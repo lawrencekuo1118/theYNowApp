@@ -175,10 +175,18 @@ if (nzchar(py)) {
 # UI CSS hooks present
 ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE), collapse = "\n")
 check("css logo-grad present", grepl("ynow-corpname-logo-grad", ui, fixed = TRUE))
+check(
+  "quote KPI icons reuse company-name gradient",
+  grepl("body.ynow-corp-logo #ibx_stockprice .info-box-icon", ui, fixed = TRUE) &&
+    grepl("body.ynow-corp-logo #ibx_marketcap .info-box-icon", ui, fixed = TRUE) &&
+    grepl("body.ynow-corp-logo #ibx_EPS .info-box-icon", ui, fixed = TRUE) &&
+    grepl("ynowCorpLogoColors", ui, fixed = TRUE)
+)
 check("css white-en helper present", grepl("ynow-corpname-en-on-white", ui, fixed = TRUE))
 
 srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE), collapse = "\n")
 check("server stores logo colors", grepl("corp_name_logo_colors", srv, fixed = TRUE))
+check("server pushes logo colors to quote icons", grepl("ynowCorpLogoColors", srv, fixed = TRUE))
 check("server ensures color pair", grepl("ensure_logo_color_pair", srv, fixed = TRUE))
 check("server calls cached_get_corp_logo_colors", grepl("cached_get_corp_logo_colors", srv, fixed = TRUE))
 wc <- paste(readLines(file.path(app_dir, "web_crawler.R"), warn = FALSE), collapse = "\n")

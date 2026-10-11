@@ -1410,6 +1410,19 @@ server <- function(input, output, session) {
   }
 
   output$txt_corpname <- renderUI({ render_corpname_ui() })
+
+  # Quote KPI icon fills share the company-name logo pair (c1 → c2).
+  observe({
+    cols <- tryCatch(
+      .ensure_logo_color_pair(corp_name_logo_colors()),
+      error = function(e) character(0)
+    )
+    ok <- length(cols) >= 2L && nzchar(cols[[1]]) && nzchar(cols[[2]])
+    session$sendCustomMessage("ynowCorpLogoColors", list(
+      c1 = if (ok) cols[[1]] else "",
+      c2 = if (ok) cols[[2]] else ""
+    ))
+  })
   output$search_results <- renderText({ corp_industry_text() })
 
   # Dashboard：FINANCIAL REPORT 上方 — 個股基本資訊總說明（一秒認識公司）

@@ -5872,6 +5872,17 @@ ui <- dashboardPage(
             0 0 1px rgba(51, 51, 51, 0.55),
             0 1px 0 rgba(51, 51, 51, 0.35);
         }
+        /* LAST PRICE / MARKET CAP / EPS (TTM): icon fill follows the company-name logo pair */
+        body.ynow-corp-logo #ibx_stockprice .info-box-icon,
+        body.ynow-corp-logo #ibx_marketcap .info-box-icon,
+        body.ynow-corp-logo #ibx_EPS .info-box-icon {
+          background-color: var(--ynow-corp-c1) !important;
+          background-image: linear-gradient(
+            90deg,
+            var(--ynow-corp-c1, #333333) 0%,
+            var(--ynow-corp-c2, #000000) 100%
+          ) !important;
+        }
         /* Header Language toggle (in black bar); Currency floats under logo */
         /* 繁中／EN 與小 logo 在頁首列垂直置中對齊 */
         .main-header .navbar-custom-menu {
@@ -8659,6 +8670,20 @@ ui <- dashboardPage(
               set('ynow_dc_sop_ack_sgr_label', payload.ack_sgr);
               set('ynow_dc_sop_ack_sens_label', payload.ack_sens);
               set('ynow_dc_sop_ack_qual_label', payload.ack_qual);
+            });
+            Shiny.addCustomMessageHandler('ynowCorpLogoColors', function (payload) {
+              var root = document.documentElement;
+              var c1 = payload && payload.c1 ? String(payload.c1) : '';
+              var c2 = payload && payload.c2 ? String(payload.c2) : '';
+              if (!c1 || !c2) {
+                root.style.removeProperty('--ynow-corp-c1');
+                root.style.removeProperty('--ynow-corp-c2');
+                document.body.classList.remove('ynow-corp-logo');
+                return;
+              }
+              root.style.setProperty('--ynow-corp-c1', c1);
+              root.style.setProperty('--ynow-corp-c2', c2);
+              document.body.classList.add('ynow-corp-logo');
             });
             Shiny.addCustomMessageHandler('ynowModelTheme', function (payload) {
               var tab = (payload && payload.tab) ? String(payload.tab) : '';
