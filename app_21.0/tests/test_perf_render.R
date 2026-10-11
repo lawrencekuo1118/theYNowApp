@@ -67,8 +67,8 @@ check(
 )
 # After cached scrape, normalize_all_financials should not be called again in the same block
 fin_block <- sub(
-  ".*incProgress\\(0\\.5, detail = \"正在抓取財報明細",
-  "incProgress(0.5, detail = \"正在抓取財報明細",
+  ".*incProgress\\(0\\.5, detail = \"正在擷取財報明細",
+  "incProgress(0.5, detail = \"正在擷取財報明細",
   srv
 )
 fin_block <- substr(fin_block, 1, 800)

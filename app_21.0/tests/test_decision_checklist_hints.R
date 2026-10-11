@@ -3,6 +3,8 @@
 
 root <- if (file.exists("decision_checklist_module.R")) {
   getwd()
+} else if (file.exists(file.path("..", "decision_checklist_module.R"))) {
+  normalizePath(file.path(".."))
 } else if (file.exists("app_21.0/decision_checklist_module.R")) {
   file.path(getwd(), "app_21.0")
 } else {

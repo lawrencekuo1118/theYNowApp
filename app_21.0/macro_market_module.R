@@ -547,11 +547,17 @@ macro_market_ui <- function(id = "macro") {
       class = "ynow-macro-hint ynow-full-only",
       "Click an index box to show its historical line chart."
     ),
+    tags$p(
+      id = "ynow_macro_ynow_index_hint",
+      class = "ynow-macro-hint ynow-lite-only",
+      "Click YNOW / TYNOW to expand or collapse its chart and constituents."
+    ),
     uiOutput(ns("rf_signal_row")),
     # Shared expand slot for ^GSPC / boards and YNOW／TYNOW (same card style).
+    # Visible in Lite when YNOW／TYNOW is selected (board KPIs stay Full-only).
     tags$div(
       id = "ynow_macro_index_hist",
-      class = "ynow-macro-index-hist ynow-full-only",
+      class = "ynow-macro-index-hist",
       uiOutput(ns("index_hist_panel"))
     ),
     tags$div(
@@ -743,11 +749,15 @@ macro_market_server <- function(id = "macro",
       htcdi_expanded(!isolate(htcdi_expanded()))
     }, ignoreInit = TRUE)
     observeEvent(input$index_click, {
-      if (.is_lite()) return()
       sym <- as.character(input$index_click %||% "")[1]
       specs <- macro_click_index_specs(.mode())
       own <- .own_index_symbol()
-      accepted <- nzchar(sym) && (sym %in% names(specs) || identical(sym, own))
+      # Lite: only YNOW / TYNOW expands; board KPIs stay Full-only.
+      accepted <- if (.is_lite()) {
+        nzchar(sym) && identical(sym, own)
+      } else {
+        nzchar(sym) && (sym %in% names(specs) || identical(sym, own))
+      }
       if (!accepted) return()
       # Second click on the same board collapses the expand panel (same pattern as HTCDI).
       cur <- isolate(as.character(selected_index() %||% "")[1])
@@ -978,12 +988,14 @@ macro_market_server <- function(id = "macro",
 
     index_hist_data <- reactive({
       refresh_token()
-      if (.is_lite()) return(NULL)
       sym <- as.character(selected_index() %||% "")[1]
       if (!nzchar(sym)) return(NULL)
+      own <- .own_index_symbol()
+      # Lite: only own-index (YNOW / TYNOW) series; board charts stay Full-only.
+      if (.is_lite() && !identical(sym, own)) return(NULL)
       period <- as.character(input$hist_period %||% "1y")[1]
       if (!nzchar(period) || is.na(period)) period <- "1y"
-      if (identical(sym, .own_index_symbol())) {
+      if (identical(sym, own)) {
         b <- tryCatch(ynow_basket(), error = function(e) NULL)
         mem <- b$members %||% list()
         if (!length(mem) || !exists("ynow_index_series", mode = "function")) return(NULL)
@@ -996,7 +1008,7 @@ macro_market_server <- function(id = "macro",
     own_member_quotes <- reactive({
       refresh_token()
       sym <- as.character(selected_index() %||% "")[1]
-      if (.is_lite() || !nzchar(sym) || !identical(sym, .own_index_symbol())) return(list())
+      if (!nzchar(sym) || !identical(sym, .own_index_symbol())) return(list())
       b <- tryCatch(ynow_basket(), error = function(e) NULL)
       mem <- b$members %||% list()
       if (!length(mem)) return(list())
@@ -1083,11 +1095,12 @@ macro_market_server <- function(id = "macro",
     }
 
     output$index_hist_panel <- renderUI({
-      if (.is_lite()) return(NULL)
       sym <- as.character(selected_index() %||% "")[1]
       if (!nzchar(sym)) return(NULL)
       # YNOW / TYNOW: same expand card as ^GSPC — rule above chart, constituents under it.
       own <- identical(sym, .own_index_symbol())
+      # Lite: only own-index expand; board expand stays Full-only.
+      if (.is_lite() && !own) return(NULL)
       dat <- index_hist_data()
       title <- if (own) .ui(.index_ui_key("title")) else .ui(macro_index_name_key(sym))
       rule_key <- .index_ui_key("rule")
@@ -1155,9 +1168,6 @@ macro_market_server <- function(id = "macro",
     })
 
     output$index_hist_plot <- plotly::renderPlotly({
-      if (.is_lite()) {
-        return(plotly::plotly_empty(type = "scatter", mode = "lines"))
-      }
       dat <- index_hist_data()
       shiny::validate(shiny::need(
         is.data.frame(dat) && nrow(dat) >= 2L,
@@ -1165,6 +1175,9 @@ macro_market_server <- function(id = "macro",
       ))
       sym <- as.character(selected_index() %||% "")[1]
       own <- identical(sym, .own_index_symbol())
+      if (.is_lite() && !own) {
+        return(plotly::plotly_empty(type = "scatter", mode = "lines"))
+      }
       title <- if (own) .ui(.index_ui_key("title")) else .ui(macro_index_name_key(sym))
       overlays <- if (own) {
         as.character(own_index_overlays() %||% character(0))
@@ -1251,9 +1264,8 @@ macro_market_server <- function(id = "macro",
     .own_index_kpi_card <- function() {
       own <- .own_index_symbol()
       if (!nzchar(own)) return(NULL)
-      lite <- .is_lite()
       sel <- as.character(selected_index() %||% "")[1]
-      selected_own <- !isTRUE(lite) && identical(sel, own)
+      selected_own <- identical(sel, own)
       lvl <- tryCatch(own_level(), error = function(e) list(last = NA_real_, chg = NA_real_))
       last <- lvl$last
       chg <- lvl$chg
@@ -1261,25 +1273,21 @@ macro_market_server <- function(id = "macro",
       chg_txt <- if (is.finite(chg)) sprintf("%+.2f%%", chg) else "—"
       chg_cls <- if (is.finite(chg) && chg >= 0) "ynow-macro-up" else "ynow-macro-down"
       title_key <- .index_ui_key("title")
-      kpi_cls <- "ynow-macro-kpi ynow-macro-kpi--ynow"
-      extra <- NULL
-      if (!isTRUE(lite)) {
-        kpi_cls <- paste(kpi_cls, "ynow-macro-kpi--clickable")
-        if (selected_own) kpi_cls <- paste(kpi_cls, "ynow-macro-kpi--selected")
-        extra <- list(
-          role = "button",
-          tabindex = "0",
-          onclick = sprintf(
-            paste0(
-              "if (document.body && document.body.classList.contains('ynow-lite')) return; ",
-              "if (window.Shiny && Shiny.setInputValue) {",
-              " Shiny.setInputValue('%s', '%s', {priority: 'event'}); }"
-            ),
-            ns("index_click"),
-            own
-          )
+      # Clickable in Full and Lite (Lite expands YNOW／TYNOW only).
+      kpi_cls <- "ynow-macro-kpi ynow-macro-kpi--ynow ynow-macro-kpi--clickable"
+      if (selected_own) kpi_cls <- paste(kpi_cls, "ynow-macro-kpi--selected")
+      extra <- list(
+        role = "button",
+        tabindex = "0",
+        onclick = sprintf(
+          paste0(
+            "if (window.Shiny && Shiny.setInputValue) {",
+            " Shiny.setInputValue('%s', '%s', {priority: 'event'}); }"
+          ),
+          ns("index_click"),
+          own
         )
-      }
+      )
       do.call(
         tags$div,
         c(

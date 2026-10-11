@@ -41,7 +41,7 @@ est_live <- estimate_perpetual_g(
   locale = "zh-TW"
 )
 check("live Macro g equals Rf", approx_eq(est_live$g_pct, 4.87))
-check("live Macro reason mentions live scrape", grepl("即時抓取", est_live$reason, fixed = TRUE))
+check("live Macro reason mentions live scrape", grepl("即時擷取", est_live$reason, fixed = TRUE))
 check("live Macro reason includes Rf value", grepl("4\\.87", est_live$reason))
 check("live Macro rf_source echoed", identical(est_live$rf_source, "live"))
 

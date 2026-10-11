@@ -34,6 +34,17 @@ In replies to the user and in any **UI / help text / notifications** you add or 
 | 质量 | 品質 |
 | 账户 | 帳戶 |
 | 报表 | 報表 |
+| 口徑 / 統計口徑 | 範圍／定義／基準（台灣不用「統計口徑」） |
+| 帶寬（情境／資訊） | 區間（情境區間；勿用 IT「帶寬」） |
+| 點擊 | 點選 |
+| 可替代對象 | 可替代標的 |
+| 一鍵（行銷口吻） | 一次產出／快速套用 |
+| 風險提示 | 風險警語 |
+| 爬取／抓取（UI） | 擷取／取得 |
+| 投資者 | 投資人 |
+| 幹擾（誤用 幹） | 干擾（台灣用 干 U+5E72） |
+
+**Dangerous false positive:** Traditional Chinese orthography ≠ Taiwan usage. Before adopting a zh phrase, check whether it is Mainland finance/stats/UI jargon that merely got converted to 繁體 (e.g. 「口徑」「統計口徑」「帶寬」「點擊」「一鍵」「可替代對象」). Prefer Taiwan investment-desk wording.
 
 ## Valuation copy (theYNowApp)
 

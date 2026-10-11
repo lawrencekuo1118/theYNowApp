@@ -309,7 +309,7 @@ server <- function(input, output, session) {
         selected = life_sel
       )
     }, error = function(e) NULL)
-    # HFV 驗證樣本口徑：標籤／三選項隨 locale 更新（值不變）
+    # HFV 驗證樣本範圍：標籤／三選項隨 locale 更新（值不變）
     tryCatch({
       oos_sel <- isolate(input$bt_fv_oos_mode)
       if (is.null(oos_sel) || !oos_sel %in% c("realized", "expanding", "insample")) {
@@ -767,7 +767,34 @@ server <- function(input, output, session) {
   })
 
   output$lab_cluster_focus_suggest_ui <- renderUI({
-    .ynow_ticker_suggest_div("lab_cluster_focus_suggest", sc_datalist_choices(), market_mode())
+    mode <- market_mode()
+    res <- tryCatch(lab_cluster_result(), error = function(e) NULL)
+    # After a cluster run, suggest only names in the clustered set — market-wide
+    # presets (e.g. 2881) are not radar-usable and made focus look "2330-only".
+    ch <- NULL
+    if (isTRUE(tryCatch(lab_cluster_has_result(res), error = function(e) FALSE))) {
+      tks <- as.character(res$data$ticker)
+      disp <- tryCatch(
+        display_tickers_for_market(tks, mode),
+        error = function(e) sub("\\.(TW|TWO)$", "", tks, ignore.case = TRUE)
+      )
+      nm <- if ("name" %in% names(res$data)) {
+        as.character(res$data$name)
+      } else {
+        as.character(disp)
+      }
+      labs <- paste0(disp, " — ", nm)
+      ch <- stats::setNames(as.character(tks), labs)
+      q <- trimws(as.character(input$ticker_typeahead %||% "")[1])
+      if (nzchar(q)) {
+        keep <- grepl(q, disp, ignore.case = TRUE) |
+          grepl(q, tks, ignore.case = TRUE) |
+          grepl(q, nm, ignore.case = TRUE)
+        ch <- ch[keep]
+      }
+    }
+    if (is.null(ch) || !length(ch)) ch <- sc_datalist_choices()
+    .ynow_ticker_suggest_div("lab_cluster_focus_suggest", ch, mode)
   })
 
   session$onFlushed(function() {
@@ -1015,7 +1042,7 @@ server <- function(input, output, session) {
           error = function(e) NULL
         )
 
-        incProgress(0.5, detail = "正在抓取財報明細（yfinance）...")
+        incProgress(0.5, detail = "正在擷取財報明細（yfinance）...")
         # cached_scrape_financials already runs normalize_all_financials — do not re-normalize
         res <- cached_scrape_financials(stock_code)
 
@@ -2387,10 +2414,12 @@ server <- function(input, output, session) {
       bt_nav_window = c("Backtest", "NAV window", "Strategy NAV 視窗"),
       lab_im_pool_rank = c("Lab", "候選截斷邏輯", "市值／概念股／近一年漲幅／隨機"),
       lab_im_concepts = c("Lab", "概念股群", "pool = concept 時"),
-      lab_im_lb_mode = c("Lab", "Leaderboard mode", "overall / by_industry"),
+      lab_im_lb_mode = c("Lab", "Leaderboard mode", "overall / by_industry / undervalued"),
+      lab_im_boards = c("Lab", "TW boards", "TWSE / TPEX / ESB"),
       lab_im_max_n = c("Lab", "Universe size N", "顯示上限"),
       lab_im_max_n_custom = c("Lab", "Custom universe N", "N = custom 時"),
       lab_im_eq_only = c("Lab", "Earnings quality only", "僅盈餘品質通過"),
+      lab_im_no_alert = c("Lab", "No FS alerts", "無財報警訊"),
       lab_im_include_adr = c("Lab", "Include ADRs", "含 ADR"),
       lab_im_gate_only = c("Lab", "Gate only", "Piotroski 高門檻"),
       lab_im_methods = c("Lab", "Valuation models", "Lab 計分模型"),
@@ -2406,8 +2435,8 @@ server <- function(input, output, session) {
     lite_default_keys <- c(
       "stock_code", "industry_choice", "session_ccy",
       "lab_im_pool_rank", "lab_im_concepts",
-      "lab_im_lb_mode", "lab_im_max_n", "lab_im_max_n_custom",
-      "lab_im_eq_only", "lab_im_include_adr",
+      "lab_im_lb_mode", "lab_im_boards", "lab_im_max_n", "lab_im_max_n_custom",
+      "lab_im_eq_only", "lab_im_no_alert", "lab_im_include_adr",
       "lab_cluster_k", "lab_cluster_x", "lab_cluster_y"
     )
     # Lite has no module extras outside APP_DEFAULTS (RI industry ROE is Full-only).
@@ -5456,7 +5485,7 @@ server <- function(input, output, session) {
       return(invisible(NULL))
     }
 
-    withProgress(message = "抓取同業 β／D/E…", value = 0.2, {
+    withProgress(message = "擷取同業 β／D/E…", value = 0.2, {
       raw <- tryCatch(fetch_beta_unlever_inputs_batch(peers), error = function(e) list())
       incProgress(0.7)
     })
@@ -5466,7 +5495,7 @@ server <- function(input, output, session) {
       if (is.null(x)) {
         return(data.frame(
           代號 = peers[i], β_L = NA_real_, D_E = NA_real_, β_u = NA_real_,
-          狀態 = "抓取失敗", stringsAsFactors = FALSE
+          狀態 = "擷取失敗", stringsAsFactors = FALSE
         ))
       }
       # reticulate may return named list
@@ -8821,7 +8850,7 @@ server <- function(input, output, session) {
 
     alert_box <- ui_missing_data_alert(
       check_list = check_list,
-      fallback_msg = "無法從財報抓取上述數值。請在下方手動輸入以確保企業估值 (DCF) 計算準確。"
+      fallback_msg = "無法從財報擷取上述數值。請在下方手動輸入以確保企業估值 (DCF) 計算準確。"
     )
     
     if (!is.null(alert_box)) {
@@ -8931,7 +8960,7 @@ server <- function(input, output, session) {
     }
     if (length(choices) < 1L) {
       return(tags$p(
-        class = "ynow-hfv-toolbar__hint",
+        class = "ynow-hfv-page-controls__hint",
         ui_str("bt_freq_insufficient", loc)
       ))
     }
@@ -8940,18 +8969,13 @@ server <- function(input, output, session) {
       pref <- as.character(APP_DEFAULTS$bt_fv_analysis_freq %||% "quarterly")[1]
       cur <- if (pref %in% unname(choices)) pref else if ("quarterly" %in% unname(choices)) "quarterly" else unname(choices)[[1]]
     }
-    tagList(
-      radioButtons(
-        "bt_fv_analysis_freq",
-        ui_str("hfv_analysis_freq_label", loc),
-        inline = TRUE,
-        choices = choices,
-        selected = cur
-      ),
-      tags$p(
-        class = "ynow-hfv-toolbar__hint",
-        ui_str("bt_freq_hint", loc)
-      )
+    # Compact page-level control (under How-to-read); no long hint block
+    radioButtons(
+      "bt_fv_analysis_freq",
+      ui_str("hfv_analysis_freq_label", loc),
+      inline = TRUE,
+      choices = choices,
+      selected = cur
     )
   })
 
@@ -9641,19 +9665,12 @@ server <- function(input, output, session) {
       return(tags$p(style = "color:#888;font-size:12.5px;", ui_str("hfv_val_hint_no_summary", loc)))
     }
     bias <- as.character(m$market_pricing_bias %||% "—")
-    bias_col <- if (grepl("低估", bias, fixed = TRUE)) {
-      "#00a65a"
+    bias_tone <- if (grepl("低估", bias, fixed = TRUE)) {
+      "bull"
     } else if (grepl("高估", bias, fixed = TRUE)) {
-      "#d9534f"
+      "bear"
     } else {
-      "#666"
-    }
-    bias_bg <- if (grepl("低估", bias, fixed = TRUE)) {
-      "#f7fbf8"
-    } else if (grepl("高估", bias, fixed = TRUE)) {
-      "#fdf7f7"
-    } else {
-      "#fafafa"
+      NULL
     }
     bias_val <- if (grepl("低估", bias, fixed = TRUE)) {
       ui_str("hfv_bias_undervalued", loc)
@@ -9664,14 +9681,41 @@ server <- function(input, output, session) {
     } else {
       bias
     }
-    pct_under <- m$pct_market_under %||% m$pct_value_over
-    last_sig <- as.character(m$last_signal %||% "—")
-    sig_col <- if (grepl("便宜", last_sig, fixed = TRUE) || grepl("Cheap", last_sig, fixed = TRUE)) {
-      "#00a65a"
-    } else if (grepl("偏貴", last_sig, fixed = TRUE) || grepl("Rich", last_sig, fixed = TRUE)) {
-      "#d9534f"
+    pct_under <- suppressWarnings(as.numeric(m$pct_market_under %||% m$pct_strategy_under %||% NA_real_)[1])
+    pct_over <- suppressWarnings(as.numeric(m$pct_market_over %||% m$pct_value_over %||% NA_real_)[1])
+    # Majority only: underpricing OR overpricing — whichever share is larger
+    maj_is_under <- if (is.finite(pct_under) && is.finite(pct_over)) {
+      pct_under >= pct_over
+    } else if (is.finite(pct_under)) {
+      TRUE
+    } else if (is.finite(pct_over)) {
+      FALSE
     } else {
-      "#666"
+      NA
+    }
+    maj_label <- if (isTRUE(maj_is_under)) {
+      ui_str("hfv_kpi_under_rate", loc)
+    } else if (identical(maj_is_under, FALSE)) {
+      ui_str("hfv_kpi_over_rate", loc)
+    } else {
+      ui_str("hfv_kpi_under_rate", loc)
+    }
+    maj_pct <- if (isTRUE(maj_is_under)) pct_under else if (identical(maj_is_under, FALSE)) pct_over else NA_real_
+    maj_tone <- if (isTRUE(maj_is_under)) "bull" else if (identical(maj_is_under, FALSE)) "bear" else NULL
+    maj_note <- if (isTRUE(maj_is_under)) {
+      ui_str("hfv_kpi_under_note", loc)
+    } else if (identical(maj_is_under, FALSE)) {
+      ui_str("hfv_kpi_over_note", loc)
+    } else {
+      ui_str("hfv_kpi_under_note", loc)
+    }
+    last_sig <- as.character(m$last_signal %||% "—")
+    sig_tone <- if (grepl("便宜", last_sig, fixed = TRUE) || grepl("Cheap", last_sig, fixed = TRUE)) {
+      "bull"
+    } else if (grepl("偏貴", last_sig, fixed = TRUE) || grepl("Rich", last_sig, fixed = TRUE)) {
+      "bear"
+    } else {
+      NULL
     }
     last_sig_disp <- if (grepl("便宜", last_sig, fixed = TRUE) || grepl("Cheap", last_sig, fixed = TRUE)) {
       ui_str("hfv_sig_cheap", loc)
@@ -9682,26 +9726,45 @@ server <- function(input, output, session) {
     } else {
       last_sig
     }
+    # tone: bull=利多 (US green / TW red), bear=利空 (US red / TW green) via CSS
+    .kpi <- function(label, value, note = NULL, tone = NULL, color = NULL, bg = NULL, border = NULL) {
+      cell_cls <- "ynow-hfv-kpi-cell"
+      val_cls <- "ynow-kpi-stat-value"
+      sty <- NULL
+      if (identical(tone, "bull")) {
+        cell_cls <- paste(cell_cls, "ynow-hfv-kpi-cell--bull")
+        val_cls <- paste(val_cls, "ynow-hfv-bull")
+      } else if (identical(tone, "bear")) {
+        cell_cls <- paste(cell_cls, "ynow-hfv-kpi-cell--bear")
+        val_cls <- paste(val_cls, "ynow-hfv-bear")
+      } else {
+        bg <- bg %||% "#fff"
+        border <- border %||% "#ddd"
+        color <- color %||% "#222"
+        sty <- paste0("background:", bg, ";border-left:4px solid ", border, ";")
+      }
+      tags$div(
+        class = cell_cls,
+        style = sty,
+        tags$div(class = "ynow-kpi-stat-label", label),
+        tags$div(
+          class = val_cls,
+          style = if (!is.null(tone)) NULL else paste0("color:", color, ";"),
+          value
+        ),
+        if (!is.null(note) && nzchar(as.character(note)[1])) {
+          tags$div(class = "ynow-kpi-stat-note", note)
+        } else NULL
+      )
+    }
     tags$div(
-      style = "display:flex;flex-wrap:wrap;gap:10px;margin-bottom:8px;",
-      tags$div(style = paste0("flex:1;min-width:120px;padding:8px 10px;background:", bias_bg,
-                              ";border-left:4px solid ", bias_col, ";"),
-               tags$div(class = "ynow-kpi-stat-label", ui_str("hfv_kpi_hist_pricing", loc)),
-               tags$div(class = "ynow-kpi-stat-value", style = paste0("color:", bias_col, ";"), bias_val)),
-      tags$div(style = "flex:1;min-width:120px;padding:8px 10px;background:#f7fbf8;border-left:4px solid #00a65a;",
-               tags$div(class = "ynow-kpi-stat-label", ui_str("hfv_kpi_under_rate", loc)),
-               tags$div(class = "ynow-kpi-stat-value", style = "color:#00a65a;",
-                        .fmt_pct(pct_under, 0)),
-               tags$div(class = "ynow-kpi-stat-note",
-                        ui_str("hfv_kpi_under_note", loc))),
-      tags$div(style = "flex:1;min-width:120px;padding:8px 10px;background:#fff;",
-               tags$div(class = "ynow-kpi-stat-label", ui_str("hfv_kpi_last_signal", loc)),
-               tags$div(class = "ynow-kpi-stat-value", style = paste0("color:", sig_col, ";"), last_sig_disp),
-               tags$div(class = "ynow-kpi-stat-note",
-                        ui_str("hfv_kpi_signal_note", loc))),
-      tags$div(style = "flex:1;min-width:120px;padding:8px 10px;background:#f5f5f5;border-left:4px solid #222222;",
-               tags$div(class = "ynow-kpi-stat-label", ui_str("hfv_kpi_mean_mos", loc)),
-               tags$div(class = "ynow-kpi-stat-value", style = "color:#222222;", .fmt_pct(m$mean_hist_mos)))
+      class = "ynow-hfv-kpi-grid",
+      .kpi(ui_str("hfv_kpi_hist_pricing", loc), bias_val, tone = bias_tone),
+      .kpi(maj_label, .fmt_pct(maj_pct, 0), note = maj_note, tone = maj_tone),
+      .kpi(ui_str("hfv_kpi_last_signal", loc), last_sig_disp,
+           note = ui_str("hfv_kpi_signal_note", loc), tone = sig_tone),
+      .kpi(ui_str("hfv_kpi_mean_mos", loc), .fmt_pct(m$mean_hist_mos),
+           color = "#222222", bg = "#f5f5f5", border = "#222222")
     )
   })
 
@@ -10210,7 +10273,7 @@ server <- function(input, output, session) {
     list(from = NULL, to = NULL)
   })
 
-  bt_fv_conv <- reactive({
+  .bt_hfv_valuation_df <- function() {
     freq <- .bt_selected_rebal_freq()
     res <- bt_result()
     fv_only <- bt_hfv_fv()
@@ -10227,6 +10290,10 @@ server <- function(input, output, session) {
         vd <- fv_only$valuation_df
       }
     }
+    vd
+  }
+
+  .bt_run_fv_validation <- function(vd) {
     if (is.null(vd)) return(NULL)
     b <- .bt_fv_conv_bounds()
     mode <- as.character(input$bt_fv_oos_mode %||% "realized")[1]
@@ -10248,15 +10315,43 @@ server <- function(input, output, session) {
         )
       }
     )
+  }
+
+  # Replay-driven: odds / tip / MOS / gap / pair table
+  bt_fv_conv <- reactive({
+    .bt_run_fv_validation(.bt_hfv_valuation_df())
   })
 
-  output$bt_fv_conv_summary <- renderUI({
+  # Overlay-driven scenarios (multi-select → average FV); NULL unless A–D conclusion
+  bt_fv_overlay_scenarios <- reactive({
+    models <- .bt_raw_fv_models()
+    if (length(models) < 1L) return(NULL)
+    vd_avg <- overlay_avg_fair_value_df(.bt_hfv_valuation_df(), models)
+    if (is.null(vd_avg)) return(NULL)
+    s <- .bt_run_fv_validation(vd_avg)
+    if (is.null(s) || is.null(s$scenarios) || !is.list(s$scenarios)) return(NULL)
+    lead_c <- as.character(s$scenarios$most_frequent %||% NA_character_)[1]
+    if (!nzchar(lead_c) || identical(lead_c, "NA")) lead_c <- NA_character_
+    if (is.na(lead_c) || !(lead_c %in% c("A", "B", "C", "D"))) return(NULL)
+    list(summary = s, scenarios = s$scenarios, models = models)
+  })
+
+  # Investor-report findings: one reactive builds chapter parts (II–V)
+  bt_hfv_findings_parts <- reactive({
     s <- bt_fv_conv()
     loc <- tryCatch(isolate(ui_locale()), error = function(e) "zh-TW")
     if (is.null(s)) {
-      return(tags$div(
-        style = "margin:0 0 8px 0;padding:12px;background:#f0f0f0;border-left:4px solid #999;font-size:13px;",
+      empty <- tags$div(
+        style = "margin:0 0 8px 0;padding:12px 14px;background:#f7f7f7;border:1px solid #e6e6e6;border-radius:6px;font-size:13px;color:#666;",
         ui_str("hfv_sum_empty", loc)
+      )
+      # Show the empty hint once (Section II only); later chapters keep leads only.
+      return(list(
+        empty = empty,
+        investor = empty,
+        price = NULL,
+        fv = NULL,
+        scenario = NULL
       ))
     }
     pct <- function(x) if (is.finite(x)) sprintf("%.0f%%", 100 * x) else "—"
@@ -10278,50 +10373,75 @@ server <- function(input, output, session) {
       insample = ui_str("hfv_oos_insample", loc),
       ui_str("hfv_oos_realized", loc)
     )
-    conclusion_card <- {
-      if (is.finite(s$p_up) && as.integer(s$n %||% 0L) > 0L) {
+    # Sample snapshot KPIs (Replay). Scenarios sit under Ch1 chart (Overlay).
+    # Up+down and shrink+expand share one cell each; bull/bear colors flip in TW via CSS.
+    .hfv_kpi_pair <- function(label, v_bull, v_bear, note = NULL) {
+      tags$div(
+        class = "ynow-hfv-kpi-cell ynow-hfv-kpi-cell--pair",
+        tags$div(class = "ynow-kpi-stat-label", label),
         tags$div(
-          style = paste0(
-            "margin:0 0 12px 0;padding:12px 14px;background:#eef7f1;",
-            "border:1px solid #b7dfc7;border-left:4px solid ", border, ";",
-            "border-radius:4px;font-size:13px;line-height:1.55;"
+          class = "ynow-kpi-stat-value ynow-hfv-kpi-pair-vals",
+          tags$span(class = "ynow-hfv-bull", v_bull),
+          tags$span(class = "ynow-hfv-kpi-pair-sep", " / "),
+          tags$span(class = "ynow-hfv-bear", v_bear)
+        ),
+        if (!is.null(note) && nzchar(as.character(note)[1])) {
+          tags$div(class = "ynow-kpi-stat-note", note)
+        } else NULL
+      )
+    }
+    conclusion_card <- {
+      n_pairs <- as.integer(s$n %||% 0L)
+      if (n_pairs > 0L && (is.finite(s$p_up) || is.finite(s$p_above) || is.finite(s$p_toward))) {
+        q12_n <- as.integer(s$q12_diverge_n %||% 0L)
+        tags$div(
+          style = "margin:0 0 14px 0;",
+          tags$div(
+            style = "margin:0 0 8px 0;color:#555;font-size:12px;",
+            ui_str("hfv_sum_qmap_lead", loc)
           ),
           tags$div(
-            tags$b(ui_str("hfv_sum_conclusion_label", loc)),
-            tags$span(
-              style = "margin-left:8px;font-size:16px;font-weight:700;",
-              sprintf(
-                ui_str("hfv_sum_conclusion_fmt", loc),
-                pct(s$p_up),
-                as.integer(s$n %||% 0L)
-              )
+            class = "ynow-hfv-kpi-grid ynow-hfv-kpi-grid--3",
+            .hfv_kpi_pair(
+              ui_str("hfv_kpi_ch2_up_down", loc),
+              if (is.finite(s$p_up)) pct(s$p_up) else "—",
+              if (is.finite(s$p_down)) pct(s$p_down) else "—",
+              note = sprintf(ui_str("hfv_pair_n_fmt", loc), n_pairs)
+            ),
+            .hfv_kpi_pair(
+              ui_str("hfv_kpi_ch2_toward_away", loc),
+              if (is.finite(s$p_toward)) pct(s$p_toward) else "—",
+              if (is.finite(s$p_away)) pct(s$p_away) else "—",
+              note = sprintf(ui_str("hfv_pair_n_fmt", loc), n_pairs)
+            ),
+            tags$div(
+              class = "ynow-hfv-kpi-cell",
+              style = paste0("background:#fafafa;border-left:4px solid ", border, ";"),
+              tags$div(class = "ynow-kpi-stat-label", ui_str("hfv_oos_mode_label", loc)),
+              tags$div(class = "ynow-kpi-stat-value", style = "color:#555;font-size:14px !important;", oos_lab),
+              tags$div(class = "ynow-kpi-stat-note", period_txt)
             )
           ),
-          tags$div(
-            style = "margin:4px 0 0 0;color:#555;font-size:12px;",
-            paste0(ui_str("hfv_oos_mode_label", loc), "：", oos_lab)
-          ),
-          tags$div(
-            style = "margin:4px 0 0 0;color:#6c757d;font-size:11.5px;",
-            ui_str("hfv_sum_conclusion_def", loc)
-          ),
-          tags$div(
-            style = "margin:4px 0 0 0;color:#888;font-size:11.5px;",
-            ui_str("hfv_sum_conclusion_caveat", loc)
-          )
+          if (q12_n > 0L) {
+            tags$div(
+              style = "margin:8px 0 0 0;color:#555;font-size:12px;line-height:1.5;",
+              sprintf(
+                ui_str("hfv_sum_q12_diverge_fmt", loc),
+                q12_n,
+                as.integer(s$n_up_below %||% 0L),
+                as.integer(s$n_down_above %||% 0L)
+              )
+            )
+          } else NULL
         )
       } else {
         tags$div(
           style = paste0(
-            "margin:0 0 12px 0;padding:12px 14px;background:#fafafa;",
+            "margin:0 0 14px 0;padding:12px 14px;background:#fafafa;",
             "border:1px solid #ddd;border-left:4px solid ", border, ";",
-            "border-radius:4px;font-size:13px;line-height:1.55;color:#666;"
+            "border-radius:6px;font-size:13px;line-height:1.55;color:#666;"
           ),
-          tags$div(tags$b(ui_str("hfv_sum_conclusion_label", loc))),
-          tags$div(
-            style = "margin:4px 0 0 0;",
-            ui_str("hfv_sum_conclusion_na", loc)
-          )
+          ui_str("hfv_sum_conclusion_na", loc)
         )
       }
     }
@@ -10349,70 +10469,94 @@ server <- function(input, output, session) {
       }
     }
 
-    price_card <- tags$div(
-      style = paste0(
-        "height:100%;margin:0;padding:12px 14px;background:#fff;",
-        "border:1px solid #d9e6f2;border-left:4px solid ", border, ";border-radius:4px;",
-        "font-size:13px;line-height:1.55;"
-      ),
-      tags$div(tags$b(ui_str("hfv_sum_price_block", loc))),
-      tags$div(style = "margin:4px 0 0 0;color:#6c757d;font-size:11.5px;", ui_str("hfv_sum_price_formula", loc)),
-      tags$p(style = "margin:6px 0 0 0;color:#555;font-size:12px;", period_txt),
-      tags$ul(
-        style = "margin:6px 0 0 0;padding-left:18px;",
-        tags$li(sprintf(ui_str("hfv_pair_n_fmt", loc), s$n %||% 0L)),
-        tags$li(sprintf(
-          ui_str("hfv_price_odds_fmt", loc),
-          pct(s$p_up), s$n_up %||% 0L,
-          pct(s$p_down), s$n_down %||% 0L,
-          pct(s$p_flat_price), s$n_flat_price %||% 0L
-        )),
-        tags$li(sprintf(
-          ui_str("hfv_next_ret_fmt", loc),
-          gap_pct(s$median_ret), gap_pct(s$mean_ret)
-        )),
-        if (identical(s$oos_mode, "expanding") && is.finite(s$oos_dir_hit_rate)) {
-          tags$li(sprintf(
-            ui_str("hfv_oos_dir_hit_fmt", loc),
-            pct(s$oos_dir_hit_rate), s$oos_dir_n %||% 0L
-          ))
+    .hfv_kpi <- function(label, value, note = NULL, color = "#222", bg = "#fff", border_col = "#ddd",
+                         tone = NULL) {
+      cell_cls <- "ynow-hfv-kpi-cell"
+      val_cls <- "ynow-kpi-stat-value"
+      sty <- NULL
+      if (identical(tone, "bull")) {
+        cell_cls <- paste(cell_cls, "ynow-hfv-kpi-cell--bull")
+        val_cls <- paste(val_cls, "ynow-hfv-bull")
+      } else if (identical(tone, "bear")) {
+        cell_cls <- paste(cell_cls, "ynow-hfv-kpi-cell--bear")
+        val_cls <- paste(val_cls, "ynow-hfv-bear")
+      } else {
+        sty <- paste0("background:", bg, ";border-left:4px solid ", border_col, ";")
+      }
+      tags$div(
+        class = cell_cls,
+        style = sty,
+        tags$div(class = "ynow-kpi-stat-label", label),
+        tags$div(
+          class = val_cls,
+          style = if (!is.null(tone)) NULL else paste0("color:", color, ";"),
+          value
+        ),
+        if (!is.null(note) && nzchar(as.character(note)[1])) {
+          tags$div(class = "ynow-kpi-stat-note", note)
         } else NULL
+      )
+    }
+
+    price_card <- tags$div(
+      style = "margin:0;",
+      tags$div(style = "margin:0 0 8px 0;color:#6c757d;font-size:11.5px;", ui_str("hfv_sum_price_formula", loc)),
+      tags$p(style = "margin:0 0 8px 0;color:#555;font-size:12px;", period_txt),
+      tags$div(
+        class = "ynow-hfv-kpi-grid ynow-hfv-kpi-grid--3",
+        .hfv_kpi(ui_str("hfv_kpi_ch3_n", loc), as.character(s$n %||% 0L), border_col = border),
+        .hfv_kpi_pair(
+          ui_str("hfv_kpi_ch3_up_down", loc),
+          if (is.finite(s$p_up)) pct(s$p_up) else "—",
+          if (is.finite(s$p_down)) pct(s$p_down) else "—",
+          note = sprintf(
+            ui_str("hfv_kpi_ch3_up_down_note", loc),
+            s$n_up %||% 0L, s$n_down %||% 0L
+          )
+        ),
+        .hfv_kpi(
+          ui_str("hfv_kpi_ch3_med_ret", loc),
+          gap_pct(s$median_ret),
+          note = sprintf(ui_str("hfv_kpi_ch3_mean_ret_note", loc), gap_pct(s$mean_ret)),
+          color = "#3c8dbc", bg = "#f5f9fc", border_col = "#3c8dbc"
+        )
       ),
-      tags$hr(style = "margin:10px 0 8px 0;border-top:1px dashed #c5d4ef;"),
-      tags$div(tags$b(ui_str("hfv_sum_mos_block", loc))),
-      mos_body
+      tags$div(
+        style = paste0(
+          "margin:12px 0 0 0;padding:12px 14px;background:#fff;",
+          "border:1px solid #d9e6f2;border-left:4px solid ", border, ";border-radius:6px;"
+        ),
+        tags$div(tags$b(ui_str("hfv_sum_mos_block", loc))),
+        mos_body
+      )
     )
 
     fv_card <- tags$div(
-      style = paste0(
-        "height:100%;margin:0;padding:12px 14px;background:#fff;",
-        "border:1px solid #e2e3e5;border-left:4px solid ", border, ";border-radius:4px;",
-        "font-size:13px;line-height:1.55;"
+      style = "margin:0;",
+      tags$div(style = "margin:0 0 8px 0;color:#6c757d;font-size:11.5px;", ui_str("hfv_sum_fv_formula", loc)),
+      tags$p(style = "margin:0 0 8px 0;color:#555;font-size:12px;", period_txt),
+      tags$div(
+        class = "ynow-hfv-kpi-grid ynow-hfv-kpi-grid--3",
+        .hfv_kpi(ui_str("hfv_kpi_ch4_n", loc), as.character(s$n %||% 0L), border_col = border),
+        .hfv_kpi_pair(
+          ui_str("hfv_kpi_ch4_toward_away", loc),
+          if (is.finite(s$p_toward)) pct(s$p_toward) else "—",
+          if (is.finite(s$p_away)) pct(s$p_away) else "—",
+          note = sprintf(
+            ui_str("hfv_kpi_ch4_toward_away_note", loc),
+            s$n_toward %||% 0L, s$n_away %||% 0L
+          )
+        ),
+        .hfv_kpi(
+          ui_str("hfv_kpi_ch4_med_gap", loc),
+          gap_pct(s$median_gap),
+          note = sprintf(ui_str("hfv_kpi_ch4_mean_gap_note", loc), gap_pct(s$mean_gap)),
+          color = "#3c8dbc", bg = "#f5f9fc", border_col = "#3c8dbc"
+        )
       ),
-      tags$div(tags$b(ui_str("hfv_sum_fv_block", loc))),
-      tags$div(style = "margin:4px 0 0 0;color:#6c757d;font-size:11.5px;", ui_str("hfv_sum_fv_formula", loc)),
-      tags$p(style = "margin:6px 0 0 0;color:#555;font-size:12px;", period_txt),
-      tags$ul(
-        style = "margin:6px 0 0 0;padding-left:18px;",
-        tags$li(sprintf(ui_str("hfv_pair_n_fmt", loc), s$n %||% 0L)),
-        tags$li(sprintf(
-          ui_str("hfv_fv_odds_fmt", loc),
-          pct(s$p_above), s$n_above %||% 0L,
-          pct(s$p_below), s$n_below %||% 0L,
-          pct(s$p_flat_vs), s$n_flat_vs %||% 0L
-        )),
-        tags$li(sprintf(
-          ui_str("hfv_gap_stats_fmt", loc),
-          gap_pct(s$median_gap), gap_pct(s$mean_gap),
-          gap_pct(s$median_gap_above), gap_pct(s$median_gap_below),
-          gap_pct(s$median_abs_gap)
-        )),
-        if (identical(s$oos_mode, "expanding") && is.finite(s$oos_hit_rate)) {
-          tags$li(sprintf(
-            ui_str("hfv_oos_fv_hit_fmt", loc),
-            pct(s$oos_hit_rate), s$oos_n %||% 0L
-          ))
-        } else NULL
+      tags$p(
+        style = "margin:8px 0 0 0;color:#555;font-size:12px;line-height:1.45;",
+        ui_str("hfv_toward_read", loc)
       )
     )
 
@@ -10470,10 +10614,10 @@ server <- function(input, output, session) {
               class = "ynow-hfv-scenario-card",
               style = paste0(
                 "border:1px solid ", border_col, ";",
-                "border-radius:8px; padding:12px 12px 10px 12px; min-height:148px; background:", bg,
+                "border-radius:8px; padding:12px 12px 10px 12px; min-height:140px; background:", bg,
                 "; box-shadow:0 2px 4px rgba(0,0,0,0.04); height:100%;"
               ),
-              tags$div(style = paste0("font-size:20px; color:", color, ";"), icon(icon_name)),
+              tags$div(style = paste0("font-size:18px; color:", color, ";"), icon(icon_name)),
               tags$h4(
                 style = "margin:6px 0 4px 0; font-weight:700; font-size:14px; line-height:1.3;",
                 sc_lab(code)
@@ -10499,52 +10643,39 @@ server <- function(input, output, session) {
         tags$div(
           style = paste0(
             "margin:0 0 10px 0;padding:12px 14px;background:#fff;",
-            "border:1px solid #e8dfd0;border-left:4px solid ", border, ";border-radius:4px;",
+            "border:1px solid #e8dfd0;border-left:4px solid ", border, ";border-radius:6px;",
             "font-size:13px;line-height:1.55;"
           ),
           tags$style(HTML("
             .ynow-hfv-scenario-lead { transform: translateY(-2px); }
             .ynow-hfv-scenario-row {
-              display: flex;
-              flex-wrap: nowrap;
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 12px 14px;
               align-items: stretch;
-              margin-left: -7.5px;
-              margin-right: -7.5px;
+              margin: 0 0 4px 0;
             }
             .ynow-hfv-scenario-row > .ynow-hfv-scenario-card-col {
-              flex: 1 1 0;
               min-width: 0;
               width: auto;
               float: none;
-              padding-left: 7.5px;
-              padding-right: 7.5px;
               box-sizing: border-box;
             }
-            @media (max-width: 991px) {
-              .ynow-hfv-scenario-row { flex-wrap: wrap; }
-              .ynow-hfv-scenario-row > .ynow-hfv-scenario-card-col {
-                flex: 1 1 45%;
-                margin-bottom: 10px;
-              }
-            }
-            @media (max-width: 767px) {
-              .ynow-hfv-scenario-row > .ynow-hfv-scenario-card-col {
-                flex: 1 1 100%;
+            @media (max-width: 575px) {
+              .ynow-hfv-scenario-row {
+                grid-template-columns: 1fr;
               }
             }
           ")),
-          tags$div(tags$b(ui_str("hfv_sum_scenario_block", loc))),
-          tags$div(
-            style = "margin:4px 0 0 0;color:#6c757d;font-size:11.5px;",
-            ui_str("hfv_sum_scenario_formula", loc)
-          ),
-          tags$p(style = "margin:6px 0 8px 0;color:#555;font-size:12px;", period_txt),
+          # Chapter V lead + method box cover formula/meaning; keep period + counts + cards.
+          tags$p(style = "margin:0 0 6px 0;color:#555;font-size:12px;", period_txt),
           tags$div(
             style = "margin:0 0 6px 0;color:#555;font-size:12px;",
-            sprintf("配對數 n＝%d", sc$n %||% 0L)
+            sprintf(ui_str("hfv_pair_n_fmt", loc), sc$n %||% 0L)
           ),
           tags$div(
             class = "ynow-hfv-scenario-row",
+            # 2×2: A B / C D
             make_sc_card("A", "gem", "#c9a227"),
             make_sc_card("B", "chart-line", "#00a65a"),
             make_sc_card("C", "exclamation-triangle", "#f39c12"),
@@ -10588,19 +10719,19 @@ server <- function(input, output, session) {
                 ui_str("hfv_scenario_concl_other", loc)
               }
             }
-            make_concl_callout <- function(scope_label, code, border_col) {
+            make_concl_callout <- function(scope_label, code, accent_col) {
               tags$div(
                 class = "ynow-hfv-scenario-concl",
                 style = paste0(
                   "margin:10px 0 0 0;padding:10px 12px;background:#f5f5f5;",
-                  "border-left:4px solid ", border_col, ";",
+                  "border-left:4px solid ", accent_col, ";",
                   "border-radius:0 4px 4px 0;font-size:13px;line-height:1.55;color:#333;"
                 ),
                 tags$div(
                   style = "margin:0 0 4px 0;font-size:12px;color:#555;",
                   tags$b(scope_label),
                   tags$span(style = "margin:0 6px;color:#bbb;", "|"),
-                  tags$span(sc_lab(code))
+                  tags$span(style = paste0("color:", accent_col, ";"), sc_lab(code))
                 ),
                 tags$div(make_concl_body(code))
               )
@@ -10650,6 +10781,7 @@ server <- function(input, output, session) {
             } else {
               ui_str("hfv_scenario_concl_latest_nodate", loc)
             }
+            diverge_q3 <- !is.na(lead_c) && !is.na(latest_c) && !identical(lead_c, latest_c)
             tagList(
               if (!is.na(lead_c) && lead_c %in% abcd) {
                 make_concl_callout(lead_label, lead_c, sc_color(lead_c))
@@ -10668,6 +10800,16 @@ server <- function(input, output, session) {
               },
               if (!is.na(latest_c)) {
                 make_concl_callout(latest_label, latest_c, sc_color(latest_c))
+              } else NULL,
+              if (isTRUE(diverge_q3)) {
+                tags$div(
+                  style = paste0(
+                    "margin:8px 0 0 0;padding:8px 10px;background:#fff8e8;",
+                    "border:1px solid #f0d78c;border-radius:4px;",
+                    "font-size:12px;line-height:1.5;color:#555;"
+                  ),
+                  ui_str("hfv_scenario_concl_diverge", loc)
+                )
               } else NULL,
               tags$div(
                 style = "margin:8px 0 0 0;color:#888;font-size:11.5px;line-height:1.45;",
@@ -10691,15 +10833,10 @@ server <- function(input, output, session) {
         tags$div(
           style = paste0(
             "margin:0 0 10px 0;padding:12px 14px;background:#fafafa;",
-            "border:1px solid #ddd;border-left:4px solid ", border, ";border-radius:4px;",
+            "border:1px solid #ddd;border-left:4px solid ", border, ";border-radius:6px;",
             "font-size:13px;line-height:1.55;color:#666;"
           ),
-          tags$div(tags$b(ui_str("hfv_sum_scenario_block", loc))),
-          tags$div(style = "margin:4px 0 0 0;", ui_str("hfv_sum_scenario_empty", loc)),
-          tags$div(
-            style = "margin:6px 0 0 0;color:#888;font-size:11.5px;",
-            ui_str("hfv_sum_scenario_caveat", loc)
-          )
+          ui_str("hfv_sum_scenario_empty", loc)
         )
       }
     }
@@ -10714,7 +10851,7 @@ server <- function(input, output, session) {
       notes_ui <- tagAppendChild(
         notes_ui,
         tags$div(
-          style = "margin:0 0 8px 0;padding:8px 10px;background:#eef4fb;border:1px solid #c5d4ef;border-radius:4px;font-size:12px;",
+          style = "margin:0 0 8px 0;padding:0;font-size:12px;",
           tags$div(tags$b(ui_str("hfv_data_sources_label", loc))),
           if (!is.null(srcs) && length(srcs) > 0) {
             tags$div(style = "margin-top:4px;", paste(srcs, collapse = " · "))
@@ -10745,7 +10882,7 @@ server <- function(input, output, session) {
       notes_ui <- tagAppendChild(
         notes_ui,
         tags$div(
-          style = "margin:8px 0 0 0;padding:10px 12px;background:#fff8e8;border:1px solid #f0d78c;border-radius:4px;font-size:12.5px;line-height:1.55;",
+          style = "margin:8px 0 0 0;padding:0;font-size:12.5px;line-height:1.55;",
           tags$div(tags$b(ui_str("hfv_fb_title", loc))),
           tags$ul(
             style = "margin:6px 0 0 0;padding-left:18px;",
@@ -10766,22 +10903,102 @@ server <- function(input, output, session) {
       )
     }
 
-    tagList(
+    # Expanding-window next actual market-price direction forecast (MOS conditions P(up)/P(down) on hist_price R)
+    tip_fc <- s$direction_tip
+    forecast_card <- {
+      if (!is.null(tip_fc) && is.list(tip_fc) && is.finite(tip_fc$p_up_hat)) {
+        method_lab <- switch(
+          as.character(tip_fc$method %||% "none")[1],
+          mos_bucket = ui_str("hfv_fc_method_bucket", loc),
+          blend = ui_str("hfv_fc_method_blend", loc),
+          unconditional = ui_str("hfv_fc_method_base", loc),
+          ui_str("hfv_fc_method_none", loc)
+        )
+        d_tip <- tryCatch(as.Date(tip_fc$Date), error = function(e) as.Date(NA))
+        date_txt <- if (is.finite(d_tip)) format(d_tip, "%Y-%m-%d") else "—"
+        tags$div(
+          style = paste0(
+            "margin:0 0 14px 0;padding:12px 14px;background:#eef4fb;",
+            "border:1px solid #c5d4ef;border-left:4px solid #3c8dbc;",
+            "border-radius:6px;font-size:13px;line-height:1.55;"
+          ),
+          tags$div(tags$b(ui_str("hfv_fc_title", loc))),
+          tags$div(
+            style = "margin:4px 0 0 0;color:#6c757d;font-size:11.5px;",
+            paste(ui_str("hfv_fc_formula", loc), ui_str("hfv_fc_caveat", loc), sep = " ")
+          ),
+          tags$div(
+            style = "margin:6px 0 0 0;font-size:15px;font-weight:700;",
+            sprintf(
+              ui_str("hfv_fc_tip_fmt", loc),
+              date_txt,
+              pct(tip_fc$p_up_hat),
+              pct(tip_fc$p_down_hat)
+            )
+          ),
+          tags$ul(
+            style = "margin:6px 0 0 0;padding-left:18px;font-size:12.5px;",
+            tags$li(sprintf(
+              ui_str("hfv_fc_mos_fmt", loc),
+              if (is.finite(tip_fc$mos)) 100 * tip_fc$mos else NA_real_,
+              tip_fc$bucket %||% "—",
+              as.integer(tip_fc$n_bucket %||% 0L),
+              as.integer(tip_fc$n_prior %||% 0L)
+            )),
+            tags$li(paste0(ui_str("hfv_fc_method_label", loc), "：", method_lab)),
+            if (is.finite(tip_fc$p_up_base)) {
+              tags$li(sprintf(ui_str("hfv_fc_base_fmt", loc), pct(tip_fc$p_up_base)))
+            } else NULL
+          ),
+          if (nzchar(tip_fc$note %||% "")) {
+            tags$div(
+              style = "margin:6px 0 0 0;color:#555;font-size:11.5px;line-height:1.45;",
+              tip_fc$note
+            )
+          } else NULL,
+          if (isTRUE(tip_fc$small_sample)) {
+            tags$div(
+              style = "margin:4px 0 0 0;color:#c27d0e;font-size:11.5px;",
+              ui_str("hfv_badge_small_sample", loc)
+            )
+          } else NULL
+        )
+      } else {
+        tags$div(
+          style = paste0(
+            "margin:0 0 14px 0;padding:12px 14px;background:#fafafa;",
+            "border:1px solid #ddd;border-left:4px solid #3c8dbc;",
+            "border-radius:6px;font-size:13px;line-height:1.55;color:#666;"
+          ),
+          tags$div(tags$b(ui_str("hfv_fc_title", loc))),
+          tags$div(
+            style = "margin:4px 0 0 0;",
+            ui_str("hfv_fc_empty", loc)
+          )
+        )
+      }
+    }
+
+    investor_block <- tagList(
       conclusion_card,
+      forecast_card,
       tags$div(
         style = "margin:0 0 8px 0;font-size:13px;",
-        tags$b(ui_str("hfv_sum_title", loc)),
-        if (isTRUE(s$small_sample)) tags$span(style = "color:#c27d0e;margin-left:8px;", ui_str("hfv_badge_small_sample", loc)),
-        if (isTRUE(s$no_strategy_fv)) tags$span(style = "color:#c27d0e;margin-left:8px;", ui_str("hfv_badge_no_strategy_fv", loc))
+        if (isTRUE(s$small_sample) || isTRUE(s$no_strategy_fv)) {
+          tagList(
+            tags$b(ui_str("hfv_sum_title", loc)),
+            if (isTRUE(s$small_sample)) {
+              tags$span(style = "color:#c27d0e;margin-left:8px;", ui_str("hfv_badge_small_sample", loc))
+            } else NULL,
+            if (isTRUE(s$no_strategy_fv)) {
+              tags$span(style = "color:#c27d0e;margin-left:8px;", ui_str("hfv_badge_no_strategy_fv", loc))
+            } else NULL
+          )
+        } else NULL
       ),
-      fluidRow(
-        column(6, style = "margin-bottom:10px;", price_card),
-        column(6, style = "margin-bottom:10px;", fv_card)
-      ),
-      scenario_card,
       if (length(notes_ui) > 0) {
         tags$div(
-          style = "margin:4px 0 0 0;padding:10px 12px;background:#fafafa;border:1px dashed #ccc;border-radius:4px;",
+          style = "margin:8px 0 0 0;padding:10px 12px;background:#fafafa;border:1px dashed #ccc;border-radius:6px;",
           tags$div(
             style = "font-size:12px;font-weight:700;color:#666;margin-bottom:4px;",
             ui_str("hfv_sum_notes", loc)
@@ -10790,6 +11007,35 @@ server <- function(input, output, session) {
         )
       } else NULL
     )
+    list(
+      empty = NULL,
+      investor = investor_block,
+      price = price_card,
+      fv = fv_card,
+      scenario = scenario_card
+    )
+  })
+
+  output$bt_hfv_investor_summary <- renderUI({
+    parts <- bt_hfv_findings_parts()
+    parts$investor
+  })
+  # Back-compat alias (older bookmarks / tests may still bind this id)
+  output$bt_fv_conv_summary <- renderUI({
+    parts <- bt_hfv_findings_parts()
+    parts$investor
+  })
+  output$bt_hfv_price_findings <- renderUI({
+    parts <- bt_hfv_findings_parts()
+    parts$price
+  })
+  output$bt_hfv_fv_findings <- renderUI({
+    parts <- bt_hfv_findings_parts()
+    parts$fv
+  })
+  output$bt_hfv_scenario_findings <- renderUI({
+    parts <- bt_hfv_findings_parts()
+    parts$scenario
   })
 
   output$bt_fv_conv_table <- renderTable({
@@ -10860,6 +11106,30 @@ server <- function(input, output, session) {
       if (identical(x, "持平")) return(ui_str("hfv_vs_flat", loc))
       x
     }, character(1))
+    toward_raw <- if ("outcome" %in% names(pp)) {
+      as.character(pp$outcome)
+    } else {
+      rep(NA_character_, nrow(pp))
+    }
+    toward_disp <- vapply(toward_raw, function(x) {
+      if (is.na(x) || !nzchar(x)) return("—")
+      if (identical(x, "趨近")) return(ui_str("hfv_toward_toward", loc))
+      if (identical(x, "遠離")) return(ui_str("hfv_toward_away", loc))
+      if (identical(x, "持平")) return(ui_str("hfv_toward_flat", loc))
+      x
+    }, character(1))
+    fc_df <- s$direction_forecasts
+    p_up_hat_disp <- rep("—", nrow(pp))
+    if (!is.null(fc_df) && is.data.frame(fc_df) && nrow(fc_df) > 0L &&
+        all(c("Date", "p_up_hat") %in% names(fc_df))) {
+      ix_fc <- match(pp$Date, fc_df$Date)
+      p_hat <- fc_df$p_up_hat[ix_fc]
+      p_up_hat_disp <- ifelse(
+        is.finite(p_hat),
+        paste0(sprintf("%.0f", 100 * p_hat), "%"),
+        "—"
+      )
+    }
     out <- data.frame(
       col1 = format(pp$Date, "%Y-%m-%d"),
       col2 = format(pp$Date_next, "%Y-%m-%d"),
@@ -10868,10 +11138,12 @@ server <- function(input, output, session) {
       col5 = round(pp$price_next, 2),
       col6 = paste0(sprintf("%+.1f", 100 * retv), "%"),
       col7 = dir_disp,
-      col8 = paste0(sprintf("%+.1f", 100 * gapv), "%"),
-      col9 = vs_disp,
-      col10 = sc_lab,
-      col11 = fb_lab,
+      col8 = p_up_hat_disp,
+      col9 = toward_disp,
+      col10 = paste0(sprintf("%+.1f", 100 * gapv), "%"),
+      col11 = vs_disp,
+      col12 = sc_lab,
+      col13 = fb_lab,
       stringsAsFactors = FALSE,
       check.names = FALSE
     )
@@ -10883,6 +11155,8 @@ server <- function(input, output, session) {
       ui_str("hfv_col_next_price", loc),
       ui_str("hfv_col_next_ret", loc),
       ui_str("hfv_col_dir", loc),
+      ui_str("hfv_col_p_up_hat", loc),
+      ui_str("hfv_col_toward", loc),
       ui_str("hfv_col_gap", loc),
       ui_str("hfv_col_vs_fv", loc),
       ui_str("hfv_col_scenario", loc),
@@ -11099,10 +11373,11 @@ server <- function(input, output, session) {
         tags$li(tags$b("策略 MOS／部位："), "用「復盤模型」單選之合理價，不是圖表複選平均。未選復盤模型＝不套用策略 FV／MOS（不暗設 DCF）。"),
         tags$li(
           tags$b("歷史基本面驗證（非策略回測）："),
-          "同時報告（1）市價下期漲跌 ", tags$code("R=(P_{t+1}-P_t)/P_t"),
-          " 經驗頻率，以及依目前安全邊際（MOS）分組的條件上漲／下跌機率；",
-          "（2）相對復盤理論估值 FV_t（＝復盤模型單選；結果隨復盤模型而變）之上／之下與幅度 (P−FV)/FV。",
-          "兩口徑不同，不可混稱。預設只計已實現下期，可選擴張窗樣本外命中率。",
+          "同時報告（1）實際市價下期漲跌 ", tags$code("R=(P_{t+1}-P_t)/P_t"),
+          " 經驗頻率，以及以復盤估值×歷史實際股價（MOS）做成的可衡量時刻「下期實際市價」漲跌機率",
+          "（擴張窗因果：僅 Date下一期≤tip，嚴格禁止未來資料回推；非預測估值／FV）；",
+          "（2）相對復盤理論估值 FV_t（＝復盤模型單選；結果隨復盤模型而變）縮小／擴大與幅度 (P−FV)/FV。",
+          "市價漲跌與估值落點是兩套定義，不可混稱。預設只計已實現下期，可選擴張窗樣本外命中率。",
           "若歷史點套用 APP_DEFAULTS／Session／法定稅率，摘要會列出預設／fallback 與對應分頁。",
           "此區塊在側邊「歷史基本面驗證」，與本頁策略淨值交易回測分開閱讀。"
         ),
@@ -11508,26 +11783,41 @@ server <- function(input, output, session) {
   # ------------------------------------------
   # Lab：產業×模型複選；Piotroski 高門檻（F-Score≥7）後依年化估值漲幅排序
   # ------------------------------------------
+  .lab_im_boards <- reactive({
+    mode <- tryCatch(normalize_market_mode(market_mode()), error = function(e) "US")
+    if (!identical(mode, "TW")) return(character(0))
+    raw <- input$lab_im_boards
+    boards <- if (exists("lab_normalize_tw_boards", mode = "function")) {
+      lab_normalize_tw_boards(raw %||% APP_DEFAULTS$lab_im_boards)
+    } else {
+      as.character(raw %||% c("TWSE", "TPEX"))
+    }
+    if (!length(boards)) boards <- c("TWSE", "TPEX")
+    boards
+  })
+
   lab_im_catalog <- reactive({
     lab_im_catalog_nonce()
     mode <- market_mode()
-    tryCatch(lab_build_industry_method_catalog(market_mode = mode), error = function(e) {
-      showNotification(.ui_msg("notif_industry_catalog_fail", err = e$message), type = "error")
-      data.frame()
-    })
+    boards <- tryCatch(.lab_im_boards(), error = function(e) c("TWSE", "TPEX"))
+    tryCatch(
+      lab_build_industry_method_catalog(market_mode = mode, boards = boards),
+      error = function(e) {
+        showNotification(.ui_msg("notif_industry_catalog_fail", err = e$message), type = "error")
+        data.frame()
+      }
+    )
   })
 
   output$lab_im_bluechip_blurb <- renderUI({
     loc <- ui_locale()
     mode <- market_mode()
-    n_yrs <- as.integer(APP_DEFAULTS$years %||% 5L)[1]
-    if (!is.finite(n_yrs) || n_yrs < 1L) n_yrs <- 5L
     key <- if (identical(normalize_market_mode(mode), "TW")) {
       "bluechip_blurb_tw"
     } else {
       "bluechip_blurb_us"
     }
-    tags$p(sprintf(ui_str(key, loc), as.integer(n_yrs)))
+    tags$p(ui_str(key, loc))
   })
 
   output$lab_im_universe_meta <- renderUI({
@@ -11538,13 +11828,13 @@ server <- function(input, output, session) {
       n_twse <- if (is.null(meta)) 0L else as.integer(meta$n_twse %||% 0L)
       n_tpex <- if (is.null(meta)) 0L else as.integer(meta$n_tpex %||% 0L)
       n_esb <- if (is.null(meta)) 0L else as.integer(meta$n_esb %||% 0L)
-      label <- sprintf("上市／上櫃／興櫃（搜尋全納；績優僅上市＋上櫃 %d＋%d）", n_twse, n_tpex)
-      if (n_esb > 0L) {
-        label <- sprintf(
-          "上市 %d／上櫃 %d／興櫃 %d（搜尋全納；Blue Chip 不含興櫃）",
-          n_twse, n_tpex, n_esb
-        )
-      }
+      boards_sel <- tryCatch(.lab_im_boards(), error = function(e) c("TWSE", "TPEX"))
+      board_txt <- paste(boards_sel, collapse = "+")
+      if (!nzchar(board_txt)) board_txt <- "TWSE+TPEX"
+      label <- sprintf(
+        "上市 %d／上櫃 %d／興櫃 %d（搜尋全納；績優板別＝%s）",
+        n_twse, n_tpex, n_esb, board_txt
+      )
     } else {
       meta <- tryCatch(lab_us_universe_meta(), error = function(e) NULL)
       if (is.null(meta) || as.integer(meta$n %||% 0L) < 1L) {
@@ -11665,9 +11955,8 @@ server <- function(input, output, session) {
     rank_mode <- lab_normalize_pool_rank_mode(input$lab_im_pool_rank %||% "mcap")
     concept_keys <- input$lab_im_concepts
     mm <- tryCatch(market_mode(), error = function(e) "US")
-    n_yrs <- lab_model_horizon_years()
     scores <- withProgress(
-      message = .ui_msg("lab_im_progress", n = n_yrs),
+      message = .ui_msg("lab_im_progress"),
       value = 0, {
         n_raw <- nrow(pool)
         if (is.finite(eval_n) && n_raw > eval_n) {
@@ -11801,23 +12090,33 @@ server <- function(input, output, session) {
 
   output$lab_im_leader_note <- renderUI({
     scores <- lab_im_scores()
-    n <- lab_model_horizon_years()
     display_n <- lab_resolve_im_max_n(input$lab_im_max_n, input$lab_im_max_n_custom)
     max_n_label <- lab_resolve_im_max_n_label(input$lab_im_max_n, input$lab_im_max_n_custom)
     eval_n <- lab_resolve_im_eval_n(display_n)
     n_eval <- if (is.data.frame(scores) && nrow(scores) > 0) nrow(scores) else 0L
     scope <- as.character(input$lab_im_lb_mode %||% "overall")[1]
+    if (!scope %in% c("overall", "by_industry", "undervalued")) scope <- "overall"
     gate_on <- isTRUE(input$lab_im_gate_only)
     eq_on <- isTRUE(input$lab_im_eq_only)
+    no_alert_on <- isTRUE(input$lab_im_no_alert)
     scope_txt <- if (identical(scope, "by_industry")) {
-      "選定產業內 Top 10"
+      "選定產業內 Top 10（產業內排名自第 1 名起算）"
+    } else if (identical(scope, "undervalued")) {
+      "價值低估 Top 10（總潛在漲幅＝主模型 FV vs 市價）"
     } else {
-      "整體 Top 10（跨本次已評估產業）"
+      "整體 Top 10（跨本次已評估產業；年化估值漲幅）"
     }
+    loc_note <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "zh-TW")
     gate_txt <- paste0(
-      if (gate_on) tryCatch(ui_str("lab_im_gate_on", isolate(ui_locale())), error = function(e) "F-Score≥7") else tryCatch(ui_str("lab_im_gate_off", isolate(ui_locale())), error = function(e) "不設 F-Score 門檻"),
+      if (gate_on) tryCatch(ui_str("lab_im_gate_on", loc_note), error = function(e) "F-Score≥7") else tryCatch(ui_str("lab_im_gate_off", loc_note), error = function(e) "不設 F-Score 門檻"),
       "／",
-      if (eq_on) "盈餘品質通過" else "不過濾盈餘品質"
+      if (eq_on) "盈餘品質通過" else "不過濾盈餘品質",
+      "／",
+      if (no_alert_on) {
+        tryCatch(ui_str("lab_im_no_alert_on", loc_note), error = function(e) "無財報警訊")
+      } else {
+        tryCatch(ui_str("lab_im_no_alert_off", loc_note), error = function(e) "不過濾財報警訊")
+      }
     )
     if (n_eval == 0L) {
       cap_txt <- if (is.finite(display_n)) {
@@ -11835,11 +12134,16 @@ server <- function(input, output, session) {
         scope_txt, "；與明細同一批、同一排序鍵；合格不足 10 時不會湊滿）。"
       ))
     }
+    sort_key_txt <- if (identical(scope, "undervalued")) {
+      "排序鍵＝推薦主模型合理價相對市價之總潛在漲幅（非年化；只列仍被低估者）"
+    } else {
+      "排序鍵＝模型合理價相對現價，依各標的自身預測年數 n（財報＋生命週期）換算之年化漲幅"
+    }
     tags$p(
       style = "color:#555; font-size:12.5px;",
       sprintf(
-        "本次已評估 %d 檔；顯示上限 N＝%s（合格不足不湊滿）。排序鍵＝模型合理價相對現價，於 %d 年預測期換算之年化漲幅；前十名門檻＝%s；目前排行視角＝%s。",
-        n_eval, max_n_label, n, gate_txt, scope_txt
+        "本次已評估 %d 檔；顯示上限 N＝%s（合格不足不湊滿）。%s；前十名門檻＝%s；目前排行視角＝%s。",
+        n_eval, max_n_label, sort_key_txt, gate_txt, scope_txt
       )
     )
   })
@@ -11871,6 +12175,138 @@ server <- function(input, output, session) {
     )
   })
 
+  # Legacy Ranking view value moved to dedicated board above Candidate truncate
+  observeEvent(input$lab_im_lb_mode, {
+    if (identical(as.character(input$lab_im_lb_mode %||% "")[1], "industry_avg")) {
+      updateRadioButtons(session, "lab_im_lb_mode", selected = "overall")
+    }
+  }, ignoreInit = FALSE)
+
+  # Dedicated industry mcap-weighted board (above Candidate truncate; auto after search)
+  .lab_im_ind_mcap_board <- reactive({
+    scores <- lab_im_scores()
+    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+    empty <- list(
+      table = NULL,
+      n_show = 0L,
+      n_qual = 0L,
+      n_eval = 0L,
+      waiting = TRUE,
+      loc = loc
+    )
+    if (is.null(scores) || !is.data.frame(scores) || nrow(scores) == 0) {
+      return(empty)
+    }
+    catlg <- tryCatch(lab_im_catalog(), error = function(e) NULL)
+    lb_src <- tryCatch({
+      if (is.data.frame(catlg) && nrow(catlg) > 0) {
+        lab_merge_catalog_scores(
+          catlg,
+          scores = scores,
+          method_filter = input$lab_im_methods,
+          industry_filter = character(0),
+          eq_only = FALSE,
+          gate_only = FALSE,
+          evaluated_only = TRUE
+        )
+      } else {
+        lab_im_merged()
+      }
+    }, error = function(e) NULL)
+    if (is.null(lb_src) || !is.data.frame(lb_src) || nrow(lb_src) == 0) {
+      empty$waiting <- FALSE
+      empty$n_eval <- nrow(scores)
+      return(empty)
+    }
+    gate_on <- isTRUE(input$lab_im_gate_only)
+    eq_on <- isTRUE(input$lab_im_eq_only)
+    no_alert_on <- isTRUE(input$lab_im_no_alert)
+    pool <- tryCatch(
+      lab_leaderboard_pool(
+        lb_src, eq_only = eq_on, gate_only = gate_on, no_alert = no_alert_on
+      ),
+      error = function(e) NULL
+    )
+    tbl <- tryCatch(
+      lab_industry_mcap_upside_leaderboard(
+        lb_src,
+        top_n = 500L,
+        eq_only = eq_on,
+        gate_only = gate_on,
+        no_alert = no_alert_on,
+        industry_filter = character(0)
+      ),
+      error = function(e) NULL
+    )
+    list(
+      table = tbl,
+      n_show = if (is.data.frame(tbl)) nrow(tbl) else 0L,
+      n_qual = if (is.data.frame(pool)) nrow(pool) else 0L,
+      n_eval = nrow(lb_src),
+      waiting = FALSE,
+      loc = loc
+    )
+  })
+
+  output$lab_im_ind_mcap_status <- renderUI({
+    board <- .lab_im_ind_mcap_board()
+    loc <- board$loc %||% "zh-TW"
+    if (isTRUE(board$waiting)) {
+      return(tags$p(
+        style = "color:#888; font-size:12.5px; margin:0 0 8px 0;",
+        tryCatch(ui_str("lab_im_ind_mcap_waiting", loc),
+                 error = function(e) "尚未評估。請按「搜尋績優股」後自動產生產業排序清單。")
+      ))
+    }
+    if (!is.finite(board$n_show) || board$n_show < 1L) {
+      txt <- tryCatch(
+        sprintf(
+          ui_str("lab_im_ind_mcap_empty", loc),
+          as.integer(board$n_qual), as.integer(board$n_eval)
+        ),
+        error = function(e) sprintf(
+          "尚無產業列可顯示（合格檔 %d／已評估 %d）。",
+          as.integer(board$n_qual), as.integer(board$n_eval)
+        )
+      )
+      return(tags$p(style = "color:#888; font-size:12.5px; margin:0 0 8px 0;", txt))
+    }
+    txt <- tryCatch(
+      sprintf(
+        ui_str("lab_im_ind_mcap_status", loc),
+        as.integer(board$n_show), as.integer(board$n_qual), as.integer(board$n_eval)
+      ),
+      error = function(e) sprintf(
+        "顯示 %d 個產業（合格檔 %d／已評估 %d）。",
+        as.integer(board$n_show), as.integer(board$n_qual), as.integer(board$n_eval)
+      )
+    )
+    tags$p(style = "color:#555; font-size:12.5px; margin:0 0 8px 0;", txt)
+  })
+
+  output$lab_im_ind_mcap_table <- renderTable({
+    board <- .lab_im_ind_mcap_board()
+    loc <- board$loc %||% "zh-TW"
+    if (isTRUE(board$waiting)) {
+      return(data.frame(
+        訊息 = tryCatch(ui_str("lab_im_ind_mcap_waiting", loc),
+                        error = function(e) "尚未評估。請按「搜尋績優股」後自動產生產業排序清單。")
+      ))
+    }
+    tbl <- board$table
+    if (is.null(tbl) || !is.data.frame(tbl) || nrow(tbl) == 0) {
+      msg <- tryCatch(
+        sprintf(
+          ui_str("lab_im_ind_mcap_empty", loc),
+          as.integer(board$n_qual), as.integer(board$n_eval)
+        ),
+        error = function(e) "尚無產業列可顯示。"
+      )
+      return(data.frame(訊息 = msg))
+    }
+    tbl
+  }, striped = TRUE, bordered = TRUE, hover = TRUE, spacing = "s", width = "100%")
+
   output$lab_im_leaderboard <- renderTable({
     scores <- lab_im_scores()
     if (is.null(scores) || !is.data.frame(scores) || nrow(scores) == 0) {
@@ -11890,12 +12326,14 @@ server <- function(input, output, session) {
       ))
     }
     scope <- as.character(input$lab_im_lb_mode %||% "overall")[1]
-    if (!scope %in% c("overall", "by_industry")) scope <- "overall"
-    # overall = Top 10 across all evaluated industries;
-    # by_industry = Top 10 within currently selected industries (one list)
+    if (!scope %in% c("overall", "by_industry", "undervalued")) scope <- "overall"
+    # overall = Top 10 across all evaluated industries (annualized upside);
+    # by_industry = Top 10 within selected industries (Industry rank from 1 within each industry);
+    # undervalued = Top 10 by total FV–price gap (primary model; still undervalued only)
+    # (industry mcap-weighted board is a dedicated auto block above Candidate truncate)
     lb_src <- merged
     ind_filter <- character(0)
-    if (identical(scope, "overall")) {
+    if (scope %in% c("overall", "undervalued")) {
       catlg <- tryCatch(lab_im_catalog(), error = function(e) NULL)
       if (is.data.frame(catlg) && nrow(catlg) > 0) {
         lb_src <- tryCatch(
@@ -11919,6 +12357,7 @@ server <- function(input, output, session) {
       top_n = 10L,
       eq_only = isTRUE(input$lab_im_eq_only),
       gate_only = isTRUE(input$lab_im_gate_only),
+      no_alert = isTRUE(input$lab_im_no_alert),
       scope = scope,
       industry_filter = ind_filter
     )
@@ -11926,7 +12365,8 @@ server <- function(input, output, session) {
       pool <- lab_leaderboard_pool(
         if (identical(scope, "by_industry")) merged else lb_src,
         eq_only = isTRUE(input$lab_im_eq_only),
-        gate_only = isTRUE(input$lab_im_gate_only)
+        gate_only = isTRUE(input$lab_im_gate_only),
+        no_alert = isTRUE(input$lab_im_no_alert)
       )
       fs_m <- suppressWarnings(as.numeric(merged$f_score))
       n_f7 <- sum(is.finite(fs_m) & fs_m >= 7, na.rm = TRUE)
@@ -11957,11 +12397,12 @@ server <- function(input, output, session) {
     if (is.null(merged) || nrow(merged) == 0) return(NULL)
     gate_on <- isTRUE(input$lab_im_gate_only)
     eq_on <- isTRUE(input$lab_im_eq_only)
+    no_alert_on <- isTRUE(input$lab_im_no_alert)
     scope <- as.character(input$lab_im_lb_mode %||% "overall")[1]
-    if (!scope %in% c("overall", "by_industry")) scope <- "overall"
+    if (!scope %in% c("overall", "by_industry", "undervalued")) scope <- "overall"
     lb_src <- merged
     ind_filter <- character(0)
-    if (identical(scope, "overall")) {
+    if (scope %in% c("overall", "undervalued")) {
       catlg <- tryCatch(lab_im_catalog(), error = function(e) NULL)
       if (is.data.frame(catlg) && nrow(catlg) > 0) {
         lb_src <- tryCatch(
@@ -11983,6 +12424,7 @@ server <- function(input, output, session) {
     lb <- tryCatch(
       lab_quality_leaderboard(
         lb_src, top_n = 10L, eq_only = eq_on, gate_only = gate_on,
+        no_alert = no_alert_on,
         scope = scope, industry_filter = ind_filter
       ),
       error = function(e) NULL
@@ -11990,7 +12432,7 @@ server <- function(input, output, session) {
     pool <- tryCatch(
       lab_leaderboard_pool(
         if (identical(scope, "by_industry")) merged else lb_src,
-        eq_only = eq_on, gate_only = gate_on
+        eq_only = eq_on, gate_only = gate_on, no_alert = no_alert_on
       ),
       error = function(e) NULL
     )
@@ -12005,7 +12447,18 @@ server <- function(input, output, session) {
           as.integer(n_show), as.integer(n_qual), as.integer(n_eval)
         ),
         error = function(e) sprintf(
-          "選定產業內前十名顯示 %d／10（合格 %d／已評估 %d）。僅在查詢條件所選產業內取最多 10 檔；不足不湊滿。",
+          "選定產業內前十名顯示 %d／10（合格 %d／已評估 %d）。產業內排名自該產業第 1 名起算；不足不湊滿。",
+          as.integer(n_show), as.integer(n_qual), as.integer(n_eval)
+        )
+      )
+    } else if (identical(scope, "undervalued")) {
+      txt <- tryCatch(
+        sprintf(
+          ui_str("lab_im_lb_status_undervalued", loc),
+          as.integer(n_show), as.integer(n_qual), as.integer(n_eval)
+        ),
+        error = function(e) sprintf(
+          "價值低估前十名顯示 %d／10（合格 %d／已評估 %d）。依推薦主模型總潛在漲幅（FV vs 市價）排序；年化漲幅僅供對照。",
           as.integer(n_show), as.integer(n_qual), as.integer(n_eval)
         )
       )
@@ -12041,6 +12494,7 @@ server <- function(input, output, session) {
     display_n <- lab_resolve_im_max_n(input$lab_im_max_n, input$lab_im_max_n_custom)
     eq_on <- isTRUE(input$lab_im_eq_only)
     gate_on <- isTRUE(input$lab_im_gate_only)
+    no_alert_on <- isTRUE(input$lab_im_no_alert)
     if (nrow(merged) == 0) {
       scores <- lab_im_scores()
       msg <- if (is.null(scores) || !is.data.frame(scores) || nrow(scores) == 0) {
@@ -12057,12 +12511,13 @@ server <- function(input, output, session) {
       merged,
       display_n = display_n,
       eq_only = eq_on,
-      gate_only = gate_on
+      gate_only = gate_on,
+      no_alert = no_alert_on
     )
     if (is.null(merged) || nrow(merged) == 0L) {
       return(DT::datatable(
         data.frame(
-          訊息 = "目前勾選條件下尚無合格列可顯示（不會為湊滿 N 而另抽樣）。可取消「盈餘品質」或「Piotroski 高門檻」，或提高 N／放寬產業後再搜尋。"
+          訊息 = "目前勾選條件下尚無合格列可顯示（不會為湊滿 N 而另抽樣）。可取消「盈餘品質」、「Piotroski 高門檻」或「無財報警訊」，或提高 N／放寬產業後再搜尋。"
         ),
         rownames = FALSE, options = list(dom = "t")
       ))
@@ -12138,7 +12593,8 @@ server <- function(input, output, session) {
       merged,
       display_n = display_n,
       eq_only = isTRUE(isolate(input$lab_im_eq_only)),
-      gate_only = isTRUE(isolate(input$lab_im_gate_only))
+      gate_only = isTRUE(isolate(input$lab_im_gate_only)),
+      no_alert = isTRUE(isolate(input$lab_im_no_alert))
     )
     if (is.null(merged) || nrow(merged) == 0L) {
       return(data.frame(訊息 = "目前勾選條件下尚無合格明細列（不足不湊滿）"))
@@ -12211,6 +12667,7 @@ server <- function(input, output, session) {
       }
       eq_on <- isTRUE(isolate(input$lab_im_eq_only))
       gate_on <- isTRUE(isolate(input$lab_im_gate_only))
+      no_alert_on <- isTRUE(isolate(input$lab_im_no_alert))
       max_n <- lab_resolve_im_max_n(isolate(input$lab_im_max_n), isolate(input$lab_im_max_n_custom))
       max_n_label <- lab_resolve_im_max_n_label(isolate(input$lab_im_max_n), isolate(input$lab_im_max_n_custom))
       eval_n <- lab_resolve_im_eval_n(max_n)
@@ -12242,10 +12699,10 @@ server <- function(input, output, session) {
         merged_lb <- tryCatch(lab_im_merged(), error = function(e) NULL)
         if (is.data.frame(merged_lb) && nrow(merged_lb) > 0) {
           lb_scope <- as.character(isolate(input$lab_im_lb_mode) %||% "overall")[1]
-          if (!lb_scope %in% c("overall", "by_industry")) lb_scope <- "overall"
+          if (!lb_scope %in% c("overall", "by_industry", "undervalued")) lb_scope <- "overall"
           lb_src <- merged_lb
           ind_filter <- character(0)
-          if (identical(lb_scope, "overall")) {
+          if (lb_scope %in% c("overall", "undervalued")) {
             lb_src <- tryCatch(
               lab_merge_catalog_scores(
                 catlg,
@@ -12264,6 +12721,7 @@ server <- function(input, output, session) {
           lb <- lab_quality_leaderboard(
             lb_src, top_n = 10L, eq_only = eq_on,
             gate_only = isTRUE(isolate(input$lab_im_gate_only)),
+            no_alert = no_alert_on,
             scope = lb_scope, industry_filter = ind_filter
           )
         }
@@ -12292,6 +12750,7 @@ server <- function(input, output, session) {
         sprintf("- 模型：%s", meth_txt),
         sprintf("- 盈餘品質過濾：%s", if (eq_on) "開" else "關"),
         sprintf("- Piotroski 高門檻過濾（F-Score≥7）：%s", if (gate_on) "開" else "關"),
+        sprintf("- 無財報警訊過濾：%s", if (no_alert_on) "開" else "關"),
         sprintf("- 候選截斷邏輯 lab_im_pool_rank：%s", rank_mode_label %||% rank_mode),
         sprintf("- 宇宙檔數（N／顯示上限）lab_im_max_n：%s", max_n_label),
         sprintf(
@@ -12382,7 +12841,7 @@ server <- function(input, output, session) {
 
     result <- withProgress(
       message = if (identical(normalize_ui_locale(loc), "zh-TW")) {
-        "分群中（抓取比率特徵 → K-Means）…"
+        "分群中（擷取比率特徵 → K-Means）…"
       } else {
         "Clustering (fetch ratios → K-Means)…"
       },
@@ -12671,6 +13130,14 @@ server <- function(input, output, session) {
         identical(toupper(trimws(cur_focus)), toupper(trimws(matched)))) {
       return()
     }
+    # Adopt Search as focus only when current focus is empty or not in this cluster.
+    # Avoid clobbering a valid manual focus if current_ticker() re-fires.
+    cur_in_cluster <- if (nzchar(cur_focus)) {
+      lab_cluster_match_ticker(res$data$ticker, cur_focus)
+    } else {
+      NA_character_
+    }
+    if (!is.na(cur_in_cluster) && nzchar(cur_in_cluster)) return()
     updateTextInput(session, "lab_cluster_focus", value = matched_disp)
   }, ignoreInit = TRUE)
 
@@ -12689,12 +13156,11 @@ server <- function(input, output, session) {
   output$lab_cluster_radar_ui <- renderUI({
     res <- lab_cluster_result()
     mode <- lab_cluster_panel_mode(res)
-    focus <- as.character(input$lab_cluster_focus %||% "")[1]
+    # Do NOT read input$lab_cluster_focus here. Gating / remounting plotlyOutput on
+    # every focus edit destroyed the widget and made non-default focus look broken
+    # (Search/2330 worked because it was set once at cluster time).
     if (identical(mode, "idle")) {
       return(lab_cluster_idle_placeholder(.lab_cluster_idle_msg("radar"), min_height = "420px"))
-    }
-    if (!nzchar(focus)) {
-      return(lab_cluster_idle_placeholder(.lab_cluster_idle_msg("focus"), min_height = "420px"))
     }
     shinycssloaders::withSpinner(
       plotly::plotlyOutput("lab_cluster_radar", height = "420px")
@@ -12797,8 +13263,29 @@ server <- function(input, output, session) {
     res <- lab_cluster_result()
     req(lab_cluster_has_result(res))
     focus <- as.character(input$lab_cluster_focus %||% "")[1]
-    req(nzchar(focus))
-    lab_cluster_radar_plotly(res, focus_ticker = focus, locale = ui_locale())
+    loc <- tryCatch(ui_locale(), error = function(e) "en")
+    empty_msg <- function(msg) {
+      plotly::plotly_empty() %>%
+        plotly::layout(annotations = list(list(
+          text = msg, showarrow = FALSE, font = list(size = 14)
+        )))
+    }
+    if (!nzchar(focus)) {
+      return(empty_msg(tryCatch(
+        ui_str("lab_cluster_idle_focus", loc),
+        error = function(e) "Pick a focus ticker for the radar."
+      )))
+    }
+    matched <- lab_cluster_match_ticker(res$data$ticker, focus)
+    if (is.na(matched) || !nzchar(matched)) {
+      return(empty_msg(tryCatch(
+        ui_str("lab_cluster_focus_not_in_cluster", loc),
+        error = function(e) {
+          "Focus ticker is not in this clustered set. Pick a name from the assignments table."
+        }
+      )))
+    }
+    lab_cluster_radar_plotly(res, focus_ticker = focus, locale = loc)
   })
 
   output$lab_cluster_table <- DT::renderDataTable({
@@ -12934,7 +13421,7 @@ server <- function(input, output, session) {
   output$lab_sec_meta <- renderUI({
     res <- lab_sec_result()
     if (is.null(res)) {
-      return(div(style = "color:#888;", "尚未查詢。按「抓取財報附註」以擷取主頁代號的最新財報附註。"))
+      return(div(style = "color:#888;", "尚未查詢。按「擷取財報附註」以取得主頁代號的最新財報附註。"))
     }
     if (!isTRUE(res$ok)) {
       return(div(

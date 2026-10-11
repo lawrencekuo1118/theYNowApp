@@ -1,10 +1,14 @@
 # Unit tests: MOS next-period stats + hist PIT helpers
-app_dir <- if (file.exists("backtest_validation.R")) {
-  getwd()
-} else if (file.exists("app_18.0/backtest_validation.R")) {
-  file.path(getwd(), "app_18.0")
-} else {
-  stop("Cannot locate app_18.0")
+app_dir <- {
+  candidates <- c(
+    getwd(),
+    dirname(getwd()),
+    file.path(getwd(), "app_21.0"),
+    file.path(dirname(getwd()), "app_21.0")
+  )
+  hit <- candidates[file.exists(file.path(candidates, "backtest_validation.R"))]
+  if (!length(hit)) stop("Cannot locate app_21.0 (backtest_validation.R)")
+  normalizePath(hit[[1]], winslash = "/", mustWork = TRUE)
 }
 
 source(file.path(app_dir, "backtest_module.R"), local = FALSE)
@@ -200,14 +204,30 @@ check("p_up in [0,1]", is.finite(sum_all$p_up) && sum_all$p_up >= 0 && sum_all$p
 check("median_gap finite", is.finite(sum_all$median_gap))
 check("median_ret finite", is.finite(sum_all$median_ret))
 check("frame note", grepl("非策略回測", sum_all$frame))
+# Q1≠Q2 relation counts: pair1 漲+之下, pair5 漲+之下 → n_up_below=2
+check("n_up_below = 2", identical(as.integer(sum_all$n_up_below), 2L))
+check("n_down_above = 0", identical(as.integer(sum_all$n_down_above), 0L))
+check("q12_diverge_n = n_up_below + n_down_above",
+      identical(as.integer(sum_all$q12_diverge_n),
+                as.integer(sum_all$n_up_below + sum_all$n_down_above)))
+# Q2 PIT shrink method: toward/away on |P−FV|
+# pairs: 趨近,遠離,遠離,遠離,趨近 → n_toward=2, n_away=3
+check("n_toward = 2", identical(as.integer(sum_all$n_toward), 2L))
+check("n_away = 3", identical(as.integer(sum_all$n_away), 3L))
+check("p_toward = 0.4", isTRUE(abs(sum_all$p_toward - 0.4) < 1e-12))
+check("p_away = 0.6", isTRUE(abs(sum_all$p_away - 0.6) < 1e-12))
+check("toward+away+flat = n",
+      sum_all$n_toward + sum_all$n_away + sum_all$n_flat == sum_all$n)
 check("mos_outlook list", is.list(sum_all$mos_outlook))
-# tip MOS = penultimate finite mos (= 0.55) → 便宜 MOS≥50%
-check("mos_outlook bucket", identical(sum_all$mos_outlook$bucket, "便宜 MOS≥50%"))
-check("mos_outlook p_up matches stats", {
-  st <- sum_all$mos_stats
-  hit <- st[st$bucket == "便宜 MOS≥50%", , drop = FALSE]
-  nrow(hit) == 1L && is.finite(hit$p_up[1]) &&
-    isTRUE(abs(sum_all$mos_outlook$p_up - hit$p_up[1]) < 1e-12)
+# Causal tip = latest measurable date (mos=0.12) → 便宜 MOS[10%,30%); n_bucket=0 → unconditional prior
+check("mos_outlook is causal flag", isTRUE(sum_all$mos_outlook$causal))
+check("mos_outlook bucket", identical(sum_all$mos_outlook$bucket, "便宜 MOS[10%,30%)"))
+check("mos_outlook p_up matches causal tip (not full-sample stats)", {
+  tip <- sum_all$direction_tip
+  is.finite(tip$p_up_hat) &&
+    is.finite(sum_all$mos_outlook$p_up) &&
+    # Outlook shows bucket prior when n_bucket>0, else unconditional base (= tip base here)
+    isTRUE(abs(sum_all$mos_outlook$p_up - tip$p_up_base) < 1e-12)
 })
 
 sum_win <- summarize_fv_market_validation(
@@ -335,6 +355,21 @@ check("scenario counts C=1", identical(as.integer(sum_sc$scenarios$counts[["C"]]
 check("most_frequent on tie → A", identical(sum_sc$scenarios$most_frequent, "A"))
 check("latest scenario → C", identical(sum_sc$scenarios$latest, "C"))
 check("latest Date_next", identical(as.character(sum_sc$scenarios$latest_date_next), "2020-12-31"))
+check("Q3 most≠latest on tie sample",
+      !identical(sum_sc$scenarios$most_frequent, sum_sc$scenarios$latest))
+
+# Q1≠Q2: construct down-but-above (跌 + 之上)
+vd_q12 <- data.frame(
+  Date = as.Date(c("2022-03-31", "2022-06-30")),
+  # t0 FV=80, P=100 → t1 P=95: 跌 but 95>80 之上
+  hist_price = c(100, 95),
+  fair_value = c(80, 90),
+  stringsAsFactors = FALSE
+)
+sum_q12 <- summarize_fv_market_validation(vd_q12, oos_mode = "insample")
+check("down_above pair", identical(as.integer(sum_q12$n_down_above), 1L))
+check("up_below zero on this sample", identical(as.integer(sum_q12$n_up_below), 0L))
+check("q12_diverge_n = 1", identical(as.integer(sum_q12$q12_diverge_n), 1L))
 
 # other: no A–D conclusion path
 vd_other <- data.frame(
@@ -346,5 +381,223 @@ vd_other <- data.frame(
 sum_ot <- summarize_hfv_scenarios(build_hfv_scenario_pairs(vd_other))
 check("other-only most_frequent NA", is.na(sum_ot$most_frequent))
 check("other-only latest other", identical(sum_ot$latest, "other"))
+
+# --- Expanding-window next-period direction forecast (MOS → P(up)) ---
+fc <- build_hfv_direction_forecasts(vd, min_bucket_n = 1L, min_base_n = 2L, prior_strength = 2)
+check("forecast rows = valuation rows", nrow(fc) == nrow(vd))
+check("first forecast NA (no prior)", !is.finite(fc$p_up_hat[1]))
+check("later forecast finite", any(is.finite(fc$p_up_hat)))
+# No look-ahead: forecast at i uses only returns with j < i
+check("no look-ahead on tip with next", {
+  # At row 3, prior pairs are 1→2 and 2→3 only (indices 1,2)
+  i <- 3L
+  prior_rets <- vd$hist_price[2:i] / vd$hist_price[1:(i - 1)] - 1
+  # unconditional from those priors
+  p_base <- mean(prior_rets > 0)
+  is.finite(fc$p_up_hat[i]) && fc$n_prior[i] == (i - 1L)
+})
+tip <- tip_hfv_direction_forecast(fc, locale = "en")
+check("tip has p_up_hat", is.finite(tip$p_up_hat) && tip$p_up_hat >= 0 && tip$p_up_hat <= 1)
+check("tip method set", tip$method %in% c("mos_bucket", "blend", "unconditional"))
+check(
+  "tip note frames Replay FV × actual price + no future backfill",
+  grepl("Replay FV|actual market", tip$note, ignore.case = TRUE) &&
+    grepl("no future|Causal", tip$note, ignore.case = TRUE)
+)
+tip_zh <- tip_hfv_direction_forecast(fc, locale = "zh-TW")
+check(
+  "tip zh note frames 復盤估值×實際 + 禁止未來回推",
+  grepl("復盤估值", tip_zh$note, fixed = TRUE) &&
+    grepl("禁止未來", tip_zh$note, fixed = TRUE)
+)
+# Forecast target is hist_price return, not fair_value change
+check("ret_next from hist_price", {
+  i <- which(is.finite(fc$ret_next))[1]
+  is.finite(i) &&
+    isTRUE(abs(fc$ret_next[i] - (vd$hist_price[i + 1] / vd$hist_price[i] - 1)) < 1e-12)
+})
+# Strict no look-ahead: poisoning prices after tip must not change tip p_up_hat
+check("poison future prices leaves tip forecast unchanged", {
+  tip_i <- 4L
+  stopifnot(tip_i < nrow(vd))
+  vd_poison <- vd
+  vd_poison$hist_price[(tip_i + 1L):nrow(vd_poison)] <- c(1e-6, 1e6)[seq_len(nrow(vd_poison) - tip_i)]
+  # Also poison future MOS (as if FV were rebuilt with future info) — tip must ignore it
+  vd_poison$mos[(tip_i + 1L):nrow(vd_poison)] <- c(-0.99, 0.99)[seq_len(nrow(vd_poison) - tip_i)]
+  fc0 <- build_hfv_direction_forecasts(vd, min_bucket_n = 1L, min_base_n = 2L, prior_strength = 2)
+  fc1 <- build_hfv_direction_forecasts(vd_poison, min_bucket_n = 1L, min_base_n = 2L, prior_strength = 2)
+  is.finite(fc0$p_up_hat[tip_i]) &&
+    is.finite(fc1$p_up_hat[tip_i]) &&
+    abs(fc0$p_up_hat[tip_i] - fc1$p_up_hat[tip_i]) < 1e-12 &&
+    identical(fc0$n_prior[tip_i], fc1$n_prior[tip_i]) &&
+    identical(fc0$n_bucket[tip_i], fc1$n_bucket[tip_i])
+})
+# Causal outlook must not use full-sample leakage from future pairs
+check("causal fc at tip ignores future poison; full-sample outlook would leak", {
+  tip_i <- 4L
+  vd_poison <- vd
+  # Massively flip prices after tip so full-sample bucket stats change
+  vd_poison$hist_price[(tip_i + 1L):nrow(vd_poison)] <-
+    vd_poison$hist_price[(tip_i + 1L):nrow(vd_poison)] * c(0.01, 100)[seq_len(nrow(vd_poison) - tip_i)]
+  fc0 <- build_hfv_direction_forecasts(vd, min_bucket_n = 1L, min_base_n = 2L, prior_strength = 2)
+  fc1 <- build_hfv_direction_forecasts(vd_poison, min_bucket_n = 1L, min_base_n = 2L, prior_strength = 2)
+  # Full-sample lookup (legacy) may change — that is the leak we removed from tip outlook
+  leak0 <- lookup_mos_bucket_outlook(vd$mos[tip_i], summarize_mos_next_period_stats(vd))
+  leak1 <- lookup_mos_bucket_outlook(vd$mos[tip_i], summarize_mos_next_period_stats(vd_poison))
+  causal0 <- causal_mos_outlook_from_forecast(fc0[seq_len(tip_i), , drop = FALSE], locale = "en")
+  causal1 <- causal_mos_outlook_from_forecast(fc1[seq_len(tip_i), , drop = FALSE], locale = "en")
+  abs(fc0$p_up_hat[tip_i] - fc1$p_up_hat[tip_i]) < 1e-12 &&
+    isTRUE(causal0$causal) && isTRUE(causal1$causal) &&
+    abs(causal0$p_up - causal1$p_up) < 1e-12 &&
+    # Full-sample outlook can move under future poison (here mean_ret); causal tip does not
+    is.finite(leak0$mean_ret) && is.finite(leak1$mean_ret) &&
+    abs(leak0$mean_ret - leak1$mean_ret) > 1e-6
+})
+sum_fc <- summarize_fv_market_validation(vd, oos_mode = "insample", locale = "en")
+check("summary attaches direction_tip", is.list(sum_fc$direction_tip) && is.finite(sum_fc$direction_tip$p_up_hat))
+check("summary attaches forecasts", is.data.frame(sum_fc$direction_forecasts) && nrow(sum_fc$direction_forecasts) >= 1L)
+check("mos_outlook is causal", isTRUE(sum_fc$mos_outlook$causal))
+check(
+  "mos_outlook note forbids future backfill",
+  grepl("no future|Causal|Date_next", sum_fc$mos_outlook$note, ignore.case = TRUE)
+)
+
+# Locale keys for two-question map + direct scenario panel (en + zh-TW)
+loc_path <- file.path(app_dir, "ui_locale.R")
+if (file.exists(loc_path)) {
+  source(loc_path, local = TRUE, encoding = "UTF-8")
+  for (loc in c("en", "zh-TW")) {
+    for (k in c(
+      "hfv_sum_qmap_label", "hfv_sum_qmap_lead", "hfv_sum_qmap_relation",
+      "hfv_sum_qmap_q1_fmt", "hfv_sum_qmap_q2_fmt",
+      "hfv_sum_q12_diverge_fmt",
+      "hfv_sum_price_meaning", "hfv_sum_fv_meaning", "hfv_sum_scenario_meaning",
+      "hfv_sum_scenario_block",
+      "hfv_scenario_concl_diverge",
+      "hfv_toward_odds_fmt", "hfv_toward_read", "hfv_col_toward",
+      "hfv_toward_toward", "hfv_toward_away",
+      "hfv_fc_title", "hfv_fc_formula", "hfv_fc_tip_fmt", "hfv_fc_caveat",
+      "hfv_col_p_up_hat", "hfv_fc_method_bucket",
+      "hfv_ch2_title", "hfv_ch2_lead", "hfv_ch3_title", "hfv_ch4_title",
+      "hfv_ch5_title",
+      "hfv_scenario_under_title", "hfv_overlay_vs_replay_note",
+      "hfv_kpi_over_rate", "hfv_kpi_ch2_p_up", "hfv_kpi_ch3_p_up",
+      "hfv_kpi_ch2_up_down", "hfv_kpi_ch2_toward_away",
+      "hfv_kpi_ch3_up_down", "hfv_kpi_ch3_up_down_note",
+      "hfv_kpi_ch4_toward_away", "hfv_kpi_ch4_toward_away_note"
+    )) {
+      v <- ui_str(k, loc)
+      check(paste0("locale ", loc, " ", k), is.character(v) && nzchar(v) && !grepl("^\\[", v))
+    }
+    # Tip forecast must frame target as actual market price, not valuation/FV
+    fc_title <- ui_str("hfv_fc_title", loc)
+    fc_formula <- ui_str("hfv_fc_formula", loc)
+    fc_caveat <- ui_str("hfv_fc_caveat", loc)
+    if (identical(loc, "en")) {
+      check(
+        "en tip title says market-price odds",
+        grepl("market-price|market price", fc_title, ignore.case = TRUE)
+      )
+      check(
+        "en tip formula causal hist_price + no look-ahead",
+        grepl("hist_price", fc_formula, fixed = TRUE) &&
+          grepl("no look-ahead|Date_\\{j\\+1\\}≤t|Date_next", fc_formula) &&
+          grepl("MOS", fc_formula, fixed = TRUE) &&
+          grepl("Replay", fc_formula, ignore.case = TRUE)
+      )
+      check(
+        "en tip caveat Replay FV × price + no future backfill",
+        grepl("Replay FV", fc_caveat, fixed = TRUE) &&
+          grepl("no future", fc_caveat, ignore.case = TRUE)
+      )
+    } else {
+      check(
+        "zh-TW tip title says 市價漲跌機率",
+        grepl("市價", fc_title, fixed = TRUE) &&
+          grepl("機率", fc_title, fixed = TRUE)
+      )
+      check(
+        "zh-TW tip formula causal 實際市價 + 禁止回推",
+        grepl("實際市價", fc_formula, fixed = TRUE) &&
+          grepl("禁止", fc_formula, fixed = TRUE) &&
+          grepl("MOS", fc_formula, fixed = TRUE) &&
+          grepl("復盤", fc_formula, fixed = TRUE)
+      )
+      check(
+        "zh-TW tip caveat 復盤估值×股價 + 禁止未來回推",
+        grepl("復盤估值", fc_caveat, fixed = TRUE) &&
+          grepl("禁止未來", fc_caveat, fixed = TRUE)
+      )
+    }
+    # Scenario panel must NOT be labeled as Q3 / 問題三
+    sc_title <- ui_str("hfv_sum_scenario_block", loc)
+    check(
+      paste0("scenario title not Q3 ", loc),
+      !grepl("Q3|問題三", sc_title)
+    )
+    qmap <- ui_str("hfv_sum_qmap_label", loc)
+    check(
+      paste0("qmap is sample snapshot ", loc),
+      grepl("Sample snapshot|本樣本對照", qmap)
+    )
+    # User-facing copy must not say Q1/Q2 / 問題一／二
+    for (k in c(
+      "hfv_sum_qmap_label", "hfv_sum_qmap_lead", "hfv_sum_qmap_q1_fmt", "hfv_sum_qmap_q2_fmt",
+      "hfv_sum_qmap_relation", "hfv_sum_q12_diverge_fmt", "hfv_scenario_concl_diverge",
+      "hfv_ch3_lead", "hfv_ch4_lead", "hfv_sum_price_block", "hfv_sum_fv_block"
+    )) {
+      txt_k <- ui_str(k, loc)
+      check(
+        paste0("no Q1/Q2 wording ", loc, " ", k),
+        !grepl("Q1|Q2|問題一|問題二", txt_k)
+      )
+    }
+  }
+  # Softened C emph must stay veto (not absolute buy order)
+  check("C emph veto en", grepl("Veto|veto|buy signal", ui_str("hfv_scenario_concl_C_emph", "en"), ignore.case = TRUE))
+  check("C emph veto zh", grepl("否決", ui_str("hfv_scenario_concl_C_emph", "zh-TW")))
+  # Gap-to-FV copy must name shrink/expand (PIT method)
+  check("FV block names shrink en", grepl("shrink|toward", ui_str("hfv_sum_fv_block", "en"), ignore.case = TRUE))
+  check("FV block names 縮小 zh", grepl("縮小", ui_str("hfv_sum_fv_block", "zh-TW")))
+  check("FV meaning shrink en", grepl("shrink|toward", ui_str("hfv_sum_fv_meaning", "en"), ignore.case = TRUE))
+  check("FV meaning 縮小 zh", grepl("縮小", ui_str("hfv_sum_fv_meaning", "zh-TW")))
+  check("ch5 period detail en", grepl("Period detail|appendix", ui_str("hfv_ch5_title", "en"), ignore.case = TRUE))
+  check("ch2 up/down pair en", grepl("up.*/.*down", ui_str("hfv_kpi_ch2_up_down", "en"), ignore.case = TRUE))
+  check("ch2 up/down pair zh", grepl("上漲.*下跌", ui_str("hfv_kpi_ch2_up_down", "zh-TW")))
+  check("ch4 toward/away pair zh", grepl("縮小.*擴大", ui_str("hfv_kpi_ch4_toward_away", "zh-TW")))
+}
+
+# HFV KPI bull/bear CSS: US green-up; TW red-up / green-down
+ui_path <- file.path(app_dir, "ynow_ui.R")
+if (file.exists(ui_path)) {
+  ui_txt <- paste(readLines(ui_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  check("HFV bull CSS class", grepl("\\.ynow-hfv-bull\\s*\\{", ui_txt))
+  check("HFV bear CSS class", grepl("\\.ynow-hfv-bear\\s*\\{", ui_txt))
+  check("HFV TW invert bull", grepl("body\\.ynow-market-tw \\.ynow-hfv-bull", ui_txt))
+  check("HFV TW invert bear", grepl("body\\.ynow-market-tw \\.ynow-hfv-bear", ui_txt))
+  check("HFV pair cell class", grepl("ynow-hfv-kpi-cell--pair", ui_txt, fixed = TRUE))
+  srv_path <- file.path(app_dir, "ynow_server.R")
+  if (file.exists(srv_path)) {
+    srv_txt <- paste(readLines(srv_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+    check("server merges up/down KPI", grepl("hfv_kpi_ch3_up_down", srv_txt, fixed = TRUE))
+    check("server merges toward/away KPI", grepl("hfv_kpi_ch4_toward_away", srv_txt, fixed = TRUE))
+    check("server uses hfv_kpi_pair", grepl("\\.hfv_kpi_pair\\s*<-", srv_txt))
+  }
+}
+
+if (exists("overlay_avg_fair_value_df", mode = "function")) {
+  vd_ov <- data.frame(
+    Date = as.Date(c("2020-01-01", "2021-01-01")),
+    hist_price = c(100, 110),
+    fv_dcf = c(120, 130),
+    fv_ddm = c(80, 90),
+    fair_value = c(120, 130),
+    mos = c(0.2, 0.15),
+    signal = c("便宜", "便宜"),
+    stringsAsFactors = FALSE
+  )
+  check("overlay multi = mean", isTRUE(abs(overlay_avg_fair_value_df(vd_ov, c("dcf", "ddm"))$fair_value[1] - 100) < 1e-9))
+  check("overlay empty → NULL", is.null(overlay_avg_fair_value_df(vd_ov, character(0))))
+}
 
 message("ALL PASS")
