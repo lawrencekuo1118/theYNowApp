@@ -8,5 +8,5 @@ short=552dc28
 message=chore: bump display version to v21.57
 captured_at=2026-10-11T04:50:00Z
 source_branch=cursor/model-kpi-outline-run-911b
-display_version=v21.57
+display_version=v21.58
 note=Canonical live line is app_21.0. Bundle 12675023 ships model KPI white outline + accent Run; includes sole-black logo white pad. Deploy via scripts/deploy_app_21.R.
