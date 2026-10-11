@@ -2082,13 +2082,30 @@ lab_quality_leaderboard <- function(merged_df, top_n = 10L, eq_only = FALSE,
       no_alert = no_alert, industry_filter = industry_filter
     ))
   }
+  # Overall / undervalued: Rank, Ticker, Company, Industry, Model, upsides, F-Score.
+  # Selected-industry Top 10 also inserts Industry, then Industry rank, after Rank.
+  lb_cols_cross <- c(
+    "排名", "代號", "公司名稱", "產業", "估值方法",
+    "年化估值漲幅", "總潛在漲幅", "F-Score"
+  )
+  lb_cols_by_ind <- c(
+    "排名", "產業", "產業內排名", "代號", "公司名稱", "估值方法",
+    "年化估值漲幅", "總潛在漲幅", "F-Score"
+  )
   empty <- data.frame(
-    排名 = integer(0), 產業 = character(0), 代號 = character(0), 公司名稱 = character(0),
+    排名 = integer(0), 代號 = character(0), 公司名稱 = character(0), 產業 = character(0),
+    估值方法 = character(0),
     年化估值漲幅 = character(0),
     總潛在漲幅 = character(0),
-    估值方法 = character(0), `F-Score` = numeric(0),
+    `F-Score` = numeric(0),
     stringsAsFactors = FALSE, check.names = FALSE
   )
+  if (identical(scope, "by_industry")) {
+    empty$產業內排名 <- integer(0)
+    empty <- empty[, lb_cols_by_ind, drop = FALSE]
+  } else {
+    empty <- empty[, lb_cols_cross, drop = FALSE]
+  }
   df <- lab_leaderboard_pool(
     merged_df, eq_only = eq_only, gate_only = gate_only, no_alert = no_alert
   )
@@ -2106,7 +2123,7 @@ lab_quality_leaderboard <- function(merged_df, top_n = 10L, eq_only = FALSE,
   if (nrow(df) == 0) return(empty)
 
   top_n <- max(1L, as.integer(top_n)[1])
-  .fmt_lb_rows <- function(sub, rank_values = NULL, rank_col = "排名") {
+  .fmt_lb_rows <- function(sub, ind_rank_values = NULL) {
     if (nrow(sub) == 0) return(NULL)
     meth <- as.character(sub$method_used)
     prim <- as.character(sub$primary)
@@ -2125,33 +2142,30 @@ lab_quality_leaderboard <- function(merged_df, top_n = 10L, eq_only = FALSE,
       rep("—", nrow(sub))
     }
     ind_lab[is.na(ind_lab) | !nzchar(ind_lab)] <- "—"
-    ranks <- if (!is.null(rank_values) && length(rank_values) == nrow(sub)) {
-      as.integer(rank_values)
-    } else {
-      seq_len(nrow(sub))
-    }
     out <- data.frame(
-      排名 = ranks,
-      產業 = ind_lab,
+      排名 = seq_len(nrow(sub)),
       代號 = if (exists("display_tickers_for_market", mode = "function")) {
         display_tickers_for_market(sub$ticker, tryCatch(get_market_mode(), error = function(e) "US"))
       } else {
         sub$ticker
       },
       公司名稱 = names_out,
+      產業 = ind_lab,
+      估值方法 = meth,
       年化估值漲幅 = sprintf("%+.1f%%", sub$upside_cagr_pct),
       總潛在漲幅 = ifelse(
         is.na(sub$upside_total_pct), "—", sprintf("%+.1f%%", sub$upside_total_pct)
       ),
-      估值方法 = meth,
       `F-Score` = sub$f_score,
       stringsAsFactors = FALSE,
       check.names = FALSE
     )
-    if (!identical(rank_col, "排名")) {
-      names(out)[names(out) == "排名"] <- rank_col
+    cols <- lb_cols_cross
+    if (!is.null(ind_rank_values) && length(ind_rank_values) == nrow(sub)) {
+      out$產業內排名 <- as.integer(ind_rank_values)
+      cols <- lb_cols_by_ind
     }
-    out
+    out[, cols, drop = FALSE]
   }
 
   # Within-industry rank: sort by industry then CAGR so each industry starts at 1
@@ -2181,7 +2195,7 @@ lab_quality_leaderboard <- function(merged_df, top_n = 10L, eq_only = FALSE,
     o_uv <- order(-tot, df_uv$ticker, na.last = TRUE)
     df_uv <- df_uv[o_uv, , drop = FALSE]
     df_uv <- head(df_uv, top_n)
-    out <- .fmt_lb_rows(df_uv, rank_values = seq_len(nrow(df_uv)), rank_col = "排名")
+    out <- .fmt_lb_rows(df_uv)
     if (is.null(out) || nrow(out) == 0) return(empty)
     return(out)
   }
@@ -2197,15 +2211,12 @@ lab_quality_leaderboard <- function(merged_df, top_n = 10L, eq_only = FALSE,
   if (identical(scope, "by_industry")) {
     # 產業內排名 = that name's rank within its industry (1 = best in industry),
     # not its place in the cross-industry Top 10.
-    out <- .fmt_lb_rows(df_glob, rank_values = df_glob$.ind_rank, rank_col = "產業內排名")
+    out <- .fmt_lb_rows(df_glob, ind_rank_values = df_glob$.ind_rank)
     if (is.null(out) || nrow(out) == 0) return(empty)
-    pref <- c("產業", "產業內排名")
-    rest <- setdiff(names(out), pref)
-    out <- out[, c(pref[pref %in% names(out)], rest), drop = FALSE]
     return(out)
   }
 
-  out <- .fmt_lb_rows(df_glob, rank_values = seq_len(nrow(df_glob)), rank_col = "排名")
+  out <- .fmt_lb_rows(df_glob)
   if (is.null(out) || nrow(out) == 0) return(empty)
   out
 }

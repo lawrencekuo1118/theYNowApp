@@ -59,6 +59,12 @@ testthat::test_that("by_industry Top-K keeps cross-industry order but Industry r
   testthat::expect_true("產業內排名" %in% names(lb))
   # Each industry restarts at 1 — not a cross-industry serial 1..4
   testthat::expect_identical(as.integer(lb$產業內排名), c(1L, 1L, 1L, 2L))
+  testthat::expect_identical(as.integer(lb$排名), c(1L, 2L, 3L, 4L))
+  testthat::expect_identical(
+    names(lb),
+    c("排名", "產業", "產業內排名", "代號", "公司名稱", "估值方法",
+      "年化估值漲幅", "總潛在漲幅", "F-Score")
+  )
 })
 
 testthat::test_that("overall is Top-K across the provided pool with serial ranks", {
@@ -71,6 +77,17 @@ testthat::test_that("overall is Top-K across the provided pool with serial ranks
   testthat::expect_identical(as.character(lb$代號), c("C1", "B1", "A1"))
   testthat::expect_true("排名" %in% names(lb))
   testthat::expect_identical(as.integer(lb$排名), c(1L, 2L, 3L))
+  testthat::expect_identical(
+    names(lb),
+    c("排名", "代號", "公司名稱", "產業", "估值方法",
+      "年化估值漲幅", "總潛在漲幅", "F-Score")
+  )
+  en <- lab_localize_im_colnames(lb, "en")
+  testthat::expect_identical(
+    names(en),
+    c("Rank", "Ticker", "Company", "Industry", "Model",
+      "Annualized upside", "Total upside", "F-Score")
+  )
 })
 
 testthat::test_that("by_industry with one industry returns that industry's Top-K from 1", {
@@ -83,6 +100,7 @@ testthat::test_that("by_industry with one industry returns that industry's Top-K
   testthat::expect_identical(as.character(lb$代號), c("A1", "A2"))
   testthat::expect_true(all(lb$產業 == "Semiconductors"))
   testthat::expect_identical(as.integer(lb$產業內排名), c(1L, 2L))
+  testthat::expect_identical(as.integer(lb$排名), c(1L, 2L))
 })
 
 testthat::test_that("industry_avg ranks by mcap-weighted average upside", {
@@ -132,6 +150,11 @@ testthat::test_that("undervalued ranks by total FV–price gap, not CAGR", {
   testthat::expect_identical(as.character(lb$代號), c("X1", "X2", "X3"))
   testthat::expect_true(grepl("\\+300\\.0%", lb[["總潛在漲幅"]][[1]], fixed = FALSE))
   testthat::expect_false("X4" %in% as.character(lb$代號))
+  testthat::expect_identical(
+    names(lb),
+    c("排名", "代號", "公司名稱", "產業", "估值方法",
+      "年化估值漲幅", "總潛在漲幅", "F-Score")
+  )
 })
 
 testthat::test_that("TW board normalizer maps 上市／上櫃／興櫃", {
