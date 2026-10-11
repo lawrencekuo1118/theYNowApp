@@ -24,6 +24,8 @@ server <- function(input, output, session) {
   corp_display_name_en <- reactiveVal("")
   # Search 後公司全稱字體色：官方 logo 主色（至多 2 色，#RRGGBB）
   corp_name_logo_colors <- reactiveVal(character(0))
+  # Yahoo 公司簡介（Dashboard 概況：sector／HQ／summary…）
+  company_profile <- reactiveVal(NULL)
   
   # 初始值設為 NULL，避免一開啟 App 就自動執行爬蟲
   current_ticker <- reactiveVal(NULL)
@@ -706,6 +708,7 @@ server <- function(input, output, session) {
       corp_display_name_en("")
       corp_name_logo_colors(character(0))
       corp_industry_text("等待搜尋...")
+      company_profile(NULL)
     }
 
     # SEC 頁籤：僅美股
@@ -890,6 +893,7 @@ server <- function(input, output, session) {
         tw_is_esb(FALSE)
         tw_tpex_fs_fallback(FALSE)
         corp_name_logo_colors(character(0))
+        company_profile(NULL)
 
         # 興櫃：宇宙板別（ESB）；可估但 Summary β／Blue Chip 有限制
         if (identical(market_mode(), "TW") &&
@@ -979,6 +983,18 @@ server <- function(input, output, session) {
             }
           }
           corp_industry_text(disp)
+          company_profile(list(
+            ticker = stock_code,
+            company_name = as.character(ind_info$company_name %||% "")[1],
+            sector = as.character(ind_info$sector %||% "")[1],
+            industry = as.character(ind_info$industry %||% "")[1],
+            summary = as.character(ind_info$summary %||% "")[1],
+            website = as.character(ind_info$website %||% "")[1],
+            country = as.character(ind_info$country %||% "")[1],
+            city = as.character(ind_info$city %||% "")[1],
+            exchange = as.character(ind_info$exchange %||% "")[1],
+            employees = suppressWarnings(as.numeric(ind_info$employees %||% NA_real_))
+          ))
         }
         # Always sync Dashboard「目前產業標準快覽」to the searched ticker's industry
         # (TW universe / US overlay·S&P / Yahoo heuristic). Unknown → keep prior pick.
@@ -1046,8 +1062,15 @@ server <- function(input, output, session) {
         }
 
         # 公司全稱字體色：自官方 logo 擷取至多兩色（失敗則維持預設灰黑）
+        logo_web <- tryCatch({
+          p <- isolate(company_profile())
+          as.character(p$website %||% "")[1]
+        }, error = function(e) "")
         logo_cols <- tryCatch(
-          cached_get_corp_logo_colors(stock_code),
+          cached_get_corp_logo_colors(
+            stock_code,
+            website = if (nzchar(logo_web %||% "")) logo_web else NULL
+          ),
           error = function(e) character(0)
         )
         # Always store a 2-color pair (single brand → pad black)
@@ -1355,6 +1378,141 @@ server <- function(input, output, session) {
 
   output$txt_corpname <- renderUI({ render_corpname_ui() })
   output$search_results <- renderText({ corp_industry_text() })
+
+  # Dashboard：FINANCIAL REPORT 上方 — 個股基本資訊總說明（一秒認識公司）
+  .fmt_company_employees <- function(n) {
+    n <- suppressWarnings(as.numeric(n)[1])
+    if (!is.finite(n) || n <= 0) return("")
+    format(round(n), big.mark = ",", scientific = FALSE)
+  }
+  .company_hq_label <- function(city, country) {
+    parts <- trimws(c(as.character(city %||% "")[1], as.character(country %||% "")[1]))
+    parts <- parts[!is.na(parts) & nzchar(parts) & !parts %in% c("N/A", "None")]
+    if (!length(parts)) return("")
+    paste(parts, collapse = ", ")
+  }
+  .website_host <- function(url) {
+    u <- trimws(as.character(url %||% "")[1])
+    if (!nzchar(u)) return("")
+    u2 <- sub("^https?://", "", u, ignore.case = TRUE)
+    u2 <- sub("/.*$", "", u2)
+    u2 <- sub("^www\\.", "", u2, ignore.case = TRUE)
+    if (nzchar(u2)) u2 else u
+  }
+  .na_profile_val <- function(x) {
+    s <- trimws(as.character(x %||% "")[1])
+    if (!nzchar(s) || s %in% c("N/A", "None", "Unknown Sector", "Unknown Industry")) {
+      return("")
+    }
+    s
+  }
+
+  output$company_overview_ui <- renderUI({
+    loc <- tryCatch(ui_locale(), error = function(e) "en")
+    loc <- normalize_ui_locale(loc)
+    prof <- company_profile()
+    title <- ui_str("company_overview_title", loc)
+    source_lab <- ui_str("company_overview_source", loc)
+
+    if (is.null(prof) || !is.list(prof)) {
+      return(tags$div(
+        class = "ynow-company-overview",
+        tags$div(
+          class = "ynow-company-overview-head",
+          tags$h3(class = "ynow-company-overview-title", title),
+          tags$p(class = "ynow-company-overview-source", source_lab)
+        ),
+        tags$p(
+          class = "ynow-company-overview-waiting",
+          ui_str("company_overview_waiting", loc)
+        )
+      ))
+    }
+
+    sector <- .na_profile_val(prof$sector)
+    industry <- .na_profile_val(prof$industry)
+    hq <- .company_hq_label(prof$city, prof$country)
+    exchange <- .na_profile_val(prof$exchange)
+    employees <- .fmt_company_employees(prof$employees)
+    website <- .na_profile_val(prof$website)
+    if (nzchar(website) && !grepl("^https?://", website, ignore.case = TRUE)) {
+      website_href <- paste0("https://", website)
+    } else {
+      website_href <- website
+    }
+    summary <- trimws(as.character(prof$summary %||% "")[1])
+    if (identical(summary, "None")) summary <- ""
+
+    chip <- function(k, v, href = NULL) {
+      if (!nzchar(v)) return(NULL)
+      val_node <- if (!is.null(href) && nzchar(href)) {
+        tags$a(class = "v", href = href, target = "_blank", rel = "noopener noreferrer", v)
+      } else {
+        tags$span(class = "v", v)
+      }
+      tags$div(class = "ynow-company-overview-chip", tags$span(class = "k", k), val_node)
+    }
+
+    chips <- Filter(Negate(is.null), list(
+      chip(ui_str("company_overview_sector", loc), sector),
+      chip(ui_str("company_overview_industry", loc), industry),
+      chip(ui_str("company_overview_hq", loc), hq),
+      chip(ui_str("company_overview_exchange", loc), exchange),
+      chip(ui_str("company_overview_employees", loc), employees),
+      chip(
+        ui_str("company_overview_website", loc),
+        .website_host(website),
+        href = if (nzchar(website_href)) website_href else NULL
+      )
+    ))
+
+    summary_long <- nchar(summary, type = "chars") > 320L
+    summary_node <- if (!nzchar(summary)) {
+      tags$p(
+        class = "ynow-company-overview-summary ynow-company-overview-waiting",
+        ui_str("company_overview_summary_empty", loc)
+      )
+    } else if (summary_long) {
+      uid <- paste0("ynow_co_sum_", as.integer(runif(1, 1e6, 1e9 - 1)))
+      more_lab <- ui_str("company_overview_show_more", loc)
+      less_lab <- ui_str("company_overview_show_less", loc)
+      tagList(
+        tags$p(
+          id = uid,
+          class = "ynow-company-overview-summary ynow-co-clamp",
+          summary
+        ),
+        tags$button(
+          type = "button",
+          class = "ynow-company-overview-toggle",
+          `data-more` = more_lab,
+          `data-less` = less_lab,
+          onclick = paste0(
+            "(function(btn){",
+            "var p=document.getElementById('", uid, "');",
+            "if(!p)return;",
+            "var open=p.classList.toggle('ynow-co-clamp')===false;",
+            "btn.textContent=open?(btn.getAttribute('data-less')||'Show less'):(btn.getAttribute('data-more')||'Show more');",
+            "})(this);"
+          ),
+          more_lab
+        )
+      )
+    } else {
+      tags$p(class = "ynow-company-overview-summary", summary)
+    }
+
+    tags$div(
+      class = "ynow-company-overview",
+      tags$div(
+        class = "ynow-company-overview-head",
+        tags$h3(class = "ynow-company-overview-title", title),
+        tags$p(class = "ynow-company-overview-source", source_lab)
+      ),
+      if (length(chips)) tags$div(class = "ynow-company-overview-meta", chips),
+      summary_node
+    )
+  })
 
   # P0／P1a／P2：公司標題下方資料缺口／興櫃／櫃買摘要 fallback 短註 banner
   output$ynow_data_gap_banner <- renderUI({

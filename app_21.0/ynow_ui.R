@@ -6003,6 +6003,110 @@ ui <- dashboardPage(
           font-size: 16px;
           line-height: 1.35;
         }
+        .ynow-company-overview {
+          margin: 0 0 14px 0;
+          padding: 14px 16px;
+          background: #f7f8fa;
+          border: 1px solid #e2e5ea;
+          border-radius: 2px;
+        }
+        .ynow-company-overview-head {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: baseline;
+          justify-content: space-between;
+          gap: 6px 12px;
+          margin: 0 0 10px 0;
+        }
+        .ynow-company-overview-title {
+          font-size: 14px;
+          font-weight: 700;
+          color: #222;
+          margin: 0;
+          letter-spacing: 0.01em;
+        }
+        .ynow-company-overview-source {
+          font-size: 11px;
+          color: #888;
+          margin: 0;
+        }
+        .ynow-company-overview-meta {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px 10px;
+          margin: 0 0 10px 0;
+        }
+        .ynow-company-overview-chip {
+          display: inline-flex;
+          flex-direction: column;
+          gap: 2px;
+          min-width: 0;
+          max-width: 100%;
+          padding: 6px 10px;
+          background: #fff;
+          border: 1px solid #e6e8ec;
+          border-radius: 2px;
+        }
+        .ynow-company-overview-chip .k {
+          font-size: 10px;
+          font-weight: 700;
+          color: #888;
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+        }
+        .ynow-company-overview-chip .v {
+          font-size: 12.5px;
+          font-weight: 600;
+          color: #222;
+          line-height: 1.35;
+          word-break: break-word;
+        }
+        .ynow-company-overview-chip a.v {
+          color: #1a5f9e;
+          text-decoration: none;
+        }
+        .ynow-company-overview-chip a.v:hover {
+          text-decoration: underline;
+        }
+        .ynow-company-overview-summary {
+          font-size: 13px;
+          line-height: 1.55;
+          color: #333;
+          margin: 0;
+        }
+        .ynow-company-overview-summary.ynow-co-clamp {
+          display: -webkit-box;
+          -webkit-box-orient: vertical;
+          -webkit-line-clamp: 4;
+          overflow: hidden;
+        }
+        .ynow-company-overview-toggle {
+          margin-top: 6px;
+          padding: 0;
+          border: none;
+          background: none;
+          color: #1a5f9e;
+          font-size: 12px;
+          font-weight: 600;
+          cursor: pointer;
+        }
+        .ynow-company-overview-toggle:hover {
+          text-decoration: underline;
+        }
+        .ynow-company-overview-waiting {
+          font-size: 13px;
+          color: #777;
+          margin: 0;
+          line-height: 1.45;
+        }
+        @media (max-width: 767px) {
+          .ynow-company-overview {
+            padding: 12px;
+          }
+          .ynow-company-overview-chip {
+            flex: 1 1 calc(50% - 10px);
+          }
+        }
         .ynow-ind-overview-block {
           margin: 0 0 12px 0;
           padding: 12px 14px;
@@ -12955,6 +13059,8 @@ ui <- dashboardPage(
       ),
 
       tabItem(tabName = "dashboard",
+
+              uiOutput("company_overview_ui"),
 
               tags$div(
                 class = "ynow-full-only",

@@ -406,11 +406,24 @@ get_yahoo_industry <- function(stock_code) {
     industry <- info$industry
     company_name <- info$company_name
     display_text <- paste0("Sector: ", sector, " | Industry: ", industry)
+    .py_chr <- function(x) {
+      s <- trimws(as.character(x %||% "")[1])
+      if (is.na(s) || !nzchar(s) || identical(s, "None") || identical(s, "NULL")) "" else s
+    }
+    emp_raw <- info$employees
+    employees <- suppressWarnings(as.numeric(emp_raw))
+    if (!is.finite(employees) || employees <= 0) employees <- NA_real_
     list(
       company_name = company_name,
       sector = sector,
       industry = industry,
-      display_text = display_text
+      display_text = display_text,
+      summary = .py_chr(info$summary),
+      website = .py_chr(info$website),
+      country = .py_chr(info$country),
+      city = .py_chr(info$city),
+      exchange = .py_chr(info$exchange),
+      employees = employees
     )
   }, error = function(e) {
     .ynow_log("⚠️ 產業資訊抓取失敗: ", e$message)
@@ -418,7 +431,13 @@ get_yahoo_industry <- function(stock_code) {
       company_name = stock_code,
       sector = "N/A",
       industry = "N/A",
-      display_text = "Sector: N/A | Industry: N/A"
+      display_text = "Sector: N/A | Industry: N/A",
+      summary = "",
+      website = "",
+      country = "",
+      city = "",
+      exchange = "",
+      employees = NA_real_
     )
   })
 

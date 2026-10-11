@@ -190,10 +190,40 @@ def fast_get_company_info(ticker="AMZN"):
         if not str(industry).strip():
             industry = "Unknown Industry"
 
+        def _s(key, *alts):
+            for k in (key,) + alts:
+                v = info.get(k)
+                if v is None:
+                    continue
+                s = str(v).strip()
+                if s:
+                    return s
+            return ""
+
+        summary = _s("longBusinessSummary", "longBusinessSummaryDisp")
+        website = _s("website", "irWebsite")
+        country = _s("country")
+        city = _s("city")
+        exchange = _s("fullExchangeName", "exchange")
+        employees = info.get("fullTimeEmployees")
+        try:
+            if employees is not None and not (isinstance(employees, float) and pd.isna(employees)):
+                employees = int(float(employees))
+            else:
+                employees = None
+        except Exception:
+            employees = None
+
         return {
             "company_name": comp_name,
             "sector": str(sector).strip(),
             "industry": str(industry).strip(),
+            "summary": summary,
+            "website": website,
+            "country": country,
+            "city": city,
+            "exchange": exchange,
+            "employees": employees if employees is not None else "",
         }
     except Exception as e:
         _dbg(f"⚠️ 獲取公司資訊失敗: {e}")
@@ -201,6 +231,12 @@ def fast_get_company_info(ticker="AMZN"):
             "company_name": ticker,
             "sector": "N/A",
             "industry": "N/A",
+            "summary": "",
+            "website": "",
+            "country": "",
+            "city": "",
+            "exchange": "",
+            "employees": "",
         }
 
 
