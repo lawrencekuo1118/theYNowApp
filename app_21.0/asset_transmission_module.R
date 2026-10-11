@@ -491,12 +491,79 @@ asset_tx_snapshot <- function(panel, catalog = NULL, window = 60L, as_of = NULL)
   )
 }
 
-asset_tx_tape <- function(panel, catalog = NULL, window = 60L, n = 22L) {
+# Cap so a long daily span cannot build hundreds of Plotly frames.
+.asset_tx_replay_max <- 48L
+
+#' Last session in each day, week, or month inside [start, end].
+#' Weekly / monthly use the last available print in that bucket.
+asset_tx_span_dates <- function(dates, start, end, freq = c("week", "month", "day"),
+                                max_frames = .asset_tx_replay_max) {
+  freq <- match.arg(freq)
+  dates <- sort(unique(as.Date(dates)))
+  dates <- dates[!is.na(dates)]
+  start <- as.Date(start)[1]
+  end <- as.Date(end)[1]
+  if (!length(dates) || is.na(start) || is.na(end)) {
+    out <- as.Date(character())
+    attr(out, "truncated") <- FALSE
+    return(out)
+  }
+  if (start > end) {
+    tmp <- start
+    start <- end
+    end <- tmp
+  }
+  dates <- dates[dates >= start & dates <= end]
+  if (!length(dates)) {
+    out <- as.Date(character())
+    attr(out, "truncated") <- FALSE
+    return(out)
+  }
+  picked <- if (identical(freq, "day")) {
+    dates
+  } else {
+    key <- if (identical(freq, "week")) format(dates, "%G-%V") else format(dates, "%Y-%m")
+    parts <- split(dates, key)
+    sort(as.Date(vapply(parts, function(x) as.character(max(x)), character(1))))
+  }
+  truncated <- FALSE
+  max_frames <- max(2L, as.integer(max_frames)[1])
+  if (length(picked) > max_frames) {
+    picked <- tail(picked, max_frames)
+    truncated <- TRUE
+  }
+  attr(picked, "truncated") <- truncated
+  picked
+}
+
+#' Yahoo chart range long enough to cover `start`.
+.asset_tx_period_for_start <- function(start, today = Sys.Date()) {
+  start <- as.Date(start)[1]
+  today <- as.Date(today)[1]
+  days <- as.numeric(today - start)
+  if (!is.finite(days) || days <= 160) "6mo"
+  else if (days <= 340) "1y"
+  else if (days <= 700) "2y"
+  else "5y"
+}
+
+.asset_tx_period_rank <- function(period) {
+  unname(c("6mo" = 1L, "1y" = 2L, "2y" = 3L, "5y" = 4L)[[.asset_tx_yahoo_range(period)]])
+}
+
+asset_tx_tape <- function(panel, catalog = NULL, window = 60L, n = 22L, as_of_dates = NULL) {
   catalog <- catalog %||% asset_tx_catalog()
   prepared <- .asset_tx_prepare_panel(panel, catalog$nodes)
   if (is.null(prepared)) return(list())
-  # Allow n=1 for progressive first paint; Play uses n>=2.
-  dts <- tail(sort(unique(prepared$Date)), max(1L, as.integer(n)[1]))
+  avail <- sort(unique(as.Date(prepared$Date)))
+  if (!is.null(as_of_dates)) {
+    want <- as.Date(as_of_dates)
+    want <- want[!is.na(want)]
+    dts <- avail[avail %in% want]
+  } else {
+    # Allow n=1 for progressive first paint; Play uses n>=2.
+    dts <- tail(avail, max(1L, as.integer(n)[1]))
+  }
   snaps <- lapply(dts, function(d) {
     asset_tx_snapshot(prepared, catalog = catalog, window = window, as_of = d)
   })
@@ -1849,7 +1916,10 @@ asset_tx_fetch_panel <- function(catalog = NULL, period = "6mo", force = FALSE) 
   cache_key <- .asset_tx_panel_cache_key(syms, period)
   if (!isTRUE(force)) {
     cached <- .asset_tx_panel_cache_get(cache_key)
-    if (!is.null(cached)) return(cached)
+    if (!is.null(cached)) {
+      cached$period <- .asset_tx_yahoo_range(period)
+      return(cached)
+    }
   }
   # R chart API first. shinyapps.io has reticulate but no Python, so the
   # Python downloader cannot be the only path — and on shinyapps we skip it
@@ -1920,7 +1990,8 @@ asset_tx_fetch_panel <- function(catalog = NULL, period = "6mo", force = FALSE) 
     symbols = used,
     fetched_at = Sys.time(),
     n_ok = as.integer(n_ok),
-    n_nodes = nrow(nodes)
+    n_nodes = nrow(nodes),
+    period = .asset_tx_yahoo_range(period)
   )
   .asset_tx_panel_cache_put(cache_key, out)
   out
@@ -2139,20 +2210,40 @@ asset_transmission_server <- function(id, ui_locale_rv = NULL, market_mode_rv = 
 
     pack_rv <- shiny::reactiveVal(NULL)
     err_rv <- shiny::reactiveVal(NULL)
+    replay_spec_rv <- shiny::reactiveVal(NULL)
+    replay_note_rv <- shiny::reactiveVal(NULL)
     loading_rv <- shiny::reactiveVal(TRUE)
     # Progressive paint: latest session first, then full Play tape.
     tape_n_rv <- shiny::reactiveVal(1L)
     inflight <- FALSE
+    pending_period <- NULL
 
-    load_panel <- function(force = FALSE) {
-      if (isTRUE(inflight)) return(invisible(NULL))
+    load_panel <- function(force = FALSE, period = NULL) {
+      if (is.null(period) || !nzchar(as.character(period)[1])) {
+        period <- shiny::isolate(pack_rv())$period %||% "6mo"
+      }
+      period <- .asset_tx_yahoo_range(period)
+      if (isTRUE(inflight)) {
+        if (is.null(pending_period) || .asset_tx_period_rank(period) > .asset_tx_period_rank(pending_period)) {
+          pending_period <<- period
+        }
+        return(invisible(NULL))
+      }
       inflight <<- TRUE
-      on.exit({ inflight <<- FALSE }, add = TRUE)
+      pending_period <<- NULL
+      on.exit({
+        inflight <<- FALSE
+        nxt <- pending_period
+        pending_period <<- NULL
+        if (!is.null(nxt) && !identical(nxt, period)) {
+          load_panel(force = TRUE, period = nxt)
+        }
+      }, add = TRUE)
       loading_rv(TRUE)
       loc <- tryCatch(shiny::isolate(locale()), error = function(e) "en")
       run_fetch <- function() {
         res <- tryCatch(
-          asset_tx_fetch_panel(force = isTRUE(force)),
+          asset_tx_fetch_panel(period = period, force = isTRUE(force)),
           error = function(e) structure(list(message = conditionMessage(e)), class = "asset_tx_fetch_error")
         )
         if (inherits(res, "asset_tx_fetch_error")) {
@@ -2177,11 +2268,12 @@ asset_transmission_server <- function(id, ui_locale_rv = NULL, market_mode_rv = 
         }
         err_rv(NULL)
         # Paint the latest session immediately, then expand to the Play tape.
-        tape_n_rv(1L)
+        # A custom span owns the frames; do not replace it with the last-22 tape.
+        if (is.null(shiny::isolate(replay_spec_rv()))) tape_n_rv(1L)
         pack_rv(res)
         loading_rv(FALSE)
         target_n <- as.integer(.asset_tx_tape_frames)
-        if (target_n > 1L) {
+        if (target_n > 1L && is.null(shiny::isolate(replay_spec_rv()))) {
           upgrade <- function() {
             if (!identical(shiny::isolate(tape_n_rv()), target_n)) {
               tape_n_rv(target_n)
@@ -2240,43 +2332,135 @@ asset_transmission_server <- function(id, ui_locale_rv = NULL, market_mode_rv = 
       }
     })
 
+    shiny::observeEvent(input$replay_run, {
+      loc <- tryCatch(locale(), error = function(e) "en")
+      start <- as.Date(input$replay_start)
+      end <- as.Date(input$replay_end)
+      freq <- as.character(input$replay_freq %||% "week")[1]
+      if (!freq %in% c("day", "week", "month")) freq <- "week"
+      if (length(start) != 1L || length(end) != 1L || is.na(start) || is.na(end)) {
+        replay_note_rv(.asset_tx_label("atx_replay_bad_dates", loc))
+        return()
+      }
+      if (start > end) {
+        tmp <- start
+        start <- end
+        end <- tmp
+      }
+      replay_spec_rv(list(start = start, end = end, freq = freq))
+      pack <- shiny::isolate(pack_rv())
+      have <- if (!is.null(pack) && is.data.frame(pack$panel) && nrow(pack$panel)) {
+        suppressWarnings(min(as.Date(pack$panel$Date), na.rm = TRUE))
+      } else {
+        as.Date(NA)
+      }
+      need <- .asset_tx_period_for_start(start)
+      have_period <- .asset_tx_yahoo_range(pack$period %||% "6mo")
+      short_history <- is.na(have) || have > start ||
+        .asset_tx_period_rank(need) > .asset_tx_period_rank(have_period)
+      if (isTRUE(short_history)) {
+        tryCatch(load_panel(force = TRUE, period = need), error = function(e) {
+          err_rv(conditionMessage(e))
+          loading_rv(FALSE)
+        })
+      }
+    }, ignoreInit = TRUE)
+
     output$toolbar <- shiny::renderUI({
       loc <- locale()
       sel <- .asset_tx_window_choice(shiny::isolate(input$window))
-      shiny::fluidRow(
-        shiny::column(
-          width = 4,
-          shiny::selectInput(
-            session$ns("window"),
-            label = .asset_tx_label("atx_window", loc),
-            choices = stats::setNames(
-              c("20", "60", "120"),
-              c(
-                .asset_tx_label("atx_win_20", loc),
-                .asset_tx_label("atx_win_60", loc),
-                .asset_tx_label("atx_win_120", loc)
+      start_sel <- shiny::isolate(input$replay_start)
+      end_sel <- shiny::isolate(input$replay_end)
+      freq_sel <- shiny::isolate(input$replay_freq)
+      if (is.null(start_sel) || is.na(suppressWarnings(as.Date(start_sel)))) start_sel <- Sys.Date() - 120
+      if (is.null(end_sel) || is.na(suppressWarnings(as.Date(end_sel)))) end_sel <- Sys.Date()
+      if (is.null(freq_sel) || !freq_sel %in% c("day", "week", "month")) freq_sel <- "week"
+      htmltools::tagList(
+        shiny::fluidRow(
+          shiny::column(
+            width = 4,
+            shiny::selectInput(
+              session$ns("window"),
+              label = .asset_tx_label("atx_window", loc),
+              choices = stats::setNames(
+                c("20", "60", "120"),
+                c(
+                  .asset_tx_label("atx_win_20", loc),
+                  .asset_tx_label("atx_win_60", loc),
+                  .asset_tx_label("atx_win_120", loc)
+                )
+              ),
+              selected = sel,
+              width = "100%"
+            )
+          ),
+          shiny::column(
+            width = 3,
+            htmltools::tags$div(
+              style = "margin-top: 25px;",
+              shiny::actionButton(
+                session$ns("refresh"),
+                .asset_tx_label("atx_refresh", loc),
+                icon = shiny::icon("sync"),
+                class = "btn-default"
               )
-            ),
-            selected = sel,
-            width = "100%"
+            )
+          ),
+          shiny::column(
+            width = 5,
+            shiny::uiOutput(session$ns("status"))
           )
         ),
-        shiny::column(
-          width = 3,
-          htmltools::tags$div(
-            style = "margin-top: 25px;",
-            shiny::actionButton(
-              session$ns("refresh"),
-              .asset_tx_label("atx_refresh", loc),
-              icon = shiny::icon("sync"),
-              class = "btn-default"
+        shiny::fluidRow(
+          shiny::column(
+            width = 3,
+            shiny::dateInput(
+              session$ns("replay_start"),
+              label = .asset_tx_label("atx_replay_start", loc),
+              value = start_sel,
+              width = "100%"
+            )
+          ),
+          shiny::column(
+            width = 3,
+            shiny::dateInput(
+              session$ns("replay_end"),
+              label = .asset_tx_label("atx_replay_end", loc),
+              value = end_sel,
+              width = "100%"
+            )
+          ),
+          shiny::column(
+            width = 3,
+            shiny::selectInput(
+              session$ns("replay_freq"),
+              label = .asset_tx_label("atx_replay_freq", loc),
+              choices = stats::setNames(
+                c("week", "month", "day"),
+                c(
+                  .asset_tx_label("atx_replay_week", loc),
+                  .asset_tx_label("atx_replay_month", loc),
+                  .asset_tx_label("atx_replay_day", loc)
+                )
+              ),
+              selected = freq_sel,
+              width = "100%"
+            )
+          ),
+          shiny::column(
+            width = 3,
+            htmltools::tags$div(
+              style = "margin-top: 25px;",
+              shiny::actionButton(
+                session$ns("replay_run"),
+                .asset_tx_label("atx_replay_run", loc),
+                icon = shiny::icon("play"),
+                class = "btn-primary"
+              )
             )
           )
         ),
-        shiny::column(
-          width = 5,
-          shiny::uiOutput(session$ns("status"))
-        )
+        htmltools::tags$p(class = "ynow-atx-note", .asset_tx_label("atx_replay_hint", loc))
       )
     })
 
@@ -2285,9 +2469,36 @@ asset_transmission_server <- function(id, ui_locale_rv = NULL, market_mode_rv = 
       shiny::req(pack)
       tryCatch({
         window <- asset_tx_window(.asset_tx_window_choice(input$window))
+        spec <- replay_spec_rv()
         n_fr <- as.integer(tape_n_rv() %||% 1L)
         if (!is.finite(n_fr) || n_fr < 1L) n_fr <- 1L
-        tape <- asset_tx_tape(pack$panel, window = window, n = n_fr)
+        if (!is.null(spec)) {
+          dts <- asset_tx_span_dates(pack$panel$Date, spec$start, spec$end, spec$freq)
+          loc <- locale()
+          freq_key <- switch(spec$freq, day = "atx_replay_day", week = "atx_replay_week", "atx_replay_month")
+          if (!length(dts)) {
+            replay_note_rv(.asset_tx_label("atx_replay_empty", loc))
+            return(list())
+          }
+          if (isTRUE(attr(dts, "truncated"))) {
+            replay_note_rv(.ynow_fmt_str(
+              .asset_tx_label("atx_replay_cap", loc),
+              n = length(dts)
+            ))
+          } else {
+            replay_note_rv(.ynow_fmt_str(
+              .asset_tx_label("atx_replay_status", loc),
+              n = length(dts),
+              freq = .asset_tx_label(freq_key, loc),
+              start = format(min(dts), "%Y-%m-%d"),
+              end = format(max(dts), "%Y-%m-%d")
+            ))
+          }
+          tape <- asset_tx_tape(pack$panel, window = window, as_of_dates = dts)
+        } else {
+          replay_note_rv(NULL)
+          tape <- asset_tx_tape(pack$panel, window = window, n = n_fr)
+        }
         lapply(tape, function(sn) {
           sn <- .asset_tx_with_symbols(sn, symbols = pack$symbols)
           attr(sn, "fetched_at") <- pack$fetched_at
@@ -2442,7 +2653,10 @@ asset_transmission_server <- function(id, ui_locale_rv = NULL, market_mode_rv = 
         htmltools::tags$p(class = "ynow-atx-note", .asset_tx_label("atx_arrow_note", loc)),
         htmltools::tags$p(class = "ynow-atx-note", .asset_tx_label(node_key, loc)),
         htmltools::tags$p(class = "ynow-atx-note", .asset_tx_label("atx_pan_hint", loc)),
-        htmltools::tags$p(class = "ynow-atx-note", .asset_tx_label("atx_play_hint", loc))
+        htmltools::tags$p(
+          class = "ynow-atx-note",
+          replay_note_rv() %||% .asset_tx_label("atx_play_hint", loc)
+        )
       )
     })
 

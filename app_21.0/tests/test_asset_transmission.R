@@ -162,6 +162,10 @@ check("menu atx zh", identical(ui_str("menu_asset_transmission", "zh-TW"), "資�
 check("menu atx en", identical(ui_str("menu_asset_transmission", "en"), "Asset transmission root map"))
 check("atx window zh", identical(ui_str("atx_window", "zh-TW"), "滾動相關視窗"))
 check("atx window en", identical(ui_str("atx_window", "en"), "Correlation window"))
+check("replay run zh", identical(ui_str("atx_replay_run", "zh-TW"), "跑動態演進"))
+check("replay freq en", identical(ui_str("atx_replay_freq", "en"), "Point frequency"))
+check("replay week zh", identical(ui_str("atx_replay_week", "zh-TW"), "每週"))
+check("replay month en", identical(ui_str("atx_replay_month", "en"), "Monthly"))
 check(
   "zh curve up is bear steepening",
   identical(ui_str("atx_lean_curve_up", "zh-TW"), "2s10s：長端升得比較快就是熊市陡峭化（bear steepener）")
@@ -468,6 +472,51 @@ check(
 )
 tape24 <- asset_tx_tape(panel, window = 60L, n = 24L)
 check("tape can still request 24", length(tape24) == 24L)
+
+weekdays_between <- function(start, end) {
+  cal <- seq(as.Date(start), as.Date(end), by = "day")
+  cal[as.integer(format(cal, "%u")) <= 5L]
+}
+span_week <- weekdays_between("2026-03-02", "2026-04-15")
+wk <- asset_tx_span_dates(span_week, "2026-03-02", "2026-04-15", "week")
+check(
+  "weekly span keeps one session per week",
+  length(wk) == 7L && !isTRUE(attr(wk, "truncated")) &&
+    identical(max(wk), as.Date("2026-04-15"))
+)
+span_month <- weekdays_between("2025-01-01", "2026-10-10")
+mo <- asset_tx_span_dates(span_month, "2025-01-01", "2026-10-10", "month")
+check(
+  "monthly span is one point per month",
+  length(mo) == 22L && !isTRUE(attr(mo, "truncated")) &&
+    identical(min(mo), as.Date("2025-01-31")) &&
+    identical(max(mo), as.Date("2026-10-09"))
+)
+long_daily <- asset_tx_span_dates(span_month, "2025-01-01", "2026-10-10", "day")
+check(
+  "daily span caps frames",
+  length(long_daily) == as.integer(.asset_tx_replay_max) && isTRUE(attr(long_daily, "truncated"))
+)
+swapped <- asset_tx_span_dates(span_week, "2026-04-15", "2026-03-02", "week")
+check("span swaps reversed dates", length(swapped) == 7L)
+empty_span <- asset_tx_span_dates(span_week, "2020-01-01", "2020-02-01", "month")
+check("empty span", !length(empty_span) && !isTRUE(attr(empty_span, "truncated")))
+check(
+  "period covers the monthly example",
+  identical(.asset_tx_period_for_start("2025-01-01", today = as.Date("2026-10-11")), "2y")
+)
+check(
+  "period covers the weekly example",
+  identical(.asset_tx_period_for_start("2026-03-02", today = as.Date("2026-10-11")), "1y")
+)
+picked <- asset_tx_span_dates(panel$Date, min(panel$Date), max(panel$Date), "month")
+tape_span <- asset_tx_tape(panel, window = 60L, as_of_dates = picked)
+check(
+  "tape follows requested dates",
+  length(tape_span) == length(picked) &&
+    identical(tape_span[[1]]$as_of, min(picked)) &&
+    identical(tape_span[[length(tape_span)]]$as_of, max(picked))
+)
 
 if (requireNamespace("plotly", quietly = TRUE)) {
   fig <- asset_tx_figure(tape, "zh-TW", "TW")
@@ -810,6 +859,12 @@ check(
   grepl("tape_n_rv", mod_src, fixed = TRUE) &&
     grepl("\\.asset_tx_tape_frames", mod_src) &&
     grepl("loading_rv", mod_src, fixed = TRUE)
+)
+check(
+  "replay span controls",
+  grepl("replay_spec_rv", mod_src, fixed = TRUE) &&
+    grepl("asset_tx_span_dates", mod_src, fixed = TRUE) &&
+    grepl('ns("replay_run")', mod_src, fixed = TRUE)
 )
 check(
   "figure cache helpers present",
