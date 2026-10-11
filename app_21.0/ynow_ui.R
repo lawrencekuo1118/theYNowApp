@@ -505,7 +505,7 @@
     tags$p(
       class = "ynow-focus-metric-note",
       tags$span(
-        class = "ynow-focus-metric-dot ynow-focus-metric-dot--legend",
+        class = "ynow-focus-metric-swatch ynow-focus-metric-swatch--legend",
         `aria-hidden` = "true"
       ),
       tags$span(id = "ynow_kpi_legend_focus", "金 · 本財報屬性關鍵指標")
@@ -9047,19 +9047,33 @@ ui <- dashboardPage(
           word-break: break-word;
           overflow-wrap: anywhere;
         }
-        /* 財報屬性「重視指標」點：與 APP 標題金色一致（非黃土琥珀） */
-        .ynow-focus-metric-dot {
+        /* 財報屬性「重視指標」：金色外框（取代圓點）；與 APP 標題金色一致 */
+        .ynow-focus-metric-swatch {
           display: inline-block;
-          width: 8px;
-          height: 8px;
-          margin-left: 6px;
-          border-radius: 50%;
-          background: var(--ynow-gold, #F5C518);
-          vertical-align: middle;
-          box-shadow: 0 0 0 1px rgba(0,0,0,0.08);
-        }
-        .ynow-focus-metric-dot--legend {
+          width: 14px;
+          height: 14px;
           margin: 0 6px 0 0;
+          border: 2px solid var(--ynow-gold, #F5C518);
+          border-radius: 3px;
+          background: transparent;
+          vertical-align: middle;
+          box-sizing: border-box;
+        }
+        .ynow-focus-metric-swatch--legend {
+          margin: 0 6px 0 0;
+        }
+        .content-wrapper .small-box.ynow-focus-metric-box,
+        .tab-content .small-box.ynow-focus-metric-box,
+        .ynow-fs-card.ynow-focus-metric-box {
+          border: 2px solid var(--ynow-gold, #F5C518) !important;
+          box-shadow: 0 0 0 1px rgba(201, 162, 39, 0.28);
+        }
+        .ynow-fs-card.ynow-focus-metric-box {
+          border-radius: 6px;
+        }
+        /* Legacy dot class hidden if any residual markup remains */
+        .ynow-focus-metric-dot {
+          display: none !important;
         }
         .ynow-kpi-legend-wrap {
           margin: 0 0 10px 0;
@@ -9091,7 +9105,7 @@ ui <- dashboardPage(
           flex: 1 1 auto;
         }
 
-        /* 財報屬性標籤：黑底＋標題同款金字金框，無圓點（High growth 等） */
+        /* 財報屬性標籤：黑底＋金框；解析後標籤字用藍綠動態（Mature dividend 等） */
         .ynow-fund-profile-badge {
           display: inline-flex;
           align-items: center;
@@ -9107,7 +9121,7 @@ ui <- dashboardPage(
           white-space: nowrap;
           line-height: 1.2;
         }
-        /* Data-limited / 資料受限: keep logo-flow fill (not HTCDI flame). */
+        /* Resolved profiles: logo-flow blue–green text (not HTCDI flame). */
         .ynow-fund-profile-badge .ynow-htcdi-flow {
           color: transparent !important;
           -webkit-text-fill-color: transparent !important;
@@ -9123,11 +9137,6 @@ ui <- dashboardPage(
             margin-left: 0;
           }
         }
-        .content-wrapper .small-box .inner h3 .ynow-focus-metric-dot {
-          margin-left: 8px;
-          vertical-align: middle;
-        }
-
         /* Snapshot / HFV 摘要數字：維持可覆寫 class，尺寸回預設 */
         .ynow-kpi-stat-label {
           font-size: 11px !important;

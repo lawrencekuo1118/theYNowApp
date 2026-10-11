@@ -1591,21 +1591,15 @@ server <- function(input, output, session) {
       } else {
         NA_character_
       }
-      mark <- if (nzchar(fp_id) && !is.na(mid) &&
-                  exists("is_profile_focus_metric", mode = "function") &&
-                  isTRUE(is_profile_focus_metric(fp_id, mid))) {
-        .ynow_focus_metric_mark(focus_tip)
-      } else {
-        NULL
-      }
+      is_focus <- nzchar(fp_id) && !is.na(mid) &&
+        exists("is_profile_focus_metric", mode = "function") &&
+        isTRUE(is_profile_focus_metric(fp_id, mid))
       tags$div(
-        class = "ynow-fs-card",
+        class = paste(c("ynow-fs-card", if (is_focus) "ynow-focus-metric-box"), collapse = " "),
+        title = if (is_focus) focus_tip else NULL,
+        `aria-label` = if (is_focus) focus_tip else NULL,
         tags$div(class = "ynow-fs-label", item),
-        tags$div(
-          class = "ynow-fs-value",
-          value,
-          if (!is.null(mark)) mark
-        )
+        tags$div(class = "ynow-fs-value", value)
       )
     }
 
@@ -2172,7 +2166,8 @@ server <- function(input, output, session) {
         tags$br(),
         tags$b(id = "ynow_fund_profile_label", "財報屬性："),
         if (exists(".ynow_data_limited_flow_span", mode = "function")) {
-          .ynow_data_limited_flow_span(fp_lab, force = identical(fp_id, "fallback"))
+          # Resolved profiles (Mature dividend, …) → logo-flow; Data-limited stays plain.
+          .ynow_data_limited_flow_span(fp_lab, force = !identical(fp_id, "fallback"))
         } else {
           fp_lab
         },

@@ -833,32 +833,43 @@ get_box_color <- function(industry_choice, metric_name, val) {
 }
 
 #' KPI valueBox：僅允許黑／白／紅／藍（AdminLTE: black, red, blue；白＝none）
-#' @param mark_focus 若 TRUE，在數值旁加琥珀色「屬性重視」小圓點（與同業紅藍語意分離）
-#' @param focus_title 圓點 title／aria-label
+#' @param mark_focus 若 TRUE，以金色外框標示「屬性重視」KPI（與同業紅藍語意分離）
+#' @param focus_title 外框 title／aria-label
 kpi_band_value_box <- function(value, subtitle, color, icon = NULL, width = 4,
                                mark_focus = FALSE, focus_title = NULL) {
   color <- as.character(color %||% "none")[1]
   allowed <- c("black", "red", "blue", "none", "white")
   if (!nzchar(color) || is.na(color) || !(color %in% allowed)) color <- "none"
-  mark <- if (isTRUE(mark_focus) && exists(".ynow_focus_metric_mark", mode = "function")) {
-    .ynow_focus_metric_mark(focus_title)
-  } else {
-    NULL
-  }
-  value_ui <- if (!is.null(mark)) {
-    tagList(value, mark)
-  } else {
-    value
-  }
+  tip <- as.character(focus_title %||% "")[1]
+  if (!nzchar(tip)) tip <- "本財報屬性關鍵指標"
+  focus_cls <- if (isTRUE(mark_focus)) "ynow-focus-metric-box" else NULL
+
   if (identical(color, "none") || identical(color, "white")) {
     box_content <- div(
-      class = "small-box ynow-kpi-na",
-      div(class = "inner", h3(value_ui), p(subtitle)),
+      class = paste(c("small-box", "ynow-kpi-na", focus_cls), collapse = " "),
+      title = if (isTRUE(mark_focus)) tip else NULL,
+      `aria-label` = if (isTRUE(mark_focus)) tip else NULL,
+      div(class = "inner", h3(value), p(subtitle)),
       if (!is.null(icon)) div(class = "icon-large", icon)
     )
     return(div(class = if (!is.null(width)) paste0("col-sm-", width), box_content))
   }
-  valueBox(value = value_ui, subtitle = subtitle, icon = icon, color = color, width = width)
+  box <- valueBox(value = value, subtitle = subtitle, icon = icon, color = color, width = width)
+  if (!isTRUE(mark_focus)) return(box)
+  # shinydashboard valueBox: col-sm-* > .small-box
+  tryCatch({
+    if (inherits(box, "shiny.tag") && length(box$children) >= 1L) {
+      child <- box$children[[1]]
+      if (inherits(child, "shiny.tag")) {
+        cls <- as.character(child$attribs$class %||% "")
+        child$attribs$class <- paste(c(cls, "ynow-focus-metric-box"), collapse = " ")
+        child$attribs$title <- tip
+        child$attribs[["aria-label"]] <- tip
+        box$children[[1]] <- child
+      }
+    }
+    box
+  }, error = function(e) box)
 }
 
 #' 產業標準欄位 → 顯示標籤／單位（單一來源，供快覽／Annotation／色碼共用）

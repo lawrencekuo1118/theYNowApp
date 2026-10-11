@@ -187,15 +187,9 @@ fs_item_to_focus_metric <- function(item) {
   NA_character_
 }
 
-#' 琥珀色「屬性重視」標記 HTML（數字旁）
+#' Legacy no-op: focus metrics use a gold box border (`.ynow-focus-metric-box`), not a gold dot.
 .ynow_focus_metric_mark <- function(title = NULL) {
-  tip <- as.character(title %||% "")[1]
-  if (!nzchar(tip)) tip <- "本財報屬性關鍵指標"
-  tags$span(
-    class = "ynow-focus-metric-dot",
-    title = tip,
-    `aria-label` = tip
-  )
+  NULL
 }
 
 #' TRUE when the visible token is Data-limited / 資料受限 (or profile id fallback).
@@ -204,10 +198,18 @@ fs_item_to_focus_metric <- function(item) {
   identical(t, "fallback") || identical(t, "Data-limited") || identical(t, "資料受限")
 }
 
-#' Wrap Data-limited / 資料受限 in the shared HTCDI logo-flow class (no second animation).
+#' Wrap resolved profile labels (Mature dividend, High growth, …) in logo-flow blue–green.
+#' Data-limited / 資料受限 stays plain (gold chip styling handles that state).
 .ynow_data_limited_flow_span <- function(lab, force = FALSE) {
   txt <- as.character(lab %||% "")[1]
-  if (isTRUE(force) || .ynow_is_data_limited_token(txt)) {
+  # `force=TRUE` → always flow (caller already decided this is a resolved profile).
+  # Default: flow only when NOT Data-limited.
+  use_flow <- if (isTRUE(force)) {
+    TRUE
+  } else {
+    !.ynow_is_data_limited_token(txt)
+  }
+  if (isTRUE(use_flow) && nzchar(txt)) {
     tags$span(class = "ynow-htcdi-flow", txt)
   } else {
     txt
@@ -232,8 +234,9 @@ fs_item_to_focus_metric <- function(item) {
     }
   }
   tip <- as.character(title %||% "")[1]
-  # Data-limited / 資料受限 uses HTCDI numeral teal flow fill; others stay gold-on-black.
-  inner_cls <- if (identical(pid, "fallback")) "ynow-htcdi-flow" else NULL
+  # Resolved profiles (Mature dividend, …): logo-flow blue–green.
+  # Data-limited stays gold-on-black chip text (no flow).
+  inner_cls <- if (!identical(pid, "fallback")) "ynow-htcdi-flow" else NULL
   tags$span(
     class = "ynow-fund-profile-badge",
     title = if (nzchar(tip)) tip else lab,
