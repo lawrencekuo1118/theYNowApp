@@ -8,5 +8,5 @@ short=f1d5ed9
 message=chore: bump display version to v21.54
 captured_at=2026-10-10T18:12:00Z
 source_branch=cursor/corpname-logo-colors-911b
-display_version=v21.54
+display_version=v21.55
 note=Canonical live line is app_21.0. Bundle 12673746 ships v21.54: Search company full-name tint uses up to two primary colors from the official logo (FMP / site icon). Deploy via scripts/deploy_app_21.R.
