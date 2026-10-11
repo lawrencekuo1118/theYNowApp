@@ -7,4 +7,4 @@ commit=69beb37b2d19e2291cb0159585a8bd5d4ffc57ea
 short=69beb37
 message=chore: bump display version to v21.75
 captured_at=2026-10-11T11:34:07Z
-display_version=v21.75
+display_version=v21.76
