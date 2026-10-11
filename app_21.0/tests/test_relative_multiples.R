@@ -201,7 +201,7 @@ check("SOTP per-segment EV", abs(sotp_pm$implied_ev - 1000) < 1e-9) # 100*2 + 20
 
 # --- Locale ---
 for (k in c(
-  "menu_rel_multiples", "menu_sotp", "rel_multiples_implied_price", "rel_multiples_disclaimer",
+  "menu_rel_multiples", "menu_rel_ev", "menu_rel_earn", "menu_rel_rev", "menu_rel_book", "menu_sotp", "rel_multiples_implied_price", "rel_multiples_disclaimer",
   "rel_multiples_growth_sgr", "rel_multiples_vbx_pe", "rel_multiples_vbx_evebit",
   "rel_multiples_status_arr", "rel_mode_label", "rel_mode_equity", "rel_mode_enterprise",
   "rel_multiples_ev_heading", "rel_multiples_ps_heading",
@@ -213,7 +213,9 @@ for (k in c(
   "sotp_lead_title", "sotp_need_segments", "sotp_vbx_price", "sotp_col_multiple",
   "sotp_tab_bridge", "sotp_formula_banner", "sotp_settings_seg_note",
   "sotp_status_shares_missing", "sotp_status_multiple_invalid",
-  "sotp_status_equity_invalid", "sotp_status_unavailable"
+  "sotp_status_equity_invalid", "sotp_status_unavailable",
+  "ms_family_enterprise", "ms_family_earnings", "ms_family_revenue", "ms_family_book",
+  "ms_pos_market", "ms_pos_primary", "ms_pos_secondary", "ms_pos_reference"
 )) {
   check(paste("en", k), nzchar(ui_str(k, "en")))
   check(paste("zh", k), nzchar(ui_str(k, "zh-TW")))

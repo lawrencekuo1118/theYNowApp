@@ -270,7 +270,9 @@ ynow_valuation_model_tabs <- function() {
     "ri_calculator",
     "pb_calculator",
     "nav_calculator",
+    "rel_mult_ev",
     "rel_multiples_calculator",
+    "rel_mult_rev",
     "sotp_calculator",
     "hfv",
     "decision_checklist"

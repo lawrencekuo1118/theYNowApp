@@ -146,8 +146,18 @@ calc_forward_eps_from_price_pe <- function(price, forward_pe) {
 
 #' Normalize legacy radio values: earnings／ps → equity; enterprise unchanged.
 .rel_normalize_mode <- function(mode = "equity") {
-  m <- as.character(mode %||% "equity")[1]
-  if (identical(m, "enterprise")) "enterprise" else "equity"
+  m <- tolower(trimws(as.character(mode %||% "equity")[1]))
+  if (m %in% c("enterprise", "revenue", "equity")) m else "equity"
+}
+
+#' Which of the four relative families a method key belongs to.
+.rel_method_family <- function(key) {
+  k <- as.character(key %||% "")[1]
+  if (k %in% c("ev_ebitda", "ev_ebit", "ev_fcf")) return("enterprise")
+  if (k %in% c("pe", "forward_pe", "peg")) return("earnings")
+  if (k %in% c("ps", "ev_sales", "ev_arr")) return("revenue")
+  if (identical(k, "pb")) return("book")
+  NA_character_
 }
 
 #' Method keys that can produce Implied Price within a Multiples family.
@@ -157,6 +167,7 @@ calc_forward_eps_from_price_pe <- function(price, forward_pe) {
   switch(
     .rel_normalize_mode(mode),
     "enterprise" = c("ev_fcf", "ev_ebit", "ev_ebitda", "ev_sales", "ev_arr"),
+    "revenue" = c("ps", "ev_sales", "ev_arr"),
     # equity (default): PEG has no Implied Price
     c("pe", "forward_pe", "ps")
   )
@@ -469,9 +480,10 @@ calc_sotp_revenue_implied <- function(segments, ev_sales_multiple, cash, debt, s
 # ==========================================
 # UI
 # ==========================================
-# Capital-claim families (radio): equity | enterprise
-# Equity = P/E · Fwd P/E · PEG · P/S; Enterprise = EV/* ; SOTP = sidebar Enterprise-structural.
-# Settings tabs: Overview + Equity + Enterprise + Bridge. P/B stays separate.
+
+# Four sidebar pages (enterprise / earnings / revenue). Book value stays pb_asset_module.
+# Page chrome matches P/B: Overview (KPI row, formula bar, Run / Reset) + Settings.
+# input['mod_rel-rel_mode'] remains so a hidden mode radio can steer the active Implied Price.
 .rel_formula_banner <- function(id, text) {
   div(
     id = id,
@@ -494,224 +506,202 @@ calc_sotp_revenue_implied <- function(segments, ev_sales_multiple, cash, debt, s
   )
 }
 
+.rel_run_row <- function(ns, calc_id, reset_id, sync_id) {
+  fluidRow(
+    column(width = 4, ynow_calc_btn(ns(calc_id), label = tags$span(class = "ynow-rel-calc-lbl", "Run multiples"))),
+    column(width = 4, ynow_reset_defaults_btn(ns(reset_id))),
+    column(
+      width = 4,
+      br(),
+      actionButton(
+        ns(sync_id),
+        label = tags$span(class = "ynow-rel-sync-lbl", "Sync from statements"),
+        icon = icon("sync"), class = "btn-sm",
+        style = "background-color:#1a1a1a;color:white;border:none;padding:8px 15px;font-weight:bold;border-radius:5px;margin-top:5px;width:100%;"
+      )
+    )
+  )
+}
+
 relative_multiples_module_ui <- function(id) {
   ns <- NS(id)
-  # conditionalPanel needs the fully namespaced input id (module id = mod_rel).
   .mode <- function(val) sprintf("input['mod_rel-rel_mode'] == '%s'", val)
-
-  tabItem(
-    tabName = "rel_multiples_calculator",
-    fluidRow(
-      column(
-        12,
-        div(
-          id = "ynow_rel_multiples_lead",
-          style = paste(
-            "margin:0 0 12px 0; padding:10px 12px; background:#f8fafc;",
-            "border:1px solid #e2e8f0; border-radius:8px; font-size:13px; color:#334155;"
-          ),
-          tags$b(id = "ynow_rel_multiples_lead_title", "Relative valuation (multiples): "),
-          tags$span(
-            id = "ynow_rel_multiples_lead_body",
-            "Implied Price by capital-claim family (Equity vs Enterprise) — not Intrinsic Value / Fair Value. ",
-            "P/S sits under Equity; SOTP is a separate sidebar Enterprise-structural engine. P/B stays separate."
-          )
-        )
-      )
-    ),
-    tabBox(
-      title = tags$span(id = "ynow_rel_multiples_box_title", "Multiples"),
-      width = "auto",
-
-      # --- Overview (mode + formulas + results) ---
-      tabPanel(
-        title = tags$span(id = "ynow_rel_multiples_tab_overview", "Overview"),
-        icon = icon("percentage"),
-        fluidRow(
-          column(
-            12,
-            radioButtons(
-              ns("rel_mode"),
-              label = tags$span(id = "ynow_rel_mode_label", "Select capital-claim family:"),
-              choices = list(
-                "Equity (P/E · Fwd P/E · PEG · P/S)" = "equity",
-                "Enterprise (EV/FCF · EV/EBIT · EV/EBITDA · EV/Sales · EV/ARR)" = "enterprise"
-              ),
-              selected = .rel_normalize_mode(APP_DEFAULTS$rel_mode %||% "equity"),
-              inline = FALSE
-            ),
-            tags$p(
-              id = "ynow_rel_mode_help",
-              class = "help-block",
-              "Equity: equity-claim multiples (EPS×P/E, Revenue×P/S; PEG is an indicator). Enterprise: EV×metric then Cash−Debt bridge. SOTP (sidebar) shares the Enterprise cash/debt/shares bridge with per-segment EV/Sales."
-            ),
-            uiOutput(ns("ui_rel_param_matrix"))
-          )
-        ),
-        conditionalPanel(
-          condition = .mode("equity"),
-          .rel_formula_banner(
-            "ynow_rel_formula_equity",
-            "Equity: Implied Price = EPS × P/E　｜　Implied Equity = Revenue × P/S　｜　PEG = P/E ÷ g(%)"
-          ),
+  list(
+    tabItem(
+      tabName = "rel_mult_ev",
+      tabBox(
+        title = tags$span(id = "ynow_rel_ev_box", "Enterprise value multiples"),
+        width = "auto",
+        tabPanel(
+          title = tags$span(id = "ynow_rel_multiples_tab_enterprise", "Overview"),
+          icon = icon("building"),
           fluidRow(
             class = "ynow-model-kpi-row",
-            column(3, class = "ynow-model-kpi-result ynow-model-kpi-outline", valueBoxOutput(ns("vbx_pe"), width = 12)),
-            column(3, class = "ynow-model-kpi-tone-2", valueBoxOutput(ns("vbx_fpe"), width = 12)),
-            column(3, class = "ynow-model-kpi-tone-3", valueBoxOutput(ns("vbx_peg"), width = 12)),
-            column(3, class = "ynow-model-kpi-tone-2", valueBoxOutput(ns("vbx_ps"), width = 12))
-          )
-        ),
-        conditionalPanel(
-          condition = .mode("enterprise"),
+            column(4, class = "ynow-model-kpi-result", valueBoxOutput(ns("vbx_evebitda"), width = 12)),
+            column(4, class = "ynow-model-kpi-tone-2", valueBoxOutput(ns("vbx_evebit"), width = 12)),
+            column(4, class = "ynow-model-kpi-tone-3", valueBoxOutput(ns("vbx_evfcf"), width = 12))
+          ),
           .rel_formula_banner(
             "ynow_rel_formula_enterprise",
             "Implied EV = Metric × Multiple　｜　Equity = EV + Cash − Debt　｜　Price = Equity ÷ Shares"
           ),
-          fluidRow(
-            class = "ynow-model-kpi-row",
-            column(4, class = "ynow-model-kpi-result", valueBoxOutput(ns("vbx_evfcf"), width = 12)),
-            column(4, class = "ynow-model-kpi-tone-2", valueBoxOutput(ns("vbx_evebit"), width = 12)),
-            column(4, class = "ynow-model-kpi-tone-3", valueBoxOutput(ns("vbx_evebitda"), width = 12))
+          .rel_run_row(ns, "btn_calc_rel_ev", "btn_reset_rel_ev", "btn_sync_rel_ev")
+        ),
+        tabPanel(
+          "Settings",
+          icon = icon("cogs"),
+          h4(tags$b(id = "ynow_rel_multiples_ev_heading", "Enterprise multiples")),
+          .rel_settings_note(
+            "ynow_rel_settings_ev_note",
+            "Implied EV = Metric × Multiple; Equity = EV + Cash − Debt; Implied Price = Equity ÷ Shares. EV/EBITDA is the cross-capital-structure comparison; it fails when EBITDA is negative."
           ),
           fluidRow(
-            class = "ynow-model-kpi-row",
-            column(4, class = "ynow-model-kpi-tone-2", valueBoxOutput(ns("vbx_evsales"), width = 12)),
-            column(4, class = "ynow-model-kpi-tone-3", valueBoxOutput(ns("vbx_evarr"), width = 12))
+            column(3, numericInput(ns("ebitda"), tags$span(id = "ynow_rel_lbl_ebitda", "EBITDA"), value = NA, step = 1)),
+            column(3, numericInput(ns("ev_ebitda_multiple"), tags$span(id = "ynow_rel_lbl_evebitda_mult", "EV/EBITDA"), value = APP_DEFAULTS$rel_ev_ebitda_multiple %||% 10, min = 0.1, step = 0.5)),
+            column(3, numericInput(ns("ebit"), tags$span(id = "ynow_rel_lbl_ebit", "EBIT"), value = NA, step = 1)),
+            column(3, numericInput(ns("ev_ebit_multiple"), tags$span(id = "ynow_rel_lbl_evebit_mult", "EV/EBIT"), value = APP_DEFAULTS$rel_ev_ebit_multiple %||% 12, min = 0.1, step = 0.5))
+          ),
+          fluidRow(
+            column(3, numericInput(ns("fcff"), tags$span(id = "ynow_rel_lbl_fcff", "FCFF"), value = NA, step = 1)),
+            column(3, numericInput(ns("ev_fcf_multiple"), tags$span(id = "ynow_rel_lbl_evfcf_mult", "EV/FCF"), value = APP_DEFAULTS$rel_ev_fcf_multiple %||% 15, min = 0.1, step = 0.5))
+          ),
+          tags$p(id = "ynow_rel_multiples_ev_help", class = "help-block", "FCFE is not used. EV/Sales and EV/ARR live on the revenue page."),
+          hr(style = "border-top:1px solid #BDC3C7;"),
+          h4(tags$b(id = "ynow_rel_multiples_tab_bridge", "Capital bridge & shares")),
+          .rel_settings_note(
+            "ynow_rel_settings_bridge_note",
+            "Shared with revenue multiples and SOTP: Equity = EV + Cash − Debt; Price = Equity ÷ Shares."
+          ),
+          uiOutput(ns("txt_shares_note")),
+          fluidRow(
+            column(4, numericInput(ns("cash"), tags$span(id = "ynow_rel_lbl_cash", "Cash"), value = NA, step = 1)),
+            column(4, numericInput(ns("debt"), tags$span(id = "ynow_rel_lbl_debt", "Total Debt"), value = NA, step = 1)),
+            column(4, numericInput(ns("shares"), tags$span(id = "ynow_rel_lbl_shares", "Shares (quote)"), value = NA, step = 1))
+          ),
+          tags$p(
+            id = "ynow_rel_multiples_bridge_help", class = "help-block",
+            "Cash / Debt used for the EV→Equity bridge. Earnings P/E does not use this bridge."
           )
+        )
+      )
+    ),
+    tabItem(
+      tabName = "rel_multiples_calculator",
+      div(
+        style = "display:none;",
+        radioButtons(
+          ns("rel_mode"),
+          label = tags$span(id = "ynow_rel_mode_label", "Select capital-claim family:"),
+          choices = list(
+            "Equity (P/E · Fwd P/E · PEG · P/S)" = "equity",
+            "Enterprise (EV/FCF · EV/EBIT · EV/EBITDA · EV/Sales · EV/ARR)" = "enterprise",
+            "Revenue (P/S · EV/Sales · EV/ARR)" = "revenue"
+          ),
+          selected = .rel_normalize_mode(APP_DEFAULTS$rel_mode %||% "equity")
         ),
-        fluidRow(
-          column(width = 4, ynow_calc_btn(ns("btn_calc_rel"), label = tags$span(id = "ynow_rel_multiples_btn_calc", "Run multiples"))),
-          column(width = 4, ynow_reset_defaults_btn(ns("btn_reset_rel"))),
-          column(
-            width = 4,
-            br(),
-            actionButton(
-              ns("btn_sync_rel"),
-              label = tags$span(id = "ynow_rel_multiples_btn_sync", "Sync from statements"),
-              icon = icon("sync"), class = "btn-sm",
-              style = "background-color:#1a1a1a;color:white;border:none;padding:8px 15px;font-weight:bold;border-radius:5px;margin-top:5px;width:100%;"
-            )
-          )
-        ),
-        fluidRow(column(12, uiOutput(ns("ui_rel_result"))))
+        tags$p(id = "ynow_rel_mode_help", .mode("equity"))
       ),
-
-      # --- Equity settings (P/E · Fwd · PEG · P/S) ---
-      tabPanel(
-        title = tags$span(id = "ynow_rel_multiples_tab_equity", "Equity"),
-        icon = icon("chart-line"),
-        h4(tags$b(id = "ynow_rel_multiples_pe_heading", "P/E & Forward P/E")),
-        .rel_settings_note(
-          "ynow_rel_settings_pe_note",
-          "Implied Price = Trailing EPS × Selected P/E; Forward Implied Price = Forward EPS × Selected Forward P/E."
+      tabBox(
+        title = tags$span(id = "ynow_rel_earn_box", "Earnings multiples"),
+        width = "auto",
+        tabPanel(
+          title = tags$span(id = "ynow_rel_multiples_tab_equity", "Overview"),
+          icon = icon("chart-line"),
+          fluidRow(
+            class = "ynow-model-kpi-row",
+            column(4, class = "ynow-model-kpi-result", valueBoxOutput(ns("vbx_pe"), width = 12)),
+            column(4, class = "ynow-model-kpi-tone-2", valueBoxOutput(ns("vbx_fpe"), width = 12)),
+            column(4, class = "ynow-model-kpi-tone-3", valueBoxOutput(ns("vbx_peg"), width = 12))
+          ),
+          .rel_formula_banner(
+            "ynow_rel_formula_equity",
+            "Implied Price = EPS × P/E　｜　PEG = P/E ÷ g(%)"
+          ),
+          .rel_run_row(ns, "btn_calc_rel", "btn_reset_rel", "btn_sync_rel"),
+          fluidRow(column(12, uiOutput(ns("ui_rel_result")))),
+          uiOutput(ns("ui_rel_param_matrix"))
         ),
-        fluidRow(
-          column(3, numericInput(ns("trailing_eps"), tags$span(id = "ynow_rel_lbl_teps", "Trailing EPS"), value = NA, step = 0.01)),
-          column(3, numericInput(ns("pe_multiple"), tags$span(id = "ynow_rel_lbl_pe_mult", "Selected P/E"), value = APP_DEFAULTS$rel_pe_multiple %||% 18, min = 0.1, step = 0.5)),
-          column(3, numericInput(ns("forward_eps"), tags$span(id = "ynow_rel_lbl_feps", "Forward EPS"), value = NA, step = 0.01)),
-          column(3, numericInput(ns("fwd_pe_multiple"), tags$span(id = "ynow_rel_lbl_fpe_mult", "Selected Forward P/E"), value = APP_DEFAULTS$rel_fwd_pe_multiple %||% 18, min = 0.1, step = 0.5))
-        ),
-        tags$p(
-          id = "ynow_rel_multiples_pe_help", class = "help-block",
-          "Trailing EPS from latest statements; Forward EPS = Trailing × (1+g) using SGR／revenue CAGR. Selected P/E from App industry defaults — not Yahoo market P/E or price÷P/E back-solve. EPS ≤ 0 → N/A."
-        ),
-        hr(style = "border-top:1px solid #BDC3C7;"),
-        h4(tags$b(id = "ynow_rel_multiples_peg_heading", "PEG (relative indicator)")),
-        .rel_settings_note(
-          "ynow_rel_settings_peg_note",
-          "PEG = P/E ÷ growth(%). Relative indicator only — not a buy/sell threshold."
-        ),
-        fluidRow(
-          column(
-            4,
-            selectInput(
+        tabPanel(
+          "Settings",
+          icon = icon("cogs"),
+          h4(tags$b(id = "ynow_rel_multiples_pe_heading", "P/E & Forward P/E")),
+          .rel_settings_note(
+            "ynow_rel_settings_pe_note",
+            "Implied Price = Trailing EPS × Selected P/E; Forward Implied Price = Forward EPS × Selected Forward P/E."
+          ),
+          fluidRow(
+            column(3, numericInput(ns("trailing_eps"), tags$span(id = "ynow_rel_lbl_teps", "Trailing EPS"), value = NA, step = 0.01)),
+            column(3, numericInput(ns("pe_multiple"), tags$span(id = "ynow_rel_lbl_pe_mult", "Selected P/E"), value = APP_DEFAULTS$rel_pe_multiple %||% 18, min = 0.1, step = 0.5)),
+            column(3, numericInput(ns("forward_eps"), tags$span(id = "ynow_rel_lbl_feps", "Forward EPS"), value = NA, step = 0.01)),
+            column(3, numericInput(ns("fwd_pe_multiple"), tags$span(id = "ynow_rel_lbl_fpe_mult", "Selected Forward P/E"), value = APP_DEFAULTS$rel_fwd_pe_multiple %||% 18, min = 0.1, step = 0.5))
+          ),
+          tags$p(
+            id = "ynow_rel_multiples_pe_help", class = "help-block",
+            "Trailing EPS from latest statements; Forward EPS = Trailing × (1+g) using SGR／revenue CAGR. Selected P/E from App industry defaults — not Yahoo market P/E or price÷P/E back-solve. EPS ≤ 0 → N/A."
+          ),
+          hr(style = "border-top:1px solid #BDC3C7;"),
+          h4(tags$b(id = "ynow_rel_multiples_peg_heading", "PEG (relative indicator)")),
+          .rel_settings_note(
+            "ynow_rel_settings_peg_note",
+            "PEG = P/E ÷ growth(%). Relative indicator only — not a buy/sell threshold."
+          ),
+          fluidRow(
+            column(4, selectInput(
               ns("peg_growth_src"),
               tags$span(id = "ynow_rel_lbl_peg_src", "Growth definition"),
-              choices = c(
-                "Central terminal SGR" = "sgr",
-                "Historical revenue CAGR" = "rev_cagr"
-              ),
+              choices = c("Central terminal SGR" = "sgr", "Historical revenue CAGR" = "rev_cagr"),
               selected = "sgr"
-            )
+            )),
+            column(4, numericInput(ns("peg_growth_pct"), tags$span(id = "ynow_rel_lbl_peg_g", "Growth (%)"), value = NA, step = 0.1)),
+            column(4, numericInput(ns("peg_pe"), tags$span(id = "ynow_rel_lbl_peg_pe", "P/E for PEG"), value = NA, min = 0.1, step = 0.5))
           ),
-          column(4, numericInput(ns("peg_growth_pct"), tags$span(id = "ynow_rel_lbl_peg_g", "Growth (%)"), value = NA, step = 0.1)),
-          column(4, numericInput(ns("peg_pe"), tags$span(id = "ynow_rel_lbl_peg_pe", "P/E for PEG"), value = NA, min = 0.1, step = 0.5))
-        ),
-        tags$p(
-          id = "ynow_rel_multiples_peg_help", class = "help-block",
-          "PEG = P/E ÷ growth(%). Not a buy/sell threshold."
-        ),
-        hr(style = "border-top:1px solid #BDC3C7;"),
-        h4(tags$b(id = "ynow_rel_multiples_ps_heading", "P/S (equity sales)")),
-        .rel_settings_note(
-          "ynow_rel_settings_ps_note",
-          "Implied Equity = Revenue × P/S; Implied Price = Equity ÷ Shares (no Cash−Debt bridge). Set Shares on the Bridge tab."
-        ),
-        fluidRow(
-          column(4, numericInput(ns("ps_revenue"), tags$span(id = "ynow_rel_lbl_ps_revenue", "Revenue"), value = NA, step = 1)),
-          column(4, numericInput(ns("ps_multiple"), tags$span(id = "ynow_rel_lbl_ps_mult", "P/S"), value = APP_DEFAULTS$rel_ps_multiple %||% 3, min = 0.01, step = 0.1))
-        ),
-        tags$p(
-          id = "ynow_rel_multiples_ps_help", class = "help-block",
-          "Equity-side: Implied Equity = Revenue × P/S; Implied Price = Equity ÷ shares. No Cash−Debt bridge (unlike EV/Sales)."
-        ),
-        tags$p(
-          id = "ynow_rel_multiples_ps_rev_note", class = "help-block",
-          "P/S Revenue syncs with Enterprise Revenue when you Sync from statements; you may override either field."
+          tags$p(id = "ynow_rel_multiples_peg_help", class = "help-block", "PEG = P/E ÷ growth(%). Not a buy/sell threshold.")
         )
-      ),
-
-      # --- Enterprise settings (EV/*) ---
-      tabPanel(
-        title = tags$span(id = "ynow_rel_multiples_tab_enterprise", "Enterprise"),
-        icon = icon("building"),
-        h4(tags$b(id = "ynow_rel_multiples_ev_heading", "Enterprise multiples")),
-        .rel_settings_note(
-          "ynow_rel_settings_ev_note",
-          "Implied EV = Metric × Multiple; Equity = EV + Cash − Debt; Implied Price = Equity ÷ Shares. Set Cash / Debt / Shares on the Bridge tab. SOTP (sidebar) reuses the same bridge with per-segment EV/Sales."
+      )
+    ),
+    tabItem(
+      tabName = "rel_mult_rev",
+      tabBox(
+        title = tags$span(id = "ynow_rel_rev_box", "Revenue multiples"),
+        width = "auto",
+        tabPanel(
+          "Overview",
+          icon = icon("shopping-cart"),
+          fluidRow(
+            class = "ynow-model-kpi-row",
+            column(4, class = "ynow-model-kpi-result", valueBoxOutput(ns("vbx_ps"), width = 12)),
+            column(4, class = "ynow-model-kpi-tone-2", valueBoxOutput(ns("vbx_evsales"), width = 12)),
+            column(4, class = "ynow-model-kpi-tone-3", valueBoxOutput(ns("vbx_evarr"), width = 12))
+          ),
+          .rel_formula_banner(
+            "ynow_rel_formula_revenue",
+            "P/S: Implied Equity = Revenue × P/S　｜　EV/Sales: Equity = EV + Cash − Debt"
+          ),
+          .rel_run_row(ns, "btn_calc_rel_rev", "btn_reset_rel_rev", "btn_sync_rel_rev")
         ),
-        fluidRow(
-          column(3, numericInput(ns("fcff"), tags$span(id = "ynow_rel_lbl_fcff", "FCFF"), value = NA, step = 1)),
-          column(3, numericInput(ns("ev_fcf_multiple"), tags$span(id = "ynow_rel_lbl_evfcf_mult", "EV/FCF"), value = APP_DEFAULTS$rel_ev_fcf_multiple %||% 15, min = 0.1, step = 0.5)),
-          column(3, numericInput(ns("ebit"), tags$span(id = "ynow_rel_lbl_ebit", "EBIT"), value = NA, step = 1)),
-          column(3, numericInput(ns("ev_ebit_multiple"), tags$span(id = "ynow_rel_lbl_evebit_mult", "EV/EBIT"), value = APP_DEFAULTS$rel_ev_ebit_multiple %||% 12, min = 0.1, step = 0.5))
-        ),
-        fluidRow(
-          column(3, numericInput(ns("ebitda"), tags$span(id = "ynow_rel_lbl_ebitda", "EBITDA"), value = NA, step = 1)),
-          column(3, numericInput(ns("ev_ebitda_multiple"), tags$span(id = "ynow_rel_lbl_evebitda_mult", "EV/EBITDA"), value = APP_DEFAULTS$rel_ev_ebitda_multiple %||% 10, min = 0.1, step = 0.5)),
-          column(3, numericInput(ns("revenue"), tags$span(id = "ynow_rel_lbl_revenue", "Revenue"), value = NA, step = 1)),
-          column(3, numericInput(ns("ev_sales_multiple"), tags$span(id = "ynow_rel_lbl_evsales_mult", "EV/Sales"), value = APP_DEFAULTS$rel_ev_sales_multiple %||% 3, min = 0.01, step = 0.1))
-        ),
-        fluidRow(
-          column(3, numericInput(ns("arr"), tags$span(id = "ynow_rel_lbl_arr", "ARR"), value = NA, step = 1)),
-          column(3, numericInput(ns("ev_arr_multiple"), tags$span(id = "ynow_rel_lbl_evarr_mult", "EV/ARR"), value = APP_DEFAULTS$rel_ev_arr_multiple %||% 10, min = 0.1, step = 0.5)),
-          column(6, helpText(id = "ynow_rel_multiples_arr_help", "ARR is not in core statements — enter manually or leave blank (N/A)."))
-        ),
-        tags$p(
-          id = "ynow_rel_multiples_ev_help", class = "help-block",
-          "Implied EV = metric × multiple; Equity = EV + Cash − Debt; Price = Equity ÷ shares. FCFE is not used."
-        )
-      ),
-
-      # --- Bridge (Cash / Debt / Shares) ---
-      tabPanel(
-        title = tags$span(id = "ynow_rel_multiples_tab_bridge", "Bridge"),
-        icon = icon("link"),
-        h4(tags$b(id = "ynow_rel_multiples_bridge_heading", "Capital bridge & shares")),
-        .rel_settings_note(
-          "ynow_rel_settings_bridge_note",
-          "Shared with Enterprise Multiples and SOTP: Equity = EV + Cash − Debt; Price = Equity ÷ Shares. Equity P/E／P/S use Shares only."
-        ),
-        uiOutput(ns("txt_shares_note")),
-        fluidRow(
-          column(4, numericInput(ns("cash"), tags$span(id = "ynow_rel_lbl_cash", "Cash"), value = NA, step = 1)),
-          column(4, numericInput(ns("debt"), tags$span(id = "ynow_rel_lbl_debt", "Total Debt"), value = NA, step = 1)),
-          column(4, numericInput(ns("shares"), tags$span(id = "ynow_rel_lbl_shares", "Shares (quote)"), value = NA, step = 1))
-        ),
-        tags$p(
-          id = "ynow_rel_multiples_bridge_help", class = "help-block",
-          "Cash / Debt used for EV→Equity bridge (Enterprise Multiples + SOTP). Equity P/S and P/E use shares only."
+        tabPanel(
+          "Settings",
+          icon = icon("cogs"),
+          h4(tags$b(id = "ynow_rel_multiples_ps_heading", "P/S (equity sales)")),
+          .rel_settings_note(
+            "ynow_rel_settings_ps_note",
+            "Implied Equity = Revenue × P/S; Implied Price = Equity ÷ Shares (no Cash−Debt bridge). Use when earnings and EBITDA are not usable. Do not compare unlike gross margins with the same P/S."
+          ),
+          fluidRow(
+            column(4, numericInput(ns("ps_revenue"), tags$span(id = "ynow_rel_lbl_ps_revenue", "Revenue"), value = NA, step = 1)),
+            column(4, numericInput(ns("ps_multiple"), tags$span(id = "ynow_rel_lbl_ps_mult", "P/S"), value = APP_DEFAULTS$rel_ps_multiple %||% 3, min = 0.01, step = 0.1))
+          ),
+          tags$p(id = "ynow_rel_multiples_ps_help", class = "help-block", "Equity-side: Implied Equity = Revenue × P/S; Implied Price = Equity ÷ shares. No Cash−Debt bridge (unlike EV/Sales)."),
+          tags$p(id = "ynow_rel_multiples_ps_rev_note", class = "help-block", "P/S Revenue syncs with Enterprise Revenue when you Sync from statements; you may override either field."),
+          hr(style = "border-top:1px solid #BDC3C7;"),
+          h4(tags$b("EV/Sales & EV/ARR")),
+          fluidRow(
+            column(3, numericInput(ns("revenue"), tags$span(id = "ynow_rel_lbl_revenue", "Revenue"), value = NA, step = 1)),
+            column(3, numericInput(ns("ev_sales_multiple"), tags$span(id = "ynow_rel_lbl_evsales_mult", "EV/Sales"), value = APP_DEFAULTS$rel_ev_sales_multiple %||% 3, min = 0.01, step = 0.1)),
+            column(3, numericInput(ns("arr"), tags$span(id = "ynow_rel_lbl_arr", "ARR"), value = NA, step = 1)),
+            column(3, numericInput(ns("ev_arr_multiple"), tags$span(id = "ynow_rel_lbl_evarr_mult", "EV/ARR"), value = APP_DEFAULTS$rel_ev_arr_multiple %||% 10, min = 0.1, step = 0.5))
+          ),
+          tags$p(id = "ynow_rel_multiples_arr_help", class = "help-block", "ARR is not in core statements — enter manually or leave blank (N/A). Cash / Debt / Shares are on the enterprise-value Settings page.")
         )
       )
     )
@@ -739,6 +729,7 @@ relative_multiples_module_server <- function(id,
     shares_resolve_note <- reactiveVal(NULL)
     calc_token <- reactiveVal(0L)
     last_result <- reactiveVal(NULL)
+    family_mode_rv <- reactiveVal(NULL)
 
     .loc <- function() tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
     .str <- function(key) ui_str(key, .loc())
@@ -868,6 +859,14 @@ relative_multiples_module_server <- function(id,
       sync_from_statements()
       showNotification(.str("rel_multiples_synced"), type = "message")
     })
+    observeEvent(input$btn_sync_rel_ev, {
+      sync_from_statements()
+      showNotification(.str("rel_multiples_synced"), type = "message")
+    })
+    observeEvent(input$btn_sync_rel_rev, {
+      sync_from_statements()
+      showNotification(.str("rel_multiples_synced"), type = "message")
+    })
     observeEvent(input$peg_growth_src, {
       d_is <- tryCatch(d_income_statement(), error = function(e) NULL)
       g_pct <- if (identical(as.character(input$peg_growth_src)[1], "rev_cagr")) {
@@ -878,7 +877,7 @@ relative_multiples_module_server <- function(id,
       updateNumericInput(session, "peg_growth_pct", value = if (is.finite(g_pct)) round(g_pct, 2) else NA)
     }, ignoreInit = TRUE)
 
-    observeEvent(input$btn_reset_rel, {
+    .reset_rel_inputs <- function() {
       updateRadioButtons(session, "rel_mode", selected = .rel_normalize_mode(APP_DEFAULTS$rel_mode %||% "equity"))
       updateNumericInput(session, "pe_multiple", value = APP_DEFAULTS$rel_pe_multiple %||% 18)
       updateNumericInput(session, "fwd_pe_multiple", value = APP_DEFAULTS$rel_fwd_pe_multiple %||% 18)
@@ -890,9 +889,13 @@ relative_multiples_module_server <- function(id,
       updateNumericInput(session, "ev_arr_multiple", value = APP_DEFAULTS$rel_ev_arr_multiple %||% 10)
       updateSelectInput(session, "peg_growth_src", selected = "sgr")
       sync_from_statements()
+      family_mode_rv(NULL)
       last_result(NULL)
       calc_token(0L)
-    })
+    }
+    observeEvent(input$btn_reset_rel, { .reset_rel_inputs() })
+    observeEvent(input$btn_reset_rel_ev, { .reset_rel_inputs() })
+    observeEvent(input$btn_reset_rel_rev, { .reset_rel_inputs() })
 
     run_calc <- function(snap = NULL) {
       .num <- function(key, fallback = NA_real_) {
@@ -944,10 +947,16 @@ relative_multiples_module_server <- function(id,
       )
     }
 
-    observeEvent(input$btn_calc_rel, {
+    .run_family <- function(mode) {
+      mode <- .rel_normalize_mode(mode)
+      family_mode_rv(mode)
+      updateRadioButtons(session, "rel_mode", selected = mode)
       last_result(run_calc())
       calc_token(as.integer(calc_token()) + 1L)
-    })
+    }
+    observeEvent(input$btn_calc_rel, { .run_family("equity") })
+    observeEvent(input$btn_calc_rel_ev, { .run_family("enterprise") })
+    observeEvent(input$btn_calc_rel_rev, { .run_family("revenue") })
     observeEvent(auto_calc_pulse(), {
       pulse <- suppressWarnings(as.numeric(auto_calc_pulse())[1])
       # Pulse reset (ticker clear) must drop stale Implied Price so Composite
@@ -1035,7 +1044,6 @@ relative_multiples_module_server <- function(id,
       if (is.null(res)) {
         return(tags$p(class = "ynow-macro-hint", .str("rel_multiples_need_run")))
       }
-      mode <- .rel_normalize_mode(input$rel_mode %||% "equity")
       .row <- function(model, status, detail) {
         tags$tr(tags$td(tags$b(model)), tags$td(status), tags$td(detail))
       }
@@ -1051,17 +1059,7 @@ relative_multiples_module_server <- function(id,
           if (is.finite(node$multiple)) node$multiple else NA_real_
         )
       }
-      rows <- if (identical(mode, "enterprise")) {
-        tagList(
-          .row(.str("rel_multiples_model_evfcf"), .st_label(res$ev_fcf), .ev_detail(res$ev_fcf, "FCFF")),
-          .row(.str("rel_multiples_model_evebit"), .st_label(res$ev_ebit), .ev_detail(res$ev_ebit, "EBIT")),
-          .row(.str("rel_multiples_model_evebitda"), .st_label(res$ev_ebitda), .ev_detail(res$ev_ebitda, "EBITDA")),
-          .row(.str("rel_multiples_model_evsales"), .st_label(res$ev_sales), .ev_detail(res$ev_sales, "Rev")),
-          .row(.str("rel_multiples_model_evarr"), .st_label(res$ev_arr), .ev_detail(res$ev_arr, "ARR"))
-        )
-      } else {
-        # equity (default): P/E · Fwd P/E · PEG · P/S
-        tagList(
+      rows <- tagList(
           .row(.str("rel_multiples_model_pe"), .st_label(res$pe),
                sprintf("%s: %s · P/E %.2f× · EPS %s", .str("rel_multiples_implied_price"),
                        .fmt_px(res$pe$implied_price),
@@ -1084,8 +1082,7 @@ relative_multiples_module_server <- function(id,
                        .fmt_px(res$ps$implied_price), .fmt_px(res$ps$equity_value),
                        if (is.finite(res$ps$revenue)) format(round(res$ps$revenue, 0), big.mark = ",") else "—",
                        if (is.finite(res$ps$multiple)) res$ps$multiple else NA_real_))
-        )
-      }
+      )
       tags$div(
         class = "table-responsive",
         tags$table(
@@ -1102,8 +1099,7 @@ relative_multiples_module_server <- function(id,
     })
 
     .active_pick <- reactive({
-      # Depend on mode so chart label / price refresh when family changes
-      mode <- .rel_normalize_mode(input$rel_mode %||% "equity")
+      mode <- .rel_normalize_mode(family_mode_rv() %||% input$rel_mode %||% "equity")
       .rel_pick_active_implied(last_result(), mode = mode)
     })
 

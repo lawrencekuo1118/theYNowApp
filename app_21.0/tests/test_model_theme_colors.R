@@ -114,7 +114,8 @@ check("card NAV hex", grepl('"NAV", "nav", "sitemap", "#d81b60"', srv_src, fixed
 check("card DCF hex", grepl('"DCF", "dcf", "calculator", "#00a65a"', srv_src, fixed = TRUE))
 check("card DDM hex", grepl('"DDM", "ddm", "hand-holding-usd", "#f39c12"', srv_src, fixed = TRUE))
 check("card RI hex", grepl('"RI", "ri", "gem", "#605ca8"', srv_src, fixed = TRUE))
-check("card P/B hex", grepl('"P/B", "pb", "landmark", "#3c8dbc"', srv_src, fixed = TRUE))
+check("card P/B folded into Multiples", !grepl('"P/B", "pb", "landmark"', srv_src, fixed = TRUE) &&
+        grepl("ms_family_book", srv_src, fixed = TRUE))
 check("card Multiples hex", grepl('"Multiples", "multiples", "percentage", "#17a2b8"', srv_src, fixed = TRUE))
 check("card SOTP hex", grepl('"SOTP", "sotp", "puzzle-piece", "#343a40"', srv_src, fixed = TRUE))
 

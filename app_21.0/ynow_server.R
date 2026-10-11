@@ -2133,9 +2133,22 @@ server <- function(input, output, session) {
     role_of <- function(key) {
       if (nzchar(prim) && identical(prim, key)) return("primary")
       if (nzchar(sec) && identical(sec, key)) return("secondary")
-      if (nzchar(ref) && identical(ref, key)) return("reference")
       ""
     }
+    meth <- tryCatch({
+      if (exists("rel_results", inherits = TRUE) && !is.null(rel_results$active_method_key)) {
+        as.character(rel_results$active_method_key())[1]
+      } else {
+        NA_character_
+      }
+    }, error = function(e) NA_character_)
+    fam <- if (exists(".rel_method_family", mode = "function")) .rel_method_family(meth) else NA_character_
+    mult_tab <- switch(
+      as.character(fam %||% ""),
+      enterprise = "rel_mult_ev",
+      revenue = "rel_mult_rev",
+      "rel_multiples_calculator"
+    )
     payload <- list(
       labels = list(
         primary = ui_str("menu_badge_primary", loc),
@@ -2147,7 +2160,9 @@ server <- function(input, output, session) {
       pb_calculator = list(role = role_of("pb")),
       ri_calculator = list(role = role_of("ri")),
       nav_calculator = list(role = role_of("nav")),
-      rel_multiples_calculator = list(role = role_of("multiples")),
+      rel_mult_ev = list(role = if (identical(mult_tab, "rel_mult_ev")) role_of("multiples") else ""),
+      rel_multiples_calculator = list(role = if (identical(mult_tab, "rel_multiples_calculator")) role_of("multiples") else ""),
+      rel_mult_rev = list(role = if (identical(mult_tab, "rel_mult_rev")) role_of("multiples") else ""),
       sotp_calculator = list(role = role_of("sotp"))
     )
     session$sendCustomMessage("ynowSidebarBadges", payload)
@@ -2199,15 +2214,18 @@ server <- function(input, output, session) {
         ri = "ri_calculator",
         pb = "pb_calculator",
         multiples = "rel_multiples_calculator",
+        enterprise = "rel_mult_ev",
+        revenue = "rel_mult_rev",
         sotp = "sotp_calculator",
         NULL
       )
     }
-    make_card <- function(title, key, icon_name, color, formula, notes) {
-      # Only label 主模型／副模型; no「備選」chip on remaining cards
-      # Accent colors come from CSS vars (--ynow-model-*) via ynow-model-card--{key}
-      # so Model Selector cards stay aligned with each model tab theme.
-      role <- if (!mark_roles) {
+    make_card <- function(title, key, icon_name, color, formula, notes,
+                          role_override = NULL, role_kind = NULL, tab_override = NULL) {
+      # Only label 主模型／副模型／參照; no「備選」chip on remaining cards
+      role <- if (!is.null(role_override)) {
+        role_override
+      } else if (!mark_roles) {
         NULL
       } else if (identical(key, prim)) {
         "主模型"
@@ -2216,11 +2234,21 @@ server <- function(input, output, session) {
       } else {
         NULL
       }
-      active <- identical(role, "主模型")
-      is_secondary <- identical(role, "副模型")
-      border_col <- if (isTRUE(active)) "var(--ynow-card-accent)" else if (is_secondary) "#888" else "#ddd"
-      bg <- if (isTRUE(active)) "#fffaf2" else if (is_secondary) "#f7f9fc" else "#fff"
-      tab <- .ms_key_to_tab(key)
+      kind <- if (!is.null(role_kind)) {
+        role_kind
+      } else if (identical(role, "主模型")) {
+        "primary"
+      } else if (identical(role, "副模型")) {
+        "secondary"
+      } else {
+        NULL
+      }
+      active <- identical(kind, "primary")
+      is_secondary <- identical(kind, "secondary")
+      is_ref <- identical(kind, "reference")
+      border_col <- if (isTRUE(active)) "var(--ynow-card-accent)" else if (is_secondary) "#888" else if (is_ref) "#17a2b8" else "#ddd"
+      bg <- if (isTRUE(active)) "#fffaf2" else if (is_secondary) "#f7f9fc" else if (is_ref) "#f3fbfc" else "#fff"
+      tab <- if (!is.null(tab_override)) tab_override else .ms_key_to_tab(key)
       jump_title <- tryCatch({
         tpl <- .ui_msg("ms_card_jump_title")
         gsub("{model}", as.character(title)[1], tpl, fixed = TRUE)
@@ -2229,7 +2257,8 @@ server <- function(input, output, session) {
         "ynow-model-card",
         paste0("ynow-model-card--", key),
         if (isTRUE(active)) "ynow-model-card--primary" else "",
-        if (is_secondary) "ynow-model-card--secondary" else ""
+        if (is_secondary) "ynow-model-card--secondary" else "",
+        if (is_ref) "ynow-model-card--reference" else ""
       )
       tags$div(
         class = paste("ynow-model-card-col", if (isTRUE(active)) "ynow-model-rec-active" else ""),
@@ -2254,7 +2283,7 @@ server <- function(input, output, session) {
             class = "ynow-model-card__badge",
             style = paste0(
               "display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; color:#fff;",
-              if (is_secondary) " background:#6c757d;" else ""
+              if (is_secondary) " background:#6c757d;" else if (is_ref) " background:#17a2b8;" else ""
             ),
             role
           ),
@@ -2385,25 +2414,133 @@ server <- function(input, output, session) {
         tags$br(),
         tags$span(rec$reason %||% "請先按下 Search 載入公司後產生推薦。")
       ),
-      # L→R 對齊側欄：NAV → DCF → DDM → RI → P/B → Multiples → SOTP
+      # L→R 對齊側欄：NAV → DCF → DDM → RI → Multiples（含 P/B）→ SOTP
       tags$div(
         class = "ynow-model-selector-row",
         make_card("NAV", "nav", "sitemap", "#d81b60", "P = NAVPS × NAV multiple", "控股／綜合：帳面控股 NAV；無需 SGR。"),
         make_card("DCF", "dcf", "calculator", "#00a65a", "FCFF／WACC 或 FCFE／Ke", "適合 FCF 為正且相對穩定的企業。"),
         make_card("DDM", "ddm", "hand-holding-usd", "#f39c12", "Gordon／SPM／二階段 P0 = PV(股利)", "適合持續且穩定配息的企業。"),
         make_card("RI", "ri", "gem", "#605ca8", "Value = Book Value + Σ Residual Income / (1+Ke)^t", "適合帳面價值與 ROE 具參考性的企業。"),
-        make_card("P/B", "pb", "landmark", "#3c8dbc", "P = (BVPS／TBVPS／NAVPS) × 目標 P/B", "相對估值：產業／歷史倍數，或 Justified（需 SGR）。"),
-        make_card(
-          "Multiples", "multiples", "percentage", "#17a2b8",
-          ui_str("ms_card_multiples_formula", loc),
-          ui_str("ms_card_multiples_notes", loc)
-        ),
+        {
+          meth <- tryCatch({
+            if (exists("rel_results", inherits = TRUE) && !is.null(rel_results$active_method_key)) {
+              as.character(rel_results$active_method_key())[1]
+            } else {
+              NA_character_
+            }
+          }, error = function(e) NA_character_)
+          fam_id <- if (exists(".rel_method_family", mode = "function")) .rel_method_family(meth) else NA_character_
+          if (!nzchar(fam_id %||% "") || is.na(fam_id)) fam_id <- "earnings"
+          fam_lab <- function(fid) {
+            ui_str(switch(
+              fid,
+              enterprise = "ms_family_enterprise",
+              revenue = "ms_family_revenue",
+              book = "ms_family_book",
+              "ms_family_earnings"
+            ), loc)
+          }
+          tag <- if (exists(".rel_method_chart_tag", mode = "function")) .rel_method_chart_tag(meth) else NA_character_
+          fam_txt <- fam_lab(fam_id)
+          if (!is.na(tag) && nzchar(tag %||% "")) fam_txt <- paste0(fam_txt, " · ", tag)
+          book_txt <- paste0(fam_lab("book"), " · P/B")
+          ref_key <- as.character(rec$reference %||% "")[1]
+          role_kind <- if (prim %in% c("pb", "multiples")) {
+            "primary"
+          } else if (sec %in% c("pb", "multiples")) {
+            "secondary"
+          } else if (identical(ref_key, "multiples")) {
+            "reference"
+          } else {
+            NULL
+          }
+          role_lab <- if (identical(role_kind, "primary")) {
+            "主模型"
+          } else if (identical(role_kind, "secondary")) {
+            "副模型"
+          } else if (identical(role_kind, "reference")) {
+            ui_str("ms_card_role_reference", loc)
+          } else {
+            NULL
+          }
+          shown_fam <- if (identical(prim, "pb") || identical(sec, "pb")) book_txt else fam_txt
+          if (!is.null(role_lab)) role_lab <- paste0(role_lab, " · ", shown_fam)
+          # Primary/secondary book still names 淨值; a separate Multiples reference keeps its own family.
+          note_bits <- character(0)
+          if (prim %in% c("pb", "multiples")) {
+            note_bits <- c(note_bits, paste0(ui_str("ms_pos_primary", loc), " · ", if (identical(prim, "pb")) book_txt else fam_txt))
+          }
+          if (sec %in% c("pb", "multiples")) {
+            note_bits <- c(note_bits, paste0(ui_str("ms_pos_secondary", loc), " · ", if (identical(sec, "pb")) book_txt else fam_txt))
+          }
+          if (identical(ref_key, "multiples") && !identical(prim, "multiples")) {
+            note_bits <- c(note_bits, paste0(ui_str("ms_pos_reference", loc), " · ", fam_txt))
+          }
+          if (!length(note_bits)) note_bits <- ui_str("ms_card_multiples_notes", loc)
+          jump_tab <- if (identical(prim, "pb") || (identical(sec, "pb") && !identical(prim, "multiples") && !identical(ref_key, "multiples"))) {
+            "pb_calculator"
+          } else {
+            switch(fam_id, enterprise = "rel_mult_ev", revenue = "rel_mult_rev", book = "pb_calculator", "rel_multiples_calculator")
+          }
+          make_card(
+            "Multiples", "multiples", "percentage", "#17a2b8",
+            ui_str("ms_card_multiples_formula", loc),
+            paste(note_bits, collapse = " · "),
+            role_override = role_lab,
+            role_kind = role_kind,
+            tab_override = jump_tab
+          )
+        },
         make_card(
           "SOTP", "sotp", "puzzle-piece", "#343a40",
           ui_str("ms_card_sotp_formula", loc),
           ui_str("ms_card_sotp_notes", loc)
         )
-      )
+      ),
+      {
+        ref_key <- as.character(rec$reference %||% "")[1]
+        cur_px <- suppressWarnings(as.numeric(tryCatch(scraped_market_cap()$price, error = function(e) NA_real_))[1])
+        prim_px <- if (nzchar(prim)) suppressWarnings(as.numeric(tryCatch(.model_point(prim), error = function(e) NA_real_))[1]) else NA_real_
+        sec_px <- if (nzchar(sec) && !identical(sec, "multiples")) suppressWarnings(as.numeric(tryCatch(.model_point(sec), error = function(e) NA_real_))[1]) else NA_real_
+        ref_px <- if (identical(ref_key, "multiples")) suppressWarnings(as.numeric(tryCatch(.model_point("multiples"), error = function(e) NA_real_))[1]) else NA_real_
+        fmt_px <- function(x) if (!is.finite(x)) "—" else format(round(x, 2), big.mark = ",", nsmall = 2)
+        marks <- list(
+          list(lab = ui_str("ms_pos_market", loc), val = cur_px, col = "#333333"),
+          list(lab = paste0(ui_str("ms_pos_primary", loc), " · ", .model_label(prim)), val = prim_px, col = "#0C5484"),
+          list(lab = paste0(ui_str("ms_pos_secondary", loc), " · ", if (nzchar(sec)) .model_label(sec) else "—"), val = sec_px, col = "#888888"),
+          list(lab = paste0(ui_str("ms_pos_reference", loc), " · ", tryCatch({
+            lab <- if (exists("rel_results", inherits = TRUE) && !is.null(rel_results$chart_label)) rel_results$chart_label() else "Multiples"
+            as.character(lab %||% "Multiples")[1]
+          }, error = function(e) "Multiples")), val = ref_px, col = "#17a2b8")
+        )
+        finite <- vapply(marks, function(m) is.finite(m$val), logical(1))
+        tags$div(
+          class = "ynow-ms-pos",
+          style = "margin-top:8px; padding:10px 12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px;",
+          tags$div(style = "font-size:12px; font-weight:700; margin-bottom:8px; color:#334155;", ui_str("ms_pos_title", loc)),
+          if (!any(finite)) {
+            tags$p(style = "margin:0; font-size:12px; color:#64748b;", ui_str("ms_pos_empty", loc))
+          } else {
+            vals <- vapply(marks[finite], function(m) m$val, numeric(1))
+            lo <- min(vals) * 0.9
+            hi <- max(vals) * 1.1
+            span <- max(hi - lo, 1)
+            tagList(
+              tags$div(style = "position:relative; height:46px; margin:18px 8px 28px 8px; background:#e5e7eb; border-radius:4px;",
+                lapply(marks, function(m) {
+                  if (!is.finite(m$val)) return(NULL)
+                  pct <- (m$val - lo) / span * 100
+                  tags$div(
+                    style = paste0("position:absolute; left:", sprintf("%.1f", pct), "%; top:0; transform:translateX(-50%); text-align:center;"),
+                    tags$div(style = paste0("width:10px; height:10px; border-radius:50%; background:", m$col, "; margin:18px auto 0 auto;")),
+                    tags$div(style = "font-size:10px; color:#334155; white-space:nowrap; margin-top:2px;", paste0(m$lab, " ", fmt_px(m$val)))
+                  )
+                })
+              )
+            )
+          }
+        )
+      }
     )
   })
 
@@ -4715,7 +4852,9 @@ server <- function(input, output, session) {
       "ri_calculator" = "ri",
       "pb_calculator" = "pb",
       "nav_calculator" = "nav",
+      "rel_mult_ev" = "multiples",
       "rel_multiples_calculator" = "multiples",
+      "rel_mult_rev" = "multiples",
       "sotp_calculator" = "sotp",
       NA_character_
     )

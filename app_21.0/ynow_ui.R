@@ -3286,6 +3286,23 @@ beta_rolling_section_ui <- function() {
   )
 }
 
+# tabItems() rejects a list of pages. Flatten one list argument so the three
+# Multiples sidebar pages can come from a single module UI call.
+.ynow_tab_items <- function(...) {
+  parts <- list(...)
+  flat <- list()
+  for (p in parts) {
+    if (inherits(p, "shiny.tag")) {
+      flat[[length(flat) + 1L]] <- p
+    } else if (is.list(p)) {
+      for (q in p) flat[[length(flat) + 1L]] <- q
+    } else {
+      flat[[length(flat) + 1L]] <- p
+    }
+  }
+  do.call(shinydashboard::tabItems, flat)
+}
+
 ui <- dashboardPage(
   skin = "black",
   # Browser tab. Header logo stays the HTML progress title; do not let that markup become <title>.
@@ -3455,11 +3472,25 @@ ui <- dashboardPage(
                text = tags$span(id = "ynow_menu_cat_relative", "Appr. Relative Valuation"),
                icon = icon("percentage"),
                startExpanded = FALSE,
-               menuSubItem("P/B", tabName = "pb_calculator", icon = icon("landmark")),
                menuSubItem(
-                 text = tags$span(id = "ynow_menu_rel_multiples", "Multiples"),
+                 text = tags$span(id = "ynow_menu_rel_ev", "Enterprise value"),
+                 tabName = "rel_mult_ev",
+                 icon = icon("building")
+               ),
+               menuSubItem(
+                 text = tags$span(id = "ynow_menu_rel_earn", "Earnings"),
                  tabName = "rel_multiples_calculator",
-                 icon = icon("percentage")
+                 icon = icon("chart-line")
+               ),
+               menuSubItem(
+                 text = tags$span(id = "ynow_menu_rel_rev", "Revenue"),
+                 tabName = "rel_mult_rev",
+                 icon = icon("shopping-cart")
+               ),
+               menuSubItem(
+                 text = tags$span(id = "ynow_menu_pb", "Book value"),
+                 tabName = "pb_calculator",
+                 icon = icon("landmark")
                )
              ),
              menuItem(
@@ -5521,7 +5552,9 @@ ui <- dashboardPage(
         body.ynow-lite .sidebar-menu li:has(a[data-value="nav_calculator"]),
         body.ynow-lite .sidebar-menu li:has(a[data-value="dcf_calculator"]),
         body.ynow-lite .sidebar-menu li:has(a[data-value="pb_calculator"]),
+        body.ynow-lite .sidebar-menu li:has(a[data-value="rel_mult_ev"]),
         body.ynow-lite .sidebar-menu li:has(a[data-value="rel_multiples_calculator"]),
+        body.ynow-lite .sidebar-menu li:has(a[data-value="rel_mult_rev"]),
         body.ynow-lite .sidebar-menu li:has(a[data-value="sotp_calculator"]),
         body.ynow-lite .sidebar-menu a[data-value="hfv"],
         body.ynow-lite .sidebar-menu li:has(> a[data-value="hfv"]),
@@ -6928,7 +6961,9 @@ ui <- dashboardPage(
             ddm_calculator: 'ynow_menu_cat_income',
             ri_calculator: 'ynow_menu_cat_income',
             pb_calculator: 'ynow_menu_cat_relative',
+            rel_mult_ev: 'ynow_menu_cat_relative',
             rel_multiples_calculator: 'ynow_menu_cat_relative',
+            rel_mult_rev: 'ynow_menu_cat_relative',
             sotp_calculator: 'ynow_menu_cat_meta'
           };
           var LAST_BADGE_MAP = null;
@@ -6978,7 +7013,7 @@ ui <- dashboardPage(
           function setRecBadgeOnAnchor(a, role, labels) {
             if (!a) return;
             clearRecBadges(a);
-            if (!role) return;
+            if (!role || role === 'reference') return;
             ensureShrinkableLabel(a);
             var lab = labels || {};
             var badge = document.createElement('small');
@@ -7028,7 +7063,6 @@ ui <- dashboardPage(
               var parentRole = '';
               if (roles.indexOf('primary') >= 0) parentRole = 'primary';
               else if (roles.indexOf('secondary') >= 0) parentRole = 'secondary';
-              else if (roles.indexOf('reference') >= 0) parentRole = 'reference';
               setRecBadgeOnAnchor(a, parentRole, labels);
             });
           }
@@ -7036,7 +7070,7 @@ ui <- dashboardPage(
           function applySidebarBadges(map) {
             LAST_BADGE_MAP = map || null;
             var labels = (map && map.labels) || {};
-            var tabs = ['dcf_calculator', 'ddm_calculator', 'pb_calculator', 'rel_multiples_calculator', 'sotp_calculator', 'ri_calculator', 'nav_calculator'];
+            var tabs = ['dcf_calculator', 'ddm_calculator', 'pb_calculator', 'rel_mult_ev', 'rel_multiples_calculator', 'rel_mult_rev', 'sotp_calculator', 'ri_calculator', 'nav_calculator'];
             tabs.forEach(function (t) {
               var role = (map && map[t] && map[t].role) ? String(map[t].role) : '';
               if (!role && map && map[t] && map[t].on) role = 'primary';
@@ -7622,8 +7656,10 @@ ui <- dashboardPage(
               get_started: s.menu_get_started,
               dcf_calculator: s.menu_dcf,
               ddm_calculator: s.menu_ddm,
-              pb_calculator: s.menu_pb,
-              rel_multiples_calculator: s.menu_rel_multiples,
+              pb_calculator: s.menu_rel_book || s.menu_pb,
+              rel_mult_ev: s.menu_rel_ev,
+              rel_multiples_calculator: s.menu_rel_earn || s.menu_rel_multiples,
+              rel_mult_rev: s.menu_rel_rev,
               sotp_calculator: s.menu_sotp,
               ri_calculator: s.menu_ri,
               nav_calculator: s.menu_nav,
@@ -8629,7 +8665,9 @@ ui <- dashboardPage(
                 ddm_calculator: 'ddm',
                 ri_calculator: 'ri',
                 pb_calculator: 'pb',
+                rel_mult_ev: 'multiples',
                 rel_multiples_calculator: 'multiples',
+                rel_mult_rev: 'multiples',
                 sotp_calculator: 'sotp'
               };
               var key = map[tab] || null;
@@ -8728,7 +8766,7 @@ ui <- dashboardPage(
           (function () {
             var FULL_ONLY_TABS = [
               'get_started', 'nav_calculator', 'dcf_calculator', 'ddm_calculator',
-              'ri_calculator', 'pb_calculator', 'rel_multiples_calculator', 'sotp_calculator', 'hfv',
+              'ri_calculator', 'pb_calculator', 'rel_mult_ev', 'rel_multiples_calculator', 'rel_mult_rev', 'sotp_calculator', 'hfv',
               'decision_checklist', 'lab_notes', 'testing', 'company_advance'
             ];
             function remapLegacyTab(tab) {
@@ -12827,7 +12865,9 @@ ui <- dashboardPage(
         "input.sidebar_tabs == 'dcf_calculator' ||",
         "input.sidebar_tabs == 'ddm_calculator' ||",
         "input.sidebar_tabs == 'pb_calculator' ||",
+        "input.sidebar_tabs == 'rel_mult_ev' ||",
         "input.sidebar_tabs == 'rel_multiples_calculator' ||",
+        "input.sidebar_tabs == 'rel_mult_rev' ||",
         "input.sidebar_tabs == 'sotp_calculator' ||",
         "input.sidebar_tabs == 'ri_calculator' ||",
         "input.sidebar_tabs == 'nav_calculator'"
@@ -12924,8 +12964,8 @@ ui <- dashboardPage(
         )
       )
     ),
-    
-    tabItems(
+
+    .ynow_tab_items(
       tabItem(
         tabName = "home",
         .home_brand_ui()
@@ -13971,7 +14011,7 @@ ui <- dashboardPage(
       # 🌟 呼叫 P/B 相對估值分頁介面
       pb_asset_module_ui("mod_pb"),
 
-      # Relative multiples: Earnings / Enterprise / P/S (Implied Price)
+      # Relative multiples: enterprise value, earnings, revenue (book value is P/B above)
       relative_multiples_module_ui("mod_rel"),
 
       # SOTP — structural Sum-of-the-Parts (separate sidebar)

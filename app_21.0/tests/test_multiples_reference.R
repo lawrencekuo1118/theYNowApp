@@ -27,11 +27,11 @@ lab <- paste(readLines(file.path(root, "lab_industry_method.R"), warn = FALSE), 
 
 check("locale Reference en", identical(ui_str("menu_badge_reference", "en"), "Reference"))
 check("locale 參照 zh", identical(ui_str("menu_badge_reference", "zh-TW"), "參照"))
-check("JS reference badge class", grepl("ynow-rec-reference", ui, fixed = TRUE))
-check("JS parent bubbles reference", grepl("roles.indexOf('reference')", ui, fixed = TRUE))
-check("server pushes reference role", grepl('return("reference")', srv, fixed = TRUE) ||
-        grepl('return\\(\"reference\"\\)', srv))
-check("server companion-runs Multiples Reference", grepl('identical(ref, "multiples")', srv, fixed = TRUE))
+check("JS does not put reference on the sidebar", !grepl("roles.indexOf('reference')", ui, fixed = TRUE))
+check("server does not assign a sidebar reference badge", !grepl('return("reference")', srv, fixed = TRUE))
+check("model selector keeps a reference position strip", grepl("ms_pos_reference", srv, fixed = TRUE))
+check("model selector folds P/B into the Multiples card", !grepl('make_card("P/B"', srv, fixed = TRUE) &&
+        grepl("ms_family_book", srv, fixed = TRUE))
 check("sec allowlist excludes multiples", grepl(
   'sec_auto_allowlist <- c("dcf", "ddm", "pb", "ri", "nav", "sotp")', srv, fixed = TRUE
 ))
