@@ -1119,6 +1119,145 @@ assess_pb_applicability <- function(equity = NA, goodwill = NA, intangibles = NA
   identical(as.character(model %||% "")[1], "sotp")
 }
 
+# Which relative family the Multiples reference should use.
+# Screening order when a claim is usable: enterprise (EV/EBITDA) when leverage or
+# D&A dominates, else earnings (P/E or Forward P/E), else revenue, else book.
+# Financials / asset-heavy book businesses stay on P/B. PEG has no implied price.
+recommend_multiples_lens <- function(ni = NA_real_, ebitda = NA_real_, ebit = NA_real_,
+                                     da = NA_real_, revenue = NA_real_, equity = NA_real_,
+                                     debt = NA_real_, assets = NA_real_,
+                                     rev_g = NA_real_, last_fcff = NA_real_,
+                                     book_biz = FALSE) {
+  n <- function(x) {
+    x <- suppressWarnings(as.numeric(x)[1])
+    if (length(x) != 1L || !is.finite(x)) NA_real_ else x
+  }
+  ni <- n(ni)
+  ebitda <- n(ebitda)
+  ebit <- n(ebit)
+  da <- n(da)
+  revenue <- n(revenue)
+  equity <- n(equity)
+  debt <- n(debt)
+  assets <- n(assets)
+  rev_g <- n(rev_g)
+  last_fcff <- n(last_fcff)
+  if (is.finite(da)) da <- abs(da)
+  if (!is.finite(ebitda) && is.finite(ebit) && is.finite(da)) ebitda <- ebit + da
+
+  lab_of <- function(method) {
+    switch(
+      method,
+      pe = "P/E",
+      forward_pe = "Fwd P/E",
+      ev_ebitda = "EV/EBITDA",
+      ev_ebit = "EV/EBIT",
+      ev_fcf = "EV/FCF",
+      ev_sales = "EV/Sales",
+      ps = "P/S",
+      pb = "P/B",
+      NA_character_
+    )
+  }
+  out <- function(family, method, zh, en) {
+    list(
+      family = family,
+      method = method,
+      method_label = lab_of(method),
+      reason = zh,
+      reason_en = en
+    )
+  }
+
+  ni_ok <- is.finite(ni) && ni > 0
+  ebitda_ok <- is.finite(ebitda) && ebitda > 0
+  ebit_ok <- is.finite(ebit) && ebit > 0
+  fcf_ok <- is.finite(last_fcff) && last_fcff > 0
+  rev_ok <- is.finite(revenue) && revenue > 0
+  book_ok <- is.finite(equity) && equity > 0
+  lev <- if (is.finite(debt) && is.finite(assets) && assets > 0) debt / assets else NA_real_
+  de <- if (is.finite(debt) && book_ok) debt / equity else NA_real_
+  levered <- (is.finite(lev) && lev >= 0.40) || (is.finite(de) && de >= 1)
+  da_heavy <- (is.finite(da) && ebit_ok && (da / ebit) >= 0.35) ||
+    (is.finite(da) && rev_ok && (da / revenue) >= 0.08)
+  ent_method <- if (ebitda_ok) "ev_ebitda" else if (ebit_ok) "ev_ebit" else if (fcf_ok) "ev_fcf" else NA_character_
+
+  if (isTRUE(book_biz) && book_ok) {
+    return(out(
+      "book", "pb",
+      "金融或重資產：相對估值用淨值乘數 P/B。",
+      "Financials or asset-heavy firms: the relative anchor is book value (P/B)."
+    ))
+  }
+  if (!ni_ok) {
+    if (!is.na(ent_method) && ent_method %in% c("ev_ebitda", "ev_ebit")) {
+      return(out(
+        "enterprise", ent_method,
+        "淨利不具代表性，改用企業價值倍數（未扣利息、稅與折舊攤銷）。",
+        "Net income is not a usable residual, so the reference is an enterprise multiple."
+      ))
+    }
+    if (rev_ok) {
+      if (isTRUE(levered)) {
+        return(out(
+          "revenue", "ev_sales",
+          "尚未獲利且槓桿偏高，營收乘數用 EV/Sales。",
+          "Unprofitable and levered: the revenue anchor is EV/Sales."
+        ))
+      }
+      return(out(
+        "revenue", "ps",
+        "尚未獲利，盈餘倍數不適用，改用營收乘數 P/S。",
+        "Unprofitable: earnings multiples fail, so the reference is P/S."
+      ))
+    }
+    if (identical(ent_method, "ev_fcf")) {
+      return(out(
+        "enterprise", "ev_fcf",
+        "盈餘與 EBITDA 不可用，企業價值倍數改看 EV/FCF。",
+        "Earnings and EBITDA are unusable; the enterprise anchor is EV/FCF."
+      ))
+    }
+    if (book_ok) {
+      return(out(
+        "book", "pb",
+        "盈餘、EBITDA 與營收都不成立，相對估值退回 P/B。",
+        "Earnings, EBITDA, and revenue all fail; the relative anchor falls back to P/B."
+      ))
+    }
+    return(out(
+      NA_character_, NA_character_,
+      "沒有可用的相對估值錨。",
+      "No usable relative anchor."
+    ))
+  }
+  if (!is.na(ent_method) && ent_method %in% c("ev_ebitda", "ev_ebit") && (isTRUE(levered) || isTRUE(da_heavy))) {
+    why_zh <- if (isTRUE(da_heavy) && !isTRUE(levered)) {
+      "折舊攤銷占營業利益偏高，用企業價值倍數，避免 P/E 被會計折舊主導。"
+    } else {
+      "資本結構差異大，用企業價值倍數，避免 P/E 把融資混進盈餘。"
+    }
+    why_en <- if (isTRUE(da_heavy) && !isTRUE(levered)) {
+      "D&A is large versus EBIT, so the reference is an enterprise multiple rather than P/E."
+    } else {
+      "Capital structure dominates, so the reference is an enterprise multiple rather than P/E."
+    }
+    return(out("enterprise", ent_method, why_zh, why_en))
+  }
+  if (is.finite(rev_g) && rev_g > 15) {
+    return(out(
+      "earnings", "forward_pe",
+      "盈餘具代表性且營收成長高，相對估值用 Forward P/E。",
+      "Earnings are representative and revenue growth is high, so the reference is Forward P/E."
+    ))
+  }
+  out(
+    "earnings", "pe",
+    "盈餘具代表性，且槓桿與折舊不主導，相對估值用 P/E。",
+    "Earnings are representative and leverage and D&A do not dominate, so the reference is P/E."
+  )
+}
+
 # Never Fair Value primary / never equal-weight FV band (Multiples Reference + SOTP Meta-Framework).
 .vg_is_non_fv_primary <- function(model) {
   .vg_is_relative_model(model) || .vg_is_meta_framework(model)
@@ -1172,6 +1311,10 @@ assemble_model_recommendation <- function(data_missing = FALSE,
                                           assets = NA_real_,
                                           rd_expense = NA_real_,
                                           revenue = NA_real_,
+                                          ebitda = NA_real_,
+                                          ebit = NA_real_,
+                                          da = NA_real_,
+                                          debt = NA_real_,
                                           lifecycle_result = NULL) {
   empty_scores <- data.frame(
     model = character(0), lens = character(0), applicability = numeric(0),
@@ -1183,7 +1326,10 @@ assemble_model_recommendation <- function(data_missing = FALSE,
                    suggest_two_stage = FALSE, scores = empty_scores,
                    secondary_role = "none", weight_primary = NA_real_,
                    weight_secondary = NA_real_, inapplicable = character(0),
-                   reason_en = NULL, reference = NULL) {
+                   reason_en = NULL, reference = NULL,
+                   multiples_family = NULL, multiples_method = NULL,
+                   multiples_method_label = NULL,
+                   multiples_reason = NULL, multiples_reason_en = NULL) {
     flags <- list(
       ddm = FALSE, dcf = FALSE, pb = FALSE, ri = FALSE, nav = FALSE,
       multiples = FALSE, sotp = FALSE
@@ -1216,6 +1362,11 @@ assemble_model_recommendation <- function(data_missing = FALSE,
       summary_method = summary_method,
       reason = reason,
       reason_en = reason_en,
+      multiples_family = if (is.null(multiples_family) || !nzchar(as.character(multiples_family %||% ""))) NULL else as.character(multiples_family),
+      multiples_method = if (is.null(multiples_method) || !nzchar(as.character(multiples_method %||% ""))) NULL else as.character(multiples_method),
+      multiples_method_label = if (is.null(multiples_method_label) || !nzchar(as.character(multiples_method_label %||% ""))) NULL else as.character(multiples_method_label),
+      multiples_reason = multiples_reason,
+      multiples_reason_en = multiples_reason_en,
       suggest_two_stage = isTRUE(suggest_two_stage),
       confidence_inputs = conf_in,
       model_scores = scores,
@@ -1701,8 +1852,22 @@ assemble_model_recommendation <- function(data_missing = FALSE,
   if (!is.null(secondary)) {
     sum_bits <- paste0(sum_bits, " / ", .model_label(secondary), " (", role, ")")
   }
+  lens <- recommend_multiples_lens(
+    ni = ni, ebitda = ebitda, ebit = ebit, da = da, revenue = revenue,
+    equity = equity, debt = debt, assets = assets, rev_g = rev_g,
+    last_fcff = last_fcff, book_biz = is_book
+  )
+  if (nzchar(as.character(lens$method %||% "")[1]) && !is.na(lens$method)) {
+    reason <- paste0(reason, " 相對估值參照：", lens$method_label, "。", lens$reason)
+    reason_en <- paste0(reason_en, " Relative reference: ", lens$method_label, ". ", lens$reason_en)
+  }
   if (identical(as.character(reference %||% "")[1], "multiples")) {
-    sum_bits <- paste0(sum_bits, " + Multiples (Reference)")
+    tag <- as.character(lens$method_label %||% "")[1]
+    sum_bits <- if (nzchar(tag) && !is.na(tag)) {
+      paste0(sum_bits, " + Multiples (Reference · ", tag, ")")
+    } else {
+      paste0(sum_bits, " + Multiples (Reference)")
+    }
   }
   pack(
     ctype, primary, secondary,
@@ -1715,6 +1880,11 @@ assemble_model_recommendation <- function(data_missing = FALSE,
     weight_primary = wp,
     weight_secondary = if (is.null(secondary)) NA_real_ else ws,
     inapplicable = as.character(inapplicable),
-    reference = reference
+    reference = reference,
+    multiples_family = lens$family,
+    multiples_method = lens$method,
+    multiples_method_label = lens$method_label,
+    multiples_reason = lens$reason,
+    multiples_reason_en = lens$reason_en
   )
 }

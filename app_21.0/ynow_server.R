@@ -2429,8 +2429,14 @@ server <- function(input, output, session) {
               NA_character_
             }
           }, error = function(e) NA_character_)
+          # A finished family run wins. Before that, the recommendation lens names the family.
+          if (!nzchar(meth %||% "") || is.na(meth)) {
+            meth <- as.character(rec$multiples_method %||% "")[1]
+          }
           fam_id <- if (exists(".rel_method_family", mode = "function")) .rel_method_family(meth) else NA_character_
-          if (!nzchar(fam_id %||% "") || is.na(fam_id)) fam_id <- "earnings"
+          if (!nzchar(fam_id %||% "") || is.na(fam_id)) {
+            fam_id <- as.character(rec$multiples_family %||% "earnings")[1]
+          }
           fam_lab <- function(fid) {
             ui_str(switch(
               fid,
@@ -2477,11 +2483,13 @@ server <- function(input, output, session) {
             note_bits <- c(note_bits, paste0(ui_str("ms_pos_reference", loc), " · ", fam_txt))
           }
           if (!length(note_bits)) note_bits <- ui_str("ms_card_multiples_notes", loc)
-          jump_tab <- if (identical(prim, "pb") || (identical(sec, "pb") && !identical(prim, "multiples") && !identical(ref_key, "multiples"))) {
-            "pb_calculator"
-          } else {
-            switch(fam_id, enterprise = "rel_mult_ev", revenue = "rel_mult_rev", book = "pb_calculator", "rel_multiples_calculator")
-          }
+          jump_tab <- switch(
+            fam_id,
+            enterprise = "rel_mult_ev",
+            revenue = "rel_mult_rev",
+            book = "pb_calculator",
+            "rel_multiples_calculator"
+          )
           make_card(
             "Multiples", "multiples", "percentage", "#17a2b8",
             ui_str("ms_card_multiples_formula", loc),
@@ -2510,7 +2518,12 @@ server <- function(input, output, session) {
           list(lab = paste0(ui_str("ms_pos_secondary", loc), " · ", if (nzchar(sec)) .model_label(sec) else "—"), val = sec_px, col = "#888888"),
           list(lab = paste0(ui_str("ms_pos_reference", loc), " · ", tryCatch({
             lab <- if (exists("rel_results", inherits = TRUE) && !is.null(rel_results$chart_label)) rel_results$chart_label() else "Multiples"
-            as.character(lab %||% "Multiples")[1]
+            lab <- as.character(lab %||% "Multiples")[1]
+            if (!grepl(" · ", lab, fixed = TRUE)) {
+              tag <- as.character(rec$multiples_method_label %||% "")[1]
+              if (nzchar(tag) && !is.na(tag)) lab <- paste0("Multiples · ", tag)
+            }
+            lab
           }, error = function(e) "Multiples")), val = ref_px, col = "#17a2b8")
         )
         finite <- vapply(marks, function(m) is.finite(m$val), logical(1))

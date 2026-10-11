@@ -505,6 +505,47 @@ leg_d <- lifecycle_terminal_diagnostics(
 check("legacy migration info",
       any(vapply(leg_d, function(x) identical(x$code, "val_diag_lifecycle_legacy_migration"), logical(1))))
 
+# Relative-valuation lens: family follows the claim that is actually usable.
+lens_earn <- recommend_multiples_lens(
+  ni = 80, ebit = 100, ebitda = 120, da = 20, revenue = 400,
+  equity = 500, debt = 100, assets = 900, rev_g = 3, last_fcff = 90
+)
+check("clean earnings use P/E", identical(lens_earn$family, "earnings") && identical(lens_earn$method, "pe"))
+
+lens_fwd <- recommend_multiples_lens(
+  ni = 40, ebit = 50, ebitda = 60, da = 10, revenue = 200,
+  equity = 300, debt = 40, assets = 500, rev_g = 28, last_fcff = 30
+)
+check("high growth earnings use Forward P/E", identical(lens_fwd$method, "forward_pe"))
+
+lens_ev <- recommend_multiples_lens(
+  ni = 40, ebit = 80, ebitda = 140, da = 60, revenue = 400,
+  equity = 200, debt = 500, assets = 800, rev_g = 4, last_fcff = 50
+)
+check("levered or D&A-heavy uses EV/EBITDA", identical(lens_ev$family, "enterprise") && identical(lens_ev$method, "ev_ebitda"))
+
+lens_loss <- recommend_multiples_lens(
+  ni = -10, ebit = -5, ebitda = -2, revenue = 180,
+  equity = 300, debt = 40, assets = 500, rev_g = 40, last_fcff = -20
+)
+check("unprofitable uses P/S", identical(lens_loss$family, "revenue") && identical(lens_loss$method, "ps"))
+
+lens_loss_lev <- recommend_multiples_lens(
+  ni = -10, ebit = -5, ebitda = -2, revenue = 180,
+  equity = 200, debt = 500, assets = 800, rev_g = 40
+)
+check("unprofitable and levered uses EV/Sales", identical(lens_loss_lev$method, "ev_sales"))
+
+lens_ni_neg_ebitda <- recommend_multiples_lens(
+  ni = -8, ebit = 20, ebitda = 40, da = 20, revenue = 200,
+  equity = 300, debt = 80, assets = 600, rev_g = 6
+)
+check("negative NI with positive EBITDA uses EV/EBITDA", identical(lens_ni_neg_ebitda$method, "ev_ebitda"))
+
+check("bank recommendation names P/B", identical(rec9$multiples_family, "book") && identical(rec9$multiples_method, "pb"))
+check("stable foods recommendation names P/E", identical(rec1$multiples_method, "pe"))
+check("loss-making software names a revenue multiple", identical(rec3$multiples_family, "revenue"))
+
 if (fail > 0L) {
   cat(fail, " valuation guard check(s) failed.\n", sep = "")
   quit(status = 1L)

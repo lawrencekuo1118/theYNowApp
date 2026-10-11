@@ -2320,6 +2320,22 @@ recommend_valuation_models <- function(d_cf, industry_text = "", d_is = NULL, d_
     select_current_metric(d_is, "^Total Revenue$", "flow"),
     error = function(e) NA_real_
   )
+  ebit_now <- tryCatch(
+    select_current_metric(d_is, "Operating Income|^EBIT$", "flow"),
+    error = function(e) NA_real_
+  )
+  ebitda_now <- tryCatch(
+    select_current_metric(d_is, "^EBITDA$|Normalized EBITDA", "flow"),
+    error = function(e) NA_real_
+  )
+  da_now <- tryCatch(
+    select_current_metric(d_cf, "Depreciation And Amortization|Depreciation & Amortization|Reconciled Depreciation", "flow"),
+    error = function(e) NA_real_
+  )
+  debt_now <- tryCatch(
+    select_current_metric(d_bs, "^Total Debt$|Long Term Debt", "stock"),
+    error = function(e) NA_real_
+  )
   n_fcff <- sum(is.finite(suppressWarnings(as.numeric(fcf_seq))))
   if (is.null(lifecycle_result) && exists("classify_lifecycle_result", mode = "function")) {
     lifecycle_result <- classify_lifecycle_result(
@@ -2355,6 +2371,10 @@ recommend_valuation_models <- function(d_cf, industry_text = "", d_is = NULL, d_
     assets = assets,
     rd_expense = rd_exp,
     revenue = revenue_now,
+    ebitda = ebitda_now,
+    ebit = ebit_now,
+    da = da_now,
+    debt = debt_now,
     lifecycle_result = lifecycle_result
   )
 }
