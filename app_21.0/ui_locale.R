@@ -790,6 +790,29 @@ locale_for_market <- function(mode = get_market_mode()) {
     fund_profile_why_fallback = "Limited data; use the full Annotation guide, not a single number.",
     btn_run_bt = "Run Backtest",
     btn_lab_im_run = "Search Blue Chips",
+    btn_lab_im_update_quality = "Update quality snapshot",
+    lab_im_update_quality_title = paste0(
+      "Write earnings quality, Piotroski F-Score, and FS alert counts ",
+      "for every name in the current filter pool. Names updated within 24 hours are kept."
+    ),
+    lab_im_update_quality_hint = paste0(
+      "Update stores earnings quality, Piotroski F-Score, and FS alerts for the current filter pool. ",
+      "Checked gates use that snapshot. Search Blue Chips still ranks by valuation."
+    ),
+    lab_im_quality_snap_none = paste0(
+      "Quality snapshot: not yet updated. ",
+      "While a gate is checked, names without a snapshot are left out of the count."
+    ),
+    lab_im_quality_snap_status = "Quality snapshot {when} ({ago}) · covered {covered}/{pool} names",
+    lab_im_quality_snap_stale = "Older than 24 hours. Gates still use this snapshot until you update.",
+    lab_im_quality_snap_missing = "Not yet updated: {n} names (left out while a gate is checked).",
+    lab_im_quality_ago_now = "just now",
+    lab_im_quality_ago_min = "{n} minutes ago",
+    lab_im_quality_ago_hr = "{n} hours ago",
+    lab_im_quality_ago_day = "{n} days ago",
+    lab_im_quality_progress = "Updating quality snapshot…",
+    lab_im_quality_done = "Quality snapshot updated: recomputed {run}, kept {skip} (within 24 hours).",
+    lab_im_quality_busy = "A Blue Chip evaluation or quality update is already running.",
     bluechip_blurb_tw = paste0(
       "Screen Taiwan blue-chip candidates from TWSE / TPEx / ESB public listings ",
       "(Listing board multi-select; default TWSE + TPEx; ESB is optional because liquidity and Yahoo coverage are less stable). ",
@@ -936,8 +959,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_filter_count_unit = "names",
     lab_im_filter_count_hint = paste0(
       "Live count after industry chain × sub-industry × model ",
-      "(and Listing board / Include ADR when applicable), ",
-      "before Candidate truncate and Search Blue Chips evaluation."
+      "(and Listing board / Include ADR when applicable). ",
+      "When a quality gate is checked, the count uses the quality snapshot ",
+      "and leaves out names that are not updated yet."
     ),
     lab_im_filter_count_qualified = "Qualified after last Search (quality gates): {n} names",
     lab_im_run_title = "Piotroski high gate (F-Score≥7) + rank by annualized valuation appreciation",
@@ -3548,6 +3572,29 @@ locale_for_market <- function(mode = get_market_mode()) {
     fund_profile_why_fallback = "資料不足；請先讀完整 Annotation 表，勿僅依單一數字。",
     btn_run_bt = "執行回測",
     btn_lab_im_run = "搜尋績優股",
+    btn_lab_im_update_quality = "更新品質快照",
+    lab_im_update_quality_title = paste0(
+      "為目前篩選池內每一檔寫入盈餘品質、Piotroski F-Score 與財報警訊數。",
+      "24 小時內已更新的代號沿用既有快照。"
+    ),
+    lab_im_update_quality_hint = paste0(
+      "更新會寫入目前篩選池的盈餘品質、Piotroski F-Score 與財報警訊。",
+      "勾選中的門檻依此快照計算池內檔數。估值排序仍由「搜尋績優股」計算。"
+    ),
+    lab_im_quality_snap_none = paste0(
+      "品質快照：尚未更新。",
+      "門檻勾選開啟時，沒有快照的代號不計入池內檔數。"
+    ),
+    lab_im_quality_snap_status = "品質快照 {when}（{ago}）· 已覆蓋 {covered}／{pool} 檔",
+    lab_im_quality_snap_stale = "已超過 24 小時。門檻仍用這份快照，直到再次更新。",
+    lab_im_quality_snap_missing = "尚未更新 {n} 檔（門檻勾選開啟時不計入）。",
+    lab_im_quality_ago_now = "剛剛",
+    lab_im_quality_ago_min = "{n} 分鐘前",
+    lab_im_quality_ago_hr = "{n} 小時前",
+    lab_im_quality_ago_day = "{n} 天前",
+    lab_im_quality_progress = "正在更新品質快照…",
+    lab_im_quality_done = "品質快照已更新：重算 {run} 檔，沿用 {skip} 檔（24 小時內）。",
+    lab_im_quality_busy = "績優評估或品質更新正在進行。",
     bluechip_blurb_tw = paste0(
       "依據臺灣證券交易所與櫃買中心公開名單，篩選台股績優候選標的（板別可複選上市／上櫃／興櫃；預設上市＋上櫃；興櫃因流動性與 Yahoo 資料覆蓋相對不穩，需勾選才納入）。",
       "「搜尋績優股」先依產業與適用評價模型篩選，再以候選截斷邏輯取較大評估池後評分，",
@@ -3680,8 +3727,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_filter_count_label = "目前篩選條件下池內股票數",
     lab_im_filter_count_unit = "檔",
     lab_im_filter_count_hint = paste0(
-      "即時統計：產業鏈×子產業×模型（及板別／含 ADR，視市場）篩選後、",
-      "候選截斷與「搜尋績優股」評估前的池內檔數。"
+      "即時統計：產業鏈×子產業×模型（及板別／含 ADR，視市場）。",
+      "品質門檻勾選開啟時，檔數改依品質快照，尚未更新的代號不計入。"
     ),
     lab_im_filter_count_qualified = "上次搜尋後合格（含品質門檻）：{n} 檔",
     lab_im_run_title = "Piotroski 高門檻（F-Score≥7）＋年化估值漲幅排序",

@@ -1972,17 +1972,21 @@ lab_merge_catalog_scores <- function(catalog, scores = NULL,
   df[o, , drop = FALSE]
 }
 
-#' Count unique tickers in the Blue Chip query-filter pool (pre-truncate).
+#' Tickers in the Blue Chip query-filter pool (pre-truncate), one row per ticker.
 #' Industry × model filters, then optional US ADR exclude. Board filter is
 #' assumed already applied when building `catalog`.
-#' @return integer count (≥ 0)
-lab_count_filter_pool_tickers <- function(catalog,
-                                          method_filter = character(0),
-                                          industry_filter = character(0),
-                                          include_adr = TRUE,
-                                          market_mode = "US") {
+lab_structural_filter_pool <- function(catalog,
+                                       method_filter = character(0),
+                                       industry_filter = character(0),
+                                       include_adr = TRUE,
+                                       market_mode = "US") {
+  empty <- data.frame(
+    ticker = character(0),
+    industry_key = character(0),
+    stringsAsFactors = FALSE
+  )
   if (is.null(catalog) || !is.data.frame(catalog) || nrow(catalog) < 1L) {
-    return(0L)
+    return(empty)
   }
   pool <- lab_merge_catalog_scores(
     catalog,
@@ -2001,10 +2005,322 @@ lab_count_filter_pool_tickers <- function(catalog,
       !isTRUE(include_adr)) {
     pool <- lab_filter_pool_adr(pool, include_adr = FALSE)
   }
-  if (is.null(pool) || !is.data.frame(pool) || nrow(pool) < 1L) return(0L)
-  tickers <- unique(as.character(pool$ticker))
+  if (is.null(pool) || !is.data.frame(pool) || nrow(pool) < 1L ||
+      !"ticker" %in% names(pool)) {
+    return(empty)
+  }
+  pool$ticker <- as.character(pool$ticker)
+  pool <- pool[!is.na(pool$ticker) & nzchar(pool$ticker), , drop = FALSE]
+  if (!nrow(pool)) return(empty)
+  if (!"industry_key" %in% names(pool)) pool$industry_key <- NA_character_
+  pool <- pool[!duplicated(pool$ticker), c("ticker", "industry_key"), drop = FALSE]
+  rownames(pool) <- NULL
+  pool
+}
+
+#' Count unique tickers in the Blue Chip query-filter pool (pre-truncate).
+#' @return integer count (≥ 0)
+lab_count_filter_pool_tickers <- function(catalog,
+                                          method_filter = character(0),
+                                          industry_filter = character(0),
+                                          include_adr = TRUE,
+                                          market_mode = "US") {
+  as.integer(nrow(lab_structural_filter_pool(
+    catalog,
+    method_filter = method_filter,
+    industry_filter = industry_filter,
+    include_adr = include_adr,
+    market_mode = market_mode
+  )))
+}
+
+#' Slow-cache lifetime for earnings-quality / F-Score / FS-alert snapshots.
+LAB_QUALITY_SNAPSHOT_TTL_SEC <- 24 * 60 * 60
+
+lab_quality_snapshot_empty <- function() {
+  data.frame(
+    ticker = character(0),
+    market = character(0),
+    updated_at = as.POSIXct(character(0)),
+    f_score = numeric(0),
+    quality_flag = numeric(0),
+    n_fs_alerts = integer(0),
+    ok = logical(0),
+    error = character(0),
+    stringsAsFactors = FALSE
+  )
+}
+
+lab_quality_snapshot_dir <- function() {
+  override <- Sys.getenv("YNOW_SLOW_CACHE_DIR", unset = "")
+  d <- if (nzchar(override)) {
+    override
+  } else if (exists(".ynow_slow_cache_dir", mode = "function")) {
+    .ynow_slow_cache_dir()
+  } else {
+    file.path(tempdir(), "ynow_cache", "slow")
+  }
+  dir.create(d, recursive = TRUE, showWarnings = FALSE)
+  d
+}
+
+lab_quality_snapshot_path <- function(market = "US") {
+  mm <- tryCatch(
+    normalize_market_mode(market),
+    error = function(e) toupper(trimws(as.character(market %||% "US")[1]))
+  )
+  if (!mm %in% c("US", "TW")) mm <- "US"
+  file.path(lab_quality_snapshot_dir(), sprintf("lab_quality_snapshot_%s.rds", mm))
+}
+
+lab_load_quality_snapshot <- function(market = "US") {
+  path <- lab_quality_snapshot_path(market)
+  if (!file.exists(path)) return(lab_quality_snapshot_empty())
+  snap <- tryCatch(readRDS(path), error = function(e) NULL)
+  if (!is.data.frame(snap) || !nrow(snap) || !"ticker" %in% names(snap)) {
+    return(lab_quality_snapshot_empty())
+  }
+  base <- lab_quality_snapshot_empty()
+  for (nm in names(base)) {
+    if (!nm %in% names(snap)) snap[[nm]] <- base[[nm]][0]
+  }
+  snap <- snap[, names(base), drop = FALSE]
+  snap$ticker <- toupper(trimws(as.character(snap$ticker)))
+  snap <- snap[!is.na(snap$ticker) & nzchar(snap$ticker), , drop = FALSE]
+  snap <- snap[!duplicated(snap$ticker), , drop = FALSE]
+  snap$updated_at <- as.POSIXct(snap$updated_at, origin = "1970-01-01", tz = "UTC")
+  snap$f_score <- suppressWarnings(as.numeric(snap$f_score))
+  snap$quality_flag <- suppressWarnings(as.numeric(snap$quality_flag))
+  snap$n_fs_alerts <- suppressWarnings(as.integer(snap$n_fs_alerts))
+  snap$ok <- as.logical(snap$ok)
+  snap$ok[is.na(snap$ok)] <- FALSE
+  rownames(snap) <- NULL
+  snap
+}
+
+lab_save_quality_snapshot <- function(snapshot, market = "US") {
+  path <- lab_quality_snapshot_path(market)
+  snap <- if (is.data.frame(snapshot)) snapshot else lab_quality_snapshot_empty()
+  if (!nrow(snap)) snap <- lab_quality_snapshot_empty()
+  tmp <- paste0(path, ".tmp")
+  saveRDS(snap, tmp)
+  ok <- file.rename(tmp, path)
+  if (!isTRUE(ok)) {
+    file.copy(tmp, path, overwrite = TRUE)
+    unlink(tmp)
+  }
+  invisible(path)
+}
+
+#' Statement-only quality fields (no price / fair value).
+lab_compute_quality_metrics <- function(ticker, industry_key = NULL) {
+  tk <- toupper(trimws(as.character(ticker)[1]))
+  out <- list(
+    ticker = tk,
+    f_score = NA_real_,
+    quality_flag = NA_real_,
+    n_fs_alerts = NA_integer_,
+    ok = FALSE,
+    error = NA_character_
+  )
+  if (!nzchar(tk)) {
+    out$error <- "empty ticker"
+    return(out)
+  }
+  if (!exists("cached_scrape_financials", mode = "function")) {
+    out$error <- "financials unavailable"
+    return(out)
+  }
+  res <- tryCatch(cached_scrape_financials(tk), error = function(e) e)
+  if (inherits(res, "error") || is.null(res) || !is.list(res)) {
+    out$error <- if (inherits(res, "error")) conditionMessage(res) else "no statements"
+    return(out)
+  }
+  d_is <- tryCatch(res[["Income Statement"]]$expanded, error = function(e) NULL)
+  d_bs <- tryCatch(res[["Balance Sheet"]]$expanded, error = function(e) NULL)
+  d_cf <- tryCatch(res[["Cash Flow"]]$expanded, error = function(e) NULL)
+  fs <- if (exists("compute_report_f_score", mode = "function")) {
+    tryCatch(
+      compute_report_f_score(d_is, d_bs, d_cf),
+      error = function(e) list(total = NA_real_, quality_flag = NA_real_)
+    )
+  } else {
+    list(total = NA_real_, quality_flag = NA_real_)
+  }
+  out$f_score <- suppressWarnings(as.numeric(fs$total)[1])
+  out$quality_flag <- suppressWarnings(as.numeric(fs$quality_flag)[1])
+  ind_key <- as.character(industry_key %||% "")[1]
+  if (exists("collect_fraud_warnings", mode = "function")) {
+    warns <- tryCatch(
+      collect_fraud_warnings(d_cf, d_is, d_bs, industry_key = ind_key),
+      error = function(e) character(0)
+    )
+    out$n_fs_alerts <- as.integer(length(warns))
+  }
+  out$ok <- is.finite(out$f_score) || is.finite(out$quality_flag) ||
+    is.finite(out$n_fs_alerts)
+  if (!isTRUE(out$ok) && is.na(out$error)) out$error <- "quality metrics unavailable"
+  out
+}
+
+lab_quality_row_is_fresh <- function(updated_at, ok, now = Sys.time(),
+                                     ttl_sec = LAB_QUALITY_SNAPSHOT_TTL_SEC) {
+  isTRUE(ok) && !is.na(updated_at) &&
+    is.finite(as.numeric(difftime(now, updated_at, units = "secs"))) &&
+    as.numeric(difftime(now, updated_at, units = "secs")) <= ttl_sec
+}
+
+#' Upsert quality rows. `rows` needs ticker plus f_score / quality_flag / n_fs_alerts.
+lab_upsert_quality_rows <- function(rows, market = "US", now = Sys.time()) {
+  mm <- tryCatch(normalize_market_mode(market), error = function(e) "US")
+  snap <- lab_load_quality_snapshot(mm)
+  if (!is.data.frame(rows) || !nrow(rows) || !"ticker" %in% names(rows)) {
+    return(snap)
+  }
+  add <- lab_quality_snapshot_empty()
+  add <- add[seq_len(nrow(rows)), , drop = FALSE]
+  add$ticker <- toupper(trimws(as.character(rows$ticker)))
+  add$market <- mm
+  add$updated_at <- as.POSIXct(now, tz = "UTC")
+  add$f_score <- suppressWarnings(as.numeric(rows$f_score))
+  add$quality_flag <- suppressWarnings(as.numeric(rows$quality_flag))
+  add$n_fs_alerts <- suppressWarnings(as.integer(rows$n_fs_alerts))
+  add$ok <- is.finite(add$f_score) | is.finite(add$quality_flag) | is.finite(add$n_fs_alerts)
+  add$error <- NA_character_
+  add <- add[!is.na(add$ticker) & nzchar(add$ticker), , drop = FALSE]
+  add <- add[!duplicated(add$ticker), , drop = FALSE]
+  if (!nrow(add)) return(snap)
+  if (nrow(snap)) snap <- snap[!snap$ticker %in% add$ticker, , drop = FALSE]
+  snap <- rbind(snap, add)
+  lab_save_quality_snapshot(snap, mm)
+  snap
+}
+
+#' Refresh quality snapshot for the structural pool. Fresh rows (≤ 24h) are kept.
+lab_refresh_quality_snapshot <- function(pool, market = "US", force = FALSE,
+                                         progress_cb = NULL, compute_fn = NULL,
+                                         now = Sys.time()) {
+  mm <- tryCatch(normalize_market_mode(market), error = function(e) "US")
+  if (is.character(pool)) {
+    pool <- data.frame(
+      ticker = pool, industry_key = NA_character_, stringsAsFactors = FALSE
+    )
+  }
+  if (!is.data.frame(pool) || !nrow(pool) || !"ticker" %in% names(pool)) {
+    return(list(
+      snapshot = lab_load_quality_snapshot(mm),
+      n_run = 0L, n_skip = 0L, n_pool = 0L
+    ))
+  }
+  pool$ticker <- toupper(trimws(as.character(pool$ticker)))
+  if (!"industry_key" %in% names(pool)) pool$industry_key <- NA_character_
+  pool <- pool[!is.na(pool$ticker) & nzchar(pool$ticker), , drop = FALSE]
+  pool <- pool[!duplicated(pool$ticker), , drop = FALSE]
+  snap <- lab_load_quality_snapshot(mm)
+  n <- nrow(pool)
+  n_run <- 0L
+  n_skip <- 0L
+  fn <- if (is.function(compute_fn)) compute_fn else lab_compute_quality_metrics
+  for (i in seq_len(n)) {
+    tk <- pool$ticker[[i]]
+    if (is.function(progress_cb)) {
+      tryCatch(progress_cb(i, n, tk), error = function(e) NULL)
+    }
+    hit <- if (nrow(snap)) match(tk, snap$ticker) else NA_integer_
+    if (!isTRUE(force) && !is.na(hit) &&
+        lab_quality_row_is_fresh(snap$updated_at[[hit]], snap$ok[[hit]], now = now)) {
+      n_skip <- n_skip + 1L
+      next
+    }
+    ev <- tryCatch(
+      fn(tk, pool$industry_key[[i]]),
+      error = function(e) list(
+        ticker = tk, f_score = NA_real_, quality_flag = NA_real_,
+        n_fs_alerts = NA_integer_, ok = FALSE, error = conditionMessage(e)
+      )
+    )
+    row <- lab_quality_snapshot_empty()
+    row <- row[1, , drop = FALSE]
+    row$ticker <- tk
+    row$market <- mm
+    row$updated_at <- as.POSIXct(now, tz = "UTC")
+    row$f_score <- suppressWarnings(as.numeric(ev$f_score)[1])
+    row$quality_flag <- suppressWarnings(as.numeric(ev$quality_flag)[1])
+    row$n_fs_alerts <- suppressWarnings(as.integer(ev$n_fs_alerts)[1])
+    row$ok <- isTRUE(ev$ok) || is.finite(row$f_score) || is.finite(row$quality_flag) ||
+      is.finite(row$n_fs_alerts)
+    row$error <- as.character(ev$error %||% NA_character_)[1]
+    if (!is.na(hit)) {
+      snap[hit, ] <- row
+    } else {
+      snap <- rbind(snap, row)
+    }
+    n_run <- n_run + 1L
+  }
+  lab_save_quality_snapshot(snap, mm)
+  list(snapshot = snap, n_run = n_run, n_skip = n_skip, n_pool = n)
+}
+
+#' Pool size after quality gates. Missing snapshot rows are excluded only while
+#' a gate is checked. With every gate off, the structural pool size is returned.
+lab_apply_quality_snapshot <- function(tickers, snapshot,
+                                       eq_only = FALSE, gate_only = FALSE,
+                                       no_alert = FALSE, now = Sys.time()) {
+  tickers <- unique(as.character(tickers))
   tickers <- tickers[!is.na(tickers) & nzchar(tickers)]
-  as.integer(length(tickers))
+  n_pool <- length(tickers)
+  snap <- if (is.data.frame(snapshot)) snapshot else lab_quality_snapshot_empty()
+  idx <- if (n_pool && nrow(snap)) match(tickers, as.character(snap$ticker)) else rep(NA_integer_, n_pool)
+  covered <- rep(FALSE, n_pool)
+  if (n_pool && any(!is.na(idx))) {
+    hit <- which(!is.na(idx))
+    covered[hit] <- isTRUE(nrow(snap) > 0) & as.logical(snap$ok[idx[hit]])
+    covered[is.na(covered)] <- FALSE
+  }
+  n_covered <- sum(covered)
+  updated_at <- as.POSIXct(NA)
+  if (n_covered > 0L) {
+    updated_at <- max(snap$updated_at[idx[covered]], na.rm = TRUE)
+    if (!is.finite(as.numeric(updated_at))) updated_at <- as.POSIXct(NA)
+  }
+  gates_on <- isTRUE(eq_only) || isTRUE(gate_only) || isTRUE(no_alert)
+  n_show <- n_pool
+  if (gates_on) {
+    pass <- rep(FALSE, n_pool)
+    if (any(covered)) {
+      sub_i <- which(covered)
+      rows <- snap[idx[sub_i], , drop = FALSE]
+      p <- rep(TRUE, length(sub_i))
+      if (isTRUE(eq_only)) {
+        qf <- suppressWarnings(as.numeric(rows$quality_flag))
+        p <- p & !is.na(qf) & qf %in% 1
+      }
+      if (isTRUE(gate_only)) {
+        fs <- suppressWarnings(as.numeric(rows$f_score))
+        p <- p & is.finite(fs) & fs >= 7
+      }
+      if (isTRUE(no_alert)) {
+        na_n <- suppressWarnings(as.numeric(rows$n_fs_alerts))
+        p <- p & is.finite(na_n) & na_n <= 0
+      }
+      pass[sub_i] <- p
+    }
+    n_show <- sum(pass)
+  }
+  age_sec <- if (!is.na(updated_at)) {
+    as.numeric(difftime(now, updated_at, units = "secs"))
+  } else {
+    NA_real_
+  }
+  list(
+    n_show = as.integer(n_show),
+    n_pool = as.integer(n_pool),
+    n_covered = as.integer(n_covered),
+    n_missing = as.integer(n_pool - n_covered),
+    updated_at = updated_at,
+    stale = is.finite(age_sec) && age_sec > LAB_QUALITY_SNAPSHOT_TTL_SEC,
+    gates_on = gates_on
+  )
 }
 
 #' 排行榜候選池：有年化漲幅；可選 F-Score≥7／無財報警訊；同一代碼只留最高 CAGR 一列

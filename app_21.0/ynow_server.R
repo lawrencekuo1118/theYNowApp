@@ -106,6 +106,7 @@ server <- function(input, output, session) {
   sc_datalist_choices <- reactiveVal(ticker_presets_for_market("US"))
   lab_im_catalog_nonce <- reactiveVal(0L)
   lab_im_scores <- reactiveVal(NULL)
+  lab_quality_snap_nonce <- reactiveVal(0L)
   # Pulse + busy flag: Search Blue Chips button and Blue Chip Leaderboard tab share one runner.
   lab_im_run_pulse <- reactiveVal(0L)
   lab_im_eval_busy <- reactiveVal(FALSE)
@@ -12273,6 +12274,62 @@ server <- function(input, output, session) {
     )
   })
 
+  observeEvent(input$lab_im_update_quality, {
+    if (isTRUE(isolate(lab_im_eval_busy()))) {
+      showNotification(.ui_msg("lab_im_quality_busy"), type = "warning", duration = 5)
+      return()
+    }
+    mm <- tryCatch(normalize_market_mode(market_mode()), error = function(e) "US")
+    include_adr <- if (identical(mm, "TW")) TRUE else isTRUE(isolate(input$lab_im_include_adr) %||% TRUE)
+    catlg <- tryCatch(lab_im_catalog(), error = function(e) NULL)
+    pool <- if (is.data.frame(catlg) && nrow(catlg) > 0L) {
+      tryCatch(
+        lab_structural_filter_pool(
+          catlg,
+          method_filter = isolate(input$lab_im_methods),
+          industry_filter = isolate(lab_im_industry_filter()),
+          include_adr = include_adr,
+          market_mode = mm
+        ),
+        error = function(e) NULL
+      )
+    } else {
+      NULL
+    }
+    if (!is.data.frame(pool) || !nrow(pool)) {
+      showNotification(.ui_msg("notif_no_candidates_ind_model"), type = "warning")
+      return()
+    }
+    lab_im_eval_busy(TRUE)
+    on.exit(tryCatch(lab_im_eval_busy(FALSE), error = function(e) NULL), add = TRUE)
+    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+    result <- withProgress(
+      message = tryCatch(ui_str("lab_im_quality_progress", loc), error = function(e) "Updating quality snapshot…"),
+      value = 0,
+      {
+        lab_refresh_quality_snapshot(
+          pool,
+          market = mm,
+          force = FALSE,
+          progress_cb = function(i, n, tk) {
+            incProgress(1 / max(n, 1), detail = paste0(tk, " (", i, "/", n, ")"))
+          }
+        )
+      }
+    )
+    lab_quality_snap_nonce(isolate(lab_quality_snap_nonce()) + 1L)
+    showNotification(
+      .ui_msg(
+        "lab_im_quality_done",
+        run = as.integer(result$n_run %||% 0L),
+        skip = as.integer(result$n_skip %||% 0L),
+        loc = loc
+      ),
+      type = "message",
+      duration = 6
+    )
+  }, ignoreInit = TRUE)
+
   # Explicit Search Blue Chips button
   observeEvent(input$lab_im_run_fscore, {
     lab_im_run_pulse(isolate(as.integer(lab_im_run_pulse()) %||% 0L) + 1L)
@@ -12451,6 +12508,11 @@ server <- function(input, output, session) {
       return()
     }
     lab_im_scores(scores)
+    tryCatch(
+      lab_upsert_quality_rows(scores, market = mm0),
+      error = function(e) NULL
+    )
+    lab_quality_snap_nonce(isolate(lab_quality_snap_nonce()) + 1L)
     fs_pass <- suppressWarnings(as.numeric(scores$f_score))
     pass_idx <- which(is.finite(fs_pass) & fs_pass >= 7)
     n_q <- length(pass_idx)
@@ -12573,8 +12635,10 @@ server <- function(input, output, session) {
     ynow_sortable_datatable(sm[, want, drop = FALSE])
   }, server = FALSE)
 
-  # Live pool size under current query filters (industry × model × board × ADR)
+  # Live pool size under current query filters (industry × model × board × ADR).
+  # Quality checkboxes apply only through the on-disk quality snapshot.
   output$lab_im_filter_count <- renderUI({
+    lab_quality_snap_nonce()
     loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
     catlg <- tryCatch(lab_im_catalog(), error = function(e) NULL)
     mm <- tryCatch(normalize_market_mode(market_mode()), error = function(e) "US")
@@ -12583,7 +12647,7 @@ server <- function(input, output, session) {
     } else {
       isTRUE(input$lab_im_include_adr %||% TRUE)
     }
-    n_pool <- if (is.data.frame(catlg) && nrow(catlg) > 0L) {
+    n_struct <- if (is.data.frame(catlg) && nrow(catlg) > 0L) {
       lab_count_filter_pool_tickers(
         catlg,
         method_filter = input$lab_im_methods,
@@ -12594,8 +12658,98 @@ server <- function(input, output, session) {
     } else {
       0L
     }
+    struct <- if (is.data.frame(catlg) && nrow(catlg) > 0L) {
+      tryCatch(
+        lab_structural_filter_pool(
+          catlg,
+          method_filter = input$lab_im_methods,
+          industry_filter = lab_im_industry_filter(),
+          include_adr = include_adr,
+          market_mode = mm
+        ),
+        error = function(e) NULL
+      )
+    } else {
+      NULL
+    }
+    snap <- tryCatch(lab_load_quality_snapshot(mm), error = function(e) NULL)
+    gated <- tryCatch(
+      lab_apply_quality_snapshot(
+        if (is.data.frame(struct)) struct$ticker else character(0),
+        snap,
+        eq_only = isTRUE(input$lab_im_eq_only),
+        gate_only = isTRUE(input$lab_im_gate_only),
+        no_alert = isTRUE(input$lab_im_no_alert)
+      ),
+      error = function(e) NULL
+    )
+    n_pool <- if (is.list(gated)) as.integer(gated$n_show) else as.integer(n_struct)
     n_pool <- as.integer(n_pool %||% 0L)[1]
     if (!is.finite(n_pool) || n_pool < 0L) n_pool <- 0L
+    snap_ui <- NULL
+    if (is.list(gated)) {
+      if (!is.finite(gated$n_covered) || gated$n_covered < 1L) {
+        snap_txt <- tryCatch(
+          ui_str("lab_im_quality_snap_none", loc),
+          error = function(e) ""
+        )
+      } else {
+        when <- tryCatch(
+          format(gated$updated_at, "%Y-%m-%d %H:%M", tz = "Asia/Taipei"),
+          error = function(e) ""
+        )
+        age_sec <- tryCatch(
+          as.numeric(difftime(Sys.time(), gated$updated_at, units = "secs")),
+          error = function(e) NA_real_
+        )
+        ago <- if (!is.finite(age_sec) || age_sec < 90) {
+          tryCatch(ui_str("lab_im_quality_ago_now", loc), error = function(e) "")
+        } else if (age_sec < 3600) {
+          tryCatch(
+            .ui_msg("lab_im_quality_ago_min", n = max(1L, as.integer(round(age_sec / 60))), loc = loc),
+            error = function(e) ""
+          )
+        } else if (age_sec < 86400 * 2) {
+          tryCatch(
+            .ui_msg("lab_im_quality_ago_hr", n = max(1L, as.integer(round(age_sec / 3600))), loc = loc),
+            error = function(e) ""
+          )
+        } else {
+          tryCatch(
+            .ui_msg("lab_im_quality_ago_day", n = max(1L, as.integer(round(age_sec / 86400))), loc = loc),
+            error = function(e) ""
+          )
+        }
+        snap_txt <- tryCatch(
+          .ui_msg(
+            "lab_im_quality_snap_status",
+            when = when, ago = ago,
+            covered = as.integer(gated$n_covered),
+            pool = as.integer(gated$n_pool),
+            loc = loc
+          ),
+          error = function(e) ""
+        )
+        if (isTRUE(gated$stale)) {
+          stale <- tryCatch(ui_str("lab_im_quality_snap_stale", loc), error = function(e) "")
+          if (nzchar(stale)) snap_txt <- paste(snap_txt, stale)
+        }
+        if (isTRUE(gated$gates_on) && is.finite(gated$n_missing) && gated$n_missing > 0L) {
+          miss <- tryCatch(
+            .ui_msg("lab_im_quality_snap_missing", n = as.integer(gated$n_missing), loc = loc),
+            error = function(e) ""
+          )
+          if (nzchar(miss)) snap_txt <- paste(snap_txt, miss)
+        }
+      }
+      if (nzchar(snap_txt %||% "")) {
+        snap_ui <- tags$span(
+          id = "ynow_lab_im_quality_snap_status",
+          class = "ynow-lab-im-filter-count-hint",
+          snap_txt
+        )
+      }
+    }
 
     scores <- tryCatch(lab_im_scores(), error = function(e) NULL)
     qual_ui <- NULL
@@ -12669,6 +12823,7 @@ server <- function(input, output, session) {
           error = function(e) ""
         )
       ),
+      snap_ui,
       qual_ui
     )
   })

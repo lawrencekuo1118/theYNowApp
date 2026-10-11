@@ -2138,6 +2138,16 @@ beta_rolling_section_ui <- function() {
                   tags$div(
                     class = "ynow-lab-im-actions",
                     actionButton(
+                      "lab_im_update_quality",
+                      tags$span(id = "ynow_lab_im_update_quality_label", "更新品質快照"),
+                      icon = icon("sync"),
+                      class = "btn-default",
+                      title = paste0(
+                        "為目前篩選池內每一檔寫入盈餘品質、Piotroski F-Score 與財報警訊數。",
+                        "24 小時內已更新的代號沿用既有快照。"
+                      )
+                    ),
+                    actionButton(
                       "lab_im_run_fscore", "搜尋績優股",
                       icon = icon("chart-line"),
                       class = "btn-success",
@@ -8439,6 +8449,15 @@ ui <- dashboardPage(
             setBtnLabel('bt_kpi_filter', s.btn_bt_kpi_filter);
             setBtnLabel('bt_refresh_params', s.btn_bt_refresh_params);
             setBtnLabel('bt_fit_bh_preset', s.btn_bt_fit_bh);
+            var labImQuality = document.getElementById('lab_im_update_quality');
+            if (labImQuality && s.btn_lab_im_update_quality) {
+              var qIcon = labImQuality.querySelector('i');
+              var qIconHtml = qIcon ? qIcon.outerHTML + ' ' : '';
+              labImQuality.innerHTML = qIconHtml + s.btn_lab_im_update_quality;
+              if (s.lab_im_update_quality_title) {
+                labImQuality.title = s.lab_im_update_quality_title;
+              }
+            }
             var labImRun = document.getElementById('lab_im_run_fscore');
             if (labImRun && s.btn_lab_im_run) {
               var labIcon = labImRun.querySelector('i');
