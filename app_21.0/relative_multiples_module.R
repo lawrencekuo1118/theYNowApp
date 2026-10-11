@@ -1094,7 +1094,31 @@ relative_multiples_module_server <- function(id,
           )),
           tags$tbody(rows)
         ),
-        tags$p(class = "help-block", style = "margin-top:8px;", .str("rel_multiples_disclaimer"))
+        tags$p(class = "help-block", style = "margin-top:8px;", .str("rel_multiples_disclaimer")),
+        {
+          lines <- list()
+          if (identical(res$pe$status, "ok")) {
+            pe_chk <- multiple_implied_price(res$pe$pe_multiple, res$pe$eps, 1)
+            pe_ok <- isTRUE(pe_chk$ok) && is.finite(res$pe$implied_price) &&
+              abs(pe_chk$price - res$pe$implied_price) < 0.05
+            lines[[length(lines) + 1L]] <- tags$p(
+              class = "help-block", style = "margin:4px 0 0 0;",
+              "P/E: ", .str(if (pe_ok) "audit_formula_match" else "audit_formula_mismatch"),
+              " multiple × EPS."
+            )
+          }
+          if (identical(res$forward_pe$status, "ok")) {
+            fpe_chk <- multiple_implied_price(res$forward_pe$pe_multiple, res$forward_pe$eps, 1)
+            fpe_ok <- isTRUE(fpe_chk$ok) && is.finite(res$forward_pe$implied_price) &&
+              abs(fpe_chk$price - res$forward_pe$implied_price) < 0.05
+            lines[[length(lines) + 1L]] <- tags$p(
+              class = "help-block", style = "margin:0;",
+              "Forward P/E: ", .str(if (fpe_ok) "audit_formula_match" else "audit_formula_mismatch"),
+              " multiple × forward EPS."
+            )
+          }
+          do.call(tagList, lines)
+        }
       )
     })
 

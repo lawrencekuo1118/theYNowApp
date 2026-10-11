@@ -3999,6 +3999,108 @@ server <- function(input, output, session) {
     )
   })
 
+  output$txt_sgr_identity <- renderUI({
+    loc <- tryCatch(ui_locale(), error = function(e) "zh-TW")
+    est <- tryCatch(central_perpetual_g(), error = function(e) NULL)
+    adopted <- if (!is.null(est)) suppressWarnings(as.numeric(est$g_pct)[1]) else NA_real_
+    if (!is.finite(adopted)) adopted <- suppressWarnings(as.numeric(input$sgr)[1])
+    ni <- tryCatch(select_current_metric_any(d_income_statement(), NET_INCOME_PATTERNS, "flow"), error = function(e) NA_real_)
+    eq <- tryCatch(select_current_metric_any(d_balance_sheet(), EQUITY_PATTERNS, "stock"), error = function(e) NA_real_)
+    div_paid <- tryCatch(select_current_metric(d_cash_flow(), "Cash Dividends Paid", "flow"), error = function(e) NA_real_)
+    ident <- tryCatch(fundamental_sgr_identity(ni, eq, div_paid), error = function(e) NULL)
+    fmt_pct <- function(x) {
+      if (!is.finite(suppressWarnings(as.numeric(x)[1]))) return("—")
+      paste0(format(round(as.numeric(x), 2), nsmall = 2), "%")
+    }
+    fmt_num <- function(x) {
+      if (!is.finite(suppressWarnings(as.numeric(x)[1]))) return("—")
+      format(round(as.numeric(x), 0), big.mark = ",", scientific = FALSE)
+    }
+    ke_pct <- suppressWarnings(as.numeric(input$wacc_re)[1])
+    if (!is.finite(ke_pct)) ke_pct <- NA_real_
+    gate_w <- tryCatch(terminal_gordon_gate(adopted, .current_wacc_pct()), error = function(e) NULL)
+    gate_k <- tryCatch(terminal_gordon_gate(adopted, ke_pct), error = function(e) NULL)
+    gate_line <- function(label, gate) {
+      if (is.null(gate) || !is.finite(gate$spread_pp)) {
+        return(tags$div(tags$b(label), " ", ui_str("sgr_gate_na", loc)))
+      }
+      verdict <- if (isTRUE(gate$computable)) ui_str("sgr_gate_pass", loc) else ui_str("sgr_gate_fail", loc)
+      tone <- if (isTRUE(gate$computable)) "#1e8449" else "#922b21"
+      tags$div(
+        tags$b(label), " ",
+        fmt_pct(gate$discount_pct), " − ", fmt_pct(gate$g_pct),
+        " = ", format(round(gate$spread_pp, 2), nsmall = 2), " pp. ",
+        tags$span(style = paste0("color:", tone, ";"), verdict)
+      )
+    }
+    match_line <- if (is.null(ident) || !isTRUE(ident$ok)) {
+      ui_str("sgr_audit_unavailable", loc)
+    } else if (isTRUE(ident$matches_formula)) {
+      ui_str("sgr_audit_match", loc)
+    } else {
+      ui_str("sgr_audit_mismatch", loc)
+    }
+    tags$div(
+      style = "background:#f4f8fb; border:1px solid #d6e2ea; padding:10px 12px; margin:8px 0 12px 0; font-size:13px; color:#333; line-height:1.55;",
+      tags$div(style = "font-weight:700; margin-bottom:6px;", ui_str("sgr_audit_title", loc)),
+      tags$div(tags$b(ui_str("sgr_audit_adopted", loc)), ": ", fmt_pct(adopted)),
+      tags$div(tags$b(ui_str("sgr_audit_formula", loc)), ": ", if (is.null(ident)) "—" else fmt_pct(ident$g_pct)),
+      tags$div(
+        ui_str("sgr_audit_ni", loc), " ", if (is.null(ident)) "—" else fmt_num(ident$ni), " · ",
+        ui_str("sgr_audit_equity", loc), " ", if (is.null(ident)) "—" else fmt_num(ident$equity), " · ",
+        ui_str("sgr_audit_div", loc), " ", if (is.null(ident)) "—" else fmt_num(ident$dividends)
+      ),
+      tags$div(
+        ui_str("sgr_audit_roe", loc), " ", if (is.null(ident)) "—" else fmt_pct(ident$roe_pct), " · ",
+        ui_str("sgr_audit_payout", loc), " ", if (is.null(ident) || !is.finite(ident$payout)) "—" else fmt_pct(ident$payout * 100), " · ",
+        ui_str("sgr_audit_retention", loc), " ", if (is.null(ident) || !is.finite(ident$retention)) "—" else fmt_pct(ident$retention * 100)
+      ),
+      tags$div(style = "margin-top:4px; color:#555;", match_line),
+      tags$div(style = "font-weight:700; margin:10px 0 4px 0;", ui_str("sgr_gate_title", loc)),
+      gate_line("WACC", gate_w),
+      gate_line("Ke", gate_k)
+    )
+  })
+
+  output$txt_scenario_audit <- renderUI({
+    loc <- tryCatch(ui_locale(), error = function(e) "zh-TW")
+    tab <- tryCatch(valuation_scenario_audit(loc), error = function(e) NULL)
+    if (is.null(tab) || !is.data.frame(tab) || nrow(tab) < 1L) return(NULL)
+    fmt_shock <- function(x) {
+      if (!is.finite(suppressWarnings(as.numeric(x)[1]))) return("—")
+      format(round(as.numeric(x), 2), nsmall = 2)
+    }
+    header <- tags$tr(
+      tags$th(ui_str("sgr_col_model", loc)),
+      tags$th(ui_str("sgr_col_case", loc)),
+      tags$th(ui_str("sgr_col_param", loc)),
+      tags$th(ui_str("sgr_col_shock", loc)),
+      tags$th(ui_str("sgr_col_rule", loc))
+    )
+    body <- lapply(seq_len(nrow(tab)), function(i) {
+      tags$tr(
+        tags$td(tab$model[[i]]),
+        tags$td(tab$case[[i]]),
+        tags$td(tab$parameter[[i]]),
+        tags$td(fmt_shock(tab$shock[[i]])),
+        tags$td(tab$rule[[i]])
+      )
+    })
+    tags$div(
+      style = "margin:0 0 12px 0;",
+      tags$div(style = "font-weight:700; margin-bottom:6px; font-size:13px;", ui_str("sgr_scenario_title", loc)),
+      tags$div(
+        style = "overflow-x:auto;",
+        tags$table(
+          class = "table table-condensed table-striped",
+          style = "font-size:12px; margin-bottom:0;",
+          tags$thead(header),
+          tags$tbody(body)
+        )
+      )
+    )
+  })
+
   output$txt_perpetual_g_method_suggest <- renderUI({
     est <- central_perpetual_g()
     loc <- tryCatch(ui_locale(), error = function(e) "zh-TW")

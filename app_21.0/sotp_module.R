@@ -450,7 +450,19 @@ sotp_module_server <- function(id,
             if (is.finite(res$shares)) format(round(res$shares, 0), big.mark = ",") else "—"
           )
         ),
-        tags$p(class = "help-block", .str("sotp_disclaimer"))
+        tags$p(class = "help-block", .str("sotp_disclaimer")),
+        {
+          chk <- sotp_implied_price(
+            res$segments$value, res$cash, res$debt, res$shares,
+            non_operating = res$non_operating %||% 0
+          )
+          ok <- isTRUE(chk$ok) && is.finite(res$implied_price) && abs(chk$price - res$implied_price) < 0.05
+          tags$p(
+            class = "help-block",
+            .str(if (ok) "audit_formula_match" else "audit_formula_mismatch"),
+            " ", chk$identity, "."
+          )
+        }
       )
     })
 

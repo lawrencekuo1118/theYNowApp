@@ -448,10 +448,21 @@ nav_module_server <- function(id,
       req(.nav_calc_requested())
       res <- nav_calc()
       req(identical(res$status, "success"))
+      mults <- c(res$nav_low, res$nav_mid, res$nav_high)
+      fairs <- c(res$fair_low, res$fair_mid, res$fair_high)
+      checks <- vapply(seq_along(mults), function(i) {
+        rebuilt <- multiple_implied_price(mults[[i]], res$navps, 1)
+        if (isTRUE(rebuilt$ok) && is.finite(fairs[[i]]) && abs(rebuilt$price - fairs[[i]]) < 0.05) {
+          ui_str("audit_formula_match", .loc())
+        } else {
+          ui_str("audit_formula_mismatch", .loc())
+        }
+      }, character(1))
       data.frame(
         情境 = c("保守", "基準", "樂觀"),
-        `NAV 倍數` = sprintf("%.2f×", c(res$nav_low, res$nav_mid, res$nav_high)),
-        `合理股價` = sprintf("$%.2f", c(res$fair_low, res$fair_mid, res$fair_high)),
+        `NAV 倍數` = sprintf("%.2f×", mults),
+        `合理股價` = sprintf("$%.2f", fairs),
+        檢核 = checks,
         check.names = FALSE
       )
     }, striped = TRUE, hover = TRUE, bordered = TRUE, align = "c", width = "100%")

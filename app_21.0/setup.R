@@ -2751,6 +2751,146 @@ calc_fundamental_sgr_pct <- function(d_is, d_bs, d_cf) {
   round(roe * retention * 100, 2)
 }
 
+#' Verifiable Fundamental／SGR identity: g = Retention × ROE.
+#' `matches_formula` is TRUE when the displayed components rebuild the engine g.
+fundamental_sgr_identity <- function(ni, equity, dividends) {
+  num <- function(x) {
+    x <- suppressWarnings(as.numeric(x)[1])
+    if (!is.finite(x)) NA_real_ else x
+  }
+  ni <- num(ni)
+  equity <- num(equity)
+  div_raw <- num(dividends)
+  div_abs <- if (is.finite(div_raw)) abs(div_raw) else NA_real_
+  roe <- if (is.finite(ni) && is.finite(equity) && equity > 0) ni / equity else NA_real_
+  payout <- 0
+  if (is.finite(ni) && ni > 0 && is.finite(div_abs)) {
+    payout <- min(max(div_abs / ni, 0), 1)
+  } else if (!is.finite(ni) || !is.finite(equity) || equity <= 0) {
+    payout <- NA_real_
+  }
+  retention <- if (is.finite(payout)) 1 - payout else NA_real_
+  g_hand <- if (is.finite(roe) && is.finite(retention)) round(roe * retention * 100, 2) else NA_real_
+  d_is <- data.frame(Breakdown = "Net Income", Y2025 = ni, stringsAsFactors = FALSE)
+  d_bs <- data.frame(Breakdown = "Stockholders Equity", Y2025 = equity, stringsAsFactors = FALSE)
+  d_cf <- data.frame(Breakdown = "Cash Dividends Paid", Y2025 = div_raw, stringsAsFactors = FALSE)
+  g_engine <- tryCatch(
+    calc_fundamental_sgr_pct(d_is, d_bs, d_cf),
+    error = function(e) NA_real_
+  )
+  list(
+    ni = ni,
+    equity = equity,
+    dividends = div_abs,
+    roe_pct = if (is.finite(roe)) round(roe * 100, 2) else NA_real_,
+    payout = payout,
+    retention = retention,
+    g_pct = g_engine,
+    g_from_components = g_hand,
+    matches_formula = is.finite(g_engine) && is.finite(g_hand) && abs(g_engine - g_hand) < 0.02,
+    ok = is.finite(g_engine)
+  )
+}
+
+#' Gordon terminal gate: discount rate must be strictly above terminal g.
+terminal_gordon_gate <- function(g_pct, discount_pct) {
+  g <- suppressWarnings(as.numeric(g_pct)[1])
+  r <- suppressWarnings(as.numeric(discount_pct)[1])
+  spread <- if (is.finite(g) && is.finite(r)) r - g else NA_real_
+  list(
+    g_pct = g,
+    discount_pct = r,
+    spread_pp = spread,
+    computable = is.finite(spread) && spread > 0,
+    rule = "discount_pct > terminal_g_pct"
+  )
+}
+
+#' Documented Bear / Base / Bull shocks for every valuation engine.
+#' DCF / DDM / RI shocks are the same numbers `scenario_stress_factors` reprices with.
+valuation_scenario_audit <- function(locale = "en") {
+  en <- identical(tolower(as.character(locale %||% "")[1]), "en") ||
+    identical(as.character(locale %||% "")[1], "en-US")
+  rows <- list()
+  add <- function(model, case, parameter, shock, rule) {
+    rows[[length(rows) + 1L]] <<- data.frame(
+      model = model, case = case, parameter = parameter,
+      shock = shock, rule = rule, stringsAsFactors = FALSE
+    )
+  }
+  rule_reprice <- if (en) {
+    "Reprice with this shock. Bear fair value must not exceed Base."
+  } else {
+    "用此衝擊重算。Bear 合理價不得高於 Base。"
+  }
+  for (m in c("dcf", "ddm", "ri")) {
+    sf <- scenario_stress_factors(m)
+    for (case in c("bear", "base", "bull")) {
+      sh <- sf[[case]]
+      for (nm in names(sh)) {
+        add(m, case, nm, as.numeric(sh[[nm]])[1], rule_reprice)
+      }
+    }
+  }
+  band_rule <- if (en) {
+    "Bear / Base / Bull are the low / mid / high of that model's own band, not a discount-rate shock."
+  } else {
+    "Bear／Base／Bull 是該模型自己的低／中／高區間，不是折現率衝擊。"
+  }
+  add("pb", "bear", "band_low", NA_real_, band_rule)
+  add("pb", "base", "band_mid", NA_real_, band_rule)
+  add("pb", "bull", "band_high", NA_real_, band_rule)
+  add("nav", "bear", "band_low", NA_real_, band_rule)
+  add("nav", "base", "band_mid", NA_real_, band_rule)
+  add("nav", "bull", "band_high", NA_real_, band_rule)
+  ref_rule <- if (en) {
+    "Not a Fair Value Bear/Base/Bull band. Verify Implied Price from the printed multiple, metric, and share count."
+  } else {
+    "不是 Fair Value 的 Bear／Base／Bull。用畫面上的倍數、指標與股數複核 Implied Price。"
+  }
+  add("multiples", "reference", "active_multiple", NA_real_, ref_rule)
+  sotp_rule <- if (en) {
+    "Meta-Framework. Verify Implied Price as the sum of segment revenue × EV/Sales, then the equity bridge."
+  } else {
+    "綜合型估值框架。用各事業營收 × EV/Sales 加總，再經權益橋接，複核 Implied Price。"
+  }
+  add("sotp", "reference", "segment_ev_sales", NA_real_, sotp_rule)
+  do.call(rbind, rows)
+}
+
+#' Implied Price = multiple × metric / shares. Linear, so a 1% multiple move is a 1% price move.
+multiple_implied_price <- function(multiple, metric, shares) {
+  m <- suppressWarnings(as.numeric(multiple)[1])
+  x <- suppressWarnings(as.numeric(metric)[1])
+  s <- suppressWarnings(as.numeric(shares)[1])
+  px <- if (is.finite(m) && is.finite(x) && is.finite(s) && s > 0) m * x / s else NA_real_
+  list(
+    price = px,
+    identity = "multiple * metric / shares",
+    one_pct_multiple_is_one_pct_price = is.finite(px),
+    ok = is.finite(px)
+  )
+}
+
+#' SOTP equity bridge: (sum of segment values + non-operating + cash − debt) / shares.
+sotp_implied_price <- function(segment_value, cash, debt, shares, non_operating = 0) {
+  parts <- sum(suppressWarnings(as.numeric(segment_value)), na.rm = TRUE)
+  if (!is.finite(parts)) parts <- NA_real_
+  non_op <- suppressWarnings(as.numeric(non_operating)[1])
+  if (!is.finite(non_op)) non_op <- 0
+  ev <- if (is.finite(parts)) parts + non_op else NA_real_
+  eq <- dcf_ev_to_equity(ev, cash = cash, debt = debt)
+  s <- suppressWarnings(as.numeric(shares)[1])
+  px <- if (is.finite(eq) && is.finite(s) && s > 0) eq / s else NA_real_
+  list(
+    enterprise_value = ev,
+    equity = eq,
+    price = px,
+    identity = "(sum(segment value) + non_operating + cash - debt) / shares",
+    ok = is.finite(px)
+  )
+}
+
 #' 建議永續成長率估計法（不改寫演算法數值；僅推薦 macro／fundamental／lifecycle）
 #' Lifecycle stage is one input. It never writes a fixed terminal g.
 #' @return list(method, label, reason, fund_sgr_pct, auto_lifecycle, lifecycle_evidence, lifecycle_rule, lifecycle_result)

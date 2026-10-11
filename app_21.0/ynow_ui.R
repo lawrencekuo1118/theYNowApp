@@ -1615,6 +1615,8 @@ beta_rolling_section_ui <- function() {
       uiOutput("txt_lifecycle_classification"),
       tags$h5(tags$b("估計依據")),
       uiOutput("txt_perpetual_g_reason"),
+      uiOutput("txt_sgr_identity"),
+      uiOutput("txt_scenario_audit"),
       tags$hr(style = "margin: 12px 0;"),
       numericInput(
         "sgr",
@@ -1718,13 +1720,26 @@ beta_rolling_section_ui <- function() {
         tableOutput(table_id)
       ),
       tags$div(
-        class = "help-block",
+        class = "help-block ynow-loc-en",
         style = "margin:12px 0 0 0; font-size:12px; line-height:1.55; color:#737373;",
-        tags$p(style = "margin:0 0 4px 0; font-weight:600; color:#555;", "註解"),
+        tags$p(style = "margin:0 0 4px 0; font-weight:600; color:#555;", "How to check"),
         tags$ul(
           style = "margin:0; padding-left:1.25em;",
-          tags$li("「｜ε｜」由估值公式在目前模型參數（WACC／Ke、g、n、We／Wd、配息、FCF 佔比等）上評估，與個股價格、股數、現金／負債規模無關；兩檔股票只要公式參數相同，｜ε｜與排序即相同。"),
-          tags$li("g 與折現率的彈性本身取決於 (r−g)，故改參數才會改｜ε｜。"),
+          tags$li("|ε| is evaluated on the formula inputs (WACC / Ke, terminal g, n, We / Wd, payout, FCF mix). It does not use the share price, share count, or cash / debt scale, so two names with the same formula inputs share the same |ε| ranking."),
+          tags$li("The elasticity of terminal g and the discount rate depends on (r − g). Changing either input changes |ε|."),
+          tags$li("One input moves at a time (relative ±1%). Integer years n use ±1 year, scaled to a 1% equivalent elasticity."),
+          tags$li("Value Δ% is the formula-value change when that input moves 1%. |ε| is the average of the two absolute sides."),
+          tags$li("Level inputs (FCFF / FCFE / D0 / B0 / BVPS / target P/B) have |ε| ≈ 1 when the formula is linear in them.")
+        )
+      ),
+      tags$div(
+        class = "help-block ynow-loc-zh",
+        style = "margin:12px 0 0 0; font-size:12px; line-height:1.55; color:#737373;",
+        tags$p(style = "margin:0 0 4px 0; font-weight:600; color:#555;", "複核方式"),
+        tags$ul(
+          style = "margin:0; padding-left:1.25em;",
+          tags$li("「｜ε｜」由估值公式在目前模型參數（WACC／Ke、終值 g、n、We／Wd、配息、FCF 佔比等）上評估，與個股價格、股數、現金／負債規模無關；兩檔股票只要公式參數相同，｜ε｜與排序即相同。"),
+          tags$li("終值 g 與折現率的彈性取決於 (r−g)，故改其中任一參數才會改｜ε｜。"),
           tags$li("一次只變動一個參數（相對 ±1%）；整數年數 n 以 ±1 年換算成 1% 等價彈性。"),
           tags$li("「估值Δ%」≈ 該參數變動 1% 時公式價值的變動幅度；「｜ε｜」= 兩側 |Δ估值%| 平均。"),
           tags$li("水準參數（FCFF／FCFE／D0／B0／BVPS／目標 P/B）在公式為線性時｜ε｜≈1。")
