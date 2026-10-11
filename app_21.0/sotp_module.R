@@ -1,9 +1,10 @@
 # =============================================================================
-# SOTP module — structural Sum-of-the-Parts (revenue × per-segment EV/Sales)
-# Independent sidebar engine (not a Multiples radio family).
+# SOTP module — Meta-Framework (Sum of the Parts)
+# Conceptual role: mix absolute / relative lenses by segment, sum EV, deduct
+# corporate overhead & net debt. App engine path: revenue × per-segment EV/Sales.
+# Independent sidebar under Appr. Meta-Framework (not a Multiples radio family).
 # Reuses calc_sotp_revenue_implied / .rel_sotp_segments_from_is from
 # relative_multiples_module.R (sourced first in global.R).
-# Settings tabs mirror P/B: Overview + same-nature parameter pages.
 # =============================================================================
 
 .sotp_formula_banner <- function(id, text) {
@@ -41,12 +42,13 @@ sotp_module_ui <- function(id) {
             "margin:0 0 12px 0; padding:10px 12px; background:#f8fafc;",
             "border:1px solid #e2e8f0; border-radius:8px; font-size:13px; color:#334155;"
           ),
-          tags$b(id = "ynow_sotp_lead_title", "SOTP (Sum of the Parts): "),
+          tags$b(id = "ynow_sotp_lead_title", "SOTP (Sum of the Parts — Meta-Framework): "),
           tags$span(
             id = "ynow_sotp_lead_body",
-            "Enterprise-structural Implied Price (sidebar sibling of Multiples → Enterprise). ",
-            "Decompose ≥2 segment revenues × per-segment EV/Sales, sum EV, then share the Cash − Debt × Shares bridge. ",
-            "Not a single-firm trading multiple; not Equity-claim P/E／P/S."
+            "A Meta-Framework that breaks the absolute／relative boundary: split the firm into segments, ",
+            "value each with the best lens (DCF, EV/EBITDA, EV/Sales／ARR, NAV), sum EV, then deduct corporate overhead and net debt. ",
+            "This app’s engine implements the revenue × EV/Sales path (≥2 segments) with the shared Cash − Debt × Shares bridge. ",
+            "Classic for Big Tech, conglomerates, and spin-off cases; markets often apply a 10%–30% conglomerate discount."
           )
         )
       )

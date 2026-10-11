@@ -1104,16 +1104,24 @@ assess_pb_applicability <- function(equity = NA, goodwill = NA, intangibles = NA
     pb = "book",
     ri = "residual_earnings",
     nav = "assets",
-    # Implied Price relative engines — never Intrinsic Value / Fair Value primaries
+    # Multiples = market-pricing Reference; SOTP = Meta-Framework (never FV primary)
     multiples = "relative_multiples",
-    sotp = "relative_sotp",
+    sotp = "meta_framework_sotp",
     "other"
   )
 }
 
 .vg_is_relative_model <- function(model) {
-  identical(as.character(model %||% "")[1], "multiples") ||
-    identical(as.character(model %||% "")[1], "sotp")
+  identical(as.character(model %||% "")[1], "multiples")
+}
+
+.vg_is_meta_framework <- function(model) {
+  identical(as.character(model %||% "")[1], "sotp")
+}
+
+# Never Fair Value primary / never equal-weight FV band (Multiples Reference + SOTP Meta-Framework).
+.vg_is_non_fv_primary <- function(model) {
+  .vg_is_relative_model(model) || .vg_is_meta_framework(model)
 }
 
 .vg_score_row <- function(model, applicability, data_quality, stability, accounting,
@@ -1215,7 +1223,8 @@ assemble_model_recommendation <- function(data_missing = FALSE,
       dependency_note = paste0(
         "RI, DDM, and NAV formulas are unchanged; only selection scores are attached. ",
         "Multiples is a universal Implied Price Reference (not a Fair Value secondary). ",
-        "SOTP remains a structural Implied Price engine (e.g. NAV companion for holdings)."
+        "SOTP is a Meta-Framework (segment mix of absolute/relative lenses; ",
+        "app engine: revenue × EV/Sales) — often the NAV companion for holdings."
       ),
       lifecycle_result = lifecycle_result
     )
@@ -1386,7 +1395,7 @@ assemble_model_recommendation <- function(data_missing = FALSE,
     accounting = if (is_holding) 60 else 40,
     forecast = 35,
     industry = if (is_holding) 85 else 40,
-    notes = "Structural SOTP (segment revenue × EV/Sales); Implied Price; needs multi-segment data at run time"
+    notes = "Meta-Framework SOTP (app path: segment revenue × EV/Sales); not equal-weight FV; needs multi-segment data at run time"
   )
   scores <- do.call(rbind, rows)
   rownames(scores) <- NULL
@@ -1424,7 +1433,7 @@ assemble_model_recommendation <- function(data_missing = FALSE,
     rest <- rest[order(-rest$overall, -rest$applicability), , drop = FALSE]
     secondary <- as.character(rest$model[1])
     role <- if (
-      .vg_is_relative_model(secondary) ||
+      .vg_is_non_fv_primary(secondary) ||
         rest$applicability[1] < .VG_MIN_APP ||
         isTRUE(rest$gordon_blocked[1])
     ) {
@@ -1505,7 +1514,7 @@ assemble_model_recommendation <- function(data_missing = FALSE,
     }
   }
   # Holdings / conglomerates: NAV is the Fair Value primary when applicable;
-  # SOTP is the structural Implied Price cross-check (not an equal-weight FV band).
+  # SOTP Meta-Framework is the structural companion (not an equal-weight FV band).
   if (isTRUE(is_holding)) {
     nav_row <- scores[scores$model == "nav", , drop = FALSE]
     sotp_row <- scores[scores$model == "sotp", , drop = FALSE]
@@ -1538,29 +1547,27 @@ assemble_model_recommendation <- function(data_missing = FALSE,
       }
     }
   }
-  # Relative engines as secondary (SOTP only — Multiples is Reference, never secondary)
-  # are always cross-checks (never equal-weight Fair Value bands).
+  # Multiples is Reference (never secondary). SOTP Meta-Framework as secondary
+  # is always a cross-check (never an equal-weight Fair Value band).
   if (.vg_is_relative_model(secondary)) {
-    if (identical(as.character(secondary)[1], "multiples")) {
-      # Harden: never keep Multiples in the secondary slot.
-      secondary <- NULL
-      role <- "none"
-      wp <- 1
-      ws <- 0
+    secondary <- NULL
+    role <- "none"
+    wp <- 1
+    ws <- 0
+  }
+  if (.vg_is_meta_framework(secondary)) {
+    role <- "cross_check"
+    sp <- scores$overall[scores$model == primary][1]
+    ss <- scores$overall[scores$model == secondary][1]
+    if (is.finite(sp) && is.finite(ss) && (sp + ss) > 0) {
+      ws <- min(0.25, ss / (sp + ss))
+      wp <- 1 - ws
     } else {
-      role <- "cross_check"
-      sp <- scores$overall[scores$model == primary][1]
-      ss <- scores$overall[scores$model == secondary][1]
-      if (is.finite(sp) && is.finite(ss) && (sp + ss) > 0) {
-        ws <- min(0.25, ss / (sp + ss))
-        wp <- 1 - ws
-      } else {
-        wp <- 1; ws <- 0
-      }
+      wp <- 1; ws <- 0
     }
   }
-  # Safety: Multiples / SOTP must never be primary (Implied Price ≠ Fair Value).
-  if (.vg_is_relative_model(primary)) {
+  # Safety: Multiples / SOTP must never be Fair Value primary.
+  if (.vg_is_non_fv_primary(primary)) {
     alt <- scores[
       scores$model %in% fv_models & scores$applicability >= .VG_CROSS_APP,
       , drop = FALSE
@@ -1635,22 +1642,22 @@ assemble_model_recommendation <- function(data_missing = FALSE,
     ""
   }
   hold_note <- if (isTRUE(is_holding) && identical(primary, "nav")) {
-    " 控股／綜合：主模型 NAV（Fair Value）；SOTP 僅作結構 Implied Price 交叉檢核。"
+    " 控股／綜合：主模型 NAV（Fair Value）；SOTP 為綜合型估值框架（Meta-Framework）搭配，不與 Fair Value 等權合成。"
   } else {
     ""
   }
   hold_note_en <- if (isTRUE(is_holding) && identical(primary, "nav")) {
-    " Holding/conglomerate: NAV is the Fair Value primary; SOTP is a structural Implied Price cross-check only."
+    " Holding/conglomerate: NAV is the Fair Value primary; SOTP Meta-Framework is the companion (not equal-weighted with Fair Value)."
   } else {
     ""
   }
   rel_note <- if (identical(as.character(secondary %||% "")[1], "sotp")) {
-    " SOTP 為 Implied Price，不與 Fair Value 等權合成。"
+    " SOTP 為綜合型估值框架（Meta-Framework），不與 Fair Value 等權合成。"
   } else {
     ""
   }
   rel_note_en <- if (identical(as.character(secondary %||% "")[1], "sotp")) {
-    " SOTP is an Implied Price engine and is not equal-weighted with Fair Value."
+    " SOTP is a Meta-Framework and is not equal-weighted with Fair Value."
   } else {
     ""
   }

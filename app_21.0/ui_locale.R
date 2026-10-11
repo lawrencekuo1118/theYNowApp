@@ -123,6 +123,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     menu_cat_asset = "Appr. Asset-based",
     menu_cat_income = "Appr. Income / Cashflow",
     menu_cat_relative = "Appr. Relative Valuation",
+    menu_cat_meta = "Appr. Meta-Framework",
     rel_multiples_lead_title = "Relative valuation (multiples): ",
     rel_multiples_lead_body = paste0(
       "Implied Price by capital-claim family (Equity vs Enterprise) — not Intrinsic Value / Fair Value. ",
@@ -195,11 +196,12 @@ locale_for_market <- function(mode = get_market_mode()) {
       "≥2 segment revenues, per-segment EV/Sales, Default EV/Sales, Non-operating assets. ",
       "Reuses Cash / Debt / Shares with Enterprise."
     ),
-    sotp_lead_title = "SOTP (Sum of the Parts): ",
+    sotp_lead_title = "SOTP (Sum of the Parts — Meta-Framework): ",
     sotp_lead_body = paste0(
-      "Enterprise-structural Implied Price (sidebar sibling of Multiples → Enterprise). ",
-      "Decompose ≥2 segment revenues × per-segment EV/Sales, sum EV, then share the Cash − Debt × Shares bridge. ",
-      "Not a single-firm trading multiple; not Equity-claim P/E／P/S."
+      "A Meta-Framework that breaks the absolute／relative boundary: split the firm into segments, ",
+      "value each with the best lens (DCF, EV/EBITDA, EV/Sales／ARR, NAV), sum EV, then deduct corporate overhead and net debt. ",
+      "This app’s engine implements the revenue × EV/Sales path (≥2 segments) with the shared Cash − Debt × Shares bridge. ",
+      "Classic for Big Tech, conglomerates, and spin-off cases; markets often apply a 10%–30% conglomerate discount."
     ),
     sotp_box_title = "SOTP",
     sotp_tab_overview = "Overview",
@@ -258,8 +260,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     sotp_vbx_ev = "SOTP Implied EV",
     sotp_vbx_n = "Segments",
     sotp_disclaimer = paste0(
-      "Structural SOTP only — do not treat this Implied Price as Intrinsic Value, ",
-      "and do not average it with DCF / DDM / RI / P/B / trading multiples."
+      "Meta-Framework output (app path: revenue × EV/Sales) — do not treat as a single-model Intrinsic Value, ",
+      "and do not equal-weight-average it with DCF / DDM / RI / P/B. ",
+      "Conglomerate discount (often 10%–30%) may explain SOTP > market price."
     ),
     rel_multiples_btn_calc = "Run multiples",
     rel_multiples_btn_sync = "Sync from statements",
@@ -1001,7 +1004,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     hfv_chart_models_label = "Chart overlay models",
     hfv_rel_models_note = paste0(
-      "Multiples / SOTP are Implied Price engines (not historical Fair Value) — ",
+      "Multiples (Reference) and SOTP (Meta-Framework) are not historical Fair Value engines — ",
       "they are not available as HFV chart overlays."
     ),
     lab_im_methods_label = "Models",
@@ -1082,13 +1085,12 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_prog_detail_concept = "Applying concept groups…",
     ms_card_multiples_formula = "Implied Price: P/E · EV/* · P/S",
     ms_card_multiples_notes = paste0(
-      "Market-multiple cross-check (not Intrinsic Value); ",
-      "often the secondary model for high-growth / intangible businesses."
+      "Market-pricing Reference for every Fair Value primary (not Intrinsic Value; never secondary)."
     ),
-    ms_card_sotp_formula = "Σ(segment revenue × EV/Sales) − Net Debt",
+    ms_card_sotp_formula = "Meta-Framework: Σ(segment EV) − Overhead − Net Debt",
     ms_card_sotp_notes = paste0(
-      "Structural sum-of-the-parts; often the NAV cross-check for holdings / conglomerates ",
-      "(needs multi-segment revenue)."
+      "Mix absolute／relative lenses by segment; app path uses revenue × EV/Sales. ",
+      "Often the NAV companion for holdings / conglomerates (needs multi-segment revenue)."
     ),
     ms_card_jump_title = "Open {model} model page",
     hfv_replay_model_label = "Replay model",
@@ -1429,7 +1431,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     box_model_guide = "Model Selection Guide",
     method_section_title = "Valuation Methodology",
     method_matrix_fv_note = "Fair Value engines (Intrinsic Value / Fair Value primaries).",
-    method_matrix_rel_note = "Implied Price relative engines — cross-check only; never Fair Value primary; not HFV overlays.",
+    method_matrix_rel_note = "Multiples = market-pricing Reference; SOTP = Meta-Framework — neither is a Fair Value primary or HFV overlay.",
     box_bt_params = "Strategy Parameters",
     # --- SGR tab (Basic Setup) ---
     sgr_method_title = "Terminal growth (SGR) method",
@@ -2885,6 +2887,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     menu_cat_asset = "法｜資產基礎",
     menu_cat_income = "法｜收益／現金流",
     menu_cat_relative = "法｜相對估值",
+    menu_cat_meta = "法｜綜合框架",
     rel_multiples_lead_title = "相對估值（倍數法）：",
     rel_multiples_lead_body = paste0(
       "依資本請求權家族（Equity／Enterprise）推得 Implied Price——不是 Intrinsic Value／Fair Value。",
@@ -2957,11 +2960,12 @@ locale_for_market <- function(mode = get_market_mode()) {
       "≥2 筆部門營收、各段 EV/Sales、Default EV/Sales、Non-operating assets。",
       "與 Enterprise 共用 Cash／Debt／Shares。"
     ),
-    sotp_lead_title = "SOTP（分部加總）：",
+    sotp_lead_title = "SOTP（分部加總／綜合型估值框架）：",
     sotp_lead_body = paste0(
-      "Enterprise-structural Implied Price（Multiples→Enterprise 的側欄姊妹引擎）。",
-      "拆解 ≥2 筆部門營收 × 各段 EV/Sales，加總 EV 後共用 Cash − Debt × Shares 橋接。",
-      "不是單一公司交易倍數，也不是 Equity 的 P/E／P/S。"
+      "綜合型估值框架（Meta-Framework）：打破絕對／相對界線，把公司拆成事業板塊，",
+      "各板塊可混用 DCF、EV/EBITDA、EV/Sales／ARR、NAV 等最適模型，加總 EV 後扣除集團 Overhead 與淨負債。",
+      "本 App 引擎實作為部門營收 × EV/Sales（需 ≥2 部門）並共用 Cash − Debt × Shares 橋接。",
+      "經典場景：Big Tech、綜合集團、分拆上市潛力；市場常給 10%–30% 控股折價（Conglomerate Discount）。"
     ),
     sotp_box_title = "SOTP",
     sotp_tab_overview = "總覽",
@@ -3021,8 +3025,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     sotp_vbx_ev = "SOTP Implied EV",
     sotp_vbx_n = "部門數",
     sotp_disclaimer = paste0(
-      "僅為結構型 SOTP——請勿將 Implied Price 視為 Intrinsic Value，",
-      "亦勿與 DCF／DDM／RI／P/B／交易倍數直接平均。"
+      "綜合型框架輸出（本 App 路徑：營收 × EV/Sales）——請勿視為單一模型 Intrinsic Value，",
+      "亦勿與 DCF／DDM／RI／P/B 等權平均。",
+      "控股折價（常見 10%–30%）可解釋 SOTP 總值高於市價。"
     ),
     rel_multiples_btn_calc = "試算倍數",
     rel_multiples_btn_sync = "自財報同步",
@@ -3742,7 +3747,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     hfv_chart_models_label = "圖表疊加模型",
     hfv_rel_models_note = paste0(
-      "Multiples／SOTP 為 Implied Price 引擎（非歷史 Fair Value）——",
+      "Multiples（Reference）與 SOTP（綜合型估值框架／Meta-Framework）非歷史 Fair Value 引擎——",
       "無法作為 HFV 圖表疊加。"
     ),
     lab_im_methods_label = "模型",
@@ -3810,13 +3815,12 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_prog_detail_concept = "套用概念股群…",
     ms_card_multiples_formula = "Implied Price：P/E · EV/* · P/S",
     ms_card_multiples_notes = paste0(
-      "市場倍數交叉檢核（非 Intrinsic Value）；",
-      "高成長／無形資產常作副模型。"
+      "所有 Fair Value 主模型的市場定價參照（Reference；非 Intrinsic Value；不作副模型）。"
     ),
-    ms_card_sotp_formula = "Σ(部門營收 × EV/Sales) − Net Debt",
+    ms_card_sotp_formula = "綜合框架：Σ(部門 EV) − Overhead − Net Debt",
     ms_card_sotp_notes = paste0(
-      "結構型分部加總；控股／綜合常作 NAV 之交叉檢核",
-      "（需多部門營收）。"
+      "各板塊可混用絕對／相對透鏡；本 App 路徑為營收 × EV/Sales。",
+      "控股／綜合常與 NAV 搭配（需多部門營收）。"
     ),
     ms_card_jump_title = "開啟 {model} 模型分頁",
     hfv_replay_model_label = "復盤模型",
@@ -4152,7 +4156,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     box_model_guide = "模型選擇決策指南",
     method_section_title = "評價方法論",
     method_matrix_fv_note = "Fair Value 引擎（Intrinsic Value／Fair Value 主模型）。",
-    method_matrix_rel_note = "Implied Price 相對引擎——僅交叉檢核；不作 Fair Value 主模型；不作 HFV 疊加。",
+    method_matrix_rel_note = "Multiples＝市場定價參照（Reference）；SOTP＝綜合型估值框架（Meta-Framework）——皆非 Fair Value 主模型，亦不作 HFV 疊加。",
     box_bt_params = "策略參數設定",
     # --- SGR tab (Basic Setup) ---
     sgr_method_title = "終值永續成長率 (SGR) 評價方法",

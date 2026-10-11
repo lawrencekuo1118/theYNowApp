@@ -95,7 +95,7 @@
     ),
     tags$li(
       tags$b("估值引擎："),
-      "內建 Fair Value 引擎（DCF：FCFF／WACC 或 FCFE／Ke、DDM：Gordon／SPM／二階段、P/B＋NAV、RI）與 Implied Price 相對引擎（Multiples、SOTP）；依產業屬性動態推薦主／副路徑，並以 Composite valuation 並陳各模型相對現價位置。"
+      "內建 Fair Value 引擎（DCF：FCFF／WACC 或 FCFE／Ke、DDM：Gordon／SPM／二階段、P/B＋NAV、RI）、市場定價參照 Multiples，以及綜合型估值框架 SOTP（Meta-Framework）；依產業屬性動態推薦主／副路徑，並以 Composite valuation 並陳各模型相對現價位置。"
     ),
     tags$li(
       tags$b("智慧決策與量化回測："),
@@ -118,7 +118,7 @@
     ),
     tags$li(
       tags$b("Valuation Engines: "),
-      "Fair Value engines (DCF: FCFF/WACC or FCFE/Ke; DDM: Gordon / SPM / two-stage; P/B with holding NAV; Residual Income) plus Implied Price relative engines (Multiples, SOTP). The app recommends a primary/secondary path by industry attributes and overlays model values versus the current price on the Composite valuation axis."
+      "Fair Value engines (DCF: FCFF/WACC or FCFE/Ke; DDM: Gordon / SPM / two-stage; P/B with holding NAV; Residual Income), Multiples as a market-pricing Reference, and SOTP as a Meta-Framework that can mix absolute and relative lenses by segment. The app recommends a primary/secondary path by industry attributes and overlays model values versus the current price on the Composite valuation axis."
     ),
     tags$li(
       tags$b("Smart Decision Matrix & Backtesting: "),
@@ -216,7 +216,7 @@
     ),
     tags$li(
       tags$b("智慧分析："),
-      "依股票性質自動判別主／副 Fair Value 模型（DCF、DDM、RI、P/B、NAV）；Multiples 恆為市場定價參照（Reference），SOTP 於控股等情境作結構型 Implied Price 搭配。",
+      "依股票性質自動判別主／副 Fair Value 模型（DCF、DDM、RI、P/B、NAV）；Multiples 恆為市場定價參照（Reference）；SOTP 為綜合型估值框架（Meta-Framework），控股／多事業體常與 NAV 搭配。",
       "辨識參數情境（Two-Stage／Gordon、SGR 法、claim）並套用最合理預設後試算，",
       "顯示合理價比較圖與 MOS；不開放手動模型設定。"
     ),
@@ -241,7 +241,7 @@
     ),
     tags$li(
       tags$b("Smart Analysis: "),
-      "Auto-selects primary and secondary Fair Value models (DCF, DDM, RI, P/B, NAV) from the ticker profile; Multiples is always a market-pricing Reference, and SOTP is a structural Implied Price companion when relevant. ",
+      "Auto-selects primary and secondary Fair Value models (DCF, DDM, RI, P/B, NAV) from the ticker profile; Multiples is always a market-pricing Reference; SOTP is a Meta-Framework often paired with NAV for holdings / multi-segment firms. ",
       "detects the best parameter scenario (Two-Stage vs Gordon, SGR method, claim), applies those defaults, ",
       "and shows fair-value comparison charts plus MOS—no manual model settings."
     ),
@@ -1218,8 +1218,8 @@ beta_rolling_section_ui <- function() {
                                    </tr>
                                    <tr>
                                      <td><b>Output role</b></td>
-                                     <td>Implied Price cross-check (not Intrinsic Value)</td>
-                                     <td>Structural Implied Price cross-check (often paired with NAV for HoldCos)</td>
+                                     <td>Market-pricing Reference (not Intrinsic Value; never Fair Value secondary)</td>
+                                     <td>Meta-Framework companion (often paired with NAV for HoldCos; not equal-weight FV)</td>
                                    </tr>
                                  </tbody>
                                </table>")
@@ -1254,8 +1254,8 @@ beta_rolling_section_ui <- function() {
                                    </tr>
                                    <tr>
                                      <td><b>輸出角色</b></td>
-                                     <td>Implied Price 交叉檢核（非 Intrinsic Value）</td>
-                                     <td>結構型 Implied Price 交叉檢核（控股／綜合常配 NAV）</td>
+                                     <td>市場定價參照 Reference（非 Intrinsic Value；不作 Fair Value 副模型）</td>
+                                     <td>綜合型估值框架 Meta-Framework（控股／綜合常配 NAV；不與 FV 等權）</td>
                                    </tr>
                                  </tbody>
                                </table>")
@@ -1274,7 +1274,7 @@ beta_rolling_section_ui <- function() {
           id = "ynow_method_lead_zh",
           tags$b("先分類，再選模型；先推導，再校正；先給區間，再給單點。"),
           " Fair Value 引擎：DCF（FCFF／WACC、FCFE／Ke）、DDM（Gordon／SPM／二階段）、RI、P/B、NAV。",
-          " Implied Price 相對引擎（僅交叉檢核、不作主模型）：Multiples、SOTP。",
+          " Multiples 為市場定價參照（Reference）；SOTP 為綜合型估值框架（Meta-Framework），可混用絕對／相對透鏡。",
           " 選對路徑與算對數字同等重要；以下說明流程紀律、適用場景與核心公式。"
         ),
         p(
@@ -1282,7 +1282,7 @@ beta_rolling_section_ui <- function() {
           id = "ynow_method_lead_en",
           tags$b("Classify before models; derive before calibrating; ranges before point targets. "),
           "Fair Value: DCF (FCFF/WACC, FCFE/Ke), DDM (Gordon / SPM / two-stage), RI, P/B, NAV. ",
-          "Implied Price cross-checks only (never Fair Value primary): Multiples, SOTP. ",
+          "Multiples is a market-pricing Reference; SOTP is a Meta-Framework that can mix absolute and relative lenses. ",
           "Path selection matters as much as the arithmetic—process, fit, and formulas below."
         )
       )
@@ -1317,7 +1317,7 @@ beta_rolling_section_ui <- function() {
             id = "ynow_method_matrix_rel_note",
             class = "help-block",
             style = "margin:0 0 10px 0;",
-            "Implied Price relative engines — cross-check only; never Fair Value primary; not HFV overlays."
+            "Multiples = market-pricing Reference; SOTP = Meta-Framework — neither is a Fair Value primary or HFV overlay."
           ),
           tags$div(
             class = "ynow-loc-en",
@@ -1527,8 +1527,8 @@ beta_rolling_section_ui <- function() {
           icon = icon("puzzle-piece"),
           tags$div(
             class = "ynow-loc-en",
-            h4(tags$b("SOTP (enterprise-structural Implied Price)")),
-            p("Sidebar engine on the same enterprise claim as Multiples→Enterprise: decompose ≥2 segment revenues × segment EV/Sales, sum, then bridge with Cash−Debt×Shares. Often a NAV secondary for HoldCos/conglomerates; not Equity P/E/P/S, and not segment-EBIT SOTP."),
+            h4(tags$b("SOTP (Meta-Framework)")),
+            p("Sum-of-the-Parts is a Meta-Framework: split the firm into segments and value each with the best lens (DCF, EV/EBITDA, EV/Sales, NAV), then sum EV, subtract corporate overhead and net debt. This app’s engine implements the revenue × EV/Sales structural path (≥2 segments) with the shared Cash−Debt×Shares bridge — often paired with NAV for HoldCos/conglomerates; not Equity P/E／P/S, and not segment-EBIT SOTP."),
             tags$ul(
               tags$li(tags$b("$$Segment\\ EV = Segment\\ Revenue \\times EV/Sales$$")),
               tags$li(tags$b("$$Implied\\ EV = \\sum Segment\\ EV + Non\\text{-}operating$$")),
@@ -1538,8 +1538,8 @@ beta_rolling_section_ui <- function() {
           ),
           tags$div(
             class = "ynow-loc-zh",
-            h4(tags$b("分部加總 SOTP（Enterprise-structural Implied Price）")),
-            p("側欄獨立引擎，與 Multiples→Enterprise 同屬企業價值請求權：拆解 ≥2 筆部門營收 × 各段 EV/Sales，加總後共用 Cash−Debt×Shares 橋接。控股／綜合常作 NAV 副模型；非 Equity 的 P/E／P/S，亦非部門 EBIT SOTP。"),
+            h4(tags$b("分部加總 SOTP（綜合型估值框架／Meta-Framework）")),
+            p("SOTP 是綜合型估值框架：把公司拆成事業板塊，各板塊可混用 DCF、EV/EBITDA、EV/Sales、NAV 等最適模型，再加總 EV、扣除集團 Overhead 與淨負債。本 App 引擎實作為部門營收 × EV/Sales 結構路徑（需 ≥2 部門）並共用 Cash−Debt×Shares 橋接——控股／綜合常與 NAV 搭配；非 Equity 的 P/E／P/S，亦非部門 EBIT SOTP。"),
             tags$ul(
               tags$li(tags$b("$$Segment\\ EV = Segment\\ Revenue \\times EV/Sales$$")),
               tags$li(tags$b("$$Implied\\ EV = \\sum Segment\\ EV + Non\\text{-}operating$$")),
@@ -2443,7 +2443,7 @@ beta_rolling_section_ui <- function() {
                       id = "ynow_hfv_rel_models_note",
                       class = "help-block",
                       style = "margin:4px 0 0 0; font-size:12px;",
-                      "Multiples / SOTP are Implied Price engines (not historical Fair Value) — they are not available as HFV chart overlays."
+                      "Multiples (Reference) and SOTP (Meta-Framework) are not historical Fair Value engines — they are not available as HFV chart overlays."
                     ),
                     checkboxInput(
                       "bt_hfv_show_bench",
@@ -3450,7 +3450,12 @@ ui <- dashboardPage(
                  text = tags$span(id = "ynow_menu_rel_multiples", "Multiples"),
                  tabName = "rel_multiples_calculator",
                  icon = icon("percentage")
-               ),
+               )
+             ),
+             menuItem(
+               text = tags$span(id = "ynow_menu_cat_meta", "Appr. Meta-Framework"),
+               icon = icon("puzzle-piece"),
+               startExpanded = FALSE,
                menuSubItem(
                  text = tags$span(id = "ynow_menu_sotp", "SOTP"),
                  tabName = "sotp_calculator",
@@ -6905,7 +6910,7 @@ ui <- dashboardPage(
             ri_calculator: 'ynow_menu_cat_income',
             pb_calculator: 'ynow_menu_cat_relative',
             rel_multiples_calculator: 'ynow_menu_cat_relative',
-            sotp_calculator: 'ynow_menu_cat_relative'
+            sotp_calculator: 'ynow_menu_cat_meta'
           };
           var LAST_BADGE_MAP = null;
 
@@ -6987,7 +6992,8 @@ ui <- dashboardPage(
             var rolesByParent = {
               ynow_menu_cat_asset: [],
               ynow_menu_cat_income: [],
-              ynow_menu_cat_relative: []
+              ynow_menu_cat_relative: [],
+              ynow_menu_cat_meta: []
             };
             Object.keys(TAB_PARENT).forEach(function (tab) {
               var role = (map && map[tab] && map[tab].role) ? String(map[tab].role) : '';
@@ -7742,6 +7748,8 @@ ui <- dashboardPage(
             if (catIncome && s.menu_cat_income) catIncome.textContent = s.menu_cat_income;
             var catRel = document.getElementById('ynow_menu_cat_relative');
             if (catRel && s.menu_cat_relative) catRel.textContent = s.menu_cat_relative;
+            var catMeta = document.getElementById('ynow_menu_cat_meta');
+            if (catMeta && s.menu_cat_meta) catMeta.textContent = s.menu_cat_meta;
             var menuRel = document.getElementById('ynow_menu_rel_multiples');
             if (menuRel && s.menu_rel_multiples) menuRel.textContent = s.menu_rel_multiples;
             var menuSotp = document.getElementById('ynow_menu_sotp');
