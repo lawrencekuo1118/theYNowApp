@@ -903,10 +903,82 @@ beta_rolling_section_ui <- function() {
 }
 
 #' Consideration-dimensions comparison table (Model Selector annotation + shared HTML).
+#' Dual `.ynow-loc-en` / `.ynow-loc-zh` tables; visibility follows `html[lang]`.
 .consideration_dimensions_table <- function() {
   tags$div(
     style = "overflow-x: auto;",
-    HTML("<table class='table table-striped table-hover table-bordered' style='background-color: white;'>
+    tags$div(
+      class = "ynow-loc-en",
+      HTML("<table class='table table-striped table-hover table-bordered' style='background-color: white;'>
+                                 <thead style='background-color: #2C3E50; color: white;'>
+                                   <tr>
+                                     <th>Dimension</th>
+                                     <th>DDM</th>
+                                     <th>DCF</th>
+                                     <th>RI</th>
+                                     <th>P/B</th>
+                                     <th>NAV</th>
+                                     <th>Multiples</th>
+                                     <th>SOTP</th>
+                                   </tr>
+                                 </thead>
+                                 <tbody>
+                                   <tr>
+                                     <td><b>Primary data</b></td>
+                                     <td>Cash flow (dividends)</td>
+                                     <td>Cash flow (CFO / CapEx)</td>
+                                     <td>Income + balance sheet</td>
+                                     <td>Balance sheet (equity / tangible book)</td>
+                                     <td>Balance sheet (equity / investments)</td>
+                                     <td>P&L / cash flow / revenue; ARR manual</td>
+                                     <td>Multi-segment revenue (BB Lab) + Cash / Debt</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>Investor lens</b></td>
+                                     <td>Minority (dividend claim)</td>
+                                     <td>Control / M&A (cash generation)</td>
+                                     <td>Either (esp. negative FCF)</td>
+                                     <td>Banks / insurance / book anchor</td>
+                                     <td>HoldCo / conglomerate</td>
+                                     <td>Growth / intangibles cross-check</td>
+                                     <td>Multi-segment structure cross-check</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>Typical fit</b></td>
+                                     <td>Mature stable payout</td>
+                                     <td>Growth / expansion, positive FCF</td>
+                                     <td>Asset-heavy, unstable FCF</td>
+                                     <td>Banks, insurance, REIT</td>
+                                     <td>HoldCo / group book</td>
+                                     <td>SaaS / platforms / high growth</td>
+                                     <td>HoldCo / multi-segment conglomerates</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>Payout dependence</b></td>
+                                     <td><span class='label label-danger'>Very high</span></td>
+                                     <td><span class='label label-success'>Low</span></td>
+                                     <td><span class='label label-success'>Very low</span></td>
+                                     <td><span class='label label-success'>Low</span></td>
+                                     <td><span class='label label-success'>Low</span></td>
+                                     <td><span class='label label-success'>Low</span></td>
+                                     <td><span class='label label-success'>Low</span></td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>Typical limits</b></td>
+                                     <td>Breaks with no / volatile dividends</td>
+                                     <td>Hard when FCF is chronically negative or highly cyclical</td>
+                                     <td>Biased when book / ROE is distorted</td>
+                                     <td>Weak when intangibles dominate</td>
+                                     <td>Not market-method SOTP; no investments → equity</td>
+                                     <td>Multiples move with sentiment; not Fair Value</td>
+                                     <td>Needs ≥2 positive segment revenues; not EBIT SOTP</td>
+                                   </tr>
+                                 </tbody>
+                               </table>")
+    ),
+    tags$div(
+      class = "ynow-loc-zh",
+      HTML("<table class='table table-striped table-hover table-bordered' style='background-color: white;'>
                                  <thead style='background-color: #2C3E50; color: white;'>
                                    <tr>
                                      <th>考慮維度</th>
@@ -972,6 +1044,7 @@ beta_rolling_section_ui <- function() {
                                    </tr>
                                  </tbody>
                                </table>")
+    )
   )
 }
 
@@ -1003,56 +1076,64 @@ beta_rolling_section_ui <- function() {
 #' Valuation methodology guide (Decision Matrix + model tabs).
 #' Mounted at the bottom of Basic Setup (Full only; Lite hides Basic Setup).
 #' Title/lead use column(12); tabBox keeps width=12 (shinydashboard always emits col-sm-N).
+#' Locale: `.ynow-loc-en` / `.ynow-loc-zh` toggle via `html[lang]` (see CSS + applyUiLocale).
 .valuation_methodology_section_ui <- function(collapsible = TRUE, collapsed = FALSE) {
   # collapsible/collapsed kept for call-site compatibility (no outer box to collapse)
-  tagList(
-    fluidRow(
-      column(
-        width = 12,
-        class = "ynow-about-section",
-        h3(
-          class = "ynow-about-section-title",
-          tags$b(id = "ynow_method_section_title", "Valuation Methodology｜評價方法論")
-        ),
-        withMathJax(),
-        p(
-          class = "ynow-about-section-lead",
-          id = "ynow_method_lead_zh",
-          tags$b("先分類，再選模型；先推導，再校正；先給區間，再給單點。"),
-          " Fair Value 引擎：DCF（FCFF／WACC、FCFE／Ke）、DDM（Gordon／SPM／二階段）、RI、P/B、NAV。",
-          " Implied Price 相對引擎（僅交叉檢核、不作主模型）：Multiples、SOTP。",
-          " 選對路徑與算對數字同等重要；以下說明流程紀律、適用場景與核心公式。"
-        ),
-        p(
-          class = "ynow-about-section-lead",
-          id = "ynow_method_lead_en",
-          style = "margin-top: -6px;",
-          tags$b("Classify before models; derive before calibrating; ranges before point targets. "),
-          "Fair Value: DCF (FCFF/WACC, FCFE/Ke), DDM (Gordon / SPM / two-stage), RI, P/B, NAV. ",
-          "Implied Price cross-checks only (never Fair Value primary): Multiples, SOTP. ",
-          "Path selection matters as much as the arithmetic—process, fit, and formulas below."
-        )
-      )
-    ),
-    fluidRow(
-      tabBox(
-        title = tags$span(id = "ynow_method_tabbox_title", "Model Selection Guide"),
-        width = 12,
-        side = "left",
-
-        # Tab: 方法論比較矩陣
-        tabPanel(
-          title = tags$span(id = "ynow_method_tab_matrix", "Decision Matrix"),
-          icon = icon("table"),
-          tags$p(
-            id = "ynow_method_matrix_fv_note",
-            class = "help-block",
-            style = "margin:0 0 10px 0;",
-            "Fair Value engines (Intrinsic Value / Fair Value primaries)."
-          ),
-          tags$div(
-            style = "overflow-x: auto; margin-bottom: 18px;",
-            HTML("<table class='table table-striped table-hover table-bordered' style='background-color: white;'>
+  .method_table_fv_en <- HTML("<table class='table table-striped table-hover table-bordered' style='background-color: white;'>
+                                 <thead style='background-color: #2C3E50; color: white;'>
+                                   <tr>
+                                     <th>Comparison</th>
+                                     <th>DDM</th>
+                                     <th>DCF</th>
+                                     <th>RI</th>
+                                     <th>P/B</th>
+                                     <th>NAV</th>
+                                   </tr>
+                                 </thead>
+                                 <tbody>
+                                   <tr>
+                                     <td><b>Cash flow / anchor</b></td>
+                                     <td>DPS D (equity claim)</td>
+                                     <td>FCFF (firm) or FCFE (equity)</td>
+                                     <td>Book equity + residual income</td>
+                                     <td>BVPS / TBVPS / HoldCo NAVPS × target P/B</td>
+                                     <td>Book HoldCo NAVPS × multiple</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>Discount / multiple</b></td>
+                                     <td>Ke (CAPM)</td>
+                                     <td>FCFF: WACC; FCFE: Ke</td>
+                                     <td>Ke (CAPM)</td>
+                                     <td>Target multiple (Justified / industry / history)</td>
+                                     <td>Discount / premium multiple (not Justified)</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>Growth g / years</b></td>
+                                     <td>Dividend perpetual g; SPM earnings g; two-stage g1 / n1</td>
+                                     <td>Explicit forecast years n; terminal SGR (vs WACC / Ke)</td>
+                                     <td>RI forecast horizon; terminal g (vs Ke)</td>
+                                     <td>Justified needs g; industry / history multiples do not require SGR</td>
+                                     <td>No forecast horizon n</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>Core formula</b></td>
+                                     <td>Gordon: P₀=D₁/(Ke−g); SPM; two-stage ΣPV(D)+PV(TV)</td>
+                                     <td>EV＝ΣPV(FCFF)+PV(TV) or Equity＝ΣPV(FCFE)+PV(TV)</td>
+                                     <td>V₀=B₀+ΣPV(RI)+PV(TV_RI)</td>
+                                     <td>P=(BVPS / TBVPS / NAVPS)×Target P/B</td>
+                                     <td>P=NAVPS×NAV multiple</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>Output role</b></td>
+                                     <td>Fair Value per share</td>
+                                     <td>Fair Value (FCFF via EV bridge)</td>
+                                     <td>Fair Value intrinsic per share</td>
+                                     <td>Fair Value range (Bear / Base / Bull)</td>
+                                     <td>Fair Value (HoldCo / asset anchor)</td>
+                                   </tr>
+                                 </tbody>
+                               </table>")
+  .method_table_fv_zh <- HTML("<table class='table table-striped table-hover table-bordered' style='background-color: white;'>
                                  <thead style='background-color: #2C3E50; color: white;'>
                                    <tr>
                                      <th>對照項目</th>
@@ -1106,16 +1187,43 @@ beta_rolling_section_ui <- function() {
                                    </tr>
                                  </tbody>
                                </table>")
-          ),
-          tags$p(
-            id = "ynow_method_matrix_rel_note",
-            class = "help-block",
-            style = "margin:0 0 10px 0;",
-            "Implied Price relative engines — cross-check only; never Fair Value primary; not HFV overlays."
-          ),
-          tags$div(
-            style = "overflow-x: auto; margin-bottom: 18px;",
-            HTML("<table class='table table-striped table-hover table-bordered' style='background-color: white;'>
+  .method_table_rel_en <- HTML("<table class='table table-striped table-hover table-bordered' style='background-color: white;'>
+                                 <thead style='background-color: #34495e; color: white;'>
+                                   <tr>
+                                     <th>Comparison</th>
+                                     <th>Multiples (market multiples)</th>
+                                     <th>SOTP (sum of the parts)</th>
+                                   </tr>
+                                 </thead>
+                                 <tbody>
+                                   <tr>
+                                     <td><b>Anchor</b></td>
+                                     <td>EPS / EBIT / EBITDA / FCFF / Revenue / ARR × trading multiple</td>
+                                     <td>≥2 segment revenues × segment EV/Sales (+ non-operating assets)</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>Bridge</b></td>
+                                     <td>Enterprise: EV→Equity＝EV+Cash−Debt; P/S: equity side, no debt bridge</td>
+                                     <td>Implied EV→Equity＝EV+Cash−Debt (same bridge as DCF)</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>Growth / years</b></td>
+                                     <td>No forecast horizon n; PEG uses growth % as a relative metric</td>
+                                     <td>No forecast horizon n</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>Core formula</b></td>
+                                     <td>Implied Price＝EPS×P/E; or Equity＝(Metric×Multiple+Cash−Debt)÷Shares</td>
+                                     <td>Implied EV＝Σ(Seg Rev×EV/Sales)+Non-op; Price＝Equity÷Shares</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>Output role</b></td>
+                                     <td>Implied Price cross-check (not Intrinsic Value)</td>
+                                     <td>Structural Implied Price cross-check (often paired with NAV for HoldCos)</td>
+                                   </tr>
+                                 </tbody>
+                               </table>")
+  .method_table_rel_zh <- HTML("<table class='table table-striped table-hover table-bordered' style='background-color: white;'>
                                  <thead style='background-color: #34495e; color: white;'>
                                    <tr>
                                      <th>對照項目</th>
@@ -1151,115 +1259,294 @@ beta_rolling_section_ui <- function() {
                                    </tr>
                                  </tbody>
                                </table>")
+  tagList(
+    fluidRow(
+      column(
+        width = 12,
+        class = "ynow-about-section",
+        h3(
+          class = "ynow-about-section-title",
+          tags$b(id = "ynow_method_section_title", "Valuation Methodology")
+        ),
+        withMathJax(),
+        p(
+          class = "ynow-about-section-lead ynow-loc-zh",
+          id = "ynow_method_lead_zh",
+          tags$b("先分類，再選模型；先推導，再校正；先給區間，再給單點。"),
+          " Fair Value 引擎：DCF（FCFF／WACC、FCFE／Ke）、DDM（Gordon／SPM／二階段）、RI、P/B、NAV。",
+          " Implied Price 相對引擎（僅交叉檢核、不作主模型）：Multiples、SOTP。",
+          " 選對路徑與算對數字同等重要；以下說明流程紀律、適用場景與核心公式。"
+        ),
+        p(
+          class = "ynow-about-section-lead ynow-loc-en",
+          id = "ynow_method_lead_en",
+          tags$b("Classify before models; derive before calibrating; ranges before point targets. "),
+          "Fair Value: DCF (FCFF/WACC, FCFE/Ke), DDM (Gordon / SPM / two-stage), RI, P/B, NAV. ",
+          "Implied Price cross-checks only (never Fair Value primary): Multiples, SOTP. ",
+          "Path selection matters as much as the arithmetic—process, fit, and formulas below."
+        )
+      )
+    ),
+    fluidRow(
+      tabBox(
+        title = tags$span(id = "ynow_method_tabbox_title", "Model Selection Guide"),
+        width = 12,
+        side = "left",
+
+        # Tab: Decision Matrix (bilingual tables)
+        tabPanel(
+          title = tags$span(id = "ynow_method_tab_matrix", "Decision Matrix"),
+          icon = icon("table"),
+          tags$p(
+            id = "ynow_method_matrix_fv_note",
+            class = "help-block",
+            style = "margin:0 0 10px 0;",
+            "Fair Value engines (Intrinsic Value / Fair Value primaries)."
+          ),
+          tags$div(
+            class = "ynow-loc-en",
+            style = "overflow-x: auto; margin-bottom: 18px;",
+            .method_table_fv_en
+          ),
+          tags$div(
+            class = "ynow-loc-zh",
+            style = "overflow-x: auto; margin-bottom: 18px;",
+            .method_table_fv_zh
+          ),
+          tags$p(
+            id = "ynow_method_matrix_rel_note",
+            class = "help-block",
+            style = "margin:0 0 10px 0;",
+            "Implied Price relative engines — cross-check only; never Fair Value primary; not HFV overlays."
+          ),
+          tags$div(
+            class = "ynow-loc-en",
+            style = "overflow-x: auto; margin-bottom: 18px;",
+            .method_table_rel_en
+          ),
+          tags$div(
+            class = "ynow-loc-zh",
+            style = "overflow-x: auto; margin-bottom: 18px;",
+            .method_table_rel_zh
           )
           # Consideration dimensions table lives under Model Selector as a
           # collapsed annotation (see .model_selector_dimensions_annotation_ui).
         ),
 
-        # Tab: DDM 模型解說
+        # Tab: DDM
         tabPanel(
           "Dividend Discount Model (DDM)",
           icon = icon("hand-holding-usd"),
-          h4(tags$b("股利折現模型（Gordon／SPM／二階段）")),
-          p("DDM 將普通股價值視為未來現金股利的現值。現金流是股利、折現率是 Ke，與以 FCFF／WACC 為核心的 DCF 屬不同層級。本 App 的永續成長家族含 Gordon Growth Model (GGM) 與 Sum of Perpetuities Method (SPM)。"),
-          tags$ul(
-            tags$li(
-              tags$b("Gordon (GGM)："),
-              tags$b("$$P_0 = \\frac{D_1}{K_e - g} = \\frac{D_0 \\times (1 + g)}{K_e - g}$$"),
-              " 假設現金發放率維持固定比例，股利隨盈餘以 g 成長。約束：g < Ke。"
+          tags$div(
+            class = "ynow-loc-en",
+            h4(tags$b("Dividend Discount Model (Gordon / SPM / two-stage)")),
+            p("DDM values common equity as the present value of future cash dividends. Cash flows are dividends and the discount rate is Ke — a different claim level from FCFF/WACC DCF. This app’s perpetual-growth family includes the Gordon Growth Model (GGM) and the Sum of Perpetuities Method (SPM)."),
+            tags$ul(
+              tags$li(
+                tags$b("Gordon (GGM): "),
+                tags$b("$$P_0 = \\frac{D_1}{K_e - g} = \\frac{D_0 \\times (1 + g)}{K_e - g}$$"),
+                " Assumes a stable payout ratio with dividends growing at g. Constraint: g < Ke."
+              ),
+              tags$li(
+                tags$b("SPM (sum of perpetuities): "),
+                tags$b("$$P_0 = \\frac{E \\times g}{K_e^2} + \\frac{D}{K_e}$$"),
+                " Brown & Abraham (2012): discounts a level-dividend perpetuity separately from growth funded by retained earnings; less input-sensitive. When ROE = Ke and g = ROE × retention, it matches forward-dividend GGM. EPS uses the D0 page estimate/latest EPS; D uses this year’s dividend."
+              ),
+              tags$li(tags$b("Two-stage: "), "Dividends grow at g₁ for n₁ years, then Gordon terminal value at perpetual g₂. Constraint: g₂ < Ke."),
+              tags$li(tags$b("$$D_t = D_0(1+g_1)^t,\\quad TV = \\frac{D_{n_1}(1+g_2)}{K_e-g_2},\\quad P_0 = \\sum_{t=1}^{n_1}\\frac{D_t}{(1+K_e)^t} + \\frac{TV}{(1+K_e)^{n_1}}$$"))
             ),
-            tags$li(
-              tags$b("SPM（永續和）："),
-              tags$b("$$P_0 = \\frac{E \\times g}{K_e^2} + \\frac{D}{K_e}$$"),
-              " Brown & Abraham (2012)：將「定額股利永續」與「保留盈餘創造之成長」分開折現；對輸入較不敏感。當 ROE = Ke 且 g = ROE × 保留率時，與前向股利版 GGM 等價。EPS 取 D0 分頁之預估／最新 EPS；D 取今年股利。"
-            ),
-            tags$li(tags$b("二階段："), "前 n₁ 年股利以 g₁ 成長，之後以永續 g₂ 做 Gordon 終值。約束：g₂ < Ke。"),
-            tags$li(tags$b("$$D_t = D_0(1+g_1)^t,\\quad TV = \\frac{D_{n_1}(1+g_2)}{K_e-g_2},\\quad P_0 = \\sum_{t=1}^{n_1}\\frac{D_t}{(1+K_e)^t} + \\frac{TV}{(1+K_e)^{n_1}}$$"))
+            p("Dividend growth g (two-stage g₂; SPM earnings g) can sync with the central terminal SGR or be overridden on the DDM page. A fundamental check is $$g = ROE \\times Retention\\ Ratio$$ (or ROA × RR), but do not force-equate it to FCFF terminal g. Prefer GGM vs SPM after judging whether payout looks closer to a fixed payout ratio or a fixed dollar dividend.")
           ),
-          p("股利成長率 g（二階段的 g₂；SPM 的盈餘成長 g）可與中央終值 SGR 同步，亦可在 DDM 分頁單獨覆寫。基本面法可參考 $$g = ROE \\times Retention\\ Ratio$$（或 ROA × RR），但不宜與 FCFF 終值 g 強制畫上等號。選擇 GGM 或 SPM 時，宜先觀察公司股利政策較接近「固定配息率」或「固定股利金額」。")
+          tags$div(
+            class = "ynow-loc-zh",
+            h4(tags$b("股利折現模型（Gordon／SPM／二階段）")),
+            p("DDM 將普通股價值視為未來現金股利的現值。現金流是股利、折現率是 Ke，與以 FCFF／WACC 為核心的 DCF 屬不同層級。本 App 的永續成長家族含 Gordon Growth Model (GGM) 與 Sum of Perpetuities Method (SPM)。"),
+            tags$ul(
+              tags$li(
+                tags$b("Gordon (GGM)："),
+                tags$b("$$P_0 = \\frac{D_1}{K_e - g} = \\frac{D_0 \\times (1 + g)}{K_e - g}$$"),
+                " 假設現金發放率維持固定比例，股利隨盈餘以 g 成長。約束：g < Ke。"
+              ),
+              tags$li(
+                tags$b("SPM（永續和）："),
+                tags$b("$$P_0 = \\frac{E \\times g}{K_e^2} + \\frac{D}{K_e}$$"),
+                " Brown & Abraham (2012)：將「定額股利永續」與「保留盈餘創造之成長」分開折現；對輸入較不敏感。當 ROE = Ke 且 g = ROE × 保留率時，與前向股利版 GGM 等價。EPS 取 D0 分頁之預估／最新 EPS；D 取今年股利。"
+              ),
+              tags$li(tags$b("二階段："), "前 n₁ 年股利以 g₁ 成長，之後以永續 g₂ 做 Gordon 終值。約束：g₂ < Ke。"),
+              tags$li(tags$b("$$D_t = D_0(1+g_1)^t,\\quad TV = \\frac{D_{n_1}(1+g_2)}{K_e-g_2},\\quad P_0 = \\sum_{t=1}^{n_1}\\frac{D_t}{(1+K_e)^t} + \\frac{TV}{(1+K_e)^{n_1}}$$"))
+            ),
+            p("股利成長率 g（二階段的 g₂；SPM 的盈餘成長 g）可與中央終值 SGR 同步，亦可在 DDM 分頁單獨覆寫。基本面法可參考 $$g = ROE \\times Retention\\ Ratio$$（或 ROA × RR），但不宜與 FCFF 終值 g 強制畫上等號。選擇 GGM 或 SPM 時，宜先觀察公司股利政策較接近「固定配息率」或「固定股利金額」。")
+          )
         ),
 
-        # Tab: DCF 模型解說
+        # Tab: DCF
         tabPanel(
           "Discounted Cash Flow (DCF)",
           icon = icon("money-bill-wave"),
-          h4(tags$b("自由現金流折現模型 (FCFF／FCFE)")),
-          p("DCF 關注企業造血能力。預設以 FCFF 用 WACC 折現得到企業價值（EV），再加現金、減負債橋接至股權價值後才除以流通股數。歷史現金流以 CFO＋稅後利息−|CapEx| 重建（Yahoo Free Cash Flow 為稅後、近 FCFE，不可直接配 WACC）。亦可切換 FCFE：將 FCFF 轉成股權現金流後以 Ke 折現，不再加減淨現金／負債。本 app 的「Gordon」模式為明確預測期加上 Gordon 終值，而非單期 EV = FCF₁/(WACC−g)。若末期 FCFF 為負則略過永續終值，並建議改用 RI。CapEx 暴衝平滑為可選工程啟發式（可調倍數閾值／均值年數）。"),
-          tags$ul(
-            tags$li(tags$b("$$FCFF = CFO + Interest\\times(1-T) - CapEx$$")),
-            tags$li(tags$b("$$FCFF = NOPAT + D\\&A - \\Delta NWC - CapEx$$")),
-            tags$li(tags$b("$$FCFE = FCFF - Interest\\times(1-T) + Net\\ Borrowing$$")),
-            tags$li(tags$b("FCFF："), tags$b("$$Enterprise\\ Value = \\sum \\frac{FCFF_t}{(1+WACC)^t} + \\frac{TV}{(1+WACC)^n}$$")),
-            tags$li(tags$b("FCFE："), tags$b("$$Equity = \\sum \\frac{FCFE_t}{(1+K_e)^t} + \\frac{TV}{(1+K_e)^n}$$")),
-            tags$li(tags$b("$$Terminal\\ Value = \\frac{CF_n \\times (1 + g)}{r - g}$$"))
+          tags$div(
+            class = "ynow-loc-en",
+            h4(tags$b("Free Cash Flow Discount Model (FCFF / FCFE)")),
+            p("DCF focuses on cash generation. Default path discounts FCFF at WACC to enterprise value (EV), then bridges +Cash −Debt to equity before dividing by shares. Historical cash flows rebuild as CFO + after-tax interest − |CapEx| (Yahoo Free Cash Flow is after-tax and closer to FCFE — do not pair it with WACC). FCFE mode converts FCFF to equity cash flows and discounts at Ke without a net-cash/debt bridge. This app’s “Gordon” mode is an explicit forecast plus Gordon terminal value, not a one-period EV = FCF₁/(WACC−g). If terminal FCFF is negative, skip the perpetual terminal and prefer RI. CapEx spike smoothing is an optional engineering heuristic (adjustable multiple threshold / averaging years)."),
+            tags$ul(
+              tags$li(tags$b("$$FCFF = CFO + Interest\\times(1-T) - CapEx$$")),
+              tags$li(tags$b("$$FCFF = NOPAT + D\\&A - \\Delta NWC - CapEx$$")),
+              tags$li(tags$b("$$FCFE = FCFF - Interest\\times(1-T) + Net\\ Borrowing$$")),
+              tags$li(tags$b("FCFF: "), tags$b("$$Enterprise\\ Value = \\sum \\frac{FCFF_t}{(1+WACC)^t} + \\frac{TV}{(1+WACC)^n}$$")),
+              tags$li(tags$b("FCFE: "), tags$b("$$Equity = \\sum \\frac{FCFE_t}{(1+K_e)^t} + \\frac{TV}{(1+K_e)^n}$$")),
+              tags$li(tags$b("$$Terminal\\ Value = \\frac{CF_n \\times (1 + g)}{r - g}$$"))
+            ),
+            p("The Live forecast table anchors on NOPAT (EBIT×(1−T)), not NI. FCFE net borrowing uses a constant-leverage approximation: each year’s net borrowing = g × beginning debt. Two-stage mode converges terminal growth to SGR after the high-growth phase; FCFF requires g < WACC and FCFE requires g < Ke.")
           ),
-          p("Live 預測表以 NOPAT（EBIT×(1−T)）為錨，不是淨利 NI。FCFE 的淨舉債採固定槓桿近似：各年淨舉債＝g×期初負債。兩階段模式在高速成長期後將終值成長率收斂至 SGR；FCFF 約束 g < WACC，FCFE 約束 g < Ke。")
+          tags$div(
+            class = "ynow-loc-zh",
+            h4(tags$b("自由現金流折現模型 (FCFF／FCFE)")),
+            p("DCF 關注企業造血能力。預設以 FCFF 用 WACC 折現得到企業價值（EV），再加現金、減負債橋接至股權價值後才除以流通股數。歷史現金流以 CFO＋稅後利息−|CapEx| 重建（Yahoo Free Cash Flow 為稅後、近 FCFE，不可直接配 WACC）。亦可切換 FCFE：將 FCFF 轉成股權現金流後以 Ke 折現，不再加減淨現金／負債。本 app 的「Gordon」模式為明確預測期加上 Gordon 終值，而非單期 EV = FCF₁/(WACC−g)。若末期 FCFF 為負則略過永續終值，並建議改用 RI。CapEx 暴衝平滑為可選工程啟發式（可調倍數閾值／均值年數）。"),
+            tags$ul(
+              tags$li(tags$b("$$FCFF = CFO + Interest\\times(1-T) - CapEx$$")),
+              tags$li(tags$b("$$FCFF = NOPAT + D\\&A - \\Delta NWC - CapEx$$")),
+              tags$li(tags$b("$$FCFE = FCFF - Interest\\times(1-T) + Net\\ Borrowing$$")),
+              tags$li(tags$b("FCFF："), tags$b("$$Enterprise\\ Value = \\sum \\frac{FCFF_t}{(1+WACC)^t} + \\frac{TV}{(1+WACC)^n}$$")),
+              tags$li(tags$b("FCFE："), tags$b("$$Equity = \\sum \\frac{FCFE_t}{(1+K_e)^t} + \\frac{TV}{(1+K_e)^n}$$")),
+              tags$li(tags$b("$$Terminal\\ Value = \\frac{CF_n \\times (1 + g)}{r - g}$$"))
+            ),
+            p("Live 預測表以 NOPAT（EBIT×(1−T)）為錨，不是淨利 NI。FCFE 的淨舉債採固定槓桿近似：各年淨舉債＝g×期初負債。兩階段模式在高速成長期後將終值成長率收斂至 SGR；FCFF 約束 g < WACC，FCFE 約束 g < Ke。")
+          )
         ),
 
-        # Tab: RI 模型解說
+        # Tab: RI
         tabPanel(
           "Residual Income (RI)",
           icon = icon("gem"),
-          h4(tags$b("剩餘收益模型 (Residual Income)")),
-          p("RI 以帳面淨值為起點，將「超過股權成本的盈餘」折現加總。適合 FCF 為負、但淨值與 ROE 具參考性的企業；折現率使用 Ke（與 DDM 同屬股權層級）。"),
-          tags$ul(
-            tags$li(tags$b("$$RI_t = (ROE_t - K_e) \\times B_{t-1}$$")),
-            tags$li(tags$b("$$B_t = B_{t-1} + NI_t \\times (1 - Payout)$$")),
-            tags$li(tags$b("$$V_0 = B_0 + \\sum_{t=1}^{n} \\frac{RI_t}{(1+K_e)^t} + \\frac{TV_{RI}}{(1+K_e)^n}$$")),
-            tags$li(tags$b("$$TV_{RI} = \\frac{RI_n \\times (1 + g)}{K_e - g}$$"))
+          tags$div(
+            class = "ynow-loc-en",
+            h4(tags$b("Residual Income Model")),
+            p("RI starts from book equity and discounts earnings above the cost of equity. Useful when FCF is negative but book value and ROE remain informative; the discount rate is Ke (same equity claim level as DDM)."),
+            tags$ul(
+              tags$li(tags$b("$$RI_t = (ROE_t - K_e) \\times B_{t-1}$$")),
+              tags$li(tags$b("$$B_t = B_{t-1} + NI_t \\times (1 - Payout)$$")),
+              tags$li(tags$b("$$V_0 = B_0 + \\sum_{t=1}^{n} \\frac{RI_t}{(1+K_e)^t} + \\frac{TV_{RI}}{(1+K_e)^n}$$")),
+              tags$li(tags$b("$$TV_{RI} = \\frac{RI_n \\times (1 + g)}{K_e - g}$$"))
+            ),
+            p("This app supports fixed ROE, linear fade, or industry ROE; terminal g must satisfy g < Ke. When ROE < Ke, residual income is negative (value destruction).")
           ),
-          p("本 app 可設定固定 ROE、線性淡化或產業 ROE；終值成長 g 須滿足 g < Ke。當 ROE < Ke 時，剩餘收益為負，代表價值減損。")
+          tags$div(
+            class = "ynow-loc-zh",
+            h4(tags$b("剩餘收益模型 (Residual Income)")),
+            p("RI 以帳面淨值為起點，將「超過股權成本的盈餘」折現加總。適合 FCF 為負、但淨值與 ROE 具參考性的企業；折現率使用 Ke（與 DDM 同屬股權層級）。"),
+            tags$ul(
+              tags$li(tags$b("$$RI_t = (ROE_t - K_e) \\times B_{t-1}$$")),
+              tags$li(tags$b("$$B_t = B_{t-1} + NI_t \\times (1 - Payout)$$")),
+              tags$li(tags$b("$$V_0 = B_0 + \\sum_{t=1}^{n} \\frac{RI_t}{(1+K_e)^t} + \\frac{TV_{RI}}{(1+K_e)^n}$$")),
+              tags$li(tags$b("$$TV_{RI} = \\frac{RI_n \\times (1 + g)}{K_e - g}$$"))
+            ),
+            p("本 app 可設定固定 ROE、線性淡化或產業 ROE；終值成長 g 須滿足 g < Ke。當 ROE < Ke 時，剩餘收益為負，代表價值減損。")
+          )
         ),
 
-        # Tab: P/B 模型解說
+        # Tab: P/B
         tabPanel(
           "Price-to-Book (P/B)",
           icon = icon("landmark"),
-          h4(tags$b("本淨比／相對估值 (P/B)")),
-          p("以每股帳面淨值、有形淨值或控股 NAVPS 乘上目標本淨比。目標倍數可來自產業／歷史（無需 SGR），或 Justified P/B（需 ROE、Ke、SGR／g）。純帳面 NAV（無倍數法 Justified）請用獨立「NAV」模型——兩者同屬資產／帳面家族，但路徑分開。"),
-          tags$ul(
-            tags$li(tags$b("$$BVPS = \\frac{Common\\ Equity}{Shares}$$")),
-            tags$li(tags$b("$$TBVPS = \\frac{Common\\ Equity - Goodwill - Intangibles}{Shares}$$")),
-            tags$li(tags$b("$$P = (BVPS\\ /\\ TBVPS\\ /\\ NAVPS) \\times Target\\ P/B$$")),
-            tags$li(tags$b("Justified\\ P/B \\approx \\frac{ROE - g}{K_e - g}"))
+          tags$div(
+            class = "ynow-loc-en",
+            h4(tags$b("Price-to-Book / relative valuation (P/B)")),
+            p("Multiply BVPS, tangible book, or HoldCo NAVPS by a target P/B. The target can come from industry/history (no SGR required) or Justified P/B (needs ROE, Ke, SGR/g). Pure book NAV without a Justified multiple path uses the separate NAV model — same asset/book family, different route."),
+            tags$ul(
+              tags$li(tags$b("$$BVPS = \\frac{Common\\ Equity}{Shares}$$")),
+              tags$li(tags$b("$$TBVPS = \\frac{Common\\ Equity - Goodwill - Intangibles}{Shares}$$")),
+              tags$li(tags$b("$$P = (BVPS\\ /\\ TBVPS\\ /\\ NAVPS) \\times Target\\ P/B$$")),
+              tags$li(tags$b("Justified\\ P/B \\approx \\frac{ROE - g}{K_e - g}"))
+            ),
+            p("For dual-class / ADR cases where quoted shares ≠ statement shares, share count is auto-implied (market cap ÷ price), same as DCF / RI / backtests.")
           ),
-          p("雙重股權／ADR 等「報價股數 ≠ 財報股數」時，與 DCF／RI／回測相同，一律自動約當股數（市值÷股價）。")
+          tags$div(
+            class = "ynow-loc-zh",
+            h4(tags$b("本淨比／相對估值 (P/B)")),
+            p("以每股帳面淨值、有形淨值或控股 NAVPS 乘上目標本淨比。目標倍數可來自產業／歷史（無需 SGR），或 Justified P/B（需 ROE、Ke、SGR／g）。純帳面 NAV（無倍數法 Justified）請用獨立「NAV」模型——兩者同屬資產／帳面家族，但路徑分開。"),
+            tags$ul(
+              tags$li(tags$b("$$BVPS = \\frac{Common\\ Equity}{Shares}$$")),
+              tags$li(tags$b("$$TBVPS = \\frac{Common\\ Equity - Goodwill - Intangibles}{Shares}$$")),
+              tags$li(tags$b("$$P = (BVPS\\ /\\ TBVPS\\ /\\ NAVPS) \\times Target\\ P/B$$")),
+              tags$li(tags$b("Justified\\ P/B \\approx \\frac{ROE - g}{K_e - g}"))
+            ),
+            p("雙重股權／ADR 等「報價股數 ≠ 財報股數」時，與 DCF／RI／回測相同，一律自動約當股數（市值÷股價）。")
+          )
         ),
         tabPanel(
           "Net Asset Value (NAV)",
           icon = icon("sitemap"),
-          h4(tags$b("純 NAV（帳面控股淨資產）")),
-          p("評估「現在家底（存量）」：合理價 = NAVPS × 折價／溢價倍數。控股折價只套用在已辨識投資科目；無投資科目時 NAV＝帳面權益。此為帳面拆解，不是市場法分部 SOTP，亦不需要 Justified／SGR。"),
-          tags$ul(
-            tags$li(tags$b("$$NAV = Equity - Holdco\\ Discount \\times Identified\\ Investments$$")),
-            tags$li(tags$b("$$P = NAVPS \\times NAV\\ Multiple$$"))
+          tags$div(
+            class = "ynow-loc-en",
+            h4(tags$b("Pure NAV (book HoldCo net assets)")),
+            p("Values the stock of assets today: Fair Value = NAVPS × discount/premium multiple. HoldCo discount applies only to identified investment accounts; with none, NAV = book equity. This is a book decomposition — not market-method segment SOTP — and does not need Justified/SGR."),
+            tags$ul(
+              tags$li(tags$b("$$NAV = Equity - Holdco\\ Discount \\times Identified\\ Investments$$")),
+              tags$li(tags$b("$$P = NAVPS \\times NAV\\ Multiple$$"))
+            )
+          ),
+          tags$div(
+            class = "ynow-loc-zh",
+            h4(tags$b("純 NAV（帳面控股淨資產）")),
+            p("評估「現在家底（存量）」：合理價 = NAVPS × 折價／溢價倍數。控股折價只套用在已辨識投資科目；無投資科目時 NAV＝帳面權益。此為帳面拆解，不是市場法分部 SOTP，亦不需要 Justified／SGR。"),
+            tags$ul(
+              tags$li(tags$b("$$NAV = Equity - Holdco\\ Discount \\times Identified\\ Investments$$")),
+              tags$li(tags$b("$$P = NAVPS \\times NAV\\ Multiple$$"))
+            )
           )
         ),
 
         tabPanel(
           "Multiples",
           icon = icon("percentage"),
-          h4(tags$b("市場倍數法（Implied Price）")),
-          p("相對估值依資本請求權分為 Equity／Enterprise 兩族（非 Intrinsic Value／Fair Value 主模型）。不可與 DCF／DDM／RI／P/B／NAV 等權平均，亦不可作為 HFV 疊加。"),
-          tags$ul(
-            tags$li(tags$b("Equity："), tags$b("$$Implied\\ Price = EPS \\times P/E$$"), "；", tags$b("$$Implied\\ Equity = Revenue \\times P/S$$"), "；PEG = P/E ÷ g(%)（相對指標）。"),
-            tags$li(tags$b("Enterprise："), tags$b("$$Implied\\ EV = Metric \\times Multiple$$"), "；", tags$b("$$Equity = EV + Cash - Debt$$"), "；Price = Equity ÷ Shares（與 SOTP 共用橋接；EV/FCF 用 FCFF）。"),
-            tags$li(tags$b("SOTP（側欄）："), "Enterprise-structural — 部門營收 × EV/Sales 加總後再用同一 Cash−Debt 橋接。")
+          tags$div(
+            class = "ynow-loc-en",
+            h4(tags$b("Market multiples (Implied Price)")),
+            p("Relative valuation splits into Equity and Enterprise claim families (not Intrinsic Value / Fair Value primaries). Do not equal-weight with DCF / DDM / RI / P/B / NAV, and do not use as HFV overlays."),
+            tags$ul(
+              tags$li(tags$b("Equity: "), tags$b("$$Implied\\ Price = EPS \\times P/E$$"), "; ", tags$b("$$Implied\\ Equity = Revenue \\times P/S$$"), "; PEG = P/E ÷ g(%) (relative metric)."),
+              tags$li(tags$b("Enterprise: "), tags$b("$$Implied\\ EV = Metric \\times Multiple$$"), "; ", tags$b("$$Equity = EV + Cash - Debt$$"), "; Price = Equity ÷ Shares (shared bridge with SOTP; EV/FCF uses FCFF)."),
+              tags$li(tags$b("SOTP (sidebar): "), "Enterprise-structural — sum segment revenue × EV/Sales, then the same Cash−Debt bridge.")
+            ),
+            p("Shared assumptions: Shares; Enterprise / SOTP also share Cash, Debt, and default EV/Sales tiers. Unique assumptions are in the Multiples Overview parameter matrix.")
           ),
-          p("共用假設：Shares；Enterprise／SOTP 另共用 Cash、Debt、EV/Sales 預設層級。獨特假設見 Multiples Overview 參數矩陣。")
+          tags$div(
+            class = "ynow-loc-zh",
+            h4(tags$b("市場倍數法（Implied Price）")),
+            p("相對估值依資本請求權分為 Equity／Enterprise 兩族（非 Intrinsic Value／Fair Value 主模型）。不可與 DCF／DDM／RI／P/B／NAV 等權平均，亦不可作為 HFV 疊加。"),
+            tags$ul(
+              tags$li(tags$b("Equity："), tags$b("$$Implied\\ Price = EPS \\times P/E$$"), "；", tags$b("$$Implied\\ Equity = Revenue \\times P/S$$"), "；PEG = P/E ÷ g(%)（相對指標）。"),
+              tags$li(tags$b("Enterprise："), tags$b("$$Implied\\ EV = Metric \\times Multiple$$"), "；", tags$b("$$Equity = EV + Cash - Debt$$"), "；Price = Equity ÷ Shares（與 SOTP 共用橋接；EV/FCF 用 FCFF）。"),
+              tags$li(tags$b("SOTP（側欄）："), "Enterprise-structural — 部門營收 × EV/Sales 加總後再用同一 Cash−Debt 橋接。")
+            ),
+            p("共用假設：Shares；Enterprise／SOTP 另共用 Cash、Debt、EV/Sales 預設層級。獨特假設見 Multiples Overview 參數矩陣。")
+          )
         ),
 
         tabPanel(
           "SOTP",
           icon = icon("puzzle-piece"),
-          h4(tags$b("分部加總 SOTP（Enterprise-structural Implied Price）")),
-          p("側欄獨立引擎，與 Multiples→Enterprise 同屬企業價值請求權：拆解 ≥2 筆部門營收 × 各段 EV/Sales，加總後共用 Cash−Debt×Shares 橋接。控股／綜合常作 NAV 副模型；非 Equity 的 P/E／P/S，亦非部門 EBIT SOTP。"),
-          tags$ul(
-            tags$li(tags$b("$$Segment\\ EV = Segment\\ Revenue \\times EV/Sales$$")),
-            tags$li(tags$b("$$Implied\\ EV = \\sum Segment\\ EV + Non\\text{-}operating$$")),
-            tags$li(tags$b("$$Equity = Implied\\ EV + Cash - Debt$$"), "；", tags$b("$$Price = Equity \\div Shares$$"))
+          tags$div(
+            class = "ynow-loc-en",
+            h4(tags$b("SOTP (enterprise-structural Implied Price)")),
+            p("Sidebar engine on the same enterprise claim as Multiples→Enterprise: decompose ≥2 segment revenues × segment EV/Sales, sum, then bridge with Cash−Debt×Shares. Often a NAV secondary for HoldCos/conglomerates; not Equity P/E/P/S, and not segment-EBIT SOTP."),
+            tags$ul(
+              tags$li(tags$b("$$Segment\\ EV = Segment\\ Revenue \\times EV/Sales$$")),
+              tags$li(tags$b("$$Implied\\ EV = \\sum Segment\\ EV + Non\\text{-}operating$$")),
+              tags$li(tags$b("$$Equity = Implied\\ EV + Cash - Debt$$"), "; ", tags$b("$$Price = Equity \\div Shares$$"))
+            ),
+            p("Shared: Cash / Debt / Shares, default EV/Sales. Unique: segment revenues, segment EV/Sales, non-operating assets.")
           ),
-          p("共用：Cash／Debt／Shares、Default EV/Sales。獨特：部門營收、各段 EV/Sales、Non-operating assets。")
+          tags$div(
+            class = "ynow-loc-zh",
+            h4(tags$b("分部加總 SOTP（Enterprise-structural Implied Price）")),
+            p("側欄獨立引擎，與 Multiples→Enterprise 同屬企業價值請求權：拆解 ≥2 筆部門營收 × 各段 EV/Sales，加總後共用 Cash−Debt×Shares 橋接。控股／綜合常作 NAV 副模型；非 Equity 的 P/E／P/S，亦非部門 EBIT SOTP。"),
+            tags$ul(
+              tags$li(tags$b("$$Segment\\ EV = Segment\\ Revenue \\times EV/Sales$$")),
+              tags$li(tags$b("$$Implied\\ EV = \\sum Segment\\ EV + Non\\text{-}operating$$")),
+              tags$li(tags$b("$$Equity = Implied\\ EV + Cash - Debt$$"), "；", tags$b("$$Price = Equity \\div Shares$$"))
+            ),
+            p("共用：Cash／Debt／Shares、Default EV/Sales。獨特：部門營收、各段 EV/Sales、Non-operating assets。")
+          )
         )
       )
     )
@@ -3664,6 +3951,10 @@ ui <- dashboardPage(
           font-weight: normal !important;
           line-height: 0 !important;
         }
+        /* Locale blocks (Valuation Methodology tables, etc.).
+           Default / en / missing lang → hide Chinese; zh* → hide English. */
+        html:not([lang^="zh"]) .ynow-loc-zh { display: none !important; }
+        html[lang^="zh"] .ynow-loc-en { display: none !important; }
         .main-header .navbar > .sidebar-toggle .icon-bar,
         .skin-black .main-header .navbar .sidebar-toggle .icon-bar {
           display: none !important;
@@ -7409,6 +7700,12 @@ ui <- dashboardPage(
             }
             applyTabLabels((payload && payload.tabs) || {});
             applyBoxHeaders((payload && payload.boxes) || []);
+            var methodTitle = document.getElementById('ynow_method_section_title');
+            if (methodTitle && s.method_section_title) methodTitle.textContent = s.method_section_title;
+            var methodFvNote = document.getElementById('ynow_method_matrix_fv_note');
+            if (methodFvNote && s.method_matrix_fv_note) methodFvNote.textContent = s.method_matrix_fv_note;
+            var methodRelNote = document.getElementById('ynow_method_matrix_rel_note');
+            if (methodRelNote && s.method_matrix_rel_note) methodRelNote.textContent = s.method_matrix_rel_note;
             var hfvTitle = document.getElementById('ynow_hfv_page_title');
             if (hfvTitle && s.hfv_page_title) hfvTitle.textContent = s.hfv_page_title;
             var hfvSub = document.getElementById('ynow_hfv_page_sub');

@@ -1426,6 +1426,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     box_beta = "BETA",
     box_sgr = "SUSTAINABLE GROWTH RATE",
     box_model_guide = "Model Selection Guide",
+    method_section_title = "Valuation Methodology",
+    method_matrix_fv_note = "Fair Value engines (Intrinsic Value / Fair Value primaries).",
+    method_matrix_rel_note = "Implied Price relative engines — cross-check only; never Fair Value primary; not HFV overlays.",
     box_bt_params = "Strategy Parameters",
     # --- SGR tab (Basic Setup) ---
     sgr_method_title = "Terminal growth (SGR) method",
@@ -4122,6 +4125,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     box_beta = "Beta β",
     box_sgr = "SUSTAINABLE GROWTH RATE",
     box_model_guide = "模型選擇決策指南",
+    method_section_title = "評價方法論",
+    method_matrix_fv_note = "Fair Value 引擎（Intrinsic Value／Fair Value 主模型）。",
+    method_matrix_rel_note = "Implied Price 相對引擎——僅交叉檢核；不作 Fair Value 主模型；不作 HFV 疊加。",
     box_bt_params = "策略參數設定",
     # --- SGR tab (Basic Setup) ---
     sgr_method_title = "終值永續成長率 (SGR) 評價方法",
