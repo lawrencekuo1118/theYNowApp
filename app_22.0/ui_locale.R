@@ -1090,6 +1090,8 @@ locale_for_market <- function(mode = get_market_mode()) {
       "they are not available as HFV chart overlays."
     ),
     lab_im_methods_label = "Models",
+    lab_im_methods_abs_label = "Absolute",
+    lab_im_methods_rel_label = "Relative",
     lab_im_methods_locked_hint = paste0(
       "Models with no names using them as the primary valuation model stay unchecked and locked. ",
       "Enterprise value, Earnings, Revenue, and Book value unlock only when that family is the Multiples reference ",
@@ -3974,6 +3976,8 @@ locale_for_market <- function(mode = get_market_mode()) {
       "無法作為 HFV 圖表疊加。"
     ),
     lab_im_methods_label = "模型",
+    lab_im_methods_abs_label = "絕對",
+    lab_im_methods_rel_label = "相對",
     lab_im_methods_locked_hint = paste0(
       "若某評價模型未被任何個股列為主模型，則維持不勾選並鎖定。",
       "相對估值的企業價值、盈餘、營收、淨值，在該類被當成 Multiples 參照時才可勾選",

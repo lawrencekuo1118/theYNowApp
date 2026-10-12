@@ -16,7 +16,7 @@
       return(sub('^"version"\\s*:\\s*"([^"]+)".*$', "\\1", m[[1]]))
     }
   }
-  "v22.02"
+  "v22.03"
 }
 .YNOW_BUILD_VERSION <- .ynow_read_build_version()
 
@@ -30,6 +30,89 @@
 
 .bt_section_intro <- function(text) {
   tags$p(style = "margin: 0 0 12px 0; font-size: 12.5px; color: #555; line-height: 1.5;", text)
+}
+
+#' Blue Chip Models filter: Absolute vs Relative groups, one `lab_im_methods` input.
+.lab_im_method_cb <- function(value, label_id, label_text, selected) {
+  input_tag <- tags$input(type = "checkbox", name = "lab_im_methods", value = value)
+  if (isTRUE(value %in% selected)) {
+    input_tag$attribs$checked <- "checked"
+  }
+  tags$label(class = "checkbox-inline", input_tag, tags$span(id = label_id, label_text))
+}
+
+.lab_im_methods_filter_ui <- function(selected = character(0)) {
+  selected <- as.character(selected %||% character(0))
+  abs_keys <- if (exists("LAB_METHOD_ABS_KEYS", inherits = TRUE)) {
+    as.character(LAB_METHOD_ABS_KEYS)
+  } else {
+    c("nav", "dcf", "ddm", "ri", "sotp")
+  }
+  rel_keys <- if (exists("LAB_METHOD_REL_KEYS", inherits = TRUE)) {
+    as.character(LAB_METHOD_REL_KEYS)
+  } else {
+    c("enterprise", "earnings", "revenue", "book")
+  }
+  label_map <- c(
+    nav = "NAV", dcf = "DCF", ddm = "DDM", ri = "RI", sotp = "SOTP",
+    enterprise = "Enterprise value", earnings = "Earnings",
+    revenue = "Revenue", book = "Book value"
+  )
+  id_map <- c(
+    nav = "ynow_lab_im_method_nav",
+    dcf = "ynow_lab_im_method_dcf",
+    ddm = "ynow_lab_im_method_ddm",
+    ri = "ynow_lab_im_method_ri",
+    sotp = "ynow_lab_im_method_sotp",
+    enterprise = "ynow_lab_im_method_enterprise",
+    earnings = "ynow_lab_im_method_earnings",
+    revenue = "ynow_lab_im_method_revenue",
+    book = "ynow_lab_im_method_book"
+  )
+  mk_group <- function(keys) {
+    lapply(keys, function(k) {
+      .lab_im_method_cb(
+        k,
+        id_map[[k]],
+        if (!is.null(label_map[[k]])) label_map[[k]] else k,
+        selected
+      )
+    })
+  }
+  tags$div(
+    id = "lab_im_methods",
+    class = paste(
+      "form-group shiny-input-checkboxgroup shiny-input-container",
+      "shiny-input-container-inline"
+    ),
+    tags$label(
+      class = "control-label",
+      id = "lab_im_methods-label",
+      `for` = "lab_im_methods",
+      tags$span(id = "ynow_lab_im_methods_label", "模型")
+    ),
+    tags$div(
+      class = "ynow-lab-im-methods-groups",
+      tags$div(
+        class = "ynow-lab-im-methods-group ynow-lab-im-methods-group--abs",
+        tags$span(
+          id = "ynow_lab_im_methods_abs_label",
+          class = "ynow-lab-im-methods-group-label",
+          "絕對"
+        ),
+        tags$div(class = "shiny-options-group", mk_group(abs_keys))
+      ),
+      tags$div(
+        class = "ynow-lab-im-methods-group ynow-lab-im-methods-group--rel",
+        tags$span(
+          id = "ynow_lab_im_methods_rel_label",
+          class = "ynow-lab-im-methods-group-label",
+          "相對"
+        ),
+        tags$div(class = "shiny-options-group", mk_group(rel_keys))
+      )
+    )
+  )
 }
 
 #' Privacy / IP / investment-risk notices (About: bilingual zh-TW | en-US)
@@ -146,7 +229,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v22.02) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+          "The YNow App (v22.03) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
         ),
         tags$p(
           class = "ynow-about-method",
@@ -165,7 +248,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v22.02) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
+          "The YNow App (v22.03) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
         ),
         tags$p(
           class = "ynow-about-method",
@@ -267,7 +350,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App（簡化版）")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite（v22.02）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
+          "The YNow App Lite（v22.03）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
           "以自動判別主／副模型與預設參數完成試算，讓使用者先看到合理價區間與產業 KPI，再決定是否回到完整版深入調整。"
         ),
         tags$p(
@@ -284,7 +367,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App (Lite)")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite (v22.02) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
+          "The YNow App Lite (v22.03) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
           "auto-selects primary/secondary models with App defaults, and surfaces fair-value ranges plus industry KPIs before you open Full for deeper calibration."
         ),
         tags$p(
@@ -2004,28 +2087,9 @@ beta_rolling_section_ui <- function() {
                       ),
                       tags$div(
                         class = "ynow-lab-im-methods",
-                        checkboxGroupInput(
-                          "lab_im_methods",
-                          tags$span(id = "ynow_lab_im_methods_label", "模型"),
-                          # Same top→bottom order as the sidebar valuation menus.
-                          choiceNames = list(
-                            tags$span(id = "ynow_lab_im_method_nav", "NAV"),
-                            tags$span(id = "ynow_lab_im_method_dcf", "DCF"),
-                            tags$span(id = "ynow_lab_im_method_ddm", "DDM"),
-                            tags$span(id = "ynow_lab_im_method_ri", "RI"),
-                            tags$span(id = "ynow_lab_im_method_enterprise", "Enterprise value"),
-                            tags$span(id = "ynow_lab_im_method_earnings", "Earnings"),
-                            tags$span(id = "ynow_lab_im_method_revenue", "Revenue"),
-                            tags$span(id = "ynow_lab_im_method_book", "Book value"),
-                            tags$span(id = "ynow_lab_im_method_sotp", "SOTP")
-                          ),
-                          choiceValues = list(
-                            "nav", "dcf", "ddm", "ri",
-                            "enterprise", "earnings", "revenue", "book", "sotp"
-                          ),
-                          selected = APP_DEFAULTS$lab_im_methods,
-                          inline = TRUE
-                        ),
+                        # Absolute (Fair Value + SOTP) vs Relative (Multiples families).
+                        # Same input id `lab_im_methods` — filter logic unchanged.
+                        .lab_im_methods_filter_ui(APP_DEFAULTS$lab_im_methods),
                         tags$span(
                           id = "ynow_lab_im_methods_locked_hint",
                           class = "ynow-lab-im-quality-hint ynow-full-only",
@@ -3332,9 +3396,9 @@ ui <- dashboardPage(
                   'data-ynow-build="', .YNOW_BUILD_VERSION, '" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v22.02</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v22.03</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v22.02</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v22.03</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -8470,6 +8534,8 @@ ui <- dashboardPage(
             if (ccyFloat && s.hdr_ccy_label) ccyFloat.setAttribute('aria-label', s.hdr_ccy_label);
             setBtText('ynow_hfv_rel_models_note', 'hfv_rel_models_note');
             setBtText('ynow_lab_im_methods_label', 'lab_im_methods_label');
+            setBtText('ynow_lab_im_methods_abs_label', 'lab_im_methods_abs_label');
+            setBtText('ynow_lab_im_methods_rel_label', 'lab_im_methods_rel_label');
             setBtText('ynow_lab_im_methods_locked_hint', 'lab_im_methods_locked_hint');
             setBtText('ynow_lab_im_method_nav', 'menu_nav');
             setBtText('ynow_lab_im_method_dcf', 'menu_dcf');
@@ -10215,6 +10281,26 @@ ui <- dashboardPage(
           padding: 6px 14px;
           font-weight: 700;
         }
+        .ynow-lab-im-methods-groups {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          margin-top: 2px;
+        }
+        .ynow-lab-im-methods-group {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 8px 12px;
+        }
+        .ynow-lab-im-methods-group-label {
+          flex: 0 0 auto;
+          min-width: 2.75em;
+          font-size: 12px;
+          font-weight: 700;
+          color: #555;
+          letter-spacing: 0.02em;
+        }
         .ynow-lab-im-methods .shiny-options-group,
         .ynow-lab-im-boards .shiny-options-group,
         .ynow-lab-im-lb-scope .shiny-options-group {
@@ -10226,6 +10312,9 @@ ui <- dashboardPage(
           justify-content: flex-start;
           column-gap: 12px;
           row-gap: 8px;
+        }
+        .ynow-lab-im-methods-group .shiny-options-group {
+          flex: 1 1 auto;
         }
         .ynow-lab-im-methods .checkbox-inline,
         .ynow-lab-im-boards .checkbox-inline,
