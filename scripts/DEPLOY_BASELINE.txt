@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12680297
+bundleId=12680321
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
 aligned_git=ac67ea4af111894256a9c2b27b897930b214c21e
 commit=ac67ea4af111894256a9c2b27b897930b214c21e
 short=ac67ea4
-message=Escape CSS attr selectors so ynow_ui.R parses on start (v23.07)
-captured_at=2026-10-12T15:20:58Z
+message=Focus KPI alert bell inside gold frame; thicker pulsing gold border (v23.07)
+captured_at=2026-10-12T15:25:45Z
 display_version=v23.07
