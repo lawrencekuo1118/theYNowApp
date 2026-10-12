@@ -912,14 +912,14 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     lab_im_eq_label = "Earnings quality",
     lab_im_eq_hint = paste0(
-      "Checked by default: Top 10 and Detail keep only names that pass earnings-quality checks. ",
-      "Uncheck to skip that filter. Shortfalls are not padded to N."
+      "Unchecked by default: when checked, Top 10 and Detail keep only names that pass earnings-quality checks. ",
+      "Leave unchecked to skip that filter. Shortfalls are not padded to N."
     ),
     lab_im_eq_explain_title = "Earnings quality:",
     lab_im_eq_explain_body = paste0(
-      "When checked (default), the leaderboard keeps only names that pass earnings-quality checks ",
+      "When checked, the leaderboard keeps only names that pass earnings-quality checks ",
       "(OCF vs operating earnings — helps flag cash-flow vs reported-profit gaps). ",
-      "Uncheck to skip that filter. Shortfalls are not padded to N."
+      "Leave unchecked (default) to skip that filter. Shortfalls are not padded to N."
     ),
     lab_im_lb_status = paste0(
       "Top 10 shows %d/10 (qualified %d / evaluated %d). ",
@@ -1002,14 +1002,14 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     lab_im_gate_label = "Piotroski high gate",
     lab_im_gate_hint = paste0(
-      "Default on: Top 10 and Detail keep only Piotroski F-Score≥7 (quality screen). ",
-      "Uncheck to drop the F-Score gate. Shortfalls are not padded to N or to 10."
+      "Unchecked by default: when checked, Top 10 and Detail keep only Piotroski F-Score≥7 (quality screen). ",
+      "Leave unchecked to drop the F-Score gate. Shortfalls are not padded to N or to 10."
     ),
     lab_im_no_alert_label = "No FS alerts",
     lab_im_no_alert_hint = paste0(
-      "Default on: Top 10 and Detail keep only names with zero financial-statement alerts ",
+      "Unchecked by default: when checked, Top 10 and Detail keep only names with zero financial-statement alerts ",
       "(Schilit warnings + earnings-quality red flags — same definition as YNOW FS alerts). ",
-      "Uncheck to skip that filter. Shortfalls are not padded to N."
+      "Leave unchecked to skip that filter. Shortfalls are not padded to N."
     ),
     lab_im_no_alert_on = "No FS alerts",
     lab_im_no_alert_off = "FS alerts not filtered",
@@ -3804,13 +3804,13 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     lab_im_eq_label = "盈餘品質",
     lab_im_eq_hint = paste0(
-      "預設勾選：排行榜／明細只列盈餘品質通過者；",
-      "取消勾選則不過濾。合格不足 N 時不湊滿。"
+      "預設不勾選：勾選後排行榜／明細只列盈餘品質通過者；",
+      "維持不勾選則不過濾。合格不足 N 時不湊滿。"
     ),
     lab_im_eq_explain_title = "盈餘品質：",
     lab_im_eq_explain_body = paste0(
-      "預設勾選時，排行榜只列通過盈餘品質檢核者（OCF 與營運獲利交叉比對，",
-      "協助排除現金流與帳面獲利落差過大的標的）；取消勾選則不過濾。",
+      "勾選後，排行榜只列通過盈餘品質檢核者（OCF 與營運獲利交叉比對，",
+      "協助排除現金流與帳面獲利落差過大的標的）；預設不勾選則不過濾。",
       "合格不足 N 時不湊滿。"
     ),
     lab_im_lb_status = paste0(
@@ -3890,13 +3890,13 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     lab_im_gate_label = "Piotroski 高門檻",
     lab_im_gate_hint = paste0(
-      "預設勾選：前十名與明細只列 Piotroski F-Score≥7（品質檢核）者；",
-      "取消勾選則不設 F-Score 門檻。合格不足 N 或不足 10 時不會湊滿。"
+      "預設不勾選：勾選後前十名與明細只列 Piotroski F-Score≥7（品質檢核）者；",
+      "維持不勾選則不設 F-Score 門檻。合格不足 N 或不足 10 時不會湊滿。"
     ),
     lab_im_no_alert_label = "無財報警訊",
     lab_im_no_alert_hint = paste0(
-      "預設勾選：排行榜／明細只列財報警訊為 0 者（Schilit 警示＋盈餘品質紅旗，",
-      "與 YNOW「財報警訊」同一套定義）；取消勾選則不過濾。合格不足 N 時不湊滿。"
+      "預設不勾選：勾選後排行榜／明細只列財報警訊為 0 者（Schilit 警示＋盈餘品質紅旗，",
+      "與 YNOW「財報警訊」同一套定義）；維持不勾選則不過濾。合格不足 N 時不湊滿。"
     ),
     lab_im_no_alert_on = "無財報警訊",
     lab_im_no_alert_off = "不過濾財報警訊",

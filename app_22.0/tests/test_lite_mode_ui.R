@@ -100,6 +100,12 @@ testthat::test_that("Lite locale keys exist in en and zh-TW", {
   testthat::expect_identical(.UI_STRINGS$en$lab_im_eq_label, "Earnings quality")
   testthat::expect_identical(.UI_STRINGS$`zh-TW`$lab_im_no_alert_label, "無財報警訊")
   testthat::expect_identical(.UI_STRINGS$en$lab_im_no_alert_label, "No FS alerts")
+  testthat::expect_true(grepl("Unchecked by default", .UI_STRINGS$en$lab_im_eq_hint, fixed = TRUE))
+  testthat::expect_true(grepl("Unchecked by default", .UI_STRINGS$en$lab_im_gate_hint, fixed = TRUE))
+  testthat::expect_true(grepl("Unchecked by default", .UI_STRINGS$en$lab_im_no_alert_hint, fixed = TRUE))
+  testthat::expect_true(grepl("預設不勾選", .UI_STRINGS$`zh-TW`$lab_im_eq_hint, fixed = TRUE))
+  testthat::expect_true(grepl("預設不勾選", .UI_STRINGS$`zh-TW`$lab_im_gate_hint, fixed = TRUE))
+  testthat::expect_true(grepl("預設不勾選", .UI_STRINGS$`zh-TW`$lab_im_no_alert_hint, fixed = TRUE))
   testthat::expect_identical(
     .UI_STRINGS$`zh-TW`$lab_im_filter_count_label,
     "目前篩選條件下池內股票數"
@@ -392,7 +398,7 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
     txt,
     perl = TRUE
   ))
-  testthat::expect_true(grepl("The YNow App v22.01", txt, fixed = TRUE))
+  testthat::expect_true(grepl("The YNow App v22.02", txt, fixed = TRUE))
   testthat::expect_true(grepl('title = "The YNow App"', txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-hfv-report", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-hfv-toolbar", txt, fixed = TRUE))
