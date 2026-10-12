@@ -946,35 +946,49 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_lb_mode_industry_avg = "Industry mcap-weighted upside",
     lab_im_lb_mode_undervalued = "Most undervalued Top 10",
     lab_im_ind_mcap_title = "Industry mcap-weighted upside",
-    lab_im_ind_mcap_badge = "Auto",
+    lab_im_ind_mcap_badge = "Default ranking",
     lab_im_ind_mcap_help = paste0(
-      "Opening Blue Chip Leaderboard (or Search Blue Chips) runs the evaluation, then ranks industries by ",
-      "Σ(market cap × annualized upside) / Σ(market cap) (per-dollar market-cap weight). ",
+      "Lists every industry chain (Semiconductors / Technology / Financials …) sorted by ",
+      "Σ(market cap × annualized upside) / Σ(market cap). ",
+      "The first completed run is the default snapshot; press Refresh ranking (top-right) for the latest. ",
       "Applies the Piotroski, earnings-quality, and No FS alerts gates from the query filters."
     ),
     lab_im_ind_mcap_waiting = paste0(
-      "No evaluation yet. Opening Blue Chip Leaderboard starts Search Blue Chips ",
-      "and builds the industry ranking automatically."
+      "No default ranking yet. Press Refresh ranking to evaluate and build ",
+      "the full industry-chain table (or open Blue Chip Leaderboard / Search Blue Chips once)."
     ),
     lab_im_ind_mcap_empty = paste0(
-      "No industry row yet (qualified names %d / evaluated %d). ",
-      "Relax gates or widen filters, then search again."
+      "No industry-chain row yet (qualified names %d / evaluated %d). ",
+      "Relax gates or widen filters, then press Refresh ranking."
     ),
     lab_im_ind_mcap_status = paste0(
-      "Showing %d industries (qualified names %d / evaluated %d). ",
-      "Each row is one industry; weight = market cap share within that industry."
+      "Showing %d / %d industry chains (qualified names %d / evaluated %d). ",
+      "Each row is one chain; weight = market cap share within that chain."
     ),
+    lab_im_ind_mcap_status_snap = paste0(
+      "Default ranking: %d industry chains",
+      "%s",
+      ". Press Refresh ranking to recompute."
+    ),
+    lab_im_ind_mcap_snap_at = " (as of %s)",
+    btn_lab_im_refresh_ind_mcap = "Refresh ranking",
+    lab_im_refresh_ind_mcap_title = paste0(
+      "Re-evaluate and recompute mcap-weighted annualized upside for every industry chain; ",
+      "saves the result as the default snapshot for later sessions."
+    ),
+    lab_im_ind_mcap_refresh_done = "Industry-chain ranking updated (%d chains).",
+    lab_im_ind_mcap_refresh_busy = "Industry-chain ranking refresh already running…",
     lab_im_lb_scope_help = paste0(
       "Overall Top 10: across industries from this evaluation run, by annualized valuation appreciation (Industry column shown). ",
       "Top 10 in selected industries: one Top 10 within chosen industries; Industry rank starts at 1 within each industry (not a cross-industry serial). ",
       "Most undervalued Top 10: across industries, by total valuation gap (primary-model FV vs price, not annualized); only names still undervalued (gap > 0). ",
-      "Industry mcap-weighted upside lives in the dedicated board above Candidate truncate ",
-      "(auto when you open Blue Chip Leaderboard or press Search Blue Chips). ",
+      "Industry mcap-weighted upside (all industry chains) lives in the dedicated board above Candidate truncate ",
+      "(default snapshot; press Refresh ranking for the latest). ",
       "Top 10 takes at most 10 qualified names; shortfalls are not padded."
     ),
     lab_im_lb_status_ind_avg = paste0(
-      "Industry mcap-weighted upside shows %d/%d (qualified names %d / evaluated %d). ",
-      "Each row is one industry; weight = market cap share within that industry."
+      "Industry mcap-weighted upside shows %d/%d industry chains (qualified names %d / evaluated %d). ",
+      "Each row is one industry chain; weight = market cap share within that chain."
     ),
     lab_im_lb_status_undervalued = paste0(
       "Most undervalued Top 10 shows %d/10 (qualified %d / evaluated %d). ",
@@ -3840,33 +3854,47 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_lb_mode_industry_avg = "產業市值加權漲幅",
     lab_im_lb_mode_undervalued = "價值低估前十名",
     lab_im_ind_mcap_title = "產業市值加權漲幅",
-    lab_im_ind_mcap_badge = "自動運算",
+    lab_im_ind_mcap_badge = "預設排名",
     lab_im_ind_mcap_help = paste0(
-      "開啟側邊欄「績優股排行榜」（或按「搜尋績優股」）即開始評估，",
-      "再依本次結果以 Σ(市值×年化估值漲幅)/Σ(市值) 列出產業排序",
-      "（每元市值加權；套用查詢條件之 Piotroski、盈餘品質、無財報警訊門檻）。"
+      "顯示全部產業鏈（半導體／科技／金融…）並依 Σ(市值×年化估值漲幅)/Σ(市值) 排序。",
+      "首次完整運算結果作為預設；之後按右上「更新排名」重算最新版。",
+      "套用查詢條件之 Piotroski、盈餘品質、無財報警訊門檻。"
     ),
     lab_im_ind_mcap_waiting = paste0(
-      "尚未評估。開啟側邊欄「績優股排行榜」即會自動執行「搜尋績優股」並產生產業排序清單。"
+      "尚無預設排名。請按「更新排名」評估並建立全部產業鏈清單",
+      "（或先開啟側邊欄「績優股排行榜」／「搜尋績優股」完成一次運算）。"
     ),
     lab_im_ind_mcap_empty = paste0(
-      "尚無產業列可顯示（合格檔 %d／已評估 %d）。",
-      "請放寬門檻或篩選後再搜尋。"
+      "尚無產業鏈列可顯示（合格檔 %d／已評估 %d）。",
+      "請放寬門檻或篩選後再按「更新排名」。"
     ),
     lab_im_ind_mcap_status = paste0(
-      "顯示 %d 個產業（合格檔 %d／已評估 %d）。",
-      "每一列為一產業；權重＝該產業內市值占比。"
+      "顯示 %d／%d 條產業鏈（合格檔 %d／已評估 %d）。",
+      "每一列為一產業鏈；權重＝該產業鏈內市值占比。"
     ),
+    lab_im_ind_mcap_status_snap = paste0(
+      "預設排名：%d 條產業鏈",
+      "%s",
+      "。按「更新排名」可重算最新版。"
+    ),
+    lab_im_ind_mcap_snap_at = "（資料時間 %s）",
+    btn_lab_im_refresh_ind_mcap = "更新排名",
+    lab_im_refresh_ind_mcap_title = paste0(
+      "重新評估並計算全部產業鏈的市值加權年化估值漲幅排名；",
+      "完成後寫入預設快照，供之後開啟時直接顯示。"
+    ),
+    lab_im_ind_mcap_refresh_done = "已更新產業鏈排名（%d 條）。",
+    lab_im_ind_mcap_refresh_busy = "產業鏈排名更新進行中…",
     lab_im_lb_scope_help = paste0(
       "整體前十名：跨本次已評估產業依年化估值漲幅取 Top 10，並顯示產業欄。",
       "選定產業前十名：所選產業內單一 Top 10；產業內排名自該產業第 1 名起算（非跨產業流水號）。",
       "價值低估前十名：跨產業依推薦主模型合理價相對市價的總潛在漲幅（非年化）由大到小；只列仍被低估者。",
-      "產業市值加權漲幅已移至上方獨立區塊（開啟績優股排行榜或按搜尋績優股後自動運算）。",
+      "產業市值加權漲幅（全部產業鏈）在上方獨立區塊（預設快照；按「更新排名」可重算最新版）。",
       "前十名只從合格者取最多 10 檔；合格不足 10 時不會湊滿。"
     ),
     lab_im_lb_status_ind_avg = paste0(
-      "產業市值加權漲幅顯示 %d／%d（合格檔 %d／已評估 %d）。",
-      "每一列為一產業；權重＝該產業內市值占比。"
+      "產業市值加權漲幅顯示 %d／%d 條產業鏈（合格檔 %d／已評估 %d）。",
+      "每一列為一產業鏈；權重＝該產業鏈內市值占比。"
     ),
     lab_im_lb_status_undervalued = paste0(
       "價值低估前十名顯示 %d／10（合格 %d／已評估 %d）。",
