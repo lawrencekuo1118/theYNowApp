@@ -2951,6 +2951,7 @@ lab_load_ind_mcap_chain_snapshot <- function(market = "US", force = FALSE) {
     stringsAsFactors = FALSE
   )
   df <- df[nzchar(df$chain_id) & !is.na(df$chain_id), , drop = FALSE]
+  df <- lab_ind_mcap_drop_unmapped_chains(df)
   rownames(df) <- NULL
   attr(df, "snapshot_source") <- path
   if (nrow(df) && any(nzchar(df$snapshot_at), na.rm = TRUE)) {
@@ -2968,7 +2969,8 @@ lab_save_ind_mcap_chain_snapshot <- function(snapshot, market = "US") {
   )
   if (!mm %in% c("US", "TW")) mm <- "US"
   snap <- if (is.data.frame(snapshot)) snapshot else lab_ind_mcap_chain_snapshot_empty()
-  if (!nrow(snap)) snap <- lab_ind_mcap_chain_snapshot_empty()
+  snap <- lab_ind_mcap_drop_unmapped_chains(snap)
+  if (!is.data.frame(snap) || !nrow(snap)) snap <- lab_ind_mcap_chain_snapshot_empty()
   if (!"market" %in% names(snap)) snap$market <- mm
   snap$market[!nzchar(as.character(snap$market))] <- mm
   # Option path wins when set (tests); else bundled data/ when writable
@@ -2997,6 +2999,35 @@ lab_save_ind_mcap_chain_snapshot <- function(snapshot, market = "US") {
   out_path
 }
 
+#' Chain ids excluded from Industry cap-weighted upside ranking (Unmapped bucket).
+lab_ind_mcap_unmapped_chain_ids <- function() {
+  ids <- c("未對應", "Unmapped", "unmapped")
+  if (exists("LAB_UNMAPPED_KEY", inherits = TRUE)) {
+    ids <- c(ids, as.character(LAB_UNMAPPED_KEY)[1])
+  }
+  unique(ids[nzchar(ids) & !is.na(ids)])
+}
+
+#' TRUE when `chain_id` is the Unmapped industry-chain bucket.
+lab_ind_mcap_is_unmapped_chain <- function(chain_id) {
+  cid <- trimws(as.character(chain_id %||% "")[1])
+  if (!nzchar(cid) || is.na(cid)) return(TRUE)
+  drop <- lab_ind_mcap_unmapped_chain_ids()
+  if (cid %in% drop) return(TRUE)
+  identical(tolower(cid), "unmapped") ||
+    identical(tolower(cid), "unmapped industry")
+}
+
+#' Drop Unmapped rows from a chain aggregate / snapshot frame.
+lab_ind_mcap_drop_unmapped_chains <- function(df) {
+  if (is.null(df) || !is.data.frame(df) || nrow(df) < 1L) return(df)
+  if (!"chain_id" %in% names(df)) return(df)
+  keep <- !vapply(df$chain_id, lab_ind_mcap_is_unmapped_chain, logical(1))
+  out <- df[keep, , drop = FALSE]
+  rownames(out) <- NULL
+  out
+}
+
 #' Format raw chain snapshot / aggregate rows into the DT display table.
 lab_format_ind_mcap_chain_table <- function(agg_df, locale = "zh-TW") {
   empty <- data.frame(
@@ -3008,6 +3039,7 @@ lab_format_ind_mcap_chain_table <- function(agg_df, locale = "zh-TW") {
     stringsAsFactors = FALSE,
     check.names = FALSE
   )
+  agg_df <- lab_ind_mcap_drop_unmapped_chains(agg_df)
   if (is.null(agg_df) || !is.data.frame(agg_df) || nrow(agg_df) == 0L) {
     return(lab_localize_im_colnames(empty, locale))
   }
@@ -3067,7 +3099,8 @@ lab_format_ind_mcap_chain_table <- function(agg_df, locale = "zh-TW") {
 }
 
 #' All industry chains ranked by mcap-weighted annualized valuation upside.
-#' Includes every chain from the picker (missing data → — / NA), sorted by wavg desc.
+#' Includes every mapped chain from the picker (missing data → — / NA), sorted by
+#' wavg desc. Unmapped（未對應）is excluded from ranking and display.
 lab_industry_chain_mcap_upside_leaderboard <- function(merged_df,
                                                       eq_only = FALSE,
                                                       gate_only = FALSE,
@@ -3089,6 +3122,8 @@ lab_industry_chain_mcap_upside_leaderboard <- function(merged_df,
   }
   all_ids <- unique(as.character(all_ids %||% character(0)))
   all_ids <- all_ids[nzchar(all_ids) & !is.na(all_ids)]
+  # Never pad / rank the Unmapped bucket on this board
+  all_ids <- all_ids[!vapply(all_ids, lab_ind_mcap_is_unmapped_chain, logical(1))]
 
   empty_agg <- data.frame(
     chain_id = character(0),
@@ -3136,23 +3171,33 @@ lab_industry_chain_mcap_upside_leaderboard <- function(merged_df,
       if (any(miss) && "industry_label" %in% names(df)) {
         chain_ids[miss] <- as.character(df$industry_label[miss])
       }
-      chain_ids[is.na(chain_ids) | !nzchar(chain_ids)] <- "未對應"
-      keys <- unique(chain_ids)
-      rows <- lapply(keys, function(k) {
-        hit <- which(chain_ids == k)
-        w <- mcap[hit]
-        u <- ups[hit]
-        data.frame(
-          chain_id = k,
-          wavg_cagr = sum(w * u) / sum(w),
-          total_mcap = sum(w),
-          n_names = length(hit),
-          stringsAsFactors = FALSE
-        )
-      })
-      agg <- do.call(rbind, rows)
+      # Drop unmapped / blank chains — do not create an Unmapped rank row
+      keep_ch <- !vapply(chain_ids, lab_ind_mcap_is_unmapped_chain, logical(1))
+      df <- df[keep_ch, , drop = FALSE]
+      mcap <- mcap[keep_ch]
+      ups <- ups[keep_ch]
+      chain_ids <- chain_ids[keep_ch]
+      if (nrow(df) > 0L) {
+        keys <- unique(chain_ids)
+        rows <- lapply(keys, function(k) {
+          hit <- which(chain_ids == k)
+          w <- mcap[hit]
+          u <- ups[hit]
+          data.frame(
+            chain_id = k,
+            wavg_cagr = sum(w * u) / sum(w),
+            total_mcap = sum(w),
+            n_names = length(hit),
+            stringsAsFactors = FALSE
+          )
+        })
+        agg <- do.call(rbind, rows)
+      }
     }
   }
+
+  agg <- lab_ind_mcap_drop_unmapped_chains(agg)
+  if (is.null(agg) || !is.data.frame(agg)) agg <- empty_agg
 
   if (length(all_ids)) {
     missing <- setdiff(all_ids, agg$chain_id)

@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12679422
+bundleId=12679501
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=3eca3ea3905bf0ee1bf39f0adc377cc552e36445
-commit=3eca3ea3905bf0ee1bf39f0adc377cc552e36445
-short=3eca3ea
-message=Concurrent Blue Chip + Clustering ExtendedTask (v22.06)
-captured_at=2026-10-12T10:56:09Z
-display_version=v22.06
+aligned_git=af59b30126b1c2f4645a3deba04f88eedd87640c
+commit=af59b30126b1c2f4645a3deba04f88eedd87640c
+short=af59b30
+message=Exclude Unmapped from Industry cap-weighted upside (v22.08)
+captured_at=2026-10-12T11:18:32Z
+display_version=v22.08

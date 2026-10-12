@@ -78,6 +78,24 @@ check("UI title-row class", grepl("ynow-lab-im-ind-mcap-title-row", ui, fixed = 
 check("UI refresh button id", grepl("lab_im_refresh_ind_mcap", ui, fixed = TRUE))
 check("UI refresh label id", grepl("ynow_lab_im_refresh_ind_mcap_label", ui, fixed = TRUE))
 check("UI CSS for refresh-ind-mcap", grepl("ynow-lab-im-refresh-ind-mcap", ui, fixed = TRUE))
+check("Refresh ranking button forces white text vs bluechip btn-default", {
+  # Theme .btn-default sets deep blue text; refresh button must win with white.
+  grepl(
+    paste0(
+      "btn.btn-default.ynow-lab-im-refresh-ind-mcap",
+      ".*",
+      "color: #fff !important"
+    ),
+    ui
+  ) && grepl(
+    paste0(
+      "ynow-lab-im-refresh-ind-mcap #ynow_lab_im_refresh_ind_mcap_label",
+      ".*",
+      "color: #fff !important"
+    ),
+    ui
+  )
+})
 check("applyUiLocale wires refresh label",
       grepl("ynow_lab_im_refresh_ind_mcap_label", ui, fixed = TRUE) &&
         grepl("btn_lab_im_refresh_ind_mcap", ui, fixed = TRUE))
@@ -118,16 +136,43 @@ built <- lab_industry_chain_mcap_upside_leaderboard(
 )
 agg <- built$aggregate
 tbl <- built$table
-n_picker <- length(unname(lab_industry_chain_picker_choices("zh-TW")))
-check("agg includes all picker chains", nrow(agg) == n_picker)
+picker_ids <- unname(lab_industry_chain_picker_choices("zh-TW"))
+n_picker <- length(picker_ids)
+n_rank <- sum(!vapply(picker_ids, lab_ind_mcap_is_unmapped_chain, logical(1)))
+check("agg includes all mapped picker chains", nrow(agg) == n_rank)
+check("agg excludes Unmapped", !"未對應" %in% agg$chain_id)
 check("半導體 in agg", "半導體" %in% agg$chain_id)
 check("金融 in agg", "金融" %in% agg$chain_id)
 # Semi wavg = (100*40+50*20)/150 = 33.333; Bank = 60 → Bank first among finite
 finite <- agg[is.finite(agg$wavg_cagr), , drop = FALSE]
 check("sorted finite first is 金融", identical(finite$chain_id[[1]], "金融"))
 check("table has 產業鏈 col", "產業鏈" %in% names(tbl))
-check("table nrow = all chains", nrow(tbl) == n_picker)
+check("table nrow = mapped chains", nrow(tbl) == n_rank)
 check("table ranks 1..n", identical(as.integer(tbl$排名), seq_len(nrow(tbl))))
+check("table labels exclude Unmapped",
+      !any(grepl("^Unmapped$|^未對應$", as.character(tbl[["產業鏈"]]), perl = TRUE)))
+
+# Explicit Unmapped rows in input must not create a rank row
+df_u <- rbind(
+  df,
+  .mk("U1", LAB_UNMAPPED_KEY, "未對應產業｜雜項", 99, 999)
+)
+built_u <- lab_industry_chain_mcap_upside_leaderboard(
+  df_u, locale = "zh-TW", include_all_chains = TRUE
+)
+check("unmapped ticker does not add Unmapped chain",
+      !"未對應" %in% built_u$aggregate$chain_id)
+check("format drops Unmapped even if present in frame", {
+  bad <- data.frame(
+    chain_id = c("半導體", "未對應", "金融"),
+    wavg_cagr = c(10, 50, 20),
+    total_mcap = c(1e9, 1e9, 1e9),
+    n_names = c(1L, 1L, 1L),
+    stringsAsFactors = FALSE
+  )
+  ft <- lab_format_ind_mcap_chain_table(bad, "zh-TW")
+  identical(nrow(ft), 2L) && !"未對應" %in% as.character(ft[["產業鏈"]])
+})
 
 # Snapshot round-trip
 td <- tempfile("ind_mcap_snap_")
@@ -142,9 +187,10 @@ res <- lab_build_ind_mcap_chain_snapshot(
   locale = "zh-TW", snapshot_at = "2026-10-12T00:00:00Z"
 )
 check("snapshot saved path", is.character(res$path) && file.exists(res$path))
-check("snapshot nrow all chains", nrow(res$snapshot) == n_picker)
+check("snapshot nrow mapped chains", nrow(res$snapshot) == n_rank)
+check("snapshot excludes Unmapped", !"未對應" %in% res$snapshot$chain_id)
 loaded <- lab_load_ind_mcap_chain_snapshot("US", force = TRUE)
-check("load snapshot nrow", nrow(loaded) == n_picker)
+check("load snapshot nrow", nrow(loaded) == n_rank)
 check("load snapshot_at attr",
       identical(as.character(attr(loaded, "snapshot_at")), "2026-10-12T00:00:00Z") ||
         identical(as.character(loaded$snapshot_at[[1]]), "2026-10-12T00:00:00Z"))
@@ -159,7 +205,8 @@ if (file.exists(bundled)) {
     rm(list = ls(envir = .lab_ind_mcap_chain_cache), envir = .lab_ind_mcap_chain_cache)
   }
   b <- lab_load_ind_mcap_chain_snapshot("US", force = TRUE)
-  check("bundled snapshot non-empty", is.data.frame(b) && nrow(b) >= 15L)
+  check("bundled snapshot non-empty", is.data.frame(b) && nrow(b) >= 14L)
+  check("bundled snapshot excludes Unmapped", !"未對應" %in% b$chain_id)
 } else {
   cat("INFO bundled ind_mcap_chain_rank_snapshot_US.csv not yet present\n")
 }
