@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12680577
+bundleId=12680627
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=319b4846ef03d9365d7163f316b82879bd2989d7
-commit=319b4846ef03d9365d7163f316b82879bd2989d7
-short=319b484
-message=fix: shorten Asset Transmission Root page title (v23.09)
-captured_at=2026-10-12T16:36:24Z
-display_version=v23.09
+aligned_git=060ab6c3c3f6e0c0f0f0f0f0f0f0f0f0f0f0f0f0
+commit=060ab6c3c3f6e0c0f0f0f0f0f0f0f0f0f0f0f0f0
+short=060ab6c
+message=feat: allow HTCDI expand in Lite mode (v23.10)
+captured_at=2026-10-12T16:47:05Z
+display_version=v23.10
