@@ -2,8 +2,8 @@
 
 **Role:** ITGC / QA automation inventory  
 **Scope:** Live line `app_23.0/` (display baseline per `scripts/DEPLOY_BASELINE.txt`)  
-**Phase:** 1–3 complete · **4 in progress** (Formula Accuracy Audit)  
-**Status:** Phase 2–3 scripts landed; Phase 4 `test_formula_accuracy.R`
+**Phase:** 1–4 complete · **5 complete** (Audit RCM Report)  
+**Status:** `scripts/run_audit.sh` → `Audit_RCM_Report.md`
 
 ---
 
@@ -162,33 +162,37 @@ Already under `app_23.0/tests/` (reuse in Phase 2–5; do not duplicate blindly)
 | Snapshots / lab | `test_lab_universe_metrics.R`, `test_lab_quality_snapshot.R`, `test_macro_bubble_indicators.R` |
 | Python pipeline | `test_valuation_pipeline.py` (standalone; not R-wired) |
 
-Framework in-repo: R `testthat`-style scripts (many are self-running `stopifnot` / custom runners), not yet a single `run_audit.sh` aggregator.
+Framework in-repo: standalone Rscript suites + Phase 5 aggregator `scripts/run_audit.sh` → `Audit_RCM_Report.md`.
 
 ---
 
-## 5. Suggested Phase 2–5 focus
+## 5. Phase 2–5 status
 
 | Phase | Candidate targets | Status |
 |---|---|---|
 | 2 Data integrity | Yahoo/TPEx shaped statements; summary quote fields; snapshot CSV schemas | **Done** — `test_data_integrity.R` |
 | 3 Parameter / boundary | `APP_DEFAULTS` lock; WACC−g; CapEx spike; g ceiling; ADR share unit; M-Score thresholds | **Done** — `test_parameters_boundaries.R` |
 | 4 Formula accuracy | DCF Gordon/2-stage; DDM; RI; F-Score 9 signals; Beneish 8 components; MOS; SGR; WACC | **Done** — `test_formula_accuracy.R` |
-| 5 RCM report | Aggregate existing `app_23.0/tests/` + new scripts → `Audit_RCM_Report.md` | Not started |
+| 5 RCM report | Aggregate suites → `Audit_RCM_Report.md` | **Done** — `scripts/run_audit.sh` |
 
 ---
 
-## 6. Phase 2–4 deliverables
+## 6. Phase 2–5 deliverables
 
 | Artifact | Role |
 |---|---|
 | `app_23.0/tests/test_data_integrity.R` | Completeness + Accuracy on data-flow entry points (offline / mock) |
 | `app_23.0/tests/test_parameters_boundaries.R` | Default lock + boundary fail-soft |
-| `app_23.0/tests/test_formula_accuracy.R` | Closed-form identities + 3 scenarios (base/bull/bear) for DCF·RI·MOS; F-Score 9-signal assert; Beneish 8-component + M hand calc |
+| `app_23.0/tests/test_formula_accuracy.R` | Closed-form + 3 scenarios; F-Score 9; Beneish 8 |
+| `scripts/run_audit.sh` | Runs Phase 2–4 suites; writes logs under `audit_logs/` |
+| `scripts/generate_audit_rcm.R` | Parses logs → Risk and Control Matrix markdown |
+| `Audit_RCM_Report.md` | Regenerated RCM (Audit Item / Target / Objective / Result / Findings) |
+| `.github/workflows/audit.yml` | Optional CI: run `scripts/run_audit.sh` on push/PR touching audit paths |
 
 ```bash
+bash scripts/run_audit.sh
+# or individual suites:
 cd app_23.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_data_integrity.R
 cd app_23.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_parameters_boundaries.R
 cd app_23.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_formula_accuracy.R
 ```
-
-Phase 5 (RCM report) not started.
