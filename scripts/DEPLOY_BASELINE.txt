@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12680097
+bundleId=12680133
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=527d388361963ee5955efa2f80000dc398dc120b
-commit=527d388361963ee5955efa2f80000dc398dc120b
-short=527d388
-message=Center and fluid-scale numerals in all KPI/value boxes (v23.04)
-captured_at=2026-10-12T14:31:48Z
-display_version=v23.04
+aligned_git=00960a6dbabd58b2d671b6ab468f1cc2027797ed
+commit=00960a6dbabd58b2d671b6ab468f1cc2027797ed
+short=00960a6
+message=Scale box text/values with clamp; restore original box sizes (v23.05)
+captured_at=2026-10-12T14:40:58Z
+display_version=v23.05
