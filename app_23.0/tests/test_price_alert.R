@@ -42,6 +42,11 @@ check("day change -4 hits lte -3", isTRUE(price_alert_condition_met("day_chg_lte
 check("fair MOS 20 hits at 80", isTRUE(price_alert_condition_met("below_fair", 100, 80, mos_pct = 20)))
 check("fair MOS 20 misses at 81", !isTRUE(price_alert_condition_met("below_fair", 100, 81, mos_pct = 20)))
 check("missing price is not a hit", !isTRUE(price_alert_condition_met("price_gte", 1, NA)))
+check("value_gte allows negative M-Score hit", isTRUE(price_alert_condition_met("value_gte", -1.78, -1.5)))
+check("value_lte F-Score hit", isTRUE(price_alert_condition_met("value_lte", 3, 2)))
+check("grade_lte D hits at D", isTRUE(price_alert_condition_met("grade_lte", 2, price_alert_grade_to_ord("D"))))
+check("grade_lte D misses at B", !isTRUE(price_alert_condition_met("grade_lte", 2, price_alert_grade_to_ord("B"))))
+check("grade ord A is 5", identical(price_alert_grade_to_ord("A"), 5))
 
 Sys.setenv(YNOW_ALERT_TO = "owner@example.com", YNOW_ALERT_ALLOWLIST = "")
 check("allowlist accepts owner", isTRUE(price_alert_email_allowed("Owner@Example.com")))
@@ -106,6 +111,7 @@ check("json round trip", identical(round$ticker[[1]], "ASML") && isTRUE(round$ar
 
 wrap <- ynow_alertable(tags$span("x"), metric = "last_price", ticker = "ASML", value = 10, ready = TRUE)
 check("alertable ready attr", identical(wrap$attribs$`data-ynow-alert-ready`, "1"))
+check("alertable has bell mark", grepl("ynow-alert-bell", as.character(wrap), fixed = TRUE))
 blocked_wrap <- ynow_alertable(tags$span("x"), metric = "last_price", ticker = "ASML", value = NA, ready = FALSE)
 check("alertable blocked when not ready", identical(blocked_wrap$attribs$`data-ynow-alert-ready`, "0"))
 
@@ -115,9 +121,12 @@ pa_keys <- en_keys[grepl("^pa_|^menu_price_alert$", en_keys)]
 check("zh has price-alert keys", all(pa_keys %in% zh_keys))
 need <- c(
   "pa_notify_app", "pa_notify_email", "pa_quick_not_ready", "pa_history_title",
-  "pa_col_channel", "pa_no_channel"
+  "pa_col_channel", "pa_no_channel", "pa_kind_value_gte", "pa_kind_grade_lte",
+  "pa_quick_channels", "pa_level_grade"
 )
 check("new i18n keys present", all(need %in% en_keys) && all(need %in% zh_keys))
+check("zh menu is 到值通知", identical(.UI_STRINGS$`zh-TW`$menu_price_alert, "到值通知"))
+check("en menu is Value Alerts", identical(.UI_STRINGS$en$menu_price_alert, "Value Alerts"))
 
 ui_txt <- paste(readLines("ynow_ui.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check("gesture JS wired", grepl("ynow_kpi_alert_open", ui_txt, fixed = TRUE))

@@ -704,7 +704,48 @@ server <- function(input, output, session) {
     current_ticker_rv = current_ticker
   )
 
-  price_alert_server(input, output, session, ui_locale_rv = ui_locale)
+  value_alert_metric_snapshot <- reactive({
+    tk <- tryCatch(toupper(trimws(as.character(current_ticker() %||% "")[1])), error = function(e) "")
+    if (!nzchar(tk)) return(NULL)
+    mets <- list()
+    # Price / FV / MOS from smart path
+    tryCatch({
+      px <- suppressWarnings(as.numeric(scraped_market_cap()$price)[1])
+      if (is.finite(px)) mets$last_price <- px
+    }, error = function(e) NULL)
+    tryCatch({
+      band <- primary_valuation_band()
+      base <- suppressWarnings(as.numeric(band$base)[1])
+      if (is.finite(base)) mets$fair_value <- base
+      sec <- suppressWarnings(as.numeric(secondary_valuation_point())[1])
+      if (is.finite(sec)) mets$fair_value_secondary <- sec
+      if (is.finite(base) && is.finite(px) && abs(base) > 0) {
+        mets$mos_pct <- (base - px) / abs(base) * 100
+        mets$ynow_mos_pct <- mets$mos_pct
+      }
+    }, error = function(e) NULL)
+    tryCatch({
+      b <- .summary_beta_value()
+      if (is.finite(b)) mets$summary_beta <- b
+    }, error = function(e) NULL)
+    tryCatch({
+      df <- summary_data()
+      if (!is.null(df) && "EPS (TTM)" %in% df$Item) {
+        eps <- suppressWarnings(as.numeric(gsub(
+          "[^0-9.eE+-]", "", as.character(df$Value[df$Item == "EPS (TTM)"][1])
+        ))[1])
+        if (is.finite(eps)) mets$eps_ttm <- eps
+      }
+    }, error = function(e) NULL)
+    out <- list()
+    out[[tk]] <- mets
+    out
+  })
+  price_alert_server(
+    input, output, session,
+    ui_locale_rv = ui_locale,
+    metric_snapshot_rv = value_alert_metric_snapshot
+  )
 
   # 語言控制：只改 UI locale，不碰顯示幣別；手動選擇鎖定後不再套用裝置預設
   observeEvent(input$ui_locale_pick, {
@@ -1855,16 +1896,35 @@ server <- function(input, output, session) {
     infoBox("Market Cap", val, icon = icon("globe"), color = "aqua")
   })
   
-  output$ibx_EPS <- renderInfoBox({
+  output$ibx_EPS <- renderUI({
     df <- summary_data()
     session_currency(); fx_usd_twd(); quote_currency()
+    loc <- ui_locale()
+    tk <- tryCatch(as.character(current_ticker() %||% "")[1], error = function(e) "")
+    raw <- if (!is.null(df) && "EPS (TTM)" %in% df$Item) {
+      df$Value[df$Item == "EPS (TTM)"][1]
+    } else {
+      NA
+    }
     val <- if (!is.null(df) && "EPS (TTM)" %in% df$Item) {
       convert_summary_value_display(
-        "EPS (TTM)", df$Value[df$Item == "EPS (TTM)"][1],
+        "EPS (TTM)", raw,
         quote_currency(), session_currency(), fx_usd_twd()
       )
-    } else "N/A"
-    infoBox("EPS (TTM)", val, icon = icon("dollar-sign"), color = "green")
+    } else {
+      "N/A"
+    }
+    eps_num <- suppressWarnings(as.numeric(gsub("[^0-9.eE+-]", "", as.character(raw)[1]))[1])
+    ready <- isTRUE(user_has_searched()) && is.finite(eps_num) && nzchar(tk) && !identical(val, "N/A")
+    ynow_alertable(
+      infoBox("EPS (TTM)", val, icon = icon("dollar-sign"), color = "green", width = NULL),
+      metric = "eps_ttm",
+      ticker = tk,
+      value = eps_num,
+      label = "EPS (TTM)",
+      ready = ready,
+      default_kind = "value_lte"
+    )
   })
   
   output$fs_summary_ui <- renderUI({
@@ -1890,7 +1950,9 @@ server <- function(input, output, session) {
     fp <- tryCatch(fundamental_profile_rec(), error = function(e) NULL)
     fp_id <- as.character(fp$profile %||% "")[1]
     focus_tip <- tryCatch(ui_str("kpi_legend_focus_metric"), error = function(e) "本財報屬性關鍵指標")
-    mk_card <- function(item, value, raw_item = item) {
+    tk_fs <- tryCatch(as.character(current_ticker() %||% "")[1], error = function(e) "")
+    searched_fs <- isTRUE(user_has_searched())
+    mk_card <- function(item, value, raw_item = item, raw_value = NA) {
       mid <- if (exists("fs_item_to_focus_metric", mode = "function")) {
         fs_item_to_focus_metric(raw_item)
       } else {
@@ -1899,12 +1961,23 @@ server <- function(input, output, session) {
       is_focus <- nzchar(fp_id) && !is.na(mid) &&
         exists("is_profile_focus_metric", mode = "function") &&
         isTRUE(is_profile_focus_metric(fp_id, mid))
-      tags$div(
+      card <- tags$div(
         class = paste(c("ynow-fs-card", if (is_focus) "ynow-focus-metric-box"), collapse = " "),
         title = if (is_focus) focus_tip else NULL,
         `aria-label` = if (is_focus) focus_tip else NULL,
         tags$div(class = "ynow-fs-label", item),
         tags$div(class = "ynow-fs-value", value)
+      )
+      if (!isTRUE(is_focus)) return(card)
+      num <- suppressWarnings(as.numeric(gsub("[^0-9.eE+-]", "", as.character(raw_value)[1]))[1])
+      ynow_alertable(
+        card,
+        metric = paste0("fund_focus_", as.character(mid)[1]),
+        ticker = tk_fs,
+        value = num,
+        label = paste(focus_tip, item, sep = " · "),
+        ready = searched_fs && is.finite(num) && nzchar(tk_fs),
+        default_kind = "value_lte"
       )
     }
 
@@ -1929,7 +2002,8 @@ server <- function(input, output, session) {
             mk_card(
               localize_summary_item_zh_tw(rows$Item[i], enabled = use_zh_fs),
               disp,
-              raw_item = rows$Item[i]
+              raw_item = rows$Item[i],
+              raw_value = rows$Value[i]
             )
           })
         )
@@ -3685,6 +3759,7 @@ server <- function(input, output, session) {
     confidence = reactive({ valuation_confidence() }),
     industry_key = reactive(input$industry_choice),
     ui_locale = ui_locale,
+    current_ticker = current_ticker,
     sop_verdict_gate = reactive({
       if (isTRUE(tryCatch(isolate(lite_mode()), error = function(e) FALSE))) {
         return(list(unlocked = TRUE, reason = "lite"))
@@ -3746,7 +3821,9 @@ server <- function(input, output, session) {
   kpi_module_server(
     "kpi", d_income_statement, d_balance_sheet, d_cash_flow,
     reactive(input$industry_choice),
-    fundamental_profile = fundamental_profile_rec
+    fundamental_profile = fundamental_profile_rec,
+    current_ticker = current_ticker,
+    user_has_searched = user_has_searched
   )
 
   # macro_market_server: first visit only (lazy_tabs); BBLab mounts with Company
@@ -5935,14 +6012,25 @@ server <- function(input, output, session) {
 
   .vbx_beta_summary_content <- function() {
     b <- .summary_beta_value()
-    valueBox(
-      if (is.finite(b)) round(b, 2) else "N/A",
-      "Summary β",
-      icon = icon("file-invoice"),
-      color = "green"
+    tk <- tryCatch(as.character(current_ticker() %||% "")[1], error = function(e) "")
+    ready <- isTRUE(user_has_searched()) && is.finite(b) && nzchar(tk)
+    ynow_alertable(
+      valueBox(
+        if (is.finite(b)) round(b, 2) else "N/A",
+        "Summary β",
+        icon = icon("file-invoice"),
+        color = "green",
+        width = NULL
+      ),
+      metric = "summary_beta",
+      ticker = tk,
+      value = b,
+      label = "Summary β",
+      ready = ready,
+      default_kind = "value_gte"
     )
   }
-  output$vbx_beta_summary <- renderValueBox({ .vbx_beta_summary_content() })
+  output$vbx_beta_summary <- renderUI({ .vbx_beta_summary_content() })
 
   .vbx_beta_industry_content <- function() {
     b <- .industry_beta_value()
@@ -8977,31 +9065,44 @@ server <- function(input, output, session) {
         default_kind = "below_fair",
         fair_value = base
       ),
-      tags$div(
-        class = "ynow-smart-card",
-        tags$p(class = "ynow-smart-card-kicker", ui_str("smart_secondary_kicker", loc)),
-        tags$p(
-          class = "ynow-smart-card-title",
+      ynow_alertable(
+        tags$div(
+          class = "ynow-smart-card",
+          tags$p(class = "ynow-smart-card-kicker", ui_str("smart_secondary_kicker", loc)),
+          tags$p(
+            class = "ynow-smart-card-title",
+            if (nzchar(sec) && !identical(sec, "multiples")) .model_label(sec) else "—"
+          ),
+          tags$p(
+            class = "ynow-smart-card-value",
+            if (nzchar(sec) && !identical(sec, "multiples")) fmt_px(sec_pt) else "—"
+          ),
+          tags$p(
+            class = "ynow-smart-card-meta",
+            {
+              ref <- as.character(rec$reference %||% "")[1]
+              bits <- character(0)
+              if (nzchar(sec) && !identical(sec, "multiples")) {
+                bits <- c(bits, ui_str("composite_secondary_check", loc))
+              }
+              if (identical(ref, "multiples")) {
+                bits <- c(bits, ui_str("smart_reference_kicker", loc))
+              }
+              paste(bits, collapse = " · ")
+            }
+          )
+        ),
+        metric = "fair_value_secondary",
+        ticker = tk,
+        value = sec_pt,
+        label = paste(
+          ui_str("smart_secondary_kicker", loc),
           if (nzchar(sec) && !identical(sec, "multiples")) .model_label(sec) else "—"
         ),
-        tags$p(
-          class = "ynow-smart-card-value",
-          if (nzchar(sec) && !identical(sec, "multiples")) fmt_px(sec_pt) else "—"
-        ),
-        tags$p(
-          class = "ynow-smart-card-meta",
-          {
-            ref <- as.character(rec$reference %||% "")[1]
-            bits <- character(0)
-            if (nzchar(sec) && !identical(sec, "multiples")) {
-              bits <- c(bits, ui_str("composite_secondary_check", loc))
-            }
-            if (identical(ref, "multiples")) {
-              bits <- c(bits, ui_str("smart_reference_kicker", loc))
-            }
-            paste(bits, collapse = " · ")
-          }
-        )
+        ready = searched && nzchar(sec) && !identical(sec, "multiples") &&
+          is.finite(sec_pt) && sec_pt > 0,
+        default_kind = "below_fair",
+        fair_value = sec_pt
       ),
       ynow_alertable(
         tags$div(

@@ -874,7 +874,8 @@ beneish_m_score_widget_ui <- function(pack, locale = "zh-TW") {
 }
 
 #' Quality of Earnings dashboard UI (shown before absolute statement focus).
-earnings_quality_dashboard_ui <- function(pack, locale = "zh-TW") {
+#' @param alert_ticker optional ticker for 到值通知 on Grade
+earnings_quality_dashboard_ui <- function(pack, locale = "zh-TW", alert_ticker = "") {
   en <- identical(as.character(locale)[1], "en")
   if (is.null(pack) || !isTRUE(pack$ok)) {
     return(tags$div(
@@ -894,6 +895,11 @@ earnings_quality_dashboard_ui <- function(pack, locale = "zh-TW") {
   grade <- pack$qoe_grade
   flag <- .eq_localize_flag(pack$qoe_flag, locale)
   flag_cls <- .eq_status_class(pack$qoe_flag)
+  grade_ord <- if (exists("price_alert_grade_to_ord", mode = "function")) {
+    price_alert_grade_to_ord(grade)
+  } else {
+    NA_real_
+  }
 
   fmt_pct <- function(x) {
     if (!.eq_finite(x)) return("—")
@@ -963,15 +969,31 @@ earnings_quality_dashboard_ui <- function(pack, locale = "zh-TW") {
     ),
     tags$div(
       class = "ynow-eq-scorecard",
-      tags$div(
-        class = paste("ynow-eq-score-pill", flag_cls),
-        tags$div(class = "ynow-eq-score-num", if (.eq_finite(score)) as.character(score) else "—"),
-        tags$div(
-          class = "ynow-eq-score-meta",
-          tags$span(class = "ynow-eq-grade", paste0("Grade ", grade)),
-          tags$span(class = paste("ynow-eq-flag", flag_cls), flag)
+      {
+        pill <- tags$div(
+          class = paste("ynow-eq-score-pill", flag_cls),
+          tags$div(class = "ynow-eq-score-num", if (.eq_finite(score)) as.character(score) else "—"),
+          tags$div(
+            class = "ynow-eq-score-meta",
+            tags$span(class = "ynow-eq-grade", paste0("Grade ", grade)),
+            tags$span(class = paste("ynow-eq-flag", flag_cls), flag)
+          )
         )
-      ),
+        tk <- as.character(alert_ticker %||% "")[1]
+        if (exists("ynow_alertable", mode = "function") && is.finite(grade_ord) && nzchar(tk)) {
+          ynow_alertable(
+            pill,
+            metric = "qoe_grade",
+            ticker = tk,
+            value = grade_ord,
+            label = if (en) "Quality of Earnings Grade" else "盈餘品質 Grade",
+            ready = TRUE,
+            default_kind = "grade_lte"
+          )
+        } else {
+          pill
+        }
+      },
       tags$div(
         class = "ynow-eq-kpis",
         tags$div(
