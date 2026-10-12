@@ -13839,7 +13839,7 @@ ui <- dashboardPage(
                      
                      tabPanel("Balance Sheet",
                               p("This section imports Balance Sheets from Yahoo Finance"),
-                              plotlyOutput("bs_plot", height = "380px"),
+                              uiOutput("bs_equity_charts_ui"),
                               tags$hr(),
                               DT::dataTableOutput("tbBalanceSheet"),
                               downloadButton('BS_download', "Download Balance Sheet")

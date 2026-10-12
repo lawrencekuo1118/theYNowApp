@@ -243,6 +243,8 @@
   "Volume" = "成交量",
   "Avg. Volume" = "平均成交量",
   "Market Cap (intraday)" = "市值（盤中）",
+  "Shares Outstanding" = "流通在外股數",
+  "Implied Shares Outstanding" = "約當流通股數（含其他類別）",
   "Beta (5Y Monthly)" = "Beta（五年月資料）",
   "PE Ratio (TTM)" = "本益比（TTM）",
   "EPS (TTM)" = "每股盈餘（TTM）",

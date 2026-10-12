@@ -424,6 +424,8 @@ def get_summary_quote(ticker="AMZN"):
         ("Volume", _fmt_num(info.get("volume"), digits=0)),
         ("Avg. Volume", _fmt_num(info.get("averageVolume"), digits=0)),
         ("Market Cap (intraday)", _fmt_num(info.get("marketCap"), digits=0)),
+        ("Shares Outstanding", _fmt_num(info.get("sharesOutstanding"), digits=0)),
+        ("Implied Shares Outstanding", _fmt_num(info.get("impliedSharesOutstanding"), digits=0)),
         ("Beta (5Y Monthly)", _fmt_num(info.get("beta"))),
         ("PE Ratio (TTM)", _fmt_num(info.get("trailingPE"))),
         ("EPS (TTM)", _fmt_num(info.get("trailingEps"))),
