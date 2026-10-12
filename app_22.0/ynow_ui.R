@@ -1908,21 +1908,24 @@ beta_rolling_section_ui <- function() {
               fluidRow(
                 box(
                   width = 12, status = "primary", solidHeader = TRUE,
-                  title = tags$span(id = "ynow_lab_im_query_title", "查詢條件"),
-                  tags$div(
-                    class = "ynow-lab-im-universe-row",
-                    uiOutput("lab_im_universe_meta"),
+                  title = tags$div(
+                    class = "ynow-lab-im-query-title-row",
+                    tags$span(id = "ynow_lab_im_query_title", "查詢條件"),
                     actionButton(
                       "lab_im_refresh_universe",
                       tags$span(id = "ynow_lab_im_refresh_label", "更新名單"),
                       icon = icon("sync"),
-                      class = "btn-default btn-sm",
+                      class = "btn-default btn-sm ynow-lab-im-refresh-in-title",
                       title = paste0(
                         "重新擷取目前市場的成分／上市／上櫃／興櫃名單，",
                         "並為目前篩選池寫入盈餘品質、Piotroski F-Score 與財報警訊數。",
                         "24 小時內已更新的代號沿用既有快照。"
                       )
                     )
+                  ),
+                  tags$div(
+                    class = "ynow-lab-im-universe-row",
+                    uiOutput("lab_im_universe_meta")
                   ),
                   fluidRow(
                     column(
@@ -10113,6 +10116,41 @@ ui <- dashboardPage(
           color: #222222;
         }
 
+        /* Blue Chip：查詢條件標題橫幅右側 — 更新名單 */
+        .box-header > .box-title:has(.ynow-lab-im-query-title-row) {
+          display: block;
+          float: none;
+          width: 100%;
+        }
+        .ynow-lab-im-query-title-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          width: 100%;
+        }
+        .ynow-lab-im-query-title-row > #ynow_lab_im_query_title {
+          flex: 1 1 auto;
+          min-width: 0;
+        }
+        .ynow-lab-im-query-title-row > .btn.ynow-lab-im-refresh-in-title,
+        .ynow-lab-im-refresh-in-title {
+          flex: 0 0 auto;
+          white-space: nowrap;
+          margin: 0;
+          padding: 2px 10px;
+          font-size: 12px;
+          line-height: 1.35;
+          background: rgba(255, 255, 255, 0.14) !important;
+          border: 1px solid rgba(255, 255, 255, 0.55) !important;
+          color: #fff !important;
+        }
+        .ynow-lab-im-query-title-row > .btn.ynow-lab-im-refresh-in-title:hover,
+        .ynow-lab-im-refresh-in-title:hover {
+          background: rgba(255, 255, 255, 0.26) !important;
+          border-color: rgba(255, 255, 255, 0.75) !important;
+          color: #fff !important;
+        }
         /* Blue Chip：美股績優篩選（對齊 Dashboard FINANCIAL REPORT：tabBox + 查詢條件／內容 box） */
         .ynow-lab-im-universe-row {
           display: flex;
@@ -10126,12 +10164,6 @@ ui <- dashboardPage(
         .ynow-lab-im-universe-row .ynow-lab-im-universe-meta {
           flex: 1 1 auto;
           min-width: 0;
-        }
-        .ynow-lab-im-universe-row .btn {
-          flex: 0 0 auto;
-          white-space: nowrap;
-          padding: 3px 10px;
-          font-size: 12px;
         }
         .ynow-lab-im-muted {
           color: #888;

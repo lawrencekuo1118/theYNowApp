@@ -74,6 +74,15 @@ ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = 
 check("UI query title id", grepl("ynow_lab_im_query_title", ui, fixed = TRUE))
 check("UI eval hint id", grepl("ynow_lab_im_eval_hint", ui, fixed = TRUE))
 check("UI refresh label id", grepl("ynow_lab_im_refresh_label", ui, fixed = TRUE))
+check("refresh button in query title row", {
+  # Scope to the box title= block so CSS class names later in the file do not confuse order checks.
+  m <- regexpr(
+    "title\\s*=\\s*tags\\$div\\(\\s*class\\s*=\\s*\"ynow-lab-im-query-title-row\"[\\s\\S]{0,1200}?lab_im_refresh_universe",
+    ui,
+    perl = TRUE
+  )
+  isTRUE(m > 0L) && grepl("ynow-lab-im-refresh-in-title", ui, fixed = TRUE)
+})
 check("applyUiLocale download", grepl("btn_lab_im_download", ui, fixed = TRUE))
 check("applyUiLocale query title", grepl("lab_im_query_title", ui, fixed = TRUE))
 
