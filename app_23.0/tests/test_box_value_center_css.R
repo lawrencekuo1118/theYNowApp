@@ -34,7 +34,7 @@ check("global value >> label clamps", grepl("clamp(18px, 2.6vw + 0.45rem, 36px)"
 check("header kpi cols col-xs-4", grepl('class = "ynow-header-kpi-row"', ui, fixed = TRUE) &&
         length(gregexpr('class = "col-xs-4"', ui, fixed = TRUE)[[1]]) >= 3L)
 check("header kpi mobile 1:1:1", grepl("LAST PRICE / MARKET CAP / EPS (TTM) 同列 1:1:1", ui, fixed = TRUE) &&
-        grepl("ynow-header-kpi-row > [class*='col-']", ui, fixed = TRUE) &&
+        grepl('ynow-header-kpi-row > [class*="col-"]', ui, fixed = TRUE) &&
         grepl("33.333%", ui, fixed = TRUE))
 check("mobile full-width excludes header kpi row", grepl("row:not(.ynow-header-kpi-row)", ui, fixed = TRUE))
 if (fail > 0L) quit(status = 1L)
