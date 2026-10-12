@@ -954,8 +954,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_ind_mcap_badge = "Default ranking",
     lab_im_ind_mcap_help = paste0(
       "Lists every industry chain (Semiconductors / Technology / Financials …) sorted by ",
-      "Σ(market cap × annualized upside) / Σ(market cap). ",
-      "The first completed run is the default snapshot; press Refresh ranking (top-right) for the latest. ",
+      "Σ(market cap × annualized upside) / Σ(market cap) among evaluated names. ",
+      "Total market cap / Names = all tickers in that chain (full universe, not the eval Top-N). ",
+      "Unmapped is excluded. Refresh ranking saves the new table as the next default. ",
       "Applies the Piotroski, earnings-quality, and No FS alerts gates from the query filters."
     ),
     lab_im_ind_mcap_waiting = paste0(
@@ -3866,8 +3867,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_ind_mcap_title = "產業市值加權漲幅",
     lab_im_ind_mcap_badge = "預設排名",
     lab_im_ind_mcap_help = paste0(
-      "顯示全部產業鏈（半導體／科技／金融…）並依 Σ(市值×年化估值漲幅)/Σ(市值) 排序。",
-      "首次完整運算結果作為預設；之後按右上「更新排名」重算最新版。",
+      "顯示全部產業鏈（半導體／科技／金融…），排序用評估樣本的 ",
+      "Σ(市值×年化估值漲幅)/Σ(市值)；總市值／檔數＝該產業鏈全宇宙個股（非 Top-N 評估樣本）。",
+      "排除未對應。按「更新排名」後會寫入為下次預設。",
       "套用查詢條件之 Piotroski、盈餘品質、無財報警訊門檻。"
     ),
     lab_im_ind_mcap_waiting = paste0(

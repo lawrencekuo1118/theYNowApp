@@ -3028,6 +3028,65 @@ lab_ind_mcap_drop_unmapped_chains <- function(df) {
   out
 }
 
+#' Per-chain universe market-cap totals (ALL names in catalog, not eval sample).
+#' Unmapped／未對應 chains are dropped (same rule as the upside board).
+lab_chain_mcap_universe_totals <- function(universe_df) {
+  empty <- data.frame(
+    chain_id = character(0),
+    total_mcap = numeric(0),
+    n_names = integer(0),
+    stringsAsFactors = FALSE
+  )
+  if (is.null(universe_df) || !is.data.frame(universe_df) || nrow(universe_df) < 1L) {
+    return(empty)
+  }
+  df <- universe_df
+  if (!"market_cap" %in% names(df) ||
+      !any(is.finite(suppressWarnings(as.numeric(df$market_cap))) &
+             suppressWarnings(as.numeric(df$market_cap)) > 0, na.rm = TRUE)) {
+    if (exists("lab_attach_market_caps", mode = "function")) {
+      df <- tryCatch(lab_attach_market_caps(df), error = function(e) df)
+    }
+  }
+  mcap <- suppressWarnings(as.numeric(df$market_cap))
+  ok <- is.finite(mcap) & mcap > 0
+  df <- df[ok, , drop = FALSE]
+  mcap <- mcap[ok]
+  if (!nrow(df)) return(empty)
+  chain_ids <- if ("industry_key" %in% names(df) &&
+                   exists("industry_chain_id", mode = "function")) {
+    vapply(as.character(df$industry_key), function(k) {
+      cid <- tryCatch(industry_chain_id(k), error = function(e) "")
+      as.character(cid %||% "")[1]
+    }, character(1))
+  } else if ("chain_id" %in% names(df)) {
+    as.character(df$chain_id)
+  } else {
+    rep("", nrow(df))
+  }
+  miss <- is.na(chain_ids) | !nzchar(chain_ids)
+  if (any(miss) && "industry_label" %in% names(df)) {
+    chain_ids[miss] <- as.character(df$industry_label[miss])
+  }
+  keep <- !vapply(chain_ids, lab_ind_mcap_is_unmapped_chain, logical(1))
+  df <- df[keep, , drop = FALSE]
+  mcap <- mcap[keep]
+  chain_ids <- chain_ids[keep]
+  if (!nrow(df)) return(empty)
+  keys <- unique(chain_ids)
+  rows <- lapply(keys, function(k) {
+    hit <- which(chain_ids == k)
+    data.frame(
+      chain_id = k,
+      total_mcap = sum(mcap[hit]),
+      n_names = length(hit),
+      stringsAsFactors = FALSE
+    )
+  })
+  out <- do.call(rbind, rows)
+  lab_ind_mcap_drop_unmapped_chains(out)
+}
+
 #' Format raw chain snapshot / aggregate rows into the DT display table.
 lab_format_ind_mcap_chain_table <- function(agg_df, locale = "zh-TW") {
   empty <- data.frame(
@@ -3101,12 +3160,14 @@ lab_format_ind_mcap_chain_table <- function(agg_df, locale = "zh-TW") {
 #' All industry chains ranked by mcap-weighted annualized valuation upside.
 #' Includes every mapped chain from the picker (missing data → — / NA), sorted by
 #' wavg desc. Unmapped（未對應）is excluded from ranking and display.
+#' @param universe_df Full catalog/universe for 總市值／檔數 (all names, not eval sample).
 lab_industry_chain_mcap_upside_leaderboard <- function(merged_df,
                                                       eq_only = FALSE,
                                                       gate_only = FALSE,
                                                       no_alert = FALSE,
                                                       locale = "zh-TW",
-                                                      include_all_chains = TRUE) {
+                                                      include_all_chains = TRUE,
+                                                      universe_df = NULL) {
   loc <- if (exists("normalize_ui_locale", mode = "function")) {
     normalize_ui_locale(locale)
   } else {
@@ -3186,12 +3247,56 @@ lab_industry_chain_mcap_upside_leaderboard <- function(merged_df,
           data.frame(
             chain_id = k,
             wavg_cagr = sum(w * u) / sum(w),
+            # Placeholder — overwritten by full-universe totals below
             total_mcap = sum(w),
             n_names = length(hit),
             stringsAsFactors = FALSE
           )
         })
         agg <- do.call(rbind, rows)
+      }
+    }
+  }
+
+  # 總市值／檔數 = ALL names in the chain universe (not eval / Top-N sample)
+  uni_src <- if (is.data.frame(universe_df) && nrow(universe_df) > 0L) {
+    universe_df
+  } else {
+    NULL
+  }
+  totals <- tryCatch(
+    lab_chain_mcap_universe_totals(uni_src),
+    error = function(e) NULL
+  )
+  if (is.data.frame(totals) && nrow(totals) > 0L) {
+    if (!nrow(agg)) {
+      agg <- data.frame(
+        chain_id = totals$chain_id,
+        wavg_cagr = NA_real_,
+        total_mcap = totals$total_mcap,
+        n_names = as.integer(totals$n_names),
+        stringsAsFactors = FALSE
+      )
+    } else {
+      idx <- match(agg$chain_id, totals$chain_id)
+      hit <- which(is.finite(idx))
+      if (length(hit)) {
+        agg$total_mcap[hit] <- totals$total_mcap[idx[hit]]
+        agg$n_names[hit] <- as.integer(totals$n_names[idx[hit]])
+      }
+      extra <- setdiff(totals$chain_id, agg$chain_id)
+      if (length(extra)) {
+        j <- match(extra, totals$chain_id)
+        agg <- rbind(
+          agg,
+          data.frame(
+            chain_id = totals$chain_id[j],
+            wavg_cagr = NA_real_,
+            total_mcap = totals$total_mcap[j],
+            n_names = as.integer(totals$n_names[j]),
+            stringsAsFactors = FALSE
+          )
+        )
       }
     }
   }
@@ -3235,13 +3340,15 @@ lab_industry_chain_mcap_upside_leaderboard <- function(merged_df,
 }
 
 #' Build / refresh chain-rank snapshot from a merged evaluated frame.
+#' @param universe_df Full catalog for 總市值 (all chain names).
 lab_build_ind_mcap_chain_snapshot <- function(merged_df,
                                              market = "US",
                                              eq_only = FALSE,
                                              gate_only = FALSE,
                                              no_alert = FALSE,
                                              locale = "zh-TW",
-                                             snapshot_at = NULL) {
+                                             snapshot_at = NULL,
+                                             universe_df = NULL) {
   mm <- tryCatch(
     normalize_market_mode(market),
     error = function(e) toupper(trimws(as.character(market %||% "US")[1]))
@@ -3253,7 +3360,8 @@ lab_build_ind_mcap_chain_snapshot <- function(merged_df,
     gate_only = gate_only,
     no_alert = no_alert,
     locale = locale,
-    include_all_chains = TRUE
+    include_all_chains = TRUE,
+    universe_df = universe_df
   )
   agg <- built$aggregate
   if (!is.data.frame(agg) || nrow(agg) == 0L) {

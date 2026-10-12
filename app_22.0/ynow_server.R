@@ -13468,7 +13468,9 @@ server <- function(input, output, session) {
         eq_only = eq_on,
         gate_only = gate_on,
         no_alert = no_alert_on,
-        locale = locale
+        locale = locale,
+        # 總市值 = 全宇宙該產業鏈個股（非評估樣本／Top-N）
+        universe_df = catlg
       ),
       error = function(e) NULL
     )
@@ -13520,7 +13522,8 @@ server <- function(input, output, session) {
             gate_only = gate_on,
             no_alert = no_alert_on,
             locale = loc,
-            include_all_chains = TRUE
+            include_all_chains = TRUE,
+            universe_df = catlg
           ),
           error = function(e) NULL
         )
