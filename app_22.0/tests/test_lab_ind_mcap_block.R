@@ -28,7 +28,8 @@ source(file.path(app_dir, "ui_locale.R"), local = FALSE)
 
 keys <- c(
   "lab_im_ind_mcap_title", "lab_im_ind_mcap_badge", "lab_im_ind_mcap_help",
-  "lab_im_ind_mcap_waiting", "lab_im_ind_mcap_empty", "lab_im_ind_mcap_status"
+  "lab_im_ind_mcap_waiting", "lab_im_ind_mcap_empty", "lab_im_ind_mcap_status",
+  "btn_lab_im_refresh_ind_mcap", "lab_im_refresh_ind_mcap_title"
 )
 for (k in keys) {
   check(paste("en key", k), k %in% names(.UI_STRINGS$en) && nzchar(ui_str(k, "en")))
@@ -76,16 +77,17 @@ check("sidebar bluechip auto-start defers via later after flush",
         grepl("lab_im_auto_start_armed", srv, fixed = TRUE) &&
         grepl("session$onFlushed(function()", srv, fixed = TRUE) &&
         grepl("delay = 0.05", srv, fixed = TRUE))
-check("waiting copy mentions opening Leaderboard (en)",
-      grepl("Opening Blue Chip Leaderboard", ui_str("lab_im_ind_mcap_waiting", "en"), fixed = TRUE) &&
-        !grepl("Run Search Blue Chips to auto-build", ui_str("lab_im_ind_mcap_waiting", "en"), fixed = TRUE))
-check("waiting copy mentions 側邊欄 (zh-TW)",
-      grepl("側邊欄「績優股排行榜」", ui_str("lab_im_ind_mcap_waiting", "zh-TW"), fixed = TRUE) &&
+check("waiting copy mentions Refresh ranking (en)",
+      grepl("Refresh ranking", ui_str("lab_im_ind_mcap_waiting", "en"), fixed = TRUE))
+check("waiting copy mentions 更新排名 (zh-TW)",
+      grepl("更新排名", ui_str("lab_im_ind_mcap_waiting", "zh-TW"), fixed = TRUE) &&
         !grepl("请按", ui_str("lab_im_ind_mcap_waiting", "zh-TW"), fixed = TRUE))
-check("help mentions open Leaderboard (en)",
-      grepl("Opening Blue Chip Leaderboard", ui_str("lab_im_ind_mcap_help", "en"), fixed = TRUE))
-check("help mentions 開啟側邊欄 (zh-TW)",
-      grepl("開啟側邊欄「績優股排行榜」", ui_str("lab_im_ind_mcap_help", "zh-TW"), fixed = TRUE))
+check("help mentions industry chain (en)",
+      grepl("industry chain", ui_str("lab_im_ind_mcap_help", "en"), ignore.case = TRUE))
+check("help mentions 全部產業鏈 (zh-TW)",
+      grepl("全部產業鏈", ui_str("lab_im_ind_mcap_help", "zh-TW"), fixed = TRUE))
+check("UI has Refresh ranking button", grepl("lab_im_refresh_ind_mcap", ui, fixed = TRUE))
+check("server refresh observeEvent", grepl("lab_im_refresh_ind_mcap", srv, fixed = TRUE))
 
 cat("\nPASS ", pass, "  FAIL ", fail, "\n", sep = "")
 if (fail > 0L) quit(status = 1L)

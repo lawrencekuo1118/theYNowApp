@@ -1852,24 +1852,38 @@ beta_rolling_section_ui <- function() {
                 class = "ynow-lab-im-ind-mcap-block",
                 style = "margin: 0 0 16px 0; padding: 12px 14px; border: 1px solid #e5e5e5; border-radius: 4px; background: #fafafa;",
                 tags$div(
-                  style = "display:flex; flex-wrap:wrap; align-items:baseline; gap:8px; margin:0 0 6px 0;",
-                  tags$h4(
-                    id = "ynow_lab_im_ind_mcap_title",
-                    style = "margin:0; font-size:15px; font-weight:600;",
-                    "產業市值加權漲幅"
+                  class = "ynow-lab-im-ind-mcap-title-row",
+                  tags$div(
+                    class = "ynow-lab-im-ind-mcap-title-left",
+                    tags$h4(
+                      id = "ynow_lab_im_ind_mcap_title",
+                      style = "margin:0; font-size:15px; font-weight:600;",
+                      "產業市值加權漲幅"
+                    ),
+                    tags$span(
+                      id = "ynow_lab_im_ind_mcap_badge",
+                      style = "font-size:11px; color:#888;",
+                      "預設排名"
+                    )
                   ),
-                  tags$span(
-                    id = "ynow_lab_im_ind_mcap_badge",
-                    style = "font-size:11px; color:#888;",
-                    "自動運算"
+                  actionButton(
+                    "lab_im_refresh_ind_mcap",
+                    tags$span(id = "ynow_lab_im_refresh_ind_mcap_label", "更新排名"),
+                    icon = icon("sync"),
+                    class = "btn-default btn-sm ynow-lab-im-refresh-ind-mcap",
+                    title = paste0(
+                      "重新評估並計算全部產業鏈的市值加權年化估值漲幅排名；",
+                      "完成後寫入預設快照，供之後開啟時直接顯示。"
+                    )
                   )
                 ),
                 tags$div(
                   id = "ynow_lab_im_ind_mcap_help",
                   style = "color:#888; font-size:12px; line-height:1.45; margin:0 0 8px 0;",
                   paste0(
-                    "搜尋績優股後自動依本次已評估結果，以 Σ(市值×年化估值漲幅)/Σ(市值) ",
-                    "列出產業排序（每元市值加權；套用上方／查詢條件之 Piotroski、盈餘品質、無財報警訊門檻）。"
+                    "顯示全部產業鏈（半導體／科技／金融…）並依 Σ(市值×年化估值漲幅)/Σ(市值) 排序。",
+                    "首次完整運算結果作為預設；之後按右上「更新排名」重算最新版。",
+                    "套用查詢條件之 Piotroski、盈餘品質、無財報警訊門檻。"
                   )
                 ),
                 uiOutput("lab_im_ind_mcap_status"),
@@ -1978,7 +1992,7 @@ beta_rolling_section_ui <- function() {
                         "整體前十名：跨本次已評估產業依年化估值漲幅取 Top 10，並顯示產業欄。",
                         "選定產業前十名：所選產業內單一 Top 10；產業內排名自該產業第 1 名起算（非跨產業流水號）。",
                         "價值低估前十名：跨產業依推薦主模型合理價相對市價的總潛在漲幅（非年化）由大到小；只列仍被低估者。",
-                        "產業市值加權漲幅已移至上方獨立區塊（搜尋後自動運算）。",
+                        "產業市值加權漲幅（全部產業鏈）在上方獨立區塊（預設快照；按「更新排名」可重算）。",
                         "前十名只從合格者取最多 10 檔；合格不足 10 時不會湊滿。"
                       )
                     )
@@ -8630,6 +8644,14 @@ ui <- dashboardPage(
             if (labIndMcapBadge && s.lab_im_ind_mcap_badge) labIndMcapBadge.textContent = s.lab_im_ind_mcap_badge;
             var labIndMcapHelp = document.getElementById('ynow_lab_im_ind_mcap_help');
             if (labIndMcapHelp && s.lab_im_ind_mcap_help) labIndMcapHelp.textContent = s.lab_im_ind_mcap_help;
+            var labIndMcapRefreshLabel = document.getElementById('ynow_lab_im_refresh_ind_mcap_label');
+            if (labIndMcapRefreshLabel && s.btn_lab_im_refresh_ind_mcap) {
+              labIndMcapRefreshLabel.textContent = s.btn_lab_im_refresh_ind_mcap;
+            }
+            var labIndMcapRefreshBtn = document.getElementById('lab_im_refresh_ind_mcap');
+            if (labIndMcapRefreshBtn && s.lab_im_refresh_ind_mcap_title) {
+              labIndMcapRefreshBtn.setAttribute('title', s.lab_im_refresh_ind_mcap_title);
+            }
             var labBoardsLabel = document.getElementById('ynow_lab_im_boards_label');
             if (labBoardsLabel && s.lab_im_boards_label) labBoardsLabel.textContent = s.lab_im_boards_label;
             var labBoardTwse = document.getElementById('ynow_lab_im_board_twse');
@@ -10215,6 +10237,43 @@ ui <- dashboardPage(
         .ynow-lab-im-refresh-in-title:hover {
           background: rgba(255, 255, 255, 0.26) !important;
           border-color: rgba(255, 255, 255, 0.75) !important;
+          color: #fff !important;
+        }
+
+        /* Blue Chip：產業市值加權漲幅標題列右側 — 更新排名 */
+        .ynow-lab-im-ind-mcap-title-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          width: 100%;
+          margin: 0 0 6px 0;
+          flex-wrap: wrap;
+        }
+        .ynow-lab-im-ind-mcap-title-left {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: baseline;
+          gap: 8px;
+          flex: 1 1 auto;
+          min-width: 0;
+        }
+        .ynow-lab-im-ind-mcap-title-row > .btn.ynow-lab-im-refresh-ind-mcap,
+        .ynow-lab-im-refresh-ind-mcap {
+          flex: 0 0 auto;
+          white-space: nowrap;
+          margin: 0;
+          padding: 2px 10px;
+          font-size: 12px;
+          line-height: 1.35;
+          background: #0C5484 !important;
+          border: 1px solid #0C5484 !important;
+          color: #fff !important;
+        }
+        .ynow-lab-im-ind-mcap-title-row > .btn.ynow-lab-im-refresh-ind-mcap:hover,
+        .ynow-lab-im-refresh-ind-mcap:hover {
+          background: #0a4570 !important;
+          border-color: #0a4570 !important;
           color: #fff !important;
         }
         /* Blue Chip：美股績優篩選（對齊 Dashboard FINANCIAL REPORT：tabBox + 查詢條件／內容 box） */

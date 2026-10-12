@@ -111,6 +111,14 @@ server <- function(input, output, session) {
   # Pulse + busy flag: Search Blue Chips button and Blue Chip Leaderboard tab share one runner.
   lab_im_run_pulse <- reactiveVal(0L)
   lab_im_eval_busy <- reactiveVal(FALSE)
+  # Industry-chain mcap rank: bundled/default snapshot; refreshed by「更新排名」
+  lab_im_ind_mcap_snap <- reactiveVal({
+    tryCatch(
+      lab_load_ind_mcap_chain_snapshot("US"),
+      error = function(e) lab_ind_mcap_chain_snapshot_empty()
+    )
+  })
+  lab_im_ind_mcap_refresh_armed <- reactiveVal(FALSE)
   # Armed once when sidebar auto-start schedules deferred eval (avoids double
   # schedule when after_mount bumps lazy_mount_nonce).
   lab_im_auto_start_armed <- reactiveVal(FALSE)
@@ -13370,71 +13378,189 @@ server <- function(input, output, session) {
     }
   }, ignoreInit = FALSE)
 
-  # Dedicated industry mcap-weighted board (above Candidate truncate; auto after search)
-  .lab_im_ind_mcap_board <- reactive({
-    scores <- lab_im_scores()
-    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
-    empty <- list(
-      table = NULL,
-      n_show = 0L,
-      n_qual = 0L,
-      n_eval = 0L,
-      waiting = TRUE,
-      loc = loc
-    )
-    if (is.null(scores) || !is.data.frame(scores) || nrow(scores) == 0) {
-      return(empty)
-    }
+  # Dedicated industry-chain mcap-weighted board (default snapshot; Refresh ranking)
+  .lab_im_persist_ind_mcap_from_scores <- function(scores, market = "US", locale = "zh-TW") {
+    if (is.null(scores) || !is.data.frame(scores) || nrow(scores) < 1L) return(NULL)
     catlg <- tryCatch(lab_im_catalog(), error = function(e) NULL)
     lb_src <- tryCatch({
       if (is.data.frame(catlg) && nrow(catlg) > 0) {
         lab_merge_catalog_scores(
           catlg,
           scores = scores,
-          method_filter = input$lab_im_methods,
+          method_filter = character(0),
           industry_filter = character(0),
           eq_only = FALSE,
           gate_only = FALSE,
           evaluated_only = TRUE
         )
       } else {
-        lab_im_merged()
+        scores
       }
-    }, error = function(e) NULL)
-    if (is.null(lb_src) || !is.data.frame(lb_src) || nrow(lb_src) == 0) {
-      empty$waiting <- FALSE
-      empty$n_eval <- nrow(scores)
-      return(empty)
-    }
-    gate_on <- isTRUE(input$lab_im_gate_only)
-    eq_on <- isTRUE(input$lab_im_eq_only)
-    no_alert_on <- isTRUE(input$lab_im_no_alert)
-    pool <- tryCatch(
-      lab_leaderboard_pool(
-        lb_src, eq_only = eq_on, gate_only = gate_on, no_alert = no_alert_on
-      ),
-      error = function(e) NULL
-    )
-    tbl <- tryCatch(
-      lab_industry_mcap_upside_leaderboard(
+    }, error = function(e) scores)
+    gate_on <- isTRUE(isolate(input$lab_im_gate_only))
+    eq_on <- isTRUE(isolate(input$lab_im_eq_only))
+    no_alert_on <- isTRUE(isolate(input$lab_im_no_alert))
+    built <- tryCatch(
+      lab_build_ind_mcap_chain_snapshot(
         lb_src,
-        top_n = 500L,
+        market = market,
         eq_only = eq_on,
         gate_only = gate_on,
         no_alert = no_alert_on,
-        industry_filter = character(0),
-        locale = loc
+        locale = locale
       ),
       error = function(e) NULL
     )
+    if (is.null(built) || !is.data.frame(built$snapshot)) return(NULL)
+    lab_im_ind_mcap_snap(built$snapshot)
+    built
+  }
+
+  .lab_im_ind_mcap_board <- reactive({
+    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+    scores <- lab_im_scores()
+    snap <- lab_im_ind_mcap_snap()
+    n_chains_all <- tryCatch({
+      length(unname(lab_industry_chain_picker_choices(loc)))
+    }, error = function(e) 0L)
+
+    # Live recompute when session has scores (keeps gates reactive)
+    if (is.data.frame(scores) && nrow(scores) > 0L) {
+      catlg <- tryCatch(lab_im_catalog(), error = function(e) NULL)
+      lb_src <- tryCatch({
+        if (is.data.frame(catlg) && nrow(catlg) > 0) {
+          lab_merge_catalog_scores(
+            catlg,
+            scores = scores,
+            method_filter = input$lab_im_methods,
+            industry_filter = character(0),
+            eq_only = FALSE,
+            gate_only = FALSE,
+            evaluated_only = TRUE
+          )
+        } else {
+          lab_im_merged()
+        }
+      }, error = function(e) NULL)
+      if (is.data.frame(lb_src) && nrow(lb_src) > 0L) {
+        gate_on <- isTRUE(input$lab_im_gate_only)
+        eq_on <- isTRUE(input$lab_im_eq_only)
+        no_alert_on <- isTRUE(input$lab_im_no_alert)
+        pool <- tryCatch(
+          lab_leaderboard_pool(
+            lb_src, eq_only = eq_on, gate_only = gate_on, no_alert = no_alert_on
+          ),
+          error = function(e) NULL
+        )
+        built <- tryCatch(
+          lab_industry_chain_mcap_upside_leaderboard(
+            lb_src,
+            eq_only = eq_on,
+            gate_only = gate_on,
+            no_alert = no_alert_on,
+            locale = loc,
+            include_all_chains = TRUE
+          ),
+          error = function(e) NULL
+        )
+        tbl <- if (!is.null(built)) built$table else NULL
+        return(list(
+          table = tbl,
+          n_show = if (is.data.frame(tbl)) nrow(tbl) else 0L,
+          n_chains_all = as.integer(n_chains_all),
+          n_qual = if (is.data.frame(pool)) nrow(pool) else 0L,
+          n_eval = nrow(lb_src),
+          waiting = FALSE,
+          from_snapshot = FALSE,
+          snapshot_at = NA_character_,
+          loc = loc
+        ))
+      }
+    }
+
+    # Default: bundled / prior「更新排名」snapshot (all chains sorted)
+    if (is.data.frame(snap) && nrow(snap) > 0L) {
+      tbl <- tryCatch(
+        lab_format_ind_mcap_chain_table(snap, loc),
+        error = function(e) NULL
+      )
+      snap_at <- tryCatch(
+        as.character(attr(snap, "snapshot_at") %||% snap$snapshot_at[[1]] %||% ""),
+        error = function(e) ""
+      )
+      return(list(
+        table = tbl,
+        n_show = if (is.data.frame(tbl)) nrow(tbl) else nrow(snap),
+        n_chains_all = max(as.integer(n_chains_all), nrow(snap)),
+        n_qual = NA_integer_,
+        n_eval = NA_integer_,
+        waiting = FALSE,
+        from_snapshot = TRUE,
+        snapshot_at = snap_at,
+        loc = loc
+      ))
+    }
+
     list(
-      table = tbl,
-      n_show = if (is.data.frame(tbl)) nrow(tbl) else 0L,
-      n_qual = if (is.data.frame(pool)) nrow(pool) else 0L,
-      n_eval = nrow(lb_src),
-      waiting = FALSE,
+      table = NULL,
+      n_show = 0L,
+      n_chains_all = as.integer(n_chains_all),
+      n_qual = 0L,
+      n_eval = 0L,
+      waiting = TRUE,
+      from_snapshot = FALSE,
+      snapshot_at = NA_character_,
       loc = loc
     )
+  })
+
+  # Reload default snapshot when market switches
+  observeEvent(market_mode(), {
+    mm <- tryCatch(normalize_market_mode(market_mode()), error = function(e) "US")
+    snap <- tryCatch(
+      lab_load_ind_mcap_chain_snapshot(mm, force = TRUE),
+      error = function(e) lab_ind_mcap_chain_snapshot_empty()
+    )
+    lab_im_ind_mcap_snap(snap)
+  }, ignoreInit = TRUE)
+
+  # After a Blue Chip search completes, persist chain ranking as the new default
+  observeEvent(lab_im_scores(), {
+    scores <- lab_im_scores()
+    if (is.null(scores) || !is.data.frame(scores) || nrow(scores) < 1L) return()
+    mm <- tryCatch(normalize_market_mode(market_mode()), error = function(e) "US")
+    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+    built <- .lab_im_persist_ind_mcap_from_scores(scores, market = mm, locale = loc)
+    if (isTRUE(isolate(lab_im_ind_mcap_refresh_armed()))) {
+      lab_im_ind_mcap_refresh_armed(FALSE)
+      n_ch <- if (!is.null(built) && is.data.frame(built$snapshot)) nrow(built$snapshot) else 0L
+      showNotification(
+        tryCatch(
+          sprintf(ui_str("lab_im_ind_mcap_refresh_done", loc), as.integer(n_ch)),
+          error = function(e) sprintf("已更新產業鏈排名（%d 條）。", as.integer(n_ch))
+        ),
+        type = "message",
+        duration = 6
+      )
+    }
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$lab_im_refresh_ind_mcap, {
+    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+    if (isTRUE(isolate(lab_im_eval_busy()))) {
+      showNotification(
+        tryCatch(
+          ui_str("lab_im_ind_mcap_refresh_busy", loc),
+          error = function(e) "產業鏈排名更新進行中…"
+        ),
+        type = "warning",
+        duration = 5
+      )
+      return()
+    }
+    # Always re-run the shared Blue Chip evaluator (latest scores → new default snapshot)
+    lab_im_ind_mcap_refresh_armed(TRUE)
+    lab_im_run_pulse(isolate(as.integer(lab_im_run_pulse()) %||% 0L) + 1L)
   })
 
   output$lab_im_ind_mcap_status <- renderUI({
@@ -13444,18 +13570,40 @@ server <- function(input, output, session) {
       return(tags$p(
         style = "color:#888; font-size:12.5px; margin:0 0 8px 0;",
         tryCatch(ui_str("lab_im_ind_mcap_waiting", loc),
-                 error = function(e) "尚未評估。請按「搜尋績優股」後自動產生產業排序清單。")
+                 error = function(e) "尚無預設排名。請按「更新排名」。")
       ))
+    }
+    if (isTRUE(board$from_snapshot)) {
+      at <- as.character(board$snapshot_at %||% "")[1]
+      at_bit <- if (nzchar(at) && !is.na(at)) {
+        tryCatch(
+          sprintf(ui_str("lab_im_ind_mcap_snap_at", loc), at),
+          error = function(e) sprintf("（資料時間 %s）", at)
+        )
+      } else {
+        ""
+      }
+      txt <- tryCatch(
+        sprintf(
+          ui_str("lab_im_ind_mcap_status_snap", loc),
+          as.integer(board$n_show), at_bit
+        ),
+        error = function(e) sprintf(
+          "預設排名：%d 條產業鏈%s。按「更新排名」可重算最新版。",
+          as.integer(board$n_show), at_bit
+        )
+      )
+      return(tags$p(style = "color:#555; font-size:12.5px; margin:0 0 8px 0;", txt))
     }
     if (!is.finite(board$n_show) || board$n_show < 1L) {
       txt <- tryCatch(
         sprintf(
           ui_str("lab_im_ind_mcap_empty", loc),
-          as.integer(board$n_qual), as.integer(board$n_eval)
+          as.integer(board$n_qual %||% 0L), as.integer(board$n_eval %||% 0L)
         ),
         error = function(e) sprintf(
-          "尚無產業列可顯示（合格檔 %d／已評估 %d）。",
-          as.integer(board$n_qual), as.integer(board$n_eval)
+          "尚無產業鏈列可顯示（合格檔 %d／已評估 %d）。",
+          as.integer(board$n_qual %||% 0L), as.integer(board$n_eval %||% 0L)
         )
       )
       return(tags$p(style = "color:#888; font-size:12.5px; margin:0 0 8px 0;", txt))
@@ -13463,11 +13611,17 @@ server <- function(input, output, session) {
     txt <- tryCatch(
       sprintf(
         ui_str("lab_im_ind_mcap_status", loc),
-        as.integer(board$n_show), as.integer(board$n_qual), as.integer(board$n_eval)
+        as.integer(board$n_show),
+        as.integer(board$n_chains_all %||% board$n_show),
+        as.integer(board$n_qual %||% 0L),
+        as.integer(board$n_eval %||% 0L)
       ),
       error = function(e) sprintf(
-        "顯示 %d 個產業（合格檔 %d／已評估 %d）。",
-        as.integer(board$n_show), as.integer(board$n_qual), as.integer(board$n_eval)
+        "顯示 %d／%d 條產業鏈（合格檔 %d／已評估 %d）。",
+        as.integer(board$n_show),
+        as.integer(board$n_chains_all %||% board$n_show),
+        as.integer(board$n_qual %||% 0L),
+        as.integer(board$n_eval %||% 0L)
       )
     )
     tags$p(style = "color:#555; font-size:12.5px; margin:0 0 8px 0;", txt)
@@ -13479,7 +13633,7 @@ server <- function(input, output, session) {
     msg_col <- if (identical(loc, "en")) "Message" else "訊息"
     if (isTRUE(board$waiting)) {
       msg <- tryCatch(ui_str("lab_im_ind_mcap_waiting", loc),
-                      error = function(e) "尚未評估。請按「搜尋績優股」後自動產生產業排序清單。")
+                      error = function(e) "尚無預設排名。請按「更新排名」。")
       return(ynow_sortable_datatable(
         stats::setNames(data.frame(msg, stringsAsFactors = FALSE), msg_col)
       ))
@@ -13489,9 +13643,9 @@ server <- function(input, output, session) {
       msg <- tryCatch(
         sprintf(
           ui_str("lab_im_ind_mcap_empty", loc),
-          as.integer(board$n_qual), as.integer(board$n_eval)
+          as.integer(board$n_qual %||% 0L), as.integer(board$n_eval %||% 0L)
         ),
-        error = function(e) "尚無產業列可顯示。"
+        error = function(e) "尚無產業鏈列可顯示。"
       )
       return(ynow_sortable_datatable(
         stats::setNames(data.frame(msg, stringsAsFactors = FALSE), msg_col)
