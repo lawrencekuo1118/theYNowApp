@@ -28,7 +28,6 @@ if (!exists("%||%", mode = "function")) {
 
 source(file.path(app_dir, "ui_locale.R"), local = FALSE)
 source(file.path(app_dir, "setup.R"), local = FALSE)
-source(file.path(app_dir, "default_config.R"), local = FALSE)
 source(file.path(app_dir, "industry_standards.R"), local = FALSE)
 source(file.path(app_dir, "lab_industry_method.R"), local = FALSE)
 
