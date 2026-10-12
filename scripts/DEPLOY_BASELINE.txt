@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12680732
+bundleId=12680748
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=01d4d7acfb61592633756ba62ed2c9830cda6b76
-commit=01d4d7acfb61592633756ba62ed2c9830cda6b76
-short=01d4d7a
-message=fix: refuse Gordon-blocked DCF as Fair Value primary (v23.12)
-captured_at=2026-10-12T17:14:01Z
-display_version=v23.12
+aligned_git=8be62f21fbe7ca58a50ccdd8b60490a36f077a0f
+commit=8be62f21fbe7ca58a50ccdd8b60490a36f077a0f
+short=8be62f2
+message=chore: bump display version to v23.13
+captured_at=2026-10-12T17:20:41Z
+display_version=v23.13
