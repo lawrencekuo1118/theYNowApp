@@ -16,7 +16,7 @@
       return(sub('^"version"\\s*:\\s*"([^"]+)".*$', "\\1", m[[1]]))
     }
   }
-  "v22.09"
+  "v23.01"
 }
 .YNOW_BUILD_VERSION <- .ynow_read_build_version()
 
@@ -229,7 +229,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v22.09) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+          "The YNow App (v23.01) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
         ),
         tags$p(
           class = "ynow-about-method",
@@ -248,7 +248,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v22.09) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
+          "The YNow App (v23.01) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
         ),
         tags$p(
           class = "ynow-about-method",
@@ -350,7 +350,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App（簡化版）")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite（v22.09）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
+          "The YNow App Lite（v23.01）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
           "以自動判別主／副模型與預設參數完成試算，讓使用者先看到合理價區間與產業 KPI，再決定是否回到完整版深入調整。"
         ),
         tags$p(
@@ -367,7 +367,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App (Lite)")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite (v22.09) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
+          "The YNow App Lite (v23.01) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
           "auto-selects primary/secondary models with App defaults, and surfaces fair-value ranges plus industry KPIs before you open Full for deeper calibration."
         ),
         tags$p(
@@ -3411,9 +3411,9 @@ ui <- dashboardPage(
                   'data-ynow-build="', .YNOW_BUILD_VERSION, '" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v22.09</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v23.01</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v22.09</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v23.01</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -5853,6 +5853,15 @@ ui <- dashboardPage(
           flex-wrap: wrap;
           gap: 12px;
           margin: 0 0 14px 0;
+        }
+        .ynow-smart-card-row > .ynow-alertable {
+          flex: 1 1 220px;
+          min-width: 0;
+        }
+        .ynow-smart-card-row > .ynow-alertable .ynow-smart-card {
+          flex: none;
+          width: 100%;
+          height: 100%;
         }
         .ynow-smart-card {
           flex: 1 1 220px;
@@ -9574,6 +9583,113 @@ ui <- dashboardPage(
           registerParamAuditPdfHandler();
         })();
       ")),
+
+      # KPI value-alert: right-click / long-press → quick set (blocked when not ready)
+      tags$style(HTML("
+        .ynow-alertable {
+          position: relative;
+          -webkit-touch-callout: none;
+        }
+        .ynow-alertable--ready {
+          cursor: context-menu;
+        }
+        .ynow-alertable--ready:hover {
+          box-shadow: 0 0 0 1px rgba(12, 84, 132, 0.25);
+        }
+        .ynow-alertable--blocked {
+          cursor: not-allowed;
+        }
+        .ynow-alertable--blocked::after {
+          content: '';
+          pointer-events: none;
+        }
+      ")),
+      tags$script(HTML("
+        (function () {
+          var LONG_MS = 520;
+          var timer = null;
+          var startX = 0;
+          var startY = 0;
+          var moved = false;
+
+          function closestAlertable(el) {
+            if (!el || !el.closest) return null;
+            return el.closest('[data-ynow-alert=\"1\"]');
+          }
+
+          function payloadFrom(el) {
+            if (!el) return null;
+            return {
+              ready: el.getAttribute('data-ynow-alert-ready') || '0',
+              metric: el.getAttribute('data-ynow-alert-metric') || '',
+              ticker: el.getAttribute('data-ynow-alert-ticker') || '',
+              value: el.getAttribute('data-ynow-alert-value') || '',
+              label: el.getAttribute('data-ynow-alert-label') || '',
+              kind: el.getAttribute('data-ynow-alert-kind') || 'price_gte',
+              fair: el.getAttribute('data-ynow-alert-fair') || '',
+              nonce: Date.now()
+            };
+          }
+
+          function openOrBlock(el) {
+            var payload = payloadFrom(el);
+            if (!payload) return;
+            if (!(window.Shiny && Shiny.setInputValue)) return;
+            if (payload.ready !== '1' || !payload.value) {
+              Shiny.setInputValue('ynow_kpi_alert_blocked', payload, {priority: 'event'});
+              return;
+            }
+            Shiny.setInputValue('ynow_kpi_alert_open', payload, {priority: 'event'});
+          }
+
+          document.addEventListener('contextmenu', function (ev) {
+            var el = closestAlertable(ev.target);
+            if (!el) return;
+            ev.preventDefault();
+            openOrBlock(el);
+          }, true);
+
+          document.addEventListener('touchstart', function (ev) {
+            var el = closestAlertable(ev.target);
+            if (!el) return;
+            if (!ev.touches || !ev.touches.length) return;
+            moved = false;
+            startX = ev.touches[0].clientX;
+            startY = ev.touches[0].clientY;
+            timer = setTimeout(function () {
+              timer = null;
+              if (moved) return;
+              openOrBlock(el);
+            }, LONG_MS);
+          }, {passive: true, capture: true});
+
+          document.addEventListener('touchmove', function (ev) {
+            if (!timer) return;
+            if (!ev.touches || !ev.touches.length) return;
+            var dx = Math.abs(ev.touches[0].clientX - startX);
+            var dy = Math.abs(ev.touches[0].clientY - startY);
+            if (dx > 12 || dy > 12) {
+              moved = true;
+              clearTimeout(timer);
+              timer = null;
+            }
+          }, {passive: true, capture: true});
+
+          document.addEventListener('touchend', function () {
+            if (timer) {
+              clearTimeout(timer);
+              timer = null;
+            }
+          }, {passive: true, capture: true});
+
+          document.addEventListener('touchcancel', function () {
+            if (timer) {
+              clearTimeout(timer);
+              timer = null;
+            }
+          }, {passive: true, capture: true});
+        })();
+      ")),
       
       tags$style(HTML("
         .selectize-dropdown-content {
@@ -13271,7 +13387,7 @@ ui <- dashboardPage(
         column(
           width = 4,
           class = "col-xs-12",
-          infoBoxOutput("ibx_stockprice", width = NULL)
+          uiOutput("ibx_stockprice")
         ),
         column(
           width = 4,
@@ -13723,7 +13839,7 @@ ui <- dashboardPage(
                      
                      tabPanel("Balance Sheet",
                               p("This section imports Balance Sheets from Yahoo Finance"),
-                              plotlyOutput("bs_plot", height = "380px"),
+                              uiOutput("bs_equity_charts_ui"),
                               tags$hr(),
                               DT::dataTableOutput("tbBalanceSheet"),
                               downloadButton('BS_download', "Download Balance Sheet")

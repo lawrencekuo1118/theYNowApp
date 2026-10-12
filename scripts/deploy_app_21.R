@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
-# Deploy the live app directory (app_22.0) → shinyapps.io TheYNowApp
-# YNOW_VERSION_BUMP_MAJOR=1 ships the next whole version (v21.91 -> v22.00).
+# Deploy the live app directory (app_23.0) → shinyapps.io TheYNowApp
+# YNOW_VERSION_BUMP_MAJOR=1 ships the next whole version (v22.09 -> v23.00).
 #
 # Credentials (either):
 #   SHINYAPPS_ACCOUNT / SHINYAPPS_TOKEN / SHINYAPPS_SECRET

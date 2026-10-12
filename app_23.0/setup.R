@@ -795,6 +795,143 @@ extract_quote_price_mcap <- function(summary_df) {
   list(price = price, market_cap = market_cap)
 }
 
+#' Parse a numeric Summary Item (Shares Outstanding, etc.).
+extract_summary_number <- function(summary_df, item_pattern) {
+  if (is.null(summary_df) || !is.data.frame(summary_df) || nrow(summary_df) < 1) {
+    return(NA_real_)
+  }
+  if (!("Item" %in% names(summary_df)) || !("Value" %in% names(summary_df))) {
+    return(NA_real_)
+  }
+  hit <- summary_df[grepl(item_pattern, summary_df$Item, ignore.case = TRUE), , drop = FALSE]
+  if (nrow(hit) < 1) return(NA_real_)
+  parse_financial_number(hit$Value[1])[1]
+}
+
+#' Known dual-class tickers: listed class vs other classes (voting nature).
+#' Labels are locale keys consumed by equity_structure_slices(locale=).
+.DUAL_CLASS_SHARE_KEYS <- list(
+  GOOGL = list(listed = "eq_pie_class_a_voting", other = "eq_pie_other_nonvoting"),
+  GOOG  = list(listed = "eq_pie_class_c_nonvoting", other = "eq_pie_other_voting"),
+  "BRK-A" = list(listed = "eq_pie_class_a_voting", other = "eq_pie_class_b"),
+  "BRK-B" = list(listed = "eq_pie_class_b", other = "eq_pie_class_a_voting"),
+  META  = list(listed = "eq_pie_class_a_voting", other = "eq_pie_class_b_supervote"),
+  FB    = list(listed = "eq_pie_class_a_voting", other = "eq_pie_class_b_supervote")
+)
+
+#' Build equity-structure slices by share nature when distinguishable.
+#' Priority: (1) Ordinary vs Preferred share counts, (2) dual-class listed vs other,
+#' (3) Common vs Preferred book equity (+ Minority Interest).
+#' @return data.frame(label, value, unit, color) or NULL if < 2 slices
+equity_structure_slices <- function(bs_df, summary_df = NULL, ticker = "",
+                                    locale = "en", label_fn = NULL) {
+  lab <- function(key, fallback) {
+    if (is.function(label_fn)) {
+      out <- tryCatch(label_fn(key), error = function(e) NULL)
+      if (!is.null(out) && nzchar(as.character(out)[1])) return(as.character(out)[1])
+    }
+    if (exists("ui_str", mode = "function")) {
+      out <- tryCatch(ui_str(key, locale), error = function(e) NULL)
+      if (!is.null(out) && nzchar(as.character(out)[1]) && !identical(out, key)) {
+        return(as.character(out)[1])
+      }
+    }
+    fallback
+  }
+  .metric <- function(patterns) {
+    tryCatch(
+      select_current_metric_any(bs_df, patterns, "stock"),
+      error = function(e) NA_real_
+    )
+  }
+  if (is.null(bs_df) || !is.data.frame(bs_df) || nrow(bs_df) < 1) return(NULL)
+
+  ordinary_n <- .metric(c("^Ordinary Shares Number$", "Ordinary Shares Number"))
+  preferred_n <- .metric(c("^Preferred Shares Number$", "Preferred Shares Number"))
+  common_eq <- .metric(c("^Common Stock Equity$", "Common Stock Equity"))
+  preferred_eq <- .metric(c(
+    "^Preferred Stock Equity$", "Preferred Stock Equity",
+    "^Preferred Stock$", "Preferred Stock"
+  ))
+  minority <- .metric(c("^Minority Interest$", "Minority Interest"))
+
+  # (1) Share counts: Ordinary vs Preferred
+  if (is.finite(ordinary_n) && ordinary_n > 0 &&
+      is.finite(preferred_n) && preferred_n > 0) {
+    return(data.frame(
+      label = c(
+        lab("eq_pie_ordinary_voting", "Ordinary (typically voting)"),
+        lab("eq_pie_preferred_limited", "Preferred (typically limited / non-voting)")
+      ),
+      value = c(ordinary_n, preferred_n),
+      unit = "shares",
+      color = c("#0C5484", "#E67E22"),
+      stringsAsFactors = FALSE
+    ))
+  }
+
+  # (2) Dual-class / multi-class via listed vs total economic shares
+  listed <- extract_summary_number(summary_df, "^Shares Outstanding$")
+  implied <- extract_summary_number(summary_df, "^Implied Shares Outstanding$")
+  if (!is.finite(listed) || listed <= 0) {
+    qm <- extract_quote_price_mcap(summary_df)
+    if (is.finite(qm$market_cap) && is.finite(qm$price) && qm$price > 0) {
+      listed <- qm$market_cap / qm$price
+    }
+  }
+  total_econ <- if (is.finite(implied) && implied > 0) implied else ordinary_n
+  if (is.finite(listed) && listed > 0 && is.finite(total_econ) && total_econ > 0) {
+    other <- total_econ - listed
+    # Material other class (≥8% of total) and listed not already ≈ total
+    if (other > total_econ * 0.08 && listed < total_econ * 0.92) {
+      tk <- toupper(trimws(as.character(ticker)[1]))
+      keys <- .DUAL_CLASS_SHARE_KEYS[[tk]]
+      listed_lab <- if (!is.null(keys)) {
+        lab(keys$listed, "Listed share class")
+      } else {
+        lab("eq_pie_listed_class", "Listed share class")
+      }
+      other_lab <- if (!is.null(keys)) {
+        lab(keys$other, "Other share classes")
+      } else {
+        lab("eq_pie_other_classes", "Other share classes")
+      }
+      return(data.frame(
+        label = c(listed_lab, other_lab),
+        value = c(listed, other),
+        unit = "shares",
+        color = c("#0C5484", "#8B1A1A"),
+        stringsAsFactors = FALSE
+      ))
+    }
+  }
+
+  # (3) Book equity: Common vs Preferred (+ Minority Interest)
+  # Only when Preferred book equity is present (share-nature signal).
+  if (is.finite(preferred_eq) && preferred_eq > 0 &&
+      is.finite(common_eq) && common_eq > 0) {
+    labels <- c(
+      lab("eq_pie_common_equity", "Common equity"),
+      lab("eq_pie_preferred_equity", "Preferred equity (typically limited / non-voting)")
+    )
+    values <- c(common_eq, preferred_eq)
+    colors <- c("#0C5484", "#E67E22")
+    if (is.finite(minority) && minority > 0) {
+      labels <- c(labels, lab("eq_pie_minority", "Minority interest"))
+      values <- c(values, minority)
+      colors <- c(colors, "#7f8c8d")
+    }
+    return(data.frame(
+      label = labels,
+      value = values,
+      unit = "currency",
+      color = colors,
+      stringsAsFactors = FALSE
+    ))
+  }
+  NULL
+}
+
 #' 解析適配「目前報價股」的流通股數（雙重股權／ADR 級距）
 #' 財報 Ordinary Shares 常為當地普通股；ADR 報價股數 = 市值÷ADR 價。
 #' price 與 market_cap 必須同一幣別（請用 extract_quote_price_mcap）。

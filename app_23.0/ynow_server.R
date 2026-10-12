@@ -1793,10 +1793,11 @@ server <- function(input, output, session) {
     industry_standard_metric_chips_ui(input$industry_choice)
   })
   
-  output$ibx_stockprice <- renderInfoBox({
+  output$ibx_stockprice <- renderUI({
     df <- summary_data()
     loc <- ui_locale()
     session_currency(); fx_usd_twd(); quote_currency()
+    tk <- tryCatch(as.character(current_ticker() %||% "")[1], error = function(e) "")
     items <- if (!is.null(df) && is.data.frame(df)) as.character(df$Item) else character()
     pick_nm <- NA_character_
     pick_raw <- NA_character_
@@ -1818,12 +1819,26 @@ server <- function(input, output, session) {
     } else {
       "N/A"
     }
-    prev_raw <- if ("Previous Close" %in% items) as.character(df$Value[items == "Previous Close"][1])[1] else ""
-    infoBox(
-      ui_str("kpi_last_price", loc),
-      val,
-      icon = icon("chart-line"),
-      color = "purple"
+    px_num <- suppressWarnings(as.numeric(tryCatch(scraped_market_cap()$price, error = function(e) NA_real_))[1])
+    if (!is.finite(px_num) && !is.na(pick_raw)) {
+      px_num <- suppressWarnings(as.numeric(gsub("[^0-9.eE+-]", "", as.character(pick_raw)[1]))[1])
+    }
+    ready <- isTRUE(user_has_searched()) && is.finite(px_num) && px_num > 0 &&
+      nzchar(tk) && !identical(val, "N/A")
+    ynow_alertable(
+      infoBox(
+        ui_str("kpi_last_price", loc),
+        val,
+        icon = icon("chart-line"),
+        color = "purple",
+        width = NULL
+      ),
+      metric = "last_price",
+      ticker = tk,
+      value = px_num,
+      label = ui_str("kpi_last_price", loc),
+      ready = ready,
+      default_kind = "price_lte"
     )
   })
   
@@ -3209,11 +3224,38 @@ server <- function(input, output, session) {
   # 📈 Balance Sheet 圓餅圖（資產／負債／權益）
   # 會計恆等式：Assets = Liabilities + Equity
   # 甜甜圈顯示負債／權益佔總資產比例；中心標註總資產
+  # 旁側：若可區分股份性質，顯示股權結構圓餅圖
   # ==========================================
+  .eq_structure_slices_now <- reactive({
+    ui_locale()
+    bs <- tryCatch(d_balance_sheet(), error = function(e) NULL)
+    sum_df <- tryCatch(summary_data(), error = function(e) NULL)
+    tk <- tryCatch(as.character(current_ticker() %||% "")[1], error = function(e) "")
+    loc <- tryCatch(ui_locale(), error = function(e) "en")
+    equity_structure_slices(bs, sum_df, ticker = tk, locale = loc)
+  })
+
+  output$bs_equity_charts_ui <- renderUI({
+    ui_locale()
+    slices <- tryCatch(.eq_structure_slices_now(), error = function(e) NULL)
+    has_eq <- is.data.frame(slices) && nrow(slices) >= 2L
+    if (isTRUE(has_eq)) {
+      fluidRow(
+        column(6, plotlyOutput("bs_plot", height = "380px")),
+        column(6, plotlyOutput("eq_structure_plot", height = "380px"))
+      )
+    } else {
+      plotlyOutput("bs_plot", height = "380px")
+    }
+  })
+
   output$bs_plot <- renderPlotly({
     tk <- current_ticker()
-    empty_title <- paste0(if (is.null(tk) || !nzchar(tk)) "Balance Sheet" else tk,
-                          " - 資產／負債／權益 (無資料)")
+    loc <- tryCatch(ui_locale(), error = function(e) "en")
+    empty_title <- paste0(
+      if (is.null(tk) || !nzchar(tk)) "Balance Sheet" else tk, " - ",
+      ui_str("bs_pie_empty", loc)
+    )
     bs <- tryCatch(d_balance_sheet(), error = function(e) NULL)
     if (is.null(bs) || !is.data.frame(bs) || nrow(bs) == 0) {
       return(plotly::plotly_empty() %>% plotly::layout(title = empty_title))
@@ -3251,7 +3293,7 @@ server <- function(input, output, session) {
       if (length(parts) > 0) assets <- sum(parts)
     }
 
-    labels <- c("負債 Liabilities", "權益 Equity")
+    labels <- c(ui_str("bs_pie_liabilities", loc), ui_str("bs_pie_equity", loc))
     values <- c(liabilities, equity)
     colors <- c("#dd4b39", "#00a65a")
     keep <- is.finite(values) & values > 0
@@ -3269,13 +3311,13 @@ server <- function(input, output, session) {
     plot_df$Pct <- plot_df$Value / assets * 100
     plot_df$Hover <- paste0(
       "<b>", plot_df$Category, "</b><br>",
-      "金額: <b>", format_dollar_abbr(plot_df$Value), "</b><br>",
-      "佔總資產: <b>", sprintf("%.1f%%", plot_df$Pct), "</b><br>",
-      "總資產 Assets: <b>", format_dollar_abbr(assets), "</b>"
+      ui_str("bs_pie_hover_amount", loc), ": <b>", format_dollar_abbr(plot_df$Value), "</b><br>",
+      ui_str("bs_pie_hover_pct_assets", loc), ": <b>", sprintf("%.1f%%", plot_df$Pct), "</b><br>",
+      ui_str("bs_pie_hover_total_assets", loc), ": <b>", format_dollar_abbr(assets), "</b>"
     )
 
     center_txt <- paste0(
-      "總資產<br><b>", format_dollar_abbr(assets), "</b>"
+      ui_str("bs_pie_center_assets", loc), "<br><b>", format_dollar_abbr(assets), "</b>"
     )
 
     plotly::plot_ly(
@@ -3293,7 +3335,7 @@ server <- function(input, output, session) {
     ) %>%
       plotly::layout(
         title = list(
-          text = paste0(tk %||% "", " - 資產負債結構（資產／負債／權益）"),
+          text = paste0(tk %||% "", " - ", ui_str("bs_pie_title", loc)),
           font = list(size = 15, color = "#2c3e50")
         ),
         showlegend = TRUE,
@@ -3302,6 +3344,61 @@ server <- function(input, output, session) {
         annotations = list(
           list(
             text = center_txt,
+            x = 0.5, y = 0.5,
+            xref = "paper", yref = "paper",
+            showarrow = FALSE,
+            font = list(size = 13, color = "#2c3e50"),
+            align = "center"
+          )
+        )
+      ) %>%
+      plotly::config(displayModeBar = FALSE)
+  })
+
+  output$eq_structure_plot <- renderPlotly({
+    tk <- current_ticker()
+    loc <- tryCatch(ui_locale(), error = function(e) "en")
+    slices <- tryCatch(.eq_structure_slices_now(), error = function(e) NULL)
+    if (!is.data.frame(slices) || nrow(slices) < 2L) {
+      return(plotly::plotly_empty())
+    }
+    total <- sum(slices$value, na.rm = TRUE)
+    unit <- as.character(slices$unit[[1]] %||% "shares")[1]
+    fmt_val <- function(v) {
+      if (identical(unit, "currency")) return(format_dollar_abbr(v))
+      format(round(v), big.mark = ",", scientific = FALSE)
+    }
+    center_key <- if (identical(unit, "currency")) "eq_pie_center_equity" else "eq_pie_center_shares"
+    slices$Hover <- paste0(
+      "<b>", slices$label, "</b><br>",
+      ui_str("eq_pie_hover_value", loc), ": <b>", fmt_val(slices$value), "</b><br>",
+      ui_str("eq_pie_hover_pct", loc), ": <b>",
+      sprintf("%.1f%%", slices$value / total * 100), "</b>"
+    )
+    plotly::plot_ly(
+      slices,
+      labels = ~label,
+      values = ~value,
+      type = "pie",
+      hole = 0.48,
+      marker = list(colors = slices$color, line = list(color = "#ffffff", width = 1.5)),
+      textinfo = "label+percent",
+      hovertext = ~Hover,
+      hoverinfo = "text",
+      sort = FALSE,
+      direction = "clockwise"
+    ) %>%
+      plotly::layout(
+        title = list(
+          text = paste0(tk %||% "", " - ", ui_str("eq_pie_title", loc)),
+          font = list(size = 15, color = "#2c3e50")
+        ),
+        showlegend = TRUE,
+        legend = list(orientation = "h", x = 0.5, xanchor = "center", y = -0.05),
+        margin = list(t = 50, b = 40, l = 20, r = 20),
+        annotations = list(
+          list(
+            text = paste0(ui_str(center_key, loc), "<br><b>", fmt_val(total), "</b>"),
             x = 0.5, y = 0.5,
             xref = "paper", yref = "paper",
             showarrow = FALSE,
@@ -8848,14 +8945,25 @@ server <- function(input, output, session) {
     } else {
       ui_str("smart_calc_pending", loc)
     }
+    tk <- tryCatch(as.character(current_ticker() %||% "")[1], error = function(e) "")
+    searched <- isTRUE(user_has_searched())
     tags$div(
       class = "ynow-smart-card-row",
-      tags$div(
-        class = "ynow-smart-card",
-        tags$p(class = "ynow-smart-card-kicker", ui_str("smart_primary_kicker", loc)),
-        tags$p(class = "ynow-smart-card-title", .model_label(prim)),
-        tags$p(class = "ynow-smart-card-value", fmt_px(base)),
-        tags$p(class = "ynow-smart-card-meta", prim_meta)
+      ynow_alertable(
+        tags$div(
+          class = "ynow-smart-card",
+          tags$p(class = "ynow-smart-card-kicker", ui_str("smart_primary_kicker", loc)),
+          tags$p(class = "ynow-smart-card-title", .model_label(prim)),
+          tags$p(class = "ynow-smart-card-value", fmt_px(base)),
+          tags$p(class = "ynow-smart-card-meta", prim_meta)
+        ),
+        metric = "fair_value",
+        ticker = tk,
+        value = base,
+        label = paste(ui_str("smart_primary_kicker", loc), .model_label(prim)),
+        ready = searched && is.finite(base) && base > 0,
+        default_kind = "below_fair",
+        fair_value = base
       ),
       tags$div(
         class = "ynow-smart-card",
@@ -8883,19 +8991,36 @@ server <- function(input, output, session) {
           }
         )
       ),
-      tags$div(
-        class = "ynow-smart-card",
-        tags$p(class = "ynow-smart-card-kicker", ui_str("smart_price_kicker", loc)),
-        tags$p(class = "ynow-smart-card-title", " "),
-        tags$p(class = "ynow-smart-card-value", fmt_px(cur)),
-        tags$p(class = "ynow-smart-card-meta", " ")
+      ynow_alertable(
+        tags$div(
+          class = "ynow-smart-card",
+          tags$p(class = "ynow-smart-card-kicker", ui_str("smart_price_kicker", loc)),
+          tags$p(class = "ynow-smart-card-title", " "),
+          tags$p(class = "ynow-smart-card-value", fmt_px(cur)),
+          tags$p(class = "ynow-smart-card-meta", " ")
+        ),
+        metric = "last_price",
+        ticker = tk,
+        value = cur,
+        label = ui_str("smart_price_kicker", loc),
+        ready = searched && is.finite(cur) && cur > 0,
+        default_kind = "price_lte"
       ),
-      tags$div(
-        class = "ynow-smart-card",
-        tags$p(class = "ynow-smart-card-kicker", ui_str("smart_mos_kicker", loc)),
-        tags$p(class = "ynow-smart-card-title", " "),
-        tags$p(class = "ynow-smart-card-value", fmt_pct(mos)),
-        tags$p(class = "ynow-smart-card-meta", " ")
+      ynow_alertable(
+        tags$div(
+          class = "ynow-smart-card",
+          tags$p(class = "ynow-smart-card-kicker", ui_str("smart_mos_kicker", loc)),
+          tags$p(class = "ynow-smart-card-title", " "),
+          tags$p(class = "ynow-smart-card-value", fmt_pct(mos)),
+          tags$p(class = "ynow-smart-card-meta", " ")
+        ),
+        metric = "mos_pct",
+        ticker = tk,
+        value = mos,
+        label = ui_str("smart_mos_kicker", loc),
+        ready = searched && is.finite(mos) && is.finite(base) && base > 0,
+        default_kind = "below_fair",
+        fair_value = base
       )
     )
   })

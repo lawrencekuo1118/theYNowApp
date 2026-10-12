@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12679525
+bundleId=12679620
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=dd95667ddba2c6db949d424cc76d91324eb62add
-commit=dd95667ddba2c6db949d424cc76d91324eb62add
-short=dd95667
-message=Full-universe chain 總市值; Unmapped excluded (v22.09)
-captured_at=2026-10-12T11:26:47Z
-display_version=v22.09
+aligned_git=c27b103
+commit=c27b103
+short=c27b103
+message=Equity structure pie beside BS; Ordinary/Preferred and dual-class (v23.01)
+captured_at=2026-10-12T12:00:00Z
+display_version=v23.01
