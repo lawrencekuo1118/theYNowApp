@@ -142,7 +142,8 @@ built <- lab_build_ind_mcap_chain_snapshot(
   eq_only = FALSE,
   gate_only = FALSE,
   no_alert = FALSE,
-  locale = "zh-TW"
+  locale = "zh-TW",
+  universe_df = catlg
 )
 dest <- file.path("data", "ind_mcap_chain_rank_snapshot_US.csv")
 utils::write.csv(built$snapshot, dest, row.names = FALSE, fileEncoding = "UTF-8")

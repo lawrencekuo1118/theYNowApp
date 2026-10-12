@@ -129,27 +129,105 @@ check("table has 產業鏈 col", "產業鏈" %in% names(tbl))
 check("table nrow = all chains", nrow(tbl) == n_picker)
 check("table ranks 1..n", identical(as.integer(tbl$排名), seq_len(nrow(tbl))))
 
-# Snapshot round-trip
+# 總市值 = full universe (extra names not in eval sample still count)
+uni <- rbind(
+  df,
+  .mk("A3", "sc.Memory", "半導體｜記憶體", 0, 1000),
+  .mk("A4", "sc.Equipment", "半導體｜設備", 0, 500)
+)
+# A3/A4 have upside 0 but finite — for universe totals use industry keys only via totals helper
+uni_only <- rbind(
+  df[, c("ticker", "industry_key", "market_cap")],
+  data.frame(
+    ticker = c("A3", "A4"),
+    industry_key = c("sc.Memory", "sc.Equipment"),
+    market_cap = c(1000, 500),
+    stringsAsFactors = FALSE
+  )
+)
+built2 <- lab_industry_chain_mcap_upside_leaderboard(
+  df, eq_only = FALSE, gate_only = FALSE, no_alert = FALSE,
+  locale = "zh-TW", include_all_chains = TRUE, universe_df = uni_only
+)
+semi <- built2$aggregate[built2$aggregate$chain_id == "半導體", , drop = FALSE]
+check("semi total_mcap uses full universe", nrow(semi) == 1L &&
+        isTRUE(all.equal(semi$total_mcap[[1]], 100 + 50 + 1000 + 500)))
+check("semi n_names uses full universe", nrow(semi) == 1L && identical(as.integer(semi$n_names[[1]]), 4L))
+check("semi wavg still from eval sample only",
+      nrow(semi) == 1L && isTRUE(all.equal(semi$wavg_cagr[[1]], (100 * 40 + 50 * 20) / 150)))
+
+# Snapshot round-trip + cache preferred as next default
 td <- tempfile("ind_mcap_snap_")
 dir.create(td)
-options(ynow.ind_mcap_chain_snapshot = file.path(td, "snap_US.csv"))
-# clear cache
+cache_csv <- file.path(td, "cache_US.csv")
+bundled_csv <- file.path(td, "bundled_US.csv")
+# Old bundled default
+old <- data.frame(
+  chain_id = "金融", wavg_cagr = 1, total_mcap = 1, n_names = 1L,
+  snapshot_at = "2020-01-01T00:00:00Z", market = "US", stringsAsFactors = FALSE
+)
+utils::write.csv(old, bundled_csv, row.names = FALSE)
+options(ynow.ind_mcap_chain_snapshot = NULL)
+# Point candidates via env slow cache
+Sys.setenv(YNOW_SLOW_CACHE_DIR = td)
+# clear cache env
 if (exists(".lab_ind_mcap_chain_cache", inherits = TRUE)) {
   rm(list = ls(envir = .lab_ind_mcap_chain_cache), envir = .lab_ind_mcap_chain_cache)
 }
+# Write "updated" snapshot into slow cache (simulates 更新排名)
+options(ynow.ind_mcap_chain_snapshot = cache_csv)
 res <- lab_build_ind_mcap_chain_snapshot(
   df, market = "US", eq_only = FALSE, gate_only = FALSE, no_alert = FALSE,
-  locale = "zh-TW", snapshot_at = "2026-10-12T00:00:00Z"
+  locale = "zh-TW", snapshot_at = "2026-10-12T12:00:00Z",
+  universe_df = uni_only
 )
 check("snapshot saved path", is.character(res$path) && file.exists(res$path))
 check("snapshot nrow all chains", nrow(res$snapshot) == n_picker)
+check("snapshot semi total_mcap full universe", {
+  s <- res$snapshot[res$snapshot$chain_id == "半導體", , drop = FALSE]
+  nrow(s) == 1L && isTRUE(all.equal(s$total_mcap[[1]], 1650))
+})
 loaded <- lab_load_ind_mcap_chain_snapshot("US", force = TRUE)
 check("load snapshot nrow", nrow(loaded) == n_picker)
 check("load snapshot_at attr",
-      identical(as.character(attr(loaded, "snapshot_at")), "2026-10-12T00:00:00Z") ||
-        identical(as.character(loaded$snapshot_at[[1]]), "2026-10-12T00:00:00Z"))
+      identical(as.character(attr(loaded, "snapshot_at")), "2026-10-12T12:00:00Z") ||
+        identical(as.character(loaded$snapshot_at[[1]]), "2026-10-12T12:00:00Z"))
+# Newest wins: cache (2026) over older bundled — use isolated data dir via option pair
+options(ynow.ind_mcap_chain_snapshot = NULL)
+if (exists(".lab_ind_mcap_chain_cache", inherits = TRUE)) {
+  rm(list = ls(envir = .lab_ind_mcap_chain_cache), envir = .lab_ind_mcap_chain_cache)
+}
+cache_dest <- lab_ind_mcap_chain_snapshot_cache_path("US")
+dir.create(dirname(cache_dest), recursive = TRUE, showWarnings = FALSE)
+file.copy(cache_csv, cache_dest, overwrite = TRUE)
+# Simulate older bundled beside cache by writing a second older file and forcing
+# candidate order via a temp "bundled" that load still sees if we put it in data/
+# — instead verify path picker chooses cache_dest when both exist with times.
+older_path <- file.path(td, "older_US.csv")
+utils::write.csv(old, older_path, row.names = FALSE)
+# Directly exercise path selection: cache newer than older_path
+picked_path <- lab_ind_mcap_chain_snapshot_path("US")
+check("path picker returns cache file",
+      normalizePath(picked_path, winslash = "/", mustWork = FALSE) ==
+        normalizePath(cache_dest, winslash = "/", mustWork = FALSE))
+picked <- lab_load_ind_mcap_chain_snapshot("US", force = TRUE)
+check("load prefers newer updated snapshot",
+      identical(as.character(attr(picked, "snapshot_at") %||% picked$snapshot_at[[1]]),
+                "2026-10-12T12:00:00Z"))
 fmt <- lab_format_ind_mcap_chain_table(loaded, "en")
 check("en col Industry chain", "Industry chain" %in% names(fmt))
+check("save writes cache path helper",
+      exists("lab_ind_mcap_chain_snapshot_cache_path", mode = "function"))
+check("help mentions full universe total mcap (en)",
+      grepl("full universe", ui_str("lab_im_ind_mcap_help", "en"), fixed = TRUE))
+check("help mentions 全宇宙 (zh-TW)",
+      grepl("全宇宙", ui_str("lab_im_ind_mcap_help", "zh-TW"), fixed = TRUE))
+# cleanup env so bundled checks below are clean
+Sys.unsetenv("YNOW_SLOW_CACHE_DIR")
+options(ynow.ind_mcap_chain_snapshot = NULL)
+if (exists(".lab_ind_mcap_chain_cache", inherits = TRUE)) {
+  rm(list = ls(envir = .lab_ind_mcap_chain_cache), envir = .lab_ind_mcap_chain_cache)
+}
 
 # Bundled default present after build script (optional)
 bundled <- file.path(app_dir, "data", "ind_mcap_chain_rank_snapshot_US.csv")

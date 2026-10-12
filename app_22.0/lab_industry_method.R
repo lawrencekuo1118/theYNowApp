@@ -2730,13 +2730,70 @@ lab_industry_mcap_upside_leaderboard <- function(merged_df, top_n = 10L,
 
 .lab_ind_mcap_chain_cache <- new.env(parent = emptyenv())
 
-#' Bundled / override path for industry-chain mcap-weighted rank snapshot
+#' Writable slow-cache path for updated「更新排名」defaults (survives session on hosted /tmp).
+lab_ind_mcap_chain_snapshot_cache_path <- function(market = "US") {
+  mm <- tryCatch(
+    normalize_market_mode(market),
+    error = function(e) toupper(trimws(as.character(market %||% "US")[1]))
+  )
+  if (!mm %in% c("US", "TW")) mm <- "US"
+  cache_dir <- tryCatch({
+    if (exists("lab_quality_snapshot_dir", mode = "function")) {
+      lab_quality_snapshot_dir()
+    } else if (exists(".ynow_slow_cache_dir", mode = "function")) {
+      .ynow_slow_cache_dir()
+    } else {
+      file.path(tempdir(), "ynow_cache", "slow")
+    }
+  }, error = function(e) file.path(tempdir(), "ynow_cache", "slow"))
+  dir.create(cache_dir, recursive = TRUE, showWarnings = FALSE)
+  file.path(cache_dir, sprintf("ind_mcap_chain_rank_snapshot_%s.csv", mm))
+}
+
+#' Candidate snapshot files: option → writable cache → bundled data/
+lab_ind_mcap_chain_snapshot_candidates <- function(market = "US") {
+  mm <- tryCatch(
+    normalize_market_mode(market),
+    error = function(e) toupper(trimws(as.character(market %||% "US")[1]))
+  )
+  if (!mm %in% c("US", "TW")) mm <- "US"
+  out <- character(0)
+  opt <- getOption("ynow.ind_mcap_chain_snapshot", default = NULL)
+  if (!is.null(opt) && length(opt) >= 1L && nzchar(as.character(opt)[1])) {
+    out <- c(out, as.character(opt)[1])
+  }
+  out <- c(
+    out,
+    lab_ind_mcap_chain_snapshot_cache_path(mm),
+    file.path("data", sprintf("ind_mcap_chain_rank_snapshot_%s.csv", mm)),
+    file.path("data", "ind_mcap_chain_rank_snapshot.csv"),
+    file.path("app_22.0", "data", sprintf("ind_mcap_chain_rank_snapshot_%s.csv", mm)),
+    file.path("app_22.0", "data", "ind_mcap_chain_rank_snapshot.csv")
+  )
+  unique(out[nzchar(out)])
+}
+
+.lab_parse_snapshot_at <- function(ts) {
+  ts <- as.character(ts %||% "")[1]
+  if (!nzchar(ts) || is.na(ts)) return(NA_real_)
+  # Accept ISO-8601 with T/Z and space-separated UTC
+  tnum <- suppressWarnings(as.numeric(as.POSIXct(
+    ts, tz = "UTC", format = "%Y-%m-%dT%H:%M:%SZ"
+  )))
+  if (!is.finite(tnum)) {
+    tnum <- suppressWarnings(as.numeric(as.POSIXct(ts, tz = "UTC")))
+  }
+  if (is.finite(tnum)) tnum else NA_real_
+}
+
+#' Best existing path: option → updated cache → newest by snapshot_at → bundled.
 lab_ind_mcap_chain_snapshot_path <- function(market = "US") {
   mm <- tryCatch(
     normalize_market_mode(market),
     error = function(e) toupper(trimws(as.character(market %||% "US")[1]))
   )
   if (!mm %in% c("US", "TW")) mm <- "US"
+  # Explicit test/override path wins when present
   opt <- getOption("ynow.ind_mcap_chain_snapshot", default = NULL)
   if (!is.null(opt) && length(opt) >= 1L) {
     p <- as.character(opt)[1]
@@ -2744,24 +2801,38 @@ lab_ind_mcap_chain_snapshot_path <- function(market = "US") {
       return(normalizePath(p, winslash = "/", mustWork = FALSE))
     }
   }
-  candidates <- c(
-    file.path("data", sprintf("ind_mcap_chain_rank_snapshot_%s.csv", mm)),
-    file.path("data", "ind_mcap_chain_rank_snapshot.csv"),
-    file.path("app_22.0", "data", sprintf("ind_mcap_chain_rank_snapshot_%s.csv", mm)),
-    file.path("app_22.0", "data", "ind_mcap_chain_rank_snapshot.csv")
-  )
-  for (p in candidates) {
-    if (file.exists(p)) return(normalizePath(p, winslash = "/", mustWork = FALSE))
+  cache_p <- lab_ind_mcap_chain_snapshot_cache_path(mm)
+  # Updated「更新排名」cache is the next default whenever it exists
+  if (file.exists(cache_p)) {
+    return(normalizePath(cache_p, winslash = "/", mustWork = FALSE))
   }
-  # Prefer writable cache for saves when bundled file is missing
-  cache_dir <- tryCatch({
-    if (exists("lab_quality_snapshot_dir", mode = "function")) {
-      lab_quality_snapshot_dir()
+  # Fall back to newest bundled candidate
+  cands <- lab_ind_mcap_chain_snapshot_candidates(mm)
+  existing <- cands[file.exists(cands)]
+  if (!length(existing)) {
+    return(normalizePath(cache_p, winslash = "/", mustWork = FALSE))
+  }
+  best_path <- existing[[1]]
+  best_ts <- -Inf
+  for (p in existing) {
+    raw <- tryCatch(
+      utils::read.csv(p, stringsAsFactors = FALSE, check.names = FALSE, fileEncoding = "UTF-8", nrows = 3),
+      error = function(e) NULL
+    )
+    ts <- if (is.data.frame(raw) && "snapshot_at" %in% names(raw) && nrow(raw) > 0L) {
+      as.character(raw$snapshot_at[[1]])
     } else {
-      file.path(tempdir(), "ynow_cache", "slow")
+      ""
     }
-  }, error = function(e) file.path(tempdir(), "ynow_cache", "slow"))
-  file.path(cache_dir, sprintf("ind_mcap_chain_rank_snapshot_%s.csv", mm))
+    tnum <- .lab_parse_snapshot_at(ts)
+    if (!is.finite(tnum)) tnum <- as.numeric(file.info(p)$mtime)
+    if (!is.finite(tnum)) tnum <- 0
+    if (tnum >= best_ts) {
+      best_ts <- tnum
+      best_path <- p
+    }
+  }
+  normalizePath(best_path, winslash = "/", mustWork = FALSE)
 }
 
 lab_ind_mcap_chain_snapshot_empty <- function() {
@@ -2776,22 +2847,9 @@ lab_ind_mcap_chain_snapshot_empty <- function() {
   )
 }
 
-#' Load industry-chain rank snapshot (bundled default or prior 更新排名 result)
-lab_load_ind_mcap_chain_snapshot <- function(market = "US", force = FALSE) {
-  mm <- tryCatch(
-    normalize_market_mode(market),
-    error = function(e) toupper(trimws(as.character(market %||% "US")[1]))
-  )
-  if (!mm %in% c("US", "TW")) mm <- "US"
-  cache_key <- paste0("df_", mm)
-  if (!isTRUE(force) &&
-      exists(cache_key, envir = .lab_ind_mcap_chain_cache, inherits = FALSE)) {
-    return(get(cache_key, envir = .lab_ind_mcap_chain_cache, inherits = FALSE))
-  }
-  path <- lab_ind_mcap_chain_snapshot_path(mm)
+.lab_read_ind_mcap_chain_snapshot_file <- function(path, market = "US") {
   empty <- lab_ind_mcap_chain_snapshot_empty()
   if (!nzchar(path) || is.na(path) || !file.exists(path)) {
-    assign(cache_key, empty, envir = .lab_ind_mcap_chain_cache)
     attr(empty, "snapshot_source") <- "missing"
     return(empty)
   }
@@ -2800,10 +2858,13 @@ lab_load_ind_mcap_chain_snapshot <- function(market = "US", force = FALSE) {
     error = function(e) NULL
   )
   if (is.null(raw) || !is.data.frame(raw) || nrow(raw) == 0L || !"chain_id" %in% names(raw)) {
-    assign(cache_key, empty, envir = .lab_ind_mcap_chain_cache)
     attr(empty, "snapshot_source") <- "empty"
     return(empty)
   }
+  mm <- tryCatch(
+    normalize_market_mode(market),
+    error = function(e) toupper(trimws(as.character(market %||% "US")[1]))
+  )
   df <- data.frame(
     chain_id = as.character(raw$chain_id),
     wavg_cagr = if ("wavg_cagr" %in% names(raw)) {
@@ -2835,15 +2896,32 @@ lab_load_ind_mcap_chain_snapshot <- function(market = "US", force = FALSE) {
   )
   df <- df[nzchar(df$chain_id) & !is.na(df$chain_id), , drop = FALSE]
   rownames(df) <- NULL
-  attr(df, "snapshot_source") <- path
+  attr(df, "snapshot_source") <- normalizePath(path, winslash = "/", mustWork = FALSE)
   if (nrow(df) && any(nzchar(df$snapshot_at), na.rm = TRUE)) {
     attr(df, "snapshot_at") <- as.character(df$snapshot_at[nzchar(df$snapshot_at)][[1]])
   }
+  df
+}
+
+#' Load industry-chain rank snapshot (newest of cache vs bundled = next default)
+lab_load_ind_mcap_chain_snapshot <- function(market = "US", force = FALSE) {
+  mm <- tryCatch(
+    normalize_market_mode(market),
+    error = function(e) toupper(trimws(as.character(market %||% "US")[1]))
+  )
+  if (!mm %in% c("US", "TW")) mm <- "US"
+  cache_key <- paste0("df_", mm)
+  if (!isTRUE(force) &&
+      exists(cache_key, envir = .lab_ind_mcap_chain_cache, inherits = FALSE)) {
+    return(get(cache_key, envir = .lab_ind_mcap_chain_cache, inherits = FALSE))
+  }
+  path <- lab_ind_mcap_chain_snapshot_path(mm)
+  df <- .lab_read_ind_mcap_chain_snapshot_file(path, mm)
   assign(cache_key, df, envir = .lab_ind_mcap_chain_cache)
   df
 }
 
-#' Persist industry-chain rank snapshot (bundled data/ when writable; else slow cache)
+#' Persist updated ranking as the next default (slow cache always; data/ if writable).
 lab_save_ind_mcap_chain_snapshot <- function(snapshot, market = "US") {
   mm <- tryCatch(
     normalize_market_mode(market),
@@ -2854,22 +2932,39 @@ lab_save_ind_mcap_chain_snapshot <- function(snapshot, market = "US") {
   if (!nrow(snap)) snap <- lab_ind_mcap_chain_snapshot_empty()
   if (!"market" %in% names(snap)) snap$market <- mm
   snap$market[!nzchar(as.character(snap$market))] <- mm
-  # Option path wins when set (tests); else bundled data/ when writable
+
   opt <- getOption("ynow.ind_mcap_chain_snapshot", default = NULL)
-  bundled <- file.path("data", sprintf("ind_mcap_chain_rank_snapshot_%s.csv", mm))
-  path <- if (!is.null(opt) && length(opt) >= 1L && nzchar(as.character(opt)[1])) {
-    as.character(opt)[1]
-  } else if (dir.exists("data") && file.access("data", 2) == 0L) {
-    bundled
+  paths <- character(0)
+  if (!is.null(opt) && length(opt) >= 1L && nzchar(as.character(opt)[1])) {
+    paths <- c(paths, as.character(opt)[1])
   } else {
-    lab_ind_mcap_chain_snapshot_path(mm)
+    # Always write slow cache so next session loads the refreshed default
+    paths <- c(paths, lab_ind_mcap_chain_snapshot_cache_path(mm))
+    bundled <- file.path("data", sprintf("ind_mcap_chain_rank_snapshot_%s.csv", mm))
+    if (dir.exists("data") && file.access("data", 2) == 0L) {
+      paths <- c(paths, bundled)
+    }
   }
-  dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
-  tmp <- paste0(path, ".tmp")
-  utils::write.csv(snap, tmp, row.names = FALSE, fileEncoding = "UTF-8")
-  file.rename(tmp, path)
+  paths <- unique(paths[nzchar(paths)])
+  primary <- NA_character_
+  for (path in paths) {
+    dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
+    tmp <- paste0(path, ".tmp")
+    ok <- tryCatch({
+      utils::write.csv(snap, tmp, row.names = FALSE, fileEncoding = "UTF-8")
+      file.rename(tmp, path)
+      TRUE
+    }, error = function(e) FALSE)
+    if (isTRUE(ok) && (is.na(primary) || !nzchar(primary))) {
+      primary <- normalizePath(path, winslash = "/", mustWork = FALSE)
+    }
+  }
   cache_key <- paste0("df_", mm)
-  out_path <- normalizePath(path, winslash = "/", mustWork = FALSE)
+  out_path <- if (nzchar(primary) && !is.na(primary)) {
+    primary
+  } else {
+    lab_ind_mcap_chain_snapshot_cache_path(mm)
+  }
   attr(snap, "snapshot_source") <- out_path
   if (nrow(snap) && any(nzchar(as.character(snap$snapshot_at)), na.rm = TRUE)) {
     attr(snap, "snapshot_at") <- as.character(
@@ -2878,6 +2973,59 @@ lab_save_ind_mcap_chain_snapshot <- function(snapshot, market = "US") {
   }
   assign(cache_key, snap, envir = .lab_ind_mcap_chain_cache)
   out_path
+}
+
+#' Per-chain universe market-cap totals (ALL names in catalog, not eval sample).
+lab_chain_mcap_universe_totals <- function(universe_df) {
+  empty <- data.frame(
+    chain_id = character(0),
+    total_mcap = numeric(0),
+    n_names = integer(0),
+    stringsAsFactors = FALSE
+  )
+  if (is.null(universe_df) || !is.data.frame(universe_df) || nrow(universe_df) < 1L) {
+    return(empty)
+  }
+  df <- universe_df
+  if (!"market_cap" %in% names(df) ||
+      !any(is.finite(suppressWarnings(as.numeric(df$market_cap))) &
+             suppressWarnings(as.numeric(df$market_cap)) > 0, na.rm = TRUE)) {
+    if (exists("lab_attach_market_caps", mode = "function")) {
+      df <- tryCatch(lab_attach_market_caps(df), error = function(e) df)
+    }
+  }
+  mcap <- suppressWarnings(as.numeric(df$market_cap))
+  ok <- is.finite(mcap) & mcap > 0
+  df <- df[ok, , drop = FALSE]
+  mcap <- mcap[ok]
+  if (!nrow(df)) return(empty)
+  chain_ids <- if ("industry_key" %in% names(df) &&
+                   exists("industry_chain_id", mode = "function")) {
+    vapply(as.character(df$industry_key), function(k) {
+      cid <- tryCatch(industry_chain_id(k), error = function(e) "")
+      as.character(cid %||% "")[1]
+    }, character(1))
+  } else if ("chain_id" %in% names(df)) {
+    as.character(df$chain_id)
+  } else {
+    rep("未對應", nrow(df))
+  }
+  miss <- is.na(chain_ids) | !nzchar(chain_ids)
+  if (any(miss) && "industry_label" %in% names(df)) {
+    chain_ids[miss] <- as.character(df$industry_label[miss])
+  }
+  chain_ids[is.na(chain_ids) | !nzchar(chain_ids)] <- "未對應"
+  keys <- unique(chain_ids)
+  rows <- lapply(keys, function(k) {
+    hit <- which(chain_ids == k)
+    data.frame(
+      chain_id = k,
+      total_mcap = sum(mcap[hit]),
+      n_names = length(hit),
+      stringsAsFactors = FALSE
+    )
+  })
+  do.call(rbind, rows)
 }
 
 #' Format raw chain snapshot / aggregate rows into the DT display table.
@@ -2951,12 +3099,14 @@ lab_format_ind_mcap_chain_table <- function(agg_df, locale = "zh-TW") {
 
 #' All industry chains ranked by mcap-weighted annualized valuation upside.
 #' Includes every chain from the picker (missing data → — / NA), sorted by wavg desc.
+#' @param universe_df Full catalog/universe for 總市值／檔數 (all names, not eval sample).
 lab_industry_chain_mcap_upside_leaderboard <- function(merged_df,
                                                       eq_only = FALSE,
                                                       gate_only = FALSE,
                                                       no_alert = FALSE,
                                                       locale = "zh-TW",
-                                                      include_all_chains = TRUE) {
+                                                      include_all_chains = TRUE,
+                                                      universe_df = NULL) {
   loc <- if (exists("normalize_ui_locale", mode = "function")) {
     normalize_ui_locale(locale)
   } else {
@@ -3007,9 +3157,6 @@ lab_industry_chain_mcap_upside_leaderboard <- function(merged_df,
                        exists("industry_chain_id", mode = "function")) {
         vapply(as.character(df$industry_key), function(k) {
           cid <- tryCatch(industry_chain_id(k), error = function(e) "")
-          if (!nzchar(cid) && "industry_label" %in% names(df)) {
-            # fall through
-          }
           as.character(cid %||% "")[1]
         }, character(1))
       } else {
@@ -3028,12 +3175,56 @@ lab_industry_chain_mcap_upside_leaderboard <- function(merged_df,
         data.frame(
           chain_id = k,
           wavg_cagr = sum(w * u) / sum(w),
+          # Placeholder — overwritten by full-universe totals below
           total_mcap = sum(w),
           n_names = length(hit),
           stringsAsFactors = FALSE
         )
       })
       agg <- do.call(rbind, rows)
+    }
+  }
+
+  # 總市值／檔數 = ALL names in the chain universe (not eval / Top-N sample)
+  uni_src <- if (is.data.frame(universe_df) && nrow(universe_df) > 0L) {
+    universe_df
+  } else {
+    NULL
+  }
+  totals <- tryCatch(
+    lab_chain_mcap_universe_totals(uni_src),
+    error = function(e) NULL
+  )
+  if (is.data.frame(totals) && nrow(totals) > 0L) {
+    if (!nrow(agg)) {
+      agg <- data.frame(
+        chain_id = totals$chain_id,
+        wavg_cagr = NA_real_,
+        total_mcap = totals$total_mcap,
+        n_names = as.integer(totals$n_names),
+        stringsAsFactors = FALSE
+      )
+    } else {
+      idx <- match(agg$chain_id, totals$chain_id)
+      hit <- which(is.finite(idx))
+      if (length(hit)) {
+        agg$total_mcap[hit] <- totals$total_mcap[idx[hit]]
+        agg$n_names[hit] <- as.integer(totals$n_names[idx[hit]])
+      }
+      extra <- setdiff(totals$chain_id, agg$chain_id)
+      if (length(extra)) {
+        j <- match(extra, totals$chain_id)
+        agg <- rbind(
+          agg,
+          data.frame(
+            chain_id = totals$chain_id[j],
+            wavg_cagr = NA_real_,
+            total_mcap = totals$total_mcap[j],
+            n_names = as.integer(totals$n_names[j]),
+            stringsAsFactors = FALSE
+          )
+        )
+      }
     }
   }
 
@@ -3073,13 +3264,15 @@ lab_industry_chain_mcap_upside_leaderboard <- function(merged_df,
 }
 
 #' Build / refresh chain-rank snapshot from a merged evaluated frame.
+#' @param universe_df Full catalog for 總市值 (all chain names).
 lab_build_ind_mcap_chain_snapshot <- function(merged_df,
                                              market = "US",
                                              eq_only = FALSE,
                                              gate_only = FALSE,
                                              no_alert = FALSE,
                                              locale = "zh-TW",
-                                             snapshot_at = NULL) {
+                                             snapshot_at = NULL,
+                                             universe_df = NULL) {
   mm <- tryCatch(
     normalize_market_mode(market),
     error = function(e) toupper(trimws(as.character(market %||% "US")[1]))
@@ -3091,7 +3284,8 @@ lab_build_ind_mcap_chain_snapshot <- function(merged_df,
     gate_only = gate_only,
     no_alert = no_alert,
     locale = locale,
-    include_all_chains = TRUE
+    include_all_chains = TRUE,
+    universe_df = universe_df
   )
   agg <- built$aggregate
   if (!is.data.frame(agg) || nrow(agg) == 0L) {

@@ -16,7 +16,7 @@
       return(sub('^"version"\\s*:\\s*"([^"]+)".*$', "\\1", m[[1]]))
     }
   }
-  "v22.05"
+  "v22.06"
 }
 .YNOW_BUILD_VERSION <- .ynow_read_build_version()
 
@@ -229,7 +229,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v22.05) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+          "The YNow App (v22.06) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
         ),
         tags$p(
           class = "ynow-about-method",
@@ -248,7 +248,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v22.05) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
+          "The YNow App (v22.06) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
         ),
         tags$p(
           class = "ynow-about-method",
@@ -350,7 +350,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App（簡化版）")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite（v22.05）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
+          "The YNow App Lite（v22.06）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
           "以自動判別主／副模型與預設參數完成試算，讓使用者先看到合理價區間與產業 KPI，再決定是否回到完整版深入調整。"
         ),
         tags$p(
@@ -367,7 +367,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App (Lite)")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite (v22.05) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
+          "The YNow App Lite (v22.06) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
           "auto-selects primary/secondary models with App defaults, and surfaces fair-value ranges plus industry KPIs before you open Full for deeper calibration."
         ),
         tags$p(
@@ -1881,8 +1881,9 @@ beta_rolling_section_ui <- function() {
                   id = "ynow_lab_im_ind_mcap_help",
                   style = "color:#888; font-size:12px; line-height:1.45; margin:0 0 8px 0;",
                   paste0(
-                    "顯示全部產業鏈（半導體／科技／金融…）並依 Σ(市值×年化估值漲幅)/Σ(市值) 排序。",
-                    "首次完整運算結果作為預設；之後按右上「更新排名」重算最新版。",
+                    "顯示全部產業鏈（半導體／科技／金融…），排序用評估樣本的 ",
+                    "Σ(市值×年化估值漲幅)/Σ(市值)；總市值／檔數＝該產業鏈全宇宙個股（非 Top-N）。",
+                    "按「更新排名」後會寫入為下次預設。",
                     "套用查詢條件之 Piotroski、盈餘品質、無財報警訊門檻。"
                   )
                 ),
@@ -3410,9 +3411,9 @@ ui <- dashboardPage(
                   'data-ynow-build="', .YNOW_BUILD_VERSION, '" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v22.05</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v22.06</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v22.05</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v22.06</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
