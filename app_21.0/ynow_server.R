@@ -14071,7 +14071,7 @@ server <- function(input, output, session) {
       input$lab_im_max_n,
       input$lab_im_max_n_custom
     )
-    # Radar focus seed = Search / main ticker input (session stock)
+    # Force-include Search ticker and optional radar focus (e.g. NVS) into Universe (N)
     session_tk <- tryCatch({
       tk <- current_ticker()
       if (is.null(tk) || !nzchar(trimws(as.character(tk)[1]))) tk <- input$sc
@@ -14079,6 +14079,18 @@ server <- function(input, output, session) {
     }, error = function(e) "")
     if (is.null(session_tk) || is.na(session_tk)) session_tk <- ""
     session_tk <- toupper(trimws(as.character(session_tk)[1]))
+    focus_tk <- tryCatch({
+      raw <- isolate(input$lab_cluster_focus)
+      if (is.null(raw) || !nzchar(trimws(as.character(raw)[1]))) {
+        ""
+      } else {
+        normalize_ticker_for_market(raw, market_mode())
+      }
+    }, error = function(e) "")
+    if (is.null(focus_tk) || is.na(focus_tk)) focus_tk <- ""
+    focus_tk <- toupper(trimws(as.character(focus_tk)[1]))
+    ensure_tks <- unique(c(session_tk, focus_tk))
+    ensure_tks <- ensure_tks[nzchar(ensure_tks)]
     rank_mode_run <- lab_normalize_pool_rank_mode(
       isolate(input$lab_im_pool_rank %||% "mcap")
     )
@@ -14097,7 +14109,7 @@ server <- function(input, output, session) {
             industry_filter = lab_im_industry_filter(),
             method_filter = input$lab_im_methods,
             max_n = max_n,
-            ensure_ticker = session_tk,
+            ensure_ticker = ensure_tks,
             rank_mode = rank_mode_run,
             concept_keys = isolate(input$lab_im_concepts),
             market_mode = tryCatch(isolate(market_mode()), error = function(e) "US"),
@@ -14180,13 +14192,15 @@ server <- function(input, output, session) {
             NULL
           }
         )
-        feats <- lab_cluster_ensure_ticker_in_features(feats, session_tk)
-        # Priority solo refill so Radar focus has real ratios (not all-NA shell)
-        if (nzchar(session_tk) && exists("lab_cluster_priority_refill_features", mode = "function")) {
-          feats <- tryCatch(
-            lab_cluster_priority_refill_features(feats, session_tk),
-            error = function(e) feats
-          )
+        feats <- lab_cluster_ensure_ticker_in_features(feats, ensure_tks)
+        # Priority solo refill so Search / radar focus have real ratios (not all-NA shell)
+        if (length(ensure_tks) && exists("lab_cluster_priority_refill_features", mode = "function")) {
+          for (ens_tk in ensure_tks) {
+            feats <- tryCatch(
+              lab_cluster_priority_refill_features(feats, ens_tk),
+              error = function(e) feats
+            )
+          }
         }
         # Carry truncate sort keys from the shared candidate pool onto features
         if (!is.null(feats) && is.data.frame(feats) && nrow(feats) > 0L) {
@@ -14250,7 +14264,7 @@ server <- function(input, output, session) {
         clustered <- tryCatch(
           lab_run_stock_clustering(
             feats, k_clusters = k_eff, locale = loc,
-            ensure_ticker = session_tk
+            ensure_ticker = ensure_tks
           ),
           error = function(e) {
             msg <- conditionMessage(e)
@@ -14300,10 +14314,12 @@ server <- function(input, output, session) {
             }
           }
         }
+        # Pin Search first when present; otherwise pin radar focus
+        pin_tk <- if (nzchar(session_tk)) session_tk else focus_tk
         clustered$data <- lab_cluster_order_by_truncate(
           clustered$data,
           rank_mode = mode_used,
-          pin_ticker = session_tk,
+          pin_ticker = pin_tk,
           pool_ticker_order = pool_ord
         )
         clustered$pool_rank_mode <- mode_used
@@ -14313,76 +14329,40 @@ server <- function(input, output, session) {
     )
     if (is.null(result) || is.null(result$data) || nrow(result$data) == 0L) return()
     lab_cluster_result(result)
-    # Default radar focus = Search ticker (pinned first row when present)
-    focus_default <- result$data$ticker[[1]]
-    matched_focus <- lab_cluster_match_ticker(result$data$ticker, session_tk)
-    if (!is.na(matched_focus) && nzchar(matched_focus)) {
-      focus_default <- matched_focus
-    } else if (nzchar(session_tk)) {
+    # Preserve user-entered radar focus when it entered the cluster; never default to Search/TSM
+    user_focus_raw <- trimws(as.character(isolate(input$lab_cluster_focus) %||% "")[1])
+    matched_user <- if (nzchar(user_focus_raw)) {
+      lab_cluster_match_ticker(result$data$ticker, user_focus_raw)
+    } else {
+      NA_character_
+    }
+    if (!is.na(matched_user) && nzchar(matched_user)) {
+      focus_disp <- tryCatch(
+        display_ticker_for_market(matched_user, market_mode()),
+        error = function(e) as.character(matched_user)[1]
+      )
+      updateTextInput(session, "lab_cluster_focus", value = focus_disp)
+    } else if (nzchar(user_focus_raw)) {
       showNotification(
         tryCatch(
-          ui_str("lab_cluster_focus_missing", loc),
+          ui_str("lab_cluster_focus_not_in_cluster", loc),
           error = function(e) {
-            paste0(
-              "Search ticker ", session_tk,
-              " was not in the clustered set; radar focus fell back to the first name."
-            )
+            "Focus ticker is not in this clustered set. Re-run clustering with the focus entered."
           }
         ),
         type = "warning",
         duration = 8
       )
+      # Keep typed value so the user can re-run; do not overwrite with Search/TSM
+    } else {
+      # Empty default — no Search/TSM autofill
+      updateTextInput(session, "lab_cluster_focus", value = "")
     }
-    focus_disp <- tryCatch(
-      display_ticker_for_market(focus_default, market_mode()),
-      error = function(e) as.character(focus_default)[1]
-    )
-    updateTextInput(session, "lab_cluster_focus", value = focus_disp)
     showNotification(
       sprintf("Clustered %d names into %d groups.", result$n, result$k),
       type = "message",
       duration = 6
     )
-  }, ignoreInit = TRUE)
-
-  # Keep radar focus on the session Search ticker when it appears in current clusters
-  observeEvent(current_ticker(), {
-    tk <- tryCatch({
-      raw <- current_ticker()
-      if (is.null(raw) || !nzchar(trimws(as.character(raw)[1]))) raw <- input$sc
-      normalize_ticker_for_market(raw, market_mode())
-    }, error = function(e) "")
-    if (is.null(tk) || is.na(tk)) tk <- ""
-    tk <- toupper(trimws(as.character(tk)[1]))
-    if (!nzchar(tk)) return()
-    mode <- tryCatch(market_mode(), error = function(e) "US")
-    disp <- tryCatch(display_ticker_for_market(tk, mode), error = function(e) tk)
-    res <- lab_cluster_result()
-    if (!isTRUE(tryCatch(lab_cluster_has_result(res), error = function(e) FALSE))) {
-      # Pre-seed focus text field to Search ticker before the first clustering run
-      updateTextInput(session, "lab_cluster_focus", value = disp)
-      return()
-    }
-    matched <- lab_cluster_match_ticker(res$data$ticker, tk)
-    if (is.na(matched) || !nzchar(matched)) return()
-    cur_focus <- as.character(isolate(input$lab_cluster_focus) %||% "")[1]
-    matched_disp <- tryCatch(
-      display_ticker_for_market(matched, mode),
-      error = function(e) matched
-    )
-    if (identical(toupper(trimws(cur_focus)), toupper(trimws(matched_disp))) ||
-        identical(toupper(trimws(cur_focus)), toupper(trimws(matched)))) {
-      return()
-    }
-    # Adopt Search as focus only when current focus is empty or not in this cluster.
-    # Avoid clobbering a valid manual focus if current_ticker() re-fires.
-    cur_in_cluster <- if (nzchar(cur_focus)) {
-      lab_cluster_match_ticker(res$data$ticker, cur_focus)
-    } else {
-      NA_character_
-    }
-    if (!is.na(cur_in_cluster) && nzchar(cur_in_cluster)) return()
-    updateTextInput(session, "lab_cluster_focus", value = matched_disp)
   }, ignoreInit = TRUE)
 
   # Dynamic hosts: idle → placeholder (no plotly/DT node); live → recreate outputs

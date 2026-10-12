@@ -193,8 +193,20 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
     fixed = TRUE
   ))
   testthat::expect_true(grepl("lab_cluster_focus_not_in_cluster", srv_txt, fixed = TRUE))
+  # Radar focus has no Search/TSM default; focus ticker is force-included with Search
+  testthat::expect_true(grepl("ensure_tks", srv_txt, fixed = TRUE))
+  testthat::expect_true(grepl("never default to Search/TSM", srv_txt, fixed = TRUE))
+  testthat::expect_false(grepl(
+    "Pre-seed focus text field to Search ticker",
+    srv_txt,
+    fixed = TRUE
+  ))
   loc_txt <- paste(readLines(file.path("..", "ui_locale.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   testthat::expect_true(grepl("lab_cluster_focus_not_in_cluster", loc_txt, fixed = TRUE))
+  testthat::expect_true(grepl("radar focus has no default symbol", loc_txt, fixed = TRUE))
+  testthat::expect_true(grepl("雷達焦點無預設代號", loc_txt, fixed = TRUE))
+  testthat::expect_false(grepl("is the default radar focus", loc_txt, fixed = TRUE))
+  testthat::expect_false(grepl("並作為雷達焦點預設", loc_txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_menu_macro", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-macro-report", txt, fixed = TRUE))
   # Theme Rolling β vs benchmark is removed from Macro (Full and Lite)
@@ -380,7 +392,7 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
     txt,
     perl = TRUE
   ))
-  testthat::expect_true(grepl("The YNow App v21.91", txt, fixed = TRUE))
+  testthat::expect_true(grepl("The YNow App v21.92", txt, fixed = TRUE))
   testthat::expect_true(grepl('title = "The YNow App"', txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-hfv-report", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-hfv-toolbar", txt, fixed = TRUE))

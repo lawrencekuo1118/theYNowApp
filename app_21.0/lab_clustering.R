@@ -682,17 +682,22 @@ lab_cluster_match_ticker <- function(tickers, focus) {
   NA_character_
 }
 
-#' Drop excess rows while keeping focus, using the same truncate priority as
+#' Normalize ensure-ticker args (Search + radar focus) to unique uppercase symbols.
+lab_cluster_normalize_ensure_tickers <- function(ensure_ticker) {
+  tks <- unique(toupper(trimws(as.character(ensure_ticker %||% character(0)))))
+  tks[nzchar(tks) & !is.na(tks)]
+}
+
+#' Drop excess rows while keeping focus row(s), using the same truncate priority as
 #' lab_select_eval_pool (lowest mcap / lowest 1Y return / trailing random slots).
+#' @param keep_focus integer index or indices that must remain
 lab_cluster_drop_excess_keeping_focus <- function(pool, keep_focus, max_n,
                                                  rank_mode = "mcap") {
   if (is.null(pool) || !is.data.frame(pool) || nrow(pool) == 0L) return(pool)
   max_n <- lab_resolve_im_max_n(max_n, custom = NULL, lo = 1L, hi = 500L)
   if (!is.finite(max_n) || nrow(pool) <= max_n) return(pool)
-  keep_focus <- as.integer(keep_focus)[1]
-  if (!is.finite(keep_focus) || keep_focus < 1L || keep_focus > nrow(pool)) {
-    keep_focus <- NA_integer_
-  }
+  keep_focus <- unique(as.integer(keep_focus))
+  keep_focus <- keep_focus[is.finite(keep_focus) & keep_focus >= 1L & keep_focus <= nrow(pool)]
   drop_cand <- setdiff(seq_len(nrow(pool)), keep_focus)
   n_drop <- nrow(pool) - as.integer(max_n)
   if (!length(drop_cand) || n_drop <= 0L) return(pool)
@@ -714,69 +719,72 @@ lab_cluster_drop_excess_keeping_focus <- function(pool, keep_focus, max_n,
   pool[-ord[seq_len(min(n_drop, length(ord)))], , drop = FALSE]
 }
 
-#' Force-include ensure_ticker in a capped pool (drop by truncate mode if over N).
-#' If the ticker is absent from catalog, inject a minimal row so Search stock still enters N.
+#' Row indices in pool matching any ensure ticker (Search / radar focus).
+lab_cluster_ensure_keep_indices <- function(pool, ensure_tickers) {
+  ensures <- lab_cluster_normalize_ensure_tickers(ensure_tickers)
+  if (!length(ensures) || is.null(pool) || !is.data.frame(pool) || !"ticker" %in% names(pool)) {
+    return(integer(0))
+  }
+  tks <- toupper(trimws(as.character(pool$ticker)))
+  keep <- integer(0)
+  for (ens in ensures) {
+    hit <- lab_cluster_match_ticker(tks, ens)
+    if (!is.na(hit) && nzchar(hit)) {
+      idx <- which(tks == hit)
+      if (length(idx)) keep <- c(keep, idx[[1]])
+    }
+  }
+  unique(keep)
+}
+
+#' Force-include ensure_ticker(s) in a capped pool (drop by truncate mode if over N).
+#' Accepts one or more symbols (Search + radar focus). Absent catalog names are
+#' injected as minimal rows so focus can still enter Universe (N).
 lab_cluster_ensure_ticker_in_pool <- function(pool, catalog, ensure_ticker, max_n,
                                               rank_mode = "mcap") {
-  ensure_raw <- toupper(trimws(as.character(ensure_ticker %||% "")[1]))
-  if (!nzchar(ensure_raw) || is.null(pool) || !is.data.frame(pool)) return(pool)
+  ensures <- lab_cluster_normalize_ensure_tickers(ensure_ticker)
+  if (!length(ensures) || is.null(pool) || !is.data.frame(pool)) return(pool)
   mode <- lab_normalize_pool_rank_mode(rank_mode)
-  matched <- lab_cluster_match_ticker(pool$ticker, ensure_raw)
-  if (!is.na(matched)) {
-    # Already in pool — still enforce max_n without dropping the focus
-    max_n <- lab_resolve_im_max_n(max_n, custom = NULL, lo = 1L, hi = 500L)
-    if (is.finite(max_n) && nrow(pool) > max_n) {
-      keep_focus <- which(toupper(trimws(as.character(pool$ticker))) == matched)[1]
-      if (!is.finite(keep_focus)) {
-        keep_focus <- which(!is.na(lab_cluster_match_ticker(pool$ticker, ensure_raw)))[1]
-      }
-      pool <- lab_cluster_drop_excess_keeping_focus(
-        pool, keep_focus, max_n, rank_mode = mode
-      )
-    }
-    return(pool)
-  }
-  # Prefer unfiltered catalog so the session ticker can enter even if filters excluded it
-  src <- catalog
-  if (is.null(src) || !is.data.frame(src) || !"ticker" %in% names(src)) {
-    src <- pool
-  }
-  if (!is.null(src) && is.data.frame(src) && "ticker" %in% names(src) && nrow(src) > 0L) {
-    src$ticker <- toupper(trimws(as.character(src$ticker)))
-    matched <- lab_cluster_match_ticker(src$ticker, ensure_raw)
-  } else {
-    matched <- NA_character_
-  }
-  if (is.na(matched)) {
-    # Not in Blue Chip catalog — still inject Search ticker as a minimal row
-    matched <- ensure_raw
-    row <- data.frame(
-      ticker = matched,
-      industry_key = NA_character_,
-      industry_label = NA_character_,
-      market_cap = NA_real_,
-      stringsAsFactors = FALSE
-    )
-  } else {
-    row <- src[src$ticker == matched, , drop = FALSE][1, , drop = FALSE]
-  }
-  need_cols <- unique(c(
-    names(pool), "ticker", "industry_key", "industry_label", "market_cap", "ret_1y"
-  ))
-  for (nm in setdiff(need_cols, names(row))) row[[nm]] <- NA
-  for (nm in setdiff(need_cols, names(pool))) {
-    pool[[nm]] <- if (nm == "ticker") character(nrow(pool)) else NA
-  }
-  pool <- rbind(pool[, need_cols, drop = FALSE], row[, need_cols, drop = FALSE])
-  pool <- lab_dedupe_eval_pool(pool)
   max_n <- lab_resolve_im_max_n(max_n, custom = NULL, lo = 1L, hi = 500L)
-  if (is.finite(max_n) && nrow(pool) > max_n) {
-    keep_focus <- which(toupper(trimws(as.character(pool$ticker))) == matched)[1]
-    if (!is.finite(keep_focus)) {
-      keep_focus <- which(!is.na(vapply(
-        pool$ticker, function(t) lab_cluster_match_ticker(t, ensure_raw), character(1)
-      )))[1]
+  for (ensure_raw in ensures) {
+    matched <- lab_cluster_match_ticker(pool$ticker, ensure_raw)
+    if (!is.na(matched) && nzchar(matched)) next
+    # Prefer unfiltered catalog so the ticker can enter even if filters excluded it
+    src <- catalog
+    if (is.null(src) || !is.data.frame(src) || !"ticker" %in% names(src)) {
+      src <- pool
     }
+    if (!is.null(src) && is.data.frame(src) && "ticker" %in% names(src) && nrow(src) > 0L) {
+      src$ticker <- toupper(trimws(as.character(src$ticker)))
+      matched <- lab_cluster_match_ticker(src$ticker, ensure_raw)
+    } else {
+      matched <- NA_character_
+    }
+    if (is.na(matched)) {
+      # Not in Blue Chip catalog — still inject as a minimal row (e.g. NVS focus)
+      matched <- ensure_raw
+      row <- data.frame(
+        ticker = matched,
+        industry_key = NA_character_,
+        industry_label = NA_character_,
+        market_cap = NA_real_,
+        stringsAsFactors = FALSE
+      )
+    } else {
+      row <- src[src$ticker == matched, , drop = FALSE][1, , drop = FALSE]
+    }
+    need_cols <- unique(c(
+      names(pool), "ticker", "industry_key", "industry_label", "market_cap", "ret_1y"
+    ))
+    for (nm in setdiff(need_cols, names(row))) row[[nm]] <- NA
+    for (nm in setdiff(need_cols, names(pool))) {
+      pool[[nm]] <- if (nm == "ticker") character(nrow(pool)) else NA
+    }
+    pool <- rbind(pool[, need_cols, drop = FALSE], row[, need_cols, drop = FALSE])
+    pool <- lab_dedupe_eval_pool(pool)
+  }
+  if (is.finite(max_n) && nrow(pool) > max_n) {
+    keep_focus <- lab_cluster_ensure_keep_indices(pool, ensures)
     pool <- lab_cluster_drop_excess_keeping_focus(
       pool, keep_focus, max_n, rank_mode = mode
     )
@@ -784,24 +792,27 @@ lab_cluster_ensure_ticker_in_pool <- function(pool, catalog, ensure_ticker, max_
   pool
 }
 
-#' Ensure Search / session ticker has a feature row (shell OK; clustering may impute).
+#' Ensure Search / radar-focus ticker(s) have feature rows (shell OK; may impute).
 lab_cluster_ensure_ticker_in_features <- function(feats, ensure_ticker) {
-  ensure_raw <- toupper(trimws(as.character(ensure_ticker %||% "")[1]))
-  if (!nzchar(ensure_raw)) {
+  ensures <- lab_cluster_normalize_ensure_tickers(ensure_ticker)
+  if (!length(ensures)) {
     return(if (is.null(feats)) lab_cluster_features_to_df(NULL) else feats)
   }
   if (is.null(feats) || !is.data.frame(feats)) {
     feats <- lab_cluster_features_to_df(NULL)
   }
-  matched <- lab_cluster_match_ticker(feats$ticker, ensure_raw)
-  if (!is.na(matched) && nzchar(matched)) return(feats)
-  row <- list(
-    ticker = ensure_raw,
-    name = ensure_raw,
-    market_cap = NA_real_
-  )
-  for (f in LAB_CLUSTER_FEATURES) row[[f]] <- NA_real_
-  lab_cluster_merge_feature_dfs(feats, lab_cluster_features_to_df(list(row)))
+  for (ensure_raw in ensures) {
+    matched <- lab_cluster_match_ticker(feats$ticker, ensure_raw)
+    if (!is.na(matched) && nzchar(matched)) next
+    row <- list(
+      ticker = ensure_raw,
+      name = ensure_raw,
+      market_cap = NA_real_
+    )
+    for (f in LAB_CLUSTER_FEATURES) row[[f]] <- NA_real_
+    feats <- lab_cluster_merge_feature_dfs(feats, lab_cluster_features_to_df(list(row)))
+  }
+  feats
 }
 
 #' Solo re-fetch for Search / radar-focus when still <2 finite ratios.
@@ -990,7 +1001,8 @@ lab_cluster_semantic_labels <- function(centers_df, locale = "en") {
 }
 
 #' Run Winsorize → median impute → scale → K-Means clustering
-#' @param ensure_ticker optional Search ticker that must remain after missing-data filter
+#' @param ensure_ticker optional Search / radar-focus ticker(s) that must remain
+#'   after the missing-data filter
 lab_run_stock_clustering <- function(df_financials, k_clusters = 3L,
                                      features = LAB_CLUSTER_FEATURES,
                                      locale = "en", seed = 42L,
@@ -1023,10 +1035,12 @@ lab_run_stock_clustering <- function(df_financials, k_clusters = 3L,
     lapply(feats, function(f) is.finite(suppressWarnings(as.numeric(df[[f]]))))
   ), na.rm = TRUE))
   keep <- n_finite_orig >= 2L
-  # Search ticker must stay in Universe / radar even if Yahoo ratios are sparse
-  ensure_hit <- lab_cluster_match_ticker(df$ticker, ensure_ticker)
-  if (!is.na(ensure_hit) && nzchar(ensure_hit)) {
-    keep[toupper(trimws(as.character(df$ticker))) == ensure_hit] <- TRUE
+  # Search + radar focus must stay in Universe / radar even if Yahoo ratios are sparse
+  for (ens in lab_cluster_normalize_ensure_tickers(ensure_ticker)) {
+    ensure_hit <- lab_cluster_match_ticker(df$ticker, ens)
+    if (!is.na(ensure_hit) && nzchar(ensure_hit)) {
+      keep[toupper(trimws(as.character(df$ticker))) == ensure_hit] <- TRUE
+    }
   }
   if (sum(keep) < k_clusters) {
     stop(sprintf(
