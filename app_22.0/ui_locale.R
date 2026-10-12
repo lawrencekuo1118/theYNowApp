@@ -2255,7 +2255,8 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Shared controls above BLUE CHIP: first apply Candidate truncate rule to the full ",
       "filtered universe (market cap sort / concept filter / 1Y return / random), ",
       "then analyze the selected Universe size (N) names — not a fixed default count. ",
-      "The Search ticker is always force-included in Universe (N) and is the default radar focus. ",
+      "The Search ticker and the Radar focus ticker (when entered) are always force-included ",
+      "in Universe (N); radar focus has no default symbol. ",
       "Fetches Yahoo ratios with a bundled offline snapshot fallback when Yahoo is blocked ",
       "(snapshot covers S&P 500 + TW listings; other US primary names use live Yahoo when available)."
     ),
@@ -2269,10 +2270,11 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_cluster_idle_focus = "Pick a focus ticker for the radar.",
     lab_cluster_focus_not_in_cluster = paste0(
       "Focus ticker is not in this clustered set. ",
-      "Pick a name from the assignments table or the focus suggestions."
+      "Enter it in Radar focus ticker and run clustering again, ",
+      "or pick a name from the assignments table / focus suggestions."
     ),
     lab_cluster_focus_missing = paste0(
-      "Search ticker was not in the clustered set; radar focus fell back to the first name."
+      "Search ticker was not in the clustered set."
     ),
     lab_cluster_err_features = paste0(
       "Ratio features unavailable for clustering. ",
@@ -5096,7 +5098,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "區塊上方共用控制語意：宇宙池先依「候選截斷邏輯」全市排序／篩選",
       "（市值／概念股／近一年漲幅／隨機；市值缺值則改依代號排序），",
       "再依所選「宇宙檔數（N）」作分群分析（非固定預設檔數）。",
-      "Search 後的代號一律強制納入宇宙（N），並作為雷達焦點預設。",
+      "Search 代號與雷達焦點代號（若有填寫）一律強制納入宇宙（N）；雷達焦點無預設代號。",
       "擷取 Yahoo 比率特徵；若 Yahoo 受限則改用內建離線快照",
       "（快照涵蓋 S&P 500＋台股上市／上櫃；其他美股主要上市檔以即時 Yahoo 為主）。"
     ),
@@ -5110,10 +5112,11 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_cluster_idle_focus = "請選擇雷達焦點代號。",
     lab_cluster_focus_not_in_cluster = paste0(
       "焦點代號不在本次分群結果中。",
-      "請改選分群結果表或焦點建議清單中的代號。"
+      "請在「雷達焦點代號」輸入後再執行分群，",
+      "或改選分群結果表／焦點建議清單中的代號。"
     ),
     lab_cluster_focus_missing = paste0(
-      "Search 代號未進入分群結果，雷達焦點已改為清單第一檔。"
+      "Search 代號未進入分群結果。"
     ),
     lab_cluster_err_features = paste0(
       "無法取得分群所需的比率特徵。",

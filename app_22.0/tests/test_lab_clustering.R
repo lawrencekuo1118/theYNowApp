@@ -4,6 +4,16 @@ suppressPackageStartupMessages({
   library(plotly)
 })
 
+if (!exists("%||%", mode = "function")) {
+  `%||%` <- function(a, b) if (is.null(a)) b else a
+}
+if (!exists("normalize_market_mode", mode = "function")) {
+  normalize_market_mode <- function(mode) {
+    m <- toupper(trimws(as.character(mode %||% "US")[1]))
+    if (identical(m, "TW") || identical(m, "TWN") || identical(m, "TAIWAN")) "TW" else "US"
+  }
+}
+
 source("lab_industry_method.R", encoding = "UTF-8")
 source("lab_clustering.R", encoding = "UTF-8")
 
@@ -240,6 +250,36 @@ stopifnot(!is.na(lab_cluster_match_ticker(res_keep$data$ticker, "ZZZ")))
 stopifnot("n_finite" %in% names(res_keep$data))
 zz_i <- which(toupper(res_keep$data$ticker) == "ZZZ")[1]
 stopifnot(is.finite(zz_i), res_keep$data$n_finite[[zz_i]] < 2L)
+
+
+# Radar focus + Search: multi ensure injects NVS even when absent from catalog
+stopifnot(identical(
+  lab_cluster_normalize_ensure_tickers(c("TSM", "", "NVS", "tsm")),
+  c("TSM", "NVS")
+))
+pool_focus <- lab_cluster_ensure_ticker_in_pool(
+  pool_top, catlg, c("TSM", "NVS"), max_n = 3L, rank_mode = "mcap"
+)
+stopifnot(nrow(pool_focus) <= 3L)
+stopifnot(!is.na(lab_cluster_match_ticker(pool_focus$ticker, "NVS")))
+# Search-only ensure must NOT include NVS (repro of pre-fix radar failure)
+pool_search_only <- lab_cluster_ensure_ticker_in_pool(
+  pool_top, catlg, "TSM", max_n = 3L, rank_mode = "mcap"
+)
+stopifnot(is.na(lab_cluster_match_ticker(pool_search_only$ticker, "NVS")))
+feats_multi <- lab_cluster_ensure_ticker_in_features(df[1:8, ], c("TSM", "NVS"))
+stopifnot(!is.na(lab_cluster_match_ticker(feats_multi$ticker, "NVS")))
+stopifnot(!is.na(lab_cluster_match_ticker(feats_multi$ticker, "TSM")))
+res_multi <- lab_run_stock_clustering(
+  feats_multi, k_clusters = 3L, locale = "en", seed = 2L,
+  ensure_ticker = c("TSM", "NVS")
+)
+stopifnot(!is.na(lab_cluster_match_ticker(res_multi$data$ticker, "NVS")))
+# Radar match succeeds for focus NVS after multi-ensure clustering
+stopifnot(identical(
+  lab_cluster_match_ticker(res_multi$data$ticker, "NVS"),
+  "NVS"
+))
 
 # Pin Search ticker as first assignment row after truncate order
 res_keep$data$market_cap <- seq_len(nrow(res_keep$data)) * 1e9
