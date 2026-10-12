@@ -1,16 +1,23 @@
 # theYNowApp
 
-Taiwan stock fundamental analysis Shiny app（雲端版：yfinance，無 Chromote）。
+US / Taiwan stock fundamental analysis Shiny app（雲端版：yfinance，無 Chromote）。
+
+**Live:** https://hopesmasher1118.shinyapps.io/TheYNowApp/  
+**Display version:** v21.91 · **App folder:** `app_21.0/`  
+**Deploy baseline:** `scripts/DEPLOY_BASELINE.txt`（bundleId／commit／URL；開發比對以此為準，不是單純看 Git tip）
 
 ## 維護方式
 
-本機僅維護此路徑，**每個迭代版本一個資料夾**：
+兩個工作複本對齊 **shinyapps 部署基準**：
 
-`/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp`
+| Clone | Path | 用途 |
+|-------|------|------|
+| Coding（建議 git） | `/Users/lawrencekuo/coding/theYNowApp` | commit／push／deploy |
+| OneDrive mirror | `/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp` | 同步鏡像（勿在此跑 `git status`／`git push`） |
 
-- 目前版本：`app_14.0/`（v14.0 — Valuation Methodology + SEC Lab）
-- **開發／比對基準以目前 shinyapps 部署為準**（見 `scripts/DEPLOY_BASELINE.txt`），不是單純看 Git tip
-- 歷史版本：`app 3.0` … `app_13.0`（本機封存；GitHub Releases 另有標籤）
+- **每個整階版本一個資料夾**（目前活動線：`app_21.0/`；顯示版號可為 `v21.91` 等 +0.01 補丁）
+- 歷史版本：`app 3.0` … `app_20.0`（本機／repo 封存；[GitHub Releases](https://github.com/lawrencekuo1118/theYNowApp/releases) 另有標籤）
+- 詳細版號變更紀錄：見 [`app_21.0/README.md`](app_21.0/README.md)
 
 ## 本機開發（建議）
 
@@ -20,10 +27,12 @@ git pull origin master
 ```
 
 ```r
-shiny::runApp("app_14.0")
+shiny::runApp("app_21.0")
 ```
 
-Requires R packages used by `app_14.0/setup.R` / `app_14.0/global.R`, and Python deps from `app_14.0/requirements.txt`（可選本機 `.ynow_venv`）。
+Cursor Cloud：`bash scripts/cloud-agent-start.sh`（`app_21.0/` → `0.0.0.0:3838`）。
+
+Requires R packages used by `app_21.0/setup.R` / `app_21.0/global.R`, and Python deps from `app_21.0/requirements.txt`（可選本機 `app_21.0/.ynow_venv`）。
 
 ## 本機部署到 shinyapps.io
 
@@ -35,44 +44,58 @@ rsconnect::setAccountInfo(name = "hopesmasher1118", token = "...", secret = "...
 
 之後在專案根目錄：
 
+```bash
+# 預設會 +0.01 顯示版號後上傳；重試可用 YNOW_SKIP_VERSION_BUMP=1
+Rscript scripts/deploy_app_21.R
+```
+
+或：
+
 ```r
 rsconnect::deployApp(
-  appDir = "app_14.0",
+  appDir = "app_21.0",
   appName = "TheYNowApp",
   appId = 10907657,
   forceUpdate = TRUE
 )
 ```
 
-或：
+Deploy 後請更新 `scripts/DEPLOY_BASELINE.txt`（bundleId、commit、`display_version`）。
 
-```bash
-# 可選：用環境變數餵憑證
-Rscript scripts/deploy_app_14.R
-```
+## 目前線重點（v18 → v21）
 
-Live: https://hopesmasher1118.shinyapps.io/TheYNowApp/
-
-## v14.0 重點
-
-- 延續 v13 方法論（分類 → 主／副模型；Bear／Base／Bull 區間＋可信度）
-- **Dashboard 財報附註 (SEC EDGAR)**（Cash Flow 旁頁籤）：年報 10-K／20-F、季報 10-Q、重大訊息 8-K／6-K
-- **實驗區 Lab**（Snapshot 旁「測試」）：績優排行＝門檻後年化估值漲幅最大；Annotation KPI 解讀與產業區間對齊
+- **方法論：** 產業／生命週期分類 → 主／副模型；Bear／Base／Bull；Decision Checklist、HFV（否決工具，非買進訊號）、YNOW 漏斗
+- **估值：** DCF（FCFF／FCFE）、DDM、RI、P/B／NAV、相對倍數、SOTP；CapEx 暴衝平滑；終值 g／WACC 防呆
+- **Macro & Market Trends：** US／TW 訂閱切換；指數 KPI、10Y Rf、產業／概念 vs 大盤、Rolling β（交叉檢驗）
+- **Business Breakdown**（完整版）：營運／獲利結構報告式分析
+- **Asset transmission：** 側邊欄獨立分頁（Lite 亦提供）
+- **Blue Chip Leaderboard／分群：** 宇宙檔數 N、ADR、概念股、候選截斷
+- **量化回測／HFV：** 報告式章節；Lite 隱藏完整回測實驗室
+- **Lite：** 側邊欄 logo 切換；智慧分析（自動主副模型＋預設參數）
+- **PDF 個股報告：** logo 藍綠色系、編號分析說明；Full／Lite × US／TW 檔名
 
 ## Cloud notes
 
 - Financials via **yfinance** (no Chromote / Chrome on shinyapps.io)
-- `requirements.txt` / `py_require` for cloud Python
+- `app_21.0/requirements.txt` / `py_require` for cloud Python
+- UI copy：en-US + zh-TW（台灣投資界用語）；見 `app_21.0/ui_locale.R`
 
-## Layout (`app_14.0/`)
+## Layout (`app_21.0/`)
 
-| File | Role |
-|------|------|
+| File / area | Role |
+|-------------|------|
 | `app.R` / `ynow_ui.R` / `ynow_server.R` / `global.R` | Shiny 進入點 |
-| `setup.R` | 分類器、P/B derive、可信度 |
-| `investment_decision_module.R` | 區間決策看板 |
-| `deep_scraper.py` / `web_crawler.R` | SEC Lab、資料抓取 |
-| `*_module.R` | DCF／DDM／RI／P/B／KPI／回測 |
+| `setup.R` / `default_config.R` / `industry_standards.R` | 分類、預設、產業標準、報告文案 |
+| `ui_locale.R` | en-US／zh-TW 字串 |
+| `macro_market_module.R` | 總體經濟與大盤 |
+| `investment_decision_module.R` / `decision_checklist_module.R` | 區間決策／決策檢核 |
+| `htcdi_*.R` / `business_breakdown_*.R` | HFV／Business Breakdown |
+| `asset_transmission_module.R` | Asset transmission |
+| `lab_*.R` / `backtest_module.R` | Blue Chip／分群／回測 |
+| `report_template.Rmd` | Download Report (PDF) |
+| `deep_scraper.py` / `web_crawler.R` | SEC／財報擷取 |
+| `*_module.R` | DCF／DDM／RI／P/B／KPI／相對倍數／SOTP 等 |
+| `tests/` | 定向驗證腳本 |
 
 ## Older versions
 
