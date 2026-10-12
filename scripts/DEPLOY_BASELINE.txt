@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12680266
+bundleId=12680297
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=22d65cb2963244e7e83c09eeea0e5e74869b653a
-commit=22d65cb2963244e7e83c09eeea0e5e74869b653a
-short=22d65cb
-message=Center only KPI grids; enlarge values; mobile header 1:1:1 (v23.06)
-captured_at=2026-10-12T15:12:05Z
-display_version=v23.06
+aligned_git=ac67ea4af111894256a9c2b27b897930b214c21e
+commit=ac67ea4af111894256a9c2b27b897930b214c21e
+short=ac67ea4
+message=Escape CSS attr selectors so ynow_ui.R parses on start (v23.07)
+captured_at=2026-10-12T15:20:58Z
+display_version=v23.07
