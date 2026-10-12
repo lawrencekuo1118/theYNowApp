@@ -546,8 +546,12 @@ check("bank recommendation names P/B", identical(rec9$multiples_family, "book") 
 check("stable foods recommendation names P/E", identical(rec1$multiples_method, "pe"))
 check("loss-making software names a revenue multiple", identical(rec3$multiples_family, "revenue"))
 
-# Thin ROE + negative latest FCFF (TW 3363-like): one-stage RI with g≈ROE collapses to P≈0.
-# Must not keep RI as Fair Value primary; prefer P/B (or another non-Gordon-blocked FV).
+# Thin ROE + negative latest FCFF (TW 3363-like):
+# - one-stage RI with g≈ROE → P≈0 (not a usable Fair Value)
+# - Gordon DCF blocked on neg FCFF
+# - Justified P/B uses the same (ROE−g)/(Ke−g) identity → also ≈0
+# - industry/history P/B is relative → Multiples Reference only, not FV primary/secondary
+# Expect: no Fair Value primary; Multiples may still be Reference.
 rec_thin <- recommend_valuation_models(
   base_cf(cfo = c(-17, 70), capex = c(-225, -217), div = c(NA_real_, -49)),
   "Communication Equipment",
@@ -565,8 +569,17 @@ check(
       isTRUE(rec_thin$model_scores$gordon_blocked[rec_thin$model_scores$model == "dcf"][1]))
 )
 check(
-  "thin ROE + neg FCFF prefers P/B primary",
-  identical(as.character(rec_thin$primary %||% ""), "pb")
+  "thin ROE + neg FCFF not P/B Fair Value primary",
+  !identical(as.character(rec_thin$primary %||% ""), "pb")
+)
+check(
+  "thin ROE + neg FCFF no usable Fair Value primary",
+  is.null(rec_thin$primary) || identical(as.character(rec_thin$company_type %||% ""), "insufficient")
+)
+check(
+  "thin ROE + neg FCFF keeps Multiples Reference",
+  identical(as.character(rec_thin$reference %||% ""), "multiples") ||
+    isTRUE(rec_thin$multiples)
 )
 
 if (fail > 0L) {
