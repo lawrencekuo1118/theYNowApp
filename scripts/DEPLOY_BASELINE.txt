@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12678596
+bundleId=12678632
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=34e76164f76a880cb5ee0823a604893c9fce0b07
-commit=34e76164f76a880cb5ee0823a604893c9fce0b07
-short=34e7616
-message=chore: record shinyapps baseline bundle 12678571 (app_22.0)
-captured_at=2026-10-12T05:41:22Z
-display_version=v22.02
+aligned_git=cc28aeb04c75eff1d107665003adc3606af768d4
+commit=cc28aeb04c75eff1d107665003adc3606af768d4
+short=cc28aeb
+message=Split Blue Chip Models filter into Absolute vs Relative groups (v22.03)
+captured_at=2026-10-12T05:59:00Z
+display_version=v22.03
