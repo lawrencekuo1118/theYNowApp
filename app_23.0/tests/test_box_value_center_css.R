@@ -1,4 +1,4 @@
-# Contract: box numerals text-centered + fluid clamp (文字／數值縮放；不改框格尺寸)
+# Contract: KPI by Sheet / Crossover KPIs centered; values >> labels; mobile header 1:1:1
 # Run: cd app_23.0 && Rscript tests/test_box_value_center_css.R
 args <- commandArgs(trailingOnly = FALSE)
 file_arg <- sub("^--file=", "", args[grep("^--file=", args)])
@@ -15,27 +15,27 @@ check <- function(label, ok) {
     cat("FAIL ", label, "\n", sep = "")
   }
 }
-# Text/value scaling only — must not reintroduce box-dimension overrides
-check("no global small-box flex resize", !grepl("Global valueBox: numeral", ui, fixed = TRUE))
-check("no info-box min-height 90", !grepl("min-height: 90px", ui, fixed = TRUE))
-check("eq-pill has no added min-height", {
-  m <- regexpr("\\.ynow-eq-score-pill \\{[^}]+\\}", ui, perl = TRUE)
+# Only KPI grids are H/V-centered
+check("kpi-grid center comment", grepl("KPI by Sheet / Crossover KPIs only", ui, fixed = TRUE))
+check("kpi-grid inner flex center", grepl(".ynow-kpi-grid .small-box .inner", ui, fixed = TRUE) &&
+        grepl("justify-content: center !important", ui, fixed = TRUE) &&
+        grepl("align-items: center !important", ui, fixed = TRUE))
+check("kpi-grid value >> label", grepl("clamp(18px, 3.4vw, 28px)", ui, fixed = TRUE) &&
+        grepl("clamp(9px, 1.2vw, 11px)", ui, fixed = TRUE))
+# Global boxes: no forced center on .inner
+check("global small-box inner not text-align center", {
+  m <- regexpr("Global boxes:[^\n]*\n\\s*\\.content-wrapper \\.small-box \\.inner \\{[^}]+\\}", ui, perl = TRUE)
   block <- if (m[1] > 0) regmatches(ui, m) else ""
-  !grepl("min-height", block, fixed = TRUE)
+  grepl("padding-right: 44px", block, fixed = TRUE) && !grepl("text-align: center", block, fixed = TRUE)
 })
-check("small-box keeps padding-right 44", grepl("padding-right: 44px", ui, fixed = TRUE))
-check("small-box h3 clamp + center", grepl("clamp(14px, 2.2vw + 0.25rem, 32px)", ui, fixed = TRUE) &&
-        grepl(".content-wrapper .small-box .inner h3", ui, fixed = TRUE) &&
-        grepl("text-align: center !important", ui, fixed = TRUE))
-check("info-box number clamp + center", grepl("clamp(14px, 2vw + 0.25rem, 28px)", ui, fixed = TRUE) &&
-        grepl(".content-wrapper .info-box .info-box-number", ui, fixed = TRUE))
-check("smart-card value clamp", grepl("ynow-smart-card-value", ui, fixed = TRUE) &&
-        grepl("clamp(16px, 3.2vw, 26px)", ui, fixed = TRUE))
-check("fs-value clamp", grepl("clamp(13px, 2.6vw, 17px)", ui, fixed = TRUE))
-check("macro kpi value clamp", grepl("clamp(18px, 4.2vw, 28px)", ui, fixed = TRUE))
-check("mscore value clamp", grepl("clamp(22px, 5vw, 34px)", ui, fixed = TRUE))
-check("eq score num clamp", grepl("clamp(24px, 5.5vw, 36px)", ui, fixed = TRUE))
-check("metric-card value center", grepl(".ynow-metric-card__value", ui, fixed = TRUE) &&
-        grepl("text-align: center", ui, fixed = TRUE))
+check("global value >> label clamps", grepl("clamp(18px, 2.6vw + 0.45rem, 36px)", ui, fixed = TRUE) &&
+        grepl("clamp(10px, 1.1vw, 12px)", ui, fixed = TRUE))
+# Mobile header KPI 1:1:1
+check("header kpi cols col-xs-4", grepl('class = "ynow-header-kpi-row"', ui, fixed = TRUE) &&
+        length(gregexpr('class = "col-xs-4"', ui, fixed = TRUE)[[1]]) >= 3L)
+check("header kpi mobile 1:1:1", grepl("LAST PRICE / MARKET CAP / EPS (TTM) 同列 1:1:1", ui, fixed = TRUE) &&
+        grepl("ynow-header-kpi-row > [class*='col-']", ui, fixed = TRUE) &&
+        grepl("33.333%", ui, fixed = TRUE))
+check("mobile full-width excludes header kpi row", grepl("row:not(.ynow-header-kpi-row)", ui, fixed = TRUE))
 if (fail > 0L) quit(status = 1L)
 cat("ALL PASS\n")
