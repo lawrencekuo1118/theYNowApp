@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12680662
+bundleId=12680732
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=f22d5f2a25954dd6a1f38616dae6dde069e3f15f
-commit=f22d5f2a25954dd6a1f38616dae6dde069e3f15f
-short=f22d5f2
-message=chore: bump display version to v23.11 for Hamada/Macro Value Alert ship
-captured_at=2026-10-12T16:57:55Z
-display_version=v23.11
+aligned_git=01d4d7acfb61592633756ba62ed2c9830cda6b76
+commit=01d4d7acfb61592633756ba62ed2c9830cda6b76
+short=01d4d7a
+message=fix: refuse Gordon-blocked DCF as Fair Value primary (v23.12)
+captured_at=2026-10-12T17:14:01Z
+display_version=v23.12
