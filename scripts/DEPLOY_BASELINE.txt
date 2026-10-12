@@ -7,4 +7,4 @@ commit=fc8f75cf389a6fada3f7a73b68a30c4008e9d9dc
 short=fc8f75c
 message=TW 3363: no fake FV when RI/Justified collapse; relative P/B stays Multiples Reference (v23.02)
 captured_at=2026-10-12T13:27:01Z
-display_version=v23.02
+display_version=v23.03
