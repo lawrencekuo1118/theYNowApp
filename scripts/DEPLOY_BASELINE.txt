@@ -7,4 +7,4 @@ commit=c27b103
 short=c27b103
 message=Equity structure pie beside BS; Ordinary/Preferred and dual-class (v23.01)
 captured_at=2026-10-12T12:00:00Z
-display_version=v23.01
+display_version=v23.02
