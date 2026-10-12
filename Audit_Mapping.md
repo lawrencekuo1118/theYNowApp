@@ -2,8 +2,8 @@
 
 **Role:** ITGC / QA automation inventory  
 **Scope:** Live line `app_23.0/` (display baseline per `scripts/DEPLOY_BASELINE.txt`)  
-**Phase:** 1 — System Mapping only  
-**Status:** Draft for reviewer confirmation (pause before Phase 2–5)
+**Phase:** 1 complete · **2 in progress** (Data Integrity Tests)  
+**Status:** Mapping confirmed; Phase 2 script `app_23.0/tests/test_data_integrity.R`
 
 ---
 
@@ -177,8 +177,12 @@ Framework in-repo: R `testthat`-style scripts (many are self-running `stopifnot`
 
 ---
 
-## 6. Pause
+## 6. Phase 2 deliverable
 
-**Phase 1 complete.** Please review this mapping (coverage, missing entry points, wrong formula owners, params to treat as out-of-scope).
+| Artifact | Role |
+|---|---|
+| `app_23.0/tests/test_data_integrity.R` | Completeness (offline CSV / fixture schemas, non-blank key fields, Buffett series continuity) + Accuracy (mock Python payload → `normalize_all_financials` / `parse_financial_number` / Summary extract / TW finalize / metrics snapshot loader) |
 
-Reply with confirmation or edits; Phase 2 (Data Integrity Tests) will start only after your go-ahead.
+Run: `cd app_23.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_data_integrity.R`
+
+Phases 3–5 not started.
