@@ -7,4 +7,4 @@ commit=17fdd3d138971f97aecdb526e2c47f0f1838d501
 short=17fdd3d
 message=chore: bump display version to v21.91
 captured_at=2026-10-11T23:45:56Z
-display_version=v21.91
+display_version=v22.00
