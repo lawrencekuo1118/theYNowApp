@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12679318
+bundleId=12679342
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=35adea29f0a859c8e5d30c832e08c8b3cd63ecfd
-commit=35adea29f0a859c8e5d30c832e08c8b3cd63ecfd
-short=35adea2
-message=Industry-chain mcap ranking all chains + Refresh ranking (v22.04)
-captured_at=2026-10-12T10:15:00Z
+aligned_git=ad55d99208ddf48b9b84f1b03d9cfa08285a9140
+commit=ad55d99208ddf48b9b84f1b03d9cfa08285a9140
+short=ad55d99
+message=Sidebar tab loading ellipsis (v22.05)
+captured_at=2026-10-12T10:30:00Z
 display_version=v22.05
