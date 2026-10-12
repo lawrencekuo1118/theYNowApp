@@ -70,9 +70,9 @@ check("compact SOP class", grepl("ynow-dc-sop--compact", dc, fixed = TRUE))
 check("en title simplified", identical(ui_str("dc_box_sop", "en"), "Decision SOP"))
 check("zh title simplified", identical(ui_str("dc_box_sop", "zh-TW"), "決策 SOP"))
 check(
-  "locked hint points to Decision Checklist",
-  grepl("Decision Checklist", ui_str("funnel_sop_locked_hint", "en"), fixed = TRUE) &&
-    grepl("決策檢核", ui_str("funnel_sop_locked_hint", "zh-TW"), fixed = TRUE)
+  "legacy locked hint key still bilingual (optional-discipline wording)",
+  grepl("optional", ui_str("funnel_sop_locked_hint", "en"), ignore.case = TRUE) &&
+    grepl("選用", ui_str("funnel_sop_locked_hint", "zh-TW"), fixed = TRUE)
 )
 check(
   "unused locked title/body keys removed",
@@ -81,7 +81,7 @@ check(
     is.null(.UI_STRINGS$`zh-TW`$funnel_sop_locked_title) &&
     is.null(.UI_STRINGS$`zh-TW`$funnel_sop_locked_body)
 )
-# Hint is for YNOW recommendation only — not the shared composite header on model pages.
+# YNOW no longer gates on Decision SOP unlock.
 rec_start <- regexpr("output\\$ui_recommendation", dec)[1]
 cmp_start <- regexpr("output\\$ui_valuation_compare", dec)[1]
 rec_chunk <- if (is.finite(rec_start) && rec_start > 0 && is.finite(cmp_start) && cmp_start > rec_start) {
@@ -91,16 +91,20 @@ rec_chunk <- if (is.finite(rec_start) && rec_start > 0 && is.finite(cmp_start) &
 }
 cmp_chunk <- if (is.finite(cmp_start) && cmp_start > 0) substr(dec, cmp_start, nchar(dec)) else ""
 check(
-  "YNOW recommendation uses locked hint",
-  grepl("funnel_sop_locked_hint", rec_chunk, fixed = TRUE)
+  "YNOW recommendation does not use SOP lock hint",
+  !grepl("funnel_sop_locked_hint", rec_chunk, fixed = TRUE)
 )
 check(
   "composite valuation omits YNOW unlock hint",
   !grepl("funnel_sop_locked_hint", cmp_chunk, fixed = TRUE)
 )
 check(
-  "composite still shows SOP locked status",
-  grepl("composite_sop_locked", cmp_chunk, fixed = TRUE)
+  "composite does not show SOP locked status",
+  !grepl("composite_sop_locked", cmp_chunk, fixed = TRUE)
+)
+check(
+  "YNOW .sop_unlocked is always TRUE",
+  grepl("\\.sop_unlocked <- function\\(\\) TRUE", dec)
 )
 
 cat("\nAll institutional SOP tests passed.\n")

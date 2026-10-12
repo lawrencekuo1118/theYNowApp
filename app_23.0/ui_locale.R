@@ -1853,8 +1853,9 @@ locale_for_market <- function(mode = get_market_mode()) {
       "or Statement alerts (includes Beneish M-Score) to scroll. ",
       "Reading order: scenario verdict → automated risk matrix → statement quality (QoE / F-Score) → ",
       "statement alerts (M-Score / Schilit). ",
-      "The verdict unlocks only after Decision Checklist → Decision SOP; ",
-      "the risk matrix is a composite overview, not the unlock gate. ",
+      "YNOW analyzes and displays from loaded price, statements, and valuation results — ",
+      "no Decision Checklist / Decision SOP unlock is required; the Checklist remains an optional discipline workflow. ",
+      "The risk matrix is a composite overview. ",
       "Dynamic industry bubble and weight concentration sit at the bottom of Macro & Market Trends."
     ),
     funnel_kpi_jump_mos_aria = "Jump to YNOW scenario verdict (MOS and Reliability are inputs to that verdict)",
@@ -1864,8 +1865,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     funnel_verdict_title = "YNOW scenario verdict",
     funnel_verdict_lead = paste0(
       "Research scenario label from MOS, F-Score / earnings quality, and trend momentum ",
-      "(not a trade ticket). In Full mode, unlock via Decision Checklist → Decision SOP ",
-      "(including hard gates). The automated risk matrix below is parallel context—not the unlock condition."
+      "(not a trade ticket). Results appear after Search loads statements and valuation inputs — ",
+      "no Decision Checklist / Decision SOP unlock is required; the Checklist remains optional discipline. ",
+      "The automated risk matrix below is parallel context."
     ),
     funnel_risk_kicker = "Overview",
     funnel_risk_title = "Automated risk matrix",
@@ -2244,8 +2246,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     dc_sop_locked_gates_na = "Mandatory gates lack data — load statements, run DCF/HFV if needed.",
     dc_sop_locked_default = "SOP incomplete — verdict locked.",
     # YNOW verdict gate only (not on Smart Analysis / model composite headers).
-    funnel_sop_locked_hint = "Open Decision Checklist and complete Decision SOP to unlock the YNOW verdict.",
-    composite_sop_locked = "SOP locked",
+    funnel_sop_locked_hint = "YNOW analyzes independently; Decision Checklist Decision SOP is optional discipline, not a prerequisite.",
+    composite_sop_locked = "Waiting for valuation",
     # --- nested / small tabs (keyed for JS; data-value match) ---
     tab_finance_summary = "Finance Summary",
     tab_income_statement = "Income Statement",
@@ -4787,7 +4789,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     funnel_page_sub = paste0(
       "點選 MOS／Reliability（跳至情境結論）、品質檢核 (F-Score)、財報警訊（含 Beneish M-Score）可捲動至對應區塊。",
       "閱讀順序：情境結論 → 自動化風險矩陣 → 財報體質（QoE／F-Score）→ 財報警訊（M-Score／Schilit）。",
-      "情境結論須先完成「決策檢核」Decision SOP 才解鎖；風險矩陣為綜合概覽、非解鎖條件。",
+      "YNOW 依已載入之股價／財報與估值結果獨立分析並顯示，不需先完成「決策檢核」Decision SOP；",
+      "決策檢核仍可作選用紀律流程。風險矩陣為綜合概覽。",
       "動態產業泡沫與權重集中度在「總體經濟與大盤趨勢」分頁最下方。"
     ),
     funnel_kpi_jump_mos_aria = "跳至 YNOW 情境結論（MOS 與 Reliability 為此結論輸入）",
@@ -4797,8 +4800,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     funnel_verdict_title = "YNOW 情境結論",
     funnel_verdict_lead = paste0(
       "綜合 MOS、F-Score／盈餘品質與趨勢動能的研究情境標籤（非下單指令）。",
-      "Full 模式須先至「決策檢核」完成 Decision SOP（含強制閘門）才解鎖；",
-      "與下方自動化風險矩陣並列參考——矩陣不是解鎖條件。"
+      "搜尋載入財報與估值後即可顯示，不需先解鎖「決策檢核」Decision SOP；",
+      "決策檢核仍可作選用紀律。下方自動化風險矩陣為並列參考。"
     ),
     funnel_risk_kicker = "綜合概覽",
     funnel_risk_title = "自動化風險矩陣",
@@ -5162,8 +5165,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     dc_sop_locked_gates_na = "強制閘門缺資料 — 請載入財報，必要時試算 DCF／HFV。",
     dc_sop_locked_default = "SOP 未完成 — 結論鎖定。",
     # YNOW 結論閘門專用（不出現在智慧分析／模型頁 composite 標頭）。
-    funnel_sop_locked_hint = "請至「決策檢核」完成決策 SOP，再解鎖 YNOW 結論。",
-    composite_sop_locked = "SOP 未解鎖",
+    funnel_sop_locked_hint = "YNOW 獨立分析並顯示結果；「決策檢核」Decision SOP 為選用紀律，非必要前提。",
+    composite_sop_locked = "等待估值結果",
     # --- nested / small tabs ---
     tab_finance_summary = "財務摘要",
     tab_income_statement = "損益表",
