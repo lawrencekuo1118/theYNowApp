@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12678469
+bundleId=12678563
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=516782d0aa311af4d7055ba045e3104e1eea2edc
-commit=516782d0aa311af4d7055ba045e3104e1eea2edc
-short=516782d
-message=Merge branch 'cursor/radar-focus-app22-f4a6'
-captured_at=2026-10-12T04:47:23Z
-display_version=v22.01
+aligned_git=7397f49b8cf68a4fb1581e1a8f0ca95806fff61a
+commit=7397f49b8cf68a4fb1581e1a8f0ca95806fff61a
+short=7397f49
+message=Default Blue Chip quality gates off (EQ, Piotroski, No FS alerts).
+captured_at=2026-10-12T05:26:00Z
+display_version=v22.02
