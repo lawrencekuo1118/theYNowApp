@@ -2,8 +2,8 @@
 
 **Role:** ITGC / QA automation inventory  
 **Scope:** Live line `app_23.0/` (display baseline per `scripts/DEPLOY_BASELINE.txt`)  
-**Phase:** 1–2 complete · **3 in progress** (Parameter & Boundary Audit)  
-**Status:** Phase 2 `test_data_integrity.R`; Phase 3 `test_parameters_boundaries.R`
+**Phase:** 1–3 complete · **4 in progress** (Formula Accuracy Audit)  
+**Status:** Phase 2–3 scripts landed; Phase 4 `test_formula_accuracy.R`
 
 ---
 
@@ -172,21 +172,23 @@ Framework in-repo: R `testthat`-style scripts (many are self-running `stopifnot`
 |---|---|---|
 | 2 Data integrity | Yahoo/TPEx shaped statements; summary quote fields; snapshot CSV schemas | **Done** — `test_data_integrity.R` |
 | 3 Parameter / boundary | `APP_DEFAULTS` lock; WACC−g; CapEx spike; g ceiling; ADR share unit; M-Score thresholds | **Done** — `test_parameters_boundaries.R` |
-| 4 Formula accuracy | DCF Gordon/2-stage; DDM; RI; F-Score 9 signals; Beneish 8 components; MOS; SGR; WACC | Not started |
+| 4 Formula accuracy | DCF Gordon/2-stage; DDM; RI; F-Score 9 signals; Beneish 8 components; MOS; SGR; WACC | **Done** — `test_formula_accuracy.R` |
 | 5 RCM report | Aggregate existing `app_23.0/tests/` + new scripts → `Audit_RCM_Report.md` | Not started |
 
 ---
 
-## 6. Phase 2–3 deliverables
+## 6. Phase 2–4 deliverables
 
 | Artifact | Role |
 |---|---|
 | `app_23.0/tests/test_data_integrity.R` | Completeness + Accuracy on data-flow entry points (offline / mock) |
-| `app_23.0/tests/test_parameters_boundaries.R` | Default lock (`APP_DEFAULTS`, Rf/tax, CapEx spike, EQ, YNOW) + boundary fail-soft (g ceiling, WACC≤g, shares≤0, neg equity P/B, MOS near-zero, PE nonpositive EPS) |
+| `app_23.0/tests/test_parameters_boundaries.R` | Default lock + boundary fail-soft |
+| `app_23.0/tests/test_formula_accuracy.R` | Closed-form identities + 3 scenarios (base/bull/bear) for DCF·RI·MOS; F-Score 9-signal assert; Beneish 8-component + M hand calc |
 
 ```bash
 cd app_23.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_data_integrity.R
 cd app_23.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_parameters_boundaries.R
+cd app_23.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_formula_accuracy.R
 ```
 
-Phases 4–5 not started.
+Phase 5 (RCM report) not started.
