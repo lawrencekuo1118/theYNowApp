@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12680321
+bundleId=12680377
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=ac67ea4af111894256a9c2b27b897930b214c21e
-commit=ac67ea4af111894256a9c2b27b897930b214c21e
-short=ac67ea4
-message=Focus KPI alert bell inside gold frame; thicker pulsing gold border (v23.07)
-captured_at=2026-10-12T15:25:45Z
-display_version=v23.07
+aligned_git=e7608958f057179f4518b1b7fdb2f7f45f4dfc98
+commit=e7608958f057179f4518b1b7fdb2f7f45f4dfc98
+short=e760895
+message=fix: YNOW analyzes without Decision SOP unlock gate (v23.08)
+captured_at=2026-10-12T15:43:56Z
+display_version=v23.08

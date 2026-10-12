@@ -55,8 +55,10 @@ check("no Decision Funnel title", !grepl("Decision Funnel", .UI_STRINGS$en$funne
 check("no 決策漏斗 title", !grepl("決策漏斗", .UI_STRINGS$`zh-TW`$funnel_page_title, fixed = TRUE))
 check("page_sub click MOS", grepl("Click MOS / Reliability", .UI_STRINGS$en$funnel_page_sub, fixed = TRUE))
 check("page_sub zh 點選", grepl("點選 MOS／Reliability", .UI_STRINGS$`zh-TW`$funnel_page_sub, fixed = TRUE))
-check("page_sub mentions verdict unlock", grepl("Decision SOP", .UI_STRINGS$en$funnel_page_sub, fixed = TRUE))
-check("page_sub zh Decision SOP", grepl("Decision SOP", .UI_STRINGS$`zh-TW`$funnel_page_sub, fixed = TRUE))
+check("page_sub independent (no unlock gate)", grepl("no Decision Checklist", .UI_STRINGS$en$funnel_page_sub, fixed = TRUE))
+check("page_sub zh 不需先完成", grepl("不需先完成", .UI_STRINGS$`zh-TW`$funnel_page_sub, fixed = TRUE))
+check("page_sub may still name Decision SOP as optional", grepl("Decision SOP", .UI_STRINGS$en$funnel_page_sub, fixed = TRUE))
+check("page_sub zh Decision SOP optional", grepl("Decision SOP", .UI_STRINGS$`zh-TW`$funnel_page_sub, fixed = TRUE))
 check("verdict locale keys", nzchar(ui_str("funnel_verdict_title", "en")) &&
         nzchar(ui_str("funnel_verdict_title", "zh-TW")))
 check("risk locale keys", nzchar(ui_str("funnel_risk_title", "en")) &&
