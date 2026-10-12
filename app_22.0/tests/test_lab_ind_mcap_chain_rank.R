@@ -162,6 +162,29 @@ built_u <- lab_industry_chain_mcap_upside_leaderboard(
 )
 check("unmapped ticker does not add Unmapped chain",
       !"未對應" %in% built_u$aggregate$chain_id)
+
+# 總市值 = full universe (extra names not in eval sample still count)
+uni_only <- rbind(
+  df[, c("ticker", "industry_key", "market_cap")],
+  data.frame(
+    ticker = c("A3", "A4"),
+    industry_key = c("sc.Memory", "sc.IC_Design"),
+    market_cap = c(1000, 500),
+    stringsAsFactors = FALSE
+  )
+)
+built2 <- lab_industry_chain_mcap_upside_leaderboard(
+  df, locale = "zh-TW", include_all_chains = TRUE, universe_df = uni_only
+)
+semi <- built2$aggregate[built2$aggregate$chain_id == "半導體", , drop = FALSE]
+check("semi total_mcap uses full universe", nrow(semi) == 1L &&
+        isTRUE(all.equal(semi$total_mcap[[1]], 100 + 50 + 1000 + 500)))
+check("semi n_names uses full universe", nrow(semi) == 1L &&
+        identical(as.integer(semi$n_names[[1]]), 4L))
+check("semi wavg still from eval sample only",
+      nrow(semi) == 1L &&
+        isTRUE(all.equal(semi$wavg_cagr[[1]], (100 * 40 + 50 * 20) / 150)))
+
 check("format drops Unmapped even if present in frame", {
   bad <- data.frame(
     chain_id = c("半導體", "未對應", "金融"),
@@ -213,6 +236,10 @@ if (file.exists(bundled)) {
 
 # Legacy block test expectations still roughly hold
 check("help mentions 全部產業鏈", grepl("全部產業鏈", ui_str("lab_im_ind_mcap_help", "zh-TW"), fixed = TRUE))
+check("help mentions full universe total mcap (en)",
+      grepl("full universe", ui_str("lab_im_ind_mcap_help", "en"), fixed = TRUE))
+check("help mentions 全宇宙 (zh-TW)",
+      grepl("全宇宙", ui_str("lab_im_ind_mcap_help", "zh-TW"), fixed = TRUE))
 check("help mentions Refresh ranking", grepl("Refresh ranking", ui_str("lab_im_ind_mcap_help", "en"), fixed = TRUE))
 
 cat("\nPASS ", pass, "  FAIL ", fail, "\n", sep = "")
