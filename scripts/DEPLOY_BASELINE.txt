@@ -7,4 +7,4 @@ commit=ad55d99208ddf48b9b84f1b03d9cfa08285a9140
 short=ad55d99
 message=Sidebar tab loading ellipsis (v22.05)
 captured_at=2026-10-12T10:30:00Z
-display_version=v22.05
+display_version=v22.06
