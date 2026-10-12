@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12677979
+bundleId=12678469
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=9c37abed3a8030b0f5b6987325073aee83a87ce8
-commit=9c37abed3a8030b0f5b6987325073aee83a87ce8
-short=9c37abe
-message=chore: bump display version to v22.00
-captured_at=2026-10-12T02:38:00Z
-display_version=v22.00
+aligned_git=516782d0aa311af4d7055ba045e3104e1eea2edc
+commit=516782d0aa311af4d7055ba045e3104e1eea2edc
+short=516782d
+message=Merge branch 'cursor/radar-focus-app22-f4a6'
+captured_at=2026-10-12T04:47:23Z
+display_version=v22.01
