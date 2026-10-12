@@ -5197,9 +5197,15 @@ server <- function(input, output, session) {
 
   primary_valuation_band <- reactive({
     rec <- model_sidebar_rec()
-    prim <- as.character(rec$primary %||% "")
-    # Multiples / SOTP are Implied Price engines — never drive Bear–Base–Bull FV band.
-    if (identical(prim, "multiples") || identical(prim, "sotp")) prim <- "dcf"
+    prim <- as.character(rec$primary %||% "")[1]
+    # Fair Value engines only. Empty / insufficient primary (e.g. TW 3363-like thin ROE +
+    # neg FCFF) must not fall through to the DCF band — that made Composite status look
+    # DCF-driven while Model Selector correctly said no usable Fair Value primary.
+    # Multiples / SOTP are Implied Price / Meta-Framework — never drive Bear–Base–Bull.
+    fv_ok <- prim %in% c("dcf", "ddm", "pb", "nav", "ri")
+    if (!isTRUE(fv_ok)) {
+      return(.model_empty_band(""))
+    }
     band <- switch(
       prim,
       "dcf" = dcf_scenario_band(),
@@ -5207,9 +5213,9 @@ server <- function(input, output, session) {
       "pb" = pb_scenario_band(),
       "nav" = nav_scenario_band(),
       "ri" = ri_scenario_band(),
-      dcf_scenario_band()
+      .model_empty_band(.model_label(prim))
     )
-    if (is.null(band)) band <- list(bear = NA_real_, base = NA_real_, bull = NA_real_, label = .model_label(prim))
+    if (is.null(band)) band <- .model_empty_band(.model_label(prim))
     band$label <- .model_label(prim)
     # ensure ordered when all present
     if (is.finite(band$bear) && is.finite(band$base) && is.finite(band$bull)) {
@@ -8930,14 +8936,20 @@ server <- function(input, output, session) {
     rec <- model_sidebar_rec()
     prim <- as.character(rec$primary %||% "")[1]
     sec <- as.character(rec$secondary %||% "")[1]
-    req(nzchar(prim), prim %in% c("dcf", "ddm", "pb", "ri", "nav"))
+    ref <- as.character(rec$reference %||% "")[1]
+    fv_prim <- nzchar(prim) && prim %in% c("dcf", "ddm", "pb", "ri", "nav")
+    # TW 3363-like insufficient FV still keeps Multiples as Reference — do not require
+    # a Fair Value primary before companion-running that Implied Price path in Lite.
+    ref_only <- !isTRUE(fv_prim) && identical(ref, "multiples")
+    req(isTRUE(fv_prim) || isTRUE(ref_only))
 
     # Lite: apply recommended scenario once, then proceed without waiting on hidden radios.
     # Do not block on .lite_scenario_matches_ui — CSS-hidden DCF radios in Lite may
     # lag or never echo updateRadioButtons, which left Smart Analysis on waiting copy.
     # Lite Smart Analysis must not hang on NA calculated WACC either; readiness falls
     # back to UI / App-default WACC and silent heal covers g ≥ discount.
-    if (isTRUE(lite_mode())) {
+    # Skip DCF scenario heal when there is no Fair Value primary (Reference-only path).
+    if (isTRUE(lite_mode()) && isTRUE(fv_prim)) {
       des <- .lite_desired_scenario(rec)
       want_sig <- paste(
         tk,
@@ -8955,7 +8967,7 @@ server <- function(input, output, session) {
       .lite_resync_discount_consistency(des)
     }
 
-    if (!isTRUE(.auto_calc_primary_ready(prim))) {
+    if (isTRUE(fv_prim) && !isTRUE(.auto_calc_primary_ready(prim))) {
       # Surface why primary cannot auto-calc (mobile Lite never opens model tabs)
       if (identical(prim, "ddm")) {
         d0 <- suppressWarnings(as.numeric(input[["mod_ddm-d0"]])[1])
@@ -8976,21 +8988,21 @@ server <- function(input, output, session) {
       }
       return()
     }
-    keys <- prim
+    keys <- if (isTRUE(fv_prim)) prim else character(0)
     # Lite secondary auto-calc: Fair Value engines + SOTP structural cross-check.
     # Multiples is a universal Reference (not a secondary) — always companion-run when ready.
     sec_auto_allowlist <- c("dcf", "ddm", "pb", "ri", "nav", "sotp")
     sec_in_auto_allowlist <- nzchar(sec) && sec %in% sec_auto_allowlist && !identical(sec, "multiples")
     sec_ready <- if (isTRUE(sec_in_auto_allowlist)) isTRUE(.auto_calc_primary_ready(sec)) else FALSE
-    if (isTRUE(lite_mode()) && isTRUE(sec_in_auto_allowlist) &&
+    if (isTRUE(lite_mode()) && isTRUE(fv_prim) && isTRUE(sec_in_auto_allowlist) &&
         !identical(sec, prim) && isTRUE(sec_ready)) {
       keys <- c(prim, sec)
     }
-    ref <- as.character(rec$reference %||% "")[1]
     if (isTRUE(lite_mode()) && identical(ref, "multiples") &&
         isTRUE(.auto_calc_primary_ready("multiples"))) {
       keys <- unique(c(keys, "multiples"))
     }
+    if (!length(keys)) return()
     mode <- as.character(input$dcf_mode %||% "gordon")[1]
     claim <- as.character(input$dcf_claim %||% "fcff")[1]
     w_calc <- suppressWarnings(as.numeric(calculated_wacc())[1])
@@ -9053,7 +9065,11 @@ server <- function(input, output, session) {
       paste0(sprintf("%+.1f", x), "%")
     }
     block <- tryCatch(lite_dcf_block(), error = function(e) "")
-    prim_meta <- if (is.finite(bear) && is.finite(bull)) {
+    ctype <- as.character(rec$company_type %||% "")[1]
+    no_fv_primary <- !nzchar(prim) || identical(ctype, "insufficient")
+    prim_meta <- if (isTRUE(no_fv_primary)) {
+      ui_str("smart_no_fv_primary_meta", loc)
+    } else if (is.finite(bear) && is.finite(bull)) {
       paste0("Bear ", fmt_px(bear), " · Bull ", fmt_px(bull))
     } else if (identical(block, "neg_terminal")) {
       ui_str("notif_dcf_neg_fcff_skip_tv", loc)
@@ -9070,6 +9086,11 @@ server <- function(input, output, session) {
     } else {
       ui_str("smart_calc_pending", loc)
     }
+    prim_title <- if (isTRUE(no_fv_primary)) {
+      ui_str("smart_no_fv_primary", loc)
+    } else {
+      .model_label(prim)
+    }
     tk <- tryCatch(as.character(current_ticker() %||% "")[1], error = function(e) "")
     searched <- isTRUE(user_has_searched())
     tags$div(
@@ -9078,14 +9099,14 @@ server <- function(input, output, session) {
         tags$div(
           class = "ynow-smart-card",
           tags$p(class = "ynow-smart-card-kicker", ui_str("smart_primary_kicker", loc)),
-          tags$p(class = "ynow-smart-card-title", .model_label(prim)),
+          tags$p(class = "ynow-smart-card-title", prim_title),
           tags$p(class = "ynow-smart-card-value", fmt_px(base)),
           tags$p(class = "ynow-smart-card-meta", prim_meta)
         ),
         metric = "fair_value",
         ticker = tk,
         value = base,
-        label = paste(ui_str("smart_primary_kicker", loc), .model_label(prim)),
+        label = paste(ui_str("smart_primary_kicker", loc), prim_title),
         ready = searched && is.finite(base) && base > 0,
         default_kind = "below_fair",
         fair_value = base
