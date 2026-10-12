@@ -7,4 +7,4 @@ commit=060ab6c6c3d39cb29934fa11d961cfddaf187e4b
 short=060ab6c
 message=feat: allow HTCDI expand in Lite mode (v23.10)
 captured_at=2026-10-12T16:47:05Z
-display_version=v23.10
+display_version=v23.11
