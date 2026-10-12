@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12679450
+bundleId=12679501
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=b2715ac793169f4e2641d27f5459a9a20f6709bf
-commit=b2715ac793169f4e2641d27f5459a9a20f6709bf
-short=b2715ac
-message=Industry cap-weighted Refresh ranking white text (v22.07)
-captured_at=2026-10-12T11:04:37Z
-display_version=v22.07
+aligned_git=af59b30126b1c2f4645a3deba04f88eedd87640c
+commit=af59b30126b1c2f4645a3deba04f88eedd87640c
+short=af59b30
+message=Exclude Unmapped from Industry cap-weighted upside (v22.08)
+captured_at=2026-10-12T11:18:32Z
+display_version=v22.08
