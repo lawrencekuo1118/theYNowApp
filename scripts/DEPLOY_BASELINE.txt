@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12680321
+bundleId=12680345
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=ac67ea4af111894256a9c2b27b897930b214c21e
-commit=ac67ea4af111894256a9c2b27b897930b214c21e
-short=ac67ea4
-message=Focus KPI alert bell inside gold frame; thicker pulsing gold border (v23.07)
-captured_at=2026-10-12T15:25:45Z
-display_version=v23.07
+aligned_git=42b86cad34e33aebca1eb67e3c39fb511b8c6d2f
+commit=42b86cad34e33aebca1eb67e3c39fb511b8c6d2f
+short=42b86ca
+message=Confirm/extend Value Alert targets; Full composite Base/Secondary (v23.08)
+captured_at=2026-10-12T15:35:14Z
+display_version=v23.08
