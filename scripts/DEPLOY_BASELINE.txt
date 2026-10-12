@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12677640
+bundleId=12677926
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=17fdd3d138971f97aecdb526e2c47f0f1838d501
-commit=17fdd3d138971f97aecdb526e2c47f0f1838d501
-short=17fdd3d
-message=chore: bump display version to v21.91
-captured_at=2026-10-11T23:45:56Z
-display_version=v21.91
+aligned_git=50fdd43a014b9973ed6117d8cac2d0b082e1a8b0
+commit=50fdd43a014b9973ed6117d8cac2d0b082e1a8b0
+short=50fdd43
+message=Allow any radar focus ticker (e.g. NVS) and drop TSM autofill.
+captured_at=2026-10-12T02:12:24Z
+display_version=v21.92
