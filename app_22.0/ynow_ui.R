@@ -5854,6 +5854,15 @@ ui <- dashboardPage(
           gap: 12px;
           margin: 0 0 14px 0;
         }
+        .ynow-smart-card-row > .ynow-alertable {
+          flex: 1 1 220px;
+          min-width: 0;
+        }
+        .ynow-smart-card-row > .ynow-alertable .ynow-smart-card {
+          flex: none;
+          width: 100%;
+          height: 100%;
+        }
         .ynow-smart-card {
           flex: 1 1 220px;
           border: 1px solid #ddd;
@@ -9574,6 +9583,113 @@ ui <- dashboardPage(
           registerParamAuditPdfHandler();
         })();
       ")),
+
+      # KPI value-alert: right-click / long-press → quick set (blocked when not ready)
+      tags$style(HTML("
+        .ynow-alertable {
+          position: relative;
+          -webkit-touch-callout: none;
+        }
+        .ynow-alertable--ready {
+          cursor: context-menu;
+        }
+        .ynow-alertable--ready:hover {
+          box-shadow: 0 0 0 1px rgba(12, 84, 132, 0.25);
+        }
+        .ynow-alertable--blocked {
+          cursor: not-allowed;
+        }
+        .ynow-alertable--blocked::after {
+          content: '';
+          pointer-events: none;
+        }
+      ")),
+      tags$script(HTML("
+        (function () {
+          var LONG_MS = 520;
+          var timer = null;
+          var startX = 0;
+          var startY = 0;
+          var moved = false;
+
+          function closestAlertable(el) {
+            if (!el || !el.closest) return null;
+            return el.closest('[data-ynow-alert=\"1\"]');
+          }
+
+          function payloadFrom(el) {
+            if (!el) return null;
+            return {
+              ready: el.getAttribute('data-ynow-alert-ready') || '0',
+              metric: el.getAttribute('data-ynow-alert-metric') || '',
+              ticker: el.getAttribute('data-ynow-alert-ticker') || '',
+              value: el.getAttribute('data-ynow-alert-value') || '',
+              label: el.getAttribute('data-ynow-alert-label') || '',
+              kind: el.getAttribute('data-ynow-alert-kind') || 'price_gte',
+              fair: el.getAttribute('data-ynow-alert-fair') || '',
+              nonce: Date.now()
+            };
+          }
+
+          function openOrBlock(el) {
+            var payload = payloadFrom(el);
+            if (!payload) return;
+            if (!(window.Shiny && Shiny.setInputValue)) return;
+            if (payload.ready !== '1' || !payload.value) {
+              Shiny.setInputValue('ynow_kpi_alert_blocked', payload, {priority: 'event'});
+              return;
+            }
+            Shiny.setInputValue('ynow_kpi_alert_open', payload, {priority: 'event'});
+          }
+
+          document.addEventListener('contextmenu', function (ev) {
+            var el = closestAlertable(ev.target);
+            if (!el) return;
+            ev.preventDefault();
+            openOrBlock(el);
+          }, true);
+
+          document.addEventListener('touchstart', function (ev) {
+            var el = closestAlertable(ev.target);
+            if (!el) return;
+            if (!ev.touches || !ev.touches.length) return;
+            moved = false;
+            startX = ev.touches[0].clientX;
+            startY = ev.touches[0].clientY;
+            timer = setTimeout(function () {
+              timer = null;
+              if (moved) return;
+              openOrBlock(el);
+            }, LONG_MS);
+          }, {passive: true, capture: true});
+
+          document.addEventListener('touchmove', function (ev) {
+            if (!timer) return;
+            if (!ev.touches || !ev.touches.length) return;
+            var dx = Math.abs(ev.touches[0].clientX - startX);
+            var dy = Math.abs(ev.touches[0].clientY - startY);
+            if (dx > 12 || dy > 12) {
+              moved = true;
+              clearTimeout(timer);
+              timer = null;
+            }
+          }, {passive: true, capture: true});
+
+          document.addEventListener('touchend', function () {
+            if (timer) {
+              clearTimeout(timer);
+              timer = null;
+            }
+          }, {passive: true, capture: true});
+
+          document.addEventListener('touchcancel', function () {
+            if (timer) {
+              clearTimeout(timer);
+              timer = null;
+            }
+          }, {passive: true, capture: true});
+        })();
+      ")),
       
       tags$style(HTML("
         .selectize-dropdown-content {
@@ -13271,7 +13387,7 @@ ui <- dashboardPage(
         column(
           width = 4,
           class = "col-xs-12",
-          infoBoxOutput("ibx_stockprice", width = NULL)
+          uiOutput("ibx_stockprice")
         ),
         column(
           width = 4,

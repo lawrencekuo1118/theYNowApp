@@ -1793,10 +1793,11 @@ server <- function(input, output, session) {
     industry_standard_metric_chips_ui(input$industry_choice)
   })
   
-  output$ibx_stockprice <- renderInfoBox({
+  output$ibx_stockprice <- renderUI({
     df <- summary_data()
     loc <- ui_locale()
     session_currency(); fx_usd_twd(); quote_currency()
+    tk <- tryCatch(as.character(current_ticker() %||% "")[1], error = function(e) "")
     items <- if (!is.null(df) && is.data.frame(df)) as.character(df$Item) else character()
     pick_nm <- NA_character_
     pick_raw <- NA_character_
@@ -1818,12 +1819,26 @@ server <- function(input, output, session) {
     } else {
       "N/A"
     }
-    prev_raw <- if ("Previous Close" %in% items) as.character(df$Value[items == "Previous Close"][1])[1] else ""
-    infoBox(
-      ui_str("kpi_last_price", loc),
-      val,
-      icon = icon("chart-line"),
-      color = "purple"
+    px_num <- suppressWarnings(as.numeric(tryCatch(scraped_market_cap()$price, error = function(e) NA_real_))[1])
+    if (!is.finite(px_num) && !is.na(pick_raw)) {
+      px_num <- suppressWarnings(as.numeric(gsub("[^0-9.eE+-]", "", as.character(pick_raw)[1]))[1])
+    }
+    ready <- isTRUE(user_has_searched()) && is.finite(px_num) && px_num > 0 &&
+      nzchar(tk) && !identical(val, "N/A")
+    ynow_alertable(
+      infoBox(
+        ui_str("kpi_last_price", loc),
+        val,
+        icon = icon("chart-line"),
+        color = "purple",
+        width = NULL
+      ),
+      metric = "last_price",
+      ticker = tk,
+      value = px_num,
+      label = ui_str("kpi_last_price", loc),
+      ready = ready,
+      default_kind = "price_lte"
     )
   })
   
@@ -8848,14 +8863,25 @@ server <- function(input, output, session) {
     } else {
       ui_str("smart_calc_pending", loc)
     }
+    tk <- tryCatch(as.character(current_ticker() %||% "")[1], error = function(e) "")
+    searched <- isTRUE(user_has_searched())
     tags$div(
       class = "ynow-smart-card-row",
-      tags$div(
-        class = "ynow-smart-card",
-        tags$p(class = "ynow-smart-card-kicker", ui_str("smart_primary_kicker", loc)),
-        tags$p(class = "ynow-smart-card-title", .model_label(prim)),
-        tags$p(class = "ynow-smart-card-value", fmt_px(base)),
-        tags$p(class = "ynow-smart-card-meta", prim_meta)
+      ynow_alertable(
+        tags$div(
+          class = "ynow-smart-card",
+          tags$p(class = "ynow-smart-card-kicker", ui_str("smart_primary_kicker", loc)),
+          tags$p(class = "ynow-smart-card-title", .model_label(prim)),
+          tags$p(class = "ynow-smart-card-value", fmt_px(base)),
+          tags$p(class = "ynow-smart-card-meta", prim_meta)
+        ),
+        metric = "fair_value",
+        ticker = tk,
+        value = base,
+        label = paste(ui_str("smart_primary_kicker", loc), .model_label(prim)),
+        ready = searched && is.finite(base) && base > 0,
+        default_kind = "below_fair",
+        fair_value = base
       ),
       tags$div(
         class = "ynow-smart-card",
@@ -8883,19 +8909,36 @@ server <- function(input, output, session) {
           }
         )
       ),
-      tags$div(
-        class = "ynow-smart-card",
-        tags$p(class = "ynow-smart-card-kicker", ui_str("smart_price_kicker", loc)),
-        tags$p(class = "ynow-smart-card-title", " "),
-        tags$p(class = "ynow-smart-card-value", fmt_px(cur)),
-        tags$p(class = "ynow-smart-card-meta", " ")
+      ynow_alertable(
+        tags$div(
+          class = "ynow-smart-card",
+          tags$p(class = "ynow-smart-card-kicker", ui_str("smart_price_kicker", loc)),
+          tags$p(class = "ynow-smart-card-title", " "),
+          tags$p(class = "ynow-smart-card-value", fmt_px(cur)),
+          tags$p(class = "ynow-smart-card-meta", " ")
+        ),
+        metric = "last_price",
+        ticker = tk,
+        value = cur,
+        label = ui_str("smart_price_kicker", loc),
+        ready = searched && is.finite(cur) && cur > 0,
+        default_kind = "price_lte"
       ),
-      tags$div(
-        class = "ynow-smart-card",
-        tags$p(class = "ynow-smart-card-kicker", ui_str("smart_mos_kicker", loc)),
-        tags$p(class = "ynow-smart-card-title", " "),
-        tags$p(class = "ynow-smart-card-value", fmt_pct(mos)),
-        tags$p(class = "ynow-smart-card-meta", " ")
+      ynow_alertable(
+        tags$div(
+          class = "ynow-smart-card",
+          tags$p(class = "ynow-smart-card-kicker", ui_str("smart_mos_kicker", loc)),
+          tags$p(class = "ynow-smart-card-title", " "),
+          tags$p(class = "ynow-smart-card-value", fmt_pct(mos)),
+          tags$p(class = "ynow-smart-card-meta", " ")
+        ),
+        metric = "mos_pct",
+        ticker = tk,
+        value = mos,
+        label = ui_str("smart_mos_kicker", loc),
+        ready = searched && is.finite(mos) && is.finite(base) && base > 0,
+        default_kind = "below_fair",
+        fair_value = base
       )
     )
   })

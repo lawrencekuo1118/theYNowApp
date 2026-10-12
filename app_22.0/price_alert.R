@@ -2,8 +2,8 @@ if (!exists("%||%", mode = "function")) {
   `%||%` <- function(x, y) if (is.null(x) || (length(x) == 1 && is.na(x))) y else x
 }
 
-# Price / condition email alerts.
-# Recipients must be on YNOW_ALERT_TO or YNOW_ALERT_ALLOWLIST.
+# Price / condition alerts (email + in-app toast) with trigger history.
+# Recipients must be on YNOW_ALERT_TO or YNOW_ALERT_ALLOWLIST when email is on.
 # SMTP: YNOW_SMTP_USER, YNOW_SMTP_PASSWORD, optional YNOW_SMTP_SERVER / YNOW_ALERT_FROM.
 
 .PA_KINDS <- c("price_gte", "price_lte", "day_chg_gte", "day_chg_lte", "below_fair")
@@ -12,6 +12,12 @@ price_alert_store_path <- function() {
   override <- Sys.getenv("YNOW_ALERT_STORE", unset = "")
   if (nzchar(override)) return(override)
   file.path("data", "price_alerts.json")
+}
+
+price_alert_history_path <- function() {
+  override <- Sys.getenv("YNOW_ALERT_HISTORY", unset = "")
+  if (nzchar(override)) return(override)
+  file.path("data", "price_alert_history.json")
 }
 
 price_alert_empty <- function() {
@@ -29,19 +35,43 @@ price_alert_empty <- function() {
     last_checked = character(0),
     last_sent = character(0),
     last_error = character(0),
+    notify_app = logical(0),
+    notify_email = logical(0),
+    source = character(0),
+    metric = character(0),
     stringsAsFactors = FALSE
   )
+}
+
+price_alert_history_empty <- function() {
+  data.frame(
+    id = character(0),
+    alert_id = character(0),
+    ticker = character(0),
+    kind = character(0),
+    level = numeric(0),
+    price = numeric(0),
+    channel = character(0),
+    message = character(0),
+    triggered_at = character(0),
+    stringsAsFactors = FALSE
+  )
+}
+
+.pa_fill_cols <- function(raw, empty) {
+  if (is.null(raw) || !is.data.frame(raw) || nrow(raw) == 0L) return(empty)
+  for (nm in names(empty)) {
+    if (!nm %in% names(raw)) raw[[nm]] <- empty[[nm]][NA_integer_][seq_len(nrow(raw))]
+  }
+  raw[, names(empty), drop = FALSE]
 }
 
 price_alert_read <- function(path = price_alert_store_path()) {
   empty <- price_alert_empty()
   if (!file.exists(path)) return(empty)
   raw <- tryCatch(jsonlite::fromJSON(path, simplifyDataFrame = TRUE), error = function(e) NULL)
-  if (is.null(raw) || !is.data.frame(raw) || nrow(raw) == 0L) return(empty)
-  for (nm in names(empty)) {
-    if (!nm %in% names(raw)) raw[[nm]] <- empty[[nm]][NA_integer_][seq_len(nrow(raw))]
-  }
-  raw <- raw[, names(empty), drop = FALSE]
+  raw <- .pa_fill_cols(raw, empty)
+  if (!nrow(raw)) return(empty)
   raw$email <- tolower(trimws(as.character(raw$email)))
   raw$ticker <- toupper(trimws(as.character(raw$ticker)))
   raw$kind <- as.character(raw$kind)
@@ -56,6 +86,17 @@ price_alert_read <- function(path = price_alert_store_path()) {
   raw$last_checked <- as.character(raw$last_checked)
   raw$last_sent <- as.character(raw$last_sent)
   raw$last_error <- as.character(raw$last_error)
+  raw$notify_app <- as.logical(raw$notify_app)
+  raw$notify_email <- as.logical(raw$notify_email)
+  # Legacy rows (pre-channel columns): email-only
+  legacy_na_app <- is.na(raw$notify_app)
+  legacy_na_email <- is.na(raw$notify_email)
+  raw$notify_app[legacy_na_app] <- FALSE
+  raw$notify_email[legacy_na_email] <- TRUE
+  raw$source <- as.character(raw$source)
+  raw$source[!nzchar(raw$source) | is.na(raw$source)] <- "form"
+  raw$metric <- as.character(raw$metric)
+  raw$metric[is.na(raw$metric)] <- ""
   raw
 }
 
@@ -64,6 +105,51 @@ price_alert_write <- function(df, path = price_alert_store_path()) {
   dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
   jsonlite::write_json(df, path, dataframe = "rows", pretty = TRUE, auto_unbox = TRUE, na = "null")
   invisible(path)
+}
+
+price_alert_history_read <- function(path = price_alert_history_path()) {
+  empty <- price_alert_history_empty()
+  if (!file.exists(path)) return(empty)
+  raw <- tryCatch(jsonlite::fromJSON(path, simplifyDataFrame = TRUE), error = function(e) NULL)
+  raw <- .pa_fill_cols(raw, empty)
+  if (!nrow(raw)) return(empty)
+  raw$id <- as.character(raw$id)
+  raw$alert_id <- as.character(raw$alert_id)
+  raw$ticker <- toupper(trimws(as.character(raw$ticker)))
+  raw$kind <- as.character(raw$kind)
+  raw$level <- suppressWarnings(as.numeric(raw$level))
+  raw$price <- suppressWarnings(as.numeric(raw$price))
+  raw$channel <- as.character(raw$channel)
+  raw$message <- as.character(raw$message)
+  raw$triggered_at <- as.character(raw$triggered_at)
+  raw
+}
+
+price_alert_history_write <- function(df, path = price_alert_history_path()) {
+  if (!is.data.frame(df)) df <- price_alert_history_empty()
+  # Cap growth
+  if (nrow(df) > 200L) df <- utils::tail(df, 200L)
+  dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
+  jsonlite::write_json(df, path, dataframe = "rows", pretty = TRUE, auto_unbox = TRUE, na = "null")
+  invisible(path)
+}
+
+price_alert_history_append <- function(row, path = price_alert_history_path()) {
+  hist <- price_alert_history_read(path)
+  add <- price_alert_history_empty()
+  add[1, ] <- list(
+    as.character(row$id %||% price_alert_new_id())[1],
+    as.character(row$alert_id %||% "")[1],
+    toupper(trimws(as.character(row$ticker %||% "")[1])),
+    as.character(row$kind %||% "")[1],
+    suppressWarnings(as.numeric(row$level %||% NA_real_)[1]),
+    suppressWarnings(as.numeric(row$price %||% NA_real_)[1]),
+    as.character(row$channel %||% "")[1],
+    as.character(row$message %||% "")[1],
+    as.character(row$triggered_at %||% format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"))[1]
+  )
+  price_alert_history_write(rbind(hist, add), path)
+  invisible(add)
 }
 
 price_alert_valid_email <- function(email) {
@@ -120,7 +206,10 @@ price_alert_new_id <- function() {
   paste0("pa_", format(Sys.time(), "%Y%m%d%H%M%S"), "_", sprintf("%04d", sample.int(9999L, 1L)))
 }
 
-price_alert_add <- function(df, email, ticker, kind, level, mos_pct = 0, note = "") {
+price_alert_add <- function(
+  df, email, ticker, kind, level, mos_pct = 0, note = "",
+  notify_app = TRUE, notify_email = FALSE, source = "form", metric = ""
+) {
   if (is.null(df) || !is.data.frame(df)) df <- price_alert_empty()
   email <- tolower(trimws(as.character(email)[1]))
   ticker <- toupper(trimws(as.character(ticker)[1]))
@@ -128,7 +217,18 @@ price_alert_add <- function(df, email, ticker, kind, level, mos_pct = 0, note = 
   level <- suppressWarnings(as.numeric(level)[1])
   mos_pct <- suppressWarnings(as.numeric(mos_pct)[1])
   if (!is.finite(mos_pct)) mos_pct <- 0
-  if (!price_alert_email_allowed(email)) return(list(ok = FALSE, reason = "bad_email", df = df))
+  notify_app <- isTRUE(notify_app)
+  notify_email <- isTRUE(notify_email)
+  if (!notify_app && !notify_email) {
+    return(list(ok = FALSE, reason = "no_channel", df = df))
+  }
+  if (notify_email) {
+    if (!price_alert_email_allowed(email)) {
+      return(list(ok = FALSE, reason = "bad_email", df = df))
+    }
+  } else {
+    email <- ""
+  }
   if (!price_alert_valid_ticker(ticker)) return(list(ok = FALSE, reason = "bad_ticker", df = df))
   if (!kind %in% .PA_KINDS) return(list(ok = FALSE, reason = "bad_kind", df = df))
   if (!is.finite(level)) return(list(ok = FALSE, reason = "bad_level", df = df))
@@ -136,7 +236,9 @@ price_alert_add <- function(df, email, ticker, kind, level, mos_pct = 0, note = 
   row <- price_alert_empty()
   row[1, ] <- list(
     price_alert_new_id(), email, ticker, kind, level, mos_pct,
-    as.character(note)[1], TRUE, "armed", NA_real_, "", "", ""
+    as.character(note)[1], TRUE, "armed", NA_real_, "", "", "",
+    notify_app, notify_email,
+    as.character(source)[1], as.character(metric)[1]
   )
   list(ok = TRUE, reason = "saved", df = rbind(df, row))
 }
@@ -169,6 +271,25 @@ price_alert_compose <- function(row, price) {
     sep = "\n"
   )
   list(subject = subject, body = body)
+}
+
+price_alert_toast_message <- function(row, price, locale = "en") {
+  ticker <- as.character(row$ticker)[1]
+  kind <- as.character(row$kind)[1]
+  level <- suppressWarnings(as.numeric(row$level)[1])
+  px <- suppressWarnings(as.numeric(price)[1])
+  if (exists("ui_str", mode = "function")) {
+    tryCatch({
+      return(sprintf(
+        "%s — %s @ %s (level %s)",
+        ticker,
+        ui_str(paste0("pa_kind_", kind), locale),
+        format(px, trim = TRUE, scientific = FALSE),
+        format(level, trim = TRUE, scientific = FALSE)
+      ))
+    }, error = function(e) NULL)
+  }
+  sprintf("%s %s hit @ %s", ticker, kind, format(px, trim = TRUE, scientific = FALSE))
 }
 
 price_alert_send <- function(to, subject, body) {
@@ -216,12 +337,14 @@ price_alert_quote <- function(ticker) {
   list(ok = TRUE, price = px[[length(px)]], prev = prev, reason = "ok")
 }
 
-price_alert_apply_checks <- function(df, quotes, send_fn = price_alert_send, now = Sys.time()) {
+price_alert_apply_checks <- function(df, quotes, send_fn = price_alert_send, now = Sys.time(),
+                                     history_path = price_alert_history_path()) {
   if (is.null(df) || !nrow(df)) {
-    return(list(df = price_alert_empty(), sent = 0L, met = 0L))
+    return(list(df = price_alert_empty(), sent = 0L, met = 0L, app_toasts = list()))
   }
   sent <- 0L
   met <- 0L
+  app_toasts <- list()
   stamp <- format(now, "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
   for (i in seq_len(nrow(df))) {
     tk <- df$ticker[[i]]
@@ -234,66 +357,160 @@ price_alert_apply_checks <- function(df, quotes, send_fn = price_alert_send, now
     ))
     if (!hit) next
     met <- met + 1L
-    mail <- price_alert_compose(df[i, , drop = FALSE], q$price)
-    res <- tryCatch(
-      send_fn(df$email[[i]], mail$subject, mail$body),
-      error = function(e) list(ok = FALSE, reason = "send_failed", detail = conditionMessage(e))
-    )
-    if (isTRUE(res$ok)) {
+    want_app <- isTRUE(df$notify_app[[i]])
+    want_email <- isTRUE(df$notify_email[[i]])
+    # Legacy: neither flag stored → email only
+    if (!want_app && !want_email) want_email <- TRUE
+
+    email_ok <- FALSE
+    email_reason <- ""
+    if (want_email) {
+      mail <- price_alert_compose(df[i, , drop = FALSE], q$price)
+      res <- tryCatch(
+        send_fn(df$email[[i]], mail$subject, mail$body),
+        error = function(e) list(ok = FALSE, reason = "send_failed", detail = conditionMessage(e))
+      )
+      email_ok <- isTRUE(res$ok)
+      email_reason <- as.character(res$reason %||% "send_failed")[1]
+      if (email_ok) sent <- sent + 1L
+    }
+
+    toast_msg <- price_alert_toast_message(df[i, , drop = FALSE], q$price)
+    channels <- character(0)
+    if (want_app) channels <- c(channels, "app")
+    if (want_email && email_ok) channels <- c(channels, "email")
+
+    # Disarm when: app-only notified, or email succeeded, or email not requested
+    can_disarm <- (!want_email && want_app) || (want_email && email_ok) || (!want_email && !want_app)
+    if (want_email && !email_ok && !want_app) {
+      can_disarm <- FALSE
+    }
+    if (want_email && !email_ok && want_app) {
+      # App toast delivered; keep armed only if user insisted on email — disarm app side done via history
+      can_disarm <- FALSE
+      df$status[[i]] <- email_reason
+      df$last_error[[i]] <- email_reason
+    }
+
+    if (length(channels)) {
+      price_alert_history_append(list(
+        id = price_alert_new_id(),
+        alert_id = df$id[[i]],
+        ticker = tk,
+        kind = df$kind[[i]],
+        level = df$level[[i]],
+        price = q$price,
+        channel = paste(channels, collapse = "+"),
+        message = toast_msg,
+        triggered_at = stamp
+      ), path = history_path)
+    }
+
+    if (want_app) {
+      app_toasts[[length(app_toasts) + 1L]] <- list(
+        alert_id = df$id[[i]],
+        ticker = tk,
+        message = toast_msg,
+        price = q$price
+      )
+    }
+
+    if (isTRUE(can_disarm) || (want_app && !want_email)) {
       df$armed[[i]] <- FALSE
-      df$status[[i]] <- "sent"
+      df$status[[i]] <- if (want_email && email_ok) "sent" else if (want_app) "notified_app" else "sent"
       df$last_sent[[i]] <- stamp
       df$last_error[[i]] <- ""
-      sent <- sent + 1L
-    } else {
-      df$status[[i]] <- as.character(res$reason %||% "send_failed")[1]
-      df$last_error[[i]] <- as.character(res$detail %||% res$reason)[1]
+    } else if (want_email && !email_ok) {
+      df$status[[i]] <- email_reason
+      df$last_error[[i]] <- email_reason
     }
   }
-  list(df = df, sent = sent, met = met)
+  list(df = df, sent = sent, met = met, app_toasts = app_toasts)
 }
 
-price_alert_check_store <- function(path = price_alert_store_path(), send_fn = price_alert_send) {
+price_alert_check_store <- function(path = price_alert_store_path(), send_fn = price_alert_send,
+                                    history_path = price_alert_history_path()) {
   df <- price_alert_read(path)
-  if (!nrow(df) || !any(df$armed %in% TRUE)) return(list(df = df, sent = 0L, met = 0L))
+  if (!nrow(df) || !any(df$armed %in% TRUE)) {
+    return(list(df = df, sent = 0L, met = 0L, app_toasts = list()))
+  }
   lock <- paste0(path, ".lock")
   if (file.exists(lock)) {
     age <- difftime(Sys.time(), file.info(lock)$mtime, units = "secs")
-    if (is.finite(age) && age < 90) return(list(df = df, sent = 0L, met = 0L, skipped = "locked"))
+    if (is.finite(age) && age < 90) {
+      return(list(df = df, sent = 0L, met = 0L, skipped = "locked", app_toasts = list()))
+    }
   }
   dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
   writeLines("1", lock)
   on.exit(unlink(lock), add = TRUE)
   quotes <- list()
   for (tk in unique(df$ticker[df$armed])) quotes[[tk]] <- price_alert_quote(tk)
-  out <- price_alert_apply_checks(df, quotes, send_fn = send_fn)
+  out <- price_alert_apply_checks(df, quotes, send_fn = send_fn, history_path = history_path)
   price_alert_write(out$df, path)
   out
 }
 
-price_alert_tab_ui <- function() {
+#' Wrap a KPI / card so right-click / long-press can open the quick alert modal.
+#' Set ready=FALSE when the value needs Search/Run first.
+ynow_alertable <- function(
+  ...,
+  metric,
+  ticker = "",
+  value = NA_real_,
+  label = "",
+  ready = FALSE,
+  default_kind = "price_gte",
+  fair_value = NA_real_
+) {
+  ready_flag <- if (isTRUE(ready) && is.finite(suppressWarnings(as.numeric(value)[1]))) "1" else "0"
+  tags$div(
+    class = paste("ynow-alertable", if (identical(ready_flag, "1")) "ynow-alertable--ready" else "ynow-alertable--blocked"),
+    `data-ynow-alert` = "1",
+    `data-ynow-alert-ready` = ready_flag,
+    `data-ynow-alert-metric` = as.character(metric)[1],
+    `data-ynow-alert-ticker` = toupper(trimws(as.character(ticker)[1])),
+    `data-ynow-alert-value` = if (is.finite(suppressWarnings(as.numeric(value)[1]))) {
+      format(suppressWarnings(as.numeric(value)[1]), scientific = FALSE, trim = TRUE)
+    } else {
+      ""
+    },
+    `data-ynow-alert-label` = as.character(label)[1],
+    `data-ynow-alert-kind` = as.character(default_kind)[1],
+    `data-ynow-alert-fair` = if (is.finite(suppressWarnings(as.numeric(fair_value)[1]))) {
+      format(suppressWarnings(as.numeric(fair_value)[1]), scientific = FALSE, trim = TRUE)
+    } else {
+      ""
+    },
+    title = if (identical(ready_flag, "1")) NULL else NULL,
+    ...
+  )
+}
+
+.pa_bi <- function(key) {
   en <- .UI_STRINGS$en
   zh <- .UI_STRINGS$`zh-TW`
-  bi <- function(key) {
-    tags$span(
-      tags$span(class = "ynow-loc-en", en[[key]]),
-      tags$span(class = "ynow-loc-zh", zh[[key]])
-    )
-  }
+  tags$span(
+    tags$span(class = "ynow-loc-en", en[[key]] %||% key),
+    tags$span(class = "ynow-loc-zh", zh[[key]] %||% key)
+  )
+}
+
+price_alert_tab_ui <- function() {
   tabItem(
     tabName = "price_alerts",
     fluidRow(
       box(
-        title = bi("pa_title"),
+        title = .pa_bi("pa_title"),
         width = 12,
         status = "primary",
         solidHeader = TRUE,
-        tags$p(bi("pa_help")),
+        tags$p(.pa_bi("pa_help")),
         fluidRow(
-          column(4, textInput("pa_email", bi("pa_email"), value = Sys.getenv("YNOW_ALERT_TO", ""))),
-          column(3, textInput("pa_ticker", bi("pa_ticker"), value = "")),
+          column(4, textInput("pa_email", .pa_bi("pa_email"), value = Sys.getenv("YNOW_ALERT_TO", ""))),
+          column(3, textInput("pa_ticker", .pa_bi("pa_ticker"), value = "")),
           column(5, selectInput(
-            "pa_kind", bi("pa_kind"),
+            "pa_kind", .pa_bi("pa_kind"),
             choices = c(
               "Last price ≥ target / 最新價 ≥ 目標價" = "price_gte",
               "Last price ≤ target / 最新價 ≤ 目標價" = "price_lte",
@@ -305,27 +522,125 @@ price_alert_tab_ui <- function() {
           ))
         ),
         fluidRow(
-          column(3, numericInput("pa_level", bi("pa_level"), value = NA, width = "100%")),
-          column(3, numericInput("pa_mos", bi("pa_mos"), value = 0, min = 0, max = 90, width = "100%")),
-          column(6, textInput("pa_note", bi("pa_note"), value = ""))
+          column(3, numericInput("pa_level", .pa_bi("pa_level"), value = NA, width = "100%")),
+          column(3, numericInput("pa_mos", .pa_bi("pa_mos"), value = 0, min = 0, max = 90, width = "100%")),
+          column(6, textInput("pa_note", .pa_bi("pa_note"), value = ""))
         ),
-        actionButton("pa_save", bi("pa_save"), class = "btn-primary"),
-        actionButton("pa_check", bi("pa_check"), class = "btn-default"),
-        actionButton("pa_rearm", bi("pa_rearm"), class = "btn-default"),
-        actionButton("pa_delete", bi("pa_delete"), class = "btn-danger"),
+        fluidRow(
+          column(3, checkboxInput("pa_notify_app", .pa_bi("pa_notify_app"), value = TRUE)),
+          column(3, checkboxInput("pa_notify_email", .pa_bi("pa_notify_email"), value = FALSE))
+        ),
+        actionButton("pa_save", .pa_bi("pa_save"), class = "btn-primary"),
+        actionButton("pa_check", .pa_bi("pa_check"), class = "btn-default"),
+        actionButton("pa_rearm", .pa_bi("pa_rearm"), class = "btn-default"),
+        actionButton("pa_delete", .pa_bi("pa_delete"), class = "btn-danger"),
         tags$div(style = "margin-top:12px;", DT::DTOutput("pa_table"))
+      )
+    ),
+    fluidRow(
+      box(
+        title = .pa_bi("pa_history_title"),
+        width = 12,
+        status = "info",
+        solidHeader = TRUE,
+        tags$p(.pa_bi("pa_history_help")),
+        actionButton("pa_history_clear", .pa_bi("pa_history_clear"), class = "btn-default"),
+        tags$div(style = "margin-top:12px;", DT::DTOutput("pa_history_table"))
       )
     )
   )
 }
 
-price_alert_server <- function(input, output, session, ui_locale_rv = NULL) {
+price_alert_quick_modal <- function(payload, locale = "en") {
+  say <- function(key) {
+    if (exists("ui_str", mode = "function")) ui_str(key, locale) else key
+  }
+  ticker <- toupper(trimws(as.character(payload$ticker %||% "")[1]))
+  metric <- as.character(payload$metric %||% "last_price")[1]
+  label <- as.character(payload$label %||% metric)[1]
+  value <- suppressWarnings(as.numeric(payload$value %||% NA_real_)[1])
+  fair <- suppressWarnings(as.numeric(payload$fair %||% NA_real_)[1])
+  def_kind <- as.character(payload$kind %||% "price_gte")[1]
+  if (!def_kind %in% .PA_KINDS) def_kind <- "price_gte"
+
+  # MOS card → convert to price_lte at FV×(1−MOS%/100) suggestion via below_fair
+  level_default <- value
+  mos_default <- 0
+  if (identical(metric, "mos_pct") && is.finite(fair) && fair > 0 && is.finite(value)) {
+    def_kind <- "below_fair"
+    level_default <- fair
+    mos_default <- max(0, min(90, value))
+  } else if (identical(metric, "fair_value") && is.finite(value)) {
+    def_kind <- "below_fair"
+    level_default <- value
+    mos_default <- 0
+  }
+
+  kind_choices <- c(
+    setNames("price_gte", say("pa_kind_price_gte")),
+    setNames("price_lte", say("pa_kind_price_lte")),
+    setNames("below_fair", say("pa_kind_below_fair"))
+  )
+
+  modalDialog(
+    title = say("pa_quick_title"),
+    easyClose = TRUE,
+    fade = TRUE,
+    size = "m",
+    tags$p(
+      style = "margin:0 0 10px 0; color:#555;",
+      sprintf("%s · %s", ticker, label),
+      if (is.finite(value)) {
+        tags$span(
+          style = "margin-left:8px; font-weight:700;",
+          format(value, trim = TRUE, scientific = FALSE)
+        )
+      }
+    ),
+    tags$p(style = "font-size:12px; color:#777;", say("pa_quick_hint")),
+    selectInput("pa_quick_kind", say("pa_kind"), choices = kind_choices, selected = def_kind),
+    numericInput("pa_quick_level", say("pa_level"), value = level_default, width = "100%"),
+    numericInput("pa_quick_mos", say("pa_mos"), value = mos_default, min = 0, max = 90, width = "100%"),
+    checkboxInput("pa_quick_notify_app", say("pa_notify_app"), value = TRUE),
+    checkboxInput("pa_quick_notify_email", say("pa_notify_email"), value = FALSE),
+    conditionalPanel(
+      condition = "input.pa_quick_notify_email == true",
+      textInput("pa_quick_email", say("pa_email"), value = Sys.getenv("YNOW_ALERT_TO", ""))
+    ),
+    textInput("pa_quick_note", say("pa_note"), value = ""),
+    # hidden fields
+    tags$div(
+      style = "display:none;",
+      textInput("pa_quick_ticker", NULL, value = ticker),
+      textInput("pa_quick_metric", NULL, value = metric)
+    ),
+    footer = tagList(
+      modalButton(say("pa_quick_cancel")),
+      actionButton("pa_quick_save", say("pa_quick_save"), class = "btn-primary")
+    )
+  )
+}
+
+price_alert_server <- function(input, output, session, ui_locale_rv = NULL,
+                               current_ticker_rv = NULL) {
   loc <- function() {
     if (is.null(ui_locale_rv)) return("en")
     tryCatch(normalize_ui_locale(isolate(ui_locale_rv())), error = function(e) "en")
   }
   say <- function(key) ui_str(key, loc())
   pa_refresh <- reactiveVal(0L)
+  hist_refresh <- reactiveVal(0L)
+
+  .deliver_app_toasts <- function(toasts) {
+    if (!length(toasts)) return()
+    for (t in toasts) {
+      showNotification(
+        as.character(t$message %||% say("pa_app_triggered"))[1],
+        type = "warning",
+        duration = 8
+      )
+    }
+  }
 
   output$pa_table <- DT::renderDT({
     pa_refresh()
@@ -333,10 +648,16 @@ price_alert_server <- function(input, output, session, ui_locale_rv = NULL) {
     if (!nrow(df)) {
       show <- data.frame(Note = say("pa_empty"), stringsAsFactors = FALSE)
     } else {
+      ch <- ifelse(
+        isTRUE(df$notify_app) & isTRUE(df$notify_email), "app+email",
+        ifelse(isTRUE(df$notify_app), "app",
+               ifelse(isTRUE(df$notify_email), "email", "—"))
+      )
       show <- data.frame(
         Ticker = df$ticker,
         Condition = df$kind,
         Level = df$level,
+        Channel = ch,
         Email = df$email,
         Status = df$status,
         Price = df$last_price,
@@ -346,8 +667,8 @@ price_alert_server <- function(input, output, session, ui_locale_rv = NULL) {
       )
       names(show) <- c(
         say("pa_col_ticker"), say("pa_col_kind"), say("pa_col_level"),
-        say("pa_col_email"), say("pa_col_status"), say("pa_col_price"),
-        say("pa_col_sent")
+        say("pa_col_channel"), say("pa_col_email"), say("pa_col_status"),
+        say("pa_col_price"), say("pa_col_sent")
       )
     }
     DT::datatable(
@@ -358,11 +679,47 @@ price_alert_server <- function(input, output, session, ui_locale_rv = NULL) {
     )
   }, server = TRUE)
 
+  output$pa_history_table <- DT::renderDT({
+    hist_refresh()
+    pa_refresh()
+    df <- price_alert_history_read()
+    if (!nrow(df)) {
+      show <- data.frame(Note = say("pa_history_empty"), stringsAsFactors = FALSE)
+    } else {
+      df <- df[order(df$triggered_at, decreasing = TRUE), , drop = FALSE]
+      show <- data.frame(
+        When = df$triggered_at,
+        Ticker = df$ticker,
+        Condition = df$kind,
+        Level = df$level,
+        Price = df$price,
+        Channel = df$channel,
+        Message = df$message,
+        stringsAsFactors = FALSE,
+        check.names = FALSE
+      )
+      names(show) <- c(
+        say("pa_hist_col_when"), say("pa_col_ticker"), say("pa_col_kind"),
+        say("pa_col_level"), say("pa_col_price"), say("pa_col_channel"),
+        say("pa_hist_col_msg")
+      )
+    }
+    DT::datatable(
+      show,
+      rownames = FALSE,
+      selection = "none",
+      options = list(pageLength = 10, dom = "tp", scrollX = TRUE)
+    )
+  }, server = TRUE)
+
   observeEvent(input$pa_save, {
     res <- price_alert_add(
       price_alert_read(),
       input$pa_email, input$pa_ticker, input$pa_kind,
-      input$pa_level, input$pa_mos, input$pa_note
+      input$pa_level, input$pa_mos, input$pa_note,
+      notify_app = isTRUE(input$pa_notify_app),
+      notify_email = isTRUE(input$pa_notify_email),
+      source = "form"
     )
     if (isTRUE(res$ok)) {
       price_alert_write(res$df)
@@ -373,6 +730,7 @@ price_alert_server <- function(input, output, session, ui_locale_rv = NULL) {
         bad_email = "pa_bad_email",
         bad_ticker = "pa_bad_ticker",
         bad_level = "pa_bad_level",
+        no_channel = "pa_no_channel",
         "pa_bad_level"
       )
       showNotification(say(key), type = "warning")
@@ -382,10 +740,15 @@ price_alert_server <- function(input, output, session, ui_locale_rv = NULL) {
 
   observeEvent(input$pa_check, {
     out <- price_alert_check_store()
+    .deliver_app_toasts(out$app_toasts %||% list())
     msg <- say("pa_checked")
-    if (out$met > 0L && out$sent == 0L) msg <- paste(msg, say("pa_smtp_missing"))
-    showNotification(msg, type = if (out$sent > 0L) "message" else "warning")
+    if (out$met > 0L && out$sent == 0L && any(vapply(out$app_toasts %||% list(), function(x) TRUE, logical(1))) == FALSE) {
+      # met but neither email nor app delivered meaningfully
+      if (!length(out$app_toasts)) msg <- paste(msg, say("pa_smtp_missing"))
+    }
+    showNotification(msg, type = if (out$sent > 0L || length(out$app_toasts)) "message" else "warning")
     pa_refresh(isolate(pa_refresh()) + 1L)
+    hist_refresh(isolate(hist_refresh()) + 1L)
   })
 
   .selected_id <- function() {
@@ -421,11 +784,72 @@ price_alert_server <- function(input, output, session, ui_locale_rv = NULL) {
     pa_refresh(isolate(pa_refresh()) + 1L)
   })
 
+  observeEvent(input$pa_history_clear, {
+    price_alert_history_write(price_alert_history_empty())
+    hist_refresh(isolate(hist_refresh()) + 1L)
+    showNotification(say("pa_history_cleared"), type = "message")
+  })
+
+  # Quick-set from KPI gesture
+  observeEvent(input$ynow_kpi_alert_open, {
+    payload <- input$ynow_kpi_alert_open
+    if (is.null(payload) || !is.list(payload)) return()
+    ready <- as.character(payload$ready %||% "0")[1]
+    if (!identical(ready, "1")) {
+      showNotification(say("pa_quick_not_ready"), type = "warning", duration = 5)
+      return()
+    }
+    value <- suppressWarnings(as.numeric(payload$value %||% NA_real_)[1])
+    if (!is.finite(value)) {
+      showNotification(say("pa_quick_not_ready"), type = "warning", duration = 5)
+      return()
+    }
+    showModal(price_alert_quick_modal(payload, locale = loc()))
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$ynow_kpi_alert_blocked, {
+    showNotification(say("pa_quick_not_ready"), type = "warning", duration = 5)
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$pa_quick_save, {
+    res <- price_alert_add(
+      price_alert_read(),
+      email = input$pa_quick_email %||% "",
+      ticker = input$pa_quick_ticker,
+      kind = input$pa_quick_kind,
+      level = input$pa_quick_level,
+      mos_pct = input$pa_quick_mos %||% 0,
+      note = input$pa_quick_note %||% "",
+      notify_app = isTRUE(input$pa_quick_notify_app),
+      notify_email = isTRUE(input$pa_quick_notify_email),
+      source = "kpi_quick",
+      metric = as.character(input$pa_quick_metric %||% "")[1]
+    )
+    if (isTRUE(res$ok)) {
+      price_alert_write(res$df)
+      removeModal()
+      showNotification(say("pa_saved"), type = "message")
+    } else {
+      key <- switch(
+        res$reason,
+        bad_email = "pa_bad_email",
+        bad_ticker = "pa_bad_ticker",
+        bad_level = "pa_bad_level",
+        no_channel = "pa_no_channel",
+        "pa_bad_level"
+      )
+      showNotification(say(key), type = "warning")
+    }
+    pa_refresh(isolate(pa_refresh()) + 1L)
+  })
+
   observe({
     invalidateLater(15 * 60 * 1000, session)
     df <- price_alert_read()
     if (!nrow(df) || !any(df$armed %in% TRUE)) return()
-    price_alert_check_store()
+    out <- price_alert_check_store()
+    .deliver_app_toasts(out$app_toasts %||% list())
     pa_refresh(isolate(pa_refresh()) + 1L)
+    hist_refresh(isolate(hist_refresh()) + 1L)
   })
 }
