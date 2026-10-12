@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12680377
+bundleId=12680601
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=e7608958f057179f4518b1b7fdb2f7f45f4dfc98
-commit=e7608958f057179f4518b1b7fdb2f7f45f4dfc98
-short=e760895
-message=fix: YNOW analyzes without Decision SOP unlock gate (v23.08)
-captured_at=2026-10-12T15:43:56Z
-display_version=v23.08
+aligned_git=f7423f634e4beca65c10c67006f4b07bf9e1451c
+commit=f7423f634e4beca65c10c67006f4b07bf9e1451c
+short=f7423f6
+message=feat: add Hamada βᵤ and Macro upper KPIs as Value Alert targets
+captured_at=2026-10-12T16:42:37Z
+display_version=v23.09
