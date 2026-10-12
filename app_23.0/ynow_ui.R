@@ -16,7 +16,7 @@
       return(sub('^"version"\\s*:\\s*"([^"]+)".*$', "\\1", m[[1]]))
     }
   }
-  "v23.04"
+  "v23.05"
 }
 .YNOW_BUILD_VERSION <- .ynow_read_build_version()
 
@@ -229,7 +229,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v23.04) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+          "The YNow App (v23.05) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
         ),
         tags$p(
           class = "ynow-about-method",
@@ -248,7 +248,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v23.04) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
+          "The YNow App (v23.05) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
         ),
         tags$p(
           class = "ynow-about-method",
@@ -350,7 +350,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App（簡化版）")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite（v23.04）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
+          "The YNow App Lite（v23.05）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
           "以自動判別主／副模型與預設參數完成試算，讓使用者先看到合理價區間與產業 KPI，再決定是否回到完整版深入調整。"
         ),
         tags$p(
@@ -367,7 +367,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App (Lite)")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite (v23.04) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
+          "The YNow App Lite (v23.05) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
           "auto-selects primary/secondary models with App defaults, and surfaces fair-value ranges plus industry KPIs before you open Full for deeper calibration."
         ),
         tags$p(
@@ -3411,9 +3411,9 @@ ui <- dashboardPage(
                   'data-ynow-build="', .YNOW_BUILD_VERSION, '" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v23.04</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v23.05</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v23.04</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v23.05</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -5870,12 +5870,7 @@ ui <- dashboardPage(
           padding: 12px 14px;
           background: #fff;
           min-height: 96px;
-          display: flex;
-          flex-direction: column;
-          justify-content: center;
-          align-items: center;
           text-align: center;
-          box-sizing: border-box;
         }
         .ynow-smart-card-kicker {
           font-size: clamp(10px, 1.6vw, 11px);
@@ -5883,7 +5878,6 @@ ui <- dashboardPage(
           letter-spacing: 0.04em;
           text-transform: uppercase;
           margin: 0 0 4px 0;
-          width: 100%;
           text-align: center;
         }
         .ynow-smart-card-title {
@@ -5891,7 +5885,6 @@ ui <- dashboardPage(
           font-weight: 700;
           margin: 0 0 6px 0;
           color: #222;
-          width: 100%;
           text-align: center;
         }
         .ynow-smart-card-value {
@@ -5899,7 +5892,6 @@ ui <- dashboardPage(
           font-weight: 700;
           color: #111;
           margin: 0;
-          width: 100%;
           text-align: center;
           font-variant-numeric: tabular-nums;
           line-height: 1.15;
@@ -5910,17 +5902,7 @@ ui <- dashboardPage(
           color: #666;
           margin: 6px 0 0 0;
           line-height: 1.4;
-          width: 100%;
           text-align: center;
-        }
-        @media (max-width: 767px) {
-          .ynow-smart-card {
-            min-height: 88px;
-            padding: 10px 12px;
-          }
-          .ynow-smart-card-row > .ynow-alertable {
-            flex: 1 1 100%;
-          }
         }
         /* 側邊欄分頁 Loading：標籤右側動態「…」 */
         .sidebar-menu a > .ynow-tab-busy-dots {
@@ -10032,31 +10014,12 @@ ui <- dashboardPage(
           width: 100%;
           height: 100%;
         }
-        /* Global valueBox: numeral + label truly H/V centered in the box.
-           Decorative icon stays absolute; do not left-shift content with padding-right:44px. */
-        .content-wrapper .small-box,
-        .tab-content .small-box,
-        .tab-pane .small-box {
-          display: flex !important;
-          flex-direction: column !important;
-          justify-content: center !important;
-          align-items: stretch !important;
-          position: relative;
-        }
-        .content-wrapper .small-box .inner,
-        .tab-content .small-box .inner,
-        .tab-pane .small-box .inner {
+        /* Box numerals: keep original box dimensions; only scale/center text & values. */
+        .content-wrapper .small-box .inner {
           min-width: 0;
-          flex: 1 1 auto !important;
-          width: 100% !important;
-          height: 100% !important;
-          box-sizing: border-box !important;
-          display: flex !important;
-          flex-direction: column !important;
-          justify-content: center !important;
-          align-items: center !important;
-          text-align: center !important;
-          padding: 10px 14px !important;
+          padding-right: 44px;
+          flex: 1 1 auto;
+          text-align: center;
         }
         .content-wrapper .small-box .inner h3,
         .content-wrapper .small-box .inner h3 *,
@@ -10067,14 +10030,13 @@ ui <- dashboardPage(
           line-height: 1.15 !important;
           font-variant-numeric: tabular-nums;
           letter-spacing: -0.02em;
-          margin: 0 0 6px 0 !important;
+          /* Keep the whole figure on one line — never orphan a trailing digit. */
           white-space: nowrap !important;
           overflow-wrap: normal;
           word-break: keep-all;
           overflow: hidden;
           text-overflow: ellipsis;
           max-width: 100%;
-          width: 100%;
           text-align: center !important;
         }
         .content-wrapper .small-box .inner p,
@@ -10082,50 +10044,13 @@ ui <- dashboardPage(
           white-space: normal;
           overflow-wrap: anywhere;
           line-height: 1.25;
-          margin: 0 !important;
-          width: 100%;
           text-align: center !important;
-        }
-        .content-wrapper .small-box .icon,
-        .content-wrapper .small-box .icon-large,
-        .tab-content .small-box .icon,
-        .tab-content .small-box .icon-large {
-          opacity: 0.12;
-          pointer-events: none;
-        }
-        /* infoBox: vertically center content column beside icon */
-        .content-wrapper .info-box,
-        .tab-content .info-box {
-          display: flex !important;
-          align-items: stretch !important;
-          min-height: 90px;
-        }
-        .content-wrapper .info-box .info-box-icon,
-        .tab-content .info-box .info-box-icon {
-          display: flex !important;
-          align-items: center !important;
-          justify-content: center !important;
-          float: none !important;
-          flex: 0 0 90px;
-          width: 90px;
-          height: auto !important;
-          min-height: 90px;
-          line-height: 1 !important;
         }
         .content-wrapper .info-box-content,
         .tab-content .info-box-content {
           min-width: 0;
           overflow: hidden;
-          float: none !important;
-          margin-left: 0 !important;
-          flex: 1 1 auto;
-          display: flex !important;
-          flex-direction: column !important;
-          justify-content: center !important;
-          align-items: center !important;
-          text-align: center !important;
-          padding: 8px 12px !important;
-          box-sizing: border-box;
+          text-align: center;
         }
         .content-wrapper .info-box .info-box-number,
         .content-wrapper .info-box .info-box-number h3,
@@ -10140,30 +10065,13 @@ ui <- dashboardPage(
           overflow: hidden;
           text-overflow: ellipsis;
           max-width: 100%;
-          width: 100%;
           text-align: center !important;
-          display: block;
         }
         .content-wrapper .info-box .info-box-text,
         .tab-content .info-box .info-box-text {
           white-space: normal;
           overflow-wrap: anywhere;
-          width: 100%;
           text-align: center !important;
-          display: block;
-        }
-        /* Alertable wrappers stretch and keep centered children filling the cell */
-        .ynow-alertable:has(> .small-box),
-        .ynow-alertable:has(> .info-box),
-        .ynow-alertable:has(> .ynow-smart-card) {
-          display: flex;
-          flex-direction: column;
-          height: 100%;
-        }
-        .ynow-alertable > .small-box,
-        .ynow-alertable > .info-box,
-        .ynow-alertable > .ynow-smart-card {
-          flex: 1 1 auto;
         }
         /* 平板：較窄欄的彩色 BOX 兩欄並排 */
         @media (max-width: 991px) {
@@ -10236,14 +10144,11 @@ ui <- dashboardPage(
           .tab-content .info-box {
             margin-bottom: 10px !important;
           }
-          .content-wrapper .small-box .inner,
-          .tab-content .small-box .inner {
-            padding: 10px 12px !important;
+          .content-wrapper .small-box .inner {
+            padding-right: 12px;
+            padding-left: 12px;
           }
-          .content-wrapper .small-box .icon,
-          .content-wrapper .small-box .icon-large,
-          .tab-content .small-box .icon,
-          .tab-content .small-box .icon-large {
+          .content-wrapper .small-box .icon {
             display: none;
           }
           .content-wrapper .small-box .inner h3,
@@ -10255,23 +10160,19 @@ ui <- dashboardPage(
           .tab-content .small-box .inner p {
             font-size: clamp(11px, 3.2vw, 13px) !important;
           }
-          .content-wrapper .info-box,
-          .tab-content .info-box {
-            min-height: 72px;
+          .content-wrapper .info-box {
+            min-height: 0;
             height: auto !important;
           }
-          .content-wrapper .info-box .info-box-icon,
-          .tab-content .info-box .info-box-icon {
-            flex: 0 0 48px;
+          .content-wrapper .info-box .info-box-icon {
             width: 48px;
-            min-height: 72px;
+            height: 48px;
             font-size: 20px;
-            line-height: 1 !important;
+            line-height: 48px;
           }
-          .content-wrapper .info-box .info-box-content,
-          .tab-content .info-box .info-box-content {
-            margin-left: 0 !important;
-            padding: 8px 10px !important;
+          .content-wrapper .info-box .info-box-content {
+            margin-left: 48px;
+            padding: 6px 10px 6px 12px;
           }
           .content-wrapper .info-box .info-box-number,
           .content-wrapper .info-box .info-box-number h3,
@@ -10323,10 +10224,8 @@ ui <- dashboardPage(
           display: flex;
           flex-direction: column;
           justify-content: center;
-          align-items: center;
           text-align: center;
           transition: border-color 0.15s ease, background 0.15s ease;
-          box-sizing: border-box;
         }
         .ynow-fs-card:hover {
           background: #ffffff;
@@ -10338,7 +10237,6 @@ ui <- dashboardPage(
           color: #777777;
           line-height: 1.25;
           margin-bottom: 4px;
-          width: 100%;
           text-align: center;
         }
         .ynow-fs-value {
@@ -10347,9 +10245,7 @@ ui <- dashboardPage(
           color: #111111;
           font-variant-numeric: tabular-nums;
           letter-spacing: -0.01em;
-          width: 100%;
           text-align: center;
-          line-height: 1.2;
           line-height: 1.2;
           word-break: break-word;
           overflow-wrap: anywhere;
@@ -11211,23 +11107,6 @@ ui <- dashboardPage(
           border: 1px solid #e6e6e6;
           min-height: 108px;
           cursor: pointer;
-          /* Inherit global H/V-centered .inner / .info-box-content */
-        }
-        a.ynow-funnel-kpi-jump .ynow-alertable {
-          display: flex;
-          flex-direction: column;
-          height: 100%;
-        }
-        a.ynow-funnel-kpi-jump .ynow-alertable > .small-box,
-        a.ynow-funnel-kpi-jump .ynow-alertable > .info-box {
-          flex: 1 1 auto;
-          height: 100%;
-        }
-        @media (max-width: 767px) {
-          a.ynow-funnel-kpi-jump .small-box,
-          a.ynow-funnel-kpi-jump .info-box {
-            min-height: 96px;
-          }
         }
         #ynow_funnel_verdict,
         #ynow_funnel_risk,
@@ -11427,12 +11306,10 @@ ui <- dashboardPage(
           width: 100%;
           display: flex;
           flex-direction: column;
-          justify-content: center;
-          align-items: center;
+          justify-content: space-between;
           text-align: center;
           min-height: 112px;
           box-shadow: 0 2px 8px rgba(12, 84, 132, 0.12);
-          box-sizing: border-box;
         }
         .ynow-macro-kpi__label {
           font-size: clamp(10px, 1.6vw, 11px);
@@ -11440,7 +11317,6 @@ ui <- dashboardPage(
           letter-spacing: 0.04em;
           text-transform: uppercase;
           color: var(--ynow-macro-gold-deep);
-          width: 100%;
           text-align: center;
         }
         .ynow-macro-kpi__value,
@@ -11449,9 +11325,8 @@ ui <- dashboardPage(
           font-weight: 700;
           color: var(--ynow-macro-gold);
           line-height: 1.15;
-          margin: 8px 0;
+          margin: 6px 0;
           word-break: break-word;
-          width: 100%;
           text-align: center;
           font-variant-numeric: tabular-nums;
         }
@@ -11461,13 +11336,12 @@ ui <- dashboardPage(
         .ynow-macro-kpi__chg {
           font-size: clamp(11px, 2vw, 12.5px);
           font-weight: 600;
-          width: 100%;
           text-align: center;
         }
         .ynow-macro-kpi__sym {
           font-size: clamp(10px, 1.6vw, 11px);
           color: rgba(245, 197, 24, 0.55);
-          width: 100%;
+          margin-top: auto;
           text-align: center;
         }
         .ynow-macro-kpi--clickable {
@@ -12415,11 +12289,7 @@ ui <- dashboardPage(
           line-height: 1.05;
           font-variant-numeric: tabular-nums;
           color: #0C5484;
-          display: flex;
-          align-items: center;
-          justify-content: center;
           text-align: center;
-          min-height: 56px;
         }
         .ynow-mscore-widget--danger .ynow-mscore-widget__value { color: #c0392b; }
         .ynow-mscore-widget--watch .ynow-mscore-widget__value { color: #9a7b1a; }
@@ -12483,12 +12353,6 @@ ui <- dashboardPage(
           text-align: center;
           border: 1px solid #d5e3ec;
           background: #f7fbf9;
-          display: flex;
-          flex-direction: column;
-          justify-content: center;
-          align-items: center;
-          min-height: 110px;
-          box-sizing: border-box;
         }
         .ynow-eq-score-pill.ynow-eq-alert { border-color: #e0b4b0; background: #fdf4f3; }
         .ynow-eq-score-pill.ynow-eq-watch { border-color: #e6d6a8; background: #fffbf0; }
@@ -12499,30 +12363,16 @@ ui <- dashboardPage(
           line-height: 1.1;
           color: #0C5484;
           letter-spacing: -0.02em;
-          width: 100%;
           text-align: center;
           font-variant-numeric: tabular-nums;
         }
         .ynow-eq-score-meta {
           display: flex;
           justify-content: center;
-          align-items: center;
           gap: 8px;
           flex-wrap: wrap;
           margin-top: 6px;
           font-size: clamp(11px, 2vw, 12px);
-          width: 100%;
-        }
-        .ynow-alertable:has(> .ynow-eq-score-pill),
-        .ynow-alertable:has(> .ynow-mscore-widget) {
-          display: flex;
-          flex-direction: column;
-          height: 100%;
-        }
-        .ynow-alertable > .ynow-eq-score-pill,
-        .ynow-alertable > .ynow-mscore-widget {
-          flex: 1 1 auto;
-          width: 100%;
         }
         .ynow-eq-grade { font-weight: 700; color: #333; }
         .ynow-eq-flag {
@@ -12674,12 +12524,8 @@ ui <- dashboardPage(
           padding: 14px 16px 12px 16px;
           display: flex;
           flex-direction: column;
-          justify-content: center;
-          align-items: center;
-          text-align: center;
           gap: 6px;
-          min-height: 96px;
-          box-sizing: border-box;
+          text-align: center;
         }
         .ynow-metric-card__top {
           display: flex;
