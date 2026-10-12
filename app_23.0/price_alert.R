@@ -2,11 +2,36 @@ if (!exists("%||%", mode = "function")) {
   `%||%` <- function(x, y) if (is.null(x) || (length(x) == 1 && is.na(x))) y else x
 }
 
-# Price / condition alerts (email + in-app toast) with trigger history.
+# Value alerts（到值通知）: price / metric / grade conditions with trigger history.
 # Recipients must be on YNOW_ALERT_TO or YNOW_ALERT_ALLOWLIST when email is on.
 # SMTP: YNOW_SMTP_USER, YNOW_SMTP_PASSWORD, optional YNOW_SMTP_SERVER / YNOW_ALERT_FROM.
 
-.PA_KINDS <- c("price_gte", "price_lte", "day_chg_gte", "day_chg_lte", "below_fair")
+.PA_KINDS <- c(
+  "price_gte", "price_lte", "day_chg_gte", "day_chg_lte", "below_fair",
+  "value_gte", "value_lte", "grade_lte", "grade_gte"
+)
+.PA_PRICE_KINDS <- c("price_gte", "price_lte", "day_chg_gte", "day_chg_lte", "below_fair")
+.PA_VALUE_KINDS <- c("value_gte", "value_lte")
+.PA_GRADE_KINDS <- c("grade_lte", "grade_gte")
+.PA_GRADE_ORD <- c(A = 5, B = 4, C = 3, D = 2, F = 1)
+
+price_alert_grade_to_ord <- function(x) {
+  if (is.numeric(x) && length(x) >= 1L && is.finite(x[1])) {
+    v <- as.numeric(x[1])
+    if (v >= 1 && v <= 5) return(v)
+  }
+  g <- toupper(trimws(as.character(x)[1]))
+  if (g %in% names(.PA_GRADE_ORD)) return(unname(.PA_GRADE_ORD[[g]]))
+  NA_real_
+}
+
+price_alert_ord_to_grade <- function(x) {
+  v <- suppressWarnings(as.numeric(x)[1])
+  if (!is.finite(v)) return(NA_character_)
+  hit <- names(.PA_GRADE_ORD)[.PA_GRADE_ORD == as.integer(round(v))]
+  if (!length(hit)) return(NA_character_)
+  hit[[1]]
+}
 
 price_alert_store_path <- function() {
   override <- Sys.getenv("YNOW_ALERT_STORE", unset = "")
@@ -187,14 +212,20 @@ price_alert_condition_met <- function(kind, level, price, prev = NA_real_, mos_p
   prev <- suppressWarnings(as.numeric(prev)[1])
   mos_pct <- suppressWarnings(as.numeric(mos_pct)[1])
   if (!is.finite(mos_pct)) mos_pct <- 0
-  if (!kind %in% .PA_KINDS || !is.finite(level) || !is.finite(price) || price <= 0) {
+  if (!kind %in% .PA_KINDS || !is.finite(level) || !is.finite(price)) {
+    return(FALSE)
+  }
+  # Price / fair paths require a positive spot; value/grade may be ≤ 0 (e.g. M-Score, MOS).
+  if (kind %in% .PA_PRICE_KINDS && !(is.finite(price) && price > 0)) {
     return(FALSE)
   }
   chg <- if (is.finite(prev) && abs(prev) > 0) (price - prev) / abs(prev) * 100 else NA_real_
-  if (identical(kind, "price_gte")) return(price >= level)
-  if (identical(kind, "price_lte")) return(price <= level)
+  if (identical(kind, "price_gte") || identical(kind, "value_gte")) return(price >= level)
+  if (identical(kind, "price_lte") || identical(kind, "value_lte")) return(price <= level)
   if (identical(kind, "day_chg_gte")) return(is.finite(chg) && chg >= level)
   if (identical(kind, "day_chg_lte")) return(is.finite(chg) && chg <= level)
+  if (identical(kind, "grade_gte")) return(price >= level)
+  if (identical(kind, "grade_lte")) return(price <= level)
   if (identical(kind, "below_fair")) {
     hurdle <- level * (1 - mos_pct / 100)
     return(is.finite(hurdle) && hurdle > 0 && price <= hurdle)
@@ -351,9 +382,25 @@ price_alert_apply_checks <- function(df, quotes, send_fn = price_alert_send, now
     q <- quotes[[tk]]
     if (is.null(q)) next
     df$last_checked[[i]] <- stamp
-    if (isTRUE(q$ok)) df$last_price[[i]] <- q$price
+    kind_i <- as.character(df$kind[[i]])[1]
+    metric_i <- as.character(df$metric[[i]] %||% "")[1]
+    cur <- NA_real_
+    prev <- suppressWarnings(as.numeric(q$prev %||% NA_real_)[1])
+    if (kind_i %in% c(.PA_VALUE_KINDS, .PA_GRADE_KINDS)) {
+      mets <- q$metrics
+      if (is.list(mets) && nzchar(metric_i) && !is.null(mets[[metric_i]])) {
+        cur <- suppressWarnings(as.numeric(mets[[metric_i]])[1])
+      }
+      if (isTRUE(q$ok) && is.finite(suppressWarnings(as.numeric(q$price)[1]))) {
+        df$last_price[[i]] <- suppressWarnings(as.numeric(q$price)[1])
+      }
+      if (is.finite(cur)) df$last_price[[i]] <- cur
+    } else {
+      if (isTRUE(q$ok)) df$last_price[[i]] <- q$price
+      cur <- suppressWarnings(as.numeric(q$price %||% NA_real_)[1])
+    }
     hit <- isTRUE(df$armed[[i]]) && isTRUE(price_alert_condition_met(
-      df$kind[[i]], df$level[[i]], q$price, q$prev, df$mos_pct[[i]]
+      kind_i, df$level[[i]], cur, prev, df$mos_pct[[i]]
     ))
     if (!hit) next
     met <- met + 1L
@@ -365,7 +412,7 @@ price_alert_apply_checks <- function(df, quotes, send_fn = price_alert_send, now
     email_ok <- FALSE
     email_reason <- ""
     if (want_email) {
-      mail <- price_alert_compose(df[i, , drop = FALSE], q$price)
+      mail <- price_alert_compose(df[i, , drop = FALSE], cur)
       res <- tryCatch(
         send_fn(df$email[[i]], mail$subject, mail$body),
         error = function(e) list(ok = FALSE, reason = "send_failed", detail = conditionMessage(e))
@@ -375,7 +422,7 @@ price_alert_apply_checks <- function(df, quotes, send_fn = price_alert_send, now
       if (email_ok) sent <- sent + 1L
     }
 
-    toast_msg <- price_alert_toast_message(df[i, , drop = FALSE], q$price)
+    toast_msg <- price_alert_toast_message(df[i, , drop = FALSE], cur)
     channels <- character(0)
     if (want_app) channels <- c(channels, "app")
     if (want_email && email_ok) channels <- c(channels, "email")
@@ -399,7 +446,7 @@ price_alert_apply_checks <- function(df, quotes, send_fn = price_alert_send, now
         ticker = tk,
         kind = df$kind[[i]],
         level = df$level[[i]],
-        price = q$price,
+        price = cur,
         channel = paste(channels, collapse = "+"),
         message = toast_msg,
         triggered_at = stamp
@@ -411,7 +458,7 @@ price_alert_apply_checks <- function(df, quotes, send_fn = price_alert_send, now
         alert_id = df$id[[i]],
         ticker = tk,
         message = toast_msg,
-        price = q$price
+        price = cur
       )
     }
 
@@ -429,7 +476,8 @@ price_alert_apply_checks <- function(df, quotes, send_fn = price_alert_send, now
 }
 
 price_alert_check_store <- function(path = price_alert_store_path(), send_fn = price_alert_send,
-                                    history_path = price_alert_history_path()) {
+                                    history_path = price_alert_history_path(),
+                                    metrics_by_ticker = NULL) {
   df <- price_alert_read(path)
   if (!nrow(df) || !any(df$armed %in% TRUE)) {
     return(list(df = df, sent = 0L, met = 0L, app_toasts = list()))
@@ -445,7 +493,20 @@ price_alert_check_store <- function(path = price_alert_store_path(), send_fn = p
   writeLines("1", lock)
   on.exit(unlink(lock), add = TRUE)
   quotes <- list()
-  for (tk in unique(df$ticker[df$armed])) quotes[[tk]] <- price_alert_quote(tk)
+  for (tk in unique(df$ticker[df$armed])) {
+    q <- price_alert_quote(tk)
+    mets <- NULL
+    if (is.list(metrics_by_ticker) && !is.null(metrics_by_ticker[[tk]])) {
+      mets <- metrics_by_ticker[[tk]]
+    }
+    if (is.list(mets) && length(mets)) q$metrics <- mets
+    # Value/grade-only rules can still evaluate from session metrics without a live quote.
+    if (!isTRUE(q$ok) && is.list(mets) && length(mets)) {
+      q$ok <- TRUE
+      if (!is.finite(suppressWarnings(as.numeric(q$price)[1]))) q$price <- NA_real_
+    }
+    quotes[[tk]] <- q
+  }
   out <- price_alert_apply_checks(df, quotes, send_fn = send_fn, history_path = history_path)
   price_alert_write(out$df, path)
   out
@@ -453,6 +514,7 @@ price_alert_check_store <- function(path = price_alert_store_path(), send_fn = p
 
 #' Wrap a KPI / card so right-click / long-press can open the quick alert modal.
 #' Set ready=FALSE when the value needs Search/Run first.
+#' A small translucent bell sits at the inner top-right of ready/blocked targets.
 ynow_alertable <- function(
   ...,
   metric,
@@ -465,7 +527,10 @@ ynow_alertable <- function(
 ) {
   ready_flag <- if (isTRUE(ready) && is.finite(suppressWarnings(as.numeric(value)[1]))) "1" else "0"
   tags$div(
-    class = paste("ynow-alertable", if (identical(ready_flag, "1")) "ynow-alertable--ready" else "ynow-alertable--blocked"),
+    class = paste(
+      "ynow-alertable",
+      if (identical(ready_flag, "1")) "ynow-alertable--ready" else "ynow-alertable--blocked"
+    ),
     `data-ynow-alert` = "1",
     `data-ynow-alert-ready` = ready_flag,
     `data-ynow-alert-metric` = as.character(metric)[1],
@@ -482,7 +547,17 @@ ynow_alertable <- function(
     } else {
       ""
     },
-    title = if (identical(ready_flag, "1")) NULL else NULL,
+    tags$span(
+      class = "ynow-alert-bell",
+      `aria-hidden` = "true",
+      HTML(
+        paste0(
+          '<svg viewBox="0 0 24 24" width="14" height="14" focusable="false">',
+          '<path fill="currentColor" d="M12 22a2.2 2.2 0 0 0 2.2-2.2h-4.4A2.2 2.2 0 0 0 12 22zm6.4-6.2V11a6.4 6.4 0 0 0-5.1-6.3V4a1.3 1.3 0 1 0-2.6 0v.7A6.4 6.4 0 0 0 5.6 11v4.8L4 17.4V18h16v-.6l-1.6-1.6z"/>',
+          "</svg>"
+        )
+      )
+    ),
     ...
   )
 }
@@ -516,7 +591,11 @@ price_alert_tab_ui <- function() {
               "Last price ≤ target / 最新價 ≤ 目標價" = "price_lte",
               "Daily change ≥ % / 日漲跌幅 ≥ %" = "day_chg_gte",
               "Daily change ≤ % / 日漲跌幅 ≤ %" = "day_chg_lte",
-              "Price ≤ fair × (1 − MOS) / 最新價 ≤ 公允價值 × (1 − MOS)" = "below_fair"
+              "Price ≤ fair × (1 − MOS) / 最新價 ≤ 公允價值 × (1 − MOS)" = "below_fair",
+              "Value ≥ level / 數值 ≥ 水準" = "value_gte",
+              "Value ≤ level / 數值 ≤ 水準" = "value_lte",
+              "Grade ≥ / 評等 ≥" = "grade_gte",
+              "Grade ≤ / 評等 ≤" = "grade_lte"
             ),
             width = "100%"
           ))
@@ -551,6 +630,13 @@ price_alert_tab_ui <- function() {
   )
 }
 
+.pa_metric_family <- function(metric) {
+  m <- as.character(metric %||% "")[1]
+  if (m %in% c("last_price", "fair_value", "fair_value_secondary", "mos_pct")) return("price")
+  if (identical(m, "qoe_grade")) return("grade")
+  "value"
+}
+
 price_alert_quick_modal <- function(payload, locale = "en") {
   say <- function(key) {
     if (exists("ui_str", mode = "function")) ui_str(key, locale) else key
@@ -562,67 +648,140 @@ price_alert_quick_modal <- function(payload, locale = "en") {
   fair <- suppressWarnings(as.numeric(payload$fair %||% NA_real_)[1])
   def_kind <- as.character(payload$kind %||% "price_gte")[1]
   if (!def_kind %in% .PA_KINDS) def_kind <- "price_gte"
+  family <- .pa_metric_family(metric)
 
-  # MOS card → convert to price_lte at FV×(1−MOS%/100) suggestion via below_fair
   level_default <- value
   mos_default <- 0
+  show_mos <- FALSE
   if (identical(metric, "mos_pct") && is.finite(fair) && fair > 0 && is.finite(value)) {
     def_kind <- "below_fair"
     level_default <- fair
     mos_default <- max(0, min(90, value))
-  } else if (identical(metric, "fair_value") && is.finite(value)) {
+    family <- "price"
+    show_mos <- TRUE
+  } else if (metric %in% c("fair_value", "fair_value_secondary") && is.finite(value)) {
     def_kind <- "below_fair"
     level_default <- value
     mos_default <- 0
+    family <- "price"
+    show_mos <- TRUE
+  } else if (identical(family, "grade")) {
+    if (!def_kind %in% .PA_GRADE_KINDS) def_kind <- "grade_lte"
+    if (!is.finite(level_default)) level_default <- 3
+  } else if (identical(family, "value")) {
+    if (!def_kind %in% .PA_VALUE_KINDS) {
+      def_kind <- if (metric %in% c("beneish_m_score", "statement_alert_count")) "value_gte" else "value_lte"
+    }
+  } else {
+    show_mos <- identical(def_kind, "below_fair") || metric %in% c("last_price", "fair_value", "mos_pct")
+    if (!def_kind %in% c("price_gte", "price_lte", "below_fair")) def_kind <- "price_lte"
   }
 
-  kind_choices <- c(
-    setNames("price_gte", say("pa_kind_price_gte")),
-    setNames("price_lte", say("pa_kind_price_lte")),
-    setNames("below_fair", say("pa_kind_below_fair"))
-  )
+  kind_choices <- if (identical(family, "grade")) {
+    c(
+      setNames("grade_gte", say("pa_kind_grade_gte")),
+      setNames("grade_lte", say("pa_kind_grade_lte"))
+    )
+  } else if (identical(family, "value")) {
+    c(
+      setNames("value_gte", say("pa_kind_value_gte")),
+      setNames("value_lte", say("pa_kind_value_lte"))
+    )
+  } else {
+    c(
+      setNames("price_gte", say("pa_kind_price_gte")),
+      setNames("price_lte", say("pa_kind_price_lte")),
+      setNames("below_fair", say("pa_kind_below_fair"))
+    )
+  }
+
+  disp_val <- if (identical(family, "grade") && is.finite(value)) {
+    price_alert_ord_to_grade(value) %||% format(value, trim = TRUE, scientific = FALSE)
+  } else if (is.finite(value)) {
+    format(value, trim = TRUE, scientific = FALSE)
+  } else {
+    "—"
+  }
+
+  level_input <- if (identical(family, "grade")) {
+    grade_choices <- c(
+      setNames(5, "A"), setNames(4, "B"), setNames(3, "C"),
+      setNames(2, "D"), setNames(1, "F")
+    )
+    sel <- if (is.finite(level_default)) as.character(as.integer(round(level_default))) else "3"
+    selectInput("pa_quick_level", say("pa_level_grade"), choices = grade_choices, selected = sel)
+  } else {
+    numericInput("pa_quick_level", say("pa_level"), value = level_default, width = "100%")
+  }
 
   modalDialog(
-    title = say("pa_quick_title"),
+    title = NULL,
     easyClose = TRUE,
     fade = TRUE,
     size = "m",
-    tags$p(
-      style = "margin:0 0 10px 0; color:#555;",
-      sprintf("%s · %s", ticker, label),
-      if (is.finite(value)) {
-        tags$span(
-          style = "margin-left:8px; font-weight:700;",
-          format(value, trim = TRUE, scientific = FALSE)
-        )
-      }
-    ),
-    tags$p(style = "font-size:12px; color:#777;", say("pa_quick_hint")),
-    selectInput("pa_quick_kind", say("pa_kind"), choices = kind_choices, selected = def_kind),
-    numericInput("pa_quick_level", say("pa_level"), value = level_default, width = "100%"),
-    numericInput("pa_quick_mos", say("pa_mos"), value = mos_default, min = 0, max = 90, width = "100%"),
-    checkboxInput("pa_quick_notify_app", say("pa_notify_app"), value = TRUE),
-    checkboxInput("pa_quick_notify_email", say("pa_notify_email"), value = FALSE),
-    conditionalPanel(
-      condition = "input.pa_quick_notify_email == true",
-      textInput("pa_quick_email", say("pa_email"), value = Sys.getenv("YNOW_ALERT_TO", ""))
-    ),
-    textInput("pa_quick_note", say("pa_note"), value = ""),
-    # hidden fields
     tags$div(
-      style = "display:none;",
-      textInput("pa_quick_ticker", NULL, value = ticker),
-      textInput("pa_quick_metric", NULL, value = metric)
+      class = "ynow-pa-modal",
+      tags$div(
+        class = "ynow-pa-modal__hero",
+        tags$div(
+          class = "ynow-pa-modal__eyebrow",
+          tags$span(class = "ynow-pa-modal__bell", HTML(
+            paste0(
+              '<svg viewBox="0 0 24 24" width="16" height="16" focusable="false">',
+              '<path fill="currentColor" d="M12 22a2.2 2.2 0 0 0 2.2-2.2h-4.4A2.2 2.2 0 0 0 12 22zm6.4-6.2V11a6.4 6.4 0 0 0-5.1-6.3V4a1.3 1.3 0 1 0-2.6 0v.7A6.4 6.4 0 0 0 5.6 11v4.8L4 17.4V18h16v-.6l-1.6-1.6z"/>',
+              "</svg>"
+            )
+          )),
+          say("pa_quick_title")
+        ),
+        tags$div(class = "ynow-pa-modal__ticker", ticker),
+        tags$div(
+          class = "ynow-pa-modal__metric",
+          tags$span(class = "ynow-pa-modal__metric-label", label),
+          tags$span(class = "ynow-pa-modal__metric-value", disp_val)
+        ),
+        tags$p(class = "ynow-pa-modal__hint", say("pa_quick_hint"))
+      ),
+      tags$div(
+        class = "ynow-pa-modal__body",
+        selectInput("pa_quick_kind", say("pa_kind"), choices = kind_choices, selected = def_kind),
+        level_input,
+        if (isTRUE(show_mos)) {
+          numericInput("pa_quick_mos", say("pa_mos"), value = mos_default, min = 0, max = 90, width = "100%")
+        } else {
+          tags$div(
+            style = "display:none;",
+            numericInput("pa_quick_mos", NULL, value = 0)
+          )
+        },
+        tags$div(
+          class = "ynow-pa-modal__channels",
+          tags$p(class = "ynow-pa-modal__section", say("pa_quick_channels")),
+          checkboxInput("pa_quick_notify_app", say("pa_notify_app"), value = TRUE),
+          checkboxInput("pa_quick_notify_email", say("pa_notify_email"), value = FALSE),
+          conditionalPanel(
+            condition = "input.pa_quick_notify_email == true",
+            textInput("pa_quick_email", say("pa_email"), value = Sys.getenv("YNOW_ALERT_TO", ""))
+          )
+        ),
+        textInput("pa_quick_note", say("pa_note"), value = ""),
+        tags$div(
+          style = "display:none;",
+          textInput("pa_quick_ticker", NULL, value = ticker),
+          textInput("pa_quick_metric", NULL, value = metric)
+        )
+      )
     ),
     footer = tagList(
       modalButton(say("pa_quick_cancel")),
-      actionButton("pa_quick_save", say("pa_quick_save"), class = "btn-primary")
+      actionButton("pa_quick_save", say("pa_quick_save"), class = "btn-primary ynow-pa-modal__save")
     )
   )
 }
 
 price_alert_server <- function(input, output, session, ui_locale_rv = NULL,
-                               current_ticker_rv = NULL) {
+                               current_ticker_rv = NULL,
+                               metric_snapshot_rv = NULL) {
   loc <- function() {
     if (is.null(ui_locale_rv)) return("en")
     tryCatch(normalize_ui_locale(isolate(ui_locale_rv())), error = function(e) "en")
@@ -630,6 +789,23 @@ price_alert_server <- function(input, output, session, ui_locale_rv = NULL,
   say <- function(key) ui_str(key, loc())
   pa_refresh <- reactiveVal(0L)
   hist_refresh <- reactiveVal(0L)
+  .metrics_by_ticker <- function() {
+    from_rv <- if (is.null(metric_snapshot_rv)) {
+      NULL
+    } else {
+      tryCatch(metric_snapshot_rv(), error = function(e) NULL)
+    }
+    from_ud <- tryCatch(session$userData$value_alert_metrics, error = function(e) NULL)
+    if (!is.list(from_rv) && !is.list(from_ud)) return(NULL)
+    out <- list()
+    for (tk in unique(c(names(from_rv %||% list()), names(from_ud %||% list())))) {
+      out[[tk]] <- modifyList(
+        as.list((from_rv %||% list())[[tk]] %||% list()),
+        as.list((from_ud %||% list())[[tk]] %||% list())
+      )
+    }
+    out
+  }
 
   .deliver_app_toasts <- function(toasts) {
     if (!length(toasts)) return()
@@ -739,7 +915,7 @@ price_alert_server <- function(input, output, session, ui_locale_rv = NULL,
   })
 
   observeEvent(input$pa_check, {
-    out <- price_alert_check_store()
+    out <- price_alert_check_store(metrics_by_ticker = .metrics_by_ticker())
     .deliver_app_toasts(out$app_toasts %||% list())
     msg <- say("pa_checked")
     if (out$met > 0L && out$sent == 0L && any(vapply(out$app_toasts %||% list(), function(x) TRUE, logical(1))) == FALSE) {
@@ -847,7 +1023,7 @@ price_alert_server <- function(input, output, session, ui_locale_rv = NULL,
     invalidateLater(15 * 60 * 1000, session)
     df <- price_alert_read()
     if (!nrow(df) || !any(df$armed %in% TRUE)) return()
-    out <- price_alert_check_store()
+    out <- price_alert_check_store(metrics_by_ticker = .metrics_by_ticker())
     .deliver_app_toasts(out$app_toasts %||% list())
     pa_refresh(isolate(pa_refresh()) + 1L)
     hist_refresh(isolate(hist_refresh()) + 1L)

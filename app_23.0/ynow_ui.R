@@ -16,7 +16,7 @@
       return(sub('^"version"\\s*:\\s*"([^"]+)".*$', "\\1", m[[1]]))
     }
   }
-  "v23.02"
+  "v23.03"
 }
 .YNOW_BUILD_VERSION <- .ynow_read_build_version()
 
@@ -229,7 +229,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v23.02) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+          "The YNow App (v23.03) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
         ),
         tags$p(
           class = "ynow-about-method",
@@ -248,7 +248,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v23.02) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
+          "The YNow App (v23.03) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
         ),
         tags$p(
           class = "ynow-about-method",
@@ -350,7 +350,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App（簡化版）")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite（v23.02）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
+          "The YNow App Lite（v23.03）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
           "以自動判別主／副模型與預設參數完成試算，讓使用者先看到合理價區間與產業 KPI，再決定是否回到完整版深入調整。"
         ),
         tags$p(
@@ -367,7 +367,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App (Lite)")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite (v23.02) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
+          "The YNow App Lite (v23.03) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
           "auto-selects primary/secondary models with App defaults, and surfaces fair-value ranges plus industry KPIs before you open Full for deeper calibration."
         ),
         tags$p(
@@ -800,7 +800,7 @@ beta_source_picker_ui <- function(input_id,
 beta_overview_section_ui <- function() {
   tagList(
     fluidRow(
-      valueBoxOutput("vbx_beta_summary", width = 6),
+      uiOutput("vbx_beta_summary", class = "col-sm-6"),
       valueBoxOutput("vbx_beta_industry", width = 6)
     ),
     fluidRow(
@@ -3411,9 +3411,9 @@ ui <- dashboardPage(
                   'data-ynow-build="', .YNOW_BUILD_VERSION, '" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v23.02</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v23.03</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v23.02</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v23.03</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -3610,7 +3610,7 @@ ui <- dashboardPage(
              ),
              menuItem("Decision Checklist", tabName = "decision_checklist", icon = icon("clipboard-check")),
              menuItem(
-               text = tags$span(id = "ynow_menu_price_alert", "Price Alerts"),
+               text = tags$span(id = "ynow_menu_price_alert", "Value Alerts"),
                tabName = "price_alerts",
                icon = icon("bell")
              ),
@@ -9584,11 +9584,38 @@ ui <- dashboardPage(
         })();
       ")),
 
-      # KPI value-alert: right-click / long-press → quick set (blocked when not ready)
+      # Value alert (到值通知): right-click / long-press → quick set; bell mark
       tags$style(HTML("
         .ynow-alertable {
           position: relative;
           -webkit-touch-callout: none;
+        }
+        .ynow-alertable > .info-box,
+        .ynow-alertable > .small-box,
+        .ynow-alertable > .ynow-smart-card,
+        .ynow-alertable > .ynow-fs-card,
+        .ynow-alertable > .ynow-mscore-widget,
+        .ynow-alertable > .ynow-eq-score-pill {
+          height: 100%;
+        }
+        .ynow-alert-bell {
+          position: absolute;
+          top: 6px;
+          right: 8px;
+          z-index: 3;
+          width: 16px;
+          height: 16px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          color: rgba(17, 24, 39, 0.28);
+          pointer-events: none;
+        }
+        .ynow-alertable--ready .ynow-alert-bell {
+          color: rgba(12, 84, 132, 0.38);
+        }
+        .ynow-alertable--ready:hover .ynow-alert-bell {
+          color: rgba(12, 84, 132, 0.62);
         }
         .ynow-alertable--ready {
           cursor: context-menu;
@@ -9602,6 +9629,80 @@ ui <- dashboardPage(
         .ynow-alertable--blocked::after {
           content: '';
           pointer-events: none;
+        }
+        .ynow-pa-modal {
+          margin: -8px -4px 0 -4px;
+        }
+        .ynow-pa-modal__hero {
+          background: linear-gradient(145deg, #0f172a 0%, #1e3a5f 55%, #0c5484 100%);
+          color: #f8fafc;
+          border-radius: 10px;
+          padding: 16px 18px 14px;
+          margin-bottom: 14px;
+        }
+        .ynow-pa-modal__eyebrow {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 12px;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+          opacity: 0.85;
+          margin-bottom: 8px;
+        }
+        .ynow-pa-modal__bell {
+          display: inline-flex;
+          opacity: 0.9;
+        }
+        .ynow-pa-modal__ticker {
+          font-size: 22px;
+          font-weight: 700;
+          letter-spacing: 0.02em;
+          line-height: 1.2;
+        }
+        .ynow-pa-modal__metric {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: baseline;
+          gap: 8px 14px;
+          margin-top: 8px;
+        }
+        .ynow-pa-modal__metric-label {
+          font-size: 13px;
+          opacity: 0.8;
+        }
+        .ynow-pa-modal__metric-value {
+          font-size: 28px;
+          font-weight: 700;
+          font-variant-numeric: tabular-nums;
+        }
+        .ynow-pa-modal__hint {
+          margin: 10px 0 0 0;
+          font-size: 12px;
+          line-height: 1.45;
+          opacity: 0.78;
+        }
+        .ynow-pa-modal__body .form-group {
+          margin-bottom: 12px;
+        }
+        .ynow-pa-modal__section {
+          margin: 4px 0 6px 0;
+          font-size: 12px;
+          font-weight: 600;
+          color: #334155;
+          letter-spacing: 0.02em;
+        }
+        .ynow-pa-modal__channels {
+          background: #f1f5f9;
+          border-radius: 8px;
+          padding: 10px 12px 4px;
+          margin-bottom: 10px;
+        }
+        .ynow-pa-modal__save {
+          min-width: 120px;
+        }
+        .modal-footer {
+          border-top: 1px solid #e2e8f0;
         }
       ")),
       tags$script(HTML("
@@ -13397,7 +13498,7 @@ ui <- dashboardPage(
         column(
           width = 4,
           class = "col-xs-12",
-          infoBoxOutput("ibx_EPS", width = NULL)
+          uiOutput("ibx_EPS")
         )
       )
     ),
@@ -13991,21 +14092,21 @@ ui <- dashboardPage(
                        column(width = 12,
                               tags$h4("Balance Sheet KPI", class = "ynow-kpi-section-title"),
                               div(class = "ynow-kpi-grid",
-                                  valueBoxOutput(NS("kpi", "vbx_eqt_multiplier"), width = NULL)
+                                  uiOutput(NS("kpi", "vbx_eqt_multiplier"))
                               ),
                               tags$h4("Income Statement KPI", class = "ynow-kpi-section-title"),
                               div(class = "ynow-kpi-grid",
-                                  valueBoxOutput(NS("kpi", "vbx_net_profit_margin"), width = NULL),
-                                  valueBoxOutput(NS("kpi", "vbx_gross_profit_margin"), width = NULL),
-                                  valueBoxOutput(NS("kpi", "vbx_opex_ratio"), width = NULL),
-                                  valueBoxOutput(NS("kpi", "vbx_rev_growth"), width = NULL),
-                                  valueBoxOutput(NS("kpi", "vbx_gross_profit_growth"), width = NULL)
+                                  uiOutput(NS("kpi", "vbx_net_profit_margin")),
+                                  uiOutput(NS("kpi", "vbx_gross_profit_margin")),
+                                  uiOutput(NS("kpi", "vbx_opex_ratio")),
+                                  uiOutput(NS("kpi", "vbx_rev_growth")),
+                                  uiOutput(NS("kpi", "vbx_gross_profit_growth"))
                               ),
                               tags$h4("Cash Flow KPI", class = "ynow-kpi-section-title"),
                               div(class = "ynow-kpi-grid",
-                                  valueBoxOutput(NS("kpi", "vbx_op_cash_flow_growth"), width = NULL),
-                                  valueBoxOutput(NS("kpi", "vbx_inv_cash_flow_growth"), width = NULL),
-                                  valueBoxOutput(NS("kpi", "vbx_fin_cash_flow_growth"), width = NULL)
+                                  uiOutput(NS("kpi", "vbx_op_cash_flow_growth")),
+                                  uiOutput(NS("kpi", "vbx_inv_cash_flow_growth")),
+                                  uiOutput(NS("kpi", "vbx_fin_cash_flow_growth"))
                               )
                        )
                      )),
@@ -14013,10 +14114,10 @@ ui <- dashboardPage(
                      tabPanel("Crossover KPIs", fluidRow(
                        column(width = 12,
                               div(class = "ynow-kpi-grid",
-                                  valueBoxOutput(NS("kpi", "vbx_ROA"), width = NULL),
-                                  valueBoxOutput(NS("kpi", "vbx_ROE"), width = NULL),
-                                  valueBoxOutput(NS("kpi", "vbx_asset_turnover"), width = NULL),
-                                  valueBoxOutput(NS("kpi", "vbx_ocf_net_income"), width = NULL)
+                                  uiOutput(NS("kpi", "vbx_ROA")),
+                                  uiOutput(NS("kpi", "vbx_ROE")),
+                                  uiOutput(NS("kpi", "vbx_asset_turnover")),
+                                  uiOutput(NS("kpi", "vbx_ocf_net_income"))
                               )
                        )
                      )),
