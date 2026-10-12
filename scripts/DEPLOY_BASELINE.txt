@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12680133
+bundleId=12680266
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=00960a6dbabd58b2d671b6ab468f1cc2027797ed
-commit=00960a6dbabd58b2d671b6ab468f1cc2027797ed
-short=00960a6
-message=Scale box text/values with clamp; restore original box sizes (v23.05)
-captured_at=2026-10-12T14:40:58Z
-display_version=v23.05
+aligned_git=22d65cb2963244e7e83c09eeea0e5e74869b653a
+commit=22d65cb2963244e7e83c09eeea0e5e74869b653a
+short=22d65cb
+message=Center only KPI grids; enlarge values; mobile header 1:1:1 (v23.06)
+captured_at=2026-10-12T15:12:05Z
+display_version=v23.06
