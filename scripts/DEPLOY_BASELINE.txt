@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12679586
+bundleId=12679620
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=9097e77c4bf797a1f3e1fb016186365865e73f6e
-commit=9097e77c4bf797a1f3e1fb016186365865e73f6e
-short=9097e77
-message=KPI quick price alerts + App/email history; cut to app_23.0 / v23.00
-captured_at=2026-10-12T11:52:05Z
+aligned_git=c27b103
+commit=c27b103
+short=c27b103
+message=Equity structure pie beside BS; Ordinary/Preferred and dual-class (v23.01)
+captured_at=2026-10-12T12:00:00Z
 display_version=v23.01
