@@ -529,19 +529,19 @@ locale_for_market <- function(mode = get_market_mode()) {
     testing_page_title = "Testing",
     testing_page_sub = paste0(
       "Full-only sandbox for experiments. Lite mode hides this entry. ",
-      "Asset transmission root map now lives in its own sidebar tab (after Macro & Market Trends)."
+      "Asset Transmission Root now lives in its own sidebar tab (after Macro & Market Trends)."
     ),
     testing_box_title = "Sandbox",
     testing_box_body = paste0(
       "Use the sidebar entry Asset Transmission Root for the inflation → rates → liquidity → asset map. ",
       "This Testing page remains a Full-only placeholder for future lab hooks."
     ),
-    atx_page_title = "Asset transmission root map",
+    atx_page_title = "Asset Transmission Root",
     atx_page_sub = paste0(
       "Same stack as the reference map: §1 macro drivers → §2 rate / dollar / liquidity hubs → §4 major asset classes (incl. FX market). ",
       "Available in Lite and Full."
     ),
-    atx_box_title = "Asset transmission root map",
+    atx_box_title = "Asset Transmission Root",
     atx_box_body = paste0(
       "§1 Macro drivers (inflation expectations) feed §2 hubs — interest rates, the dollar (DXY), and liquidity — then §4 asset classes: bonds, equities, precious metals, commodities, FX market, crypto, and other. ",
       "Arrows run upstream to downstream. Purple marks links that can flip by regime. ",
@@ -555,7 +555,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     atx_play = "Play",
     atx_session_prefix = "Session ",
     atx_loading = "Loading public prints…",
-    atx_loading_bar = "Loading Asset transmission root map…",
+    atx_loading_bar = "Loading Asset Transmission Root…",
     atx_status = "{n_ok}/{n_nodes} series · updated {stamp}",
     atx_empty = "Public prints are unavailable, so the map cannot be drawn.",
     atx_play_hint = "Press Play to replay the last 22 sessions (about one month). Card text and the border follow that session's move; line width is the trailing correlation.",
@@ -3094,7 +3094,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     menu_company_advance = "業務拆解",
     kpi_last_price = "最新股價",
     menu_macro_market = "總體經濟與大盤趨勢",
-    menu_asset_transmission = "資產傳導根系圖",
+    menu_asset_transmission = "資產傳導根系",
     menu_smart_analysis = "智慧分析",
     menu_get_started = "模型儀表板",
     menu_dcf = "DCF 模型",
@@ -3507,19 +3507,19 @@ locale_for_market <- function(mode = get_market_mode()) {
     testing_page_title = "測試",
     testing_page_sub = paste0(
       "完整版實驗沙盒；簡化版不顯示此入口。",
-      "資產傳導根系圖已獨立成側邊欄分頁（接在「總體經濟與大盤趨勢」之後）。"
+      "資產傳導根系已獨立成側邊欄分頁（接在「總體經濟與大盤趨勢」之後）。"
     ),
     testing_box_title = "沙盒",
     testing_box_body = paste0(
-      "通膨→利率→流動性→資產的傳導圖，請改用側邊欄「資產傳導根系圖」。",
+      "通膨→利率→流動性→資產的傳導圖，請改用側邊欄「資產傳導根系」。",
       "本 Testing 頁保留為完整版實驗入口佔位。"
     ),
-    atx_page_title = "資產傳導根系圖",
+    atx_page_title = "資產傳導根系",
     atx_page_sub = paste0(
       "與參考圖一致：§1 總體驅動 → §2 利率／美元／流動性樞紐 → §4 主要資產類別（含外匯市場）。",
       "簡化版與完整版皆可使用。"
     ),
-    atx_box_title = "資產傳導根系圖",
+    atx_box_title = "資產傳導根系",
     atx_box_body = paste0(
       "§1 總體驅動（通膨預期）進入 §2 樞紐——利率、美元（DXY）、流動性——再傳到 §4 資產類別：債券、股市、貴金屬、原物料、外匯市場、加密貨幣與其他。",
       "箭頭由上游指向下游。紫線是會隨情境翻轉的連結。",
@@ -3533,7 +3533,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     atx_play = "播放",
     atx_session_prefix = "交易日 ",
     atx_loading = "正在讀取公開報價…",
-    atx_loading_bar = "正在載入資產傳導根系圖…",
+    atx_loading_bar = "正在載入資產傳導根系…",
     atx_status = "{n_ok}/{n_nodes} 條序列 · 更新於 {stamp}",
     atx_empty = "公開報價暫不可用，無法繪製傳導圖。",
     atx_play_hint = "按播放可重播近 22 個交易日（約一個月）。卡片文字與外框跟著該日漲跌；線寬是當時的滾動相關。",
