@@ -22,6 +22,7 @@ Thumbs.db
 *.pdf
 .positai
 .cursor/
+audit_logs/
 
 # Local secrets — never commit
 .Renviron
