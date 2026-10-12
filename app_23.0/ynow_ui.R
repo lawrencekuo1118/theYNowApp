@@ -9627,8 +9627,18 @@ ui <- dashboardPage(
         .ynow-alertable > .ynow-smart-card,
         .ynow-alertable > .ynow-fs-card,
         .ynow-alertable > .ynow-mscore-widget,
-        .ynow-alertable > .ynow-eq-score-pill {
+        .ynow-alertable > .ynow-eq-score-pill,
+        .ynow-alertable > .ynow-composite-band-card {
           height: 100%;
+        }
+        .ynow-composite-valuation > div:first-child > .ynow-alertable {
+          flex: 1 1 120px;
+          min-width: 120px;
+          display: flex;
+          flex-direction: column;
+        }
+        .ynow-composite-valuation .ynow-alertable > .ynow-composite-band-card {
+          flex: 1 1 auto;
         }
         .ynow-alert-bell {
           position: absolute;

@@ -980,14 +980,14 @@ earnings_quality_dashboard_ui <- function(pack, locale = "zh-TW", alert_ticker =
           )
         )
         tk <- as.character(alert_ticker %||% "")[1]
-        if (exists("ynow_alertable", mode = "function") && is.finite(grade_ord) && nzchar(tk)) {
+        if (exists("ynow_alertable", mode = "function") && nzchar(tk)) {
           ynow_alertable(
             pill,
             metric = "qoe_grade",
             ticker = tk,
-            value = grade_ord,
+            value = if (is.finite(grade_ord)) grade_ord else NA_real_,
             label = if (en) "Quality of Earnings Grade" else "盈餘品質 Grade",
-            ready = TRUE,
+            ready = is.finite(grade_ord),
             default_kind = "grade_lte"
           )
         } else {

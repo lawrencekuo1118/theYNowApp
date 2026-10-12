@@ -1031,54 +1031,103 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
         )
       }
       axis_height <- 80
+      tk_alert <- .alert_tk()
+      .band_card <- function(label, value_html, meta_html = NULL, bg, value_color, value_size = "20px") {
+        tags$div(
+          class = "ynow-composite-band-card",
+          style = paste0(
+            "flex:1; min-width:120px; padding:10px; background:", bg,
+            "; border-radius:6px; position:relative;"
+          ),
+          tags$div(style = "font-size:12px; color:#888;", label),
+          tags$div(
+            style = paste0("font-size:", value_size, "; font-weight:700; color:", value_color, ";"),
+            HTML(value_html)
+          ),
+          if (!is.null(meta_html)) tags$div(style = "font-size:12px; color:#555;", HTML(meta_html))
+        )
+      }
+      bear_card <- .band_card("Bear", htmltools::htmlEscape(fmt(bear)), NULL, "#fdf2f2", "#c0392b")
+      base_card <- .band_card(
+        "Base",
+        htmltools::htmlEscape(fmt(base)),
+        paste0(
+          htmltools::htmlEscape(str("composite_upside_prefix")),
+          htmltools::htmlEscape(upside_txt)
+        ),
+        "#f5f5f5", "#1a1a1a", value_size = "22px"
+      )
+      bull_card <- .band_card("Bull", htmltools::htmlEscape(fmt(bull)), NULL, "#eafaf1", "#1e8449")
+      sec_card <- .band_card(
+        str("composite_secondary_check"),
+        htmltools::htmlEscape(fmt(sec_pt)),
+        htmltools::htmlEscape(.point_label(sec)),
+        "#f4f6f7", "#566573", value_size = "18px"
+      )
+      # Primary Base + secondary check: Value Alert targets (到值通知)
+      if (exists("ynow_alertable", mode = "function")) {
+        base_card <- ynow_alertable(
+          base_card,
+          metric = "fair_value",
+          ticker = tk_alert,
+          value = if (is.finite(base)) base else NA_real_,
+          label = paste(str("composite_main_model"), .point_label(prim), "Base"),
+          ready = nzchar(tk_alert) && is.finite(base) && base > 0,
+          default_kind = "below_fair",
+          fair_value = if (is.finite(base)) base else NA_real_
+        )
+        sec_card <- ynow_alertable(
+          sec_card,
+          metric = "fair_value_secondary",
+          ticker = tk_alert,
+          value = if (is.finite(sec_pt)) sec_pt else NA_real_,
+          label = paste(str("composite_sub_model"), .point_label(sec)),
+          ready = nzchar(tk_alert) && nzchar(sec) && is.finite(sec_pt) && sec_pt > 0,
+          default_kind = "below_fair",
+          fair_value = if (is.finite(sec_pt)) sec_pt else NA_real_
+        )
+      }
 
-      HTML(paste0(
-        "<div class='ynow-composite-valuation' style='background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 12px; border-top: 3px solid ", status_color, ";'>",
-        "<div style='display:flex; gap:14px; flex-wrap:wrap; margin-bottom: 18px;'>",
-        "<div style='flex:1; min-width:120px; padding:10px; background:#fdf2f2; border-radius:6px;'>",
-        "<div style='font-size:12px; color:#888;'>Bear</div>",
-        "<div style='font-size:20px; font-weight:700; color:#c0392b;'>", fmt(bear), "</div></div>",
-        "<div style='flex:1; min-width:120px; padding:10px; background:#f5f5f5; border-radius:6px;'>",
-        "<div style='font-size:12px; color:#888;'>Base</div>",
-        "<div style='font-size:22px; font-weight:700; color:#1a1a1a;'>", fmt(base), "</div>",
-        "<div style='font-size:12px; color:#555;'>", htmltools::htmlEscape(str("composite_upside_prefix")), upside_txt, "</div></div>",
-        "<div style='flex:1; min-width:120px; padding:10px; background:#eafaf1; border-radius:6px;'>",
-        "<div style='font-size:12px; color:#888;'>Bull</div>",
-        "<div style='font-size:20px; font-weight:700; color:#1e8449;'>", fmt(bull), "</div></div>",
-        "<div style='flex:1; min-width:120px; padding:10px; background:#f4f6f7; border-radius:6px;'>",
-        "<div style='font-size:12px; color:#888;'>", htmltools::htmlEscape(str("composite_secondary_check")), "</div>",
-        "<div style='font-size:18px; font-weight:700; color:#566573;'>", fmt(sec_pt), "</div>",
-        "<div style='font-size:12px; color:#777;'>", htmltools::htmlEscape(.point_label(sec)), "</div></div>",
-        "</div>",
-        "<h4 style='margin-top: 0; font-weight: bold;'><i class='fa fa-balance-scale'></i> ",
-        htmltools::htmlEscape(str("composite_status_prefix")),
-        status_html, "</h4>",
-        "<div style='position: relative; height: ", axis_height, "px; margin-top: 28px; margin-bottom: 8px;'>",
-        "<div style='position: absolute; top: 28px; left: 0; right: 0; height: 10px; background: #ecf0f1; border-radius: 5px;'></div>",
-        "<div style='position: absolute; top: 28px; left: ", band_left, "%; width: ", band_width,
-        "%; height: 10px; background: #aed6f1; border-radius: 5px; opacity: ", band_opacity, ";'></div>",
-        "<div style='position: absolute; top: 0; left: ", pos_base_css, "%; transform: translateX(-50%); opacity: ", base_opacity, ";'>",
-        "<div style='font-size: 11px; color: #7f8c8d;'>Base</div>",
-        "<div style='width: 3px; height: 35px; background: #1a1a1a; margin: 0 auto;'></div></div>",
-        "<div style='position: absolute; top: -10px; left: ", pos_curr, "%; transform: translateX(-50%); z-index: 10;'>",
-        "<div style='font-size: 12px; color: white; background: #2c3e50; padding: 2px 6px; border-radius: 4px;'>",
-        htmltools::htmlEscape(str("composite_current_price")), "</div>",
-        "<div style='width: 12px; height: 12px; background: #2c3e50; border: 2px solid white; border-radius: 50%; margin: 2px auto;'></div>",
-        "<div style='font-size: 15px; color: #2c3e50; font-weight: bold;'>",
-        htmltools::htmlEscape(fmt(p_curr)), "</div></div>",
-        overlay_html,
-        "</div>",
-        "<div class='ynow-composite-chart-notes' style='margin-top: 8px;'>",
-        "<p class='ynow-composite-footer-note' style='margin: 0 0 10px 0; font-size: 12px; color: #888;'>",
-        htmltools::htmlEscape(str("composite_footer_note")), "</p>",
-        "<div class='ynow-composite-model-notes' style='background: #1a1a1a15; border-left: 5px solid #222222; padding: 12px; border-radius: 4px;'>",
-        "<h5 style='color: #222222; margin-top: 0; margin-bottom: 6px; font-weight: bold;'>", htmltools::htmlEscape(rec_title), "</h5>",
-        "<p style='margin-bottom: 6px; font-size: 13px; color: #555;'>", htmltools::htmlEscape(rec_desc), "</p>",
-        "<p style='margin: 0; font-size: 12.5px; color: #333;'><b>", htmltools::htmlEscape(conf_txt), "</b></p>",
-        "</div>",
-        "</div>",
-        "</div>"
-      ))
+      tags$div(
+        class = "ynow-composite-valuation",
+        style = paste0(
+          "background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); ",
+          "margin-bottom: 12px; border-top: 3px solid ", status_color, ";"
+        ),
+        tags$div(
+          style = "display:flex; gap:14px; flex-wrap:wrap; margin-bottom: 18px;",
+          bear_card, base_card, bull_card, sec_card
+        ),
+        HTML(paste0(
+          "<h4 style='margin-top: 0; font-weight: bold;'><i class='fa fa-balance-scale'></i> ",
+          htmltools::htmlEscape(str("composite_status_prefix")),
+          status_html, "</h4>",
+          "<div style='position: relative; height: ", axis_height, "px; margin-top: 28px; margin-bottom: 8px;'>",
+          "<div style='position: absolute; top: 28px; left: 0; right: 0; height: 10px; background: #ecf0f1; border-radius: 5px;'></div>",
+          "<div style='position: absolute; top: 28px; left: ", band_left, "%; width: ", band_width,
+          "%; height: 10px; background: #aed6f1; border-radius: 5px; opacity: ", band_opacity, ";'></div>",
+          "<div style='position: absolute; top: 0; left: ", pos_base_css, "%; transform: translateX(-50%); opacity: ", base_opacity, ";'>",
+          "<div style='font-size: 11px; color: #7f8c8d;'>Base</div>",
+          "<div style='width: 3px; height: 35px; background: #1a1a1a; margin: 0 auto;'></div></div>",
+          "<div style='position: absolute; top: -10px; left: ", pos_curr, "%; transform: translateX(-50%); z-index: 10;'>",
+          "<div style='font-size: 12px; color: white; background: #2c3e50; padding: 2px 6px; border-radius: 4px;'>",
+          htmltools::htmlEscape(str("composite_current_price")), "</div>",
+          "<div style='width: 12px; height: 12px; background: #2c3e50; border: 2px solid white; border-radius: 50%; margin: 2px auto;'></div>",
+          "<div style='font-size: 15px; color: #2c3e50; font-weight: bold;'>",
+          htmltools::htmlEscape(fmt(p_curr)), "</div></div>",
+          overlay_html,
+          "</div>",
+          "<div class='ynow-composite-chart-notes' style='margin-top: 8px;'>",
+          "<p class='ynow-composite-footer-note' style='margin: 0 0 10px 0; font-size: 12px; color: #888;'>",
+          htmltools::htmlEscape(str("composite_footer_note")), "</p>",
+          "<div class='ynow-composite-model-notes' style='background: #1a1a1a15; border-left: 5px solid #222222; padding: 12px; border-radius: 4px;'>",
+          "<h5 style='color: #222222; margin-top: 0; margin-bottom: 6px; font-weight: bold;'>", htmltools::htmlEscape(rec_title), "</h5>",
+          "<p style='margin-bottom: 6px; font-size: 13px; color: #555;'>", htmltools::htmlEscape(rec_desc), "</p>",
+          "<p style='margin: 0; font-size: 12.5px; color: #333;'><b>", htmltools::htmlEscape(conf_txt), "</b></p>",
+          "</div>",
+          "</div>"
+        ))
+      )
     })
   })
 }
