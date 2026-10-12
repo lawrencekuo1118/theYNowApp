@@ -16,7 +16,7 @@
       return(sub('^"version"\\s*:\\s*"([^"]+)".*$', "\\1", m[[1]]))
     }
   }
-  "v23.03"
+  "v23.07"
 }
 .YNOW_BUILD_VERSION <- .ynow_read_build_version()
 
@@ -229,7 +229,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v23.03) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+          "The YNow App (v23.07) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
         ),
         tags$p(
           class = "ynow-about-method",
@@ -248,7 +248,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v23.03) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
+          "The YNow App (v23.07) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
         ),
         tags$p(
           class = "ynow-about-method",
@@ -350,7 +350,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App（簡化版）")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite（v23.03）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
+          "The YNow App Lite（v23.07）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
           "以自動判別主／副模型與預設參數完成試算，讓使用者先看到合理價區間與產業 KPI，再決定是否回到完整版深入調整。"
         ),
         tags$p(
@@ -367,7 +367,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App (Lite)")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite (v23.03) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
+          "The YNow App Lite (v23.07) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
           "auto-selects primary/secondary models with App defaults, and surfaces fair-value ranges plus industry KPIs before you open Full for deeper calibration."
         ),
         tags$p(
@@ -3411,9 +3411,9 @@ ui <- dashboardPage(
                   'data-ynow-build="', .YNOW_BUILD_VERSION, '" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v23.03</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v23.07</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v23.03</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v23.07</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -5879,16 +5879,18 @@ ui <- dashboardPage(
           margin: 0 0 4px 0;
         }
         .ynow-smart-card-title {
-          font-size: 16px;
+          font-size: 14px;
           font-weight: 700;
           margin: 0 0 6px 0;
           color: #222;
         }
         .ynow-smart-card-value {
-          font-size: 22px;
-          font-weight: 700;
+          font-size: clamp(22px, 3.6vw, 30px);
+          font-weight: 800;
           color: #111;
           margin: 0;
+          font-variant-numeric: tabular-nums;
+          line-height: 1.15;
         }
         .ynow-smart-card-meta {
           font-size: 12px;
@@ -6530,16 +6532,46 @@ ui <- dashboardPage(
         .ynow-header-kpi-row .info-box .info-box-number h3 {
           color: var(--ynow-ink) !important;
         }
-        /* 手機：PREVIOUS CLOSE / MARKET CAP / EPS 直向堆疊、各佔 100% */
+        /* 手機：LAST PRICE / MARKET CAP / EPS (TTM) 同列 1:1:1 不換行 */
         @media (max-width: 767px) {
-          .content-wrapper .ynow-header-kpi-row > .col-xs-12 {
-            width: 100% !important;
+          .content-wrapper .ynow-header-kpi-row {
+            display: flex !important;
+            flex-wrap: nowrap !important;
+            align-items: stretch;
+          }
+          .content-wrapper .ynow-header-kpi-row > [class*="col-"] {
+            width: 33.333% !important;
+            max-width: 33.333% !important;
+            flex: 1 1 0 !important;
             float: none !important;
-            display: block;
-            clear: both;
+            display: block !important;
+            clear: none !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+            padding-left: 4px;
+            padding-right: 4px;
+            box-sizing: border-box;
           }
           .content-wrapper .ynow-header-kpi-row .info-box {
-            margin-bottom: 10px;
+            margin-bottom: 8px;
+            min-height: 0 !important;
+            height: auto !important;
+          }
+          .content-wrapper .ynow-header-kpi-row .info-box .info-box-icon {
+            display: none !important;
+          }
+          .content-wrapper .ynow-header-kpi-row .info-box .info-box-content {
+            margin-left: 0 !important;
+            padding: 8px 6px !important;
+          }
+          .content-wrapper .ynow-header-kpi-row .info-box .info-box-number,
+          .content-wrapper .ynow-header-kpi-row .info-box .info-box-number h3 {
+            font-size: clamp(15px, 4.5vw, 22px) !important;
+            font-weight: 800 !important;
+          }
+          .content-wrapper .ynow-header-kpi-row .info-box .info-box-text {
+            font-size: clamp(8px, 2.2vw, 10px) !important;
+            line-height: 1.2 !important;
           }
         }
 
@@ -10006,6 +10038,7 @@ ui <- dashboardPage(
           width: 100%;
           height: 100%;
         }
+        /* Global boxes: keep original alignment; numerals much larger than labels. */
         .content-wrapper .small-box .inner {
           min-width: 0;
           padding-right: 44px;
@@ -10013,7 +10046,7 @@ ui <- dashboardPage(
         }
         .content-wrapper .small-box .inner h3,
         .content-wrapper .small-box .inner h3 * {
-          font-size: clamp(13px, 1.9vw + 0.35rem, 34px) !important;
+          font-size: clamp(18px, 2.6vw + 0.45rem, 36px) !important;
           font-weight: 800;
           line-height: 1.15 !important;
           font-variant-numeric: tabular-nums;
@@ -10027,6 +10060,7 @@ ui <- dashboardPage(
           max-width: 100%;
         }
         .content-wrapper .small-box .inner p {
+          font-size: clamp(10px, 1.1vw, 12px) !important;
           white-space: normal;
           overflow-wrap: anywhere;
           line-height: 1.25;
@@ -10037,8 +10071,8 @@ ui <- dashboardPage(
         }
         .content-wrapper .info-box .info-box-number,
         .content-wrapper .info-box .info-box-number h3 {
-          font-size: clamp(13px, 1.8vw + 0.3rem, 28px) !important;
-          font-weight: 700;
+          font-size: clamp(16px, 2.2vw + 0.35rem, 30px) !important;
+          font-weight: 800;
           line-height: 1.15 !important;
           font-variant-numeric: tabular-nums;
           white-space: nowrap !important;
@@ -10049,66 +10083,68 @@ ui <- dashboardPage(
           max-width: 100%;
         }
         .content-wrapper .info-box .info-box-text {
+          font-size: clamp(10px, 1.1vw, 12px) !important;
           white-space: normal;
           overflow-wrap: anywhere;
         }
-        /* 平板：較窄欄的彩色 BOX 兩欄並排 */
+        /* 平板：較窄欄的彩色 BOX 兩欄並排（header KPI 列維持 1:1:1） */
         @media (max-width: 991px) {
-          .content-wrapper .row > .col-sm-2:has(.small-box),
-          .content-wrapper .row > .col-sm-3:has(.small-box),
-          .content-wrapper .row > .col-sm-4:has(.small-box),
-          .content-wrapper .row > .col-sm-2:has(.info-box),
-          .content-wrapper .row > .col-sm-3:has(.info-box),
-          .content-wrapper .row > .col-sm-4:has(.info-box),
-          .tab-content .row > .col-sm-2:has(.small-box),
-          .tab-content .row > .col-sm-3:has(.small-box),
-          .tab-content .row > .col-sm-4:has(.small-box),
-          .tab-content .row > .col-sm-2:has(.info-box),
-          .tab-content .row > .col-sm-3:has(.info-box),
-          .tab-content .row > .col-sm-4:has(.info-box) {
+          .content-wrapper .row:not(.ynow-header-kpi-row) > .col-sm-2:has(.small-box),
+          .content-wrapper .row:not(.ynow-header-kpi-row) > .col-sm-3:has(.small-box),
+          .content-wrapper .row:not(.ynow-header-kpi-row) > .col-sm-4:has(.small-box),
+          .content-wrapper .row:not(.ynow-header-kpi-row) > .col-sm-2:has(.info-box),
+          .content-wrapper .row:not(.ynow-header-kpi-row) > .col-sm-3:has(.info-box),
+          .content-wrapper .row:not(.ynow-header-kpi-row) > .col-sm-4:has(.info-box),
+          .tab-content .row:not(.ynow-header-kpi-row) > .col-sm-2:has(.small-box),
+          .tab-content .row:not(.ynow-header-kpi-row) > .col-sm-3:has(.small-box),
+          .tab-content .row:not(.ynow-header-kpi-row) > .col-sm-4:has(.small-box),
+          .tab-content .row:not(.ynow-header-kpi-row) > .col-sm-2:has(.info-box),
+          .tab-content .row:not(.ynow-header-kpi-row) > .col-sm-3:has(.info-box),
+          .tab-content .row:not(.ynow-header-kpi-row) > .col-sm-4:has(.info-box) {
             width: 50% !important;
             float: left !important;
             clear: none;
           }
         }
-        /* 手機：頁籤／內容區彩色 BOX 直向全寬（勿再壓成 33% 三欄） */
+        /* 手機：頁籤／內容區彩色 BOX 直向全寬（勿再壓成 33% 三欄）
+           例外：.ynow-header-kpi-row 維持 LAST PRICE／MARKET CAP／EPS 1:1:1 */
         @media (max-width: 767px) {
-          .content-wrapper .row > .col-xs-12:has(.small-box),
-          .content-wrapper .row > .col-sm-2:has(.small-box),
-          .content-wrapper .row > .col-sm-3:has(.small-box),
-          .content-wrapper .row > .col-sm-4:has(.small-box),
-          .content-wrapper .row > .col-sm-6:has(.small-box),
-          .content-wrapper .row > .col-sm-12:has(.small-box),
-          .content-wrapper .row > .col-xs-12:has(.info-box),
-          .content-wrapper .row > .col-sm-2:has(.info-box),
-          .content-wrapper .row > .col-sm-3:has(.info-box),
-          .content-wrapper .row > .col-sm-4:has(.info-box),
-          .content-wrapper .row > .col-sm-6:has(.info-box),
-          .content-wrapper .row > .col-sm-12:has(.info-box),
-          .tab-content .row > .col-xs-12:has(.small-box),
-          .tab-content .row > .col-sm-2:has(.small-box),
-          .tab-content .row > .col-sm-3:has(.small-box),
-          .tab-content .row > .col-sm-4:has(.small-box),
-          .tab-content .row > .col-sm-6:has(.small-box),
-          .tab-content .row > .col-sm-12:has(.small-box),
-          .tab-content .row > .col-xs-12:has(.info-box),
-          .tab-content .row > .col-sm-2:has(.info-box),
-          .tab-content .row > .col-sm-3:has(.info-box),
-          .tab-content .row > .col-sm-4:has(.info-box),
-          .tab-content .row > .col-sm-6:has(.info-box),
-          .tab-content .row > .col-sm-12:has(.info-box),
-          .tab-pane .row > .col-xs-12:has(.small-box),
-          .tab-pane .row > .col-sm-2:has(.small-box),
-          .tab-pane .row > .col-sm-3:has(.small-box),
-          .tab-pane .row > .col-sm-4:has(.small-box),
-          .tab-pane .row > .col-sm-6:has(.small-box),
-          .tab-pane .row > .col-sm-12:has(.small-box),
-          .tab-pane .row > .col-xs-12:has(.info-box),
-          .tab-pane .row > .col-sm-2:has(.info-box),
-          .tab-pane .row > .col-sm-3:has(.info-box),
-          .tab-pane .row > .col-sm-4:has(.info-box),
-          .tab-pane .row > .col-sm-6:has(.info-box),
-          .tab-pane .row > .col-sm-12:has(.info-box) {
+          .content-wrapper .row:not(.ynow-header-kpi-row) > .col-xs-12:has(.small-box),
+          .content-wrapper .row:not(.ynow-header-kpi-row) > .col-sm-2:has(.small-box),
+          .content-wrapper .row:not(.ynow-header-kpi-row) > .col-sm-3:has(.small-box),
+          .content-wrapper .row:not(.ynow-header-kpi-row) > .col-sm-4:has(.small-box),
+          .content-wrapper .row:not(.ynow-header-kpi-row) > .col-sm-6:has(.small-box),
+          .content-wrapper .row:not(.ynow-header-kpi-row) > .col-sm-12:has(.small-box),
+          .content-wrapper .row:not(.ynow-header-kpi-row) > .col-xs-12:has(.info-box),
+          .content-wrapper .row:not(.ynow-header-kpi-row) > .col-sm-2:has(.info-box),
+          .content-wrapper .row:not(.ynow-header-kpi-row) > .col-sm-3:has(.info-box),
+          .content-wrapper .row:not(.ynow-header-kpi-row) > .col-sm-4:has(.info-box),
+          .content-wrapper .row:not(.ynow-header-kpi-row) > .col-sm-6:has(.info-box),
+          .content-wrapper .row:not(.ynow-header-kpi-row) > .col-sm-12:has(.info-box),
+          .tab-content .row:not(.ynow-header-kpi-row) > .col-xs-12:has(.small-box),
+          .tab-content .row:not(.ynow-header-kpi-row) > .col-sm-2:has(.small-box),
+          .tab-content .row:not(.ynow-header-kpi-row) > .col-sm-3:has(.small-box),
+          .tab-content .row:not(.ynow-header-kpi-row) > .col-sm-4:has(.small-box),
+          .tab-content .row:not(.ynow-header-kpi-row) > .col-sm-6:has(.small-box),
+          .tab-content .row:not(.ynow-header-kpi-row) > .col-sm-12:has(.small-box),
+          .tab-content .row:not(.ynow-header-kpi-row) > .col-xs-12:has(.info-box),
+          .tab-content .row:not(.ynow-header-kpi-row) > .col-sm-2:has(.info-box),
+          .tab-content .row:not(.ynow-header-kpi-row) > .col-sm-3:has(.info-box),
+          .tab-content .row:not(.ynow-header-kpi-row) > .col-sm-4:has(.info-box),
+          .tab-content .row:not(.ynow-header-kpi-row) > .col-sm-6:has(.info-box),
+          .tab-content .row:not(.ynow-header-kpi-row) > .col-sm-12:has(.info-box),
+          .tab-pane .row:not(.ynow-header-kpi-row) > .col-xs-12:has(.small-box),
+          .tab-pane .row:not(.ynow-header-kpi-row) > .col-sm-2:has(.small-box),
+          .tab-pane .row:not(.ynow-header-kpi-row) > .col-sm-3:has(.small-box),
+          .tab-pane .row:not(.ynow-header-kpi-row) > .col-sm-4:has(.small-box),
+          .tab-pane .row:not(.ynow-header-kpi-row) > .col-sm-6:has(.small-box),
+          .tab-pane .row:not(.ynow-header-kpi-row) > .col-sm-12:has(.small-box),
+          .tab-pane .row:not(.ynow-header-kpi-row) > .col-xs-12:has(.info-box),
+          .tab-pane .row:not(.ynow-header-kpi-row) > .col-sm-2:has(.info-box),
+          .tab-pane .row:not(.ynow-header-kpi-row) > .col-sm-3:has(.info-box),
+          .tab-pane .row:not(.ynow-header-kpi-row) > .col-sm-4:has(.info-box),
+          .tab-pane .row:not(.ynow-header-kpi-row) > .col-sm-6:has(.info-box),
+          .tab-pane .row:not(.ynow-header-kpi-row) > .col-sm-12:has(.info-box) {
             width: 100% !important;
             max-width: 100% !important;
             float: none !important;
@@ -10132,10 +10168,10 @@ ui <- dashboardPage(
           }
           .content-wrapper .small-box .inner h3,
           .content-wrapper .small-box .inner h3 * {
-            font-size: clamp(18px, 5.5vw, 26px) !important;
+            font-size: clamp(20px, 6vw, 28px) !important;
           }
           .content-wrapper .small-box .inner p {
-            font-size: clamp(11px, 3.2vw, 13px) !important;
+            font-size: clamp(10px, 2.6vw, 12px) !important;
           }
           .content-wrapper .info-box {
             min-height: 0;
@@ -10153,10 +10189,10 @@ ui <- dashboardPage(
           }
           .content-wrapper .info-box .info-box-number,
           .content-wrapper .info-box .info-box-number h3 {
-            font-size: clamp(16px, 4.8vw, 22px) !important;
+            font-size: clamp(18px, 5.2vw, 24px) !important;
           }
           .content-wrapper .info-box .info-box-text {
-            font-size: clamp(11px, 3vw, 13px) !important;
+            font-size: clamp(10px, 2.6vw, 12px) !important;
           }
         }
 
@@ -10213,8 +10249,8 @@ ui <- dashboardPage(
           margin-bottom: 4px;
         }
         .ynow-fs-value {
-          font-size: clamp(12px, 2.4vw, 15px);
-          font-weight: 700;
+          font-size: clamp(16px, 3vw, 22px);
+          font-weight: 800;
           color: #111111;
           font-variant-numeric: tabular-nums;
           letter-spacing: -0.01em;
@@ -10237,11 +10273,23 @@ ui <- dashboardPage(
         .ynow-focus-metric-swatch--legend {
           margin: 0 6px 0 0;
         }
+        /* Focus KPI gold frame: thicker + pulse (do not reuse title gold-shine) */
+        @keyframes ynow-focus-gold-pulse {
+          0%, 100% {
+            border-color: var(--ynow-gold, #F5C518);
+            box-shadow: 0 0 0 1px rgba(201, 162, 39, 0.28), 0 0 0 0 rgba(245, 197, 24, 0);
+          }
+          50% {
+            border-color: var(--ynow-gold-deep, #C9A227);
+            box-shadow: 0 0 0 2px rgba(201, 162, 39, 0.55), 0 0 10px 1px rgba(245, 197, 24, 0.38);
+          }
+        }
         .content-wrapper .small-box.ynow-focus-metric-box,
         .tab-content .small-box.ynow-focus-metric-box,
         .ynow-fs-card.ynow-focus-metric-box {
-          border: 2px solid var(--ynow-gold, #F5C518) !important;
+          border: 3px solid var(--ynow-gold, #F5C518) !important;
           box-shadow: 0 0 0 1px rgba(201, 162, 39, 0.28);
+          animation: ynow-focus-gold-pulse 1.6s ease-in-out infinite;
         }
         .ynow-fs-card.ynow-focus-metric-box {
           border-radius: 6px;
@@ -10320,8 +10368,8 @@ ui <- dashboardPage(
           margin: 0 !important;
         }
         .ynow-kpi-stat-value {
-          font-size: clamp(14px, 3.2vw, 18px) !important;
-          font-weight: 700 !important;
+          font-size: clamp(18px, 3.6vw, 24px) !important;
+          font-weight: 800 !important;
           line-height: 1.2 !important;
           margin: 0 !important;
           font-variant-numeric: tabular-nums;
@@ -10452,7 +10500,10 @@ ui <- dashboardPage(
             flex-basis: 50%;
           }
           .ynow-kpi-grid .small-box .inner h3 {
-            font-size: clamp(11px, 3.2vw, 16px) !important;
+            font-size: clamp(18px, 5vw, 26px) !important;
+          }
+          .ynow-kpi-grid .small-box .inner p {
+            font-size: clamp(9px, 2.4vw, 11px) !important;
           }
           .ynow-kpi-grid .small-box .icon-large {
             display: none !important;
@@ -10481,9 +10532,7 @@ ui <- dashboardPage(
         .ynow-kpi-grid .small-box.ynow-kpi-na .icon-large {
           color: rgba(0, 0, 0, 0.12);
         }
-        /* Value + label: true vertical & horizontal center.
-           Override global .small-box .inner { padding-right:44px; flex:1 } which
-           left-shifts numerals for the decorative icon and pins content to the top. */
+        /* KPI by Sheet / Crossover KPIs only: H/V-center text & values; value >> label */
         .ynow-kpi-grid .small-box .inner {
           display: flex !important;
           flex-direction: column !important;
@@ -10498,7 +10547,7 @@ ui <- dashboardPage(
           text-align: center !important;
         }
         .ynow-kpi-grid .small-box .inner h3 {
-          font-size: clamp(14px, 2.6vw, 23px) !important;
+          font-size: clamp(18px, 3.4vw, 28px) !important;
           font-weight: 800 !important;
           margin: 0 0 5px 0 !important;
           white-space: normal !important;
@@ -10508,7 +10557,7 @@ ui <- dashboardPage(
           max-width: 100% !important;
         }
         .ynow-kpi-grid .small-box .inner p {
-          font-size: clamp(10px, 0.75vw, 11px) !important;
+          font-size: clamp(9px, 1.2vw, 11px) !important;
           opacity: 0.9;
           font-weight: 500 !important;
           margin: 0 !important;
@@ -10521,6 +10570,25 @@ ui <- dashboardPage(
           top: 9px !important;
           right: 9px !important;
           opacity: 0.12 !important;
+        }
+        /* Focus KPI value-alert: bell inside gold frame (alertable wraps .small-box) */
+        .ynow-kpi-grid .ynow-alertable {
+          position: relative;
+          display: block;
+          width: 100%;
+        }
+        .ynow-kpi-grid .ynow-alertable > [class*='col-'] {
+          width: 100% !important;
+          max-width: 100% !important;
+          float: none !important;
+          padding-left: 0 !important;
+          padding-right: 0 !important;
+          box-sizing: border-box;
+        }
+        .ynow-kpi-grid .ynow-alertable .ynow-alert-bell {
+          top: 8px;
+          right: 8px;
+          z-index: 5;
         }
         .ynow-kpi-section-title {
           font-size: 13px;
@@ -11289,15 +11357,16 @@ ui <- dashboardPage(
         }
         .ynow-macro-kpi__value,
         .ynow-macro-rf__value {
-          font-size: clamp(18px, 4.2vw, 26px);
-          font-weight: 700;
+          font-size: clamp(22px, 4.6vw, 32px);
+          font-weight: 800;
           color: var(--ynow-macro-gold);
-          line-height: 1.2;
+          line-height: 1.15;
           margin: 6px 0;
           word-break: break-word;
+          font-variant-numeric: tabular-nums;
         }
         .ynow-macro-rf__value {
-          font-size: clamp(22px, 5vw, 30px);
+          font-size: clamp(24px, 5.2vw, 34px);
         }
         .ynow-macro-kpi__chg { font-size: 12.5px; font-weight: 600; }
         .ynow-macro-kpi__sym {
@@ -12244,7 +12313,7 @@ ui <- dashboardPage(
           .ynow-mscore-widget__body { grid-template-columns: 1fr; }
         }
         .ynow-mscore-widget__value {
-          font-size: 34px;
+          font-size: clamp(26px, 5.5vw, 38px);
           font-weight: 800;
           line-height: 1.05;
           font-variant-numeric: tabular-nums;
@@ -12314,8 +12383,9 @@ ui <- dashboardPage(
         .ynow-eq-score-pill.ynow-eq-watch { border-color: #e6d6a8; background: #fffbf0; }
         .ynow-eq-score-pill.ynow-eq-pass { border-color: #b8dfc8; background: #eef8f1; }
         .ynow-eq-score-num {
-          font-size: 36px; font-weight: 800; line-height: 1.1;
+          font-size: clamp(28px, 6vw, 40px); font-weight: 800; line-height: 1.1;
           color: #0C5484; letter-spacing: -0.02em;
+          font-variant-numeric: tabular-nums;
         }
         .ynow-eq-score-meta {
           display: flex; justify-content: center; gap: 8px; flex-wrap: wrap;
@@ -12500,7 +12570,7 @@ ui <- dashboardPage(
           margin: 0;
         }
         .ynow-metric-card__value {
-          font-size: clamp(18px, 4.2vw, 34px);
+          font-size: clamp(22px, 4.6vw, 36px);
           font-weight: 800;
           font-variant-numeric: tabular-nums;
           letter-spacing: -0.02em;
@@ -13487,17 +13557,17 @@ ui <- dashboardPage(
         class = "ynow-header-kpi-row",
         column(
           width = 4,
-          class = "col-xs-12",
+          class = "col-xs-4",
           uiOutput("ibx_stockprice")
         ),
         column(
           width = 4,
-          class = "col-xs-12",
+          class = "col-xs-4",
           infoBoxOutput("ibx_marketcap", width = NULL)
         ),
         column(
           width = 4,
-          class = "col-xs-12",
+          class = "col-xs-4",
           uiOutput("ibx_EPS")
         )
       )

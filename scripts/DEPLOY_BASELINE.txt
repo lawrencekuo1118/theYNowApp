@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12679975
+bundleId=12680297
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=487ea3178b7c68ec3d7598712bb219d05277b45e
-commit=487ea3178b7c68ec3d7598712bb219d05277b45e
-short=487ea31
-message=Value alerts expand: more KPIs, bell mark, investor modal (v23.03)
-captured_at=2026-10-12T14:03:30Z
-display_version=v23.03
+aligned_git=ac67ea4af111894256a9c2b27b897930b214c21e
+commit=ac67ea4af111894256a9c2b27b897930b214c21e
+short=ac67ea4
+message=Escape CSS attr selectors so ynow_ui.R parses on start (v23.07)
+captured_at=2026-10-12T15:20:58Z
+display_version=v23.07

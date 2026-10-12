@@ -26,6 +26,19 @@ kpi_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_fl
         "本財報屬性關鍵指標"
       }
     }
+    # Unwrap Bootstrap col-* / shinydashboard width=NULL wrapper so alertable
+    # sits directly on .small-box (bell at inner top-right of the gold frame).
+    .unwrap_kpi_box <- function(tag) {
+      if (!inherits(tag, "shiny.tag") || length(tag$children) < 1L) return(tag)
+      cls <- paste(as.character(tag$attribs$class %||% ""), collapse = " ")
+      child <- tag$children[[1]]
+      if (!inherits(child, "shiny.tag")) return(tag)
+      child_cls <- paste(as.character(child$attribs$class %||% ""), collapse = " ")
+      is_col <- grepl("\\bcol-(xs|sm|md|lg)-", cls)
+      is_null_wrap <- !nzchar(trimws(cls)) && grepl("\\bsmall-box\\b", child_cls)
+      if (is_col || is_null_wrap) return(child)
+      tag
+    }
     .box <- function(value, subtitle, color, icon, metric_id, numeric_value = NA_real_) {
       focus <- .focus_on(metric_id)
       box <- kpi_band_value_box(
@@ -33,9 +46,11 @@ kpi_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_fl
         subtitle = subtitle,
         color = color,
         icon = icon,
+        width = NULL,
         mark_focus = focus,
         focus_title = .focus_tip()
       )
+      box <- .unwrap_kpi_box(box)
       if (!isTRUE(focus) || !exists("ynow_alertable", mode = "function")) return(box)
       tk <- tryCatch(as.character(current_ticker() %||% "")[1], error = function(e) "")
       num <- suppressWarnings(as.numeric(numeric_value)[1])
