@@ -220,10 +220,10 @@ APP_DEFAULTS <- list(
   lab_im_boards = c("TWSE", "TPEX"),
   lab_im_max_n = "25",
   lab_im_max_n_custom = 25L,
-  lab_im_eq_only = TRUE,
-  lab_im_no_alert = TRUE,
+  lab_im_eq_only = FALSE,
+  lab_im_no_alert = FALSE,
   lab_im_include_adr = TRUE,
-  lab_im_gate_only = TRUE,
+  lab_im_gate_only = FALSE,
   lab_im_methods = c(
     "nav", "dcf", "ddm", "ri", "enterprise", "earnings", "revenue", "book", "sotp"
   ),

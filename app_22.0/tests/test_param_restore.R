@@ -143,5 +143,14 @@ stopifnot(all(reg$input_id[!reg$full_only] %in% c(
 cfg_txt <- paste(readLines(file.path("..", "default_config.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 stopifnot(grepl("lab_im_pool_rank\\s*=\\s*\"mcap\"", cfg_txt))
 stopifnot(grepl("lab_im_concepts\\s*=\\s*character\\(0\\)", cfg_txt))
+# Quality gates default unchecked (回復預設 / APP_DEFAULTS)
+stopifnot(grepl("lab_im_eq_only\\s*=\\s*FALSE", cfg_txt))
+stopifnot(grepl("lab_im_gate_only\\s*=\\s*FALSE", cfg_txt))
+stopifnot(grepl("lab_im_no_alert\\s*=\\s*FALSE", cfg_txt))
+# Checkbox UI seeds from isTRUE(APP_DEFAULTS$…) — must stay FALSE
+ui_txt <- paste(readLines(file.path("..", "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+stopifnot(grepl('value\\s*=\\s*isTRUE\\(APP_DEFAULTS\\$lab_im_eq_only\\)', ui_txt))
+stopifnot(grepl('value\\s*=\\s*isTRUE\\(APP_DEFAULTS\\$lab_im_gate_only\\)', ui_txt))
+stopifnot(grepl('value\\s*=\\s*isTRUE\\(APP_DEFAULTS\\$lab_im_no_alert\\)', ui_txt))
 
 cat("test_param_restore.R: OK\n")
