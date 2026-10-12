@@ -7,6 +7,24 @@ server <- function(input, output, session) {
   # instead of forcing the user onto the gray "Disconnected / Reload" overlay.
   tryCatch(session$allowReconnect("force"), error = function(e) NULL)
 
+  # #region agent log
+  .agent_dbg <- function(hypothesisId, location, message, data = list()) {
+    tryCatch({
+      payload <- list(
+        hypothesisId = hypothesisId,
+        location = location,
+        message = message,
+        data = data,
+        timestamp = as.numeric(Sys.time()) * 1000,
+        runId = "post-fix"
+      )
+      line <- jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null", na = "null")
+      cat(line, "\n", file = "/opt/cursor/logs/debug.log", append = TRUE, sep = "")
+    }, error = function(e) NULL)
+    invisible(NULL)
+  }
+  # #endregion
+
   # Sidebar tab label busy dots (JS `ynowTabBusy` → animated 「…」 on menu item)
   .ynow_set_tab_busy <- function(tab, busy = TRUE) {
     tab <- as.character(tab %||% "")[1]
@@ -2116,6 +2134,13 @@ server <- function(input, output, session) {
       ))
     }
     if (isTRUE(fs_all_empty())) {
+      # #region agent log
+      .agent_dbg("D", "ynow_server.R:model_sidebar_rec", "fs_all_empty branch", list(
+        ticker = as.character(current_ticker() %||% "")[1],
+        market = as.character(tryCatch(market_mode(), error = function(e) NA))[1],
+        tpex = isTRUE(tw_tpex_fs_fallback())
+      ))
+      # #endregion
       return(.empty_model_rec(
         "Yahoo 尚無年報",
         paste0(
@@ -2139,6 +2164,13 @@ server <- function(input, output, session) {
       )
       has_roe <- is.finite(ni) && is.finite(equity) && equity > 0
       has_bv <- is.finite(equity) && equity > 0
+      # #region agent log
+      .agent_dbg("D", "ynow_server.R:model_sidebar_rec", "tpex_fallback branch", list(
+        ticker = as.character(current_ticker() %||% "")[1],
+        ni = ni, equity = equity, has_roe = has_roe,
+        primary = if (isTRUE(has_roe)) "ri" else "pb"
+      ))
+      # #endregion
       list(
         company_type = "fallback",
         primary = if (isTRUE(has_roe)) "ri" else "pb",
@@ -2179,7 +2211,7 @@ server <- function(input, output, session) {
         company_type = "fallback"
       ))
     }
-    recommend_valuation_models(
+    rec_out <- recommend_valuation_models(
       cf,
       industry_text = ind,
       d_is = is,
@@ -2189,6 +2221,21 @@ server <- function(input, output, session) {
       lifecycle_result = tryCatch(central_lifecycle(), error = function(e) NULL),
       selected_stage = input$lifecycle_stage %||% "auto"
     )
+    # #region agent log
+    .agent_dbg("E", "ynow_server.R:model_sidebar_rec", "recommend_valuation_models result", list(
+      ticker = as.character(current_ticker() %||% "")[1],
+      market = as.character(tryCatch(market_mode(), error = function(e) NA))[1],
+      q_ccy = as.character(tryCatch(quote_currency(), error = function(e) NA))[1],
+      f_ccy = as.character(tryCatch(statement_currency(), error = function(e) NA))[1],
+      sess_ccy = as.character(tryCatch(session_currency(), error = function(e) NA))[1],
+      primary = as.character(rec_out$primary %||% "")[1],
+      secondary = as.character(rec_out$secondary %||% "")[1],
+      company_type = as.character(rec_out$company_type %||% "")[1],
+      summary_method = as.character(rec_out$summary_method %||% "")[1],
+      money_prefix = tryCatch(money_prefix(), error = function(e) NA_character_)
+    ))
+    # #endregion
+    rec_out
     }
   })
 
@@ -2613,6 +2660,17 @@ server <- function(input, output, session) {
         prim_px <- if (nzchar(prim)) suppressWarnings(as.numeric(tryCatch(.model_point(prim), error = function(e) NA_real_))[1]) else NA_real_
         sec_px <- if (nzchar(sec) && !identical(sec, "multiples")) suppressWarnings(as.numeric(tryCatch(.model_point(sec), error = function(e) NA_real_))[1]) else NA_real_
         ref_px <- if (identical(ref_key, "multiples")) suppressWarnings(as.numeric(tryCatch(.model_point("multiples"), error = function(e) NA_real_))[1]) else NA_real_
+        # #region agent log
+        .agent_dbg("B", "ynow_server.R:get_started_model_selector", "ms-pos strip values", list(
+          ticker = as.character(tryCatch(current_ticker() %||% "", error = function(e) ""))[1],
+          prim = prim, sec = sec, ref = ref_key,
+          cur_px = cur_px, prim_px = prim_px, sec_px = sec_px, ref_px = ref_px,
+          money_prefix = tryCatch(money_prefix(), error = function(e) NA_character_),
+          any_inf = any(vapply(list(cur_px, prim_px, sec_px, ref_px), function(x) length(x) && !is.na(x) && !is.finite(x), logical(1))),
+          any_huge = any(vapply(list(cur_px, prim_px, sec_px, ref_px), function(x) is.finite(x) && abs(x) > 1e5, logical(1))),
+          prim_vs_cur_ratio = if (is.finite(prim_px) && is.finite(cur_px) && cur_px != 0) prim_px / cur_px else NA_real_
+        ))
+        # #endregion
         fmt_px <- function(x) if (!is.finite(x)) "—" else format(round(x, 2), big.mark = ",", nsmall = 2)
         marks <- list(
           list(lab = ui_str("ms_pos_market", loc), val = cur_px, col = "#333333"),
@@ -4647,37 +4705,61 @@ server <- function(input, output, session) {
     )
     raw_shares <- suppressWarnings(as.numeric(sh$shares_bs)[1])
     sh_ratio <- suppressWarnings(as.numeric(sh$ratio)[1])
+    out_sh <- NULL
+    branch <- "fallback"
     # ADR／雙重股權：一律自動套用約當股數（與 P/B／RI／回測一致）
     if (shares_auto_adjust_method(sh$method) && is.finite(sh$shares) && sh$shares > 0) {
-      return(list(
+      out_sh <- list(
         shares = sh$shares, note = sh$note, method = sh$method, ratio = sh_ratio
-      ))
+      )
+      branch <- "auto_adjust"
+    } else {
+      # Missing reporting ccy + not ADR → treat as quote (AAPL-like). ADR keeps NA.
+      st_eff <- infer_statement_currency(
+        statement_currency(), quote_currency(), sh$method
+      )
+      # Statement ≠ quote and not ADR-aligned: refuse common-share fallback (never label as ADR).
+      if (isTRUE(fx_conversion_required(st_eff, quote_currency())) ||
+          isTRUE(adr_conversion_required(st_eff, quote_currency(), sh$method))) {
+        out_sh <- list(
+          shares = NA_real_,
+          note = sh$note %||% "報價幣≠財報幣且無法約當 ADR 股數，不顯示每股",
+          method = sh$method %||% "none",
+          ratio = sh_ratio
+        )
+        branch <- "fx_refuse"
+      } else if (is.finite(raw_shares) && raw_shares > 0) {
+        out_sh <- list(
+          shares = raw_shares, note = NULL, method = "balance_sheet", ratio = sh_ratio
+        )
+        branch <- "balance_sheet"
+      } else {
+        out_sh <- list(
+          shares = if (is.finite(sh$shares) && sh$shares > 0) sh$shares else NA_real_,
+          note = sh$note %||% "缺少流通在外股數，不顯示每股",
+          method = sh$method %||% "none",
+          ratio = sh_ratio
+        )
+        branch <- "fallback"
+      }
     }
-    # Missing reporting ccy + not ADR → treat as quote (AAPL-like). ADR keeps NA.
-    st_eff <- infer_statement_currency(
-      statement_currency(), quote_currency(), sh$method
-    )
-    # Statement ≠ quote and not ADR-aligned: refuse common-share fallback (never label as ADR).
-    if (isTRUE(fx_conversion_required(st_eff, quote_currency())) ||
-        isTRUE(adr_conversion_required(st_eff, quote_currency(), sh$method))) {
-      return(list(
-        shares = NA_real_,
-        note = sh$note %||% "報價幣≠財報幣且無法約當 ADR 股數，不顯示每股",
-        method = sh$method %||% "none",
-        ratio = sh_ratio
-      ))
-    }
-    if (is.finite(raw_shares) && raw_shares > 0) {
-      return(list(
-        shares = raw_shares, note = NULL, method = "balance_sheet", ratio = sh_ratio
-      ))
-    }
-    list(
-      shares = if (is.finite(sh$shares) && sh$shares > 0) sh$shares else NA_real_,
-      note = sh$note %||% "缺少流通在外股數，不顯示每股",
-      method = sh$method %||% "none",
-      ratio = sh_ratio
-    )
+    # #region agent log
+    .agent_dbg("A", "ynow_server.R:.valuation_shares", "resolved shares", list(
+      ticker = as.character(current_ticker() %||% "")[1],
+      branch = branch,
+      shares = out_sh$shares,
+      shares_bs = raw_shares,
+      method = out_sh$method,
+      ratio = sh_ratio,
+      q_ccy = as.character(tryCatch(quote_currency(), error = function(e) NA))[1],
+      f_ccy = as.character(tryCatch(statement_currency(), error = function(e) NA))[1],
+      price = suppressWarnings(as.numeric(sh$price)[1]),
+      mcap = suppressWarnings(as.numeric(sh$market_cap)[1]),
+      implied_px = if (is.finite(out_sh$shares) && out_sh$shares > 0 && is.finite(sh$market_cap))
+        sh$market_cap / out_sh$shares else NA_real_
+    ))
+    # #endregion
+    out_sh
   })
 
   .dcf_per_share <- function(equity_value, sh = NULL) {
@@ -4715,6 +4797,21 @@ server <- function(input, output, session) {
       required_per_share = c(dcf = px),
       method = "dcf"
     )
+    # #region agent log
+    .agent_dbg("A", "ynow_server.R:.dcf_per_share", "per-share conversion", list(
+      equity_value = suppressWarnings(as.numeric(equity_value)[1]),
+      shares = suppressWarnings(as.numeric(sh$shares)[1]),
+      method = as.character(sh$method %||% "")[1],
+      eq_ccy = as.character(eq_ccy %||% "")[1],
+      st_eff = as.character(st_eff %||% "")[1],
+      to_ccy = as.character(tryCatch(quote_currency(), error = function(e) NA))[1],
+      fx = suppressWarnings(as.numeric(tryCatch(fx_usd_twd(), error = function(e) NA))[1]),
+      px = suppressWarnings(as.numeric(px)[1]),
+      align = as.character(code %||% "")[1],
+      looks_equity_scale = is.finite(px) && abs(px) > 1e5,
+      looks_inf = !is.finite(px)
+    ))
+    # #endregion
     attr(px, "alignment_failure") <- code
     px
   }
@@ -5124,6 +5221,19 @@ server <- function(input, output, session) {
       xs <- sort(c(band$bear, band$base, band$bull))
       band$bear <- xs[1]; band$base <- xs[2]; band$bull <- xs[3]
     }
+    # #region agent log
+    .agent_dbg("C", "ynow_server.R:primary_valuation_band", "primary FV band", list(
+      ticker = as.character(current_ticker() %||% "")[1],
+      prim = prim,
+      bear = suppressWarnings(as.numeric(band$bear)[1]),
+      base = suppressWarnings(as.numeric(band$base)[1]),
+      bull = suppressWarnings(as.numeric(band$bull)[1]),
+      any_inf = any(!is.finite(c(band$bear, band$base, band$bull)) &
+                    !is.na(c(band$bear, band$base, band$bull))),
+      looks_huge = any(is.finite(c(band$bear, band$base, band$bull)) &
+                       abs(c(band$bear, band$base, band$bull)) > 1e5)
+    ))
+    # #endregion
     band
   })
 
@@ -8914,11 +9024,31 @@ server <- function(input, output, session) {
     base <- if (!is.null(band)) suppressWarnings(as.numeric(band$base)[1]) else NA_real_
     bear <- if (!is.null(band)) suppressWarnings(as.numeric(band$bear)[1]) else NA_real_
     bull <- if (!is.null(band)) suppressWarnings(as.numeric(band$bull)[1]) else NA_real_
-    mos <- if (is.finite(base) && base != 0 && is.finite(cur)) {
-      (base - cur) / base * 100
-    } else {
-      NA_real_
-    }
+    # Guard near-zero Base (e.g. RI clean-surplus g≈ROE → FV≈0 float residue)
+    # so MOS never becomes Inf / 1e16 %.
+    mos_dec <- tryCatch(
+      mos_vs_fair_value(base, cur),
+      error = function(e) NA_real_
+    )
+    mos <- if (is.finite(mos_dec)) mos_dec * 100 else NA_real_
+    # #region agent log
+    .agent_dbg("C", "ynow_server.R:smart_analysis_summary", "smart card numbers", list(
+      ticker = as.character(tryCatch(current_ticker() %||% "", error = function(e) ""))[1],
+      prim = prim, sec = sec,
+      cur = cur, base = base, bear = bear, bull = bull, mos = mos,
+      money_prefix = tryCatch(money_prefix(), error = function(e) NA_character_),
+      q_ccy = as.character(tryCatch(quote_currency(), error = function(e) NA))[1],
+      sess_ccy = as.character(tryCatch(session_currency(), error = function(e) NA))[1],
+      base_inf = !is.finite(base),
+      cur_inf = !is.finite(cur),
+      mos_inf = !is.finite(mos),
+      base_near_zero = is.finite(base) && abs(base) < 0.01,
+      mos_guarded = is.finite(base) && abs(base) < 0.01 && !is.finite(mos),
+      base_huge = is.finite(base) && abs(base) > 1e5,
+      upside_vs_price = if (is.finite(base) && is.finite(cur) && cur > 0)
+        (base - cur) / cur * 100 else NA_real_
+    ))
+    # #endregion
     fmt_px <- function(x) {
       if (!is.finite(x)) return("—")
       paste0(money_prefix(), format(round(x, 2), nsmall = 2, big.mark = ","))

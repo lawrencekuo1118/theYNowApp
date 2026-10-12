@@ -870,9 +870,43 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
         )
       }
 
-      fmt <- function(x) if (is.na(x)) "—" else sprintf("$%.2f", x)
-      upside <- if (!is.na(base) && p_curr > 0) (base - p_curr) / p_curr * 100 else NA_real_
-      upside_txt <- if (is.na(upside)) "—" else sprintf("%+.1f%%", upside)
+      px_sym <- tryCatch(money_prefix(), error = function(e) "$")
+      if (!nzchar(as.character(px_sym %||% "")[1])) px_sym <- "$"
+      fmt <- function(x) {
+        if (is.na(x) || !is.finite(x)) return("—")
+        # Collapse float residue (±1e-15) so Base does not show "-0.00"
+        if (abs(x) < 0.005) x <- 0
+        paste0(px_sym, sprintf("%.2f", x))
+      }
+      upside <- if (!is.na(base) && is.finite(base) && p_curr > 0) {
+        (base - p_curr) / p_curr * 100
+      } else {
+        NA_real_
+      }
+      upside_txt <- if (is.na(upside) || !is.finite(upside)) "—" else sprintf("%+.1f%%", upside)
+      # #region agent log
+      tryCatch({
+        payload <- list(
+          hypothesisId = "B",
+          location = "investment_decision_module.R:ui_valuation_compare",
+          message = "composite valuation numbers",
+          data = list(
+            prim = prim, sec = sec,
+            p_curr = p_curr, bear = bear, base = base, bull = bull,
+            sec_pt = sec_pt, upside = upside,
+            fmt_hardcoded_dollar = FALSE,
+            money_prefix = as.character(px_sym)[1],
+            any_inf = any(vapply(list(p_curr, bear, base, bull, sec_pt), function(x) length(x) && !is.na(x) && !is.finite(x), logical(1))),
+            any_huge = any(vapply(list(p_curr, bear, base, bull, sec_pt), function(x) is.finite(x) && abs(x) > 1e5, logical(1))),
+            base_vs_price = if (is.finite(base) && is.finite(p_curr) && p_curr != 0) base / p_curr else NA_real_
+          ),
+          timestamp = as.numeric(Sys.time()) * 1000,
+          runId = "post-fix"
+        )
+        cat(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null", na = "null"),
+            "\n", file = "/opt/cursor/logs/debug.log", append = TRUE, sep = "")
+      }, error = function(e) NULL)
+      # #endregion
 
       model_colors <- c(
         dcf = "#2980b9", ddm = "#8e44ad", ri = "#16a085",
@@ -910,7 +944,7 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
           "<div style='width:12px; height:12px; background:", col,
           "; border:2px solid white; border-radius:50%; margin:2px auto;'></div>",
           "<div style='font-size:15px; color:", col, "; font-weight:bold;'>",
-          htmltools::htmlEscape(sprintf("$%.2f", v)),
+          htmltools::htmlEscape(fmt(v)),
           "</div></div>"
         )
       }
@@ -948,7 +982,8 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
         "<div style='font-size: 12px; color: white; background: #2c3e50; padding: 2px 6px; border-radius: 4px;'>",
         htmltools::htmlEscape(str("composite_current_price")), "</div>",
         "<div style='width: 12px; height: 12px; background: #2c3e50; border: 2px solid white; border-radius: 50%; margin: 2px auto;'></div>",
-        "<div style='font-size: 15px; color: #2c3e50; font-weight: bold;'>$", round(p_curr, 2), "</div></div>",
+        "<div style='font-size: 15px; color: #2c3e50; font-weight: bold;'>",
+        htmltools::htmlEscape(fmt(p_curr)), "</div></div>",
         overlay_html,
         "</div>",
         "<div class='ynow-composite-chart-notes' style='margin-top: 8px;'>",

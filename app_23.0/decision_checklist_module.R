@@ -519,9 +519,12 @@ decision_checklist_server <- function(
   }
 
   .mos <- function(fv, px) {
+    if (exists("mos_vs_fair_value", mode = "function")) {
+      return(mos_vs_fair_value(fv, px))
+    }
     fv <- .pick(fv)
     px <- .pick(px)
-    if (!is.finite(fv) || !is.finite(px) || fv == 0) return(NA_real_)
+    if (!is.finite(fv) || !is.finite(px) || abs(fv) < 0.01) return(NA_real_)
     (fv - px) / fv
   }
 

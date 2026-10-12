@@ -111,6 +111,21 @@ dt_currency_symbol <- function(ccy = NULL) {
   money_prefix(ccy)
 }
 
+#' Margin of Safety vs fair value: (FV − Price) / FV (decimal ratio).
+#'
+#' Near-zero |FV| (float residue / clean-surplus degeneracy when g≈ROE &
+#' payout≈0 → P≈0) must not use `fv != 0` alone — that yields Inf / 1e16 % MOS.
+#' @param min_abs_fv absolute floor in quote currency units (default 0.01)
+#' @return decimal MOS, or NA_real_ when undefined
+mos_vs_fair_value <- function(fv, price, min_abs_fv = 0.01) {
+  fv <- suppressWarnings(as.numeric(fv)[1])
+  price <- suppressWarnings(as.numeric(price)[1])
+  floor_abs <- suppressWarnings(as.numeric(min_abs_fv)[1])
+  if (!is.finite(floor_abs) || floor_abs <= 0) floor_abs <- 0.01
+  if (!is.finite(fv) || !is.finite(price) || abs(fv) < floor_abs) return(NA_real_)
+  (fv - price) / fv
+}
+
 # USD↔TWD only (v1). Same currency → 1; unknown or missing live FX → NA (refuse).
 fx_factor <- function(from_ccy, to_ccy, usd_twd = NULL) {
   fr <- normalize_ccy(from_ccy)
