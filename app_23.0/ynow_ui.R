@@ -805,7 +805,7 @@ beta_overview_section_ui <- function() {
     ),
     fluidRow(
       valueBoxOutput("vbx_beta_unlever_bottomup", width = 4),
-      valueBoxOutput("vbx_beta_unlever_firm", width = 4),
+      uiOutput("vbx_beta_unlever_firm", class = "col-sm-4"),
       valueBoxOutput("vbx_beta_estimated", width = 4)
     ),
     fluidRow(
@@ -9624,7 +9624,22 @@ ui <- dashboardPage(
         .ynow-alertable > .ynow-smart-card,
         .ynow-alertable > .ynow-fs-card,
         .ynow-alertable > .ynow-mscore-widget,
-        .ynow-alertable > .ynow-eq-score-pill {
+        .ynow-alertable > .ynow-eq-score-pill,
+        .ynow-alertable > .ynow-composite-band-card,
+        .ynow-alertable > .ynow-macro-kpi {
+          height: 100%;
+        }
+        .ynow-composite-valuation > div:first-child > .ynow-alertable {
+          flex: 1 1 120px;
+          min-width: 120px;
+          display: flex;
+          flex-direction: column;
+        }
+        .ynow-composite-valuation .ynow-alertable > .ynow-composite-band-card {
+          flex: 1 1 auto;
+        }
+        .ynow-macro-kpi-row .ynow-alertable {
+          display: block;
           height: 100%;
         }
         .ynow-alert-bell {

@@ -922,6 +922,35 @@ macro_market_server <- function(id = "macro",
       })
     })
 
+    .macro_wrap_alertable <- function(ui, metric, ticker, value, label,
+                                      ready = FALSE, default_kind = "price_gte") {
+      if (!exists("ynow_alertable", mode = "function")) return(ui)
+      ynow_alertable(
+        ui,
+        metric = metric,
+        ticker = ticker,
+        value = value,
+        label = label,
+        ready = ready,
+        default_kind = default_kind
+      )
+    }
+
+    .macro_publish_alert_metrics <- function(entries) {
+      if (!is.list(entries) || !length(entries)) return(invisible(NULL))
+      cur <- tryCatch(session$userData$value_alert_metrics, error = function(e) NULL)
+      if (!is.list(cur)) cur <- list()
+      for (nm in names(entries)) {
+        mets <- entries[[nm]]
+        if (!is.list(mets) || !length(mets)) next
+        tk <- toupper(trimws(as.character(nm)[1]))
+        if (!nzchar(tk)) next
+        cur[[tk]] <- modifyList(as.list(cur[[tk]] %||% list()), mets)
+      }
+      session$userData$value_alert_metrics <- cur
+      invisible(NULL)
+    }
+
     output$index_kpi_row <- renderUI({
       rows <- index_quotes()
       lite <- .is_lite()
@@ -934,7 +963,7 @@ macro_market_server <- function(id = "macro",
       } else {
         "col-xs-6 col-sm-6 col-md-3"
       }
-      cols <- lapply(rows, function(r) {
+      built <- lapply(rows, function(r) {
         last_txt <- if (is.finite(r$last)) format(round(r$last, 2), big.mark = ",") else "—"
         chg_txt <- if (is.finite(r$chg_pct)) sprintf("%+.2f%%", r$chg_pct) else "—"
         col_cls <- if (is.finite(r$chg_pct) && r$chg_pct >= 0) "ynow-macro-up" else "ynow-macro-down"
@@ -963,26 +992,44 @@ macro_market_server <- function(id = "macro",
             )
           )
         }
-        column(
-          width = idx_col_w,
-          class = idx_col_cls,
-          do.call(
-            tags$div,
-            c(
-              list(
-                id = box_id,
-                class = kpi_cls,
-                `data-macro-index` = r$symbol,
-                tags$div(class = "ynow-macro-kpi__label", lab),
-                tags$div(class = "ynow-macro-kpi__value", last_txt),
-                tags$div(class = paste("ynow-macro-kpi__chg", col_cls), chg_txt),
-                tags$div(class = "ynow-macro-kpi__sym", r$symbol)
-              ),
-              extra
-            )
+        kpi <- do.call(
+          tags$div,
+          c(
+            list(
+              id = box_id,
+              class = kpi_cls,
+              `data-macro-index` = r$symbol,
+              tags$div(class = "ynow-macro-kpi__label", lab),
+              tags$div(class = "ynow-macro-kpi__value", last_txt),
+              tags$div(class = paste("ynow-macro-kpi__chg", col_cls), chg_txt),
+              tags$div(class = "ynow-macro-kpi__sym", r$symbol)
+            ),
+            extra
           )
         )
+        kpi <- .macro_wrap_alertable(
+          kpi,
+          metric = "last_price",
+          ticker = r$symbol,
+          value = r$last,
+          label = lab,
+          ready = is.finite(r$last),
+          default_kind = "price_gte"
+        )
+        list(
+          col = column(width = idx_col_w, class = idx_col_cls, kpi),
+          sym = as.character(r$symbol)[1],
+          last = r$last
+        )
       })
+      alert_entries <- list()
+      for (b in built) {
+        if (is.finite(b$last) && nzchar(b$sym %||% "")) {
+          alert_entries[[b$sym]] <- list(last_price = b$last)
+        }
+      }
+      if (length(alert_entries)) .macro_publish_alert_metrics(alert_entries)
+      cols <- lapply(built, function(b) b$col)
       do.call(fluidRow, c(list(class = "ynow-macro-kpi-row"), cols))
     })
 
@@ -1273,6 +1320,7 @@ macro_market_server <- function(id = "macro",
       chg_txt <- if (is.finite(chg)) sprintf("%+.2f%%", chg) else "—"
       chg_cls <- if (is.finite(chg) && chg >= 0) "ynow-macro-up" else "ynow-macro-down"
       title_key <- .index_ui_key("title")
+      lab <- .ui(title_key)
       # Clickable in Full and Lite (Lite expands YNOW／TYNOW only).
       kpi_cls <- "ynow-macro-kpi ynow-macro-kpi--ynow ynow-macro-kpi--clickable"
       if (selected_own) kpi_cls <- paste(kpi_cls, "ynow-macro-kpi--selected")
@@ -1288,7 +1336,7 @@ macro_market_server <- function(id = "macro",
           own
         )
       )
-      do.call(
+      kpi <- do.call(
         tags$div,
         c(
           list(
@@ -1299,7 +1347,7 @@ macro_market_server <- function(id = "macro",
               class = "ynow-macro-kpi__label",
               id = "ynow_index_title",
               `data-i18n` = title_key,
-              .ui(title_key)
+              lab
             ),
             tags$div(class = "ynow-macro-kpi__value ynow-htcdi-flow", last_txt),
             tags$div(class = paste("ynow-macro-kpi__chg", chg_cls), chg_txt),
@@ -1307,6 +1355,20 @@ macro_market_server <- function(id = "macro",
           ),
           extra
         )
+      )
+      if (is.finite(last)) {
+        mets <- list()
+        mets$macro_ynow_level <- last
+        .macro_publish_alert_metrics(setNames(list(mets), own))
+      }
+      .macro_wrap_alertable(
+        kpi,
+        metric = "macro_ynow_level",
+        ticker = own,
+        value = last,
+        label = lab,
+        ready = is.finite(last),
+        default_kind = "value_gte"
       )
     }
 
@@ -1435,18 +1497,45 @@ macro_market_server <- function(id = "macro",
       res <- tryCatch(htcdi_result(), error = function(e) NULL)
       if (is.null(res)) res <- list(availability = "loading")
       ynow_card <- .own_index_kpi_card()
+      det <- tryCatch({
+        if (exists("cached_get_risk_free_rate_detail", mode = "function")) {
+          cached_get_risk_free_rate_detail(mode)
+        } else {
+          list(rf_pct = cached_get_risk_free_rate(mode), source = "")
+        }
+      }, error = function(e) list(rf_pct = NA_real_, source = e$message))
+      rf <- suppressWarnings(as.numeric(det$rf_pct %||% NA_real_)[1])
+      rf_tk <- if (is_tw) "RF_TW" else "RF_US"
+      rf_lab <- .ui("macro_rf_title")
+      rf_kpi <- tags$div(
+        class = "ynow-macro-kpi ynow-macro-kpi--rf",
+        tags$div(class = "ynow-macro-kpi__label", id = "ynow_macro_rf_title", rf_lab),
+        uiOutput(ns("rf_box"))
+      )
+      if (is.finite(rf)) {
+        .macro_publish_alert_metrics(setNames(list(list(macro_rf_pct = rf)), rf_tk))
+      }
+      rf_kpi <- .macro_wrap_alertable(
+        rf_kpi,
+        metric = "macro_rf_pct",
+        ticker = rf_tk,
+        value = rf,
+        label = rf_lab,
+        ready = is.finite(rf),
+        default_kind = "value_gte"
+      )
       rf_col <- column(
         width = 6, class = "col-xs-12 col-sm-6 col-md-6",
-        tags$div(
-          class = "ynow-macro-kpi ynow-macro-kpi--rf",
-          tags$div(class = "ynow-macro-kpi__label", id = "ynow_macro_rf_title", .ui("macro_rf_title")),
-          uiOutput(ns("rf_box"))
-        )
+        rf_kpi
       )
       ynow_col <- column(
         width = 3, class = "col-xs-12 col-sm-3 col-md-3",
         if (!is.null(ynow_card)) ynow_card else tags$div(class = "ynow-macro-kpi ynow-macro-kpi--ynow", "—")
       )
+      htcdi_score <- suppressWarnings(as.numeric(res$composite %||% NA_real_)[1])
+      if (is.finite(htcdi_score)) {
+        .macro_publish_alert_metrics(list(HTCDI = list(macro_htcdi = htcdi_score)))
+      }
       htcdi_col <- column(
         width = 3, class = "col-xs-12 col-sm-3 col-md-3",
         if (exists("htcdi_kpi_box", mode = "function")) {

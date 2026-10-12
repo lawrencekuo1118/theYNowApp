@@ -177,16 +177,31 @@ htcdi_kpi_box <- function(result, lite = FALSE, locale = "en", ns = NULL, select
   } else {
     .htcdi_ui("htcdi_click_hint", locale)
   }
-  do.call(tags$div, c(list(
+  lab <- .htcdi_ui("htcdi_title", locale)
+  score_num <- suppressWarnings(as.numeric(score)[1])
+  kpi <- do.call(tags$div, c(list(
     id = "ynow_macro_htcdi_box",
     class = paste(cls, collapse = " "),
     `data-htcdi-alert` = alert,
-    tags$div(class = "ynow-macro-kpi__label", id = "ynow_macro_htcdi_title", .htcdi_ui("htcdi_title", locale)),
+    tags$div(class = "ynow-macro-kpi__label", id = "ynow_macro_htcdi_title", lab),
     tags$div(class = "ynow-macro-kpi__value ynow-htcdi__value", htcdi_score_span(score)),
     tags$div(class = paste("ynow-macro-kpi__chg", htcdi_alert_class(alert)), id = "ynow_macro_htcdi_alert",
              paste(.htcdi_ui("htcdi_alert_label", locale), alert_txt)),
     tags$div(class = "ynow-macro-hint", id = "ynow_macro_htcdi_hint", hint)
   ), extra))
+  # Value Alert target: Macro upper-half HTCDI composite score
+  if (exists("ynow_alertable", mode = "function")) {
+    return(ynow_alertable(
+      kpi,
+      metric = "macro_htcdi",
+      ticker = "HTCDI",
+      value = score_num,
+      label = lab,
+      ready = is.finite(score_num) && !isTRUE(loading) && !isTRUE(unavailable),
+      default_kind = "value_gte"
+    ))
+  }
+  kpi
 }
 
 .htcdi_four_boxes <- function(result, locale = "en") {

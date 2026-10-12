@@ -729,6 +729,11 @@ server <- function(input, output, session) {
       if (is.finite(b)) mets$summary_beta <- b
     }, error = function(e) NULL)
     tryCatch({
+      f <- firm_unlever_reactive()
+      bu <- if (!is.null(f)) suppressWarnings(as.numeric(f$beta_u)[1]) else NA_real_
+      if (is.finite(bu)) mets$hamada_beta_u <- bu
+    }, error = function(e) NULL)
+    tryCatch({
       df <- summary_data()
       if (!is.null(df) && "EPS (TTM)" %in% df$Item) {
         eps <- suppressWarnings(as.numeric(gsub(
@@ -6707,14 +6712,34 @@ server <- function(input, output, session) {
 
   .vbx_beta_unlever_firm_content <- function() {
     f <- firm_unlever_reactive()
-    valueBox(
-      if (is.finite(f$beta_u)) round(f$beta_u, 3) else "—",
-      "去槓桿化 βᵤ（Hamada）",
+    loc <- tryCatch(ui_locale(), error = function(e) "en")
+    lab <- if (identical(loc, "en")) {
+      "Unlevered βᵤ (Hamada)"
+    } else {
+      "去槓桿化 βᵤ（Hamada）"
+    }
+    bu <- suppressWarnings(as.numeric(f$beta_u)[1])
+    tk <- tryCatch(as.character(current_ticker() %||% "")[1], error = function(e) "")
+    ready <- isTRUE(user_has_searched()) && is.finite(bu) && nzchar(tk)
+    box <- valueBox(
+      if (is.finite(bu)) round(bu, 3) else "—",
+      lab,
       icon = icon("balance-scale"),
-      color = "orange"
+      color = "orange",
+      width = NULL
+    )
+    if (!exists("ynow_alertable", mode = "function")) return(box)
+    ynow_alertable(
+      box,
+      metric = "hamada_beta_u",
+      ticker = tk,
+      value = bu,
+      label = lab,
+      ready = ready,
+      default_kind = "value_gte"
     )
   }
-  output$vbx_beta_unlever_firm <- renderValueBox({ .vbx_beta_unlever_firm_content() })
+  output$vbx_beta_unlever_firm <- renderUI({ .vbx_beta_unlever_firm_content() })
 
   .vbx_beta_unlever_bottomup_content <- function() {
     res <- beta_bottomup_result()
