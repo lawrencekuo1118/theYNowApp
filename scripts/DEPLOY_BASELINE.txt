@@ -7,4 +7,4 @@ commit=35adea29f0a859c8e5d30c832e08c8b3cd63ecfd
 short=35adea2
 message=Industry-chain mcap ranking all chains + Refresh ranking (v22.04)
 captured_at=2026-10-12T10:15:00Z
-display_version=v22.04
+display_version=v22.05
