@@ -1577,15 +1577,31 @@ assemble_model_recommendation <- function(data_missing = FALSE,
   scores <- do.call(rbind, rows)
   rownames(scores) <- NULL
 
-  # Intrinsic / Fair Value engines only for primary eligibility
+  # Intrinsic / Fair Value engines only for primary eligibility.
+  # Gordon-blocked DCF (latest FCFF < 0) must not clear the Fair Value primary
+  # gate: Terminal Value is refused, so a sole blocked DCF would show as
+  # "recommended" with no computable Gordon value (TW 3363-class edge).
   fv_models <- c("dcf", "ddm", "ri", "pb", "nav")
   eligible <- scores[
     scores$model %in% fv_models &
       scores$applicability >= .VG_MIN_APP &
-      scores$overall >= .VG_MIN_OVERALL,
+      scores$overall >= .VG_MIN_OVERALL &
+      !(scores$model == "dcf" & scores$gordon_blocked %in% TRUE),
     , drop = FALSE
   ]
   inapplicable <- scores$model[scores$applicability < .VG_CROSS_APP]
+  # Cyclical rescue: when Gordon-blocked DCF was the only model clearing the
+  # full gate, keep industry P/B as Fair Value primary (policy: cyclical → P/B
+  # in the pair) if applicability clears MIN_APP even when overall is a hair
+  # under MIN_OVERALL (CLF / steel-class).
+  if (!nrow(eligible) && isTRUE(is_cyc) && !isTRUE(pb_view$blocked)) {
+    pb_soft <- scores[
+      scores$model == "pb" &
+        scores$applicability >= .VG_MIN_APP,
+      , drop = FALSE
+    ]
+    if (nrow(pb_soft)) eligible <- pb_soft
+  }
   if (!nrow(eligible)) {
     # Still attach Multiples as market-pricing Reference when scored applicable —
     # relative Implied Price is not a Fair Value substitute.
@@ -1684,7 +1700,9 @@ assemble_model_recommendation <- function(data_missing = FALSE,
       role <- "cross_check"
     }
   }
-  # Gordon-blocked DCF must not sit as Fair Value primary (terminal value refused).
+  # Safety net: Gordon-blocked DCF must not sit as Fair Value primary
+  # (terminal value refused). Prefer another eligible FV model. When none
+  # exist, eligibility already excluded blocked DCF — this branch is rare.
   if (identical(primary, "dcf") && isTRUE(gordon_blocked)) {
     alt <- eligible[eligible$model != "dcf", , drop = FALSE]
     if (nrow(alt)) {
