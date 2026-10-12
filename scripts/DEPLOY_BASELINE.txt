@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12679525
+bundleId=12679586
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=dd95667ddba2c6db949d424cc76d91324eb62add
-commit=dd95667ddba2c6db949d424cc76d91324eb62add
-short=dd95667
-message=Full-universe chain 總市值; Unmapped excluded (v22.09)
-captured_at=2026-10-12T11:26:47Z
-display_version=v22.09
+aligned_git=9097e77c4bf797a1f3e1fb016186365865e73f6e
+commit=9097e77c4bf797a1f3e1fb016186365865e73f6e
+short=9097e77
+message=KPI quick price alerts + App/email history; cut to app_23.0 / v23.00
+captured_at=2026-10-12T11:52:05Z
+display_version=v23.00
