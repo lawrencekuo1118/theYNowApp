@@ -7,6 +7,7 @@ server <- function(input, output, session) {
   # instead of forcing the user onto the gray "Disconnected / Reload" overlay.
   tryCatch(session$allowReconnect("force"), error = function(e) NULL)
 
+
   # Sidebar tab label busy dots (JS `ynowTabBusy` → animated 「…」 on menu item)
   .ynow_set_tab_busy <- function(tab, busy = TRUE) {
     tab <- as.character(tab %||% "")[1]
@@ -2179,7 +2180,7 @@ server <- function(input, output, session) {
         company_type = "fallback"
       ))
     }
-    recommend_valuation_models(
+    rec_out <- recommend_valuation_models(
       cf,
       industry_text = ind,
       d_is = is,
@@ -2189,6 +2190,7 @@ server <- function(input, output, session) {
       lifecycle_result = tryCatch(central_lifecycle(), error = function(e) NULL),
       selected_stage = input$lifecycle_stage %||% "auto"
     )
+    rec_out
     }
   })
 
@@ -4647,37 +4649,45 @@ server <- function(input, output, session) {
     )
     raw_shares <- suppressWarnings(as.numeric(sh$shares_bs)[1])
     sh_ratio <- suppressWarnings(as.numeric(sh$ratio)[1])
+    out_sh <- NULL
+    branch <- "fallback"
     # ADR／雙重股權：一律自動套用約當股數（與 P/B／RI／回測一致）
     if (shares_auto_adjust_method(sh$method) && is.finite(sh$shares) && sh$shares > 0) {
-      return(list(
+      out_sh <- list(
         shares = sh$shares, note = sh$note, method = sh$method, ratio = sh_ratio
-      ))
+      )
+      branch <- "auto_adjust"
+    } else {
+      # Missing reporting ccy + not ADR → treat as quote (AAPL-like). ADR keeps NA.
+      st_eff <- infer_statement_currency(
+        statement_currency(), quote_currency(), sh$method
+      )
+      # Statement ≠ quote and not ADR-aligned: refuse common-share fallback (never label as ADR).
+      if (isTRUE(fx_conversion_required(st_eff, quote_currency())) ||
+          isTRUE(adr_conversion_required(st_eff, quote_currency(), sh$method))) {
+        out_sh <- list(
+          shares = NA_real_,
+          note = sh$note %||% "報價幣≠財報幣且無法約當 ADR 股數，不顯示每股",
+          method = sh$method %||% "none",
+          ratio = sh_ratio
+        )
+        branch <- "fx_refuse"
+      } else if (is.finite(raw_shares) && raw_shares > 0) {
+        out_sh <- list(
+          shares = raw_shares, note = NULL, method = "balance_sheet", ratio = sh_ratio
+        )
+        branch <- "balance_sheet"
+      } else {
+        out_sh <- list(
+          shares = if (is.finite(sh$shares) && sh$shares > 0) sh$shares else NA_real_,
+          note = sh$note %||% "缺少流通在外股數，不顯示每股",
+          method = sh$method %||% "none",
+          ratio = sh_ratio
+        )
+        branch <- "fallback"
+      }
     }
-    # Missing reporting ccy + not ADR → treat as quote (AAPL-like). ADR keeps NA.
-    st_eff <- infer_statement_currency(
-      statement_currency(), quote_currency(), sh$method
-    )
-    # Statement ≠ quote and not ADR-aligned: refuse common-share fallback (never label as ADR).
-    if (isTRUE(fx_conversion_required(st_eff, quote_currency())) ||
-        isTRUE(adr_conversion_required(st_eff, quote_currency(), sh$method))) {
-      return(list(
-        shares = NA_real_,
-        note = sh$note %||% "報價幣≠財報幣且無法約當 ADR 股數，不顯示每股",
-        method = sh$method %||% "none",
-        ratio = sh_ratio
-      ))
-    }
-    if (is.finite(raw_shares) && raw_shares > 0) {
-      return(list(
-        shares = raw_shares, note = NULL, method = "balance_sheet", ratio = sh_ratio
-      ))
-    }
-    list(
-      shares = if (is.finite(sh$shares) && sh$shares > 0) sh$shares else NA_real_,
-      note = sh$note %||% "缺少流通在外股數，不顯示每股",
-      method = sh$method %||% "none",
-      ratio = sh_ratio
-    )
+    out_sh
   })
 
   .dcf_per_share <- function(equity_value, sh = NULL) {
@@ -8914,11 +8924,13 @@ server <- function(input, output, session) {
     base <- if (!is.null(band)) suppressWarnings(as.numeric(band$base)[1]) else NA_real_
     bear <- if (!is.null(band)) suppressWarnings(as.numeric(band$bear)[1]) else NA_real_
     bull <- if (!is.null(band)) suppressWarnings(as.numeric(band$bull)[1]) else NA_real_
-    mos <- if (is.finite(base) && base != 0 && is.finite(cur)) {
-      (base - cur) / base * 100
-    } else {
-      NA_real_
-    }
+    # Guard near-zero Base (e.g. RI clean-surplus g≈ROE → FV≈0 float residue)
+    # so MOS never becomes Inf / 1e16 %.
+    mos_dec <- tryCatch(
+      mos_vs_fair_value(base, cur),
+      error = function(e) NA_real_
+    )
+    mos <- if (is.finite(mos_dec)) mos_dec * 100 else NA_real_
     fmt_px <- function(x) {
       if (!is.finite(x)) return("—")
       paste0(money_prefix(), format(round(x, 2), nsmall = 2, big.mark = ","))

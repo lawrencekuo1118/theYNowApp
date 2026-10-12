@@ -468,7 +468,13 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
     mos_calc <- reactive({
       base <- primary_values()$base
       curr_p <- .pick_num(current_price())
-      if (is.na(base) || is.na(curr_p) || base == 0) return(NA_real_)
+      # Near-zero Base (RI clean-surplus residue) must not divide — use shared guard.
+      if (exists("mos_vs_fair_value", mode = "function")) {
+        return(mos_vs_fair_value(base, curr_p))
+      }
+      if (is.na(base) || is.na(curr_p) || !is.finite(base) || abs(base) < 0.01) {
+        return(NA_real_)
+      }
       (base - curr_p) / base
     })
 
@@ -870,9 +876,20 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
         )
       }
 
-      fmt <- function(x) if (is.na(x)) "—" else sprintf("$%.2f", x)
-      upside <- if (!is.na(base) && p_curr > 0) (base - p_curr) / p_curr * 100 else NA_real_
-      upside_txt <- if (is.na(upside)) "—" else sprintf("%+.1f%%", upside)
+      px_sym <- tryCatch(money_prefix(), error = function(e) "$")
+      if (!nzchar(as.character(px_sym %||% "")[1])) px_sym <- "$"
+      fmt <- function(x) {
+        if (is.na(x) || !is.finite(x)) return("—")
+        # Collapse float residue (±1e-15) so Base does not show "-0.00"
+        if (abs(x) < 0.005) x <- 0
+        paste0(px_sym, sprintf("%.2f", x))
+      }
+      upside <- if (!is.na(base) && is.finite(base) && p_curr > 0) {
+        (base - p_curr) / p_curr * 100
+      } else {
+        NA_real_
+      }
+      upside_txt <- if (is.na(upside) || !is.finite(upside)) "—" else sprintf("%+.1f%%", upside)
 
       model_colors <- c(
         dcf = "#2980b9", ddm = "#8e44ad", ri = "#16a085",
@@ -910,7 +927,7 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
           "<div style='width:12px; height:12px; background:", col,
           "; border:2px solid white; border-radius:50%; margin:2px auto;'></div>",
           "<div style='font-size:15px; color:", col, "; font-weight:bold;'>",
-          htmltools::htmlEscape(sprintf("$%.2f", v)),
+          htmltools::htmlEscape(fmt(v)),
           "</div></div>"
         )
       }
@@ -948,7 +965,8 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
         "<div style='font-size: 12px; color: white; background: #2c3e50; padding: 2px 6px; border-radius: 4px;'>",
         htmltools::htmlEscape(str("composite_current_price")), "</div>",
         "<div style='width: 12px; height: 12px; background: #2c3e50; border: 2px solid white; border-radius: 50%; margin: 2px auto;'></div>",
-        "<div style='font-size: 15px; color: #2c3e50; font-weight: bold;'>$", round(p_curr, 2), "</div></div>",
+        "<div style='font-size: 15px; color: #2c3e50; font-weight: bold;'>",
+        htmltools::htmlEscape(fmt(p_curr)), "</div></div>",
         overlay_html,
         "</div>",
         "<div class='ynow-composite-chart-notes' style='margin-top: 8px;'>",

@@ -1461,8 +1461,23 @@ assemble_model_recommendation <- function(data_missing = FALSE,
       gordon_blocked = gordon_blocked
     )
   )
+  # One-stage RI: P = B×(ROE−g)/(Ke−g). With unstable/missing dividends the app uses
+  # SGR≈ROE×1 (full retention), so g≈ROE → P≡0 for any Ke≠ROE. Thin ROE below a
+  # CAPM-ish Ke floor then yields a useless Fair Value strip (0 / float residue) —
+  # do not promote RI just because latest FCFF cannot Gordon (e.g. TW 3363).
+  ke_proxy_pct <- 8
+  ri_roe_g_collapse <- is.finite(roe) && roe > 0 && roe < ke_proxy_pct && !isTRUE(is_div_stable)
+
   pb_app <- if (isTRUE(pb_view$blocked)) 0 else pb_view$score
   if (isTRUE(is_cyc) && !isTRUE(pb_view$blocked)) pb_app <- min(100, pb_app + 15)
+  # Justified P/B ≡ (ROE−g)/(Ke−g) is the same identity as one-stage RI. When g≈ROE
+  # collapses RI to P≈0, Justified P/B collapses too. Industry/history target P/B is
+  # relative valuation (Multiples Reference) — do not promote it to Fair Value primary
+  # for non-book / non-cyclical names just because Gordon FCFF is blocked (e.g. TW 3363).
+  pb_justified_collapse <- isTRUE(ri_roe_g_collapse) && !isTRUE(is_book) && !isTRUE(is_cyc)
+  if (isTRUE(pb_justified_collapse) && !isTRUE(pb_view$blocked)) {
+    pb_app <- min(pb_app, 40)
+  }
   pb_ind <- if (!isTRUE(pb_view$industry_pb_ok)) {
     25
   } else if (is_book) {
@@ -1485,16 +1500,27 @@ assemble_model_recommendation <- function(data_missing = FALSE,
       "P/B blocked"
     } else if (isTRUE(is_cyc)) {
       "P/B applicability; cyclical industry prefers book through the cycle"
+    } else if (isTRUE(pb_justified_collapse)) {
+      "Justified P/B collapses with g≈ROE (same as RI); industry/history P/B stays Multiples Reference, not Fair Value primary"
     } else {
       "P/B applicability"
     }
   )
   ri_app <- if (is.finite(ni) && ni > 0 && is.finite(equity) && equity > 0 && is.finite(roe) && roe > 0) 80 else 15
-  if (gordon_blocked && ri_app >= 80) ri_app <- ri_app + 10
+  ri_notes <- "RI formula unchanged; score is selection only"
+  if (isTRUE(ri_roe_g_collapse)) {
+    ri_app <- min(ri_app, 40)
+    ri_notes <- paste0(
+      "one-stage RI with g≈ROE (full retention) collapses to P≈0 when ROE < Ke; ",
+      "not a usable Fair Value primary"
+    )
+  } else if (gordon_blocked && ri_app >= 80) {
+    ri_app <- ri_app + 10
+  }
   rows[[length(rows) + 1L]] <- .vg_score_row(
     "ri", ri_app, if (is.finite(roe)) 70 else 20, if (is.finite(roe) && roe > 0) 65 else 20,
     70, if (is.finite(roe) && roe > 0) 60 else 20, if (is_book) 70 else 55,
-    notes = "RI formula unchanged; score is selection only"
+    notes = ri_notes
   )
   ddm_app <- if (isTRUE(is_div_stable)) 75 else 15
   rows[[length(rows) + 1L]] <- .vg_score_row(
@@ -1561,10 +1587,66 @@ assemble_model_recommendation <- function(data_missing = FALSE,
   ]
   inapplicable <- scores$model[scores$applicability < .VG_CROSS_APP]
   if (!nrow(eligible)) {
+    # Still attach Multiples as market-pricing Reference when scored applicable —
+    # relative Implied Price is not a Fair Value substitute.
+    mult_row0 <- scores[scores$model == "multiples", , drop = FALSE]
+    ref0 <- if (nrow(mult_row0) == 1L && mult_row0$applicability[1] >= .VG_CROSS_APP) {
+      "multiples"
+    } else {
+      NULL
+    }
+    lens0 <- recommend_multiples_lens(
+      ni = ni, ebitda = ebitda, ebit = ebit, da = da, revenue = revenue,
+      equity = equity, debt = debt, assets = assets, rev_g = rev_g,
+      last_fcff = last_fcff, book_biz = is_book
+    )
+    reason0 <- "沒有模型同時通過適用性與信心門檻。不輸出假精確合理價值，也不把低品質模型平均成區間。"
+    reason0_en <- paste0(
+      "No model clears both applicability and confidence gates. ",
+      "No pseudo-precise Fair Value is emitted, and weak models are not averaged into a band."
+    )
+    if (isTRUE(ri_roe_g_collapse) && isTRUE(gordon_blocked)) {
+      reason0 <- paste0(
+        reason0,
+        " 一階 RI／Justified P/B 在全保留 g≈ROE 時塌成 P≈0；最新 FCFF 為負無法做 Gordon 終值。",
+        " 產業／歷史本淨比屬相對估值，僅作 Multiples Reference，不升格為 Fair Value 主／副模型。"
+      )
+      reason0_en <- paste0(
+        reason0_en,
+        " One-stage RI / Justified P/B collapses to P≈0 when full-retention g≈ROE; ",
+        "latest FCFF is negative so Gordon terminal value is refused. ",
+        "Industry/history P/B is relative valuation and stays Multiples Reference — ",
+        "not Fair Value primary or secondary."
+      )
+    }
+    if (!is.null(ref0) && nzchar(as.character(lens0$method_label %||% "")[1])) {
+      reason0 <- paste0(reason0, " 相對估值參照：", lens0$method_label, "。", lens0$reason)
+      reason0_en <- paste0(
+        reason0_en, " Relative reference: ", lens0$method_label, ". ", lens0$reason_en
+      )
+    }
+    sum0 <- if (!is.null(ref0)) {
+      tag <- as.character(lens0$method_label %||% "")[1]
+      if (nzchar(tag) && !is.na(tag)) {
+        paste0("無適用 Fair Value + Multiples (Reference · ", tag, ")")
+      } else {
+        "無適用 Fair Value + Multiples (Reference)"
+      }
+    } else {
+      "無適用模型"
+    }
     return(pack(
-      "insufficient", NULL, NULL, "無適用模型",
-      "沒有模型同時通過適用性與信心門檻。不輸出假精確合理價值，也不把低品質模型平均成區間。",
-      scores = scores, inapplicable = as.character(inapplicable)
+      "insufficient", NULL, NULL, sum0,
+      reason0,
+      reason_en = reason0_en,
+      scores = scores,
+      inapplicable = as.character(inapplicable),
+      reference = ref0,
+      multiples_family = lens0$family,
+      multiples_method = lens0$method,
+      multiples_method_label = lens0$method_label,
+      multiples_reason = lens0$reason,
+      multiples_reason_en = lens0$reason_en
     ))
   }
   eligible <- eligible[order(-eligible$overall, -eligible$applicability, eligible$model), , drop = FALSE]
@@ -1600,6 +1682,24 @@ assemble_model_recommendation <- function(data_missing = FALSE,
     if (nrow(dcf_row) == 1L && dcf_row$applicability[1] >= .VG_CROSS_APP) {
       secondary <- "dcf"
       role <- "cross_check"
+    }
+  }
+  # Gordon-blocked DCF must not sit as Fair Value primary (terminal value refused).
+  if (identical(primary, "dcf") && isTRUE(gordon_blocked)) {
+    alt <- eligible[eligible$model != "dcf", , drop = FALSE]
+    if (nrow(alt)) {
+      primary <- as.character(alt$model[1])
+      secondary <- "dcf"
+      role <- "cross_check"
+      primary_row <- scores[scores$model == primary, , drop = FALSE]
+      sp <- primary_row$overall[1]
+      ss <- scores$overall[scores$model == secondary][1]
+      if (is.finite(sp) && is.finite(ss) && (sp + ss) > 0) {
+        ws <- min(0.25, ss / (sp + ss))
+        wp <- 1 - ws
+      } else {
+        wp <- 1; ws <- 0
+      }
     }
   }
   sp <- primary_row$overall[1]

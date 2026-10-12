@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12679620
+bundleId=12679886
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=c27b103
-commit=c27b103
-short=c27b103
-message=Equity structure pie beside BS; Ordinary/Preferred and dual-class (v23.01)
-captured_at=2026-10-12T12:00:00Z
-display_version=v23.01
+aligned_git=fc8f75cf389a6fada3f7a73b68a30c4008e9d9dc
+commit=fc8f75cf389a6fada3f7a73b68a30c4008e9d9dc
+short=fc8f75c
+message=TW 3363: no fake FV when RI/Justified collapse; relative P/B stays Multiples Reference (v23.02)
+captured_at=2026-10-12T13:27:01Z
+display_version=v23.02
