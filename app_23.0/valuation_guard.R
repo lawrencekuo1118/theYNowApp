@@ -1461,8 +1461,20 @@ assemble_model_recommendation <- function(data_missing = FALSE,
       gordon_blocked = gordon_blocked
     )
   )
+  # One-stage RI: P = B×(ROE−g)/(Ke−g). With unstable/missing dividends the app uses
+  # SGR≈ROE×1 (full retention), so g≈ROE → P≡0 for any Ke≠ROE. Thin ROE below a
+  # CAPM-ish Ke floor then yields a useless Fair Value strip (0 / float residue) —
+  # do not promote RI just because latest FCFF cannot Gordon (e.g. TW 3363).
+  ke_proxy_pct <- 8
+  ri_roe_g_collapse <- is.finite(roe) && roe > 0 && roe < ke_proxy_pct && !isTRUE(is_div_stable)
+
   pb_app <- if (isTRUE(pb_view$blocked)) 0 else pb_view$score
   if (isTRUE(is_cyc) && !isTRUE(pb_view$blocked)) pb_app <- min(100, pb_app + 15)
+  # Neg FCFF (no Gordon) + RI g≈ROE collapse: lift P/B so book remains a usable FV primary.
+  if (isTRUE(gordon_blocked) && isTRUE(ri_roe_g_collapse) && !isTRUE(pb_view$blocked) &&
+      is.finite(equity) && equity > 0) {
+    pb_app <- max(pb_app, 58)
+  }
   pb_ind <- if (!isTRUE(pb_view$industry_pb_ok)) {
     25
   } else if (is_book) {
@@ -1485,16 +1497,27 @@ assemble_model_recommendation <- function(data_missing = FALSE,
       "P/B blocked"
     } else if (isTRUE(is_cyc)) {
       "P/B applicability; cyclical industry prefers book through the cycle"
+    } else if (isTRUE(gordon_blocked) && isTRUE(ri_roe_g_collapse)) {
+      "P/B lifted: Gordon FCFF blocked and RI g≈ROE collapse"
     } else {
       "P/B applicability"
     }
   )
   ri_app <- if (is.finite(ni) && ni > 0 && is.finite(equity) && equity > 0 && is.finite(roe) && roe > 0) 80 else 15
-  if (gordon_blocked && ri_app >= 80) ri_app <- ri_app + 10
+  ri_notes <- "RI formula unchanged; score is selection only"
+  if (isTRUE(ri_roe_g_collapse)) {
+    ri_app <- min(ri_app, 40)
+    ri_notes <- paste0(
+      "one-stage RI with g≈ROE (full retention) collapses to P≈0 when ROE < Ke; ",
+      "not a usable Fair Value primary"
+    )
+  } else if (gordon_blocked && ri_app >= 80) {
+    ri_app <- ri_app + 10
+  }
   rows[[length(rows) + 1L]] <- .vg_score_row(
     "ri", ri_app, if (is.finite(roe)) 70 else 20, if (is.finite(roe) && roe > 0) 65 else 20,
     70, if (is.finite(roe) && roe > 0) 60 else 20, if (is_book) 70 else 55,
-    notes = "RI formula unchanged; score is selection only"
+    notes = ri_notes
   )
   ddm_app <- if (isTRUE(is_div_stable)) 75 else 15
   rows[[length(rows) + 1L]] <- .vg_score_row(
@@ -1600,6 +1623,24 @@ assemble_model_recommendation <- function(data_missing = FALSE,
     if (nrow(dcf_row) == 1L && dcf_row$applicability[1] >= .VG_CROSS_APP) {
       secondary <- "dcf"
       role <- "cross_check"
+    }
+  }
+  # Gordon-blocked DCF must not sit as Fair Value primary (terminal value refused).
+  if (identical(primary, "dcf") && isTRUE(gordon_blocked)) {
+    alt <- eligible[eligible$model != "dcf", , drop = FALSE]
+    if (nrow(alt)) {
+      primary <- as.character(alt$model[1])
+      secondary <- "dcf"
+      role <- "cross_check"
+      primary_row <- scores[scores$model == primary, , drop = FALSE]
+      sp <- primary_row$overall[1]
+      ss <- scores$overall[scores$model == secondary][1]
+      if (is.finite(sp) && is.finite(ss) && (sp + ss) > 0) {
+        ws <- min(0.25, ss / (sp + ss))
+        wp <- 1 - ws
+      } else {
+        wp <- 1; ws <- 0
+      }
     }
   }
   sp <- primary_row$overall[1]

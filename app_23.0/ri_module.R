@@ -468,31 +468,6 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
           share_method = sh_ri$method,
           statement_ccy = f_ccy
         )
-        # #region agent log
-        tryCatch({
-          payload <- list(
-            hypothesisId = "G",
-            location = "ri_module.R:sync_b0",
-            message = "RI B0/ROE sync inputs",
-            data = list(
-              equity = suppressWarnings(as.numeric(equity)[1]),
-              shares = suppressWarnings(as.numeric(shares)[1]),
-              share_method = as.character(sh_ri$method %||% "")[1],
-              eq_ccy = as.character(eq_ccy %||% "")[1],
-              q_ccy = as.character(q_ccy %||% "")[1],
-              f_ccy = as.character(f_ccy %||% "")[1],
-              b0 = suppressWarnings(as.numeric(b0)[1]),
-              b0_looks_equity_scale = is.finite(b0) && abs(b0) > 1e5,
-              raw_eq_over_sh = if (is.finite(equity) && is.finite(shares) && shares > 0)
-                equity / shares else NA_real_
-            ),
-            timestamp = as.numeric(Sys.time()) * 1000,
-            runId = "post-fix"
-          )
-          cat(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null", na = "null"),
-              "\n", file = "/opt/cursor/logs/debug.log", append = TRUE, sep = "")
-        }, error = function(e) NULL)
-        # #endregion
         if (is.finite(b0)) updateNumericInput(session, "b0", value = round(b0, 2))
       }
 

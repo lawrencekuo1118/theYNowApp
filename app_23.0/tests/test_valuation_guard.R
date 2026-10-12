@@ -546,6 +546,29 @@ check("bank recommendation names P/B", identical(rec9$multiples_family, "book") 
 check("stable foods recommendation names P/E", identical(rec1$multiples_method, "pe"))
 check("loss-making software names a revenue multiple", identical(rec3$multiples_family, "revenue"))
 
+# Thin ROE + negative latest FCFF (TW 3363-like): one-stage RI with g≈ROE collapses to P≈0.
+# Must not keep RI as Fair Value primary; prefer P/B (or another non-Gordon-blocked FV).
+rec_thin <- recommend_valuation_models(
+  base_cf(cfo = c(-17, 70), capex = c(-225, -217), div = c(NA_real_, -49)),
+  "Communication Equipment",
+  base_is(ni = c(16, -48), rev = c(1892, 1364), pretax = c(20, -40), tax = c(4, 8)),
+  base_bs(equity = c(2549, 2531), debt = c(258, 100), assets = c(3157, 2967), shares = c(105, 105)),
+  industry_choice = ""
+)
+check(
+  "thin ROE + neg FCFF not RI primary",
+  !identical(as.character(rec_thin$primary %||% ""), "ri")
+)
+check(
+  "thin ROE + neg FCFF not Gordon-blocked DCF primary",
+  !(identical(as.character(rec_thin$primary %||% ""), "dcf") &&
+      isTRUE(rec_thin$model_scores$gordon_blocked[rec_thin$model_scores$model == "dcf"][1]))
+)
+check(
+  "thin ROE + neg FCFF prefers P/B primary",
+  identical(as.character(rec_thin$primary %||% ""), "pb")
+)
+
 if (fail > 0L) {
   cat(fail, " valuation guard check(s) failed.\n", sep = "")
   quit(status = 1L)

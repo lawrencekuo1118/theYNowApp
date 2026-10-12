@@ -468,7 +468,13 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
     mos_calc <- reactive({
       base <- primary_values()$base
       curr_p <- .pick_num(current_price())
-      if (is.na(base) || is.na(curr_p) || base == 0) return(NA_real_)
+      # Near-zero Base (RI clean-surplus residue) must not divide — use shared guard.
+      if (exists("mos_vs_fair_value", mode = "function")) {
+        return(mos_vs_fair_value(base, curr_p))
+      }
+      if (is.na(base) || is.na(curr_p) || !is.finite(base) || abs(base) < 0.01) {
+        return(NA_real_)
+      }
       (base - curr_p) / base
     })
 
@@ -884,29 +890,6 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
         NA_real_
       }
       upside_txt <- if (is.na(upside) || !is.finite(upside)) "—" else sprintf("%+.1f%%", upside)
-      # #region agent log
-      tryCatch({
-        payload <- list(
-          hypothesisId = "B",
-          location = "investment_decision_module.R:ui_valuation_compare",
-          message = "composite valuation numbers",
-          data = list(
-            prim = prim, sec = sec,
-            p_curr = p_curr, bear = bear, base = base, bull = bull,
-            sec_pt = sec_pt, upside = upside,
-            fmt_hardcoded_dollar = FALSE,
-            money_prefix = as.character(px_sym)[1],
-            any_inf = any(vapply(list(p_curr, bear, base, bull, sec_pt), function(x) length(x) && !is.na(x) && !is.finite(x), logical(1))),
-            any_huge = any(vapply(list(p_curr, bear, base, bull, sec_pt), function(x) is.finite(x) && abs(x) > 1e5, logical(1))),
-            base_vs_price = if (is.finite(base) && is.finite(p_curr) && p_curr != 0) base / p_curr else NA_real_
-          ),
-          timestamp = as.numeric(Sys.time()) * 1000,
-          runId = "post-fix"
-        )
-        cat(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null", na = "null"),
-            "\n", file = "/opt/cursor/logs/debug.log", append = TRUE, sep = "")
-      }, error = function(e) NULL)
-      # #endregion
 
       model_colors <- c(
         dcf = "#2980b9", ddm = "#8e44ad", ri = "#16a085",
