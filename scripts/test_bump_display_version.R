@@ -26,6 +26,7 @@ check("v17.01 -> v17.02", identical(ynow_bump_display_label("v17.01"), "v17.02")
 check("v17.94 -> v17.95", identical(ynow_bump_display_label("v17.94"), "v17.95"))
 check("v17.99 -> v18.00", identical(ynow_bump_display_label("v17.99"), "v18.00"))
 check("v17.9 -> v17.91", identical(ynow_bump_display_label("v17.9"), "v17.91"))
+check("major v21.91 -> v22.00", identical(ynow_major_display_label("v21.91"), "v22.00"))
 
 tmp <- tempfile("ynow-bump-")
 dir.create(file.path(tmp, "app_21.0", "www"), recursive = TRUE)

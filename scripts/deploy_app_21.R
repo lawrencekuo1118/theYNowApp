@@ -1,5 +1,6 @@
 #!/usr/bin/env Rscript
-# Deploy app_21.0 → shinyapps.io TheYNowApp
+# Deploy the live app directory (app_22.0) → shinyapps.io TheYNowApp
+# YNOW_VERSION_BUMP_MAJOR=1 ships the next whole version (v21.91 -> v22.00).
 #
 # Credentials (either):
 #   SHINYAPPS_ACCOUNT / SHINYAPPS_TOKEN / SHINYAPPS_SECRET
@@ -45,17 +46,17 @@ if (length(file_arg) == 1L && nzchar(file_arg)) {
 } else {
   root <- normalizePath(getwd(), mustWork = TRUE)
 }
-app_dir <- file.path(root, "app_21.0")
-if (!dir.exists(app_dir) || !file.exists(file.path(app_dir, "app.R"))) {
-  stop("app_21.0/app.R not found under ", root)
+bump_path <- file.path(root, "scripts", "bump_display_version.R")
+if (!file.exists(bump_path)) stop("Missing ", bump_path)
+source(bump_path, local = FALSE)
+app_dir <- ynow_live_app_dir(root)
+if (!file.exists(file.path(app_dir, "app.R"))) {
+  stop("live app.R not found under ", root)
 }
 
 user_args <- commandArgs(trailingOnly = TRUE)
 skip_bump <- "--no-bump" %in% user_args || identical(Sys.getenv("YNOW_SKIP_VERSION_BUMP"), "1")
-bump_path <- file.path(root, "scripts", "bump_display_version.R")
 if (!skip_bump) {
-  if (!file.exists(bump_path)) stop("Missing ", bump_path)
-  source(bump_path, local = FALSE)
   ver <- ynow_prepare_deploy_version(root, commit = TRUE)
   message("Shipping display version ", ver$version)
 } else {

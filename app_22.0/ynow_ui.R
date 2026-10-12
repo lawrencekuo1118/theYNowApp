@@ -3527,6 +3527,11 @@ ui <- dashboardPage(
                icon = icon("flask")
              ),
              menuItem("Decision Checklist", tabName = "decision_checklist", icon = icon("clipboard-check")),
+             menuItem(
+               text = tags$span(id = "ynow_menu_price_alert", "Price Alerts"),
+               tabName = "price_alerts",
+               icon = icon("bell")
+             ),
              menuItem("About", tabName = "about", icon = icon("info-circle"))
              # Snapshot 不放主選單（避免巢狀 li 被瀏覽器抬出隱藏）；改由底部捷徑切換
            ),
@@ -7694,6 +7699,7 @@ ui <- dashboardPage(
               bluechip: s.menu_bluechip,
               hfv: s.menu_hfv,
               decision_checklist: s.menu_decision_checklist,
+              price_alerts: s.menu_price_alert,
               about: s.menu_about
             };
             Object.keys(menu).forEach(function (k) {
@@ -14087,6 +14093,7 @@ ui <- dashboardPage(
       # 決策檢核（投資決策通過檢核表）
       # ==========================================
       decision_checklist_tab_ui(),
+      price_alert_tab_ui(),
 
       # ==========================================
       # Quant Backtest Lab（報告式版面；章節內容後接預設收合之控制區）

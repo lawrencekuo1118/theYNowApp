@@ -635,6 +635,8 @@ server <- function(input, output, session) {
     current_ticker_rv = current_ticker
   )
 
+  price_alert_server(input, output, session, ui_locale_rv = ui_locale)
+
   # 語言控制：只改 UI locale，不碰顯示幣別；手動選擇鎖定後不再套用裝置預設
   observeEvent(input$ui_locale_pick, {
     pick <- normalize_ui_locale(input$ui_locale_pick)

@@ -1,8 +1,8 @@
 #!/usr/bin/env Rscript
-# Display-version bump for the live line (app_21.0).
+# Display-version bump for the live line (app_22.0; app_21.0 remains readable).
 #
-# Each successful deploy_app_21.R run advances the display version by +0.01
-# and ships that version. Folder name stays app_21.0/ until a full +1 cut.
+# Each successful deploy advances the display version by +0.01 and ships that
+# version. Set YNOW_VERSION_BUMP_MAJOR=1 for a full +1 cut (v21.91 -> v22.00).
 #
 #   Rscript scripts/bump_display_version.R --dry-run
 #   Rscript scripts/bump_display_version.R
@@ -41,6 +41,19 @@ ynow_format_display_version <- function(hundredths) {
 
 ynow_bump_display_label <- function(label) {
   ynow_format_display_version(ynow_parse_display_version(label) + 1L)
+}
+
+ynow_major_display_label <- function(label) {
+  major <- ynow_parse_display_version(label) %/% 100L
+  ynow_format_display_version((major + 1L) * 100L)
+}
+
+ynow_live_app_dir <- function(root) {
+  p22 <- file.path(root, "app_22.0")
+  p21 <- file.path(root, "app_21.0")
+  if (file.exists(file.path(p22, "app.R"))) return(p22)
+  if (file.exists(file.path(p21, "ynow_ui.R"))) return(p21)
+  stop("live app directory not found under ", root)
 }
 
 ynow_repo_root_from_script <- function() {
@@ -83,7 +96,7 @@ ynow_write_lines <- function(path, lines) {
 }
 
 ynow_apply_display_version <- function(root, old_label, new_label) {
-  app_dir <- file.path(root, "app_21.0")
+  app_dir <- ynow_live_app_dir(root)
   changed <- character(0)
 
   ui_path <- file.path(app_dir, "ynow_ui.R")
@@ -204,10 +217,15 @@ ynow_record_shipped_version <- function(root, version) {
 }
 
 ynow_prepare_deploy_version <- function(root, commit = TRUE) {
-  app_dir <- file.path(root, "app_21.0")
+  app_dir <- ynow_live_app_dir(root)
   current <- ynow_read_display_version(app_dir)
   baseline <- ynow_read_baseline_version(root)
-  pending <- !is.na(baseline) && nzchar(baseline) && identical(current, ynow_bump_display_label(baseline))
+  step <- if (identical(Sys.getenv("YNOW_VERSION_BUMP_MAJOR"), "1")) {
+    ynow_major_display_label
+  } else {
+    ynow_bump_display_label
+  }
+  pending <- !is.na(baseline) && nzchar(baseline) && identical(current, step(baseline))
   if (pending) {
     message(
       "Display version ", current,
@@ -219,7 +237,7 @@ ynow_prepare_deploy_version <- function(root, commit = TRUE) {
     }
     return(list(version = current, previous = current, bumped = FALSE))
   }
-  new_label <- ynow_bump_display_label(current)
+  new_label <- step(current)
   changed <- ynow_apply_display_version(root, current, new_label)
   message("Display version ", current, " -> ", new_label)
   if (commit && length(changed)) {
@@ -232,10 +250,14 @@ ynow_bump_cli <- function() {
   args <- commandArgs(trailingOnly = TRUE)
   dry <- "--dry-run" %in% args
   root <- ynow_repo_root_from_script()
-  app_dir <- file.path(root, "app_21.0")
+  app_dir <- ynow_live_app_dir(root)
   current <- ynow_read_display_version(app_dir)
   baseline <- ynow_read_baseline_version(root)
-  new_label <- ynow_bump_display_label(current)
+  new_label <- if (identical(Sys.getenv("YNOW_VERSION_BUMP_MAJOR"), "1")) {
+    ynow_major_display_label(current)
+  } else {
+    ynow_bump_display_label(current)
+  }
   message("root: ", root)
   message("current: ", current)
   message("baseline: ", if (is.na(baseline)) "(none)" else baseline)

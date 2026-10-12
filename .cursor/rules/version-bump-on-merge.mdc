@@ -28,8 +28,8 @@ Do **not** invent a second version number; one display version for the live line
 
 ## Folder vs display version
 
-- **Live directory** may stay `app_21.0/` while display shows `v21.01`, `v21.02`, …
-- **Directory rename** (e.g. `app_21.0/` → `app_22.0/`) only when the user requests a full **+1** version cut.
+- **Live directory** is `app_22.0/` while display shows `v22`, `v22.01`, …
+- **Directory rename** (e.g. `app_22.0/` → `app_23.0/`) only when the user requests the next full **+1** version cut. Set `YNOW_VERSION_BUMP_MAJOR=1` on that deploy so the display version becomes `vN.00`.
 - If header/UI and folder naming disagree: **UI/header/version strings bump +0.01 each merge**; **folder stays** until that +1 cut.
 
 ## When to bump
@@ -42,4 +42,4 @@ Do **not** invent a second version number; one display version for the live line
 
 ## Automatic step
 
-Agents do not hand-edit `v21.xx` strings before deploy. The deploy script owns the +0.01 step (`scripts/bump_display_version.R`). Surfaces it rewrites: header / About / Lite copy in `ynow_ui.R`, `report_template.Rmd` `app_version`, the README title line, `www/ynow_build.json`, and a hardcoded header expectation in `tests/test_lite_mode_ui.R` when present. README history sections stay on their original version numbers. The app directory stays `app_21.0/` until the user asks for a full +1 cut.
+Agents do not hand-edit `v22.xx` strings before deploy. The deploy script owns the +0.01 step (`scripts/bump_display_version.R`). Surfaces it rewrites: header / About / Lite copy in `ynow_ui.R`, `report_template.Rmd` `app_version`, the README title line, `www/ynow_build.json`, and a hardcoded header expectation in `tests/test_lite_mode_ui.R` when present. README history sections stay on their original version numbers. The app directory stays `app_22.0/` until the user asks for the next full +1 cut.
