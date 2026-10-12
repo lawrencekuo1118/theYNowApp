@@ -78,6 +78,24 @@ check("UI title-row class", grepl("ynow-lab-im-ind-mcap-title-row", ui, fixed = 
 check("UI refresh button id", grepl("lab_im_refresh_ind_mcap", ui, fixed = TRUE))
 check("UI refresh label id", grepl("ynow_lab_im_refresh_ind_mcap_label", ui, fixed = TRUE))
 check("UI CSS for refresh-ind-mcap", grepl("ynow-lab-im-refresh-ind-mcap", ui, fixed = TRUE))
+check("Refresh ranking button forces white text vs bluechip btn-default", {
+  # Theme .btn-default sets deep blue text; refresh button must win with white.
+  grepl(
+    paste0(
+      "btn.btn-default.ynow-lab-im-refresh-ind-mcap",
+      ".*",
+      "color: #fff !important"
+    ),
+    ui
+  ) && grepl(
+    paste0(
+      "ynow-lab-im-refresh-ind-mcap #ynow_lab_im_refresh_ind_mcap_label",
+      ".*",
+      "color: #fff !important"
+    ),
+    ui
+  )
+})
 check("applyUiLocale wires refresh label",
       grepl("ynow_lab_im_refresh_ind_mcap_label", ui, fixed = TRUE) &&
         grepl("btn_lab_im_refresh_ind_mcap", ui, fixed = TRUE))
