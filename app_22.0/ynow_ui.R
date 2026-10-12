@@ -16,7 +16,7 @@
       return(sub('^"version"\\s*:\\s*"([^"]+)".*$', "\\1", m[[1]]))
     }
   }
-  "v22.04"
+  "v22.05"
 }
 .YNOW_BUILD_VERSION <- .ynow_read_build_version()
 
@@ -229,7 +229,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v22.04) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+          "The YNow App (v22.05) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
         ),
         tags$p(
           class = "ynow-about-method",
@@ -248,7 +248,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v22.04) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
+          "The YNow App (v22.05) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
         ),
         tags$p(
           class = "ynow-about-method",
@@ -350,7 +350,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App（簡化版）")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite（v22.04）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
+          "The YNow App Lite（v22.05）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
           "以自動判別主／副模型與預設參數完成試算，讓使用者先看到合理價區間與產業 KPI，再決定是否回到完整版深入調整。"
         ),
         tags$p(
@@ -367,7 +367,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App (Lite)")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite (v22.04) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
+          "The YNow App Lite (v22.05) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
           "auto-selects primary/secondary models with App defaults, and surfaces fair-value ranges plus industry KPIs before you open Full for deeper calibration."
         ),
         tags$p(
@@ -3410,9 +3410,9 @@ ui <- dashboardPage(
                   'data-ynow-build="', .YNOW_BUILD_VERSION, '" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v22.04</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v22.05</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v22.04</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v22.05</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -5886,6 +5886,38 @@ ui <- dashboardPage(
           margin: 6px 0 0 0;
           line-height: 1.4;
         }
+        /* 側邊欄分頁 Loading：標籤右側動態「…」 */
+        .sidebar-menu a > .ynow-tab-busy-dots {
+          display: none;
+          margin-left: 3px;
+          font-weight: 700;
+          letter-spacing: 0.02em;
+          color: #249C60;
+          vertical-align: baseline;
+          white-space: nowrap;
+        }
+        .sidebar-menu a.ynow-tab-is-busy > .ynow-tab-busy-dots {
+          display: inline;
+        }
+        .sidebar-menu a.ynow-tab-is-busy {
+          font-weight: 600;
+        }
+        .sidebar-menu .ynow-tab-busy-dots > span {
+          display: inline-block;
+          opacity: 0.2;
+          animation: ynow-tab-dot-pulse 1.2s infinite ease-in-out;
+        }
+        .sidebar-menu .ynow-tab-busy-dots > span:nth-child(2) {
+          animation-delay: 0.2s;
+        }
+        .sidebar-menu .ynow-tab-busy-dots > span:nth-child(3) {
+          animation-delay: 0.4s;
+        }
+        @keyframes ynow-tab-dot-pulse {
+          0%, 80%, 100% { opacity: 0.15; }
+          40% { opacity: 1; }
+        }
+
         /* 側邊欄 PDF 下載：換行／縮放，避免長標籤撐破側欄 */
         .ynow-sidebar-download-wrap {
           padding: 6px 10px 10px 10px;
@@ -7425,6 +7457,153 @@ ui <- dashboardPage(
             }
           })();
 
+          /* Sidebar tab label: animated 「…」 while that tab's feature is loading */
+          (function initYnowSidebarTabBusyDots() {
+            var sourcesByTab = {};
+            var shinyArmTimer = null;
+            var shinyTab = null;
+
+            function remapTab(tab) {
+              tab = String(tab || '');
+              if (tab === 'business_breakdown_lab') return 'company_advance';
+              return tab;
+            }
+            function currentTab() {
+              if (typeof window.ynowCurrentSidebarTab === 'function') {
+                try { return remapTab(window.ynowCurrentSidebarTab() || ''); } catch (e0) {}
+              }
+              var active = document.querySelector('.sidebar-menu li.active > a[data-value]');
+              if (active) return remapTab(active.getAttribute('data-value') || '');
+              var pane = document.querySelector('.tab-content > .tab-pane.active');
+              if (pane && pane.id && pane.id.indexOf('shiny-tab-') === 0) {
+                return remapTab(pane.id.slice('shiny-tab-'.length));
+              }
+              return '';
+            }
+            function tabAnchor(tab) {
+              tab = remapTab(tab);
+              if (!tab) return null;
+              return document.querySelector('.main-sidebar .sidebar-menu a[data-value=\"' + tab + '\"]') ||
+                     document.querySelector('.sidebar-menu a[data-value=\"' + tab + '\"]');
+            }
+            function ensureDots(a) {
+              if (!a) return null;
+              var existing = null;
+              for (var i = 0; i < a.children.length; i++) {
+                if (a.children[i].classList && a.children[i].classList.contains('ynow-tab-busy-dots')) {
+                  existing = a.children[i];
+                  break;
+                }
+              }
+              if (existing) return existing;
+              var dots = document.createElement('span');
+              dots.className = 'ynow-tab-busy-dots';
+              dots.setAttribute('aria-hidden', 'true');
+              dots.innerHTML = '<span>.</span><span>.</span><span>.</span>';
+              var before = null;
+              for (var j = 0; j < a.children.length; j++) {
+                var el = a.children[j];
+                if (!el.classList) continue;
+                if (el.classList.contains('ynow-rec-slot') ||
+                    el.classList.contains('pull-right-container') ||
+                    el.classList.contains('fa-angle-left') ||
+                    el.classList.contains('fa-angle-down')) {
+                  before = el;
+                  break;
+                }
+              }
+              if (before) a.insertBefore(dots, before);
+              else a.appendChild(dots);
+              return dots;
+            }
+            function applyVisual(tab) {
+              tab = remapTab(tab);
+              var a = tabAnchor(tab);
+              if (!a) return;
+              var src = sourcesByTab[tab] || {};
+              var busy = Object.keys(src).length > 0;
+              ensureDots(a);
+              a.classList.toggle('ynow-tab-is-busy', busy);
+              var li = a.closest ? a.closest('li') : a.parentElement;
+              if (li && li.classList) li.classList.toggle('ynow-tab-is-busy', busy);
+              if (busy) {
+                try { a.setAttribute('aria-busy', 'true'); } catch (e1) {}
+              } else {
+                try { a.removeAttribute('aria-busy'); } catch (e2) {}
+              }
+            }
+            function setTabBusy(tab, on, source) {
+              tab = remapTab(tab);
+              source = String(source || 'server');
+              if (!tab) return;
+              if (!sourcesByTab[tab]) sourcesByTab[tab] = {};
+              if (on) {
+                sourcesByTab[tab][source] = true;
+              } else {
+                delete sourcesByTab[tab][source];
+                if (!Object.keys(sourcesByTab[tab]).length) delete sourcesByTab[tab];
+              }
+              applyVisual(tab);
+            }
+            function clearSource(source) {
+              Object.keys(sourcesByTab).forEach(function (tab) {
+                if (sourcesByTab[tab] && sourcesByTab[tab][source]) {
+                  delete sourcesByTab[tab][source];
+                  if (!Object.keys(sourcesByTab[tab]).length) delete sourcesByTab[tab];
+                  applyVisual(tab);
+                }
+              });
+            }
+            function hasShinyProgress() {
+              return !!document.querySelector('.shiny-progress, .shiny-progress-container .progress');
+            }
+            function onShinyBusy() {
+              if (shinyArmTimer) clearTimeout(shinyArmTimer);
+              shinyArmTimer = setTimeout(function () {
+                shinyArmTimer = null;
+                /* Avoid flicker on tiny reactive flushes: require progress UI or linger */
+                if (!hasShinyProgress() && !document.body.classList.contains('busy')) {
+                  /* still mark — withProgress usually adds .shiny-progress quickly */
+                }
+                var tab = currentTab();
+                if (!tab) return;
+                shinyTab = tab;
+                setTabBusy(tab, true, 'shiny');
+              }, 220);
+            }
+            function onShinyIdle() {
+              if (shinyArmTimer) {
+                clearTimeout(shinyArmTimer);
+                shinyArmTimer = null;
+              }
+              if (shinyTab) {
+                setTabBusy(shinyTab, false, 'shiny');
+                shinyTab = null;
+              }
+              clearSource('shiny');
+            }
+            function register() {
+              if (!window.Shiny || !Shiny.addCustomMessageHandler) {
+                setTimeout(register, 50);
+                return;
+              }
+              Shiny.addCustomMessageHandler('ynowTabBusy', function (payload) {
+                if (!payload) return;
+                var tab = payload.tab;
+                var busy = payload.busy === true || payload.busy === 'true' || payload.busy === 1;
+                setTabBusy(tab, busy, 'server');
+              });
+              if (window.jQuery) {
+                jQuery(document).on('shiny:busy', onShinyBusy);
+                jQuery(document).on('shiny:idle', onShinyIdle);
+              } else {
+                setTimeout(register, 50);
+              }
+            }
+            register();
+            window.ynowSetSidebarTabBusy = setTabBusy;
+          })();
+
           /* Deploy refresh: poll ynow_build.json; never auto-reload.
              When a newer version is live, user must click The YNow App title to refresh. */
           (function initYnowDeployRefresh() {
@@ -8945,6 +9124,7 @@ ui <- dashboardPage(
               }
             }
             window.ynowGotoTab = gotoTab;
+            window.ynowCurrentSidebarTab = currentSidebarTab;
             function bindModelSelectorJump() {
               if (document.documentElement.getAttribute('data-ynow-ms-jump') === '1') return;
               document.documentElement.setAttribute('data-ynow-ms-jump', '1');

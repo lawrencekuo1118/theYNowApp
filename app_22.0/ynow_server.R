@@ -6,6 +6,30 @@ server <- function(input, output, session) {
   # iOS Safari drops the websocket during a long Lab Search; reconnect in-session
   # instead of forcing the user onto the gray "Disconnected / Reload" overlay.
   tryCatch(session$allowReconnect("force"), error = function(e) NULL)
+
+  # Sidebar tab label busy dots (JS `ynowTabBusy` → animated 「…」 on menu item)
+  .ynow_set_tab_busy <- function(tab, busy = TRUE) {
+    tab <- as.character(tab %||% "")[1]
+    if (!nzchar(tab) || is.na(tab)) return(invisible(FALSE))
+    tryCatch(
+      session$sendCustomMessage(
+        "ynowTabBusy",
+        list(tab = tab, busy = isTRUE(busy), ts = as.numeric(Sys.time()))
+      ),
+      error = function(e) NULL
+    )
+    invisible(TRUE)
+  }
+  .ynow_busy_tab_now <- function(fallback = "dashboard") {
+    tab <- tryCatch(
+      as.character(isolate(input$sidebar_tabs) %||% "")[1],
+      error = function(e) ""
+    )
+    if (!nzchar(tab) || is.na(tab)) {
+      tab <- as.character(fallback %||% "dashboard")[1]
+    }
+    tab
+  }
   
   # ==========================================
   # 🗄️ 全域資料容器 (儲存爬蟲結果與跨模組變數)
@@ -111,6 +135,10 @@ server <- function(input, output, session) {
   # Pulse + busy flag: Search Blue Chips button and Blue Chip Leaderboard tab share one runner.
   lab_im_run_pulse <- reactiveVal(0L)
   lab_im_eval_busy <- reactiveVal(FALSE)
+  # Mirror Blue Chip eval busy onto sidebar 「績優股排行榜」label dots
+  observe({
+    .ynow_set_tab_busy("bluechip", isTRUE(lab_im_eval_busy()))
+  })
   # Industry-chain mcap rank: bundled/default snapshot; refreshed by「更新排名」
   lab_im_ind_mcap_snap <- reactiveVal({
     tryCatch(
@@ -924,6 +952,9 @@ server <- function(input, output, session) {
       .tw_two_fallback_tried_for(NA_character_)
     }
     
+    busy_tab <- .ynow_busy_tab_now("dashboard")
+    .ynow_set_tab_busy(busy_tab, TRUE)
+    on.exit(tryCatch(.ynow_set_tab_busy(busy_tab, FALSE), error = function(e) NULL), add = TRUE)
     withProgress(message = paste(
       '🚀 正在取得', display_ticker_for_market(stock_code, market_mode()), '的最新資料...'
     ), value = 0, {
@@ -10127,6 +10158,8 @@ server <- function(input, output, session) {
     bt_hfv_fv(NULL)
     bt_fv_visible(FALSE)
     bt_run_msg("V12 回測計算中（PIT 多模型重建）…")
+    .ynow_set_tab_busy("hfv", TRUE)
+    on.exit(tryCatch(.ynow_set_tab_busy("hfv", FALSE), error = function(e) NULL), add = TRUE)
     tryCatch({
       if (is.null(d_income_statement()) || is.null(d_cash_flow()) || is.null(d_balance_sheet())) {
         stop("請先在 Dashboard 搜尋並載入該公司財報")
@@ -14251,6 +14284,8 @@ server <- function(input, output, session) {
       isolate(input$lab_im_pool_rank %||% "mcap")
     )
 
+    .ynow_set_tab_busy("lab_notes", TRUE)
+    on.exit(tryCatch(.ynow_set_tab_busy("lab_notes", FALSE), error = function(e) NULL), add = TRUE)
     result <- withProgress(
       message = if (identical(normalize_ui_locale(loc), "zh-TW")) {
         "分群中（擷取比率特徵 → K-Means）…"
