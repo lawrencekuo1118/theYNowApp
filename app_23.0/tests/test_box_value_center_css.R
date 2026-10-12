@@ -37,5 +37,11 @@ check("header kpi mobile 1:1:1", grepl("LAST PRICE / MARKET CAP / EPS (TTM) åŒå
         grepl('ynow-header-kpi-row > [class*="col-"]', ui, fixed = TRUE) &&
         grepl("33.333%", ui, fixed = TRUE))
 check("mobile full-width excludes header kpi row", grepl("row:not(.ynow-header-kpi-row)", ui, fixed = TRUE))
+# Focus KPI alert bell: inner top-right of gold frame + thicker pulsing border
+check("kpi-grid alertable bell inset", grepl(".ynow-kpi-grid .ynow-alertable .ynow-alert-bell", ui, fixed = TRUE) &&
+        grepl("z-index: 5", ui, fixed = TRUE))
+check("kpi-grid alertable col safety", grepl(".ynow-kpi-grid .ynow-alertable > [class*='col-']", ui, fixed = TRUE))
+check("focus gold pulse animation", grepl("@keyframes ynow-focus-gold-pulse", ui, fixed = TRUE) &&
+        grepl("border: 3px solid var(--ynow-gold", ui, fixed = TRUE))
 if (fail > 0L) quit(status = 1L)
 cat("ALL PASS\n")

@@ -10273,11 +10273,23 @@ ui <- dashboardPage(
         .ynow-focus-metric-swatch--legend {
           margin: 0 6px 0 0;
         }
+        /* Focus KPI gold frame: thicker + pulse (do not reuse title gold-shine) */
+        @keyframes ynow-focus-gold-pulse {
+          0%, 100% {
+            border-color: var(--ynow-gold, #F5C518);
+            box-shadow: 0 0 0 1px rgba(201, 162, 39, 0.28), 0 0 0 0 rgba(245, 197, 24, 0);
+          }
+          50% {
+            border-color: var(--ynow-gold-deep, #C9A227);
+            box-shadow: 0 0 0 2px rgba(201, 162, 39, 0.55), 0 0 10px 1px rgba(245, 197, 24, 0.38);
+          }
+        }
         .content-wrapper .small-box.ynow-focus-metric-box,
         .tab-content .small-box.ynow-focus-metric-box,
         .ynow-fs-card.ynow-focus-metric-box {
-          border: 2px solid var(--ynow-gold, #F5C518) !important;
+          border: 3px solid var(--ynow-gold, #F5C518) !important;
           box-shadow: 0 0 0 1px rgba(201, 162, 39, 0.28);
+          animation: ynow-focus-gold-pulse 1.6s ease-in-out infinite;
         }
         .ynow-fs-card.ynow-focus-metric-box {
           border-radius: 6px;
@@ -10558,6 +10570,25 @@ ui <- dashboardPage(
           top: 9px !important;
           right: 9px !important;
           opacity: 0.12 !important;
+        }
+        /* Focus KPI value-alert: bell inside gold frame (alertable wraps .small-box) */
+        .ynow-kpi-grid .ynow-alertable {
+          position: relative;
+          display: block;
+          width: 100%;
+        }
+        .ynow-kpi-grid .ynow-alertable > [class*='col-'] {
+          width: 100% !important;
+          max-width: 100% !important;
+          float: none !important;
+          padding-left: 0 !important;
+          padding-right: 0 !important;
+          box-sizing: border-box;
+        }
+        .ynow-kpi-grid .ynow-alertable .ynow-alert-bell {
+          top: 8px;
+          right: 8px;
+          z-index: 5;
         }
         .ynow-kpi-section-title {
           font-size: 13px;

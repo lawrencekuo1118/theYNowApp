@@ -209,7 +209,19 @@ check("single logo-flow keyframes", length(kf) == 1L && kf[[1]] > 0)
 check("badge flow override not second animation", grepl(".ynow-fund-profile-badge .ynow-htcdi-flow", ui_txt, fixed = TRUE))
 check("Rf still excluded from flow", grepl(".ynow-macro-kpi--rf .ynow-htcdi-flow", ui_txt, fixed = TRUE))
 check("CSS gold border on focus KPI", grepl(".small-box.ynow-focus-metric-box", ui_txt, fixed = TRUE))
+check("CSS focus gold thicker border", grepl("border: 3px solid var(--ynow-gold", ui_txt, fixed = TRUE))
+check("CSS focus gold pulse keyframes", grepl("@keyframes ynow-focus-gold-pulse", ui_txt, fixed = TRUE) &&
+        grepl("animation: ynow-focus-gold-pulse", ui_txt, fixed = TRUE))
 check("legend uses border swatch", grepl("ynow-focus-metric-swatch", ui_txt, fixed = TRUE))
+# width=NULL returns bare .small-box (no Bootstrap col wrapper)
+box_null <- kpi_band_value_box("12%", "毛利率", "none", width = NULL, mark_focus = TRUE)
+box_null_html <- as.character(box_null)
+check("width=NULL focus is bare small-box", grepl("small-box", box_null_html, fixed = TRUE) &&
+        !grepl("col-sm-", box_null_html, fixed = TRUE))
+check("kpi_module passes width=NULL", {
+  km <- paste(readLines(file.path(app_dir, "kpi_module.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("width = NULL", km, fixed = TRUE) && grepl("\\.unwrap_kpi_box", km)
+})
 
 for (fn in c("fundamental_profile.R", "ynow_ui.R", "ynow_server.R", "lab_clustering.R")) {
   parsed <- tryCatch({

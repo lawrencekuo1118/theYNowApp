@@ -852,11 +852,13 @@ kpi_band_value_box <- function(value, subtitle, color, icon = NULL, width = 4,
       div(class = "inner", h3(value), p(subtitle)),
       if (!is.null(icon)) div(class = "icon-large", icon)
     )
-    return(div(class = if (!is.null(width)) paste0("col-sm-", width), box_content))
+    # width=NULL → bare .small-box (so ynow_alertable wraps the box, not a col-*)
+    if (is.null(width)) return(box_content)
+    return(div(class = paste0("col-sm-", width), box_content))
   }
   box <- valueBox(value = value, subtitle = subtitle, icon = icon, color = color, width = width)
   if (!isTRUE(mark_focus)) return(box)
-  # shinydashboard valueBox: col-sm-* > .small-box
+  # shinydashboard valueBox: col-sm-* > .small-box  (or bare wrapper when width=NULL)
   tryCatch({
     if (inherits(box, "shiny.tag") && length(box$children) >= 1L) {
       child <- box$children[[1]]
