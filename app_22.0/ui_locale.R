@@ -870,7 +870,12 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_quality_ago_day = "{n} days ago",
     lab_im_quality_progress = "Updating quality snapshot…",
     lab_im_quality_done = "Quality snapshot updated: recomputed {run}, kept {skip} (within 24 hours).",
-    lab_im_quality_busy = "A Blue Chip evaluation or quality update is already running.",
+    lab_im_quality_busy = paste0(
+      "A Blue Chip evaluation or universe quality update is already running ",
+      "(Clustering and HFV can still run in parallel)."
+    ),
+    lab_cluster_busy = "Clustering already running…",
+    lab_im_async_started = "Blue Chip evaluation started in the background…",
     bluechip_blurb_tw = paste0(
       "Screen Taiwan blue-chip candidates from TWSE / TPEx / ESB public listings ",
       "(Listing board multi-select; default TWSE + TPEx; ESB is optional because liquidity and Yahoo coverage are less stable). ",
@@ -3786,7 +3791,12 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_quality_ago_day = "{n} 天前",
     lab_im_quality_progress = "正在更新品質快照…",
     lab_im_quality_done = "品質快照已更新：重算 {run} 檔，沿用 {skip} 檔（24 小時內）。",
-    lab_im_quality_busy = "績優評估或品質更新正在進行。",
+    lab_im_quality_busy = paste0(
+      "績優評估或名單品質更新正在進行",
+      "（分群分析與 HFV 仍可同時運算）。"
+    ),
+    lab_cluster_busy = "分群分析進行中…",
+    lab_im_async_started = "績優評估已在背景開始…",
     bluechip_blurb_tw = paste0(
       "依據臺灣證券交易所與櫃買中心公開名單，篩選台股績優候選標的（板別可複選上市／上櫃／興櫃；預設上市＋上櫃；興櫃因流動性與 Yahoo 資料覆蓋相對不穩，需勾選才納入）。",
       "「搜尋績優股」先依產業與適用評價模型篩選，再以候選截斷邏輯取較大評估池後評分，",

@@ -1916,6 +1916,123 @@ lab_screen_tickers_fscore <- function(tickers, progress_cb = NULL, max_n = Inf,
   do.call(rbind, rows)
 }
 
+#' Pure Blue Chip evaluation job for ExtendedTask / future workers.
+#' All inputs are plain R objects (no reactives / session). Returns a list with
+#' `scores`, optional `pool_note` (character), and meta fields for UI copy.
+lab_im_run_eval_job <- function(catlg,
+                                method_filter = NULL,
+                                industry_filter = NULL,
+                                include_adr = TRUE,
+                                display_n = 25L,
+                                eval_n = 25L,
+                                rank_mode = "mcap",
+                                concept_keys = NULL,
+                                market_mode = "US",
+                                locale = "zh-TW") {
+  mm <- tryCatch(normalize_market_mode(market_mode), error = function(e) "US")
+  tryCatch(set_market_mode(mm), error = function(e) NULL)
+  loc <- tryCatch(normalize_ui_locale(locale), error = function(e) "zh-TW")
+  if (!is.data.frame(catlg) || nrow(catlg) < 1L) {
+    return(list(ok = FALSE, reason = "empty_catalog", scores = NULL))
+  }
+  pool <- lab_merge_catalog_scores(
+    catlg,
+    scores = NULL,
+    method_filter = method_filter,
+    industry_filter = industry_filter,
+    eq_only = FALSE,
+    gate_only = FALSE
+  )
+  pool <- lab_dedupe_eval_pool(pool)
+  if (!identical(mm, "TW") && exists("lab_filter_pool_adr", mode = "function")) {
+    pool <- lab_filter_pool_adr(pool, include_adr = isTRUE(include_adr))
+  }
+  if (is.null(pool) || !is.data.frame(pool) || nrow(pool) < 1L) {
+    return(list(ok = FALSE, reason = "no_candidates", scores = NULL))
+  }
+  display_n <- suppressWarnings(as.integer(display_n)[1])
+  eval_n <- suppressWarnings(as.integer(eval_n)[1])
+  if (!is.finite(eval_n) || eval_n < 1L) eval_n <- display_n
+  rank_mode <- lab_normalize_pool_rank_mode(rank_mode %||% "mcap")
+  n_raw <- nrow(pool)
+  if (is.finite(eval_n) && n_raw > eval_n) {
+    if (identical(rank_mode, "mcap") || identical(rank_mode, "concept")) {
+      pool <- lab_attach_market_caps(pool)
+    }
+  }
+  pool <- lab_select_eval_pool(
+    pool,
+    max_n = eval_n,
+    mode = rank_mode,
+    concept_keys = concept_keys,
+    market_mode = mm,
+    seed = as.integer(Sys.time())
+  )
+  n_filtered <- as.integer(attr(pool, "n_filtered") %||% nrow(pool))
+  used_mcap <- isTRUE(attr(pool, "used_market_cap"))
+  mode_used <- as.character(attr(pool, "pool_rank_mode") %||% rank_mode)[1]
+  note <- as.character(attr(pool, "pool_rank_note") %||% "")[1]
+  if (nrow(pool) < 1L) {
+    return(list(ok = FALSE, reason = "no_candidates_ind_model", scores = NULL))
+  }
+  pool_note <- NULL
+  if (is.finite(eval_n) && n_filtered > nrow(pool)) {
+    how <- switch(
+      mode_used,
+      ret_1y = tryCatch(ui_str("lab_im_rank_how_ret_1y", loc), error = function(e) "by 1Y return"),
+      random = tryCatch(ui_str("lab_im_rank_how_random", loc), error = function(e) "random"),
+      concept = tryCatch(ui_str("lab_im_rank_how_concept", loc), error = function(e) "by concept"),
+      if (used_mcap) {
+        tryCatch(ui_str("lab_im_rank_how_mcap", loc), error = function(e) "by market cap")
+      } else {
+        tryCatch(ui_str("lab_im_rank_how_mcap_fallback", loc), error = function(e) "by market cap")
+      }
+    )
+    if (grepl("fallback_mcap", note, fixed = TRUE)) {
+      how <- paste0(
+        how,
+        tryCatch(ui_str("lab_im_rank_how_concept_fallback", loc), error = function(e) "")
+      )
+    }
+    adr_note <- if (!identical(mm, "TW") && !isTRUE(include_adr)) {
+      tryCatch(ui_str("lab_im_rank_adr_excluded", loc), error = function(e) "")
+    } else {
+      ""
+    }
+    disp_note <- if (is.finite(display_n) && is.finite(eval_n) && eval_n > display_n) {
+      tryCatch(
+        .ynow_fmt_str(ui_str("lab_im_rank_disp_note", loc), n = display_n),
+        error = function(e) ""
+      )
+    } else {
+      ""
+    }
+    pool_note <- tryCatch(
+      .ynow_fmt_str(
+        ui_str("lab_im_rank_pool_note", loc),
+        n_filtered = n_filtered, how = how, n_eval = nrow(pool),
+        adr = adr_note, disp = disp_note
+      ),
+      error = function(e) NULL
+    )
+  }
+  cols <- intersect(c("ticker", "industry_key", "primary"), names(pool))
+  scores <- lab_screen_tickers_fscore(
+    pool[, cols, drop = FALSE],
+    max_n = eval_n,
+    progress_cb = NULL
+  )
+  list(
+    ok = is.data.frame(scores) && nrow(scores) > 0L,
+    reason = if (is.data.frame(scores) && nrow(scores) > 0L) "ok" else "empty_scores",
+    scores = scores,
+    pool_note = pool_note,
+    display_n = display_n,
+    market_mode = mm,
+    locale = loc
+  )
+}
+
 #' Query-filter keys → row hit. `book` matches primary/secondary P/B.
 #' Enterprise / earnings / revenue match the industry Multiples reference family.
 #' Legacy `pb` and `multiples` still match.

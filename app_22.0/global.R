@@ -2,6 +2,13 @@
 # global.R - 初始化與環境設定（app_21.0）
 # ==========================================
 
+# Optional writable lib (Cloud Agent / local) so future etc. resolve before p_load.
+.ynow_extra_lib <- file.path("..", ".R", "library")
+if (!dir.exists(.ynow_extra_lib)) .ynow_extra_lib <- file.path(".R", "library")
+if (dir.exists(.ynow_extra_lib)) {
+  .libPaths(c(normalizePath(.ynow_extra_lib, mustWork = FALSE), .libPaths()))
+}
+
 # 🐍 Python：本機可選 .ynow_venv；雲端延遲以 py_require / uv 安裝（Listen 之後）
 Sys.setenv(RETICULATE_PYTHON = "")
 env_dir <- "./.ynow_venv"
@@ -60,7 +67,10 @@ pacman::p_load(
   shiny, shinydashboard, shinyjs, shinycustomloader, shinyWidgets, shinyBS, shinycssloaders,
 
   # 5. 效能優化與快取 (Performance & Cache)
-  memoise, cachem, TTR
+  memoise, cachem, TTR,
+
+  # 6. 非阻塞並行任務 (ExtendedTask / future_promise — ≥2 features concurrent)
+  future, promises, later, callr
 )
 
 # jsonlite masks shiny::validate after p_load order; restore Shiny's for need()/render*
@@ -190,4 +200,6 @@ source("default_config.R", local = TRUE, encoding = "UTF-8")
 source("param_audit.R", local = TRUE, encoding = "UTF-8")
 source("lab_industry_method.R", local = TRUE, encoding = "UTF-8")
 source("lab_clustering.R", local = TRUE, encoding = "UTF-8")
+source("async_jobs.R", local = TRUE, encoding = "UTF-8")
+tryCatch(.ynow_async_init(), error = function(e) NULL)
 # debug_lab.R is not sourced here; set YNOW_DEBUG=1 and source it locally if needed.

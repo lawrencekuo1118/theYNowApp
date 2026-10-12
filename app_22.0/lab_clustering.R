@@ -1092,6 +1092,221 @@ lab_run_stock_clustering <- function(df_financials, k_clusters = 3L,
   )
 }
 
+#' Pure clustering job for ExtendedTask / future workers (no Shiny session).
+#' Returns list(ok, result, notes, errors, warnings) for the main session to notify.
+lab_cluster_run_job <- function(catlg,
+                                industry_filter = NULL,
+                                method_filter = NULL,
+                                max_n = 25L,
+                                max_n_label = NULL,
+                                session_ticker = "",
+                                focus_ticker = "",
+                                rank_mode = "mcap",
+                                concept_keys = NULL,
+                                market_mode = "US",
+                                include_adr = TRUE,
+                                k = 3L,
+                                locale = "en") {
+  loc <- tryCatch(normalize_ui_locale(locale), error = function(e) "en")
+  mm <- tryCatch(normalize_market_mode(market_mode), error = function(e) "US")
+  tryCatch(set_market_mode(mm), error = function(e) NULL)
+  notes <- character(0)
+  warnings <- character(0)
+  errors <- character(0)
+  k <- suppressWarnings(as.integer(k)[1])
+  if (!is.finite(k)) k <- 3L
+  k <- max(2L, min(8L, k))
+  if (!is.data.frame(catlg) || nrow(catlg) < 1L) {
+    return(list(ok = FALSE, result = NULL, notes = notes, warnings = warnings,
+                errors = "empty_catalog"))
+  }
+  session_tk <- toupper(trimws(as.character(session_ticker %||% "")[1]))
+  focus_tk <- toupper(trimws(as.character(focus_ticker %||% "")[1]))
+  if (is.na(session_tk)) session_tk <- ""
+  if (is.na(focus_tk)) focus_tk <- ""
+  ensure_tks <- unique(c(session_tk, focus_tk))
+  ensure_tks <- ensure_tks[nzchar(ensure_tks)]
+  rank_mode_run <- lab_normalize_pool_rank_mode(rank_mode %||% "mcap")
+  pool <- tryCatch(
+    lab_cluster_build_pool(
+      catlg,
+      industry_filter = industry_filter,
+      method_filter = method_filter,
+      max_n = max_n,
+      ensure_ticker = ensure_tks,
+      rank_mode = rank_mode_run,
+      concept_keys = concept_keys,
+      market_mode = mm,
+      include_adr = if (identical(mm, "TW")) TRUE else isTRUE(include_adr)
+    ),
+    error = function(e) {
+      errors <<- c(errors, paste("Cluster pool failed:", conditionMessage(e)))
+      NULL
+    }
+  )
+  if (is.null(pool) || nrow(pool) < k) {
+    warnings <- c(warnings, sprintf(
+      "Need at least %d tickers in the pool (got %d).",
+      k, if (is.null(pool)) 0L else nrow(pool)
+    ))
+    return(list(ok = FALSE, result = NULL, notes = notes, warnings = warnings,
+                errors = errors))
+  }
+  mode_used <- as.character(attr(pool, "pool_rank_mode") %||% rank_mode_run)[1]
+  pool_ord <- as.character(pool$ticker)
+  n_filtered <- suppressWarnings(as.integer(attr(pool, "n_filtered") %||% nrow(pool))[1])
+  if (is.finite(n_filtered) && n_filtered > nrow(pool)) {
+    how <- switch(
+      mode_used,
+      ret_1y = if (identical(loc, "zh-TW")) "依近一年股價漲幅" else "by 1Y price return",
+      random = if (identical(loc, "zh-TW")) "系統隨機" else "system random",
+      concept = if (identical(loc, "zh-TW")) {
+        "所選概念股（必要時再依市值）"
+      } else {
+        "selected concept groups (mcap within if needed)"
+      },
+      if (identical(loc, "zh-TW")) "依市值由大到小" else "by market cap (largest first)"
+    )
+    lbl <- as.character(max_n_label %||% max_n)[1]
+    notes <- c(notes, if (identical(loc, "zh-TW")) {
+      paste0(
+        "篩選後 ", n_filtered, " 檔，", how, "分群宇宙 ", nrow(pool),
+        " 檔（所選 N＝", lbl, "）。"
+      )
+    } else {
+      paste0(
+        "After filters: ", n_filtered, " names; clustering universe ",
+        nrow(pool), " via ", how, " (selected N=", lbl, ")."
+      )
+    })
+  }
+  feats <- tryCatch(
+    lab_fetch_cluster_features(pool$ticker),
+    error = function(e) {
+      errors <<- c(errors, paste("Feature fetch failed:", conditionMessage(e)))
+      NULL
+    }
+  )
+  feats <- lab_cluster_ensure_ticker_in_features(feats, ensure_tks)
+  if (length(ensure_tks) && exists("lab_cluster_priority_refill_features", mode = "function")) {
+    for (ens_tk in ensure_tks) {
+      feats <- tryCatch(
+        lab_cluster_priority_refill_features(feats, ens_tk),
+        error = function(e) feats
+      )
+    }
+  }
+  if (!is.null(feats) && is.data.frame(feats) && nrow(feats) > 0L) {
+    hit <- match(
+      toupper(trimws(as.character(feats$ticker))),
+      toupper(trimws(as.character(pool$ticker)))
+    )
+    if ("market_cap" %in% names(pool)) {
+      pool_mcap <- suppressWarnings(as.numeric(pool$market_cap[hit]))
+      if (!"market_cap" %in% names(feats)) {
+        feats$market_cap <- pool_mcap
+      } else {
+        fm <- suppressWarnings(as.numeric(feats$market_cap))
+        miss <- !is.finite(fm) | fm <= 0
+        feats$market_cap[miss] <- pool_mcap[miss]
+      }
+    }
+    if ("ret_1y" %in% names(pool)) {
+      feats$ret_1y <- suppressWarnings(as.numeric(pool$ret_1y[hit]))
+    }
+  }
+  n_usable <- lab_cluster_usable_feature_rows(feats)
+  if (is.null(feats) || n_usable < 2L) {
+    if (!is.null(feats)) {
+      warnings <- c(warnings, sprintf(
+        "Too few usable feature rows (got %d; need ≥ 2).", n_usable
+      ))
+    }
+    return(list(ok = FALSE, result = NULL, notes = notes, warnings = warnings,
+                errors = errors))
+  }
+  k_eff <- k
+  if (n_usable < k_eff) {
+    k_eff <- max(2L, as.integer(n_usable))
+    warnings <- c(warnings, sprintf(
+      "%s (k=%d → %d; usable=%d)",
+      tryCatch(ui_str("lab_cluster_partial_k", loc), error = function(e) "Lowered k"),
+      k, k_eff, n_usable
+    ))
+  }
+  if (isTRUE(attr(feats, "used_snapshot"))) {
+    notes <- c(notes, tryCatch(
+      ui_str("lab_cluster_snapshot_note", loc),
+      error = function(e) {
+        "Using bundled offline feature snapshot (Yahoo live ratios unavailable or incomplete)."
+      }
+    ))
+  }
+  if ("industry_key" %in% names(pool)) {
+    feats$industry_key <- pool$industry_key[match(feats$ticker, pool$ticker)]
+  }
+  clustered <- tryCatch(
+    lab_run_stock_clustering(
+      feats, k_clusters = k_eff, locale = loc,
+      ensure_ticker = ensure_tks
+    ),
+    error = function(e) {
+      errors <<- c(errors, paste("Clustering failed:", conditionMessage(e)))
+      NULL
+    }
+  )
+  if (is.null(clustered) || is.null(clustered$data) || nrow(clustered$data) == 0L) {
+    return(list(ok = FALSE, result = NULL, notes = notes, warnings = warnings,
+                errors = errors))
+  }
+  if ("ret_1y" %in% names(feats) && !"ret_1y" %in% names(clustered$data)) {
+    clustered$data$ret_1y <- feats$ret_1y[
+      match(
+        toupper(trimws(as.character(clustered$data$ticker))),
+        toupper(trimws(as.character(feats$ticker)))
+      )
+    ]
+  }
+  if ("market_cap" %in% names(feats)) {
+    if (!"market_cap" %in% names(clustered$data)) {
+      clustered$data$market_cap <- feats$market_cap[
+        match(
+          toupper(trimws(as.character(clustered$data$ticker))),
+          toupper(trimws(as.character(feats$ticker)))
+        )
+      ]
+    } else {
+      cm <- suppressWarnings(as.numeric(clustered$data$market_cap))
+      miss <- !is.finite(cm) | cm <= 0
+      if (any(miss)) {
+        clustered$data$market_cap[miss] <- feats$market_cap[
+          match(
+            toupper(trimws(as.character(clustered$data$ticker[miss]))),
+            toupper(trimws(as.character(feats$ticker)))
+          )
+        ]
+      }
+    }
+  }
+  pin_tk <- if (nzchar(session_tk)) session_tk else focus_tk
+  clustered$data <- lab_cluster_order_by_truncate(
+    clustered$data,
+    rank_mode = mode_used,
+    pin_ticker = pin_tk,
+    pool_ticker_order = pool_ord
+  )
+  clustered$pool_rank_mode <- mode_used
+  clustered$n <- nrow(clustered$data)
+  list(
+    ok = TRUE,
+    result = clustered,
+    notes = notes,
+    warnings = warnings,
+    errors = errors,
+    locale = loc
+  )
+}
+
 #' Pick same-cluster peers for radar (exclude focus; prefer closest in feature space)
 lab_cluster_radar_peers <- function(result, focus_ticker, n_peers = 3L) {
   df <- result$data
