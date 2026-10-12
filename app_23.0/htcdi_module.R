@@ -157,27 +157,23 @@ htcdi_kpi_box <- function(result, lite = FALSE, locale = "en", ns = NULL, select
   alert_txt <- if (isTRUE(loading)) .htcdi_ui("htcdi_loading", locale) else alert
   cls <- c("ynow-macro-kpi", "ynow-macro-kpi--htcdi", htcdi_alert_class(alert))
   extra <- NULL
-  if (!isTRUE(lite)) {
-    cls <- c(cls, "ynow-macro-kpi--clickable")
-    if (isTRUE(selected)) cls <- c(cls, "ynow-macro-kpi--selected")
-    click_id <- if (!is.null(ns) && is.function(ns)) ns("htcdi_click") else "macro-htcdi_click"
-    extra <- list(
-      role = "button", tabindex = "0",
-      onclick = sprintf(
-        paste0(
-          "if (document.body && document.body.classList.contains('ynow-lite')) return; ",
-          "if (window.Shiny && Shiny.setInputValue) {",
-          " Shiny.setInputValue('%s', Date.now(), {priority: 'event'}); }"
-        ), click_id
-      )
+  # Lite and Full: HTCDI box expands the four-index panel (board KPIs stay Full-only).
+  cls <- c(cls, "ynow-macro-kpi--clickable")
+  if (isTRUE(selected)) cls <- c(cls, "ynow-macro-kpi--selected")
+  click_id <- if (!is.null(ns) && is.function(ns)) ns("htcdi_click") else "macro-htcdi_click"
+  extra <- list(
+    role = "button", tabindex = "0",
+    onclick = sprintf(
+      paste0(
+        "if (window.Shiny && Shiny.setInputValue) {",
+        " Shiny.setInputValue('%s', Date.now(), {priority: 'event'}); }"
+      ), click_id
     )
-  }
+  )
   hint <- if (isTRUE(loading)) {
     .htcdi_ui("htcdi_loading", locale)
   } else if (isTRUE(unavailable)) {
     .htcdi_ui("htcdi_unavailable", locale)
-  } else if (isTRUE(lite)) {
-    .htcdi_ui("htcdi_disclosure_short", locale)
   } else {
     .htcdi_ui("htcdi_click_hint", locale)
   }

@@ -544,7 +544,8 @@ check("locale wires index hint", grepl("ynow_macro_index_hint", ui_css, fixed = 
 check("HTCDI box on Rf row", grepl("ynow-macro-kpi--htcdi", txt, fixed = TRUE))
 check("YNOW KPI on Rf row", grepl("ynow-macro-kpi--ynow", txt, fixed = TRUE) &&
   grepl(".own_index_kpi_card", txt, fixed = TRUE))
-check("HTCDI expand Full-only", grepl("ynow-macro-htcdi-expand ynow-full-only", txt, fixed = TRUE))
+check("HTCDI expand available in Lite", grepl("ynow-macro-htcdi-expand", txt, fixed = TRUE) &&
+  !grepl("ynow-macro-htcdi-expand ynow-full-only", txt, fixed = TRUE))
 check("HTCDI expand below Rf row", {
   pos_rf <- regexpr("rf_signal_row", txt, fixed = TRUE)[1]
   pos_ex <- regexpr("ynow_macro_htcdi_expand", txt, fixed = TRUE)[1]
@@ -554,7 +555,8 @@ check("RF:YNOW:HTCDI 2:1:1 widths", grepl("width = 6, class = \"col-xs-12 col-sm
   grepl("width = 3, class = \"col-xs-12 col-sm-3 col-md-3\"", txt, fixed = TRUE) &&
   grepl("rf_col, ynow_col, htcdi_col", txt, fixed = TRUE))
 check("TW NDC on next row", grepl("ynow-macro-ndc-row", txt, fixed = TRUE))
-check("lite CSS hides HTCDI expand", grepl("body.ynow-lite #ynow_macro_htcdi_expand", ui_css, fixed = TRUE))
+check("lite CSS allows HTCDI expand", !grepl("body.ynow-lite #ynow_macro_htcdi_expand", ui_css, fixed = TRUE) &&
+  grepl(":not(.ynow-macro-kpi--htcdi)", ui_css, fixed = TRUE))
 check("en HTCDI title", identical(ui_str("htcdi_title", "en"), "HTCDI"))
 check("zh HTCDI title Chinese display", identical(ui_str("htcdi_title", "zh-TW"), "人類科技文明毀滅指數"))
 check("zh HTCDI full includes ticker", identical(ui_str("htcdi_title_full", "zh-TW"), "人類科技文明毀滅指數（HTCDI）"))

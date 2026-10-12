@@ -550,7 +550,7 @@ macro_market_ui <- function(id = "macro") {
     tags$p(
       id = "ynow_macro_ynow_index_hint",
       class = "ynow-macro-hint ynow-lite-only",
-      "Click YNOW / TYNOW to expand or collapse its chart and constituents."
+      "Click YNOW / TYNOW or HTCDI to expand or collapse details."
     ),
     uiOutput(ns("rf_signal_row")),
     # Shared expand slot for ^GSPC / boards and YNOW／TYNOW (same card style).
@@ -560,9 +560,10 @@ macro_market_ui <- function(id = "macro") {
       class = "ynow-macro-index-hist",
       uiOutput(ns("index_hist_panel"))
     ),
+    # HTCDI expand panel: available in Lite and Full (not Full-gated).
     tags$div(
       id = "ynow_macro_htcdi_expand",
-      class = "ynow-macro-htcdi-expand ynow-full-only",
+      class = "ynow-macro-htcdi-expand",
       uiOutput(ns("htcdi_expand_panel"))
     ),
     tags$section(
@@ -745,7 +746,6 @@ macro_market_server <- function(id = "macro",
       refresh_token(isolate(refresh_token()) + 1L)
     }, ignoreInit = TRUE)
     observeEvent(input$htcdi_click, {
-      if (.is_lite()) return()
       htcdi_expanded(!isolate(htcdi_expanded()))
     }, ignoreInit = TRUE)
     observeEvent(input$index_click, {
@@ -1420,13 +1420,13 @@ macro_market_server <- function(id = "macro",
     htcdi_result <- reactive(htcdi_val())
 
     output$htcdi_expand_panel <- renderUI({
-      if (.is_lite() || !isTRUE(htcdi_expanded())) return(NULL)
+      if (!isTRUE(htcdi_expanded())) return(NULL)
       res <- htcdi_result()
       if (exists("htcdi_expand_ui", mode = "function")) htcdi_expand_ui(res, .loc()) else NULL
     })
 
     # Rf : YNOW/TYNOW : HTCDI = 2:1:1 (widths 6 / 3 / 3). TW NDC on the next row.
-    # HTCDI four-index expand stays Full-only, below this row.
+    # HTCDI four-index expand works in Lite and Full, below this row.
     output$rf_signal_row <- renderUI({
       .loc()
       mode <- .mode()
@@ -1451,7 +1451,7 @@ macro_market_server <- function(id = "macro",
         width = 3, class = "col-xs-12 col-sm-3 col-md-3",
         if (exists("htcdi_kpi_box", mode = "function")) {
           htcdi_kpi_box(res, lite = lite, locale = .loc(), ns = ns,
-                        selected = isTRUE(htcdi_expanded()) && !isTRUE(lite))
+                        selected = isTRUE(htcdi_expanded()))
         } else {
           tags$div(class = "ynow-macro-kpi ynow-macro-kpi--htcdi", "HTCDI")
         }

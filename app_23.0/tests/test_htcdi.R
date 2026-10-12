@@ -283,7 +283,9 @@ check("single logo-flow keyframes", length(kf) == 1L && kf[[1]] > 0)
 kf_flame <- gregexpr("@keyframes ynow-htcdi-flame-flow", ui_txt, fixed = TRUE)[[1]]
 check("single flame-flow keyframes", length(kf_flame) == 1L && kf_flame[[1]] > 0)
 check("Data-limited reuses flow class", grepl(".ynow-fund-profile-badge .ynow-htcdi-flow", ui_txt, fixed = TRUE))
-check("Data-limited stays logo not flame comment", grepl("keep logo-flow fill (not HTCDI flame)", ui_txt, fixed = TRUE))
+check("Data-limited stays logo not flame comment",
+      grepl("logo-flow", ui_txt, fixed = TRUE) &&
+        grepl("not HTCDI flame", ui_txt, fixed = TRUE))
 
 if (!exists("tags", inherits = TRUE) && requireNamespace("htmltools", quietly = TRUE)) {
   tags <- htmltools::tags
@@ -293,6 +295,10 @@ if (!is.null(box_ok)) {
   html_ok <- paste(as.character(box_ok), collapse = " ")
   check("KPI numeral flow class", grepl("ynow-htcdi-flow", html_ok, fixed = TRUE))
   check("KPI numeral not unavailable", !grepl("ynow-htcdi-unavailable", html_ok, fixed = TRUE))
+  check("Lite KPI is clickable", grepl("ynow-macro-kpi--clickable", html_ok, fixed = TRUE))
+  check("Lite KPI shows click hint", grepl("Click to open", html_ok, fixed = TRUE) ||
+    grepl("htcdi_click_hint", html_ok, fixed = TRUE) ||
+    grepl("Statement, Market", html_ok, fixed = TRUE))
 }
 box_na <- tryCatch(htcdi_kpi_box(sc0, lite = TRUE, locale = "en"), error = function(e) NULL)
 if (!is.null(box_na)) {
@@ -317,9 +323,11 @@ check("UI expand below", {
   pos_exp <- regexpr("ynow_macro_htcdi_expand", macro_txt, fixed = TRUE)[1]
   is.finite(pos_row) && is.finite(pos_exp) && pos_exp > pos_row
 })
-check("UI Full-only expand", grepl("ynow-macro-htcdi-expand ynow-full-only", macro_txt, fixed = TRUE))
-check("UI Lite no click", grepl("if (!isTRUE(lite))", mod_txt, fixed = TRUE))
-check("UI Lite CSS", grepl("body.ynow-lite #ynow_macro_htcdi_expand", ui_txt, fixed = TRUE))
+check("UI expand not Full-only", grepl("ynow-macro-htcdi-expand", macro_txt, fixed = TRUE) &&
+  !grepl("ynow-macro-htcdi-expand ynow-full-only", macro_txt, fixed = TRUE))
+check("UI Lite allows HTCDI click", grepl("ynow-macro-kpi--clickable", mod_txt, fixed = TRUE) &&
+  !grepl("if \\(document\\.body && document\\.body\\.classList\\.contains\\('ynow-lite'\\)\\) return;", mod_txt))
+check("UI Lite CSS does not hide HTCDI expand", !grepl("body.ynow-lite #ynow_macro_htcdi_expand", ui_txt, fixed = TRUE))
 check("UI four indices", grepl("htcdi-four", mod_txt, fixed = TRUE))
 check("four-index uses flow span", grepl("htcdi_score_span(it$val)", mod_txt, fixed = TRUE))
 check("layer table uses flow span", grepl("htcdi_score_span(stmt_v)", mod_txt, fixed = TRUE) &&
