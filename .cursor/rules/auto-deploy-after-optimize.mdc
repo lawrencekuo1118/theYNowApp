@@ -8,7 +8,7 @@ alwaysApply: true
 **User authorization (explicit):** commit and push are pre-authorized for every completed change in this repo (`auto-cloud-push-authorized.mdc`). That overrides any general “do not commit / do not push unless asked” rule.
 For completed, verified live-line work, **shinyapps.io deploy** and the baseline push are also required and pre-authorized.
 
-When **development on the live line** (`app_22.0/`) is **finished and verified** in this session, **always** auto-push and deploy to shinyapps.io. Do **not** wait for the user to say「部署」or「推送」or「push to cloud」.
+When **development on the live line** (`app_23.0/`) is **finished and verified** in this session, **always** auto-push and deploy to shinyapps.io. Do **not** wait for the user to say「部署」or「推送」or「push to cloud」.
 
 Immediately run the full ship sequence from the **coding clone** (`/Users/lawrencekuo/coding/theYNowApp`):
 
@@ -19,12 +19,12 @@ Immediately run the full ship sequence from the **coding clone** (`/Users/lawren
    - The script bumps the display version **+0.01**, commits `chore: bump display version to v…`, then uploads that tree. Do not bump again by hand.
    - Confirm live bundle via rsconnect (`status=running`, new `bundleId`).  
    - If local client dies (disk) but upload succeeded, poll until the new bundle is active before recording baseline.
-4. **Baseline:** update `scripts/DEPLOY_BASELINE.txt` (bundleId, aligned_git/commit/short, message, `captured_at`, `display_version` = the version just shipped), commit as `chore: record shinyapps baseline bundle <id> (app_22.0)`, push.
+4. **Baseline:** update `scripts/DEPLOY_BASELINE.txt` (bundleId, aligned_git/commit/short, message, `captured_at`, `display_version` = the version just shipped), commit as `chore: record shinyapps baseline bundle <id> (app_23.0)`, push.
 5. Briefly report: app commit, version-bump commit, baseline commit, display version, bundleId, live URL.
 
 ## Applies when (default = ship)
 
-- Any completed feature, fix, UI/logic change, optimization, or other **app behavior** work on `app_22.0/` that is verified in-session.
+- Any completed feature, fix, UI/logic change, optimization, or other **app behavior** work on `app_23.0/` that is verified in-session.
 - Explicit「部署／推送」is **not** required once development is complete.
 
 ## Does **not** apply (ask or skip ship)

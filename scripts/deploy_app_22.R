@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# Live line app_22.0. Resolves the directory inside deploy_app_21.R.
+# Compatibility shim: live line is app_23.0 — forwards to deploy_app_21.R.
 args <- commandArgs(trailingOnly = FALSE)
 file_arg <- sub("^--file=", "", args[grep("^--file=", args)])
 script_dir <- if (length(file_arg) == 1L && nzchar(file_arg)) {
