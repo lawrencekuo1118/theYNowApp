@@ -47,6 +47,26 @@ check("hint wired in UI", grepl("ynow_lab_im_methods_locked_hint", ui, fixed = T
 check("applyUiLocale wires hint",
       grepl("ynow_lab_im_methods_locked_hint", ui, fixed = TRUE) &&
         grepl("lab_im_methods_locked_hint", ui, fixed = TRUE))
+check("abs/rel group labels in UI",
+      grepl("ynow_lab_im_methods_abs_label", ui, fixed = TRUE) &&
+        grepl("ynow_lab_im_methods_rel_label", ui, fixed = TRUE) &&
+        grepl("ynow-lab-im-methods-group--abs", ui, fixed = TRUE) &&
+        grepl("ynow-lab-im-methods-group--rel", ui, fixed = TRUE))
+check("abs/rel locale keys",
+      identical(ui_str("lab_im_methods_abs_label", "en"), "Absolute") &&
+        identical(ui_str("lab_im_methods_rel_label", "en"), "Relative") &&
+        identical(ui_str("lab_im_methods_abs_label", "zh-TW"), "絕對") &&
+        identical(ui_str("lab_im_methods_rel_label", "zh-TW"), "相對"))
+check("applyUiLocale wires abs/rel labels",
+      grepl("lab_im_methods_abs_label", ui, fixed = TRUE) &&
+        grepl("lab_im_methods_rel_label", ui, fixed = TRUE))
+check("abs/rel taxonomy keys",
+      identical(LAB_METHOD_ABS_KEYS, c("nav", "dcf", "ddm", "ri", "sotp")) &&
+        identical(LAB_METHOD_REL_KEYS, c("enterprise", "earnings", "revenue", "book")) &&
+        identical(
+          sort(c(LAB_METHOD_ABS_KEYS, LAB_METHOD_REL_KEYS)),
+          sort(as.character(LAB_SIDEBAR_METHOD_ORDER))
+        ))
 
 # Runtime: US catalog → RI/SOTP not primary → locked; relative families follow the reference lens.
 catlg <- lab_build_industry_method_catalog(market_mode = "US", boards = c("TWSE", "TPEX"))

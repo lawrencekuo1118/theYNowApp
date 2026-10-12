@@ -20,6 +20,12 @@ LAB_SIDEBAR_METHOD_ORDER <- c(
   "nav", "dcf", "ddm", "ri", "enterprise", "earnings", "revenue", "book", "sotp"
 )
 
+# Blue Chip Models filter UI groups (絕對 / Absolute vs 相對 / Relative).
+# Absolute = Fair Value / intrinsic (+ SOTP Meta-Framework); Relative = Multiples families.
+# Filter keys and lab_method_filter_hits() are unchanged — grouping is presentation only.
+LAB_METHOD_ABS_KEYS <- c("nav", "dcf", "ddm", "ri", "sotp")
+LAB_METHOD_REL_KEYS <- c("enterprise", "earnings", "revenue", "book")
+
 LAB_METHOD_LABELS <- c(
   nav = "NAV（帳面控股淨資產）",
   dcf = "DCF（現金流折現）",
