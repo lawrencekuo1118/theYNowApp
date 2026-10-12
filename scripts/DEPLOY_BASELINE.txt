@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12678609
+bundleId=12679318
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=85d7a9d78cc7d3c83c814f8bdf23bb7c567ff045
-commit=85d7a9d78cc7d3c83c814f8bdf23bb7c567ff045
-short=85d7a9d
-message=chore: record shinyapps baseline bundle 12678609 (app_22.0)
-captured_at=2026-10-12T05:50:04Z
+aligned_git=35adea29f0a859c8e5d30c832e08c8b3cd63ecfd
+commit=35adea29f0a859c8e5d30c832e08c8b3cd63ecfd
+short=35adea2
+message=Industry-chain mcap ranking all chains + Refresh ranking (v22.04)
+captured_at=2026-10-12T10:15:00Z
 display_version=v22.04
