@@ -74,6 +74,22 @@ check("pit rd", approx_eq(.hist_pit_rd(fund), 0.05, 1e-8))
 check("pit tax", approx_eq(.hist_pit_tax(fund), 0.21, 1e-8))
 pb <- .hist_justified_pb(roe = 0.15, ke = 0.10, g = 0.03, fallback = 1.5)
 check("justified pb", approx_eq(pb, (0.15 - 0.03) / (0.10 - 0.03), 1e-8))
+pb_na <- .hist_justified_pb(roe = NA_real_, ke = 0.10, g = 0.03, fallback = NA_real_)
+check("justified pb refuses relative fallback", !is.finite(pb_na))
+check(
+  "relative_excluded src label en",
+  identical(
+    .hist_src_label("relative_excluded", "en"),
+    "Relative / history multiple (excluded from Fair Value)"
+  )
+)
+check(
+  "relative_excluded src label zh-TW",
+  identical(
+    .hist_src_label("relative_excluded", "zh-TW"),
+    "相對／歷史倍數（不納入 Fair Value）"
+  )
+)
 
 # --- reconstruct hist uses g/rd/tax/pb diagnostics ---
 fund_row <- list(
@@ -94,6 +110,30 @@ check("hist src_g pit", identical(pit$src_g, "pit"))
 check("hist src_rd pit", identical(pit$src_rd, "pit"))
 check("hist src_tax pit", identical(pit$src_tax, "pit"))
 check("hist src_pb justified", identical(pit$src_pb_mid, "justified"))
+check("hist fv_pb from justified", is.finite(pit$fv_pb) && pit$fv_pb > 0)
+# Relative / history multiples must not enter hist theoretical Fair Value
+fund_no_roe <- list(
+  shares = 100, fcf = 200, cash = 50, debt = 0,
+  ni = NA_real_, equity_book = NA_real_, dividends_paid = 0,
+  rev_growth = 5, eps_growth = 5, fcf_growth = 5,
+  g_pit = 0.05,
+  interest_expense = NA_real_, tax_expense = NA_real_, pretax_income = NA_real_
+)
+mp_rel <- list(
+  wacc = 0.09, ke = 0.10, rd = 0.06, tax = 0.25,
+  pb_mid_hist = 1.8, fv_models = "pb"
+)
+pit_rel <- reconstruct_fair_value_pit(
+  fund_no_roe, price = 8, mp_rel, use_session_assumptions = FALSE
+)
+check("hist relative pb excluded from FV", !is.finite(pit_rel$fv_pb))
+check("hist relative pb_mid NA", !is.finite(pit_rel$pb_mid_used))
+check(
+  "hist src_pb relative_excluded",
+  identical(pit_rel$src_pb_mid, "relative_excluded")
+)
+check("hist relative pb not in fallback_keys",
+      !grepl("pb_mid", pit_rel$fallback_keys %||% "", fixed = TRUE))
 check("hist src_n_years app_defaults", identical(pit$src_n_years, "app_defaults"))
 check("hist n_years in fallback_keys", grepl("n_years", pit$fallback_keys, fixed = TRUE))
 check("hist near-term g ≠ terminal SGR", {

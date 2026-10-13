@@ -61,29 +61,31 @@ check("applyUiLocale wires abs/rel labels",
       grepl("lab_im_methods_abs_label", ui, fixed = TRUE) &&
         grepl("lab_im_methods_rel_label", ui, fixed = TRUE))
 check("abs/rel taxonomy keys",
-      identical(LAB_METHOD_ABS_KEYS, c("nav", "dcf", "ddm", "ri", "sotp")) &&
+      identical(LAB_METHOD_ABS_KEYS, c("nav", "pb", "dcf", "ddm", "ri", "sotp")) &&
         identical(LAB_METHOD_REL_KEYS, c("enterprise", "earnings", "revenue", "book")) &&
         identical(
           sort(c(LAB_METHOD_ABS_KEYS, LAB_METHOD_REL_KEYS)),
           sort(as.character(LAB_SIDEBAR_METHOD_ORDER))
         ))
 
-# Runtime: US catalog → RI/SOTP not primary → locked; relative families follow the reference lens.
+# Runtime: US catalog → RI/SOTP not primary → locked; Justified P/B absolute + Book multiples relative.
 catlg <- lab_build_industry_method_catalog(market_mode = "US", boards = c("TWSE", "TPEX"))
 avail <- lab_im_available_primary_methods(catlg)
 sm <- lab_method_group_summary(catlg, include_all = TRUE)
 check("US summary matches sidebar order", nrow(sm) == length(LAB_SIDEBAR_METHOD_ORDER) &&
         identical(sm$method_key, LAB_SIDEBAR_METHOD_ORDER))
-check("US available excludes unused primaries",
-      all(c("dcf", "book") %in% avail) &&
-        !("ri" %in% avail) &&
-        !("sotp" %in% avail) &&
-        all(c("enterprise", "earnings", "revenue") %in% avail))
-check("US table zeros for locked methods",
+check("US available keeps Justified P/B absolute and Book multiples relative",
+      all(c("dcf", "pb", "book") %in% avail) &&
+        all(c("enterprise", "earnings", "revenue") %in% avail) &&
+        # RI / SOTP unlock via secondary Fair Value slots (not primary counts)
+        all(c("ri", "sotp") %in% avail))
+check("US table zeros for locked primary methods",
       all(sm$候選檔數[sm$method_key %in% c("ri", "sotp")] == 0L) &&
         all(!sm$has_primary[sm$method_key %in% c("ri", "sotp")]))
-check("US table positive for DCF",
-      isTRUE(sm$候選檔數[sm$method_key == "dcf"][1] > 0L))
+check("US table positive for DCF and Justified P/B",
+      isTRUE(sm$候選檔數[sm$method_key == "dcf"][1] > 0L) &&
+        isTRUE(sm$候選檔數[sm$method_key == "pb"][1] > 0L) &&
+        isTRUE(sm$候選檔數[sm$method_key == "book"][1] > 0L))
 
 if (fail > 0L) {
   cat("FAILED ", fail, " check(s)\n", sep = "")

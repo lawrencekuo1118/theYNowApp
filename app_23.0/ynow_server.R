@@ -2527,7 +2527,7 @@ server <- function(input, output, session) {
           margin-bottom: 14px; padding: 10px 12px; border-left: 4px solid #222222;
           background: #f5f5f5; color: #333; font-size: 13px; line-height: 1.5;
         }
-        /* 七卡：桌面可換行，小螢幕兩欄／單欄；點擊跳模型分頁 */
+        /* 八卡：桌面可換行，小螢幕兩欄／單欄；點擊跳模型分頁 */
         .ynow-model-selector-row {
           display: flex;
           flex-wrap: wrap;
@@ -2536,8 +2536,8 @@ server <- function(input, output, session) {
           margin-right: -7.5px;
         }
         .ynow-model-selector-row > .ynow-model-card-col {
-          flex: 1 1 12%;
-          min-width: 120px;
+          flex: 1 1 11%;
+          min-width: 110px;
           width: auto;
           float: none;
           padding-left: 7.5px;
@@ -2597,10 +2597,15 @@ server <- function(input, output, session) {
         tags$br(),
         tags$span(rec$reason %||% "請先按下 Search 載入公司後產生推薦。")
       ),
-      # L→R 對齊側欄：NAV → DCF → DDM → RI → Multiples（含 P/B）→ SOTP
+      # L→R 對齊側欄：NAV → Justified P/B → DCF → DDM → RI → Multiples → SOTP
       tags$div(
         class = "ynow-model-selector-row",
         make_card("NAV", "nav", "sitemap", "#d81b60", "P = NAVPS × NAV multiple", "控股／綜合：帳面控股 NAV；無需 SGR。"),
+        make_card(
+          "Justified P/B", "pb", "landmark", "#1a5276",
+          ui_str("ms_card_pb_formula", loc),
+          ui_str("ms_card_pb_notes", loc)
+        ),
         make_card("DCF", "dcf", "calculator", "#00a65a", "FCFF／WACC 或 FCFE／Ke", "適合 FCF 為正且相對穩定的企業。"),
         make_card("DDM", "ddm", "hand-holding-usd", "#f39c12", "Gordon／SPM／二階段 P0 = PV(股利)", "適合持續且穩定配息的企業。"),
         make_card("RI", "ri", "gem", "#605ca8", "Value = Book Value + Σ Residual Income / (1+Ke)^t", "適合帳面價值與 ROE 具參考性的企業。"),
@@ -2632,11 +2637,11 @@ server <- function(input, output, session) {
           tag <- if (exists(".rel_method_chart_tag", mode = "function")) .rel_method_chart_tag(meth) else NA_character_
           fam_txt <- fam_lab(fam_id)
           if (!is.na(tag) && nzchar(tag %||% "")) fam_txt <- paste0(fam_txt, " · ", tag)
-          book_txt <- paste0(fam_lab("book"), " · P/B")
           ref_key <- as.character(rec$reference %||% "")[1]
-          role_kind <- if (prim %in% c("pb", "multiples")) {
+          # Justified P/B is its own Fair Value card; Multiples never inherits pb as primary.
+          role_kind <- if (identical(prim, "multiples")) {
             "primary"
-          } else if (sec %in% c("pb", "multiples")) {
+          } else if (identical(sec, "multiples")) {
             "secondary"
           } else if (identical(ref_key, "multiples")) {
             "reference"
@@ -2652,15 +2657,13 @@ server <- function(input, output, session) {
           } else {
             NULL
           }
-          shown_fam <- if (identical(prim, "pb") || identical(sec, "pb")) book_txt else fam_txt
-          if (!is.null(role_lab)) role_lab <- paste0(role_lab, " · ", shown_fam)
-          # Primary/secondary book still names 淨值; a separate Multiples reference keeps its own family.
+          if (!is.null(role_lab)) role_lab <- paste0(role_lab, " · ", fam_txt)
           note_bits <- character(0)
-          if (prim %in% c("pb", "multiples")) {
-            note_bits <- c(note_bits, paste0(ui_str("ms_pos_primary", loc), " · ", if (identical(prim, "pb")) book_txt else fam_txt))
+          if (identical(prim, "multiples")) {
+            note_bits <- c(note_bits, paste0(ui_str("ms_pos_primary", loc), " · ", fam_txt))
           }
-          if (sec %in% c("pb", "multiples")) {
-            note_bits <- c(note_bits, paste0(ui_str("ms_pos_secondary", loc), " · ", if (identical(sec, "pb")) book_txt else fam_txt))
+          if (identical(sec, "multiples")) {
+            note_bits <- c(note_bits, paste0(ui_str("ms_pos_secondary", loc), " · ", fam_txt))
           }
           if (identical(ref_key, "multiples") && !identical(prim, "multiples")) {
             note_bits <- c(note_bits, paste0(ui_str("ms_pos_reference", loc), " · ", fam_txt))
@@ -10007,10 +10010,10 @@ server <- function(input, output, session) {
     # Key order matches YNOW_FV_ENGINE_ORDER (sidebar L→R).
     list(
       nav = list(col = "FV_NAV", label = "NAV", color = "#d81b60"),
+      pb  = list(col = "FV_PB",  label = "Justified P/B", color = "#e67e22"),
       dcf = list(col = "FV_DCF", label = "DCF", color = "#c0392b"),
       ddm = list(col = "FV_DDM", label = "DDM", color = "#8e44ad"),
-      ri  = list(col = "FV_RI",  label = "RI",  color = "#16a085"),
-      pb  = list(col = "FV_PB",  label = "P/B", color = "#e67e22")
+      ri  = list(col = "FV_RI",  label = "RI",  color = "#16a085")
     )
   }
 

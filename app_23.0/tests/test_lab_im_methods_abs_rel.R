@@ -62,9 +62,9 @@ check("zh-TW 絕對 / 相對",
         identical(ui_str("lab_im_methods_rel_label", "zh-TW"), "相對") &&
         !grepl("默认|参数|数据", ui_str("lab_im_methods_abs_label", "zh-TW")))
 
-check("taxonomy Absolute = NAV/DCF/DDM/RI/SOTP",
-      identical(LAB_METHOD_ABS_KEYS, c("nav", "dcf", "ddm", "ri", "sotp")))
-check("taxonomy Relative = Enterprise/Earnings/Revenue/Book",
+check("taxonomy Absolute = NAV/Justified P/B/DCF/DDM/RI/SOTP",
+      identical(LAB_METHOD_ABS_KEYS, c("nav", "pb", "dcf", "ddm", "ri", "sotp")))
+check("taxonomy Relative = Enterprise/Earnings/Revenue/Book multiples",
       identical(LAB_METHOD_REL_KEYS, c("enterprise", "earnings", "revenue", "book")))
 check("no overlap abs vs rel",
       length(intersect(LAB_METHOD_ABS_KEYS, LAB_METHOD_REL_KEYS)) == 0L)
@@ -74,7 +74,7 @@ check("partition covers sidebar order",
         sort(as.character(LAB_SIDEBAR_METHOD_ORDER))
       ))
 
-# Filter hit logic still treats book as P/B primary and enterprise as rel family.
+# Absolute Justified P/B vs Relative Book multiples (Target source taxonomy).
 df <- data.frame(
   primary = c("dcf", "pb", "nav", "multiples"),
   secondary = c("ri", NA, "sotp", NA),
@@ -86,12 +86,17 @@ check(
   identical(lab_method_filter_hits(df, "dcf"), c(TRUE, FALSE, FALSE, FALSE))
 )
 check(
+  "filter abs Justified P/B hits primary pb",
+  identical(lab_method_filter_hits(df, "pb"), c(FALSE, TRUE, FALSE, FALSE))
+)
+check(
   "filter rel enterprise still hits",
   identical(lab_method_filter_hits(df, "enterprise"), c(FALSE, FALSE, FALSE, TRUE))
 )
 check(
-  "filter book still hits P/B primary",
-  isTRUE(lab_method_filter_hits(df, "book")[2])
+  "filter rel book hits Multiples family (not remapped away from Absolute pb)",
+  isTRUE(lab_method_filter_hits(df, "book")[2]) &&
+    identical(lab_method_filter_hits(df, "book"), c(FALSE, TRUE, FALSE, FALSE))
 )
 
 if (fail > 0L) {

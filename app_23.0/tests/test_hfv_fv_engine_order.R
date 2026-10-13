@@ -28,14 +28,14 @@ check <- function(label, cond) {
   }
 }
 
-want <- c("nav", "dcf", "ddm", "ri", "pb")
+want <- c("nav", "pb", "dcf", "ddm", "ri")
 check("YNOW_FV_ENGINE_ORDER sidebar-aligned", identical(YNOW_FV_ENGINE_ORDER, want))
 ch <- ynow_fv_engine_choices()
 check("choices values order", identical(unname(ch), want))
-check("choices labels", identical(names(ch), c("NAV", "DCF", "DDM", "RI", "P/B")))
+check("choices labels", identical(names(ch), c("NAV", "Justified P/B", "DCF", "DDM", "RI")))
 check(
   "order helper shuffles",
-  identical(ynow_order_fv_engines(c("pb", "nav", "ri", "dcf")), c("nav", "dcf", "ri", "pb"))
+  identical(ynow_order_fv_engines(c("pb", "nav", "ri", "dcf")), c("nav", "pb", "dcf", "ri"))
 )
 check("order helper drops multiples/sotp", identical(ynow_order_fv_engines(c("multiples", "sotp", "dcf")), "dcf"))
 

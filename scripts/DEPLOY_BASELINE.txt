@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12683815
+bundleId=12684006
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=83d1a9fbb07e6f4b013c8a83ba284bdf35941a32
-commit=83d1a9fbb07e6f4b013c8a83ba284bdf35941a32
-short=83d1a9f
-message=fix(ui): align HFV overlay/replay model order with sidebar (v23.16)
-captured_at=2026-10-13T09:39:05Z
-display_version=v23.16
+aligned_git=7aab288e7103e6b17ca33f04ab786d814a41f104
+commit=7aab288e7103e6b17ca33f04ab786d814a41f104
+short=7aab288
+message=feat(rec): restore Justified P/B as Absolute Book Fair Value (v23.18)
+captured_at=2026-10-13T10:39:48Z
+display_version=v23.18

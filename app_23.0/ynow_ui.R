@@ -16,7 +16,7 @@
       return(sub('^"version"\\s*:\\s*"([^"]+)".*$', "\\1", m[[1]]))
     }
   }
-  "v23.16"
+  "v23.18"
 }
 .YNOW_BUILD_VERSION <- .ynow_read_build_version()
 
@@ -46,7 +46,7 @@
   abs_keys <- if (exists("LAB_METHOD_ABS_KEYS", inherits = TRUE)) {
     as.character(LAB_METHOD_ABS_KEYS)
   } else {
-    c("nav", "dcf", "ddm", "ri", "sotp")
+    c("nav", "pb", "dcf", "ddm", "ri", "sotp")
   }
   rel_keys <- if (exists("LAB_METHOD_REL_KEYS", inherits = TRUE)) {
     as.character(LAB_METHOD_REL_KEYS)
@@ -54,12 +54,14 @@
     c("enterprise", "earnings", "revenue", "book")
   }
   label_map <- c(
-    nav = "NAV", dcf = "DCF", ddm = "DDM", ri = "RI", sotp = "SOTP",
+    nav = "NAV", pb = "Justified P/B", dcf = "DCF", ddm = "DDM", ri = "RI",
+    sotp = "SOTP",
     enterprise = "Enterprise value", earnings = "Earnings",
-    revenue = "Revenue", book = "Book value"
+    revenue = "Revenue", book = "Book multiples"
   )
   id_map <- c(
     nav = "ynow_lab_im_method_nav",
+    pb = "ynow_lab_im_method_pb",
     dcf = "ynow_lab_im_method_dcf",
     ddm = "ynow_lab_im_method_ddm",
     ri = "ynow_lab_im_method_ri",
@@ -229,7 +231,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v23.16) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+          "The YNow App (v23.18) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
         ),
         tags$p(
           class = "ynow-about-method",
@@ -248,7 +250,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v23.16) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
+          "The YNow App (v23.18) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
         ),
         tags$p(
           class = "ynow-about-method",
@@ -350,7 +352,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App（簡化版）")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite（v23.16）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
+          "The YNow App Lite（v23.18）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
           "以自動判別主／副模型與預設參數完成試算，讓使用者先看到合理價區間與產業 KPI，再決定是否回到完整版深入調整。"
         ),
         tags$p(
@@ -367,7 +369,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App (Lite)")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite (v23.16) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
+          "The YNow App Lite (v23.18) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
           "auto-selects primary/secondary models with App defaults, and surfaces fair-value ranges plus industry KPIs before you open Full for deeper calibration."
         ),
         tags$p(
@@ -1532,8 +1534,8 @@ beta_rolling_section_ui <- function() {
           icon = icon("landmark"),
           tags$div(
             class = "ynow-loc-en",
-            h4(tags$b("Price-to-Book / relative valuation (P/B)")),
-            p("Multiply BVPS, tangible book, or HoldCo NAVPS by a target P/B. The target can come from industry/history (no SGR required) or Justified P/B (needs ROE, Ke, SGR/g). Pure book NAV without a Justified multiple path uses the separate NAV model — same asset/book family, different route."),
+            h4(tags$b("Price-to-Book: Justified Fair Value vs relative multiples")),
+            p("Multiply BVPS, tangible book, or HoldCo NAVPS by a target P/B. The Target source decides the method: Justified P/B from ROE, Ke, and SGR/g is Book / Asset Fair Value; industry or history multiples are Relative Implied Price (Multiples · Book). Pure book NAV without a multiple uses the separate NAV model — same asset/book family, different route."),
             tags$ul(
               tags$li(tags$b("$$BVPS = \\frac{Common\\ Equity}{Shares}$$")),
               tags$li(tags$b("$$TBVPS = \\frac{Common\\ Equity - Goodwill - Intangibles}{Shares}$$")),
@@ -1544,8 +1546,8 @@ beta_rolling_section_ui <- function() {
           ),
           tags$div(
             class = "ynow-loc-zh",
-            h4(tags$b("本淨比／相對估值 (P/B)")),
-            p("以每股帳面淨值、有形淨值或控股 NAVPS 乘上目標本淨比。目標倍數可來自產業／歷史（無需 SGR），或 Justified P/B（需 ROE、Ke、SGR／g）。純帳面 NAV（無倍數法 Justified）請用獨立「NAV」模型——兩者同屬資產／帳面家族，但路徑分開。"),
+            h4(tags$b("本淨比：Justified Fair Value 與相對倍數")),
+            p("以每股帳面淨值、有形淨值或控股 NAVPS 乘上目標本淨比。目標倍數來源決定方法性質：由 ROE、Ke、SGR／g 推導的 Justified P/B 屬帳面／資產型 Fair Value；產業或歷史交易倍數屬相對估值 Implied Price（Multiples · Book）。純帳面 NAV（無倍數）請用獨立「NAV」模型——兩者同屬資產／帳面家族，但路徑分開。"),
             tags$ul(
               tags$li(tags$b("$$BVPS = \\frac{Common\\ Equity}{Shares}$$")),
               tags$li(tags$b("$$TBVPS = \\frac{Common\\ Equity - Goodwill - Intangibles}{Shares}$$")),
@@ -3401,9 +3403,9 @@ ui <- dashboardPage(
                   'data-ynow-build="', .YNOW_BUILD_VERSION, '" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v23.16</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v23.18</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v23.16</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v23.18</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -3545,6 +3547,11 @@ ui <- dashboardPage(
                  text = tags$span(id = "ynow_menu_nav", "NAV"),
                  tabName = "nav_calculator",
                  icon = icon("sitemap")
+               ),
+               menuSubItem(
+                 text = tags$span(id = "ynow_menu_pb", "Justified P/B"),
+                 tabName = "pb_calculator",
+                 icon = icon("landmark")
                )
              ),
              menuItem(
@@ -3575,9 +3582,9 @@ ui <- dashboardPage(
                  icon = icon("shopping-cart")
                ),
                menuSubItem(
-                 text = tags$span(id = "ynow_menu_pb", "Book value"),
+                 text = tags$span(id = "ynow_menu_rel_book", "Book multiples"),
                  tabName = "pb_calculator",
-                 icon = icon("landmark")
+                 icon = icon("percentage")
                )
              ),
              menuItem(
@@ -7132,10 +7139,10 @@ ui <- dashboardPage(
         (function () {
           var TAB_PARENT = {
             nav_calculator: 'ynow_menu_cat_asset',
+            pb_calculator: 'ynow_menu_cat_asset',
             dcf_calculator: 'ynow_menu_cat_income',
             ddm_calculator: 'ynow_menu_cat_income',
             ri_calculator: 'ynow_menu_cat_income',
-            pb_calculator: 'ynow_menu_cat_relative',
             rel_mult_ev: 'ynow_menu_cat_relative',
             rel_multiples_calculator: 'ynow_menu_cat_relative',
             rel_mult_rev: 'ynow_menu_cat_relative',
@@ -7978,7 +7985,7 @@ ui <- dashboardPage(
               get_started: s.menu_get_started,
               dcf_calculator: s.menu_dcf,
               ddm_calculator: s.menu_ddm,
-              pb_calculator: s.menu_rel_book || s.menu_pb,
+              pb_calculator: s.menu_pb || s.menu_rel_book,
               rel_mult_ev: s.menu_rel_ev,
               rel_multiples_calculator: s.menu_rel_earn || s.menu_rel_multiples,
               rel_mult_rev: s.menu_rel_rev,
@@ -8760,14 +8767,17 @@ ui <- dashboardPage(
             setBtText('ynow_lab_im_methods_rel_label', 'lab_im_methods_rel_label');
             setBtText('ynow_lab_im_methods_locked_hint', 'lab_im_methods_locked_hint');
             setBtText('ynow_lab_im_method_nav', 'menu_nav');
+            setBtText('ynow_lab_im_method_pb', 'menu_pb');
             setBtText('ynow_lab_im_method_dcf', 'menu_dcf');
             setBtText('ynow_lab_im_method_ddm', 'menu_ddm');
             setBtText('ynow_lab_im_method_ri', 'menu_ri');
             setBtText('ynow_lab_im_method_enterprise', 'menu_rel_ev');
             setBtText('ynow_lab_im_method_earnings', 'menu_rel_earn');
             setBtText('ynow_lab_im_method_revenue', 'menu_rel_rev');
-            setBtText('ynow_lab_im_method_book', 'menu_pb');
+            setBtText('ynow_lab_im_method_book', 'menu_rel_book');
             setBtText('ynow_lab_im_method_sotp', 'menu_sotp');
+            setBtText('ynow_menu_pb', 'menu_pb');
+            setBtText('ynow_menu_rel_book', 'menu_rel_book');
             setBtText('ynow_lab_im_chains_label', 'lab_im_chains_label');
             setBtText('ynow_lab_im_chains_hint', 'lab_im_chains_hint');
             setBtText('ynow_lab_im_industries_label', 'lab_im_industries_label');

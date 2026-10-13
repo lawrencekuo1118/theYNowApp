@@ -15,15 +15,17 @@
 # ==========================================
 
 # Canonical sidebar valuation order (top → bottom in ynow_ui.R):
-# NAV → DCF → DDM → RI → Enterprise value → Earnings → Revenue → Book value → SOTP
+# NAV → Justified P/B → DCF → DDM → RI → Enterprise → Earnings → Revenue → Book multiples → SOTP
+# Target P/B source decides taxonomy: Justified → Absolute Fair Value (`pb`);
+# industry / history trading multiples → Relative Implied Price (`book`).
 LAB_SIDEBAR_METHOD_ORDER <- c(
-  "nav", "dcf", "ddm", "ri", "enterprise", "earnings", "revenue", "book", "sotp"
+  "nav", "pb", "dcf", "ddm", "ri", "enterprise", "earnings", "revenue", "book", "sotp"
 )
 
 # Blue Chip Models filter UI groups (絕對 / Absolute vs 相對 / Relative).
-# Absolute = Fair Value / intrinsic (+ SOTP Meta-Framework); Relative = Multiples families.
-# Filter keys and lab_method_filter_hits() are unchanged — grouping is presentation only.
-LAB_METHOD_ABS_KEYS <- c("nav", "dcf", "ddm", "ri", "sotp")
+# Absolute = Fair Value / intrinsic (+ Justified P/B + SOTP Meta-Framework);
+# Relative = Multiples families (peer / history Book multiples stay here).
+LAB_METHOD_ABS_KEYS <- c("nav", "pb", "dcf", "ddm", "ri", "sotp")
 LAB_METHOD_REL_KEYS <- c("enterprise", "earnings", "revenue", "book")
 
 LAB_METHOD_LABELS <- c(
@@ -31,8 +33,8 @@ LAB_METHOD_LABELS <- c(
   dcf = "DCF（現金流折現）",
   ddm = "DDM（股利折現）",
   ri  = "RI（剩餘收益）",
-  pb  = "淨值乘數（P/B）",
-  book = "淨值乘數（P/B）",
+  pb  = "Justified P/B（帳面／資產型 Fair Value）",
+  book = "淨值相對倍數（產業／歷史 P/B）",
   enterprise = "企業價值乘數（EV/EBITDA · EV/EBIT · EV/FCF）",
   earnings = "盈餘乘數（P/E · Forward P/E · PEG）",
   revenue = "營收乘數（P/S · EV/Sales · EV/ARR）",
@@ -45,8 +47,8 @@ LAB_METHOD_LABELS_EN <- c(
   dcf = "DCF (discounted cash flow)",
   ddm = "DDM (dividend discount)",
   ri  = "RI (residual income)",
-  pb  = "Book value (P/B)",
-  book = "Book value (P/B)",
+  pb  = "Justified P/B (Book / Asset Fair Value)",
+  book = "Book multiples (industry / history P/B)",
   enterprise = "Enterprise value (EV/EBITDA · EV/EBIT · EV/FCF)",
   earnings = "Earnings (P/E · Forward P/E · PEG)",
   revenue = "Revenue (P/S · EV/Sales · EV/ARR)",
@@ -2033,20 +2035,19 @@ lab_im_run_eval_job <- function(catlg,
   )
 }
 
-#' Query-filter keys → row hit. `book` matches primary/secondary P/B.
+#' Query-filter keys → row hit.
+#' Absolute `pb` = Justified P/B Fair Value (primary/secondary).
+#' Relative `book` = Multiples reference family book (industry / history).
 #' Enterprise / earnings / revenue match the industry Multiples reference family.
-#' Legacy `pb` and `multiples` still match.
+#' Legacy `multiples` still matches any relative family.
 lab_method_filter_hits <- function(df, method_filter) {
   n <- if (is.data.frame(df)) nrow(df) else 0L
   if (n < 1L) return(logical(0))
   mf <- lab_normalize_multi_filter(method_filter)
   if (!length(mf)) return(rep(TRUE, n))
-  if ("pb" %in% mf) mf <- unique(c(setdiff(mf, "pb"), "book"))
   legacy_mult <- "multiples" %in% mf
   mf <- setdiff(mf, "multiples")
-  fv <- mf
-  fv[fv == "book"] <- "pb"
-  fv <- intersect(fv, c("nav", "dcf", "ddm", "ri", "pb", "sotp"))
+  fv <- intersect(mf, c("nav", "dcf", "ddm", "ri", "pb", "sotp"))
   fam <- intersect(mf, c("enterprise", "earnings", "revenue", "book"))
   hit <- rep(FALSE, n)
   if (length(fv)) {
@@ -3382,8 +3383,8 @@ lab_build_ind_mcap_chain_snapshot <- function(merged_df,
 }
 
 #' Models the query filter can unlock (sidebar order).
-#' Fair Value keys come from primary (`pb` shows as book). Relative families
-#' unlock when that family is the industry Multiples reference.
+#' Absolute Justified P/B (`pb`) unlocks from Fair Value primary/secondary.
+#' Relative families (including Book multiples) unlock from Multiples reference.
 lab_im_available_primary_methods <- function(catalog) {
   if (is.null(catalog) || !is.data.frame(catalog) || !nrow(catalog)) {
     return(character(0))
@@ -3392,9 +3393,14 @@ lab_im_available_primary_methods <- function(catalog) {
   if ("primary" %in% names(catalog)) {
     p <- unique(as.character(catalog$primary))
     p <- p[nzchar(p) & !is.na(p)]
-    p[p == "pb"] <- "book"
-    p <- intersect(p, c("nav", "dcf", "ddm", "ri", "book", "sotp"))
+    p <- intersect(p, c("nav", "dcf", "ddm", "ri", "pb", "sotp"))
     keys <- c(keys, p)
+  }
+  if ("secondary" %in% names(catalog)) {
+    s <- unique(as.character(catalog$secondary))
+    s <- s[nzchar(s) & !is.na(s)]
+    s <- intersect(s, c("nav", "dcf", "ddm", "ri", "pb", "sotp"))
+    keys <- c(keys, s)
   }
   if ("rel_family" %in% names(catalog)) {
     f <- unique(as.character(catalog$rel_family))
@@ -3407,8 +3413,8 @@ lab_im_available_primary_methods <- function(catalog) {
 
 #' 顯示用摘要：依主方法分組的產業數／候選檔數
 #' Row order follows sidebar model order
-#' (NAV → DCF → DDM → RI → Enterprise → Earnings → Revenue → Book → SOTP).
-#' @param include_all TRUE：七個評價模型列都顯示（無主模型者產業數／候選檔數為 0）
+#' (NAV → Justified P/B → DCF → DDM → RI → Enterprise → Earnings → Revenue → Book multiples → SOTP).
+#' @param include_all TRUE：側欄模型列都顯示（無主模型者產業數／候選檔數為 0）
 #' @param locale UI locale (`en` / `zh-TW`); display labels and column headers follow locale.
 lab_method_group_summary <- function(catalog, include_all = FALSE, locale = "zh-TW") {
   labels <- lab_method_labels(locale)
@@ -3442,9 +3448,7 @@ lab_method_group_summary <- function(catalog, include_all = FALSE, locale = "zh-
       lab_order_methods_like_sidebar(catalog$primary)
     }
     do.call(rbind, lapply(methods, function(m) {
-      sub <- if (identical(m, "book")) {
-        catalog[as.character(catalog$primary) == "pb", , drop = FALSE]
-      } else if (m %in% c("enterprise", "earnings", "revenue")) {
+      sub <- if (m %in% c("enterprise", "earnings", "revenue", "book")) {
         if (!"rel_family" %in% names(catalog)) {
           catalog[0, , drop = FALSE]
         } else {
