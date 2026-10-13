@@ -364,6 +364,25 @@ classify_fundamental_profile <- function(d_cf = NULL, d_is = NULL, d_bs = NULL,
     NA_real_
   }
   asset_turnover <- if (is.finite(rev) && is.finite(assets) && assets != 0) rev / assets else NA_real_
+  debt_avg <- if (isTRUE(has_bs)) {
+    tryCatch(get_avg(select_clean_metric_row(d_bs, "Total Debt", include_ttm = FALSE)),
+             error = function(e) NA_real_)
+  } else {
+    NA_real_
+  }
+  equity_avg <- if (isTRUE(has_bs)) {
+    tryCatch(get_avg(select_clean_metric_row_any(d_bs, EQUITY_PATTERNS, include_ttm = FALSE)),
+             error = function(e) NA_real_)
+  } else {
+    NA_real_
+  }
+  lev <- if (is.finite(debt_avg) && is.finite(assets) && assets > 0) debt_avg / assets else NA_real_
+  rev_to_eq <- if (is.finite(rev) && is.finite(equity_avg) && equity_avg > 0) rev / equity_avg else NA_real_
+  # Balance-sheet business and asset shell come from the statements.
+  # Industry labels only confirm; they do not assign the profile alone.
+  stmt_book <- is.finite(asset_turnover) && asset_turnover < 0.35 &&
+    is.finite(lev) && lev >= 0.35
+  stmt_shell <- is.finite(rev_to_eq) && rev_to_eq < 0.20 && !isTRUE(is_fcf_pos)
 
   signals <- list(
     rev_g = rev_g, fcf_cv = fcf_cv, div_cv = div_cv,
@@ -371,7 +390,10 @@ classify_fundamental_profile <- function(d_cf = NULL, d_is = NULL, d_bs = NULL,
     is_div_stable = is_div_stable, gpm = gpm, capex_rev = capex_rev,
     asset_turnover = asset_turnover,
     is_holding = is_holding, is_financial = is_financial,
-    asset_or_book_driven = asset_or_book_driven
+    asset_or_book_driven = asset_or_book_driven,
+    statement_book = isTRUE(stmt_book),
+    statement_shell = isTRUE(stmt_shell),
+    debt_to_assets = lev
   )
 
   .out <- function(profile, reason) {
@@ -383,17 +405,9 @@ classify_fundamental_profile <- function(d_cf = NULL, d_is = NULL, d_bs = NULL,
     )
   }
 
-  # 1) Holding
-  if (isTRUE(is_holding)) {
-    return(.out("holding_asset", "控股／綜合：以帳面淨資產與槓桿為屬性錨。"))
-  }
+  # Statement signals first. Industry labels do not assign a profile by themselves.
 
-  # 2) Financial / book-driven
-  if (isTRUE(asset_or_book_driven) || isTRUE(is_financial)) {
-    return(.out("financial_book", "金融／帳面驅動：資本與淨值相關指標優先。"))
-  }
-
-  # 3) Growth
+  # 1) Growth
   is_growth <- (is.finite(rev_g) && rev_g > thr$rev_growth_high && isTRUE(is_fcf_pos)) ||
     (is.finite(rev_g) && rev_g > 15) ||
     (isTRUE(is_fcf_pos) && !isTRUE(is_fcf_stable) && is.finite(rev_g) && rev_g > thr$rev_growth_soft)
@@ -425,7 +439,21 @@ classify_fundamental_profile <- function(d_cf = NULL, d_is = NULL, d_bs = NULL,
     return(.out("asset_light", "高毛利且 CapEx／營收偏低：輕資產效率指標優先。"))
   }
 
-  # 8) Stable FCF mature (map to mature_dividend focus if div exists, else cyclical soft → asset_light-ish)
+  # Asset shell / balance-sheet business, after operating-statement profiles.
+  if (isTRUE(stmt_shell)) {
+    return(.out(
+      "holding_asset",
+      "營收相對淨值很低且自由現金流非正：以帳面淨資產為屬性錨。產業標籤只作確認。"
+    ))
+  }
+  if (isTRUE(stmt_book)) {
+    return(.out(
+      "financial_book",
+      "資產週轉低且負債佔資產高：帳面與淨值指標優先。產業標籤只作確認。"
+    ))
+  }
+
+  # Stable FCF mature
   if (isTRUE(is_fcf_stable)) {
     if (isTRUE(is_div)) {
       return(.out("mature_dividend", "FCF 穩定且有配息：成熟配息／獲利品質優先。"))

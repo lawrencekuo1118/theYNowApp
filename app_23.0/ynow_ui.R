@@ -180,7 +180,7 @@
     ),
     tags$li(
       tags$b("估值引擎："),
-      "內建 Fair Value 引擎（DCF：FCFF／WACC 或 FCFE／Ke、DDM：Gordon／SPM／二階段、P/B＋NAV、RI）、市場定價參照 Multiples，以及綜合型估值框架 SOTP（Meta-Framework）；依產業屬性動態推薦主／副路徑，並以 Composite valuation 並陳各模型相對現價位置。"
+      "內建 Fair Value 引擎（DCF：FCFF／WACC 或 FCFE／Ke、DDM：Gordon／SPM／二階段、P/B＋NAV、RI）、市場定價參照 Multiples，以及綜合型估值框架 SOTP（Meta-Framework）；以個股財報屬性推薦主／副路徑，產業與資料完整性為輔，並以 Composite valuation 並陳各模型相對現價位置。"
     ),
     tags$li(
       tags$b("智慧決策與量化回測："),
@@ -203,7 +203,7 @@
     ),
     tags$li(
       tags$b("Valuation Engines: "),
-      "Fair Value engines (DCF: FCFF/WACC or FCFE/Ke; DDM: Gordon / SPM / two-stage; P/B with holding NAV; Residual Income), Multiples as a market-pricing Reference, and SOTP as a Meta-Framework that can mix absolute and relative lenses by segment. The app recommends a primary/secondary path by industry attributes and overlays model values versus the current price on the Composite valuation axis."
+      "Fair Value engines (DCF: FCFF/WACC or FCFE/Ke; DDM: Gordon / SPM / two-stage; P/B with holding NAV; Residual Income), Multiples as a market-pricing Reference, and SOTP as a Meta-Framework that can mix absolute and relative lenses by segment. The app recommends a primary/secondary path from the stock's financial-statement attributes, with industry and data completeness as supplements, and overlays model values versus the current price on the Composite valuation axis."
     ),
     tags$li(
       tags$b("Smart Decision Matrix & Backtesting: "),

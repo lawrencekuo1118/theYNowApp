@@ -368,11 +368,15 @@ check("low lifecycle confidence is forwarded",
       is.finite(rec_low$confidence_inputs$lifecycle_confidence) &&
         rec_low$confidence_inputs$lifecycle_confidence < 0.45)
 
-# --- Cyclical industries must keep P/B as primary or secondary ---
+# --- Cyclical label is a supplement. Stable statements keep the same primary. ---
 .has_pb_slot <- function(rec) {
   identical(as.character(rec$primary %||% ""), "pb") ||
     identical(as.character(rec$secondary %||% ""), "pb")
 }
+foods_primary <- recommend_valuation_models(
+  base_cf(), "Packaged Foods", base_is(), base_bs(),
+  industry_choice = "fmcg.Food_Beverages"
+)$primary
 cyc_cases <- list(
   list("Steel", "mat.Metals_Mining"),
   list("Marine Shipping", "tr.Logistics_Shipping"),
@@ -388,16 +392,18 @@ for (cc in cyc_cases) {
   rec_c <- recommend_valuation_models(
     base_cf(), cc[[1]], base_is(), base_bs(), industry_choice = cc[[2]]
   )
-  check(paste0("cyclical ", cc[[2]], " has P/B slot"), .has_pb_slot(rec_c))
+  check(paste0("cyclical ", cc[[2]], " does not override stable statements"),
+        identical(rec_c$primary, foods_primary))
   check(paste0("cyclical ", cc[[2]], " tagged"), isTRUE(rec_c$confidence_inputs$cyclical_industry))
-  check(paste0("cyclical ", cc[[2]], " mentions P/B rule"), {
-    grepl("景氣循環", rec_c$reason %||% "") && grepl("P/B", rec_c$reason_en %||% "")
+  check(paste0("cyclical ", cc[[2]], " industry is a supplement"), {
+    grepl("景氣循環", rec_c$reason %||% "") && grepl("supplement", rec_c$reason_en %||% "")
   })
 }
 rec_steel_txt <- recommend_valuation_models(
   base_cf(), "Steel", base_is(), base_bs(), industry_choice = ""
 )
-check("text-only steel still gets P/B slot", .has_pb_slot(rec_steel_txt))
+check("text-only steel does not override stable statements",
+      identical(rec_steel_txt$primary, foods_primary))
 
 rec_foods <- recommend_valuation_models(
   base_cf(), "Packaged Foods", base_is(), base_bs(),
@@ -424,13 +430,20 @@ rec_hold <- recommend_valuation_models(
   base_cf(), "Conglomerate", base_is(), base_bs(),
   industry_choice = "fn.Conglomerate_Holding"
 )
-check("holding prefers NAV primary when applicable", {
-  identical(as.character(rec_hold$primary %||% ""), "nav") ||
-    identical(as.character(rec_hold$company_type %||% ""), "holding_asset")
-})
-if (identical(as.character(rec_hold$primary %||% ""), "nav")) {
-  check("holding NAV secondary SOTP", identical(as.character(rec_hold$secondary %||% ""), "sotp"))
-  check("holding SOTP cross_check", identical(as.character(rec_hold$secondary_role %||% ""), "cross_check"))
+check("holding label does not override usable cash flow",
+      identical(as.character(rec_hold$primary %||% ""), foods_primary))
+rec_shell <- recommend_valuation_models(
+  base_cf(cfo = c(5, 4), capex = c(-12, -11), div = c(NA, NA)),
+  "Conglomerate",
+  base_is(ni = c(8, 6), rev = c(40, 38)),
+  base_bs(equity = c(800, 790), debt = c(50, 50), assets = c(900, 880)),
+  industry_choice = "fn.Conglomerate_Holding"
+)
+check("asset shell plus holding label uses NAV",
+      identical(as.character(rec_shell$primary %||% ""), "nav"))
+if (identical(as.character(rec_shell$primary %||% ""), "nav")) {
+  check("holding NAV secondary SOTP", identical(as.character(rec_shell$secondary %||% ""), "sotp"))
+  check("holding SOTP cross_check", identical(as.character(rec_shell$secondary_role %||% ""), "cross_check"))
 }
 check("holding never primary SOTP", !identical(as.character(rec_hold$primary %||% ""), "sotp"))
 check("holding never primary Multiples", !identical(as.character(rec_hold$primary %||% ""), "multiples"))
@@ -594,9 +607,8 @@ check(
     isTRUE(rec_thin$multiples)
 )
 
-# Cyclical + neg latest FCFF (CLF-like): Gordon-blocked DCF must not remain
-# Fair Value primary; industry P/B rescues the slot even if overall is a hair
-# under MIN_OVERALL.
+# Cyclical + neg latest FCFF (CLF-like): Gordon-blocked DCF is not Fair Value
+# primary. Positive book equity is the remaining statement claim, so P/B leads.
 rec_cyc_neg <- recommend_valuation_models(
   base_cf(cfo = c(-50, 80), capex = c(-120, -90), div = c(NA_real_, NA_real_)),
   "Steel",

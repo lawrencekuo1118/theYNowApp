@@ -1489,7 +1489,8 @@ lab_industry_method_defaults <- function() {
       )
     )
   }
-  # Same cyclical source of truth as recommend_valuation_models / industry_standards.R
+  # Industry-catalog prior only (no statements yet). Per-stock recommend_valuation_models
+  # ranks from financial-statement attributes; a cyclical label does not force P/B.
   if (exists("is_cyclical_industry", mode = "function") &&
       exists("cyclical_pb_slot", mode = "function")) {
     for (i in seq_len(nrow(df))) {

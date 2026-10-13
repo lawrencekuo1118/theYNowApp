@@ -1271,10 +1271,13 @@ recommend_multiples_lens <- function(ni = NA_real_, ebitda = NA_real_, ebit = NA
   accounting <- .vg_clip(accounting)
   forecast <- .vg_clip(forecast)
   industry <- .vg_clip(industry)
-  overall <- .vg_clip(
-    0.25 * applicability + 0.15 * data_quality + 0.15 * stability +
-      0.10 * accounting + 0.20 * forecast + 0.15 * industry
+  # Statement attributes (applicability through forecast) rank the model.
+  # Industry is a 10% supplement and does not set the order by itself.
+  statement <- .vg_clip(
+    0.30 * applicability + 0.20 * data_quality + 0.18 * stability +
+      0.12 * accounting + 0.20 * forecast
   )
+  overall <- .vg_clip(0.90 * statement + 0.10 * industry)
   data.frame(
     model = model,
     lens = .vg_lens(model),
@@ -1284,6 +1287,7 @@ recommend_multiples_lens <- function(ni = NA_real_, ebitda = NA_real_, ebit = NA
     accounting = accounting,
     forecast = forecast,
     industry = industry,
+    statement = statement,
     overall = overall,
     gordon_blocked = isTRUE(gordon_blocked),
     notes = paste(notes, collapse = "; "),
@@ -1319,7 +1323,7 @@ assemble_model_recommendation <- function(data_missing = FALSE,
   empty_scores <- data.frame(
     model = character(0), lens = character(0), applicability = numeric(0),
     data_quality = numeric(0), stability = numeric(0), accounting = numeric(0),
-    forecast = numeric(0), industry = numeric(0), overall = numeric(0),
+    forecast = numeric(0), industry = numeric(0), statement = numeric(0), overall = numeric(0),
     gordon_blocked = logical(0), notes = character(0), stringsAsFactors = FALSE
   )
   pack <- function(company_type, primary, secondary, summary_method, reason,
@@ -1400,6 +1404,25 @@ assemble_model_recommendation <- function(data_missing = FALSE,
   is_holding <- grepl("Conglomerate|Holding|fn\\.Conglomerate", txt, ignore.case = TRUE)
   is_book <- isTRUE(pb_view$book_biz)
   is_intang <- isTRUE(pb_view$intangible_biz)
+  # Statement shape, independent of the industry label.
+  stmt_turn <- if (is.finite(.vg_num(revenue)) && is.finite(.vg_num(assets)) && .vg_num(assets) > 0) {
+    .vg_num(revenue) / .vg_num(assets)
+  } else {
+    NA_real_
+  }
+  stmt_lev <- if (is.finite(.vg_num(debt)) && is.finite(.vg_num(assets)) && .vg_num(assets) > 0) {
+    .vg_num(debt) / .vg_num(assets)
+  } else {
+    NA_real_
+  }
+  stmt_book <- is.finite(stmt_turn) && stmt_turn < 0.35 && is.finite(stmt_lev) && stmt_lev >= 0.35
+  stmt_shell <- is.finite(.vg_num(revenue)) && is.finite(.vg_num(equity)) && .vg_num(equity) > 0 &&
+    (.vg_num(revenue) / .vg_num(equity)) < 0.20 &&
+    (!is.finite(.vg_num(last_fcff)) || .vg_num(last_fcff) <= 0)
+  conf_in$statement_book <- isTRUE(stmt_book)
+  conf_in$statement_shell <- isTRUE(stmt_shell)
+  conf_in$asset_turnover <- stmt_turn
+  conf_in$debt_to_assets <- stmt_lev
   # 景氣循環 is an industry-class tag (industry_standards.R), not a lifecycle stage.
   is_cyc <- exists("is_cyclical_industry", mode = "function") &&
     isTRUE(is_cyclical_industry(ind_key, ind_txt))
@@ -1421,10 +1444,13 @@ assemble_model_recommendation <- function(data_missing = FALSE,
   dcf_stab <- if (!is.finite(fcf_cv)) 40 else if (fcf_cv <= 0.5) 85 else if (fcf_cv <= 0.75) 65 else 30
   if (!isTRUE(is_fcf_pos)) dcf_stab <- min(dcf_stab, 25)
   dcf_fcst <- if (isTRUE(is_fcf_stable) && is.finite(rev_g)) 80 else if (isTRUE(is_fcf_pos)) 60 else if (is.finite(rev_g) && cfo_ok) 45 else 25
-  # Interest is an operating item for banks, insurers, and utilities, so unlevered FCFF is a weaker primary claim.
-  if (is_book) {
+  # Low asset turnover plus material leverage is a balance-sheet business on the statements.
+  # An industry label alone is only a small supplement.
+  if (isTRUE(stmt_book)) {
     dcf_app <- dcf_app - 45
     dcf_fcst <- dcf_fcst - 20
+  } else if (is_book) {
+    dcf_app <- dcf_app - 12
   }
   life <- lifecycle_result
   life_stage <- as.character(life$selectedStage %||% life$autoDetectedStage %||% "")[1]
@@ -1469,7 +1495,11 @@ assemble_model_recommendation <- function(data_missing = FALSE,
   ri_roe_g_collapse <- is.finite(roe) && roe > 0 && roe < ke_proxy_pct && !isTRUE(is_div_stable)
 
   pb_app <- if (isTRUE(pb_view$blocked)) 0 else pb_view$score
-  if (isTRUE(is_cyc) && !isTRUE(pb_view$blocked)) pb_app <- min(100, pb_app + 15)
+  # Cyclical label supplements P/B only when cash flow is already unstable or Gordon is blocked.
+  if (isTRUE(is_cyc) && !isTRUE(pb_view$blocked)) {
+    pb_bump <- if ((is.finite(fcf_cv) && fcf_cv >= 1) || isTRUE(gordon_blocked)) 12 else 4
+    pb_app <- min(100, pb_app + pb_bump)
+  }
   # Justified P/B ≡ (ROE−g)/(Ke−g) is the same identity as one-stage RI. When g≈ROE
   # collapses RI to P≈0, Justified P/B collapses too. Industry/history target P/B is
   # relative valuation (Multiples Reference) — do not promote it to Fair Value primary
@@ -1530,7 +1560,10 @@ assemble_model_recommendation <- function(data_missing = FALSE,
     50, if (isTRUE(is_div_stable)) 65 else 20, if (is_book) 60 else 50,
     notes = "DDM formula unchanged; score is selection only"
   )
-  nav_app <- if (is_holding && is.finite(equity) && equity > 0) 85 else 10
+  nav_app <- 15
+  if (is.finite(equity) && equity > 0) nav_app <- nav_app + 20
+  if (isTRUE(stmt_shell)) nav_app <- nav_app + 40
+  if (is_holding) nav_app <- nav_app + 12
   rows[[length(rows) + 1L]] <- .vg_score_row(
     "nav", nav_app, if (is.finite(equity)) 60 else 15, 50,
     if (is_holding) 80 else 30, 40, if (is_holding) 85 else 25,
@@ -1561,10 +1594,8 @@ assemble_model_recommendation <- function(data_missing = FALSE,
   )
   # SOTP: structural revenue-segment framework. Preferred secondary for holdings / conglomerates.
   sotp_app <- 15
-  if (is_holding) sotp_app <- sotp_app + 50
-  if (grepl("Conglomerate|Holding|fn\\.Conglomerate|ind\\.Conglomerate", txt, ignore.case = TRUE)) {
-    sotp_app <- sotp_app + 15
-  }
+  if (isTRUE(stmt_shell)) sotp_app <- sotp_app + 25
+  if (is_holding) sotp_app <- sotp_app + 12
   if (is.finite(equity) && equity > 0) sotp_app <- sotp_app + 10
   if (is_book && !is_holding) sotp_app <- sotp_app - 15
   rows[[length(rows) + 1L]] <- .vg_score_row(
@@ -1592,17 +1623,22 @@ assemble_model_recommendation <- function(data_missing = FALSE,
     , drop = FALSE
   ]
   inapplicable <- scores$model[scores$applicability < .VG_CROSS_APP]
-  # Cyclical rescue: when Gordon-blocked DCF was the only model clearing the
-  # full gate, keep industry P/B as Fair Value primary (policy: cyclical → P/B
-  # in the pair) if applicability clears MIN_APP even when overall is a hair
-  # under MIN_OVERALL (CLF / steel-class).
-  if (!nrow(eligible) && isTRUE(is_cyc) && !isTRUE(pb_view$blocked)) {
+  # Statement rescue: if Gordon DCF and the other Fair Value engines miss the
+  # gate, a usable book (positive equity, P/B applicability) can still be primary.
+  # Industry does not create this slot by itself.
+  if (!nrow(eligible) && !isTRUE(pb_view$blocked)) {
     pb_soft <- scores[
       scores$model == "pb" &
         scores$applicability >= .VG_MIN_APP,
       , drop = FALSE
     ]
-    if (nrow(pb_soft)) eligible <- pb_soft
+    others <- scores[
+      scores$model %in% setdiff(fv_models, "pb") &
+        scores$applicability >= .VG_MIN_APP &
+        !(scores$model == "dcf" & scores$gordon_blocked %in% TRUE),
+      , drop = FALSE
+    ]
+    if (nrow(pb_soft) && !nrow(others)) eligible <- pb_soft
   }
   if (!nrow(eligible)) {
     # Still attach Multiples as market-pricing Reference when scored applicable —
@@ -1667,7 +1703,7 @@ assemble_model_recommendation <- function(data_missing = FALSE,
       multiples_reason_en = lens0$reason_en
     ))
   }
-  eligible <- eligible[order(-eligible$overall, -eligible$applicability, eligible$model), , drop = FALSE]
+  eligible <- eligible[order(-eligible$statement, -eligible$overall, -eligible$applicability, eligible$model), , drop = FALSE]
   primary <- as.character(eligible$model[1])
   primary_row <- scores[scores$model == primary, , drop = FALSE]
   # Multiples is never a secondary candidate — it is a universal Reference companion.
@@ -1681,7 +1717,7 @@ assemble_model_recommendation <- function(data_missing = FALSE,
   secondary <- NULL
   role <- "none"
   if (nrow(rest)) {
-    rest <- rest[order(-rest$overall, -rest$applicability), , drop = FALSE]
+    rest <- rest[order(-rest$statement, -rest$overall, -rest$applicability), , drop = FALSE]
     secondary <- as.character(rest$model[1])
     role <- if (
       .vg_is_non_fv_primary(secondary) ||
@@ -1735,13 +1771,12 @@ assemble_model_recommendation <- function(data_missing = FALSE,
     wp <- sp / (sp + ss)
     ws <- 1 - wp
   }
-  # Financial institutions: unlevered FCFF DCF must not be the sole recommendation.
-  if ((identical(life_special, "FINANCIAL_INSTITUTION") ||
-       identical(life_stage, "FINANCIAL_INSTITUTION")) &&
-      identical(primary, "dcf")) {
+  # Balance-sheet businesses: unlevered FCFF is not the primary when the statements say so.
+  # An industry or lifecycle label does not demote DCF on its own.
+  if (isTRUE(stmt_book) && identical(primary, "dcf")) {
     alt <- scores[scores$model != "dcf" & scores$applicability >= .VG_CROSS_APP, , drop = FALSE]
     if (nrow(alt)) {
-      alt <- alt[order(-alt$overall, -alt$applicability), , drop = FALSE]
+      alt <- alt[order(-alt$statement, -alt$overall, -alt$applicability), , drop = FALSE]
       secondary <- primary
       role <- "cross_check"
       primary <- as.character(alt$model[1])
@@ -1752,41 +1787,10 @@ assemble_model_recommendation <- function(data_missing = FALSE,
       wp <- 1 - ws
     }
   }
-  # Cyclical industries: P/B must be primary or secondary when it is applicable.
-  # Score ranking can otherwise fill the pair with DCF + RI and omit P/B.
-  if (isTRUE(is_cyc) && !identical(primary, "pb") && !identical(as.character(secondary %||% ""), "pb")) {
-    pb_row <- scores[scores$model == "pb", , drop = FALSE]
-    pb_ok <- nrow(pb_row) == 1L &&
-      !isTRUE(pb_view$blocked) &&
-      pb_row$applicability[1] >= .VG_CROSS_APP
-    slot <- if (exists("cyclical_pb_slot", mode = "function")) {
-      cyclical_pb_slot(primary, secondary, pb_ok = pb_ok)
-    } else if (isTRUE(pb_ok)) {
-      list(primary = primary, secondary = "pb", changed = TRUE)
-    } else {
-      list(primary = primary, secondary = secondary, changed = FALSE)
-    }
-    if (isTRUE(slot$changed) && identical(as.character(slot$secondary %||% ""), "pb")) {
-      primary <- as.character(slot$primary)
-      secondary <- "pb"
-      primary_row <- scores[scores$model == primary, , drop = FALSE]
-      sp <- primary_row$overall[1]
-      ss <- scores$overall[scores$model == secondary][1]
-      role <- if (pb_row$applicability[1] >= .VG_MIN_APP) "valuation" else "cross_check"
-      if (!is.finite(ss)) {
-        wp <- 1; ws <- 0; role <- "none"
-      } else if (identical(role, "cross_check")) {
-        ws <- min(0.25, ss / (sp + ss))
-        wp <- 1 - ws
-      } else {
-        wp <- sp / (sp + ss)
-        ws <- 1 - wp
-      }
-    }
-  }
-  # Holdings / conglomerates: NAV is the Fair Value primary when applicable;
-  # SOTP Meta-Framework is the structural companion (not an equal-weight FV band).
-  if (isTRUE(is_holding)) {
+  # Holdings: NAV leads only when the statements are an asset shell (little revenue
+  # versus equity and no positive FCFF). The conglomerate label does not replace
+  # a usable cash-flow primary.
+  if (isTRUE(stmt_shell) && isTRUE(is_holding)) {
     nav_row <- scores[scores$model == "nav", , drop = FALSE]
     sotp_row <- scores[scores$model == "sotp", , drop = FALSE]
     nav_ok <- nrow(nav_row) == 1L && nav_row$applicability[1] >= .VG_CROSS_APP
@@ -1900,15 +1904,13 @@ assemble_model_recommendation <- function(data_missing = FALSE,
   } else {
     ""
   }
-  cyc_note <- if (isTRUE(is_cyc) &&
-                    (identical(primary, "pb") || identical(as.character(secondary %||% ""), "pb"))) {
-    " 景氣循環產業：Justified P/B（帳面／資產型 Fair Value）必為主模型或副模型之一。"
+  cyc_note <- if (isTRUE(is_cyc)) {
+    " 景氣循環是產業輔助：只有現金流不穩或 Gordon 被擋時才提高 Justified P/B，不取代財報排序。"
   } else {
     ""
   }
-  cyc_note_en <- if (isTRUE(is_cyc) &&
-                      (identical(primary, "pb") || identical(as.character(secondary %||% ""), "pb"))) {
-    " Cyclical industry: Justified P/B (Book / Asset Fair Value) is required as primary or secondary."
+  cyc_note_en <- if (isTRUE(is_cyc)) {
+    " Cyclical is an industry supplement: it lifts Justified P/B only when cash flow is unstable or Gordon is blocked, and it does not replace the statement ranking."
   } else {
     ""
   }
@@ -1953,6 +1955,7 @@ assemble_model_recommendation <- function(data_missing = FALSE,
     ""
   }
   reason <- paste0(
+    "以財報屬性為主（現金流、盈餘、淨值、配息、槓桿）；產業與資料完整性為輔。",
     "主模型 ", primary, "（綜合信心 ", round(sp, 1),
     "）。權重隨信心分數，不預設等權。",
     if (is.null(secondary)) " 無適用副模型。" else paste0(
@@ -1964,9 +1967,16 @@ assemble_model_recommendation <- function(data_missing = FALSE,
     hold_note,
     rel_note,
     ref_note,
-    life_note
+    life_note,
+    if (!isTRUE(conf_in$data_complete)) {
+      " 財報欄位不完整只降低信心，不改走產業預設模型。"
+    } else {
+      ""
+    }
   )
   reason_en <- paste0(
+    "Statement attributes lead (cash flow, earnings, equity, dividends, leverage). ",
+    "Industry and data completeness are supplements. ",
     "Primary model ", primary, " (overall confidence ", round(sp, 1),
     "). Weights follow confidence scores; they are not preset to be equal. ",
     if (is.null(secondary)) "No applicable secondary model." else paste0(
@@ -1978,7 +1988,12 @@ assemble_model_recommendation <- function(data_missing = FALSE,
     hold_note_en,
     rel_note_en,
     ref_note_en,
-    life_note
+    life_note,
+    if (!isTRUE(conf_in$data_complete)) {
+      " Incomplete statements lower confidence only; they do not switch in an industry-default model."
+    } else {
+      ""
+    }
   )
   sum_bits <- .model_label(primary)
   if (!is.null(secondary)) {

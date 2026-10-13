@@ -48,18 +48,47 @@ check("is_profile_focus financial pe", is_profile_focus_metric("financial_book",
 check("fs PE map", identical(fs_item_to_focus_metric("PE Ratio (TTM)"), "pe_ratio"))
 check("fs Yield map", identical(fs_item_to_focus_metric("Yield"), "dividend_yield"))
 
-# --- Holding ---
-cf_h <- .stack(.mk_stmt("Free Cash Flow", c(10, 11, 12)))
-is_h <- .stack(.mk_stmt("Total Revenue", c(100, 110, 120)))
-bs_h <- .stack(.mk_stmt("Total Assets", c(200, 210, 220)))
+# --- Operating statements keep their profile even with a holding/bank label ---
+cf_op <- .stack(.mk_stmt("Free Cash Flow", c(10, 11, 12)))
+is_op <- .stack(.mk_stmt("Total Revenue", c(100, 110, 120)))
+bs_op <- .stack(.mk_stmt("Total Assets", c(200, 210, 220)))
+r_label <- classify_fundamental_profile(
+  cf_op, is_op, bs_op,
+  industry_text = "Conglomerate Holding", industry_choice = "fn.Conglomerate_Holding"
+)
+check("holding label alone is not holding_asset", !identical(r_label$profile, "holding_asset"))
+r_bank_label <- classify_fundamental_profile(
+  cf_op, is_op, bs_op,
+  industry_text = "Banks - Diversified", industry_choice = "fn.Banking"
+)
+check("bank label alone is not financial_book", !identical(r_bank_label$profile, "financial_book"))
+
+# --- Asset shell (revenue << equity, FCF not positive) ---
+cf_h <- .stack(.mk_stmt("Free Cash Flow", c(-4, -3, -2)))
+is_h <- .stack(.mk_stmt("Total Revenue", c(30, 32, 31)))
+bs_h <- .stack(
+  .mk_stmt("Total Assets", c(900, 880, 860)),
+  .mk_stmt("Stockholders Equity", c(700, 690, 680))
+)
 r_h <- classify_fundamental_profile(cf_h, is_h, bs_h, industry_text = "Conglomerate Holding", industry_choice = "fn.Conglomerate_Holding")
 check("holding_asset", identical(r_h$profile, "holding_asset"))
 check("holding focuses leverage", "eqt_multiplier" %in% r_h$focus_metrics)
+r_h_plain <- classify_fundamental_profile(cf_h, is_h, bs_h, industry_text = "Software", industry_choice = "tech.Software")
+check("asset shell is holding_asset without the label", identical(r_h_plain$profile, "holding_asset"))
 
-# --- Financial book ---
-r_f <- classify_fundamental_profile(cf_h, is_h, bs_h, industry_text = "Banks - Diversified", industry_choice = "fn.Banking")
+# --- Financial book: low turnover and high leverage ---
+cf_f <- .stack(.mk_stmt("Free Cash Flow", c(8, 7, 9)))
+is_f <- .stack(.mk_stmt("Total Revenue", c(80, 78, 76)))
+bs_f <- .stack(
+  .mk_stmt("Total Assets", c(2000, 1900, 1800)),
+  .mk_stmt("Total Debt", c(1200, 1100, 1000)),
+  .mk_stmt("Stockholders Equity", c(400, 390, 380))
+)
+r_f <- classify_fundamental_profile(cf_f, is_f, bs_f, industry_text = "Banks - Diversified", industry_choice = "fn.Banking")
 check("financial_book", identical(r_f$profile, "financial_book"))
 check("financial focuses ROE", "roe" %in% r_f$focus_metrics)
+r_f_plain <- classify_fundamental_profile(cf_f, is_f, bs_f, industry_text = "Software", industry_choice = "tech.Software")
+check("book statements are financial_book without the bank label", identical(r_f_plain$profile, "financial_book"))
 
 # --- Growth (high rev CAGR) ---
 # YoY from newest→oldest: 150/120-1=25%, 120/90-1=33% → avg ~29%
