@@ -127,6 +127,10 @@ need <- c(
 check("new i18n keys present", all(need %in% en_keys) && all(need %in% zh_keys))
 check("zh menu is 到值通知", identical(.UI_STRINGS$`zh-TW`$menu_price_alert, "到值通知"))
 check("en menu is Value Alerts", identical(.UI_STRINGS$en$menu_price_alert, "Value Alerts"))
+check("en level label is Target Value", identical(.UI_STRINGS$en$pa_level, "Target Value"))
+check("zh level label is 目標值", identical(.UI_STRINGS$`zh-TW`$pa_level, "目標值"))
+check("en table col is Target Value", identical(.UI_STRINGS$en$pa_col_level, "Target Value"))
+check("zh table col is 目標值", identical(.UI_STRINGS$`zh-TW`$pa_col_level, "目標值"))
 
 ui_txt <- paste(readLines("ynow_ui.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check("gesture JS wired", grepl("ynow_kpi_alert_open", ui_txt, fixed = TRUE))
