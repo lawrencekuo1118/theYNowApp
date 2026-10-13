@@ -1134,7 +1134,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_chart_models_label = "Chart overlay models",
     hfv_rel_models_note = paste0(
       "Multiples (Reference) and SOTP (Meta-Framework) are not historical Fair Value engines — ",
-      "they are not available as HFV chart overlays."
+      "they are not available as HFV chart overlays. ",
+      "Historical theoretical FV for P/B uses Justified P/B only (ROE, g, Ke); ",
+      "industry / history trading multiples stay Relative Valuation (Implied Price), not Fair Value."
     ),
     lab_im_methods_label = "Models",
     lab_im_methods_abs_label = "Absolute",
@@ -4097,7 +4099,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_chart_models_label = "圖表疊加模型",
     hfv_rel_models_note = paste0(
       "Multiples（Reference）與 SOTP（綜合型估值框架／Meta-Framework）非歷史 Fair Value 引擎——",
-      "無法作為 HFV 圖表疊加。"
+      "無法作為 HFV 圖表疊加。",
+      "歷史復盤的理論 FV 僅在 Justified P/B 成立時產出（ROE、成長率、Ke）；",
+      "產業／歷史交易倍數屬相對估值（Implied Price），不進 Fair Value。"
     ),
     lab_im_methods_label = "模型",
     lab_im_methods_abs_label = "絕對",
