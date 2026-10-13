@@ -7,4 +7,4 @@ commit=90485391aa2dcf17b91908fbf4e97e07fe0c9859
 short=9048539
 message=chore: bump display version to v23.20
 captured_at=2026-10-13T15:54:19Z
-display_version=v23.20
+display_version=v23.21
