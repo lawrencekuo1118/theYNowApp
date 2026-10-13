@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12682171
+bundleId=12682222
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=b9268d71832a12ef7bda559f51f8b3e4e08baddf
-commit=b9268d71832a12ef7bda559f51f8b3e4e08baddf
-short=b9268d7
-message=chore: bump display version to v23.14
-captured_at=2026-10-13T00:59:09Z
-display_version=v23.14
+aligned_git=ce0b552e6d59ca2262db210f883d1f4fec3d1a47
+commit=ce0b552e6d59ca2262db210f883d1f4fec3d1a47
+short=ce0b552
+message=test: assert Value Alerts Target Value locale labels
+captured_at=2026-10-13T01:23:13Z
+display_version=v23.15
