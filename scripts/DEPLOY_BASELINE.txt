@@ -7,4 +7,4 @@ commit=f5524ef2b4f250fb7924d403f44296200172dd42
 short=f5524ef
 message=fix(hfv): hist theoretical FV uses Justified P/B only (v23.17)
 captured_at=2026-10-13T10:18:45Z
-display_version=v23.17
+display_version=v23.18
