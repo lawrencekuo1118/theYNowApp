@@ -34,7 +34,15 @@ check(
 check(
   "relative menu no longer nests SOTP",
   grepl(
-    'ynow_menu_cat_relative[\\s\\S]*?ynow_menu_rel_ev[\\s\\S]*?ynow_menu_rel_earn[\\s\\S]*?ynow_menu_rel_rev[\\s\\S]*?ynow_menu_pb[\\s\\S]*?menuItem\\(\\s*\\n\\s*text = tags\\$span\\(id = "ynow_menu_cat_meta"',
+    'ynow_menu_cat_relative[\\s\\S]*?ynow_menu_rel_ev[\\s\\S]*?ynow_menu_rel_earn[\\s\\S]*?ynow_menu_rel_rev[\\s\\S]*?ynow_menu_rel_book[\\s\\S]*?menuItem\\(\\s*\\n\\s*text = tags\\$span\\(id = "ynow_menu_cat_meta"',
+    ui,
+    perl = TRUE
+  )
+)
+check(
+  "Justified P/B nests under Asset-based",
+  grepl(
+    'ynow_menu_cat_asset[\\s\\S]*?ynow_menu_nav[\\s\\S]*?ynow_menu_pb[\\s\\S]*?menuItem\\(\\s*\\n\\s*text = tags\\$span\\(id = "ynow_menu_cat_income"',
     ui,
     perl = TRUE
   )

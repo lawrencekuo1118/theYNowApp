@@ -115,12 +115,12 @@ locale_for_market <- function(mode = get_market_mode()) {
     menu_get_started = "Model Dashboard",
     menu_dcf = "DCF-Model",
     menu_ddm = "DDM",
-    menu_pb = "Book value (P/B)",
+    menu_pb = "Justified P/B",
     menu_rel_multiples = "Multiples",
     menu_rel_ev = "Enterprise value",
     menu_rel_earn = "Earnings",
     menu_rel_rev = "Revenue",
-    menu_rel_book = "Book value (P/B)",
+    menu_rel_book = "Book multiples",
     menu_sotp = "SOTP",
     menu_ri = "RI-Model",
     menu_nav = "NAV",
@@ -131,7 +131,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     rel_multiples_lead_title = "Relative valuation (multiples): ",
     rel_multiples_lead_body = paste0(
       "Implied Price by capital-claim family (Equity vs Enterprise) — not Intrinsic Value / Fair Value. ",
-      "P/S sits under Equity; SOTP is a separate sidebar Enterprise-structural engine. P/B stays separate."
+      "P/S sits under Equity; SOTP is a separate Meta-Framework. ",
+      "Justified P/B is Asset-based Fair Value; industry/history Book multiples stay Relative here."
     ),
     rel_multiples_box_title = "Multiples",
     rel_multiples_tab_overview = "Overview",
@@ -1143,7 +1144,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_methods_rel_label = "Relative",
     lab_im_methods_locked_hint = paste0(
       "Models with no names using them as the primary valuation model stay unchecked and locked. ",
-      "Enterprise value, Earnings, Revenue, and Book value unlock only when that family is the Multiples reference ",
+      "Justified P/B unlocks when it is a Fair Value primary or secondary. ",
+      "Enterprise value, Earnings, Revenue, and Book multiples unlock only when that family is the Multiples reference ",
       "(same disabled style as Listed). Rows in Suggested valuation methods match this filter."
     ),
     lab_im_query_title = "Query filters",
@@ -1221,15 +1223,20 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_prog_detail_ret_1y = "Ranking pool by 1Y return…",
     lab_im_prog_detail_random = "Random sampling…",
     lab_im_prog_detail_concept = "Applying concept groups…",
+    ms_card_pb_formula = "FV = BVPS × Justified P/B; Justified ≈ (ROE − g) / (Ke − g)",
+    ms_card_pb_notes = paste0(
+      "Book / Asset Fair Value from fundamentals (ROE, g, Ke). ",
+      "Industry / history trading multiples stay Relative Implied Price on the Multiples card."
+    ),
     ms_card_multiples_formula = "Implied Price by family: EV · Earnings · Revenue · Book",
     ms_card_multiples_notes = paste0(
       "Market-pricing Reference for every Fair Value primary. ",
-      "The card names the family in use (enterprise value, earnings, revenue, or book)."
+      "The card names the family in use (enterprise value, earnings, revenue, or book multiples)."
     ),
     ms_family_enterprise = "Enterprise value",
     ms_family_earnings = "Earnings",
     ms_family_revenue = "Revenue",
-    ms_family_book = "Book value",
+    ms_family_book = "Book multiples",
     ms_pos_title = "Valuation vs market",
     ms_pos_market = "Market",
     ms_pos_primary = "Primary",
@@ -3103,12 +3110,12 @@ locale_for_market <- function(mode = get_market_mode()) {
     menu_get_started = "模型儀表板",
     menu_dcf = "DCF 模型",
     menu_ddm = "DDM",
-    menu_pb = "淨值乘數 (P/B)",
+    menu_pb = "Justified P/B",
     menu_rel_multiples = "倍數法",
     menu_rel_ev = "企業價值乘數",
     menu_rel_earn = "盈餘乘數",
     menu_rel_rev = "營收乘數",
-    menu_rel_book = "淨值乘數 (P/B)",
+    menu_rel_book = "淨值相對倍數",
     menu_sotp = "SOTP",
     menu_ri = "RI 模型",
     menu_nav = "NAV",
@@ -3119,7 +3126,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     rel_multiples_lead_title = "相對估值（倍數法）：",
     rel_multiples_lead_body = paste0(
       "依資本請求權家族（Equity／Enterprise）推得 Implied Price——不是 Intrinsic Value／Fair Value。",
-      "P/S 歸 Equity；SOTP 為側欄 Enterprise-structural 引擎。P/B 仍為獨立側欄。"
+      "P/S 歸 Equity；SOTP 為綜合型估值框架。",
+      "Justified P/B 屬資產基礎 Fair Value；產業／歷史淨值相對倍數留在此相對估值區。"
     ),
     rel_multiples_box_title = "倍數法",
     rel_multiples_tab_overview = "總覽",
@@ -4108,7 +4116,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_methods_rel_label = "相對",
     lab_im_methods_locked_hint = paste0(
       "若某評價模型未被任何個股列為主模型，則維持不勾選並鎖定。",
-      "相對估值的企業價值、盈餘、營收、淨值，在該類被當成 Multiples 參照時才可勾選",
+      "Justified P/B 在作為 Fair Value 主／副模型時可勾選。",
+      "相對估值的企業價值、盈餘、營收、淨值相對倍數，在該類被當成 Multiples 參照時才可勾選",
       "（樣式同美股 Listed）。「建議評價方法」表格列與此篩選列一致。"
     ),
     lab_im_query_title = "查詢條件",
@@ -4173,15 +4182,20 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_prog_detail_ret_1y = "取近一年漲幅（評估池排序）…",
     lab_im_prog_detail_random = "系統隨機抽樣…",
     lab_im_prog_detail_concept = "套用概念股群…",
-    ms_card_multiples_formula = "Implied Price 依四類：企業價值 · 盈餘 · 營收 · 淨值",
+    ms_card_pb_formula = "FV = BVPS × Justified P/B；Justified ≈ (ROE − g) / (Ke − g)",
+    ms_card_pb_notes = paste0(
+      "由 ROE、成長率、Ke 推導的帳面／資產型 Fair Value。",
+      "產業／歷史交易倍數屬相對估值 Implied Price，見 Multiples 小卡。"
+    ),
+    ms_card_multiples_formula = "Implied Price 依四類：企業價值 · 盈餘 · 營收 · 淨值相對倍數",
     ms_card_multiples_notes = paste0(
       "所有 Fair Value 主模型的市場定價參照。",
-      "小卡會標出正在使用的分類（企業價值、盈餘、營收或淨值）。"
+      "小卡會標出正在使用的分類（企業價值、盈餘、營收或淨值相對倍數）。"
     ),
     ms_family_enterprise = "企業價值乘數",
     ms_family_earnings = "盈餘乘數",
     ms_family_revenue = "營收乘數",
-    ms_family_book = "淨值乘數",
+    ms_family_book = "淨值相對倍數",
     ms_pos_title = "估值與市價相對位置",
     ms_pos_market = "市價",
     ms_pos_primary = "主模型",
@@ -4520,7 +4534,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     box_discounted_cf = "折現現金流 DCF",
     box_sensitivity = "敏感度分析",
     box_residual_income = "剩餘收益 RI",
-    box_pb_asset = "P/B 與相對估值",
+    box_pb_asset = "P/B 與資產價值",
     box_nav = "NET ASSET VALUE",
     box_blue_chip = "績優股排行榜",
     box_beta = "Beta β",

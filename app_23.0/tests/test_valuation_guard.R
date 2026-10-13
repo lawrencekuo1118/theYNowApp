@@ -135,6 +135,18 @@ rec9 <- recommend_valuation_models(
   industry_choice = "fn.Banking"
 )
 check("bank primary pb", identical(rec9$primary, "pb"))
+check(
+  "bank Justified P/B Fair Value note",
+  grepl("Justified P/B", rec9$reason_en %||% "", fixed = TRUE) &&
+    grepl("Fair Value", rec9$reason_en %||% "", fixed = TRUE) &&
+    grepl("Justified P/B", rec9$reason %||% "", fixed = TRUE) &&
+    grepl("相對估值", rec9$reason %||% "", fixed = TRUE)
+)
+check(
+  "bank Multiples lens stays book family",
+  identical(rec9$multiples_family, "book")
+)
+check("model label Justified P/B", identical(.model_label("pb"), "Justified P/B"))
 
 # 10 buybacks lower pb applicability
 pb10 <- assess_pb_applicability(equity = 80, buyback_to_equity = 0.6, roe = 20, industry_text = "Packaged Foods")

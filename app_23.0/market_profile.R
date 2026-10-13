@@ -280,18 +280,18 @@ ynow_valuation_model_tabs <- function() {
 }
 
 # Fair Value engines for HFV Chart overlay / Replay (and similar pickers).
-# Matches Model Selector L→R: NAV → DCF → DDM → RI → Book(P/B).
+# Matches Model Selector L→R: NAV → Justified P/B → DCF → DDM → RI.
 # Multiples (Reference) and SOTP (Meta-Framework) are not FV engines here.
-YNOW_FV_ENGINE_ORDER <- c("nav", "dcf", "ddm", "ri", "pb")
+YNOW_FV_ENGINE_ORDER <- c("nav", "pb", "dcf", "ddm", "ri")
 
 #' Named choices for Fair Value engine pickers (sidebar-aligned order).
 ynow_fv_engine_choices <- function() {
   c(
     "NAV" = "nav",
+    "Justified P/B" = "pb",
     "DCF" = "dcf",
     "DDM" = "ddm",
-    "RI" = "ri",
-    "P/B" = "pb"
+    "RI" = "ri"
   )
 }
 
