@@ -292,11 +292,45 @@ query_has_cjk <- function(q) {
   grepl("[\u4e00-\u9fff]", as.character(q %||% "")[1])
 }
 
-#' 清理公司名稱候選（去空白／NA／代號本身）
+#' Decode HTML character references in text (TWSE/MOPS sometimes emit &#NNNN; in 公司名稱).
+#' Handles decimal (&#33834;), hex (&#x842A;), and a few common named entities.
+unescape_html_text <- function(x) {
+  x <- as.character(x)
+  if (!length(x)) return(x)
+  vapply(x, function(s) {
+    if (is.na(s) || !nzchar(s) || !grepl("&", s, fixed = TRUE)) return(s)
+    while (grepl("&#[0-9]+;", s, perl = TRUE)) {
+      m <- regmatches(s, regexpr("&#[0-9]+;", s, perl = TRUE))[1]
+      code <- suppressWarnings(as.integer(sub("^&#([0-9]+);$", "\\1", m)))
+      ch <- if (is.finite(code) && code > 0L) intToUtf8(code) else m
+      if (!nzchar(ch)) ch <- m
+      s <- sub("&#[0-9]+;", ch, s, perl = TRUE)
+    }
+    while (grepl("&#[xX][0-9A-Fa-f]+;", s, perl = TRUE)) {
+      m <- regmatches(s, regexpr("&#[xX][0-9A-Fa-f]+;", s, perl = TRUE))[1]
+      code <- suppressWarnings(strtoi(sub("^&#[xX]([0-9A-Fa-f]+);$", "\\1", m), 16L))
+      ch <- if (is.finite(code) && code > 0L) intToUtf8(code) else m
+      if (!nzchar(ch)) ch <- m
+      s <- sub("&#[xX][0-9A-Fa-f]+;", ch, s, perl = TRUE)
+    }
+    s <- gsub("&amp;", "&", s, fixed = TRUE)
+    s <- gsub("&lt;", "<", s, fixed = TRUE)
+    s <- gsub("&gt;", ">", s, fixed = TRUE)
+    s <- gsub("&quot;", "\"", s, fixed = TRUE)
+    s <- gsub("&#39;", "'", s, fixed = TRUE)
+    s <- gsub("&apos;", "'", s, fixed = TRUE)
+    s
+  }, character(1L), USE.NAMES = FALSE)
+}
+
+#' 清理公司名稱候選（去空白／NA／代號本身；並解 HTML entity）
 .clean_company_name_cands <- function(cands, ticker = "") {
   cands <- unlist(cands, use.names = FALSE)
   cands <- trimws(as.character(cands))
   cands <- cands[!is.na(cands) & nzchar(cands)]
+  if (exists("unescape_html_text", mode = "function")) {
+    cands <- unescape_html_text(cands)
+  }
   tk <- toupper(trimws(as.character(ticker %||% "")[1]))
   if (nzchar(tk)) {
     cands <- cands[toupper(cands) != tk]
