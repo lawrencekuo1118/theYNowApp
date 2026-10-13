@@ -19,7 +19,7 @@ pb_asset_module_ui <- function(id) {
                  tabPanel("P/B Overview", icon = icon("landmark"),
                           fluidRow(
                             class = "ynow-model-kpi-row",
-                            column(3, class = "ynow-model-kpi-result", valueBoxOutput(ns("vbx_fair"), width = 12)),
+                            column(3, class = "ynow-model-kpi-result ynow-model-kpi-outline", valueBoxOutput(ns("vbx_fair"), width = 12)),
                             column(3, class = "ynow-model-kpi-tone-2", valueBoxOutput(ns("vbx_bvps"), width = 12)),
                             column(3, class = "ynow-model-kpi-tone-3", valueBoxOutput(ns("vbx_tbvps"), width = 12)),
                             column(3, class = "ynow-model-kpi-tone-4", valueBoxOutput(ns("vbx_mkt_pb"), width = 12))
@@ -29,7 +29,7 @@ pb_asset_module_ui <- function(id) {
                                 style = "font-size: 16px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;")
                           ),
                           fluidRow(
-                            column(width = 6, ynow_calc_btn(ns("btn_calc_pb"), "試算 P/B")),
+                            column(width = 6, ynow_calc_btn(ns("btn_calc_pb"), "試算 Jst. P/B")),
                             column(width = 6, ynow_reset_defaults_btn(ns("btn_reset_pb")))
                           ),
                           fluidRow(
@@ -120,7 +120,7 @@ pb_asset_module_ui <- function(id) {
                                    tags$p(
                                      id = ns("ynow_pb_settings_reset_hint"),
                                      style = "margin-top: 10px; color: #7f8c8d; font-size: 12px;",
-                                     "「回復預設」在 Overview，與「試算 P/B」並排。"
+                                     "「回復預設」在 Overview，與「試算 Jst. P/B」並排。"
                                    )
                             )
                           )

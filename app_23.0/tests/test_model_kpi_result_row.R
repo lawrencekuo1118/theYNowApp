@@ -74,7 +74,7 @@ check("SOTP price leftmost + flow", grepl("ynow-model-kpi-result", sotp_src, fix
         grepl("ynow_model_result_num(val)", sotp_src, fixed = TRUE))
 check("Multiples PE/EVFCF/PS marked result", grepl("is_result = TRUE", rel_src, fixed = TRUE))
 
-# White-outline class only on listed primary KPIs (not P/B; Multiples = P/E only)
+# White-outline class on listed primary KPIs (Multiples family stays filled)
 check(
   "NAV mid has outline class",
   grepl('ynow-model-kpi-result ynow-model-kpi-outline", valueBoxOutput(ns("vbx_nav_mid")', nav_src, fixed = TRUE) ||
@@ -97,9 +97,8 @@ check(
     !grepl("ynow-model-kpi-outline", rel_src, fixed = TRUE)
 )
 check(
-  "P/B fair has no outline class",
-  grepl('ynow-model-kpi-result", valueBoxOutput(ns("vbx_fair")', pb_src, fixed = TRUE) &&
-    !grepl("ynow-model-kpi-outline", pb_src, fixed = TRUE)
+  "P/B fair has outline class",
+  grepl('ynow-model-kpi-result ynow-model-kpi-outline", valueBoxOutput(ns("vbx_fair")', pb_src, fixed = TRUE)
 )
 check(
   "DCF/DDM result columns have outline",

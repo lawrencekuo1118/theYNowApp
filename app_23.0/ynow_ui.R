@@ -4387,7 +4387,7 @@ ui <- dashboardPage(
           border-color: #000 !important;
           color: #fff !important;
         }
-        /* Valuation「試算」：logo 綠 #249C60、白字（DCF／DDM／RI／P/B／NAV） */
+        /* Valuation「試算」預設 logo 綠白字；開著模型分頁時改由該模型主色覆寫 */
         .btn.ynow-btn-calc,
         .btn.ynow-btn-calc:focus,
         .btn.ynow-btn-calc:active,
@@ -4418,7 +4418,7 @@ ui <- dashboardPage(
           color: var(--ynow-ink) !important;
         }
 
-        /* --- 估值模型頁色系（對齊 Model Selector 七卡；不含 試算／回復預設 按鈕）--- */
+        /* --- 估值模型頁色系（對齊 Model Selector 七卡；試算鈕另見各主題覆寫）--- */
         body.ynow-theme-nav { --ynow-model-accent: var(--ynow-model-nav); }
         body.ynow-theme-dcf { --ynow-model-accent: var(--ynow-model-dcf); }
         body.ynow-theme-ddm { --ynow-model-accent: var(--ynow-model-ddm); }
@@ -4522,7 +4522,7 @@ ui <- dashboardPage(
           background-color: var(--ynow-model-kpi-result) !important;
         }
         /* Listed primary KPIs only: white fill + model-accent border / text
-           (NAV fair, DCF/DDM per-share, RI FV, P/E Implied, SOTP Implied).
+           (NAV fair, DCF/DDM per-share, RI FV, Jst. P/B fair, P/E Implied, SOTP Implied).
            Other result / sibling KPIs keep filled family tones above.
            Specificity must beat .content-wrapper .info-box.bg-* muted fills. */
         body.ynow-theme-model .content-wrapper .ynow-model-kpi-outline .small-box,
@@ -4635,7 +4635,7 @@ ui <- dashboardPage(
           border-color: var(--ynow-model-accent) !important;
           color: #ffffff !important;
         }
-        /* 試算／Run：P/B 等未列項目維持 logo 綠；下列模型改模型主色白字 */
+        /* 試算／Run：未列入下列主題的按鈕維持 logo 綠；列入者改該模型主色白字 */
         body.ynow-theme-model .btn.ynow-btn-calc,
         body.ynow-theme-model .btn.ynow-btn-calc:hover,
         body.ynow-theme-model .btn.ynow-btn-calc:focus,
@@ -4665,6 +4665,11 @@ ui <- dashboardPage(
         body.ynow-theme-ri .btn.ynow-btn-calc:focus,
         body.ynow-theme-ri .btn.ynow-btn-calc:active,
         body.ynow-theme-ri .btn.ynow-btn-calc.active,
+        body.ynow-theme-pb .btn.ynow-btn-calc,
+        body.ynow-theme-pb .btn.ynow-btn-calc:hover,
+        body.ynow-theme-pb .btn.ynow-btn-calc:focus,
+        body.ynow-theme-pb .btn.ynow-btn-calc:active,
+        body.ynow-theme-pb .btn.ynow-btn-calc.active,
         body.ynow-theme-multiples .btn.ynow-btn-calc,
         body.ynow-theme-multiples .btn.ynow-btn-calc:hover,
         body.ynow-theme-multiples .btn.ynow-btn-calc:focus,
@@ -4688,6 +4693,8 @@ ui <- dashboardPage(
         body.ynow-theme-ddm .btn.ynow-btn-calc .fas,
         body.ynow-theme-ri .btn.ynow-btn-calc .fa,
         body.ynow-theme-ri .btn.ynow-btn-calc .fas,
+        body.ynow-theme-pb .btn.ynow-btn-calc .fa,
+        body.ynow-theme-pb .btn.ynow-btn-calc .fas,
         body.ynow-theme-multiples .btn.ynow-btn-calc .fa,
         body.ynow-theme-multiples .btn.ynow-btn-calc .fas,
         body.ynow-theme-sotp .btn.ynow-btn-calc .fa,

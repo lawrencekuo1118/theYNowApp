@@ -84,7 +84,7 @@ check(
     grepl("body.ynow-theme-nav .btn.ynow-btn-calc", ui_src, fixed = TRUE) &&
     grepl("body.ynow-theme-sotp .btn.ynow-btn-calc", ui_src, fixed = TRUE) &&
     grepl("body.ynow-theme-multiples .btn.ynow-btn-calc", ui_src, fixed = TRUE) &&
-    !grepl("body.ynow-theme-pb .btn.ynow-btn-calc", ui_src, fixed = TRUE)
+    grepl("body.ynow-theme-pb .btn.ynow-btn-calc", ui_src, fixed = TRUE)
 )
 check(
   "sibling KPI tones defined",
