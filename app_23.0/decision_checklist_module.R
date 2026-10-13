@@ -152,9 +152,12 @@
                 "dc_user_primary",
                 .dc_str("dc_cond_user_primary", "en"),
                 # Fair Value primaries only — Multiples / SOTP are Implied Price cross-checks
-                choices = c(
-                  "DCF" = "dcf", "DDM" = "ddm", "RI" = "ri", "P/B" = "pb", "NAV" = "nav"
-                ),
+                # Sidebar L→R Fair Value engines (same as HFV overlay / Replay)
+                choices = if (exists("ynow_fv_engine_choices", mode = "function")) {
+                  ynow_fv_engine_choices()
+                } else {
+                  c("NAV" = "nav", "DCF" = "dcf", "DDM" = "ddm", "RI" = "ri", "P/B" = "pb")
+                },
                 selected = "dcf",
                 width = "100%"
               ),
