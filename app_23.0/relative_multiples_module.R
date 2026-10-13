@@ -574,13 +574,13 @@ relative_multiples_module_ui <- function(id) {
           ),
           uiOutput(ns("txt_shares_note")),
           fluidRow(
-            column(4, numericInput(ns("cash"), tags$span(id = "ynow_rel_lbl_cash", "Cash"), value = NA, step = 1)),
-            column(4, numericInput(ns("debt"), tags$span(id = "ynow_rel_lbl_debt", "Total Debt"), value = NA, step = 1)),
-            column(4, numericInput(ns("shares"), tags$span(id = "ynow_rel_lbl_shares", "Shares (quote)"), value = NA, step = 1))
+            column(4, lock_numeric_input(numericInput(ns("cash"), tags$span(id = "ynow_rel_lbl_cash", "Cash"), value = NA, step = 1))),
+            column(4, lock_numeric_input(numericInput(ns("debt"), tags$span(id = "ynow_rel_lbl_debt", "Total Debt"), value = NA, step = 1))),
+            column(4, lock_numeric_input(numericInput(ns("shares"), tags$span(id = "ynow_rel_lbl_shares", "Shares (quote)"), value = NA, step = 1)))
           ),
           tags$p(
             id = "ynow_rel_multiples_bridge_help", class = "help-block",
-            "Cash / Debt used for the EV→Equity bridge. Earnings P/E does not use this bridge."
+            "Cash, Total Debt, Shares, and total Revenue are set once on Model Dashboard → Shared bridge. This page shows the applied values."
           )
         )
       )
@@ -688,7 +688,7 @@ relative_multiples_module_ui <- function(id) {
             "Implied Equity = Revenue × P/S; Implied Price = Equity ÷ Shares (no Cash−Debt bridge). Use when earnings and EBITDA are not usable. Do not compare unlike gross margins with the same P/S."
           ),
           fluidRow(
-            column(4, numericInput(ns("ps_revenue"), tags$span(id = "ynow_rel_lbl_ps_revenue", "Revenue"), value = NA, step = 1)),
+            column(4, lock_numeric_input(numericInput(ns("ps_revenue"), tags$span(id = "ynow_rel_lbl_ps_revenue", "Revenue"), value = NA, step = 1))),
             column(4, numericInput(ns("ps_multiple"), tags$span(id = "ynow_rel_lbl_ps_mult", "P/S"), value = APP_DEFAULTS$rel_ps_multiple %||% 3, min = 0.01, step = 0.1))
           ),
           tags$p(id = "ynow_rel_multiples_ps_help", class = "help-block", "Equity-side: Implied Equity = Revenue × P/S; Implied Price = Equity ÷ shares. No Cash−Debt bridge (unlike EV/Sales)."),
@@ -696,7 +696,7 @@ relative_multiples_module_ui <- function(id) {
           hr(style = "border-top:1px solid #BDC3C7;"),
           h4(tags$b("EV/Sales & EV/ARR")),
           fluidRow(
-            column(3, numericInput(ns("revenue"), tags$span(id = "ynow_rel_lbl_revenue", "Revenue"), value = NA, step = 1)),
+            column(3, lock_numeric_input(numericInput(ns("revenue"), tags$span(id = "ynow_rel_lbl_revenue", "Revenue"), value = NA, step = 1))),
             column(3, numericInput(ns("ev_sales_multiple"), tags$span(id = "ynow_rel_lbl_evsales_mult", "EV/Sales"), value = APP_DEFAULTS$rel_ev_sales_multiple %||% 3, min = 0.01, step = 0.1)),
             column(3, numericInput(ns("arr"), tags$span(id = "ynow_rel_lbl_arr", "ARR"), value = NA, step = 1)),
             column(3, numericInput(ns("ev_arr_multiple"), tags$span(id = "ynow_rel_lbl_evarr_mult", "EV/ARR"), value = APP_DEFAULTS$rel_ev_arr_multiple %||% 10, min = 0.1, step = 0.5))
@@ -724,7 +724,8 @@ relative_multiples_module_server <- function(id,
                                             quote_currency = reactive(NA),
                                             financial_currency = reactive(NA),
                                             central_sgr_pct = reactive(NA),
-                                            ui_locale = reactive("zh-TW")) {
+                                            ui_locale = reactive("zh-TW"),
+                                            shared_bridge = NULL) {
   moduleServer(id, function(input, output, session) {
     shares_resolve_note <- reactiveVal(NULL)
     calc_token <- reactiveVal(0L)
@@ -737,6 +738,10 @@ relative_multiples_module_server <- function(id,
       px <- suppressWarnings(as.numeric(quote_price())[1])
       if (!is.finite(px) || px <= 0) px <- suppressWarnings(as.numeric(current_price())[1])
       px
+    }
+    .sb_now <- function() {
+      if (is.null(shared_bridge)) return(NULL)
+      tryCatch(shared_bridge(), error = function(e) NULL)
     }
 
     sync_from_statements <- function() {
@@ -775,6 +780,12 @@ relative_multiples_module_server <- function(id,
       cd <- statement_cash_debt(d_bs)
       cash <- cd$cash
       debt <- cd$debt
+      sb0 <- .sb_now()
+      if (is.list(sb0)) {
+        if (is.finite(sb0$cash)) cash <- sb0$cash
+        if (is.finite(sb0$debt)) debt <- sb0$debt
+        if (is.finite(sb0$revenue)) revenue <- sb0$revenue
+      }
 
       px_quote <- .quote_px()
       mcap <- suppressWarnings(as.numeric(market_cap())[1])
@@ -796,6 +807,7 @@ relative_multiples_module_server <- function(id,
       }
       adopted <- adopt_valuation_shares(sh_res, f_ccy0, q_ccy0)
       shares <- adopted$shares
+      if (is.list(sb0) && is.finite(sb0$shares) && sb0$shares > 0) shares <- sb0$shares
       fx_block <- isTRUE(fx_conversion_required(
         infer_statement_currency(f_ccy0, q_ccy0, adopted$method), q_ccy0
       )) || isTRUE(adr_conversion_required(
@@ -919,6 +931,12 @@ relative_multiples_module_server <- function(id,
       cash <- .num("cash")
       debt <- .num("debt")
       shares <- .num("shares")
+      sb_calc <- .sb_now()
+      if (is.list(sb_calc)) {
+        if (is.finite(sb_calc$cash)) cash <- sb_calc$cash
+        if (is.finite(sb_calc$debt)) debt <- sb_calc$debt
+        if (is.finite(sb_calc$shares) && sb_calc$shares > 0) shares <- sb_calc$shares
+      }
       ev_fcf_m <- .num("ev_fcf_multiple"); if (!is.finite(ev_fcf_m) || ev_fcf_m <= 0) ev_fcf_m <- APP_DEFAULTS$rel_ev_fcf_multiple %||% 15
       ev_ebit_m <- .num("ev_ebit_multiple"); if (!is.finite(ev_ebit_m) || ev_ebit_m <= 0) ev_ebit_m <- APP_DEFAULTS$rel_ev_ebit_multiple %||% 12
       ev_ebitda_m <- .num("ev_ebitda_multiple"); if (!is.finite(ev_ebitda_m) || ev_ebitda_m <= 0) ev_ebitda_m <- APP_DEFAULTS$rel_ev_ebitda_multiple %||% 10
@@ -928,9 +946,14 @@ relative_multiples_module_server <- function(id,
       evf <- calc_ev_fcf_implied_price(.num("fcff"), ev_fcf_m, cash, debt, shares)
       eve <- calc_ev_metric_implied_price(.num("ebit"), ev_ebit_m, cash, debt, shares, "EBIT")
       eveda <- calc_ev_metric_implied_price(.num("ebitda"), ev_ebitda_m, cash, debt, shares, "EBITDA")
-      evs <- calc_ev_metric_implied_price(.num("revenue"), ev_sales_m, cash, debt, shares, "Revenue")
+      rev_ev <- .num("revenue")
       ps_rev <- .num("ps_revenue")
-      if (!is.finite(ps_rev)) ps_rev <- .num("revenue")
+      if (!is.finite(ps_rev)) ps_rev <- rev_ev
+      if (is.list(sb_calc) && is.finite(sb_calc$revenue)) {
+        rev_ev <- sb_calc$revenue
+        ps_rev <- sb_calc$revenue
+      }
+      evs <- calc_ev_metric_implied_price(rev_ev, ev_sales_m, cash, debt, shares, "Revenue")
       ps <- calc_ps_implied_price(ps_rev, ps_m, shares)
       evarr <- calc_ev_metric_implied_price(.num("arr"), ev_arr_m, cash, debt, shares, "ARR")
       if (identical(evarr$reason, "metric_nonpositive")) evarr$reason <- "arr_unavailable"

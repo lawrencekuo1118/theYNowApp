@@ -143,14 +143,14 @@ sotp_module_ui <- function(id) {
         ),
         uiOutput(ns("txt_shares_note")),
         fluidRow(
-          column(4, numericInput(ns("cash"), tags$span(id = "ynow_sotp_lbl_cash", "Cash"), value = NA, step = 1)),
-          column(4, numericInput(ns("debt"), tags$span(id = "ynow_sotp_lbl_debt", "Total Debt"), value = NA, step = 1)),
-          column(4, numericInput(ns("shares"), tags$span(id = "ynow_sotp_lbl_shares", "Shares (quote)"), value = NA, step = 1))
+          column(4, lock_numeric_input(numericInput(ns("cash"), tags$span(id = "ynow_sotp_lbl_cash", "Cash"), value = NA, step = 1))),
+          column(4, lock_numeric_input(numericInput(ns("debt"), tags$span(id = "ynow_sotp_lbl_debt", "Total Debt"), value = NA, step = 1))),
+          column(4, lock_numeric_input(numericInput(ns("shares"), tags$span(id = "ynow_sotp_lbl_shares", "Shares (quote)"), value = NA, step = 1)))
         ),
         tags$p(
           id = "ynow_sotp_bridge_help",
           class = "help-block",
-          "Implied EV = Σ(segment revenue × segment EV/Sales) + non-operating; Equity = EV + Cash − Debt (same bridge as DCF)."
+          "Implied EV = Σ(segment revenue × segment EV/Sales) + non-operating; Equity = EV + Cash − Debt. Cash, Total Debt, and Shares are set once on Model Dashboard → Shared bridge."
         )
       )
     )
@@ -167,7 +167,8 @@ sotp_module_server <- function(id,
                                current_ticker = reactive(""),
                                quote_currency = reactive(NA),
                                financial_currency = reactive(NA),
-                               ui_locale = reactive("zh-TW")) {
+                               ui_locale = reactive("zh-TW"),
+                               shared_bridge = NULL) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     shares_resolve_note <- reactiveVal(NULL)
@@ -213,6 +214,11 @@ sotp_module_server <- function(id,
       cd <- statement_cash_debt(d_bs)
       cash <- cd$cash
       debt <- cd$debt
+      sb0 <- if (is.null(shared_bridge)) NULL else tryCatch(shared_bridge(), error = function(e) NULL)
+      if (is.list(sb0)) {
+        if (is.finite(sb0$cash)) cash <- sb0$cash
+        if (is.finite(sb0$debt)) debt <- sb0$debt
+      }
       px_quote <- .quote_px()
       mcap <- suppressWarnings(as.numeric(market_cap())[1])
       tk <- tryCatch(current_ticker(), error = function(e) "")
@@ -229,6 +235,7 @@ sotp_module_server <- function(id,
       sh_adj$shares_bs <- shares_bs
       adopted <- adopt_valuation_shares(sh_adj, f_ccy0, q_ccy0)
       shares <- adopted$shares
+      if (is.list(sb0) && is.finite(sb0$shares) && sb0$shares > 0) shares <- sb0$shares
       fx_block <- isTRUE(fx_conversion_required(
         infer_statement_currency(f_ccy0, q_ccy0, adopted$method), q_ccy0
       )) || isTRUE(adr_conversion_required(
@@ -293,12 +300,21 @@ sotp_module_server <- function(id,
 
     run_calc <- function() {
       seg <- .collect_segment_multiples(segments_rv())
+      cash <- input$cash
+      debt <- input$debt
+      shares <- input$shares
+      sb <- if (is.null(shared_bridge)) NULL else tryCatch(shared_bridge(), error = function(e) NULL)
+      if (is.list(sb)) {
+        if (is.finite(sb$cash)) cash <- sb$cash
+        if (is.finite(sb$debt)) debt <- sb$debt
+        if (is.finite(sb$shares) && sb$shares > 0) shares <- sb$shares
+      }
       calc_sotp_revenue_implied(
         seg,
         ev_sales_multiple = .default_mult(),
-        cash = input$cash,
-        debt = input$debt,
-        shares = input$shares,
+        cash = cash,
+        debt = debt,
+        shares = shares,
         non_operating = input$nonop
       )
     }

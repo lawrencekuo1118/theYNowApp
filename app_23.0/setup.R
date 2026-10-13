@@ -1105,6 +1105,23 @@ bridge_pick_number <- function(...) {
   unname(hit[[1]])
 }
 
+#' Grey out a numericInput so the page can show a shared value without a second editor.
+lock_numeric_input <- function(ui) {
+  if (!inherits(ui, "shiny.tag")) return(ui)
+  kids <- ui$children
+  if (is.null(kids)) return(ui)
+  for (i in seq_along(kids)) {
+    kid <- kids[[i]]
+    if (inherits(kid, "shiny.tag") && identical(kid$name, "input")) {
+      kid$attribs$disabled <- "disabled"
+      kid$attribs$readonly <- "readonly"
+      kids[[i]] <- kid
+    }
+  }
+  ui$children <- kids
+  ui
+}
+
 #' Same share-class decision as DCF `.valuation_shares`: ADR auto-adjust, else refuse
 #' a cross-currency common-share fallback, else balance-sheet shares.
 adopt_valuation_shares <- function(sh, statement_ccy = NULL, quote_ccy = NULL) {

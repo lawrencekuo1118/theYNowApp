@@ -97,8 +97,13 @@ fcf_projection_module_ui <- function(id) {
            ),
            br(),
            
+           tags$p(
+             id = "ynow_fcf_revenue_shared_help",
+             class = "help-block",
+             "總營收在 Model Dashboard → 共用橋接設定一次。"
+           ),
            fluidRow(
-             column(4, numericInput(ns("fcf_revenue"), "當期營收 (Revenue)", value = 100)),
+             column(4, lock_numeric_input(numericInput(ns("fcf_revenue"), "當期營收 (Revenue)", value = 100))),
              column(4, numericInput(ns("fcf_nopat"), "稅後營業利益 (NOPAT)", value = 0)),
              column(4, numericInput(ns("fcf_depreciation"), "折舊與攤銷 (D&A) [+]", value = 0))
            ),
@@ -240,7 +245,8 @@ fcf_projection_module_server <- function(
     fcfe_interest_after_tax = reactive(0),
     fcfe_debt0       = reactive(0),
     fcfe_g           = reactive(0),
-    tax_ratio        = reactive(NULL)
+    tax_ratio        = reactive(NULL),
+    shared_bridge    = NULL
 ) {
   
   moduleServer(id, function(input, output, session) {
@@ -555,6 +561,10 @@ fcf_projection_module_server <- function(
       req(d_cash_flow(), d_income_statement(), d_balance_sheet())
       
       rev  <- statement_total_revenue(d_income_statement())
+      if (!is.null(shared_bridge)) {
+        sb <- tryCatch(shared_bridge(), error = function(e) NULL)
+        if (is.list(sb) && is.finite(sb$revenue)) rev <- sb$revenue
+      }
       ebit <- select_current_metric(d_income_statement(), "Operating Income", "flow")
       tax_exp <- select_current_metric(d_income_statement(), "Income Tax Expense", "flow")
       if (is.na(tax_exp)) {
@@ -685,6 +695,10 @@ fcf_projection_module_server <- function(
       n_years <- as.numeric(input_years()) 
       
       base_rev       <- safe_num(input$fcf_revenue)
+      if (!is.null(shared_bridge)) {
+        sb_rev <- tryCatch(shared_bridge(), error = function(e) NULL)
+        if (is.list(sb_rev) && is.finite(sb_rev$revenue)) base_rev <- sb_rev$revenue
+      }
       base_nopat     <- safe_num(input$fcf_nopat)
       base_depre     <- safe_num(input$fcf_depreciation)
       base_capex     <- safe_num(input$fcf_capex)

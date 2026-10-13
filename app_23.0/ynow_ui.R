@@ -1638,6 +1638,39 @@ beta_rolling_section_ui <- function() {
   )
 }
 
+.shared_bridge_box <- function() {
+  box(
+    title = tagList(
+      icon("link"),
+      tags$span(id = "ynow_shared_bridge_title", "共用橋接")
+    ),
+    width = 12, status = "primary", solidHeader = TRUE,
+    tags$p(
+      id = "ynow_shared_bridge_help",
+      class = "help-block",
+      paste0(
+        "Cash、Total Debt、股數與總營收只在這裡設定一次。",
+        "DCF、WACC 權重、Enterprise Multiples、P/S 與 SOTP 都讀這組數值。",
+        "終值 g 與 Ke 仍用 SGR 與 CAPM。",
+        "SOTP 部門營收、股利 g、近端營收成長維持各自的控制。"
+      )
+    ),
+    fluidRow(
+      column(3, numericInput("bridge_cash", "Cash", value = NA, step = 1)),
+      column(3, numericInput("bridge_debt", "Total Debt", value = NA, step = 1)),
+      column(3, numericInput("bridge_shares", "股數", value = NA, step = 1)),
+      column(3, numericInput("bridge_revenue", "總營收", value = NA, step = 1))
+    ),
+    tags$button(
+      id = "bridge_reload",
+      type = "button",
+      class = "btn btn-default action-button btn-sm",
+      icon("sync"),
+      tags$span(id = "ynow_shared_bridge_reset", "從財報重新帶入")
+    )
+  )
+}
+
 .dcf_core_params_box <- function() {
   # Chrome／欄寬對齊下方 BETA tabBox：左側單一頁籤 + 右側大標英文；同為 col-sm-12
   tabBox(
@@ -8389,6 +8422,19 @@ ui <- dashboardPage(
             }
             var sgrMethodTitle = document.getElementById('ynow_sgr_method_title');
             if (sgrMethodTitle && s.sgr_method_title) sgrMethodTitle.textContent = s.sgr_method_title;
+            var sharedBridgeTitle = document.getElementById('ynow_shared_bridge_title');
+            if (sharedBridgeTitle && s.shared_bridge_title) sharedBridgeTitle.textContent = s.shared_bridge_title;
+            var sharedBridgeHelp = document.getElementById('ynow_shared_bridge_help');
+            if (sharedBridgeHelp && s.shared_bridge_help) sharedBridgeHelp.textContent = s.shared_bridge_help;
+            var sharedBridgeReset = document.getElementById('ynow_shared_bridge_reset');
+            if (sharedBridgeReset && s.shared_bridge_reset) sharedBridgeReset.textContent = s.shared_bridge_reset;
+            var fcfRevHelp = document.getElementById('ynow_fcf_revenue_shared_help');
+            if (fcfRevHelp && s.fcf_revenue_shared_help) fcfRevHelp.textContent = s.fcf_revenue_shared_help;
+            [['bridge_cash', 'shared_bridge_cash'], ['bridge_debt', 'shared_bridge_debt'],
+             ['bridge_shares', 'shared_bridge_shares'], ['bridge_revenue', 'shared_bridge_revenue']].forEach(function (pair) {
+              var lab = document.querySelector('label[for=\"' + pair[0] + '\"]');
+              if (lab && s[pair[1]]) lab.textContent = s[pair[1]];
+            });
             var lifeTitle = document.getElementById('ynow_lifecycle_stage_title');
             if (lifeTitle && s.lifecycle_stage_title) lifeTitle.textContent = s.lifecycle_stage_title;
             var lifeHelp = document.getElementById('ynow_lifecycle_stage_help');
@@ -13713,6 +13759,9 @@ ui <- dashboardPage(
         # SGR 與 BETA 同層、同 col-sm-12（勿只對 SGR 外包 fluidRow，否則欄寬會不一致）
         fluidRow(
           .dcf_core_params_box()
+        ),
+        fluidRow(
+          .shared_bridge_box()
         ),
         fluidRow(
           tabBox(

@@ -68,5 +68,21 @@ plain <- adopt_valuation_shares(
 )
 check("same-currency shares stay on the balance sheet", identical(plain$shares, 10))
 
+fake_input <- structure(
+  list(name = "input", attribs = list(id = "cash", type = "number"), children = list()),
+  class = "shiny.tag"
+)
+fake_ui <- structure(
+  list(name = "div", attribs = list(class = "form-group"), children = list(fake_input)),
+  class = "shiny.tag"
+)
+locked <- lock_numeric_input(fake_ui)
+check("locked bridge input is not editable", identical(locked$children[[1]]$attribs$disabled, "disabled"))
+
+srv <- paste(readLines("ynow_server.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+ui <- paste(readLines("ynow_ui.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+check("one shared bridge editor", grepl("bridge_cash", ui, fixed = TRUE) && grepl(".shared_bridge", srv, fixed = TRUE))
+check("models no longer copy each other's fields", !grepl(".watch_bridge", srv, fixed = TRUE))
+
 if (fail > 0L) quit(status = 1)
 cat("ALL PASS\n")
