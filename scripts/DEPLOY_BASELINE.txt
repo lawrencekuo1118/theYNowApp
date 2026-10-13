@@ -7,4 +7,4 @@ commit=7aab288e7103e6b17ca33f04ab786d814a41f104
 short=7aab288
 message=feat(rec): restore Justified P/B as Absolute Book Fair Value (v23.18)
 captured_at=2026-10-13T10:39:48Z
-display_version=v23.18
+display_version=v23.19
