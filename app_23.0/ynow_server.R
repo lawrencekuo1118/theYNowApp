@@ -10010,10 +10010,10 @@ server <- function(input, output, session) {
     # Key order matches YNOW_FV_ENGINE_ORDER (sidebar L→R).
     list(
       nav = list(col = "FV_NAV", label = "NAV", color = "#d81b60"),
+      pb  = list(col = "FV_PB",  label = "Justified P/B", color = "#e67e22"),
       dcf = list(col = "FV_DCF", label = "DCF", color = "#c0392b"),
       ddm = list(col = "FV_DDM", label = "DDM", color = "#8e44ad"),
-      ri  = list(col = "FV_RI",  label = "RI",  color = "#16a085"),
-      pb  = list(col = "FV_PB",  label = "P/B", color = "#e67e22")
+      ri  = list(col = "FV_RI",  label = "RI",  color = "#16a085")
     )
   }
 
