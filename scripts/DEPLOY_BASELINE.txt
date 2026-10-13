@@ -7,4 +7,4 @@ commit=83d1a9fbb07e6f4b013c8a83ba284bdf35941a32
 short=83d1a9f
 message=fix(ui): align HFV overlay/replay model order with sidebar (v23.16)
 captured_at=2026-10-13T09:39:05Z
-display_version=v23.16
+display_version=v23.17
