@@ -313,23 +313,24 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_false(grepl("ynow-macro-kpi--rf[^\\n]*ynow-full-only", macro_txt))
   testthat::expect_true(grepl("macro_click_index_specs", macro_txt, fixed = TRUE))
   testthat::expect_true(grepl("lite_mode_rv", macro_txt, fixed = TRUE))
-  # Lite keeps YNOW／TYNOW expand; only board clickables + HTCDI expand stay gated.
+  # Lite keeps YNOW／TYNOW + HTCDI expand; board clickables stay gated.
   testthat::expect_false(grepl("body.ynow-lite #ynow_macro_index_hist", txt, fixed = TRUE))
   testthat::expect_true(grepl(
-    "body.ynow-lite .ynow-macro-kpi--clickable:not(.ynow-macro-kpi--ynow)",
+    "body.ynow-lite .ynow-macro-kpi--clickable:not(.ynow-macro-kpi--ynow):not(.ynow-macro-kpi--htcdi)",
     txt,
     fixed = TRUE
   ))
   testthat::expect_true(grepl("body.ynow-lite #ynow_macro_index_hint", txt, fixed = TRUE))
-  testthat::expect_true(grepl("body.ynow-lite #ynow_macro_htcdi_expand", txt, fixed = TRUE))
+  testthat::expect_false(grepl("body.ynow-lite #ynow_macro_htcdi_expand", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_macro_ynow_index_hint", macro_txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-macro-hint ynow-lite-only", macro_txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-macro-kpi--htcdi", macro_txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-macro-kpi--ynow", macro_txt, fixed = TRUE))
   testthat::expect_true(grepl("rf_col, ynow_col, htcdi_col", macro_txt, fixed = TRUE))
-  testthat::expect_true(grepl("ynow-macro-htcdi-expand ynow-full-only", macro_txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-macro-htcdi-expand", macro_txt, fixed = TRUE))
+  testthat::expect_false(grepl("ynow-macro-htcdi-expand ynow-full-only", macro_txt, fixed = TRUE))
   testthat::expect_false(grepl("ynow-macro-kpi--htcdi[^\\n]*ynow-full-only", macro_txt))
-  # Own-index KPI is clickable in Lite (no lite early-return on onclick).
+  # Own-index + HTCDI KPIs are clickable in Lite.
   testthat::expect_true(grepl("ynow-macro-kpi--ynow ynow-macro-kpi--clickable", macro_txt, fixed = TRUE))
   testthat::expect_false(grepl(
     "document.body.classList.contains\\('ynow-lite'\\)\\) return;[\\s\\S]*own",
@@ -398,7 +399,8 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
     txt,
     perl = TRUE
   ))
-  testthat::expect_true(grepl("The YNow App v23.08", txt, fixed = TRUE))
+  testthat::expect_true(grepl("The YNow App v23.19", txt, fixed = TRUE))
+
   testthat::expect_true(grepl('title = "The YNow App"', txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-hfv-report", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-hfv-toolbar", txt, fixed = TRUE))

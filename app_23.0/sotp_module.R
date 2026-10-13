@@ -210,47 +210,36 @@ sotp_module_server <- function(id,
     sync_from_statements <- function() {
       d_is <- tryCatch(d_income_statement(), error = function(e) NULL)
       d_bs <- tryCatch(d_balance_sheet(), error = function(e) NULL)
-      cash <- tryCatch(
-        select_current_metric(d_bs, "Cash.*Equivalents.*Investments|Cash And Cash Equivalents|^Total Cash$", "stock"),
-        error = function(e) NA_real_
-      )
-      debt <- tryCatch(select_current_metric(d_bs, "^Total Debt$", "stock"), error = function(e) NA_real_)
-      if (!is.finite(debt)) {
-        st <- tryCatch(select_current_metric(d_bs, "Current Debt|Short Term Debt", "stock"), error = function(e) NA_real_)
-        lt <- tryCatch(select_current_metric(d_bs, "Long Term Debt|^Long-Term Debt$", "stock"), error = function(e) NA_real_)
-        if (is.finite(st) || is.finite(lt)) debt <- sum(c(st, lt)[is.finite(c(st, lt))])
-      }
-      shares_bs <- tryCatch(select_current_metric_any(d_bs, SHARE_PATTERNS, "stock"), error = function(e) NA_real_)
+      cd <- statement_cash_debt(d_bs)
+      cash <- cd$cash
+      debt <- cd$debt
       px_quote <- .quote_px()
       mcap <- suppressWarnings(as.numeric(market_cap())[1])
       tk <- tryCatch(current_ticker(), error = function(e) "")
+      q_ccy0 <- tryCatch(quote_currency(), error = function(e) NA_character_)
+      f_ccy0 <- tryCatch(financial_currency(), error = function(e) NA_character_)
+      shares_bs <- tryCatch(select_current_metric_any(d_bs, SHARE_PATTERNS, "stock"), error = function(e) NA_real_)
       sh_adj <- tryCatch(
         resolve_shares_for_price(
           shares_bs, price = px_quote, market_cap = mcap, ticker = tk,
-          quote_currency = tryCatch(quote_currency(), error = function(e) NULL),
-          financial_currency = tryCatch(financial_currency(), error = function(e) NULL)
+          quote_currency = q_ccy0, financial_currency = f_ccy0
         ),
-        error = function(e) list(shares = NA_real_, method = "none", note = NULL)
+        error = function(e) list(shares = NA_real_, method = "none", note = NULL, shares_bs = shares_bs)
       )
-      auto_adj <- shares_auto_adjust_method(sh_adj$method)
-      q_ccy0 <- tryCatch(quote_currency(), error = function(e) NA_character_)
-      f_ccy0 <- tryCatch(financial_currency(), error = function(e) NA_character_)
-      shares <- NA_real_
-      if (isTRUE(auto_adj) && is.finite(sh_adj$shares) && sh_adj$shares > 0) {
-        shares <- sh_adj$shares
-        shares_resolve_note(sh_adj$note)
-      } else if (isTRUE(adr_conversion_required(
-        infer_statement_currency(f_ccy0, q_ccy0, sh_adj$method), q_ccy0, sh_adj$method
-      )) || isTRUE(fx_conversion_required(
-        infer_statement_currency(f_ccy0, q_ccy0, sh_adj$method), q_ccy0
-      ))) {
-        shares <- NA_real_
+      sh_adj$shares_bs <- shares_bs
+      adopted <- adopt_valuation_shares(sh_adj, f_ccy0, q_ccy0)
+      shares <- adopted$shares
+      fx_block <- isTRUE(fx_conversion_required(
+        infer_statement_currency(f_ccy0, q_ccy0, adopted$method), q_ccy0
+      )) || isTRUE(adr_conversion_required(
+        infer_statement_currency(f_ccy0, q_ccy0, adopted$method), q_ccy0, adopted$method
+      ))
+      if (shares_auto_adjust_method(adopted$method)) {
+        shares_resolve_note(adopted$note)
+      } else if (!is.finite(shares) && fx_block) {
         shares_resolve_note(.str("rel_multiples_shares_fx_block"))
       } else {
-        shares <- if (is.finite(shares_bs) && shares_bs > 0) shares_bs else sh_adj$shares
-        shares_resolve_note(
-          if (!shares_auto_adjust_method(sh_adj$method %||% "")) .str("rel_multiples_shares_basic") else NULL
-        )
+        shares_resolve_note(adopted$note)
       }
 
       def <- .default_mult()

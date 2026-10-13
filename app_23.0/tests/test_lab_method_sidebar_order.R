@@ -23,11 +23,11 @@ check <- function(label, cond) {
   }
 }
 
-want <- c("nav", "dcf", "ddm", "ri", "enterprise", "earnings", "revenue", "book", "sotp")
+want <- c("nav", "pb", "dcf", "ddm", "ri", "enterprise", "earnings", "revenue", "book", "sotp")
 check("LAB_SIDEBAR_METHOD_ORDER", identical(LAB_SIDEBAR_METHOD_ORDER, want))
 check(
-  "LAB_METHOD_ABS_KEYS absolute Fair Value + SOTP",
-  identical(LAB_METHOD_ABS_KEYS, c("nav", "dcf", "ddm", "ri", "sotp"))
+  "LAB_METHOD_ABS_KEYS absolute Fair Value + Justified P/B + SOTP",
+  identical(LAB_METHOD_ABS_KEYS, c("nav", "pb", "dcf", "ddm", "ri", "sotp"))
 )
 check(
   "LAB_METHOD_REL_KEYS relative Multiples families",
@@ -41,7 +41,7 @@ check(
   "lab_order shuffles to sidebar",
   identical(
     lab_order_methods_like_sidebar(c(
-      "sotp", "book", "revenue", "earnings", "enterprise", "dcf", "nav", "ri", "ddm"
+      "sotp", "book", "revenue", "earnings", "enterprise", "dcf", "nav", "ri", "ddm", "pb"
     )),
     want
   )
@@ -67,7 +67,7 @@ catlg <- data.frame(
 sm <- lab_method_group_summary(catlg)
 check(
   "summary method_key order",
-  identical(sm$method_key, c("nav", "dcf", "ddm", "ri", "sotp", "multiples", "pb"))
+  identical(sm$method_key, c("nav", "pb", "dcf", "ddm", "ri", "sotp", "multiples"))
 )
 check(
   "summary labels follow keys",
@@ -77,7 +77,7 @@ check(
 sm2 <- lab_method_group_summary(
   catlg[catlg$primary %in% c("ri", "nav", "pb"), , drop = FALSE]
 )
-check("partial summary order", identical(sm2$method_key, c("nav", "ri", "pb")))
+check("partial summary order", identical(sm2$method_key, c("nav", "pb", "ri")))
 
 sm_all <- lab_method_group_summary(
   catlg[catlg$primary %in% c("dcf", "nav"), , drop = FALSE],
@@ -92,10 +92,10 @@ check(
     !isTRUE(sm_all$has_primary[sm_all$method_key == "ri"])
 )
 check(
-  "available primary methods helper",
+  "available primary methods helper keeps Justified P/B absolute",
   identical(
     lab_im_available_primary_methods(catlg[catlg$primary %in% c("pb", "dcf"), , drop = FALSE]),
-    c("dcf", "book")
+    c("pb", "dcf")
   )
 )
 

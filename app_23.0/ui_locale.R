@@ -115,12 +115,12 @@ locale_for_market <- function(mode = get_market_mode()) {
     menu_get_started = "Model Dashboard",
     menu_dcf = "DCF-Model",
     menu_ddm = "DDM",
-    menu_pb = "Book value (P/B)",
+    menu_pb = "Justified P/B",
     menu_rel_multiples = "Multiples",
     menu_rel_ev = "Enterprise value",
     menu_rel_earn = "Earnings",
     menu_rel_rev = "Revenue",
-    menu_rel_book = "Book value (P/B)",
+    menu_rel_book = "Book multiples",
     menu_sotp = "SOTP",
     menu_ri = "RI-Model",
     menu_nav = "NAV",
@@ -131,7 +131,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     rel_multiples_lead_title = "Relative valuation (multiples): ",
     rel_multiples_lead_body = paste0(
       "Implied Price by capital-claim family (Equity vs Enterprise) — not Intrinsic Value / Fair Value. ",
-      "P/S sits under Equity; SOTP is a separate sidebar Enterprise-structural engine. P/B stays separate."
+      "P/S sits under Equity; SOTP is a separate Meta-Framework. ",
+      "Justified P/B is Asset-based Fair Value; industry/history Book multiples stay Relative here."
     ),
     rel_multiples_box_title = "Multiples",
     rel_multiples_tab_overview = "Overview",
@@ -369,7 +370,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     pa_email = "Email",
     pa_ticker = "Ticker",
     pa_kind = "Condition",
-    pa_level = "Level",
+    pa_level = "Target Value",
     pa_level_grade = "Grade threshold",
     pa_mos = "MOS % (vs your fair value)",
     pa_note = "Note",
@@ -399,7 +400,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     pa_smtp_missing = "SMTP is not configured, so no mail was sent.",
     pa_col_ticker = "Ticker",
     pa_col_kind = "Condition",
-    pa_col_level = "Level",
+    pa_col_level = "Target Value",
     pa_col_channel = "Channel",
     pa_col_email = "Email",
     pa_col_status = "Status",
@@ -529,19 +530,19 @@ locale_for_market <- function(mode = get_market_mode()) {
     testing_page_title = "Testing",
     testing_page_sub = paste0(
       "Full-only sandbox for experiments. Lite mode hides this entry. ",
-      "Asset transmission root map now lives in its own sidebar tab (after Macro & Market Trends)."
+      "Asset Transmission Root now lives in its own sidebar tab (after Macro & Market Trends)."
     ),
     testing_box_title = "Sandbox",
     testing_box_body = paste0(
       "Use the sidebar entry Asset Transmission Root for the inflation → rates → liquidity → asset map. ",
       "This Testing page remains a Full-only placeholder for future lab hooks."
     ),
-    atx_page_title = "Asset transmission root map",
+    atx_page_title = "Asset Transmission Root",
     atx_page_sub = paste0(
       "Same stack as the reference map: §1 macro drivers → §2 rate / dollar / liquidity hubs → §4 major asset classes (incl. FX market). ",
       "Available in Lite and Full."
     ),
-    atx_box_title = "Asset transmission root map",
+    atx_box_title = "Asset Transmission Root",
     atx_box_body = paste0(
       "§1 Macro drivers (inflation expectations) feed §2 hubs — interest rates, the dollar (DXY), and liquidity — then §4 asset classes: bonds, equities, precious metals, commodities, FX market, crypto, and other. ",
       "Arrows run upstream to downstream. Purple marks links that can flip by regime. ",
@@ -555,7 +556,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     atx_play = "Play",
     atx_session_prefix = "Session ",
     atx_loading = "Loading public prints…",
-    atx_loading_bar = "Loading Asset transmission root map…",
+    atx_loading_bar = "Loading Asset Transmission Root…",
     atx_status = "{n_ok}/{n_nodes} series · updated {stamp}",
     atx_empty = "Public prints are unavailable, so the map cannot be drawn.",
     atx_play_hint = "Press Play to replay the last 22 sessions (about one month). Card text and the border follow that session's move; line width is the trailing correlation.",
@@ -1134,14 +1135,17 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_chart_models_label = "Chart overlay models",
     hfv_rel_models_note = paste0(
       "Multiples (Reference) and SOTP (Meta-Framework) are not historical Fair Value engines — ",
-      "they are not available as HFV chart overlays."
+      "they are not available as HFV chart overlays. ",
+      "Historical theoretical FV for P/B uses Justified P/B only (ROE, g, Ke); ",
+      "industry / history trading multiples stay Relative Valuation (Implied Price), not Fair Value."
     ),
     lab_im_methods_label = "Models",
     lab_im_methods_abs_label = "Absolute",
     lab_im_methods_rel_label = "Relative",
     lab_im_methods_locked_hint = paste0(
       "Models with no names using them as the primary valuation model stay unchecked and locked. ",
-      "Enterprise value, Earnings, Revenue, and Book value unlock only when that family is the Multiples reference ",
+      "Justified P/B unlocks when it is a Fair Value primary or secondary. ",
+      "Enterprise value, Earnings, Revenue, and Book multiples unlock only when that family is the Multiples reference ",
       "(same disabled style as Listed). Rows in Suggested valuation methods match this filter."
     ),
     lab_im_query_title = "Query filters",
@@ -1219,15 +1223,20 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_prog_detail_ret_1y = "Ranking pool by 1Y return…",
     lab_im_prog_detail_random = "Random sampling…",
     lab_im_prog_detail_concept = "Applying concept groups…",
+    ms_card_pb_formula = "FV = BVPS × Justified P/B; Justified ≈ (ROE − g) / (Ke − g)",
+    ms_card_pb_notes = paste0(
+      "Book / Asset Fair Value from fundamentals (ROE, g, Ke). ",
+      "Industry / history trading multiples stay Relative Implied Price on the Multiples card."
+    ),
     ms_card_multiples_formula = "Implied Price by family: EV · Earnings · Revenue · Book",
     ms_card_multiples_notes = paste0(
       "Market-pricing Reference for every Fair Value primary. ",
-      "The card names the family in use (enterprise value, earnings, revenue, or book)."
+      "The card names the family in use (enterprise value, earnings, revenue, or book multiples)."
     ),
     ms_family_enterprise = "Enterprise value",
     ms_family_earnings = "Earnings",
     ms_family_revenue = "Revenue",
-    ms_family_book = "Book value",
+    ms_family_book = "Book multiples",
     ms_pos_title = "Valuation vs market",
     ms_pos_market = "Market",
     ms_pos_primary = "Primary",
@@ -1702,6 +1711,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     smart_calc_pending = "Detecting scenario and calculating…",
     smart_calc_failed = "Fair value could not be computed for the primary model. Check inputs or try another model.",
     smart_ddm_no_d0 = "DDM cannot run: no positive trailing DPS (D0). This name may not be paying dividends now—use P/B or another Fair Value model.",
+    smart_no_fv_primary = "No usable Fair Value",
+    smart_no_fv_primary_meta = "No Fair Value primary clears the gates; Multiples remains a market-pricing Reference only.",
     smart_reason_title = "Why these models",
     smart_scenario_title = "Applied scenario:",
     smart_scenario_two_stage = "Two-Stage DCF",
@@ -1853,8 +1864,9 @@ locale_for_market <- function(mode = get_market_mode()) {
       "or Statement alerts (includes Beneish M-Score) to scroll. ",
       "Reading order: scenario verdict → automated risk matrix → statement quality (QoE / F-Score) → ",
       "statement alerts (M-Score / Schilit). ",
-      "The verdict unlocks only after Decision Checklist → Decision SOP; ",
-      "the risk matrix is a composite overview, not the unlock gate. ",
+      "YNOW analyzes and displays from loaded price, statements, and valuation results — ",
+      "no Decision Checklist / Decision SOP unlock is required; the Checklist remains an optional discipline workflow. ",
+      "The risk matrix is a composite overview. ",
       "Dynamic industry bubble and weight concentration sit at the bottom of Macro & Market Trends."
     ),
     funnel_kpi_jump_mos_aria = "Jump to YNOW scenario verdict (MOS and Reliability are inputs to that verdict)",
@@ -1864,8 +1876,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     funnel_verdict_title = "YNOW scenario verdict",
     funnel_verdict_lead = paste0(
       "Research scenario label from MOS, F-Score / earnings quality, and trend momentum ",
-      "(not a trade ticket). In Full mode, unlock via Decision Checklist → Decision SOP ",
-      "(including hard gates). The automated risk matrix below is parallel context—not the unlock condition."
+      "(not a trade ticket). Results appear after Search loads statements and valuation inputs — ",
+      "no Decision Checklist / Decision SOP unlock is required; the Checklist remains optional discipline. ",
+      "The automated risk matrix below is parallel context."
     ),
     funnel_risk_kicker = "Overview",
     funnel_risk_title = "Automated risk matrix",
@@ -2244,8 +2257,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     dc_sop_locked_gates_na = "Mandatory gates lack data — load statements, run DCF/HFV if needed.",
     dc_sop_locked_default = "SOP incomplete — verdict locked.",
     # YNOW verdict gate only (not on Smart Analysis / model composite headers).
-    funnel_sop_locked_hint = "Open Decision Checklist and complete Decision SOP to unlock the YNOW verdict.",
-    composite_sop_locked = "SOP locked",
+    funnel_sop_locked_hint = "YNOW analyzes independently; Decision Checklist Decision SOP is optional discipline, not a prerequisite.",
+    composite_sop_locked = "Waiting for valuation",
     # --- nested / small tabs (keyed for JS; data-value match) ---
     tab_finance_summary = "Finance Summary",
     tab_income_statement = "Income Statement",
@@ -2642,7 +2655,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     tynow_index_empty = "No fixed TYNOW constituents for this month.",
     tynow_index_none = "This month’s TYNOW basket has no constituents.",
     macro_index_chart_hint = "Click an index box to show its historical line chart.",
-    macro_ynow_index_chart_hint = "Click YNOW / TYNOW to expand or collapse its chart and constituents.",
+    macro_ynow_index_chart_hint = "Click YNOW / TYNOW or HTCDI to expand or collapse details.",
     macro_index_chart_empty = "No price history for this index.",
     macro_index_chart_error = "Could not load this index history.",
     macro_own_index_overlay_label = "Overlay market indices",
@@ -3092,17 +3105,17 @@ locale_for_market <- function(mode = get_market_mode()) {
     menu_company_advance = "業務拆解",
     kpi_last_price = "最新股價",
     menu_macro_market = "總體經濟與大盤趨勢",
-    menu_asset_transmission = "資產傳導根系圖",
+    menu_asset_transmission = "資產傳導根系",
     menu_smart_analysis = "智慧分析",
     menu_get_started = "模型儀表板",
     menu_dcf = "DCF 模型",
     menu_ddm = "DDM",
-    menu_pb = "淨值乘數 (P/B)",
+    menu_pb = "Justified P/B",
     menu_rel_multiples = "倍數法",
     menu_rel_ev = "企業價值乘數",
     menu_rel_earn = "盈餘乘數",
     menu_rel_rev = "營收乘數",
-    menu_rel_book = "淨值乘數 (P/B)",
+    menu_rel_book = "淨值相對倍數",
     menu_sotp = "SOTP",
     menu_ri = "RI 模型",
     menu_nav = "NAV",
@@ -3113,7 +3126,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     rel_multiples_lead_title = "相對估值（倍數法）：",
     rel_multiples_lead_body = paste0(
       "依資本請求權家族（Equity／Enterprise）推得 Implied Price——不是 Intrinsic Value／Fair Value。",
-      "P/S 歸 Equity；SOTP 為側欄 Enterprise-structural 引擎。P/B 仍為獨立側欄。"
+      "P/S 歸 Equity；SOTP 為綜合型估值框架。",
+      "Justified P/B 屬資產基礎 Fair Value；產業／歷史淨值相對倍數留在此相對估值區。"
     ),
     rel_multiples_box_title = "倍數法",
     rel_multiples_tab_overview = "總覽",
@@ -3352,7 +3366,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     pa_email = "Email",
     pa_ticker = "代號",
     pa_kind = "條件",
-    pa_level = "水準",
+    pa_level = "目標值",
     pa_level_grade = "評等門檻",
     pa_mos = "MOS %（相對自訂公允價值）",
     pa_note = "備註",
@@ -3382,7 +3396,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     pa_smtp_missing = "尚未設定 SMTP，因此沒有寄出信件。",
     pa_col_ticker = "代號",
     pa_col_kind = "條件",
-    pa_col_level = "水準",
+    pa_col_level = "目標值",
     pa_col_channel = "管道",
     pa_col_email = "Email",
     pa_col_status = "狀態",
@@ -3505,19 +3519,19 @@ locale_for_market <- function(mode = get_market_mode()) {
     testing_page_title = "測試",
     testing_page_sub = paste0(
       "完整版實驗沙盒；簡化版不顯示此入口。",
-      "資產傳導根系圖已獨立成側邊欄分頁（接在「總體經濟與大盤趨勢」之後）。"
+      "資產傳導根系已獨立成側邊欄分頁（接在「總體經濟與大盤趨勢」之後）。"
     ),
     testing_box_title = "沙盒",
     testing_box_body = paste0(
-      "通膨→利率→流動性→資產的傳導圖，請改用側邊欄「資產傳導根系圖」。",
+      "通膨→利率→流動性→資產的傳導圖，請改用側邊欄「資產傳導根系」。",
       "本 Testing 頁保留為完整版實驗入口佔位。"
     ),
-    atx_page_title = "資產傳導根系圖",
+    atx_page_title = "資產傳導根系",
     atx_page_sub = paste0(
       "與參考圖一致：§1 總體驅動 → §2 利率／美元／流動性樞紐 → §4 主要資產類別（含外匯市場）。",
       "簡化版與完整版皆可使用。"
     ),
-    atx_box_title = "資產傳導根系圖",
+    atx_box_title = "資產傳導根系",
     atx_box_body = paste0(
       "§1 總體驅動（通膨預期）進入 §2 樞紐——利率、美元（DXY）、流動性——再傳到 §4 資產類別：債券、股市、貴金屬、原物料、外匯市場、加密貨幣與其他。",
       "箭頭由上游指向下游。紫線是會隨情境翻轉的連結。",
@@ -3531,7 +3545,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     atx_play = "播放",
     atx_session_prefix = "交易日 ",
     atx_loading = "正在讀取公開報價…",
-    atx_loading_bar = "正在載入資產傳導根系圖…",
+    atx_loading_bar = "正在載入資產傳導根系…",
     atx_status = "{n_ok}/{n_nodes} 條序列 · 更新於 {stamp}",
     atx_empty = "公開報價暫不可用，無法繪製傳導圖。",
     atx_play_hint = "按播放可重播近 22 個交易日（約一個月）。卡片文字與外框跟著該日漲跌；線寬是當時的滾動相關。",
@@ -4093,14 +4107,17 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_chart_models_label = "圖表疊加模型",
     hfv_rel_models_note = paste0(
       "Multiples（Reference）與 SOTP（綜合型估值框架／Meta-Framework）非歷史 Fair Value 引擎——",
-      "無法作為 HFV 圖表疊加。"
+      "無法作為 HFV 圖表疊加。",
+      "歷史復盤的理論 FV 僅在 Justified P/B 成立時產出（ROE、成長率、Ke）；",
+      "產業／歷史交易倍數屬相對估值（Implied Price），不進 Fair Value。"
     ),
     lab_im_methods_label = "模型",
     lab_im_methods_abs_label = "絕對",
     lab_im_methods_rel_label = "相對",
     lab_im_methods_locked_hint = paste0(
       "若某評價模型未被任何個股列為主模型，則維持不勾選並鎖定。",
-      "相對估值的企業價值、盈餘、營收、淨值，在該類被當成 Multiples 參照時才可勾選",
+      "Justified P/B 在作為 Fair Value 主／副模型時可勾選。",
+      "相對估值的企業價值、盈餘、營收、淨值相對倍數，在該類被當成 Multiples 參照時才可勾選",
       "（樣式同美股 Listed）。「建議評價方法」表格列與此篩選列一致。"
     ),
     lab_im_query_title = "查詢條件",
@@ -4165,15 +4182,20 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_prog_detail_ret_1y = "取近一年漲幅（評估池排序）…",
     lab_im_prog_detail_random = "系統隨機抽樣…",
     lab_im_prog_detail_concept = "套用概念股群…",
-    ms_card_multiples_formula = "Implied Price 依四類：企業價值 · 盈餘 · 營收 · 淨值",
+    ms_card_pb_formula = "FV = BVPS × Justified P/B；Justified ≈ (ROE − g) / (Ke − g)",
+    ms_card_pb_notes = paste0(
+      "由 ROE、成長率、Ke 推導的帳面／資產型 Fair Value。",
+      "產業／歷史交易倍數屬相對估值 Implied Price，見 Multiples 小卡。"
+    ),
+    ms_card_multiples_formula = "Implied Price 依四類：企業價值 · 盈餘 · 營收 · 淨值相對倍數",
     ms_card_multiples_notes = paste0(
       "所有 Fair Value 主模型的市場定價參照。",
-      "小卡會標出正在使用的分類（企業價值、盈餘、營收或淨值）。"
+      "小卡會標出正在使用的分類（企業價值、盈餘、營收或淨值相對倍數）。"
     ),
     ms_family_enterprise = "企業價值乘數",
     ms_family_earnings = "盈餘乘數",
     ms_family_revenue = "營收乘數",
-    ms_family_book = "淨值乘數",
+    ms_family_book = "淨值相對倍數",
     ms_pos_title = "估值與市價相對位置",
     ms_pos_market = "市價",
     ms_pos_primary = "主模型",
@@ -4512,7 +4534,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     box_discounted_cf = "折現現金流 DCF",
     box_sensitivity = "敏感度分析",
     box_residual_income = "剩餘收益 RI",
-    box_pb_asset = "P/B 與相對估值",
+    box_pb_asset = "P/B 與資產價值",
     box_nav = "NET ASSET VALUE",
     box_blue_chip = "績優股排行榜",
     box_beta = "Beta β",
@@ -4642,6 +4664,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     smart_calc_pending = "正在辨識參數情境並計算…",
     smart_calc_failed = "主模型無法算出公允價值。請檢查參數，或改用其他模型。",
     smart_ddm_no_d0 = "DDM 無法試算：沒有正的最近一期 DPS（D0）。此檔可能已停止配息——請改用 P/B 或其他 Fair Value 模型。",
+    smart_no_fv_primary = "無適用 Fair Value",
+    smart_no_fv_primary_meta = "沒有通過門檻的 Fair Value 主模型；Multiples 僅作市場定價參照（Reference）。",
     smart_reason_title = "模型判別理由",
     smart_scenario_title = "已套用參數情境：",
     smart_scenario_two_stage = "Two-Stage DCF",
@@ -4787,7 +4811,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     funnel_page_sub = paste0(
       "點選 MOS／Reliability（跳至情境結論）、品質檢核 (F-Score)、財報警訊（含 Beneish M-Score）可捲動至對應區塊。",
       "閱讀順序：情境結論 → 自動化風險矩陣 → 財報體質（QoE／F-Score）→ 財報警訊（M-Score／Schilit）。",
-      "情境結論須先完成「決策檢核」Decision SOP 才解鎖；風險矩陣為綜合概覽、非解鎖條件。",
+      "YNOW 依已載入之股價／財報與估值結果獨立分析並顯示，不需先完成「決策檢核」Decision SOP；",
+      "決策檢核仍可作選用紀律流程。風險矩陣為綜合概覽。",
       "動態產業泡沫與權重集中度在「總體經濟與大盤趨勢」分頁最下方。"
     ),
     funnel_kpi_jump_mos_aria = "跳至 YNOW 情境結論（MOS 與 Reliability 為此結論輸入）",
@@ -4797,8 +4822,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     funnel_verdict_title = "YNOW 情境結論",
     funnel_verdict_lead = paste0(
       "綜合 MOS、F-Score／盈餘品質與趨勢動能的研究情境標籤（非下單指令）。",
-      "Full 模式須先至「決策檢核」完成 Decision SOP（含強制閘門）才解鎖；",
-      "與下方自動化風險矩陣並列參考——矩陣不是解鎖條件。"
+      "搜尋載入財報與估值後即可顯示，不需先解鎖「決策檢核」Decision SOP；",
+      "決策檢核仍可作選用紀律。下方自動化風險矩陣為並列參考。"
     ),
     funnel_risk_kicker = "綜合概覽",
     funnel_risk_title = "自動化風險矩陣",
@@ -5162,8 +5187,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     dc_sop_locked_gates_na = "強制閘門缺資料 — 請載入財報，必要時試算 DCF／HFV。",
     dc_sop_locked_default = "SOP 未完成 — 結論鎖定。",
     # YNOW 結論閘門專用（不出現在智慧分析／模型頁 composite 標頭）。
-    funnel_sop_locked_hint = "請至「決策檢核」完成決策 SOP，再解鎖 YNOW 結論。",
-    composite_sop_locked = "SOP 未解鎖",
+    funnel_sop_locked_hint = "YNOW 獨立分析並顯示結果；「決策檢核」Decision SOP 為選用紀律，非必要前提。",
+    composite_sop_locked = "等待估值結果",
     # --- nested / small tabs ---
     tab_finance_summary = "財務摘要",
     tab_income_statement = "損益表",
@@ -5551,7 +5576,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     tynow_index_empty = "本月尚無固定的 TYNOW 成分。",
     tynow_index_none = "本月 TYNOW 沒有成分股。",
     macro_index_chart_hint = "點選指數方塊即可顯示該指數的歷史走勢圖。",
-    macro_ynow_index_chart_hint = "點選 YNOW／TYNOW 即可展開或收合走勢圖與成分股。",
+    macro_ynow_index_chart_hint = "點選 YNOW／TYNOW 或 HTCDI 即可展開或收合詳細內容。",
     macro_index_chart_empty = "此指數沒有歷史價格資料。",
     macro_index_chart_error = "無法載入此指數的歷史走勢。",
     macro_own_index_overlay_label = "疊加大盤指數",

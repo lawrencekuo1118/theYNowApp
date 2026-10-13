@@ -1052,6 +1052,92 @@ resolve_valuation_shares <- function(d_bs,
   sh
 }
 
+#' Cash and Total Debt used by FCFF, FCFE, WACC weights, EV multiples, and SOTP.
+#' Missing lines are 0 so every model applies the same bridge, not NA in one and 0 in another.
+statement_cash_debt <- function(d_bs) {
+  empty <- list(cash = 0, debt = 0)
+  if (is.null(d_bs) || !is.data.frame(d_bs) || !nrow(d_bs)) return(empty)
+  cash <- tryCatch(
+    select_current_metric(
+      d_bs,
+      "Cash.*Equivalents.*Investments|Cash And Cash Equivalents|^Total Cash$",
+      "stock"
+    ),
+    error = function(e) NA_real_
+  )
+  debt <- tryCatch(
+    select_current_metric(d_bs, "^Total Debt$", "stock"),
+    error = function(e) NA_real_
+  )
+  if (!is.finite(debt)) {
+    st <- tryCatch(
+      select_current_metric(d_bs, "Current Debt|Short Term Debt", "stock"),
+      error = function(e) NA_real_
+    )
+    lt <- tryCatch(
+      select_current_metric(d_bs, "Long Term Debt|^Long-Term Debt$", "stock"),
+      error = function(e) NA_real_
+    )
+    if (is.finite(st) || is.finite(lt)) {
+      debt <- sum(c(st, lt)[is.finite(c(st, lt))])
+    }
+  }
+  if (!is.finite(cash)) cash <- 0
+  if (!is.finite(debt) || debt < 0) debt <- 0
+  list(cash = unname(as.numeric(cash)[1]), debt = unname(as.numeric(debt)[1]))
+}
+
+#' Total revenue row shared by DCF Rev0, P/S, and EV/Sales.
+statement_total_revenue <- function(d_is) {
+  if (is.null(d_is) || !is.data.frame(d_is) || !nrow(d_is)) return(NA_real_)
+  tryCatch(
+    select_current_metric(d_is, "Total Revenue|^Revenue$|Operating Revenue", "flow"),
+    error = function(e) NA_real_
+  )
+}
+
+#' First finite number. Used so DCF / WACC / Multiples / SOTP read the same override.
+bridge_pick_number <- function(...) {
+  vals <- unlist(list(...), use.names = FALSE)
+  vals <- suppressWarnings(as.numeric(vals))
+  hit <- vals[is.finite(vals)]
+  if (!length(hit)) return(NA_real_)
+  unname(hit[[1]])
+}
+
+#' Same share-class decision as DCF `.valuation_shares`: ADR auto-adjust, else refuse
+#' a cross-currency common-share fallback, else balance-sheet shares.
+adopt_valuation_shares <- function(sh, statement_ccy = NULL, quote_ccy = NULL) {
+  if (is.null(sh)) {
+    return(list(shares = NA_real_, note = NULL, method = "none", ratio = NA_real_))
+  }
+  raw_shares <- suppressWarnings(as.numeric(sh$shares_bs)[1])
+  sh_ratio <- suppressWarnings(as.numeric(sh$ratio)[1])
+  method <- as.character(sh$method %||% "none")[1]
+  if (shares_auto_adjust_method(method) && is.finite(sh$shares) && sh$shares > 0) {
+    return(list(shares = sh$shares, note = sh$note, method = method, ratio = sh_ratio))
+  }
+  st_eff <- infer_statement_currency(statement_ccy, quote_ccy, method)
+  if (isTRUE(fx_conversion_required(st_eff, quote_ccy)) ||
+      isTRUE(adr_conversion_required(st_eff, quote_ccy, method))) {
+    return(list(
+      shares = NA_real_,
+      note = sh$note,
+      method = method,
+      ratio = sh_ratio
+    ))
+  }
+  if (is.finite(raw_shares) && raw_shares > 0) {
+    return(list(shares = raw_shares, note = NULL, method = "balance_sheet", ratio = sh_ratio))
+  }
+  list(
+    shares = if (is.finite(sh$shares) && sh$shares > 0) sh$shares else NA_real_,
+    note = sh$note,
+    method = method,
+    ratio = sh_ratio
+  )
+}
+
 #' 是否應自動套用約當股數（ADR／雙重股權等）
 shares_auto_adjust_method <- function(method) {
   identical(method, "market_cap_per_price") || identical(method, "brk_b_x1500")
@@ -2840,7 +2926,7 @@ score_valuation_confidence <- function(confidence_inputs = list(),
     as.character(key %||% ""),
     "dcf" = "DCF",
     "ddm" = "DDM",
-    "pb" = "P/B",
+    "pb" = "Justified P/B",
     "ri" = "RI",
     "nav" = "NAV",
     "multiples" = "Multiples",

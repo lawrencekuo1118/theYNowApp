@@ -554,7 +554,7 @@ fcf_projection_module_server <- function(
     do_sync_financials <- function() {
       req(d_cash_flow(), d_income_statement(), d_balance_sheet())
       
-      rev  <- select_current_metric(d_income_statement(), "Total Revenue", "flow")
+      rev  <- statement_total_revenue(d_income_statement())
       ebit <- select_current_metric(d_income_statement(), "Operating Income", "flow")
       tax_exp <- select_current_metric(d_income_statement(), "Income Tax Expense", "flow")
       if (is.na(tax_exp)) {

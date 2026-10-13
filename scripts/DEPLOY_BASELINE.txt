@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12680345
+bundleId=12685095
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=42b86cad34e33aebca1eb67e3c39fb511b8c6d2f
-commit=42b86cad34e33aebca1eb67e3c39fb511b8c6d2f
-short=42b86ca
-message=Confirm/extend Value Alert targets; Full composite Base/Secondary (v23.08)
-captured_at=2026-10-12T15:35:14Z
-display_version=v23.08
+aligned_git=b8603692739b54c502a9f17bf8d463a332270aab
+commit=b8603692739b54c502a9f17bf8d463a332270aab
+short=b860369
+message=chore: bump display version to v23.19
+captured_at=2026-10-13T15:12:06Z
+display_version=v23.19

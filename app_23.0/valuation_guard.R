@@ -1185,8 +1185,8 @@ recommend_multiples_lens <- function(ni = NA_real_, ebitda = NA_real_, ebit = NA
   if (isTRUE(book_biz) && book_ok) {
     return(out(
       "book", "pb",
-      "金融或重資產：相對估值用淨值乘數 P/B。",
-      "Financials or asset-heavy firms: the relative anchor is book value (P/B)."
+      "金融或重資產：相對估值 Implied Price 用產業／歷史淨值倍數；Justified P/B 另屬 Fair Value。",
+      "Financials or asset-heavy firms: Relative Implied Price anchors on industry/history Book multiples; Justified P/B stays Fair Value."
     ))
   }
   if (!ni_ok) {
@@ -1221,8 +1221,8 @@ recommend_multiples_lens <- function(ni = NA_real_, ebitda = NA_real_, ebit = NA
     if (book_ok) {
       return(out(
         "book", "pb",
-        "盈餘、EBITDA 與營收都不成立，相對估值退回 P/B。",
-        "Earnings, EBITDA, and revenue all fail; the relative anchor falls back to P/B."
+        "盈餘、EBITDA 與營收都不成立，相對估值退回產業／歷史淨值倍數。",
+        "Earnings, EBITDA, and revenue all fail; the relative anchor falls back to industry/history Book multiples."
       ))
     }
     return(out(
@@ -1498,12 +1498,14 @@ assemble_model_recommendation <- function(data_missing = FALSE,
     industry = pb_ind,
     notes = if (isTRUE(pb_view$blocked)) {
       "P/B blocked"
-    } else if (isTRUE(is_cyc)) {
-      "P/B applicability; cyclical industry prefers book through the cycle"
     } else if (isTRUE(pb_justified_collapse)) {
       "Justified P/B collapses with g≈ROE (same as RI); industry/history P/B stays Multiples Reference, not Fair Value primary"
+    } else if (isTRUE(is_book)) {
+      "Justified P/B (Book / Asset Fair Value) for balance-sheet-driven business; peer/history multiples stay Relative Reference"
+    } else if (isTRUE(is_cyc)) {
+      "Justified P/B Fair Value through the cycle; industry/history multiples stay Relative Reference"
     } else {
-      "P/B applicability"
+      "Justified P/B (Book / Asset Fair Value); Target from ROE/g/Ke — not peer multiples"
     }
   )
   ri_app <- if (is.finite(ni) && ni > 0 && is.finite(equity) && equity > 0 && is.finite(roe) && roe > 0) 80 else 15
@@ -1577,15 +1579,31 @@ assemble_model_recommendation <- function(data_missing = FALSE,
   scores <- do.call(rbind, rows)
   rownames(scores) <- NULL
 
-  # Intrinsic / Fair Value engines only for primary eligibility
+  # Intrinsic / Fair Value engines only for primary eligibility.
+  # Gordon-blocked DCF (latest FCFF < 0) must not clear the Fair Value primary
+  # gate: Terminal Value is refused, so a sole blocked DCF would show as
+  # "recommended" with no computable Gordon value (TW 3363-class edge).
   fv_models <- c("dcf", "ddm", "ri", "pb", "nav")
   eligible <- scores[
     scores$model %in% fv_models &
       scores$applicability >= .VG_MIN_APP &
-      scores$overall >= .VG_MIN_OVERALL,
+      scores$overall >= .VG_MIN_OVERALL &
+      !(scores$model == "dcf" & scores$gordon_blocked %in% TRUE),
     , drop = FALSE
   ]
   inapplicable <- scores$model[scores$applicability < .VG_CROSS_APP]
+  # Cyclical rescue: when Gordon-blocked DCF was the only model clearing the
+  # full gate, keep industry P/B as Fair Value primary (policy: cyclical → P/B
+  # in the pair) if applicability clears MIN_APP even when overall is a hair
+  # under MIN_OVERALL (CLF / steel-class).
+  if (!nrow(eligible) && isTRUE(is_cyc) && !isTRUE(pb_view$blocked)) {
+    pb_soft <- scores[
+      scores$model == "pb" &
+        scores$applicability >= .VG_MIN_APP,
+      , drop = FALSE
+    ]
+    if (nrow(pb_soft)) eligible <- pb_soft
+  }
   if (!nrow(eligible)) {
     # Still attach Multiples as market-pricing Reference when scored applicable —
     # relative Implied Price is not a Fair Value substitute.
@@ -1684,7 +1702,9 @@ assemble_model_recommendation <- function(data_missing = FALSE,
       role <- "cross_check"
     }
   }
-  # Gordon-blocked DCF must not sit as Fair Value primary (terminal value refused).
+  # Safety net: Gordon-blocked DCF must not sit as Fair Value primary
+  # (terminal value refused). Prefer another eligible FV model. When none
+  # exist, eligibility already excluded blocked DCF — this branch is rare.
   if (identical(primary, "dcf") && isTRUE(gordon_blocked)) {
     alt <- eligible[eligible$model != "dcf", , drop = FALSE]
     if (nrow(alt)) {
@@ -1882,13 +1902,23 @@ assemble_model_recommendation <- function(data_missing = FALSE,
   }
   cyc_note <- if (isTRUE(is_cyc) &&
                     (identical(primary, "pb") || identical(as.character(secondary %||% ""), "pb"))) {
-    " 景氣循環產業：P/B 必為主模型或副模型之一。"
+    " 景氣循環產業：Justified P/B（帳面／資產型 Fair Value）必為主模型或副模型之一。"
   } else {
     ""
   }
   cyc_note_en <- if (isTRUE(is_cyc) &&
                       (identical(primary, "pb") || identical(as.character(secondary %||% ""), "pb"))) {
-    " Cyclical industry: P/B is required as primary or secondary."
+    " Cyclical industry: Justified P/B (Book / Asset Fair Value) is required as primary or secondary."
+  } else {
+    ""
+  }
+  pb_fv_note <- if (identical(primary, "pb") || identical(as.character(secondary %||% ""), "pb")) {
+    " Justified P/B 為基本面 Fair Value（BVPS×(ROE−g)/(Ke−g)）；產業／歷史本淨比屬相對估值 Implied Price，僅作 Multiples Reference。"
+  } else {
+    ""
+  }
+  pb_fv_note_en <- if (identical(primary, "pb") || identical(as.character(secondary %||% ""), "pb")) {
+    " Justified P/B is fundamentals Fair Value (BVPS×(ROE−g)/(Ke−g)); industry/history P/B is Relative Implied Price (Multiples Reference only)."
   } else {
     ""
   }
@@ -1930,6 +1960,7 @@ assemble_model_recommendation <- function(data_missing = FALSE,
       round(100 * ws, 1), "% / ", round(100 * wp, 1), "%。"
     ),
     cyc_note,
+    pb_fv_note,
     hold_note,
     rel_note,
     ref_note,
@@ -1943,6 +1974,7 @@ assemble_model_recommendation <- function(data_missing = FALSE,
       round(100 * ws, 1), "% / ", round(100 * wp, 1), "%."
     ),
     cyc_note_en,
+    pb_fv_note_en,
     hold_note_en,
     rel_note_en,
     ref_note_en,

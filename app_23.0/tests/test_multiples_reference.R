@@ -35,6 +35,22 @@ check("model selector folds P/B into the Multiples card", !grepl('make_card("P/B
 check("sec allowlist excludes multiples", grepl(
   'sec_auto_allowlist <- c("dcf", "ddm", "pb", "ri", "nav", "sotp")', srv, fixed = TRUE
 ))
+check(
+  "empty Fair Value primary does not fall through to DCF band",
+  grepl("fv_ok <- prim %in% c(\"dcf\", \"ddm\", \"pb\", \"nav\", \"ri\")", srv, fixed = TRUE) &&
+    grepl("return(.model_empty_band(\"\"))", srv, fixed = TRUE) &&
+    !grepl("dcf_scenario_band()\n    )\n    if (is.null(band)) band <- list(bear = NA_real_", srv, fixed = TRUE)
+)
+check(
+  "Lite auto-calc allows Multiples Reference without Fair Value primary",
+  grepl("ref_only <- !isTRUE(fv_prim) && identical(ref, \"multiples\")", srv, fixed = TRUE) &&
+    grepl("req(isTRUE(fv_prim) || isTRUE(ref_only))", srv, fixed = TRUE)
+)
+check("smart analysis labels insufficient Fair Value primary", {
+  identical(ui_str("smart_no_fv_primary", "en"), "No usable Fair Value") &&
+    identical(ui_str("smart_no_fv_primary", "zh-TW"), "無適用 Fair Value") &&
+    grepl("smart_no_fv_primary", srv, fixed = TRUE)
+})
 check("guard excludes multiples from secondary pool", grepl('scores$model != "multiples"', vg, fixed = TRUE))
 check("guard sets reference multiples", grepl('reference <- "multiples"', vg, fixed = TRUE))
 check("guard removed SaaS multiples secondary override", !grepl(

@@ -729,6 +729,11 @@ server <- function(input, output, session) {
       if (is.finite(b)) mets$summary_beta <- b
     }, error = function(e) NULL)
     tryCatch({
+      f <- firm_unlever_reactive()
+      bu <- if (!is.null(f)) suppressWarnings(as.numeric(f$beta_u)[1]) else NA_real_
+      if (is.finite(bu)) mets$hamada_beta_u <- bu
+    }, error = function(e) NULL)
+    tryCatch({
       df <- summary_data()
       if (!is.null(df) && "EPS (TTM)" %in% df$Item) {
         eps <- suppressWarnings(as.numeric(gsub(
@@ -2522,7 +2527,7 @@ server <- function(input, output, session) {
           margin-bottom: 14px; padding: 10px 12px; border-left: 4px solid #222222;
           background: #f5f5f5; color: #333; font-size: 13px; line-height: 1.5;
         }
-        /* 七卡：桌面可換行，小螢幕兩欄／單欄；點擊跳模型分頁 */
+        /* 八卡：桌面可換行，小螢幕兩欄／單欄；點擊跳模型分頁 */
         .ynow-model-selector-row {
           display: flex;
           flex-wrap: wrap;
@@ -2531,8 +2536,8 @@ server <- function(input, output, session) {
           margin-right: -7.5px;
         }
         .ynow-model-selector-row > .ynow-model-card-col {
-          flex: 1 1 12%;
-          min-width: 120px;
+          flex: 1 1 11%;
+          min-width: 110px;
           width: auto;
           float: none;
           padding-left: 7.5px;
@@ -2592,10 +2597,15 @@ server <- function(input, output, session) {
         tags$br(),
         tags$span(rec$reason %||% "請先按下 Search 載入公司後產生推薦。")
       ),
-      # L→R 對齊側欄：NAV → DCF → DDM → RI → Multiples（含 P/B）→ SOTP
+      # L→R 對齊側欄：NAV → Justified P/B → DCF → DDM → RI → Multiples → SOTP
       tags$div(
         class = "ynow-model-selector-row",
         make_card("NAV", "nav", "sitemap", "#d81b60", "P = NAVPS × NAV multiple", "控股／綜合：帳面控股 NAV；無需 SGR。"),
+        make_card(
+          "Justified P/B", "pb", "landmark", "#1a5276",
+          ui_str("ms_card_pb_formula", loc),
+          ui_str("ms_card_pb_notes", loc)
+        ),
         make_card("DCF", "dcf", "calculator", "#00a65a", "FCFF／WACC 或 FCFE／Ke", "適合 FCF 為正且相對穩定的企業。"),
         make_card("DDM", "ddm", "hand-holding-usd", "#f39c12", "Gordon／SPM／二階段 P0 = PV(股利)", "適合持續且穩定配息的企業。"),
         make_card("RI", "ri", "gem", "#605ca8", "Value = Book Value + Σ Residual Income / (1+Ke)^t", "適合帳面價值與 ROE 具參考性的企業。"),
@@ -2627,11 +2637,11 @@ server <- function(input, output, session) {
           tag <- if (exists(".rel_method_chart_tag", mode = "function")) .rel_method_chart_tag(meth) else NA_character_
           fam_txt <- fam_lab(fam_id)
           if (!is.na(tag) && nzchar(tag %||% "")) fam_txt <- paste0(fam_txt, " · ", tag)
-          book_txt <- paste0(fam_lab("book"), " · P/B")
           ref_key <- as.character(rec$reference %||% "")[1]
-          role_kind <- if (prim %in% c("pb", "multiples")) {
+          # Justified P/B is its own Fair Value card; Multiples never inherits pb as primary.
+          role_kind <- if (identical(prim, "multiples")) {
             "primary"
-          } else if (sec %in% c("pb", "multiples")) {
+          } else if (identical(sec, "multiples")) {
             "secondary"
           } else if (identical(ref_key, "multiples")) {
             "reference"
@@ -2647,15 +2657,13 @@ server <- function(input, output, session) {
           } else {
             NULL
           }
-          shown_fam <- if (identical(prim, "pb") || identical(sec, "pb")) book_txt else fam_txt
-          if (!is.null(role_lab)) role_lab <- paste0(role_lab, " · ", shown_fam)
-          # Primary/secondary book still names 淨值; a separate Multiples reference keeps its own family.
+          if (!is.null(role_lab)) role_lab <- paste0(role_lab, " · ", fam_txt)
           note_bits <- character(0)
-          if (prim %in% c("pb", "multiples")) {
-            note_bits <- c(note_bits, paste0(ui_str("ms_pos_primary", loc), " · ", if (identical(prim, "pb")) book_txt else fam_txt))
+          if (identical(prim, "multiples")) {
+            note_bits <- c(note_bits, paste0(ui_str("ms_pos_primary", loc), " · ", fam_txt))
           }
-          if (sec %in% c("pb", "multiples")) {
-            note_bits <- c(note_bits, paste0(ui_str("ms_pos_secondary", loc), " · ", if (identical(sec, "pb")) book_txt else fam_txt))
+          if (identical(sec, "multiples")) {
+            note_bits <- c(note_bits, paste0(ui_str("ms_pos_secondary", loc), " · ", fam_txt))
           }
           if (identical(ref_key, "multiples") && !identical(prim, "multiples")) {
             note_bits <- c(note_bits, paste0(ui_str("ms_pos_reference", loc), " · ", fam_txt))
@@ -3932,16 +3940,10 @@ server <- function(input, output, session) {
   # FCFE 轉換參數（與 .dcf_valuation_bundle 同一套：稅後利息＋g×負債）
   # ==========================================
   .dcf_fcfe_bridge <- reactive({
-    raw_total_debt <- tryCatch(
-      select_current_metric(d_balance_sheet(), "^Total Debt$", "stock"),
-      error = function(e) NA_real_
+    cd_bridge <- statement_cash_debt(tryCatch(d_balance_sheet(), error = function(e) NULL))
+    latest_debt <- bridge_pick_number(
+      input$manual_debt, input[["mod_rel-debt"]], input[["mod_sotp-debt"]], cd_bridge$debt
     )
-    scraped_debt <- if (is.na(raw_total_debt)) 0 else raw_total_debt
-    latest_debt <- if (!is.null(input$manual_debt) && !is.na(input$manual_debt)) {
-      input$manual_debt
-    } else {
-      scraped_debt
-    }
     if (!is.finite(latest_debt) || latest_debt < 0) latest_debt <- 0
     rd <- suppressWarnings(as.numeric(input$wacc_rd)[1]) / 100
     if (!is.finite(rd) || rd < 0) rd <- 0
@@ -4688,6 +4690,40 @@ server <- function(input, output, session) {
     ui_locale = ui_locale
   )
 
+  # Cash、Debt、股數、總營收：DCF／WACC／倍數／SOTP 用同一數值。
+  # 使用者改任一邊，其餘欄位跟著寫入。SOTP 部門營收不是總營收，不在這組。
+  bridge_mirror_lock <- reactiveVal(FALSE)
+  .mirror_bridge_value <- function(ids, value) {
+    if (isTRUE(isolate(bridge_mirror_lock()))) return(invisible(NULL))
+    value <- suppressWarnings(as.numeric(value)[1])
+    if (!is.finite(value)) return(invisible(NULL))
+    bridge_mirror_lock(TRUE)
+    on.exit(bridge_mirror_lock(FALSE), add = TRUE)
+    for (id in ids) {
+      cur <- suppressWarnings(as.numeric(isolate(input[[id]]))[1])
+      if (is.finite(cur) && abs(cur - value) <= max(1, abs(value)) * 1e-6) next
+      updateNumericInput(session, id, value = value)
+    }
+    invisible(NULL)
+  }
+  .watch_bridge <- function(src, ids) {
+    observeEvent(input[[src]], {
+      if (isTRUE(isolate(bridge_mirror_lock()))) return()
+      .mirror_bridge_value(ids, input[[src]])
+    }, ignoreInit = TRUE)
+  }
+  .watch_bridge("manual_cash", c("mod_rel-cash", "mod_sotp-cash"))
+  .watch_bridge("mod_rel-cash", c("manual_cash", "mod_sotp-cash"))
+  .watch_bridge("mod_sotp-cash", c("manual_cash", "mod_rel-cash"))
+  .watch_bridge("manual_debt", c("mod_rel-debt", "mod_sotp-debt"))
+  .watch_bridge("mod_rel-debt", c("manual_debt", "mod_sotp-debt"))
+  .watch_bridge("mod_sotp-debt", c("manual_debt", "mod_rel-debt"))
+  .watch_bridge("mod_rel-shares", "mod_sotp-shares")
+  .watch_bridge("mod_sotp-shares", "mod_rel-shares")
+  .watch_bridge("mod_fcf-fcf_revenue", c("mod_rel-revenue", "mod_rel-ps_revenue"))
+  .watch_bridge("mod_rel-revenue", c("mod_fcf-fcf_revenue", "mod_rel-ps_revenue"))
+  .watch_bridge("mod_rel-ps_revenue", c("mod_fcf-fcf_revenue", "mod_rel-revenue"))
+
   # ==========================================
   # 呼叫純 NAV 模組
   # ==========================================
@@ -4724,47 +4760,7 @@ server <- function(input, output, session) {
       ),
       error = function(e) list(shares = NA_real_, method = "none", note = NULL, shares_bs = NA_real_)
     )
-    raw_shares <- suppressWarnings(as.numeric(sh$shares_bs)[1])
-    sh_ratio <- suppressWarnings(as.numeric(sh$ratio)[1])
-    out_sh <- NULL
-    branch <- "fallback"
-    # ADR／雙重股權：一律自動套用約當股數（與 P/B／RI／回測一致）
-    if (shares_auto_adjust_method(sh$method) && is.finite(sh$shares) && sh$shares > 0) {
-      out_sh <- list(
-        shares = sh$shares, note = sh$note, method = sh$method, ratio = sh_ratio
-      )
-      branch <- "auto_adjust"
-    } else {
-      # Missing reporting ccy + not ADR → treat as quote (AAPL-like). ADR keeps NA.
-      st_eff <- infer_statement_currency(
-        statement_currency(), quote_currency(), sh$method
-      )
-      # Statement ≠ quote and not ADR-aligned: refuse common-share fallback (never label as ADR).
-      if (isTRUE(fx_conversion_required(st_eff, quote_currency())) ||
-          isTRUE(adr_conversion_required(st_eff, quote_currency(), sh$method))) {
-        out_sh <- list(
-          shares = NA_real_,
-          note = sh$note %||% "報價幣≠財報幣且無法約當 ADR 股數，不顯示每股",
-          method = sh$method %||% "none",
-          ratio = sh_ratio
-        )
-        branch <- "fx_refuse"
-      } else if (is.finite(raw_shares) && raw_shares > 0) {
-        out_sh <- list(
-          shares = raw_shares, note = NULL, method = "balance_sheet", ratio = sh_ratio
-        )
-        branch <- "balance_sheet"
-      } else {
-        out_sh <- list(
-          shares = if (is.finite(sh$shares) && sh$shares > 0) sh$shares else NA_real_,
-          note = sh$note %||% "缺少流通在外股數，不顯示每股",
-          method = sh$method %||% "none",
-          ratio = sh_ratio
-        )
-        branch <- "fallback"
-      }
-    }
-    out_sh
+    adopt_valuation_shares(sh, statement_currency(), quote_currency())
   })
 
   .dcf_per_share <- function(equity_value, sh = NULL) {
@@ -5192,9 +5188,15 @@ server <- function(input, output, session) {
 
   primary_valuation_band <- reactive({
     rec <- model_sidebar_rec()
-    prim <- as.character(rec$primary %||% "")
-    # Multiples / SOTP are Implied Price engines — never drive Bear–Base–Bull FV band.
-    if (identical(prim, "multiples") || identical(prim, "sotp")) prim <- "dcf"
+    prim <- as.character(rec$primary %||% "")[1]
+    # Fair Value engines only. Empty / insufficient primary (e.g. TW 3363-like thin ROE +
+    # neg FCFF) must not fall through to the DCF band — that made Composite status look
+    # DCF-driven while Model Selector correctly said no usable Fair Value primary.
+    # Multiples / SOTP are Implied Price / Meta-Framework — never drive Bear–Base–Bull.
+    fv_ok <- prim %in% c("dcf", "ddm", "pb", "nav", "ri")
+    if (!isTRUE(fv_ok)) {
+      return(.model_empty_band(""))
+    }
     band <- switch(
       prim,
       "dcf" = dcf_scenario_band(),
@@ -5202,9 +5204,9 @@ server <- function(input, output, session) {
       "pb" = pb_scenario_band(),
       "nav" = nav_scenario_band(),
       "ri" = ri_scenario_band(),
-      dcf_scenario_band()
+      .model_empty_band(.model_label(prim))
     )
-    if (is.null(band)) band <- list(bear = NA_real_, base = NA_real_, bull = NA_real_, label = .model_label(prim))
+    if (is.null(band)) band <- .model_empty_band(.model_label(prim))
     band$label <- .model_label(prim)
     # ensure ordered when all present
     if (is.finite(band$bear) && is.finite(band$base) && is.finite(band$bull)) {
@@ -6707,14 +6709,34 @@ server <- function(input, output, session) {
 
   .vbx_beta_unlever_firm_content <- function() {
     f <- firm_unlever_reactive()
-    valueBox(
-      if (is.finite(f$beta_u)) round(f$beta_u, 3) else "—",
-      "去槓桿化 βᵤ（Hamada）",
+    loc <- tryCatch(ui_locale(), error = function(e) "en")
+    lab <- if (identical(loc, "en")) {
+      "Unlevered βᵤ (Hamada)"
+    } else {
+      "去槓桿化 βᵤ（Hamada）"
+    }
+    bu <- suppressWarnings(as.numeric(f$beta_u)[1])
+    tk <- tryCatch(as.character(current_ticker() %||% "")[1], error = function(e) "")
+    ready <- isTRUE(user_has_searched()) && is.finite(bu) && nzchar(tk)
+    box <- valueBox(
+      if (is.finite(bu)) round(bu, 3) else "—",
+      lab,
       icon = icon("balance-scale"),
-      color = "orange"
+      color = "orange",
+      width = NULL
+    )
+    if (!exists("ynow_alertable", mode = "function")) return(box)
+    ynow_alertable(
+      box,
+      metric = "hamada_beta_u",
+      ticker = tk,
+      value = bu,
+      label = lab,
+      ready = ready,
+      default_kind = "value_gte"
     )
   }
-  output$vbx_beta_unlever_firm <- renderValueBox({ .vbx_beta_unlever_firm_content() })
+  output$vbx_beta_unlever_firm <- renderUI({ .vbx_beta_unlever_firm_content() })
 
   .vbx_beta_unlever_bottomup_content <- function() {
     res <- beta_bottomup_result()
@@ -7791,8 +7813,11 @@ server <- function(input, output, session) {
     } else {
       select_current_metric(bs, "Common Stock Equity", "stock")
     }
-    debt <- select_current_metric(bs, "Total Debt", "stock")
-    debt <- if (is.na(debt)) 0 else debt
+    cd_bridge <- statement_cash_debt(bs)
+    debt <- bridge_pick_number(
+      input$manual_debt, input[["mod_rel-debt"]], input[["mod_sotp-debt"]], cd_bridge$debt
+    )
+    if (!is.finite(debt) || debt < 0) debt <- 0
     if (is.na(equity_mv) || equity_mv <= 0) return(invisible(NULL))
 
     total_capital <- equity_mv + debt
@@ -8246,31 +8271,25 @@ server <- function(input, output, session) {
     # ==========================================
     
     # 1. 抓取現金 (Cash) - 涵蓋所有可能的 Yahoo Finance 命名，找不到強制設 0
-    raw_cash <- select_current_metric(d_balance_sheet(), "Cash.*Equivalents.*Investments|Cash And Cash Equivalents|^Total Cash$", "stock")
-    scraped_cash <- ifelse(is.na(raw_cash), 0, raw_cash)
-    latest_cash <- if (!is.null(input$manual_cash) && !is.na(input$manual_cash)) input$manual_cash else scraped_cash
+    cd_bridge <- statement_cash_debt(d_balance_sheet())
+    latest_cash <- bridge_pick_number(
+      input$manual_cash, input[["mod_rel-cash"]], input[["mod_sotp-cash"]], cd_bridge$cash
+    )
+    latest_debt <- bridge_pick_number(
+      input$manual_debt, input[["mod_rel-debt"]], input[["mod_sotp-debt"]], cd_bridge$debt
+    )
+    if (!is.finite(latest_cash) || latest_cash < 0) latest_cash <- 0
+    if (!is.finite(latest_debt) || latest_debt < 0) latest_debt <- 0
     
-    raw_total_debt <- select_current_metric(d_balance_sheet(), "^Total Debt$", "stock")
-    if (is.na(raw_total_debt)) {
-      st_debt <- select_current_metric(d_balance_sheet(), "Current Debt|Short Term Debt", "stock")
-      lt_debt <- select_current_metric(d_balance_sheet(), "Long Term Debt", "stock")
-      st_debt <- ifelse(is.na(st_debt), 0, st_debt)
-      lt_debt <- ifelse(is.na(lt_debt), 0, lt_debt)
-      scraped_debt <- st_debt + lt_debt
+    share_user <- bridge_pick_number(input[["mod_rel-shares"]], input[["mod_sotp-shares"]])
+    share_outstanding <- if (is.finite(share_user) && share_user > 0) {
+      share_user
     } else {
-      scraped_debt <- raw_total_debt
+      tryCatch({
+        sh <- .valuation_shares()
+        if (!is.null(sh) && is.finite(sh$shares) && sh$shares > 0) sh$shares else NA_real_
+      }, error = function(e) NA_real_)
     }
-    latest_debt <- if (!is.null(input$manual_debt) && !is.na(input$manual_debt)) input$manual_debt else scraped_debt
-    
-    raw_shares <- select_current_metric(d_balance_sheet(), "Ordinary Shares Number|Share Issued|Total Shares Outstanding|Basic Average Shares", "stock")
-    share_outstanding <- tryCatch({
-      sh <- .valuation_shares()
-      if (is.finite(sh$shares) && sh$shares > 0) sh$shares else {
-        if (is.na(raw_shares) || raw_shares <= 0) NA_real_ else raw_shares
-      }
-    }, error = function(e) {
-      if (is.na(raw_shares) || raw_shares <= 0) NA_real_ else raw_shares
-    })
 
     claim <- as.character(input$dcf_claim %||% "fcff")[1]
     if (silent && !is.null(des) && nzchar(as.character(des$claim %||% "")[1])) {
@@ -8905,14 +8924,20 @@ server <- function(input, output, session) {
     rec <- model_sidebar_rec()
     prim <- as.character(rec$primary %||% "")[1]
     sec <- as.character(rec$secondary %||% "")[1]
-    req(nzchar(prim), prim %in% c("dcf", "ddm", "pb", "ri", "nav"))
+    ref <- as.character(rec$reference %||% "")[1]
+    fv_prim <- nzchar(prim) && prim %in% c("dcf", "ddm", "pb", "ri", "nav")
+    # TW 3363-like insufficient FV still keeps Multiples as Reference — do not require
+    # a Fair Value primary before companion-running that Implied Price path in Lite.
+    ref_only <- !isTRUE(fv_prim) && identical(ref, "multiples")
+    req(isTRUE(fv_prim) || isTRUE(ref_only))
 
     # Lite: apply recommended scenario once, then proceed without waiting on hidden radios.
     # Do not block on .lite_scenario_matches_ui — CSS-hidden DCF radios in Lite may
     # lag or never echo updateRadioButtons, which left Smart Analysis on waiting copy.
     # Lite Smart Analysis must not hang on NA calculated WACC either; readiness falls
     # back to UI / App-default WACC and silent heal covers g ≥ discount.
-    if (isTRUE(lite_mode())) {
+    # Skip DCF scenario heal when there is no Fair Value primary (Reference-only path).
+    if (isTRUE(lite_mode()) && isTRUE(fv_prim)) {
       des <- .lite_desired_scenario(rec)
       want_sig <- paste(
         tk,
@@ -8930,7 +8955,7 @@ server <- function(input, output, session) {
       .lite_resync_discount_consistency(des)
     }
 
-    if (!isTRUE(.auto_calc_primary_ready(prim))) {
+    if (isTRUE(fv_prim) && !isTRUE(.auto_calc_primary_ready(prim))) {
       # Surface why primary cannot auto-calc (mobile Lite never opens model tabs)
       if (identical(prim, "ddm")) {
         d0 <- suppressWarnings(as.numeric(input[["mod_ddm-d0"]])[1])
@@ -8951,21 +8976,21 @@ server <- function(input, output, session) {
       }
       return()
     }
-    keys <- prim
+    keys <- if (isTRUE(fv_prim)) prim else character(0)
     # Lite secondary auto-calc: Fair Value engines + SOTP structural cross-check.
     # Multiples is a universal Reference (not a secondary) — always companion-run when ready.
     sec_auto_allowlist <- c("dcf", "ddm", "pb", "ri", "nav", "sotp")
     sec_in_auto_allowlist <- nzchar(sec) && sec %in% sec_auto_allowlist && !identical(sec, "multiples")
     sec_ready <- if (isTRUE(sec_in_auto_allowlist)) isTRUE(.auto_calc_primary_ready(sec)) else FALSE
-    if (isTRUE(lite_mode()) && isTRUE(sec_in_auto_allowlist) &&
+    if (isTRUE(lite_mode()) && isTRUE(fv_prim) && isTRUE(sec_in_auto_allowlist) &&
         !identical(sec, prim) && isTRUE(sec_ready)) {
       keys <- c(prim, sec)
     }
-    ref <- as.character(rec$reference %||% "")[1]
     if (isTRUE(lite_mode()) && identical(ref, "multiples") &&
         isTRUE(.auto_calc_primary_ready("multiples"))) {
       keys <- unique(c(keys, "multiples"))
     }
+    if (!length(keys)) return()
     mode <- as.character(input$dcf_mode %||% "gordon")[1]
     claim <- as.character(input$dcf_claim %||% "fcff")[1]
     w_calc <- suppressWarnings(as.numeric(calculated_wacc())[1])
@@ -9028,7 +9053,11 @@ server <- function(input, output, session) {
       paste0(sprintf("%+.1f", x), "%")
     }
     block <- tryCatch(lite_dcf_block(), error = function(e) "")
-    prim_meta <- if (is.finite(bear) && is.finite(bull)) {
+    ctype <- as.character(rec$company_type %||% "")[1]
+    no_fv_primary <- !nzchar(prim) || identical(ctype, "insufficient")
+    prim_meta <- if (isTRUE(no_fv_primary)) {
+      ui_str("smart_no_fv_primary_meta", loc)
+    } else if (is.finite(bear) && is.finite(bull)) {
       paste0("Bear ", fmt_px(bear), " · Bull ", fmt_px(bull))
     } else if (identical(block, "neg_terminal")) {
       ui_str("notif_dcf_neg_fcff_skip_tv", loc)
@@ -9045,6 +9074,11 @@ server <- function(input, output, session) {
     } else {
       ui_str("smart_calc_pending", loc)
     }
+    prim_title <- if (isTRUE(no_fv_primary)) {
+      ui_str("smart_no_fv_primary", loc)
+    } else {
+      .model_label(prim)
+    }
     tk <- tryCatch(as.character(current_ticker() %||% "")[1], error = function(e) "")
     searched <- isTRUE(user_has_searched())
     tags$div(
@@ -9053,14 +9087,14 @@ server <- function(input, output, session) {
         tags$div(
           class = "ynow-smart-card",
           tags$p(class = "ynow-smart-card-kicker", ui_str("smart_primary_kicker", loc)),
-          tags$p(class = "ynow-smart-card-title", .model_label(prim)),
+          tags$p(class = "ynow-smart-card-title", prim_title),
           tags$p(class = "ynow-smart-card-value", fmt_px(base)),
           tags$p(class = "ynow-smart-card-meta", prim_meta)
         ),
         metric = "fair_value",
         ticker = tk,
         value = base,
-        label = paste(ui_str("smart_primary_kicker", loc), .model_label(prim)),
+        label = paste(ui_str("smart_primary_kicker", loc), prim_title),
         ready = searched && is.finite(base) && base > 0,
         default_kind = "below_fair",
         fair_value = base
@@ -9359,25 +9393,25 @@ server <- function(input, output, session) {
     future_fcfs <- extract_fcff_series(df_fcf)
     fcf_n <- tail(future_fcfs, 1)
 
-    latest_cash <- get_latest_cash_position(d_cash_flow())
-    temp_debt <- select_current_metric(d_balance_sheet(), "Total Debt", "stock")
-    total_debt <- if (!is.null(input$manual_debt) && !is.na(input$manual_debt)) {
-      input$manual_debt
-    } else {
-      ifelse(is.na(temp_debt), 0, temp_debt)
-    }
+    cd_bridge <- statement_cash_debt(d_balance_sheet())
+    latest_cash <- bridge_pick_number(
+      input$manual_cash, input[["mod_rel-cash"]], input[["mod_sotp-cash"]], cd_bridge$cash
+    )
+    total_debt <- bridge_pick_number(
+      input$manual_debt, input[["mod_rel-debt"]], input[["mod_sotp-debt"]], cd_bridge$debt
+    )
+    if (!is.finite(latest_cash) || latest_cash < 0) latest_cash <- 0
+    if (!is.finite(total_debt) || total_debt < 0) total_debt <- 0
 
-    shares <- tryCatch({
-      sh <- .valuation_shares()
-      if (is.finite(sh$shares) && sh$shares > 0) sh$shares else NA_real_
-    }, error = function(e) {
-      s <- select_current_metric(
-        d_balance_sheet(),
-        "Ordinary Shares Number|Share Issued|Total Shares Outstanding",
-        "stock"
-      )
-      if (is.na(s) || s <= 0) NA_real_ else s
-    })
+    share_user <- bridge_pick_number(input[["mod_rel-shares"]], input[["mod_sotp-shares"]])
+    shares <- if (is.finite(share_user) && share_user > 0) {
+      share_user
+    } else {
+      tryCatch({
+        sh <- .valuation_shares()
+        if (!is.null(sh) && is.finite(sh$shares) && sh$shares > 0) sh$shares else NA_real_
+      }, error = function(e) NA_real_)
+    }
     if (is.na(shares) || shares <= 0) return(NULL)
 
     wacc_range <- seq(base_wacc + 2, base_wacc - 2, length.out = 5)
@@ -9958,21 +9992,21 @@ server <- function(input, output, session) {
   })
 
   .bt_fv_model_specs <- function() {
+    # Key order matches YNOW_FV_ENGINE_ORDER (sidebar L→R).
     list(
+      nav = list(col = "FV_NAV", label = "NAV", color = "#d81b60"),
+      pb  = list(col = "FV_PB",  label = "Justified P/B", color = "#e67e22"),
       dcf = list(col = "FV_DCF", label = "DCF", color = "#c0392b"),
       ddm = list(col = "FV_DDM", label = "DDM", color = "#8e44ad"),
-      ri  = list(col = "FV_RI",  label = "RI",  color = "#16a085"),
-      pb  = list(col = "FV_PB",  label = "P/B", color = "#e67e22"),
-      nav = list(col = "FV_NAV", label = "NAV", color = "#d81b60")
+      ri  = list(col = "FV_RI",  label = "RI",  color = "#16a085")
     )
   }
 
   .bt_raw_fv_models <- reactive({
-    # Chart overlay: multi-select
+    # Chart overlay: multi-select (sidebar-aligned order)
     sel <- input$bt_fv_models
     if (is.null(sel) || length(sel) < 1) return(character(0))
-    ord <- c("dcf", "ddm", "ri", "pb", "nav")
-    intersect(ord, as.character(sel))
+    ynow_order_fv_engines(sel)
   })
 
   .bt_replay_fv_model <- reactive({
@@ -9981,7 +10015,7 @@ server <- function(input, output, session) {
     if (is.null(sel) || length(sel) < 1) return(character(0))
     m <- tolower(trimws(as.character(sel)[1]))
     if (!nzchar(m) || identical(m, "none")) return(character(0))
-    intersect(c("dcf", "ddm", "ri", "pb", "nav"), m)
+    ynow_order_fv_engines(m)
   })
 
   .bt_selected_fv_models <- reactive({
@@ -10101,8 +10135,7 @@ server <- function(input, output, session) {
     if (!is.finite(wacc) || wacc <= 0) wacc <- APP_DEFAULTS$wacc_gordon / 100
     if (!is.finite(sgr)) sgr <- APP_DEFAULTS$sgr / 100
     if (!is.finite(g_explicit)) g_explicit <- sgr
-    fv_models <- .bt_selected_fv_models()
-    fv_models <- fv_models[fv_models %in% c("dcf", "ddm", "ri", "pb", "nav")]
+    fv_models <- ynow_order_fv_engines(.bt_selected_fv_models())
     # 未選復盤模型：保持空向量，策略 fair_value／MOS = NA（不暗設 DCF）
 
     rf <- suppressWarnings(as.numeric(input$capm_rf)[1]) / 100

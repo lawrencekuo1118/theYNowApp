@@ -21,6 +21,9 @@ srv <- readf("ynow_server.R")
 kpi <- readf("kpi_module.R")
 dec <- readf("investment_decision_module.R")
 eq <- readf("earnings_quality_module.R")
+macro <- readf("macro_market_module.R")
+htcdi <- readf("htcdi_module.R")
+ui <- readf("ynow_ui.R")
 
 check("EPS (TTM)", grepl('metric = "eps_ttm"', srv, fixed = TRUE))
 check("Summary beta", grepl('metric = "summary_beta"', srv, fixed = TRUE))
@@ -41,6 +44,18 @@ check("Full composite Base/Secondary alertable", grepl("ynow-composite-band-card
         grepl('metric = "fair_value"', dec, fixed = TRUE) &&
         grepl('metric = "fair_value_secondary"', dec, fixed = TRUE) &&
         grepl("below_fair", dec, fixed = TRUE))
+check("Hamada unlevered beta_u", grepl('metric = "hamada_beta_u"', srv, fixed = TRUE) &&
+        grepl("vbx_beta_unlever_firm", srv, fixed = TRUE) &&
+        grepl('uiOutput("vbx_beta_unlever_firm"', ui, fixed = TRUE))
+check("Macro index KPI alertable", grepl("\\.macro_wrap_alertable", macro) &&
+        grepl('metric = "last_price"', macro, fixed = TRUE) &&
+        grepl("index_kpi_row", macro, fixed = TRUE))
+check("Macro Rf alertable", grepl('metric = "macro_rf_pct"', macro, fixed = TRUE) &&
+        grepl("RF_US", macro, fixed = TRUE) &&
+        grepl("RF_TW", macro, fixed = TRUE))
+check("Macro YNOW/TYNOW alertable", grepl('metric = "macro_ynow_level"', macro, fixed = TRUE))
+check("Macro HTCDI alertable", grepl('metric = "macro_htcdi"', htcdi, fixed = TRUE) &&
+        grepl('ticker = "HTCDI"', htcdi, fixed = TRUE))
 
 if (fail > 0L) quit(status = 1L)
 cat("ALL PASS\n")

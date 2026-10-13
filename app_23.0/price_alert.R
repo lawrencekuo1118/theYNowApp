@@ -294,7 +294,7 @@ price_alert_compose <- function(row, price) {
   body <- paste(
     sprintf("Ticker: %s", ticker),
     sprintf("Condition: %s", kind),
-    sprintf("Level: %s", format(level, trim = TRUE, scientific = FALSE)),
+    sprintf("Target Value: %s", format(level, trim = TRUE, scientific = FALSE)),
     sprintf("MOS %%: %s", format(mos, trim = TRUE, scientific = FALSE)),
     sprintf("Last price: %s", format(price, trim = TRUE, scientific = FALSE)),
     sprintf("Note: %s", as.character(row$note)[1]),

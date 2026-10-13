@@ -211,6 +211,10 @@ lab_tw_row_to_record <- function(row, exchange, source, fetched_at) {
       c("證券名稱", "公司簡稱", "CompanyAbbreviation", "^Name$", "^name$")
     )
   }
+  # TWSE/MOPS OpenAPI／CSV 偶發回傳 HTML entity（例：6831 邁&#33834;科技…）
+  if (exists("unescape_html_text", mode = "function") && nzchar(name)) {
+    name <- unescape_html_text(name)[1]
+  }
   ind <- .lab_tw_pick_field(
     row,
     c("產業別", "SecuritiesIndustryCode", "Industry", "industry", "產業類別")
@@ -759,6 +763,10 @@ lookup_tw_universe_company_name <- function(ticker) {
   if (is.null(hit$u) || !length(hit$idx) || !"name" %in% names(hit$u)) return("")
   nm <- trimws(as.character(hit$u$name[[hit$idx[[1]]]]))
   if (!nzchar(nm) || identical(nm, "NA") || identical(toupper(nm), hit$ticker)) return("")
+  # Cached CSV may still hold raw &#NNNN; from older fetches
+  if (exists("unescape_html_text", mode = "function")) {
+    nm <- unescape_html_text(nm)[1]
+  }
   nm
 }
 

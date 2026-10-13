@@ -156,9 +156,9 @@ for (bad in c("默认", "参数", "数据", "用户", "信息", "软件", "网�
 }
 check("zh node TAIEX", identical(ui_str("atx_node_taiex", "zh-TW"), "台灣加權指數"))
 check("en node T-bill", identical(ui_str("atx_node_us_bill", "en"), "US T-bill"))
-check("atx page title zh", identical(ui_str("atx_box_title", "zh-TW"), "資產傳導根系圖"))
-check("atx page title en", identical(ui_str("atx_box_title", "en"), "Asset transmission root map"))
-check("menu atx zh", identical(ui_str("menu_asset_transmission", "zh-TW"), "資產傳導根系圖"))
+check("atx page title zh", identical(ui_str("atx_box_title", "zh-TW"), "資產傳導根系"))
+check("atx page title en", identical(ui_str("atx_box_title", "en"), "Asset Transmission Root"))
+check("menu atx zh", identical(ui_str("menu_asset_transmission", "zh-TW"), "資產傳導根系"))
 check("menu atx en", identical(ui_str("menu_asset_transmission", "en"), "Asset Transmission Root"))
 check("atx window zh", identical(ui_str("atx_window", "zh-TW"), "滾動相關視窗"))
 check("atx window en", identical(ui_str("atx_window", "en"), "Correlation window"))
@@ -899,8 +899,8 @@ check(
 check(
   "loading bar localized en+zh-TW",
   grepl("atx_loading_bar", loc_src, fixed = TRUE) &&
-    grepl("Loading Asset transmission root map", loc_src, fixed = TRUE) &&
-    grepl("正在載入資產傳導根系圖", loc_src, fixed = TRUE)
+    grepl("Loading Asset Transmission Root", loc_src, fixed = TRUE) &&
+    grepl("正在載入資產傳導根系", loc_src, fixed = TRUE)
 )
 check(
   "play tape covers at least one trading month",

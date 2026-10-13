@@ -1,8 +1,10 @@
 # ==========================================
-# pb_asset_module.R - P/B 相對估值（倍數）
-# 合理價 = (BVPS／TBVPS／NAVPS) × 目標本淨比
-# 目標來源：產業／歷史倍數，或 Justified P/B（需 ROE、Ke、SGR／g）
-# 純 NAV（無倍數）請用獨立 NAV 模型，勿與此混淆。
+# pb_asset_module.R — Book / Asset P/B valuation
+# Fair Value = (BVPS／TBVPS／NAVPS) × Target P/B
+# Target source decides taxonomy:
+#   Justified P/B (ROE、Ke、SGR／g) → Absolute Fair Value (Book / Asset)
+#   industry / history multiples → Relative Implied Price (Multiples · Book)
+# Pure NAV (no multiple) uses the separate NAV model — same family, different route.
 # ==========================================
 
 # ==========================================

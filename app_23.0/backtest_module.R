@@ -380,7 +380,8 @@ estimate_hist_ri <- function(b0, roe, ke, g, n = 5, payout = NA_real_, roe_path 
   v
 }
 
-#' Book-value multiple: BVPS * P/B target.
+#' BVPS × target P/B. For HFV theoretical Fair Value, pass Justified P/B only;
+#' peer / history multiples belong to Relative Valuation (Implied Price).
 estimate_hist_pb <- function(bvps, pb_mid) {
   bvps <- .safe_num(bvps, NA_real_)
   pb_mid <- .safe_num(pb_mid, NA_real_)
@@ -537,6 +538,8 @@ valuation_signal_label <- function(fv, price) {
 }
 
 #' Justified P/B = (ROE − g) / (Ke − g) using decimal inputs.
+#' When the identity is unavailable, returns `fallback` (may be NA to refuse
+#' a relative / default multiple as Fair Value).
 .hist_justified_pb <- function(roe, ke, g, fallback = 1.5) {
   roe <- .safe_num(roe, NA_real_)
   ke <- .safe_num(ke, NA_real_)
@@ -545,7 +548,7 @@ valuation_signal_label <- function(fv, price) {
     pb <- (roe - g) / (ke - g)
     if (is.finite(pb) && pb > 0) return(max(0.3, min(6, pb)))
   }
-  .safe_num(fallback, 1.5)
+  .safe_num(fallback, NA_real_)
 }
 
 # Sources that mean「非使用者於該再平衡日確認」→ UI 應提醒至對應分頁設定。
@@ -571,7 +574,7 @@ valuation_signal_label <- function(fv, price) {
         "Forecast years n",
         "Cost of debt Rd",
         "Tax rate T",
-        "Justified P/B / baseline P/B",
+        "Justified P/B (Fair Value)",
         "Risk-free rate Rf",
         "Market return Rm",
         "Beta (β)"
@@ -582,7 +585,7 @@ valuation_signal_label <- function(fv, price) {
         "shared app default (forecast years n)",
         "shared app default (Rd)",
         "shared app default (tax rate T)",
-        "shared app default (P/B)",
+        "shared app default (Justified P/B)",
         "shared app default (Rf)",
         "shared app default (Rm)",
         "shared app default (Beta)"
@@ -597,7 +600,7 @@ valuation_signal_label <- function(fv, price) {
       "預測年數 n",
       "負債成本 Rd",
       "所得稅率 T",
-      "Justified P/B／基準 P/B",
+      "Justified P/B（Fair Value）",
       "無風險利率 Rf",
       "市場報酬率 Rm",
       "Beta (β)"
@@ -607,7 +610,7 @@ valuation_signal_label <- function(fv, price) {
       "共用系統預設（預測年數 n）",
       "共用系統預設（負債成本 Rd）",
       "共用系統預設（所得稅率 T）",
-      "共用系統預設（P/B）",
+      "共用系統預設（Justified P/B）",
       "共用系統預設（Rf）",
       "共用系統預設（Rm）",
       "共用系統預設（Beta）"
@@ -633,6 +636,7 @@ valuation_signal_label <- function(fv, price) {
       key,
       pit = "Then-available fundamentals (PIT)",
       justified = "Justified formula",
+      relative_excluded = "Relative / history multiple (excluded from Fair Value)",
       rolling = "Rolling β",
       realized = "Benchmark realized return",
       tnx = "^TNX close at the time",
@@ -648,6 +652,7 @@ valuation_signal_label <- function(fv, price) {
     key,
     pit = "當時財報（PIT）",
     justified = "Justified 公式",
+    relative_excluded = "相對／歷史倍數（不納入 Fair Value）",
     rolling = "Rolling β",
     realized = "基準已實現報酬",
     tnx = "^TNX 當時收盤",
@@ -741,7 +746,11 @@ valuation_signal_label <- function(fv, price) {
 #' Accepts `fv_models` (vector) or `fv_model` (string / vector / "composite").
 #' Empty selection → character(0)（不暗設 DCF）；策略 fair_value／MOS 為 NA。
 .normalize_fv_models <- function(model_params) {
-  known <- c("dcf", "ddm", "ri", "pb", "nav")
+  known <- if (exists("YNOW_FV_ENGINE_ORDER", inherits = TRUE)) {
+    as.character(YNOW_FV_ENGINE_ORDER)
+  } else {
+    c("nav", "dcf", "ddm", "ri", "pb")
+  }
   raw <- NULL
   if (is.list(model_params)) {
     if (!is.null(model_params$fv_models) && length(model_params$fv_models) > 0) {
@@ -761,6 +770,9 @@ valuation_signal_label <- function(fv, price) {
   if (any(x %in% c("composite", "mean", "avg", "all", "average"))) {
     return(known)
   }
+  if (exists("ynow_order_fv_engines", mode = "function")) {
+    return(ynow_order_fv_engines(x))
+  }
   unique(intersect(known, x))
 }
 
@@ -770,9 +782,13 @@ overlay_avg_fair_value_df <- function(valuation_df, models) {
   if (is.null(valuation_df) || !is.data.frame(valuation_df) || nrow(valuation_df) < 1L) {
     return(NULL)
   }
-  models <- intersect(c("dcf", "ddm", "ri", "pb", "nav"), as.character(models %||% character(0)))
+  models <- if (exists("ynow_order_fv_engines", mode = "function")) {
+    ynow_order_fv_engines(models)
+  } else {
+    intersect(c("nav", "dcf", "ddm", "ri", "pb"), as.character(models %||% character(0)))
+  }
   if (length(models) < 1L) return(NULL)
-  colmap <- c(dcf = "fv_dcf", ddm = "fv_ddm", ri = "fv_ri", pb = "fv_pb", nav = "fv_nav")
+  colmap <- c(nav = "fv_nav", dcf = "fv_dcf", ddm = "fv_ddm", ri = "fv_ri", pb = "fv_pb")
   cols <- unname(colmap[models])
   cols <- cols[cols %in% names(valuation_df)]
   if (length(cols) < 1L) return(NULL)
@@ -904,12 +920,16 @@ reconstruct_fair_value_pit <- function(fund_row, price, model_params,
     # DDM／RI 終值成長用 SGR；近期末路徑仍用 g_ex（DCF explicit）
     ddm_g <- .hist_clamp_g_below_r(sgr, ke)
     ri_g <- .hist_clamp_g_below_r(sgr, ke)
-    pb_fallback <- .safe_num(
-      if (!is.null(model_params$pb_mid_hist)) model_params$pb_mid_hist else NULL,
-      hist$pb_mid
-    )
+    # Fair Value P/B (HFV theoretical FV) = BVPS × Justified P/B only.
+    # Industry / history / APP_DEFAULTS multiples are Relative Valuation
+    # (Multiples · Book) — do not emit them as hist Fair Value.
     src_pb_mid <- .hist_pb_source(roe_use, ke, sgr, model_params)
-    pb_mid <- .hist_justified_pb(roe_use, ke, sgr, fallback = pb_fallback)
+    if (identical(as.character(src_pb_mid)[1], "justified")) {
+      pb_mid <- .hist_justified_pb(roe_use, ke, sgr, fallback = NA_real_)
+    } else {
+      pb_mid <- NA_real_
+      src_pb_mid <- "relative_excluded"
+    }
     nav_mid <- .safe_num(model_params$nav_mid, 1)
     if (!is.finite(nav_mid) || nav_mid <= 0) nav_mid <- 1
     roe_path <- NULL

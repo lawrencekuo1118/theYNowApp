@@ -135,6 +135,18 @@ rec9 <- recommend_valuation_models(
   industry_choice = "fn.Banking"
 )
 check("bank primary pb", identical(rec9$primary, "pb"))
+check(
+  "bank Justified P/B Fair Value note",
+  grepl("Justified P/B", rec9$reason_en %||% "", fixed = TRUE) &&
+    grepl("Fair Value", rec9$reason_en %||% "", fixed = TRUE) &&
+    grepl("Justified P/B", rec9$reason %||% "", fixed = TRUE) &&
+    grepl("相對估值", rec9$reason %||% "", fixed = TRUE)
+)
+check(
+  "bank Multiples lens stays book family",
+  identical(rec9$multiples_family, "book")
+)
+check("model label Justified P/B", identical(.model_label("pb"), "Justified P/B"))
 
 # 10 buybacks lower pb applicability
 pb10 <- assess_pb_applicability(equity = 80, buyback_to_equity = 0.6, roe = 20, industry_text = "Packaged Foods")
@@ -580,6 +592,30 @@ check(
   "thin ROE + neg FCFF keeps Multiples Reference",
   identical(as.character(rec_thin$reference %||% ""), "multiples") ||
     isTRUE(rec_thin$multiples)
+)
+
+# Cyclical + neg latest FCFF (CLF-like): Gordon-blocked DCF must not remain
+# Fair Value primary; industry P/B rescues the slot even if overall is a hair
+# under MIN_OVERALL.
+rec_cyc_neg <- recommend_valuation_models(
+  base_cf(cfo = c(-50, 80), capex = c(-120, -90), div = c(NA_real_, NA_real_)),
+  "Steel",
+  base_is(ni = c(-20, 40), rev = c(2000, 2200), pretax = c(-25, 50), tax = c(5, 10)),
+  base_bs(equity = c(800, 850), debt = c(400, 380), assets = c(1600, 1550), shares = c(100, 100)),
+  industry_choice = "mat.Steel"
+)
+check(
+  "cyclical neg FCFF not Gordon-blocked DCF primary",
+  !(identical(as.character(rec_cyc_neg$primary %||% ""), "dcf") &&
+      isTRUE(rec_cyc_neg$model_scores$gordon_blocked[rec_cyc_neg$model_scores$model == "dcf"][1]))
+)
+check(
+  "cyclical neg FCFF rescues P/B Fair Value primary",
+  identical(as.character(rec_cyc_neg$primary %||% ""), "pb")
+)
+check(
+  "cyclical neg FCFF keeps cyclical tag",
+  isTRUE(rec_cyc_neg$confidence_inputs$cyclical_industry)
 )
 
 if (fail > 0L) {
