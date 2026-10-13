@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12683815
+bundleId=12683949
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=83d1a9fbb07e6f4b013c8a83ba284bdf35941a32
-commit=83d1a9fbb07e6f4b013c8a83ba284bdf35941a32
-short=83d1a9f
-message=fix(ui): align HFV overlay/replay model order with sidebar (v23.16)
-captured_at=2026-10-13T09:39:05Z
+aligned_git=f5524ef2b4f250fb7924d403f44296200172dd42
+commit=f5524ef2b4f250fb7924d403f44296200172dd42
+short=f5524ef
+message=fix(hfv): hist theoretical FV uses Justified P/B only (v23.17)
+captured_at=2026-10-13T10:18:45Z
 display_version=v23.17
