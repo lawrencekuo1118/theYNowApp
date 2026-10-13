@@ -3940,16 +3940,10 @@ server <- function(input, output, session) {
   # FCFE 轉換參數（與 .dcf_valuation_bundle 同一套：稅後利息＋g×負債）
   # ==========================================
   .dcf_fcfe_bridge <- reactive({
-    raw_total_debt <- tryCatch(
-      select_current_metric(d_balance_sheet(), "^Total Debt$", "stock"),
-      error = function(e) NA_real_
+    cd_bridge <- statement_cash_debt(tryCatch(d_balance_sheet(), error = function(e) NULL))
+    latest_debt <- bridge_pick_number(
+      input$manual_debt, input[["mod_rel-debt"]], input[["mod_sotp-debt"]], cd_bridge$debt
     )
-    scraped_debt <- if (is.na(raw_total_debt)) 0 else raw_total_debt
-    latest_debt <- if (!is.null(input$manual_debt) && !is.na(input$manual_debt)) {
-      input$manual_debt
-    } else {
-      scraped_debt
-    }
     if (!is.finite(latest_debt) || latest_debt < 0) latest_debt <- 0
     rd <- suppressWarnings(as.numeric(input$wacc_rd)[1]) / 100
     if (!is.finite(rd) || rd < 0) rd <- 0
@@ -4696,6 +4690,40 @@ server <- function(input, output, session) {
     ui_locale = ui_locale
   )
 
+  # Cash、Debt、股數、總營收：DCF／WACC／倍數／SOTP 用同一數值。
+  # 使用者改任一邊，其餘欄位跟著寫入。SOTP 部門營收不是總營收，不在這組。
+  bridge_mirror_lock <- reactiveVal(FALSE)
+  .mirror_bridge_value <- function(ids, value) {
+    if (isTRUE(isolate(bridge_mirror_lock()))) return(invisible(NULL))
+    value <- suppressWarnings(as.numeric(value)[1])
+    if (!is.finite(value)) return(invisible(NULL))
+    bridge_mirror_lock(TRUE)
+    on.exit(bridge_mirror_lock(FALSE), add = TRUE)
+    for (id in ids) {
+      cur <- suppressWarnings(as.numeric(isolate(input[[id]]))[1])
+      if (is.finite(cur) && abs(cur - value) <= max(1, abs(value)) * 1e-6) next
+      updateNumericInput(session, id, value = value)
+    }
+    invisible(NULL)
+  }
+  .watch_bridge <- function(src, ids) {
+    observeEvent(input[[src]], {
+      if (isTRUE(isolate(bridge_mirror_lock()))) return()
+      .mirror_bridge_value(ids, input[[src]])
+    }, ignoreInit = TRUE)
+  }
+  .watch_bridge("manual_cash", c("mod_rel-cash", "mod_sotp-cash"))
+  .watch_bridge("mod_rel-cash", c("manual_cash", "mod_sotp-cash"))
+  .watch_bridge("mod_sotp-cash", c("manual_cash", "mod_rel-cash"))
+  .watch_bridge("manual_debt", c("mod_rel-debt", "mod_sotp-debt"))
+  .watch_bridge("mod_rel-debt", c("manual_debt", "mod_sotp-debt"))
+  .watch_bridge("mod_sotp-debt", c("manual_debt", "mod_rel-debt"))
+  .watch_bridge("mod_rel-shares", "mod_sotp-shares")
+  .watch_bridge("mod_sotp-shares", "mod_rel-shares")
+  .watch_bridge("mod_fcf-fcf_revenue", c("mod_rel-revenue", "mod_rel-ps_revenue"))
+  .watch_bridge("mod_rel-revenue", c("mod_fcf-fcf_revenue", "mod_rel-ps_revenue"))
+  .watch_bridge("mod_rel-ps_revenue", c("mod_fcf-fcf_revenue", "mod_rel-revenue"))
+
   # ==========================================
   # 呼叫純 NAV 模組
   # ==========================================
@@ -4732,47 +4760,7 @@ server <- function(input, output, session) {
       ),
       error = function(e) list(shares = NA_real_, method = "none", note = NULL, shares_bs = NA_real_)
     )
-    raw_shares <- suppressWarnings(as.numeric(sh$shares_bs)[1])
-    sh_ratio <- suppressWarnings(as.numeric(sh$ratio)[1])
-    out_sh <- NULL
-    branch <- "fallback"
-    # ADR／雙重股權：一律自動套用約當股數（與 P/B／RI／回測一致）
-    if (shares_auto_adjust_method(sh$method) && is.finite(sh$shares) && sh$shares > 0) {
-      out_sh <- list(
-        shares = sh$shares, note = sh$note, method = sh$method, ratio = sh_ratio
-      )
-      branch <- "auto_adjust"
-    } else {
-      # Missing reporting ccy + not ADR → treat as quote (AAPL-like). ADR keeps NA.
-      st_eff <- infer_statement_currency(
-        statement_currency(), quote_currency(), sh$method
-      )
-      # Statement ≠ quote and not ADR-aligned: refuse common-share fallback (never label as ADR).
-      if (isTRUE(fx_conversion_required(st_eff, quote_currency())) ||
-          isTRUE(adr_conversion_required(st_eff, quote_currency(), sh$method))) {
-        out_sh <- list(
-          shares = NA_real_,
-          note = sh$note %||% "報價幣≠財報幣且無法約當 ADR 股數，不顯示每股",
-          method = sh$method %||% "none",
-          ratio = sh_ratio
-        )
-        branch <- "fx_refuse"
-      } else if (is.finite(raw_shares) && raw_shares > 0) {
-        out_sh <- list(
-          shares = raw_shares, note = NULL, method = "balance_sheet", ratio = sh_ratio
-        )
-        branch <- "balance_sheet"
-      } else {
-        out_sh <- list(
-          shares = if (is.finite(sh$shares) && sh$shares > 0) sh$shares else NA_real_,
-          note = sh$note %||% "缺少流通在外股數，不顯示每股",
-          method = sh$method %||% "none",
-          ratio = sh_ratio
-        )
-        branch <- "fallback"
-      }
-    }
-    out_sh
+    adopt_valuation_shares(sh, statement_currency(), quote_currency())
   })
 
   .dcf_per_share <- function(equity_value, sh = NULL) {
@@ -7825,8 +7813,11 @@ server <- function(input, output, session) {
     } else {
       select_current_metric(bs, "Common Stock Equity", "stock")
     }
-    debt <- select_current_metric(bs, "Total Debt", "stock")
-    debt <- if (is.na(debt)) 0 else debt
+    cd_bridge <- statement_cash_debt(bs)
+    debt <- bridge_pick_number(
+      input$manual_debt, input[["mod_rel-debt"]], input[["mod_sotp-debt"]], cd_bridge$debt
+    )
+    if (!is.finite(debt) || debt < 0) debt <- 0
     if (is.na(equity_mv) || equity_mv <= 0) return(invisible(NULL))
 
     total_capital <- equity_mv + debt
@@ -8280,31 +8271,25 @@ server <- function(input, output, session) {
     # ==========================================
     
     # 1. 抓取現金 (Cash) - 涵蓋所有可能的 Yahoo Finance 命名，找不到強制設 0
-    raw_cash <- select_current_metric(d_balance_sheet(), "Cash.*Equivalents.*Investments|Cash And Cash Equivalents|^Total Cash$", "stock")
-    scraped_cash <- ifelse(is.na(raw_cash), 0, raw_cash)
-    latest_cash <- if (!is.null(input$manual_cash) && !is.na(input$manual_cash)) input$manual_cash else scraped_cash
+    cd_bridge <- statement_cash_debt(d_balance_sheet())
+    latest_cash <- bridge_pick_number(
+      input$manual_cash, input[["mod_rel-cash"]], input[["mod_sotp-cash"]], cd_bridge$cash
+    )
+    latest_debt <- bridge_pick_number(
+      input$manual_debt, input[["mod_rel-debt"]], input[["mod_sotp-debt"]], cd_bridge$debt
+    )
+    if (!is.finite(latest_cash) || latest_cash < 0) latest_cash <- 0
+    if (!is.finite(latest_debt) || latest_debt < 0) latest_debt <- 0
     
-    raw_total_debt <- select_current_metric(d_balance_sheet(), "^Total Debt$", "stock")
-    if (is.na(raw_total_debt)) {
-      st_debt <- select_current_metric(d_balance_sheet(), "Current Debt|Short Term Debt", "stock")
-      lt_debt <- select_current_metric(d_balance_sheet(), "Long Term Debt", "stock")
-      st_debt <- ifelse(is.na(st_debt), 0, st_debt)
-      lt_debt <- ifelse(is.na(lt_debt), 0, lt_debt)
-      scraped_debt <- st_debt + lt_debt
+    share_user <- bridge_pick_number(input[["mod_rel-shares"]], input[["mod_sotp-shares"]])
+    share_outstanding <- if (is.finite(share_user) && share_user > 0) {
+      share_user
     } else {
-      scraped_debt <- raw_total_debt
+      tryCatch({
+        sh <- .valuation_shares()
+        if (!is.null(sh) && is.finite(sh$shares) && sh$shares > 0) sh$shares else NA_real_
+      }, error = function(e) NA_real_)
     }
-    latest_debt <- if (!is.null(input$manual_debt) && !is.na(input$manual_debt)) input$manual_debt else scraped_debt
-    
-    raw_shares <- select_current_metric(d_balance_sheet(), "Ordinary Shares Number|Share Issued|Total Shares Outstanding|Basic Average Shares", "stock")
-    share_outstanding <- tryCatch({
-      sh <- .valuation_shares()
-      if (is.finite(sh$shares) && sh$shares > 0) sh$shares else {
-        if (is.na(raw_shares) || raw_shares <= 0) NA_real_ else raw_shares
-      }
-    }, error = function(e) {
-      if (is.na(raw_shares) || raw_shares <= 0) NA_real_ else raw_shares
-    })
 
     claim <- as.character(input$dcf_claim %||% "fcff")[1]
     if (silent && !is.null(des) && nzchar(as.character(des$claim %||% "")[1])) {
@@ -9408,25 +9393,25 @@ server <- function(input, output, session) {
     future_fcfs <- extract_fcff_series(df_fcf)
     fcf_n <- tail(future_fcfs, 1)
 
-    latest_cash <- get_latest_cash_position(d_cash_flow())
-    temp_debt <- select_current_metric(d_balance_sheet(), "Total Debt", "stock")
-    total_debt <- if (!is.null(input$manual_debt) && !is.na(input$manual_debt)) {
-      input$manual_debt
-    } else {
-      ifelse(is.na(temp_debt), 0, temp_debt)
-    }
+    cd_bridge <- statement_cash_debt(d_balance_sheet())
+    latest_cash <- bridge_pick_number(
+      input$manual_cash, input[["mod_rel-cash"]], input[["mod_sotp-cash"]], cd_bridge$cash
+    )
+    total_debt <- bridge_pick_number(
+      input$manual_debt, input[["mod_rel-debt"]], input[["mod_sotp-debt"]], cd_bridge$debt
+    )
+    if (!is.finite(latest_cash) || latest_cash < 0) latest_cash <- 0
+    if (!is.finite(total_debt) || total_debt < 0) total_debt <- 0
 
-    shares <- tryCatch({
-      sh <- .valuation_shares()
-      if (is.finite(sh$shares) && sh$shares > 0) sh$shares else NA_real_
-    }, error = function(e) {
-      s <- select_current_metric(
-        d_balance_sheet(),
-        "Ordinary Shares Number|Share Issued|Total Shares Outstanding",
-        "stock"
-      )
-      if (is.na(s) || s <= 0) NA_real_ else s
-    })
+    share_user <- bridge_pick_number(input[["mod_rel-shares"]], input[["mod_sotp-shares"]])
+    shares <- if (is.finite(share_user) && share_user > 0) {
+      share_user
+    } else {
+      tryCatch({
+        sh <- .valuation_shares()
+        if (!is.null(sh) && is.finite(sh$shares) && sh$shares > 0) sh$shares else NA_real_
+      }, error = function(e) NA_real_)
+    }
     if (is.na(shares) || shares <= 0) return(NULL)
 
     wacc_range <- seq(base_wacc + 2, base_wacc - 2, length.out = 5)
