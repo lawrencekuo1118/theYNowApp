@@ -10004,21 +10004,21 @@ server <- function(input, output, session) {
   })
 
   .bt_fv_model_specs <- function() {
+    # Key order matches YNOW_FV_ENGINE_ORDER (sidebar L→R).
     list(
+      nav = list(col = "FV_NAV", label = "NAV", color = "#d81b60"),
       dcf = list(col = "FV_DCF", label = "DCF", color = "#c0392b"),
       ddm = list(col = "FV_DDM", label = "DDM", color = "#8e44ad"),
       ri  = list(col = "FV_RI",  label = "RI",  color = "#16a085"),
-      pb  = list(col = "FV_PB",  label = "P/B", color = "#e67e22"),
-      nav = list(col = "FV_NAV", label = "NAV", color = "#d81b60")
+      pb  = list(col = "FV_PB",  label = "P/B", color = "#e67e22")
     )
   }
 
   .bt_raw_fv_models <- reactive({
-    # Chart overlay: multi-select
+    # Chart overlay: multi-select (sidebar-aligned order)
     sel <- input$bt_fv_models
     if (is.null(sel) || length(sel) < 1) return(character(0))
-    ord <- c("dcf", "ddm", "ri", "pb", "nav")
-    intersect(ord, as.character(sel))
+    ynow_order_fv_engines(sel)
   })
 
   .bt_replay_fv_model <- reactive({
@@ -10027,7 +10027,7 @@ server <- function(input, output, session) {
     if (is.null(sel) || length(sel) < 1) return(character(0))
     m <- tolower(trimws(as.character(sel)[1]))
     if (!nzchar(m) || identical(m, "none")) return(character(0))
-    intersect(c("dcf", "ddm", "ri", "pb", "nav"), m)
+    ynow_order_fv_engines(m)
   })
 
   .bt_selected_fv_models <- reactive({
@@ -10147,8 +10147,7 @@ server <- function(input, output, session) {
     if (!is.finite(wacc) || wacc <= 0) wacc <- APP_DEFAULTS$wacc_gordon / 100
     if (!is.finite(sgr)) sgr <- APP_DEFAULTS$sgr / 100
     if (!is.finite(g_explicit)) g_explicit <- sgr
-    fv_models <- .bt_selected_fv_models()
-    fv_models <- fv_models[fv_models %in% c("dcf", "ddm", "ri", "pb", "nav")]
+    fv_models <- ynow_order_fv_engines(.bt_selected_fv_models())
     # 未選復盤模型：保持空向量，策略 fair_value／MOS = NA（不暗設 DCF）
 
     rf <- suppressWarnings(as.numeric(input$capm_rf)[1]) / 100

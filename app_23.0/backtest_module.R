@@ -741,7 +741,11 @@ valuation_signal_label <- function(fv, price) {
 #' Accepts `fv_models` (vector) or `fv_model` (string / vector / "composite").
 #' Empty selection → character(0)（不暗設 DCF）；策略 fair_value／MOS 為 NA。
 .normalize_fv_models <- function(model_params) {
-  known <- c("dcf", "ddm", "ri", "pb", "nav")
+  known <- if (exists("YNOW_FV_ENGINE_ORDER", inherits = TRUE)) {
+    as.character(YNOW_FV_ENGINE_ORDER)
+  } else {
+    c("nav", "dcf", "ddm", "ri", "pb")
+  }
   raw <- NULL
   if (is.list(model_params)) {
     if (!is.null(model_params$fv_models) && length(model_params$fv_models) > 0) {
@@ -761,6 +765,9 @@ valuation_signal_label <- function(fv, price) {
   if (any(x %in% c("composite", "mean", "avg", "all", "average"))) {
     return(known)
   }
+  if (exists("ynow_order_fv_engines", mode = "function")) {
+    return(ynow_order_fv_engines(x))
+  }
   unique(intersect(known, x))
 }
 
@@ -770,9 +777,13 @@ overlay_avg_fair_value_df <- function(valuation_df, models) {
   if (is.null(valuation_df) || !is.data.frame(valuation_df) || nrow(valuation_df) < 1L) {
     return(NULL)
   }
-  models <- intersect(c("dcf", "ddm", "ri", "pb", "nav"), as.character(models %||% character(0)))
+  models <- if (exists("ynow_order_fv_engines", mode = "function")) {
+    ynow_order_fv_engines(models)
+  } else {
+    intersect(c("nav", "dcf", "ddm", "ri", "pb"), as.character(models %||% character(0)))
+  }
   if (length(models) < 1L) return(NULL)
-  colmap <- c(dcf = "fv_dcf", ddm = "fv_ddm", ri = "fv_ri", pb = "fv_pb", nav = "fv_nav")
+  colmap <- c(nav = "fv_nav", dcf = "fv_dcf", ddm = "fv_ddm", ri = "fv_ri", pb = "fv_pb")
   cols <- unname(colmap[models])
   cols <- cols[cols %in% names(valuation_df)]
   if (length(cols) < 1L) return(NULL)

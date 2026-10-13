@@ -279,6 +279,29 @@ ynow_valuation_model_tabs <- function() {
   )
 }
 
+# Fair Value engines for HFV Chart overlay / Replay (and similar pickers).
+# Matches Model Selector L→R: NAV → DCF → DDM → RI → Book(P/B).
+# Multiples (Reference) and SOTP (Meta-Framework) are not FV engines here.
+YNOW_FV_ENGINE_ORDER <- c("nav", "dcf", "ddm", "ri", "pb")
+
+#' Named choices for Fair Value engine pickers (sidebar-aligned order).
+ynow_fv_engine_choices <- function() {
+  c(
+    "NAV" = "nav",
+    "DCF" = "dcf",
+    "DDM" = "ddm",
+    "RI" = "ri",
+    "P/B" = "pb"
+  )
+}
+
+#' Keep only known Fair Value engines, ordered like the Model Selector.
+ynow_order_fv_engines <- function(models) {
+  m <- unique(as.character(models %||% character(0)))
+  m <- m[nzchar(m) & !is.na(m)]
+  intersect(YNOW_FV_ENGINE_ORDER, m)
+}
+
 #' TRUE when sidebar tab should preload market-default ticker on market switch.
 is_valuation_model_tab <- function(tab) {
   t <- trimws(as.character(tab %||% "")[1])
