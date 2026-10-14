@@ -2871,21 +2871,52 @@ normalize_ui_locale_safe <- function(locale) {
 }
 
 #' Valuation confidence label from fundamentals quality signals (v13)
-#' @return list(level = "低"|"中"|"高", score = 0–100, reasons = character)
+#' Pick model-recommendation reason text for the active UI locale.
+#' Prefer reason_en when locale is en; fall back to reason (zh) if EN missing.
+#' @param rec list with reason / reason_en (from recommend_valuation_models / empties)
+#' @param locale "en" / "zh-TW" (or aliases normalized via normalize_ui_locale_safe)
+#' @return character(1)
+.pick_rec_reason <- function(rec, locale = "zh-TW") {
+  loc <- if (exists("normalize_ui_locale_safe", mode = "function")) {
+    normalize_ui_locale_safe(locale)
+  } else {
+    as.character(locale %||% "zh-TW")[1]
+  }
+  zh <- as.character(rec$reason %||% "")[1]
+  en <- as.character(rec$reason_en %||% "")[1]
+  if (identical(loc, "en") && nzchar(en)) return(en)
+  if (nzchar(zh)) return(zh)
+  en
+}
+
+#' @return list(level, score, reasons) — level/reasons follow locale (en-US / zh-TW)
 score_valuation_confidence <- function(confidence_inputs = list(),
                                        f_score = NA_real_,
                                        primary_base = NA_real_,
                                        secondary_point = NA_real_,
-                                       tv_weight = NA_real_) {
+                                       tv_weight = NA_real_,
+                                       locale = "zh-TW") {
+  loc <- if (exists("normalize_ui_locale_safe", mode = "function")) {
+    normalize_ui_locale_safe(locale)
+  } else {
+    as.character(locale %||% "zh-TW")[1]
+  }
+  .cs <- function(key, fallback) {
+    if (exists("ui_str", mode = "function")) {
+      out <- tryCatch(ui_str(key, loc), error = function(e) NULL)
+      if (is.character(out) && nzchar(out[1])) return(as.character(out)[1])
+    }
+    fallback
+  }
   score <- 40
   reasons <- character(0)
   ci <- confidence_inputs %||% list()
 
   if (isTRUE(ci$data_complete)) {
     score <- score + 15
-    reasons <- c(reasons, "財報輸入完整")
+    reasons <- c(reasons, .cs("conf_fs_complete", "財報輸入完整"))
   } else {
-    reasons <- c(reasons, "財報輸入不完整")
+    reasons <- c(reasons, .cs("conf_fs_incomplete", "財報輸入不完整"))
   }
   if (isTRUE(ci$has_fcf)) score <- score + 8
   if (isTRUE(ci$has_div)) score <- score + 5
@@ -2895,10 +2926,10 @@ score_valuation_confidence <- function(confidence_inputs = list(),
   if (is.finite(fcf_cv)) {
     if (fcf_cv <= 0.5) {
       score <- score + 12
-      reasons <- c(reasons, "FCF 波動可控")
+      reasons <- c(reasons, .cs("conf_fcf_stable", "FCF 波動可控"))
     } else if (fcf_cv > 1) {
       score <- score - 10
-      reasons <- c(reasons, "FCF 波動偏高")
+      reasons <- c(reasons, .cs("conf_fcf_volatile", "FCF 波動偏高"))
     }
   }
 
@@ -2906,10 +2937,10 @@ score_valuation_confidence <- function(confidence_inputs = list(),
   if (is.finite(fs)) {
     if (fs >= 7) {
       score <- score + 12
-      reasons <- c(reasons, if (exists("ui_str", mode = "function")) ui_str("conf_fscore_strong", "zh-TW") else "F-Score 偏強（品質檢核）")
+      reasons <- c(reasons, .cs("conf_fscore_strong", "F-Score 偏強（品質檢核）"))
     } else if (fs < 4) {
       score <- score - 12
-      reasons <- c(reasons, if (exists("ui_str", mode = "function")) ui_str("conf_fscore_weak", "zh-TW") else "F-Score 偏弱（品質檢核）")
+      reasons <- c(reasons, .cs("conf_fscore_weak", "F-Score 偏弱（品質檢核）"))
     }
   }
 
@@ -2919,22 +2950,28 @@ score_valuation_confidence <- function(confidence_inputs = list(),
     gap <- abs(sp - pb) / pb
     if (gap <= 0.15) {
       score <- score + 10
-      reasons <- c(reasons, "主副模型接近")
+      reasons <- c(reasons, .cs("conf_models_close", "主副模型接近"))
     } else if (gap > 0.35) {
       score <- score - 8
-      reasons <- c(reasons, "主副模型分歧大")
+      reasons <- c(reasons, .cs("conf_models_diverge", "主副模型分歧大"))
     }
   }
 
   tvw <- suppressWarnings(as.numeric(tv_weight)[1])
   if (is.finite(tvw) && tvw > 0.75) {
     score <- score - 10
-    reasons <- c(reasons, "終值權重偏高")
+    reasons <- c(reasons, .cs("conf_tv_weight_high", "終值權重偏高"))
   }
 
   score <- max(0, min(100, round(score)))
-  level <- if (score >= 70) "高" else if (score >= 45) "中" else "低"
-  list(level = level, score = score, reasons = reasons)
+  level <- if (score >= 70) {
+    .cs("conf_level_high", "高")
+  } else if (score >= 45) {
+    .cs("conf_level_mid", "中")
+  } else {
+    .cs("conf_level_low", "低")
+  }
+  list(level = level, score = score, reasons = reasons, locale = loc)
 }
 
 #' Map model key to display label

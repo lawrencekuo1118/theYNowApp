@@ -57,7 +57,7 @@ no_crash <- function(expr) {
 cat("\n== A. Default-value lock ==\n")
 
 check("APP_DEFAULTS is a list", is.list(APP_DEFAULTS) && length(APP_DEFAULTS) > 20L)
-check("boot ticker TSM", identical(APP_DEFAULTS$stock_code, "TSM"))
+check("boot ticker empty (placeholder only)", identical(APP_DEFAULTS$stock_code, ""))
 check("boot industry sc.Foundry", identical(APP_DEFAULTS$industry_choice, "sc.Foundry"))
 check("forecast years == 5", identical(as.integer(APP_DEFAULTS$years), 5L))
 check("dcf_mode gordon", identical(APP_DEFAULTS$dcf_mode, "gordon"))

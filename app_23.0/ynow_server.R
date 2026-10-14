@@ -7,7 +7,6 @@ server <- function(input, output, session) {
   # instead of forcing the user onto the gray "Disconnected / Reload" overlay.
   tryCatch(session$allowReconnect("force"), error = function(e) NULL)
 
-
   # Sidebar tab label busy dots (JS `ynowTabBusy` → animated 「…」 on menu item)
   .ynow_set_tab_busy <- function(tab, busy = TRUE) {
     tab <- as.character(tab %||% "")[1]
@@ -57,9 +56,8 @@ server <- function(input, output, session) {
   # Search must re-fetch even when the symbol is unchanged (Shiny skips
   # identical reactiveVal writes, so a second Search on TSM/NVDA was a no-op).
   ticker_search_gen <- reactiveVal(0L)
-  # Market switch off valuation tabs: remember default ticker (e.g. 2330.TW)
-  # and fetch only when the user later opens a valuation-model tab.
-  pending_market_default_ticker <- reactiveVal(NULL)
+  # Recent Search chip: pending fetch after a cross-market mode switch
+  pending_recent_fetch <- reactiveVal(NULL)
   # 首次按下 Search 前：不標示模型推薦／側邊欄「推薦」
   user_has_searched <- reactiveVal(FALSE)
 
@@ -213,35 +211,6 @@ server <- function(input, output, session) {
   # Lazy-mount nonce: bumped after each first-visit page mount (locale / input refresh)
   lazy_mount_nonce <- reactiveVal(0L)
 
-  # Apply deferred market-default ticker fetch (TW→2330 / US→TSM) on first
-  # visit to a valuation-model tab after a gated market switch.
-  .ynow_apply_pending_market_default_ticker <- function(tab = NULL) {
-    pending <- isolate(pending_market_default_ticker())
-    if (is.null(pending) || !nzchar(as.character(pending)[1])) {
-      return(invisible(FALSE))
-    }
-    tab_now <- if (!is.null(tab) && nzchar(as.character(tab)[1])) {
-      as.character(tab)[1]
-    } else {
-      tryCatch(as.character(isolate(input$sidebar_tabs) %||% "")[1], error = function(e) "")
-    }
-    if (!isTRUE(is_valuation_model_tab(tab_now))) return(invisible(FALSE))
-    pending_market_default_ticker(NULL)
-    user_has_searched(TRUE)
-    param_audit_baseline(NULL)
-    param_audit_baseline_at(NULL)
-    param_audit_baseline_ticker(NULL)
-    param_audit_capture_token(isolate(param_audit_capture_token()) + 1L)
-    current_ticker(as.character(pending)[1])
-    mode_now <- tryCatch(
-      normalize_market_mode(isolate(market_mode())),
-      error = function(e) get_market_mode()
-    )
-    disp <- display_ticker_for_market(pending, mode_now)
-    tryCatch(updateTextInput(session, "sc", value = disp), error = function(e) NULL)
-    invisible(TRUE)
-  }
-
   # Valuation-model / Blue Chip page accent; Basic Setup / other tabs clear theme
   observeEvent(input$sidebar_tabs, {
     tab <- as.character(input$sidebar_tabs %||% "")[1]
@@ -250,7 +219,6 @@ server <- function(input, output, session) {
       tab <- "company_advance"
     }
     session$sendCustomMessage("ynowModelTheme", list(tab = tab))
-    .ynow_apply_pending_market_default_ticker(tab)
   }, ignoreNULL = FALSE, ignoreInit = FALSE)
 
   # JS market buttons also pulse this tick so Clustering clears even if mode is unchanged.
@@ -276,25 +244,79 @@ server <- function(input, output, session) {
   # ==========================================
   # 🚀 股票代號：僅主區 Ticker / Stock Code（sc + Search）
   # ==========================================
-  observeEvent(input$search, {
-    sc_raw <- tryCatch(as.character(input$sc %||% "")[1], error = function(e) "")
-    tab_now <- tryCatch(as.character(input$sidebar_tabs %||% "")[1], error = function(e) "")
-    req(input$sc)
+  # Shared Search path: main Search button + Recent Search chips.
+  # goto_tab: NULL = stay on current tab; "dashboard" = 個股 (Lite → Smart Analysis).
+  .ynow_fire_ticker_search <- function(sym_raw, goto_tab = NULL) {
+    mode <- tryCatch(
+      normalize_market_mode(isolate(market_mode())),
+      error = function(e) "US"
+    )
+    raw <- trimws(as.character(sym_raw %||% "")[1])
+    if (!nzchar(raw) || identical(toupper(raw), "NA")) return(invisible(FALSE))
+    # Prefer stored Yahoo suffix when it already matches the active market.
+    tk <- if (identical(mode, "TW") &&
+              grepl("\\.(TW|TWO)$", raw, ignore.case = TRUE)) {
+      toupper(gsub("\\s+", "", raw))
+    } else {
+      normalize_ticker_for_market(raw, mode)
+    }
+    if (is.na(tk) || !nzchar(tk)) return(invisible(FALSE))
     user_has_searched(TRUE)
-    # Explicit Search supersedes any deferred market-default preload.
-    pending_market_default_ticker(NULL)
-    # New Search: clear prior baseline until post-load capture settles
     param_audit_baseline(NULL)
     param_audit_baseline_at(NULL)
     param_audit_baseline_ticker(NULL)
     param_audit_capture_token(isolate(param_audit_capture_token()) + 1L)
-    tk <- normalize_ticker_for_market(input$sc, market_mode())
-    req(!is.na(tk), nzchar(tk))
     current_ticker(tk)
     ticker_search_gen(isolate(ticker_search_gen()) + 1L)
-    disp <- display_ticker_for_market(tk, market_mode())
+    disp <- display_ticker_for_market(tk, mode)
     tryCatch(updateTextInput(session, "sc", value = disp), error = function(e) NULL)
+    if (!is.null(goto_tab) && nzchar(as.character(goto_tab)[1])) {
+      tab <- as.character(goto_tab)[1]
+      tryCatch(
+        session$sendCustomMessage("ynowGotoTab", list(tab = tab)),
+        error = function(e) NULL
+      )
+    }
+    invisible(TRUE)
+  }
+
+  observeEvent(input$search, {
+    req(input$sc)
+    .ynow_fire_ticker_search(input$sc, goto_tab = NULL)
   })
+
+  # Recent Search chip: restore prior ticker scrape and jump to 個股 / Smart Analysis.
+  observeEvent(input$recent_search_pick, {
+    raw <- trimws(as.character(input$recent_search_pick %||% "")[1])
+    req(nzchar(raw))
+    mode <- tryCatch(
+      normalize_market_mode(isolate(market_mode())),
+      error = function(e) "US"
+    )
+    want_tw <- grepl("\\.(TW|TWO)$", raw, ignore.case = TRUE)
+    # Cross-market recent: switch market first, then search after clear settles.
+    if (isTRUE(want_tw) && !identical(mode, "TW")) {
+      pending_recent_fetch(toupper(gsub("\\s+", "", raw)))
+      tryCatch(
+        shinyjs::runjs(
+          "if (window.Shiny && Shiny.setInputValue) { Shiny.setInputValue('market_mode_pick', 'TW', {priority: 'event'}); }"
+        ),
+        error = function(e) NULL
+      )
+      return(invisible(FALSE))
+    }
+    if (!isTRUE(want_tw) && identical(mode, "TW")) {
+      pending_recent_fetch(toupper(gsub("\\s+", "", raw)))
+      tryCatch(
+        shinyjs::runjs(
+          "if (window.Shiny && Shiny.setInputValue) { Shiny.setInputValue('market_mode_pick', 'US', {priority: 'event'}); }"
+        ),
+        error = function(e) NULL
+      )
+      return(invisible(FALSE))
+    }
+    .ynow_fire_ticker_search(raw, goto_tab = "dashboard")
+  }, ignoreInit = TRUE)
 
   # ==========================================
   # UI locale（語言）與顯示幣別分開；市場切換不覆寫語言
@@ -821,42 +843,39 @@ server <- function(input, output, session) {
       updateNumericInput(session, "capm_rf", value = round(as.numeric(rf_new), 2))
     }
 
-    # Default ticker (TW→2330 / US→TSM): show in the input always, but only
-    # preload / scrape when the active sidebar tab is valuation-model related.
-    # On Home / Macro / Blue Chip / Lab / About / etc., defer until that tab opens.
-    disp <- display_ticker_for_market(prof$default_ticker, mode)
-    tryCatch(updateTextInput(session, "sc", value = disp), error = function(e) NULL)
-    tab_now <- tryCatch(
-      as.character(isolate(input$sidebar_tabs) %||% "")[1],
-      error = function(e) ""
+    # No market-default ticker preload (TW 2330 / US TSM). Clear the input;
+    # set market-specific placeholder here (updateTextInput would otherwise
+    # wipe the JS placeholder from applyUiLocale).
+    sc_ph <- tryCatch(
+      ui_str(
+        if (identical(mode, "TW")) "ticker_placeholder_tw" else "ticker_placeholder_us",
+        isolate(ui_locale())
+      ),
+      error = function(e) if (identical(mode, "TW")) "e.g. 2330" else "e.g. AAPL / TSM"
     )
-    if (isTRUE(is_valuation_model_tab(tab_now))) {
-      pending_market_default_ticker(NULL)
-      user_has_searched(TRUE)
-      param_audit_baseline(NULL)
-      param_audit_baseline_at(NULL)
-      param_audit_baseline_ticker(NULL)
-      param_audit_capture_token(isolate(param_audit_capture_token()) + 1L)
-      current_ticker(prof$default_ticker)
-    } else {
-      pending_market_default_ticker(prof$default_ticker)
-      user_has_searched(FALSE)
-      param_audit_baseline(NULL)
-      param_audit_baseline_at(NULL)
-      param_audit_baseline_ticker(NULL)
-      # Drop prior market's ticker / statements so no cross-market scrape runs.
-      current_ticker(NULL)
-      summary_data(NULL)
-      scraped_financials(NULL)
-      fs_all_empty(FALSE)
-      tw_is_esb(FALSE)
-      tw_tpex_fs_fallback(FALSE)
-      corp_display_name("")
-      corp_display_name_en("")
-      corp_name_logo_colors(character(0))
-      corp_industry_text("等待搜尋...")
-      company_profile(NULL)
-    }
+    tryCatch(
+      updateTextInput(session, "sc", value = "", placeholder = sc_ph),
+      error = function(e) {
+        tryCatch(updateTextInput(session, "sc", value = ""), error = function(e2) NULL)
+      }
+    )
+    user_has_searched(FALSE)
+    param_audit_baseline(NULL)
+    param_audit_baseline_at(NULL)
+    param_audit_baseline_ticker(NULL)
+    param_audit_capture_token(isolate(param_audit_capture_token()) + 1L)
+    # Drop prior market's ticker / statements so no cross-market scrape runs.
+    current_ticker(NULL)
+    summary_data(NULL)
+    scraped_financials(NULL)
+    fs_all_empty(FALSE)
+    tw_is_esb(FALSE)
+    tw_tpex_fs_fallback(FALSE)
+    corp_display_name("")
+    corp_display_name_en("")
+    corp_name_logo_colors(character(0))
+    corp_industry_text("等待搜尋...")
+    company_profile(NULL)
 
     # SEC 頁籤：僅美股
     if (isTRUE(prof$show_sec_lab)) {
@@ -875,12 +894,21 @@ server <- function(input, output, session) {
       .ui_msg(
         "notif_market_switched",
         market = prof$label_zh %||% as.character(mode),
-        ticker = disp,
         rf = prof$rf_label_zh %||% "",
         ccy = prof$session_currency
       ),
       type = "message", duration = 8
     )
+
+    # Recent Search chip requested a cross-market reload — fire after clear settles.
+    pend <- isolate(pending_recent_fetch())
+    pend <- trimws(as.character(pend %||% "")[1])
+    if (nzchar(pend)) {
+      pending_recent_fetch(NULL)
+      shinyjs::delay(180L, {
+        .ynow_fire_ticker_search(pend, goto_tab = "dashboard")
+      })
+    }
   }, ignoreInit = TRUE)
 
   # ==========================================
@@ -1226,9 +1254,11 @@ server <- function(input, output, session) {
         # Always store a 2-color pair (single brand → black; sole black → white)
         corp_name_logo_colors(.ensure_logo_color_pair(logo_cols))
 
-        if (!(stock_code %in% values$recentsearch)) {
-          values$recentsearch <- head(c(stock_code, values$recentsearch), 5)
-        }
+        # Keep most-recent first; re-Search moves an existing ticker to the front.
+        values$recentsearch <- head(
+          c(stock_code, setdiff(values$recentsearch, stock_code)),
+          5L
+        )
         # 成功載入後：輸入框維持顯示乾淨代號
         tryCatch(
           updateTextInput(
@@ -1776,8 +1806,40 @@ server <- function(input, output, session) {
     )
   })
 
-  output$recentsearch <- renderText({
-    paste(display_tickers_for_market(values$recentsearch, market_mode()), collapse = ", ")
+  output$recentsearch <- renderUI({
+    loc <- tryCatch(ui_locale(), error = function(e) "en")
+    mode <- tryCatch(
+      normalize_market_mode(market_mode()),
+      error = function(e) "US"
+    )
+    raw <- unique(as.character(values$recentsearch %||% character(0)))
+    raw <- raw[nzchar(raw) & !is.na(raw)]
+    if (!length(raw)) {
+      return(tags$p(
+        class = "ynow-recent-search-empty",
+        ui_str("recent_search_empty", loc)
+      ))
+    }
+    chips <- lapply(raw, function(fetch_tk) {
+      disp <- display_ticker_for_market(fetch_tk, mode)
+      if (!nzchar(disp)) disp <- fetch_tk
+      aria <- tryCatch(
+        {
+          msg <- ui_str("recent_search_aria", loc)
+          gsub("{ticker}", disp, msg, fixed = TRUE)
+        },
+        error = function(e) disp
+      )
+      tags$button(
+        type = "button",
+        class = "ynow-recent-chip",
+        `data-ticker` = fetch_tk,
+        title = aria,
+        `aria-label` = aria,
+        disp
+      )
+    })
+    tags$div(class = "ynow-recent-search", role = "list", chips)
   })
   output$today <- renderText({ format(Sys.Date(), "%Y/%m/%d") })
 
@@ -2179,31 +2241,37 @@ server <- function(input, output, session) {
   # ==========================================
   # 📌 v13.0：分類 → 主／副模型（側邊欄標主「推薦」、副「備選」，並上浮至 Appr. 父層）
   # ==========================================
-  .empty_model_rec <- function(summary_method, reason, company_type = "pending") {
+  .empty_model_rec <- function(summary_method, reason, company_type = "pending",
+                               reason_en = NULL, summary_method_en = NULL) {
     list(
       company_type = company_type, primary = "", secondary = NULL, reference = NULL,
       ddm = FALSE, dcf = FALSE, pb = FALSE, ri = FALSE, nav = FALSE, tags = character(0),
-      summary_method = summary_method, reason = reason,
+      summary_method = summary_method,
+      summary_method_en = summary_method_en %||% summary_method,
+      reason = reason,
+      reason_en = reason_en %||% reason,
       suggest_two_stage = FALSE,
       confidence_inputs = list(data_complete = FALSE)
     )
   }
 
   model_sidebar_rec <- reactive({
+    loc_now <- tryCatch(ui_locale(), error = function(e) "en")
     if (!isTRUE(user_has_searched())) {
       return(.empty_model_rec(
-        "尚未搜尋",
-        "請先按下 Search 載入公司後產生推薦。"
+        ui_str("model_rec_empty_summary", "zh-TW"),
+        ui_str("model_rec_empty_reason", "zh-TW"),
+        reason_en = ui_str("model_rec_empty_reason", "en"),
+        summary_method_en = ui_str("model_rec_empty_summary", "en")
       ))
     }
     if (isTRUE(fs_all_empty())) {
       return(.empty_model_rec(
-        "Yahoo 尚無年報",
-        paste0(
-          "IS／BS／CF 皆空，基本面模型不可用；",
-          "請至公開資訊觀測站（MOPS）／櫃買查詢完整財報，勿將空結果視為已估值。"
-        ),
-        company_type = "fallback"
+        ui_str("model_rec_no_yahoo_summary", "zh-TW"),
+        ui_str("model_rec_no_yahoo_reason", "zh-TW"),
+        company_type = "fallback",
+        reason_en = ui_str("model_rec_no_yahoo_reason", "en"),
+        summary_method_en = ui_str("model_rec_no_yahoo_summary", "en")
       ))
     }
     if (isTRUE(tw_tpex_fs_fallback())) {
@@ -2233,12 +2301,10 @@ server <- function(input, output, session) {
           "pb",
           "tpex_summary"
         ),
-        summary_method = "櫃買財務資料簡報（摘要）→ P/B／RI",
-        reason = paste0(
-          "Yahoo 年報三表為空，已改用櫃買上櫃／興櫃季報彙總。",
-          "可估 P/B（每股淨值）與 RI（稅後純益／權益）；",
-          "無 CF／CapEx／FCF，不建議當完整 DCF 輸入。"
-        ),
+        summary_method = ui_str("model_rec_tpex_summary", "zh-TW"),
+        summary_method_en = ui_str("model_rec_tpex_summary", "en"),
+        reason = ui_str("model_rec_tpex_reason", "zh-TW"),
+        reason_en = ui_str("model_rec_tpex_reason", "en"),
         suggest_two_stage = FALSE,
         confidence_inputs = list(
           fcf_cv = NA_real_, div_cv = NA_real_,
@@ -2255,9 +2321,11 @@ server <- function(input, output, session) {
     ind <- corp_industry_text()
     if (is.null(cf) || !is.data.frame(cf) || nrow(cf) == 0) {
       return(.empty_model_rec(
-        "等待財報資料",
-        "搜尋股票並載入財報後產生推薦。",
-        company_type = "fallback"
+        ui_str("model_rec_waiting_fs_summary", "zh-TW"),
+        ui_str("model_rec_waiting_fs_reason", "zh-TW"),
+        company_type = "fallback",
+        reason_en = ui_str("model_rec_waiting_fs_reason", "en"),
+        summary_method_en = ui_str("model_rec_waiting_fs_summary", "en")
       ))
     }
     rec_out <- recommend_valuation_models(
@@ -2268,7 +2336,8 @@ server <- function(input, output, session) {
       industry_choice = input$industry_choice,
       wacc_pct = tryCatch(.current_wacc_pct(), error = function(e) NA_real_),
       lifecycle_result = tryCatch(central_lifecycle(), error = function(e) NULL),
-      selected_stage = input$lifecycle_stage %||% "auto"
+      selected_stage = input$lifecycle_stage %||% "auto",
+      locale = loc_now
     )
     rec_out
     }
@@ -2596,7 +2665,13 @@ server <- function(input, output, session) {
         tags$span(style = "margin:0 8px; color:#bbb;", "|"),
         tags$span(style = "color:#555;", fp_why),
         tags$br(),
-        tags$span(rec$reason %||% "請先按下 Search 載入公司後產生推薦。")
+        tags$span(
+          if (exists(".pick_rec_reason", mode = "function")) {
+            .pick_rec_reason(rec, loc)
+          } else {
+            as.character(rec$reason %||% ui_str("model_rec_empty_reason", loc))[1]
+          }
+        )
       ),
       # L→R 對齊側欄：NAV → Justified P/B → DCF → DDM → RI → Multiples → SOTP
       tags$div(
@@ -4343,8 +4418,17 @@ server <- function(input, output, session) {
       )
     })
     tags$div(
-      style = "margin:0 0 12px 0;",
-      tags$div(style = "font-weight:700; margin-bottom:6px; font-size:13px;", ui_str("sgr_scenario_title", loc)),
+      style = "margin:0;",
+      tags$div(
+        id = "ynow_sgr_scenario_title",
+        style = "font-weight:700; margin-bottom:4px; font-size:14px;",
+        ui_str("sgr_scenario_title", loc)
+      ),
+      tags$p(
+        id = "ynow_sgr_scenario_help",
+        style = "font-size:12px; color:#666; line-height:1.45; margin:0 0 8px 0;",
+        ui_str("sgr_scenario_help", loc)
+      ),
       tags$div(
         style = "overflow-x:auto;",
         tags$table(
@@ -5350,12 +5434,14 @@ server <- function(input, output, session) {
       tv <- (tail(future_fcfs, 1) * (1 + g)) / (r2 - g) / dfs[n_years]
       tv / (pv_fcf + tv)
     }, error = function(e) NA_real_)
+    loc <- tryCatch(ui_locale(), error = function(e) "zh-TW")
     score_valuation_confidence(
       confidence_inputs = rec$confidence_inputs %||% list(),
       f_score = f_score,
       primary_base = if (!is.null(band)) band$base else NA_real_,
       secondary_point = sec_pt,
-      tv_weight = tv_weight
+      tv_weight = tv_weight,
+      locale = loc
     )
   })
   
@@ -9226,7 +9312,13 @@ server <- function(input, output, session) {
     if (!isTRUE(user_has_searched())) return(NULL)
     rec <- tryCatch(model_sidebar_rec(), error = function(e) NULL)
     if (is.null(rec)) return(NULL)
-    reason <- as.character(rec$reason %||% "")[1]
+    reason <- if (exists(".pick_rec_reason", mode = "function")) {
+      .pick_rec_reason(rec, loc)
+    } else if (identical(loc, "en") && nzchar(as.character(rec$reason_en %||% "")[1])) {
+      as.character(rec$reason_en)[1]
+    } else {
+      as.character(rec$reason %||% "")[1]
+    }
     des <- tryCatch(.lite_desired_scenario(rec), error = function(e) NULL)
     scenario_bits <- character(0)
     if (!is.null(des)) {
@@ -9323,6 +9415,7 @@ server <- function(input, output, session) {
     labs <- labs[ok]
     vals <- vals[ok]
     cols <- cols[ok]
+    y_title <- paste0("Price (", money_prefix(), ")")
 
     plotly::plot_ly(
       x = labs,
@@ -9335,7 +9428,7 @@ server <- function(input, output, session) {
     ) %>%
       plotly::layout(
         margin = list(l = 48, r = 16, t = 24, b = 64),
-        yaxis = list(title = paste0("Price (", money_prefix(), ")"), zeroline = FALSE),
+        yaxis = list(title = y_title, zeroline = FALSE),
         xaxis = list(title = "", tickangle = -20),
         showlegend = FALSE,
         paper_bgcolor = "rgba(0,0,0,0)",

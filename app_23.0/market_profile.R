@@ -253,10 +253,9 @@ display_tickers_for_market <- function(syms, mode = get_market_mode()) {
   )
 }
 
-#' Sidebar tabs that need company ticker / valuation-model resources.
-#' Market switch only auto-fetches the market default ticker (e.g. TW → 2330)
-#' when the active tab is one of these; otherwise the fetch is deferred until
-#' the user opens a valuation-related tab.
+#' Sidebar tabs that host company ticker / valuation-model resources.
+#' Used for theme chrome and tab classification — market switch does NOT
+#' auto-fetch a default ticker (input shows a placeholder hint only).
 ynow_valuation_model_tabs <- function() {
   c(
     "get_started",
@@ -302,7 +301,7 @@ ynow_order_fv_engines <- function(models) {
   intersect(YNOW_FV_ENGINE_ORDER, m)
 }
 
-#' TRUE when sidebar tab should preload market-default ticker on market switch.
+#' TRUE when sidebar tab is a valuation-model / company-analysis surface.
 is_valuation_model_tab <- function(tab) {
   t <- trimws(as.character(tab %||% "")[1])
   if (!nzchar(t) || identical(toupper(t), "NA")) return(FALSE)

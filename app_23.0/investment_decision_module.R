@@ -916,12 +916,25 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
         str("composite_main_model"), " ", .point_label(prim),
         if (nzchar(sec)) paste0(" ｜ ", str("composite_sub_model"), " ", .point_label(sec)) else ""
       )
-      rec_desc <- as.character(rec$reason %||% "")
+      rec_desc <- if (exists(".pick_rec_reason", mode = "function")) {
+        .pick_rec_reason(rec, loc)
+      } else if (identical(loc, "en") && nzchar(as.character(rec$reason_en %||% "")[1])) {
+        as.character(rec$reason_en)[1]
+      } else {
+        as.character(rec$reason %||% "")[1]
+      }
+      score_paren_l <- if (identical(loc, "en")) " (" else "（"
+      score_paren_r <- if (identical(loc, "en")) ")" else "）"
+      reason_sep <- if (identical(loc, "en")) "; " else "；"
       conf_txt <- if (is.list(conf) && !is.null(conf$level)) {
         paste0(
           str("composite_confidence_prefix"), " ", conf$level,
-          if (!is.null(conf$score)) paste0("（", conf$score, "）") else "",
-          if (length(conf$reasons)) paste0(" — ", paste(utils::head(conf$reasons, 3), collapse = "；")) else ""
+          if (!is.null(conf$score)) paste0(score_paren_l, conf$score, score_paren_r) else "",
+          if (length(conf$reasons)) {
+            paste0(" — ", paste(utils::head(conf$reasons, 3), collapse = reason_sep))
+          } else {
+            ""
+          }
         )
       } else {
         paste0(str("composite_confidence_prefix"), " ", str("composite_confidence_calculating"))

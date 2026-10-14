@@ -16,7 +16,7 @@
       return(sub('^"version"\\s*:\\s*"([^"]+)".*$', "\\1", m[[1]]))
     }
   }
-  "v23.23"
+  "v23.27"
 }
 .YNOW_BUILD_VERSION <- .ynow_read_build_version()
 
@@ -231,7 +231,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v23.23) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+          "The YNow App (v23.27) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
         ),
         tags$p(
           class = "ynow-about-method",
@@ -250,7 +250,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v23.23) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
+          "The YNow App (v23.27) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
         ),
         tags$p(
           class = "ynow-about-method",
@@ -352,7 +352,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App（簡化版）")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite（v23.23）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
+          "The YNow App Lite（v23.27）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
           "以自動判別主／副模型與預設參數完成試算，讓使用者先看到合理價區間與產業 KPI，再決定是否回到完整版深入調整。"
         ),
         tags$p(
@@ -369,7 +369,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App (Lite)")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite (v23.23) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
+          "The YNow App Lite (v23.27) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
           "auto-selects primary/secondary models with App defaults, and surfaces fair-value ranges plus industry KPIs before you open Full for deeper calibration."
         ),
         tags$p(
@@ -1734,7 +1734,6 @@ beta_rolling_section_ui <- function() {
       tags$h5(tags$b("估計依據")),
       uiOutput("txt_perpetual_g_reason"),
       uiOutput("txt_sgr_identity"),
-      uiOutput("txt_scenario_audit"),
       tags$hr(style = "margin: 12px 0;"),
       numericInput(
         "sgr",
@@ -3436,9 +3435,9 @@ ui <- dashboardPage(
                   'data-ynow-build="', .YNOW_BUILD_VERSION, '" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v23.23</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v23.27</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v23.23</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v23.27</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -3652,7 +3651,7 @@ ui <- dashboardPage(
     
     column(width = 12,
            h5(id = "ynow_recent_search_label", "Recent Search:"),
-           textOutput("recentsearch"),
+           uiOutput("recentsearch"),
            hr()
     ),
     
@@ -5356,6 +5355,44 @@ ui <- dashboardPage(
         .ynow-sidebar-feedback-link { margin-left: 8px; }
         .ynow-sidebar-feedback-link { margin-left: 8px; }
         .ynow-sidebar-test-link { margin-left: 8px; }
+        /* Recent Search: clickable tickers → re-Search + 個股 */
+        .ynow-recent-search {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+          padding: 0 2px 2px 2px;
+          min-height: 1.4em;
+        }
+        .ynow-recent-search-empty {
+          color: rgba(255, 255, 255, 0.45);
+          font-size: 12px;
+          line-height: 1.4;
+          margin: 0;
+        }
+        .ynow-recent-chip {
+          display: inline-block;
+          padding: 2px 8px;
+          border-radius: 3px;
+          border: 1px solid rgba(255, 255, 255, 0.22);
+          background: rgba(255, 255, 255, 0.06);
+          color: rgba(255, 255, 255, 0.92) !important;
+          font-size: 12px;
+          font-weight: 600;
+          letter-spacing: 0.02em;
+          line-height: 1.45;
+          cursor: pointer;
+          user-select: none;
+          text-decoration: none !important;
+        }
+        .ynow-recent-chip:hover,
+        .ynow-recent-chip:focus {
+          background: rgba(255, 255, 255, 0.14);
+          border-color: rgba(255, 255, 255, 0.4);
+          outline: none;
+        }
+        .ynow-recent-chip:focus-visible {
+          box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35);
+        }
         /* 側欄完整 LOGO：Recent Search 橫線下、Download Report 正上方；等比例放大 */
         .ynow-sidebar-brand {
           display: flex;
@@ -5677,6 +5714,22 @@ ui <- dashboardPage(
           padding-left: 1.2em;
         }
         .ynow-bblab-split li { margin-bottom: 4px; }
+        /* ---- Full mode: white hairlines between sidebar groups ----
+           Home | Macro
+           Asset Transmission | Blue Chip
+           YNOW | Model Dashboard  (Smart Analysis is hidden in Full)
+           Hist. FV Validation | Quant Backtest Lab
+           Value Alerts | About
+        */
+        body:not(.ynow-lite) .sidebar-menu > li:has(> a[data-value="macro_market"]),
+        body:not(.ynow-lite) .sidebar-menu > li:has(> a[data-value="bluechip"]),
+        body:not(.ynow-lite) .sidebar-menu > li:has(> a[data-value="get_started"]),
+        body:not(.ynow-lite) .sidebar-menu > li:has(> a[data-value="lab_notes"]),
+        body:not(.ynow-lite) .sidebar-menu > li:has(> a[data-value="about"]) {
+          border-top: 1px solid #ffffff;
+          margin-top: 8px;
+          padding-top: 4px;
+        }
         /* ---- Lite mode: hide Full-only chrome; show Smart Analysis ---- */
         .sidebar-menu a[data-value="smart_analysis"],
         .sidebar-menu li:has(> a[data-value="smart_analysis"]) {
@@ -8420,6 +8473,15 @@ ui <- dashboardPage(
             if (recent && s.recent_search) recent.textContent = s.recent_search;
             var scLab = document.querySelector('label[for=\"sc\"]');
             if (scLab && s.ticker_label) scLab.textContent = s.ticker_label;
+            var scInput = document.getElementById('sc');
+            if (scInput) {
+              var mktPh = (payload && payload.market) ? String(payload.market) : 'US';
+              var scPh = (mktPh === 'TW')
+                ? (s.ticker_placeholder_tw || 'e.g. 2330')
+                : (s.ticker_placeholder_us || 'e.g. AAPL / TSM');
+              scInput.setAttribute('placeholder', scPh);
+              scInput.placeholder = scPh;
+            }
             var yahooIndLab = document.getElementById('ynow_industry_info_yahoo');
             if (yahooIndLab && s.industry_info_yahoo) yahooIndLab.textContent = s.industry_info_yahoo;
             var indLab = document.querySelector('label[for=\"industry_choice\"]');
@@ -13491,7 +13553,12 @@ ui <- dashboardPage(
                  class = "ynow-sc-row",
                  div(
                    class = "ynow-sc-wrap",
-                   textInput("sc", "Ticker / Stock Code", value = APP_DEFAULTS$stock_code),
+                   textInput(
+                     "sc",
+                     "Ticker / Stock Code",
+                     value = "",
+                     placeholder = "e.g. AAPL / TSM"
+                   ),
                    uiOutput("sc_ticker_suggest_ui")
                  ),
                  actionButton(
@@ -13594,6 +13661,15 @@ ui <- dashboardPage(
 
         $(document).on('click', '#search', function() {
           hideSuggest('sc');
+        });
+
+        // Recent Search chips → reload ticker + jump to Company / 個股
+        $(document).on('click keydown', '.ynow-recent-chip', function(e) {
+          if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;
+          e.preventDefault();
+          var tk = this.getAttribute('data-ticker') || '';
+          if (!tk || !(window.Shiny && Shiny.setInputValue)) return;
+          Shiny.setInputValue('recent_search_pick', tk, {priority: 'event'});
         });
 
         $(document).on('mousedown', '#sc_ticker_suggest .ynow-suggest-item, #lab_cluster_focus_suggest .ynow-suggest-item', function(e) {
@@ -13989,6 +14065,13 @@ ui <- dashboardPage(
                 style = "font-size:12.5px; color:#555;"
               ),
               uiOutput("param_restore_status_ui")
+            ),
+            # Bear／Base／Bull scenario rules for every valuation engine
+            # (moved from Model Dashboard SGR box — Snapshot is the review surface).
+            tags$div(
+              class = "ynow-scenario-audit-wrap",
+              style = "margin:0 0 16px 0; padding:12px 14px; background:#fafbfc; border:1px solid #e5e7eb; border-radius:6px;",
+              uiOutput("txt_scenario_audit")
             ),
             dataTableOutput("snapshot_table")
           ),

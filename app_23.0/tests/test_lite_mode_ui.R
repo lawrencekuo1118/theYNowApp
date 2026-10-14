@@ -31,6 +31,13 @@ testthat::test_that("Lite locale keys exist in en and zh-TW", {
     "smart_chart_title", "smart_primary_kicker", "smart_secondary_kicker",
     "smart_price_kicker", "smart_mos_kicker", "smart_waiting",
     "smart_calc_pending", "smart_calc_failed", "smart_ddm_no_d0", "smart_reason_title",
+    "conf_level_high", "conf_level_mid", "conf_level_low",
+    "conf_fs_complete", "conf_fs_incomplete", "conf_fcf_stable", "conf_fcf_volatile",
+    "conf_models_close", "conf_models_diverge", "conf_tv_weight_high",
+    "model_rec_empty_summary", "model_rec_empty_reason",
+    "model_rec_no_yahoo_summary", "model_rec_no_yahoo_reason",
+    "model_rec_waiting_fs_summary", "model_rec_waiting_fs_reason",
+    "model_rec_tpex_summary", "model_rec_tpex_reason",
     "ddm_err_d0", "ddm_err_inputs", "notif_ddm_no_d0",
     "smart_scenario_title", "smart_scenario_two_stage", "smart_scenario_gordon",
     "smart_scenario_sgr", "smart_scenario_claim",
@@ -399,7 +406,7 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
     txt,
     perl = TRUE
   ))
-  testthat::expect_true(grepl("The YNow App v23.23", txt, fixed = TRUE))
+  testthat::expect_true(grepl("The YNow App v23.27", txt, fixed = TRUE))
   testthat::expect_true(grepl('title = "The YNow App"', txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-hfv-report", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-hfv-toolbar", txt, fixed = TRUE))

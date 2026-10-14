@@ -57,6 +57,8 @@ locale_for_market <- function(mode = get_market_mode()) {
 .UI_STRINGS <- list(
   en = list(
     recent_search = "Recent Search:",
+    recent_search_empty = "No recent tickers yet.",
+    recent_search_aria = "Reload {ticker} and open Company",
     menu_home = "Home",
     header_logo_home_title = "Go to Home",
     update_available_click = "New version available — click The YNow App to refresh",
@@ -422,6 +424,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     pa_app_triggered = "Value alert triggered.",
     menu_business_breakdown_lab = "Business Breakdown",
     ticker_label = "Ticker / Stock Code",
+    ticker_placeholder_us = "e.g. AAPL / TSM",
+    ticker_placeholder_tw = "e.g. 2330",
     industry_info_yahoo = "industry info from Yahoo",
     data_source_title = "Data Source:",
     data_source_body = paste0(
@@ -1634,6 +1638,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     sgr_gate_fail = "Not computable: terminal g is at or above the discount rate, so the Gordon denominator is not positive.",
     sgr_gate_na = "Discount rate or terminal g is missing.",
     sgr_scenario_title = "Scenario check (every engine)",
+    sgr_scenario_help = paste0(
+      "Bear／Base／Bull shocks applied by each valuation engine under the current App parameters. ",
+      "Use this table to verify scenario inputs before reading Snapshot values below."
+    ),
     sgr_col_model = "Model",
     sgr_col_case = "Case",
     sgr_col_param = "Input",
@@ -1954,6 +1962,31 @@ locale_for_market <- function(mode = get_market_mode()) {
     fscore_item_turnover = "Efficiency (asset turnover up)",
     conf_fscore_strong = "F-Score stronger (quality screen)",
     conf_fscore_weak = "F-Score weaker (quality screen)",
+    conf_level_high = "High",
+    conf_level_mid = "Medium",
+    conf_level_low = "Low",
+    conf_fs_complete = "Financial-statement inputs complete",
+    conf_fs_incomplete = "Financial-statement inputs incomplete",
+    conf_fcf_stable = "FCF volatility contained",
+    conf_fcf_volatile = "FCF volatility elevated",
+    conf_models_close = "Primary and secondary models aligned",
+    conf_models_diverge = "Primary and secondary models diverge",
+    conf_tv_weight_high = "Terminal Value weight elevated",
+    model_rec_empty_summary = "Not searched yet",
+    model_rec_empty_reason = "Press Search to load a company before recommendations appear.",
+    model_rec_no_yahoo_summary = "No Yahoo annual statements",
+    model_rec_no_yahoo_reason = paste0(
+      "IS / BS / CF are all empty, so fundamental models are unavailable. ",
+      "Check MOPS / TPEx for full statements; do not treat an empty result as a completed valuation."
+    ),
+    model_rec_waiting_fs_summary = "Waiting for statements",
+    model_rec_waiting_fs_reason = "Search a ticker and load statements to generate recommendations.",
+    model_rec_tpex_summary = "TPEx financial summary → P/B / RI",
+    model_rec_tpex_reason = paste0(
+      "Yahoo annual statements are empty; switched to TPEx OTC / emerging quarterly summaries. ",
+      "P/B (book value per share) and RI (net income / equity) are estimable; ",
+      "without CF / CapEx / FCF, full DCF inputs are not recommended."
+    ),
     ann_fscore_crossref = paste0(
       "Tip: asset turnover and OCF / net income stay uncolored without a peer band; ",
       "cash quality can also be read against the YNOW F-Score quality screen ",
@@ -2026,7 +2059,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     funnel_mom_cond_line = "{c1} Cond1 (price > both MAs)　{c2} Cond2 (SMA20 > SMA60)　→　",
     funnel_shen_skip = "Auto screen skipped.",
     # --- High-traffic notifications (ynow_server) ---
-    notif_market_switched = "Switched to {market} mode (default {ticker}; Rf: {rf}; display currency {ccy}; language unchanged)",
+    notif_market_switched = "Switched to {market} mode (Rf: {rf}; display currency {ccy}; language unchanged)",
     notif_fx_usd_twd_fail = "Could not fetch spot USD/TWD; FX conversion refused.",
     notif_fx_convert_fail = "Could not fetch spot FX; USD↔TWD conversion refused.",
     notif_fx_usd_twd_fail_keep = "Could not fetch spot USD/TWD; FX conversion refused (amounts stay in original currency or are hidden). Try again later.",
@@ -3069,6 +3102,8 @@ locale_for_market <- function(mode = get_market_mode()) {
   ),
   `zh-TW` = list(
     recent_search = "最近搜尋：",
+    recent_search_empty = "尚無最近搜尋代號。",
+    recent_search_aria = "重新載入 {ticker} 並開啟個股",
     menu_home = "首頁",
     header_logo_home_title = "回到首頁",
     update_available_click = "有新版本 — 請點一下 The YNow App 重新整理",
@@ -3432,6 +3467,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     pa_app_triggered = "到值通知已觸發。",
     menu_business_breakdown_lab = "業務拆解",
     ticker_label = "Ticker／股票代號",
+    ticker_placeholder_us = "例如 AAPL／TSM",
+    ticker_placeholder_tw = "例如 2330",
     industry_info_yahoo = "Yahoo 產業資訊",
     data_source_title = "資料來源：",
     data_source_body = paste0(
@@ -4602,6 +4639,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     sgr_gate_fail = "無法計算：終值 g 大於或等於折現率，Gordon 分母不是正數。",
     sgr_gate_na = "折現率或終值 g 尚缺。",
     sgr_scenario_title = "情境檢核（每個模型）",
+    sgr_scenario_help = paste0(
+      "目前 App 參數下，各估值引擎套用的 Bear／Base／Bull 衝擊。",
+      "請先核對此表，再閱讀下方 Snapshot 參數值。"
+    ),
     sgr_col_model = "模型",
     sgr_col_case = "情境",
     sgr_col_param = "參數",
@@ -4907,6 +4948,31 @@ locale_for_market <- function(mode = get_market_mode()) {
     fscore_item_turnover = "效率 (資產週轉率提升)",
     conf_fscore_strong = "F-Score 偏強（品質檢核）",
     conf_fscore_weak = "F-Score 偏弱（品質檢核）",
+    conf_level_high = "高",
+    conf_level_mid = "中",
+    conf_level_low = "低",
+    conf_fs_complete = "財報輸入完整",
+    conf_fs_incomplete = "財報輸入不完整",
+    conf_fcf_stable = "FCF 波動可控",
+    conf_fcf_volatile = "FCF 波動偏高",
+    conf_models_close = "主副模型接近",
+    conf_models_diverge = "主副模型分歧大",
+    conf_tv_weight_high = "終值權重偏高",
+    model_rec_empty_summary = "尚未搜尋",
+    model_rec_empty_reason = "請先按下 Search 載入公司後產生推薦。",
+    model_rec_no_yahoo_summary = "Yahoo 尚無年報",
+    model_rec_no_yahoo_reason = paste0(
+      "IS／BS／CF 皆空，基本面模型不可用；",
+      "請至公開資訊觀測站（MOPS）／櫃買查詢完整財報，勿將空結果視為已估值。"
+    ),
+    model_rec_waiting_fs_summary = "等待財報資料",
+    model_rec_waiting_fs_reason = "搜尋股票並載入財報後產生推薦。",
+    model_rec_tpex_summary = "櫃買財務資料簡報（摘要）→ P/B／RI",
+    model_rec_tpex_reason = paste0(
+      "Yahoo 年報三表為空，已改用櫃買上櫃／興櫃季報彙總。",
+      "可估 P/B（每股淨值）與 RI（稅後純益／權益）；",
+      "無 CF／CapEx／FCF，不建議當完整 DCF 輸入。"
+    ),
     ann_fscore_crossref = paste0(
       "提示：資產週轉率、OCF／淨利無同業區間時固定為白；",
       "現金品質另可對照 YNOW／F-Score 品質檢核中的盈餘品質項。"
@@ -4974,7 +5040,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     funnel_mom_cond_line = "{c1} Cond1（價 > 雙均）　{c2} Cond2（SMA20 > SMA60）　→　",
     funnel_shen_skip = "自動判讀略過。",
     # --- High-traffic notifications (ynow_server) ---
-    notif_market_switched = "已切換至{market}模式（預設 {ticker}；Rf：{rf}；顯示幣別 {ccy}；語言不變）",
+    notif_market_switched = "已切換至{market}模式（Rf：{rf}；顯示幣別 {ccy}；語言不變）",
     notif_fx_usd_twd_fail = "無法取得即期 USD/TWD 匯率，已拒絕換匯。",
     notif_fx_convert_fail = "無法取得即期匯率，已拒絕 USD↔TWD 換匯。",
     notif_fx_usd_twd_fail_keep = "無法取得即期 USD/TWD 匯率，已拒絕換匯（金額維持原幣或不顯示）。請稍後再試。",
