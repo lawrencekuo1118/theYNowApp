@@ -30,13 +30,21 @@ srv <- paste(readLines("ynow_server.R", warn = FALSE, encoding = "UTF-8"), colla
 loc <- paste(readLines("ui_locale.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 setup <- paste(readLines("setup.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 
-# P1D-DCF-TAB-NA fix: tab visit fires DCF when ready and FV missing
+# P1D-DCF-TAB-NA fix: tab visit fires DCF when ready and FV missing.
+# NOTE: these grepl checks are structural only — they do NOT prove Shiny
+# runtime tab-switch triggers valuation (see docs/PHASE_AUDIT_CLOSEOUT.md).
 check(
   "DCF tab-visit auto-calc observer present",
   grepl("dcf_calculator", srv, fixed = TRUE) &&
     grepl("stock_price_estimate_val", srv, fixed = TRUE) &&
     grepl("\\.fire_auto_calc_primary\\(\"dcf\"\\)", srv) &&
     grepl("P1-D closeout", srv, fixed = TRUE)
+)
+check(
+  "DCF tab-visit skips when FV already present (structural)",
+  grepl("has_ps", srv, fixed = TRUE) &&
+    grepl("if \\(isTRUE\\(has_ps\\)\\) return\\(\\)", srv) &&
+    grepl("\\.auto_calc_primary_ready\\(\"dcf\"\\)", srv)
 )
 check(
   "Companion DDM/RI/MULT tab-visit fire present",

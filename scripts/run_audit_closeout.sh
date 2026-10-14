@@ -2,8 +2,11 @@
 # Final audit closeout runner (structural + Phase 2 regression + optional live probe)
 # Usage: bash scripts/run_audit_closeout.sh
 # Env:   YNOW_LIVE_PROBE=1 to attempt one live Yahoo/Rf call (network)
+#
+# NOTE: set -uo pipefail is required so Rscript|tee pipelines do not swallow
+# Rscript failures (pipeline status would otherwise be tee's exit 0).
 
-set -u
+set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP="${ROOT}/app_23.0"
 export YNOW_DEBUG_SKIP_PY="${YNOW_DEBUG_SKIP_PY:-1}"
@@ -15,6 +18,13 @@ cat "${ROOT}/scripts/DEPLOY_BASELINE.txt" 2>/dev/null || true
 echo "    HEAD=$(git -C "${ROOT}" rev-parse HEAD 2>/dev/null || echo unknown)"
 
 ec=0
+
+echo "==> Meta: pipefail proof (deliberate non-zero through tee)"
+if ! bash "${ROOT}/scripts/test_audit_closeout_pipefail.sh"; then
+  echo "ERROR: closeout runner cannot reliably detect test failures" >&2
+  exit 2
+fi
+
 echo "==> Closeout structural tests"
 (
   cd "${APP}"
