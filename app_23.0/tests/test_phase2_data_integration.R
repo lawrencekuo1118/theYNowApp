@@ -205,16 +205,17 @@ check(
 )
 check(
   "reorder must not corrupt duplicate-period values (expect 999 present)",
-  "999" %in% dup_vals_ord,
+  identical(dup_vals_ord, c("100", "999", "90")) ||
+    ("999" %in% dup_vals_ord && "100" %in% dup_vals_ord),
   mk_finding(
     "NORM-DUP-PERIOD-CORRUPT", "period_integrity", "P1", "offline_mock",
-    "values include 100 and 999 after reorder",
+    "values include 100 and 999 after reorder (index-based reorder + make.unique)",
     paste(dup_vals_ord, collapse = "|"),
     delta = NA_real_,
     error_cases = "Malformed/duplicate period columns → silent value overwrite in reorder_financial_columns",
-    remediation = "approve fix: make.unique before subset OR reject duplicate periods as unavailable",
-    deploy_impact = "Yahoo annual path rarely emits duplicates; risk if cached malformed payload — NOT formula engine",
-    notes = "PROVEN DEFECT (normalize path). coerce OK; reorder_financial_columns corrupts. No fix applied pending approval."
+    remediation = "fixed: reorder via integer indices; make.unique colnames after reorder",
+    deploy_impact = "normalize path on live v23.28+ after ship; not a valuation formula change",
+    notes = "Regression for former PROVEN DEFECT. coerce OK; reorder must preserve both period values."
   )
 )
 

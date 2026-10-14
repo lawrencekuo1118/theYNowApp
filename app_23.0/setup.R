@@ -527,29 +527,38 @@ coerce_financial_df <- function(df) {
 }
 
 # 將財報表格欄位重排：Breakdown | TTM | 最新財年 → 最舊財年
+# Use integer indices (not name subsetting): R's df[, c("FY","FY")] silently
+# reuses the first matching column and corrupts values (NORM-DUP-PERIOD-CORRUPT).
 reorder_financial_columns <- function(df) {
   df <- coerce_financial_df(df)
   if (is.null(df) || !is.data.frame(df) || ncol(df) < 2) return(df)
-  
-  label_col <- colnames(df)[1]
-  period_cols <- colnames(df)[-1]
-  
-  is_ttm <- grepl("^ttm$", period_cols, ignore.case = TRUE)
-  ttm_cols <- period_cols[is_ttm]
-  fy_cols <- period_cols[!is_ttm]
-  
+
+  label_idx <- 1L
+  period_idx <- seq.int(2L, ncol(df))
+  period_names <- as.character(colnames(df)[period_idx])
+
+  is_ttm <- grepl("^ttm$", period_names, ignore.case = TRUE)
+  ttm_idx <- period_idx[is_ttm]
+  fy_idx <- period_idx[!is_ttm]
+  fy_names <- period_names[!is_ttm]
+
   parse_fy_date <- function(x) {
     d <- suppressWarnings(as.Date(x, format = "%m/%d/%Y"))
     if (!is.na(d)) return(d)
     suppressWarnings(as.Date(x))
   }
-  
-  if (length(fy_cols) > 0) {
-    fy_dates <- vapply(fy_cols, parse_fy_date, FUN.VALUE = as.Date("1970-01-01"))
-    fy_cols <- fy_cols[order(fy_dates, decreasing = TRUE)]
+
+  if (length(fy_idx) > 0) {
+    fy_dates <- vapply(fy_names, parse_fy_date, FUN.VALUE = as.Date("1970-01-01"))
+    fy_idx <- fy_idx[order(fy_dates, decreasing = TRUE)]
   }
-  
-  df[, c(label_col, ttm_cols, fy_cols), drop = FALSE]
+
+  out <- df[, c(label_idx, ttm_idx, fy_idx), drop = FALSE]
+  # Downstream helpers assume unique colnames; preserve values, uniquify labels.
+  if (anyDuplicated(colnames(out))) {
+    colnames(out) <- make.unique(as.character(colnames(out)), sep = ".")
+  }
+  out
 }
 
 # 標準化三表結構（collapsed / expanded 皆重排欄位）

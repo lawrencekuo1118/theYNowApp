@@ -5,7 +5,9 @@
 **Runner:** `bash scripts/run_phase2_audit.sh`  
 **Suite:** `app_23.0/tests/test_phase2_data_integration.R`  
 **Oracles:** `app_23.0/tests/audit_data_oracles.R`  
-**Findings JSON:** `docs/phase2_findings.json`
+**Findings JSON:** `docs/phase2_findings.json`  
+
+**Remediation update:** `NORM-DUP-PERIOD-CORRUPT` fixed in `setup.R::reorder_financial_columns` (integer-index reorder + `make.unique`). Re-run: **PASS=38 FAIL=0** exit 0.
 
 ### Deployment baseline locked before testing
 
@@ -27,10 +29,10 @@
 
 | Metric | Value |
 |---|---|
-| PASS | **37** |
-| FAIL | **1** |
+| PASS | **38** (was 37 before fix) |
+| FAIL | **0** (was 1: `NORM-DUP-PERIOD-CORRUPT`) |
 | Findings rows | **30** |
-| Exit code | **1** (because of proven normalize defect) |
+| Exit code | **0** |
 
 Reproduce:
 
@@ -40,9 +42,9 @@ bash scripts/run_phase2_audit.sh
 
 ---
 
-## Proven defect (do not “fix” without approval)
+## Remediated defect
 
-### NORM-DUP-PERIOD-CORRUPT — `reorder_financial_columns` corrupts duplicate periods
+### NORM-DUP-PERIOD-CORRUPT — `reorder_financial_columns` (fixed)
 
 | Field | Detail |
 |---|---|
@@ -50,10 +52,10 @@ bash scripts/run_phase2_audit.sh
 | 控制點 | Period integrity / malformed payload |
 | 公式／規格 | After coerce, duplicate FY columns must keep distinct values; reorder must not overwrite |
 | 獨立基準 | Fixture `Breakdown \| 12/31/2024=100 \| 12/31/2024=999 \| 12/31/2023=90` |
-| 實際結果 | **FAIL** — after `reorder_financial_columns`, values become `100\|100\|90` (999 lost); colnames become `12/31/2024\|12/31/2024.1\|…` |
-| 錯誤案例 | Malformed / duplicate period columns in cached payload |
-| 修正建議 | **Approve separately:** `make.unique` before subset **or** reject duplicates as unavailable. Not applied this phase. |
-| 部署影響 | Yahoo annual path rarely emits duplicates; risk if a malformed payload is cached. **Not a DCF/RI/DDM formula bug.** |
+| 修復前 | FAIL — values became `100\|100\|90` via name-based `df[, c("FY","FY")]` |
+| 修復後 | PASS — values `100\|999\|90`; colnames `12/31/2024\|12/31/2024.1\|12/31/2023` |
+| 修正 | Integer-index column reorder; `make.unique` on result colnames (`setup.R`) |
+| 部署影響 | Ships with next live-line deploy; normalize-only change |
 
 ---
 
@@ -78,7 +80,7 @@ Each lineage node records source / period / ccy / unit in finding notes where ap
 | NORM-STOCK-NO-TTM | P0 | PASS | Stock ignores TTM poison shares=999 |
 | NORM-FCF-TTM-EXCLUDE | P0 | PASS | `include_ttm=FALSE` → FY 25M |
 | NORM-MISSING-NA | P0 | PASS | Missing metric → NA (not 0) |
-| NORM-DUP-PERIOD-CORRUPT | P1 | **FAIL** | See proven defect |
+| NORM-DUP-PERIOD-CORRUPT | P1 | **PASS** (fixed) | Index reorder + make.unique |
 | NORM-EMPTY-DETECT | P0 | PASS | Empty three tables detected |
 | NORM-CCY-NO-COPY | P0 | PASS | Missing financialCurrency not copied from quote |
 
@@ -125,7 +127,7 @@ Each lineage node records source / period / ccy / unit in finding notes where ap
 |---|---|---|---|---|
 | Yahoo statement payload coerce/normalize | Yes | — | **No** | Phase 2 + `test_data_integrity.R` |
 | TTM vs FY flow/stock/FCF | Yes | — | **No** | Phase 2 |
-| Duplicate period columns | Yes (**FAIL**) | — | **No** | Phase 2 |
+| Duplicate period columns | Yes (**PASS** after fix) | — | **No** | Phase 2 |
 | Empty Yahoo → drop cache | Yes (contract) | Yes (source) | **No** | Phase 2 + `test_financials_empty_fallback.R` |
 | Yahoo timeout/429/schema live | — | — | **Uncovered** | LIVE-UNCOVERED-1 |
 | TPEx summary merge / no invent CF | Partial | Yes | **Uncovered** | Phase 2 + `test_tpex_financial_summary.R` |
@@ -138,11 +140,10 @@ Each lineage node records source / period / ccy / unit in finding notes where ap
 
 ## Residual risks (unresolved)
 
-1. **NORM-DUP-PERIOD-CORRUPT** — proven; fix pending explicit approval.  
-2. **BRIDGE-ZERO-DEFAULT** — intentional zeros can look like a complete EV bridge.  
-3. **Rf fallback** — numeric rate may still feed CAPM without strong UI warning (verify in P1-D).  
-4. **All LIVE-UNCOVERED-*** rows — require staging/live probes.  
-5. Quarterly Yahoo columns — live scraper is annual-only; TPEx YTD vs annual mix is only partially covered via existing TPEx tests.
+1. **BRIDGE-ZERO-DEFAULT** — intentional zeros can look like a complete EV bridge.  
+2. **Rf fallback** — numeric rate may still feed CAPM without strong UI warning (verify in P1-D).  
+3. **All LIVE-UNCOVERED-*** rows — require staging/live probes.  
+4. Quarterly Yahoo columns — live scraper is annual-only; TPEx YTD vs annual mix is only partially covered via existing TPEx tests.
 
 ---
 
