@@ -7,4 +7,4 @@ commit=2662bc2a0a3052505924ab54346898eb0dfb274b
 short=2662bc2
 message=chore: bump display version to v24.00
 captured_at=2026-10-14T17:20:04Z
-display_version=v24.00
+display_version=v24.01
