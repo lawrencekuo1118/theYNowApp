@@ -1954,6 +1954,31 @@ locale_for_market <- function(mode = get_market_mode()) {
     fscore_item_turnover = "Efficiency (asset turnover up)",
     conf_fscore_strong = "F-Score stronger (quality screen)",
     conf_fscore_weak = "F-Score weaker (quality screen)",
+    conf_level_high = "High",
+    conf_level_mid = "Medium",
+    conf_level_low = "Low",
+    conf_fs_complete = "Financial-statement inputs complete",
+    conf_fs_incomplete = "Financial-statement inputs incomplete",
+    conf_fcf_stable = "FCF volatility contained",
+    conf_fcf_volatile = "FCF volatility elevated",
+    conf_models_close = "Primary and secondary models aligned",
+    conf_models_diverge = "Primary and secondary models diverge",
+    conf_tv_weight_high = "Terminal Value weight elevated",
+    model_rec_empty_summary = "Not searched yet",
+    model_rec_empty_reason = "Press Search to load a company before recommendations appear.",
+    model_rec_no_yahoo_summary = "No Yahoo annual statements",
+    model_rec_no_yahoo_reason = paste0(
+      "IS / BS / CF are all empty, so fundamental models are unavailable. ",
+      "Check MOPS / TPEx for full statements; do not treat an empty result as a completed valuation."
+    ),
+    model_rec_waiting_fs_summary = "Waiting for statements",
+    model_rec_waiting_fs_reason = "Search a ticker and load statements to generate recommendations.",
+    model_rec_tpex_summary = "TPEx financial summary → P/B / RI",
+    model_rec_tpex_reason = paste0(
+      "Yahoo annual statements are empty; switched to TPEx OTC / emerging quarterly summaries. ",
+      "P/B (book value per share) and RI (net income / equity) are estimable; ",
+      "without CF / CapEx / FCF, full DCF inputs are not recommended."
+    ),
     ann_fscore_crossref = paste0(
       "Tip: asset turnover and OCF / net income stay uncolored without a peer band; ",
       "cash quality can also be read against the YNOW F-Score quality screen ",
@@ -4907,6 +4932,31 @@ locale_for_market <- function(mode = get_market_mode()) {
     fscore_item_turnover = "效率 (資產週轉率提升)",
     conf_fscore_strong = "F-Score 偏強（品質檢核）",
     conf_fscore_weak = "F-Score 偏弱（品質檢核）",
+    conf_level_high = "高",
+    conf_level_mid = "中",
+    conf_level_low = "低",
+    conf_fs_complete = "財報輸入完整",
+    conf_fs_incomplete = "財報輸入不完整",
+    conf_fcf_stable = "FCF 波動可控",
+    conf_fcf_volatile = "FCF 波動偏高",
+    conf_models_close = "主副模型接近",
+    conf_models_diverge = "主副模型分歧大",
+    conf_tv_weight_high = "終值權重偏高",
+    model_rec_empty_summary = "尚未搜尋",
+    model_rec_empty_reason = "請先按下 Search 載入公司後產生推薦。",
+    model_rec_no_yahoo_summary = "Yahoo 尚無年報",
+    model_rec_no_yahoo_reason = paste0(
+      "IS／BS／CF 皆空，基本面模型不可用；",
+      "請至公開資訊觀測站（MOPS）／櫃買查詢完整財報，勿將空結果視為已估值。"
+    ),
+    model_rec_waiting_fs_summary = "等待財報資料",
+    model_rec_waiting_fs_reason = "搜尋股票並載入財報後產生推薦。",
+    model_rec_tpex_summary = "櫃買財務資料簡報（摘要）→ P/B／RI",
+    model_rec_tpex_reason = paste0(
+      "Yahoo 年報三表為空，已改用櫃買上櫃／興櫃季報彙總。",
+      "可估 P/B（每股淨值）與 RI（稅後純益／權益）；",
+      "無 CF／CapEx／FCF，不建議當完整 DCF 輸入。"
+    ),
     ann_fscore_crossref = paste0(
       "提示：資產週轉率、OCF／淨利無同業區間時固定為白；",
       "現金品質另可對照 YNOW／F-Score 品質檢核中的盈餘品質項。"

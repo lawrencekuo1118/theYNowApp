@@ -2219,11 +2219,15 @@ server <- function(input, output, session) {
   # ==========================================
   # 📌 v13.0：分類 → 主／副模型（側邊欄標主「推薦」、副「備選」，並上浮至 Appr. 父層）
   # ==========================================
-  .empty_model_rec <- function(summary_method, reason, company_type = "pending") {
+  .empty_model_rec <- function(summary_method, reason, company_type = "pending",
+                               reason_en = NULL, summary_method_en = NULL) {
     list(
       company_type = company_type, primary = "", secondary = NULL, reference = NULL,
       ddm = FALSE, dcf = FALSE, pb = FALSE, ri = FALSE, nav = FALSE, tags = character(0),
-      summary_method = summary_method, reason = reason,
+      summary_method = summary_method,
+      summary_method_en = summary_method_en %||% summary_method,
+      reason = reason,
+      reason_en = reason_en %||% reason,
       suggest_two_stage = FALSE,
       confidence_inputs = list(data_complete = FALSE)
     )
@@ -2233,30 +2237,29 @@ server <- function(input, output, session) {
     loc_now <- tryCatch(ui_locale(), error = function(e) "en")
     if (!isTRUE(user_has_searched())) {
       # #region agent log
-      .agent_dbg("B", "ynow_server.R:model_sidebar_rec", "empty_not_searched_zh_hardcoded", list(
-        loc = loc_now, branch = "not_searched",
-        reason_zh = "請先按下 Search 載入公司後產生推薦。",
-        has_reason_en = FALSE
+      .agent_dbg("B", "ynow_server.R:model_sidebar_rec", "empty_not_searched_bilingual", list(
+        loc = loc_now, branch = "not_searched", has_reason_en = TRUE
       ))
       # #endregion
       return(.empty_model_rec(
-        "尚未搜尋",
-        "請先按下 Search 載入公司後產生推薦。"
+        ui_str("model_rec_empty_summary", "zh-TW"),
+        ui_str("model_rec_empty_reason", "zh-TW"),
+        reason_en = ui_str("model_rec_empty_reason", "en"),
+        summary_method_en = ui_str("model_rec_empty_summary", "en")
       ))
     }
     if (isTRUE(fs_all_empty())) {
       # #region agent log
-      .agent_dbg("B", "ynow_server.R:model_sidebar_rec", "empty_fs_zh_hardcoded", list(
-        loc = loc_now, branch = "fs_all_empty", has_reason_en = FALSE
+      .agent_dbg("B", "ynow_server.R:model_sidebar_rec", "empty_fs_bilingual", list(
+        loc = loc_now, branch = "fs_all_empty", has_reason_en = TRUE
       ))
       # #endregion
       return(.empty_model_rec(
-        "Yahoo 尚無年報",
-        paste0(
-          "IS／BS／CF 皆空，基本面模型不可用；",
-          "請至公開資訊觀測站（MOPS）／櫃買查詢完整財報，勿將空結果視為已估值。"
-        ),
-        company_type = "fallback"
+        ui_str("model_rec_no_yahoo_summary", "zh-TW"),
+        ui_str("model_rec_no_yahoo_reason", "zh-TW"),
+        company_type = "fallback",
+        reason_en = ui_str("model_rec_no_yahoo_reason", "en"),
+        summary_method_en = ui_str("model_rec_no_yahoo_summary", "en")
       ))
     }
     if (isTRUE(tw_tpex_fs_fallback())) {
@@ -2274,8 +2277,8 @@ server <- function(input, output, session) {
       has_roe <- is.finite(ni) && is.finite(equity) && equity > 0
       has_bv <- is.finite(equity) && equity > 0
       # #region agent log
-      .agent_dbg("B", "ynow_server.R:model_sidebar_rec", "tpex_fallback_zh_hardcoded", list(
-        loc = loc_now, branch = "tpex", has_roe = isTRUE(has_roe), has_reason_en = FALSE
+      .agent_dbg("B", "ynow_server.R:model_sidebar_rec", "tpex_fallback_bilingual", list(
+        loc = loc_now, branch = "tpex", has_roe = isTRUE(has_roe), has_reason_en = TRUE
       ))
       # #endregion
       list(
@@ -2291,12 +2294,10 @@ server <- function(input, output, session) {
           "pb",
           "tpex_summary"
         ),
-        summary_method = "櫃買財務資料簡報（摘要）→ P/B／RI",
-        reason = paste0(
-          "Yahoo 年報三表為空，已改用櫃買上櫃／興櫃季報彙總。",
-          "可估 P/B（每股淨值）與 RI（稅後純益／權益）；",
-          "無 CF／CapEx／FCF，不建議當完整 DCF 輸入。"
-        ),
+        summary_method = ui_str("model_rec_tpex_summary", "zh-TW"),
+        summary_method_en = ui_str("model_rec_tpex_summary", "en"),
+        reason = ui_str("model_rec_tpex_reason", "zh-TW"),
+        reason_en = ui_str("model_rec_tpex_reason", "en"),
         suggest_two_stage = FALSE,
         confidence_inputs = list(
           fcf_cv = NA_real_, div_cv = NA_real_,
@@ -2313,21 +2314,22 @@ server <- function(input, output, session) {
     ind <- corp_industry_text()
     if (is.null(cf) || !is.data.frame(cf) || nrow(cf) == 0) {
       # #region agent log
-      .agent_dbg("B", "ynow_server.R:model_sidebar_rec", "waiting_fs_zh_hardcoded", list(
-        loc = loc_now, branch = "cf_empty", has_reason_en = FALSE
+      .agent_dbg("B", "ynow_server.R:model_sidebar_rec", "waiting_fs_bilingual", list(
+        loc = loc_now, branch = "cf_empty", has_reason_en = TRUE
       ))
       # #endregion
       return(.empty_model_rec(
-        "等待財報資料",
-        "搜尋股票並載入財報後產生推薦。",
-        company_type = "fallback"
+        ui_str("model_rec_waiting_fs_summary", "zh-TW"),
+        ui_str("model_rec_waiting_fs_reason", "zh-TW"),
+        company_type = "fallback",
+        reason_en = ui_str("model_rec_waiting_fs_reason", "en"),
+        summary_method_en = ui_str("model_rec_waiting_fs_summary", "en")
       ))
     }
     # #region agent log
-    .agent_dbg("C", "ynow_server.R:model_sidebar_rec", "recommend_call_no_locale_arg", list(
+    .agent_dbg("C", "ynow_server.R:model_sidebar_rec", "recommend_call_with_locale", list(
       loc = loc_now,
-      locale_arg_passed = FALSE,
-      recommend_default = "zh-TW",
+      locale_arg_passed = TRUE,
       industry = substr(as.character(ind %||% "")[1], 1, 60),
       cf_nrow = nrow(cf)
     ))
@@ -2340,7 +2342,8 @@ server <- function(input, output, session) {
       industry_choice = input$industry_choice,
       wacc_pct = tryCatch(.current_wacc_pct(), error = function(e) NA_real_),
       lifecycle_result = tryCatch(central_lifecycle(), error = function(e) NULL),
-      selected_stage = input$lifecycle_stage %||% "auto"
+      selected_stage = input$lifecycle_stage %||% "auto",
+      locale = loc_now
     )
     # #region agent log
     .agent_dbg("C", "ynow_server.R:model_sidebar_rec", "recommend_result", list(
@@ -2678,7 +2681,13 @@ server <- function(input, output, session) {
         tags$span(style = "margin:0 8px; color:#bbb;", "|"),
         tags$span(style = "color:#555;", fp_why),
         tags$br(),
-        tags$span(rec$reason %||% "請先按下 Search 載入公司後產生推薦。")
+        tags$span(
+          if (exists(".pick_rec_reason", mode = "function")) {
+            .pick_rec_reason(rec, loc)
+          } else {
+            as.character(rec$reason %||% ui_str("model_rec_empty_reason", loc))[1]
+          }
+        )
       ),
       # L→R 對齊側欄：NAV → Justified P/B → DCF → DDM → RI → Multiples → SOTP
       tags$div(
@@ -5432,12 +5441,14 @@ server <- function(input, output, session) {
       tv <- (tail(future_fcfs, 1) * (1 + g)) / (r2 - g) / dfs[n_years]
       tv / (pv_fcf + tv)
     }, error = function(e) NA_real_)
+    loc <- tryCatch(ui_locale(), error = function(e) "zh-TW")
     score_valuation_confidence(
       confidence_inputs = rec$confidence_inputs %||% list(),
       f_score = f_score,
       primary_base = if (!is.null(band)) band$base else NA_real_,
       secondary_point = sec_pt,
-      tv_weight = tv_weight
+      tv_weight = tv_weight,
+      locale = loc
     )
   })
   
@@ -9355,13 +9366,23 @@ server <- function(input, output, session) {
     if (is.null(rec)) return(NULL)
     reason_zh <- as.character(rec$reason %||% "")[1]
     reason_en <- as.character(rec$reason_en %||% "")[1]
-    # Current (buggy) path always uses reason; log whether reason_en was available.
-    reason <- reason_zh
-    picked <- "reason_zh"
+    reason <- if (exists(".pick_rec_reason", mode = "function")) {
+      .pick_rec_reason(rec, loc)
+    } else if (identical(loc, "en") && nzchar(reason_en)) {
+      reason_en
+    } else {
+      reason_zh
+    }
+    picked <- if (identical(loc, "en") && identical(reason, reason_en) && nzchar(reason_en)) {
+      "reason_en"
+    } else {
+      "reason_zh"
+    }
     # #region agent log
     .agent_dbg("A", "ynow_server.R:smart_analysis_reason", "reason_locale_pick", list(
       loc = loc,
       picked = picked,
+      runId = "post-fix",
       has_reason_zh = nzchar(reason_zh),
       has_reason_en = nzchar(reason_en),
       would_prefer_en = identical(loc, "en") && nzchar(reason_en),
