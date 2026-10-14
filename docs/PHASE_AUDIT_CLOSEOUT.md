@@ -1,11 +1,12 @@
 # Audit closeout — remaining steps
 
-**Status:** Not final acceptance — runner P0 verified on actual script; tab-visit runtime and live Treasury still open  
-**Branch:** `cursor/audit-closeout-remaining-3eea`  
-**Recorded ship (behavior):** v23.30 / bundle `12690107` (tab-visit auto-calc + Rf fallback note)  
+**Status:** Structural closeout + runner P0 verified; **runtime / live Rf / live statements** tracked in `docs/PHASE_AUDIT_ACCEPTANCE.md` under **v24.00**  
+**Branch (historical):** `cursor/audit-closeout-remaining-3eea`  
+**Current live baseline:** `app_24.0/` / **v24.00** / bundle `12690522`  
+**Recorded ship (behavior on v23 line):** v23.30 / bundle `12690107` (tab-visit auto-calc + Rf fallback note)  
 **Prior normalize ship:** v23.29 / bundle `12689855`
 
-This document tracks residual items after Phase 0–2 and P1-D. Valuation formula engines are unchanged and are **not** blocked by these test-control / coverage gaps.
+This document tracks residual items after Phase 0–2 and P1-D. Valuation formula engines are unchanged and are **not** blocked by these test-control / coverage gaps. For objective acceptance evidence beyond structural closeout, see **`PHASE_AUDIT_ACCEPTANCE.md`**.
 
 ---
 
@@ -16,11 +17,12 @@ This document tracks residual items after Phase 0–2 and P1-D. Valuation formul
 | Production runner enables `set -uo pipefail` (source gate on `scripts/run_audit_closeout.sh`) | **Required — verified** |
 | Actual-runner integration: failing structural `Rscript` via PATH shim → runner exit ≠ 0 | **Required — verified** |
 | Full closeout + Phase 2 re-run with complete logs and captured exit codes | **Required — see evidence below** |
-| Tab-visit auto-calc interactive / runtime proof | **Open** — structural `grepl` only; full browser E2E deferred |
-| Rf fallback note UI | **Fallback path** structure / failsoft note; **live Treasury path** still open |
-| Deploy baseline ↔ bundle ↔ display version | Recorded: `12690107` / `v23.30` (no redeploy for test-runner/docs) |
+| Tab-visit auto-calc interactive / runtime proof | **Closed under acceptance** — `testServer` + gate unit (chromote still deferred) |
+| Rf fallback note UI | **Fallback** structure kept; **live US+TW Rf** proven in acceptance |
+| Live Yahoo / TPEx statements | **Closed under acceptance** — `test_audit_live_statements.R` |
+| Deploy baseline ↔ bundle ↔ display version | Live: `12690522` / `v24.00` (`app_24.0/`) |
 
-**Conclusion:** Do **not** treat this closeout branch as final audit acceptance. Runner exit 0 is only meaningful after the pipefail source gate and actual-runner shim integration pass; tab-visit and live Rf remain open.
+**Conclusion:** Structural closeout + runner P0 are required gates; they alone are not full acceptance. Full objective evidence (tab-visit runtime, live Rf, live statements) is recorded on the v24 baseline in `PHASE_AUDIT_ACCEPTANCE.md`. Multi-worker cache races and chromote E2E remain out of scope.
 
 ---
 
@@ -83,10 +85,11 @@ Do **not** claim a suite passed if its log is incomplete or its exit status was 
 
 | Prior ID | Risk | Disposition |
 |---|---|---|
-| P1D-DCF-TAB-NA | P2→P1 UX | **Design in code** (tab-visit fire when ready / FV missing). **Proof: structural only** — runtime open. |
-| FAILSOFT-RF-FALLBACK | P1 | **UI** bilingual `capm_rf_fallback_note` when `is_fallback=TRUE`. Live Treasury success **open**. |
+| P1D-DCF-TAB-NA | P2→P1 UX | **Closed (acceptance)** — structural + `shiny::testServer` empty-FV runtime. chromote deferred. |
+| FAILSOFT-RF-FALLBACK | P1 | **UI** bilingual note when fallback; **live US+TW Rf** proven in acceptance. |
 | BRIDGE-ZERO-DEFAULT | P1 | **Accepted / documented** — intentional shared bridge; not changed. |
-| LIVE-UNCOVERED-* | P1 | Live Yahoo/TPEx HTTP still uncovered; `YNOW_LIVE_PROBE=1` is best-effort. |
+| LIVE-UNCOVERED-1/2 | P1 | **Closed (acceptance)** — Yahoo + TPEx live statements suite. |
+| LIVE-UNCOVERED-3/4 | P1 | **Still open** — multi-worker cache / quote-vs-statement timing. |
 | P1D-NO-SHINYTEST | P2 | **Deferred** — no chromote / shinytest harness. |
 | NORM-DUP-PERIOD-CORRUPT | P1 | **Shipped** v23.29; regression in Phase 2 + closeout. |
 | CLOSEOUT-RUNNER-PIPEFAIL | P0 | **Fixed and regression-tested** against the actual runner (source gate + shim integration). |
@@ -153,17 +156,20 @@ YNOW_LIVE_PROBE=1 bash scripts/run_audit_closeout.sh
 | 0 | Deploy baseline + RCM re-run | 257/0 reproducible |
 | 1 (P1-A/B) | Independent DCF/RI/DDM/MULT oracles | 43/0; no formula defects |
 | 2 (P1-C) | Data / cache / lineage | 38/0 after normalize fix |
-| P1-D | Browser E2E | Composite OK; tab-visit **runtime still open** |
-| Closeout | Residuals + runner reliability | Runner P0 verified on actual script; **not final acceptance** |
+| P1-D | Browser E2E | Composite OK; tab-visit runtime closed under acceptance (`testServer`) |
+| Closeout | Residuals + runner reliability | Runner P0 verified; acceptance continues on v24 |
+| Acceptance (v24) | Tab-visit runtime + live Rf + live statements | See `PHASE_AUDIT_ACCEPTANCE.md` |
 
-**Still out of scope by design:** full live Yahoo/TPEx matrix, multi-worker cache races, shinytest / chromote automation.
+**Still out of scope by design:** multi-worker cache races (LIVE-UNCOVERED-3/4), shinytest / chromote automation.
 
 ---
 
 ## Deploy decision
 
-**Retain:** v23.29 normalize; v23.30 tab-visit design + Rf fallback note (`DEPLOY_BASELINE.txt` → bundle `12690107`, `display_version=v23.30`).
+**Live baseline:** `app_24.0/` / **v24.00** / bundle `12690522` (includes prior audit behavior fixes).
 
-**This revision:** test-runner + documentation only → **do not deploy** solely for these changes.
+Historical v23 ships retained for lineage: v23.29 normalize; v23.30 tab-visit + Rf note; v23.31 US/TW Rf.
 
-**Still required before final acceptance:** tab-visit runtime demonstration (or continued explicit deferral) and any live-Rf integration proof you want in scope. Valuation **formulas** unchanged.
+**This revision (live-statements acceptance):** tests + documentation only → **do not deploy** solely for these changes unless an app defect is fixed.
+
+Valuation **formulas** unchanged.

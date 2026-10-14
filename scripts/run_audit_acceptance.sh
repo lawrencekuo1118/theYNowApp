@@ -65,6 +65,11 @@ run_step live_rf_paths bash -c "cd '${APP}' && YNOW_DEBUG_SKIP_PY=0 Rscript test
 # Keep legacy US-only suite as a focused quantmod regression
 run_step live_rf_us bash -c "cd '${APP}' && YNOW_DEBUG_SKIP_PY=0 Rscript tests/test_audit_live_rf_us.R"
 
+# Live Yahoo / TPEx financial statements (LIVE-UNCOVERED-1 / LIVE-UNCOVERED-2)
+export YNOW_ACCEPTANCE_REQUIRE_LIVE_STATEMENTS="${YNOW_ACCEPTANCE_REQUIRE_LIVE_STATEMENTS:-1}"
+echo "==> live_statements (Yahoo US/TW + TPEx; require=${YNOW_ACCEPTANCE_REQUIRE_LIVE_STATEMENTS})"
+run_step live_statements bash -c "cd '${APP}' && YNOW_DEBUG_SKIP_PY=0 Rscript tests/test_audit_live_statements.R"
+
 echo "==> live_rf_probe TW+US detail lines"
 LIVE_LOG="${LOG_DIR}/acceptance_live_rf.log"
 set +e
