@@ -5714,6 +5714,22 @@ ui <- dashboardPage(
           padding-left: 1.2em;
         }
         .ynow-bblab-split li { margin-bottom: 4px; }
+        /* ---- Full mode: white hairlines between sidebar groups ----
+           Home | Macro
+           Asset Transmission | Blue Chip
+           YNOW | Model Dashboard  (Smart Analysis is hidden in Full)
+           Hist. FV Validation | Quant Backtest Lab
+           Value Alerts | About
+        */
+        body:not(.ynow-lite) .sidebar-menu > li:has(> a[data-value="macro_market"]),
+        body:not(.ynow-lite) .sidebar-menu > li:has(> a[data-value="bluechip"]),
+        body:not(.ynow-lite) .sidebar-menu > li:has(> a[data-value="get_started"]),
+        body:not(.ynow-lite) .sidebar-menu > li:has(> a[data-value="lab_notes"]),
+        body:not(.ynow-lite) .sidebar-menu > li:has(> a[data-value="about"]) {
+          border-top: 1px solid rgba(255, 255, 255, 0.72);
+          margin-top: 6px;
+          padding-top: 2px;
+        }
         /* ---- Lite mode: hide Full-only chrome; show Smart Analysis ---- */
         .sidebar-menu a[data-value="smart_analysis"],
         .sidebar-menu li:has(> a[data-value="smart_analysis"]) {
