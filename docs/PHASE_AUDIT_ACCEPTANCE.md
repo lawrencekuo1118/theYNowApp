@@ -1,8 +1,8 @@
 # Audit acceptance evidence — beyond structural closeout
 
 **Status:** Objective evidence recorded for tab-visit **Shiny runtime**, Rf numeric impact, and **US+TW live Rf** (with local `.ynow_venv`)  
-**Branch:** `cursor/audit-acceptance-runtime-evidence-3eea`  
-**Shipped:** v23.31 / bundle `12690471` (US quantmod Rf + TW market-mode fix)  
+**Live baseline:** `app_24.0/` / display **v24.00** (cut from v23.31 acceptance tip)  
+**Prior ship on v23 line:** v23.31 / bundle `12690471`  
 **Formulas:** unchanged (no engine rewrites)
 
 ---
@@ -26,7 +26,7 @@ Browser UI smoke remains complementary: primary auto-calc on ticker load often f
 
 ```bash
 # Optional but recommended for TW live:
-# python3 -m venv app_23.0/.ynow_venv && app_23.0/.ynow_venv/bin/pip install -r app_23.0/requirements.txt
+# python3 -m venv app_24.0/.ynow_venv && app_24.0/.ynow_venv/bin/pip install -r app_24.0/requirements.txt
 
 bash scripts/run_audit_acceptance.sh
 ```

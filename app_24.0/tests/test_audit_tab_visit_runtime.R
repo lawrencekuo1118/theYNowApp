@@ -3,7 +3,7 @@
 # Exercises pure gate helpers + fire callback; proves wait / skip / fire paths.
 # Does NOT boot full Shiny; browser E2E remains a separate evidence layer.
 #
-# Run: cd app_23.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_audit_tab_visit_runtime.R
+# Run: cd app_24.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_audit_tab_visit_runtime.R
 
 args <- commandArgs(trailingOnly = FALSE)
 file_arg <- sub("^--file=", "", args[grep("^--file=", args)])

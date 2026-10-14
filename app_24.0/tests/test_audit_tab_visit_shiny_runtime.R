@@ -3,7 +3,7 @@
 # Proves observeEvent wiring fires when FV is empty and skips when FV exists,
 # using the same helpers as ynow_server.R (not grepl-only, not browser-only).
 #
-# Run: cd app_23.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_audit_tab_visit_shiny_runtime.R
+# Run: cd app_24.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_audit_tab_visit_shiny_runtime.R
 
 args <- commandArgs(trailingOnly = FALSE)
 file_arg <- sub("^--file=", "", args[grep("^--file=", args)])

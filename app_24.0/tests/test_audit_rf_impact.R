@@ -7,7 +7,7 @@
 # When β > 1, a higher Rf *lowers* Ke (ERP shrinks faster than Rf rises).
 # When β < 1, a higher Rf raises Ke. Tests cover both.
 #
-# Run: cd app_23.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_audit_rf_impact.R
+# Run: cd app_24.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_audit_rf_impact.R
 
 args <- commandArgs(trailingOnly = FALSE)
 file_arg <- sub("^--file=", "", args[grep("^--file=", args)])

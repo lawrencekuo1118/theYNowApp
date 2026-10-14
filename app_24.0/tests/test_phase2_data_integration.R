@@ -3,7 +3,7 @@
 # Deterministic fixtures + controllable mocks. Does NOT prove live Yahoo/TPEx
 # network behavior — report those as uncovered.
 #
-# Run: cd app_23.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_phase2_data_integration.R
+# Run: cd app_24.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_phase2_data_integration.R
 # Or:  bash scripts/run_phase2_audit.sh
 
 args <- commandArgs(trailingOnly = FALSE)

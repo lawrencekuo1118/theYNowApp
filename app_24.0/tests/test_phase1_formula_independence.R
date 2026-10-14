@@ -1,9 +1,9 @@
 #!/usr/bin/env Rscript
 # Phase 1 — Independent formula verification (P1-A DCF/RI/DDM + P1-B MULT).
 # Oracles live in audit_independent_oracles.R (no engine calls).
-# Engine under test: app_23.0 production helpers only.
+# Engine under test: app_24.0 production helpers only.
 #
-# Run: cd app_23.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_phase1_formula_independence.R
+# Run: cd app_24.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_phase1_formula_independence.R
 # Optional: PHASE1_FINDINGS_JSON=/path/findings.json
 
 args <- commandArgs(trailingOnly = FALSE)

@@ -1,8 +1,8 @@
 #!/usr/bin/env Rscript
 # Acceptance — live Rf paths (US ^TNX + TW TPEx when Python venv available).
-# Prefers app_23.0/.ynow_venv via RETICULATE_PYTHON when present.
+# Prefers app_24.0/.ynow_venv via RETICULATE_PYTHON when present.
 #
-# Run: cd app_23.0 && YNOW_DEBUG_SKIP_PY=0 Rscript tests/test_audit_live_rf_paths.R
+# Run: cd app_24.0 && YNOW_DEBUG_SKIP_PY=0 Rscript tests/test_audit_live_rf_paths.R
 # Env:  YNOW_ACCEPTANCE_REQUIRE_TW_LIVE=1 to fail if TW is not live
 
 args <- commandArgs(trailingOnly = FALSE)

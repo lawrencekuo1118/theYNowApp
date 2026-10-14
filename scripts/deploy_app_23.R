@@ -1,13 +1,9 @@
-# Live line app_23.0. Resolves the directory inside deploy_app_21.R.
+# Compatibility shim: live line is app_24.0 — forwards to deploy_app_21.R.
 args <- commandArgs(trailingOnly = FALSE)
 file_arg <- sub("^--file=", "", args[grep("^--file=", args)])
-script_dir <- if (length(file_arg) == 1L && nzchar(file_arg)) {
-  dirname(normalizePath(file_arg, mustWork = TRUE))
+root <- if (length(file_arg) == 1L && nzchar(file_arg)) {
+  normalizePath(file.path(dirname(file_arg), ".."), mustWork = TRUE)
 } else {
-  normalizePath("scripts", mustWork = TRUE)
+  normalizePath(getwd(), mustWork = TRUE)
 }
-status <- system2(
-  "Rscript",
-  c(file.path(script_dir, "deploy_app_21.R"), commandArgs(trailingOnly = TRUE))
-)
-quit(status = status)
+source(file.path(root, "scripts", "deploy_app_21.R"), local = FALSE)

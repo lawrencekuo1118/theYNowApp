@@ -9,12 +9,12 @@
 set -u
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-APP="${ROOT}/app_23.0"
+APP="${ROOT}/app_24.0"
 export YNOW_DEBUG_SKIP_PY="${YNOW_DEBUG_SKIP_PY:-1}"
 export PHASE2_FINDINGS_JSON="${PHASE2_FINDINGS_JSON:-${ROOT}/docs/phase2_findings.json}"
 
 if [[ ! -d "${APP}" ]]; then
-  echo "ERROR: app_23.0 not found at ${APP}" >&2
+  echo "ERROR: app_24.0 not found at ${APP}" >&2
   exit 2
 fi
 if ! command -v Rscript >/dev/null 2>&1; then

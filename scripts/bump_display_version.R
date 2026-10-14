@@ -1,8 +1,8 @@
 #!/usr/bin/env Rscript
-# Display-version bump for the live line (app_23.0; app_22.0 remains readable).
+# Display-version bump for the live line (app_24.0; older app_N.0 remain readable).
 #
 # Each successful deploy advances the display version by +0.01 and ships that
-# version. Set YNOW_VERSION_BUMP_MAJOR=1 for a full +1 cut (v22.09 -> v23.00).
+# version. Set YNOW_VERSION_BUMP_MAJOR=1 for a full +1 cut (v23.31 -> v24.00).
 #
 #   Rscript scripts/bump_display_version.R --dry-run
 #   Rscript scripts/bump_display_version.R
@@ -49,10 +49,11 @@ ynow_major_display_label <- function(label) {
 }
 
 ynow_live_app_dir <- function(root) {
-  p23 <- file.path(root, "app_23.0")
-  p22 <- file.path(root, "app_22.0")
-  if (file.exists(file.path(p23, "app.R"))) return(p23)
-  if (file.exists(file.path(p22, "app.R"))) return(p22)
+  # Prefer newest live folder; keep prior majors readable for rollback/compare.
+  for (cand in c("app_24.0", "app_23.0", "app_22.0")) {
+    p <- file.path(root, cand)
+    if (file.exists(file.path(p, "app.R"))) return(p)
+  }
   stop("live app directory not found under ", root)
 }
 

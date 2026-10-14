@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 # Audit closeout — structural checks for remaining P1-D / Phase 2 residuals.
-# Run: cd app_23.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_audit_closeout.R
+# Run: cd app_24.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_audit_closeout.R
 
 args <- commandArgs(trailingOnly = FALSE)
 file_arg <- sub("^--file=", "", args[grep("^--file=", args)])

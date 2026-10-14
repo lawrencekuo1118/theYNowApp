@@ -10,7 +10,7 @@
 
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-APP="${ROOT}/app_23.0"
+APP="${ROOT}/app_24.0"
 export YNOW_DEBUG_SKIP_PY="${YNOW_DEBUG_SKIP_PY:-1}"
 LOG_DIR="${ROOT}/audit_logs"
 mkdir -p "${LOG_DIR}"

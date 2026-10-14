@@ -2,7 +2,7 @@
 # Acceptance — US live Rf path (Yahoo ^TNX via quantmod when Python absent).
 # Network required. Exit 0 only if source is live or last_known (not fallback).
 #
-# Run: cd app_23.0 && YNOW_DEBUG_SKIP_PY=0 Rscript tests/test_audit_live_rf_us.R
+# Run: cd app_24.0 && YNOW_DEBUG_SKIP_PY=0 Rscript tests/test_audit_live_rf_us.R
 
 args <- commandArgs(trailingOnly = FALSE)
 file_arg <- sub("^--file=", "", args[grep("^--file=", args)])
