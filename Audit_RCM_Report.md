@@ -1,8 +1,8 @@
 # Audit RCM Report — theYNowApp (`app_23.0`)
 
 **Format:** Risk and Control Matrix (RCM)
-**Generated at (UTC):** 2026-10-12 16:25:07 UTC
-**Git:** `e54d92c`
+**Generated at (UTC):** 2026-10-14 13:36:19 UTC
+**Git:** `11e3da6`
 **Overall result:** **PASS**
 
 Mapped from Phase 1 `Audit_Mapping.md` controls; executed by `scripts/run_audit.sh`.
