@@ -48,9 +48,13 @@ run_step rf_impact bash -c "cd '${APP}' && Rscript tests/test_audit_rf_impact.R"
 run_step phase1 bash "${ROOT}/scripts/run_phase1_audit.sh"
 run_step phase2 bash "${ROOT}/scripts/run_phase2_audit.sh"
 
-# Live Rf probe — record path explicitly; optional hard fail
+# US live Rf (quantmod ^TNX when Python absent) — required for acceptance by default
 export YNOW_LIVE_PROBE="${YNOW_LIVE_PROBE:-1}"
-echo "==> live_rf_probe (YNOW_LIVE_PROBE=${YNOW_LIVE_PROBE})"
+export YNOW_ACCEPTANCE_REQUIRE_LIVE_RF="${YNOW_ACCEPTANCE_REQUIRE_LIVE_RF:-1}"
+echo "==> live_rf_us (YNOW_ACCEPTANCE_REQUIRE_LIVE_RF=${YNOW_ACCEPTANCE_REQUIRE_LIVE_RF})"
+run_step live_rf_us bash -c "cd '${APP}' && YNOW_DEBUG_SKIP_PY=0 Rscript tests/test_audit_live_rf_us.R"
+
+echo "==> live_rf_probe TW+US detail lines"
 LIVE_LOG="${LOG_DIR}/acceptance_live_rf.log"
 set +e
 (
@@ -62,6 +66,8 @@ set +e
       `%||%` <- function(x, y) if (is.null(x) || (length(x) == 1 && is.na(x))) y else x
     }
     source("web_crawler.R", local = TRUE)
+    tryCatch(memoise::forget(.cached_fetch_rf_live_us), error = function(e) NULL)
+    tryCatch(memoise::forget(.cached_fetch_rf_live_tw), error = function(e) NULL)
     for (mkt in c("US", "TW")) {
       det <- tryCatch(cached_get_risk_free_rate_detail(mkt), error = function(e) e)
       if (inherits(det, "error")) {
@@ -88,12 +94,16 @@ if grep -Eq 'LIVE_PROBE Rf US: source=live' "${LIVE_LOG}" || \
   live_ok=1
   echo "INFO live/last_known US Rf path observed"
 else
-  echo "INFO US Rf live/last_known NOT observed (fallback or error) — live path still open for hard acceptance"
+  echo "INFO US Rf live/last_known NOT observed (fallback or error)"
 fi
 
-if [[ "${YNOW_ACCEPTANCE_REQUIRE_LIVE_RF:-0}" == "1" && "${live_ok}" -ne 1 ]]; then
-  echo "ERROR: YNOW_ACCEPTANCE_REQUIRE_LIVE_RF=1 but live/last_known Rf not obtained" >&2
+if [[ "${YNOW_ACCEPTANCE_REQUIRE_LIVE_RF}" == "1" && "${live_ok}" -ne 1 ]]; then
+  echo "ERROR: YNOW_ACCEPTANCE_REQUIRE_LIVE_RF=1 but live/last_known US Rf not obtained" >&2
   ec=1
+fi
+# TW live still optional (needs Python/TPEx)
+if grep -Eq 'LIVE_PROBE Rf TW: source=fallback|LIVE_PROBE Rf TW: FAIL' "${LIVE_LOG}"; then
+  echo "INFO TW Rf live path still open (Python/TPEx) — recorded, not a hard fail"
 fi
 
 echo "==> Acceptance exit=${ec}"

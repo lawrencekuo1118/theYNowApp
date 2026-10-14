@@ -618,6 +618,10 @@ if (!exists("%||%", mode = "function")) {
     if (exists("normalize_market_mode", mode = "function")) {
       return(normalize_market_mode(market))
     }
+    # Without market_profile helpers, still honor explicit TW vs US (do not
+    # collapse every non-NULL market argument to US — that mislabels TW Rf).
+    m <- toupper(trimws(as.character(market)[1]))
+    if (m %in% c("TW", "TWD", "TAIWAN", "TPE", "TPEx", "TPEX")) return("TW")
     return("US")
   }
   if (exists("get_market_mode", mode = "function")) get_market_mode() else "US"
@@ -642,20 +646,52 @@ if (!exists("%||%", mode = "function")) {
   fb
 }
 
+#' US live Rf via quantmod Yahoo ^TNX (R-only; used when Python scraper is down).
+#' @return finite positive percent yield, or throws
+.fetch_rf_live_us_quantmod <- function() {
+  if (!requireNamespace("quantmod", quietly = TRUE)) {
+    stop("quantmod unavailable for US Rf")
+  }
+  xt <- tryCatch(
+    quantmod::getSymbols("^TNX", src = "yahoo", auto.assign = FALSE),
+    error = function(e) e
+  )
+  if (inherits(xt, "error")) stop(conditionMessage(xt))
+  cl <- tryCatch(as.numeric(quantmod::Cl(xt)), error = function(e) NA_real_)
+  cl <- cl[is.finite(cl) & cl > 0]
+  if (!length(cl)) stop("empty ^TNX close series")
+  rf <- cl[length(cl)]
+  if (!is.finite(rf) || rf <= 0 || rf > 40) stop("invalid ^TNX close")
+  rf
+}
+
 #' Live Rf（失敗則 throw；不回傳固定 fallback）。
-#' US: Yahoo ^TNX；TW: 櫃買 TPEx 公債殖利率曲線 10 年期。
+#' US: Yahoo ^TNX（prefer Python scraper; R quantmod fallback）；
+#' TW: 櫃買 TPEx 公債殖利率曲線 10 年期（Python）。
 .fetch_risk_free_rate_live <- function(mode = "US") {
   mode <- .rf_market_mode(mode)
+  if (isTRUE(.ensure_python_scraper())) {
+    if (exists("get_risk_free_rate_yf", envir = .py_scraper_env, inherits = FALSE, mode = "function") ||
+        exists("get_risk_free_rate_yf", mode = "function")) {
+      rf <- as.numeric(get_risk_free_rate_yf(mode))
+      if (is.finite(rf) && rf > 0) return(rf)
+    }
+  }
+  # US: keep CAPM Macro live when reticulate/venv is absent (Cloud / offline Python)
+  if (identical(mode, "US")) {
+    rf_qm <- tryCatch(.fetch_rf_live_us_quantmod(), error = function(e) {
+      .ynow_log("⚠️ US Rf quantmod fallback failed: ", e$message)
+      NA_real_
+    })
+    if (is.finite(rf_qm) && rf_qm > 0) {
+      .ynow_log(paste("✅ Rf (live quantmod ^TNX):", rf_qm, "%"))
+      return(rf_qm)
+    }
+  }
   if (!isTRUE(.ensure_python_scraper())) {
     stop("Python scraper unavailable for Rf")
   }
-  if (!exists("get_risk_free_rate_yf", envir = .py_scraper_env, inherits = FALSE, mode = "function") &&
-      !exists("get_risk_free_rate_yf", mode = "function")) {
-    stop("get_risk_free_rate_yf 未載入")
-  }
-  rf <- as.numeric(get_risk_free_rate_yf(mode))
-  if (is.na(rf) || !is.finite(rf) || rf <= 0) stop("invalid rf")
-  rf
+  stop("get_risk_free_rate_yf 未載入或回傳無效")
 }
 
 # FAST: live Rf — short TTL so CAPM Ke / terminal g track market (not stale hour-old yields)
