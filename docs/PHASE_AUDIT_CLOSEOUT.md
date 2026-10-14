@@ -55,6 +55,8 @@ That proves **structure exists**, not that Shiny runtime fires valuation on tab 
 
 **Accurate status:** structural control established; **execution-layer / interactive verification pending**. Full browser automation remains deferred (`P1D-NO-SHINYTEST`). Do not mark tab-visit as E2E-closed.
 
+**Cloud Agent observational smoke (2026-10-14, local `:3838`, AAPL already loaded):** Smart Analysis showed calculated DCF/RI/Multiples values (not Waiting/N/A), but sidebar navigation to standalone `dcf_calculator` / DDM / RI / MULT tabs was not completed in that session—so this does **not** prove tab-visit observers fired (values may already exist from primary auto-calc on load). Artifact: `/opt/cursor/artifacts/audit_closeout_smart_analysis_aapl.png`.
+
 ---
 
 ## P1 — CAPM Rf: fallback vs live
@@ -63,7 +65,7 @@ That proves **structure exists**, not that Shiny runtime fires valuation on tab 
 |---|---|---|
 | **Fallback** | Locale strings; server checks `is_fallback` and surfaces `capm_rf_fallback_note`; live probe that returns `is_fallback=TRUE` exercises this path | — |
 | **Live Treasury** | Helper exists (`YNOW_LIVE_PROBE=1` / `cached_get_risk_free_rate_detail`) | Successful live Yahoo ^TNX / TPEx scrape in this closeout program |
-| **Numeric impact** | Engineering fallback uses `APP_DEFAULTS$capm_rf` (else 5%) via `.current_rf_detail()` → feeds CAPM Ke / WACC / DCF discounting when Macro Rf is unavailable | Dedicated oracle comparing live Rf vs fallback Ke/WACC/FV deltas under fixed other inputs — **still recommended as follow-up**, not claimed here |
+| **Numeric impact** | Engineering fallback uses `APP_DEFAULTS$capm_rf` from `default_config.R` (`default_rf`, else 5% in `.current_rf_detail()`) → feeds CAPM Ke → WACC / Ke paths → DCF/RI discounting when Macro Rf is unavailable | Dedicated oracle comparing live Rf vs fallback Ke/WACC/FV deltas under fixed other inputs — **still recommended as follow-up**, not claimed here |
 
 Treat “fallback note appeared” as **failsoft UX verified**, not as “live Rf integration passed.”
 
