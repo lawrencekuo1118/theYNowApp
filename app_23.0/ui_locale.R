@@ -2121,7 +2121,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     notif_feedback_fail = "Submit failed: {err}",
     notif_fetch_fail = "❌ Data fetch failed — check the ticker. Error: {err}",
     notif_data_gap_yahoo_tpex = paste0(
-      "Yahoo has no full annuals yet; filled partial IS／BS from TPEx financial summary ({board})."
+      "Yahoo annuals incomplete; filled missing IS／BS from TPEx financial summary ({board}). ",
+      "YTD summary only — Cash Flow is never invented."
     ),
     notif_data_gap_empty = paste0(
       "Yahoo has no annuals (IS／BS／CF empty) and TPEx quarterly summary has no usable extract; ",
@@ -5067,7 +5068,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     notif_feedback_need_body = "請再補充說明內容（至少約 8 字）。",
     notif_feedback_fail = "送出失敗：{err}",
     notif_fetch_fail = "❌ 取得資料失敗，請確認代號。錯誤: {err}",
-    notif_data_gap_yahoo_tpex = "Yahoo 尚無完整年報，已改用櫃買「財務資料簡報」補齊部分 IS／BS（{board}）。",
+    notif_data_gap_yahoo_tpex = paste0(
+      "Yahoo 年報缺漏，已以櫃買「財務資料簡報」補齊缺漏的 IS／BS（{board}）。",
+      "此為截至當季累計摘要；現金流量表未提供、不捏造。"
+    ),
     notif_data_gap_empty = paste0(
       "Yahoo 尚無年報（IS／BS／CF 皆空），且櫃買季報彙總亦無可用摘要，",
       "基本面模型不可用。完整財報請至公開資訊觀測站（MOPS）／櫃買中心查詢。"
