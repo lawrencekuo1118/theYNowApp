@@ -56,6 +56,8 @@ server <- function(input, output, session) {
   # Search must re-fetch even when the symbol is unchanged (Shiny skips
   # identical reactiveVal writes, so a second Search on TSM/NVDA was a no-op).
   ticker_search_gen <- reactiveVal(0L)
+  # Recent Search chip: pending fetch after a cross-market mode switch
+  pending_recent_fetch <- reactiveVal(NULL)
   # 首次按下 Search 前：不標示模型推薦／側邊欄「推薦」
   user_has_searched <- reactiveVal(FALSE)
 
@@ -242,23 +244,79 @@ server <- function(input, output, session) {
   # ==========================================
   # 🚀 股票代號：僅主區 Ticker / Stock Code（sc + Search）
   # ==========================================
-  observeEvent(input$search, {
-    sc_raw <- tryCatch(as.character(input$sc %||% "")[1], error = function(e) "")
-    tab_now <- tryCatch(as.character(input$sidebar_tabs %||% "")[1], error = function(e) "")
-    req(input$sc)
+  # Shared Search path: main Search button + Recent Search chips.
+  # goto_tab: NULL = stay on current tab; "dashboard" = 個股 (Lite → Smart Analysis).
+  .ynow_fire_ticker_search <- function(sym_raw, goto_tab = NULL) {
+    mode <- tryCatch(
+      normalize_market_mode(isolate(market_mode())),
+      error = function(e) "US"
+    )
+    raw <- trimws(as.character(sym_raw %||% "")[1])
+    if (!nzchar(raw) || identical(toupper(raw), "NA")) return(invisible(FALSE))
+    # Prefer stored Yahoo suffix when it already matches the active market.
+    tk <- if (identical(mode, "TW") &&
+              grepl("\\.(TW|TWO)$", raw, ignore.case = TRUE)) {
+      toupper(gsub("\\s+", "", raw))
+    } else {
+      normalize_ticker_for_market(raw, mode)
+    }
+    if (is.na(tk) || !nzchar(tk)) return(invisible(FALSE))
     user_has_searched(TRUE)
-    # New Search: clear prior baseline until post-load capture settles
     param_audit_baseline(NULL)
     param_audit_baseline_at(NULL)
     param_audit_baseline_ticker(NULL)
     param_audit_capture_token(isolate(param_audit_capture_token()) + 1L)
-    tk <- normalize_ticker_for_market(input$sc, market_mode())
-    req(!is.na(tk), nzchar(tk))
     current_ticker(tk)
     ticker_search_gen(isolate(ticker_search_gen()) + 1L)
-    disp <- display_ticker_for_market(tk, market_mode())
+    disp <- display_ticker_for_market(tk, mode)
     tryCatch(updateTextInput(session, "sc", value = disp), error = function(e) NULL)
+    if (!is.null(goto_tab) && nzchar(as.character(goto_tab)[1])) {
+      tab <- as.character(goto_tab)[1]
+      tryCatch(
+        session$sendCustomMessage("ynowGotoTab", list(tab = tab)),
+        error = function(e) NULL
+      )
+    }
+    invisible(TRUE)
+  }
+
+  observeEvent(input$search, {
+    req(input$sc)
+    .ynow_fire_ticker_search(input$sc, goto_tab = NULL)
   })
+
+  # Recent Search chip: restore prior ticker scrape and jump to 個股 / Smart Analysis.
+  observeEvent(input$recent_search_pick, {
+    raw <- trimws(as.character(input$recent_search_pick %||% "")[1])
+    req(nzchar(raw))
+    mode <- tryCatch(
+      normalize_market_mode(isolate(market_mode())),
+      error = function(e) "US"
+    )
+    want_tw <- grepl("\\.(TW|TWO)$", raw, ignore.case = TRUE)
+    # Cross-market recent: switch market first, then search after clear settles.
+    if (isTRUE(want_tw) && !identical(mode, "TW")) {
+      pending_recent_fetch(toupper(gsub("\\s+", "", raw)))
+      tryCatch(
+        shinyjs::runjs(
+          "if (window.Shiny && Shiny.setInputValue) { Shiny.setInputValue('market_mode_pick', 'TW', {priority: 'event'}); }"
+        ),
+        error = function(e) NULL
+      )
+      return(invisible(FALSE))
+    }
+    if (!isTRUE(want_tw) && identical(mode, "TW")) {
+      pending_recent_fetch(toupper(gsub("\\s+", "", raw)))
+      tryCatch(
+        shinyjs::runjs(
+          "if (window.Shiny && Shiny.setInputValue) { Shiny.setInputValue('market_mode_pick', 'US', {priority: 'event'}); }"
+        ),
+        error = function(e) NULL
+      )
+      return(invisible(FALSE))
+    }
+    .ynow_fire_ticker_search(raw, goto_tab = "dashboard")
+  }, ignoreInit = TRUE)
 
   # ==========================================
   # UI locale（語言）與顯示幣別分開；市場切換不覆寫語言
@@ -836,12 +894,21 @@ server <- function(input, output, session) {
       .ui_msg(
         "notif_market_switched",
         market = prof$label_zh %||% as.character(mode),
-        ticker = disp,
         rf = prof$rf_label_zh %||% "",
         ccy = prof$session_currency
       ),
       type = "message", duration = 8
     )
+
+    # Recent Search chip requested a cross-market reload — fire after clear settles.
+    pend <- isolate(pending_recent_fetch())
+    pend <- trimws(as.character(pend %||% "")[1])
+    if (nzchar(pend)) {
+      pending_recent_fetch(NULL)
+      shinyjs::delay(180L, {
+        .ynow_fire_ticker_search(pend, goto_tab = "dashboard")
+      })
+    }
   }, ignoreInit = TRUE)
 
   # ==========================================
@@ -1187,9 +1254,11 @@ server <- function(input, output, session) {
         # Always store a 2-color pair (single brand → black; sole black → white)
         corp_name_logo_colors(.ensure_logo_color_pair(logo_cols))
 
-        if (!(stock_code %in% values$recentsearch)) {
-          values$recentsearch <- head(c(stock_code, values$recentsearch), 5)
-        }
+        # Keep most-recent first; re-Search moves an existing ticker to the front.
+        values$recentsearch <- head(
+          c(stock_code, setdiff(values$recentsearch, stock_code)),
+          5L
+        )
         # 成功載入後：輸入框維持顯示乾淨代號
         tryCatch(
           updateTextInput(
@@ -1737,8 +1806,40 @@ server <- function(input, output, session) {
     )
   })
 
-  output$recentsearch <- renderText({
-    paste(display_tickers_for_market(values$recentsearch, market_mode()), collapse = ", ")
+  output$recentsearch <- renderUI({
+    loc <- tryCatch(ui_locale(), error = function(e) "en")
+    mode <- tryCatch(
+      normalize_market_mode(market_mode()),
+      error = function(e) "US"
+    )
+    raw <- unique(as.character(values$recentsearch %||% character(0)))
+    raw <- raw[nzchar(raw) & !is.na(raw)]
+    if (!length(raw)) {
+      return(tags$p(
+        class = "ynow-recent-search-empty",
+        ui_str("recent_search_empty", loc)
+      ))
+    }
+    chips <- lapply(raw, function(fetch_tk) {
+      disp <- display_ticker_for_market(fetch_tk, mode)
+      if (!nzchar(disp)) disp <- fetch_tk
+      aria <- tryCatch(
+        {
+          msg <- ui_str("recent_search_aria", loc)
+          gsub("{ticker}", disp, msg, fixed = TRUE)
+        },
+        error = function(e) disp
+      )
+      tags$button(
+        type = "button",
+        class = "ynow-recent-chip",
+        `data-ticker` = fetch_tk,
+        title = aria,
+        `aria-label` = aria,
+        disp
+      )
+    })
+    tags$div(class = "ynow-recent-search", role = "list", chips)
   })
   output$today <- renderText({ format(Sys.Date(), "%Y/%m/%d") })
 

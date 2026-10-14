@@ -3652,7 +3652,7 @@ ui <- dashboardPage(
     
     column(width = 12,
            h5(id = "ynow_recent_search_label", "Recent Search:"),
-           textOutput("recentsearch"),
+           uiOutput("recentsearch"),
            hr()
     ),
     
@@ -5356,6 +5356,44 @@ ui <- dashboardPage(
         .ynow-sidebar-feedback-link { margin-left: 8px; }
         .ynow-sidebar-feedback-link { margin-left: 8px; }
         .ynow-sidebar-test-link { margin-left: 8px; }
+        /* Recent Search: clickable tickers → re-Search + 個股 */
+        .ynow-recent-search {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+          padding: 0 2px 2px 2px;
+          min-height: 1.4em;
+        }
+        .ynow-recent-search-empty {
+          color: rgba(255, 255, 255, 0.45);
+          font-size: 12px;
+          line-height: 1.4;
+          margin: 0;
+        }
+        .ynow-recent-chip {
+          display: inline-block;
+          padding: 2px 8px;
+          border-radius: 3px;
+          border: 1px solid rgba(255, 255, 255, 0.22);
+          background: rgba(255, 255, 255, 0.06);
+          color: rgba(255, 255, 255, 0.92) !important;
+          font-size: 12px;
+          font-weight: 600;
+          letter-spacing: 0.02em;
+          line-height: 1.45;
+          cursor: pointer;
+          user-select: none;
+          text-decoration: none !important;
+        }
+        .ynow-recent-chip:hover,
+        .ynow-recent-chip:focus {
+          background: rgba(255, 255, 255, 0.14);
+          border-color: rgba(255, 255, 255, 0.4);
+          outline: none;
+        }
+        .ynow-recent-chip:focus-visible {
+          box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35);
+        }
         /* 側欄完整 LOGO：Recent Search 橫線下、Download Report 正上方；等比例放大 */
         .ynow-sidebar-brand {
           display: flex;
@@ -13608,6 +13646,15 @@ ui <- dashboardPage(
 
         $(document).on('click', '#search', function() {
           hideSuggest('sc');
+        });
+
+        // Recent Search chips → reload ticker + jump to Company / 個股
+        $(document).on('click keydown', '.ynow-recent-chip', function(e) {
+          if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;
+          e.preventDefault();
+          var tk = this.getAttribute('data-ticker') || '';
+          if (!tk || !(window.Shiny && Shiny.setInputValue)) return;
+          Shiny.setInputValue('recent_search_pick', tk, {priority: 'event'});
         });
 
         $(document).on('mousedown', '#sc_ticker_suggest .ynow-suggest-item, #lab_cluster_focus_suggest .ynow-suggest-item', function(e) {

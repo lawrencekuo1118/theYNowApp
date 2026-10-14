@@ -57,6 +57,8 @@ locale_for_market <- function(mode = get_market_mode()) {
 .UI_STRINGS <- list(
   en = list(
     recent_search = "Recent Search:",
+    recent_search_empty = "No recent tickers yet.",
+    recent_search_aria = "Reload {ticker} and open Company",
     menu_home = "Home",
     header_logo_home_title = "Go to Home",
     update_available_click = "New version available — click The YNow App to refresh",
@@ -2053,7 +2055,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     funnel_mom_cond_line = "{c1} Cond1 (price > both MAs)　{c2} Cond2 (SMA20 > SMA60)　→　",
     funnel_shen_skip = "Auto screen skipped.",
     # --- High-traffic notifications (ynow_server) ---
-    notif_market_switched = "Switched to {market} mode (default {ticker}; Rf: {rf}; display currency {ccy}; language unchanged)",
+    notif_market_switched = "Switched to {market} mode (Rf: {rf}; display currency {ccy}; language unchanged)",
     notif_fx_usd_twd_fail = "Could not fetch spot USD/TWD; FX conversion refused.",
     notif_fx_convert_fail = "Could not fetch spot FX; USD↔TWD conversion refused.",
     notif_fx_usd_twd_fail_keep = "Could not fetch spot USD/TWD; FX conversion refused (amounts stay in original currency or are hidden). Try again later.",
@@ -3096,6 +3098,8 @@ locale_for_market <- function(mode = get_market_mode()) {
   ),
   `zh-TW` = list(
     recent_search = "最近搜尋：",
+    recent_search_empty = "尚無最近搜尋代號。",
+    recent_search_aria = "重新載入 {ticker} 並開啟個股",
     menu_home = "首頁",
     header_logo_home_title = "回到首頁",
     update_available_click = "有新版本 — 請點一下 The YNow App 重新整理",
@@ -5028,7 +5032,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     funnel_mom_cond_line = "{c1} Cond1（價 > 雙均）　{c2} Cond2（SMA20 > SMA60）　→　",
     funnel_shen_skip = "自動判讀略過。",
     # --- High-traffic notifications (ynow_server) ---
-    notif_market_switched = "已切換至{market}模式（預設 {ticker}；Rf：{rf}；顯示幣別 {ccy}；語言不變）",
+    notif_market_switched = "已切換至{market}模式（Rf：{rf}；顯示幣別 {ccy}；語言不變）",
     notif_fx_usd_twd_fail = "無法取得即期 USD/TWD 匯率，已拒絕換匯。",
     notif_fx_convert_fail = "無法取得即期匯率，已拒絕 USD↔TWD 換匯。",
     notif_fx_usd_twd_fail_keep = "無法取得即期 USD/TWD 匯率，已拒絕換匯（金額維持原幣或不顯示）。請稍後再試。",
