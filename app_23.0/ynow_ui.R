@@ -5726,9 +5726,9 @@ ui <- dashboardPage(
         body:not(.ynow-lite) .sidebar-menu > li:has(> a[data-value="get_started"]),
         body:not(.ynow-lite) .sidebar-menu > li:has(> a[data-value="lab_notes"]),
         body:not(.ynow-lite) .sidebar-menu > li:has(> a[data-value="about"]) {
-          border-top: 1px solid rgba(255, 255, 255, 0.72);
-          margin-top: 6px;
-          padding-top: 2px;
+          border-top: 1px solid #ffffff;
+          margin-top: 8px;
+          padding-top: 4px;
         }
         /* ---- Lite mode: hide Full-only chrome; show Smart Analysis ---- */
         .sidebar-menu a[data-value="smart_analysis"],
