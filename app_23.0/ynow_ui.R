@@ -8012,26 +8012,6 @@ ui <- dashboardPage(
 
           function applyUiLocale(payload) {
             var s = (payload && payload.strings) || {};
-            // #region agent log
-            try {
-              var _smartSubEl = document.getElementById('ynow_smart_page_sub');
-              var _smartSubBefore = _smartSubEl ? String(_smartSubEl.textContent || '').slice(0, 80) : '';
-              var _smartSubAfter = s.smart_page_sub ? String(s.smart_page_sub).slice(0, 80) : '';
-              if (window.Shiny && Shiny.setInputValue) {
-                Shiny.setInputValue('ynow_dbg_locale_applied', {
-                  locale: (payload && payload.locale) || '',
-                  market: (payload && payload.market) || '',
-                  smart_sub_before: _smartSubBefore,
-                  smart_sub_after: _smartSubAfter,
-                  flash_likely: !!(payload && payload.locale === 'zh-TW' &&
-                    _smartSubBefore && _smartSubAfter &&
-                    _smartSubBefore !== _smartSubAfter &&
-                    /Auto-selects|Smart Analysis|Fair value/i.test(_smartSubBefore)),
-                  ts: Date.now()
-                }, {priority: 'event'});
-              }
-            } catch (_e) {}
-            // #endregion
             if (typeof window.ynowSetUpdateLocaleStrings === 'function') {
               window.ynowSetUpdateLocaleStrings(s);
             }
