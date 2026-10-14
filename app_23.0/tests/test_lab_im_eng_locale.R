@@ -87,7 +87,11 @@ check("applyUiLocale download", grepl("btn_lab_im_download", ui, fixed = TRUE))
 check("applyUiLocale query title", grepl("lab_im_query_title", ui, fixed = TRUE))
 
 srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-check("server updates max_n choices", grepl("lab_im_max_n_select_choices\\(loc\\)", srv))
+check(
+  "server updates max_n choices",
+  grepl("lab_im_max_n_select_choices\\(loc2?\\)", srv) ||
+    grepl("lab_im_max_n_select_choices(loc", srv, fixed = TRUE)
+)
 check("server summary uses locale", grepl("lab_method_group_summary\\(.*locale\\s*=\\s*loc", srv))
 check("server delayed locale remount", grepl("delay = 0.25", srv, fixed = TRUE))
 

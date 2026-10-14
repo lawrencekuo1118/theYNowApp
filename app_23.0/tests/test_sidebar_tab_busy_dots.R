@@ -36,6 +36,8 @@ check("JS shiny:busy hook", grepl("shiny:busy", ui, fixed = TRUE) &&
 check("JS shiny:idle clears", grepl("shiny:idle", ui, fixed = TRUE) &&
         grepl("onShinyIdle", ui, fixed = TRUE))
 check("JS exposes ynowSetSidebarTabBusy", grepl("ynowSetSidebarTabBusy", ui, fixed = TRUE))
+check("JS reapply busy after locale", grepl("ynowReapplyAllTabBusyVisuals", ui, fixed = TRUE))
+check("setMenuLabel keeps busy dots", grepl("busyDotsClone", ui, fixed = TRUE))
 check("JS exposes ynowCurrentSidebarTab", grepl("ynowCurrentSidebarTab", ui, fixed = TRUE))
 check("JS creates three dot spans", grepl("<span>\\\\.<\\\\/span><span>\\\\.<\\\\/span><span>\\\\.<\\\\/span>", ui) ||
         grepl("innerHTML = '<span>.</span><span>.</span><span>.</span>'", ui, fixed = TRUE))

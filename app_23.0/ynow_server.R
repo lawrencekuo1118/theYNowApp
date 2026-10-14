@@ -12972,26 +12972,51 @@ server <- function(input, output, session) {
     )
   })
 
+  # Coalesce Blue Chip picker locale refreshes so ZH/EN stays snappy during eval.
+  .lab_im_locale_picker_gen <- reactiveVal(0L)
+  .lab_im_schedule_picker_locale <- function(fn) {
+    gen <- tryCatch(
+      as.integer(isolate(.lab_im_locale_picker_gen()) %||% 0L) + 1L,
+      error = function(e) 1L
+    )
+    .lab_im_locale_picker_gen(gen)
+    run <- function() {
+      if (!identical(isolate(.lab_im_locale_picker_gen()), gen)) return()
+      tryCatch(fn(), error = function(e) NULL)
+    }
+    busy <- isTRUE(isolate(lab_im_eval_busy())) || isTRUE(isolate(lab_im_universe_busy()))
+    if (busy && requireNamespace("later", quietly = TRUE)) {
+      later::later(run, delay = 0.35)
+    } else if (busy) {
+      # No later package: skip heavy picker remount while Blue Chip is running
+      invisible(NULL)
+    } else {
+      run()
+    }
+  }
+
   # Refresh chain / sub-industry pickers on locale + chain selection
   observeEvent(
     list(ui_locale(), lazy_mount_nonce()),
     {
-      loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
-      chain_choices <- lab_industry_chain_picker_choices(loc)
-      cur_ch <- as.character(isolate(input$lab_im_chains) %||% character(0))
-      cur_ch <- cur_ch[cur_ch %in% unname(chain_choices)]
-      shinyWidgets::updatePickerInput(
-        session,
-        "lab_im_chains",
-        choices = chain_choices,
-        selected = if (length(cur_ch)) cur_ch else unname(chain_choices),
-        options = list(
-          noneSelectedText = tryCatch(
-            ui_str("lab_im_chains_none", loc),
-            error = function(e) "全部產業鏈"
+      .lab_im_schedule_picker_locale(function() {
+        loc <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "zh-TW")
+        chain_choices <- lab_industry_chain_picker_choices(loc)
+        cur_ch <- as.character(isolate(input$lab_im_chains) %||% character(0))
+        cur_ch <- cur_ch[cur_ch %in% unname(chain_choices)]
+        shinyWidgets::updatePickerInput(
+          session,
+          "lab_im_chains",
+          choices = chain_choices,
+          selected = if (length(cur_ch)) cur_ch else unname(chain_choices),
+          options = list(
+            noneSelectedText = tryCatch(
+              ui_str("lab_im_chains_none", loc),
+              error = function(e) "全部產業鏈"
+            )
           )
         )
-      )
+      })
     },
     ignoreNULL = FALSE
   )
@@ -12999,23 +13024,25 @@ server <- function(input, output, session) {
   observeEvent(
     list(input$lab_im_chains, ui_locale(), lazy_mount_nonce()),
     {
-      loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
-      chains <- as.character(input$lab_im_chains %||% character(0))
-      sub_choices <- lab_industry_sub_picker_choices(chains, loc)
-      cur_sub <- as.character(isolate(input$lab_im_industries) %||% character(0))
-      cur_sub <- cur_sub[cur_sub %in% unname(sub_choices)]
-      shinyWidgets::updatePickerInput(
-        session,
-        "lab_im_industries",
-        choices = sub_choices,
-        selected = if (length(cur_sub)) cur_sub else unname(sub_choices),
-        options = list(
-          noneSelectedText = tryCatch(
-            ui_str("lab_im_industries_none", loc),
-            error = function(e) "全部子產業"
+      .lab_im_schedule_picker_locale(function() {
+        loc <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "zh-TW")
+        chains <- as.character(isolate(input$lab_im_chains) %||% character(0))
+        sub_choices <- lab_industry_sub_picker_choices(chains, loc)
+        cur_sub <- as.character(isolate(input$lab_im_industries) %||% character(0))
+        cur_sub <- cur_sub[cur_sub %in% unname(sub_choices)]
+        shinyWidgets::updatePickerInput(
+          session,
+          "lab_im_industries",
+          choices = sub_choices,
+          selected = if (length(cur_sub)) cur_sub else unname(sub_choices),
+          options = list(
+            noneSelectedText = tryCatch(
+              ui_str("lab_im_industries_none", loc),
+              error = function(e) "全部子產業"
+            )
           )
         )
-      )
+      })
     },
     ignoreNULL = FALSE
   )
@@ -13471,13 +13498,22 @@ server <- function(input, output, session) {
       available <- intersect(as.character(LAB_SIDEBAR_METHOD_ORDER), as.character(available))
       cur <- isolate(as.character(input$lab_im_methods %||% character(0)))
       cur <- cur[nzchar(cur)]
-      # Keep user picks among still-available methods; default = all available.
+      # Keep user picks among still-available methods.
+      # Empty (pre-bind / remount): APP_DEFAULTS Absolute-only — never force Relatives on.
+      defaults <- intersect(
+        as.character(APP_DEFAULTS$lab_im_methods %||% character(0)),
+        available
+      )
       new_sel <- if (length(cur)) {
         intersect(cur, available)
       } else {
-        available
+        defaults
       }
-      if (!length(new_sel) && length(available)) new_sel <- available
+      if (!length(new_sel) && length(defaults)) new_sel <- defaults
+      if (!length(new_sel) && length(available)) {
+        abs_fallback <- intersect(as.character(LAB_METHOD_ABS_KEYS), available)
+        new_sel <- if (length(abs_fallback)) abs_fallback else available
+      }
       tryCatch(
         updateCheckboxGroupInput(session, "lab_im_methods", selected = new_sel),
         error = function(e) NULL
@@ -13814,35 +13850,40 @@ server <- function(input, output, session) {
   })
 
   # Refresh truncate-rule / N / concept labels when market / locale changes
-  # (also after Blue Chip lazy mount so newly created inputs get locale choices)
+  # (also after Blue Chip lazy mount so newly created inputs get locale choices).
+  # Defer while Blue Chip eval/universe is busy so ZH/EN chrome can finish first.
   observe({
     lazy_mount_nonce()
     mm <- tryCatch(market_mode(), error = function(e) "US")
     loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
-    rank_cur <- as.character(isolate(input$lab_im_pool_rank) %||% "mcap")[1]
-    rank_choices <- lab_im_pool_rank_choices(loc)
-    if (!rank_cur %in% unname(rank_choices)) rank_cur <- "mcap"
-    updateSelectInput(session, "lab_im_pool_rank", choices = rank_choices, selected = rank_cur)
+    .lab_im_schedule_picker_locale(function() {
+      mm2 <- tryCatch(isolate(market_mode()), error = function(e) mm)
+      loc2 <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) loc)
+      rank_cur <- as.character(isolate(input$lab_im_pool_rank) %||% "mcap")[1]
+      rank_choices <- lab_im_pool_rank_choices(loc2)
+      if (!rank_cur %in% unname(rank_choices)) rank_cur <- "mcap"
+      updateSelectInput(session, "lab_im_pool_rank", choices = rank_choices, selected = rank_cur)
 
-    max_n_cur <- as.character(isolate(input$lab_im_max_n) %||% "25")[1]
-    max_n_choices <- lab_im_max_n_select_choices(loc)
-    if (!max_n_cur %in% unname(max_n_choices)) max_n_cur <- "25"
-    updateSelectInput(session, "lab_im_max_n", choices = max_n_choices, selected = max_n_cur)
+      max_n_cur <- as.character(isolate(input$lab_im_max_n) %||% "25")[1]
+      max_n_choices <- lab_im_max_n_select_choices(loc2)
+      if (!max_n_cur %in% unname(max_n_choices)) max_n_cur <- "25"
+      updateSelectInput(session, "lab_im_max_n", choices = max_n_choices, selected = max_n_cur)
 
-    concept_choices <- lab_concept_group_choices(mm, loc)
-    concept_cur <- isolate(input$lab_im_concepts)
-    concept_cur <- as.character(concept_cur %||% character(0))
-    concept_cur <- concept_cur[concept_cur %in% unname(concept_choices)]
-    updateSelectizeInput(
-      session,
-      "lab_im_concepts",
-      choices = concept_choices,
-      selected = concept_cur,
-      options = list(
-        placeholder = ui_str("lab_im_concepts_placeholder", loc),
-        plugins = list("remove_button")
+      concept_choices <- lab_concept_group_choices(mm2, loc2)
+      concept_cur <- isolate(input$lab_im_concepts)
+      concept_cur <- as.character(concept_cur %||% character(0))
+      concept_cur <- concept_cur[concept_cur %in% unname(concept_choices)]
+      updateSelectizeInput(
+        session,
+        "lab_im_concepts",
+        choices = concept_choices,
+        selected = concept_cur,
+        options = list(
+          placeholder = ui_str("lab_im_concepts_placeholder", loc2),
+          plugins = list("remove_button")
+        )
       )
-    )
+    })
   })
 
   # Legacy Ranking view value moved to dedicated board above Candidate truncate

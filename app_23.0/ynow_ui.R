@@ -7748,6 +7748,10 @@ ui <- dashboardPage(
             }
             register();
             window.ynowSetSidebarTabBusy = setTabBusy;
+            /* After applyUiLocale rewrites menu HTML, restore busy-dot visuals. */
+            window.ynowReapplyAllTabBusyVisuals = function () {
+              Object.keys(sourcesByTab).forEach(function (tab) { applyVisual(tab); });
+            };
           })();
 
           /* Deploy refresh: poll ynow_build.json; never auto-reload.
@@ -8003,9 +8007,12 @@ ui <- dashboardPage(
             var angle = a.querySelector('i.fa.pull-right, i.fas.pull-right, i.far.pull-right, i.glyphicon.pull-right, i.fa-angle-left, i.fas.fa-angle-left');
             var slots = a.querySelectorAll('.ynow-rec-slot');
             var badges = a.querySelectorAll('small.ynow-sidebar-badge, small.ynow-rec-badge');
+            var busyDots = a.querySelector('.ynow-tab-busy-dots');
+            var wasBusy = a.classList.contains('ynow-tab-is-busy');
             var iconClone = icon ? icon.cloneNode(true) : null;
             var prcClone = prc ? prc.cloneNode(true) : null;
             var angleClone = (!prc && angle) ? angle.cloneNode(true) : null;
+            var busyDotsClone = busyDots ? busyDots.cloneNode(true) : null;
             var slotClones = [];
             if (slots.length) {
               slots.forEach(function (s) { slotClones.push(s.cloneNode(true)); });
@@ -8023,9 +8030,16 @@ ui <- dashboardPage(
             lab.className = 'ynow-menu-label';
             lab.textContent = ' ' + label + ' ';
             a.appendChild(lab);
+            if (busyDotsClone) a.appendChild(busyDotsClone);
             slotClones.forEach(function (sc) { a.appendChild(sc); });
             if (prcClone) a.appendChild(prcClone);
             else if (angleClone) a.appendChild(angleClone);
+            if (wasBusy) {
+              a.classList.add('ynow-tab-is-busy');
+              try { a.setAttribute('aria-busy', 'true'); } catch (eBusy) {}
+              var liBusy = a.closest ? a.closest('li') : a.parentElement;
+              if (liBusy && liBusy.classList) liBusy.classList.add('ynow-tab-is-busy');
+            }
           }
 
           function setNavLinkLabel(a, label) {
@@ -8111,6 +8125,9 @@ ui <- dashboardPage(
             Object.keys(menu).forEach(function (k) {
               if (menu[k]) setMenuLabel(k, menu[k]);
             });
+            if (typeof window.ynowReapplyAllTabBusyVisuals === 'function') {
+              try { window.ynowReapplyAllTabBusyVisuals(); } catch (eBusyVis) {}
+            }
             var menuMacro = document.getElementById('ynow_menu_macro');
             if (menuMacro && s.menu_macro_market) menuMacro.textContent = s.menu_macro_market;
             var menuAtx = document.getElementById('ynow_menu_asset_transmission');
