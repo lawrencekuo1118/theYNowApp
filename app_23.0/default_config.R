@@ -64,7 +64,8 @@ if (!is.null(ind_kpi$pb_band) && length(ind_kpi$pb_band) >= 2) {
 APP_DEFAULTS <- list(
 
   # --- 1. 基本設定 ---
-  stock_code      = "TSM",
+  # Empty: no preloaded ticker scrape; input shows a market-specific placeholder only.
+  stock_code      = "",
   industry_choice = DEFAULT_IND,
   years           = 5,
 

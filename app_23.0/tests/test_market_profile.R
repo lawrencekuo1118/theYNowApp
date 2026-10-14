@@ -51,7 +51,7 @@ check("TW hides SEC", isFALSE(market_profile("TW")$show_sec_lab))
 check("US shows SEC", isTRUE(market_profile("US")$show_sec_lab))
 check("TW bench 0050", identical(market_profile("TW")$beta_bench, "0050.TW"))
 
-# Market-switch preload gate: only valuation-model tabs auto-fetch default ticker
+# Valuation-model tab classifier (theme / chrome); no market-default preload.
 check(
   "valuation tabs include DCF / Model Dashboard / Company",
   isTRUE(is_valuation_model_tab("dcf_calculator")) &&
@@ -63,7 +63,7 @@ check(
     isTRUE(is_valuation_model_tab("sensitivity"))
 )
 check(
-  "non-valuation tabs skip default preload",
+  "non-valuation tabs are not valuation-model surfaces",
   isFALSE(is_valuation_model_tab("home")) &&
     isFALSE(is_valuation_model_tab("macro_market")) &&
     isFALSE(is_valuation_model_tab("bluechip")) &&
@@ -73,11 +73,27 @@ check(
     isFALSE(is_valuation_model_tab(""))
 )
 srv_txt <- paste(readLines(file.path(root, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+ui_txt <- paste(readLines(file.path(root, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+loc_txt <- paste(readLines(file.path(root, "ui_locale.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check(
-  "market switch gates default ticker via is_valuation_model_tab",
-  grepl("is_valuation_model_tab\\(tab_now\\)", srv_txt, perl = TRUE) &&
-    grepl("pending_market_default_ticker", srv_txt, fixed = TRUE) &&
-    grepl("\\.ynow_apply_pending_market_default_ticker", srv_txt, perl = TRUE)
+  "market switch clears sc; no default ticker preload",
+  grepl('updateTextInput\\(session, \"sc\", value = \"\"\\)', srv_txt, perl = TRUE) &&
+    !grepl("pending_market_default_ticker", srv_txt, fixed = TRUE) &&
+    !grepl(".ynow_apply_pending_market_default_ticker", srv_txt, fixed = TRUE) &&
+    !grepl("current_ticker\\(prof\\$default_ticker\\)", srv_txt, perl = TRUE)
+)
+check(
+  "sc input starts empty with placeholder",
+  grepl('textInput\\(\\s*\"sc\"', ui_txt, perl = TRUE) &&
+    grepl('placeholder = \"e.g. AAPL / TSM\"', ui_txt, fixed = TRUE) &&
+    grepl("ticker_placeholder_us", loc_txt, fixed = TRUE) &&
+    grepl("ticker_placeholder_tw", loc_txt, fixed = TRUE) &&
+    grepl("ticker_placeholder_tw", ui_txt, fixed = TRUE)
+)
+cfg_txt <- paste(readLines(file.path(root, "default_config.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+check(
+  "APP_DEFAULTS stock_code empty (no preload seed)",
+  grepl("stock_code\\s*=\\s*\"\"", cfg_txt, perl = TRUE)
 )
 
 # Display vs fetch

@@ -8420,6 +8420,15 @@ ui <- dashboardPage(
             if (recent && s.recent_search) recent.textContent = s.recent_search;
             var scLab = document.querySelector('label[for=\"sc\"]');
             if (scLab && s.ticker_label) scLab.textContent = s.ticker_label;
+            var scInput = document.getElementById('sc');
+            if (scInput) {
+              var mktPh = (payload && payload.market) ? String(payload.market) : 'US';
+              var scPh = (mktPh === 'TW')
+                ? (s.ticker_placeholder_tw || 'e.g. 2330')
+                : (s.ticker_placeholder_us || 'e.g. AAPL / TSM');
+              scInput.setAttribute('placeholder', scPh);
+              scInput.placeholder = scPh;
+            }
             var yahooIndLab = document.getElementById('ynow_industry_info_yahoo');
             if (yahooIndLab && s.industry_info_yahoo) yahooIndLab.textContent = s.industry_info_yahoo;
             var indLab = document.querySelector('label[for=\"industry_choice\"]');
@@ -13491,7 +13500,12 @@ ui <- dashboardPage(
                  class = "ynow-sc-row",
                  div(
                    class = "ynow-sc-wrap",
-                   textInput("sc", "Ticker / Stock Code", value = APP_DEFAULTS$stock_code),
+                   textInput(
+                     "sc",
+                     "Ticker / Stock Code",
+                     value = "",
+                     placeholder = "e.g. AAPL / TSM"
+                   ),
                    uiOutput("sc_ticker_suggest_ui")
                  ),
                  actionButton(
