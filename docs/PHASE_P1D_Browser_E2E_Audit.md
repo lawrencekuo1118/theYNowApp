@@ -62,8 +62,8 @@ Composite Smart Analysis (EN): Primary DCF Base **201.79** (Bear 146.46 / Bull 3
 
 | ID | Risk | Issue | Remediation suggestion |
 |---|---|---|---|
-| P1D-DCF-TAB-NA | P2 | DCF calculator tab can show N/A /「Waiting for valuation」while Smart Analysis already has a DCF Base | Confirm auto-calc pulse / tab visit triggers `btn_calc` path; UX consistency |
-| P1D-NO-SHINYTEST | P2 | No chromote/shinytest harness in repo | Optional later automation |
+| P1D-DCF-TAB-NA | P2 | DCF calculator tab can show N/A /「Waiting for valuation」while Smart Analysis already has a DCF Base | **Closed in closeout:** tab-visit observer fires `.fire_auto_calc_primary("dcf")` when ready (`ynow_server.R`). See `docs/PHASE_AUDIT_CLOSEOUT.md`. |
+| P1D-NO-SHINYTEST | P2 | No chromote/shinytest harness in repo | Deferred; structural closeout tests + manual E2E remain |
 
 ---
 

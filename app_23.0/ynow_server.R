@@ -1786,6 +1786,32 @@ server <- function(input, output, session) {
   })
 
   .capm_rf_source_note_ui <- function() {
+    loc <- tryCatch(ui_locale(), error = function(e) "en")
+    # When live/last-known Rf failed, surface engineering fallback explicitly
+    # (Phase 2 residual FAILSOFT-RF-FALLBACK → P1-D/closeout).
+    det <- tryCatch({
+      if (exists(".current_rf_detail", mode = "function", inherits = TRUE)) {
+        .current_rf_detail()
+      } else {
+        NULL
+      }
+    }, error = function(e) NULL)
+    if (isTRUE(det$is_fallback)) {
+      fb_note <- tryCatch(
+        ui_str("capm_rf_fallback_note", loc),
+        error = function(e) {
+          if (identical(loc, "zh-TW")) {
+            "目前使用工程 fallback Rf（即時公債殖利率無法取得）。"
+          } else {
+            "Using engineering fallback Rf (live Treasury yield unavailable)."
+          }
+        }
+      )
+      return(helpText(
+        style = "margin-top:-6px; margin-bottom:8px; font-size:12px; color:#b45309;",
+        fb_note
+      ))
+    }
     prof <- tryCatch(active_market_profile(), error = function(e) NULL)
     note <- if (!is.null(prof)) as.character(prof$data_source_note_zh %||% "")[1] else ""
     if (!nzchar(note)) {
@@ -9150,6 +9176,40 @@ server <- function(input, output, session) {
     auto_calc_primary_sig(sig)
     for (k in keys) .fire_auto_calc_primary(k)
   })
+
+  # P1-D closeout: visiting the DCF tab must not sit on N/A / "Waiting for
+  # valuation" when FCF + WACC/shares are already ready but the primary
+  # auto-calc observer has not yet written stock_price_estimate_val.
+  # Smart Analysis and DCF KPI boxes share that same session store — do not
+  # invent a second live formula path here.
+  observeEvent(input$sidebar_tabs, {
+    tab <- as.character(input$sidebar_tabs %||% "")[1]
+    if (!identical(tab, "dcf_calculator")) return()
+    if (!isTRUE(isolate(user_has_searched()))) return()
+    has_ps <- is.finite(suppressWarnings(as.numeric(isolate(stock_price_estimate_val()))[1]))
+    if (isTRUE(has_ps)) return()
+    if (!isTRUE(.auto_calc_primary_ready("dcf"))) return()
+    .fire_auto_calc_primary("dcf")
+  }, ignoreInit = TRUE)
+
+  # Companion: open DDM / RI / Multiples tabs and fire once when ready so Full
+  # users who jump straight to a non-primary tab are not stuck on idle state.
+  observeEvent(input$sidebar_tabs, {
+    tab <- as.character(input$sidebar_tabs %||% "")[1]
+    if (!isTRUE(isolate(user_has_searched()))) return()
+    key <- if (identical(tab, "ddm_calculator")) {
+      "ddm"
+    } else if (identical(tab, "ri_calculator")) {
+      "ri"
+    } else if (tab %in% c("rel_multiples_calculator", "rel_mult_ev", "rel_mult_rev")) {
+      "multiples"
+    } else {
+      ""
+    }
+    if (!nzchar(key)) return()
+    if (!isTRUE(.auto_calc_primary_ready(key))) return()
+    .fire_auto_calc_primary(key)
+  }, ignoreInit = TRUE)
 
   # ==========================================
   # Smart Analysis（Lite）：主／副模型摘要與合理價圖
