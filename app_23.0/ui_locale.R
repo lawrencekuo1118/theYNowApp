@@ -1638,6 +1638,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     sgr_gate_fail = "Not computable: terminal g is at or above the discount rate, so the Gordon denominator is not positive.",
     sgr_gate_na = "Discount rate or terminal g is missing.",
     sgr_scenario_title = "Scenario check (every engine)",
+    sgr_scenario_help = paste0(
+      "Bear／Base／Bull shocks applied by each valuation engine under the current App parameters. ",
+      "Use this table to verify scenario inputs before reading Snapshot values below."
+    ),
     sgr_col_model = "Model",
     sgr_col_case = "Case",
     sgr_col_param = "Input",
@@ -4635,6 +4639,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     sgr_gate_fail = "無法計算：終值 g 大於或等於折現率，Gordon 分母不是正數。",
     sgr_gate_na = "折現率或終值 g 尚缺。",
     sgr_scenario_title = "情境檢核（每個模型）",
+    sgr_scenario_help = paste0(
+      "目前 App 參數下，各估值引擎套用的 Bear／Base／Bull 衝擊。",
+      "請先核對此表，再閱讀下方 Snapshot 參數值。"
+    ),
     sgr_col_model = "模型",
     sgr_col_case = "情境",
     sgr_col_param = "參數",

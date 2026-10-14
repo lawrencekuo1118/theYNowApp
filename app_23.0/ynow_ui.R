@@ -1734,7 +1734,6 @@ beta_rolling_section_ui <- function() {
       tags$h5(tags$b("估計依據")),
       uiOutput("txt_perpetual_g_reason"),
       uiOutput("txt_sgr_identity"),
-      uiOutput("txt_scenario_audit"),
       tags$hr(style = "margin: 12px 0;"),
       numericInput(
         "sgr",
@@ -14050,6 +14049,13 @@ ui <- dashboardPage(
                 style = "font-size:12.5px; color:#555;"
               ),
               uiOutput("param_restore_status_ui")
+            ),
+            # Bear／Base／Bull scenario rules for every valuation engine
+            # (moved from Model Dashboard SGR box — Snapshot is the review surface).
+            tags$div(
+              class = "ynow-scenario-audit-wrap",
+              style = "margin:0 0 16px 0; padding:12px 14px; background:#fafbfc; border:1px solid #e5e7eb; border-radius:6px;",
+              uiOutput("txt_scenario_audit")
             ),
             dataTableOutput("snapshot_table")
           ),

@@ -4418,8 +4418,17 @@ server <- function(input, output, session) {
       )
     })
     tags$div(
-      style = "margin:0 0 12px 0;",
-      tags$div(style = "font-weight:700; margin-bottom:6px; font-size:13px;", ui_str("sgr_scenario_title", loc)),
+      style = "margin:0;",
+      tags$div(
+        id = "ynow_sgr_scenario_title",
+        style = "font-weight:700; margin-bottom:4px; font-size:14px;",
+        ui_str("sgr_scenario_title", loc)
+      ),
+      tags$p(
+        id = "ynow_sgr_scenario_help",
+        style = "font-size:12px; color:#666; line-height:1.45; margin:0 0 8px 0;",
+        ui_str("sgr_scenario_help", loc)
+      ),
       tags$div(
         style = "overflow-x:auto;",
         tags$table(
