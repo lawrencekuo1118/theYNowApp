@@ -1,7 +1,8 @@
 # Audit acceptance evidence — beyond structural closeout
 
 **Status:** Objective evidence recorded for tab-visit **Shiny runtime**, Rf numeric impact, **US+TW live Rf**, and **live Yahoo/TPEx statements** (with local `.ynow_venv`)  
-**Live baseline:** `app_24.0/` / display **v24.00** (bundle `12690522`)  
+**Live baseline:** `app_24.0/` / display **v24.01** (bundle `12690593`)  
+**Prior v24 cut:** v24.00 / bundle `12690522`  
 **Prior ship on v23 line:** v23.31 / bundle `12690471`  
 **Formulas:** unchanged (no engine rewrites)
 
