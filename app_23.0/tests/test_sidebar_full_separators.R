@@ -1,4 +1,4 @@
-# Full-mode sidebar white separators between specified menu groups.
+# Full-mode sidebar short white dashed separators between specified menu groups.
 fail <- 0L
 check <- function(label, cond) {
   ok <- isTRUE(cond)
@@ -30,11 +30,27 @@ for (dv in c("macro_market", "bluechip", "get_started", "lab_notes", "about")) {
       perl = TRUE
     )
   )
+  check(
+    paste0("short dashed ::before ", dv),
+    grepl(
+      paste0(
+        "body:not\\(\\.ynow-lite\\) \\.sidebar-menu > li:has\\(> a\\[data-value=\"",
+        dv,
+        "\"\\]\\)::before"
+      ),
+      ui,
+      perl = TRUE
+    )
+  )
 }
 check(
-  "white border color",
-  grepl("border-top:\\s*1px solid #ffffff", ui, perl = TRUE) ||
-    grepl("border-top:\\s*1px solid rgba\\(255,\\s*255,\\s*255", ui, perl = TRUE)
+  "white dashed border on ::before",
+  grepl("border-top:\\s*1px dashed #ffffff", ui, perl = TRUE) ||
+    grepl("border-top:\\s*1px dashed rgba\\(255,\\s*255,\\s*255", ui, perl = TRUE)
+)
+check(
+  "shortened inset left/right",
+  grepl("left:\\s*22%", ui, perl = TRUE) && grepl("right:\\s*22%", ui, perl = TRUE)
 )
 # Ensure Lite does not get a separate copy of these rules under body.ynow-lite
 check(

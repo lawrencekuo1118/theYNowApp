@@ -16,7 +16,7 @@
       return(sub('^"version"\\s*:\\s*"([^"]+)".*$', "\\1", m[[1]]))
     }
   }
-  "v23.28"
+  "v23.30"
 }
 .YNOW_BUILD_VERSION <- .ynow_read_build_version()
 
@@ -231,7 +231,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v23.28) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+          "The YNow App (v23.30) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
         ),
         tags$p(
           class = "ynow-about-method",
@@ -250,7 +250,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v23.28) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
+          "The YNow App (v23.30) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
         ),
         tags$p(
           class = "ynow-about-method",
@@ -352,7 +352,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App（簡化版）")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite（v23.28）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
+          "The YNow App Lite（v23.30）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
           "以自動判別主／副模型與預設參數完成試算，讓使用者先看到合理價區間與產業 KPI，再決定是否回到完整版深入調整。"
         ),
         tags$p(
@@ -369,7 +369,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App (Lite)")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite (v23.28) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
+          "The YNow App Lite (v23.30) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
           "auto-selects primary/secondary models with App defaults, and surfaces fair-value ranges plus industry KPIs before you open Full for deeper calibration."
         ),
         tags$p(
@@ -3435,9 +3435,9 @@ ui <- dashboardPage(
                   'data-ynow-build="', .YNOW_BUILD_VERSION, '" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v23.28</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v23.30</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v23.28</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v23.30</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -5714,21 +5714,36 @@ ui <- dashboardPage(
           padding-left: 1.2em;
         }
         .ynow-bblab-split li { margin-bottom: 4px; }
-        /* ---- Full mode: white hairlines between sidebar groups ----
+        /* ---- Full mode: short white dashed separators between sidebar groups ----
            Home | Macro
            Asset Transmission | Blue Chip
            YNOW | Model Dashboard  (Smart Analysis is hidden in Full)
            Hist. FV Validation | Quant Backtest Lab
            Value Alerts | About
+           Inset via ::before so the dash is shorter than full sidebar width.
         */
         body:not(.ynow-lite) .sidebar-menu > li:has(> a[data-value="macro_market"]),
         body:not(.ynow-lite) .sidebar-menu > li:has(> a[data-value="bluechip"]),
         body:not(.ynow-lite) .sidebar-menu > li:has(> a[data-value="get_started"]),
         body:not(.ynow-lite) .sidebar-menu > li:has(> a[data-value="lab_notes"]),
         body:not(.ynow-lite) .sidebar-menu > li:has(> a[data-value="about"]) {
-          border-top: 1px solid #ffffff;
+          position: relative;
           margin-top: 8px;
-          padding-top: 4px;
+          padding-top: 8px;
+          border-top: none;
+        }
+        body:not(.ynow-lite) .sidebar-menu > li:has(> a[data-value="macro_market"])::before,
+        body:not(.ynow-lite) .sidebar-menu > li:has(> a[data-value="bluechip"])::before,
+        body:not(.ynow-lite) .sidebar-menu > li:has(> a[data-value="get_started"])::before,
+        body:not(.ynow-lite) .sidebar-menu > li:has(> a[data-value="lab_notes"])::before,
+        body:not(.ynow-lite) .sidebar-menu > li:has(> a[data-value="about"])::before {
+          content: "";
+          position: absolute;
+          top: 0;
+          left: 22%;
+          right: 22%;
+          border-top: 1px dashed #ffffff;
+          pointer-events: none;
         }
         /* ---- Lite mode: hide Full-only chrome; show Smart Analysis ---- */
         .sidebar-menu a[data-value="smart_analysis"],
@@ -7733,6 +7748,10 @@ ui <- dashboardPage(
             }
             register();
             window.ynowSetSidebarTabBusy = setTabBusy;
+            /* After applyUiLocale rewrites menu HTML, restore busy-dot visuals. */
+            window.ynowReapplyAllTabBusyVisuals = function () {
+              Object.keys(sourcesByTab).forEach(function (tab) { applyVisual(tab); });
+            };
           })();
 
           /* Deploy refresh: poll ynow_build.json; never auto-reload.
@@ -7988,9 +8007,12 @@ ui <- dashboardPage(
             var angle = a.querySelector('i.fa.pull-right, i.fas.pull-right, i.far.pull-right, i.glyphicon.pull-right, i.fa-angle-left, i.fas.fa-angle-left');
             var slots = a.querySelectorAll('.ynow-rec-slot');
             var badges = a.querySelectorAll('small.ynow-sidebar-badge, small.ynow-rec-badge');
+            var busyDots = a.querySelector('.ynow-tab-busy-dots');
+            var wasBusy = a.classList.contains('ynow-tab-is-busy');
             var iconClone = icon ? icon.cloneNode(true) : null;
             var prcClone = prc ? prc.cloneNode(true) : null;
             var angleClone = (!prc && angle) ? angle.cloneNode(true) : null;
+            var busyDotsClone = busyDots ? busyDots.cloneNode(true) : null;
             var slotClones = [];
             if (slots.length) {
               slots.forEach(function (s) { slotClones.push(s.cloneNode(true)); });
@@ -8008,9 +8030,16 @@ ui <- dashboardPage(
             lab.className = 'ynow-menu-label';
             lab.textContent = ' ' + label + ' ';
             a.appendChild(lab);
+            if (busyDotsClone) a.appendChild(busyDotsClone);
             slotClones.forEach(function (sc) { a.appendChild(sc); });
             if (prcClone) a.appendChild(prcClone);
             else if (angleClone) a.appendChild(angleClone);
+            if (wasBusy) {
+              a.classList.add('ynow-tab-is-busy');
+              try { a.setAttribute('aria-busy', 'true'); } catch (eBusy) {}
+              var liBusy = a.closest ? a.closest('li') : a.parentElement;
+              if (liBusy && liBusy.classList) liBusy.classList.add('ynow-tab-is-busy');
+            }
           }
 
           function setNavLinkLabel(a, label) {
@@ -8096,6 +8125,9 @@ ui <- dashboardPage(
             Object.keys(menu).forEach(function (k) {
               if (menu[k]) setMenuLabel(k, menu[k]);
             });
+            if (typeof window.ynowReapplyAllTabBusyVisuals === 'function') {
+              try { window.ynowReapplyAllTabBusyVisuals(); } catch (eBusyVis) {}
+            }
             var menuMacro = document.getElementById('ynow_menu_macro');
             if (menuMacro && s.menu_macro_market) menuMacro.textContent = s.menu_macro_market;
             var menuAtx = document.getElementById('ynow_menu_asset_transmission');
