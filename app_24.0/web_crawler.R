@@ -673,11 +673,18 @@ if (!exists("%||%", mode = "function")) {
   if (isTRUE(.ensure_python_scraper())) {
     if (exists("get_risk_free_rate_yf", envir = .py_scraper_env, inherits = FALSE, mode = "function") ||
         exists("get_risk_free_rate_yf", mode = "function")) {
-      rf <- as.numeric(get_risk_free_rate_yf(mode))
-      if (is.finite(rf) && rf > 0) return(rf)
+      # yfinance can raise (e.g. rate limit); must not skip the US quantmod path
+      rf_py <- tryCatch(
+        as.numeric(get_risk_free_rate_yf(mode))[1],
+        error = function(e) {
+          .ynow_log("⚠️ Python Rf scrape failed (", mode, "): ", e$message)
+          NA_real_
+        }
+      )
+      if (is.finite(rf_py) && rf_py > 0) return(rf_py)
     }
   }
-  # US: keep CAPM Macro live when reticulate/venv is absent (Cloud / offline Python)
+  # US: keep CAPM Macro live when Python is absent or rate-limited
   if (identical(mode, "US")) {
     rf_qm <- tryCatch(.fetch_rf_live_us_quantmod(), error = function(e) {
       .ynow_log("⚠️ US Rf quantmod fallback failed: ", e$message)
