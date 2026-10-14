@@ -32,9 +32,9 @@ for (dv in c("macro_market", "bluechip", "get_started", "lab_notes", "about")) {
   )
 }
 check(
-  "white border color",
-  grepl("border-top:\\s*1px solid #ffffff", ui, perl = TRUE) ||
-    grepl("border-top:\\s*1px solid rgba\\(255,\\s*255,\\s*255", ui, perl = TRUE)
+  "white dashed border",
+  grepl("border-top:\\s*1px dashed #ffffff", ui, perl = TRUE) ||
+    grepl("border-top:\\s*1px dashed rgba\\(255,\\s*255,\\s*255", ui, perl = TRUE)
 )
 # Ensure Lite does not get a separate copy of these rules under body.ynow-lite
 check(

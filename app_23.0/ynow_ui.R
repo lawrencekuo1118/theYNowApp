@@ -5726,7 +5726,7 @@ ui <- dashboardPage(
         body:not(.ynow-lite) .sidebar-menu > li:has(> a[data-value="get_started"]),
         body:not(.ynow-lite) .sidebar-menu > li:has(> a[data-value="lab_notes"]),
         body:not(.ynow-lite) .sidebar-menu > li:has(> a[data-value="about"]) {
-          border-top: 1px solid #ffffff;
+          border-top: 1px dashed #ffffff;
           margin-top: 8px;
           padding-top: 4px;
         }
