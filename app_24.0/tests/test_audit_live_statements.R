@@ -67,10 +67,37 @@ check <- function(label, cond) {
   is.data.frame(d) && isFALSE(financial_df_is_empty(d))
 }
 
+.fetch_yahoo_triple <- function(ticker, attempts = 3L) {
+  attempts <- max(1L, as.integer(attempts)[1])
+  last <- NULL
+  for (i in seq_len(attempts)) {
+    tryCatch(memoise::forget(.cached_scrape_financials_memo), error = function(e) NULL)
+    .drop_financials_cache_key(ticker)
+    res <- tryCatch(cached_scrape_financials(ticker), error = function(e) e)
+    last <- res
+    if (!inherits(res, "error") && isFALSE(financials_is_bs_cf_all_empty(res))) {
+      if (i > 1L) {
+        cat("INFO ", ticker, " recovered on attempt ", i, "\n", sep = "")
+      }
+      return(res)
+    }
+    cat(
+      "INFO ", ticker, " attempt ", i, "/", attempts,
+      if (inherits(res, "error")) {
+        paste0(" err=", conditionMessage(res))
+      } else {
+        " empty"
+      },
+      "\n",
+      sep = ""
+    )
+    if (i < attempts) Sys.sleep(2 * i)
+  }
+  last
+}
+
 .check_yahoo_triple <- function(ticker, require_cf = TRUE) {
-  tryCatch(memoise::forget(.cached_scrape_financials_memo), error = function(e) NULL)
-  .drop_financials_cache_key(ticker)
-  res <- tryCatch(cached_scrape_financials(ticker), error = function(e) e)
+  res <- .fetch_yahoo_triple(ticker, attempts = 3L)
   check(paste0(ticker, " scrape ok"), !inherits(res, "error"))
   if (inherits(res, "error")) {
     cat("INFO ", ticker, " err=", conditionMessage(res), "\n", sep = "")

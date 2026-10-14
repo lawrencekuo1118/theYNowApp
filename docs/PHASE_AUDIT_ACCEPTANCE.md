@@ -32,8 +32,9 @@ Ancestry of the v24 cut (`bc4e464` → `ce1caec`) includes:
 | Rf numeric impact (Ke / WACC / FV) | `test_audit_rf_impact.R` (β>1 and β<1 CAPM identity) | **Met** |
 | Live data paths — US Rf | quantmod `^TNX` and/or Python; `source=live` | **Met** |
 | Live data paths — TW Rf | Python `get_risk_free_rate_yf("TW")` via `.ynow_venv`; `source=live` | **Met when venv present** |
-| Live Yahoo statements (US + TW + OTC quote) | `test_audit_live_statements.R` — AAPL / 2330.TW / 3363.TWO non-empty IS/BS/CF | **Met** |
-| Live TPEx XLS summary + merge | Same suite — OTC raw + `apply_tpex_financial_fallback`; CF not invented | **Met** |
+| Live Yahoo statements (US + TW + OTC quote) | `test_audit_live_statements.R` — AAPL / 2330.TW / 3363.TWO non-empty IS/BS/CF | **Met** (acceptance; Phase 2 offline JSON still lists LIVE-UNCOVERED-1 as honesty marker) |
+| Live TPEx XLS summary + merge | Same suite — OTC raw + `apply_tpex_financial_fallback`; CF not invented | **Met** (acceptance; Phase 2 offline JSON still lists LIVE-UNCOVERED-2) |
+| Yahoo statements under datacenter rate-limit | `deep_scraper._yf_ticker` uses curl_cffi chrome impersonation + one retry | **Fixed in v24 line** |
 
 Browser UI smoke remains complementary: primary auto-calc on ticker load often fills FV first; tab-visit is the **heal path** when FV is missing — now proven under `testServer` with empty FV.
 
@@ -70,6 +71,10 @@ Defaults: US live Rf required; TW live required when `.ynow_venv` exists (`YNOW_
 1. US Rf quantmod path when Python unavailable  
 2. `.rf_market_mode("TW")` no longer collapses to US without `normalize_market_mode`  
 3. Python US Rf scrape errors fall through to quantmod  
+
+## App defect fixed while closing live-statement scope (ships with this branch)
+
+4. Yahoo statement scrape under datacenter rate-limit returned empty IS/BS/CF — `deep_scraper` now builds `yf.Ticker` via curl_cffi chrome impersonation (`_yf_ticker`) with one fresh-session retry
 
 ---
 

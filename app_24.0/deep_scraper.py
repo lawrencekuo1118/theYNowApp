@@ -65,6 +65,38 @@ def _yahoo_gate_dir():
     return d
 
 
+def _yahoo_http_session():
+    """Browser-impersonated HTTP session for yfinance.
+
+    Datacenter IPs often get empty statement frames or YFRateLimitError on the
+    default requests stack; curl_cffi chrome impersonation keeps statements
+    usable under the same commercial hardening gate.
+    """
+    try:
+        from curl_cffi import requests as creq
+
+        return creq.Session(impersonate="chrome")
+    except Exception:
+        try:
+            import requests
+
+            return requests.Session()
+        except Exception:
+            return None
+
+
+def _yf_ticker(ticker, session=None):
+    """yf.Ticker with optional shared curl_cffi session."""
+    sess = session if session is not None else _yahoo_http_session()
+    if sess is not None:
+        try:
+            return yf.Ticker(ticker, session=sess)
+        except TypeError:
+            # Older yfinance without session= kw
+            pass
+    return yf.Ticker(ticker)
+
+
 def _yahoo_gate_acquire(timeout_sec=30.0):
     """Space live Yahoo HTTP across processes (mkdir lock + min interval).
 
@@ -1012,7 +1044,7 @@ def scrape_all_financials_yf(ticker="AMZN"):
     """Cloud-safe financials via Yahoo Finance API (no Chrome)."""
     _dbg(f"📊 使用 yfinance 獲取 {ticker} 財報（app_11.0）...")
     _yahoo_gate_acquire()
-    stock = yf.Ticker(ticker)
+    stock = _yf_ticker(ticker)
 
     def pick(*names):
         for name in names:
@@ -1020,7 +1052,8 @@ def scrape_all_financials_yf(ticker="AMZN"):
             if callable(df):
                 try:
                     df = df()
-                except Exception:
+                except Exception as e:
+                    _dbg(f"⚠️ yfinance {name}: {e}")
                     df = None
             if df is not None and hasattr(df, "empty") and not df.empty:
                 return df
@@ -1029,6 +1062,17 @@ def scrape_all_financials_yf(ticker="AMZN"):
     income = pick("income_stmt", "financials", "incomestmt")
     balance = pick("balance_sheet", "balancesheet")
     cash = pick("cashflow", "cash_flow")
+
+    # One retry with a fresh curl_cffi session if all statements came back empty
+    # (transient Yahoo rate-limit / cookie miss).
+    if income.empty and balance.empty and cash.empty:
+        _dbg("⚠️ yfinance statements empty; retry with fresh session")
+        time.sleep(0.75)
+        _yahoo_gate_acquire()
+        stock = _yf_ticker(ticker)
+        income = pick("income_stmt", "financials", "incomestmt")
+        balance = pick("balance_sheet", "balancesheet")
+        cash = pick("cashflow", "cash_flow")
 
     income_p = _stmt_to_payload(income)
     balance_p = _stmt_to_payload(balance)
