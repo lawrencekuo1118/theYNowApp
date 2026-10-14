@@ -1,6 +1,6 @@
 # Audit acceptance evidence — beyond structural closeout
 
-**Status:** Objective evidence recorded for tab-visit **Shiny runtime**, Rf numeric impact, **US+TW live Rf**, and **live Yahoo/TPEx statements** (with local `.ynow_venv`)  
+**Status:** Objective evidence recorded for tab-visit **Shiny runtime**, Rf numeric impact, **US+TW live Rf**, **live Yahoo/TPEx statements**, **multi-worker cache races**, **quote/statement tier timing**, and **chromote full-app E2E**  
 **Live baseline:** `app_24.0/` / display **v24.01** (bundle `12690593`)  
 **Prior v24 cut:** v24.00 / bundle `12690522`  
 **Prior ship on v23 line:** v23.31 / bundle `12690471`  
@@ -33,11 +33,14 @@ Ancestry of the v24 cut (`bc4e464` → `ce1caec`) includes:
 | Rf numeric impact (Ke / WACC / FV) | `test_audit_rf_impact.R` (β>1 and β<1 CAPM identity) | **Met** |
 | Live data paths — US Rf | quantmod `^TNX` and/or Python; `source=live` | **Met** |
 | Live data paths — TW Rf | Python `get_risk_free_rate_yf("TW")` via `.ynow_venv`; `source=live` | **Met when venv present** |
-| Live Yahoo statements (US + TW + OTC quote) | `test_audit_live_statements.R` — AAPL / 2330.TW / 3363.TWO non-empty IS/BS/CF | **Met** (acceptance; Phase 2 offline JSON still lists LIVE-UNCOVERED-1 as honesty marker) |
-| Live TPEx XLS summary + merge | Same suite — OTC raw + `apply_tpex_financial_fallback`; CF not invented | **Met** (acceptance; Phase 2 offline JSON still lists LIVE-UNCOVERED-2) |
+| Live Yahoo statements (US + TW + OTC quote) | `test_audit_live_statements.R` — AAPL / 2330.TW / 3363.TWO non-empty IS/BS/CF | **Met** |
+| Live TPEx XLS summary + merge | Same suite — OTC raw + `apply_tpex_financial_fallback`; CF not invented | **Met** |
 | Yahoo statements under datacenter rate-limit | `deep_scraper._yf_ticker` uses curl_cffi chrome impersonation + one retry | **Fixed in v24 line** |
+| Multi-worker shared gate/cache (LIVE-UNCOVERED-3) | `test_audit_live_cache_races.R` — 4×`callr` workers share stamp + `cache_disk`; Python advances stamp | **Met** |
+| Quote-fresh vs statement-warm (LIVE-UNCOVERED-4) | Same suite — fast quote drop/refresh leaves slow statements warm; opposite check | **Met** |
+| chromote full-app E2E | `test_audit_chromote_e2e.R` — headless CDP drives `#sc` / `#search`, screenshots under artifacts | **Met** |
 
-Browser UI smoke remains complementary: primary auto-calc on ticker load often fills FV first; tab-visit is the **heal path** when FV is missing — now proven under `testServer` with empty FV.
+Browser UI smoke remains complementary: primary auto-calc on ticker load often fills FV first; tab-visit is the **heal path** when FV is missing — now proven under `testServer` with empty FV; chromote proves the search path in a real browser.
 
 ---
 
@@ -46,11 +49,12 @@ Browser UI smoke remains complementary: primary auto-calc on ticker load often f
 ```bash
 # Optional but recommended for TW live Rf + statements:
 # python3 -m venv app_24.0/.ynow_venv && app_24.0/.ynow_venv/bin/pip install -r app_24.0/requirements.txt
+# chromote + shinytest2 required for browser E2E (install.packages)
 
 bash scripts/run_audit_acceptance.sh
 ```
 
-Defaults: US live Rf required; TW live required when `.ynow_venv` exists (`YNOW_ACCEPTANCE_REQUIRE_TW_LIVE=auto`); live statements required (`YNOW_ACCEPTANCE_REQUIRE_LIVE_STATEMENTS=1`).
+Defaults: US live Rf required; TW live required when `.ynow_venv` exists (`YNOW_ACCEPTANCE_REQUIRE_TW_LIVE=auto`); live statements required (`YNOW_ACCEPTANCE_REQUIRE_LIVE_STATEMENTS=1`); chromote required (`YNOW_ACCEPTANCE_REQUIRE_CHROMOTE=1`).
 
 ---
 
@@ -64,6 +68,8 @@ Defaults: US live Rf required; TW live required when `.ynow_venv` exists (`YNOW_
 | Phase 1 / Phase 2 | 43/0 · 38/0 |
 | live Rf paths | US live + TW live (with venv) |
 | live statements | Yahoo AAPL / 2330.TW / 3363.TWO + TPEx OTC merge |
+| live cache races | PASS=22 (LIVE-UNCOVERED-3/4) |
+| chromote E2E | home + search screenshots; search controls + ticker/valuation text |
 
 ---
 
@@ -81,7 +87,4 @@ Defaults: US live Rf required; TW live required when `.ynow_venv` exists (`YNOW_
 
 ## Still out of scope / not claimed
 
-- Multi-worker shared-cache stamp races (LIVE-UNCOVERED-3)  
-- Quote-fresh vs statement-stale timing races (LIVE-UNCOVERED-4)  
-- chromote full-app E2E  
 - “Every valuation on every ticker is numerically perfect in production”

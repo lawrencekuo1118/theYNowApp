@@ -17,12 +17,14 @@ This document tracks residual items after Phase 0–2 and P1-D. Valuation formul
 | Production runner enables `set -uo pipefail` (source gate on `scripts/run_audit_closeout.sh`) | **Required — verified** |
 | Actual-runner integration: failing structural `Rscript` via PATH shim → runner exit ≠ 0 | **Required — verified** |
 | Full closeout + Phase 2 re-run with complete logs and captured exit codes | **Required — see evidence below** |
-| Tab-visit auto-calc interactive / runtime proof | **Closed under acceptance** — `testServer` + gate unit (chromote still deferred) |
+| Tab-visit auto-calc interactive / runtime proof | **Closed under acceptance** — `testServer` + gate unit + chromote E2E |
 | Rf fallback note UI | **Fallback** structure kept; **live US+TW Rf** proven in acceptance |
 | Live Yahoo / TPEx statements | **Closed under acceptance** — `test_audit_live_statements.R` |
-| Deploy baseline ↔ bundle ↔ display version | Live: `12690522` / `v24.00` (`app_24.0/`) |
+| Multi-worker cache / quote-vs-statement timing | **Closed under acceptance** — `test_audit_live_cache_races.R` |
+| chromote / shinytest harness | **Closed under acceptance** — `test_audit_chromote_e2e.R` |
+| Deploy baseline ↔ bundle ↔ display version | Live: `12690593` / `v24.01` (`app_24.0/`) |
 
-**Conclusion:** Structural closeout + runner P0 are required gates; they alone are not full acceptance. Full objective evidence (tab-visit runtime, live Rf, live statements) is recorded on the v24 baseline in `PHASE_AUDIT_ACCEPTANCE.md`. Multi-worker cache races and chromote E2E remain out of scope.
+**Conclusion:** Structural closeout + runner P0 are required gates; they alone are not full acceptance. Full objective evidence (including LIVE-UNCOVERED-3/4 and chromote E2E) is recorded on the v24 baseline in `PHASE_AUDIT_ACCEPTANCE.md`.
 
 ---
 

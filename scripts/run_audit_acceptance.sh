@@ -70,6 +70,24 @@ export YNOW_ACCEPTANCE_REQUIRE_LIVE_STATEMENTS="${YNOW_ACCEPTANCE_REQUIRE_LIVE_S
 echo "==> live_statements (Yahoo US/TW + TPEx; require=${YNOW_ACCEPTANCE_REQUIRE_LIVE_STATEMENTS})"
 run_step live_statements bash -c "cd '${APP}' && YNOW_DEBUG_SKIP_PY=0 Rscript tests/test_audit_live_statements.R"
 
+# Multi-worker shared cache + quote/statement tier timing (LIVE-UNCOVERED-3 / 4)
+echo "==> live_cache_races (LIVE-UNCOVERED-3/4)"
+run_step live_cache_races bash -c "cd '${APP}' && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_audit_live_cache_races.R"
+
+# chromote full-app browser E2E (closes P1D-NO-SHINYTEST)
+export YNOW_ACCEPTANCE_REQUIRE_CHROMOTE="${YNOW_ACCEPTANCE_REQUIRE_CHROMOTE:-1}"
+echo "==> chromote_e2e (require=${YNOW_ACCEPTANCE_REQUIRE_CHROMOTE})"
+run_step chromote_e2e bash -c "cd '${APP}' && Rscript tests/test_audit_chromote_e2e.R"
+if [[ "${YNOW_ACCEPTANCE_REQUIRE_CHROMOTE}" == "1" ]]; then
+  if [[ ! -f "${LOG_DIR}/acceptance_chromote_e2e.log" ]] || ! grep -q 'PASS=' "${LOG_DIR}/acceptance_chromote_e2e.log"; then
+    echo "ERROR: chromote_e2e log missing PASS summary" >&2
+    ec=1
+  elif grep -Eq 'FAIL=[1-9]' "${LOG_DIR}/acceptance_chromote_e2e.log"; then
+    echo "ERROR: chromote_e2e reported FAIL>0" >&2
+    ec=1
+  fi
+fi
+
 echo "==> live_rf_probe TW+US detail lines"
 LIVE_LOG="${LOG_DIR}/acceptance_live_rf.log"
 set +e
