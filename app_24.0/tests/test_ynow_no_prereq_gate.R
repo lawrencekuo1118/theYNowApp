@@ -1,5 +1,5 @@
 # test_ynow_no_prereq_gate.R — YNOW verdict/composite must not require SOP unlock
-# Run: Rscript app_23.0/tests/test_ynow_no_prereq_gate.R
+# Run: Rscript app_24.0/tests/test_ynow_no_prereq_gate.R
 
 .app_dir <- tryCatch({
   args <- commandArgs(trailingOnly = FALSE)
@@ -8,7 +8,7 @@
 }, error = function(e) getwd())
 if (basename(.app_dir) == "tests") .app_dir <- dirname(.app_dir)
 if (!file.exists(file.path(.app_dir, "investment_decision_module.R"))) {
-  .app_dir <- normalizePath(file.path(getwd(), "app_23.0"), mustWork = FALSE)
+  .app_dir <- normalizePath(file.path(getwd(), "app_24.0"), mustWork = FALSE)
 }
 setwd(.app_dir)
 

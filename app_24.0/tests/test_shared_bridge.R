@@ -1,5 +1,5 @@
 # Shared cash / debt / shares / revenue source for DCF, WACC, Multiples, SOTP.
-# Run: cd app_23.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_shared_bridge.R
+# Run: cd app_24.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_shared_bridge.R
 
 Sys.setenv(YNOW_DEBUG_SKIP_PY = "1")
 args <- commandArgs(trailingOnly = FALSE)

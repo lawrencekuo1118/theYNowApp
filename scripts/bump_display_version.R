@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# Display-version bump for the live line (app_23.0; app_22.0 remains readable).
+# Display-version bump for the live line (app_24.0; older app_* folders stay readable).
 #
 # Each successful deploy advances the display version by +0.01 and ships that
 # version. Set YNOW_VERSION_BUMP_MAJOR=1 for a full +1 cut (v22.09 -> v23.00).
@@ -49,10 +49,10 @@ ynow_major_display_label <- function(label) {
 }
 
 ynow_live_app_dir <- function(root) {
-  p23 <- file.path(root, "app_23.0")
-  p22 <- file.path(root, "app_22.0")
-  if (file.exists(file.path(p23, "app.R"))) return(p23)
-  if (file.exists(file.path(p22, "app.R"))) return(p22)
+  for (name in c("app_24.0", "app_23.0", "app_22.0")) {
+    p <- file.path(root, name)
+    if (file.exists(file.path(p, "app.R"))) return(p)
+  }
   stop("live app directory not found under ", root)
 }
 
@@ -124,10 +124,12 @@ ynow_apply_display_version <- function(root, old_label, new_label) {
   readme_path <- file.path(app_dir, "README.md")
   if (file.exists(readme_path)) {
     readme <- readLines(readme_path, warn = FALSE, encoding = "UTF-8")
-    if (length(readme) && grepl(old_label, readme[[1]], fixed = TRUE)) {
-      readme[[1]] <- ynow_replace_label(readme[[1]], old_label, new_label)
-      ynow_write_lines(readme_path, readme)
-      changed <- c(changed, readme_path)
+    if (length(readme) && grepl("The YNow App v[0-9]", readme[[1]])) {
+      readme[[1]] <- sub("v[0-9]+(\\.[0-9]{1,2})?", new_label, readme[[1]])
+      if (!identical(readme, readLines(readme_path, warn = FALSE, encoding = "UTF-8"))) {
+        ynow_write_lines(readme_path, readme)
+        changed <- c(changed, readme_path)
+      }
     }
   }
 
@@ -178,11 +180,26 @@ ynow_git_commit_paths <- function(root, paths, message, must = TRUE) {
   msg_file <- tempfile(pattern = "ynow-commit-", fileext = ".txt")
   on.exit(unlink(msg_file), add = TRUE)
   ynow_write_lines(msg_file, message)
+  system2("git", c("-C", root, "add", "--", rel))
   status <- system2("git", c("-C", root, "commit", "-F", msg_file, "--", rel))
   if (!identical(status, 0L)) {
-    if (must) stop("git commit failed (status ", status, "): ", message)
-    message("git commit failed (status ", status, "): ", message)
-    return(invisible(FALSE))
+    tree <- system2("git", c("-C", root, "write-tree"), stdout = TRUE)
+    parent <- system2("git", c("-C", root, "rev-parse", "HEAD"), stdout = TRUE)
+    new_sha <- system2(
+      "git", c("-C", root, "commit-tree", tree[[1]], "-p", parent[[1]], "-F", msg_file),
+      stdout = TRUE
+    )
+    if (!length(new_sha) || !nzchar(new_sha[[1]])) {
+      if (must) stop("git commit failed (status ", status, "): ", message)
+      message("git commit failed (status ", status, "): ", message)
+      return(invisible(FALSE))
+    }
+    upd <- system2("git", c("-C", root, "update-ref", "HEAD", new_sha[[1]]))
+    if (!identical(upd, 0L)) {
+      if (must) stop("git update-ref failed (status ", upd, "): ", message)
+      message("git update-ref failed (status ", upd, "): ", message)
+      return(invisible(FALSE))
+    }
   }
   invisible(TRUE)
 }

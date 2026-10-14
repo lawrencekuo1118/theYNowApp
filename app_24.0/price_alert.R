@@ -64,6 +64,7 @@ price_alert_empty <- function() {
     notify_email = logical(0),
     source = character(0),
     metric = character(0),
+    screen_ref = character(0),
     stringsAsFactors = FALSE
   )
 }
@@ -122,7 +123,16 @@ price_alert_read <- function(path = price_alert_store_path()) {
   raw$source[!nzchar(raw$source) | is.na(raw$source)] <- "form"
   raw$metric <- as.character(raw$metric)
   raw$metric[is.na(raw$metric)] <- ""
+  raw$screen_ref <- as.character(raw$screen_ref)
+  raw$screen_ref[is.na(raw$screen_ref)] <- ""
   raw
+}
+
+price_alert_screen_text <- function(screen_ref) {
+  x <- as.character(screen_ref)
+  if (!length(x)) return(character(0))
+  x[is.na(x)] <- ""
+  sub("^scr_[^|]*\\|", "", x)
 }
 
 price_alert_write <- function(df, path = price_alert_store_path()) {
@@ -239,9 +249,11 @@ price_alert_new_id <- function() {
 
 price_alert_add <- function(
   df, email, ticker, kind, level, mos_pct = 0, note = "",
-  notify_app = TRUE, notify_email = FALSE, source = "form", metric = ""
+  notify_app = TRUE, notify_email = FALSE, source = "form", metric = "",
+  screen_ref = ""
 ) {
   if (is.null(df) || !is.data.frame(df)) df <- price_alert_empty()
+  df <- .pa_fill_cols(df, price_alert_empty())
   email <- tolower(trimws(as.character(email)[1]))
   ticker <- toupper(trimws(as.character(ticker)[1]))
   kind <- as.character(kind)[1]
@@ -269,7 +281,8 @@ price_alert_add <- function(
     price_alert_new_id(), email, ticker, kind, level, mos_pct,
     as.character(note)[1], TRUE, "armed", NA_real_, "", "", "",
     notify_app, notify_email,
-    as.character(source)[1], as.character(metric)[1]
+    as.character(source)[1], as.character(metric)[1],
+    as.character(screen_ref)[1]
   )
   list(ok = TRUE, reason = "saved", df = rbind(df, row))
 }
@@ -574,6 +587,7 @@ ynow_alertable <- function(
 price_alert_tab_ui <- function() {
   tabItem(
     tabName = "price_alerts",
+    screener_panel_ui(),
     fluidRow(
       box(
         title = .pa_bi("pa_title"),
@@ -789,6 +803,13 @@ price_alert_server <- function(input, output, session, ui_locale_rv = NULL,
   say <- function(key) ui_str(key, loc())
   pa_refresh <- reactiveVal(0L)
   hist_refresh <- reactiveVal(0L)
+  screener_server(
+    input, output, session,
+    ui_locale_rv = ui_locale_rv,
+    say = say,
+    loc = loc,
+    pa_refresh = pa_refresh
+  )
   .metrics_by_ticker <- function() {
     from_rv <- if (is.null(metric_snapshot_rv)) {
       NULL
@@ -831,6 +852,7 @@ price_alert_server <- function(input, output, session, ui_locale_rv = NULL,
       )
       show <- data.frame(
         Ticker = df$ticker,
+        Screen = price_alert_screen_text(df$screen_ref),
         Condition = df$kind,
         Level = df$level,
         Channel = ch,
@@ -842,7 +864,7 @@ price_alert_server <- function(input, output, session, ui_locale_rv = NULL,
         check.names = FALSE
       )
       names(show) <- c(
-        say("pa_col_ticker"), say("pa_col_kind"), say("pa_col_level"),
+        say("pa_col_ticker"), say("pa_col_screen"), say("pa_col_kind"), say("pa_col_level"),
         say("pa_col_channel"), say("pa_col_email"), say("pa_col_status"),
         say("pa_col_price"), say("pa_col_sent")
       )

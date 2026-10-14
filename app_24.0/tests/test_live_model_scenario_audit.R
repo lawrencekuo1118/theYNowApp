@@ -2,7 +2,7 @@
 # Live random-ticker audit across valuation model scenarios (US + TW).
 # Verifies: recommend → param resolve → formula FV → reasonableness.
 # Run:
-#   cd app_23.0 && RETICULATE_PYTHON=.ynow_venv/bin/python3 \
+#   cd app_24.0 && RETICULATE_PYTHON=.ynow_venv/bin/python3 \
 #     Rscript tests/test_live_model_scenario_audit.R
 #
 # Optional: YNOW_AUDIT_SEED=42  YNOW_AUDIT_OUT=/path/to/report.md
@@ -495,7 +495,7 @@ md <- c(
   "# Live valuation model scenario audit",
   "",
   paste0("- Seed: `", seed, "`"),
-  paste0("- App: `app_23.0`"),
+  paste0("- App: `app_24.0`"),
   paste0("- When: ", format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")),
   paste0("- Results: PASS=", pass, " FAIL=", fail, " WARN=", warn_n),
   "",

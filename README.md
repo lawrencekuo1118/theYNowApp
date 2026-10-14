@@ -3,7 +3,7 @@
 US / Taiwan stock fundamental analysis Shiny app（雲端版：yfinance，無 Chromote）。
 
 **Live:** https://hopesmasher1118.shinyapps.io/TheYNowApp/  
-**Display version:** v21.91 · **App folder:** `app_21.0/`  
+**Display version:** v24.00 · **App folder:** `app_24.0/`  
 **Deploy baseline:** `scripts/DEPLOY_BASELINE.txt`（bundleId／commit／URL；開發比對以此為準，不是單純看 Git tip）
 
 ## 維護方式
@@ -15,9 +15,9 @@ US / Taiwan stock fundamental analysis Shiny app（雲端版：yfinance，無 Ch
 | Coding（建議 git） | `/Users/lawrencekuo/coding/theYNowApp` | commit／push／deploy |
 | OneDrive mirror | `/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp` | 同步鏡像（勿在此跑 `git status`／`git push`） |
 
-- **每個整階版本一個資料夾**（目前活動線：`app_21.0/`；顯示版號可為 `v21.91` 等 +0.01 補丁）
-- 歷史版本：`app 3.0` … `app_20.0`（本機／repo 封存；[GitHub Releases](https://github.com/lawrencekuo1118/theYNowApp/releases) 另有標籤）
-- 詳細版號變更紀錄：見 [`app_21.0/README.md`](app_21.0/README.md)
+- **每個整階版本一個資料夾**（目前活動線：`app_24.0/`；顯示版號 `v24.00`，其後 deploy 以 +0.01 補丁）
+- 歷史版本：`app 3.0` … `app_23.0`（本機／repo 封存；[GitHub Releases](https://github.com/lawrencekuo1118/theYNowApp/releases) 另有標籤）
+- 詳細版號變更紀錄：見 [`app_24.0/README.md`](app_24.0/README.md)
 
 ## 本機開發（建議）
 
@@ -27,12 +27,12 @@ git pull origin master
 ```
 
 ```r
-shiny::runApp("app_21.0")
+shiny::runApp("app_24.0")
 ```
 
-Cursor Cloud：`bash scripts/cloud-agent-start.sh`（`app_21.0/` → `0.0.0.0:3838`）。
+Cursor Cloud：`bash scripts/cloud-agent-start.sh`（`app_24.0/` → `0.0.0.0:3838`）。
 
-Requires R packages used by `app_21.0/setup.R` / `app_21.0/global.R`, and Python deps from `app_21.0/requirements.txt`（可選本機 `app_21.0/.ynow_venv`）。
+Requires R packages used by `app_24.0/setup.R` / `app_24.0/global.R`, and Python deps from `app_24.0/requirements.txt`（可選本機 `app_24.0/.ynow_venv`）。
 
 ## 本機部署到 shinyapps.io
 
@@ -53,7 +53,7 @@ Rscript scripts/deploy_app_21.R
 
 ```r
 rsconnect::deployApp(
-  appDir = "app_21.0",
+  appDir = "app_24.0",
   appName = "TheYNowApp",
   appId = 10907657,
   forceUpdate = TRUE
@@ -77,10 +77,10 @@ Deploy 後請更新 `scripts/DEPLOY_BASELINE.txt`（bundleId、commit、`display
 ## Cloud notes
 
 - Financials via **yfinance** (no Chromote / Chrome on shinyapps.io)
-- `app_21.0/requirements.txt` / `py_require` for cloud Python
-- UI copy：en-US + zh-TW（台灣投資界用語）；見 `app_21.0/ui_locale.R`
+- `app_24.0/requirements.txt` / `py_require` for cloud Python
+- UI copy：en-US + zh-TW（台灣投資界用語）；見 `app_24.0/ui_locale.R`
 
-## Layout (`app_21.0/`)
+## Layout (`app_24.0/`)
 
 | File / area | Role |
 |-------------|------|

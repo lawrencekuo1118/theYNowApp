@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
 # Phase 3 — Parameter & Boundary Audit (default lock + edge-case guards)
 # Offline; no live Yahoo / TPEx network required.
-# Run: cd app_23.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_parameters_boundaries.R
+# Run: cd app_24.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_parameters_boundaries.R
 
 args <- commandArgs(trailingOnly = FALSE)
 file_arg <- sub("^--file=", "", args[grep("^--file=", args)])

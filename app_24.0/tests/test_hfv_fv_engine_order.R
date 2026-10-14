@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 # HFV Chart overlay / Replay model pickers follow sidebar Fair Value order.
-# Run: cd app_23.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_hfv_fv_engine_order.R
+# Run: cd app_24.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_hfv_fv_engine_order.R
 
 args <- commandArgs(trailingOnly = FALSE)
 file_arg <- sub("^--file=", "", args[grep("^--file=", args)])
