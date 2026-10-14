@@ -5,6 +5,8 @@
 #
 # NOTE: set -uo pipefail is required so Rscript|tee pipelines do not swallow
 # Rscript failures (pipeline status would otherwise be tee's exit 0).
+# Regression: scripts/test_audit_closeout_pipefail.sh (source gate + local proof)
+# Integration (standalone, do not nest here): scripts/test_audit_closeout_runner_exit.sh
 
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
