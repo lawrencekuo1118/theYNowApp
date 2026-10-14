@@ -786,8 +786,21 @@ server <- function(input, output, session) {
     }
 
     # No market-default ticker preload (TW 2330 / US TSM). Clear the input;
-    # placeholder hint only (applyUiLocale → ticker_placeholder_us／tw).
-    tryCatch(updateTextInput(session, "sc", value = ""), error = function(e) NULL)
+    # set market-specific placeholder here (updateTextInput would otherwise
+    # wipe the JS placeholder from applyUiLocale).
+    sc_ph <- tryCatch(
+      ui_str(
+        if (identical(mode, "TW")) "ticker_placeholder_tw" else "ticker_placeholder_us",
+        isolate(ui_locale())
+      ),
+      error = function(e) if (identical(mode, "TW")) "e.g. 2330" else "e.g. AAPL / TSM"
+    )
+    tryCatch(
+      updateTextInput(session, "sc", value = "", placeholder = sc_ph),
+      error = function(e) {
+        tryCatch(updateTextInput(session, "sc", value = ""), error = function(e2) NULL)
+      }
+    )
     user_has_searched(FALSE)
     param_audit_baseline(NULL)
     param_audit_baseline_at(NULL)

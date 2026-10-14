@@ -77,7 +77,8 @@ ui_txt <- paste(readLines(file.path(root, "ynow_ui.R"), warn = FALSE, encoding =
 loc_txt <- paste(readLines(file.path(root, "ui_locale.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check(
   "market switch clears sc; no default ticker preload",
-  grepl('updateTextInput\\(session, \"sc\", value = \"\"\\)', srv_txt, perl = TRUE) &&
+  grepl('updateTextInput\\(session, \"sc\", value = \"\", placeholder = sc_ph\\)', srv_txt, perl = TRUE) &&
+    grepl("ticker_placeholder_tw", srv_txt, fixed = TRUE) &&
     !grepl("pending_market_default_ticker", srv_txt, fixed = TRUE) &&
     !grepl(".ynow_apply_pending_market_default_ticker", srv_txt, fixed = TRUE) &&
     !grepl("current_ticker\\(prof\\$default_ticker\\)", srv_txt, perl = TRUE)
