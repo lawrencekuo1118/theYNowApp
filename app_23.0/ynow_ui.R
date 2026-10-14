@@ -5714,7 +5714,7 @@ ui <- dashboardPage(
           padding-left: 1.2em;
         }
         .ynow-bblab-split li { margin-bottom: 4px; }
-        /* ---- Full mode: white hairlines between sidebar groups ----
+        /* ---- Full mode: white dashed separators between sidebar groups ----
            Home | Macro
            Asset Transmission | Blue Chip
            YNOW | Model Dashboard  (Smart Analysis is hidden in Full)
