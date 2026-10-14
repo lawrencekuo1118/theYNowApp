@@ -7,6 +7,24 @@ server <- function(input, output, session) {
   # instead of forcing the user onto the gray "Disconnected / Reload" overlay.
   tryCatch(session$allowReconnect("force"), error = function(e) NULL)
 
+  # #region agent log
+  .agent_dbg <- function(hypothesisId, location, message, data = list()) {
+    tryCatch({
+      payload <- list(
+        hypothesisId = as.character(hypothesisId %||% "")[1],
+        location = as.character(location %||% "")[1],
+        message = as.character(message %||% "")[1],
+        data = if (is.null(data)) list() else data,
+        timestamp = as.numeric(Sys.time()) * 1000,
+        session = tryCatch(as.character(session$token %||% "")[1], error = function(e) "")
+      )
+      line <- jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null", Digits = 14)
+      cat(as.character(line), "\n", file = "/opt/cursor/logs/debug.log", append = TRUE, sep = "")
+    }, error = function(e) NULL)
+    invisible(NULL)
+  }
+  # #endregion
+
 
   # Sidebar tab label busy dots (JS `ynowTabBusy` → animated 「…」 on menu item)
   .ynow_set_tab_busy <- function(tab, busy = TRUE) {
@@ -343,6 +361,21 @@ server <- function(input, output, session) {
     invisible(TRUE)
   }
 
+  # #region agent log
+  observeEvent(input$ynow_dbg_locale_applied, {
+    p <- input$ynow_dbg_locale_applied
+    if (is.null(p)) return()
+    .agent_dbg("F", "ynow_ui.R:applyUiLocale", "client_locale_applied", list(
+      locale = as.character(p$locale %||% "")[1],
+      market = as.character(p$market %||% "")[1],
+      smart_sub_before = as.character(p$smart_sub_before %||% "")[1],
+      smart_sub_after = as.character(p$smart_sub_after %||% "")[1],
+      flash_likely = isTRUE(p$flash_likely),
+      client_ts = suppressWarnings(as.numeric(p$ts %||% NA_real_)[1])
+    ))
+  }, ignoreNULL = TRUE, ignoreInit = TRUE)
+  # #endregion
+
   .push_ui_locale <- function(locale, sync_picker = TRUE) {
     loc <- normalize_ui_locale(locale)
     ui_locale(loc)
@@ -359,6 +392,13 @@ server <- function(input, output, session) {
       tabs = ui_tab_label_map(loc),
       boxes = ui_box_header_specs(loc)
     )
+    # #region agent log
+    .agent_dbg("F", "ynow_server.R:.push_ui_locale", "locale_push", list(
+      loc = loc, market = mode, sync_picker = isTRUE(sync_picker),
+      smart_page_sub_preview = substr(as.character(payload$strings$smart_page_sub %||% "")[1], 1, 80),
+      menu_smart = as.character(payload$strings$menu_smart_analysis %||% "")[1]
+    ))
+    # #endregion
     session$sendCustomMessage("ynowUiLocale", payload)
     # SGR 自訂輸入標籤隨 locale
     tryCatch({
@@ -2190,13 +2230,26 @@ server <- function(input, output, session) {
   }
 
   model_sidebar_rec <- reactive({
+    loc_now <- tryCatch(ui_locale(), error = function(e) "en")
     if (!isTRUE(user_has_searched())) {
+      # #region agent log
+      .agent_dbg("B", "ynow_server.R:model_sidebar_rec", "empty_not_searched_zh_hardcoded", list(
+        loc = loc_now, branch = "not_searched",
+        reason_zh = "請先按下 Search 載入公司後產生推薦。",
+        has_reason_en = FALSE
+      ))
+      # #endregion
       return(.empty_model_rec(
         "尚未搜尋",
         "請先按下 Search 載入公司後產生推薦。"
       ))
     }
     if (isTRUE(fs_all_empty())) {
+      # #region agent log
+      .agent_dbg("B", "ynow_server.R:model_sidebar_rec", "empty_fs_zh_hardcoded", list(
+        loc = loc_now, branch = "fs_all_empty", has_reason_en = FALSE
+      ))
+      # #endregion
       return(.empty_model_rec(
         "Yahoo 尚無年報",
         paste0(
@@ -2220,6 +2273,11 @@ server <- function(input, output, session) {
       )
       has_roe <- is.finite(ni) && is.finite(equity) && equity > 0
       has_bv <- is.finite(equity) && equity > 0
+      # #region agent log
+      .agent_dbg("B", "ynow_server.R:model_sidebar_rec", "tpex_fallback_zh_hardcoded", list(
+        loc = loc_now, branch = "tpex", has_roe = isTRUE(has_roe), has_reason_en = FALSE
+      ))
+      # #endregion
       list(
         company_type = "fallback",
         primary = if (isTRUE(has_roe)) "ri" else "pb",
@@ -2254,12 +2312,26 @@ server <- function(input, output, session) {
     bs <- tryCatch(d_balance_sheet(), error = function(e) NULL)
     ind <- corp_industry_text()
     if (is.null(cf) || !is.data.frame(cf) || nrow(cf) == 0) {
+      # #region agent log
+      .agent_dbg("B", "ynow_server.R:model_sidebar_rec", "waiting_fs_zh_hardcoded", list(
+        loc = loc_now, branch = "cf_empty", has_reason_en = FALSE
+      ))
+      # #endregion
       return(.empty_model_rec(
         "等待財報資料",
         "搜尋股票並載入財報後產生推薦。",
         company_type = "fallback"
       ))
     }
+    # #region agent log
+    .agent_dbg("C", "ynow_server.R:model_sidebar_rec", "recommend_call_no_locale_arg", list(
+      loc = loc_now,
+      locale_arg_passed = FALSE,
+      recommend_default = "zh-TW",
+      industry = substr(as.character(ind %||% "")[1], 1, 60),
+      cf_nrow = nrow(cf)
+    ))
+    # #endregion
     rec_out <- recommend_valuation_models(
       cf,
       industry_text = ind,
@@ -2270,6 +2342,16 @@ server <- function(input, output, session) {
       lifecycle_result = tryCatch(central_lifecycle(), error = function(e) NULL),
       selected_stage = input$lifecycle_stage %||% "auto"
     )
+    # #region agent log
+    .agent_dbg("C", "ynow_server.R:model_sidebar_rec", "recommend_result", list(
+      loc = loc_now,
+      primary = as.character(rec_out$primary %||% "")[1],
+      has_reason = nzchar(as.character(rec_out$reason %||% "")[1]),
+      has_reason_en = nzchar(as.character(rec_out$reason_en %||% "")[1]),
+      reason_preview = substr(as.character(rec_out$reason %||% "")[1], 1, 60),
+      reason_en_preview = substr(as.character(rec_out$reason_en %||% "")[1], 1, 60)
+    ))
+    # #endregion
     rec_out
     }
   })
@@ -8978,6 +9060,18 @@ server <- function(input, output, session) {
     # TW 3363-like insufficient FV still keeps Multiples as Reference — do not require
     # a Fair Value primary before companion-running that Implied Price path in Lite.
     ref_only <- !isTRUE(fv_prim) && identical(ref, "multiples")
+    # #region agent log
+    .agent_dbg("E", "ynow_server.R:lite_auto_calc", "auto_calc_gate", list(
+      tk = as.character(tk)[1],
+      lite = isTRUE(lite_mode()),
+      loc = tryCatch(ui_locale(), error = function(e) "en"),
+      prim = prim, sec = sec, ref = ref,
+      fv_prim = isTRUE(fv_prim), ref_only = isTRUE(ref_only),
+      primary_ready = if (isTRUE(fv_prim)) isTRUE(.auto_calc_primary_ready(prim)) else NA,
+      applied_sig = as.character(isolate(lite_scenario_applied_sig()) %||% "")[1],
+      calc_sig = as.character(isolate(auto_calc_primary_sig()) %||% "")[1]
+    ))
+    # #endregion
     req(isTRUE(fv_prim) || isTRUE(ref_only))
 
     # Lite: apply recommended scenario once, then proceed without waiting on hidden radios.
@@ -8996,6 +9090,11 @@ server <- function(input, output, session) {
         sep = "|"
       )
       if (!identical(lite_scenario_applied_sig(), want_sig)) {
+        # #region agent log
+        .agent_dbg("E", "ynow_server.R:lite_auto_calc", "apply_lite_scenario_then_return", list(
+          tk = as.character(tk)[1], want_sig = want_sig
+        ))
+        # #endregion
         .apply_lite_recommended_scenario(rec)
         lite_scenario_applied_sig(want_sig)
         return()
@@ -9005,6 +9104,12 @@ server <- function(input, output, session) {
     }
 
     if (isTRUE(fv_prim) && !isTRUE(.auto_calc_primary_ready(prim))) {
+      # #region agent log
+      .agent_dbg("E", "ynow_server.R:lite_auto_calc", "primary_not_ready_return", list(
+        tk = as.character(tk)[1], prim = prim,
+        lite = isTRUE(lite_mode())
+      ))
+      # #endregion
       # Surface why primary cannot auto-calc (mobile Lite never opens model tabs)
       if (identical(prim, "ddm")) {
         d0 <- suppressWarnings(as.numeric(input[["mod_ddm-d0"]])[1])
@@ -9061,6 +9166,11 @@ server <- function(input, output, session) {
     )
     if (identical(auto_calc_primary_sig(), sig)) return()
 
+    # #region agent log
+    .agent_dbg("E", "ynow_server.R:lite_auto_calc", "fire_auto_calc", list(
+      tk = as.character(tk)[1], keys = keys, sig = sig, lite = isTRUE(lite_mode())
+    ))
+    # #endregion
     auto_calc_primary_sig(sig)
     for (k in keys) .fire_auto_calc_primary(k)
   })
@@ -9071,10 +9181,18 @@ server <- function(input, output, session) {
   output$smart_analysis_summary <- renderUI({
     loc <- tryCatch(ui_locale(), error = function(e) "en")
     if (!isTRUE(user_has_searched())) {
+      # #region agent log
+      .agent_dbg("E", "ynow_server.R:smart_analysis_summary", "waiting_not_searched", list(
+        loc = loc, waiting_copy = ui_str("smart_waiting", loc)
+      ))
+      # #endregion
       return(tags$p(class = "ynow-smart-card-meta", ui_str("smart_waiting", loc)))
     }
     rec <- tryCatch(model_sidebar_rec(), error = function(e) NULL)
     if (is.null(rec)) {
+      # #region agent log
+      .agent_dbg("E", "ynow_server.R:smart_analysis_summary", "pending_null_rec", list(loc = loc))
+      # #endregion
       return(tags$p(class = "ynow-smart-card-meta", ui_str("smart_calc_pending", loc)))
     }
     prim <- as.character(rec$primary %||% "")[1]
@@ -9130,6 +9248,15 @@ server <- function(input, output, session) {
     }
     tk <- tryCatch(as.character(current_ticker() %||% "")[1], error = function(e) "")
     searched <- isTRUE(user_has_searched())
+    # #region agent log
+    .agent_dbg("D", "ynow_server.R:smart_analysis_summary", "summary_render", list(
+      loc = loc, tk = tk, prim = prim, sec = sec,
+      base_finite = is.finite(base), bear_finite = is.finite(bear),
+      prim_meta = substr(as.character(prim_meta %||% "")[1], 1, 80),
+      meta_hardcoded_bear_bull = grepl("Bear |Bull ", as.character(prim_meta %||% "")[1]),
+      pending = identical(as.character(prim_meta %||% "")[1], ui_str("smart_calc_pending", loc))
+    ))
+    # #endregion
     tags$div(
       class = "ynow-smart-card-row",
       ynow_alertable(
@@ -9226,7 +9353,22 @@ server <- function(input, output, session) {
     if (!isTRUE(user_has_searched())) return(NULL)
     rec <- tryCatch(model_sidebar_rec(), error = function(e) NULL)
     if (is.null(rec)) return(NULL)
-    reason <- as.character(rec$reason %||% "")[1]
+    reason_zh <- as.character(rec$reason %||% "")[1]
+    reason_en <- as.character(rec$reason_en %||% "")[1]
+    # Current (buggy) path always uses reason; log whether reason_en was available.
+    reason <- reason_zh
+    picked <- "reason_zh"
+    # #region agent log
+    .agent_dbg("A", "ynow_server.R:smart_analysis_reason", "reason_locale_pick", list(
+      loc = loc,
+      picked = picked,
+      has_reason_zh = nzchar(reason_zh),
+      has_reason_en = nzchar(reason_en),
+      would_prefer_en = identical(loc, "en") && nzchar(reason_en),
+      reason_preview = substr(reason, 1, 80),
+      reason_en_preview = substr(reason_en, 1, 80)
+    ))
+    # #endregion
     des <- tryCatch(.lite_desired_scenario(rec), error = function(e) NULL)
     scenario_bits <- character(0)
     if (!is.null(des)) {
@@ -9323,6 +9465,16 @@ server <- function(input, output, session) {
     labs <- labs[ok]
     vals <- vals[ok]
     cols <- cols[ok]
+    y_title <- paste0("Price (", money_prefix(), ")")
+    # #region agent log
+    .agent_dbg("D", "ynow_server.R:smart_analysis_chart", "chart_labels", list(
+      loc = loc,
+      labs = as.character(labs),
+      y_title = y_title,
+      hardcoded_bear_base_bull = any(grepl(" Bear$| Base$| Bull$| FV$", labs)),
+      y_title_en_hardcoded = grepl("^Price \\(", y_title)
+    ))
+    # #endregion
 
     plotly::plot_ly(
       x = labs,
@@ -9335,7 +9487,7 @@ server <- function(input, output, session) {
     ) %>%
       plotly::layout(
         margin = list(l = 48, r = 16, t = 24, b = 64),
-        yaxis = list(title = paste0("Price (", money_prefix(), ")"), zeroline = FALSE),
+        yaxis = list(title = y_title, zeroline = FALSE),
         xaxis = list(title = "", tickangle = -20),
         showlegend = FALSE,
         paper_bgcolor = "rgba(0,0,0,0)",
