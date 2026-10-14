@@ -1256,13 +1256,14 @@ server <- function(input, output, session) {
           )
         }
 
-        # .TWO：Yahoo IS／BS／CF 全空 → 櫃買「財務資料簡報」摘要 fallback（上櫃 O_／興櫃 U_）
+        # .TWO：Yahoo IS／BS 缺漏（含全空或部分空）→ 櫃買「財務資料簡報」補齊
+        # （上櫃 O_／興櫃 U_）。只填空表、不捏造 CF；閘門用 should_try_* 而非要求三表全空。
         tpex_used <- FALSE
         if (exists("apply_tpex_financial_fallback", mode = "function") &&
             grepl("\\.TWO$", stock_code, ignore.case = TRUE) &&
-            exists("financials_is_bs_cf_all_empty", mode = "function") &&
-            isTRUE(financials_is_bs_cf_all_empty(res))) {
-          incProgress(0.55, detail = "Yahoo 年報空，改試櫃買季報彙總…")
+            exists("should_try_tpex_financial_fallback", mode = "function") &&
+            isTRUE(should_try_tpex_financial_fallback(stock_code, res))) {
+          incProgress(0.55, detail = "Yahoo 年報缺漏，改試櫃買季報彙總…")
           fb <- tryCatch(
             apply_tpex_financial_fallback(res, stock_code),
             error = function(e) list(res = res, used = FALSE, error = conditionMessage(e))

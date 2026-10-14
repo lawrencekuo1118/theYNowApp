@@ -622,9 +622,9 @@ financials_is_bs_cf_all_empty <- function(res) {
     .stmt_empty("Cash Flow")
 }
 
-# 櫃買「財務資料簡報」季報彙總（上櫃 O_*.xls／興櫃 U_*.xls）→ Yahoo 空三表時 fallback。
-# 僅摘要欄位；非完整 IS／BS／CF。實作見 tpex_financial_summary.py／tpex_financial.R。
-# 勿接 FinMind；勿對未提供科目捏造數值。
+# 櫃買「財務資料簡報」季報彙總（上櫃 O_*.xls／興櫃 U_*.xls）→ Yahoo IS／BS 缺漏時 soft-fill。
+# 僅摘要欄位；非完整 IS／BS／CF。Search／HFV 皆走 should_try_tpex_financial_fallback。
+# 勿接 FinMind；勿對未提供科目（尤其 CF／CapEx／FCF）捏造數值。
 YNOW_MOPS_HOME_URL <- "https://mops.twse.com.tw/"
 YNOW_TPEX_HOME_URL <- "https://www.tpex.org.tw/"
 YNOW_TPEX_FINANCIAL_SUMMARY_URL <-

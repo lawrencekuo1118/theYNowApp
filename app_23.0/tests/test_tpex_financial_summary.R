@@ -86,6 +86,62 @@ check(
   isTRUE(should_try_tpex_financial_fallback("6488.TWO", empty_yahoo))
 )
 
+# Partial Yahoo (BS present, IS empty) must still trigger TPEx soft-fill
+partial_yahoo <- list(
+  "Income Statement" = list(expanded = data.frame(Breakdown = character(0))),
+  "Balance Sheet" = list(expanded = data.frame(
+    Breakdown = "Stockholders Equity",
+    `2024` = "1000",
+    check.names = FALSE, stringsAsFactors = FALSE
+  )),
+  "Cash Flow" = list(expanded = data.frame(Breakdown = character(0)))
+)
+check(
+  "should_try when only IS empty .TWO",
+  isTRUE(should_try_tpex_financial_fallback("6488.TWO", partial_yahoo))
+)
+check(
+  "should_try false when IS+BS both present",
+  {
+    both <- list(
+      "Income Statement" = list(expanded = data.frame(
+        Breakdown = "Total Revenue", `2024` = "1",
+        check.names = FALSE, stringsAsFactors = FALSE
+      )),
+      "Balance Sheet" = list(expanded = data.frame(
+        Breakdown = "Stockholders Equity", `2024` = "1",
+        check.names = FALSE, stringsAsFactors = FALSE
+      )),
+      "Cash Flow" = list(expanded = data.frame(Breakdown = character(0)))
+    )
+    isFALSE(should_try_tpex_financial_fallback("6488.TWO", both))
+  }
+)
+
+# Merge: fill empty IS from TPEx, keep Yahoo BS
+tpex_stub <- list(
+  "Income Statement" = list(expanded = data.frame(
+    Breakdown = "Total Revenue", `2024` = "999",
+    check.names = FALSE, stringsAsFactors = FALSE
+  )),
+  "Balance Sheet" = list(expanded = data.frame(
+    Breakdown = "Common Stock", `2024` = "50",
+    check.names = FALSE, stringsAsFactors = FALSE
+  )),
+  "Cash Flow" = list(expanded = data.frame(Breakdown = character(0)))
+)
+mrg <- .merge_yahoo_tpex_statements(partial_yahoo, tpex_stub)
+check(
+  "merge fills empty IS",
+  "Income Statement" %in% mrg$filled &&
+    identical(as.character(mrg$res[["Income Statement"]]$expanded$Breakdown[1]), "Total Revenue")
+)
+check(
+  "merge keeps Yahoo BS",
+  !("Balance Sheet" %in% mrg$filled) &&
+    identical(as.character(mrg$res[["Balance Sheet"]]$expanded$Breakdown[1]), "Stockholders Equity")
+)
+
 # Prefer system Python when available (avoid reticulate uv downloading a second CPython).
 Sys.setenv(YNOW_DEBUG_SKIP_PY = "")
 if (nzchar(Sys.which("python3"))) {
@@ -134,7 +190,10 @@ if (isTRUE(py_ok)) {
   cf_df <- coerce_financial_df(otc[["Cash Flow"]]$expanded)
   check("fixture OTC IS has revenue", any(grepl("Total Revenue", is_df[[1]])))
   check("fixture OTC IS has NI", any(grepl("^Net Income$", is_df[[1]])))
+  check("fixture OTC IS has Non Operating Income", any(grepl("Non Operating Income", is_df[[1]])))
+  check("fixture OTC IS has Pretax Income", any(grepl("Pretax Income", is_df[[1]])))
   check("fixture OTC BS has equity", any(grepl("Stockholders Equity", bs_df[[1]])))
+  check("fixture OTC BS has Total Assets", any(grepl("Total Assets", bs_df[[1]])))
   check("fixture OTC BS has BVPS", any(grepl("Book Value Per Share", bs_df[[1]])))
   check("fixture OTC CF empty (honest)", financial_df_is_empty(cf_df))
   check(

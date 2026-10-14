@@ -67,7 +67,6 @@ TPEX_UNMAPPED_FIELDS = (
     "Change In Working Capital",
     "Cash And Cash Equivalents",
     "Total Debt",
-    "Total Assets (absolute; only equity/assets % is published)",
     "full Income Statement line items",
     "full Balance Sheet line items",
     "Cash Flow statement (entirety)",
@@ -75,8 +74,9 @@ TPEX_UNMAPPED_FIELDS = (
 
 _CACHE_DIR = Path(tempfile.gettempdir()) / "ynow_tpex_fs_cache"
 _MEM: Dict[str, Tuple[float, Any]] = {}
-_MEM_TTL = 6 * 3600
-_DISK_TTL = 24 * 3600
+# Shorter TTL so newly posted O_/U_ quarters surface sooner (still quarterly cadence).
+_MEM_TTL = 2 * 3600
+_DISK_TTL = 8 * 3600
 
 
 def _dbg(*args, **kwargs):
@@ -319,8 +319,8 @@ def _discover_available(board: str, years: Sequence[int], timeout: float) -> Lis
 def fetch_tpex_ticker_rows(
     ticker: str,
     board: Optional[str] = None,
-    max_periods: int = 8,
-    years_back: int = 4,
+    max_periods: int = 10,
+    years_back: int = 5,
     timeout: float = 30.0,
 ) -> Dict[str, Any]:
     """
@@ -340,6 +340,7 @@ def fetch_tpex_ticker_rows(
         boards = ["OTC", "ESB"]
 
     now_y = time.gmtime().tm_year
+    # Include current calendar year even early in Q1 (index may already list prior Q4).
     years = list(range(now_y, now_y - max(years_back, 1) - 1, -1))
     rows: List[Dict[str, Any]] = []
     used_board = None
@@ -432,12 +433,14 @@ def rows_to_yahoo_shaped_statements(payload: Dict[str, Any], par_value: float = 
     Map TPEx summary rows into Yahoo-like statement payloads (columns/data).
 
     Mapped:
-      IS: Total Revenue, Operating Income, Net Income, Basic EPS, Diluted EPS
+      IS: Total Revenue, Operating Income, Non Operating Income, Pretax Income
+          (op+nonop when both published), Net Income, Basic／Diluted EPS
       BS: Common Stock, Ordinary Shares Number, Stockholders Equity (derived),
-          Book Value Per Share
-      CF: empty (honest)
+          Total Assets (equity ÷ equity/assets %), Book Value Per Share
+      CF: empty (honest — summary never publishes CapEx／FCF／cash)
 
     Stockholders Equity = BVPS × shares（股數由股本／面額推得；面額預設 NT$10）.
+    Total Assets = Equity / (淨值／總資產 %) when the published ratio is usable.
     """
     empty = {"columns": ["Breakdown"], "data": []}
     if not payload or not payload.get("ok") or not payload.get("rows"):
@@ -477,9 +480,18 @@ def rows_to_yahoo_shaped_statements(payload: Dict[str, Any], par_value: float = 
                 out.append(str(v))
         return out
 
+    def pretax(r):
+        op = r.get("op_income")
+        nonop = r.get("nonop")
+        if op is None and nonop is None:
+            return None
+        return float(op or 0.0) + float(nonop or 0.0)
+
     is_rows = [
         ["Total Revenue"] + col_vals(lambda r: _k_to_ntd(r.get("revenue"))),
         ["Operating Income"] + col_vals(lambda r: _k_to_ntd(r.get("op_income"))),
+        ["Non Operating Income"] + col_vals(lambda r: _k_to_ntd(r.get("nonop"))),
+        ["Pretax Income"] + col_vals(lambda r: _k_to_ntd(pretax(r))),
         ["Net Income"] + col_vals(lambda r: _k_to_ntd(r.get("ni"))),
         ["Net Income Common Stockholders"] + col_vals(lambda r: _k_to_ntd(r.get("ni"))),
         ["Basic EPS"] + col_vals(lambda r: r.get("eps")),
@@ -493,12 +505,26 @@ def rows_to_yahoo_shaped_statements(payload: Dict[str, Any], par_value: float = 
             return None
         return float(bv) * float(shares)
 
+    def total_assets(r):
+        eq = equity(r)
+        pct = r.get("equity_to_assets_pct")
+        if eq is None or pct is None:
+            return None
+        try:
+            p = float(pct)
+        except (TypeError, ValueError):
+            return None
+        if not (p > 0.5 and p <= 100.0):
+            return None
+        return float(eq) / (p / 100.0)
+
     bs_rows = [
         ["Common Stock"] + col_vals(lambda r: _k_to_ntd(r.get("capital_stock_k"))),
         ["Ordinary Shares Number"]
         + col_vals(lambda r: _shares_from_capital_k(r.get("capital_stock_k"), par_value)),
         ["Stockholders Equity"] + col_vals(equity),
         ["Common Stock Equity"] + col_vals(equity),
+        ["Total Assets"] + col_vals(total_assets),
         ["Book Value Per Share"] + col_vals(lambda r: r.get("bvps")),
     ]
 
