@@ -91,8 +91,8 @@ Do **not** claim a suite passed if its log is incomplete or its exit status was 
 | FAILSOFT-RF-FALLBACK | P1 | **UI** bilingual note when fallback; **live US+TW Rf** proven in acceptance. |
 | BRIDGE-ZERO-DEFAULT | P1 | **Accepted / documented** — intentional shared bridge; not changed. |
 | LIVE-UNCOVERED-1/2 | P1 | **Closed (acceptance)** — Yahoo + TPEx live statements suite. |
-| LIVE-UNCOVERED-3/4 | P1 | **Still open** — multi-worker cache / quote-vs-statement timing. |
-| P1D-NO-SHINYTEST | P2 | **Deferred** — no chromote / shinytest harness. |
+| LIVE-UNCOVERED-3/4 | P1 | **Closed (acceptance)** — multi-worker gate/cache + quote/statement tier suite. |
+| P1D-NO-SHINYTEST | P2 | **Closed (acceptance)** — `test_audit_chromote_e2e.R` CDP harness. |
 | NORM-DUP-PERIOD-CORRUPT | P1 | **Shipped** v23.29; regression in Phase 2 + closeout. |
 | CLOSEOUT-RUNNER-PIPEFAIL | P0 | **Fixed and regression-tested** against the actual runner (source gate + shim integration). |
 
@@ -162,7 +162,7 @@ YNOW_LIVE_PROBE=1 bash scripts/run_audit_closeout.sh
 | Closeout | Residuals + runner reliability | Runner P0 verified; acceptance continues on v24 |
 | Acceptance (v24) | Tab-visit runtime + live Rf + live statements | See `PHASE_AUDIT_ACCEPTANCE.md` |
 
-**Still out of scope by design:** multi-worker cache races (LIVE-UNCOVERED-3/4), shinytest / chromote automation.
+**Still out of scope by design:** claiming every production ticker’s valuation is numerically perfect.
 
 ---
 

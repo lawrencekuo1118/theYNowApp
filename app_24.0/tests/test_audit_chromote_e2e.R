@@ -47,41 +47,77 @@ if (fail > 0L) {
 }
 
 chrome_bin <- Sys.getenv("CHROMOTE_CHROME", unset = "")
-if (!nzchar(chrome_bin)) {
-  chrome_bin <- tryCatch(chromote::find_chrome(), error = function(e) "")
-}
-if (!nzchar(chrome_bin) || !file.exists(chrome_bin)) {
-  chrome_bin <- "/usr/local/bin/google-chrome"
-}
-check("chrome binary exists", file.exists(chrome_bin))
+# Prefer the real Chromium binary — some cloud wrappers inject a shared
+# --remote-debugging-port=9222 / user-data-dir that fights dedicated profiles.
+candidates <- c(
+  chrome_bin,
+  "/opt/google/chrome/chrome",
+  "/usr/local/bin/google-chrome",
+  tryCatch(chromote::find_chrome(), error = function(e) ""),
+  "/usr/bin/google-chrome-stable"
+)
+chrome_bin <- candidates[nzchar(candidates) & file.exists(candidates)][1]
+check("chrome binary exists", nzchar(chrome_bin %||% "") && file.exists(chrome_bin))
+cat("INFO chrome_bin=", chrome_bin, "\n", sep = "")
 
 # --- helpers ---------------------------------------------------------------
 .find_free_port <- function() {
   httpuv::randomPort()
 }
 
-.wait_http <- function(url, timeout_sec = 120) {
+.port_open <- function(host, port) {
+  port <- as.integer(port)[1]
+  tryCatch({
+    con <- socketConnection(host = host, port = port, open = "r", blocking = TRUE, timeout = 1)
+    close(con)
+    TRUE
+  }, error = function(e) FALSE)
+}
+
+.wait_http <- function(url, timeout_sec = 180, proc = NULL) {
+  # Prefer TCP listen check — shiny::runApp can be up before HTTP body is ready.
+  host <- sub("^https?://([^:/]+).*$", "\\1", url)
+  port <- suppressWarnings(as.integer(sub("^https?://[^:/]+:(\\d+).*$", "\\1", url)))
+  if (!is.finite(port)) port <- 80L
   deadline <- Sys.time() + timeout_sec
   while (Sys.time() < deadline) {
-    ok <- tryCatch({
-      con <- url(url, open = "rb", timeout = 2)
-      close(con)
-      TRUE
-    }, error = function(e) FALSE)
-    if (isTRUE(ok)) return(TRUE)
+    if (isTRUE(.port_open(host, port))) {
+      http_ok <- tryCatch({
+        if (nzchar(Sys.which("curl"))) {
+          rc <- system2(
+            "curl",
+            c("-sf", "-o", "/dev/null", "-m", "3", "-w", "%{http_code}", url),
+            stdout = TRUE, stderr = FALSE
+          )
+          code <- suppressWarnings(as.integer(rc[1]))
+          is.finite(code) && code >= 200 && code < 500
+        } else {
+          TRUE
+        }
+      }, error = function(e) TRUE)
+      if (isTRUE(http_ok)) return(TRUE)
+    }
+    if (!is.null(proc) && !isTRUE(proc$is_alive())) return(FALSE)
     Sys.sleep(0.5)
   }
   FALSE
 }
 
-.wait_chrome_debug <- function(port, timeout_sec = 30) {
+.wait_chrome_debug <- function(port, timeout_sec = 45) {
   deadline <- Sys.time() + timeout_sec
+  u <- sprintf("http://127.0.0.1:%d/json/version", as.integer(port))
   while (Sys.time() < deadline) {
     ok <- tryCatch({
-      u <- sprintf("http://127.0.0.1:%d/json/version", as.integer(port))
-      con <- url(u, open = "rb", timeout = 1)
-      close(con)
-      TRUE
+      if (nzchar(Sys.which("curl"))) {
+        rc <- system2(
+          "curl",
+          c("-sf", "-m", "2", u),
+          stdout = TRUE, stderr = FALSE
+        )
+        length(rc) > 0 && any(grepl("webSocketDebuggerUrl|Browser", rc))
+      } else {
+        isTRUE(.port_open("127.0.0.1", port))
+      }
     }, error = function(e) FALSE)
     if (isTRUE(ok)) return(TRUE)
     Sys.sleep(0.25)
@@ -107,11 +143,21 @@ check("chrome binary exists", file.exists(chrome_bin))
   last
 }
 
-.screenshot <- function(session, path) {
-  png <- session$Page$captureScreenshot(format = "png", fromSurface = TRUE)
-  raw <- jsonlite::base64_dec(png$data)
-  writeBin(raw, path)
-  file.exists(path) && file.info(path)$size > 1000
+.screenshot <- function(session, path, tries = 3L) {
+  for (i in seq_len(max(1L, as.integer(tries)[1]))) {
+    ok <- tryCatch({
+      png <- session$Page$captureScreenshot(format = "png", fromSurface = TRUE)
+      raw <- jsonlite::base64_dec(png$data)
+      writeBin(raw, path)
+      file.exists(path) && isTRUE(file.info(path)$size > 1000)
+    }, error = function(e) {
+      cat("INFO screenshot error: ", conditionMessage(e), "\n", sep = "")
+      FALSE
+    })
+    if (isTRUE(ok)) return(TRUE)
+    Sys.sleep(0.4)
+  }
+  FALSE
 }
 
 # --- start Shiny -----------------------------------------------------------
@@ -139,9 +185,10 @@ on.exit({
   try(shiny_proc$kill(), silent = TRUE)
 }, add = TRUE)
 
-shiny_up <- .wait_http(shiny_url, timeout_sec = 180)
+shiny_up <- .wait_http(shiny_url, timeout_sec = 240, proc = shiny_proc)
 check("shiny listening", isTRUE(shiny_up))
 if (!isTRUE(shiny_up)) {
+  cat("INFO shiny alive=", tryCatch(shiny_proc$is_alive(), error = function(e) NA), "\n")
   cat("INFO shiny stderr tail:\n")
   try(cat(paste(utils::tail(readLines(file.path(artifact_dir, "shiny_stderr.log"), warn = FALSE), 40), collapse = "\n"), "\n"), silent = TRUE)
   cat("PASS=", pass, " FAIL=", fail, "\n", sep = "")
@@ -200,66 +247,155 @@ Sys.sleep(2)
 
 home_png <- file.path(artifact_dir, "01_home.png")
 check("screenshot home", .screenshot(s, home_png))
+home_brand <- .js_eval(
+  s,
+  "!!document.querySelector('.ynow-home') && ((document.body.innerText||'').indexOf('YNow')>=0)"
+)
+check("home brand visible", isTRUE(home_brand))
+
+# Leave landing via Company card → dashboard (exposes #sc / #search)
+clicked_company <- .js_eval(
+  s,
+  paste0(
+    "(function(){",
+    "var card=document.querySelector('.ynow-home-card[data-tab=\"dashboard\"]');",
+    "if(!card) return false;",
+    "card.click();",
+    "return true;",
+    "})()"
+  )
+)
+check("clicked Company home card", isTRUE(clicked_company))
+Sys.sleep(1.5)
 
 has_sc <- .js_await(
   s,
-  "!!document.getElementById('sc') && !!document.getElementById('search')",
+  paste0(
+    "(function(){",
+    "var el=document.getElementById('sc');",
+    "if(!el) return false;",
+    "var st=window.getComputedStyle(el);",
+    "return st && st.visibility!=='hidden' && st.display!=='none';",
+    "})()"
+  ),
   timeout_sec = 90
 )
-check("search controls present", isTRUE(has_sc))
+check("search controls present on Company tab", isTRUE(has_sc))
+company_png <- file.path(artifact_dir, "02_company_tab.png")
+check("screenshot company tab", .screenshot(s, company_png))
 
-# Fill ticker and search
-.js_eval(
+# Fill ticker and search (must not treat home-card 'Fair value' copy as success)
+filled <- .js_eval(
   s,
   sprintf(
     paste0(
       "(function(){",
       "var el=document.getElementById('sc');",
+      "if(!el) return false;",
+      "el.focus();",
+      "el.value='';",
       "el.value=%s;",
-      "el.dispatchEvent(new Event('input',{bubbles:true}));",
-      "el.dispatchEvent(new Event('change',{bubbles:true}));",
-      "Shiny.setInputValue('sc', %s, {priority:'event'});",
-      "document.getElementById('search').click();",
-      "return true;",
+      "['input','keyup','change'].forEach(function(ev){",
+      "  el.dispatchEvent(new Event(ev,{bubbles:true}));",
+      "});",
+      "if(window.jQuery){ try { jQuery(el).val(%s).trigger('change'); } catch(e) {} }",
+      "if(window.Shiny&&Shiny.setInputValue){",
+      "  Shiny.setInputValue('sc', %s, {priority:'event'});",
+      "}",
+      "var btn=document.getElementById('search');",
+      "if(btn){",
+      "  if(window.jQuery){ try { jQuery(btn).click(); } catch(e) { btn.click(); } }",
+      "  else { btn.click(); }",
+      "  if(window.Shiny&&Shiny.setInputValue){",
+      "    Shiny.setInputValue('search', Math.random(), {priority:'event'});",
+      "  }",
+      "}",
+      "return el.value;",
       "})()"
     ),
+    jsonlite::toJSON(ticker, auto_unbox = TRUE),
     jsonlite::toJSON(ticker, auto_unbox = TRUE),
     jsonlite::toJSON(ticker, auto_unbox = TRUE)
   )
 )
+check(paste0("ticker typed into #sc (", as.character(filled), ")"), identical(toupper(as.character(filled)[1]), ticker))
+Sys.sleep(1)
 
+# Strong UI assertion (not landing marketing copy): left home, ticker lodged in #sc,
+# and Company surfaces (summary / statements chrome) are visible. Live Yahoo numeric
+# fill is covered by test_audit_live_statements.R — E2E may show N/A under rate-limit.
 corp_ok <- .js_await(
   s,
   sprintf(
     paste0(
       "(function(){",
+      "var el=document.getElementById('sc');",
+      "var sc=(el && el.value) || '';",
       "var t=(document.body && document.body.innerText) || '';",
-      "return t.indexOf(%s)>=0 || t.indexOf('Apple')>=0 || t.indexOf('Fair')>=0 || t.indexOf('WACC')>=0;",
+      # Home markup may remain in DOM; require it is not the visible surface.
+      "var home=document.querySelector('.ynow-home-grid');",
+      "var homeVisible=false;",
+      "if(home){",
+      "  var st=window.getComputedStyle(home);",
+      "  homeVisible = !!(home.offsetParent) && st.display!=='none' && st.visibility!=='hidden';",
+      "}",
+      "var tickerOk = sc.toUpperCase()===%s;",
+      "var companyChrome = /Finance Summary|Income Statement|Balance Sheet|Cash Flow|Industry info from Yahoo|Sector:/i.test(t);",
+      "return !homeVisible && tickerOk && companyChrome;",
       "})()"
     ),
     jsonlite::toJSON(ticker, auto_unbox = TRUE)
   ),
   timeout_sec = 120
 )
-check(paste0("page shows ticker/valuation after search (", ticker, ")"), isTRUE(corp_ok))
+if (!isTRUE(corp_ok)) {
+  dbg <- .js_eval(
+    s,
+    paste0(
+      "(function(){",
+      "var el=document.getElementById('sc');",
+      "return {",
+      "sc: el?el.value:null,",
+      "home: !!document.querySelector('.ynow-home-grid'),",
+      "snippet: ((document.body&&document.body.innerText)||'').slice(0,240)",
+      "};",
+      "})()"
+    )
+  )
+  cat("INFO company-surface debug: ", paste(capture.output(str(dbg)), collapse = " "), "\n", sep = "")
+}
+check(paste0("company surface after search (", ticker, ")"), isTRUE(corp_ok))
 
-after_png <- file.path(artifact_dir, "02_after_search.png")
+after_png <- file.path(artifact_dir, "03_after_search.png")
 check("screenshot after search", .screenshot(s, after_png))
 
-# Try to open DCF tab via sidebar / menu text when present
+# Open Fundamental Value / Smart Analysis surface
 .js_eval(
   s,
   paste0(
     "(function(){",
-    "var nodes=Array.from(document.querySelectorAll('a,button,li,span,div'));",
-    "var n=nodes.find(function(x){var t=(x.textContent||'').trim(); return /^DCF\\b/i.test(t) || t==='DCF';});",
-    "if(n){n.click(); return true;} return false;",
+    "var a=document.querySelector('.sidebar-menu a[data-value=\"get_started\"]');",
+    "if(a){a.click(); return 'get_started';}",
+    "var a2=document.querySelector('.sidebar-menu a[data-value=\"smart_analysis\"]');",
+    "if(a2){a2.click(); return 'smart_analysis';}",
+    "return false;",
     "})()"
   )
 )
-Sys.sleep(2)
-dcf_png <- file.path(artifact_dir, "03_dcf_tab.png")
-check("screenshot dcf/nav attempt", .screenshot(s, dcf_png))
+Sys.sleep(3)
+value_png <- file.path(artifact_dir, "04_value_tab.png")
+check("screenshot value tab", .screenshot(s, value_png))
+value_ok <- .js_await(
+  s,
+  paste0(
+    "(function(){",
+    "var t=(document.body && document.body.innerText) || '';",
+    "return /DCF|WACC|MOS|Fair Value|Smart Analysis|Bearing|Bear|Base/i.test(t);",
+    "})()"
+  ),
+  timeout_sec = 60
+)
+check("value/DCF surface text present", isTRUE(value_ok))
 
 body_len <- .js_eval(s, "(document.body && document.body.innerText || '').length")
 check("body has substantial text", is.finite(as.numeric(body_len)[1]) && as.numeric(body_len)[1] > 200)
@@ -271,8 +407,9 @@ writeLines(
     paste0("shiny_url=", shiny_url),
     paste0("chrome_port=", chrome_port),
     paste0("home=", home_png),
+    paste0("company=", company_png),
     paste0("after_search=", after_png),
-    paste0("dcf=", dcf_png),
+    paste0("value=", value_png),
     paste0("PASS=", pass, " FAIL=", fail)
   ),
   file.path(artifact_dir, "e2e_summary.txt")
