@@ -9182,13 +9182,18 @@ server <- function(input, output, session) {
   # auto-calc observer has not yet written stock_price_estimate_val.
   # Smart Analysis and DCF KPI boxes share that same session store — do not
   # invent a second live formula path here.
+  # Gate predicates live in tab_visit_calc_gates.R (shared with acceptance tests).
   observeEvent(input$sidebar_tabs, {
     tab <- as.character(input$sidebar_tabs %||% "")[1]
-    if (!identical(tab, "dcf_calculator")) return()
-    if (!isTRUE(isolate(user_has_searched()))) return()
     has_ps <- is.finite(suppressWarnings(as.numeric(isolate(stock_price_estimate_val()))[1]))
-    if (isTRUE(has_ps)) return()
-    if (!isTRUE(.auto_calc_primary_ready("dcf"))) return()
+    if (!isTRUE(tab_visit_dcf_should_fire(
+      tab,
+      isolate(user_has_searched()),
+      has_ps,
+      .auto_calc_primary_ready("dcf")
+    ))) {
+      return()
+    }
     .fire_auto_calc_primary("dcf")
   }, ignoreInit = TRUE)
 
@@ -9196,18 +9201,15 @@ server <- function(input, output, session) {
   # users who jump straight to a non-primary tab are not stuck on idle state.
   observeEvent(input$sidebar_tabs, {
     tab <- as.character(input$sidebar_tabs %||% "")[1]
-    if (!isTRUE(isolate(user_has_searched()))) return()
-    key <- if (identical(tab, "ddm_calculator")) {
-      "ddm"
-    } else if (identical(tab, "ri_calculator")) {
-      "ri"
-    } else if (tab %in% c("rel_multiples_calculator", "rel_mult_ev", "rel_mult_rev")) {
-      "multiples"
-    } else {
-      ""
-    }
+    key <- tab_visit_companion_key(tab)
     if (!nzchar(key)) return()
-    if (!isTRUE(.auto_calc_primary_ready(key))) return()
+    if (!isTRUE(tab_visit_companion_should_fire(
+      tab,
+      isolate(user_has_searched()),
+      .auto_calc_primary_ready(key)
+    ))) {
+      return()
+    }
     .fire_auto_calc_primary(key)
   }, ignoreInit = TRUE)
 

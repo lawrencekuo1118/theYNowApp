@@ -41,17 +41,23 @@ check(
     grepl("P1-D closeout", srv, fixed = TRUE)
 )
 check(
-  "DCF tab-visit skips when FV already present (structural)",
-  grepl("has_ps", srv, fixed = TRUE) &&
-    grepl("if \\(isTRUE\\(has_ps\\)\\) return\\(\\)", srv) &&
+  "DCF tab-visit uses shared gate helper (structural)",
+  grepl("tab_visit_dcf_should_fire\\(", srv) &&
+    grepl("stock_price_estimate_val", srv, fixed = TRUE) &&
     grepl("\\.auto_calc_primary_ready\\(\"dcf\"\\)", srv)
 )
 check(
   "Companion DDM/RI/MULT tab-visit fire present",
-  grepl("ddm_calculator", srv, fixed = TRUE) &&
-    grepl("ri_calculator", srv, fixed = TRUE) &&
-    grepl("rel_multiples_calculator", srv, fixed = TRUE) &&
+  grepl("tab_visit_companion_key\\(", srv) &&
+    grepl("tab_visit_companion_should_fire\\(", srv) &&
     grepl("\\.fire_auto_calc_primary\\(key\\)", srv)
+)
+check(
+  "tab_visit_calc_gates.R helpers exist",
+  file.exists("tab_visit_calc_gates.R") &&
+    grepl("tab_visit_dcf_should_fire",
+          paste(readLines("tab_visit_calc_gates.R", warn = FALSE), collapse = "\n"),
+          fixed = TRUE)
 )
 
 # Rf fallback UI surfacing
