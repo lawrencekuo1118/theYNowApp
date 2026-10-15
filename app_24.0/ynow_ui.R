@@ -7524,6 +7524,8 @@ ui <- dashboardPage(
             }
             if (!toggle) toggle = navbar.querySelector('a.sidebar-toggle, .sidebar-toggle');
             if (!toggle) return;
+            var beforeParent = market.parentNode === navbar;
+            var beforePrevToggle = market.previousElementSibling === toggle;
             /* Always re-assert beside toggle — AdminLTE may steal the node back
                into .navbar-custom-menu / .navbar-nav after our first pass. */
             if (!(market.parentNode === navbar && market.previousElementSibling === toggle)) {
@@ -7548,6 +7550,36 @@ ui <- dashboardPage(
             market.style.marginLeft = '0';
             market.style.paddingLeft = '0';
             try { placeMobileAppTitle(); } catch (eTitle) {}
+            // #region agent log
+            try {
+              if (typeof window.__ynowProbeLiteTargets === 'function' &&
+                  (mobile || !beforeParent || !beforePrevToggle)) {
+                var mr = market.getBoundingClientRect();
+                var lr = document.querySelector('.main-header .logo');
+                var lrr = lr ? lr.getBoundingClientRect() : null;
+                if (window.Shiny && Shiny.setInputValue) {
+                  Shiny.setInputValue('ynow_agent_dbg', JSON.stringify({
+                    hypothesisId: 'F',
+                    location: 'ynow_ui.R:placeMarketHeaderByToggle',
+                    message: 'placed',
+                    data: {
+                      mobile: mobile,
+                      moved: !(beforeParent && beforePrevToggle),
+                      marketRect: {x: Math.round(mr.x), y: Math.round(mr.y), w: Math.round(mr.width), h: Math.round(mr.height)},
+                      logoRect: lrr ? {x: Math.round(lrr.x), y: Math.round(lrr.y), w: Math.round(lrr.width), h: Math.round(lrr.height)} : null,
+                      logoPe: lr ? getComputedStyle(lr).pointerEvents : null,
+                      logoZ: lr ? getComputedStyle(lr).zIndex : null,
+                      marketPe: getComputedStyle(market).pointerEvents,
+                      marketZ: getComputedStyle(market).zIndex,
+                      marketPos: getComputedStyle(market).position
+                    },
+                    timestamp: Date.now(),
+                    runId: 'lite-mobile-click'
+                  }), {priority: 'event'});
+                }
+              }
+            } catch (ePlaceLog) {}
+            // #endregion
           }
           window.ynowPlaceMarketHeaderByToggle = placeMarketHeaderByToggle;
           /* Mobile: app title viewport-centered in the gap; scale font to fit — never cover chrome. */
@@ -9584,6 +9616,82 @@ ui <- dashboardPage(
 
           /* ---- Lite mode: sidebar logo click toggles body.ynow-lite + LITE badge ---- */
           (function () {
+            // #region agent log
+            function ynowAgentDbg(hypothesisId, location, message, data) {
+              var payload = {
+                hypothesisId: hypothesisId || '',
+                location: location || '',
+                message: message || '',
+                data: data || {},
+                timestamp: Date.now(),
+                runId: 'lite-mobile-click'
+              };
+              try {
+                window.__ynowDbgLogs = window.__ynowDbgLogs || [];
+                window.__ynowDbgLogs.push(payload);
+              } catch (eKeep) {}
+              try {
+                if (window.Shiny && Shiny.setInputValue) {
+                  Shiny.setInputValue('ynow_agent_dbg', JSON.stringify(payload), {priority: 'event'});
+                }
+              } catch (eSend) {}
+            }
+            function ynowLiteGeom(el) {
+              if (!el) return {present: false};
+              var r = el.getBoundingClientRect();
+              var cs = window.getComputedStyle(el);
+              var cx = r.left + r.width / 2;
+              var cy = r.top + r.height / 2;
+              var topEl = (r.width > 0 && r.height > 0) ? document.elementFromPoint(cx, cy) : null;
+              var covered = !!(topEl && topEl !== el && !el.contains(topEl));
+              return {
+                present: true,
+                id: el.id || '',
+                cls: (el.className || '').toString().slice(0, 80),
+                rect: {x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height)},
+                inViewport: r.bottom > 0 && r.top < window.innerHeight && r.right > 0 && r.left < window.innerWidth,
+                pe: cs.pointerEvents,
+                display: cs.display,
+                visibility: cs.visibility,
+                z: cs.zIndex,
+                opacity: cs.opacity,
+                covered: covered,
+                topAtCenter: topEl ? {
+                  tag: topEl.tagName,
+                  id: topEl.id || '',
+                  cls: (topEl.className || '').toString().slice(0, 100)
+                } : null
+              };
+            }
+            function ynowProbeLiteTargets(reason) {
+              var side = document.getElementById('ynow_lite_toggle');
+              var home = document.getElementById('ynow_home_lite_toggle');
+              var sidebar = document.querySelector('.main-sidebar');
+              var sidebarInner = document.querySelector('.main-sidebar .sidebar');
+              var market = document.getElementById('ynow-market-header');
+              var logo = document.querySelector('.main-header .logo');
+              var body = document.body;
+              ynowAgentDbg('A', 'ynow_ui.R:lite-probe', reason || 'lite-probe', {
+                vw: window.innerWidth,
+                vh: window.innerHeight,
+                bodyLite: !!(body && body.classList.contains('ynow-lite')),
+                bodySidebarOpen: !!(body && (body.classList.contains('sidebar-open') || body.classList.contains('sidebar-expanded'))),
+                sidebarCls: sidebar ? (sidebar.className || '').toString().slice(0, 120) : null,
+                sidebarScroll: sidebarInner ? {
+                  scrollTop: sidebarInner.scrollTop,
+                  scrollHeight: sidebarInner.scrollHeight,
+                  clientHeight: sidebarInner.clientHeight,
+                  overflowY: getComputedStyle(sidebarInner).overflowY
+                } : null,
+                sidebarBrand: ynowLiteGeom(side),
+                homeBrand: ynowLiteGeom(home),
+                market: ynowLiteGeom(market),
+                headerLogo: ynowLiteGeom(logo),
+                delegated: document.documentElement.getAttribute('data-ynow-lite-delegated')
+              });
+            }
+            window.__ynowProbeLiteTargets = ynowProbeLiteTargets;
+            // #endregion
             var FULL_ONLY_TABS = [
               'get_started', 'nav_calculator', 'dcf_calculator', 'ddm_calculator',
               'ri_calculator', 'pb_calculator', 'rel_mult_ev', 'rel_multiples_calculator', 'rel_mult_rev', 'sotp_calculator', 'hfv',
@@ -9693,6 +9801,7 @@ ui <- dashboardPage(
             function applyLiteMode(on, opts) {
               opts = opts || {};
               var enabled = !!on;
+              var prev = document.body.classList.contains('ynow-lite');
               document.body.classList.toggle('ynow-lite', enabled);
               document.querySelectorAll('.ynow-lite-toggle').forEach(function (brand) {
                 brand.setAttribute('aria-pressed', enabled ? 'true' : 'false');
@@ -9703,6 +9812,22 @@ ui <- dashboardPage(
               if (window.Shiny && Shiny.setInputValue) {
                 Shiny.setInputValue('ynow_lite_mode', enabled, {priority: 'event'});
               }
+              // #region agent log
+              ynowAgentDbg('D', 'ynow_ui.R:applyLiteMode', 'apply', {
+                prev: prev,
+                enabled: enabled,
+                bodyHasLite: document.body.classList.contains('ynow-lite'),
+                badgeVisible: (function () {
+                  var b = document.getElementById('ynow_lite_badge') ||
+                    document.querySelector('.ynow-lite-badge');
+                  if (!b) return null;
+                  return getComputedStyle(b).display !== 'none';
+                })(),
+                navigate: opts.navigate !== false,
+                shinyReady: !!(window.Shiny && Shiny.setInputValue),
+                toggleCount: document.querySelectorAll('.ynow-lite-toggle').length
+              });
+              // #endregion
               if (enabled) ensureLiteSnapshotDefaultsTab();
               remapLegacyHash();
               if (opts.navigate === false) return;
@@ -9762,17 +9887,83 @@ ui <- dashboardPage(
             }
             window.ynowShowSidebarFootTab = showSidebarFootTab;
             function toggleLite() {
+              // #region agent log
+              ynowAgentDbg('D', 'ynow_ui.R:toggleLite', 'toggle', {
+                before: document.body.classList.contains('ynow-lite')
+              });
+              // #endregion
               applyLiteMode(!document.body.classList.contains('ynow-lite'));
             }
             function bindLiteToggle() {
-              if (document.documentElement.getAttribute('data-ynow-lite-delegated') === '1') return;
+              if (document.documentElement.getAttribute('data-ynow-lite-delegated') === '1') {
+                // #region agent log
+                ynowAgentDbg('C', 'ynow_ui.R:bindLiteToggle', 'already-bound', {});
+                // #endregion
+                return;
+              }
               document.documentElement.setAttribute('data-ynow-lite-delegated', '1');
+              // #region agent log
+              ynowAgentDbg('C', 'ynow_ui.R:bindLiteToggle', 'bound', {
+                toggleCount: document.querySelectorAll('.ynow-lite-toggle').length
+              });
+              ynowProbeLiteTargets('bind-lite');
+              // #endregion
               document.addEventListener('click', function (ev) {
                 var brand = ev.target && ev.target.closest ? ev.target.closest('.ynow-lite-toggle') : null;
+                // #region agent log
+                var topAt = null;
+                try { topAt = document.elementFromPoint(ev.clientX, ev.clientY); } catch (eTop) {}
+                var side = document.getElementById('ynow_lite_toggle');
+                var home = document.getElementById('ynow_home_lite_toggle');
+                var nearSide = side && (side === ev.target || side.contains(ev.target));
+                var nearHome = home && (home === ev.target || home.contains(ev.target));
+                if (brand || nearSide || nearHome || (ev.clientY > window.innerHeight - 160)) {
+                  ynowAgentDbg(brand ? 'C' : 'B', 'ynow_ui.R:bindLiteToggle', brand ? 'click-hit' : 'click-miss', {
+                    brandId: brand ? (brand.id || '') : null,
+                    brandCls: brand ? (brand.className || '').toString().slice(0, 80) : null,
+                    targetTag: ev.target ? ev.target.tagName : null,
+                    targetId: (ev.target && ev.target.id) || '',
+                    targetCls: (ev.target && ev.target.className || '').toString().slice(0, 100),
+                    x: ev.clientX,
+                    y: ev.clientY,
+                    vw: window.innerWidth,
+                    vh: window.innerHeight,
+                    hasClosest: !!(ev.target && ev.target.closest),
+                    nearSide: !!nearSide,
+                    nearHome: !!nearHome,
+                    topAtPoint: topAt ? {
+                      tag: topAt.tagName,
+                      id: topAt.id || '',
+                      cls: (topAt.className || '').toString().slice(0, 100)
+                    } : null,
+                    sidebarBrand: ynowLiteGeom(side),
+                    homeBrand: ynowLiteGeom(home),
+                    defaultPrevented: !!ev.defaultPrevented
+                  });
+                }
+                // #endregion
                 if (!brand) return;
                 ev.preventDefault();
                 ev.stopPropagation();
                 toggleLite();
+              }, true);
+              document.addEventListener('touchend', function (ev) {
+                var t = (ev.changedTouches && ev.changedTouches[0]) || null;
+                var el = ev.target;
+                var brand = el && el.closest ? el.closest('.ynow-lite-toggle') : null;
+                // #region agent log
+                if (brand || (t && t.clientY > window.innerHeight - 160)) {
+                  ynowAgentDbg('C', 'ynow_ui.R:bindLiteToggle', brand ? 'touchend-hit' : 'touchend-near', {
+                    brandId: brand ? (brand.id || '') : null,
+                    targetTag: el ? el.tagName : null,
+                    targetId: (el && el.id) || '',
+                    x: t ? t.clientX : null,
+                    y: t ? t.clientY : null,
+                    sidebarBrand: ynowLiteGeom(document.getElementById('ynow_lite_toggle')),
+                    homeBrand: ynowLiteGeom(document.getElementById('ynow_home_lite_toggle'))
+                  });
+                }
+                // #endregion
               }, true);
               document.addEventListener('keydown', function (ev) {
                 var brand = ev.target && ev.target.closest ? ev.target.closest('.ynow-lite-toggle') : null;
@@ -9782,6 +9973,15 @@ ui <- dashboardPage(
                   toggleLite();
                 }
               }, true);
+              // #region agent log
+              document.addEventListener('click', function (ev) {
+                var tgl = ev.target && ev.target.closest
+                  ? ev.target.closest('.sidebar-toggle, a.sidebar-toggle')
+                  : null;
+                if (!tgl) return;
+                setTimeout(function () { ynowProbeLiteTargets('after-sidebar-toggle'); }, 350);
+              }, true);
+              // #endregion
             }
             function restoreLiteFromStorage() {
               var saved = null;
@@ -9793,10 +9993,18 @@ ui <- dashboardPage(
               document.addEventListener('DOMContentLoaded', function () {
                 bindLiteToggle();
                 restoreLiteFromStorage();
+                // #region agent log
+                setTimeout(function () { ynowProbeLiteTargets('dom+400'); }, 400);
+                setTimeout(function () { ynowProbeLiteTargets('dom+1500'); }, 1500);
+                // #endregion
               });
             } else {
               bindLiteToggle();
               restoreLiteFromStorage();
+              // #region agent log
+              setTimeout(function () { ynowProbeLiteTargets('ready+400'); }, 400);
+              setTimeout(function () { ynowProbeLiteTargets('ready+1500'); }, 1500);
+              // #endregion
             }
             if (window.jQuery) {
               jQuery(document).on('shiny:connected shiny:sessioninitialized', function () {
