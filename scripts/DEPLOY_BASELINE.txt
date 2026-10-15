@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12693842
+bundleId=12693909
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=f9175e9
-commit=f9175e9
-short=f9175e9
-message=chore: record shipped display version v24.20
-captured_at=2026-10-15T11:10:00Z
+aligned_git=536c1928dd9a4978afcb12bd466be012cc21c191
+commit=536c1928dd9a4978afcb12bd466be012cc21c191
+short=536c192
+message=chore: record shipped display version v24.21
+captured_at=2026-10-15T11:30:00Z
 display_version=v24.21
