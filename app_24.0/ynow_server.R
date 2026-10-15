@@ -681,7 +681,13 @@ server <- function(input, output, session) {
           market_mode_rv = market_mode,
           ui_locale_rv = ui_locale,
           lite_mode_rv = reactive(isTRUE(input$ynow_lite_mode)),
-          company_industry_rv = reactive(input$industry_choice)
+          # Only link after a ticker is loaded — ignore APP_DEFAULTS industry alone.
+          company_industry_rv = reactive({
+            tk <- tryCatch(current_ticker(), error = function(e) NULL)
+            tk <- as.character(tk %||% "")[1]
+            if (!nzchar(tk) || is.na(tk)) return("")
+            as.character(input$industry_choice %||% "")[1]
+          })
         )
       },
       asset_transmission = function() {

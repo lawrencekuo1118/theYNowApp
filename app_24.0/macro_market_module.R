@@ -865,27 +865,48 @@ macro_market_server <- function(id = "macro",
       industry_touched(TRUE)
     }, ignoreInit = TRUE)
 
-    # Shared Industry menu + Concept word cloud (Relative performance + Dynamic bubble).
-    # Default blank; until user edits the picker, follow Company industry_choice
-    # (mapped to GICS on US / industry_standards on TW).
-    # Lazy-tab race: gate Industry updates on hist_period after inputs bind.
-    observe({
+    .apply_linked_industry <- function(force_blank_if_unlinked = FALSE) {
       mode <- .mode()
       loc <- .loc()
-      hist_ready <- input$hist_period
-      req(!is.null(hist_ready))
       linked <- .linked_industry()
       ind_ch <- macro_choices_with_none(macro_industry_choices(mode, loc), loc)
-
       isel <- isolate(as.character(input$industry_key %||% "")[1])
       in_menu <- isel %in% unname(ind_ch)
       if (!isTRUE(isolate(industry_touched())) || !in_menu) {
         isel <- if (nzchar(linked) && linked %in% unname(ind_ch)) linked else ""
+      } else if (force_blank_if_unlinked && !nzchar(linked) && !nzchar(isel)) {
+        isel <- ""
       }
       cur_ind <- isolate(as.character(input$industry_key %||% "")[1])
       if (!identical(cur_ind, isel)) industry_programmatic(TRUE)
       updateSelectInput(session, "industry_key", choices = ind_ch, selected = isel)
+    }
+
+    # Shared Industry menu + Concept word cloud (Relative performance + Dynamic bubble).
+    # Default blank; until user edits the picker, follow Company industry after a ticker load
+    # (mapped to GICS on US / industry_standards on TW).
+    # Lazy-tab race: gate Industry updates on hist_period after inputs bind.
+    observe({
+      hist_ready <- input$hist_period
+      req(!is.null(hist_ready))
+      .linked_industry()
+      .mode()
+      .loc()
+      .apply_linked_industry()
     })
+
+    # When ticker industry resolves after Macro is already open, sync if untouched.
+    if (!is.null(company_industry_rv)) {
+      observeEvent(
+        company_industry_rv(),
+        {
+          if (is.null(isolate(input$hist_period))) return()
+          if (isTRUE(isolate(industry_touched()))) return()
+          .apply_linked_industry()
+        },
+        ignoreInit = TRUE
+      )
+    }
 
     concept_cloud_catalog <- reactive({
       list(

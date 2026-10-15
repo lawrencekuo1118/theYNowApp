@@ -386,11 +386,11 @@ check("industry links company industry", {
     grepl("macro_resolve_linked_industry_key", txt, fixed = TRUE) &&
     grepl(".linked_industry", txt, fixed = TRUE)
 })
-check("server wires company_industry_rv", {
-  grepl(
-    "company_industry_rv = reactive\\(input\\$industry_choice\\)",
-    paste(readLines("ynow_server.R", warn = FALSE), collapse = "\n")
-  )
+check("server wires company_industry_rv gated on ticker", {
+  srv <- paste(readLines("ynow_server.R", warn = FALSE), collapse = "\n")
+  grepl("company_industry_rv = reactive", srv, fixed = TRUE) &&
+    grepl("current_ticker()", srv, fixed = TRUE) &&
+    grepl("Only link after a ticker is loaded", srv, fixed = TRUE)
 })
 check("refresh in theme title row", {
   grepl("ynow-macro-theme-title-row", txt, fixed = TRUE) &&
