@@ -2,6 +2,8 @@
 
 ## v24.10 重點
 
+- **國旗**：美／台同長度、各自等比；高度加總滿版 50px（flex 15:19，寬 calc(50×57/68)）
+
 - **Snapshot ↔ 智慧分析接線**：側邊欄 Snapshot／Testing／Feedback 腳鏈改走 `ynowShowSidebarFootTab`（直接啟用 pane＋Lite 強制 `snap_defaults`）；首頁 Value 卡 Lite 經 `ynowGotoTab('smart_analysis')`
 - **推薦估值**：Smart Analysis 上 composite 的 active model key 對齊推薦主模型；Lite 情境套用 → auto-calc 路徑不變
 - **手機 Lite 入口**：側邊欄內部可捲動延伸至 `max-width: 767px`，底部 LOGO 可點進 Lite

@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# Header US/TW market buttons: proportional fly length, flush stack after toggle.
+# Header US/TW flags: same fly length, native aspect each, combined hoist = 50px.
 fail <- 0L
 check <- function(label, cond) {
   ok <- isTRUE(cond)
@@ -19,27 +19,22 @@ check("SVG flags with native viewBox aspect (not emoji)",
       grepl('class="ynow-mkt-flag"', ui, fixed = TRUE) &&
         grepl("viewBox=\"0 0 19 10\"", ui, fixed = TRUE) &&
         grepl("viewBox=\"0 0 18 12\"", ui, fixed = TRUE) &&
-        grepl('width="38" height="20"', ui, fixed = TRUE) &&
-        grepl('width="30" height="20"', ui, fixed = TRUE) &&
-        !grepl("\\\\U0001F1FA\\\\U0001F1F8", ui, fixed = TRUE))
-check("flags: hoist fixed, length auto (proportional)",
-      grepl('preserveAspectRatio="xMidYMid meet"', ui, fixed = TRUE) &&
+        grepl('preserveAspectRatio="xMidYMid meet"', ui, fixed = TRUE) &&
         !grepl('preserveAspectRatio="none"', ui, fixed = TRUE) &&
-        grepl("height: 100% !important", ui, fixed = TRUE) &&
-        grepl("width: auto !important", ui, fixed = TRUE) &&
-        grepl("Hoist fills the 25px half; length (width) auto", ui, fixed = TRUE))
-check("stack/header length 48px for 25px hoist (US 19/10)", {
-  grepl("#ynow-market-header .ynow-market-stack", ui, fixed = TRUE) &&
-    grepl("height: 50px", ui, fixed = TRUE) &&
-    grepl("height: 25px", ui, fixed = TRUE) &&
-    grepl("gap: 0", ui, fixed = TRUE) &&
-    # Parent li + mobile stack: length-only tune to 48px (not old 38/28 clips)
-    grepl("fly length = 25×(19/10) ≈ 48px", ui, fixed = TRUE) &&
-    grepl("Same proportional length as desktop", ui, fixed = TRUE) &&
-    grepl("width: 48px !important", ui, fixed = TRUE) &&
-    !grepl("width: 38px !important", ui, fixed = TRUE) &&
-    !grepl("width: 28px !important;\n            height: 50px !important", ui, fixed = TRUE)
-})
+        !grepl("\\\\U0001F1FA\\\\U0001F1F8", ui, fixed = TRUE))
+check("shared length + full 50px stack height (US:TW flex 15:19)",
+      grepl("calc(50px * 57 / 68)", ui, fixed = TRUE) &&
+        grepl("Height share US:TW = (10/19):(2/3) = 15:19", ui, fixed = TRUE) &&
+        grepl("#ynow_mkt_btn_us", ui, fixed = TRUE) &&
+        grepl("flex: 15 0 0", ui, fixed = TRUE) &&
+        grepl("flex: 19 0 0", ui, fixed = TRUE) &&
+        grepl("height: 50px", ui, fixed = TRUE) &&
+        grepl("gap: 0", ui, fixed = TRUE) &&
+        !grepl("height: 25px;\n          min-height: 25px;\n          max-height: 25px;", ui, fixed = TRUE))
+check("flags fill shared-length cells (width+height 100%)",
+      grepl("Cell aspect matches each flag", ui, fixed = TRUE) &&
+        grepl("width: 100% !important", ui, fixed = TRUE) &&
+        grepl("height: 100% !important", ui, fixed = TRUE))
 check("absolute flush after toggle (JS left)",
       grepl("placeMarketHeaderByToggle", ui, fixed = TRUE) &&
         grepl("position: absolute !important", ui, fixed = TRUE) &&

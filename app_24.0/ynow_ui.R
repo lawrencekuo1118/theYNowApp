@@ -4262,8 +4262,9 @@ ui <- dashboardPage(
           right: auto !important;
           top: 0 !important;
           float: none !important;
-          /* Length only: hoist fixed at 25px×2; fly length = 25×(19/10) ≈ 48px (US). */
-          width: 48px !important;
+          /* Same fly length for both flags; stack height = full 50px header.
+             W = 50×57/68 so US(19:10)+TW(3:2) heights sum to 50 at shared width. */
+          width: calc(50px * 57 / 68) !important;
           height: 50px !important;
           margin: 0 !important;
           padding: 0 !important;
@@ -4272,27 +4273,26 @@ ui <- dashboardPage(
           visibility: visible !important;
           z-index: 1040;
         }
-        /* Flag stack: 50px header, two 25px halves, no seam.
-           Hoist (height) fixed; only fly length (width) follows native aspect. */
+        /* Flag stack: shared length, native aspect each, combined hoist = 50px, no seam.
+           Height share US:TW = (10/19):(2/3) = 15:19. */
         #ynow-market-header .ynow-market-stack {
           display: flex;
           flex-direction: column;
-          width: 48px;
+          width: calc(50px * 57 / 68);
           height: 50px;
           margin: 0;
           padding: 0;
           gap: 0;
-          overflow: visible;
+          overflow: hidden;
           border: none;
           background: transparent;
         }
         #ynow-market-header .ynow-mkt-btn {
           box-sizing: border-box;
-          flex: 1 1 50%;
           width: 100%;
-          height: 25px;
-          min-height: 25px;
-          max-height: 25px;
+          height: auto;
+          min-height: 0;
+          max-height: none;
           margin: 0;
           padding: 0;
           border: 0;
@@ -4304,18 +4304,25 @@ ui <- dashboardPage(
           line-height: 0;
           cursor: pointer;
           display: flex;
-          align-items: center;
-          justify-content: center;
+          align-items: stretch;
+          justify-content: stretch;
           overflow: hidden;
+        }
+        /* viewBox height parts → flex grow (US 10/19, TW 12/18) */
+        #ynow-market-header #ynow_mkt_btn_us {
+          flex: 15 0 0;
+        }
+        #ynow-market-header #ynow_mkt_btn_tw {
+          flex: 19 0 0;
         }
         #ynow-market-header .ynow-mkt-btn .ynow-mkt-flag {
           display: block;
-          /* Hoist fills the 25px half; length (width) auto from viewBox aspect. */
+          /* Cell aspect matches each flag → fill flush at shared length. */
+          width: 100% !important;
           height: 100% !important;
-          width: auto !important;
           max-width: none;
           max-height: none;
-          flex: 0 0 auto;
+          flex: 1 1 auto;
           margin: 0;
           padding: 0;
           pointer-events: none;
@@ -13373,8 +13380,8 @@ ui <- dashboardPage(
             background: none !important;
           }
           #ynow-market-header .ynow-market-stack {
-            /* Same proportional length as desktop (25px hoist → ~48px fly for US). */
-            width: 48px !important;
+            /* Shared length; US+TW hoist sum = 50px (same math as desktop). */
+            width: calc(50px * 57 / 68) !important;
             height: 50px !important;
             min-height: 50px !important;
             flex-direction: column;
@@ -13385,9 +13392,9 @@ ui <- dashboardPage(
             border: none !important;
             background: transparent !important;
             box-shadow: none !important;
-            overflow: visible !important;
+            overflow: hidden !important;
           }
-          /* Bare flags only — no frame / seam between glyphs; length stays proportional. */
+          /* Bare flags only — no frame / seam; same length, native aspect, full stack height. */
           #ynow-market-header .ynow-mkt-btn,
           #ynow-market-header .ynow-mkt-btn.active,
           #ynow-market-header .ynow-mkt-btn:hover,
@@ -13408,15 +13415,20 @@ ui <- dashboardPage(
             outline: none !important;
             -webkit-tap-highlight-color: transparent !important;
             width: 100% !important;
-            height: 25px !important;
-            min-height: 25px !important;
-            max-height: 25px !important;
-            flex: 1 1 50% !important;
+            height: auto !important;
+            min-height: 0 !important;
+            max-height: none !important;
             padding: 0 !important;
             margin: 0 !important;
-            align-items: center !important;
-            justify-content: center !important;
+            align-items: stretch !important;
+            justify-content: stretch !important;
             overflow: hidden !important;
+          }
+          #ynow-market-header #ynow_mkt_btn_us {
+            flex: 15 0 0 !important;
+          }
+          #ynow-market-header #ynow_mkt_btn_tw {
+            flex: 19 0 0 !important;
           }
           #ynow-market-header .ynow-mkt-btn {
             opacity: 1;
@@ -13430,8 +13442,8 @@ ui <- dashboardPage(
             opacity: 1;
           }
           #ynow-market-header .ynow-mkt-btn .ynow-mkt-flag {
+            width: 100% !important;
             height: 100% !important;
-            width: auto !important;
             min-width: 0 !important;
             min-height: 0 !important;
             max-width: none !important;
