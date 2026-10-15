@@ -8060,119 +8060,23 @@ ui <- dashboardPage(
           /* Language: stable custom buttons (no shinyWidgets re-render / mobile drift).
              Do not push an initial value — server + device_ui_locale own first paint;
              a premature EN push can race and lock out device zh-TW. */
-          // #region agent log
-          function ynowAgentDbg(hypothesisId, location, message, data) {
-            var payload = {
-              hypothesisId: hypothesisId,
-              location: location,
-              message: message,
-              data: data || {},
-              timestamp: Date.now()
-            };
-            try {
-              window.__ynowDbgLogs = window.__ynowDbgLogs || [];
-              window.__ynowDbgLogs.push(payload);
-            } catch (eKeep) {}
-            try {
-              if (window.Shiny && Shiny.setInputValue) {
-                Shiny.setInputValue('ynow_agent_dbg', JSON.stringify(payload), {priority: 'event'});
-              }
-            } catch (eSend) {}
-          }
-          function ynowProbeLangOverlays(reason) {
-            var zh = document.getElementById('ynow_lang_btn_zh');
-            var en = document.getElementById('ynow_lang_btn_en');
-            var stack = document.getElementById('ynow_lang_stack');
-            var market = document.getElementById('ynow-market-header');
-            var logo = document.querySelector('.main-header .logo');
-            var probeBtn = function (el) {
-              if (!el) return {present: false};
-              var r = el.getBoundingClientRect();
-              var cx = r.left + r.width / 2;
-              var cy = r.top + r.height / 2;
-              var topEl = (r.width > 0 && r.height > 0) ? document.elementFromPoint(cx, cy) : null;
-              var pe = getComputedStyle(el).pointerEvents;
-              var coveredBy = topEl && !el.contains(topEl) && topEl !== el
-                ? {tag: topEl.tagName, id: topEl.id || '', cls: (topEl.className || '').toString().slice(0, 120)}
-                : null;
-              return {
-                present: true,
-                id: el.id || '',
-                val: el.getAttribute('data-value'),
-                active: el.classList.contains('active'),
-                text: (el.textContent || '').trim().slice(0, 20),
-                rect: {x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height)},
-                pe: pe,
-                display: getComputedStyle(el).display,
-                visibility: getComputedStyle(el).visibility,
-                z: getComputedStyle(el).zIndex,
-                topAtCenter: topEl ? {tag: topEl.tagName, id: topEl.id || '', cls: (topEl.className || '').toString().slice(0, 120)} : null,
-                coveredBy: coveredBy
-              };
-            };
-            var mkt = null;
-            if (market) {
-              var mr = market.getBoundingClientRect();
-              mkt = {x: Math.round(mr.x), y: Math.round(mr.y), w: Math.round(mr.width), h: Math.round(mr.height), pe: getComputedStyle(market).pointerEvents, z: getComputedStyle(market).zIndex};
-            }
-            var logoGeo = null;
-            if (logo) {
-              var lr = logo.getBoundingClientRect();
-              logoGeo = {x: Math.round(lr.x), y: Math.round(lr.y), w: Math.round(lr.width), h: Math.round(lr.height), pe: getComputedStyle(logo).pointerEvents, z: getComputedStyle(logo).zIndex};
-            }
-            ynowAgentDbg('A', 'ynow_ui.R:lang-overlay-probe', reason || 'lang-probe', {
-              vw: window.innerWidth,
-              vh: window.innerHeight,
-              htmlLang: document.documentElement.getAttribute('lang'),
-              stackBound: stack ? stack.getAttribute('data-ynow-bound') : null,
-              stackPe: stack ? getComputedStyle(stack).pointerEvents : null,
-              zh: probeBtn(zh),
-              en: probeBtn(en),
-              market: mkt,
-              logo: logoGeo
-            });
-          }
-          window.__ynowProbeLangOverlays = ynowProbeLangOverlays;
-          // #endregion
           function bindLangModeButtons() {
             var stack = document.getElementById('ynow_lang_stack') ||
               document.querySelector('.ynow-lang-header .ynow-lang-stack');
-            // #region agent log
-            ynowAgentDbg('C', 'ynow_ui.R:bindLangModeButtons', 'bind-attempt', {
-              stackFound: !!stack,
-              alreadyBound: !!(stack && stack.getAttribute('data-ynow-bound') === '1'),
-              btnCount: stack ? stack.querySelectorAll('.ynow-lang-btn').length : 0
-            });
-            // #endregion
             if (!stack) return;
             if (stack.getAttribute('data-ynow-bound') === '1') return;
             stack.setAttribute('data-ynow-bound', '1');
             stack.addEventListener('click', function (ev) {
               var btn = ev.target && ev.target.closest ? ev.target.closest('.ynow-lang-btn') : null;
-              // #region agent log
-              var topAt = document.elementFromPoint(ev.clientX, ev.clientY);
-              ynowAgentDbg('B', 'ynow_ui.R:bindLangModeButtons', 'lang-click', {
-                btnFound: !!btn,
-                val: btn ? btn.getAttribute('data-value') : null,
-                targetId: (ev.target && ev.target.id) || '',
-                targetCls: (ev.target && ev.target.className || '').toString().slice(0, 120),
-                x: ev.clientX,
-                y: ev.clientY,
-                topAtPoint: topAt ? {tag: topAt.tagName, id: topAt.id || '', cls: (topAt.className || '').toString().slice(0, 120)} : null,
-                shinyReady: !!(window.Shiny && Shiny.setInputValue),
-                defaultPrevented: !!ev.defaultPrevented
-              });
-              ynowProbeLangOverlays('on-lang-click');
-              // #endregion
               if (!btn || !stack.contains(btn)) return;
               var val = btn.getAttribute('data-value');
               if (!val) return;
               stack.querySelectorAll('.ynow-lang-btn').forEach(function (b) {
                 b.classList.toggle('active', b === btn);
               });
-              /* Pending pick blocks mismatched (stale) websocket applies until the
-                 server confirms this locale. Cancel prior verify timers so an EN
-                 click's delayed check cannot run after a later 繁中 click. */
+              /* Sticky pending pick blocks mismatched (stale) websocket applies.
+                 Cancel prior verify timers so an EN click's delayed check cannot
+                 run after a later 繁中 click. */
               if (window.__ynowLocaleVerifyTimer) {
                 clearTimeout(window.__ynowLocaleVerifyTimer);
                 window.__ynowLocaleVerifyTimer = null;
@@ -8188,8 +8092,6 @@ ui <- dashboardPage(
               try {
                 var bootRoot = window.__YNOW_UI_LOCALE_BOOT || {};
                 var boot = bootRoot[val] || (val === 'zh-TW' ? bootRoot['zh-TW'] : bootRoot.en);
-                var bootHome = boot && boot.strings ? boot.strings.menu_home : null;
-                var bootAbout = boot && boot.strings ? boot.strings.menu_about : null;
                 if (boot && typeof applyUiLocale === 'function') {
                   var mkt = document.body.classList.contains('ynow-market-tw') ? 'TW' : 'US';
                   applyUiLocale({
@@ -8199,47 +8101,10 @@ ui <- dashboardPage(
                     tabs: boot.tabs || {},
                     boxes: boot.boxes || []
                   }, {fromBoot: true});
-                  // #region agent log
-                  ynowAgentDbg('C', 'ynow_ui.R:bindLangModeButtons', 'boot-apply', {
-                    val: val,
-                    menu_home: bootHome || null,
-                    menu_about: bootAbout || null,
-                    stringKeys: boot.strings ? Object.keys(boot.strings).length : 0,
-                    pickSeq: pickSeq,
-                    homeAfter: (function () {
-                      var a = document.querySelector('.sidebar-menu a[data-value=\"home\"]');
-                      if (!a) return null;
-                      var sp = a.querySelector('.ynow-menu-label, span:not(.pull-right-container):not(.ynow-rec-slot)');
-                      return ((sp && sp.textContent) || a.textContent || '').replace(/\\s+/g, ' ').trim().slice(0, 40);
-                    })()
-                  });
-                  // #endregion
-                } else {
-                  // #region agent log
-                  ynowAgentDbg('D', 'ynow_ui.R:bindLangModeButtons', 'boot-apply-missing', {
-                    val: val,
-                    hasBootRoot: !!bootRoot && Object.keys(bootRoot).length > 0,
-                    hasBoot: !!boot,
-                    hasApply: typeof applyUiLocale === 'function',
-                    pickSeq: pickSeq
-                  });
-                  // #endregion
                 }
-              } catch (eBoot) {
-                // #region agent log
-                try {
-                  ynowAgentDbg('D', 'ynow_ui.R:bindLangModeButtons', 'boot-apply-error', {
-                    val: val,
-                    err: String(eBoot && eBoot.message || eBoot)
-                  });
-                } catch (eBootLog) {}
-                // #endregion
-              }
+              } catch (eBoot) {}
               if (window.Shiny && Shiny.setInputValue) {
                 Shiny.setInputValue('ui_locale_pick', val, {priority: 'event'});
-                // #region agent log
-                ynowAgentDbg('C', 'ynow_ui.R:bindLangModeButtons', 'setInputValue-ui_locale_pick', {val: val});
-                // #endregion
                 var expect = val;
                 window.__ynowLocaleVerifyTimer = setTimeout(function () {
                   window.__ynowLocaleVerifyTimer = null;
@@ -8254,25 +8119,7 @@ ui <- dashboardPage(
                   var stringsOk = needZh
                     ? (/首頁/.test(homeTxt) && /關於/.test(aboutTxt))
                     : (/Home/i.test(homeTxt) && /About/i.test(aboutTxt));
-                  // #region agent log
-                  ynowAgentDbg('D', 'ynow_ui.R:bindLangModeButtons', 'lang-click-verify', {
-                    expect: expect,
-                    htmlLang: document.documentElement.getAttribute('lang'),
-                    homeTxt: homeTxt.slice(0, 40),
-                    aboutTxt: aboutTxt.slice(0, 40),
-                    stringsOk: stringsOk,
-                    pendingPick: window.__ynowLocaleUserPick || null,
-                    pickSeq: pickSeq
-                  });
-                  // #endregion
                   if (stringsOk || !(window.Shiny && Shiny.setInputValue)) return;
-                  // #region agent log
-                  ynowAgentDbg('D', 'ynow_ui.R:bindLangModeButtons', 'force-repick', {
-                    expect: expect,
-                    homeTxt: homeTxt.slice(0, 40),
-                    aboutTxt: aboutTxt.slice(0, 40)
-                  });
-                  // #endregion
                   Shiny.setInputValue('ui_locale_pick', expect, {priority: 'event'});
                   try {
                     var bootRoot2 = window.__YNOW_UI_LOCALE_BOOT || {};
@@ -8291,10 +8138,6 @@ ui <- dashboardPage(
                 }, 1200);
               }
             });
-            // #region agent log
-            setTimeout(function () { ynowProbeLangOverlays('bind+200'); }, 200);
-            setTimeout(function () { ynowProbeLangOverlays('bind+1500'); }, 1500);
-            // #endregion
           }
           function armMarketHeaderPlacement() {
             try { placeMarketHeaderByToggle(); } catch (ePlace0) {}
@@ -8484,36 +8327,11 @@ ui <- dashboardPage(
             var s = (payload && payload.strings) || {};
             var incoming = payload && payload.locale ? String(payload.locale) : 'en';
             var pendingPick = window.__ynowLocaleUserPick ? String(window.__ynowLocaleUserPick) : '';
+            /* Drop stale websocket locale pushes that disagree with the sticky
+               manual pick (e.g. late queued `en` after an early 繁中 click). */
             if (pendingPick && incoming !== pendingPick) {
-              // #region agent log
-              try {
-                if (typeof ynowAgentDbg === 'function') {
-                  ynowAgentDbg('D', 'ynow_ui.R:applyUiLocale', 'apply-skipped-stale', {
-                    incoming: incoming,
-                    pendingPick: pendingPick,
-                    fromBoot: fromBoot
-                  });
-                }
-              } catch (eStale) {}
-              // #endregion
               return;
             }
-            // #region agent log
-            try {
-              if (typeof ynowAgentDbg === 'function') {
-                ynowAgentDbg('C', 'ynow_ui.R:applyUiLocale', 'apply-enter', {
-                  locale: payload && payload.locale,
-                  market: payload && payload.market,
-                  menu_home: s.menu_home || null,
-                  menu_dashboard: s.menu_dashboard || null,
-                  hdr_lang_zh: s.hdr_lang_zh || null,
-                  stringKeys: Object.keys(s).length,
-                  prevHtmlLang: document.documentElement.getAttribute('lang'),
-                  fromBoot: fromBoot
-                });
-              }
-            } catch (eDbgEnter) {}
-            // #endregion
             if (typeof window.ynowSetUpdateLocaleStrings === 'function') {
               window.ynowSetUpdateLocaleStrings(s);
             }
@@ -9529,27 +9347,6 @@ ui <- dashboardPage(
             /* Keep __ynowLocaleUserPick sticky after the first manual click.
                Clearing it on server-confirm let a late queued `en` overwrite
                首頁／關於 after an early 繁中 apply had already succeeded. */
-            // #region agent log
-            try {
-              if (typeof ynowAgentDbg === 'function') {
-                ynowAgentDbg('C', 'ynow_ui.R:applyUiLocale', 'apply-exit', {
-                  htmlLang: document.documentElement.getAttribute('lang'),
-                  zhActive: !!(document.getElementById('ynow_lang_btn_zh') &&
-                    document.getElementById('ynow_lang_btn_zh').classList.contains('active')),
-                  enActive: !!(document.getElementById('ynow_lang_btn_en') &&
-                    document.getElementById('ynow_lang_btn_en').classList.contains('active')),
-                  fromBoot: fromBoot,
-                  pendingLeft: window.__ynowLocaleUserPick || null,
-                  menuHomeText: (function () {
-                    var a = document.querySelector('.sidebar-menu a[data-value=\"home\"]');
-                    if (!a) return null;
-                    var sp = a.querySelector('.ynow-menu-label, span:not(.pull-right-container):not(.ynow-rec-slot)');
-                    return sp ? (sp.textContent || '').trim().slice(0, 40) : (a.textContent || '').trim().slice(0, 40);
-                  })()
-                });
-              }
-            } catch (eDbgExit) {}
-            // #endregion
           }
 
           function applyDcLocale(payload) {
@@ -9583,16 +9380,6 @@ ui <- dashboardPage(
             if (__ynowLocaleResyncTimer) clearTimeout(__ynowLocaleResyncTimer);
             __ynowLocaleResyncTimer = setTimeout(function () {
               __ynowLocaleResyncTimer = null;
-              // #region agent log
-              try {
-                if (typeof ynowAgentDbg === 'function') {
-                  ynowAgentDbg('D', 'ynow_ui.R:requestLocaleResync', 'resync', {
-                    reason: reason || '',
-                    htmlLang: document.documentElement.getAttribute('lang')
-                  });
-                }
-              } catch (eRs) {}
-              // #endregion
               Shiny.setInputValue('ynow_locale_resync', Date.now(), {priority: 'event'});
             }, 120);
           }

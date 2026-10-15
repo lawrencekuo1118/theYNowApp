@@ -85,7 +85,7 @@ check("applyUiLocale syncs lang active/labels", {
 check("locale pick always re-pushes (no noop early-return)", {
   grepl("Always re-push", srv_src, fixed = TRUE) &&
     grepl("ynow_locale_resync", srv_src, fixed = TRUE) &&
-    grepl("force_repush", srv_src, fixed = TRUE)
+    grepl("force = TRUE", srv_src, fixed = TRUE)
 })
 check("client resyncs locale after shiny connect / missed apply", {
   grepl("ynowRequestLocaleResync", ui_src, fixed = TRUE) &&
@@ -94,7 +94,7 @@ check("client resyncs locale after shiny connect / missed apply", {
 })
 check("client drops stale locale push after manual pick", {
   grepl("__ynowLocaleUserPick", ui_src, fixed = TRUE) &&
-    grepl("apply-skipped-stale", ui_src, fixed = TRUE)
+    grepl("pendingPick && incoming !== pendingPick", ui_src, fixed = TRUE)
 })
 check("click-time boot locale apply (no websocket wait)", {
   grepl("__YNOW_UI_LOCALE_BOOT", ui_src, fixed = TRUE) &&
@@ -105,8 +105,9 @@ check("user pick stays sticky (late en cannot overwrite after confirm)", {
   grepl("Keep __ynowLocaleUserPick sticky", ui_src, fixed = TRUE) &&
     !grepl("window.__ynowLocaleUserPick = null", ui_src, fixed = TRUE)
 })
-check("same-locale pick logs force-repush", {
-  grepl("locale-pick-force-repush", srv_src, fixed = TRUE)
+check("push coalesce skips identical non-force bursts", {
+  grepl("ynow_last_locale_push", srv_src, fixed = TRUE) &&
+    grepl("!isTRUE(force)", srv_src, fixed = TRUE)
 })
 
 if (fail > 0L) {
