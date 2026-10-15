@@ -7,4 +7,4 @@ commit=76aae86
 short=76aae86
 message=chore: record shipped display version v25.10
 captured_at=2026-10-15T17:11:33Z
-display_version=v25.10
+display_version=v25.11
