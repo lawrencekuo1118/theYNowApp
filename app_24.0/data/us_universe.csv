@@ -125,7 +125,7 @@
 "PH","Parker-Hannifin Corp","NYSE",NA,"ind.Machinery","2026-10-02T17:06:46Z","sec-exchange",FALSE
 "PGR","PROGRESSIVE CORP/OH/","NYSE",NA,"fn.Insurance","2026-10-02T17:06:46Z","sec-exchange",FALSE
 "COF","CAPITAL ONE FINANCIAL CORP","NYSE",NA,"fn.Fintech","2026-10-02T17:06:46Z","sec-exchange",FALSE
-"ASX","ASE Technology Holding Co., Ltd.","NYSE","Sector: Technology | Industry: Semiconductors","sc.IC_Design","2026-10-02T17:06:46Z","sec-exchange",TRUE
+"ASX","ASE Technology Holding Co., Ltd.","NYSE","Sector: Technology | Industry: Semiconductors","sc.Packaging","2026-10-02T17:06:46Z","sec-exchange",TRUE
 "LMT","LOCKHEED MARTIN CORP","NYSE",NA,"ind.Aerospace_Defense","2026-10-02T17:06:46Z","sec-exchange",FALSE
 "BMO","BANK OF MONTREAL /CAN/","NYSE","Sector: Financial Services | Industry: Banks - Diversified","fn.Banking","2026-10-02T17:06:46Z","sec-exchange",FALSE
 "BTI","British American Tobacco p.l.c.","NYSE","Sector: Consumer Defensive | Industry: Tobacco","fmcg.Food_Beverages","2026-10-02T17:06:46Z","sec-exchange",FALSE

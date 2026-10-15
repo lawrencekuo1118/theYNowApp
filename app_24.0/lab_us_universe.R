@@ -101,10 +101,8 @@ lab_us_overlay_ticker_industry_overrides <- function(df) {
   if (!length(ov)) return(df)
   # Later entries win for duplicate names (ADR map may refine)
   ov <- ov[!duplicated(names(ov), fromLast = TRUE)]
-  need <- which(
-    tks %in% names(ov) &
-      (is.na(keys) | !nzchar(keys) | keys == unmapped)
-  )
+  # Curated ticker/ADR overrides always win over Yahoo/S&P heuristics.
+  need <- which(tks %in% names(ov))
   if (length(need)) {
     df$industry_key[need] <- unname(ov[tks[need]])
   }
@@ -253,6 +251,16 @@ lookup_us_ticker_industry_key <- function(ticker) {
       return("")
     }
     key
+  }
+
+  # Curated ADR / foreign-issuer map wins over Yahoo overlay heuristics
+  # (e.g. ASX OSAT must not stay sc.IC_Design from bare "Semiconductors").
+  if (exists("lab_adr_industry_map", mode = "function")) {
+    am <- tryCatch(lab_adr_industry_map(), error = function(e) c())
+    if (length(am) && tk %in% names(am)) {
+      key <- .valid_key(unname(am[[tk]]))
+      if (nzchar(key)) return(key)
+    }
   }
 
   ov <- tryCatch(lab_us_load_industry_overlay(), error = function(e) NULL)

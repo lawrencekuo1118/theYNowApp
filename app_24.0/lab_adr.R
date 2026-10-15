@@ -12,7 +12,7 @@ lab_adr_industry_map <- function() {
     # Semiconductors / tech hardware
     TSM = "sc.Foundry",
     UMC = "sc.Foundry",
-    ASX = "sc.Foundry",
+    ASX = "sc.Packaging",  # ASE Technology Holding — OSAT / 封測 (not IC design / foundry)
     SKHY = "sc.Memory",
     ASML = "sc.Equipment",
     ARM = "sc.IC_Design",
@@ -172,11 +172,8 @@ lab_us_overlay_adr_industry <- function(df) {
   nms <- if ("name" %in% names(df)) as.character(df$name) else rep("", length(tks))
   amap <- lab_adr_industry_map()
   if (!("industry_key" %in% names(df))) df$industry_key <- unmapped
-  keys <- as.character(df$industry_key)
-  need <- which(
-    tks %in% names(amap) &
-      (is.na(keys) | !nzchar(keys) | keys == unmapped)
-  )
+  # Curated ADR keys always win (e.g. ASX → Packaging over Yahoo Semiconductors→IC Design).
+  need <- which(tks %in% names(amap))
   if (length(need)) {
     df$industry_key[need] <- unname(amap[tks[need]])
   }

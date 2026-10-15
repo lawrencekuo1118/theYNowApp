@@ -24,6 +24,6 @@ check("stardust paused on update-available", {
 })
 check("reduced motion hides stardust", grepl("prefers-reduced-motion: reduce", ui, fixed = TRUE) &&
   grepl("ynow-gold-stardust", ui, fixed = TRUE))
-check("display version v24.19", grepl("v24.19", ui, fixed = TRUE))
+check("display version v24.21", grepl("v24.21", ui, fixed = TRUE))
 if (fail > 0L) { message("FAILED: ", fail); quit(status = 1L) }
 message("All gold-stardust checks passed.")

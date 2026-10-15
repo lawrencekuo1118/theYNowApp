@@ -4127,7 +4127,8 @@ server <- function(input, output, session) {
     reactive(input$industry_choice),
     fundamental_profile = fundamental_profile_rec,
     current_ticker = current_ticker,
-    user_has_searched = user_has_searched
+    user_has_searched = user_has_searched,
+    ui_locale = ui_locale
   )
 
   # macro_market_server: first visit only (lazy_tabs); BBLab mounts with Company
