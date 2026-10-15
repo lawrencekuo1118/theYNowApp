@@ -720,11 +720,21 @@ locale_for_market <- function(mode = get_market_mode()) {
     auth_msg_oauth_failed = "Social sign-in failed. Please try again.",
     auth_msg_oauth_state = "Social sign-in session expired. Please try again.",
     auth_msg_oauth_no_email = "The social account did not return an email address.",
-    auth_msg_register_soon = "Registration is not open yet.",
+    auth_msg_register_soon = "Registration is not open yet. Configure Neon (YNOW_DB_*) to enable Email sign-up.",
+    auth_msg_register_ok = "Account created. Signed in.",
+    auth_msg_register_failed = "Could not create the account. Please try again.",
+    auth_msg_email_taken = "This email is already registered. Sign in instead.",
+    auth_msg_password_short = "Password must be at least 8 characters.",
+    auth_msg_disabled_account = "This account is disabled.",
     auth_msg_forgot_soon = "Password reset is not available yet.",
     auth_msg_resend_soon = "Verification email resend is not available yet.",
+    auth_about_neon = paste0(
+      "Account store: Neon Free Postgres (own users table). ",
+      "Email sign-in / register use the existing modal when YNOW_DB_* is set."
+    ),
     auth_about_note = paste0(
       "Account sign-in is on by default (set YNOW_ENABLE_ACCOUNT_LOGIN=0 to disable). ",
+      "Preferred account store: Neon Free Postgres (own users table; set YNOW_DB_*). ",
       "Full-mode Value Alerts require sign-in; email notify defaults to the registered mailbox. ",
       "Lite mode stays fully usable without an account."
     ),
@@ -4052,11 +4062,21 @@ locale_for_market <- function(mode = get_market_mode()) {
     auth_msg_oauth_failed = "社群登入失敗，請再試一次。",
     auth_msg_oauth_state = "社群登入階段已過期，請再試一次。",
     auth_msg_oauth_no_email = "此社群帳號未提供電子郵件。",
-    auth_msg_register_soon = "註冊功能尚未開放。",
+    auth_msg_register_soon = "註冊尚未開放。請先設定 Neon（YNOW_DB_*）以啟用 Email 註冊。",
+    auth_msg_register_ok = "帳號已建立並登入。",
+    auth_msg_register_failed = "無法建立帳號，請再試一次。",
+    auth_msg_email_taken = "此電子郵件已註冊，請直接登入。",
+    auth_msg_password_short = "密碼至少需 8 個字元。",
+    auth_msg_disabled_account = "此帳號已停用。",
     auth_msg_forgot_soon = "密碼重設尚未開放。",
     auth_msg_resend_soon = "認證信重寄尚未開放。",
+    auth_about_neon = paste0(
+      "帳號資料庫：Neon Free Postgres（自管 users 表）。",
+      "設定 YNOW_DB_* 後，Email 登入／註冊仍走現有 modal。"
+    ),
     auth_about_note = paste0(
       "帳號登入預設啟用（設 YNOW_ENABLE_ACCOUNT_LOGIN=0 可關閉）。",
+      "帳號表建議 Neon Free Postgres（自管 users；設 YNOW_DB_*）。",
       "完整版到值通知需登入；寄信預設註冊信箱。",
       "Lite 版無需帳號即可完整使用。"
     ),

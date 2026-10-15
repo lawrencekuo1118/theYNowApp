@@ -44,7 +44,7 @@ ynow_auth_password_ok <- function(provided, expected) {
   identical(a, b)
 }
 
-#' Validate credentials against the demo store (when enabled).
+#' Validate credentials: Neon users table first, then demo env fallback.
 #' @return list(ok=, user=, message_key=) — user is NULL on failure.
 ynow_auth_try_login <- function(email, password) {
   if (!isTRUE(ynow_auth_enabled())) {
@@ -54,6 +54,11 @@ ynow_auth_try_login <- function(email, password) {
   pw <- as.character(password %||% "")[1]
   if (!nzchar(em) || !nzchar(pw)) {
     return(list(ok = FALSE, user = NULL, message_key = "auth_msg_missing"))
+  }
+  # Preferred: Neon Free account table (own users, same Email modal).
+  if (exists("ynow_db_ready", mode = "function") && isTRUE(ynow_db_ready()) &&
+      exists("ynow_db_try_login", mode = "function")) {
+    return(ynow_db_try_login(em, pw))
   }
   demo <- ynow_auth_demo_credentials()
   if (is.null(demo)) {
@@ -68,10 +73,23 @@ ynow_auth_try_login <- function(email, password) {
       email = em,
       display_name = em,
       provider = "demo_env",
+      role = "admin",
       logged_in_at = as.character(Sys.time())
     ),
     message_key = "auth_msg_ok"
   )
+}
+
+#' Register via Neon when configured; otherwise not open.
+ynow_auth_try_register <- function(email, password, display_name = NULL) {
+  if (!isTRUE(ynow_auth_enabled())) {
+    return(list(ok = FALSE, user = NULL, message_key = "auth_msg_disabled"))
+  }
+  if (exists("ynow_db_ready", mode = "function") && isTRUE(ynow_db_ready()) &&
+      exists("ynow_db_create_user", mode = "function")) {
+    return(ynow_db_create_user(email, password, display_name = display_name, role = "user"))
+  }
+  list(ok = FALSE, user = NULL, message_key = "auth_msg_register_soon")
 }
 
 #' Sign-in / Sign-out text links under the ZH/EN stack (right-aligned).
@@ -633,7 +651,20 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
   }, ignoreInit = TRUE)
   observeEvent(input$ynow_auth_register, {
     if (!isTRUE(ynow_auth_enabled())) return()
-    .show_auth_note("auth_msg_register_soon", "Registration is not open yet.")
+    # Same Email/password fields as sign-in; Neon creates the account when configured.
+    res <- ynow_auth_try_register(input$ynow_auth_email, input$ynow_auth_password)
+    if (isTRUE(res$ok) && !is.null(res$user)) {
+      account_user(res$user)
+      output$ynow_auth_status <- renderUI({
+        tags$p(class = "text-success", .str("auth_msg_register_ok", "Account created. Signed in."))
+      })
+      .push_auth_state(TRUE, res$user$email %||% "")
+      tryCatch(shinyBS::toggleModal(session, "ynow_auth_modal", "close"), error = function(e) NULL)
+    } else {
+      mk <- as.character(res$message_key %||% "auth_msg_register_soon")[1]
+      cls <- if (identical(mk, "auth_msg_register_soon")) "text-muted" else "text-danger"
+      .show_auth_note(mk, "Registration is not open yet.", cls = cls)
+    }
   }, ignoreInit = TRUE)
   observeEvent(input$ynow_auth_resend, {
     if (!isTRUE(ynow_auth_enabled())) return()

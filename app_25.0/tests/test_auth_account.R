@@ -26,6 +26,7 @@ check <- function(label, cond) {
 
 src_auth <- file.path(app_dir, "auth_account.R")
 src_oauth <- file.path(app_dir, "auth_oauth.R")
+src_db <- file.path(app_dir, "auth_db.R")
 src_locale <- file.path(app_dir, "ui_locale.R")
 src_global <- file.path(app_dir, "global.R")
 src_ui <- file.path(app_dir, "ynow_ui.R")
@@ -33,6 +34,7 @@ src_srv <- file.path(app_dir, "ynow_server.R")
 
 check("auth_account.R exists", file.exists(src_auth))
 check("auth_oauth.R exists", file.exists(src_oauth))
+check("auth_db.R exists", file.exists(src_db))
 check("global sources auth_account.R", {
   g <- paste(readLines(src_global, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   grepl('source\\(\"auth_account\\.R\"', g)
@@ -40,6 +42,10 @@ check("global sources auth_account.R", {
 check("global sources auth_oauth.R", {
   g <- paste(readLines(src_global, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   grepl('source\\(\"auth_oauth\\.R\"', g)
+})
+check("global sources auth_db.R", {
+  g <- paste(readLines(src_global, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl('source\\(\"auth_db\\.R\"', g)
 })
 
 if (!exists("%||%", mode = "function")) {
@@ -51,8 +57,10 @@ if (!exists("ui_str", mode = "function")) {
 suppressPackageStartupMessages({
   if (!requireNamespace("jsonlite", quietly = TRUE)) stop("jsonlite required")
   if (!requireNamespace("digest", quietly = TRUE)) stop("digest required")
+  if (!requireNamespace("openssl", quietly = TRUE)) stop("openssl required")
 })
 source(src_auth, local = FALSE, encoding = "UTF-8")
+source(src_db, local = FALSE, encoding = "UTF-8")
 source(src_oauth, local = FALSE, encoding = "UTF-8")
 
 # Default: disabled (unset / 0)
@@ -184,7 +192,9 @@ keys <- c(
   "auth_msg_ok", "auth_msg_disabled", "auth_msg_missing", "auth_msg_invalid",
   "auth_msg_no_backend", "auth_msg_oauth_soon", "auth_msg_oauth_need_google",
   "auth_msg_oauth_need_facebook", "auth_msg_oauth_failed", "auth_msg_oauth_state",
-  "auth_msg_oauth_no_email", "auth_msg_register_soon",
+  "auth_msg_oauth_no_email", "auth_msg_register_soon", "auth_msg_register_ok",
+  "auth_msg_register_failed", "auth_msg_email_taken", "auth_msg_password_short",
+  "auth_msg_disabled_account", "auth_about_neon",
   "auth_msg_forgot_soon", "auth_msg_resend_soon", "auth_about_note",
   "menu_admin", "auth_admin_title", "auth_admin_intro", "auth_pa_gate_title",
   "auth_pa_gate_body", "auth_admin_tool_lite", "pa_email_account_help"
@@ -212,6 +222,38 @@ check("UI wires ynowAuthState handler", grepl("ynowAuthState", ui, fixed = TRUE)
 check("UI wires ynowAuthFeature handler", grepl("ynowAuthFeature", ui, fixed = TRUE))
 check("UI wires OAuth redirect + callback", grepl("ynowAuthOAuthRedirect", ui, fixed = TRUE) &&
         grepl("ynow_auth_oauth_callback", ui, fixed = TRUE))
+check("Neon not ready without env", {
+  Sys.unsetenv("YNOW_DB_HOST")
+  Sys.unsetenv("YNOW_DB_USER")
+  Sys.unsetenv("YNOW_DB_PASSWORD")
+  Sys.unsetenv("YNOW_DATABASE_URL")
+  Sys.unsetenv("DATABASE_URL")
+  identical(ynow_db_ready(), FALSE)
+})
+check("Neon URL parse", {
+  p <- ynow_db_parse_url(
+    "postgresql://neondb_owner:s3cret@ep-cool-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require"
+  )
+  !is.null(p) && identical(p$user, "neondb_owner") && identical(p$password, "s3cret") &&
+    identical(p$host, "ep-cool-pooler.us-east-2.aws.neon.tech") &&
+    identical(p$dbname, "neondb") && identical(p$sslmode, "require")
+})
+check("Neon password hash verify", {
+  h <- ynow_db_hash_password("correct-horse-battery")
+  isTRUE(ynow_db_verify_password("correct-horse-battery", h)) &&
+    !isTRUE(ynow_db_verify_password("wrong", h))
+})
+check("register without Neon says soon", {
+  Sys.unsetenv("YNOW_DB_HOST")
+  Sys.unsetenv("YNOW_DATABASE_URL")
+  Sys.setenv(YNOW_ENABLE_ACCOUNT_LOGIN = "1")
+  r <- ynow_auth_try_register("a@b.com", "password123")
+  isFALSE(r$ok) && identical(r$message_key, "auth_msg_register_soon")
+})
+check("UI About mentions Neon", grepl("Neon Free", ui, fixed = TRUE) &&
+        grepl("Neon Free", ui, fixed = TRUE))
+check("migrate script exists", file.exists(file.path(dirname(app_dir), "scripts", "neon_migrate.R")) ||
+        file.exists(file.path(app_dir, "..", "scripts", "neon_migrate.R")))
 check("OAuth google not ready without env", {
   Sys.unsetenv("YNOW_SUPABASE_URL")
   Sys.unsetenv("YNOW_SUPABASE_ANON_KEY")

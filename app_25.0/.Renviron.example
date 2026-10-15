@@ -1,24 +1,37 @@
 # Copy to app_25.0/.Renviron (gitignored) and fill real values before deploy.
-# Social login will redirect to Google / Facebook only after these are set.
 
-# --- Recommended: Supabase Auth (covers Google + Facebook in one project) ---
+# =============================================================================
+# Preferred: Neon Free — own account table; Email login still uses the modal
+# =============================================================================
+# Neon Console → Connect → copy pooled connection details (hostname has -pooler).
+YNOW_DB_HOST=ep-xxxx-pooler.region.aws.neon.tech
+YNOW_DB_NAME=neondb
+YNOW_DB_USER=neondb_owner
+YNOW_DB_PASSWORD=
+YNOW_DB_PORT=5432
+YNOW_DB_SSLMODE=require
+# Or one URL instead of the fields above:
+# YNOW_DATABASE_URL=postgresql://USER:PASSWORD@ep-xxxx-pooler.region.aws.neon.tech/neondb?sslmode=require
+
+# One-time: Rscript scripts/neon_migrate.R
+# Optional seed admin (created on migrate / app boot if missing):
+# YNOW_AUTH_SEED_EMAIL=you@example.com
+# YNOW_AUTH_SEED_PASSWORD=change-me-long
+
+YNOW_ENABLE_ACCOUNT_LOGIN=1
+
+# =============================================================================
+# Optional: social OAuth (Google / Facebook) — still optional alongside Neon
+# =============================================================================
 # YNOW_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
-# YNOW_SUPABASE_ANON_KEY=YOUR_ANON_KEY
-# YNOW_OAUTH_REDIRECT_URI=https://hopesmasher1118.shinyapps.io/TheYNowApp
-# In Supabase Dashboard → Authentication → Providers: enable Google + Facebook.
-# Add the redirect URI under Authentication → URL Configuration → Redirect URLs.
-
-# --- Or direct OAuth (no Supabase) ---
+# YNOW_SUPABASE_ANON_KEY=
 # YNOW_GOOGLE_CLIENT_ID=
 # YNOW_GOOGLE_CLIENT_SECRET=
 # YNOW_FACEBOOK_APP_ID=
 # YNOW_FACEBOOK_APP_SECRET=
-# YNOW_OAUTH_STATE_SECRET=replace-with-a-long-random-string
+# YNOW_OAUTH_STATE_SECRET=
 # YNOW_OAUTH_REDIRECT_URI=https://hopesmasher1118.shinyapps.io/TheYNowApp
-# Google Cloud Console → OAuth client (Web) Authorized redirect URI = YNOW_OAUTH_REDIRECT_URI
-# Meta Developer → Facebook Login Valid OAuth Redirect URIs = same URI
 
-# Optional Email demo login (existing)
+# Legacy Email demo fallback when Neon is NOT configured:
 # YNOW_AUTH_DEMO_EMAIL=you@example.com
 # YNOW_AUTH_DEMO_PASSWORD=change-me
-# YNOW_ENABLE_ACCOUNT_LOGIN=1

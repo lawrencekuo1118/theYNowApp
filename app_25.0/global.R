@@ -69,6 +69,9 @@ pacman::p_load(
   # 5. 效能優化與快取 (Performance & Cache)
   memoise, cachem, TTR, httr2, digest,
 
+  # 5b. Neon account store (Postgres) + password hashing
+  DBI, RPostgres, pool, sodium, openssl,
+
   # 6. 非阻塞並行任務 (ExtendedTask / future_promise — ≥2 features concurrent)
   future, promises, later, callr
 )
@@ -201,7 +204,19 @@ source("default_config.R", local = TRUE, encoding = "UTF-8")
 source("param_audit.R", local = TRUE, encoding = "UTF-8")
 source("explainability.R", local = TRUE, encoding = "UTF-8")
 source("auth_account.R", local = TRUE, encoding = "UTF-8")
+source("auth_db.R", local = TRUE, encoding = "UTF-8")
 source("auth_oauth.R", local = TRUE, encoding = "UTF-8")
+# Ensure Neon schema + optional seed admin when DB env is present (best-effort).
+if (exists("ynow_db_ready", mode = "function") && isTRUE(ynow_db_ready())) {
+  tryCatch({
+    ynow_db_ensure_schema()
+    if (exists("ynow_db_seed_admin_from_env", mode = "function")) {
+      ynow_db_seed_admin_from_env()
+    }
+  }, error = function(e) {
+    warning("Neon auth bootstrap: ", conditionMessage(e), call. = FALSE)
+  })
+}
 source("corp_events.R", local = TRUE, encoding = "UTF-8")
 source("lab_industry_method.R", local = TRUE, encoding = "UTF-8")
 source("lab_clustering.R", local = TRUE, encoding = "UTF-8")
