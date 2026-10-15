@@ -9825,68 +9825,6 @@ ui <- dashboardPage(
             window.__ynowApplyLiteMode = applyLiteMode;
           })();
 
-          // #region agent log
-          (function () {
-            function dbg(hypothesisId, location, message, data) {
-              var payload = {
-                hypothesisId: hypothesisId || '',
-                location: location || '',
-                message: message || '',
-                data: data || {},
-                timestamp: Date.now(),
-                runId: 'tw-filter-count'
-              };
-              try {
-                if (window.Shiny && Shiny.setInputValue) {
-                  Shiny.setInputValue('ynow_agent_dbg', JSON.stringify(payload), {priority: 'event'});
-                }
-              } catch (eSend) {}
-            }
-            function armFilterCountProbe() {
-              if (document.documentElement.getAttribute('data-ynow-fc-probe') === '1') return;
-              document.documentElement.setAttribute('data-ynow-fc-probe', '1');
-              var lastN = null;
-              var obs = new MutationObserver(function () {
-                var el = document.getElementById('ynow_lab_im_filter_count_n');
-                if (!el) return;
-                var txt = (el.textContent || '').replace(/\\s+/g, '').trim();
-                if (txt === lastN) return;
-                lastN = txt;
-                dbg('C', 'ynow_ui.R:filter-count-dom', 'count-dom-changed', {
-                  nText: txt,
-                  marketTw: document.body.classList.contains('ynow-market-tw'),
-                  tab: (function () {
-                    var a = document.querySelector('.sidebar-menu li.active > a[data-value]');
-                    return a ? a.getAttribute('data-value') : null;
-                  })()
-                });
-              });
-              obs.observe(document.body, {childList: true, subtree: true, characterData: true});
-              document.addEventListener('change', function (ev) {
-                var t = ev.target;
-                if (!t) return;
-                var name = t.name || t.id || '';
-                if (!/lab_im_/.test(name) && !(t.closest && t.closest('#lab_im_methods, #lab_im_boards, #lab_im_chains, #lab_im_industries'))) return;
-                dbg('A', 'ynow_ui.R:filter-count-dom', 'filter-input-change', {
-                  name: name,
-                  id: t.id || '',
-                  type: t.type || t.tagName,
-                  checked: !!t.checked,
-                  value: (t.value || '').toString().slice(0, 40)
-                });
-              }, true);
-            }
-            if (document.readyState === 'loading') {
-              document.addEventListener('DOMContentLoaded', armFilterCountProbe);
-            } else {
-              armFilterCountProbe();
-            }
-            if (window.jQuery) {
-              jQuery(document).on('shiny:connected', armFilterCountProbe);
-            }
-          })();
-          // #endregion
-
           /* ---- Param audit (1A+2B): go to tab + highlight input ---- */
           function ynowClearParamHighlight() {
             document.querySelectorAll('.ynow-param-highlight').forEach(function (el) {
