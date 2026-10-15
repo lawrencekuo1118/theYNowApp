@@ -2549,30 +2549,6 @@ build_report_kpi_df <- function(d_is, d_bs, d_cf) {
   } else {
     "毛利率"
   }
-  # #region agent log
-  tryCatch({
-    labels <- if (is.data.frame(d_is) && ncol(d_is) >= 1L) as.character(d_is[[1]]) else character(0)
-    payload <- list(
-      hypothesisId = "C",
-      location = "setup.R:build_report_kpi_df",
-      message = "report KPI GM row (post-fix)",
-      data = list(
-        has_gross_profit_label = any(grepl("^Gross Profit$", labels, ignore.case = TRUE)),
-        has_cogs_label = any(grepl("Cost Of Revenue|Cost Of Goods Sold", labels, ignore.case = TRUE)),
-        has_net_interest_income = any(grepl("Net Interest Income", labels, ignore.case = TRUE)),
-        mode = as.character(gm_m$mode %||% "")[1],
-        gm_pct = if (is.finite(gm_pct)) gm_pct else NA_real_,
-        display = pct(gm_pct),
-        gm_label = gm_label,
-        runPhase = "post-fix"
-      ),
-      timestamp = as.numeric(Sys.time()) * 1000,
-      runId = "tw-2884-gm"
-    )
-    cat(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"),
-        "\n", file = "/opt/cursor/logs/debug.log", append = TRUE)
-  }, error = function(e) NULL)
-  # #endregion
   
   data.frame(
     指標 = c(gm_label, "淨利率", "營收成長率 (年均)", "ROA", "ROE", "FCF 利潤率", "營業現金流 (均)", "自由現金流 (均)"),

@@ -91,34 +91,6 @@ kpi_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_fl
       )
       margin <- suppressWarnings(as.numeric(m$margin_pct)[1])
       mode <- as.character(m$mode %||% "unavailable")[1]
-      # #region agent log
-      tryCatch({
-        labels <- if (is.data.frame(d_is) && ncol(d_is) >= 1L) as.character(d_is[[1]]) else character(0)
-        payload <- list(
-          hypothesisId = "A",
-          location = "kpi_module.R:vbx_gross_profit_margin",
-          message = "KPI gross margin compute (post-fix)",
-          data = list(
-            ticker = tryCatch(as.character(current_ticker() %||% "")[1], error = function(e) ""),
-            industry = tryCatch(as.character(industry_choice() %||% "")[1], error = function(e) ""),
-            n_is_rows = length(labels),
-            has_gross_profit_label = any(grepl("^Gross Profit$", labels, ignore.case = TRUE)),
-            has_cogs_label = any(grepl("Cost Of Revenue|Cost Of Goods Sold", labels, ignore.case = TRUE)),
-            has_total_revenue = any(grepl("^Total Revenue$", labels, ignore.case = TRUE)),
-            has_net_interest_income = any(grepl("Net Interest Income", labels, ignore.case = TRUE)),
-            mode = mode,
-            reason = as.character(m$reason %||% "")[1],
-            margin_pct = if (is.finite(margin)) margin else NA_real_,
-            display = if (is.finite(margin)) "pct" else "N/A",
-            runPhase = "post-fix"
-          ),
-          timestamp = as.numeric(Sys.time()) * 1000,
-          runId = "tw-2884-gm"
-        )
-        cat(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"),
-            "\n", file = "/opt/cursor/logs/debug.log", append = TRUE)
-      }, error = function(e) NULL)
-      # #endregion
       if (identical(mode, "bank_nii")) {
         # No industry GPM band for banks — keep white / N/A color path honest.
         color <- get_box_color(industry_choice(), "gross_profit_margin", NA_real_)
@@ -174,30 +146,6 @@ kpi_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_fl
       )
       val <- suppressWarnings(as.numeric(m$growth_pct)[1])
       mode <- as.character(m$mode %||% "unavailable")[1]
-      # #region agent log
-      tryCatch({
-        labels <- if (is.data.frame(d_is) && ncol(d_is) >= 1L) as.character(d_is[[1]]) else character(0)
-        payload <- list(
-          hypothesisId = "A",
-          location = "kpi_module.R:vbx_gross_profit_growth",
-          message = "KPI gross profit growth compute (post-fix)",
-          data = list(
-            ticker = tryCatch(as.character(current_ticker() %||% "")[1], error = function(e) ""),
-            has_gross_profit_label = any(grepl("^Gross Profit$", labels, ignore.case = TRUE)),
-            has_net_interest_income = any(grepl("Net Interest Income", labels, ignore.case = TRUE)),
-            mode = mode,
-            reason = as.character(m$reason %||% "")[1],
-            growth_pct = if (is.finite(val)) val else NA_real_,
-            display = if (is.finite(val)) "pct" else "N/A",
-            runPhase = "post-fix"
-          ),
-          timestamp = as.numeric(Sys.time()) * 1000,
-          runId = "tw-2884-gm"
-        )
-        cat(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"),
-            "\n", file = "/opt/cursor/logs/debug.log", append = TRUE)
-      }, error = function(e) NULL)
-      # #endregion
       if (identical(mode, "bank_nii")) {
         color <- get_box_color(industry_choice(), "rev_growth", val)
         sub <- .kpi_str(

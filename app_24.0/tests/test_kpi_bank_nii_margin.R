@@ -5,7 +5,14 @@ suppressPackageStartupMessages({
   }
 })
 
-root <- normalizePath(file.path(".."), mustWork = TRUE)
+args <- commandArgs(trailingOnly = FALSE)
+file_arg <- grep("^--file=", args, value = TRUE)
+script_path <- if (length(file_arg)) {
+  normalizePath(sub("^--file=", "", file_arg[[1]]), mustWork = TRUE)
+} else {
+  normalizePath("test_kpi_bank_nii_margin.R", mustWork = FALSE)
+}
+root <- normalizePath(file.path(dirname(script_path), ".."), mustWork = TRUE)
 src_setup <- file.path(root, "setup.R")
 src_locale <- file.path(root, "ui_locale.R")
 src_kpi <- file.path(root, "kpi_module.R")
