@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12692644
+bundleId=12692763
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=a7c336945fcfd0115a442c1167977344a4230084
-commit=a7c336945fcfd0115a442c1167977344a4230084
-short=a7c3369
-message=fix(ui): desktop sidebar scrolls so Lite logo is clickable (v24.07)
-captured_at=2026-10-15T04:20:00Z
-display_version=v24.07
+aligned_git=6fedf0c145082ee101283022f27f0dee1089c16e
+commit=6fedf0c145082ee101283022f27f0dee1089c16e
+short=6fedf0c
+message=fix(ui): make 繁中 locale switch survive connect races (v24.08)
+captured_at=2026-10-15T04:35:00Z
+display_version=v24.08
