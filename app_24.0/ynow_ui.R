@@ -4175,7 +4175,11 @@ ui <- dashboardPage(
           box-shadow: none !important;
         }
 
-        /* 美股／台股：三線 icon 右側上下堆疊；合計滿版標頭高度（各 25px）；國旗等寬等高 */
+        /* 美股／台股：釘在三線 icon 右側上下堆疊（滿 50px／各 25px）；國旗等寬等高。
+           absolute + JS left 可在 DOM 搬移前／後都貼齊 toggle（避免停在右欄 custom-menu）。 */
+        .main-header .navbar {
+          position: relative !important;
+        }
         .main-header .navbar > .sidebar-toggle,
         .skin-black .main-header .navbar .sidebar-toggle {
           padding-right: 0 !important;
@@ -4185,11 +4189,11 @@ ui <- dashboardPage(
         .main-header .navbar #ynow-market-header.ynow-market-header,
         .main-header .navbar-custom-menu #ynow-market-header.ynow-market-header,
         .main-header .navbar-custom-menu .navbar-nav > li#ynow-market-header.ynow-market-header {
-          float: left !important;
-          position: static !important;
-          left: auto !important;
+          position: absolute !important;
+          left: 44px !important; /* fallback；JS 依 toggle.offsetWidth 覆寫 */
           right: auto !important;
-          top: auto !important;
+          top: 0 !important;
+          float: none !important;
           width: 40px !important;
           height: 50px !important;
           margin: 0 !important;
@@ -7409,7 +7413,7 @@ ui <- dashboardPage(
           }
           registerBadgeHandler();
 
-          /* 美股／台股：搬到三線 toggle 正後方（float:left 流式；無 absolute left） */
+          /* 美股／台股：搬到三線 toggle 正後方；left = toggle 右緣（無空隙） */
           function placeMarketHeaderByToggle() {
             var navbar = document.querySelector('.main-header .navbar');
             var market = document.getElementById('ynow-market-header');
@@ -7427,8 +7431,10 @@ ui <- dashboardPage(
             if (!(market.parentNode === navbar && market.previousElementSibling === toggle)) {
               navbar.insertBefore(market, toggle.nextSibling);
             }
-            market.style.left = '';
-            market.style.top = '';
+            var leftPx = Math.round(toggle.offsetLeft + toggle.offsetWidth);
+            if (!(leftPx > 0)) leftPx = Math.round(toggle.offsetWidth) || 44;
+            market.style.left = leftPx + 'px';
+            market.style.top = '0';
             market.style.marginLeft = '0';
             market.style.paddingLeft = '0';
             placeMobileAppTitle();
@@ -13024,10 +13030,10 @@ ui <- dashboardPage(
             margin: 0 !important;
           }
           .main-header .navbar #ynow-market-header.ynow-market-header {
-            position: static !important;
-            left: auto !important;
-            top: auto !important;
-            float: left !important;
+            position: absolute !important;
+            left: 44px !important; /* fallback；JS 依 toggle.offsetWidth 覆寫 */
+            top: 0 !important;
+            float: none !important;
             align-self: auto;
             margin: 0 !important;
             padding: 0 !important;
