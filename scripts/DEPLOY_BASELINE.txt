@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12691996
+bundleId=12692115
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=b3bd97a02aba5e327c4fc758b1c2ba1be0ca028d
-commit=b3bd97a02aba5e327c4fc758b1c2ba1be0ca028d
-short=b3bd97a
-message=chore: record shipped display version v24.01
-captured_at=2026-10-15T00:52:00Z
+aligned_git=f9299706eb850ea5e5a241f36b25f384e3160256
+commit=f9299706eb850ea5e5a241f36b25f384e3160256
+short=f929970
+message=fix(ui): drop Full sidebar separators under Home and above About (v24.02)
+captured_at=2026-10-15T01:37:44Z
 display_version=v24.02
