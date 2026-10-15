@@ -9804,14 +9804,16 @@ ui <- dashboardPage(
           /* OAuth return: Google/Facebook/Supabase redirect lands with ?code= or #access_token= */
           function ynowParseQuery(qs) {
             var out = {};
-            String(qs || '').replace(/^\?/, '').split('&').forEach(function (pair) {
+            var raw = String(qs || '');
+            if (raw.charAt(0) === '?' || raw.charAt(0) === '#') raw = raw.slice(1);
+            raw.split('&').forEach(function (pair) {
               if (!pair) return;
               var i = pair.indexOf('=');
               var k = i < 0 ? pair : pair.slice(0, i);
               var v = i < 0 ? '' : pair.slice(i + 1);
               try {
-                out[decodeURIComponent(k.replace(/\+/g, ' '))] =
-                  decodeURIComponent(v.replace(/\+/g, ' '));
+                out[decodeURIComponent(String(k).split('+').join(' '))] =
+                  decodeURIComponent(String(v).split('+').join(' '));
               } catch (eDec) {
                 out[k] = v;
               }
@@ -9825,7 +9827,7 @@ ui <- dashboardPage(
             }
             if (window.__ynowOAuthCallbackPushed) return;
             var q = ynowParseQuery(window.location.search || '');
-            var h = ynowParseQuery((window.location.hash || '').replace(/^#/, ''));
+            var h = ynowParseQuery(window.location.hash || '');
             var access = h.access_token || q.access_token || '';
             var code = q.code || h.code || '';
             var state = q.state || h.state || '';
