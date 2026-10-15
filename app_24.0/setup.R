@@ -1569,6 +1569,91 @@ get_avg_growth <- function(x) {
   mean(rates, na.rm = TRUE) * 100
 }
 
+#' TRUE when the income statement has a usable Gross Profit series.
+stmt_has_gross_profit <- function(d_is) {
+  vals <- tryCatch(
+    select_clean_metric_row(d_is, "Gross Profit", include_ttm = FALSE),
+    error = function(e) NA
+  )
+  length(vals) > 0L && any(is.finite(suppressWarnings(as.numeric(vals))))
+}
+
+#' Bank / financial IS shape: no Gross Profit, but Net Interest Income (or Interest Income).
+#' Does NOT invent COGS / Gross Profit.
+stmt_is_bank_interest_structure <- function(d_is) {
+  if (isTRUE(stmt_has_gross_profit(d_is))) return(FALSE)
+  nii <- tryCatch(
+    select_clean_metric_row(d_is, "Net Interest Income", include_ttm = FALSE),
+    error = function(e) NA
+  )
+  if (length(nii) > 0L && any(is.finite(suppressWarnings(as.numeric(nii))))) return(TRUE)
+  ii <- tryCatch(
+    select_clean_metric_row(d_is, "^Interest Income$", include_ttm = FALSE),
+    error = function(e) NA
+  )
+  length(ii) > 0L && any(is.finite(suppressWarnings(as.numeric(ii))))
+}
+
+#' KPI filler for the Gross Margin / Gross Profit Growth boxes.
+#'
+#' Modes:
+#' - `gross`: standard Gross Profit / Revenue (+ GP growth)
+#' - `bank_nii`: engineering heuristic Net Interest Income / Revenue (+ NII growth),
+#'   only when Gross Profit is absent and bank interest rows exist — never labeled as GM
+#' - `unavailable`: no GP and no bank heuristic → N/A with explicit reason
+kpi_gross_margin_box_metrics <- function(d_is) {
+  empty <- function(mode, reason) {
+    list(
+      mode = mode,
+      reason = reason,
+      margin_pct = NA_real_,
+      growth_pct = NA_real_,
+      numer_avg = NA_real_,
+      rev_avg = NA_real_
+    )
+  }
+  if (!is.data.frame(d_is) || nrow(d_is) < 1L) {
+    return(empty("unavailable", "empty_income_statement"))
+  }
+  rev_row <- select_clean_metric_row(d_is, "Total Revenue", include_ttm = FALSE)
+  rev <- get_avg(rev_row)
+
+  if (isTRUE(stmt_has_gross_profit(d_is))) {
+    gp_row <- select_clean_metric_row(d_is, "Gross Profit", include_ttm = FALSE)
+    gp <- get_avg(gp_row)
+    margin <- if (!is.na(gp) && !is.na(rev) && rev != 0) gp / rev * 100 else NA_real_
+    growth <- get_avg_growth(gp_row)
+    return(list(
+      mode = "gross",
+      reason = "ok",
+      margin_pct = if (is.finite(margin)) margin else NA_real_,
+      growth_pct = if (is.finite(growth)) growth else NA_real_,
+      numer_avg = if (is.finite(gp)) gp else NA_real_,
+      rev_avg = if (is.finite(rev)) rev else NA_real_
+    ))
+  }
+
+  if (isTRUE(stmt_is_bank_interest_structure(d_is))) {
+    nii_row <- select_clean_metric_row(d_is, "Net Interest Income", include_ttm = FALSE)
+    if (length(nii_row) == 0L || all(is.na(nii_row))) {
+      nii_row <- select_clean_metric_row(d_is, "^Interest Income$", include_ttm = FALSE)
+    }
+    nii <- get_avg(nii_row)
+    margin <- if (!is.na(nii) && !is.na(rev) && rev != 0) nii / rev * 100 else NA_real_
+    growth <- get_avg_growth(nii_row)
+    return(list(
+      mode = "bank_nii",
+      reason = "bank_nii_heuristic",
+      margin_pct = if (is.finite(margin)) margin else NA_real_,
+      growth_pct = if (is.finite(growth)) growth else NA_real_,
+      numer_avg = if (is.finite(nii)) nii else NA_real_,
+      rev_avg = if (is.finite(rev)) rev else NA_real_
+    ))
+  }
+
+  empty("unavailable", "missing_gross_profit_row")
+}
+
 # ==========================================
 # 🚨 數據缺失警示 UI 共用函數
 # ==========================================
@@ -2443,7 +2528,10 @@ build_report_kpi_df <- function(d_is, d_bs, d_cf) {
   pct <- function(x) if (is.na(x)) "N/A" else paste0(sprintf("%.1f", x), "%")
   num <- function(x) if (is.na(x)) "N/A" else format_dollar_abbr(x)
   
-  gp <- get_avg(select_clean_metric_row(d_is, "Gross Profit", include_ttm = FALSE))
+  gm_m <- tryCatch(
+    kpi_gross_margin_box_metrics(d_is),
+    error = function(e) list(mode = "unavailable", margin_pct = NA_real_)
+  )
   rev <- get_avg(select_clean_metric_row(d_is, "Total Revenue", include_ttm = FALSE))
   net <- get_avg(select_clean_metric_row_any(d_is, NET_INCOME_PATTERNS, include_ttm = FALSE))
   ocf <- get_avg(select_clean_metric_row(d_cf, "Operating Cash Flow", include_ttm = FALSE))
@@ -2455,22 +2543,28 @@ build_report_kpi_df <- function(d_is, d_bs, d_cf) {
   roa <- if (!is.na(net) && !is.na(assets) && assets != 0) net / assets * 100 else NA
   roe <- if (!is.na(net) && !is.na(equity) && equity != 0) net / equity * 100 else NA
   fcf_margin <- if (!is.na(fcf) && !is.na(rev) && rev != 0) fcf / rev * 100 else NA
-  gm_pct <- if (!is.na(gp) && !is.na(rev) && rev != 0) gp / rev * 100 else NA
+  gm_pct <- suppressWarnings(as.numeric(gm_m$margin_pct)[1])
+  gm_label <- if (identical(as.character(gm_m$mode %||% "")[1], "bank_nii")) {
+    "淨利息收入／營收（銀行啟發式）"
+  } else {
+    "毛利率"
+  }
   # #region agent log
   tryCatch({
     labels <- if (is.data.frame(d_is) && ncol(d_is) >= 1L) as.character(d_is[[1]]) else character(0)
     payload <- list(
       hypothesisId = "C",
       location = "setup.R:build_report_kpi_df",
-      message = "report KPI GM row",
+      message = "report KPI GM row (post-fix)",
       data = list(
         has_gross_profit_label = any(grepl("^Gross Profit$", labels, ignore.case = TRUE)),
         has_cogs_label = any(grepl("Cost Of Revenue|Cost Of Goods Sold", labels, ignore.case = TRUE)),
-        gp_avg = if (is.finite(gp)) gp else NA_real_,
-        rev_avg = if (is.finite(rev)) rev else NA_real_,
+        has_net_interest_income = any(grepl("Net Interest Income", labels, ignore.case = TRUE)),
+        mode = as.character(gm_m$mode %||% "")[1],
         gm_pct = if (is.finite(gm_pct)) gm_pct else NA_real_,
         display = pct(gm_pct),
-        reason_hint = if (is.finite(gm_pct)) "ok" else if (!any(grepl("^Gross Profit$", labels, ignore.case = TRUE))) "missing_gross_profit_row" else "gp_or_rev_na"
+        gm_label = gm_label,
+        runPhase = "post-fix"
       ),
       timestamp = as.numeric(Sys.time()) * 1000,
       runId = "tw-2884-gm"
@@ -2481,7 +2575,7 @@ build_report_kpi_df <- function(d_is, d_bs, d_cf) {
   # #endregion
   
   data.frame(
-    指標 = c("毛利率", "淨利率", "營收成長率 (年均)", "ROA", "ROE", "FCF 利潤率", "營業現金流 (均)", "自由現金流 (均)"),
+    指標 = c(gm_label, "淨利率", "營收成長率 (年均)", "ROA", "ROE", "FCF 利潤率", "營業現金流 (均)", "自由現金流 (均)"),
   數值 = c(
       pct(gm_pct),
       pct(if (!is.na(net) && !is.na(rev) && rev != 0) net / rev * 100 else NA),

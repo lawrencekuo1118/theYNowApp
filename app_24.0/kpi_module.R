@@ -6,8 +6,20 @@
 kpi_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flow,
                               industry_choice, fundamental_profile = reactive(NULL),
                               current_ticker = reactive(""),
-                              user_has_searched = reactive(FALSE)) {
+                              user_has_searched = reactive(FALSE),
+                              ui_locale = reactive("zh-TW")) {
   moduleServer(id, function(input, output, session) {
+
+    .loc <- function() {
+      tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+    }
+    .kpi_str <- function(key, fallback) {
+      if (exists("ui_str", mode = "function")) {
+        tryCatch(ui_str(key, .loc()), error = function(e) fallback)
+      } else {
+        fallback
+      }
+    }
 
     .focus_on <- function(metric_id) {
       prof <- tryCatch(fundamental_profile(), error = function(e) NULL)
@@ -69,21 +81,23 @@ kpi_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_fl
     
     # --- Income Statement ---
     # 毛利率 = Gross Profit / Total Revenue
+    # Banks without GP: Net Interest Income / Revenue (labeled heuristic, never fake GM)
     output$vbx_gross_profit_margin <- renderUI({
       d_is <- d_income_statement()
-      gp_row <- select_clean_metric_row(d_is, "Gross Profit", include_ttm = FALSE)
-      rev_row <- select_clean_metric_row(d_is, "Total Revenue", include_ttm = FALSE)
-      cogs_row <- select_clean_metric_row(d_is, "Cost Of Revenue", include_ttm = FALSE)
-      gp <- get_avg(gp_row)
-      rev <- get_avg(rev_row)
-      margin <- if (!is.na(gp) && !is.na(rev) && rev != 0) gp / rev * 100 else NA_real_
+      m <- tryCatch(
+        kpi_gross_margin_box_metrics(d_is),
+        error = function(e) list(mode = "unavailable", reason = "error",
+                                 margin_pct = NA_real_, growth_pct = NA_real_)
+      )
+      margin <- suppressWarnings(as.numeric(m$margin_pct)[1])
+      mode <- as.character(m$mode %||% "unavailable")[1]
       # #region agent log
       tryCatch({
         labels <- if (is.data.frame(d_is) && ncol(d_is) >= 1L) as.character(d_is[[1]]) else character(0)
         payload <- list(
           hypothesisId = "A",
           location = "kpi_module.R:vbx_gross_profit_margin",
-          message = "KPI gross margin compute",
+          message = "KPI gross margin compute (post-fix)",
           data = list(
             ticker = tryCatch(as.character(current_ticker() %||% "")[1], error = function(e) ""),
             industry = tryCatch(as.character(industry_choice() %||% "")[1], error = function(e) ""),
@@ -92,13 +106,11 @@ kpi_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_fl
             has_cogs_label = any(grepl("Cost Of Revenue|Cost Of Goods Sold", labels, ignore.case = TRUE)),
             has_total_revenue = any(grepl("^Total Revenue$", labels, ignore.case = TRUE)),
             has_net_interest_income = any(grepl("Net Interest Income", labels, ignore.case = TRUE)),
-            gp_avg = if (is.finite(gp)) gp else NA_real_,
-            rev_avg = if (is.finite(rev)) rev else NA_real_,
+            mode = mode,
+            reason = as.character(m$reason %||% "")[1],
             margin_pct = if (is.finite(margin)) margin else NA_real_,
-            gp_row_all_na = length(gp_row) == 0L || all(is.na(gp_row)),
-            cogs_row_all_na = length(cogs_row) == 0L || all(is.na(cogs_row)),
-            display = if (!is.na(margin)) "pct" else "N/A",
-            reason_hint = if (is.finite(margin)) "ok" else if (!any(grepl("^Gross Profit$", labels, ignore.case = TRUE))) "missing_gross_profit_row" else "gp_or_rev_na"
+            display = if (is.finite(margin)) "pct" else "N/A",
+            runPhase = "post-fix"
           ),
           timestamp = as.numeric(Sys.time()) * 1000,
           runId = "tw-2884-gm"
@@ -107,10 +119,30 @@ kpi_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_fl
             "\n", file = "/opt/cursor/logs/debug.log", append = TRUE)
       }, error = function(e) NULL)
       # #endregion
-      color <- get_box_color(industry_choice(), "gross_profit_margin", margin)
+      if (identical(mode, "bank_nii")) {
+        # No industry GPM band for banks — keep white / N/A color path honest.
+        color <- get_box_color(industry_choice(), "gross_profit_margin", NA_real_)
+        sub <- .kpi_str(
+          "kpi_bank_nii_margin_subtitle",
+          "淨利息收入／營收（銀行啟發式，非毛利率）"
+        )
+        val_txt <- if (is.finite(margin)) paste0(sprintf("%.2f", margin), "%") else "N/A"
+      } else if (identical(mode, "gross") && is.finite(margin)) {
+        color <- get_box_color(industry_choice(), "gross_profit_margin", margin)
+        sub <- .kpi_str("kpi_gross_margin_subtitle", "毛利率 Gross Profit Margin")
+        val_txt <- paste0(sprintf("%.2f", margin), "%")
+      } else {
+        color <- get_box_color(industry_choice(), "gross_profit_margin", NA_real_)
+        sub <- .kpi_str(
+          "kpi_gross_margin_unavailable_subtitle",
+          "毛利率 · 資料受限（損益表無 Gross Profit）"
+        )
+        val_txt <- "N/A"
+        margin <- NA_real_
+      }
       .box(
-        value = if (!is.na(margin)) paste0(sprintf("%.2f", margin), "%") else "N/A",
-        subtitle = "毛利率 Gross Profit Margin",
+        value = val_txt,
+        subtitle = sub,
         color = color,
         icon = icon("percentage"),
         metric_id = "gross_profit_margin",
@@ -132,26 +164,32 @@ kpi_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_fl
         numeric_value = margin)
     })
     
-    # 毛利成長率 = 年均 YoY(Gross Profit)
+    # 毛利成長率 = 年均 YoY(Gross Profit); banks → NII growth (labeled heuristic)
     output$vbx_gross_profit_growth <- renderUI({
       d_is <- d_income_statement()
-      gp_row <- select_clean_metric_row(d_is, "Gross Profit", include_ttm = FALSE)
-      val <- get_avg_growth(gp_row)
+      m <- tryCatch(
+        kpi_gross_margin_box_metrics(d_is),
+        error = function(e) list(mode = "unavailable", reason = "error",
+                                 margin_pct = NA_real_, growth_pct = NA_real_)
+      )
+      val <- suppressWarnings(as.numeric(m$growth_pct)[1])
+      mode <- as.character(m$mode %||% "unavailable")[1]
       # #region agent log
       tryCatch({
         labels <- if (is.data.frame(d_is) && ncol(d_is) >= 1L) as.character(d_is[[1]]) else character(0)
         payload <- list(
           hypothesisId = "A",
           location = "kpi_module.R:vbx_gross_profit_growth",
-          message = "KPI gross profit growth compute",
+          message = "KPI gross profit growth compute (post-fix)",
           data = list(
             ticker = tryCatch(as.character(current_ticker() %||% "")[1], error = function(e) ""),
             has_gross_profit_label = any(grepl("^Gross Profit$", labels, ignore.case = TRUE)),
-            gp_n = length(gp_row),
-            gp_finite_n = sum(is.finite(suppressWarnings(as.numeric(gp_row)))),
+            has_net_interest_income = any(grepl("Net Interest Income", labels, ignore.case = TRUE)),
+            mode = mode,
+            reason = as.character(m$reason %||% "")[1],
             growth_pct = if (is.finite(val)) val else NA_real_,
-            display = if (!is.na(val)) "pct" else "N/A",
-            reason_hint = if (is.finite(val)) "ok" else if (!any(grepl("^Gross Profit$", labels, ignore.case = TRUE))) "missing_gross_profit_row" else "insufficient_gp_series"
+            display = if (is.finite(val)) "pct" else "N/A",
+            runPhase = "post-fix"
           ),
           timestamp = as.numeric(Sys.time()) * 1000,
           runId = "tw-2884-gm"
@@ -160,10 +198,29 @@ kpi_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_fl
             "\n", file = "/opt/cursor/logs/debug.log", append = TRUE)
       }, error = function(e) NULL)
       # #endregion
-      color <- get_box_color(industry_choice(), "rev_growth", val)
+      if (identical(mode, "bank_nii")) {
+        color <- get_box_color(industry_choice(), "rev_growth", val)
+        sub <- .kpi_str(
+          "kpi_bank_nii_growth_subtitle",
+          "淨利息收入成長率（銀行啟發式，非毛利成長率）"
+        )
+        val_txt <- if (is.finite(val)) paste0(sprintf("%.2f", val), "%") else "N/A"
+      } else if (identical(mode, "gross") && is.finite(val)) {
+        color <- get_box_color(industry_choice(), "rev_growth", val)
+        sub <- .kpi_str("kpi_gross_profit_growth_subtitle", "毛利成長率 Gross Profit Growth")
+        val_txt <- paste0(sprintf("%.2f", val), "%")
+      } else {
+        color <- get_box_color(industry_choice(), "rev_growth", NA_real_)
+        sub <- .kpi_str(
+          "kpi_gross_profit_growth_unavailable_subtitle",
+          "毛利成長率 · 資料受限（損益表無 Gross Profit）"
+        )
+        val_txt <- "N/A"
+        val <- NA_real_
+      }
       .box(
-        value = if (!is.na(val)) paste0(sprintf("%.2f", val), "%") else "N/A",
-        subtitle = "毛利成長率 Gross Profit Growth",
+        value = val_txt,
+        subtitle = sub,
         color = color,
         icon = icon("chart-line"),
         metric_id = "gross_profit_growth",
