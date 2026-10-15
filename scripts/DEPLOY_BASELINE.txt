@@ -7,4 +7,4 @@ commit=3af3550
 short=3af3550
 message=fix(ui): mobile bare market flags beside hamburger (v24.05)
 captured_at=2026-10-15T03:43:57Z
-display_version=v24.05
+display_version=v24.06
