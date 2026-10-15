@@ -13347,6 +13347,39 @@ server <- function(input, output, session) {
     list(input$sidebar_tabs, lazy_mount_nonce()),
     {
       tab <- as.character(input$sidebar_tabs %||% "")[1]
+      # #region agent log
+      tryCatch({
+        payload <- list(
+          hypothesisId = "A",
+          location = "ynow_server.R:bluechip_tab_auto_start",
+          message = "sidebar tab / mount event",
+          data = list(
+            tab = tab,
+            mounted = tryCatch(
+              isTRUE(.ynow_lazy_tab_ctrl$mounted("bluechip")),
+              error = function(e) FALSE
+            ),
+            n_scores = {
+              sc <- isolate(lab_im_scores())
+              if (is.data.frame(sc)) as.integer(nrow(sc)) else 0L
+            },
+            auto_start_armed = isTRUE(isolate(lab_im_auto_start_armed())),
+            eval_busy = isTRUE(isolate(lab_im_eval_busy())),
+            universe_busy = isTRUE(isolate(lab_im_universe_busy())),
+            pool_rank = as.character(isolate(input$lab_im_pool_rank) %||% "")[1],
+            max_n = as.character(isolate(input$lab_im_max_n) %||% "")[1],
+            n_concepts = length(as.character(isolate(input$lab_im_concepts) %||% character(0))),
+            n_methods = length(as.character(isolate(input$lab_im_methods) %||% character(0))),
+            n_boards = length(as.character(isolate(input$lab_im_boards) %||% character(0))),
+            market = tryCatch(normalize_market_mode(isolate(market_mode())), error = function(e) "US")
+          ),
+          timestamp = as.numeric(Sys.time()) * 1000,
+          runId = "ind-mcap-auto"
+        )
+        cat(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"),
+            "\n", file = "/opt/cursor/logs/debug.log", append = TRUE)
+      }, error = function(e) NULL)
+      # #endregion
       if (!identical(tab, "bluechip")) return()
       mounted <- tryCatch(
         isTRUE(.ynow_lazy_tab_ctrl$mounted("bluechip")),
@@ -13373,6 +13406,29 @@ server <- function(input, output, session) {
             tryCatch(lab_im_auto_start_armed(FALSE), error = function(e) NULL)
             return()
           }
+          # #region agent log
+          tryCatch({
+            payload <- list(
+              hypothesisId = "A",
+              location = "ynow_server.R:bluechip_tab_auto_start:pulse",
+              message = "auto-start pulsing shared Blue Chip eval (page params)",
+              data = list(
+                pool_rank = as.character(isolate(input$lab_im_pool_rank) %||% "")[1],
+                max_n = as.character(isolate(input$lab_im_max_n) %||% "")[1],
+                n_concepts = length(as.character(isolate(input$lab_im_concepts) %||% character(0))),
+                n_methods = length(as.character(isolate(input$lab_im_methods) %||% character(0))),
+                n_boards = length(as.character(isolate(input$lab_im_boards) %||% character(0))),
+                gate_only = isTRUE(isolate(input$lab_im_gate_only)),
+                uses_shared_lab_im_run_pulse = TRUE,
+                independent_ind_mcap_job = FALSE
+              ),
+              timestamp = as.numeric(Sys.time()) * 1000,
+              runId = "ind-mcap-auto"
+            )
+            cat(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"),
+                "\n", file = "/opt/cursor/logs/debug.log", append = TRUE)
+          }, error = function(e) NULL)
+          # #endregion
           lab_im_run_pulse(isolate(as.integer(lab_im_run_pulse()) %||% 0L) + 1L)
         }
         if (requireNamespace("later", quietly = TRUE)) {
@@ -13489,6 +13545,32 @@ server <- function(input, output, session) {
     loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
     method_filter <- input$lab_im_methods
     industry_filter <- lab_im_industry_filter()
+    # #region agent log
+    tryCatch({
+      payload <- list(
+        hypothesisId = "C",
+        location = "ynow_server.R:lab_im_run_pulse",
+        message = "shared eval job receives page filters (ind-mcap depends on these scores)",
+        data = list(
+          market = mm0,
+          rank_mode = as.character(rank_mode)[1],
+          max_n_raw = as.character(input$lab_im_max_n %||% "")[1],
+          display_n = if (is.finite(display_n)) as.numeric(display_n) else "Inf",
+          eval_n = if (is.finite(eval_n)) as.numeric(eval_n) else "Inf",
+          n_concepts = length(as.character(concept_keys %||% character(0))),
+          n_methods = length(as.character(method_filter %||% character(0))),
+          n_industry_filter = length(as.character(industry_filter %||% character(0))),
+          n_catalog = if (is.data.frame(catlg)) as.integer(nrow(catlg)) else 0L,
+          ind_mcap_refresh_armed = isTRUE(isolate(lab_im_ind_mcap_refresh_armed())),
+          auto_start_armed = isTRUE(isolate(lab_im_auto_start_armed()))
+        ),
+        timestamp = as.numeric(Sys.time()) * 1000,
+        runId = "ind-mcap-auto"
+      )
+      cat(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"),
+          "\n", file = "/opt/cursor/logs/debug.log", append = TRUE)
+    }, error = function(e) NULL)
+    # #endregion
     showNotification(
       tryCatch(.ui_msg("lab_im_async_started"), error = function(e) .ui_msg("lab_im_progress")),
       type = "message", duration = 4
@@ -14018,6 +14100,31 @@ server <- function(input, output, session) {
     gate_on <- isTRUE(isolate(input$lab_im_gate_only))
     eq_on <- isTRUE(isolate(input$lab_im_eq_only))
     no_alert_on <- isTRUE(isolate(input$lab_im_no_alert))
+    # #region agent log
+    tryCatch({
+      payload <- list(
+        hypothesisId = "B",
+        location = "ynow_server.R:persist_ind_mcap_from_scores",
+        message = "persist snapshot from session scores (page gates)",
+        data = list(
+          market = as.character(market)[1],
+          n_scores = as.integer(nrow(scores)),
+          n_lb_src = if (is.data.frame(lb_src)) as.integer(nrow(lb_src)) else 0L,
+          n_catalog = if (is.data.frame(catlg)) as.integer(nrow(catlg)) else 0L,
+          gate_only = gate_on,
+          eq_only = eq_on,
+          no_alert = no_alert_on,
+          uses_page_quality_gates = TRUE,
+          uses_page_methods = FALSE,
+          uses_page_industry_filter = FALSE
+        ),
+        timestamp = as.numeric(Sys.time()) * 1000,
+        runId = "ind-mcap-auto"
+      )
+      cat(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"),
+          "\n", file = "/opt/cursor/logs/debug.log", append = TRUE)
+    }, error = function(e) NULL)
+    # #endregion
     built <- tryCatch(
       lab_build_ind_mcap_chain_snapshot(
         lb_src,
@@ -14032,6 +14139,24 @@ server <- function(input, output, session) {
       error = function(e) NULL
     )
     if (is.null(built) || !is.data.frame(built$snapshot)) return(NULL)
+    # #region agent log
+    tryCatch({
+      payload <- list(
+        hypothesisId = "D",
+        location = "ynow_server.R:persist_ind_mcap_from_scores:built",
+        message = "snapshot built",
+        data = list(
+          n_chains = as.integer(nrow(built$snapshot)),
+          sample_chains = as.list(utils::head(as.character(built$snapshot$chain_id), 5L)),
+          path = as.character(built$path %||% "")[1]
+        ),
+        timestamp = as.numeric(Sys.time()) * 1000,
+        runId = "ind-mcap-auto"
+      )
+      cat(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"),
+          "\n", file = "/opt/cursor/logs/debug.log", append = TRUE)
+    }, error = function(e) NULL)
+    # #endregion
     lab_im_ind_mcap_snap(built$snapshot)
     built
   }
@@ -14047,12 +14172,13 @@ server <- function(input, output, session) {
     # Live recompute when session has scores (keeps gates reactive)
     if (is.data.frame(scores) && nrow(scores) > 0L) {
       catlg <- tryCatch(lab_im_catalog(), error = function(e) NULL)
+      method_filter_live <- input$lab_im_methods
       lb_src <- tryCatch({
         if (is.data.frame(catlg) && nrow(catlg) > 0) {
           lab_merge_catalog_scores(
             catlg,
             scores = scores,
-            method_filter = input$lab_im_methods,
+            method_filter = method_filter_live,
             industry_filter = character(0),
             eq_only = FALSE,
             gate_only = FALSE,
@@ -14066,6 +14192,31 @@ server <- function(input, output, session) {
         gate_on <- isTRUE(input$lab_im_gate_only)
         eq_on <- isTRUE(input$lab_im_eq_only)
         no_alert_on <- isTRUE(input$lab_im_no_alert)
+        # #region agent log
+        tryCatch({
+          payload <- list(
+            hypothesisId = "B",
+            location = "ynow_server.R:ind_mcap_board:live",
+            message = "live board uses session scores + page methods/gates",
+            data = list(
+              n_scores = as.integer(nrow(scores)),
+              n_lb_src = as.integer(nrow(lb_src)),
+              n_methods = length(as.character(method_filter_live %||% character(0))),
+              methods = as.list(utils::head(as.character(method_filter_live %||% character(0)), 8L)),
+              gate_only = gate_on,
+              eq_only = eq_on,
+              no_alert = no_alert_on,
+              include_all_chains = TRUE,
+              from_snapshot = FALSE,
+              coupled_to_page_params = TRUE
+            ),
+            timestamp = as.numeric(Sys.time()) * 1000,
+            runId = "ind-mcap-auto"
+          )
+          cat(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"),
+              "\n", file = "/opt/cursor/logs/debug.log", append = TRUE)
+        }, error = function(e) NULL)
+        # #endregion
         pool <- tryCatch(
           lab_leaderboard_pool(
             lb_src, eq_only = eq_on, gate_only = gate_on, no_alert = no_alert_on
@@ -14109,6 +14260,27 @@ server <- function(input, output, session) {
         as.character(attr(snap, "snapshot_at") %||% snap$snapshot_at[[1]] %||% ""),
         error = function(e) ""
       )
+      # #region agent log
+      tryCatch({
+        payload <- list(
+          hypothesisId = "D",
+          location = "ynow_server.R:ind_mcap_board:snapshot",
+          message = "showing bundled/prior snapshot (no independent live job)",
+          data = list(
+            n_snap = as.integer(nrow(snap)),
+            n_show = if (is.data.frame(tbl)) as.integer(nrow(tbl)) else as.integer(nrow(snap)),
+            n_chains_all = as.integer(n_chains_all),
+            snapshot_at = snap_at,
+            from_snapshot = TRUE,
+            n_scores = if (is.data.frame(scores)) as.integer(nrow(scores)) else 0L
+          ),
+          timestamp = as.numeric(Sys.time()) * 1000,
+          runId = "ind-mcap-auto"
+        )
+        cat(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"),
+            "\n", file = "/opt/cursor/logs/debug.log", append = TRUE)
+      }, error = function(e) NULL)
+      # #endregion
       return(list(
         table = tbl,
         n_show = if (is.data.frame(tbl)) nrow(tbl) else nrow(snap),
@@ -14122,6 +14294,20 @@ server <- function(input, output, session) {
       ))
     }
 
+    # #region agent log
+    tryCatch({
+      payload <- list(
+        hypothesisId = "D",
+        location = "ynow_server.R:ind_mcap_board:waiting",
+        message = "no snapshot and no scores — waiting UI",
+        data = list(n_chains_all = as.integer(n_chains_all), waiting = TRUE),
+        timestamp = as.numeric(Sys.time()) * 1000,
+        runId = "ind-mcap-auto"
+      )
+      cat(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"),
+          "\n", file = "/opt/cursor/logs/debug.log", append = TRUE)
+    }, error = function(e) NULL)
+    # #endregion
     list(
       table = NULL,
       n_show = 0L,
@@ -14142,6 +14328,24 @@ server <- function(input, output, session) {
       lab_load_ind_mcap_chain_snapshot(mm, force = TRUE),
       error = function(e) lab_ind_mcap_chain_snapshot_empty()
     )
+    # #region agent log
+    tryCatch({
+      payload <- list(
+        hypothesisId = "E",
+        location = "ynow_server.R:ind_mcap_market_switch",
+        message = "reload snapshot on market switch; auto_start re-armed via market observer",
+        data = list(
+          market = mm,
+          n_snap = if (is.data.frame(snap)) as.integer(nrow(snap)) else 0L,
+          auto_start_armed_after_market_clear = FALSE
+        ),
+        timestamp = as.numeric(Sys.time()) * 1000,
+        runId = "ind-mcap-auto"
+      )
+      cat(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"),
+          "\n", file = "/opt/cursor/logs/debug.log", append = TRUE)
+    }, error = function(e) NULL)
+    # #endregion
     lab_im_ind_mcap_snap(snap)
   }, ignoreInit = TRUE)
 
@@ -14168,6 +14372,30 @@ server <- function(input, output, session) {
 
   observeEvent(input$lab_im_refresh_ind_mcap, {
     loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+    # #region agent log
+    tryCatch({
+      payload <- list(
+        hypothesisId = "A",
+        location = "ynow_server.R:lab_im_refresh_ind_mcap",
+        message = "manual refresh arms shared eval pulse (not independent job)",
+        data = list(
+          eval_busy = isTRUE(isolate(lab_im_eval_busy())),
+          universe_busy = isTRUE(isolate(lab_im_universe_busy())),
+          pool_rank = as.character(isolate(input$lab_im_pool_rank) %||% "")[1],
+          max_n = as.character(isolate(input$lab_im_max_n) %||% "")[1],
+          n_methods = length(as.character(isolate(input$lab_im_methods) %||% character(0))),
+          n_boards = length(as.character(isolate(input$lab_im_boards) %||% character(0))),
+          gate_only = isTRUE(isolate(input$lab_im_gate_only)),
+          uses_shared_lab_im_run_pulse = TRUE,
+          independent_ind_mcap_job = FALSE
+        ),
+        timestamp = as.numeric(Sys.time()) * 1000,
+        runId = "ind-mcap-auto"
+      )
+      cat(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"),
+          "\n", file = "/opt/cursor/logs/debug.log", append = TRUE)
+    }, error = function(e) NULL)
+    # #endregion
     if (isTRUE(isolate(lab_im_eval_busy())) || isTRUE(isolate(lab_im_universe_busy()))) {
       showNotification(
         tryCatch(

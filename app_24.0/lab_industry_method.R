@@ -3413,6 +3413,28 @@ lab_build_ind_mcap_chain_snapshot <- function(merged_df,
     error = function(e) toupper(trimws(as.character(market %||% "US")[1]))
   )
   if (!mm %in% c("US", "TW")) mm <- "US"
+  # #region agent log
+  tryCatch({
+    payload <- list(
+      hypothesisId = "F",
+      location = "lab_industry_method.R:lab_build_ind_mcap_chain_snapshot",
+      message = "build snapshot (include_all_chains=TRUE fixed)",
+      data = list(
+        market = mm,
+        n_merged = if (is.data.frame(merged_df)) as.integer(nrow(merged_df)) else 0L,
+        n_universe = if (is.data.frame(universe_df)) as.integer(nrow(universe_df)) else 0L,
+        eq_only = isTRUE(eq_only),
+        gate_only = isTRUE(gate_only),
+        no_alert = isTRUE(no_alert),
+        include_all_chains = TRUE
+      ),
+      timestamp = as.numeric(Sys.time()) * 1000,
+      runId = "ind-mcap-auto"
+    )
+    cat(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"),
+        "\n", file = "/opt/cursor/logs/debug.log", append = TRUE)
+  }, error = function(e) NULL)
+  # #endregion
   built <- lab_industry_chain_mcap_upside_leaderboard(
     merged_df,
     eq_only = eq_only,
