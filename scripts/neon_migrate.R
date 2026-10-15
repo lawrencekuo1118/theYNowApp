@@ -1,5 +1,6 @@
 #!/usr/bin/env Rscript
-# Create ynow_users on Neon and optionally seed an admin.
+# Create ynow_users on Neon and optionally seed YOUR maintenance admin.
+# Seed is NOT a whitelist — end users self-register via Google / Facebook / Email.
 # Usage (from repo root, with app_25.0/.Renviron filled):
 #   Rscript scripts/neon_migrate.R
 

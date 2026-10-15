@@ -16,7 +16,7 @@
       return(sub('^"version"\\s*:\\s*"([^"]+)".*$', "\\1", m[[1]]))
     }
   }
-  "v25.08"
+  "v25.09"
 }
 .YNOW_BUILD_VERSION <- .ynow_read_build_version()
 
@@ -230,7 +230,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v25.08) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+          "The YNow App (v25.09) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
         ),
         tags$p(
           class = "ynow-about-method",
@@ -245,8 +245,9 @@
         tags$p(
           class = "ynow-about-method",
           tags$b("帳號登入："),
-          "帳號登入預設啟用；帳號表建議放 Neon Free（自管 users）；Email 登入／註冊仍走現有 modal；",
-          "完整版到值通知需登入（寄信預設註冊信箱）；登入後（完整版）可開啟維護後台。Lite 版無需帳號即可完整使用。"
+          "帳號登入預設啟用；一般使用者可用 Google、Facebook 或 Email 自行註冊並立即使用，無需後台開權限；",
+          "帳號表建議放 Neon Free（自管 users）；完整版到值通知需登入（寄信預設註冊信箱）；",
+          "登入後（完整版）可開啟維護後台。Lite 版無需帳號即可完整使用。"
         ),
         tags$h4(class = "ynow-about-feat-h", tags$b("核心功能亮點：")),
         zh_features
@@ -257,7 +258,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v25.08) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
+          "The YNow App (v25.09) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
         ),
         tags$p(
           class = "ynow-about-method",
@@ -273,7 +274,7 @@
         tags$p(
           class = "ynow-about-method",
           tags$b("Account sign-in:"),
-          " Account sign-in is on by default. Preferred store: Neon Free (own users table); Email sign-in / register stay on the existing modal. Full-mode Value Alerts require sign-in; email notify defaults to the registered mailbox. After sign-in, Maintenance opens; Lite never requires an account."
+          " Account sign-in is on by default. Anyone may self-register with Google, Facebook, or Email — no per-user admin approval. Preferred store: Neon Free (own users table). Full-mode Value Alerts require sign-in; email notify defaults to the registered mailbox. After sign-in, Maintenance opens; Lite never requires an account."
         ),
         tags$h4(class = "ynow-about-feat-h", tags$b("Core Features:")),
         en_features
@@ -367,7 +368,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App（簡化版）")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite（v25.08）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
+          "The YNow App Lite（v25.09）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
           "以自動判別主／副模型與預設參數完成試算，讓使用者先看到合理價區間與產業 KPI，再決定是否回到完整版深入調整。"
         ),
         tags$p(
@@ -384,7 +385,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App (Lite)")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite (v25.08) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
+          "The YNow App Lite (v25.09) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
           "auto-selects primary/secondary models with App defaults, and surfaces fair-value ranges plus industry KPIs before you open Full for deeper calibration."
         ),
         tags$p(
@@ -3504,9 +3505,9 @@ ui <- dashboardPage(
                   'data-ynow-build="', .YNOW_BUILD_VERSION, '" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v25.08</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v25.09</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v25.08</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v25.09</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,

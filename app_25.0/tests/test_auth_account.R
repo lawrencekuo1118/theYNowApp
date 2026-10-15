@@ -316,6 +316,31 @@ check("OAuth state rejects tamper", {
   p <- ynow_oauth_parse_state(bad)
   identical(p$ok, FALSE)
 })
+check("oauth sentinel never verifies as password", {
+  h <- ynow_db_oauth_password_sentinel("google", "uid-1")
+  startsWith(h, "oauth$") && !isTRUE(ynow_db_verify_password("anything", h))
+})
+check("social accept without Neon is self-serve user", {
+  Sys.unsetenv("YNOW_DB_HOST")
+  Sys.unsetenv("YNOW_DATABASE_URL")
+  Sys.setenv(YNOW_ENABLE_ACCOUNT_LOGIN = "1")
+  r <- ynow_auth_accept_social_user(list(
+    email = "New.User@Gmail.com",
+    display_name = "New User",
+    provider = "google",
+    provider_uid = "sub-123"
+  ))
+  isTRUE(r$ok) && identical(r$user$email, "new.user@gmail.com") &&
+    identical(r$user$role, "user") && identical(r$user$provider, "google")
+})
+check("social accept rejects empty email", {
+  r <- ynow_auth_accept_social_user(list(email = "", provider = "google"))
+  isFALSE(r$ok) && identical(r$message_key, "auth_msg_oauth_no_email")
+})
+check("locale says self-serve no admin", {
+  grepl("no admin permission", ui_str("auth_modal_help", "en"), fixed = TRUE) &&
+    grepl("無需後台開權限", ui_str("auth_modal_help", "zh-TW"), fixed = TRUE)
+})
 check("UI About Lite no account", grepl("Lite never requires an account", ui, fixed = TRUE) &&
         grepl("Lite 版無需帳號即可完整使用", ui, fixed = TRUE))
 auth_src <- paste(readLines(src_auth, warn = FALSE, encoding = "UTF-8"), collapse = "\n")

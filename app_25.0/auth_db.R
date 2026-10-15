@@ -1,8 +1,10 @@
 # ==========================================
-# Neon Free Postgres — account store (Email modal)
+# Neon Free Postgres — account store (self-serve)
 # ==========================================
-# Preferred backend for account login: own `ynow_users` table on Neon Free.
-# Login / register still use the existing modal; OAuth remains optional.
+# Preferred backend: own `ynow_users` table on Neon Free.
+# Anyone may self-register via Google / Facebook / Email — no admin approval.
+# Optional YNOW_AUTH_SEED_* only creates YOUR maintenance admin row; it is not
+# a whitelist for end users.
 #
 # Env (put in app_25.0/.Renviron — gitignored):
 #   YNOW_DB_HOST=ep-xxxx-pooler.region.aws.neon.tech
@@ -15,7 +17,7 @@
 #   YNOW_DATABASE_URL=postgresql://user:pass@ep-xxxx-pooler.../neondb?sslmode=require
 #
 # One-time schema: Rscript app_25.0/../scripts/neon_migrate.R
-# Seed admin: set YNOW_AUTH_SEED_EMAIL / YNOW_AUTH_SEED_PASSWORD then migrate.
+# Optional seed admin: set YNOW_AUTH_SEED_EMAIL / YNOW_AUTH_SEED_PASSWORD then migrate.
 
 .ynow_db_pool <- NULL
 
@@ -141,6 +143,8 @@ ynow_db_verify_password <- function(password, hash) {
   pw <- as.character(password %||% "")[1]
   hash <- as.character(hash %||% "")[1]
   if (!nzchar(pw) || !nzchar(hash)) return(FALSE)
+  # OAuth-only rows store an unusable sentinel — never accept password login.
+  if (startsWith(hash, "oauth$")) return(FALSE)
   if (startsWith(hash, "$argon2") || startsWith(hash, "$7$") ||
       grepl("^\\$[a-z0-9]+\\$", hash)) {
     if (!requireNamespace("sodium", quietly = TRUE)) return(FALSE)
@@ -158,6 +162,23 @@ ynow_db_verify_password <- function(password, hash) {
   }
   # Legacy demo plain compare only if hash looks like plaintext (should not happen in DB).
   identical(pw, hash)
+}
+
+#' Unusable password_hash for Google / Facebook self-registered rows.
+ynow_db_oauth_password_sentinel <- function(provider, provider_uid = "") {
+  nonce <- paste(
+    as.character(provider %||% "oauth")[1],
+    as.character(provider_uid %||% "")[1],
+    as.character(Sys.time()),
+    paste(sample(c(letters, LETTERS, 0:9), 32L, replace = TRUE), collapse = ""),
+    sep = "|"
+  )
+  dig <- if (requireNamespace("digest", quietly = TRUE)) {
+    digest::digest(nonce, algo = "sha256")
+  } else {
+    paste(sample(c(letters, 0:9), 40L, replace = TRUE), collapse = "")
+  }
+  paste0("oauth$", dig)
 }
 
 ynow_db_ensure_schema <- function(conn = NULL) {
@@ -307,7 +328,99 @@ ynow_db_try_login <- function(email, password) {
   )
 }
 
-#' Seed admin from env when table empty / email missing (idempotent).
+#' Upsert a self-serve Google / Facebook user. No admin approval.
+#' Existing Email users with the same address are linked and signed in.
+#' New rows always get role = "user" and disabled = FALSE.
+#' @return list(ok=, user=, message_key=)
+ynow_db_upsert_oauth_user <- function(email, display_name = NULL,
+                                      provider = "google",
+                                      provider_uid = NULL) {
+  if (!isTRUE(ynow_db_ready())) {
+    return(list(ok = FALSE, user = NULL, message_key = "auth_msg_no_backend"))
+  }
+  em <- ynow_auth_norm_email(email)
+  if (!nzchar(em)) {
+    return(list(ok = FALSE, user = NULL, message_key = "auth_msg_oauth_no_email"))
+  }
+  prov <- tolower(as.character(provider %||% "oauth")[1])
+  if (!nzchar(prov)) prov <- "oauth"
+  if (!(prov %in% c("google", "facebook", "supabase", "oauth"))) {
+    # Keep unknown IdP labels (e.g. apple) but store as oauth-family.
+    if (!nzchar(prov)) prov <- "oauth"
+  }
+  puid <- as.character(provider_uid %||% "")[1]
+  dn <- as.character(display_name %||% em)[1]
+  if (!nzchar(dn)) dn <- em
+
+  existing <- ynow_db_get_user_by_email(em)
+  if (!is.null(existing)) {
+    if (isTRUE(as.logical(existing$disabled %||% FALSE))) {
+      return(list(ok = FALSE, user = NULL, message_key = "auth_msg_disabled_account"))
+    }
+    ok <- ynow_db_with(function(con) {
+      DBI::dbExecute(
+        con,
+        "UPDATE ynow_users
+            SET display_name = COALESCE(NULLIF($1, ''), display_name),
+                provider = $2,
+                provider_uid = COALESCE(NULLIF($3, ''), provider_uid),
+                last_login_at = NOW()
+          WHERE id = $4::uuid",
+        params = list(dn, prov, puid, as.character(existing$id)[1])
+      )
+      TRUE
+    })
+    if (!isTRUE(ok)) {
+      return(list(ok = FALSE, user = NULL, message_key = "auth_msg_oauth_failed"))
+    }
+    u <- ynow_db_get_user_by_email(em)
+    return(list(
+      ok = TRUE,
+      user = list(
+        email = em,
+        display_name = as.character(u$display_name %||% dn)[1],
+        provider = as.character(u$provider %||% prov)[1],
+        provider_uid = as.character(u$provider_uid %||% puid)[1],
+        role = as.character(u$role %||% "user")[1],
+        id = as.character(u$id %||% "")[1],
+        logged_in_at = as.character(Sys.time())
+      ),
+      message_key = "auth_msg_ok"
+    ))
+  }
+
+  sentinel <- ynow_db_oauth_password_sentinel(prov, puid)
+  ok <- ynow_db_with(function(con) {
+    ynow_db_ensure_schema(con)
+    DBI::dbExecute(
+      con,
+      "INSERT INTO ynow_users
+         (email, password_hash, display_name, role, provider, provider_uid, disabled)
+       VALUES ($1, $2, $3, 'user', $4, $5, FALSE)",
+      params = list(em, sentinel, dn, prov, if (nzchar(puid)) puid else NA_character_)
+    )
+    TRUE
+  })
+  if (!isTRUE(ok)) {
+    return(list(ok = FALSE, user = NULL, message_key = "auth_msg_register_failed"))
+  }
+  u <- ynow_db_get_user_by_email(em)
+  list(
+    ok = TRUE,
+    user = list(
+      email = em,
+      display_name = as.character(u$display_name %||% dn)[1],
+      provider = as.character(u$provider %||% prov)[1],
+      provider_uid = as.character(u$provider_uid %||% puid)[1],
+      role = "user",
+      id = as.character(u$id %||% "")[1],
+      logged_in_at = as.character(Sys.time())
+    ),
+    message_key = "auth_msg_register_ok"
+  )
+}
+
+#' Seed optional maintenance admin from env (idempotent). Not a user whitelist.
 ynow_db_seed_admin_from_env <- function() {
   if (!isTRUE(ynow_db_ready())) return(invisible(FALSE))
   em <- ynow_auth_norm_email(Sys.getenv("YNOW_AUTH_SEED_EMAIL", unset = ""))

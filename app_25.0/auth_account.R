@@ -81,6 +81,7 @@ ynow_auth_try_login <- function(email, password) {
 }
 
 #' Register via Neon when configured; otherwise not open.
+#' New Email accounts are role = "user" immediately — no admin approval.
 ynow_auth_try_register <- function(email, password, display_name = NULL) {
   if (!isTRUE(ynow_auth_enabled())) {
     return(list(ok = FALSE, user = NULL, message_key = "auth_msg_disabled"))
@@ -90,6 +91,51 @@ ynow_auth_try_register <- function(email, password, display_name = NULL) {
     return(ynow_db_create_user(email, password, display_name = display_name, role = "user"))
   }
   list(ok = FALSE, user = NULL, message_key = "auth_msg_register_soon")
+}
+
+#' Accept a Google / Facebook (or Supabase) profile as a self-serve account.
+#' Persists to Neon when configured; otherwise still signs the session in as
+#' role = "user" so end users are never blocked waiting for admin provisioning.
+#' @param oauth_user list from ynow_oauth_complete()$user
+#' @return list(ok=, user=, message_key=)
+ynow_auth_accept_social_user <- function(oauth_user) {
+  if (!isTRUE(ynow_auth_enabled())) {
+    return(list(ok = FALSE, user = NULL, message_key = "auth_msg_disabled"))
+  }
+  if (!is.list(oauth_user)) {
+    return(list(ok = FALSE, user = NULL, message_key = "auth_msg_oauth_failed"))
+  }
+  em <- ynow_auth_norm_email(oauth_user$email %||% "")
+  if (!nzchar(em)) {
+    return(list(ok = FALSE, user = NULL, message_key = "auth_msg_oauth_no_email"))
+  }
+  dn <- as.character(oauth_user$display_name %||% em)[1]
+  prov <- as.character(oauth_user$provider %||% "oauth")[1]
+  puid <- as.character(oauth_user$provider_uid %||% "")[1]
+
+  if (exists("ynow_db_ready", mode = "function") && isTRUE(ynow_db_ready()) &&
+      exists("ynow_db_upsert_oauth_user", mode = "function")) {
+    return(ynow_db_upsert_oauth_user(
+      email = em,
+      display_name = dn,
+      provider = prov,
+      provider_uid = puid
+    ))
+  }
+
+  # No Neon yet: still allow self-serve session (not an admin-gated whitelist).
+  list(
+    ok = TRUE,
+    user = list(
+      email = em,
+      display_name = dn,
+      provider = prov,
+      provider_uid = puid,
+      role = "user",
+      logged_in_at = as.character(Sys.time())
+    ),
+    message_key = "auth_msg_ok"
+  )
 }
 
 #' Sign-in / Sign-out text links under the ZH/EN stack (right-aligned).
@@ -164,7 +210,7 @@ ynow_auth_modal_ui <- function() {
         inputId = "ynow_auth_google",
         label = tagList(
           .ynow_auth_google_icon(),
-          tags$span(id = "ynow_auth_google_label", "Sign in with Google")
+          tags$span(id = "ynow_auth_google_label", "Continue with Google")
         ),
         class = "ynow-auth-social ynow-auth-social--google"
       ),
@@ -172,7 +218,7 @@ ynow_auth_modal_ui <- function() {
         inputId = "ynow_auth_facebook",
         label = tagList(
           .ynow_auth_facebook_icon(),
-          tags$span(id = "ynow_auth_facebook_label", "Sign in with Facebook")
+          tags$span(id = "ynow_auth_facebook_label", "Continue with Facebook")
         ),
         class = "ynow-auth-social ynow-auth-social--facebook"
       ),
@@ -624,6 +670,7 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
   }, ignoreInit = TRUE)
 
   # Browser returned from Google / Facebook / Supabase with code or access_token.
+  # Self-serve: upsert into Neon (role=user) and sign in — no admin permission step.
   observeEvent(input$ynow_auth_oauth_callback, {
     if (!isTRUE(ynow_auth_enabled())) return()
     if (!exists("ynow_oauth_complete", mode = "function")) {
@@ -631,11 +678,19 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
       return()
     }
     payload <- input$ynow_auth_oauth_callback
-    res <- ynow_oauth_complete(payload)
+    oauth_res <- ynow_oauth_complete(payload)
+    if (!isTRUE(oauth_res$ok) || is.null(oauth_res$user)) {
+      mk <- as.character(oauth_res$message_key %||% "auth_msg_oauth_failed")[1]
+      .show_auth_note(mk, "Social sign-in failed.", cls = "text-danger")
+      tryCatch(shinyBS::toggleModal(session, "ynow_auth_modal", "open"), error = function(e) NULL)
+      return()
+    }
+    res <- ynow_auth_accept_social_user(oauth_res$user)
     if (isTRUE(res$ok) && !is.null(res$user)) {
       account_user(res$user)
+      mk_ok <- as.character(res$message_key %||% "auth_msg_ok")[1]
       output$ynow_auth_status <- renderUI({
-        tags$p(class = "text-success", .str("auth_msg_ok", "Signed in."))
+        tags$p(class = "text-success", .str(mk_ok, "Signed in."))
       })
       .push_auth_state(TRUE, res$user$email %||% "")
       tryCatch(shinyBS::toggleModal(session, "ynow_auth_modal", "close"), error = function(e) NULL)
@@ -721,8 +776,8 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
         submit = tryCatch(ui_str("auth_submit", loc), error = function(e) "Email sign-in"),
         cancel = tryCatch(ui_str("auth_cancel", loc), error = function(e) "Cancel"),
         or_email = tryCatch(ui_str("auth_or_email", loc), error = function(e) "Or sign in with Email"),
-        google = tryCatch(ui_str("auth_google", loc), error = function(e) "Sign in with Google"),
-        facebook = tryCatch(ui_str("auth_facebook", loc), error = function(e) "Sign in with Facebook"),
+        google = tryCatch(ui_str("auth_google", loc), error = function(e) "Continue with Google"),
+        facebook = tryCatch(ui_str("auth_facebook", loc), error = function(e) "Continue with Facebook"),
         forgot = tryCatch(ui_str("auth_forgot", loc), error = function(e) "Forgot password?"),
         register = tryCatch(ui_str("auth_register", loc), error = function(e) "Register a new account"),
         resend = tryCatch(ui_str("auth_resend", loc), error = function(e) "Didn't receive the verification email"),

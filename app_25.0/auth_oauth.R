@@ -1,16 +1,20 @@
 # ==========================================
-# Social OAuth (Google / Facebook) for account login
+# Social OAuth (Google / Facebook) — self-serve signup
 # ==========================================
-# Buttons redirect to the provider when credentials are set; otherwise the UI
-# shows a configure message (not a silent no-op).
+# Product model: any end user clicks Google / Facebook → provider consent →
+# app auto-creates a Neon `ynow_users` row (role=user) and signs them in.
+# There is NO admin whitelist / permission step for ordinary users.
+#
+# One-time owner setup (credentials only — not per-user provisioning):
 #
 # Preferred path — Supabase Auth (one project covers Google + Facebook):
 #   YNOW_SUPABASE_URL=https://xxxx.supabase.co
 #   YNOW_SUPABASE_ANON_KEY=eyJ...
 #   YNOW_OAUTH_REDIRECT_URI=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-# Enable Google / Facebook under Supabase → Authentication → Providers.
+# Enable Google / Facebook under Supabase → Authentication → Providers
+# (turn ON; leave "Disable sign ups" OFF so the public can register).
 #
-# Direct path (no Supabase) — register apps then set:
+# Direct path (no Supabase) — register OAuth apps then set:
 #   YNOW_GOOGLE_CLIENT_ID=...
 #   YNOW_GOOGLE_CLIENT_SECRET=...
 #   YNOW_FACEBOOK_APP_ID=...

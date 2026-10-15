@@ -690,14 +690,17 @@ locale_for_market <- function(mode = get_market_mode()) {
     auth_sign_in = "Sign in",
     auth_sign_out = "Sign out",
     auth_modal_title = "Sign in to The YNow App",
-    auth_modal_help = "Sign in with your account email and password. Guest mode remains available while login is optional.",
+    auth_modal_help = paste0(
+      "Anyone can register and use the app with Google, Facebook, or Email — ",
+      "no admin permission step. Guest mode remains available while login is optional."
+    ),
     auth_email_label = "Enter your Email account:",
     auth_password_label = "Enter password:",
     auth_submit = "Email sign-in",
     auth_cancel = "Cancel",
     auth_or_email = "Or sign in with Email",
-    auth_google = "Sign in with Google",
-    auth_facebook = "Sign in with Facebook",
+    auth_google = "Continue with Google",
+    auth_facebook = "Continue with Facebook",
     auth_forgot = "Forgot password?",
     auth_register = "Register a new account",
     auth_resend = "Didn't receive the verification email",
@@ -708,14 +711,16 @@ locale_for_market <- function(mode = get_market_mode()) {
     auth_msg_no_backend = "Sign-in backend is not configured yet.",
     auth_msg_oauth_soon = "Social sign-in is not configured yet.",
     auth_msg_oauth_need_google = paste0(
-      "Google sign-in is not configured. Set YNOW_SUPABASE_URL + YNOW_SUPABASE_ANON_KEY ",
+      "Google self-serve sign-in is not configured on this deployment yet. ",
+      "The app owner must set YNOW_SUPABASE_URL + YNOW_SUPABASE_ANON_KEY ",
       "(recommended) or YNOW_GOOGLE_CLIENT_ID + YNOW_GOOGLE_CLIENT_SECRET in .Renviron, ",
-      "then redeploy."
+      "then redeploy. After that, any user can register via Google with no admin approval."
     ),
     auth_msg_oauth_need_facebook = paste0(
-      "Facebook sign-in is not configured. Set YNOW_SUPABASE_URL + YNOW_SUPABASE_ANON_KEY ",
+      "Facebook self-serve sign-in is not configured on this deployment yet. ",
+      "The app owner must set YNOW_SUPABASE_URL + YNOW_SUPABASE_ANON_KEY ",
       "(recommended) or YNOW_FACEBOOK_APP_ID + YNOW_FACEBOOK_APP_SECRET in .Renviron, ",
-      "then redeploy."
+      "then redeploy. After that, any user can register via Facebook with no admin approval."
     ),
     auth_msg_oauth_failed = "Social sign-in failed. Please try again.",
     auth_msg_oauth_state = "Social sign-in session expired. Please try again.",
@@ -730,10 +735,12 @@ locale_for_market <- function(mode = get_market_mode()) {
     auth_msg_resend_soon = "Verification email resend is not available yet.",
     auth_about_neon = paste0(
       "Account store: Neon Free Postgres (own users table). ",
-      "Email sign-in / register use the existing modal when YNOW_DB_* is set."
+      "Google / Facebook / Email self-register into the same table (role=user); ",
+      "no admin whitelist for ordinary users."
     ),
     auth_about_note = paste0(
       "Account sign-in is on by default (set YNOW_ENABLE_ACCOUNT_LOGIN=0 to disable). ",
+      "Anyone may self-register with Google, Facebook, or Email — no per-user admin approval. ",
       "Preferred account store: Neon Free Postgres (own users table; set YNOW_DB_*). ",
       "Full-mode Value Alerts require sign-in; email notify defaults to the registered mailbox. ",
       "Lite mode stays fully usable without an account."
@@ -4034,14 +4041,17 @@ locale_for_market <- function(mode = get_market_mode()) {
     auth_sign_in = "登入",
     auth_sign_out = "登出",
     auth_modal_title = "登入 The YNow App",
-    auth_modal_help = "請輸入帳號電子郵件與密碼登入。登入為選用時，仍可訪客使用。",
+    auth_modal_help = paste0(
+      "一般使用者可用 Google、Facebook 或 Email 自行註冊並立即使用，無需後台開權限。",
+      "登入為選用時，仍可訪客使用。"
+    ),
     auth_email_label = "輸入您的 Email 帳號：",
     auth_password_label = "輸入密碼：",
     auth_submit = "Email 登入",
     auth_cancel = "取消",
     auth_or_email = "或用 Email 登入",
-    auth_google = "使用 Google 帳戶登入",
-    auth_facebook = "使用 Facebook 帳號登入",
+    auth_google = "使用 Google 繼續",
+    auth_facebook = "使用 Facebook 繼續",
     auth_forgot = "忘記密碼？",
     auth_register = "註冊新帳號",
     auth_resend = "沒有收到註冊認證信",
@@ -4052,12 +4062,16 @@ locale_for_market <- function(mode = get_market_mode()) {
     auth_msg_no_backend = "登入後端尚未設定。",
     auth_msg_oauth_soon = "社群登入尚未設定。",
     auth_msg_oauth_need_google = paste0(
-      "尚未設定 Google 登入。請在 .Renviron 設定 YNOW_SUPABASE_URL 與 YNOW_SUPABASE_ANON_KEY",
-      "（建議），或 YNOW_GOOGLE_CLIENT_ID 與 YNOW_GOOGLE_CLIENT_SECRET，然後重新部署。"
+      "此部署尚未完成 Google 自助註冊設定。應用擁有者需在 .Renviron 設定 ",
+      "YNOW_SUPABASE_URL 與 YNOW_SUPABASE_ANON_KEY（建議），或 ",
+      "YNOW_GOOGLE_CLIENT_ID 與 YNOW_GOOGLE_CLIENT_SECRET，然後重新部署。",
+      "完成後，一般使用者即可自行用 Google 註冊，無需後台開權限。"
     ),
     auth_msg_oauth_need_facebook = paste0(
-      "尚未設定 Facebook 登入。請在 .Renviron 設定 YNOW_SUPABASE_URL 與 YNOW_SUPABASE_ANON_KEY",
-      "（建議），或 YNOW_FACEBOOK_APP_ID 與 YNOW_FACEBOOK_APP_SECRET，然後重新部署。"
+      "此部署尚未完成 Facebook 自助註冊設定。應用擁有者需在 .Renviron 設定 ",
+      "YNOW_SUPABASE_URL 與 YNOW_SUPABASE_ANON_KEY（建議），或 ",
+      "YNOW_FACEBOOK_APP_ID 與 YNOW_FACEBOOK_APP_SECRET，然後重新部署。",
+      "完成後，一般使用者即可自行用 Facebook 註冊，無需後台開權限。"
     ),
     auth_msg_oauth_failed = "社群登入失敗，請再試一次。",
     auth_msg_oauth_state = "社群登入階段已過期，請再試一次。",
@@ -4072,10 +4086,12 @@ locale_for_market <- function(mode = get_market_mode()) {
     auth_msg_resend_soon = "認證信重寄尚未開放。",
     auth_about_neon = paste0(
       "帳號資料庫：Neon Free Postgres（自管 users 表）。",
-      "設定 YNOW_DB_* 後，Email 登入／註冊仍走現有 modal。"
+      "Google／Facebook／Email 皆可自助註冊寫入同一表（role=user），",
+      "一般使用者無需後台白名單。"
     ),
     auth_about_note = paste0(
       "帳號登入預設啟用（設 YNOW_ENABLE_ACCOUNT_LOGIN=0 可關閉）。",
+      "一般使用者可用 Google、Facebook 或 Email 自行註冊，無需逐一後台開權限。",
       "帳號表建議 Neon Free Postgres（自管 users；設 YNOW_DB_*）。",
       "完整版到值通知需登入；寄信預設註冊信箱。",
       "Lite 版無需帳號即可完整使用。"
