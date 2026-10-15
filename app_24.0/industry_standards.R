@@ -726,51 +726,13 @@ map_yahoo_industry_to_key <- function(sector = "", industry = "") {
     "hosp.Hotels_Travel" = c("hotels?", "resort", "cruise", "travel", "leisure facilities", "觀光", "旅宿")
   )
 
-  matched_key <- ""
-  matched_pat <- ""
   for (key in names(rules)) {
     for (pat in rules[[key]]) {
       if (grepl(pat, blob, ignore.case = TRUE, perl = TRUE)) {
-        if (key %in% names(industry_standards)) {
-          matched_key <- key
-          matched_pat <- pat
-          break
-        }
+        if (key %in% names(industry_standards)) return(key)
       }
     }
-    if (nzchar(matched_key)) break
   }
-
-  # #region agent log
-  if (grepl("semiconductor|packag|osat|封測|asx", blob, ignore.case = TRUE) ||
-      grepl("semiconductor|packag", paste(sec, ind), ignore.case = TRUE)) {
-    tryCatch({
-      payload <- list(
-        hypothesisId = "C",
-        location = "industry_standards.R:map_yahoo_industry_to_key",
-        message = "Yahoo Sector/Industry → key heuristic",
-        data = list(
-          sector = sec,
-          industry = ind,
-          blob = blob,
-          matched_key = matched_key,
-          matched_pat = matched_pat,
-          packaging_rule = "packag.*(test|assembl)|osat|封測",
-          ic_design_rule_first = TRUE,
-          bare_semiconductors_hits_ic_design = grepl(
-            "semiconductor(?!.*(equip|material|memory|foundry))",
-            blob, ignore.case = TRUE, perl = TRUE
-          )
-        ),
-        timestamp = as.numeric(Sys.time()) * 1000
-      )
-      cat(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"),
-          "\n", file = "/opt/cursor/artifacts/asx_industry_debug.log", append = TRUE)
-    }, error = function(e) NULL)
-  }
-  # #endregion
-
-  if (nzchar(matched_key)) return(matched_key)
 
   if (exists("lab_gics_sector_fallback", mode = "function") && nzchar(sec)) {
     fmap <- lab_gics_sector_fallback()
@@ -821,82 +783,26 @@ resolve_industry_key_for_ticker <- function(ticker,
   }, error = function(e) "US")
   is_tw <- identical(mode, "TW") || grepl("\\.(TW|TWO)$", tk, ignore.case = TRUE)
 
-  source_hit <- "none"
-  key_out <- ""
-
   if (is_tw && exists("lookup_tw_universe_industry_key", mode = "function")) {
     key <- tryCatch(
       as.character(lookup_tw_universe_industry_key(tk) %||% "")[1],
       error = function(e) ""
     )
-    if (nzchar(key)) {
-      source_hit <- "tw_universe"
-      key_out <- key
-    }
+    if (nzchar(key)) return(key)
   }
-  if (!nzchar(key_out) && !is_tw && exists("lookup_us_ticker_industry_key", mode = "function")) {
+  if (!is_tw && exists("lookup_us_ticker_industry_key", mode = "function")) {
     key <- tryCatch(
       as.character(lookup_us_ticker_industry_key(tk) %||% "")[1],
       error = function(e) ""
     )
-    if (nzchar(key)) {
-      source_hit <- "us_lookup"
-      key_out <- key
-    }
+    if (nzchar(key)) return(key)
   }
 
-  if (!nzchar(key_out)) {
-    key_out <- resolve_industry_key_from_yahoo(
-      display_text = display_text,
-      sector = sector,
-      industry = industry
-    )
-    if (nzchar(as.character(key_out %||% "")[1])) source_hit <- "yahoo_heuristic"
-  }
-
-  # #region agent log
-  tryCatch({
-    adr_key <- ""
-    if (exists("lab_adr_industry_map", mode = "function")) {
-      am <- lab_adr_industry_map()
-      if (tk %in% names(am)) adr_key <- unname(am[[tk]])
-    }
-    yahoo_key <- tryCatch(
-      resolve_industry_key_from_yahoo(
-        display_text = display_text, sector = sector, industry = industry
-      ),
-      error = function(e) ""
-    )
-    payload <- list(
-      hypothesisId = "A",
-      location = "industry_standards.R:resolve_industry_key_for_ticker",
-      message = "ticker→industry_key resolve",
-      data = list(
-        ticker = tk,
-        market_mode = mode,
-        is_tw = is_tw,
-        source_hit = source_hit,
-        resolved_key = as.character(key_out %||% "")[1],
-        adr_map_key = as.character(adr_key %||% "")[1],
-        yahoo_key = as.character(yahoo_key %||% "")[1],
-        sector = as.character(sector %||% "")[1],
-        industry = as.character(industry %||% "")[1],
-        display_text = as.character(display_text %||% "")[1],
-        expected_packaging = "sc.Packaging",
-        label_zh = if (nzchar(key_out) && exists("industry_label", mode = "function")) {
-          tryCatch(industry_label(key_out, "zh-TW"), error = function(e) "")
-        } else if (nzchar(key_out) && exists(".INDUSTRY_LABELS_ZH", inherits = TRUE)) {
-          as.character(.INDUSTRY_LABELS_ZH[[key_out]] %||% "")
-        } else ""
-      ),
-      timestamp = as.numeric(Sys.time()) * 1000
-    )
-    cat(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"),
-        "\n", file = "/opt/cursor/artifacts/asx_industry_debug.log", append = TRUE)
-  }, error = function(e) NULL)
-  # #endregion
-
-  as.character(key_out %||% "")[1]
+  resolve_industry_key_from_yahoo(
+    display_text = display_text,
+    sector = sector,
+    industry = industry
+  )
 }
 
 # 🎨 KPI 顏色判定（只取區間前兩碼 low/high；與 industry_standards 一致）
