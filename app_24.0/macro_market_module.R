@@ -251,6 +251,8 @@ macro_resolve_linked_industry_key <- function(industry_key, mode = get_market_mo
   if (identical(mode, "TW")) {
     ch <- tryCatch(macro_industry_choices("TW", "en"), error = function(e) character(0))
     if (key %in% unname(ch)) return(key)
+    # Picker may not be bound yet on first paint — still accept catalog keys.
+    if (exists("industry_standards") && key %in% names(industry_standards)) return(key)
     return("")
   }
   if (startsWith(key, "gics_") && key %in% names(.MACRO_US_GICS)) return(key)
@@ -862,6 +864,12 @@ macro_market_server <- function(id = "macro",
         industry_programmatic(FALSE)
         return()
       }
+      cur <- as.character(input$industry_key %||% "")[1]
+      if (is.na(cur)) cur <- ""
+      linked <- isolate(.linked_industry())
+      # Choice-list rebuilds (locale / market) often re-fire selectInput with the
+      # same blank or linked value — that is not a user edit.
+      if (identical(cur, linked)) return()
       industry_touched(TRUE)
     }, ignoreInit = TRUE)
 
@@ -871,14 +879,16 @@ macro_market_server <- function(id = "macro",
       linked <- .linked_industry()
       ind_ch <- macro_choices_with_none(macro_industry_choices(mode, loc), loc)
       isel <- isolate(as.character(input$industry_key %||% "")[1])
+      if (is.na(isel)) isel <- ""
       in_menu <- isel %in% unname(ind_ch)
       if (!isTRUE(isolate(industry_touched())) || !in_menu) {
         isel <- if (nzchar(linked) && linked %in% unname(ind_ch)) linked else ""
       } else if (force_blank_if_unlinked && !nzchar(linked) && !nzchar(isel)) {
         isel <- ""
       }
-      cur_ind <- isolate(as.character(input$industry_key %||% "")[1])
-      if (!identical(cur_ind, isel)) industry_programmatic(TRUE)
+      # Always mark programmatic: Shiny may re-fire industry_key when only the
+      # choice labels change, which would otherwise sticky-touch and block link.
+      industry_programmatic(TRUE)
       updateSelectInput(session, "industry_key", choices = ind_ch, selected = isel)
     }
 
@@ -895,13 +905,15 @@ macro_market_server <- function(id = "macro",
       .apply_linked_industry()
     })
 
-    # When ticker industry resolves after Macro is already open, sync if untouched.
+    # New ticker / Company industry resolve: re-link Macro Industry (clears prior
+    # sticky touch from menu rebuilds). Manual Macro override holds only until
+    # the next Company industry change.
     if (!is.null(company_industry_rv)) {
       observeEvent(
         company_industry_rv(),
         {
           if (is.null(isolate(input$hist_period))) return()
-          if (isTRUE(isolate(industry_touched()))) return()
+          industry_touched(FALSE)
           .apply_linked_industry()
         },
         ignoreInit = TRUE

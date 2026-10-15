@@ -116,10 +116,15 @@ check(
 )
 check(
   "TW linked Foundry passthrough",
-  identical(macro_resolve_linked_industry_key("sc.Foundry", "TW"), "sc.Foundry") ||
-    identical(macro_resolve_linked_industry_key("sc.Foundry", "TW"), "")
+  identical(macro_resolve_linked_industry_key("sc.Foundry", "TW"), "sc.Foundry")
 )
 check("blank linked stays blank", identical(macro_resolve_linked_industry_key("", "US"), ""))
+check("industry apply always marks programmatic", {
+  src_mm <- paste(readLines("macro_market_module.R", warn = FALSE), collapse = "\n")
+  grepl("industry_programmatic(TRUE)", src_mm, fixed = TRUE) &&
+    grepl("if (identical(cur, linked)) return()", src_mm, fixed = TRUE) &&
+    grepl("industry_touched(FALSE)", src_mm, fixed = TRUE)
+})
 check("US concept has mag7", "concept_mag7" %in% unname(con_us))
 check("US concept has no GICS keys", !any(startsWith(unname(con_us), "gics_")))
 check("TW concept has shipping", "tw_shipping" %in% unname(con_tw))
