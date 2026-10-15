@@ -7411,6 +7411,39 @@ ui <- dashboardPage(
             market.style.marginLeft = '0';
             market.style.paddingLeft = '0';
             placeMobileAppTitle();
+            // #region agent log
+            try {
+              if (window.Shiny && Shiny.setInputValue) {
+                var us = document.getElementById('ynow_mkt_btn_us');
+                var tw = document.getElementById('ynow_mkt_btn_tw');
+                var tb = toggle.getBoundingClientRect();
+                var mb = market.getBoundingClientRect();
+                var cs = getComputedStyle(market);
+                var custom = document.querySelector('.navbar-custom-menu');
+                Shiny.setInputValue('ynow_dbg_mkt_layout', {
+                  reason: 'placeMarketHeaderByToggle',
+                  vw: window.innerWidth,
+                  parentOk: !!(market.parentNode === navbar && market.previousElementSibling === toggle),
+                  gap: Math.round(mb.left - tb.right),
+                  leftPxSet: String(market.style.left || ''),
+                  toggleRight: Math.round(tb.right),
+                  mktLeft: Math.round(mb.left),
+                  mktTop: Math.round(mb.top),
+                  mktW: Math.round(mb.width),
+                  mktH: Math.round(mb.height),
+                  usText: us ? String(us.textContent || '').trim() : '',
+                  twText: tw ? String(tw.textContent || '').trim() : '',
+                  usOverflow: !!(us && us.scrollWidth > us.clientWidth + 1),
+                  twOverflow: !!(tw && tw.scrollWidth > tw.clientWidth + 1),
+                  mktPos: cs.position,
+                  inCustomMenu: !!(custom && custom.contains(market)),
+                  afterToggle: !!(market.previousElementSibling === toggle),
+                  loc: (document.documentElement.getAttribute('lang') || ''),
+                  ts: Date.now()
+                }, {priority: 'event'});
+              }
+            } catch (_e) {}
+            // #endregion
           }
           /* Mobile: app title viewport-centered in the gap; scale font to fit — never cover chrome. */
           function placeMobileAppTitle() {
@@ -8914,6 +8947,29 @@ ui <- dashboardPage(
             if (mktUs && s.market_us) mktUs.textContent = s.market_us;
             var mktTw = document.getElementById('ynow_mkt_btn_tw');
             if (mktTw && s.market_tw) mktTw.textContent = s.market_tw;
+            // #region agent log
+            try {
+              if (window.Shiny && Shiny.setInputValue && typeof placeMarketHeaderByToggle === 'function') {
+                setTimeout(function () {
+                  placeMarketHeaderByToggle();
+                  if (mktUs || mktTw) {
+                    Shiny.setInputValue('ynow_dbg_mkt_layout', {
+                      reason: 'applyUiLocale_market_text',
+                      vw: window.innerWidth,
+                      usText: mktUs ? String(mktUs.textContent || '').trim() : '',
+                      twText: mktTw ? String(mktTw.textContent || '').trim() : '',
+                      usOverflow: !!(mktUs && mktUs.scrollWidth > mktUs.clientWidth + 1),
+                      twOverflow: !!(mktTw && mktTw.scrollWidth > mktTw.clientWidth + 1),
+                      loc: (payload && payload.locale) ? String(payload.locale) : '',
+                      market_us_key: s.market_us || '',
+                      market_tw_key: s.market_tw || '',
+                      ts: Date.now()
+                    }, {priority: 'event'});
+                  }
+                }, 0);
+              }
+            } catch (_e2) {}
+            // #endregion
             var mktStack = document.querySelector('#ynow-market-header .ynow-market-stack');
             if (mktStack && s.market_hint) mktStack.setAttribute('aria-label', s.market_hint);
             var langStack = document.getElementById('ynow_lang_stack') ||
