@@ -3454,11 +3454,15 @@ ui <- dashboardPage(
           `data-value` = "US",
           `aria-label` = "US",
           title = "US",
-          tags$span(
-            class = "ynow-mkt-flag",
-            `aria-hidden` = "true",
-            "\U0001F1FA\U0001F1F8"
-          )
+          # Fixed-size SVG so US/TW flags match pixel-for-pixel (emoji glyphs differ).
+          HTML(paste0(
+            '<svg class="ynow-mkt-flag" aria-hidden="true" width="18" height="12" viewBox="0 0 19 10" ',
+            'xmlns="http://www.w3.org/2000/svg" focusable="false">',
+            '<rect width="19" height="10" fill="#B22234"/>',
+            '<path d="M0 1.1h19M0 3.3h19M0 5.5h19M0 7.7h19M0 9.9h19" stroke="#fff" stroke-width="1.1"/>',
+            '<rect width="7.6" height="5.5" fill="#3C3B6E"/>',
+            '</svg>'
+          ))
         ),
         tags$button(
           type = "button",
@@ -3467,11 +3471,15 @@ ui <- dashboardPage(
           `data-value` = "TW",
           `aria-label` = "TW",
           title = "TW",
-          tags$span(
-            class = "ynow-mkt-flag",
-            `aria-hidden` = "true",
-            "\U0001F1F9\U0001F1FC"
-          )
+          HTML(paste0(
+            '<svg class="ynow-mkt-flag" aria-hidden="true" width="18" height="12" viewBox="0 0 18 12" ',
+            'xmlns="http://www.w3.org/2000/svg" focusable="false">',
+            '<rect width="18" height="12" fill="#FE0000"/>',
+            '<rect width="9" height="6" fill="#000095"/>',
+            '<circle cx="4.5" cy="3" r="2.1" fill="#fff"/>',
+            '<circle cx="4.5" cy="3" r="1.25" fill="#000095"/>',
+            '</svg>'
+          ))
         )
       )
     ),
@@ -4234,12 +4242,16 @@ ui <- dashboardPage(
         }
         #ynow-market-header .ynow-mkt-btn .ynow-mkt-flag {
           display: block;
-          width: 18px;
-          height: 18px;
-          font-size: 16px;
-          line-height: 18px;
-          text-align: center;
-          overflow: hidden;
+          width: 18px !important;
+          height: 12px !important;
+          min-width: 18px;
+          min-height: 12px;
+          max-width: 18px;
+          max-height: 12px;
+          flex: 0 0 auto;
+          margin: 0;
+          padding: 0;
+          pointer-events: none;
         }
         #ynow-market-header .ynow-mkt-btn + .ynow-mkt-btn {
           border-top-width: 0;
