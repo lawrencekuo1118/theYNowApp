@@ -16,7 +16,7 @@
       return(sub('^"version"\\s*:\\s*"([^"]+)".*$', "\\1", m[[1]]))
     }
   }
-  "v24.09"
+  "v24.10"
 }
 .YNOW_BUILD_VERSION <- .ynow_read_build_version()
 
@@ -230,7 +230,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v24.09) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+          "The YNow App (v24.10) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
         ),
         tags$p(
           class = "ynow-about-method",
@@ -249,7 +249,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v24.09) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
+          "The YNow App (v24.10) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
         ),
         tags$p(
           class = "ynow-about-method",
@@ -351,7 +351,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App（簡化版）")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite（v24.09）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
+          "The YNow App Lite（v24.10）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
           "以自動判別主／副模型與預設參數完成試算，讓使用者先看到合理價區間與產業 KPI，再決定是否回到完整版深入調整。"
         ),
         tags$p(
@@ -368,7 +368,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App (Lite)")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite (v24.09) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
+          "The YNow App Lite (v24.10) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
           "auto-selects primary/secondary models with App defaults, and surfaces fair-value ranges plus industry KPIs before you open Full for deeper calibration."
         ),
         tags$p(
@@ -547,6 +547,11 @@
           var tab = card.getAttribute('data-tab');
           if (lite) tab = card.getAttribute('data-tab-lite') || tab;
           if (!tab) return;
+          /* Lite home Value card → smart_analysis; Full → get_started / other data-tab */
+          if (typeof window.ynowGotoTab === 'function') {
+            window.ynowGotoTab(tab);
+            return;
+          }
           if (window.Shiny && Shiny.setInputValue) {
             Shiny.setInputValue('sidebar_tabs', tab, {priority: 'event'});
           }
@@ -3434,9 +3439,9 @@ ui <- dashboardPage(
                   'data-ynow-build="', .YNOW_BUILD_VERSION, '" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v24.09</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v24.10</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v24.09</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v24.10</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -3457,7 +3462,7 @@ ui <- dashboardPage(
           # Fixed-size SVG so US/TW flags match pixel-for-pixel (emoji glyphs differ).
           HTML(paste0(
             '<svg class="ynow-mkt-flag" aria-hidden="true" width="18" height="12" viewBox="0 0 19 10" ',
-            'preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" focusable="false">',
+            'preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" focusable="false">',
             '<rect width="19" height="10" fill="#B22234"/>',
             '<path d="M0 1.1h19M0 3.3h19M0 5.5h19M0 7.7h19M0 9.9h19" stroke="#fff" stroke-width="1.1"/>',
             '<rect width="7.6" height="5.5" fill="#3C3B6E"/>',
@@ -3473,7 +3478,7 @@ ui <- dashboardPage(
           title = "TW",
           HTML(paste0(
             '<svg class="ynow-mkt-flag" aria-hidden="true" width="18" height="12" viewBox="0 0 18 12" ',
-            'preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" focusable="false">',
+            'preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" focusable="false">',
             '<rect width="18" height="12" fill="#FE0000"/>',
             '<rect width="9" height="6" fill="#000095"/>',
             '<circle cx="4.5" cy="3" r="2.1" fill="#fff"/>',
@@ -3726,7 +3731,7 @@ ui <- dashboardPage(
         `data-toggle` = "tab",
         `data-value` = "snapshot",
         class = "ynow-sidebar-snapshot-link",
-        onclick = "Shiny.setInputValue('sidebar_tabs', 'snapshot', {priority: 'event'}); setTimeout(function(){ try { if (window.ensureLiteSnapshotDefaultsTab) window.ensureLiteSnapshotDefaultsTab(); } catch (e) {} }, 0); return false;",
+        onclick = "if (window.ynowShowSidebarFootTab) { window.ynowShowSidebarFootTab('snapshot'); } else if (window.Shiny) { Shiny.setInputValue('sidebar_tabs', 'snapshot', {priority: 'event'}); } return false;",
         icon("camera", class = "fa-fw"),
         tags$span(id = "ynow_snapshot_link_label", " Snapshot")
       ),
@@ -3737,7 +3742,7 @@ ui <- dashboardPage(
         `data-toggle` = "tab",
         `data-value` = "testing",
         class = "ynow-sidebar-snapshot-link ynow-sidebar-test-link ynow-full-only",
-        onclick = "Shiny.setInputValue('sidebar_tabs', 'testing', {priority: 'event'}); Shiny.setInputValue('sidebar_test_click', (window.__ynowTestClicks=(window.__ynowTestClicks||0)+1), {priority: 'event'}); return false;",
+        onclick = "if (window.Shiny) { Shiny.setInputValue('sidebar_test_click', (window.__ynowTestClicks=(window.__ynowTestClicks||0)+1), {priority: 'event'}); } if (window.ynowShowSidebarFootTab) { window.ynowShowSidebarFootTab('testing'); } else if (window.Shiny) { Shiny.setInputValue('sidebar_tabs', 'testing', {priority: 'event'}); } return false;",
         icon("flask", class = "fa-fw"),
         tags$span(id = "ynow_test_link_label", " Testing")
       ),
@@ -3748,7 +3753,7 @@ ui <- dashboardPage(
         `data-toggle` = "tab",
         `data-value` = "feedback",
         class = "ynow-sidebar-snapshot-link ynow-sidebar-feedback-link",
-        onclick = "Shiny.setInputValue('sidebar_tabs', 'feedback', {priority: 'event'}); Shiny.setInputValue('sidebar_feedback_click', (window.__ynowFeedbackClicks=(window.__ynowFeedbackClicks||0)+1), {priority: 'event'}); return false;",
+        onclick = "if (window.Shiny) { Shiny.setInputValue('sidebar_feedback_click', (window.__ynowFeedbackClicks=(window.__ynowFeedbackClicks||0)+1), {priority: 'event'}); } if (window.ynowShowSidebarFootTab) { window.ynowShowSidebarFootTab('feedback'); } else if (window.Shiny) { Shiny.setInputValue('sidebar_tabs', 'feedback', {priority: 'event'}); } return false;",
         icon("comment-dots", class = "fa-fw"),
         tags$span(id = "ynow_feedback_link_label", " 意見區")
       )
@@ -4055,10 +4060,11 @@ ui <- dashboardPage(
         .right-side {
           margin-top: 50px !important;
         }
-        /* Desktop: pin sidebar to the viewport and scroll inside .sidebar so the
+        /* Pin sidebar to the viewport and scroll inside .sidebar so the
            bottom Lite brand (#ynow_lite_toggle) is reachable without scrolling
-           the whole .wrapper. (Bootstrap col-* floats collapse .sidebar height
-           to padding-bottom:10px with overflow:visible — brand sat below vh.) */
+           the whole .wrapper. Desktop: Bootstrap col-* floats collapse .sidebar
+           height to padding-bottom:10px with overflow:visible — brand sat below vh.
+           Mobile: same internal scroll when the off-canvas sidebar is open. */
         @media (min-width: 768px) {
           .main-sidebar,
           .skin-black .main-sidebar {
@@ -4069,6 +4075,26 @@ ui <- dashboardPage(
             min-height: 100vh !important;
             max-height: 100vh !important;
             padding-top: 50px !important;
+            overflow: hidden !important;
+          }
+          .main-sidebar .sidebar,
+          .main-sidebar #sidebarItemExpanded {
+            height: calc(100vh - 50px) !important;
+            max-height: calc(100vh - 50px) !important;
+            overflow-x: hidden !important;
+            overflow-y: auto !important;
+            -webkit-overflow-scrolling: touch;
+            box-sizing: border-box !important;
+          }
+          .main-sidebar .sidebar::after {
+            content: "";
+            display: table;
+            clear: both;
+          }
+        }
+        @media (max-width: 767px) {
+          .main-sidebar,
+          .skin-black .main-sidebar {
             overflow: hidden !important;
           }
           .main-sidebar .sidebar,
@@ -4242,11 +4268,13 @@ ui <- dashboardPage(
           visibility: visible !important;
           z-index: 1040;
         }
-        /* Full-bleed flag stack: two halves fill the 50px header with no seam. */
+        /* Flag stack: 50px header, two equal halves, no seam.
+           Width follows US aspect at 25px height (19/10 → ~48px) so length stays
+           proportional to width (no stretch). */
         #ynow-market-header .ynow-market-stack {
           display: flex;
           flex-direction: column;
-          width: 38px;
+          width: 48px;
           height: 50px;
           margin: 0;
           padding: 0;
@@ -4273,8 +4301,8 @@ ui <- dashboardPage(
           line-height: 0;
           cursor: pointer;
           display: flex;
-          align-items: stretch;
-          justify-content: stretch;
+          align-items: center;
+          justify-content: center;
           overflow: hidden;
         }
         #ynow-market-header .ynow-mkt-btn .ynow-mkt-flag {
@@ -4285,12 +4313,12 @@ ui <- dashboardPage(
           min-height: 0;
           max-width: none;
           max-height: none;
-          flex: 1 1 auto;
+          flex: 0 0 auto;
           margin: 0;
           padding: 0;
           pointer-events: none;
-          /* Stretch SVG to fill each half — height flush to header, no letterbox. */
-          object-fit: fill;
+          /* Keep native flag aspect; only length (stack width) was tuned. */
+          object-fit: contain;
           /* Inactive market: black-and-white; active restores full color. */
           filter: grayscale(1);
           -webkit-filter: grayscale(1);
@@ -9695,6 +9723,44 @@ ui <- dashboardPage(
               } catch (eSnap) {}
             }
             window.ensureLiteSnapshotDefaultsTab = ensureLiteSnapshotDefaultsTab;
+            /* Foot links (Snapshot / Testing / Feedback) are outside .sidebar-menu.
+               Activate the pane directly — do not a.click() the foot anchor (recursion
+               with return false) and do not rely on Bootstrap after preventDefault. */
+            function showSidebarFootTab(tab) {
+              tab = remapLegacyTab(tab);
+              if (!tab) return;
+              if (window.Shiny && Shiny.setInputValue) {
+                Shiny.setInputValue('sidebar_tabs', tab, {priority: 'event'});
+              }
+              var pane = document.getElementById('shiny-tab-' + tab);
+              if (pane) {
+                try {
+                  if (window.jQuery) {
+                    jQuery(pane).addClass('active').siblings('.tab-pane').removeClass('active in');
+                  } else {
+                    var parent = pane.parentNode;
+                    if (parent && parent.children) {
+                      Array.prototype.forEach.call(parent.children, function (sib) {
+                        if (sib !== pane && sib.classList) {
+                          sib.classList.remove('active');
+                          sib.classList.remove('in');
+                        }
+                      });
+                    }
+                    pane.classList.add('active');
+                  }
+                } catch (eShow) {}
+              }
+              try { history.replaceState(null, '', '#shiny-tab-' + tab); } catch (eH) {}
+              if (tab === 'snapshot') {
+                setTimeout(function () {
+                  try {
+                    if (window.ensureLiteSnapshotDefaultsTab) window.ensureLiteSnapshotDefaultsTab();
+                  } catch (eSnap2) {}
+                }, 0);
+              }
+            }
+            window.ynowShowSidebarFootTab = showSidebarFootTab;
             function toggleLite() {
               applyLiteMode(!document.body.classList.contains('ynow-lite'));
             }
@@ -13358,7 +13424,7 @@ ui <- dashboardPage(
             min-height: 0 !important;
             max-width: none !important;
             max-height: none !important;
-            object-fit: fill !important;
+            object-fit: contain !important;
             border: none !important;
             box-shadow: none !important;
             outline: none !important;

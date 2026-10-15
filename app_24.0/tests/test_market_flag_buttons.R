@@ -21,17 +21,19 @@ check("equal-size SVG flags (not emoji text)",
         grepl("viewBox=\"0 0 19 10\"", ui, fixed = TRUE) &&
         grepl("viewBox=\"0 0 18 12\"", ui, fixed = TRUE) &&
         !grepl("\\\\U0001F1FA\\\\U0001F1F8", ui, fixed = TRUE))
-check("flags fill each half (full-bleed, no letterbox)",
-      grepl("object-fit: fill", ui, fixed = TRUE) &&
-        grepl('preserveAspectRatio="none"', ui, fixed = TRUE) &&
+check("flags keep native aspect (proportional length)",
+      grepl("object-fit: contain", ui, fixed = TRUE) &&
+        grepl('preserveAspectRatio="xMidYMid meet"', ui, fixed = TRUE) &&
+        !grepl('preserveAspectRatio="none"', ui, fixed = TRUE) &&
         grepl("width: 100% !important", ui, fixed = TRUE) &&
         grepl("height: 100% !important", ui, fixed = TRUE))
-check("stack fills 50px header seamless",
+check("stack fills 50px header seamless; width follows US aspect",
       grepl("#ynow-market-header .ynow-market-stack", ui, fixed = TRUE) &&
         grepl("height: 50px", ui, fixed = TRUE) &&
         grepl("height: 25px", ui, fixed = TRUE) &&
+        grepl("width: 48px", ui, fixed = TRUE) &&
         grepl("gap: 0", ui, fixed = TRUE) &&
-        grepl("Full-bleed flag stack", ui, fixed = TRUE))
+        grepl("Flag stack: 50px header", ui, fixed = TRUE))
 check("absolute flush after toggle (JS left)",
       grepl("placeMarketHeaderByToggle", ui, fixed = TRUE) &&
         grepl("position: absolute !important", ui, fixed = TRUE) &&

@@ -5404,6 +5404,15 @@ server <- function(input, output, session) {
 
   active_valuation_model_key <- reactive({
     tab <- as.character(input$sidebar_tabs %||% "")[1]
+    # Smart Analysis: highlight the recommended primary on the shared composite strip
+    if (identical(tab, "smart_analysis")) {
+      rec <- tryCatch(model_sidebar_rec(), error = function(e) NULL)
+      prim <- as.character(rec$primary %||% "")[1]
+      if (nzchar(prim) && prim %in% c("dcf", "ddm", "ri", "pb", "nav", "multiples", "sotp")) {
+        return(prim)
+      }
+      return(NA_character_)
+    }
     switch(
       tab,
       "dcf_calculator" = "dcf",

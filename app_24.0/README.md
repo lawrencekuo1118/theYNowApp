@@ -1,5 +1,11 @@
-# The YNow App v24.09 — Valuation Methodology
+# The YNow App v24.10 — Valuation Methodology
 
+## v24.10 重點
+
+- **Snapshot ↔ 智慧分析接線**：側邊欄 Snapshot／Testing／Feedback 腳鏈改走 `ynowShowSidebarFootTab`（直接啟用 pane＋Lite 強制 `snap_defaults`）；首頁 Value 卡 Lite 經 `ynowGotoTab('smart_analysis')`
+- **推薦估值**：Smart Analysis 上 composite 的 active model key 對齊推薦主模型；Lite 情境套用 → auto-calc 路徑不變
+- **手機 Lite 入口**：側邊欄內部可捲動延伸至 `max-width: 767px`，底部 LOGO 可點進 Lite
+- **國旗**：還原等比例（`object-fit: contain`／`preserveAspectRatio=meet`），僅加寬 stack 至 48px 對齊 25px 高
 
 ## v21 重點
 
