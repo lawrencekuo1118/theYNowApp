@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12692520
+bundleId=12692644
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=dfc298389f01e35519d64288e227d2a6e0df59b2
-commit=dfc298389f01e35519d64288e227d2a6e0df59b2
-short=dfc2983
-message=fix(ui): inactive US/TW market flags render grayscale (v24.06)
-captured_at=2026-10-15T03:56:00Z
-display_version=v24.06
+aligned_git=a7c336945fcfd0115a442c1167977344a4230084
+commit=a7c336945fcfd0115a442c1167977344a4230084
+short=a7c3369
+message=fix(ui): desktop sidebar scrolls so Lite logo is clickable (v24.07)
+captured_at=2026-10-15T04:20:00Z
+display_version=v24.07
