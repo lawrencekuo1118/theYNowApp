@@ -105,10 +105,17 @@ check("server has snapshot reactive", grepl("lab_im_ind_mcap_snap", srv, fixed =
 check("server refresh observeEvent", grepl("observeEvent\\(input\\$lab_im_refresh_ind_mcap", srv))
 check("server has independent ind-mcap job", grepl("lab_im_run_ind_mcap_job", srv, fixed = TRUE))
 check("server start helper ignores page filters", grepl("\\.lab_im_start_ind_mcap_job", srv) &&
-        grepl("page_methods_ignored = TRUE", srv, fixed = TRUE))
-check("server board is snapshot-only", grepl("uses_lab_im_scores = FALSE", srv, fixed = TRUE) ||
-        (grepl("Snapshot-only board", srv, fixed = TRUE) &&
-           !grepl("Live recompute when session has scores", srv, fixed = TRUE)))
+        grepl("ignore page boards / industry / methods filters", srv, fixed = TRUE) &&
+        grepl("boards = c(\"TWSE\", \"TPEX\")", srv, fixed = TRUE) &&
+        grepl("per_chain = 2L", srv, fixed = TRUE))
+check("server board is snapshot-only", {
+  board_fn <- sub("(?s).*\\.lab_im_ind_mcap_board <- reactive\\(\\{", "", srv, perl = TRUE)
+  board_fn <- sub("(?s)\\}\\)\\s*\n\\s*# Reload default snapshot.*", "", board_fn, perl = TRUE)
+  grepl("Snapshot-only board", board_fn, fixed = TRUE) &&
+    grepl("lab_im_ind_mcap_snap()", board_fn, fixed = TRUE) &&
+    !grepl("lab_im_scores()", board_fn, fixed = TRUE) &&
+    !grepl("Live recompute when session has scores", srv, fixed = TRUE)
+})
 check("server does not persist from Search scores",
       !grepl("\\.lab_im_persist_ind_mcap_from_scores", srv, fixed = TRUE))
 check("lab_im_run_ind_mcap_job defined in lab", {
@@ -261,6 +268,11 @@ check("help mentions full universe total mcap (en)",
 check("help mentions 全宇宙 (zh-TW)",
       grepl("全宇宙", ui_str("lab_im_ind_mcap_help", "zh-TW"), fixed = TRUE))
 check("help mentions Refresh ranking", grepl("Refresh ranking", ui_str("lab_im_ind_mcap_help", "en"), fixed = TRUE))
+check("help mentions Blue Chip auto-start (en)",
+      grepl("Opening Blue Chip Lab", ui_str("lab_im_ind_mcap_help", "en"), fixed = TRUE))
+check("help mentions tab auto-start (zh-TW)",
+      grepl("開啟績優股排行榜會在背景自動重算全部產業鏈",
+            ui_str("lab_im_ind_mcap_help", "zh-TW"), fixed = TRUE))
 
 cat("\nPASS ", pass, "  FAIL ", fail, "\n", sep = "")
 if (fail > 0L) quit(status = 1L)

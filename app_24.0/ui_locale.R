@@ -1049,7 +1049,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_ind_mcap_status_snap = paste0(
       "Default ranking: %d industry chains",
       "%s",
-      ". Press Refresh ranking to recompute."
+      ". Opening Blue Chip Lab refreshes all chains in the background; ",
+      "press Refresh ranking to recompute now."
     ),
     lab_im_ind_mcap_snap_at = " (as of %s)",
     btn_lab_im_refresh_ind_mcap = "Refresh ranking",
@@ -1064,7 +1065,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Top 10 in selected industries: one Top 10 within chosen industries; Industry rank starts at 1 within each industry (not a cross-industry serial). ",
       "Most undervalued Top 10: across industries, by total valuation gap (primary-model FV vs price, not annualized); only names still undervalued (gap > 0). ",
       "Industry mcap-weighted upside (all industry chains) lives in the dedicated board above Candidate truncate ",
-      "(default snapshot; press Refresh ranking for the latest). ",
+      "(default snapshot; opening Blue Chip Lab auto-refreshes all chains; press Refresh ranking for a manual rebuild). ",
       "Top 10 takes at most 10 qualified names; shortfalls are not padded."
     ),
     lab_im_lb_status_ind_avg = paste0(
@@ -4128,7 +4129,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_ind_mcap_status_snap = paste0(
       "預設排名：%d 條產業鏈",
       "%s",
-      "。按「更新排名」可重算最新版。"
+      "。開啟績優股排行榜會在背景自動重算全部產業鏈；",
+      "按「更新排名」可立即手動重算。"
     ),
     lab_im_ind_mcap_snap_at = "（資料時間 %s）",
     btn_lab_im_refresh_ind_mcap = "更新排名",
@@ -4142,7 +4144,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "整體前十名：跨本次已評估產業依年化估值漲幅取 Top 10，並顯示產業欄。",
       "選定產業前十名：所選產業內單一 Top 10；產業內排名自該產業第 1 名起算（非跨產業流水號）。",
       "價值低估前十名：跨產業依推薦主模型合理價相對市價的總潛在漲幅（非年化）由大到小；只列仍被低估者。",
-      "產業市值加權漲幅（全部產業鏈）在上方獨立區塊（預設快照；按「更新排名」可重算最新版）。",
+      "產業市值加權漲幅（全部產業鏈）在上方獨立區塊（預設快照；開啟績優股排行榜會自動重算全部產業鏈；按「更新排名」可手動重建）。",
       "前十名只從合格者取最多 10 檔；合格不足 10 時不會湊滿。"
     ),
     lab_im_lb_status_ind_avg = paste0(
