@@ -82,6 +82,20 @@ check("applyUiLocale syncs lang active/labels", {
     grepl("hdr_lang_zh", ui_src, fixed = TRUE) &&
     grepl("ynow-lang-stack .ynow-lang-btn", ui_src, fixed = TRUE)
 })
+check("locale pick always re-pushes (no noop early-return)", {
+  grepl("Always re-push", srv_src, fixed = TRUE) &&
+    grepl("ynow_locale_resync", srv_src, fixed = TRUE) &&
+    grepl("force_repush", srv_src, fixed = TRUE)
+})
+check("client resyncs locale after shiny connect / missed apply", {
+  grepl("ynowRequestLocaleResync", ui_src, fixed = TRUE) &&
+    grepl("ynow_locale_resync", ui_src, fixed = TRUE) &&
+    grepl("shiny:connected shiny:sessioninitialized shiny:reconnected", ui_src, fixed = TRUE)
+})
+check("client drops stale locale push after manual pick", {
+  grepl("__ynowLocaleUserPick", ui_src, fixed = TRUE) &&
+    grepl("apply-skipped-stale", ui_src, fixed = TRUE)
+})
 
 if (fail > 0L) {
   cat("FAILED: ", fail, " check(s)\n", sep = "")

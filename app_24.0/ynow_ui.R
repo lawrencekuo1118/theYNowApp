@@ -8164,11 +8164,36 @@ ui <- dashboardPage(
               stack.querySelectorAll('.ynow-lang-btn').forEach(function (b) {
                 b.classList.toggle('active', b === btn);
               });
+              /* Optimistic lang so .ynow-loc-zh CSS switches immediately; server
+                 ynowUiLocale still owns full string replacement. Stash pending pick
+                 so a late onFlushed/device `en` push cannot clobber the click. */
+              window.__ynowLocaleUserPick = val;
+              try {
+                document.documentElement.setAttribute('lang', val === 'zh-TW' ? 'zh-TW' : 'en');
+              } catch (eLangOpt) {}
               if (window.Shiny && Shiny.setInputValue) {
                 Shiny.setInputValue('ui_locale_pick', val, {priority: 'event'});
                 // #region agent log
                 ynowAgentDbg('C', 'ynow_ui.R:bindLangModeButtons', 'setInputValue-ui_locale_pick', {val: val});
                 // #endregion
+                /* Single recovery shot: if full string apply never lands, force-repush once. */
+                var expect = val;
+                setTimeout(function () {
+                  var home = document.querySelector('.sidebar-menu a[data-value=\"home\"]');
+                  var homeTxt = home ? (home.textContent || '').replace(/\\s+/g, ' ').trim() : '';
+                  var needZh = expect === 'zh-TW';
+                  var stringsOk = needZh ? /首頁/.test(homeTxt) : /Home/i.test(homeTxt);
+                  // #region agent log
+                  ynowAgentDbg('D', 'ynow_ui.R:bindLangModeButtons', 'lang-click-verify', {
+                    expect: expect,
+                    htmlLang: document.documentElement.getAttribute('lang'),
+                    homeTxt: homeTxt.slice(0, 40),
+                    stringsOk: stringsOk
+                  });
+                  // #endregion
+                  if (stringsOk || !(window.Shiny && Shiny.setInputValue)) return;
+                  Shiny.setInputValue('ui_locale_pick', expect, {priority: 'event'});
+                }, 1600);
               }
             });
             // #region agent log
@@ -8360,6 +8385,23 @@ ui <- dashboardPage(
 
           function applyUiLocale(payload) {
             var s = (payload && payload.strings) || {};
+            var incoming = payload && payload.locale ? String(payload.locale) : 'en';
+            var pendingPick = window.__ynowLocaleUserPick ? String(window.__ynowLocaleUserPick) : '';
+            if (pendingPick && incoming !== pendingPick) {
+              // #region agent log
+              try {
+                if (typeof ynowAgentDbg === 'function') {
+                  ynowAgentDbg('D', 'ynow_ui.R:applyUiLocale', 'apply-skipped-stale', {
+                    incoming: incoming,
+                    pendingPick: pendingPick
+                  });
+                }
+              } catch (eStale) {}
+              // #endregion
+              return;
+            }
+            /* Keep pending until after strings are written so a trailing stale
+               `en` queued behind this zh-TW message cannot clear the guard early. */
             // #region agent log
             try {
               if (typeof ynowAgentDbg === 'function') {
@@ -9387,6 +9429,9 @@ ui <- dashboardPage(
             document.querySelectorAll('#ynow-market-header .ynow-mkt-btn').forEach(function (b) {
               b.classList.toggle('active', b.getAttribute('data-value') === mkt);
             });
+            if (pendingPick && incoming === pendingPick) {
+              window.__ynowLocaleUserPick = null;
+            }
             // #region agent log
             try {
               if (typeof ynowAgentDbg === 'function') {
@@ -9432,11 +9477,34 @@ ui <- dashboardPage(
               });
             });
           }
+          var __ynowLocaleResyncTimer = null;
+          function requestLocaleResync(reason) {
+            if (!(window.Shiny && Shiny.setInputValue)) return;
+            // Debounce: each push ships a large strings payload; flooding delays applyUiLocale.
+            if (__ynowLocaleResyncTimer) clearTimeout(__ynowLocaleResyncTimer);
+            __ynowLocaleResyncTimer = setTimeout(function () {
+              __ynowLocaleResyncTimer = null;
+              // #region agent log
+              try {
+                if (typeof ynowAgentDbg === 'function') {
+                  ynowAgentDbg('D', 'ynow_ui.R:requestLocaleResync', 'resync', {
+                    reason: reason || '',
+                    htmlLang: document.documentElement.getAttribute('lang')
+                  });
+                }
+              } catch (eRs) {}
+              // #endregion
+              Shiny.setInputValue('ynow_locale_resync', Date.now(), {priority: 'event'});
+            }, 120);
+          }
+          window.ynowRequestLocaleResync = requestLocaleResync;
           function registerLocaleHandler() {
             if (!window.Shiny || !Shiny.addCustomMessageHandler) {
               setTimeout(registerLocaleHandler, 50);
               return;
             }
+            /* Always (re)bind — an early register before Shiny is fully live can
+               no-op; connect/resync must be able to re-attach applyUiLocale. */
             Shiny.addCustomMessageHandler('ynowUiLocale', applyUiLocale);
             Shiny.addCustomMessageHandler('ynowDcLocale', applyDcLocale);
             Shiny.addCustomMessageHandler('ynowDcSopLocale', function (payload) {
@@ -9519,6 +9587,21 @@ ui <- dashboardPage(
             });
           }
           registerLocaleHandler();
+          /* Re-broadcast locale after connect so a dropped ynowUiLocale cannot stick. */
+          if (window.jQuery) {
+            jQuery(document).on(
+              'shiny:connected shiny:sessioninitialized shiny:reconnected',
+              function () {
+                registerLocaleHandler();
+                requestLocaleResync('shiny-lifecycle');
+              }
+            );
+          } else {
+            document.addEventListener('shiny:connected', function () {
+              registerLocaleHandler();
+              requestLocaleResync('shiny-lifecycle');
+            });
+          }
 
           /* Device / browser language → initial UI locale (mapping done in R). */
           function pushDeviceUiLocale() {
