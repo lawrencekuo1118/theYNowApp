@@ -1,20 +1,21 @@
 # ==========================================
 # Social OAuth (Google / Facebook) — self-serve signup
 # ==========================================
-# Product model: any end user clicks Google / Facebook → provider consent →
+# Product model: any end user clicks Google / Facebook / Apple → provider consent →
 # app auto-creates a Neon `ynow_users` row (role=user) and signs them in.
 # There is NO admin whitelist / permission step for ordinary users.
 #
 # One-time owner setup (credentials only — not per-user provisioning):
 #
-# Preferred path — Supabase Auth (one project covers Google + Facebook):
+# Preferred path — Supabase Auth (one project covers Google + Facebook + Apple):
 #   YNOW_SUPABASE_URL=https://xxxx.supabase.co
 #   YNOW_SUPABASE_ANON_KEY=eyJ...
 #   YNOW_OAUTH_REDIRECT_URI=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-# Enable Google / Facebook under Supabase → Authentication → Providers
+# Enable Google / Facebook / Apple under Supabase → Authentication → Providers
 # (turn ON; leave "Disable sign ups" OFF so the public can register).
+# Apple requires Apple Developer Services ID credentials in the Supabase provider form.
 #
-# Direct path (no Supabase) — register OAuth apps then set:
+# Direct path (no Supabase) — Google / Facebook only; Apple stays Supabase-only:
 #   YNOW_GOOGLE_CLIENT_ID=...
 #   YNOW_GOOGLE_CLIENT_SECRET=...
 #   YNOW_FACEBOOK_APP_ID=...
@@ -52,6 +53,11 @@ ynow_oauth_facebook_ready <- function() {
   if (isTRUE(ynow_oauth_supabase_ready())) return(TRUE)
   nzchar(trimws(Sys.getenv("YNOW_FACEBOOK_APP_ID", unset = ""))) &&
     nzchar(trimws(Sys.getenv("YNOW_FACEBOOK_APP_SECRET", unset = "")))
+}
+
+#' Apple Sign In via Supabase Auth only (no direct Apple client path).
+ynow_oauth_apple_ready <- function() {
+  isTRUE(ynow_oauth_supabase_ready())
 }
 
 ynow_oauth_state_secret <- function() {
@@ -113,9 +119,10 @@ ynow_oauth_parse_state <- function(state, max_age_sec = 900) {
   list(ok = TRUE, provider = as.character(payload$p %||% "")[1], message_key = NULL)
 }
 
-#' Build authorize URL for Google or Facebook (Supabase or direct).
+#' Build authorize URL for Google / Facebook / Apple (Supabase or direct).
+#' Apple requires Supabase Auth; direct Apple client flow is not implemented.
 #' @return list(ok=, url=, message_key=)
-ynow_oauth_authorize_url <- function(provider = c("google", "facebook")) {
+ynow_oauth_authorize_url <- function(provider = c("google", "facebook", "apple")) {
   provider <- match.arg(provider)
   if (!isTRUE(ynow_auth_enabled())) {
     return(list(ok = FALSE, url = NULL, message_key = "auth_msg_disabled"))
@@ -130,6 +137,9 @@ ynow_oauth_authorize_url <- function(provider = c("google", "facebook")) {
       utils::URLencode(redir, reserved = TRUE)
     )
     return(list(ok = TRUE, url = url, message_key = NULL))
+  }
+  if (identical(provider, "apple")) {
+    return(list(ok = FALSE, url = NULL, message_key = "auth_msg_oauth_need_apple"))
   }
   state <- ynow_oauth_make_state(provider)
   if (identical(provider, "google")) {

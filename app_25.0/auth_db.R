@@ -344,8 +344,8 @@ ynow_db_upsert_oauth_user <- function(email, display_name = NULL,
   }
   prov <- tolower(as.character(provider %||% "oauth")[1])
   if (!nzchar(prov)) prov <- "oauth"
-  if (!(prov %in% c("google", "facebook", "supabase", "oauth"))) {
-    # Keep unknown IdP labels (e.g. apple) but store as oauth-family.
+  if (!(prov %in% c("google", "facebook", "apple", "supabase", "oauth"))) {
+    # Keep unknown IdP labels but store as oauth-family.
     if (!nzchar(prov)) prov <- "oauth"
   }
   puid <- as.character(provider_uid %||% "")[1]

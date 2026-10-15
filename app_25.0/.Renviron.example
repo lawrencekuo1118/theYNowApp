@@ -15,24 +15,25 @@ YNOW_DB_SSLMODE=require
 
 # One-time: Rscript scripts/neon_migrate.R
 # Optional: YOUR maintenance admin only (NOT a whitelist for end users).
-# Ordinary users self-register via Google / Facebook / Email with role=user.
+# Ordinary users self-register via Google / Facebook / Apple / Email with role=user.
 # YNOW_AUTH_SEED_EMAIL=you@example.com
 # YNOW_AUTH_SEED_PASSWORD=change-me-long
 
 YNOW_ENABLE_ACCOUNT_LOGIN=1
 
 # =============================================================================
-# Required for public Google / Facebook self-registration (pick ONE path)
+# Required for public Google / Facebook / Apple self-registration
 # =============================================================================
 # After this one-time owner setup + redeploy, ANY end user can register by
-# clicking Google / Facebook — no per-user admin permission step.
+# clicking Google / Facebook / Apple — no per-user admin permission step.
 #
-# Path A (recommended): Supabase Auth — enable Google + Facebook providers,
+# Path A (recommended): Supabase Auth — enable Google + Facebook + Apple providers,
 # leave "Disable sign ups" OFF, set Site URL / redirect to the live app URL.
+# Apple needs Apple Developer Services ID credentials in the Supabase provider form.
 # YNOW_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
 # YNOW_SUPABASE_ANON_KEY=
 #
-# Path B: direct Google / Facebook OAuth apps (redirect URI = live app URL):
+# Path B: direct Google / Facebook OAuth apps (Apple still needs Supabase / Path A):
 # YNOW_GOOGLE_CLIENT_ID=
 # YNOW_GOOGLE_CLIENT_SECRET=
 # YNOW_FACEBOOK_APP_ID=
