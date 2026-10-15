@@ -7,4 +7,4 @@ commit=dfbb7012342d51dfa4242b29860ec19ec0b1af8b
 short=dfbb701
 message=chore: record shipped display version v24.13
 captured_at=2026-10-15T08:05:33Z
-display_version=v24.13
+display_version=v24.14
