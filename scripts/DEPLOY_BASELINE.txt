@@ -7,4 +7,4 @@ commit=6fedf0c145082ee101283022f27f0dee1089c16e
 short=6fedf0c
 message=fix(ui): make 繁中 locale switch survive connect races (v24.08)
 captured_at=2026-10-15T04:35:00Z
-display_version=v24.08
+display_version=v24.09
