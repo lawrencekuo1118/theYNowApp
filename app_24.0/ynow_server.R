@@ -14035,7 +14035,35 @@ server <- function(input, output, session) {
       }
       return(invisible(FALSE))
     }
-    lab_im_ind_mcap_snap(out$snapshot)
+    new_snap <- out$snapshot
+    new_has_upside <- any(
+      is.finite(suppressWarnings(as.numeric(new_snap$wavg_cagr))),
+      na.rm = TRUE
+    )
+    if (!isTRUE(new_has_upside)) {
+      old <- tryCatch(isolate(lab_im_ind_mcap_snap()), error = function(e) NULL)
+      old_has_upside <- is.data.frame(old) && nrow(old) > 0L &&
+        any(is.finite(suppressWarnings(as.numeric(old$wavg_cagr))), na.rm = TRUE)
+      if (isTRUE(old_has_upside)) {
+        # Keep prior heatmap when refresh cannot compute upside (e.g. offline Yahoo).
+        if (isTRUE(notify)) {
+          showNotification(
+            tryCatch(
+              ui_str("lab_im_ind_mcap_refresh_kept_prior", loc),
+              error = function(e) if (identical(loc, "en")) {
+                "Industry-chain refresh finished without upside samples; kept prior ranking."
+              } else {
+                "產業鏈刷新未取得估值漲幅樣本，仍保留先前排名。"
+              }
+            ),
+            type = "warning",
+            duration = 7
+          )
+        }
+        return(invisible(TRUE))
+      }
+    }
+    lab_im_ind_mcap_snap(new_snap)
     if (isTRUE(notify)) {
       n_ch <- as.integer(out$n_chains %||% nrow(out$snapshot))
       showNotification(
@@ -14136,21 +14164,27 @@ server <- function(input, output, session) {
     observeEvent(lab_im_ind_mcap_task$status(), {
       st <- tryCatch(lab_im_ind_mcap_task$status(), error = function(e) "initial")
       if (identical(st, "error")) {
-        lab_im_ind_mcap_busy(FALSE)
+        tryCatch(lab_im_ind_mcap_busy(FALSE), error = function(e) NULL)
         err <- tryCatch(lab_im_ind_mcap_task$result(), error = function(e) conditionMessage(e))
         if (is.character(err) && nzchar(err[1])) {
-          showNotification(
-            paste("Industry-chain ranking failed:", err[1]),
-            type = "error",
-            duration = 8
+          tryCatch(
+            showNotification(
+              paste("Industry-chain ranking failed:", err[1]),
+              type = "error",
+              duration = 8
+            ),
+            error = function(e) NULL
           )
         }
         return()
       }
       if (!identical(st, "success")) return()
       out <- tryCatch(lab_im_ind_mcap_task$result(), error = function(e) NULL)
-      lab_im_ind_mcap_busy(FALSE)
-      .lab_im_apply_ind_mcap_result(out, notify = TRUE)
+      tryCatch(lab_im_ind_mcap_busy(FALSE), error = function(e) NULL)
+      tryCatch(
+        .lab_im_apply_ind_mcap_result(out, notify = TRUE),
+        error = function(e) NULL
+      )
     }, ignoreInit = TRUE)
   }
 

@@ -3032,15 +3032,28 @@ lab_save_ind_mcap_chain_snapshot <- function(snapshot, market = "US") {
   if (!is.data.frame(snap) || !nrow(snap)) snap <- lab_ind_mcap_chain_snapshot_empty()
   if (!"market" %in% names(snap)) snap$market <- mm
   snap$market[!nzchar(as.character(snap$market))] <- mm
-  # Option path wins when set (tests); else bundled data/ when writable
+  # Option path wins when set (tests). Prefer writable cache over bundled data/
+  # so a failed / no-Yahoo refresh cannot wipe the shipped snapshot (all-NA wavg).
   opt <- getOption("ynow.ind_mcap_chain_snapshot", default = NULL)
   bundled <- file.path("data", sprintf("ind_mcap_chain_rank_snapshot_%s.csv", mm))
+  has_upside <- any(
+    is.finite(suppressWarnings(as.numeric(snap$wavg_cagr))),
+    na.rm = TRUE
+  )
   path <- if (!is.null(opt) && length(opt) >= 1L && nzchar(as.character(opt)[1])) {
     as.character(opt)[1]
-  } else if (dir.exists("data") && file.access("data", 2) == 0L) {
+  } else if (isTRUE(has_upside) && dir.exists("data") && file.access("data", 2) == 0L) {
     bundled
   } else {
-    lab_ind_mcap_chain_snapshot_path(mm)
+    # Writable cache — keeps packaged CSV intact when upside is all NA
+    cache_dir <- tryCatch({
+      if (exists("lab_quality_snapshot_dir", mode = "function")) {
+        lab_quality_snapshot_dir()
+      } else {
+        file.path(tempdir(), "ynow_cache", "slow")
+      }
+    }, error = function(e) file.path(tempdir(), "ynow_cache", "slow"))
+    file.path(cache_dir, sprintf("ind_mcap_chain_rank_snapshot_%s.csv", mm))
   }
   dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
   tmp <- paste0(path, ".tmp")

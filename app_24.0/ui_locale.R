@@ -1060,6 +1060,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     lab_im_ind_mcap_refresh_done = "Industry-chain ranking updated (%d chains).",
     lab_im_ind_mcap_refresh_busy = "Industry-chain ranking refresh already running…",
+    lab_im_ind_mcap_refresh_kept_prior = paste0(
+      "Industry-chain refresh finished without upside samples; kept prior ranking / heatmap."
+    ),
     lab_im_ind_mcap_treemap_legend = paste0(
       "Area = industry-chain total market cap; color = mcap-weighted annualized valuation upside ",
       "(US: green up / red down; TW: red up / green down). Includes every industry chain."
@@ -4150,6 +4153,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     lab_im_ind_mcap_refresh_done = "已更新產業鏈排名（%d 條）。",
     lab_im_ind_mcap_refresh_busy = "產業鏈排名更新進行中…",
+    lab_im_ind_mcap_refresh_kept_prior = "產業鏈刷新未取得估值漲幅樣本，仍保留先前排名／熱圖。",
     lab_im_ind_mcap_treemap_legend = paste0(
       "面積＝產業鏈總市值；顏色＝市值加權年化估值漲幅",
       "（美股漲綠／台股漲紅）。納入全部產業鏈。"
