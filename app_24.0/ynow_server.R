@@ -7,6 +7,21 @@ server <- function(input, output, session) {
   # instead of forcing the user onto the gray "Disconnected / Reload" overlay.
   tryCatch(session$allowReconnect("force"), error = function(e) NULL)
 
+  # #region agent log
+  observeEvent(input$ynow_agent_dbg, {
+    raw <- input$ynow_agent_dbg
+    if (is.null(raw)) return()
+    line <- if (is.character(raw)) paste(raw, collapse = "") else {
+      tryCatch(jsonlite::toJSON(raw, auto_unbox = TRUE, null = "null"), error = function(e) NULL)
+    }
+    if (is.null(line) || !nzchar(line)) return()
+    tryCatch(
+      cat(paste0(line, "\n"), file = "/opt/cursor/logs/debug.log", append = TRUE),
+      error = function(e) invisible(NULL)
+    )
+  }, ignoreNULL = TRUE)
+  # #endregion
+
   # Sidebar tab label busy dots (JS `ynowTabBusy` → animated 「…」 on menu item)
   .ynow_set_tab_busy <- function(tab, busy = TRUE) {
     tab <- as.character(tab %||% "")[1]
@@ -368,6 +383,28 @@ server <- function(input, output, session) {
   .push_ui_locale <- function(locale, sync_picker = TRUE) {
     loc <- normalize_ui_locale(locale)
     ui_locale(loc)
+    # #region agent log
+    tryCatch({
+      dbg <- jsonlite::toJSON(
+        list(
+          hypothesisId = "D",
+          location = "ynow_server.R:.push_ui_locale",
+          message = "push-ui-locale",
+          data = list(
+            loc = loc,
+            sync_picker = isTRUE(sync_picker),
+            menu_home = tryCatch(ui_str("menu_home", loc), error = function(e) NA_character_),
+            user_picked = isTRUE(isolate(ui_locale_user_picked())),
+            device_applied = isTRUE(isolate(device_ui_locale_applied()))
+          ),
+          timestamp = as.numeric(Sys.time()) * 1000
+        ),
+        auto_unbox = TRUE,
+        null = "null"
+      )
+      cat(paste0(dbg, "\n"), file = "/opt/cursor/logs/debug.log", append = TRUE)
+    }, error = function(e) invisible(NULL))
+    # #endregion
     # Language chrome is custom header buttons; labels/active state sync via ynowUiLocale
     # (no shinyWidgets updateRadioGroupButtons — that re-render displaced the control on mobile).
     mode <- tryCatch(
@@ -784,13 +821,59 @@ server <- function(input, output, session) {
   # 語言控制：只改 UI locale，不碰顯示幣別；手動選擇鎖定後不再套用裝置預設
   observeEvent(input$ui_locale_pick, {
     pick <- normalize_ui_locale(input$ui_locale_pick)
-    if (identical(pick, isolate(ui_locale()))) return()
+    cur <- isolate(ui_locale())
+    # #region agent log
+    tryCatch({
+      dbg <- jsonlite::toJSON(
+        list(
+          hypothesisId = "D",
+          location = "ynow_server.R:ui_locale_pick",
+          message = "locale-pick-event",
+          data = list(
+            raw = as.character(input$ui_locale_pick %||% "")[1],
+            pick = pick,
+            current = cur,
+            noop = identical(pick, cur)
+          ),
+          timestamp = as.numeric(Sys.time()) * 1000
+        ),
+        auto_unbox = TRUE,
+        null = "null"
+      )
+      cat(paste0(dbg, "\n"), file = "/opt/cursor/logs/debug.log", append = TRUE)
+    }, error = function(e) invisible(NULL))
+    # #endregion
+    if (identical(pick, cur)) return()
     ui_locale_user_picked(TRUE)
     .push_ui_locale(pick, sync_picker = FALSE)
   }, ignoreInit = TRUE)
 
   # 裝置／瀏覽器語言 → 初次 UI locale（僅一次；不覆寫手動選擇）
   observeEvent(input$device_ui_locale, {
+    # #region agent log
+    tryCatch({
+      dbg <- jsonlite::toJSON(
+        list(
+          hypothesisId = "D",
+          location = "ynow_server.R:device_ui_locale",
+          message = "device-locale-event",
+          data = list(
+            raw = as.character(input$device_ui_locale %||% "")[1],
+            user_picked = isTRUE(isolate(ui_locale_user_picked())),
+            device_applied = isTRUE(isolate(device_ui_locale_applied())),
+            mapped = tryCatch(
+              locale_from_device_language(input$device_ui_locale, default = "en"),
+              error = function(e) NA_character_
+            )
+          ),
+          timestamp = as.numeric(Sys.time()) * 1000
+        ),
+        auto_unbox = TRUE,
+        null = "null"
+      )
+      cat(paste0(dbg, "\n"), file = "/opt/cursor/logs/debug.log", append = TRUE)
+    }, error = function(e) invisible(NULL))
+    # #endregion
     if (isTRUE(isolate(ui_locale_user_picked())) ||
         isTRUE(isolate(device_ui_locale_applied()))) {
       return()
