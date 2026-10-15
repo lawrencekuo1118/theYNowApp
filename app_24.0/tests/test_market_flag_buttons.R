@@ -44,6 +44,11 @@ check("mobile bare flags (no frame)", {
     grepl("innerWidth <= 767", ui, fixed = TRUE) &&
     grepl("appearance: none !important", ui, fixed = TRUE)
 })
+check("inactive market flag is grayscale (B&W)", {
+  grepl("filter: grayscale(1)", ui, fixed = TRUE) &&
+    grepl(".ynow-mkt-btn.active .ynow-mkt-flag", ui, fixed = TRUE) &&
+    grepl("Inactive market: black-and-white", ui, fixed = TRUE)
+})
 
 if (fail > 0L) {
   cat("FAILED:", fail, "\n")

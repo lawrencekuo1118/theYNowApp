@@ -4252,6 +4252,9 @@ ui <- dashboardPage(
           margin: 0;
           padding: 0;
           pointer-events: none;
+          /* Inactive market: black-and-white; active restores full color. */
+          filter: grayscale(1);
+          -webkit-filter: grayscale(1);
         }
         #ynow-market-header .ynow-mkt-btn + .ynow-mkt-btn {
           border-top-width: 0;
@@ -4260,6 +4263,10 @@ ui <- dashboardPage(
           background: #fff;
           color: #222;
           border-color: #fff;
+        }
+        #ynow-market-header .ynow-mkt-btn.active .ynow-mkt-flag {
+          filter: none;
+          -webkit-filter: none;
         }
         #ynow-market-header .ynow-mkt-btn:focus {
           outline: none;
@@ -13182,7 +13189,7 @@ ui <- dashboardPage(
             margin: 0 !important;
           }
           #ynow-market-header .ynow-mkt-btn {
-            opacity: 0.42;
+            opacity: 1;
           }
           #ynow-market-header .ynow-mkt-btn + .ynow-mkt-btn {
             border: 0 !important;
@@ -13201,6 +13208,12 @@ ui <- dashboardPage(
             border: none !important;
             box-shadow: none !important;
             outline: none !important;
+            filter: grayscale(1) !important;
+            -webkit-filter: grayscale(1) !important;
+          }
+          #ynow-market-header .ynow-mkt-btn.active .ynow-mkt-flag {
+            filter: none !important;
+            -webkit-filter: none !important;
           }
           .main-header .navbar-custom-menu {
             float: none !important;
