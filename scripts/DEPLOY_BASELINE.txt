@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12692333
+bundleId=12692444
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=58814fd04afc54dd2f66875ca74af687215fb8c7
-commit=58814fd04afc54dd2f66875ca74af687215fb8c7
-short=58814fd
-message=fix(ui): equal-size US/TW market flag buttons (v24.04)
-captured_at=2026-10-15T03:06:31Z
+aligned_git=3af3550
+commit=3af3550
+short=3af3550
+message=fix(ui): mobile bare market flags beside hamburger (v24.05)
+captured_at=2026-10-15T03:43:57Z
 display_version=v24.05
