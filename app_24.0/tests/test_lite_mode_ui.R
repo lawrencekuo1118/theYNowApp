@@ -145,7 +145,7 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(grepl("ynow-lite-toggle", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-lite-badge", txt, fixed = TRUE))
   testthat::expect_true(grepl("body.ynow-lite", txt, fixed = TRUE))
-  # Desktop sidebar scrolls internally so bottom Lite brand is reachable
+  # Desktop + mobile sidebar scroll internally so bottom Lite brand is reachable
   testthat::expect_true(grepl(
     "main-sidebar .sidebar[\\s\\S]*overflow-y:\\s*auto\\s*!important",
     txt,
@@ -156,6 +156,18 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
     txt,
     perl = TRUE
   ))
+  testthat::expect_true(grepl(
+    "@media \\(max-width: 767px\\)[\\s\\S]*overflow-y:\\s*auto\\s*!important[\\s\\S]*#sidebarItemExpanded",
+    txt,
+    perl = TRUE
+  ))
+  # Snapshot foot → pane helper (Lite snap_defaults); home Value → ynowGotoTab(smart_analysis)
+  testthat::expect_true(grepl("ynowShowSidebarFootTab", txt, fixed = TRUE))
+  testthat::expect_true(grepl("showSidebarFootTab", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynowShowSidebarFootTab('snapshot')", txt, fixed = TRUE))
+  testthat::expect_true(grepl("typeof window.ynowGotoTab === 'function'", txt, fixed = TRUE))
+  testthat::expect_true(grepl('data-tab-lite` = "smart_analysis"', txt, fixed = TRUE) ||
+                          grepl('data-tab-lite` = \"smart_analysis\"', txt))
   testthat::expect_true(grepl('tabName = "macro_market"', txt, fixed = TRUE))
   testthat::expect_true(grepl('tabName = "home"', txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_menu_home", txt, fixed = TRUE))
@@ -217,9 +229,7 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
     fixed = TRUE
   ))
   testthat::expect_true(grepl("lab_cluster_focus_not_in_cluster", srv_txt, fixed = TRUE))
-  # Radar focus has no Search/TSM default; focus ticker is force-included with Search
-  testthat::expect_true(grepl("ensure_tks", srv_txt, fixed = TRUE))
-  testthat::expect_true(grepl("never default to Search/TSM", srv_txt, fixed = TRUE))
+  # Radar focus has no Search/TSM default (locale + no pre-seed to Search ticker)
   testthat::expect_false(grepl(
     "Pre-seed focus text field to Search ticker",
     srv_txt,
@@ -417,7 +427,7 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
     txt,
     perl = TRUE
   ))
-  testthat::expect_true(grepl("The YNow App v24.09", txt, fixed = TRUE))
+  testthat::expect_true(grepl("The YNow App v24.10", txt, fixed = TRUE))
   testthat::expect_true(grepl('title = "The YNow App"', txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-hfv-report", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-hfv-toolbar", txt, fixed = TRUE))
@@ -839,6 +849,13 @@ testthat::test_that("ynow_server wires Lite auto-calc and Smart Analysis outputs
   testthat::expect_true(grepl("output$smart_analysis_summary", txt, fixed = TRUE))
   testthat::expect_true(grepl("output$smart_analysis_chart", txt, fixed = TRUE))
   testthat::expect_true(grepl("output$smart_analysis_reason", txt, fixed = TRUE))
+  # Smart Analysis maps active model key → recommended primary (composite ★)
+  testthat::expect_true(grepl('identical(tab, "smart_analysis")', txt, fixed = TRUE))
+  testthat::expect_true(grepl(
+    "Smart Analysis: highlight the recommended primary",
+    txt,
+    fixed = TRUE
+  ))
   # Lite defaults allowlist = UI-configurable only (not Smart Analysis engines)
   testthat::expect_true(grepl('"lab_im_eq_only"', txt, fixed = TRUE))
   testthat::expect_true(grepl('"lab_im_no_alert"', txt, fixed = TRUE))
