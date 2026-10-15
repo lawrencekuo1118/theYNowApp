@@ -255,39 +255,90 @@ lookup_us_ticker_industry_key <- function(ticker) {
     key
   }
 
+  path_hit <- "none"
+  key_out <- ""
+  ov_key_raw <- ""
+  ov_sector <- ""
+  ov_industry <- ""
+  uni_key_raw <- ""
+  adr_key <- ""
+
   ov <- tryCatch(lab_us_load_industry_overlay(), error = function(e) NULL)
   if (is.data.frame(ov) && nrow(ov) && "ticker" %in% names(ov)) {
     j <- match(tk, toupper(trimws(as.character(ov$ticker))))
     if (!is.na(j)) {
       key <- ""
       if ("industry_key" %in% names(ov)) {
-        key <- .valid_key(ov$industry_key[[j]])
+        ov_key_raw <- as.character(ov$industry_key[[j]] %||% "")[1]
+        key <- .valid_key(ov_key_raw)
       }
+      ov_sector <- if ("sector" %in% names(ov)) as.character(ov$sector[[j]] %||% "")[1] else ""
+      ov_industry <- if ("industry" %in% names(ov)) as.character(ov$industry[[j]] %||% "")[1] else ""
       if (!nzchar(key) &&
           exists("resolve_industry_key_from_yahoo", mode = "function")) {
         key <- .valid_key(tryCatch(
           resolve_industry_key_from_yahoo(
-            sector = if ("sector" %in% names(ov)) ov$sector[[j]] else "",
-            industry = if ("industry" %in% names(ov)) ov$industry[[j]] else ""
+            sector = ov_sector,
+            industry = ov_industry
           ),
           error = function(e) ""
         ))
+        if (nzchar(key)) path_hit <- "overlay_yahoo_fallback"
       }
-      if (nzchar(key)) return(key)
+      if (nzchar(key)) {
+        if (!nzchar(path_hit) || identical(path_hit, "none")) path_hit <- "overlay_csv"
+        key_out <- key
+      }
     }
   }
 
-  u <- tryCatch(lab_get_us_universe(FALSE), error = function(e) NULL)
-  if (is.data.frame(u) && nrow(u) &&
-      all(c("ticker", "industry_key") %in% names(u))) {
-    j <- match(tk, toupper(trimws(as.character(u$ticker))))
-    if (!is.na(j)) {
-      key <- .valid_key(u$industry_key[[j]])
-      if (nzchar(key)) return(key)
+  if (!nzchar(key_out)) {
+    u <- tryCatch(lab_get_us_universe(FALSE), error = function(e) NULL)
+    if (is.data.frame(u) && nrow(u) &&
+        all(c("ticker", "industry_key") %in% names(u))) {
+      j <- match(tk, toupper(trimws(as.character(u$ticker))))
+      if (!is.na(j)) {
+        uni_key_raw <- as.character(u$industry_key[[j]] %||% "")[1]
+        key <- .valid_key(uni_key_raw)
+        if (nzchar(key)) {
+          path_hit <- "us_universe_csv"
+          key_out <- key
+        }
+      }
     }
   }
 
-  ""
+  if (exists("lab_adr_industry_map", mode = "function")) {
+    am <- tryCatch(lab_adr_industry_map(), error = function(e) c())
+    if (length(am) && tk %in% names(am)) adr_key <- unname(am[[tk]])
+  }
+
+  # #region agent log
+  tryCatch({
+    payload <- list(
+      hypothesisId = "B",
+      location = "lab_us_universe.R:lookup_us_ticker_industry_key",
+      message = "US ticker industry lookup path",
+      data = list(
+        ticker = tk,
+        path_hit = path_hit,
+        resolved_key = as.character(key_out %||% "")[1],
+        overlay_key_raw = ov_key_raw,
+        overlay_sector = ov_sector,
+        overlay_industry = ov_industry,
+        universe_key_raw = uni_key_raw,
+        adr_map_key = as.character(adr_key %||% "")[1],
+        adr_would_apply_only_if_unmapped = TRUE,
+        note = "ADR/overrides only fill Unmapped; overlay/universe IC_Design blocks ADR Foundry/Packaging"
+      ),
+      timestamp = as.numeric(Sys.time()) * 1000
+    )
+    cat(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"),
+        "\n", file = "/opt/cursor/artifacts/asx_industry_debug.log", append = TRUE)
+  }, error = function(e) NULL)
+  # #endregion
+
+  as.character(key_out %||% "")[1]
 }
 
 lab_finalize_us_from_sec <- function(raw, fetched_at = NULL) {

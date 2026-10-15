@@ -1335,6 +1335,36 @@ server <- function(input, output, session) {
           error = function(e) ""
         )
         mapped <- as.character(mapped %||% "")[1]
+        # #region agent log
+        tryCatch({
+          payload <- list(
+            hypothesisId = "A",
+            location = "ynow_server.R:search_sync_industry_choice",
+            message = "Search syncs industry_choice for snapshot",
+            data = list(
+              ticker = as.character(stock_code %||% "")[1],
+              market = tryCatch(normalize_market_mode(market_mode()), error = function(e) ""),
+              mapped_key = mapped,
+              will_update_picker = isTRUE(nzchar(mapped) && mapped %in% names(industry_standards)),
+              prior_industry_choice = tryCatch(
+                as.character(isolate(input$industry_choice) %||% "")[1],
+                error = function(e) ""
+              ),
+              ind_info_sector = if (!is.null(ind_info)) as.character(ind_info$sector %||% "")[1] else "",
+              ind_info_industry = if (!is.null(ind_info)) as.character(ind_info$industry %||% "")[1] else "",
+              snapshot_label_zh = if (nzchar(mapped) && mapped %in% names(industry_standards)) {
+                tryCatch({
+                  if (exists("industry_label", mode = "function")) industry_label(mapped, "zh-TW")
+                  else as.character((get0(".INDUSTRY_LABELS_ZH", ifnotfound = list()))[[mapped]] %||% "")
+                }, error = function(e) "")
+              } else ""
+            ),
+            timestamp = as.numeric(Sys.time()) * 1000
+          )
+          cat(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"),
+              "\n", file = "/opt/cursor/artifacts/asx_industry_debug.log", append = TRUE)
+        }, error = function(e) NULL)
+        # #endregion
         if (nzchar(mapped) && mapped %in% names(industry_standards)) {
           tryCatch(
             shinyWidgets::updatePickerInput(
