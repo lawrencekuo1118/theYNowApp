@@ -66,6 +66,18 @@ check(
   "eval_n for Inf stays Inf",
   is.infinite(lab_resolve_im_eval_n(Inf))
 )
+check(
+  "job_n coerce Inf stays Inf (no as.integer collapse)",
+  is.infinite(lab_coerce_im_job_n(Inf))
+)
+check(
+  "job_n coerce all stays Inf",
+  is.infinite(lab_coerce_im_job_n("all"))
+)
+check(
+  "job_n coerce 25 stays 25",
+  identical(lab_coerce_im_job_n(25), 25L) || identical(lab_coerce_im_job_n(25L), 25L)
+)
 # 120*4=480 < 500
 check("eval_n 120 -> 480", identical(lab_resolve_im_eval_n(120L), 480L))
 

@@ -13414,7 +13414,11 @@ server <- function(input, output, session) {
       error = function(e) NULL
     )
     lab_quality_snap_nonce(isolate(lab_quality_snap_nonce()) + 1L)
-    display_n <- suppressWarnings(as.integer(out$display_n)[1])
+    display_n <- if (exists("lab_coerce_im_job_n", mode = "function")) {
+      lab_coerce_im_job_n(out$display_n)
+    } else {
+      suppressWarnings(as.numeric(out$display_n)[1])
+    }
     fs_pass <- suppressWarnings(as.numeric(scores$f_score))
     pass_idx <- which(is.finite(fs_pass) & fs_pass >= 7)
     n_q <- length(pass_idx)
@@ -13887,19 +13891,29 @@ server <- function(input, output, session) {
       gate_only = FALSE,
       evaluated_only = TRUE
     )
+    rank_mode <- lab_normalize_pool_rank_mode(input$lab_im_pool_rank %||% "mcap")
+    concept_keys <- as.character(input$lab_im_concepts %||% character(0))
+    concepts_applied <- FALSE
+    if (identical(rank_mode, "concept") && length(concept_keys) > 0L &&
+        exists("lab_filter_df_by_concept_keys", mode = "function")) {
+      mm <- tryCatch(normalize_market_mode(market_mode()), error = function(e) "US")
+      out <- lab_filter_df_by_concept_keys(out, concept_keys, market_mode = mm)
+      concepts_applied <- TRUE
+    }
     # #region agent log
     tryCatch({
       scores <- lab_im_scores()
       payload <- list(
         hypothesisId = "A",
         location = "ynow_server.R:lab_im_merged",
-        message = "merged ranking/detail source (no concept filter)",
+        message = "merged ranking/detail source (concept filter when pool_rank=concept)",
         data = list(
           n_merged = if (is.data.frame(out)) as.integer(nrow(out)) else 0L,
           n_scores = if (is.data.frame(scores)) as.integer(nrow(scores)) else 0L,
-          concepts_input = as.list(as.character(input$lab_im_concepts %||% character(0))),
-          pool_rank = as.character(input$lab_im_pool_rank %||% "")[1],
-          concepts_applied_in_merged = FALSE
+          concepts_input = as.list(concept_keys),
+          pool_rank = as.character(rank_mode)[1],
+          concepts_applied_in_merged = isTRUE(concepts_applied),
+          runPhase = "post-fix"
         ),
         timestamp = as.numeric(Sys.time()) * 1000,
         runId = "tw-concept-detail"
@@ -14311,18 +14325,22 @@ server <- function(input, output, session) {
     loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
     msg_col <- if (identical(loc, "en")) "Message" else "訊息"
     scores <- lab_im_scores()
+    rank_mode_lb <- lab_normalize_pool_rank_mode(input$lab_im_pool_rank %||% "mcap")
+    concept_keys_lb <- as.character(input$lab_im_concepts %||% character(0))
+    concepts_applied_lb <- identical(rank_mode_lb, "concept") && length(concept_keys_lb) > 0L
     # #region agent log
     tryCatch({
       payload <- list(
         hypothesisId = "E",
         location = "ynow_server.R:lab_im_leaderboard",
-        message = "leaderboard uses scores/merged only",
+        message = "leaderboard source (concept filter via merged / lb_src)",
         data = list(
           n_scores = if (is.data.frame(scores)) as.integer(nrow(scores)) else 0L,
-          concepts_input = as.list(as.character(input$lab_im_concepts %||% character(0))),
-          pool_rank = as.character(input$lab_im_pool_rank %||% "")[1],
+          concepts_input = as.list(concept_keys_lb),
+          pool_rank = as.character(rank_mode_lb)[1],
           lb_mode = as.character(input$lab_im_lb_mode %||% "overall")[1],
-          concepts_applied_in_leaderboard = FALSE
+          concepts_applied_in_leaderboard = isTRUE(concepts_applied_lb),
+          runPhase = "post-fix"
         ),
         timestamp = as.numeric(Sys.time()) * 1000,
         runId = "tw-concept-detail"
@@ -14383,6 +14401,11 @@ server <- function(input, output, session) {
       }
     } else {
       ind_filter <- as.character(lab_im_industry_filter() %||% character(0))
+    }
+    if (identical(rank_mode_lb, "concept") && length(concept_keys_lb) > 0L &&
+        exists("lab_filter_df_by_concept_keys", mode = "function")) {
+      mm_lb <- tryCatch(normalize_market_mode(market_mode()), error = function(e) "US")
+      lb_src <- lab_filter_df_by_concept_keys(lb_src, concept_keys_lb, market_mode = mm_lb)
     }
     lb <- lab_quality_leaderboard(
       lb_src,
@@ -14550,7 +14573,18 @@ server <- function(input, output, session) {
       gate_only = FALSE,
       evaluated_only = TRUE
     )
+    rank_mode_dt <- lab_normalize_pool_rank_mode(input$lab_im_pool_rank %||% "mcap")
+    concept_keys_dt <- as.character(input$lab_im_concepts %||% character(0))
+    concepts_applied_dt <- FALSE
+    if (identical(rank_mode_dt, "concept") && length(concept_keys_dt) > 0L &&
+        exists("lab_filter_df_by_concept_keys", mode = "function")) {
+      mm_dt <- tryCatch(normalize_market_mode(market_mode()), error = function(e) "US")
+      merged <- lab_filter_df_by_concept_keys(merged, concept_keys_dt, market_mode = mm_dt)
+      concepts_applied_dt <- TRUE
+    }
     display_n <- lab_resolve_im_max_n(input$lab_im_max_n, input$lab_im_max_n_custom)
+    # Unlimited / large N: show all rows (page_length=NULL → nrow); else page 20.
+    page_len <- if (!is.finite(display_n) || display_n > 100) NULL else 20L
     eq_on <- isTRUE(input$lab_im_eq_only)
     gate_on <- isTRUE(input$lab_im_gate_only)
     no_alert_on <- isTRUE(input$lab_im_no_alert)
@@ -14564,9 +14598,11 @@ server <- function(input, output, session) {
           n_merged = as.integer(nrow(merged)),
           max_n_raw = as.character(input$lab_im_max_n %||% "")[1],
           display_n = if (is.finite(display_n)) as.numeric(display_n) else "Inf",
-          concepts_input = as.list(as.character(input$lab_im_concepts %||% character(0))),
-          pool_rank = as.character(input$lab_im_pool_rank %||% "")[1],
-          page_length_hardcoded = 20L
+          concepts_input = as.list(concept_keys_dt),
+          pool_rank = as.character(rank_mode_dt)[1],
+          concepts_applied_in_detail = isTRUE(concepts_applied_dt),
+          page_length = if (is.null(page_len)) "NULL_all" else as.integer(page_len),
+          runPhase = "post-fix"
         ),
         timestamp = as.numeric(Sys.time()) * 1000,
         runId = "tw-concept-detail"
@@ -14654,8 +14690,9 @@ server <- function(input, output, session) {
         message = "detail table render row counts",
         data = list(
           n_show_df = as.integer(nrow(show_df)),
-          page_length = 20L,
-          display_n = if (is.finite(display_n)) as.numeric(display_n) else "Inf"
+          page_length = if (is.null(page_len)) "NULL_all" else as.integer(page_len),
+          display_n = if (is.finite(display_n)) as.numeric(display_n) else "Inf",
+          runPhase = "post-fix"
         ),
         timestamp = as.numeric(Sys.time()) * 1000,
         runId = "tw-concept-detail"
@@ -14667,7 +14704,7 @@ server <- function(input, output, session) {
     ynow_sortable_datatable(
       show_df,
       escape = FALSE,
-      page_length = 20L,
+      page_length = page_len,
       filter = "top"
     ) %>%
       DT::formatStyle(
@@ -14691,6 +14728,18 @@ server <- function(input, output, session) {
       gate_only = FALSE,
       evaluated_only = TRUE
     )
+    rank_mode_ex <- lab_normalize_pool_rank_mode(
+      isolate(input$lab_im_pool_rank) %||% "mcap"
+    )
+    concept_keys_ex <- as.character(isolate(input$lab_im_concepts) %||% character(0))
+    if (identical(rank_mode_ex, "concept") && length(concept_keys_ex) > 0L &&
+        exists("lab_filter_df_by_concept_keys", mode = "function")) {
+      mm_ex <- tryCatch(
+        normalize_market_mode(isolate(market_mode())),
+        error = function(e) "US"
+      )
+      merged <- lab_filter_df_by_concept_keys(merged, concept_keys_ex, market_mode = mm_ex)
+    }
     if (nrow(merged) == 0) {
       return(data.frame(訊息 = "目前篩選下無已評估明細列（請先按「搜尋績優股」）"))
     }

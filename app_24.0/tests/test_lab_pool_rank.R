@@ -143,6 +143,27 @@ check(
     (nrow(cp_n) == 2L && !("ZZZ" %in% cp_n$ticker) && identical(cp_n$ticker[1], "MSFT"))
 )
 
+# Display-path concept filter (ranking/detail) — prefixed TW keys
+view_df <- data.frame(
+  ticker = c("2330.TW", "2317.TW", "ZZZ.TW"),
+  upside_cagr_pct = c(10, 20, 99),
+  stringsAsFactors = FALSE
+)
+view_f <- lab_filter_df_by_concept_keys(
+  view_df, concept_keys = "tw_ai_foundry", market_mode = "TW"
+)
+check(
+  "display filter keeps TW concept members only",
+  "2330.TW" %in% view_f$ticker && !("ZZZ.TW" %in% view_f$ticker)
+)
+check(
+  "display filter empty keys is no-op",
+  identical(
+    nrow(lab_filter_df_by_concept_keys(view_df, character(0), "TW")),
+    nrow(view_df)
+  )
+)
+
 if (fail > 0L) {
   cat("FAILED ", fail, " checks\n", sep = "")
   quit(status = 1L)

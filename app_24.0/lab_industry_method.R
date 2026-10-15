@@ -589,6 +589,54 @@ lab_resolve_im_max_n <- function(sel, custom = NULL, lo = 1L, hi = 500L) {
   lab_clamp_im_max_n(sel, default = 25L, lo = lo, hi = hi)
 }
 
+#' Coerce display/eval N for lab_im_run_eval_job — preserve Inf ("全部").
+#'
+#' `as.integer(Inf)` is NA in R; that used to collapse universe N=全部 to the
+#' default 25 via lab_clamp_im_max_n(NA). Keep Inf, coerce finite values to int.
+lab_coerce_im_job_n <- function(x) {
+  if (is.null(x) || !length(x)) return(NA_real_)
+  if (is.numeric(x) && !is.factor(x)) {
+    n0 <- suppressWarnings(as.numeric(x)[1])
+    if (length(n0) == 1L && !is.na(n0) && !is.finite(n0)) return(Inf)
+    if (is.finite(n0) && n0 >= 1) return(as.integer(round(n0)))
+  }
+  lab_clamp_im_max_n(x)
+}
+
+#' Filter a ticker data.frame to selected concept-group members (display path).
+#'
+#' Ranking / detail views call this when pool_rank == concept so the concept
+#' picker stays linked even if scores were produced under a different truncate rule.
+lab_filter_df_by_concept_keys <- function(df, concept_keys, market_mode = "US") {
+  if (is.null(df) || !is.data.frame(df) || nrow(df) == 0L) return(df)
+  if (!"ticker" %in% names(df)) return(df)
+  ckeys <- if (exists("lab_normalize_multi_filter", mode = "function")) {
+    lab_normalize_multi_filter(concept_keys)
+  } else {
+    unique(as.character(unlist(concept_keys, use.names = FALSE)))
+  }
+  ckeys <- ckeys[!is.na(ckeys) & nzchar(ckeys)]
+  if (!length(ckeys)) return(df)
+  if (!exists("lab_concept_tickers", mode = "function")) return(df)
+  mm <- tryCatch({
+    if (exists("normalize_market_mode", mode = "function")) {
+      normalize_market_mode(market_mode)
+    } else {
+      m <- toupper(trimws(as.character(market_mode)[1]))
+      if (identical(m, "TW") || identical(m, "TWN") || identical(m, "TAIWAN")) "TW" else "US"
+    }
+  }, error = function(e) "US")
+  ctks <- lab_concept_tickers(ckeys, market = mm)
+  if (!length(ctks)) return(df[FALSE, , drop = FALSE])
+  tk <- toupper(trimws(as.character(df$ticker)))
+  ctks_u <- unique(toupper(trimws(ctks)))
+  bare <- function(x) sub("\\.(TW|TWO)$", "", x, ignore.case = TRUE)
+  keep <- tk %in% ctks_u |
+    bare(tk) %in% bare(ctks_u) |
+    gsub("\\.", "-", tk) %in% gsub("\\.", "-", ctks_u)
+  df[keep, , drop = FALSE]
+}
+
 lab_resolve_im_max_n_label <- function(sel, custom = NULL) {
   s <- if (is.null(sel) || !length(sel)) "" else trimws(as.character(sel)[1])
   if (identical(s, "custom") || identical(s, "自訂")) {
@@ -2047,15 +2095,15 @@ lab_im_run_eval_job <- function(catlg,
   .dbg_dn_in <- display_n
   .dbg_en_in <- eval_n
   # #endregion
-  display_n <- suppressWarnings(as.integer(display_n)[1])
-  eval_n <- suppressWarnings(as.integer(eval_n)[1])
-  if (!is.finite(eval_n) || eval_n < 1L) eval_n <- display_n
+  display_n <- lab_coerce_im_job_n(display_n)
+  eval_n <- lab_coerce_im_job_n(eval_n)
+  if (!is.finite(eval_n) || (is.finite(eval_n) && eval_n < 1L)) eval_n <- display_n
   # #region agent log
   tryCatch({
     payload <- list(
       hypothesisId = "C",
       location = "lab_industry_method.R:lab_im_run_eval_job",
-      message = "max_n after as.integer coercion",
+      message = "max_n after job_n coerce (preserves Inf)",
       data = list(
         market = mm,
         rank_mode = as.character(if (is.null(rank_mode)) "mcap" else rank_mode)[1],
@@ -2066,9 +2114,10 @@ lab_im_run_eval_job <- function(catlg,
         eval_n_in = if (is.numeric(.dbg_en_in) && length(.dbg_en_in)) {
           if (is.finite(.dbg_en_in[1])) as.numeric(.dbg_en_in[1]) else "Inf"
         } else as.character(if (is.null(.dbg_en_in)) "" else .dbg_en_in)[1],
-        display_n_after_int = if (is.finite(display_n)) as.integer(display_n) else NA_integer_,
-        eval_n_after_int = if (is.finite(eval_n)) as.integer(eval_n) else NA_integer_,
-        n_pool_raw = as.integer(nrow(pool))
+        display_n_after = if (is.finite(display_n)) as.numeric(display_n) else "Inf",
+        eval_n_after = if (is.finite(eval_n)) as.numeric(eval_n) else "Inf",
+        n_pool_raw = as.integer(nrow(pool)),
+        runPhase = "post-fix"
       ),
       timestamp = as.numeric(Sys.time()) * 1000,
       runId = "tw-concept-detail"
