@@ -7,4 +7,4 @@ commit=dfc298389f01e35519d64288e227d2a6e0df59b2
 short=dfc2983
 message=fix(ui): inactive US/TW market flags render grayscale (v24.06)
 captured_at=2026-10-15T03:56:00Z
-display_version=v24.06
+display_version=v24.07
