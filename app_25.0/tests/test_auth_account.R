@@ -25,15 +25,21 @@ check <- function(label, cond) {
 }
 
 src_auth <- file.path(app_dir, "auth_account.R")
+src_oauth <- file.path(app_dir, "auth_oauth.R")
 src_locale <- file.path(app_dir, "ui_locale.R")
 src_global <- file.path(app_dir, "global.R")
 src_ui <- file.path(app_dir, "ynow_ui.R")
 src_srv <- file.path(app_dir, "ynow_server.R")
 
 check("auth_account.R exists", file.exists(src_auth))
+check("auth_oauth.R exists", file.exists(src_oauth))
 check("global sources auth_account.R", {
   g <- paste(readLines(src_global, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   grepl('source\\(\"auth_account\\.R\"', g)
+})
+check("global sources auth_oauth.R", {
+  g <- paste(readLines(src_global, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl('source\\(\"auth_oauth\\.R\"', g)
 })
 
 if (!exists("%||%", mode = "function")) {
@@ -42,7 +48,12 @@ if (!exists("%||%", mode = "function")) {
 if (!exists("ui_str", mode = "function")) {
   source(src_locale, local = FALSE, encoding = "UTF-8")
 }
+suppressPackageStartupMessages({
+  if (!requireNamespace("jsonlite", quietly = TRUE)) stop("jsonlite required")
+  if (!requireNamespace("digest", quietly = TRUE)) stop("digest required")
+})
 source(src_auth, local = FALSE, encoding = "UTF-8")
+source(src_oauth, local = FALSE, encoding = "UTF-8")
 
 # Default: disabled (unset / 0)
 old_en <- Sys.getenv("YNOW_ENABLE_ACCOUNT_LOGIN", unset = NA_character_)
@@ -171,7 +182,9 @@ keys <- c(
   "auth_or_email", "auth_google", "auth_facebook", "auth_forgot",
   "auth_register", "auth_resend",
   "auth_msg_ok", "auth_msg_disabled", "auth_msg_missing", "auth_msg_invalid",
-  "auth_msg_no_backend", "auth_msg_oauth_soon", "auth_msg_register_soon",
+  "auth_msg_no_backend", "auth_msg_oauth_soon", "auth_msg_oauth_need_google",
+  "auth_msg_oauth_need_facebook", "auth_msg_oauth_failed", "auth_msg_oauth_state",
+  "auth_msg_oauth_no_email", "auth_msg_register_soon",
   "auth_msg_forgot_soon", "auth_msg_resend_soon", "auth_about_note",
   "menu_admin", "auth_admin_title", "auth_admin_intro", "auth_pa_gate_title",
   "auth_pa_gate_body", "auth_admin_tool_lite", "pa_email_account_help"
@@ -197,6 +210,70 @@ check("UI About mentions account sign-in", grepl("Account sign-in", ui, fixed = 
         grepl("帳號登入", ui, fixed = TRUE))
 check("UI wires ynowAuthState handler", grepl("ynowAuthState", ui, fixed = TRUE))
 check("UI wires ynowAuthFeature handler", grepl("ynowAuthFeature", ui, fixed = TRUE))
+check("UI wires OAuth redirect + callback", grepl("ynowAuthOAuthRedirect", ui, fixed = TRUE) &&
+        grepl("ynow_auth_oauth_callback", ui, fixed = TRUE))
+check("OAuth google not ready without env", {
+  Sys.unsetenv("YNOW_SUPABASE_URL")
+  Sys.unsetenv("YNOW_SUPABASE_ANON_KEY")
+  Sys.unsetenv("YNOW_GOOGLE_CLIENT_ID")
+  Sys.unsetenv("YNOW_GOOGLE_CLIENT_SECRET")
+  Sys.setenv(YNOW_ENABLE_ACCOUNT_LOGIN = "1")
+  r <- ynow_oauth_authorize_url("google")
+  identical(r$ok, FALSE) && identical(r$message_key, "auth_msg_oauth_need_google")
+})
+check("OAuth facebook not ready without env", {
+  Sys.unsetenv("YNOW_FACEBOOK_APP_ID")
+  Sys.unsetenv("YNOW_FACEBOOK_APP_SECRET")
+  r <- ynow_oauth_authorize_url("facebook")
+  identical(r$ok, FALSE) && identical(r$message_key, "auth_msg_oauth_need_facebook")
+})
+check("OAuth google URL when client set", {
+  Sys.setenv(
+    YNOW_GOOGLE_CLIENT_ID = "test-client.apps.googleusercontent.com",
+    YNOW_GOOGLE_CLIENT_SECRET = "test-secret",
+    YNOW_OAUTH_STATE_SECRET = "state-secret-for-tests",
+    YNOW_OAUTH_REDIRECT_URI = "https://example.com/app"
+  )
+  r <- ynow_oauth_authorize_url("google")
+  isTRUE(r$ok) && grepl("accounts.google.com", r$url, fixed = TRUE) &&
+    grepl("client_id=test-client", r$url, fixed = TRUE)
+})
+check("OAuth facebook URL when app set", {
+  Sys.setenv(
+    YNOW_FACEBOOK_APP_ID = "1234567890",
+    YNOW_FACEBOOK_APP_SECRET = "fb-secret",
+    YNOW_OAUTH_STATE_SECRET = "state-secret-for-tests",
+    YNOW_OAUTH_REDIRECT_URI = "https://example.com/app"
+  )
+  r <- ynow_oauth_authorize_url("facebook")
+  isTRUE(r$ok) && grepl("facebook.com", r$url, fixed = TRUE) &&
+    grepl("client_id=1234567890", r$url, fixed = TRUE)
+})
+check("OAuth supabase authorize URL", {
+  Sys.unsetenv("YNOW_GOOGLE_CLIENT_ID")
+  Sys.unsetenv("YNOW_GOOGLE_CLIENT_SECRET")
+  Sys.setenv(
+    YNOW_SUPABASE_URL = "https://abc.supabase.co",
+    YNOW_SUPABASE_ANON_KEY = "anon-key",
+    YNOW_OAUTH_REDIRECT_URI = "https://example.com/app"
+  )
+  r <- ynow_oauth_authorize_url("google")
+  isTRUE(r$ok) && grepl("abc.supabase.co/auth/v1/authorize", r$url, fixed = TRUE) &&
+    grepl("provider=google", r$url, fixed = TRUE)
+})
+check("OAuth state round-trip", {
+  Sys.setenv(YNOW_OAUTH_STATE_SECRET = "state-secret-for-tests")
+  st <- ynow_oauth_make_state("google")
+  p <- ynow_oauth_parse_state(st)
+  isTRUE(p$ok) && identical(p$provider, "google")
+})
+check("OAuth state rejects tamper", {
+  Sys.setenv(YNOW_OAUTH_STATE_SECRET = "state-secret-for-tests")
+  st <- ynow_oauth_make_state("google")
+  bad <- paste0(st, "x")
+  p <- ynow_oauth_parse_state(bad)
+  identical(p$ok, FALSE)
+})
 check("UI About Lite no account", grepl("Lite never requires an account", ui, fixed = TRUE) &&
         grepl("Lite 版無需帳號即可完整使用", ui, fixed = TRUE))
 auth_src <- paste(readLines(src_auth, warn = FALSE, encoding = "UTF-8"), collapse = "\n")

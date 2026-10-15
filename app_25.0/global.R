@@ -67,7 +67,7 @@ pacman::p_load(
   shiny, shinydashboard, shinyjs, shinycustomloader, shinyWidgets, shinyBS, shinycssloaders,
 
   # 5. 效能優化與快取 (Performance & Cache)
-  memoise, cachem, TTR,
+  memoise, cachem, TTR, httr2, digest,
 
   # 6. 非阻塞並行任務 (ExtendedTask / future_promise — ≥2 features concurrent)
   future, promises, later, callr
@@ -201,6 +201,7 @@ source("default_config.R", local = TRUE, encoding = "UTF-8")
 source("param_audit.R", local = TRUE, encoding = "UTF-8")
 source("explainability.R", local = TRUE, encoding = "UTF-8")
 source("auth_account.R", local = TRUE, encoding = "UTF-8")
+source("auth_oauth.R", local = TRUE, encoding = "UTF-8")
 source("corp_events.R", local = TRUE, encoding = "UTF-8")
 source("lab_industry_method.R", local = TRUE, encoding = "UTF-8")
 source("lab_clustering.R", local = TRUE, encoding = "UTF-8")

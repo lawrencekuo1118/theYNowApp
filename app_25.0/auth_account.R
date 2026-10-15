@@ -142,19 +142,21 @@ ynow_auth_modal_ui <- function() {
         class = "ynow-auth-help-sr",
         "Sign in with your account email and password."
       ),
-      tags$button(
-        id = "ynow_auth_google",
-        type = "button",
-        class = "ynow-auth-social ynow-auth-social--google action-button",
-        .ynow_auth_google_icon(),
-        tags$span(id = "ynow_auth_google_label", "Sign in with Google")
+      actionButton(
+        inputId = "ynow_auth_google",
+        label = tagList(
+          .ynow_auth_google_icon(),
+          tags$span(id = "ynow_auth_google_label", "Sign in with Google")
+        ),
+        class = "ynow-auth-social ynow-auth-social--google"
       ),
-      tags$button(
-        id = "ynow_auth_facebook",
-        type = "button",
-        class = "ynow-auth-social ynow-auth-social--facebook action-button",
-        .ynow_auth_facebook_icon(),
-        tags$span(id = "ynow_auth_facebook_label", "Sign in with Facebook")
+      actionButton(
+        inputId = "ynow_auth_facebook",
+        label = tagList(
+          .ynow_auth_facebook_icon(),
+          tags$span(id = "ynow_auth_facebook_label", "Sign in with Facebook")
+        ),
+        class = "ynow-auth-social ynow-auth-social--facebook"
       ),
       tags$div(
         class = "ynow-auth-divider",
@@ -578,14 +580,52 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
     }
   }, ignoreInit = TRUE)
 
-  # Social / register / forgot / resend — UI stubs until free-DB + OAuth land.
-  observeEvent(input$ynow_auth_google, {
+  .start_oauth <- function(provider) {
     if (!isTRUE(ynow_auth_enabled())) return()
-    .show_auth_note("auth_msg_oauth_soon", "Social sign-in is not configured yet.")
+    if (!exists("ynow_oauth_authorize_url", mode = "function")) {
+      .show_auth_note("auth_msg_oauth_soon", "Social sign-in is not configured yet.")
+      return()
+    }
+    res <- ynow_oauth_authorize_url(provider)
+    if (!isTRUE(res$ok) || !nzchar(as.character(res$url %||% "")[1])) {
+      mk <- as.character(res$message_key %||% "auth_msg_oauth_soon")[1]
+      .show_auth_note(mk, "Social sign-in is not configured yet.")
+      return()
+    }
+    session$sendCustomMessage(
+      "ynowAuthOAuthRedirect",
+      list(url = as.character(res$url)[1])
+    )
+  }
+
+  observeEvent(input$ynow_auth_google, {
+    .start_oauth("google")
   }, ignoreInit = TRUE)
   observeEvent(input$ynow_auth_facebook, {
+    .start_oauth("facebook")
+  }, ignoreInit = TRUE)
+
+  # Browser returned from Google / Facebook / Supabase with code or access_token.
+  observeEvent(input$ynow_auth_oauth_callback, {
     if (!isTRUE(ynow_auth_enabled())) return()
-    .show_auth_note("auth_msg_oauth_soon", "Social sign-in is not configured yet.")
+    if (!exists("ynow_oauth_complete", mode = "function")) {
+      .show_auth_note("auth_msg_oauth_failed", "Social sign-in failed.")
+      return()
+    }
+    payload <- input$ynow_auth_oauth_callback
+    res <- ynow_oauth_complete(payload)
+    if (isTRUE(res$ok) && !is.null(res$user)) {
+      account_user(res$user)
+      output$ynow_auth_status <- renderUI({
+        tags$p(class = "text-success", .str("auth_msg_ok", "Signed in."))
+      })
+      .push_auth_state(TRUE, res$user$email %||% "")
+      tryCatch(shinyBS::toggleModal(session, "ynow_auth_modal", "close"), error = function(e) NULL)
+    } else {
+      mk <- as.character(res$message_key %||% "auth_msg_oauth_failed")[1]
+      .show_auth_note(mk, "Social sign-in failed.", cls = "text-danger")
+      tryCatch(shinyBS::toggleModal(session, "ynow_auth_modal", "open"), error = function(e) NULL)
+    }
   }, ignoreInit = TRUE)
   observeEvent(input$ynow_auth_forgot, {
     if (!isTRUE(ynow_auth_enabled())) return()

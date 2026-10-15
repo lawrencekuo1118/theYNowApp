@@ -707,6 +707,19 @@ locale_for_market <- function(mode = get_market_mode()) {
     auth_msg_invalid = "Email or password is incorrect.",
     auth_msg_no_backend = "Sign-in backend is not configured yet.",
     auth_msg_oauth_soon = "Social sign-in is not configured yet.",
+    auth_msg_oauth_need_google = paste0(
+      "Google sign-in is not configured. Set YNOW_SUPABASE_URL + YNOW_SUPABASE_ANON_KEY ",
+      "(recommended) or YNOW_GOOGLE_CLIENT_ID + YNOW_GOOGLE_CLIENT_SECRET in .Renviron, ",
+      "then redeploy."
+    ),
+    auth_msg_oauth_need_facebook = paste0(
+      "Facebook sign-in is not configured. Set YNOW_SUPABASE_URL + YNOW_SUPABASE_ANON_KEY ",
+      "(recommended) or YNOW_FACEBOOK_APP_ID + YNOW_FACEBOOK_APP_SECRET in .Renviron, ",
+      "then redeploy."
+    ),
+    auth_msg_oauth_failed = "Social sign-in failed. Please try again.",
+    auth_msg_oauth_state = "Social sign-in session expired. Please try again.",
+    auth_msg_oauth_no_email = "The social account did not return an email address.",
     auth_msg_register_soon = "Registration is not open yet.",
     auth_msg_forgot_soon = "Password reset is not available yet.",
     auth_msg_resend_soon = "Verification email resend is not available yet.",
@@ -4028,6 +4041,17 @@ locale_for_market <- function(mode = get_market_mode()) {
     auth_msg_invalid = "電子郵件或密碼不正確。",
     auth_msg_no_backend = "登入後端尚未設定。",
     auth_msg_oauth_soon = "社群登入尚未設定。",
+    auth_msg_oauth_need_google = paste0(
+      "尚未設定 Google 登入。請在 .Renviron 設定 YNOW_SUPABASE_URL 與 YNOW_SUPABASE_ANON_KEY",
+      "（建議），或 YNOW_GOOGLE_CLIENT_ID 與 YNOW_GOOGLE_CLIENT_SECRET，然後重新部署。"
+    ),
+    auth_msg_oauth_need_facebook = paste0(
+      "尚未設定 Facebook 登入。請在 .Renviron 設定 YNOW_SUPABASE_URL 與 YNOW_SUPABASE_ANON_KEY",
+      "（建議），或 YNOW_FACEBOOK_APP_ID 與 YNOW_FACEBOOK_APP_SECRET，然後重新部署。"
+    ),
+    auth_msg_oauth_failed = "社群登入失敗，請再試一次。",
+    auth_msg_oauth_state = "社群登入階段已過期，請再試一次。",
+    auth_msg_oauth_no_email = "此社群帳號未提供電子郵件。",
     auth_msg_register_soon = "註冊功能尚未開放。",
     auth_msg_forgot_soon = "密碼重設尚未開放。",
     auth_msg_resend_soon = "認證信重寄尚未開放。",

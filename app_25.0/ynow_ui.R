@@ -16,7 +16,7 @@
       return(sub('^"version"\\s*:\\s*"([^"]+)".*$', "\\1", m[[1]]))
     }
   }
-  "v25.05"
+  "v25.06"
 }
 .YNOW_BUILD_VERSION <- .ynow_read_build_version()
 
@@ -230,7 +230,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v25.05) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+          "The YNow App (v25.06) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
         ),
         tags$p(
           class = "ynow-about-method",
@@ -257,7 +257,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v25.05) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
+          "The YNow App (v25.06) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
         ),
         tags$p(
           class = "ynow-about-method",
@@ -367,7 +367,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App（簡化版）")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite（v25.05）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
+          "The YNow App Lite（v25.06）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
           "以自動判別主／副模型與預設參數完成試算，讓使用者先看到合理價區間與產業 KPI，再決定是否回到完整版深入調整。"
         ),
         tags$p(
@@ -384,7 +384,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App (Lite)")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite (v25.05) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
+          "The YNow App Lite (v25.06) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
           "auto-selects primary/secondary models with App defaults, and surfaces fair-value ranges plus industry KPIs before you open Full for deeper calibration."
         ),
         tags$p(
@@ -3504,9 +3504,9 @@ ui <- dashboardPage(
                   'data-ynow-build="', .YNOW_BUILD_VERSION, '" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v25.05</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v25.06</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v25.05</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v25.06</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -9653,6 +9653,14 @@ ui <- dashboardPage(
               if (payload.on) document.body.classList.add('ynow-auth-feature');
               else document.body.classList.remove('ynow-auth-feature');
             });
+            addHandler('ynowAuthOAuthRedirect', function (payload) {
+              if (!payload || !payload.url) return;
+              try {
+                window.location.assign(String(payload.url));
+              } catch (eGo) {
+                window.location.href = String(payload.url);
+              }
+            });
             addHandler('ynowAuthState', function (payload) {
               if (!payload) return;
               var chip = document.getElementById('ynow_auth_user_chip');
@@ -9792,6 +9800,59 @@ ui <- dashboardPage(
             Shiny.setInputValue('device_ui_locale', tags.join(','), {priority: 'event'});
           }
           pushDeviceUiLocale();
+
+          /* OAuth return: Google/Facebook/Supabase redirect lands with ?code= or #access_token= */
+          function ynowParseQuery(qs) {
+            var out = {};
+            String(qs || '').replace(/^\?/, '').split('&').forEach(function (pair) {
+              if (!pair) return;
+              var i = pair.indexOf('=');
+              var k = i < 0 ? pair : pair.slice(0, i);
+              var v = i < 0 ? '' : pair.slice(i + 1);
+              try {
+                out[decodeURIComponent(k.replace(/\+/g, ' '))] =
+                  decodeURIComponent(v.replace(/\+/g, ' '));
+              } catch (eDec) {
+                out[k] = v;
+              }
+            });
+            return out;
+          }
+          function ynowPushOAuthCallback() {
+            if (!(window.Shiny && Shiny.setInputValue)) {
+              setTimeout(ynowPushOAuthCallback, 50);
+              return;
+            }
+            if (window.__ynowOAuthCallbackPushed) return;
+            var q = ynowParseQuery(window.location.search || '');
+            var h = ynowParseQuery((window.location.hash || '').replace(/^#/, ''));
+            var access = h.access_token || q.access_token || '';
+            var code = q.code || h.code || '';
+            var state = q.state || h.state || '';
+            var err = q.error || h.error || '';
+            if (!access && !code && !err) return;
+            window.__ynowOAuthCallbackPushed = true;
+            Shiny.setInputValue('ynow_auth_oauth_callback', {
+              access_token: String(access || ''),
+              refresh_token: String(h.refresh_token || q.refresh_token || ''),
+              code: String(code || ''),
+              state: String(state || ''),
+              provider: String(q.provider || h.provider || ''),
+              error: String(err || '')
+            }, {priority: 'event'});
+            try {
+              var path = window.location.pathname || '/';
+              if (window.history && history.replaceState) {
+                history.replaceState(null, '', path);
+              } else {
+                window.location.hash = '';
+              }
+            } catch (eClear) {}
+          }
+          ynowPushOAuthCallback();
+          document.addEventListener('shiny:connected', function () {
+            ynowPushOAuthCallback();
+          });
 
           /* ---- YNOW KPI cards: click / keyboard scroll to chapter anchors ---- */
           function ynowScrollFunnelAnchor(id) {
