@@ -71,6 +71,17 @@ piot <- lab_apply_quality_snapshot(
 )
 check("Piotroski gate drops BBB and unknowns", identical(piot$n_show, 1L))
 check("unknown DDD is missing", identical(piot$n_missing, 2L))
+check("gates applied when coverage exists", isTRUE(piot$gates_applied))
+
+# TW-before-Search pattern: gate checked but snapshot covers none of the pool
+uncovered <- lab_apply_quality_snapshot(
+  c("2330.TW", "2317.TW"), snap, eq_only = TRUE, gate_only = TRUE, no_alert = TRUE, now = now
+)
+check(
+  "gates with zero coverage keep structural N",
+  identical(uncovered$n_show, 2L) && identical(uncovered$n_covered, 0L)
+)
+check("gates not applied when coverage is zero", isTRUE(uncovered$gates_on) && !isTRUE(uncovered$gates_applied))
 
 old <- lab_apply_quality_snapshot(pool$ticker, snap, gate_only = TRUE, now = now + 3 * 86400)
 check("snapshot older than 24h is stale", isTRUE(old$stale))

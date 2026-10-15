@@ -77,6 +77,8 @@ check(
   }
 )
 check("server renderUI company_overview", grepl("output\\$company_overview_ui", srv))
+check("ui key-date chip CSS", grepl("ynow-key-date-chip", ui, fixed = TRUE))
+check("ui corp_events tab", grepl('value = "corp_events"', ui, fixed = TRUE))
 check("server stores company_profile", grepl("company_profile\\s*<-\\s*reactiveVal", srv))
 check("server clears company_profile", grepl("company_profile\\(NULL\\)", srv))
 check("python returns summary field", grepl('"summary": summary', py, fixed = TRUE))

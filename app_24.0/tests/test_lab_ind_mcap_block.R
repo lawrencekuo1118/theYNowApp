@@ -62,7 +62,7 @@ check("scope help mentions dedicated board (en)",
 check("scope help mentions 上方獨立區塊 (zh-TW)",
       grepl("上方獨立區塊", ui_str("lab_im_lb_scope_help", "zh-TW"), fixed = TRUE))
 
-# Opening Blue Chip Leaderboard auto-starts the same runner as Search Blue Chips
+# Shared Search auto-start may remain; ind-mcap uses an independent job.
 check("server has lab_im_run_pulse", grepl("lab_im_run_pulse", srv, fixed = TRUE))
 check("server has lab_im_eval_busy", grepl("lab_im_eval_busy", srv, fixed = TRUE))
 check("button pulses shared runner",
@@ -72,11 +72,18 @@ check("sidebar bluechip auto-triggers when empty",
       grepl('identical(tab, "bluechip")', srv, fixed = TRUE) &&
         grepl("lazy_mount_nonce()", srv, fixed = TRUE) &&
         grepl('mounted("bluechip")', srv, fixed = TRUE))
-check("sidebar bluechip auto-start defers via later after flush",
+check("sidebar Search auto-start defers via later after flush",
       grepl("later::later(start_eval", srv, fixed = TRUE) &&
         grepl("lab_im_auto_start_armed", srv, fixed = TRUE) &&
         grepl("session$onFlushed(function()", srv, fixed = TRUE) &&
         grepl("delay = 0.05", srv, fixed = TRUE))
+check("ind-mcap has independent job + auto arm",
+      grepl("lab_im_run_ind_mcap_job", srv, fixed = TRUE) &&
+        grepl("lab_im_ind_mcap_auto_armed", srv, fixed = TRUE) &&
+        grepl(".lab_im_start_ind_mcap_job", srv, fixed = TRUE))
+check("ind-mcap refresh does not pulse shared Search",
+      grepl("reason = \"refresh_button\"", srv, fixed = TRUE) ||
+        grepl('reason = "refresh_button"', srv, fixed = TRUE))
 check("waiting copy mentions Refresh ranking (en)",
       grepl("Refresh ranking", ui_str("lab_im_ind_mcap_waiting", "en"), fixed = TRUE))
 check("waiting copy mentions 更新排名 (zh-TW)",
@@ -86,6 +93,12 @@ check("help mentions industry chain (en)",
       grepl("industry chain", ui_str("lab_im_ind_mcap_help", "en"), ignore.case = TRUE))
 check("help mentions 全部產業鏈 (zh-TW)",
       grepl("全部產業鏈", ui_str("lab_im_ind_mcap_help", "zh-TW"), fixed = TRUE))
+check("help says independent of quality gates (en)",
+      grepl("quality gates", ui_str("lab_im_ind_mcap_help", "en"), ignore.case = TRUE) &&
+        !grepl("Applies the Piotroski", ui_str("lab_im_ind_mcap_help", "en"), fixed = TRUE))
+check("help says independent of 品質門檻 (zh-TW)",
+      grepl("品質門檻無關", ui_str("lab_im_ind_mcap_help", "zh-TW"), fixed = TRUE) &&
+        !grepl("套用查詢條件之 Piotroski", ui_str("lab_im_ind_mcap_help", "zh-TW"), fixed = TRUE))
 check("UI has Refresh ranking button", grepl("lab_im_refresh_ind_mcap", ui, fixed = TRUE))
 check("server refresh observeEvent", grepl("lab_im_refresh_ind_mcap", srv, fixed = TRUE))
 

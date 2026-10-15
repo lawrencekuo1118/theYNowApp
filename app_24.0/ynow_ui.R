@@ -16,7 +16,7 @@
       return(sub('^"version"\\s*:\\s*"([^"]+)".*$', "\\1", m[[1]]))
     }
   }
-  "v24.11"
+  "v24.18"
 }
 .YNOW_BUILD_VERSION <- .ynow_read_build_version()
 
@@ -230,15 +230,17 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v24.11) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+          "The YNow App (v24.18) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
         ),
         tags$p(
           class = "ynow-about-method",
           "我們的核心方法論為：",
           tags$b("「先分類，再選模型；先推導，再校正；先給區間，再給單點。」"),
-          " 完整「Valuation Methodology｜評價方法論」矩陣與公式說明見 ",
+          " ",
+          tags$b("可解釋性是核心功能，不是附註："),
+          "每個合理價旁都應能說清公式路徑、輸入與資料來源；完整 Valuation Methodology 矩陣仍在 ",
           tags$b("Model Dashboard"),
-          " 分頁最下方。"
+          "。"
         ),
         tags$h4(class = "ynow-about-feat-h", tags$b("核心功能亮點：")),
         zh_features
@@ -249,13 +251,16 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v24.11) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
+          "The YNow App (v24.18) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
         ),
         tags$p(
           class = "ynow-about-method",
           "Our core methodology is: ",
           tags$b("\"Classify before selecting models; derive before calibrating; provide valuation ranges before absolute price targets.\""),
-          " The full Valuation Methodology matrix and formulas sit at the bottom of ",
+          " ",
+          tags$b("Explainability is a core feature, not an appendix:"),
+          " every Fair Value should show its formula path, inputs, and data sources. ",
+          "The full Valuation Methodology matrix remains on ",
           tags$b("Model Dashboard"),
           "."
         ),
@@ -351,7 +356,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App（簡化版）")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite（v24.11）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
+          "The YNow App Lite（v24.18）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
           "以自動判別主／副模型與預設參數完成試算，讓使用者先看到合理價區間與產業 KPI，再決定是否回到完整版深入調整。"
         ),
         tags$p(
@@ -368,7 +373,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App (Lite)")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite (v24.11) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
+          "The YNow App Lite (v24.18) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
           "auto-selects primary/secondary models with App defaults, and surfaces fair-value ranges plus industry KPIs before you open Full for deeper calibration."
         ),
         tags$p(
@@ -1831,11 +1836,12 @@ beta_rolling_section_ui <- function() {
 
 #' Shared bottom block: formula-param contribution / relative ±1% elasticity.
 .model_param_sensitivity_box <- function(title, table_id) {
+  # Core explainability: keep open by default (not an appendix drawer).
   fluidRow(
     box(
       title = tagList(icon("percentage"), title),
       width = 12, status = "info", solidHeader = TRUE,
-      collapsible = TRUE, collapsed = TRUE,
+      collapsible = TRUE, collapsed = FALSE,
       tags$div(
         style = "overflow-x:auto;",
         tableOutput(table_id)
@@ -1880,7 +1886,35 @@ beta_rolling_section_ui <- function() {
 }
 
 #' Lazy page body for tab `bluechip` (mounted once per session).
-.ynow_page_ui_bluechip <- function() {
+#' @param market_mode Active market so concept-group choices bake US ≠ TW at mount.
+#' @param locale UI locale for labels / placeholder.
+.ynow_page_ui_bluechip <- function(market_mode = NULL, locale = NULL) {
+  .bc_mm <- tryCatch({
+    if (!is.null(market_mode) && nzchar(as.character(market_mode)[1])) {
+      if (exists("normalize_market_mode", mode = "function")) {
+        normalize_market_mode(market_mode)
+      } else {
+        toupper(as.character(market_mode)[1])
+      }
+    } else if (exists("get_market_mode", mode = "function")) {
+      get_market_mode()
+    } else {
+      "US"
+    }
+  }, error = function(e) "US")
+  if (!.bc_mm %in% c("US", "TW")) .bc_mm <- "US"
+  .bc_loc <- tryCatch({
+    if (!is.null(locale) && nzchar(as.character(locale)[1])) {
+      if (exists("normalize_ui_locale", mode = "function")) {
+        normalize_ui_locale(locale)
+      } else {
+        as.character(locale)[1]
+      }
+    } else {
+      "zh-TW"
+    }
+  }, error = function(e) "zh-TW")
+
   tagList(
   # Industry mcap-weighted upside board (auto; above Candidate truncate)
           fluidRow(
@@ -1919,13 +1953,24 @@ beta_rolling_section_ui <- function() {
                   id = "ynow_lab_im_ind_mcap_help",
                   style = "color:#888; font-size:12px; line-height:1.45; margin:0 0 8px 0;",
                   paste0(
-                    "顯示全部產業鏈（半導體／科技／金融…），排序用評估樣本的 ",
-                    "Σ(市值×年化估值漲幅)/Σ(市值)；總市值／檔數＝該產業鏈全宇宙個股（非 Top-N 評估樣本）。",
-                    "排除未對應。按「更新排名」後會寫入為下次預設。",
-                    "套用查詢條件之 Piotroski、盈餘品質、無財報警訊門檻。"
+                    "顯示全部產業鏈（半導體／科技／金融…），排序用獨立抽樣評估樣本的 ",
+                    "Σ(市值×年化估值漲幅)/Σ(市值)；總市值／檔數＝該產業鏈全宇宙個股（非搜尋 Top-N）。",
+                    "排除未對應。與候選截斷、概念股、宇宙檔數 N、產業／模型篩選、品質門檻無關。",
+                    "開啟績優股排行榜會在背景自動重算；按「更新排名」可手動重算並寫入預設快照。"
                   )
                 ),
                 uiOutput("lab_im_ind_mcap_status"),
+                tags$div(
+                  class = "ynow-lab-im-ind-mcap-treemap-wrap",
+                  style = "margin: 0 0 10px 0; width: 100%;",
+                  tags$div(
+                    id = "ynow_lab_im_ind_mcap_treemap_legend",
+                    class = "ynow-lab-im-ind-mcap-treemap-legend",
+                    style = "color:#888; font-size:11.5px; line-height:1.4; margin:0 0 6px 0;",
+                    "面積＝產業鏈總市值；顏色＝市值加權年化估值漲幅（美股漲綠／台股漲紅）。納入全部產業鏈。"
+                  ),
+                  plotlyOutput("lab_im_ind_mcap_treemap", height = "320px")
+                ),
                 tags$div(
                   style = "overflow-x:auto;",
                   DT::dataTableOutput("lab_im_ind_mcap_table")
@@ -1957,11 +2002,14 @@ beta_rolling_section_ui <- function() {
                   selectizeInput(
                     "lab_im_concepts",
                     tags$span(id = "ynow_lab_im_concepts_label", "概念股群"),
-                    choices = lab_concept_group_choices("US", "zh-TW"),
+                    choices = lab_concept_group_choices(.bc_mm, .bc_loc),
                     selected = APP_DEFAULTS$lab_im_concepts,
                     multiple = TRUE,
                     options = list(
-                      placeholder = "選擇一或多個概念股群…",
+                      placeholder = tryCatch(
+                        ui_str("lab_im_concepts_placeholder", .bc_loc),
+                        error = function(e) "依目前市場（美股／台股）選擇一或多個概念股群…"
+                      ),
                       plugins = list("remove_button")
                     ),
                     width = "100%"
@@ -3439,9 +3487,9 @@ ui <- dashboardPage(
                   'data-ynow-build="', .YNOW_BUILD_VERSION, '" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v24.11</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v24.18</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v24.11</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v24.18</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -3828,6 +3876,7 @@ ui <- dashboardPage(
           );
         }
 
+        /* Legacy name kept for tests / comments; title motion is gold stardust (canvas), not a shine sweep. */
         @keyframes ynow-gold-shine {
           0%, 100% { background-position: 0% 50%; }
           50% { background-position: 100% 50%; }
@@ -3908,11 +3957,35 @@ ui <- dashboardPage(
         .main-header .logo:hover {
           position: relative;
           z-index: 1;
+          overflow: hidden;
           font-weight: bold;
           color: #FFD700 !important;
           background-color: var(--ynow-ink) !important;
           background-image: none !important;
           filter: none !important;
+        }
+        /* Gold stardust overlay (falling sparkles when title is-complete) */
+        .main-header .logo .ynow-gold-stardust {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 100%;
+          height: 100%;
+          pointer-events: none;
+          z-index: 5;
+          opacity: 0;
+          transition: opacity 0.35s ease;
+        }
+        .main-header .logo .ynow-gold-stardust.is-on {
+          opacity: 1;
+        }
+        body.ynow-update-available .main-header .logo .ynow-gold-stardust {
+          opacity: 0 !important;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .main-header .logo .ynow-gold-stardust {
+            display: none !important;
+          }
         }
         .main-header .logo .ynow-app-title {
           --ynow-load-pct: 0%;
@@ -3973,8 +4046,10 @@ ui <- dashboardPage(
           width: 100%;
           transition: width 0.2s ease-out;
         }
+        /* Complete: steady gold fill; motion comes from stardust canvas (not shine sweep). */
         .main-header .logo .ynow-app-title.is-complete .ynow-app-title-fill-inner {
-          animation: ynow-gold-shine 2.6s ease-in-out infinite;
+          animation: none;
+          filter: drop-shadow(0 0 2px rgba(255, 230, 120, 0.4));
         }
         @supports not ((-webkit-background-clip: text) or (background-clip: text)) {
           .main-header .logo .ynow-app-title-fill-inner {
@@ -6454,12 +6529,81 @@ ui <- dashboardPage(
           gap: 6px 12px;
           margin: 0 0 10px 0;
         }
+        .ynow-company-overview-head-main {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 8px 10px;
+          min-width: 0;
+          flex: 1 1 auto;
+        }
         .ynow-company-overview-title {
           font-size: 14px;
           font-weight: 700;
           color: #222;
           margin: 0;
           letter-spacing: 0.01em;
+        }
+        /* Important dates: Data-limited–style compact chips (inline, not a block) */
+        .ynow-key-date-chips {
+          display: inline-flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 6px;
+        }
+        .ynow-key-date-chip {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 3px 10px;
+          border-radius: 4px;
+          border: 1px solid var(--ynow-gold, #F5C518) !important;
+          background: #000000 !important;
+          color: var(--ynow-gold, #F5C518) !important;
+          font-size: 12px;
+          font-weight: 700;
+          white-space: nowrap;
+          line-height: 1.2;
+        }
+        .ynow-key-date-chip .k {
+          font-size: 10px;
+          font-weight: 600;
+          letter-spacing: 0.02em;
+          opacity: 0.9;
+        }
+        .ynow-key-date-chip .v {
+          font-variant-numeric: tabular-nums;
+          font-weight: 700;
+        }
+        .ynow-corp-events {
+          margin: 0;
+          padding: 4px 0 8px 0;
+        }
+        .ynow-corp-events-h {
+          font-size: 14px;
+          font-weight: 700;
+          margin: 0 0 8px 0;
+          color: #222;
+        }
+        .ynow-corp-events-source,
+        .ynow-corp-events-waiting {
+          font-size: 12px;
+          color: #777;
+          margin: 8px 0 0 0;
+          line-height: 1.45;
+        }
+        .ynow-corp-events-cand ul {
+          margin: 0;
+          padding-left: 18px;
+          font-size: 12.5px;
+          line-height: 1.45;
+        }
+        .ynow-corp-cb-table {
+          font-size: 12.5px;
+          margin-top: 8px;
+        }
+        .ynow-corp-cb-table th {
+          white-space: nowrap;
         }
         .ynow-company-overview-source {
           font-size: 11px;
@@ -7608,6 +7752,191 @@ ui <- dashboardPage(
 
           /* Header title = load progress bar (fills with boot / Shiny busy / withProgress) */
           document.title = 'The YNow App';
+
+          /* Gold stardust: falling sparkles over the app title when load is complete.
+             Paused during update-available (flame) and prefers-reduced-motion. */
+          (function initYnowGoldStardust() {
+            var logo = null;
+            var canvas = null;
+            var ctx = null;
+            var particles = [];
+            var raf = 0;
+            var running = false;
+            var lastTs = 0;
+
+            function reducedMotion() {
+              try {
+                return !!(window.matchMedia &&
+                  window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+              } catch (e) {
+                return false;
+              }
+            }
+
+            function titleEl() {
+              return document.getElementById('ynow_app_title') ||
+                document.querySelector('.main-header .logo .ynow-app-title');
+            }
+
+            function ensure() {
+              logo = document.querySelector('.main-header .logo');
+              if (!logo) return false;
+              canvas = logo.querySelector('canvas.ynow-gold-stardust');
+              if (!canvas) {
+                canvas = document.createElement('canvas');
+                canvas.className = 'ynow-gold-stardust';
+                canvas.setAttribute('aria-hidden', 'true');
+                logo.appendChild(canvas);
+              }
+              try {
+                ctx = canvas.getContext('2d');
+              } catch (e) {
+                ctx = null;
+              }
+              return !!ctx;
+            }
+
+            function resize() {
+              if (!logo || !canvas || !ctx) return;
+              var r = logo.getBoundingClientRect();
+              var cssW = Math.max(1, Math.round(r.width));
+              var cssH = Math.max(1, Math.round(r.height));
+              var dpr = Math.min(window.devicePixelRatio || 1, 2);
+              canvas.width = Math.max(1, Math.floor(cssW * dpr));
+              canvas.height = Math.max(1, Math.floor(cssH * dpr));
+              canvas.style.width = cssW + 'px';
+              canvas.style.height = cssH + 'px';
+              ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            }
+
+            function spawn(n) {
+              if (!canvas) return;
+              var w = canvas.clientWidth || 1;
+              var h = canvas.clientHeight || 1;
+              for (var i = 0; i < n; i++) {
+                particles.push({
+                  x: Math.random() * w,
+                  y: -4 - Math.random() * h * 0.55,
+                  r: 0.55 + Math.random() * 1.7,
+                  vy: 18 + Math.random() * 42,
+                  vx: -10 + Math.random() * 20,
+                  a: 0.4 + Math.random() * 0.6,
+                  tw: Math.random() * Math.PI * 2,
+                  tws: 2.2 + Math.random() * 4.5
+                });
+              }
+            }
+
+            function draw(ts) {
+              if (!running || !ctx || !canvas) return;
+              var dt = lastTs ? Math.min(0.05, (ts - lastTs) / 1000) : 0.016;
+              lastTs = ts;
+              var w = canvas.clientWidth || 1;
+              var h = canvas.clientHeight || 1;
+              ctx.clearRect(0, 0, w, h);
+              if (particles.length < 56 && Math.random() < 0.55) spawn(1 + (Math.random() < 0.25 ? 1 : 0));
+              for (var i = particles.length - 1; i >= 0; i--) {
+                var p = particles[i];
+                p.y += p.vy * dt;
+                p.x += p.vx * dt;
+                p.tw += p.tws * dt;
+                if (p.y > h + 6 || p.x < -8 || p.x > w + 8) {
+                  particles.splice(i, 1);
+                  continue;
+                }
+                var alpha = p.a * (0.5 + 0.5 * Math.sin(p.tw));
+                var g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 2.4);
+                g.addColorStop(0, 'rgba(255,248,210,' + alpha + ')');
+                g.addColorStop(0.4, 'rgba(245,197,24,' + (alpha * 0.9) + ')');
+                g.addColorStop(1, 'rgba(201,162,39,0)');
+                ctx.fillStyle = g;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.r * 2.4, 0, Math.PI * 2);
+                ctx.fill();
+                /* crisp core spark */
+                ctx.fillStyle = 'rgba(255,255,240,' + (alpha * 0.85) + ')';
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, Math.max(0.4, p.r * 0.35), 0, Math.PI * 2);
+                ctx.fill();
+              }
+              raf = window.requestAnimationFrame(draw);
+            }
+
+            function shouldRun() {
+              if (reducedMotion()) return false;
+              if (document.body && document.body.classList.contains('ynow-update-available')) {
+                return false;
+              }
+              var el = titleEl();
+              return !!(el && el.classList.contains('is-complete'));
+            }
+
+            function stop() {
+              running = false;
+              lastTs = 0;
+              if (raf) {
+                window.cancelAnimationFrame(raf);
+                raf = 0;
+              }
+              particles = [];
+              if (canvas) canvas.classList.remove('is-on');
+              if (ctx && canvas) {
+                ctx.clearRect(0, 0, canvas.clientWidth || 1, canvas.clientHeight || 1);
+              }
+            }
+
+            function start() {
+              if (!ensure()) return;
+              resize();
+              if (!running) {
+                running = true;
+                particles = [];
+                spawn(20);
+                canvas.classList.add('is-on');
+                lastTs = 0;
+                raf = window.requestAnimationFrame(draw);
+              } else {
+                canvas.classList.add('is-on');
+              }
+            }
+
+            function sync() {
+              if (shouldRun()) start();
+              else stop();
+            }
+
+            function boot() {
+              if (!ensure()) {
+                setTimeout(boot, 80);
+                return;
+              }
+              resize();
+              sync();
+              if (typeof MutationObserver !== 'undefined') {
+                var obs = new MutationObserver(function () { sync(); });
+                var el = titleEl();
+                if (el) obs.observe(el, { attributes: true, attributeFilter: ['class'] });
+                if (document.body) {
+                  obs.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+                }
+              }
+              window.addEventListener('resize', function () {
+                if (!running) return;
+                resize();
+              });
+              /* Re-check after mobile title layout settles */
+              setInterval(function () {
+                if (shouldRun() && !running) sync();
+              }, 1200);
+            }
+            if (document.readyState === 'loading') {
+              document.addEventListener('DOMContentLoaded', boot);
+            } else {
+              boot();
+            }
+            window.ynowSyncGoldStardust = sync;
+          })();
+
           (function initYnowTitleLoadBar() {
             var pct = 0;
             var firstIdleDone = false;
@@ -7645,6 +7974,11 @@ ui <- dashboardPage(
               el.classList.add('is-complete');
               el.setAttribute('aria-valuenow', '100');
               firstIdleDone = true;
+              try {
+                if (typeof window.ynowSyncGoldStardust === 'function') {
+                  window.ynowSyncGoldStardust();
+                }
+              } catch (eStar) {}
             }
             function readShinyProgressPct() {
               var bar = document.querySelector('.shiny-progress .progress-bar');
@@ -8960,6 +9294,14 @@ ui <- dashboardPage(
             if (ddmRmLab && s.capm_rm_label) ddmRmLab.textContent = s.capm_rm_label;
             var useEstRe = document.getElementById('ynow_use_estimated_re_label');
             if (useEstRe && s.use_estimated_re_label) useEstRe.textContent = s.use_estimated_re_label;
+            var explainCoreTitle = document.getElementById('ynow_explain_core_callout_title');
+            if (explainCoreTitle && s.explain_core_callout_title) {
+              explainCoreTitle.textContent = s.explain_core_callout_title;
+            }
+            var explainCoreBody = document.getElementById('ynow_explain_core_callout_body');
+            if (explainCoreBody && s.explain_core_callout_body) {
+              explainCoreBody.textContent = s.explain_core_callout_body;
+            }
             var gsModelSel = document.getElementById('ynow_gs_model_selector_title');
             if (gsModelSel && s.gs_model_selector_title) gsModelSel.textContent = s.gs_model_selector_title;
             var gsBetaOv = document.getElementById('ynow_gs_beta_overview_help');
@@ -9299,6 +9641,10 @@ ui <- dashboardPage(
             if (labIndMcapBadge && s.lab_im_ind_mcap_badge) labIndMcapBadge.textContent = s.lab_im_ind_mcap_badge;
             var labIndMcapHelp = document.getElementById('ynow_lab_im_ind_mcap_help');
             if (labIndMcapHelp && s.lab_im_ind_mcap_help) labIndMcapHelp.textContent = s.lab_im_ind_mcap_help;
+            var labIndMcapTreemapLegend = document.getElementById('ynow_lab_im_ind_mcap_treemap_legend');
+            if (labIndMcapTreemapLegend && s.lab_im_ind_mcap_treemap_legend) {
+              labIndMcapTreemapLegend.textContent = s.lab_im_ind_mcap_treemap_legend;
+            }
             var labIndMcapRefreshLabel = document.getElementById('ynow_lab_im_refresh_ind_mcap_label');
             if (labIndMcapRefreshLabel && s.btn_lab_im_refresh_ind_mcap) {
               labIndMcapRefreshLabel.textContent = s.btn_lab_im_refresh_ind_mcap;
@@ -11235,6 +11581,17 @@ ui <- dashboardPage(
           color: #fff !important;
         }
 
+        /* Blue Chip：產業市值加權漲幅區塊熱圖（表格上方） */
+        .ynow-lab-im-ind-mcap-treemap-wrap {
+          border: 1px solid #e8e8e8;
+          border-radius: 3px;
+          background: #fff;
+          padding: 8px 8px 4px 8px;
+        }
+        .ynow-lab-im-ind-mcap-treemap-wrap .js-plotly-plot,
+        .ynow-lab-im-ind-mcap-treemap-wrap .plotly {
+          width: 100% !important;
+        }
         /* Blue Chip：產業市值加權漲幅標題列右側 — 更新排名 */
         .ynow-lab-im-ind-mcap-title-row {
           display: flex;
@@ -14363,6 +14720,21 @@ ui <- dashboardPage(
       ),
       tabItem(
         tabName = "get_started",
+        tags$div(
+          id = "ynow_explain_core_callout",
+          class = "ynow-explain-core-callout ynow-full-only",
+          style = paste0(
+            "margin:0 0 14px 0; padding:10px 14px; ",
+            "border:1px solid #c5d8ea; border-left:4px solid #0C5484; ",
+            "border-radius:4px; background:#f3f8fc; font-size:12.5px; line-height:1.5; color:#333;"
+          ),
+          tags$b(id = "ynow_explain_core_callout_title", style = "color:#0C5484;", "可解釋性（核心）"),
+          tags$span(id = "ynow_explain_core_callout_body", paste0(
+            "：每個估值結果旁應能回答「為何是這個合理價」。",
+            "DCF Overview 的 KPI 下方已顯示公式路徑／現值橋接／終值驅動；",
+            "各模型「公式參數貢獻與敏感度」預設展開。完整 Decision Matrix 見本頁下方。"
+          ))
+        ),
         fluidRow(
           box(
             title = tagList(
@@ -14718,6 +15090,15 @@ ui <- dashboardPage(
                        tags$hr(),
                        DT::dataTableOutput("tbCashFlow"),
                        downloadButton('CF_download', "Download Cash Flow Data")
+                     ),
+
+                     # 董監改選／可轉債稀釋（Search 代號勾稽；台股 MOPS／TPEx，美股 SEC 連結）
+                     tabPanel(
+                       title = "Board / CB",
+                       value = "corp_events",
+                       icon = icon("landmark"),
+                       id = "corp_events_panel",
+                       uiOutput("corp_events_ui")
                      ),
 
                      # 財報附註擷取 (SEC EDGAR) — 僅美股模式顯示（server 以 shinyjs 控制）
@@ -15264,6 +15645,8 @@ ui <- dashboardPage(
                                        )
                                 )
                               ),
+                              # Core explainability: Why this Fair Value (not appendix)
+                              uiOutput("dcf_value_why"),
                               fluidRow(
                                 column(width = 12,
                                        plotOutput("plt_dcf_trajectory", height = "420px"),

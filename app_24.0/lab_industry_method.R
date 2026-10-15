@@ -589,6 +589,54 @@ lab_resolve_im_max_n <- function(sel, custom = NULL, lo = 1L, hi = 500L) {
   lab_clamp_im_max_n(sel, default = 25L, lo = lo, hi = hi)
 }
 
+#' Coerce display/eval N for lab_im_run_eval_job — preserve Inf ("全部").
+#'
+#' `as.integer(Inf)` is NA in R; that used to collapse universe N=全部 to the
+#' default 25 via lab_clamp_im_max_n(NA). Keep Inf, coerce finite values to int.
+lab_coerce_im_job_n <- function(x) {
+  if (is.null(x) || !length(x)) return(NA_real_)
+  if (is.numeric(x) && !is.factor(x)) {
+    n0 <- suppressWarnings(as.numeric(x)[1])
+    if (length(n0) == 1L && !is.na(n0) && !is.finite(n0)) return(Inf)
+    if (is.finite(n0) && n0 >= 1) return(as.integer(round(n0)))
+  }
+  lab_clamp_im_max_n(x)
+}
+
+#' Filter a ticker data.frame to selected concept-group members (display path).
+#'
+#' Ranking / detail views call this when pool_rank == concept so the concept
+#' picker stays linked even if scores were produced under a different truncate rule.
+lab_filter_df_by_concept_keys <- function(df, concept_keys, market_mode = "US") {
+  if (is.null(df) || !is.data.frame(df) || nrow(df) == 0L) return(df)
+  if (!"ticker" %in% names(df)) return(df)
+  ckeys <- if (exists("lab_normalize_multi_filter", mode = "function")) {
+    lab_normalize_multi_filter(concept_keys)
+  } else {
+    unique(as.character(unlist(concept_keys, use.names = FALSE)))
+  }
+  ckeys <- ckeys[!is.na(ckeys) & nzchar(ckeys)]
+  if (!length(ckeys)) return(df)
+  if (!exists("lab_concept_tickers", mode = "function")) return(df)
+  mm <- tryCatch({
+    if (exists("normalize_market_mode", mode = "function")) {
+      normalize_market_mode(market_mode)
+    } else {
+      m <- toupper(trimws(as.character(market_mode)[1]))
+      if (identical(m, "TW") || identical(m, "TWN") || identical(m, "TAIWAN")) "TW" else "US"
+    }
+  }, error = function(e) "US")
+  ctks <- lab_concept_tickers(ckeys, market = mm)
+  if (!length(ctks)) return(df[FALSE, , drop = FALSE])
+  tk <- toupper(trimws(as.character(df$ticker)))
+  ctks_u <- unique(toupper(trimws(ctks)))
+  bare <- function(x) sub("\\.(TW|TWO)$", "", x, ignore.case = TRUE)
+  keep <- tk %in% ctks_u |
+    bare(tk) %in% bare(ctks_u) |
+    gsub("\\.", "-", tk) %in% gsub("\\.", "-", ctks_u)
+  df[keep, , drop = FALSE]
+}
+
 lab_resolve_im_max_n_label <- function(sel, custom = NULL) {
   s <- if (is.null(sel) || !length(sel)) "" else trimws(as.character(sel)[1])
   if (identical(s, "custom") || identical(s, "自訂")) {
@@ -1954,9 +2002,9 @@ lab_im_run_eval_job <- function(catlg,
   if (is.null(pool) || !is.data.frame(pool) || nrow(pool) < 1L) {
     return(list(ok = FALSE, reason = "no_candidates", scores = NULL))
   }
-  display_n <- suppressWarnings(as.integer(display_n)[1])
-  eval_n <- suppressWarnings(as.integer(eval_n)[1])
-  if (!is.finite(eval_n) || eval_n < 1L) eval_n <- display_n
+  display_n <- lab_coerce_im_job_n(display_n)
+  eval_n <- lab_coerce_im_job_n(eval_n)
+  if (!is.finite(eval_n) || (is.finite(eval_n) && eval_n < 1L)) eval_n <- display_n
   rank_mode <- lab_normalize_pool_rank_mode(rank_mode %||% "mcap")
   n_raw <- nrow(pool)
   if (is.finite(eval_n) && n_raw > eval_n) {
@@ -2455,6 +2503,9 @@ lab_refresh_quality_snapshot <- function(pool, market = "US", force = FALSE,
 
 #' Pool size after quality gates. Missing snapshot rows are excluded only while
 #' a gate is checked. With every gate off, the structural pool size is returned.
+#' If a gate is checked but the snapshot covers none of the structural pool
+#' (common on TW before Search / refresh), keep the structural count — do not
+#' report 0 as if every name failed the gate.
 lab_apply_quality_snapshot <- function(tickers, snapshot,
                                        eq_only = FALSE, gate_only = FALSE,
                                        no_alert = FALSE, now = Sys.time()) {
@@ -2477,27 +2528,31 @@ lab_apply_quality_snapshot <- function(tickers, snapshot,
   }
   gates_on <- isTRUE(eq_only) || isTRUE(gate_only) || isTRUE(no_alert)
   n_show <- n_pool
-  if (gates_on) {
+  gates_applied <- FALSE
+  if (gates_on && n_covered < 1L) {
+    # No usable quality rows for this pool — defer gates; keep structural N.
+    n_show <- n_pool
+    gates_applied <- FALSE
+  } else if (gates_on) {
     pass <- rep(FALSE, n_pool)
-    if (any(covered)) {
-      sub_i <- which(covered)
-      rows <- snap[idx[sub_i], , drop = FALSE]
-      p <- rep(TRUE, length(sub_i))
-      if (isTRUE(eq_only)) {
-        qf <- suppressWarnings(as.numeric(rows$quality_flag))
-        p <- p & !is.na(qf) & qf %in% 1
-      }
-      if (isTRUE(gate_only)) {
-        fs <- suppressWarnings(as.numeric(rows$f_score))
-        p <- p & is.finite(fs) & fs >= 7
-      }
-      if (isTRUE(no_alert)) {
-        na_n <- suppressWarnings(as.numeric(rows$n_fs_alerts))
-        p <- p & is.finite(na_n) & na_n <= 0
-      }
-      pass[sub_i] <- p
+    sub_i <- which(covered)
+    rows <- snap[idx[sub_i], , drop = FALSE]
+    p <- rep(TRUE, length(sub_i))
+    if (isTRUE(eq_only)) {
+      qf <- suppressWarnings(as.numeric(rows$quality_flag))
+      p <- p & !is.na(qf) & qf %in% 1
     }
+    if (isTRUE(gate_only)) {
+      fs <- suppressWarnings(as.numeric(rows$f_score))
+      p <- p & is.finite(fs) & fs >= 7
+    }
+    if (isTRUE(no_alert)) {
+      na_n <- suppressWarnings(as.numeric(rows$n_fs_alerts))
+      p <- p & is.finite(na_n) & na_n <= 0
+    }
+    pass[sub_i] <- p
     n_show <- sum(pass)
+    gates_applied <- TRUE
   }
   age_sec <- if (!is.na(updated_at)) {
     as.numeric(difftime(now, updated_at, units = "secs"))
@@ -2511,7 +2566,8 @@ lab_apply_quality_snapshot <- function(tickers, snapshot,
     n_missing = as.integer(n_pool - n_covered),
     updated_at = updated_at,
     stale = is.finite(age_sec) && age_sec > LAB_QUALITY_SNAPSHOT_TTL_SEC,
-    gates_on = gates_on
+    gates_on = gates_on,
+    gates_applied = gates_applied
   )
 }
 
@@ -2976,15 +3032,28 @@ lab_save_ind_mcap_chain_snapshot <- function(snapshot, market = "US") {
   if (!is.data.frame(snap) || !nrow(snap)) snap <- lab_ind_mcap_chain_snapshot_empty()
   if (!"market" %in% names(snap)) snap$market <- mm
   snap$market[!nzchar(as.character(snap$market))] <- mm
-  # Option path wins when set (tests); else bundled data/ when writable
+  # Option path wins when set (tests). Prefer writable cache over bundled data/
+  # so a failed / no-Yahoo refresh cannot wipe the shipped snapshot (all-NA wavg).
   opt <- getOption("ynow.ind_mcap_chain_snapshot", default = NULL)
   bundled <- file.path("data", sprintf("ind_mcap_chain_rank_snapshot_%s.csv", mm))
+  has_upside <- any(
+    is.finite(suppressWarnings(as.numeric(snap$wavg_cagr))),
+    na.rm = TRUE
+  )
   path <- if (!is.null(opt) && length(opt) >= 1L && nzchar(as.character(opt)[1])) {
     as.character(opt)[1]
-  } else if (dir.exists("data") && file.access("data", 2) == 0L) {
+  } else if (isTRUE(has_upside) && dir.exists("data") && file.access("data", 2) == 0L) {
     bundled
   } else {
-    lab_ind_mcap_chain_snapshot_path(mm)
+    # Writable cache — keeps packaged CSV intact when upside is all NA
+    cache_dir <- tryCatch({
+      if (exists("lab_quality_snapshot_dir", mode = "function")) {
+        lab_quality_snapshot_dir()
+      } else {
+        file.path(tempdir(), "ynow_cache", "slow")
+      }
+    }, error = function(e) file.path(tempdir(), "ynow_cache", "slow"))
+    file.path(cache_dir, sprintf("ind_mcap_chain_rank_snapshot_%s.csv", mm))
   }
   dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
   tmp <- paste0(path, ".tmp")
@@ -3158,6 +3227,268 @@ lab_format_ind_mcap_chain_table <- function(agg_df, locale = "zh-TW") {
     ),
     loc
   )
+}
+
+#' Market-aware colorscale for industry mcap treemap (valuation upside %).
+#'
+#' US: green up / red down. TW: red up / green down (台灣投資慣例).
+lab_ind_mcap_treemap_colorscale <- function(market = "US") {
+  mm <- tryCatch({
+    if (exists("normalize_market_mode", mode = "function")) {
+      normalize_market_mode(market)
+    } else {
+      m <- toupper(trimws(as.character(market)[1]))
+      if (identical(m, "TW") || identical(m, "TWN") || identical(m, "TAIWAN")) "TW" else "US"
+    }
+  }, error = function(e) "US")
+  # Soft block-heatmap palette (close to common market treemap UIs).
+  if (identical(mm, "TW")) {
+    list(
+      list(0, "#1b7a4a"),
+      list(0.35, "#8fd6a8"),
+      list(0.5, "#d8dde3"),
+      list(0.65, "#f0a2a2"),
+      list(1, "#c0392b")
+    )
+  } else {
+    list(
+      list(0, "#c0392b"),
+      list(0.35, "#f0a2a2"),
+      list(0.5, "#d8dde3"),
+      list(0.65, "#8fd6a8"),
+      list(1, "#1b7a4a")
+    )
+  }
+}
+
+#' Prepare all industry-chain rows for the block treemap (size = total mcap).
+#'
+#' Pads missing picker chains so **全部產業** always appear; Unmapped excluded.
+lab_ind_mcap_prepare_treemap_df <- function(snap_df, locale = "zh-TW") {
+  loc <- if (exists("normalize_ui_locale", mode = "function")) {
+    normalize_ui_locale(locale)
+  } else {
+    as.character(locale %||% "zh-TW")[1]
+  }
+  empty <- data.frame(
+    chain_id = character(0),
+    label = character(0),
+    wavg_cagr = numeric(0),
+    total_mcap = numeric(0),
+    n_names = integer(0),
+    stringsAsFactors = FALSE
+  )
+  snap_df <- lab_ind_mcap_drop_unmapped_chains(snap_df)
+  picker <- character(0)
+  if (exists("lab_industry_chain_picker_choices", mode = "function")) {
+    picker <- tryCatch(
+      unname(lab_industry_chain_picker_choices(loc)),
+      error = function(e) character(0)
+    )
+  }
+  picker <- as.character(picker %||% character(0))
+  picker <- picker[nzchar(picker) & !is.na(picker)]
+  if (exists("lab_ind_mcap_is_unmapped_chain", mode = "function")) {
+    picker <- picker[!vapply(picker, lab_ind_mcap_is_unmapped_chain, logical(1))]
+  }
+  if (!length(picker) && (is.null(snap_df) || !nrow(snap_df))) return(empty)
+
+  by_id <- list()
+  if (is.data.frame(snap_df) && nrow(snap_df) > 0L) {
+    for (i in seq_len(nrow(snap_df))) {
+      cid <- as.character(snap_df$chain_id[[i]] %||% "")[1]
+      if (!nzchar(cid)) next
+      by_id[[cid]] <- list(
+        wavg = suppressWarnings(as.numeric(snap_df$wavg_cagr[[i]])),
+        mcap = suppressWarnings(as.numeric(snap_df$total_mcap[[i]])),
+        n_names = if ("n_names" %in% names(snap_df)) {
+          as.integer(suppressWarnings(as.numeric(snap_df$n_names[[i]])))
+        } else {
+          NA_integer_
+        }
+      )
+    }
+  }
+  ids <- unique(c(picker, names(by_id)))
+  ids <- ids[nzchar(ids)]
+  if (!length(ids)) return(empty)
+
+  .chain_lab <- function(cid) {
+    if (exists("industry_chain_label", mode = "function")) {
+      lab <- tryCatch(industry_chain_label(cid, locale = loc), error = function(e) NA_character_)
+      if (is.character(lab) && length(lab) && nzchar(lab[[1]]) && !is.na(lab[[1]])) {
+        return(as.character(lab[[1]]))
+      }
+    }
+    cid
+  }
+  rows <- lapply(ids, function(cid) {
+    hit <- by_id[[cid]]
+    data.frame(
+      chain_id = cid,
+      label = .chain_lab(cid),
+      wavg_cagr = if (is.null(hit)) NA_real_ else as.numeric(hit$wavg)[1],
+      total_mcap = if (is.null(hit)) NA_real_ else as.numeric(hit$mcap)[1],
+      n_names = if (is.null(hit)) NA_integer_ else as.integer(hit$n_names)[1],
+      stringsAsFactors = FALSE
+    )
+  })
+  out <- do.call(rbind, rows)
+  rownames(out) <- NULL
+  # Prefer largest mcap first for stable packing.
+  ord <- order(
+    -ifelse(is.finite(out$total_mcap), out$total_mcap, -Inf),
+    out$label
+  )
+  out[ord, , drop = FALSE]
+}
+
+#' Plotly block treemap for industry mcap-weighted upside (all chains).
+#'
+#' Area = total market cap; color = mcap-weighted annualized valuation upside.
+#' @param market US → green-up; TW → red-up.
+lab_ind_mcap_treemap_plotly <- function(snap_df,
+                                        market = "US",
+                                        locale = "zh-TW",
+                                        color_abs_max = 20) {
+  loc <- if (exists("normalize_ui_locale", mode = "function")) {
+    normalize_ui_locale(locale)
+  } else {
+    as.character(locale %||% "zh-TW")[1]
+  }
+  mm <- tryCatch({
+    if (exists("normalize_market_mode", mode = "function")) {
+      normalize_market_mode(market)
+    } else {
+      m <- toupper(trimws(as.character(market)[1]))
+      if (identical(m, "TW") || identical(m, "TWN") || identical(m, "TAIWAN")) "TW" else "US"
+    }
+  }, error = function(e) "US")
+  df <- lab_ind_mcap_prepare_treemap_df(snap_df, locale = loc)
+  empty_plot <- function(msg) {
+    p0 <- plotly::plotly_empty(type = "scatter")
+    p0 <- plotly::layout(
+      p0,
+      annotations = list(
+        list(
+          text = msg, showarrow = FALSE, xref = "paper", yref = "paper",
+          x = 0.5, y = 0.5, font = list(size = 13, color = "#888")
+        )
+      ),
+      margin = list(l = 8, r = 8, t = 8, b = 8),
+      paper_bgcolor = "rgba(0,0,0,0)",
+      plot_bgcolor = "rgba(0,0,0,0)"
+    )
+    plotly::config(p0, displayModeBar = FALSE)
+  }
+  if (!is.data.frame(df) || nrow(df) < 1L) {
+    msg <- tryCatch(
+      ui_str("lab_im_ind_mcap_treemap_empty", loc),
+      error = function(e) if (identical(loc, "en")) {
+        "No industry-chain blocks yet."
+      } else {
+        "尚無產業鏈區塊可顯示。"
+      }
+    )
+    return(empty_plot(msg))
+  }
+
+  mcap <- suppressWarnings(as.numeric(df$total_mcap))
+  # Tiny floor so zero/NA mcap chains still appear (全部產業).
+  pos <- is.finite(mcap) & mcap > 0
+  floor_v <- if (any(pos)) max(min(mcap[pos]) * 0.02, 1) else 1
+  values <- ifelse(pos, mcap, floor_v)
+
+  wavg <- suppressWarnings(as.numeric(df$wavg_cagr))
+  cabsm <- suppressWarnings(as.numeric(color_abs_max)[1])
+  if (!is.finite(cabsm) || cabsm <= 0) cabsm <- 20
+  # Midpoint grey for missing upside; clip extremes for a readable scale.
+  z <- ifelse(is.finite(wavg), pmax(-cabsm, pmin(cabsm, wavg)), 0)
+
+  wavg_txt <- ifelse(is.finite(wavg), sprintf("%+.1f%%", wavg), "—")
+  labels <- paste0(df$label, "\n", wavg_txt)
+  n_names <- suppressWarnings(as.integer(df$n_names))
+  hover_chain <- tryCatch(
+    ui_str("lab_im_ind_mcap_treemap_hover_chain", loc),
+    error = function(e) if (identical(loc, "en")) "Industry chain" else "產業鏈"
+  )
+  hover_upside <- tryCatch(
+    ui_str("lab_im_ind_mcap_treemap_hover_upside", loc),
+    error = function(e) if (identical(loc, "en")) {
+      "Mcap-weighted annualized upside"
+    } else {
+      "市值加權年化估值漲幅"
+    }
+  )
+  hover_mcap <- tryCatch(
+    ui_str("lab_im_ind_mcap_treemap_hover_mcap", loc),
+    error = function(e) if (identical(loc, "en")) "Total market cap" else "總市值"
+  )
+  hover_n <- tryCatch(
+    ui_str("lab_im_ind_mcap_treemap_hover_n", loc),
+    error = function(e) if (identical(loc, "en")) "Names" else "檔數"
+  )
+  cbar_title <- tryCatch(
+    ui_str("lab_im_ind_mcap_treemap_colorbar", loc),
+    error = function(e) if (identical(loc, "en")) "Upside %" else "漲幅 %"
+  )
+  .fmt_mcap <- function(x) {
+    x <- suppressWarnings(as.numeric(x)[1])
+    if (!is.finite(x) || x <= 0) return("—")
+    if (x >= 1e12) sprintf("%.2fT", x / 1e12)
+    else if (x >= 1e9) sprintf("%.2fB", x / 1e9)
+    else if (x >= 1e6) sprintf("%.2fM", x / 1e6)
+    else sprintf("%.0f", x)
+  }
+  mcap_txt <- vapply(mcap, .fmt_mcap, character(1))
+  n_txt <- ifelse(is.finite(n_names), as.character(n_names), "—")
+  custom <- paste0(
+    hover_chain, ": ", df$label, "<br>",
+    hover_upside, ": ", wavg_txt, "<br>",
+    hover_mcap, ": ", mcap_txt, "<br>",
+    hover_n, ": ", n_txt
+  )
+
+  p <- plotly::plot_ly(
+    type = "treemap",
+    labels = labels,
+    parents = rep("", nrow(df)),
+    values = values,
+    ids = as.character(df$chain_id),
+    text = labels,
+    textinfo = "label",
+    hovertext = custom,
+    hoverinfo = "text",
+    marker = list(
+      colors = z,
+      colorscale = lab_ind_mcap_treemap_colorscale(mm),
+      cmin = -cabsm,
+      cmax = cabsm,
+      cmid = 0,
+      line = list(width = 1.5, color = "#ffffff"),
+      pad = list(t = 2, l = 2, r = 2, b = 2),
+      showscale = TRUE,
+      colorbar = list(
+        title = list(text = cbar_title, font = list(size = 11)),
+        thickness = 12,
+        len = 0.55,
+        y = 0.5,
+        tickfont = list(size = 10),
+        ticksuffix = "%"
+      )
+    ),
+    tiling = list(packing = "squarify", pad = 2),
+    pathbar = list(visible = FALSE)
+  )
+  p <- plotly::layout(
+    p,
+    margin = list(l = 4, r = 4, t = 4, b = 4),
+    paper_bgcolor = "rgba(0,0,0,0)",
+    plot_bgcolor = "rgba(0,0,0,0)",
+    uniformtext = list(minsize = 10, mode = "hide"),
+    font = list(family = "Helvetica Neue, Arial, sans-serif", size = 12, color = "#222")
+  )
+  plotly::config(p, displayModeBar = FALSE, responsive = TRUE)
 }
 
 #' All industry chains ranked by mcap-weighted annualized valuation upside.
@@ -3382,6 +3713,150 @@ lab_build_ind_mcap_chain_snapshot <- function(merged_df,
   )
   path <- tryCatch(lab_save_ind_mcap_chain_snapshot(snap, mm), error = function(e) NA_character_)
   list(snapshot = snap, table = built$table, path = path)
+}
+
+#' Independent industry-chain mcap-weighted upside job (all chains).
+#'
+#' Decoupled from Blue Chip page filters (truncate / concepts / N / boards /
+#' methods / quality gates). Samples top `per_chain` mcap names per chain,
+#' evaluates FV upside, builds + saves the default snapshot.
+#'
+#' Pure inputs only (safe for ExtendedTask / future workers).
+lab_im_run_ind_mcap_job <- function(catlg,
+                                    market_mode = "US",
+                                    locale = "zh-TW",
+                                    per_chain = 2L) {
+  mm <- tryCatch(normalize_market_mode(market_mode), error = function(e) "US")
+  tryCatch(set_market_mode(mm), error = function(e) NULL)
+  loc <- tryCatch(normalize_ui_locale(locale), error = function(e) "zh-TW")
+  pc <- suppressWarnings(as.integer(per_chain)[1])
+  if (!is.finite(pc) || pc < 1L) pc <- 2L
+
+  empty_out <- function(reason) {
+    list(
+      ok = FALSE,
+      reason = as.character(reason)[1],
+      snapshot = lab_ind_mcap_chain_snapshot_empty(),
+      table = NULL,
+      n_eval = 0L,
+      n_chains = 0L,
+      path = NA_character_,
+      market_mode = mm,
+      locale = loc
+    )
+  }
+
+  if (!is.data.frame(catlg) || nrow(catlg) < 1L) {
+    return(empty_out("empty_catalog"))
+  }
+  if (!exists("industry_chain_id", mode = "function") ||
+      !exists("lab_industry_chain_picker_choices", mode = "function") ||
+      !exists("lab_screen_tickers_fscore", mode = "function")) {
+    return(empty_out("missing_helpers"))
+  }
+
+  catlg <- catlg
+  if (!"chain_id" %in% names(catlg) ||
+      !any(nzchar(as.character(catlg$chain_id)), na.rm = TRUE)) {
+    catlg$chain_id <- vapply(
+      as.character(catlg$industry_key %||% rep(NA_character_, nrow(catlg))),
+      function(k) tryCatch(industry_chain_id(k), error = function(e) ""),
+      character(1)
+    )
+  }
+  catlg <- tryCatch(lab_attach_market_caps(catlg), error = function(e) catlg)
+  mcap <- suppressWarnings(as.numeric(catlg$market_cap))
+  if (!any(is.finite(mcap) & mcap > 0, na.rm = TRUE)) {
+    return(empty_out("no_market_cap"))
+  }
+
+  chains <- unname(lab_industry_chain_picker_choices(loc))
+  chains <- chains[nzchar(as.character(chains)) & !is.na(chains)]
+  chains <- chains[!vapply(chains, lab_ind_mcap_is_unmapped_chain, logical(1))]
+  if (!length(chains)) return(empty_out("no_chains"))
+
+  pick <- lapply(chains, function(cid) {
+    sub <- catlg[
+      !is.na(catlg$chain_id) & as.character(catlg$chain_id) == as.character(cid) &
+        is.finite(suppressWarnings(as.numeric(catlg$market_cap))) &
+        suppressWarnings(as.numeric(catlg$market_cap)) > 0,
+      ,
+      drop = FALSE
+    ]
+    if (!nrow(sub)) return(NULL)
+    sub <- sub[order(-suppressWarnings(as.numeric(sub$market_cap))), , drop = FALSE]
+    utils::head(sub, pc)
+  })
+  pool <- do.call(rbind, Filter(Negate(is.null), pick))
+  if (is.null(pool) || !is.data.frame(pool) || nrow(pool) < 1L) {
+    return(empty_out("empty_pool"))
+  }
+  pool <- pool[!duplicated(toupper(as.character(pool$ticker))), , drop = FALSE]
+
+  cols <- intersect(c("ticker", "industry_key", "primary"), names(pool))
+  scores <- tryCatch(
+    lab_screen_tickers_fscore(
+      pool[, cols, drop = FALSE],
+      max_n = nrow(pool),
+      progress_cb = NULL
+    ),
+    error = function(e) NULL
+  )
+  if (!is.data.frame(scores) || nrow(scores) < 1L) {
+    return(empty_out("empty_scores"))
+  }
+
+  merged <- lab_merge_catalog_scores(
+    catlg,
+    scores = scores,
+    method_filter = character(0),
+    industry_filter = character(0),
+    eq_only = FALSE,
+    gate_only = FALSE,
+    evaluated_only = TRUE
+  )
+  if (!is.data.frame(merged) || nrow(merged) < 1L) {
+    return(empty_out("empty_merged"))
+  }
+  if (!"market_cap" %in% names(merged) ||
+      !any(is.finite(suppressWarnings(as.numeric(merged$market_cap))), na.rm = TRUE)) {
+    merged <- tryCatch(lab_attach_market_caps(merged), error = function(e) merged)
+  }
+  if ("market_cap" %in% names(scores)) {
+    idx <- match(toupper(merged$ticker), toupper(scores$ticker))
+    hit <- which(is.finite(idx))
+    sc_m <- suppressWarnings(as.numeric(scores$market_cap[idx[hit]]))
+    use <- is.finite(sc_m) & sc_m > 0
+    if (any(use)) merged$market_cap[hit[use]] <- sc_m[use]
+  }
+
+  built <- tryCatch(
+    lab_build_ind_mcap_chain_snapshot(
+      merged,
+      market = mm,
+      eq_only = FALSE,
+      gate_only = FALSE,
+      no_alert = FALSE,
+      locale = loc,
+      universe_df = catlg
+    ),
+    error = function(e) NULL
+  )
+  if (is.null(built) || !is.data.frame(built$snapshot) || nrow(built$snapshot) < 1L) {
+    return(empty_out("build_failed"))
+  }
+
+  list(
+    ok = TRUE,
+    reason = "ok",
+    snapshot = built$snapshot,
+    table = built$table,
+    n_eval = as.integer(nrow(scores)),
+    n_chains = as.integer(nrow(built$snapshot)),
+    path = as.character(built$path %||% NA_character_)[1],
+    market_mode = mm,
+    locale = loc
+  )
 }
 
 #' Models the query filter can unlock (sidebar order).

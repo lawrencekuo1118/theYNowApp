@@ -50,6 +50,10 @@ server <- function(input, output, session) {
   corp_name_logo_colors <- reactiveVal(character(0))
   # Yahoo 公司簡介（Dashboard 概況：sector／HQ／summary…）
   company_profile <- reactiveVal(NULL)
+  # 個股重要日期（Yahoo calendar）＋董監改選／可轉債（MOPS／TPEx）
+  company_key_dates <- reactiveVal(NULL)
+  company_board_election <- reactiveVal(NULL)
+  company_cb_dilution <- reactiveVal(NULL)
   
   # 初始值設為 NULL，避免一開啟 App 就自動執行爬蟲
   current_ticker <- reactiveVal(NULL)
@@ -163,23 +167,39 @@ server <- function(input, output, session) {
   } else {
     NULL
   }
-  # Mirror Blue Chip eval busy onto sidebar 「績優股排行榜」label dots
+  lab_im_ind_mcap_task <- if (isTRUE(.ynow_async_ok)) {
+    tryCatch(
+      {
+        fn <- lab_im_run_ind_mcap_job
+        attr(fn, "ynow_job_name") <- "lab_im_run_ind_mcap_job"
+        .ynow_make_extended_task(fn)
+      },
+      error = function(e) NULL
+    )
+  } else {
+    NULL
+  }
+  # Mirror Blue Chip eval / ind-mcap busy onto sidebar 「績優股排行榜」label dots
   observe({
-    .ynow_set_tab_busy("bluechip", isTRUE(lab_im_eval_busy()))
+    .ynow_set_tab_busy(
+      "bluechip",
+      isTRUE(lab_im_eval_busy()) || isTRUE(lab_im_ind_mcap_busy())
+    )
   })
   observe({
     .ynow_set_tab_busy("lab_notes", isTRUE(lab_cluster_busy()))
   })
-  # Industry-chain mcap rank: bundled/default snapshot; refreshed by「更新排名」
+  # Industry-chain mcap rank: bundled/default snapshot; independent all-chains job
   lab_im_ind_mcap_snap <- reactiveVal({
     tryCatch(
       lab_load_ind_mcap_chain_snapshot("US"),
       error = function(e) lab_ind_mcap_chain_snapshot_empty()
     )
   })
-  lab_im_ind_mcap_refresh_armed <- reactiveVal(FALSE)
-  # Armed once when sidebar auto-start schedules deferred eval (avoids double
-  # schedule when after_mount bumps lazy_mount_nonce).
+  lab_im_ind_mcap_busy <- reactiveVal(FALSE)
+  # Armed once per market visit when Blue Chip tab auto-starts ind-mcap job.
+  lab_im_ind_mcap_auto_armed <- reactiveVal(FALSE)
+  # Armed once when sidebar Shared Search auto-start schedules deferred eval.
   lab_im_auto_start_armed <- reactiveVal(FALSE)
   lab_cluster_result <- reactiveVal(NULL)
   # Destroy Plotly/DT via renderUI idle placeholders on market switch
@@ -675,7 +695,12 @@ server <- function(input, output, session) {
     input, output, session,
     builders = list(
       macro_market = function() .ynow_page_ui_macro_market(),
-      bluechip = function() .ynow_page_ui_bluechip(),
+      bluechip = function() {
+        .ynow_page_ui_bluechip(
+          market_mode = isolate(market_mode()),
+          locale = isolate(ui_locale())
+        )
+      },
       hfv = function() .ynow_page_ui_hfv(),
       lab_notes = function() .ynow_page_ui_lab_notes(),
       testing = function() .ynow_page_ui_testing(),
@@ -818,6 +843,50 @@ server <- function(input, output, session) {
     .push_ui_locale(loc, sync_picker = TRUE)
   }, ignoreInit = TRUE)
 
+  # Push Blue Chip concept-group choices for the active market (US ≠ TW).
+  .lab_im_push_concept_choices <- function(mode, locale = NULL, clear_selected = FALSE) {
+    mm <- tryCatch(normalize_market_mode(mode), error = function(e) "US")
+    loc <- tryCatch({
+      raw_loc <- locale
+      if (is.null(raw_loc) || !nzchar(as.character(raw_loc)[1])) {
+        raw_loc <- isolate(ui_locale())
+      }
+      normalize_ui_locale(raw_loc)
+    }, error = function(e) "zh-TW")
+    if (!exists("lab_concept_group_choices", mode = "function")) return(invisible(NULL))
+    concept_choices <- tryCatch(
+      lab_concept_group_choices(mm, loc),
+      error = function(e) character(0)
+    )
+    concept_cur <- if (isTRUE(clear_selected)) {
+      character(0)
+    } else {
+      cur <- tryCatch(
+        as.character(isolate(input$lab_im_concepts) %||% character(0)),
+        error = function(e) character(0)
+      )
+      cur[cur %in% unname(concept_choices)]
+    }
+    tryCatch(
+      updateSelectizeInput(
+        session,
+        "lab_im_concepts",
+        choices = concept_choices,
+        selected = concept_cur,
+        server = FALSE,
+        options = list(
+          placeholder = tryCatch(
+            ui_str("lab_im_concepts_placeholder", loc),
+            error = function(e) "Select one or more concept groups…"
+          ),
+          plugins = list("remove_button")
+        )
+      ),
+      error = function(e) NULL
+    )
+    invisible(NULL)
+  }
+
   observeEvent(input$market_mode_pick, {
     mode <- normalize_market_mode(input$market_mode_pick)
     prev <- market_mode()
@@ -825,6 +894,11 @@ server <- function(input, output, session) {
     market_mode(mode)
     set_market_mode(mode)
     prof <- market_profile(mode)
+
+    # Concept groups are market-scoped — refresh if Blue Chip is already mounted.
+    if (isTRUE(tryCatch(.ynow_lazy_tab_ctrl$mounted("bluechip"), error = function(e) FALSE))) {
+      .lab_im_push_concept_choices(mode, clear_selected = TRUE)
+    }
 
     # 市場切換：不覆寫使用者語言；僅刷新 chrome 的 market class／美股｜台股按鈕
     .push_ui_locale(isolate(ui_locale()), sync_picker = FALSE)
@@ -858,6 +932,7 @@ server <- function(input, output, session) {
     sc_datalist_choices(ticker_presets_for_market(mode))
     lab_im_scores(NULL)
     lab_im_auto_start_armed(FALSE)
+    lab_im_ind_mcap_auto_armed(FALSE)
     .clear_lab_cluster_result()
     lab_im_catalog_nonce(isolate(lab_im_catalog_nonce()) + 1L)
 
@@ -900,6 +975,9 @@ server <- function(input, output, session) {
     corp_name_logo_colors(character(0))
     corp_industry_text("等待搜尋...")
     company_profile(NULL)
+    company_key_dates(NULL)
+    company_board_election(NULL)
+    company_cb_dilution(NULL)
 
     # SEC 頁籤：僅美股
     if (isTRUE(prof$show_sec_lab)) {
@@ -1096,6 +1174,9 @@ server <- function(input, output, session) {
         tw_tpex_fs_fallback(FALSE)
         corp_name_logo_colors(character(0))
         company_profile(NULL)
+        company_key_dates(NULL)
+        company_board_election(NULL)
+        company_cb_dilution(NULL)
 
         # 興櫃：宇宙板別（ESB）；可估但 Summary β／Blue Chip 有限制
         if (identical(market_mode(), "TW") &&
@@ -1196,6 +1277,49 @@ server <- function(input, output, session) {
             city = as.character(ind_info$city %||% "")[1],
             exchange = as.character(ind_info$exchange %||% "")[1],
             employees = suppressWarnings(as.numeric(ind_info$employees %||% NA_real_))
+          ))
+        }
+
+        # Key dates (Yahoo) + TW board / CB open data — tied to Search ticker
+        kd <- tryCatch(
+          cached_fetch_company_key_dates(stock_code),
+          error = function(e) NULL
+        )
+        company_key_dates(kd)
+        mode_now <- tryCatch(
+          normalize_market_mode(market_mode()),
+          error = function(e) "US"
+        )
+        if (identical(mode_now, "TW")) {
+          company_board_election(tryCatch(
+            cached_fetch_tw_board_election(stock_code),
+            error = function(e) NULL
+          ))
+          fx_now <- tryCatch(
+            suppressWarnings(as.numeric(fx_usd_twd())[1]),
+            error = function(e) NA_real_
+          )
+          sh_now <- suppressWarnings(as.numeric(kd$shares_outstanding %||% NA_real_)[1])
+          company_cb_dilution(tryCatch(
+            fetch_tw_convertible_bonds_live(
+              stock_code,
+              shares_out = sh_now,
+              fx_usd_twd = fx_now
+            ),
+            error = function(e) NULL
+          ))
+        } else {
+          company_board_election(tryCatch(
+            fetch_us_board_election_stub(stock_code),
+            error = function(e) NULL
+          ))
+          company_cb_dilution(tryCatch(
+            fetch_us_cb_soft(
+              stock_code,
+              shares_out = suppressWarnings(as.numeric(kd$shares_outstanding %||% NA_real_)[1]),
+              shares_diluted = suppressWarnings(as.numeric(kd$shares_diluted %||% NA_real_)[1])
+            ),
+            error = function(e) NULL
           ))
         }
         # Always sync Dashboard「目前產業標準快覽」to the searched ticker's industry
@@ -1635,13 +1759,25 @@ server <- function(input, output, session) {
     prof <- company_profile()
     title <- ui_str("company_overview_title", loc)
     source_lab <- ui_str("company_overview_source", loc)
+    mode_ov <- tryCatch(
+      normalize_market_mode(market_mode()),
+      error = function(e) "US"
+    )
+    date_chips <- tryCatch(
+      .ynow_key_date_chips_ui(company_key_dates(), market_mode = mode_ov, loc = loc),
+      error = function(e) NULL
+    )
 
     if (is.null(prof) || !is.list(prof)) {
       return(tags$div(
         class = "ynow-company-overview",
         tags$div(
           class = "ynow-company-overview-head",
-          tags$h3(class = "ynow-company-overview-title", title),
+          tags$div(
+            class = "ynow-company-overview-head-main",
+            tags$h3(class = "ynow-company-overview-title", title),
+            date_chips
+          ),
           tags$p(class = "ynow-company-overview-source", source_lab)
         ),
         tags$p(
@@ -1728,11 +1864,71 @@ server <- function(input, output, session) {
       class = "ynow-company-overview",
       tags$div(
         class = "ynow-company-overview-head",
-        tags$h3(class = "ynow-company-overview-title", title),
+        tags$div(
+          class = "ynow-company-overview-head-main",
+          tags$h3(class = "ynow-company-overview-title", title),
+          date_chips
+        ),
         tags$p(class = "ynow-company-overview-source", source_lab)
       ),
       if (length(chips)) tags$div(class = "ynow-company-overview-meta", chips),
       summary_node
+    )
+  })
+
+  # 董監改選／可轉債稀釋（Company → FINANCIAL REPORT tab）
+  output$corp_events_ui <- renderUI({
+    loc <- tryCatch(ui_locale(), error = function(e) "en")
+    loc <- normalize_ui_locale(loc)
+    mode_ce <- tryCatch(
+      normalize_market_mode(market_mode()),
+      error = function(e) "US"
+    )
+    tk <- tryCatch(current_ticker(), error = function(e) NULL)
+    board <- company_board_election()
+    cb <- company_cb_dilution()
+    # Recompute TW CB dilution when bridge shares become available after FS load
+    if (identical(mode_ce, "TW") && !is.null(tk) && nzchar(as.character(tk)[1])) {
+      sh_bridge <- tryCatch({
+        sb <- .shared_bridge()
+        suppressWarnings(as.numeric(sb$shares)[1])
+      }, error = function(e) NA_real_)
+      kd <- company_key_dates()
+      sh_yahoo <- suppressWarnings(as.numeric(kd$shares_outstanding %||% NA_real_)[1])
+      sh_use <- if (is.finite(sh_bridge) && sh_bridge > 0) sh_bridge else sh_yahoo
+      fx_now <- tryCatch(
+        suppressWarnings(as.numeric(fx_usd_twd())[1]),
+        error = function(e) NA_real_
+      )
+      need_refresh <- is.null(cb) ||
+        !isTRUE(cb$has_data) ||
+        identical(cb$note, "shares_missing") ||
+        (is.finite(sh_use) && is.finite(cb$shares_out) &&
+           abs(sh_use - cb$shares_out) / max(sh_use, 1) > 0.02) ||
+        (is.finite(sh_use) && (!is.finite(cb$shares_out) || cb$shares_out <= 0))
+      if (isTRUE(need_refresh)) {
+        cb2 <- tryCatch(
+          fetch_tw_convertible_bonds_live(tk, shares_out = sh_use, fx_usd_twd = fx_now),
+          error = function(e) cb
+        )
+        if (!is.null(cb2)) {
+          company_cb_dilution(cb2)
+          cb <- cb2
+        }
+      }
+    }
+    if (is.null(tk) || !nzchar(as.character(tk)[1])) {
+      return(tags$div(
+        class = "ynow-corp-events",
+        tags$p(class = "ynow-corp-events-waiting", ui_str("corp_events_waiting", loc))
+      ))
+    }
+    tagList(
+      tags$p(
+        style = "margin:0 0 12px 0; color:#666; font-size:13px; line-height:1.5;",
+        ui_str("corp_events_intro", loc)
+      ),
+      .ynow_corp_events_panel_ui(board, cb, market_mode = mode_ce, loc = loc)
     )
   })
 
@@ -9513,6 +9709,55 @@ server <- function(input, output, session) {
             if(is.null(dcf_value_result())) "N/A" else format_dollar_abbr(dcf_value_result()), 
             icon = icon("building"), color = "purple", fill = TRUE) 
   })
+
+  # Core explainability: Why this DCF Fair Value (audit snap bridge under KPI)
+  output$dcf_value_why <- renderUI({
+    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+    title <- tryCatch(
+      ui_str("explain_dcf_why_title", loc),
+      error = function(e) if (identical(loc, "en")) {
+        "Why this Fair Value (DCF)"
+      } else {
+        "為何是這個合理價（DCF）"
+      }
+    )
+    empty_msg <- tryCatch(
+      ui_str("explain_dcf_why_empty", loc),
+      error = function(e) if (identical(loc, "en")) {
+        "Run Search / Calculate DCF to see the formula path, PV bridge, and Terminal Value drivers."
+      } else {
+        "請先搜尋／試算 DCF，即可看到公式路徑、現值橋接與終值驅動因子。"
+      }
+    )
+    foot <- tryCatch(
+      ui_str("explain_dcf_why_foot", loc),
+      error = function(e) if (identical(loc, "en")) {
+        "Explainability is a core surface: this panel mirrors the live DCF audit snapshot."
+      } else {
+        "可解釋性為核心表面：本區塊對應即時 DCF 稽核快照，非附註。"
+      }
+    )
+    snap <- tryCatch(dcf_audit_snap(), error = function(e) NULL)
+    claim <- as.character(input$dcf_claim %||% "fcff")[1]
+    mode <- as.character(input$dcf_mode %||% "gordon")[1]
+    g_pct <- suppressWarnings(as.numeric(input$sgr)[1])
+    rows <- if (exists("ynow_dcf_why_rows", mode = "function")) {
+      ynow_dcf_why_rows(
+        snap, claim = claim, mode = mode, g_pct = g_pct, locale = loc
+      )
+    } else {
+      NULL
+    }
+    if (!exists("ynow_value_why_panel", mode = "function")) {
+      return(tags$p(style = "color:#888;", empty_msg))
+    }
+    ynow_value_why_panel(
+      title = title,
+      rows = rows,
+      empty_message = empty_msg,
+      footnote = foot
+    )
+  })
   
   output$vtxt_dcf_setting_details <- renderUI({
     req(input$dcf_mode, input$years)
@@ -13360,7 +13605,11 @@ server <- function(input, output, session) {
       error = function(e) NULL
     )
     lab_quality_snap_nonce(isolate(lab_quality_snap_nonce()) + 1L)
-    display_n <- suppressWarnings(as.integer(out$display_n)[1])
+    display_n <- if (exists("lab_coerce_im_job_n", mode = "function")) {
+      lab_coerce_im_job_n(out$display_n)
+    } else {
+      suppressWarnings(as.numeric(out$display_n)[1])
+    }
     fs_pass <- suppressWarnings(as.numeric(scores$f_score))
     pass_idx <- which(is.finite(fs_pass) & fs_pass >= 7)
     n_q <- length(pass_idx)
@@ -13802,7 +14051,7 @@ server <- function(input, output, session) {
   lab_im_merged <- reactive({
     catlg <- lab_im_catalog()
     req(is.data.frame(catlg), nrow(catlg) > 0)
-    lab_merge_catalog_scores(
+    out <- lab_merge_catalog_scores(
       catlg,
       scores = lab_im_scores(),
       method_filter = input$lab_im_methods,
@@ -13811,6 +14060,14 @@ server <- function(input, output, session) {
       gate_only = FALSE,
       evaluated_only = TRUE
     )
+    rank_mode <- lab_normalize_pool_rank_mode(input$lab_im_pool_rank %||% "mcap")
+    concept_keys <- as.character(input$lab_im_concepts %||% character(0))
+    if (identical(rank_mode, "concept") && length(concept_keys) > 0L &&
+        exists("lab_filter_df_by_concept_keys", mode = "function")) {
+      mm <- tryCatch(normalize_market_mode(market_mode()), error = function(e) "US")
+      out <- lab_filter_df_by_concept_keys(out, concept_keys, market_mode = mm)
+    }
+    out
   })
 
   output$lab_im_leader_note <- renderUI({
@@ -13919,20 +14176,7 @@ server <- function(input, output, session) {
       if (!max_n_cur %in% unname(max_n_choices)) max_n_cur <- "25"
       updateSelectInput(session, "lab_im_max_n", choices = max_n_choices, selected = max_n_cur)
 
-      concept_choices <- lab_concept_group_choices(mm2, loc2)
-      concept_cur <- isolate(input$lab_im_concepts)
-      concept_cur <- as.character(concept_cur %||% character(0))
-      concept_cur <- concept_cur[concept_cur %in% unname(concept_choices)]
-      updateSelectizeInput(
-        session,
-        "lab_im_concepts",
-        choices = concept_choices,
-        selected = concept_cur,
-        options = list(
-          placeholder = ui_str("lab_im_concepts_placeholder", loc2),
-          plugins = list("remove_button")
-        )
-      )
+      .lab_im_push_concept_choices(mm2, locale = loc2, clear_selected = FALSE)
     })
   })
 
@@ -13943,110 +14187,190 @@ server <- function(input, output, session) {
     }
   }, ignoreInit = FALSE)
 
-  # Dedicated industry-chain mcap-weighted board (default snapshot; Refresh ranking)
-  .lab_im_persist_ind_mcap_from_scores <- function(scores, market = "US", locale = "zh-TW") {
-    if (is.null(scores) || !is.data.frame(scores) || nrow(scores) < 1L) return(NULL)
-    catlg <- tryCatch(lab_im_catalog(), error = function(e) NULL)
-    lb_src <- tryCatch({
-      if (is.data.frame(catlg) && nrow(catlg) > 0) {
-        lab_merge_catalog_scores(
-          catlg,
-          scores = scores,
-          method_filter = character(0),
-          industry_filter = character(0),
-          eq_only = FALSE,
-          gate_only = FALSE,
-          evaluated_only = TRUE
+  # Dedicated industry-chain mcap-weighted board — independent all-chains job
+  # (decoupled from Search / page filters). Snapshot-only UI; bundled snap while busy.
+  .lab_im_apply_ind_mcap_result <- function(out, notify = TRUE) {
+    loc <- tryCatch(
+      normalize_ui_locale(out$locale %||% isolate(ui_locale())),
+      error = function(e) "zh-TW"
+    )
+    if (is.null(out) || !is.list(out) || !isTRUE(out$ok) ||
+        !is.data.frame(out$snapshot) || nrow(out$snapshot) < 1L) {
+      if (isTRUE(notify)) {
+        showNotification(
+          paste0(
+            "Industry-chain ranking failed",
+            if (nzchar(as.character(out$reason %||% "")[1]))
+              paste0(": ", as.character(out$reason)[1]) else "."
+          ),
+          type = "warning",
+          duration = 8
         )
-      } else {
-        scores
       }
-    }, error = function(e) scores)
-    gate_on <- isTRUE(isolate(input$lab_im_gate_only))
-    eq_on <- isTRUE(isolate(input$lab_im_eq_only))
-    no_alert_on <- isTRUE(isolate(input$lab_im_no_alert))
-    built <- tryCatch(
-      lab_build_ind_mcap_chain_snapshot(
-        lb_src,
-        market = market,
-        eq_only = eq_on,
-        gate_only = gate_on,
-        no_alert = no_alert_on,
-        locale = locale,
-        # 總市值 = 全宇宙該產業鏈個股（非評估樣本／Top-N）
-        universe_df = catlg
+      return(invisible(FALSE))
+    }
+    new_snap <- out$snapshot
+    new_has_upside <- any(
+      is.finite(suppressWarnings(as.numeric(new_snap$wavg_cagr))),
+      na.rm = TRUE
+    )
+    if (!isTRUE(new_has_upside)) {
+      old <- tryCatch(isolate(lab_im_ind_mcap_snap()), error = function(e) NULL)
+      old_has_upside <- is.data.frame(old) && nrow(old) > 0L &&
+        any(is.finite(suppressWarnings(as.numeric(old$wavg_cagr))), na.rm = TRUE)
+      if (isTRUE(old_has_upside)) {
+        # Keep prior heatmap when refresh cannot compute upside (e.g. offline Yahoo).
+        if (isTRUE(notify)) {
+          showNotification(
+            tryCatch(
+              ui_str("lab_im_ind_mcap_refresh_kept_prior", loc),
+              error = function(e) if (identical(loc, "en")) {
+                "Industry-chain refresh finished without upside samples; kept prior ranking."
+              } else {
+                "產業鏈刷新未取得估值漲幅樣本，仍保留先前排名。"
+              }
+            ),
+            type = "warning",
+            duration = 7
+          )
+        }
+        return(invisible(TRUE))
+      }
+    }
+    lab_im_ind_mcap_snap(new_snap)
+    if (isTRUE(notify)) {
+      n_ch <- as.integer(out$n_chains %||% nrow(out$snapshot))
+      showNotification(
+        tryCatch(
+          sprintf(ui_str("lab_im_ind_mcap_refresh_done", loc), n_ch),
+          error = function(e) sprintf("已更新產業鏈排名（%d 條）。", n_ch)
+        ),
+        type = "message",
+        duration = 6
+      )
+    }
+    invisible(TRUE)
+  }
+
+  .lab_im_start_ind_mcap_job <- function(reason = "manual", notify_busy = TRUE) {
+    loc <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "zh-TW")
+    if (isTRUE(isolate(lab_im_ind_mcap_busy()))) {
+      if (isTRUE(notify_busy)) {
+        showNotification(
+          tryCatch(
+            ui_str("lab_im_ind_mcap_refresh_busy", loc),
+            error = function(e) "產業鏈排名更新進行中…"
+          ),
+          type = "warning",
+          duration = 5
+        )
+      }
+      return(invisible(FALSE))
+    }
+    if (!is.null(lab_im_ind_mcap_task)) {
+      st <- tryCatch(lab_im_ind_mcap_task$status(), error = function(e) "error")
+      if (identical(st, "running")) {
+        if (isTRUE(notify_busy)) {
+          showNotification(
+            tryCatch(
+              ui_str("lab_im_ind_mcap_refresh_busy", loc),
+              error = function(e) "產業鏈排名更新進行中…"
+            ),
+            type = "warning",
+            duration = 5
+          )
+        }
+        return(invisible(FALSE))
+      }
+    }
+    mm <- tryCatch(normalize_market_mode(isolate(market_mode())), error = function(e) "US")
+    # Full market catalog — ignore page boards / industry / methods filters.
+    catlg <- tryCatch(
+      lab_build_industry_method_catalog(
+        market_mode = mm,
+        boards = c("TWSE", "TPEX")
       ),
       error = function(e) NULL
     )
-    if (is.null(built) || !is.data.frame(built$snapshot)) return(NULL)
-    lab_im_ind_mcap_snap(built$snapshot)
-    built
+    if (!is.data.frame(catlg) || nrow(catlg) < 1L) {
+      catlg <- tryCatch(isolate(lab_im_catalog()), error = function(e) NULL)
+    }
+    if (!is.data.frame(catlg) || nrow(catlg) < 1L) {
+      return(invisible(FALSE))
+    }
+    lab_im_ind_mcap_busy(TRUE)
+    if (!is.null(lab_im_ind_mcap_task)) {
+      tryCatch(
+        lab_im_ind_mcap_task$invoke(
+          catlg = catlg,
+          market_mode = mm,
+          locale = loc,
+          per_chain = 2L
+        ),
+        error = function(e) {
+          lab_im_ind_mcap_busy(FALSE)
+          showNotification(
+            paste("Industry-chain ranking start failed:", conditionMessage(e)),
+            type = "error",
+            duration = 8
+          )
+        }
+      )
+      return(invisible(TRUE))
+    }
+    # Sync fallback when ExtendedTask unavailable
+    on.exit(tryCatch(lab_im_ind_mcap_busy(FALSE), error = function(e) NULL), add = TRUE)
+    out <- tryCatch(
+      lab_im_run_ind_mcap_job(
+        catlg = catlg,
+        market_mode = mm,
+        locale = loc,
+        per_chain = 2L
+      ),
+      error = function(e) list(ok = FALSE, reason = conditionMessage(e))
+    )
+    lab_im_ind_mcap_busy(FALSE)
+    .lab_im_apply_ind_mcap_result(out, notify = TRUE)
+    invisible(TRUE)
+  }
+
+  if (!is.null(lab_im_ind_mcap_task)) {
+    observeEvent(lab_im_ind_mcap_task$status(), {
+      st <- tryCatch(lab_im_ind_mcap_task$status(), error = function(e) "initial")
+      if (identical(st, "error")) {
+        tryCatch(lab_im_ind_mcap_busy(FALSE), error = function(e) NULL)
+        err <- tryCatch(lab_im_ind_mcap_task$result(), error = function(e) conditionMessage(e))
+        if (is.character(err) && nzchar(err[1])) {
+          tryCatch(
+            showNotification(
+              paste("Industry-chain ranking failed:", err[1]),
+              type = "error",
+              duration = 8
+            ),
+            error = function(e) NULL
+          )
+        }
+        return()
+      }
+      if (!identical(st, "success")) return()
+      out <- tryCatch(lab_im_ind_mcap_task$result(), error = function(e) NULL)
+      tryCatch(lab_im_ind_mcap_busy(FALSE), error = function(e) NULL)
+      tryCatch(
+        .lab_im_apply_ind_mcap_result(out, notify = TRUE),
+        error = function(e) NULL
+      )
+    }, ignoreInit = TRUE)
   }
 
   .lab_im_ind_mcap_board <- reactive({
     loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
-    scores <- lab_im_scores()
     snap <- lab_im_ind_mcap_snap()
+    busy <- isTRUE(lab_im_ind_mcap_busy())
     n_chains_all <- tryCatch({
       length(unname(lab_industry_chain_picker_choices(loc)))
     }, error = function(e) 0L)
 
-    # Live recompute when session has scores (keeps gates reactive)
-    if (is.data.frame(scores) && nrow(scores) > 0L) {
-      catlg <- tryCatch(lab_im_catalog(), error = function(e) NULL)
-      lb_src <- tryCatch({
-        if (is.data.frame(catlg) && nrow(catlg) > 0) {
-          lab_merge_catalog_scores(
-            catlg,
-            scores = scores,
-            method_filter = input$lab_im_methods,
-            industry_filter = character(0),
-            eq_only = FALSE,
-            gate_only = FALSE,
-            evaluated_only = TRUE
-          )
-        } else {
-          lab_im_merged()
-        }
-      }, error = function(e) NULL)
-      if (is.data.frame(lb_src) && nrow(lb_src) > 0L) {
-        gate_on <- isTRUE(input$lab_im_gate_only)
-        eq_on <- isTRUE(input$lab_im_eq_only)
-        no_alert_on <- isTRUE(input$lab_im_no_alert)
-        pool <- tryCatch(
-          lab_leaderboard_pool(
-            lb_src, eq_only = eq_on, gate_only = gate_on, no_alert = no_alert_on
-          ),
-          error = function(e) NULL
-        )
-        built <- tryCatch(
-          lab_industry_chain_mcap_upside_leaderboard(
-            lb_src,
-            eq_only = eq_on,
-            gate_only = gate_on,
-            no_alert = no_alert_on,
-            locale = loc,
-            include_all_chains = TRUE,
-            universe_df = catlg
-          ),
-          error = function(e) NULL
-        )
-        tbl <- if (!is.null(built)) built$table else NULL
-        return(list(
-          table = tbl,
-          n_show = if (is.data.frame(tbl)) nrow(tbl) else 0L,
-          n_chains_all = as.integer(n_chains_all),
-          n_qual = if (is.data.frame(pool)) nrow(pool) else 0L,
-          n_eval = nrow(lb_src),
-          waiting = FALSE,
-          from_snapshot = FALSE,
-          snapshot_at = NA_character_,
-          loc = loc
-        ))
-      }
-    }
-
-    # Default: bundled / prior「更新排名」snapshot (all chains sorted)
+    # Snapshot-only board (independent of Search scores / page gates / methods).
     if (is.data.frame(snap) && nrow(snap) > 0L) {
       tbl <- tryCatch(
         lab_format_ind_mcap_chain_table(snap, loc),
@@ -14064,6 +14388,7 @@ server <- function(input, output, session) {
         n_eval = NA_integer_,
         waiting = FALSE,
         from_snapshot = TRUE,
+        busy = busy,
         snapshot_at = snap_at,
         loc = loc
       ))
@@ -14077,12 +14402,13 @@ server <- function(input, output, session) {
       n_eval = 0L,
       waiting = TRUE,
       from_snapshot = FALSE,
+      busy = busy,
       snapshot_at = NA_character_,
       loc = loc
     )
   })
 
-  # Reload default snapshot when market switches
+  # Reload default snapshot when market switches (arm reset elsewhere)
   observeEvent(market_mode(), {
     mm <- tryCatch(normalize_market_mode(market_mode()), error = function(e) "US")
     snap <- tryCatch(
@@ -14092,49 +14418,47 @@ server <- function(input, output, session) {
     lab_im_ind_mcap_snap(snap)
   }, ignoreInit = TRUE)
 
-  # After a Blue Chip search completes, persist chain ranking as the new default
-  observeEvent(lab_im_scores(), {
-    scores <- lab_im_scores()
-    if (is.null(scores) || !is.data.frame(scores) || nrow(scores) < 1L) return()
-    mm <- tryCatch(normalize_market_mode(market_mode()), error = function(e) "US")
-    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
-    built <- .lab_im_persist_ind_mcap_from_scores(scores, market = mm, locale = loc)
-    if (isTRUE(isolate(lab_im_ind_mcap_refresh_armed()))) {
-      lab_im_ind_mcap_refresh_armed(FALSE)
-      n_ch <- if (!is.null(built) && is.data.frame(built$snapshot)) nrow(built$snapshot) else 0L
-      showNotification(
-        tryCatch(
-          sprintf(ui_str("lab_im_ind_mcap_refresh_done", loc), as.integer(n_ch)),
-          error = function(e) sprintf("已更新產業鏈排名（%d 條）。", as.integer(n_ch))
-        ),
-        type = "message",
-        duration = 6
+  # Opening Blue Chip tab auto-starts independent all-chains ind-mcap job (once / market).
+  observeEvent(
+    list(input$sidebar_tabs, lazy_mount_nonce()),
+    {
+      tab <- as.character(input$sidebar_tabs %||% "")[1]
+      if (!identical(tab, "bluechip")) return()
+      mounted <- tryCatch(
+        isTRUE(.ynow_lazy_tab_ctrl$mounted("bluechip")),
+        error = function(e) FALSE
       )
-    }
-  }, ignoreInit = TRUE)
+      if (!isTRUE(mounted)) return()
+      if (isTRUE(isolate(lab_im_ind_mcap_auto_armed()))) return()
+      if (isTRUE(isolate(lab_im_ind_mcap_busy()))) return()
+      lab_im_ind_mcap_auto_armed(TRUE)
+      session$onFlushed(function() {
+        start_job <- function() {
+          if (!identical(as.character(isolate(input$sidebar_tabs) %||% "")[1], "bluechip")) {
+            tryCatch(lab_im_ind_mcap_auto_armed(FALSE), error = function(e) NULL)
+            return()
+          }
+          .lab_im_start_ind_mcap_job(reason = "tab_enter", notify_busy = FALSE)
+        }
+        if (requireNamespace("later", quietly = TRUE)) {
+          later::later(start_job, delay = 0.05)
+        } else {
+          start_job()
+        }
+      }, once = TRUE)
+    },
+    ignoreInit = TRUE
+  )
 
   observeEvent(input$lab_im_refresh_ind_mcap, {
-    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
-    if (isTRUE(isolate(lab_im_eval_busy())) || isTRUE(isolate(lab_im_universe_busy()))) {
-      showNotification(
-        tryCatch(
-          ui_str("lab_im_ind_mcap_refresh_busy", loc),
-          error = function(e) "產業鏈排名更新進行中…"
-        ),
-        type = "warning",
-        duration = 5
-      )
-      return()
-    }
-    # Always re-run the shared Blue Chip evaluator (latest scores → new default snapshot)
-    lab_im_ind_mcap_refresh_armed(TRUE)
-    lab_im_run_pulse(isolate(as.integer(lab_im_run_pulse()) %||% 0L) + 1L)
+    .lab_im_start_ind_mcap_job(reason = "refresh_button", notify_busy = TRUE)
   })
 
   output$lab_im_ind_mcap_status <- renderUI({
     board <- .lab_im_ind_mcap_board()
     loc <- board$loc %||% "zh-TW"
-    if (isTRUE(board$waiting)) {
+    busy <- isTRUE(board$busy) || isTRUE(lab_im_ind_mcap_busy())
+    if (isTRUE(board$waiting) && !busy) {
       return(tags$p(
         style = "color:#888; font-size:12.5px; margin:0 0 8px 0;",
         tryCatch(ui_str("lab_im_ind_mcap_waiting", loc),
@@ -14161,38 +14485,40 @@ server <- function(input, output, session) {
           as.integer(board$n_show), at_bit
         )
       )
+      if (busy) {
+        busy_txt <- tryCatch(
+          ui_str("lab_im_ind_mcap_refresh_busy", loc),
+          error = function(e) "產業鏈排名更新進行中…"
+        )
+        txt <- paste0(txt, " ", busy_txt)
+      }
       return(tags$p(style = "color:#555; font-size:12.5px; margin:0 0 8px 0;", txt))
     }
-    if (!is.finite(board$n_show) || board$n_show < 1L) {
-      txt <- tryCatch(
-        sprintf(
-          ui_str("lab_im_ind_mcap_empty", loc),
-          as.integer(board$n_qual %||% 0L), as.integer(board$n_eval %||% 0L)
-        ),
-        error = function(e) sprintf(
-          "尚無產業鏈列可顯示（合格檔 %d／已評估 %d）。",
-          as.integer(board$n_qual %||% 0L), as.integer(board$n_eval %||% 0L)
+    if (busy) {
+      return(tags$p(
+        style = "color:#555; font-size:12.5px; margin:0 0 8px 0;",
+        tryCatch(
+          ui_str("lab_im_ind_mcap_refresh_busy", loc),
+          error = function(e) "產業鏈排名更新進行中…"
         )
-      )
-      return(tags$p(style = "color:#888; font-size:12.5px; margin:0 0 8px 0;", txt))
+      ))
     }
-    txt <- tryCatch(
-      sprintf(
-        ui_str("lab_im_ind_mcap_status", loc),
-        as.integer(board$n_show),
-        as.integer(board$n_chains_all %||% board$n_show),
-        as.integer(board$n_qual %||% 0L),
-        as.integer(board$n_eval %||% 0L)
-      ),
-      error = function(e) sprintf(
-        "顯示 %d／%d 條產業鏈（合格檔 %d／已評估 %d）。",
-        as.integer(board$n_show),
-        as.integer(board$n_chains_all %||% board$n_show),
-        as.integer(board$n_qual %||% 0L),
-        as.integer(board$n_eval %||% 0L)
-      )
+    tags$p(
+      style = "color:#888; font-size:12.5px; margin:0 0 8px 0;",
+      tryCatch(ui_str("lab_im_ind_mcap_waiting", loc),
+               error = function(e) "尚無預設排名。開啟績優股排行榜會自動計算，或按「更新排名」。")
     )
-    tags$p(style = "color:#555; font-size:12.5px; margin:0 0 8px 0;", txt)
+  })
+
+  output$lab_im_ind_mcap_treemap <- plotly::renderPlotly({
+    board <- .lab_im_ind_mcap_board()
+    loc <- board$loc %||% "zh-TW"
+    mm <- tryCatch(normalize_market_mode(market_mode()), error = function(e) "US")
+    snap <- lab_im_ind_mcap_snap()
+    if (isTRUE(board$waiting) || is.null(snap) || !is.data.frame(snap) || nrow(snap) < 1L) {
+      snap <- lab_ind_mcap_chain_snapshot_empty()
+    }
+    lab_ind_mcap_treemap_plotly(snap, market = mm, locale = loc)
   })
 
   output$lab_im_ind_mcap_table <- DT::renderDT({
@@ -14201,7 +14527,7 @@ server <- function(input, output, session) {
     msg_col <- if (identical(loc, "en")) "Message" else "訊息"
     if (isTRUE(board$waiting)) {
       msg <- tryCatch(ui_str("lab_im_ind_mcap_waiting", loc),
-                      error = function(e) "尚無預設排名。請按「更新排名」。")
+                      error = function(e) "尚無預設排名。開啟績優股排行榜會自動計算，或按「更新排名」。")
       return(ynow_sortable_datatable(
         stats::setNames(data.frame(msg, stringsAsFactors = FALSE), msg_col)
       ))
@@ -14226,6 +14552,8 @@ server <- function(input, output, session) {
     loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
     msg_col <- if (identical(loc, "en")) "Message" else "訊息"
     scores <- lab_im_scores()
+    rank_mode_lb <- lab_normalize_pool_rank_mode(input$lab_im_pool_rank %||% "mcap")
+    concept_keys_lb <- as.character(input$lab_im_concepts %||% character(0))
     if (is.null(scores) || !is.data.frame(scores) || nrow(scores) == 0) {
       msg <- tryCatch(ui_str("lab_im_lb_none", loc),
                       error = function(e) "（尚無績優排行 — 請先按「搜尋績優股」）")
@@ -14278,6 +14606,11 @@ server <- function(input, output, session) {
       }
     } else {
       ind_filter <- as.character(lab_im_industry_filter() %||% character(0))
+    }
+    if (identical(rank_mode_lb, "concept") && length(concept_keys_lb) > 0L &&
+        exists("lab_filter_df_by_concept_keys", mode = "function")) {
+      mm_lb <- tryCatch(normalize_market_mode(market_mode()), error = function(e) "US")
+      lb_src <- lab_filter_df_by_concept_keys(lb_src, concept_keys_lb, market_mode = mm_lb)
     }
     lb <- lab_quality_leaderboard(
       lb_src,
@@ -14445,7 +14778,16 @@ server <- function(input, output, session) {
       gate_only = FALSE,
       evaluated_only = TRUE
     )
+    rank_mode_dt <- lab_normalize_pool_rank_mode(input$lab_im_pool_rank %||% "mcap")
+    concept_keys_dt <- as.character(input$lab_im_concepts %||% character(0))
+    if (identical(rank_mode_dt, "concept") && length(concept_keys_dt) > 0L &&
+        exists("lab_filter_df_by_concept_keys", mode = "function")) {
+      mm_dt <- tryCatch(normalize_market_mode(market_mode()), error = function(e) "US")
+      merged <- lab_filter_df_by_concept_keys(merged, concept_keys_dt, market_mode = mm_dt)
+    }
     display_n <- lab_resolve_im_max_n(input$lab_im_max_n, input$lab_im_max_n_custom)
+    # Unlimited / large N: show all rows (page_length=NULL → nrow); else page 20.
+    page_len <- if (!is.finite(display_n) || display_n > 100) NULL else 20L
     eq_on <- isTRUE(input$lab_im_eq_only)
     gate_on <- isTRUE(input$lab_im_gate_only)
     no_alert_on <- isTRUE(input$lab_im_no_alert)
@@ -14523,7 +14865,7 @@ server <- function(input, output, session) {
     ynow_sortable_datatable(
       show_df,
       escape = FALSE,
-      page_length = 20L,
+      page_length = page_len,
       filter = "top"
     ) %>%
       DT::formatStyle(
@@ -14547,6 +14889,18 @@ server <- function(input, output, session) {
       gate_only = FALSE,
       evaluated_only = TRUE
     )
+    rank_mode_ex <- lab_normalize_pool_rank_mode(
+      isolate(input$lab_im_pool_rank) %||% "mcap"
+    )
+    concept_keys_ex <- as.character(isolate(input$lab_im_concepts) %||% character(0))
+    if (identical(rank_mode_ex, "concept") && length(concept_keys_ex) > 0L &&
+        exists("lab_filter_df_by_concept_keys", mode = "function")) {
+      mm_ex <- tryCatch(
+        normalize_market_mode(isolate(market_mode())),
+        error = function(e) "US"
+      )
+      merged <- lab_filter_df_by_concept_keys(merged, concept_keys_ex, market_mode = mm_ex)
+    }
     if (nrow(merged) == 0) {
       return(data.frame(訊息 = "目前篩選下無已評估明細列（請先按「搜尋績優股」）"))
     }

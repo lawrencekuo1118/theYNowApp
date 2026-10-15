@@ -240,6 +240,167 @@ def fast_get_company_info(ticker="AMZN"):
         }
 
 
+def _iso_date_from_value(v):
+    """Normalize yfinance date / timestamp / datetime to YYYY-MM-DD (UTC date)."""
+    if v is None:
+        return ""
+    try:
+        if isinstance(v, float) and pd.isna(v):
+            return ""
+    except Exception:
+        pass
+    try:
+        if hasattr(v, "date") and callable(getattr(v, "date", None)):
+            d = v.date()
+            return d.isoformat()
+    except Exception:
+        pass
+    try:
+        # list of dates (calendar Earnings Date)
+        if isinstance(v, (list, tuple)) and v:
+            return _iso_date_from_value(v[0])
+    except Exception:
+        pass
+    try:
+        # unix seconds
+        if isinstance(v, (int, float)) and v > 1e9:
+            return pd.Timestamp(int(v), unit="s", tz="UTC").strftime("%Y-%m-%d")
+    except Exception:
+        pass
+    try:
+        s = str(v).strip()
+        if not s or s.lower() in ("none", "nan", "nat"):
+            return ""
+        ts = pd.Timestamp(s)
+        if pd.isna(ts):
+            return ""
+        return ts.strftime("%Y-%m-%d")
+    except Exception:
+        return ""
+
+
+def get_company_key_dates(ticker="AAPL"):
+    """Next FS release / earnings call / guidance / ex-div via yfinance.
+
+    Returns plain strings for reticulate stability. Guidance is only filled when
+    Yahoo exposes a distinct field; otherwise left blank (do not invent).
+    """
+    _dbg(f"📅 yfinance key dates: {ticker}")
+    empty = {
+        "earnings_date": "",
+        "earnings_call": "",
+        "guidance_date": "",
+        "guidance_soft": False,
+        "ex_dividend": "",
+        "source": "Yahoo Finance",
+        "is_estimate": False,
+        "shares_outstanding": "",
+        "shares_diluted": "",
+    }
+    _yahoo_gate_acquire()
+    try:
+        stock = yf.Ticker(ticker)
+        info = {}
+        try:
+            info = stock.info or {}
+        except Exception as e:
+            _dbg(f"⚠️ key-dates info failed: {e}")
+            info = {}
+        if not isinstance(info, dict):
+            info = {}
+
+        cal = {}
+        try:
+            raw_cal = getattr(stock, "calendar", None)
+            if callable(raw_cal):
+                raw_cal = raw_cal()
+            if isinstance(raw_cal, dict):
+                cal = raw_cal
+            elif raw_cal is not None:
+                # older yfinance sometimes returns a DataFrame
+                try:
+                    if hasattr(raw_cal, "to_dict"):
+                        cal = raw_cal.to_dict()
+                except Exception:
+                    cal = {}
+        except Exception as e:
+            _dbg(f"⚠️ calendar failed: {e}")
+            cal = {}
+
+        earnings_date = ""
+        if isinstance(cal, dict):
+            earnings_date = _iso_date_from_value(cal.get("Earnings Date"))
+            if not earnings_date:
+                earnings_date = _iso_date_from_value(cal.get("Earnings Date".lower()))
+        if not earnings_date:
+            earnings_date = _iso_date_from_value(
+                info.get("earningsTimestampStart") or info.get("earningsTimestamp")
+            )
+
+        earnings_call = _iso_date_from_value(
+            info.get("earningsCallTimestampStart") or info.get("earningsCallTimestampEnd")
+        )
+
+        # Guidance: Yahoo rarely separates it. Prefer dedicated keys; for US tickers
+        # (no .TW/.TWO) fall back to earnings date — guidance is typically same-day.
+        guidance_date = ""
+        guidance_soft = False
+        for gk in (
+            "guidanceDate",
+            "guidanceTimestamp",
+            "earningsGuidanceDate",
+        ):
+            if gk in info and info.get(gk) is not None:
+                guidance_date = _iso_date_from_value(info.get(gk))
+                if guidance_date:
+                    break
+        tk_u = str(ticker or "").upper()
+        is_tw = tk_u.endswith(".TW") or tk_u.endswith(".TWO")
+        if not guidance_date and not is_tw and earnings_date:
+            guidance_date = earnings_date
+            guidance_soft = True
+
+        ex_div = ""
+        if isinstance(cal, dict):
+            ex_div = _iso_date_from_value(cal.get("Ex-Dividend Date"))
+        if not ex_div:
+            ex_div = _iso_date_from_value(info.get("exDividendDate"))
+
+        is_est = bool(info.get("isEarningsDateEstimate") is True)
+
+        def _num_str(key, *alts):
+            for k in (key,) + alts:
+                v = info.get(k)
+                if v is None:
+                    continue
+                try:
+                    if isinstance(v, float) and pd.isna(v):
+                        continue
+                    fv = float(v)
+                    if fv > 0:
+                        return str(fv)
+                except Exception:
+                    continue
+            return ""
+
+        return {
+            "earnings_date": earnings_date or "",
+            "earnings_call": earnings_call or "",
+            "guidance_date": guidance_date or "",
+            "guidance_soft": guidance_soft,
+            "ex_dividend": ex_div or "",
+            "source": "Yahoo Finance",
+            "is_estimate": is_est,
+            "shares_outstanding": _num_str("sharesOutstanding", "impliedSharesOutstanding"),
+            "shares_diluted": _num_str(
+                "impliedSharesOutstanding", "sharesOutstanding"
+            ),
+        }
+    except Exception as e:
+        _dbg(f"⚠️ get_company_key_dates failed: {e}")
+        return empty
+
+
 def _fmt_num(v, digits=2):
     """Format a number for Summary Value cells (always a string for reticulate).
 

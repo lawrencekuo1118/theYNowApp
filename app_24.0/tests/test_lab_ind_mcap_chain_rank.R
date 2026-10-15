@@ -59,7 +59,11 @@ keys <- c(
   "lab_im_ind_mcap_waiting", "lab_im_ind_mcap_empty", "lab_im_ind_mcap_status",
   "lab_im_ind_mcap_status_snap", "lab_im_ind_mcap_snap_at",
   "btn_lab_im_refresh_ind_mcap", "lab_im_refresh_ind_mcap_title",
-  "lab_im_ind_mcap_refresh_done", "lab_im_ind_mcap_refresh_busy"
+  "lab_im_ind_mcap_refresh_done", "lab_im_ind_mcap_refresh_busy",
+  "lab_im_ind_mcap_treemap_legend", "lab_im_ind_mcap_treemap_empty",
+  "lab_im_ind_mcap_treemap_hover_chain", "lab_im_ind_mcap_treemap_hover_upside",
+  "lab_im_ind_mcap_treemap_hover_mcap", "lab_im_ind_mcap_treemap_hover_n",
+  "lab_im_ind_mcap_treemap_colorbar"
 )
 for (k in keys) {
   check(paste("en key", k), k %in% names(.UI_STRINGS$en) && nzchar(ui_str(k, "en")))
@@ -78,6 +82,50 @@ check("UI title-row class", grepl("ynow-lab-im-ind-mcap-title-row", ui, fixed = 
 check("UI refresh button id", grepl("lab_im_refresh_ind_mcap", ui, fixed = TRUE))
 check("UI refresh label id", grepl("ynow_lab_im_refresh_ind_mcap_label", ui, fixed = TRUE))
 check("UI CSS for refresh-ind-mcap", grepl("ynow-lab-im-refresh-ind-mcap", ui, fixed = TRUE))
+check("UI treemap plotly output", grepl('plotlyOutput\\(\"lab_im_ind_mcap_treemap\"', ui))
+check("UI treemap above table", {
+  i_tm <- regexpr("lab_im_ind_mcap_treemap", ui, fixed = TRUE)[1]
+  i_tb <- regexpr("lab_im_ind_mcap_table", ui, fixed = TRUE)[1]
+  i_tm > 0 && i_tb > 0 && i_tm < i_tb
+})
+check("UI treemap legend id", grepl("ynow_lab_im_ind_mcap_treemap_legend", ui, fixed = TRUE))
+check("applyUiLocale wires treemap legend",
+      grepl("ynow_lab_im_ind_mcap_treemap_legend", ui, fixed = TRUE) &&
+        grepl("lab_im_ind_mcap_treemap_legend", ui, fixed = TRUE))
+check("server renders treemap", grepl("lab_im_ind_mcap_treemap", srv, fixed = TRUE) &&
+        grepl("lab_ind_mcap_treemap_plotly", srv, fixed = TRUE))
+check("zh treemap legend 漲紅", grepl("台股漲紅", ui_str("lab_im_ind_mcap_treemap_legend", "zh-TW"), fixed = TRUE))
+check("en treemap legend green up", grepl("green up", ui_str("lab_im_ind_mcap_treemap_legend", "en"), fixed = TRUE))
+check("treemap colorscale TW ends red", {
+  cs <- lab_ind_mcap_treemap_colorscale("TW")
+  identical(tolower(cs[[length(cs)]][[2]]), "#c0392b")
+})
+check("treemap colorscale US ends green", {
+  cs <- lab_ind_mcap_treemap_colorscale("US")
+  identical(tolower(cs[[length(cs)]][[2]]), "#1b7a4a")
+})
+check("treemap prepare includes all snap chains", {
+  snap <- data.frame(
+    chain_id = c("半導體", "金融", "科技"),
+    wavg_cagr = c(5, -2, 1),
+    total_mcap = c(1e12, 2e12, 3e12),
+    n_names = c(10L, 20L, 30L),
+    stringsAsFactors = FALSE
+  )
+  df <- lab_ind_mcap_prepare_treemap_df(snap, locale = "zh-TW")
+  all(c("半導體", "金融", "科技") %in% df$chain_id) && nrow(df) >= 3L
+})
+check("treemap plotly builds", {
+  snap <- data.frame(
+    chain_id = c("半導體", "金融"),
+    wavg_cagr = c(8, -3),
+    total_mcap = c(5e12, 2e12),
+    n_names = c(12L, 40L),
+    stringsAsFactors = FALSE
+  )
+  p <- lab_ind_mcap_treemap_plotly(snap, market = "TW", locale = "zh-TW")
+  inherits(p, "plotly")
+})
 check("Refresh ranking button forces white text vs bluechip btn-default", {
   # Theme .btn-default sets deep blue text; refresh button must win with white.
   grepl(
@@ -100,10 +148,37 @@ check("applyUiLocale wires refresh label",
       grepl("ynow_lab_im_refresh_ind_mcap_label", ui, fixed = TRUE) &&
         grepl("btn_lab_im_refresh_ind_mcap", ui, fixed = TRUE))
 
-check("server has chain board helper", grepl("lab_industry_chain_mcap_upside_leaderboard", srv, fixed = TRUE))
+check("server formats snapshot table", grepl("lab_format_ind_mcap_chain_table", srv, fixed = TRUE))
 check("server has snapshot reactive", grepl("lab_im_ind_mcap_snap", srv, fixed = TRUE))
 check("server refresh observeEvent", grepl("observeEvent\\(input\\$lab_im_refresh_ind_mcap", srv))
-check("server persist after scores", grepl("\\.lab_im_persist_ind_mcap_from_scores", srv))
+check("server has independent ind-mcap job", grepl("lab_im_run_ind_mcap_job", srv, fixed = TRUE))
+check("server start helper ignores page filters", grepl("\\.lab_im_start_ind_mcap_job", srv) &&
+        grepl("ignore page boards / industry / methods filters", srv, fixed = TRUE) &&
+        grepl("boards = c(\"TWSE\", \"TPEX\")", srv, fixed = TRUE) &&
+        grepl("per_chain = 2L", srv, fixed = TRUE))
+check("server board is snapshot-only", {
+  board_fn <- sub("(?s).*\\.lab_im_ind_mcap_board <- reactive\\(\\{", "", srv, perl = TRUE)
+  board_fn <- sub("(?s)\\}\\)\\s*\n\\s*# Reload default snapshot.*", "", board_fn, perl = TRUE)
+  grepl("Snapshot-only board", board_fn, fixed = TRUE) &&
+    grepl("lab_im_ind_mcap_snap()", board_fn, fixed = TRUE) &&
+    !grepl("lab_im_scores()", board_fn, fixed = TRUE) &&
+    !grepl("Live recompute when session has scores", srv, fixed = TRUE)
+})
+check("server does not persist from Search scores",
+      !grepl("\\.lab_im_persist_ind_mcap_from_scores", srv, fixed = TRUE))
+check("lab_im_run_ind_mcap_job defined in lab", {
+  lab_src <- paste(readLines(src_lab, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("lab_im_run_ind_mcap_job\\s*<-\\s*function", lab_src)
+})
+# Smoke: empty catalog returns structured failure (no Yahoo)
+if (exists("lab_im_run_ind_mcap_job", mode = "function")) {
+  empty_job <- lab_im_run_ind_mcap_job(
+    data.frame(), market_mode = "US", locale = "en", per_chain = 2L
+  )
+  check("ind-mcap job empty catalog fails cleanly",
+        is.list(empty_job) && identical(empty_job$ok, FALSE) &&
+          identical(as.character(empty_job$reason)[1], "empty_catalog"))
+}
 
 # Functional: all chains included + sorted
 .mk <- function(tk, key, lab, cagr, mcap) {
@@ -241,6 +316,11 @@ check("help mentions full universe total mcap (en)",
 check("help mentions 全宇宙 (zh-TW)",
       grepl("全宇宙", ui_str("lab_im_ind_mcap_help", "zh-TW"), fixed = TRUE))
 check("help mentions Refresh ranking", grepl("Refresh ranking", ui_str("lab_im_ind_mcap_help", "en"), fixed = TRUE))
+check("help mentions Blue Chip auto-start (en)",
+      grepl("Opening Blue Chip Lab", ui_str("lab_im_ind_mcap_help", "en"), fixed = TRUE))
+check("help mentions tab auto-start (zh-TW)",
+      grepl("開啟績優股排行榜會在背景自動重算全部產業鏈",
+            ui_str("lab_im_ind_mcap_help", "zh-TW"), fixed = TRUE))
 
 cat("\nPASS ", pass, "  FAIL ", fail, "\n", sep = "")
 if (fail > 0L) quit(status = 1L)

@@ -540,6 +540,37 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_win_1y = "1Y",
     hfv_win_3y = "3Y",
     hfv_win_5y = "5Y",
+    explain_core_callout_title = "Explainability (core)",
+    explain_core_callout_body = paste0(
+      ": every valuation result should answer \"why this Fair Value\". ",
+      "DCF Overview shows the formula path / PV bridge / Terminal Value drivers under the KPI; ",
+      "each model's formula-parameter contribution & sensitivity table is expanded by default. ",
+      "Full Decision Matrix is at the bottom of this page."
+    ),
+    explain_dcf_why_title = "Why this Fair Value (DCF)",
+    explain_dcf_why_empty = paste0(
+      "Run Search / Calculate DCF to see the formula path, PV bridge, ",
+      "and Terminal Value drivers."
+    ),
+    explain_dcf_why_foot = paste0(
+      "Explainability is a core surface: this panel mirrors the live DCF audit snapshot ",
+      "(path, PV of forecast / Terminal Value, discount rate, terminal g, EV→Equity bridge)."
+    ),
+    explain_dcf_why_path = "Path",
+    explain_dcf_why_mode = "Model",
+    explain_dcf_why_path_fcff = "FCFF → EV (WACC) → Equity bridge",
+    explain_dcf_why_path_fcfe = "FCFE → Equity PV (Ke)",
+    explain_dcf_why_mode_gordon = "Gordon / single-stage DCF",
+    explain_dcf_why_mode_two = "Two-Stage DCF",
+    explain_dcf_why_pv_explicit = "PV of explicit forecast",
+    explain_dcf_why_pv_tv = "PV of Terminal Value",
+    explain_dcf_why_disc_wacc = "Discount rate WACC",
+    explain_dcf_why_disc_ke = "Discount rate Ke",
+    explain_dcf_why_g = "Terminal g",
+    explain_dcf_why_cash = "Cash (EV→Equity)",
+    explain_dcf_why_debt = "Debt (EV→Equity)",
+    explain_dcf_why_shares = "Shares",
+    explain_dcf_why_price = "Fair Value / share",
     param_audit_title = "Manual adjustments (vs post-Search baseline)",
     param_audit_help = paste0(
       "Baseline locks after Search and statement auto-fill. ",
@@ -981,7 +1012,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_max_n_custom_label = "Custom count",
     lab_im_pool_rank_label = "Candidate truncate rule",
     lab_im_concepts_label = "Concept groups",
-    lab_im_concepts_placeholder = "Select one or more concept groups…",
+    lab_im_concepts_placeholder = "Select US or TW concept groups for the active market…",
     lab_im_us_listed_label = "Listed",
     lab_im_us_listed_hint = "Blue Chip US pool is primary listings only (Nasdaq / NYSE / NYSE American).",
     lab_im_include_adr_label = "Include ADRs",
@@ -1028,18 +1059,19 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_ind_mcap_badge = "Default ranking",
     lab_im_ind_mcap_help = paste0(
       "Lists every industry chain (Semiconductors / Technology / Financials …) sorted by ",
-      "Σ(market cap × annualized upside) / Σ(market cap) among evaluated names. ",
-      "Total market cap / Names = all tickers in that chain (full universe, not the eval Top-N). ",
-      "Unmapped is excluded. Refresh ranking saves the new table as the next default. ",
-      "Applies the Piotroski, earnings-quality, and No FS alerts gates from the query filters."
+      "Σ(market cap × annualized upside) / Σ(market cap) among independently sampled names. ",
+      "Total market cap / Names = all tickers in that chain (full universe, not Search Top-N). ",
+      "Unmapped is excluded. Independent of Candidate truncate, concepts, universe N, ",
+      "industry filters, models, and quality gates. Opening Blue Chip Lab starts a background ",
+      "all-chains refresh; Refresh ranking rebuilds and saves the default snapshot."
     ),
     lab_im_ind_mcap_waiting = paste0(
-      "No default ranking yet. Press Refresh ranking to evaluate and build ",
-      "the full industry-chain table (or open Blue Chip Leaderboard / Search Blue Chips once)."
+      "No default ranking yet. Opening Blue Chip Lab starts a background all-chains compute, ",
+      "or press Refresh ranking to rebuild the full industry-chain table."
     ),
     lab_im_ind_mcap_empty = paste0(
       "No industry-chain row yet (qualified names %d / evaluated %d). ",
-      "Relax gates or widen filters, then press Refresh ranking."
+      "Press Refresh ranking to recompute all chains."
     ),
     lab_im_ind_mcap_status = paste0(
       "Showing %d / %d industry chains (qualified names %d / evaluated %d). ",
@@ -1048,7 +1080,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_ind_mcap_status_snap = paste0(
       "Default ranking: %d industry chains",
       "%s",
-      ". Press Refresh ranking to recompute."
+      ". Opening Blue Chip Lab refreshes all chains in the background; ",
+      "press Refresh ranking to recompute now."
     ),
     lab_im_ind_mcap_snap_at = " (as of %s)",
     btn_lab_im_refresh_ind_mcap = "Refresh ranking",
@@ -1058,12 +1091,25 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     lab_im_ind_mcap_refresh_done = "Industry-chain ranking updated (%d chains).",
     lab_im_ind_mcap_refresh_busy = "Industry-chain ranking refresh already running…",
+    lab_im_ind_mcap_refresh_kept_prior = paste0(
+      "Industry-chain refresh finished without upside samples; kept prior ranking / heatmap."
+    ),
+    lab_im_ind_mcap_treemap_legend = paste0(
+      "Area = industry-chain total market cap; color = mcap-weighted annualized valuation upside ",
+      "(US: green up / red down; TW: red up / green down). Includes every industry chain."
+    ),
+    lab_im_ind_mcap_treemap_empty = "No industry-chain blocks yet.",
+    lab_im_ind_mcap_treemap_hover_chain = "Industry chain",
+    lab_im_ind_mcap_treemap_hover_upside = "Mcap-weighted annualized upside",
+    lab_im_ind_mcap_treemap_hover_mcap = "Total market cap",
+    lab_im_ind_mcap_treemap_hover_n = "Names",
+    lab_im_ind_mcap_treemap_colorbar = "Upside %",
     lab_im_lb_scope_help = paste0(
       "Overall Top 10: across industries from this evaluation run, by annualized valuation appreciation (Industry column shown). ",
       "Top 10 in selected industries: one Top 10 within chosen industries; Industry rank starts at 1 within each industry (not a cross-industry serial). ",
       "Most undervalued Top 10: across industries, by total valuation gap (primary-model FV vs price, not annualized); only names still undervalued (gap > 0). ",
       "Industry mcap-weighted upside (all industry chains) lives in the dedicated board above Candidate truncate ",
-      "(default snapshot; press Refresh ranking for the latest). ",
+      "(default snapshot; opening Blue Chip Lab auto-refreshes all chains; press Refresh ranking for a manual rebuild). ",
       "Top 10 takes at most 10 qualified names; shortfalls are not padded."
     ),
     lab_im_lb_status_ind_avg = paste0(
@@ -1112,8 +1158,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_filter_count_hint = paste0(
       "Live count after industry chain × sub-industry × model ",
       "(and Listing board / Include ADR when applicable). ",
-      "When a quality gate is checked, the count uses the quality snapshot ",
-      "and leaves out names that are not updated yet."
+      "When a quality gate is checked and the quality snapshot covers the pool, ",
+      "the count uses that snapshot (names not updated yet are left out). ",
+      "If the snapshot does not cover the pool yet, the structural filter count is shown."
     ),
     lab_im_filter_count_qualified = "Qualified after last Search (quality gates): {n} names",
     lab_im_run_title = "Piotroski high gate (F-Score≥7) + rank by annualized valuation appreciation",
@@ -1768,6 +1815,56 @@ locale_for_market <- function(mode = get_market_mode()) {
     company_overview_summary_empty = "No business summary available for this ticker.",
     company_overview_show_more = "Show more",
     company_overview_show_less = "Show less",
+    key_date_fs_release = "Next FS release",
+    key_date_earnings_call = "Next earnings call",
+    key_date_guidance = "Next guidance",
+    key_date_guidance_soft = "Guidance (w/ earnings)",
+    key_date_estimate_tip = "Date may be an estimate (Yahoo)",
+    tab_corp_events = "Board / CB",
+    corp_events_intro = paste0(
+      "Board election and convertible-bond dilution for the Search ticker. ",
+      "TW: MOPS open CSV + TPEx ISSBD; US: SEC EDGAR links and soft diluted-share gap."
+    ),
+    corp_events_waiting = "Search a ticker to load board election and convertible-bond data.",
+    corp_board_title = "Board election",
+    corp_board_meeting = "Shareholder meeting",
+    corp_board_elect_yes = "Board election at this AGM: Yes",
+    corp_board_elect_no = "Board election at this AGM: No",
+    corp_board_method = "Election method",
+    corp_board_nomination = "nomination system",
+    corp_board_nomination_window = "Nomination window",
+    corp_board_cand_counts = "Candidates — directors %d / independent %d / supervisors %d",
+    corp_board_cand_list = "Candidate list (open data; may be prior AGM)",
+    corp_board_source = "Source",
+    corp_board_empty_tw = "No MOPS board-election open data for this ticker yet.",
+    corp_board_us_note = paste0(
+      "US board elections are disclosed in DEF 14A proxy statements ",
+      "(no free open-data feed matching TW MOPS)."
+    ),
+    corp_board_us_sec_link = "Open SEC EDGAR DEF 14A search",
+    corp_cb_title = "Convertible bonds — dilution",
+    corp_cb_issues = "Outstanding CB issues",
+    corp_cb_potential = "Potential conversion shares",
+    corp_cb_dilution = "Implied dilution",
+    corp_cb_dilution_help = paste0(
+      "Dilution ≈ Σ(outstanding face ÷ conversion price) ÷ current shares. ",
+      "Overseas CB (USD face) uses USD/TWD FX. Engineering heuristic — verify vs MOPS / prospectus."
+    ),
+    corp_cb_shares_missing = "Current shares unavailable — dilution % withheld.",
+    corp_cb_col_code = "CB code",
+    corp_cb_col_name = "Short name",
+    corp_cb_col_out = "Outstanding",
+    corp_cb_col_px = "Conv. price",
+    corp_cb_col_pot = "Potential shares",
+    corp_cb_col_end = "Conv. end",
+    corp_cb_source = "Source",
+    corp_cb_empty_tw = "No outstanding convertible / exchangeable bonds in TPEx open data for this issuer.",
+    corp_cb_us_note = paste0(
+      "US convertible notes lack a free issuance open-data feed comparable to TPEx ISSBD. ",
+      "Soft proxy: Yahoo diluted vs basic share gap when available."
+    ),
+    corp_cb_soft_gap = "Diluted − basic shares",
+    corp_cb_us_sec_link = "Open SEC EDGAR 10-K search",
     smart_page_title = "Smart Analysis",
     smart_page_sub = paste0(
       "Auto-selects primary and secondary valuation models from the ticker profile, ",
@@ -3631,6 +3728,35 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_win_1y = "近1年",
     hfv_win_3y = "近3年",
     hfv_win_5y = "近5年",
+    explain_core_callout_title = "可解釋性（核心）",
+    explain_core_callout_body = paste0(
+      "：每個估值結果旁應能回答「為何是這個合理價」。",
+      "DCF Overview 的 KPI 下方已顯示公式路徑／現值橋接／終值驅動；",
+      "各模型「公式參數貢獻與敏感度」預設展開。完整 Decision Matrix 見本頁下方。"
+    ),
+    explain_dcf_why_title = "為何是這個合理價（DCF）",
+    explain_dcf_why_empty = paste0(
+      "請先搜尋／試算 DCF，即可看到公式路徑、現值橋接與終值驅動因子。"
+    ),
+    explain_dcf_why_foot = paste0(
+      "可解釋性為核心表面：本區塊對應即時 DCF 稽核快照",
+      "（路徑、預測期／終值現值、折現率、終值 g、EV→股權橋接），非附註。"
+    ),
+    explain_dcf_why_path = "路徑",
+    explain_dcf_why_mode = "模型",
+    explain_dcf_why_path_fcff = "FCFF → EV（WACC）→ 股權橋接",
+    explain_dcf_why_path_fcfe = "FCFE → 股權現值（Ke）",
+    explain_dcf_why_mode_gordon = "Gordon／單階段 DCF",
+    explain_dcf_why_mode_two = "Two-Stage DCF",
+    explain_dcf_why_pv_explicit = "預測期現金流現值",
+    explain_dcf_why_pv_tv = "終值現值（Terminal Value）",
+    explain_dcf_why_disc_wacc = "折現率 WACC",
+    explain_dcf_why_disc_ke = "折現率 Ke",
+    explain_dcf_why_g = "終值 g",
+    explain_dcf_why_cash = "現金（EV→股權）",
+    explain_dcf_why_debt = "負債（EV→股權）",
+    explain_dcf_why_shares = "股數",
+    explain_dcf_why_price = "每股合理價",
     param_audit_title = "手改參數（相對 Search 後基準）",
     param_audit_help = paste0(
       "基準在按下 Search 且財報自動帶入後鎖定。之後你手動覆寫的參數會分頁列出；",
@@ -4060,7 +4186,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_max_n_custom_label = "自訂檔數",
     lab_im_pool_rank_label = "候選截斷邏輯",
     lab_im_concepts_label = "概念股群",
-    lab_im_concepts_placeholder = "選擇一或多個概念股群…",
+    lab_im_concepts_placeholder = "依目前市場（美股／台股）選擇一或多個概念股群…",
     lab_im_us_listed_label = "上市",
     lab_im_us_listed_hint = "美股績優池僅含主要上市（Nasdaq／NYSE／NYSE American）。",
     lab_im_include_adr_label = "含 ADR",
@@ -4106,27 +4232,28 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_ind_mcap_title = "產業市值加權漲幅",
     lab_im_ind_mcap_badge = "預設排名",
     lab_im_ind_mcap_help = paste0(
-      "顯示全部產業鏈（半導體／科技／金融…），排序用評估樣本的 ",
-      "Σ(市值×年化估值漲幅)/Σ(市值)；總市值／檔數＝該產業鏈全宇宙個股（非 Top-N 評估樣本）。",
-      "排除未對應。按「更新排名」後會寫入為下次預設。",
-      "套用查詢條件之 Piotroski、盈餘品質、無財報警訊門檻。"
+      "顯示全部產業鏈（半導體／科技／金融…），排序用獨立抽樣評估樣本的 ",
+      "Σ(市值×年化估值漲幅)/Σ(市值)；總市值／檔數＝該產業鏈全宇宙個股（非搜尋 Top-N）。",
+      "排除未對應。與候選截斷、概念股、宇宙檔數 N、產業／模型篩選、品質門檻無關。",
+      "開啟績優股排行榜會在背景自動重算全部產業鏈；按「更新排名」可手動重算並寫入預設快照。"
     ),
     lab_im_ind_mcap_waiting = paste0(
-      "尚無預設排名。請按「更新排名」評估並建立全部產業鏈清單",
-      "（或先開啟側邊欄「績優股排行榜」／「搜尋績優股」完成一次運算）。"
+      "尚無預設排名。開啟績優股排行榜會在背景自動計算全部產業鏈，",
+      "或按「更新排名」手動重建清單。"
     ),
     lab_im_ind_mcap_empty = paste0(
       "尚無產業鏈列可顯示（合格檔 %d／已評估 %d）。",
-      "請放寬門檻或篩選後再按「更新排名」。"
+      "請按「更新排名」重算全部產業鏈。"
     ),
     lab_im_ind_mcap_status = paste0(
       "顯示 %d／%d 條產業鏈（合格檔 %d／已評估 %d）。",
-      "每一列為一產業鏈；權重＝該產業鏈內市值占比。"
+      "每一列為一產業鏈；權重＝該產業鏈內市值佔比。"
     ),
     lab_im_ind_mcap_status_snap = paste0(
       "預設排名：%d 條產業鏈",
       "%s",
-      "。按「更新排名」可重算最新版。"
+      "。開啟績優股排行榜會在背景自動重算全部產業鏈；",
+      "按「更新排名」可立即手動重算。"
     ),
     lab_im_ind_mcap_snap_at = "（資料時間 %s）",
     btn_lab_im_refresh_ind_mcap = "更新排名",
@@ -4136,16 +4263,27 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     lab_im_ind_mcap_refresh_done = "已更新產業鏈排名（%d 條）。",
     lab_im_ind_mcap_refresh_busy = "產業鏈排名更新進行中…",
+    lab_im_ind_mcap_refresh_kept_prior = "產業鏈刷新未取得估值漲幅樣本，仍保留先前排名／熱圖。",
+    lab_im_ind_mcap_treemap_legend = paste0(
+      "面積＝產業鏈總市值；顏色＝市值加權年化估值漲幅",
+      "（美股漲綠／台股漲紅）。納入全部產業鏈。"
+    ),
+    lab_im_ind_mcap_treemap_empty = "尚無產業鏈區塊可顯示。",
+    lab_im_ind_mcap_treemap_hover_chain = "產業鏈",
+    lab_im_ind_mcap_treemap_hover_upside = "市值加權年化估值漲幅",
+    lab_im_ind_mcap_treemap_hover_mcap = "總市值",
+    lab_im_ind_mcap_treemap_hover_n = "檔數",
+    lab_im_ind_mcap_treemap_colorbar = "漲幅 %",
     lab_im_lb_scope_help = paste0(
       "整體前十名：跨本次已評估產業依年化估值漲幅取 Top 10，並顯示產業欄。",
       "選定產業前十名：所選產業內單一 Top 10；產業內排名自該產業第 1 名起算（非跨產業流水號）。",
       "價值低估前十名：跨產業依推薦主模型合理價相對市價的總潛在漲幅（非年化）由大到小；只列仍被低估者。",
-      "產業市值加權漲幅（全部產業鏈）在上方獨立區塊（預設快照；按「更新排名」可重算最新版）。",
+      "產業市值加權漲幅（全部產業鏈）在上方獨立區塊（預設快照；開啟績優股排行榜會自動重算全部產業鏈；按「更新排名」可手動重建）。",
       "前十名只從合格者取最多 10 檔；合格不足 10 時不會湊滿。"
     ),
     lab_im_lb_status_ind_avg = paste0(
       "產業市值加權漲幅顯示 %d／%d 條產業鏈（合格檔 %d／已評估 %d）。",
-      "每一列為一產業鏈；權重＝該產業鏈內市值占比。"
+      "每一列為一產業鏈；權重＝該產業鏈內市值佔比。"
     ),
     lab_im_lb_status_undervalued = paste0(
       "價值低估前十名顯示 %d／10（合格 %d／已評估 %d）。",
@@ -4185,7 +4323,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_filter_count_unit = "檔",
     lab_im_filter_count_hint = paste0(
       "即時統計：產業鏈×子產業×模型（及板別／含 ADR，視市場）。",
-      "品質門檻勾選開啟時，檔數改依品質快照，尚未更新的代號不計入。"
+      "品質門檻勾選且品質快照已涵蓋池內代號時，檔數改依快照（尚未更新者不計入）；",
+      "快照尚未涵蓋時仍顯示結構篩選後的池內檔數。"
     ),
     lab_im_filter_count_qualified = "上次搜尋後合格（含品質門檻）：{n} 檔",
     lab_im_run_title = "Piotroski 高門檻（F-Score≥7）＋年化估值漲幅排序",
@@ -4821,6 +4960,55 @@ locale_for_market <- function(mode = get_market_mode()) {
     company_overview_summary_empty = "此代號尚無營運摘要說明。",
     company_overview_show_more = "展開全文",
     company_overview_show_less = "收合",
+    key_date_fs_release = "下期財報公布",
+    key_date_earnings_call = "下期法說會",
+    key_date_guidance = "下期財測公布",
+    key_date_guidance_soft = "財測（併財報日）",
+    key_date_estimate_tip = "日期可能為預估（Yahoo）",
+    tab_corp_events = "董監／可轉債",
+    corp_events_intro = paste0(
+      "依 Search 代號彙整董監改選與可轉債對股權稀釋的影響。",
+      "台股：公開資訊觀測站開放 CSV＋櫃買 ISSBD；美股：SEC EDGAR 連結與稀釋股數軟性差距。"
+    ),
+    corp_events_waiting = "請先搜尋股票代號，以載入董監改選與可轉債資料。",
+    corp_board_title = "董監改選",
+    corp_board_meeting = "股東會",
+    corp_board_elect_yes = "本次股東會改選董監：是",
+    corp_board_elect_no = "本次股東會改選董監：否",
+    corp_board_method = "選任方式",
+    corp_board_nomination = "候選人提名制",
+    corp_board_nomination_window = "提名受理期間",
+    corp_board_cand_counts = "候選人——董事 %d／獨立董事 %d／監察人 %d",
+    corp_board_cand_list = "候選人名單（開放資料；可能為最近一次股東會）",
+    corp_board_source = "資料來源",
+    corp_board_empty_tw = "此代號尚無公開資訊觀測站董監改選開放資料。",
+    corp_board_us_note = paste0(
+      "美股董監改選揭露於 DEF 14A 委託書（無對應台股 MOPS 的免費開放資料彙整）。"
+    ),
+    corp_board_us_sec_link = "開啟 SEC EDGAR DEF 14A 搜尋",
+    corp_cb_title = "可轉債對財務及股權稀釋的影響",
+    corp_cb_issues = "流通可轉債檔數",
+    corp_cb_potential = "潛在轉換股數",
+    corp_cb_dilution = "隱含稀釋",
+    corp_cb_dilution_help = paste0(
+      "稀釋 ≈ Σ(流通餘額 ÷ 轉換價格) ÷ 目前股數。",
+      "海外可轉債（美元面額）以 USD/TWD 匯率換算。此為工程啟發式，請以公開資訊觀測站／公開說明書核對。"
+    ),
+    corp_cb_shares_missing = "目前股數不可用——暫不顯示稀釋％。",
+    corp_cb_col_code = "債券代號",
+    corp_cb_col_name = "簡稱",
+    corp_cb_col_out = "流通餘額",
+    corp_cb_col_px = "轉換價格",
+    corp_cb_col_pot = "潛在股數",
+    corp_cb_col_end = "轉換迄日",
+    corp_cb_source = "資料來源",
+    corp_cb_empty_tw = "櫃買開放資料尚無此發行人流通中的轉換／交換債。",
+    corp_cb_us_note = paste0(
+      "美股可轉債無對應櫃買 ISSBD 的免費發行開放資料。",
+      "軟性代理：Yahoo 稀釋股數與基本股數差距（若有）。"
+    ),
+    corp_cb_soft_gap = "稀釋股 − 基本股",
+    corp_cb_us_sec_link = "開啟 SEC EDGAR 10-K 搜尋",
     smart_page_title = "智慧分析",
     smart_page_sub = paste0(
       "依股票性質自動判別主／副模型，辨識參數情境（Two-Stage／Gordon、SGR 法、claim），",
@@ -5418,7 +5606,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     eq_pie_center_shares = "股數",
     eq_pie_center_equity = "權益",
     eq_pie_hover_value = "數值",
-    eq_pie_hover_pct = "占比",
+    eq_pie_hover_pct = "佔比",
     tab_cash_flow = "現金流量表",
     tab_sec_notes = "財報附註 (SEC)",
     tab_kpi_by_sheet = "分表 KPI",
@@ -6135,6 +6323,7 @@ locale_for_market <- function(mode = get_market_mode()) {
   "Balance Sheet" = "tab_balance_sheet",
   "Cash Flow" = "tab_cash_flow",
   "sec_notes" = "tab_sec_notes",
+  "corp_events" = "tab_corp_events",
   "KPI by Sheet" = "tab_kpi_by_sheet",
   "Crossover KPIs" = "tab_crossover_kpis",
   "Annotation" = "tab_annotation",
@@ -6177,7 +6366,9 @@ locale_for_market <- function(mode = get_market_mode()) {
   "排行" = "tab_im_filters",
   "明細" = "tab_im_detail",
   "分群" = "tab_im_cluster",
-  "財報附註 (SEC)" = "tab_sec_notes"
+  "財報附註 (SEC)" = "tab_sec_notes",
+  "董監／可轉債" = "tab_corp_events",
+  "Board / CB" = "tab_corp_events"
 )
 
 # English (canonical) header text → ui_str key; aliases include both locales for rematch
