@@ -7,4 +7,4 @@ commit=af6b38c66bf4047ca35b09e48b02976d1873ebce
 short=af6b38c
 message=chore: record shipped display version v24.24
 captured_at=2026-10-15T12:20:00Z
-display_version=v24.24
+display_version=v24.25
