@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12692791
+bundleId=12692900
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=e19c64727da66ca8ec6460ea9336e4482c184d19
-commit=e19c64727da66ca8ec6460ea9336e4482c184d19
-short=e19c647
-message=fix(ui): full-bleed market flags with no seam (v24.09)
-captured_at=2026-10-15T05:05:00Z
+aligned_git=df56e8c4643d485f7dc0f15ba9adc958808333c0
+commit=df56e8c4643d485f7dc0f15ba9adc958808333c0
+short=df56e8c
+message=chore: record shipped display version v24.10
+captured_at=2026-10-15T05:51:15Z
 display_version=v24.10
