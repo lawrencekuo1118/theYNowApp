@@ -32,6 +32,8 @@ src_srv <- file.path(app_dir, "ynow_server.R")
 src_ri <- file.path(app_dir, "ri_module.R")
 src_pb <- file.path(app_dir, "pb_asset_module.R")
 src_nav <- file.path(app_dir, "nav_module.R")
+src_rel <- file.path(app_dir, "relative_multiples_module.R")
+src_sotp <- file.path(app_dir, "sotp_module.R")
 
 check("explainability.R exists", file.exists(src_explain))
 check("global sources explainability.R", {
@@ -59,7 +61,9 @@ keys <- c(
   "explain_dcf_why_shares", "explain_dcf_why_price",
   "explain_data_source", "explain_data_source_value", "explain_gate_rationale",
   "explain_ddm_why_title", "explain_ri_why_title", "explain_pb_why_title",
-  "explain_nav_why_title", "explain_smart_fv_why_title", "explain_gate_why_title",
+  "explain_nav_why_title", "explain_mult_why_title", "explain_sotp_why_title",
+  "explain_mult_path", "explain_mult_role_value", "explain_sotp_path", "explain_sotp_role_value",
+  "explain_smart_fv_why_title", "explain_gate_why_title",
   "explain_gate_item_hfv", "explain_gate_unlocked", "explain_gate_locked_fail"
 )
 for (k in keys) {
@@ -78,6 +82,18 @@ check("callout mentions Smart Analysis", {
   grepl("Smart Analysis", ui_str("explain_core_callout_body", "en"), fixed = TRUE) &&
     grepl("Smart Analysis", ui_str("explain_core_callout_body", "zh-TW"), fixed = TRUE)
 })
+check("callout mentions Multiples + SOTP + Dashboard", {
+  en_b <- ui_str("explain_core_callout_body", "en")
+  zh_b <- ui_str("explain_core_callout_body", "zh-TW")
+  grepl("Multiples", en_b, fixed = TRUE) && grepl("SOTP", en_b, fixed = TRUE) &&
+    grepl("Model Dashboard", en_b, fixed = TRUE) &&
+    grepl("Multiples", zh_b, fixed = TRUE) && grepl("SOTP", zh_b, fixed = TRUE) &&
+    grepl("Model Dashboard", zh_b, fixed = TRUE)
+})
+check("mult Reference not FV (en)", grepl("Reference", ui_str("explain_mult_role_value", "en"), fixed = TRUE) &&
+        grepl("not a Fair Value", ui_str("explain_mult_role_value", "en"), ignore.case = TRUE))
+check("mult Reference not FV (zh)", grepl("Reference", ui_str("explain_mult_role_value", "zh-TW"), fixed = TRUE) &&
+        grepl("非 Fair Value", ui_str("explain_mult_role_value", "zh-TW"), fixed = TRUE))
 
 snap <- list(
   pv_explicit = 100, pv_tv = 400, discount = 0.09, g = 0.04,
@@ -116,6 +132,22 @@ nav_rows <- ynow_nav_why_rows(
 )
 check("nav rows NAVPS", any(grepl("NAVPS", nav_rows$label, fixed = TRUE)))
 
+mult_rows <- ynow_multiples_why_rows(
+  method_key = "pe", implied_price = 42, locale = "en"
+)
+check("mult rows path+role", nrow(mult_rows) >= 5L &&
+        any(grepl("Metric", mult_rows$value, fixed = TRUE) | grepl("Multiple", mult_rows$value, fixed = TRUE)) &&
+        any(grepl("Reference", mult_rows$value, fixed = TRUE)))
+check("mult rows data source", any(grepl("Data source", mult_rows$label, fixed = TRUE)))
+
+sotp_rows <- ynow_sotp_why_rows(
+  n_segments = 3, implied_price = 55, locale = "en"
+)
+check("sotp rows segments+path", nrow(sotp_rows) >= 5L &&
+        any(grepl("3", sotp_rows$value, fixed = TRUE)) &&
+        any(grepl("EV/Sales", sotp_rows$value, fixed = TRUE)))
+check("sotp rows data source", any(grepl("Data source", sotp_rows$label, fixed = TRUE)))
+
 gate_rows <- ynow_decision_gate_why_rows(
   list(
     unlocked = FALSE,
@@ -143,16 +175,30 @@ smart <- ynow_smart_explain_ui(
   gate_title = "Gate", gate_rows = gate_rows, gate_empty = "ge"
 )
 check("smart explain ui", inherits(smart, "shiny.tag.list") || inherits(smart, "shiny.tag"))
+mult_panel <- ynow_value_why_panel(
+  title = "Mult", rows = mult_rows, empty_message = "e", footnote = "f"
+)
+smart_extra <- ynow_smart_explain_ui(
+  fv_title = "FV", fv_rows = rows_fcff, fv_empty = "e", fv_foot = "f",
+  gate_title = "Gate", gate_rows = gate_rows, gate_empty = "ge",
+  extra_panels = list(mult_panel)
+)
+check("smart explain ui accepts extra_panels", {
+  inherits(smart_extra, "shiny.tag.list") || inherits(smart_extra, "shiny.tag")
+})
 
 ui <- paste(readLines(src_ui, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 srv <- paste(readLines(src_srv, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 ri_txt <- paste(readLines(src_ri, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 pb_txt <- paste(readLines(src_pb, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 nav_txt <- paste(readLines(src_nav, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+rel_txt <- paste(readLines(src_rel, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+sotp_txt <- paste(readLines(src_sotp, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 
 check("UI mounts dcf_value_why", grepl('uiOutput\\(\"dcf_value_why\"\\)', ui))
 check("UI mounts ddm_value_why", grepl('uiOutput\\(\"ddm_value_why\"\\)', ui))
 check("UI mounts smart_value_why", grepl('uiOutput\\(\"smart_value_why\"\\)', ui))
+check("UI mounts dashboard_value_why", grepl('uiOutput\\(\"dashboard_value_why\"\\)', ui))
 check("UI why before dcf chart", {
   i_why <- regexpr("dcf_value_why", ui, fixed = TRUE)[1]
   i_chart <- regexpr("plt_dcf_trajectory", ui, fixed = TRUE)[1]
@@ -162,6 +208,11 @@ check("Smart why before chart", {
   i_why <- regexpr("smart_value_why", ui, fixed = TRUE)[1]
   i_chart <- regexpr("smart_analysis_chart", ui, fixed = TRUE)[1]
   i_why > 0 && i_chart > 0 && i_why < i_chart
+})
+check("Dashboard why near explain callout", {
+  i_call <- regexpr('id = "ynow_explain_core_callout"', ui, fixed = TRUE)[1]
+  i_dash <- regexpr("dashboard_value_why", ui, fixed = TRUE)[1]
+  i_call > 0 && i_dash > 0 && i_dash > i_call && (i_dash - i_call) < 2500
 })
 check("param sensitivity default expanded", {
   grepl("collapsed = FALSE", ui, fixed = TRUE) &&
@@ -182,6 +233,13 @@ check("server renders dcf_value_why", grepl("output\\$dcf_value_why", srv) &&
 check("server renders smart_value_why", grepl("output\\$smart_value_why", srv) &&
         grepl("ynow_smart_explain_ui", srv, fixed = TRUE) &&
         grepl("ynow_decision_gate_why_rows", srv, fixed = TRUE))
+check("server shared primary explain for dashboard", {
+  grepl("output\\$dashboard_value_why", srv) &&
+    grepl("\\.ynow_build_primary_explain_ui", srv) &&
+    grepl("ynow_multiples_why_rows", srv, fixed = TRUE) &&
+    grepl("ynow_sotp_why_rows", srv, fixed = TRUE) &&
+    grepl("extra_panels", srv, fixed = TRUE)
+})
 check("server renders ddm_value_why", grepl("output\\$ddm_value_why", srv) &&
         grepl("ynow_ddm_why_rows", srv, fixed = TRUE))
 check("RI module mounts value_why", grepl('uiOutput\\(ns\\(\"value_why\"\\)\\)', ri_txt) &&
@@ -190,6 +248,10 @@ check("PB module mounts value_why", grepl('uiOutput\\(ns\\(\"value_why\"\\)\\)',
         grepl("ynow_pb_why_rows", pb_txt, fixed = TRUE))
 check("NAV module mounts value_why", grepl('uiOutput\\(ns\\(\"value_why\"\\)\\)', nav_txt) &&
         grepl("ynow_nav_why_rows", nav_txt, fixed = TRUE))
+check("Multiples module mounts value_why", grepl('uiOutput\\(ns\\(\"value_why\"\\)\\)', rel_txt) &&
+        grepl("ynow_multiples_why_rows", rel_txt, fixed = TRUE))
+check("SOTP module mounts value_why", grepl('uiOutput\\(ns\\(\"value_why\"\\)\\)', sotp_txt) &&
+        grepl("ynow_sotp_why_rows", sotp_txt, fixed = TRUE))
 
 cat(sprintf("PASS %d  FAIL %d\n", pass, fail))
 if (fail > 0L) quit(status = 1L)

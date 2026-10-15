@@ -478,7 +478,71 @@ ynow_decision_gate_why_rows <- function(sop_gate = NULL, locale = "zh-TW") {
   ynow_why_df_from_pairs(rows)
 }
 
-#' Stack primary FV why + decision gate why into one Smart Analysis surface.
+#' Multiples (Reference) Why rows — market-pricing, not Fair Value primary.
+ynow_multiples_why_rows <- function(method_key = "",
+                                    implied_price = NA_real_,
+                                    locale = "zh-TW",
+                                    gate_note = NULL) {
+  loc <- as.character(locale %||% "zh-TW")[1]
+  .lab <- function(key, fallback) ynow_why_lab(key, fallback, loc)
+  mk <- as.character(method_key %||% "")[1]
+  method_val <- if (nzchar(mk)) mk else .lab("explain_mult_method_na", "Active multiple (unset)")
+  rows <- list(
+    c(
+      .lab("explain_dcf_why_path", "Path"),
+      .lab("explain_mult_path", "Implied Price = Metric × Multiple (−/+ bridge when EV)")
+    ),
+    c(
+      .lab("explain_dcf_why_mode", "Model"),
+      .lab("explain_mult_mode", "Multiples (market-pricing Reference)")
+    ),
+    c(.lab("explain_mult_method", "Active method"), method_val),
+    c(
+      .lab("explain_mult_price", "Implied Price / share"),
+      ynow_why_fmt_num(implied_price)
+    ),
+    c(
+      .lab("explain_mult_role", "Role"),
+      .lab("explain_mult_role_value", "Reference only — not a Fair Value primary / secondary")
+    )
+  )
+  ynow_why_df_from_pairs(ynow_why_append_meta(rows, loc, gate_note = gate_note))
+}
+
+#' SOTP Meta-Framework Why rows.
+ynow_sotp_why_rows <- function(n_segments = NA_real_,
+                               implied_price = NA_real_,
+                               locale = "zh-TW",
+                               gate_note = NULL) {
+  loc <- as.character(locale %||% "zh-TW")[1]
+  .lab <- function(key, fallback) ynow_why_lab(key, fallback, loc)
+  n <- suppressWarnings(as.numeric(n_segments)[1])
+  rows <- list(
+    c(
+      .lab("explain_dcf_why_path", "Path"),
+      .lab("explain_sotp_path", "Σ(Seg Rev × EV/Sales) → EV + Cash − Debt → / Shares")
+    ),
+    c(
+      .lab("explain_dcf_why_mode", "Model"),
+      .lab("explain_sotp_mode", "SOTP Meta-Framework (revenue × EV/Sales)")
+    ),
+    c(
+      .lab("explain_sotp_n", "Segments"),
+      if (is.finite(n)) as.character(as.integer(n)) else "—"
+    ),
+    c(
+      .lab("explain_dcf_why_price", "Fair Value / share"),
+      ynow_why_fmt_num(implied_price)
+    ),
+    c(
+      .lab("explain_sotp_role", "Role"),
+      .lab("explain_sotp_role_value", "Meta-Framework — can mix absolute / relative lenses")
+    )
+  )
+  ynow_why_df_from_pairs(ynow_why_append_meta(rows, loc, gate_note = gate_note))
+}
+
+#' Stack primary FV why + decision gate why into one primary-workflow surface.
 ynow_smart_explain_ui <- function(fv_title,
                                   fv_rows,
                                   fv_empty,
@@ -486,19 +550,31 @@ ynow_smart_explain_ui <- function(fv_title,
                                   gate_title,
                                   gate_rows,
                                   gate_empty,
-                                  gate_foot = NULL) {
-  tagList(
+                                  gate_foot = NULL,
+                                  extra_panels = NULL) {
+  panels <- list(
     ynow_value_why_panel(
       title = fv_title,
       rows = fv_rows,
       empty_message = fv_empty,
       footnote = fv_foot
-    ),
-    ynow_value_why_panel(
+    )
+  )
+  if (!is.null(extra_panels)) {
+    if (inherits(extra_panels, "shiny.tag") || inherits(extra_panels, "shiny.tag.list")) {
+      panels <- c(panels, list(extra_panels))
+    } else if (is.list(extra_panels)) {
+      panels <- c(panels, extra_panels)
+    }
+  }
+  panels <- c(
+    panels,
+    list(ynow_value_why_panel(
       title = gate_title,
       rows = gate_rows,
       empty_message = gate_empty,
       footnote = gate_foot
-    )
+    ))
   )
+  do.call(tagList, panels)
 }

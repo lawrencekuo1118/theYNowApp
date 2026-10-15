@@ -9794,9 +9794,8 @@ server <- function(input, output, session) {
     )
   })
 
-  # Primary workflow explainability: Smart Analysis FV Why + Decision Checklist gates
-  output$smart_value_why <- renderUI({
-    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+  # Shared primary-workflow explainability builder (Smart Analysis + Model Dashboard)
+  .ynow_build_primary_explain_ui <- function(loc) {
     if (!exists("ynow_smart_explain_ui", mode = "function")) return(NULL)
     fv_empty <- tryCatch(ui_str("explain_smart_fv_why_empty", loc), error = function(e) {
       "Search a ticker so Smart Analysis can show the primary Fair Value path and inputs."
@@ -9805,9 +9804,12 @@ server <- function(input, output, session) {
       "Open Decision Checklist / complete Search to see mandatory gate rationale."
     })
     fv_rows <- NULL
+    extra <- list()
     if (isTRUE(user_has_searched())) {
       rec <- tryCatch(model_sidebar_rec(), error = function(e) NULL)
       prim <- as.character(rec$primary %||% "")[1]
+      sec <- as.character(rec$secondary %||% "")[1]
+      ref <- as.character(rec$reference %||% "")[1]
       if (identical(prim, "dcf") && exists("ynow_dcf_why_rows", mode = "function")) {
         snap <- tryCatch(dcf_audit_snap(), error = function(e) NULL)
         fv_rows <- ynow_dcf_why_rows(
@@ -9875,6 +9877,39 @@ server <- function(input, output, session) {
             locale = loc
           )
         }
+      } else if (identical(prim, "sotp") && exists("ynow_sotp_why_rows", mode = "function")) {
+        price <- tryCatch(sotp_results$sotp_price(), error = function(e) NA_real_)
+        if (is.finite(price)) {
+          fv_rows <- ynow_sotp_why_rows(implied_price = price, locale = loc)
+        }
+      }
+      # Companion Reference / Meta panels when relevant
+      if (identical(ref, "multiples") && exists("ynow_multiples_why_rows", mode = "function") &&
+          exists("ynow_value_why_panel", mode = "function")) {
+        px <- tryCatch(rel_results$any_implied_price(), error = function(e) NA_real_)
+        mk <- tryCatch(rel_results$active_method_key(), error = function(e) "")
+        if (is.finite(px)) {
+          extra[[length(extra) + 1L]] <- ynow_value_why_panel(
+            title = tryCatch(ui_str("explain_mult_why_title", loc), error = function(e) "Why this Implied Price (Multiples)"),
+            rows = ynow_multiples_why_rows(method_key = mk, implied_price = px, locale = loc),
+            empty_message = tryCatch(ui_str("explain_mult_why_empty", loc), error = function(e) ""),
+            footnote = tryCatch(ui_str("explain_mult_why_foot", loc), error = function(e) NULL)
+          )
+        }
+      }
+      if ((identical(sec, "sotp") || identical(prim, "sotp")) &&
+          !identical(prim, "sotp") &&
+          exists("ynow_sotp_why_rows", mode = "function") &&
+          exists("ynow_value_why_panel", mode = "function")) {
+        px <- tryCatch(sotp_results$sotp_price(), error = function(e) NA_real_)
+        if (is.finite(px)) {
+          extra[[length(extra) + 1L]] <- ynow_value_why_panel(
+            title = tryCatch(ui_str("explain_sotp_why_title", loc), error = function(e) "Why this SOTP value"),
+            rows = ynow_sotp_why_rows(implied_price = px, locale = loc),
+            empty_message = tryCatch(ui_str("explain_sotp_why_empty", loc), error = function(e) ""),
+            footnote = tryCatch(ui_str("explain_sotp_why_foot", loc), error = function(e) NULL)
+          )
+        }
       }
     }
     gate_rows <- if (exists("ynow_decision_gate_why_rows", mode = "function")) {
@@ -9893,8 +9928,19 @@ server <- function(input, output, session) {
       gate_title = tryCatch(ui_str("explain_gate_why_title", loc), error = function(e) "Why this Decision Checklist gate"),
       gate_rows = gate_rows,
       gate_empty = gate_empty,
-      gate_foot = tryCatch(ui_str("explain_gate_why_foot", loc), error = function(e) NULL)
+      gate_foot = tryCatch(ui_str("explain_gate_why_foot", loc), error = function(e) NULL),
+      extra_panels = if (length(extra)) extra else NULL
     )
+  }
+
+  output$smart_value_why <- renderUI({
+    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+    .ynow_build_primary_explain_ui(loc)
+  })
+
+  output$dashboard_value_why <- renderUI({
+    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+    .ynow_build_primary_explain_ui(loc)
   })
   
   output$vtxt_dcf_setting_details <- renderUI({

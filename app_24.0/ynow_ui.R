@@ -14521,6 +14521,8 @@ ui <- dashboardPage(
             "各模型「公式參數貢獻與敏感度」預設展開。完整 Decision Matrix 見本頁下方。"
           ))
         ),
+        # Full-mode primary workflow: same Why + gate surface as Smart Analysis
+        uiOutput("dashboard_value_why"),
         fluidRow(
           box(
             title = tagList(

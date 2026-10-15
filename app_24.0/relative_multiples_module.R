@@ -613,6 +613,7 @@ relative_multiples_module_ui <- function(id) {
             column(4, class = "ynow-model-kpi-tone-2", valueBoxOutput(ns("vbx_fpe"), width = 12)),
             column(4, class = "ynow-model-kpi-tone-3", valueBoxOutput(ns("vbx_peg"), width = 12))
           ),
+          uiOutput(ns("value_why")),
           .rel_formula_banner(
             "ynow_rel_formula_equity",
             "Implied Price = EPS × P/E　｜　PEG = P/E ÷ g(%)"
@@ -1155,6 +1156,35 @@ relative_multiples_module_server <- function(id,
     .active_pick <- reactive({
       mode <- .rel_normalize_mode(family_mode_rv() %||% input$rel_mode %||% "equity")
       .rel_pick_active_implied(last_result(), mode = mode)
+    })
+
+    output$value_why <- renderUI({
+      loc <- .loc()
+      empty_msg <- tryCatch(
+        ui_str("explain_mult_why_empty", loc),
+        error = function(e) "Run Multiples to see Implied Price path (Reference, not Fair Value)."
+      )
+      if (!exists("ynow_value_why_panel", mode = "function") ||
+          !exists("ynow_multiples_why_rows", mode = "function")) {
+        return(tags$p(style = "color:#888;", empty_msg))
+      }
+      pick <- tryCatch(.active_pick(), error = function(e) NULL)
+      px <- if (!is.null(pick)) suppressWarnings(as.numeric(pick$implied_price)[1]) else NA_real_
+      rows <- if (is.finite(px)) {
+        ynow_multiples_why_rows(
+          method_key = as.character(pick$key %||% "")[1],
+          implied_price = px,
+          locale = loc
+        )
+      } else {
+        NULL
+      }
+      ynow_value_why_panel(
+        title = tryCatch(ui_str("explain_mult_why_title", loc), error = function(e) "Why this Implied Price (Multiples)"),
+        rows = rows,
+        empty_message = empty_msg,
+        footnote = tryCatch(ui_str("explain_mult_why_foot", loc), error = function(e) NULL)
+      )
     })
 
     return(list(
