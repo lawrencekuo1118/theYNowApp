@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12692763
+bundleId=12692791
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=6fedf0c145082ee101283022f27f0dee1089c16e
-commit=6fedf0c145082ee101283022f27f0dee1089c16e
-short=6fedf0c
-message=fix(ui): make 繁中 locale switch survive connect races (v24.08)
-captured_at=2026-10-15T04:35:00Z
+aligned_git=e19c64727da66ca8ec6460ea9336e4482c184d19
+commit=e19c64727da66ca8ec6460ea9336e4482c184d19
+short=e19c647
+message=fix(ui): full-bleed market flags with no seam (v24.09)
+captured_at=2026-10-15T05:05:00Z
 display_version=v24.09
