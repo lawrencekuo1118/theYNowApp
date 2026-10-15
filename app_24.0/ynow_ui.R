@@ -9460,11 +9460,22 @@ ui <- dashboardPage(
               setTimeout(registerLocaleHandler, 50);
               return;
             }
-            /* Always (re)bind — an early register before Shiny is fully live can
-               no-op; connect/resync must be able to re-attach applyUiLocale. */
-            Shiny.addCustomMessageHandler('ynowUiLocale', applyUiLocale);
-            Shiny.addCustomMessageHandler('ynowDcLocale', applyDcLocale);
-            Shiny.addCustomMessageHandler('ynowDcSopLocale', function (payload) {
+            /* Shiny 1.14+ requires handler.length === 1. applyUiLocale(payload, opts)
+               has arity 2 for click-time boot opts — register a unary wrapper so
+               addCustomMessageHandler does not throw and abort this script (which
+               would skip the Lite toggle IIFE below). */
+            var addHandler = function (type, fn) {
+              try {
+                Shiny.addCustomMessageHandler(type, fn);
+              } catch (eAdd) {
+                /* Re-register on shiny:connected may hit "already added"; keep first. */
+              }
+            };
+            addHandler('ynowUiLocale', function (payload) {
+              applyUiLocale(payload);
+            });
+            addHandler('ynowDcLocale', applyDcLocale);
+            addHandler('ynowDcSopLocale', function (payload) {
               if (!payload) return;
               var set = function (id, val) {
                 var el = document.getElementById(id);
@@ -9479,7 +9490,7 @@ ui <- dashboardPage(
               set('ynow_dc_sop_ack_sens_label', payload.ack_sens);
               set('ynow_dc_sop_ack_qual_label', payload.ack_qual);
             });
-            Shiny.addCustomMessageHandler('ynowCorpLogoColors', function (payload) {
+            addHandler('ynowCorpLogoColors', function (payload) {
               var root = document.documentElement;
               var c1 = payload && payload.c1 ? String(payload.c1) : '';
               var c2 = payload && payload.c2 ? String(payload.c2) : '';
@@ -9493,7 +9504,7 @@ ui <- dashboardPage(
               root.style.setProperty('--ynow-corp-c2', c2);
               document.body.classList.add('ynow-corp-logo');
             });
-            Shiny.addCustomMessageHandler('ynowModelTheme', function (payload) {
+            addHandler('ynowModelTheme', function (payload) {
               var tab = (payload && payload.tab) ? String(payload.tab) : '';
               /* Keys match Model Selector card accents (NAV/DCF/DDM/RI/P/B/Multiples/SOTP). */
               var map = {
@@ -9516,7 +9527,7 @@ ui <- dashboardPage(
               document.body.classList.toggle('ynow-theme-atx', tab === 'asset_transmission');
             });
             /* Models filter: lock methods with no primary names (Listed-style disabled, unchecked). */
-            Shiny.addCustomMessageHandler('ynowLabImMethodsLock', function (payload) {
+            addHandler('ynowLabImMethodsLock', function (payload) {
               var avail = (payload && payload.available) ? payload.available.map(String) : [];
               var root = document.getElementById('lab_im_methods');
               if (!root) return;

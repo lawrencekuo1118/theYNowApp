@@ -109,6 +109,12 @@ check("push coalesce skips identical non-force bursts", {
   grepl("ynow_last_locale_push", srv_src, fixed = TRUE) &&
     grepl("!isTRUE(force)", srv_src, fixed = TRUE)
 })
+check("ynowUiLocale registered with unary wrapper (Shiny 1.14 arity)", {
+  grepl("addHandler('ynowUiLocale', function (payload)", ui_src, fixed = TRUE) &&
+    grepl("applyUiLocale(payload);", ui_src, fixed = TRUE) &&
+    grepl("function applyUiLocale(payload, opts)", ui_src, fixed = TRUE) &&
+    !grepl("addCustomMessageHandler('ynowUiLocale', applyUiLocale)", ui_src, fixed = TRUE)
+})
 
 if (fail > 0L) {
   cat("FAILED: ", fail, " check(s)\n", sep = "")
