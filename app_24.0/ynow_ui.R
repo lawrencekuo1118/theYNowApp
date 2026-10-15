@@ -11388,6 +11388,35 @@ ui <- dashboardPage(
           border-radius: 8px;
           background: rgba(12, 84, 132, 0.03);
         }
+        .ynow-macro-theme-title-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          width: 100%;
+          margin: 0 0 8px 0;
+        }
+        .ynow-macro-theme-title-row > #ynow_macro_theme_title {
+          flex: 1 1 auto;
+          min-width: 0;
+          margin: 0;
+        }
+        .ynow-macro-theme-title-row > .btn.ynow-macro-refresh-in-title,
+        .ynow-macro-refresh-in-title {
+          flex: 0 0 auto;
+          white-space: nowrap;
+          margin: 0;
+          padding: 4px 12px;
+          font-size: 13px;
+          line-height: 1.35;
+          background: #fff !important;
+          border: 1px solid var(--ynow-macro-blue, #0C5484) !important;
+          color: var(--ynow-macro-blue, #0C5484) !important;
+        }
+        .ynow-macro-theme-title-row > .btn.ynow-macro-refresh-in-title:hover,
+        .ynow-macro-refresh-in-title:hover {
+          background: rgba(12, 84, 132, 0.08) !important;
+        }
         .ynow-macro-chapter h3,
         .ynow-macro-chapter h4 {
           margin: 0 0 8px 0;
