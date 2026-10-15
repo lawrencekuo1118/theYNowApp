@@ -700,6 +700,26 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Account sign-in is designed but disabled by default; ",
       "the app stays guest-accessible until enabled via environment flag."
     ),
+    menu_admin = "Maintenance",
+    auth_admin_title = "Maintenance",
+    auth_admin_intro = paste0(
+      "Signed-in maintenance workspace (Full mode). ",
+      "Lite mode never requires an account and stays fully usable."
+    ),
+    auth_admin_account = "Account",
+    auth_admin_since = "Signed in at",
+    auth_admin_build = "Display version",
+    auth_admin_tools = "Tools",
+    auth_admin_tool_alerts = "Value Alerts: email notifications default to this account mailbox.",
+    auth_admin_tool_lite = "Lite mode stays fully usable without sign-in (no maintenance nav).",
+    auth_admin_goto_alerts = "Open Value Alerts",
+    auth_admin_need_login = "Sign in to open the maintenance workspace.",
+    auth_admin_lite_blocked = "Maintenance is Full-mode only. Lite stays fully usable without an account.",
+    auth_pa_gate_title = "Sign in required",
+    auth_pa_gate_body = paste0(
+      "Value Alerts in Full mode require an account. ",
+      "Lite mode does not require sign-in and remains fully usable."
+    ),
     test_link = " Testing",
     testing_page_title = "Testing",
     testing_page_sub = paste0(
@@ -3985,6 +4005,26 @@ locale_for_market <- function(mode = get_market_mode()) {
     auth_about_note = paste0(
       "帳號登入架構已設計，目前預設關閉；",
       "啟用前全站仍以訪客模式使用（環境變數開關）。"
+    ),
+    menu_admin = "維護後台",
+    auth_admin_title = "維護後台",
+    auth_admin_intro = paste0(
+      "登入後的維護工作區（完整版）。",
+      "Lite 版無需帳號即可完整使用。"
+    ),
+    auth_admin_account = "帳號",
+    auth_admin_since = "登入時間",
+    auth_admin_build = "顯示版號",
+    auth_admin_tools = "工具",
+    auth_admin_tool_alerts = "到值通知：寄信預設寄到此帳號信箱。",
+    auth_admin_tool_lite = "Lite 版無需登入即可完整使用（不顯示維護後台）。",
+    auth_admin_goto_alerts = "開啟到值通知",
+    auth_admin_need_login = "請先登入以開啟維護後台。",
+    auth_admin_lite_blocked = "維護後台僅完整版提供。Lite 版無需帳號即可完整使用。",
+    auth_pa_gate_title = "需登入帳號",
+    auth_pa_gate_body = paste0(
+      "完整版的到值通知需登入帳號後才可使用。",
+      "Lite 版無需登入，功能可完整使用。"
     ),
     test_link = " 測試",
     testing_page_title = "測試",

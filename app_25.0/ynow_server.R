@@ -367,6 +367,55 @@ server <- function(input, output, session) {
   }
   session$userData$ynow_auth <- ynow_auth
 
+  # Maintenance backend (Full + signed-in). Lite never requires login.
+  output$ynow_admin_panel <- renderUI({
+    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+    if (!isTRUE(ynow_auth_enabled())) {
+      return(tags$p(style = "color:#888;", tryCatch(
+        ui_str("auth_msg_disabled", loc),
+        error = function(e) "Account sign-in is not enabled on this deployment."
+      )))
+    }
+    if (isTRUE(tryCatch(lite_mode(), error = function(e) FALSE))) {
+      return(tags$p(style = "color:#888;", tryCatch(
+        ui_str("auth_admin_lite_blocked", loc),
+        error = function(e) "Maintenance is Full-mode only. Lite stays fully usable without an account."
+      )))
+    }
+    u <- tryCatch(ynow_auth$user(), error = function(e) NULL)
+    if (is.null(u)) {
+      return(tags$div(
+        class = "box box-warning",
+        tags$div(class = "box-body", tags$p(tryCatch(
+          ui_str("auth_admin_need_login", loc),
+          error = function(e) "Sign in to open the maintenance workspace."
+        )),
+        actionButton("ynow_pa_gate_signin", tryCatch(
+          ui_str("auth_sign_in", loc), error = function(e) "Sign in"
+        ), class = "btn-primary"))
+      ))
+    }
+    build_ver <- tryCatch(
+      as.character(.YNOW_BUILD_VERSION %||% "")[1],
+      error = function(e) ""
+    )
+    if (exists("ynow_admin_panel_ui", mode = "function")) {
+      ynow_admin_panel_ui(u, locale = loc, build_version = build_ver)
+    } else {
+      tags$p(u$email %||% "")
+    }
+  })
+
+  # Prefill Value Alert email with the signed-in account mailbox (Full; Lite unchanged).
+  observe({
+    if (!isTRUE(ynow_auth_enabled())) return()
+    if (isTRUE(tryCatch(lite_mode(), error = function(e) FALSE))) return()
+    em <- ynow_auth_session_email(ynow_auth)
+    if (!nzchar(em)) return()
+    tryCatch(updateTextInput(session, "pa_email", value = em), error = function(e) NULL)
+    tryCatch(updateTextInput(session, "pa_quick_email", value = em), error = function(e) NULL)
+  })
+
   .ui_msg <- function(key, ..., loc = NULL) {
     if (is.null(loc)) {
       loc <- tryCatch(isolate(ui_locale()), error = function(e) "en")

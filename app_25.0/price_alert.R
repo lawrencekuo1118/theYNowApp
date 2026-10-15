@@ -587,6 +587,14 @@ ynow_alertable <- function(
 price_alert_tab_ui <- function() {
   tabItem(
     tabName = "price_alerts",
+    # Full + auth-on + guest gate (CSS: body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed))
+    if (exists("ynow_pa_guest_gate_ui", mode = "function")) {
+      ynow_pa_guest_gate_ui()
+    } else {
+      tags$div(id = "ynow_pa_guest_gate", style = "display:none;")
+    },
+    tags$div(
+      id = "ynow_pa_body",
     screener_panel_ui(),
     fluidRow(
       box(
@@ -641,6 +649,7 @@ price_alert_tab_ui <- function() {
         tags$div(style = "margin-top:12px;", DT::DTOutput("pa_history_table"))
       )
     )
+    ) # /#ynow_pa_body
   )
 }
 
@@ -910,10 +919,34 @@ price_alert_server <- function(input, output, session, ui_locale_rv = NULL,
     )
   }, server = TRUE)
 
+  .pa_login_ok <- function() {
+    # Lite never requires an account. When auth feature is off, guests keep alerts.
+    if (isTRUE(tryCatch(isolate(input$ynow_lite_mode), error = function(e) FALSE))) {
+      return(TRUE)
+    }
+    if (!exists("ynow_auth_enabled", mode = "function") || !isTRUE(ynow_auth_enabled())) {
+      return(TRUE)
+    }
+    auth <- tryCatch(session$userData$ynow_auth, error = function(e) NULL)
+    isTRUE(tryCatch(auth$is_logged_in(), error = function(e) FALSE))
+  }
+
   observeEvent(input$pa_save, {
+    if (!isTRUE(.pa_login_ok())) {
+      showNotification(say("auth_pa_gate_title"), type = "warning")
+      return()
+    }
+    email_val <- input$pa_email
+    # Default outbound email to the signed-in account mailbox when blank.
+    if (exists("ynow_auth_session_email", mode = "function")) {
+      acct <- ynow_auth_session_email(tryCatch(session$userData$ynow_auth, error = function(e) NULL))
+      if ((!nzchar(trimws(as.character(email_val %||% "")[1]))) && nzchar(acct)) {
+        email_val <- acct
+      }
+    }
     res <- price_alert_add(
       price_alert_read(),
-      input$pa_email, input$pa_ticker, input$pa_kind,
+      email_val, input$pa_ticker, input$pa_kind,
       input$pa_level, input$pa_mos, input$pa_note,
       notify_app = isTRUE(input$pa_notify_app),
       notify_email = isTRUE(input$pa_notify_email),

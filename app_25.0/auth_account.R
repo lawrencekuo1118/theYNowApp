@@ -144,7 +144,22 @@ ynow_auth_modal_ui <- function() {
   )
 }
 
-#' Minimal CSS for the header auth chip (harmless when auth is off / unused).
+#' TRUE when a Full-mode session may require sign-in for gated surfaces.
+#' Lite never requires an account — always returns FALSE for Lite callers.
+ynow_auth_requires_login <- function(lite = FALSE) {
+  if (isTRUE(lite)) return(FALSE)
+  isTRUE(ynow_auth_enabled())
+}
+
+#' Account email for the current session user (or "").
+ynow_auth_session_email <- function(auth) {
+  if (is.null(auth) || !is.list(auth) || is.null(auth$user)) return("")
+  u <- tryCatch(auth$user(), error = function(e) NULL)
+  if (is.null(u)) return("")
+  ynow_auth_norm_email(u$email %||% "")
+}
+
+#' Minimal CSS for auth chrome + maintenance nav + Lite exemptions.
 ynow_auth_css <- function() {
   if (!isTRUE(ynow_auth_enabled())) return(NULL)
   tags$style(HTML(paste0(
@@ -155,8 +170,133 @@ ynow_auth_css <- function() {
     ".ynow-auth-btn { color:#f5f5f5 !important; font-size:12px; font-weight:600; }",
     ".ynow-auth-btn:hover { color:#fff !important; text-decoration:underline; }",
     ".ynow-auth-user-chip { color:#ddd; font-size:11px; max-width:140px; overflow:hidden;",
-    "  text-overflow:ellipsis; white-space:nowrap; }"
+    "  text-overflow:ellipsis; white-space:nowrap; }",
+    "body.ynow-lite .ynow-auth-header { display:none !important; }",
+    "body.ynow-lite .sidebar-menu a[data-value=\"account_admin\"],",
+    "body.ynow-lite .sidebar-menu li:has(> a[data-value=\"account_admin\"]) {",
+    "  display:none !important;",
+    "}",
+    "body.ynow-auth-feature:not(.ynow-authed) .sidebar-menu a[data-value=\"account_admin\"],",
+    "body.ynow-auth-feature:not(.ynow-authed) .sidebar-menu li:has(> a[data-value=\"account_admin\"]) {",
+    "  display:none !important;",
+    "}",
+    "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) #ynow_pa_body { display:none !important; }",
+    "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) #ynow_pa_guest_gate { display:block !important; }",
+    "#ynow_pa_guest_gate { display:none; }",
+    ".ynow-admin-panel { max-width:960px; margin:12px auto; }",
+    ".ynow-admin-panel .ynow-admin-meta { color:#555; font-size:13px; line-height:1.5; }"
   )))
+}
+
+#' Sidebar menu item for Maintenance (Full + signed-in; CSS hides otherwise).
+ynow_admin_menu_item <- function() {
+  if (!isTRUE(ynow_auth_enabled())) return(NULL)
+  menuItem(
+    text = tags$span(id = "ynow_menu_admin", "Maintenance"),
+    tabName = "account_admin",
+    icon = icon("toolbox")
+  )
+}
+
+#' Tab shell for maintenance backend (body filled by server).
+ynow_admin_tab_ui <- function() {
+  if (!isTRUE(ynow_auth_enabled())) return(NULL)
+  tabItem(
+    tabName = "account_admin",
+    uiOutput("ynow_admin_panel")
+  )
+}
+
+#' Build maintenance panel UI for a signed-in user.
+ynow_admin_panel_ui <- function(user, locale = "zh-TW", build_version = "") {
+  loc <- as.character(locale %||% "zh-TW")[1]
+  .lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
+  email <- ynow_auth_norm_email(user$email %||% "")
+  at <- as.character(user$logged_in_at %||% "")[1]
+  tags$div(
+    class = "ynow-admin-panel",
+    fluidRow(
+      box(
+        width = 12,
+        status = "primary",
+        solidHeader = TRUE,
+        title = tags$span(id = "ynow_admin_box_title", .lab("auth_admin_title", "Maintenance")),
+        tags$p(
+          class = "ynow-admin-meta",
+          tags$span(id = "ynow_admin_intro", .lab(
+            "auth_admin_intro",
+            "Signed-in maintenance workspace. Lite mode never requires an account."
+          ))
+        ),
+        tags$hr(),
+        tags$p(
+          tags$b(id = "ynow_admin_account_label", .lab("auth_admin_account", "Account")),
+          ": ",
+          tags$code(if (nzchar(email)) email else "—")
+        ),
+        tags$p(
+          tags$b(id = "ynow_admin_since_label", .lab("auth_admin_since", "Signed in at")),
+          ": ",
+          if (nzchar(at)) at else "—"
+        ),
+        tags$p(
+          tags$b(id = "ynow_admin_build_label", .lab("auth_admin_build", "Display version")),
+          ": ",
+          tags$code(if (nzchar(build_version)) build_version else "—")
+        ),
+        tags$hr(),
+        tags$h4(id = "ynow_admin_tools_h", .lab("auth_admin_tools", "Tools")),
+        tags$ul(
+          tags$li(id = "ynow_admin_tool_alerts", .lab(
+            "auth_admin_tool_alerts",
+            "Value Alerts: email notifications default to this account mailbox."
+          )),
+          tags$li(id = "ynow_admin_tool_lite", .lab(
+            "auth_admin_tool_lite",
+            "Lite mode stays fully usable without sign-in (no maintenance nav)."
+          ))
+        ),
+        actionButton(
+          "ynow_admin_goto_alerts",
+          label = tags$span(id = "ynow_admin_goto_alerts_label", .lab("auth_admin_goto_alerts", "Open Value Alerts")),
+          class = "btn-default"
+        ),
+        actionButton(
+          "ynow_auth_sign_out_admin",
+          label = tags$span(id = "ynow_admin_sign_out_label", .lab("auth_sign_out", "Sign out")),
+          class = "btn-warning"
+        )
+      )
+    )
+  )
+}
+
+#' Guest gate copy for Full-mode Value Alerts when auth is on (CSS-hidden otherwise).
+ynow_pa_guest_gate_ui <- function() {
+  tags$div(
+    id = "ynow_pa_guest_gate",
+    class = "box box-warning",
+    style = "display:none;",
+    tags$div(
+      class = "box-header with-border",
+      tags$h3(
+        class = "box-title",
+        tags$span(id = "ynow_pa_gate_title", "Sign in required")
+      )
+    ),
+    tags$div(
+      class = "box-body",
+      tags$p(id = "ynow_pa_gate_body", paste0(
+        "Value Alerts in Full mode require an account. ",
+        "Lite mode does not require sign-in and remains fully usable."
+      )),
+      actionButton(
+        "ynow_pa_gate_signin",
+        label = tags$span(id = "ynow_pa_gate_signin_label", "Sign in"),
+        class = "btn-primary"
+      )
+    )
+  )
 }
 
 #' Server: session account state. Always registers; UI/actions no-op when disabled.
@@ -180,6 +320,23 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
     NULL
   })
 
+  .push_auth_state <- function(logged_in = FALSE, email = "") {
+    session$sendCustomMessage(
+      "ynowAuthState",
+      list(
+        logged_in = isTRUE(logged_in),
+        email = as.character(email %||% "")[1],
+        label_sign_in = .str("auth_sign_in", "Sign in"),
+        label_sign_out = .str("auth_sign_out", "Sign out")
+      )
+    )
+  }
+
+  .sign_out <- function() {
+    account_user(NULL)
+    .push_auth_state(FALSE, "")
+  }
+
   observeEvent(input$ynow_auth_open, {
     if (!isTRUE(ynow_auth_enabled())) return()
     tryCatch(shinyBS::toggleModal(session, "ynow_auth_modal", "open"), error = function(e) NULL)
@@ -193,15 +350,7 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
       output$ynow_auth_status <- renderUI({
         tags$p(class = "text-success", .str("auth_msg_ok", "Signed in."))
       })
-      session$sendCustomMessage(
-        "ynowAuthState",
-        list(
-          logged_in = TRUE,
-          email = res$user$email %||% "",
-          label_sign_in = .str("auth_sign_in", "Sign in"),
-          label_sign_out = .str("auth_sign_out", "Sign out")
-        )
-      )
+      .push_auth_state(TRUE, res$user$email %||% "")
       tryCatch(shinyBS::toggleModal(session, "ynow_auth_modal", "close"), error = function(e) NULL)
     } else {
       mk <- as.character(res$message_key %||% "auth_msg_invalid")[1]
@@ -213,17 +362,37 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
 
   observeEvent(input$ynow_auth_sign_out, {
     if (!isTRUE(ynow_auth_enabled())) return()
-    account_user(NULL)
-    session$sendCustomMessage(
-      "ynowAuthState",
-      list(
-        logged_in = FALSE,
-        email = "",
-        label_sign_in = .str("auth_sign_in", "Sign in"),
-        label_sign_out = .str("auth_sign_out", "Sign out")
-      )
+    .sign_out()
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$ynow_auth_sign_out_admin, {
+    if (!isTRUE(ynow_auth_enabled())) return()
+    .sign_out()
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$ynow_pa_gate_signin, {
+    if (!isTRUE(ynow_auth_enabled())) return()
+    tryCatch(shinyBS::toggleModal(session, "ynow_auth_modal", "open"), error = function(e) NULL)
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$ynow_admin_goto_alerts, {
+    tryCatch(
+      updateTabItems(session, "sidebar_tabs", "price_alerts"),
+      error = function(e) {
+        tryCatch(
+          session$sendInputMessage("sidebar_tabs", list(value = "price_alerts")),
+          error = function(e2) NULL
+        )
+      }
     )
   }, ignoreInit = TRUE)
+
+  # Mark body as auth-feature so CSS gates Full-only surfaces; Lite stays exempt.
+  if (isTRUE(ynow_auth_enabled())) {
+    session$onFlushed(function() {
+      session$sendCustomMessage("ynowAuthFeature", list(on = TRUE))
+    }, once = TRUE)
+  }
 
   # Push locale labels when language changes (only matters when chrome exists).
   observe({
@@ -239,7 +408,12 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
         email_label = tryCatch(ui_str("auth_email_label", loc), error = function(e) "Email"),
         password_label = tryCatch(ui_str("auth_password_label", loc), error = function(e) "Password"),
         submit = tryCatch(ui_str("auth_submit", loc), error = function(e) "Sign in"),
-        cancel = tryCatch(ui_str("auth_cancel", loc), error = function(e) "Cancel")
+        cancel = tryCatch(ui_str("auth_cancel", loc), error = function(e) "Cancel"),
+        admin_title = tryCatch(ui_str("auth_admin_title", loc), error = function(e) "Maintenance"),
+        admin_intro = tryCatch(ui_str("auth_admin_intro", loc), error = function(e) ""),
+        pa_gate_title = tryCatch(ui_str("auth_pa_gate_title", loc), error = function(e) "Sign in required"),
+        pa_gate_body = tryCatch(ui_str("auth_pa_gate_body", loc), error = function(e) ""),
+        menu_admin = tryCatch(ui_str("menu_admin", loc), error = function(e) "Maintenance")
       )
     )
   })
@@ -248,6 +422,8 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
     enabled = ynow_auth_enabled(),
     user = account_user,
     is_logged_in = reactive({ !is.null(account_user()) }),
-    is_guest = reactive({ is.null(account_user()) })
+    is_guest = reactive({ is.null(account_user()) }),
+    sign_out = .sign_out,
+    push_auth_state = .push_auth_state
   )
 }

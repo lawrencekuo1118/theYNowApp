@@ -144,11 +144,32 @@ Sys.setenv(YNOW_ENABLE_ACCOUNT_LOGIN = "0")
 check("0 disables auth", identical(ynow_auth_enabled(), FALSE))
 check("header gone when re-disabled", is.null(ynow_auth_header_ui()))
 
+# Lite never requires login; Full does only when auth feature is on
+Sys.setenv(YNOW_ENABLE_ACCOUNT_LOGIN = "1")
+check("Lite never requires login", identical(ynow_auth_requires_login(TRUE), FALSE))
+check("Full requires login when auth on", identical(ynow_auth_requires_login(FALSE), TRUE))
+Sys.setenv(YNOW_ENABLE_ACCOUNT_LOGIN = "0")
+check("Full guest OK when auth off", identical(ynow_auth_requires_login(FALSE), FALSE))
+
+Sys.setenv(YNOW_ENABLE_ACCOUNT_LOGIN = "1")
+suppressPackageStartupMessages(library(shinydashboard))
+check("admin menu when enabled", !is.null(ynow_admin_menu_item()))
+check("admin tab when enabled", !is.null(ynow_admin_tab_ui()))
+check("admin panel builds", {
+  p <- ynow_admin_panel_ui(list(email = "demo@ynow.app", logged_in_at = "t"), "en", "v25.01")
+  inherits(p, "shiny.tag") || inherits(p, "shiny.tag.list")
+})
+check("pa guest gate builds", inherits(ynow_pa_guest_gate_ui(), "shiny.tag"))
+Sys.setenv(YNOW_ENABLE_ACCOUNT_LOGIN = "0")
+check("admin menu NULL when disabled", is.null(ynow_admin_menu_item()))
+
 keys <- c(
   "auth_sign_in", "auth_sign_out", "auth_modal_title", "auth_modal_help",
   "auth_email_label", "auth_password_label", "auth_submit", "auth_cancel",
   "auth_msg_ok", "auth_msg_disabled", "auth_msg_missing", "auth_msg_invalid",
-  "auth_msg_no_backend", "auth_about_note"
+  "auth_msg_no_backend", "auth_about_note",
+  "menu_admin", "auth_admin_title", "auth_admin_intro", "auth_pa_gate_title",
+  "auth_pa_gate_body", "auth_admin_tool_lite"
 )
 for (k in keys) {
   check(paste("en key", k), k %in% names(.UI_STRINGS$en) && nzchar(ui_str(k, "en")))
@@ -171,7 +192,20 @@ check("UI About mentions account sign-in", grepl("Account sign-in", ui, fixed = 
 check("UI About says disabled by default", grepl("disabled by default", ui, fixed = TRUE) &&
         grepl("預設關閉", ui, fixed = TRUE))
 check("UI wires ynowAuthState handler", grepl("ynowAuthState", ui, fixed = TRUE))
+check("UI wires ynowAuthFeature handler", grepl("ynowAuthFeature", ui, fixed = TRUE))
+check("UI About Lite no account", grepl("Lite never requires an account", ui, fixed = TRUE) &&
+        grepl("Lite 版無需帳號即可完整使用", ui, fixed = TRUE))
+check("UI CSS hides auth in Lite", grepl("body.ynow-lite .ynow-auth-header", {
+  paste(readLines(src_auth, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+}, fixed = TRUE))
 check("server wires ynow_auth_server", grepl("ynow_auth_server", srv, fixed = TRUE))
+check("server renders admin panel", grepl("output\\$ynow_admin_panel", srv))
+check("server prefills alert email from account", grepl("ynow_auth_session_email", srv, fixed = TRUE) &&
+        grepl("pa_email", srv, fixed = TRUE))
+check("pa save gates login", {
+  pa <- paste(readLines(file.path(app_dir, "price_alert.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("\\.pa_login_ok", pa) && grepl("ynow_lite_mode", pa, fixed = TRUE)
+})
 check("display version v25", grepl("The YNow App v25", ui, fixed = TRUE))
 
 # Live line folder name

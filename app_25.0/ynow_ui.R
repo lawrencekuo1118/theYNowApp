@@ -246,7 +246,7 @@
           class = "ynow-about-method",
           tags$b("帳號登入："),
           "登入架構已設計（電子郵件／密碼、工作階段狀態），目前預設關閉、不啟用；",
-          "全站仍以訪客模式使用。日後以環境變數啟用，無需改版重做介面。"
+          "全站仍以訪客模式使用；登入後（完整版）可開啟維護後台。Lite 版無需帳號即可完整使用。"
         ),
         tags$h4(class = "ynow-about-feat-h", tags$b("核心功能亮點：")),
         zh_features
@@ -275,7 +275,7 @@
           tags$b("Account sign-in:"),
           " the login surface is designed (email / password, session state) but ",
           tags$b("disabled by default"),
-          " — the app stays guest-accessible. Enable later via environment flag without rebuilding the UI."
+          " — the app stays guest-accessible. After sign-in (Full), Maintenance opens; Lite never requires an account."
         ),
         tags$h4(class = "ynow-about-feat-h", tags$b("Core Features:")),
         en_features
@@ -3477,13 +3477,19 @@ beta_rolling_section_ui <- function() {
 .ynow_tab_items <- function(...) {
   parts <- list(...)
   flat <- list()
+  .push <- function(x) {
+    if (is.null(x)) return()
+    flat[[length(flat) + 1L]] <<- x
+  }
   for (p in parts) {
-    if (inherits(p, "shiny.tag")) {
-      flat[[length(flat) + 1L]] <- p
+    if (is.null(p)) {
+      next
+    } else if (inherits(p, "shiny.tag")) {
+      .push(p)
     } else if (is.list(p)) {
-      for (q in p) flat[[length(flat) + 1L]] <- q
+      for (q in p) .push(q)
     } else {
-      flat[[length(flat) + 1L]] <- p
+      .push(p)
     }
   }
   do.call(shinydashboard::tabItems, flat)
@@ -3739,7 +3745,15 @@ ui <- dashboardPage(
                tabName = "price_alerts",
                icon = icon("bell")
              ),
-             menuItem("About", tabName = "about", icon = icon("info-circle"))
+             menuItem("About", tabName = "about", icon = icon("info-circle")),
+             # Maintenance: Full + signed-in only (CSS). Omit NULL via .list (tagAssert).
+             .list = if (exists("ynow_compact_ui", mode = "function")) {
+               ynow_compact_ui(
+                 if (exists("ynow_admin_menu_item", mode = "function")) ynow_admin_menu_item()
+               )
+             } else {
+               list()
+             }
              # Snapshot 不放主選單（避免巢狀 li 被瀏覽器抬出隱藏）；改由底部捷徑切換
            ),
            hr()
@@ -9626,6 +9640,17 @@ ui <- dashboardPage(
               set('ynow_auth_password_label', payload.password_label);
               set('ynow_auth_submit_label', payload.submit);
               set('ynow_auth_cancel_label', payload.cancel);
+              set('ynow_menu_admin', payload.menu_admin);
+              set('ynow_admin_box_title', payload.admin_title);
+              set('ynow_admin_intro', payload.admin_intro);
+              set('ynow_pa_gate_title', payload.pa_gate_title);
+              set('ynow_pa_gate_body', payload.pa_gate_body);
+              set('ynow_pa_gate_signin_label', payload.sign_in);
+            });
+            addHandler('ynowAuthFeature', function (payload) {
+              if (!payload) return;
+              if (payload.on) document.body.classList.add('ynow-auth-feature');
+              else document.body.classList.remove('ynow-auth-feature');
             });
             addHandler('ynowAuthState', function (payload) {
               if (!payload) return;
@@ -9634,6 +9659,8 @@ ui <- dashboardPage(
               var openLink = document.getElementById('ynow_auth_open');
               var outLink = document.getElementById('ynow_auth_sign_out');
               var loggedIn = !!(payload.logged_in);
+              if (loggedIn) document.body.classList.add('ynow-authed');
+              else document.body.classList.remove('ynow-authed');
               if (chip) {
                 chip.textContent = loggedIn ? String(payload.email || '') : '';
                 chip.style.display = loggedIn ? '' : 'none';
@@ -15684,6 +15711,7 @@ ui <- dashboardPage(
       # ==========================================
       decision_checklist_tab_ui(),
       price_alert_tab_ui(),
+      if (exists("ynow_admin_tab_ui", mode = "function")) ynow_admin_tab_ui() else NULL,
 
       # ==========================================
       # Quant Backtest Lab（報告式版面；章節內容後接預設收合之控制區）
