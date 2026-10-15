@@ -13496,6 +13496,12 @@ server <- function(input, output, session) {
         error = function(e) character(0)
       )
       available <- intersect(as.character(LAB_SIDEBAR_METHOD_ORDER), as.character(available))
+      # Catalog not ready yet: keep HTML Absolute defaults.
+      # Do not updateCheckboxGroupInput(selected=empty) and do not push an empty
+      # lock payload (client lock would uncheck every method when avail=[]).
+      if (!length(available)) {
+        return()
+      }
       cur <- isolate(as.character(input$lab_im_methods %||% character(0)))
       cur <- cur[nzchar(cur)]
       # Keep user picks among still-available methods.
@@ -13504,6 +13510,17 @@ server <- function(input, output, session) {
         as.character(APP_DEFAULTS$lab_im_methods %||% character(0)),
         available
       )
+      # Stale "select all" from an older default (Absolute defaults never include Relative):
+      # snap back to Absolute defaults on first catalog bind so Relatives stay off.
+      rel_keys <- as.character(LAB_METHOD_REL_KEYS)
+      default_rel <- intersect(
+        as.character(APP_DEFAULTS$lab_im_methods %||% character(0)),
+        rel_keys
+      )
+      if (length(cur) && !length(default_rel) &&
+          any(rel_keys %in% cur) && setequal(sort(cur), sort(available))) {
+        cur <- character(0)
+      }
       new_sel <- if (length(cur)) {
         intersect(cur, available)
       } else {
