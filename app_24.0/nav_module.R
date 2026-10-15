@@ -47,6 +47,7 @@ nav_module_ui <- function(id) {
           column(4, class = "ynow-model-kpi-tone-2", valueBoxOutput(ns("vbx_navps"), width = 12)),
           column(4, class = "ynow-model-kpi-tone-3", valueBoxOutput(ns("vbx_mkt"), width = 12))
         ),
+        uiOutput(ns("value_why")),
         fluidRow(
           div(
             "Fair Price = NAVPS × NAV 倍數　｜　NAV = 股東權益 − 控股折價 × 投資科目",
@@ -494,6 +495,38 @@ nav_module_server <- function(id,
           )
       }
       p
+    })
+
+    # Core explainability: Why this NAV Fair Value (not appendix)
+    output$value_why <- renderUI({
+      loc <- .loc()
+      empty_msg <- tryCatch(
+        ui_str("explain_nav_why_empty", loc),
+        error = function(e) "Run Search / Calculate NAV to see NAVPS × multiple and HoldCo discount."
+      )
+      if (!exists("ynow_value_why_panel", mode = "function") ||
+          !exists("ynow_nav_why_rows", mode = "function")) {
+        return(tags$p(style = "color:#888;", empty_msg))
+      }
+      res <- tryCatch(nav_calc(), error = function(e) NULL)
+      ok <- !is.null(res) && identical(res$status, "success")
+      rows <- if (isTRUE(ok)) {
+        ynow_nav_why_rows(
+          navps = res$navps,
+          multiple = res$nav_mid,
+          holdco_pct = suppressWarnings(as.numeric(input$holdco_discount)[1]),
+          price = res$fair_mid,
+          locale = loc
+        )
+      } else {
+        NULL
+      }
+      ynow_value_why_panel(
+        title = tryCatch(ui_str("explain_nav_why_title", loc), error = function(e) "Why this Fair Value (NAV)"),
+        rows = rows,
+        empty_message = empty_msg,
+        footnote = tryCatch(ui_str("explain_nav_why_foot", loc), error = function(e) NULL)
+      )
     })
 
     return(list(

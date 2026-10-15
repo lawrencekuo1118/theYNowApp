@@ -24,6 +24,7 @@ pb_asset_module_ui <- function(id) {
                             column(3, class = "ynow-model-kpi-tone-3", valueBoxOutput(ns("vbx_tbvps"), width = 12)),
                             column(3, class = "ynow-model-kpi-tone-4", valueBoxOutput(ns("vbx_mkt_pb"), width = 12))
                           ),
+                          uiOutput(ns("value_why")),
                           fluidRow(
                             div("Fair Price = (BVPS / TBVPS / NAVPS) × Target P/B",
                                 style = "font-size: 16px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;")
@@ -780,6 +781,39 @@ pb_asset_module_server <- function(id,
       }
       .param_sensitivity_sort_by_abs_eps(do.call(rbind, rows))
     }, striped = TRUE, hover = TRUE, bordered = TRUE, spacing = "s", width = "100%")
+
+    # Core explainability: Why this P/B Fair Value (not appendix)
+    output$value_why <- renderUI({
+      loc <- .loc()
+      empty_msg <- tryCatch(
+        ui_str("explain_pb_why_empty", loc),
+        error = function(e) "Run Search / Calculate P/B to see book × target multiple drivers."
+      )
+      if (!exists("ynow_value_why_panel", mode = "function") ||
+          !exists("ynow_pb_why_rows", mode = "function")) {
+        return(tags$p(style = "color:#888;", empty_msg))
+      }
+      res <- tryCatch(pb_calc(), error = function(e) NULL)
+      ok <- !is.null(res) && identical(res$status, "success")
+      mode <- as.character(input$target_mode %||% "justified")[1]
+      rows <- if (isTRUE(ok)) {
+        ynow_pb_why_rows(
+          mode = mode,
+          book = res$basis_val,
+          target_pb = res$pb_mid,
+          price = res$fair_mid,
+          locale = loc
+        )
+      } else {
+        NULL
+      }
+      ynow_value_why_panel(
+        title = tryCatch(ui_str("explain_pb_why_title", loc), error = function(e) "Why this Fair Value (P/B)"),
+        rows = rows,
+        empty_message = empty_msg,
+        footnote = tryCatch(ui_str("explain_pb_why_foot", loc), error = function(e) NULL)
+      )
+    })
 
     return(list(
       # Calc-only exports: Composite overlays must not appear until 試算 / Run

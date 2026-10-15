@@ -9759,6 +9759,143 @@ server <- function(input, output, session) {
       footnote = foot
     )
   })
+
+  # Core explainability: Why this DDM Fair Value
+  output$ddm_value_why <- renderUI({
+    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+    empty_msg <- tryCatch(ui_str("explain_ddm_why_empty", loc), error = function(e) {
+      "Run Search / Calculate DDM to see path, Ke, g, and dividend inputs."
+    })
+    if (!exists("ynow_value_why_panel", mode = "function") ||
+        !exists("ynow_ddm_why_rows", mode = "function")) {
+      return(tags$p(style = "color:#888;", empty_msg))
+    }
+    mode <- as.character(input[["mod_ddm-ddm_mode"]] %||% "gordon")[1]
+    ke_pct <- tryCatch(central_ke() * 100, error = function(e) NA_real_)
+    g_pct <- suppressWarnings(as.numeric(input[["mod_ddm-g"]])[1])
+    d0 <- suppressWarnings(as.numeric(input[["mod_ddm-d0"]])[1])
+    eps <- suppressWarnings(as.numeric(input[["mod_ddm-spm_eps"]])[1])
+    price <- tryCatch({
+      if (!is.null(ddm_results$ddm_price)) ddm_results$ddm_price() else NA_real_
+    }, error = function(e) NA_real_)
+    rows <- if (is.finite(price)) {
+      ynow_ddm_why_rows(
+        mode = mode, ke_pct = ke_pct, g_pct = g_pct, d0 = d0, eps = eps,
+        price = price, locale = loc
+      )
+    } else {
+      NULL
+    }
+    ynow_value_why_panel(
+      title = tryCatch(ui_str("explain_ddm_why_title", loc), error = function(e) "Why this Fair Value (DDM)"),
+      rows = rows,
+      empty_message = empty_msg,
+      footnote = tryCatch(ui_str("explain_ddm_why_foot", loc), error = function(e) NULL)
+    )
+  })
+
+  # Primary workflow explainability: Smart Analysis FV Why + Decision Checklist gates
+  output$smart_value_why <- renderUI({
+    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+    if (!exists("ynow_smart_explain_ui", mode = "function")) return(NULL)
+    fv_empty <- tryCatch(ui_str("explain_smart_fv_why_empty", loc), error = function(e) {
+      "Search a ticker so Smart Analysis can show the primary Fair Value path and inputs."
+    })
+    gate_empty <- tryCatch(ui_str("explain_gate_why_empty", loc), error = function(e) {
+      "Open Decision Checklist / complete Search to see mandatory gate rationale."
+    })
+    fv_rows <- NULL
+    if (isTRUE(user_has_searched())) {
+      rec <- tryCatch(model_sidebar_rec(), error = function(e) NULL)
+      prim <- as.character(rec$primary %||% "")[1]
+      if (identical(prim, "dcf") && exists("ynow_dcf_why_rows", mode = "function")) {
+        snap <- tryCatch(dcf_audit_snap(), error = function(e) NULL)
+        fv_rows <- ynow_dcf_why_rows(
+          snap,
+          claim = as.character(input$dcf_claim %||% "fcff")[1],
+          mode = as.character(input$dcf_mode %||% "gordon")[1],
+          g_pct = suppressWarnings(as.numeric(input$sgr)[1]),
+          locale = loc
+        )
+      } else if (identical(prim, "ddm") && exists("ynow_ddm_why_rows", mode = "function")) {
+        price <- tryCatch(ddm_results$ddm_price(), error = function(e) NA_real_)
+        if (is.finite(price)) {
+          fv_rows <- ynow_ddm_why_rows(
+            mode = as.character(input[["mod_ddm-ddm_mode"]] %||% "gordon")[1],
+            ke_pct = tryCatch(central_ke() * 100, error = function(e) NA_real_),
+            g_pct = suppressWarnings(as.numeric(input[["mod_ddm-g"]])[1]),
+            d0 = suppressWarnings(as.numeric(input[["mod_ddm-d0"]])[1]),
+            eps = suppressWarnings(as.numeric(input[["mod_ddm-spm_eps"]])[1]),
+            price = price,
+            locale = loc
+          )
+        }
+      } else if (identical(prim, "ri") && exists("ynow_ri_why_rows", mode = "function")) {
+        res <- tryCatch({
+          if (!is.null(ri_results$ri_result)) ri_results$ri_result() else NULL
+        }, error = function(e) NULL)
+        if (!is.null(res) && identical(res$status, "success")) {
+          roe0 <- tryCatch({
+            if (!is.null(res$df) && "ROE" %in% names(res$df)) {
+              suppressWarnings(as.numeric(res$df$ROE[[1]])[1]) * 100
+            } else NA_real_
+          }, error = function(e) NA_real_)
+          fv_rows <- ynow_ri_why_rows(
+            b0 = res$b0,
+            ke_pct = suppressWarnings(as.numeric(res$ke)[1]) * 100,
+            roe_pct = roe0,
+            g_pct = suppressWarnings(as.numeric(res$g)[1]) * 100,
+            pv_ri = res$pv_ri,
+            tv = res$pv_terminal,
+            price = res$intrinsic,
+            locale = loc
+          )
+        }
+      } else if (identical(prim, "pb") && exists("ynow_pb_why_rows", mode = "function")) {
+        price <- tryCatch(pb_results$pb_price(), error = function(e) NA_real_)
+        band <- tryCatch(pb_results$pb_band(), error = function(e) NULL)
+        if (is.finite(price)) {
+          fv_rows <- ynow_pb_why_rows(
+            mode = as.character(input[["mod_pb-target_mode"]] %||% "justified")[1],
+            book = if (!is.null(band)) band$basis_val else NA_real_,
+            target_pb = suppressWarnings(as.numeric(input[["mod_pb-pb_mid"]])[1]),
+            price = price,
+            locale = loc
+          )
+        }
+      } else if (identical(prim, "nav") && exists("ynow_nav_why_rows", mode = "function")) {
+        price <- tryCatch(nav_results$nav_price(), error = function(e) NA_real_)
+        band <- tryCatch(nav_results$nav_band(), error = function(e) NULL)
+        if (is.finite(price)) {
+          fv_rows <- ynow_nav_why_rows(
+            navps = if (!is.null(band)) band$navps else NA_real_,
+            multiple = suppressWarnings(as.numeric(input[["mod_nav-nav_mid"]])[1]),
+            holdco_pct = suppressWarnings(as.numeric(input[["mod_nav-holdco_discount"]])[1]),
+            price = price,
+            locale = loc
+          )
+        }
+      }
+    }
+    gate_rows <- if (exists("ynow_decision_gate_why_rows", mode = "function")) {
+      ynow_decision_gate_why_rows(
+        tryCatch(institutional_sop_gate(), error = function(e) NULL),
+        locale = loc
+      )
+    } else {
+      NULL
+    }
+    ynow_smart_explain_ui(
+      fv_title = tryCatch(ui_str("explain_smart_fv_why_title", loc), error = function(e) "Why this Fair Value (primary)"),
+      fv_rows = fv_rows,
+      fv_empty = fv_empty,
+      fv_foot = tryCatch(ui_str("explain_smart_fv_why_foot", loc), error = function(e) NULL),
+      gate_title = tryCatch(ui_str("explain_gate_why_title", loc), error = function(e) "Why this Decision Checklist gate"),
+      gate_rows = gate_rows,
+      gate_empty = gate_empty,
+      gate_foot = tryCatch(ui_str("explain_gate_why_foot", loc), error = function(e) NULL)
+    )
+  })
   
   output$vtxt_dcf_setting_details <- renderUI({
     req(input$dcf_mode, input$years)
