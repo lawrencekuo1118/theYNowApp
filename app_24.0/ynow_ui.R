@@ -1880,7 +1880,35 @@ beta_rolling_section_ui <- function() {
 }
 
 #' Lazy page body for tab `bluechip` (mounted once per session).
-.ynow_page_ui_bluechip <- function() {
+#' @param market_mode Active market so concept-group choices bake US ≠ TW at mount.
+#' @param locale UI locale for labels / placeholder.
+.ynow_page_ui_bluechip <- function(market_mode = NULL, locale = NULL) {
+  .bc_mm <- tryCatch({
+    if (!is.null(market_mode) && nzchar(as.character(market_mode)[1])) {
+      if (exists("normalize_market_mode", mode = "function")) {
+        normalize_market_mode(market_mode)
+      } else {
+        toupper(as.character(market_mode)[1])
+      }
+    } else if (exists("get_market_mode", mode = "function")) {
+      get_market_mode()
+    } else {
+      "US"
+    }
+  }, error = function(e) "US")
+  if (!.bc_mm %in% c("US", "TW")) .bc_mm <- "US"
+  .bc_loc <- tryCatch({
+    if (!is.null(locale) && nzchar(as.character(locale)[1])) {
+      if (exists("normalize_ui_locale", mode = "function")) {
+        normalize_ui_locale(locale)
+      } else {
+        as.character(locale)[1]
+      }
+    } else {
+      "zh-TW"
+    }
+  }, error = function(e) "zh-TW")
+
   tagList(
   # Industry mcap-weighted upside board (auto; above Candidate truncate)
           fluidRow(
@@ -1957,11 +1985,14 @@ beta_rolling_section_ui <- function() {
                   selectizeInput(
                     "lab_im_concepts",
                     tags$span(id = "ynow_lab_im_concepts_label", "概念股群"),
-                    choices = lab_concept_group_choices("US", "zh-TW"),
+                    choices = lab_concept_group_choices(.bc_mm, .bc_loc),
                     selected = APP_DEFAULTS$lab_im_concepts,
                     multiple = TRUE,
                     options = list(
-                      placeholder = "選擇一或多個概念股群…",
+                      placeholder = tryCatch(
+                        ui_str("lab_im_concepts_placeholder", .bc_loc),
+                        error = function(e) "依目前市場（美股／台股）選擇一或多個概念股群…"
+                      ),
                       plugins = list("remove_button")
                     ),
                     width = "100%"

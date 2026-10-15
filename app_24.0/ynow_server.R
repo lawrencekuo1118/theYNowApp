@@ -675,7 +675,12 @@ server <- function(input, output, session) {
     input, output, session,
     builders = list(
       macro_market = function() .ynow_page_ui_macro_market(),
-      bluechip = function() .ynow_page_ui_bluechip(),
+      bluechip = function() {
+        .ynow_page_ui_bluechip(
+          market_mode = isolate(market_mode()),
+          locale = isolate(ui_locale())
+        )
+      },
       hfv = function() .ynow_page_ui_hfv(),
       lab_notes = function() .ynow_page_ui_lab_notes(),
       testing = function() .ynow_page_ui_testing(),
@@ -819,13 +824,15 @@ server <- function(input, output, session) {
   }, ignoreInit = TRUE)
 
   # Push Blue Chip concept-group choices for the active market (US ≠ TW).
-  # Clear selection on market change so shared bare-key leftovers cannot linger.
   .lab_im_push_concept_choices <- function(mode, locale = NULL, clear_selected = FALSE) {
     mm <- tryCatch(normalize_market_mode(mode), error = function(e) "US")
-    loc <- tryCatch(
-      normalize_ui_locale(locale %||% isolate(ui_locale())),
-      error = function(e) "zh-TW"
-    )
+    loc <- tryCatch({
+      raw_loc <- locale
+      if (is.null(raw_loc) || !nzchar(as.character(raw_loc)[1])) {
+        raw_loc <- isolate(ui_locale())
+      }
+      normalize_ui_locale(raw_loc)
+    }, error = function(e) "zh-TW")
     if (!exists("lab_concept_group_choices", mode = "function")) return(invisible(NULL))
     concept_choices <- tryCatch(
       lab_concept_group_choices(mm, loc),
@@ -834,7 +841,10 @@ server <- function(input, output, session) {
     concept_cur <- if (isTRUE(clear_selected)) {
       character(0)
     } else {
-      cur <- as.character(isolate(input$lab_im_concepts) %||% character(0))
+      cur <- tryCatch(
+        as.character(isolate(input$lab_im_concepts) %||% character(0)),
+        error = function(e) character(0)
+      )
       cur[cur %in% unname(concept_choices)]
     }
     tryCatch(
@@ -843,6 +853,7 @@ server <- function(input, output, session) {
         "lab_im_concepts",
         choices = concept_choices,
         selected = concept_cur,
+        server = FALSE,
         options = list(
           placeholder = tryCatch(
             ui_str("lab_im_concepts_placeholder", loc),
@@ -864,8 +875,7 @@ server <- function(input, output, session) {
     set_market_mode(mode)
     prof <- market_profile(mode)
 
-    # Concept groups are market-scoped — refresh immediately (do not wait for
-    # coalesced locale scheduler / catalog rebuild).
+    # Concept groups are market-scoped — refresh immediately (US ≠ TW).
     .lab_im_push_concept_choices(mode, clear_selected = TRUE)
 
     # 市場切換：不覆寫使用者語言；僅刷新 chrome 的 market class／美股｜台股按鈕

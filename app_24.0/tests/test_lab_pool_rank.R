@@ -72,8 +72,10 @@ check(
   "server pushes concepts on market switch",
   {
     srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+    ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
     grepl(".lab_im_push_concept_choices", srv, fixed = TRUE) &&
-      grepl("clear_selected = TRUE", srv, fixed = TRUE)
+      grepl("clear_selected = TRUE", srv, fixed = TRUE) &&
+      grepl("lab_concept_group_choices(.bc_mm", ui, fixed = TRUE)
   }
 )
 # All TW concept tickers resolve in bundled universe (when available)
