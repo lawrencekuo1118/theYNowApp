@@ -1955,6 +1955,17 @@ beta_rolling_section_ui <- function() {
                 ),
                 uiOutput("lab_im_ind_mcap_status"),
                 tags$div(
+                  class = "ynow-lab-im-ind-mcap-treemap-wrap",
+                  style = "margin: 0 0 10px 0; width: 100%;",
+                  tags$div(
+                    id = "ynow_lab_im_ind_mcap_treemap_legend",
+                    class = "ynow-lab-im-ind-mcap-treemap-legend",
+                    style = "color:#888; font-size:11.5px; line-height:1.4; margin:0 0 6px 0;",
+                    "面積＝產業鏈總市值；顏色＝市值加權年化估值漲幅（美股漲綠／台股漲紅）。納入全部產業鏈。"
+                  ),
+                  plotlyOutput("lab_im_ind_mcap_treemap", height = "320px")
+                ),
+                tags$div(
                   style = "overflow-x:auto;",
                   DT::dataTableOutput("lab_im_ind_mcap_table")
                 )
@@ -9330,6 +9341,10 @@ ui <- dashboardPage(
             if (labIndMcapBadge && s.lab_im_ind_mcap_badge) labIndMcapBadge.textContent = s.lab_im_ind_mcap_badge;
             var labIndMcapHelp = document.getElementById('ynow_lab_im_ind_mcap_help');
             if (labIndMcapHelp && s.lab_im_ind_mcap_help) labIndMcapHelp.textContent = s.lab_im_ind_mcap_help;
+            var labIndMcapTreemapLegend = document.getElementById('ynow_lab_im_ind_mcap_treemap_legend');
+            if (labIndMcapTreemapLegend && s.lab_im_ind_mcap_treemap_legend) {
+              labIndMcapTreemapLegend.textContent = s.lab_im_ind_mcap_treemap_legend;
+            }
             var labIndMcapRefreshLabel = document.getElementById('ynow_lab_im_refresh_ind_mcap_label');
             if (labIndMcapRefreshLabel && s.btn_lab_im_refresh_ind_mcap) {
               labIndMcapRefreshLabel.textContent = s.btn_lab_im_refresh_ind_mcap;
@@ -11266,6 +11281,17 @@ ui <- dashboardPage(
           color: #fff !important;
         }
 
+        /* Blue Chip：產業市值加權漲幅區塊熱圖（表格上方） */
+        .ynow-lab-im-ind-mcap-treemap-wrap {
+          border: 1px solid #e8e8e8;
+          border-radius: 3px;
+          background: #fff;
+          padding: 8px 8px 4px 8px;
+        }
+        .ynow-lab-im-ind-mcap-treemap-wrap .js-plotly-plot,
+        .ynow-lab-im-ind-mcap-treemap-wrap .plotly {
+          width: 100% !important;
+        }
         /* Blue Chip：產業市值加權漲幅標題列右側 — 更新排名 */
         .ynow-lab-im-ind-mcap-title-row {
           display: flex;

@@ -14302,6 +14302,17 @@ server <- function(input, output, session) {
     )
   })
 
+  output$lab_im_ind_mcap_treemap <- plotly::renderPlotly({
+    board <- .lab_im_ind_mcap_board()
+    loc <- board$loc %||% "zh-TW"
+    mm <- tryCatch(normalize_market_mode(market_mode()), error = function(e) "US")
+    snap <- lab_im_ind_mcap_snap()
+    if (isTRUE(board$waiting) || is.null(snap) || !is.data.frame(snap) || nrow(snap) < 1L) {
+      snap <- lab_ind_mcap_chain_snapshot_empty()
+    }
+    lab_ind_mcap_treemap_plotly(snap, market = mm, locale = loc)
+  })
+
   output$lab_im_ind_mcap_table <- DT::renderDT({
     board <- .lab_im_ind_mcap_board()
     loc <- board$loc %||% "zh-TW"

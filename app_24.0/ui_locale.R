@@ -1060,6 +1060,16 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     lab_im_ind_mcap_refresh_done = "Industry-chain ranking updated (%d chains).",
     lab_im_ind_mcap_refresh_busy = "Industry-chain ranking refresh already running…",
+    lab_im_ind_mcap_treemap_legend = paste0(
+      "Area = industry-chain total market cap; color = mcap-weighted annualized valuation upside ",
+      "(US: green up / red down; TW: red up / green down). Includes every industry chain."
+    ),
+    lab_im_ind_mcap_treemap_empty = "No industry-chain blocks yet.",
+    lab_im_ind_mcap_treemap_hover_chain = "Industry chain",
+    lab_im_ind_mcap_treemap_hover_upside = "Mcap-weighted annualized upside",
+    lab_im_ind_mcap_treemap_hover_mcap = "Total market cap",
+    lab_im_ind_mcap_treemap_hover_n = "Names",
+    lab_im_ind_mcap_treemap_colorbar = "Upside %",
     lab_im_lb_scope_help = paste0(
       "Overall Top 10: across industries from this evaluation run, by annualized valuation appreciation (Industry column shown). ",
       "Top 10 in selected industries: one Top 10 within chosen industries; Industry rank starts at 1 within each industry (not a cross-industry serial). ",
@@ -4140,6 +4150,16 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     lab_im_ind_mcap_refresh_done = "已更新產業鏈排名（%d 條）。",
     lab_im_ind_mcap_refresh_busy = "產業鏈排名更新進行中…",
+    lab_im_ind_mcap_treemap_legend = paste0(
+      "面積＝產業鏈總市值；顏色＝市值加權年化估值漲幅",
+      "（美股漲綠／台股漲紅）。納入全部產業鏈。"
+    ),
+    lab_im_ind_mcap_treemap_empty = "尚無產業鏈區塊可顯示。",
+    lab_im_ind_mcap_treemap_hover_chain = "產業鏈",
+    lab_im_ind_mcap_treemap_hover_upside = "市值加權年化估值漲幅",
+    lab_im_ind_mcap_treemap_hover_mcap = "總市值",
+    lab_im_ind_mcap_treemap_hover_n = "檔數",
+    lab_im_ind_mcap_treemap_colorbar = "漲幅 %",
     lab_im_lb_scope_help = paste0(
       "整體前十名：跨本次已評估產業依年化估值漲幅取 Top 10，並顯示產業欄。",
       "選定產業前十名：所選產業內單一 Top 10；產業內排名自該產業第 1 名起算（非跨產業流水號）。",

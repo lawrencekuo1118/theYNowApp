@@ -3216,6 +3216,268 @@ lab_format_ind_mcap_chain_table <- function(agg_df, locale = "zh-TW") {
   )
 }
 
+#' Market-aware colorscale for industry mcap treemap (valuation upside %).
+#'
+#' US: green up / red down. TW: red up / green down (台灣投資慣例).
+lab_ind_mcap_treemap_colorscale <- function(market = "US") {
+  mm <- tryCatch({
+    if (exists("normalize_market_mode", mode = "function")) {
+      normalize_market_mode(market)
+    } else {
+      m <- toupper(trimws(as.character(market)[1]))
+      if (identical(m, "TW") || identical(m, "TWN") || identical(m, "TAIWAN")) "TW" else "US"
+    }
+  }, error = function(e) "US")
+  # Soft block-heatmap palette (close to common market treemap UIs).
+  if (identical(mm, "TW")) {
+    list(
+      list(0, "#1b7a4a"),
+      list(0.35, "#8fd6a8"),
+      list(0.5, "#d8dde3"),
+      list(0.65, "#f0a2a2"),
+      list(1, "#c0392b")
+    )
+  } else {
+    list(
+      list(0, "#c0392b"),
+      list(0.35, "#f0a2a2"),
+      list(0.5, "#d8dde3"),
+      list(0.65, "#8fd6a8"),
+      list(1, "#1b7a4a")
+    )
+  }
+}
+
+#' Prepare all industry-chain rows for the block treemap (size = total mcap).
+#'
+#' Pads missing picker chains so **全部產業** always appear; Unmapped excluded.
+lab_ind_mcap_prepare_treemap_df <- function(snap_df, locale = "zh-TW") {
+  loc <- if (exists("normalize_ui_locale", mode = "function")) {
+    normalize_ui_locale(locale)
+  } else {
+    as.character(locale %||% "zh-TW")[1]
+  }
+  empty <- data.frame(
+    chain_id = character(0),
+    label = character(0),
+    wavg_cagr = numeric(0),
+    total_mcap = numeric(0),
+    n_names = integer(0),
+    stringsAsFactors = FALSE
+  )
+  snap_df <- lab_ind_mcap_drop_unmapped_chains(snap_df)
+  picker <- character(0)
+  if (exists("lab_industry_chain_picker_choices", mode = "function")) {
+    picker <- tryCatch(
+      unname(lab_industry_chain_picker_choices(loc)),
+      error = function(e) character(0)
+    )
+  }
+  picker <- as.character(picker %||% character(0))
+  picker <- picker[nzchar(picker) & !is.na(picker)]
+  if (exists("lab_ind_mcap_is_unmapped_chain", mode = "function")) {
+    picker <- picker[!vapply(picker, lab_ind_mcap_is_unmapped_chain, logical(1))]
+  }
+  if (!length(picker) && (is.null(snap_df) || !nrow(snap_df))) return(empty)
+
+  by_id <- list()
+  if (is.data.frame(snap_df) && nrow(snap_df) > 0L) {
+    for (i in seq_len(nrow(snap_df))) {
+      cid <- as.character(snap_df$chain_id[[i]] %||% "")[1]
+      if (!nzchar(cid)) next
+      by_id[[cid]] <- list(
+        wavg = suppressWarnings(as.numeric(snap_df$wavg_cagr[[i]])),
+        mcap = suppressWarnings(as.numeric(snap_df$total_mcap[[i]])),
+        n_names = if ("n_names" %in% names(snap_df)) {
+          as.integer(suppressWarnings(as.numeric(snap_df$n_names[[i]])))
+        } else {
+          NA_integer_
+        }
+      )
+    }
+  }
+  ids <- unique(c(picker, names(by_id)))
+  ids <- ids[nzchar(ids)]
+  if (!length(ids)) return(empty)
+
+  .chain_lab <- function(cid) {
+    if (exists("industry_chain_label", mode = "function")) {
+      lab <- tryCatch(industry_chain_label(cid, locale = loc), error = function(e) NA_character_)
+      if (is.character(lab) && length(lab) && nzchar(lab[[1]]) && !is.na(lab[[1]])) {
+        return(as.character(lab[[1]]))
+      }
+    }
+    cid
+  }
+  rows <- lapply(ids, function(cid) {
+    hit <- by_id[[cid]]
+    data.frame(
+      chain_id = cid,
+      label = .chain_lab(cid),
+      wavg_cagr = if (is.null(hit)) NA_real_ else as.numeric(hit$wavg)[1],
+      total_mcap = if (is.null(hit)) NA_real_ else as.numeric(hit$mcap)[1],
+      n_names = if (is.null(hit)) NA_integer_ else as.integer(hit$n_names)[1],
+      stringsAsFactors = FALSE
+    )
+  })
+  out <- do.call(rbind, rows)
+  rownames(out) <- NULL
+  # Prefer largest mcap first for stable packing.
+  ord <- order(
+    -ifelse(is.finite(out$total_mcap), out$total_mcap, -Inf),
+    out$label
+  )
+  out[ord, , drop = FALSE]
+}
+
+#' Plotly block treemap for industry mcap-weighted upside (all chains).
+#'
+#' Area = total market cap; color = mcap-weighted annualized valuation upside.
+#' @param market US → green-up; TW → red-up.
+lab_ind_mcap_treemap_plotly <- function(snap_df,
+                                        market = "US",
+                                        locale = "zh-TW",
+                                        color_abs_max = 20) {
+  loc <- if (exists("normalize_ui_locale", mode = "function")) {
+    normalize_ui_locale(locale)
+  } else {
+    as.character(locale %||% "zh-TW")[1]
+  }
+  mm <- tryCatch({
+    if (exists("normalize_market_mode", mode = "function")) {
+      normalize_market_mode(market)
+    } else {
+      m <- toupper(trimws(as.character(market)[1]))
+      if (identical(m, "TW") || identical(m, "TWN") || identical(m, "TAIWAN")) "TW" else "US"
+    }
+  }, error = function(e) "US")
+  df <- lab_ind_mcap_prepare_treemap_df(snap_df, locale = loc)
+  empty_plot <- function(msg) {
+    p0 <- plotly::plotly_empty(type = "scatter")
+    p0 <- plotly::layout(
+      p0,
+      annotations = list(
+        list(
+          text = msg, showarrow = FALSE, xref = "paper", yref = "paper",
+          x = 0.5, y = 0.5, font = list(size = 13, color = "#888")
+        )
+      ),
+      margin = list(l = 8, r = 8, t = 8, b = 8),
+      paper_bgcolor = "rgba(0,0,0,0)",
+      plot_bgcolor = "rgba(0,0,0,0)"
+    )
+    plotly::config(p0, displayModeBar = FALSE)
+  }
+  if (!is.data.frame(df) || nrow(df) < 1L) {
+    msg <- tryCatch(
+      ui_str("lab_im_ind_mcap_treemap_empty", loc),
+      error = function(e) if (identical(loc, "en")) {
+        "No industry-chain blocks yet."
+      } else {
+        "尚無產業鏈區塊可顯示。"
+      }
+    )
+    return(empty_plot(msg))
+  }
+
+  mcap <- suppressWarnings(as.numeric(df$total_mcap))
+  # Tiny floor so zero/NA mcap chains still appear (全部產業).
+  pos <- is.finite(mcap) & mcap > 0
+  floor_v <- if (any(pos)) max(min(mcap[pos]) * 0.02, 1) else 1
+  values <- ifelse(pos, mcap, floor_v)
+
+  wavg <- suppressWarnings(as.numeric(df$wavg_cagr))
+  cabsm <- suppressWarnings(as.numeric(color_abs_max)[1])
+  if (!is.finite(cabsm) || cabsm <= 0) cabsm <- 20
+  # Midpoint grey for missing upside; clip extremes for a readable scale.
+  z <- ifelse(is.finite(wavg), pmax(-cabsm, pmin(cabsm, wavg)), 0)
+
+  wavg_txt <- ifelse(is.finite(wavg), sprintf("%+.1f%%", wavg), "—")
+  labels <- paste0(df$label, "\n", wavg_txt)
+  n_names <- suppressWarnings(as.integer(df$n_names))
+  hover_chain <- tryCatch(
+    ui_str("lab_im_ind_mcap_treemap_hover_chain", loc),
+    error = function(e) if (identical(loc, "en")) "Industry chain" else "產業鏈"
+  )
+  hover_upside <- tryCatch(
+    ui_str("lab_im_ind_mcap_treemap_hover_upside", loc),
+    error = function(e) if (identical(loc, "en")) {
+      "Mcap-weighted annualized upside"
+    } else {
+      "市值加權年化估值漲幅"
+    }
+  )
+  hover_mcap <- tryCatch(
+    ui_str("lab_im_ind_mcap_treemap_hover_mcap", loc),
+    error = function(e) if (identical(loc, "en")) "Total market cap" else "總市值"
+  )
+  hover_n <- tryCatch(
+    ui_str("lab_im_ind_mcap_treemap_hover_n", loc),
+    error = function(e) if (identical(loc, "en")) "Names" else "檔數"
+  )
+  cbar_title <- tryCatch(
+    ui_str("lab_im_ind_mcap_treemap_colorbar", loc),
+    error = function(e) if (identical(loc, "en")) "Upside %" else "漲幅 %"
+  )
+  .fmt_mcap <- function(x) {
+    x <- suppressWarnings(as.numeric(x)[1])
+    if (!is.finite(x) || x <= 0) return("—")
+    if (x >= 1e12) sprintf("%.2fT", x / 1e12)
+    else if (x >= 1e9) sprintf("%.2fB", x / 1e9)
+    else if (x >= 1e6) sprintf("%.2fM", x / 1e6)
+    else sprintf("%.0f", x)
+  }
+  mcap_txt <- vapply(mcap, .fmt_mcap, character(1))
+  n_txt <- ifelse(is.finite(n_names), as.character(n_names), "—")
+  custom <- paste0(
+    hover_chain, ": ", df$label, "<br>",
+    hover_upside, ": ", wavg_txt, "<br>",
+    hover_mcap, ": ", mcap_txt, "<br>",
+    hover_n, ": ", n_txt
+  )
+
+  p <- plotly::plot_ly(
+    type = "treemap",
+    labels = labels,
+    parents = rep("", nrow(df)),
+    values = values,
+    ids = as.character(df$chain_id),
+    text = labels,
+    textinfo = "label",
+    hovertext = custom,
+    hoverinfo = "text",
+    marker = list(
+      colors = z,
+      colorscale = lab_ind_mcap_treemap_colorscale(mm),
+      cmin = -cabsm,
+      cmax = cabsm,
+      cmid = 0,
+      line = list(width = 1.5, color = "#ffffff"),
+      pad = list(t = 2, l = 2, r = 2, b = 2),
+      showscale = TRUE,
+      colorbar = list(
+        title = list(text = cbar_title, font = list(size = 11)),
+        thickness = 12,
+        len = 0.55,
+        y = 0.5,
+        tickfont = list(size = 10),
+        ticksuffix = "%"
+      )
+    ),
+    tiling = list(packing = "squarify", pad = 2),
+    pathbar = list(visible = FALSE)
+  )
+  p <- plotly::layout(
+    p,
+    margin = list(l = 4, r = 4, t = 4, b = 4),
+    paper_bgcolor = "rgba(0,0,0,0)",
+    plot_bgcolor = "rgba(0,0,0,0)",
+    uniformtext = list(minsize = 10, mode = "hide"),
+    font = list(family = "Helvetica Neue, Arial, sans-serif", size = 12, color = "#222")
+  )
+  plotly::config(p, displayModeBar = FALSE, responsive = TRUE)
+}
+
 #' All industry chains ranked by mcap-weighted annualized valuation upside.
 #' Includes every mapped chain from the picker (missing data → — / NA), sorted by
 #' wavg desc. Unmapped（未對應）is excluded from ranking and display.
