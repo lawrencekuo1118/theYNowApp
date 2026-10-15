@@ -3457,7 +3457,7 @@ ui <- dashboardPage(
           # Fixed-size SVG so US/TW flags match pixel-for-pixel (emoji glyphs differ).
           HTML(paste0(
             '<svg class="ynow-mkt-flag" aria-hidden="true" width="18" height="12" viewBox="0 0 19 10" ',
-            'xmlns="http://www.w3.org/2000/svg" focusable="false">',
+            'preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" focusable="false">',
             '<rect width="19" height="10" fill="#B22234"/>',
             '<path d="M0 1.1h19M0 3.3h19M0 5.5h19M0 7.7h19M0 9.9h19" stroke="#fff" stroke-width="1.1"/>',
             '<rect width="7.6" height="5.5" fill="#3C3B6E"/>',
@@ -3473,7 +3473,7 @@ ui <- dashboardPage(
           title = "TW",
           HTML(paste0(
             '<svg class="ynow-mkt-flag" aria-hidden="true" width="18" height="12" viewBox="0 0 18 12" ',
-            'xmlns="http://www.w3.org/2000/svg" focusable="false">',
+            'preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" focusable="false">',
             '<rect width="18" height="12" fill="#FE0000"/>',
             '<rect width="9" height="6" fill="#000095"/>',
             '<circle cx="4.5" cy="3" r="2.1" fill="#fff"/>',

@@ -23,6 +23,7 @@ check("equal-size SVG flags (not emoji text)",
         !grepl("\\\\U0001F1FA\\\\U0001F1F8", ui, fixed = TRUE))
 check("flags fill each half (full-bleed, no letterbox)",
       grepl("object-fit: fill", ui, fixed = TRUE) &&
+        grepl('preserveAspectRatio="none"', ui, fixed = TRUE) &&
         grepl("width: 100% !important", ui, fixed = TRUE) &&
         grepl("height: 100% !important", ui, fixed = TRUE))
 check("stack fills 50px header seamless",
