@@ -16,7 +16,7 @@
       return(sub('^"version"\\s*:\\s*"([^"]+)".*$', "\\1", m[[1]]))
     }
   }
-  "v24.08"
+  "v24.09"
 }
 .YNOW_BUILD_VERSION <- .ynow_read_build_version()
 
@@ -230,7 +230,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v24.08) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+          "The YNow App (v24.09) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
         ),
         tags$p(
           class = "ynow-about-method",
@@ -249,7 +249,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v24.08) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
+          "The YNow App (v24.09) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
         ),
         tags$p(
           class = "ynow-about-method",
@@ -351,7 +351,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App（簡化版）")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite（v24.08）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
+          "The YNow App Lite（v24.09）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
           "以自動判別主／副模型與預設參數完成試算，讓使用者先看到合理價區間與產業 KPI，再決定是否回到完整版深入調整。"
         ),
         tags$p(
@@ -368,7 +368,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App (Lite)")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite (v24.08) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
+          "The YNow App Lite (v24.09) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
           "auto-selects primary/secondary models with App defaults, and surfaces fair-value ranges plus industry KPIs before you open Full for deeper calibration."
         ),
         tags$p(
@@ -3434,9 +3434,9 @@ ui <- dashboardPage(
                   'data-ynow-build="', .YNOW_BUILD_VERSION, '" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v24.08</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v24.09</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v24.08</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v24.09</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -4233,7 +4233,7 @@ ui <- dashboardPage(
           right: auto !important;
           top: 0 !important;
           float: none !important;
-          width: 40px !important;
+          width: 38px !important;
           height: 50px !important;
           margin: 0 !important;
           padding: 0 !important;
@@ -4242,13 +4242,18 @@ ui <- dashboardPage(
           visibility: visible !important;
           z-index: 1040;
         }
+        /* Full-bleed flag stack: two halves fill the 50px header with no seam. */
         #ynow-market-header .ynow-market-stack {
           display: flex;
           flex-direction: column;
-          width: 40px;
+          width: 38px;
           height: 50px;
           margin: 0;
           padding: 0;
+          gap: 0;
+          overflow: hidden;
+          border: none;
+          background: transparent;
         }
         #ynow-market-header .ynow-mkt-btn {
           box-sizing: border-box;
@@ -4259,41 +4264,46 @@ ui <- dashboardPage(
           max-height: 25px;
           margin: 0;
           padding: 0;
-          border: 1px solid rgba(255,255,255,0.35);
+          border: 0;
           border-radius: 0;
-          background: rgba(255,255,255,0.12);
+          background: transparent;
           color: #fff;
           font-size: 14px;
           font-weight: 400;
-          line-height: 1;
+          line-height: 0;
           cursor: pointer;
           display: flex;
-          align-items: center;
-          justify-content: center;
+          align-items: stretch;
+          justify-content: stretch;
+          overflow: hidden;
         }
         #ynow-market-header .ynow-mkt-btn .ynow-mkt-flag {
           display: block;
-          width: 18px !important;
-          height: 12px !important;
-          min-width: 18px;
-          min-height: 12px;
-          max-width: 18px;
-          max-height: 12px;
-          flex: 0 0 auto;
+          width: 100% !important;
+          height: 100% !important;
+          min-width: 0;
+          min-height: 0;
+          max-width: none;
+          max-height: none;
+          flex: 1 1 auto;
           margin: 0;
           padding: 0;
           pointer-events: none;
+          /* Stretch SVG to fill each half — height flush to header, no letterbox. */
+          object-fit: fill;
           /* Inactive market: black-and-white; active restores full color. */
           filter: grayscale(1);
           -webkit-filter: grayscale(1);
         }
         #ynow-market-header .ynow-mkt-btn + .ynow-mkt-btn {
-          border-top-width: 0;
+          border: 0;
+          border-top: 0;
+          margin-top: 0;
         }
         #ynow-market-header .ynow-mkt-btn.active {
-          background: #fff;
-          color: #222;
-          border-color: #fff;
+          background: transparent;
+          color: #fff;
+          border: 0;
         }
         #ynow-market-header .ynow-mkt-btn.active .ynow-mkt-flag {
           filter: none;
@@ -13286,19 +13296,20 @@ ui <- dashboardPage(
             background: none !important;
           }
           #ynow-market-header .ynow-market-stack {
-            width: auto !important;
-            height: auto !important;
-            min-height: 0 !important;
+            width: 28px !important;
+            height: 50px !important;
+            min-height: 50px !important;
             flex-direction: column;
-            justify-content: center;
-            gap: 4px;
+            justify-content: stretch;
+            gap: 0 !important;
             margin: 0 !important;
             padding: 0 !important;
             border: none !important;
             background: transparent !important;
             box-shadow: none !important;
+            overflow: hidden !important;
           }
-          /* Bare flags only — no frame / fill / border around each glyph. */
+          /* Bare flags only — full-bleed halves, no frame / seam between glyphs. */
           #ynow-market-header .ynow-mkt-btn,
           #ynow-market-header .ynow-mkt-btn.active,
           #ynow-market-header .ynow-mkt-btn:hover,
@@ -13318,13 +13329,16 @@ ui <- dashboardPage(
             -webkit-box-shadow: none !important;
             outline: none !important;
             -webkit-tap-highlight-color: transparent !important;
-            width: auto !important;
-            height: auto !important;
-            min-height: 0 !important;
-            max-height: none !important;
-            flex: 0 0 auto !important;
+            width: 100% !important;
+            height: 25px !important;
+            min-height: 25px !important;
+            max-height: 25px !important;
+            flex: 1 1 50% !important;
             padding: 0 !important;
             margin: 0 !important;
+            align-items: stretch !important;
+            justify-content: stretch !important;
+            overflow: hidden !important;
           }
           #ynow-market-header .ynow-mkt-btn {
             opacity: 1;
@@ -13332,17 +13346,19 @@ ui <- dashboardPage(
           #ynow-market-header .ynow-mkt-btn + .ynow-mkt-btn {
             border: 0 !important;
             border-top-width: 0 !important;
+            margin-top: 0 !important;
           }
           #ynow-market-header .ynow-mkt-btn.active {
             opacity: 1;
           }
           #ynow-market-header .ynow-mkt-btn .ynow-mkt-flag {
-            width: 20px !important;
-            height: 13px !important;
-            min-width: 20px;
-            min-height: 13px;
-            max-width: 20px;
-            max-height: 13px;
+            width: 100% !important;
+            height: 100% !important;
+            min-width: 0 !important;
+            min-height: 0 !important;
+            max-width: none !important;
+            max-height: none !important;
+            object-fit: fill !important;
             border: none !important;
             box-shadow: none !important;
             outline: none !important;

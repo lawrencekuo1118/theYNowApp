@@ -21,13 +21,16 @@ check("equal-size SVG flags (not emoji text)",
         grepl("viewBox=\"0 0 19 10\"", ui, fixed = TRUE) &&
         grepl("viewBox=\"0 0 18 12\"", ui, fixed = TRUE) &&
         !grepl("\\\\U0001F1FA\\\\U0001F1F8", ui, fixed = TRUE))
-check("CSS locks flag box 18x12",
-      grepl("width: 18px !important", ui, fixed = TRUE) &&
-        grepl("height: 12px !important", ui, fixed = TRUE))
-check("stack fills 50px header",
+check("flags fill each half (full-bleed, no letterbox)",
+      grepl("object-fit: fill", ui, fixed = TRUE) &&
+        grepl("width: 100% !important", ui, fixed = TRUE) &&
+        grepl("height: 100% !important", ui, fixed = TRUE))
+check("stack fills 50px header seamless",
       grepl("#ynow-market-header .ynow-market-stack", ui, fixed = TRUE) &&
         grepl("height: 50px", ui, fixed = TRUE) &&
-        grepl("height: 25px", ui, fixed = TRUE))
+        grepl("height: 25px", ui, fixed = TRUE) &&
+        grepl("gap: 0", ui, fixed = TRUE) &&
+        grepl("Full-bleed flag stack", ui, fixed = TRUE))
 check("absolute flush after toggle (JS left)",
       grepl("placeMarketHeaderByToggle", ui, fixed = TRUE) &&
         grepl("position: absolute !important", ui, fixed = TRUE) &&
