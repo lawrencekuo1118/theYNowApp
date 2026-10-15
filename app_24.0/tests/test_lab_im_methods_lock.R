@@ -61,11 +61,11 @@ check("applyUiLocale wires abs/rel labels",
       grepl("lab_im_methods_abs_label", ui, fixed = TRUE) &&
         grepl("lab_im_methods_rel_label", ui, fixed = TRUE))
 check("abs/rel taxonomy keys",
-      identical(LAB_METHOD_ABS_KEYS, c("nav", "pb", "dcf", "ddm", "ri", "sotp")) &&
+      identical(LAB_METHOD_ABS_KEYS, c("nav", "pb", "dcf", "ddm", "ri")) &&
         identical(LAB_METHOD_REL_KEYS, c("enterprise", "earnings", "revenue", "book")) &&
         identical(
           sort(c(LAB_METHOD_ABS_KEYS, LAB_METHOD_REL_KEYS)),
-          sort(as.character(LAB_SIDEBAR_METHOD_ORDER))
+          sort(setdiff(as.character(LAB_SIDEBAR_METHOD_ORDER), "sotp"))
         ))
 
 # Runtime: US catalog → RI/SOTP not primary → locked; Justified P/B absolute + Book multiples relative.

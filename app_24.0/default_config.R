@@ -226,7 +226,7 @@ APP_DEFAULTS <- list(
   lab_im_include_adr = TRUE,
   lab_im_gate_only = FALSE,
   # Absolute (Fair Value + SOTP) all on; Relative (Multiples) all off by default.
-  lab_im_methods = c("nav", "pb", "dcf", "ddm", "ri", "sotp"),
+  lab_im_methods = c("nav", "pb", "dcf", "ddm", "ri"),
   lab_cluster_k = 3L,
   lab_cluster_x = "ROE",
   lab_cluster_y = "PE_Ratio",

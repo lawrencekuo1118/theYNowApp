@@ -46,16 +46,16 @@
   abs_keys <- if (exists("LAB_METHOD_ABS_KEYS", inherits = TRUE)) {
     as.character(LAB_METHOD_ABS_KEYS)
   } else {
-    c("nav", "pb", "dcf", "ddm", "ri", "sotp")
+    c("nav", "pb", "dcf", "ddm", "ri")
   }
   rel_keys <- if (exists("LAB_METHOD_REL_KEYS", inherits = TRUE)) {
     as.character(LAB_METHOD_REL_KEYS)
   } else {
     c("enterprise", "earnings", "revenue", "book")
   }
+  # Short filter labels (no 「模型」/ "-Model" suffix — sidebar menus keep those).
   label_map <- c(
     nav = "NAV", pb = "Justified P/B", dcf = "DCF", ddm = "DDM", ri = "RI",
-    sotp = "SOTP",
     enterprise = "Enterprise value", earnings = "Earnings",
     revenue = "Revenue", book = "Book multiples"
   )
@@ -65,7 +65,6 @@
     dcf = "ynow_lab_im_method_dcf",
     ddm = "ynow_lab_im_method_ddm",
     ri = "ynow_lab_im_method_ri",
-    sotp = "ynow_lab_im_method_sotp",
     enterprise = "ynow_lab_im_method_enterprise",
     earnings = "ynow_lab_im_method_earnings",
     revenue = "ynow_lab_im_method_revenue",
@@ -7699,18 +7698,15 @@ ui <- dashboardPage(
               return !!document.querySelector('.shiny-progress, .shiny-progress-container .progress');
             }
             function onShinyBusy() {
-              if (shinyArmTimer) clearTimeout(shinyArmTimer);
-              shinyArmTimer = setTimeout(function () {
+              /* Show 「…」 as soon as the loading screen / busy state starts — no arm delay. */
+              if (shinyArmTimer) {
+                clearTimeout(shinyArmTimer);
                 shinyArmTimer = null;
-                /* Avoid flicker on tiny reactive flushes: require progress UI or linger */
-                if (!hasShinyProgress() && !document.body.classList.contains('busy')) {
-                  /* still mark — withProgress usually adds .shiny-progress quickly */
-                }
-                var tab = currentTab();
-                if (!tab) return;
-                shinyTab = tab;
-                setTabBusy(tab, true, 'shiny');
-              }, 220);
+              }
+              var tab = currentTab();
+              if (!tab) return;
+              shinyTab = tab;
+              setTabBusy(tab, true, 'shiny');
             }
             function onShinyIdle() {
               if (shinyArmTimer) {
@@ -7722,6 +7718,34 @@ ui <- dashboardPage(
                 shinyTab = null;
               }
               clearSource('shiny');
+              clearSource('nav');
+              clearSource('progress');
+            }
+            function onSidebarTabClick(ev) {
+              var t = ev.target;
+              if (!t || !t.closest) return;
+              var a = t.closest('.sidebar-menu a[data-value]');
+              if (!a) return;
+              var tab = remapTab(a.getAttribute('data-value') || '');
+              if (!tab) return;
+              /* Immediate feedback on the tab that is about to load. */
+              setTabBusy(tab, true, 'nav');
+            }
+            function watchProgressDom() {
+              if (typeof MutationObserver === 'undefined') return;
+              var armed = false;
+              var obs = new MutationObserver(function () {
+                if (hasShinyProgress()) {
+                  if (armed) return;
+                  armed = true;
+                  var tab = currentTab();
+                  if (tab) setTabBusy(tab, true, 'progress');
+                } else if (armed) {
+                  armed = false;
+                  clearSource('progress');
+                }
+              });
+              obs.observe(document.body, { childList: true, subtree: true });
             }
             function register() {
               if (!window.Shiny || !Shiny.addCustomMessageHandler) {
@@ -7737,6 +7761,8 @@ ui <- dashboardPage(
               if (window.jQuery) {
                 jQuery(document).on('shiny:busy', onShinyBusy);
                 jQuery(document).on('shiny:idle', onShinyIdle);
+                jQuery(document).on('click', '.sidebar-menu a[data-value]', onSidebarTabClick);
+                watchProgressDom();
               } else {
                 setTimeout(register, 50);
               }
@@ -8908,16 +8934,15 @@ ui <- dashboardPage(
             setBtText('ynow_lab_im_methods_abs_label', 'lab_im_methods_abs_label');
             setBtText('ynow_lab_im_methods_rel_label', 'lab_im_methods_rel_label');
             setBtText('ynow_lab_im_methods_locked_hint', 'lab_im_methods_locked_hint');
-            setBtText('ynow_lab_im_method_nav', 'menu_nav');
-            setBtText('ynow_lab_im_method_pb', 'menu_pb');
-            setBtText('ynow_lab_im_method_dcf', 'menu_dcf');
-            setBtText('ynow_lab_im_method_ddm', 'menu_ddm');
-            setBtText('ynow_lab_im_method_ri', 'menu_ri');
-            setBtText('ynow_lab_im_method_enterprise', 'menu_rel_ev');
-            setBtText('ynow_lab_im_method_earnings', 'menu_rel_earn');
-            setBtText('ynow_lab_im_method_revenue', 'menu_rel_rev');
-            setBtText('ynow_lab_im_method_book', 'menu_rel_book');
-            setBtText('ynow_lab_im_method_sotp', 'menu_sotp');
+            setBtText('ynow_lab_im_method_nav', 'lab_im_method_nav');
+            setBtText('ynow_lab_im_method_pb', 'lab_im_method_pb');
+            setBtText('ynow_lab_im_method_dcf', 'lab_im_method_dcf');
+            setBtText('ynow_lab_im_method_ddm', 'lab_im_method_ddm');
+            setBtText('ynow_lab_im_method_ri', 'lab_im_method_ri');
+            setBtText('ynow_lab_im_method_enterprise', 'lab_im_method_enterprise');
+            setBtText('ynow_lab_im_method_earnings', 'lab_im_method_earnings');
+            setBtText('ynow_lab_im_method_revenue', 'lab_im_method_revenue');
+            setBtText('ynow_lab_im_method_book', 'lab_im_method_book');
             setBtText('ynow_menu_pb', 'menu_pb');
             setBtText('ynow_menu_rel_book', 'menu_rel_book');
             setBtText('ynow_lab_im_chains_label', 'lab_im_chains_label');
