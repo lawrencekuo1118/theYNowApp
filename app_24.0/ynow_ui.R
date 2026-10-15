@@ -4055,6 +4055,37 @@ ui <- dashboardPage(
         .right-side {
           margin-top: 50px !important;
         }
+        /* Desktop: pin sidebar to the viewport and scroll inside .sidebar so the
+           bottom Lite brand (#ynow_lite_toggle) is reachable without scrolling
+           the whole .wrapper. (Bootstrap col-* floats collapse .sidebar height
+           to padding-bottom:10px with overflow:visible — brand sat below vh.) */
+        @media (min-width: 768px) {
+          .main-sidebar,
+          .skin-black .main-sidebar {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            height: 100vh !important;
+            min-height: 100vh !important;
+            max-height: 100vh !important;
+            padding-top: 50px !important;
+            overflow: hidden !important;
+          }
+          .main-sidebar .sidebar,
+          .main-sidebar #sidebarItemExpanded {
+            height: calc(100vh - 50px) !important;
+            max-height: calc(100vh - 50px) !important;
+            overflow-x: hidden !important;
+            overflow-y: auto !important;
+            -webkit-overflow-scrolling: touch;
+            box-sizing: border-box !important;
+          }
+          .main-sidebar .sidebar::after {
+            content: "";
+            display: table;
+            clear: both;
+          }
+        }
         /* Reserve band under fixed header for credit (left) + USD/TWD (right) */
         .content-wrapper > .content {
           padding-top: 52px;
@@ -9435,6 +9466,25 @@ ui <- dashboardPage(
                 var mr = market.getBoundingClientRect();
                 mktRect = {x: mr.x, y: mr.y, w: mr.width, h: mr.height, pe: getComputedStyle(market).pointerEvents, z: getComputedStyle(market).zIndex};
               }
+              var sidebar = document.querySelector('.main-sidebar .sidebar') ||
+                document.getElementById('sidebarItemExpanded');
+              var mainSb = document.querySelector('.main-sidebar');
+              var sideGeo = null;
+              if (sidebar) {
+                var scs = getComputedStyle(sidebar);
+                var brand = document.getElementById('ynow_lite_toggle');
+                var br = brand ? brand.getBoundingClientRect() : null;
+                sideGeo = {
+                  clientH: sidebar.clientHeight,
+                  scrollH: sidebar.scrollHeight,
+                  overflowY: scs.overflowY,
+                  mainPos: mainSb ? getComputedStyle(mainSb).position : null,
+                  mainH: mainSb ? mainSb.clientHeight : null,
+                  brandY: br ? Math.round(br.y) : null,
+                  brandInView: !!(br && br.top >= 0 && br.bottom <= window.innerHeight),
+                  canScrollToBrand: !!(sidebar.scrollHeight > sidebar.clientHeight + 8)
+                };
+              }
               var toggles = ids.map(function (id) {
                 var el = document.getElementById(id);
                 if (!el) return {id: id, present: false};
@@ -9460,11 +9510,13 @@ ui <- dashboardPage(
                 };
               });
               ynowAgentDbg('A', 'ynow_ui.R:lite-overlay-probe', reason || 'overlay-probe', {
+                runId: 'post-fix',
                 vw: window.innerWidth,
                 vh: window.innerHeight,
                 bodyLite: !!(document.body && document.body.classList.contains('ynow-lite')),
                 delegated: document.documentElement.getAttribute('data-ynow-lite-delegated'),
                 market: mktRect,
+                sideGeo: sideGeo,
                 toggles: toggles
               });
             }

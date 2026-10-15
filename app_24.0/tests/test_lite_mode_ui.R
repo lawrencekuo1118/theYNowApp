@@ -145,6 +145,17 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(grepl("ynow-lite-toggle", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-lite-badge", txt, fixed = TRUE))
   testthat::expect_true(grepl("body.ynow-lite", txt, fixed = TRUE))
+  # Desktop sidebar scrolls internally so bottom Lite brand is reachable
+  testthat::expect_true(grepl(
+    "main-sidebar .sidebar[\\s\\S]*overflow-y:\\s*auto\\s*!important",
+    txt,
+    perl = TRUE
+  ))
+  testthat::expect_true(grepl(
+    "@media \\(min-width: 768px\\)[\\s\\S]*position:\\s*fixed\\s*!important[\\s\\S]*#sidebarItemExpanded",
+    txt,
+    perl = TRUE
+  ))
   testthat::expect_true(grepl('tabName = "macro_market"', txt, fixed = TRUE))
   testthat::expect_true(grepl('tabName = "home"', txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_menu_home", txt, fixed = TRUE))
