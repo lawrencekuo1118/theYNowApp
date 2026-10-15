@@ -15,6 +15,12 @@ ynow_auth_enabled <- function() {
   v %in% c("1", "true", "yes", "on")
 }
 
+#' Drop NULL UI children (shinydashboard::dashboardHeader tagAssert rejects NULL).
+#' Prefer omitting disabled auth chrome over placeholder tags.
+ynow_compact_ui <- function(...) {
+  Filter(Negate(is.null), list(...))
+}
+
 #' Normalize email for compare (trim + lower).
 ynow_auth_norm_email <- function(email) {
   tolower(trimws(as.character(email %||% "")[1]))

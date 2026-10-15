@@ -59,6 +59,47 @@ check("default auth disabled", identical(ynow_auth_enabled(), FALSE))
 check("header UI NULL when disabled", is.null(ynow_auth_header_ui()))
 check("modal UI NULL when disabled", is.null(ynow_auth_modal_ui()))
 check("css NULL when disabled", is.null(ynow_auth_css()))
+check("compact drops NULL", {
+  identical(ynow_compact_ui(NULL, NULL), list()) &&
+    length(ynow_compact_ui(NULL, list(a = 1), NULL)) == 1L
+})
+
+# Regression: shinydashboard header must not receive NULL auth children when disabled
+check("dashboardHeader tolerates disabled auth via .list", {
+  suppressPackageStartupMessages({
+    library(htmltools)
+    library(shiny)
+    library(shinydashboard)
+  })
+  err <- tryCatch({
+    dashboardHeader(
+      title = "t",
+      titleWidth = 250,
+      tags$li(class = "dropdown", tags$span("mkt")),
+      tags$li(class = "dropdown", tags$span("lang")),
+      tags$li(class = "dropdown", tags$span("logo")),
+      .list = ynow_compact_ui(ynow_auth_header_ui())
+    )
+    NULL
+  }, error = function(e) conditionMessage(e))
+  is.null(err)
+})
+check("raw NULL child still errors (documents root cause)", {
+  suppressPackageStartupMessages({
+    library(shiny)
+    library(shinydashboard)
+  })
+  err <- tryCatch({
+    dashboardHeader(
+      title = "t",
+      tags$li(class = "dropdown", "a"),
+      NULL,
+      tags$li(class = "dropdown", "b")
+    )
+    ""
+  }, error = function(e) conditionMessage(e))
+  grepl("shiny.tag", err, fixed = TRUE)
+})
 
 res_off <- ynow_auth_try_login("a@b.com", "x")
 check("login rejected when disabled", isFALSE(res_off$ok) && identical(res_off$message_key, "auth_msg_disabled"))
@@ -122,6 +163,9 @@ ui <- paste(readLines(src_ui, warn = FALSE, encoding = "UTF-8"), collapse = "\n"
 srv <- paste(readLines(src_srv, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check("UI mounts auth header helper", grepl("ynow_auth_header_ui", ui, fixed = TRUE))
 check("UI mounts auth modal helper", grepl("ynow_auth_modal_ui", ui, fixed = TRUE))
+check("UI omits NULL via ynow_compact_ui", grepl("ynow_compact_ui", ui, fixed = TRUE))
+check("UI header uses .list for auth", grepl("\\.list\\s*=", ui) &&
+        grepl("ynow_auth_header_ui", ui, fixed = TRUE))
 check("UI About mentions account sign-in", grepl("Account sign-in", ui, fixed = TRUE) &&
         grepl("帳號登入", ui, fixed = TRUE))
 check("UI About says disabled by default", grepl("disabled by default", ui, fixed = TRUE) &&

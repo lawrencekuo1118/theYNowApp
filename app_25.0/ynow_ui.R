@@ -3577,8 +3577,6 @@ ui <- dashboardPage(
         )
       )
     ),
-    # Account sign-in (designed; rendered only when YNOW_ENABLE_ACCOUNT_LOGIN is on)
-    if (exists("ynow_auth_header_ui", mode = "function")) ynow_auth_header_ui() else NULL,
     # Logo + USD／TWD under logo (modest gap below black header)
     tags$li(
       id = "ynow-header-logo",
@@ -3613,7 +3611,15 @@ ui <- dashboardPage(
           textOutput("hdr_ccy_status", inline = TRUE)
         )
       )
-    )
+    ),
+    # Account sign-in — omit when disabled (NULL breaks dashboardHeader tagAssert)
+    .list = if (exists("ynow_compact_ui", mode = "function")) {
+      ynow_compact_ui(
+        if (exists("ynow_auth_header_ui", mode = "function")) ynow_auth_header_ui()
+      )
+    } else {
+      list()
+    }
   ),
   
   dashboardSidebar(
@@ -3828,9 +3834,18 @@ ui <- dashboardPage(
   
   dashboardBody(
     shinyjs::useShinyjs(),
-    # Account login modal/CSS — NULL when YNOW_ENABLE_ACCOUNT_LOGIN is off
-    if (exists("ynow_auth_css", mode = "function")) ynow_auth_css() else NULL,
-    if (exists("ynow_auth_modal_ui", mode = "function")) ynow_auth_modal_ui() else NULL,
+    # Account login modal/CSS — omit when disabled (do not inject NULL children)
+    do.call(
+      tagList,
+      if (exists("ynow_compact_ui", mode = "function")) {
+        ynow_compact_ui(
+          if (exists("ynow_auth_css", mode = "function")) ynow_auth_css(),
+          if (exists("ynow_auth_modal_ui", mode = "function")) ynow_auth_modal_ui()
+        )
+      } else {
+        list()
+      }
+    ),
     # MathJax: load on pages that need it (Basic Setup methodology, HFV, Backtest Lab)
     # rather than on every first paint of Home.
 
