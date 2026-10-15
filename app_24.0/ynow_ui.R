@@ -16,7 +16,7 @@
       return(sub('^"version"\\s*:\\s*"([^"]+)".*$', "\\1", m[[1]]))
     }
   }
-  "v24.16"
+  "v24.17"
 }
 .YNOW_BUILD_VERSION <- .ynow_read_build_version()
 
@@ -230,15 +230,17 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v24.16) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+          "The YNow App (v24.17) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
         ),
         tags$p(
           class = "ynow-about-method",
           "我們的核心方法論為：",
           tags$b("「先分類，再選模型；先推導，再校正；先給區間，再給單點。」"),
-          " 完整「Valuation Methodology｜評價方法論」矩陣與公式說明見 ",
+          " ",
+          tags$b("可解釋性是核心功能，不是附註："),
+          "每個合理價旁都應能說清公式路徑、輸入與資料來源；完整 Valuation Methodology 矩陣仍在 ",
           tags$b("Model Dashboard"),
-          " 分頁最下方。"
+          "。"
         ),
         tags$h4(class = "ynow-about-feat-h", tags$b("核心功能亮點：")),
         zh_features
@@ -249,13 +251,16 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v24.16) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
+          "The YNow App (v24.17) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
         ),
         tags$p(
           class = "ynow-about-method",
           "Our core methodology is: ",
           tags$b("\"Classify before selecting models; derive before calibrating; provide valuation ranges before absolute price targets.\""),
-          " The full Valuation Methodology matrix and formulas sit at the bottom of ",
+          " ",
+          tags$b("Explainability is a core feature, not an appendix:"),
+          " every Fair Value should show its formula path, inputs, and data sources. ",
+          "The full Valuation Methodology matrix remains on ",
           tags$b("Model Dashboard"),
           "."
         ),
@@ -351,7 +356,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App（簡化版）")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite（v24.16）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
+          "The YNow App Lite（v24.17）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
           "以自動判別主／副模型與預設參數完成試算，讓使用者先看到合理價區間與產業 KPI，再決定是否回到完整版深入調整。"
         ),
         tags$p(
@@ -368,7 +373,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App (Lite)")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite (v24.16) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
+          "The YNow App Lite (v24.17) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
           "auto-selects primary/secondary models with App defaults, and surfaces fair-value ranges plus industry KPIs before you open Full for deeper calibration."
         ),
         tags$p(
@@ -1831,11 +1836,12 @@ beta_rolling_section_ui <- function() {
 
 #' Shared bottom block: formula-param contribution / relative ±1% elasticity.
 .model_param_sensitivity_box <- function(title, table_id) {
+  # Core explainability: keep open by default (not an appendix drawer).
   fluidRow(
     box(
       title = tagList(icon("percentage"), title),
       width = 12, status = "info", solidHeader = TRUE,
-      collapsible = TRUE, collapsed = TRUE,
+      collapsible = TRUE, collapsed = FALSE,
       tags$div(
         style = "overflow-x:auto;",
         tableOutput(table_id)
@@ -3481,9 +3487,9 @@ ui <- dashboardPage(
                   'data-ynow-build="', .YNOW_BUILD_VERSION, '" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v24.16</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v24.17</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v24.16</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v24.17</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -9002,6 +9008,14 @@ ui <- dashboardPage(
             if (ddmRmLab && s.capm_rm_label) ddmRmLab.textContent = s.capm_rm_label;
             var useEstRe = document.getElementById('ynow_use_estimated_re_label');
             if (useEstRe && s.use_estimated_re_label) useEstRe.textContent = s.use_estimated_re_label;
+            var explainCoreTitle = document.getElementById('ynow_explain_core_callout_title');
+            if (explainCoreTitle && s.explain_core_callout_title) {
+              explainCoreTitle.textContent = s.explain_core_callout_title;
+            }
+            var explainCoreBody = document.getElementById('ynow_explain_core_callout_body');
+            if (explainCoreBody && s.explain_core_callout_body) {
+              explainCoreBody.textContent = s.explain_core_callout_body;
+            }
             var gsModelSel = document.getElementById('ynow_gs_model_selector_title');
             if (gsModelSel && s.gs_model_selector_title) gsModelSel.textContent = s.gs_model_selector_title;
             var gsBetaOv = document.getElementById('ynow_gs_beta_overview_help');
@@ -14420,6 +14434,21 @@ ui <- dashboardPage(
       ),
       tabItem(
         tabName = "get_started",
+        tags$div(
+          id = "ynow_explain_core_callout",
+          class = "ynow-explain-core-callout ynow-full-only",
+          style = paste0(
+            "margin:0 0 14px 0; padding:10px 14px; ",
+            "border:1px solid #c5d8ea; border-left:4px solid #0C5484; ",
+            "border-radius:4px; background:#f3f8fc; font-size:12.5px; line-height:1.5; color:#333;"
+          ),
+          tags$b(id = "ynow_explain_core_callout_title", style = "color:#0C5484;", "可解釋性（核心）"),
+          tags$span(id = "ynow_explain_core_callout_body", paste0(
+            "：每個估值結果旁應能回答「為何是這個合理價」。",
+            "DCF Overview 的 KPI 下方已顯示公式路徑／現值橋接／終值驅動；",
+            "各模型「公式參數貢獻與敏感度」預設展開。完整 Decision Matrix 見本頁下方。"
+          ))
+        ),
         fluidRow(
           box(
             title = tagList(
@@ -15321,6 +15350,8 @@ ui <- dashboardPage(
                                        )
                                 )
                               ),
+                              # Core explainability: Why this Fair Value (not appendix)
+                              uiOutput("dcf_value_why"),
                               fluidRow(
                                 column(width = 12,
                                        plotOutput("plt_dcf_trajectory", height = "420px"),

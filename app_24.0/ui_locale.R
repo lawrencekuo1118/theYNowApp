@@ -540,6 +540,37 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_win_1y = "1Y",
     hfv_win_3y = "3Y",
     hfv_win_5y = "5Y",
+    explain_core_callout_title = "Explainability (core)",
+    explain_core_callout_body = paste0(
+      ": every valuation result should answer \"why this Fair Value\". ",
+      "DCF Overview shows the formula path / PV bridge / Terminal Value drivers under the KPI; ",
+      "each model's formula-parameter contribution & sensitivity table is expanded by default. ",
+      "Full Decision Matrix is at the bottom of this page."
+    ),
+    explain_dcf_why_title = "Why this Fair Value (DCF)",
+    explain_dcf_why_empty = paste0(
+      "Run Search / Calculate DCF to see the formula path, PV bridge, ",
+      "and Terminal Value drivers."
+    ),
+    explain_dcf_why_foot = paste0(
+      "Explainability is a core surface: this panel mirrors the live DCF audit snapshot ",
+      "(path, PV of forecast / Terminal Value, discount rate, terminal g, EV→Equity bridge)."
+    ),
+    explain_dcf_why_path = "Path",
+    explain_dcf_why_mode = "Model",
+    explain_dcf_why_path_fcff = "FCFF → EV (WACC) → Equity bridge",
+    explain_dcf_why_path_fcfe = "FCFE → Equity PV (Ke)",
+    explain_dcf_why_mode_gordon = "Gordon / single-stage DCF",
+    explain_dcf_why_mode_two = "Two-Stage DCF",
+    explain_dcf_why_pv_explicit = "PV of explicit forecast",
+    explain_dcf_why_pv_tv = "PV of Terminal Value",
+    explain_dcf_why_disc_wacc = "Discount rate WACC",
+    explain_dcf_why_disc_ke = "Discount rate Ke",
+    explain_dcf_why_g = "Terminal g",
+    explain_dcf_why_cash = "Cash (EV→Equity)",
+    explain_dcf_why_debt = "Debt (EV→Equity)",
+    explain_dcf_why_shares = "Shares",
+    explain_dcf_why_price = "Fair Value / share",
     param_audit_title = "Manual adjustments (vs post-Search baseline)",
     param_audit_help = paste0(
       "Baseline locks after Search and statement auto-fill. ",
@@ -3647,6 +3678,35 @@ locale_for_market <- function(mode = get_market_mode()) {
     hfv_win_1y = "近1年",
     hfv_win_3y = "近3年",
     hfv_win_5y = "近5年",
+    explain_core_callout_title = "可解釋性（核心）",
+    explain_core_callout_body = paste0(
+      "：每個估值結果旁應能回答「為何是這個合理價」。",
+      "DCF Overview 的 KPI 下方已顯示公式路徑／現值橋接／終值驅動；",
+      "各模型「公式參數貢獻與敏感度」預設展開。完整 Decision Matrix 見本頁下方。"
+    ),
+    explain_dcf_why_title = "為何是這個合理價（DCF）",
+    explain_dcf_why_empty = paste0(
+      "請先搜尋／試算 DCF，即可看到公式路徑、現值橋接與終值驅動因子。"
+    ),
+    explain_dcf_why_foot = paste0(
+      "可解釋性為核心表面：本區塊對應即時 DCF 稽核快照",
+      "（路徑、預測期／終值現值、折現率、終值 g、EV→股權橋接），非附註。"
+    ),
+    explain_dcf_why_path = "路徑",
+    explain_dcf_why_mode = "模型",
+    explain_dcf_why_path_fcff = "FCFF → EV（WACC）→ 股權橋接",
+    explain_dcf_why_path_fcfe = "FCFE → 股權現值（Ke）",
+    explain_dcf_why_mode_gordon = "Gordon／單階段 DCF",
+    explain_dcf_why_mode_two = "Two-Stage DCF",
+    explain_dcf_why_pv_explicit = "預測期現金流現值",
+    explain_dcf_why_pv_tv = "終值現值（Terminal Value）",
+    explain_dcf_why_disc_wacc = "折現率 WACC",
+    explain_dcf_why_disc_ke = "折現率 Ke",
+    explain_dcf_why_g = "終值 g",
+    explain_dcf_why_cash = "現金（EV→股權）",
+    explain_dcf_why_debt = "負債（EV→股權）",
+    explain_dcf_why_shares = "股數",
+    explain_dcf_why_price = "每股合理價",
     param_audit_title = "手改參數（相對 Search 後基準）",
     param_audit_help = paste0(
       "基準在按下 Search 且財報自動帶入後鎖定。之後你手動覆寫的參數會分頁列出；",

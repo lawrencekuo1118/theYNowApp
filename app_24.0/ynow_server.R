@@ -9584,6 +9584,55 @@ server <- function(input, output, session) {
             if(is.null(dcf_value_result())) "N/A" else format_dollar_abbr(dcf_value_result()), 
             icon = icon("building"), color = "purple", fill = TRUE) 
   })
+
+  # Core explainability: Why this DCF Fair Value (audit snap bridge under KPI)
+  output$dcf_value_why <- renderUI({
+    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+    title <- tryCatch(
+      ui_str("explain_dcf_why_title", loc),
+      error = function(e) if (identical(loc, "en")) {
+        "Why this Fair Value (DCF)"
+      } else {
+        "為何是這個合理價（DCF）"
+      }
+    )
+    empty_msg <- tryCatch(
+      ui_str("explain_dcf_why_empty", loc),
+      error = function(e) if (identical(loc, "en")) {
+        "Run Search / Calculate DCF to see the formula path, PV bridge, and Terminal Value drivers."
+      } else {
+        "請先搜尋／試算 DCF，即可看到公式路徑、現值橋接與終值驅動因子。"
+      }
+    )
+    foot <- tryCatch(
+      ui_str("explain_dcf_why_foot", loc),
+      error = function(e) if (identical(loc, "en")) {
+        "Explainability is a core surface: this panel mirrors the live DCF audit snapshot."
+      } else {
+        "可解釋性為核心表面：本區塊對應即時 DCF 稽核快照，非附註。"
+      }
+    )
+    snap <- tryCatch(dcf_audit_snap(), error = function(e) NULL)
+    claim <- as.character(input$dcf_claim %||% "fcff")[1]
+    mode <- as.character(input$dcf_mode %||% "gordon")[1]
+    g_pct <- suppressWarnings(as.numeric(input$sgr)[1])
+    rows <- if (exists("ynow_dcf_why_rows", mode = "function")) {
+      ynow_dcf_why_rows(
+        snap, claim = claim, mode = mode, g_pct = g_pct, locale = loc
+      )
+    } else {
+      NULL
+    }
+    if (!exists("ynow_value_why_panel", mode = "function")) {
+      return(tags$p(style = "color:#888;", empty_msg))
+    }
+    ynow_value_why_panel(
+      title = title,
+      rows = rows,
+      empty_message = empty_msg,
+      footnote = foot
+    )
+  })
   
   output$vtxt_dcf_setting_details <- renderUI({
     req(input$dcf_mode, input$years)
