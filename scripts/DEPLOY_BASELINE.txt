@@ -7,4 +7,4 @@ commit=f14bd53
 short=f14bd53
 message=chore: record shipped display version v24.19
 captured_at=2026-10-15T10:50:00Z
-display_version=v24.19
+display_version=v24.20
