@@ -104,43 +104,128 @@ ynow_auth_header_ui <- function() {
   )
 }
 
-#' Login modal markup — only when auth is enabled (otherwise NULL).
+#' Inline Google "G" mark for social button (decorative).
+.ynow_auth_google_icon <- function() {
+  HTML(paste0(
+    '<svg class="ynow-auth-social-icon" viewBox="0 0 48 48" width="18" height="18" aria-hidden="true" focusable="false">',
+    '<path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>',
+    '<path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>',
+    '<path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>',
+    '<path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>',
+    '</svg>'
+  ))
+}
+
+#' Inline "f" mark for Facebook-style social button (decorative).
+.ynow_auth_facebook_icon <- function() {
+  HTML(paste0(
+    '<svg class="ynow-auth-social-icon ynow-auth-social-icon--fb" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">',
+    '<path fill="currentColor" d="M22 12.07C22 6.48 17.52 2 11.93 2S1.86 6.48 1.86 12.07c0 5.02 3.66 9.18 8.44 9.93v-7.02H7.9v-2.91h2.4V9.84c0-2.37 1.4-3.68 3.56-3.68 1.03 0 2.11.18 2.11.18v2.33h-1.19c-1.17 0-1.54.73-1.54 1.48v1.78h2.62l-.42 2.91h-2.2V22c4.78-.75 8.44-4.91 8.44-9.93z"/>',
+    '</svg>'
+  ))
+}
+
+#' Login modal — StatementDog-style card; YNow ink / logo-blue / wash palette.
+#' Social / register / forgot are UI stubs until OAuth + free DB are wired.
 ynow_auth_modal_ui <- function() {
   if (!isTRUE(ynow_auth_enabled())) return(NULL)
   shinyBS::bsModal(
     id = "ynow_auth_modal",
-    title = tags$span(id = "ynow_auth_modal_title", "Account sign-in"),
+    title = tags$span(id = "ynow_auth_modal_title", "Sign in to The YNow App"),
     trigger = NULL,
     size = "small",
-    tags$p(
-      id = "ynow_auth_modal_help",
-      class = "help-block",
-      "Sign in with your account email and password."
-    ),
-    textInput(
-      "ynow_auth_email",
-      label = tags$span(id = "ynow_auth_email_label", "Email"),
-      value = "",
-      placeholder = "you@example.com"
-    ),
-    passwordInput(
-      "ynow_auth_password",
-      label = tags$span(id = "ynow_auth_password_label", "Password"),
-      value = ""
-    ),
-    uiOutput("ynow_auth_status"),
-    footer = tagList(
-      actionButton(
-        "ynow_auth_submit",
-        label = tags$span(id = "ynow_auth_submit_label", "Sign in"),
-        class = "btn-primary"
+    tags$div(
+      class = "ynow-auth-card",
+      # Hidden help kept for locale push / a11y (visually collapsed).
+      tags$p(
+        id = "ynow_auth_modal_help",
+        class = "ynow-auth-help-sr",
+        "Sign in with your account email and password."
       ),
       tags$button(
+        id = "ynow_auth_google",
         type = "button",
-        class = "btn btn-default",
-        `data-dismiss` = "modal",
-        tags$span(id = "ynow_auth_cancel_label", "Cancel")
+        class = "ynow-auth-social ynow-auth-social--google action-button",
+        .ynow_auth_google_icon(),
+        tags$span(id = "ynow_auth_google_label", "Sign in with Google")
+      ),
+      tags$button(
+        id = "ynow_auth_facebook",
+        type = "button",
+        class = "ynow-auth-social ynow-auth-social--facebook action-button",
+        .ynow_auth_facebook_icon(),
+        tags$span(id = "ynow_auth_facebook_label", "Sign in with Facebook")
+      ),
+      tags$div(
+        class = "ynow-auth-divider",
+        tags$span(id = "ynow_auth_or_email", "Or sign in with Email")
+      ),
+      tags$div(
+        class = "ynow-auth-field",
+        tags$label(
+          `for` = "ynow_auth_email",
+          tags$span(id = "ynow_auth_email_label", "Enter your Email account:")
+        ),
+        tags$input(
+          id = "ynow_auth_email",
+          type = "email",
+          class = "form-control ynow-auth-input",
+          value = "",
+          autocomplete = "username",
+          placeholder = "you@example.com"
+        )
+      ),
+      tags$div(
+        class = "ynow-auth-field",
+        tags$label(
+          `for` = "ynow_auth_password",
+          tags$span(id = "ynow_auth_password_label", "Enter password:")
+        ),
+        tags$input(
+          id = "ynow_auth_password",
+          type = "password",
+          class = "form-control ynow-auth-input",
+          value = "",
+          autocomplete = "current-password"
+        ),
+        tags$div(
+          class = "ynow-auth-forgot-row",
+          actionLink(
+            "ynow_auth_forgot",
+            label = tags$span(id = "ynow_auth_forgot_label", "Forgot password?"),
+            class = "ynow-auth-text-link"
+          )
+        )
+      ),
+      uiOutput("ynow_auth_status"),
+      actionButton(
+        "ynow_auth_submit",
+        label = tags$span(id = "ynow_auth_submit_label", "Email sign-in"),
+        class = "ynow-auth-email-submit"
+      ),
+      tags$div(
+        class = "ynow-auth-card-foot",
+        actionLink(
+          "ynow_auth_register",
+          label = tags$span(id = "ynow_auth_register_label", "Register a new account"),
+          class = "ynow-auth-text-link"
+        ),
+        tags$span(class = "ynow-auth-foot-dot", "·"),
+        actionLink(
+          "ynow_auth_resend",
+          label = tags$span(
+            id = "ynow_auth_resend_label",
+            "Didn't receive the verification email"
+          ),
+          class = "ynow-auth-text-link"
+        )
       )
+    ),
+    footer = tags$button(
+      type = "button",
+      class = "btn btn-default ynow-auth-cancel-btn",
+      `data-dismiss` = "modal",
+      tags$span(id = "ynow_auth_cancel_label", "Cancel")
     )
   )
 }
@@ -160,7 +245,8 @@ ynow_auth_session_email <- function(auth) {
   ynow_auth_norm_email(u$email %||% "")
 }
 
-#' Minimal CSS for auth chrome + maintenance nav + Lite exemptions.
+#' Minimal CSS for auth chrome + StatementDog-style login card + Lite exemptions.
+#' Palette: --ynow-ink / --ynow-logo-blue / --ynow-wash / --ynow-line (app tokens).
 ynow_auth_css <- function() {
   if (!isTRUE(ynow_auth_enabled())) return(NULL)
   # Lang column: ZH/EN on top; Sign in / Sign out text links below, right-aligned.
@@ -189,6 +275,109 @@ ynow_auth_css <- function() {
     "}",
     ".ynow-auth-under-lang .ynow-auth-user-chip { display:none !important; }",
     "body.ynow-lite .ynow-auth-under-lang { display:none !important; }",
+    "#ynow_auth_modal .modal-dialog { width:92%; max-width:420px; margin:40px auto; }",
+    "#ynow_auth_modal .modal-content {",
+    "  border:1px solid var(--ynow-line, #d0d0d0); border-radius:2px;",
+    "  box-shadow:0 8px 28px rgba(26,26,26,0.12); background:#fff;",
+    "}",
+    "#ynow_auth_modal .modal-header {",
+    "  border-bottom:0; padding:28px 28px 8px; background:#fff;",
+    "}",
+    "#ynow_auth_modal .modal-header .close {",
+    "  margin-top:-8px; font-weight:300; color:var(--ynow-ink-soft, #333); opacity:0.55;",
+    "}",
+    "#ynow_auth_modal .modal-title,",
+    "#ynow_auth_modal #ynow_auth_modal_title {",
+    "  display:block; font-size:22px; font-weight:700; line-height:1.3;",
+    "  color:var(--ynow-ink, #1a1a1a); letter-spacing:-0.01em;",
+    "}",
+    "#ynow_auth_modal .modal-body { padding:8px 28px 8px; background:#fff; }",
+    "#ynow_auth_modal .modal-footer {",
+    "  border-top:0; padding:0 28px 20px; text-align:center; background:#fff;",
+    "}",
+    "#ynow_auth_modal .ynow-auth-cancel-btn { display:none !important; }",
+    ".ynow-auth-help-sr {",
+    "  position:absolute; width:1px; height:1px; padding:0; margin:-1px;",
+    "  overflow:hidden; clip:rect(0,0,0,0); border:0;",
+    "}",
+    ".ynow-auth-card { display:flex; flex-direction:column; gap:12px; }",
+    ".ynow-auth-social {",
+    "  display:flex; align-items:center; justify-content:center; gap:10px;",
+    "  width:100%; height:44px; margin:0; padding:0 14px;",
+    "  border-radius:2px; font-size:14px; font-weight:600; line-height:1;",
+    "  cursor:pointer; box-shadow:none !important; text-shadow:none;",
+    "}",
+    ".ynow-auth-social--google {",
+    "  background:#fff !important; color:var(--ynow-ink, #1a1a1a) !important;",
+    "  border:1px solid var(--ynow-line, #d0d0d0) !important;",
+    "}",
+    ".ynow-auth-social--google:hover {",
+    "  background:var(--ynow-wash, #f5f5f5) !important;",
+    "  border-color:#b8b8b8 !important; color:var(--ynow-ink, #1a1a1a) !important;",
+    "}",
+    ".ynow-auth-social--facebook {",
+    "  background:var(--ynow-logo-blue, #0C5484) !important;",
+    "  border:1px solid var(--ynow-logo-blue, #0C5484) !important;",
+    "  color:#fff !important;",
+    "}",
+    ".ynow-auth-social--facebook:hover {",
+    "  background:#0a456c !important; border-color:#0a456c !important; color:#fff !important;",
+    "}",
+    ".ynow-auth-social-icon { flex:0 0 auto; display:block; }",
+    ".ynow-auth-social-icon--fb { color:#fff; }",
+    ".ynow-auth-divider {",
+    "  display:flex; align-items:center; gap:12px; margin:4px 0 2px;",
+    "  color:#888; font-size:12px;",
+    "}",
+    ".ynow-auth-divider::before, .ynow-auth-divider::after {",
+    "  content:''; flex:1 1 auto; height:1px; background:var(--ynow-line, #d0d0d0);",
+    "}",
+    ".ynow-auth-divider span { white-space:nowrap; flex:0 0 auto; }",
+    ".ynow-auth-field { margin:0; }",
+    ".ynow-auth-field > label {",
+    "  display:block; margin:0 0 6px; font-size:13px; font-weight:600;",
+    "  color:var(--ynow-ink-soft, #333);",
+    "}",
+    ".ynow-auth-input.form-control,",
+    "#ynow_auth_modal .ynow-auth-input {",
+    "  height:42px; border-radius:2px; border:1px solid transparent;",
+    "  background:var(--ynow-wash, #f5f5f5) !important;",
+    "  box-shadow:none !important; color:var(--ynow-ink, #1a1a1a);",
+    "}",
+    "#ynow_auth_modal .ynow-auth-input:focus {",
+    "  border-color:var(--ynow-logo-blue, #0C5484) !important;",
+    "  background:#fff !important;",
+    "}",
+    ".ynow-auth-forgot-row { margin:6px 0 0; }",
+    ".ynow-auth-text-link,",
+    "#ynow_auth_modal a.ynow-auth-text-link {",
+    "  color:var(--ynow-logo-blue, #0C5484) !important;",
+    "  font-size:13px; font-weight:500; text-decoration:none !important;",
+    "  padding:0 !important; background:transparent !important; border:0 !important;",
+    "}",
+    "#ynow_auth_modal a.ynow-auth-text-link:hover {",
+    "  color:#0a456c !important; text-decoration:underline !important;",
+    "}",
+    ".ynow-auth-email-submit,",
+    "#ynow_auth_modal .ynow-auth-email-submit.btn {",
+    "  display:block; width:100%; height:46px; margin:4px 0 0; padding:0;",
+    "  border-radius:2px; border:1px solid var(--ynow-ink, #1a1a1a) !important;",
+    "  background:var(--ynow-ink, #1a1a1a) !important; color:#fff !important;",
+    "  font-size:15px; font-weight:700; line-height:46px;",
+    "  box-shadow:none !important; text-shadow:none;",
+    "}",
+    "#ynow_auth_modal .ynow-auth-email-submit.btn:hover,",
+    "#ynow_auth_modal .ynow-auth-email-submit.btn:focus {",
+    "  background:#000 !important; border-color:#000 !important; color:#fff !important;",
+    "}",
+    ".ynow-auth-card-foot {",
+    "  display:flex; flex-wrap:wrap; align-items:center; justify-content:center;",
+    "  gap:8px; margin:8px 0 4px; text-align:center;",
+    "}",
+    ".ynow-auth-foot-dot { color:#bbb; font-size:13px; }",
+    "#ynow_auth_modal #ynow_auth_status .text-danger { color:#c0392b; font-size:13px; }",
+    "#ynow_auth_modal #ynow_auth_status .text-success { color:var(--ynow-logo-green, #249C60); font-size:13px; }",
+    "#ynow_auth_modal #ynow_auth_status .text-muted { color:#777; font-size:13px; }",
     "body.ynow-lite .sidebar-menu a[data-value=\"account_admin\"],",
     "body.ynow-lite .sidebar-menu li:has(> a[data-value=\"account_admin\"]) {",
     "  display:none !important;",
@@ -365,6 +554,12 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
     tryCatch(shinyBS::toggleModal(session, "ynow_auth_modal", "open"), error = function(e) NULL)
   }, ignoreInit = TRUE)
 
+  .show_auth_note <- function(key, fallback, cls = "text-muted") {
+    output$ynow_auth_status <- renderUI({
+      tags$p(class = cls, .str(key, fallback))
+    })
+  }
+
   observeEvent(input$ynow_auth_submit, {
     if (!isTRUE(ynow_auth_enabled())) return()
     res <- ynow_auth_try_login(input$ynow_auth_email, input$ynow_auth_password)
@@ -381,6 +576,28 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
         tags$p(class = "text-danger", .str(mk, "Sign-in failed."))
       })
     }
+  }, ignoreInit = TRUE)
+
+  # Social / register / forgot / resend — UI stubs until free-DB + OAuth land.
+  observeEvent(input$ynow_auth_google, {
+    if (!isTRUE(ynow_auth_enabled())) return()
+    .show_auth_note("auth_msg_oauth_soon", "Social sign-in is not configured yet.")
+  }, ignoreInit = TRUE)
+  observeEvent(input$ynow_auth_facebook, {
+    if (!isTRUE(ynow_auth_enabled())) return()
+    .show_auth_note("auth_msg_oauth_soon", "Social sign-in is not configured yet.")
+  }, ignoreInit = TRUE)
+  observeEvent(input$ynow_auth_forgot, {
+    if (!isTRUE(ynow_auth_enabled())) return()
+    .show_auth_note("auth_msg_forgot_soon", "Password reset is not available yet.")
+  }, ignoreInit = TRUE)
+  observeEvent(input$ynow_auth_register, {
+    if (!isTRUE(ynow_auth_enabled())) return()
+    .show_auth_note("auth_msg_register_soon", "Registration is not open yet.")
+  }, ignoreInit = TRUE)
+  observeEvent(input$ynow_auth_resend, {
+    if (!isTRUE(ynow_auth_enabled())) return()
+    .show_auth_note("auth_msg_resend_soon", "Verification email resend is not available yet.")
   }, ignoreInit = TRUE)
 
   observeEvent(input$ynow_auth_sign_out, {
@@ -426,12 +643,18 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
       list(
         sign_in = tryCatch(ui_str("auth_sign_in", loc), error = function(e) "Sign in"),
         sign_out = tryCatch(ui_str("auth_sign_out", loc), error = function(e) "Sign out"),
-        modal_title = tryCatch(ui_str("auth_modal_title", loc), error = function(e) "Account sign-in"),
+        modal_title = tryCatch(ui_str("auth_modal_title", loc), error = function(e) "Sign in to The YNow App"),
         modal_help = tryCatch(ui_str("auth_modal_help", loc), error = function(e) ""),
-        email_label = tryCatch(ui_str("auth_email_label", loc), error = function(e) "Email"),
-        password_label = tryCatch(ui_str("auth_password_label", loc), error = function(e) "Password"),
-        submit = tryCatch(ui_str("auth_submit", loc), error = function(e) "Sign in"),
+        email_label = tryCatch(ui_str("auth_email_label", loc), error = function(e) "Enter your Email account:"),
+        password_label = tryCatch(ui_str("auth_password_label", loc), error = function(e) "Enter password:"),
+        submit = tryCatch(ui_str("auth_submit", loc), error = function(e) "Email sign-in"),
         cancel = tryCatch(ui_str("auth_cancel", loc), error = function(e) "Cancel"),
+        or_email = tryCatch(ui_str("auth_or_email", loc), error = function(e) "Or sign in with Email"),
+        google = tryCatch(ui_str("auth_google", loc), error = function(e) "Sign in with Google"),
+        facebook = tryCatch(ui_str("auth_facebook", loc), error = function(e) "Sign in with Facebook"),
+        forgot = tryCatch(ui_str("auth_forgot", loc), error = function(e) "Forgot password?"),
+        register = tryCatch(ui_str("auth_register", loc), error = function(e) "Register a new account"),
+        resend = tryCatch(ui_str("auth_resend", loc), error = function(e) "Didn't receive the verification email"),
         admin_title = tryCatch(ui_str("auth_admin_title", loc), error = function(e) "Maintenance"),
         admin_intro = tryCatch(ui_str("auth_admin_intro", loc), error = function(e) ""),
         pa_gate_title = tryCatch(ui_str("auth_pa_gate_title", loc), error = function(e) "Sign in required"),

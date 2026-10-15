@@ -168,8 +168,11 @@ check("admin menu NULL when disabled", is.null(ynow_admin_menu_item()))
 keys <- c(
   "auth_sign_in", "auth_sign_out", "auth_modal_title", "auth_modal_help",
   "auth_email_label", "auth_password_label", "auth_submit", "auth_cancel",
+  "auth_or_email", "auth_google", "auth_facebook", "auth_forgot",
+  "auth_register", "auth_resend",
   "auth_msg_ok", "auth_msg_disabled", "auth_msg_missing", "auth_msg_invalid",
-  "auth_msg_no_backend", "auth_about_note",
+  "auth_msg_no_backend", "auth_msg_oauth_soon", "auth_msg_register_soon",
+  "auth_msg_forgot_soon", "auth_msg_resend_soon", "auth_about_note",
   "menu_admin", "auth_admin_title", "auth_admin_intro", "auth_pa_gate_title",
   "auth_pa_gate_body", "auth_admin_tool_lite", "pa_email_account_help"
 )
@@ -179,8 +182,10 @@ for (k in keys) {
 }
 check("zh uses 登入", grepl("登入", ui_str("auth_sign_in", "zh-TW"), fixed = TRUE))
 check("zh no simplified 登录", !grepl("登录", ui_str("auth_sign_in", "zh-TW"), fixed = TRUE))
-check("zh uses 帳號", grepl("帳號", ui_str("auth_modal_title", "zh-TW"), fixed = TRUE))
-check("zh no 账户", !grepl("账户", ui_str("auth_modal_title", "zh-TW"), fixed = TRUE))
+check("zh uses 帳號", grepl("帳號", ui_str("auth_register", "zh-TW"), fixed = TRUE))
+check("zh no 账户", !grepl("账户", ui_str("auth_register", "zh-TW"), fixed = TRUE))
+check("zh modal title YNow", grepl("The YNow App", ui_str("auth_modal_title", "zh-TW"), fixed = TRUE))
+check("zh Email 登入 submit", grepl("Email 登入", ui_str("auth_submit", "zh-TW"), fixed = TRUE))
 
 ui <- paste(readLines(src_ui, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 srv <- paste(readLines(src_srv, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
@@ -198,12 +203,34 @@ auth_src <- paste(readLines(src_auth, warn = FALSE, encoding = "UTF-8"), collaps
 check("auth under-lang text links", grepl("ynow-auth-under-lang", auth_src, fixed = TRUE) &&
         grepl("ynow-auth-link", auth_src, fixed = TRUE))
 check("UI CSS hides auth in Lite", grepl("body.ynow-lite .ynow-auth-under-lang", auth_src, fixed = TRUE))
+check("login card uses app palette tokens", {
+  grepl("--ynow-ink", auth_src, fixed = TRUE) &&
+    grepl("--ynow-logo-blue", auth_src, fixed = TRUE) &&
+    grepl("--ynow-wash", auth_src, fixed = TRUE) &&
+    grepl("ynow-auth-social--google", auth_src, fixed = TRUE) &&
+    grepl("ynow-auth-email-submit", auth_src, fixed = TRUE)
+})
 check("header UI is div not navbar li", {
   Sys.setenv(YNOW_ENABLE_ACCOUNT_LOGIN = "1")
   h <- ynow_auth_header_ui()
   Sys.setenv(YNOW_ENABLE_ACCOUNT_LOGIN = "0")
   inherits(h, "shiny.tag") && identical(h$name, "div") &&
     grepl("ynow-auth-under-lang", paste(as.character(h), collapse = ""), fixed = TRUE)
+})
+check("modal card layout present when enabled", {
+  Sys.setenv(YNOW_ENABLE_ACCOUNT_LOGIN = "1")
+  if (!requireNamespace("shinyBS", quietly = TRUE)) {
+    Sys.setenv(YNOW_ENABLE_ACCOUNT_LOGIN = "0")
+    TRUE
+  } else {
+    m <- ynow_auth_modal_ui()
+    html <- paste(as.character(m), collapse = "")
+    Sys.setenv(YNOW_ENABLE_ACCOUNT_LOGIN = "0")
+    grepl("ynow-auth-card", html, fixed = TRUE) &&
+      grepl("ynow_auth_google", html, fixed = TRUE) &&
+      grepl("ynow_auth_facebook", html, fixed = TRUE) &&
+      grepl("ynow-auth-email-submit", html, fixed = TRUE)
+  }
 })
 check("server wires ynow_auth_server", grepl("ynow_auth_server", srv, fixed = TRUE))
 check("server renders admin panel", grepl("output\\$ynow_admin_panel", srv))
