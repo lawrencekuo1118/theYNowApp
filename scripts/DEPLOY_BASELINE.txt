@@ -7,4 +7,4 @@ commit=fdf521fb6f40eb00634ac939b49ec3087681b516
 short=fdf521f
 message=chore: record shipped display version v25.07
 captured_at=2026-10-15T14:35:00Z
-display_version=v25.07
+display_version=v25.08
