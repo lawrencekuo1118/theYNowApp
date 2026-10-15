@@ -138,34 +138,60 @@ ynow_auth_accept_social_user <- function(oauth_user) {
   )
 }
 
-#' Sign-in / Sign-out text links under the ZH/EN stack (right-aligned).
-#' Returns a div for nesting inside the lang header column — not a navbar <li>.
-ynow_auth_header_ui <- function() {
+#' Sign-in / Sign-out text links for a placement (sidebar date row or Home legal).
+#' @param placement "sidebar" | "home"
+#' @return shiny tag or NULL when auth disabled
+ynow_auth_links_ui <- function(placement = c("sidebar", "home")) {
+  placement <- match.arg(placement)
   if (!isTRUE(ynow_auth_enabled())) return(NULL)
+  # Unique input ids per placement (Shiny forbids duplicate ids).
+  open_id <- if (identical(placement, "sidebar")) "ynow_auth_open" else "ynow_auth_open_home"
+  out_id <- if (identical(placement, "sidebar")) "ynow_auth_sign_out" else "ynow_auth_sign_out_home"
+  open_lbl <- if (identical(placement, "sidebar")) "ynow_auth_header_label" else "ynow_auth_home_label"
+  out_lbl <- if (identical(placement, "sidebar")) {
+    "ynow_auth_sign_out_label"
+  } else {
+    "ynow_auth_sign_out_home_label"
+  }
+  wrap_id <- if (identical(placement, "sidebar")) "ynow-auth-sidebar" else "ynow-auth-home"
+  wrap_class <- if (identical(placement, "sidebar")) {
+    "ynow-auth-links ynow-auth-links--sidebar"
+  } else {
+    "ynow-auth-links ynow-auth-links--home"
+  }
   tags$div(
-    id = "ynow-auth-header",
-    class = "ynow-auth-under-lang",
+    id = wrap_id,
+    class = wrap_class,
     role = "group",
     `aria-label` = "Account",
     actionLink(
-      inputId = "ynow_auth_open",
-      label = tags$span(id = "ynow_auth_header_label", "Sign in"),
-      class = "ynow-auth-link"
+      inputId = open_id,
+      label = tags$span(id = open_lbl, class = "ynow-auth-open-label", "Sign in"),
+      class = "ynow-auth-link ynow-auth-open"
     ),
     tags$span(
-      id = "ynow_auth_user_chip",
       class = "ynow-auth-user-chip",
       style = "display:none;",
       title = "",
       ""
     ),
     actionLink(
-      inputId = "ynow_auth_sign_out",
-      label = tags$span(id = "ynow_auth_sign_out_label", "Sign out"),
+      inputId = out_id,
+      label = tags$span(id = out_lbl, class = "ynow-auth-signout-label", "Sign out"),
       class = "ynow-auth-link ynow-auth-signout",
       style = "display:none;"
     )
   )
+}
+
+#' @deprecated Prefer ynow_auth_links_ui("sidebar"); kept for tests / callers.
+ynow_auth_header_ui <- function() {
+  ynow_auth_links_ui("sidebar")
+}
+
+#' Home legal-row companion (left of About · Privacy).
+ynow_auth_home_ui <- function() {
+  ynow_auth_links_ui("home")
 }
 
 #' Inline Google "G" mark for social button (decorative).
@@ -332,32 +358,53 @@ ynow_auth_session_email <- function(auth) {
 #' Palette: --ynow-ink / --ynow-logo-blue / --ynow-wash / --ynow-line (app tokens).
 ynow_auth_css <- function() {
   if (!isTRUE(ynow_auth_enabled())) return(NULL)
-  # Lang column: ZH/EN on top; Sign in / Sign out text links below, right-aligned.
-  # Email chip stays hidden in header (account email lives in Maintenance).
+  # Sign-in lives in sidebar date row + Home legal row (not under ZH/EN).
+  # Email chip stays hidden (account email lives in Maintenance).
   tags$style(HTML(paste0(
-    ".ynow-lang-col {",
-    "  display:flex; flex-direction:column; align-items:flex-end; justify-content:center;",
-    "  gap:2px; line-height:1.15;",
+    ".ynow-sidebar-date-row {",
+    "  display:flex; flex-direction:row; align-items:center; justify-content:flex-start;",
+    "  gap:12px; flex-wrap:nowrap; width:100%; min-height:22px;",
+    "  margin:0; padding:6px 4px 2px;",
     "}",
-    ".ynow-auth-under-lang {",
-    "  display:flex; flex-direction:column; align-items:flex-end; justify-content:center;",
-    "  margin:0; padding:0; max-width:100%;",
+    ".ynow-sidebar-date-row .ynow-sidebar-date,",
+    ".ynow-sidebar-date-row #today {",
+    "  flex:0 0 auto; margin:0; padding:0; font-size:12px; line-height:1.2;",
+    "  white-space:nowrap; color:inherit;",
     "}",
-    ".ynow-auth-under-lang .ynow-auth-link,",
-    ".ynow-auth-under-lang a.ynow-auth-link {",
-    "  color:rgba(255,255,255,0.88) !important;",
-    "  font-size:11px; font-weight:500; line-height:1.2;",
+    ".ynow-auth-links {",
+    "  display:inline-flex; flex-direction:row; align-items:center; gap:8px;",
+    "  margin:0; padding:0; flex:0 0 auto;",
+    "}",
+    ".ynow-auth-links .ynow-auth-link,",
+    ".ynow-auth-links a.ynow-auth-link {",
     "  padding:0 !important; margin:0 !important;",
     "  text-decoration:none !important; background:transparent !important;",
     "  border:0 !important; box-shadow:none !important;",
-    "  white-space:nowrap; text-align:right;",
+    "  white-space:nowrap; font-weight:500; line-height:1.2;",
     "}",
-    ".ynow-auth-under-lang .ynow-auth-link:hover,",
-    ".ynow-auth-under-lang a.ynow-auth-link:hover {",
+    ".ynow-auth-links--sidebar .ynow-auth-link,",
+    ".ynow-auth-links--sidebar a.ynow-auth-link {",
+    "  color:rgba(255,255,255,0.88) !important; font-size:12px;",
+    "}",
+    ".ynow-auth-links--sidebar .ynow-auth-link:hover,",
+    ".ynow-auth-links--sidebar a.ynow-auth-link:hover {",
     "  color:#fff !important; text-decoration:underline !important;",
     "}",
-    ".ynow-auth-under-lang .ynow-auth-user-chip { display:none !important; }",
-    "body.ynow-lite .ynow-auth-under-lang { display:none !important; }",
+    ".ynow-auth-links--home .ynow-auth-link,",
+    ".ynow-auth-links--home a.ynow-auth-link {",
+    "  color:#0b57d0 !important; font-size:12px;",
+    "  text-decoration:underline !important; text-underline-offset:2px;",
+    "}",
+    ".ynow-auth-links--home .ynow-auth-link:hover,",
+    ".ynow-auth-links--home a.ynow-auth-link:hover {",
+    "  color:#0842a0 !important;",
+    "}",
+    ".ynow-auth-links .ynow-auth-user-chip { display:none !important; }",
+    ".ynow-home-legal-links {",
+    "  display:inline-flex; flex-direction:row; align-items:center;",
+    "  justify-content:center; gap:14px; flex-wrap:wrap;",
+    "}",
+    "body.ynow-lite .ynow-auth-links { display:none !important; }",
     "#ynow_auth_modal .modal-dialog { width:92%; max-width:420px; margin:40px auto; }",
     "#ynow_auth_modal .modal-content {",
     "  border:1px solid var(--ynow-line, #d0d0d0); border-radius:2px;",
@@ -639,9 +686,15 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
     .push_auth_state(FALSE, "")
   }
 
-  observeEvent(input$ynow_auth_open, {
+  .open_auth_modal <- function() {
     if (!isTRUE(ynow_auth_enabled())) return()
     tryCatch(shinyBS::toggleModal(session, "ynow_auth_modal", "open"), error = function(e) NULL)
+  }
+  observeEvent(input$ynow_auth_open, {
+    .open_auth_modal()
+  }, ignoreInit = TRUE)
+  observeEvent(input$ynow_auth_open_home, {
+    .open_auth_modal()
   }, ignoreInit = TRUE)
 
   .show_auth_note <- function(key, fallback, cls = "text-muted") {
@@ -754,6 +807,10 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
   }, ignoreInit = TRUE)
 
   observeEvent(input$ynow_auth_sign_out, {
+    if (!isTRUE(ynow_auth_enabled())) return()
+    .sign_out()
+  }, ignoreInit = TRUE)
+  observeEvent(input$ynow_auth_sign_out_home, {
     if (!isTRUE(ynow_auth_enabled())) return()
     .sign_out()
   }, ignoreInit = TRUE)

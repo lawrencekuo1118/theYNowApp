@@ -16,7 +16,7 @@
       return(sub('^"version"\\s*:\\s*"([^"]+)".*$', "\\1", m[[1]]))
     }
   }
-  "v25.10"
+  "v25.11"
 }
 .YNOW_BUILD_VERSION <- .ynow_read_build_version()
 
@@ -230,7 +230,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v25.10) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+          "The YNow App (v25.11) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
         ),
         tags$p(
           class = "ynow-about-method",
@@ -258,7 +258,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v25.10) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
+          "The YNow App (v25.11) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
         ),
         tags$p(
           class = "ynow-about-method",
@@ -368,7 +368,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App（簡化版）")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite（v25.10）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
+          "The YNow App Lite（v25.11）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
           "以自動判別主／副模型與預設參數完成試算，讓使用者先看到合理價區間與產業 KPI，再決定是否回到完整版深入調整。"
         ),
         tags$p(
@@ -385,7 +385,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App (Lite)")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite (v25.10) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
+          "The YNow App Lite (v25.11) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
           "auto-selects primary/secondary models with App defaults, and surfaces fair-value ranges plus industry KPIs before you open Full for deeper calibration."
         ),
         tags$p(
@@ -541,12 +541,17 @@
             "You alone bear all investment decisions and losses."
           )
         ),
-        tags$button(
-          type = "button",
-          id = "ynow_home_legal_about",
-          class = "ynow-home-legal-link",
-          `data-tab` = "about",
-          "About · Privacy, IP & risk"
+        tags$div(
+          class = "ynow-home-legal-links",
+          # Sign in sits left of About · Privacy (same row).
+          if (exists("ynow_auth_home_ui", mode = "function")) ynow_auth_home_ui(),
+          tags$button(
+            type = "button",
+            id = "ynow_home_legal_about",
+            class = "ynow-home-legal-link",
+            `data-tab` = "about",
+            "About · Privacy, IP & risk"
+          )
         )
       )
     ),
@@ -3505,9 +3510,9 @@ ui <- dashboardPage(
                   'data-ynow-build="', .YNOW_BUILD_VERSION, '" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v25.10</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v25.11</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v25.10</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v25.11</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -3559,32 +3564,28 @@ ui <- dashboardPage(
     ),
     # Language (zh-TW ↔ en-US) — custom buttons (same stability pattern as US/TW;
     # avoid shinyWidgets radioGroupButtons re-render that displaces the control on mobile).
-    # Sign in / Sign out text links sit under ZH/EN, right-aligned (when auth enabled).
+    # Vertically centered with the small header logo (auth links live in sidebar + Home).
     tags$li(
       class = "dropdown ynow-lang-header ynow-hdr-toggle",
       tags$div(
-        class = "ynow-lang-col",
-        tags$div(
-          class = "ynow-lang-stack",
-          id = "ynow_lang_stack",
-          role = "group",
-          `aria-label` = "Language",
-          tags$button(
-            type = "button",
-            class = "ynow-lang-btn",
-            id = "ynow_lang_btn_zh",
-            `data-value` = "zh-TW",
-            "繁中"
-          ),
-          tags$button(
-            type = "button",
-            class = "ynow-lang-btn active",
-            id = "ynow_lang_btn_en",
-            `data-value` = "en",
-            "EN"
-          )
+        class = "ynow-lang-stack",
+        id = "ynow_lang_stack",
+        role = "group",
+        `aria-label` = "Language",
+        tags$button(
+          type = "button",
+          class = "ynow-lang-btn",
+          id = "ynow_lang_btn_zh",
+          `data-value` = "zh-TW",
+          "繁中"
         ),
-        if (exists("ynow_auth_header_ui", mode = "function")) ynow_auth_header_ui()
+        tags$button(
+          type = "button",
+          class = "ynow-lang-btn active",
+          id = "ynow_lang_btn_en",
+          `data-value` = "en",
+          "EN"
+        )
       )
     ),
     # Logo + USD／TWD under logo (modest gap below black header)
@@ -3627,10 +3628,15 @@ ui <- dashboardPage(
   dashboardSidebar(
     width = 250,
     collapsed = TRUE,
-    column(width = 12,
-           column(width = 12, textOutput("today"),
-                  hr()
-           )
+    # Sign in (left) + date (right-of-link) on one row above the white hr.
+    column(
+      width = 12,
+      tags$div(
+        class = "ynow-sidebar-date-row",
+        if (exists("ynow_auth_links_ui", mode = "function")) ynow_auth_links_ui("sidebar"),
+        tags$span(class = "ynow-sidebar-date", textOutput("today", inline = TRUE))
+      ),
+      tags$hr(class = "ynow-sidebar-date-hr")
     ),
     
     # Must stay inside column(width=12): bare sidebarMenu after Bootstrap
@@ -6130,6 +6136,14 @@ ui <- dashboardPage(
           line-height: 1.5;
           color: #666;
         }
+        .ynow-home-legal-links {
+          display: inline-flex;
+          flex-direction: row;
+          align-items: center;
+          justify-content: center;
+          gap: 14px;
+          flex-wrap: wrap;
+        }
         .ynow-home-legal-link {
           display: inline-block;
           margin: 0;
@@ -6147,6 +6161,10 @@ ui <- dashboardPage(
         .ynow-home-legal-link:focus-visible {
           color: #0842a0;
           outline: none;
+        }
+        .ynow-sidebar-date-hr {
+          margin: 6px 8px 10px;
+          border-top-color: rgba(255,255,255,0.18);
         }
         /* Lite Smart Analysis: lead blurb above composite status (no page heading) */
         .ynow-smart-lite-blurb-wrap {
@@ -9628,8 +9646,17 @@ ui <- dashboardPage(
                 var el = document.getElementById(id);
                 if (el && val) el.textContent = val;
               };
+              var setAll = function (sel, val) {
+                if (!val) return;
+                var nodes = document.querySelectorAll(sel);
+                for (var i = 0; i < nodes.length; i++) nodes[i].textContent = val;
+              };
+              setAll('.ynow-auth-open-label', payload.sign_in);
+              setAll('.ynow-auth-signout-label', payload.sign_out);
               set('ynow_auth_header_label', payload.sign_in);
+              set('ynow_auth_home_label', payload.sign_in);
               set('ynow_auth_sign_out_label', payload.sign_out);
+              set('ynow_auth_sign_out_home_label', payload.sign_out);
               set('ynow_auth_modal_title', payload.modal_title);
               set('ynow_auth_modal_help', payload.modal_help);
               set('ynow_auth_email_label', payload.email_label);
@@ -9665,22 +9692,26 @@ ui <- dashboardPage(
             });
             addHandler('ynowAuthState', function (payload) {
               if (!payload) return;
-              var chip = document.getElementById('ynow_auth_user_chip');
-              var openLbl = document.getElementById('ynow_auth_header_label');
-              var openLink = document.getElementById('ynow_auth_open');
-              var outLink = document.getElementById('ynow_auth_sign_out');
               var loggedIn = !!(payload.logged_in);
               if (loggedIn) document.body.classList.add('ynow-authed');
               else document.body.classList.remove('ynow-authed');
-              if (chip) {
-                chip.textContent = loggedIn ? String(payload.email || '') : '';
-                chip.style.display = loggedIn ? '' : 'none';
+              var openLinks = document.querySelectorAll('.ynow-auth-open');
+              var outLinks = document.querySelectorAll('.ynow-auth-signout');
+              var i;
+              for (i = 0; i < openLinks.length; i++) {
+                openLinks[i].style.display = loggedIn ? 'none' : '';
               }
-              if (openLink) openLink.style.display = loggedIn ? 'none' : '';
-              if (outLink) outLink.style.display = loggedIn ? '' : 'none';
-              if (openLbl && payload.label_sign_in) openLbl.textContent = payload.label_sign_in;
-              var outLbl = document.getElementById('ynow_auth_sign_out_label');
-              if (outLbl && payload.label_sign_out) outLbl.textContent = payload.label_sign_out;
+              for (i = 0; i < outLinks.length; i++) {
+                outLinks[i].style.display = loggedIn ? '' : 'none';
+              }
+              if (payload.label_sign_in) {
+                var openLbls = document.querySelectorAll('.ynow-auth-open-label');
+                for (i = 0; i < openLbls.length; i++) openLbls[i].textContent = payload.label_sign_in;
+              }
+              if (payload.label_sign_out) {
+                var outLbls = document.querySelectorAll('.ynow-auth-signout-label');
+                for (i = 0; i < outLbls.length; i++) outLbls[i].textContent = payload.label_sign_out;
+              }
             });
             addHandler('ynowDcLocale', applyDcLocale);
             addHandler('ynowDcSopLocale', function (payload) {
