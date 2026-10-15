@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12694201
+bundleId=12694252
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=c6d43649d4c940f76818b1efa67ae4ad0773146f
-commit=c6d43649d4c940f76818b1efa67ae4ad0773146f
-short=c6d4364
-message=feat(auth): account login designed but disabled; cut live line to app_25.0 / v25.00
-captured_at=2026-10-15T12:48:10Z
+aligned_git=9a1908f283654fa1499b3e1d09a63f225f1b9170
+commit=9a1908f283654fa1499b3e1d09a63f225f1b9170
+short=9a1908f
+message=chore: record shipped display version v25.01
+captured_at=2026-10-15T13:02:32Z
 display_version=v25.01
