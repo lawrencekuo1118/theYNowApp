@@ -16,7 +16,7 @@
       return(sub('^"version"\\s*:\\s*"([^"]+)".*$', "\\1", m[[1]]))
     }
   }
-  "v24.04"
+  "v24.05"
 }
 .YNOW_BUILD_VERSION <- .ynow_read_build_version()
 
@@ -230,7 +230,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v24.04) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+          "The YNow App (v24.05) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
         ),
         tags$p(
           class = "ynow-about-method",
@@ -249,7 +249,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v24.04) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
+          "The YNow App (v24.05) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
         ),
         tags$p(
           class = "ynow-about-method",
@@ -351,7 +351,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App（簡化版）")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite（v24.04）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
+          "The YNow App Lite（v24.05）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
           "以自動判別主／副模型與預設參數完成試算，讓使用者先看到合理價區間與產業 KPI，再決定是否回到完整版深入調整。"
         ),
         tags$p(
@@ -368,7 +368,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App (Lite)")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite (v24.04) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
+          "The YNow App Lite (v24.05) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
           "auto-selects primary/secondary models with App defaults, and surfaces fair-value ranges plus industry KPIs before you open Full for deeper calibration."
         ),
         tags$p(
@@ -3434,9 +3434,9 @@ ui <- dashboardPage(
                   'data-ynow-build="', .YNOW_BUILD_VERSION, '" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v24.04</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v24.05</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v24.04</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v24.05</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -7425,7 +7425,9 @@ ui <- dashboardPage(
           }
           registerBadgeHandler();
 
-          /* 美股／台股：搬到三線 toggle 正後方；left = toggle 右緣（無空隙） */
+          /* 美股／台股：搬到三線 toggle 正後方。
+             Desktop: absolute left = toggle 右緣（無空隙）。
+             Mobile: static flex sibling after toggle (black-bar leftmost chrome). */
           function placeMarketHeaderByToggle() {
             var navbar = document.querySelector('.main-header .navbar');
             var market = document.getElementById('ynow-market-header');
@@ -7438,19 +7440,34 @@ ui <- dashboardPage(
                 break;
               }
             }
-            if (!toggle) toggle = navbar.querySelector('.sidebar-toggle');
+            if (!toggle) toggle = navbar.querySelector('a.sidebar-toggle, .sidebar-toggle');
             if (!toggle) return;
+            /* Always re-assert beside toggle — AdminLTE may steal the node back
+               into .navbar-custom-menu / .navbar-nav after our first pass. */
             if (!(market.parentNode === navbar && market.previousElementSibling === toggle)) {
               navbar.insertBefore(market, toggle.nextSibling);
             }
-            var leftPx = Math.round(toggle.offsetLeft + toggle.offsetWidth);
-            if (!(leftPx > 0)) leftPx = Math.round(toggle.offsetWidth) || 44;
-            market.style.left = leftPx + 'px';
-            market.style.top = '0';
+            var mobile = window.innerWidth <= 767;
+            if (mobile) {
+              market.style.setProperty('left', 'auto', 'important');
+              market.style.setProperty('right', 'auto', 'important');
+              market.style.setProperty('top', 'auto', 'important');
+              market.style.setProperty('position', 'static', 'important');
+              market.style.setProperty('float', 'none', 'important');
+              market.style.setProperty('display', 'flex', 'important');
+              market.style.setProperty('align-items', 'center', 'important');
+            } else {
+              var leftPx = Math.round(toggle.offsetLeft + toggle.offsetWidth);
+              if (!(leftPx > 0)) leftPx = Math.round(toggle.offsetWidth) || 44;
+              market.style.left = leftPx + 'px';
+              market.style.top = '0';
+              market.style.position = '';
+            }
             market.style.marginLeft = '0';
             market.style.paddingLeft = '0';
-            placeMobileAppTitle();
+            try { placeMobileAppTitle(); } catch (eTitle) {}
           }
+          window.ynowPlaceMarketHeaderByToggle = placeMarketHeaderByToggle;
           /* Mobile: app title viewport-centered in the gap; scale font to fit — never cover chrome. */
           function placeMobileAppTitle() {
             var logo = document.querySelector('.main-header .logo');
@@ -7772,6 +7789,8 @@ ui <- dashboardPage(
             }
             function watchProgressDom() {
               if (typeof MutationObserver === 'undefined') return;
+              var root = document.body || document.documentElement;
+              if (!root || root.nodeType !== 1) return;
               var armed = false;
               var obs = new MutationObserver(function () {
                 if (hasShinyProgress()) {
@@ -7784,7 +7803,9 @@ ui <- dashboardPage(
                   clearSource('progress');
                 }
               });
-              obs.observe(document.body, { childList: true, subtree: true });
+              try {
+                obs.observe(root, { childList: true, subtree: true });
+              } catch (eWatch) { /* body may be unavailable mid-parse */ }
             }
             function register() {
               if (!window.Shiny || !Shiny.addCustomMessageHandler) {
@@ -8015,35 +8036,79 @@ ui <- dashboardPage(
             });
           }
           function armMarketHeaderPlacement() {
-            placeMarketHeaderByToggle();
-            bindMarketModeButtons();
-            bindLangModeButtons();
+            try { placeMarketHeaderByToggle(); } catch (ePlace0) {}
+            try { bindMarketModeButtons(); } catch (eBindM) {}
+            try { bindLangModeButtons(); } catch (eBindL) {}
             if (typeof MutationObserver !== 'undefined') {
-              var hdrNav = document.querySelector('.main-header .navbar');
-              if (hdrNav && !hdrNav.getAttribute('data-ynow-mkt-obs')) {
-                hdrNav.setAttribute('data-ynow-mkt-obs', '1');
-                var mktObs = new MutationObserver(function () {
-                  placeMarketHeaderByToggle();
-                });
-                /* Only react to direct navbar child moves (market relocate), not lang label text. */
-                mktObs.observe(hdrNav, { childList: true, subtree: false });
-              }
+              try {
+                var hdrNav = document.querySelector('.main-header .navbar');
+                if (hdrNav && hdrNav.nodeType === 1 && !hdrNav.getAttribute('data-ynow-mkt-obs')) {
+                  hdrNav.setAttribute('data-ynow-mkt-obs', '1');
+                  var placeTimer = null;
+                  var mktObs = new MutationObserver(function () {
+                    if (placeTimer) clearTimeout(placeTimer);
+                    placeTimer = setTimeout(function () {
+                      try { placeMarketHeaderByToggle(); } catch (ePlace1) {}
+                    }, 0);
+                  });
+                  /* Navbar child moves + custom-menu rebuilds that steal the market li. */
+                  mktObs.observe(hdrNav, { childList: true, subtree: false });
+                  var custom = document.querySelector('.main-header .navbar-custom-menu');
+                  if (custom && custom.nodeType === 1) {
+                    mktObs.observe(custom, { childList: true, subtree: true });
+                  }
+                }
+              } catch (eObs) { /* never block placement timers */ }
             }
           }
+          /* Register timers BEFORE arm so a MutationObserver throw cannot skip them. */
+          [0, 50, 150, 250, 500, 1000, 2000, 4000].forEach(function (ms) {
+            setTimeout(function () {
+              try { placeMarketHeaderByToggle(); } catch (eT) {}
+            }, ms);
+          });
+          /* Mobile: keep nudging until flags sit after the hamburger (AdminLTE
+             sometimes rebuilds .navbar-nav and steals the market li back). */
+          (function keepMarketBesideToggleOnMobile() {
+            var tries = 0;
+            var iv = setInterval(function () {
+              tries += 1;
+              try {
+                if (typeof window.ynowPlaceMarketHeaderByToggle === 'function') {
+                  window.ynowPlaceMarketHeaderByToggle();
+                } else {
+                  placeMarketHeaderByToggle();
+                }
+              } catch (eIv) {}
+              var market = document.getElementById('ynow-market-header');
+              var toggle = document.querySelector('.main-header .navbar > .sidebar-toggle') ||
+                document.querySelector('.main-header .navbar .sidebar-toggle');
+              var ok = !!(market && toggle && market.parentNode === toggle.parentNode &&
+                market.previousElementSibling === toggle);
+              if (ok) {
+                document.documentElement.setAttribute('data-ynow-mkt-beside-toggle', '1');
+                clearInterval(iv);
+              } else if (tries >= 60) {
+                clearInterval(iv);
+              }
+            }, 200);
+          })();
           if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', armMarketHeaderPlacement);
           } else {
             armMarketHeaderPlacement();
           }
-          [0, 250, 1000, 2500].forEach(function (ms) {
-            setTimeout(placeMarketHeaderByToggle, ms);
-          });
           window.addEventListener('resize', function () {
-            placeMarketHeaderByToggle();
-            placeMobileAppTitle();
+            try { placeMarketHeaderByToggle(); } catch (eR) {}
+            try { placeMobileAppTitle(); } catch (eR2) {}
           });
           if (window.jQuery) {
-            jQuery(document).on('shiny:connected shiny:sessioninitialized', placeMarketHeaderByToggle);
+            jQuery(document).on(
+              'shiny:connected shiny:sessioninitialized shiny:reconnected',
+              function () {
+                try { placeMarketHeaderByToggle(); } catch (eS) {}
+              }
+            );
           }
           document.addEventListener('click', function (ev) {
             var t = ev.target;
@@ -13041,16 +13106,101 @@ ui <- dashboardPage(
             float: none !important;
             margin: 0 !important;
           }
-          .main-header .navbar #ynow-market-header.ynow-market-header {
-            position: absolute !important;
-            left: 44px !important; /* fallback；JS 依 toggle.offsetWidth 覆寫 */
-            top: 0 !important;
+          /* Mobile: flags sit in the flex row immediately after the hamburger
+             (leftmost chrome on the black bar) — no absolute left drift. */
+          .main-header .navbar #ynow-market-header.ynow-market-header,
+          .main-header .navbar-custom-menu #ynow-market-header.ynow-market-header,
+          .main-header .navbar-custom-menu .navbar-nav > li#ynow-market-header.ynow-market-header {
+            position: static !important;
+            left: auto !important;
+            top: auto !important;
+            right: auto !important;
             float: none !important;
-            align-self: auto;
+            align-self: center !important;
+            flex: 0 0 auto !important;
+            margin: 0 !important;
+            padding: 0 2px 0 0 !important;
+            width: auto !important;
+            height: 50px !important;
+            min-height: 50px !important;
+            display: flex !important;
+            align-items: center !important;
+            z-index: 1063 !important;
+            border: none !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            outline: none !important;
+          }
+          .main-header .navbar #ynow-market-header.ynow-market-header::before,
+          .main-header .navbar #ynow-market-header.ynow-market-header::after,
+          #ynow-market-header.ynow-market-header::before,
+          #ynow-market-header.ynow-market-header::after {
+            content: none !important;
+            display: none !important;
+            border: none !important;
+            background: none !important;
+          }
+          #ynow-market-header .ynow-market-stack {
+            width: auto !important;
+            height: auto !important;
+            min-height: 0 !important;
+            flex-direction: column;
+            justify-content: center;
+            gap: 4px;
             margin: 0 !important;
             padding: 0 !important;
-            width: 40px !important;
-            height: 50px !important;
+            border: none !important;
+            background: transparent !important;
+            box-shadow: none !important;
+          }
+          /* Bare flags only — no frame / fill / border around each glyph. */
+          #ynow-market-header .ynow-mkt-btn,
+          #ynow-market-header .ynow-mkt-btn.active,
+          #ynow-market-header .ynow-mkt-btn:hover,
+          #ynow-market-header .ynow-mkt-btn:focus,
+          #ynow-market-header .ynow-mkt-btn:active {
+            -webkit-appearance: none !important;
+            appearance: none !important;
+            border: 0 !important;
+            border-width: 0 !important;
+            border-style: none !important;
+            border-color: transparent !important;
+            border-radius: 0 !important;
+            background: transparent !important;
+            background-color: transparent !important;
+            background-image: none !important;
+            box-shadow: none !important;
+            -webkit-box-shadow: none !important;
+            outline: none !important;
+            -webkit-tap-highlight-color: transparent !important;
+            width: auto !important;
+            height: auto !important;
+            min-height: 0 !important;
+            max-height: none !important;
+            flex: 0 0 auto !important;
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+          #ynow-market-header .ynow-mkt-btn {
+            opacity: 0.42;
+          }
+          #ynow-market-header .ynow-mkt-btn + .ynow-mkt-btn {
+            border: 0 !important;
+            border-top-width: 0 !important;
+          }
+          #ynow-market-header .ynow-mkt-btn.active {
+            opacity: 1;
+          }
+          #ynow-market-header .ynow-mkt-btn .ynow-mkt-flag {
+            width: 20px !important;
+            height: 13px !important;
+            min-width: 20px;
+            min-height: 13px;
+            max-width: 20px;
+            max-height: 13px;
+            border: none !important;
+            box-shadow: none !important;
+            outline: none !important;
           }
           .main-header .navbar-custom-menu {
             float: none !important;
