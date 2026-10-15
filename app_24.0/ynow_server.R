@@ -7,21 +7,6 @@ server <- function(input, output, session) {
   # instead of forcing the user onto the gray "Disconnected / Reload" overlay.
   tryCatch(session$allowReconnect("force"), error = function(e) NULL)
 
-  # #region agent log
-  observeEvent(input$ynow_agent_dbg, {
-    raw <- input$ynow_agent_dbg
-    if (is.null(raw)) return()
-    line <- if (is.character(raw)) paste(raw, collapse = "") else {
-      tryCatch(jsonlite::toJSON(raw, auto_unbox = TRUE, null = "null"), error = function(e) NULL)
-    }
-    if (is.null(line) || !nzchar(line)) return()
-    tryCatch(
-      cat(paste0(line, "\n"), file = "/opt/cursor/logs/debug.log", append = TRUE),
-      error = function(e) invisible(NULL)
-    )
-  }, ignoreNULL = TRUE)
-  # #endregion
-
   # Sidebar tab label busy dots (JS `ynowTabBusy` → animated 「…」 on menu item)
   .ynow_set_tab_busy <- function(tab, busy = TRUE) {
     tab <- as.character(tab %||% "")[1]

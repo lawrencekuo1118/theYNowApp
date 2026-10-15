@@ -9439,89 +9439,6 @@ ui <- dashboardPage(
 
           /* ---- Lite mode: sidebar logo click toggles body.ynow-lite + LITE badge ---- */
           (function () {
-            // #region agent log
-            function ynowAgentDbg(hypothesisId, location, message, data) {
-              var payload = {
-                hypothesisId: hypothesisId,
-                location: location,
-                message: message,
-                data: data || {},
-                timestamp: Date.now()
-              };
-              try {
-                window.__ynowDbgLogs = window.__ynowDbgLogs || [];
-                window.__ynowDbgLogs.push(payload);
-              } catch (eKeep) {}
-              try {
-                if (window.Shiny && Shiny.setInputValue) {
-                  Shiny.setInputValue('ynow_agent_dbg', JSON.stringify(payload), {priority: 'event'});
-                }
-              } catch (eSend) {}
-            }
-            function ynowProbeLiteOverlays(reason) {
-              var ids = ['ynow_home_lite_toggle', 'ynow_lite_toggle'];
-              var market = document.getElementById('ynow-market-header');
-              var mktRect = null;
-              if (market) {
-                var mr = market.getBoundingClientRect();
-                mktRect = {x: mr.x, y: mr.y, w: mr.width, h: mr.height, pe: getComputedStyle(market).pointerEvents, z: getComputedStyle(market).zIndex};
-              }
-              var sidebar = document.querySelector('.main-sidebar .sidebar') ||
-                document.getElementById('sidebarItemExpanded');
-              var mainSb = document.querySelector('.main-sidebar');
-              var sideGeo = null;
-              if (sidebar) {
-                var scs = getComputedStyle(sidebar);
-                var brand = document.getElementById('ynow_lite_toggle');
-                var br = brand ? brand.getBoundingClientRect() : null;
-                sideGeo = {
-                  clientH: sidebar.clientHeight,
-                  scrollH: sidebar.scrollHeight,
-                  overflowY: scs.overflowY,
-                  mainPos: mainSb ? getComputedStyle(mainSb).position : null,
-                  mainH: mainSb ? mainSb.clientHeight : null,
-                  brandY: br ? Math.round(br.y) : null,
-                  brandInView: !!(br && br.top >= 0 && br.bottom <= window.innerHeight),
-                  canScrollToBrand: !!(sidebar.scrollHeight > sidebar.clientHeight + 8)
-                };
-              }
-              var toggles = ids.map(function (id) {
-                var el = document.getElementById(id);
-                if (!el) return {id: id, present: false};
-                var r = el.getBoundingClientRect();
-                var cx = r.left + r.width / 2;
-                var cy = r.top + r.height / 2;
-                var topEl = (r.width > 0 && r.height > 0) ? document.elementFromPoint(cx, cy) : null;
-                var pe = getComputedStyle(el).pointerEvents;
-                var parentPe = el.parentElement ? getComputedStyle(el.parentElement).pointerEvents : null;
-                var coveredBy = topEl && !el.contains(topEl) && topEl !== el
-                  ? {tag: topEl.tagName, id: topEl.id || '', cls: (topEl.className || '').toString().slice(0, 120)}
-                  : null;
-                return {
-                  id: id,
-                  present: true,
-                  rect: {x: r.x, y: r.y, w: r.width, h: r.height},
-                  pe: pe,
-                  parentPe: parentPe,
-                  ariaPressed: el.getAttribute('aria-pressed'),
-                  topAtCenter: topEl ? {tag: topEl.tagName, id: topEl.id || '', cls: (topEl.className || '').toString().slice(0, 120)} : null,
-                  coveredBy: coveredBy,
-                  visible: !!(r.width > 0 && r.height > 0)
-                };
-              });
-              ynowAgentDbg('A', 'ynow_ui.R:lite-overlay-probe', reason || 'overlay-probe', {
-                runId: 'post-fix',
-                vw: window.innerWidth,
-                vh: window.innerHeight,
-                bodyLite: !!(document.body && document.body.classList.contains('ynow-lite')),
-                delegated: document.documentElement.getAttribute('data-ynow-lite-delegated'),
-                market: mktRect,
-                sideGeo: sideGeo,
-                toggles: toggles
-              });
-            }
-            window.__ynowProbeLiteOverlays = ynowProbeLiteOverlays;
-            // #endregion
             var FULL_ONLY_TABS = [
               'get_started', 'nav_calculator', 'dcf_calculator', 'ddm_calculator',
               'ri_calculator', 'pb_calculator', 'rel_mult_ev', 'rel_multiples_calculator', 'rel_mult_rev', 'sotp_calculator', 'hfv',
@@ -9631,14 +9548,6 @@ ui <- dashboardPage(
             function applyLiteMode(on, opts) {
               opts = opts || {};
               var enabled = !!on;
-              // #region agent log
-              ynowAgentDbg('C', 'ynow_ui.R:applyLiteMode', 'applyLiteMode-enter', {
-                requested: enabled,
-                prevLite: !!(document.body && document.body.classList.contains('ynow-lite')),
-                navigate: opts.navigate !== false,
-                tab: (typeof currentSidebarTab === 'function') ? currentSidebarTab() : null
-              });
-              // #endregion
               document.body.classList.toggle('ynow-lite', enabled);
               document.querySelectorAll('.ynow-lite-toggle').forEach(function (brand) {
                 brand.setAttribute('aria-pressed', enabled ? 'true' : 'false');
@@ -9651,26 +9560,13 @@ ui <- dashboardPage(
               }
               if (enabled) ensureLiteSnapshotDefaultsTab();
               remapLegacyHash();
-              if (opts.navigate === false) {
-                // #region agent log
-                ynowAgentDbg('C', 'ynow_ui.R:applyLiteMode', 'applyLiteMode-exit-no-nav', {
-                  bodyLite: !!(document.body && document.body.classList.contains('ynow-lite'))
-                });
-                // #endregion
-                return;
-              }
+              if (opts.navigate === false) return;
               var tab = currentSidebarTab();
               if (enabled) {
                 if (FULL_ONLY_TABS.indexOf(tab) >= 0) gotoTab('smart_analysis');
               } else if (tab === 'smart_analysis') {
                 gotoTab('dashboard');
               }
-              // #region agent log
-              ynowAgentDbg('C', 'ynow_ui.R:applyLiteMode', 'applyLiteMode-exit', {
-                bodyLite: !!(document.body && document.body.classList.contains('ynow-lite')),
-                tabAfter: currentSidebarTab()
-              });
-              // #endregion
             }
             function ensureLiteSnapshotDefaultsTab() {
               if (!document.body.classList.contains('ynow-lite')) return;
@@ -9688,56 +9584,11 @@ ui <- dashboardPage(
             function bindLiteToggle() {
               if (document.documentElement.getAttribute('data-ynow-lite-delegated') === '1') return;
               document.documentElement.setAttribute('data-ynow-lite-delegated', '1');
-              // #region agent log
-              ynowAgentDbg('B', 'ynow_ui.R:bindLiteToggle', 'bindLiteToggle-armed', {
-                toggleCount: document.querySelectorAll('.ynow-lite-toggle').length
-              });
-              document.addEventListener('click', function (ev) {
-                var t = ev.target;
-                var nearLite = t && t.closest
-                  ? (t.closest('.ynow-lite-toggle') || t.closest('#ynow-market-header') ||
-                     t.closest('.main-header .logo') || t.closest('.sidebar-toggle'))
-                  : null;
-                if (nearLite) {
-                  var topAt = document.elementFromPoint(ev.clientX, ev.clientY);
-                  ynowAgentDbg('A', 'ynow_ui.R:doc-click-capture', 'click-near-chrome', {
-                    x: ev.clientX,
-                    y: ev.clientY,
-                    target: t ? {tag: t.tagName, id: t.id || '', cls: (t.className || '').toString().slice(0, 120)} : null,
-                    topAtPoint: topAt ? {tag: topAt.tagName, id: topAt.id || '', cls: (topAt.className || '').toString().slice(0, 120)} : null,
-                    defaultPrevented: !!ev.defaultPrevented
-                  });
-                }
-              }, true);
-              // #endregion
               document.addEventListener('click', function (ev) {
                 var brand = ev.target && ev.target.closest ? ev.target.closest('.ynow-lite-toggle') : null;
-                // #region agent log
-                if (ev.target && ev.target.closest && (
-                  ev.target.closest('#ynow_home_lite_toggle') ||
-                  ev.target.closest('#ynow_lite_toggle') ||
-                  ev.target.closest('.ynow-home-logo-wrap') ||
-                  ev.target.closest('.ynow-sidebar-brand')
-                )) {
-                  ynowAgentDbg('B', 'ynow_ui.R:bindLiteToggle', 'lite-click-candidate', {
-                    brandFound: !!brand,
-                    brandId: brand ? (brand.id || '') : '',
-                    targetId: (ev.target && ev.target.id) || '',
-                    targetCls: (ev.target && ev.target.className || '').toString().slice(0, 120),
-                    peBrand: brand ? getComputedStyle(brand).pointerEvents : null
-                  });
-                  ynowProbeLiteOverlays('on-lite-click-candidate');
-                }
-                // #endregion
                 if (!brand) return;
                 ev.preventDefault();
                 ev.stopPropagation();
-                // #region agent log
-                ynowAgentDbg('B', 'ynow_ui.R:bindLiteToggle', 'toggleLite-invoked', {
-                  brandId: brand.id || '',
-                  beforeLite: !!(document.body && document.body.classList.contains('ynow-lite'))
-                });
-                // #endregion
                 toggleLite();
               }, true);
               document.addEventListener('keydown', function (ev) {
@@ -9752,9 +9603,6 @@ ui <- dashboardPage(
             function restoreLiteFromStorage() {
               var saved = null;
               try { saved = window.sessionStorage.getItem('ynow_lite_mode'); } catch (e1) {}
-              // #region agent log
-              ynowAgentDbg('D', 'ynow_ui.R:restoreLiteFromStorage', 'restore', {saved: saved});
-              // #endregion
               applyLiteMode(saved === '1', {navigate: false});
               remapLegacyHash();
             }
@@ -9762,26 +9610,15 @@ ui <- dashboardPage(
               document.addEventListener('DOMContentLoaded', function () {
                 bindLiteToggle();
                 restoreLiteFromStorage();
-                // #region agent log
-                setTimeout(function () { ynowProbeLiteOverlays('domcontentloaded+200'); }, 200);
-                setTimeout(function () { ynowProbeLiteOverlays('domcontentloaded+1500'); }, 1500);
-                // #endregion
               });
             } else {
               bindLiteToggle();
               restoreLiteFromStorage();
-              // #region agent log
-              setTimeout(function () { ynowProbeLiteOverlays('ready+200'); }, 200);
-              setTimeout(function () { ynowProbeLiteOverlays('ready+1500'); }, 1500);
-              // #endregion
             }
             if (window.jQuery) {
               jQuery(document).on('shiny:connected shiny:sessioninitialized', function () {
                 bindLiteToggle();
                 restoreLiteFromStorage();
-                // #region agent log
-                setTimeout(function () { ynowProbeLiteOverlays('shiny-connected'); }, 100);
-                // #endregion
               });
             }
             window.__ynowApplyLiteMode = applyLiteMode;
