@@ -33,14 +33,31 @@ us_ch <- lab_concept_group_choices("US", "en")
 tw_ch <- lab_concept_group_choices("TW", "zh-TW")
 check("US concepts nonempty", length(us_ch) >= 8L)
 check("TW concepts nonempty", length(tw_ch) >= 14L)
+check("US choices use concept_ prefix", all(startsWith(unname(us_ch), "concept_")))
+check("TW choices use tw_ prefix", all(startsWith(unname(tw_ch), "tw_")))
+check(
+  "US／TW concept picker values are disjoint",
+  length(intersect(unname(us_ch), unname(tw_ch))) == 0L
+)
 check("mag7 has NVDA", "NVDA" %in% lab_concept_tickers("mag7", "US"))
+check(
+  "prefixed concept_mag7 has NVDA",
+  "NVDA" %in% lab_concept_tickers("concept_mag7", "US")
+)
 check("TW ai has 2330.TW", "2330.TW" %in% lab_concept_tickers("ai_foundry", "TW"))
+check(
+  "prefixed tw_ai_foundry has 2330.TW",
+  "2330.TW" %in% lab_concept_tickers("tw_ai_foundry", "TW")
+)
 # Supplements from TW industry/concept maps (no duplicate theme keys)
 tw_new <- c(
   "optical_comms", "robotics_auto", "defense_sat",
   "passive_components", "industrial_pc"
 )
-check("TW new concept keys present", all(tw_new %in% unname(tw_ch)))
+check(
+  "TW new concept keys present",
+  all(paste0("tw_", tw_new) %in% unname(tw_ch))
+)
 check("TW optical has 2345", "2345.TW" %in% lab_concept_tickers("optical_comms", "TW"))
 check("TW robotics has 1590", "1590.TW" %in% lab_concept_tickers("robotics_auto", "TW"))
 check("TW defense has 2634", "2634.TW" %in% lab_concept_tickers("defense_sat", "TW"))
@@ -49,7 +66,15 @@ check("TW IPC has 2395", "2395.TW" %in% lab_concept_tickers("industrial_pc", "TW
 check(
   "TW zh labels for new keys",
   identical(lab_concept_group_label("passive_components", "TW", "zh-TW"), "被動元件") &&
-    identical(lab_concept_group_label("optical_comms", "TW", "zh-TW"), "光通訊／網通設備")
+    identical(lab_concept_group_label("tw_optical_comms", "TW", "zh-TW"), "光通訊／網通設備")
+)
+check(
+  "server pushes concepts on market switch",
+  {
+    srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+    grepl(".lab_im_push_concept_choices", srv, fixed = TRUE) &&
+      grepl("clear_selected = TRUE", srv, fixed = TRUE)
+  }
 )
 # All TW concept tickers resolve in bundled universe (when available)
 u_path <- file.path(app_dir, "data", "tw_universe.csv")

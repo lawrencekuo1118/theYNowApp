@@ -818,6 +818,44 @@ server <- function(input, output, session) {
     .push_ui_locale(loc, sync_picker = TRUE)
   }, ignoreInit = TRUE)
 
+  # Push Blue Chip concept-group choices for the active market (US ≠ TW).
+  # Clear selection on market change so shared bare-key leftovers cannot linger.
+  .lab_im_push_concept_choices <- function(mode, locale = NULL, clear_selected = FALSE) {
+    mm <- tryCatch(normalize_market_mode(mode), error = function(e) "US")
+    loc <- tryCatch(
+      normalize_ui_locale(locale %||% isolate(ui_locale())),
+      error = function(e) "zh-TW"
+    )
+    if (!exists("lab_concept_group_choices", mode = "function")) return(invisible(NULL))
+    concept_choices <- tryCatch(
+      lab_concept_group_choices(mm, loc),
+      error = function(e) character(0)
+    )
+    concept_cur <- if (isTRUE(clear_selected)) {
+      character(0)
+    } else {
+      cur <- as.character(isolate(input$lab_im_concepts) %||% character(0))
+      cur[cur %in% unname(concept_choices)]
+    }
+    tryCatch(
+      updateSelectizeInput(
+        session,
+        "lab_im_concepts",
+        choices = concept_choices,
+        selected = concept_cur,
+        options = list(
+          placeholder = tryCatch(
+            ui_str("lab_im_concepts_placeholder", loc),
+            error = function(e) "Select one or more concept groups…"
+          ),
+          plugins = list("remove_button")
+        )
+      ),
+      error = function(e) NULL
+    )
+    invisible(NULL)
+  }
+
   observeEvent(input$market_mode_pick, {
     mode <- normalize_market_mode(input$market_mode_pick)
     prev <- market_mode()
@@ -825,6 +863,10 @@ server <- function(input, output, session) {
     market_mode(mode)
     set_market_mode(mode)
     prof <- market_profile(mode)
+
+    # Concept groups are market-scoped — refresh immediately (do not wait for
+    # coalesced locale scheduler / catalog rebuild).
+    .lab_im_push_concept_choices(mode, clear_selected = TRUE)
 
     # 市場切換：不覆寫使用者語言；僅刷新 chrome 的 market class／美股｜台股按鈕
     .push_ui_locale(isolate(ui_locale()), sync_picker = FALSE)
@@ -13919,20 +13961,7 @@ server <- function(input, output, session) {
       if (!max_n_cur %in% unname(max_n_choices)) max_n_cur <- "25"
       updateSelectInput(session, "lab_im_max_n", choices = max_n_choices, selected = max_n_cur)
 
-      concept_choices <- lab_concept_group_choices(mm2, loc2)
-      concept_cur <- isolate(input$lab_im_concepts)
-      concept_cur <- as.character(concept_cur %||% character(0))
-      concept_cur <- concept_cur[concept_cur %in% unname(concept_choices)]
-      updateSelectizeInput(
-        session,
-        "lab_im_concepts",
-        choices = concept_choices,
-        selected = concept_cur,
-        options = list(
-          placeholder = ui_str("lab_im_concepts_placeholder", loc2),
-          plugins = list("remove_button")
-        )
-      )
+      .lab_im_push_concept_choices(mm2, locale = loc2, clear_selected = FALSE)
     })
   })
 

@@ -149,11 +149,25 @@ LAB_CONCEPT_GROUPS <- list(
   )
 )
 
+#' Market-scoped concept key prefix (aligned with macro word-cloud).
+#' US → `concept_`; TW → `tw_`. Keeps picker values disjoint across markets.
+lab_concept_key_prefix <- function(market = c("US", "TW")) {
+  market <- match.arg(toupper(as.character(market)[1]), c("US", "TW"))
+  if (identical(market, "TW")) "tw_" else "concept_"
+}
+
+#' Strip `concept_` / `tw_` prefix; pass through bare catalog keys.
+lab_concept_bare_key <- function(key) {
+  k <- as.character(if (is.null(key)) "" else key)[1]
+  if (!nzchar(k) || is.na(k)) return("")
+  sub("^(concept_|tw_)", "", k, ignore.case = FALSE)
+}
+
 #' Labels for concept keys (zh-TW / en-US)
 lab_concept_group_label <- function(key, market = c("US", "TW"), locale = "zh-TW") {
   `%||%` <- function(a, b) if (is.null(a)) b else a
   market <- match.arg(toupper(as.character(market)[1]), c("US", "TW"))
-  key <- as.character(key %||% "")[1]
+  key <- lab_concept_bare_key(as.character(key %||% "")[1])
   loc <- if (exists("normalize_ui_locale", mode = "function")) {
     normalize_ui_locale(locale)
   } else {
@@ -241,21 +255,27 @@ lab_concept_group_label <- function(key, market = c("US", "TW"), locale = "zh-TW
   unname(tab[[key]])
 }
 
-#' Named choices for selectInput / checkboxGroup (values = keys)
+#' Named choices for selectInput / checkboxGroup.
+#' Values are market-prefixed (`concept_*` / `tw_*`) so US／TW pickers never share ids.
 lab_concept_group_choices <- function(market = c("US", "TW"), locale = "zh-TW") {
   market <- match.arg(toupper(as.character(market)[1]), c("US", "TW"))
   groups <- LAB_CONCEPT_GROUPS[[market]]
   if (is.null(groups) || !length(groups)) return(character(0))
   keys <- names(groups)
+  prefix <- lab_concept_key_prefix(market)
+  vals <- paste0(prefix, keys)
   labs <- vapply(keys, function(k) lab_concept_group_label(k, market, locale), character(1))
-  stats::setNames(keys, labs)
+  stats::setNames(vals, labs)
 }
 
-#' Tickers for one or more concept keys (market-aware)
+#' Tickers for one or more concept keys (market-aware).
+#' Accepts prefixed (`concept_mag7`, `tw_ai_foundry`) or bare (`mag7`) keys.
 lab_concept_tickers <- function(concept_keys, market = c("US", "TW")) {
   market <- match.arg(toupper(as.character(market)[1]), c("US", "TW"))
   keys <- unique(as.character(unlist(concept_keys, use.names = FALSE)))
   keys <- keys[nzchar(keys) & !is.na(keys)]
+  keys <- vapply(keys, lab_concept_bare_key, character(1), USE.NAMES = FALSE)
+  keys <- keys[nzchar(keys)]
   groups <- LAB_CONCEPT_GROUPS[[market]]
   if (is.null(groups) || !length(keys)) return(character(0))
   out <- character(0)
