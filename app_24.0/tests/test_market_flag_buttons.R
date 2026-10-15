@@ -37,6 +37,18 @@ check("locale updates aria/title only (keeps flags)",
         grepl("mktUs.setAttribute('aria-label', s.market_us)", ui, fixed = TRUE) &&
         !grepl("mktUs.textContent = s.market_us", ui, fixed = TRUE) &&
         !grepl("mktTw.textContent = s.market_tw", ui, fixed = TRUE))
+check("mobile bare flags (no frame)", {
+  grepl("Bare flags only", ui, fixed = TRUE) &&
+    grepl("Mobile: flags sit in the flex row immediately after the hamburger", ui, fixed = TRUE) &&
+    grepl("position: static !important", ui, fixed = TRUE) &&
+    grepl("innerWidth <= 767", ui, fixed = TRUE) &&
+    grepl("appearance: none !important", ui, fixed = TRUE)
+})
+check("inactive market flag is grayscale (B&W)", {
+  grepl("filter: grayscale(1)", ui, fixed = TRUE) &&
+    grepl(".ynow-mkt-btn.active .ynow-mkt-flag", ui, fixed = TRUE) &&
+    grepl("Inactive market: black-and-white", ui, fixed = TRUE)
+})
 
 if (fail > 0L) {
   cat("FAILED:", fail, "\n")
