@@ -27,6 +27,7 @@ check("TSM Foundry", identical(unname(amap[["TSM"]]), "sc.Foundry"))
 check("SKHY Memory", identical(unname(amap[["SKHY"]]), "sc.Memory"))
 check("BABA ecommerce", identical(unname(amap[["BABA"]]), "ecr.Ecommerce_Retail"))
 check("ASML equipment", identical(unname(amap[["ASML"]]), "sc.Equipment"))
+check("ASX Packaging (OSAT)", identical(unname(amap[["ASX"]]), "sc.Packaging"))
 miss_keys <- setdiff(unique(unname(amap)), names(industry_standards))
 check("all ADR keys in industry_standards", length(miss_keys) == 0L)
 if (length(miss_keys)) cat("  missing keys: ", paste(miss_keys, collapse = ", "), "\n", sep = "")
@@ -45,6 +46,15 @@ check("SKHY mapped Memory", nrow(skhy) == 1L && identical(skhy$industry_key[[1]]
 check("TSM is_adr TRUE", nrow(tsm) == 1L && isTRUE(tsm$is_adr[[1]]))
 baba <- u[u$ticker == "BABA", , drop = FALSE]
 check("BABA mapped", nrow(baba) == 1L && identical(baba$industry_key[[1]], "ecr.Ecommerce_Retail"))
+asx <- u[u$ticker == "ASX", , drop = FALSE]
+check("ASX universe Packaging", nrow(asx) == 1L && identical(asx$industry_key[[1]], "sc.Packaging"))
+check(
+  "ASX resolve Packaging",
+  identical(
+    resolve_industry_key_for_ticker("ASX", market_mode = "US"),
+    "sc.Packaging"
+  )
+)
 
 n_adr <- sum(as.logical(u$is_adr), na.rm = TRUE)
 check("ADR count > 50", n_adr > 50L)

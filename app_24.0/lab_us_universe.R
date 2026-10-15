@@ -101,10 +101,8 @@ lab_us_overlay_ticker_industry_overrides <- function(df) {
   if (!length(ov)) return(df)
   # Later entries win for duplicate names (ADR map may refine)
   ov <- ov[!duplicated(names(ov), fromLast = TRUE)]
-  need <- which(
-    tks %in% names(ov) &
-      (is.na(keys) | !nzchar(keys) | keys == unmapped)
-  )
+  # Curated ticker/ADR overrides always win over Yahoo/S&P heuristics.
+  need <- which(tks %in% names(ov))
   if (length(need)) {
     df$industry_key[need] <- unname(ov[tks[need]])
   }
@@ -263,31 +261,47 @@ lookup_us_ticker_industry_key <- function(ticker) {
   uni_key_raw <- ""
   adr_key <- ""
 
-  ov <- tryCatch(lab_us_load_industry_overlay(), error = function(e) NULL)
-  if (is.data.frame(ov) && nrow(ov) && "ticker" %in% names(ov)) {
-    j <- match(tk, toupper(trimws(as.character(ov$ticker))))
-    if (!is.na(j)) {
-      key <- ""
-      if ("industry_key" %in% names(ov)) {
-        ov_key_raw <- as.character(ov$industry_key[[j]] %||% "")[1]
-        key <- .valid_key(ov_key_raw)
-      }
-      ov_sector <- if ("sector" %in% names(ov)) as.character(ov$sector[[j]] %||% "")[1] else ""
-      ov_industry <- if ("industry" %in% names(ov)) as.character(ov$industry[[j]] %||% "")[1] else ""
-      if (!nzchar(key) &&
-          exists("resolve_industry_key_from_yahoo", mode = "function")) {
-        key <- .valid_key(tryCatch(
-          resolve_industry_key_from_yahoo(
-            sector = ov_sector,
-            industry = ov_industry
-          ),
-          error = function(e) ""
-        ))
-        if (nzchar(key)) path_hit <- "overlay_yahoo_fallback"
-      }
+  # Curated ADR / foreign-issuer map wins over Yahoo overlay heuristics
+  # (e.g. ASX OSAT must not stay sc.IC_Design from bare "Semiconductors").
+  if (exists("lab_adr_industry_map", mode = "function")) {
+    am <- tryCatch(lab_adr_industry_map(), error = function(e) c())
+    if (length(am) && tk %in% names(am)) {
+      adr_key <- unname(am[[tk]])
+      key <- .valid_key(adr_key)
       if (nzchar(key)) {
-        if (!nzchar(path_hit) || identical(path_hit, "none")) path_hit <- "overlay_csv"
+        path_hit <- "adr_map"
         key_out <- key
+      }
+    }
+  }
+
+  if (!nzchar(key_out)) {
+    ov <- tryCatch(lab_us_load_industry_overlay(), error = function(e) NULL)
+    if (is.data.frame(ov) && nrow(ov) && "ticker" %in% names(ov)) {
+      j <- match(tk, toupper(trimws(as.character(ov$ticker))))
+      if (!is.na(j)) {
+        key <- ""
+        if ("industry_key" %in% names(ov)) {
+          ov_key_raw <- as.character(ov$industry_key[[j]] %||% "")[1]
+          key <- .valid_key(ov_key_raw)
+        }
+        ov_sector <- if ("sector" %in% names(ov)) as.character(ov$sector[[j]] %||% "")[1] else ""
+        ov_industry <- if ("industry" %in% names(ov)) as.character(ov$industry[[j]] %||% "")[1] else ""
+        if (!nzchar(key) &&
+            exists("resolve_industry_key_from_yahoo", mode = "function")) {
+          key <- .valid_key(tryCatch(
+            resolve_industry_key_from_yahoo(
+              sector = ov_sector,
+              industry = ov_industry
+            ),
+            error = function(e) ""
+          ))
+          if (nzchar(key)) path_hit <- "overlay_yahoo_fallback"
+        }
+        if (nzchar(key)) {
+          if (!nzchar(path_hit) || identical(path_hit, "none")) path_hit <- "overlay_csv"
+          key_out <- key
+        }
       }
     }
   }
@@ -308,7 +322,7 @@ lookup_us_ticker_industry_key <- function(ticker) {
     }
   }
 
-  if (exists("lab_adr_industry_map", mode = "function")) {
+  if (!nzchar(adr_key) && exists("lab_adr_industry_map", mode = "function")) {
     am <- tryCatch(lab_adr_industry_map(), error = function(e) c())
     if (length(am) && tk %in% names(am)) adr_key <- unname(am[[tk]])
   }
