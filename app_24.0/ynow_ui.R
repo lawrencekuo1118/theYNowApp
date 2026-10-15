@@ -5715,28 +5715,23 @@ ui <- dashboardPage(
         }
         .ynow-bblab-split li { margin-bottom: 4px; }
         /* ---- Full mode: short white dashed separators between sidebar groups ----
-           Home | Macro
+           (no line under Home / above About)
            Asset Transmission | Blue Chip
            YNOW | Model Dashboard  (Smart Analysis is hidden in Full)
            Hist. FV Validation | Quant Backtest Lab
-           Value Alerts | About
            Inset via ::before so the dash is shorter than full sidebar width.
         */
-        body:not(.ynow-lite) .sidebar-menu > li:has(> a[data-value="macro_market"]),
         body:not(.ynow-lite) .sidebar-menu > li:has(> a[data-value="bluechip"]),
         body:not(.ynow-lite) .sidebar-menu > li:has(> a[data-value="get_started"]),
-        body:not(.ynow-lite) .sidebar-menu > li:has(> a[data-value="lab_notes"]),
-        body:not(.ynow-lite) .sidebar-menu > li:has(> a[data-value="about"]) {
+        body:not(.ynow-lite) .sidebar-menu > li:has(> a[data-value="lab_notes"]) {
           position: relative;
           margin-top: 8px;
           padding-top: 8px;
           border-top: none;
         }
-        body:not(.ynow-lite) .sidebar-menu > li:has(> a[data-value="macro_market"])::before,
         body:not(.ynow-lite) .sidebar-menu > li:has(> a[data-value="bluechip"])::before,
         body:not(.ynow-lite) .sidebar-menu > li:has(> a[data-value="get_started"])::before,
-        body:not(.ynow-lite) .sidebar-menu > li:has(> a[data-value="lab_notes"])::before,
-        body:not(.ynow-lite) .sidebar-menu > li:has(> a[data-value="about"])::before {
+        body:not(.ynow-lite) .sidebar-menu > li:has(> a[data-value="lab_notes"])::before {
           content: "";
           position: absolute;
           top: 0;

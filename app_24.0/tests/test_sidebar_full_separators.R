@@ -1,4 +1,5 @@
 # Full-mode sidebar short white dashed separators between specified menu groups.
+# Home-below (macro_market) and About-above separators are intentionally absent.
 fail <- 0L
 check <- function(label, cond) {
   ok <- isTRUE(cond)
@@ -15,9 +16,9 @@ ui <- paste(readLines(file.path(root, "ynow_ui.R"), warn = FALSE, encoding = "UT
 
 check(
   "Full-only selector body:not(.ynow-lite)",
-  grepl("body:not\\(\\.ynow-lite\\) \\.sidebar-menu > li:has\\(> a\\[data-value=\"macro_market\"\\]\\)", ui, perl = TRUE)
+  grepl("body:not\\(\\.ynow-lite\\) \\.sidebar-menu > li:has\\(> a\\[data-value=\"bluechip\"\\]\\)", ui, perl = TRUE)
 )
-for (dv in c("macro_market", "bluechip", "get_started", "lab_notes", "about")) {
+for (dv in c("bluechip", "get_started", "lab_notes")) {
   check(
     paste0("separator target ", dv),
     grepl(
@@ -43,6 +44,32 @@ for (dv in c("macro_market", "bluechip", "get_started", "lab_notes", "about")) {
     )
   )
 }
+for (dv in c("macro_market", "about")) {
+  check(
+    paste0("no separator target ", dv),
+    !grepl(
+      paste0(
+        "body:not\\(\\.ynow-lite\\) \\.sidebar-menu > li:has\\(> a\\[data-value=\"",
+        dv,
+        "\"\\]\\)\\s*[,\\{]"
+      ),
+      ui,
+      perl = TRUE
+    )
+  )
+  check(
+    paste0("no ::before ", dv),
+    !grepl(
+      paste0(
+        "body:not\\(\\.ynow-lite\\) \\.sidebar-menu > li:has\\(> a\\[data-value=\"",
+        dv,
+        "\"\\]\\)::before"
+      ),
+      ui,
+      perl = TRUE
+    )
+  )
+}
 check(
   "white dashed border on ::before",
   grepl("border-top:\\s*1px dashed #ffffff", ui, perl = TRUE) ||
@@ -56,7 +83,7 @@ check(
 check(
   "no Lite-forced separators",
   !grepl(
-    "body\\.ynow-lite \\.sidebar-menu > li:has\\(> a\\[data-value=\"macro_market\"\\]\\)\\s*\\{",
+    "body\\.ynow-lite \\.sidebar-menu > li:has\\(> a\\[data-value=\"bluechip\"\\]\\)\\s*\\{",
     ui,
     perl = TRUE
   )
