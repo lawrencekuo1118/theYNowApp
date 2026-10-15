@@ -7,4 +7,4 @@ commit=f9299706eb850ea5e5a241f36b25f384e3160256
 short=f929970
 message=fix(ui): drop Full sidebar separators under Home and above About (v24.02)
 captured_at=2026-10-15T01:37:44Z
-display_version=v24.02
+display_version=v24.03
