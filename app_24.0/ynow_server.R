@@ -13770,9 +13770,12 @@ server <- function(input, output, session) {
         gated_n_pool = if (is.list(gated)) as.integer(gated$n_pool %||% NA_integer_)[1] else NA_integer_,
         gated_n_covered = if (is.list(gated)) as.integer(gated$n_covered %||% NA_integer_)[1] else NA_integer_,
         gated_gates_on = if (is.list(gated)) isTRUE(gated$gates_on) else NA,
+        gated_gates_applied = if (is.list(gated)) isTRUE(gated$gates_applied) else NA,
         snap_rows = if (is.data.frame(snap)) nrow(snap) else 0L,
         quality_nonce = tryCatch(as.integer(lab_quality_snap_nonce()), error = function(e) NA_integer_),
-        used_gated_n_show = is.list(gated)
+        used_gated_n_show = is.list(gated),
+        deferred_uncov_gates = is.list(gated) && isTRUE(gated$gates_on) &&
+          !isTRUE(gated$gates_applied) && identical(as.integer(n_pool), as.integer(n_struct))
       )
     )
     # #endregion

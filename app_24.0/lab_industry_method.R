@@ -2487,6 +2487,9 @@ lab_refresh_quality_snapshot <- function(pool, market = "US", force = FALSE,
 
 #' Pool size after quality gates. Missing snapshot rows are excluded only while
 #' a gate is checked. With every gate off, the structural pool size is returned.
+#' If a gate is checked but the snapshot covers none of the structural pool
+#' (common on TW before Search / refresh), keep the structural count — do not
+#' report 0 as if every name failed the gate.
 lab_apply_quality_snapshot <- function(tickers, snapshot,
                                        eq_only = FALSE, gate_only = FALSE,
                                        no_alert = FALSE, now = Sys.time()) {
@@ -2509,27 +2512,31 @@ lab_apply_quality_snapshot <- function(tickers, snapshot,
   }
   gates_on <- isTRUE(eq_only) || isTRUE(gate_only) || isTRUE(no_alert)
   n_show <- n_pool
-  if (gates_on) {
+  gates_applied <- FALSE
+  if (gates_on && n_covered < 1L) {
+    # No usable quality rows for this pool — defer gates; keep structural N.
+    n_show <- n_pool
+    gates_applied <- FALSE
+  } else if (gates_on) {
     pass <- rep(FALSE, n_pool)
-    if (any(covered)) {
-      sub_i <- which(covered)
-      rows <- snap[idx[sub_i], , drop = FALSE]
-      p <- rep(TRUE, length(sub_i))
-      if (isTRUE(eq_only)) {
-        qf <- suppressWarnings(as.numeric(rows$quality_flag))
-        p <- p & !is.na(qf) & qf %in% 1
-      }
-      if (isTRUE(gate_only)) {
-        fs <- suppressWarnings(as.numeric(rows$f_score))
-        p <- p & is.finite(fs) & fs >= 7
-      }
-      if (isTRUE(no_alert)) {
-        na_n <- suppressWarnings(as.numeric(rows$n_fs_alerts))
-        p <- p & is.finite(na_n) & na_n <= 0
-      }
-      pass[sub_i] <- p
+    sub_i <- which(covered)
+    rows <- snap[idx[sub_i], , drop = FALSE]
+    p <- rep(TRUE, length(sub_i))
+    if (isTRUE(eq_only)) {
+      qf <- suppressWarnings(as.numeric(rows$quality_flag))
+      p <- p & !is.na(qf) & qf %in% 1
     }
+    if (isTRUE(gate_only)) {
+      fs <- suppressWarnings(as.numeric(rows$f_score))
+      p <- p & is.finite(fs) & fs >= 7
+    }
+    if (isTRUE(no_alert)) {
+      na_n <- suppressWarnings(as.numeric(rows$n_fs_alerts))
+      p <- p & is.finite(na_n) & na_n <= 0
+    }
+    pass[sub_i] <- p
     n_show <- sum(pass)
+    gates_applied <- TRUE
   }
   age_sec <- if (!is.na(updated_at)) {
     as.numeric(difftime(now, updated_at, units = "secs"))
@@ -2543,7 +2550,8 @@ lab_apply_quality_snapshot <- function(tickers, snapshot,
     n_missing = as.integer(n_pool - n_covered),
     updated_at = updated_at,
     stale = is.finite(age_sec) && age_sec > LAB_QUALITY_SNAPSHOT_TTL_SEC,
-    gates_on = gates_on
+    gates_on = gates_on,
+    gates_applied = gates_applied
   )
 }
 

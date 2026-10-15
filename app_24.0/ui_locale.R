@@ -1112,8 +1112,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_filter_count_hint = paste0(
       "Live count after industry chain × sub-industry × model ",
       "(and Listing board / Include ADR when applicable). ",
-      "When a quality gate is checked, the count uses the quality snapshot ",
-      "and leaves out names that are not updated yet."
+      "When a quality gate is checked and the quality snapshot covers the pool, ",
+      "the count uses that snapshot (names not updated yet are left out). ",
+      "If the snapshot does not cover the pool yet, the structural filter count is shown."
     ),
     lab_im_filter_count_qualified = "Qualified after last Search (quality gates): {n} names",
     lab_im_run_title = "Piotroski high gate (F-Score≥7) + rank by annualized valuation appreciation",
@@ -4185,7 +4186,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_filter_count_unit = "檔",
     lab_im_filter_count_hint = paste0(
       "即時統計：產業鏈×子產業×模型（及板別／含 ADR，視市場）。",
-      "品質門檻勾選開啟時，檔數改依品質快照，尚未更新的代號不計入。"
+      "品質門檻勾選且品質快照已涵蓋池內代號時，檔數改依快照（尚未更新者不計入）；",
+      "快照尚未涵蓋時仍顯示結構篩選後的池內檔數。"
     ),
     lab_im_filter_count_qualified = "上次搜尋後合格（含品質門檻）：{n} 檔",
     lab_im_run_title = "Piotroski 高門檻（F-Score≥7）＋年化估值漲幅排序",
