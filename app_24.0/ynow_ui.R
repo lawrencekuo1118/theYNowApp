@@ -16,7 +16,7 @@
       return(sub('^"version"\\s*:\\s*"([^"]+)".*$', "\\1", m[[1]]))
     }
   }
-  "v24.07"
+  "v24.08"
 }
 .YNOW_BUILD_VERSION <- .ynow_read_build_version()
 
@@ -230,7 +230,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v24.07) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+          "The YNow App (v24.08) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
         ),
         tags$p(
           class = "ynow-about-method",
@@ -249,7 +249,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v24.07) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
+          "The YNow App (v24.08) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
         ),
         tags$p(
           class = "ynow-about-method",
@@ -351,7 +351,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App（簡化版）")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite（v24.07）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
+          "The YNow App Lite（v24.08）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
           "以自動判別主／副模型與預設參數完成試算，讓使用者先看到合理價區間與產業 KPI，再決定是否回到完整版深入調整。"
         ),
         tags$p(
@@ -368,7 +368,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App (Lite)")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite (v24.07) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
+          "The YNow App Lite (v24.08) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
           "auto-selects primary/secondary models with App defaults, and surfaces fair-value ranges plus industry KPIs before you open Full for deeper calibration."
         ),
         tags$p(
@@ -3434,9 +3434,9 @@ ui <- dashboardPage(
                   'data-ynow-build="', .YNOW_BUILD_VERSION, '" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v24.07</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v24.08</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v24.07</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v24.08</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -7313,6 +7313,12 @@ ui <- dashboardPage(
           padding-left: 20px;
         }
       ')),
+      # Boot locale maps (slim): click-time apply so 繁中／EN do not depend on websocket timing
+      tags$script(HTML(paste0(
+        "window.__YNOW_UI_LOCALE_BOOT = ",
+        jsonlite::toJSON(ui_locale_boot_bundle(), auto_unbox = TRUE, null = "null"),
+        ";"
+      ))),
       tags$script(HTML("
         (function () {
           var TAB_PARENT = {
@@ -8068,8 +8074,68 @@ ui <- dashboardPage(
               stack.querySelectorAll('.ynow-lang-btn').forEach(function (b) {
                 b.classList.toggle('active', b === btn);
               });
+              /* Sticky pending pick blocks mismatched (stale) websocket applies.
+                 Cancel prior verify timers so an EN click's delayed check cannot
+                 run after a later 繁中 click. */
+              if (window.__ynowLocaleVerifyTimer) {
+                clearTimeout(window.__ynowLocaleVerifyTimer);
+                window.__ynowLocaleVerifyTimer = null;
+              }
+              window.__ynowLocaleUserPick = val;
+              window.__ynowLocaleUserPickSeq = (window.__ynowLocaleUserPickSeq || 0) + 1;
+              var pickSeq = window.__ynowLocaleUserPickSeq;
+              try {
+                document.documentElement.setAttribute('lang', val === 'zh-TW' ? 'zh-TW' : 'en');
+              } catch (eLangOpt) {}
+              /* Click-time boot apply: real menu strings (首頁／關於) without waiting
+                 on ynowUiLocale. Server push still refreshes the full string map. */
+              try {
+                var bootRoot = window.__YNOW_UI_LOCALE_BOOT || {};
+                var boot = bootRoot[val] || (val === 'zh-TW' ? bootRoot['zh-TW'] : bootRoot.en);
+                if (boot && typeof applyUiLocale === 'function') {
+                  var mkt = document.body.classList.contains('ynow-market-tw') ? 'TW' : 'US';
+                  applyUiLocale({
+                    locale: boot.locale || val,
+                    market: mkt,
+                    strings: boot.strings || {},
+                    tabs: boot.tabs || {},
+                    boxes: boot.boxes || []
+                  }, {fromBoot: true});
+                }
+              } catch (eBoot) {}
               if (window.Shiny && Shiny.setInputValue) {
                 Shiny.setInputValue('ui_locale_pick', val, {priority: 'event'});
+                var expect = val;
+                window.__ynowLocaleVerifyTimer = setTimeout(function () {
+                  window.__ynowLocaleVerifyTimer = null;
+                  if (pickSeq !== window.__ynowLocaleUserPickSeq) return;
+                  var home = document.querySelector('.sidebar-menu a[data-value=\"home\"]');
+                  var about = document.querySelector('.sidebar-menu a[data-value=\"about\"]');
+                  var sp = home ? home.querySelector('.ynow-menu-label, span:not(.pull-right-container):not(.ynow-rec-slot)') : null;
+                  var spA = about ? about.querySelector('.ynow-menu-label, span:not(.pull-right-container):not(.ynow-rec-slot)') : null;
+                  var homeTxt = ((sp && sp.textContent) || (home && home.textContent) || '').replace(/\\s+/g, ' ').trim();
+                  var aboutTxt = ((spA && spA.textContent) || (about && about.textContent) || '').replace(/\\s+/g, ' ').trim();
+                  var needZh = expect === 'zh-TW';
+                  var stringsOk = needZh
+                    ? (/首頁/.test(homeTxt) && /關於/.test(aboutTxt))
+                    : (/Home/i.test(homeTxt) && /About/i.test(aboutTxt));
+                  if (stringsOk || !(window.Shiny && Shiny.setInputValue)) return;
+                  Shiny.setInputValue('ui_locale_pick', expect, {priority: 'event'});
+                  try {
+                    var bootRoot2 = window.__YNOW_UI_LOCALE_BOOT || {};
+                    var boot2 = bootRoot2[expect] || (expect === 'zh-TW' ? bootRoot2['zh-TW'] : bootRoot2.en);
+                    if (boot2 && typeof applyUiLocale === 'function') {
+                      var mkt2 = document.body.classList.contains('ynow-market-tw') ? 'TW' : 'US';
+                      applyUiLocale({
+                        locale: boot2.locale || expect,
+                        market: mkt2,
+                        strings: boot2.strings || {},
+                        tabs: boot2.tabs || {},
+                        boxes: boot2.boxes || []
+                      }, {fromBoot: true});
+                    }
+                  } catch (eBoot2) {}
+                }, 1200);
               }
             });
           }
@@ -8255,8 +8321,18 @@ ui <- dashboardPage(
             });
           }
 
-          function applyUiLocale(payload) {
+          function applyUiLocale(payload, opts) {
+            /* opts.fromBoot: click-time slim boot maps; ignored for control flow
+               because __ynowLocaleUserPick stays sticky after a manual pick. */
+            opts = opts || {};
             var s = (payload && payload.strings) || {};
+            var incoming = payload && payload.locale ? String(payload.locale) : 'en';
+            var pendingPick = window.__ynowLocaleUserPick ? String(window.__ynowLocaleUserPick) : '';
+            /* Drop stale websocket locale pushes that disagree with the sticky
+               manual pick (e.g. late queued `en` after an early 繁中 click). */
+            if (pendingPick && incoming !== pendingPick) {
+              return;
+            }
             if (typeof window.ynowSetUpdateLocaleStrings === 'function') {
               window.ynowSetUpdateLocaleStrings(s);
             }
@@ -9269,6 +9345,9 @@ ui <- dashboardPage(
             document.querySelectorAll('#ynow-market-header .ynow-mkt-btn').forEach(function (b) {
               b.classList.toggle('active', b.getAttribute('data-value') === mkt);
             });
+            /* Keep __ynowLocaleUserPick sticky after the first manual click.
+               Clearing it on server-confirm let a late queued `en` overwrite
+               首頁／關於 after an early 繁中 apply had already succeeded. */
           }
 
           function applyDcLocale(payload) {
@@ -9295,11 +9374,24 @@ ui <- dashboardPage(
               });
             });
           }
+          var __ynowLocaleResyncTimer = null;
+          function requestLocaleResync(reason) {
+            if (!(window.Shiny && Shiny.setInputValue)) return;
+            // Debounce: each push ships a large strings payload; flooding delays applyUiLocale.
+            if (__ynowLocaleResyncTimer) clearTimeout(__ynowLocaleResyncTimer);
+            __ynowLocaleResyncTimer = setTimeout(function () {
+              __ynowLocaleResyncTimer = null;
+              Shiny.setInputValue('ynow_locale_resync', Date.now(), {priority: 'event'});
+            }, 120);
+          }
+          window.ynowRequestLocaleResync = requestLocaleResync;
           function registerLocaleHandler() {
             if (!window.Shiny || !Shiny.addCustomMessageHandler) {
               setTimeout(registerLocaleHandler, 50);
               return;
             }
+            /* Always (re)bind — an early register before Shiny is fully live can
+               no-op; connect/resync must be able to re-attach applyUiLocale. */
             Shiny.addCustomMessageHandler('ynowUiLocale', applyUiLocale);
             Shiny.addCustomMessageHandler('ynowDcLocale', applyDcLocale);
             Shiny.addCustomMessageHandler('ynowDcSopLocale', function (payload) {
@@ -9382,6 +9474,21 @@ ui <- dashboardPage(
             });
           }
           registerLocaleHandler();
+          /* Re-broadcast locale after connect so a dropped ynowUiLocale cannot stick. */
+          if (window.jQuery) {
+            jQuery(document).on(
+              'shiny:connected shiny:sessioninitialized shiny:reconnected',
+              function () {
+                registerLocaleHandler();
+                requestLocaleResync('shiny-lifecycle');
+              }
+            );
+          } else {
+            document.addEventListener('shiny:connected', function () {
+              registerLocaleHandler();
+              requestLocaleResync('shiny-lifecycle');
+            });
+          }
 
           /* Device / browser language → initial UI locale (mapping done in R). */
           function pushDeviceUiLocale() {

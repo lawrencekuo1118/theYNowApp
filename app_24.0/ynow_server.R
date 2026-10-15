@@ -365,9 +365,18 @@ server <- function(input, output, session) {
     invisible(TRUE)
   }
 
-  .push_ui_locale <- function(locale, sync_picker = TRUE) {
+  .push_ui_locale <- function(locale, sync_picker = TRUE, force = FALSE) {
     loc <- normalize_ui_locale(locale)
     ui_locale(loc)
+    # Coalesce identical bursts (onFlushed + device + resync) so the client is not
+    # flooded with multi‑KB ynowUiLocale payloads that delay the user's zh-TW apply.
+    # Manual picks pass force=TRUE so a missed message can still be recovered.
+    last <- session$userData$ynow_last_locale_push
+    now_num <- as.numeric(Sys.time())
+    if (!isTRUE(force) && is.list(last) && identical(last$loc, loc) &&
+        is.numeric(last$at_num) && (now_num - last$at_num) < 0.35) {
+      return(invisible(loc))
+    }
     # Language chrome is custom header buttons; labels/active state sync via ynowUiLocale
     # (no shinyWidgets updateRadioGroupButtons — that re-render displaced the control on mobile).
     mode <- tryCatch(
@@ -381,6 +390,7 @@ server <- function(input, output, session) {
       tabs = ui_tab_label_map(loc),
       boxes = ui_box_header_specs(loc)
     )
+    session$userData$ynow_last_locale_push <- list(loc = loc, at_num = now_num)
     session$sendCustomMessage("ynowUiLocale", payload)
     # SGR 自訂輸入標籤隨 locale
     tryCatch({
@@ -781,12 +791,19 @@ server <- function(input, output, session) {
     metric_snapshot_rv = value_alert_metric_snapshot
   )
 
-  # 語言控制：只改 UI locale，不碰顯示幣別；手動選擇鎖定後不再套用裝置預設
+  # 語言控制：只改 UI locale，不碰顯示幣別；手動選擇鎖定後不再套用裝置預設。
+  # Always re-push (even if pick == current): a missed ynowUiLocale custom message
+  # leaves the client with optimistic .active chrome but English strings / null lang;
+  # a second click used to early-return as noop and never recover.
   observeEvent(input$ui_locale_pick, {
     pick <- normalize_ui_locale(input$ui_locale_pick)
-    if (identical(pick, isolate(ui_locale()))) return()
     ui_locale_user_picked(TRUE)
-    .push_ui_locale(pick, sync_picker = FALSE)
+    .push_ui_locale(pick, sync_picker = FALSE, force = TRUE)
+  }, ignoreInit = TRUE)
+
+  # Client asks for a locale re-broadcast after connect / missed custom messages.
+  observeEvent(input$ynow_locale_resync, {
+    .push_ui_locale(isolate(ui_locale()), sync_picker = FALSE)
   }, ignoreInit = TRUE)
 
   # 裝置／瀏覽器語言 → 初次 UI locale（僅一次；不覆寫手動選擇）
