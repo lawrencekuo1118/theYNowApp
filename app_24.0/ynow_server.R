@@ -875,8 +875,10 @@ server <- function(input, output, session) {
     set_market_mode(mode)
     prof <- market_profile(mode)
 
-    # Concept groups are market-scoped — refresh immediately (US ≠ TW).
-    .lab_im_push_concept_choices(mode, clear_selected = TRUE)
+    # Concept groups are market-scoped — refresh if Blue Chip is already mounted.
+    if (isTRUE(tryCatch(.ynow_lazy_tab_ctrl$mounted("bluechip"), error = function(e) FALSE))) {
+      .lab_im_push_concept_choices(mode, clear_selected = TRUE)
+    }
 
     # 市場切換：不覆寫使用者語言；僅刷新 chrome 的 market class／美股｜台股按鈕
     .push_ui_locale(isolate(ui_locale()), sync_picker = FALSE)
@@ -13480,6 +13482,28 @@ server <- function(input, output, session) {
     eval_n <- lab_resolve_im_eval_n(display_n)
     rank_mode <- lab_normalize_pool_rank_mode(input$lab_im_pool_rank %||% "mcap")
     concept_keys <- input$lab_im_concepts
+    # #region agent log
+    tryCatch({
+      payload <- list(
+        hypothesisId = "A",
+        location = "ynow_server.R:lab_im_search",
+        message = "Search eval inputs",
+        data = list(
+          market = mm0,
+          rank_mode = as.character(rank_mode)[1],
+          concept_keys = as.list(as.character(concept_keys %||% character(0))),
+          max_n_raw = as.character(input$lab_im_max_n %||% "")[1],
+          display_n = if (is.finite(display_n)) as.numeric(display_n) else "Inf",
+          eval_n = if (is.finite(eval_n)) as.numeric(eval_n) else "Inf",
+          n_catalog = if (is.data.frame(catlg)) as.integer(nrow(catlg)) else 0L
+        ),
+        timestamp = as.numeric(Sys.time()) * 1000,
+        runId = "tw-concept-detail"
+      )
+      cat(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"),
+          "\n", file = "/opt/cursor/logs/debug.log", append = TRUE)
+    }, error = function(e) NULL)
+    # #endregion
     loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
     method_filter <- input$lab_im_methods
     industry_filter <- lab_im_industry_filter()
@@ -13854,7 +13878,7 @@ server <- function(input, output, session) {
   lab_im_merged <- reactive({
     catlg <- lab_im_catalog()
     req(is.data.frame(catlg), nrow(catlg) > 0)
-    lab_merge_catalog_scores(
+    out <- lab_merge_catalog_scores(
       catlg,
       scores = lab_im_scores(),
       method_filter = input$lab_im_methods,
@@ -13863,6 +13887,28 @@ server <- function(input, output, session) {
       gate_only = FALSE,
       evaluated_only = TRUE
     )
+    # #region agent log
+    tryCatch({
+      scores <- lab_im_scores()
+      payload <- list(
+        hypothesisId = "A",
+        location = "ynow_server.R:lab_im_merged",
+        message = "merged ranking/detail source (no concept filter)",
+        data = list(
+          n_merged = if (is.data.frame(out)) as.integer(nrow(out)) else 0L,
+          n_scores = if (is.data.frame(scores)) as.integer(nrow(scores)) else 0L,
+          concepts_input = as.list(as.character(input$lab_im_concepts %||% character(0))),
+          pool_rank = as.character(input$lab_im_pool_rank %||% "")[1],
+          concepts_applied_in_merged = FALSE
+        ),
+        timestamp = as.numeric(Sys.time()) * 1000,
+        runId = "tw-concept-detail"
+      )
+      cat(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"),
+          "\n", file = "/opt/cursor/logs/debug.log", append = TRUE)
+    }, error = function(e) NULL)
+    # #endregion
+    out
   })
 
   output$lab_im_leader_note <- renderUI({
@@ -14265,6 +14311,26 @@ server <- function(input, output, session) {
     loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
     msg_col <- if (identical(loc, "en")) "Message" else "訊息"
     scores <- lab_im_scores()
+    # #region agent log
+    tryCatch({
+      payload <- list(
+        hypothesisId = "E",
+        location = "ynow_server.R:lab_im_leaderboard",
+        message = "leaderboard uses scores/merged only",
+        data = list(
+          n_scores = if (is.data.frame(scores)) as.integer(nrow(scores)) else 0L,
+          concepts_input = as.list(as.character(input$lab_im_concepts %||% character(0))),
+          pool_rank = as.character(input$lab_im_pool_rank %||% "")[1],
+          lb_mode = as.character(input$lab_im_lb_mode %||% "overall")[1],
+          concepts_applied_in_leaderboard = FALSE
+        ),
+        timestamp = as.numeric(Sys.time()) * 1000,
+        runId = "tw-concept-detail"
+      )
+      cat(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"),
+          "\n", file = "/opt/cursor/logs/debug.log", append = TRUE)
+    }, error = function(e) NULL)
+    # #endregion
     if (is.null(scores) || !is.data.frame(scores) || nrow(scores) == 0) {
       msg <- tryCatch(ui_str("lab_im_lb_none", loc),
                       error = function(e) "（尚無績優排行 — 請先按「搜尋績優股」）")
@@ -14488,6 +14554,27 @@ server <- function(input, output, session) {
     eq_on <- isTRUE(input$lab_im_eq_only)
     gate_on <- isTRUE(input$lab_im_gate_only)
     no_alert_on <- isTRUE(input$lab_im_no_alert)
+    # #region agent log
+    tryCatch({
+      payload <- list(
+        hypothesisId = "D",
+        location = "ynow_server.R:lab_im_table:pre_cap",
+        message = "detail table before cap",
+        data = list(
+          n_merged = as.integer(nrow(merged)),
+          max_n_raw = as.character(input$lab_im_max_n %||% "")[1],
+          display_n = if (is.finite(display_n)) as.numeric(display_n) else "Inf",
+          concepts_input = as.list(as.character(input$lab_im_concepts %||% character(0))),
+          pool_rank = as.character(input$lab_im_pool_rank %||% "")[1],
+          page_length_hardcoded = 20L
+        ),
+        timestamp = as.numeric(Sys.time()) * 1000,
+        runId = "tw-concept-detail"
+      )
+      cat(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"),
+          "\n", file = "/opt/cursor/logs/debug.log", append = TRUE)
+    }, error = function(e) NULL)
+    # #endregion
     if (nrow(merged) == 0) {
       scores <- lab_im_scores()
       msg <- if (is.null(scores) || !is.data.frame(scores) || nrow(scores) == 0) {
@@ -14559,6 +14646,24 @@ server <- function(input, output, session) {
       ),
       loc
     )
+    # #region agent log
+    tryCatch({
+      payload <- list(
+        hypothesisId = "D",
+        location = "ynow_server.R:lab_im_table:render",
+        message = "detail table render row counts",
+        data = list(
+          n_show_df = as.integer(nrow(show_df)),
+          page_length = 20L,
+          display_n = if (is.finite(display_n)) as.numeric(display_n) else "Inf"
+        ),
+        timestamp = as.numeric(Sys.time()) * 1000,
+        runId = "tw-concept-detail"
+      )
+      cat(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"),
+          "\n", file = "/opt/cursor/logs/debug.log", append = TRUE)
+    }, error = function(e) NULL)
+    # #endregion
     ynow_sortable_datatable(
       show_df,
       escape = FALSE,
