@@ -466,6 +466,18 @@ screener_server <- function(input, output, session, ui_locale_rv = NULL,
   }, server = TRUE)
 
   observeEvent(input$scr_add, {
+    # Full + auth: Value Alerts require sign-in (Lite exempt)
+    lite <- isTRUE(tryCatch(isolate(input$ynow_lite_mode), error = function(e) FALSE))
+    auth_on <- exists("ynow_auth_enabled", mode = "function") && isTRUE(ynow_auth_enabled())
+    if (!lite && auth_on) {
+      auth <- tryCatch(session$userData$ynow_auth, error = function(e) NULL)
+      logged <- isTRUE(tryCatch(auth$is_logged_in(), error = function(e) FALSE))
+      if (!logged) {
+        showNotification(say_now("auth_pa_gate_title"), type = "warning")
+        tryCatch(shinyBS::toggleModal(session, "ynow_auth_modal", "open"), error = function(e) NULL)
+        return()
+      }
+    }
     res_df <- isolate(scr_result())
     meta <- isolate(scr_meta())
     idx <- input$scr_table_rows_selected
@@ -490,11 +502,16 @@ screener_server <- function(input, output, session, ui_locale_rv = NULL,
     last_reason <- "saved"
     notify_app <- if (is.null(input$pa_notify_app)) TRUE else isTRUE(input$pa_notify_app)
     notify_email <- isTRUE(input$pa_notify_email)
+    email_val <- as.character(input$pa_email %||% "")[1]
+    if (exists("ynow_auth_session_email", mode = "function")) {
+      acct <- ynow_auth_session_email(tryCatch(session$userData$ynow_auth, error = function(e) NULL))
+      if (nzchar(acct)) email_val <- acct
+    }
     for (i in idx) {
       if (is.na(i) || i < 1L || i > nrow(res_df)) next
       added <- price_alert_add(
         alerts,
-        email = input$pa_email %||% "",
+        email = email_val,
         ticker = res_df$ticker[[i]],
         kind = kind,
         level = level,

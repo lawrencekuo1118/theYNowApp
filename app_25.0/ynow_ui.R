@@ -245,7 +245,7 @@
         tags$p(
           class = "ynow-about-method",
           tags$b("帳號登入："),
-          "登入架構已設計（電子郵件／密碼、工作階段狀態），目前預設關閉、不啟用；",
+          "帳號登入預設啟用；完整版到值通知需登入（寄信預設註冊信箱）；",
           "全站仍以訪客模式使用；登入後（完整版）可開啟維護後台。Lite 版無需帳號即可完整使用。"
         ),
         tags$h4(class = "ynow-about-feat-h", tags$b("核心功能亮點：")),
@@ -273,9 +273,7 @@
         tags$p(
           class = "ynow-about-method",
           tags$b("Account sign-in:"),
-          " the login surface is designed (email / password, session state) but ",
-          tags$b("disabled by default"),
-          " — the app stays guest-accessible. After sign-in (Full), Maintenance opens; Lite never requires an account."
+          " Account sign-in is on by default. Full-mode Value Alerts require sign-in; email notify defaults to the registered mailbox. After sign-in, Maintenance opens; Lite never requires an account."
         ),
         tags$h4(class = "ynow-about-feat-h", tags$b("Core Features:")),
         en_features

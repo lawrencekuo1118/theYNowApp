@@ -9,10 +9,12 @@
 # Never ship real secrets in the repo; leave demo env unset on production
 # until a real identity backend is wired.
 
-#' TRUE only when account login is explicitly enabled.
+#' TRUE when account login is enabled (default ON).
+#' Set YNOW_ENABLE_ACCOUNT_LOGIN=0/false/off to disable chrome + gates.
 ynow_auth_enabled <- function() {
-  v <- tolower(trimws(Sys.getenv("YNOW_ENABLE_ACCOUNT_LOGIN", unset = "0")))
-  v %in% c("1", "true", "yes", "on")
+  v <- tolower(trimws(Sys.getenv("YNOW_ENABLE_ACCOUNT_LOGIN", unset = "1")))
+  if (!nzchar(v)) return(TRUE)
+  !(v %in% c("0", "false", "no", "off"))
 }
 
 #' Drop NULL UI children (shinydashboard::dashboardHeader tagAssert rejects NULL).
@@ -183,8 +185,14 @@ ynow_auth_css <- function() {
     "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) #ynow_pa_body { display:none !important; }",
     "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) #ynow_pa_guest_gate { display:block !important; }",
     "#ynow_pa_guest_gate { display:none; }",
+    "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .ynow-alert-bell {",
+    "  opacity:0.35; pointer-events:none; cursor:not-allowed;",
+    "}",
     ".ynow-admin-panel { max-width:960px; margin:12px auto; }",
-    ".ynow-admin-panel .ynow-admin-meta { color:#555; font-size:13px; line-height:1.5; }"
+    ".ynow-admin-panel .ynow-admin-meta { color:#555; font-size:13px; line-height:1.5; }",
+    "body.ynow-authed #pa_email, body.ynow-authed #pa_quick_email {",
+    "  background:#f5f5f5;",
+    "}"
   )))
 }
 

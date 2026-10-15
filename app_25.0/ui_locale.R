@@ -370,6 +370,10 @@ locale_for_market <- function(mode = get_market_mode()) {
       "A fired rule stays off until you arm it again. Trigger history is kept below."
     ),
     pa_email = "Email",
+    pa_email_account_help = paste0(
+      "When signed in (Full), email notifications default to your registered account mailbox. ",
+      "Lite mode does not require sign-in."
+    ),
     pa_ticker = "Ticker",
     pa_kind = "Condition",
     pa_level = "Target Value",
@@ -697,8 +701,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     auth_msg_invalid = "Email or password is incorrect.",
     auth_msg_no_backend = "Sign-in backend is not configured yet.",
     auth_about_note = paste0(
-      "Account sign-in is designed but disabled by default; ",
-      "the app stays guest-accessible until enabled via environment flag."
+      "Account sign-in is on by default (set YNOW_ENABLE_ACCOUNT_LOGIN=0 to disable). ",
+      "Full-mode Value Alerts require sign-in; email notify defaults to the registered mailbox. ",
+      "Lite mode stays fully usable without an account."
     ),
     menu_admin = "Maintenance",
     auth_admin_title = "Maintenance",
@@ -3684,7 +3689,11 @@ locale_for_market <- function(mode = get_market_mode()) {
       "需先按 Search／Run 才算出的數值，未就緒時無法快捷設定通知。",
       "觸發後該規則會停用，要再通知請重新啟用。觸發紀錄見下方。"
     ),
-    pa_email = "Email",
+    pa_email = "電子郵件",
+    pa_email_account_help = paste0(
+      "完整版登入後，寄信通知預設寄到註冊信箱。",
+      "Lite 版無需登入即可使用到值通知。"
+    ),
     pa_ticker = "代號",
     pa_kind = "條件",
     pa_level = "目標值",
@@ -4003,8 +4012,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     auth_msg_invalid = "電子郵件或密碼不正確。",
     auth_msg_no_backend = "登入後端尚未設定。",
     auth_about_note = paste0(
-      "帳號登入架構已設計，目前預設關閉；",
-      "啟用前全站仍以訪客模式使用（環境變數開關）。"
+      "帳號登入預設啟用（設 YNOW_ENABLE_ACCOUNT_LOGIN=0 可關閉）。",
+      "完整版到值通知需登入；寄信預設註冊信箱。",
+      "Lite 版無需帳號即可完整使用。"
     ),
     menu_admin = "維護後台",
     auth_admin_title = "維護後台",

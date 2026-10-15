@@ -55,7 +55,10 @@ on.exit({
 }, add = TRUE)
 
 Sys.unsetenv("YNOW_ENABLE_ACCOUNT_LOGIN")
-check("default auth disabled", identical(ynow_auth_enabled(), FALSE))
+check("default auth enabled", isTRUE(ynow_auth_enabled()))
+
+Sys.setenv(YNOW_ENABLE_ACCOUNT_LOGIN = "0")
+check("0 disables auth", identical(ynow_auth_enabled(), FALSE))
 check("header UI NULL when disabled", is.null(ynow_auth_header_ui()))
 check("modal UI NULL when disabled", is.null(ynow_auth_modal_ui()))
 check("css NULL when disabled", is.null(ynow_auth_css()))
@@ -141,10 +144,9 @@ check("missing fields", {
 
 # Disable again — chrome must disappear
 Sys.setenv(YNOW_ENABLE_ACCOUNT_LOGIN = "0")
-check("0 disables auth", identical(ynow_auth_enabled(), FALSE))
 check("header gone when re-disabled", is.null(ynow_auth_header_ui()))
 
-# Lite never requires login; Full does only when auth feature is on
+# Lite never requires login; Full does when auth feature is on
 Sys.setenv(YNOW_ENABLE_ACCOUNT_LOGIN = "1")
 check("Lite never requires login", identical(ynow_auth_requires_login(TRUE), FALSE))
 check("Full requires login when auth on", identical(ynow_auth_requires_login(FALSE), TRUE))
@@ -169,7 +171,7 @@ keys <- c(
   "auth_msg_ok", "auth_msg_disabled", "auth_msg_missing", "auth_msg_invalid",
   "auth_msg_no_backend", "auth_about_note",
   "menu_admin", "auth_admin_title", "auth_admin_intro", "auth_pa_gate_title",
-  "auth_pa_gate_body", "auth_admin_tool_lite"
+  "auth_pa_gate_body", "auth_admin_tool_lite", "pa_email_account_help"
 )
 for (k in keys) {
   check(paste("en key", k), k %in% names(.UI_STRINGS$en) && nzchar(ui_str(k, "en")))
@@ -189,8 +191,6 @@ check("UI header uses .list for auth", grepl("\\.list\\s*=", ui) &&
         grepl("ynow_auth_header_ui", ui, fixed = TRUE))
 check("UI About mentions account sign-in", grepl("Account sign-in", ui, fixed = TRUE) &&
         grepl("帳號登入", ui, fixed = TRUE))
-check("UI About says disabled by default", grepl("disabled by default", ui, fixed = TRUE) &&
-        grepl("預設關閉", ui, fixed = TRUE))
 check("UI wires ynowAuthState handler", grepl("ynowAuthState", ui, fixed = TRUE))
 check("UI wires ynowAuthFeature handler", grepl("ynowAuthFeature", ui, fixed = TRUE))
 check("UI About Lite no account", grepl("Lite never requires an account", ui, fixed = TRUE) &&
@@ -202,10 +202,22 @@ check("server wires ynow_auth_server", grepl("ynow_auth_server", srv, fixed = TR
 check("server renders admin panel", grepl("output\\$ynow_admin_panel", srv))
 check("server prefills alert email from account", grepl("ynow_auth_session_email", srv, fixed = TRUE) &&
         grepl("pa_email", srv, fixed = TRUE))
-check("pa save gates login", {
+check("pa save gates login + resolve email", {
   pa <- paste(readLines(file.path(app_dir, "price_alert.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-  grepl("\\.pa_login_ok", pa) && grepl("ynow_lite_mode", pa, fixed = TRUE)
+  grepl("\\.pa_login_ok", pa) && grepl("\\.pa_resolve_email", pa) &&
+    grepl("ynow_kpi_alert_open", pa, fixed = TRUE) && grepl("pa_quick_save", pa, fixed = TRUE)
 })
+check("screener add gates login", {
+  scr <- paste(readLines(file.path(app_dir, "stock_screener.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("scr_add", scr, fixed = TRUE) && grepl("auth_pa_gate_title", scr, fixed = TRUE) &&
+    grepl("ynow_auth_session_email", scr, fixed = TRUE)
+})
+check("auth default on (unset)", {
+  a <- paste(readLines(src_auth, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl('unset = "1"', a, fixed = TRUE)
+})
+check("locale about auth default on", grepl("on by default", ui_str("auth_about_note", "en"), fixed = TRUE) &&
+        grepl("預設啟用", ui_str("auth_about_note", "zh-TW"), fixed = TRUE))
 check("display version v25", grepl("The YNow App v25", ui, fixed = TRUE))
 
 # Live line folder name

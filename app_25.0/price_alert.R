@@ -603,6 +603,7 @@ price_alert_tab_ui <- function() {
         status = "primary",
         solidHeader = TRUE,
         tags$p(.pa_bi("pa_help")),
+        tags$p(class = "help-block", .pa_bi("pa_email_account_help")),
         fluidRow(
           column(4, textInput("pa_email", .pa_bi("pa_email"), value = Sys.getenv("YNOW_ALERT_TO", ""))),
           column(3, textInput("pa_ticker", .pa_bi("pa_ticker"), value = "")),
@@ -920,10 +921,11 @@ price_alert_server <- function(input, output, session, ui_locale_rv = NULL,
   }, server = TRUE)
 
   .pa_login_ok <- function() {
-    # Lite never requires an account. When auth feature is off, guests keep alerts.
+    # Lite never requires an account (fully usable without sign-in).
     if (isTRUE(tryCatch(isolate(input$ynow_lite_mode), error = function(e) FALSE))) {
       return(TRUE)
     }
+    # Full: Value Alerts require a signed-in account when auth is enabled.
     if (!exists("ynow_auth_enabled", mode = "function") || !isTRUE(ynow_auth_enabled())) {
       return(TRUE)
     }
@@ -931,19 +933,28 @@ price_alert_server <- function(input, output, session, ui_locale_rv = NULL,
     isTRUE(tryCatch(auth$is_logged_in(), error = function(e) FALSE))
   }
 
+  .pa_registered_email <- function() {
+    if (!exists("ynow_auth_session_email", mode = "function")) return("")
+    ynow_auth_session_email(tryCatch(session$userData$ynow_auth, error = function(e) NULL))
+  }
+
+  #' Prefer registered account mailbox for email notify (Full, signed-in).
+  .pa_resolve_email <- function(form_email) {
+    acct <- .pa_registered_email()
+    if (nzchar(acct)) return(acct)
+    trimws(as.character(form_email %||% "")[1])
+  }
+
+  .pa_require_login_or_notify <- function() {
+    if (isTRUE(.pa_login_ok())) return(TRUE)
+    showNotification(say("auth_pa_gate_title"), type = "warning")
+    tryCatch(shinyBS::toggleModal(session, "ynow_auth_modal", "open"), error = function(e) NULL)
+    FALSE
+  }
+
   observeEvent(input$pa_save, {
-    if (!isTRUE(.pa_login_ok())) {
-      showNotification(say("auth_pa_gate_title"), type = "warning")
-      return()
-    }
-    email_val <- input$pa_email
-    # Default outbound email to the signed-in account mailbox when blank.
-    if (exists("ynow_auth_session_email", mode = "function")) {
-      acct <- ynow_auth_session_email(tryCatch(session$userData$ynow_auth, error = function(e) NULL))
-      if ((!nzchar(trimws(as.character(email_val %||% "")[1]))) && nzchar(acct)) {
-        email_val <- acct
-      }
-    }
+    if (!isTRUE(.pa_require_login_or_notify())) return()
+    email_val <- .pa_resolve_email(input$pa_email)
     res <- price_alert_add(
       price_alert_read(),
       email_val, input$pa_ticker, input$pa_kind,
@@ -1025,6 +1036,7 @@ price_alert_server <- function(input, output, session, ui_locale_rv = NULL,
   observeEvent(input$ynow_kpi_alert_open, {
     payload <- input$ynow_kpi_alert_open
     if (is.null(payload) || !is.list(payload)) return()
+    if (!isTRUE(.pa_require_login_or_notify())) return()
     ready <- as.character(payload$ready %||% "0")[1]
     if (!identical(ready, "1")) {
       showNotification(say("pa_quick_not_ready"), type = "warning", duration = 5)
@@ -1036,16 +1048,27 @@ price_alert_server <- function(input, output, session, ui_locale_rv = NULL,
       return()
     }
     showModal(price_alert_quick_modal(payload, locale = loc()))
+    # Prefill / lock to registered mailbox when signed in
+    acct <- .pa_registered_email()
+    if (nzchar(acct)) {
+      tryCatch(updateTextInput(session, "pa_quick_email", value = acct), error = function(e) NULL)
+    }
   }, ignoreInit = TRUE)
 
   observeEvent(input$ynow_kpi_alert_blocked, {
+    if (!isTRUE(.pa_login_ok())) {
+      showNotification(say("auth_pa_gate_title"), type = "warning", duration = 5)
+      tryCatch(shinyBS::toggleModal(session, "ynow_auth_modal", "open"), error = function(e) NULL)
+      return()
+    }
     showNotification(say("pa_quick_not_ready"), type = "warning", duration = 5)
   }, ignoreInit = TRUE)
 
   observeEvent(input$pa_quick_save, {
+    if (!isTRUE(.pa_require_login_or_notify())) return()
     res <- price_alert_add(
       price_alert_read(),
-      email = input$pa_quick_email %||% "",
+      email = .pa_resolve_email(input$pa_quick_email %||% ""),
       ticker = input$pa_quick_ticker,
       kind = input$pa_quick_kind,
       level = input$pa_quick_level,
