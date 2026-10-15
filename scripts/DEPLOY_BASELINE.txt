@@ -7,4 +7,4 @@ commit=0fe5e19
 short=0fe5e19
 message=chore: record shipped display version v24.18
 captured_at=2026-10-15T10:35:00Z
-display_version=v24.18
+display_version=v24.19
