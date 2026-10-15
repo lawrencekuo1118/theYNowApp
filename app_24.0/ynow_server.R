@@ -50,6 +50,10 @@ server <- function(input, output, session) {
   corp_name_logo_colors <- reactiveVal(character(0))
   # Yahoo 公司簡介（Dashboard 概況：sector／HQ／summary…）
   company_profile <- reactiveVal(NULL)
+  # 個股重要日期（Yahoo calendar）＋董監改選／可轉債（MOPS／TPEx）
+  company_key_dates <- reactiveVal(NULL)
+  company_board_election <- reactiveVal(NULL)
+  company_cb_dilution <- reactiveVal(NULL)
   
   # 初始值設為 NULL，避免一開啟 App 就自動執行爬蟲
   current_ticker <- reactiveVal(NULL)
@@ -971,6 +975,9 @@ server <- function(input, output, session) {
     corp_name_logo_colors(character(0))
     corp_industry_text("等待搜尋...")
     company_profile(NULL)
+    company_key_dates(NULL)
+    company_board_election(NULL)
+    company_cb_dilution(NULL)
 
     # SEC 頁籤：僅美股
     if (isTRUE(prof$show_sec_lab)) {
@@ -1167,6 +1174,9 @@ server <- function(input, output, session) {
         tw_tpex_fs_fallback(FALSE)
         corp_name_logo_colors(character(0))
         company_profile(NULL)
+        company_key_dates(NULL)
+        company_board_election(NULL)
+        company_cb_dilution(NULL)
 
         # 興櫃：宇宙板別（ESB）；可估但 Summary β／Blue Chip 有限制
         if (identical(market_mode(), "TW") &&
@@ -1267,6 +1277,49 @@ server <- function(input, output, session) {
             city = as.character(ind_info$city %||% "")[1],
             exchange = as.character(ind_info$exchange %||% "")[1],
             employees = suppressWarnings(as.numeric(ind_info$employees %||% NA_real_))
+          ))
+        }
+
+        # Key dates (Yahoo) + TW board / CB open data — tied to Search ticker
+        kd <- tryCatch(
+          cached_fetch_company_key_dates(stock_code),
+          error = function(e) NULL
+        )
+        company_key_dates(kd)
+        mode_now <- tryCatch(
+          normalize_market_mode(market_mode()),
+          error = function(e) "US"
+        )
+        if (identical(mode_now, "TW")) {
+          company_board_election(tryCatch(
+            cached_fetch_tw_board_election(stock_code),
+            error = function(e) NULL
+          ))
+          fx_now <- tryCatch(
+            suppressWarnings(as.numeric(fx_usd_twd())[1]),
+            error = function(e) NA_real_
+          )
+          sh_now <- suppressWarnings(as.numeric(kd$shares_outstanding %||% NA_real_)[1])
+          company_cb_dilution(tryCatch(
+            fetch_tw_convertible_bonds_live(
+              stock_code,
+              shares_out = sh_now,
+              fx_usd_twd = fx_now
+            ),
+            error = function(e) NULL
+          ))
+        } else {
+          company_board_election(tryCatch(
+            fetch_us_board_election_stub(stock_code),
+            error = function(e) NULL
+          ))
+          company_cb_dilution(tryCatch(
+            fetch_us_cb_soft(
+              stock_code,
+              shares_out = suppressWarnings(as.numeric(kd$shares_outstanding %||% NA_real_)[1]),
+              shares_diluted = suppressWarnings(as.numeric(kd$shares_diluted %||% NA_real_)[1])
+            ),
+            error = function(e) NULL
           ))
         }
         # Always sync Dashboard「目前產業標準快覽」to the searched ticker's industry
@@ -1706,13 +1759,25 @@ server <- function(input, output, session) {
     prof <- company_profile()
     title <- ui_str("company_overview_title", loc)
     source_lab <- ui_str("company_overview_source", loc)
+    mode_ov <- tryCatch(
+      normalize_market_mode(market_mode()),
+      error = function(e) "US"
+    )
+    date_chips <- tryCatch(
+      .ynow_key_date_chips_ui(company_key_dates(), market_mode = mode_ov, loc = loc),
+      error = function(e) NULL
+    )
 
     if (is.null(prof) || !is.list(prof)) {
       return(tags$div(
         class = "ynow-company-overview",
         tags$div(
           class = "ynow-company-overview-head",
-          tags$h3(class = "ynow-company-overview-title", title),
+          tags$div(
+            class = "ynow-company-overview-head-main",
+            tags$h3(class = "ynow-company-overview-title", title),
+            date_chips
+          ),
           tags$p(class = "ynow-company-overview-source", source_lab)
         ),
         tags$p(
@@ -1799,11 +1864,71 @@ server <- function(input, output, session) {
       class = "ynow-company-overview",
       tags$div(
         class = "ynow-company-overview-head",
-        tags$h3(class = "ynow-company-overview-title", title),
+        tags$div(
+          class = "ynow-company-overview-head-main",
+          tags$h3(class = "ynow-company-overview-title", title),
+          date_chips
+        ),
         tags$p(class = "ynow-company-overview-source", source_lab)
       ),
       if (length(chips)) tags$div(class = "ynow-company-overview-meta", chips),
       summary_node
+    )
+  })
+
+  # 董監改選／可轉債稀釋（Company → FINANCIAL REPORT tab）
+  output$corp_events_ui <- renderUI({
+    loc <- tryCatch(ui_locale(), error = function(e) "en")
+    loc <- normalize_ui_locale(loc)
+    mode_ce <- tryCatch(
+      normalize_market_mode(market_mode()),
+      error = function(e) "US"
+    )
+    tk <- tryCatch(current_ticker(), error = function(e) NULL)
+    board <- company_board_election()
+    cb <- company_cb_dilution()
+    # Recompute TW CB dilution when bridge shares become available after FS load
+    if (identical(mode_ce, "TW") && !is.null(tk) && nzchar(as.character(tk)[1])) {
+      sh_bridge <- tryCatch({
+        sb <- .shared_bridge()
+        suppressWarnings(as.numeric(sb$shares)[1])
+      }, error = function(e) NA_real_)
+      kd <- company_key_dates()
+      sh_yahoo <- suppressWarnings(as.numeric(kd$shares_outstanding %||% NA_real_)[1])
+      sh_use <- if (is.finite(sh_bridge) && sh_bridge > 0) sh_bridge else sh_yahoo
+      fx_now <- tryCatch(
+        suppressWarnings(as.numeric(fx_usd_twd())[1]),
+        error = function(e) NA_real_
+      )
+      need_refresh <- is.null(cb) ||
+        !isTRUE(cb$has_data) ||
+        identical(cb$note, "shares_missing") ||
+        (is.finite(sh_use) && is.finite(cb$shares_out) &&
+           abs(sh_use - cb$shares_out) / max(sh_use, 1) > 0.02) ||
+        (is.finite(sh_use) && (!is.finite(cb$shares_out) || cb$shares_out <= 0))
+      if (isTRUE(need_refresh)) {
+        cb2 <- tryCatch(
+          fetch_tw_convertible_bonds_live(tk, shares_out = sh_use, fx_usd_twd = fx_now),
+          error = function(e) cb
+        )
+        if (!is.null(cb2)) {
+          company_cb_dilution(cb2)
+          cb <- cb2
+        }
+      }
+    }
+    if (is.null(tk) || !nzchar(as.character(tk)[1])) {
+      return(tags$div(
+        class = "ynow-corp-events",
+        tags$p(class = "ynow-corp-events-waiting", ui_str("corp_events_waiting", loc))
+      ))
+    }
+    tagList(
+      tags$p(
+        style = "margin:0 0 12px 0; color:#666; font-size:13px; line-height:1.5;",
+        ui_str("corp_events_intro", loc)
+      ),
+      .ynow_corp_events_panel_ui(board, cb, market_mode = mode_ce, loc = loc)
     )
   })
 

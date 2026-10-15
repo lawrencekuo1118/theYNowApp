@@ -16,7 +16,7 @@
       return(sub('^"version"\\s*:\\s*"([^"]+)".*$', "\\1", m[[1]]))
     }
   }
-  "v24.17"
+  "v24.18"
 }
 .YNOW_BUILD_VERSION <- .ynow_read_build_version()
 
@@ -230,7 +230,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v24.17) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+          "The YNow App (v24.18) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
         ),
         tags$p(
           class = "ynow-about-method",
@@ -251,7 +251,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v24.17) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
+          "The YNow App (v24.18) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
         ),
         tags$p(
           class = "ynow-about-method",
@@ -356,7 +356,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App（簡化版）")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite（v24.17）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
+          "The YNow App Lite（v24.18）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
           "以自動判別主／副模型與預設參數完成試算，讓使用者先看到合理價區間與產業 KPI，再決定是否回到完整版深入調整。"
         ),
         tags$p(
@@ -373,7 +373,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App (Lite)")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite (v24.17) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
+          "The YNow App Lite (v24.18) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
           "auto-selects primary/secondary models with App defaults, and surfaces fair-value ranges plus industry KPIs before you open Full for deeper calibration."
         ),
         tags$p(
@@ -3487,9 +3487,9 @@ ui <- dashboardPage(
                   'data-ynow-build="', .YNOW_BUILD_VERSION, '" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v24.17</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v24.18</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v24.17</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v24.18</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -6502,12 +6502,81 @@ ui <- dashboardPage(
           gap: 6px 12px;
           margin: 0 0 10px 0;
         }
+        .ynow-company-overview-head-main {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 8px 10px;
+          min-width: 0;
+          flex: 1 1 auto;
+        }
         .ynow-company-overview-title {
           font-size: 14px;
           font-weight: 700;
           color: #222;
           margin: 0;
           letter-spacing: 0.01em;
+        }
+        /* Important dates: Data-limited–style compact chips (inline, not a block) */
+        .ynow-key-date-chips {
+          display: inline-flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 6px;
+        }
+        .ynow-key-date-chip {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 3px 10px;
+          border-radius: 4px;
+          border: 1px solid var(--ynow-gold, #F5C518) !important;
+          background: #000000 !important;
+          color: var(--ynow-gold, #F5C518) !important;
+          font-size: 12px;
+          font-weight: 700;
+          white-space: nowrap;
+          line-height: 1.2;
+        }
+        .ynow-key-date-chip .k {
+          font-size: 10px;
+          font-weight: 600;
+          letter-spacing: 0.02em;
+          opacity: 0.9;
+        }
+        .ynow-key-date-chip .v {
+          font-variant-numeric: tabular-nums;
+          font-weight: 700;
+        }
+        .ynow-corp-events {
+          margin: 0;
+          padding: 4px 0 8px 0;
+        }
+        .ynow-corp-events-h {
+          font-size: 14px;
+          font-weight: 700;
+          margin: 0 0 8px 0;
+          color: #222;
+        }
+        .ynow-corp-events-source,
+        .ynow-corp-events-waiting {
+          font-size: 12px;
+          color: #777;
+          margin: 8px 0 0 0;
+          line-height: 1.45;
+        }
+        .ynow-corp-events-cand ul {
+          margin: 0;
+          padding-left: 18px;
+          font-size: 12.5px;
+          line-height: 1.45;
+        }
+        .ynow-corp-cb-table {
+          font-size: 12.5px;
+          margin-top: 8px;
+        }
+        .ynow-corp-cb-table th {
+          white-space: nowrap;
         }
         .ynow-company-overview-source {
           font-size: 11px;
@@ -14804,6 +14873,15 @@ ui <- dashboardPage(
                        tags$hr(),
                        DT::dataTableOutput("tbCashFlow"),
                        downloadButton('CF_download', "Download Cash Flow Data")
+                     ),
+
+                     # 董監改選／可轉債稀釋（Search 代號勾稽；台股 MOPS／TPEx，美股 SEC 連結）
+                     tabPanel(
+                       title = "Board / CB",
+                       value = "corp_events",
+                       icon = icon("landmark"),
+                       id = "corp_events_panel",
+                       uiOutput("corp_events_ui")
                      ),
 
                      # 財報附註擷取 (SEC EDGAR) — 僅美股模式顯示（server 以 shinyjs 控制）

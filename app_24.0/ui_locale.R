@@ -1815,6 +1815,56 @@ locale_for_market <- function(mode = get_market_mode()) {
     company_overview_summary_empty = "No business summary available for this ticker.",
     company_overview_show_more = "Show more",
     company_overview_show_less = "Show less",
+    key_date_fs_release = "Next FS release",
+    key_date_earnings_call = "Next earnings call",
+    key_date_guidance = "Next guidance",
+    key_date_guidance_soft = "Guidance (w/ earnings)",
+    key_date_estimate_tip = "Date may be an estimate (Yahoo)",
+    tab_corp_events = "Board / CB",
+    corp_events_intro = paste0(
+      "Board election and convertible-bond dilution for the Search ticker. ",
+      "TW: MOPS open CSV + TPEx ISSBD; US: SEC EDGAR links and soft diluted-share gap."
+    ),
+    corp_events_waiting = "Search a ticker to load board election and convertible-bond data.",
+    corp_board_title = "Board election",
+    corp_board_meeting = "Shareholder meeting",
+    corp_board_elect_yes = "Board election at this AGM: Yes",
+    corp_board_elect_no = "Board election at this AGM: No",
+    corp_board_method = "Election method",
+    corp_board_nomination = "nomination system",
+    corp_board_nomination_window = "Nomination window",
+    corp_board_cand_counts = "Candidates — directors %d / independent %d / supervisors %d",
+    corp_board_cand_list = "Candidate list (open data; may be prior AGM)",
+    corp_board_source = "Source",
+    corp_board_empty_tw = "No MOPS board-election open data for this ticker yet.",
+    corp_board_us_note = paste0(
+      "US board elections are disclosed in DEF 14A proxy statements ",
+      "(no free open-data feed matching TW MOPS)."
+    ),
+    corp_board_us_sec_link = "Open SEC EDGAR DEF 14A search",
+    corp_cb_title = "Convertible bonds — dilution",
+    corp_cb_issues = "Outstanding CB issues",
+    corp_cb_potential = "Potential conversion shares",
+    corp_cb_dilution = "Implied dilution",
+    corp_cb_dilution_help = paste0(
+      "Dilution ≈ Σ(outstanding face ÷ conversion price) ÷ current shares. ",
+      "Overseas CB (USD face) uses USD/TWD FX. Engineering heuristic — verify vs MOPS / prospectus."
+    ),
+    corp_cb_shares_missing = "Current shares unavailable — dilution % withheld.",
+    corp_cb_col_code = "CB code",
+    corp_cb_col_name = "Short name",
+    corp_cb_col_out = "Outstanding",
+    corp_cb_col_px = "Conv. price",
+    corp_cb_col_pot = "Potential shares",
+    corp_cb_col_end = "Conv. end",
+    corp_cb_source = "Source",
+    corp_cb_empty_tw = "No outstanding convertible / exchangeable bonds in TPEx open data for this issuer.",
+    corp_cb_us_note = paste0(
+      "US convertible notes lack a free issuance open-data feed comparable to TPEx ISSBD. ",
+      "Soft proxy: Yahoo diluted vs basic share gap when available."
+    ),
+    corp_cb_soft_gap = "Diluted − basic shares",
+    corp_cb_us_sec_link = "Open SEC EDGAR 10-K search",
     smart_page_title = "Smart Analysis",
     smart_page_sub = paste0(
       "Auto-selects primary and secondary valuation models from the ticker profile, ",
@@ -4197,7 +4247,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     lab_im_ind_mcap_status = paste0(
       "顯示 %d／%d 條產業鏈（合格檔 %d／已評估 %d）。",
-      "每一列為一產業鏈；權重＝該產業鏈內市值占比。"
+      "每一列為一產業鏈；權重＝該產業鏈內市值佔比。"
     ),
     lab_im_ind_mcap_status_snap = paste0(
       "預設排名：%d 條產業鏈",
@@ -4233,7 +4283,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     lab_im_lb_status_ind_avg = paste0(
       "產業市值加權漲幅顯示 %d／%d 條產業鏈（合格檔 %d／已評估 %d）。",
-      "每一列為一產業鏈；權重＝該產業鏈內市值占比。"
+      "每一列為一產業鏈；權重＝該產業鏈內市值佔比。"
     ),
     lab_im_lb_status_undervalued = paste0(
       "價值低估前十名顯示 %d／10（合格 %d／已評估 %d）。",
@@ -4910,6 +4960,55 @@ locale_for_market <- function(mode = get_market_mode()) {
     company_overview_summary_empty = "此代號尚無營運摘要說明。",
     company_overview_show_more = "展開全文",
     company_overview_show_less = "收合",
+    key_date_fs_release = "下期財報公布",
+    key_date_earnings_call = "下期法說會",
+    key_date_guidance = "下期財測公布",
+    key_date_guidance_soft = "財測（併財報日）",
+    key_date_estimate_tip = "日期可能為預估（Yahoo）",
+    tab_corp_events = "董監／可轉債",
+    corp_events_intro = paste0(
+      "依 Search 代號彙整董監改選與可轉債對股權稀釋的影響。",
+      "台股：公開資訊觀測站開放 CSV＋櫃買 ISSBD；美股：SEC EDGAR 連結與稀釋股數軟性差距。"
+    ),
+    corp_events_waiting = "請先搜尋股票代號，以載入董監改選與可轉債資料。",
+    corp_board_title = "董監改選",
+    corp_board_meeting = "股東會",
+    corp_board_elect_yes = "本次股東會改選董監：是",
+    corp_board_elect_no = "本次股東會改選董監：否",
+    corp_board_method = "選任方式",
+    corp_board_nomination = "候選人提名制",
+    corp_board_nomination_window = "提名受理期間",
+    corp_board_cand_counts = "候選人——董事 %d／獨立董事 %d／監察人 %d",
+    corp_board_cand_list = "候選人名單（開放資料；可能為最近一次股東會）",
+    corp_board_source = "資料來源",
+    corp_board_empty_tw = "此代號尚無公開資訊觀測站董監改選開放資料。",
+    corp_board_us_note = paste0(
+      "美股董監改選揭露於 DEF 14A 委託書（無對應台股 MOPS 的免費開放資料彙整）。"
+    ),
+    corp_board_us_sec_link = "開啟 SEC EDGAR DEF 14A 搜尋",
+    corp_cb_title = "可轉債對財務及股權稀釋的影響",
+    corp_cb_issues = "流通可轉債檔數",
+    corp_cb_potential = "潛在轉換股數",
+    corp_cb_dilution = "隱含稀釋",
+    corp_cb_dilution_help = paste0(
+      "稀釋 ≈ Σ(流通餘額 ÷ 轉換價格) ÷ 目前股數。",
+      "海外可轉債（美元面額）以 USD/TWD 匯率換算。此為工程啟發式，請以公開資訊觀測站／公開說明書核對。"
+    ),
+    corp_cb_shares_missing = "目前股數不可用——暫不顯示稀釋％。",
+    corp_cb_col_code = "債券代號",
+    corp_cb_col_name = "簡稱",
+    corp_cb_col_out = "流通餘額",
+    corp_cb_col_px = "轉換價格",
+    corp_cb_col_pot = "潛在股數",
+    corp_cb_col_end = "轉換迄日",
+    corp_cb_source = "資料來源",
+    corp_cb_empty_tw = "櫃買開放資料尚無此發行人流通中的轉換／交換債。",
+    corp_cb_us_note = paste0(
+      "美股可轉債無對應櫃買 ISSBD 的免費發行開放資料。",
+      "軟性代理：Yahoo 稀釋股數與基本股數差距（若有）。"
+    ),
+    corp_cb_soft_gap = "稀釋股 − 基本股",
+    corp_cb_us_sec_link = "開啟 SEC EDGAR 10-K 搜尋",
     smart_page_title = "智慧分析",
     smart_page_sub = paste0(
       "依股票性質自動判別主／副模型，辨識參數情境（Two-Stage／Gordon、SGR 法、claim），",
@@ -5507,7 +5606,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     eq_pie_center_shares = "股數",
     eq_pie_center_equity = "權益",
     eq_pie_hover_value = "數值",
-    eq_pie_hover_pct = "占比",
+    eq_pie_hover_pct = "佔比",
     tab_cash_flow = "現金流量表",
     tab_sec_notes = "財報附註 (SEC)",
     tab_kpi_by_sheet = "分表 KPI",
@@ -6224,6 +6323,7 @@ locale_for_market <- function(mode = get_market_mode()) {
   "Balance Sheet" = "tab_balance_sheet",
   "Cash Flow" = "tab_cash_flow",
   "sec_notes" = "tab_sec_notes",
+  "corp_events" = "tab_corp_events",
   "KPI by Sheet" = "tab_kpi_by_sheet",
   "Crossover KPIs" = "tab_crossover_kpis",
   "Annotation" = "tab_annotation",
@@ -6266,7 +6366,9 @@ locale_for_market <- function(mode = get_market_mode()) {
   "排行" = "tab_im_filters",
   "明細" = "tab_im_detail",
   "分群" = "tab_im_cluster",
-  "財報附註 (SEC)" = "tab_sec_notes"
+  "財報附註 (SEC)" = "tab_sec_notes",
+  "董監／可轉債" = "tab_corp_events",
+  "Board / CB" = "tab_corp_events"
 )
 
 # English (canonical) header text → ui_str key; aliases include both locales for rematch
