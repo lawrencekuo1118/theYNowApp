@@ -67,6 +67,7 @@ sotp_module_ui <- function(id) {
           column(4, class = "ynow-model-kpi-tone-2", valueBoxOutput(ns("vbx_sotp_ev"), width = 12)),
           column(4, class = "ynow-model-kpi-tone-3", valueBoxOutput(ns("vbx_sotp_n"), width = 12))
         ),
+        uiOutput(ns("value_why")),
         .sotp_formula_banner(
           "ynow_sotp_formula_banner",
           "Implied EV = Σ(Seg Rev × EV/Sales) + Non-op　｜　Equity = EV + Cash − Debt　｜　Price = Equity ÷ Shares"
@@ -468,6 +469,35 @@ sotp_module_server <- function(id,
             " ", chk$identity, "."
           )
         }
+      )
+    })
+
+    output$value_why <- renderUI({
+      loc <- .loc()
+      empty_msg <- tryCatch(
+        ui_str("explain_sotp_why_empty", loc),
+        error = function(e) "Run SOTP to see segment path and Implied Price."
+      )
+      if (!exists("ynow_value_why_panel", mode = "function") ||
+          !exists("ynow_sotp_why_rows", mode = "function")) {
+        return(tags$p(style = "color:#888;", empty_msg))
+      }
+      res <- tryCatch(last_result(), error = function(e) NULL)
+      ok <- !is.null(res) && identical(res$status, "ok")
+      rows <- if (isTRUE(ok)) {
+        ynow_sotp_why_rows(
+          n_segments = res$n_segments,
+          implied_price = res$implied_price,
+          locale = loc
+        )
+      } else {
+        NULL
+      }
+      ynow_value_why_panel(
+        title = tryCatch(ui_str("explain_sotp_why_title", loc), error = function(e) "Why this SOTP value"),
+        rows = rows,
+        empty_message = empty_msg,
+        footnote = tryCatch(ui_str("explain_sotp_why_foot", loc), error = function(e) NULL)
       )
     })
 

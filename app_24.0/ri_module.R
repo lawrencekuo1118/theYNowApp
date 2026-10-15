@@ -206,6 +206,7 @@ ri_module_ui <- function(id) {
           column(3, class = "ynow-model-kpi-tone-3", valueBoxOutput(ns("vbx_ri_pv"), width = 12)),
           column(3, class = "ynow-model-kpi-tone-4", valueBoxOutput(ns("vbx_ri_tv"), width = 12))
         ),
+        uiOutput(ns("value_why")),
         fluidRow(
           div(
             id = ns("ynow_ri_formula_banner"),
@@ -1219,6 +1220,48 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
       )
       .param_sensitivity_sort_by_abs_eps(do.call(rbind, rows))
     }, striped = TRUE, hover = TRUE, bordered = TRUE, spacing = "s", width = "100%")
+
+    # Core explainability: Why this RI Fair Value (not appendix)
+    output$value_why <- renderUI({
+      loc <- .loc()
+      empty_msg <- tryCatch(
+        ui_str("explain_ri_why_empty", loc),
+        error = function(e) "Run Search / Calculate RI to see B0, ROE, Ke, and RI path."
+      )
+      if (!exists("ynow_value_why_panel", mode = "function") ||
+          !exists("ynow_ri_why_rows", mode = "function")) {
+        return(tags$p(style = "color:#888;", empty_msg))
+      }
+      res <- tryCatch(ri_calc(), error = function(e) NULL)
+      ok <- !is.null(res) && identical(res$status, "success")
+      rows <- if (isTRUE(ok)) {
+        roe0 <- tryCatch({
+          if (!is.null(res$df) && is.data.frame(res$df) && "ROE" %in% names(res$df)) {
+            suppressWarnings(as.numeric(res$df$ROE[[1]])[1]) * 100
+          } else {
+            NA_real_
+          }
+        }, error = function(e) NA_real_)
+        ynow_ri_why_rows(
+          b0 = res$b0,
+          ke_pct = suppressWarnings(as.numeric(res$ke)[1]) * 100,
+          roe_pct = roe0,
+          g_pct = suppressWarnings(as.numeric(res$g)[1]) * 100,
+          pv_ri = res$pv_ri,
+          tv = res$pv_terminal,
+          price = res$intrinsic,
+          locale = loc
+        )
+      } else {
+        NULL
+      }
+      ynow_value_why_panel(
+        title = tryCatch(ui_str("explain_ri_why_title", loc), error = function(e) "Why this Fair Value (RI)"),
+        rows = rows,
+        empty_message = empty_msg,
+        footnote = tryCatch(ui_str("explain_ri_why_foot", loc), error = function(e) NULL)
+      )
+    })
 
     # Preserve external contract
     return(list(

@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.Rhistory
+.RData
+.DS_Store
+debug_lab.R
+# Keep requirements.txt for local venv builds, but do not ship it to shinyapps:
+# Connect still lacks a linked RETICULATE_PYTHON, and a root requirements.txt
+# encourages runtime uv/CPython installs before Listen. Packages are declared
+# via reticulate::py_require(.ynow_py_pkgs) after Listen instead.
+requirements.txt

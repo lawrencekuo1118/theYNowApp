@@ -43,5 +43,15 @@ check("kpi-grid alertable bell inset", grepl(".ynow-kpi-grid .ynow-alertable .yn
 check("kpi-grid alertable col safety", grepl(".ynow-kpi-grid .ynow-alertable > [class*='col-']", ui, fixed = TRUE))
 check("focus gold pulse animation", grepl("@keyframes ynow-focus-gold-pulse", ui, fixed = TRUE) &&
         grepl("border: 3px solid var(--ynow-gold", ui, fixed = TRUE))
+# Value-alert marks: colorless translucent (no ready/hover blue tint)
+check("alert bell colorless translucent", {
+  grepl("color: rgba(0, 0, 0, 0.35)", ui, fixed = TRUE) &&
+    !grepl("ynow-alertable--ready .ynow-alert-bell {\n          color: rgba(12, 84, 132", ui, fixed = TRUE) &&
+    grepl(
+      ".ynow-alertable--ready .ynow-alert-bell,\n        .ynow-alertable--ready:hover .ynow-alert-bell,\n        .ynow-alertable--blocked .ynow-alert-bell",
+      ui,
+      fixed = TRUE
+    )
+})
 if (fail > 0L) quit(status = 1L)
 cat("ALL PASS\n")

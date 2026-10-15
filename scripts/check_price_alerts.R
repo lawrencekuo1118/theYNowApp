@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
 # Check saved price/condition rules and send mail when one is met.
 # Run from the repo root: Rscript scripts/check_price_alerts.R
-# Uses the live app directory (app_24.0, else app_22.0) and its .Renviron.
+# Uses the live app directory (app_25.0, else app_22.0) and its .Renviron.
 
 args <- commandArgs(trailingOnly = FALSE)
 file_arg <- sub("^--file=", "", args[grep("^--file=", args)])
@@ -11,8 +11,8 @@ root <- if (length(file_arg) == 1L && nzchar(file_arg)) {
   normalizePath(getwd(), mustWork = TRUE)
 }
 
-app <- if (dir.exists(file.path(root, "app_24.0"))) {
-  file.path(root, "app_24.0")
+app <- if (dir.exists(file.path(root, "app_25.0"))) {
+  file.path(root, "app_25.0")
 } else {
   file.path(root, "app_22.0")
 }

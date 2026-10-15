@@ -1,0 +1,47 @@
+# Copy to app_25.0/.Renviron (gitignored) and fill real values before deploy.
+
+# =============================================================================
+# Neon Free — own account table (self-serve Email + social)
+# =============================================================================
+# Neon Console → Connect → copy pooled connection details (hostname has -pooler).
+YNOW_DB_HOST=ep-xxxx-pooler.region.aws.neon.tech
+YNOW_DB_NAME=neondb
+YNOW_DB_USER=neondb_owner
+YNOW_DB_PASSWORD=
+YNOW_DB_PORT=5432
+YNOW_DB_SSLMODE=require
+# Or one URL instead of the fields above:
+# YNOW_DATABASE_URL=postgresql://USER:PASSWORD@ep-xxxx-pooler.region.aws.neon.tech/neondb?sslmode=require
+
+# One-time: Rscript scripts/neon_migrate.R
+# Optional: YOUR maintenance admin only (NOT a whitelist for end users).
+# Ordinary users self-register via Google / Facebook / Apple / Email with role=user.
+# YNOW_AUTH_SEED_EMAIL=you@example.com
+# YNOW_AUTH_SEED_PASSWORD=change-me-long
+
+YNOW_ENABLE_ACCOUNT_LOGIN=1
+
+# =============================================================================
+# Required for public Google / Facebook / Apple self-registration
+# =============================================================================
+# After this one-time owner setup + redeploy, ANY end user can register by
+# clicking Google / Facebook / Apple — no per-user admin permission step.
+#
+# Path A (recommended): Supabase Auth — enable Google + Facebook + Apple providers,
+# leave "Disable sign ups" OFF, set Site URL / redirect to the live app URL.
+# Apple needs Apple Developer Services ID credentials in the Supabase provider form.
+# YNOW_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+# YNOW_SUPABASE_ANON_KEY=
+#
+# Path B: direct Google / Facebook OAuth apps (Apple still needs Supabase / Path A):
+# YNOW_GOOGLE_CLIENT_ID=
+# YNOW_GOOGLE_CLIENT_SECRET=
+# YNOW_FACEBOOK_APP_ID=
+# YNOW_FACEBOOK_APP_SECRET=
+# YNOW_OAUTH_STATE_SECRET=
+#
+YNOW_OAUTH_REDIRECT_URI=https://hopesmasher1118.shinyapps.io/TheYNowApp
+
+# Legacy Email demo fallback when Neon is NOT configured (single demo account only):
+# YNOW_AUTH_DEMO_EMAIL=you@example.com
+# YNOW_AUTH_DEMO_PASSWORD=change-me
