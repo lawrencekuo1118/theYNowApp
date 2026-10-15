@@ -7,4 +7,4 @@ commit=7f51634c158ea44eda781a01a79780c6c433f95e
 short=7f51634
 message=chore: record shipped display version v24.11
 captured_at=2026-10-15T06:03:55Z
-display_version=v24.11
+display_version=v24.12
