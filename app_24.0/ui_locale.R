@@ -1028,18 +1028,19 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_ind_mcap_badge = "Default ranking",
     lab_im_ind_mcap_help = paste0(
       "Lists every industry chain (Semiconductors / Technology / Financials …) sorted by ",
-      "Σ(market cap × annualized upside) / Σ(market cap) among evaluated names. ",
-      "Total market cap / Names = all tickers in that chain (full universe, not the eval Top-N). ",
-      "Unmapped is excluded. Refresh ranking saves the new table as the next default. ",
-      "Applies the Piotroski, earnings-quality, and No FS alerts gates from the query filters."
+      "Σ(market cap × annualized upside) / Σ(market cap) among independently sampled names. ",
+      "Total market cap / Names = all tickers in that chain (full universe, not Search Top-N). ",
+      "Unmapped is excluded. Independent of Candidate truncate, concepts, universe N, ",
+      "industry filters, models, and quality gates. Opening Blue Chip Lab starts a background ",
+      "all-chains refresh; Refresh ranking rebuilds and saves the default snapshot."
     ),
     lab_im_ind_mcap_waiting = paste0(
-      "No default ranking yet. Press Refresh ranking to evaluate and build ",
-      "the full industry-chain table (or open Blue Chip Leaderboard / Search Blue Chips once)."
+      "No default ranking yet. Opening Blue Chip Lab starts a background all-chains compute, ",
+      "or press Refresh ranking to rebuild the full industry-chain table."
     ),
     lab_im_ind_mcap_empty = paste0(
       "No industry-chain row yet (qualified names %d / evaluated %d). ",
-      "Relax gates or widen filters, then press Refresh ranking."
+      "Press Refresh ranking to recompute all chains."
     ),
     lab_im_ind_mcap_status = paste0(
       "Showing %d / %d industry chains (qualified names %d / evaluated %d). ",
@@ -4107,18 +4108,18 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_ind_mcap_title = "產業市值加權漲幅",
     lab_im_ind_mcap_badge = "預設排名",
     lab_im_ind_mcap_help = paste0(
-      "顯示全部產業鏈（半導體／科技／金融…），排序用評估樣本的 ",
-      "Σ(市值×年化估值漲幅)/Σ(市值)；總市值／檔數＝該產業鏈全宇宙個股（非 Top-N 評估樣本）。",
-      "排除未對應。按「更新排名」後會寫入為下次預設。",
-      "套用查詢條件之 Piotroski、盈餘品質、無財報警訊門檻。"
+      "顯示全部產業鏈（半導體／科技／金融…），排序用獨立抽樣評估樣本的 ",
+      "Σ(市值×年化估值漲幅)/Σ(市值)；總市值／檔數＝該產業鏈全宇宙個股（非搜尋 Top-N）。",
+      "排除未對應。與候選截斷、概念股、宇宙檔數 N、產業／模型篩選、品質門檻無關。",
+      "開啟績優股排行榜會在背景自動重算全部產業鏈；按「更新排名」可手動重算並寫入預設快照。"
     ),
     lab_im_ind_mcap_waiting = paste0(
-      "尚無預設排名。請按「更新排名」評估並建立全部產業鏈清單",
-      "（或先開啟側邊欄「績優股排行榜」／「搜尋績優股」完成一次運算）。"
+      "尚無預設排名。開啟績優股排行榜會在背景自動計算全部產業鏈，",
+      "或按「更新排名」手動重建清單。"
     ),
     lab_im_ind_mcap_empty = paste0(
       "尚無產業鏈列可顯示（合格檔 %d／已評估 %d）。",
-      "請放寬門檻或篩選後再按「更新排名」。"
+      "請按「更新排名」重算全部產業鏈。"
     ),
     lab_im_ind_mcap_status = paste0(
       "顯示 %d／%d 條產業鏈（合格檔 %d／已評估 %d）。",

@@ -3462,6 +3462,150 @@ lab_build_ind_mcap_chain_snapshot <- function(merged_df,
   list(snapshot = snap, table = built$table, path = path)
 }
 
+#' Independent industry-chain mcap-weighted upside job (all chains).
+#'
+#' Decoupled from Blue Chip page filters (truncate / concepts / N / boards /
+#' methods / quality gates). Samples top `per_chain` mcap names per chain,
+#' evaluates FV upside, builds + saves the default snapshot.
+#'
+#' Pure inputs only (safe for ExtendedTask / future workers).
+lab_im_run_ind_mcap_job <- function(catlg,
+                                    market_mode = "US",
+                                    locale = "zh-TW",
+                                    per_chain = 2L) {
+  mm <- tryCatch(normalize_market_mode(market_mode), error = function(e) "US")
+  tryCatch(set_market_mode(mm), error = function(e) NULL)
+  loc <- tryCatch(normalize_ui_locale(locale), error = function(e) "zh-TW")
+  pc <- suppressWarnings(as.integer(per_chain)[1])
+  if (!is.finite(pc) || pc < 1L) pc <- 2L
+
+  empty_out <- function(reason) {
+    list(
+      ok = FALSE,
+      reason = as.character(reason)[1],
+      snapshot = lab_ind_mcap_chain_snapshot_empty(),
+      table = NULL,
+      n_eval = 0L,
+      n_chains = 0L,
+      path = NA_character_,
+      market_mode = mm,
+      locale = loc
+    )
+  }
+
+  if (!is.data.frame(catlg) || nrow(catlg) < 1L) {
+    return(empty_out("empty_catalog"))
+  }
+  if (!exists("industry_chain_id", mode = "function") ||
+      !exists("lab_industry_chain_picker_choices", mode = "function") ||
+      !exists("lab_screen_tickers_fscore", mode = "function")) {
+    return(empty_out("missing_helpers"))
+  }
+
+  catlg <- catlg
+  if (!"chain_id" %in% names(catlg) ||
+      !any(nzchar(as.character(catlg$chain_id)), na.rm = TRUE)) {
+    catlg$chain_id <- vapply(
+      as.character(catlg$industry_key %||% rep(NA_character_, nrow(catlg))),
+      function(k) tryCatch(industry_chain_id(k), error = function(e) ""),
+      character(1)
+    )
+  }
+  catlg <- tryCatch(lab_attach_market_caps(catlg), error = function(e) catlg)
+  mcap <- suppressWarnings(as.numeric(catlg$market_cap))
+  if (!any(is.finite(mcap) & mcap > 0, na.rm = TRUE)) {
+    return(empty_out("no_market_cap"))
+  }
+
+  chains <- unname(lab_industry_chain_picker_choices(loc))
+  chains <- chains[nzchar(as.character(chains)) & !is.na(chains)]
+  chains <- chains[!vapply(chains, lab_ind_mcap_is_unmapped_chain, logical(1))]
+  if (!length(chains)) return(empty_out("no_chains"))
+
+  pick <- lapply(chains, function(cid) {
+    sub <- catlg[
+      !is.na(catlg$chain_id) & as.character(catlg$chain_id) == as.character(cid) &
+        is.finite(suppressWarnings(as.numeric(catlg$market_cap))) &
+        suppressWarnings(as.numeric(catlg$market_cap)) > 0,
+      ,
+      drop = FALSE
+    ]
+    if (!nrow(sub)) return(NULL)
+    sub <- sub[order(-suppressWarnings(as.numeric(sub$market_cap))), , drop = FALSE]
+    utils::head(sub, pc)
+  })
+  pool <- do.call(rbind, Filter(Negate(is.null), pick))
+  if (is.null(pool) || !is.data.frame(pool) || nrow(pool) < 1L) {
+    return(empty_out("empty_pool"))
+  }
+  pool <- pool[!duplicated(toupper(as.character(pool$ticker))), , drop = FALSE]
+
+  cols <- intersect(c("ticker", "industry_key", "primary"), names(pool))
+  scores <- tryCatch(
+    lab_screen_tickers_fscore(
+      pool[, cols, drop = FALSE],
+      max_n = nrow(pool),
+      progress_cb = NULL
+    ),
+    error = function(e) NULL
+  )
+  if (!is.data.frame(scores) || nrow(scores) < 1L) {
+    return(empty_out("empty_scores"))
+  }
+
+  merged <- lab_merge_catalog_scores(
+    catlg,
+    scores = scores,
+    method_filter = character(0),
+    industry_filter = character(0),
+    eq_only = FALSE,
+    gate_only = FALSE,
+    evaluated_only = TRUE
+  )
+  if (!is.data.frame(merged) || nrow(merged) < 1L) {
+    return(empty_out("empty_merged"))
+  }
+  if (!"market_cap" %in% names(merged) ||
+      !any(is.finite(suppressWarnings(as.numeric(merged$market_cap))), na.rm = TRUE)) {
+    merged <- tryCatch(lab_attach_market_caps(merged), error = function(e) merged)
+  }
+  if ("market_cap" %in% names(scores)) {
+    idx <- match(toupper(merged$ticker), toupper(scores$ticker))
+    hit <- which(is.finite(idx))
+    sc_m <- suppressWarnings(as.numeric(scores$market_cap[idx[hit]]))
+    use <- is.finite(sc_m) & sc_m > 0
+    if (any(use)) merged$market_cap[hit[use]] <- sc_m[use]
+  }
+
+  built <- tryCatch(
+    lab_build_ind_mcap_chain_snapshot(
+      merged,
+      market = mm,
+      eq_only = FALSE,
+      gate_only = FALSE,
+      no_alert = FALSE,
+      locale = loc,
+      universe_df = catlg
+    ),
+    error = function(e) NULL
+  )
+  if (is.null(built) || !is.data.frame(built$snapshot) || nrow(built$snapshot) < 1L) {
+    return(empty_out("build_failed"))
+  }
+
+  list(
+    ok = TRUE,
+    reason = "ok",
+    snapshot = built$snapshot,
+    table = built$table,
+    n_eval = as.integer(nrow(scores)),
+    n_chains = as.integer(nrow(built$snapshot)),
+    path = as.character(built$path %||% NA_character_)[1],
+    market_mode = mm,
+    locale = loc
+  )
+}
+
 #' Models the query filter can unlock (sidebar order).
 #' Absolute Justified P/B (`pb`) unlocks from Fair Value primary/secondary.
 #' Relative families (including Book multiples) unlock from Multiples reference.

@@ -163,23 +163,39 @@ server <- function(input, output, session) {
   } else {
     NULL
   }
-  # Mirror Blue Chip eval busy onto sidebar 「績優股排行榜」label dots
+  lab_im_ind_mcap_task <- if (isTRUE(.ynow_async_ok)) {
+    tryCatch(
+      {
+        fn <- lab_im_run_ind_mcap_job
+        attr(fn, "ynow_job_name") <- "lab_im_run_ind_mcap_job"
+        .ynow_make_extended_task(fn)
+      },
+      error = function(e) NULL
+    )
+  } else {
+    NULL
+  }
+  # Mirror Blue Chip eval / ind-mcap busy onto sidebar 「績優股排行榜」label dots
   observe({
-    .ynow_set_tab_busy("bluechip", isTRUE(lab_im_eval_busy()))
+    .ynow_set_tab_busy(
+      "bluechip",
+      isTRUE(lab_im_eval_busy()) || isTRUE(lab_im_ind_mcap_busy())
+    )
   })
   observe({
     .ynow_set_tab_busy("lab_notes", isTRUE(lab_cluster_busy()))
   })
-  # Industry-chain mcap rank: bundled/default snapshot; refreshed by「更新排名」
+  # Industry-chain mcap rank: bundled/default snapshot; independent all-chains job
   lab_im_ind_mcap_snap <- reactiveVal({
     tryCatch(
       lab_load_ind_mcap_chain_snapshot("US"),
       error = function(e) lab_ind_mcap_chain_snapshot_empty()
     )
   })
-  lab_im_ind_mcap_refresh_armed <- reactiveVal(FALSE)
-  # Armed once when sidebar auto-start schedules deferred eval (avoids double
-  # schedule when after_mount bumps lazy_mount_nonce).
+  lab_im_ind_mcap_busy <- reactiveVal(FALSE)
+  # Armed once per market visit when Blue Chip tab auto-starts ind-mcap job.
+  lab_im_ind_mcap_auto_armed <- reactiveVal(FALSE)
+  # Armed once when sidebar Shared Search auto-start schedules deferred eval.
   lab_im_auto_start_armed <- reactiveVal(FALSE)
   lab_cluster_result <- reactiveVal(NULL)
   # Destroy Plotly/DT via renderUI idle placeholders on market switch
@@ -912,6 +928,7 @@ server <- function(input, output, session) {
     sc_datalist_choices(ticker_presets_for_market(mode))
     lab_im_scores(NULL)
     lab_im_auto_start_armed(FALSE)
+    lab_im_ind_mcap_auto_armed(FALSE)
     .clear_lab_cluster_result()
     lab_im_catalog_nonce(isolate(lab_im_catalog_nonce()) + 1L)
 
@@ -13561,7 +13578,7 @@ server <- function(input, output, session) {
           n_methods = length(as.character(method_filter %||% character(0))),
           n_industry_filter = length(as.character(industry_filter %||% character(0))),
           n_catalog = if (is.data.frame(catlg)) as.integer(nrow(catlg)) else 0L,
-          ind_mcap_refresh_armed = isTRUE(isolate(lab_im_ind_mcap_refresh_armed())),
+          ind_mcap_busy = isTRUE(isolate(lab_im_ind_mcap_busy())),
           auto_start_armed = isTRUE(isolate(lab_im_auto_start_armed()))
         ),
         timestamp = as.numeric(Sys.time()) * 1000,
@@ -14078,77 +14095,60 @@ server <- function(input, output, session) {
     }
   }, ignoreInit = FALSE)
 
-  # Dedicated industry-chain mcap-weighted board (default snapshot; Refresh ranking)
-  .lab_im_persist_ind_mcap_from_scores <- function(scores, market = "US", locale = "zh-TW") {
-    if (is.null(scores) || !is.data.frame(scores) || nrow(scores) < 1L) return(NULL)
-    catlg <- tryCatch(lab_im_catalog(), error = function(e) NULL)
-    lb_src <- tryCatch({
-      if (is.data.frame(catlg) && nrow(catlg) > 0) {
-        lab_merge_catalog_scores(
-          catlg,
-          scores = scores,
-          method_filter = character(0),
-          industry_filter = character(0),
-          eq_only = FALSE,
-          gate_only = FALSE,
-          evaluated_only = TRUE
-        )
-      } else {
-        scores
-      }
-    }, error = function(e) scores)
-    gate_on <- isTRUE(isolate(input$lab_im_gate_only))
-    eq_on <- isTRUE(isolate(input$lab_im_eq_only))
-    no_alert_on <- isTRUE(isolate(input$lab_im_no_alert))
-    # #region agent log
-    tryCatch({
-      payload <- list(
-        hypothesisId = "B",
-        location = "ynow_server.R:persist_ind_mcap_from_scores",
-        message = "persist snapshot from session scores (page gates)",
-        data = list(
-          market = as.character(market)[1],
-          n_scores = as.integer(nrow(scores)),
-          n_lb_src = if (is.data.frame(lb_src)) as.integer(nrow(lb_src)) else 0L,
-          n_catalog = if (is.data.frame(catlg)) as.integer(nrow(catlg)) else 0L,
-          gate_only = gate_on,
-          eq_only = eq_on,
-          no_alert = no_alert_on,
-          uses_page_quality_gates = TRUE,
-          uses_page_methods = FALSE,
-          uses_page_industry_filter = FALSE
-        ),
-        timestamp = as.numeric(Sys.time()) * 1000,
-        runId = "ind-mcap-auto"
-      )
-      cat(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"),
-          "\n", file = "/opt/cursor/logs/debug.log", append = TRUE)
-    }, error = function(e) NULL)
-    # #endregion
-    built <- tryCatch(
-      lab_build_ind_mcap_chain_snapshot(
-        lb_src,
-        market = market,
-        eq_only = eq_on,
-        gate_only = gate_on,
-        no_alert = no_alert_on,
-        locale = locale,
-        # 總市值 = 全宇宙該產業鏈個股（非評估樣本／Top-N）
-        universe_df = catlg
-      ),
-      error = function(e) NULL
+  # Dedicated industry-chain mcap-weighted board — independent all-chains job
+  # (decoupled from Search / page filters). Snapshot-only UI; bundled snap while busy.
+  .lab_im_apply_ind_mcap_result <- function(out, notify = TRUE) {
+    loc <- tryCatch(
+      normalize_ui_locale(out$locale %||% isolate(ui_locale())),
+      error = function(e) "zh-TW"
     )
-    if (is.null(built) || !is.data.frame(built$snapshot)) return(NULL)
+    if (is.null(out) || !is.list(out) || !isTRUE(out$ok) ||
+        !is.data.frame(out$snapshot) || nrow(out$snapshot) < 1L) {
+      # #region agent log
+      tryCatch({
+        payload <- list(
+          hypothesisId = "D",
+          location = "ynow_server.R:apply_ind_mcap_result:fail",
+          message = "independent ind-mcap job failed",
+          data = list(
+            ok = isTRUE(out$ok),
+            reason = as.character(out$reason %||% "")[1],
+            notify = isTRUE(notify)
+          ),
+          timestamp = as.numeric(Sys.time()) * 1000,
+          runId = "ind-mcap-auto"
+        )
+        cat(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"),
+            "\n", file = "/opt/cursor/logs/debug.log", append = TRUE)
+      }, error = function(e) NULL)
+      # #endregion
+      if (isTRUE(notify)) {
+        showNotification(
+          paste0(
+            "Industry-chain ranking failed",
+            if (nzchar(as.character(out$reason %||% "")[1]))
+              paste0(": ", as.character(out$reason)[1]) else "."
+          ),
+          type = "warning",
+          duration = 8
+        )
+      }
+      return(invisible(FALSE))
+    }
+    lab_im_ind_mcap_snap(out$snapshot)
     # #region agent log
     tryCatch({
       payload <- list(
         hypothesisId = "D",
-        location = "ynow_server.R:persist_ind_mcap_from_scores:built",
-        message = "snapshot built",
+        location = "ynow_server.R:apply_ind_mcap_result:ok",
+        message = "independent ind-mcap snapshot applied",
         data = list(
-          n_chains = as.integer(nrow(built$snapshot)),
-          sample_chains = as.list(utils::head(as.character(built$snapshot$chain_id), 5L)),
-          path = as.character(built$path %||% "")[1]
+          n_chains = as.integer(out$n_chains %||% nrow(out$snapshot)),
+          n_eval = as.integer(out$n_eval %||% 0L),
+          path = as.character(out$path %||% "")[1],
+          market = as.character(out$market_mode %||% "")[1],
+          independent_ind_mcap_job = TRUE,
+          runPhase = "post-fix"
         ),
         timestamp = as.numeric(Sys.time()) * 1000,
         runId = "ind-mcap-auto"
@@ -14157,100 +14157,173 @@ server <- function(input, output, session) {
           "\n", file = "/opt/cursor/logs/debug.log", append = TRUE)
     }, error = function(e) NULL)
     # #endregion
-    lab_im_ind_mcap_snap(built$snapshot)
-    built
+    if (isTRUE(notify)) {
+      n_ch <- as.integer(out$n_chains %||% nrow(out$snapshot))
+      showNotification(
+        tryCatch(
+          sprintf(ui_str("lab_im_ind_mcap_refresh_done", loc), n_ch),
+          error = function(e) sprintf("已更新產業鏈排名（%d 條）。", n_ch)
+        ),
+        type = "message",
+        duration = 6
+      )
+    }
+    invisible(TRUE)
+  }
+
+  .lab_im_start_ind_mcap_job <- function(reason = "manual", notify_busy = TRUE) {
+    loc <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "zh-TW")
+    if (isTRUE(isolate(lab_im_ind_mcap_busy()))) {
+      if (isTRUE(notify_busy)) {
+        showNotification(
+          tryCatch(
+            ui_str("lab_im_ind_mcap_refresh_busy", loc),
+            error = function(e) "產業鏈排名更新進行中…"
+          ),
+          type = "warning",
+          duration = 5
+        )
+      }
+      return(invisible(FALSE))
+    }
+    if (!is.null(lab_im_ind_mcap_task)) {
+      st <- tryCatch(lab_im_ind_mcap_task$status(), error = function(e) "error")
+      if (identical(st, "running")) {
+        if (isTRUE(notify_busy)) {
+          showNotification(
+            tryCatch(
+              ui_str("lab_im_ind_mcap_refresh_busy", loc),
+              error = function(e) "產業鏈排名更新進行中…"
+            ),
+            type = "warning",
+            duration = 5
+          )
+        }
+        return(invisible(FALSE))
+      }
+    }
+    mm <- tryCatch(normalize_market_mode(isolate(market_mode())), error = function(e) "US")
+    # Full market catalog — ignore page boards / industry / methods filters.
+    catlg <- tryCatch(
+      lab_build_industry_method_catalog(
+        market_mode = mm,
+        boards = c("TWSE", "TPEX")
+      ),
+      error = function(e) NULL
+    )
+    if (!is.data.frame(catlg) || nrow(catlg) < 1L) {
+      catlg <- tryCatch(isolate(lab_im_catalog()), error = function(e) NULL)
+    }
+    if (!is.data.frame(catlg) || nrow(catlg) < 1L) {
+      # #region agent log
+      tryCatch({
+        payload <- list(
+          hypothesisId = "C",
+          location = "ynow_server.R:start_ind_mcap_job",
+          message = "no catalog for independent ind-mcap job",
+          data = list(reason = as.character(reason)[1], market = mm),
+          timestamp = as.numeric(Sys.time()) * 1000,
+          runId = "ind-mcap-auto"
+        )
+        cat(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"),
+            "\n", file = "/opt/cursor/logs/debug.log", append = TRUE)
+      }, error = function(e) NULL)
+      # #endregion
+      return(invisible(FALSE))
+    }
+    # #region agent log
+    tryCatch({
+      payload <- list(
+        hypothesisId = "A",
+        location = "ynow_server.R:start_ind_mcap_job",
+        message = "starting independent all-chains ind-mcap job",
+        data = list(
+          reason = as.character(reason)[1],
+          market = mm,
+          n_catalog = as.integer(nrow(catlg)),
+          per_chain = 2L,
+          uses_shared_lab_im_run_pulse = FALSE,
+          independent_ind_mcap_job = TRUE,
+          page_methods_ignored = TRUE,
+          page_gates_ignored = TRUE,
+          page_max_n_ignored = TRUE,
+          page_concepts_ignored = TRUE,
+          runPhase = "post-fix"
+        ),
+        timestamp = as.numeric(Sys.time()) * 1000,
+        runId = "ind-mcap-auto"
+      )
+      cat(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"),
+          "\n", file = "/opt/cursor/logs/debug.log", append = TRUE)
+    }, error = function(e) NULL)
+    # #endregion
+    lab_im_ind_mcap_busy(TRUE)
+    if (!is.null(lab_im_ind_mcap_task)) {
+      tryCatch(
+        lab_im_ind_mcap_task$invoke(
+          catlg = catlg,
+          market_mode = mm,
+          locale = loc,
+          per_chain = 2L
+        ),
+        error = function(e) {
+          lab_im_ind_mcap_busy(FALSE)
+          showNotification(
+            paste("Industry-chain ranking start failed:", conditionMessage(e)),
+            type = "error",
+            duration = 8
+          )
+        }
+      )
+      return(invisible(TRUE))
+    }
+    # Sync fallback when ExtendedTask unavailable
+    on.exit(tryCatch(lab_im_ind_mcap_busy(FALSE), error = function(e) NULL), add = TRUE)
+    out <- tryCatch(
+      lab_im_run_ind_mcap_job(
+        catlg = catlg,
+        market_mode = mm,
+        locale = loc,
+        per_chain = 2L
+      ),
+      error = function(e) list(ok = FALSE, reason = conditionMessage(e))
+    )
+    lab_im_ind_mcap_busy(FALSE)
+    .lab_im_apply_ind_mcap_result(out, notify = TRUE)
+    invisible(TRUE)
+  }
+
+  if (!is.null(lab_im_ind_mcap_task)) {
+    observeEvent(lab_im_ind_mcap_task$status(), {
+      st <- tryCatch(lab_im_ind_mcap_task$status(), error = function(e) "initial")
+      if (identical(st, "error")) {
+        lab_im_ind_mcap_busy(FALSE)
+        err <- tryCatch(lab_im_ind_mcap_task$result(), error = function(e) conditionMessage(e))
+        if (is.character(err) && nzchar(err[1])) {
+          showNotification(
+            paste("Industry-chain ranking failed:", err[1]),
+            type = "error",
+            duration = 8
+          )
+        }
+        return()
+      }
+      if (!identical(st, "success")) return()
+      out <- tryCatch(lab_im_ind_mcap_task$result(), error = function(e) NULL)
+      lab_im_ind_mcap_busy(FALSE)
+      .lab_im_apply_ind_mcap_result(out, notify = TRUE)
+    }, ignoreInit = TRUE)
   }
 
   .lab_im_ind_mcap_board <- reactive({
     loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
-    scores <- lab_im_scores()
     snap <- lab_im_ind_mcap_snap()
+    busy <- isTRUE(lab_im_ind_mcap_busy())
     n_chains_all <- tryCatch({
       length(unname(lab_industry_chain_picker_choices(loc)))
     }, error = function(e) 0L)
 
-    # Live recompute when session has scores (keeps gates reactive)
-    if (is.data.frame(scores) && nrow(scores) > 0L) {
-      catlg <- tryCatch(lab_im_catalog(), error = function(e) NULL)
-      method_filter_live <- input$lab_im_methods
-      lb_src <- tryCatch({
-        if (is.data.frame(catlg) && nrow(catlg) > 0) {
-          lab_merge_catalog_scores(
-            catlg,
-            scores = scores,
-            method_filter = method_filter_live,
-            industry_filter = character(0),
-            eq_only = FALSE,
-            gate_only = FALSE,
-            evaluated_only = TRUE
-          )
-        } else {
-          lab_im_merged()
-        }
-      }, error = function(e) NULL)
-      if (is.data.frame(lb_src) && nrow(lb_src) > 0L) {
-        gate_on <- isTRUE(input$lab_im_gate_only)
-        eq_on <- isTRUE(input$lab_im_eq_only)
-        no_alert_on <- isTRUE(input$lab_im_no_alert)
-        # #region agent log
-        tryCatch({
-          payload <- list(
-            hypothesisId = "B",
-            location = "ynow_server.R:ind_mcap_board:live",
-            message = "live board uses session scores + page methods/gates",
-            data = list(
-              n_scores = as.integer(nrow(scores)),
-              n_lb_src = as.integer(nrow(lb_src)),
-              n_methods = length(as.character(method_filter_live %||% character(0))),
-              methods = as.list(utils::head(as.character(method_filter_live %||% character(0)), 8L)),
-              gate_only = gate_on,
-              eq_only = eq_on,
-              no_alert = no_alert_on,
-              include_all_chains = TRUE,
-              from_snapshot = FALSE,
-              coupled_to_page_params = TRUE
-            ),
-            timestamp = as.numeric(Sys.time()) * 1000,
-            runId = "ind-mcap-auto"
-          )
-          cat(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"),
-              "\n", file = "/opt/cursor/logs/debug.log", append = TRUE)
-        }, error = function(e) NULL)
-        # #endregion
-        pool <- tryCatch(
-          lab_leaderboard_pool(
-            lb_src, eq_only = eq_on, gate_only = gate_on, no_alert = no_alert_on
-          ),
-          error = function(e) NULL
-        )
-        built <- tryCatch(
-          lab_industry_chain_mcap_upside_leaderboard(
-            lb_src,
-            eq_only = eq_on,
-            gate_only = gate_on,
-            no_alert = no_alert_on,
-            locale = loc,
-            include_all_chains = TRUE,
-            universe_df = catlg
-          ),
-          error = function(e) NULL
-        )
-        tbl <- if (!is.null(built)) built$table else NULL
-        return(list(
-          table = tbl,
-          n_show = if (is.data.frame(tbl)) nrow(tbl) else 0L,
-          n_chains_all = as.integer(n_chains_all),
-          n_qual = if (is.data.frame(pool)) nrow(pool) else 0L,
-          n_eval = nrow(lb_src),
-          waiting = FALSE,
-          from_snapshot = FALSE,
-          snapshot_at = NA_character_,
-          loc = loc
-        ))
-      }
-    }
-
-    # Default: bundled / prior「更新排名」snapshot (all chains sorted)
+    # Snapshot-only board (independent of Search scores / page gates / methods).
     if (is.data.frame(snap) && nrow(snap) > 0L) {
       tbl <- tryCatch(
         lab_format_ind_mcap_chain_table(snap, loc),
@@ -14263,16 +14336,19 @@ server <- function(input, output, session) {
       # #region agent log
       tryCatch({
         payload <- list(
-          hypothesisId = "D",
+          hypothesisId = "B",
           location = "ynow_server.R:ind_mcap_board:snapshot",
-          message = "showing bundled/prior snapshot (no independent live job)",
+          message = "snapshot-only board (decoupled from page params)",
           data = list(
             n_snap = as.integer(nrow(snap)),
             n_show = if (is.data.frame(tbl)) as.integer(nrow(tbl)) else as.integer(nrow(snap)),
             n_chains_all = as.integer(n_chains_all),
             snapshot_at = snap_at,
             from_snapshot = TRUE,
-            n_scores = if (is.data.frame(scores)) as.integer(nrow(scores)) else 0L
+            busy = busy,
+            coupled_to_page_params = FALSE,
+            uses_lab_im_scores = FALSE,
+            runPhase = "post-fix"
           ),
           timestamp = as.numeric(Sys.time()) * 1000,
           runId = "ind-mcap-auto"
@@ -14289,6 +14365,7 @@ server <- function(input, output, session) {
         n_eval = NA_integer_,
         waiting = FALSE,
         from_snapshot = TRUE,
+        busy = busy,
         snapshot_at = snap_at,
         loc = loc
       ))
@@ -14299,8 +14376,14 @@ server <- function(input, output, session) {
       payload <- list(
         hypothesisId = "D",
         location = "ynow_server.R:ind_mcap_board:waiting",
-        message = "no snapshot and no scores — waiting UI",
-        data = list(n_chains_all = as.integer(n_chains_all), waiting = TRUE),
+        message = "no snapshot yet",
+        data = list(
+          n_chains_all = as.integer(n_chains_all),
+          waiting = TRUE,
+          busy = busy,
+          coupled_to_page_params = FALSE,
+          runPhase = "post-fix"
+        ),
         timestamp = as.numeric(Sys.time()) * 1000,
         runId = "ind-mcap-auto"
       )
@@ -14316,12 +14399,13 @@ server <- function(input, output, session) {
       n_eval = 0L,
       waiting = TRUE,
       from_snapshot = FALSE,
+      busy = busy,
       snapshot_at = NA_character_,
       loc = loc
     )
   })
 
-  # Reload default snapshot when market switches
+  # Reload default snapshot when market switches (arm reset elsewhere)
   observeEvent(market_mode(), {
     mm <- tryCatch(normalize_market_mode(market_mode()), error = function(e) "US")
     snap <- tryCatch(
@@ -14333,11 +14417,11 @@ server <- function(input, output, session) {
       payload <- list(
         hypothesisId = "E",
         location = "ynow_server.R:ind_mcap_market_switch",
-        message = "reload snapshot on market switch; auto_start re-armed via market observer",
+        message = "reload snapshot on market switch; ind-mcap auto arm cleared with market",
         data = list(
           market = mm,
           n_snap = if (is.data.frame(snap)) as.integer(nrow(snap)) else 0L,
-          auto_start_armed_after_market_clear = FALSE
+          ind_mcap_auto_armed = isTRUE(isolate(lab_im_ind_mcap_auto_armed()))
         ),
         timestamp = as.numeric(Sys.time()) * 1000,
         runId = "ind-mcap-auto"
@@ -14349,45 +14433,69 @@ server <- function(input, output, session) {
     lab_im_ind_mcap_snap(snap)
   }, ignoreInit = TRUE)
 
-  # After a Blue Chip search completes, persist chain ranking as the new default
-  observeEvent(lab_im_scores(), {
-    scores <- lab_im_scores()
-    if (is.null(scores) || !is.data.frame(scores) || nrow(scores) < 1L) return()
-    mm <- tryCatch(normalize_market_mode(market_mode()), error = function(e) "US")
-    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
-    built <- .lab_im_persist_ind_mcap_from_scores(scores, market = mm, locale = loc)
-    if (isTRUE(isolate(lab_im_ind_mcap_refresh_armed()))) {
-      lab_im_ind_mcap_refresh_armed(FALSE)
-      n_ch <- if (!is.null(built) && is.data.frame(built$snapshot)) nrow(built$snapshot) else 0L
-      showNotification(
-        tryCatch(
-          sprintf(ui_str("lab_im_ind_mcap_refresh_done", loc), as.integer(n_ch)),
-          error = function(e) sprintf("已更新產業鏈排名（%d 條）。", as.integer(n_ch))
-        ),
-        type = "message",
-        duration = 6
+  # Opening Blue Chip tab auto-starts independent all-chains ind-mcap job (once / market).
+  observeEvent(
+    list(input$sidebar_tabs, lazy_mount_nonce()),
+    {
+      tab <- as.character(input$sidebar_tabs %||% "")[1]
+      if (!identical(tab, "bluechip")) return()
+      mounted <- tryCatch(
+        isTRUE(.ynow_lazy_tab_ctrl$mounted("bluechip")),
+        error = function(e) FALSE
       )
-    }
-  }, ignoreInit = TRUE)
+      if (!isTRUE(mounted)) return()
+      if (isTRUE(isolate(lab_im_ind_mcap_auto_armed()))) return()
+      if (isTRUE(isolate(lab_im_ind_mcap_busy()))) return()
+      lab_im_ind_mcap_auto_armed(TRUE)
+      # #region agent log
+      tryCatch({
+        payload <- list(
+          hypothesisId = "A",
+          location = "ynow_server.R:ind_mcap_tab_auto_start",
+          message = "bluechip tab enter → independent ind-mcap job",
+          data = list(
+            market = tryCatch(normalize_market_mode(isolate(market_mode())), error = function(e) "US"),
+            uses_shared_lab_im_run_pulse = FALSE,
+            independent_ind_mcap_job = TRUE,
+            runPhase = "post-fix"
+          ),
+          timestamp = as.numeric(Sys.time()) * 1000,
+          runId = "ind-mcap-auto"
+        )
+        cat(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"),
+            "\n", file = "/opt/cursor/logs/debug.log", append = TRUE)
+      }, error = function(e) NULL)
+      # #endregion
+      session$onFlushed(function() {
+        start_job <- function() {
+          if (!identical(as.character(isolate(input$sidebar_tabs) %||% "")[1], "bluechip")) {
+            tryCatch(lab_im_ind_mcap_auto_armed(FALSE), error = function(e) NULL)
+            return()
+          }
+          .lab_im_start_ind_mcap_job(reason = "tab_enter", notify_busy = FALSE)
+        }
+        if (requireNamespace("later", quietly = TRUE)) {
+          later::later(start_job, delay = 0.05)
+        } else {
+          start_job()
+        }
+      }, once = TRUE)
+    },
+    ignoreInit = TRUE
+  )
 
   observeEvent(input$lab_im_refresh_ind_mcap, {
-    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
     # #region agent log
     tryCatch({
       payload <- list(
         hypothesisId = "A",
         location = "ynow_server.R:lab_im_refresh_ind_mcap",
-        message = "manual refresh arms shared eval pulse (not independent job)",
+        message = "manual refresh → independent ind-mcap job",
         data = list(
-          eval_busy = isTRUE(isolate(lab_im_eval_busy())),
-          universe_busy = isTRUE(isolate(lab_im_universe_busy())),
-          pool_rank = as.character(isolate(input$lab_im_pool_rank) %||% "")[1],
-          max_n = as.character(isolate(input$lab_im_max_n) %||% "")[1],
-          n_methods = length(as.character(isolate(input$lab_im_methods) %||% character(0))),
-          n_boards = length(as.character(isolate(input$lab_im_boards) %||% character(0))),
-          gate_only = isTRUE(isolate(input$lab_im_gate_only)),
-          uses_shared_lab_im_run_pulse = TRUE,
-          independent_ind_mcap_job = FALSE
+          ind_mcap_busy = isTRUE(isolate(lab_im_ind_mcap_busy())),
+          uses_shared_lab_im_run_pulse = FALSE,
+          independent_ind_mcap_job = TRUE,
+          runPhase = "post-fix"
         ),
         timestamp = as.numeric(Sys.time()) * 1000,
         runId = "ind-mcap-auto"
@@ -14396,26 +14504,14 @@ server <- function(input, output, session) {
           "\n", file = "/opt/cursor/logs/debug.log", append = TRUE)
     }, error = function(e) NULL)
     # #endregion
-    if (isTRUE(isolate(lab_im_eval_busy())) || isTRUE(isolate(lab_im_universe_busy()))) {
-      showNotification(
-        tryCatch(
-          ui_str("lab_im_ind_mcap_refresh_busy", loc),
-          error = function(e) "產業鏈排名更新進行中…"
-        ),
-        type = "warning",
-        duration = 5
-      )
-      return()
-    }
-    # Always re-run the shared Blue Chip evaluator (latest scores → new default snapshot)
-    lab_im_ind_mcap_refresh_armed(TRUE)
-    lab_im_run_pulse(isolate(as.integer(lab_im_run_pulse()) %||% 0L) + 1L)
+    .lab_im_start_ind_mcap_job(reason = "refresh_button", notify_busy = TRUE)
   })
 
   output$lab_im_ind_mcap_status <- renderUI({
     board <- .lab_im_ind_mcap_board()
     loc <- board$loc %||% "zh-TW"
-    if (isTRUE(board$waiting)) {
+    busy <- isTRUE(board$busy) || isTRUE(lab_im_ind_mcap_busy())
+    if (isTRUE(board$waiting) && !busy) {
       return(tags$p(
         style = "color:#888; font-size:12.5px; margin:0 0 8px 0;",
         tryCatch(ui_str("lab_im_ind_mcap_waiting", loc),
@@ -14442,38 +14538,29 @@ server <- function(input, output, session) {
           as.integer(board$n_show), at_bit
         )
       )
+      if (busy) {
+        busy_txt <- tryCatch(
+          ui_str("lab_im_ind_mcap_refresh_busy", loc),
+          error = function(e) "產業鏈排名更新進行中…"
+        )
+        txt <- paste0(txt, " ", busy_txt)
+      }
       return(tags$p(style = "color:#555; font-size:12.5px; margin:0 0 8px 0;", txt))
     }
-    if (!is.finite(board$n_show) || board$n_show < 1L) {
-      txt <- tryCatch(
-        sprintf(
-          ui_str("lab_im_ind_mcap_empty", loc),
-          as.integer(board$n_qual %||% 0L), as.integer(board$n_eval %||% 0L)
-        ),
-        error = function(e) sprintf(
-          "尚無產業鏈列可顯示（合格檔 %d／已評估 %d）。",
-          as.integer(board$n_qual %||% 0L), as.integer(board$n_eval %||% 0L)
+    if (busy) {
+      return(tags$p(
+        style = "color:#555; font-size:12.5px; margin:0 0 8px 0;",
+        tryCatch(
+          ui_str("lab_im_ind_mcap_refresh_busy", loc),
+          error = function(e) "產業鏈排名更新進行中…"
         )
-      )
-      return(tags$p(style = "color:#888; font-size:12.5px; margin:0 0 8px 0;", txt))
+      ))
     }
-    txt <- tryCatch(
-      sprintf(
-        ui_str("lab_im_ind_mcap_status", loc),
-        as.integer(board$n_show),
-        as.integer(board$n_chains_all %||% board$n_show),
-        as.integer(board$n_qual %||% 0L),
-        as.integer(board$n_eval %||% 0L)
-      ),
-      error = function(e) sprintf(
-        "顯示 %d／%d 條產業鏈（合格檔 %d／已評估 %d）。",
-        as.integer(board$n_show),
-        as.integer(board$n_chains_all %||% board$n_show),
-        as.integer(board$n_qual %||% 0L),
-        as.integer(board$n_eval %||% 0L)
-      )
+    tags$p(
+      style = "color:#888; font-size:12.5px; margin:0 0 8px 0;",
+      tryCatch(ui_str("lab_im_ind_mcap_waiting", loc),
+               error = function(e) "尚無預設排名。請按「更新排名」。")
     )
-    tags$p(style = "color:#555; font-size:12.5px; margin:0 0 8px 0;", txt)
   })
 
   output$lab_im_ind_mcap_table <- DT::renderDT({

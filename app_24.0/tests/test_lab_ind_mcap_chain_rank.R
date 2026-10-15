@@ -100,10 +100,30 @@ check("applyUiLocale wires refresh label",
       grepl("ynow_lab_im_refresh_ind_mcap_label", ui, fixed = TRUE) &&
         grepl("btn_lab_im_refresh_ind_mcap", ui, fixed = TRUE))
 
-check("server has chain board helper", grepl("lab_industry_chain_mcap_upside_leaderboard", srv, fixed = TRUE))
+check("server formats snapshot table", grepl("lab_format_ind_mcap_chain_table", srv, fixed = TRUE))
 check("server has snapshot reactive", grepl("lab_im_ind_mcap_snap", srv, fixed = TRUE))
 check("server refresh observeEvent", grepl("observeEvent\\(input\\$lab_im_refresh_ind_mcap", srv))
-check("server persist after scores", grepl("\\.lab_im_persist_ind_mcap_from_scores", srv))
+check("server has independent ind-mcap job", grepl("lab_im_run_ind_mcap_job", srv, fixed = TRUE))
+check("server start helper ignores page filters", grepl("\\.lab_im_start_ind_mcap_job", srv) &&
+        grepl("page_methods_ignored = TRUE", srv, fixed = TRUE))
+check("server board is snapshot-only", grepl("uses_lab_im_scores = FALSE", srv, fixed = TRUE) ||
+        (grepl("Snapshot-only board", srv, fixed = TRUE) &&
+           !grepl("Live recompute when session has scores", srv, fixed = TRUE)))
+check("server does not persist from Search scores",
+      !grepl("\\.lab_im_persist_ind_mcap_from_scores", srv, fixed = TRUE))
+check("lab_im_run_ind_mcap_job defined in lab", {
+  lab_src <- paste(readLines(src_lab, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("lab_im_run_ind_mcap_job\\s*<-\\s*function", lab_src)
+})
+# Smoke: empty catalog returns structured failure (no Yahoo)
+if (exists("lab_im_run_ind_mcap_job", mode = "function")) {
+  empty_job <- lab_im_run_ind_mcap_job(
+    data.frame(), market_mode = "US", locale = "en", per_chain = 2L
+  )
+  check("ind-mcap job empty catalog fails cleanly",
+        is.list(empty_job) && identical(empty_job$ok, FALSE) &&
+          identical(as.character(empty_job$reason)[1], "empty_catalog"))
+}
 
 # Functional: all chains included + sorted
 .mk <- function(tk, key, lab, cagr, mcap) {
