@@ -74,33 +74,32 @@ ynow_auth_try_login <- function(email, password) {
   )
 }
 
-#' Header Sign-in / account chip — rendered only when auth is enabled.
+#' Sign-in / Sign-out text links under the ZH/EN stack (right-aligned).
+#' Returns a div for nesting inside the lang header column — not a navbar <li>.
 ynow_auth_header_ui <- function() {
   if (!isTRUE(ynow_auth_enabled())) return(NULL)
-  tags$li(
+  tags$div(
     id = "ynow-auth-header",
-    class = "dropdown ynow-auth-header",
-    tags$div(
-      class = "ynow-auth-stack",
-      role = "group",
-      `aria-label` = "Account",
-      actionLink(
-        inputId = "ynow_auth_open",
-        label = tags$span(id = "ynow_auth_header_label", "Sign in"),
-        class = "ynow-auth-btn"
-      ),
-      tags$span(
-        id = "ynow_auth_user_chip",
-        class = "ynow-auth-user-chip",
-        style = "display:none;",
-        ""
-      ),
-      actionLink(
-        inputId = "ynow_auth_sign_out",
-        label = tags$span(id = "ynow_auth_sign_out_label", "Sign out"),
-        class = "ynow-auth-btn ynow-auth-signout",
-        style = "display:none;"
-      )
+    class = "ynow-auth-under-lang",
+    role = "group",
+    `aria-label` = "Account",
+    actionLink(
+      inputId = "ynow_auth_open",
+      label = tags$span(id = "ynow_auth_header_label", "Sign in"),
+      class = "ynow-auth-link"
+    ),
+    tags$span(
+      id = "ynow_auth_user_chip",
+      class = "ynow-auth-user-chip",
+      style = "display:none;",
+      title = "",
+      ""
+    ),
+    actionLink(
+      inputId = "ynow_auth_sign_out",
+      label = tags$span(id = "ynow_auth_sign_out_label", "Sign out"),
+      class = "ynow-auth-link ynow-auth-signout",
+      style = "display:none;"
     )
   )
 }
@@ -164,16 +163,32 @@ ynow_auth_session_email <- function(auth) {
 #' Minimal CSS for auth chrome + maintenance nav + Lite exemptions.
 ynow_auth_css <- function() {
   if (!isTRUE(ynow_auth_enabled())) return(NULL)
+  # Lang column: ZH/EN on top; Sign in / Sign out text links below, right-aligned.
+  # Email chip stays hidden in header (account email lives in Maintenance).
   tags$style(HTML(paste0(
-    ".main-header .navbar-custom-menu .navbar-nav > li.ynow-auth-header {",
-    "  display:flex; align-items:center; height:100%; list-style:none; margin:0; padding:0 8px;",
+    ".ynow-lang-col {",
+    "  display:flex; flex-direction:column; align-items:flex-end; justify-content:center;",
+    "  gap:2px; line-height:1.15;",
     "}",
-    ".ynow-auth-stack { display:flex; align-items:center; gap:8px; }",
-    ".ynow-auth-btn { color:#f5f5f5 !important; font-size:12px; font-weight:600; }",
-    ".ynow-auth-btn:hover { color:#fff !important; text-decoration:underline; }",
-    ".ynow-auth-user-chip { color:#ddd; font-size:11px; max-width:140px; overflow:hidden;",
-    "  text-overflow:ellipsis; white-space:nowrap; }",
-    "body.ynow-lite .ynow-auth-header { display:none !important; }",
+    ".ynow-auth-under-lang {",
+    "  display:flex; flex-direction:column; align-items:flex-end; justify-content:center;",
+    "  margin:0; padding:0; max-width:100%;",
+    "}",
+    ".ynow-auth-under-lang .ynow-auth-link,",
+    ".ynow-auth-under-lang a.ynow-auth-link {",
+    "  color:rgba(255,255,255,0.88) !important;",
+    "  font-size:11px; font-weight:500; line-height:1.2;",
+    "  padding:0 !important; margin:0 !important;",
+    "  text-decoration:none !important; background:transparent !important;",
+    "  border:0 !important; box-shadow:none !important;",
+    "  white-space:nowrap; text-align:right;",
+    "}",
+    ".ynow-auth-under-lang .ynow-auth-link:hover,",
+    ".ynow-auth-under-lang a.ynow-auth-link:hover {",
+    "  color:#fff !important; text-decoration:underline !important;",
+    "}",
+    ".ynow-auth-under-lang .ynow-auth-user-chip { display:none !important; }",
+    "body.ynow-lite .ynow-auth-under-lang { display:none !important; }",
     "body.ynow-lite .sidebar-menu a[data-value=\"account_admin\"],",
     "body.ynow-lite .sidebar-menu li:has(> a[data-value=\"account_admin\"]) {",
     "  display:none !important;",

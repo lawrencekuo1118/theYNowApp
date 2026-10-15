@@ -186,8 +186,7 @@ ui <- paste(readLines(src_ui, warn = FALSE, encoding = "UTF-8"), collapse = "\n"
 srv <- paste(readLines(src_srv, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check("UI mounts auth header helper", grepl("ynow_auth_header_ui", ui, fixed = TRUE))
 check("UI mounts auth modal helper", grepl("ynow_auth_modal_ui", ui, fixed = TRUE))
-check("UI omits NULL via ynow_compact_ui", grepl("ynow_compact_ui", ui, fixed = TRUE))
-check("UI header uses .list for auth", grepl("\\.list\\s*=", ui) &&
+check("UI nests auth under lang column", grepl("ynow-lang-col", ui, fixed = TRUE) &&
         grepl("ynow_auth_header_ui", ui, fixed = TRUE))
 check("UI About mentions account sign-in", grepl("Account sign-in", ui, fixed = TRUE) &&
         grepl("帳號登入", ui, fixed = TRUE))
@@ -195,9 +194,17 @@ check("UI wires ynowAuthState handler", grepl("ynowAuthState", ui, fixed = TRUE)
 check("UI wires ynowAuthFeature handler", grepl("ynowAuthFeature", ui, fixed = TRUE))
 check("UI About Lite no account", grepl("Lite never requires an account", ui, fixed = TRUE) &&
         grepl("Lite 版無需帳號即可完整使用", ui, fixed = TRUE))
-check("UI CSS hides auth in Lite", grepl("body.ynow-lite .ynow-auth-header", {
-  paste(readLines(src_auth, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-}, fixed = TRUE))
+auth_src <- paste(readLines(src_auth, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+check("auth under-lang text links", grepl("ynow-auth-under-lang", auth_src, fixed = TRUE) &&
+        grepl("ynow-auth-link", auth_src, fixed = TRUE))
+check("UI CSS hides auth in Lite", grepl("body.ynow-lite .ynow-auth-under-lang", auth_src, fixed = TRUE))
+check("header UI is div not navbar li", {
+  Sys.setenv(YNOW_ENABLE_ACCOUNT_LOGIN = "1")
+  h <- ynow_auth_header_ui()
+  Sys.setenv(YNOW_ENABLE_ACCOUNT_LOGIN = "0")
+  inherits(h, "shiny.tag") && identical(h$name, "div") &&
+    grepl("ynow-auth-under-lang", paste(as.character(h), collapse = ""), fixed = TRUE)
+})
 check("server wires ynow_auth_server", grepl("ynow_auth_server", srv, fixed = TRUE))
 check("server renders admin panel", grepl("output\\$ynow_admin_panel", srv))
 check("server prefills alert email from account", grepl("ynow_auth_session_email", srv, fixed = TRUE) &&
