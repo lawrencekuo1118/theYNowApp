@@ -37,6 +37,17 @@ check("reapply busy after applyUiLocale", grepl("ynowReapplyAllTabBusyVisuals", 
 check("schedule picker locale helper", grepl("\\.lab_im_schedule_picker_locale", srv))
 check("defaults used when methods empty", grepl("APP_DEFAULTS\\$lab_im_methods", srv) &&
         grepl("Empty \\(pre-bind", srv))
+check(
+  "skip checkbox clear when available empty",
+  grepl("Catalog not ready yet", srv, fixed = TRUE) &&
+    grepl("keep HTML Absolute defaults", srv, fixed = TRUE)
+)
+check(
+  "snap stale select-all away from Relative",
+  grepl("Stale \"select all\"", srv, fixed = TRUE) ||
+    grepl("Stale 'select all'", srv, fixed = TRUE) ||
+    grepl("snap back to Absolute defaults", srv, fixed = TRUE)
+)
 check("defer while eval busy", grepl("lab_im_eval_busy", srv) &&
         grepl("later::later\\(run, delay = 0.35\\)", srv))
 
