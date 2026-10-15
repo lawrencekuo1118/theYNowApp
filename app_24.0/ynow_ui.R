@@ -7313,6 +7313,12 @@ ui <- dashboardPage(
           padding-left: 20px;
         }
       ')),
+      # Boot locale maps (slim): click-time apply so 繁中／EN do not depend on websocket timing
+      tags$script(HTML(paste0(
+        "window.__YNOW_UI_LOCALE_BOOT = ",
+        jsonlite::toJSON(ui_locale_boot_bundle(), auto_unbox = TRUE, null = "null"),
+        ";"
+      ))),
       tags$script(HTML("
         (function () {
           var TAB_PARENT = {
@@ -8164,36 +8170,125 @@ ui <- dashboardPage(
               stack.querySelectorAll('.ynow-lang-btn').forEach(function (b) {
                 b.classList.toggle('active', b === btn);
               });
-              /* Optimistic lang so .ynow-loc-zh CSS switches immediately; server
-                 ynowUiLocale still owns full string replacement. Stash pending pick
-                 so a late onFlushed/device `en` push cannot clobber the click. */
+              /* Pending pick blocks mismatched (stale) websocket applies until the
+                 server confirms this locale. Cancel prior verify timers so an EN
+                 click's delayed check cannot run after a later 繁中 click. */
+              if (window.__ynowLocaleVerifyTimer) {
+                clearTimeout(window.__ynowLocaleVerifyTimer);
+                window.__ynowLocaleVerifyTimer = null;
+              }
               window.__ynowLocaleUserPick = val;
+              window.__ynowLocaleUserPickSeq = (window.__ynowLocaleUserPickSeq || 0) + 1;
+              var pickSeq = window.__ynowLocaleUserPickSeq;
               try {
                 document.documentElement.setAttribute('lang', val === 'zh-TW' ? 'zh-TW' : 'en');
               } catch (eLangOpt) {}
+              /* Click-time boot apply: real menu strings (首頁／關於) without waiting
+                 on ynowUiLocale. Server push still refreshes the full string map. */
+              try {
+                var bootRoot = window.__YNOW_UI_LOCALE_BOOT || {};
+                var boot = bootRoot[val] || (val === 'zh-TW' ? bootRoot['zh-TW'] : bootRoot.en);
+                var bootHome = boot && boot.strings ? boot.strings.menu_home : null;
+                var bootAbout = boot && boot.strings ? boot.strings.menu_about : null;
+                if (boot && typeof applyUiLocale === 'function') {
+                  var mkt = document.body.classList.contains('ynow-market-tw') ? 'TW' : 'US';
+                  applyUiLocale({
+                    locale: boot.locale || val,
+                    market: mkt,
+                    strings: boot.strings || {},
+                    tabs: boot.tabs || {},
+                    boxes: boot.boxes || []
+                  }, {fromBoot: true});
+                  // #region agent log
+                  ynowAgentDbg('C', 'ynow_ui.R:bindLangModeButtons', 'boot-apply', {
+                    val: val,
+                    menu_home: bootHome || null,
+                    menu_about: bootAbout || null,
+                    stringKeys: boot.strings ? Object.keys(boot.strings).length : 0,
+                    pickSeq: pickSeq,
+                    homeAfter: (function () {
+                      var a = document.querySelector('.sidebar-menu a[data-value=\"home\"]');
+                      if (!a) return null;
+                      var sp = a.querySelector('.ynow-menu-label, span:not(.pull-right-container):not(.ynow-rec-slot)');
+                      return ((sp && sp.textContent) || a.textContent || '').replace(/\\s+/g, ' ').trim().slice(0, 40);
+                    })()
+                  });
+                  // #endregion
+                } else {
+                  // #region agent log
+                  ynowAgentDbg('D', 'ynow_ui.R:bindLangModeButtons', 'boot-apply-missing', {
+                    val: val,
+                    hasBootRoot: !!bootRoot && Object.keys(bootRoot).length > 0,
+                    hasBoot: !!boot,
+                    hasApply: typeof applyUiLocale === 'function',
+                    pickSeq: pickSeq
+                  });
+                  // #endregion
+                }
+              } catch (eBoot) {
+                // #region agent log
+                try {
+                  ynowAgentDbg('D', 'ynow_ui.R:bindLangModeButtons', 'boot-apply-error', {
+                    val: val,
+                    err: String(eBoot && eBoot.message || eBoot)
+                  });
+                } catch (eBootLog) {}
+                // #endregion
+              }
               if (window.Shiny && Shiny.setInputValue) {
                 Shiny.setInputValue('ui_locale_pick', val, {priority: 'event'});
                 // #region agent log
                 ynowAgentDbg('C', 'ynow_ui.R:bindLangModeButtons', 'setInputValue-ui_locale_pick', {val: val});
                 // #endregion
-                /* Single recovery shot: if full string apply never lands, force-repush once. */
                 var expect = val;
-                setTimeout(function () {
+                window.__ynowLocaleVerifyTimer = setTimeout(function () {
+                  window.__ynowLocaleVerifyTimer = null;
+                  if (pickSeq !== window.__ynowLocaleUserPickSeq) return;
                   var home = document.querySelector('.sidebar-menu a[data-value=\"home\"]');
-                  var homeTxt = home ? (home.textContent || '').replace(/\\s+/g, ' ').trim() : '';
+                  var about = document.querySelector('.sidebar-menu a[data-value=\"about\"]');
+                  var sp = home ? home.querySelector('.ynow-menu-label, span:not(.pull-right-container):not(.ynow-rec-slot)') : null;
+                  var spA = about ? about.querySelector('.ynow-menu-label, span:not(.pull-right-container):not(.ynow-rec-slot)') : null;
+                  var homeTxt = ((sp && sp.textContent) || (home && home.textContent) || '').replace(/\\s+/g, ' ').trim();
+                  var aboutTxt = ((spA && spA.textContent) || (about && about.textContent) || '').replace(/\\s+/g, ' ').trim();
                   var needZh = expect === 'zh-TW';
-                  var stringsOk = needZh ? /首頁/.test(homeTxt) : /Home/i.test(homeTxt);
+                  var stringsOk = needZh
+                    ? (/首頁/.test(homeTxt) && /關於/.test(aboutTxt))
+                    : (/Home/i.test(homeTxt) && /About/i.test(aboutTxt));
                   // #region agent log
                   ynowAgentDbg('D', 'ynow_ui.R:bindLangModeButtons', 'lang-click-verify', {
                     expect: expect,
                     htmlLang: document.documentElement.getAttribute('lang'),
                     homeTxt: homeTxt.slice(0, 40),
-                    stringsOk: stringsOk
+                    aboutTxt: aboutTxt.slice(0, 40),
+                    stringsOk: stringsOk,
+                    pendingPick: window.__ynowLocaleUserPick || null,
+                    pickSeq: pickSeq
                   });
                   // #endregion
                   if (stringsOk || !(window.Shiny && Shiny.setInputValue)) return;
+                  // #region agent log
+                  ynowAgentDbg('D', 'ynow_ui.R:bindLangModeButtons', 'force-repick', {
+                    expect: expect,
+                    homeTxt: homeTxt.slice(0, 40),
+                    aboutTxt: aboutTxt.slice(0, 40)
+                  });
+                  // #endregion
                   Shiny.setInputValue('ui_locale_pick', expect, {priority: 'event'});
-                }, 1600);
+                  try {
+                    var bootRoot2 = window.__YNOW_UI_LOCALE_BOOT || {};
+                    var boot2 = bootRoot2[expect] || (expect === 'zh-TW' ? bootRoot2['zh-TW'] : bootRoot2.en);
+                    if (boot2 && typeof applyUiLocale === 'function') {
+                      var mkt2 = document.body.classList.contains('ynow-market-tw') ? 'TW' : 'US';
+                      applyUiLocale({
+                        locale: boot2.locale || expect,
+                        market: mkt2,
+                        strings: boot2.strings || {},
+                        tabs: boot2.tabs || {},
+                        boxes: boot2.boxes || []
+                      }, {fromBoot: true});
+                    }
+                  } catch (eBoot2) {}
+                }, 1200);
               }
             });
             // #region agent log
@@ -8383,7 +8478,9 @@ ui <- dashboardPage(
             });
           }
 
-          function applyUiLocale(payload) {
+          function applyUiLocale(payload, opts) {
+            opts = opts || {};
+            var fromBoot = !!opts.fromBoot;
             var s = (payload && payload.strings) || {};
             var incoming = payload && payload.locale ? String(payload.locale) : 'en';
             var pendingPick = window.__ynowLocaleUserPick ? String(window.__ynowLocaleUserPick) : '';
@@ -8393,15 +8490,14 @@ ui <- dashboardPage(
                 if (typeof ynowAgentDbg === 'function') {
                   ynowAgentDbg('D', 'ynow_ui.R:applyUiLocale', 'apply-skipped-stale', {
                     incoming: incoming,
-                    pendingPick: pendingPick
+                    pendingPick: pendingPick,
+                    fromBoot: fromBoot
                   });
                 }
               } catch (eStale) {}
               // #endregion
               return;
             }
-            /* Keep pending until after strings are written so a trailing stale
-               `en` queued behind this zh-TW message cannot clear the guard early. */
             // #region agent log
             try {
               if (typeof ynowAgentDbg === 'function') {
@@ -8412,7 +8508,8 @@ ui <- dashboardPage(
                   menu_dashboard: s.menu_dashboard || null,
                   hdr_lang_zh: s.hdr_lang_zh || null,
                   stringKeys: Object.keys(s).length,
-                  prevHtmlLang: document.documentElement.getAttribute('lang')
+                  prevHtmlLang: document.documentElement.getAttribute('lang'),
+                  fromBoot: fromBoot
                 });
               }
             } catch (eDbgEnter) {}
@@ -9429,9 +9526,9 @@ ui <- dashboardPage(
             document.querySelectorAll('#ynow-market-header .ynow-mkt-btn').forEach(function (b) {
               b.classList.toggle('active', b.getAttribute('data-value') === mkt);
             });
-            if (pendingPick && incoming === pendingPick) {
-              window.__ynowLocaleUserPick = null;
-            }
+            /* Keep __ynowLocaleUserPick sticky after the first manual click.
+               Clearing it on server-confirm let a late queued `en` overwrite
+               首頁／關於 after an early 繁中 apply had already succeeded. */
             // #region agent log
             try {
               if (typeof ynowAgentDbg === 'function') {
@@ -9441,6 +9538,8 @@ ui <- dashboardPage(
                     document.getElementById('ynow_lang_btn_zh').classList.contains('active')),
                   enActive: !!(document.getElementById('ynow_lang_btn_en') &&
                     document.getElementById('ynow_lang_btn_en').classList.contains('active')),
+                  fromBoot: fromBoot,
+                  pendingLeft: window.__ynowLocaleUserPick || null,
                   menuHomeText: (function () {
                     var a = document.querySelector('.sidebar-menu a[data-value=\"home\"]');
                     if (!a) return null;

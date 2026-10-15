@@ -96,6 +96,18 @@ check("client drops stale locale push after manual pick", {
   grepl("__ynowLocaleUserPick", ui_src, fixed = TRUE) &&
     grepl("apply-skipped-stale", ui_src, fixed = TRUE)
 })
+check("click-time boot locale apply (no websocket wait)", {
+  grepl("__YNOW_UI_LOCALE_BOOT", ui_src, fixed = TRUE) &&
+    grepl("fromBoot: true", ui_src, fixed = TRUE) &&
+    grepl("ui_locale_boot_bundle", paste(readLines(file.path(app_dir, "ui_locale.R"), warn = FALSE), collapse = "\n"), fixed = TRUE)
+})
+check("user pick stays sticky (late en cannot overwrite after confirm)", {
+  grepl("Keep __ynowLocaleUserPick sticky", ui_src, fixed = TRUE) &&
+    !grepl("window.__ynowLocaleUserPick = null", ui_src, fixed = TRUE)
+})
+check("same-locale pick logs force-repush", {
+  grepl("locale-pick-force-repush", srv_src, fixed = TRUE)
+})
 
 if (fail > 0L) {
   cat("FAILED: ", fail, " check(s)\n", sep = "")

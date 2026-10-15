@@ -852,18 +852,19 @@ server <- function(input, output, session) {
   observeEvent(input$ui_locale_pick, {
     pick <- normalize_ui_locale(input$ui_locale_pick)
     cur <- isolate(ui_locale())
+    same <- identical(pick, cur)
     # #region agent log
     tryCatch({
       dbg <- jsonlite::toJSON(
         list(
           hypothesisId = "D",
           location = "ynow_server.R:ui_locale_pick",
-          message = "locale-pick-event",
+          message = if (isTRUE(same)) "locale-pick-force-repush" else "locale-pick-event",
           data = list(
             raw = as.character(input$ui_locale_pick %||% "")[1],
             pick = pick,
             current = cur,
-            noop = identical(pick, cur),
+            noop = same,
             force_repush = TRUE
           ),
           timestamp = as.numeric(Sys.time()) * 1000

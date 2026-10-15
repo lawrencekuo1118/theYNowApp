@@ -6235,6 +6235,29 @@ ui_locale_payload <- function(locale = "en") {
   stats::setNames(lapply(keys, function(k) ui_str(k, loc)), keys)
 }
 
+#' Slim chrome payload for first-paint / click-time locale apply (en + zh-TW).
+#' Embedded in the page so 繁中／EN clicks do not wait on a large ynowUiLocale
+#' websocket message (connect races otherwise leave optimistic lang + English menus).
+ui_locale_boot_bundle <- function() {
+  slim_strings <- function(loc) {
+    s <- ui_locale_payload(loc)
+    keep <- grepl(
+      "^(menu_|hdr_|about|home_|btn_|feedback_|test_link|smart_|market_|lite_)",
+      names(s)
+    )
+    as.list(s[keep])
+  }
+  one <- function(loc) {
+    list(
+      locale = loc,
+      strings = slim_strings(loc),
+      tabs = ui_tab_label_map(loc),
+      boxes = list()
+    )
+  }
+  list(en = one("en"), `zh-TW` = one("zh-TW"))
+}
+
 #' data-value → 目前 locale 標籤（小頁籤）
 ui_tab_label_map <- function(locale = "en") {
   loc <- normalize_ui_locale(locale)
