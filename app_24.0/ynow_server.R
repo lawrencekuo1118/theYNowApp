@@ -13486,28 +13486,6 @@ server <- function(input, output, session) {
     eval_n <- lab_resolve_im_eval_n(display_n)
     rank_mode <- lab_normalize_pool_rank_mode(input$lab_im_pool_rank %||% "mcap")
     concept_keys <- input$lab_im_concepts
-    # #region agent log
-    tryCatch({
-      payload <- list(
-        hypothesisId = "A",
-        location = "ynow_server.R:lab_im_search",
-        message = "Search eval inputs",
-        data = list(
-          market = mm0,
-          rank_mode = as.character(rank_mode)[1],
-          concept_keys = as.list(as.character(concept_keys %||% character(0))),
-          max_n_raw = as.character(input$lab_im_max_n %||% "")[1],
-          display_n = if (is.finite(display_n)) as.numeric(display_n) else "Inf",
-          eval_n = if (is.finite(eval_n)) as.numeric(eval_n) else "Inf",
-          n_catalog = if (is.data.frame(catlg)) as.integer(nrow(catlg)) else 0L
-        ),
-        timestamp = as.numeric(Sys.time()) * 1000,
-        runId = "tw-concept-detail"
-      )
-      cat(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"),
-          "\n", file = "/opt/cursor/logs/debug.log", append = TRUE)
-    }, error = function(e) NULL)
-    # #endregion
     loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
     method_filter <- input$lab_im_methods
     industry_filter <- lab_im_industry_filter()
@@ -13893,35 +13871,11 @@ server <- function(input, output, session) {
     )
     rank_mode <- lab_normalize_pool_rank_mode(input$lab_im_pool_rank %||% "mcap")
     concept_keys <- as.character(input$lab_im_concepts %||% character(0))
-    concepts_applied <- FALSE
     if (identical(rank_mode, "concept") && length(concept_keys) > 0L &&
         exists("lab_filter_df_by_concept_keys", mode = "function")) {
       mm <- tryCatch(normalize_market_mode(market_mode()), error = function(e) "US")
       out <- lab_filter_df_by_concept_keys(out, concept_keys, market_mode = mm)
-      concepts_applied <- TRUE
     }
-    # #region agent log
-    tryCatch({
-      scores <- lab_im_scores()
-      payload <- list(
-        hypothesisId = "A",
-        location = "ynow_server.R:lab_im_merged",
-        message = "merged ranking/detail source (concept filter when pool_rank=concept)",
-        data = list(
-          n_merged = if (is.data.frame(out)) as.integer(nrow(out)) else 0L,
-          n_scores = if (is.data.frame(scores)) as.integer(nrow(scores)) else 0L,
-          concepts_input = as.list(concept_keys),
-          pool_rank = as.character(rank_mode)[1],
-          concepts_applied_in_merged = isTRUE(concepts_applied),
-          runPhase = "post-fix"
-        ),
-        timestamp = as.numeric(Sys.time()) * 1000,
-        runId = "tw-concept-detail"
-      )
-      cat(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"),
-          "\n", file = "/opt/cursor/logs/debug.log", append = TRUE)
-    }, error = function(e) NULL)
-    # #endregion
     out
   })
 
@@ -14327,28 +14281,6 @@ server <- function(input, output, session) {
     scores <- lab_im_scores()
     rank_mode_lb <- lab_normalize_pool_rank_mode(input$lab_im_pool_rank %||% "mcap")
     concept_keys_lb <- as.character(input$lab_im_concepts %||% character(0))
-    concepts_applied_lb <- identical(rank_mode_lb, "concept") && length(concept_keys_lb) > 0L
-    # #region agent log
-    tryCatch({
-      payload <- list(
-        hypothesisId = "E",
-        location = "ynow_server.R:lab_im_leaderboard",
-        message = "leaderboard source (concept filter via merged / lb_src)",
-        data = list(
-          n_scores = if (is.data.frame(scores)) as.integer(nrow(scores)) else 0L,
-          concepts_input = as.list(concept_keys_lb),
-          pool_rank = as.character(rank_mode_lb)[1],
-          lb_mode = as.character(input$lab_im_lb_mode %||% "overall")[1],
-          concepts_applied_in_leaderboard = isTRUE(concepts_applied_lb),
-          runPhase = "post-fix"
-        ),
-        timestamp = as.numeric(Sys.time()) * 1000,
-        runId = "tw-concept-detail"
-      )
-      cat(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"),
-          "\n", file = "/opt/cursor/logs/debug.log", append = TRUE)
-    }, error = function(e) NULL)
-    # #endregion
     if (is.null(scores) || !is.data.frame(scores) || nrow(scores) == 0) {
       msg <- tryCatch(ui_str("lab_im_lb_none", loc),
                       error = function(e) "（尚無績優排行 — 請先按「搜尋績優股」）")
@@ -14575,12 +14507,10 @@ server <- function(input, output, session) {
     )
     rank_mode_dt <- lab_normalize_pool_rank_mode(input$lab_im_pool_rank %||% "mcap")
     concept_keys_dt <- as.character(input$lab_im_concepts %||% character(0))
-    concepts_applied_dt <- FALSE
     if (identical(rank_mode_dt, "concept") && length(concept_keys_dt) > 0L &&
         exists("lab_filter_df_by_concept_keys", mode = "function")) {
       mm_dt <- tryCatch(normalize_market_mode(market_mode()), error = function(e) "US")
       merged <- lab_filter_df_by_concept_keys(merged, concept_keys_dt, market_mode = mm_dt)
-      concepts_applied_dt <- TRUE
     }
     display_n <- lab_resolve_im_max_n(input$lab_im_max_n, input$lab_im_max_n_custom)
     # Unlimited / large N: show all rows (page_length=NULL → nrow); else page 20.
@@ -14588,29 +14518,6 @@ server <- function(input, output, session) {
     eq_on <- isTRUE(input$lab_im_eq_only)
     gate_on <- isTRUE(input$lab_im_gate_only)
     no_alert_on <- isTRUE(input$lab_im_no_alert)
-    # #region agent log
-    tryCatch({
-      payload <- list(
-        hypothesisId = "D",
-        location = "ynow_server.R:lab_im_table:pre_cap",
-        message = "detail table before cap",
-        data = list(
-          n_merged = as.integer(nrow(merged)),
-          max_n_raw = as.character(input$lab_im_max_n %||% "")[1],
-          display_n = if (is.finite(display_n)) as.numeric(display_n) else "Inf",
-          concepts_input = as.list(concept_keys_dt),
-          pool_rank = as.character(rank_mode_dt)[1],
-          concepts_applied_in_detail = isTRUE(concepts_applied_dt),
-          page_length = if (is.null(page_len)) "NULL_all" else as.integer(page_len),
-          runPhase = "post-fix"
-        ),
-        timestamp = as.numeric(Sys.time()) * 1000,
-        runId = "tw-concept-detail"
-      )
-      cat(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"),
-          "\n", file = "/opt/cursor/logs/debug.log", append = TRUE)
-    }, error = function(e) NULL)
-    # #endregion
     if (nrow(merged) == 0) {
       scores <- lab_im_scores()
       msg <- if (is.null(scores) || !is.data.frame(scores) || nrow(scores) == 0) {
@@ -14682,25 +14589,6 @@ server <- function(input, output, session) {
       ),
       loc
     )
-    # #region agent log
-    tryCatch({
-      payload <- list(
-        hypothesisId = "D",
-        location = "ynow_server.R:lab_im_table:render",
-        message = "detail table render row counts",
-        data = list(
-          n_show_df = as.integer(nrow(show_df)),
-          page_length = if (is.null(page_len)) "NULL_all" else as.integer(page_len),
-          display_n = if (is.finite(display_n)) as.numeric(display_n) else "Inf",
-          runPhase = "post-fix"
-        ),
-        timestamp = as.numeric(Sys.time()) * 1000,
-        runId = "tw-concept-detail"
-      )
-      cat(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"),
-          "\n", file = "/opt/cursor/logs/debug.log", append = TRUE)
-    }, error = function(e) NULL)
-    # #endregion
     ynow_sortable_datatable(
       show_df,
       escape = FALSE,

@@ -680,53 +680,11 @@ lab_cap_detail_display <- function(merged_df, display_n,
     no_alert = no_alert
   )
   if (is.null(pool) || !is.data.frame(pool) || nrow(pool) == 0L) {
-    # #region agent log
-    tryCatch({
-      payload <- list(
-        hypothesisId = "C",
-        location = "lab_industry_method.R:lab_cap_detail_display",
-        message = "detail cap empty pool",
-        data = list(
-          n_merged = if (is.data.frame(merged_df)) as.integer(nrow(merged_df)) else 0L,
-          display_n = if (is.numeric(display_n) && length(display_n) && is.finite(display_n[1])) {
-            as.numeric(display_n[1])
-          } else as.character(if (is.null(display_n)) "" else display_n)[1]
-        ),
-        timestamp = as.numeric(Sys.time()) * 1000,
-        runId = "tw-concept-detail"
-      )
-      cat(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"),
-          "\n", file = "/opt/cursor/logs/debug.log", append = TRUE)
-    }, error = function(e) NULL)
-    # #endregion
     return(pool)
   }
   d <- suppressWarnings(as.numeric(display_n)[1])
-  out <- if (!is.finite(d) || d < 1) pool else utils::head(pool, as.integer(d))
-  # #region agent log
-  tryCatch({
-    payload <- list(
-      hypothesisId = "C",
-      location = "lab_industry_method.R:lab_cap_detail_display",
-      message = "detail cap applied",
-      data = list(
-        n_merged = as.integer(nrow(merged_df)),
-        n_qualified = as.integer(nrow(pool)),
-        n_out = as.integer(nrow(out)),
-        display_n_finite = is.finite(d),
-        display_n = if (is.finite(d)) as.numeric(d) else "Inf",
-        eq_only = isTRUE(eq_only),
-        gate_only = isTRUE(gate_only),
-        no_alert = isTRUE(no_alert)
-      ),
-      timestamp = as.numeric(Sys.time()) * 1000,
-      runId = "tw-concept-detail"
-    )
-    cat(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"),
-        "\n", file = "/opt/cursor/logs/debug.log", append = TRUE)
-  }, error = function(e) NULL)
-  # #endregion
-  out
+  if (!is.finite(d) || d < 1) return(pool)
+  utils::head(pool, as.integer(d))
 }
 
 lab_dedupe_eval_pool <- function(pool) {
@@ -1084,33 +1042,6 @@ lab_select_eval_pool <- function(pool, max_n = 25L, mode = "mcap",
     } else {
       ckeys <- lab_normalize_multi_filter(concept_keys)
       ctks <- lab_concept_tickers(ckeys, market = mm)
-      # #region agent log
-      tryCatch({
-        bare_keys <- if (exists("lab_concept_bare_key", mode = "function")) {
-          vapply(ckeys, lab_concept_bare_key, character(1), USE.NAMES = FALSE)
-        } else {
-          as.character(ckeys)
-        }
-        payload <- list(
-          hypothesisId = "B",
-          location = "lab_industry_method.R:lab_select_eval_pool",
-          message = "concept filter resolve",
-          data = list(
-            market = mm,
-            mode_in = "concept",
-            concept_keys = as.list(as.character(ckeys)),
-            bare_keys = as.list(as.character(bare_keys)),
-            n_concept_tickers = length(ctks),
-            n_pool_in = as.integer(nrow(pool)),
-            sample_ctks = as.list(utils::head(as.character(ctks), 5L))
-          ),
-          timestamp = as.numeric(Sys.time()) * 1000,
-          runId = "tw-concept-detail"
-        )
-        cat(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"),
-            "\n", file = "/opt/cursor/logs/debug.log", append = TRUE)
-      }, error = function(e) NULL)
-      # #endregion
       if (!length(ckeys) || !length(ctks)) {
         mode <- "mcap"
         note <- "concept_none_selected_fallback_mcap"
@@ -1131,26 +1062,6 @@ lab_select_eval_pool <- function(pool, max_n = 25L, mode = "mcap",
         }
       }
     }
-    # #region agent log
-    tryCatch({
-      payload <- list(
-        hypothesisId = "B",
-        location = "lab_industry_method.R:lab_select_eval_pool:after_concept",
-        message = "concept filter outcome",
-        data = list(
-          market = mm,
-          mode_out = mode,
-          note = as.character(note)[1],
-          n_pool_out = as.integer(nrow(pool)),
-          max_n = if (is.finite(max_n)) as.integer(max_n) else "Inf"
-        ),
-        timestamp = as.numeric(Sys.time()) * 1000,
-        runId = "tw-concept-detail"
-      )
-      cat(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"),
-          "\n", file = "/opt/cursor/logs/debug.log", append = TRUE)
-    }, error = function(e) NULL)
-    # #endregion
   }
 
   # Soft Yahoo-cost guard for 1Y returns only. Never pre-cut a pool that already
@@ -2091,41 +2002,9 @@ lab_im_run_eval_job <- function(catlg,
   if (is.null(pool) || !is.data.frame(pool) || nrow(pool) < 1L) {
     return(list(ok = FALSE, reason = "no_candidates", scores = NULL))
   }
-  # #region agent log
-  .dbg_dn_in <- display_n
-  .dbg_en_in <- eval_n
-  # #endregion
   display_n <- lab_coerce_im_job_n(display_n)
   eval_n <- lab_coerce_im_job_n(eval_n)
   if (!is.finite(eval_n) || (is.finite(eval_n) && eval_n < 1L)) eval_n <- display_n
-  # #region agent log
-  tryCatch({
-    payload <- list(
-      hypothesisId = "C",
-      location = "lab_industry_method.R:lab_im_run_eval_job",
-      message = "max_n after job_n coerce (preserves Inf)",
-      data = list(
-        market = mm,
-        rank_mode = as.character(if (is.null(rank_mode)) "mcap" else rank_mode)[1],
-        concept_keys = as.list(as.character(if (is.null(concept_keys)) character(0) else concept_keys)),
-        display_n_in = if (is.numeric(.dbg_dn_in) && length(.dbg_dn_in)) {
-          if (is.finite(.dbg_dn_in[1])) as.numeric(.dbg_dn_in[1]) else "Inf"
-        } else as.character(if (is.null(.dbg_dn_in)) "" else .dbg_dn_in)[1],
-        eval_n_in = if (is.numeric(.dbg_en_in) && length(.dbg_en_in)) {
-          if (is.finite(.dbg_en_in[1])) as.numeric(.dbg_en_in[1]) else "Inf"
-        } else as.character(if (is.null(.dbg_en_in)) "" else .dbg_en_in)[1],
-        display_n_after = if (is.finite(display_n)) as.numeric(display_n) else "Inf",
-        eval_n_after = if (is.finite(eval_n)) as.numeric(eval_n) else "Inf",
-        n_pool_raw = as.integer(nrow(pool)),
-        runPhase = "post-fix"
-      ),
-      timestamp = as.numeric(Sys.time()) * 1000,
-      runId = "tw-concept-detail"
-    )
-    cat(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"),
-        "\n", file = "/opt/cursor/logs/debug.log", append = TRUE)
-  }, error = function(e) NULL)
-  # #endregion
   rank_mode <- lab_normalize_pool_rank_mode(rank_mode %||% "mcap")
   n_raw <- nrow(pool)
   if (is.finite(eval_n) && n_raw > eval_n) {
