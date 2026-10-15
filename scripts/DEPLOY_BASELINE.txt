@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12692115
+bundleId=12692157
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=f9299706eb850ea5e5a241f36b25f384e3160256
-commit=f9299706eb850ea5e5a241f36b25f384e3160256
-short=f929970
-message=fix(ui): drop Full sidebar separators under Home and above About (v24.02)
-captured_at=2026-10-15T01:37:44Z
+aligned_git=39c754da6c85fd3c2a87dc8bb5159a810260180b
+commit=39c754da6c85fd3c2a87dc8bb5159a810260180b
+short=39c754d
+message=merge #236 #237 #238 + ship v24.03
+captured_at=2026-10-15T01:56:33Z
 display_version=v24.03
