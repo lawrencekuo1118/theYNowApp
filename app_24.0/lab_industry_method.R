@@ -2217,13 +2217,45 @@ lab_count_filter_pool_tickers <- function(catalog,
                                           industry_filter = character(0),
                                           include_adr = TRUE,
                                           market_mode = "US") {
-  as.integer(nrow(lab_structural_filter_pool(
+  pool <- lab_structural_filter_pool(
     catalog,
     method_filter = method_filter,
     industry_filter = industry_filter,
     include_adr = include_adr,
     market_mode = market_mode
-  )))
+  )
+  n <- as.integer(nrow(pool))
+  # #region agent log
+  tryCatch({
+    mf <- lab_normalize_multi_filter(method_filter)
+    indf <- lab_normalize_multi_filter(industry_filter)
+    dbg <- jsonlite::toJSON(
+      list(
+        hypothesisId = "E",
+        location = "lab_industry_method.R:lab_count_filter_pool_tickers",
+        message = "count-struct",
+        data = list(
+          market_mode = as.character(market_mode %||% "")[1],
+          catalog_n = if (is.data.frame(catalog)) nrow(catalog) else 0L,
+          method_raw_n = length(as.character(unlist(method_filter, use.names = FALSE))),
+          method_norm_n = length(mf),
+          method_norm = as.character(mf),
+          industry_raw_n = length(as.character(unlist(industry_filter, use.names = FALSE))),
+          industry_norm_n = length(indf),
+          industry_empty_means_all = !length(indf),
+          include_adr = isTRUE(include_adr),
+          n_struct = n
+        ),
+        timestamp = as.numeric(Sys.time()) * 1000,
+        runId = "tw-filter-count"
+      ),
+      auto_unbox = TRUE,
+      null = "null"
+    )
+    cat(paste0(dbg, "\n"), file = "/opt/cursor/logs/debug.log", append = TRUE)
+  }, error = function(e) invisible(NULL))
+  # #endregion
+  n
 }
 
 #' Slow-cache lifetime for earnings-quality / F-Score / FS-alert snapshots.

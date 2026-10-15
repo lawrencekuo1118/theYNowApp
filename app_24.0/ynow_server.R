@@ -7,6 +7,38 @@ server <- function(input, output, session) {
   # instead of forcing the user onto the gray "Disconnected / Reload" overlay.
   tryCatch(session$allowReconnect("force"), error = function(e) NULL)
 
+  # #region agent log
+  .ynow_dbg_filter_count <- function(hypothesisId, location, message, data = list()) {
+    tryCatch({
+      dbg <- jsonlite::toJSON(
+        list(
+          hypothesisId = as.character(hypothesisId %||% "")[1],
+          location = as.character(location %||% "")[1],
+          message = as.character(message %||% "")[1],
+          data = data,
+          timestamp = as.numeric(Sys.time()) * 1000,
+          runId = "tw-filter-count"
+        ),
+        auto_unbox = TRUE,
+        null = "null"
+      )
+      cat(paste0(dbg, "\n"), file = "/opt/cursor/logs/debug.log", append = TRUE)
+    }, error = function(e) invisible(NULL))
+  }
+  observeEvent(input$ynow_agent_dbg, {
+    raw <- input$ynow_agent_dbg
+    if (is.null(raw)) return()
+    line <- if (is.character(raw)) paste(raw, collapse = "") else {
+      tryCatch(jsonlite::toJSON(raw, auto_unbox = TRUE, null = "null"), error = function(e) NULL)
+    }
+    if (is.null(line) || !nzchar(line)) return()
+    tryCatch(
+      cat(paste0(line, "\n"), file = "/opt/cursor/logs/debug.log", append = TRUE),
+      error = function(e) invisible(NULL)
+    )
+  }, ignoreNULL = TRUE)
+  # #endregion
+
   # Sidebar tab label busy dots (JS `ynowTabBusy` → animated 「…」 on menu item)
   .ynow_set_tab_busy <- function(tab, busy = TRUE) {
     tab <- as.character(tab %||% "")[1]
@@ -12988,21 +13020,62 @@ server <- function(input, output, session) {
     lab_im_catalog_nonce()
     mode <- market_mode()
     boards <- tryCatch(.lab_im_boards(), error = function(e) c("TWSE", "TPEX"))
-    tryCatch(
+    out <- tryCatch(
       lab_build_industry_method_catalog(market_mode = mode, boards = boards),
       error = function(e) {
         showNotification(.ui_msg("notif_industry_catalog_fail", err = e$message), type = "error")
         data.frame()
       }
     )
+    # #region agent log
+    .ynow_dbg_filter_count(
+      "B",
+      "ynow_server.R:lab_im_catalog",
+      "catalog-built",
+      list(
+        market = tryCatch(normalize_market_mode(mode), error = function(e) as.character(mode)[1]),
+        boards = as.character(boards %||% character(0)),
+        boards_from_input = as.character(isolate(input$lab_im_boards) %||% character(0)),
+        nrow = if (is.data.frame(out)) nrow(out) else 0L,
+        n_tickers = if (is.data.frame(out) && "ticker" %in% names(out)) {
+          length(unique(as.character(out$ticker)))
+        } else {
+          0L
+        },
+        nonce = tryCatch(as.integer(lab_im_catalog_nonce()), error = function(e) NA_integer_)
+      )
+    )
+    # #endregion
+    out
   })
 
   # Industry chain × sub-industry → industry_key filter for Blue Chip Lab
   lab_im_industry_filter <- reactive({
-    lab_resolve_industry_filter_keys(
-      chain_ids = input$lab_im_chains,
-      sub_keys = input$lab_im_industries
+    chains <- input$lab_im_chains
+    subs <- input$lab_im_industries
+    keys <- lab_resolve_industry_filter_keys(
+      chain_ids = chains,
+      sub_keys = subs
     )
+    # #region agent log
+    .ynow_dbg_filter_count(
+      "D",
+      "ynow_server.R:lab_im_industry_filter",
+      "industry-filter-resolved",
+      list(
+        chains_null = is.null(chains),
+        chains_n = length(as.character(chains %||% character(0))),
+        chains_head = head(as.character(chains %||% character(0)), 5),
+        subs_null = is.null(subs),
+        subs_n = length(as.character(subs %||% character(0))),
+        subs_head = head(as.character(subs %||% character(0)), 5),
+        keys_n = length(as.character(keys %||% character(0))),
+        keys_head = head(as.character(keys %||% character(0)), 8),
+        market = tryCatch(normalize_market_mode(isolate(market_mode())), error = function(e) NA_character_)
+      )
+    )
+    # #endregion
+    keys
   })
 
   # Coalesce Blue Chip picker locale refreshes so ZH/EN stays snappy during eval.
@@ -13613,6 +13686,13 @@ server <- function(input, output, session) {
     loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
     catlg <- tryCatch(lab_im_catalog(), error = function(e) NULL)
     mm <- tryCatch(normalize_market_mode(market_mode()), error = function(e) "US")
+    methods_raw <- input$lab_im_methods
+    ind_filter <- lab_im_industry_filter()
+    boards_raw <- input$lab_im_boards
+    boards_norm <- tryCatch(.lab_im_boards(), error = function(e) character(0))
+    eq_only <- isTRUE(input$lab_im_eq_only)
+    gate_only <- isTRUE(input$lab_im_gate_only)
+    no_alert <- isTRUE(input$lab_im_no_alert)
     include_adr <- if (identical(mm, "TW")) {
       TRUE
     } else {
@@ -13621,8 +13701,8 @@ server <- function(input, output, session) {
     n_struct <- if (is.data.frame(catlg) && nrow(catlg) > 0L) {
       lab_count_filter_pool_tickers(
         catlg,
-        method_filter = input$lab_im_methods,
-        industry_filter = lab_im_industry_filter(),
+        method_filter = methods_raw,
+        industry_filter = ind_filter,
         include_adr = include_adr,
         market_mode = mm
       )
@@ -13633,8 +13713,8 @@ server <- function(input, output, session) {
       tryCatch(
         lab_structural_filter_pool(
           catlg,
-          method_filter = input$lab_im_methods,
-          industry_filter = lab_im_industry_filter(),
+          method_filter = methods_raw,
+          industry_filter = ind_filter,
           include_adr = include_adr,
           market_mode = mm
         ),
@@ -13648,15 +13728,54 @@ server <- function(input, output, session) {
       lab_apply_quality_snapshot(
         if (is.data.frame(struct)) struct$ticker else character(0),
         snap,
-        eq_only = isTRUE(input$lab_im_eq_only),
-        gate_only = isTRUE(input$lab_im_gate_only),
-        no_alert = isTRUE(input$lab_im_no_alert)
+        eq_only = eq_only,
+        gate_only = gate_only,
+        no_alert = no_alert
       ),
       error = function(e) NULL
     )
     n_pool <- if (is.list(gated)) as.integer(gated$n_show) else as.integer(n_struct)
     n_pool <- as.integer(n_pool %||% 0L)[1]
     if (!is.finite(n_pool) || n_pool < 0L) n_pool <- 0L
+    # #region agent log
+    .ynow_dbg_filter_count(
+      "A",
+      "ynow_server.R:lab_im_filter_count",
+      "render-count",
+      list(
+        market = mm,
+        loc = loc,
+        catalog_n = if (is.data.frame(catlg)) nrow(catlg) else 0L,
+        catalog_tickers = if (is.data.frame(catlg) && "ticker" %in% names(catlg)) {
+          length(unique(as.character(catlg$ticker)))
+        } else {
+          0L
+        },
+        methods_null = is.null(methods_raw),
+        methods = as.character(methods_raw %||% character(0)),
+        methods_n = length(as.character(methods_raw %||% character(0))),
+        ind_filter_n = length(as.character(ind_filter %||% character(0))),
+        ind_filter_head = head(as.character(ind_filter %||% character(0)), 8),
+        chains_n = length(as.character(input$lab_im_chains %||% character(0))),
+        industries_n = length(as.character(input$lab_im_industries %||% character(0))),
+        boards_raw = as.character(boards_raw %||% character(0)),
+        boards_norm = as.character(boards_norm %||% character(0)),
+        include_adr = isTRUE(include_adr),
+        eq_only = eq_only,
+        gate_only = gate_only,
+        no_alert = no_alert,
+        n_struct = as.integer(n_struct %||% 0L)[1],
+        n_pool_display = n_pool,
+        gated_n_show = if (is.list(gated)) as.integer(gated$n_show %||% NA_integer_)[1] else NA_integer_,
+        gated_n_pool = if (is.list(gated)) as.integer(gated$n_pool %||% NA_integer_)[1] else NA_integer_,
+        gated_n_covered = if (is.list(gated)) as.integer(gated$n_covered %||% NA_integer_)[1] else NA_integer_,
+        gated_gates_on = if (is.list(gated)) isTRUE(gated$gates_on) else NA,
+        snap_rows = if (is.data.frame(snap)) nrow(snap) else 0L,
+        quality_nonce = tryCatch(as.integer(lab_quality_snap_nonce()), error = function(e) NA_integer_),
+        used_gated_n_show = is.list(gated)
+      )
+    )
+    # #endregion
     snap_ui <- NULL
     if (is.list(gated)) {
       if (!is.finite(gated$n_covered) || gated$n_covered < 1L) {
