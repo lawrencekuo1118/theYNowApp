@@ -16,7 +16,7 @@
       return(sub('^"version"\\s*:\\s*"([^"]+)".*$', "\\1", m[[1]]))
     }
   }
-  "v24.03"
+  "v24.04"
 }
 .YNOW_BUILD_VERSION <- .ynow_read_build_version()
 
@@ -230,7 +230,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v24.03) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+          "The YNow App (v24.04) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
         ),
         tags$p(
           class = "ynow-about-method",
@@ -249,7 +249,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v24.03) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
+          "The YNow App (v24.04) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
         ),
         tags$p(
           class = "ynow-about-method",
@@ -351,7 +351,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App（簡化版）")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite（v24.03）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
+          "The YNow App Lite（v24.04）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
           "以自動判別主／副模型與預設參數完成試算，讓使用者先看到合理價區間與產業 KPI，再決定是否回到完整版深入調整。"
         ),
         tags$p(
@@ -368,7 +368,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App (Lite)")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite (v24.03) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
+          "The YNow App Lite (v24.04) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
           "auto-selects primary/secondary models with App defaults, and surfaces fair-value ranges plus industry KPIs before you open Full for deeper calibration."
         ),
         tags$p(
@@ -3434,9 +3434,9 @@ ui <- dashboardPage(
                   'data-ynow-build="', .YNOW_BUILD_VERSION, '" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v24.03</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v24.04</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v24.03</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v24.04</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -3452,14 +3452,34 @@ ui <- dashboardPage(
           class = "ynow-mkt-btn active",
           id = "ynow_mkt_btn_us",
           `data-value` = "US",
-          "US"
+          `aria-label` = "US",
+          title = "US",
+          # Fixed-size SVG so US/TW flags match pixel-for-pixel (emoji glyphs differ).
+          HTML(paste0(
+            '<svg class="ynow-mkt-flag" aria-hidden="true" width="18" height="12" viewBox="0 0 19 10" ',
+            'xmlns="http://www.w3.org/2000/svg" focusable="false">',
+            '<rect width="19" height="10" fill="#B22234"/>',
+            '<path d="M0 1.1h19M0 3.3h19M0 5.5h19M0 7.7h19M0 9.9h19" stroke="#fff" stroke-width="1.1"/>',
+            '<rect width="7.6" height="5.5" fill="#3C3B6E"/>',
+            '</svg>'
+          ))
         ),
         tags$button(
           type = "button",
           class = "ynow-mkt-btn",
           id = "ynow_mkt_btn_tw",
           `data-value` = "TW",
-          "TW"
+          `aria-label` = "TW",
+          title = "TW",
+          HTML(paste0(
+            '<svg class="ynow-mkt-flag" aria-hidden="true" width="18" height="12" viewBox="0 0 18 12" ',
+            'xmlns="http://www.w3.org/2000/svg" focusable="false">',
+            '<rect width="18" height="12" fill="#FE0000"/>',
+            '<rect width="9" height="6" fill="#000095"/>',
+            '<circle cx="4.5" cy="3" r="2.1" fill="#fff"/>',
+            '<circle cx="4.5" cy="3" r="1.25" fill="#000095"/>',
+            '</svg>'
+          ))
         )
       )
     ),
@@ -4163,7 +4183,8 @@ ui <- dashboardPage(
           box-shadow: none !important;
         }
 
-        /* 美股／台股：釘在三線 icon 右側（navbar 座標；脫離右欄 flex；無空隙） */
+        /* 美股／台股：釘在三線 icon 右側上下堆疊（滿 50px／各 25px）；國旗等寬等高。
+           absolute + JS left 可在 DOM 搬移前／後都貼齊 toggle（避免停在右欄 custom-menu）。 */
         .main-header .navbar {
           position: relative !important;
         }
@@ -4172,6 +4193,7 @@ ui <- dashboardPage(
           padding-right: 0 !important;
           margin-right: 0 !important;
         }
+        .main-header .navbar > #ynow-market-header.ynow-market-header,
         .main-header .navbar #ynow-market-header.ynow-market-header,
         .main-header .navbar-custom-menu #ynow-market-header.ynow-market-header,
         .main-header .navbar-custom-menu .navbar-nav > li#ynow-market-header.ynow-market-header {
@@ -4210,10 +4232,26 @@ ui <- dashboardPage(
           border-radius: 0;
           background: rgba(255,255,255,0.12);
           color: #fff;
-          font-size: 11px;
-          font-weight: 700;
-          line-height: 23px;
+          font-size: 14px;
+          font-weight: 400;
+          line-height: 1;
           cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        #ynow-market-header .ynow-mkt-btn .ynow-mkt-flag {
+          display: block;
+          width: 18px !important;
+          height: 12px !important;
+          min-width: 18px;
+          min-height: 12px;
+          max-width: 18px;
+          max-height: 12px;
+          flex: 0 0 auto;
+          margin: 0;
+          padding: 0;
+          pointer-events: none;
         }
         #ynow-market-header .ynow-mkt-btn + .ynow-mkt-btn {
           border-top-width: 0;
@@ -7406,8 +7444,9 @@ ui <- dashboardPage(
               navbar.insertBefore(market, toggle.nextSibling);
             }
             var leftPx = Math.round(toggle.offsetLeft + toggle.offsetWidth);
-            if (!(leftPx > 0)) leftPx = Math.round(toggle.offsetWidth);
+            if (!(leftPx > 0)) leftPx = Math.round(toggle.offsetWidth) || 44;
             market.style.left = leftPx + 'px';
+            market.style.top = '0';
             market.style.marginLeft = '0';
             market.style.paddingLeft = '0';
             placeMobileAppTitle();
@@ -8910,10 +8949,17 @@ ui <- dashboardPage(
                 }
               }
             }
+            /* Market buttons show equal-size flag glyphs; locale only updates a11y labels. */
             var mktUs = document.getElementById('ynow_mkt_btn_us');
-            if (mktUs && s.market_us) mktUs.textContent = s.market_us;
+            if (mktUs && s.market_us) {
+              mktUs.setAttribute('aria-label', s.market_us);
+              mktUs.setAttribute('title', s.market_us);
+            }
             var mktTw = document.getElementById('ynow_mkt_btn_tw');
-            if (mktTw && s.market_tw) mktTw.textContent = s.market_tw;
+            if (mktTw && s.market_tw) {
+              mktTw.setAttribute('aria-label', s.market_tw);
+              mktTw.setAttribute('title', s.market_tw);
+            }
             var mktStack = document.querySelector('#ynow-market-header .ynow-market-stack');
             if (mktStack && s.market_hint) mktStack.setAttribute('aria-label', s.market_hint);
             var langStack = document.getElementById('ynow_lang_stack') ||
@@ -13003,6 +13049,8 @@ ui <- dashboardPage(
             align-self: auto;
             margin: 0 !important;
             padding: 0 !important;
+            width: 40px !important;
+            height: 50px !important;
           }
           .main-header .navbar-custom-menu {
             float: none !important;
