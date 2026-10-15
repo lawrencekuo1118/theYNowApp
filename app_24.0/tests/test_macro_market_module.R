@@ -104,8 +104,22 @@ check("TW industry en matches snapshot", identical(macro_industry_choices("TW", 
 foundry_tks <- macro_theme_tickers("sc.Foundry", "TW")
 check("TW foundry basket includes 2330", "2330.TW" %in% foundry_tks && length(foundry_tks) > 10L)
 check("TW snapshot key is not a concept row", !"sc.Foundry" %in% unname(con_tw))
-check("TW industry default is snapshot foundry", identical(macro_industry_default_key("TW"), "sc.Foundry"))
-check("US industry default key", identical(macro_industry_default_key("US"), "gics_xlk"))
+check("US industry default key blank", identical(macro_industry_default_key("US"), ""))
+check("TW industry default key blank", identical(macro_industry_default_key("TW"), ""))
+check(
+  "US linked Foundry → XLK",
+  identical(macro_resolve_linked_industry_key("sc.Foundry", "US"), "gics_xlk")
+)
+check(
+  "US linked Banking → XLF",
+  identical(macro_resolve_linked_industry_key("fn.Banking", "US"), "gics_xlf")
+)
+check(
+  "TW linked Foundry passthrough",
+  identical(macro_resolve_linked_industry_key("sc.Foundry", "TW"), "sc.Foundry") ||
+    identical(macro_resolve_linked_industry_key("sc.Foundry", "TW"), "")
+)
+check("blank linked stays blank", identical(macro_resolve_linked_industry_key("", "US"), ""))
 check("US concept has mag7", "concept_mag7" %in% unname(con_us))
 check("US concept has no GICS keys", !any(startsWith(unname(con_us), "gics_")))
 check("TW concept has shipping", "tw_shipping" %in% unname(con_tw))
@@ -360,8 +374,31 @@ check("combined overlay theme_key gone", !grepl('ns("theme_key")', txt, fixed = 
 check("combined title gone", !grepl("Industry / concept vs benchmark", txt, fixed = TRUE))
 check("industry vs benchmark first paint", grepl("Industry vs benchmark", txt, fixed = TRUE))
 check("concept vs benchmark first paint", grepl("Concept vs benchmark", txt, fixed = TRUE))
-check("industry defaults to technology", grepl('selected = "gics_xlk"', txt, fixed = TRUE))
-check("industry server default follows market", grepl("macro_industry_default_key(mode)", txt, fixed = TRUE))
+check("industry defaults blank", {
+  grepl(
+    "ns\\(\"industry_key\"\\)[\\s\\S]{0,400}?selected = \"\"",
+    txt,
+    perl = TRUE
+  )
+})
+check("industry links company industry", {
+  grepl("company_industry_rv", txt, fixed = TRUE) &&
+    grepl("macro_resolve_linked_industry_key", txt, fixed = TRUE) &&
+    grepl(".linked_industry", txt, fixed = TRUE)
+})
+check("server wires company_industry_rv", {
+  grepl(
+    "company_industry_rv = reactive\\(input\\$industry_choice\\)",
+    paste(readLines("ynow_server.R", warn = FALSE), collapse = "\n")
+  )
+})
+check("refresh in theme title row", {
+  grepl("ynow-macro-theme-title-row", txt, fixed = TRUE) &&
+    grepl("ynow-macro-refresh-in-title", txt, fixed = TRUE) &&
+    grepl('ns("refresh")', txt, fixed = TRUE)
+})
+check("refresh bumps token", grepl("observeEvent(input$refresh", txt, fixed = TRUE) &&
+        grepl("refresh_token", txt, fixed = TRUE))
 check("menu choices gated on lazy-bound hist_period", {
   grepl("input$hist_period", txt, fixed = TRUE) &&
     grepl("req(!is.null(hist_ready))", txt, fixed = TRUE) &&

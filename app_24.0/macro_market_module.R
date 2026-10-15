@@ -237,16 +237,56 @@ macro_industry_choices <- function(mode = get_market_mode(), locale = "en") {
   stats::setNames(names(.MACRO_US_GICS), as.character(labs[names(.MACRO_US_GICS)]))
 }
 
-#' Industry-vs-benchmark default: US Technology (XLK).
-#' TW uses the snapshot default (半導體｜晶圓代工 / sc.Foundry).
+#' Industry-vs-benchmark default selection: blank until linked to a ticker industry.
 macro_industry_default_key <- function(mode = get_market_mode()) {
-  if (!identical(normalize_market_mode(mode), "TW")) return("gics_xlk")
-  key <- "sc.Foundry"
-  if (exists("APP_DEFAULTS", inherits = TRUE)) {
-    k <- as.character(APP_DEFAULTS$industry_choice %||% "")[1]
-    if (nzchar(k) && !is.na(k)) key <- k
+  ""
+}
+
+#' Map Company「目前產業標準快覽」key → Macro Industry-vs-benchmark picker value.
+#' TW: same industry_standards keys. US: map to GICS sector ETF keys (gics_*).
+macro_resolve_linked_industry_key <- function(industry_key, mode = get_market_mode()) {
+  key <- as.character(industry_key %||% "")[1]
+  if (is.na(key) || !nzchar(key)) return("")
+  mode <- normalize_market_mode(mode)
+  if (identical(mode, "TW")) {
+    ch <- tryCatch(macro_industry_choices("TW", "en"), error = function(e) character(0))
+    if (key %in% unname(ch)) return(key)
+    return("")
   }
-  key
+  if (startsWith(key, "gics_") && key %in% names(.MACRO_US_GICS)) return(key)
+  # Exact reverse of lab_gics_sector_fallback() industry keys → GICS ETF.
+  exact <- c(
+    "media.Entertainment" = "gics_xlc",
+    "cons.Discretionary" = "gics_xly",
+    "fmcg.Food_Beverages" = "gics_xlp",
+    "en.Energy_OilGas" = "gics_xle",
+    "fn.Banking" = "gics_xlf",
+    "hc.Healthcare_Services" = "gics_xlv",
+    "ind.Machinery" = "gics_xli",
+    "tech.Software" = "gics_xlk",
+    "mat.Chemicals" = "gics_xlb",
+    "re.REIT" = "gics_xlre",
+    "en.Utilities" = "gics_xlu"
+  )
+  if (key %in% names(exact)) return(unname(exact[[key]]))
+  prefix <- sub("\\..*$", "", key)
+  by_prefix <- c(
+    sc = "gics_xlk", tech = "gics_xlk", saas = "gics_xlk", ec = "gics_xlk",
+    fn = "gics_xlf",
+    hc = "gics_xlv",
+    en = "gics_xle",
+    ind = "gics_xli", tr = "gics_xli", bus = "gics_xli",
+    mat = "gics_xlb", ag = "gics_xlb",
+    re = "gics_xlre",
+    media = "gics_xlc", tel = "gics_xlc",
+    cons = "gics_xly", auto = "gics_xly", retail = "gics_xly",
+    ecr = "gics_xly", lxg = "gics_xly", hosp = "gics_xly",
+    fmcg = "gics_xlp"
+  )
+  if (identical(key, "en.Utilities") || startsWith(key, "en.Util")) return("gics_xlu")
+  hit <- unname(by_prefix[[prefix]] %||% "")
+  if (nzchar(hit) && hit %in% names(.MACRO_US_GICS)) return(hit)
+  ""
 }
 
 #' TW constituents for one industry-standard key.
@@ -568,7 +608,18 @@ macro_market_ui <- function(id = "macro") {
     ),
     tags$section(
       class = "ynow-macro-chapter",
-      tags$h3(id = "ynow_macro_theme_title", "Relative performance vs benchmark"),
+      # Refresh re-fetches index quotes, overlay series, HTCDI, and bubble data —
+      # keep it; place on the same row as the chapter title (right-aligned).
+      tags$div(
+        class = "ynow-macro-theme-title-row",
+        tags$h3(id = "ynow_macro_theme_title", "Relative performance vs benchmark"),
+        actionButton(
+          ns("refresh"),
+          "Refresh",
+          icon = icon("sync"),
+          class = "btn-default ynow-macro-refresh-in-title"
+        )
+      ),
       # Always-visible block chrome — not Notes / 附註. Currency-lock footnote stays below.
       tags$p(
         id = "ynow_macro_theme_help",
@@ -584,7 +635,7 @@ macro_market_ui <- function(id = "macro") {
       ),
       fluidRow(
         column(
-          width = 4,
+          width = 6,
           selectInput(
             ns("industry_key"),
             label = tags$span(id = "ynow_macro_industry_label", "Industry vs benchmark"),
@@ -592,28 +643,16 @@ macro_market_ui <- function(id = "macro") {
               macro_choices_with_none(macro_industry_choices("US", "en"), "en"),
               error = function(e) c("—" = "")
             ),
-            selected = "gics_xlk"
+            selected = ""
           )
         ),
         column(
-          width = 3,
+          width = 6,
           selectInput(
             ns("hist_period"),
             label = tags$span(id = "ynow_macro_period_label", "Window"),
             choices = c("6M" = "6mo", "1Y" = "1y", "3Y" = "3y", "5Y" = "5y"),
             selected = "1y"
-          )
-        ),
-        column(
-          width = 5,
-          tags$div(
-            style = "margin-top: 24px;",
-            actionButton(
-              ns("refresh"),
-              "Refresh",
-              icon = icon("sync"),
-              class = "btn-default"
-            )
           )
         )
       ),
@@ -682,10 +721,12 @@ macro_market_ui <- function(id = "macro") {
 
 #' @param market_mode_rv reactiveVal / reactive returning "US" | "TW"
 #' @param ui_locale_rv reactive returning locale id
+#' @param company_industry_rv reactive returning Company industry_choice key (optional)
 macro_market_server <- function(id = "macro",
                                 market_mode_rv,
                                 ui_locale_rv = reactive("en"),
-                                lite_mode_rv = NULL) {
+                                lite_mode_rv = NULL,
+                                company_industry_rv = NULL) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     `%||%` <- function(a, b) if (is.null(a)) b else a
@@ -695,6 +736,11 @@ macro_market_server <- function(id = "macro",
     }
     .mode <- function() {
       tryCatch(normalize_market_mode(market_mode_rv()), error = function(e) "US")
+    }
+    .linked_industry <- function() {
+      if (is.null(company_industry_rv)) return("")
+      raw <- tryCatch(as.character(company_industry_rv())[1], error = function(e) "")
+      macro_resolve_linked_industry_key(raw, .mode())
     }
     .is_lite <- function() {
       if (!is.null(lite_mode_rv)) {
@@ -739,7 +785,7 @@ macro_market_server <- function(id = "macro",
     htcdi_expanded <- reactiveVal(FALSE)
     # YNOW / TYNOW chart overlays — default none (no major-index overlay).
     own_index_overlays <- reactiveVal(character(0))
-    # Until the user changes Industry vs benchmark, US opens on Technology (XLK).
+    # Until the user changes Industry vs benchmark, follow Company ticker industry (else blank).
     industry_touched <- reactiveVal(FALSE)
     industry_programmatic <- reactiveVal(FALSE)
     observeEvent(input$refresh, {
@@ -820,20 +866,21 @@ macro_market_server <- function(id = "macro",
     }, ignoreInit = TRUE)
 
     # Shared Industry menu + Concept word cloud (Relative performance + Dynamic bubble).
-    # Default is Technology (XLK) on US, and the snapshot default (sc.Foundry) on TW.
+    # Default blank; until user edits the picker, follow Company industry_choice
+    # (mapped to GICS on US / industry_standards on TW).
     # Lazy-tab race: gate Industry updates on hist_period after inputs bind.
     observe({
       mode <- .mode()
       loc <- .loc()
       hist_ready <- input$hist_period
       req(!is.null(hist_ready))
+      linked <- .linked_industry()
       ind_ch <- macro_choices_with_none(macro_industry_choices(mode, loc), loc)
 
       isel <- isolate(as.character(input$industry_key %||% "")[1])
       in_menu <- isel %in% unname(ind_ch)
-      def_ind <- macro_industry_default_key(mode)
       if (!isTRUE(isolate(industry_touched())) || !in_menu) {
-        isel <- if (def_ind %in% unname(ind_ch)) def_ind else ""
+        isel <- if (nzchar(linked) && linked %in% unname(ind_ch)) linked else ""
       }
       cur_ind <- isolate(as.character(input$industry_key %||% "")[1])
       if (!identical(cur_ind, isel)) industry_programmatic(TRUE)

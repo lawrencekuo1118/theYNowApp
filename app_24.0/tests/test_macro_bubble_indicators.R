@@ -122,9 +122,10 @@ check("bubble shares Macro Industry/Concept picks", {
     grepl("bubble_shared_pick_status", bt_src, fixed = TRUE)
 })
 macro_src_for_default <- paste(readLines("macro_market_module.R", warn = FALSE), collapse = "\n")
-check("shared Industry first-paint Technology XLK", {
+check("shared Industry first-paint blank (linked later)", {
   grepl('ns("industry_key")', macro_src_for_default, fixed = TRUE) &&
-    grepl('selected = "gics_xlk"', macro_src_for_default, fixed = TRUE)
+    grepl("selected = \"\"", macro_src_for_default, fixed = TRUE) &&
+    !grepl('selected = "gics_xlk"', macro_src_for_default, fixed = TRUE)
 })
 check("conc history UI mounts table", {
   grepl("bubble_conc_table", bt_src, fixed = TRUE) &&

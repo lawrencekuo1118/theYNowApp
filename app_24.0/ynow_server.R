@@ -680,7 +680,8 @@ server <- function(input, output, session) {
           "macro",
           market_mode_rv = market_mode,
           ui_locale_rv = ui_locale,
-          lite_mode_rv = reactive(isTRUE(input$ynow_lite_mode))
+          lite_mode_rv = reactive(isTRUE(input$ynow_lite_mode)),
+          company_industry_rv = reactive(input$industry_choice)
         )
       },
       asset_transmission = function() {
