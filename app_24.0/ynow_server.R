@@ -7,48 +7,6 @@ server <- function(input, output, session) {
   # instead of forcing the user onto the gray "Disconnected / Reload" overlay.
   tryCatch(session$allowReconnect("force"), error = function(e) NULL)
 
-  # #region agent log
-  .agent_dbg <- function(hypothesisId, location, message, data = list()) {
-    tryCatch({
-      payload <- list(
-        hypothesisId = as.character(hypothesisId %||% "")[1],
-        location = as.character(location %||% "")[1],
-        message = as.character(message %||% "")[1],
-        data = if (is.null(data)) list() else data,
-        timestamp = as.numeric(Sys.time()) * 1000,
-        session = tryCatch(as.character(session$token %||% "")[1], error = function(e) "")
-      )
-      line <- jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null", Digits = 14)
-      cat(as.character(line), "\n", file = "/opt/cursor/logs/debug.log", append = TRUE, sep = "")
-    }, error = function(e) NULL)
-    invisible(NULL)
-  }
-  observeEvent(input$ynow_dbg_mkt_layout, {
-    p <- input$ynow_dbg_mkt_layout
-    if (is.null(p)) return()
-    .agent_dbg("A", "ynow_ui.R:placeMarketHeaderByToggle", "mkt_layout_probe", list(
-      vw = suppressWarnings(as.numeric(p$vw %||% NA_real_)[1]),
-      parentOk = isTRUE(p$parentOk),
-      gap = suppressWarnings(as.numeric(p$gap %||% NA_real_)[1]),
-      leftPxSet = as.character(p$leftPxSet %||% "")[1],
-      toggleRight = suppressWarnings(as.numeric(p$toggleRight %||% NA_real_)[1]),
-      mktLeft = suppressWarnings(as.numeric(p$mktLeft %||% NA_real_)[1]),
-      mktTop = suppressWarnings(as.numeric(p$mktTop %||% NA_real_)[1]),
-      mktW = suppressWarnings(as.numeric(p$mktW %||% NA_real_)[1]),
-      mktH = suppressWarnings(as.numeric(p$mktH %||% NA_real_)[1]),
-      usText = as.character(p$usText %||% "")[1],
-      twText = as.character(p$twText %||% "")[1],
-      usOverflow = isTRUE(p$usOverflow),
-      twOverflow = isTRUE(p$twOverflow),
-      mktPos = as.character(p$mktPos %||% "")[1],
-      inCustomMenu = isTRUE(p$inCustomMenu),
-      afterToggle = isTRUE(p$afterToggle),
-      loc = as.character(p$loc %||% "")[1],
-      reason = as.character(p$reason %||% "")[1]
-    ))
-  }, ignoreNULL = TRUE, ignoreInit = TRUE)
-  # #endregion
-
   # Sidebar tab label busy dots (JS `ynowTabBusy` → animated 「…」 on menu item)
   .ynow_set_tab_busy <- function(tab, busy = TRUE) {
     tab <- as.character(tab %||% "")[1]

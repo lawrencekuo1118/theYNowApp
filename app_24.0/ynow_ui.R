@@ -3452,14 +3452,26 @@ ui <- dashboardPage(
           class = "ynow-mkt-btn active",
           id = "ynow_mkt_btn_us",
           `data-value` = "US",
-          "US"
+          `aria-label` = "US",
+          title = "US",
+          tags$span(
+            class = "ynow-mkt-flag",
+            `aria-hidden` = "true",
+            "\U0001F1FA\U0001F1F8"
+          )
         ),
         tags$button(
           type = "button",
           class = "ynow-mkt-btn",
           id = "ynow_mkt_btn_tw",
           `data-value` = "TW",
-          "TW"
+          `aria-label` = "TW",
+          title = "TW",
+          tags$span(
+            class = "ynow-mkt-flag",
+            `aria-hidden` = "true",
+            "\U0001F1F9\U0001F1FC"
+          )
         )
       )
     ),
@@ -4163,23 +4175,21 @@ ui <- dashboardPage(
           box-shadow: none !important;
         }
 
-        /* 美股／台股：釘在三線 icon 右側（navbar 座標；脫離右欄 flex；無空隙） */
-        .main-header .navbar {
-          position: relative !important;
-        }
+        /* 美股／台股：三線 icon 右側上下堆疊；合計滿版標頭高度（各 25px）；國旗等寬等高 */
         .main-header .navbar > .sidebar-toggle,
         .skin-black .main-header .navbar .sidebar-toggle {
           padding-right: 0 !important;
           margin-right: 0 !important;
         }
+        .main-header .navbar > #ynow-market-header.ynow-market-header,
         .main-header .navbar #ynow-market-header.ynow-market-header,
         .main-header .navbar-custom-menu #ynow-market-header.ynow-market-header,
         .main-header .navbar-custom-menu .navbar-nav > li#ynow-market-header.ynow-market-header {
-          position: absolute !important;
-          left: 44px !important; /* fallback；JS 依 toggle.offsetWidth 覆寫 */
+          float: left !important;
+          position: static !important;
+          left: auto !important;
           right: auto !important;
-          top: 0 !important;
-          float: none !important;
+          top: auto !important;
           width: 40px !important;
           height: 50px !important;
           margin: 0 !important;
@@ -4210,10 +4220,22 @@ ui <- dashboardPage(
           border-radius: 0;
           background: rgba(255,255,255,0.12);
           color: #fff;
-          font-size: 11px;
-          font-weight: 700;
-          line-height: 23px;
+          font-size: 14px;
+          font-weight: 400;
+          line-height: 1;
           cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        #ynow-market-header .ynow-mkt-btn .ynow-mkt-flag {
+          display: block;
+          width: 18px;
+          height: 18px;
+          font-size: 16px;
+          line-height: 18px;
+          text-align: center;
+          overflow: hidden;
         }
         #ynow-market-header .ynow-mkt-btn + .ynow-mkt-btn {
           border-top-width: 0;
@@ -7387,7 +7409,7 @@ ui <- dashboardPage(
           }
           registerBadgeHandler();
 
-          /* 美股／台股：搬到三線 toggle 正後方；left = toggle 右緣（無空隙） */
+          /* 美股／台股：搬到三線 toggle 正後方（float:left 流式；無 absolute left） */
           function placeMarketHeaderByToggle() {
             var navbar = document.querySelector('.main-header .navbar');
             var market = document.getElementById('ynow-market-header');
@@ -7405,45 +7427,11 @@ ui <- dashboardPage(
             if (!(market.parentNode === navbar && market.previousElementSibling === toggle)) {
               navbar.insertBefore(market, toggle.nextSibling);
             }
-            var leftPx = Math.round(toggle.offsetLeft + toggle.offsetWidth);
-            if (!(leftPx > 0)) leftPx = Math.round(toggle.offsetWidth);
-            market.style.left = leftPx + 'px';
+            market.style.left = '';
+            market.style.top = '';
             market.style.marginLeft = '0';
             market.style.paddingLeft = '0';
             placeMobileAppTitle();
-            // #region agent log
-            try {
-              if (window.Shiny && Shiny.setInputValue) {
-                var us = document.getElementById('ynow_mkt_btn_us');
-                var tw = document.getElementById('ynow_mkt_btn_tw');
-                var tb = toggle.getBoundingClientRect();
-                var mb = market.getBoundingClientRect();
-                var cs = getComputedStyle(market);
-                var custom = document.querySelector('.navbar-custom-menu');
-                Shiny.setInputValue('ynow_dbg_mkt_layout', {
-                  reason: 'placeMarketHeaderByToggle',
-                  vw: window.innerWidth,
-                  parentOk: !!(market.parentNode === navbar && market.previousElementSibling === toggle),
-                  gap: Math.round(mb.left - tb.right),
-                  leftPxSet: String(market.style.left || ''),
-                  toggleRight: Math.round(tb.right),
-                  mktLeft: Math.round(mb.left),
-                  mktTop: Math.round(mb.top),
-                  mktW: Math.round(mb.width),
-                  mktH: Math.round(mb.height),
-                  usText: us ? String(us.textContent || '').trim() : '',
-                  twText: tw ? String(tw.textContent || '').trim() : '',
-                  usOverflow: !!(us && us.scrollWidth > us.clientWidth + 1),
-                  twOverflow: !!(tw && tw.scrollWidth > tw.clientWidth + 1),
-                  mktPos: cs.position,
-                  inCustomMenu: !!(custom && custom.contains(market)),
-                  afterToggle: !!(market.previousElementSibling === toggle),
-                  loc: (document.documentElement.getAttribute('lang') || ''),
-                  ts: Date.now()
-                }, {priority: 'event'});
-              }
-            } catch (_e) {}
-            // #endregion
           }
           /* Mobile: app title viewport-centered in the gap; scale font to fit — never cover chrome. */
           function placeMobileAppTitle() {
@@ -8943,33 +8931,17 @@ ui <- dashboardPage(
                 }
               }
             }
+            /* Market buttons show equal-size flag glyphs; locale only updates a11y labels. */
             var mktUs = document.getElementById('ynow_mkt_btn_us');
-            if (mktUs && s.market_us) mktUs.textContent = s.market_us;
+            if (mktUs && s.market_us) {
+              mktUs.setAttribute('aria-label', s.market_us);
+              mktUs.setAttribute('title', s.market_us);
+            }
             var mktTw = document.getElementById('ynow_mkt_btn_tw');
-            if (mktTw && s.market_tw) mktTw.textContent = s.market_tw;
-            // #region agent log
-            try {
-              if (window.Shiny && Shiny.setInputValue && typeof placeMarketHeaderByToggle === 'function') {
-                setTimeout(function () {
-                  placeMarketHeaderByToggle();
-                  if (mktUs || mktTw) {
-                    Shiny.setInputValue('ynow_dbg_mkt_layout', {
-                      reason: 'applyUiLocale_market_text',
-                      vw: window.innerWidth,
-                      usText: mktUs ? String(mktUs.textContent || '').trim() : '',
-                      twText: mktTw ? String(mktTw.textContent || '').trim() : '',
-                      usOverflow: !!(mktUs && mktUs.scrollWidth > mktUs.clientWidth + 1),
-                      twOverflow: !!(mktTw && mktTw.scrollWidth > mktTw.clientWidth + 1),
-                      loc: (payload && payload.locale) ? String(payload.locale) : '',
-                      market_us_key: s.market_us || '',
-                      market_tw_key: s.market_tw || '',
-                      ts: Date.now()
-                    }, {priority: 'event'});
-                  }
-                }, 0);
-              }
-            } catch (_e2) {}
-            // #endregion
+            if (mktTw && s.market_tw) {
+              mktTw.setAttribute('aria-label', s.market_tw);
+              mktTw.setAttribute('title', s.market_tw);
+            }
             var mktStack = document.querySelector('#ynow-market-header .ynow-market-stack');
             if (mktStack && s.market_hint) mktStack.setAttribute('aria-label', s.market_hint);
             var langStack = document.getElementById('ynow_lang_stack') ||
@@ -13052,13 +13024,15 @@ ui <- dashboardPage(
             margin: 0 !important;
           }
           .main-header .navbar #ynow-market-header.ynow-market-header {
-            position: absolute !important;
-            left: 44px !important; /* fallback；JS 依 toggle.offsetWidth 覆寫 */
-            top: 0 !important;
-            float: none !important;
+            position: static !important;
+            left: auto !important;
+            top: auto !important;
+            float: left !important;
             align-self: auto;
             margin: 0 !important;
             padding: 0 !important;
+            width: 40px !important;
+            height: 50px !important;
           }
           .main-header .navbar-custom-menu {
             float: none !important;
