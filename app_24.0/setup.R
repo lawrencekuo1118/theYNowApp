@@ -2455,11 +2455,35 @@ build_report_kpi_df <- function(d_is, d_bs, d_cf) {
   roa <- if (!is.na(net) && !is.na(assets) && assets != 0) net / assets * 100 else NA
   roe <- if (!is.na(net) && !is.na(equity) && equity != 0) net / equity * 100 else NA
   fcf_margin <- if (!is.na(fcf) && !is.na(rev) && rev != 0) fcf / rev * 100 else NA
+  gm_pct <- if (!is.na(gp) && !is.na(rev) && rev != 0) gp / rev * 100 else NA
+  # #region agent log
+  tryCatch({
+    labels <- if (is.data.frame(d_is) && ncol(d_is) >= 1L) as.character(d_is[[1]]) else character(0)
+    payload <- list(
+      hypothesisId = "C",
+      location = "setup.R:build_report_kpi_df",
+      message = "report KPI GM row",
+      data = list(
+        has_gross_profit_label = any(grepl("^Gross Profit$", labels, ignore.case = TRUE)),
+        has_cogs_label = any(grepl("Cost Of Revenue|Cost Of Goods Sold", labels, ignore.case = TRUE)),
+        gp_avg = if (is.finite(gp)) gp else NA_real_,
+        rev_avg = if (is.finite(rev)) rev else NA_real_,
+        gm_pct = if (is.finite(gm_pct)) gm_pct else NA_real_,
+        display = pct(gm_pct),
+        reason_hint = if (is.finite(gm_pct)) "ok" else if (!any(grepl("^Gross Profit$", labels, ignore.case = TRUE))) "missing_gross_profit_row" else "gp_or_rev_na"
+      ),
+      timestamp = as.numeric(Sys.time()) * 1000,
+      runId = "tw-2884-gm"
+    )
+    cat(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"),
+        "\n", file = "/opt/cursor/logs/debug.log", append = TRUE)
+  }, error = function(e) NULL)
+  # #endregion
   
   data.frame(
     指標 = c("毛利率", "淨利率", "營收成長率 (年均)", "ROA", "ROE", "FCF 利潤率", "營業現金流 (均)", "自由現金流 (均)"),
   數值 = c(
-      pct(if (!is.na(gp) && !is.na(rev) && rev != 0) gp / rev * 100 else NA),
+      pct(gm_pct),
       pct(if (!is.na(net) && !is.na(rev) && rev != 0) net / rev * 100 else NA),
       pct(rev_g),
       pct(roa), pct(roe), pct(fcf_margin),

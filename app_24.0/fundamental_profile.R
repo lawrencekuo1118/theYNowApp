@@ -346,6 +346,35 @@ classify_fundamental_profile <- function(d_cf = NULL, d_is = NULL, d_bs = NULL,
     NA_real_
   }
   gpm <- if (is.finite(gp) && is.finite(rev) && rev != 0) gp / rev * 100 else NA_real_
+  # #region agent log
+  tryCatch({
+    labels <- if (isTRUE(has_is) && is.data.frame(d_is) && ncol(d_is) >= 1L) {
+      as.character(d_is[[1]])
+    } else {
+      character(0)
+    }
+    payload <- list(
+      hypothesisId = "E",
+      location = "fundamental_profile.R:classify_gpm",
+      message = "fund profile GPM input",
+      data = list(
+        industry_key = as.character(industry_choice %||% "")[1],
+        industry_text = as.character(industry_text %||% "")[1],
+        is_financial = isTRUE(is_financial),
+        has_gross_profit_label = any(grepl("^Gross Profit$", labels, ignore.case = TRUE)),
+        has_cogs_label = any(grepl("Cost Of Revenue|Cost Of Goods Sold", labels, ignore.case = TRUE)),
+        gp_avg = if (is.finite(gp)) gp else NA_real_,
+        rev_avg = if (is.finite(rev)) rev else NA_real_,
+        gpm = if (is.finite(gpm)) gpm else NA_real_,
+        reason_hint = if (is.finite(gpm)) "ok" else if (!any(grepl("^Gross Profit$", labels, ignore.case = TRUE))) "missing_gross_profit_row" else "gp_or_rev_na"
+      ),
+      timestamp = as.numeric(Sys.time()) * 1000,
+      runId = "tw-2884-gm"
+    )
+    cat(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"),
+        "\n", file = "/opt/cursor/logs/debug.log", append = TRUE)
+  }, error = function(e) NULL)
+  # #endregion
 
   capex <- if (isTRUE(has_cf)) {
     tryCatch(

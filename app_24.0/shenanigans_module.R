@@ -206,7 +206,32 @@ SHENANIGAN_THRESHOLDS <- list(
 }
 
 .sh_gm <- function(ctx, i = 1L) {
-  .sh_ratio(ctx$gp[i], ctx$rev[i])
+  out <- .sh_ratio(ctx$gp[i], ctx$rev[i])
+  # #region agent log
+  tryCatch({
+    payload <- list(
+      hypothesisId = "D",
+      location = "shenanigans_module.R:.sh_gm",
+      message = "shenanigans GM ratio",
+      data = list(
+        i = as.integer(i)[1],
+        gp_len = length(ctx$gp %||% numeric(0)),
+        rev_len = length(ctx$rev %||% numeric(0)),
+        gp_i = if (length(ctx$gp) >= i) suppressWarnings(as.numeric(ctx$gp[i])[1]) else NA_real_,
+        rev_i = if (length(ctx$rev) >= i) suppressWarnings(as.numeric(ctx$rev[i])[1]) else NA_real_,
+        gm = if (is.finite(out)) out else NA_real_,
+        gp_series_empty = length(ctx$gp %||% numeric(0)) < 1L ||
+          all(!is.finite(suppressWarnings(as.numeric(ctx$gp)))),
+        reason_hint = if (is.finite(out)) "ok" else "missing_gp_or_rev"
+      ),
+      timestamp = as.numeric(Sys.time()) * 1000,
+      runId = "tw-2884-gm"
+    )
+    cat(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"),
+        "\n", file = "/opt/cursor/logs/debug.log", append = TRUE)
+  }, error = function(e) NULL)
+  # #endregion
+  out
 }
 
 .sh_ind_gm <- function(industry_key) {

@@ -2443,7 +2443,34 @@ server <- function(input, output, session) {
     req(scraped_financials())
     session_currency(); fx_usd_twd()
     df <- reorder_financial_columns(scraped_financials()[["Income Statement"]]$expanded)
-    scale_financial_df_money(df, statement_currency(), session_currency(), fx_usd_twd())
+    out <- scale_financial_df_money(df, statement_currency(), session_currency(), fx_usd_twd())
+    # #region agent log
+    tryCatch({
+      labels <- if (is.data.frame(out) && ncol(out) >= 1L) as.character(out[[1]]) else character(0)
+      payload <- list(
+        hypothesisId = "B",
+        location = "ynow_server.R:d_income_statement",
+        message = "IS loaded after scrape/scale",
+        data = list(
+          ticker = tryCatch(as.character(current_ticker() %||% "")[1], error = function(e) ""),
+          market = tryCatch(normalize_market_mode(market_mode()), error = function(e) ""),
+          n_rows = length(labels),
+          has_gross_profit = any(grepl("^Gross Profit$", labels, ignore.case = TRUE)),
+          has_cogs = any(grepl("Cost Of Revenue|Cost Of Goods Sold", labels, ignore.case = TRUE)),
+          has_total_revenue = any(grepl("^Total Revenue$", labels, ignore.case = TRUE)),
+          has_operating_revenue = any(grepl("Operating Revenue", labels, ignore.case = TRUE)),
+          has_net_interest_income = any(grepl("Net Interest Income", labels, ignore.case = TRUE)),
+          has_interest_income = any(grepl("^Interest Income$", labels, ignore.case = TRUE)),
+          sample_labels = utils::head(labels, 12L)
+        ),
+        timestamp = as.numeric(Sys.time()) * 1000,
+        runId = "tw-2884-gm"
+      )
+      cat(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"),
+          "\n", file = "/opt/cursor/logs/debug.log", append = TRUE)
+    }, error = function(e) NULL)
+    # #endregion
+    out
   })
   d_balance_sheet <- reactive({
     req(scraped_financials())

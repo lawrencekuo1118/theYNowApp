@@ -70,9 +70,43 @@ kpi_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_fl
     # --- Income Statement ---
     # 毛利率 = Gross Profit / Total Revenue
     output$vbx_gross_profit_margin <- renderUI({
-      gp <- get_avg(select_clean_metric_row(d_income_statement(), "Gross Profit", include_ttm = FALSE))
-      rev <- get_avg(select_clean_metric_row(d_income_statement(), "Total Revenue", include_ttm = FALSE))
+      d_is <- d_income_statement()
+      gp_row <- select_clean_metric_row(d_is, "Gross Profit", include_ttm = FALSE)
+      rev_row <- select_clean_metric_row(d_is, "Total Revenue", include_ttm = FALSE)
+      cogs_row <- select_clean_metric_row(d_is, "Cost Of Revenue", include_ttm = FALSE)
+      gp <- get_avg(gp_row)
+      rev <- get_avg(rev_row)
       margin <- if (!is.na(gp) && !is.na(rev) && rev != 0) gp / rev * 100 else NA_real_
+      # #region agent log
+      tryCatch({
+        labels <- if (is.data.frame(d_is) && ncol(d_is) >= 1L) as.character(d_is[[1]]) else character(0)
+        payload <- list(
+          hypothesisId = "A",
+          location = "kpi_module.R:vbx_gross_profit_margin",
+          message = "KPI gross margin compute",
+          data = list(
+            ticker = tryCatch(as.character(current_ticker() %||% "")[1], error = function(e) ""),
+            industry = tryCatch(as.character(industry_choice() %||% "")[1], error = function(e) ""),
+            n_is_rows = length(labels),
+            has_gross_profit_label = any(grepl("^Gross Profit$", labels, ignore.case = TRUE)),
+            has_cogs_label = any(grepl("Cost Of Revenue|Cost Of Goods Sold", labels, ignore.case = TRUE)),
+            has_total_revenue = any(grepl("^Total Revenue$", labels, ignore.case = TRUE)),
+            has_net_interest_income = any(grepl("Net Interest Income", labels, ignore.case = TRUE)),
+            gp_avg = if (is.finite(gp)) gp else NA_real_,
+            rev_avg = if (is.finite(rev)) rev else NA_real_,
+            margin_pct = if (is.finite(margin)) margin else NA_real_,
+            gp_row_all_na = length(gp_row) == 0L || all(is.na(gp_row)),
+            cogs_row_all_na = length(cogs_row) == 0L || all(is.na(cogs_row)),
+            display = if (!is.na(margin)) "pct" else "N/A",
+            reason_hint = if (is.finite(margin)) "ok" else if (!any(grepl("^Gross Profit$", labels, ignore.case = TRUE))) "missing_gross_profit_row" else "gp_or_rev_na"
+          ),
+          timestamp = as.numeric(Sys.time()) * 1000,
+          runId = "tw-2884-gm"
+        )
+        cat(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"),
+            "\n", file = "/opt/cursor/logs/debug.log", append = TRUE)
+      }, error = function(e) NULL)
+      # #endregion
       color <- get_box_color(industry_choice(), "gross_profit_margin", margin)
       .box(
         value = if (!is.na(margin)) paste0(sprintf("%.2f", margin), "%") else "N/A",
@@ -100,7 +134,32 @@ kpi_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_fl
     
     # 毛利成長率 = 年均 YoY(Gross Profit)
     output$vbx_gross_profit_growth <- renderUI({
-      val <- get_avg_growth(select_clean_metric_row(d_income_statement(), "Gross Profit", include_ttm = FALSE))
+      d_is <- d_income_statement()
+      gp_row <- select_clean_metric_row(d_is, "Gross Profit", include_ttm = FALSE)
+      val <- get_avg_growth(gp_row)
+      # #region agent log
+      tryCatch({
+        labels <- if (is.data.frame(d_is) && ncol(d_is) >= 1L) as.character(d_is[[1]]) else character(0)
+        payload <- list(
+          hypothesisId = "A",
+          location = "kpi_module.R:vbx_gross_profit_growth",
+          message = "KPI gross profit growth compute",
+          data = list(
+            ticker = tryCatch(as.character(current_ticker() %||% "")[1], error = function(e) ""),
+            has_gross_profit_label = any(grepl("^Gross Profit$", labels, ignore.case = TRUE)),
+            gp_n = length(gp_row),
+            gp_finite_n = sum(is.finite(suppressWarnings(as.numeric(gp_row)))),
+            growth_pct = if (is.finite(val)) val else NA_real_,
+            display = if (!is.na(val)) "pct" else "N/A",
+            reason_hint = if (is.finite(val)) "ok" else if (!any(grepl("^Gross Profit$", labels, ignore.case = TRUE))) "missing_gross_profit_row" else "insufficient_gp_series"
+          ),
+          timestamp = as.numeric(Sys.time()) * 1000,
+          runId = "tw-2884-gm"
+        )
+        cat(jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null"),
+            "\n", file = "/opt/cursor/logs/debug.log", append = TRUE)
+      }, error = function(e) NULL)
+      # #endregion
       color <- get_box_color(industry_choice(), "rev_growth", val)
       .box(
         value = if (!is.na(val)) paste0(sprintf("%.2f", val), "%") else "N/A",
