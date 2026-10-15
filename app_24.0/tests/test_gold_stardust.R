@@ -28,6 +28,6 @@ check("complete uses gold shine sweep", {
   )
 })
 check("gold-shine keyframes present", grepl("@keyframes ynow-gold-shine", ui, fixed = TRUE))
-check("display version v24.22", grepl("v24.22", ui, fixed = TRUE))
+check("display version v24.23", grepl("v24.23", ui, fixed = TRUE))
 if (fail > 0L) { message("FAILED: ", fail); quit(status = 1L) }
 message("All gold-title (no-stardust) checks passed.")
