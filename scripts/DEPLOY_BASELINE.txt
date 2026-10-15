@@ -7,4 +7,4 @@ commit=c6d43649d4c940f76818b1efa67ae4ad0773146f
 short=c6d4364
 message=feat(auth): account login designed but disabled; cut live line to app_25.0 / v25.00
 captured_at=2026-10-15T12:48:10Z
-display_version=v25.00
+display_version=v25.01
