@@ -3876,6 +3876,7 @@ ui <- dashboardPage(
           );
         }
 
+        /* Legacy name kept for tests / comments; title motion is gold stardust (canvas), not a shine sweep. */
         @keyframes ynow-gold-shine {
           0%, 100% { background-position: 0% 50%; }
           50% { background-position: 100% 50%; }
@@ -3956,11 +3957,35 @@ ui <- dashboardPage(
         .main-header .logo:hover {
           position: relative;
           z-index: 1;
+          overflow: hidden;
           font-weight: bold;
           color: #FFD700 !important;
           background-color: var(--ynow-ink) !important;
           background-image: none !important;
           filter: none !important;
+        }
+        /* Gold stardust overlay (falling sparkles when title is-complete) */
+        .main-header .logo .ynow-gold-stardust {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 100%;
+          height: 100%;
+          pointer-events: none;
+          z-index: 5;
+          opacity: 0;
+          transition: opacity 0.35s ease;
+        }
+        .main-header .logo .ynow-gold-stardust.is-on {
+          opacity: 1;
+        }
+        body.ynow-update-available .main-header .logo .ynow-gold-stardust {
+          opacity: 0 !important;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .main-header .logo .ynow-gold-stardust {
+            display: none !important;
+          }
         }
         .main-header .logo .ynow-app-title {
           --ynow-load-pct: 0%;
@@ -4021,8 +4046,10 @@ ui <- dashboardPage(
           width: 100%;
           transition: width 0.2s ease-out;
         }
+        /* Complete: steady gold fill; motion comes from stardust canvas (not shine sweep). */
         .main-header .logo .ynow-app-title.is-complete .ynow-app-title-fill-inner {
-          animation: ynow-gold-shine 2.6s ease-in-out infinite;
+          animation: none;
+          filter: drop-shadow(0 0 2px rgba(255, 230, 120, 0.4));
         }
         @supports not ((-webkit-background-clip: text) or (background-clip: text)) {
           .main-header .logo .ynow-app-title-fill-inner {
@@ -7725,6 +7752,191 @@ ui <- dashboardPage(
 
           /* Header title = load progress bar (fills with boot / Shiny busy / withProgress) */
           document.title = 'The YNow App';
+
+          /* Gold stardust: falling sparkles over the app title when load is complete.
+             Paused during update-available (flame) and prefers-reduced-motion. */
+          (function initYnowGoldStardust() {
+            var logo = null;
+            var canvas = null;
+            var ctx = null;
+            var particles = [];
+            var raf = 0;
+            var running = false;
+            var lastTs = 0;
+
+            function reducedMotion() {
+              try {
+                return !!(window.matchMedia &&
+                  window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+              } catch (e) {
+                return false;
+              }
+            }
+
+            function titleEl() {
+              return document.getElementById('ynow_app_title') ||
+                document.querySelector('.main-header .logo .ynow-app-title');
+            }
+
+            function ensure() {
+              logo = document.querySelector('.main-header .logo');
+              if (!logo) return false;
+              canvas = logo.querySelector('canvas.ynow-gold-stardust');
+              if (!canvas) {
+                canvas = document.createElement('canvas');
+                canvas.className = 'ynow-gold-stardust';
+                canvas.setAttribute('aria-hidden', 'true');
+                logo.appendChild(canvas);
+              }
+              try {
+                ctx = canvas.getContext('2d');
+              } catch (e) {
+                ctx = null;
+              }
+              return !!ctx;
+            }
+
+            function resize() {
+              if (!logo || !canvas || !ctx) return;
+              var r = logo.getBoundingClientRect();
+              var cssW = Math.max(1, Math.round(r.width));
+              var cssH = Math.max(1, Math.round(r.height));
+              var dpr = Math.min(window.devicePixelRatio || 1, 2);
+              canvas.width = Math.max(1, Math.floor(cssW * dpr));
+              canvas.height = Math.max(1, Math.floor(cssH * dpr));
+              canvas.style.width = cssW + 'px';
+              canvas.style.height = cssH + 'px';
+              ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            }
+
+            function spawn(n) {
+              if (!canvas) return;
+              var w = canvas.clientWidth || 1;
+              var h = canvas.clientHeight || 1;
+              for (var i = 0; i < n; i++) {
+                particles.push({
+                  x: Math.random() * w,
+                  y: -4 - Math.random() * h * 0.55,
+                  r: 0.55 + Math.random() * 1.7,
+                  vy: 18 + Math.random() * 42,
+                  vx: -10 + Math.random() * 20,
+                  a: 0.4 + Math.random() * 0.6,
+                  tw: Math.random() * Math.PI * 2,
+                  tws: 2.2 + Math.random() * 4.5
+                });
+              }
+            }
+
+            function draw(ts) {
+              if (!running || !ctx || !canvas) return;
+              var dt = lastTs ? Math.min(0.05, (ts - lastTs) / 1000) : 0.016;
+              lastTs = ts;
+              var w = canvas.clientWidth || 1;
+              var h = canvas.clientHeight || 1;
+              ctx.clearRect(0, 0, w, h);
+              if (particles.length < 56 && Math.random() < 0.55) spawn(1 + (Math.random() < 0.25 ? 1 : 0));
+              for (var i = particles.length - 1; i >= 0; i--) {
+                var p = particles[i];
+                p.y += p.vy * dt;
+                p.x += p.vx * dt;
+                p.tw += p.tws * dt;
+                if (p.y > h + 6 || p.x < -8 || p.x > w + 8) {
+                  particles.splice(i, 1);
+                  continue;
+                }
+                var alpha = p.a * (0.5 + 0.5 * Math.sin(p.tw));
+                var g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 2.4);
+                g.addColorStop(0, 'rgba(255,248,210,' + alpha + ')');
+                g.addColorStop(0.4, 'rgba(245,197,24,' + (alpha * 0.9) + ')');
+                g.addColorStop(1, 'rgba(201,162,39,0)');
+                ctx.fillStyle = g;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.r * 2.4, 0, Math.PI * 2);
+                ctx.fill();
+                /* crisp core spark */
+                ctx.fillStyle = 'rgba(255,255,240,' + (alpha * 0.85) + ')';
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, Math.max(0.4, p.r * 0.35), 0, Math.PI * 2);
+                ctx.fill();
+              }
+              raf = window.requestAnimationFrame(draw);
+            }
+
+            function shouldRun() {
+              if (reducedMotion()) return false;
+              if (document.body && document.body.classList.contains('ynow-update-available')) {
+                return false;
+              }
+              var el = titleEl();
+              return !!(el && el.classList.contains('is-complete'));
+            }
+
+            function stop() {
+              running = false;
+              lastTs = 0;
+              if (raf) {
+                window.cancelAnimationFrame(raf);
+                raf = 0;
+              }
+              particles = [];
+              if (canvas) canvas.classList.remove('is-on');
+              if (ctx && canvas) {
+                ctx.clearRect(0, 0, canvas.clientWidth || 1, canvas.clientHeight || 1);
+              }
+            }
+
+            function start() {
+              if (!ensure()) return;
+              resize();
+              if (!running) {
+                running = true;
+                particles = [];
+                spawn(20);
+                canvas.classList.add('is-on');
+                lastTs = 0;
+                raf = window.requestAnimationFrame(draw);
+              } else {
+                canvas.classList.add('is-on');
+              }
+            }
+
+            function sync() {
+              if (shouldRun()) start();
+              else stop();
+            }
+
+            function boot() {
+              if (!ensure()) {
+                setTimeout(boot, 80);
+                return;
+              }
+              resize();
+              sync();
+              if (typeof MutationObserver !== 'undefined') {
+                var obs = new MutationObserver(function () { sync(); });
+                var el = titleEl();
+                if (el) obs.observe(el, { attributes: true, attributeFilter: ['class'] });
+                if (document.body) {
+                  obs.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+                }
+              }
+              window.addEventListener('resize', function () {
+                if (!running) return;
+                resize();
+              });
+              /* Re-check after mobile title layout settles */
+              setInterval(function () {
+                if (shouldRun() && !running) sync();
+              }, 1200);
+            }
+            if (document.readyState === 'loading') {
+              document.addEventListener('DOMContentLoaded', boot);
+            } else {
+              boot();
+            }
+            window.ynowSyncGoldStardust = sync;
+          })();
+
           (function initYnowTitleLoadBar() {
             var pct = 0;
             var firstIdleDone = false;
@@ -7762,6 +7974,11 @@ ui <- dashboardPage(
               el.classList.add('is-complete');
               el.setAttribute('aria-valuenow', '100');
               firstIdleDone = true;
+              try {
+                if (typeof window.ynowSyncGoldStardust === 'function') {
+                  window.ynowSyncGoldStardust();
+                }
+              } catch (eStar) {}
             }
             function readShinyProgressPct() {
               var bar = document.querySelector('.shiny-progress .progress-bar');
