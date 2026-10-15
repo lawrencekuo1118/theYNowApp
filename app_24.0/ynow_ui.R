@@ -8322,8 +8322,9 @@ ui <- dashboardPage(
           }
 
           function applyUiLocale(payload, opts) {
+            /* opts.fromBoot: click-time slim boot maps; ignored for control flow
+               because __ynowLocaleUserPick stays sticky after a manual pick. */
             opts = opts || {};
-            var fromBoot = !!opts.fromBoot;
             var s = (payload && payload.strings) || {};
             var incoming = payload && payload.locale ? String(payload.locale) : 'en';
             var pendingPick = window.__ynowLocaleUserPick ? String(window.__ynowLocaleUserPick) : '';
