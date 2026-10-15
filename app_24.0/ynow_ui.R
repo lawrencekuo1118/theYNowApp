@@ -9468,7 +9468,7 @@ ui <- dashboardPage(
               try {
                 Shiny.addCustomMessageHandler(type, fn);
               } catch (eAdd) {
-                /* Re-register on shiny:connected may hit "already added"; keep first. */
+                /* Re-register on shiny:connected may hit already-added; keep first. */
               }
             };
             addHandler('ynowUiLocale', function (payload) {
