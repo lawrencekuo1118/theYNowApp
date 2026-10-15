@@ -35,6 +35,22 @@ check("JS shiny:busy hook", grepl("shiny:busy", ui, fixed = TRUE) &&
         grepl("onShinyBusy", ui, fixed = TRUE))
 check("JS shiny:idle clears", grepl("shiny:idle", ui, fixed = TRUE) &&
         grepl("onShinyIdle", ui, fixed = TRUE))
+check("JS busy is immediate (no arm delay)", {
+  busy_js <- regmatches(
+    ui,
+    regexpr("/\\* Sidebar tab label:[\\s\\S]*?window\\.ynowSetSidebarTabBusy = setTabBusy;", ui, perl = TRUE)
+  )
+  length(busy_js) == 1L &&
+    grepl("Show 「…」 as soon as the loading screen", busy_js, fixed = TRUE) &&
+    grepl("setTabBusy(tab, true, 'shiny')", busy_js, fixed = TRUE) &&
+    !grepl(", 220)", busy_js, fixed = TRUE)
+})
+check("JS marks busy on sidebar tab click",
+      grepl("onSidebarTabClick", ui, fixed = TRUE) &&
+        grepl("setTabBusy(tab, true, 'nav')", ui, fixed = TRUE))
+check("JS progress DOM watcher",
+      grepl("watchProgressDom", ui, fixed = TRUE) &&
+        grepl("setTabBusy(tab, true, 'progress')", ui, fixed = TRUE))
 check("JS exposes ynowSetSidebarTabBusy", grepl("ynowSetSidebarTabBusy", ui, fixed = TRUE))
 check("JS reapply busy after locale", grepl("ynowReapplyAllTabBusyVisuals", ui, fixed = TRUE))
 check("setMenuLabel keeps busy dots", grepl("busyDotsClone", ui, fixed = TRUE))

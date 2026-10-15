@@ -62,17 +62,32 @@ check("zh-TW 絕對 / 相對",
         identical(ui_str("lab_im_methods_rel_label", "zh-TW"), "相對") &&
         !grepl("默认|参数|数据", ui_str("lab_im_methods_abs_label", "zh-TW")))
 
-check("taxonomy Absolute = NAV/Justified P/B/DCF/DDM/RI/SOTP",
-      identical(LAB_METHOD_ABS_KEYS, c("nav", "pb", "dcf", "ddm", "ri", "sotp")))
+check("taxonomy Absolute = NAV/Justified P/B/DCF/DDM/RI (no SOTP)",
+      identical(LAB_METHOD_ABS_KEYS, c("nav", "pb", "dcf", "ddm", "ri")))
 check("taxonomy Relative = Enterprise/Earnings/Revenue/Book multiples",
       identical(LAB_METHOD_REL_KEYS, c("enterprise", "earnings", "revenue", "book")))
 check("no overlap abs vs rel",
       length(intersect(LAB_METHOD_ABS_KEYS, LAB_METHOD_REL_KEYS)) == 0L)
-check("partition covers sidebar order",
+check("partition covers sidebar order without SOTP filter key",
       identical(
         sort(c(LAB_METHOD_ABS_KEYS, LAB_METHOD_REL_KEYS)),
-        sort(as.character(LAB_SIDEBAR_METHOD_ORDER))
+        sort(setdiff(as.character(LAB_SIDEBAR_METHOD_ORDER), "sotp"))
       ))
+check("filter UI has no SOTP Absolute option",
+      !grepl("ynow_lab_im_method_sotp", ui, fixed = TRUE) &&
+        grepl('c\\(\"nav\", \"pb\", \"dcf\", \"ddm\", \"ri\"\\)', ui))
+check("Absolute filter labels omit 模型 suffix keys", {
+  identical(ui_str("lab_im_method_dcf", "zh-TW"), "DCF") &&
+    identical(ui_str("lab_im_method_ri", "zh-TW"), "RI") &&
+    identical(ui_str("lab_im_method_dcf", "en"), "DCF") &&
+    identical(ui_str("lab_im_method_ri", "en"), "RI") &&
+    !grepl("模型", ui_str("lab_im_method_dcf", "zh-TW"), fixed = TRUE) &&
+    !grepl("Model", ui_str("lab_im_method_dcf", "en"), fixed = TRUE)
+})
+check("locale wires lab_im_method_* not menu_* for filter",
+      grepl("lab_im_method_dcf", ui, fixed = TRUE) &&
+        grepl("setBtText('ynow_lab_im_method_dcf', 'lab_im_method_dcf')", ui, fixed = TRUE) &&
+        !grepl("setBtText('ynow_lab_im_method_dcf', 'menu_dcf')", ui, fixed = TRUE))
 
 # Absolute Justified P/B vs Relative Book multiples (Target source taxonomy).
 df <- data.frame(

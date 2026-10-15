@@ -26,16 +26,19 @@ check <- function(label, cond) {
 want <- c("nav", "pb", "dcf", "ddm", "ri", "enterprise", "earnings", "revenue", "book", "sotp")
 check("LAB_SIDEBAR_METHOD_ORDER", identical(LAB_SIDEBAR_METHOD_ORDER, want))
 check(
-  "LAB_METHOD_ABS_KEYS absolute Fair Value + Justified P/B + SOTP",
-  identical(LAB_METHOD_ABS_KEYS, c("nav", "pb", "dcf", "ddm", "ri", "sotp"))
+  "LAB_METHOD_ABS_KEYS absolute Fair Value + Justified P/B (no SOTP filter)",
+  identical(LAB_METHOD_ABS_KEYS, c("nav", "pb", "dcf", "ddm", "ri"))
 )
 check(
   "LAB_METHOD_REL_KEYS relative Multiples families",
   identical(LAB_METHOD_REL_KEYS, c("enterprise", "earnings", "revenue", "book"))
 )
 check(
-  "abs+rel partition sidebar order",
-  identical(sort(c(LAB_METHOD_ABS_KEYS, LAB_METHOD_REL_KEYS)), sort(want))
+  "abs+rel partition sidebar order without SOTP",
+  identical(
+    sort(c(LAB_METHOD_ABS_KEYS, LAB_METHOD_REL_KEYS)),
+    sort(setdiff(want, "sotp"))
+  )
 )
 check(
   "lab_order shuffles to sidebar",

@@ -1188,6 +1188,16 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_methods_label = "Models",
     lab_im_methods_abs_label = "Absolute",
     lab_im_methods_rel_label = "Relative",
+    # Blue Chip Absolute/Relative checkbox labels (no "-Model" / 「模型」 suffix).
+    lab_im_method_nav = "NAV",
+    lab_im_method_pb = "Justified P/B",
+    lab_im_method_dcf = "DCF",
+    lab_im_method_ddm = "DDM",
+    lab_im_method_ri = "RI",
+    lab_im_method_enterprise = "Enterprise value",
+    lab_im_method_earnings = "Earnings",
+    lab_im_method_revenue = "Revenue",
+    lab_im_method_book = "Book multiples",
     lab_im_methods_locked_hint = paste0(
       "Models with no names using them as the primary valuation model stay unchecked and locked. ",
       "Justified P/B unlocks when it is a Fair Value primary or secondary. ",
@@ -4249,6 +4259,16 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_methods_label = "模型",
     lab_im_methods_abs_label = "絕對",
     lab_im_methods_rel_label = "相對",
+    # 績優股排行榜 Absolute／Relative 複選標籤（不含「模型」後綴；側欄選單仍用 menu_*）。
+    lab_im_method_nav = "NAV",
+    lab_im_method_pb = "Justified P/B",
+    lab_im_method_dcf = "DCF",
+    lab_im_method_ddm = "DDM",
+    lab_im_method_ri = "RI",
+    lab_im_method_enterprise = "企業價值乘數",
+    lab_im_method_earnings = "盈餘乘數",
+    lab_im_method_revenue = "營收乘數",
+    lab_im_method_book = "淨值相對倍數",
     lab_im_methods_locked_hint = paste0(
       "若某評價模型未被任何個股列為主模型，則維持不勾選並鎖定。",
       "Justified P/B 在作為 Fair Value 主／副模型時可勾選。",

@@ -23,9 +23,10 @@ LAB_SIDEBAR_METHOD_ORDER <- c(
 )
 
 # Blue Chip Models filter UI groups (絕對 / Absolute vs 相對 / Relative).
-# Absolute = Fair Value / intrinsic (+ Justified P/B + SOTP Meta-Framework);
+# Absolute = Fair Value / intrinsic (+ Justified P/B). SOTP is Meta-Framework —
+# kept in sidebar valuation order but not offered in this Absolute multi-select.
 # Relative = Multiples families (peer / history Book multiples stay here).
-LAB_METHOD_ABS_KEYS <- c("nav", "pb", "dcf", "ddm", "ri", "sotp")
+LAB_METHOD_ABS_KEYS <- c("nav", "pb", "dcf", "ddm", "ri")
 LAB_METHOD_REL_KEYS <- c("enterprise", "earnings", "revenue", "book")
 
 LAB_METHOD_LABELS <- c(
