@@ -7,4 +7,4 @@ commit=a7c336945fcfd0115a442c1167977344a4230084
 short=a7c3369
 message=fix(ui): desktop sidebar scrolls so Lite logo is clickable (v24.07)
 captured_at=2026-10-15T04:20:00Z
-display_version=v24.07
+display_version=v24.08
