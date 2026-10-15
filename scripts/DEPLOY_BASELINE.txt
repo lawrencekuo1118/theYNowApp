@@ -7,4 +7,4 @@ commit=39c754da6c85fd3c2a87dc8bb5159a810260180b
 short=39c754d
 message=merge #236 #237 #238 + ship v24.03
 captured_at=2026-10-15T01:56:33Z
-display_version=v24.03
+display_version=v24.04
