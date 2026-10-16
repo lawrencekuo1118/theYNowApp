@@ -2,7 +2,113 @@
 # Results can be written into the existing value-alert store (price_alerts.json)
 # with screen_ref set, so the alert list can show which screen created the rule.
 
-.SCR_N_COND <- 4L
+.SCR_N_COND <- 4L # legacy; DnD workspace no longer uses fixed rows
+
+#' Catalog of drag-and-drop condition cards (masters + metric categories).
+screener_condition_catalog <- function() {
+  data.frame(
+    id = c(
+      "m_buffett_debt", "m_buffett_roe", "m_buffett_opm", "m_buffett_pe",
+      "m_graham_pe", "m_graham_pb", "m_graham_debt", "m_graham_roe",
+      "f_debt_ratio", "f_roe", "f_op_margin", "f_rev_yoy", "f_opinc_yoy",
+      "f_pe", "f_pb", "f_market_cap_bn", "f_ret_1y_pct"
+    ),
+    category = c(
+      rep("masters", 8L),
+      "safety", "profit", "profit", "growth", "growth",
+      "value", "value", "size", "size"
+    ),
+    pack = c(
+      rep("buffett", 4L), rep("graham", 4L),
+      rep("", 9L)
+    ),
+    field = c(
+      "debt_ratio", "roe", "op_margin", "pe",
+      "pe", "pb", "debt_ratio", "roe",
+      "debt_ratio", "roe", "op_margin", "rev_yoy", "opinc_yoy",
+      "pe", "pb", "market_cap_bn", "ret_1y_pct"
+    ),
+    op = c(
+      "lte", "gte", "gte", "lte",
+      "lte", "lte", "lte", "gte",
+      "lte", "gte", "gte", "gte", "gte",
+      "lte", "lte", "gte", "gte"
+    ),
+    value = c(
+      30, 15, 15, 25,
+      15, 1.5, 50, 15,
+      60, 15, 10, 10, 10,
+      20, 3, 10, 0
+    ),
+    tone = c(
+      "safe", "profit", "profit", "value",
+      "value", "value", "safe", "profit",
+      "safe", "profit", "profit", "growth", "growth",
+      "value", "value", "master", "growth"
+    ),
+    icon = c(
+      "Db", "ROE", "OM", "PE",
+      "PE", "PB", "Db", "ROE",
+      "Db", "ROE", "OM", "Rv", "Oi",
+      "PE", "PB", "MC", "1Y"
+    ),
+    stringsAsFactors = FALSE
+  )
+}
+
+screener_catalog_categories <- function() {
+  c("masters", "profit", "safety", "growth", "value", "size")
+}
+
+screener_catalog_packs <- function() {
+  c("buffett", "graham")
+}
+
+screener_payload_to_conditions <- function(payload) {
+  blank <- data.frame(
+    use = logical(0), field = character(0), op = character(0), value = numeric(0),
+    stringsAsFactors = FALSE
+  )
+  rows <- payload
+  if (is.character(payload) && length(payload) >= 1L) {
+    raw <- trimws(as.character(payload[[1]])[1])
+    if (!nzchar(raw) || identical(raw, "null") || identical(raw, "[]")) return(blank)
+    rows <- tryCatch(jsonlite::fromJSON(raw, simplifyDataFrame = TRUE), error = function(e) NULL)
+  }
+  if (is.null(rows)) return(blank)
+  if (is.list(rows) && !is.data.frame(rows)) {
+    if (!length(rows)) return(blank)
+    rows <- tryCatch({
+      do.call(rbind, lapply(rows, function(x) {
+        if (is.null(x)) return(NULL)
+        data.frame(
+          field = as.character(x[["field"]] %||% "")[1],
+          op = as.character(x[["op"]] %||% "")[1],
+          value = suppressWarnings(as.numeric(x[["value"]])[1]),
+          stringsAsFactors = FALSE
+        )
+      }))
+    }, error = function(e) NULL)
+  }
+  if (!is.data.frame(rows) || !nrow(rows)) return(blank)
+  field <- as.character(rows$field %||% character(0))
+  op <- as.character(rows$op %||% character(0))
+  value <- suppressWarnings(as.numeric(rows$value))
+  n <- max(length(field), length(op), length(value))
+  if (!n) return(blank)
+  field <- rep(field, length.out = n)
+  op <- rep(op, length.out = n)
+  value <- rep(value, length.out = n)
+  ok <- nzchar(field) & op %in% c("gte", "lte") & is.finite(value)
+  if (!any(ok)) return(blank)
+  data.frame(
+    use = rep(TRUE, sum(ok)),
+    field = field[ok],
+    op = op[ok],
+    value = value[ok],
+    stringsAsFactors = FALSE
+  )
+}
 
 screener_field_spec <- function() {
   data.frame(
@@ -233,33 +339,64 @@ screener_load_pool <- function(market = "US", app_dir = getwd()) {
   key
 }
 
+.screener_card_label <- function(id) {
+  key <- paste0("scr_card_", id)
+  .screener_bi(key)
+}
+
+.screener_cat_label <- function(cat) {
+  .screener_bi(paste0("scr_cat_", cat))
+}
+
+.screener_pack_label <- function(pack) {
+  .screener_bi(paste0("scr_pack_", pack))
+}
+
 screener_panel_ui <- function() {
-  defaults <- data.frame(
-    field = c("roe", "pe", "debt_ratio", "pb"),
-    op = c("gte", "lte", "lte", "lte"),
-    value = c(15, 20, 60, 3),
-    use = c(TRUE, TRUE, FALSE, FALSE),
-    stringsAsFactors = FALSE
-  )
-  rows <- lapply(seq_len(.SCR_N_COND), function(i) {
-    fluidRow(
-      column(2, checkboxInput(
-        paste0("scr_use_", i), .screener_bi("scr_use"), value = isTRUE(defaults$use[[i]])
-      )),
-      column(4, selectInput(
-        paste0("scr_field_", i), .screener_bi("scr_field"),
-        choices = screener_field_choices("en"),
-        selected = defaults$field[[i]], width = "100%"
-      )),
-      column(2, selectInput(
-        paste0("scr_op_", i), .screener_bi("scr_op"),
-        choices = c("≥" = "gte", "≤" = "lte"),
-        selected = defaults$op[[i]], width = "100%"
-      )),
-      column(4, numericInput(
-        paste0("scr_value_", i), .screener_bi("scr_value"),
-        value = defaults$value[[i]], width = "100%"
-      ))
+  cat_ids <- screener_catalog_categories()
+  packs <- screener_catalog_packs()
+  catalog <- screener_condition_catalog()
+  cat_btns <- lapply(cat_ids, function(cat) {
+    tags$button(
+      type = "button",
+      class = paste("ynow-scr-cat-btn", if (identical(cat, "masters")) "is-active" else ""),
+      `data-scr-cat` = cat,
+      .screener_cat_label(cat)
+    )
+  })
+  pack_btns <- lapply(packs, function(pk) {
+    tags$button(
+      type = "button",
+      class = paste("ynow-scr-pack-btn", if (identical(pk, "buffett")) "is-active" else ""),
+      `data-scr-pack` = pk,
+      .screener_pack_label(pk)
+    )
+  })
+  avail_cards <- lapply(seq_len(nrow(catalog)), function(i) {
+    row <- catalog[i, , drop = FALSE]
+    tone <- as.character(row$tone[[1]])
+    tags$li(
+      class = "ynow-scr-card",
+      `data-scr-id` = row$id[[1]],
+      `data-scr-category` = row$category[[1]],
+      `data-scr-pack` = row$pack[[1]],
+      `data-scr-field` = row$field[[1]],
+      `data-scr-op` = row$op[[1]],
+      `data-scr-value` = as.character(row$value[[1]]),
+      tags$span(
+        class = paste("ynow-scr-card-icon", paste0("tone-", tone)),
+        as.character(row$icon[[1]])
+      ),
+      tags$span(class = "ynow-scr-card-body", .screener_card_label(row$id[[1]])),
+      tags$span(
+        class = "ynow-scr-card-actions",
+        tags$button(
+          type = "button",
+          class = "ynow-scr-card-add",
+          title = "Add",
+          ">"
+        )
+      )
     )
   })
   fluidRow(
@@ -269,7 +406,8 @@ screener_panel_ui <- function() {
       width = 12,
       status = "warning",
       solidHeader = TRUE,
-      tags$p(.screener_bi("scr_help")),
+      tags$link(rel = "stylesheet", type = "text/css", href = "ynow_screener_dnd.css"),
+      tags$p(id = "ynow_scr_help", .screener_bi("scr_help")),
       fluidRow(
         column(4, selectInput(
           "scr_market", .screener_bi("scr_market"),
@@ -277,8 +415,46 @@ screener_panel_ui <- function() {
           selected = "US", width = "100%"
         ))
       ),
-      do.call(tagList, rows),
-      actionButton("scr_run", .screener_bi("scr_run"), class = "btn-warning"),
+      tags$div(
+        id = "ynow_screener_dnd",
+        class = "ynow-scr-dnd",
+        tags$div(
+          class = "ynow-scr-dnd-cats",
+          do.call(tagList, cat_btns)
+        ),
+        tags$div(
+          class = "ynow-scr-dnd-mid",
+          tags$div(
+            id = "scr_pack_row",
+            class = "ynow-scr-pack-row",
+            do.call(tagList, pack_btns)
+          ),
+          tags$ul(
+            id = "scr_avail_list",
+            class = "ynow-scr-list ynow-scr-list-avail",
+            do.call(tagList, avail_cards)
+          )
+        ),
+        tags$div(
+          class = "ynow-scr-dnd-right",
+          tags$div(
+            class = "ynow-scr-workspace-actions",
+            actionButton("scr_run", .screener_bi("scr_run"), class = "btn-primary"),
+            actionButton("scr_save", .screener_bi("scr_save"), class = "btn-default"),
+            actionButton("scr_clear", .screener_bi("scr_clear"), class = "btn-default")
+          ),
+          tags$ul(
+            id = "scr_selected_list",
+            class = "ynow-scr-list ynow-scr-list-selected",
+            tags$li(
+              class = "ynow-scr-drop-hint",
+              .screener_bi("scr_drop_hint")
+            )
+          )
+        )
+      ),
+      tags$script(src = "vendor/Sortable.min.js"),
+      tags$script(src = "ynow_screener_dnd.js"),
       tags$div(style = "margin-top:12px;", DT::DTOutput("scr_table")),
       fluidRow(
         style = "margin-top:8px;",
@@ -323,8 +499,15 @@ screener_server <- function(input, output, session, ui_locale_rv = NULL,
   if (is.null(pa_refresh)) pa_refresh <- reactiveVal(0L)
   scr_result <- reactiveVal(screener_empty_pool())
   scr_meta <- reactiveVal(list(ok = FALSE, reason = "idle", label = "", fields = character(0)))
+  scr_dnd_conds <- reactiveVal(screener_payload_to_conditions("[]"))
 
   .conds_from_input <- function() {
+    # Prefer drag-and-drop workspace; fall back to legacy fixed rows if present.
+    dnd <- tryCatch(scr_dnd_conds(), error = function(e) NULL)
+    if (is.data.frame(dnd) && nrow(dnd) > 0L) return(dnd)
+    payload <- isolate(input$scr_dnd_payload)
+    from_payload <- screener_payload_to_conditions(payload)
+    if (nrow(from_payload) > 0L) return(from_payload)
     rows <- lapply(seq_len(.SCR_N_COND), function(i) {
       data.frame(
         use = isTRUE(input[[paste0("scr_use_", i)]]),
@@ -337,12 +520,23 @@ screener_server <- function(input, output, session, ui_locale_rv = NULL,
     do.call(rbind, rows)
   }
 
+  observeEvent(input$scr_dnd_payload, {
+    scr_dnd_conds(screener_payload_to_conditions(input$scr_dnd_payload))
+  }, ignoreNULL = FALSE)
+
+  observeEvent(input$scr_clear, {
+    tryCatch(session$sendCustomMessage("ynowScrDndClear", list()), error = function(e) NULL)
+    scr_dnd_conds(screener_payload_to_conditions("[]"))
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$scr_dnd_saved, {
+    showNotification(say_now("scr_saved"), type = "message", duration = 3)
+  }, ignoreInit = TRUE)
+
   observe({
     locale <- if (is.null(ui_locale_rv)) "en" else {
       tryCatch(normalize_ui_locale(ui_locale_rv()), error = function(e) "en")
     }
-    ch <- screener_field_choices(locale)
-    ops <- stats::setNames(c("gte", "lte"), c(ui_str("scr_op_gte", locale), ui_str("scr_op_lte", locale)))
     mkts <- stats::setNames(c("US", "TW"), c(ui_str("scr_market_us", locale), ui_str("scr_market_tw", locale)))
     kinds <- stats::setNames(
       c("price_lte", "price_gte", "day_chg_lte", "day_chg_gte"),
@@ -352,16 +546,6 @@ screener_server <- function(input, output, session, ui_locale_rv = NULL,
         character(1)
       )
     )
-    field_defaults <- c("roe", "pe", "debt_ratio", "pb")
-    op_defaults <- c("gte", "lte", "lte", "lte")
-    for (i in seq_len(.SCR_N_COND)) {
-      cur <- isolate(input[[paste0("scr_field_", i)]])
-      if (is.null(cur) || !cur %in% unname(ch)) cur <- field_defaults[[i]]
-      updateSelectInput(session, paste0("scr_field_", i), choices = ch, selected = cur)
-      cur_op <- isolate(input[[paste0("scr_op_", i)]])
-      if (is.null(cur_op) || !cur_op %in% c("gte", "lte")) cur_op <- op_defaults[[i]]
-      updateSelectInput(session, paste0("scr_op_", i), choices = ops, selected = cur_op)
-    }
     cur_m <- isolate(input$scr_market)
     if (is.null(cur_m) || !cur_m %in% c("US", "TW")) cur_m <- "US"
     updateSelectInput(session, "scr_market", choices = mkts, selected = cur_m)

@@ -1,0 +1,215 @@
+/* Custom screen — StatementDog-style drag workspace */
+.ynow-scr-dnd {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: stretch;
+  margin-bottom: 8px;
+}
+.ynow-scr-dnd-cats {
+  flex: 0 0 148px;
+  max-width: 160px;
+  background: #f4f6f8;
+  border: 1px solid #d9dee5;
+  border-radius: 4px;
+  padding: 6px 0;
+  min-height: 280px;
+}
+.ynow-scr-cat-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: #334155;
+  cursor: pointer;
+  border-left: 3px solid transparent;
+}
+.ynow-scr-cat-btn:hover {
+  background: #e8eef5;
+}
+.ynow-scr-cat-btn.is-active {
+  background: #fff;
+  border-left-color: #f0ad4e;
+  font-weight: 600;
+  color: #1e293b;
+}
+.ynow-scr-dnd-mid {
+  flex: 1 1 220px;
+  min-width: 200px;
+  background: #fff;
+  border: 1px solid #d9dee5;
+  border-radius: 4px;
+  padding: 8px;
+  min-height: 280px;
+}
+.ynow-scr-pack-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.ynow-scr-pack-btn {
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  border-radius: 3px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  color: #334155;
+}
+.ynow-scr-pack-btn.is-active {
+  border-color: #f0ad4e;
+  background: #fff8e8;
+  font-weight: 600;
+}
+.ynow-scr-dnd-right {
+  flex: 1 1 260px;
+  min-width: 240px;
+  background: #fff;
+  border: 1px solid #d9dee5;
+  border-radius: 4px;
+  padding: 8px;
+  min-height: 280px;
+  display: flex;
+  flex-direction: column;
+}
+.ynow-scr-workspace-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.ynow-scr-workspace-actions .btn {
+  margin: 0;
+}
+.ynow-scr-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  min-height: 180px;
+  flex: 1 1 auto;
+}
+.ynow-scr-list-avail .ynow-scr-card {
+  display: none;
+}
+.ynow-scr-list-avail .ynow-scr-card.is-visible {
+  display: flex;
+}
+.ynow-scr-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #e2e8f0;
+  background: #fafbfc;
+  border-radius: 4px;
+  padding: 8px 10px;
+  margin-bottom: 6px;
+  cursor: grab;
+  user-select: none;
+}
+.ynow-scr-card:active {
+  cursor: grabbing;
+}
+.ynow-scr-card.sortable-ghost {
+  opacity: 0.45;
+  background: #fff3cd;
+}
+.ynow-scr-card.sortable-chosen {
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
+}
+.ynow-scr-card-icon {
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  background: #64748b;
+}
+.ynow-scr-card-icon.tone-safe { background: #16a34a; }
+.ynow-scr-card-icon.tone-profit { background: #dc2626; }
+.ynow-scr-card-icon.tone-growth { background: #2563eb; }
+.ynow-scr-card-icon.tone-value { background: #ca8a04; }
+.ynow-scr-card-icon.tone-master { background: #7c3aed; }
+.ynow-scr-card-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 13px;
+  color: #1e293b;
+  line-height: 1.35;
+}
+.ynow-scr-card-actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.ynow-scr-card-value {
+  width: 72px;
+  height: 28px;
+  padding: 2px 6px;
+  font-size: 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 3px;
+}
+.ynow-scr-card-add,
+.ynow-scr-card-remove {
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  border-radius: 3px;
+  width: 28px;
+  height: 28px;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+  color: #475569;
+}
+.ynow-scr-card-add:hover,
+.ynow-scr-card-remove:hover {
+  border-color: #f0ad4e;
+  color: #1e293b;
+}
+.ynow-scr-drop-hint {
+  color: #64748b;
+  font-size: 12.5px;
+  line-height: 1.55;
+  padding: 18px 10px;
+  text-align: center;
+}
+.ynow-scr-list-selected.has-items .ynow-scr-drop-hint {
+  display: none;
+}
+.ynow-scr-list-selected.ynow-scr-drop-active {
+  outline: 2px dashed #f0ad4e;
+  outline-offset: -2px;
+  background: #fffbeb;
+}
+@media (max-width: 768px) {
+  .ynow-scr-dnd-cats {
+    flex: 1 1 100%;
+    max-width: none;
+    min-height: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 6px;
+  }
+  .ynow-scr-cat-btn {
+    border-left: 0;
+    border-radius: 3px;
+    padding: 8px 10px;
+    background: #fff;
+    border: 1px solid #d9dee5;
+  }
+  .ynow-scr-cat-btn.is-active {
+    border-color: #f0ad4e;
+    background: #fff8e8;
+  }
+}

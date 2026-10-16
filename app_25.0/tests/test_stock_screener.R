@@ -158,6 +158,32 @@ if (nrow(bhit$df)) {
   check("bundled hits are US tickers", TRUE)
 }
 
+catalog <- screener_condition_catalog()
+check("catalog has master packs", all(c("buffett", "graham") %in% catalog$pack))
+check("catalog fields are known", all(catalog$field %in% screener_field_ids()))
+payload_json <- jsonlite::toJSON(
+  list(
+    list(id = "m_buffett_roe", field = "roe", op = "gte", value = 15),
+    list(id = "m_buffett_debt", field = "debt_ratio", op = "lte", value = 30)
+  ),
+  auto_unbox = TRUE
+)
+from_dnd <- screener_payload_to_conditions(as.character(payload_json))
+check("dnd payload becomes conditions", nrow(from_dnd) == 2L && all(from_dnd$use))
+dnd_hit <- screener_apply(us, from_dnd)
+check("dnd Buffett-like filter keeps AAA", isTRUE(dnd_hit$ok) && "AAA" %in% dnd_hit$df$ticker)
+check("empty dnd payload is no conditions", identical(
+  screener_payload_to_conditions("[]")$field, character(0)
+))
+card_keys <- paste0("scr_card_", catalog$id)
+check("en card labels present", all(card_keys %in% names(.UI_STRINGS$en)))
+check("zh card labels present", all(card_keys %in% names(.UI_STRINGS$`zh-TW`)))
+check("dnd locale keys paired", all(c(
+  "scr_save", "scr_clear", "scr_drop_hint", "scr_cat_masters", "scr_pack_buffett"
+) %in% names(.UI_STRINGS$en) & c(
+  "scr_save", "scr_clear", "scr_drop_hint", "scr_cat_masters", "scr_pack_buffett"
+) %in% names(.UI_STRINGS$`zh-TW`)))
+
 if (fail > 0L) {
   cat("FAILED ", fail, " checks\n", sep = "")
   quit(status = 1L)
