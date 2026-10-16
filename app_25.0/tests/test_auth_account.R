@@ -229,6 +229,12 @@ check("UI wires ynowAuthState handler", grepl("ynowAuthState", ui, fixed = TRUE)
 check("UI wires ynowAuthFeature handler", grepl("ynowAuthFeature", ui, fixed = TRUE))
 check("UI wires OAuth redirect + callback", grepl("ynowAuthOAuthRedirect", ui, fixed = TRUE) &&
         grepl("ynow_auth_oauth_callback", ui, fixed = TRUE))
+check("UI collapses sidebar before auth modal", {
+  auth_open <- paste(readLines(src_auth, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("ynowAuthOpenModal", ui, fixed = TRUE) &&
+    grepl("ynowEnsureSidebarCollapsed", ui, fixed = TRUE) &&
+    grepl("ynowAuthOpenModal", auth_open, fixed = TRUE)
+})
 check("Neon not ready without env", {
   Sys.unsetenv("YNOW_DB_HOST")
   Sys.unsetenv("YNOW_DB_USER")
