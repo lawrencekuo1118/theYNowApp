@@ -97,6 +97,10 @@ check("admin credit +5", isTRUE(cred$ok) && identical(ynow_points_balance(uid), 
 
 tail <- ynow_points_ledger_tail(uid, n = 50L)
 check("ledger has rows", is.data.frame(tail) && nrow(tail) >= 3L)
+all_rows <- ynow_points_ledger_all(uid)
+check("ledger_all returns every row", is.data.frame(all_rows) && nrow(all_rows) >= nrow(tail))
+check("ledger has note column", "note" %in% names(all_rows))
+check("ledger has ref_id column", "ref_id" %in% names(all_rows))
 
 # Gate off always allows
 Sys.setenv(YNOW_POINTS_ENABLED = "0")
@@ -128,6 +132,24 @@ check("run_bt gates bt_run", {
 check("admin panel shows points", {
   auth <- paste(readLines(file.path(app_dir, "auth_account.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   grepl("points_balance", auth, fixed = TRUE) && grepl("ynow_pts_admin_submit", auth, fixed = TRUE)
+})
+check("account_points is independent tab", {
+  auth <- paste(readLines(file.path(app_dir, "auth_account.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl('tabName = "account_points"', auth, fixed = TRUE) &&
+    grepl("ynow_points_panel_ui", auth, fixed = TRUE) &&
+    grepl("ynow_menu_pts_ledger", auth, fixed = TRUE)
+})
+check("server renders points panel + DT", {
+  srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("output$ynow_points_panel", srv, fixed = TRUE) &&
+    grepl("ynow_pts_ledger_dt", srv, fixed = TRUE) &&
+    grepl("ynow_points_ledger_all", srv, fixed = TRUE)
+})
+check("locale has pts ledger tab keys", {
+  nzchar(ui_str("pts_ledger_title", "en")) &&
+    nzchar(ui_str("pts_ledger_title", "zh-TW")) &&
+    nzchar(ui_str("menu_pts_ledger", "zh-TW")) &&
+    grepl("資料庫", ui_str("pts_ledger_intro", "zh-TW"), fixed = TRUE)
 })
 
 cat("PASS", n_ok, " FAIL", n_fail, "\n")

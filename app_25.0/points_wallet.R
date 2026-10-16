@@ -148,26 +148,35 @@ ynow_points_sku_title <- function(sku, locale = "en") {
   list(ok = TRUE, balance = new_bal, message_key = "pts_msg_ok", delta = dlt)
 }
 
-.ynow_points_mem_ledger_tail <- function(user_id, n = 20L) {
+.ynow_points_mem_meta_note <- function(meta) {
+  if (is.null(meta)) return("")
+  if (is.list(meta) && !is.null(meta$note)) return(as.character(meta$note)[1])
+  ""
+}
+
+.ynow_points_mem_ledger_tail <- function(user_id, n = NULL) {
   uid <- as.character(user_id %||% "")[1]
-  n <- max(1L, as.integer(n %||% 20L)[1])
+  empty <- data.frame(
+    id = character(), created_at = character(), delta = integer(),
+    balance_after = integer(), reason = character(), sku = character(),
+    ref_id = character(), note = character(),
+    stringsAsFactors = FALSE
+  )
   rows <- Filter(function(r) identical(r$user_id, uid), .ynow_points_mem$ledger)
-  if (!length(rows)) {
-    return(data.frame(
-      created_at = character(), delta = integer(), balance_after = integer(),
-      reason = character(), sku = character(), ref_id = character(),
-      stringsAsFactors = FALSE
-    ))
-  }
+  if (!length(rows)) return(empty)
   rows <- rev(rows)
-  rows <- rows[seq_len(min(n, length(rows)))]
+  if (!is.null(n) && is.finite(as.integer(n)[1]) && as.integer(n)[1] > 0L) {
+    rows <- rows[seq_len(min(as.integer(n)[1], length(rows)))]
+  }
   data.frame(
+    id = vapply(rows, function(r) as.character(r$id %||% ""), character(1)),
     created_at = vapply(rows, function(r) as.character(r$created_at), character(1)),
     delta = vapply(rows, function(r) as.integer(r$delta), integer(1)),
     balance_after = vapply(rows, function(r) as.integer(r$balance_after), integer(1)),
     reason = vapply(rows, function(r) as.character(r$reason), character(1)),
     sku = vapply(rows, function(r) as.character(r$sku %||% ""), character(1)),
     ref_id = vapply(rows, function(r) as.character(r$ref_id), character(1)),
+    note = vapply(rows, function(r) .ynow_points_mem_meta_note(r$meta), character(1)),
     stringsAsFactors = FALSE
   )
 }
@@ -344,33 +353,37 @@ ynow_points_ensure_schema <- function(conn = NULL) {
   }) %||% list(ok = FALSE, balance = NA_integer_, message_key = "pts_msg_backend")
 }
 
-.ynow_points_neon_ledger_tail <- function(user_id, n = 20L) {
-  uid <- as.character(user_id %||% "")[1]
-  n <- max(1L, as.integer(n %||% 20L)[1])
-  if (!nzchar(uid)) {
-    return(data.frame(
-      created_at = character(), delta = integer(), balance_after = integer(),
-      reason = character(), sku = character(), ref_id = character(),
-      stringsAsFactors = FALSE
-    ))
-  }
-  ynow_db_with(function(con) {
-    ynow_points_ensure_schema(con)
-    DBI::dbGetQuery(
-      con,
-      "SELECT created_at::text AS created_at, delta, balance_after, reason,
-              COALESCE(sku, '') AS sku, ref_id
-         FROM ynow_points_ledger
-        WHERE user_id = $1::uuid
-        ORDER BY created_at DESC
-        LIMIT $2",
-      params = list(uid, n)
-    )
-  }) %||% data.frame(
-    created_at = character(), delta = integer(), balance_after = integer(),
-    reason = character(), sku = character(), ref_id = character(),
+.ynow_points_neon_ledger_empty <- function() {
+  data.frame(
+    id = character(), created_at = character(), delta = integer(),
+    balance_after = integer(), reason = character(), sku = character(),
+    ref_id = character(), note = character(),
     stringsAsFactors = FALSE
   )
+}
+
+.ynow_points_neon_ledger_tail <- function(user_id, n = NULL) {
+  uid <- as.character(user_id %||% "")[1]
+  if (!nzchar(uid)) return(.ynow_points_neon_ledger_empty())
+  lim <- suppressWarnings(as.integer(n)[1])
+  ynow_db_with(function(con) {
+    ynow_points_ensure_schema(con)
+    # All rows for the user (newest first). Optional LIMIT when n is set.
+    sql <- paste0(
+      "SELECT id::text AS id, created_at::text AS created_at, delta, balance_after, reason,",
+      " COALESCE(sku, '') AS sku, ref_id,",
+      " COALESCE(meta->>'note', '') AS note",
+      " FROM ynow_points_ledger",
+      " WHERE user_id = $1::uuid",
+      " ORDER BY created_at DESC"
+    )
+    if (is.finite(lim) && lim > 0L) {
+      sql <- paste0(sql, " LIMIT $2")
+      DBI::dbGetQuery(con, sql, params = list(uid, lim))
+    } else {
+      DBI::dbGetQuery(con, sql, params = list(uid))
+    }
+  }) %||% .ynow_points_neon_ledger_empty()
 }
 
 # ----- public API -----
@@ -432,11 +445,18 @@ ynow_points_try_spend <- function(user_id, sku, ref_id, meta = NULL) {
   )
 }
 
-ynow_points_ledger_tail <- function(user_id, n = 20L) {
+#' Ledger rows for one user (newest first).
+#' @param n NULL = all rows (DB stores every mutation); or positive integer limit.
+ynow_points_ledger_tail <- function(user_id, n = NULL) {
   if (identical(ynow_points_backend(), "neon")) {
     return(.ynow_points_neon_ledger_tail(user_id, n = n))
   }
   .ynow_points_mem_ledger_tail(user_id, n = n)
+}
+
+#' Alias: full history for one user (every points mutation).
+ynow_points_ledger_all <- function(user_id) {
+  ynow_points_ledger_tail(user_id, n = NULL)
 }
 
 #' Grant signup bonus once (idempotent). Safe to call on every new account path.

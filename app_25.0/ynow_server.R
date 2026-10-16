@@ -383,10 +383,7 @@ server <- function(input, output, session) {
   session$userData$ynow_auth <- ynow_auth
   ynow_pts_panel_tick <- reactiveVal(0L)
 
-  # Maintenance backend (Full + signed-in). Lite never requires login.
-  output$ynow_admin_panel <- renderUI({
-    ynow_pts_panel_tick()
-    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+  .ynow_account_gate_ui <- function(loc) {
     if (!isTRUE(ynow_auth_enabled())) {
       return(tags$p(style = "color:#888;", tryCatch(
         ui_str("auth_msg_disabled", loc),
@@ -396,7 +393,7 @@ server <- function(input, output, session) {
     if (isTRUE(tryCatch(lite_mode(), error = function(e) FALSE))) {
       return(tags$p(style = "color:#888;", tryCatch(
         ui_str("auth_admin_lite_blocked", loc),
-        error = function(e) "Maintenance is Full-mode only. Lite stays fully usable without an account."
+        error = function(e) "Account pages are Full-mode only. Lite stays fully usable without an account."
       )))
     }
     u <- tryCatch(ynow_auth$user(), error = function(e) NULL)
@@ -405,40 +402,203 @@ server <- function(input, output, session) {
         class = "box box-warning",
         tags$div(class = "box-body", tags$p(tryCatch(
           ui_str("auth_admin_need_login", loc),
-          error = function(e) "Sign in to open the maintenance workspace."
+          error = function(e) "Sign in to open the account workspace."
         )),
         actionButton("ynow_pa_gate_signin", tryCatch(
           ui_str("auth_sign_in", loc), error = function(e) "Sign in"
         ), class = "btn-primary"))
       ))
     }
-    build_ver <- tryCatch(
-      as.character(.YNOW_BUILD_VERSION %||% "")[1],
-      error = function(e) ""
-    )
+    NULL
+  }
+
+  .ynow_pts_user_bundle <- function(u) {
     uid <- as.character(u$id %||% "")[1]
     pts_bal <- if (nzchar(uid) && exists("ynow_points_balance", mode = "function")) {
       tryCatch(ynow_points_balance(uid), error = function(e) NA_integer_)
     } else {
       NA_integer_
     }
-    pts_led <- if (nzchar(uid) && exists("ynow_points_ledger_tail", mode = "function")) {
-      tryCatch(ynow_points_ledger_tail(uid, n = 20L), error = function(e) NULL)
+    # Full ledger for this user (every DB mutation).
+    pts_led <- if (nzchar(uid) && exists("ynow_points_ledger_all", mode = "function")) {
+      tryCatch(ynow_points_ledger_all(uid), error = function(e) NULL)
+    } else if (nzchar(uid) && exists("ynow_points_ledger_tail", mode = "function")) {
+      tryCatch(ynow_points_ledger_tail(uid, n = NULL), error = function(e) NULL)
     } else {
       NULL
     }
+    list(uid = uid, balance = pts_bal, ledger = pts_led)
+  }
+
+  # Account overview (Full + signed-in). Lite never requires login.
+  output$ynow_admin_panel <- renderUI({
+    ynow_pts_panel_tick()
+    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+    gated <- .ynow_account_gate_ui(loc)
+    if (!is.null(gated)) return(gated)
+    u <- tryCatch(ynow_auth$user(), error = function(e) NULL)
+    build_ver <- tryCatch(
+      as.character(.YNOW_BUILD_VERSION %||% "")[1],
+      error = function(e) ""
+    )
+    bund <- .ynow_pts_user_bundle(u)
     if (exists("ynow_admin_panel_ui", mode = "function")) {
       ynow_admin_panel_ui(
         u,
         locale = loc,
         build_version = build_ver,
-        points_balance = pts_bal,
-        points_ledger = pts_led
+        points_balance = bund$balance,
+        points_ledger = NULL
       )
     } else {
       tags$p(u$email %||% "")
     }
   })
+
+  # Points ledger tab — full history for the signed-in user.
+  output$ynow_points_panel <- renderUI({
+    ynow_pts_panel_tick()
+    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+    gated <- .ynow_account_gate_ui(loc)
+    if (!is.null(gated)) return(gated)
+    u <- tryCatch(ynow_auth$user(), error = function(e) NULL)
+    bund <- .ynow_pts_user_bundle(u)
+    if (exists("ynow_points_panel_ui", mode = "function")) {
+      ynow_points_panel_ui(
+        u,
+        locale = loc,
+        points_balance = bund$balance,
+        points_ledger = bund$ledger
+      )
+    } else {
+      tags$p(tryCatch(ui_str("pts_ledger_title", loc), error = function(e) "Points ledger"))
+    }
+  })
+
+  .ynow_pts_ledger_display_df <- function() {
+    ynow_pts_panel_tick()
+    u <- tryCatch(ynow_auth$user(), error = function(e) NULL)
+    if (is.null(u)) {
+      return(data.frame(
+        created_at = character(), delta = integer(), balance_after = integer(),
+        reason = character(), sku = character(), ref_id = character(),
+        note = character(), stringsAsFactors = FALSE
+      ))
+    }
+    bund <- .ynow_pts_user_bundle(u)
+    df <- bund$ledger
+    if (!is.data.frame(df) || nrow(df) < 1L) {
+      return(data.frame(
+        created_at = character(), delta = integer(), balance_after = integer(),
+        reason = character(), sku = character(), ref_id = character(),
+        note = character(), stringsAsFactors = FALSE
+      ))
+    }
+    cols <- intersect(
+      c("created_at", "delta", "balance_after", "reason", "sku", "ref_id", "note"),
+      names(df)
+    )
+    df[, cols, drop = FALSE]
+  }
+
+  if (requireNamespace("DT", quietly = TRUE)) {
+    output$ynow_pts_ledger_dt <- DT::renderDT({
+      loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+      .lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
+      df <- .ynow_pts_ledger_display_df()
+      if (!nrow(df)) {
+        return(DT::datatable(
+          data.frame(Message = .lab("pts_ledger_empty", "No points activity yet.")),
+          rownames = FALSE,
+          options = list(dom = "t", ordering = FALSE)
+        ))
+      }
+      names(df) <- vapply(names(df), function(nm) {
+        switch(
+          nm,
+          created_at = .lab("pts_col_when", "When"),
+          delta = .lab("pts_col_delta", "Delta"),
+          balance_after = .lab("pts_col_balance", "Balance"),
+          reason = .lab("pts_col_reason", "Reason"),
+          sku = .lab("pts_col_sku", "SKU"),
+          ref_id = .lab("pts_col_ref", "Reference"),
+          note = .lab("pts_col_note", "Note"),
+          nm
+        )
+      }, character(1))
+      DT::datatable(
+        df,
+        rownames = FALSE,
+        class = "compact stripe hover",
+        options = list(
+          pageLength = 25,
+          lengthMenu = list(c(25, 50, 100, -1), c("25", "50", "100", "All")),
+          order = list(list(0, "desc")),
+          scrollX = TRUE,
+          deferRender = TRUE
+        )
+      )
+    }, server = TRUE)
+  } else {
+    output$ynow_pts_ledger_fallback <- renderUI({
+      loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+      .lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
+      df <- .ynow_pts_ledger_display_df()
+      if (!nrow(df)) {
+        return(tags$p(class = "text-muted", .lab("pts_ledger_empty", "No points activity yet.")))
+      }
+      tags$div(
+        style = "overflow-x:auto; max-height:70vh;",
+        tags$table(
+          class = "table table-condensed table-striped",
+          tags$thead(tags$tr(
+            tags$th(.lab("pts_col_when", "When")),
+            tags$th(.lab("pts_col_delta", "Delta")),
+            tags$th(.lab("pts_col_balance", "Balance")),
+            tags$th(.lab("pts_col_reason", "Reason")),
+            tags$th(.lab("pts_col_sku", "SKU")),
+            tags$th(.lab("pts_col_ref", "Reference")),
+            tags$th(.lab("pts_col_note", "Note"))
+          )),
+          tags$tbody(lapply(seq_len(nrow(df)), function(i) {
+            tags$tr(
+              tags$td(as.character(df$created_at[[i]] %||% "")),
+              tags$td(as.character(df$delta[[i]] %||% "")),
+              tags$td(as.character(df$balance_after[[i]] %||% "")),
+              tags$td(as.character(df$reason[[i]] %||% "")),
+              tags$td(as.character(df$sku[[i]] %||% "")),
+              tags$td(as.character(df$ref_id[[i]] %||% "")),
+              tags$td(as.character(df$note[[i]] %||% ""))
+            )
+          }))
+        )
+      )
+    })
+  }
+
+  observeEvent(input$ynow_admin_goto_points, {
+    tryCatch(
+      updateTabItems(session, "sidebar_tabs", "account_points"),
+      error = function(e) {
+        tryCatch(
+          session$sendInputMessage("sidebar_tabs", list(value = "account_points")),
+          error = function(e2) NULL
+        )
+      }
+    )
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$ynow_pts_goto_overview, {
+    tryCatch(
+      updateTabItems(session, "sidebar_tabs", "account_admin"),
+      error = function(e) {
+        tryCatch(
+          session$sendInputMessage("sidebar_tabs", list(value = "account_admin")),
+          error = function(e2) NULL
+        )
+      }
+    )
+  }, ignoreInit = TRUE)
 
   # Admin-only: credit points to a Neon user by email.
   observeEvent(input$ynow_pts_admin_submit, {

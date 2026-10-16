@@ -541,13 +541,22 @@ ynow_auth_css <- function() {
     "#ynow_auth_modal #ynow_auth_status .text-success { color:var(--ynow-logo-green, #249C60); font-size:13px; }",
     "#ynow_auth_modal #ynow_auth_status .text-muted { color:#777; font-size:13px; }",
     "body.ynow-lite .sidebar-menu a[data-value=\"account_admin\"],",
-    "body.ynow-lite .sidebar-menu li:has(> a[data-value=\"account_admin\"]) {",
+    "body.ynow-lite .sidebar-menu li:has(> a[data-value=\"account_admin\"]),",
+    "body.ynow-lite .sidebar-menu a[data-value=\"account_points\"],",
+    "body.ynow-lite .sidebar-menu li:has(> a[data-value=\"account_points\"]),",
+    "body.ynow-lite .sidebar-menu li.treeview:has(a[data-value=\"account_admin\"]),",
+    "body.ynow-lite .sidebar-menu li.treeview:has(a[data-value=\"account_points\"]) {",
     "  display:none !important;",
     "}",
     "body.ynow-auth-feature:not(.ynow-authed) .sidebar-menu a[data-value=\"account_admin\"],",
-    "body.ynow-auth-feature:not(.ynow-authed) .sidebar-menu li:has(> a[data-value=\"account_admin\"]) {",
+    "body.ynow-auth-feature:not(.ynow-authed) .sidebar-menu li:has(> a[data-value=\"account_admin\"]),",
+    "body.ynow-auth-feature:not(.ynow-authed) .sidebar-menu a[data-value=\"account_points\"],",
+    "body.ynow-auth-feature:not(.ynow-authed) .sidebar-menu li:has(> a[data-value=\"account_points\"]),",
+    "body.ynow-auth-feature:not(.ynow-authed) .sidebar-menu li.treeview:has(a[data-value=\"account_admin\"]),",
+    "body.ynow-auth-feature:not(.ynow-authed) .sidebar-menu li.treeview:has(a[data-value=\"account_points\"]) {",
     "  display:none !important;",
     "}",
+    ".ynow-pts-ledger-panel { max-width:1100px; margin:12px auto; }",
     "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) #ynow_pa_body { display:none !important; }",
     "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) #ynow_pa_guest_gate { display:block !important; }",
     "#ynow_pa_guest_gate { display:none; }",
@@ -562,26 +571,42 @@ ynow_auth_css <- function() {
   )))
 }
 
-#' Sidebar menu item for Maintenance (Full + signed-in; CSS hides otherwise).
+#' Sidebar: Account tree with Overview + Points ledger (Full + signed-in).
 ynow_admin_menu_item <- function() {
   if (!isTRUE(ynow_auth_enabled())) return(NULL)
   menuItem(
-    text = tags$span(id = "ynow_menu_admin", "Maintenance"),
-    tabName = "account_admin",
-    icon = icon("toolbox")
+    text = tags$span(id = "ynow_menu_admin", "Account"),
+    icon = icon("toolbox"),
+    startExpanded = FALSE,
+    menuSubItem(
+      text = tags$span(id = "ynow_menu_admin_overview", "Overview"),
+      tabName = "account_admin",
+      icon = icon("user-cog")
+    ),
+    menuSubItem(
+      text = tags$span(id = "ynow_menu_pts_ledger", "Points ledger"),
+      tabName = "account_points",
+      icon = icon("list-alt")
+    )
   )
 }
 
-#' Tab shell for maintenance backend (body filled by server).
+#' Tab shells for Account overview + Points ledger (bodies filled by server).
 ynow_admin_tab_ui <- function() {
   if (!isTRUE(ynow_auth_enabled())) return(NULL)
-  tabItem(
-    tabName = "account_admin",
-    uiOutput("ynow_admin_panel")
+  tagList(
+    tabItem(
+      tabName = "account_admin",
+      uiOutput("ynow_admin_panel")
+    ),
+    tabItem(
+      tabName = "account_points",
+      uiOutput("ynow_points_panel")
+    )
   )
 }
 
-#' Build maintenance panel UI for a signed-in user.
+#' Build Account overview panel (signed-in). Ledger lives on account_points tab.
 ynow_admin_panel_ui <- function(user, locale = "zh-TW", build_version = "",
                                 points_balance = NA_integer_,
                                 points_ledger = NULL) {
@@ -589,68 +614,9 @@ ynow_admin_panel_ui <- function(user, locale = "zh-TW", build_version = "",
   .lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
   email <- ynow_auth_norm_email(user$email %||% "")
   at <- as.character(user$logged_in_at %||% "")[1]
-  role <- as.character(user$role %||% "user")[1]
-  is_admin <- identical(role, "admin")
   bal <- suppressWarnings(as.integer(points_balance)[1])
   bal_txt <- if (is.finite(bal)) as.character(bal) else "—"
   pts_on <- exists("ynow_points_enabled", mode = "function") && isTRUE(ynow_points_enabled())
-  ledger_ui <- {
-    df <- points_ledger
-    if (!is.data.frame(df) || nrow(df) < 1L) {
-      tags$p(class = "text-muted", .lab("pts_ledger_empty", "No points activity yet."))
-    } else {
-      tags$div(
-        style = "overflow-x:auto;",
-        tags$table(
-          class = "table table-condensed table-striped",
-          tags$thead(tags$tr(
-            tags$th(.lab("pts_col_when", "When")),
-            tags$th(.lab("pts_col_delta", "Delta")),
-            tags$th(.lab("pts_col_balance", "Balance")),
-            tags$th(.lab("pts_col_reason", "Reason")),
-            tags$th(.lab("pts_col_sku", "SKU"))
-          )),
-          tags$tbody(lapply(seq_len(min(20L, nrow(df))), function(i) {
-            tags$tr(
-              tags$td(as.character(df$created_at[[i]] %||% "")),
-              tags$td(as.character(df$delta[[i]] %||% "")),
-              tags$td(as.character(df$balance_after[[i]] %||% "")),
-              tags$td(as.character(df$reason[[i]] %||% "")),
-              tags$td(as.character(df$sku[[i]] %||% ""))
-            )
-          }))
-        )
-      )
-    }
-  }
-  admin_credit_ui <- if (isTRUE(is_admin)) {
-    tags$div(
-      tags$hr(),
-      tags$h4(id = "ynow_pts_admin_h", .lab("pts_admin_credit", "Admin: add points")),
-      fluidRow(
-        column(
-          4,
-          textInput("ynow_pts_admin_email", .lab("pts_admin_email", "User email"), value = "")
-        ),
-        column(
-          3,
-          numericInput("ynow_pts_admin_amount", .lab("pts_admin_amount", "Points to add"),
-                       value = 20, min = 1, step = 1)
-        ),
-        column(
-          5,
-          textInput("ynow_pts_admin_note", .lab("pts_admin_note", "Note (optional)"), value = "")
-        )
-      ),
-      actionButton(
-        "ynow_pts_admin_submit",
-        label = tags$span(id = "ynow_pts_admin_submit_label", .lab("pts_admin_submit", "Add points")),
-        class = "btn-primary"
-      )
-    )
-  } else {
-    NULL
-  }
   tags$div(
     class = "ynow-admin-panel",
     fluidRow(
@@ -658,7 +624,7 @@ ynow_admin_panel_ui <- function(user, locale = "zh-TW", build_version = "",
         width = 12,
         status = "primary",
         solidHeader = TRUE,
-        title = tags$span(id = "ynow_admin_box_title", .lab("auth_admin_title", "Maintenance")),
+        title = tags$span(id = "ynow_admin_box_title", .lab("auth_admin_title", "Account overview")),
         tags$p(
           class = "ynow-admin-meta",
           tags$span(id = "ynow_admin_intro", .lab(
@@ -697,10 +663,6 @@ ynow_admin_panel_ui <- function(user, locale = "zh-TW", build_version = "",
           }
         ),
         tags$hr(),
-        tags$h4(id = "ynow_pts_ledger_h", .lab("pts_ledger", "Recent points activity")),
-        ledger_ui,
-        admin_credit_ui,
-        tags$hr(),
         tags$h4(id = "ynow_admin_tools_h", .lab("auth_admin_tools", "Tools")),
         tags$ul(
           tags$li(id = "ynow_admin_tool_alerts", .lab(
@@ -713,8 +675,16 @@ ynow_admin_panel_ui <- function(user, locale = "zh-TW", build_version = "",
           )),
           tags$li(id = "ynow_admin_tool_points", .lab(
             "auth_admin_tool_points",
-            "Points: signup bonus on first account; usage SKUs may spend points when enabled."
+            "Points: every balance change is stored; open Points ledger for the full history."
           ))
+        ),
+        actionButton(
+          "ynow_admin_goto_points",
+          label = tags$span(
+            id = "ynow_admin_goto_points_label",
+            .lab("pts_goto_ledger", "Open Points ledger")
+          ),
+          class = "btn-primary"
         ),
         actionButton(
           "ynow_admin_goto_alerts",
@@ -724,6 +694,107 @@ ynow_admin_panel_ui <- function(user, locale = "zh-TW", build_version = "",
         actionButton(
           "ynow_auth_sign_out_admin",
           label = tags$span(id = "ynow_admin_sign_out_label", .lab("auth_sign_out", "Sign out")),
+          class = "btn-warning"
+        )
+      )
+    )
+  )
+}
+
+#' Points ledger panel — full history for the signed-in user (+ admin credit).
+#' Table body is filled by server via DT::dataTableOutput("ynow_pts_ledger_dt").
+ynow_points_panel_ui <- function(user, locale = "zh-TW",
+                                 points_balance = NA_integer_,
+                                 points_ledger = NULL) {
+  loc <- as.character(locale %||% "zh-TW")[1]
+  .lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
+  email <- ynow_auth_norm_email(user$email %||% "")
+  role <- as.character(user$role %||% "user")[1]
+  is_admin <- identical(role, "admin")
+  bal <- suppressWarnings(as.integer(points_balance)[1])
+  bal_txt <- if (is.finite(bal)) as.character(bal) else "—"
+  n_rows <- if (is.data.frame(points_ledger)) nrow(points_ledger) else 0L
+  ledger_ui <- tags$div(
+    id = "ynow_pts_ledger_wrap",
+    if (requireNamespace("DT", quietly = TRUE)) {
+      DT::dataTableOutput("ynow_pts_ledger_dt")
+    } else {
+      uiOutput("ynow_pts_ledger_fallback")
+    }
+  )
+  admin_credit_ui <- if (isTRUE(is_admin)) {
+    tags$div(
+      tags$hr(),
+      tags$h4(id = "ynow_pts_admin_h", .lab("pts_admin_credit", "Admin: add points")),
+      fluidRow(
+        column(
+          4,
+          textInput("ynow_pts_admin_email", .lab("pts_admin_email", "User email"), value = "")
+        ),
+        column(
+          3,
+          numericInput("ynow_pts_admin_amount", .lab("pts_admin_amount", "Points to add"),
+                       value = 20, min = 1, step = 1)
+        ),
+        column(
+          5,
+          textInput("ynow_pts_admin_note", .lab("pts_admin_note", "Note (optional)"), value = "")
+        )
+      ),
+      actionButton(
+        "ynow_pts_admin_submit",
+        label = tags$span(id = "ynow_pts_admin_submit_label", .lab("pts_admin_submit", "Add points")),
+        class = "btn-primary"
+      )
+    )
+  } else {
+    NULL
+  }
+  tags$div(
+    class = "ynow-pts-ledger-panel",
+    fluidRow(
+      box(
+        width = 12,
+        status = "primary",
+        solidHeader = TRUE,
+        title = tags$span(id = "ynow_pts_box_title", .lab("pts_ledger_title", "Points ledger")),
+        tags$p(
+          class = "ynow-admin-meta",
+          tags$span(id = "ynow_pts_ledger_intro", .lab(
+            "pts_ledger_intro",
+            "Every points change for this account is stored in the database and listed here."
+          ))
+        ),
+        tags$p(
+          tags$b(id = "ynow_pts_ledger_account_label", .lab("auth_admin_account", "Account")),
+          ": ",
+          tags$code(if (nzchar(email)) email else "—"),
+          " · ",
+          tags$b(id = "ynow_pts_ledger_bal_label", .lab("pts_balance", "Points balance")),
+          ": ",
+          tags$code(id = "ynow_pts_ledger_bal_value", bal_txt),
+          " · ",
+          tags$span(
+            id = "ynow_pts_ledger_count",
+            sprintf(.lab("pts_ledger_count_fmt", "%s records"), as.character(n_rows))
+          )
+        ),
+        tags$hr(),
+        tags$h4(id = "ynow_pts_ledger_h", .lab("pts_ledger", "All points activity")),
+        ledger_ui,
+        admin_credit_ui,
+        tags$hr(),
+        actionButton(
+          "ynow_pts_goto_overview",
+          label = tags$span(
+            id = "ynow_pts_goto_overview_label",
+            .lab("pts_goto_overview", "Back to Account overview")
+          ),
+          class = "btn-default"
+        ),
+        actionButton(
+          "ynow_auth_sign_out_points",
+          label = tags$span(id = "ynow_pts_sign_out_label", .lab("auth_sign_out", "Sign out")),
           class = "btn-warning"
         )
       )
@@ -988,6 +1059,10 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
     if (!isTRUE(ynow_auth_enabled())) return()
     .sign_out()
   }, ignoreInit = TRUE)
+  observeEvent(input$ynow_auth_sign_out_points, {
+    if (!isTRUE(ynow_auth_enabled())) return()
+    .sign_out()
+  }, ignoreInit = TRUE)
 
   observeEvent(input$ynow_pa_gate_signin, {
     .open_auth_modal()
@@ -1037,11 +1112,15 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
         forgot = tryCatch(ui_str("auth_forgot", loc), error = function(e) "Forgot password?"),
         register = tryCatch(ui_str("auth_register", loc), error = function(e) "Register a new account"),
         resend = tryCatch(ui_str("auth_resend", loc), error = function(e) "Didn't receive the verification email"),
-        admin_title = tryCatch(ui_str("auth_admin_title", loc), error = function(e) "Maintenance"),
+        admin_title = tryCatch(ui_str("auth_admin_title", loc), error = function(e) "Account overview"),
         admin_intro = tryCatch(ui_str("auth_admin_intro", loc), error = function(e) ""),
         pa_gate_title = tryCatch(ui_str("auth_pa_gate_title", loc), error = function(e) "Sign in required"),
         pa_gate_body = tryCatch(ui_str("auth_pa_gate_body", loc), error = function(e) ""),
-        menu_admin = tryCatch(ui_str("menu_admin", loc), error = function(e) "Maintenance")
+        menu_admin = tryCatch(ui_str("menu_admin", loc), error = function(e) "Account"),
+        menu_admin_overview = tryCatch(ui_str("menu_admin_overview", loc), error = function(e) "Overview"),
+        menu_pts_ledger = tryCatch(ui_str("menu_pts_ledger", loc), error = function(e) "Points ledger"),
+        pts_box_title = tryCatch(ui_str("pts_ledger_title", loc), error = function(e) "Points ledger"),
+        pts_ledger_intro = tryCatch(ui_str("pts_ledger_intro", loc), error = function(e) "")
       )
     )
   })
