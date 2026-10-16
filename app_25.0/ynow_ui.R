@@ -16,7 +16,7 @@
       return(sub('^"version"\\s*:\\s*"([^"]+)".*$', "\\1", m[[1]]))
     }
   }
-  "v25.11"
+  "v25.12"
 }
 .YNOW_BUILD_VERSION <- .ynow_read_build_version()
 
@@ -230,7 +230,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v25.11) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+          "The YNow App (v25.12) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
         ),
         tags$p(
           class = "ynow-about-method",
@@ -258,7 +258,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v25.11) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
+          "The YNow App (v25.12) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
         ),
         tags$p(
           class = "ynow-about-method",
@@ -368,7 +368,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App（簡化版）")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite（v25.11）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
+          "The YNow App Lite（v25.12）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
           "以自動判別主／副模型與預設參數完成試算，讓使用者先看到合理價區間與產業 KPI，再決定是否回到完整版深入調整。"
         ),
         tags$p(
@@ -385,7 +385,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App (Lite)")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite (v25.11) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
+          "The YNow App Lite (v25.12) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
           "auto-selects primary/secondary models with App defaults, and surfaces fair-value ranges plus industry KPIs before you open Full for deeper calibration."
         ),
         tags$p(
@@ -3510,9 +3510,9 @@ ui <- dashboardPage(
                   'data-ynow-build="', .YNOW_BUILD_VERSION, '" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v25.11</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v25.12</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v25.11</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v25.12</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -9690,6 +9690,24 @@ ui <- dashboardPage(
                 window.location.href = String(payload.url);
               }
             });
+            /* Collapse sidebar, then show login modal (Sign in / PA gate).
+               Uses window.* helpers defined later in this script. */
+            addHandler('ynowAuthOpenModal', function () {
+              try {
+                if (typeof window.ynowEnsureSidebarCollapsed === 'function') {
+                  window.ynowEnsureSidebarCollapsed();
+                }
+              } catch (eCol) {}
+              setTimeout(function () {
+                try {
+                  if (typeof window.ynowShowAuthModal === 'function') {
+                    window.ynowShowAuthModal();
+                  } else if (window.jQuery) {
+                    jQuery('#ynow_auth_modal').modal('show');
+                  }
+                } catch (eModal) {}
+              }, 140);
+            });
             addHandler('ynowAuthState', function (payload) {
               if (!payload) return;
               var loggedIn = !!(payload.logged_in);
@@ -10189,13 +10207,16 @@ ui <- dashboardPage(
           window.ynowGotoAndHighlight = ynowGotoAndHighlight;
 
           /* g ≥ WACC／Ke: expand sidebar, pulse Model Dashboard, jump to SGR */
+          function ynowSidebarPushToggle() {
+            return document.querySelector('.main-header .sidebar-toggle') ||
+                   document.querySelector('a.sidebar-toggle') ||
+                   document.querySelector('[data-toggle=\"push-menu\"]');
+          }
           function ynowEnsureSidebarOpen() {
             var body = document.body;
             if (!body) return;
             if (!body.classList.contains('sidebar-collapse')) return;
-            var toggle = document.querySelector('.main-header .sidebar-toggle') ||
-                         document.querySelector('a.sidebar-toggle') ||
-                         document.querySelector('[data-toggle=\"push-menu\"]');
+            var toggle = ynowSidebarPushToggle();
             if (toggle) {
               try { toggle.click(); } catch (e0) {}
             }
@@ -10211,6 +10232,43 @@ ui <- dashboardPage(
               }
             }, 80);
           }
+          /* Sign-in: collapse sidebar before the login modal appears */
+          function ynowEnsureSidebarCollapsed() {
+            var body = document.body;
+            if (!body) return;
+            if (body.classList.contains('sidebar-collapse')) return;
+            var toggle = ynowSidebarPushToggle();
+            if (toggle) {
+              try { toggle.click(); } catch (e0) {}
+            }
+            setTimeout(function () {
+              if (!body.classList.contains('sidebar-collapse')) {
+                body.classList.add('sidebar-collapse');
+                try {
+                  if (window.jQuery) {
+                    jQuery('body').trigger('collapsed.pushMenu');
+                  }
+                } catch (e1) {}
+              }
+            }, 80);
+          }
+          window.ynowEnsureSidebarCollapsed = ynowEnsureSidebarCollapsed;
+          function ynowShowAuthModal() {
+            try {
+              if (window.jQuery && jQuery.fn && jQuery.fn.modal) {
+                jQuery('#ynow_auth_modal').modal('show');
+                return;
+              }
+            } catch (eShow) {}
+            var el = document.getElementById('ynow_auth_modal');
+            if (el) {
+              el.classList.add('in');
+              el.style.display = 'block';
+              el.setAttribute('aria-hidden', 'false');
+              document.body.classList.add('modal-open');
+            }
+          }
+          window.ynowShowAuthModal = ynowShowAuthModal;
           function ynowClearSidebarGuide() {
             document.querySelectorAll('.ynow-sidebar-guide-pulse').forEach(function (el) {
               el.classList.remove('ynow-sidebar-guide-pulse');

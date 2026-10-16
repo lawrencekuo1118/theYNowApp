@@ -686,9 +686,10 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
     .push_auth_state(FALSE, "")
   }
 
+  #' Collapse sidebar first (client), then open the login modal.
   .open_auth_modal <- function() {
     if (!isTRUE(ynow_auth_enabled())) return()
-    tryCatch(shinyBS::toggleModal(session, "ynow_auth_modal", "open"), error = function(e) NULL)
+    session$sendCustomMessage("ynowAuthOpenModal", list())
   }
   observeEvent(input$ynow_auth_open, {
     .open_auth_modal()
@@ -821,8 +822,7 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
   }, ignoreInit = TRUE)
 
   observeEvent(input$ynow_pa_gate_signin, {
-    if (!isTRUE(ynow_auth_enabled())) return()
-    tryCatch(shinyBS::toggleModal(session, "ynow_auth_modal", "open"), error = function(e) NULL)
+    .open_auth_modal()
   }, ignoreInit = TRUE)
 
   observeEvent(input$ynow_admin_goto_alerts, {
