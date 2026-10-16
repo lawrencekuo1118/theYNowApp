@@ -430,6 +430,11 @@ ynow_auth_css <- function() {
     "  justify-content:center; gap:14px; flex-wrap:wrap;",
     "}",
     "body.ynow-lite .ynow-auth-links { display:none !important; }",
+    # Logged-in: never show or hit Sign-in links (avoids post-login modal reopen race).
+    "body.ynow-authed .ynow-auth-open,",
+    "body.ynow-authed a.ynow-auth-open {",
+    "  display:none !important; pointer-events:none !important;",
+    "}",
     "#ynow_auth_modal .modal-dialog { width:92%; max-width:420px; margin:40px auto; }",
     "#ynow_auth_modal .modal-content {",
     "  border:1px solid var(--ynow-line, #d0d0d0); border-radius:2px;",
@@ -729,9 +734,19 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
   #' Collapse sidebar first (client), then open the login modal.
   .open_auth_modal <- function() {
     if (!isTRUE(ynow_auth_enabled())) return()
+    # Already signed in: ignore stale Sign-in actionLink clicks (display:none links still fire).
+    if (!is.null(account_user())) {
+      # #region agent log
+      .ynow_auth_sidebar_dbg("H2", "auth_account.R:.open_auth_modal", "skip open; already logged in", list(
+        logged_in = TRUE,
+        sidebar_tabs = as.character(isolate(input$sidebar_tabs) %||% "")[1]
+      ))
+      # #endregion
+      return()
+    }
     # #region agent log
     .ynow_auth_sidebar_dbg("H2", "auth_account.R:.open_auth_modal", "send ynowAuthOpenModal", list(
-      logged_in = !is.null(account_user()),
+      logged_in = FALSE,
       sidebar_tabs = as.character(isolate(input$sidebar_tabs) %||% "")[1]
     ))
     # #endregion
