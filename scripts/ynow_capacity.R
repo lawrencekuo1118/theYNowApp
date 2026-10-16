@@ -181,6 +181,9 @@ ynow_capacity_from_entitlements <- function(entitlements, target = .YNOW_CAPACIT
 
 #' Best-effort settings for the *current* plan (stability first when below target).
 #' On Starter (1×1×50 @ large): lower max_connections so 1 GB does not OOM.
+#' After session_capacity hardenings (shared hist cache, deferred Blue Chip snap,
+#' heavy-job single-flight, session teardown), Starter browse/search density can
+#' use a slightly lower MB/conn floor (100) → typically 7 concurrent on large.
 ynow_capacity_stable_for_plan <- function(entitlements) {
   rec <- ynow_capacity_from_entitlements(entitlements, target = .YNOW_CAPACITY_TARGET)
   max_inst <- tryCatch(as.integer(entitlements$MaxInstancesLimit$limit), error = function(e) 1L)
@@ -197,18 +200,19 @@ ynow_capacity_stable_for_plan <- function(entitlements) {
     return(rec)
   }
 
-  # Stability path: shrink connections so residual RAM/conn stays ≥ 120 MB.
-  # Prefer fewer workers when a single large instance would otherwise OOM.
+  # Stability path: shrink connections so residual RAM/conn stays healthy.
+  # Starter/single-instance uses 100 MB floor (post architecture opts); multi-instance
+  # plans keep the stricter 120 MB Lab/HFV floor via recommend().
+  mb_floor <- if (max_inst <= 1L && max_workers <= 1L) 100 else 120
   w <- max(1L, max_workers)
   usable <- ynow_capacity_usable_mb(size, w)
-  if (!is.finite(usable) || usable < 120) {
-    # Drop workers until base RSS fits.
-    while (w > 1L && (ynow_capacity_usable_mb(size, w) < 120 || !is.finite(ynow_capacity_usable_mb(size, w)))) {
+  if (!is.finite(usable) || usable < mb_floor) {
+    while (w > 1L && (ynow_capacity_usable_mb(size, w) < mb_floor || !is.finite(ynow_capacity_usable_mb(size, w)))) {
       w <- w - 1L
     }
     usable <- ynow_capacity_usable_mb(size, w)
   }
-  c_max <- max(1L, min(50L, as.integer(floor(max(usable, 0) / 120))))
+  c_max <- max(1L, min(50L, as.integer(floor(max(usable, 0) / mb_floor))))
   list(
     ok = FALSE,
     target = .YNOW_CAPACITY_TARGET,

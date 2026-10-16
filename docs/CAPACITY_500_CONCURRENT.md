@@ -46,12 +46,28 @@ Billing: [shinyapps.io account billing](https://www.shinyapps.io/admin/#/account
 Rscript scripts/configure_shinyapps_capacity.R
 ```
 
+## Architecture tuned for *current* Starter ceiling
+
+Design target while still on Starter: **maximize safe concurrent browse/search sessions on 1× large (1 GB) × 1 worker** (about **7** connections at ≥100 MB usable/conn after opts), not fake a 500 number.
+
+| Lever | Where | Effect |
+|-------|--------|--------|
+| Session teardown | `ynow_server.R` `onSessionEnded` | Drop financials / HFV / Lab payloads + `gc()` on disconnect |
+| Shared hist cache | `session_capacity.R` `ynow_cached_hist_stock_trim` | One 180d frame per ticker per worker (not per session) |
+| Defer Blue Chip snapshot | lazy `on_first_mount` for `bluechip` | No chain-rank CSV copy on every connect |
+| Heavy-job single-flight | Lab eval / Clustering / HFV `run_bt` | Only one memory-heavy job on the worker at a time |
+| Price-alert timer gate | `price_alert.R` | `invalidateLater` only while alerts are armed |
+| Hosted sequential futures | `async_jobs.R` | No multisession RSS multiplier |
+| Neon pool cap | `auth_db.R` | `maxSize ≤ 2` on hosted |
+| shinyapps props | `configure_shinyapps_capacity.R` | `max_connections` matched to RAM floor; `timeout_conn=600` |
+
 ## What we already hardened in app code
 
 1. **Shared disk caches** on hosted workers (`web_crawler.R` / `YNOW_CACHE_ROOT`) — avoid stampeding Yahoo/SEC.
 2. **Hosted async = sequential** (`async_jobs.R`) — do not spawn `future` multisession children that multiply RSS under multi-tenant workers.
 3. **Neon pool maxSize ≤ 2 on hosted** (`auth_db.R`) — many workers × large pools exhaust Neon Free.
 4. **Capacity planner + apply script** — `scripts/ynow_capacity.R`, `scripts/configure_shinyapps_capacity.R`.
+5. **`session_capacity.R`** — process locks + shared hist + cleanup helpers.
 
 ## Ops checklist
 

@@ -43,6 +43,27 @@ stable <- ynow_capacity_stable_for_plan(starter_ents)
 check("Starter stable shrinks connections", stable$settings$max_connections < 50L)
 check("Starter stable capacity ≥ 1", stable$capacity >= 1L)
 check("Starter stable MB/conn ≥ 100", isTRUE(stable$mb_per_conn >= 100))
+# Post session_capacity opts: Starter floor 100 MB → typically 7 on large/1GB
+check(
+  "Starter stable capacity in 6–10 band",
+  stable$capacity >= 6L && stable$capacity <= 10L
+)
+check(
+  "async + session_capacity wired in global",
+  {
+    glob <- paste(
+      readLines(file.path(root, "app_25.0", "global.R"), warn = FALSE, encoding = "UTF-8"),
+      collapse = "\n"
+    )
+    if (!grepl("session_capacity", glob, fixed = TRUE)) {
+      glob <- paste(
+        readLines(file.path(root, "global.R"), warn = FALSE, encoding = "UTF-8"),
+        collapse = "\n"
+      )
+    }
+    grepl("session_capacity.R", glob, fixed = TRUE)
+  }
+)
 
 # Professional-class entitlements: must recommend ≥500 with healthy MB/conn.
 pro_ents <- list(
