@@ -29,9 +29,17 @@
     return { id: id, field: field, op: op, value: value };
   }
 
+  function parkHint(list) {
+    if (!list) return;
+    var hint = list.querySelector('.ynow-scr-drop-hint');
+    if (hint) list.appendChild(hint);
+  }
+
   function emitPayload() {
     var list = $('#scr_selected_list');
-    if (!list || typeof Shiny === 'undefined' || !Shiny.setInputValue) return;
+    if (!list) return;
+    parkHint(list);
+    if (typeof Shiny === 'undefined' || !Shiny.setInputValue) return;
     var cards = $all('.ynow-scr-card', list).map(parseCard).filter(Boolean);
     list.classList.toggle('has-items', cards.length > 0);
     Shiny.setInputValue('scr_dnd_payload', JSON.stringify(cards), { priority: 'event' });
