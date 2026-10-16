@@ -582,11 +582,75 @@ ynow_admin_tab_ui <- function() {
 }
 
 #' Build maintenance panel UI for a signed-in user.
-ynow_admin_panel_ui <- function(user, locale = "zh-TW", build_version = "") {
+ynow_admin_panel_ui <- function(user, locale = "zh-TW", build_version = "",
+                                points_balance = NA_integer_,
+                                points_ledger = NULL) {
   loc <- as.character(locale %||% "zh-TW")[1]
   .lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
   email <- ynow_auth_norm_email(user$email %||% "")
   at <- as.character(user$logged_in_at %||% "")[1]
+  role <- as.character(user$role %||% "user")[1]
+  is_admin <- identical(role, "admin")
+  bal <- suppressWarnings(as.integer(points_balance)[1])
+  bal_txt <- if (is.finite(bal)) as.character(bal) else "—"
+  pts_on <- exists("ynow_points_enabled", mode = "function") && isTRUE(ynow_points_enabled())
+  ledger_ui <- {
+    df <- points_ledger
+    if (!is.data.frame(df) || nrow(df) < 1L) {
+      tags$p(class = "text-muted", .lab("pts_ledger_empty", "No points activity yet."))
+    } else {
+      tags$div(
+        style = "overflow-x:auto;",
+        tags$table(
+          class = "table table-condensed table-striped",
+          tags$thead(tags$tr(
+            tags$th(.lab("pts_col_when", "When")),
+            tags$th(.lab("pts_col_delta", "Delta")),
+            tags$th(.lab("pts_col_balance", "Balance")),
+            tags$th(.lab("pts_col_reason", "Reason")),
+            tags$th(.lab("pts_col_sku", "SKU"))
+          )),
+          tags$tbody(lapply(seq_len(min(20L, nrow(df))), function(i) {
+            tags$tr(
+              tags$td(as.character(df$created_at[[i]] %||% "")),
+              tags$td(as.character(df$delta[[i]] %||% "")),
+              tags$td(as.character(df$balance_after[[i]] %||% "")),
+              tags$td(as.character(df$reason[[i]] %||% "")),
+              tags$td(as.character(df$sku[[i]] %||% ""))
+            )
+          }))
+        )
+      )
+    }
+  }
+  admin_credit_ui <- if (isTRUE(is_admin)) {
+    tags$div(
+      tags$hr(),
+      tags$h4(id = "ynow_pts_admin_h", .lab("pts_admin_credit", "Admin: add points")),
+      fluidRow(
+        column(
+          4,
+          textInput("ynow_pts_admin_email", .lab("pts_admin_email", "User email"), value = "")
+        ),
+        column(
+          3,
+          numericInput("ynow_pts_admin_amount", .lab("pts_admin_amount", "Points to add"),
+                       value = 20, min = 1, step = 1)
+        ),
+        column(
+          5,
+          textInput("ynow_pts_admin_note", .lab("pts_admin_note", "Note (optional)"), value = "")
+        )
+      ),
+      actionButton(
+        "ynow_pts_admin_submit",
+        label = tags$span(id = "ynow_pts_admin_submit_label", .lab("pts_admin_submit", "Add points")),
+        class = "btn-primary"
+      )
+    )
+  } else {
+    NULL
+  }
   tags$div(
     class = "ynow-admin-panel",
     fluidRow(
@@ -618,6 +682,24 @@ ynow_admin_panel_ui <- function(user, locale = "zh-TW", build_version = "") {
           ": ",
           tags$code(if (nzchar(build_version)) build_version else "—")
         ),
+        tags$p(
+          tags$b(id = "ynow_pts_balance_label", .lab("pts_balance", "Points balance")),
+          ": ",
+          tags$code(id = "ynow_pts_balance_value", bal_txt)
+        ),
+        tags$p(
+          class = "text-muted",
+          style = "font-size:12.5px;",
+          if (isTRUE(pts_on)) {
+            .lab("pts_enabled_note", "Points enforcement is on.")
+          } else {
+            .lab("pts_disabled_note", "Points enforcement is off.")
+          }
+        ),
+        tags$hr(),
+        tags$h4(id = "ynow_pts_ledger_h", .lab("pts_ledger", "Recent points activity")),
+        ledger_ui,
+        admin_credit_ui,
         tags$hr(),
         tags$h4(id = "ynow_admin_tools_h", .lab("auth_admin_tools", "Tools")),
         tags$ul(
@@ -628,6 +710,10 @@ ynow_admin_panel_ui <- function(user, locale = "zh-TW", build_version = "") {
           tags$li(id = "ynow_admin_tool_lite", .lab(
             "auth_admin_tool_lite",
             "Lite mode stays fully usable without sign-in (no maintenance nav)."
+          )),
+          tags$li(id = "ynow_admin_tool_points", .lab(
+            "auth_admin_tool_points",
+            "Points: signup bonus on first account; usage SKUs may spend points when enabled."
           ))
         ),
         actionButton(

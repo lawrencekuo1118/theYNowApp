@@ -28,6 +28,7 @@ if (requireNamespace("sodium", quietly = TRUE)) {
 
 source(file.path(app_dir, "auth_account.R"), local = TRUE, encoding = "UTF-8")
 source(file.path(app_dir, "auth_db.R"), local = TRUE, encoding = "UTF-8")
+source(file.path(app_dir, "points_wallet.R"), local = TRUE, encoding = "UTF-8")
 
 if (!isTRUE(ynow_db_ready())) {
   stop(
@@ -39,6 +40,10 @@ if (!isTRUE(ynow_db_ready())) {
 ok <- ynow_db_ensure_schema()
 if (!isTRUE(ok)) stop("Schema create failed (check SSL / credentials / network).")
 cat("OK schema ynow_users\n")
+
+pts <- ynow_points_ensure_schema()
+if (!isTRUE(pts)) stop("Points schema create failed.")
+cat("OK schema ynow_points_ledger + ynow_points_catalog\n")
 
 seeded <- ynow_db_seed_admin_from_env()
 if (isTRUE(seeded)) {

@@ -211,6 +211,20 @@ ynow_db_ensure_schema <- function(conn = NULL) {
       CREATE INDEX IF NOT EXISTS ynow_users_email_lower_idx
         ON ynow_users (lower(email))
     ")
+    # Points wallet columns / tables (no-op when points_wallet.R not sourced yet).
+    if (exists("ynow_points_ensure_schema", mode = "function")) {
+      tryCatch(ynow_points_ensure_schema(con), error = function(e) NULL)
+    } else {
+      # Minimal column so older deploys still migrate users table.
+      tryCatch(
+        DBI::dbExecute(
+          con,
+          "ALTER TABLE ynow_users
+             ADD COLUMN IF NOT EXISTS points_balance INTEGER NOT NULL DEFAULT 0"
+        ),
+        error = function(e) NULL
+      )
+    }
     TRUE
   }
   if (!is.null(conn)) return(run(conn))
@@ -289,6 +303,10 @@ ynow_db_create_user <- function(email, password, display_name = NULL,
     return(list(ok = FALSE, user = NULL, message_key = "auth_msg_register_failed"))
   }
   u <- ynow_db_get_user_by_email(em)
+  uid <- as.character(u$id %||% "")[1]
+  if (nzchar(uid) && exists("ynow_points_grant_signup_bonus", mode = "function")) {
+    tryCatch(ynow_points_grant_signup_bonus(uid), error = function(e) NULL)
+  }
   list(
     ok = TRUE,
     user = list(
@@ -296,7 +314,7 @@ ynow_db_create_user <- function(email, password, display_name = NULL,
       display_name = as.character(u$display_name %||% em)[1],
       provider = "password",
       role = as.character(u$role %||% role)[1],
-      id = as.character(u$id %||% "")[1],
+      id = uid,
       logged_in_at = as.character(Sys.time())
     ),
     message_key = "auth_msg_register_ok"
@@ -415,6 +433,10 @@ ynow_db_upsert_oauth_user <- function(email, display_name = NULL,
     return(list(ok = FALSE, user = NULL, message_key = "auth_msg_register_failed"))
   }
   u <- ynow_db_get_user_by_email(em)
+  uid <- as.character(u$id %||% "")[1]
+  if (nzchar(uid) && exists("ynow_points_grant_signup_bonus", mode = "function")) {
+    tryCatch(ynow_points_grant_signup_bonus(uid), error = function(e) NULL)
+  }
   list(
     ok = TRUE,
     user = list(
@@ -423,7 +445,7 @@ ynow_db_upsert_oauth_user <- function(email, display_name = NULL,
       provider = as.character(u$provider %||% prov)[1],
       provider_uid = as.character(u$provider_uid %||% puid)[1],
       role = "user",
-      id = as.character(u$id %||% "")[1],
+      id = uid,
       logged_in_at = as.character(Sys.time())
     ),
     message_key = "auth_msg_register_ok"

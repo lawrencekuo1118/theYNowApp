@@ -381,9 +381,11 @@ server <- function(input, output, session) {
     )
   }
   session$userData$ynow_auth <- ynow_auth
+  ynow_pts_panel_tick <- reactiveVal(0L)
 
   # Maintenance backend (Full + signed-in). Lite never requires login.
   output$ynow_admin_panel <- renderUI({
+    ynow_pts_panel_tick()
     loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
     if (!isTRUE(ynow_auth_enabled())) {
       return(tags$p(style = "color:#888;", tryCatch(
@@ -414,12 +416,82 @@ server <- function(input, output, session) {
       as.character(.YNOW_BUILD_VERSION %||% "")[1],
       error = function(e) ""
     )
+    uid <- as.character(u$id %||% "")[1]
+    pts_bal <- if (nzchar(uid) && exists("ynow_points_balance", mode = "function")) {
+      tryCatch(ynow_points_balance(uid), error = function(e) NA_integer_)
+    } else {
+      NA_integer_
+    }
+    pts_led <- if (nzchar(uid) && exists("ynow_points_ledger_tail", mode = "function")) {
+      tryCatch(ynow_points_ledger_tail(uid, n = 20L), error = function(e) NULL)
+    } else {
+      NULL
+    }
     if (exists("ynow_admin_panel_ui", mode = "function")) {
-      ynow_admin_panel_ui(u, locale = loc, build_version = build_ver)
+      ynow_admin_panel_ui(
+        u,
+        locale = loc,
+        build_version = build_ver,
+        points_balance = pts_bal,
+        points_ledger = pts_led
+      )
     } else {
       tags$p(u$email %||% "")
     }
   })
+
+  # Admin-only: credit points to a Neon user by email.
+  observeEvent(input$ynow_pts_admin_submit, {
+    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+    .pts_lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
+    u <- tryCatch(ynow_auth$user(), error = function(e) NULL)
+    if (is.null(u) || !identical(as.character(u$role %||% "")[1], "admin")) {
+      showNotification(.pts_lab("pts_admin_denied", "Only admins can add points."), type = "error")
+      return()
+    }
+    if (!exists("ynow_points_credit", mode = "function")) {
+      showNotification(.pts_lab("pts_msg_backend", "Points backend is unavailable."), type = "error")
+      return()
+    }
+    em <- ynow_auth_norm_email(input$ynow_pts_admin_email %||% "")
+    amt <- suppressWarnings(as.integer(input$ynow_pts_admin_amount)[1])
+    note <- as.character(input$ynow_pts_admin_note %||% "")[1]
+    if (!nzchar(em)) {
+      showNotification(.pts_lab("pts_admin_bad_user", "No account found for that email."), type = "warning")
+      return()
+    }
+    if (!is.finite(amt) || amt < 1L) {
+      showNotification(.pts_lab("pts_admin_bad_amount", "Enter a positive whole-number amount."), type = "warning")
+      return()
+    }
+    target <- if (exists("ynow_db_get_user_by_email", mode = "function")) {
+      tryCatch(ynow_db_get_user_by_email(em), error = function(e) NULL)
+    } else {
+      NULL
+    }
+    tid <- as.character(target$id %||% "")[1]
+    if (!nzchar(tid)) {
+      showNotification(.pts_lab("pts_admin_bad_user", "No account found for that email."), type = "warning")
+      return()
+    }
+    ref <- paste0(
+      "admin_credit:", tid, ":", as.integer(as.numeric(Sys.time())), ":",
+      paste(sample(c(letters, 0:9), 8, replace = TRUE), collapse = "")
+    )
+    res <- ynow_points_credit(
+      tid,
+      delta = amt,
+      reason = "earn_admin",
+      ref_id = ref,
+      meta = list(by = u$email %||% "", note = note)
+    )
+    if (isTRUE(res$ok)) {
+      showNotification(.pts_lab("pts_admin_ok", "Points added."), type = "message")
+      ynow_pts_panel_tick(isolate(ynow_pts_panel_tick()) + 1L)
+    } else {
+      showNotification(.pts_lab(res$message_key %||% "pts_msg_backend", "Points backend error."), type = "error")
+    }
+  }, ignoreInit = TRUE)
 
   # Prefill Value Alert email with the signed-in account mailbox (Full; Lite unchanged).
   observe({
@@ -11156,6 +11228,22 @@ server <- function(input, output, session) {
 
   observeEvent(input$run_bt, {
     req(current_ticker())
+    # Points gate (Full + enforce): Backtest full run.
+    if (!isTRUE(tryCatch(lite_mode(), error = function(e) FALSE)) &&
+        exists("ynow_points_enabled", mode = "function") && isTRUE(ynow_points_enabled()) &&
+        exists("ynow_points_gate", mode = "function")) {
+      u <- tryCatch(ynow_auth$user(), error = function(e) NULL)
+      ref <- paste0(
+        "bt_run:", as.character(u$id %||% "anon")[1], ":",
+        toupper(as.character(current_ticker())[1]), ":",
+        as.character(as.numeric(Sys.time())), ":",
+        paste(sample(c(letters, 0:9), 6, replace = TRUE), collapse = "")
+      )
+      loc_now <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "en")
+      if (!isTRUE(ynow_points_gate(session, "bt_run", ref, user = u, locale = loc_now))) {
+        return()
+      }
+    }
     if (!isTRUE(ynow_heavy_job_try_acquire("hfv_bt"))) {
       showNotification(
         tryCatch(

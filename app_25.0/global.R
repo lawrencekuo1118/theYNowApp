@@ -207,10 +207,14 @@ source("explainability.R", local = TRUE, encoding = "UTF-8")
 source("auth_account.R", local = TRUE, encoding = "UTF-8")
 source("auth_db.R", local = TRUE, encoding = "UTF-8")
 source("auth_oauth.R", local = TRUE, encoding = "UTF-8")
+source("points_wallet.R", local = TRUE, encoding = "UTF-8")
 # Ensure Neon schema + optional seed admin when DB env is present (best-effort).
 if (exists("ynow_db_ready", mode = "function") && isTRUE(ynow_db_ready())) {
   tryCatch({
     ynow_db_ensure_schema()
+    if (exists("ynow_points_ensure_schema", mode = "function")) {
+      ynow_points_ensure_schema()
+    }
     if (exists("ynow_db_seed_admin_from_env", mode = "function")) {
       ynow_db_seed_admin_from_env()
     }

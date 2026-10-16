@@ -509,6 +509,32 @@ screener_server <- function(input, output, session, ui_locale_rv = NULL,
     }
     for (i in idx) {
       if (is.na(i) || i < 1L || i > nrow(res_df)) next
+      # Points: one alert_slot per ticker when enforcement is on (Lite skips).
+      if (!lite &&
+          exists("ynow_points_enabled", mode = "function") && isTRUE(ynow_points_enabled()) &&
+          exists("ynow_points_gate", mode = "function")) {
+        auth_u <- tryCatch({
+          a <- session$userData$ynow_auth
+          a$user()
+        }, error = function(e) NULL)
+        day <- format(Sys.Date(), "%Y-%m-%d")
+        pref <- paste(
+          "alert",
+          as.character(auth_u$id %||% "anon")[1],
+          toupper(trimws(as.character(res_df$ticker[[i]])[1])),
+          kind,
+          as.character(level)[1],
+          day,
+          sep = ":"
+        )
+        loc_now <- tryCatch({
+          if (is.null(ui_locale_rv)) "en" else normalize_ui_locale(isolate(ui_locale_rv()))
+        }, error = function(e) "en")
+        if (!isTRUE(ynow_points_gate(session, "alert_slot", pref, user = auth_u, locale = loc_now))) {
+          last_reason <- "points"
+          break
+        }
+      }
       added <- price_alert_add(
         alerts,
         email = email_val,

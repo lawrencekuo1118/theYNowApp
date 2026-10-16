@@ -952,8 +952,33 @@ price_alert_server <- function(input, output, session, ui_locale_rv = NULL,
     FALSE
   }
 
+  .pa_points_gate_alert <- function(ticker, kind, level) {
+    # Lite / points-off: no-op allow.
+    if (isTRUE(tryCatch(isolate(input$ynow_lite_mode), error = function(e) FALSE))) {
+      return(TRUE)
+    }
+    if (!exists("ynow_points_enabled", mode = "function") || !isTRUE(ynow_points_enabled())) {
+      return(TRUE)
+    }
+    if (!exists("ynow_points_gate", mode = "function")) return(TRUE)
+    auth <- tryCatch(session$userData$ynow_auth, error = function(e) NULL)
+    u <- tryCatch(auth$user(), error = function(e) NULL)
+    day <- format(Sys.Date(), "%Y-%m-%d")
+    ref <- paste(
+      "alert",
+      as.character(u$id %||% "anon")[1],
+      toupper(trimws(as.character(ticker %||% "")[1])),
+      as.character(kind %||% "")[1],
+      as.character(level %||% "")[1],
+      day,
+      sep = ":"
+    )
+    ynow_points_gate(session, "alert_slot", ref, user = u, locale = loc())
+  }
+
   observeEvent(input$pa_save, {
     if (!isTRUE(.pa_require_login_or_notify())) return()
+    if (!isTRUE(.pa_points_gate_alert(input$pa_ticker, input$pa_kind, input$pa_level))) return()
     email_val <- .pa_resolve_email(input$pa_email)
     res <- price_alert_add(
       price_alert_read(),
@@ -1066,6 +1091,11 @@ price_alert_server <- function(input, output, session, ui_locale_rv = NULL,
 
   observeEvent(input$pa_quick_save, {
     if (!isTRUE(.pa_require_login_or_notify())) return()
+    if (!isTRUE(.pa_points_gate_alert(
+      input$pa_quick_ticker, input$pa_quick_kind, input$pa_quick_level
+    ))) {
+      return()
+    }
     res <- price_alert_add(
       price_alert_read(),
       email = .pa_resolve_email(input$pa_quick_email %||% ""),

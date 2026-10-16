@@ -22,6 +22,18 @@ YNOW_DB_SSLMODE=require
 YNOW_ENABLE_ACCOUNT_LOGIN=1
 
 # =============================================================================
+# Points unlock (usage credits) — v1
+# =============================================================================
+# Default OFF (gate allows all actions; set 1 to enforce spend).
+# YNOW_POINTS_ENABLED=0
+# YNOW_POINTS_SIGNUP_BONUS=20
+# Optional price overrides:
+# YNOW_POINTS_PRICE_ALERT_SLOT=1
+# YNOW_POINTS_PRICE_HFV_RUN=3
+# YNOW_POINTS_PRICE_BT_RUN=5
+# Tests / no Neon: YNOW_POINTS_BACKEND=memory
+
+# =============================================================================
 # Required for public Google / Facebook / Apple self-registration
 # =============================================================================
 # After this one-time owner setup + redeploy, ANY end user can register by
