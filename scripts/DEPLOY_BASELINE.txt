@@ -7,4 +7,4 @@ commit=350f269
 short=350f269
 message=chore: record shipped display version v25.19
 captured_at=2026-10-16T13:13:00Z
-display_version=v25.19
+display_version=v25.20
