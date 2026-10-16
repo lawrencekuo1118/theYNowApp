@@ -7,4 +7,4 @@ commit=ebc2dd7
 short=ebc2dd7
 message=chore: record shipped display version v25.13
 captured_at=2026-10-16T01:14:00Z
-display_version=v25.13
+display_version=v25.14
