@@ -265,6 +265,24 @@ check("authed guards skip auth modal reopen (client)", {
     grepl("document.body.classList.add('ynow-authed')", ui, fixed = TRUE) &&
     !grepl("ynowAuthSidebarDbg", ui, fixed = TRUE)
 })
+check("ynow_ui.R parses as R (shinyapps source gate)", {
+  # Bundle 12699126 died here: JS comment with bare "open" inside R "..." string.
+  inherits(tryCatch(parse(src_ui, encoding = "UTF-8"), error = function(e) e), "expression")
+})
+check("auth modal veto JS comments have no bare double-quotes", {
+  # Bare " in /* */ or // comments inside the R-embedded script string terminates
+  # the R string early (see shinyapps exit status 1 / unexpected symbol).
+  lines <- readLines(src_ui, warn = FALSE, encoding = "UTF-8")
+  idx <- which(grepl("__ynowAuthModalShowVeto", lines, fixed = TRUE))
+  if (!length(idx)) return(FALSE)
+  # Window around veto + ynowRequestAuthModal assignment.
+  lo <- max(1L, idx[[1]] - 15L)
+  hi <- min(length(lines), idx[[1]] + 40L)
+  chunk <- lines[lo:hi]
+  cmt <- chunk[grepl("^\\s*(//|/\\*|\\*)", chunk)]
+  !any(grepl('"', cmt, fixed = TRUE)) &&
+    !grepl('toggleModal(..., "open")', paste(chunk, collapse = "\n"), fixed = TRUE)
+})
 check("authed guards skip auth modal reopen (server + CSS)", {
   auth_txt <- paste(readLines(src_auth, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   grepl("body.ynow-authed .ynow-auth-open", auth_txt, fixed = TRUE) &&
