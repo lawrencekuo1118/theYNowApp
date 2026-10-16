@@ -16,7 +16,7 @@
       return(sub('^"version"\\s*:\\s*"([^"]+)".*$', "\\1", m[[1]]))
     }
   }
-  "v25.18"
+  "v25.19"
 }
 .YNOW_BUILD_VERSION <- .ynow_read_build_version()
 
@@ -230,7 +230,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v25.18) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+          "The YNow App (v25.19) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
         ),
         tags$p(
           class = "ynow-about-method",
@@ -258,7 +258,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v25.18) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
+          "The YNow App (v25.19) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
         ),
         tags$p(
           class = "ynow-about-method",
@@ -368,7 +368,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App（簡化版）")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite（v25.18）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
+          "The YNow App Lite（v25.19）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
           "以自動判別主／副模型與預設參數完成試算，讓使用者先看到合理價區間與產業 KPI，再決定是否回到完整版深入調整。"
         ),
         tags$p(
@@ -385,7 +385,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App (Lite)")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite (v25.18) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
+          "The YNow App Lite (v25.19) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
           "auto-selects primary/secondary models with App defaults, and surfaces fair-value ranges plus industry KPIs before you open Full for deeper calibration."
         ),
         tags$p(
@@ -3510,9 +3510,9 @@ ui <- dashboardPage(
                   'data-ynow-build="', .YNOW_BUILD_VERSION, '" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v25.18</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v25.19</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v25.18</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v25.19</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -9833,6 +9833,11 @@ ui <- dashboardPage(
             });
             addHandler('ynowAuthPostLogin', function (payload) {
               if (!payload) return;
+              /* Success: mark authed BEFORE tab restore / sidebar work so any
+                 subsequent Sign-in / BS toggleModal open is vetoed. */
+              if (payload.ok && document.body) {
+                document.body.classList.add('ynow-authed');
+              }
               try {
                 if (window.jQuery) jQuery('#ynow_auth_modal').modal('hide');
               } catch (eHide) {}
@@ -10478,9 +10483,13 @@ ui <- dashboardPage(
             }, 80);
           }
           window.ynowEnsureSidebarCollapsed = ynowEnsureSidebarCollapsed;
+          function ynowIsAuthed() {
+            return !!(document.body && document.body.classList.contains('ynow-authed'));
+          }
+          window.ynowIsAuthed = ynowIsAuthed;
           function ynowShowAuthModal() {
             // Already signed in: never reopen login modal (post-login sidebar race).
-            if (document.body && document.body.classList.contains('ynow-authed')) return;
+            if (ynowIsAuthed()) return;
             try {
               if (window.jQuery && jQuery.fn && jQuery.fn.modal) {
                 jQuery('#ynow_auth_modal').modal('show');
@@ -10500,7 +10509,7 @@ ui <- dashboardPage(
              Shiny custom message and by a capture-phase click on Sign in so the
              modal does not depend on a server round-trip that can be lost. */
           function ynowRequestAuthModal() {
-            if (document.body && document.body.classList.contains('ynow-authed')) return;
+            if (ynowIsAuthed()) return;
             try {
               if (typeof window.ynowPersistPreAuthTab === 'function') window.ynowPersistPreAuthTab();
             } catch (eTab) {}
@@ -10510,6 +10519,42 @@ ui <- dashboardPage(
             }, 140);
           }
           window.ynowRequestAuthModal = ynowRequestAuthModal;
+          /* Last line of defense: shinyBS::toggleModal(..., "open") and any
+             other Bootstrap show path must not open login after sign-in. */
+          if (!window.__ynowAuthModalShowVeto) {
+            window.__ynowAuthModalShowVeto = true;
+            var vetoShow = function (e) {
+              if (!ynowIsAuthed()) return;
+              try { if (e && e.preventDefault) e.preventDefault(); } catch (ePd) {}
+              try { if (e && e.stopImmediatePropagation) e.stopImmediatePropagation(); } catch (eSip) {}
+              try {
+                if (window.jQuery) {
+                  var $m = jQuery('#ynow_auth_modal');
+                  setTimeout(function () {
+                    try { $m.modal('hide'); } catch (eH) {}
+                  }, 0);
+                }
+              } catch (eHide) {}
+              return false;
+            };
+            var forceHideIfAuthed = function () {
+              if (!ynowIsAuthed()) return;
+              try {
+                if (window.jQuery) jQuery('#ynow_auth_modal').modal('hide');
+              } catch (eH2) {}
+            };
+            try {
+              if (window.jQuery) {
+                jQuery(document).on('show.bs.modal', '#ynow_auth_modal', vetoShow);
+                jQuery(document).on('shown.bs.modal', '#ynow_auth_modal', forceHideIfAuthed);
+              }
+            } catch (eBind) {}
+            document.addEventListener('show.bs.modal', function (ev) {
+              var t = ev && ev.target;
+              if (!t || t.id !== 'ynow_auth_modal') return;
+              vetoShow(ev);
+            }, true);
+          }
           if (!window.__ynowAuthOpenCapture) {
             window.__ynowAuthOpenCapture = true;
             document.addEventListener('click', function (ev) {
@@ -10519,7 +10564,7 @@ ui <- dashboardPage(
                 'a.ynow-auth-open, .ynow-auth-open, #ynow_pa_gate_signin, #ynow_pa_gate_signin_label'
               );
               if (!hit) return;
-              var authed = !!(document.body && document.body.classList.contains('ynow-authed'));
+              var authed = ynowIsAuthed();
               var disp = '';
               try { disp = window.getComputedStyle(hit).display || ''; } catch (eD) {}
               var invisible = authed || disp === 'none' || hit.offsetParent === null;

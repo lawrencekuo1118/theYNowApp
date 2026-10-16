@@ -405,7 +405,12 @@ ynow_auth_css <- function() {
     "  justify-content:center; gap:14px; flex-wrap:wrap;",
     "}",
     "body.ynow-lite .ynow-auth-links { display:none !important; }",
-    # Logged-in: never show or hit Sign-in links (avoids post-login modal reopen race).
+    # Logged-in: never show Sign-in modal or hit Sign-in links (post-login race).
+    "body.ynow-authed #ynow_auth_modal,",
+    "body.ynow-authed #ynow_auth_modal.in,",
+    "body.ynow-authed #ynow_auth_modal.show {",
+    "  display:none !important; visibility:hidden !important;",
+    "}",
     "body.ynow-authed .ynow-auth-open,",
     "body.ynow-authed a.ynow-auth-open {",
     "  display:none !important; pointer-events:none !important;",

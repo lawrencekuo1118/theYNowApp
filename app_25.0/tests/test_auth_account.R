@@ -250,19 +250,25 @@ check("client capture opens auth modal without server round-trip", {
     grepl("a.ynow-auth-open", ui, fixed = TRUE)
 })
 check("authed guards skip auth modal reopen (client)", {
-  # Post-login sidebar race: no-op show/request when body.ynow-authed;
-  # capture skips authed or invisible (display:none / offsetParent null).
+  # Post-login: no-op show/request when body.ynow-authed;
+  # capture skips authed or invisible; Bootstrap show.bs.modal veto;
+  # ynowAuthPostLogin sets ynow-authed immediately on success.
   grepl("function ynowShowAuthModal()", ui, fixed = TRUE) &&
     grepl("function ynowRequestAuthModal()", ui, fixed = TRUE) &&
+    grepl("function ynowIsAuthed()", ui, fixed = TRUE) &&
     grepl("classList.contains('ynow-authed')", ui, fixed = TRUE) &&
     grepl("hit.offsetParent === null", ui, fixed = TRUE) &&
     grepl("disp === 'none'", ui, fixed = TRUE) &&
     grepl("var invisible = authed || disp === 'none' || hit.offsetParent === null", ui, fixed = TRUE) &&
+    grepl("__ynowAuthModalShowVeto", ui, fixed = TRUE) &&
+    grepl("show.bs.modal", ui, fixed = TRUE) &&
+    grepl("document.body.classList.add('ynow-authed')", ui, fixed = TRUE) &&
     !grepl("ynowAuthSidebarDbg", ui, fixed = TRUE)
 })
 check("authed guards skip auth modal reopen (server + CSS)", {
   auth_txt <- paste(readLines(src_auth, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   grepl("body.ynow-authed .ynow-auth-open", auth_txt, fixed = TRUE) &&
+    grepl("body.ynow-authed #ynow_auth_modal", auth_txt, fixed = TRUE) &&
     grepl("pointer-events:none !important", auth_txt, fixed = TRUE) &&
     grepl("if (!is.null(account_user())) return()", auth_txt, fixed = TRUE) &&
     grepl(".open_auth_modal <- function()", auth_txt, fixed = TRUE) &&
