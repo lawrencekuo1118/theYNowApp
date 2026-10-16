@@ -17,6 +17,31 @@ ynow_auth_enabled <- function() {
   !(v %in% c("0", "false", "no", "off"))
 }
 
+# #region agent log
+.ynow_auth_sidebar_dbg <- function(hypothesisId, location, message, data = list()) {
+  tryCatch({
+    payload <- list(
+      id = paste0("log_", as.integer(as.numeric(Sys.time()) * 1000), "_", sample(1e5, 1)),
+      timestamp = as.numeric(Sys.time()) * 1000,
+      hypothesisId = as.character(hypothesisId)[1],
+      location = as.character(location)[1],
+      message = as.character(message)[1],
+      data = data,
+      runId = "auth-sidebar-modal-guard"
+    )
+    line <- jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null")
+    for (p in c("/opt/cursor/logs/debug.log", "/opt/cursor/artifacts/auth_sidebar_modal_debug.log")) {
+      tryCatch({
+        dir.create(dirname(p), recursive = TRUE, showWarnings = FALSE)
+        cat(line, "\n", file = p, append = TRUE, sep = "")
+      }, error = function(e) NULL)
+    }
+    message("[ynowAuthSidebarDbg] ", line)
+  }, error = function(e) NULL)
+  invisible(NULL)
+}
+# #endregion
+
 #' Drop NULL UI children (shinydashboard::dashboardHeader tagAssert rejects NULL).
 #' Prefer omitting disabled auth chrome over placeholder tags.
 ynow_compact_ui <- function(...) {
@@ -704,6 +729,12 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
   #' Collapse sidebar first (client), then open the login modal.
   .open_auth_modal <- function() {
     if (!isTRUE(ynow_auth_enabled())) return()
+    # #region agent log
+    .ynow_auth_sidebar_dbg("H2", "auth_account.R:.open_auth_modal", "send ynowAuthOpenModal", list(
+      logged_in = !is.null(account_user()),
+      sidebar_tabs = as.character(isolate(input$sidebar_tabs) %||% "")[1]
+    ))
+    # #endregion
     # Non-empty payload: some Shiny/json paths drop empty list() customs.
     session$sendCustomMessage("ynowAuthOpenModal", list(ok = TRUE))
   }
@@ -720,12 +751,32 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
     })
   }
 
+  # #region agent log
+  observeEvent(input$ynow_auth_sidebar_dbg_event, {
+    ev <- input$ynow_auth_sidebar_dbg_event
+    if (!is.list(ev)) return()
+    .ynow_auth_sidebar_dbg(
+      as.character(ev$hypothesisId %||% "H?")[1],
+      as.character(ev$location %||% "client")[1],
+      as.character(ev$message %||% "client_event")[1],
+      if (is.list(ev$data)) ev$data else list()
+    )
+  }, ignoreInit = TRUE)
+  # #endregion
+
   #' After successful login: toast, close modal, restore pre-login tab (client).
   .finish_auth_success <- function(user, message_key = "auth_msg_ok",
                                    fallback = "Signed in.", restore_tab = NULL) {
     account_user(user)
     mk <- as.character(message_key %||% "auth_msg_ok")[1]
     msg <- .str(mk, fallback)
+    # #region agent log
+    .ynow_auth_sidebar_dbg("H5", "auth_account.R:.finish_auth_success", "success → status + close modal", list(
+      message_key = mk,
+      will_toggle_close = TRUE,
+      writes_status_in_modal = TRUE
+    ))
+    # #endregion
     output$ynow_auth_status <- renderUI({
       tags$p(class = "text-success", msg)
     })

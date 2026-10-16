@@ -9857,6 +9857,17 @@ ui <- dashboardPage(
                Uses window.ynowRequestAuthModal (defined later). Shiny 1.14+
                requires handler.length === 1 — zero-arg handlers never register. */
             addHandler('ynowAuthOpenModal', function (_msg) {
+              // #region agent log
+              try {
+                if (typeof window.ynowAuthSidebarDbg === 'function') {
+                  window.ynowAuthSidebarDbg('H2', 'ynow_ui.R:ynowAuthOpenModal', 'custom message open modal', {
+                    authed: !!(document.body && document.body.classList.contains('ynow-authed')),
+                    sidebarOpen: !!(document.body && document.body.classList.contains('sidebar-open')),
+                    modalOpen: !!(document.body && document.body.classList.contains('modal-open'))
+                  });
+                }
+              } catch (eOpenDbg) {}
+              // #endregion
               if (typeof window.ynowRequestAuthModal === 'function') {
                 window.ynowRequestAuthModal();
               } else {
@@ -9870,6 +9881,26 @@ ui <- dashboardPage(
             addHandler('ynowAuthState', function (payload) {
               if (!payload) return;
               var loggedIn = !!(payload.logged_in);
+              // #region agent log
+              try {
+                if (typeof window.ynowAuthSidebarDbg === 'function') {
+                  var openLinks0 = document.querySelectorAll('.ynow-auth-open');
+                  var visibleOpen = 0;
+                  for (var vi = 0; vi < openLinks0.length; vi++) {
+                    if (window.getComputedStyle(openLinks0[vi]).display !== 'none') visibleOpen++;
+                  }
+                  window.ynowAuthSidebarDbg('H1', 'ynow_ui.R:ynowAuthState', 'auth state applied', {
+                    logged_in: loggedIn,
+                    visible_auth_open: visibleOpen,
+                    sidebarOpen: !!(document.body && document.body.classList.contains('sidebar-open')),
+                    modalDisplay: (function () {
+                      var m = document.getElementById('ynow_auth_modal');
+                      return m ? (window.getComputedStyle(m).display || '') : 'missing';
+                    })()
+                  });
+                }
+              } catch (eStateDbg) {}
+              // #endregion
               if (loggedIn) document.body.classList.add('ynow-authed');
               else document.body.classList.remove('ynow-authed');
               var openLinks = document.querySelectorAll('.ynow-auth-open');
@@ -10476,7 +10507,38 @@ ui <- dashboardPage(
             }, 80);
           }
           window.ynowEnsureSidebarCollapsed = ynowEnsureSidebarCollapsed;
+          // #region agent log
+          window.ynowAuthSidebarDbg = function (hypothesisId, location, message, data) {
+            try {
+              var payload = {
+                hypothesisId: String(hypothesisId || ''),
+                location: String(location || ''),
+                message: String(message || ''),
+                data: data || {},
+                t: Date.now()
+              };
+              console.log('ynowAuthSidebarDbg ' + JSON.stringify(payload));
+              if (window.Shiny && Shiny.setInputValue) {
+                Shiny.setInputValue('ynow_auth_sidebar_dbg_event', Object.assign({}, payload, {
+                  _n: (window.__ynowAuthSidebarDbgN = (window.__ynowAuthSidebarDbgN || 0) + 1)
+                }), { priority: 'event' });
+              }
+            } catch (eDbg) {}
+          };
+          // #endregion
           function ynowShowAuthModal() {
+            // #region agent log
+            try {
+              if (typeof window.ynowAuthSidebarDbg === 'function') {
+                window.ynowAuthSidebarDbg('H4', 'ynow_ui.R:ynowShowAuthModal', 'show modal called', {
+                  authed: !!(document.body && document.body.classList.contains('ynow-authed')),
+                  sidebarOpen: !!(document.body && document.body.classList.contains('sidebar-open')),
+                  sidebarCollapse: !!(document.body && document.body.classList.contains('sidebar-collapse')),
+                  modalOpenBefore: !!(document.body && document.body.classList.contains('modal-open'))
+                });
+              }
+            } catch (eShowDbg) {}
+            // #endregion
             try {
               if (window.jQuery && jQuery.fn && jQuery.fn.modal) {
                 jQuery('#ynow_auth_modal').modal('show');
@@ -10496,6 +10558,16 @@ ui <- dashboardPage(
              Shiny custom message and by a capture-phase click on Sign in so the
              modal does not depend on a server round-trip that can be lost. */
           function ynowRequestAuthModal() {
+            // #region agent log
+            try {
+              if (typeof window.ynowAuthSidebarDbg === 'function') {
+                window.ynowAuthSidebarDbg('H1', 'ynow_ui.R:ynowRequestAuthModal', 'request auth modal', {
+                  authed: !!(document.body && document.body.classList.contains('ynow-authed')),
+                  sidebarOpen: !!(document.body && document.body.classList.contains('sidebar-open'))
+                });
+              }
+            } catch (eReqDbg) {}
+            // #endregion
             try {
               if (typeof window.ynowPersistPreAuthTab === 'function') window.ynowPersistPreAuthTab();
             } catch (eTab) {}
@@ -10514,9 +10586,63 @@ ui <- dashboardPage(
                 'a.ynow-auth-open, .ynow-auth-open, #ynow_pa_gate_signin, #ynow_pa_gate_signin_label'
               );
               if (!hit) return;
+              // #region agent log
+              try {
+                if (typeof window.ynowAuthSidebarDbg === 'function') {
+                  var tog = t.closest('.sidebar-toggle, a.sidebar-toggle, [data-toggle=\"push-menu\"]');
+                  window.ynowAuthSidebarDbg('H1', 'ynow_ui.R:capture_click', 'auth-open capture click', {
+                    hitId: hit.id || '',
+                    hitClass: String(hit.className || ''),
+                    targetTag: t.tagName || '',
+                    targetClass: String(t.className || ''),
+                    authed: !!(document.body && document.body.classList.contains('ynow-authed')),
+                    sidebarOpen: !!(document.body && document.body.classList.contains('sidebar-open')),
+                    alsoSidebarToggle: !!tog,
+                    openLinkDisplay: window.getComputedStyle(hit).display || ''
+                  });
+                }
+              } catch (eCapDbg) {}
+              // #endregion
               ynowRequestAuthModal();
             }, true);
+            // #region agent log
+            document.addEventListener('click', function (ev) {
+              var t = ev.target;
+              if (!t || !t.closest) return;
+              var tog = t.closest('.sidebar-toggle, a.sidebar-toggle, [data-toggle=\"push-menu\"]');
+              if (!tog) return;
+              try {
+                if (typeof window.ynowAuthSidebarDbg === 'function') {
+                  window.ynowAuthSidebarDbg('H3', 'ynow_ui.R:sidebar_toggle_click', 'sidebar toggle clicked', {
+                    authed: !!(document.body && document.body.classList.contains('ynow-authed')),
+                    sidebarOpenBefore: !!(document.body && document.body.classList.contains('sidebar-open')),
+                    modalOpen: !!(document.body && document.body.classList.contains('modal-open')),
+                    nearAuthOpen: !!t.closest('.ynow-auth-links, #ynow-auth-sidebar')
+                  });
+                }
+              } catch (eTog) {}
+            }, true);
+            // #endregion
           }
+          // #region agent log
+          try {
+            if (window.jQuery) {
+              jQuery(document).on('shown.bs.modal hidden.bs.modal', '#ynow_auth_modal', function (ev) {
+                if (typeof window.ynowAuthSidebarDbg === 'function') {
+                  window.ynowAuthSidebarDbg('H5', 'ynow_ui.R:bs.modal', String(ev.type || 'modal'), {
+                    authed: !!(document.body && document.body.classList.contains('ynow-authed')),
+                    sidebarOpen: !!(document.body && document.body.classList.contains('sidebar-open')),
+                    modalOpenBody: !!(document.body && document.body.classList.contains('modal-open')),
+                    display: (function () {
+                      var m = document.getElementById('ynow_auth_modal');
+                      return m ? (window.getComputedStyle(m).display || '') : 'missing';
+                    })()
+                  });
+                }
+              });
+            }
+          } catch (eModalEvt) {}
+          // #endregion
           function ynowClearSidebarGuide() {
             document.querySelectorAll('.ynow-sidebar-guide-pulse').forEach(function (el) {
               el.classList.remove('ynow-sidebar-guide-pulse');
