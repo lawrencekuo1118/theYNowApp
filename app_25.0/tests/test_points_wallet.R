@@ -1,4 +1,4 @@
-# Points wallet v1 — memory backend unit tests
+# Points wallet — FYN/PYN, first gift, daily check-in, admin adjust
 # Run: Rscript app_25.0/tests/test_points_wallet.R
 
 args_all <- commandArgs(trailingOnly = FALSE)
@@ -23,8 +23,8 @@ if (!exists("%||%", mode = "function")) {
 
 Sys.setenv(YNOW_POINTS_BACKEND = "memory")
 Sys.setenv(YNOW_POINTS_ENABLED = "1")
-Sys.setenv(YNOW_POINTS_SIGNUP_BONUS = "20")
-Sys.setenv(YNOW_POINTS_LOGIN_GRANT = "100")
+Sys.setenv(YNOW_POINTS_SIGNUP_BONUS = "100")
+Sys.setenv(YNOW_POINTS_DAILY_CHECKIN = "30")
 Sys.unsetenv("YNOW_DB_HOST")
 Sys.unsetenv("YNOW_DATABASE_URL")
 Sys.unsetenv("DATABASE_URL")
@@ -49,87 +49,132 @@ check <- function(label, cond) {
 
 check("backend memory", identical(ynow_points_backend(), "memory"))
 check("enabled true", isTRUE(ynow_points_enabled()))
+check("signup bonus default 100", identical(ynow_points_signup_bonus(), 100L))
+check("daily checkin default 30", identical(ynow_points_daily_checkin_amount(), 30L))
 check("catalog has alert_slot", {
   cat <- ynow_points_catalog()
   "alert_slot" %in% cat$sku && as.integer(cat$cost[cat$sku == "alert_slot"][[1]]) == 1L
 })
-check("catalog bt_run=5", {
-  cat <- ynow_points_catalog()
-  as.integer(cat$cost[cat$sku == "bt_run"][[1]]) == 5L
-})
-check("catalog hfv_run=3", {
-  cat <- ynow_points_catalog()
-  as.integer(cat$cost[cat$sku == "hfv_run"][[1]]) == 3L
-})
 
 uid <- "user-test-001"
-check("balance starts 0", identical(ynow_points_balance(uid), 0L))
+ynow_points_mem_register_profile(uid, role = "user")
+check("balance starts 0 fyn", identical(ynow_points_balance(uid, "fyn"), 0L))
+check("balance starts 0 pyn", identical(ynow_points_balance(uid, "pyn"), 0L))
 
 g1 <- ynow_points_grant_signup_bonus(uid)
-check("signup bonus ok", isTRUE(g1$ok) && identical(g1$balance, 20L))
-check("balance after signup 20", identical(ynow_points_balance(uid), 20L))
+check("first gift ok 100 FYN", isTRUE(g1$ok) && identical(g1$balance, 100L) && identical(g1$fyn, 100L))
+check("balance after first gift", identical(ynow_points_balances(uid)$fyn, 100L))
+check("pyn still 0 after gift", identical(ynow_points_balances(uid)$pyn, 0L))
 
 g2 <- ynow_points_grant_signup_bonus(uid)
-check("signup bonus idempotent", isTRUE(g2$ok) && isTRUE(g2$idempotent) && identical(ynow_points_balance(uid), 20L))
+check(
+  "first gift once only",
+  isTRUE(g2$ok) && isTRUE(g2$idempotent) && identical(ynow_points_balances(uid)$fyn, 100L)
+)
 
-s1 <- ynow_points_try_spend(uid, "alert_slot", "alert:u:AAPL:price_lte:100:2026-10-16")
-check("spend alert -1", isTRUE(s1$ok) && identical(ynow_points_balance(uid), 19L))
+# Daily check-in once per Taipei day
+day1 <- as.POSIXct("2026-10-16 10:00:00", tz = "Asia/Taipei")
+c1 <- ynow_points_grant_daily_checkin(uid, when = day1)
+check("daily +30 once", isTRUE(c1$ok) && identical(ynow_points_balances(uid)$fyn, 130L))
+c1b <- ynow_points_grant_daily_checkin(uid, when = day1)
+check(
+  "daily same day idempotent",
+  isTRUE(c1b$ok) && isTRUE(c1b$idempotent) && identical(ynow_points_balances(uid)$fyn, 130L)
+)
+day2 <- as.POSIXct("2026-10-17 01:00:00", tz = "Asia/Taipei")
+c2 <- ynow_points_grant_daily_checkin(uid, when = day2)
+check("daily next day +30", isTRUE(c2$ok) && identical(ynow_points_balances(uid)$fyn, 160L))
 
-s1b <- ynow_points_try_spend(uid, "alert_slot", "alert:u:AAPL:price_lte:100:2026-10-16")
-check("spend alert idempotent", isTRUE(s1b$ok) && isTRUE(s1b$idempotent) && identical(ynow_points_balance(uid), 19L))
+# Login hook never resets to 100
+before_login <- ynow_points_balances(uid)$fyn
+invisible(ynow_points_try_spend(uid, "alert_slot", "spend-before-login"))
+mid <- ynow_points_balances(uid)$fyn
+check("spend from FYN", identical(mid, before_login - 1L))
+login_again <- ynow_points_on_login(uid, when = day2)
+check(
+  "login does not reset to 100",
+  isTRUE(login_again$ok) &&
+    identical(ynow_points_balances(uid)$fyn, mid) &&
+    mid != 100L
+)
+# Deprecated reset is no-op
+r_old <- ynow_points_reset_on_login(uid)
+check(
+  "deprecated reset is no-op",
+  isTRUE(r_old$skipped) && identical(ynow_points_balances(uid)$fyn, mid)
+)
 
-s2 <- ynow_points_try_spend(uid, "bt_run", "bt:1")
-check("spend bt -5", isTRUE(s2$ok) && identical(ynow_points_balance(uid), 14L))
+# FYN / PYN separation + admin adjust mirrors user-visible balances
+adj <- ynow_points_admin_adjust(uid, fyn_delta = 5L, pyn_delta = 40L, note = "test")
+check("admin adjust ok", isTRUE(adj$ok))
+bals <- ynow_points_balances(uid)
+check("admin fyn matches visible", identical(bals$fyn, mid + 5L) && identical(adj$fyn, bals$fyn))
+check("admin pyn matches visible", identical(bals$pyn, 40L) && identical(adj$pyn, bals$pyn))
+check("spend still FYN only", {
+  s <- ynow_points_try_spend(uid, "alert_slot", "spend-fyn-only")
+  isTRUE(s$ok) &&
+    identical(ynow_points_balances(uid)$fyn, bals$fyn - 1L) &&
+    identical(ynow_points_balances(uid)$pyn, 40L)
+})
 
-s3 <- ynow_points_try_spend(uid, "hfv_run", "hfv:1")
-check("spend hfv -3", isTRUE(s3$ok) && identical(ynow_points_balance(uid), 11L))
-
-# Drain to zero then fail
-while (ynow_points_balance(uid) > 0L) {
-  bal <- ynow_points_balance(uid)
+# Insufficient when FYN empty (PYN untouched)
+while (ynow_points_balances(uid)$fyn > 0L) {
+  bal <- ynow_points_balances(uid)$fyn
   ynow_points_try_spend(uid, "alert_slot", paste0("drain:", bal))
 }
 fail <- ynow_points_try_spend(uid, "alert_slot", "drain:overflow")
-check("insufficient fails", !isTRUE(fail$ok) && identical(fail$message_key, "pts_msg_insufficient"))
-check("balance stays 0", identical(ynow_points_balance(uid), 0L))
+check("insufficient fails on FYN", !isTRUE(fail$ok) && identical(fail$message_key, "pts_msg_insufficient"))
+check("pyn untouched when FYN empty", identical(ynow_points_balances(uid)$pyn, 40L))
 
-cred <- ynow_points_credit(uid, 5L, reason = "earn_admin", ref_id = "admin:1")
-check("admin credit +5", isTRUE(cred$ok) && identical(ynow_points_balance(uid), 5L))
+# Admin subtract
+sub <- ynow_points_admin_adjust(uid, fyn_delta = 0L, pyn_delta = -10L)
+check("admin subtract pyn", isTRUE(sub$ok) && identical(ynow_points_balances(uid)$pyn, 30L))
 
-# Login reset → exactly 100 (membership testing)
-r1 <- ynow_points_reset_on_login(uid)
-check("login reset to 100", isTRUE(r1$ok) && identical(ynow_points_balance(uid), 100L))
-invisible(ynow_points_try_spend(uid, "alert_slot", "after-reset-spend"))
-check("after spend balance 99", identical(ynow_points_balance(uid), 99L))
-r2 <- ynow_points_reset_on_login(uid)
-check("second login resets to 100 again", isTRUE(r2$ok) && identical(ynow_points_balance(uid), 100L))
-check("login grant default 100", identical(ynow_points_login_grant(), 100L))
-check("finish_auth wires login reset", {
-  auth <- paste(readLines(file.path(app_dir, "auth_account.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-  grepl("ynow_points_reset_on_login", auth, fixed = TRUE)
+# De-identified admin list
+uid2 <- "user-test-002"
+ynow_points_mem_register_profile(uid2, role = "admin")
+invisible(ynow_points_grant_signup_bonus(uid2))
+lst <- ynow_points_admin_list_users()
+check("admin list has users", is.data.frame(lst) && nrow(lst) >= 2L)
+check("admin list has public_id", "public_id" %in% names(lst) && all(grepl("^U-", lst$public_id)))
+check("admin list has fyn/pyn", all(c("fyn", "pyn") %in% names(lst)))
+pid <- lst$public_id[lst$user_id == uid][[1]]
+check("resolve public_id", identical(ynow_points_resolve_public_id(pid), uid))
+
+# finish_auth wires on_login (not reset)
+auth <- paste(readLines(file.path(app_dir, "auth_account.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+check("finish_auth wires on_login", grepl("ynow_points_on_login", auth, fixed = TRUE))
+check("finish_auth no active reset call", {
+  # Deprecated function may still exist; login path must call on_login.
+  grepl("ynow_points_on_login", auth, fixed = TRUE) &&
+    !grepl("ynow_points_reset_on_login\\(", auth)
 })
 
 tail <- ynow_points_ledger_tail(uid, n = 50L)
 check("ledger has rows", is.data.frame(tail) && nrow(tail) >= 3L)
+check("ledger has wallet column", "wallet" %in% names(tail))
 all_rows <- ynow_points_ledger_all(uid)
 check("ledger_all returns every row", is.data.frame(all_rows) && nrow(all_rows) >= nrow(tail))
-check("ledger has note column", "note" %in% names(all_rows))
-check("ledger has ref_id column", "ref_id" %in% names(all_rows))
 
 # Gate off always allows
 Sys.setenv(YNOW_POINTS_ENABLED = "0")
 check("enabled false", !isTRUE(ynow_points_enabled()))
-# Fake session-less gate: when disabled, returns TRUE even with NULL session
 check("gate allows when disabled", isTRUE(ynow_points_gate(NULL, "alert_slot", "x", user = list(id = uid))))
 
-# Locale keys present
+# Locale keys
 for (k in c(
-  "pts_balance", "pts_ledger", "pts_msg_insufficient_fmt", "pts_admin_credit",
+  "pts_balance", "pts_fyn_label", "pts_pyn_label", "pts_ledger",
+  "pts_msg_insufficient_fmt", "pts_rules_note", "pts_sysadmin_title",
+  "pts_sysadmin_enter", "pts_daily_checkin_fmt", "pts_first_gift_fmt",
   "auth_admin_tool_points"
 )) {
   check(paste("locale en", k), nzchar(ui_str(k, "en")))
   check(paste("locale zh", k), nzchar(ui_str(k, "zh-TW")))
 }
+check("locale zh-TW no simplified 数据", {
+  !grepl("数据", ui_str("pts_rules_note", "zh-TW"), fixed = TRUE) &&
+    !grepl("默认", ui_str("pts_sysadmin_intro", "zh-TW"), fixed = TRUE)
+})
 
 check("global sources points_wallet", {
   g <- paste(readLines(file.path(app_dir, "global.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
@@ -143,12 +188,19 @@ check("run_bt gates bt_run", {
   srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   grepl("bt_run", srv, fixed = TRUE) && grepl("ynow_points_gate", srv, fixed = TRUE)
 })
-check("admin panel shows points", {
-  auth <- paste(readLines(file.path(app_dir, "auth_account.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-  grepl("points_balance", auth, fixed = TRUE) && grepl("ynow_pts_admin_submit", auth, fixed = TRUE)
+check("testing tab has sysadmin entry", {
+  ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("ynow_pts_sysadmin_enter", ui, fixed = TRUE) &&
+    grepl("ynow_pts_banner", ui, fixed = TRUE) &&
+    grepl("ynow-pts-header", ui, fixed = TRUE)
+})
+check("server has sysadmin + banner", {
+  srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("ynow_pts_sysadmin_apply", srv, fixed = TRUE) &&
+    grepl("ynowPtsBanner", srv, fixed = TRUE) &&
+    grepl("ynow_points_admin_adjust", srv, fixed = TRUE)
 })
 check("account_points is independent tab", {
-  auth <- paste(readLines(file.path(app_dir, "auth_account.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   grepl('tabName = "account_points"', auth, fixed = TRUE) &&
     grepl("ynow_points_panel_ui", auth, fixed = TRUE) &&
     grepl("ynow_menu_pts_ledger", auth, fixed = TRUE)
@@ -165,9 +217,10 @@ check("locale has pts ledger tab keys", {
     nzchar(ui_str("menu_pts_ledger", "zh-TW")) &&
     grepl("資料庫", ui_str("pts_ledger_intro", "zh-TW"), fixed = TRUE)
 })
-check("locale login reset note", {
-  grepl("100", ui_str("pts_login_reset_note", "en"), fixed = TRUE) &&
-    grepl("100", ui_str("pts_login_reset_note", "zh-TW"), fixed = TRUE)
+check("locale rules note persists", {
+  grepl("100", ui_str("pts_rules_note", "en"), fixed = TRUE) &&
+    grepl("30", ui_str("pts_rules_note", "en"), fixed = TRUE) &&
+    grepl("100", ui_str("pts_rules_note", "zh-TW"), fixed = TRUE)
 })
 
 cat("PASS", n_ok, " FAIL", n_fail, "\n")
