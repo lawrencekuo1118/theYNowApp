@@ -9798,6 +9798,27 @@ ui <- dashboardPage(
             });
             addHandler('ynowAuthOAuthRedirect', function (payload) {
               if (!payload || !payload.url) return;
+              // #region agent log
+              try {
+                var tabEl = document.querySelector('.sidebar-menu li.active > a[data-value]');
+                var tab = tabEl ? (tabEl.getAttribute('data-value') || '') : '';
+                /* Probe only: do NOT persist yet (product fix later). Log H5 gap. */
+                if (typeof window.ynowAuthDbg === 'function') {
+                  window.ynowAuthDbg('H5', 'ynow_ui.R:ynowAuthOAuthRedirect', 'leaving for IdP without tab persist', {
+                    active_tab: tab,
+                    will_persist: false,
+                    url_host: String(payload.url).split('/')[2] || ''
+                  });
+                } else {
+                  console.log('ynowAuthDbg ' + JSON.stringify({
+                    hypothesisId: 'H5',
+                    location: 'ynow_ui.R:ynowAuthOAuthRedirect',
+                    message: 'leaving for IdP without tab persist',
+                    data: { active_tab: tab, will_persist: false }
+                  }));
+                }
+              } catch (eRedirDbg) {}
+              // #endregion
               try {
                 window.location.assign(String(payload.url));
               } catch (eGo) {
