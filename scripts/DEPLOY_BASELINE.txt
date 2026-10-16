@@ -7,4 +7,4 @@ commit=ad880fa
 short=ad880fa
 message=chore: record shipped display version v25.21
 captured_at=2026-10-16T14:05:00Z
-display_version=v25.21
+display_version=v25.22
