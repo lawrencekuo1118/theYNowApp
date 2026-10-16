@@ -7,4 +7,4 @@ commit=3a0449f
 short=3a0449f
 message=chore: record shipped display version v25.14
 captured_at=2026-10-16T01:40:00Z
-display_version=v25.14
+display_version=v25.15
