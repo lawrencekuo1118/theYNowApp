@@ -361,8 +361,9 @@ ynow_oauth_supabase_exchange_code <- function(code, code_verifier = "") {
   }
   base <- ynow_oauth_supabase_url()
   anon <- ynow_oauth_supabase_anon()
+  # GoTrue expects grant_type=pkce (not OAuth "authorization_code").
   tok <- .ynow_oauth_http_json(
-    httr2::request(paste0(base, "/auth/v1/token?grant_type=authorization_code")) |>
+    httr2::request(paste0(base, "/auth/v1/token?grant_type=pkce")) |>
       httr2::req_method("POST") |>
       httr2::req_headers(
         apikey = anon,

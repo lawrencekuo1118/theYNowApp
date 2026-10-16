@@ -404,6 +404,13 @@ check("OAuth state rejects tamper", {
   p <- ynow_oauth_parse_state(bad)
   identical(p$ok, FALSE)
 })
+check("OAuth supabase PKCE uses grant_type=pkce", {
+  oauth_src <- paste(readLines(src_oauth, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  # Direct Google still uses grant_type=authorization_code; Supabase must use pkce.
+  grepl("token?grant_type=pkce", oauth_src, fixed = TRUE) &&
+    grepl("auth_code", oauth_src, fixed = TRUE) &&
+    grepl("ynow_oauth_supabase_exchange_code", oauth_src, fixed = TRUE)
+})
 check("OAuth supabase code without verifier fails clearly", {
   Sys.setenv(
     YNOW_SUPABASE_URL = "https://abc.supabase.co",

@@ -9807,18 +9807,6 @@ ui <- dashboardPage(
                 (tabEl ? (tabEl.getAttribute('data-value') || '') : '');
               var baseUrl = String(payload.url);
               var finish = function (url, persisted, hasPkce) {
-                // #region agent log
-                try {
-                  if (typeof window.ynowAuthDbg === 'function') {
-                    window.ynowAuthDbg('H5', 'ynow_ui.R:ynowAuthOAuthRedirect', 'leaving for IdP', {
-                      active_tab: tab,
-                      will_persist: !!persisted,
-                      has_pkce: !!hasPkce,
-                      url_host: String(url).split('/')[2] || ''
-                    });
-                  }
-                } catch (eRedirDbg) {}
-                // #endregion
                 go(url);
               };
               try {
@@ -9854,17 +9842,6 @@ ui <- dashboardPage(
                 sessionStorage.removeItem('ynow_oauth_code_verifier');
                 sessionStorage.removeItem('ynow_pre_oauth_tab');
               } catch (eClr) {}
-              // #region agent log
-              try {
-                if (typeof window.ynowAuthDbg === 'function') {
-                  window.ynowAuthDbg('H1', 'ynow_ui.R:ynowAuthPostLogin', 'post-login client', {
-                    ok: !!payload.ok,
-                    restore_tab: tab,
-                    modal_hiding: true
-                  });
-                }
-              } catch (ePl) {}
-              // #endregion
               if (payload.ok && tab && window.Shiny && Shiny.setInputValue) {
                 try {
                   if (typeof window.ynowShowSidebarFootTab === 'function' &&
@@ -9880,19 +9857,6 @@ ui <- dashboardPage(
                Uses window.ynowRequestAuthModal (defined later). Shiny 1.14+
                requires handler.length === 1 — zero-arg handlers never register. */
             addHandler('ynowAuthOpenModal', function (_msg) {
-              // #region agent log
-              try {
-                if (typeof window.ynowAuthDbg === 'function') {
-                  window.ynowAuthDbg('H3', 'ynow_ui.R:ynowAuthOpenModal', 'custom message open modal', {
-                    authed: !!(document.body && document.body.classList.contains('ynow-authed')),
-                    modalDisplay: (function () {
-                      var m = document.getElementById('ynow_auth_modal');
-                      return m ? (window.getComputedStyle(m).display || '') : 'missing';
-                    })()
-                  });
-                }
-              } catch (eDbgOpen) {}
-              // #endregion
               if (typeof window.ynowRequestAuthModal === 'function') {
                 window.ynowRequestAuthModal();
               } else {
@@ -9906,22 +9870,6 @@ ui <- dashboardPage(
             addHandler('ynowAuthState', function (payload) {
               if (!payload) return;
               var loggedIn = !!(payload.logged_in);
-              // #region agent log
-              try {
-                if (typeof window.ynowAuthDbg === 'function') {
-                  var modal = document.getElementById('ynow_auth_modal');
-                  window.ynowAuthDbg('H2', 'ynow_ui.R:ynowAuthState', 'auth state applied', {
-                    logged_in: loggedIn,
-                    modalDisplay: modal ? (window.getComputedStyle(modal).display || '') : 'missing',
-                    modalHasIn: !!(modal && modal.classList.contains('in')),
-                    sidebarActive: (function () {
-                      var a = document.querySelector('.sidebar-menu li.active > a[data-value]');
-                      return a ? (a.getAttribute('data-value') || '') : '';
-                    })()
-                  });
-                }
-              } catch (eDbgState) {}
-              // #endregion
               if (loggedIn) document.body.classList.add('ynow-authed');
               else document.body.classList.remove('ynow-authed');
               var openLinks = document.querySelectorAll('.ynow-auth-open');
@@ -10064,25 +10012,6 @@ ui <- dashboardPage(
           pushDeviceUiLocale();
 
           /* OAuth return: Google/Facebook/Supabase redirect lands with ?code= or #access_token= */
-          // #region agent log
-          window.ynowAuthDbg = function (hypothesisId, location, message, data) {
-            try {
-              var payload = {
-                hypothesisId: String(hypothesisId || ''),
-                location: String(location || ''),
-                message: String(message || ''),
-                data: data || {},
-                t: Date.now()
-              };
-              console.log('ynowAuthDbg ' + JSON.stringify(payload));
-              if (window.Shiny && Shiny.setInputValue) {
-                Shiny.setInputValue('ynow_auth_dbg_event', Object.assign({}, payload, {
-                  _n: (window.__ynowAuthDbgN = (window.__ynowAuthDbgN || 0) + 1)
-                }), { priority: 'event' });
-              }
-            } catch (eDbg) {}
-          };
-          // #endregion
           /* PKCE helpers for Supabase Auth authorize → token exchange */
           window.ynowPkceVerifier = function () {
             try {
@@ -10153,24 +10082,6 @@ ui <- dashboardPage(
               storedTab = sessionStorage.getItem('ynow_pre_oauth_tab') || '';
               codeVerifier = sessionStorage.getItem('ynow_oauth_code_verifier') || '';
             } catch (eS) {}
-            // #region agent log
-            try {
-              window.ynowAuthDbg('H1', 'ynow_ui.R:ynowPushOAuthCallback', 'oauth return detected', {
-                has_access: !!access,
-                has_code: !!code,
-                has_verifier: !!codeVerifier,
-                has_error: !!err,
-                search_len: String(window.location.search || '').length,
-                hash_len: String(window.location.hash || '').length,
-                path: String(window.location.pathname || ''),
-                stored_tab: storedTab,
-                active_tab: (function () {
-                  var a = document.querySelector('.sidebar-menu li.active > a[data-value]');
-                  return a ? (a.getAttribute('data-value') || '') : '';
-                })()
-              });
-            } catch (eOc) {}
-            // #endregion
             Shiny.setInputValue('ynow_auth_oauth_callback', {
               access_token: String(access || ''),
               refresh_token: String(h.refresh_token || q.refresh_token || ''),
@@ -10566,16 +10477,6 @@ ui <- dashboardPage(
           }
           window.ynowEnsureSidebarCollapsed = ynowEnsureSidebarCollapsed;
           function ynowShowAuthModal() {
-            // #region agent log
-            try {
-              if (typeof window.ynowAuthDbg === 'function') {
-                window.ynowAuthDbg('H2', 'ynow_ui.R:ynowShowAuthModal', 'show modal called', {
-                  authed: !!(document.body && document.body.classList.contains('ynow-authed')),
-                  stack: (new Error()).stack ? String((new Error()).stack).split('\\n').slice(0, 4).join(' | ') : ''
-                });
-              }
-            } catch (eShowDbg) {}
-            // #endregion
             try {
               if (window.jQuery && jQuery.fn && jQuery.fn.modal) {
                 jQuery('#ynow_auth_modal').modal('show');
@@ -10595,15 +10496,6 @@ ui <- dashboardPage(
              Shiny custom message and by a capture-phase click on Sign in so the
              modal does not depend on a server round-trip that can be lost. */
           function ynowRequestAuthModal() {
-            // #region agent log
-            try {
-              if (typeof window.ynowAuthDbg === 'function') {
-                window.ynowAuthDbg('H3', 'ynow_ui.R:ynowRequestAuthModal', 'request auth modal', {
-                  authed: !!(document.body && document.body.classList.contains('ynow-authed'))
-                });
-              }
-            } catch (eReqDbg) {}
-            // #endregion
             try {
               if (typeof window.ynowPersistPreAuthTab === 'function') window.ynowPersistPreAuthTab();
             } catch (eTab) {}
@@ -10622,37 +10514,9 @@ ui <- dashboardPage(
                 'a.ynow-auth-open, .ynow-auth-open, #ynow_pa_gate_signin, #ynow_pa_gate_signin_label'
               );
               if (!hit) return;
-              // #region agent log
-              try {
-                if (typeof window.ynowAuthDbg === 'function') {
-                  window.ynowAuthDbg('H3', 'ynow_ui.R:capture_click', 'auth-open capture click', {
-                    hitId: hit.id || '',
-                    hitClass: hit.className || '',
-                    authed: !!(document.body && document.body.classList.contains('ynow-authed'))
-                  });
-                }
-              } catch (eCapDbg) {}
-              // #endregion
               ynowRequestAuthModal();
             }, true);
           }
-          // #region agent log
-          try {
-            if (window.jQuery) {
-              jQuery(document).on('shown.bs.modal hidden.bs.modal', '#ynow_auth_modal', function (ev) {
-                if (typeof window.ynowAuthDbg === 'function') {
-                  window.ynowAuthDbg('H2', 'ynow_ui.R:bs.modal', String(ev.type || 'modal'), {
-                    authed: !!(document.body && document.body.classList.contains('ynow-authed')),
-                    display: (function () {
-                      var m = document.getElementById('ynow_auth_modal');
-                      return m ? (window.getComputedStyle(m).display || '') : 'missing';
-                    })()
-                  });
-                }
-              });
-            }
-          } catch (eModalEvt) {}
-          // #endregion
           function ynowClearSidebarGuide() {
             document.querySelectorAll('.ynow-sidebar-guide-pulse').forEach(function (el) {
               el.classList.remove('ynow-sidebar-guide-pulse');
