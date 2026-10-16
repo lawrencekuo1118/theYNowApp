@@ -662,6 +662,12 @@ ynow_admin_panel_ui <- function(user, locale = "zh-TW", build_version = "",
             .lab("pts_disabled_note", "Points enforcement is off.")
           }
         ),
+        tags$p(
+          class = "text-muted",
+          style = "font-size:12.5px;",
+          id = "ynow_pts_login_reset_note",
+          .lab("pts_login_reset_note", "Testing: every Sign-in resets your points balance to 100.")
+        ),
         tags$hr(),
         tags$h4(id = "ynow_admin_tools_h", .lab("auth_admin_tools", "Tools")),
         tags$ul(
@@ -764,6 +770,12 @@ ynow_points_panel_ui <- function(user, locale = "zh-TW",
             "pts_ledger_intro",
             "Every points change for this account is stored in the database and listed here."
           ))
+        ),
+        tags$p(
+          class = "text-muted",
+          style = "font-size:12.5px;",
+          id = "ynow_pts_ledger_reset_note",
+          .lab("pts_login_reset_note", "Testing: every Sign-in resets your points balance to 100.")
         ),
         tags$p(
           tags$b(id = "ynow_pts_ledger_account_label", .lab("auth_admin_account", "Account")),
@@ -893,15 +905,36 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
   .finish_auth_success <- function(user, message_key = "auth_msg_ok",
                                    fallback = "Signed in.", restore_tab = NULL) {
     account_user(user)
+    # Membership testing: every Sign-in resets this user's points to LOGIN_GRANT (default 100).
+    pts_reset <- NULL
+    if (exists("ynow_points_reset_on_login", mode = "function")) {
+      uid <- as.character(user$id %||% "")[1]
+      if (nzchar(uid)) {
+        pts_reset <- tryCatch(
+          ynow_points_reset_on_login(uid),
+          error = function(e) NULL
+        )
+      }
+    }
     mk <- as.character(message_key %||% "auth_msg_ok")[1]
     msg <- .str(mk, fallback)
+    if (isTRUE(pts_reset$ok) && is.finite(suppressWarnings(as.integer(pts_reset$balance)[1]))) {
+      grant_n <- tryCatch(ynow_points_login_grant(), error = function(e) 100L)
+      if (is.finite(grant_n) && grant_n > 0L) {
+        pts_note <- tryCatch(
+          sprintf(.str("pts_login_reset_fmt", "Points reset to %s for testing."), as.character(grant_n)),
+          error = function(e) sprintf("Points reset to %s for testing.", as.character(grant_n))
+        )
+        msg <- paste(msg, pts_note)
+      }
+    }
     output$ynow_auth_status <- renderUI({
       tags$p(class = "text-success", msg)
     })
     .push_auth_state(TRUE, user$email %||% "")
     tryCatch(shinyBS::toggleModal(session, "ynow_auth_modal", "close"), error = function(e) NULL)
     tryCatch(
-      showNotification(msg, type = "message", duration = 4),
+      showNotification(msg, type = "message", duration = 5),
       error = function(e) NULL
     )
     tab <- as.character(restore_tab %||% "")[1]

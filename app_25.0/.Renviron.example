@@ -26,6 +26,8 @@ YNOW_ENABLE_ACCOUNT_LOGIN=1
 # =============================================================================
 # Default OFF (gate allows all actions; set 1 to enforce spend).
 # YNOW_POINTS_ENABLED=0
+# Every Sign-in resets that user's balance to this amount (membership testing). Set 0 to disable.
+YNOW_POINTS_LOGIN_GRANT=100
 # YNOW_POINTS_SIGNUP_BONUS=20
 # Optional price overrides:
 # YNOW_POINTS_PRICE_ALERT_SLOT=1

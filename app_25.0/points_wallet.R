@@ -4,12 +4,14 @@
 # Freemium usage points on Neon (ledger = source of truth).
 # Env:
 #   YNOW_POINTS_ENABLED=0|1   (default 0 — shadow/off; gate always allows)
-#   YNOW_POINTS_SIGNUP_BONUS  (default 20)
+#   YNOW_POINTS_LOGIN_GRANT   (default 100 — reset balance to this on every login; testing)
+#   YNOW_POINTS_SIGNUP_BONUS  (default 20; still applied once on first Neon create)
 #   YNOW_POINTS_PRICE_ALERT_SLOT / HFV_RUN / BT_RUN  (optional overrides)
 #   YNOW_POINTS_BACKEND=memory  (tests / no Neon)
 #
 # SKUs (v1): alert_slot=1, hfv_run=3, bt_run=5
 # Lite never spends points. Spend is server-side only (idempotent ref_id).
+# Testing: every successful Sign-in resets that user's balance to LOGIN_GRANT (100).
 
 .ynow_points_mem <- new.env(parent = emptyenv())
 .ynow_points_mem$users <- new.env(parent = emptyenv())
@@ -23,6 +25,12 @@ ynow_points_enabled <- function() {
 ynow_points_signup_bonus <- function() {
   n <- suppressWarnings(as.integer(Sys.getenv("YNOW_POINTS_SIGNUP_BONUS", unset = "20")))
   if (!is.finite(n) || n < 0L) 20L else as.integer(n)
+}
+
+#' Points granted / reset to on every successful login (membership testing default 100).
+ynow_points_login_grant <- function() {
+  n <- suppressWarnings(as.integer(Sys.getenv("YNOW_POINTS_LOGIN_GRANT", unset = "100")))
+  if (!is.finite(n) || n < 0L) 100L else as.integer(n)
 }
 
 ynow_points_backend <- function() {
@@ -475,6 +483,47 @@ ynow_points_grant_signup_bonus <- function(user_id) {
     reason = "earn_signup",
     ref_id = paste0("signup:", uid),
     meta = list(bonus = bonus)
+  )
+}
+
+#' Reset (or top up / trim) balance to LOGIN_GRANT on every Sign-in.
+#' Writes a ledger row with reason=earn_login_reset (unique ref_id per login).
+#' Used to test membership / points UX; set YNOW_POINTS_LOGIN_GRANT=0 to disable.
+ynow_points_reset_on_login <- function(user_id, target = NULL) {
+  uid <- as.character(user_id %||% "")[1]
+  if (!nzchar(uid)) {
+    return(list(ok = FALSE, balance = NA_integer_, message_key = "pts_msg_no_user"))
+  }
+  tgt <- if (is.null(target)) {
+    ynow_points_login_grant()
+  } else {
+    suppressWarnings(as.integer(target)[1])
+  }
+  if (!is.finite(tgt) || tgt < 0L) {
+    return(list(ok = TRUE, balance = ynow_points_balance(uid), message_key = "pts_msg_ok",
+                delta = 0L, skipped = TRUE))
+  }
+  # Ensure user row exists in memory backend before reading balance.
+  if (identical(ynow_points_backend(), "memory")) {
+    .ynow_points_mem_ensure_user(uid)
+  }
+  bal <- suppressWarnings(as.integer(ynow_points_balance(uid))[1])
+  if (!is.finite(bal)) bal <- 0L
+  dlt <- as.integer(tgt) - bal
+  if (identical(dlt, 0L)) {
+    return(list(ok = TRUE, balance = bal, message_key = "pts_msg_ok", delta = 0L))
+  }
+  ref <- paste0(
+    "login_reset:", uid, ":",
+    format(Sys.time(), "%Y%m%d%H%M%OS3"), ":",
+    paste(sample(c(letters, 0:9), 8L, replace = TRUE), collapse = "")
+  )
+  ynow_points_credit(
+    uid,
+    delta = dlt,
+    reason = "earn_login_reset",
+    ref_id = ref,
+    meta = list(target = tgt, previous = bal, testing = TRUE)
   )
 }
 

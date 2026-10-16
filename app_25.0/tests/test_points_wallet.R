@@ -24,6 +24,7 @@ if (!exists("%||%", mode = "function")) {
 Sys.setenv(YNOW_POINTS_BACKEND = "memory")
 Sys.setenv(YNOW_POINTS_ENABLED = "1")
 Sys.setenv(YNOW_POINTS_SIGNUP_BONUS = "20")
+Sys.setenv(YNOW_POINTS_LOGIN_GRANT = "100")
 Sys.unsetenv("YNOW_DB_HOST")
 Sys.unsetenv("YNOW_DATABASE_URL")
 Sys.unsetenv("DATABASE_URL")
@@ -95,6 +96,19 @@ check("balance stays 0", identical(ynow_points_balance(uid), 0L))
 cred <- ynow_points_credit(uid, 5L, reason = "earn_admin", ref_id = "admin:1")
 check("admin credit +5", isTRUE(cred$ok) && identical(ynow_points_balance(uid), 5L))
 
+# Login reset → exactly 100 (membership testing)
+r1 <- ynow_points_reset_on_login(uid)
+check("login reset to 100", isTRUE(r1$ok) && identical(ynow_points_balance(uid), 100L))
+invisible(ynow_points_try_spend(uid, "alert_slot", "after-reset-spend"))
+check("after spend balance 99", identical(ynow_points_balance(uid), 99L))
+r2 <- ynow_points_reset_on_login(uid)
+check("second login resets to 100 again", isTRUE(r2$ok) && identical(ynow_points_balance(uid), 100L))
+check("login grant default 100", identical(ynow_points_login_grant(), 100L))
+check("finish_auth wires login reset", {
+  auth <- paste(readLines(file.path(app_dir, "auth_account.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("ynow_points_reset_on_login", auth, fixed = TRUE)
+})
+
 tail <- ynow_points_ledger_tail(uid, n = 50L)
 check("ledger has rows", is.data.frame(tail) && nrow(tail) >= 3L)
 all_rows <- ynow_points_ledger_all(uid)
@@ -150,6 +164,10 @@ check("locale has pts ledger tab keys", {
     nzchar(ui_str("pts_ledger_title", "zh-TW")) &&
     nzchar(ui_str("menu_pts_ledger", "zh-TW")) &&
     grepl("資料庫", ui_str("pts_ledger_intro", "zh-TW"), fixed = TRUE)
+})
+check("locale login reset note", {
+  grepl("100", ui_str("pts_login_reset_note", "en"), fixed = TRUE) &&
+    grepl("100", ui_str("pts_login_reset_note", "zh-TW"), fixed = TRUE)
 })
 
 cat("PASS", n_ok, " FAIL", n_fail, "\n")

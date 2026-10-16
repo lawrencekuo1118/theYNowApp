@@ -811,7 +811,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     pts_spend_toast = "Used %s points (%s). Balance: %s.",
     pts_enabled_note = "Points enforcement is on (YNOW_POINTS_ENABLED).",
     pts_disabled_note = "Points enforcement is off — browsing stays free; enable YNOW_POINTS_ENABLED to charge usage SKUs.",
-    auth_admin_tool_points = "Points: every balance change is stored in the database; open Points ledger for the full history.",
+    pts_login_reset_fmt = "Points reset to %s for testing.",
+    pts_login_reset_note = "Testing: every Sign-in resets your points balance to 100 (YNOW_POINTS_LOGIN_GRANT).",
+    auth_admin_tool_points = "Points: every Sign-in resets balance to 100 for testing; all changes are stored — open Points ledger for history.",
     auth_pa_gate_title = "Sign in required",
     auth_pa_gate_body = paste0(
       "Value Alerts in Full mode require an account. ",
@@ -4217,7 +4219,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     pts_spend_toast = "已使用 %s 點（%s）。餘額：%s。",
     pts_enabled_note = "點數強制扣點已開啟（YNOW_POINTS_ENABLED）。",
     pts_disabled_note = "點數強制扣點未開啟——瀏覽免費；設定 YNOW_POINTS_ENABLED=1 後才會對用量 SKU 扣點。",
-    auth_admin_tool_points = "點數：每一次餘額變動都會存入資料庫；完整紀錄請開啟「點數流水」。",
+    pts_login_reset_fmt = "測試用：點數已重設為 %s。",
+    pts_login_reset_note = "測試中：每次登入會將點數餘額重設為 100（YNOW_POINTS_LOGIN_GRANT）。",
+    auth_admin_tool_points = "點數：測試階段每次登入重設為 100；所有異動皆入庫，完整紀錄請開「點數流水」。",
     auth_pa_gate_title = "需登入帳號",
     auth_pa_gate_body = paste0(
       "完整版的到值通知需登入帳號後才可使用。",
