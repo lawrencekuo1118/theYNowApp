@@ -762,6 +762,72 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
     })
   }
 
+  #' After successful login: toast, close modal, restore pre-login tab (client).
+  .finish_auth_success <- function(user, message_key = "auth_msg_ok",
+                                   fallback = "Signed in.", restore_tab = NULL) {
+    account_user(user)
+    mk <- as.character(message_key %||% "auth_msg_ok")[1]
+    msg <- .str(mk, fallback)
+    output$ynow_auth_status <- renderUI({
+      tags$p(class = "text-success", msg)
+    })
+    .push_auth_state(TRUE, user$email %||% "")
+    tryCatch(shinyBS::toggleModal(session, "ynow_auth_modal", "close"), error = function(e) NULL)
+    tryCatch(
+      showNotification(msg, type = "message", duration = 4),
+      error = function(e) NULL
+    )
+    tab <- as.character(restore_tab %||% "")[1]
+    if (!nzchar(tab)) {
+      tab <- as.character(isolate(input$sidebar_tabs) %||% "")[1]
+    }
+    # #region agent log
+    .ynow_auth_dbg("H4", "auth_account.R:.finish_auth_success", "success toast + restore", list(
+      message_key = mk,
+      restore_tab = tab,
+      has_global_toast = TRUE,
+      will_close_modal = TRUE
+    ))
+    # #endregion
+    session$sendCustomMessage(
+      "ynowAuthPostLogin",
+      list(ok = TRUE, restore_tab = tab, message = msg)
+    )
+    if (nzchar(tab) && !identical(tab, as.character(isolate(input$sidebar_tabs) %||% "")[1])) {
+      tryCatch(
+        updateTabItems(session, "sidebar_tabs", tab),
+        error = function(e) {
+          tryCatch(
+            session$sendInputMessage("sidebar_tabs", list(value = tab)),
+            error = function(e2) NULL
+          )
+        }
+      )
+    }
+  }
+
+  #' OAuth failure after IdP return: toast only — do not auto-open login modal.
+  .finish_auth_oauth_failure <- function(message_key, fallback = "Social sign-in failed.") {
+    mk <- as.character(message_key %||% "auth_msg_oauth_failed")[1]
+    msg <- .str(mk, fallback)
+    .show_auth_note(mk, fallback, cls = "text-danger")
+    tryCatch(
+      showNotification(msg, type = "error", duration = 6),
+      error = function(e) NULL
+    )
+    tryCatch(shinyBS::toggleModal(session, "ynow_auth_modal", "close"), error = function(e) NULL)
+    # #region agent log
+    .ynow_auth_dbg("H2", "auth_account.R:.finish_auth_oauth_failure", "oauth failed → toast, no reopen", list(
+      message_key = mk,
+      reopen_modal = FALSE
+    ))
+    # #endregion
+    session$sendCustomMessage(
+      "ynowAuthPostLogin",
+      list(ok = FALSE, restore_tab = "", message = msg)
+    )
+  }
+
   # #region agent log
   observeEvent(input$ynow_auth_dbg_event, {
     ev <- input$ynow_auth_dbg_event
@@ -785,16 +851,15 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
       sidebar_tabs = as.character(isolate(input$sidebar_tabs) %||% "")[1],
       will_write_status_in_modal = TRUE,
       will_close_modal = isTRUE(res$ok),
-      has_global_toast = FALSE
+      has_global_toast = isTRUE(res$ok)
     ))
     # #endregion
     if (isTRUE(res$ok)) {
-      account_user(res$user)
-      output$ynow_auth_status <- renderUI({
-        tags$p(class = "text-success", .str("auth_msg_ok", "Signed in."))
-      })
-      .push_auth_state(TRUE, res$user$email %||% "")
-      tryCatch(shinyBS::toggleModal(session, "ynow_auth_modal", "close"), error = function(e) NULL)
+      .finish_auth_success(
+        res$user,
+        message_key = res$message_key %||% "auth_msg_ok",
+        restore_tab = as.character(input$ynow_auth_restore_tab %||% "")[1]
+      )
     } else {
       mk <- as.character(res$message_key %||% "auth_msg_invalid")[1]
       output$ynow_auth_status <- renderUI({
@@ -820,11 +885,12 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
       .show_auth_note(mk, fallback, cls = "text-danger")
       return()
     }
+    tab_now <- as.character(isolate(input$sidebar_tabs) %||% "")[1]
     # #region agent log
-    .ynow_auth_dbg("H1", "auth_account.R:.start_oauth", "redirect to IdP; no tab persist", list(
+    .ynow_auth_dbg("H1", "auth_account.R:.start_oauth", "redirect to IdP; client persists tab+PKCE", list(
       provider = as.character(provider)[1],
-      sidebar_tabs = as.character(isolate(input$sidebar_tabs) %||% "")[1],
-      persisted_tab = FALSE,
+      sidebar_tabs = tab_now,
+      persisted_tab = TRUE,
       redirect_host = tryCatch({
         u <- as.character(res$url)[1]
         if (grepl("^https?://", u)) sub("^https?://([^/]+).*", "\\1", u) else "relative"
@@ -833,7 +899,7 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
     # #endregion
     session$sendCustomMessage(
       "ynowAuthOAuthRedirect",
-      list(url = as.character(res$url)[1])
+      list(url = as.character(res$url)[1], restore_tab = tab_now)
     )
   }
 
@@ -856,51 +922,45 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
       return()
     }
     payload <- input$ynow_auth_oauth_callback
+    restore_tab <- as.character(payload$restore_tab %||% "")[1]
     # #region agent log
     .ynow_auth_dbg("H1", "auth_account.R:oauth_callback", "oauth callback received", list(
       has_access = nzchar(as.character(payload$access_token %||% "")[1]),
       has_code = nzchar(as.character(payload$code %||% "")[1]),
+      has_verifier = nzchar(as.character(payload$code_verifier %||% "")[1]),
       has_error = nzchar(as.character(payload$error %||% "")[1]),
       provider = as.character(payload$provider %||% "")[1],
+      restore_tab = restore_tab,
       sidebar_tabs = as.character(isolate(input$sidebar_tabs) %||% "")[1]
     ))
     # #endregion
     oauth_res <- ynow_oauth_complete(payload)
     if (!isTRUE(oauth_res$ok) || is.null(oauth_res$user)) {
       mk <- as.character(oauth_res$message_key %||% "auth_msg_oauth_failed")[1]
-      # #region agent log
-      .ynow_auth_dbg("H2", "auth_account.R:oauth_callback", "oauth failed → reopen modal", list(
-        message_key = mk,
-        reopen_modal = TRUE
-      ))
-      # #endregion
-      .show_auth_note(mk, "Social sign-in failed.", cls = "text-danger")
-      tryCatch(shinyBS::toggleModal(session, "ynow_auth_modal", "open"), error = function(e) NULL)
+      .finish_auth_oauth_failure(mk, "Social sign-in failed.")
       return()
     }
     res <- ynow_auth_accept_social_user(oauth_res$user)
     if (isTRUE(res$ok) && !is.null(res$user)) {
-      account_user(res$user)
-      mk_ok <- as.character(res$message_key %||% "auth_msg_ok")[1]
       # #region agent log
       .ynow_auth_dbg("H4", "auth_account.R:oauth_callback", "oauth success path", list(
-        message_key = mk_ok,
+        message_key = as.character(res$message_key %||% "auth_msg_ok")[1],
         sidebar_tabs = as.character(isolate(input$sidebar_tabs) %||% "")[1],
+        restore_tab = restore_tab,
         will_write_status_in_modal = TRUE,
         will_close_modal = TRUE,
-        has_global_toast = FALSE,
-        restores_tab = FALSE
+        has_global_toast = TRUE,
+        restores_tab = nzchar(restore_tab)
       ))
       # #endregion
-      output$ynow_auth_status <- renderUI({
-        tags$p(class = "text-success", .str(mk_ok, "Signed in."))
-      })
-      .push_auth_state(TRUE, res$user$email %||% "")
-      tryCatch(shinyBS::toggleModal(session, "ynow_auth_modal", "close"), error = function(e) NULL)
+      .finish_auth_success(
+        res$user,
+        message_key = res$message_key %||% "auth_msg_ok",
+        restore_tab = restore_tab
+      )
     } else {
       mk <- as.character(res$message_key %||% "auth_msg_oauth_failed")[1]
-      .show_auth_note(mk, "Social sign-in failed.", cls = "text-danger")
-      tryCatch(shinyBS::toggleModal(session, "ynow_auth_modal", "open"), error = function(e) NULL)
+      .finish_auth_oauth_failure(mk, "Social sign-in failed.")
     }
   }, ignoreInit = TRUE)
   observeEvent(input$ynow_auth_forgot, {
@@ -912,12 +972,12 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
     # Same Email/password fields as sign-in; Neon creates the account when configured.
     res <- ynow_auth_try_register(input$ynow_auth_email, input$ynow_auth_password)
     if (isTRUE(res$ok) && !is.null(res$user)) {
-      account_user(res$user)
-      output$ynow_auth_status <- renderUI({
-        tags$p(class = "text-success", .str("auth_msg_register_ok", "Account created. Signed in."))
-      })
-      .push_auth_state(TRUE, res$user$email %||% "")
-      tryCatch(shinyBS::toggleModal(session, "ynow_auth_modal", "close"), error = function(e) NULL)
+      .finish_auth_success(
+        res$user,
+        message_key = "auth_msg_register_ok",
+        fallback = "Account created. Signed in.",
+        restore_tab = as.character(input$ynow_auth_restore_tab %||% "")[1]
+      )
     } else {
       mk <- as.character(res$message_key %||% "auth_msg_register_soon")[1]
       cls <- if (identical(mk, "auth_msg_register_soon")) "text-muted" else "text-danger"

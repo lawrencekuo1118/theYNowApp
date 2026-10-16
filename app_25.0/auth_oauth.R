@@ -347,6 +347,41 @@ ynow_oauth_exchange_code <- function(provider, code) {
   list(ok = FALSE, user = NULL, message_key = "auth_msg_oauth_failed")
 }
 
+#' Exchange Supabase Auth authorization code (PKCE) for a session access_token.
+#' @param code auth code from redirect `?code=`
+#' @param code_verifier PKCE verifier stored in the browser before IdP leave
+ynow_oauth_supabase_exchange_code <- function(code, code_verifier = "") {
+  code <- as.character(code %||% "")[1]
+  code_verifier <- as.character(code_verifier %||% "")[1]
+  if (!nzchar(code) || !isTRUE(ynow_oauth_supabase_ready())) {
+    return(list(ok = FALSE, user = NULL, message_key = "auth_msg_oauth_failed"))
+  }
+  if (!nzchar(code_verifier)) {
+    return(list(ok = FALSE, user = NULL, message_key = "auth_msg_oauth_state"))
+  }
+  base <- ynow_oauth_supabase_url()
+  anon <- ynow_oauth_supabase_anon()
+  tok <- .ynow_oauth_http_json(
+    httr2::request(paste0(base, "/auth/v1/token?grant_type=authorization_code")) |>
+      httr2::req_method("POST") |>
+      httr2::req_headers(
+        apikey = anon,
+        Authorization = paste("Bearer", anon),
+        `Content-Type` = "application/json"
+      ) |>
+      httr2::req_body_json(list(
+        auth_code = code,
+        code_verifier = code_verifier
+      )) |>
+      httr2::req_timeout(12)
+  )
+  access <- as.character(tok$access_token %||% "")[1]
+  if (!nzchar(access)) {
+    return(list(ok = FALSE, user = NULL, message_key = "auth_msg_oauth_failed"))
+  }
+  ynow_oauth_user_from_supabase(access)
+}
+
 #' Resolve Supabase access_token → user profile.
 ynow_oauth_user_from_supabase <- function(access_token) {
   access_token <- as.character(access_token %||% "")[1]
@@ -388,6 +423,7 @@ ynow_oauth_user_from_supabase <- function(access_token) {
 }
 
 #' Handle browser callback payload from JS (code or access_token).
+#' Supabase returns `?code=` (PKCE). Direct Google/Facebook use HMAC `state` + code.
 ynow_oauth_complete <- function(payload) {
   if (!isTRUE(ynow_auth_enabled())) {
     return(list(ok = FALSE, user = NULL, message_key = "auth_msg_disabled"))
@@ -405,12 +441,22 @@ ynow_oauth_complete <- function(payload) {
   }
   code <- as.character(payload$code %||% "")[1]
   state <- as.character(payload$state %||% "")[1]
+  code_verifier <- as.character(payload$code_verifier %||% "")[1]
   if (!nzchar(code)) {
     return(list(ok = FALSE, user = NULL, message_key = "auth_msg_oauth_failed"))
   }
-  st <- ynow_oauth_parse_state(state)
-  if (!isTRUE(st$ok)) {
-    return(list(ok = FALSE, user = NULL, message_key = st$message_key %||% "auth_msg_oauth_state"))
+  # Supabase Auth PKCE: code + code_verifier → session token (no HMAC state).
+  if (isTRUE(ynow_oauth_supabase_ready()) && nzchar(code_verifier)) {
+    return(ynow_oauth_supabase_exchange_code(code, code_verifier))
   }
-  ynow_oauth_exchange_code(st$provider, code)
+  # Direct Google / Facebook: signed state selects provider for code exchange.
+  st <- ynow_oauth_parse_state(state)
+  if (isTRUE(st$ok)) {
+    return(ynow_oauth_exchange_code(st$provider, code))
+  }
+  # Supabase code without verifier (stale tab / missing PKCE) — do not pretend HMAC failed.
+  if (isTRUE(ynow_oauth_supabase_ready())) {
+    return(list(ok = FALSE, user = NULL, message_key = "auth_msg_oauth_state"))
+  }
+  list(ok = FALSE, user = NULL, message_key = st$message_key %||% "auth_msg_oauth_state")
 }

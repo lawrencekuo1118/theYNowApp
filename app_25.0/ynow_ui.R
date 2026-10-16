@@ -9798,31 +9798,82 @@ ui <- dashboardPage(
             });
             addHandler('ynowAuthOAuthRedirect', function (payload) {
               if (!payload || !payload.url) return;
+              var go = function (url) {
+                try { window.location.assign(String(url)); }
+                catch (eGo) { window.location.href = String(url); }
+              };
+              var tabEl = document.querySelector('.sidebar-menu li.active > a[data-value]');
+              var tab = (payload.restore_tab && String(payload.restore_tab)) ||
+                (tabEl ? (tabEl.getAttribute('data-value') || '') : '');
+              var baseUrl = String(payload.url);
+              var finish = function (url, persisted, hasPkce) {
+                // #region agent log
+                try {
+                  if (typeof window.ynowAuthDbg === 'function') {
+                    window.ynowAuthDbg('H5', 'ynow_ui.R:ynowAuthOAuthRedirect', 'leaving for IdP', {
+                      active_tab: tab,
+                      will_persist: !!persisted,
+                      has_pkce: !!hasPkce,
+                      url_host: String(url).split('/')[2] || ''
+                    });
+                  }
+                } catch (eRedirDbg) {}
+                // #endregion
+                go(url);
+              };
+              try {
+                if (tab) sessionStorage.setItem('ynow_pre_oauth_tab', tab);
+                var verifier = (typeof window.ynowPkceVerifier === 'function')
+                  ? window.ynowPkceVerifier() : '';
+                if (!verifier || typeof window.ynowPkceChallenge !== 'function') {
+                  finish(baseUrl, !!tab, false);
+                  return;
+                }
+                sessionStorage.setItem('ynow_oauth_code_verifier', verifier);
+                window.ynowPkceChallenge(verifier).then(function (challenge) {
+                  var join = baseUrl.indexOf('?') >= 0 ? '&' : '?';
+                  var url = baseUrl + join +
+                    'code_challenge=' + encodeURIComponent(challenge) +
+                    '&code_challenge_method=S256';
+                  finish(url, !!tab, true);
+                }).catch(function () {
+                  finish(baseUrl, !!tab, false);
+                });
+              } catch (ePkce) {
+                finish(baseUrl, !!tab, false);
+              }
+            });
+            addHandler('ynowAuthPostLogin', function (payload) {
+              if (!payload) return;
+              try {
+                if (window.jQuery) jQuery('#ynow_auth_modal').modal('hide');
+              } catch (eHide) {}
+              var tab = '';
+              try {
+                tab = String(payload.restore_tab || sessionStorage.getItem('ynow_pre_oauth_tab') || '');
+                sessionStorage.removeItem('ynow_oauth_code_verifier');
+                sessionStorage.removeItem('ynow_pre_oauth_tab');
+              } catch (eClr) {}
               // #region agent log
               try {
-                var tabEl = document.querySelector('.sidebar-menu li.active > a[data-value]');
-                var tab = tabEl ? (tabEl.getAttribute('data-value') || '') : '';
-                /* Probe only: do NOT persist yet (product fix later). Log H5 gap. */
                 if (typeof window.ynowAuthDbg === 'function') {
-                  window.ynowAuthDbg('H5', 'ynow_ui.R:ynowAuthOAuthRedirect', 'leaving for IdP without tab persist', {
-                    active_tab: tab,
-                    will_persist: false,
-                    url_host: String(payload.url).split('/')[2] || ''
+                  window.ynowAuthDbg('H1', 'ynow_ui.R:ynowAuthPostLogin', 'post-login client', {
+                    ok: !!payload.ok,
+                    restore_tab: tab,
+                    modal_hiding: true
                   });
-                } else {
-                  console.log('ynowAuthDbg ' + JSON.stringify({
-                    hypothesisId: 'H5',
-                    location: 'ynow_ui.R:ynowAuthOAuthRedirect',
-                    message: 'leaving for IdP without tab persist',
-                    data: { active_tab: tab, will_persist: false }
-                  }));
                 }
-              } catch (eRedirDbg) {}
+              } catch (ePl) {}
               // #endregion
-              try {
-                window.location.assign(String(payload.url));
-              } catch (eGo) {
-                window.location.href = String(payload.url);
+              if (payload.ok && tab && window.Shiny && Shiny.setInputValue) {
+                try {
+                  if (typeof window.ynowShowSidebarFootTab === 'function' &&
+                      (tab === 'snapshot' || tab === 'testing' || tab === 'feedback')) {
+                    window.ynowShowSidebarFootTab(tab);
+                  } else {
+                    Shiny.setInputValue('sidebar_tabs', tab, { priority: 'event' });
+                  }
+                } catch (eTab) {}
               }
             });
             /* Collapse sidebar, then show login modal (Sign in / PA gate).
@@ -10032,6 +10083,38 @@ ui <- dashboardPage(
             } catch (eDbg) {}
           };
           // #endregion
+          /* PKCE helpers for Supabase Auth authorize → token exchange */
+          window.ynowPkceVerifier = function () {
+            try {
+              var a = new Uint8Array(32);
+              (window.crypto || window.msCrypto).getRandomValues(a);
+              var s = '';
+              for (var i = 0; i < a.length; i++) s += String.fromCharCode(a[i]);
+              return btoa(s).replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=+$/g, '');
+            } catch (eV) {
+              return '';
+            }
+          };
+          window.ynowPkceChallenge = function (verifier) {
+            var data = new TextEncoder().encode(String(verifier || ''));
+            return (window.crypto || window.msCrypto).subtle.digest('SHA-256', data).then(function (buf) {
+              var bytes = new Uint8Array(buf);
+              var s = '';
+              for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+              return btoa(s).replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=+$/g, '');
+            });
+          };
+          window.ynowPersistPreAuthTab = function () {
+            try {
+              var a = document.querySelector('.sidebar-menu li.active > a[data-value]');
+              var tab = a ? (a.getAttribute('data-value') || '') : '';
+              if (tab) sessionStorage.setItem('ynow_pre_oauth_tab', tab);
+              if (window.Shiny && Shiny.setInputValue) {
+                Shiny.setInputValue('ynow_auth_restore_tab', tab || '', { priority: 'event' });
+              }
+              return tab;
+            } catch (eP) { return ''; }
+          };
           function ynowParseQuery(qs) {
             var out = {};
             var raw = String(qs || '');
@@ -10064,18 +10147,23 @@ ui <- dashboardPage(
             var err = q.error || h.error || '';
             if (!access && !code && !err) return;
             window.__ynowOAuthCallbackPushed = true;
+            var storedTab = '';
+            var codeVerifier = '';
+            try {
+              storedTab = sessionStorage.getItem('ynow_pre_oauth_tab') || '';
+              codeVerifier = sessionStorage.getItem('ynow_oauth_code_verifier') || '';
+            } catch (eS) {}
             // #region agent log
             try {
               window.ynowAuthDbg('H1', 'ynow_ui.R:ynowPushOAuthCallback', 'oauth return detected', {
                 has_access: !!access,
                 has_code: !!code,
+                has_verifier: !!codeVerifier,
                 has_error: !!err,
                 search_len: String(window.location.search || '').length,
                 hash_len: String(window.location.hash || '').length,
                 path: String(window.location.pathname || ''),
-                stored_tab: (function () {
-                  try { return sessionStorage.getItem('ynow_pre_oauth_tab') || ''; } catch (eS) { return ''; }
-                })(),
+                stored_tab: storedTab,
                 active_tab: (function () {
                   var a = document.querySelector('.sidebar-menu li.active > a[data-value]');
                   return a ? (a.getAttribute('data-value') || '') : '';
@@ -10089,7 +10177,9 @@ ui <- dashboardPage(
               code: String(code || ''),
               state: String(state || ''),
               provider: String(q.provider || h.provider || ''),
-              error: String(err || '')
+              error: String(err || ''),
+              code_verifier: String(codeVerifier || ''),
+              restore_tab: String(storedTab || '')
             }, {priority: 'event'});
             try {
               var path = window.location.pathname || '/';
@@ -10514,6 +10604,9 @@ ui <- dashboardPage(
               }
             } catch (eReqDbg) {}
             // #endregion
+            try {
+              if (typeof window.ynowPersistPreAuthTab === 'function') window.ynowPersistPreAuthTab();
+            } catch (eTab) {}
             try { ynowEnsureSidebarCollapsed(); } catch (eCol) {}
             setTimeout(function () {
               try { ynowShowAuthModal(); } catch (eModal) {}

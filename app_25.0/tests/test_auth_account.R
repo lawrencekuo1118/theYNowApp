@@ -404,6 +404,35 @@ check("OAuth state rejects tamper", {
   p <- ynow_oauth_parse_state(bad)
   identical(p$ok, FALSE)
 })
+check("OAuth supabase code without verifier fails clearly", {
+  Sys.setenv(
+    YNOW_SUPABASE_URL = "https://abc.supabase.co",
+    YNOW_SUPABASE_ANON_KEY = "anon-key",
+    YNOW_ENABLE_ACCOUNT_LOGIN = "1"
+  )
+  r <- ynow_oauth_complete(list(code = "testcode123", state = "badstate"))
+  identical(r$ok, FALSE) && identical(r$message_key, "auth_msg_oauth_state")
+})
+check("OAuth complete prefers supabase PKCE when verifier present", {
+  # Without network, exchange fails with auth_msg_oauth_failed (not HMAC state).
+  Sys.setenv(
+    YNOW_SUPABASE_URL = "https://abc.supabase.co",
+    YNOW_SUPABASE_ANON_KEY = "anon-key",
+    YNOW_ENABLE_ACCOUNT_LOGIN = "1"
+  )
+  r <- ynow_oauth_complete(list(
+    code = "testcode123",
+    state = "not-hmac",
+    code_verifier = "pkce-verifier-for-tests"
+  ))
+  identical(r$ok, FALSE) && identical(r$message_key, "auth_msg_oauth_failed")
+})
+check("UI wires PKCE + post-login restore", {
+  grepl("ynowPkceVerifier", ui, fixed = TRUE) &&
+    grepl("ynowAuthPostLogin", ui, fixed = TRUE) &&
+    grepl("ynow_pre_oauth_tab", ui, fixed = TRUE) &&
+    grepl("code_challenge_method=S256", ui, fixed = TRUE)
+})
 check("oauth sentinel never verifies as password", {
   h <- ynow_db_oauth_password_sentinel("google", "uid-1")
   startsWith(h, "oauth$") && !isTRUE(ynow_db_verify_password("anything", h))
