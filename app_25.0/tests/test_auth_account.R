@@ -244,6 +244,11 @@ check("sidebar collapse helper handles sidebar-open", {
     grepl("ynowEnsureSidebarCollapsed", ui, fixed = TRUE) &&
     grepl("max-width: 767px", ui, fixed = TRUE)
 })
+check("client capture opens auth modal without server round-trip", {
+  grepl("ynowRequestAuthModal", ui, fixed = TRUE) &&
+    grepl("__ynowAuthOpenCapture", ui, fixed = TRUE) &&
+    grepl("a.ynow-auth-open", ui, fixed = TRUE)
+})
 check("Neon not ready without env", {
   Sys.unsetenv("YNOW_DB_HOST")
   Sys.unsetenv("YNOW_DB_USER")

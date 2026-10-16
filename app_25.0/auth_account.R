@@ -689,7 +689,8 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
   #' Collapse sidebar first (client), then open the login modal.
   .open_auth_modal <- function() {
     if (!isTRUE(ynow_auth_enabled())) return()
-    session$sendCustomMessage("ynowAuthOpenModal", list())
+    # Non-empty payload: some Shiny/json paths drop empty list() customs.
+    session$sendCustomMessage("ynowAuthOpenModal", list(ok = TRUE))
   }
   observeEvent(input$ynow_auth_open, {
     .open_auth_modal()

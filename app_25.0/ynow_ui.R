@@ -16,7 +16,7 @@
       return(sub('^"version"\\s*:\\s*"([^"]+)".*$', "\\1", m[[1]]))
     }
   }
-  "v25.14"
+  "v25.15"
 }
 .YNOW_BUILD_VERSION <- .ynow_read_build_version()
 
@@ -230,7 +230,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v25.14) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+          "The YNow App (v25.15) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
         ),
         tags$p(
           class = "ynow-about-method",
@@ -258,7 +258,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v25.14) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
+          "The YNow App (v25.15) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
         ),
         tags$p(
           class = "ynow-about-method",
@@ -368,7 +368,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App（簡化版）")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite（v25.14）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
+          "The YNow App Lite（v25.15）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
           "以自動判別主／副模型與預設參數完成試算，讓使用者先看到合理價區間與產業 KPI，再決定是否回到完整版深入調整。"
         ),
         tags$p(
@@ -385,7 +385,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App (Lite)")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite (v25.14) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
+          "The YNow App Lite (v25.15) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
           "auto-selects primary/secondary models with App defaults, and surfaces fair-value ranges plus industry KPIs before you open Full for deeper calibration."
         ),
         tags$p(
@@ -3510,9 +3510,9 @@ ui <- dashboardPage(
                   'data-ynow-build="', .YNOW_BUILD_VERSION, '" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v25.14</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v25.15</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v25.14</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v25.15</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -9691,24 +9691,18 @@ ui <- dashboardPage(
               }
             });
             /* Collapse sidebar, then show login modal (Sign in / PA gate).
-               Uses window.* helpers defined later in this script.
-               Shiny 1.14+ requires handler.length === 1 — a zero-arg function
-               throws and addHandler's try/catch would silently skip registration. */
+               Uses window.ynowRequestAuthModal (defined later). Shiny 1.14+
+               requires handler.length === 1 — zero-arg handlers never register. */
             addHandler('ynowAuthOpenModal', function (_msg) {
-              try {
-                if (typeof window.ynowEnsureSidebarCollapsed === 'function') {
-                  window.ynowEnsureSidebarCollapsed();
-                }
-              } catch (eCol) {}
-              setTimeout(function () {
-                try {
-                  if (typeof window.ynowShowAuthModal === 'function') {
-                    window.ynowShowAuthModal();
-                  } else if (window.jQuery) {
-                    jQuery('#ynow_auth_modal').modal('show');
-                  }
-                } catch (eModal) {}
-              }, 140);
+              if (typeof window.ynowRequestAuthModal === 'function') {
+                window.ynowRequestAuthModal();
+              } else {
+                setTimeout(function () {
+                  try {
+                    if (window.jQuery) jQuery('#ynow_auth_modal').modal('show');
+                  } catch (eModal) {}
+                }, 140);
+              }
             });
             addHandler('ynowAuthState', function (payload) {
               if (!payload) return;
@@ -10295,6 +10289,28 @@ ui <- dashboardPage(
             }
           }
           window.ynowShowAuthModal = ynowShowAuthModal;
+          /* Open login modal from client (collapse sidebar first). Used by the
+             Shiny custom message and by a capture-phase click on Sign in so the
+             modal does not depend on a server round-trip that can be lost. */
+          function ynowRequestAuthModal() {
+            try { ynowEnsureSidebarCollapsed(); } catch (eCol) {}
+            setTimeout(function () {
+              try { ynowShowAuthModal(); } catch (eModal) {}
+            }, 140);
+          }
+          window.ynowRequestAuthModal = ynowRequestAuthModal;
+          if (!window.__ynowAuthOpenCapture) {
+            window.__ynowAuthOpenCapture = true;
+            document.addEventListener('click', function (ev) {
+              var t = ev.target;
+              if (!t || !t.closest) return;
+              var hit = t.closest(
+                'a.ynow-auth-open, .ynow-auth-open, #ynow_pa_gate_signin, #ynow_pa_gate_signin_label'
+              );
+              if (!hit) return;
+              ynowRequestAuthModal();
+            }, true);
+          }
           function ynowClearSidebarGuide() {
             document.querySelectorAll('.ynow-sidebar-guide-pulse').forEach(function (el) {
               el.classList.remove('ynow-sidebar-guide-pulse');
