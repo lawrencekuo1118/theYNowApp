@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12698708
+bundleId=12698794
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=e46ee7d
-commit=e46ee7d
-short=e46ee7d
-message=fix: zh-TW first paint without EN flash; mobile Sign-in opens immediately
-captured_at=2026-10-16T11:22:00Z
-display_version=v25.15
+aligned_git=63108e1
+commit=63108e1
+short=63108e1
+message=fix: social login logos inline; LinkedIn replaces Apple (v25.16)
+captured_at=2026-10-16T11:47:00Z
+display_version=v25.16
