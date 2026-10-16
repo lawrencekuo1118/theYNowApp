@@ -731,7 +731,12 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
     res <- ynow_oauth_authorize_url(provider)
     if (!isTRUE(res$ok) || !nzchar(as.character(res$url %||% "")[1])) {
       mk <- as.character(res$message_key %||% "auth_msg_oauth_soon")[1]
-      .show_auth_note(mk, "Social sign-in is not configured yet.")
+      fallback <- if (identical(mk, "auth_msg_oauth_provider_disabled")) {
+        "This social provider is not enabled in Supabase Auth yet."
+      } else {
+        "Social sign-in is not configured yet."
+      }
+      .show_auth_note(mk, fallback, cls = "text-danger")
       return()
     }
     session$sendCustomMessage(

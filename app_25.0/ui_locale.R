@@ -729,6 +729,12 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Supabase → Authentication → Providers (with Apple Developer credentials), then redeploy. ",
       "After that, any user can register via Apple with no admin approval."
     ),
+    auth_msg_oauth_provider_disabled = paste0(
+      "This social provider is not enabled in Supabase Auth yet. ",
+      "Owner: open Supabase → Authentication → Providers, enable Google / Facebook / Apple ",
+      "(add Client ID / Secret), and add this app URL under Authentication → URL Configuration ",
+      "(Site URL + Redirect URLs). Env vars alone are not enough."
+    ),
     auth_msg_oauth_failed = "Social sign-in failed. Please try again.",
     auth_msg_oauth_state = "Social sign-in session expired. Please try again.",
     auth_msg_oauth_no_email = "The social account did not return an email address.",
@@ -4086,6 +4092,12 @@ locale_for_market <- function(mode = get_market_mode()) {
       "YNOW_SUPABASE_URL 與 YNOW_SUPABASE_ANON_KEY，並在 Supabase → Authentication → Providers ",
       "啟用 Apple（填入 Apple Developer 憑證），然後重新部署。",
       "完成後，一般使用者即可自行用 Apple 註冊，無需後台開權限。"
+    ),
+    auth_msg_oauth_provider_disabled = paste0(
+      "此社群登入提供者尚未在 Supabase Auth 啟用。",
+      "擁有者請至 Supabase → Authentication → Providers，開啟 Google／Facebook／Apple ",
+      "（填入 Client ID／Secret），並在 Authentication → URL Configuration ",
+      "將本應用網址加入 Site URL 與 Redirect URLs。僅設定環境變數不夠。"
     ),
     auth_msg_oauth_failed = "社群登入失敗，請再試一次。",
     auth_msg_oauth_state = "社群登入階段已過期，請再試一次。",
