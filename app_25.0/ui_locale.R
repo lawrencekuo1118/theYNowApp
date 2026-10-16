@@ -691,7 +691,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     auth_sign_out = "Sign out",
     auth_modal_title = "Sign in to The YNow App",
     auth_modal_help = paste0(
-      "Anyone can register and use the app with Google, Facebook, Apple, or Email — ",
+      "Anyone can register and use the app with Google, Facebook, LinkedIn, or Email — ",
       "no admin permission step. Guest mode remains available while login is optional."
     ),
     auth_email_label = "Enter your Email account:",
@@ -701,7 +701,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     auth_or_email = "Or sign in with Email",
     auth_google = "Continue with Google",
     auth_facebook = "Continue with Facebook",
-    auth_apple = "Continue with Apple",
+    auth_linkedin = "Continue with LinkedIn",
     auth_forgot = "Forgot password?",
     auth_register = "Register a new account",
     auth_resend = "Didn't receive the verification email",
@@ -723,15 +723,15 @@ locale_for_market <- function(mode = get_market_mode()) {
       "(recommended) or YNOW_FACEBOOK_APP_ID + YNOW_FACEBOOK_APP_SECRET in .Renviron, ",
       "then redeploy. After that, any user can register via Facebook with no admin approval."
     ),
-    auth_msg_oauth_need_apple = paste0(
-      "Apple self-serve sign-in requires Supabase Auth. ",
-      "Set YNOW_SUPABASE_URL + YNOW_SUPABASE_ANON_KEY in .Renviron, enable Apple under ",
-      "Supabase → Authentication → Providers (with Apple Developer credentials), then redeploy. ",
-      "After that, any user can register via Apple with no admin approval."
+    auth_msg_oauth_need_linkedin = paste0(
+      "LinkedIn self-serve sign-in requires Supabase Auth (LinkedIn OIDC). ",
+      "Set YNOW_SUPABASE_URL + YNOW_SUPABASE_ANON_KEY in .Renviron, enable LinkedIn (OIDC) under ",
+      "Supabase → Authentication → Providers, then redeploy. ",
+      "After that, any user can register via LinkedIn with no admin approval."
     ),
     auth_msg_oauth_provider_disabled = paste0(
       "This social provider is not enabled in Supabase Auth yet. ",
-      "Owner: open Supabase → Authentication → Providers, enable Google / Facebook / Apple ",
+      "Owner: open Supabase → Authentication → Providers, enable Google / Facebook / LinkedIn (OIDC) ",
       "(add Client ID / Secret), and add this app URL under Authentication → URL Configuration ",
       "(Site URL + Redirect URLs). Env vars alone are not enough."
     ),
@@ -748,12 +748,12 @@ locale_for_market <- function(mode = get_market_mode()) {
     auth_msg_resend_soon = "Verification email resend is not available yet.",
     auth_about_neon = paste0(
       "Account store: Neon Free Postgres (own users table). ",
-      "Google / Facebook / Apple / Email self-register into the same table (role=user); ",
+      "Google / Facebook / LinkedIn / Email self-register into the same table (role=user); ",
       "no admin whitelist for ordinary users."
     ),
     auth_about_note = paste0(
       "Account sign-in is on by default (set YNOW_ENABLE_ACCOUNT_LOGIN=0 to disable). ",
-      "Anyone may self-register with Google, Facebook, Apple, or Email — no per-user admin approval. ",
+      "Anyone may self-register with Google, Facebook, LinkedIn, or Email — no per-user admin approval. ",
       "Preferred account store: Neon Free Postgres (own users table; set YNOW_DB_*). ",
       "Full-mode Value Alerts require sign-in; email notify defaults to the registered mailbox. ",
       "Lite mode stays fully usable without an account."
@@ -4059,7 +4059,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     auth_sign_out = "登出",
     auth_modal_title = "登入 The YNow App",
     auth_modal_help = paste0(
-      "一般使用者可用 Google、Facebook、Apple 或 Email 自行註冊並立即使用，無需後台開權限。",
+      "一般使用者可用 Google、Facebook、LinkedIn 或 Email 自行註冊並立即使用，無需後台開權限。",
       "登入為選用時，仍可訪客使用。"
     ),
     auth_email_label = "輸入您的 Email 帳號：",
@@ -4069,7 +4069,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     auth_or_email = "或用 Email 登入",
     auth_google = "使用 Google 繼續",
     auth_facebook = "使用 Facebook 繼續",
-    auth_apple = "使用 Apple 繼續",
+    auth_linkedin = "使用 LinkedIn 繼續",
     auth_forgot = "忘記密碼？",
     auth_register = "註冊新帳號",
     auth_resend = "沒有收到註冊認證信",
@@ -4091,15 +4091,15 @@ locale_for_market <- function(mode = get_market_mode()) {
       "YNOW_FACEBOOK_APP_ID 與 YNOW_FACEBOOK_APP_SECRET，然後重新部署。",
       "完成後，一般使用者即可自行用 Facebook 註冊，無需後台開權限。"
     ),
-    auth_msg_oauth_need_apple = paste0(
-      "Apple 自助註冊需透過 Supabase Auth。請在 .Renviron 設定 ",
+    auth_msg_oauth_need_linkedin = paste0(
+      "LinkedIn 自助註冊需透過 Supabase Auth（LinkedIn OIDC）。請在 .Renviron 設定 ",
       "YNOW_SUPABASE_URL 與 YNOW_SUPABASE_ANON_KEY，並在 Supabase → Authentication → Providers ",
-      "啟用 Apple（填入 Apple Developer 憑證），然後重新部署。",
-      "完成後，一般使用者即可自行用 Apple 註冊，無需後台開權限。"
+      "啟用 LinkedIn（OIDC），然後重新部署。",
+      "完成後，一般使用者即可自行用 LinkedIn 註冊，無需後台開權限。"
     ),
     auth_msg_oauth_provider_disabled = paste0(
       "此社群登入提供者尚未在 Supabase Auth 啟用。",
-      "擁有者請至 Supabase → Authentication → Providers，開啟 Google／Facebook／Apple ",
+      "擁有者請至 Supabase → Authentication → Providers，開啟 Google／Facebook／LinkedIn（OIDC） ",
       "（填入 Client ID／Secret），並在 Authentication → URL Configuration ",
       "將本應用網址加入 Site URL 與 Redirect URLs。僅設定環境變數不夠。"
     ),
@@ -4116,12 +4116,12 @@ locale_for_market <- function(mode = get_market_mode()) {
     auth_msg_resend_soon = "認證信重寄尚未開放。",
     auth_about_neon = paste0(
       "帳號資料庫：Neon Free Postgres（自管 users 表）。",
-      "Google／Facebook／Apple／Email 皆可自助註冊寫入同一表（role=user），",
+      "Google／Facebook／LinkedIn／Email 皆可自助註冊寫入同一表（role=user），",
       "一般使用者無需後台白名單。"
     ),
     auth_about_note = paste0(
       "帳號登入預設啟用（設 YNOW_ENABLE_ACCOUNT_LOGIN=0 可關閉）。",
-      "一般使用者可用 Google、Facebook、Apple 或 Email 自行註冊，無需逐一後台開權限。",
+      "一般使用者可用 Google、Facebook、LinkedIn 或 Email 自行註冊，無需逐一後台開權限。",
       "帳號表建議 Neon Free Postgres（自管 users；設 YNOW_DB_*）。",
       "完整版到值通知需登入；寄信預設註冊信箱。",
       "Lite 版無需帳號即可完整使用。"

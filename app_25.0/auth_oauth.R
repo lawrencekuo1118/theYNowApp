@@ -1,13 +1,13 @@
 # ==========================================
-# Social OAuth (Google / Facebook) — self-serve signup
+# Social OAuth (Google / Facebook / LinkedIn) — self-serve signup
 # ==========================================
-# Product model: any end user clicks Google / Facebook / Apple → provider consent →
+# Product model: any end user clicks Google / Facebook / LinkedIn → provider consent →
 # app auto-creates a Neon `ynow_users` row (role=user) and signs them in.
 # There is NO admin whitelist / permission step for ordinary users.
 #
 # One-time owner setup (credentials only — not per-user provisioning):
 #
-# Preferred path — Supabase Auth (one project covers Google + Facebook + Apple):
+# Preferred path — Supabase Auth (one project covers Google + Facebook + LinkedIn):
 #   YNOW_SUPABASE_URL=https://xxxx.supabase.co
 #   YNOW_SUPABASE_ANON_KEY=eyJ...
 #   YNOW_OAUTH_REDIRECT_URI=https://hopesmasher1118.shinyapps.io/TheYNowApp/
@@ -15,14 +15,15 @@
 # Owner must also enable each provider in the Supabase dashboard (env alone is not enough):
 #   1. https://supabase.com/dashboard → project (ref in YNOW_SUPABASE_URL)
 #   2. Authentication → Providers
-#   3. Google / Facebook / Apple → Enable, paste Client ID / Secret (Apple: Services ID + key)
+#   3. Google / Facebook / LinkedIn (OIDC) → Enable, paste Client ID / Secret
 #   4. Authentication → URL Configuration: Site URL + Redirect URLs include YNOW_OAUTH_REDIRECT_URI
 #   5. Leave "Confirm email" / disable-sign-ups as needed; keep public signup allowed for self-serve
 # If a provider stays OFF, /auth/v1/authorize returns:
 #   {"error_code":"validation_failed","msg":"Unsupported provider: provider is not enabled"}
 # The app probes /auth/v1/settings and surfaces auth_msg_oauth_provider_disabled instead of a raw 400.
+# LinkedIn uses Supabase slug `linkedin_oidc` (UI / app provider id remains `linkedin`).
 #
-# Direct path (no Supabase) — Google / Facebook only; Apple stays Supabase-only:
+# Direct path (no Supabase) — Google / Facebook only; LinkedIn stays Supabase-only:
 #   YNOW_GOOGLE_CLIENT_ID=...
 #   YNOW_GOOGLE_CLIENT_SECRET=...
 #   YNOW_FACEBOOK_APP_ID=...
@@ -79,18 +80,34 @@ ynow_oauth_supabase_settings <- function(force = FALSE) {
   settings
 }
 
+#' Map app provider id → Supabase /auth/v1/authorize slug.
+ynow_oauth_supabase_slug <- function(provider) {
+  provider <- tolower(trimws(as.character(provider %||% "")[1]))
+  if (identical(provider, "linkedin")) return("linkedin_oidc")
+  provider
+}
+
 #' TRUE when Supabase reports the named external provider as enabled.
 #' Unknown / unreachable settings → NA (caller may still attempt authorize).
+#' LinkedIn checks `linkedin_oidc` first, then legacy `linkedin`.
 ynow_oauth_supabase_provider_enabled <- function(provider) {
   provider <- tolower(trimws(as.character(provider %||% "")[1]))
   if (!nzchar(provider)) return(NA)
   settings <- ynow_oauth_supabase_settings()
   if (!is.list(settings)) return(NA)
   ext <- settings$external
-  if (!is.list(ext) || !(provider %in% names(ext))) return(FALSE)
-  val <- ext[[provider]]
-  if (is.list(val) && !is.null(val$enabled)) return(isTRUE(val$enabled))
-  isTRUE(val)
+  if (!is.list(ext)) return(FALSE)
+  keys <- unique(c(ynow_oauth_supabase_slug(provider), provider))
+  found <- FALSE
+  for (k in keys) {
+    if (!(k %in% names(ext))) next
+    found <- TRUE
+    val <- ext[[k]]
+    en <- if (is.list(val) && !is.null(val$enabled)) isTRUE(val$enabled) else isTRUE(val)
+    if (isTRUE(en)) return(TRUE)
+  }
+  if (!found) return(FALSE)
+  FALSE
 }
 
 ynow_oauth_google_ready <- function() {
@@ -105,8 +122,8 @@ ynow_oauth_facebook_ready <- function() {
     nzchar(trimws(Sys.getenv("YNOW_FACEBOOK_APP_SECRET", unset = "")))
 }
 
-#' Apple Sign In via Supabase Auth only (no direct Apple client path).
-ynow_oauth_apple_ready <- function() {
+#' LinkedIn Sign In via Supabase Auth only (linkedin_oidc; no direct client path).
+ynow_oauth_linkedin_ready <- function() {
   isTRUE(ynow_oauth_supabase_ready())
 }
 
@@ -169,10 +186,10 @@ ynow_oauth_parse_state <- function(state, max_age_sec = 900) {
   list(ok = TRUE, provider = as.character(payload$p %||% "")[1], message_key = NULL)
 }
 
-#' Build authorize URL for Google / Facebook / Apple (Supabase or direct).
-#' Apple requires Supabase Auth; direct Apple client flow is not implemented.
+#' Build authorize URL for Google / Facebook / LinkedIn (Supabase or direct).
+#' LinkedIn requires Supabase Auth (`linkedin_oidc`); no direct LinkedIn client path.
 #' @return list(ok=, url=, message_key=)
-ynow_oauth_authorize_url <- function(provider = c("google", "facebook", "apple")) {
+ynow_oauth_authorize_url <- function(provider = c("google", "facebook", "linkedin")) {
   provider <- match.arg(provider)
   if (!isTRUE(ynow_auth_enabled())) {
     return(list(ok = FALSE, url = NULL, message_key = "auth_msg_disabled"))
@@ -189,16 +206,17 @@ ynow_oauth_authorize_url <- function(provider = c("google", "facebook", "apple")
       ))
     }
     base <- ynow_oauth_supabase_url()
+    slug <- ynow_oauth_supabase_slug(provider)
     url <- sprintf(
       "%s/auth/v1/authorize?provider=%s&redirect_to=%s",
       base,
-      utils::URLencode(provider, reserved = TRUE),
+      utils::URLencode(slug, reserved = TRUE),
       utils::URLencode(redir, reserved = TRUE)
     )
     return(list(ok = TRUE, url = url, message_key = NULL))
   }
-  if (identical(provider, "apple")) {
-    return(list(ok = FALSE, url = NULL, message_key = "auth_msg_oauth_need_apple"))
+  if (identical(provider, "linkedin")) {
+    return(list(ok = FALSE, url = NULL, message_key = "auth_msg_oauth_need_linkedin"))
   }
   state <- ynow_oauth_make_state(provider)
   if (identical(provider, "google")) {

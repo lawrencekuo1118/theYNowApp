@@ -215,11 +215,11 @@ ynow_auth_home_ui <- function() {
   ))
 }
 
-#' Apple mark for Sign in with Apple (decorative; white on black button).
-.ynow_auth_apple_icon <- function() {
+#' LinkedIn "in" mark for social button (decorative; white on LinkedIn blue).
+.ynow_auth_linkedin_icon <- function() {
   HTML(paste0(
-    '<svg class="ynow-auth-social-icon ynow-auth-social-icon--apple" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">',
-    '<path fill="currentColor" d="M16.365 1.43c0 1.14-.418 2.206-1.18 3.048-.81.89-2.15 1.576-3.3 1.48-.14-1.1.42-2.26 1.2-3.06.81-.84 2.2-1.46 3.28-1.47zM20.5 17.24c-.58 1.34-.86 1.93-1.61 3.11-1.05 1.63-2.53 3.66-4.37 3.68-1.63.02-2.05-1.06-4.27-1.05-2.22.01-2.68 1.07-4.31 1.05-1.84-.02-3.25-1.85-4.3-3.48C-.01 17.6-.9 12.6 1.3 9.2c1.1-1.72 2.85-2.8 4.5-2.8 1.68 0 2.74 1.1 4.13 1.1 1.35 0 2.17-1.11 4.12-1.11 1.47 0 3.03.8 4.13 2.18-3.63 1.99-3.04 7.18.32 8.67z"/>',
+    '<svg class="ynow-auth-social-icon ynow-auth-social-icon--linkedin" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">',
+    '<path fill="currentColor" d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.12 2.06 2.06 0 0 1 0 4.12zM7.12 20.45H3.56V9h3.56v11.45zM22.23 0H1.77C.79 0 0 .77 0 1.73v20.54C0 23.23.79 24 1.77 24h20.46c.98 0 1.77-.77 1.77-1.73V1.73C24 .77 23.21 0 22.23 0z"/>',
     '</svg>'
   ))
 }
@@ -258,12 +258,12 @@ ynow_auth_modal_ui <- function() {
         class = "ynow-auth-social ynow-auth-social--facebook"
       ),
       actionButton(
-        inputId = "ynow_auth_apple",
+        inputId = "ynow_auth_linkedin",
         label = tagList(
-          .ynow_auth_apple_icon(),
-          tags$span(id = "ynow_auth_apple_label", "Continue with Apple")
+          .ynow_auth_linkedin_icon(),
+          tags$span(id = "ynow_auth_linkedin_label", "Continue with LinkedIn")
         ),
-        class = "ynow-auth-social ynow-auth-social--apple"
+        class = "ynow-auth-social ynow-auth-social--linkedin"
       ),
       tags$div(
         class = "ynow-auth-divider",
@@ -431,11 +431,26 @@ ynow_auth_css <- function() {
     "  overflow:hidden; clip:rect(0,0,0,0); border:0;",
     "}",
     ".ynow-auth-card { display:flex; flex-direction:column; gap:12px; }",
+    # Logo + continue label on one row (override Bootstrap .btn).
+    "#ynow_auth_modal button.ynow-auth-social.btn,",
+    "#ynow_auth_modal .ynow-auth-social.btn,",
+    ".ynow-auth-social.btn,",
     ".ynow-auth-social {",
-    "  display:flex; align-items:center; justify-content:center; gap:10px;",
+    "  display:inline-flex !important; flex-direction:row !important;",
+    "  flex-wrap:nowrap !important; align-items:center !important;",
+    "  justify-content:center !important; gap:10px !important;",
     "  width:100%; height:44px; margin:0; padding:0 14px;",
     "  border-radius:2px; font-size:14px; font-weight:600; line-height:1;",
+    "  white-space:nowrap !important; vertical-align:middle;",
     "  cursor:pointer; box-shadow:none !important; text-shadow:none;",
+    "}",
+    "#ynow_auth_modal .ynow-auth-social > .ynow-auth-social-icon,",
+    "#ynow_auth_modal .ynow-auth-social > span,",
+    ".ynow-auth-social > .ynow-auth-social-icon,",
+    ".ynow-auth-social > span {",
+    "  display:inline-flex !important; align-items:center !important;",
+    "  flex:0 0 auto !important; margin:0 !important; float:none !important;",
+    "  vertical-align:middle;",
     "}",
     ".ynow-auth-social--google {",
     "  background:#fff !important; color:var(--ynow-ink, #1a1a1a) !important;",
@@ -453,15 +468,15 @@ ynow_auth_css <- function() {
     ".ynow-auth-social--facebook:hover {",
     "  background:#0a456c !important; border-color:#0a456c !important; color:#fff !important;",
     "}",
-    ".ynow-auth-social--apple {",
-    "  background:#000 !important; border:1px solid #000 !important; color:#fff !important;",
+    ".ynow-auth-social--linkedin {",
+    "  background:#0A66C2 !important; border:1px solid #0A66C2 !important; color:#fff !important;",
     "}",
-    ".ynow-auth-social--apple:hover {",
-    "  background:#222 !important; border-color:#222 !important; color:#fff !important;",
+    ".ynow-auth-social--linkedin:hover {",
+    "  background:#004182 !important; border-color:#004182 !important; color:#fff !important;",
     "}",
-    ".ynow-auth-social-icon { flex:0 0 auto; display:block; }",
+    ".ynow-auth-social-icon { width:18px; height:18px; }",
     ".ynow-auth-social-icon--fb { color:#fff; }",
-    ".ynow-auth-social-icon--apple { color:#fff; }",
+    ".ynow-auth-social-icon--linkedin { color:#fff; }",
     ".ynow-auth-divider {",
     "  display:flex; align-items:center; gap:12px; margin:4px 0 2px;",
     "  color:#888; font-size:12px;",
@@ -752,11 +767,11 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
   observeEvent(input$ynow_auth_facebook, {
     .start_oauth("facebook")
   }, ignoreInit = TRUE)
-  observeEvent(input$ynow_auth_apple, {
-    .start_oauth("apple")
+  observeEvent(input$ynow_auth_linkedin, {
+    .start_oauth("linkedin")
   }, ignoreInit = TRUE)
 
-  # Browser returned from Google / Facebook / Supabase with code or access_token.
+  # Browser returned from Google / Facebook / LinkedIn / Supabase with code or access_token.
   # Self-serve: upsert into Neon (role=user) and sign in — no admin permission step.
   observeEvent(input$ynow_auth_oauth_callback, {
     if (!isTRUE(ynow_auth_enabled())) return()
@@ -871,7 +886,7 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
         or_email = tryCatch(ui_str("auth_or_email", loc), error = function(e) "Or sign in with Email"),
         google = tryCatch(ui_str("auth_google", loc), error = function(e) "Continue with Google"),
         facebook = tryCatch(ui_str("auth_facebook", loc), error = function(e) "Continue with Facebook"),
-        apple = tryCatch(ui_str("auth_apple", loc), error = function(e) "Continue with Apple"),
+        linkedin = tryCatch(ui_str("auth_linkedin", loc), error = function(e) "Continue with LinkedIn"),
         forgot = tryCatch(ui_str("auth_forgot", loc), error = function(e) "Forgot password?"),
         register = tryCatch(ui_str("auth_register", loc), error = function(e) "Register a new account"),
         resend = tryCatch(ui_str("auth_resend", loc), error = function(e) "Didn't receive the verification email"),

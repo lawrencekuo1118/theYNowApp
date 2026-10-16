@@ -187,11 +187,11 @@ check("admin menu NULL when disabled", is.null(ynow_admin_menu_item()))
 keys <- c(
   "auth_sign_in", "auth_sign_out", "auth_modal_title", "auth_modal_help",
   "auth_email_label", "auth_password_label", "auth_submit", "auth_cancel",
-  "auth_or_email", "auth_google", "auth_facebook", "auth_apple", "auth_forgot",
+  "auth_or_email", "auth_google", "auth_facebook", "auth_linkedin", "auth_forgot",
   "auth_register", "auth_resend",
   "auth_msg_ok", "auth_msg_disabled", "auth_msg_missing", "auth_msg_invalid",
   "auth_msg_no_backend", "auth_msg_oauth_soon", "auth_msg_oauth_need_google",
-  "auth_msg_oauth_need_facebook", "auth_msg_oauth_need_apple",
+  "auth_msg_oauth_need_facebook", "auth_msg_oauth_need_linkedin",
   "auth_msg_oauth_failed", "auth_msg_oauth_state",
   "auth_msg_oauth_no_email", "auth_msg_register_soon", "auth_msg_register_ok",
   "auth_msg_register_failed", "auth_msg_email_taken", "auth_msg_password_short",
@@ -296,12 +296,12 @@ check("OAuth facebook not ready without env", {
   r <- ynow_oauth_authorize_url("facebook")
   identical(r$ok, FALSE) && identical(r$message_key, "auth_msg_oauth_need_facebook")
 })
-check("OAuth apple not ready without Supabase", {
+check("OAuth linkedin not ready without Supabase", {
   Sys.unsetenv("YNOW_SUPABASE_URL")
   Sys.unsetenv("YNOW_SUPABASE_ANON_KEY")
   Sys.setenv(YNOW_ENABLE_ACCOUNT_LOGIN = "1")
-  r <- ynow_oauth_authorize_url("apple")
-  identical(r$ok, FALSE) && identical(r$message_key, "auth_msg_oauth_need_apple")
+  r <- ynow_oauth_authorize_url("linkedin")
+  identical(r$ok, FALSE) && identical(r$message_key, "auth_msg_oauth_need_linkedin")
 })
 check("OAuth google URL when client set", {
   Sys.setenv(
@@ -342,23 +342,23 @@ check("OAuth supabase authorize URL", {
   )
   # Mock settings: providers enabled (avoid live /auth/v1/settings probe).
   .ynow_oauth_cache$settings <- list(
-    external = list(google = TRUE, facebook = TRUE, apple = TRUE)
+    external = list(google = TRUE, facebook = TRUE, linkedin_oidc = TRUE)
   )
   r <- ynow_oauth_authorize_url("google")
   isTRUE(r$ok) && grepl("abc.supabase.co/auth/v1/authorize", r$url, fixed = TRUE) &&
     grepl("provider=google", r$url, fixed = TRUE)
 })
-check("OAuth supabase apple URL", {
+check("OAuth supabase linkedin URL uses linkedin_oidc", {
   Sys.setenv(
     YNOW_SUPABASE_URL = "https://abc.supabase.co",
     YNOW_SUPABASE_ANON_KEY = "anon-key",
     YNOW_OAUTH_REDIRECT_URI = "https://example.com/app"
   )
   .ynow_oauth_cache$settings <- list(
-    external = list(google = TRUE, facebook = TRUE, apple = TRUE)
+    external = list(google = TRUE, facebook = TRUE, linkedin_oidc = TRUE)
   )
-  r <- ynow_oauth_authorize_url("apple")
-  isTRUE(r$ok) && grepl("provider=apple", r$url, fixed = TRUE)
+  r <- ynow_oauth_authorize_url("linkedin")
+  isTRUE(r$ok) && grepl("provider=linkedin_oidc", r$url, fixed = TRUE)
 })
 check("OAuth supabase provider disabled returns clear key", {
   Sys.setenv(
@@ -368,23 +368,28 @@ check("OAuth supabase provider disabled returns clear key", {
     YNOW_ENABLE_ACCOUNT_LOGIN = "1"
   )
   .ynow_oauth_cache$settings <- list(
-    external = list(google = FALSE, facebook = FALSE, apple = FALSE)
+    external = list(google = FALSE, facebook = FALSE, linkedin_oidc = FALSE, linkedin = FALSE)
   )
   rg <- ynow_oauth_authorize_url("google")
   rf <- ynow_oauth_authorize_url("facebook")
-  ra <- ynow_oauth_authorize_url("apple")
+  rl <- ynow_oauth_authorize_url("linkedin")
   identical(rg$ok, FALSE) && identical(rg$message_key, "auth_msg_oauth_provider_disabled") &&
     is.null(rg$url) &&
     identical(rf$message_key, "auth_msg_oauth_provider_disabled") &&
-    identical(ra$message_key, "auth_msg_oauth_provider_disabled")
+    identical(rl$message_key, "auth_msg_oauth_provider_disabled")
 })
 check("OAuth provider_enabled reads external flags", {
   .ynow_oauth_cache$settings <- list(
-    external = list(google = TRUE, facebook = FALSE, apple = list(enabled = TRUE))
+    external = list(
+      google = TRUE,
+      facebook = FALSE,
+      linkedin_oidc = list(enabled = TRUE),
+      linkedin = FALSE
+    )
   )
   identical(ynow_oauth_supabase_provider_enabled("google"), TRUE) &&
     identical(ynow_oauth_supabase_provider_enabled("facebook"), FALSE) &&
-    identical(ynow_oauth_supabase_provider_enabled("apple"), TRUE)
+    identical(ynow_oauth_supabase_provider_enabled("linkedin"), TRUE)
 })
 check("OAuth state round-trip", {
   Sys.setenv(YNOW_OAUTH_STATE_SECRET = "state-secret-for-tests")
@@ -436,8 +441,10 @@ check("login card uses app palette tokens", {
     grepl("--ynow-logo-blue", auth_src, fixed = TRUE) &&
     grepl("--ynow-wash", auth_src, fixed = TRUE) &&
     grepl("ynow-auth-social--google", auth_src, fixed = TRUE) &&
-    grepl("ynow-auth-social--apple", auth_src, fixed = TRUE) &&
-    grepl("ynow-auth-email-submit", auth_src, fixed = TRUE)
+    grepl("ynow-auth-social--linkedin", auth_src, fixed = TRUE) &&
+    grepl("flex-direction:row", auth_src, fixed = TRUE) &&
+    grepl("ynow-auth-email-submit", auth_src, fixed = TRUE) &&
+    !grepl("ynow-auth-social--apple", auth_src, fixed = TRUE)
 })
 check("sidebar auth UI is div not navbar li", {
   Sys.setenv(YNOW_ENABLE_ACCOUNT_LOGIN = "1")
@@ -461,7 +468,8 @@ check("modal card layout present when enabled", {
     grepl("ynow-auth-card", html, fixed = TRUE) &&
       grepl("ynow_auth_google", html, fixed = TRUE) &&
       grepl("ynow_auth_facebook", html, fixed = TRUE) &&
-      grepl("ynow_auth_apple", html, fixed = TRUE) &&
+      grepl("ynow_auth_linkedin", html, fixed = TRUE) &&
+      !grepl("ynow_auth_apple", html, fixed = TRUE) &&
       grepl("ynow-auth-email-submit", html, fixed = TRUE)
   }
 })
