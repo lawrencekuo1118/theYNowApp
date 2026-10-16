@@ -10519,8 +10519,8 @@ ui <- dashboardPage(
             }, 140);
           }
           window.ynowRequestAuthModal = ynowRequestAuthModal;
-          /* Last line of defense: shinyBS::toggleModal(..., "open") and any
-             other Bootstrap show path must not open login after sign-in. */
+          /* Last line of defense: shinyBS toggleModal open and any other
+             Bootstrap show path must not open login after sign-in. */
           if (!window.__ynowAuthModalShowVeto) {
             window.__ynowAuthModalShowVeto = true;
             var vetoShow = function (e) {
