@@ -7,4 +7,4 @@ commit=5a464bc
 short=5a464bc
 message=chore: record shipped display version v25.20
 captured_at=2026-10-16T13:26:00Z
-display_version=v25.20
+display_version=v25.21
