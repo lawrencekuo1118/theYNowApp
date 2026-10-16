@@ -7,5 +7,5 @@ commit=b27fbe9
 short=b27fbe9
 message=chore: record shinyapps baseline bundle 12699505 (app_25.0)
 captured_at=2026-10-16T14:50:00Z
-display_version=v25.23
+display_version=v25.24
 note=YNOW_POINTS_ENABLED=1 + LOGIN_GRANT=100 on deploy (.Renviron)
