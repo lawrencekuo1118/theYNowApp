@@ -7,4 +7,4 @@ commit=9ba6c07
 short=9ba6c07
 message=chore: bump display version to v25.18
 captured_at=2026-10-16T12:20:00Z
-display_version=v25.18
+display_version=v25.19
