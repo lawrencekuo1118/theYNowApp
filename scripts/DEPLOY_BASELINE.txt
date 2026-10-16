@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12698794
+bundleId=12698878
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=63108e1
-commit=63108e1
-short=63108e1
-message=fix: social login logos inline; LinkedIn replaces Apple (v25.16)
-captured_at=2026-10-16T11:47:00Z
-display_version=v25.16
+aligned_git=04c3c9c
+commit=04c3c9c
+short=04c3c9c
+message=chore: bump display version to v25.17
+captured_at=2026-10-16T12:05:00Z
+display_version=v25.17
