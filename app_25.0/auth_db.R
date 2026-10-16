@@ -97,6 +97,16 @@ ynow_db_pool <- function(force_new = FALSE) {
     # Fall back to a one-shot DBI connection wrapped as list with $conn semantics — use pool only.
     return(NULL)
   }
+  # Hosted: many Shiny workers × large pools exhaust Neon Free connection
+  # limits under concurrent login. Keep per-worker pool tiny; pooler host is
+  # expected (ep-*-pooler). Override with YNOW_DB_POOL_MAX.
+  hosted <- exists(".ynow_is_hosted_connect", mode = "function") &&
+    isTRUE(.ynow_is_hosted_connect())
+  pool_max <- suppressWarnings(as.integer(Sys.getenv("YNOW_DB_POOL_MAX", unset = "")))
+  if (!is.finite(pool_max) || pool_max < 1L) {
+    pool_max <- if (isTRUE(hosted)) 2L else 3L
+  }
+  pool_max <- max(1L, min(10L, pool_max))
   .ynow_db_pool <<- tryCatch(
     pool::dbPool(
       drv = RPostgres::Postgres(),
@@ -107,7 +117,7 @@ ynow_db_pool <- function(force_new = FALSE) {
       password = cfg$password,
       sslmode = cfg$sslmode,
       minSize = 0,
-      maxSize = 3,
+      maxSize = pool_max,
       idleTimeout = 60
     ),
     error = function(e) {
