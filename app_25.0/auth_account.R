@@ -689,7 +689,8 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
   #' Collapse sidebar first (client), then open the login modal.
   .open_auth_modal <- function() {
     if (!isTRUE(ynow_auth_enabled())) return()
-    session$sendCustomMessage("ynowAuthOpenModal", list())
+    # Non-empty payload: some Shiny/json paths drop empty list() customs.
+    session$sendCustomMessage("ynowAuthOpenModal", list(ok = TRUE))
   }
   observeEvent(input$ynow_auth_open, {
     .open_auth_modal()
@@ -843,6 +844,8 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
   }, ignoreInit = TRUE)
 
   # Mark body as auth-feature so CSS gates Full-only surfaces; Lite stays exempt.
+  # Also re-send from the locale observe below: onFlushed can race before the
+  # client registers ynowAuthFeature (Shiny 1.14 custom handlers).
   if (isTRUE(ynow_auth_enabled())) {
     session$onFlushed(function() {
       session$sendCustomMessage("ynowAuthFeature", list(on = TRUE))
@@ -853,6 +856,7 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
   observe({
     if (!isTRUE(ynow_auth_enabled())) return()
     loc <- .loc()
+    session$sendCustomMessage("ynowAuthFeature", list(on = TRUE))
     session$sendCustomMessage(
       "ynowAuthLocale",
       list(
