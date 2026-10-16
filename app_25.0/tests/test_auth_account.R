@@ -252,20 +252,22 @@ check("client capture opens auth modal without server round-trip", {
 check("authed guards skip auth modal reopen (client)", {
   # Post-login sidebar race: no-op show/request when body.ynow-authed;
   # capture skips authed or invisible (display:none / offsetParent null).
-  grepl("classList.contains('ynow-authed')", ui, fixed = TRUE) &&
-    grepl("skip show; already authed", ui, fixed = TRUE) &&
-    grepl("skip request; already authed", ui, fixed = TRUE) &&
-    grepl("auth-open capture skipped", ui, fixed = TRUE) &&
+  grepl("function ynowShowAuthModal()", ui, fixed = TRUE) &&
+    grepl("function ynowRequestAuthModal()", ui, fixed = TRUE) &&
+    grepl("classList.contains('ynow-authed')", ui, fixed = TRUE) &&
     grepl("hit.offsetParent === null", ui, fixed = TRUE) &&
-    grepl("disp === 'none'", ui, fixed = TRUE)
+    grepl("disp === 'none'", ui, fixed = TRUE) &&
+    grepl("var invisible = authed || disp === 'none' || hit.offsetParent === null", ui, fixed = TRUE) &&
+    !grepl("ynowAuthSidebarDbg", ui, fixed = TRUE)
 })
 check("authed guards skip auth modal reopen (server + CSS)", {
   auth_txt <- paste(readLines(src_auth, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   grepl("body.ynow-authed .ynow-auth-open", auth_txt, fixed = TRUE) &&
     grepl("pointer-events:none !important", auth_txt, fixed = TRUE) &&
-    grepl("skip open; already logged in", auth_txt, fixed = TRUE) &&
-    grepl("if (!is.null(account_user()))", auth_txt, fixed = TRUE) &&
-    grepl(".open_auth_modal <- function()", auth_txt, fixed = TRUE)
+    grepl("if (!is.null(account_user())) return()", auth_txt, fixed = TRUE) &&
+    grepl(".open_auth_modal <- function()", auth_txt, fixed = TRUE) &&
+    !grepl("ynow_auth_sidebar_dbg", auth_txt, fixed = TRUE) &&
+    !grepl("ynow_auth_sidebar_dbg_event", auth_txt, fixed = TRUE)
 })
 check("Neon not ready without env", {
   Sys.unsetenv("YNOW_DB_HOST")
