@@ -235,6 +235,15 @@ check("UI collapses sidebar before auth modal", {
     grepl("ynowEnsureSidebarCollapsed", ui, fixed = TRUE) &&
     grepl("ynowAuthOpenModal", auth_open, fixed = TRUE)
 })
+check("ynowAuthOpenModal handler is unary (Shiny 1.14)", {
+  # Zero-arg handlers throw in Shiny 1.14+ and never register.
+  grepl("addHandler('ynowAuthOpenModal', function (_msg)", ui, fixed = TRUE)
+})
+check("sidebar collapse helper handles sidebar-open", {
+  grepl("sidebar-open", ui, fixed = TRUE) &&
+    grepl("ynowEnsureSidebarCollapsed", ui, fixed = TRUE) &&
+    grepl("max-width: 767px", ui, fixed = TRUE)
+})
 check("Neon not ready without env", {
   Sys.unsetenv("YNOW_DB_HOST")
   Sys.unsetenv("YNOW_DB_USER")

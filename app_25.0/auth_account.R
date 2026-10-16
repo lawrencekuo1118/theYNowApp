@@ -843,6 +843,8 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
   }, ignoreInit = TRUE)
 
   # Mark body as auth-feature so CSS gates Full-only surfaces; Lite stays exempt.
+  # Also re-send from the locale observe below: onFlushed can race before the
+  # client registers ynowAuthFeature (Shiny 1.14 custom handlers).
   if (isTRUE(ynow_auth_enabled())) {
     session$onFlushed(function() {
       session$sendCustomMessage("ynowAuthFeature", list(on = TRUE))
@@ -853,6 +855,7 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
   observe({
     if (!isTRUE(ynow_auth_enabled())) return()
     loc <- .loc()
+    session$sendCustomMessage("ynowAuthFeature", list(on = TRUE))
     session$sendCustomMessage(
       "ynowAuthLocale",
       list(
