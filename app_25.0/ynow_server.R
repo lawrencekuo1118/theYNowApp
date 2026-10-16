@@ -340,9 +340,24 @@ server <- function(input, output, session) {
 
   # ==========================================
   # UI locale（語言）與顯示幣別分開；市場切換不覆寫語言
-  # 初次預設：裝置／瀏覽器語言（device_ui_locale）；手動 Language 優先
+  # 初次預設：HTTP Accept-Language → device_ui_locale；手動 Language 優先
   # ==========================================
-  ui_locale <- reactiveVal("en")
+  .boot_locale_from_request <- tryCatch({
+    req <- session$request
+    al <- NULL
+    if (!is.null(req)) {
+      al <- req[["HTTP_ACCEPT_LANGUAGE"]]
+      if (is.null(al) || !nzchar(as.character(al %||% "")[1])) {
+        hdrs <- req$HEADERS
+        if (!is.null(hdrs)) {
+          al <- hdrs[["accept-language"]]
+          if (is.null(al)) al <- hdrs[["Accept-Language"]]
+        }
+      }
+    }
+    locale_from_device_language(al, default = "en")
+  }, error = function(e) "en")
+  ui_locale <- reactiveVal(.boot_locale_from_request)
   ui_locale_user_picked <- reactiveVal(FALSE)
   device_ui_locale_applied <- reactiveVal(FALSE)
 

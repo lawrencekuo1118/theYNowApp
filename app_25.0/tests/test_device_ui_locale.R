@@ -115,6 +115,19 @@ check("ynowUiLocale registered with unary wrapper (Shiny 1.14 arity)", {
     grepl("function applyUiLocale(payload, opts)", ui_src, fixed = TRUE) &&
     !grepl("addCustomMessageHandler('ynowUiLocale', applyUiLocale)", ui_src, fixed = TRUE)
 })
+check("first-paint preferred locale from navigator (no EN→zh flash)", {
+  grepl("__ynowPreferredLocale", ui_src, fixed = TRUE) &&
+    grepl("ynowPreferredUiLocale", ui_src, fixed = TRUE) &&
+    grepl("data-ynow-boot-zh", ui_src, fixed = TRUE) &&
+    grepl("__ynowLocaleBootGuard", ui_src, fixed = TRUE) &&
+    grepl("ynowApplyBootPreferredLocale", ui_src, fixed = TRUE) &&
+    grepl("window.applyUiLocale = applyUiLocale", ui_src, fixed = TRUE)
+})
+check("server boots ui_locale from Accept-Language", {
+  grepl("HTTP_ACCEPT_LANGUAGE", srv_src, fixed = TRUE) &&
+    grepl(".boot_locale_from_request", srv_src, fixed = TRUE) &&
+    grepl("locale_from_device_language(al, default = \"en\")", srv_src, fixed = TRUE)
+})
 
 if (fail > 0L) {
   cat("FAILED: ", fail, " check(s)\n", sep = "")
