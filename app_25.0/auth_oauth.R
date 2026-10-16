@@ -11,9 +11,16 @@
 #   YNOW_SUPABASE_URL=https://xxxx.supabase.co
 #   YNOW_SUPABASE_ANON_KEY=eyJ...
 #   YNOW_OAUTH_REDIRECT_URI=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-# Enable Google / Facebook / Apple under Supabase → Authentication → Providers
-# (turn ON; leave "Disable sign ups" OFF so the public can register).
-# Apple requires Apple Developer Services ID credentials in the Supabase provider form.
+#
+# Owner must also enable each provider in the Supabase dashboard (env alone is not enough):
+#   1. https://supabase.com/dashboard → project (ref in YNOW_SUPABASE_URL)
+#   2. Authentication → Providers
+#   3. Google / Facebook / Apple → Enable, paste Client ID / Secret (Apple: Services ID + key)
+#   4. Authentication → URL Configuration: Site URL + Redirect URLs include YNOW_OAUTH_REDIRECT_URI
+#   5. Leave "Confirm email" / disable-sign-ups as needed; keep public signup allowed for self-serve
+# If a provider stays OFF, /auth/v1/authorize returns:
+#   {"error_code":"validation_failed","msg":"Unsupported provider: provider is not enabled"}
+# The app probes /auth/v1/settings and surfaces auth_msg_oauth_provider_disabled instead of a raw 400.
 #
 # Direct path (no Supabase) — Google / Facebook only; Apple stays Supabase-only:
 #   YNOW_GOOGLE_CLIENT_ID=...
@@ -24,6 +31,10 @@
 #   YNOW_OAUTH_STATE_SECRET=<random long string>
 #
 # Never commit real secrets. Use app_25.0/.Renviron (gitignored) for shinyapps.
+
+if (!exists("%||%", mode = "function")) {
+  `%||%` <- function(a, b) if (is.null(a)) b else a
+}
 
 ynow_oauth_redirect_uri <- function() {
   u <- trimws(Sys.getenv("YNOW_OAUTH_REDIRECT_URI", unset = ""))
@@ -41,6 +52,45 @@ ynow_oauth_supabase_anon <- function() {
 
 ynow_oauth_supabase_ready <- function() {
   nzchar(ynow_oauth_supabase_url()) && nzchar(ynow_oauth_supabase_anon())
+}
+
+.ynow_oauth_cache <- new.env(parent = emptyenv())
+
+#' Fetch Supabase Auth settings (which external providers are enabled).
+#' Cached per process; pass force=TRUE after dashboard changes in the same session.
+ynow_oauth_supabase_settings <- function(force = FALSE) {
+  if (!isTRUE(force) && is.list(.ynow_oauth_cache$settings)) {
+    return(.ynow_oauth_cache$settings)
+  }
+  if (!isTRUE(ynow_oauth_supabase_ready())) return(NULL)
+  base <- ynow_oauth_supabase_url()
+  anon <- ynow_oauth_supabase_anon()
+  settings <- tryCatch(
+    {
+      resp <- httr2::request(paste0(base, "/auth/v1/settings")) |>
+        httr2::req_headers(apikey = anon, Authorization = paste("Bearer", anon)) |>
+        httr2::req_timeout(8) |>
+        httr2::req_perform()
+      httr2::resp_body_json(resp, simplifyVector = TRUE)
+    },
+    error = function(e) NULL
+  )
+  if (is.list(settings)) .ynow_oauth_cache$settings <- settings
+  settings
+}
+
+#' TRUE when Supabase reports the named external provider as enabled.
+#' Unknown / unreachable settings → NA (caller may still attempt authorize).
+ynow_oauth_supabase_provider_enabled <- function(provider) {
+  provider <- tolower(trimws(as.character(provider %||% "")[1]))
+  if (!nzchar(provider)) return(NA)
+  settings <- ynow_oauth_supabase_settings()
+  if (!is.list(settings)) return(NA)
+  ext <- settings$external
+  if (!is.list(ext) || !(provider %in% names(ext))) return(FALSE)
+  val <- ext[[provider]]
+  if (is.list(val) && !is.null(val$enabled)) return(isTRUE(val$enabled))
+  isTRUE(val)
 }
 
 ynow_oauth_google_ready <- function() {
@@ -129,6 +179,15 @@ ynow_oauth_authorize_url <- function(provider = c("google", "facebook", "apple")
   }
   redir <- ynow_oauth_redirect_uri()
   if (isTRUE(ynow_oauth_supabase_ready())) {
+    enabled <- ynow_oauth_supabase_provider_enabled(provider)
+    if (identical(enabled, FALSE)) {
+      return(list(
+        ok = FALSE,
+        url = NULL,
+        message_key = "auth_msg_oauth_provider_disabled",
+        provider = provider
+      ))
+    }
     base <- ynow_oauth_supabase_url()
     url <- sprintf(
       "%s/auth/v1/authorize?provider=%s&redirect_to=%s",

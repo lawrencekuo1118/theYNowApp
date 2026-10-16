@@ -311,6 +311,13 @@ check("OAuth facebook URL when app set", {
   isTRUE(r$ok) && grepl("facebook.com", r$url, fixed = TRUE) &&
     grepl("client_id=1234567890", r$url, fixed = TRUE)
 })
+check("locale has auth_msg_oauth_provider_disabled en+zh-TW", {
+  en <- ui_str("auth_msg_oauth_provider_disabled", "en")
+  zh <- ui_str("auth_msg_oauth_provider_disabled", "zh-TW")
+  grepl("Supabase", en, fixed = TRUE) && grepl("Providers", en, fixed = TRUE) &&
+    grepl("Supabase", zh, fixed = TRUE) && grepl("Providers", zh, fixed = TRUE) &&
+    grepl("啟用", zh, fixed = TRUE)
+})
 check("OAuth supabase authorize URL", {
   Sys.unsetenv("YNOW_GOOGLE_CLIENT_ID")
   Sys.unsetenv("YNOW_GOOGLE_CLIENT_SECRET")
@@ -318,6 +325,10 @@ check("OAuth supabase authorize URL", {
     YNOW_SUPABASE_URL = "https://abc.supabase.co",
     YNOW_SUPABASE_ANON_KEY = "anon-key",
     YNOW_OAUTH_REDIRECT_URI = "https://example.com/app"
+  )
+  # Mock settings: providers enabled (avoid live /auth/v1/settings probe).
+  .ynow_oauth_cache$settings <- list(
+    external = list(google = TRUE, facebook = TRUE, apple = TRUE)
   )
   r <- ynow_oauth_authorize_url("google")
   isTRUE(r$ok) && grepl("abc.supabase.co/auth/v1/authorize", r$url, fixed = TRUE) &&
@@ -329,8 +340,37 @@ check("OAuth supabase apple URL", {
     YNOW_SUPABASE_ANON_KEY = "anon-key",
     YNOW_OAUTH_REDIRECT_URI = "https://example.com/app"
   )
+  .ynow_oauth_cache$settings <- list(
+    external = list(google = TRUE, facebook = TRUE, apple = TRUE)
+  )
   r <- ynow_oauth_authorize_url("apple")
   isTRUE(r$ok) && grepl("provider=apple", r$url, fixed = TRUE)
+})
+check("OAuth supabase provider disabled returns clear key", {
+  Sys.setenv(
+    YNOW_SUPABASE_URL = "https://abc.supabase.co",
+    YNOW_SUPABASE_ANON_KEY = "anon-key",
+    YNOW_OAUTH_REDIRECT_URI = "https://example.com/app",
+    YNOW_ENABLE_ACCOUNT_LOGIN = "1"
+  )
+  .ynow_oauth_cache$settings <- list(
+    external = list(google = FALSE, facebook = FALSE, apple = FALSE)
+  )
+  rg <- ynow_oauth_authorize_url("google")
+  rf <- ynow_oauth_authorize_url("facebook")
+  ra <- ynow_oauth_authorize_url("apple")
+  identical(rg$ok, FALSE) && identical(rg$message_key, "auth_msg_oauth_provider_disabled") &&
+    is.null(rg$url) &&
+    identical(rf$message_key, "auth_msg_oauth_provider_disabled") &&
+    identical(ra$message_key, "auth_msg_oauth_provider_disabled")
+})
+check("OAuth provider_enabled reads external flags", {
+  .ynow_oauth_cache$settings <- list(
+    external = list(google = TRUE, facebook = FALSE, apple = list(enabled = TRUE))
+  )
+  identical(ynow_oauth_supabase_provider_enabled("google"), TRUE) &&
+    identical(ynow_oauth_supabase_provider_enabled("facebook"), FALSE) &&
+    identical(ynow_oauth_supabase_provider_enabled("apple"), TRUE)
 })
 check("OAuth state round-trip", {
   Sys.setenv(YNOW_OAUTH_STATE_SECRET = "state-secret-for-tests")
