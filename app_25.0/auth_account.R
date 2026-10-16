@@ -609,13 +609,17 @@ ynow_admin_tab_ui <- function() {
 #' Build Account overview panel (signed-in). Ledger lives on account_points tab.
 ynow_admin_panel_ui <- function(user, locale = "zh-TW", build_version = "",
                                 points_balance = NA_integer_,
-                                points_ledger = NULL) {
+                                points_ledger = NULL,
+                                fyn_balance = NA_integer_,
+                                pyn_balance = NA_integer_) {
   loc <- as.character(locale %||% "zh-TW")[1]
   .lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
   email <- ynow_auth_norm_email(user$email %||% "")
   at <- as.character(user$logged_in_at %||% "")[1]
-  bal <- suppressWarnings(as.integer(points_balance)[1])
-  bal_txt <- if (is.finite(bal)) as.character(bal) else "—"
+  fyn <- suppressWarnings(as.integer(fyn_balance %||% points_balance)[1])
+  pyn <- suppressWarnings(as.integer(pyn_balance)[1])
+  fyn_txt <- if (is.finite(fyn)) as.character(fyn) else "—"
+  pyn_txt <- if (is.finite(pyn)) as.character(pyn) else "—"
   pts_on <- exists("ynow_points_enabled", mode = "function") && isTRUE(ynow_points_enabled())
   tags$div(
     class = "ynow-admin-panel",
@@ -649,9 +653,13 @@ ynow_admin_panel_ui <- function(user, locale = "zh-TW", build_version = "",
           tags$code(if (nzchar(build_version)) build_version else "—")
         ),
         tags$p(
-          tags$b(id = "ynow_pts_balance_label", .lab("pts_balance", "Points balance")),
+          tags$b(id = "ynow_pts_fyn_label", .lab("pts_fyn_label", "FYN points")),
           ": ",
-          tags$code(id = "ynow_pts_balance_value", bal_txt)
+          tags$code(id = "ynow_pts_fyn_value", fyn_txt),
+          " · ",
+          tags$b(id = "ynow_pts_pyn_label", .lab("pts_pyn_label", "PYN points")),
+          ": ",
+          tags$code(id = "ynow_pts_pyn_value", pyn_txt)
         ),
         tags$p(
           class = "text-muted",
@@ -665,8 +673,11 @@ ynow_admin_panel_ui <- function(user, locale = "zh-TW", build_version = "",
         tags$p(
           class = "text-muted",
           style = "font-size:12.5px;",
-          id = "ynow_pts_login_reset_note",
-          .lab("pts_login_reset_note", "Testing: every Sign-in resets your points balance to 100.")
+          id = "ynow_pts_rules_note",
+          .lab(
+            "pts_rules_note",
+            "New accounts receive 100 FYN once. Daily check-in adds +30 FYN once per Asia/Taipei day. Balances are never reset on login."
+          )
         ),
         tags$hr(),
         tags$h4(id = "ynow_admin_tools_h", .lab("auth_admin_tools", "Tools")),
@@ -681,7 +692,7 @@ ynow_admin_panel_ui <- function(user, locale = "zh-TW", build_version = "",
           )),
           tags$li(id = "ynow_admin_tool_points", .lab(
             "auth_admin_tool_points",
-            "Points: every balance change is stored; open Points ledger for the full history."
+            "Points: FYN (free) and PYN (paid) are stored separately; open Points ledger for history."
           ))
         ),
         actionButton(
@@ -707,18 +718,21 @@ ynow_admin_panel_ui <- function(user, locale = "zh-TW", build_version = "",
   )
 }
 
-#' Points ledger panel — full history for the signed-in user (+ admin credit).
+#' Points ledger panel — full history for the signed-in user.
 #' Table body is filled by server via DT::dataTableOutput("ynow_pts_ledger_dt").
+#' System admin adjust lives on the Testing tab (de-identified user list).
 ynow_points_panel_ui <- function(user, locale = "zh-TW",
                                  points_balance = NA_integer_,
-                                 points_ledger = NULL) {
+                                 points_ledger = NULL,
+                                 fyn_balance = NA_integer_,
+                                 pyn_balance = NA_integer_) {
   loc <- as.character(locale %||% "zh-TW")[1]
   .lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
   email <- ynow_auth_norm_email(user$email %||% "")
-  role <- as.character(user$role %||% "user")[1]
-  is_admin <- identical(role, "admin")
-  bal <- suppressWarnings(as.integer(points_balance)[1])
-  bal_txt <- if (is.finite(bal)) as.character(bal) else "—"
+  fyn <- suppressWarnings(as.integer(fyn_balance %||% points_balance)[1])
+  pyn <- suppressWarnings(as.integer(pyn_balance)[1])
+  fyn_txt <- if (is.finite(fyn)) as.character(fyn) else "—"
+  pyn_txt <- if (is.finite(pyn)) as.character(pyn) else "—"
   n_rows <- if (is.data.frame(points_ledger)) nrow(points_ledger) else 0L
   ledger_ui <- tags$div(
     id = "ynow_pts_ledger_wrap",
@@ -728,34 +742,6 @@ ynow_points_panel_ui <- function(user, locale = "zh-TW",
       uiOutput("ynow_pts_ledger_fallback")
     }
   )
-  admin_credit_ui <- if (isTRUE(is_admin)) {
-    tags$div(
-      tags$hr(),
-      tags$h4(id = "ynow_pts_admin_h", .lab("pts_admin_credit", "Admin: add points")),
-      fluidRow(
-        column(
-          4,
-          textInput("ynow_pts_admin_email", .lab("pts_admin_email", "User email"), value = "")
-        ),
-        column(
-          3,
-          numericInput("ynow_pts_admin_amount", .lab("pts_admin_amount", "Points to add"),
-                       value = 20, min = 1, step = 1)
-        ),
-        column(
-          5,
-          textInput("ynow_pts_admin_note", .lab("pts_admin_note", "Note (optional)"), value = "")
-        )
-      ),
-      actionButton(
-        "ynow_pts_admin_submit",
-        label = tags$span(id = "ynow_pts_admin_submit_label", .lab("pts_admin_submit", "Add points")),
-        class = "btn-primary"
-      )
-    )
-  } else {
-    NULL
-  }
   tags$div(
     class = "ynow-pts-ledger-panel",
     fluidRow(
@@ -774,17 +760,24 @@ ynow_points_panel_ui <- function(user, locale = "zh-TW",
         tags$p(
           class = "text-muted",
           style = "font-size:12.5px;",
-          id = "ynow_pts_ledger_reset_note",
-          .lab("pts_login_reset_note", "Testing: every Sign-in resets your points balance to 100.")
+          id = "ynow_pts_ledger_rules_note",
+          .lab(
+            "pts_rules_note",
+            "New accounts receive 100 FYN once. Daily check-in adds +30 FYN once per Asia/Taipei day. Balances are never reset on login."
+          )
         ),
         tags$p(
           tags$b(id = "ynow_pts_ledger_account_label", .lab("auth_admin_account", "Account")),
           ": ",
           tags$code(if (nzchar(email)) email else "—"),
           " · ",
-          tags$b(id = "ynow_pts_ledger_bal_label", .lab("pts_balance", "Points balance")),
+          tags$b(id = "ynow_pts_ledger_fyn_label", .lab("pts_fyn_label", "FYN points")),
           ": ",
-          tags$code(id = "ynow_pts_ledger_bal_value", bal_txt),
+          tags$code(id = "ynow_pts_ledger_fyn_value", fyn_txt),
+          " · ",
+          tags$b(id = "ynow_pts_ledger_pyn_label", .lab("pts_pyn_label", "PYN points")),
+          ": ",
+          tags$code(id = "ynow_pts_ledger_pyn_value", pyn_txt),
           " · ",
           tags$span(
             id = "ynow_pts_ledger_count",
@@ -794,7 +787,6 @@ ynow_points_panel_ui <- function(user, locale = "zh-TW",
         tags$hr(),
         tags$h4(id = "ynow_pts_ledger_h", .lab("pts_ledger", "All points activity")),
         ledger_ui,
-        admin_credit_ui,
         tags$hr(),
         actionButton(
           "ynow_pts_goto_overview",
@@ -905,28 +897,33 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
   .finish_auth_success <- function(user, message_key = "auth_msg_ok",
                                    fallback = "Signed in.", restore_tab = NULL) {
     account_user(user)
-    # Membership testing: every Sign-in resets this user's points to LOGIN_GRANT (default 100).
-    pts_reset <- NULL
-    if (exists("ynow_points_reset_on_login", mode = "function")) {
+    # First gift (100 FYN once) + daily check-in (+30 FYN / Asia/Taipei day). Never reset.
+    pts_login <- NULL
+    if (exists("ynow_points_on_login", mode = "function")) {
       uid <- as.character(user$id %||% "")[1]
       if (nzchar(uid)) {
-        pts_reset <- tryCatch(
-          ynow_points_reset_on_login(uid),
+        pts_login <- tryCatch(
+          ynow_points_on_login(uid),
           error = function(e) NULL
         )
       }
     }
     mk <- as.character(message_key %||% "auth_msg_ok")[1]
     msg <- .str(mk, fallback)
-    if (isTRUE(pts_reset$ok) && is.finite(suppressWarnings(as.integer(pts_reset$balance)[1]))) {
-      grant_n <- tryCatch(ynow_points_login_grant(), error = function(e) 100L)
-      if (is.finite(grant_n) && grant_n > 0L) {
-        pts_note <- tryCatch(
-          sprintf(.str("pts_login_reset_fmt", "Points reset to %s for testing."), as.character(grant_n)),
-          error = function(e) sprintf("Points reset to %s for testing.", as.character(grant_n))
-        )
-        msg <- paste(msg, pts_note)
-      }
+    if (isTRUE(pts_login$checkin_granted)) {
+      amt <- tryCatch(ynow_points_daily_checkin_amount(), error = function(e) 30L)
+      pts_note <- tryCatch(
+        sprintf(.str("pts_daily_checkin_fmt", "Daily check-in: +%s FYN."), as.character(amt)),
+        error = function(e) sprintf("Daily check-in: +%s FYN.", as.character(amt))
+      )
+      msg <- paste(msg, pts_note)
+    } else if (isTRUE(pts_login$gift_granted)) {
+      gift_n <- tryCatch(ynow_points_signup_bonus(), error = function(e) 100L)
+      pts_note <- tryCatch(
+        sprintf(.str("pts_first_gift_fmt", "Welcome gift: +%s FYN."), as.character(gift_n)),
+        error = function(e) sprintf("Welcome gift: +%s FYN.", as.character(gift_n))
+      )
+      msg <- paste(msg, pts_note)
     }
     output$ynow_auth_status <- renderUI({
       tags$p(class = "text-success", msg)

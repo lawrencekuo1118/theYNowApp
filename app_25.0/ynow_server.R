@@ -382,6 +382,8 @@ server <- function(input, output, session) {
   }
   session$userData$ynow_auth <- ynow_auth
   ynow_pts_panel_tick <- reactiveVal(0L)
+  ynow_pts_sysadmin_on <- reactiveVal(FALSE)
+  ynow_pts_sysadmin_tick <- reactiveVal(0L)
 
   .ynow_account_gate_ui <- function(loc) {
     if (!isTRUE(ynow_auth_enabled())) {
@@ -414,11 +416,17 @@ server <- function(input, output, session) {
 
   .ynow_pts_user_bundle <- function(u) {
     uid <- as.character(u$id %||% "")[1]
-    pts_bal <- if (nzchar(uid) && exists("ynow_points_balance", mode = "function")) {
-      tryCatch(ynow_points_balance(uid), error = function(e) NA_integer_)
+    bals <- if (nzchar(uid) && exists("ynow_points_balances", mode = "function")) {
+      tryCatch(ynow_points_balances(uid), error = function(e) list(fyn = NA_integer_, pyn = NA_integer_))
+    } else if (nzchar(uid) && exists("ynow_points_balance", mode = "function")) {
+      list(
+        fyn = tryCatch(ynow_points_balance(uid), error = function(e) NA_integer_),
+        pyn = 0L
+      )
     } else {
-      NA_integer_
+      list(fyn = NA_integer_, pyn = NA_integer_)
     }
+    pts_bal <- suppressWarnings(as.integer(bals$fyn %||% NA_integer_)[1])
     # Full ledger for this user (every DB mutation).
     pts_led <- if (nzchar(uid) && exists("ynow_points_ledger_all", mode = "function")) {
       tryCatch(ynow_points_ledger_all(uid), error = function(e) NULL)
@@ -427,7 +435,39 @@ server <- function(input, output, session) {
     } else {
       NULL
     }
-    list(uid = uid, balance = pts_bal, ledger = pts_led)
+    list(
+      uid = uid,
+      balance = pts_bal,
+      fyn = suppressWarnings(as.integer(bals$fyn %||% NA_integer_)[1]),
+      pyn = suppressWarnings(as.integer(bals$pyn %||% NA_integer_)[1]),
+      ledger = pts_led
+    )
+  }
+
+  .ynow_pts_push_banner <- function() {
+    loc <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "en")
+    u <- tryCatch(ynow_auth$user(), error = function(e) NULL)
+    fyn_lab <- tryCatch(paste0(ui_str("pts_fyn_label", loc), ":"), error = function(e) "FYN points:")
+    pyn_lab <- tryCatch(paste0(ui_str("pts_pyn_label", loc), ":"), error = function(e) "PYN points:")
+    if (is.null(u)) {
+      session$sendCustomMessage(
+        "ynowPtsBanner",
+        list(fyn = "—", pyn = "—", fyn_label = fyn_lab, pyn_label = pyn_lab, visible = TRUE)
+      )
+      return(invisible(NULL))
+    }
+    bund <- .ynow_pts_user_bundle(u)
+    fyn_txt <- if (is.finite(bund$fyn)) as.character(bund$fyn) else "—"
+    pyn_txt <- if (is.finite(bund$pyn)) as.character(bund$pyn) else "—"
+    session$sendCustomMessage(
+      "ynowPtsBanner",
+      list(
+        fyn = fyn_txt, pyn = pyn_txt,
+        fyn_label = fyn_lab, pyn_label = pyn_lab,
+        visible = TRUE
+      )
+    )
+    invisible(NULL)
   }
 
   # Account overview (Full + signed-in). Lite never requires login.
@@ -448,6 +488,8 @@ server <- function(input, output, session) {
         locale = loc,
         build_version = build_ver,
         points_balance = bund$balance,
+        fyn_balance = bund$fyn,
+        pyn_balance = bund$pyn,
         points_ledger = NULL
       )
     } else {
@@ -468,6 +510,8 @@ server <- function(input, output, session) {
         u,
         locale = loc,
         points_balance = bund$balance,
+        fyn_balance = bund$fyn,
+        pyn_balance = bund$pyn,
         points_ledger = bund$ledger
       )
     } else {
@@ -481,8 +525,8 @@ server <- function(input, output, session) {
     if (is.null(u)) {
       return(data.frame(
         created_at = character(), delta = integer(), balance_after = integer(),
-        reason = character(), sku = character(), ref_id = character(),
-        note = character(), stringsAsFactors = FALSE
+        wallet = character(), reason = character(), sku = character(),
+        ref_id = character(), note = character(), stringsAsFactors = FALSE
       ))
     }
     bund <- .ynow_pts_user_bundle(u)
@@ -490,12 +534,12 @@ server <- function(input, output, session) {
     if (!is.data.frame(df) || nrow(df) < 1L) {
       return(data.frame(
         created_at = character(), delta = integer(), balance_after = integer(),
-        reason = character(), sku = character(), ref_id = character(),
-        note = character(), stringsAsFactors = FALSE
+        wallet = character(), reason = character(), sku = character(),
+        ref_id = character(), note = character(), stringsAsFactors = FALSE
       ))
     }
     cols <- intersect(
-      c("created_at", "delta", "balance_after", "reason", "sku", "ref_id", "note"),
+      c("created_at", "delta", "balance_after", "wallet", "reason", "sku", "ref_id", "note"),
       names(df)
     )
     df[, cols, drop = FALSE]
@@ -519,6 +563,7 @@ server <- function(input, output, session) {
           created_at = .lab("pts_col_when", "When"),
           delta = .lab("pts_col_delta", "Delta"),
           balance_after = .lab("pts_col_balance", "Balance"),
+          wallet = .lab("pts_col_wallet", "Wallet"),
           reason = .lab("pts_col_reason", "Reason"),
           sku = .lab("pts_col_sku", "SKU"),
           ref_id = .lab("pts_col_ref", "Reference"),
@@ -555,6 +600,7 @@ server <- function(input, output, session) {
             tags$th(.lab("pts_col_when", "When")),
             tags$th(.lab("pts_col_delta", "Delta")),
             tags$th(.lab("pts_col_balance", "Balance")),
+            tags$th(.lab("pts_col_wallet", "Wallet")),
             tags$th(.lab("pts_col_reason", "Reason")),
             tags$th(.lab("pts_col_sku", "SKU")),
             tags$th(.lab("pts_col_ref", "Reference")),
@@ -565,6 +611,7 @@ server <- function(input, output, session) {
               tags$td(as.character(df$created_at[[i]] %||% "")),
               tags$td(as.character(df$delta[[i]] %||% "")),
               tags$td(as.character(df$balance_after[[i]] %||% "")),
+              tags$td(as.character(df$wallet[[i]] %||% "")),
               tags$td(as.character(df$reason[[i]] %||% "")),
               tags$td(as.character(df$sku[[i]] %||% "")),
               tags$td(as.character(df$ref_id[[i]] %||% "")),
@@ -575,6 +622,164 @@ server <- function(input, output, session) {
       )
     })
   }
+
+  # Header FYN / PYN banner (right of locale switch).
+  observe({
+    ynow_pts_panel_tick()
+    tryCatch(ynow_auth$user(), error = function(e) NULL)
+    tryCatch(ui_locale(), error = function(e) NULL)
+    .ynow_pts_push_banner()
+  })
+
+  # Testing tab — system admin (no separate account/password).
+  observeEvent(input$ynow_pts_sysadmin_enter, {
+    ynow_pts_sysadmin_on(TRUE)
+    ynow_pts_sysadmin_tick(isolate(ynow_pts_sysadmin_tick()) + 1L)
+  }, ignoreInit = TRUE)
+  observeEvent(input$ynow_pts_sysadmin_exit, {
+    ynow_pts_sysadmin_on(FALSE)
+  }, ignoreInit = TRUE)
+  observeEvent(input$ynow_pts_sysadmin_refresh, {
+    ynow_pts_sysadmin_tick(isolate(ynow_pts_sysadmin_tick()) + 1L)
+  }, ignoreInit = TRUE)
+
+  output$ynow_pts_sysadmin_panel <- renderUI({
+    ynow_pts_sysadmin_tick()
+    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+    .lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
+    if (!isTRUE(ynow_pts_sysadmin_on())) return(NULL)
+    if (!exists("ynow_points_admin_list_users", mode = "function")) {
+      return(tags$p(class = "text-danger", .lab("pts_msg_backend", "Points backend is unavailable.")))
+    }
+    df <- tryCatch(ynow_points_admin_list_users(), error = function(e) NULL)
+    if (!is.data.frame(df) || nrow(df) < 1L) {
+      return(tags$div(
+        tags$hr(),
+        tags$p(class = "text-muted", .lab("pts_sysadmin_empty", "No users in the database yet."))
+      ))
+    }
+    status_ok <- .lab("pts_sysadmin_status_ok", "Active")
+    status_off <- .lab("pts_sysadmin_status_disabled", "Disabled")
+    choices <- stats::setNames(as.character(df$public_id), as.character(df$public_id))
+    tags$div(
+      tags$hr(),
+      tags$h4(.lab("pts_sysadmin_users", "Users (de-identified)")),
+      tags$div(
+        style = "overflow-x:auto; max-height:40vh; margin-bottom:12px;",
+        tags$table(
+          class = "table table-condensed table-striped",
+          tags$thead(tags$tr(
+            tags$th(.lab("pts_sysadmin_col_id", "User id")),
+            tags$th(.lab("pts_sysadmin_col_fyn", "FYN")),
+            tags$th(.lab("pts_sysadmin_col_pyn", "PYN")),
+            tags$th(.lab("pts_sysadmin_col_role", "Role")),
+            tags$th(.lab("pts_sysadmin_col_status", "Status"))
+          )),
+          tags$tbody(lapply(seq_len(nrow(df)), function(i) {
+            tags$tr(
+              tags$td(tags$code(as.character(df$public_id[[i]]))),
+              tags$td(as.character(df$fyn[[i]])),
+              tags$td(as.character(df$pyn[[i]])),
+              tags$td(as.character(df$role[[i]] %||% "user")),
+              tags$td(if (isTRUE(df$disabled[[i]])) status_off else status_ok)
+            )
+          }))
+        )
+      ),
+      fluidRow(
+        column(
+          4,
+          selectInput(
+            "ynow_pts_sysadmin_user",
+            .lab("pts_sysadmin_select", "Select user id"),
+            choices = choices,
+            selected = choices[[1]]
+          )
+        ),
+        column(
+          2,
+          numericInput(
+            "ynow_pts_sysadmin_fyn_delta",
+            .lab("pts_sysadmin_fyn_delta", "FYN change (+/−)"),
+            value = 0, step = 1
+          )
+        ),
+        column(
+          2,
+          numericInput(
+            "ynow_pts_sysadmin_pyn_delta",
+            .lab("pts_sysadmin_pyn_delta", "PYN change (+/−)"),
+            value = 0, step = 1
+          )
+        ),
+        column(
+          4,
+          textInput(
+            "ynow_pts_sysadmin_note",
+            .lab("pts_sysadmin_note", "Note (optional)"),
+            value = ""
+          )
+        )
+      ),
+      actionButton(
+        "ynow_pts_sysadmin_apply",
+        label = tags$span(
+          id = "ynow_pts_sysadmin_apply_label",
+          .lab("pts_sysadmin_apply", "Apply change")
+        ),
+        class = "btn-warning"
+      )
+    )
+  })
+
+  observeEvent(input$ynow_pts_sysadmin_apply, {
+    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+    .lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
+    if (!isTRUE(ynow_pts_sysadmin_on())) {
+      showNotification(.lab("pts_admin_denied", "Only admins can add points."), type = "error")
+      return()
+    }
+    if (!exists("ynow_points_admin_adjust", mode = "function")) {
+      showNotification(.lab("pts_msg_backend", "Points backend is unavailable."), type = "error")
+      return()
+    }
+    pid <- as.character(input$ynow_pts_sysadmin_user %||% "")[1]
+    uid <- if (exists("ynow_points_resolve_public_id", mode = "function")) {
+      ynow_points_resolve_public_id(pid)
+    } else {
+      ""
+    }
+    if (!nzchar(uid)) {
+      showNotification(.lab("pts_sysadmin_bad_user", "Select a user from the list."), type = "warning")
+      return()
+    }
+    fd <- suppressWarnings(as.integer(input$ynow_pts_sysadmin_fyn_delta)[1])
+    pd <- suppressWarnings(as.integer(input$ynow_pts_sysadmin_pyn_delta)[1])
+    if (!is.finite(fd)) fd <- 0L
+    if (!is.finite(pd)) pd <- 0L
+    if (identical(fd, 0L) && identical(pd, 0L)) {
+      showNotification(
+        .lab("pts_sysadmin_bad_delta", "Enter a non-zero whole-number change for FYN and/or PYN."),
+        type = "warning"
+      )
+      return()
+    }
+    note <- as.character(input$ynow_pts_sysadmin_note %||% "")[1]
+    res <- ynow_points_admin_adjust(
+      uid, fyn_delta = fd, pyn_delta = pd, note = note, by = "testing_sysadmin"
+    )
+    if (isTRUE(res$ok)) {
+      showNotification(.lab("pts_sysadmin_ok", "Balances updated."), type = "message")
+      ynow_pts_sysadmin_tick(isolate(ynow_pts_sysadmin_tick()) + 1L)
+      ynow_pts_panel_tick(isolate(ynow_pts_panel_tick()) + 1L)
+      .ynow_pts_push_banner()
+    } else {
+      showNotification(
+        .lab(res$message_key %||% "pts_msg_backend", "Points backend error."),
+        type = "error"
+      )
+    }
+  }, ignoreInit = TRUE)
 
   observeEvent(input$ynow_admin_goto_points, {
     tryCatch(
