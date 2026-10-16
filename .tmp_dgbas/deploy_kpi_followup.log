@@ -1,0 +1,34 @@
+Using configured rsconnect account: hopesmasher1118 @ shinyapps.io
+Display version v21.09 is already +0.01 ahead of deployed baseline v21.08. This deploy ships that bump and does not add another 0.01.
+Shipping display version v21.09
+Deploying with saved rsconnect account: hopesmasher1118
+Deploying /Users/lawrencekuo/coding/theYNowApp/app_21.0 → TheYNowApp (appId=10907657)
+── Preparing for deployment ────────────────────────────────────────────────────
+✔ Re-deploying "TheYNowApp" using "server: shinyapps.io / username: hopesmasher1118"
+ℹ Looking up content with id "10907657"...
+✔ Found content <https://hopesmasher1118.shinyapps.io/TheYNowApp/>
+ℹ Bundling 149 files: '.Rprofile', 'app.R', 'asset_transmission_module.R', 'backtest_module.R', 'backtest_validation.R', 'business_breakdown_config.yaml', 'business_breakdown_engine.R', 'business_breakdown_module.R', 'business_breakdown_schema.R', 'business_breakdown_structure.R', 'data/cluster_features_snapshot.csv', 'data/macro_buffett_tw_abs.csv', 'data/macro_buffett_tw.csv', 'data/macro_buffett_us.csv', 'data/sp500_universe.csv', 'data/tw_universe.csv', 'data/tynow_index_basket.csv', 'data/universe_metrics_snapshot.csv', …, 'ynow_server.R', and 'ynow_ui.R'
+ℹ Capturing R dependencies
+✔ Found 146 dependencies
+✔ Created bundle of size: 1,681,745b
+ℹ Uploading bundle...
+✔ Uploaded bundle with id 12655490
+── Deploying to server ─────────────────────────────────────────────────────────
+Error in `POST()`:
+! <https://api.shinyapps.io/v1/applications/10907657/deploy> failed with
+  HTTP status 409
+Unable to dispatch task for application=10907657 as there are 1 tasks already
+in progress. This is most likely a transient error. Please try again in a bit.
+If this error persists please contact support.
+Backtrace:
+    ▆
+ 1. └─rsconnect::deployApp(...)
+ 2.   └─client$deployApplication(application, bundle$id)
+ 3.     └─rsconnect:::POST_JSON(service, authInfo, path, json)
+ 4.       └─rsconnect:::POST(...)
+ 5.         └─rsconnect:::httpRequestWithBody(...)
+ 6.           └─rsconnect:::handleResponse(...)
+ 7.             └─rsconnect (local) reportError(unlist(json$error), errorType = unlist(json$error_type))
+ 8.               └─cli::cli_abort(...)
+ 9.                 └─rlang::abort(...)
+Execution halted
