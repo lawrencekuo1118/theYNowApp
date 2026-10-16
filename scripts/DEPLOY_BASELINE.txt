@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12698333
+bundleId=12698708
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=a99e9fe
-commit=a99e9fe
-short=a99e9fe
-message=chore: record shipped display version v25.14
-captured_at=2026-10-16T09:33:00Z
-display_version=v25.14
+aligned_git=e46ee7d
+commit=e46ee7d
+short=e46ee7d
+message=fix: zh-TW first paint without EN flash; mobile Sign-in opens immediately
+captured_at=2026-10-16T11:22:00Z
+display_version=v25.15
