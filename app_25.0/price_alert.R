@@ -1097,10 +1097,17 @@ price_alert_server <- function(input, output, session, ui_locale_rv = NULL,
     pa_refresh(isolate(pa_refresh()) + 1L)
   })
 
+  # Only keep a 15-minute timer while at least one alert is armed — avoids
+  # waking every idle Starter session every quarter hour.
   observe({
-    invalidateLater(15 * 60 * 1000, session)
     df <- price_alert_read()
-    if (!nrow(df) || !any(df$armed %in% TRUE)) return()
+    armed <- isTRUE(nrow(df) > 0L) && any(df$armed %in% TRUE)
+    if (!armed) {
+      # Re-check when store mutates via pa_refresh; no standing invalidateLater.
+      pa_refresh()
+      return()
+    }
+    invalidateLater(15 * 60 * 1000, session)
     out <- price_alert_check_store(metrics_by_ticker = .metrics_by_ticker())
     .deliver_app_toasts(out$app_toasts %||% list())
     pa_refresh(isolate(pa_refresh()) + 1L)

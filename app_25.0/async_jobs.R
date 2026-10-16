@@ -8,12 +8,39 @@
 
 .ynow_async_plan_ready <- FALSE
 
-#' Initialise a 2-worker future plan (multicore when safe, else multisession).
+#' Whether this process should avoid spawning extra future workers (memory).
+#' Hosted shinyapps workers already multiplex many browser sessions; each
+#' multisession child can double/triple RSS and OOM the instance under load.
+.ynow_async_hosted_memory_safe <- function() {
+  if (identical(Sys.getenv("YNOW_ASYNC_FORCE_PARALLEL"), "1")) return(FALSE)
+  if (identical(Sys.getenv("YNOW_ASYNC_SEQUENTIAL"), "1")) return(TRUE)
+  if (exists(".ynow_is_hosted_connect", mode = "function")) {
+    return(isTRUE(.ynow_is_hosted_connect()))
+  }
+  nzchar(Sys.getenv("SHINY_SERVER_VERSION")) ||
+    grepl("shinyapps", Sys.getenv("HOSTNAME"), ignore.case = TRUE) ||
+    grepl("/srv/connect/apps", tryCatch(getwd(), error = function(e) ""), fixed = TRUE)
+}
+
+#' Initialise a future plan (local: up to 2 workers; hosted: sequential).
 .ynow_async_init <- function() {
   if (isTRUE(.ynow_async_plan_ready)) return(invisible(TRUE))
   if (!requireNamespace("future", quietly = TRUE) ||
       !requireNamespace("promises", quietly = TRUE)) {
     return(invisible(FALSE))
+  }
+  # shinyapps / Connect: sequential only — ExtendedTask still yields the session
+  # loop, but we do not fork extra R processes that starve co-tenants.
+  if (isTRUE(.ynow_async_hosted_memory_safe())) {
+    ok <- tryCatch(
+      {
+        future::plan(future::sequential)
+        TRUE
+      },
+      error = function(e) FALSE
+    )
+    .ynow_async_plan_ready <<- isTRUE(ok)
+    return(invisible(isTRUE(ok)))
   }
   workers <- tryCatch(
     {

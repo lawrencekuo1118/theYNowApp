@@ -89,9 +89,13 @@ check(
     !grepl("bt_exposure_plot[\\s\\S]{0,1200}ggplotly\\(", srv, perl = TRUE)
 )
 check(
-  "hist price cache has TTL",
-  grepl("fetched_at", srv, fixed = TRUE) &&
-    grepl(".hist_price_cache_ttl_sec", srv, fixed = TRUE)
+  "hist price cache has TTL (process-global)",
+  {
+    sc <- paste(readLines(file.path(root, "session_capacity.R"), warn = FALSE), collapse = "\n")
+    grepl("ynow_cached_hist_stock_trim", srv, fixed = TRUE) &&
+      grepl("ynow_hist_price_ttl_sec", sc, fixed = TRUE) &&
+      grepl("fetched_at", sc, fixed = TRUE)
+  }
 )
 
 # --- Lab / BBLab route summary through fast cache ---

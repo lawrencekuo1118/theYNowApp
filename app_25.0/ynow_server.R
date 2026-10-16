@@ -189,13 +189,13 @@ server <- function(input, output, session) {
   observe({
     .ynow_set_tab_busy("lab_notes", isTRUE(lab_cluster_busy()))
   })
-  # Industry-chain mcap rank: bundled/default snapshot; independent all-chains job
-  lab_im_ind_mcap_snap <- reactiveVal({
+  # Industry-chain mcap rank: empty until Blue Chip first mount (Starter RSS).
+  lab_im_ind_mcap_snap <- reactiveVal(
     tryCatch(
-      lab_load_ind_mcap_chain_snapshot("US"),
-      error = function(e) lab_ind_mcap_chain_snapshot_empty()
+      lab_ind_mcap_chain_snapshot_empty(),
+      error = function(e) NULL
     )
-  })
+  )
   lab_im_ind_mcap_busy <- reactiveVal(FALSE)
   # Armed once per market visit when Blue Chip tab auto-starts ind-mcap job.
   lab_im_ind_mcap_auto_armed <- reactiveVal(FALSE)
@@ -795,6 +795,19 @@ server <- function(input, output, session) {
           })
         )
       },
+      bluechip = function() {
+        # Load chain-rank snapshot once when user opens Blue Chip (not every connect).
+        mm <- tryCatch(
+          normalize_market_mode(isolate(market_mode())),
+          error = function(e) "US"
+        )
+        snap <- tryCatch(
+          lab_load_ind_mcap_chain_snapshot(mm),
+          error = function(e) lab_ind_mcap_chain_snapshot_empty()
+        )
+        lab_im_ind_mcap_snap(snap)
+        invisible(TRUE)
+      },
       asset_transmission = function() {
         asset_transmission_server(
           "atx",
@@ -829,6 +842,33 @@ server <- function(input, output, session) {
       invisible(tab)
     }
   )
+
+  # Starter (1 GB / 1 worker): drop heavy session payloads on disconnect so the
+  # next browser can reuse RAM instead of waiting for opportunistic GC.
+  session$onSessionEnded(function() {
+    ynow_session_capacity_cleanup(list(
+      function() tryCatch(scraped_financials(NULL), error = function(e) NULL),
+      function() tryCatch(summary_data(NULL), error = function(e) NULL),
+      function() tryCatch(company_profile(NULL), error = function(e) NULL),
+      function() tryCatch(dcf_value_result(NULL), error = function(e) NULL),
+      function() tryCatch(dcf_audit_snap(NULL), error = function(e) NULL),
+      function() tryCatch(bt_result(NULL), error = function(e) NULL),
+      function() tryCatch(bt_validation(NULL), error = function(e) NULL),
+      function() tryCatch(bt_hfv_fv(NULL), error = function(e) NULL),
+      function() tryCatch(lab_im_scores(NULL), error = function(e) NULL),
+      function() tryCatch(lab_cluster_result(NULL), error = function(e) NULL),
+      function() tryCatch(lab_im_ind_mcap_snap(
+        tryCatch(lab_ind_mcap_chain_snapshot_empty(), error = function(e) NULL)
+      ), error = function(e) NULL),
+      function() {
+        # If this session held the process heavy-job lock, free it.
+        own <- tryCatch(ynow_heavy_job_owner(), error = function(e) "")
+        if (nzchar(own)) {
+          tryCatch(ynow_heavy_job_release(own), error = function(e) NULL)
+        }
+      }
+    ))
+  })
 
   # Business Breakdown — sidebar tab (shares global ticker; id company_advance)
   business_breakdown_lab_server(
@@ -3995,46 +4035,17 @@ server <- function(input, output, session) {
   # 🔌 4. 呼叫外部模組 (KPI, FCF, DDM)
   # ==========================================
   
-  # --- 歷史股價：優先 yfinance；session cache + fast-tier TTL（與報價／Rf 對齊）
-  .hist_price_cache <- new.env(parent = emptyenv())
-  .hist_price_cache_ttl_sec <- function() {
-    ttl <- tryCatch(as.integer(.YNOW_CACHE_FAST_TTL_SEC)[1], error = function(e) NA_integer_)
-    if (!is.finite(ttl) || ttl < 60L) 900L else ttl
-  }
+  # --- 歷史股價：process-global TTL cache（多 session 共用，Starter 省 RAM／Yahoo）
   hist_stock_data <- reactive({
     req(current_ticker())
     tk <- toupper(trimws(current_ticker()))
-    now_ts <- as.numeric(Sys.time())
-    if (exists(tk, envir = .hist_price_cache, inherits = FALSE)) {
-      hit <- get(tk, envir = .hist_price_cache, inherits = FALSE)
-      fetched_at <- suppressWarnings(as.numeric(attr(hit, "fetched_at") %||% NA_real_)[1])
-      if (is.finite(fetched_at) && (now_ts - fetched_at) <= .hist_price_cache_ttl_sec()) {
-        return(hit)
+    df_final <- tryCatch(
+      ynow_cached_hist_stock_trim(tk),
+      error = function(e) {
+        .ynow_log("無法取得歷史股價: ", e$message)
+        NULL
       }
-    }
-    df_final <- tryCatch({
-      # 1y 足夠動能；與 backtest fetch 共用 yfinance-first 路徑
-      hist <- fetch_price_history_df(tk, "1y")
-      if (is.null(hist) || nrow(hist) < 30) stop("insufficient history")
-      # 決策模組只需近約 180 日
-      cutoff <- Sys.Date() - 180
-      hist <- hist[hist$Date >= cutoff, , drop = FALSE]
-      data.frame(
-        Date = hist$Date,
-        Open = NA_real_, High = NA_real_, Low = NA_real_,
-        Close = hist$Close,
-        Volume = if ("Volume" %in% names(hist)) hist$Volume else NA_real_,
-        Adjusted = hist$Close,
-        stringsAsFactors = FALSE
-      )
-    }, error = function(e) {
-      .ynow_log("無法取得歷史股價: ", e$message)
-      NULL
-    })
-    if (!is.null(df_final)) {
-      attr(df_final, "fetched_at") <- now_ts
-      assign(tk, df_final, envir = .hist_price_cache)
-    }
+    )
     df_final
   })
   
@@ -11130,13 +11141,27 @@ server <- function(input, output, session) {
 
   observeEvent(input$run_bt, {
     req(current_ticker())
+    if (!isTRUE(ynow_heavy_job_try_acquire("hfv_bt"))) {
+      showNotification(
+        tryCatch(
+          .ui_msg("capacity_heavy_job_busy"),
+          error = function(e) "Another heavy job is running on this server. Please retry shortly."
+        ),
+        type = "warning",
+        duration = 8
+      )
+      return()
+    }
     bt_result(NULL)
     bt_validation(NULL)
     bt_hfv_fv(NULL)
     bt_fv_visible(FALSE)
     bt_run_msg("V12 回測計算中（PIT 多模型重建）…")
     .ynow_set_tab_busy("hfv", TRUE)
-    on.exit(tryCatch(.ynow_set_tab_busy("hfv", FALSE), error = function(e) NULL), add = TRUE)
+    on.exit({
+      tryCatch(.ynow_set_tab_busy("hfv", FALSE), error = function(e) NULL)
+      tryCatch(ynow_heavy_job_release("hfv_bt"), error = function(e) NULL)
+    }, add = TRUE)
     tryCatch({
       if (is.null(d_income_statement()) || is.null(d_cash_flow()) || is.null(d_balance_sheet())) {
         stop("請先在 Dashboard 搜尋並載入該公司財報")
@@ -13934,6 +13959,17 @@ server <- function(input, output, session) {
     loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
     method_filter <- input$lab_im_methods
     industry_filter <- lab_im_industry_filter()
+    if (!isTRUE(ynow_heavy_job_try_acquire("lab_im_eval"))) {
+      showNotification(
+        tryCatch(
+          .ui_msg("capacity_heavy_job_busy"),
+          error = function(e) "Another heavy job is running on this server. Please retry shortly."
+        ),
+        type = "warning",
+        duration = 8
+      )
+      return()
+    }
     showNotification(
       tryCatch(.ui_msg("lab_im_async_started"), error = function(e) .ui_msg("lab_im_progress")),
       type = "message", duration = 4
@@ -13955,6 +13991,7 @@ server <- function(input, output, session) {
         ),
         error = function(e) {
           lab_im_eval_busy(FALSE)
+          tryCatch(ynow_heavy_job_release("lab_im_eval"), error = function(e2) NULL)
           showNotification(
             paste("Blue Chip async start failed:", conditionMessage(e)),
             type = "error", duration = 8
@@ -13964,7 +14001,10 @@ server <- function(input, output, session) {
       return()
     }
     # Fallback: synchronous path when ExtendedTask / future unavailable
-    on.exit(tryCatch(lab_im_eval_busy(FALSE), error = function(e) NULL), add = TRUE)
+    on.exit({
+      tryCatch(lab_im_eval_busy(FALSE), error = function(e) NULL)
+      tryCatch(ynow_heavy_job_release("lab_im_eval"), error = function(e) NULL)
+    }, add = TRUE)
     out <- tryCatch(
       lab_im_run_eval_job(
         catlg = catlg,
@@ -13993,6 +14033,7 @@ server <- function(input, output, session) {
       st <- tryCatch(lab_im_bc_task$status(), error = function(e) "initial")
       if (identical(st, "error")) {
         lab_im_eval_busy(FALSE)
+        tryCatch(ynow_heavy_job_release("lab_im_eval"), error = function(e) NULL)
         err <- tryCatch(lab_im_bc_task$result(), error = function(e) conditionMessage(e))
         if (is.character(err) && nzchar(err[1])) {
           showNotification(paste("Blue Chip eval failed:", err[1]), type = "error", duration = 8)
@@ -14002,6 +14043,7 @@ server <- function(input, output, session) {
       if (!identical(st, "success")) return()
       out <- tryCatch(lab_im_bc_task$result(), error = function(e) NULL)
       lab_im_eval_busy(FALSE)
+      tryCatch(ynow_heavy_job_release("lab_im_eval"), error = function(e) NULL)
       .lab_im_apply_eval_result(out)
     }, ignoreInit = TRUE)
   }
@@ -15495,6 +15537,17 @@ server <- function(input, output, session) {
     } else {
       "Clustering (fetch ratios → K-Means)…"
     }
+    if (!isTRUE(ynow_heavy_job_try_acquire("lab_cluster"))) {
+      showNotification(
+        tryCatch(
+          .ui_msg("capacity_heavy_job_busy"),
+          error = function(e) "Another heavy job is running on this server. Please retry shortly."
+        ),
+        type = "warning",
+        duration = 8
+      )
+      return()
+    }
     showNotification(prog_msg, type = "message", duration = 4)
     lab_cluster_busy(TRUE)
     job_args <- list(
@@ -15531,6 +15584,7 @@ server <- function(input, output, session) {
         ),
         error = function(e) {
           lab_cluster_busy(FALSE)
+          tryCatch(ynow_heavy_job_release("lab_cluster"), error = function(e2) NULL)
           showNotification(
             paste("Clustering async start failed:", conditionMessage(e)),
             type = "error", duration = 8
@@ -15539,7 +15593,10 @@ server <- function(input, output, session) {
       )
       return()
     }
-    on.exit(tryCatch(lab_cluster_busy(FALSE), error = function(e) NULL), add = TRUE)
+    on.exit({
+      tryCatch(lab_cluster_busy(FALSE), error = function(e) NULL)
+      tryCatch(ynow_heavy_job_release("lab_cluster"), error = function(e) NULL)
+    }, add = TRUE)
     out <- tryCatch(
       lab_cluster_run_job(
         catlg = job_args$catlg,
@@ -15570,6 +15627,7 @@ server <- function(input, output, session) {
       st <- tryCatch(lab_cluster_task$status(), error = function(e) "initial")
       if (identical(st, "error")) {
         lab_cluster_busy(FALSE)
+        tryCatch(ynow_heavy_job_release("lab_cluster"), error = function(e) NULL)
         err <- tryCatch(lab_cluster_task$result(), error = function(e) conditionMessage(e))
         if (is.character(err) && nzchar(err[1])) {
           showNotification(paste("Clustering failed:", err[1]), type = "error", duration = 12)
@@ -15579,6 +15637,7 @@ server <- function(input, output, session) {
       if (!identical(st, "success")) return()
       out <- tryCatch(lab_cluster_task$result(), error = function(e) NULL)
       lab_cluster_busy(FALSE)
+      tryCatch(ynow_heavy_job_release("lab_cluster"), error = function(e) NULL)
       loc <- tryCatch(ui_locale(), error = function(e) "en")
       .lab_cluster_apply_job_out(out, loc)
     }, ignoreInit = TRUE)

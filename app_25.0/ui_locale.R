@@ -1162,6 +1162,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     lab_cluster_busy = "Clustering already running…",
     lab_im_async_started = "Blue Chip evaluation started in the background…",
+    capacity_heavy_job_busy = paste0(
+      "Another heavy job (Blue Chip / Clustering / HFV) is already running on this server. ",
+      "Please retry in a moment so memory stays stable for all concurrent users."
+    ),
     bluechip_blurb_tw = paste0(
       "Screen Taiwan blue-chip candidates from TWSE / TPEx / ESB public listings ",
       "(Listing board multi-select; default TWSE + TPEx; ESB is optional because liquidity and Yahoo coverage are less stable). ",
@@ -4525,6 +4529,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     lab_cluster_busy = "分群分析進行中…",
     lab_im_async_started = "績優評估已在背景開始…",
+    capacity_heavy_job_busy = paste0(
+      "本伺服器正在執行另一項重型任務（績優股排行榜／分群分析／HFV）。",
+      "請稍後再試，以維持多位使用者同時連線時的記憶體穩定。"
+    ),
     bluechip_blurb_tw = paste0(
       "依據臺灣證券交易所與櫃買中心公開名單，篩選台股績優候選標的（板別可複選上市／上櫃／興櫃；預設上市＋上櫃；興櫃因流動性與 Yahoo 資料覆蓋相對不穩，需勾選才納入）。",
       "「搜尋績優股」先依產業與適用評價模型篩選，再以候選截斷邏輯取較大評估池後評分，",
