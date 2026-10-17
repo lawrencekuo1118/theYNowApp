@@ -28,6 +28,23 @@ ynow_auth_norm_email <- function(email) {
   tolower(trimws(as.character(email %||% "")[1]))
 }
 
+#' Stable in-process user id when Neon is not configured.
+#' Memory points wallet keys on this id so first-gift / daily check-in still run.
+ynow_auth_memory_user_id <- function(email) {
+  em <- ynow_auth_norm_email(email)
+  if (!nzchar(em)) return("")
+  hx <- tryCatch(
+    digest::digest(paste0("ynow-mem:", em), algo = "sha256", serialize = FALSE),
+    error = function(e) {
+      tryCatch(
+        paste(as.character(openssl::sha256(charToRaw(paste0("ynow-mem:", em)))), collapse = ""),
+        error = function(e2) gsub("[^a-z0-9]", "", em)
+      )
+    }
+  )
+  paste0("mem:", substr(as.character(hx)[1], 1L, 32L))
+}
+
 #' Demo credential lookup — env-only stub; returns NULL when unset / incomplete.
 ynow_auth_demo_credentials <- function() {
   email <- ynow_auth_norm_email(Sys.getenv("YNOW_AUTH_DEMO_EMAIL", unset = ""))
@@ -70,6 +87,7 @@ ynow_auth_try_login <- function(email, password) {
   list(
     ok = TRUE,
     user = list(
+      id = ynow_auth_memory_user_id(em),
       email = em,
       display_name = em,
       provider = "demo_env",
@@ -124,9 +142,12 @@ ynow_auth_accept_social_user <- function(oauth_user) {
   }
 
   # No Neon yet: still allow self-serve session (not an admin-gated whitelist).
+  # Assign a stable mem: id so FYN/PYN on_login (gift + daily check-in) can run
+  # against the in-process memory wallet until YNOW_DB_* is configured.
   list(
     ok = TRUE,
     user = list(
+      id = ynow_auth_memory_user_id(em),
       email = em,
       display_name = dn,
       provider = prov,
@@ -363,13 +384,36 @@ ynow_auth_css <- function() {
   tags$style(HTML(paste0(
     ".ynow-sidebar-date-row {",
     "  display:flex; flex-direction:row; align-items:center; justify-content:flex-start;",
-    "  gap:12px; flex-wrap:nowrap; width:100%; min-height:22px;",
+    "  gap:10px; flex-wrap:nowrap; width:100%; min-height:22px;",
     "  margin:0; padding:6px 4px 2px;",
     "}",
     ".ynow-sidebar-date-row .ynow-sidebar-date,",
     ".ynow-sidebar-date-row #today {",
     "  flex:0 0 auto; margin:0; padding:0; font-size:12px; line-height:1.2;",
     "  white-space:nowrap; color:inherit;",
+    "}",
+    # Mobile: FYN/PYN sit right of the login date in the sidebar (not top header).
+    "#ynow-pts-sidebar.ynow-pts-sidebar {",
+    "  display:none; flex:0 0 auto; margin:0; padding:0; min-width:0;",
+    "}",
+    "#ynow-pts-sidebar .ynow-pts-sidebar-banner {",
+    "  display:flex; flex-direction:column; align-items:flex-start; justify-content:center;",
+    "  gap:0; line-height:1.15; font-size:10px; font-weight:600;",
+    "  color:rgba(255,255,255,0.92); white-space:nowrap;",
+    "}",
+    "#ynow-pts-sidebar .ynow-pts-sidebar-line {",
+    "  display:flex; flex-direction:row; align-items:baseline; gap:3px;",
+    "}",
+    "#ynow-pts-sidebar .ynow-pts-sidebar-val {",
+    "  font-variant-numeric:tabular-nums; font-weight:700;",
+    "}",
+    "@media (max-width:767px) {",
+    "  #ynow-pts-sidebar.ynow-pts-sidebar:not(.ynow-pts-hidden) {",
+    "    display:flex !important; align-items:center;",
+    "  }",
+    "  #ynow-pts-sidebar.ynow-pts-sidebar.ynow-pts-hidden {",
+    "    display:none !important;",
+    "  }",
     "}",
     ".ynow-auth-links {",
     "  display:inline-flex; flex-direction:row; align-items:center; gap:8px;",
