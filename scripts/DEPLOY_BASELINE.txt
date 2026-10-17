@@ -7,4 +7,4 @@ commit=59f1af626bfca5dbadf638c9ef0d22f5afb00860
 short=59f1af62
 message=chore: record shinyapps baseline bundle 12702427 (app_25.0)
 captured_at=2026-10-17T08:25:22Z
-display_version=v25.34
+display_version=v25.35
