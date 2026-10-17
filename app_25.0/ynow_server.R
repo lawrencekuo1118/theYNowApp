@@ -451,9 +451,10 @@ server <- function(input, output, session) {
     fyn_lab <- tryCatch(paste0(ui_str("pts_fyn_label", loc), pts_colon), error = function(e) "FYN points:")
     pyn_lab <- tryCatch(paste0(ui_str("pts_pyn_label", loc), pts_colon), error = function(e) "PYN points:")
     if (is.null(u)) {
+      # Guests: hide FYN/PYN header entirely (no placeholder "—" next to locale).
       session$sendCustomMessage(
         "ynowPtsBanner",
-        list(fyn = "—", pyn = "—", fyn_label = fyn_lab, pyn_label = pyn_lab, visible = TRUE)
+        list(fyn = "", pyn = "", fyn_label = fyn_lab, pyn_label = pyn_lab, visible = FALSE)
       )
       return(invisible(NULL))
     }

@@ -3636,23 +3636,25 @@ ui <- dashboardPage(
       )
     ),
     # FYN / PYN balances — right of locale switch, vertically stacked.
+    # Hidden until sign-in (ynowPtsBanner visible=true removes ynow-pts-hidden).
     tags$li(
-      class = "dropdown ynow-pts-header",
+      class = "dropdown ynow-pts-header ynow-pts-hidden",
       id = "ynow-pts-header",
       tags$div(
         class = "ynow-pts-banner",
         id = "ynow_pts_banner",
         role = "status",
         `aria-label` = "Points",
+        `aria-hidden` = "true",
         tags$div(
           class = "ynow-pts-banner-line",
           tags$span(id = "ynow_pts_banner_fyn_label", "FYN points:"),
-          tags$span(id = "ynow_pts_banner_fyn_value", class = "ynow-pts-banner-val", "—")
+          tags$span(id = "ynow_pts_banner_fyn_value", class = "ynow-pts-banner-val", "")
         ),
         tags$div(
           class = "ynow-pts-banner-line",
           tags$span(id = "ynow_pts_banner_pyn_label", "PYN points:"),
-          tags$span(id = "ynow_pts_banner_pyn_value", class = "ynow-pts-banner-val", "—")
+          tags$span(id = "ynow_pts_banner_pyn_value", class = "ynow-pts-banner-val", "")
         )
       )
     ),
@@ -6468,6 +6470,22 @@ ui <- dashboardPage(
           padding: 0 14px 0 8px !important;
           list-style: none !important;
           overflow: visible !important;
+        }
+        /* Guests: hide pts (beats flex !important on header li / Lite keep-visible). */
+        .main-header .navbar-custom-menu .navbar-nav > li.ynow-pts-header.ynow-pts-hidden,
+        body.ynow-lite .main-header .navbar-custom-menu .navbar-nav > li.ynow-pts-header.ynow-pts-hidden,
+        body.ynow-lite #ynow-pts-header.ynow-pts-hidden,
+        #ynow-pts-header.ynow-pts-hidden {
+          display: none !important;
+          visibility: hidden !important;
+          opacity: 0 !important;
+          width: 0 !important;
+          min-width: 0 !important;
+          max-width: 0 !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          overflow: hidden !important;
+          pointer-events: none !important;
         }
         .ynow-pts-banner {
           display: flex !important;
@@ -9933,9 +9951,15 @@ ui <- dashboardPage(
               if (fynVal) fynVal.textContent = (payload.fyn != null && payload.fyn !== '') ? String(payload.fyn) : '—';
               if (pynVal) pynVal.textContent = (payload.pyn != null && payload.pyn !== '') ? String(payload.pyn) : '—';
               var hdr = document.getElementById('ynow-pts-header');
+              var banner = document.getElementById('ynow_pts_banner');
               if (hdr) {
-                if (payload.visible === false) hdr.style.display = 'none';
-                else hdr.style.display = '';
+                // Class + !important CSS — inline display loses to flex !important / Lite rules.
+                if (payload.visible === false) hdr.classList.add('ynow-pts-hidden');
+                else hdr.classList.remove('ynow-pts-hidden');
+              }
+              if (banner) {
+                if (payload.visible === false) banner.setAttribute('aria-hidden', 'true');
+                else banner.setAttribute('aria-hidden', 'false');
               }
             });
             addHandler('ynowAuthFeature', function (payload) {
@@ -14354,14 +14378,14 @@ ui <- dashboardPage(
             position: relative !important;
             overflow: visible !important;
           }
-          /* Lite: same top-banner pts pattern — never hide */
-          body.ynow-lite .main-header .navbar-custom-menu .navbar-nav > li.ynow-pts-header,
-          body.ynow-lite #ynow-pts-header {
+          /* Lite: same top-banner pts pattern when signed in (not .ynow-pts-hidden) */
+          body.ynow-lite .main-header .navbar-custom-menu .navbar-nav > li.ynow-pts-header:not(.ynow-pts-hidden),
+          body.ynow-lite #ynow-pts-header:not(.ynow-pts-hidden) {
             display: flex !important;
             visibility: visible !important;
             opacity: 1 !important;
           }
-          body.ynow-lite .ynow-pts-banner {
+          body.ynow-lite #ynow-pts-header:not(.ynow-pts-hidden) .ynow-pts-banner {
             display: flex !important;
             visibility: visible !important;
           }

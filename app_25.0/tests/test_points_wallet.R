@@ -215,6 +215,15 @@ check("server has sysadmin + banner", {
     grepl("ynowPtsBanner", srv, fixed = TRUE) &&
     grepl("ynow_points_admin_adjust", srv, fixed = TRUE)
 })
+check("guest pts banner hidden until login", {
+  srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("visible = FALSE", srv, fixed = TRUE) &&
+    grepl("ynow-pts-hidden", ui, fixed = TRUE) &&
+    grepl("classList.add('ynow-pts-hidden')", ui, fixed = TRUE) &&
+    grepl("li.ynow-pts-header.ynow-pts-hidden", ui, fixed = TRUE) &&
+    grepl("ynow-pts-header:not(.ynow-pts-hidden)", ui, fixed = TRUE)
+})
 check("server distinguishes no-db empty state", {
   srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   grepl("pts_sysadmin_no_db", srv, fixed = TRUE) &&
