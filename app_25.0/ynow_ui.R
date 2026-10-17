@@ -327,7 +327,7 @@
     ),
     tags$li(
       tags$b("績優股排行榜（Blue Chip）："),
-      "保留候選截斷邏輯與宇宙檔數（N）、盈餘品質與 ADR 篩選、排行頁底部明細表，以及分群研究；隱藏其餘進階查詢條件。"
+      "保留候選截斷邏輯與宇宙檔數（N）、盈餘品質與 ADR 篩選、排行頁底部明細表、分群研究，以及自訂選股；隱藏其餘進階查詢條件。"
     )
   )
   en_features <- tags$ul(
@@ -352,7 +352,7 @@
     ),
     tags$li(
       tags$b("Blue Chip Leaderboard: "),
-      "Keeps Candidate truncate rules and Universe size (N), Earnings Quality and ADR filters, the detail table at the bottom of Rankings, plus Clustering. Hides other advanced Ranking filters."
+      "Keeps Candidate truncate rules and Universe size (N), Earnings Quality and ADR filters, the detail table at the bottom of Rankings, Clustering, and Custom screen. Hides other advanced Ranking filters."
     )
   )
 
@@ -476,7 +476,7 @@
           tags$p(
             id = "ynow_home_bluechip_d",
             class = "ynow-home-card-d",
-            "Peer ranking pools, truncate rules, and clustering for research."
+            "Peer ranking pools, truncate rules, clustering, and custom screen."
           )
         ),
         tags$button(
@@ -2520,6 +2520,17 @@ beta_rolling_section_ui <- function() {
                   uiOutput("lab_cluster_table_ui")
                 )
               )
+            ),
+
+            tabPanel(
+              title = "自訂選股",
+              value = "im_screener",
+              icon = icon("filter"),
+              if (exists("screener_panel_ui", mode = "function")) {
+                screener_panel_ui(embed = "bluechip")
+              } else {
+                tags$p(id = "ynow_scr_missing", "Custom screen unavailable.")
+              }
             )
           )
   )
@@ -5104,6 +5115,39 @@ ui <- dashboardPage(
         /* tabBox title strip */
         body.ynow-theme-bluechip .content-wrapper .nav-tabs-custom > .nav-tabs > li.header {
           color: var(--ynow-bluechip-deep) !important;
+        }
+        /* Custom screen (自訂選股) — ocean accents inside Blue Chip */
+        body.ynow-theme-bluechip .ynow-scr-dnd-bluechip .ynow-scr-cat-btn.is-active {
+          border-left-color: var(--ynow-bluechip-cyan) !important;
+          color: var(--ynow-bluechip-deep) !important;
+        }
+        body.ynow-theme-bluechip .ynow-scr-dnd-bluechip .ynow-scr-pack-btn.is-active {
+          border-color: var(--ynow-bluechip-ocean) !important;
+          background: rgba(140, 208, 235, 0.22) !important;
+          color: var(--ynow-bluechip-deep) !important;
+        }
+        body.ynow-theme-bluechip .ynow-scr-dnd-bluechip .ynow-scr-card-add:hover,
+        body.ynow-theme-bluechip .ynow-scr-dnd-bluechip .ynow-scr-card-remove:hover {
+          border-color: var(--ynow-bluechip-ocean) !important;
+          color: var(--ynow-bluechip-deep) !important;
+        }
+        body.ynow-theme-bluechip .ynow-scr-dnd-bluechip .ynow-scr-list-selected.ynow-scr-drop-active {
+          outline-color: var(--ynow-bluechip-cyan) !important;
+          background: rgba(140, 208, 235, 0.18) !important;
+        }
+        body.ynow-theme-bluechip .ynow-scr-dnd-bluechip .ynow-scr-dnd-cats {
+          background: rgba(15, 90, 144, 0.06);
+          border-color: rgba(10, 114, 174, 0.28);
+        }
+        body.ynow-theme-bluechip .ynow-scr-dnd-bluechip .ynow-scr-dnd-mid,
+        body.ynow-theme-bluechip .ynow-scr-dnd-bluechip .ynow-scr-dnd-right {
+          border-color: rgba(10, 114, 174, 0.28);
+        }
+        @media (max-width: 768px) {
+          body.ynow-theme-bluechip .ynow-scr-dnd-bluechip .ynow-scr-cat-btn.is-active {
+            border-color: var(--ynow-bluechip-ocean) !important;
+            background: rgba(140, 208, 235, 0.22) !important;
+          }
         }
         body.ynow-theme-bluechip .content-wrapper .ynow-lab-im-pool-controls {
           border-left: 4px solid var(--ynow-bluechip-cyan);
@@ -15029,7 +15073,11 @@ ui <- dashboardPage(
           border: none !important;
           color: inherit !important;
         }
-      "))
+      ")),
+      # Custom screen DnD assets (Blue Chip lazy tab mounts UI later)
+      tags$link(rel = "stylesheet", type = "text/css", href = "ynow_screener_dnd.css"),
+      tags$script(src = "vendor/Sortable.min.js"),
+      tags$script(src = "ynow_screener_dnd.js")
     ),
     
     # ==========================================
