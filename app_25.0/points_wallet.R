@@ -515,7 +515,9 @@ ynow_points_ensure_schema <- function(conn = NULL) {
   )
   bal_col <- if (identical(w, "pyn")) "pyn_balance" else "fyn_balance"
 
-  ynow_db_with(function(con) {
+  # con is a checked-out DBI connection (not Pool) — dbWithTransaction works.
+  # Nested balances/idempotent reads reuse the same checkout via ynow_db_with stack.
+  out <- ynow_db_with(function(con) {
     ynow_points_ensure_schema(con)
     prev <- DBI::dbGetQuery(
       con,
@@ -525,7 +527,18 @@ ynow_points_ensure_schema <- function(conn = NULL) {
       params = list(uid, ref)
     )
     if (is.data.frame(prev) && nrow(prev) >= 1L) {
-      bals <- .ynow_points_neon_balances(uid)
+      # Same connection — avoid nested checkout / second pool slot.
+      bals_df <- DBI::dbGetQuery(
+        con,
+        "SELECT COALESCE(fyn_balance, 0) AS fyn, COALESCE(pyn_balance, 0) AS pyn
+           FROM ynow_users WHERE id = $1::uuid LIMIT 1",
+        params = list(uid)
+      )
+      bals <- if (is.data.frame(bals_df) && nrow(bals_df) >= 1L) {
+        list(fyn = as.integer(bals_df$fyn[[1]]), pyn = as.integer(bals_df$pyn[[1]]))
+      } else {
+        list(fyn = NA_integer_, pyn = NA_integer_)
+      }
       return(list(
         ok = TRUE,
         balance = as.integer(prev$balance_after[[1]]),
@@ -579,8 +592,21 @@ ynow_points_ensure_schema <- function(conn = NULL) {
       list(ok = TRUE, balance = new_bal, fyn = fyn, pyn = pyn, wallet = w,
            message_key = "pts_msg_ok", delta = dlt)
     })
-  }) %||% list(ok = FALSE, balance = NA_integer_, fyn = NA_integer_, pyn = NA_integer_,
-               message_key = "pts_msg_backend")
+  })
+  # #region agent log
+  if (exists(".ynow_agent_dbg", mode = "function")) {
+    .ynow_agent_dbg("I2E", "points_wallet.R:neon_apply", "neon_apply_result", list(
+      ok = isTRUE(out$ok),
+      msg = as.character(out$message_key %||% "")[1],
+      idempotent = isTRUE(out$idempotent),
+      fyn = suppressWarnings(as.integer(out$fyn %||% NA_integer_)[1]),
+      delta = suppressWarnings(as.integer(out$delta %||% NA_integer_)[1]),
+      id_prefix = substr(uid, 1L, 8L)
+    ))
+  }
+  # #endregion
+  out %||% list(ok = FALSE, balance = NA_integer_, fyn = NA_integer_, pyn = NA_integer_,
+                message_key = "pts_msg_backend")
 }
 
 .ynow_points_neon_ledger_empty <- function() {

@@ -704,7 +704,20 @@ server <- function(input, output, session) {
       ))
     }
     # #endregion
-    if (!admin_on) return(NULL)
+    if (!admin_on) {
+      # Avoid blank white void — clear hint to click Enter (I2A).
+      return(tags$div(
+        tags$hr(),
+        tags$p(
+          class = "text-muted",
+          id = "ynow_pts_sysadmin_need_enter",
+          .lab(
+            "pts_sysadmin_need_enter",
+            "Click Enter system admin to load the de-identified user list."
+          )
+        )
+      ))
+    }
     if (!exists("ynow_points_admin_list_users", mode = "function")) {
       return(tags$p(class = "text-danger", .lab("pts_msg_backend", "Points backend is unavailable.")))
     }

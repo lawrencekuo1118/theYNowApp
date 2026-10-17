@@ -143,13 +143,63 @@ ynow_db_pool <- function(force_new = FALSE) {
   .ynow_db_pool
 }
 
+# Nest-safe checkout stack (R is single-threaded for sync Shiny handlers).
+# Reuses the outer connection so nested ynow_db_with never exhausts a tiny pool
+# and so DBI::dbWithTransaction works (Pool objects are not supported).
+.ynow_db_with_stack <- new.env(parent = emptyenv())
+.ynow_db_with_stack$cons <- list()
+
+#' Run `fn(con)` with a real DBI connection from the pool.
+#' Nested calls reuse the outer checkout (safe for apply → balances).
 ynow_db_with <- function(fn) {
+  if (!is.function(fn)) return(NULL)
+
+  # Nested first — reuse outer connection even if pool is temporarily empty.
+  n <- length(.ynow_db_with_stack$cons)
+  if (n >= 1L) {
+    return(tryCatch(
+      fn(.ynow_db_with_stack$cons[[n]]),
+      error = function(e) {
+        warning("ynow_db_with: ", conditionMessage(e), call. = FALSE)
+        NULL
+      }
+    ))
+  }
+
   p <- ynow_db_pool()
   if (is.null(p)) return(NULL)
-  tryCatch(fn(p), error = function(e) {
-    warning("ynow_db_with: ", conditionMessage(e), call. = FALSE)
-    NULL
-  })
+  if (!requireNamespace("pool", quietly = TRUE)) {
+    warning("ynow_db_with: pool package unavailable", call. = FALSE)
+    return(NULL)
+  }
+  con <- tryCatch(
+    pool::poolCheckout(p),
+    error = function(e) {
+      warning("ynow_db_with checkout: ", conditionMessage(e), call. = FALSE)
+      NULL
+    }
+  )
+  if (is.null(con)) return(NULL)
+  .ynow_db_with_stack$cons[[length(.ynow_db_with_stack$cons) + 1L]] <- con
+  on.exit({
+    .ynow_db_with_stack$cons <- .ynow_db_with_stack$cons[-length(.ynow_db_with_stack$cons)]
+    tryCatch(pool::poolReturn(con), error = function(e) NULL)
+  }, add = FALSE)
+  # #region agent log
+  if (exists(".ynow_agent_dbg", mode = "function")) {
+    .ynow_agent_dbg("I2E", "auth_db.R:ynow_db_with", "db_with_checkout", list(
+      con_class = paste(class(con), collapse = ","),
+      is_pool = inherits(con, "Pool")
+    ))
+  }
+  # #endregion
+  tryCatch(
+    fn(con),
+    error = function(e) {
+      warning("ynow_db_with: ", conditionMessage(e), call. = FALSE)
+      NULL
+    }
+  )
 }
 
 #' Password hash using sodium (preferred) or openssl salted SHA-256 fallback.
