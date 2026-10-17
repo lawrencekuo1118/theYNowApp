@@ -10069,6 +10069,9 @@ ui <- dashboardPage(
                 banner = document.getElementById(pairs[i].banner);
                 if (banner) banner.setAttribute('aria-hidden', 'false');
               }
+              /* #region agent log */
+              try { if (window.ynowDebugSidebarProbe) window.ynowDebugSidebarProbe('pts_banner'); } catch (ePtsDbg) {}
+              /* #endregion */
             });
             addHandler('ynowAuthFeature', function (payload) {
               if (!payload) return;
@@ -10175,7 +10178,80 @@ ui <- dashboardPage(
                 var outLbls = document.querySelectorAll('.ynow-auth-signout-label');
                 for (i = 0; i < outLbls.length; i++) outLbls[i].textContent = payload.label_sign_out;
               }
+              try { if (window.ynowDebugSidebarProbe) window.ynowDebugSidebarProbe('auth_state'); } catch (eDbgAuth) {}
             });
+            /* #region agent log — sidebar dim / overlay probe (Issue 1) */
+            window.ynowDebugSidebarProbe = function (reason) {
+              try {
+                if (!window.Shiny || !Shiny.setInputValue) return;
+                var body = document.body;
+                var links = document.querySelectorAll('.sidebar-menu > li > a');
+                var home = document.querySelector('.sidebar-menu a[data-value=\"home\"], .sidebar-menu a[data-value=\"get_started\"]');
+                var other = null;
+                var i, cs, op, pe, dimCount = 0, peNone = 0;
+                for (i = 0; i < links.length; i++) {
+                  if (links[i] === home) continue;
+                  if (!other) other = links[i];
+                  cs = window.getComputedStyle(links[i]);
+                  op = parseFloat(cs.opacity || '1');
+                  pe = String(cs.pointerEvents || '');
+                  if (isFinite(op) && op < 0.7) dimCount++;
+                  if (pe === 'none') peNone++;
+                }
+                var homeCs = home ? window.getComputedStyle(home) : null;
+                var otherCs = other ? window.getComputedStyle(other) : null;
+                var coverTag = '', coverClass = '';
+                if (other) {
+                  var r = other.getBoundingClientRect();
+                  var midX = r.left + Math.max(4, r.width / 2);
+                  var midY = r.top + Math.max(4, r.height / 2);
+                  var topEl = document.elementFromPoint(midX, midY);
+                  if (topEl && topEl !== other && !other.contains(topEl)) {
+                    coverTag = String(topEl.tagName || '');
+                    coverClass = String(topEl.className || '').slice(0, 120);
+                  }
+                }
+                var fynEl = document.getElementById('ynow_pts_sidebar_fyn_value') ||
+                  document.getElementById('ynow_pts_banner_fyn_value');
+                var pynEl = document.getElementById('ynow_pts_sidebar_pyn_value') ||
+                  document.getElementById('ynow_pts_banner_pyn_value');
+                var active = document.querySelector('.sidebar-menu li.active > a[data-value]');
+                Shiny.setInputValue('ynow_debug_sidebar_probe', {
+                  reason: String(reason || 'probe'),
+                  bodyClasses: body ? String(body.className || '').slice(0, 240) : '',
+                  menuCount: links.length,
+                  dimCount: dimCount,
+                  peNoneCount: peNone,
+                  coverTag: coverTag,
+                  coverClass: coverClass,
+                  homeOpacity: homeCs ? homeCs.opacity : '',
+                  homeColor: homeCs ? homeCs.color : '',
+                  otherOpacity: otherCs ? otherCs.opacity : '',
+                  otherColor: otherCs ? otherCs.color : '',
+                  otherPe: otherCs ? otherCs.pointerEvents : '',
+                  fynTxt: fynEl ? String(fynEl.textContent || '') : '',
+                  pynTxt: pynEl ? String(pynEl.textContent || '') : '',
+                  lite: !!(body && body.classList.contains('ynow-lite')),
+                  authed: !!(body && body.classList.contains('ynow-authed')),
+                  activeTab: active ? String(active.getAttribute('data-value') || '') : ''
+                }, {priority: 'event'});
+              } catch (eProbe) {}
+            };
+            document.addEventListener('shiny:connected', function () {
+              setTimeout(function () {
+                try { window.ynowDebugSidebarProbe('connected'); } catch (eC) {}
+              }, 800);
+            });
+            document.addEventListener('click', function (ev) {
+              var t = ev.target;
+              if (!t) return;
+              if (t.closest && (t.closest('.sidebar-toggle') || t.closest('a.sidebar-toggle'))) {
+                setTimeout(function () {
+                  try { window.ynowDebugSidebarProbe('sidebar_toggle'); } catch (eT) {}
+                }, 350);
+              }
+            }, true);
+            /* #endregion */
             addHandler('ynowDcLocale', applyDcLocale);
             addHandler('ynowDcSopLocale', function (payload) {
               if (!payload) return;

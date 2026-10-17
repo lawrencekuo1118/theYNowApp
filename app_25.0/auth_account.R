@@ -131,23 +131,55 @@ ynow_auth_accept_social_user <- function(oauth_user) {
   prov <- as.character(oauth_user$provider %||% "oauth")[1]
   puid <- as.character(oauth_user$provider_uid %||% "")[1]
 
-  if (exists("ynow_db_ready", mode = "function") && isTRUE(ynow_db_ready()) &&
-      exists("ynow_db_upsert_oauth_user", mode = "function")) {
-    return(ynow_db_upsert_oauth_user(
+  db_ready <- exists("ynow_db_ready", mode = "function") && isTRUE(ynow_db_ready())
+  # #region agent log
+  if (exists(".ynow_agent_dbg", mode = "function")) {
+    .ynow_agent_dbg("I2C", "auth_account.R:accept_social", "accept_social_entry", list(
+      db_ready = isTRUE(db_ready),
+      provider = prov,
+      has_email = nzchar(em),
+      has_provider_uid = nzchar(puid)
+    ))
+  }
+  # #endregion
+
+  if (db_ready && exists("ynow_db_upsert_oauth_user", mode = "function")) {
+    res <- ynow_db_upsert_oauth_user(
       email = em,
       display_name = dn,
       provider = prov,
       provider_uid = puid
-    ))
+    )
+    # #region agent log
+    if (exists(".ynow_agent_dbg", mode = "function")) {
+      uid <- as.character(res$user$id %||% "")[1]
+      .ynow_agent_dbg("I2C", "auth_account.R:accept_social", "accept_social_db_exit", list(
+        ok = isTRUE(res$ok),
+        has_id = nzchar(uid),
+        id_prefix = if (nzchar(uid)) substr(uid, 1L, 8L) else "",
+        message_key = as.character(res$message_key %||% "")[1]
+      ))
+    }
+    # #endregion
+    return(res)
   }
 
   # No Neon yet: still allow self-serve session (not an admin-gated whitelist).
   # Assign a stable mem: id so FYN/PYN on_login (gift + daily check-in) can run
   # against the in-process memory wallet until YNOW_DB_* is configured.
+  mem_id <- ynow_auth_memory_user_id(em)
+  # #region agent log
+  if (exists(".ynow_agent_dbg", mode = "function")) {
+    .ynow_agent_dbg("I2C", "auth_account.R:accept_social", "accept_social_mem_path", list(
+      has_id = nzchar(as.character(mem_id %||% "")[1]),
+      id_prefix = substr(as.character(mem_id %||% "")[1], 1L, 8L)
+    ))
+  }
+  # #endregion
   list(
     ok = TRUE,
     user = list(
-      id = ynow_auth_memory_user_id(em),
+      id = mem_id,
       email = em,
       display_name = dn,
       provider = prov,
@@ -943,15 +975,46 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
     account_user(user)
     # First gift (100 FYN once) + daily check-in (+30 FYN / Asia/Taipei day). Never reset.
     pts_login <- NULL
+    uid <- as.character(user$id %||% "")[1]
+    # #region agent log
+    if (exists(".ynow_agent_dbg", mode = "function")) {
+      .ynow_agent_dbg("I2E", "auth_account.R:finish_auth", "finish_auth_before_on_login", list(
+        has_id = nzchar(uid),
+        id_prefix = if (nzchar(uid)) substr(uid, 1L, 8L) else "",
+        on_login_exists = exists("ynow_points_on_login", mode = "function"),
+        backend = tryCatch(ynow_points_backend(), error = function(e) "err")
+      ))
+    }
+    # #endregion
     if (exists("ynow_points_on_login", mode = "function")) {
-      uid <- as.character(user$id %||% "")[1]
       if (nzchar(uid)) {
         pts_login <- tryCatch(
           ynow_points_on_login(uid),
-          error = function(e) NULL
+          error = function(e) {
+            # #region agent log
+            if (exists(".ynow_agent_dbg", mode = "function")) {
+              .ynow_agent_dbg("I2E", "auth_account.R:finish_auth", "on_login_error", list(
+                err = substr(conditionMessage(e), 1L, 120L)
+              ))
+            }
+            # #endregion
+            NULL
+          }
         )
       }
     }
+    # #region agent log
+    if (exists(".ynow_agent_dbg", mode = "function")) {
+      .ynow_agent_dbg("I2E", "auth_account.R:finish_auth", "finish_auth_after_on_login", list(
+        skipped_no_id = !nzchar(uid),
+        gift_granted = isTRUE(pts_login$gift_granted),
+        checkin_granted = isTRUE(pts_login$checkin_granted),
+        fyn = suppressWarnings(as.integer(pts_login$fyn %||% NA_integer_)[1]),
+        pyn = suppressWarnings(as.integer(pts_login$pyn %||% NA_integer_)[1]),
+        pts_null = is.null(pts_login)
+      ))
+    }
+    # #endregion
     mk <- as.character(message_key %||% "auth_msg_ok")[1]
     msg <- .str(mk, fallback)
     if (isTRUE(pts_login$checkin_granted)) {

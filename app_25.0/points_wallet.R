@@ -800,10 +800,25 @@ ynow_points_ledger_all <- function(user_id) {
 
 #' De-identified user list for Testing-tab system admin.
 ynow_points_admin_list_users <- function() {
-  if (ynow_points_uses_db()) {
-    return(.ynow_points_neon_list_users())
+  uses_db <- ynow_points_uses_db()
+  backend <- tryCatch(ynow_points_backend(), error = function(e) "err")
+  df <- if (uses_db) {
+    .ynow_points_neon_list_users()
+  } else {
+    .ynow_points_mem_list_users()
   }
-  .ynow_points_mem_list_users()
+  # #region agent log
+  if (exists(".ynow_agent_dbg", mode = "function")) {
+    .ynow_agent_dbg("I2B", "points_wallet.R:admin_list", "admin_list_users", list(
+      uses_db = isTRUE(uses_db),
+      backend = backend,
+      is_df = is.data.frame(df),
+      nrow = if (is.data.frame(df)) nrow(df) else -1L,
+      db_ready = exists("ynow_db_ready", mode = "function") && isTRUE(ynow_db_ready())
+    ))
+  }
+  # #endregion
+  df
 }
 
 #' Resolve internal user_id from opaque public_id (admin UI).
@@ -868,15 +883,41 @@ ynow_points_grant_daily_checkin <- function(user_id, when = Sys.time()) {
 ynow_points_on_login <- function(user_id, when = Sys.time()) {
   uid <- as.character(user_id %||% "")[1]
   if (!nzchar(uid)) {
+    # #region agent log
+    if (exists(".ynow_agent_dbg", mode = "function")) {
+      .ynow_agent_dbg("I2E", "points_wallet.R:on_login", "on_login_no_uid", list())
+    }
+    # #endregion
     return(list(ok = FALSE, balance = NA_integer_, fyn = NA_integer_, pyn = NA_integer_,
                 message_key = "pts_msg_no_user"))
   }
-  if (identical(ynow_points_backend(), "memory")) {
+  backend <- ynow_points_backend()
+  if (identical(backend, "memory")) {
     .ynow_points_mem_ensure_user(uid)
   }
   gift <- ynow_points_grant_signup_bonus(uid)
   checkin <- ynow_points_grant_daily_checkin(uid, when = when)
   bals <- ynow_points_balances(uid)
+  gift_granted <- isTRUE(gift$ok) && !isTRUE(gift$idempotent) && !isTRUE(gift$skipped) &&
+    isTRUE((gift$delta %||% 0L) > 0L)
+  checkin_granted <- isTRUE(checkin$ok) && !isTRUE(checkin$idempotent) &&
+    !isTRUE(checkin$skipped) && isTRUE((checkin$delta %||% 0L) > 0L)
+  # #region agent log
+  if (exists(".ynow_agent_dbg", mode = "function")) {
+    .ynow_agent_dbg("I2E", "points_wallet.R:on_login", "on_login_result", list(
+      backend = backend,
+      uses_db = isTRUE(ynow_points_uses_db()),
+      id_prefix = substr(uid, 1L, 8L),
+      gift_ok = isTRUE(gift$ok),
+      gift_idempotent = isTRUE(gift$idempotent),
+      gift_granted = gift_granted,
+      checkin_granted = checkin_granted,
+      fyn = suppressWarnings(as.integer(bals$fyn %||% NA_integer_)[1]),
+      pyn = suppressWarnings(as.integer(bals$pyn %||% NA_integer_)[1]),
+      gift_msg = as.character(gift$message_key %||% "")[1]
+    ))
+  }
+  # #endregion
   list(
     ok = TRUE,
     balance = bals$fyn,
@@ -885,10 +926,8 @@ ynow_points_on_login <- function(user_id, when = Sys.time()) {
     message_key = "pts_msg_ok",
     gift = gift,
     checkin = checkin,
-    gift_granted = isTRUE(gift$ok) && !isTRUE(gift$idempotent) && !isTRUE(gift$skipped) &&
-      isTRUE((gift$delta %||% 0L) > 0L),
-    checkin_granted = isTRUE(checkin$ok) && !isTRUE(checkin$idempotent) &&
-      !isTRUE(checkin$skipped) && isTRUE((checkin$delta %||% 0L) > 0L)
+    gift_granted = gift_granted,
+    checkin_granted = checkin_granted
   )
 }
 
@@ -911,6 +950,14 @@ ynow_points_reset_on_login <- function(user_id, target = NULL) {
 
 #' Shiny gate helper. Returns TRUE if the action may proceed.
 ynow_points_gate <- function(session, sku, ref_id, user = NULL, locale = "en") {
+  # #region agent log
+  if (exists(".ynow_agent_dbg", mode = "function")) {
+    .ynow_agent_dbg("I1A", "points_wallet.R:gate", "points_gate_called", list(
+      sku = as.character(sku %||% "")[1],
+      enabled = isTRUE(ynow_points_enabled())
+    ))
+  }
+  # #endregion
   if (!isTRUE(ynow_points_enabled())) return(TRUE)
 
   u <- user
