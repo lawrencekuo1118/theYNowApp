@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "installedAt": "2026-10-17T04:44:02Z",
+  "source": "https://github.com/supabase/agent-skills",
+  "skills": [
+    {
+      "name": "supabase",
+      "source": "supabase/agent-skills",
+      "path": ".agents/skills/supabase"
+    },
+    {
+      "name": "supabase-postgres-best-practices",
+      "source": "supabase/agent-skills",
+      "path": ".agents/skills/supabase-postgres-best-practices"
+    }
+  ],
+  "note": "Vendored manually (npx skills CLI failed in cloud agent). No secrets."
+}

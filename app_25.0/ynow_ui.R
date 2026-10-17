@@ -16,7 +16,7 @@
       return(sub('^"version"\\s*:\\s*"([^"]+)".*$', "\\1", m[[1]]))
     }
   }
-  "v25.31"
+  "v25.32"
 }
 .YNOW_BUILD_VERSION <- .ynow_read_build_version()
 
@@ -230,7 +230,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v25.31) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+          "The YNow App (v25.32) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
         ),
         tags$p(
           class = "ynow-about-method",
@@ -258,7 +258,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v25.31) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
+          "The YNow App (v25.32) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
         ),
         tags$p(
           class = "ynow-about-method",
@@ -327,7 +327,7 @@
     ),
     tags$li(
       tags$b("績優股排行榜（Blue Chip）："),
-      "保留候選截斷邏輯與宇宙檔數（N）、盈餘品質與 ADR 篩選、排行頁底部明細表、分群研究，以及自訂選股；隱藏其餘進階查詢條件。"
+      "保留候選截斷邏輯與宇宙檔數（N）、盈餘品質與 ADR 篩選、排行頁底部明細表，以及分群研究；隱藏其餘進階查詢條件。"
     )
   )
   en_features <- tags$ul(
@@ -352,7 +352,7 @@
     ),
     tags$li(
       tags$b("Blue Chip Leaderboard: "),
-      "Keeps Candidate truncate rules and Universe size (N), Earnings Quality and ADR filters, the detail table at the bottom of Rankings, Clustering, and Custom screen. Hides other advanced Ranking filters."
+      "Keeps Candidate truncate rules and Universe size (N), Earnings Quality and ADR filters, the detail table at the bottom of Rankings, plus Clustering. Hides other advanced Ranking filters."
     )
   )
 
@@ -368,7 +368,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App（簡化版）")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite（v25.31）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
+          "The YNow App Lite（v25.32）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
           "以自動判別主／副模型與預設參數完成試算，讓使用者先看到合理價區間與產業 KPI，再決定是否回到完整版深入調整。"
         ),
         tags$p(
@@ -385,7 +385,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App (Lite)")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite (v25.31) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
+          "The YNow App Lite (v25.32) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
           "auto-selects primary/secondary models with App defaults, and surfaces fair-value ranges plus industry KPIs before you open Full for deeper calibration."
         ),
         tags$p(
@@ -476,7 +476,7 @@
           tags$p(
             id = "ynow_home_bluechip_d",
             class = "ynow-home-card-d",
-            "Peer ranking pools, truncate rules, clustering, and custom screen."
+            "Peer ranking pools, truncate rules, and clustering for research."
           )
         ),
         tags$button(
@@ -2520,17 +2520,6 @@ beta_rolling_section_ui <- function() {
                   uiOutput("lab_cluster_table_ui")
                 )
               )
-            ),
-
-            tabPanel(
-              title = "自訂選股",
-              value = "im_screener",
-              icon = icon("filter"),
-              if (exists("screener_panel_ui", mode = "function")) {
-                screener_panel_ui(embed = "bluechip")
-              } else {
-                tags$p(id = "ynow_scr_missing", "Custom screen unavailable.")
-              }
             )
           )
   )
@@ -3568,9 +3557,9 @@ ui <- dashboardPage(
                   'data-ynow-build="', .YNOW_BUILD_VERSION, '" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v25.31</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v25.32</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v25.31</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v25.32</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -5115,39 +5104,6 @@ ui <- dashboardPage(
         /* tabBox title strip */
         body.ynow-theme-bluechip .content-wrapper .nav-tabs-custom > .nav-tabs > li.header {
           color: var(--ynow-bluechip-deep) !important;
-        }
-        /* Custom screen (自訂選股) — ocean accents inside Blue Chip */
-        body.ynow-theme-bluechip .ynow-scr-dnd-bluechip .ynow-scr-cat-btn.is-active {
-          border-left-color: var(--ynow-bluechip-cyan) !important;
-          color: var(--ynow-bluechip-deep) !important;
-        }
-        body.ynow-theme-bluechip .ynow-scr-dnd-bluechip .ynow-scr-pack-btn.is-active {
-          border-color: var(--ynow-bluechip-ocean) !important;
-          background: rgba(140, 208, 235, 0.22) !important;
-          color: var(--ynow-bluechip-deep) !important;
-        }
-        body.ynow-theme-bluechip .ynow-scr-dnd-bluechip .ynow-scr-card-add:hover,
-        body.ynow-theme-bluechip .ynow-scr-dnd-bluechip .ynow-scr-card-remove:hover {
-          border-color: var(--ynow-bluechip-ocean) !important;
-          color: var(--ynow-bluechip-deep) !important;
-        }
-        body.ynow-theme-bluechip .ynow-scr-dnd-bluechip .ynow-scr-list-selected.ynow-scr-drop-active {
-          outline-color: var(--ynow-bluechip-cyan) !important;
-          background: rgba(140, 208, 235, 0.18) !important;
-        }
-        body.ynow-theme-bluechip .ynow-scr-dnd-bluechip .ynow-scr-dnd-cats {
-          background: rgba(15, 90, 144, 0.06);
-          border-color: rgba(10, 114, 174, 0.28);
-        }
-        body.ynow-theme-bluechip .ynow-scr-dnd-bluechip .ynow-scr-dnd-mid,
-        body.ynow-theme-bluechip .ynow-scr-dnd-bluechip .ynow-scr-dnd-right {
-          border-color: rgba(10, 114, 174, 0.28);
-        }
-        @media (max-width: 768px) {
-          body.ynow-theme-bluechip .ynow-scr-dnd-bluechip .ynow-scr-cat-btn.is-active {
-            border-color: var(--ynow-bluechip-ocean) !important;
-            background: rgba(140, 208, 235, 0.22) !important;
-          }
         }
         body.ynow-theme-bluechip .content-wrapper .ynow-lab-im-pool-controls {
           border-left: 4px solid var(--ynow-bluechip-cyan);
@@ -15073,11 +15029,7 @@ ui <- dashboardPage(
           border: none !important;
           color: inherit !important;
         }
-      ")),
-      # Custom screen DnD assets (Blue Chip lazy tab mounts UI later)
-      tags$link(rel = "stylesheet", type = "text/css", href = "ynow_screener_dnd.css"),
-      tags$script(src = "vendor/Sortable.min.js"),
-      tags$script(src = "ynow_screener_dnd.js")
+      "))
     ),
     
     # ==========================================

@@ -1,20 +1,21 @@
 # ==========================================
-# Neon Free Postgres — account store (self-serve)
+# Postgres account store (Neon / Supabase) — self-serve
 # ==========================================
-# Preferred backend: own `ynow_users` table on Neon Free.
+# Preferred backend: own `ynow_users` table on managed Postgres
+# (Neon Free or Supabase; same YNOW_DB_* / YNOW_DATABASE_URL shape).
 # Anyone may self-register via Google / Facebook / Email — no admin approval.
 # Optional YNOW_AUTH_SEED_* only creates YOUR maintenance admin row; it is not
 # a whitelist for end users.
 #
 # Env (put in app_25.0/.Renviron — gitignored):
-#   YNOW_DB_HOST=ep-xxxx-pooler.region.aws.neon.tech
-#   YNOW_DB_NAME=neondb
-#   YNOW_DB_USER=neondb_owner
+#   YNOW_DB_HOST=…-pooler…   # prefer IPv4 pooler when runtime lacks IPv6
+#   YNOW_DB_NAME=neondb|postgres
+#   YNOW_DB_USER=neondb_owner | postgres.<PROJECT_REF> (Supabase pooler)
 #   YNOW_DB_PASSWORD=...
 #   YNOW_DB_PORT=5432
 #   YNOW_DB_SSLMODE=require
 # Or a single URL:
-#   YNOW_DATABASE_URL=postgresql://user:pass@ep-xxxx-pooler.../neondb?sslmode=require
+#   YNOW_DATABASE_URL=postgresql://user:pass@…pooler…/dbname?sslmode=require
 #
 # One-time schema: Rscript app_25.0/../scripts/neon_migrate.R
 # Optional seed admin: set YNOW_AUTH_SEED_EMAIL / YNOW_AUTH_SEED_PASSWORD then migrate.
@@ -191,6 +192,47 @@ ynow_db_oauth_password_sentinel <- function(provider, provider_uid = "") {
   paste0("oauth$", dig)
 }
 
+#' Fail-closed RLS for account tables (Supabase PostgREST / anon key safe).
+#' Enables RLS without FORCE so the YNOW_DB_* owner/server role still works;
+#' revokes anon/authenticated/PUBLIC table grants; adds no open policies.
+.ynow_db_rls_fail_closed <- function(con, table = "ynow_users") {
+  tbl <- as.character(table %||% "")[1]
+  if (!nzchar(tbl) || !grepl("^[A-Za-z_][A-Za-z0-9_]*$", tbl)) {
+    return(FALSE)
+  }
+  # ENABLE (not FORCE): app connects as table owner / postgres via YNOW_DB_*;
+  # FORCE would block that role unless BYPASSRLS or dedicated policies.
+  tryCatch(
+    DBI::dbExecute(
+      con,
+      paste0("ALTER TABLE ", tbl, " ENABLE ROW LEVEL SECURITY")
+    ),
+    error = function(e) NULL
+  )
+  # No permissive policies for anon / authenticated — default deny under RLS.
+  for (pol in c(
+    paste0(tbl, "_anon_all"),
+    paste0(tbl, "_authenticated_all"),
+    paste0(tbl, "_public_all")
+  )) {
+    tryCatch(
+      DBI::dbExecute(con, paste0("DROP POLICY IF EXISTS ", pol, " ON ", tbl)),
+      error = function(e) NULL
+    )
+  }
+  # Strip API/public grants even if RLS were mis-disabled later.
+  for (role in c("PUBLIC", "anon", "authenticated")) {
+    tryCatch(
+      DBI::dbExecute(
+        con,
+        paste0("REVOKE ALL ON TABLE ", tbl, " FROM ", role)
+      ),
+      error = function(e) NULL
+    )
+  }
+  TRUE
+}
+
 ynow_db_ensure_schema <- function(conn = NULL) {
   run <- function(con) {
     DBI::dbExecute(con, "
@@ -211,6 +253,8 @@ ynow_db_ensure_schema <- function(conn = NULL) {
       CREATE INDEX IF NOT EXISTS ynow_users_email_lower_idx
         ON ynow_users (lower(email))
     ")
+    # Fail-closed for Supabase anon / PostgREST (principle: supabase-rls-exposure).
+    .ynow_db_rls_fail_closed(con, "ynow_users")
     # Points wallet columns / tables (no-op when points_wallet.R not sourced yet).
     if (exists("ynow_points_ensure_schema", mode = "function")) {
       tryCatch(ynow_points_ensure_schema(con), error = function(e) NULL)
