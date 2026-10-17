@@ -39,7 +39,7 @@ if (!isTRUE(ynow_db_ready())) {
 
 ok <- ynow_db_ensure_schema()
 if (!isTRUE(ok)) stop("Schema create failed (check SSL / credentials / network).")
-cat("OK schema ynow_users\n")
+cat("OK schema ynow_users (+ RLS fail-closed for anon/authenticated/PUBLIC)\n")
 
 pts <- ynow_points_ensure_schema()
 if (!isTRUE(pts)) stop("Points schema create failed.")

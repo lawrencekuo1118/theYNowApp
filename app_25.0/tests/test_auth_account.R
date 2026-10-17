@@ -148,6 +148,13 @@ check("modal UI present when enabled", {
 
 Sys.unsetenv("YNOW_AUTH_DEMO_EMAIL")
 Sys.unsetenv("YNOW_AUTH_DEMO_PASSWORD")
+# Demo-path checks require no Postgres bind (Cloud agents often export YNOW_DB_*).
+Sys.unsetenv("YNOW_DB_HOST")
+Sys.unsetenv("YNOW_DB_USER")
+Sys.unsetenv("YNOW_DB_PASSWORD")
+Sys.unsetenv("YNOW_DB_NAME")
+Sys.unsetenv("YNOW_DATABASE_URL")
+Sys.unsetenv("DATABASE_URL")
 res_nb <- ynow_auth_try_login("a@b.com", "secret")
 check("no backend message", isFALSE(res_nb$ok) && identical(res_nb$message_key, "auth_msg_no_backend"))
 
@@ -326,6 +333,15 @@ check("UI About mentions Neon", grepl("Neon Free", ui, fixed = TRUE) &&
         grepl("Neon Free", ui, fixed = TRUE))
 check("migrate script exists", file.exists(file.path(dirname(app_dir), "scripts", "neon_migrate.R")) ||
         file.exists(file.path(app_dir, "..", "scripts", "neon_migrate.R")))
+check("ynow_users schema enables fail-closed RLS", {
+  auth_db_txt <- paste(readLines(file.path(app_dir, "auth_db.R"), warn = FALSE), collapse = "\n")
+  grepl("ENABLE ROW LEVEL SECURITY", auth_db_txt, fixed = TRUE) &&
+    grepl(".ynow_db_rls_fail_closed", auth_db_txt, fixed = TRUE) &&
+    grepl("REVOKE ALL ON TABLE", auth_db_txt, fixed = TRUE) &&
+    grepl("anon", auth_db_txt, fixed = TRUE) &&
+    grepl("authenticated", auth_db_txt, fixed = TRUE) &&
+    !grepl("FORCE ROW LEVEL SECURITY", auth_db_txt, fixed = TRUE)
+})
 check("OAuth google not ready without env", {
   Sys.unsetenv("YNOW_SUPABASE_URL")
   Sys.unsetenv("YNOW_SUPABASE_ANON_KEY")
