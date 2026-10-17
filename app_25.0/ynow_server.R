@@ -461,17 +461,6 @@ server <- function(input, output, session) {
     bund <- .ynow_pts_user_bundle(u)
     fyn_txt <- if (is.finite(bund$fyn)) as.character(bund$fyn) else "—"
     pyn_txt <- if (is.finite(bund$pyn)) as.character(bund$pyn) else "—"
-    # #region agent log
-    if (exists(".ynow_agent_dbg", mode = "function")) {
-      .ynow_agent_dbg("I2E", "ynow_server.R:pts_banner", "push_banner", list(
-        has_uid = nzchar(as.character(bund$uid %||% "")[1]),
-        id_prefix = substr(as.character(bund$uid %||% "")[1], 1L, 8L),
-        fyn = fyn_txt,
-        pyn = pyn_txt,
-        backend = tryCatch(ynow_points_backend(), error = function(e) "err")
-      ))
-    }
-    # #endregion
     session$sendCustomMessage(
       "ynowPtsBanner",
       list(
@@ -656,56 +645,12 @@ server <- function(input, output, session) {
     ynow_pts_sysadmin_tick(isolate(ynow_pts_sysadmin_tick()) + 1L)
   }, ignoreInit = TRUE)
 
-  observeEvent(input$ynow_pts_sysadmin_enter, {
-    # #region agent log
-    if (exists(".ynow_agent_dbg", mode = "function")) {
-      .ynow_agent_dbg("I2A", "ynow_server.R:sysadmin", "sysadmin_enter_clicked", list(
-        was_on = isTRUE(isolate(ynow_pts_sysadmin_on()))
-      ))
-    }
-    # #endregion
-  }, ignoreInit = TRUE, priority = 10)
-
-  observeEvent(input$ynow_debug_sidebar_probe, {
-    # #region agent log
-    if (exists(".ynow_agent_dbg", mode = "function")) {
-      p <- input$ynow_debug_sidebar_probe
-      .ynow_agent_dbg("I1C", "ynow_server.R:sidebar_probe", "client_sidebar_probe", list(
-        bodyClasses = as.character(p$bodyClasses %||% "")[1],
-        menuCount = suppressWarnings(as.integer(p$menuCount %||% NA_integer_)[1]),
-        dimCount = suppressWarnings(as.integer(p$dimCount %||% NA_integer_)[1]),
-        peNoneCount = suppressWarnings(as.integer(p$peNoneCount %||% NA_integer_)[1]),
-        coverTag = as.character(p$coverTag %||% "")[1],
-        coverClass = as.character(p$coverClass %||% "")[1],
-        homeOpacity = as.character(p$homeOpacity %||% "")[1],
-        homeColor = as.character(p$homeColor %||% "")[1],
-        otherOpacity = as.character(p$otherOpacity %||% "")[1],
-        otherColor = as.character(p$otherColor %||% "")[1],
-        otherPe = as.character(p$otherPe %||% "")[1],
-        fynTxt = as.character(p$fynTxt %||% "")[1],
-        pynTxt = as.character(p$pynTxt %||% "")[1],
-        lite = isTRUE(p$lite),
-        authed = isTRUE(p$authed),
-        activeTab = as.character(p$activeTab %||% "")[1]
-      ))
-    }
-    # #endregion
-  }, ignoreInit = TRUE)
-
   output$ynow_pts_sysadmin_panel <- renderUI({
     ynow_pts_sysadmin_tick()
     loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
     .lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
-    admin_on <- isTRUE(ynow_pts_sysadmin_on())
-    # #region agent log
-    if (exists(".ynow_agent_dbg", mode = "function")) {
-      .ynow_agent_dbg("I2A", "ynow_server.R:sysadmin_panel", "sysadmin_panel_render", list(
-        admin_on = admin_on
-      ))
-    }
-    # #endregion
-    if (!admin_on) {
-      # Avoid blank white void — clear hint to click Enter (I2A).
+    if (!isTRUE(ynow_pts_sysadmin_on())) {
+      # Avoid blank white void — clear hint to click Enter.
       return(tags$div(
         tags$hr(),
         tags$p(
@@ -753,18 +698,6 @@ server <- function(input, output, session) {
       } else {
         .lab("pts_sysadmin_empty", "No users in the database yet.")
       }
-      # #region agent log
-      if (exists(".ynow_agent_dbg", mode = "function")) {
-        .ynow_agent_dbg("I2B", "ynow_server.R:sysadmin_panel", "sysadmin_empty", list(
-          empty_key = empty_key,
-          backend = backend,
-          backend_label = as.character(backend_label)[1],
-          uses_db = isTRUE(uses_db),
-          db_ready = isTRUE(db_ready),
-          nrow = if (is.data.frame(df)) nrow(df) else -1L
-        ))
-      }
-      # #endregion
       return(tags$div(
         tags$hr(),
         tags$p(
@@ -780,16 +713,6 @@ server <- function(input, output, session) {
         tags$p(class = "text-warning", empty_msg)
       ))
     }
-    # #region agent log
-    if (exists(".ynow_agent_dbg", mode = "function")) {
-      .ynow_agent_dbg("I2B", "ynow_server.R:sysadmin_panel", "sysadmin_has_users", list(
-        nrow = nrow(df),
-        backend = backend,
-        backend_label = as.character(backend_label)[1],
-        sample_fyn0 = sum(suppressWarnings(as.integer(df$fyn)) == 0L, na.rm = TRUE)
-      ))
-    }
-    # #endregion
     status_ok <- .lab("pts_sysadmin_status_ok", "Active")
     status_off <- .lab("pts_sysadmin_status_disabled", "Disabled")
     choices <- stats::setNames(as.character(df$public_id), as.character(df$public_id))

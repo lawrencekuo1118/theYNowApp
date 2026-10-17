@@ -185,14 +185,6 @@ ynow_db_with <- function(fn) {
     .ynow_db_with_stack$cons <- .ynow_db_with_stack$cons[-length(.ynow_db_with_stack$cons)]
     tryCatch(pool::poolReturn(con), error = function(e) NULL)
   }, add = FALSE)
-  # #region agent log
-  if (exists(".ynow_agent_dbg", mode = "function")) {
-    .ynow_agent_dbg("I2E", "auth_db.R:ynow_db_with", "db_with_checkout", list(
-      con_class = paste(class(con), collapse = ","),
-      is_pool = inherits(con, "Pool")
-    ))
-  }
-  # #endregion
   tryCatch(
     fn(con),
     error = function(e) {
@@ -507,26 +499,9 @@ ynow_db_upsert_oauth_user <- function(email, display_name = NULL,
       TRUE
     })
     if (!isTRUE(ok)) {
-      # #region agent log
-      if (exists(".ynow_agent_dbg", mode = "function")) {
-        .ynow_agent_dbg("I2C", "auth_db.R:upsert_oauth", "upsert_existing_update_fail", list(
-          path = "existing"
-        ))
-      }
-      # #endregion
       return(list(ok = FALSE, user = NULL, message_key = "auth_msg_oauth_failed"))
     }
     u <- ynow_db_get_user_by_email(em)
-    uid_ex <- as.character(u$id %||% "")[1]
-    # #region agent log
-    if (exists(".ynow_agent_dbg", mode = "function")) {
-      .ynow_agent_dbg("I2C", "auth_db.R:upsert_oauth", "upsert_existing_ok", list(
-        path = "existing",
-        has_id = nzchar(uid_ex),
-        id_prefix = if (nzchar(uid_ex)) substr(uid_ex, 1L, 8L) else ""
-      ))
-    }
-    # #endregion
     return(list(
       ok = TRUE,
       user = list(
@@ -535,7 +510,7 @@ ynow_db_upsert_oauth_user <- function(email, display_name = NULL,
         provider = as.character(u$provider %||% prov)[1],
         provider_uid = as.character(u$provider_uid %||% puid)[1],
         role = as.character(u$role %||% "user")[1],
-        id = uid_ex,
+        id = as.character(u$id %||% "")[1],
         logged_in_at = as.character(Sys.time())
       ),
       message_key = "auth_msg_ok"
@@ -555,39 +530,13 @@ ynow_db_upsert_oauth_user <- function(email, display_name = NULL,
     TRUE
   })
   if (!isTRUE(ok)) {
-    # #region agent log
-    if (exists(".ynow_agent_dbg", mode = "function")) {
-      .ynow_agent_dbg("I2C", "auth_db.R:upsert_oauth", "upsert_insert_fail", list(path = "insert"))
-    }
-    # #endregion
     return(list(ok = FALSE, user = NULL, message_key = "auth_msg_register_failed"))
   }
   u <- ynow_db_get_user_by_email(em)
   uid <- as.character(u$id %||% "")[1]
-  gift_ok <- NA
   if (nzchar(uid) && exists("ynow_points_grant_signup_bonus", mode = "function")) {
-    gift_res <- tryCatch(ynow_points_grant_signup_bonus(uid), error = function(e) {
-      # #region agent log
-      if (exists(".ynow_agent_dbg", mode = "function")) {
-        .ynow_agent_dbg("I2E", "auth_db.R:upsert_oauth", "signup_gift_error", list(
-          err = substr(conditionMessage(e), 1L, 120L)
-        ))
-      }
-      # #endregion
-      NULL
-    })
-    gift_ok <- isTRUE(gift_res$ok)
+    tryCatch(ynow_points_grant_signup_bonus(uid), error = function(e) NULL)
   }
-  # #region agent log
-  if (exists(".ynow_agent_dbg", mode = "function")) {
-    .ynow_agent_dbg("I2C", "auth_db.R:upsert_oauth", "upsert_insert_ok", list(
-      path = "insert",
-      has_id = nzchar(uid),
-      id_prefix = if (nzchar(uid)) substr(uid, 1L, 8L) else "",
-      gift_ok = gift_ok
-    ))
-  }
-  # #endregion
   list(
     ok = TRUE,
     user = list(
