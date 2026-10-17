@@ -166,11 +166,20 @@ for (k in c(
   "pts_balance", "pts_fyn_label", "pts_pyn_label", "pts_ledger",
   "pts_msg_insufficient_fmt", "pts_rules_note", "pts_sysadmin_title",
   "pts_sysadmin_enter", "pts_daily_checkin_fmt", "pts_first_gift_fmt",
-  "auth_admin_tool_points"
+  "auth_admin_tool_points", "pts_sysadmin_no_neon", "pts_sysadmin_empty"
 )) {
   check(paste("locale en", k), nzchar(ui_str(k, "en")))
   check(paste("locale zh", k), nzchar(ui_str(k, "zh-TW")))
 }
+check("sysadmin no_neon mentions YNOW_DB", {
+  grepl("YNOW_DB_", ui_str("pts_sysadmin_no_neon", "en"), fixed = TRUE) &&
+    grepl("YNOW_DB_", ui_str("pts_sysadmin_no_neon", "zh-TW"), fixed = TRUE)
+})
+check("server distinguishes no-neon vs empty list", {
+  srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("pts_sysadmin_no_neon", srv, fixed = TRUE) &&
+    grepl("ynow_db_ready", srv, fixed = TRUE)
+})
 check("locale zh-TW no simplified 数据", {
   !grepl("数据", ui_str("pts_rules_note", "zh-TW"), fixed = TRUE) &&
     !grepl("默认", ui_str("pts_sysadmin_intro", "zh-TW"), fixed = TRUE)

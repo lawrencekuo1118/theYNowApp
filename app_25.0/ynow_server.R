@@ -651,6 +651,7 @@ server <- function(input, output, session) {
     if (!exists("ynow_points_admin_list_users", mode = "function")) {
       return(tags$p(class = "text-danger", .lab("pts_msg_backend", "Points backend is unavailable.")))
     }
+    # Without Neon (YNOW_DB_*) / RPostgres, points fall back to empty per-process memory — not a wiped DB.
     backend <- tryCatch(ynow_points_backend(), error = function(e) "memory")
     db_ready <- exists("ynow_db_ready", mode = "function") && isTRUE(ynow_db_ready())
     df <- tryCatch(ynow_points_admin_list_users(), error = function(e) NULL)
@@ -658,7 +659,10 @@ server <- function(input, output, session) {
       empty_msg <- if (!isTRUE(db_ready) || !identical(backend, "neon")) {
         .lab(
           "pts_sysadmin_no_db",
-          "Neon account store is not configured on this deployment (missing YNOW_DB_* / YNOW_DATABASE_URL, or RPostgres/pool not installed). Testing admin reads the same Neon ynow_users table as sign-in — without it the list stays empty."
+          .lab(
+            "pts_sysadmin_no_neon",
+            "Neon account store is not configured on this deployment (missing YNOW_DB_* / YNOW_DATABASE_URL, or RPostgres/pool not installed). Testing admin reads the same Neon ynow_users table as sign-in — without it the list stays empty."
+          )
         )
       } else {
         .lab("pts_sysadmin_empty", "No users in the database yet.")

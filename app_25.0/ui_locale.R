@@ -885,6 +885,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     pts_sysadmin_bad_user = "Select a user from the list.",
     pts_sysadmin_bad_delta = "Enter a non-zero whole-number change for FYN and/or PYN.",
     pts_sysadmin_empty = "No users in the database yet.",
+    pts_sysadmin_no_neon = paste0(
+      "Neon is not configured on this deployment (set YNOW_DB_* in .Renviron, then redeploy). ",
+      "The user list and FYN/PYN balances live in Neon — not in ephemeral app memory."
+    ),
     pts_sysadmin_no_db = paste0(
       "Neon account store is not configured on this deployment ",
       "(missing YNOW_DB_* / YNOW_DATABASE_URL in app_25.0/.Renviron, ",
@@ -4371,6 +4375,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     pts_sysadmin_bad_user = "請從清單選擇使用者。",
     pts_sysadmin_bad_delta = "請輸入非零整數，調整 FYN 與／或 PYN。",
     pts_sysadmin_empty = "資料庫尚無使用者。",
+    pts_sysadmin_no_neon = paste0(
+      "此部署尚未設定 Neon（請在 .Renviron 設定 YNOW_DB_* 後重新部署）。",
+      "使用者清單與 FYN／PYN 餘額存在 Neon，不會寫入應用程式暫存記憶體。"
+    ),
     pts_sysadmin_no_db = paste0(
       "此部署尚未設定 Neon 帳號庫",
       "（缺少 app_25.0/.Renviron 的 YNOW_DB_*／YNOW_DATABASE_URL，",
