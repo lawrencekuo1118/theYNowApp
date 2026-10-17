@@ -7048,7 +7048,7 @@ ui_locale_boot_bundle <- function() {
   slim_strings <- function(loc) {
     s <- ui_locale_payload(loc)
     keep <- grepl(
-      "^(menu_|hdr_|about|home_|btn_|feedback_|test_link|smart_|market_|lite_)",
+      "^(menu_|hdr_|about|home_|btn_|feedback_|test_link|smart_|market_|lite_|pts_fyn_label|pts_pyn_label)",
       names(s)
     )
     as.list(s[keep])

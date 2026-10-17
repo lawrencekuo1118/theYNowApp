@@ -16,7 +16,7 @@
       return(sub('^"version"\\s*:\\s*"([^"]+)".*$', "\\1", m[[1]]))
     }
   }
-  "v25.26"
+  "v25.27"
 }
 .YNOW_BUILD_VERSION <- .ynow_read_build_version()
 
@@ -230,7 +230,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v25.26) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+          "The YNow App (v25.27) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
         ),
         tags$p(
           class = "ynow-about-method",
@@ -258,7 +258,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v25.26) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
+          "The YNow App (v25.27) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
         ),
         tags$p(
           class = "ynow-about-method",
@@ -368,7 +368,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App（簡化版）")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite（v25.26）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
+          "The YNow App Lite（v25.27）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
           "以自動判別主／副模型與預設參數完成試算，讓使用者先看到合理價區間與產業 KPI，再決定是否回到完整版深入調整。"
         ),
         tags$p(
@@ -385,7 +385,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App (Lite)")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite (v25.26) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
+          "The YNow App Lite (v25.27) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
           "auto-selects primary/secondary models with App defaults, and surfaces fair-value ranges plus industry KPIs before you open Full for deeper calibration."
         ),
         tags$p(
@@ -3557,9 +3557,9 @@ ui <- dashboardPage(
                   'data-ynow-build="', .YNOW_BUILD_VERSION, '" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v25.26</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v25.27</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v25.26</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v25.27</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -3636,23 +3636,25 @@ ui <- dashboardPage(
       )
     ),
     # FYN / PYN balances — right of locale switch, vertically stacked.
+    # Hidden until sign-in (ynowPtsBanner visible=true removes ynow-pts-hidden).
     tags$li(
-      class = "dropdown ynow-pts-header",
+      class = "dropdown ynow-pts-header ynow-pts-hidden",
       id = "ynow-pts-header",
       tags$div(
         class = "ynow-pts-banner",
         id = "ynow_pts_banner",
         role = "status",
         `aria-label` = "Points",
+        `aria-hidden` = "true",
         tags$div(
           class = "ynow-pts-banner-line",
           tags$span(id = "ynow_pts_banner_fyn_label", "FYN points:"),
-          tags$span(id = "ynow_pts_banner_fyn_value", class = "ynow-pts-banner-val", "—")
+          tags$span(id = "ynow_pts_banner_fyn_value", class = "ynow-pts-banner-val", "")
         ),
         tags$div(
           class = "ynow-pts-banner-line",
           tags$span(id = "ynow_pts_banner_pyn_label", "PYN points:"),
-          tags$span(id = "ynow_pts_banner_pyn_value", class = "ynow-pts-banner-val", "—")
+          tags$span(id = "ynow_pts_banner_pyn_value", class = "ynow-pts-banner-val", "")
         )
       )
     ),
@@ -6469,6 +6471,22 @@ ui <- dashboardPage(
           list-style: none !important;
           overflow: visible !important;
         }
+        /* Guests: hide pts (beats flex !important on header li / Lite keep-visible). */
+        .main-header .navbar-custom-menu .navbar-nav > li.ynow-pts-header.ynow-pts-hidden,
+        body.ynow-lite .main-header .navbar-custom-menu .navbar-nav > li.ynow-pts-header.ynow-pts-hidden,
+        body.ynow-lite #ynow-pts-header.ynow-pts-hidden,
+        #ynow-pts-header.ynow-pts-hidden {
+          display: none !important;
+          visibility: hidden !important;
+          opacity: 0 !important;
+          width: 0 !important;
+          min-width: 0 !important;
+          max-width: 0 !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          overflow: hidden !important;
+          pointer-events: none !important;
+        }
         .ynow-pts-banner {
           display: flex !important;
           flex-direction: column !important;
@@ -7919,14 +7937,28 @@ ui <- dashboardPage(
             if (!title || !base) return;
             var mkt = document.getElementById('ynow-market-header');
             var custom = document.querySelector('.main-header .navbar-custom-menu');
+            var ptsHdr = document.getElementById('ynow-pts-header');
+            var langHdr = document.querySelector('.main-header .ynow-lang-header');
             var gap = 10;
             var leftClear = mkt ? Math.round(mkt.getBoundingClientRect().right) : 90;
-            var rightClear = custom
-              ? Math.round(window.innerWidth - custom.getBoundingClientRect().left)
-              : 120;
+            /* Right clear: protect locale + FYN/PYN pts + mark — title must not paint over them. */
+            var rightEdge = window.innerWidth;
+            var pushLeft = function (el) {
+              if (!el) return;
+              try {
+                var cs = window.getComputedStyle(el);
+                if (cs.display === 'none' || cs.visibility === 'hidden') return;
+                var r = el.getBoundingClientRect();
+                if (r.width > 0 && r.left > 0) rightEdge = Math.min(rightEdge, r.left);
+              } catch (ePush) {}
+            };
+            pushLeft(ptsHdr);
+            pushLeft(langHdr);
+            if (custom) pushLeft(custom);
+            var rightClear = Math.max(80, Math.round(window.innerWidth - rightEdge));
             var maxW = Math.max(64, window.innerWidth - leftClear - rightClear - gap * 2);
             title.style.maxWidth = maxW + 'px';
-            title.style.overflow = 'visible';
+            title.style.overflow = 'hidden';
             title.style.textOverflow = 'clip';
             /* Prefer readable size; shrink proportionally so full version string stays visible */
             var fs = 16;
@@ -9617,10 +9649,11 @@ ui <- dashboardPage(
             if (ptsSysExit && s.pts_sysadmin_exit) ptsSysExit.textContent = s.pts_sysadmin_exit;
             var ptsSysRefresh = document.getElementById('ynow_pts_sysadmin_refresh_label');
             if (ptsSysRefresh && s.pts_sysadmin_refresh) ptsSysRefresh.textContent = s.pts_sysadmin_refresh;
+            var ptsColon = (payload && payload.locale === 'zh-TW') ? '：' : ':';
             var ptsFynLab = document.getElementById('ynow_pts_banner_fyn_label');
-            if (ptsFynLab && s.pts_fyn_label) ptsFynLab.textContent = s.pts_fyn_label + ':';
+            if (ptsFynLab && s.pts_fyn_label) ptsFynLab.textContent = s.pts_fyn_label + ptsColon;
             var ptsPynLab = document.getElementById('ynow_pts_banner_pyn_label');
-            if (ptsPynLab && s.pts_pyn_label) ptsPynLab.textContent = s.pts_pyn_label + ':';
+            if (ptsPynLab && s.pts_pyn_label) ptsPynLab.textContent = s.pts_pyn_label + ptsColon;
             var atxTitle = document.getElementById('ynow_atx_page_title');
             if (atxTitle && s.atx_page_title) atxTitle.textContent = s.atx_page_title;
             var atxSub = document.getElementById('ynow_atx_page_sub');
@@ -9918,9 +9951,15 @@ ui <- dashboardPage(
               if (fynVal) fynVal.textContent = (payload.fyn != null && payload.fyn !== '') ? String(payload.fyn) : '—';
               if (pynVal) pynVal.textContent = (payload.pyn != null && payload.pyn !== '') ? String(payload.pyn) : '—';
               var hdr = document.getElementById('ynow-pts-header');
+              var banner = document.getElementById('ynow_pts_banner');
               if (hdr) {
-                if (payload.visible === false) hdr.style.display = 'none';
-                else hdr.style.display = '';
+                // Class + !important CSS — inline display loses to flex !important / Lite rules.
+                if (payload.visible === false) hdr.classList.add('ynow-pts-hidden');
+                else hdr.classList.remove('ynow-pts-hidden');
+              }
+              if (banner) {
+                if (payload.visible === false) banner.setAttribute('aria-hidden', 'true');
+                else banner.setAttribute('aria-hidden', 'false');
               }
             });
             addHandler('ynowAuthFeature', function (payload) {
@@ -14087,12 +14126,12 @@ ui <- dashboardPage(
             background-image: none !important;
           }
           .main-header .logo .ynow-app-title {
-            /* JS scales font into the center gap; no ellipsis — full version string stays */
+            /* JS scales font into the center gap; clip so title cannot paint over pts/lang */
             position: relative;
             font-size: 16px;
             line-height: 1.15 !important;
             white-space: nowrap;
-            overflow: visible;
+            overflow: hidden !important;
             text-overflow: clip;
             max-width: min(100%, calc(100vw - 200px));
             height: auto !important;
@@ -14119,12 +14158,9 @@ ui <- dashboardPage(
             white-space: nowrap;
             pointer-events: none;
           }
-          /* Keep 繁中／EN / mark / toggle above the absolute title band */
-          .main-header .navbar-custom-menu .navbar-nav > li.ynow-lang-header {
-            position: relative !important;
-            z-index: 1062 !important;
-            flex-shrink: 0 !important;
-          }
+          /* Keep 繁中／EN / FYN·PYN / mark / toggle above the absolute title band */
+          .main-header .navbar-custom-menu .navbar-nav > li.ynow-lang-header,
+          .main-header .navbar-custom-menu .navbar-nav > li.ynow-pts-header,
           .main-header .navbar-custom-menu .navbar-nav > li#ynow-header-logo.ynow-header-logo {
             position: relative !important;
             z-index: 1062 !important;
@@ -14151,6 +14187,16 @@ ui <- dashboardPage(
           }
           .main-header .navbar-custom-menu .navbar-nav > li.ynow-lang-header {
             padding: 0 4px 0 0 !important;
+          }
+          .main-header .navbar-custom-menu .navbar-nav > li.ynow-pts-header {
+            padding: 0 6px 0 2px !important;
+          }
+          .ynow-pts-banner {
+            font-size: 10px !important;
+            gap: 0 !important;
+            min-width: 0 !important;
+            flex-shrink: 0 !important;
+            line-height: 1.1 !important;
           }
           .main-header .navbar {
             min-height: 50px !important;
@@ -14307,6 +14353,7 @@ ui <- dashboardPage(
             overflow: visible !important;
           }
           .main-header .navbar-custom-menu .navbar-nav > li.ynow-lang-header,
+          .main-header .navbar-custom-menu .navbar-nav > li.ynow-pts-header,
           .main-header .navbar-custom-menu .navbar-nav > li#ynow-header-logo.ynow-header-logo {
             float: none !important;
             height: 50px !important;
@@ -14322,9 +14369,25 @@ ui <- dashboardPage(
             padding-left: 0 !important;
             padding-right: 4px !important;
           }
+          .main-header .navbar-custom-menu .navbar-nav > li.ynow-pts-header {
+            padding-left: 2px !important;
+            padding-right: 6px !important;
+            overflow: visible !important;
+          }
           .main-header .navbar-custom-menu .navbar-nav > li#ynow-header-logo.ynow-header-logo {
             position: relative !important;
             overflow: visible !important;
+          }
+          /* Lite: same top-banner pts pattern when signed in (not .ynow-pts-hidden) */
+          body.ynow-lite .main-header .navbar-custom-menu .navbar-nav > li.ynow-pts-header:not(.ynow-pts-hidden),
+          body.ynow-lite #ynow-pts-header:not(.ynow-pts-hidden) {
+            display: flex !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+          }
+          body.ynow-lite #ynow-pts-header:not(.ynow-pts-hidden) .ynow-pts-banner {
+            display: flex !important;
+            visibility: visible !important;
           }
           .ynow-ccy-float {
             right: 8px;

@@ -166,20 +166,11 @@ for (k in c(
   "pts_balance", "pts_fyn_label", "pts_pyn_label", "pts_ledger",
   "pts_msg_insufficient_fmt", "pts_rules_note", "pts_sysadmin_title",
   "pts_sysadmin_enter", "pts_daily_checkin_fmt", "pts_first_gift_fmt",
-  "auth_admin_tool_points", "pts_sysadmin_no_neon", "pts_sysadmin_empty"
+  "auth_admin_tool_points"
 )) {
   check(paste("locale en", k), nzchar(ui_str(k, "en")))
   check(paste("locale zh", k), nzchar(ui_str(k, "zh-TW")))
 }
-check("sysadmin no_neon mentions YNOW_DB", {
-  grepl("YNOW_DB_", ui_str("pts_sysadmin_no_neon", "en"), fixed = TRUE) &&
-    grepl("YNOW_DB_", ui_str("pts_sysadmin_no_neon", "zh-TW"), fixed = TRUE)
-})
-check("server distinguishes no-neon vs empty list", {
-  srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-  grepl("pts_sysadmin_no_neon", srv, fixed = TRUE) &&
-    grepl("ynow_db_ready", srv, fixed = TRUE)
-})
 check("locale zh-TW no simplified 数据", {
   !grepl("数据", ui_str("pts_rules_note", "zh-TW"), fixed = TRUE) &&
     !grepl("默认", ui_str("pts_sysadmin_intro", "zh-TW"), fixed = TRUE)
@@ -203,11 +194,35 @@ check("testing tab has sysadmin entry", {
     grepl("ynow_pts_banner", ui, fixed = TRUE) &&
     grepl("ynow-pts-header", ui, fixed = TRUE)
 })
+check("mobile CSS includes pts header with lang/logo flex+z-index", {
+  ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl(
+    "@media \\(max-width: 767px\\)[\\s\\S]*li\\.ynow-lang-header,[\\s\\S]*li\\.ynow-pts-header,[\\s\\S]*#ynow-header-logo",
+    ui,
+    perl = TRUE
+  ) &&
+    grepl("body.ynow-lite #ynow-pts-header", ui, fixed = TRUE) &&
+    grepl("pushLeft(ptsHdr)", ui, fixed = TRUE)
+})
+check("boot locale slim keeps pts banner labels", {
+  loc <- paste(readLines(file.path(app_dir, "ui_locale.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("pts_fyn_label|pts_pyn_label", loc, perl = TRUE) &&
+    grepl("ui_locale_boot_bundle", loc, fixed = TRUE)
+})
 check("server has sysadmin + banner", {
   srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   grepl("ynow_pts_sysadmin_apply", srv, fixed = TRUE) &&
     grepl("ynowPtsBanner", srv, fixed = TRUE) &&
     grepl("ynow_points_admin_adjust", srv, fixed = TRUE)
+})
+check("guest pts banner hidden until login", {
+  srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("visible = FALSE", srv, fixed = TRUE) &&
+    grepl("ynow-pts-hidden", ui, fixed = TRUE) &&
+    grepl("classList.add('ynow-pts-hidden')", ui, fixed = TRUE) &&
+    grepl("li.ynow-pts-header.ynow-pts-hidden", ui, fixed = TRUE) &&
+    grepl("ynow-pts-header:not(.ynow-pts-hidden)", ui, fixed = TRUE)
 })
 check("server distinguishes no-db empty state", {
   srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
