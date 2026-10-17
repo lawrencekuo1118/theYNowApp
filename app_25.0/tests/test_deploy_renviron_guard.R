@@ -37,8 +37,11 @@ check <- function(label, ok) {
 check("deploy guard mentions .Renviron", grepl("\\.Renviron", deploy_src, fixed = FALSE))
 check("deploy guard can refuse missing file", grepl("Refusing deploy: missing", deploy_src, fixed = TRUE))
 check("deploy guard has renviron override", grepl("YNOW_ALLOW_MISSING_RENVIRON", deploy_src, fixed = TRUE))
-check("deploy refuses missing Neon by default", grepl("Refusing deploy: .Renviron has no Neon", deploy_src, fixed = TRUE))
-check("deploy has Neon override", grepl("YNOW_ALLOW_MISSING_NEON", deploy_src, fixed = TRUE))
+check("deploy refuses missing account DB by default", {
+  grepl("Refusing deploy: .Renviron has no account Postgres", deploy_src, fixed = TRUE) ||
+    grepl("Refusing deploy: .Renviron has no Neon", deploy_src, fixed = TRUE)
+})
+check("deploy has account-DB override", grepl("YNOW_ALLOW_MISSING_NEON", deploy_src, fixed = TRUE))
 check("deploy auto-restores from live bundle", grepl("restore_renviron_from_shinyapps", deploy_src, fixed = TRUE))
 check("deploy injects secrets from process env", grepl("inject_renviron_from_env", deploy_src, fixed = TRUE))
 check("deploy refuses missing OAuth", grepl("neither Supabase nor Google OAuth", deploy_src, fixed = TRUE))
