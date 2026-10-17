@@ -3705,7 +3705,29 @@ ui <- dashboardPage(
       tags$div(
         class = "ynow-sidebar-date-row",
         if (exists("ynow_auth_links_ui", mode = "function")) ynow_auth_links_ui("sidebar"),
-        tags$span(class = "ynow-sidebar-date", textOutput("today", inline = TRUE))
+        tags$span(class = "ynow-sidebar-date", textOutput("today", inline = TRUE)),
+        # Mobile only (CSS): FYN/PYN right of login date. Desktop keeps top header banner.
+        tags$div(
+          class = "ynow-pts-sidebar ynow-pts-hidden",
+          id = "ynow-pts-sidebar",
+          tags$div(
+            class = "ynow-pts-sidebar-banner",
+            id = "ynow_pts_sidebar_banner",
+            role = "status",
+            `aria-label` = "Points",
+            `aria-hidden` = "true",
+            tags$div(
+              class = "ynow-pts-sidebar-line",
+              tags$span(id = "ynow_pts_sidebar_fyn_label", ""),
+              tags$span(id = "ynow_pts_sidebar_fyn_value", class = "ynow-pts-sidebar-val", "")
+            ),
+            tags$div(
+              class = "ynow-pts-sidebar-line",
+              tags$span(id = "ynow_pts_sidebar_pyn_label", ""),
+              tags$span(id = "ynow_pts_sidebar_pyn_value", class = "ynow-pts-sidebar-val", "")
+            )
+          )
+        )
       ),
       tags$hr(class = "ynow-sidebar-date-hr")
     ),
@@ -9652,13 +9674,21 @@ ui <- dashboardPage(
             if (ptsSysRefresh && s.pts_sysadmin_refresh) ptsSysRefresh.textContent = s.pts_sysadmin_refresh;
             var ptsColon = (payload && payload.locale === 'zh-TW') ? '：' : ':';
             var ptsHdrForLocale = document.getElementById('ynow-pts-header');
-            var ptsGuestHidden = !!(ptsHdrForLocale && ptsHdrForLocale.classList.contains('ynow-pts-hidden'));
+            var ptsSideForLocale = document.getElementById('ynow-pts-sidebar');
+            var ptsGuestHidden = !!(
+              (ptsHdrForLocale && ptsHdrForLocale.classList.contains('ynow-pts-hidden')) ||
+              (ptsSideForLocale && ptsSideForLocale.classList.contains('ynow-pts-hidden'))
+            );
             /* Do not refill FYN/PYN banner labels while guest-hidden. */
             if (!ptsGuestHidden) {
               var ptsFynLab = document.getElementById('ynow_pts_banner_fyn_label');
               if (ptsFynLab && s.pts_fyn_label) ptsFynLab.textContent = s.pts_fyn_label + ptsColon;
               var ptsPynLab = document.getElementById('ynow_pts_banner_pyn_label');
               if (ptsPynLab && s.pts_pyn_label) ptsPynLab.textContent = s.pts_pyn_label + ptsColon;
+              var ptsSideFynLab = document.getElementById('ynow_pts_sidebar_fyn_label');
+              if (ptsSideFynLab && s.pts_fyn_label) ptsSideFynLab.textContent = s.pts_fyn_label + ptsColon;
+              var ptsSidePynLab = document.getElementById('ynow_pts_sidebar_pyn_label');
+              if (ptsSidePynLab && s.pts_pyn_label) ptsSidePynLab.textContent = s.pts_pyn_label + ptsColon;
             }
             var atxTitle = document.getElementById('ynow_atx_page_title');
             if (atxTitle && s.atx_page_title) atxTitle.textContent = s.atx_page_title;
@@ -9948,28 +9978,53 @@ ui <- dashboardPage(
             });
             addHandler('ynowPtsBanner', function (payload) {
               if (!payload) return;
-              var fynLab = document.getElementById('ynow_pts_banner_fyn_label');
-              var pynLab = document.getElementById('ynow_pts_banner_pyn_label');
-              var fynVal = document.getElementById('ynow_pts_banner_fyn_value');
-              var pynVal = document.getElementById('ynow_pts_banner_pyn_value');
-              var hdr = document.getElementById('ynow-pts-header');
-              var banner = document.getElementById('ynow_pts_banner');
+              var pairs = [
+                {
+                  fynLab: 'ynow_pts_banner_fyn_label',
+                  pynLab: 'ynow_pts_banner_pyn_label',
+                  fynVal: 'ynow_pts_banner_fyn_value',
+                  pynVal: 'ynow_pts_banner_pyn_value',
+                  wrap: 'ynow-pts-header',
+                  banner: 'ynow_pts_banner'
+                },
+                {
+                  fynLab: 'ynow_pts_sidebar_fyn_label',
+                  pynLab: 'ynow_pts_sidebar_pyn_label',
+                  fynVal: 'ynow_pts_sidebar_fyn_value',
+                  pynVal: 'ynow_pts_sidebar_pyn_value',
+                  wrap: 'ynow-pts-sidebar',
+                  banner: 'ynow_pts_sidebar_banner'
+                }
+              ];
+              var i, el, wrap, banner;
               /* Guests: hide + clear DOM (do not map empty to em-dash placeholders). */
               if (payload.visible === false) {
-                if (fynLab) fynLab.textContent = '';
-                if (pynLab) pynLab.textContent = '';
-                if (fynVal) fynVal.textContent = '';
-                if (pynVal) pynVal.textContent = '';
-                if (hdr) hdr.classList.add('ynow-pts-hidden');
-                if (banner) banner.setAttribute('aria-hidden', 'true');
+                for (i = 0; i < pairs.length; i++) {
+                  el = document.getElementById(pairs[i].fynLab); if (el) el.textContent = '';
+                  el = document.getElementById(pairs[i].pynLab); if (el) el.textContent = '';
+                  el = document.getElementById(pairs[i].fynVal); if (el) el.textContent = '';
+                  el = document.getElementById(pairs[i].pynVal); if (el) el.textContent = '';
+                  wrap = document.getElementById(pairs[i].wrap);
+                  if (wrap) wrap.classList.add('ynow-pts-hidden');
+                  banner = document.getElementById(pairs[i].banner);
+                  if (banner) banner.setAttribute('aria-hidden', 'true');
+                }
                 return;
               }
-              if (fynLab && payload.fyn_label) fynLab.textContent = payload.fyn_label;
-              if (pynLab && payload.pyn_label) pynLab.textContent = payload.pyn_label;
-              if (fynVal) fynVal.textContent = (payload.fyn != null && payload.fyn !== '') ? String(payload.fyn) : '—';
-              if (pynVal) pynVal.textContent = (payload.pyn != null && payload.pyn !== '') ? String(payload.pyn) : '—';
-              if (hdr) hdr.classList.remove('ynow-pts-hidden');
-              if (banner) banner.setAttribute('aria-hidden', 'false');
+              for (i = 0; i < pairs.length; i++) {
+                el = document.getElementById(pairs[i].fynLab);
+                if (el && payload.fyn_label) el.textContent = payload.fyn_label;
+                el = document.getElementById(pairs[i].pynLab);
+                if (el && payload.pyn_label) el.textContent = payload.pyn_label;
+                el = document.getElementById(pairs[i].fynVal);
+                if (el) el.textContent = (payload.fyn != null && payload.fyn !== '') ? String(payload.fyn) : '—';
+                el = document.getElementById(pairs[i].pynVal);
+                if (el) el.textContent = (payload.pyn != null && payload.pyn !== '') ? String(payload.pyn) : '—';
+                wrap = document.getElementById(pairs[i].wrap);
+                if (wrap) wrap.classList.remove('ynow-pts-hidden');
+                banner = document.getElementById(pairs[i].banner);
+                if (banner) banner.setAttribute('aria-hidden', 'false');
+              }
             });
             addHandler('ynowAuthFeature', function (payload) {
               if (!payload) return;
@@ -14387,16 +14442,25 @@ ui <- dashboardPage(
             position: relative !important;
             overflow: visible !important;
           }
-          /* Lite: same top-banner pts pattern when signed in (not .ynow-pts-hidden) */
+          /* Mobile override: points live in the sidebar (right of login date), not header. */
+          .main-header .navbar-custom-menu .navbar-nav > li.ynow-pts-header,
+          .main-header .navbar-custom-menu .navbar-nav > li.ynow-pts-header:not(.ynow-pts-hidden),
+          body.ynow-lite .main-header .navbar-custom-menu .navbar-nav > li.ynow-pts-header,
           body.ynow-lite .main-header .navbar-custom-menu .navbar-nav > li.ynow-pts-header:not(.ynow-pts-hidden),
-          body.ynow-lite #ynow-pts-header:not(.ynow-pts-hidden) {
-            display: flex !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-          }
-          body.ynow-lite #ynow-pts-header:not(.ynow-pts-hidden) .ynow-pts-banner {
-            display: flex !important;
-            visibility: visible !important;
+          body.ynow-lite #ynow-pts-header,
+          body.ynow-lite #ynow-pts-header:not(.ynow-pts-hidden),
+          #ynow-pts-header,
+          #ynow-pts-header:not(.ynow-pts-hidden) {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            width: 0 !important;
+            min-width: 0 !important;
+            max-width: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            overflow: hidden !important;
+            pointer-events: none !important;
           }
           .ynow-ccy-float {
             right: 8px;

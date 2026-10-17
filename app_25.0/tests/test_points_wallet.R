@@ -227,8 +227,9 @@ check("guest pts banner hidden until login", {
 check("guest pts banner clears DOM values when hidden", {
   ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   grepl("payload.visible === false", ui, fixed = TRUE) &&
-    grepl("fynVal.textContent = ''", ui, fixed = TRUE) &&
-    grepl("pynVal.textContent = ''", ui, fixed = TRUE) &&
+    grepl("el.textContent = ''", ui, fixed = TRUE) &&
+    grepl("ynow_pts_sidebar_fyn_value", ui, fixed = TRUE) &&
+    grepl("classList.add('ynow-pts-hidden')", ui, fixed = TRUE) &&
     grepl("ptsGuestHidden", ui, fixed = TRUE)
 })
 check("guest pts banner initial HTML labels empty", {
@@ -238,6 +239,26 @@ check("guest pts banner initial HTML labels empty", {
     !grepl('ynow_pts_banner_pyn_label", "PYN', ui, fixed = TRUE) &&
     grepl('ynow_pts_banner_fyn_label", ""', ui, fixed = TRUE) &&
     grepl('ynow_pts_banner_pyn_label", ""', ui, fixed = TRUE)
+})
+check("mobile pts live in sidebar right of login date", {
+  ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  auth <- paste(readLines(file.path(app_dir, "auth_account.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("ynow-pts-sidebar", ui, fixed = TRUE) &&
+    grepl("ynow_pts_sidebar_fyn_label", ui, fixed = TRUE) &&
+    grepl("ynow-sidebar-date-row", ui, fixed = TRUE) &&
+    grepl("ynow_pts_sidebar", ui, fixed = TRUE) &&
+    grepl("@media \\(max-width:767px\\)", auth, perl = TRUE) &&
+    grepl("#ynow-pts-sidebar.ynow-pts-sidebar:not\\(.ynow-pts-hidden\\)", auth, perl = TRUE) &&
+    grepl("Mobile override: points live in the sidebar", ui, fixed = TRUE)
+})
+check("auth memory user id helper stable", {
+  auth_src <- file.path(app_dir, "auth_account.R")
+  if (!exists("ynow_auth_memory_user_id", mode = "function")) {
+    sys.source(auth_src, envir = environment())
+  }
+  a <- ynow_auth_memory_user_id("A@B.com")
+  b <- ynow_auth_memory_user_id("a@b.com")
+  grepl("^mem:", a) && identical(a, b) && nchar(a) > 8
 })
 check("server distinguishes no-db empty state", {
   srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")

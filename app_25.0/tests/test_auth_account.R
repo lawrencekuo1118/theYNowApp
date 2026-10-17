@@ -155,7 +155,8 @@ Sys.setenv(YNOW_AUTH_DEMO_EMAIL = "demo@ynow.app", YNOW_AUTH_DEMO_PASSWORD = "de
 res_bad <- ynow_auth_try_login("demo@ynow.app", "wrong")
 check("invalid password", isFALSE(res_bad$ok) && identical(res_bad$message_key, "auth_msg_invalid"))
 res_ok <- ynow_auth_try_login("Demo@Ynow.app", "demo-pass")
-check("demo login ok", isTRUE(res_ok$ok) && identical(res_ok$user$email, "demo@ynow.app"))
+check("demo login ok", isTRUE(res_ok$ok) && identical(res_ok$user$email, "demo@ynow.app") &&
+        grepl("^mem:", as.character(res_ok$user$id %||% "")[1]))
 check("missing fields", {
   r <- ynow_auth_try_login("", "")
   isFALSE(r$ok) && identical(r$message_key, "auth_msg_missing")
@@ -499,7 +500,42 @@ check("social accept without Neon is self-serve user", {
     provider_uid = "sub-123"
   ))
   isTRUE(r$ok) && identical(r$user$email, "new.user@gmail.com") &&
-    identical(r$user$role, "user") && identical(r$user$provider, "google")
+    identical(r$user$role, "user") && identical(r$user$provider, "google") &&
+    grepl("^mem:", as.character(r$user$id %||% "")[1]) &&
+    identical(
+      as.character(r$user$id)[1],
+      ynow_auth_memory_user_id("new.user@gmail.com")
+    )
+})
+check("no-Neon social id enables points_on_login gift", {
+  Sys.unsetenv("YNOW_DB_HOST")
+  Sys.unsetenv("YNOW_DATABASE_URL")
+  Sys.setenv(YNOW_POINTS_BACKEND = "memory", YNOW_ENABLE_ACCOUNT_LOGIN = "1")
+  pts_src <- file.path(app_dir, "points_wallet.R")
+  if (file.exists(pts_src) && !exists("ynow_points_on_login", mode = "function")) {
+    sys.source(pts_src, envir = environment())
+  }
+  if (exists("ynow_points_reset_memory", mode = "function")) {
+    tryCatch(ynow_points_reset_memory(), error = function(e) NULL)
+  }
+  r <- ynow_auth_accept_social_user(list(
+    email = "pts.gift@example.com",
+    provider = "google",
+    provider_uid = "sub-gift"
+  ))
+  uid <- as.character(r$user$id %||% "")[1]
+  pts <- if (nzchar(uid) && exists("ynow_points_on_login", mode = "function")) {
+    ynow_points_on_login(uid)
+  } else {
+    NULL
+  }
+  bals <- if (nzchar(uid) && exists("ynow_points_balances", mode = "function")) {
+    ynow_points_balances(uid)
+  } else {
+    list(fyn = NA_integer_)
+  }
+  isTRUE(r$ok) && nzchar(uid) && isTRUE(pts$gift_granted) &&
+    isTRUE(as.integer(bals$fyn)[1] >= 100L)
 })
 check("social accept rejects empty email", {
   r <- ynow_auth_accept_social_user(list(email = "", provider = "google"))
