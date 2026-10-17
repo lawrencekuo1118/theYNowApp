@@ -73,11 +73,104 @@ ynow_db_config <- function() {
 }
 
 #' TRUE when Neon/Postgres credentials are present (does not open a socket).
+#' Note: "ready" means env + drivers — not that the host is Neon Free (neon.tech).
 ynow_db_ready <- function() {
   !is.null(ynow_db_config()) &&
     requireNamespace("DBI", quietly = TRUE) &&
     requireNamespace("RPostgres", quietly = TRUE)
 }
+
+#' Classify DB host without exposing hostname/URL/password.
+#' @return "neon.tech" | "supabase" | "aws-ish" | "other" | "empty"
+ynow_db_host_kind <- function(cfg = NULL) {
+  if (is.null(cfg)) cfg <- tryCatch(ynow_db_config(), error = function(e) NULL)
+  host <- tolower(as.character(cfg$host %||% "")[1])
+  if (!nzchar(host)) return("empty")
+  if (grepl("neon\\.tech", host, perl = TRUE)) return("neon.tech")
+  if (grepl("supabase", host, fixed = TRUE)) return("supabase")
+  if (grepl("amazonaws\\.com|\\.rds\\.", host, perl = TRUE)) return("aws-ish")
+  "other"
+}
+
+#' Safe runtime probe for account/points Postgres (no secrets in return value).
+#' Distinguishes: credentials present vs host vendor vs live connect.
+#' @return list(ready, drivers_ok, host_kind, host_len, dbname_len, connect_ok, connect_err)
+ynow_db_runtime_probe <- function(try_connect = TRUE) {
+  cfg <- tryCatch(ynow_db_config(), error = function(e) NULL)
+  drivers_ok <- requireNamespace("DBI", quietly = TRUE) &&
+    requireNamespace("RPostgres", quietly = TRUE)
+  ready <- !is.null(cfg) && isTRUE(drivers_ok)
+  host_kind <- ynow_db_host_kind(cfg)
+  out <- list(
+    ready = ready,
+    drivers_ok = drivers_ok,
+    host_kind = host_kind,
+    host_len = if (is.null(cfg)) 0L else nchar(as.character(cfg$host %||% "")[1]),
+    dbname_len = if (is.null(cfg)) 0L else nchar(as.character(cfg$dbname %||% "")[1]),
+    has_user = if (is.null(cfg)) FALSE else nzchar(as.character(cfg$user %||% "")[1]),
+    has_password = if (is.null(cfg)) FALSE else nzchar(as.character(cfg$password %||% "")[1]),
+    connect_ok = NA,
+    connect_err = NA_character_
+  )
+  if (!isTRUE(try_connect) || !isTRUE(ready)) {
+    out$connect_ok <- FALSE
+    if (!isTRUE(ready)) out$connect_err <- "not_ready"
+    return(out)
+  }
+  # One-shot connect; never return password/host/URL.
+  con <- tryCatch(
+    DBI::dbConnect(
+      RPostgres::Postgres(),
+      host = cfg$host,
+      port = cfg$port,
+      dbname = cfg$dbname,
+      user = cfg$user,
+      password = cfg$password,
+      sslmode = cfg$sslmode %||% "require"
+    ),
+    error = function(e) e
+  )
+  if (inherits(con, "error") || inherits(con, "condition")) {
+    out$connect_ok <- FALSE
+    msg <- conditionMessage(con)
+    # Strip anything that looks like a password / user@host URL fragment.
+    msg <- gsub(":[^@\\s/]+@", ":***@", msg, perl = TRUE)
+    msg <- gsub("password[=:][^\\s;]+", "password=***", msg, ignore.case = TRUE, perl = TRUE)
+    out$connect_err <- substr(msg, 1L, 160L)
+    return(out)
+  }
+  ok <- tryCatch({
+    DBI::dbGetQuery(con, "SELECT 1 AS ok")
+    TRUE
+  }, error = function(e) {
+    out$connect_err <<- substr(gsub(":[^@\\s/]+@", ":***@", conditionMessage(e), perl = TRUE), 1L, 160L)
+    FALSE
+  })
+  tryCatch(DBI::dbDisconnect(con), error = function(e) NULL)
+  out$connect_ok <- isTRUE(ok)
+  out
+}
+
+# #region agent log
+#' Append one NDJSON probe line (no secrets).
+ynow_db_debug_log_probe <- function(reason = "manual", try_connect = TRUE) {
+  tryCatch({
+    probe <- ynow_db_runtime_probe(try_connect = try_connect)
+    be <- tryCatch({
+      if (exists("ynow_points_backend", mode = "function")) ynow_points_backend() else NA_character_
+    }, error = function(e) NA_character_)
+    cat(jsonlite::toJSON(list(
+      hypothesisId = "A-D",
+      location = "auth_db.R:ynow_db_debug_log_probe",
+      message = "db/points runtime probe",
+      timestamp = as.numeric(Sys.time()) * 1000,
+      data = c(list(reason = reason, points_backend = be), probe)
+    ), auto_unbox = TRUE, null = "null"), "\n",
+    file = "/opt/cursor/logs/debug.log", append = TRUE, sep = "")
+    invisible(probe)
+  }, error = function(e) invisible(NULL))
+}
+# #endregion
 
 ynow_db_driver_ok <- function() {
   requireNamespace("DBI", quietly = TRUE) &&

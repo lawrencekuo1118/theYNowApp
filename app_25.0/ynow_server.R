@@ -653,9 +653,28 @@ server <- function(input, output, session) {
     if (!exists("ynow_points_admin_list_users", mode = "function")) {
       return(tags$p(class = "text-danger", .lab("pts_msg_backend", "Points backend is unavailable.")))
     }
-    # Without Neon (YNOW_DB_*) / RPostgres, points fall back to empty per-process memory — not a wiped DB.
+    # Without Postgres creds (YNOW_DB_*) / RPostgres, points fall back to empty per-process memory — not a wiped DB.
+    # Note: ynow_points_backend() returns the label "neon" whenever ynow_db_ready() — that label is historical
+    # and does NOT prove the host is Neon Free (neon.tech); see ynow_db_host_kind().
     backend <- tryCatch(ynow_points_backend(), error = function(e) "memory")
     db_ready <- exists("ynow_db_ready", mode = "function") && isTRUE(ynow_db_ready())
+    # #region agent log
+    probe <- tryCatch({
+      if (exists("ynow_db_debug_log_probe", mode = "function")) {
+        ynow_db_debug_log_probe("sysadmin_panel", try_connect = TRUE)
+      } else if (exists("ynow_db_runtime_probe", mode = "function")) {
+        ynow_db_runtime_probe(try_connect = TRUE)
+      } else {
+        NULL
+      }
+    }, error = function(e) NULL)
+    # #endregion
+    host_kind <- tryCatch({
+      if (!is.null(probe$host_kind)) probe$host_kind
+      else if (exists("ynow_db_host_kind", mode = "function")) ynow_db_host_kind()
+      else "unknown"
+    }, error = function(e) "unknown")
+    connect_ok <- tryCatch(isTRUE(probe$connect_ok), error = function(e) NA)
     df <- tryCatch(ynow_points_admin_list_users(), error = function(e) NULL)
     if (!is.data.frame(df) || nrow(df) < 1L) {
       empty_msg <- if (!isTRUE(db_ready) || !identical(backend, "neon")) {
@@ -679,6 +698,14 @@ server <- function(input, output, session) {
               .lab("pts_sysadmin_backend_fmt", "Points backend: %s"),
               as.character(backend)
             )
+          ),
+          tags$br(),
+          tags$span(
+            id = "ynow_pts_sysadmin_db_diag",
+            sprintf(
+              "DB diag: ready=%s host_kind=%s connect_ok=%s (label neon≠neon.tech)",
+              as.character(db_ready), as.character(host_kind), as.character(connect_ok)
+            )
           )
         ),
         tags$p(class = "text-warning", empty_msg)
@@ -697,6 +724,14 @@ server <- function(input, output, session) {
           sprintf(
             .lab("pts_sysadmin_backend_fmt", "Points backend: %s"),
             as.character(backend)
+          )
+        ),
+        tags$br(),
+        tags$span(
+          id = "ynow_pts_sysadmin_db_diag",
+          sprintf(
+            "DB diag: ready=%s host_kind=%s connect_ok=%s (label neon≠neon.tech)",
+            as.character(db_ready), as.character(host_kind), as.character(connect_ok)
           )
         )
       ),
