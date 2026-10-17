@@ -200,6 +200,23 @@ check("server has sysadmin + banner", {
     grepl("ynowPtsBanner", srv, fixed = TRUE) &&
     grepl("ynow_points_admin_adjust", srv, fixed = TRUE)
 })
+check("server distinguishes no-db empty state", {
+  srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("pts_sysadmin_no_db", srv, fixed = TRUE) &&
+    grepl("ynow_db_ready", srv, fixed = TRUE)
+})
+check("forced deps file sources Neon packages", {
+  deps <- paste(readLines(file.path(app_dir, "ynow_forced_deps.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("library(RPostgres)", deps, fixed = TRUE) &&
+    grepl("library(pool)", deps, fixed = TRUE) &&
+    grepl("library(sodium)", deps, fixed = TRUE)
+})
+check("locale no-db keys", {
+  nzchar(ui_str("pts_sysadmin_no_db", "en")) &&
+    nzchar(ui_str("pts_sysadmin_no_db", "zh-TW")) &&
+    grepl("Neon", ui_str("pts_sysadmin_no_db", "en"), fixed = TRUE) &&
+    grepl("Neon", ui_str("pts_sysadmin_no_db", "zh-TW"), fixed = TRUE)
+})
 check("account_points is independent tab", {
   grepl('tabName = "account_points"', auth, fixed = TRUE) &&
     grepl("ynow_points_panel_ui", auth, fixed = TRUE) &&
