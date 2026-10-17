@@ -960,7 +960,7 @@ price_alert_server <- function(input, output, session, ui_locale_rv = NULL,
       return(TRUE)
     }
     if (!exists("ynow_points_gate", mode = "function")) return(TRUE)
-    # Prefer Testing view-as uuid when active (DB balances); else signed-in account.
+    # Prefer sysadmin view-as uuid when active (DB balances); else signed-in account.
     eff_fn <- tryCatch(session$userData$ynow_pts_effective_user, error = function(e) NULL)
     u <- if (is.function(eff_fn)) {
       tryCatch(eff_fn(), error = function(e) NULL)
