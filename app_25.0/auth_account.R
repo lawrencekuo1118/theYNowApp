@@ -124,6 +124,23 @@ ynow_auth_accept_social_user <- function(oauth_user) {
   }
 
   # No Neon yet: still allow self-serve session (not an admin-gated whitelist).
+  # NOTE: no stable `id` here → ynow_points_on_login is skipped (see agent debug A/D).
+  # #region agent log
+  tryCatch({
+    cat(jsonlite::toJSON(list(
+      hypothesisId = "A-D",
+      location = "auth_account.R:ynow_auth_accept_social_user",
+      message = "social accept without Neon — no user id",
+      timestamp = as.numeric(Sys.time()) * 1000,
+      data = list(
+        neon_ready = FALSE,
+        has_email = nzchar(em),
+        provider = prov,
+        will_omit_id = TRUE
+      )
+    ), auto_unbox = TRUE), "\n", file = "/opt/cursor/logs/debug.log", append = TRUE, sep = "")
+  }, error = function(e) invisible(NULL))
+  # #endregion
   list(
     ok = TRUE,
     user = list(
@@ -899,8 +916,8 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
     account_user(user)
     # First gift (100 FYN once) + daily check-in (+30 FYN / Asia/Taipei day). Never reset.
     pts_login <- NULL
+    uid <- as.character(user$id %||% "")[1]
     if (exists("ynow_points_on_login", mode = "function")) {
-      uid <- as.character(user$id %||% "")[1]
       if (nzchar(uid)) {
         pts_login <- tryCatch(
           ynow_points_on_login(uid),
@@ -908,6 +925,28 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
         )
       }
     }
+    # #region agent log
+    tryCatch({
+      be <- tryCatch(ynow_points_backend(), error = function(e) "unknown")
+      db_ok <- exists("ynow_db_ready", mode = "function") && isTRUE(ynow_db_ready())
+      cat(jsonlite::toJSON(list(
+        hypothesisId = "A-D",
+        location = "auth_account.R:.finish_auth_success",
+        message = "post-login points hook",
+        timestamp = as.numeric(Sys.time()) * 1000,
+        data = list(
+          has_uid = nzchar(uid),
+          uid_len = nchar(uid),
+          on_login_ran = !is.null(pts_login),
+          gift_granted = isTRUE(pts_login$gift_granted),
+          checkin_granted = isTRUE(pts_login$checkin_granted),
+          backend = be,
+          neon_ready = db_ok,
+          provider = as.character(user$provider %||% "")[1]
+        )
+      ), auto_unbox = TRUE), "\n", file = "/opt/cursor/logs/debug.log", append = TRUE, sep = "")
+    }, error = function(e) invisible(NULL))
+    # #endregion
     mk <- as.character(message_key %||% "auth_msg_ok")[1]
     msg <- .str(mk, fallback)
     if (isTRUE(pts_login$checkin_granted)) {

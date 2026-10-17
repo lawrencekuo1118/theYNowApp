@@ -9962,6 +9962,20 @@ ui <- dashboardPage(
                 if (pynVal) pynVal.textContent = '';
                 if (hdr) hdr.classList.add('ynow-pts-hidden');
                 if (banner) banner.setAttribute('aria-hidden', 'true');
+                // #region agent log
+                try {
+                  console.log('[ynow-debug-pts]', JSON.stringify({
+                    hypothesisId: 'B-C-E', message: 'client banner guest-hide',
+                    visible: false, hiddenClass: !!(hdr && hdr.classList.contains('ynow-pts-hidden')),
+                    display: hdr ? getComputedStyle(hdr).display : null
+                  }));
+                  if (window.Shiny && Shiny.setInputValue) {
+                    Shiny.setInputValue('ynow_debug_pts_banner', {
+                      visible: false, hiddenClass: true, reason: 'guest'
+                    }, {priority: 'event'});
+                  }
+                } catch (eDbgG) {}
+                // #endregion
                 return;
               }
               if (fynLab && payload.fyn_label) fynLab.textContent = payload.fyn_label;
@@ -9970,6 +9984,32 @@ ui <- dashboardPage(
               if (pynVal) pynVal.textContent = (payload.pyn != null && payload.pyn !== '') ? String(payload.pyn) : '—';
               if (hdr) hdr.classList.remove('ynow-pts-hidden');
               if (banner) banner.setAttribute('aria-hidden', 'false');
+              // #region agent log
+              try {
+                var cs = hdr ? getComputedStyle(hdr) : null;
+                var sideRow = document.querySelector('.ynow-sidebar-date-row');
+                console.log('[ynow-debug-pts]', JSON.stringify({
+                  hypothesisId: 'B-C-E', message: 'client banner show',
+                  visible: true,
+                  hiddenClass: !!(hdr && hdr.classList.contains('ynow-pts-hidden')),
+                  display: cs ? cs.display : null,
+                  fyn: fynVal ? fynVal.textContent : null,
+                  pyn: pynVal ? pynVal.textContent : null,
+                  sidebarDateRow: !!sideRow,
+                  vw: window.innerWidth
+                }));
+                if (window.Shiny && Shiny.setInputValue) {
+                  Shiny.setInputValue('ynow_debug_pts_banner', {
+                    visible: true,
+                    hiddenClass: !!(hdr && hdr.classList.contains('ynow-pts-hidden')),
+                    display: cs ? cs.display : null,
+                    fyn: fynVal ? fynVal.textContent : null,
+                    pyn: pynVal ? pynVal.textContent : null,
+                    vw: window.innerWidth
+                  }, {priority: 'event'});
+                }
+              } catch (eDbgS) {}
+              // #endregion
             });
             addHandler('ynowAuthFeature', function (payload) {
               if (!payload) return;

@@ -452,6 +452,22 @@ server <- function(input, output, session) {
     pyn_lab <- tryCatch(paste0(ui_str("pts_pyn_label", loc), pts_colon), error = function(e) "PYN points:")
     if (is.null(u)) {
       # Guests: hide FYN/PYN header entirely (no placeholder "—" next to locale).
+      # #region agent log
+      tryCatch({
+        cat(jsonlite::toJSON(list(
+          hypothesisId = "B-C",
+          location = "ynow_server.R:.ynow_pts_push_banner",
+          message = "banner push guest",
+          timestamp = as.numeric(Sys.time()) * 1000,
+          data = list(
+            has_user = FALSE,
+            visible = FALSE,
+            backend = tryCatch(ynow_points_backend(), error = function(e) "unknown"),
+            neon_ready = exists("ynow_db_ready", mode = "function") && isTRUE(ynow_db_ready())
+          )
+        ), auto_unbox = TRUE), "\n", file = "/opt/cursor/logs/debug.log", append = TRUE, sep = "")
+      }, error = function(e) invisible(NULL))
+      # #endregion
       session$sendCustomMessage(
         "ynowPtsBanner",
         list(fyn = "", pyn = "", fyn_label = fyn_lab, pyn_label = pyn_lab, visible = FALSE)
@@ -461,6 +477,28 @@ server <- function(input, output, session) {
     bund <- .ynow_pts_user_bundle(u)
     fyn_txt <- if (is.finite(bund$fyn)) as.character(bund$fyn) else "—"
     pyn_txt <- if (is.finite(bund$pyn)) as.character(bund$pyn) else "—"
+    # #region agent log
+    tryCatch({
+      cat(jsonlite::toJSON(list(
+        hypothesisId = "A-B-C-E",
+        location = "ynow_server.R:.ynow_pts_push_banner",
+        message = "banner push signed-in",
+        timestamp = as.numeric(Sys.time()) * 1000,
+        data = list(
+          has_user = TRUE,
+          has_uid = nzchar(as.character(bund$uid %||% "")[1]),
+          uid_len = nchar(as.character(bund$uid %||% "")[1]),
+          visible = TRUE,
+          fyn_finite = is.finite(bund$fyn),
+          pyn_finite = is.finite(bund$pyn),
+          fyn_txt = fyn_txt,
+          pyn_txt = pyn_txt,
+          backend = tryCatch(ynow_points_backend(), error = function(e) "unknown"),
+          neon_ready = exists("ynow_db_ready", mode = "function") && isTRUE(ynow_db_ready())
+        )
+      ), auto_unbox = TRUE), "\n", file = "/opt/cursor/logs/debug.log", append = TRUE, sep = "")
+    }, error = function(e) invisible(NULL))
+    # #endregion
     session$sendCustomMessage(
       "ynowPtsBanner",
       list(
@@ -632,6 +670,23 @@ server <- function(input, output, session) {
     tryCatch(ui_locale(), error = function(e) NULL)
     .ynow_pts_push_banner()
   })
+
+  # #region agent log
+  observeEvent(input$ynow_debug_pts_banner, {
+    payload <- input$ynow_debug_pts_banner
+    if (is.null(payload)) return()
+    tryCatch({
+      cat(jsonlite::toJSON(list(
+        hypothesisId = "B-C-E",
+        location = "ynow_server.R:ynow_debug_pts_banner",
+        message = "client banner ack",
+        timestamp = as.numeric(Sys.time()) * 1000,
+        data = payload
+      ), auto_unbox = TRUE, null = "null"), "\n",
+      file = "/opt/cursor/logs/debug.log", append = TRUE, sep = "")
+    }, error = function(e) invisible(NULL))
+  }, ignoreNULL = TRUE, ignoreInit = TRUE)
+  # #endregion
 
   # Testing tab — system admin (no separate account/password).
   observeEvent(input$ynow_pts_sysadmin_enter, {
