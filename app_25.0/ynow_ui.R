@@ -3549,7 +3549,7 @@ beta_rolling_section_ui <- function() {
               )
             ),
             tags$div(
-              style = "margin-top: 8px; display:flex; flex-wrap:wrap; gap:8px;",
+              style = "margin-top: 8px; display:flex; flex-wrap:wrap; gap:8px; align-items:center;",
               actionButton(
                 "ynow_pts_sysadmin_exit",
                 label = tags$span(
@@ -3563,6 +3563,23 @@ beta_rolling_section_ui <- function() {
                 label = tags$span(
                   id = "ynow_pts_sysadmin_refresh_label",
                   "Refresh user list"
+                ),
+                class = "btn-default"
+              ),
+              # Stable bindings (outside renderUI) so Switch view / exit always fire.
+              actionButton(
+                "ynow_pts_sysadmin_viewas",
+                label = tags$span(
+                  id = "ynow_pts_sysadmin_viewas_label",
+                  "Switch view"
+                ),
+                class = "btn-info"
+              ),
+              actionButton(
+                "ynow_pts_sysadmin_viewas_exit",
+                label = tags$span(
+                  id = "ynow_pts_sysadmin_viewas_exit_label",
+                  "Exit user view"
                 ),
                 class = "btn-default"
               )

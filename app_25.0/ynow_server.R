@@ -407,10 +407,12 @@ server <- function(input, output, session) {
   session$userData$ynow_pts_view_as <- ynow_pts_view_as
 
   #' Push / clear view-as chrome + silver title Loading (no PII beyond public_id).
-  .ynow_view_as_push_chrome <- function() {
+  .ynow_view_as_push_chrome <- function(va = NULL) {
     loc <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "en")
     .lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
-    va <- tryCatch(ynow_pts_view_as(), error = function(e) NULL)
+    if (is.null(va)) {
+      va <- tryCatch(ynow_pts_view_as(), error = function(e) NULL)
+    }
     if (!is.list(va) || !nzchar(as.character(va$public_id %||% "")[1])) {
       tryCatch(
         session$sendCustomMessage("ynowViewAsMode", list(active = FALSE)),
@@ -437,6 +439,12 @@ server <- function(input, output, session) {
     )
     invisible(TRUE)
   }
+
+  # Keep silver Loading / chrome in sync whenever view-as changes.
+  observe({
+    va <- ynow_pts_view_as()
+    .ynow_view_as_push_chrome(va)
+  })
 
   .ynow_account_gate_ui <- function(loc) {
     if (!isTRUE(ynow_auth_enabled())) {
@@ -737,40 +745,43 @@ server <- function(input, output, session) {
     ynow_pts_sysadmin_tick(isolate(ynow_pts_sysadmin_tick()) + 1L)
   }, ignoreInit = TRUE)
   observeEvent(input$ynow_pts_sysadmin_viewas, {
-    if (!isTRUE(ynow_pts_sysadmin_on())) return()
+    if (!isTRUE(ynow_pts_sysadmin_on())) {
+      showNotification(
+        tryCatch(
+          ui_str("pts_sysadmin_need_enter", normalize_ui_locale(ui_locale())),
+          error = function(e) "Sign in to system admin first."
+        ),
+        type = "warning"
+      )
+      return()
+    }
     loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
     .lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
-    pid <- as.character(input$ynow_pts_sysadmin_user %||% "")[1]
-    uid <- if (exists("ynow_points_resolve_public_id", mode = "function")) {
-      ynow_points_resolve_public_id(pid)
-    } else {
-      ""
+    # selectInput value is internal user_id; label (names) is opaque public_id.
+    # Race: freshly rendered select may not have reported yet — fall back to first listed user.
+    uid <- as.character(input$ynow_pts_sysadmin_user %||% "")[1]
+    pid <- ""
+    role <- "user"
+    if (!nzchar(uid) && exists("ynow_points_admin_list_users", mode = "function")) {
+      df0 <- tryCatch(ynow_points_admin_list_users(), error = function(e) NULL)
+      if (is.data.frame(df0) && nrow(df0) > 0L) {
+        uid <- as.character(df0$user_id[[1]] %||% "")[1]
+        pid <- as.character(df0$public_id[[1]] %||% "")[1]
+        if ("role" %in% names(df0)) role <- as.character(df0$role[[1]] %||% "user")[1]
+      }
     }
-    if (!nzchar(uid) || !nzchar(pid)) {
+    if (nzchar(uid) && !nzchar(pid) && exists("ynow_points_public_id", mode = "function")) {
+      pid <- tryCatch(ynow_points_public_id(uid), error = function(e) "")
+    }
+    if (!nzchar(uid)) {
       showNotification(.lab("pts_sysadmin_bad_user", "Select a user from the list."), type = "warning")
       return()
     }
-    role <- "user"
-    if (exists("ynow_points_admin_list_users", mode = "function")) {
-      df <- tryCatch(ynow_points_admin_list_users(), error = function(e) NULL)
-      if (is.data.frame(df) && nrow(df) > 0L && "public_id" %in% names(df)) {
-        hit <- df[as.character(df$public_id) == pid, , drop = FALSE]
-        if (nrow(hit) > 0L && "role" %in% names(hit)) {
-          role <- as.character(hit$role[[1]] %||% "user")[1]
-        }
-      }
-    }
-    ynow_pts_view_as(list(public_id = pid, user_id = uid, role = role))
-    ynow_pts_sysadmin_tick(isolate(ynow_pts_sysadmin_tick()) + 1L)
-    .ynow_pts_push_banner()
-    .ynow_view_as_push_chrome()
-    # Open Home so admin sees the user’s current live UI (silver Loading).
-    tryCatch({
-      if (exists("updateTabItems", mode = "function")) {
-        updateTabItems(session, "sidebar_tabs", "home")
-      }
-      session$sendCustomMessage("ynowGotoTab", list(tab = "home"))
-    }, error = function(e) NULL)
+    if (!nzchar(pid)) pid <- uid
+    va <- list(public_id = pid, user_id = uid, role = role)
+    ynow_pts_view_as(va)
+    # Chrome/silver first (no DB); banner may hit Postgres and must not block the signal.
+    .ynow_view_as_push_chrome(va)
     showNotification(
       sprintf(
         .lab("pts_sysadmin_viewas_ok_fmt", "Viewing as %s (de-identified)."),
@@ -779,22 +790,29 @@ server <- function(input, output, session) {
       type = "message",
       duration = 4
     )
+    tryCatch(.ynow_pts_push_banner(), error = function(e) NULL)
+    # Navigate after chrome so silver Loading is visible on Home.
+    tryCatch({
+      if (exists("updateTabItems", mode = "function")) {
+        updateTabItems(session, "sidebar_tabs", "home")
+      }
+      session$sendCustomMessage("ynowGotoTab", list(tab = "home"))
+    }, error = function(e) NULL)
+    # Refresh panel last (avoid interrupting view-as side effects).
+    ynow_pts_sysadmin_tick(isolate(ynow_pts_sysadmin_tick()) + 1L)
   }, ignoreInit = TRUE)
   observeEvent(input$ynow_pts_sysadmin_viewas_exit, {
     ynow_pts_view_as(NULL)
-    ynow_pts_sysadmin_tick(isolate(ynow_pts_sysadmin_tick()) + 1L)
-    .ynow_view_as_push_chrome()
-    .ynow_pts_push_banner()
+    .ynow_view_as_push_chrome(NULL)
+    tryCatch(.ynow_pts_push_banner(), error = function(e) NULL)
     # Return to the system-admin portal after exiting view-as.
     tryCatch({
-      if (exists("ynowShowSidebarFootTab", mode = "function")) {
-        # client helper — notify via custom message / setInputValue
-      }
       if (exists("updateTabItems", mode = "function")) {
         updateTabItems(session, "sidebar_tabs", "testing")
       }
       session$sendCustomMessage("ynowGotoTab", list(tab = "testing"))
     }, error = function(e) NULL)
+    ynow_pts_sysadmin_tick(isolate(ynow_pts_sysadmin_tick()) + 1L)
   }, ignoreInit = TRUE)
 
   output$ynow_pts_sysadmin_panel <- renderUI({
@@ -867,10 +885,16 @@ server <- function(input, output, session) {
     }
     status_ok <- .lab("pts_sysadmin_status_ok", "Active")
     status_off <- .lab("pts_sysadmin_status_disabled", "Disabled")
-    choices <- stats::setNames(as.character(df$public_id), as.character(df$public_id))
+    # Value = internal user_id; label = opaque public_id (avoids a second DB resolve on Switch view).
+    choices <- stats::setNames(as.character(df$user_id), as.character(df$public_id))
     va <- tryCatch(ynow_pts_view_as(), error = function(e) NULL)
+    va_uid <- if (is.list(va)) as.character(va$user_id %||% "")[1] else ""
     va_pid <- if (is.list(va)) as.character(va$public_id %||% "")[1] else ""
-    sel <- if (nzchar(va_pid) && va_pid %in% names(choices)) va_pid else choices[[1]]
+    sel <- if (nzchar(va_uid) && va_uid %in% as.character(choices)) {
+      va_uid
+    } else {
+      as.character(choices[[1]])
+    }
     viewas_banner <- if (nzchar(va_pid)) {
       tags$div(
         class = "alert alert-info",
@@ -975,22 +999,13 @@ server <- function(input, output, session) {
           ),
           class = "btn-warning"
         ),
-        actionButton(
-          "ynow_pts_sysadmin_viewas",
-          label = tags$span(
-            id = "ynow_pts_sysadmin_viewas_label",
-            .lab("pts_sysadmin_viewas", "Switch view")
-          ),
-          class = "btn-info"
-        ),
-        actionButton(
-          "ynow_pts_sysadmin_viewas_exit",
-          label = tags$span(
-            id = "ynow_pts_sysadmin_viewas_exit_label",
-            .lab("pts_sysadmin_viewas_exit", "Exit user view")
-          ),
-          class = "btn-default",
-          disabled = if (!nzchar(va_pid)) "disabled" else NULL
+        tags$span(
+          class = "text-muted",
+          style = "font-size:12.5px;",
+          .lab(
+            "pts_sysadmin_viewas_toolbar_hint",
+            "Use Switch view / Exit user view in the toolbar above."
+          )
         )
       )
     )
@@ -1007,12 +1022,8 @@ server <- function(input, output, session) {
       showNotification(.lab("pts_msg_backend", "Points backend is unavailable."), type = "error")
       return()
     }
-    pid <- as.character(input$ynow_pts_sysadmin_user %||% "")[1]
-    uid <- if (exists("ynow_points_resolve_public_id", mode = "function")) {
-      ynow_points_resolve_public_id(pid)
-    } else {
-      ""
-    }
+    # selectInput value is internal user_id (label remains opaque public_id).
+    uid <- as.character(input$ynow_pts_sysadmin_user %||% "")[1]
     if (!nzchar(uid)) {
       showNotification(.lab("pts_sysadmin_bad_user", "Select a user from the list."), type = "warning")
       return()
