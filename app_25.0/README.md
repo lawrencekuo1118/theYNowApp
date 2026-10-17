@@ -1,4 +1,4 @@
-# The YNow App v25.25 — Valuation Methodology
+# The YNow App v25.26 — Valuation Methodology
 
 ## v24.10 重點
 
