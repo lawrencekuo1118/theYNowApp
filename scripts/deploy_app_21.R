@@ -65,7 +65,11 @@ allow_missing_neon <- identical(Sys.getenv("YNOW_ALLOW_MISSING_NEON"), "1") ||
 # Default ON: pull live bundle .Renviron before ship so redeploys cannot drop secrets.
 auto_restore <- !identical(Sys.getenv("YNOW_SKIP_RENVIRON_RESTORE"), "1") &&
   !("--skip-renviron-restore" %in% user_args)
+# Default ON: merge Cursor/CI process-env secrets into .Renviron (Neon first bind).
+auto_env_inject <- !identical(Sys.getenv("YNOW_SKIP_RENVIRON_ENV_INJECT"), "1") &&
+  !("--skip-renviron-env-inject" %in% user_args)
 restore_script <- file.path(root, "scripts", "restore_renviron_from_shinyapps.R")
+inject_script <- file.path(root, "scripts", "inject_renviron_from_env.R")
 
 .ynow_renviron_key_flags <- function(path) {
   if (!file.exists(path)) {
@@ -110,6 +114,18 @@ if (isTRUE(auto_restore) && isTRUE(need_restore) && file.exists(restore_script))
   flags <- .ynow_renviron_key_flags(renviron_path)
 }
 
+# After live restore: overlay process-env secrets (first-time Neon bind from Cloud secrets).
+# Env values win so a newly pasted Neon is not discarded when live still lacks it.
+if (isTRUE(auto_env_inject) && file.exists(inject_script)) {
+  message("Merging allow-listed YNOW_* secrets from process env into .Renviron…")
+  inj_status <- system2("Rscript", inject_script, stdout = TRUE, stderr = TRUE)
+  writeLines(inj_status)
+  if (!is.null(attr(inj_status, "status")) && !identical(attr(inj_status, "status"), 0L)) {
+    message("WARNING: env → .Renviron inject failed — continuing with file checks.")
+  }
+  flags <- .ynow_renviron_key_flags(renviron_path)
+}
+
 if (!file.exists(renviron_path) && !isTRUE(allow_missing_renviron)) {
   stop(paste(
     "Refusing deploy: missing ", renviron_path, ".",
@@ -135,7 +151,12 @@ if (file.exists(renviron_path)) {
       "Refusing deploy: .Renviron has no Neon YNOW_DB_* / YNOW_DATABASE_URL.",
       "Without Neon, live falls back to memory points (wiped every cold start)",
       "and Testing admin / Email login stay empty.",
-      "Add Neon pooled credentials to app_25.0/.Renviron (gitignored), then re-run.",
+      "Fix (any one):",
+      "  1) Paste Neon pooled keys into app_25.0/.Renviron (gitignored), or",
+      "  2) Set YNOW_DB_HOST + YNOW_DB_USER + YNOW_DB_PASSWORD (or YNOW_DATABASE_URL)",
+      "     in the environment / Cloud Agent secrets, then re-run deploy",
+      "     (scripts/inject_renviron_from_env.R merges them into .Renviron), or",
+      "  3) Restore a prior live bundle that already has Neon.",
       "Emergency override only: YNOW_ALLOW_MISSING_NEON=1",
       sep = "\n"
     ), call. = FALSE)
