@@ -231,6 +231,14 @@ check("guest pts banner clears DOM values when hidden", {
     grepl("pynVal.textContent = ''", ui, fixed = TRUE) &&
     grepl("ptsGuestHidden", ui, fixed = TRUE)
 })
+check("guest pts banner initial HTML labels empty", {
+  ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  # Boot markup must not embed "FYN points:" / "PYN points:" before login.
+  !grepl('ynow_pts_banner_fyn_label", "FYN', ui, fixed = TRUE) &&
+    !grepl('ynow_pts_banner_pyn_label", "PYN', ui, fixed = TRUE) &&
+    grepl('ynow_pts_banner_fyn_label", ""', ui, fixed = TRUE) &&
+    grepl('ynow_pts_banner_pyn_label", ""', ui, fixed = TRUE)
+})
 check("server distinguishes no-db empty state", {
   srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   grepl("pts_sysadmin_no_db", srv, fixed = TRUE) &&

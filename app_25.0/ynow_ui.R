@@ -3648,12 +3648,13 @@ ui <- dashboardPage(
         `aria-hidden` = "true",
         tags$div(
           class = "ynow-pts-banner-line",
-          tags$span(id = "ynow_pts_banner_fyn_label", "FYN points:"),
+          # Empty until sign-in fills via ynowPtsBanner (guest must not hold points copy).
+          tags$span(id = "ynow_pts_banner_fyn_label", ""),
           tags$span(id = "ynow_pts_banner_fyn_value", class = "ynow-pts-banner-val", "")
         ),
         tags$div(
           class = "ynow-pts-banner-line",
-          tags$span(id = "ynow_pts_banner_pyn_label", "PYN points:"),
+          tags$span(id = "ynow_pts_banner_pyn_label", ""),
           tags$span(id = "ynow_pts_banner_pyn_value", class = "ynow-pts-banner-val", "")
         )
       )
