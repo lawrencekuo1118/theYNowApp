@@ -16,7 +16,7 @@
       return(sub('^"version"\\s*:\\s*"([^"]+)".*$', "\\1", m[[1]]))
     }
   }
-  "v25.27"
+  "v25.29"
 }
 .YNOW_BUILD_VERSION <- .ynow_read_build_version()
 
@@ -230,7 +230,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v25.27) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+          "The YNow App (v25.29) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
         ),
         tags$p(
           class = "ynow-about-method",
@@ -258,7 +258,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v25.27) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
+          "The YNow App (v25.29) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
         ),
         tags$p(
           class = "ynow-about-method",
@@ -368,7 +368,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App（簡化版）")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite（v25.27）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
+          "The YNow App Lite（v25.29）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
           "以自動判別主／副模型與預設參數完成試算，讓使用者先看到合理價區間與產業 KPI，再決定是否回到完整版深入調整。"
         ),
         tags$p(
@@ -385,7 +385,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App (Lite)")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite (v25.27) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
+          "The YNow App Lite (v25.29) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
           "auto-selects primary/secondary models with App defaults, and surfaces fair-value ranges plus industry KPIs before you open Full for deeper calibration."
         ),
         tags$p(
@@ -3557,9 +3557,9 @@ ui <- dashboardPage(
                   'data-ynow-build="', .YNOW_BUILD_VERSION, '" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v25.27</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v25.29</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v25.27</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v25.29</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -3648,12 +3648,13 @@ ui <- dashboardPage(
         `aria-hidden` = "true",
         tags$div(
           class = "ynow-pts-banner-line",
-          tags$span(id = "ynow_pts_banner_fyn_label", "FYN points:"),
+          # Empty until sign-in fills via ynowPtsBanner (guest must not hold points copy).
+          tags$span(id = "ynow_pts_banner_fyn_label", ""),
           tags$span(id = "ynow_pts_banner_fyn_value", class = "ynow-pts-banner-val", "")
         ),
         tags$div(
           class = "ynow-pts-banner-line",
-          tags$span(id = "ynow_pts_banner_pyn_label", "PYN points:"),
+          tags$span(id = "ynow_pts_banner_pyn_label", ""),
           tags$span(id = "ynow_pts_banner_pyn_value", class = "ynow-pts-banner-val", "")
         )
       )
@@ -9650,10 +9651,15 @@ ui <- dashboardPage(
             var ptsSysRefresh = document.getElementById('ynow_pts_sysadmin_refresh_label');
             if (ptsSysRefresh && s.pts_sysadmin_refresh) ptsSysRefresh.textContent = s.pts_sysadmin_refresh;
             var ptsColon = (payload && payload.locale === 'zh-TW') ? '：' : ':';
-            var ptsFynLab = document.getElementById('ynow_pts_banner_fyn_label');
-            if (ptsFynLab && s.pts_fyn_label) ptsFynLab.textContent = s.pts_fyn_label + ptsColon;
-            var ptsPynLab = document.getElementById('ynow_pts_banner_pyn_label');
-            if (ptsPynLab && s.pts_pyn_label) ptsPynLab.textContent = s.pts_pyn_label + ptsColon;
+            var ptsHdrForLocale = document.getElementById('ynow-pts-header');
+            var ptsGuestHidden = !!(ptsHdrForLocale && ptsHdrForLocale.classList.contains('ynow-pts-hidden'));
+            /* Do not refill FYN/PYN banner labels while guest-hidden. */
+            if (!ptsGuestHidden) {
+              var ptsFynLab = document.getElementById('ynow_pts_banner_fyn_label');
+              if (ptsFynLab && s.pts_fyn_label) ptsFynLab.textContent = s.pts_fyn_label + ptsColon;
+              var ptsPynLab = document.getElementById('ynow_pts_banner_pyn_label');
+              if (ptsPynLab && s.pts_pyn_label) ptsPynLab.textContent = s.pts_pyn_label + ptsColon;
+            }
             var atxTitle = document.getElementById('ynow_atx_page_title');
             if (atxTitle && s.atx_page_title) atxTitle.textContent = s.atx_page_title;
             var atxSub = document.getElementById('ynow_atx_page_sub');
@@ -9946,21 +9952,24 @@ ui <- dashboardPage(
               var pynLab = document.getElementById('ynow_pts_banner_pyn_label');
               var fynVal = document.getElementById('ynow_pts_banner_fyn_value');
               var pynVal = document.getElementById('ynow_pts_banner_pyn_value');
+              var hdr = document.getElementById('ynow-pts-header');
+              var banner = document.getElementById('ynow_pts_banner');
+              /* Guests: hide + clear DOM (do not map empty to em-dash placeholders). */
+              if (payload.visible === false) {
+                if (fynLab) fynLab.textContent = '';
+                if (pynLab) pynLab.textContent = '';
+                if (fynVal) fynVal.textContent = '';
+                if (pynVal) pynVal.textContent = '';
+                if (hdr) hdr.classList.add('ynow-pts-hidden');
+                if (banner) banner.setAttribute('aria-hidden', 'true');
+                return;
+              }
               if (fynLab && payload.fyn_label) fynLab.textContent = payload.fyn_label;
               if (pynLab && payload.pyn_label) pynLab.textContent = payload.pyn_label;
               if (fynVal) fynVal.textContent = (payload.fyn != null && payload.fyn !== '') ? String(payload.fyn) : '—';
               if (pynVal) pynVal.textContent = (payload.pyn != null && payload.pyn !== '') ? String(payload.pyn) : '—';
-              var hdr = document.getElementById('ynow-pts-header');
-              var banner = document.getElementById('ynow_pts_banner');
-              if (hdr) {
-                // Class + !important CSS — inline display loses to flex !important / Lite rules.
-                if (payload.visible === false) hdr.classList.add('ynow-pts-hidden');
-                else hdr.classList.remove('ynow-pts-hidden');
-              }
-              if (banner) {
-                if (payload.visible === false) banner.setAttribute('aria-hidden', 'true');
-                else banner.setAttribute('aria-hidden', 'false');
-              }
+              if (hdr) hdr.classList.remove('ynow-pts-hidden');
+              if (banner) banner.setAttribute('aria-hidden', 'false');
             });
             addHandler('ynowAuthFeature', function (payload) {
               if (!payload) return;
