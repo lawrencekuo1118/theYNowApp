@@ -595,61 +595,60 @@ price_alert_tab_ui <- function() {
     },
     tags$div(
       id = "ynow_pa_body",
-    screener_panel_ui(),
-    fluidRow(
-      box(
-        title = .pa_bi("pa_title"),
+      class = "ynow-pa-tabs-wrap",
+      tabBox(
+        title = .pa_bi("menu_price_alert"),
+        id = "ynow_pa_report",
         width = 12,
-        status = "primary",
-        solidHeader = TRUE,
-        tags$p(.pa_bi("pa_help")),
-        tags$p(class = "help-block", .pa_bi("pa_email_account_help")),
-        fluidRow(
-          column(4, textInput("pa_email", .pa_bi("pa_email"), value = Sys.getenv("YNOW_ALERT_TO", ""))),
-          column(3, textInput("pa_ticker", .pa_bi("pa_ticker"), value = "")),
-          column(5, selectInput(
-            "pa_kind", .pa_bi("pa_kind"),
-            choices = c(
-              "Last price ≥ target / 最新價 ≥ 目標價" = "price_gte",
-              "Last price ≤ target / 最新價 ≤ 目標價" = "price_lte",
-              "Daily change ≥ % / 日漲跌幅 ≥ %" = "day_chg_gte",
-              "Daily change ≤ % / 日漲跌幅 ≤ %" = "day_chg_lte",
-              "Price ≤ fair × (1 − MOS) / 最新價 ≤ 公允價值 × (1 − MOS)" = "below_fair",
-              "Value ≥ level / 數值 ≥ 水準" = "value_gte",
-              "Value ≤ level / 數值 ≤ 水準" = "value_lte",
-              "Grade ≥ / 評等 ≥" = "grade_gte",
-              "Grade ≤ / 評等 ≤" = "grade_lte"
-            ),
-            width = "100%"
-          ))
+        tabPanel(
+          title = .pa_bi("pa_title"),
+          value = "pa_alerts",
+          icon = icon("bell"),
+          tags$p(.pa_bi("pa_help")),
+          tags$p(class = "help-block", .pa_bi("pa_email_account_help")),
+          fluidRow(
+            column(4, textInput("pa_email", .pa_bi("pa_email"), value = Sys.getenv("YNOW_ALERT_TO", ""))),
+            column(3, textInput("pa_ticker", .pa_bi("pa_ticker"), value = "")),
+            column(5, selectInput(
+              "pa_kind", .pa_bi("pa_kind"),
+              choices = c(
+                "Last price ≥ target / 最新價 ≥ 目標價" = "price_gte",
+                "Last price ≤ target / 最新價 ≤ 目標價" = "price_lte",
+                "Daily change ≥ % / 日漲跌幅 ≥ %" = "day_chg_gte",
+                "Daily change ≤ % / 日漲跌幅 ≤ %" = "day_chg_lte",
+                "Price ≤ fair × (1 − MOS) / 最新價 ≤ 公允價值 × (1 − MOS)" = "below_fair",
+                "Value ≥ level / 數值 ≥ 水準" = "value_gte",
+                "Value ≤ level / 數值 ≤ 水準" = "value_lte",
+                "Grade ≥ / 評等 ≥" = "grade_gte",
+                "Grade ≤ / 評等 ≤" = "grade_lte"
+              ),
+              width = "100%"
+            ))
+          ),
+          fluidRow(
+            column(3, numericInput("pa_level", .pa_bi("pa_level"), value = NA, width = "100%")),
+            column(3, numericInput("pa_mos", .pa_bi("pa_mos"), value = 0, min = 0, max = 90, width = "100%")),
+            column(6, textInput("pa_note", .pa_bi("pa_note"), value = ""))
+          ),
+          fluidRow(
+            column(3, checkboxInput("pa_notify_app", .pa_bi("pa_notify_app"), value = TRUE)),
+            column(3, checkboxInput("pa_notify_email", .pa_bi("pa_notify_email"), value = FALSE))
+          ),
+          actionButton("pa_save", .pa_bi("pa_save"), class = "btn-primary"),
+          actionButton("pa_check", .pa_bi("pa_check"), class = "btn-default"),
+          actionButton("pa_rearm", .pa_bi("pa_rearm"), class = "btn-default"),
+          actionButton("pa_delete", .pa_bi("pa_delete"), class = "btn-danger"),
+          tags$div(style = "margin-top:12px;", DT::DTOutput("pa_table"))
         ),
-        fluidRow(
-          column(3, numericInput("pa_level", .pa_bi("pa_level"), value = NA, width = "100%")),
-          column(3, numericInput("pa_mos", .pa_bi("pa_mos"), value = 0, min = 0, max = 90, width = "100%")),
-          column(6, textInput("pa_note", .pa_bi("pa_note"), value = ""))
-        ),
-        fluidRow(
-          column(3, checkboxInput("pa_notify_app", .pa_bi("pa_notify_app"), value = TRUE)),
-          column(3, checkboxInput("pa_notify_email", .pa_bi("pa_notify_email"), value = FALSE))
-        ),
-        actionButton("pa_save", .pa_bi("pa_save"), class = "btn-primary"),
-        actionButton("pa_check", .pa_bi("pa_check"), class = "btn-default"),
-        actionButton("pa_rearm", .pa_bi("pa_rearm"), class = "btn-default"),
-        actionButton("pa_delete", .pa_bi("pa_delete"), class = "btn-danger"),
-        tags$div(style = "margin-top:12px;", DT::DTOutput("pa_table"))
+        tabPanel(
+          title = .pa_bi("pa_history_title"),
+          value = "pa_history",
+          icon = icon("history"),
+          tags$p(.pa_bi("pa_history_help")),
+          actionButton("pa_history_clear", .pa_bi("pa_history_clear"), class = "btn-default"),
+          tags$div(style = "margin-top:12px;", DT::DTOutput("pa_history_table"))
+        )
       )
-    ),
-    fluidRow(
-      box(
-        title = .pa_bi("pa_history_title"),
-        width = 12,
-        status = "info",
-        solidHeader = TRUE,
-        tags$p(.pa_bi("pa_history_help")),
-        actionButton("pa_history_clear", .pa_bi("pa_history_clear"), class = "btn-default"),
-        tags$div(style = "margin-top:12px;", DT::DTOutput("pa_history_table"))
-      )
-    )
     ) # /#ynow_pa_body
   )
 }

@@ -161,6 +161,35 @@ if (nrow(bhit$df)) {
 catalog <- screener_condition_catalog()
 check("catalog has master packs", all(c("buffett", "graham") %in% catalog$pack))
 check("catalog fields are known", all(catalog$field %in% screener_field_ids()))
+
+# UI placement: Custom screen under Blue Chip after Clustering; Value Alerts = sibling tabs.
+ui_txt <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+pa_txt <- paste(readLines(file.path(app_dir, "price_alert.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+scr_src <- paste(readLines(file.path(app_dir, "stock_screener.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+check(
+  "bluechip hosts screener after cluster",
+  grepl(
+    'value = "im_cluster"[\\s\\S]*value = "im_screener"[\\s\\S]*screener_panel_ui\\(embed = "bluechip"\\)',
+    ui_txt,
+    perl = TRUE
+  )
+)
+check(
+  "value alerts use sibling tabs for rules + history",
+  grepl('value = "pa_alerts"', pa_txt, fixed = TRUE) &&
+    grepl('value = "pa_history"', pa_txt, fixed = TRUE) &&
+    !grepl("screener_panel_ui", pa_txt, fixed = TRUE)
+)
+check(
+  "screener panel supports bluechip embed",
+  grepl('embed = c\\("standalone", "bluechip"\\)', scr_src, perl = TRUE)
+)
+check(
+  "locale has tab_im_screener both sides",
+  identical(.UI_STRINGS$en$tab_im_screener, "Custom screen") &&
+    identical(.UI_STRINGS$`zh-TW`$tab_im_screener, "自訂選股")
+)
+
 payload_json <- jsonlite::toJSON(
   list(
     list(id = "m_buffett_roe", field = "roe", op = "gte", value = 15),
