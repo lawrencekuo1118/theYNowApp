@@ -885,6 +885,13 @@ locale_for_market <- function(mode = get_market_mode()) {
     pts_sysadmin_bad_user = "Select a user from the list.",
     pts_sysadmin_bad_delta = "Enter a non-zero whole-number change for FYN and/or PYN.",
     pts_sysadmin_empty = "No users in the database yet.",
+    pts_sysadmin_no_db = paste0(
+      "Neon account store is not configured on this deployment ",
+      "(missing YNOW_DB_* / YNOW_DATABASE_URL in app_25.0/.Renviron, ",
+      "or RPostgres/pool not installed in the bundle). ",
+      "Testing admin reads the same Neon ynow_users table as sign-in — without it the list stays empty."
+    ),
+    pts_sysadmin_backend_fmt = "Points backend: %s",
     auth_pa_gate_title = "Sign in required",
     auth_pa_gate_body = paste0(
       "Value Alerts in Full mode require an account. ",
@@ -4364,6 +4371,13 @@ locale_for_market <- function(mode = get_market_mode()) {
     pts_sysadmin_bad_user = "請從清單選擇使用者。",
     pts_sysadmin_bad_delta = "請輸入非零整數，調整 FYN 與／或 PYN。",
     pts_sysadmin_empty = "資料庫尚無使用者。",
+    pts_sysadmin_no_db = paste0(
+      "此部署尚未設定 Neon 帳號庫",
+      "（缺少 app_25.0/.Renviron 的 YNOW_DB_*／YNOW_DATABASE_URL，",
+      "或套件包未含 RPostgres／pool）。",
+      "Testing 系統管理讀取的是與登入相同的 Neon ynow_users 表——未設定時清單會是空的。"
+    ),
+    pts_sysadmin_backend_fmt = "點數後端：%s",
     auth_pa_gate_title = "需登入帳號",
     auth_pa_gate_body = paste0(
       "完整版的到值通知需登入帳號後才可使用。",

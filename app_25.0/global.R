@@ -53,6 +53,20 @@ knitr::opts_knit$set(global.par = TRUE)
 options(scipen = 20, digits = 4, width = 90)
 
 # 📚 套件安裝與載入 --------------------------------------------------------
+# Ensure Neon / async packages are present for rsconnect snapshots + runtime.
+if (file.exists("ynow_forced_deps.R")) {
+  tryCatch(
+    source("ynow_forced_deps.R", local = FALSE, encoding = "UTF-8"),
+    error = function(e) {
+      warning(
+        "ynow_forced_deps.R failed (install RPostgres/pool/sodium/future before deploy): ",
+        conditionMessage(e),
+        call. = FALSE
+      )
+    }
+  )
+}
+
 pacman::p_load(
   # 1. 核心資料處理 (Data Wrangling)
   tidyverse, dplyr, stringr, purrr, magrittr, glue, jsonlite,

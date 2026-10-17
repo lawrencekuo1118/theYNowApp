@@ -22,18 +22,21 @@ YNOW_DB_SSLMODE=require
 YNOW_ENABLE_ACCOUNT_LOGIN=1
 
 # =============================================================================
-# Points unlock (usage credits) — v1
+# Points unlock (usage credits) — FYN (free) + PYN (paid)
 # =============================================================================
 # Default OFF (gate allows all actions; set 1 to enforce spend).
 # YNOW_POINTS_ENABLED=0
-# Every Sign-in resets that user's balance to this amount (membership testing). Set 0 to disable.
-YNOW_POINTS_LOGIN_GRANT=100
-# YNOW_POINTS_SIGNUP_BONUS=20
-# Optional price overrides:
+# First registration / first-login gift (FYN, once per user). Default 100.
+# YNOW_POINTS_SIGNUP_BONUS=100
+# Daily check-in (FYN, once per Asia/Taipei calendar day). Default 30.
+# YNOW_POINTS_DAILY_CHECKIN=30
+# Optional price overrides (spent from FYN):
 # YNOW_POINTS_PRICE_ALERT_SLOT=1
 # YNOW_POINTS_PRICE_HFV_RUN=3
 # YNOW_POINTS_PRICE_BT_RUN=5
 # Tests / no Neon: YNOW_POINTS_BACKEND=memory
+# Testing-tab system admin lists Neon ynow_users (de-identified). Without
+# YNOW_DB_* above, the admin list stays empty (memory backend has no shared users).
 
 # =============================================================================
 # Required for public Google / Facebook / Apple self-registration
