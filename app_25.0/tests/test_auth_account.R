@@ -301,7 +301,7 @@ check("authed guards skip auth modal reopen (server + CSS)", {
     !grepl("ynow_auth_sidebar_dbg", auth_txt, fixed = TRUE) &&
     !grepl("ynow_auth_sidebar_dbg_event", auth_txt, fixed = TRUE)
 })
-check("Neon not ready without env", {
+check("DB not ready without env", {
   Sys.unsetenv("YNOW_DB_HOST")
   Sys.unsetenv("YNOW_DB_USER")
   Sys.unsetenv("YNOW_DB_PASSWORD")
@@ -309,7 +309,20 @@ check("Neon not ready without env", {
   Sys.unsetenv("DATABASE_URL")
   identical(ynow_db_ready(), FALSE)
 })
-check("Neon URL parse", {
+check("host_kind classifies neon/supabase/postgres/none", {
+  identical(ynow_db_host_kind(NULL), "none") &&
+    identical(ynow_db_host_kind(list(host = "")), "none") &&
+    identical(
+      ynow_db_host_kind(list(host = "ep-cool-pooler.us-east-2.aws.neon.tech")),
+      "neon"
+    ) &&
+    identical(
+      ynow_db_host_kind(list(host = "aws-0-ap-southeast-1.pooler.supabase.com")),
+      "supabase"
+    ) &&
+    identical(ynow_db_host_kind(list(host = "db.internal.example")), "postgres")
+})
+check("DB URL parse", {
   p <- ynow_db_parse_url(
     "postgresql://neondb_owner:s3cret@ep-cool-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require"
   )
@@ -317,20 +330,29 @@ check("Neon URL parse", {
     identical(p$host, "ep-cool-pooler.us-east-2.aws.neon.tech") &&
     identical(p$dbname, "neondb") && identical(p$sslmode, "require")
 })
-check("Neon password hash verify", {
+check("DB password hash verify", {
   h <- ynow_db_hash_password("correct-horse-battery")
   isTRUE(ynow_db_verify_password("correct-horse-battery", h)) &&
     !isTRUE(ynow_db_verify_password("wrong", h))
 })
-check("register without Neon says soon", {
+check("register without DB says soon", {
   Sys.unsetenv("YNOW_DB_HOST")
   Sys.unsetenv("YNOW_DATABASE_URL")
   Sys.setenv(YNOW_ENABLE_ACCOUNT_LOGIN = "1")
   r <- ynow_auth_try_register("a@b.com", "password123")
   isFALSE(r$ok) && identical(r$message_key, "auth_msg_register_soon")
 })
-check("UI About mentions Neon", grepl("Neon Free", ui, fixed = TRUE) &&
-        grepl("Neon Free", ui, fixed = TRUE))
+check("UI About mentions Neon Free as example provider", {
+  grepl("Neon Free", ui, fixed = TRUE) &&
+    grepl("YNOW_DB_", ui, fixed = TRUE) &&
+    grepl("Supabase", ui, fixed = TRUE)
+})
+check("no debug probe instrumentation in auth_db", {
+  db_txt <- paste(readLines(src_db, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  !grepl("ynow_db_debug_log_probe", db_txt, fixed = TRUE) &&
+    !grepl("/opt/cursor/logs/debug.log", db_txt, fixed = TRUE) &&
+    !grepl("ynow_db_runtime_probe", db_txt, fixed = TRUE)
+})
 check("migrate script exists", file.exists(file.path(dirname(app_dir), "scripts", "neon_migrate.R")) ||
         file.exists(file.path(app_dir, "..", "scripts", "neon_migrate.R")))
 check("ynow_users schema enables fail-closed RLS", {

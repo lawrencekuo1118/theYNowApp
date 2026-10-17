@@ -653,36 +653,28 @@ server <- function(input, output, session) {
     if (!exists("ynow_points_admin_list_users", mode = "function")) {
       return(tags$p(class = "text-danger", .lab("pts_msg_backend", "Points backend is unavailable.")))
     }
-    # Without Postgres creds (YNOW_DB_*) / RPostgres, points fall back to empty per-process memory — not a wiped DB.
-    # Note: ynow_points_backend() returns the label "neon" whenever ynow_db_ready() — that label is historical
-    # and does NOT prove the host is Neon Free (neon.tech); see ynow_db_host_kind().
+    # Without Postgres creds (YNOW_DB_*) / RPostgres, points fall back to empty per-process memory.
     backend <- tryCatch(ynow_points_backend(), error = function(e) "memory")
-    db_ready <- exists("ynow_db_ready", mode = "function") && isTRUE(ynow_db_ready())
-    # #region agent log
-    probe <- tryCatch({
-      if (exists("ynow_db_debug_log_probe", mode = "function")) {
-        ynow_db_debug_log_probe("sysadmin_panel", try_connect = TRUE)
-      } else if (exists("ynow_db_runtime_probe", mode = "function")) {
-        ynow_db_runtime_probe(try_connect = TRUE)
+    backend_label <- tryCatch({
+      if (exists("ynow_points_backend_label", mode = "function")) {
+        ynow_points_backend_label()
       } else {
-        NULL
+        as.character(backend)
       }
-    }, error = function(e) NULL)
-    # #endregion
-    host_kind <- tryCatch({
-      if (!is.null(probe$host_kind)) probe$host_kind
-      else if (exists("ynow_db_host_kind", mode = "function")) ynow_db_host_kind()
-      else "unknown"
-    }, error = function(e) "unknown")
-    connect_ok <- tryCatch(isTRUE(probe$connect_ok), error = function(e) NA)
+    }, error = function(e) as.character(backend))
+    uses_db <- tryCatch({
+      if (exists("ynow_points_uses_db", mode = "function")) ynow_points_uses_db()
+      else identical(backend, "postgres")
+    }, error = function(e) FALSE)
+    db_ready <- exists("ynow_db_ready", mode = "function") && isTRUE(ynow_db_ready())
     df <- tryCatch(ynow_points_admin_list_users(), error = function(e) NULL)
     if (!is.data.frame(df) || nrow(df) < 1L) {
-      empty_msg <- if (!isTRUE(db_ready) || !identical(backend, "neon")) {
+      empty_msg <- if (!isTRUE(db_ready) || !isTRUE(uses_db)) {
         .lab(
           "pts_sysadmin_no_db",
           .lab(
             "pts_sysadmin_no_neon",
-            "Neon account store is not configured on this deployment (missing YNOW_DB_* / YNOW_DATABASE_URL, or RPostgres/pool not installed). Testing admin reads the same Neon ynow_users table as sign-in — without it the list stays empty."
+            "Account database is not configured on this deployment (missing YNOW_DB_* / YNOW_DATABASE_URL, or RPostgres/pool not installed). Testing admin reads the same ynow_users table as sign-in — without it the list stays empty."
           )
         )
       } else {
@@ -696,15 +688,7 @@ server <- function(input, output, session) {
             id = "ynow_pts_sysadmin_backend",
             sprintf(
               .lab("pts_sysadmin_backend_fmt", "Points backend: %s"),
-              as.character(backend)
-            )
-          ),
-          tags$br(),
-          tags$span(
-            id = "ynow_pts_sysadmin_db_diag",
-            sprintf(
-              "DB diag: ready=%s host_kind=%s connect_ok=%s (label neon≠neon.tech)",
-              as.character(db_ready), as.character(host_kind), as.character(connect_ok)
+              as.character(backend_label)
             )
           )
         ),
@@ -723,15 +707,7 @@ server <- function(input, output, session) {
           id = "ynow_pts_sysadmin_backend",
           sprintf(
             .lab("pts_sysadmin_backend_fmt", "Points backend: %s"),
-            as.character(backend)
-          )
-        ),
-        tags$br(),
-        tags$span(
-          id = "ynow_pts_sysadmin_db_diag",
-          sprintf(
-            "DB diag: ready=%s host_kind=%s connect_ok=%s (label neon≠neon.tech)",
-            as.character(db_ready), as.character(host_kind), as.character(connect_ok)
+            as.character(backend_label)
           )
         )
       ),

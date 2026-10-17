@@ -72,7 +72,7 @@ ynow_auth_try_login <- function(email, password) {
   if (!nzchar(em) || !nzchar(pw)) {
     return(list(ok = FALSE, user = NULL, message_key = "auth_msg_missing"))
   }
-  # Preferred: Neon Free account table (own users, same Email modal).
+  # Preferred: account Postgres table via YNOW_DB_* (own users, same Email modal).
   if (exists("ynow_db_ready", mode = "function") && isTRUE(ynow_db_ready()) &&
       exists("ynow_db_try_login", mode = "function")) {
     return(ynow_db_try_login(em, pw))

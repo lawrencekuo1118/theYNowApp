@@ -52,10 +52,33 @@ ynow_points_taipei_day <- function(when = Sys.time()) {
 ynow_points_backend <- function() {
   b <- tolower(trimws(Sys.getenv("YNOW_POINTS_BACKEND", unset = "")))
   if (identical(b, "memory")) return("memory")
+  # Legacy force "neon" meant "use Postgres account store" — map to postgres.
+  if (identical(b, "neon") || identical(b, "postgres") || identical(b, "db")) {
+    if (exists("ynow_db_ready", mode = "function") && isTRUE(ynow_db_ready())) {
+      return("postgres")
+    }
+    return("memory")
+  }
   if (exists("ynow_db_ready", mode = "function") && isTRUE(ynow_db_ready())) {
-    return("neon")
+    return("postgres")
   }
   "memory"
+}
+
+#' TRUE when FYN/PYN use the account Postgres store (not in-process memory).
+ynow_points_uses_db <- function() {
+  identical(ynow_points_backend(), "postgres")
+}
+
+#' UI label for Testing admin: memory | supabase | neon | postgres (no secrets).
+ynow_points_backend_label <- function() {
+  if (!isTRUE(ynow_points_uses_db())) return("memory")
+  if (exists("ynow_db_host_kind", mode = "function")) {
+    k <- tryCatch(ynow_db_host_kind(), error = function(e) "postgres")
+    if (identical(k, "none")) return("postgres")
+    return(as.character(k)[1])
+  }
+  "postgres"
 }
 
 ynow_points_norm_wallet <- function(wallet = "fyn") {
@@ -436,7 +459,7 @@ ynow_points_ensure_schema <- function(conn = NULL) {
     TRUE
   }
   if (!is.null(conn)) return(run(conn))
-  if (!identical(ynow_points_backend(), "neon")) return(TRUE)
+  if (!ynow_points_uses_db()) return(TRUE)
   out <- ynow_db_with(run)
   isTRUE(out)
 }
@@ -629,7 +652,7 @@ ynow_points_ensure_schema <- function(conn = NULL) {
 
 #' Dual balances: list(fyn=, pyn=).
 ynow_points_balances <- function(user_id) {
-  if (identical(ynow_points_backend(), "neon")) {
+  if (ynow_points_uses_db()) {
     return(.ynow_points_neon_balances(user_id))
   }
   .ynow_points_mem_balances(user_id)
@@ -637,14 +660,14 @@ ynow_points_balances <- function(user_id) {
 
 #' FYN balance (spendable free points). Alias of balances$fyn for gate/spend.
 ynow_points_balance <- function(user_id, wallet = "fyn") {
-  if (identical(ynow_points_backend(), "neon")) {
+  if (ynow_points_uses_db()) {
     return(.ynow_points_neon_balance(user_id, wallet = wallet))
   }
   .ynow_points_mem_balance(user_id, wallet = wallet)
 }
 
 ynow_points_catalog <- function() {
-  if (identical(ynow_points_backend(), "neon")) {
+  if (ynow_points_uses_db()) {
     df <- ynow_db_with(function(con) {
       ynow_points_ensure_schema(con)
       DBI::dbGetQuery(
@@ -670,7 +693,7 @@ ynow_points_credit <- function(user_id, delta, reason = "adjust", ref_id = NULL,
       wallet = w, message_key = "pts_msg_bad_delta"
     ))
   }
-  if (identical(ynow_points_backend(), "neon")) {
+  if (ynow_points_uses_db()) {
     return(.ynow_points_neon_apply(user_id, dlt, reason, sku = sku,
                                    ref_id = ref_id, meta = meta, wallet = w))
   }
@@ -765,7 +788,7 @@ ynow_points_try_spend <- function(user_id, sku, ref_id, meta = NULL) {
 
 #' Ledger rows for one user (newest first).
 ynow_points_ledger_tail <- function(user_id, n = NULL) {
-  if (identical(ynow_points_backend(), "neon")) {
+  if (ynow_points_uses_db()) {
     return(.ynow_points_neon_ledger_tail(user_id, n = n))
   }
   .ynow_points_mem_ledger_tail(user_id, n = n)
@@ -777,7 +800,7 @@ ynow_points_ledger_all <- function(user_id) {
 
 #' De-identified user list for Testing-tab system admin.
 ynow_points_admin_list_users <- function() {
-  if (identical(ynow_points_backend(), "neon")) {
+  if (ynow_points_uses_db()) {
     return(.ynow_points_neon_list_users())
   }
   .ynow_points_mem_list_users()

@@ -771,7 +771,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     auth_msg_oauth_failed = "Social sign-in failed. Please try again.",
     auth_msg_oauth_state = "Social sign-in session expired. Please try again.",
     auth_msg_oauth_no_email = "The social account did not return an email address.",
-    auth_msg_register_soon = "Registration is not open yet. Configure Neon (YNOW_DB_*) to enable Email sign-up.",
+    auth_msg_register_soon = "Registration is not open yet. Configure the account database (YNOW_DB_*) to enable Email sign-up.",
     auth_msg_register_ok = "Account created. Signed in.",
     auth_msg_register_failed = "Could not create the account. Please try again.",
     auth_msg_email_taken = "This email is already registered. Sign in instead.",
@@ -780,14 +780,14 @@ locale_for_market <- function(mode = get_market_mode()) {
     auth_msg_forgot_soon = "Password reset is not available yet.",
     auth_msg_resend_soon = "Verification email resend is not available yet.",
     auth_about_neon = paste0(
-      "Account store: Neon Free Postgres (own users table). ",
+      "Account store: Postgres via YNOW_DB_* (own users table; e.g. Neon Free or Supabase pooler). ",
       "Google / Facebook / LinkedIn / Email self-register into the same table (role=user); ",
       "no admin whitelist for ordinary users."
     ),
     auth_about_note = paste0(
       "Account sign-in is on by default (set YNOW_ENABLE_ACCOUNT_LOGIN=0 to disable). ",
       "Anyone may self-register with Google, Facebook, LinkedIn, or Email — no per-user admin approval. ",
-      "Preferred account store: Neon Free Postgres (own users table; set YNOW_DB_*). ",
+      "Account store: Postgres via YNOW_DB_* (own users table; e.g. Neon Free or Supabase pooler). ",
       "Full-mode Value Alerts require sign-in; email notify defaults to the registered mailbox. ",
       "Lite mode stays fully usable without an account."
     ),
@@ -886,14 +886,14 @@ locale_for_market <- function(mode = get_market_mode()) {
     pts_sysadmin_bad_delta = "Enter a non-zero whole-number change for FYN and/or PYN.",
     pts_sysadmin_empty = "No users in the database yet.",
     pts_sysadmin_no_neon = paste0(
-      "Neon is not configured on this deployment (set YNOW_DB_* in .Renviron, then redeploy). ",
-      "The user list and FYN/PYN balances live in Neon — not in ephemeral app memory."
+      "Account database is not configured on this deployment (set YNOW_DB_* in .Renviron, then redeploy). ",
+      "The user list and FYN/PYN balances live in the account Postgres store — not in ephemeral app memory."
     ),
     pts_sysadmin_no_db = paste0(
-      "Neon account store is not configured on this deployment ",
+      "Account database is not configured on this deployment ",
       "(missing YNOW_DB_* / YNOW_DATABASE_URL in app_25.0/.Renviron, ",
       "or RPostgres/pool not installed in the bundle). ",
-      "Testing admin reads the same Neon ynow_users table as sign-in — without it the list stays empty."
+      "Testing admin reads the same ynow_users table as sign-in — without it the list stays empty."
     ),
     pts_sysadmin_backend_fmt = "Points backend: %s",
     auth_pa_gate_title = "Sign in required",
@@ -4263,7 +4263,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     auth_msg_oauth_failed = "社群登入失敗，請再試一次。",
     auth_msg_oauth_state = "社群登入階段已過期，請再試一次。",
     auth_msg_oauth_no_email = "此社群帳號未提供電子郵件。",
-    auth_msg_register_soon = "註冊尚未開放。請先設定 Neon（YNOW_DB_*）以啟用 Email 註冊。",
+    auth_msg_register_soon = "註冊尚未開放。請先設定帳號資料庫（YNOW_DB_*）以啟用 Email 註冊。",
     auth_msg_register_ok = "帳號已建立並登入。",
     auth_msg_register_failed = "無法建立帳號，請再試一次。",
     auth_msg_email_taken = "此電子郵件已註冊，請直接登入。",
@@ -4272,14 +4272,14 @@ locale_for_market <- function(mode = get_market_mode()) {
     auth_msg_forgot_soon = "密碼重設尚未開放。",
     auth_msg_resend_soon = "認證信重寄尚未開放。",
     auth_about_neon = paste0(
-      "帳號資料庫：Neon Free Postgres（自管 users 表）。",
+      "帳號資料庫：經 YNOW_DB_* 的 Postgres（自管 users 表；例如 Neon Free 或 Supabase pooler）。",
       "Google／Facebook／LinkedIn／Email 皆可自助註冊寫入同一表（role=user），",
       "一般使用者無需後台白名單。"
     ),
     auth_about_note = paste0(
       "帳號登入預設啟用（設 YNOW_ENABLE_ACCOUNT_LOGIN=0 可關閉）。",
       "一般使用者可用 Google、Facebook、LinkedIn 或 Email 自行註冊，無需逐一後台開權限。",
-      "帳號表建議 Neon Free Postgres（自管 users；設 YNOW_DB_*）。",
+      "帳號表：經 YNOW_DB_* 的 Postgres（自管 users；例如 Neon Free 或 Supabase pooler）。",
       "完整版到值通知需登入；寄信預設註冊信箱。",
       "Lite 版無需帳號即可完整使用。"
     ),
@@ -4377,14 +4377,14 @@ locale_for_market <- function(mode = get_market_mode()) {
     pts_sysadmin_bad_delta = "請輸入非零整數，調整 FYN 與／或 PYN。",
     pts_sysadmin_empty = "資料庫尚無使用者。",
     pts_sysadmin_no_neon = paste0(
-      "此部署尚未設定 Neon（請在 .Renviron 設定 YNOW_DB_* 後重新部署）。",
-      "使用者清單與 FYN／PYN 餘額存在 Neon，不會寫入應用程式暫存記憶體。"
+      "此部署尚未設定帳號資料庫（請在 .Renviron 設定 YNOW_DB_* 後重新部署）。",
+      "使用者清單與 FYN／PYN 餘額存在帳號 Postgres，不會寫入應用程式暫存記憶體。"
     ),
     pts_sysadmin_no_db = paste0(
-      "此部署尚未設定 Neon 帳號庫",
+      "此部署尚未設定帳號資料庫",
       "（缺少 app_25.0/.Renviron 的 YNOW_DB_*／YNOW_DATABASE_URL，",
       "或套件包未含 RPostgres／pool）。",
-      "Testing 系統管理讀取的是與登入相同的 Neon ynow_users 表——未設定時清單會是空的。"
+      "Testing 系統管理讀取的是與登入相同的 ynow_users 表——未設定時清單會是空的。"
     ),
     pts_sysadmin_backend_fmt = "點數後端：%s",
     auth_pa_gate_title = "需登入帳號",

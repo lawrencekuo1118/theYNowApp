@@ -30,6 +30,7 @@ Sys.unsetenv("YNOW_DATABASE_URL")
 Sys.unsetenv("DATABASE_URL")
 
 source(file.path(app_dir, "ui_locale.R"), local = FALSE, encoding = "UTF-8")
+source(file.path(app_dir, "auth_db.R"), local = FALSE, encoding = "UTF-8")
 source(file.path(app_dir, "auth_account.R"), local = FALSE, encoding = "UTF-8")
 source(file.path(app_dir, "points_wallet.R"), local = FALSE, encoding = "UTF-8")
 
@@ -48,6 +49,57 @@ check <- function(label, cond) {
 }
 
 check("backend memory", identical(ynow_points_backend(), "memory"))
+check("uses_db false under memory", identical(ynow_points_uses_db(), FALSE))
+check("backend_label memory", identical(ynow_points_backend_label(), "memory"))
+check("host_kind none without cfg", identical(ynow_db_host_kind(), "none"))
+check("host_kind neon", {
+  identical(
+    ynow_db_host_kind(list(host = "ep-x-pooler.us-east-2.aws.neon.tech")),
+    "neon"
+  )
+})
+check("host_kind supabase", {
+  identical(
+    ynow_db_host_kind(list(host = "aws-0-ap-southeast-1.pooler.supabase.com")),
+    "supabase"
+  )
+})
+check("host_kind postgres other", {
+  identical(ynow_db_host_kind(list(host = "db.example.com")), "postgres")
+})
+check("backend returns postgres not neon when ready", {
+  # Stub ready without real drivers/creds; restore after.
+  old_ready <- ynow_db_ready
+  assign("ynow_db_ready", function() TRUE, envir = .GlobalEnv)
+  on.exit(assign("ynow_db_ready", old_ready, envir = .GlobalEnv), add = TRUE)
+  Sys.unsetenv("YNOW_POINTS_BACKEND")
+  be <- ynow_points_backend()
+  Sys.setenv(YNOW_POINTS_BACKEND = "memory")
+  identical(be, "postgres")
+})
+check("backend_label uses host_kind when db", {
+  old_ready <- ynow_db_ready
+  old_kind <- ynow_db_host_kind
+  assign("ynow_db_ready", function() TRUE, envir = .GlobalEnv)
+  assign("ynow_db_host_kind", function(cfg = NULL) "supabase", envir = .GlobalEnv)
+  on.exit({
+    assign("ynow_db_ready", old_ready, envir = .GlobalEnv)
+    assign("ynow_db_host_kind", old_kind, envir = .GlobalEnv)
+  }, add = TRUE)
+  Sys.unsetenv("YNOW_POINTS_BACKEND")
+  lab <- ynow_points_backend_label()
+  Sys.setenv(YNOW_POINTS_BACKEND = "memory")
+  identical(lab, "supabase")
+})
+check("legacy YNOW_POINTS_BACKEND=neon maps to postgres", {
+  old_ready <- ynow_db_ready
+  assign("ynow_db_ready", function() TRUE, envir = .GlobalEnv)
+  on.exit(assign("ynow_db_ready", old_ready, envir = .GlobalEnv), add = TRUE)
+  Sys.setenv(YNOW_POINTS_BACKEND = "neon")
+  be <- ynow_points_backend()
+  Sys.setenv(YNOW_POINTS_BACKEND = "memory")
+  identical(be, "postgres")
+})
 check("enabled true", isTRUE(ynow_points_enabled()))
 check("signup bonus default 100", identical(ynow_points_signup_bonus(), 100L))
 check("daily checkin default 30", identical(ynow_points_daily_checkin_amount(), 30L))
@@ -263,7 +315,10 @@ check("auth memory user id helper stable", {
 check("server distinguishes no-db empty state", {
   srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   grepl("pts_sysadmin_no_db", srv, fixed = TRUE) &&
-    grepl("ynow_db_ready", srv, fixed = TRUE)
+    grepl("ynow_db_ready", srv, fixed = TRUE) &&
+    grepl("ynow_points_backend_label", srv, fixed = TRUE) &&
+    !grepl("ynow_pts_sysadmin_db_diag", srv, fixed = TRUE) &&
+    !grepl("ynow_db_debug_log_probe", srv, fixed = TRUE)
 })
 check("forced deps file sources Neon packages", {
   deps <- paste(readLines(file.path(app_dir, "ynow_forced_deps.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
@@ -272,10 +327,13 @@ check("forced deps file sources Neon packages", {
     grepl("library(sodium)", deps, fixed = TRUE)
 })
 check("locale no-db keys", {
-  nzchar(ui_str("pts_sysadmin_no_db", "en")) &&
-    nzchar(ui_str("pts_sysadmin_no_db", "zh-TW")) &&
-    grepl("Neon", ui_str("pts_sysadmin_no_db", "en"), fixed = TRUE) &&
-    grepl("Neon", ui_str("pts_sysadmin_no_db", "zh-TW"), fixed = TRUE)
+  en <- ui_str("pts_sysadmin_no_db", "en")
+  zh <- ui_str("pts_sysadmin_no_db", "zh-TW")
+  nzchar(en) && nzchar(zh) &&
+    grepl("YNOW_DB_", en, fixed = TRUE) &&
+    grepl("YNOW_DB_", zh, fixed = TRUE) &&
+    !grepl("尚未設定 Neon", zh, fixed = TRUE) &&
+    !grepl("Neon account store", en, fixed = TRUE)
 })
 check("account_points is independent tab", {
   grepl('tabName = "account_points"', auth, fixed = TRUE) &&
