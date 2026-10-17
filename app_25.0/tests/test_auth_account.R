@@ -67,11 +67,24 @@ source(src_oauth, local = FALSE, encoding = "UTF-8")
 old_en <- Sys.getenv("YNOW_ENABLE_ACCOUNT_LOGIN", unset = NA_character_)
 old_em <- Sys.getenv("YNOW_AUTH_DEMO_EMAIL", unset = NA_character_)
 old_pw <- Sys.getenv("YNOW_AUTH_DEMO_PASSWORD", unset = NA_character_)
+# Isolate from app_25.0/.Renviron (R auto-loads it when cwd is the app dir).
+# Live account store is Supabase Postgres via YNOW_DB_* — not needed for unit paths.
+.db_env_keys <- c(
+  "YNOW_DB_HOST", "YNOW_DB_USER", "YNOW_DB_PASSWORD", "YNOW_DB_NAME",
+  "YNOW_DB_PORT", "YNOW_DB_SSLMODE", "YNOW_DATABASE_URL", "DATABASE_URL",
+  "YNOW_POINTS_BACKEND"
+)
+.old_db <- setNames(lapply(.db_env_keys, function(k) Sys.getenv(k, unset = NA_character_)), .db_env_keys)
 on.exit({
   if (is.na(old_en)) Sys.unsetenv("YNOW_ENABLE_ACCOUNT_LOGIN") else Sys.setenv(YNOW_ENABLE_ACCOUNT_LOGIN = old_en)
   if (is.na(old_em)) Sys.unsetenv("YNOW_AUTH_DEMO_EMAIL") else Sys.setenv(YNOW_AUTH_DEMO_EMAIL = old_em)
   if (is.na(old_pw)) Sys.unsetenv("YNOW_AUTH_DEMO_PASSWORD") else Sys.setenv(YNOW_AUTH_DEMO_PASSWORD = old_pw)
+  for (k in names(.old_db)) {
+    v <- .old_db[[k]]
+    if (is.na(v)) Sys.unsetenv(k) else do.call(Sys.setenv, setNames(list(v), k))
+  }
 }, add = TRUE)
+for (k in .db_env_keys) Sys.unsetenv(k)
 
 Sys.unsetenv("YNOW_ENABLE_ACCOUNT_LOGIN")
 check("default auth enabled", isTRUE(ynow_auth_enabled()))
