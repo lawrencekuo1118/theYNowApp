@@ -3459,18 +3459,21 @@ beta_rolling_section_ui <- function() {
   )
 }
 
-#' Lazy page body for tab `testing` (Full-only sandbox; Asset transmission moved out).
+#' Lazy page body for tab `testing` — dedicated system-admin portal (Full-only).
+#' Internal tabName stays `testing` for sidebar/lazy wiring; UI copy is System admin.
+#' Login: username `ynow` + Asia/Taipei calendar password YYYYMMDD (not end-user Email login).
 .ynow_page_ui_testing <- function() {
   tagList(
     fluidRow(
       column(
         width = 12,
-        h2(tags$b(id = "ynow_testing_page_title", "Testing")),
+        h2(tags$b(id = "ynow_testing_page_title", "System admin")),
         p(
           id = "ynow_testing_page_sub",
           paste0(
-            "Full-only sandbox for experiments. Lite mode hides this entry. ",
-            "Asset Transmission Root now lives in its own sidebar tab (after Macro & Market Trends)."
+            "Dedicated system-admin portal (Full mode). Lite hides this entry. ",
+            "Sign in with the portal credentials below, then manage points ",
+            "or switch to a de-identified user’s live view."
           )
         ),
         tags$hr(),
@@ -3478,8 +3481,10 @@ beta_rolling_section_ui <- function() {
           id = "ynow_testing_box_body",
           style = "color:#555; line-height:1.5;",
           paste0(
-            "Use the sidebar entry Asset Transmission Root for the inflation → rates → liquidity → asset map. ",
-            "System admin for FYN / PYN points is below — dedicated entry, no separate account or password."
+            "This portal replaces the old Testing sandbox home. ",
+            "Adjust FYN / PYN, then use Switch view to open that user’s current UI ",
+            "(balances, spend gates, and other persisted account state). ",
+            "Title Loading turns silver while view-as is active."
           )
         ),
         tags$div(
@@ -3488,7 +3493,7 @@ beta_rolling_section_ui <- function() {
             class = "box-header with-border",
             tags$h3(
               class = "box-title",
-              tags$span(id = "ynow_pts_sysadmin_title", "System admin (points)")
+              tags$span(id = "ynow_pts_sysadmin_title", "System admin")
             )
           ),
           tags$div(
@@ -3497,34 +3502,70 @@ beta_rolling_section_ui <- function() {
               id = "ynow_pts_sysadmin_intro",
               style = "color:#555; line-height:1.5;",
               paste0(
-                "Dedicated Testing entry — no separate account or password. ",
+                "Dedicated system-admin login (separate from end-user Email sign-in). ",
                 "Users are listed with opaque ids only (no raw email, name, or phone). ",
-                "Adjust FYN / PYN; changes persist and match what the user sees after sign-in."
+                "Adjust FYN / PYN; changes persist and match what the user sees after sign-in. ",
+                "Switch view replays that user’s persisted settings in the live UI."
               )
             ),
-            actionButton(
-              "ynow_pts_sysadmin_enter",
-              label = tags$span(
-                id = "ynow_pts_sysadmin_enter_label",
-                "Enter system admin"
+            fluidRow(
+              column(
+                width = 4,
+                textInput(
+                  "ynow_pts_sysadmin_login_user",
+                  label = tags$span(
+                    id = "ynow_pts_sysadmin_login_user_label",
+                    "Username"
+                  ),
+                  value = "",
+                  placeholder = "ynow"
+                )
               ),
-              class = "btn-primary"
+              column(
+                width = 4,
+                passwordInput(
+                  "ynow_pts_sysadmin_login_pass",
+                  label = tags$span(
+                    id = "ynow_pts_sysadmin_login_pass_label",
+                    "Password"
+                  ),
+                  value = "",
+                  placeholder = ""
+                )
+              ),
+              column(
+                width = 4,
+                tags$div(
+                  style = "margin-top: 25px;",
+                  actionButton(
+                    "ynow_pts_sysadmin_enter",
+                    label = tags$span(
+                      id = "ynow_pts_sysadmin_enter_label",
+                      "Enter system admin"
+                    ),
+                    class = "btn-primary"
+                  )
+                )
+              )
             ),
-            actionButton(
-              "ynow_pts_sysadmin_exit",
-              label = tags$span(
-                id = "ynow_pts_sysadmin_exit_label",
-                "Exit system admin"
+            tags$div(
+              style = "margin-top: 8px; display:flex; flex-wrap:wrap; gap:8px;",
+              actionButton(
+                "ynow_pts_sysadmin_exit",
+                label = tags$span(
+                  id = "ynow_pts_sysadmin_exit_label",
+                  "Exit system admin"
+                ),
+                class = "btn-default"
               ),
-              class = "btn-default"
-            ),
-            actionButton(
-              "ynow_pts_sysadmin_refresh",
-              label = tags$span(
-                id = "ynow_pts_sysadmin_refresh_label",
-                "Refresh user list"
-              ),
-              class = "btn-default"
+              actionButton(
+                "ynow_pts_sysadmin_refresh",
+                label = tags$span(
+                  id = "ynow_pts_sysadmin_refresh_label",
+                  "Refresh user list"
+                ),
+                class = "btn-default"
+              )
             ),
             uiOutput("ynow_pts_sysadmin_panel")
           )
@@ -3927,7 +3968,7 @@ ui <- dashboardPage(
         icon("camera", class = "fa-fw"),
         tags$span(id = "ynow_snapshot_link_label", " Snapshot")
       ),
-      # Testing：側邊欄小按鈕（完整版）；供後續實驗／測試功能入口；Lite 隱藏
+      # System admin：側邊欄專用入口（完整版）；Lite 隱藏；內部 tabName 仍為 testing
       tags$a(
         id = "ynow_sidebar_test_btn",
         href = "#shiny-tab-testing",
@@ -3935,8 +3976,8 @@ ui <- dashboardPage(
         `data-value` = "testing",
         class = "ynow-sidebar-snapshot-link ynow-sidebar-test-link ynow-full-only",
         onclick = "if (window.Shiny) { Shiny.setInputValue('sidebar_test_click', (window.__ynowTestClicks=(window.__ynowTestClicks||0)+1), {priority: 'event'}); } if (window.ynowShowSidebarFootTab) { window.ynowShowSidebarFootTab('testing'); } else if (window.Shiny) { Shiny.setInputValue('sidebar_tabs', 'testing', {priority: 'event'}); } return false;",
-        icon("flask", class = "fa-fw"),
-        tags$span(id = "ynow_test_link_label", " Testing")
+        icon("user-shield", class = "fa-fw"),
+        tags$span(id = "ynow_test_link_label", " System admin")
       ),
       # 意見區：收集使用者回饋，系統性開 GitHub Issue
       tags$a(
@@ -3954,6 +3995,32 @@ ui <- dashboardPage(
   
   dashboardBody(
     shinyjs::useShinyjs(),
+    # View-as chrome: visible on every tab while admin impersonates a user.
+    tags$div(
+      id = "ynow_viewas_chrome",
+      class = "ynow-viewas-chrome",
+      role = "status",
+      `aria-live` = "polite",
+      tags$strong(
+        id = "ynow_viewas_chrome_active_label",
+        "User view active"
+      ),
+      tags$code(id = "ynow_viewas_chrome_pid", ""),
+      tags$span(
+        id = "ynow_viewas_chrome_hint",
+        style = "opacity:0.92;",
+        "Title Loading is silver. Balances and spend gates follow this user."
+      ),
+      tags$button(
+        id = "ynow_viewas_chrome_exit",
+        type = "button",
+        class = "btn btn-default btn-sm",
+        tags$span(
+          id = "ynow_viewas_chrome_exit_label",
+          "Exit user view"
+        )
+      )
+    ),
     # Account login modal/CSS — omit when disabled (do not inject NULL children)
     do.call(
       tagList,
@@ -4027,9 +4094,26 @@ ui <- dashboardPage(
             #FFE566 68%,
             #FFF8D0 100%
           );
+          /* View-as mode: silver Loading / title (admin impersonation signal) */
+          --ynow-silver: #C0C0C0;
+          --ynow-silver-ink: #6E6E6E;
+          --ynow-silver-deep: #8A8A8A;
+          --ynow-silver-gradient: linear-gradient(
+            105deg,
+            #F4F4F4 0%,
+            #E0E0E0 18%,
+            #C0C0C0 36%,
+            #8A8A8A 50%,
+            #E0E0E0 68%,
+            #F8F8F8 100%
+          );
         }
 
         @keyframes ynow-gold-shine {
+          0%, 100% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+        }
+        @keyframes ynow-silver-shine {
           0%, 100% { background-position: 0% 50%; }
           50% { background-position: 100% 50%; }
         }
@@ -4177,6 +4261,26 @@ ui <- dashboardPage(
         .main-header .logo .ynow-app-title.is-complete .ynow-app-title-fill-inner {
           animation: ynow-gold-shine 2.6s ease-in-out infinite;
         }
+        /* View-as: gold Loading → silver (place after gold; before deploy flame) */
+        body.ynow-view-as .main-header .logo {
+          color: var(--ynow-silver, #C0C0C0) !important;
+        }
+        body.ynow-view-as .main-header .logo .ynow-app-title-base {
+          color: rgba(192, 192, 192, 0.38) !important;
+          -webkit-text-fill-color: rgba(192, 192, 192, 0.38);
+        }
+        body.ynow-view-as .main-header .logo .ynow-app-title-fill-inner {
+          color: var(--ynow-silver, #C0C0C0) !important;
+          background-image: var(--ynow-silver-gradient) !important;
+          background-size: 220% 100%;
+          background-repeat: no-repeat;
+          -webkit-background-clip: text;
+          background-clip: text;
+          -webkit-text-fill-color: transparent;
+        }
+        body.ynow-view-as .main-header .logo .ynow-app-title.is-complete .ynow-app-title-fill-inner {
+          animation: ynow-silver-shine 2.6s ease-in-out infinite;
+        }
         @supports not ((-webkit-background-clip: text) or (background-clip: text)) {
           .main-header .logo .ynow-app-title-fill-inner {
             -webkit-text-fill-color: #FFD700 !important;
@@ -4191,6 +4295,54 @@ ui <- dashboardPage(
             color: rgba(255, 215, 0, 0.35) !important;
             -webkit-text-fill-color: rgba(255, 215, 0, 0.35);
           }
+          body.ynow-view-as .main-header .logo .ynow-app-title-fill-inner {
+            -webkit-text-fill-color: #C0C0C0 !important;
+            color: #C0C0C0 !important;
+            background-image: none !important;
+            text-shadow:
+              0 0 6px rgba(220, 220, 220, 0.75),
+              0 0 14px rgba(160, 160, 160, 0.4),
+              0 1px 2px rgba(0, 0, 0, 0.85);
+          }
+          body.ynow-view-as .main-header .logo .ynow-app-title-base {
+            color: rgba(192, 192, 192, 0.4) !important;
+            -webkit-text-fill-color: rgba(192, 192, 192, 0.4);
+          }
+        }
+        /* Fixed chrome while view-as is active (exit back to system admin) */
+        .ynow-viewas-chrome {
+          display: none;
+          position: fixed;
+          z-index: 19000;
+          left: 50%;
+          transform: translateX(-50%);
+          top: 8px;
+          max-width: min(920px, calc(100vw - 24px));
+          padding: 8px 12px;
+          border-radius: 6px;
+          background: rgba(32, 32, 36, 0.92);
+          color: #f0f0f0;
+          border: 1px solid rgba(192, 192, 192, 0.55);
+          box-shadow: 0 4px 18px rgba(0, 0, 0, 0.28);
+          font-size: 13px;
+          line-height: 1.4;
+          align-items: center;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+        body.ynow-view-as .ynow-viewas-chrome {
+          display: flex;
+        }
+        .ynow-viewas-chrome code {
+          color: #e8e8e8;
+          background: rgba(255, 255, 255, 0.08);
+          padding: 1px 6px;
+          border-radius: 3px;
+        }
+        .ynow-viewas-chrome .btn {
+          margin: 0;
+          padding: 4px 10px;
+          font-size: 12px;
         }
         /* Pending deploy: flame title must override gold fill/shine (place after gold rules) */
         body.ynow-update-available .main-header .logo .ynow-app-title-base {
@@ -9731,12 +9883,22 @@ ui <- dashboardPage(
             if (ptsSysExit && s.pts_sysadmin_exit) ptsSysExit.textContent = s.pts_sysadmin_exit;
             var ptsSysRefresh = document.getElementById('ynow_pts_sysadmin_refresh_label');
             if (ptsSysRefresh && s.pts_sysadmin_refresh) ptsSysRefresh.textContent = s.pts_sysadmin_refresh;
+            var ptsLoginUserLab = document.getElementById('ynow_pts_sysadmin_login_user_label');
+            if (ptsLoginUserLab && s.pts_sysadmin_login_user) ptsLoginUserLab.textContent = s.pts_sysadmin_login_user;
+            var ptsLoginPassLab = document.getElementById('ynow_pts_sysadmin_login_pass_label');
+            if (ptsLoginPassLab && s.pts_sysadmin_login_pass) ptsLoginPassLab.textContent = s.pts_sysadmin_login_pass;
             var ptsViewAs = document.getElementById('ynow_pts_sysadmin_viewas_label');
             if (ptsViewAs && s.pts_sysadmin_viewas) ptsViewAs.textContent = s.pts_sysadmin_viewas;
             var ptsViewAsExit = document.getElementById('ynow_pts_sysadmin_viewas_exit_label');
             if (ptsViewAsExit && s.pts_sysadmin_viewas_exit) ptsViewAsExit.textContent = s.pts_sysadmin_viewas_exit;
             var ptsViewAsActive = document.getElementById('ynow_pts_sysadmin_viewas_active_label');
             if (ptsViewAsActive && s.pts_sysadmin_viewas_active) ptsViewAsActive.textContent = s.pts_sysadmin_viewas_active;
+            var vaChromeActive = document.getElementById('ynow_viewas_chrome_active_label');
+            if (vaChromeActive && s.pts_sysadmin_viewas_active) vaChromeActive.textContent = s.pts_sysadmin_viewas_active;
+            var vaChromeHint = document.getElementById('ynow_viewas_chrome_hint');
+            if (vaChromeHint && s.pts_sysadmin_viewas_chrome_hint) vaChromeHint.textContent = s.pts_sysadmin_viewas_chrome_hint;
+            var vaChromeExit = document.getElementById('ynow_viewas_chrome_exit_label');
+            if (vaChromeExit && s.pts_sysadmin_viewas_exit) vaChromeExit.textContent = s.pts_sysadmin_viewas_exit;
             var ptsColon = (payload && payload.locale === 'zh-TW') ? '：' : ':';
             var ptsHdrForLocale = document.getElementById('ynow-pts-header');
             var ptsSideForLocale = document.getElementById('ynow-pts-sidebar');
@@ -10091,6 +10253,33 @@ ui <- dashboardPage(
                 if (banner) banner.setAttribute('aria-hidden', 'false');
               }
             });
+            addHandler('ynowViewAsMode', function (payload) {
+              if (!payload) return;
+              var on = !!payload.active;
+              if (on) document.body.classList.add('ynow-view-as');
+              else document.body.classList.remove('ynow-view-as');
+              var pidEl = document.getElementById('ynow_viewas_chrome_pid');
+              if (pidEl) pidEl.textContent = on && payload.public_id ? String(payload.public_id) : '';
+              var actEl = document.getElementById('ynow_viewas_chrome_active_label');
+              if (actEl && payload.active_label) actEl.textContent = String(payload.active_label);
+              var hintEl = document.getElementById('ynow_viewas_chrome_hint');
+              if (hintEl && payload.hint) hintEl.textContent = String(payload.hint);
+              var exitLab = document.getElementById('ynow_viewas_chrome_exit_label');
+              if (exitLab && payload.exit_label) exitLab.textContent = String(payload.exit_label);
+            });
+            (function bindViewAsChromeExit() {
+              var btn = document.getElementById('ynow_viewas_chrome_exit');
+              if (!btn || btn.__ynowBound) return;
+              btn.__ynowBound = true;
+              btn.addEventListener('click', function () {
+                if (!window.Shiny || !Shiny.setInputValue) return;
+                Shiny.setInputValue(
+                  'ynow_pts_sysadmin_viewas_exit',
+                  (window.__ynowViewAsExitClicks = (window.__ynowViewAsExitClicks || 0) + 1),
+                  { priority: 'event' }
+                );
+              });
+            })();
             addHandler('ynowAuthFeature', function (payload) {
               if (!payload) return;
               if (payload.on) document.body.classList.add('ynow-auth-feature');
@@ -16530,7 +16719,7 @@ ui <- dashboardPage(
       ),
 
       # ==========================================
-      # 🧪 Testing：完整版側邊欄小按鈕入口（供後續實驗／測試功能）
+      # System admin portal（完整版側邊欄入口；內部 tabName = testing）
       # ==========================================
       tabItem(
         tabName = "testing",

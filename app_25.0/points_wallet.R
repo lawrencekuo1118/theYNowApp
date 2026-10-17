@@ -835,12 +835,30 @@ ynow_points_ledger_all <- function(user_id) {
   ynow_points_ledger_tail(user_id, n = NULL)
 }
 
-#' De-identified user list for Testing-tab system admin.
+#' De-identified user list for system-admin portal.
 ynow_points_admin_list_users <- function() {
   if (ynow_points_uses_db()) {
     return(.ynow_points_neon_list_users())
   }
   .ynow_points_mem_list_users()
+}
+
+#' Expected system-admin portal password for `when` (Asia/Taipei YYYYMMDD).
+#' Dynamic — never a fixed hardcoded secret. Same TZ as daily check-in.
+ynow_sysadmin_expected_password <- function(when = Sys.time()) {
+  format(as.POSIXlt(when, tz = ynow_points_tz()), "%Y%m%d")
+}
+
+#' Validate dedicated sysadmin portal credentials (not end-user Email login).
+#' Username must be `ynow`; password = Asia/Taipei calendar date as YYYYMMDD.
+#' Never logs the password. Returns list(ok=TRUE/FALSE) only.
+ynow_sysadmin_validate_login <- function(username, password, when = Sys.time()) {
+  u <- tolower(trimws(as.character(username %||% "")[1]))
+  p <- as.character(password %||% "")[1]
+  user_ok <- identical(u, "ynow")
+  expect <- ynow_sysadmin_expected_password(when)
+  pass_ok <- identical(p, expect)
+  list(ok = isTRUE(user_ok) && isTRUE(pass_ok))
 }
 
 #' Resolve internal user_id from opaque public_id (admin UI).

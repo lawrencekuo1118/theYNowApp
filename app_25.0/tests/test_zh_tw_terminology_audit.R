@@ -126,7 +126,7 @@ expect_zh <- list(
   htcdi_alert_critical = "收縮",
   htcdi_alert_unavailable = "無法取得",
   htcdi_col_criticality = "關鍵程度",
-  testing_page_title = "測試",
+  testing_page_title = "系統管理",
   bblab_ticker_label = "股票代號",
   bblab_gm_unestimable = "無法可靠估計",
   bblab_reval_unavailable = "重估比率無法取得",

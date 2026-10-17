@@ -859,16 +859,21 @@ locale_for_market <- function(mode = get_market_mode()) {
     pts_login_reset_fmt = "Welcome gift / check-in applied (balances are not reset).",
     pts_login_reset_note = "Balances persist across logins. New accounts get 100 FYN once; daily check-in adds +30 FYN (Asia/Taipei).",
     auth_admin_tool_points = "Points: FYN (free) and PYN (paid) are stored separately; every change is in the ledger — open Points ledger for history.",
-    pts_sysadmin_title = "System admin (points)",
+    pts_sysadmin_title = "System admin",
     pts_sysadmin_intro = paste0(
-      "Dedicated Testing entry — no separate account or password. ",
+      "Dedicated system-admin login (separate from end-user Email sign-in). ",
       "Users are listed with opaque ids only (no raw email, name, or phone). ",
-      "Adjust FYN / PYN; changes persist and match what the user sees after sign-in."
+      "Adjust FYN / PYN; changes persist and match what the user sees after sign-in. ",
+      "Switch view replays that user’s persisted settings in the live UI."
     ),
     pts_sysadmin_enter = "Enter system admin",
     pts_sysadmin_exit = "Exit system admin",
     pts_sysadmin_refresh = "Refresh user list",
-    pts_sysadmin_need_enter = "Click Enter system admin to load the de-identified user list.",
+    pts_sysadmin_login_user = "Username",
+    pts_sysadmin_login_pass = "Password",
+    pts_sysadmin_login_ok = "System admin unlocked.",
+    pts_sysadmin_login_bad = "Invalid system-admin username or password.",
+    pts_sysadmin_need_enter = "Sign in with the system-admin username and password to load the de-identified user list.",
     pts_sysadmin_users = "Users (de-identified)",
     pts_sysadmin_col_id = "User id",
     pts_sysadmin_col_fyn = "FYN",
@@ -885,10 +890,11 @@ locale_for_market <- function(mode = get_market_mode()) {
     pts_sysadmin_ok = "Balances updated.",
     pts_sysadmin_ok_verify_fmt = "Balances updated and verified (FYN %s, PYN %s).",
     pts_sysadmin_verify_failed = "Balance change did not persist — check the points backend / database.",
-    pts_sysadmin_viewas = "View as this user",
+    pts_sysadmin_viewas = "Switch view",
     pts_sysadmin_viewas_exit = "Exit user view",
     pts_sysadmin_viewas_active = "User view active",
-    pts_sysadmin_viewas_active_hint = "Banner and spend gates use this user’s DB balances.",
+    pts_sysadmin_viewas_active_hint = "Title Loading is silver. Banner, spend gates, and role follow this user’s DB state.",
+    pts_sysadmin_viewas_chrome_hint = "Title Loading is silver. Balances and spend gates follow this user.",
     pts_sysadmin_viewas_ok_fmt = "Viewing as %s (de-identified).",
     pts_sysadmin_bad_user = "Select a user from the list.",
     pts_sysadmin_bad_delta = "Enter a non-zero whole-number change for FYN and/or PYN.",
@@ -901,7 +907,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Account database is not configured on this deployment ",
       "(missing YNOW_DB_* / YNOW_DATABASE_URL in app_25.0/.Renviron, ",
       "or RPostgres/pool not installed in the bundle). ",
-      "Testing admin reads the same ynow_users table as sign-in — without it the list stays empty."
+      "System admin reads the same ynow_users table as sign-in — without it the list stays empty."
     ),
     pts_sysadmin_backend_fmt = "Points backend: %s",
     auth_pa_gate_title = "Sign in required",
@@ -909,16 +915,19 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Value Alerts in Full mode require an account. ",
       "Lite mode does not require sign-in and remains fully usable."
     ),
-    test_link = " Testing",
-    testing_page_title = "Testing",
+    test_link = " System admin",
+    testing_page_title = "System admin",
     testing_page_sub = paste0(
-      "Full-only sandbox for experiments. Lite mode hides this entry. ",
-      "Asset Transmission Root now lives in its own sidebar tab (after Macro & Market Trends)."
+      "Dedicated system-admin portal (Full mode). Lite hides this entry. ",
+      "Sign in with the portal credentials below, then manage points ",
+      "or switch to a de-identified user’s live view."
     ),
-    testing_box_title = "Sandbox",
+    testing_box_title = "System admin",
     testing_box_body = paste0(
-      "Use the sidebar entry Asset Transmission Root for the inflation → rates → liquidity → asset map. ",
-      "System admin for FYN / PYN points is below — dedicated entry, no separate account or password."
+      "This portal replaces the old Testing sandbox home. ",
+      "Adjust FYN / PYN, then use Switch view to open that user’s current UI ",
+      "(balances, spend gates, and other persisted account state). ",
+      "Title Loading turns silver while view-as is active."
     ),
     atx_page_title = "Asset Transmission Root",
     atx_page_sub = paste0(
@@ -2607,7 +2616,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     notif_pdf_busy = "Generating ticker PDF investment report — please wait…",
     notif_pdf_ok = "✅ Ticker PDF investment report ready",
     notif_pdf_fail = "Report generation failed: {err}",
-    notif_test_opened = "Opened Testing",
+    notif_test_opened = "Opened System admin",
     notif_industry_catalog_fail = "Industry catalog load failed: {err}",
     notif_update_cache_fallback = "Update failed; using last cache / built-in snapshot.",
     notif_no_candidates = "No evaluable candidates under the current filters.",
@@ -4358,16 +4367,21 @@ locale_for_market <- function(mode = get_market_mode()) {
     pts_login_reset_fmt = "已套用歡迎贈點／每日簽到（餘額不會重設）。",
     pts_login_reset_note = "餘額會跨登入保留。新帳號一次贈 100 FYN；每日簽到加 +30 FYN（Asia/Taipei）。",
     auth_admin_tool_points = "點數：FYN（免費）與 PYN（付費）分開儲存；所有異動皆入庫，完整紀錄請開「點數流水」。",
-    pts_sysadmin_title = "系統管理（點數）",
+    pts_sysadmin_title = "系統管理",
     pts_sysadmin_intro = paste0(
-      "Testing 專用入口——無需另設帳號或密碼。",
+      "系統管理專用登入（與一般使用者 Email 登入分開）。",
       "使用者清單僅顯示去識別化代號（不含原始 Email、姓名、電話）。",
-      "可加減 FYN／PYN；變更會持久化，並與該使用者登入後所見餘額一致。"
+      "可加減 FYN／PYN；變更會持久化，並與該使用者登入後所見餘額一致。",
+      "「切換檢視」會比照該使用者的持久化設定狀態復刻顯示。"
     ),
     pts_sysadmin_enter = "進入系統管理",
     pts_sysadmin_exit = "離開系統管理",
     pts_sysadmin_refresh = "重新整理使用者清單",
-    pts_sysadmin_need_enter = "請點選「進入系統管理」以載入去識別化使用者清單。",
+    pts_sysadmin_login_user = "使用者名稱",
+    pts_sysadmin_login_pass = "密碼",
+    pts_sysadmin_login_ok = "已進入系統管理。",
+    pts_sysadmin_login_bad = "系統管理使用者名稱或密碼不正確。",
+    pts_sysadmin_need_enter = "請以系統管理使用者名稱與密碼登入，以載入去識別化使用者清單。",
     pts_sysadmin_users = "使用者（去識別化）",
     pts_sysadmin_col_id = "使用者代號",
     pts_sysadmin_col_fyn = "FYN",
@@ -4384,10 +4398,11 @@ locale_for_market <- function(mode = get_market_mode()) {
     pts_sysadmin_ok = "餘額已更新。",
     pts_sysadmin_ok_verify_fmt = "餘額已更新並核對（FYN %s、PYN %s）。",
     pts_sysadmin_verify_failed = "餘額變更未寫入——請檢查點數後端／資料庫。",
-    pts_sysadmin_viewas = "切換為該使用者視角",
+    pts_sysadmin_viewas = "切換檢視",
     pts_sysadmin_viewas_exit = "結束使用者視角",
     pts_sysadmin_viewas_active = "使用者視角啟用中",
-    pts_sysadmin_viewas_active_hint = "橫幅與扣點閘門改用此使用者的資料庫餘額。",
+    pts_sysadmin_viewas_active_hint = "標題 Loading 改為銀色。橫幅、扣點閘門與角色改用此使用者的資料庫狀態。",
+    pts_sysadmin_viewas_chrome_hint = "標題 Loading 為銀色。餘額與扣點閘門依此使用者。",
     pts_sysadmin_viewas_ok_fmt = "已切換為 %s（去識別化）視角。",
     pts_sysadmin_bad_user = "請從清單選擇使用者。",
     pts_sysadmin_bad_delta = "請輸入非零整數，調整 FYN 與／或 PYN。",
@@ -4400,7 +4415,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "此部署尚未設定帳號資料庫",
       "（缺少 app_25.0/.Renviron 的 YNOW_DB_*／YNOW_DATABASE_URL，",
       "或套件包未含 RPostgres／pool）。",
-      "Testing 系統管理讀取的是與登入相同的 ynow_users 表——未設定時清單會是空的。"
+      "系統管理讀取的是與登入相同的 ynow_users 表——未設定時清單會是空的。"
     ),
     pts_sysadmin_backend_fmt = "點數後端：%s",
     auth_pa_gate_title = "需登入帳號",
@@ -4408,16 +4423,18 @@ locale_for_market <- function(mode = get_market_mode()) {
       "完整版的到值通知需登入帳號後才可使用。",
       "Lite 版無需登入，功能可完整使用。"
     ),
-    test_link = " 測試",
-    testing_page_title = "測試",
+    test_link = " 系統管理",
+    testing_page_title = "系統管理",
     testing_page_sub = paste0(
-      "完整版實驗沙盒；簡化版不顯示此入口。",
-      "資產傳導根系已獨立成側邊欄分頁（接在「總體經濟與大盤趨勢」之後）。"
+      "系統管理專用入口（完整版）；簡化版不顯示此入口。",
+      "請以入口憑證登入後管理點數，或切換至去識別化使用者的即時介面。"
     ),
-    testing_box_title = "沙盒",
+    testing_box_title = "系統管理",
     testing_box_body = paste0(
-      "通膨→利率→流動性→資產的傳導圖，請改用側邊欄「資產傳導根系」。",
-      "下方為 FYN／PYN 系統管理專用入口——無需另設帳號或密碼。"
+      "此入口已取代原 Testing 沙盒首頁。",
+      "可調整 FYN／PYN，再以「切換檢視」開啟該使用者目前介面",
+      "（餘額、扣點閘門與其他已持久化的帳號狀態）。",
+      "視角啟用時標題 Loading 改為銀色。"
     ),
     atx_page_title = "資產傳導根系",
     atx_page_sub = paste0(
@@ -6047,7 +6064,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     notif_pdf_busy = "正在產出個股 PDF 投資意見報告，請稍候…",
     notif_pdf_ok = "✅ 個股 PDF 投資意見報告已產出",
     notif_pdf_fail = "報告產出失敗: {err}",
-    notif_test_opened = "已開啟 Testing",
+    notif_test_opened = "已開啟系統管理",
     notif_industry_catalog_fail = "產業目錄載入失敗: {err}",
     notif_update_cache_fallback = "更新失敗，沿用上次快取／內建快照。",
     notif_no_candidates = "目前篩選下沒有可評估的候選。",

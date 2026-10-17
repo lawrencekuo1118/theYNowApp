@@ -765,7 +765,7 @@ ynow_admin_panel_ui <- function(user, locale = "zh-TW", build_version = "",
 
 #' Points ledger panel — full history for the signed-in user.
 #' Table body is filled by server via DT::dataTableOutput("ynow_pts_ledger_dt").
-#' System admin adjust lives on the Testing tab (de-identified user list).
+#' System admin adjust lives on the System admin portal (de-identified user list).
 ynow_points_panel_ui <- function(user, locale = "zh-TW",
                                  points_balance = NA_integer_,
                                  points_ledger = NULL,

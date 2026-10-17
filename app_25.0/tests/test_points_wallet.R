@@ -240,9 +240,14 @@ check("run_bt gates bt_run", {
   srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   grepl("bt_run", srv, fixed = TRUE) && grepl("ynow_points_gate", srv, fixed = TRUE)
 })
-check("testing tab has sysadmin entry", {
+check("sysadmin portal has login + entry", {
   ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   grepl("ynow_pts_sysadmin_enter", ui, fixed = TRUE) &&
+    grepl("ynow_pts_sysadmin_login_user", ui, fixed = TRUE) &&
+    grepl("ynow_pts_sysadmin_login_pass", ui, fixed = TRUE) &&
+    grepl("ynow_viewas_chrome", ui, fixed = TRUE) &&
+    grepl("ynow-view-as", ui, fixed = TRUE) &&
+    grepl("ynow-silver-gradient", ui, fixed = TRUE) &&
     grepl("ynow_pts_banner", ui, fixed = TRUE) &&
     grepl("ynow-pts-header", ui, fixed = TRUE)
 })
@@ -392,14 +397,52 @@ check("locale pts_sysadmin_need_enter en+zh-TW", {
   en <- ui_str("pts_sysadmin_need_enter", "en")
   zh <- ui_str("pts_sysadmin_need_enter", "zh-TW")
   nzchar(en) && nzchar(zh) &&
-    grepl("Enter system admin", en, fixed = TRUE) &&
-    grepl("進入系統管理", zh, fixed = TRUE) &&
-    !grepl("数据", zh, fixed = TRUE)
+    grepl("username and password", en, fixed = TRUE) &&
+    grepl("使用者名稱與密碼", zh, fixed = TRUE) &&
+    !grepl("数据", zh, fixed = TRUE) &&
+    !grepl("一鍵", zh, fixed = TRUE)
+})
+check("locale sysadmin login keys en+zh-TW", {
+  keys <- c(
+    "pts_sysadmin_login_user", "pts_sysadmin_login_pass",
+    "pts_sysadmin_login_ok", "pts_sysadmin_login_bad",
+    "pts_sysadmin_viewas_chrome_hint"
+  )
+  all(vapply(keys, function(k) {
+    en <- ui_str(k, "en")
+    zh <- ui_str(k, "zh-TW")
+    nzchar(en) && nzchar(zh) && !grepl("数据|默认|一鍵", zh)
+  }, logical(1)))
 })
 check("server shows need_enter hint when sysadmin off", {
   srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   grepl("pts_sysadmin_need_enter", srv, fixed = TRUE) &&
     grepl("ynow_pts_sysadmin_need_enter", srv, fixed = TRUE)
+})
+check("sysadmin login validates ynow + Taipei YYYYMMDD", {
+  pts <- paste(readLines(file.path(app_dir, "points_wallet.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("ynow_sysadmin_validate_login", pts, fixed = TRUE) &&
+    grepl("ynow_sysadmin_expected_password", pts, fixed = TRUE) &&
+    grepl("%Y%m%d", pts, fixed = TRUE) &&
+    grepl("ynow_points_tz", pts, fixed = TRUE)
+})
+check("sysadmin password is Taipei date not fixed", {
+  when <- as.POSIXct("2026-10-15 23:30:00", tz = "Asia/Taipei")
+  expect <- ynow_sysadmin_expected_password(when)
+  identical(expect, "20261015") &&
+    isTRUE(ynow_sysadmin_validate_login("ynow", "20261015", when = when)$ok) &&
+    isTRUE(ynow_sysadmin_validate_login("YNOW", "20261015", when = when)$ok) &&
+    !isTRUE(ynow_sysadmin_validate_login("ynow", "20261014", when = when)$ok) &&
+    !isTRUE(ynow_sysadmin_validate_login("admin", "20261015", when = when)$ok) &&
+    !isTRUE(ynow_sysadmin_validate_login("ynow", "", when = when)$ok)
+})
+check("server never logs sysadmin password", {
+  srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  # Enter handler clears pass; no message()/cat()/print of login_pass.
+  grepl("ynow_pts_sysadmin_login_pass", srv, fixed = TRUE) &&
+    grepl("ynow_sysadmin_validate_login", srv, fixed = TRUE) &&
+    grepl("updateTextInput\\(session, \"ynow_pts_sysadmin_login_pass\"", srv, perl = TRUE) &&
+    !grepl("message\\(.*login_pass|cat\\(.*login_pass|print\\(.*login_pass", srv, perl = TRUE)
 })
 
 # Admin adjust post-write verify + view-as wiring
@@ -430,25 +473,41 @@ check("locale view-as keys en+zh-TW", {
   keys <- c(
     "pts_sysadmin_viewas", "pts_sysadmin_viewas_exit",
     "pts_sysadmin_viewas_active", "pts_sysadmin_ok_verify_fmt",
-    "pts_sysadmin_verify_failed"
+    "pts_sysadmin_verify_failed", "pts_sysadmin_viewas_chrome_hint"
   )
   all(vapply(keys, function(k) {
     en <- ui_str(k, "en")
     zh <- ui_str(k, "zh-TW")
-    nzchar(en) && nzchar(zh) && !grepl("数据|默认", zh)
-  }, logical(1)))
+    nzchar(en) && nzchar(zh) && !grepl("数据|默认|一鍵", zh)
+  }, logical(1))) &&
+    identical(ui_str("pts_sysadmin_viewas", "en"), "Switch view") &&
+    identical(ui_str("pts_sysadmin_viewas", "zh-TW"), "切換檢視")
 })
-check("server wires view-as + effective user", {
+check("server wires view-as + silver chrome + effective user", {
   srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   grepl("ynow_pts_view_as", srv, fixed = TRUE) &&
     grepl(".ynow_pts_effective_user", srv, fixed = TRUE) &&
     grepl("ynow_pts_sysadmin_viewas", srv, fixed = TRUE) &&
     grepl("pts_sysadmin_viewas_exit", srv, fixed = TRUE) &&
+    grepl(".ynow_view_as_push_chrome", srv, fixed = TRUE) &&
+    grepl("ynowViewAsMode", srv, fixed = TRUE) &&
+    grepl("ynowViewAsMode", ui, fixed = TRUE) &&
+    grepl("ynow-silver-shine", ui, fixed = TRUE) &&
     grepl("verified", paste(readLines(file.path(app_dir, "points_wallet.R"), warn = FALSE), collapse = "\n"), fixed = TRUE)
 })
 check("price_alert prefers effective user for points gate", {
   pa <- paste(readLines(file.path(app_dir, "price_alert.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   grepl("ynow_pts_effective_user", pa, fixed = TRUE)
+})
+check("sidebar foot link is System admin not Testing sandbox", {
+  ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  en <- ui_str("test_link", "en")
+  zh <- ui_str("test_link", "zh-TW")
+  grepl("System admin", en, fixed = TRUE) &&
+    grepl("系統管理", zh, fixed = TRUE) &&
+    grepl("user-shield", ui, fixed = TRUE) &&
+    !grepl("一鍵", zh, fixed = TRUE)
 })
 check("no leftover agent debug instrumentation", {
   files <- c("points_wallet.R", "ynow_server.R", "auth_account.R", "debug_helpers.R")
