@@ -224,6 +224,13 @@ check("guest pts banner hidden until login", {
     grepl("li.ynow-pts-header.ynow-pts-hidden", ui, fixed = TRUE) &&
     grepl("ynow-pts-header:not(.ynow-pts-hidden)", ui, fixed = TRUE)
 })
+check("guest pts banner clears DOM values when hidden", {
+  ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("payload.visible === false", ui, fixed = TRUE) &&
+    grepl("fynVal.textContent = ''", ui, fixed = TRUE) &&
+    grepl("pynVal.textContent = ''", ui, fixed = TRUE) &&
+    grepl("ptsGuestHidden", ui, fixed = TRUE)
+})
 check("server distinguishes no-db empty state", {
   srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   grepl("pts_sysadmin_no_db", srv, fixed = TRUE) &&

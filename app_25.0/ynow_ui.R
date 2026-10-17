@@ -9650,10 +9650,15 @@ ui <- dashboardPage(
             var ptsSysRefresh = document.getElementById('ynow_pts_sysadmin_refresh_label');
             if (ptsSysRefresh && s.pts_sysadmin_refresh) ptsSysRefresh.textContent = s.pts_sysadmin_refresh;
             var ptsColon = (payload && payload.locale === 'zh-TW') ? '：' : ':';
-            var ptsFynLab = document.getElementById('ynow_pts_banner_fyn_label');
-            if (ptsFynLab && s.pts_fyn_label) ptsFynLab.textContent = s.pts_fyn_label + ptsColon;
-            var ptsPynLab = document.getElementById('ynow_pts_banner_pyn_label');
-            if (ptsPynLab && s.pts_pyn_label) ptsPynLab.textContent = s.pts_pyn_label + ptsColon;
+            var ptsHdrForLocale = document.getElementById('ynow-pts-header');
+            var ptsGuestHidden = !!(ptsHdrForLocale && ptsHdrForLocale.classList.contains('ynow-pts-hidden'));
+            /* Do not refill FYN/PYN banner labels while guest-hidden. */
+            if (!ptsGuestHidden) {
+              var ptsFynLab = document.getElementById('ynow_pts_banner_fyn_label');
+              if (ptsFynLab && s.pts_fyn_label) ptsFynLab.textContent = s.pts_fyn_label + ptsColon;
+              var ptsPynLab = document.getElementById('ynow_pts_banner_pyn_label');
+              if (ptsPynLab && s.pts_pyn_label) ptsPynLab.textContent = s.pts_pyn_label + ptsColon;
+            }
             var atxTitle = document.getElementById('ynow_atx_page_title');
             if (atxTitle && s.atx_page_title) atxTitle.textContent = s.atx_page_title;
             var atxSub = document.getElementById('ynow_atx_page_sub');
@@ -9946,21 +9951,24 @@ ui <- dashboardPage(
               var pynLab = document.getElementById('ynow_pts_banner_pyn_label');
               var fynVal = document.getElementById('ynow_pts_banner_fyn_value');
               var pynVal = document.getElementById('ynow_pts_banner_pyn_value');
+              var hdr = document.getElementById('ynow-pts-header');
+              var banner = document.getElementById('ynow_pts_banner');
+              /* Guests: hide + clear DOM (do not map empty to em-dash placeholders). */
+              if (payload.visible === false) {
+                if (fynLab) fynLab.textContent = '';
+                if (pynLab) pynLab.textContent = '';
+                if (fynVal) fynVal.textContent = '';
+                if (pynVal) pynVal.textContent = '';
+                if (hdr) hdr.classList.add('ynow-pts-hidden');
+                if (banner) banner.setAttribute('aria-hidden', 'true');
+                return;
+              }
               if (fynLab && payload.fyn_label) fynLab.textContent = payload.fyn_label;
               if (pynLab && payload.pyn_label) pynLab.textContent = payload.pyn_label;
               if (fynVal) fynVal.textContent = (payload.fyn != null && payload.fyn !== '') ? String(payload.fyn) : '—';
               if (pynVal) pynVal.textContent = (payload.pyn != null && payload.pyn !== '') ? String(payload.pyn) : '—';
-              var hdr = document.getElementById('ynow-pts-header');
-              var banner = document.getElementById('ynow_pts_banner');
-              if (hdr) {
-                // Class + !important CSS — inline display loses to flex !important / Lite rules.
-                if (payload.visible === false) hdr.classList.add('ynow-pts-hidden');
-                else hdr.classList.remove('ynow-pts-hidden');
-              }
-              if (banner) {
-                if (payload.visible === false) banner.setAttribute('aria-hidden', 'true');
-                else banner.setAttribute('aria-hidden', 'false');
-              }
+              if (hdr) hdr.classList.remove('ynow-pts-hidden');
+              if (banner) banner.setAttribute('aria-hidden', 'false');
             });
             addHandler('ynowAuthFeature', function (payload) {
               if (!payload) return;
