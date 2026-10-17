@@ -402,6 +402,64 @@ check("server shows need_enter hint when sysadmin off", {
     grepl("ynow_pts_sysadmin_need_enter", srv, fixed = TRUE)
 })
 
+# Admin adjust post-write verify + view-as wiring
+check("admin adjust verifies persisted balances", {
+  .ynow_points_mem_reset()
+  u2 <- paste0("mem-verify-", as.integer(as.numeric(Sys.time())))
+  ynow_points_on_login(u2)
+  before <- ynow_points_balances(u2)
+  adj <- ynow_points_admin_adjust(u2, fyn_delta = 17L, pyn_delta = 3L, note = "verify")
+  after <- ynow_points_balances(u2)
+  isTRUE(adj$ok) && isTRUE(adj$verified) &&
+    identical(as.integer(after$fyn), as.integer(before$fyn) + 17L) &&
+    identical(as.integer(after$pyn), as.integer(before$pyn) + 3L)
+})
+check("on_login does not wipe admin grant", {
+  .ynow_points_mem_reset()
+  u3 <- paste0("mem-persist-", as.integer(as.numeric(Sys.time())))
+  ynow_points_on_login(u3)
+  ynow_points_admin_adjust(u3, fyn_delta = 40L, pyn_delta = 0L)
+  mid <- ynow_points_balances(u3)
+  again <- ynow_points_on_login(u3)
+  after <- ynow_points_balances(u3)
+  isTRUE(again$ok) && !isTRUE(again$gift_granted) &&
+    identical(as.integer(after$fyn), as.integer(mid$fyn)) &&
+    identical(as.integer(after$pyn), as.integer(mid$pyn))
+})
+check("locale view-as keys en+zh-TW", {
+  keys <- c(
+    "pts_sysadmin_viewas", "pts_sysadmin_viewas_exit",
+    "pts_sysadmin_viewas_active", "pts_sysadmin_ok_verify_fmt",
+    "pts_sysadmin_verify_failed"
+  )
+  all(vapply(keys, function(k) {
+    en <- ui_str(k, "en")
+    zh <- ui_str(k, "zh-TW")
+    nzchar(en) && nzchar(zh) && !grepl("数据|默认", zh)
+  }, logical(1)))
+})
+check("server wires view-as + effective user", {
+  srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("ynow_pts_view_as", srv, fixed = TRUE) &&
+    grepl(".ynow_pts_effective_user", srv, fixed = TRUE) &&
+    grepl("ynow_pts_sysadmin_viewas", srv, fixed = TRUE) &&
+    grepl("pts_sysadmin_viewas_exit", srv, fixed = TRUE) &&
+    grepl("verified", paste(readLines(file.path(app_dir, "points_wallet.R"), warn = FALSE), collapse = "\n"), fixed = TRUE)
+})
+check("price_alert prefers effective user for points gate", {
+  pa <- paste(readLines(file.path(app_dir, "price_alert.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("ynow_pts_effective_user", pa, fixed = TRUE)
+})
+check("no leftover agent debug instrumentation", {
+  files <- c("points_wallet.R", "ynow_server.R", "auth_account.R", "debug_helpers.R")
+  txt <- paste(vapply(files, function(f) {
+    paste(readLines(file.path(app_dir, f), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  }, character(1)), collapse = "\n")
+  !grepl("ynow_agent_dbg", txt, fixed = TRUE) &&
+    !grepl("/opt/cursor/logs/debug.log", txt, fixed = TRUE) &&
+    !grepl("#region agent log", txt, fixed = TRUE)
+})
+
 cat("PASS", n_ok, " FAIL", n_fail, "\n")
 if (n_fail > 0L) quit(status = 1)
 cat("ALL PASS\n")

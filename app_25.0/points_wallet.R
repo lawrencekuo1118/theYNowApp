@@ -716,6 +716,7 @@ ynow_points_credit <- function(user_id, delta, reason = "adjust", ref_id = NULL,
 }
 
 #' Admin adjust: add or subtract FYN and/or PYN in one call (separate ledger refs).
+#' Re-reads balances after credit; fails if expected deltas are not reflected (no silent OK).
 ynow_points_admin_adjust <- function(user_id, fyn_delta = 0L, pyn_delta = 0L,
                                      note = "", by = "testing_admin") {
   uid <- as.character(user_id %||% "")[1]
@@ -727,10 +728,10 @@ ynow_points_admin_adjust <- function(user_id, fyn_delta = 0L, pyn_delta = 0L,
   pd <- suppressWarnings(as.integer(pyn_delta)[1])
   if (!is.finite(fd)) fd <- 0L
   if (!is.finite(pd)) pd <- 0L
+  before <- ynow_points_balances(uid)
   if (identical(fd, 0L) && identical(pd, 0L)) {
-    bals <- ynow_points_balances(uid)
     return(list(ok = FALSE, message_key = "pts_msg_bad_delta",
-                fyn = bals$fyn, pyn = bals$pyn))
+                fyn = before$fyn, pyn = before$pyn))
   }
   stamp <- paste0(
     as.integer(as.numeric(Sys.time())), ":",
@@ -771,9 +772,31 @@ ynow_points_admin_adjust <- function(user_id, fyn_delta = 0L, pyn_delta = 0L,
       ))
     }
   }
+  # Post-write verify against the same backend the credit used (DB or memory).
   bals <- ynow_points_balances(uid)
-  list(ok = TRUE, message_key = "pts_msg_ok", fyn = bals$fyn, pyn = bals$pyn,
-       fyn_delta = fd, pyn_delta = pd)
+  bf <- suppressWarnings(as.integer(before$fyn %||% NA_integer_)[1])
+  bp <- suppressWarnings(as.integer(before$pyn %||% NA_integer_)[1])
+  af <- suppressWarnings(as.integer(bals$fyn %||% NA_integer_)[1])
+  ap <- suppressWarnings(as.integer(bals$pyn %||% NA_integer_)[1])
+  expect_fyn <- if (is.finite(bf)) bf + fd else NA_integer_
+  expect_pyn <- if (is.finite(bp)) bp + pd else NA_integer_
+  ok_fyn <- identical(fd, 0L) || (is.finite(af) && is.finite(expect_fyn) && identical(af, expect_fyn))
+  ok_pyn <- identical(pd, 0L) || (is.finite(ap) && is.finite(expect_pyn) && identical(ap, expect_pyn))
+  if (!isTRUE(ok_fyn) || !isTRUE(ok_pyn)) {
+    return(list(
+      ok = FALSE,
+      message_key = "pts_msg_backend",
+      fyn = bals$fyn,
+      pyn = bals$pyn,
+      verified = FALSE,
+      fyn_delta = fd,
+      pyn_delta = pd
+    ))
+  }
+  list(
+    ok = TRUE, message_key = "pts_msg_ok", fyn = bals$fyn, pyn = bals$pyn,
+    fyn_delta = fd, pyn_delta = pd, verified = TRUE
+  )
 }
 
 #' Spend FYN for a SKU (negative delta = cost). Idempotent on ref_id.
