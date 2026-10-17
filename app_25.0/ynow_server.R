@@ -447,8 +447,9 @@ server <- function(input, output, session) {
   .ynow_pts_push_banner <- function() {
     loc <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "en")
     u <- tryCatch(ynow_auth$user(), error = function(e) NULL)
-    fyn_lab <- tryCatch(paste0(ui_str("pts_fyn_label", loc), ":"), error = function(e) "FYN points:")
-    pyn_lab <- tryCatch(paste0(ui_str("pts_pyn_label", loc), ":"), error = function(e) "PYN points:")
+    pts_colon <- if (identical(loc, "zh-TW")) "：" else ":"
+    fyn_lab <- tryCatch(paste0(ui_str("pts_fyn_label", loc), pts_colon), error = function(e) "FYN points:")
+    pyn_lab <- tryCatch(paste0(ui_str("pts_pyn_label", loc), pts_colon), error = function(e) "PYN points:")
     if (is.null(u)) {
       session$sendCustomMessage(
         "ynowPtsBanner",

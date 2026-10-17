@@ -7919,14 +7919,28 @@ ui <- dashboardPage(
             if (!title || !base) return;
             var mkt = document.getElementById('ynow-market-header');
             var custom = document.querySelector('.main-header .navbar-custom-menu');
+            var ptsHdr = document.getElementById('ynow-pts-header');
+            var langHdr = document.querySelector('.main-header .ynow-lang-header');
             var gap = 10;
             var leftClear = mkt ? Math.round(mkt.getBoundingClientRect().right) : 90;
-            var rightClear = custom
-              ? Math.round(window.innerWidth - custom.getBoundingClientRect().left)
-              : 120;
+            /* Right clear: protect locale + FYN/PYN pts + mark — title must not paint over them. */
+            var rightEdge = window.innerWidth;
+            var pushLeft = function (el) {
+              if (!el) return;
+              try {
+                var cs = window.getComputedStyle(el);
+                if (cs.display === 'none' || cs.visibility === 'hidden') return;
+                var r = el.getBoundingClientRect();
+                if (r.width > 0 && r.left > 0) rightEdge = Math.min(rightEdge, r.left);
+              } catch (ePush) {}
+            };
+            pushLeft(ptsHdr);
+            pushLeft(langHdr);
+            if (custom) pushLeft(custom);
+            var rightClear = Math.max(80, Math.round(window.innerWidth - rightEdge));
             var maxW = Math.max(64, window.innerWidth - leftClear - rightClear - gap * 2);
             title.style.maxWidth = maxW + 'px';
-            title.style.overflow = 'visible';
+            title.style.overflow = 'hidden';
             title.style.textOverflow = 'clip';
             /* Prefer readable size; shrink proportionally so full version string stays visible */
             var fs = 16;
@@ -9617,10 +9631,11 @@ ui <- dashboardPage(
             if (ptsSysExit && s.pts_sysadmin_exit) ptsSysExit.textContent = s.pts_sysadmin_exit;
             var ptsSysRefresh = document.getElementById('ynow_pts_sysadmin_refresh_label');
             if (ptsSysRefresh && s.pts_sysadmin_refresh) ptsSysRefresh.textContent = s.pts_sysadmin_refresh;
+            var ptsColon = (payload && payload.locale === 'zh-TW') ? '：' : ':';
             var ptsFynLab = document.getElementById('ynow_pts_banner_fyn_label');
-            if (ptsFynLab && s.pts_fyn_label) ptsFynLab.textContent = s.pts_fyn_label + ':';
+            if (ptsFynLab && s.pts_fyn_label) ptsFynLab.textContent = s.pts_fyn_label + ptsColon;
             var ptsPynLab = document.getElementById('ynow_pts_banner_pyn_label');
-            if (ptsPynLab && s.pts_pyn_label) ptsPynLab.textContent = s.pts_pyn_label + ':';
+            if (ptsPynLab && s.pts_pyn_label) ptsPynLab.textContent = s.pts_pyn_label + ptsColon;
             var atxTitle = document.getElementById('ynow_atx_page_title');
             if (atxTitle && s.atx_page_title) atxTitle.textContent = s.atx_page_title;
             var atxSub = document.getElementById('ynow_atx_page_sub');
@@ -14087,12 +14102,12 @@ ui <- dashboardPage(
             background-image: none !important;
           }
           .main-header .logo .ynow-app-title {
-            /* JS scales font into the center gap; no ellipsis — full version string stays */
+            /* JS scales font into the center gap; clip so title cannot paint over pts/lang */
             position: relative;
             font-size: 16px;
             line-height: 1.15 !important;
             white-space: nowrap;
-            overflow: visible;
+            overflow: hidden !important;
             text-overflow: clip;
             max-width: min(100%, calc(100vw - 200px));
             height: auto !important;
@@ -14119,12 +14134,9 @@ ui <- dashboardPage(
             white-space: nowrap;
             pointer-events: none;
           }
-          /* Keep 繁中／EN / mark / toggle above the absolute title band */
-          .main-header .navbar-custom-menu .navbar-nav > li.ynow-lang-header {
-            position: relative !important;
-            z-index: 1062 !important;
-            flex-shrink: 0 !important;
-          }
+          /* Keep 繁中／EN / FYN·PYN / mark / toggle above the absolute title band */
+          .main-header .navbar-custom-menu .navbar-nav > li.ynow-lang-header,
+          .main-header .navbar-custom-menu .navbar-nav > li.ynow-pts-header,
           .main-header .navbar-custom-menu .navbar-nav > li#ynow-header-logo.ynow-header-logo {
             position: relative !important;
             z-index: 1062 !important;
@@ -14151,6 +14163,16 @@ ui <- dashboardPage(
           }
           .main-header .navbar-custom-menu .navbar-nav > li.ynow-lang-header {
             padding: 0 4px 0 0 !important;
+          }
+          .main-header .navbar-custom-menu .navbar-nav > li.ynow-pts-header {
+            padding: 0 6px 0 2px !important;
+          }
+          .ynow-pts-banner {
+            font-size: 10px !important;
+            gap: 0 !important;
+            min-width: 0 !important;
+            flex-shrink: 0 !important;
+            line-height: 1.1 !important;
           }
           .main-header .navbar {
             min-height: 50px !important;
@@ -14307,6 +14329,7 @@ ui <- dashboardPage(
             overflow: visible !important;
           }
           .main-header .navbar-custom-menu .navbar-nav > li.ynow-lang-header,
+          .main-header .navbar-custom-menu .navbar-nav > li.ynow-pts-header,
           .main-header .navbar-custom-menu .navbar-nav > li#ynow-header-logo.ynow-header-logo {
             float: none !important;
             height: 50px !important;
@@ -14322,9 +14345,25 @@ ui <- dashboardPage(
             padding-left: 0 !important;
             padding-right: 4px !important;
           }
+          .main-header .navbar-custom-menu .navbar-nav > li.ynow-pts-header {
+            padding-left: 2px !important;
+            padding-right: 6px !important;
+            overflow: visible !important;
+          }
           .main-header .navbar-custom-menu .navbar-nav > li#ynow-header-logo.ynow-header-logo {
             position: relative !important;
             overflow: visible !important;
+          }
+          /* Lite: same top-banner pts pattern — never hide */
+          body.ynow-lite .main-header .navbar-custom-menu .navbar-nav > li.ynow-pts-header,
+          body.ynow-lite #ynow-pts-header {
+            display: flex !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+          }
+          body.ynow-lite .ynow-pts-banner {
+            display: flex !important;
+            visibility: visible !important;
           }
           .ynow-ccy-float {
             right: 8px;
