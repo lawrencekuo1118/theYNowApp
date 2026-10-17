@@ -376,7 +376,7 @@ ynow_points_ensure_schema <- function(conn = NULL) {
       )
     }
     # One-time migrate: legacy single balance → FYN when FYN still 0 and legacy > 0.
-    tryCatch(
+    mig_n <- tryCatch(
       DBI::dbExecute(
         con,
         "UPDATE ynow_users
@@ -385,17 +385,26 @@ ynow_points_ensure_schema <- function(conn = NULL) {
             AND COALESCE(pyn_balance, 0) = 0
             AND COALESCE(points_balance, 0) > 0"
       ),
-      error = function(e) NULL
+      error = function(e) -1L
     )
     # Keep points_balance mirrored to FYN for any legacy SELECT paths.
-    tryCatch(
+    mir_n <- tryCatch(
       DBI::dbExecute(
         con,
         "UPDATE ynow_users SET points_balance = COALESCE(fyn_balance, 0)
           WHERE points_balance IS DISTINCT FROM COALESCE(fyn_balance, 0)"
       ),
-      error = function(e) NULL
+      error = function(e) -1L
     )
+    # #region agent log
+    if (exists(".ynow_agent_dbg", mode = "function") &&
+        ((is.finite(mig_n) && mig_n > 0L) || (is.finite(mir_n) && mir_n > 0L))) {
+      .ynow_agent_dbg("B", "points_wallet.R:ensure_schema", "schema_balance_mutate", list(
+        migrate_rows = suppressWarnings(as.integer(mig_n)[1]),
+        mirror_rows = suppressWarnings(as.integer(mir_n)[1])
+      ))
+    }
+    # #endregion
 
     DBI::dbExecute(con, "
       CREATE TABLE IF NOT EXISTS ynow_points_ledger (
@@ -553,7 +562,8 @@ ynow_points_ensure_schema <- function(conn = NULL) {
     DBI::dbWithTransaction(con, {
       locked <- DBI::dbGetQuery(
         con,
-        "SELECT COALESCE(fyn_balance, 0) AS fyn, COALESCE(pyn_balance, 0) AS pyn
+        "SELECT COALESCE(fyn_balance, 0) AS fyn, COALESCE(pyn_balance, 0) AS pyn,
+                COALESCE(points_balance, 0) AS points_balance
            FROM ynow_users WHERE id = $1::uuid FOR UPDATE",
         params = list(uid)
       )
@@ -590,9 +600,32 @@ ynow_points_ensure_schema <- function(conn = NULL) {
         params = list(uid, dlt, new_bal, reason_s, sku_s, ref, meta_json, w)
       )
       list(ok = TRUE, balance = new_bal, fyn = fyn, pyn = pyn, wallet = w,
-           message_key = "pts_msg_ok", delta = dlt)
+           message_key = "pts_msg_ok", delta = dlt,
+           locked_fyn = as.integer(locked$fyn[[1]]),
+           locked_pyn = as.integer(locked$pyn[[1]]),
+           locked_pts = as.integer(locked$points_balance[[1]]))
     })
   })
+  # #region agent log
+  if (exists(".ynow_agent_dbg", mode = "function") &&
+      (identical(reason_s, "earn_admin") || identical(reason_s, "earn_signup") ||
+       identical(reason_s, "earn_daily_checkin"))) {
+    .ynow_agent_dbg("A", "points_wallet.R:neon_apply", "neon_apply_result", list(
+      reason = reason_s,
+      wallet = w,
+      ok = isTRUE(out$ok),
+      msg = as.character(out$message_key %||% "")[1],
+      idempotent = isTRUE(out$idempotent),
+      delta = suppressWarnings(as.integer(out$delta %||% dlt)[1]),
+      fyn = suppressWarnings(as.integer(out$fyn %||% NA_integer_)[1]),
+      pyn = suppressWarnings(as.integer(out$pyn %||% NA_integer_)[1]),
+      locked_fyn = suppressWarnings(as.integer(out$locked_fyn %||% NA_integer_)[1]),
+      locked_pts = suppressWarnings(as.integer(out$locked_pts %||% NA_integer_)[1]),
+      id_prefix = substr(uid, 1L, 8L),
+      out_null = is.null(out)
+    ))
+  }
+  # #endregion
   out %||% list(ok = FALSE, balance = NA_integer_, fyn = NA_integer_, pyn = NA_integer_,
                 message_key = "pts_msg_backend")
 }
@@ -666,10 +699,26 @@ ynow_points_ensure_schema <- function(conn = NULL) {
 
 #' Dual balances: list(fyn=, pyn=).
 ynow_points_balances <- function(user_id) {
-  if (ynow_points_uses_db()) {
-    return(.ynow_points_neon_balances(user_id))
+  uid <- as.character(user_id %||% "")[1]
+  bals <- if (ynow_points_uses_db()) {
+    .ynow_points_neon_balances(uid)
+  } else {
+    .ynow_points_mem_balances(uid)
   }
-  .ynow_points_mem_balances(user_id)
+  # #region agent log
+  if (exists(".ynow_agent_dbg", mode = "function") && nzchar(uid)) {
+    # Throttle: only log when caller is interesting (admin/login) via env sticky flag —
+    # always log; volume is low for targeted repro.
+    .ynow_agent_dbg("E", "points_wallet.R:balances", "balances_read", list(
+      id_prefix = substr(uid, 1L, 8L),
+      uses_db = isTRUE(ynow_points_uses_db()),
+      backend = tryCatch(ynow_points_backend(), error = function(e) "err"),
+      fyn = suppressWarnings(as.integer(bals$fyn %||% NA_integer_)[1]),
+      pyn = suppressWarnings(as.integer(bals$pyn %||% NA_integer_)[1])
+    ))
+  }
+  # #endregion
+  bals
 }
 
 #' FYN balance (spendable free points). Alias of balances$fyn for gate/spend.
@@ -727,6 +776,23 @@ ynow_points_admin_adjust <- function(user_id, fyn_delta = 0L, pyn_delta = 0L,
   pd <- suppressWarnings(as.integer(pyn_delta)[1])
   if (!is.finite(fd)) fd <- 0L
   if (!is.finite(pd)) pd <- 0L
+  before <- ynow_points_balances(uid)
+  backend <- tryCatch(ynow_points_backend(), error = function(e) "err")
+  uses_db <- isTRUE(ynow_points_uses_db())
+  # #region agent log
+  if (exists(".ynow_agent_dbg", mode = "function")) {
+    .ynow_agent_dbg("A", "points_wallet.R:admin_adjust", "admin_adjust_entry", list(
+      id_prefix = substr(uid, 1L, 8L),
+      is_uuid = grepl("^[0-9a-fA-F-]{36}$", uid),
+      is_mem = startsWith(uid, "mem:"),
+      fd = fd, pd = pd,
+      backend = backend,
+      uses_db = uses_db,
+      before_fyn = suppressWarnings(as.integer(before$fyn %||% NA_integer_)[1]),
+      before_pyn = suppressWarnings(as.integer(before$pyn %||% NA_integer_)[1])
+    ))
+  }
+  # #endregion
   if (identical(fd, 0L) && identical(pd, 0L)) {
     bals <- ynow_points_balances(uid)
     return(list(ok = FALSE, message_key = "pts_msg_bad_delta",
@@ -748,6 +814,14 @@ ynow_points_admin_adjust <- function(user_id, fyn_delta = 0L, pyn_delta = 0L,
       wallet = "fyn"
     )
     if (!isTRUE(res_fyn$ok)) {
+      # #region agent log
+      if (exists(".ynow_agent_dbg", mode = "function")) {
+        .ynow_agent_dbg("A", "points_wallet.R:admin_adjust", "admin_adjust_fyn_fail", list(
+          msg = as.character(res_fyn$message_key %||% "")[1],
+          backend = backend, uses_db = uses_db
+        ))
+      }
+      # #endregion
       return(list(
         ok = FALSE,
         message_key = res_fyn$message_key %||% "pts_msg_backend",
@@ -764,6 +838,14 @@ ynow_points_admin_adjust <- function(user_id, fyn_delta = 0L, pyn_delta = 0L,
     )
     if (!isTRUE(res_pyn$ok)) {
       bals <- ynow_points_balances(uid)
+      # #region agent log
+      if (exists(".ynow_agent_dbg", mode = "function")) {
+        .ynow_agent_dbg("A", "points_wallet.R:admin_adjust", "admin_adjust_pyn_fail", list(
+          msg = as.character(res_pyn$message_key %||% "")[1],
+          backend = backend, uses_db = uses_db
+        ))
+      }
+      # #endregion
       return(list(
         ok = FALSE,
         message_key = res_pyn$message_key %||% "pts_msg_backend",
@@ -772,6 +854,21 @@ ynow_points_admin_adjust <- function(user_id, fyn_delta = 0L, pyn_delta = 0L,
     }
   }
   bals <- ynow_points_balances(uid)
+  # #region agent log
+  if (exists(".ynow_agent_dbg", mode = "function")) {
+    .ynow_agent_dbg("A", "points_wallet.R:admin_adjust", "admin_adjust_exit", list(
+      ok = TRUE,
+      backend = backend,
+      uses_db = uses_db,
+      after_fyn = suppressWarnings(as.integer(bals$fyn %||% NA_integer_)[1]),
+      after_pyn = suppressWarnings(as.integer(bals$pyn %||% NA_integer_)[1]),
+      delta_fyn = suppressWarnings(as.integer(bals$fyn %||% 0L)[1] - as.integer(before$fyn %||% 0L)[1]),
+      delta_pyn = suppressWarnings(as.integer(bals$pyn %||% 0L)[1] - as.integer(before$pyn %||% 0L)[1]),
+      fyn_credit_ok = if (is.null(res_fyn)) NA else isTRUE(res_fyn$ok),
+      pyn_credit_ok = if (is.null(res_pyn)) NA else isTRUE(res_pyn$ok)
+    ))
+  }
+  # #endregion
   list(ok = TRUE, message_key = "pts_msg_ok", fyn = bals$fyn, pyn = bals$pyn,
        fyn_delta = fd, pyn_delta = pd)
 }
@@ -828,7 +925,18 @@ ynow_points_resolve_public_id <- function(public_id) {
   if (!is.data.frame(df) || !nrow(df)) return("")
   hit <- df[df$public_id == pid, , drop = FALSE]
   if (!nrow(hit)) return("")
-  as.character(hit$user_id[[1]])
+  uid <- as.character(hit$user_id[[1]])
+  # #region agent log
+  if (exists(".ynow_agent_dbg", mode = "function")) {
+    .ynow_agent_dbg("D", "points_wallet.R:resolve_public_id", "resolve_public_id", list(
+      pid_prefix = substr(pid, 1L, 14L),
+      uid_prefix = substr(uid, 1L, 8L),
+      is_uuid = grepl("^[0-9a-fA-F-]{36}$", uid),
+      list_nrow = nrow(df)
+    ))
+  }
+  # #endregion
+  uid
 }
 
 #' Grant first-registration / first-login gift once (idempotent). Default 100 FYN.
@@ -885,12 +993,51 @@ ynow_points_on_login <- function(user_id, when = Sys.time()) {
     return(list(ok = FALSE, balance = NA_integer_, fyn = NA_integer_, pyn = NA_integer_,
                 message_key = "pts_msg_no_user"))
   }
-  if (identical(ynow_points_backend(), "memory")) {
+  backend <- ynow_points_backend()
+  before <- ynow_points_balances(uid)
+  # #region agent log
+  if (exists(".ynow_agent_dbg", mode = "function")) {
+    .ynow_agent_dbg("B", "points_wallet.R:on_login", "on_login_before", list(
+      id_prefix = substr(uid, 1L, 8L),
+      is_uuid = grepl("^[0-9a-fA-F-]{36}$", uid),
+      is_mem = startsWith(uid, "mem:"),
+      backend = backend,
+      uses_db = isTRUE(ynow_points_uses_db()),
+      before_fyn = suppressWarnings(as.integer(before$fyn %||% NA_integer_)[1]),
+      before_pyn = suppressWarnings(as.integer(before$pyn %||% NA_integer_)[1])
+    ))
+  }
+  # #endregion
+  if (identical(backend, "memory")) {
     .ynow_points_mem_ensure_user(uid)
   }
   gift <- ynow_points_grant_signup_bonus(uid)
   checkin <- ynow_points_grant_daily_checkin(uid, when = when)
   bals <- ynow_points_balances(uid)
+  gift_granted <- isTRUE(gift$ok) && !isTRUE(gift$idempotent) && !isTRUE(gift$skipped) &&
+    isTRUE((gift$delta %||% 0L) > 0L)
+  checkin_granted <- isTRUE(checkin$ok) && !isTRUE(checkin$idempotent) &&
+    !isTRUE(checkin$skipped) && isTRUE((checkin$delta %||% 0L) > 0L)
+  # #region agent log
+  if (exists(".ynow_agent_dbg", mode = "function")) {
+    .ynow_agent_dbg("B", "points_wallet.R:on_login", "on_login_after", list(
+      after_fyn = suppressWarnings(as.integer(bals$fyn %||% NA_integer_)[1]),
+      after_pyn = suppressWarnings(as.integer(bals$pyn %||% NA_integer_)[1]),
+      gift_granted = gift_granted,
+      gift_idempotent = isTRUE(gift$idempotent),
+      gift_msg = as.character(gift$message_key %||% "")[1],
+      checkin_granted = checkin_granted,
+      fyn_dropped = isTRUE(
+        is.finite(before$fyn) && is.finite(bals$fyn) &&
+          as.integer(bals$fyn) < as.integer(before$fyn)
+      ),
+      pyn_dropped = isTRUE(
+        is.finite(before$pyn) && is.finite(bals$pyn) &&
+          as.integer(bals$pyn) < as.integer(before$pyn)
+      )
+    ))
+  }
+  # #endregion
   list(
     ok = TRUE,
     balance = bals$fyn,
@@ -899,10 +1046,8 @@ ynow_points_on_login <- function(user_id, when = Sys.time()) {
     message_key = "pts_msg_ok",
     gift = gift,
     checkin = checkin,
-    gift_granted = isTRUE(gift$ok) && !isTRUE(gift$idempotent) && !isTRUE(gift$skipped) &&
-      isTRUE((gift$delta %||% 0L) > 0L),
-    checkin_granted = isTRUE(checkin$ok) && !isTRUE(checkin$idempotent) &&
-      !isTRUE(checkin$skipped) && isTRUE((checkin$delta %||% 0L) > 0L)
+    gift_granted = gift_granted,
+    checkin_granted = checkin_granted
   )
 }
 

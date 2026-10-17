@@ -944,8 +944,19 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
     account_user(user)
     # First gift (100 FYN once) + daily check-in (+30 FYN / Asia/Taipei day). Never reset.
     pts_login <- NULL
+    uid <- as.character(user$id %||% "")[1]
+    # #region agent log
+    if (exists(".ynow_agent_dbg", mode = "function")) {
+      .ynow_agent_dbg("C", "auth_account.R:finish_auth", "finish_auth_uid", list(
+        has_id = nzchar(uid),
+        id_prefix = if (nzchar(uid)) substr(uid, 1L, 8L) else "",
+        is_uuid = grepl("^[0-9a-fA-F-]{36}$", uid),
+        is_mem = startsWith(uid, "mem:"),
+        backend = tryCatch(ynow_points_backend(), error = function(e) "err")
+      ))
+    }
+    # #endregion
     if (exists("ynow_points_on_login", mode = "function")) {
-      uid <- as.character(user$id %||% "")[1]
       if (nzchar(uid)) {
         pts_login <- tryCatch(
           ynow_points_on_login(uid),

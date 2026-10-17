@@ -14,3 +14,24 @@
   if (.ynow_debug_on()) message(...)
   invisible(NULL)
 }
+
+# Temporary agent NDJSON (admin-grant-persist). Always writes; no secrets/PII.
+.ynow_agent_dbg <- function(hypothesisId, location, message, data = list()) {
+  # #region agent log
+  tryCatch({
+    path <- "/opt/cursor/logs/debug.log"
+    dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
+    payload <- list(
+      id = paste0("log_", as.integer(Sys.time()), "_", sample.int(1e6, 1)),
+      timestamp = as.numeric(Sys.time()) * 1000,
+      location = as.character(location)[1],
+      message = as.character(message)[1],
+      data = if (is.list(data)) data else list(value = data),
+      hypothesisId = as.character(hypothesisId)[1]
+    )
+    line <- jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null", force = TRUE)
+    cat(as.character(line), "\n", file = path, append = TRUE, sep = "")
+  }, error = function(e) invisible(NULL))
+  # #endregion
+  invisible(NULL)
+}

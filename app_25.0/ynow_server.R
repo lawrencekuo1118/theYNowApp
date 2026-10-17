@@ -461,6 +461,18 @@ server <- function(input, output, session) {
     bund <- .ynow_pts_user_bundle(u)
     fyn_txt <- if (is.finite(bund$fyn)) as.character(bund$fyn) else "—"
     pyn_txt <- if (is.finite(bund$pyn)) as.character(bund$pyn) else "—"
+    # #region agent log
+    if (exists(".ynow_agent_dbg", mode = "function")) {
+      .ynow_agent_dbg("C", "ynow_server.R:pts_banner", "push_banner", list(
+        id_prefix = substr(as.character(bund$uid %||% "")[1], 1L, 8L),
+        is_uuid = grepl("^[0-9a-fA-F-]{36}$", as.character(bund$uid %||% "")[1]),
+        is_mem = startsWith(as.character(bund$uid %||% "")[1], "mem:"),
+        fyn = fyn_txt,
+        pyn = pyn_txt,
+        backend = tryCatch(ynow_points_backend(), error = function(e) "err")
+      ))
+    }
+    # #endregion
     session$sendCustomMessage(
       "ynowPtsBanner",
       list(
@@ -815,6 +827,10 @@ server <- function(input, output, session) {
     } else {
       ""
     }
+    session_uid <- tryCatch({
+      su <- ynow_auth$user()
+      as.character(su$id %||% "")[1]
+    }, error = function(e) "")
     if (!nzchar(uid)) {
       showNotification(.lab("pts_sysadmin_bad_user", "Select a user from the list."), type = "warning")
       return()
@@ -831,9 +847,30 @@ server <- function(input, output, session) {
       return()
     }
     note <- as.character(input$ynow_pts_sysadmin_note %||% "")[1]
+    # #region agent log
+    if (exists(".ynow_agent_dbg", mode = "function")) {
+      .ynow_agent_dbg("C", "ynow_server.R:sysadmin_apply", "sysadmin_apply_before", list(
+        target_prefix = substr(uid, 1L, 8L),
+        session_prefix = substr(session_uid, 1L, 8L),
+        same_user = identical(uid, session_uid),
+        fd = fd, pd = pd,
+        backend = tryCatch(ynow_points_backend(), error = function(e) "err")
+      ))
+    }
+    # #endregion
     res <- ynow_points_admin_adjust(
       uid, fyn_delta = fd, pyn_delta = pd, note = note, by = "testing_sysadmin"
     )
+    # #region agent log
+    if (exists(".ynow_agent_dbg", mode = "function")) {
+      .ynow_agent_dbg("A", "ynow_server.R:sysadmin_apply", "sysadmin_apply_after", list(
+        ok = isTRUE(res$ok),
+        msg = as.character(res$message_key %||% "")[1],
+        res_fyn = suppressWarnings(as.integer(res$fyn %||% NA_integer_)[1]),
+        res_pyn = suppressWarnings(as.integer(res$pyn %||% NA_integer_)[1])
+      ))
+    }
+    # #endregion
     if (isTRUE(res$ok)) {
       showNotification(.lab("pts_sysadmin_ok", "Balances updated."), type = "message")
       ynow_pts_sysadmin_tick(isolate(ynow_pts_sysadmin_tick()) + 1L)
