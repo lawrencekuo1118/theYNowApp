@@ -54,6 +54,36 @@ if (!file.exists(file.path(app_dir, "app.R"))) {
   stop("live app.R not found under ", root)
 }
 
+# Guard: shinyapps has no Secrets UI — auth/DB keys must ride in gitignored app/.Renviron.
+# Cloud deploys that omit this file wipe live Google/Email login and empty the points admin list.
+renviron_path <- file.path(app_dir, ".Renviron")
+allow_missing_renviron <- identical(Sys.getenv("YNOW_ALLOW_MISSING_RENVIRON"), "1") ||
+  "--allow-missing-renviron" %in% commandArgs(trailingOnly = TRUE)
+if (!file.exists(renviron_path) && !isTRUE(allow_missing_renviron)) {
+  stop(paste(
+    "Refusing deploy: missing ", renviron_path, ".",
+    "Copy .Renviron.example → .Renviron, fill YNOW_SUPABASE_* (or Google client) and YNOW_DB_*,",
+    "then re-run. Override only with YNOW_ALLOW_MISSING_RENVIRON=1 (breaks live login).",
+    sep = "\n"
+  ))
+}
+if (file.exists(renviron_path)) {
+  # Presence-only check (never print values). Warn when OAuth or Neon blocks look unset.
+  ren_lines <- readLines(renviron_path, warn = FALSE, encoding = "UTF-8")
+  ren_keys <- sub("=.*", "", ren_lines[grepl("^[A-Za-z_][A-Za-z0-9_]*=.", ren_lines)])
+  has_supabase <- all(c("YNOW_SUPABASE_URL", "YNOW_SUPABASE_ANON_KEY") %in% ren_keys)
+  has_google <- all(c("YNOW_GOOGLE_CLIENT_ID", "YNOW_GOOGLE_CLIENT_SECRET") %in% ren_keys)
+  has_neon <- all(c("YNOW_DB_HOST", "YNOW_DB_USER", "YNOW_DB_PASSWORD") %in% ren_keys) ||
+    ("YNOW_DATABASE_URL" %in% ren_keys)
+  if (!has_supabase && !has_google) {
+    message("WARNING: .Renviron has neither Supabase nor Google OAuth keys — social login will fail.")
+  }
+  if (!has_neon) {
+    message("WARNING: .Renviron has no Neon YNOW_DB_* / YNOW_DATABASE_URL — Email login and points admin stay empty.")
+  }
+  message("Deploy bundle will include .Renviron (gitignored; not committed).")
+}
+
 user_args <- commandArgs(trailingOnly = TRUE)
 skip_bump <- "--no-bump" %in% user_args || identical(Sys.getenv("YNOW_SKIP_VERSION_BUMP"), "1")
 if (!skip_bump) {

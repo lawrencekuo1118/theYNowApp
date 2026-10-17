@@ -651,6 +651,20 @@ server <- function(input, output, session) {
     if (!exists("ynow_points_admin_list_users", mode = "function")) {
       return(tags$p(class = "text-danger", .lab("pts_msg_backend", "Points backend is unavailable.")))
     }
+    # Without Neon (YNOW_DB_*), points fall back to empty per-process memory — not a wiped DB.
+    neon_ready <- exists("ynow_db_ready", mode = "function") && isTRUE(ynow_db_ready())
+    if (!isTRUE(neon_ready)) {
+      return(tags$div(
+        tags$hr(),
+        tags$p(
+          class = "text-danger",
+          .lab(
+            "pts_sysadmin_no_neon",
+            "Neon is not configured on this deployment (set YNOW_DB_* in .Renviron, then redeploy). The user list and FYN/PYN balances live in Neon — not in ephemeral app memory."
+          )
+        )
+      ))
+    }
     df <- tryCatch(ynow_points_admin_list_users(), error = function(e) NULL)
     if (!is.data.frame(df) || nrow(df) < 1L) {
       return(tags$div(
