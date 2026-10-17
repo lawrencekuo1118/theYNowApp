@@ -9731,6 +9731,12 @@ ui <- dashboardPage(
             if (ptsSysExit && s.pts_sysadmin_exit) ptsSysExit.textContent = s.pts_sysadmin_exit;
             var ptsSysRefresh = document.getElementById('ynow_pts_sysadmin_refresh_label');
             if (ptsSysRefresh && s.pts_sysadmin_refresh) ptsSysRefresh.textContent = s.pts_sysadmin_refresh;
+            var ptsViewAs = document.getElementById('ynow_pts_sysadmin_viewas_label');
+            if (ptsViewAs && s.pts_sysadmin_viewas) ptsViewAs.textContent = s.pts_sysadmin_viewas;
+            var ptsViewAsExit = document.getElementById('ynow_pts_sysadmin_viewas_exit_label');
+            if (ptsViewAsExit && s.pts_sysadmin_viewas_exit) ptsViewAsExit.textContent = s.pts_sysadmin_viewas_exit;
+            var ptsViewAsActive = document.getElementById('ynow_pts_sysadmin_viewas_active_label');
+            if (ptsViewAsActive && s.pts_sysadmin_viewas_active) ptsViewAsActive.textContent = s.pts_sysadmin_viewas_active;
             var ptsColon = (payload && payload.locale === 'zh-TW') ? '：' : ':';
             var ptsHdrForLocale = document.getElementById('ynow-pts-header');
             var ptsSideForLocale = document.getElementById('ynow-pts-sidebar');

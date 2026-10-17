@@ -384,6 +384,27 @@ server <- function(input, output, session) {
   ynow_pts_panel_tick <- reactiveVal(0L)
   ynow_pts_sysadmin_on <- reactiveVal(FALSE)
   ynow_pts_sysadmin_tick <- reactiveVal(0L)
+  # Testing view-as: list(public_id=, user_id=) or NULL. No PII.
+  ynow_pts_view_as <- reactiveVal(NULL)
+
+  #' Effective points user: view-as uuid when active, else signed-in account.
+  .ynow_pts_effective_user <- function() {
+    va <- tryCatch(ynow_pts_view_as(), error = function(e) NULL)
+    if (is.list(va)) {
+      vid <- as.character(va$user_id %||% "")[1]
+      if (nzchar(vid)) {
+        return(list(
+          id = vid,
+          role = "user",
+          public_id = as.character(va$public_id %||% "")[1],
+          view_as = TRUE
+        ))
+      }
+    }
+    tryCatch(ynow_auth$user(), error = function(e) NULL)
+  }
+  session$userData$ynow_pts_effective_user <- .ynow_pts_effective_user
+  session$userData$ynow_pts_view_as <- ynow_pts_view_as
 
   .ynow_account_gate_ui <- function(loc) {
     if (!isTRUE(ynow_auth_enabled())) {
@@ -446,7 +467,8 @@ server <- function(input, output, session) {
 
   .ynow_pts_push_banner <- function() {
     loc <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "en")
-    u <- tryCatch(ynow_auth$user(), error = function(e) NULL)
+    # View-as prefers target DB balances; otherwise signed-in user.
+    u <- .ynow_pts_effective_user()
     pts_colon <- if (identical(loc, "zh-TW")) "：" else ":"
     fyn_lab <- tryCatch(paste0(ui_str("pts_fyn_label", loc), pts_colon), error = function(e) "FYN points:")
     pyn_lab <- tryCatch(paste0(ui_str("pts_pyn_label", loc), pts_colon), error = function(e) "PYN points:")
@@ -461,18 +483,6 @@ server <- function(input, output, session) {
     bund <- .ynow_pts_user_bundle(u)
     fyn_txt <- if (is.finite(bund$fyn)) as.character(bund$fyn) else "—"
     pyn_txt <- if (is.finite(bund$pyn)) as.character(bund$pyn) else "—"
-    # #region agent log
-    if (exists(".ynow_agent_dbg", mode = "function")) {
-      .ynow_agent_dbg("C", "ynow_server.R:pts_banner", "push_banner", list(
-        id_prefix = substr(as.character(bund$uid %||% "")[1], 1L, 8L),
-        is_uuid = grepl("^[0-9a-fA-F-]{36}$", as.character(bund$uid %||% "")[1]),
-        is_mem = startsWith(as.character(bund$uid %||% "")[1], "mem:"),
-        fyn = fyn_txt,
-        pyn = pyn_txt,
-        backend = tryCatch(ynow_points_backend(), error = function(e) "err")
-      ))
-    }
-    # #endregion
     session$sendCustomMessage(
       "ynowPtsBanner",
       list(
@@ -640,6 +650,7 @@ server <- function(input, output, session) {
   # Header FYN / PYN banner (right of locale switch).
   observe({
     ynow_pts_panel_tick()
+    ynow_pts_view_as()
     tryCatch(ynow_auth$user(), error = function(e) NULL)
     tryCatch(ui_locale(), error = function(e) NULL)
     .ynow_pts_push_banner()
@@ -652,9 +663,42 @@ server <- function(input, output, session) {
   }, ignoreInit = TRUE)
   observeEvent(input$ynow_pts_sysadmin_exit, {
     ynow_pts_sysadmin_on(FALSE)
+    ynow_pts_view_as(NULL)
+    .ynow_pts_push_banner()
   }, ignoreInit = TRUE)
   observeEvent(input$ynow_pts_sysadmin_refresh, {
     ynow_pts_sysadmin_tick(isolate(ynow_pts_sysadmin_tick()) + 1L)
+  }, ignoreInit = TRUE)
+  observeEvent(input$ynow_pts_sysadmin_viewas, {
+    if (!isTRUE(ynow_pts_sysadmin_on())) return()
+    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+    .lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
+    pid <- as.character(input$ynow_pts_sysadmin_user %||% "")[1]
+    uid <- if (exists("ynow_points_resolve_public_id", mode = "function")) {
+      ynow_points_resolve_public_id(pid)
+    } else {
+      ""
+    }
+    if (!nzchar(uid) || !nzchar(pid)) {
+      showNotification(.lab("pts_sysadmin_bad_user", "Select a user from the list."), type = "warning")
+      return()
+    }
+    ynow_pts_view_as(list(public_id = pid, user_id = uid))
+    ynow_pts_sysadmin_tick(isolate(ynow_pts_sysadmin_tick()) + 1L)
+    .ynow_pts_push_banner()
+    showNotification(
+      sprintf(
+        .lab("pts_sysadmin_viewas_ok_fmt", "Viewing as %s (de-identified)."),
+        pid
+      ),
+      type = "message",
+      duration = 4
+    )
+  }, ignoreInit = TRUE)
+  observeEvent(input$ynow_pts_sysadmin_viewas_exit, {
+    ynow_pts_view_as(NULL)
+    ynow_pts_sysadmin_tick(isolate(ynow_pts_sysadmin_tick()) + 1L)
+    .ynow_pts_push_banner()
   }, ignoreInit = TRUE)
 
   output$ynow_pts_sysadmin_panel <- renderUI({
@@ -728,6 +772,28 @@ server <- function(input, output, session) {
     status_ok <- .lab("pts_sysadmin_status_ok", "Active")
     status_off <- .lab("pts_sysadmin_status_disabled", "Disabled")
     choices <- stats::setNames(as.character(df$public_id), as.character(df$public_id))
+    va <- tryCatch(ynow_pts_view_as(), error = function(e) NULL)
+    va_pid <- if (is.list(va)) as.character(va$public_id %||% "")[1] else ""
+    sel <- if (nzchar(va_pid) && va_pid %in% names(choices)) va_pid else choices[[1]]
+    viewas_banner <- if (nzchar(va_pid)) {
+      tags$div(
+        class = "alert alert-info",
+        style = "margin:8px 0 12px 0; padding:8px 12px;",
+        id = "ynow_pts_sysadmin_viewas_banner",
+        tags$strong(
+          id = "ynow_pts_sysadmin_viewas_active_label",
+          .lab("pts_sysadmin_viewas_active", "User view active")
+        ),
+        tags$span(" — "),
+        tags$code(va_pid),
+        tags$span(
+          style = "margin-left:8px;",
+          .lab("pts_sysadmin_viewas_active_hint", "Banner and spend gates use this user’s DB balances.")
+        )
+      )
+    } else {
+      NULL
+    }
     tags$div(
       tags$hr(),
       tags$p(
@@ -741,6 +807,7 @@ server <- function(input, output, session) {
           )
         )
       ),
+      viewas_banner,
       tags$h4(.lab("pts_sysadmin_users", "Users (de-identified)")),
       tags$div(
         style = "overflow-x:auto; max-height:40vh; margin-bottom:12px;",
@@ -771,7 +838,7 @@ server <- function(input, output, session) {
             "ynow_pts_sysadmin_user",
             .lab("pts_sysadmin_select", "Select user id"),
             choices = choices,
-            selected = choices[[1]]
+            selected = sel
           )
         ),
         column(
@@ -799,13 +866,33 @@ server <- function(input, output, session) {
           )
         )
       ),
-      actionButton(
-        "ynow_pts_sysadmin_apply",
-        label = tags$span(
-          id = "ynow_pts_sysadmin_apply_label",
-          .lab("pts_sysadmin_apply", "Apply change")
+      tags$div(
+        style = "margin-top:4px; display:flex; flex-wrap:wrap; gap:8px; align-items:center;",
+        actionButton(
+          "ynow_pts_sysadmin_apply",
+          label = tags$span(
+            id = "ynow_pts_sysadmin_apply_label",
+            .lab("pts_sysadmin_apply", "Apply change")
+          ),
+          class = "btn-warning"
         ),
-        class = "btn-warning"
+        actionButton(
+          "ynow_pts_sysadmin_viewas",
+          label = tags$span(
+            id = "ynow_pts_sysadmin_viewas_label",
+            .lab("pts_sysadmin_viewas", "View as this user")
+          ),
+          class = "btn-info"
+        ),
+        actionButton(
+          "ynow_pts_sysadmin_viewas_exit",
+          label = tags$span(
+            id = "ynow_pts_sysadmin_viewas_exit_label",
+            .lab("pts_sysadmin_viewas_exit", "Exit user view")
+          ),
+          class = "btn-default",
+          disabled = if (!nzchar(va_pid)) "disabled" else NULL
+        )
       )
     )
   })
@@ -827,10 +914,6 @@ server <- function(input, output, session) {
     } else {
       ""
     }
-    session_uid <- tryCatch({
-      su <- ynow_auth$user()
-      as.character(su$id %||% "")[1]
-    }, error = function(e) "")
     if (!nzchar(uid)) {
       showNotification(.lab("pts_sysadmin_bad_user", "Select a user from the list."), type = "warning")
       return()
@@ -847,38 +930,33 @@ server <- function(input, output, session) {
       return()
     }
     note <- as.character(input$ynow_pts_sysadmin_note %||% "")[1]
-    # #region agent log
-    if (exists(".ynow_agent_dbg", mode = "function")) {
-      .ynow_agent_dbg("C", "ynow_server.R:sysadmin_apply", "sysadmin_apply_before", list(
-        target_prefix = substr(uid, 1L, 8L),
-        session_prefix = substr(session_uid, 1L, 8L),
-        same_user = identical(uid, session_uid),
-        fd = fd, pd = pd,
-        backend = tryCatch(ynow_points_backend(), error = function(e) "err")
-      ))
-    }
-    # #endregion
     res <- ynow_points_admin_adjust(
       uid, fyn_delta = fd, pyn_delta = pd, note = note, by = "testing_sysadmin"
     )
-    # #region agent log
-    if (exists(".ynow_agent_dbg", mode = "function")) {
-      .ynow_agent_dbg("A", "ynow_server.R:sysadmin_apply", "sysadmin_apply_after", list(
-        ok = isTRUE(res$ok),
-        msg = as.character(res$message_key %||% "")[1],
-        res_fyn = suppressWarnings(as.integer(res$fyn %||% NA_integer_)[1]),
-        res_pyn = suppressWarnings(as.integer(res$pyn %||% NA_integer_)[1])
-      ))
-    }
-    # #endregion
     if (isTRUE(res$ok)) {
-      showNotification(.lab("pts_sysadmin_ok", "Balances updated."), type = "message")
+      showNotification(
+        sprintf(
+          .lab("pts_sysadmin_ok_verify_fmt", "Balances updated and verified (FYN %s, PYN %s)."),
+          as.character(res$fyn %||% "—"),
+          as.character(res$pyn %||% "—")
+        ),
+        type = "message"
+      )
       ynow_pts_sysadmin_tick(isolate(ynow_pts_sysadmin_tick()) + 1L)
       ynow_pts_panel_tick(isolate(ynow_pts_panel_tick()) + 1L)
-      .ynow_pts_push_banner()
+      # Refresh banner only when the effective user is the grant target
+      # (signed-in self or active view-as) — avoid overwriting with the wrong wallet.
+      eff <- .ynow_pts_effective_user()
+      eff_id <- as.character(eff$id %||% "")[1]
+      if (identical(eff_id, uid)) {
+        .ynow_pts_push_banner()
+      }
     } else {
       showNotification(
-        .lab(res$message_key %||% "pts_msg_backend", "Points backend error."),
+        .lab(
+          res$message_key %||% "pts_sysadmin_verify_failed",
+          .lab("pts_msg_backend", "Points backend error.")
+        ),
         type = "error"
       )
     }
@@ -11700,7 +11778,7 @@ server <- function(input, output, session) {
     if (!isTRUE(tryCatch(lite_mode(), error = function(e) FALSE)) &&
         exists("ynow_points_enabled", mode = "function") && isTRUE(ynow_points_enabled()) &&
         exists("ynow_points_gate", mode = "function")) {
-      u <- tryCatch(ynow_auth$user(), error = function(e) NULL)
+      u <- .ynow_pts_effective_user()
       ref <- paste0(
         "bt_run:", as.character(u$id %||% "anon")[1], ":",
         toupper(as.character(current_ticker())[1]), ":",
