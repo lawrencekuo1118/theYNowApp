@@ -67,11 +67,24 @@ source(src_oauth, local = FALSE, encoding = "UTF-8")
 old_en <- Sys.getenv("YNOW_ENABLE_ACCOUNT_LOGIN", unset = NA_character_)
 old_em <- Sys.getenv("YNOW_AUTH_DEMO_EMAIL", unset = NA_character_)
 old_pw <- Sys.getenv("YNOW_AUTH_DEMO_PASSWORD", unset = NA_character_)
+# Isolate from app_25.0/.Renviron (R auto-loads it when cwd is the app dir).
+# Live account store is Supabase Postgres via YNOW_DB_* — not needed for unit paths.
+.db_env_keys <- c(
+  "YNOW_DB_HOST", "YNOW_DB_USER", "YNOW_DB_PASSWORD", "YNOW_DB_NAME",
+  "YNOW_DB_PORT", "YNOW_DB_SSLMODE", "YNOW_DATABASE_URL", "DATABASE_URL",
+  "YNOW_POINTS_BACKEND"
+)
+.old_db <- setNames(lapply(.db_env_keys, function(k) Sys.getenv(k, unset = NA_character_)), .db_env_keys)
 on.exit({
   if (is.na(old_en)) Sys.unsetenv("YNOW_ENABLE_ACCOUNT_LOGIN") else Sys.setenv(YNOW_ENABLE_ACCOUNT_LOGIN = old_en)
   if (is.na(old_em)) Sys.unsetenv("YNOW_AUTH_DEMO_EMAIL") else Sys.setenv(YNOW_AUTH_DEMO_EMAIL = old_em)
   if (is.na(old_pw)) Sys.unsetenv("YNOW_AUTH_DEMO_PASSWORD") else Sys.setenv(YNOW_AUTH_DEMO_PASSWORD = old_pw)
+  for (k in names(.old_db)) {
+    v <- .old_db[[k]]
+    if (is.na(v)) Sys.unsetenv(k) else do.call(Sys.setenv, setNames(list(v), k))
+  }
 }, add = TRUE)
+for (k in .db_env_keys) Sys.unsetenv(k)
 
 Sys.unsetenv("YNOW_ENABLE_ACCOUNT_LOGIN")
 check("default auth enabled", isTRUE(ynow_auth_enabled()))
@@ -301,7 +314,7 @@ check("authed guards skip auth modal reopen (server + CSS)", {
     !grepl("ynow_auth_sidebar_dbg", auth_txt, fixed = TRUE) &&
     !grepl("ynow_auth_sidebar_dbg_event", auth_txt, fixed = TRUE)
 })
-check("Neon not ready without env", {
+check("DB not ready without env", {
   Sys.unsetenv("YNOW_DB_HOST")
   Sys.unsetenv("YNOW_DB_USER")
   Sys.unsetenv("YNOW_DB_PASSWORD")
@@ -309,7 +322,20 @@ check("Neon not ready without env", {
   Sys.unsetenv("DATABASE_URL")
   identical(ynow_db_ready(), FALSE)
 })
-check("Neon URL parse", {
+check("host_kind classifies neon/supabase/postgres/none", {
+  identical(ynow_db_host_kind(NULL), "none") &&
+    identical(ynow_db_host_kind(list(host = "")), "none") &&
+    identical(
+      ynow_db_host_kind(list(host = "ep-cool-pooler.us-east-2.aws.neon.tech")),
+      "neon"
+    ) &&
+    identical(
+      ynow_db_host_kind(list(host = "aws-0-ap-southeast-1.pooler.supabase.com")),
+      "supabase"
+    ) &&
+    identical(ynow_db_host_kind(list(host = "db.internal.example")), "postgres")
+})
+check("DB URL parse", {
   p <- ynow_db_parse_url(
     "postgresql://neondb_owner:s3cret@ep-cool-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require"
   )
@@ -317,20 +343,29 @@ check("Neon URL parse", {
     identical(p$host, "ep-cool-pooler.us-east-2.aws.neon.tech") &&
     identical(p$dbname, "neondb") && identical(p$sslmode, "require")
 })
-check("Neon password hash verify", {
+check("DB password hash verify", {
   h <- ynow_db_hash_password("correct-horse-battery")
   isTRUE(ynow_db_verify_password("correct-horse-battery", h)) &&
     !isTRUE(ynow_db_verify_password("wrong", h))
 })
-check("register without Neon says soon", {
+check("register without DB says soon", {
   Sys.unsetenv("YNOW_DB_HOST")
   Sys.unsetenv("YNOW_DATABASE_URL")
   Sys.setenv(YNOW_ENABLE_ACCOUNT_LOGIN = "1")
   r <- ynow_auth_try_register("a@b.com", "password123")
   isFALSE(r$ok) && identical(r$message_key, "auth_msg_register_soon")
 })
-check("UI About mentions Neon", grepl("Neon Free", ui, fixed = TRUE) &&
-        grepl("Neon Free", ui, fixed = TRUE))
+check("UI About mentions Neon Free as example provider", {
+  grepl("Neon Free", ui, fixed = TRUE) &&
+    grepl("YNOW_DB_", ui, fixed = TRUE) &&
+    grepl("Supabase", ui, fixed = TRUE)
+})
+check("no debug probe instrumentation in auth_db", {
+  db_txt <- paste(readLines(src_db, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  !grepl("ynow_db_debug_log_probe", db_txt, fixed = TRUE) &&
+    !grepl("/opt/cursor/logs/debug.log", db_txt, fixed = TRUE) &&
+    !grepl("ynow_db_runtime_probe", db_txt, fixed = TRUE)
+})
 check("migrate script exists", file.exists(file.path(dirname(app_dir), "scripts", "neon_migrate.R")) ||
         file.exists(file.path(app_dir, "..", "scripts", "neon_migrate.R")))
 check("ynow_users schema enables fail-closed RLS", {

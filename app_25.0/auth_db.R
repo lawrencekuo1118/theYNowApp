@@ -3,6 +3,7 @@
 # ==========================================
 # Preferred backend: own `ynow_users` table on managed Postgres
 # (Neon Free or Supabase; same YNOW_DB_* / YNOW_DATABASE_URL shape).
+# UI label uses ynow_db_host_kind() — supabase | neon | postgres | none.
 # Anyone may self-register via Google / Facebook / Email — no admin approval.
 # Optional YNOW_AUTH_SEED_* only creates YOUR maintenance admin row; it is not
 # a whitelist for end users.
@@ -72,11 +73,24 @@ ynow_db_config <- function() {
   )
 }
 
-#' TRUE when Neon/Postgres credentials are present (does not open a socket).
+#' TRUE when account Postgres credentials are present (does not open a socket).
+#' Host may be Neon Free, Supabase pooler, or any Postgres — see ynow_db_host_kind().
 ynow_db_ready <- function() {
   !is.null(ynow_db_config()) &&
     requireNamespace("DBI", quietly = TRUE) &&
     requireNamespace("RPostgres", quietly = TRUE)
+}
+
+#' Classify account DB host vendor without exposing hostname/URL/password.
+#' @return "neon" | "supabase" | "postgres" | "none"
+ynow_db_host_kind <- function(cfg = NULL) {
+  if (is.null(cfg)) cfg <- tryCatch(ynow_db_config(), error = function(e) NULL)
+  if (is.null(cfg)) return("none")
+  host <- tolower(as.character(cfg$host %||% "")[1])
+  if (!nzchar(host)) return("none")
+  if (grepl("neon\\.tech", host, perl = TRUE)) return("neon")
+  if (grepl("supabase", host, fixed = TRUE)) return("supabase")
+  "postgres"
 }
 
 ynow_db_driver_ok <- function() {

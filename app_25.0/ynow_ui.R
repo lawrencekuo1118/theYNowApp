@@ -246,7 +246,7 @@
           class = "ynow-about-method",
           tags$b("帳號登入："),
           "帳號登入預設啟用；一般使用者可用 Google、Facebook、LinkedIn 或 Email 自行註冊並立即使用，無需後台開權限；",
-          "帳號表建議放 Neon Free（自管 users）；完整版到值通知需登入（寄信預設註冊信箱）；",
+          "帳號表經 YNOW_DB_* 的 Postgres（自管 users；例如 Neon Free 或 Supabase pooler）；完整版到值通知需登入（寄信預設註冊信箱）；",
           "登入後（完整版）可開啟維護後台。Lite 版無需帳號即可完整使用。"
         ),
         tags$h4(class = "ynow-about-feat-h", tags$b("核心功能亮點：")),
@@ -274,7 +274,7 @@
         tags$p(
           class = "ynow-about-method",
           tags$b("Account sign-in:"),
-          " Account sign-in is on by default. Anyone may self-register with Google, Facebook, LinkedIn, or Email — no per-user admin approval. Preferred store: Neon Free (own users table). Full-mode Value Alerts require sign-in; email notify defaults to the registered mailbox. After sign-in, Maintenance opens; Lite never requires an account."
+          " Account sign-in is on by default. Anyone may self-register with Google, Facebook, LinkedIn, or Email — no per-user admin approval. Account store: Postgres via YNOW_DB_* (own users table; e.g. Neon Free or Supabase pooler). Full-mode Value Alerts require sign-in; email notify defaults to the registered mailbox. After sign-in, Maintenance opens; Lite never requires an account."
         ),
         tags$h4(class = "ynow-about-feat-h", tags$b("Core Features:")),
         en_features

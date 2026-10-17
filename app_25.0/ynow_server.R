@@ -653,17 +653,28 @@ server <- function(input, output, session) {
     if (!exists("ynow_points_admin_list_users", mode = "function")) {
       return(tags$p(class = "text-danger", .lab("pts_msg_backend", "Points backend is unavailable.")))
     }
-    # Without Neon (YNOW_DB_*) / RPostgres, points fall back to empty per-process memory — not a wiped DB.
+    # Without Postgres creds (YNOW_DB_*) / RPostgres, points fall back to empty per-process memory.
     backend <- tryCatch(ynow_points_backend(), error = function(e) "memory")
+    backend_label <- tryCatch({
+      if (exists("ynow_points_backend_label", mode = "function")) {
+        ynow_points_backend_label()
+      } else {
+        as.character(backend)
+      }
+    }, error = function(e) as.character(backend))
+    uses_db <- tryCatch({
+      if (exists("ynow_points_uses_db", mode = "function")) ynow_points_uses_db()
+      else identical(backend, "postgres")
+    }, error = function(e) FALSE)
     db_ready <- exists("ynow_db_ready", mode = "function") && isTRUE(ynow_db_ready())
     df <- tryCatch(ynow_points_admin_list_users(), error = function(e) NULL)
     if (!is.data.frame(df) || nrow(df) < 1L) {
-      empty_msg <- if (!isTRUE(db_ready) || !identical(backend, "neon")) {
+      empty_msg <- if (!isTRUE(db_ready) || !isTRUE(uses_db)) {
         .lab(
           "pts_sysadmin_no_db",
           .lab(
             "pts_sysadmin_no_neon",
-            "Neon account store is not configured on this deployment (missing YNOW_DB_* / YNOW_DATABASE_URL, or RPostgres/pool not installed). Testing admin reads the same Neon ynow_users table as sign-in — without it the list stays empty."
+            "Account database is not configured on this deployment (missing YNOW_DB_* / YNOW_DATABASE_URL, or RPostgres/pool not installed). Testing admin reads the same ynow_users table as sign-in — without it the list stays empty."
           )
         )
       } else {
@@ -677,7 +688,7 @@ server <- function(input, output, session) {
             id = "ynow_pts_sysadmin_backend",
             sprintf(
               .lab("pts_sysadmin_backend_fmt", "Points backend: %s"),
-              as.character(backend)
+              as.character(backend_label)
             )
           )
         ),
@@ -696,7 +707,7 @@ server <- function(input, output, session) {
           id = "ynow_pts_sysadmin_backend",
           sprintf(
             .lab("pts_sysadmin_backend_fmt", "Points backend: %s"),
-            as.character(backend)
+            as.character(backend_label)
           )
         )
       ),

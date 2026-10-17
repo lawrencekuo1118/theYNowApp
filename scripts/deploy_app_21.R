@@ -148,25 +148,24 @@ if (file.exists(renviron_path)) {
   }
   if (!isTRUE(flags$has_neon) && !isTRUE(allow_missing_neon)) {
     stop(paste(
-      "Refusing deploy: .Renviron has no Neon YNOW_DB_* / YNOW_DATABASE_URL.",
-      "Without Neon, live falls back to memory points (wiped every cold start)",
-      "and Testing admin / Email login stay empty.",
+      "Refusing deploy: .Renviron has no account Postgres YNOW_DB_* / YNOW_DATABASE_URL.",
+      "Without an account DB (Supabase pooler, Neon, or other Postgres), live falls back to",
+      "memory points (wiped every cold start) and Testing admin / Email login stay empty.",
       "Fix (any one):",
-      "  1) Paste Neon pooled keys into app_25.0/.Renviron (gitignored), or",
-      "  2) Set YNOW_DB_HOST + YNOW_DB_USER + YNOW_DB_PASSWORD (or YNOW_DATABASE_URL)",
-      "     in the environment / Cloud Agent secrets, then re-run deploy",
+      "  1) Paste pooled YNOW_DB_* (or YNOW_DATABASE_URL) into app_25.0/.Renviron (gitignored), or",
+      "  2) Set those keys in the environment / Cloud Agent secrets, then re-run deploy",
       "     (scripts/inject_renviron_from_env.R merges them into .Renviron), or",
-      "  3) Restore a prior live bundle that already has Neon.",
+      "  3) Restore a prior live bundle that already has the account DB keys.",
       "Emergency override only: YNOW_ALLOW_MISSING_NEON=1",
       sep = "\n"
     ), call. = FALSE)
   }
   if (!isTRUE(flags$has_neon) && isTRUE(allow_missing_neon)) {
-    message("WARNING: shipping WITHOUT Neon (YNOW_ALLOW_MISSING_NEON=1) — points stay memory-only.")
+    message("WARNING: shipping WITHOUT account DB (YNOW_ALLOW_MISSING_NEON=1) — points stay memory-only.")
   }
   message(
     "Deploy .Renviron OK: oauth=", flags$has_oauth,
-    " neon=", flags$has_neon,
+    " account_db=", flags$has_neon,
     " (gitignored; not committed)."
   )
 }
