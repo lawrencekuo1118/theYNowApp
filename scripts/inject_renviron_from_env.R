@@ -66,7 +66,7 @@ for (k in secret_keys) {
 
 if (!length(injected)) {
   message("No allow-listed YNOW_* secrets found in process env — .Renviron unchanged.")
-  invisible(list(path = dest, injected = character(), keys = names(existing)))
+  quit(status = 0)
 }
 
 prefer <- secret_keys
