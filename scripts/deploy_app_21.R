@@ -57,34 +57,99 @@ if (!file.exists(file.path(app_dir, "app.R"))) {
 # Guard: shinyapps has no Secrets UI — auth/DB keys must ride in gitignored app/.Renviron.
 # Cloud deploys that omit this file wipe live Google/Email login and empty the points admin list.
 renviron_path <- file.path(app_dir, ".Renviron")
+user_args <- commandArgs(trailingOnly = TRUE)
 allow_missing_renviron <- identical(Sys.getenv("YNOW_ALLOW_MISSING_RENVIRON"), "1") ||
-  "--allow-missing-renviron" %in% commandArgs(trailingOnly = TRUE)
-if (!file.exists(renviron_path) && !isTRUE(allow_missing_renviron)) {
-  stop(paste(
-    "Refusing deploy: missing ", renviron_path, ".",
-    "Copy .Renviron.example → .Renviron, fill YNOW_SUPABASE_* (or Google client) and YNOW_DB_*,",
-    "then re-run. Override only with YNOW_ALLOW_MISSING_RENVIRON=1 (breaks live login).",
-    sep = "\n"
-  ))
-}
-if (file.exists(renviron_path)) {
-  # Presence-only check (never print values). Warn when OAuth or Neon blocks look unset.
-  ren_lines <- readLines(renviron_path, warn = FALSE, encoding = "UTF-8")
+  "--allow-missing-renviron" %in% user_args
+allow_missing_neon <- identical(Sys.getenv("YNOW_ALLOW_MISSING_NEON"), "1") ||
+  "--allow-missing-neon" %in% user_args
+# Default ON: pull live bundle .Renviron before ship so redeploys cannot drop secrets.
+auto_restore <- !identical(Sys.getenv("YNOW_SKIP_RENVIRON_RESTORE"), "1") &&
+  !("--skip-renviron-restore" %in% user_args)
+restore_script <- file.path(root, "scripts", "restore_renviron_from_shinyapps.R")
+
+.ynow_renviron_key_flags <- function(path) {
+  if (!file.exists(path)) {
+    return(list(
+      keys = character(), has_supabase = FALSE, has_google = FALSE,
+      has_oauth = FALSE, has_neon = FALSE
+    ))
+  }
+  ren_lines <- readLines(path, warn = FALSE, encoding = "UTF-8")
   ren_keys <- sub("=.*", "", ren_lines[grepl("^[A-Za-z_][A-Za-z0-9_]*=.", ren_lines)])
   has_supabase <- all(c("YNOW_SUPABASE_URL", "YNOW_SUPABASE_ANON_KEY") %in% ren_keys)
   has_google <- all(c("YNOW_GOOGLE_CLIENT_ID", "YNOW_GOOGLE_CLIENT_SECRET") %in% ren_keys)
   has_neon <- all(c("YNOW_DB_HOST", "YNOW_DB_USER", "YNOW_DB_PASSWORD") %in% ren_keys) ||
     ("YNOW_DATABASE_URL" %in% ren_keys)
-  if (!has_supabase && !has_google) {
-    message("WARNING: .Renviron has neither Supabase nor Google OAuth keys — social login will fail.")
-  }
-  if (!has_neon) {
-    message("WARNING: .Renviron has no Neon YNOW_DB_* / YNOW_DATABASE_URL — Email login and points admin stay empty.")
-  }
-  message("Deploy bundle will include .Renviron (gitignored; not committed).")
+  list(
+    keys = ren_keys,
+    has_supabase = has_supabase,
+    has_google = has_google,
+    has_oauth = isTRUE(has_supabase) || isTRUE(has_google),
+    has_neon = isTRUE(has_neon)
+  )
 }
 
-user_args <- commandArgs(trailingOnly = TRUE)
+flags <- .ynow_renviron_key_flags(renviron_path)
+need_restore <- !file.exists(renviron_path) || !isTRUE(flags$has_oauth) || !isTRUE(flags$has_neon)
+if (isTRUE(auto_restore) && isTRUE(need_restore) && file.exists(restore_script)) {
+  message(
+    "Auto-restoring .Renviron from live shinyapps bundle ",
+    "(merge keeps any newer local keys)…"
+  )
+  # Merge when a local file already exists so freshly pasted Neon is not wiped.
+  status <- system2(
+    "Rscript",
+    c(restore_script, if (file.exists(renviron_path)) "--merge" else character()),
+    stdout = TRUE,
+    stderr = TRUE
+  )
+  writeLines(status)
+  if (!is.null(attr(status, "status")) && !identical(attr(status, "status"), 0L)) {
+    message("WARNING: live .Renviron restore failed — continuing with local file checks.")
+  }
+  flags <- .ynow_renviron_key_flags(renviron_path)
+}
+
+if (!file.exists(renviron_path) && !isTRUE(allow_missing_renviron)) {
+  stop(paste(
+    "Refusing deploy: missing ", renviron_path, ".",
+    "Copy .Renviron.example → .Renviron, fill YNOW_SUPABASE_* (or Google client) and YNOW_DB_*,",
+    "or run: Rscript scripts/restore_renviron_from_shinyapps.R",
+    "Override only with YNOW_ALLOW_MISSING_RENVIRON=1 (breaks live login).",
+    sep = "\n"
+  ), call. = FALSE)
+}
+
+if (file.exists(renviron_path)) {
+  flags <- .ynow_renviron_key_flags(renviron_path)
+  if (!isTRUE(flags$has_oauth) && !isTRUE(allow_missing_renviron)) {
+    stop(paste(
+      "Refusing deploy: .Renviron has neither Supabase nor Google OAuth keys.",
+      "Restore from live: Rscript scripts/restore_renviron_from_shinyapps.R",
+      "or set YNOW_SUPABASE_URL + YNOW_SUPABASE_ANON_KEY.",
+      sep = "\n"
+    ), call. = FALSE)
+  }
+  if (!isTRUE(flags$has_neon) && !isTRUE(allow_missing_neon)) {
+    stop(paste(
+      "Refusing deploy: .Renviron has no Neon YNOW_DB_* / YNOW_DATABASE_URL.",
+      "Without Neon, live falls back to memory points (wiped every cold start)",
+      "and Testing admin / Email login stay empty.",
+      "Add Neon pooled credentials to app_25.0/.Renviron (gitignored), then re-run.",
+      "Emergency override only: YNOW_ALLOW_MISSING_NEON=1",
+      sep = "\n"
+    ), call. = FALSE)
+  }
+  if (!isTRUE(flags$has_neon) && isTRUE(allow_missing_neon)) {
+    message("WARNING: shipping WITHOUT Neon (YNOW_ALLOW_MISSING_NEON=1) — points stay memory-only.")
+  }
+  message(
+    "Deploy .Renviron OK: oauth=", flags$has_oauth,
+    " neon=", flags$has_neon,
+    " (gitignored; not committed)."
+  )
+}
+
 skip_bump <- "--no-bump" %in% user_args || identical(Sys.getenv("YNOW_SKIP_VERSION_BUMP"), "1")
 if (!skip_bump) {
   ver <- ynow_prepare_deploy_version(root, commit = TRUE)
