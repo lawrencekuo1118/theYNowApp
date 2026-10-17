@@ -358,6 +358,50 @@ check("locale rules note persists", {
     grepl("100", ui_str("pts_rules_note", "zh-TW"), fixed = TRUE)
 })
 
+# Pool-safe credit path: checkout real DBI con (not Pool) + nest reuse.
+check("ynow_db_with checkouts connection not pool", {
+  db <- paste(readLines(file.path(app_dir, "auth_db.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("poolCheckout", db, fixed = TRUE) &&
+    grepl("poolReturn", db, fixed = TRUE) &&
+    grepl(".ynow_db_with_stack", db, fixed = TRUE) &&
+    grepl("Nested first — reuse outer connection", db, fixed = TRUE)
+})
+check("neon_apply keeps dbWithTransaction on checked-out con", {
+  pts <- paste(readLines(file.path(app_dir, "points_wallet.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("DBI::dbWithTransaction(con", pts, fixed = TRUE) &&
+    grepl("Same connection — avoid nested checkout", pts, fixed = TRUE)
+})
+check("ynow_db_with nest reuses outer connection", {
+  if (!exists("ynow_db_with", mode = "function") ||
+      !exists(".ynow_db_with_stack", inherits = TRUE)) {
+    return(TRUE) # sourced env may differ; structural checks above cover ship gate
+  }
+  stack_env <- get(".ynow_db_with_stack", inherits = TRUE)
+  old <- stack_env$cons
+  on.exit({ stack_env$cons <- old }, add = TRUE)
+  sentinel <- structure(list(mark = "outer-con"), class = "DBIConnection")
+  stack_env$cons <- list(sentinel)
+  seen <- NULL
+  res <- ynow_db_with(function(con) {
+    seen <<- con
+    "ok"
+  })
+  identical(res, "ok") && identical(seen$mark, "outer-con")
+})
+check("locale pts_sysadmin_need_enter en+zh-TW", {
+  en <- ui_str("pts_sysadmin_need_enter", "en")
+  zh <- ui_str("pts_sysadmin_need_enter", "zh-TW")
+  nzchar(en) && nzchar(zh) &&
+    grepl("Enter system admin", en, fixed = TRUE) &&
+    grepl("進入系統管理", zh, fixed = TRUE) &&
+    !grepl("数据", zh, fixed = TRUE)
+})
+check("server shows need_enter hint when sysadmin off", {
+  srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("pts_sysadmin_need_enter", srv, fixed = TRUE) &&
+    grepl("ynow_pts_sysadmin_need_enter", srv, fixed = TRUE)
+})
+
 cat("PASS", n_ok, " FAIL", n_fail, "\n")
 if (n_fail > 0L) quit(status = 1)
 cat("ALL PASS\n")

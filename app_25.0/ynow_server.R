@@ -649,7 +649,20 @@ server <- function(input, output, session) {
     ynow_pts_sysadmin_tick()
     loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
     .lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
-    if (!isTRUE(ynow_pts_sysadmin_on())) return(NULL)
+    if (!isTRUE(ynow_pts_sysadmin_on())) {
+      # Avoid blank white void — clear hint to click Enter.
+      return(tags$div(
+        tags$hr(),
+        tags$p(
+          class = "text-muted",
+          id = "ynow_pts_sysadmin_need_enter",
+          .lab(
+            "pts_sysadmin_need_enter",
+            "Click Enter system admin to load the de-identified user list."
+          )
+        )
+      ))
+    }
     if (!exists("ynow_points_admin_list_users", mode = "function")) {
       return(tags$p(class = "text-danger", .lab("pts_msg_backend", "Points backend is unavailable.")))
     }
@@ -669,7 +682,12 @@ server <- function(input, output, session) {
     db_ready <- exists("ynow_db_ready", mode = "function") && isTRUE(ynow_db_ready())
     df <- tryCatch(ynow_points_admin_list_users(), error = function(e) NULL)
     if (!is.data.frame(df) || nrow(df) < 1L) {
-      empty_msg <- if (!isTRUE(db_ready) || !isTRUE(uses_db)) {
+      empty_key <- if (!isTRUE(db_ready) || !isTRUE(uses_db)) {
+        "pts_sysadmin_no_db"
+      } else {
+        "pts_sysadmin_empty"
+      }
+      empty_msg <- if (identical(empty_key, "pts_sysadmin_no_db")) {
         .lab(
           "pts_sysadmin_no_db",
           .lab(

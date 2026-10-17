@@ -131,8 +131,9 @@ ynow_auth_accept_social_user <- function(oauth_user) {
   prov <- as.character(oauth_user$provider %||% "oauth")[1]
   puid <- as.character(oauth_user$provider_uid %||% "")[1]
 
-  if (exists("ynow_db_ready", mode = "function") && isTRUE(ynow_db_ready()) &&
-      exists("ynow_db_upsert_oauth_user", mode = "function")) {
+  db_ready <- exists("ynow_db_ready", mode = "function") && isTRUE(ynow_db_ready())
+
+  if (db_ready && exists("ynow_db_upsert_oauth_user", mode = "function")) {
     return(ynow_db_upsert_oauth_user(
       email = em,
       display_name = dn,
