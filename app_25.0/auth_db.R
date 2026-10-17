@@ -1,20 +1,21 @@
 # ==========================================
-# Neon Free Postgres — account store (self-serve)
+# Postgres account store (Neon / Supabase) — self-serve
 # ==========================================
-# Preferred backend: own `ynow_users` table on Neon Free.
+# Preferred backend: own `ynow_users` table on managed Postgres
+# (Neon Free or Supabase; same YNOW_DB_* / YNOW_DATABASE_URL shape).
 # Anyone may self-register via Google / Facebook / Email — no admin approval.
 # Optional YNOW_AUTH_SEED_* only creates YOUR maintenance admin row; it is not
 # a whitelist for end users.
 #
 # Env (put in app_25.0/.Renviron — gitignored):
-#   YNOW_DB_HOST=ep-xxxx-pooler.region.aws.neon.tech
-#   YNOW_DB_NAME=neondb
-#   YNOW_DB_USER=neondb_owner
+#   YNOW_DB_HOST=…-pooler…   # prefer IPv4 pooler when runtime lacks IPv6
+#   YNOW_DB_NAME=neondb|postgres
+#   YNOW_DB_USER=neondb_owner | postgres.<PROJECT_REF> (Supabase pooler)
 #   YNOW_DB_PASSWORD=...
 #   YNOW_DB_PORT=5432
 #   YNOW_DB_SSLMODE=require
 # Or a single URL:
-#   YNOW_DATABASE_URL=postgresql://user:pass@ep-xxxx-pooler.../neondb?sslmode=require
+#   YNOW_DATABASE_URL=postgresql://user:pass@…pooler…/dbname?sslmode=require
 #
 # One-time schema: Rscript app_25.0/../scripts/neon_migrate.R
 # Optional seed admin: set YNOW_AUTH_SEED_EMAIL / YNOW_AUTH_SEED_PASSWORD then migrate.

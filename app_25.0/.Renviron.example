@@ -1,9 +1,12 @@
 # Copy to app_25.0/.Renviron (gitignored) and fill real values before deploy.
 
 # =============================================================================
-# Neon Free — own account table (self-serve Email + social)
+# Postgres account store (Neon Free or Supabase — same YNOW_DB_* shape)
 # =============================================================================
-# Neon Console → Connect → copy pooled connection details (hostname has -pooler).
+# Prefer an IPv4 pooler host when the agent/runtime has no IPv6:
+#   Neon:    Console → Connect → pooled hostname (…-pooler…)
+#   Supabase: Connect → Session pooler (aws-N-REGION.pooler.supabase.com;
+#             user is postgres.<PROJECT_REF>, not plain postgres)
 YNOW_DB_HOST=ep-xxxx-pooler.region.aws.neon.tech
 YNOW_DB_NAME=neondb
 YNOW_DB_USER=neondb_owner
@@ -12,6 +15,8 @@ YNOW_DB_PORT=5432
 YNOW_DB_SSLMODE=require
 # Or one URL instead of the fields above:
 # YNOW_DATABASE_URL=postgresql://USER:PASSWORD@ep-xxxx-pooler.region.aws.neon.tech/neondb?sslmode=require
+# Supabase session-pooler example (IPv4):
+# YNOW_DATABASE_URL=postgresql://postgres.PROJECT_REF:PASSWORD@aws-0-REGION.pooler.supabase.com:5432/postgres?sslmode=require
 
 # One-time: Rscript scripts/neon_migrate.R
 # Optional: YOUR maintenance admin only (NOT a whitelist for end users).
@@ -34,8 +39,8 @@ YNOW_ENABLE_ACCOUNT_LOGIN=1
 # YNOW_POINTS_PRICE_ALERT_SLOT=1
 # YNOW_POINTS_PRICE_HFV_RUN=3
 # YNOW_POINTS_PRICE_BT_RUN=5
-# Tests / no Neon: YNOW_POINTS_BACKEND=memory
-# Testing-tab system admin lists Neon ynow_users (de-identified). Without
+# Tests / no Postgres: YNOW_POINTS_BACKEND=memory
+# Testing-tab system admin lists ynow_users (de-identified). Without
 # YNOW_DB_* above, the admin list stays empty (memory backend has no shared users).
 
 # =============================================================================
@@ -59,6 +64,6 @@ YNOW_ENABLE_ACCOUNT_LOGIN=1
 #
 YNOW_OAUTH_REDIRECT_URI=https://hopesmasher1118.shinyapps.io/TheYNowApp
 
-# Legacy Email demo fallback when Neon is NOT configured (single demo account only):
+# Legacy Email demo fallback when Postgres is NOT configured (single demo account only):
 # YNOW_AUTH_DEMO_EMAIL=you@example.com
 # YNOW_AUTH_DEMO_PASSWORD=change-me
