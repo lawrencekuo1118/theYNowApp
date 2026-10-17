@@ -352,7 +352,9 @@ screener_load_pool <- function(market = "US", app_dir = getwd()) {
   .screener_bi(paste0("scr_pack_", pack))
 }
 
-screener_panel_ui <- function() {
+screener_panel_ui <- function(embed = c("standalone", "bluechip")) {
+  embed <- match.arg(embed)
+  in_bluechip <- identical(embed, "bluechip")
   cat_ids <- screener_catalog_categories()
   packs <- screener_catalog_packs()
   catalog <- screener_condition_catalog()
@@ -399,6 +401,83 @@ screener_panel_ui <- function() {
       )
     )
   })
+  body <- tagList(
+    tags$p(id = "ynow_scr_help", .screener_bi("scr_help")),
+    fluidRow(
+      column(4, selectInput(
+        "scr_market", .screener_bi("scr_market"),
+        choices = c("US" = "US", "Taiwan" = "TW"),
+        selected = "US", width = "100%"
+      ))
+    ),
+    tags$div(
+      id = "ynow_screener_dnd",
+      class = paste("ynow-scr-dnd", if (in_bluechip) "ynow-scr-dnd-bluechip" else NULL),
+      tags$div(
+        class = "ynow-scr-dnd-cats",
+        do.call(tagList, cat_btns)
+      ),
+      tags$div(
+        class = "ynow-scr-dnd-mid",
+        tags$div(
+          id = "scr_pack_row",
+          class = "ynow-scr-pack-row",
+          do.call(tagList, pack_btns)
+        ),
+        tags$ul(
+          id = "scr_avail_list",
+          class = "ynow-scr-list ynow-scr-list-avail",
+          do.call(tagList, avail_cards)
+        )
+      ),
+      tags$div(
+        class = "ynow-scr-dnd-right",
+        tags$div(
+          class = "ynow-scr-workspace-actions",
+          actionButton(
+            "scr_run", .screener_bi("scr_run"),
+            class = if (in_bluechip) "btn-success" else "btn-primary"
+          ),
+          actionButton("scr_save", .screener_bi("scr_save"), class = "btn-default"),
+          actionButton("scr_clear", .screener_bi("scr_clear"), class = "btn-default")
+        ),
+        tags$ul(
+          id = "scr_selected_list",
+          class = "ynow-scr-list ynow-scr-list-selected",
+          tags$li(
+            class = "ynow-scr-drop-hint",
+            .screener_bi("scr_drop_hint")
+          )
+        )
+      )
+    ),
+    tags$div(style = "margin-top:12px;", DT::DTOutput("scr_table")),
+    fluidRow(
+      style = "margin-top:8px;",
+      column(4, selectInput(
+        "scr_alert_kind", .screener_bi("scr_alert_kind"),
+        choices = c(
+          "Last price ≤ target" = "price_lte",
+          "Last price ≥ target" = "price_gte"
+        ),
+        selected = "price_lte", width = "100%"
+      )),
+      column(3, numericInput(
+        "scr_alert_level", .screener_bi("scr_alert_level"), value = NA, width = "100%"
+      )),
+      column(5, tags$div(
+        style = "margin-top:25px;",
+        actionButton(
+          "scr_add", .screener_bi("scr_add"),
+          class = if (in_bluechip) "btn-success" else "btn-primary"
+        )
+      ))
+    )
+  )
+  if (in_bluechip) {
+    # Tab title already names the panel; keep content flush with Blue Chip ocean chrome.
+    return(tags$div(id = "ynow_screener_box", class = "ynow-scr-bluechip-panel", body))
+  }
   fluidRow(
     box(
       title = .screener_bi("scr_title"),
@@ -406,74 +485,7 @@ screener_panel_ui <- function() {
       width = 12,
       status = "warning",
       solidHeader = TRUE,
-      tags$link(rel = "stylesheet", type = "text/css", href = "ynow_screener_dnd.css"),
-      tags$p(id = "ynow_scr_help", .screener_bi("scr_help")),
-      fluidRow(
-        column(4, selectInput(
-          "scr_market", .screener_bi("scr_market"),
-          choices = c("US" = "US", "Taiwan" = "TW"),
-          selected = "US", width = "100%"
-        ))
-      ),
-      tags$div(
-        id = "ynow_screener_dnd",
-        class = "ynow-scr-dnd",
-        tags$div(
-          class = "ynow-scr-dnd-cats",
-          do.call(tagList, cat_btns)
-        ),
-        tags$div(
-          class = "ynow-scr-dnd-mid",
-          tags$div(
-            id = "scr_pack_row",
-            class = "ynow-scr-pack-row",
-            do.call(tagList, pack_btns)
-          ),
-          tags$ul(
-            id = "scr_avail_list",
-            class = "ynow-scr-list ynow-scr-list-avail",
-            do.call(tagList, avail_cards)
-          )
-        ),
-        tags$div(
-          class = "ynow-scr-dnd-right",
-          tags$div(
-            class = "ynow-scr-workspace-actions",
-            actionButton("scr_run", .screener_bi("scr_run"), class = "btn-primary"),
-            actionButton("scr_save", .screener_bi("scr_save"), class = "btn-default"),
-            actionButton("scr_clear", .screener_bi("scr_clear"), class = "btn-default")
-          ),
-          tags$ul(
-            id = "scr_selected_list",
-            class = "ynow-scr-list ynow-scr-list-selected",
-            tags$li(
-              class = "ynow-scr-drop-hint",
-              .screener_bi("scr_drop_hint")
-            )
-          )
-        )
-      ),
-      tags$script(src = "vendor/Sortable.min.js"),
-      tags$script(src = "ynow_screener_dnd.js"),
-      tags$div(style = "margin-top:12px;", DT::DTOutput("scr_table")),
-      fluidRow(
-        style = "margin-top:8px;",
-        column(4, selectInput(
-          "scr_alert_kind", .screener_bi("scr_alert_kind"),
-          choices = c(
-            "Last price ≤ target" = "price_lte",
-            "Last price ≥ target" = "price_gte"
-          ),
-          selected = "price_lte", width = "100%"
-        )),
-        column(3, numericInput(
-          "scr_alert_level", .screener_bi("scr_alert_level"), value = NA, width = "100%"
-        )),
-        column(5, tags$div(
-          style = "margin-top:25px;",
-          actionButton("scr_add", .screener_bi("scr_add"), class = "btn-primary")
-        ))
-      )
+      body
     )
   )
 }

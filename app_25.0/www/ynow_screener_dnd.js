@@ -282,7 +282,10 @@
   }
 
   function boot() {
-    if (!$('#ynow_screener_dnd')) return;
+    var root = $('#ynow_screener_dnd');
+    if (!root) return;
+    // Allow a second boot after lazy mount even if an earlier empty pass ran.
+    if (ready && root.getAttribute('data-ynow-scr-booted') === '1') return;
     bindClicks();
     bindSortables();
     setActiveCat('masters');
@@ -294,6 +297,7 @@
       }
     } catch (e) {}
     emitPayload();
+    root.setAttribute('data-ynow-scr-booted', '1');
     ready = true;
   }
 
@@ -305,21 +309,41 @@
     }
   }
 
+  function tryBoot() {
+    if (typeof Sortable === 'undefined') return;
+    var root = $('#ynow_screener_dnd');
+    if (!root) return;
+    if (ready && root.getAttribute('data-ynow-scr-booted') === '1') return;
+    boot();
+  }
+
   onReady(function () {
-    if (typeof Sortable !== 'undefined') boot();
+    if (typeof Sortable !== 'undefined') tryBoot();
     else {
       var tries = 0;
       var timer = setInterval(function () {
         tries += 1;
         if (typeof Sortable !== 'undefined') {
           clearInterval(timer);
-          boot();
+          tryBoot();
         } else if (tries > 40) {
           clearInterval(timer);
         }
       }, 100);
     }
   });
+
+  // Blue Chip page mounts screener via lazy renderUI — watch for the root node.
+  if (typeof MutationObserver !== 'undefined') {
+    var mo = new MutationObserver(function () {
+      if ($('#ynow_screener_dnd') && (!ready || !$('#scr_avail_list'))) {
+        tryBoot();
+      }
+    });
+    onReady(function () {
+      mo.observe(document.documentElement, { childList: true, subtree: true });
+    });
+  }
 
   if (typeof Shiny !== 'undefined' && Shiny.addCustomMessageHandler) {
     Shiny.addCustomMessageHandler('ynowScrDndClear', function () {
@@ -338,8 +362,13 @@
           setSelectedFromPayload(cards || []);
         });
       }
-      if (!ready) boot();
-      else emitPayload();
+      tryBoot();
+      if (ready) emitPayload();
     });
   }
+  document.addEventListener('shiny:value', function (ev) {
+    if (ev && ev.target && ev.target.id && String(ev.target.id).indexOf('ynow_lazy_host_bluechip') === 0) {
+      setTimeout(tryBoot, 0);
+    }
+  });
 })();
