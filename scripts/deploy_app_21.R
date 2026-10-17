@@ -103,6 +103,29 @@ if (use_env_creds) {
   message("Deploying with saved rsconnect account: ", acct)
 }
 
+# Preflight: Neon account store packages must be installed locally or rsconnect
+# skips them in the bundle → live falls back to empty in-memory points/users.
+.ynow_extra_lib <- file.path(root, ".R", "library")
+if (dir.exists(.ynow_extra_lib)) {
+  .libPaths(c(normalizePath(.ynow_extra_lib, mustWork = FALSE), .libPaths()))
+}
+need_pkgs <- c("RPostgres", "pool", "sodium", "future", "DBI")
+missing_pkgs <- need_pkgs[!vapply(
+  need_pkgs,
+  function(p) requireNamespace(p, quietly = TRUE),
+  logical(1)
+)]
+if (length(missing_pkgs)) {
+  stop(
+    "Deploy preflight failed — install these packages before shipping ",
+    "(otherwise Testing admin / sign-in Neon backend will be empty on shinyapps):\n  ",
+    paste(missing_pkgs, collapse = ", "),
+    "\nExample:\n  Rscript -e 'install.packages(c(\"RPostgres\",\"pool\",\"sodium\",\"future\"))'",
+    call. = FALSE
+  )
+}
+message("Deploy preflight OK: ", paste(need_pkgs, collapse = ", "))
+
 message("Deploying ", app_dir, " → ", app_name, " (appId=", app_id, ")")
 res <- rsconnect::deployApp(
   appDir = app_dir,
