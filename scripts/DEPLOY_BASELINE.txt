@@ -7,5 +7,5 @@ commit=fddd43936e894869bab862ae7346bfa4b4c522cd
 short=fddd4393
 message=chore: record shipped display version v25.59
 captured_at=2026-10-18T15:05:25Z
-display_version=v25.59
+display_version=v25.60
 note=Canonical live line is app_25.0. Bundle 12706662: proprietary download login gate (PR #304) on top of Sign-in gate promo/FAQ/demos.
