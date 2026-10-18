@@ -7,4 +7,4 @@ commit=bccc55b73950ecb1e3c8e71fbfe853ca96a537ff
 short=bccc55b7
 message=chore: bump display version to v25.46
 captured_at=2026-10-18T09:51:12Z
-display_version=v25.46
+display_version=v25.47
