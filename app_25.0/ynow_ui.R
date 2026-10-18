@@ -6437,13 +6437,17 @@ ui <- dashboardPage(
         body.ynow-lite .ynow-bblab {
           display: none !important;
         }
-        /* Lite Snapshot: only System defaults tab (when sysadmin unlocked) */
-        body.ynow-lite #snapshot_report > .nav-tabs > li:has(> a[data-value="snap_audit"]),
-        body.ynow-lite #snapshot_report > .nav-tabs > li:has(> a[data-value="snap_current"]) {
+        /* Lite Snapshot: only System defaults tab (when sysadmin unlocked).
+           Note: shiny tabset id may sit on the ul.nav-tabs itself (not a wrapper). */
+        body.ynow-lite #snapshot_report > li:has(> a[data-value="snap_audit"]),
+        body.ynow-lite #snapshot_report > li:has(> a[data-value="snap_current"]),
+        body.ynow-lite #snapshot_report .nav-tabs > li:has(> a[data-value="snap_audit"]),
+        body.ynow-lite #snapshot_report .nav-tabs > li:has(> a[data-value="snap_current"]) {
           display: none !important;
         }
         /* Snapshot APP_DEFAULTS: same session unlock as Points → System admin */
-        body:not(.ynow-sysadmin-on) #snapshot_report > .nav-tabs > li:has(> a[data-value="snap_defaults"]) {
+        body:not(.ynow-sysadmin-on) #snapshot_report > li:has(> a[data-value="snap_defaults"]),
+        body:not(.ynow-sysadmin-on) #snapshot_report .nav-tabs > li:has(> a[data-value="snap_defaults"]) {
           display: none !important;
         }
         body:not(.ynow-sysadmin-on) .ynow-snap-defaults-body {

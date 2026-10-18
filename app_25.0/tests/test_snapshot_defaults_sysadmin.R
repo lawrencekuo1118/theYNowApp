@@ -46,7 +46,11 @@ check("locale page help mentions unlock zh-TW", {
 
 check("ui hides snap_defaults unless sysadmin-on", {
   grepl(
-    'body:not(.ynow-sysadmin-on) #snapshot_report > .nav-tabs > li:has(> a[data-value="snap_defaults"])',
+    'body:not(.ynow-sysadmin-on) #snapshot_report > li:has(> a[data-value="snap_defaults"])',
+    ui,
+    fixed = TRUE
+  ) || grepl(
+    'body:not(.ynow-sysadmin-on) #snapshot_report .nav-tabs > li:has(> a[data-value="snap_defaults"])',
     ui,
     fixed = TRUE
   )
