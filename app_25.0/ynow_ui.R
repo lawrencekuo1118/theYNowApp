@@ -3987,28 +3987,6 @@ ui <- dashboardPage(
                  id = "ynow_download_report_quota",
                  class = "ynow-download-report-quota",
                  "Sign-in required. Three free downloads each Asia/Taipei day; each extra download costs 10 FYN."
-               ),
-               tags$div(
-                 id = "ynow_pdf_guest_gate",
-                 class = "ynow-pdf-guest-gate",
-                 if (exists("ynow_gate_promo_faq_ui", mode = "function")) {
-                   ynow_gate_promo_faq_ui(
-                     feature = "pdf",
-                     include_faq = TRUE,
-                     compact = TRUE
-                   )
-                 } else {
-                   NULL
-                 },
-                 actionButton(
-                   "ynow_pdf_gate_signin",
-                   label = tags$span(
-                     id = "ynow_pdf_gate_signin_label",
-                     class = "ynow-member-gate-signin-label",
-                     "Sign in"
-                   ),
-                   class = "btn-primary ynow-auth-open ynow-pdf-gate-signin"
-                 )
                )
            )
     ),
@@ -4981,55 +4959,14 @@ ui <- dashboardPage(
         .ynow-gate-extras--compact .ynow-gate-promo__list {
           font-size: 11.5px;
         }
-        /* Sidebar PDF guest promo: guests only when auth feature is on */
-        .ynow-pdf-guest-gate {
-          display: none;
-          margin-top: 10px;
-          padding: 8px;
-          border: 1px solid #666;
-          border-radius: 4px;
-          background: #111;
-          color: #e8e8e8;
-        }
-        body.ynow-auth-feature:not(.ynow-authed) .ynow-pdf-guest-gate {
-          display: block;
-        }
-        .ynow-pdf-guest-gate .ynow-gate-promo {
-          background: repeating-linear-gradient(
-            -45deg,
-            #1a1a1a 0,
-            #1a1a1a 6px,
-            #222 6px,
-            #222 12px
-          );
-          border-color: #666;
-        }
-        .ynow-pdf-guest-gate .ynow-gate-promo-lead,
-        .ynow-pdf-guest-gate .ynow-gate-promo__list,
-        .ynow-pdf-guest-gate .ynow-gate-demo-caption,
-        .ynow-pdf-guest-gate .ynow-gate-faq__summary,
-        .ynow-pdf-guest-gate .ynow-gate-faq-q,
-        .ynow-pdf-guest-gate .ynow-gate-faq-a {
-          color: #ddd;
-        }
-        .ynow-pdf-guest-gate .ynow-gate-faq {
-          background: #1a1a1a;
-          border-color: #666;
-        }
-        .ynow-pdf-guest-gate .ynow-gate-demo {
-          background: #1a1a1a;
-          border-color: #666;
-        }
-        .ynow-pdf-guest-gate .ynow-pdf-gate-signin,
-        .ynow-pdf-guest-gate .btn-primary {
-          width: 100%;
-          margin-top: 8px;
-          background-color: #fff !important;
-          border-color: #fff !important;
-          color: #1a1a1a !important;
-        }
         .ynow-snap-defaults-locked .ynow-gate-extras {
           margin-top: 10px;
+        }
+        /* Guest: sidebar PDF control shows a small lock (not download) */
+        .ynow-sidebar-download-wrap #download_report > i.ynow-sidebar-dl-lock {
+          font-size: 0.92em;
+          margin-right: 2px;
+          opacity: 0.95;
         }
         .ynow-gate-faq {
           margin: 0;
@@ -10771,11 +10708,13 @@ ui <- dashboardPage(
             if (dsBody && s.data_source_body) dsBody.textContent = s.data_source_body;
             var dl = document.getElementById('download_report');
             if (dl && s.download_report) {
-              var spans = dl.querySelectorAll('span, .shiny-download-link');
-              /* downloadButton text is in the button itself after icon */
+              /* Keep current icon (download vs lock); sync may swap after. */
               var icon = dl.querySelector('i');
               var iconHtml = icon ? icon.outerHTML + ' ' : '';
               dl.innerHTML = iconHtml + s.download_report;
+              if (typeof window.ynowSyncSidebarDownloadIcon === 'function') {
+                window.ynowSyncSidebarDownloadIcon();
+              }
             }
             var pdfQuota = document.getElementById('ynow_download_report_quota');
             if (pdfQuota && s.pdf_quota_hint) pdfQuota.textContent = s.pdf_quota_hint;
@@ -11259,7 +11198,6 @@ ui <- dashboardPage(
               set('ynow_lab_gate_signin_label', payload.sign_in);
               set('ynow_chk_gate_title', payload.pa_gate_title);
               set('ynow_chk_gate_signin_label', payload.sign_in);
-              set('ynow_pdf_gate_signin_label', payload.sign_in);
               setAll('.ynow-auth-gate-title', payload.pa_gate_title);
               setAll('.ynow-member-gate-signin-label', payload.sign_in);
               var setFeature = function (feat, map) {
@@ -11538,6 +11476,9 @@ ui <- dashboardPage(
               if (!payload) return;
               if (payload.on) document.body.classList.add('ynow-auth-feature');
               else document.body.classList.remove('ynow-auth-feature');
+              if (typeof window.ynowSyncSidebarDownloadIcon === 'function') {
+                window.ynowSyncSidebarDownloadIcon();
+              }
             });
             addHandler('ynowAuthOAuthRedirect', function (payload) {
               if (!payload || !payload.url) return;
@@ -11593,6 +11534,35 @@ ui <- dashboardPage(
               }
             }
             window.ynowSyncSysAdminFootVisibility = ynowSyncSysAdminFootVisibility;
+            /* Sidebar PDF button: lock icon while guest; download icon after sign-in.
+               Click gate still opens Sign-in; no promo/FAQ/video in the sidebar. */
+            function ynowSyncSidebarDownloadIcon() {
+              var dl = document.getElementById('download_report');
+              if (!dl || !document.body) return;
+              var locked = document.body.classList.contains('ynow-auth-feature') &&
+                !document.body.classList.contains('ynow-authed');
+              var icon = dl.querySelector('i');
+              if (!icon) {
+                icon = document.createElement('i');
+                icon.setAttribute('role', 'presentation');
+                if (dl.firstChild) {
+                  dl.insertBefore(icon, dl.firstChild);
+                  dl.insertBefore(document.createTextNode(' '), icon.nextSibling);
+                } else {
+                  dl.appendChild(icon);
+                  dl.appendChild(document.createTextNode(' '));
+                }
+              }
+              if (locked) {
+                icon.className = 'fas fa-lock ynow-sidebar-dl-lock';
+                icon.setAttribute('aria-label', 'lock icon');
+              } else {
+                icon.className = 'fas fa-download';
+                icon.setAttribute('aria-label', 'download icon');
+              }
+            }
+            window.ynowSyncSidebarDownloadIcon = ynowSyncSidebarDownloadIcon;
+            try { ynowSyncSidebarDownloadIcon(); } catch (eDlIcon0) {}
             addHandler('ynowAuthPostLogin', function (payload) {
               if (!payload) return;
               /* Success: mark authed BEFORE tab restore / sidebar work so any
@@ -11600,6 +11570,9 @@ ui <- dashboardPage(
               if (payload.ok && document.body) {
                 document.body.classList.add('ynow-authed');
                 ynowSyncSysAdminFootVisibility(true);
+                if (typeof window.ynowSyncSidebarDownloadIcon === 'function') {
+                  window.ynowSyncSidebarDownloadIcon();
+                }
               }
               try {
                 if (window.jQuery) jQuery('#ynow_auth_modal').modal('hide');
@@ -11645,6 +11618,9 @@ ui <- dashboardPage(
               if (loggedIn) document.body.classList.add('ynow-authed');
               else document.body.classList.remove('ynow-authed');
               ynowSyncSysAdminFootVisibility(loggedIn);
+              if (typeof window.ynowSyncSidebarDownloadIcon === 'function') {
+                window.ynowSyncSidebarDownloadIcon();
+              }
               var openLinks = document.querySelectorAll('.ynow-auth-open');
               var outLinks = document.querySelectorAll('.ynow-auth-signout');
               var i;
@@ -12284,6 +12260,11 @@ ui <- dashboardPage(
             return !!(document.body && document.body.classList.contains('ynow-authed'));
           }
           window.ynowIsAuthed = ynowIsAuthed;
+          try {
+            if (typeof window.ynowSyncSidebarDownloadIcon === 'function') {
+              window.ynowSyncSidebarDownloadIcon();
+            }
+          } catch (eDlIcon) {}
           /* Guest click gate for proprietary downloads / capture exports.
              Public statement CSVs (IS/BS/CF/FS) stay open. */
           document.addEventListener('click', function (ev) {
@@ -12387,7 +12368,7 @@ ui <- dashboardPage(
               var t = ev.target;
               if (!t || !t.closest) return;
               var hit = t.closest(
-                'a.ynow-auth-open, .ynow-auth-open, #ynow_pa_gate_signin, #ynow_pa_gate_signin_label, #ynow_lab_gate_signin, #ynow_lab_gate_signin_label, #ynow_chk_gate_signin, #ynow_chk_gate_signin_label, #ynow_pdf_gate_signin, #ynow_pdf_gate_signin_label'
+                'a.ynow-auth-open, .ynow-auth-open, #ynow_pa_gate_signin, #ynow_pa_gate_signin_label, #ynow_lab_gate_signin, #ynow_lab_gate_signin_label, #ynow_chk_gate_signin, #ynow_chk_gate_signin_label'
               );
               if (!hit) return;
               var authed = ynowIsAuthed();

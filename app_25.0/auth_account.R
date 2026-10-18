@@ -1251,7 +1251,7 @@ ynow_gate_promo_keys <- function(feature) {
 #' Shared promo + demo + member FAQ for Sign-in / unlock gate surfaces.
 #' @param feature one of [ynow_gate_features()]
 #' @param include_faq shared membership Q&A (accordion)
-#' @param compact tighter layout (sidebar PDF promo)
+#' @param compact tighter layout for constrained surfaces
 ynow_gate_promo_faq_ui <- function(feature = "lab", include_faq = TRUE, compact = FALSE) {
   keys <- ynow_gate_promo_keys(feature)
   feature <- keys$feature
@@ -1688,9 +1688,6 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
     .open_auth_modal()
   }, ignoreInit = TRUE)
   observeEvent(input$ynow_chk_gate_signin, {
-    .open_auth_modal()
-  }, ignoreInit = TRUE)
-  observeEvent(input$ynow_pdf_gate_signin, {
     .open_auth_modal()
   }, ignoreInit = TRUE)
 

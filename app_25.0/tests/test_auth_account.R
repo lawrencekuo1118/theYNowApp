@@ -299,12 +299,14 @@ check("account gate uses shared promo FAQ helper", {
     grepl("ynow-auth-gate", srv, fixed = TRUE) &&
     grepl("ynow-auth-open", srv, fixed = TRUE)
 })
-check("pdf and snap_defaults gates wired in UI", {
+check("snap_defaults gate keeps promo; sidebar has no PDF promo chrome", {
   ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   auth <- paste(readLines(src_auth, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-  grepl("ynow_pdf_guest_gate", ui, fixed = TRUE) &&
-    grepl('feature = "pdf"', ui, fixed = TRUE) &&
+  !grepl("ynow_pdf_guest_gate", ui, fixed = TRUE) &&
+    !grepl("ynow_pdf_gate_signin", ui, fixed = TRUE) &&
     grepl('feature = "snap_defaults"', ui, fixed = TRUE) &&
+    grepl("ynowSyncSidebarDownloadIcon", ui, fixed = TRUE) &&
+    grepl("ynow-sidebar-dl-lock", ui, fixed = TRUE) &&
     grepl("ynow-gate-demo-video", auth, fixed = TRUE) &&
     grepl("demos/", auth, fixed = TRUE)
 })
