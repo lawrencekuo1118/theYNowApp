@@ -218,7 +218,8 @@ check("login tabs show a lock before sign-in", {
     grepl("lab_notes: true", ui, fixed = TRUE) &&
     grepl("decision_checklist: true", ui, fixed = TRUE) &&
     grepl("price_alerts: true", ui, fixed = TRUE) &&
-    grepl("not(.ynow-lite):not(.ynow-authed) .sidebar-menu .ynow-menu-lock", ui, fixed = TRUE)
+    grepl("not(.ynow-lite):not(.ynow-authed) .sidebar-menu .ynow-menu-lock", ui, fixed = TRUE) &&
+    grepl("a:has(.ynow-menu-lock) > i:not(.ynow-menu-lock):not(.pull-right)", ui, fixed = TRUE)
 })
 check("member gate uses mono gate box not warning amber", {
   auth <- paste(readLines(src_auth, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
