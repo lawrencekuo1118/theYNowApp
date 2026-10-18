@@ -1267,11 +1267,22 @@ business_breakdown_lab_server <- function(id = "bblab",
       } else body
     })
 
+    .bblab_deny_guest_download <- function(file) {
+      deny <- tryCatch(session$userData$ynow_deny_guest_download, error = function(e) NULL)
+      if (!is.function(deny)) {
+        root <- tryCatch(session$rootScope(), error = function(e) NULL)
+        deny <- tryCatch(root$userData$ynow_deny_guest_download, error = function(e) NULL)
+      }
+      if (is.function(deny)) return(isTRUE(deny(file)))
+      FALSE
+    }
+
     output$export_data <- downloadHandler(
       filename = function() {
         paste0("business_breakdown_", lab_ticker() %||% "lab", "_", Sys.Date(), ".csv")
       },
       content = function(file) {
+        if (isTRUE(.bblab_deny_guest_download(file))) return()
         res <- lab_result()
         rows <- lapply(res$businesses %||% list(), function(c) {
           data.frame(
@@ -1290,6 +1301,7 @@ business_breakdown_lab_server <- function(id = "bblab",
     output$export_chart <- downloadHandler(
       filename = function() paste0("business_breakdown_chart_", Sys.Date(), ".html"),
       content = function(file) {
+        if (isTRUE(.bblab_deny_guest_download(file))) return()
         res <- lab_result()
         if (is.null(res) || !isTRUE(res$chart$eligible)) {
           writeLines("<html><body>Chart not eligible</body></html>", file)
