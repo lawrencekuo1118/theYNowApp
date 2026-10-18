@@ -128,6 +128,18 @@ check("locale en+zh download_need_login", {
   grepl('download_need_login = "Sign in to download this file."', loc, fixed = TRUE) &&
     grepl('download_need_login = "請先登入再下載此檔案。"', loc, fixed = TRUE)
 })
+check("sidebar has no PDF guest promo/FAQ/video chrome", {
+  !grepl("ynow_pdf_guest_gate", ui, fixed = TRUE) &&
+    !grepl("ynow_pdf_gate_signin", ui, fixed = TRUE) &&
+    !grepl("ynow-pdf-guest-gate", ui, fixed = TRUE) &&
+    grepl("ynow-sidebar-download-wrap", ui, fixed = TRUE) &&
+    grepl("download_report", ui, fixed = TRUE)
+})
+check("sidebar guest download uses lock icon sync", {
+  grepl("ynowSyncSidebarDownloadIcon", ui, fixed = TRUE) &&
+    grepl("fas fa-lock ynow-sidebar-dl-lock", ui, fixed = TRUE) &&
+    grepl("fas fa-download", ui, fixed = TRUE)
+})
 check("server parses", inherits(tryCatch(parse(file.path(app_dir, "ynow_server.R")), error = function(e) e), "expression"))
 check("ui parses", inherits(tryCatch(parse(file.path(app_dir, "ynow_ui.R")), error = function(e) e), "expression"))
 check("bblab parses", inherits(tryCatch(parse(file.path(app_dir, "business_breakdown_module.R")), error = function(e) e), "expression"))

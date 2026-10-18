@@ -16,7 +16,7 @@
       return(sub('^"version"\\s*:\\s*"([^"]+)".*$', "\\1", m[[1]]))
     }
   }
-  "v25.59"
+  "v25.60"
 }
 .YNOW_BUILD_VERSION <- .ynow_read_build_version()
 
@@ -230,7 +230,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v25.59) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+          "The YNow App (v25.60) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
         ),
         tags$p(
           class = "ynow-about-method",
@@ -258,7 +258,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v25.59) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
+          "The YNow App (v25.60) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
         ),
         tags$p(
           class = "ynow-about-method",
@@ -368,7 +368,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App（簡化版）")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite（v25.59）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
+          "The YNow App Lite（v25.60）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
           "以自動判別主／副模型與預設參數完成試算，讓使用者先看到合理價區間與產業 KPI，再決定是否回到完整版深入調整。"
         ),
         tags$p(
@@ -385,7 +385,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App (Lite)")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite (v25.59) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
+          "The YNow App Lite (v25.60) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
           "auto-selects primary/secondary models with App defaults, and surfaces fair-value ranges plus industry KPIs before you open Full for deeper calibration."
         ),
         tags$p(
@@ -3639,9 +3639,9 @@ ui <- dashboardPage(
                   'data-ynow-build="', .YNOW_BUILD_VERSION, '" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v25.59</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v25.60</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v25.59</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v25.60</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -3987,28 +3987,6 @@ ui <- dashboardPage(
                  id = "ynow_download_report_quota",
                  class = "ynow-download-report-quota",
                  "Sign-in required. Three free downloads each Asia/Taipei day; each extra download costs 10 FYN."
-               ),
-               tags$div(
-                 id = "ynow_pdf_guest_gate",
-                 class = "ynow-pdf-guest-gate",
-                 if (exists("ynow_gate_promo_faq_ui", mode = "function")) {
-                   ynow_gate_promo_faq_ui(
-                     feature = "pdf",
-                     include_faq = TRUE,
-                     compact = TRUE
-                   )
-                 } else {
-                   NULL
-                 },
-                 actionButton(
-                   "ynow_pdf_gate_signin",
-                   label = tags$span(
-                     id = "ynow_pdf_gate_signin_label",
-                     class = "ynow-member-gate-signin-label",
-                     "Sign in"
-                   ),
-                   class = "btn-primary ynow-auth-open ynow-pdf-gate-signin"
-                 )
                )
            )
     ),
@@ -4981,55 +4959,14 @@ ui <- dashboardPage(
         .ynow-gate-extras--compact .ynow-gate-promo__list {
           font-size: 11.5px;
         }
-        /* Sidebar PDF guest promo: guests only when auth feature is on */
-        .ynow-pdf-guest-gate {
-          display: none;
-          margin-top: 10px;
-          padding: 8px;
-          border: 1px solid #666;
-          border-radius: 4px;
-          background: #111;
-          color: #e8e8e8;
-        }
-        body.ynow-auth-feature:not(.ynow-authed) .ynow-pdf-guest-gate {
-          display: block;
-        }
-        .ynow-pdf-guest-gate .ynow-gate-promo {
-          background: repeating-linear-gradient(
-            -45deg,
-            #1a1a1a 0,
-            #1a1a1a 6px,
-            #222 6px,
-            #222 12px
-          );
-          border-color: #666;
-        }
-        .ynow-pdf-guest-gate .ynow-gate-promo-lead,
-        .ynow-pdf-guest-gate .ynow-gate-promo__list,
-        .ynow-pdf-guest-gate .ynow-gate-demo-caption,
-        .ynow-pdf-guest-gate .ynow-gate-faq__summary,
-        .ynow-pdf-guest-gate .ynow-gate-faq-q,
-        .ynow-pdf-guest-gate .ynow-gate-faq-a {
-          color: #ddd;
-        }
-        .ynow-pdf-guest-gate .ynow-gate-faq {
-          background: #1a1a1a;
-          border-color: #666;
-        }
-        .ynow-pdf-guest-gate .ynow-gate-demo {
-          background: #1a1a1a;
-          border-color: #666;
-        }
-        .ynow-pdf-guest-gate .ynow-pdf-gate-signin,
-        .ynow-pdf-guest-gate .btn-primary {
-          width: 100%;
-          margin-top: 8px;
-          background-color: #fff !important;
-          border-color: #fff !important;
-          color: #1a1a1a !important;
-        }
         .ynow-snap-defaults-locked .ynow-gate-extras {
           margin-top: 10px;
+        }
+        /* Guest: sidebar PDF control shows a small lock (not download) */
+        .ynow-sidebar-download-wrap #download_report > i.ynow-sidebar-dl-lock {
+          font-size: 0.92em;
+          margin-right: 2px;
+          opacity: 0.95;
         }
         .ynow-gate-faq {
           margin: 0;
@@ -6585,15 +6522,39 @@ ui <- dashboardPage(
         .skin-black .sidebar-menu > li.menu-open > a {
           color: #ffffff !important;
         }
-        /* Locked sidebar items stay visible, with light-gray labels. */
+        /* Locked sidebar items stay visible, with light-gray labels + icons. */
         .skin-black .main-sidebar .sidebar-menu li.ynow-access-locked-nav > a,
         .skin-black .main-sidebar .sidebar-menu li.ynow-access-locked-nav > a:hover,
         .skin-black .main-sidebar .sidebar-menu li.ynow-access-locked-nav > a:focus,
         body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .skin-black .main-sidebar .sidebar-menu a:has(.ynow-menu-lock),
         body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .skin-black .main-sidebar .sidebar-menu a:has(.ynow-menu-lock):hover,
-        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .skin-black .main-sidebar .sidebar-menu a:has(.ynow-menu-lock):focus {
+        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .skin-black .main-sidebar .sidebar-menu a:has(.ynow-menu-lock):focus,
+        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .skin-black .main-sidebar .sidebar-menu li.treeview:has(a:has(.ynow-menu-lock)) > a,
+        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .skin-black .main-sidebar .sidebar-menu li.treeview:has(a:has(.ynow-menu-lock)) > a:hover,
+        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .skin-black .main-sidebar .sidebar-menu li.treeview:has(a:has(.ynow-menu-lock)) > a:focus {
           color: #a3a3a3 !important;
           opacity: 1;
+        }
+        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .skin-black .main-sidebar .sidebar-menu a:has(.ynow-menu-lock) > i,
+        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .skin-black .main-sidebar .sidebar-menu li.treeview:has(a:has(.ynow-menu-lock)) > a > i {
+          color: #a3a3a3 !important;
+        }
+        /* Guest PDF download: muted / light-gray locked control (lock icon via JS). */
+        body.ynow-auth-feature:not(.ynow-authed) .ynow-sidebar-download-wrap #download_report,
+        body.ynow-auth-feature:not(.ynow-authed) .ynow-sidebar-download-btn {
+          background-color: #2e2e2e !important;
+          color: #a3a3a3 !important;
+          border-color: #666666 !important;
+          box-shadow: none !important;
+        }
+        body.ynow-auth-feature:not(.ynow-authed) .ynow-sidebar-download-wrap #download_report:hover,
+        body.ynow-auth-feature:not(.ynow-authed) .ynow-sidebar-download-btn:hover {
+          background-color: #353535 !important;
+          color: #b8b8b8 !important;
+          border-color: #777777 !important;
+        }
+        body.ynow-auth-feature:not(.ynow-authed) .ynow-download-report-quota {
+          color: #a3a3a3;
         }
         .label-primary, .badge-primary {
           background-color: var(--ynow-ink) !important;
@@ -9922,7 +9883,9 @@ ui <- dashboardPage(
             var loginTabs = {
               lab_notes: true,
               decision_checklist: true,
-              price_alerts: true
+              price_alerts: true,
+              account_admin: true,
+              account_points: true
             };
             if (loginTabs[tab]) {
               var lock = document.createElement('i');
@@ -10781,11 +10744,13 @@ ui <- dashboardPage(
             if (dsBody && s.data_source_body) dsBody.textContent = s.data_source_body;
             var dl = document.getElementById('download_report');
             if (dl && s.download_report) {
-              var spans = dl.querySelectorAll('span, .shiny-download-link');
-              /* downloadButton text is in the button itself after icon */
+              /* Keep current icon (download vs lock); sync may swap after. */
               var icon = dl.querySelector('i');
               var iconHtml = icon ? icon.outerHTML + ' ' : '';
               dl.innerHTML = iconHtml + s.download_report;
+              if (typeof window.ynowSyncSidebarDownloadIcon === 'function') {
+                window.ynowSyncSidebarDownloadIcon();
+              }
             }
             var pdfQuota = document.getElementById('ynow_download_report_quota');
             if (pdfQuota && s.pdf_quota_hint) pdfQuota.textContent = s.pdf_quota_hint;
@@ -11269,7 +11234,6 @@ ui <- dashboardPage(
               set('ynow_lab_gate_signin_label', payload.sign_in);
               set('ynow_chk_gate_title', payload.pa_gate_title);
               set('ynow_chk_gate_signin_label', payload.sign_in);
-              set('ynow_pdf_gate_signin_label', payload.sign_in);
               setAll('.ynow-auth-gate-title', payload.pa_gate_title);
               setAll('.ynow-member-gate-signin-label', payload.sign_in);
               var setFeature = function (feat, map) {
@@ -11560,6 +11524,9 @@ ui <- dashboardPage(
               if (!payload) return;
               if (payload.on) document.body.classList.add('ynow-auth-feature');
               else document.body.classList.remove('ynow-auth-feature');
+              if (typeof window.ynowSyncSidebarDownloadIcon === 'function') {
+                window.ynowSyncSidebarDownloadIcon();
+              }
             });
             addHandler('ynowAuthOAuthRedirect', function (payload) {
               if (!payload || !payload.url) return;
@@ -11615,6 +11582,35 @@ ui <- dashboardPage(
               }
             }
             window.ynowSyncSysAdminFootVisibility = ynowSyncSysAdminFootVisibility;
+            /* Sidebar PDF button: lock icon while guest; download icon after sign-in.
+               Click gate still opens Sign-in; no promo/FAQ/video in the sidebar. */
+            function ynowSyncSidebarDownloadIcon() {
+              var dl = document.getElementById('download_report');
+              if (!dl || !document.body) return;
+              var locked = document.body.classList.contains('ynow-auth-feature') &&
+                !document.body.classList.contains('ynow-authed');
+              var icon = dl.querySelector('i');
+              if (!icon) {
+                icon = document.createElement('i');
+                icon.setAttribute('role', 'presentation');
+                if (dl.firstChild) {
+                  dl.insertBefore(icon, dl.firstChild);
+                  dl.insertBefore(document.createTextNode(' '), icon.nextSibling);
+                } else {
+                  dl.appendChild(icon);
+                  dl.appendChild(document.createTextNode(' '));
+                }
+              }
+              if (locked) {
+                icon.className = 'fas fa-lock ynow-sidebar-dl-lock';
+                icon.setAttribute('aria-label', 'lock icon');
+              } else {
+                icon.className = 'fas fa-download';
+                icon.setAttribute('aria-label', 'download icon');
+              }
+            }
+            window.ynowSyncSidebarDownloadIcon = ynowSyncSidebarDownloadIcon;
+            try { ynowSyncSidebarDownloadIcon(); } catch (eDlIcon0) {}
             addHandler('ynowAuthPostLogin', function (payload) {
               if (!payload) return;
               /* Success: mark authed BEFORE tab restore / sidebar work so any
@@ -11622,6 +11618,9 @@ ui <- dashboardPage(
               if (payload.ok && document.body) {
                 document.body.classList.add('ynow-authed');
                 ynowSyncSysAdminFootVisibility(true);
+                if (typeof window.ynowSyncSidebarDownloadIcon === 'function') {
+                  window.ynowSyncSidebarDownloadIcon();
+                }
               }
               try {
                 if (window.jQuery) jQuery('#ynow_auth_modal').modal('hide');
@@ -11667,6 +11666,9 @@ ui <- dashboardPage(
               if (loggedIn) document.body.classList.add('ynow-authed');
               else document.body.classList.remove('ynow-authed');
               ynowSyncSysAdminFootVisibility(loggedIn);
+              if (typeof window.ynowSyncSidebarDownloadIcon === 'function') {
+                window.ynowSyncSidebarDownloadIcon();
+              }
               var openLinks = document.querySelectorAll('.ynow-auth-open');
               var outLinks = document.querySelectorAll('.ynow-auth-signout');
               var i;
@@ -12306,6 +12308,11 @@ ui <- dashboardPage(
             return !!(document.body && document.body.classList.contains('ynow-authed'));
           }
           window.ynowIsAuthed = ynowIsAuthed;
+          try {
+            if (typeof window.ynowSyncSidebarDownloadIcon === 'function') {
+              window.ynowSyncSidebarDownloadIcon();
+            }
+          } catch (eDlIcon) {}
           /* Guest click gate for proprietary downloads / capture exports.
              Public statement CSVs (IS/BS/CF/FS) stay open. */
           document.addEventListener('click', function (ev) {
@@ -12409,7 +12416,7 @@ ui <- dashboardPage(
               var t = ev.target;
               if (!t || !t.closest) return;
               var hit = t.closest(
-                'a.ynow-auth-open, .ynow-auth-open, #ynow_pa_gate_signin, #ynow_pa_gate_signin_label, #ynow_lab_gate_signin, #ynow_lab_gate_signin_label, #ynow_chk_gate_signin, #ynow_chk_gate_signin_label, #ynow_pdf_gate_signin, #ynow_pdf_gate_signin_label'
+                'a.ynow-auth-open, .ynow-auth-open, #ynow_pa_gate_signin, #ynow_pa_gate_signin_label, #ynow_lab_gate_signin, #ynow_lab_gate_signin_label, #ynow_chk_gate_signin, #ynow_chk_gate_signin_label'
               );
               if (!hit) return;
               var authed = ynowIsAuthed();
