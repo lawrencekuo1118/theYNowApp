@@ -7,5 +7,5 @@ commit=05c59eb680045ece36294ba881b5ac173a50a92d
 short=05c59eb6
 message=chore: bump display version to v25.62
 captured_at=2026-10-18T16:29:30Z
-display_version=v25.62
+display_version=v25.63
 note=Canonical live line is app_25.0. Bundle 12706860: in-tab locks (Snapshot APP_DEFAULTS and section/input/report targets) use a lock icon on the tab and show sign-in plus demo promo only inside that tab.
