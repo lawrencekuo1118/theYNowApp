@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12706343
+bundleId=12706388
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=9634d09e42bca6eba71aedf1c09e9e41f79db90e
-commit=9634d09e42bca6eba71aedf1c09e9e41f79db90e
-short=9634d09e
-message=Merge pull request #301 from lawrencekuo1118/cursor/remove-pdf-agent-debug-24cc
-captured_at=2026-10-18T13:08:51Z
+aligned_git=c8ed9f05cfc425b49f1b4d5ac700cce717f3706a
+commit=c8ed9f05cfc425b49f1b4d5ac700cce717f3706a
+short=c8ed9f05
+message=chore: bump display version to v25.52
+captured_at=2026-10-18T13:25:49Z
 display_version=v25.52
