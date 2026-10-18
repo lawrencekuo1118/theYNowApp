@@ -3620,7 +3620,24 @@ locale_for_market <- function(mode = get_market_mode()) {
     notif_bblab_business_history_insufficient_years = paste0(
       "Fewer than two fiscal years of comparable revenue shares are available. ",
       "The five-year mix series is omitted; current mix, cards, and reconciliation remain."
-    )
+    ),
+    cookie_banner_body = paste0(
+      "To improve your experience, please allow this site to use cookies. ",
+      "Select Cookie settings to learn more and manage cookies on this site."
+    ),
+    cookie_settings_btn = "Cookie settings",
+    cookie_accept_all = "Accept all",
+    cookie_reject_optional = "Reject optional",
+    cookie_save = "Save settings",
+    cookie_panel_title = "Cookie settings",
+    cookie_necessary_label = "Necessary cookies",
+    cookie_necessary_hint = "Required for this site to work. Always on and cannot be turned off.",
+    cookie_analytics_label = "Analytics cookies",
+    cookie_analytics_hint = "Optional. Help us understand how this site is used.",
+    cookie_preferences_label = "Preference cookies",
+    cookie_preferences_hint = "Optional. Remember choices such as language on this device.",
+    cookie_always_on = "Always on",
+    cookie_reopen = "Cookie settings"
   ),
   `zh-TW` = list(
     recent_search = "最近搜尋：",
@@ -7056,7 +7073,24 @@ locale_for_market <- function(mode = get_market_mode()) {
     notif_bblab_business_history_insufficient_years = paste0(
       "可比較的營收佔比不足兩個會計年度，因此不呈現五年結構佔比序列。",
       "當期組成、事業卡片與對帳仍保留。"
-    )
+    ),
+    cookie_banner_body = paste0(
+      "為增進您的使用體驗，請允許本網站使用您的 Cookie。",
+      "點選「Cookie 設定」了解更多資訊並管理本網站上的 Cookie。"
+    ),
+    cookie_settings_btn = "Cookie 設定",
+    cookie_accept_all = "全部允許",
+    cookie_reject_optional = "拒絕選用",
+    cookie_save = "儲存設定",
+    cookie_panel_title = "Cookie 設定",
+    cookie_necessary_label = "必要 Cookie",
+    cookie_necessary_hint = "網站運作所需，一律開啟且無法關閉。",
+    cookie_analytics_label = "分析 Cookie",
+    cookie_analytics_hint = "選用。協助了解本網站的使用情形。",
+    cookie_preferences_label = "偏好 Cookie",
+    cookie_preferences_hint = "選用。在此裝置上記住語言等選擇。",
+    cookie_always_on = "一律開啟",
+    cookie_reopen = "Cookie 設定"
   )
 )
 
@@ -7183,7 +7217,7 @@ ui_locale_boot_bundle <- function() {
   slim_strings <- function(loc) {
     s <- ui_locale_payload(loc)
     keep <- grepl(
-      "^(menu_|hdr_|about|home_|btn_|feedback_|test_link|smart_|market_|lite_|pts_fyn_label|pts_pyn_label)",
+      "^(menu_|hdr_|about|home_|btn_|feedback_|test_link|smart_|market_|lite_|pts_fyn_label|pts_pyn_label|cookie_)",
       names(s)
     )
     as.list(s[keep])

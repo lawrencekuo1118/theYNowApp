@@ -4069,6 +4069,204 @@ ui <- dashboardPage(
         )
       )
     ),
+    tags$div(
+      id = "ynow_cookie_banner",
+      class = "ynow-cookie-banner",
+      role = "dialog",
+      `aria-modal` = "false",
+      `aria-labelledby` = "ynow_cookie_panel_title",
+      hidden = "hidden",
+      tags$p(
+        id = "ynow_cookie_banner_body",
+        class = "ynow-cookie-banner__body",
+        paste0(
+          "To improve your experience, please allow this site to use cookies. ",
+          "Select Cookie settings to learn more and manage cookies on this site."
+        )
+      ),
+      tags$div(
+        class = "ynow-cookie-banner__actions",
+        tags$button(
+          id = "ynow_cookie_settings_btn",
+          type = "button",
+          class = "btn btn-default btn-sm",
+          "Cookie settings"
+        ),
+        tags$button(
+          id = "ynow_cookie_accept_all",
+          type = "button",
+          class = "btn btn-default btn-sm",
+          "Accept all"
+        ),
+        tags$button(
+          id = "ynow_cookie_reject_optional",
+          type = "button",
+          class = "btn btn-default btn-sm",
+          "Reject optional"
+        )
+      ),
+      tags$div(
+        id = "ynow_cookie_panel",
+        class = "ynow-cookie-panel",
+        hidden = "hidden",
+        tags$p(
+          id = "ynow_cookie_panel_title",
+          class = "ynow-cookie-panel__title",
+          "Cookie settings"
+        ),
+        tags$label(
+          class = "ynow-cookie-row",
+          `for` = "ynow_cookie_necessary",
+          tags$input(
+            id = "ynow_cookie_necessary",
+            type = "checkbox",
+            checked = "checked",
+            disabled = "disabled"
+          ),
+          tags$span(
+            tags$span(id = "ynow_cookie_necessary_label", "Necessary cookies"),
+            tags$span(id = "ynow_cookie_always_on", class = "ynow-cookie-always", "Always on"),
+            tags$span(
+              id = "ynow_cookie_necessary_hint",
+              class = "ynow-cookie-hint",
+              "Required for this site to work. Always on and cannot be turned off."
+            )
+          )
+        ),
+        tags$label(
+          class = "ynow-cookie-row",
+          `for` = "ynow_cookie_analytics",
+          tags$input(id = "ynow_cookie_analytics", type = "checkbox"),
+          tags$span(
+            tags$span(id = "ynow_cookie_analytics_label", "Analytics cookies"),
+            tags$span(
+              id = "ynow_cookie_analytics_hint",
+              class = "ynow-cookie-hint",
+              "Optional. Help us understand how this site is used."
+            )
+          )
+        ),
+        tags$label(
+          class = "ynow-cookie-row",
+          `for` = "ynow_cookie_preferences",
+          tags$input(id = "ynow_cookie_preferences", type = "checkbox"),
+          tags$span(
+            tags$span(id = "ynow_cookie_preferences_label", "Preference cookies"),
+            tags$span(
+              id = "ynow_cookie_preferences_hint",
+              class = "ynow-cookie-hint",
+              "Optional. Remember choices such as language on this device."
+            )
+          )
+        ),
+        tags$button(
+          id = "ynow_cookie_save",
+          type = "button",
+          class = "btn btn-default btn-sm",
+          "Save settings"
+        )
+      )
+    ),
+    tags$button(
+      id = "ynow_cookie_reopen",
+      type = "button",
+      class = "btn btn-default btn-sm ynow-cookie-reopen",
+      hidden = "hidden",
+      "Cookie settings"
+    ),
+    tags$script(HTML('
+      (function () {
+        var KEY = "ynow_cookie_prefs";
+        function readPrefs() {
+          try {
+            var raw = localStorage.getItem(KEY);
+            if (raw) return JSON.parse(raw);
+          } catch (e) {}
+          var m = document.cookie.match(/(?:^|; )ynow_cookie_prefs=([^;]*)/);
+          if (!m) return null;
+          try { return JSON.parse(decodeURIComponent(m[1])); } catch (e2) { return null; }
+        }
+        function writePrefs(obj) {
+          obj.necessary = true;
+          obj.v = 1;
+          var raw = JSON.stringify(obj);
+          try { localStorage.setItem(KEY, raw); } catch (e) {}
+          var secure = (location.protocol === "https:") ? "; Secure" : "";
+          document.cookie = KEY + "=" + encodeURIComponent(raw) +
+            "; path=/; max-age=31536000; SameSite=Lax" + secure;
+        }
+        function banner() { return document.getElementById("ynow_cookie_banner"); }
+        function panel() { return document.getElementById("ynow_cookie_panel"); }
+        function reopen() { return document.getElementById("ynow_cookie_reopen"); }
+        function showBanner(openPanel) {
+          var b = banner();
+          if (!b) return;
+          b.removeAttribute("hidden");
+          var r = reopen();
+          if (r) r.setAttribute("hidden", "hidden");
+          var p = panel();
+          if (!p) return;
+          if (openPanel) p.removeAttribute("hidden");
+          else p.setAttribute("hidden", "hidden");
+        }
+        function hideBanner() {
+          var b = banner();
+          if (b) b.setAttribute("hidden", "hidden");
+          var p = panel();
+          if (p) p.setAttribute("hidden", "hidden");
+          var r = reopen();
+          if (r) r.removeAttribute("hidden");
+        }
+        function applyToggles(prefs) {
+          var a = document.getElementById("ynow_cookie_analytics");
+          var p = document.getElementById("ynow_cookie_preferences");
+          var n = document.getElementById("ynow_cookie_necessary");
+          if (n) { n.checked = true; n.disabled = true; }
+          if (a) a.checked = !!(prefs && prefs.analytics);
+          if (p) p.checked = !!(prefs && prefs.preferences);
+        }
+        function choice(kind) {
+          var a = document.getElementById("ynow_cookie_analytics");
+          var p = document.getElementById("ynow_cookie_preferences");
+          var analytics = kind === "all" ? true : (kind === "reject" ? false : !!(a && a.checked));
+          var preferences = kind === "all" ? true : (kind === "reject" ? false : !!(p && p.checked));
+          writePrefs({
+            necessary: true,
+            analytics: analytics,
+            preferences: preferences,
+            choice: kind
+          });
+          applyToggles(readPrefs());
+          hideBanner();
+        }
+        function bind() {
+          var prefs = readPrefs();
+          applyToggles(prefs);
+          if (prefs && prefs.choice) hideBanner();
+          else showBanner(false);
+          var settings = document.getElementById("ynow_cookie_settings_btn");
+          if (settings) settings.addEventListener("click", function () {
+            var p = panel();
+            if (!p) return;
+            if (p.hasAttribute("hidden")) p.removeAttribute("hidden");
+            else p.setAttribute("hidden", "hidden");
+          });
+          var accept = document.getElementById("ynow_cookie_accept_all");
+          if (accept) accept.addEventListener("click", function () { choice("all"); });
+          var reject = document.getElementById("ynow_cookie_reject_optional");
+          if (reject) reject.addEventListener("click", function () { choice("reject"); });
+          var save = document.getElementById("ynow_cookie_save");
+          if (save) save.addEventListener("click", function () { choice("custom"); });
+          var again = reopen();
+          if (again) again.addEventListener("click", function () { showBanner(true); });
+        }
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", bind);
+        } else {
+          bind();
+        }
+      })();
+    ')),
     # Account login modal/CSS — omit when disabled (do not inject NULL children)
     do.call(
       tagList,
@@ -4481,6 +4679,115 @@ ui <- dashboardPage(
           margin: 0;
           padding: 4px 10px;
           font-size: 12px;
+        }
+        /* Site-wide cookie notice: bottom bar, not a full-screen lock */
+        .ynow-cookie-banner {
+          display: none;
+          position: fixed;
+          z-index: 18500;
+          left: 12px;
+          right: 12px;
+          bottom: 12px;
+          max-width: 920px;
+          margin: 0 auto;
+          max-height: min(70vh, 480px);
+          overflow: auto;
+          padding: 12px 14px;
+          background: #fff;
+          color: var(--ynow-ink, #1a1a1a);
+          border: 1px solid var(--ynow-line, #d0d0d0);
+          border-left: 4px solid var(--ynow-ink, #1a1a1a);
+          border-radius: 6px;
+          box-shadow: 0 4px 18px rgba(0, 0, 0, 0.18);
+          font-size: 13px;
+          line-height: 1.45;
+        }
+        .ynow-cookie-banner:not([hidden]) {
+          display: block;
+        }
+        .ynow-cookie-banner__body {
+          margin: 0;
+        }
+        .ynow-cookie-banner__actions {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          margin-top: 10px;
+        }
+        .ynow-cookie-banner .btn {
+          margin: 0;
+          padding: 4px 10px;
+          font-size: 12px;
+        }
+        .ynow-cookie-panel {
+          display: none;
+          margin-top: 10px;
+          padding-top: 10px;
+          border-top: 1px solid var(--ynow-line, #d0d0d0);
+        }
+        .ynow-cookie-panel:not([hidden]) {
+          display: block;
+        }
+        .ynow-cookie-panel__title {
+          margin: 0 0 8px 0;
+          font-weight: 700;
+        }
+        .ynow-cookie-row {
+          display: flex;
+          align-items: flex-start;
+          gap: 8px;
+          margin: 0 0 8px 0;
+          font-weight: 400;
+        }
+        .ynow-cookie-row input {
+          margin-top: 3px;
+        }
+        .ynow-cookie-always {
+          margin-left: 6px;
+          font-size: 12px;
+          color: var(--ynow-ink-soft, #333);
+        }
+        .ynow-cookie-hint {
+          display: block;
+          margin-top: 2px;
+          font-size: 12px;
+          color: var(--ynow-ink-soft, #333);
+        }
+        .ynow-cookie-reopen {
+          position: fixed;
+          z-index: 18400;
+          left: 12px;
+          bottom: 12px;
+          margin: 0;
+          padding: 4px 10px;
+          font-size: 12px;
+        }
+        .ynow-cookie-reopen[hidden] {
+          display: none !important;
+        }
+        @media (max-width: 767px) {
+          .ynow-cookie-banner {
+            left: 8px;
+            right: 8px;
+            bottom: 8px;
+            max-height: 60vh;
+          }
+          .ynow-cookie-banner .btn,
+          .ynow-cookie-reopen {
+            font-size: 13px;
+          }
+          .ynow-cookie-reopen {
+            left: 8px;
+            bottom: 8px;
+          }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .ynow-cookie-banner,
+          .ynow-cookie-panel,
+          .ynow-cookie-reopen {
+            transition: none;
+            animation: none;
+          }
         }
         /* Sysadmin portal: after login hide all login/intro chrome */
         .sidebar-menu li.ynow-access-locked { display: none !important; }
@@ -9718,6 +10025,20 @@ ui <- dashboardPage(
               var el = document.getElementById(id);
               if (el && s[key]) el.textContent = s[key];
             }
+            setBtText('ynow_cookie_banner_body', 'cookie_banner_body');
+            setBtText('ynow_cookie_settings_btn', 'cookie_settings_btn');
+            setBtText('ynow_cookie_accept_all', 'cookie_accept_all');
+            setBtText('ynow_cookie_reject_optional', 'cookie_reject_optional');
+            setBtText('ynow_cookie_save', 'cookie_save');
+            setBtText('ynow_cookie_panel_title', 'cookie_panel_title');
+            setBtText('ynow_cookie_necessary_label', 'cookie_necessary_label');
+            setBtText('ynow_cookie_necessary_hint', 'cookie_necessary_hint');
+            setBtText('ynow_cookie_analytics_label', 'cookie_analytics_label');
+            setBtText('ynow_cookie_analytics_hint', 'cookie_analytics_hint');
+            setBtText('ynow_cookie_preferences_label', 'cookie_preferences_label');
+            setBtText('ynow_cookie_preferences_hint', 'cookie_preferences_hint');
+            setBtText('ynow_cookie_always_on', 'cookie_always_on');
+            setBtText('ynow_cookie_reopen', 'cookie_reopen');
             ['ynow_home_title', 'ynow_home_lead', 'ynow_home_method', 'ynow_home_method_lite',
              'ynow_home_market_k', 'ynow_home_market_d',
              'ynow_home_bluechip_k', 'ynow_home_bluechip_d',
