@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12706315
+bundleId=12706343
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=977d61569ab6a8f3c1a8a4137eae7e3a452c9fb5
-commit=977d61569ab6a8f3c1a8a4137eae7e3a452c9fb5
-short=977d6156
-message=chore: bump display version to v25.50
-captured_at=2026-10-18T13:04:25Z
-display_version=v25.50
+aligned_git=6946e6fb2bf7118a321897b9c9795d8a3e668bd6
+commit=6946e6fb2bf7118a321897b9c9795d8a3e668bd6
+short=6946e6fb
+message=Pin the collapsed Cookie settings control to the bottom-right, and add a small copyright line at the bottom of the sidebar.
+captured_at=2026-10-18T13:08:40Z
+display_version=v25.51
