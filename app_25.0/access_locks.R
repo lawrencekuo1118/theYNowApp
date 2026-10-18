@@ -1,9 +1,14 @@
-# Per-user UI locks set from System admin.
+# Per-user / global UI restrictions set from System admin.
 # item id = kind:target  (tab | section | input | report)
+# effect  = "lock" (show locked placeholder / disable) | "hide" (remove from UI)
+# scope   = selected user id, or YNOW_ACCESS_ALL_USERS for every account (+ guests)
 
 if (!exists("%||%", mode = "function")) {
   `%||%` <- function(a, b) if (is.null(a) || length(a) == 0L) b else a
 }
+
+YNOW_ACCESS_ALL_USERS <- "__all__"
+.YNOW_ACCESS_EFFECTS <- c("lock", "hide")
 
 .ynow_access_mem <- new.env(parent = emptyenv())
 .ynow_access_mem$by_user <- list()
@@ -82,6 +87,21 @@ ynow_access_kind_label <- function(kind, locale = "en") {
   }
 }
 
+ynow_access_effect_label <- function(effect, locale = "en") {
+  zh <- identical(as.character(locale)[1], "zh-TW")
+  e <- ynow_access_normalize_effect(effect)
+  if (zh) {
+    switch(e, lock = "鎖上（顯示鎖定）", hide = "隱藏", e)
+  } else {
+    switch(e, lock = "Lock (show locked)", hide = "Hide", e)
+  }
+}
+
+ynow_access_normalize_effect <- function(effect) {
+  e <- tolower(as.character(effect %||% "hide")[1])
+  if (!nzchar(e) || !e %in% .YNOW_ACCESS_EFFECTS) "hide" else e
+}
+
 ynow_access_reset_memory <- function() {
   .ynow_access_mem$by_user <- list()
   invisible(TRUE)
@@ -91,6 +111,40 @@ ynow_access_reset_memory <- function() {
   override <- Sys.getenv("YNOW_ACCESS_LOCKS_PATH", "")
   if (nzchar(override)) return(override)
   file.path("data", "access_locks.json")
+}
+
+#' Normalize one user's stored map to named character vector: item_id -> effect.
+.ynow_access_coerce_map <- function(raw) {
+  if (is.null(raw)) return(character())
+  if (is.character(raw) && !is.null(names(raw)) && any(nzchar(names(raw)))) {
+    out <- vapply(raw, ynow_access_normalize_effect, character(1), USE.NAMES = TRUE)
+    out <- out[nzchar(names(out))]
+    return(out)
+  }
+  # Legacy: plain list/vector of item ids → hide (matches prior CSS)
+  if (is.list(raw) || is.character(raw)) {
+    ids <- as.character(unlist(raw, use.names = FALSE))
+    ids <- ids[nzchar(ids)]
+    if (!length(ids)) return(character())
+    # Named list of effects: list(`tab:x` = "lock")
+    if (is.list(raw) && !is.null(names(raw)) && any(nzchar(names(raw)))) {
+      nms <- names(raw)
+      keep <- nzchar(nms)
+      vals <- vapply(raw[keep], function(v) {
+        if (is.list(v) && !is.null(v$effect)) {
+          ynow_access_normalize_effect(v$effect)
+        } else {
+          ynow_access_normalize_effect(v)
+        }
+      }, character(1))
+      names(vals) <- nms[keep]
+      return(vals)
+    }
+    out <- rep("hide", length(ids))
+    names(out) <- ids
+    return(out)
+  }
+  character()
 }
 
 .ynow_access_read_file <- function() {
@@ -123,15 +177,36 @@ ynow_access_ensure_schema <- function() {
       "user_id TEXT NOT NULL,",
       "item_id TEXT NOT NULL,",
       "locked BOOLEAN NOT NULL DEFAULT TRUE,",
+      "effect TEXT NOT NULL DEFAULT 'hide',",
       "updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),",
       "PRIMARY KEY (user_id, item_id)",
       ")"
     ))
+    # Older deploys may lack effect column.
+    cols <- tryCatch(
+      DBI::dbGetQuery(
+        con,
+        paste(
+          "SELECT column_name FROM information_schema.columns",
+          "WHERE table_name = 'ynow_access_locks'"
+        )
+      ),
+      error = function(e) NULL
+    )
+    if (is.data.frame(cols) && !"effect" %in% cols$column_name) {
+      tryCatch(
+        DBI::dbExecute(
+          con,
+          "ALTER TABLE ynow_access_locks ADD COLUMN IF NOT EXISTS effect TEXT NOT NULL DEFAULT 'hide'"
+        ),
+        error = function(e) NULL
+      )
+    }
   })
   invisible(TRUE)
 }
 
-ynow_access_locked_ids <- function(user_id) {
+.ynow_access_map_for_uid <- function(user_id) {
   uid <- as.character(user_id %||% "")[1]
   if (!nzchar(uid)) return(character())
   if (.ynow_access_db_on()) {
@@ -139,21 +214,54 @@ ynow_access_locked_ids <- function(user_id) {
     df <- ynow_db_with(function(con) {
       DBI::dbGetQuery(
         con,
-        "SELECT item_id FROM ynow_access_locks WHERE user_id = $1 AND locked IS TRUE ORDER BY item_id",
+        paste(
+          "SELECT item_id, COALESCE(NULLIF(effect, ''), 'hide') AS effect",
+          "FROM ynow_access_locks",
+          "WHERE user_id = $1 AND locked IS TRUE",
+          "ORDER BY item_id"
+        ),
         params = list(uid)
       )
     })
-    if (is.data.frame(df) && nrow(df) > 0L) return(as.character(df$item_id))
-    return(character())
+    if (!is.data.frame(df) || nrow(df) < 1L) return(character())
+    out <- vapply(df$effect, ynow_access_normalize_effect, character(1))
+    names(out) <- as.character(df$item_id)
+    return(out)
   }
   mem <- .ynow_access_mem$by_user[[uid]]
   if (is.null(mem)) {
     store <- .ynow_access_read_file()
     mem <- store[[uid]]
   }
-  ids <- as.character(unlist(mem, use.names = FALSE))
-  ids <- ids[nzchar(ids)]
-  sort(unique(ids))
+  .ynow_access_coerce_map(mem)
+}
+
+#' Effective restrictions for a subject: global (__all__) then per-user override.
+ynow_access_entries <- function(user_id = "") {
+  uid <- as.character(user_id %||% "")[1]
+  global <- .ynow_access_map_for_uid(YNOW_ACCESS_ALL_USERS)
+  personal <- if (nzchar(uid) && !identical(uid, YNOW_ACCESS_ALL_USERS)) {
+    .ynow_access_map_for_uid(uid)
+  } else {
+    character()
+  }
+  merged <- global
+  if (length(personal)) {
+    for (nm in names(personal)) merged[[nm]] <- personal[[nm]]
+  }
+  if (!length(merged)) {
+    return(data.frame(id = character(), effect = character(), stringsAsFactors = FALSE))
+  }
+  data.frame(
+    id = names(merged),
+    effect = unname(vapply(merged, ynow_access_normalize_effect, character(1))),
+    stringsAsFactors = FALSE
+  )
+}
+
+ynow_access_locked_ids <- function(user_id) {
+  ent <- ynow_access_entries(user_id)
+  sort(unique(as.character(ent$id)))
 }
 
 ynow_access_is_locked <- function(user_id, item_id) {
@@ -161,13 +269,25 @@ ynow_access_is_locked <- function(user_id, item_id) {
   id %in% ynow_access_locked_ids(user_id)
 }
 
-ynow_access_set <- function(user_id, item_id, locked = TRUE) {
+ynow_access_item_effect <- function(user_id, item_id) {
+  id <- as.character(item_id %||% "")[1]
+  ent <- ynow_access_entries(user_id)
+  hit <- which(ent$id == id)
+  if (!length(hit)) return(NA_character_)
+  as.character(ent$effect[[hit[[1]]]])
+}
+
+#' Set or clear a restriction.
+#' @param user_id account uuid, or YNOW_ACCESS_ALL_USERS for everyone
+#' @param effect "lock" or "hide" (ignored when locked=FALSE)
+ynow_access_set <- function(user_id, item_id, locked = TRUE, effect = "hide") {
   uid <- as.character(user_id %||% "")[1]
   id <- as.character(item_id %||% "")[1]
   cat <- ynow_access_catalog()
   if (!nzchar(uid)) return(list(ok = FALSE, message_key = "access_bad_user"))
   if (!id %in% cat$id) return(list(ok = FALSE, message_key = "access_bad_item"))
   on <- isTRUE(locked)
+  eff <- ynow_access_normalize_effect(effect)
   if (.ynow_access_db_on()) {
     ynow_access_ensure_schema()
     ynow_db_with(function(con) {
@@ -175,11 +295,12 @@ ynow_access_set <- function(user_id, item_id, locked = TRUE) {
         DBI::dbExecute(
           con,
           paste(
-            "INSERT INTO ynow_access_locks (user_id, item_id, locked, updated_at)",
-            "VALUES ($1, $2, TRUE, NOW())",
-            "ON CONFLICT (user_id, item_id) DO UPDATE SET locked = TRUE, updated_at = NOW()"
+            "INSERT INTO ynow_access_locks (user_id, item_id, locked, effect, updated_at)",
+            "VALUES ($1, $2, TRUE, $3, NOW())",
+            "ON CONFLICT (user_id, item_id) DO UPDATE SET",
+            "locked = TRUE, effect = EXCLUDED.effect, updated_at = NOW()"
           ),
-          params = list(uid, id)
+          params = list(uid, id, eff)
         )
       } else {
         DBI::dbExecute(
@@ -191,19 +312,32 @@ ynow_access_set <- function(user_id, item_id, locked = TRUE) {
     })
   } else {
     store <- .ynow_access_read_file()
-    cur <- unique(c(
-      as.character(unlist(.ynow_access_mem$by_user[[uid]], use.names = FALSE)),
-      as.character(unlist(store[[uid]], use.names = FALSE))
-    ))
-    cur <- cur[nzchar(cur)]
-    if (on) cur <- unique(c(cur, id)) else cur <- setdiff(cur, id)
+    cur <- .ynow_access_coerce_map(
+      .ynow_access_mem$by_user[[uid]] %||% store[[uid]]
+    )
+    if (on) {
+      cur[[id]] <- eff
+    } else {
+      cur <- cur[setdiff(names(cur), id)]
+    }
     .ynow_access_mem$by_user[[uid]] <- cur
+    # Persist as named list for JSON clarity
     store[[uid]] <- as.list(cur)
     .ynow_access_write_file(store)
   }
   list(
     ok = TRUE,
-    message_key = if (on) "access_ok_lock" else "access_ok_unlock",
-    ids = ynow_access_locked_ids(uid)
+    message_key = if (on) {
+      if (identical(uid, YNOW_ACCESS_ALL_USERS)) {
+        if (identical(eff, "lock")) "access_ok_lock_all" else "access_ok_hide_all"
+      } else {
+        if (identical(eff, "lock")) "access_ok_lock" else "access_ok_hide"
+      }
+    } else {
+      if (identical(uid, YNOW_ACCESS_ALL_USERS)) "access_ok_unlock_all" else "access_ok_unlock"
+    },
+    ids = ynow_access_locked_ids(uid),
+    effect = if (on) eff else NA_character_,
+    scope = if (identical(uid, YNOW_ACCESS_ALL_USERS)) "all" else "user"
   )
 }
