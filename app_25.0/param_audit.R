@@ -115,6 +115,19 @@ ynow_tracked_param_registry <- function() {
     c("mod_nav-nav_low", "NAV", "NAV low", "nav_calculator", "numeric", "TRUE", "Bear NAV multiple"),
     c("mod_nav-nav_mid", "NAV", "NAV mid", "nav_calculator", "numeric", "TRUE", "Base NAV multiple"),
     c("mod_nav-nav_high", "NAV", "NAV high", "nav_calculator", "numeric", "TRUE", "Bull NAV multiple"),
+    # ---- Relative Multiples (Implied Price; app/industry assumptions, not Yahoo back-solve) ----
+    c("mod_rel-rel_mode", "Multiples", "Relative mode", "rel_multiples_calculator", "radio", "TRUE", "equity / enterprise claim family"),
+    c("mod_rel-pe_multiple", "Multiples", "Selected P/E", "rel_multiples_calculator", "numeric", "TRUE", "App/industry P/E assumption → Implied Price"),
+    c("mod_rel-fwd_pe_multiple", "Multiples", "Selected Forward P/E", "rel_multiples_calculator", "numeric", "TRUE", "App/industry Forward P/E assumption"),
+    c("mod_rel-ps_multiple", "Multiples", "P/S", "rel_mult_rev", "numeric", "TRUE", "App/industry P/S assumption"),
+    c("mod_rel-ev_fcf_multiple", "Multiples", "EV/FCF", "rel_mult_ev", "numeric", "TRUE", "App/industry EV/FCF assumption"),
+    c("mod_rel-ev_ebit_multiple", "Multiples", "EV/EBIT", "rel_mult_ev", "numeric", "TRUE", "App/industry EV/EBIT assumption"),
+    c("mod_rel-ev_ebitda_multiple", "Multiples", "EV/EBITDA", "rel_mult_ev", "numeric", "TRUE", "App/industry EV/EBITDA assumption"),
+    c("mod_rel-ev_sales_multiple", "Multiples", "EV/Sales", "rel_mult_rev", "numeric", "TRUE", "App/industry EV/Sales assumption"),
+    c("mod_rel-ev_arr_multiple", "Multiples", "EV/ARR", "rel_mult_rev", "numeric", "TRUE", "App/industry EV/ARR assumption"),
+    # ---- SOTP (Meta-Framework) ----
+    c("mod_sotp-default_ev_sales", "SOTP", "Default EV/Sales", "sotp_calculator", "numeric", "TRUE", "Default segment EV/Sales when row multiple missing"),
+    c("mod_sotp-nonop", "SOTP", "Non-operating value", "sotp_calculator", "numeric", "TRUE", "Added to Σ(seg Rev × EV/Sales) before equity bridge"),
     # ---- Decision Checklist ----
     c("chk_bear_base", "Decision Checklist", "Gate: Bear vs Base", "decision_checklist", "checkbox", "TRUE", "Default ON — Bear/Base MOS hygiene"),
     c("cond_bear_base_bear_mos_floor", "Decision Checklist", "Bear MOS floor (%)", "decision_checklist", "numeric", "TRUE", "Min MOS at Bear FV"),

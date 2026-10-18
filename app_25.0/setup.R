@@ -3264,9 +3264,9 @@ valuation_scenario_audit <- function(locale = "en") {
   }
   add("multiples", "reference", "active_multiple", NA_real_, ref_rule)
   sotp_rule <- if (en) {
-    "Meta-Framework. Verify Implied Price as the sum of segment revenue × EV/Sales, then the equity bridge."
+    "Meta-Framework. Verify Implied Price as Σ(segment revenue × EV/Sales) then the equity bridge. Conglomerate discount is not auto-applied."
   } else {
-    "綜合型估值框架。用各事業營收 × EV/Sales 加總，再經權益橋接，複核 Implied Price。"
+    "綜合型估值框架。用各事業營收 × EV/Sales 加總，再經權益橋接，複核 Implied Price。控股折價不自動套用。"
   }
   add("sotp", "reference", "segment_ev_sales", NA_real_, sotp_rule)
   do.call(rbind, rows)

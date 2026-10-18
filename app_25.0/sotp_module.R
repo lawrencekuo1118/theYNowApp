@@ -48,7 +48,7 @@ sotp_module_ui <- function(id) {
             "A Meta-Framework that breaks the absolute／relative boundary: split the firm into segments, ",
             "value each with the best lens (DCF, EV/EBITDA, EV/Sales／ARR, NAV), sum EV, then deduct corporate overhead and net debt. ",
             "This app’s engine implements the revenue × EV/Sales path (≥2 segments) with the shared Cash − Debt × Shares bridge. ",
-            "Classic for Big Tech, conglomerates, and spin-off cases; markets often apply a 10%–30% conglomerate discount."
+            "Markets often cite a 10%–30% conglomerate discount — this app does not auto-apply that discount; adjust segment multiples if needed."
           )
         )
       )

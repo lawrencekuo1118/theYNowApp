@@ -4429,6 +4429,30 @@ server <- function(input, output, session) {
     est_g <- tryCatch(central_perpetual_g(), error = function(e) NULL)
     lite <- isTRUE(input$ynow_lite_mode)
 
+    # Engine assumptions that are not editable inputs but still affect results —
+    # must appear on Snapshot so nothing is a fully hidden substitute.
+    hfv_thr <- tryCatch(
+      if (exists("hfv_scenario_threshold_defaults", mode = "function")) {
+        hfv_scenario_threshold_defaults()
+      } else {
+        list()
+      },
+      error = function(e) list()
+    )
+    capex_prior <- tryCatch(
+      as.integer(APP_DEFAULTS$capex_spike_prior_years %||% 2L)[1],
+      error = function(e) 2L
+    )
+    g2_sync <- if (!is.null(est_g) && is.finite(suppressWarnings(as.numeric(est_g$g_pct)[1]))) {
+      .snapshot_value(est_g$g_pct)
+    } else {
+      .snapshot_value(tryCatch(input$sgr, error = function(e) APP_DEFAULTS$sgr))
+    }
+    statutory_tax <- tryCatch({
+      mode <- normalize_market_mode(market_mode())
+      if (identical(mode, "TW")) 20 else 21
+    }, error = function(e) 21)
+
     extras <- list(
       c("Meta", "Downloaded At", ts, "Timestamp at download/render"),
       c("Meta", "Ticker", .snapshot_value(ticker), "Selected ticker"),
@@ -4446,6 +4470,61 @@ server <- function(input, output, session) {
         "SGR", "Estimated g (%)",
         if (!is.null(est_g)) .snapshot_value(est_g$g_pct) else NA_character_,
         "Selected perpetual-growth method output (derived)"
+      ),
+      c(
+        "Two-Stage", "Stage-2 g2 (%) (synced to SGR)",
+        g2_sync,
+        "No separate UI; DCF stage-2 g follows central SGR / Estimated g"
+      ),
+      c(
+        "FCF", "CapEx spike prior years",
+        .snapshot_value(capex_prior),
+        "APP_DEFAULTS; prior-window years excluding latest year for spike detect"
+      ),
+      c(
+        "Tax", "Statutory tax fallback (%)",
+        .snapshot_value(statutory_tax),
+        "Used when income-statement effective tax is missing/NaN (TW 20 / US 21)"
+      ),
+      c(
+        "HFV", "Scenario |Δ|/prev flat band",
+        .snapshot_value(hfv_thr$momentum_flat_band),
+        "Fixed heuristic; classifies FV/price momentum as flat (not editable)"
+      ),
+      c(
+        "HFV", "Scenario Price≪FV MOS floor",
+        .snapshot_value(hfv_thr$mos_deep_cheap),
+        "Fixed heuristic; MOS ≥ this → Price ≪ FV (scenario A/B)"
+      ),
+      c(
+        "HFV", "Scenario Price≫FV MOS ceiling",
+        .snapshot_value(hfv_thr$mos_deep_rich),
+        "Fixed heuristic; MOS ≤ this → Price ≫ FV"
+      ),
+      c(
+        "HFV", "Scenario Price≈FV |MOS| band",
+        .snapshot_value(hfv_thr$mos_near),
+        "Fixed heuristic; |MOS| ≤ this → Price ≈ FV"
+      ),
+      c(
+        "HFV", "Scenario D price strong-up",
+        .snapshot_value(hfv_thr$price_strong_up),
+        "Fixed heuristic; price momentum ≥ this for scenario D"
+      ),
+      c(
+        "Backtest", "MOS hysteresis ladder (fixed)",
+        "MOS≥30%→max_exp; ≥10%→~72%×cap; ≥0%→~44%; ≥−10%→~17%; else 0; blend vs flat≤40% via w_vg",
+        "Quant Lab Mode A exposure; not editable — documented here for transparency"
+      ),
+      c(
+        "Backtest", "Mode B sentiment blend (fixed)",
+        "clip(0.28 + 0.40×w_avg, 0.28, 0.60)",
+        "Quant Lab Mode B; mixes Mode A with momentum/RSI — not editable"
+      ),
+      c(
+        "SOTP", "Conglomerate discount",
+        "not applied",
+        "Market narrative often 10%–30%; engine never auto-discounts Σ(seg×EV/Sales) — adjust multiples manually if needed"
       )
     )
     ynow_snapshot_registry_rows(input, lite = lite, extras = extras)
@@ -4645,6 +4724,15 @@ server <- function(input, output, session) {
       nav_low = c("NAV", "NAV Low 倍數", "Bear 倍數"),
       nav_mid = c("NAV", "NAV Mid 倍數", "Base 倍數"),
       nav_high = c("NAV", "NAV High 倍數", "Bull 倍數"),
+      rel_mode = c("Multiples", "Relative mode", "equity / enterprise"),
+      rel_pe_multiple = c("Multiples", "Selected P/E", "App／產業假設；非 Yahoo 回推"),
+      rel_fwd_pe_multiple = c("Multiples", "Selected Forward P/E", "App／產業假設"),
+      rel_ev_fcf_multiple = c("Multiples", "EV/FCF", "App／產業假設"),
+      rel_ev_ebit_multiple = c("Multiples", "EV/EBIT", "App／產業假設"),
+      rel_ev_ebitda_multiple = c("Multiples", "EV/EBITDA", "App／產業假設"),
+      rel_ev_sales_multiple = c("Multiples", "EV/Sales", "App／產業假設；SOTP 預設亦用此鍵"),
+      rel_ps_multiple = c("Multiples", "P/S", "App／產業假設"),
+      rel_ev_arr_multiple = c("Multiples", "EV/ARR", "App／產業假設"),
       apply_capex_spike_smooth = c("FCF", "啟用 CapEx 暴衝平滑", "TRUE = 暴衝時改採均值"),
       capex_spike_mult = c("FCF", "暴衝倍數閾值", "最新 CapEx/Rev > mult × 前期均值"),
       capex_spike_avg_years = c("FCF", "暴衝均值年數", "暴衝時投影採最近 N 年均值"),
