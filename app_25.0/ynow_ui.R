@@ -6341,6 +6341,16 @@ ui <- dashboardPage(
         .skin-black .sidebar-menu > li.menu-open > a {
           color: #ffffff !important;
         }
+        /* Locked sidebar items stay visible, with light-gray labels. */
+        .skin-black .main-sidebar .sidebar-menu li.ynow-access-locked-nav > a,
+        .skin-black .main-sidebar .sidebar-menu li.ynow-access-locked-nav > a:hover,
+        .skin-black .main-sidebar .sidebar-menu li.ynow-access-locked-nav > a:focus,
+        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .skin-black .main-sidebar .sidebar-menu a:has(.ynow-menu-lock),
+        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .skin-black .main-sidebar .sidebar-menu a:has(.ynow-menu-lock):hover,
+        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .skin-black .main-sidebar .sidebar-menu a:has(.ynow-menu-lock):focus {
+          color: #a3a3a3 !important;
+          opacity: 1;
+        }
         .label-primary, .badge-primary {
           background-color: var(--ynow-ink) !important;
         }
