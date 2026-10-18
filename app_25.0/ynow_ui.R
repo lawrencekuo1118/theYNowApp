@@ -16,7 +16,7 @@
       return(sub('^"version"\\s*:\\s*"([^"]+)".*$', "\\1", m[[1]]))
     }
   }
-  "v25.53"
+  "v25.54"
 }
 .YNOW_BUILD_VERSION <- .ynow_read_build_version()
 
@@ -230,7 +230,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v25.53) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+          "The YNow App (v25.54) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
         ),
         tags$p(
           class = "ynow-about-method",
@@ -258,7 +258,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v25.53) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
+          "The YNow App (v25.54) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
         ),
         tags$p(
           class = "ynow-about-method",
@@ -368,7 +368,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App（簡化版）")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite（v25.53）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
+          "The YNow App Lite（v25.54）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
           "以自動判別主／副模型與預設參數完成試算，讓使用者先看到合理價區間與產業 KPI，再決定是否回到完整版深入調整。"
         ),
         tags$p(
@@ -385,7 +385,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App (Lite)")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite (v25.53) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
+          "The YNow App Lite (v25.54) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
           "auto-selects primary/secondary models with App defaults, and surfaces fair-value ranges plus industry KPIs before you open Full for deeper calibration."
         ),
         tags$p(
@@ -3639,9 +3639,9 @@ ui <- dashboardPage(
                   'data-ynow-build="', .YNOW_BUILD_VERSION, '" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v25.53</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v25.54</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v25.53</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v25.54</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -4004,39 +4004,43 @@ ui <- dashboardPage(
     ),
 
     # Snapshot：側邊欄內容流最底部低調捷徑（勿用 absolute，會跑到搜尋框）
+    # Foot links row + copyright directly below (copyright must not overlap the three links).
     column(
       width = 12,
       class = "ynow-sidebar-snapshot-foot",
-      tags$a(
-        href = "#shiny-tab-snapshot",
-        `data-toggle` = "tab",
-        `data-value` = "snapshot",
-        class = "ynow-sidebar-snapshot-link",
-        onclick = "if (window.ynowShowSidebarFootTab) { window.ynowShowSidebarFootTab('snapshot'); } else if (window.Shiny) { Shiny.setInputValue('sidebar_tabs', 'snapshot', {priority: 'event'}); } return false;",
-        icon("camera", class = "fa-fw"),
-        tags$span(id = "ynow_snapshot_link_label", " Snapshot")
-      ),
-      # System admin：側邊欄專用入口（完整版）；Lite 隱藏；內部 tabName 仍為 testing
-      tags$a(
-        id = "ynow_sidebar_test_btn",
-        href = "#shiny-tab-testing",
-        `data-toggle` = "tab",
-        `data-value` = "testing",
-        class = "ynow-sidebar-snapshot-link ynow-sidebar-test-link ynow-full-only",
-        onclick = "if (window.Shiny) { Shiny.setInputValue('sidebar_test_click', (window.__ynowTestClicks=(window.__ynowTestClicks||0)+1), {priority: 'event'}); } if (window.ynowShowSidebarFootTab) { window.ynowShowSidebarFootTab('testing'); } else if (window.Shiny) { Shiny.setInputValue('sidebar_tabs', 'testing', {priority: 'event'}); } return false;",
-        icon("user-shield", class = "fa-fw"),
-        tags$span(id = "ynow_test_link_label", " Sys. Admin")
-      ),
-      # 意見區：收集使用者回饋，系統性開 GitHub Issue
-      tags$a(
-        id = "ynow_sidebar_feedback_btn",
-        href = "#shiny-tab-feedback",
-        `data-toggle` = "tab",
-        `data-value` = "feedback",
-        class = "ynow-sidebar-snapshot-link ynow-sidebar-feedback-link",
-        onclick = "if (window.Shiny) { Shiny.setInputValue('sidebar_feedback_click', (window.__ynowFeedbackClicks=(window.__ynowFeedbackClicks||0)+1), {priority: 'event'}); } if (window.ynowShowSidebarFootTab) { window.ynowShowSidebarFootTab('feedback'); } else if (window.Shiny) { Shiny.setInputValue('sidebar_tabs', 'feedback', {priority: 'event'}); } return false;",
-        icon("comment-dots", class = "fa-fw"),
-        tags$span(id = "ynow_feedback_link_label", " 意見區")
+      tags$div(
+        class = "ynow-sidebar-snapshot-foot-links",
+        tags$a(
+          href = "#shiny-tab-snapshot",
+          `data-toggle` = "tab",
+          `data-value` = "snapshot",
+          class = "ynow-sidebar-snapshot-link",
+          onclick = "if (window.ynowShowSidebarFootTab) { window.ynowShowSidebarFootTab('snapshot'); } else if (window.Shiny) { Shiny.setInputValue('sidebar_tabs', 'snapshot', {priority: 'event'}); } return false;",
+          icon("camera", class = "fa-fw"),
+          tags$span(id = "ynow_snapshot_link_label", " Snapshot")
+        ),
+        # System admin：側邊欄專用入口（完整版）；Lite／已登入帳號隱藏；內部 tabName 仍為 testing
+        tags$a(
+          id = "ynow_sidebar_test_btn",
+          href = "#shiny-tab-testing",
+          `data-toggle` = "tab",
+          `data-value` = "testing",
+          class = "ynow-sidebar-snapshot-link ynow-sidebar-test-link ynow-full-only",
+          onclick = "if (document.body && document.body.classList.contains('ynow-authed')) { return false; } if (window.Shiny) { Shiny.setInputValue('sidebar_test_click', (window.__ynowTestClicks=(window.__ynowTestClicks||0)+1), {priority: 'event'}); } if (window.ynowShowSidebarFootTab) { window.ynowShowSidebarFootTab('testing'); } else if (window.Shiny) { Shiny.setInputValue('sidebar_tabs', 'testing', {priority: 'event'}); } return false;",
+          icon("user-shield", class = "fa-fw"),
+          tags$span(id = "ynow_test_link_label", " Sys. Admin")
+        ),
+        # 意見區：收集使用者回饋，系統性開 GitHub Issue
+        tags$a(
+          id = "ynow_sidebar_feedback_btn",
+          href = "#shiny-tab-feedback",
+          `data-toggle` = "tab",
+          `data-value` = "feedback",
+          class = "ynow-sidebar-snapshot-link ynow-sidebar-feedback-link",
+          onclick = "if (window.Shiny) { Shiny.setInputValue('sidebar_feedback_click', (window.__ynowFeedbackClicks=(window.__ynowFeedbackClicks||0)+1), {priority: 'event'}); } if (window.ynowShowSidebarFootTab) { window.ynowShowSidebarFootTab('feedback'); } else if (window.Shiny) { Shiny.setInputValue('sidebar_tabs', 'feedback', {priority: 'event'}); } return false;",
+          icon("comment-dots", class = "fa-fw"),
+          tags$span(id = "ynow_feedback_link_label", " 意見區")
+        ),
       ),
       tags$p(
         id = "ynow_sidebar_copyright",
@@ -4924,6 +4928,15 @@ ui <- dashboardPage(
           background: var(--ynow-gate-accent, #1a1a1a) !important;
           background-color: var(--ynow-gate-accent, #1a1a1a) !important;
           color: #fff !important;
+        }
+        /* Guest 「Sign in required」gates: hide stock Ticker / Yahoo industry chrome */
+        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed)
+          .content-wrapper:has(#shiny-tab-lab_notes.active) .ynow-stock-chrome,
+        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed)
+          .content-wrapper:has(#shiny-tab-decision_checklist.active) .ynow-stock-chrome,
+        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed)
+          .content-wrapper:has(#shiny-tab-price_alerts.active) .ynow-stock-chrome {
+          display: none !important;
         }
         body.ynow-sysadmin-on .ynow-sysadmin-login-chrome,
         body.ynow-sysadmin-on .ynow-sysadmin-login-row {
@@ -6341,6 +6354,16 @@ ui <- dashboardPage(
         .skin-black .sidebar-menu > li.menu-open > a {
           color: #ffffff !important;
         }
+        /* Locked sidebar items stay visible, with light-gray labels. */
+        .skin-black .main-sidebar .sidebar-menu li.ynow-access-locked-nav > a,
+        .skin-black .main-sidebar .sidebar-menu li.ynow-access-locked-nav > a:hover,
+        .skin-black .main-sidebar .sidebar-menu li.ynow-access-locked-nav > a:focus,
+        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .skin-black .main-sidebar .sidebar-menu a:has(.ynow-menu-lock),
+        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .skin-black .main-sidebar .sidebar-menu a:has(.ynow-menu-lock):hover,
+        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .skin-black .main-sidebar .sidebar-menu a:has(.ynow-menu-lock):focus {
+          color: #a3a3a3 !important;
+          opacity: 1;
+        }
         .label-primary, .badge-primary {
           background-color: var(--ynow-ink) !important;
         }
@@ -6492,8 +6515,22 @@ ui <- dashboardPage(
           font-weight: 700 !important;
           border-left-color: #fff;
         }
-        /* Snapshot／Sys. Admin／Feedback：側邊欄底部同一列，不換行 */
+        /* Snapshot／Sys. Admin／Feedback：同一列；版權宣告在按鈕列正下方（勿重疊） */
         .ynow-sidebar-snapshot-foot {
+          display: flex !important;
+          flex-direction: column !important;
+          flex-wrap: nowrap !important;
+          align-items: stretch;
+          justify-content: flex-start;
+          gap: 0;
+          width: 100%;
+          box-sizing: border-box;
+          margin-top: 8px !important;
+          margin-bottom: 10px !important;
+          padding: 0 4px !important;
+          text-align: left !important;
+        }
+        .ynow-sidebar-snapshot-foot-links {
           display: flex !important;
           flex-direction: row !important;
           flex-wrap: nowrap !important;
@@ -6502,10 +6539,6 @@ ui <- dashboardPage(
           gap: 2px;
           width: 100%;
           box-sizing: border-box;
-          margin-top: 8px !important;
-          margin-bottom: 10px !important;
-          padding: 0 4px !important;
-          text-align: left !important;
         }
         .main-sidebar .ynow-sidebar-snapshot-foot.col-sm-12,
         .main-sidebar .ynow-sidebar-snapshot-foot.col-xs-12 {
@@ -6582,11 +6615,14 @@ ui <- dashboardPage(
         .ynow-recent-chip:focus-visible {
           box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35);
         }
-        /* 側欄完整 LOGO：Recent Search 橫線下、Download Report 正上方；等比例放大 */
+        /* 側欄版權：緊接 Snapshot／Sys. Admin／意見區列下方，全寬、不與按鈕重疊 */
         .ynow-sidebar-copyright {
+          flex: 0 0 auto;
+          width: 100%;
+          box-sizing: border-box;
           clear: both;
-          margin: 14px 0 0;
-          padding: 8px 10px 12px;
+          margin: 6px 0 0;
+          padding: 6px 4px 8px;
           font-size: 10px;
           line-height: 1.35;
           text-align: center;
@@ -7015,6 +7051,15 @@ ui <- dashboardPage(
         body.ynow-lite .ynow-company-advance-bblab,
         body.ynow-lite .ynow-bblab {
           display: none !important;
+        }
+        /* Signed-in account users: hide Sys. Admin foot link (portal is guest/ops only).
+           Beat .ynow-sidebar-snapshot-link { display: inline-flex !important }. */
+        body.ynow-authed .ynow-sidebar-snapshot-foot a.ynow-sidebar-snapshot-link.ynow-sidebar-test-link,
+        body.ynow-authed .ynow-sidebar-snapshot-foot #ynow_sidebar_test_btn,
+        body.ynow-authed a#ynow_sidebar_test_btn.ynow-sidebar-test-link {
+          display: none !important;
+          visibility: hidden !important;
+          pointer-events: none !important;
         }
         /* Lite Snapshot: only System defaults tab (when sysadmin unlocked).
            Note: shiny tabset id may sit on the ul.nav-tabs itself (not a wrapper). */
@@ -11224,12 +11269,32 @@ ui <- dashboardPage(
                 finish(baseUrl, !!tab, false);
               }
             });
+            /* Sys. Admin foot link: hide while signed in (CSS + inline, sign-out restores). */
+            function ynowSyncSysAdminFootVisibility(loggedIn) {
+              var el = document.getElementById('ynow_sidebar_test_btn');
+              if (!el) return;
+              if (loggedIn) {
+                el.style.setProperty('display', 'none', 'important');
+                el.style.setProperty('visibility', 'hidden', 'important');
+                el.style.setProperty('pointer-events', 'none', 'important');
+                el.setAttribute('aria-hidden', 'true');
+                el.setAttribute('tabindex', '-1');
+              } else {
+                el.style.removeProperty('display');
+                el.style.removeProperty('visibility');
+                el.style.removeProperty('pointer-events');
+                el.removeAttribute('aria-hidden');
+                el.removeAttribute('tabindex');
+              }
+            }
+            window.ynowSyncSysAdminFootVisibility = ynowSyncSysAdminFootVisibility;
             addHandler('ynowAuthPostLogin', function (payload) {
               if (!payload) return;
               /* Success: mark authed BEFORE tab restore / sidebar work so any
                  subsequent Sign-in / BS toggleModal open is vetoed. */
               if (payload.ok && document.body) {
                 document.body.classList.add('ynow-authed');
+                ynowSyncSysAdminFootVisibility(true);
               }
               try {
                 if (window.jQuery) jQuery('#ynow_auth_modal').modal('hide');
@@ -11240,10 +11305,12 @@ ui <- dashboardPage(
                 sessionStorage.removeItem('ynow_oauth_code_verifier');
                 sessionStorage.removeItem('ynow_pre_oauth_tab');
               } catch (eClr) {}
+              /* Sys. Admin is guest/ops-only: never restore testing after sign-in. */
+              if (payload.ok && tab === 'testing') tab = 'home';
               if (payload.ok && tab && window.Shiny && Shiny.setInputValue) {
                 try {
                   if (typeof window.ynowShowSidebarFootTab === 'function' &&
-                      (tab === 'snapshot' || tab === 'testing' || tab === 'feedback')) {
+                      (tab === 'snapshot' || tab === 'feedback')) {
                     window.ynowShowSidebarFootTab(tab);
                   } else {
                     Shiny.setInputValue('sidebar_tabs', tab, { priority: 'event' });
@@ -11272,6 +11339,7 @@ ui <- dashboardPage(
               var loggedIn = !!(payload.logged_in);
               if (loggedIn) document.body.classList.add('ynow-authed');
               else document.body.classList.remove('ynow-authed');
+              ynowSyncSysAdminFootVisibility(loggedIn);
               var openLinks = document.querySelectorAll('.ynow-auth-open');
               var outLinks = document.querySelectorAll('.ynow-auth-signout');
               var i;
@@ -11288,6 +11356,24 @@ ui <- dashboardPage(
               if (payload.label_sign_out) {
                 var outLbls = document.querySelectorAll('.ynow-auth-signout-label');
                 for (i = 0; i < outLbls.length; i++) outLbls[i].textContent = payload.label_sign_out;
+              }
+              /* Leave Sys. Admin tab if still open after sign-in (link is CSS-hidden). */
+              if (loggedIn && window.Shiny && Shiny.setInputValue) {
+                try {
+                  var active = document.querySelector(
+                    '.sidebar-menu li.active > a[data-value], .sidebar-menu a.active[data-value]'
+                  );
+                  var footActive = document.querySelector(
+                    '.ynow-sidebar-snapshot-foot a.active[data-value], ' +
+                    '.ynow-sidebar-snapshot-foot a[aria-expanded=\"true\"][data-value]'
+                  );
+                  var cur = (active && active.getAttribute('data-value')) ||
+                    (footActive && footActive.getAttribute('data-value')) || '';
+                  var hash = (window.location.hash || '').replace(/^#shiny-tab-/, '');
+                  if (cur === 'testing' || hash === 'testing') {
+                    Shiny.setInputValue('sidebar_tabs', 'home', { priority: 'event' });
+                  }
+                } catch (eLeaveTest) {}
               }
             });
             addHandler('ynowDcLocale', applyDcLocale);
@@ -11569,6 +11655,11 @@ ui <- dashboardPage(
             function gotoTab(tab) {
               tab = remapLegacyTab(tab);
               if (!tab) return;
+              /* Signed-in members: Sys. Admin portal is guest/ops only. */
+              if (tab === 'testing' && document.body &&
+                  document.body.classList.contains('ynow-authed')) {
+                tab = 'home';
+              }
               if (window.Shiny && Shiny.setInputValue) {
                 Shiny.setInputValue('sidebar_tabs', tab, {priority: 'event'});
               }
@@ -11685,6 +11776,11 @@ ui <- dashboardPage(
             function showSidebarFootTab(tab) {
               tab = remapLegacyTab(tab);
               if (!tab) return;
+              /* Signed-in members: never open Sys. Admin (testing) via foot link. */
+              if (tab === 'testing' && document.body &&
+                  document.body.classList.contains('ynow-authed')) {
+                tab = 'home';
+              }
               if (window.Shiny && Shiny.setInputValue) {
                 Shiny.setInputValue('sidebar_tabs', tab, {priority: 'event'});
               }
@@ -11882,13 +11978,6 @@ ui <- dashboardPage(
             return !!(document.body && document.body.classList.contains('ynow-authed'));
           }
           window.ynowIsAuthed = ynowIsAuthed;
-          document.addEventListener('click', function (ev) {
-            var node = ev.target && ev.target.closest ? ev.target.closest('#download_report') : null;
-            if (!node || !document.body) return;
-            // #region agent log
-            fetch('http://127.0.0.1:7302/ingest/e3a0dcdf-71e1-4bba-855e-f942118bd315',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ef0f33'},body:JSON.stringify({sessionId:'ef0f33',runId:'pre',hypothesisId:'C',location:'ynow_ui.R:download_click',message:'pdf button click',data:{authed:document.body.classList.contains('ynow-authed'),lite:document.body.classList.contains('ynow-lite'),authFeature:document.body.classList.contains('ynow-auth-feature'),label:(node.textContent||'').replace(/\\s+/g,' ').trim().slice(0,80)},timestamp:Date.now()})}).catch(function(){});
-            // #endregion
-          }, true);
           function ynowShowAuthModal() {
             // Already signed in: never reopen login modal (post-login sidebar race).
             if (ynowIsAuthed()) return;
@@ -16214,61 +16303,75 @@ ui <- dashboardPage(
         tags$span(class = "ynow-credit-text", "a lawrence kuo shiny app")
       )
     ),
-    # Ticker search + Yahoo industry chrome: hide on Home, About, Macro, Blue Chip, Testing
+    # Ticker search + Yahoo industry chrome: hide on Home, About, Macro, Blue Chip,
+    # Testing, and account maintenance (gate / 會員管理 / points). Guest Sign-in-required
+    # surfaces (Lab / Checklist / Value Alerts) hide the same chrome via CSS while gated.
     # (Business Breakdown shares global Ticker / Stock Code chrome;
     # Blue Chip uses its own universe Search, not the global ticker chrome).
     conditionalPanel(
-      condition = "input.sidebar_tabs != 'about' && input.sidebar_tabs != 'macro_market' && input.sidebar_tabs != 'asset_transmission' && input.sidebar_tabs != 'bluechip' && input.sidebar_tabs != 'testing' && input.sidebar_tabs != 'home'",
-      fluidRow(
-        column(width = 12,
-               div(
-                 class = "ynow-sc-row",
+      condition = paste(
+        "input.sidebar_tabs != 'about' &&",
+        "input.sidebar_tabs != 'macro_market' &&",
+        "input.sidebar_tabs != 'asset_transmission' &&",
+        "input.sidebar_tabs != 'bluechip' &&",
+        "input.sidebar_tabs != 'testing' &&",
+        "input.sidebar_tabs != 'home' &&",
+        "input.sidebar_tabs != 'account_admin' &&",
+        "input.sidebar_tabs != 'account_points'"
+      ),
+      tags$div(
+        class = "ynow-stock-chrome",
+        fluidRow(
+          column(width = 12,
                  div(
-                   class = "ynow-sc-wrap",
-                   textInput(
-                     "sc",
-                     "Ticker / Stock Code",
-                     value = "",
-                     placeholder = "e.g. AAPL / TSM"
+                   class = "ynow-sc-row",
+                   div(
+                     class = "ynow-sc-wrap",
+                     textInput(
+                       "sc",
+                       "Ticker / Stock Code",
+                       value = "",
+                       placeholder = "e.g. AAPL / TSM"
+                     ),
+                     uiOutput("sc_ticker_suggest_ui")
                    ),
-                   uiOutput("sc_ticker_suggest_ui")
-                 ),
-                 actionButton(
-                   "search",
-                   "Search",
-                   icon = icon("search"),
-                   class = "ynow-search-btn"
+                   actionButton(
+                     "search",
+                     "Search",
+                     icon = icon("search"),
+                     class = "ynow-search-btn"
+                   )
                  )
-               )
-        )
-      ),
-      fluidRow(
-        column(
-          width = 12,
-          h2(uiOutput("txt_corpname", inline = TRUE), class = "ynow-corpname")
-        )
-      ),
-      fluidRow(
-        column(
-          width = 12,
-          uiOutput("ynow_data_gap_banner")
-        )
-      ),
-      fluidRow(
-        column(
-          width = 12,
-          tags$div(
-            style = "width: 100%; text-align: left; margin-top: 8px;",
-            tags$p(
-              id = "ynow_industry_info_yahoo",
-              "industry info from Yahoo",
-              style = "font-size: 12px; color: #888; margin: 0 0 4px 0; font-weight: bold;"
-            ),
-            verbatimTextOutput("search_results")
           )
-        )
-      ),
-      br()
+        ),
+        fluidRow(
+          column(
+            width = 12,
+            h2(uiOutput("txt_corpname", inline = TRUE), class = "ynow-corpname")
+          )
+        ),
+        fluidRow(
+          column(
+            width = 12,
+            uiOutput("ynow_data_gap_banner")
+          )
+        ),
+        fluidRow(
+          column(
+            width = 12,
+            tags$div(
+              style = "width: 100%; text-align: left; margin-top: 8px;",
+              tags$p(
+                id = "ynow_industry_info_yahoo",
+                "industry info from Yahoo",
+                style = "font-size: 12px; color: #888; margin: 0 0 4px 0; font-weight: bold;"
+              ),
+              verbatimTextOutput("search_results")
+            )
+          )
+        ),
+        br()
+      )
     ),
     # Shared ticker typeahead (Ticker/Stock Code + Radar focus); always loaded
     tags$script(HTML("

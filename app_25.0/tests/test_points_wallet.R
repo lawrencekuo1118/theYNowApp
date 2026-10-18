@@ -535,8 +535,41 @@ check("sidebar foot link is Sys. Admin not Testing sandbox", {
     grepl("Sys. Admin", zh, fixed = TRUE) &&
     grepl("user-shield", ui, fixed = TRUE) &&
     grepl(".ynow-sidebar-snapshot-foot", ui, fixed = TRUE) &&
+    grepl("ynow-sidebar-snapshot-foot-links", ui, fixed = TRUE) &&
+    grepl("ynow-sidebar-copyright", ui, fixed = TRUE) &&
+    grepl("flex-direction: column !important", ui, fixed = TRUE) &&
     grepl("flex-wrap: nowrap", ui, fixed = TRUE) &&
     !grepl("一鍵", zh, fixed = TRUE)
+})
+check("Sys. Admin hidden for signed-in users", {
+  ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("ynowSyncSysAdminFootVisibility", ui, fixed = TRUE) &&
+    grepl("body.ynow-authed .ynow-sidebar-snapshot-foot #ynow_sidebar_test_btn", ui, fixed = TRUE) &&
+    grepl("classList.contains('ynow-authed')) { return false; }", ui, fixed = TRUE) &&
+    grepl("tab === 'testing' && document.body &&", ui, fixed = TRUE)
+})
+check("sysadmin chrome banner shows infinity not wallet balances", {
+  srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  # Ops portal (sysadmin on, not view-as) → ∞; view-as keeps real balances.
+  grepl("\u221E", srv, fixed = TRUE) &&
+    grepl("sys_on", srv, fixed = TRUE) &&
+    grepl("view_as_on", srv, fixed = TRUE) &&
+    grepl("ynow_pts_sysadmin_on()", srv, fixed = TRUE) &&
+    grepl(".ynow_pts_push_banner()", srv, fixed = TRUE)
+})
+check("server remaps testing tab away when signed in", {
+  srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl('identical(tab, "testing")', srv, fixed = TRUE) &&
+    grepl("ynow-sysadmin-blocked", srv, fixed = TRUE) &&
+    grepl("pts_sysadmin_member_blocked", srv, fixed = TRUE)
+})
+check("locale pts_sysadmin_member_blocked en+zh-TW", {
+  en <- ui_str("pts_sysadmin_member_blocked", "en")
+  zh <- ui_str("pts_sysadmin_member_blocked", "zh-TW")
+  nzchar(en) && nzchar(zh) &&
+    grepl("sign-in|Sign out", en, ignore.case = TRUE) &&
+    grepl("登出|系統管理", zh) &&
+    !grepl("默认|数据|一鍵", zh)
 })
 check("no leftover agent debug instrumentation", {
   files <- c("points_wallet.R", "ynow_server.R", "auth_account.R", "debug_helpers.R")
@@ -573,7 +606,28 @@ check("pdf blocked when FYN is short", isTRUE(!broke$ok) && identical(broke$mess
 check("next Taipei day is free again", identical(ynow_pdf_claim(pdf_uid, day = "2026-10-19")$kind, "free"))
 check("pdf download requires the claim helper", {
   srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-  grepl("ynow_pdf_claim", srv, fixed = TRUE) && grepl("pdf_need_login", srv, fixed = TRUE)
+  grepl("ynow_pdf_claim", srv, fixed = TRUE) && grepl("pdf_need_login", srv, fixed = TRUE) &&
+    grepl("pdf_need_ticker", srv, fixed = TRUE) && grepl("ynow_pdf_repeat_mark", srv, fixed = TRUE)
+})
+check("empty ticker has no settings key", identical(ynow_pdf_settings_key(""), "") && identical(ynow_pdf_settings_key("NA"), ""))
+fp_same <- ynow_pdf_settings_key("aapl", list(market = "US", wacc_gordon = "8", sgr = "3"))
+fp_other <- ynow_pdf_settings_key("msft", list(market = "US", wacc_gordon = "8", sgr = "3"))
+ynow_pdf_reset_memory()
+.ynow_points_mem_reset()
+invisible(ynow_points_credit("pdf-user-2", 100L, reason = "earn_signup", ref_id = "pdf-seed-2", wallet = "fyn"))
+first_fp <- ynow_pdf_claim("pdf-user-2", day = "2026-10-20", fingerprint = fp_same)
+check("first fingerprint uses a free download", isTRUE(first_fp$ok) && identical(first_fp$kind, "free") && identical(first_fp$used, 1L))
+ynow_pdf_repeat_mark("pdf-user-2", fp_same)
+repeat_fp <- ynow_pdf_claim("pdf-user-2", day = "2026-10-20", fingerprint = fp_same)
+check("same ticker and settings do not spend again", isTRUE(repeat_fp$ok) && identical(repeat_fp$kind, "repeat"))
+check("different ticker still spends a free download", {
+  diff_fp <- ynow_pdf_claim("pdf-user-2", day = "2026-10-20", fingerprint = fp_other)
+  isTRUE(diff_fp$ok) && identical(diff_fp$kind, "free") && identical(diff_fp$used, 2L)
+})
+check("pdf ticker and repeat copy", {
+  identical(ui_str("pdf_need_ticker", "zh-TW"), "請先輸入股票代碼，再下載報告。") &&
+    grepl("FYN", ui_str("pdf_repeat_free", "en"), fixed = TRUE) &&
+    grepl("不計免費次數", ui_str("pdf_repeat_free", "zh-TW"), fixed = TRUE)
 })
 check("pdf quota hint is bilingual", {
   grepl("10 FYN", ui_str("pdf_quota_hint", "en"), fixed = TRUE) &&

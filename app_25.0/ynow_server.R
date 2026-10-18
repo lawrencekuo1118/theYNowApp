@@ -238,6 +238,26 @@ server <- function(input, output, session) {
       session$sendCustomMessage("ynowGotoTab", list(tab = "company_advance"))
       tab <- "company_advance"
     }
+    # Signed-in account members cannot open Sys. Admin (internal tab `testing`).
+    if (identical(tab, "testing")) {
+      logged <- tryCatch(isTRUE(ynow_auth$is_logged_in()), error = function(e) FALSE)
+      if (isTRUE(logged)) {
+        tryCatch(
+          updateTabItems(session, "sidebar_tabs", "home"),
+          error = function(e) {
+            tryCatch(
+              session$sendInputMessage("sidebar_tabs", list(value = "home")),
+              error = function(e2) NULL
+            )
+          }
+        )
+        tryCatch(
+          session$sendCustomMessage("ynowGotoTab", list(tab = "home")),
+          error = function(e) NULL
+        )
+        return()
+      }
+    }
     session$sendCustomMessage("ynowModelTheme", list(tab = tab))
   }, ignoreNULL = FALSE, ignoreInit = FALSE)
 
@@ -457,6 +477,25 @@ server <- function(input, output, session) {
     invisible(TRUE)
   }
 
+  .ynow_pdf_fingerprint <- function() {
+    grab <- function(id) {
+      tryCatch(trimws(as.character(isolate(input[[id]]) %||% "")[1]), error = function(e) "")
+    }
+    tk <- tryCatch(trimws(as.character(isolate(current_ticker()) %||% "")[1]), error = function(e) "")
+    settings <- list(
+      market = tryCatch(trimws(as.character(isolate(market_mode()) %||% "")[1]), error = function(e) ""),
+      dcf_mode = grab("dcf_mode"),
+      wacc_gordon = grab("wacc_gordon"),
+      wacc_stage1 = grab("wacc_stage1"),
+      wacc_stage2 = grab("wacc_stage2"),
+      sgr = grab("sgr"),
+      g_stage1 = grab("g_stage1"),
+      industry = grab("industry_choice")
+    )
+    if (!exists("ynow_pdf_settings_key", mode = "function")) return("")
+    ynow_pdf_settings_key(tk, settings)
+  }
+
   #' Login + daily free quota, then 10 FYN. NULL means the denial file is already written.
   .ynow_pdf_authorize <- function(file) {
     auth_on <- exists("ynow_auth_enabled", mode = "function") && isTRUE(ynow_auth_enabled())
@@ -474,7 +513,15 @@ server <- function(input, output, session) {
       .ynow_pdf_note_file(file, msg)
       return(NULL)
     }
-    ticket <- ynow_pdf_claim(uid)
+    tk <- tryCatch(trimws(as.character(isolate(current_ticker()) %||% "")[1]), error = function(e) "")
+    if (!nzchar(tk) || identical(toupper(tk), "NA")) {
+      msg <- .lab("pdf_need_ticker", "Enter a stock ticker before downloading the report.")
+      showNotification(msg, type = "warning", duration = 6)
+      .ynow_pdf_note_file(file, msg)
+      return(NULL)
+    }
+    fp <- tryCatch(.ynow_pdf_fingerprint(), error = function(e) "")
+    ticket <- ynow_pdf_claim(uid, fingerprint = fp)
     if (!isTRUE(ticket$ok)) {
       cost <- ticket$cost %||% 10L
       bal <- ticket$fyn %||% 0L
@@ -634,11 +681,27 @@ server <- function(input, output, session) {
 
   .ynow_pts_push_banner <- function() {
     loc <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "en")
-    # View-as prefers target DB balances; otherwise signed-in user.
-    u <- .ynow_pts_effective_user()
     pts_colon <- if (identical(loc, "zh-TW")) "：" else ":"
     fyn_lab <- tryCatch(paste0(ui_str("pts_fyn_label", loc), pts_colon), error = function(e) "FYN points:")
     pyn_lab <- tryCatch(paste0(ui_str("pts_pyn_label", loc), pts_colon), error = function(e) "PYN points:")
+    # Sys. Admin portal chrome is ops context, not a member wallet → show ∞.
+    # View-as of a specific user still shows that user's real FYN / PYN.
+    sys_on <- isTRUE(tryCatch(isolate(ynow_pts_sysadmin_on()), error = function(e) FALSE))
+    va <- tryCatch(isolate(ynow_pts_view_as()), error = function(e) NULL)
+    view_as_on <- is.list(va) && nzchar(as.character(va$user_id %||% "")[1])
+    if (isTRUE(sys_on) && !isTRUE(view_as_on)) {
+      session$sendCustomMessage(
+        "ynowPtsBanner",
+        list(
+          fyn = "\u221E", pyn = "\u221E",
+          fyn_label = fyn_lab, pyn_label = pyn_lab,
+          visible = TRUE
+        )
+      )
+      return(invisible(NULL))
+    }
+    # View-as prefers target DB balances; otherwise signed-in user.
+    u <- .ynow_pts_effective_user()
     if (is.null(u)) {
       # Guests: hide FYN/PYN header entirely (no placeholder "—" next to locale).
       session$sendCustomMessage(
@@ -818,6 +881,7 @@ server <- function(input, output, session) {
   observe({
     ynow_pts_panel_tick()
     ynow_pts_view_as()
+    ynow_pts_sysadmin_on()
     tryCatch(ynow_auth$user(), error = function(e) NULL)
     tryCatch(ui_locale(), error = function(e) NULL)
     .ynow_pts_push_banner()
@@ -854,6 +918,7 @@ server <- function(input, output, session) {
     }
     ynow_pts_sysadmin_on(TRUE)
     .ynow_sysadmin_push_mode()
+    tryCatch(.ynow_pts_push_banner(), error = function(e) NULL)
     ynow_pts_sysadmin_tick(isolate(ynow_pts_sysadmin_tick()) + 1L)
     showNotification(
       .lab("pts_sysadmin_login_ok", "System admin unlocked."),
@@ -1883,7 +1948,27 @@ server <- function(input, output, session) {
       },
       hfv = function() .ynow_page_ui_hfv(),
       lab_notes = function() .ynow_page_ui_lab_notes(),
-      testing = function() .ynow_page_ui_testing(),
+      testing = function() {
+        # Signed-in account members must not receive the Sys. Admin portal UI.
+        logged <- tryCatch(isTRUE(ynow_auth$is_logged_in()), error = function(e) FALSE)
+        if (isTRUE(logged)) {
+          loc <- tryCatch(
+            normalize_ui_locale(isolate(ui_locale())),
+            error = function(e2) "en"
+          )
+          return(tags$div(
+            class = "ynow-sysadmin-blocked",
+            style = "padding:1.25rem;color:#666;",
+            tryCatch(
+              ui_str("pts_sysadmin_member_blocked", loc),
+              error = function(e) {
+                "System admin is available only before account sign-in. Sign out to open the ops portal."
+              }
+            )
+          ))
+        }
+        .ynow_page_ui_testing()
+      },
       asset_transmission = function() {
         .ynow_page_ui_asset_transmission(isolate(ui_locale()))
       },
@@ -14781,8 +14866,23 @@ server <- function(input, output, session) {
         )
 
         render_report_pdf(tmp_html, file)
+        if (nzchar(as.character(pdf_ticket$fingerprint %||% "")[1]) &&
+            exists("ynow_pdf_repeat_mark", mode = "function")) {
+          tryCatch(
+            ynow_pdf_repeat_mark(pdf_ticket$user_id, pdf_ticket$fingerprint),
+            error = function(e) NULL
+          )
+        }
         loc_pdf <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "en")
-        if (identical(pdf_ticket$kind, "free")) {
+        if (identical(pdf_ticket$kind, "repeat")) {
+          showNotification(
+            tryCatch(
+              ui_str("pdf_repeat_free", loc_pdf),
+              error = function(e) "This download does not use a free download or FYN."
+            ),
+            type = "message"
+          )
+        } else if (identical(pdf_ticket$kind, "free")) {
           showNotification(
             sprintf(
               tryCatch(ui_str("pdf_free_ok_fmt", loc_pdf), error = function(e) "Free PDF download (%s of %s today)."),
@@ -14826,8 +14926,21 @@ server <- function(input, output, session) {
   # ==========================================
   lab_sec_result <- reactiveVal(NULL)
 
-  # 側邊欄「系統管理」入口（完整版；Lite 隱藏）
+  # 側邊欄「系統管理」入口（完整版；Lite／已登入帳號隱藏）
   observeEvent(input$sidebar_test_click, {
+    logged <- tryCatch(isTRUE(ynow_auth$is_logged_in()), error = function(e) FALSE)
+    if (isTRUE(logged)) {
+      tryCatch(
+        updateTabItems(session, "sidebar_tabs", "home"),
+        error = function(e) {
+          tryCatch(
+            session$sendInputMessage("sidebar_tabs", list(value = "home")),
+            error = function(e2) NULL
+          )
+        }
+      )
+      return()
+    }
     showNotification(.ui_msg("notif_test_opened"), type = "message", duration = 3)
   }, ignoreInit = TRUE)
 

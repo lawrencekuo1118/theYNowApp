@@ -108,6 +108,12 @@ check("ui distinguishes hide vs lock classes", {
     grepl("ynow-access-locked-nav", ui, fixed = TRUE) &&
     grepl("ynow-access-locked-pane", ui, fixed = TRUE)
 })
+check("locked sidebar labels are light gray", {
+  grepl("li.ynow-access-locked-nav > a", ui, fixed = TRUE) &&
+    grepl("a:has(.ynow-menu-lock)", ui, fixed = TRUE) &&
+    grepl("color: #a3a3a3 !important;", ui, fixed = TRUE) &&
+    grepl("not(.ynow-lite):not(.ynow-authed)", ui, fixed = TRUE)
+})
 check("js reads entries effect", {
   grepl("__ynowAccessEntries", ui, fixed = TRUE) &&
     grepl("effect === 'hide'", ui, fixed = TRUE)

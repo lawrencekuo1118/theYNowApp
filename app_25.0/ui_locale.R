@@ -517,6 +517,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     pdf_need_login = "Sign in to download the valuation report (PDF).",
     pdf_free_ok_fmt = "Free PDF download (%s of %s today).",
     pdf_paid_ok_fmt = "PDF download charged %s FYN (balance %s).",
+    pdf_need_ticker = "Enter a stock ticker before downloading the report.",
+    pdf_repeat_free = "This download does not use a free download or FYN. The ticker and settings match a report you already downloaded.",
     download_report_about = paste0(
       "One-Click Investment Reports: Compiles ticker-only valuation (DCF／DDM／RI／P/B), ",
       "KPIs, MOS, F-Score, and WACC×g sensitivity into a broker-style PDF — ",
@@ -892,6 +894,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     pts_sysadmin_login_ok = "System admin unlocked.",
     pts_sysadmin_login_bad = "Invalid system-admin username or password.",
     pts_sysadmin_need_enter = "Sign in with the system-admin username and password to load the de-identified user list.",
+    pts_sysadmin_member_blocked = "System admin is available only before account sign-in. Sign out to open the ops portal.",
     pts_sysadmin_loading = "Loading de-identified users…",
     pts_sysadmin_users = "Users (de-identified)",
     pts_sysadmin_col_id = "User id",
@@ -4254,6 +4257,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     pdf_need_login = "請先登入再下載估值報告（PDF）。",
     pdf_free_ok_fmt = "免費下載 PDF（今日第 %s／%s 次）。",
     pdf_paid_ok_fmt = "本次 PDF 下載已扣 %s FYN（餘額 %s）。",
+    pdf_need_ticker = "請先輸入股票代碼，再下載報告。",
+    pdf_repeat_free = "本次下載不計免費次數，也不扣 FYN。",
     download_report_about = paste0(
       "一次產出投資意見報告：彙整個股估值（DCF／DDM／RI／P/B）、KPI、MOS、F-Score ",
       "與 WACC×g 敏感度為券商風格 PDF——不含同業排名或 Lab 宇宙敘事。"
@@ -4620,6 +4625,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     pts_sysadmin_login_ok = "已進入系統管理。",
     pts_sysadmin_login_bad = "系統管理使用者名稱或密碼不正確。",
     pts_sysadmin_need_enter = "請以系統管理使用者名稱與密碼登入，以載入去識別化使用者清單。",
+    pts_sysadmin_member_blocked = "系統管理僅供未登入帳號的維運入口使用。請先登出後再開啟。",
     pts_sysadmin_loading = "正在載入去識別化使用者…",
     pts_sysadmin_users = "使用者（去識別化）",
     pts_sysadmin_col_id = "使用者代號",
