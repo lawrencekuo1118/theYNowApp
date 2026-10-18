@@ -429,6 +429,60 @@ server <- function(input, output, session) {
     TRUE
   }
 
+  .ynow_pdf_note_file <- function(file, msg) {
+    msg <- as.character(msg %||% "")[1]
+    tryCatch({
+      grDevices::pdf(file, width = 8.27, height = 11.69)
+      plot.new()
+      text(0.5, 0.55, msg, cex = 1.05)
+      grDevices::dev.off()
+    }, error = function(e) {
+      writeLines(msg, file, useBytes = TRUE)
+    })
+    invisible(TRUE)
+  }
+
+  #' Login + daily free quota, then 10 FYN. NULL means the denial file is already written.
+  .ynow_pdf_authorize <- function(file) {
+    if (!exists("ynow_auth_enabled", mode = "function") || !isTRUE(ynow_auth_enabled())) {
+      return(list(ok = TRUE, kind = "bypass"))
+    }
+    if (!exists("ynow_pdf_claim", mode = "function")) {
+      return(list(ok = TRUE, kind = "bypass"))
+    }
+    loc <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "en")
+    .lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
+    uid <- .ynow_access_subject_id()
+    if (!nzchar(uid)) {
+      msg <- .lab("pdf_need_login", "Sign in to download the valuation report (PDF).")
+      showNotification(msg, type = "warning", duration = 6)
+      tryCatch(shinyBS::toggleModal(session, "ynow_auth_modal", "open"), error = function(e) NULL)
+      .ynow_pdf_note_file(file, msg)
+      return(NULL)
+    }
+    ticket <- ynow_pdf_claim(uid)
+    if (!isTRUE(ticket$ok)) {
+      cost <- ticket$cost %||% 10L
+      bal <- ticket$fyn %||% 0L
+      title <- if (exists("ynow_points_sku_title", mode = "function")) {
+        ynow_points_sku_title("pdf_report", loc)
+      } else {
+        "PDF"
+      }
+      msg <- tryCatch(
+        sprintf(
+          ui_str("pts_msg_insufficient_fmt", loc),
+          as.character(cost), title, as.character(bal)
+        ),
+        error = function(e) "Not enough FYN points for this PDF download."
+      )
+      showNotification(msg, type = "warning", duration = 8)
+      .ynow_pdf_note_file(file, msg)
+      return(NULL)
+    }
+    ticket
+  }
+
   observe({
     tryCatch(ynow_auth$is_logged_in(), error = function(e) FALSE)
     tryCatch(ynow_auth$user(), error = function(e) NULL)
@@ -14134,6 +14188,8 @@ server <- function(input, output, session) {
     },
     content = function(file) {
       if (isTRUE(.ynow_access_deny_download("report:download_report", file))) return()
+      pdf_ticket <- .ynow_pdf_authorize(file)
+      if (is.null(pdf_ticket)) return()
       tryCatch({
         showNotification(.ui_msg("notif_pdf_busy"), type = "message", duration = 8)
         tempReport <- file.path(tempdir(), "report_template.Rmd")
@@ -14418,8 +14474,33 @@ server <- function(input, output, session) {
         )
 
         render_report_pdf(tmp_html, file)
-        showNotification(.ui_msg("notif_pdf_ok"), type = "message")
+        loc_pdf <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "en")
+        if (identical(pdf_ticket$kind, "free")) {
+          showNotification(
+            sprintf(
+              tryCatch(ui_str("pdf_free_ok_fmt", loc_pdf), error = function(e) "Free PDF download (%s of %s today)."),
+              as.character(pdf_ticket$used %||% ""),
+              as.character(pdf_ticket$limit %||% 3L)
+            ),
+            type = "message"
+          )
+        } else if (identical(pdf_ticket$kind, "paid")) {
+          showNotification(
+            sprintf(
+              tryCatch(ui_str("pdf_paid_ok_fmt", loc_pdf), error = function(e) "PDF download charged %s FYN (balance %s)."),
+              as.character(pdf_ticket$cost %||% 10L),
+              as.character(pdf_ticket$fyn %||% "")
+            ),
+            type = "message"
+          )
+          tryCatch(.ynow_pts_push_banner(), error = function(e) NULL)
+        } else {
+          showNotification(.ui_msg("notif_pdf_ok"), type = "message")
+        }
       }, error = function(e) {
+        if (exists("ynow_pdf_release", mode = "function")) {
+          tryCatch(ynow_pdf_release(pdf_ticket), error = function(e2) NULL)
+        }
         showNotification(.ui_msg("notif_pdf_fail", err = e$message), type = "error", duration = 12)
         # 寫入最小錯誤 PDF 避免下載 handler 空檔
         tryCatch({

@@ -3955,7 +3955,12 @@ ui <- dashboardPage(
            div(class = "ynow-sidebar-download-wrap",
                downloadButton("download_report", "Download Report (PDF)",
                               class = "ynow-sidebar-download-btn",
-                              style = "background-color: #1a1a1a; color: #ffffff; border: 1px solid #000000; box-shadow: none; text-shadow: none;")
+                              style = "background-color: #1a1a1a; color: #ffffff; border: 1px solid #000000; box-shadow: none; text-shadow: none;"),
+               tags$p(
+                 id = "ynow_download_report_quota",
+                 class = "ynow-download-report-quota",
+                 "Sign-in required. Three free downloads each Asia/Taipei day; each extra download costs 10 FYN."
+               )
            )
     ),
     
@@ -6720,6 +6725,12 @@ ui <- dashboardPage(
           margin-top: 4px;
           max-width: 100%;
           box-sizing: border-box;
+        }
+        .ynow-download-report-quota {
+          margin: 6px 0 0 0;
+          font-size: 11px;
+          line-height: 1.35;
+          color: #d9d9d9;
         }
         .ynow-sidebar-download-wrap #download_report,
         .ynow-sidebar-download-btn {
@@ -9886,6 +9897,8 @@ ui <- dashboardPage(
               var iconHtml = icon ? icon.outerHTML + ' ' : '';
               dl.innerHTML = iconHtml + s.download_report;
             }
+            var pdfQuota = document.getElementById('ynow_download_report_quota');
+            if (pdfQuota && s.pdf_quota_hint) pdfQuota.textContent = s.pdf_quota_hint;
             var snap = document.getElementById('ynow_snapshot_link_label');
             if (snap && s.snapshot_link) snap.textContent = s.snapshot_link;
             var snapTitle = document.getElementById('ynow_snapshot_page_title');

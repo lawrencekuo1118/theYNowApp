@@ -548,6 +548,39 @@ check("no leftover agent debug instrumentation", {
     !grepl("#region agent log", txt, fixed = TRUE)
 })
 
+ynow_pdf_reset_memory()
+.ynow_points_mem_reset()
+pdf_uid <- "pdf-user-1"
+invisible(ynow_points_credit(pdf_uid, 100L, reason = "earn_signup", ref_id = "pdf-seed", wallet = "fyn"))
+check("pdf sku costs 10", identical(ynow_points_sku_cost("pdf_report"), 10L))
+day_fixed <- "2026-10-18"
+free_ok <- replicate(3L, ynow_pdf_claim(pdf_uid, day = day_fixed)$kind)
+check("three free pdf downloads", identical(as.character(free_ok), c("free", "free", "free")))
+bal_before <- ynow_points_balances(pdf_uid)$fyn
+paid <- ynow_pdf_claim(pdf_uid, day = day_fixed)
+check("fourth pdf spends 10 FYN", {
+  isTRUE(paid$ok) && identical(paid$kind, "paid") &&
+    identical(ynow_points_balances(pdf_uid)$fyn, bal_before - 10L)
+})
+ynow_pdf_release(paid)
+check("failed render refunds FYN", identical(ynow_points_balances(pdf_uid)$fyn, bal_before))
+drain <- ynow_points_balances(pdf_uid)$fyn
+if (is.finite(drain) && drain > 0L) {
+  invisible(ynow_points_credit(pdf_uid, -drain, reason = "adjust", ref_id = "pdf-drain", wallet = "fyn"))
+}
+broke <- ynow_pdf_claim(pdf_uid, day = day_fixed)
+check("pdf blocked when FYN is short", isTRUE(!broke$ok) && identical(broke$message_key, "pts_msg_insufficient"))
+check("next Taipei day is free again", identical(ynow_pdf_claim(pdf_uid, day = "2026-10-19")$kind, "free"))
+check("pdf download requires the claim helper", {
+  srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("ynow_pdf_claim", srv, fixed = TRUE) && grepl("pdf_need_login", srv, fixed = TRUE)
+})
+check("pdf quota hint is bilingual", {
+  grepl("10 FYN", ui_str("pdf_quota_hint", "en"), fixed = TRUE) &&
+    grepl("10 FYN", ui_str("pdf_quota_hint", "zh-TW"), fixed = TRUE) &&
+    !grepl("一鍵", ui_str("pdf_quota_hint", "zh-TW"), fixed = TRUE)
+})
+
 cat("PASS", n_ok, " FAIL", n_fail, "\n")
 if (n_fail > 0L) quit(status = 1)
 cat("ALL PASS\n")
