@@ -1193,12 +1193,162 @@ ynow_points_panel_ui <- function(user, locale = "zh-TW",
   )
 }
 
+#' Known gate feature ids (promo + demo are keyed per feature).
+ynow_gate_features <- function() {
+  c("lab", "checklist", "alerts", "account", "pdf", "snap_defaults")
+}
+
+#' Locale key helpers for a feature-specific gate promo.
+ynow_gate_promo_keys <- function(feature) {
+  feature <- as.character(feature %||% "lab")[1]
+  if (!feature %in% ynow_gate_features()) feature <- "lab"
+  list(
+    feature = feature,
+    body = paste0("auth_gate_", feature, "_body"),
+    kicker = paste0("auth_gate_", feature, "_kicker"),
+    lead = paste0("auth_gate_", feature, "_lead"),
+    b1 = paste0("auth_gate_", feature, "_b1"),
+    b2 = paste0("auth_gate_", feature, "_b2"),
+    b3 = paste0("auth_gate_", feature, "_b3"),
+    demo_caption = paste0("auth_gate_", feature, "_demo_caption")
+  )
+}
+
+.ynow_gate_str <- function(key, fallback = "") {
+  tryCatch(ui_str(key, "en"), error = function(e) fallback)
+}
+
+#' Shared promo + demo + member FAQ for Sign-in / unlock gate surfaces.
+#' @param feature one of [ynow_gate_features()]
+#' @param include_faq shared membership Q&A (accordion)
+#' @param compact tighter layout (sidebar PDF promo)
+ynow_gate_promo_faq_ui <- function(feature = "lab", include_faq = TRUE, compact = FALSE) {
+  keys <- ynow_gate_promo_keys(feature)
+  feature <- keys$feature
+  demo_base <- paste0("demos/", feature)
+  tags$div(
+    class = paste(
+      "ynow-gate-extras",
+      if (isTRUE(compact)) "ynow-gate-extras--compact" else NULL
+    ),
+    `data-ynow-gate-feature` = feature,
+    tags$div(
+      class = "ynow-gate-promo",
+      tags$div(
+        class = "ynow-gate-promo__banner",
+        tags$span(class = "ynow-gate-promo__badge", "APP"),
+        tags$span(
+          class = "ynow-gate-promo-kicker",
+          .ynow_gate_str(keys$kicker, "APP member exclusive")
+        )
+      ),
+      tags$p(
+        class = "ynow-gate-promo-lead",
+        .ynow_gate_str(keys$lead, "")
+      ),
+      tags$ul(
+        class = "ynow-gate-promo__list",
+        tags$li(tags$span(class = "ynow-gate-promo-b1", .ynow_gate_str(keys$b1, ""))),
+        tags$li(tags$span(class = "ynow-gate-promo-b2", .ynow_gate_str(keys$b2, ""))),
+        tags$li(tags$span(class = "ynow-gate-promo-b3", .ynow_gate_str(keys$b3, "")))
+      )
+    ),
+    tags$div(
+      class = "ynow-gate-demo",
+      tags$p(
+        class = "ynow-gate-demo-caption",
+        .ynow_gate_str(keys$demo_caption, "Feature demo")
+      ),
+      tags$video(
+        class = "ynow-gate-demo-video",
+        controls = NA,
+        muted = NA,
+        playsinline = NA,
+        preload = "metadata",
+        autoplay = NA,
+        loop = NA,
+        tags$source(src = paste0(demo_base, ".webm"), type = "video/webm"),
+        tags$source(src = paste0(demo_base, ".mp4"), type = "video/mp4"),
+        "Demo video unavailable."
+      )
+    ),
+    if (isTRUE(include_faq)) {
+      tags$details(
+        class = "ynow-gate-faq",
+        tags$summary(
+          class = "ynow-gate-faq__summary",
+          tags$span(
+            class = "ynow-gate-faq-title",
+            .ynow_gate_str("auth_gate_faq_title", "Member benefits — FAQ")
+          )
+        ),
+        tags$div(
+          class = "ynow-gate-faq__body",
+          tags$div(
+            class = "ynow-gate-faq-item",
+            tags$p(
+              class = "ynow-gate-faq-q ynow-gate-faq-q1",
+              .ynow_gate_str("auth_gate_faq_q1", "Why sign in?")
+            ),
+            tags$p(
+              class = "ynow-gate-faq-a ynow-gate-faq-a1",
+              .ynow_gate_str("auth_gate_faq_a1", "")
+            )
+          ),
+          tags$div(
+            class = "ynow-gate-faq-item",
+            tags$p(
+              class = "ynow-gate-faq-q ynow-gate-faq-q2",
+              .ynow_gate_str("auth_gate_faq_q2", "What does membership unlock?")
+            ),
+            tags$p(
+              class = "ynow-gate-faq-a ynow-gate-faq-a2",
+              .ynow_gate_str("auth_gate_faq_a2", "")
+            )
+          ),
+          tags$div(
+            class = "ynow-gate-faq-item",
+            tags$p(
+              class = "ynow-gate-faq-q ynow-gate-faq-q3",
+              .ynow_gate_str("auth_gate_faq_q3", "What are FYN and PYN?")
+            ),
+            tags$p(
+              class = "ynow-gate-faq-a ynow-gate-faq-a3",
+              .ynow_gate_str("auth_gate_faq_a3", "")
+            )
+          ),
+          tags$div(
+            class = "ynow-gate-faq-item",
+            tags$p(
+              class = "ynow-gate-faq-q ynow-gate-faq-q4",
+              .ynow_gate_str("auth_gate_faq_q4", "Does Lite stay open?")
+            ),
+            tags$p(
+              class = "ynow-gate-faq-a ynow-gate-faq-a4",
+              .ynow_gate_str("auth_gate_faq_a4", "")
+            )
+          )
+        )
+      )
+    } else {
+      NULL
+    }
+  )
+}
+
 #' Sign-in panel for Full-mode pages that stay closed until the user is logged in.
 #' Hidden until body has ynow-auth-feature and lacks ynow-lite / ynow-authed.
-ynow_member_gate_ui <- function(gate_id, title_id, body_id, btn_id) {
+#' @param feature feature key for promo / demo (see [ynow_gate_features()])
+ynow_member_gate_ui <- function(gate_id, title_id, body_id, btn_id, feature = "lab") {
+  keys <- ynow_gate_promo_keys(feature)
+  body_fb <- paste0(
+    "This member area requires a signed-in account in Full mode. ",
+    "Lite mode does not require sign-in and remains fully usable."
+  )
   tags$div(
     id = gate_id,
     class = "box box-solid ynow-member-gate ynow-gate-box",
+    `data-ynow-gate-feature` = keys$feature,
     style = "display:none; max-width:760px; margin:18px auto;",
     tags$div(
       class = "box-header with-border",
@@ -1209,11 +1359,12 @@ ynow_member_gate_ui <- function(gate_id, title_id, body_id, btn_id) {
     ),
     tags$div(
       class = "box-body",
-      tags$p(id = body_id, paste0(
-        "Quantitative Backtest Lab, Decision Checklist, and Value Alerts ",
-        "require a signed-in account in Full mode. ",
-        "Lite mode does not require sign-in and remains fully usable."
-      )),
+      tags$p(
+        id = body_id,
+        class = "ynow-gate-body",
+        .ynow_gate_str(keys$body, body_fb)
+      ),
+      ynow_gate_promo_faq_ui(feature = keys$feature, include_faq = TRUE),
       actionButton(
         btn_id,
         label = tags$span(
@@ -1233,7 +1384,8 @@ ynow_pa_guest_gate_ui <- function() {
     "ynow_pa_guest_gate",
     "ynow_pa_gate_title",
     "ynow_pa_gate_body",
-    "ynow_pa_gate_signin"
+    "ynow_pa_gate_signin",
+    feature = "alerts"
   )
 }
 
@@ -1502,6 +1654,15 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
   observeEvent(input$ynow_pa_gate_signin, {
     .open_auth_modal()
   }, ignoreInit = TRUE)
+  observeEvent(input$ynow_lab_gate_signin, {
+    .open_auth_modal()
+  }, ignoreInit = TRUE)
+  observeEvent(input$ynow_chk_gate_signin, {
+    .open_auth_modal()
+  }, ignoreInit = TRUE)
+  observeEvent(input$ynow_pdf_gate_signin, {
+    .open_auth_modal()
+  }, ignoreInit = TRUE)
 
   observeEvent(input$ynow_admin_goto_alerts, {
     tryCatch(
@@ -1551,6 +1712,57 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
         admin_intro = tryCatch(ui_str("auth_admin_intro", loc), error = function(e) ""),
         pa_gate_title = tryCatch(ui_str("auth_pa_gate_title", loc), error = function(e) "Sign in required"),
         pa_gate_body = tryCatch(ui_str("auth_pa_gate_body", loc), error = function(e) ""),
+        gate_lab_body = tryCatch(ui_str("auth_gate_lab_body", loc), error = function(e) ""),
+        gate_lab_kicker = tryCatch(ui_str("auth_gate_lab_kicker", loc), error = function(e) ""),
+        gate_lab_lead = tryCatch(ui_str("auth_gate_lab_lead", loc), error = function(e) ""),
+        gate_lab_b1 = tryCatch(ui_str("auth_gate_lab_b1", loc), error = function(e) ""),
+        gate_lab_b2 = tryCatch(ui_str("auth_gate_lab_b2", loc), error = function(e) ""),
+        gate_lab_b3 = tryCatch(ui_str("auth_gate_lab_b3", loc), error = function(e) ""),
+        gate_lab_demo_caption = tryCatch(ui_str("auth_gate_lab_demo_caption", loc), error = function(e) ""),
+        gate_checklist_body = tryCatch(ui_str("auth_gate_checklist_body", loc), error = function(e) ""),
+        gate_checklist_kicker = tryCatch(ui_str("auth_gate_checklist_kicker", loc), error = function(e) ""),
+        gate_checklist_lead = tryCatch(ui_str("auth_gate_checklist_lead", loc), error = function(e) ""),
+        gate_checklist_b1 = tryCatch(ui_str("auth_gate_checklist_b1", loc), error = function(e) ""),
+        gate_checklist_b2 = tryCatch(ui_str("auth_gate_checklist_b2", loc), error = function(e) ""),
+        gate_checklist_b3 = tryCatch(ui_str("auth_gate_checklist_b3", loc), error = function(e) ""),
+        gate_checklist_demo_caption = tryCatch(ui_str("auth_gate_checklist_demo_caption", loc), error = function(e) ""),
+        gate_alerts_body = tryCatch(ui_str("auth_gate_alerts_body", loc), error = function(e) ""),
+        gate_alerts_kicker = tryCatch(ui_str("auth_gate_alerts_kicker", loc), error = function(e) ""),
+        gate_alerts_lead = tryCatch(ui_str("auth_gate_alerts_lead", loc), error = function(e) ""),
+        gate_alerts_b1 = tryCatch(ui_str("auth_gate_alerts_b1", loc), error = function(e) ""),
+        gate_alerts_b2 = tryCatch(ui_str("auth_gate_alerts_b2", loc), error = function(e) ""),
+        gate_alerts_b3 = tryCatch(ui_str("auth_gate_alerts_b3", loc), error = function(e) ""),
+        gate_alerts_demo_caption = tryCatch(ui_str("auth_gate_alerts_demo_caption", loc), error = function(e) ""),
+        gate_account_body = tryCatch(ui_str("auth_gate_account_body", loc), error = function(e) ""),
+        gate_account_kicker = tryCatch(ui_str("auth_gate_account_kicker", loc), error = function(e) ""),
+        gate_account_lead = tryCatch(ui_str("auth_gate_account_lead", loc), error = function(e) ""),
+        gate_account_b1 = tryCatch(ui_str("auth_gate_account_b1", loc), error = function(e) ""),
+        gate_account_b2 = tryCatch(ui_str("auth_gate_account_b2", loc), error = function(e) ""),
+        gate_account_b3 = tryCatch(ui_str("auth_gate_account_b3", loc), error = function(e) ""),
+        gate_account_demo_caption = tryCatch(ui_str("auth_gate_account_demo_caption", loc), error = function(e) ""),
+        gate_pdf_body = tryCatch(ui_str("auth_gate_pdf_body", loc), error = function(e) ""),
+        gate_pdf_kicker = tryCatch(ui_str("auth_gate_pdf_kicker", loc), error = function(e) ""),
+        gate_pdf_lead = tryCatch(ui_str("auth_gate_pdf_lead", loc), error = function(e) ""),
+        gate_pdf_b1 = tryCatch(ui_str("auth_gate_pdf_b1", loc), error = function(e) ""),
+        gate_pdf_b2 = tryCatch(ui_str("auth_gate_pdf_b2", loc), error = function(e) ""),
+        gate_pdf_b3 = tryCatch(ui_str("auth_gate_pdf_b3", loc), error = function(e) ""),
+        gate_pdf_demo_caption = tryCatch(ui_str("auth_gate_pdf_demo_caption", loc), error = function(e) ""),
+        gate_snap_defaults_body = tryCatch(ui_str("auth_gate_snap_defaults_body", loc), error = function(e) ""),
+        gate_snap_defaults_kicker = tryCatch(ui_str("auth_gate_snap_defaults_kicker", loc), error = function(e) ""),
+        gate_snap_defaults_lead = tryCatch(ui_str("auth_gate_snap_defaults_lead", loc), error = function(e) ""),
+        gate_snap_defaults_b1 = tryCatch(ui_str("auth_gate_snap_defaults_b1", loc), error = function(e) ""),
+        gate_snap_defaults_b2 = tryCatch(ui_str("auth_gate_snap_defaults_b2", loc), error = function(e) ""),
+        gate_snap_defaults_b3 = tryCatch(ui_str("auth_gate_snap_defaults_b3", loc), error = function(e) ""),
+        gate_snap_defaults_demo_caption = tryCatch(ui_str("auth_gate_snap_defaults_demo_caption", loc), error = function(e) ""),
+        gate_faq_title = tryCatch(ui_str("auth_gate_faq_title", loc), error = function(e) "Member benefits — FAQ"),
+        gate_faq_q1 = tryCatch(ui_str("auth_gate_faq_q1", loc), error = function(e) ""),
+        gate_faq_a1 = tryCatch(ui_str("auth_gate_faq_a1", loc), error = function(e) ""),
+        gate_faq_q2 = tryCatch(ui_str("auth_gate_faq_q2", loc), error = function(e) ""),
+        gate_faq_a2 = tryCatch(ui_str("auth_gate_faq_a2", loc), error = function(e) ""),
+        gate_faq_q3 = tryCatch(ui_str("auth_gate_faq_q3", loc), error = function(e) ""),
+        gate_faq_a3 = tryCatch(ui_str("auth_gate_faq_a3", loc), error = function(e) ""),
+        gate_faq_q4 = tryCatch(ui_str("auth_gate_faq_q4", loc), error = function(e) ""),
+        gate_faq_a4 = tryCatch(ui_str("auth_gate_faq_a4", loc), error = function(e) ""),
         menu_admin = tryCatch(ui_str("menu_admin", loc), error = function(e) "Account"),
         menu_admin_overview = tryCatch(ui_str("menu_admin_overview", loc), error = function(e) "Overview"),
         menu_pts_ledger = tryCatch(ui_str("menu_pts_ledger", loc), error = function(e) "Points ledger"),

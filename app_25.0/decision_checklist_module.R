@@ -366,7 +366,8 @@ decision_checklist_tab_ui <- function() {
         "ynow_chk_guest_gate",
         "ynow_chk_gate_title",
         "ynow_chk_gate_body",
-        "ynow_chk_gate_signin"
+        "ynow_chk_gate_signin",
+        feature = "checklist"
       )
     },
     tags$div(

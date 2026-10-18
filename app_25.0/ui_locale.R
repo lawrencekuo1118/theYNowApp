@@ -1000,6 +1000,105 @@ locale_for_market <- function(mode = get_market_mode()) {
       "require a signed-in account in Full mode. ",
       "Lite mode does not require sign-in and remains fully usable."
     ),
+    # Per-gate promo (feature-specific) + shared FAQ
+    auth_gate_lab_body = paste0(
+      "Quantitative Backtest Lab requires a signed-in account in Full mode. ",
+      "Lite mode does not require sign-in and remains fully usable."
+    ),
+    auth_gate_lab_kicker = "Unlock Quantitative Backtest Lab",
+    auth_gate_lab_lead = paste0(
+      "Sign in to run HFV and Quant backtests, replay Fair Value paths, ",
+      "and use Lab controls reserved for APP members in Full mode."
+    ),
+    auth_gate_lab_b1 = "HFV and Quant Backtest Lab worksheets",
+    auth_gate_lab_b2 = "Fair Value replay, strategy filters, and Lab reports",
+    auth_gate_lab_b3 = "FYN spend for Lab runs (bt_run / hfv_run) when points are on",
+    auth_gate_lab_demo_caption = "Lab demo — what you unlock after sign-in",
+    auth_gate_checklist_body = paste0(
+      "Decision Checklist requires a signed-in account in Full mode. ",
+      "Lite mode does not require sign-in and remains fully usable."
+    ),
+    auth_gate_checklist_kicker = "Unlock Decision Checklist",
+    auth_gate_checklist_lead = paste0(
+      "Sign in to open Decision SOP gates, live checks, ",
+      "and the unlock path for the YNOW verdict."
+    ),
+    auth_gate_checklist_b1 = "Mandatory Decision SOP gates and live checklist items",
+    auth_gate_checklist_b2 = "Bear/Base MOS, F-Score, and quality acknowledgements",
+    auth_gate_checklist_b3 = "YNOW verdict unlock after SOP gates pass",
+    auth_gate_checklist_demo_caption = "Checklist demo — Decision SOP flow",
+    auth_gate_alerts_body = paste0(
+      "Value Alerts require a signed-in account in Full mode. ",
+      "Lite mode does not require sign-in and remains fully usable."
+    ),
+    auth_gate_alerts_kicker = "Unlock Value Alerts",
+    auth_gate_alerts_lead = paste0(
+      "Sign in to create and manage Value Alerts, ",
+      "and send email notify to your registered mailbox."
+    ),
+    auth_gate_alerts_b1 = "Save and manage value / price alert rules",
+    auth_gate_alerts_b2 = "Email notify defaults to your account mailbox",
+    auth_gate_alerts_b3 = "Alert history and FYN alert_slot spend when points are on",
+    auth_gate_alerts_demo_caption = "Value Alerts demo — rules and notify",
+    auth_gate_account_body = "Sign in to open the Account workspace and Points ledger.",
+    auth_gate_account_kicker = "Unlock Account workspace",
+    auth_gate_account_lead = paste0(
+      "Sign in to open Account overview, FYN / PYN balances, ",
+      "and the full Points ledger."
+    ),
+    auth_gate_account_b1 = "Account overview and page theme preferences",
+    auth_gate_account_b2 = "FYN / PYN balances — welcome gift and daily check-in (Asia/Taipei)",
+    auth_gate_account_b3 = "Complete Points ledger history for this account",
+    auth_gate_account_demo_caption = "Account demo — overview and points",
+    auth_gate_pdf_body = paste0(
+      "Valuation PDF downloads require a signed-in account. ",
+      "Three free downloads each Asia/Taipei day; each extra costs 10 FYN."
+    ),
+    auth_gate_pdf_kicker = "Unlock valuation PDF downloads",
+    auth_gate_pdf_lead = paste0(
+      "Sign in to download the broker-style valuation report for the active ticker. ",
+      "Daily free quota applies; extras spend FYN."
+    ),
+    auth_gate_pdf_b1 = "Valuation PDF for the active ticker (DCF / DDM / RI / P/B and more)",
+    auth_gate_pdf_b2 = "Three free downloads each Asia/Taipei day",
+    auth_gate_pdf_b3 = "Extra downloads cost 10 FYN from your account balance",
+    auth_gate_pdf_demo_caption = "PDF demo — report download",
+    auth_gate_snap_defaults_body = paste0(
+      "System defaults (APP_DEFAULTS) require System admin unlock ",
+      "(same session as Points → System admin). ",
+      "After Exit system admin, this tab locks again."
+    ),
+    auth_gate_snap_defaults_kicker = "APP_DEFAULTS locked",
+    auth_gate_snap_defaults_lead = paste0(
+      "Unlock System defaults for this session via System admin. ",
+      "This is an ops unlock, not a membership gate."
+    ),
+    auth_gate_snap_defaults_b1 = "View and edit APP_DEFAULTS for the live line",
+    auth_gate_snap_defaults_b2 = "Download / restore defaults CSV while unlocked",
+    auth_gate_snap_defaults_b3 = "Locks again when you exit System admin",
+    auth_gate_snap_defaults_demo_caption = "APP_DEFAULTS demo — sysadmin unlock",
+    auth_gate_faq_title = "Member benefits — FAQ",
+    auth_gate_faq_q1 = "Why sign in?",
+    auth_gate_faq_a1 = paste0(
+      "In Full mode, member areas and account tools need a signed-in account. ",
+      "Lite does not require sign-in and remains fully usable."
+    ),
+    auth_gate_faq_q2 = "What does membership unlock?",
+    auth_gate_faq_a2 = paste0(
+      "Quantitative Backtest Lab, Decision Checklist, Value Alerts, ",
+      "the Account workspace and Points ledger, FYN/PYN balances, ",
+      "and valuation PDF downloads with a daily free quota."
+    ),
+    auth_gate_faq_q3 = "What are FYN and PYN?",
+    auth_gate_faq_a3 = paste0(
+      "FYN is free points (welcome gift and daily check-in). ",
+      "PYN is the paid wallet. History lives in Points ledger after you sign in."
+    ),
+    auth_gate_faq_q4 = "Does Lite stay open?",
+    auth_gate_faq_a4 = paste0(
+      "Yes. Lite never requires an account. ",
+      "Signing in unlocks Full-mode member surfaces; it does not lock Lite features."
+    ),
     test_link = " Sys. Admin",
     testing_page_title = "System admin",
     testing_page_sub = paste0(
@@ -4759,6 +4858,103 @@ locale_for_market <- function(mode = get_market_mode()) {
     auth_pa_gate_body = paste0(
       "完整版的量化回測實驗室、決策檢核、到值通知需登入帳號後才能使用。",
       "Lite 版無需登入，功能可完整使用。"
+    ),
+    auth_gate_lab_body = paste0(
+      "完整版的量化回測實驗室需登入帳號後才能使用。",
+      "Lite 版無需登入，功能可完整使用。"
+    ),
+    auth_gate_lab_kicker = "解鎖量化回測實驗室",
+    auth_gate_lab_lead = paste0(
+      "登入後可執行 HFV 與量化回測、重播 Fair Value 路徑，",
+      "並使用完整版 APP 會員專屬的實驗室控制項。"
+    ),
+    auth_gate_lab_b1 = "HFV 與量化回測實驗室工作區",
+    auth_gate_lab_b2 = "Fair Value 重播、策略篩選與實驗室報告",
+    auth_gate_lab_b3 = "點數開啟時，實驗室執行可使用 FYN（bt_run／hfv_run）",
+    auth_gate_lab_demo_caption = "實驗室示範——登入後可解鎖的功能",
+    auth_gate_checklist_body = paste0(
+      "完整版的決策檢核需登入帳號後才能使用。",
+      "Lite 版無需登入，功能可完整使用。"
+    ),
+    auth_gate_checklist_kicker = "解鎖決策檢核",
+    auth_gate_checklist_lead = paste0(
+      "登入後可開啟 Decision SOP 門檻、即時檢核項目，",
+      "以及 YNOW 結論的解鎖流程。"
+    ),
+    auth_gate_checklist_b1 = "必要 Decision SOP 門檻與即時檢核項目",
+    auth_gate_checklist_b2 = "Bear／Base MOS、F-Score 與品質確認",
+    auth_gate_checklist_b3 = "SOP 通過後解鎖 YNOW 結論",
+    auth_gate_checklist_demo_caption = "決策檢核示範——Decision SOP 流程",
+    auth_gate_alerts_body = paste0(
+      "完整版的到值通知需登入帳號後才能使用。",
+      "Lite 版無需登入，功能可完整使用。"
+    ),
+    auth_gate_alerts_kicker = "解鎖到值通知",
+    auth_gate_alerts_lead = paste0(
+      "登入後可建立與管理到值通知，",
+      "並將信件寄至註冊信箱。"
+    ),
+    auth_gate_alerts_b1 = "儲存與管理到值／價格通知規則",
+    auth_gate_alerts_b2 = "寄信預設使用帳號註冊信箱",
+    auth_gate_alerts_b3 = "通知紀錄；點數開啟時可使用 FYN（alert_slot）",
+    auth_gate_alerts_demo_caption = "到值通知示範——規則與寄信",
+    auth_gate_account_body = "請先登入以開啟帳號工作區與點數流水。",
+    auth_gate_account_kicker = "解鎖帳號工作區",
+    auth_gate_account_lead = paste0(
+      "登入後可開啟帳號總覽、FYN／PYN 餘額，",
+      "以及完整點數流水。"
+    ),
+    auth_gate_account_b1 = "帳號總覽與本分頁主色系偏好",
+    auth_gate_account_b2 = "FYN／PYN 餘額——歡迎贈點與每日簽到（台北時間）",
+    auth_gate_account_b3 = "本帳號完整點數流水紀錄",
+    auth_gate_account_demo_caption = "帳號示範——總覽與點數",
+    auth_gate_pdf_body = paste0(
+      "下載估值報告 PDF 需先登入。",
+      "每個台北時間日曆日可免費下載 3 次；超過後每次扣 10 FYN。"
+    ),
+    auth_gate_pdf_kicker = "解鎖估值報告 PDF 下載",
+    auth_gate_pdf_lead = paste0(
+      "登入後可下載目前標的的估值報告 PDF。",
+      "每日有免費額度；額外下載以 FYN 計費。"
+    ),
+    auth_gate_pdf_b1 = "目前標的的估值報告 PDF（含 DCF／DDM／RI／P/B 等）",
+    auth_gate_pdf_b2 = "每個台北時間日曆日免費 3 次",
+    auth_gate_pdf_b3 = "額外下載每次扣 10 FYN（自帳號餘額）",
+    auth_gate_pdf_demo_caption = "PDF 示範——報告下載",
+    auth_gate_snap_defaults_body = paste0(
+      "系統預設（APP_DEFAULTS）需先以系統管理解鎖",
+      "（與「點數 → 系統管理」同一工作階段）。",
+      "結束系統管理後，此分頁會再次鎖定。"
+    ),
+    auth_gate_snap_defaults_kicker = "APP_DEFAULTS 已鎖定",
+    auth_gate_snap_defaults_lead = paste0(
+      "請以系統管理解鎖本工作階段的系統預設。",
+      "此為維運解鎖，不是會員閘。"
+    ),
+    auth_gate_snap_defaults_b1 = "檢視與編輯線上版 APP_DEFAULTS",
+    auth_gate_snap_defaults_b2 = "解鎖期間可下載／還原預設 CSV",
+    auth_gate_snap_defaults_b3 = "結束系統管理後再次鎖定",
+    auth_gate_snap_defaults_demo_caption = "APP_DEFAULTS 示範——系統管理解鎖",
+    auth_gate_faq_title = "會員權益 — 常見問題",
+    auth_gate_faq_q1 = "為什麼需要登入？",
+    auth_gate_faq_a1 = paste0(
+      "完整版的會員專區與帳號工具需登入後才能使用。",
+      "Lite 版無需登入，功能可完整使用。"
+    ),
+    auth_gate_faq_q2 = "會員可解鎖哪些功能？",
+    auth_gate_faq_a2 = paste0(
+      "量化回測實驗室、決策檢核、到值通知、帳號工作區與點數流水、FYN／PYN 餘額，",
+      "以及具每日免費額度的估值報告 PDF 下載。"
+    ),
+    auth_gate_faq_q3 = "FYN 與 PYN 是什麼？",
+    auth_gate_faq_a3 = paste0(
+      "FYN 為免費點數（含歡迎贈點與每日簽到）。",
+      "PYN 為付費錢包。登入後可於「點數流水」查看完整紀錄。"
+    ),
+    auth_gate_faq_q4 = "Lite 版會被鎖上嗎？",
+    auth_gate_faq_a4 = paste0(
+      "不會。Lite 版從不要求帳號。",
+      "登入是解鎖完整版會員介面，不會鎖住 Lite 功能。"
     ),
     test_link = " Sys. Admin",
     testing_page_title = "系統管理",

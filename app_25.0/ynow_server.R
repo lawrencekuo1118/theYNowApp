@@ -635,15 +635,49 @@ server <- function(input, output, session) {
     }
     u <- tryCatch(ynow_auth$user(), error = function(e) NULL)
     if (is.null(u)) {
+      extras <- if (exists("ynow_gate_promo_faq_ui", mode = "function")) {
+        ynow_gate_promo_faq_ui(feature = "account", include_faq = TRUE)
+      } else {
+        NULL
+      }
+      acct_body <- tryCatch(
+        ui_str("auth_gate_account_body", loc),
+        error = function(e) tryCatch(
+          ui_str("auth_admin_need_login", loc),
+          error = function(e2) "Sign in to open the account workspace."
+        )
+      )
       return(tags$div(
         class = "box box-solid ynow-auth-gate ynow-gate-box",
-        tags$div(class = "box-body", tags$p(tryCatch(
-          ui_str("auth_admin_need_login", loc),
-          error = function(e) "Sign in to open the account workspace."
-        )),
-        actionButton("ynow_pa_gate_signin", tryCatch(
-          ui_str("auth_sign_in", loc), error = function(e) "Sign in"
-        ), class = "btn-primary"))
+        `data-ynow-gate-feature` = "account",
+        style = "max-width:760px; margin:18px auto;",
+        tags$div(
+          class = "box-header with-border",
+          tags$h3(
+            class = "box-title",
+            tags$span(
+              class = "ynow-auth-gate-title",
+              tryCatch(
+                ui_str("auth_pa_gate_title", loc),
+                error = function(e) "Sign in required"
+              )
+            )
+          )
+        ),
+        tags$div(
+          class = "box-body",
+          tags$p(class = "ynow-gate-body", acct_body),
+          extras,
+          actionButton(
+            "ynow_pa_gate_signin",
+            label = tags$span(
+              id = "ynow_pa_gate_signin_label",
+              class = "ynow-member-gate-signin-label",
+              tryCatch(ui_str("auth_sign_in", loc), error = function(e) "Sign in")
+            ),
+            class = "btn-primary ynow-auth-open"
+          )
+        )
       ))
     }
     NULL
