@@ -265,12 +265,35 @@ check("backtest and checklist require the member gate", {
 })
 check("login tabs show a lock before sign-in", {
   ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  auth <- paste(readLines(src_auth, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   grepl("ynow-menu-lock", ui, fixed = TRUE) &&
     grepl("lab_notes: true", ui, fixed = TRUE) &&
     grepl("decision_checklist: true", ui, fixed = TRUE) &&
     grepl("price_alerts: true", ui, fixed = TRUE) &&
+    grepl("account_admin: true", ui, fixed = TRUE) &&
+    grepl("account_points: true", ui, fixed = TRUE) &&
     grepl("not(.ynow-lite):not(.ynow-authed) .sidebar-menu .ynow-menu-lock", ui, fixed = TRUE) &&
-    grepl("a:has(.ynow-menu-lock) > i:not(.ynow-menu-lock):not(.pull-right)", ui, fixed = TRUE)
+    grepl("a:has(.ynow-menu-lock) > i:not(.ynow-menu-lock):not(.pull-right)", ui, fixed = TRUE) &&
+    grepl("ynow-menu-lock", auth, fixed = TRUE) &&
+    grepl("account_admin", auth, fixed = TRUE) &&
+    # Guests see Account dimmed (not display:none)
+    grepl("color:#a3a3a3", auth, fixed = TRUE) &&
+    !grepl(
+      "body.ynow-auth-feature:not(.ynow-authed) .sidebar-menu a[data-value=\"account_admin\"][\\s\\S]{0,200}display:none",
+      auth,
+      perl = TRUE
+    )
+})
+check("guest PDF download control uses muted locked styling", {
+  ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("ynowSyncSidebarDownloadIcon", ui, fixed = TRUE) &&
+    grepl("ynow-sidebar-dl-lock", ui, fixed = TRUE) &&
+    grepl(
+      "body.ynow-auth-feature:not(.ynow-authed) .ynow-sidebar-download-wrap #download_report",
+      ui,
+      fixed = TRUE
+    ) &&
+    grepl("color: #a3a3a3 !important", ui, fixed = TRUE)
 })
 check("stock chrome hidden on guest gate tabs and account panels", {
   ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
@@ -299,12 +322,14 @@ check("account gate uses shared promo FAQ helper", {
     grepl("ynow-auth-gate", srv, fixed = TRUE) &&
     grepl("ynow-auth-open", srv, fixed = TRUE)
 })
-check("pdf and snap_defaults gates wired in UI", {
+check("snap_defaults gate keeps promo; sidebar has no PDF promo chrome", {
   ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   auth <- paste(readLines(src_auth, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-  grepl("ynow_pdf_guest_gate", ui, fixed = TRUE) &&
-    grepl('feature = "pdf"', ui, fixed = TRUE) &&
+  !grepl("ynow_pdf_guest_gate", ui, fixed = TRUE) &&
+    !grepl("ynow_pdf_gate_signin", ui, fixed = TRUE) &&
     grepl('feature = "snap_defaults"', ui, fixed = TRUE) &&
+    grepl("ynowSyncSidebarDownloadIcon", ui, fixed = TRUE) &&
+    grepl("ynow-sidebar-dl-lock", ui, fixed = TRUE) &&
     grepl("ynow-gate-demo-video", auth, fixed = TRUE) &&
     grepl("demos/", auth, fixed = TRUE)
 })
