@@ -13,7 +13,9 @@ stopifnot(!anyDuplicated(reg$input_id))
 stopifnot(all(grepl("^mod_fcf-", reg$input_id[reg$section == "FCF"])))
 stopifnot(all(c(
   "mod_fcf-apply_capex_spike_smooth", "mod_fcf-capex_spike_mult", "mod_fcf-capex_spike_avg_years",
-  "mod_fcf-apply_g_ceiling", "bt_net_margin", "chk_hfv_veto", "lab_im_eq_only", "session_ccy_pick"
+  "mod_fcf-apply_g_ceiling", "bt_net_margin", "chk_hfv_veto", "lab_im_eq_only", "session_ccy_pick",
+  "mod_rel-pe_multiple", "mod_rel-ev_fcf_multiple", "mod_rel-ps_multiple",
+  "mod_sotp-default_ev_sales", "mod_sotp-nonop"
 ) %in% reg$input_id))
 
 inp <- setNames(as.list(rep(2.5, nrow(reg))), reg$input_id)
