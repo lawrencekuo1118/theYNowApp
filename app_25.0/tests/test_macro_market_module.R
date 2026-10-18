@@ -253,7 +253,10 @@ check(
   "hide ticker chrome on macro",
   grepl("input.sidebar_tabs != 'macro_market'", ui_src, fixed = TRUE) &&
     grepl("input.sidebar_tabs != 'bluechip'", ui_src, fixed = TRUE) &&
-    grepl("input.sidebar_tabs != 'about'", ui_src, fixed = TRUE)
+    grepl("input.sidebar_tabs != 'about'", ui_src, fixed = TRUE) &&
+    grepl("input.sidebar_tabs != 'account_admin'", ui_src, fixed = TRUE) &&
+    grepl("input.sidebar_tabs != 'account_points'", ui_src, fixed = TRUE) &&
+    grepl("ynow-stock-chrome", ui_src, fixed = TRUE)
 )
 check("locale wiring dropped beta title", !grepl("ynow_macro_beta_title", ui_src, fixed = TRUE))
 check("locale wiring dropped beta warn", !grepl("macro_beta_warn_title", ui_src, fixed = TRUE))

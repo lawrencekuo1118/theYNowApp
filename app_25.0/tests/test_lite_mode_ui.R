@@ -555,6 +555,10 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(grepl("body.ynow-lite .ynow-bblab", txt, fixed = TRUE))
   testthat::expect_true(grepl("input.sidebar_tabs != 'asset_transmission'", txt, fixed = TRUE))
   testthat::expect_true(grepl("input.sidebar_tabs != 'testing'", txt, fixed = TRUE))
+  testthat::expect_true(grepl("input.sidebar_tabs != 'account_admin'", txt, fixed = TRUE))
+  testthat::expect_true(grepl("input.sidebar_tabs != 'account_points'", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-stock-chrome", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-sidebar-snapshot-foot-links", txt, fixed = TRUE))
   testthat::expect_true(grepl("remapLegacyTab", txt, fixed = TRUE))
   testthat::expect_true(grepl("return 'company_advance'", txt, fixed = TRUE))
   # Asset transmission is a first-class sidebar tab (Lite + Full); Testing stays Full-only sandbox

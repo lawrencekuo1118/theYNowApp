@@ -248,6 +248,16 @@ check("login tabs show a lock before sign-in", {
     grepl("not(.ynow-lite):not(.ynow-authed) .sidebar-menu .ynow-menu-lock", ui, fixed = TRUE) &&
     grepl("a:has(.ynow-menu-lock) > i:not(.ynow-menu-lock):not(.pull-right)", ui, fixed = TRUE)
 })
+check("stock chrome hidden on guest gate tabs and account panels", {
+  ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("ynow-stock-chrome", ui, fixed = TRUE) &&
+    grepl("input.sidebar_tabs != 'account_admin'", ui, fixed = TRUE) &&
+    grepl("input.sidebar_tabs != 'account_points'", ui, fixed = TRUE) &&
+    grepl("shiny-tab-lab_notes.active) .ynow-stock-chrome", ui, fixed = TRUE) &&
+    grepl("shiny-tab-decision_checklist.active) .ynow-stock-chrome", ui, fixed = TRUE) &&
+    grepl("shiny-tab-price_alerts.active) .ynow-stock-chrome", ui, fixed = TRUE) &&
+    grepl("ynow-sidebar-snapshot-foot-links", ui, fixed = TRUE)
+})
 check("member gate uses mono gate box not warning amber", {
   auth <- paste(readLines(src_auth, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")

@@ -535,6 +535,9 @@ check("sidebar foot link is Sys. Admin not Testing sandbox", {
     grepl("Sys. Admin", zh, fixed = TRUE) &&
     grepl("user-shield", ui, fixed = TRUE) &&
     grepl(".ynow-sidebar-snapshot-foot", ui, fixed = TRUE) &&
+    grepl("ynow-sidebar-snapshot-foot-links", ui, fixed = TRUE) &&
+    grepl("ynow-sidebar-copyright", ui, fixed = TRUE) &&
+    grepl("flex-direction: column !important", ui, fixed = TRUE) &&
     grepl("flex-wrap: nowrap", ui, fixed = TRUE) &&
     !grepl("一鍵", zh, fixed = TRUE)
 })
