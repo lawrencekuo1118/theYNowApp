@@ -223,6 +223,8 @@ source("auth_db.R", local = TRUE, encoding = "UTF-8")
 source("auth_oauth.R", local = TRUE, encoding = "UTF-8")
 source("points_wallet.R", local = TRUE, encoding = "UTF-8")
 source("access_locks.R", local = TRUE, encoding = "UTF-8")
+source("market_cache.R", local = TRUE, encoding = "UTF-8")
+source("news_sentiment.R", local = TRUE, encoding = "UTF-8")
 # Ensure Neon schema + optional seed admin when DB env is present (best-effort).
 if (exists("ynow_db_ready", mode = "function") && isTRUE(ynow_db_ready())) {
   tryCatch({
@@ -232,6 +234,9 @@ if (exists("ynow_db_ready", mode = "function") && isTRUE(ynow_db_ready())) {
     }
     if (exists("ynow_access_ensure_schema", mode = "function")) {
       ynow_access_ensure_schema()
+    }
+    if (exists("ynow_market_cache_ensure_schema", mode = "function")) {
+      ynow_market_cache_ensure_schema()
     }
     if (exists("ynow_db_seed_admin_from_env", mode = "function")) {
       ynow_db_seed_admin_from_env()

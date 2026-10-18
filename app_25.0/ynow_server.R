@@ -442,18 +442,43 @@ server <- function(input, output, session) {
     invisible(TRUE)
   }
 
+  .ynow_dbg_pdf <- function(hypothesisId, message, data = list()) {
+    # #region agent log
+    tryCatch({
+      payload <- list(
+        sessionId = "ef0f33",
+        runId = "pre",
+        hypothesisId = hypothesisId,
+        location = "ynow_server.R:pdf",
+        message = message,
+        data = data,
+        timestamp = round(as.numeric(Sys.time()) * 1000)
+      )
+      line <- jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null")
+      cat(line, "\n", file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-ef0f33.log", append = TRUE)
+    }, error = function(e) NULL)
+    # #endregion
+  }
+
   #' Login + daily free quota, then 10 FYN. NULL means the denial file is already written.
   .ynow_pdf_authorize <- function(file) {
-    if (!exists("ynow_auth_enabled", mode = "function") || !isTRUE(ynow_auth_enabled())) {
-      return(list(ok = TRUE, kind = "bypass"))
-    }
-    if (!exists("ynow_pdf_claim", mode = "function")) {
+    auth_on <- exists("ynow_auth_enabled", mode = "function") && isTRUE(ynow_auth_enabled())
+    claim_ok <- exists("ynow_pdf_claim", mode = "function")
+    logged <- tryCatch(isTRUE(ynow_auth$is_logged_in()), error = function(e) NA)
+    lite <- tryCatch(isTRUE(isolate(lite_mode())), error = function(e) NA)
+    uid <- .ynow_access_subject_id()
+    .ynow_dbg_pdf("A", "pdf authorize entry", list(
+      auth_on = auth_on, claim_ok = claim_ok, logged_in = logged, lite = lite,
+      uid_nchar = nchar(uid)
+    ))
+    if (!auth_on || !claim_ok) {
+      .ynow_dbg_pdf("A", "pdf authorize bypass", list(auth_on = auth_on, claim_ok = claim_ok))
       return(list(ok = TRUE, kind = "bypass"))
     }
     loc <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "en")
     .lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
-    uid <- .ynow_access_subject_id()
     if (!nzchar(uid)) {
+      .ynow_dbg_pdf("B", "pdf authorize deny guest", list(logged_in = logged, lite = lite))
       msg <- .lab("pdf_need_login", "Sign in to download the valuation report (PDF).")
       showNotification(msg, type = "warning", duration = 6)
       tryCatch(shinyBS::toggleModal(session, "ynow_auth_modal", "open"), error = function(e) NULL)
@@ -461,6 +486,9 @@ server <- function(input, output, session) {
       return(NULL)
     }
     ticket <- ynow_pdf_claim(uid)
+    .ynow_dbg_pdf("B", "pdf claim result", list(
+      ok = isTRUE(ticket$ok), kind = as.character(ticket$kind %||% "")[1]
+    ))
     if (!isTRUE(ticket$ok)) {
       cost <- ticket$cost %||% 10L
       bal <- ticket$fyn %||% 0L
@@ -2825,6 +2853,64 @@ server <- function(input, output, session) {
     }
     s
   }
+
+  ynow_news_now <- reactive({
+    tk <- tryCatch(as.character(current_ticker() %||% "")[1], error = function(e) "")
+    empty <- list(
+      ok = FALSE, score = NA_real_, n = 0L, flags = character(), nudges = character(),
+      rows = data.frame(title = character(), score = numeric(), stringsAsFactors = FALSE)
+    )
+    if (!nzchar(tk)) return(empty)
+    tryCatch(ynow_news_bundle(tk), error = function(e) empty)
+  })
+
+  output$ynow_news_thermometer <- renderUI({
+    loc <- tryCatch(ui_locale(), error = function(e) "en")
+    pack <- ynow_news_now()
+    score <- suppressWarnings(as.numeric(pack$score)[1])
+    tone <- if (!is.finite(score)) {
+      ui_str("news_thermo_empty", loc)
+    } else if (score <= -0.25) {
+      ui_str("news_thermo_pessimistic", loc)
+    } else if (score >= 0.25) {
+      ui_str("news_thermo_optimistic", loc)
+    } else {
+      ui_str("news_thermo_neutral", loc)
+    }
+    pct <- if (is.finite(score)) round((score + 1) / 2 * 100) else 50
+    flag_lab <- c(
+      management = ui_str("news_flag_management", loc),
+      sec = ui_str("news_flag_sec", loc),
+      lawsuit = ui_str("news_flag_lawsuit", loc)
+    )
+    flags <- intersect(as.character(pack$flags %||% character()), names(flag_lab))
+    nudges <- as.character(pack$nudges %||% character())
+    nudge_txt <- character()
+    if ("capex" %in% nudges) nudge_txt <- c(nudge_txt, ui_str("news_nudge_capex", loc))
+    if ("dividend" %in% nudges) nudge_txt <- c(nudge_txt, ui_str("news_nudge_dividend", loc))
+    tags$div(
+      class = "ynow-full-only",
+      style = "margin: 8px 0 14px; padding: 10px 12px; border: 1px solid #d9d9d9; border-radius: 6px;",
+      tags$b(ui_str("news_thermo_title", loc)),
+      tags$span(style = "margin-left: 8px;", tone),
+      if (is.finite(score)) tags$span(style = "margin-left: 8px;", sprintf("%+.2f", score)),
+      tags$div(
+        style = "margin-top: 6px; height: 8px; background: #eee; border-radius: 4px;",
+        tags$div(style = sprintf(
+          "width:%s%%; height:8px; border-radius:4px; background:%s;",
+          pct, if (!is.finite(score) || abs(score) < 0.25) "#888" else if (score > 0) "#2e7d32" else "#c62828"
+        ))
+      ),
+      tags$p(style = "margin: 6px 0 0; color: #666; font-size: 12px;", ui_str("news_thermo_method", loc)),
+      if (length(flags)) tags$p(
+        style = "margin: 6px 0 0; color: #c62828;",
+        paste(ui_str("news_flag_title", loc), paste(flag_lab[flags], collapse = " · "))
+      ),
+      if (length(nudge_txt)) tags$ul(
+        lapply(nudge_txt, function(x) tags$li(style = "font-size: 13px;", x))
+      )
+    )
+  })
 
   output$company_overview_ui <- renderUI({
     loc <- tryCatch(ui_locale(), error = function(e) "en")
@@ -12180,7 +12266,9 @@ server <- function(input, output, session) {
         bt_w_vg = input$bt_w_vg,
         bt_max_exp = input$bt_max_exp,
         bt_min_exp_pass = input$bt_min_exp_pass,
-        bt_rebal_freq = .bt_selected_rebal_freq()
+        bt_rebal_freq = .bt_selected_rebal_freq(),
+        bt_news_on = isTRUE(input$bt_news_on),
+        bt_news_score = tryCatch(ynow_news_now()$score, error = function(e) NA_real_)
       )
       mp <- bt_current_model_params()
       withProgress(message = paste("V12 回測", current_ticker(), "…"), value = 0.15, {
@@ -14250,6 +14338,13 @@ server <- function(input, output, session) {
         }
 
         rating_info <- derive_investment_rating(cur_price, rating_anchor)
+        .ynow_dbg_pdf("R", "pdf numbers bound", list(
+          ticket_kind = as.character(pdf_ticket$kind %||% "")[1],
+          price_finite = is.finite(cur_price),
+          dcf_finite = is.finite(dcf_price),
+          anchor_finite = is.finite(rating_anchor),
+          rating = as.character(rating_info$rating %||% "")[1]
+        ))
 
         sum_df <- isolate(summary_data())
         co_name <- isolate(attr(sum_df, "company_name"))

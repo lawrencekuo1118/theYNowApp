@@ -3345,6 +3345,20 @@ beta_rolling_section_ui <- function() {
                               id = "ynow_bt_w_rsi_hint",
                               class = "ynow-backtest-inline-hint",
                               "Overbought lowers the sentiment target; oversold raises it."
+                            ),
+                            checkboxInput(
+                              "bt_news_on",
+                              label = tags$span(id = "ynow_bt_news_on", "News sentiment factor"),
+                              value = FALSE
+                            ),
+                            tags$p(
+                              id = "ynow_bt_news_hint",
+                              class = "ynow-backtest-inline-hint",
+                              paste0(
+                                "Uses today's headline score only on the latest rebalance. ",
+                                "Very negative news blocks an RSI oversold add; very positive news blocks an overbought cut. ",
+                                "Earlier dates stay momentum / RSI."
+                              )
                             )
                           ),
                           column(
@@ -3898,13 +3912,26 @@ ui <- dashboardPage(
              menuItem("Hist. FV Validation", tabName = "hfv", icon = icon("balance-scale")),
              # 量化回測實驗室：主選單（完整版）；Lite 以 CSS 隱藏，不進簡化版
              menuItem(
-               text = tags$span(id = "ynow_menu_backtest", "Quant Backtest Lab"),
+               text = tagList(
+                 icon("lock", class = "ynow-menu-lock"),
+                 tags$span(id = "ynow_menu_backtest", "Quant Backtest Lab")
+               ),
                tabName = "lab_notes",
                icon = icon("flask")
              ),
-             menuItem("Decision Checklist", tabName = "decision_checklist", icon = icon("clipboard-check")),
              menuItem(
-               text = tags$span(id = "ynow_menu_price_alert", "Value Alerts"),
+               text = tagList(
+                 icon("lock", class = "ynow-menu-lock"),
+                 tags$span(id = "ynow_menu_decision_checklist", "Decision Checklist")
+               ),
+               tabName = "decision_checklist",
+               icon = icon("clipboard-check")
+             ),
+             menuItem(
+               text = tagList(
+                 icon("lock", class = "ynow-menu-lock"),
+                 tags$span(id = "ynow_menu_price_alert", "Value Alerts")
+               ),
                tabName = "price_alerts",
                icon = icon("bell")
              ),
@@ -6451,6 +6478,17 @@ ui <- dashboardPage(
            Hist. FV Validation | Quant Backtest Lab
            Inset via ::before so the dash is shorter than full sidebar width.
         */
+        .sidebar-menu .ynow-menu-lock {
+          display: none;
+          font-size: 11px;
+          width: 1em;
+          margin: 0 4px 0 2px;
+          opacity: 0.95;
+          vertical-align: -1px;
+        }
+        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .sidebar-menu .ynow-menu-lock {
+          display: inline-block;
+        }
         body:not(.ynow-lite) .sidebar-menu > li:has(> a[data-value="bluechip"]),
         body:not(.ynow-lite) .sidebar-menu > li:has(> a[data-value="get_started"]),
         body:not(.ynow-lite) .sidebar-menu > li:has(> a[data-value="lab_notes"]) {
@@ -9144,6 +9182,17 @@ ui <- dashboardPage(
             }
             a.innerHTML = '';
             if (iconClone) a.appendChild(iconClone);
+            var loginTabs = {
+              lab_notes: true,
+              decision_checklist: true,
+              price_alerts: true
+            };
+            if (loginTabs[tab]) {
+              var lock = document.createElement('i');
+              lock.className = 'fas fa-lock ynow-menu-lock';
+              lock.setAttribute('aria-hidden', 'true');
+              a.appendChild(lock);
+            }
             var lab = document.createElement('span');
             lab.className = 'ynow-menu-label';
             lab.textContent = ' ' + label + ' ';
@@ -9637,6 +9686,8 @@ ui <- dashboardPage(
             setBtText('ynow_bt_sent_intro', 'bt_sent_intro');
             setBtText('ynow_bt_w_mom_hint', 'bt_w_mom_hint');
             setBtText('ynow_bt_w_rsi_hint', 'bt_w_rsi_hint');
+            setBtText('ynow_bt_news_on', 'bt_news_on');
+            setBtText('ynow_bt_news_hint', 'bt_news_hint');
             setBtText('ynow_bt_max_exp_hint', 'bt_max_exp_hint');
             setBtText('ynow_bt_min_exp_hint', 'bt_min_exp_hint');
             setBtText('ynow_bt_fit_bh_hint', 'bt_fit_bh_hint');
@@ -11300,6 +11351,13 @@ ui <- dashboardPage(
             return !!(document.body && document.body.classList.contains('ynow-authed'));
           }
           window.ynowIsAuthed = ynowIsAuthed;
+          document.addEventListener('click', function (ev) {
+            var node = ev.target && ev.target.closest ? ev.target.closest('#download_report') : null;
+            if (!node || !document.body) return;
+            // #region agent log
+            fetch('http://127.0.0.1:7302/ingest/e3a0dcdf-71e1-4bba-855e-f942118bd315',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ef0f33'},body:JSON.stringify({sessionId:'ef0f33',runId:'pre',hypothesisId:'C',location:'ynow_ui.R:download_click',message:'pdf button click',data:{authed:document.body.classList.contains('ynow-authed'),lite:document.body.classList.contains('ynow-lite'),authFeature:document.body.classList.contains('ynow-auth-feature'),label:(node.textContent||'').replace(/\\s+/g,' ').trim().slice(0,80)},timestamp:Date.now()})}).catch(function(){});
+            // #endregion
+          }, true);
           function ynowShowAuthModal() {
             // Already signed in: never reopen login modal (post-login sidebar race).
             if (ynowIsAuthed()) return;
@@ -16239,6 +16297,7 @@ ui <- dashboardPage(
       tabItem(tabName = "dashboard",
 
               uiOutput("company_overview_ui"),
+              uiOutput("ynow_news_thermometer"),
 
               tags$div(
                 class = "ynow-full-only",

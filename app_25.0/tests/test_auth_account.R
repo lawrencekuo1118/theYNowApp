@@ -212,6 +212,14 @@ check("backtest and checklist require the member gate", {
     grepl("ynow-member-gate", auth, fixed = TRUE) &&
     grepl("not(.ynow-lite):not(.ynow-authed) .ynow-member-body", auth, fixed = TRUE)
 })
+check("login tabs show a lock before sign-in", {
+  ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("ynow-menu-lock", ui, fixed = TRUE) &&
+    grepl("lab_notes: true", ui, fixed = TRUE) &&
+    grepl("decision_checklist: true", ui, fixed = TRUE) &&
+    grepl("price_alerts: true", ui, fixed = TRUE) &&
+    grepl("not(.ynow-lite):not(.ynow-authed) .sidebar-menu .ynow-menu-lock", ui, fixed = TRUE)
+})
 check("member gate uses mono gate box not warning amber", {
   auth <- paste(readLines(src_auth, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")

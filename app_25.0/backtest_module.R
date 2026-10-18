@@ -1593,6 +1593,17 @@ fetch_price_history_df <- function(ticker, period = "5y") {
   raw_ticker <- as.character(ticker)[1]
   ticker <- toupper(trimws(raw_ticker))
   if (!nzchar(ticker)) return(NULL)
+  if (exists("ynow_price_history_through_cache", mode = "function")) {
+    return(ynow_price_history_through_cache(ticker, period, function() {
+      .fetch_price_history_df_live(ticker, period)
+    }))
+  }
+  .fetch_price_history_df_live(ticker, period)
+}
+
+.fetch_price_history_df_live <- function(ticker, period = "5y") {
+  ticker <- toupper(trimws(as.character(ticker)[1]))
+  if (!nzchar(ticker)) return(NULL)
 
   yfin_err <- ""
   df <- tryCatch({
@@ -2724,6 +2735,14 @@ supported_analysis_freqs <- function(price_dates = NULL, valuation_dates = NULL)
         # ---- Strategy B: blend Exp_A with emotion target (diverges from A) ----
         mb <- mode_b_exposure(pos_a, mom_score, rsi_score, w_mom, w_rsi, max_exp)
         pos_b <- mb$pos_b
+        if (isTRUE(params$bt_news_on) && identical(i, max(rebal_idx))) {
+          veto <- ynow_news_apply_veto(
+            pos_a, pos_b, rsi_score,
+            params$bt_news_score,
+            enabled = TRUE
+          )
+          pos_b <- veto$pos_b
+        }
       }
 
       val_rows[[length(val_rows) + 1L]] <- data.frame(
