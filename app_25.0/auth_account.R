@@ -1341,6 +1341,8 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
     if (!nzchar(tab)) {
       tab <- as.character(isolate(input$sidebar_tabs) %||% "")[1]
     }
+    # Sys. Admin (testing) is ops-only — never keep a signed-in user on that tab.
+    if (identical(tab, "testing")) tab <- "home"
     session$sendCustomMessage(
       "ynowAuthPostLogin",
       list(ok = TRUE, restore_tab = tab, message = msg)

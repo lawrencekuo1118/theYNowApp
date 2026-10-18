@@ -541,6 +541,10 @@ check("sidebar foot link is Sys. Admin not Testing sandbox", {
     grepl("flex-wrap: nowrap", ui, fixed = TRUE) &&
     !grepl("一鍵", zh, fixed = TRUE)
 })
+check("Sys. Admin hidden for signed-in users", {
+  ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("body.ynow-authed .ynow-sidebar-test-link", ui, fixed = TRUE)
+})
 check("no leftover agent debug instrumentation", {
   files <- c("points_wallet.R", "ynow_server.R", "auth_account.R", "debug_helpers.R")
   txt <- paste(vapply(files, function(f) {

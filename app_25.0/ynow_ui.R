@@ -4019,7 +4019,7 @@ ui <- dashboardPage(
           icon("camera", class = "fa-fw"),
           tags$span(id = "ynow_snapshot_link_label", " Snapshot")
         ),
-        # System admin：側邊欄專用入口（完整版）；Lite 隱藏；內部 tabName 仍為 testing
+        # System admin：側邊欄專用入口（完整版）；Lite／已登入帳號隱藏；內部 tabName 仍為 testing
         tags$a(
           id = "ynow_sidebar_test_btn",
           href = "#shiny-tab-testing",
@@ -7050,6 +7050,11 @@ ui <- dashboardPage(
         body.ynow-lite .ynow-sidebar-test-link,
         body.ynow-lite .ynow-company-advance-bblab,
         body.ynow-lite .ynow-bblab {
+          display: none !important;
+        }
+        /* Signed-in account users: hide Sys. Admin foot link (portal is guest/ops only). */
+        body.ynow-authed .ynow-sidebar-test-link,
+        body.ynow-authed #ynow_sidebar_test_btn {
           display: none !important;
         }
         /* Lite Snapshot: only System defaults tab (when sysadmin unlocked).
@@ -11276,10 +11281,12 @@ ui <- dashboardPage(
                 sessionStorage.removeItem('ynow_oauth_code_verifier');
                 sessionStorage.removeItem('ynow_pre_oauth_tab');
               } catch (eClr) {}
+              /* Sys. Admin is guest/ops-only: never restore testing after sign-in. */
+              if (payload.ok && tab === 'testing') tab = 'home';
               if (payload.ok && tab && window.Shiny && Shiny.setInputValue) {
                 try {
                   if (typeof window.ynowShowSidebarFootTab === 'function' &&
-                      (tab === 'snapshot' || tab === 'testing' || tab === 'feedback')) {
+                      (tab === 'snapshot' || tab === 'feedback')) {
                     window.ynowShowSidebarFootTab(tab);
                   } else {
                     Shiny.setInputValue('sidebar_tabs', tab, { priority: 'event' });
@@ -11324,6 +11331,24 @@ ui <- dashboardPage(
               if (payload.label_sign_out) {
                 var outLbls = document.querySelectorAll('.ynow-auth-signout-label');
                 for (i = 0; i < outLbls.length; i++) outLbls[i].textContent = payload.label_sign_out;
+              }
+              /* Leave Sys. Admin tab if still open after sign-in (link is CSS-hidden). */
+              if (loggedIn && window.Shiny && Shiny.setInputValue) {
+                try {
+                  var active = document.querySelector(
+                    '.sidebar-menu li.active > a[data-value], .sidebar-menu a.active[data-value]'
+                  );
+                  var footActive = document.querySelector(
+                    '.ynow-sidebar-snapshot-foot a.active[data-value], ' +
+                    '.ynow-sidebar-snapshot-foot a[aria-expanded=\"true\"][data-value]'
+                  );
+                  var cur = (active && active.getAttribute('data-value')) ||
+                    (footActive && footActive.getAttribute('data-value')) || '';
+                  var hash = (window.location.hash || '').replace(/^#shiny-tab-/, '');
+                  if (cur === 'testing' || hash === 'testing') {
+                    Shiny.setInputValue('sidebar_tabs', 'home', { priority: 'event' });
+                  }
+                } catch (eLeaveTest) {}
               }
             });
             addHandler('ynowDcLocale', applyDcLocale);
@@ -11918,13 +11943,6 @@ ui <- dashboardPage(
             return !!(document.body && document.body.classList.contains('ynow-authed'));
           }
           window.ynowIsAuthed = ynowIsAuthed;
-          document.addEventListener('click', function (ev) {
-            var node = ev.target && ev.target.closest ? ev.target.closest('#download_report') : null;
-            if (!node || !document.body) return;
-            // #region agent log
-            fetch('http://127.0.0.1:7302/ingest/e3a0dcdf-71e1-4bba-855e-f942118bd315',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ef0f33'},body:JSON.stringify({sessionId:'ef0f33',runId:'pre',hypothesisId:'C',location:'ynow_ui.R:download_click',message:'pdf button click',data:{authed:document.body.classList.contains('ynow-authed'),lite:document.body.classList.contains('ynow-lite'),authFeature:document.body.classList.contains('ynow-auth-feature'),label:(node.textContent||'').replace(/\\s+/g,' ').trim().slice(0,80)},timestamp:Date.now()})}).catch(function(){});
-            // #endregion
-          }, true);
           function ynowShowAuthModal() {
             // Already signed in: never reopen login modal (post-login sidebar race).
             if (ynowIsAuthed()) return;
