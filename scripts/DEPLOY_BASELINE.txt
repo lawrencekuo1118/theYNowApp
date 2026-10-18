@@ -8,5 +8,5 @@ short=bc221ce6
 message=fix(snapshot): surface assumed valuation params on Current Snapshot
 captured_at=2026-10-18T13:30:30Z
 source_branch=cursor/valuation-param-audit-3580
-display_version=v25.52
+display_version=v25.53
 note=Canonical live line is app_25.0. Bundle 12706398 surfaces Multiples/SOTP + engine assumption extras on Snapshot Current.
