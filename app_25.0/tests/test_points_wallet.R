@@ -544,7 +544,32 @@ check("sidebar foot link is Sys. Admin not Testing sandbox", {
 check("Sys. Admin hidden for signed-in users", {
   ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   grepl("ynowSyncSysAdminFootVisibility", ui, fixed = TRUE) &&
-    grepl("body.ynow-authed .ynow-sidebar-snapshot-foot #ynow_sidebar_test_btn", ui, fixed = TRUE)
+    grepl("body.ynow-authed .ynow-sidebar-snapshot-foot #ynow_sidebar_test_btn", ui, fixed = TRUE) &&
+    grepl("classList.contains('ynow-authed')) { return false; }", ui, fixed = TRUE) &&
+    grepl("tab === 'testing' && document.body &&", ui, fixed = TRUE)
+})
+check("sysadmin chrome banner shows infinity not wallet balances", {
+  srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  # Ops portal (sysadmin on, not view-as) → ∞; view-as keeps real balances.
+  grepl("\u221E", srv, fixed = TRUE) &&
+    grepl("sys_on", srv, fixed = TRUE) &&
+    grepl("view_as_on", srv, fixed = TRUE) &&
+    grepl("ynow_pts_sysadmin_on()", srv, fixed = TRUE) &&
+    grepl(".ynow_pts_push_banner()", srv, fixed = TRUE)
+})
+check("server remaps testing tab away when signed in", {
+  srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl('identical(tab, "testing")', srv, fixed = TRUE) &&
+    grepl("ynow-sysadmin-blocked", srv, fixed = TRUE) &&
+    grepl("pts_sysadmin_member_blocked", srv, fixed = TRUE)
+})
+check("locale pts_sysadmin_member_blocked en+zh-TW", {
+  en <- ui_str("pts_sysadmin_member_blocked", "en")
+  zh <- ui_str("pts_sysadmin_member_blocked", "zh-TW")
+  nzchar(en) && nzchar(zh) &&
+    grepl("sign-in|Sign out", en, ignore.case = TRUE) &&
+    grepl("登出|系統管理", zh) &&
+    !grepl("默认|数据|一鍵", zh)
 })
 check("no leftover agent debug instrumentation", {
   files <- c("points_wallet.R", "ynow_server.R", "auth_account.R", "debug_helpers.R")

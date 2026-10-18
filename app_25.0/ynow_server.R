@@ -238,6 +238,26 @@ server <- function(input, output, session) {
       session$sendCustomMessage("ynowGotoTab", list(tab = "company_advance"))
       tab <- "company_advance"
     }
+    # Signed-in account members cannot open Sys. Admin (internal tab `testing`).
+    if (identical(tab, "testing")) {
+      logged <- tryCatch(isTRUE(ynow_auth$is_logged_in()), error = function(e) FALSE)
+      if (isTRUE(logged)) {
+        tryCatch(
+          updateTabItems(session, "sidebar_tabs", "home"),
+          error = function(e) {
+            tryCatch(
+              session$sendInputMessage("sidebar_tabs", list(value = "home")),
+              error = function(e2) NULL
+            )
+          }
+        )
+        tryCatch(
+          session$sendCustomMessage("ynowGotoTab", list(tab = "home")),
+          error = function(e) NULL
+        )
+        return()
+      }
+    }
     session$sendCustomMessage("ynowModelTheme", list(tab = tab))
   }, ignoreNULL = FALSE, ignoreInit = FALSE)
 
@@ -661,11 +681,27 @@ server <- function(input, output, session) {
 
   .ynow_pts_push_banner <- function() {
     loc <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "en")
-    # View-as prefers target DB balances; otherwise signed-in user.
-    u <- .ynow_pts_effective_user()
     pts_colon <- if (identical(loc, "zh-TW")) "：" else ":"
     fyn_lab <- tryCatch(paste0(ui_str("pts_fyn_label", loc), pts_colon), error = function(e) "FYN points:")
     pyn_lab <- tryCatch(paste0(ui_str("pts_pyn_label", loc), pts_colon), error = function(e) "PYN points:")
+    # Sys. Admin portal chrome is ops context, not a member wallet → show ∞.
+    # View-as of a specific user still shows that user's real FYN / PYN.
+    sys_on <- isTRUE(tryCatch(isolate(ynow_pts_sysadmin_on()), error = function(e) FALSE))
+    va <- tryCatch(isolate(ynow_pts_view_as()), error = function(e) NULL)
+    view_as_on <- is.list(va) && nzchar(as.character(va$user_id %||% "")[1])
+    if (isTRUE(sys_on) && !isTRUE(view_as_on)) {
+      session$sendCustomMessage(
+        "ynowPtsBanner",
+        list(
+          fyn = "\u221E", pyn = "\u221E",
+          fyn_label = fyn_lab, pyn_label = pyn_lab,
+          visible = TRUE
+        )
+      )
+      return(invisible(NULL))
+    }
+    # View-as prefers target DB balances; otherwise signed-in user.
+    u <- .ynow_pts_effective_user()
     if (is.null(u)) {
       # Guests: hide FYN/PYN header entirely (no placeholder "—" next to locale).
       session$sendCustomMessage(
@@ -845,6 +881,7 @@ server <- function(input, output, session) {
   observe({
     ynow_pts_panel_tick()
     ynow_pts_view_as()
+    ynow_pts_sysadmin_on()
     tryCatch(ynow_auth$user(), error = function(e) NULL)
     tryCatch(ui_locale(), error = function(e) NULL)
     .ynow_pts_push_banner()
@@ -881,6 +918,7 @@ server <- function(input, output, session) {
     }
     ynow_pts_sysadmin_on(TRUE)
     .ynow_sysadmin_push_mode()
+    tryCatch(.ynow_pts_push_banner(), error = function(e) NULL)
     ynow_pts_sysadmin_tick(isolate(ynow_pts_sysadmin_tick()) + 1L)
     showNotification(
       .lab("pts_sysadmin_login_ok", "System admin unlocked."),
@@ -1910,7 +1948,27 @@ server <- function(input, output, session) {
       },
       hfv = function() .ynow_page_ui_hfv(),
       lab_notes = function() .ynow_page_ui_lab_notes(),
-      testing = function() .ynow_page_ui_testing(),
+      testing = function() {
+        # Signed-in account members must not receive the Sys. Admin portal UI.
+        logged <- tryCatch(isTRUE(ynow_auth$is_logged_in()), error = function(e) FALSE)
+        if (isTRUE(logged)) {
+          loc <- tryCatch(
+            normalize_ui_locale(isolate(ui_locale())),
+            error = function(e2) "en"
+          )
+          return(tags$div(
+            class = "ynow-sysadmin-blocked",
+            style = "padding:1.25rem;color:#666;",
+            tryCatch(
+              ui_str("pts_sysadmin_member_blocked", loc),
+              error = function(e) {
+                "System admin is available only before account sign-in. Sign out to open the ops portal."
+              }
+            )
+          ))
+        }
+        .ynow_page_ui_testing()
+      },
       asset_transmission = function() {
         .ynow_page_ui_asset_transmission(isolate(ui_locale()))
       },

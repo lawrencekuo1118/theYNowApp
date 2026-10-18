@@ -329,6 +329,16 @@ check("server blocks Sys. Admin click when signed in", {
     grepl("ynow_auth$is_logged_in", srv, fixed = TRUE) &&
     grepl('updateTabItems(session, "sidebar_tabs", "home")', srv, fixed = TRUE)
 })
+check("client remaps testing→home when authed (goto + foot)", {
+  grepl("tab === 'testing' && document.body &&", ui, fixed = TRUE) &&
+    grepl("document.body.classList.contains('ynow-authed')", ui, fixed = TRUE) &&
+    grepl("classList.contains('ynow-authed')) { return false; }", ui, fixed = TRUE) &&
+    grepl("pointer-events", ui, fixed = TRUE)
+})
+check("server blocks testing tab + lazy mount when signed in", {
+  grepl('identical(tab, "testing")', srv, fixed = TRUE) &&
+    grepl("ynow-sysadmin-blocked", srv, fixed = TRUE)
+})
 check("UI wires ynowAuthFeature handler", grepl("ynowAuthFeature", ui, fixed = TRUE))
 check("UI wires OAuth redirect + callback", grepl("ynowAuthOAuthRedirect", ui, fixed = TRUE) &&
         grepl("ynow_auth_oauth_callback", ui, fixed = TRUE))

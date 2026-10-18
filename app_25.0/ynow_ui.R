@@ -4026,7 +4026,7 @@ ui <- dashboardPage(
           `data-toggle` = "tab",
           `data-value` = "testing",
           class = "ynow-sidebar-snapshot-link ynow-sidebar-test-link ynow-full-only",
-          onclick = "if (window.Shiny) { Shiny.setInputValue('sidebar_test_click', (window.__ynowTestClicks=(window.__ynowTestClicks||0)+1), {priority: 'event'}); } if (window.ynowShowSidebarFootTab) { window.ynowShowSidebarFootTab('testing'); } else if (window.Shiny) { Shiny.setInputValue('sidebar_tabs', 'testing', {priority: 'event'}); } return false;",
+          onclick = "if (document.body && document.body.classList.contains('ynow-authed')) { return false; } if (window.Shiny) { Shiny.setInputValue('sidebar_test_click', (window.__ynowTestClicks=(window.__ynowTestClicks||0)+1), {priority: 'event'}); } if (window.ynowShowSidebarFootTab) { window.ynowShowSidebarFootTab('testing'); } else if (window.Shiny) { Shiny.setInputValue('sidebar_tabs', 'testing', {priority: 'event'}); } return false;",
           icon("user-shield", class = "fa-fw"),
           tags$span(id = "ynow_test_link_label", " Sys. Admin")
         ),
@@ -11275,10 +11275,16 @@ ui <- dashboardPage(
               if (!el) return;
               if (loggedIn) {
                 el.style.setProperty('display', 'none', 'important');
+                el.style.setProperty('visibility', 'hidden', 'important');
+                el.style.setProperty('pointer-events', 'none', 'important');
                 el.setAttribute('aria-hidden', 'true');
+                el.setAttribute('tabindex', '-1');
               } else {
                 el.style.removeProperty('display');
+                el.style.removeProperty('visibility');
+                el.style.removeProperty('pointer-events');
                 el.removeAttribute('aria-hidden');
+                el.removeAttribute('tabindex');
               }
             }
             window.ynowSyncSysAdminFootVisibility = ynowSyncSysAdminFootVisibility;
@@ -11649,6 +11655,11 @@ ui <- dashboardPage(
             function gotoTab(tab) {
               tab = remapLegacyTab(tab);
               if (!tab) return;
+              /* Signed-in members: Sys. Admin portal is guest/ops only. */
+              if (tab === 'testing' && document.body &&
+                  document.body.classList.contains('ynow-authed')) {
+                tab = 'home';
+              }
               if (window.Shiny && Shiny.setInputValue) {
                 Shiny.setInputValue('sidebar_tabs', tab, {priority: 'event'});
               }
@@ -11765,6 +11776,11 @@ ui <- dashboardPage(
             function showSidebarFootTab(tab) {
               tab = remapLegacyTab(tab);
               if (!tab) return;
+              /* Signed-in members: never open Sys. Admin (testing) via foot link. */
+              if (tab === 'testing' && document.body &&
+                  document.body.classList.contains('ynow-authed')) {
+                tab = 'home';
+              }
               if (window.Shiny && Shiny.setInputValue) {
                 Shiny.setInputValue('sidebar_tabs', tab, {priority: 'event'});
               }
