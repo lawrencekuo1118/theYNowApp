@@ -122,13 +122,10 @@ writeLines(
 # Assert source still has the live rules we care about
 stopifnot(grepl("ynowSyncSidebarDownloadIcon", ui_txt, fixed = TRUE))
 stopifnot(grepl("color: #a3a3a3 !important", ui_txt, fixed = TRUE))
-stopifnot(grepl("account_admin: true", ui_txt, fixed = TRUE))
-stopifnot(grepl("color:#a3a3a3", auth_css, fixed = TRUE))
-stopifnot(!grepl(
-  "body.ynow-auth-feature:not(.ynow-authed) .sidebar-menu a[data-value=\"account_admin\"][\\s\\S]{0,120}display:none",
-  auth_css,
-  perl = TRUE
-))
+stopifnot(!grepl("account_admin: true", ui_txt, fixed = TRUE))
+stopifnot(grepl("body.skin-black.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .main-sidebar", ui_txt, fixed = TRUE))
+stopifnot(grepl("treeview:has(a[data-value=\\\"account_admin\\\"])", auth_css, fixed = TRUE))
+stopifnot(grepl("display:none !important;", auth_css, fixed = TRUE))
 
 cat("wrote", out_dir, "\n")
 cat("fixture ok\n")

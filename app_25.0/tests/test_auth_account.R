@@ -270,19 +270,14 @@ check("login tabs show a lock before sign-in", {
     grepl("lab_notes: true", ui, fixed = TRUE) &&
     grepl("decision_checklist: true", ui, fixed = TRUE) &&
     grepl("price_alerts: true", ui, fixed = TRUE) &&
-    grepl("account_admin: true", ui, fixed = TRUE) &&
-    grepl("account_points: true", ui, fixed = TRUE) &&
+    !grepl("account_admin: true", ui, fixed = TRUE) &&
+    !grepl("account_points: true", ui, fixed = TRUE) &&
+    grepl("body.skin-black.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .main-sidebar", ui, fixed = TRUE) &&
     grepl("not(.ynow-lite):not(.ynow-authed) .sidebar-menu .ynow-menu-lock", ui, fixed = TRUE) &&
     grepl("a:has(.ynow-menu-lock) > i:not(.ynow-menu-lock):not(.pull-right)", ui, fixed = TRUE) &&
-    grepl("ynow-menu-lock", auth, fixed = TRUE) &&
-    grepl("account_admin", auth, fixed = TRUE) &&
-    # Guests see Account dimmed (not display:none)
-    grepl("color:#a3a3a3", auth, fixed = TRUE) &&
-    !grepl(
-      "body.ynow-auth-feature:not(.ynow-authed) .sidebar-menu a[data-value=\"account_admin\"][\\s\\S]{0,200}display:none",
-      auth,
-      perl = TRUE
-    )
+    grepl("ynow-auth-header", ui, fixed = TRUE) &&
+    grepl("display:none !important;", auth, fixed = TRUE) &&
+    grepl("treeview:has(a[data-value=\\\"account_admin\\\"])", auth, fixed = TRUE)
 })
 check("guest PDF download control uses muted locked styling", {
   ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")

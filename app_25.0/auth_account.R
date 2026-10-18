@@ -625,16 +625,10 @@ ynow_auth_css <- function() {
     "body.ynow-lite .sidebar-menu li.treeview:has(a[data-value=\"account_points\"]) {",
     "  display:none !important;",
     "}",
-    # Guests: Account stays visible but locked (light gray + lock icon), same as Lab/Checklist.
-    "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .sidebar-menu li.treeview:has(a[data-value=\"account_admin\"]) > a,",
-    "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .sidebar-menu a[data-value=\"account_admin\"],",
-    "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .sidebar-menu a[data-value=\"account_admin\"]:hover,",
-    "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .sidebar-menu a[data-value=\"account_admin\"]:focus,",
-    "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .sidebar-menu a[data-value=\"account_points\"],",
-    "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .sidebar-menu a[data-value=\"account_points\"]:hover,",
-    "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .sidebar-menu a[data-value=\"account_points\"]:focus {",
-    "  color:#a3a3a3 !important;",
-    "  opacity:1;",
+    # Account is a signed-in workspace, not a guest product. Hide until sign-in.
+    "body.ynow-auth-feature:not(.ynow-authed) .sidebar-menu li.treeview:has(a[data-value=\"account_admin\"]),",
+    "body.ynow-auth-feature:not(.ynow-authed) .sidebar-menu li.treeview:has(a[data-value=\"account_points\"]) {",
+    "  display:none !important;",
     "}",
     "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) #ynow_pa_body { display:none !important; }",
     "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) #ynow_pa_guest_gate { display:block !important; }",
@@ -909,25 +903,16 @@ ynow_auth_css <- function() {
 ynow_admin_menu_item <- function() {
   if (!isTRUE(ynow_auth_enabled())) return(NULL)
   menuItem(
-    text = tagList(
-      icon("lock", class = "ynow-menu-lock"),
-      tags$span(id = "ynow_menu_admin", "Account")
-    ),
+    text = tags$span(id = "ynow_menu_admin", "Account"),
     icon = icon("toolbox"),
     startExpanded = FALSE,
     menuSubItem(
-      text = tagList(
-        icon("lock", class = "ynow-menu-lock"),
-        tags$span(id = "ynow_menu_admin_overview", "Overview")
-      ),
+      text = tags$span(id = "ynow_menu_admin_overview", "Overview"),
       tabName = "account_admin",
       icon = icon("user-cog")
     ),
     menuSubItem(
-      text = tagList(
-        icon("lock", class = "ynow-menu-lock"),
-        tags$span(id = "ynow_menu_pts_ledger", "Points ledger")
-      ),
+      text = tags$span(id = "ynow_menu_pts_ledger", "Points ledger"),
       tabName = "account_points",
       icon = icon("list-alt")
     )

@@ -3695,6 +3695,10 @@ ui <- dashboardPage(
     # avoid shinyWidgets radioGroupButtons re-render that displaces the control on mobile).
     # Vertically centered with the small header logo (auth links live in sidebar + Home).
     tags$li(
+      class = "dropdown ynow-auth-header",
+      if (exists("ynow_auth_links_ui", mode = "function")) ynow_auth_links_ui("sidebar")
+    ),
+    tags$li(
       class = "dropdown ynow-lang-header ynow-hdr-toggle",
       tags$div(
         class = "ynow-lang-stack",
@@ -3786,7 +3790,6 @@ ui <- dashboardPage(
       width = 12,
       tags$div(
         class = "ynow-sidebar-date-row",
-        if (exists("ynow_auth_links_ui", mode = "function")) ynow_auth_links_ui("sidebar"),
         tags$span(class = "ynow-sidebar-date", textOutput("today", inline = TRUE)),
         # Mobile only (CSS): FYN/PYN right of login date. Desktop keeps top header banner.
         tags$div(
@@ -6550,17 +6553,17 @@ ui <- dashboardPage(
         .skin-black .main-sidebar .sidebar-menu li.ynow-access-locked-nav > a,
         .skin-black .main-sidebar .sidebar-menu li.ynow-access-locked-nav > a:hover,
         .skin-black .main-sidebar .sidebar-menu li.ynow-access-locked-nav > a:focus,
-        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .skin-black .main-sidebar .sidebar-menu a:has(.ynow-menu-lock),
-        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .skin-black .main-sidebar .sidebar-menu a:has(.ynow-menu-lock):hover,
-        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .skin-black .main-sidebar .sidebar-menu a:has(.ynow-menu-lock):focus,
-        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .skin-black .main-sidebar .sidebar-menu li.treeview:has(a:has(.ynow-menu-lock)) > a,
-        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .skin-black .main-sidebar .sidebar-menu li.treeview:has(a:has(.ynow-menu-lock)) > a:hover,
-        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .skin-black .main-sidebar .sidebar-menu li.treeview:has(a:has(.ynow-menu-lock)) > a:focus {
+        body.skin-black.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .main-sidebar .sidebar-menu a:has(.ynow-menu-lock),
+        body.skin-black.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .main-sidebar .sidebar-menu a:has(.ynow-menu-lock):hover,
+        body.skin-black.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .main-sidebar .sidebar-menu a:has(.ynow-menu-lock):focus,
+        body.skin-black.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .main-sidebar .sidebar-menu li.treeview:has(a:has(.ynow-menu-lock)) > a,
+        body.skin-black.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .main-sidebar .sidebar-menu li.treeview:has(a:has(.ynow-menu-lock)) > a:hover,
+        body.skin-black.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .main-sidebar .sidebar-menu li.treeview:has(a:has(.ynow-menu-lock)) > a:focus {
           color: #a3a3a3 !important;
           opacity: 1;
         }
-        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .skin-black .main-sidebar .sidebar-menu a:has(.ynow-menu-lock) > i,
-        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .skin-black .main-sidebar .sidebar-menu li.treeview:has(a:has(.ynow-menu-lock)) > a > i {
+        body.skin-black.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .main-sidebar .sidebar-menu a:has(.ynow-menu-lock) > i,
+        body.skin-black.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .main-sidebar .sidebar-menu li.treeview:has(a:has(.ynow-menu-lock)) > a > i {
           color: #a3a3a3 !important;
         }
         /* Guest PDF download: muted / light-gray locked control (lock icon via JS). */
@@ -7693,6 +7696,7 @@ ui <- dashboardPage(
           height: 50px !important;
           margin: 0 !important;
         }
+        .main-header .navbar-custom-menu .navbar-nav > li.ynow-auth-header,
         .main-header .navbar-custom-menu .navbar-nav > li.ynow-lang-header,
         .main-header .navbar-custom-menu .navbar-nav > li.ynow-pts-header,
         .main-header .navbar-custom-menu .navbar-nav > li#ynow-header-logo.ynow-header-logo {
@@ -7705,6 +7709,12 @@ ui <- dashboardPage(
           margin: 0 !important;
           padding-top: 0 !important;
           padding-bottom: 0 !important;
+          flex-shrink: 0 !important;
+        }
+        .main-header .navbar-custom-menu .navbar-nav > li.ynow-auth-header {
+          padding: 0 12px 0 8px !important;
+          list-style: none !important;
+          overflow: visible !important;
           flex-shrink: 0 !important;
         }
         .main-header .navbar-custom-menu .navbar-nav > li.ynow-lang-header {
@@ -9200,7 +9210,20 @@ ui <- dashboardPage(
             };
             pushLeft(ptsHdr);
             pushLeft(langHdr);
+            pushLeft(document.querySelector('.main-header .ynow-auth-header'));
             if (custom) pushLeft(custom);
+            // #region agent log
+            try {
+              var rows = ['lab_notes','decision_checklist','price_alerts'].map(function (tab) {
+                var link = document.querySelector('.sidebar-menu a[data-value=\"' + tab + '\"]');
+                return { tab: tab, color: link ? getComputedStyle(link).color : null };
+              });
+              var authEl = document.querySelector('.main-header .ynow-auth-header');
+              var langEl = document.querySelector('.main-header .ynow-lang-header');
+              var titleEl = document.querySelector('.main-header .logo .ynow-app-title');
+              fetch('http://127.0.0.1:7302/ingest/e3a0dcdf-71e1-4bba-855e-f942118bd315',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f91dce'},body:JSON.stringify({sessionId:'f91dce',hypothesisId:'A',location:'ynow_ui.R:placeMobileAppTitle',message:'lock colors and header auth',data:{rows:rows,body:document.body.className,auth:authEl?Math.round(authEl.getBoundingClientRect().left):null,lang:langEl?Math.round(langEl.getBoundingClientRect().left):null,titleRight:titleEl?Math.round(titleEl.getBoundingClientRect().right):null,width:window.innerWidth},timestamp:Date.now()})}).catch(function(){});
+            } catch (eLog) {}
+            // #endregion
             var rightClear = Math.max(80, Math.round(window.innerWidth - rightEdge));
             var maxW = Math.max(64, window.innerWidth - leftClear - rightClear - gap * 2);
             title.style.maxWidth = maxW + 'px';
@@ -9921,9 +9944,7 @@ ui <- dashboardPage(
             var loginTabs = {
               lab_notes: true,
               decision_checklist: true,
-              price_alerts: true,
-              account_admin: true,
-              account_points: true
+              price_alerts: true
             };
             if (loginTabs[tab]) {
               var lock = document.createElement('i');
@@ -16046,6 +16067,7 @@ ui <- dashboardPage(
             pointer-events: none;
           }
           /* Keep 繁中／EN / FYN·PYN / mark / toggle above the absolute title band */
+          .main-header .navbar-custom-menu .navbar-nav > li.ynow-auth-header,
           .main-header .navbar-custom-menu .navbar-nav > li.ynow-lang-header,
           .main-header .navbar-custom-menu .navbar-nav > li.ynow-pts-header,
           .main-header .navbar-custom-menu .navbar-nav > li#ynow-header-logo.ynow-header-logo {
@@ -16071,6 +16093,10 @@ ui <- dashboardPage(
           }
           .ynow-lang-stack {
             height: 26px !important;
+          }
+          .main-header .navbar-custom-menu .navbar-nav > li.ynow-auth-header {
+            padding: 0 10px 0 6px !important;
+            margin-left: 8px !important;
           }
           .main-header .navbar-custom-menu .navbar-nav > li.ynow-lang-header {
             padding: 0 4px 0 0 !important;
