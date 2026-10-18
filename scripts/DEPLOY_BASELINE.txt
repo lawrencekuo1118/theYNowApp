@@ -1,21 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12706540
+bundleId=12706559
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-<<<<<<< HEAD
-aligned_git=f9b25858d43ed83912f19d1d995828f98b8f635c
-commit=f9b25858d43ed83912f19d1d995828f98b8f635c
-short=f9b2585
-message=chore: record shinyapps baseline bundle 12706540 (app_25.0)
-captured_at=2026-10-18T14:20:10Z
-display_version=v25.56
-note=Canonical live line is app_25.0. Bundle 12706540 after PR #302: hide Sys. Admin foot link when signed in (CSS + ynowSyncSysAdminFootVisibility).
-=======
-aligned_git=cf95d0c8ce901d50927c1b186da644e34ff8bd27
-commit=cf95d0c8ce901d50927c1b186da644e34ff8bd27
-short=cf95d0c8
-message=chore: bump display version to v25.56
-captured_at=2026-10-18T14:13:51Z
+aligned_git=5c51cd0155187ae7c0a500153dd65a5f8fe8dfa3
+commit=5c51cd0155187ae7c0a500153dd65a5f8fe8dfa3
+short=5c51cd01
+message=chore: bump display version to v25.57
+captured_at=2026-10-18T14:24:04Z
 display_version=v25.57
-note=Canonical live line is app_25.0. Bundle 12706529: Sys. Admin FYN/PYN chrome shows infinity; signed-in members blocked from Sys. Admin portal.
->>>>>>> 66badabe (chore: record shipped display version v25.57)
+note=Canonical live line is app_25.0. Bundle 12706559: Pages to capture expanded with categorized fundamentals/backtest options (PR #303).
