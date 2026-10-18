@@ -1812,6 +1812,62 @@ server <- function(input, output, session) {
         )
       )
     }, error = function(e) NULL)
+    tryCatch({
+      fb_sel <- as.character(isolate(input$feedback_category) %||% "enhancement")[1]
+      if (!fb_sel %in% c("enhancement", "bug", "ux", "other")) fb_sel <- "enhancement"
+      updateSelectInput(
+        session, "feedback_category",
+        label = ui_str("feedback_category_label", loc),
+        choices = stats::setNames(
+          c("enhancement", "bug", "ux", "other"),
+          c(
+            ui_str("feedback_cat_enhancement", loc),
+            ui_str("feedback_cat_bug", loc),
+            ui_str("feedback_cat_ux", loc),
+            ui_str("feedback_cat_other", loc)
+          )
+        ),
+        selected = fb_sel
+      )
+    }, error = function(e) NULL)
+    tryCatch({
+      g_sel <- as.character(isolate(input$g_growth_method) %||% APP_DEFAULTS$g_growth_method)[1]
+      g_vals <- c("fundamental", "cagr", "mean", "median", "last_year", "custom")
+      if (!g_sel %in% g_vals) g_sel <- APP_DEFAULTS$g_growth_method
+      updateSelectInput(
+        session, "g_growth_method",
+        label = ui_str("fcf_g_method_label", loc),
+        choices = stats::setNames(
+          g_vals,
+          c(
+            ui_str("fcf_g_fundamental", loc),
+            ui_str("fcf_g_cagr", loc),
+            ui_str("fcf_g_mean", loc),
+            ui_str("fcf_g_median", loc),
+            ui_str("fcf_g_last", loc),
+            ui_str("fcf_g_custom", loc)
+          )
+        ),
+        selected = g_sel
+      )
+    }, error = function(e) NULL)
+    tryCatch({
+      b_sel <- as.character(isolate(input[["mod_pb-basis"]]) %||% APP_DEFAULTS$pb_basis)[1]
+      if (!b_sel %in% c("bvps", "tbvps", "navps")) b_sel <- APP_DEFAULTS$pb_basis
+      updateSelectInput(
+        session, "mod_pb-basis",
+        label = ui_str("pb_basis_label", loc),
+        choices = stats::setNames(
+          c("bvps", "tbvps", "navps"),
+          c(
+            ui_str("pb_basis_bvps", loc),
+            ui_str("pb_basis_tbvps", loc),
+            ui_str("pb_basis_navps", loc)
+          )
+        ),
+        selected = b_sel
+      )
+    }, error = function(e) NULL)
   }
 
   # Once-per-session lazy page mounts (heavy tabs). Revisit keeps mounted UI.
@@ -7077,7 +7133,7 @@ server <- function(input, output, session) {
     debt <- suppressWarnings(as.numeric(input$rd_interest_bearing_debt)[1])
     rd <- tryCatch(scraped_rd_pct(), error = function(e) NA_real_)
     if (!is.finite(interest) || interest <= 0 || !is.finite(debt) || debt <= 0) {
-      return(tags$p(style = "color:#888;font-size:13px;", "請輸入利息費用與有息負債後按估算。"))
+      return(tags$p(style = "color:#888;font-size:13px;", .ui_msg("rd_need_inputs")))
     }
     raw <- 100 * interest / debt
     shown <- if (is.finite(rd)) rd else raw
@@ -7405,7 +7461,7 @@ server <- function(input, output, session) {
     rm <- suppressWarnings(as.numeric(input$capm_rm)[1])
     re <- if (is.finite(rf) && is.finite(b) && is.finite(rm)) rf + b * (rm - rf) else NA_real_
     if (!is.finite(re)) {
-      return(tags$p(style = "color:#888;font-size:13px;", "請輸入 Rf、β、Rm 後按估算。"))
+      return(tags$p(style = "color:#888;font-size:13px;", .ui_msg("capm_need_inputs")))
     }
     HTML(glue::glue(
       "<div style='padding:8px;border-left:4px solid #222222;background:#f5f5f5;font-size:13px;'>
@@ -7669,10 +7725,10 @@ server <- function(input, output, session) {
   .beta_est_result_content <- function() {
     res <- beta_est_result()
     if (is.null(res)) {
-      return(tags$p(style = "color:#888;font-size:13px;", "尚未估計。搜尋標的後按「估計 Rolling β」。"))
+      return(tags$p(style = "color:#888;font-size:13px;", .ui_msg("beta_roll_need")))
     }
     if (!isTRUE(res$ok)) {
-      return(tags$p(style = "color:#c0392b;", res$reason %||% "估計失敗"))
+      return(tags$p(style = "color:#c0392b;", res$reason %||% .ui_msg("beta_est_fail")))
     }
     rf <- suppressWarnings(as.numeric(input$capm_rf)[1])
     rm <- suppressWarnings(as.numeric(input$capm_rm)[1])
@@ -8358,7 +8414,7 @@ server <- function(input, output, session) {
   .beta_unlever_firm_result_content <- function() {
     f <- firm_unlever_reactive()
     if (!is.finite(f$bl)) {
-      return(tags$p(style = "color:#c0392b;", "尚無 β_L：請先搜尋標的，或至 Rolling β 分頁估計。"))
+      return(tags$p(style = "color:#c0392b;", .ui_msg("beta_no_bl")))
     }
     if (!isTRUE(f$de_info$ok)) {
       return(HTML(glue::glue(
@@ -8386,7 +8442,7 @@ server <- function(input, output, session) {
                     "輸入同業後按「計算 Bottom-Up βᵤ」；或留空以產業基準估算。"))
     }
     if (!isTRUE(res$ok)) {
-      return(tags$p(style = "color:#c0392b;", res$reason %||% "計算失敗"))
+      return(tags$p(style = "color:#c0392b;", res$reason %||% .ui_msg("beta_calc_fail")))
     }
     # glue 不支援多行 if/else 區塊；先組字串再嵌入
     HTML(glue::glue(
@@ -12872,7 +12928,7 @@ server <- function(input, output, session) {
   output$bt_exposure_stats <- renderUI({
     res <- bt_result()
     if (is.null(res) || is.null(res$exposure)) {
-      return(tags$p(style = "color:#888;font-size:12px;", "回測後顯示平均／最高／最低持股與現金比例。"))
+      return(tags$p(style = "color:#888;font-size:12px;", .ui_msg("bt_exposure_empty")))
     }
     e <- res$exposure
     tags$div(
@@ -14080,7 +14136,7 @@ server <- function(input, output, session) {
 
   output$bt_fv_edge <- renderUI({
     v <- bt_validation()
-    if (is.null(v) || is.null(v$fv)) return(tags$p(style="color:#888;font-size:12px;", "回測後回答：價格遠低於合理價時，前瞻報酬是否較高？"))
+    if (is.null(v) || is.null(v$fv)) return(tags$p(style="color:#888;font-size:12px;", .ui_msg("bt_fv_question")))
     tags$p(style = "font-size:13px;line-height:1.55;", tags$b("結論："), v$fv$answer)
   })
 

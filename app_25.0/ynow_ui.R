@@ -1779,28 +1779,28 @@ beta_rolling_section_ui <- function() {
   conditionalPanel(
     condition = "input.dcf_mode == 'two_stage'",
     box(
-      title = tagList(icon("layer-group"), "兩階段成長假設（DCF）"),
+      title = tagList(icon("layer-group"), ui_i18n("dcf_two_stage_title")),
       width = 12, status = "warning", solidHeader = TRUE,
-      tags$p(style = "margin: 0 0 6px 0; font-size: 12.5px; color: #555;", tags$b("第一階段｜高速成長")),
-      numericInput("yr_stage1", "年數", value = APP_DEFAULTS$yr_stage1),
-      numericInput("g_stage1", "成長率 g1 (%)", value = APP_DEFAULTS$g_stage1),
+      tags$p(style = "margin: 0 0 6px 0; font-size: 12.5px; color: #555;", tags$b(ui_i18n("dcf_stage1_heading"))),
+      numericInput("yr_stage1", ui_i18n("dcf_yr_stage1_label"), value = APP_DEFAULTS$yr_stage1),
+      numericInput("g_stage1", ui_i18n("dcf_g1_label"), value = APP_DEFAULTS$g_stage1),
       helpText(
         id = "ynow_g_stage1_help",
-        "預設帶入「預估營收成長率」；可手動覆寫。終值成長率仍用基礎設定的 SGR。"
+        ui_str("g_stage1_help", "en")
       ),
       conditionalPanel(
         condition = "input.dcf_claim != 'fcfe'",
-        numericInput("wacc_stage1", "折現率 WACC1 (%)", value = APP_DEFAULTS$wacc_stage1, step = 0.01)
+        numericInput("wacc_stage1", ui_i18n("dcf_wacc1_label"), value = APP_DEFAULTS$wacc_stage1, step = 0.01)
       ),
-      tags$p(style = "margin: 10px 0 6px 0; font-size: 12.5px; color: #555;", tags$b("第二階段｜永續成長")),
-      helpText("第二階段成長率採用基礎設定的 SGR；以下設定折現率。"),
+      tags$p(style = "margin: 10px 0 6px 0; font-size: 12.5px; color: #555;", tags$b(ui_i18n("dcf_stage2_heading"))),
+      helpText(ui_i18n("dcf_stage2_help")),
       conditionalPanel(
         condition = "input.dcf_claim != 'fcfe'",
-        numericInput("wacc_stage2", "折現率 WACC2 (%)", value = APP_DEFAULTS$wacc_stage2, step = 0.01)
+        numericInput("wacc_stage2", ui_i18n("dcf_wacc2_label"), value = APP_DEFAULTS$wacc_stage2, step = 0.01)
       ),
       conditionalPanel(
         condition = "input.dcf_claim == 'fcfe'",
-        helpText("FCFE 模式以 Ke（WACC 分頁之 rₑ／CAPM）折現，不再分 WACC1／WACC2。兩階段成長率仍適用；終值約束 g < Ke。")
+        helpText(ui_i18n("dcf_fcfe_stage_help"))
       )
     )
   )
@@ -1811,19 +1811,19 @@ beta_rolling_section_ui <- function() {
   conditionalPanel(
     condition = "input['mod_ddm-ddm_mode'] == 'two_stage'",
     box(
-      title = tagList(icon("layer-group"), "兩階段成長假設（DDM）"),
+      title = tagList(icon("layer-group"), ui_i18n("ddm_two_stage_title")),
       width = 12, status = "warning", solidHeader = TRUE,
-      tags$p(style = "margin: 0 0 6px 0; font-size: 12.5px; color: #555;", tags$b("第一階段｜高速成長")),
+      tags$p(style = "margin: 0 0 6px 0; font-size: 12.5px; color: #555;", tags$b(ui_i18n("ddm_stage1_heading"))),
       numericInput(
-        "mod_ddm-yr_stage1", "年數 n",
+        "mod_ddm-yr_stage1", ui_i18n("ddm_yr_stage1_label"),
         value = APP_DEFAULTS$ddm_yr_stage1, min = 1, max = 30, step = 1
       ),
       numericInput(
-        "mod_ddm-g_stage1", "成長率 g1 (%)",
+        "mod_ddm-g_stage1", ui_i18n("ddm_g1_label"),
         value = APP_DEFAULTS$ddm_g_stage1, step = 0.1
       ),
-      tags$p(style = "margin: 10px 0 6px 0; font-size: 12.5px; color: #555;", tags$b("第二階段｜永續成長")),
-      helpText(id = "ynow_ddm_two_stage_help", "第二階段股利成長率採用 Overview 的永續 g（g₂）；折現率 r＝Ke（CAPM）。終值約束：g₂ < r。")
+      tags$p(style = "margin: 10px 0 6px 0; font-size: 12.5px; color: #555;", tags$b(ui_i18n("ddm_stage2_heading"))),
+      helpText(id = "ynow_ddm_two_stage_help", ui_str("ddm_two_stage_help", "en"))
     )
   )
 }
@@ -10820,6 +10820,18 @@ ui <- dashboardPage(
             if (clusterRadar && s.lab_cluster_radar_title) clusterRadar.textContent = s.lab_cluster_radar_title;
             var clusterTable = document.getElementById('ynow_lab_cluster_table_title');
             if (clusterTable && s.lab_cluster_table_title) clusterTable.textContent = s.lab_cluster_table_title;
+            document.querySelectorAll('[data-i18n]').forEach(function (el) {
+              var key = el.getAttribute('data-i18n');
+              if (!key || s[key] == null || s[key] === '') return;
+              if (el.children && el.children.length) return;
+              el.textContent = s[key];
+            });
+            document.querySelectorAll('[data-i18n-ph]').forEach(function (el) {
+              var key = el.getAttribute('data-i18n-ph');
+              if (!key || s[key] == null || s[key] === '') return;
+              var target = (el.matches && el.matches('input,textarea')) ? el : el.querySelector('input,textarea');
+              if (target) target.setAttribute('placeholder', s[key]);
+            });
             document.documentElement.setAttribute('lang', (payload && payload.locale) || 'en');
             var mkt = (payload && payload.market) ? String(payload.market) : 'US';
             document.body.classList.toggle('ynow-market-tw', mkt === 'TW');
@@ -16422,11 +16434,12 @@ ui <- dashboardPage(
             tags$div(
               class = "ynow-dcf-mode-col",
               radioButtons(
-                "dcf_mode", "選擇 DCF 估值模型：",
-                choices = list(
-                  "明確預測 + Gordon 終值" = "gordon",
-                  "二階段成長法 (Two-Stage Model)" = "two_stage"
+                "dcf_mode", ui_i18n("dcf_mode_label"),
+                choiceNames = list(
+                  ui_i18n("dcf_mode_gordon"),
+                  ui_i18n("dcf_mode_two_stage")
                 ),
+                choiceValues = list("gordon", "two_stage"),
                 selected = APP_DEFAULTS$dcf_mode
               )
             )
@@ -16438,15 +16451,16 @@ ui <- dashboardPage(
               class = "ynow-dcf-claim-col",
               radioButtons(
                 "dcf_claim",
-                "採用現金流",
-                choices = list(
-                  "FCFF（WACC，再橋接股權）" = "fcff",
-                  "FCFE（Ke，直接股權）" = "fcfe"
+                ui_i18n("dcf_claim_label"),
+                choiceNames = list(
+                  ui_i18n("dcf_claim_fcff"),
+                  ui_i18n("dcf_claim_fcfe")
                 ),
+                choiceValues = list("fcff", "fcfe"),
                 selected = APP_DEFAULTS$dcf_claim,
                 inline = TRUE
               ),
-              helpText("FCFE = FCFF − 稅後利息 + 淨舉債（負債隨 g 成長）；以 Ke 折現，不再減負債。")
+              helpText(ui_i18n("dcf_claim_help"))
             )
           )
         )
@@ -16464,7 +16478,7 @@ ui <- dashboardPage(
             tags$div(
               class = "ynow-header-years",
               numericInput(
-                "years", "預測年數 n",
+                "years", ui_i18n("dcf_years_label"),
                 value = APP_DEFAULTS$years, min = 1, max = 30
               )
             )
@@ -16891,18 +16905,18 @@ ui <- dashboardPage(
 
                      # 財報附註擷取 (SEC EDGAR) — 僅美股模式顯示（server 以 shinyjs 控制）
                      tabPanel(
-                       title = "財報附註 (SEC)",
+                       title = ui_i18n("tab_sec_notes"),
                        value = "sec_notes",
                        icon = icon("file-alt"),
                        id = "sec_notes_panel",
                        p(
-                         "直接從美國 SEC EDGAR 擷取指定美股的",
-                         tags$b("最新年報（10-K／20-F／40-F）、季報（10-Q）或重大訊息（8-K／6-K）"),
-                         "：年報／季報抽出「財務報表附註 (Notes)」；重大訊息則盡力萃取最新一則正文。",
+                         ui_i18n("sec_notes_lead"),
+                         " ",
+                         tags$b(ui_i18n("sec_notes_forms")),
                          tags$br(),
                          tags$span(
                            style = "color:#888;",
-                           "資料來源：SEC EDGAR。僅支援美股（含 ADR／外國發行人：年報 20-F、重大訊息 6-K）；台股模式請改用市場切換至美股後使用。"
+                           ui_i18n("sec_notes_source")
                          )
                        ),
                        tags$hr(),
@@ -16911,46 +16925,47 @@ ui <- dashboardPage(
                            width = 4,
                            box(
                              width = 12, status = "primary", solidHeader = TRUE,
-                             title = "查詢條件",
+                             title = ui_i18n("sec_query_title"),
                              tags$div(
                                style = "margin-bottom:10px;",
-                               tags$label("美股代號 (US Ticker)", class = "control-label"),
+                               tags$label(ui_i18n("sec_ticker_label"), class = "control-label"),
                                uiOutput("lab_sec_ticker_display"),
                                tags$span(
                                  style = "color:#888; font-size:12px;",
-                                 "沿用主頁「Ticker / Stock Code」；於主頁搜尋即同步更新。"
+                                 ui_i18n("sec_ticker_hint")
                                )
                              ),
                              radioButtons(
-                               "lab_sec_form", "財報類型 (Form)",
-                               choices = c(
-                                 "年報 10-K / 20-F" = "10-K",
-                                 "季報 10-Q" = "10-Q",
-                                 "重大訊息 8-K / 6-K" = "8-K"
+                               "lab_sec_form", ui_i18n("sec_form_label"),
+                               choiceNames = list(
+                                 ui_i18n("sec_form_10k"),
+                                 ui_i18n("sec_form_10q"),
+                                 ui_i18n("sec_form_8k")
                                ),
+                               choiceValues = list("10-K", "10-Q", "8-K"),
                                selected = "10-K", inline = TRUE
                              ),
                              checkboxInput(
-                               "lab_sec_important_only", "只顯示重要附註", value = isTRUE(APP_DEFAULTS$lab_sec_important_only)
+                               "lab_sec_important_only", ui_i18n("sec_important_only"), value = isTRUE(APP_DEFAULTS$lab_sec_important_only)
                              ),
                              textInput(
-                               "lab_sec_keyword", "關鍵字搜尋",
+                               "lab_sec_keyword", ui_i18n("sec_keyword_label"),
                                value = "",
-                               placeholder = "例如 revenue、lease、tax…"
-                             ),
+                               placeholder = ui_str("sec_keyword_ph", "en")
+                             ) %>% tagAppendAttributes(`data-i18n-ph` = "sec_keyword_ph"),
                              tags$span(
                                style = "color:#888; font-size:12px; display:block; margin:-6px 0 10px 0;",
-                               "比對附註標題、重點摘要與全文（不區分大小寫）；空白＝顯示全部。"
+                               ui_i18n("sec_keyword_hint")
                              ),
                              actionButton(
-                               "lab_sec_fetch", "擷取財報附註",
+                               "lab_sec_fetch", ui_i18n("sec_fetch_btn"),
                                class = "btn-success btn-block",
                                icon = icon("download"),
                                style = "font-weight:bold;"
                              ),
                              tags$p(
                                style = "margin-top:10px; color:#888; font-size:12px;",
-                               "提示：需向 SEC 逐條擷取附註，約需數秒。"
+                               ui_i18n("sec_fetch_hint")
                              )
                            ),
                            uiOutput("lab_sec_meta")
@@ -16959,12 +16974,12 @@ ui <- dashboardPage(
                            width = 8,
                            box(
                              width = 12, status = "info", solidHeader = TRUE,
-                             title = "附註索引 (Notes Index)",
+                             title = ui_i18n("sec_index_title"),
                              uiOutput("lab_sec_index")
                            ),
                            box(
                              width = 12, status = "info", solidHeader = TRUE,
-                             title = "附註內容 (Notes)",
+                             title = ui_i18n("sec_body_title"),
                              uiOutput("lab_sec_notes")
                            )
                          )
@@ -17054,21 +17069,15 @@ ui <- dashboardPage(
                            width = 12,
                            tags$p(
                              class = "ynow-ann-note",
-                             tags$b("用途："),
-                             "解讀上方 KPI 色碼如何對照 Dashboard「目前產業標準快覽」內的產業區間。",
-                             "數值採年報序列（排除 TTM）的多年平均或年均 YoY，以利跨期／同業比較。"
+                             ui_i18n("ann_kpi_purpose")
                            ),
                            tags$p(
                              style = "margin:-4px 0 12px 0; font-size:12px; color:#777; line-height:1.45;",
-                             "規則對齊 ", tags$code("get_box_color"), "：",
-                             "多數指標「越高越好」；",
-                             tags$b("營運費用比、財務槓桿"), " 為「越低越好」（反向著色）。",
-                             "落在產業 ", tags$code("[下限, 上限]"), " 內→黑；越出有利側→藍；不利側→紅（警示）；未設區間／N/A→白。",
-                             " KPI 數字框僅用黑／白／紅／藍。色碼圖例與產業標準快覽見上方 PERFORMANCE 區塊外（含產業選單）。"
+                             ui_i18n("ann_kpi_rules")
                            ),
-                           tags$h4("KPI 計算與產業區間", class = "ynow-ann-h"),
+                           tags$h4(ui_i18n("ann_kpi_calc_title"), class = "ynow-ann-h"),
                            DT::dataTableOutput("annotation_kpi_guide"),
-                           tags$h4("指標群組解讀穩定度", class = "ynow-ann-h"),
+                           tags$h4(ui_i18n("ann_kpi_stability_title"), class = "ynow-ann-h"),
                            tableOutput("annotation_stability_table"),
                            tags$p(
                              id = "ynow_ann_fscore_crossref",
@@ -17185,7 +17194,7 @@ ui <- dashboardPage(
                            width = 12,
                            .ddm_formula_banner(),
                            uiOutput("mod_ddm-ui_ddm_result"),
-                           h6(helpText(id = "ynow_ddm_overview_hint", "提示：D0 在上方模式列；g／二階段在下方 Overview；折現率 r＝Ke 在 Ke 分頁。自訂參數後請再點試算。")),
+                           h6(helpText(id = "ynow_ddm_overview_hint", ui_str("ddm_overview_hint", "en"))),
                            fluidRow(
                              column(
                                width = 6,
@@ -17211,7 +17220,7 @@ ui <- dashboardPage(
                          column(
                            width = 12,
                            div(
-                             "實務上常需對 D0 進行平滑化或還原本業配息，避免單一年度特別股利或景氣循環造成估值失真。請至 D0 覆寫。",
+                             ui_i18n("ddm_details_smooth_note"),
                              style = "font-size: 15px; font-weight: bold; color: #2C3E50; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;"
                            )
                          )
@@ -17227,12 +17236,12 @@ ui <- dashboardPage(
                            width = 12,
                            numericInput(
                              "mod_ddm-g",
-                             "股利永續成長率 g (%)",
+                             ui_i18n("ddm_g_label"),
                              value = APP_DEFAULTS$ddm_g
                            ),
                            checkboxInput(
                              "mod_ddm-sync_g",
-                             "與中央永續成長率（基礎設定 SGR）同步",
+                             ui_i18n("ddm_sync_g_label"),
                              value = isTRUE(APP_DEFAULTS$ddm_sync_central_g)
                            ),
                            tags$p(
@@ -17268,23 +17277,23 @@ ui <- dashboardPage(
                            )
                          ),
                          box(
-                           h4(tags$b("方法 1：目標配息率推算法")),
-                           p(helpText("適用於宣告改變股利政策，或未來獲利將發生重大變化的公司")),
+                           h4(tags$b(ui_i18n("ddm_d0_m1_title"))),
+                           p(helpText(ui_i18n("ddm_d0_m1_help"))),
                            div(
-                             "公式：預估 EPS × 目標配息率",
+                             ui_i18n("ddm_d0_formula"),
                              style = "font-size: 18px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;"
                            ),
-                           numericInput("mod_ddm-est_eps", "預估/最新 EPS (元)", value = NA, step = 0.01),
-                           numericInput("mod_ddm-est_payout", "目標配息率 Payout Ratio (%)", value = NA, min = 0, max = 100, step = 0.01),
-                           actionButton("mod_ddm-calc_d0_payout", "計算並套用 D0", class = "btn-primary"),
+                           numericInput("mod_ddm-est_eps", ui_i18n("ddm_est_eps_label"), value = NA, step = 0.01),
+                           numericInput("mod_ddm-est_payout", ui_i18n("ddm_est_payout_label"), value = NA, min = 0, max = 100, step = 0.01),
+                           actionButton("mod_ddm-calc_d0_payout", ui_i18n("btn_calc_d0_payout"), class = "btn-primary"),
                            tags$br(),
                            htmlOutput("mod_ddm-txt_d0_payout_res")
                          ),
                          box(
-                           h4(tags$b("方法 2：景氣循環平滑法")),
-                           p(helpText("適用於航運、原物料等景氣循環股。系統將自動從現金流量表擷取歷史配息來平均。")),
-                           numericInput("mod_ddm-cycle_years", "擷取過去幾年平均？", value = 5, min = 1, max = 10, step = 0.01),
-                           actionButton("mod_ddm-calc_d0_average", "計算並套用平均 D0", class = "btn-primary"),
+                           h4(tags$b(ui_i18n("ddm_d0_m2_title"))),
+                           p(helpText(ui_i18n("ddm_d0_m2_help"))),
+                           numericInput("mod_ddm-cycle_years", ui_i18n("ddm_cycle_years_label"), value = 5, min = 1, max = 10, step = 0.01),
+                           actionButton("mod_ddm-calc_d0_average", ui_i18n("btn_calc_d0_avg"), class = "btn-primary"),
                            tags$br(),
                            htmlOutput("mod_ddm-txt_d0_avg_res")
                          )
@@ -17314,7 +17323,7 @@ ui <- dashboardPage(
                              column(
                                4,
                                numericInput(
-                                 "mod_ddm-ke", "折現率 r＝Ke (%)",
+                                 "mod_ddm-ke", ui_i18n("ddm_r_ke_label"),
                                  value = APP_DEFAULTS$ddm_ke, min = 0, step = 0.01
                                )
                              ),
@@ -17382,8 +17391,8 @@ ui <- dashboardPage(
                      fluidRow(
                        column(
                          width = 12,
-                         h4("敏感度分析矩陣 (Sensitivity Analysis)"),
-                         p(helpText("軸心採用目前 DDM 的 Ke 與股利永續 g；觀察鄰近組合下的每股內在價值變化。D0／二階段設定請至上方各分頁。"))
+                         h4(ui_i18n("sens_matrix_title")),
+                         p(helpText(ui_i18n("ddm_sens_help")))
                        )
                      ),
                      fluidRow(
@@ -17404,7 +17413,7 @@ ui <- dashboardPage(
                      )
               ),
               .model_param_sensitivity_box(
-                "DDM 公式參數：每股估值貢獻與敏感度",
+                ui_i18n("ddm_formula_contrib_title"),
                 "mod_ddm-param_sensitivity_table"
               )
       ),
@@ -17418,7 +17427,7 @@ ui <- dashboardPage(
               tags$div(
                 style = "display:none;",
                 numericInput(
-                  "wacc_gordon", "折現率 WACC (%)",
+                  "wacc_gordon", ui_i18n("wacc_rate_label"),
                   value = APP_DEFAULTS$wacc_gordon, step = 0.01
                 )
               ),
@@ -17502,15 +17511,15 @@ ui <- dashboardPage(
                                   h4("WACC 估算", id = "ynow_wacc_box_title"),
                                   fluidRow(
                                     column(4, numericInput(
-                                      "wacc_re", "股權成本 rₑ (%)",
+                                      "wacc_re", ui_i18n("wacc_re_label"),
                                       value = APP_DEFAULTS$wacc_re, min = 0, step = 0.01
                                     )),
                                     column(4, numericInput(
-                                      "wacc_rd", "負債成本 rᵈ (%)",
+                                      "wacc_rd", ui_i18n("wacc_rd_label"),
                                       value = APP_DEFAULTS$wacc_rd, min = 0, step = 0.01
                                     )),
                                     column(4, numericInput(
-                                      "wacc_tax", "所得稅率 T (%)",
+                                      "wacc_tax", ui_i18n("wacc_tax_label"),
                                       value = APP_DEFAULTS$wacc_tax, min = 0, max = 100, step = 0.01
                                     ))
                                   ),
@@ -17553,7 +17562,7 @@ ui <- dashboardPage(
                      fluidRow(
                        column(
                          width = 12,
-                         h4("敏感度分析矩陣 (Sensitivity Analysis)"),
+                         h4(ui_i18n("sens_matrix_title")),
                          uiOutput("dcf_sens_help")
                        )
                      ),
@@ -17575,7 +17584,7 @@ ui <- dashboardPage(
                      )
               ),
               .model_param_sensitivity_box(
-                "DCF 公式參數：每股估值貢獻與敏感度",
+                ui_i18n("dcf_formula_contrib_title"),
                 "dcf_param_sensitivity_table"
               ),
               uiOutput("txt_dcf_investment_checks")
@@ -17666,25 +17675,11 @@ ui <- dashboardPage(
         fluidRow(
           column(
             width = 12,
-            h2(tags$b("意見區 — 使用者回饋與優化建議")),
-            p(
-              "歡迎回報問題、使用體驗或功能建議。送出後會以",
-              tags$b("GitHub Issue"),
-              "系統性收集（標籤 ",
-              tags$code("feedback"),
-              "），方便追蹤與排入後續優化。"
-            ),
+            h2(tags$b(ui_i18n("feedback_page_title"))),
+            p(ui_i18n("feedback_page_lead")),
             tags$p(
               style = "color:#888;font-size:13px;",
-              "需在執行環境設定環境變數 ",
-              tags$code("YNOW_FEEDBACK_GITHUB_TOKEN"),
-              "（具 ",
-              tags$code("issues:write"),
-              " 權限的 fine-grained 或 classic PAT）。可選 ",
-              tags$code("YNOW_FEEDBACK_GITHUB_REPO"),
-              "（預設 ",
-              tags$code("lawrencekuo1118/theYNowApp"),
-              "）。"
+              ui_i18n("feedback_token_note")
             ),
             tags$hr()
           )
@@ -17694,40 +17689,40 @@ ui <- dashboardPage(
             width = 7,
             box(
               width = 12, status = "primary", solidHeader = TRUE,
-              title = tagList(icon("edit"), "回饋表單"),
+              title = tagList(icon("edit"), ui_i18n("feedback_form_title")),
               selectInput(
-                "feedback_category", "類別",
+                "feedback_category", ui_i18n("feedback_category_label"),
                 choices = c(
-                  "優化建議" = "enhancement",
-                  "問題回報" = "bug",
-                  "使用體驗" = "ux",
-                  "其他" = "other"
+                  "Suggestion" = "enhancement",
+                  "Bug report" = "bug",
+                  "Experience" = "ux",
+                  "Other" = "other"
                 ),
                 selected = "enhancement"
               ),
               textInput(
-                "feedback_title", "標題",
+                "feedback_title", ui_i18n("feedback_title_label"),
                 value = "",
-                placeholder = "簡短描述（必填）"
-              ),
+                placeholder = ui_str("feedback_title_ph", "en")
+              ) %>% tagAppendAttributes(`data-i18n-ph` = "feedback_title_ph"),
               textAreaInput(
-                "feedback_body", "內容說明",
+                "feedback_body", ui_i18n("feedback_body_label"),
                 value = "",
                 rows = 8,
-                placeholder = "請描述現象、重現步驟、期望行為，或優化想法…"
-              ),
+                placeholder = ui_str("feedback_body_ph", "en")
+              ) %>% tagAppendAttributes(`data-i18n-ph` = "feedback_body_ph"),
               textInput(
-                "feedback_contact", "聯絡方式（選填）",
+                "feedback_contact", ui_i18n("feedback_contact_label"),
                 value = "",
-                placeholder = "Email 或其他，不會公開顯示於 Issue 標題"
-              ),
+                placeholder = ui_str("feedback_contact_ph", "en")
+              ) %>% tagAppendAttributes(`data-i18n-ph` = "feedback_contact_ph"),
               checkboxInput(
                 "feedback_include_context",
-                "附上目前 Session 脈絡（Ticker／產業／App 版本）",
+                ui_i18n("feedback_include_context"),
                 value = TRUE
               ),
               actionButton(
-                "feedback_submit", "送出至 GitHub Issues",
+                "feedback_submit", ui_i18n("feedback_submit"),
                 class = "btn-success",
                 icon = icon("paper-plane")
               ),
@@ -17738,21 +17733,22 @@ ui <- dashboardPage(
             width = 5,
             box(
               width = 12, status = "info", solidHeader = TRUE,
-              title = "如何追蹤",
+              title = ui_i18n("feedback_track_title"),
               tags$ul(
-                tags$li("送出成功後會顯示 Issue 編號與連結。"),
+                tags$li(ui_i18n("feedback_track_1")),
                 tags$li(
-                  "亦可至 repo Issues 篩選標籤 ",
+                  ui_i18n("feedback_track_2"),
+                  " ",
                   tags$code("feedback"),
-                  "：",
+                  " ",
                   tags$a(
                     href = "https://github.com/lawrencekuo1118/theYNowApp/issues?q=is%3Aissue+label%3Afeedback",
                     target = "_blank",
                     rel = "noopener noreferrer",
-                    "查看已收集意見"
+                    ui_i18n("feedback_track_link")
                   )
                 ),
-                tags$li("請勿在表單貼上密碼、token 或其他機密資訊。")
+                tags$li(ui_i18n("feedback_track_3"))
               )
             )
           )

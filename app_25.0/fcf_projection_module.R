@@ -29,20 +29,20 @@ fcf_projection_module_ui <- function(id) {
              column(
                width = 7,
                selectInput(
-                 "g_growth_method", "預估營收成長率（驅動 FCFF 預測）",
+                 "g_growth_method", ui_i18n("fcf_g_method_label"),
                  choices = c(
-                   "基本面 RR×ROIC" = "fundamental",
-                   "營收 CAGR" = "cagr",
-                   "營收 YoY 平均" = "mean",
-                   "營收 YoY 中位" = "median",
-                   "營收最近一年" = "last_year",
-                   "自訂營收成長率" = "custom"
+                   "Fundamental RR×ROIC" = "fundamental",
+                   "Revenue CAGR" = "cagr",
+                   "Revenue YoY average" = "mean",
+                   "Revenue YoY median" = "median",
+                   "Revenue last year" = "last_year",
+                   "Custom revenue growth" = "custom"
                  ),
                  selected = APP_DEFAULTS$g_growth_method
                ),
                conditionalPanel(
                  condition = "input.g_growth_method == 'custom'",
-                 numericInput("custom_g", "自訂營收成長率 (%)", value = APP_DEFAULTS$custom_g)
+                 numericInput("custom_g", ui_i18n("fcf_custom_g_label"), value = APP_DEFAULTS$custom_g)
                ),
                conditionalPanel(
                  condition = "input.g_growth_method != 'custom'",
@@ -63,7 +63,7 @@ fcf_projection_module_ui <- function(id) {
                      ns("apply_g_ceiling"),
                      tags$span(
                        style = "color: #d35400; font-weight: bold;",
-                       "啟用 25% 成長率天花板防呆 (建議)"
+                       ui_i18n("fcf_g_ceiling_label")
                      ),
                      value = isTRUE(APP_DEFAULTS$apply_g_ceiling)
                    )
@@ -76,8 +76,8 @@ fcf_projection_module_ui <- function(id) {
            # 成長率選單正下方、六個輸入格正上方：參數拆解說明
            div(
              style = "background-color: #f9f9f9; padding: 15px; border-left: 4px solid #00a65a; margin: 12px 0 16px 0;",
-             h4(tags$b("自由現金流 (FCF) 參數拆解")),
-             p("您可以點選「同步按鈕」帶入最新財報，或手動微調參數來模擬不同的營運情境，藉此還原 FCF 與基本面永續成長率 (g) 的計算過程。"),
+             h4(tags$b(ui_i18n("fcf_decomp_title"))),
+             p(ui_i18n("fcf_decomp_body")),
              p(
                style = "font-size: 13px; color: #7f8c8d; margin-top: 5px; margin-bottom: 0px;",
                "※ 符號說明：NOPAT (稅後營業利益), D&A (折舊與攤銷), ΔNWC (營運資金變動), CapEx (資本支出)"

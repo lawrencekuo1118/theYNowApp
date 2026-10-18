@@ -30,9 +30,7 @@ nav_module_ui <- function(id) {
             "margin:0 0 12px 0; padding:10px 12px; background:#f8fafc;",
             "border:1px solid #e2e8f0; border-radius:8px; font-size:13px; color:#334155;"
           ),
-          tags$b("純 NAV｜帳面控股淨資產："),
-          "評估「現在家底（存量）」。",
-          tags$span(style = "color:#64748b;", "非市場法分部 SOTP；不使用 Justified P/B／SGR。")
+          ui_i18n("nav_lead")
         )
       )
     ),
@@ -50,7 +48,7 @@ nav_module_ui <- function(id) {
         uiOutput(ns("value_why")),
         fluidRow(
           div(
-            "Fair Price = NAVPS × NAV 倍數　｜　NAV = 股東權益 − 控股折價 × 投資科目",
+            ui_i18n("nav_formula"),
             style = paste(
               "font-size:16px; font-weight:bold; color:#2C3E50; text-align:center;",
               "margin-bottom:15px; padding:10px; background-color:#F2F4F4; border-radius:8px;"
@@ -67,7 +65,7 @@ nav_module_ui <- function(id) {
             uiOutput(ns("ui_nav_result")),
             br(),
             box(
-              title = "估值區間（保守／基準／樂觀）", width = 12,
+              title = ui_i18n("nav_band_title"), width = 12,
               status = "primary", solidHeader = TRUE,
               tableOutput(ns("tbl_nav_band")),
               plotOutput(ns("plt_nav_band"), height = "280px")
@@ -78,14 +76,10 @@ nav_module_ui <- function(id) {
 
       tabPanel(
         "NAV Settings", icon = icon("cogs"),
-        h4(tags$b("控股 NAV 與折價參數")),
+        h4(tags$b(ui_i18n("nav_settings_title"))),
         fluidRow(
           div(
-            paste0(
-              "NAV＝股東權益 − 控股折價×已辨識投資科目（帳面拆解）。",
-              "無獨立投資科目時 NAV＝帳面權益。",
-              "雙重股權／ADR 時與 DCF／P/B／RI 相同，以市值÷股價約當報價股。"
-            ),
+            ui_i18n("nav_settings_body"),
             style = paste(
               "font-size:14px; font-weight:bold; color:#2C3E50; text-align:left;",
               "margin-bottom:10px; padding:10px; background-color:#F8F9F9;",
@@ -95,9 +89,9 @@ nav_module_ui <- function(id) {
         ),
         uiOutput(ns("txt_shares_resolve_note")),
         fluidRow(
-          column(4, numericInput(ns("navps"), "每股淨資產 NAVPS", value = NA, step = 0.1, min = 0)),
+          column(4, numericInput(ns("navps"), ui_i18n("nav_navps_label"), value = NA, step = 0.1, min = 0)),
           column(4, numericInput(
-            ns("holdco_discount"), "控股折價 (%)",
+            ns("holdco_discount"), ui_i18n("nav_holdco_label"),
             value = (APP_DEFAULTS$nav_holdco_discount %||% 0) * 100,
             min = 0, max = 50, step = 1
           )),

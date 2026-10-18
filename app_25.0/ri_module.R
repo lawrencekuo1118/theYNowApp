@@ -210,7 +210,7 @@ ri_module_ui <- function(id) {
         fluidRow(
           div(
             id = ns("ynow_ri_formula_banner"),
-            "剩餘收益 RI = (ROE − Ke) × 期初每股帳面淨值 B0",
+            ui_i18n("ri_formula_banner"),
             style = paste(
               "font-size: 16px; font-weight: bold; color: #2C3E50; text-align: center;",
               "margin-bottom: 12px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;"
@@ -233,7 +233,7 @@ ri_module_ui <- function(id) {
             tags$p(
               id = ns("ynow_ri_calc_hint"),
               style = "margin: 8px 0 12px 0; color: #666; font-size: 12px;",
-              "請確認下方 RI Settings 參數後按「試算 RI」。搜尋後若 RI 為推薦主模型會自動試算。"
+              ui_i18n("ri_calc_hint")
             ),
             uiOutput(ns("ui_ri_source_notes")),
             uiOutput(ns("ui_ri_warnings")),
@@ -242,19 +242,19 @@ ri_module_ui <- function(id) {
         ),
         fluidRow(
           box(
-            title = "估值瀑布圖 (Valuation Waterfall)", width = 12, status = "success", solidHeader = TRUE,
+            title = ui_i18n("ri_waterfall_title"), width = 12, status = "success", solidHeader = TRUE,
             plotlyOutput(ns("plt_ri_waterfall"), height = "360px") %>% withSpinner()
           )
         ),
         fluidRow(
           box(
-            title = "每股帳面淨值 vs 剩餘收益軌跡", width = 12, status = "info", solidHeader = TRUE,
+            title = ui_i18n("ri_trajectory_title"), width = 12, status = "info", solidHeader = TRUE,
             plotOutput(ns("plt_ri_trajectory"), height = "320px")
           )
         ),
         fluidRow(
           box(
-            title = tagList(icon("table"), "預測明細"),
+            title = tagList(icon("table"), ui_i18n("ri_forecast_title")),
             width = 12, status = "primary", solidHeader = TRUE,
             collapsible = TRUE, collapsed = FALSE,
             div(

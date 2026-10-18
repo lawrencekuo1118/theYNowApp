@@ -37,7 +37,7 @@ pb_asset_module_ui <- function(id) {
                             column(width = 12,
                                    uiOutput(ns("ui_pb_result")),
                                    br(),
-                                   box(title = "估值區間（保守／基準／樂觀）", width = 12, status = "primary", solidHeader = TRUE,
+                                   box(title = ui_i18n("pb_band_title"), width = 12, status = "primary", solidHeader = TRUE,
                                        tableOutput(ns("tbl_pb_band")),
                                        plotOutput(ns("plt_pb_band"), height = "280px")
                                    )
@@ -46,18 +46,18 @@ pb_asset_module_ui <- function(id) {
                  ),
                  
                  tabPanel("P/B Settings", icon = icon("cogs"),
-                          h4(tags$b("每股帳面淨值 (BVPS) 與資產基礎")),
+                          h4(tags$b(ui_i18n("pb_bv_title"))),
                           fluidRow(
-                            div("標準公式：BVPS = Common Equity ÷ 流通股數；TBVPS 另扣除商譽／無形資產。控股 NAV＝權益 − 折價×已辨識投資科目。雙重股權／ADR 等「報價股數 ≠ 財報股數」時，與 DCF／RI／回測相同，一律以市值÷股價自動約當報價股。",
+                            div(ui_i18n("pb_bv_formula"),
                                 style = "font-size: 14px; font-weight: bold; color: #2C3E50; text-align: left; margin-bottom: 10px; padding: 10px; background-color: #F8F9F9; border-left: 4px solid #1a1a1a; border-radius: 4px;")
                           ),
                           uiOutput(ns("txt_shares_resolve_note")),
                           fluidRow(
-                            column(4, numericInput(ns("bvps"), "每股帳面淨值 BVPS", value = APP_DEFAULTS$pb_bvps, step = 0.1, min = 0)),
-                            column(4, numericInput(ns("tbvps"), "有形每股淨值 TBVPS", value = APP_DEFAULTS$pb_tbvps, step = 0.1, min = 0)),
+                            column(4, numericInput(ns("bvps"), ui_i18n("pb_bvps_label"), value = APP_DEFAULTS$pb_bvps, step = 0.1, min = 0)),
+                            column(4, numericInput(ns("tbvps"), ui_i18n("pb_tbvps_label"), value = APP_DEFAULTS$pb_tbvps, step = 0.1, min = 0)),
                             column(4,
                                    br(),
-                                   actionButton(ns("btn_sync_bv"), "從最新財報自動帶入",
+                                   actionButton(ns("btn_sync_bv"), ui_i18n("pb_sync_bv"),
                                                 icon = icon("sync"), class = "btn-sm",
                                                 style = "background-color: #1a1a1a; color: white; border: none; padding: 8px 15px; font-weight: bold; border-radius: 5px; margin-top: 5px;")
                             )
@@ -66,13 +66,13 @@ pb_asset_module_ui <- function(id) {
                             column(12, uiOutput(ns("alert_missing_bv")))
                           ),
                           fluidRow(
-                            column(4, numericInput(ns("navps"), "每股淨資產 NAVPS", value = NA, step = 0.1, min = 0)),
+                            column(4, numericInput(ns("navps"), ui_i18n("pb_navps_label"), value = NA, step = 0.1, min = 0)),
                             column(4, numericInput(
-                              ns("holdco_discount"), "控股折價 (%)",
+                              ns("holdco_discount"), ui_i18n("pb_holdco_label"),
                               value = APP_DEFAULTS$pb_holdco_discount * 100,
                               min = 0, max = 50, step = 1
                             )),
-                            column(4, helpText("NAV＝股東權益 − 折價×已辨識投資科目。無投資科目時 NAV＝帳面權益。折價 0–50%。"))
+                            column(4, helpText(ui_i18n("pb_holdco_help")))
                           ),
                           fluidRow(
                             column(12, tableOutput(ns("tbl_nav_breakdown")))
@@ -80,13 +80,13 @@ pb_asset_module_ui <- function(id) {
                           hr(style = "border-top: 1px solid #BDC3C7;"),
                           fluidRow(
                             column(6,
-                                   selectInput(ns("basis"), "估值基礎",
-                                               choices = c("帳面淨值 BVPS" = "bvps",
-                                                           "有形淨值 TBVPS" = "tbvps",
-                                                           "控股 NAVPS" = "navps"),
+                                   selectInput(ns("basis"), ui_i18n("pb_basis_label"),
+                                               choices = c("Book value BVPS" = "bvps",
+                                                           "Tangible book TBVPS" = "tbvps",
+                                                           "Holding-company NAVPS" = "navps"),
                                                selected = APP_DEFAULTS$pb_basis)
                             ),
-                            column(6, helpText("合理價＝選定基礎 × 目標本淨比。倍數請至右側「目標本淨比」分頁設定。"))
+                            column(6, helpText(ui_i18n("pb_basis_help")))
                           )
                  ),
 
