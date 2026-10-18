@@ -4131,6 +4131,28 @@ ui <- dashboardPage(
             #E67E22 88%,
             #922B21 100%
           );
+          --ynow-thermo-ocean-gradient: linear-gradient(
+            105deg,
+            #021526 0%,
+            #0C5484 16%,
+            #1565C0 32%,
+            #1AA8B8 48%,
+            #4FC3F7 62%,
+            #01579B 78%,
+            #0C5484 100%
+          );
+          --ynow-thermo-mix-gradient: linear-gradient(
+            105deg,
+            #8B1A1A 0%,
+            #E67E22 12%,
+            #FFE66D 22%,
+            #1AA8B8 38%,
+            #0C5484 50%,
+            #4FC3F7 62%,
+            #C0392B 78%,
+            #F39C12 88%,
+            #01579B 100%
+          );
           /* Model Selector｜估值模型推薦 色系（各模型頁主題；與小卡 icon 色一致） */
           --ynow-model-nav: #d81b60;
           --ynow-model-dcf: #00a65a;
@@ -4178,6 +4200,68 @@ ui <- dashboardPage(
         @keyframes ynow-htcdi-flame-flow {
           0%, 100% { background-position: 0% 50%; }
           50% { background-position: 100% 50%; }
+        }
+        @keyframes ynow-thermo-ocean-flow {
+          0%, 100% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+        }
+        @keyframes ynow-thermo-mix-flow {
+          0%, 100% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+        }
+        .ynow-thermo-tone {
+          margin-left: 8px;
+          font-weight: 700;
+          background-size: 280% 100%;
+          -webkit-background-clip: text;
+          background-clip: text;
+          color: transparent;
+          -webkit-text-fill-color: transparent;
+        }
+        .ynow-thermo-track {
+          position: relative;
+          margin-top: 6px;
+          height: 10px;
+          border-radius: 5px;
+          background-size: 280% 100%;
+        }
+        .ynow-thermo-marker {
+          position: absolute;
+          top: -2px;
+          width: 3px;
+          height: 14px;
+          margin-left: -1px;
+          border-radius: 1px;
+          background: #fff;
+          box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45);
+        }
+        .ynow-thermo-flame {
+          background-image: var(--ynow-htcdi-flame-gradient);
+          animation: ynow-htcdi-flame-flow 2.4s ease-in-out infinite;
+        }
+        .ynow-thermo-ocean {
+          background-image: var(--ynow-thermo-ocean-gradient);
+          animation: ynow-thermo-ocean-flow 3s ease-in-out infinite;
+        }
+        .ynow-thermo-mix {
+          background-image: var(--ynow-thermo-mix-gradient);
+          animation: ynow-thermo-mix-flow 3.2s ease-in-out infinite;
+        }
+        .ynow-thermo-track.ynow-thermo-empty {
+          background: #eee;
+        }
+        .ynow-thermo-tone.ynow-thermo-empty {
+          background: none;
+          color: #666;
+          -webkit-text-fill-color: #666;
+          animation: none;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .ynow-thermo-flame,
+          .ynow-thermo-ocean,
+          .ynow-thermo-mix {
+            animation: none;
+          }
         }
 
         /* Shiny toasts: keep above AdminLTE chrome; mobile must not clip / bury them */

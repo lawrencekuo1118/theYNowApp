@@ -2868,6 +2868,15 @@ server <- function(input, output, session) {
     loc <- tryCatch(ui_locale(), error = function(e) "en")
     pack <- ynow_news_now()
     score <- suppressWarnings(as.numeric(pack$score)[1])
+    tone_cls <- if (!is.finite(score)) {
+      "ynow-thermo-empty"
+    } else if (score <= -0.25) {
+      "ynow-thermo-flame"
+    } else if (score >= 0.25) {
+      "ynow-thermo-ocean"
+    } else {
+      "ynow-thermo-mix"
+    }
     tone <- if (!is.finite(score)) {
       ui_str("news_thermo_empty", loc)
     } else if (score <= -0.25) {
@@ -2878,6 +2887,8 @@ server <- function(input, output, session) {
       ui_str("news_thermo_neutral", loc)
     }
     pct <- if (is.finite(score)) round((score + 1) / 2 * 100) else 50
+    n_head <- suppressWarnings(as.integer(pack$n)[1])
+    if (!is.finite(n_head) || n_head < 0L) n_head <- 0L
     flag_lab <- c(
       management = ui_str("news_flag_management", loc),
       sec = ui_str("news_flag_sec", loc),
@@ -2892,14 +2903,15 @@ server <- function(input, output, session) {
       class = "ynow-full-only",
       style = "margin: 8px 0 14px; padding: 10px 12px; border: 1px solid #d9d9d9; border-radius: 6px;",
       tags$b(ui_str("news_thermo_title", loc)),
-      tags$span(style = "margin-left: 8px;", tone),
+      tags$span(class = paste("ynow-thermo-tone", tone_cls), tone),
       if (is.finite(score)) tags$span(style = "margin-left: 8px;", sprintf("%+.2f", score)),
       tags$div(
-        style = "margin-top: 6px; height: 8px; background: #eee; border-radius: 4px;",
-        tags$div(style = sprintf(
-          "width:%s%%; height:8px; border-radius:4px; background:%s;",
-          pct, if (!is.finite(score) || abs(score) < 0.25) "#888" else if (score > 0) "#2e7d32" else "#c62828"
-        ))
+        class = paste("ynow-thermo-track", tone_cls),
+        tags$div(class = "ynow-thermo-marker", style = sprintf("left:%s%%;", pct))
+      ),
+      if (is.finite(score) && n_head > 0L) tags$p(
+        style = "margin: 6px 0 0; color: #666; font-size: 12px;",
+        sprintf(ui_str("news_thermo_n", loc), n_head)
       ),
       tags$p(style = "margin: 6px 0 0; color: #666; font-size: 12px;", ui_str("news_thermo_method", loc)),
       if (length(flags)) tags$p(

@@ -1802,7 +1802,8 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Earlier dates stay momentum / RSI."
     ),
     news_thermo_title = "Sentiment thermometer",
-    news_thermo_method = "Headline lexicon on Yahoo Finance news (cached 24 hours). Not a FinBERT score.",
+    news_thermo_method = "Headline lexicon on every Yahoo Finance headline from the last 24 hours (cached 24 hours). Not a FinBERT score.",
+    news_thermo_n = "%d headlines in the last 24 hours",
     news_thermo_empty = "No headlines for this ticker yet.",
     news_thermo_pessimistic = "Pessimistic",
     news_thermo_neutral = "Neutral",
@@ -5320,7 +5321,8 @@ locale_for_market <- function(mode = get_market_mode()) {
       "更早的日期仍只用動能／RSI。"
     ),
     news_thermo_title = "市場溫度計",
-    news_thermo_method = "Yahoo Finance 新聞標題的金融詞彙分數（快取 24 小時）。不是 FinBERT。",
+    news_thermo_method = "近 24 小時內全部 Yahoo Finance 新聞標題的金融詞彙分數（快取 24 小時）。不是 FinBERT。",
+    news_thermo_n = "近 24 小時共 %d 則",
     news_thermo_empty = "這檔股票目前沒有標題可評。",
     news_thermo_pessimistic = "偏悲觀",
     news_thermo_neutral = "中性",

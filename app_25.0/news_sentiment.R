@@ -1,5 +1,6 @@
 # Headline news sentiment for the live ticker.
-# Score is a finance-headline lexicon in [-1, 1], cached one day.
+# Score is a finance-headline lexicon in [-1, 1] over every Yahoo headline
+# published in the last 24 hours. The bundle is cached one day.
 # It is not FinBERT. Historical backtests must not reuse today's score on past dates.
 
 if (!exists("%||%", mode = "function")) {
@@ -73,22 +74,49 @@ ynow_news_score_bundle <- function(titles) {
   )
 }
 
-ynow_news_parse_rss <- function(xml_text) {
+.ynow_news_xml_field <- function(chunk, tag) {
+  m <- regexpr(
+    paste0("<", tag, "\\b[^>]*>.*?</", tag, ">"),
+    chunk, perl = TRUE, ignore.case = TRUE
+  )
+  if (is.na(m) || m < 0L) return("")
+  raw <- regmatches(chunk, m)
+  text <- gsub("<!\\[CDATA\\[|\\]\\]>", "", raw)
+  text <- gsub("<[^>]+>", "", text)
+  text <- gsub("&amp;", "&", text, fixed = TRUE)
+  text <- gsub("&#39;", "'", text, fixed = TRUE)
+  text <- gsub("&quot;", "\"", text, fixed = TRUE)
+  trimws(text)
+}
+
+.ynow_news_parse_pubdate <- function(pub) {
+  pub <- trimws(as.character(pub %||% "")[1])
+  if (!nzchar(pub)) return(as.POSIXct(NA_real_, tz = "UTC"))
+  pub <- sub("\\s+GMT$", " +0000", pub)
+  pub <- sub("\\s+UT$", " +0000", pub)
+  parsed <- suppressWarnings(as.POSIXct(pub, format = "%a, %d %b %Y %H:%M:%S %z", tz = "UTC"))
+  if (length(parsed) != 1L || !is.finite(parsed)) as.POSIXct(NA_real_, tz = "UTC") else parsed
+}
+
+ynow_news_parse_rss <- function(xml_text, now = Sys.time(), window_sec = 86400) {
   xml <- paste(as.character(xml_text %||% ""), collapse = "\n")
-  titles <- character()
-  if (!nzchar(xml)) {
-    return(data.frame(title = character(), stringsAsFactors = FALSE))
-  }
-  m <- gregexpr("<title[^>]*>.*?</title>", xml, perl = TRUE, ignore.case = TRUE)
-  raw <- regmatches(xml, m)[[1]]
-  if (!length(raw)) {
-    return(data.frame(title = character(), stringsAsFactors = FALSE))
-  }
-  titles <- gsub("<[^>]+>", "", raw)
-  titles <- trimws(gsub("&amp;", "&", titles, fixed = TRUE))
-  titles <- titles[!grepl("^Yahoo", titles) & nzchar(titles)]
-  if (length(titles) > 12L) titles <- titles[seq_len(12L)]
-  data.frame(title = titles, stringsAsFactors = FALSE)
+  empty <- data.frame(title = character(), published = as.POSIXct(character(), tz = "UTC"), stringsAsFactors = FALSE)
+  if (!nzchar(xml)) return(empty)
+  m <- gregexpr("<item\\b[^>]*>.*?</item>", xml, perl = TRUE, ignore.case = TRUE)
+  items <- regmatches(xml, m)[[1]]
+  if (!length(items)) return(empty)
+  titles <- vapply(items, .ynow_news_xml_field, character(1), tag = "title")
+  published <- vapply(items, function(item) {
+    as.numeric(.ynow_news_parse_pubdate(.ynow_news_xml_field(item, "pubDate")))
+  }, numeric(1))
+  published <- as.POSIXct(published, origin = "1970-01-01", tz = "UTC")
+  now_utc <- as.POSIXct(as.numeric(now), origin = "1970-01-01", tz = "UTC")
+  window_sec <- suppressWarnings(as.numeric(window_sec)[1])
+  if (!is.finite(window_sec) || window_sec <= 0) window_sec <- 86400
+  age <- as.numeric(now_utc) - as.numeric(published)
+  keep <- nzchar(titles) & !grepl("^Yahoo", titles) & is.finite(age) & age >= -900 & age <= window_sec
+  if (!any(keep)) return(empty)
+  data.frame(title = titles[keep], published = published[keep], stringsAsFactors = FALSE)
 }
 
 ynow_news_fetch_rss <- function(ticker) {

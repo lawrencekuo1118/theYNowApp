@@ -32,8 +32,22 @@ check("flags", all(c("management", "sec") %in% bundle$flags))
 check("nudge capex", "capex" %in% bundle$nudges)
 check("score range", is.finite(bundle$score) && bundle$score >= -1 && bundle$score <= 1)
 
-rss <- ynow_news_parse_rss("<rss><channel><title>Yahoo Finance</title><item><title>Lawsuit filed</title></item></channel></rss>")
-check("parse skips channel title", identical(rss$title, "Lawsuit filed"))
+now <- as.POSIXct("2026-10-18 12:00:00", tz = "UTC")
+rss_xml <- paste0(
+  "<rss><channel><title>Yahoo Finance</title>",
+  "<item><title>Lawsuit filed</title><pubDate>Sat, 18 Oct 2026 10:00:00 +0000</pubDate></item>",
+  "<item><title>Old layoff headline</title><pubDate>Thu, 16 Oct 2026 10:00:00 +0000</pubDate></item>",
+  "<item><title>Undated headline</title></item>",
+  paste0(vapply(1:14, function(i) {
+    sprintf("<item><title>Fresh headline %02d</title><pubDate>Sat, 18 Oct 2026 11:%02d:00 +0000</pubDate></item>", i, i)
+  }, character(1)), collapse = ""),
+  "</channel></rss>"
+)
+rss <- ynow_news_parse_rss(rss_xml, now = now)
+check("parse skips channel title", rss$title[1] == "Lawsuit filed")
+check("drops older than 24h", !any(grepl("Old layoff", rss$title)))
+check("drops undated", !any(grepl("Undated", rss$title)))
+check("keeps every headline inside 24h", length(rss$title) == 15L)
 
 veto <- ynow_news_apply_veto(0.4, 0.8, 0.85, -0.8, TRUE)
 check("block oversold", identical(veto$veto, "block_oversold") && veto$pos_b <= 0.4)
