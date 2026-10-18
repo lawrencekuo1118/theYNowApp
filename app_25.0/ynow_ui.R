@@ -6437,9 +6437,34 @@ ui <- dashboardPage(
         body.ynow-lite .ynow-bblab {
           display: none !important;
         }
-        /* Lite Snapshot: only System defaults tab */
+        /* Lite Snapshot: only System defaults tab (when sysadmin unlocked) */
         body.ynow-lite #snapshot_report > .nav-tabs > li:has(> a[data-value="snap_audit"]),
         body.ynow-lite #snapshot_report > .nav-tabs > li:has(> a[data-value="snap_current"]) {
+          display: none !important;
+        }
+        /* Snapshot APP_DEFAULTS: same session unlock as Points → System admin */
+        body:not(.ynow-sysadmin-on) #snapshot_report > .nav-tabs > li:has(> a[data-value="snap_defaults"]) {
+          display: none !important;
+        }
+        body:not(.ynow-sysadmin-on) .ynow-snap-defaults-body {
+          display: none !important;
+        }
+        .ynow-snap-defaults-locked {
+          display: none;
+          margin: 0 0 12px 0;
+          padding: 12px 14px;
+          background: #fff8e6;
+          border: 1px solid #f0d78c;
+          border-left: 4px solid #e0a800;
+          border-radius: 4px;
+          color: #5c4a00;
+          font-size: 13px;
+          line-height: 1.45;
+        }
+        body:not(.ynow-sysadmin-on) .ynow-snap-defaults-locked {
+          display: block !important;
+        }
+        body.ynow-sysadmin-on .ynow-snap-defaults-locked {
           display: none !important;
         }
         .ynow-lite-only {
@@ -9879,6 +9904,10 @@ ui <- dashboardPage(
             if (snapTabDefaults && s.snapshot_tab_defaults) snapTabDefaults.textContent = s.snapshot_tab_defaults;
             var snapDefaultsHelp = document.getElementById('ynow_snapshot_defaults_help');
             if (snapDefaultsHelp && s.snapshot_defaults_help) snapDefaultsHelp.textContent = s.snapshot_defaults_help;
+            var snapDefaultsLocked = document.getElementById('ynow_snapshot_defaults_locked_msg');
+            if (snapDefaultsLocked && s.snapshot_defaults_locked) {
+              snapDefaultsLocked.textContent = s.snapshot_defaults_locked;
+            }
             var dlSnapBtn = document.getElementById('ynow_download_snapshot_btn');
             if (dlSnapBtn && s.download_snapshot_btn) dlSnapBtn.textContent = s.download_snapshot_btn;
             var dlRestoreBtn = document.getElementById('ynow_download_param_restore_btn');
@@ -10387,8 +10416,27 @@ ui <- dashboardPage(
             });
             addHandler('ynowSysadminMode', function (payload) {
               if (!payload) return;
-              if (payload.on) document.body.classList.add('ynow-sysadmin-on');
-              else document.body.classList.remove('ynow-sysadmin-on');
+              if (payload.on) {
+                document.body.classList.add('ynow-sysadmin-on');
+                try {
+                  if (window.ensureLiteSnapshotDefaultsTab) window.ensureLiteSnapshotDefaultsTab();
+                } catch (eOn) {}
+              } else {
+                document.body.classList.remove('ynow-sysadmin-on');
+                try {
+                  var activeSnap = document.querySelector('#snapshot_report .nav-tabs li.active a');
+                  var onDefaults = activeSnap &&
+                    activeSnap.getAttribute('data-value') === 'snap_defaults';
+                  if (onDefaults) {
+                    var fallback = document.querySelector('#snapshot_report a[data-value=\"snap_current\"]') ||
+                      document.querySelector('#snapshot_report a[data-value=\"snap_audit\"]');
+                    if (fallback) {
+                      if (window.jQuery) window.jQuery(fallback).tab('show');
+                      else if (typeof fallback.click === 'function') fallback.click();
+                    }
+                  }
+                } catch (eOff) {}
+              }
             });
             window.ynowApplyAccessLocks = function () {
               var ids = window.__ynowAccessLocks || [];
@@ -10940,6 +10988,8 @@ ui <- dashboardPage(
             }
             function ensureLiteSnapshotDefaultsTab() {
               if (!document.body.classList.contains('ynow-lite')) return;
+              /* APP_DEFAULTS only after System admin unlock */
+              if (!document.body.classList.contains('ynow-sysadmin-on')) return;
               var a = document.querySelector('#snapshot_report a[data-value=\"snap_defaults\"]');
               if (!a) return;
               try {
@@ -15860,16 +15910,29 @@ ui <- dashboardPage(
           class = "help-block ynow-full-only",
           paste0(
             "Three tabs: manual adjustments vs the post-Search baseline (with annotated PDF); ",
-            "current live parameters (download / upload restore CSV); and APP_DEFAULTS."
+            "current live parameters (download / upload restore CSV); and APP_DEFAULTS ",
+            "(visible only after System admin unlock)."
           )
         ),
         tags$p(
           id = "ynow_snapshot_page_help_lite",
           class = "help-block ynow-lite-only",
           paste0(
-            "Lite shows only System defaults for parameters you can set in Lite ",
-            "(Dashboard industry / currency / default ticker, Blue Chip ranking and Clustering). ",
-            "Manual audit and live snapshot restore stay in Full mode."
+            "Lite can show System defaults (APP_DEFAULTS) for parameters you can set in Lite ",
+            "(Dashboard industry / currency / default ticker, Blue Chip ranking and Clustering) ",
+            "after System admin unlock. Manual audit and live snapshot restore stay in Full mode."
+          )
+        ),
+        tags$div(
+          id = "ynow_snapshot_defaults_locked",
+          class = "ynow-snap-defaults-locked",
+          tags$span(
+            id = "ynow_snapshot_defaults_locked_msg",
+            paste0(
+              "System defaults (APP_DEFAULTS) require System admin unlock ",
+              "(same session as Points → System admin). ",
+              "After Exit system admin, this tab locks again."
+            )
           )
         ),
         tabBox(
@@ -16035,33 +16098,36 @@ ui <- dashboardPage(
             ),
             value = "snap_defaults",
             div(
-              style = "display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:10px; flex-wrap:wrap;",
-              tags$span(
-                id = "ynow_snapshot_defaults_help",
-                class = "ynow-full-only",
-                style = "font-size:12.5px; color:#666; line-height:1.45;",
-                paste0(
-                  "Defaults written at App start (including items estimated from the default industry / Rf). ",
-                  "May differ from Current App Parameter Snapshot; fields can still be overridden on each page."
+              class = "ynow-snap-defaults-body",
+              div(
+                style = "display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:10px; flex-wrap:wrap;",
+                tags$span(
+                  id = "ynow_snapshot_defaults_help",
+                  class = "ynow-full-only",
+                  style = "font-size:12.5px; color:#666; line-height:1.45;",
+                  paste0(
+                    "Defaults written at App start (including items estimated from the default industry / Rf). ",
+                    "May differ from Current App Parameter Snapshot; fields can still be overridden on each page."
+                  )
+                ),
+                tags$span(
+                  id = "ynow_snapshot_defaults_help_lite",
+                  class = "ynow-lite-only",
+                  style = "font-size:12.5px; color:#666; line-height:1.45;",
+                  paste0(
+                    "Only parameters Lite can set (Dashboard industry / currency / default ticker, ",
+                    "plus Blue Chip ranking and Clustering). Smart Analysis engine seeds and Full-only ",
+                    "model parameters are hidden here."
+                  )
+                ),
+                downloadButton(
+                  "download_defaults",
+                  tags$span(id = "ynow_download_defaults_btn", "Download Defaults CSV"),
+                  icon = icon("download")
                 )
               ),
-              tags$span(
-                id = "ynow_snapshot_defaults_help_lite",
-                class = "ynow-lite-only",
-                style = "font-size:12.5px; color:#666; line-height:1.45;",
-                paste0(
-                  "Only parameters Lite can set (Dashboard industry / currency / default ticker, ",
-                  "plus Blue Chip ranking and Clustering). Smart Analysis engine seeds and Full-only ",
-                  "model parameters are hidden here."
-                )
-              ),
-              downloadButton(
-                "download_defaults",
-                tags$span(id = "ynow_download_defaults_btn", "Download Defaults CSV"),
-                icon = icon("download")
-              )
-            ),
-            dataTableOutput("defaults_table")
+              dataTableOutput("defaults_table")
+            )
           )
         )
       ),
