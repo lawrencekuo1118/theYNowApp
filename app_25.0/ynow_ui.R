@@ -3987,6 +3987,28 @@ ui <- dashboardPage(
                  id = "ynow_download_report_quota",
                  class = "ynow-download-report-quota",
                  "Sign-in required. Three free downloads each Asia/Taipei day; each extra download costs 10 FYN."
+               ),
+               tags$div(
+                 id = "ynow_pdf_guest_gate",
+                 class = "ynow-pdf-guest-gate",
+                 if (exists("ynow_gate_promo_faq_ui", mode = "function")) {
+                   ynow_gate_promo_faq_ui(
+                     feature = "pdf",
+                     include_faq = TRUE,
+                     compact = TRUE
+                   )
+                 } else {
+                   NULL
+                 },
+                 actionButton(
+                   "ynow_pdf_gate_signin",
+                   label = tags$span(
+                     id = "ynow_pdf_gate_signin_label",
+                     class = "ynow-member-gate-signin-label",
+                     "Sign in"
+                   ),
+                   class = "btn-primary ynow-auth-open ynow-pdf-gate-signin"
+                 )
                )
            )
     ),
@@ -4865,6 +4887,215 @@ ui <- dashboardPage(
           color: var(--ynow-gate-ink-soft, #333333);
           font-size: 13px;
           line-height: 1.45;
+        }
+        /* Sign-in gate promo + member FAQ (logo mono; mobile-scannable) */
+        .ynow-gate-extras {
+          margin: 12px 0 16px 0;
+        }
+        .ynow-gate-promo {
+          margin: 0 0 10px 0;
+          padding: 0;
+          border: 1px solid var(--ynow-gate-border, #d0d0d0);
+          border-radius: 4px;
+          overflow: hidden;
+          background:
+            repeating-linear-gradient(
+              -45deg,
+              #ffffff 0,
+              #ffffff 6px,
+              #f5f5f5 6px,
+              #f5f5f5 12px
+            );
+        }
+        .ynow-gate-promo__banner {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 10px 12px;
+          background: var(--ynow-gate-accent, #1a1a1a);
+          color: #fff;
+        }
+        .ynow-gate-promo__badge {
+          display: inline-block;
+          flex: 0 0 auto;
+          padding: 2px 8px;
+          border: 1px solid #fff;
+          border-radius: 2px;
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          line-height: 1.4;
+        }
+        .ynow-gate-promo-kicker {
+          font-size: 13px;
+          font-weight: 600;
+          letter-spacing: 0.02em;
+          line-height: 1.35;
+        }
+        .ynow-gate-promo-lead {
+          margin: 10px 12px 6px 12px;
+          font-size: 13px;
+          line-height: 1.45;
+          color: var(--ynow-gate-ink-soft, #333333);
+        }
+        .ynow-gate-promo__list {
+          margin: 0 12px 12px 12px;
+          padding: 0 0 0 18px;
+          color: var(--ynow-gate-ink-soft, #333333);
+          font-size: 12.5px;
+          line-height: 1.45;
+        }
+        .ynow-gate-promo__list > li {
+          margin: 0 0 4px 0;
+        }
+        .ynow-gate-promo__list > li::marker {
+          color: var(--ynow-gate-accent, #1a1a1a);
+        }
+        .ynow-gate-demo {
+          margin: 0 0 10px 0;
+          padding: 8px;
+          border: 1px solid var(--ynow-gate-border, #d0d0d0);
+          border-radius: 4px;
+          background: #fff;
+        }
+        .ynow-gate-demo-caption {
+          margin: 0 0 6px 0;
+          font-size: 12px;
+          font-weight: 600;
+          color: var(--ynow-gate-ink, #1a1a1a);
+        }
+        .ynow-gate-demo-video {
+          display: block;
+          width: 100%;
+          max-width: 100%;
+          height: auto;
+          max-height: 220px;
+          background: #1a1a1a;
+          border: 1px solid #000;
+          border-radius: 2px;
+        }
+        .ynow-gate-extras--compact .ynow-gate-demo-video {
+          max-height: 140px;
+        }
+        .ynow-gate-extras--compact .ynow-gate-promo-lead,
+        .ynow-gate-extras--compact .ynow-gate-promo__list {
+          font-size: 11.5px;
+        }
+        /* Sidebar PDF guest promo: guests only when auth feature is on */
+        .ynow-pdf-guest-gate {
+          display: none;
+          margin-top: 10px;
+          padding: 8px;
+          border: 1px solid #666;
+          border-radius: 4px;
+          background: #111;
+          color: #e8e8e8;
+        }
+        body.ynow-auth-feature:not(.ynow-authed) .ynow-pdf-guest-gate {
+          display: block;
+        }
+        .ynow-pdf-guest-gate .ynow-gate-promo {
+          background: repeating-linear-gradient(
+            -45deg,
+            #1a1a1a 0,
+            #1a1a1a 6px,
+            #222 6px,
+            #222 12px
+          );
+          border-color: #666;
+        }
+        .ynow-pdf-guest-gate .ynow-gate-promo-lead,
+        .ynow-pdf-guest-gate .ynow-gate-promo__list,
+        .ynow-pdf-guest-gate .ynow-gate-demo-caption,
+        .ynow-pdf-guest-gate .ynow-gate-faq__summary,
+        .ynow-pdf-guest-gate .ynow-gate-faq-q,
+        .ynow-pdf-guest-gate .ynow-gate-faq-a {
+          color: #ddd;
+        }
+        .ynow-pdf-guest-gate .ynow-gate-faq {
+          background: #1a1a1a;
+          border-color: #666;
+        }
+        .ynow-pdf-guest-gate .ynow-gate-demo {
+          background: #1a1a1a;
+          border-color: #666;
+        }
+        .ynow-pdf-guest-gate .ynow-pdf-gate-signin,
+        .ynow-pdf-guest-gate .btn-primary {
+          width: 100%;
+          margin-top: 8px;
+          background-color: #fff !important;
+          border-color: #fff !important;
+          color: #1a1a1a !important;
+        }
+        .ynow-snap-defaults-locked .ynow-gate-extras {
+          margin-top: 10px;
+        }
+        .ynow-gate-faq {
+          margin: 0;
+          border: 1px solid var(--ynow-gate-border, #d0d0d0);
+          border-left: 4px solid var(--ynow-gate-accent, #1a1a1a);
+          border-radius: 4px;
+          background: #fff;
+        }
+        .ynow-gate-faq > .ynow-gate-faq__summary {
+          list-style: none;
+          cursor: pointer;
+          padding: 10px 12px;
+          font-size: 13px;
+          font-weight: 600;
+          color: var(--ynow-gate-ink, #1a1a1a);
+          user-select: none;
+        }
+        .ynow-gate-faq > .ynow-gate-faq__summary::-webkit-details-marker {
+          display: none;
+        }
+        .ynow-gate-faq > .ynow-gate-faq__summary::marker {
+          content: "";
+        }
+        .ynow-gate-faq > .ynow-gate-faq__summary::before {
+          content: "+";
+          display: inline-block;
+          width: 1.1em;
+          margin-right: 6px;
+          font-weight: 700;
+          color: var(--ynow-gate-accent, #1a1a1a);
+        }
+        .ynow-gate-faq[open] > .ynow-gate-faq__summary::before {
+          content: "–";
+        }
+        .ynow-gate-faq__body {
+          padding: 0 12px 10px 12px;
+          border-top: 1px solid var(--ynow-gate-border, #d0d0d0);
+        }
+        .ynow-gate-faq-item {
+          margin: 10px 0 0 0;
+        }
+        .ynow-gate-faq-item > .ynow-gate-faq-q {
+          margin: 0 0 2px 0;
+          font-size: 12.5px;
+          font-weight: 600;
+          color: var(--ynow-gate-ink, #1a1a1a);
+        }
+        .ynow-gate-faq-item > .ynow-gate-faq-a {
+          margin: 0;
+          font-size: 12.5px;
+          line-height: 1.45;
+          color: var(--ynow-gate-ink-soft, #333333);
+        }
+        @media (max-width: 767px) {
+          .box.ynow-member-gate,
+          .box.ynow-auth-gate,
+          .box.ynow-gate-box {
+            max-width: 100% !important;
+            margin-left: 8px !important;
+            margin-right: 8px !important;
+          }
+          .ynow-gate-promo-lead,
+          .ynow-gate-promo__list,
+          .ynow-gate-faq-item > .ynow-gate-faq-a {
+            font-size: 12px;
+          }
         }
         .box.ynow-gate-box,
         .box.ynow-member-gate,
@@ -11023,14 +11254,84 @@ ui <- dashboardPage(
               set('ynow_pts_box_title', payload.pts_box_title);
               set('ynow_pts_ledger_intro', payload.pts_ledger_intro);
               set('ynow_pa_gate_title', payload.pa_gate_title);
-              set('ynow_pa_gate_body', payload.pa_gate_body);
               set('ynow_pa_gate_signin_label', payload.sign_in);
               set('ynow_lab_gate_title', payload.pa_gate_title);
-              set('ynow_lab_gate_body', payload.pa_gate_body);
               set('ynow_lab_gate_signin_label', payload.sign_in);
               set('ynow_chk_gate_title', payload.pa_gate_title);
-              set('ynow_chk_gate_body', payload.pa_gate_body);
               set('ynow_chk_gate_signin_label', payload.sign_in);
+              set('ynow_pdf_gate_signin_label', payload.sign_in);
+              setAll('.ynow-auth-gate-title', payload.pa_gate_title);
+              setAll('.ynow-member-gate-signin-label', payload.sign_in);
+              var setFeature = function (feat, map) {
+                if (!feat || !map) return;
+                var roots = document.querySelectorAll('[data-ynow-gate-feature=\"' + feat + '\"]');
+                for (var ri = 0; ri < roots.length; ri++) {
+                  var root = roots[ri];
+                  var applySel = function (sel, val) {
+                    if (!val) return;
+                    var nodes = root.querySelectorAll(sel);
+                    for (var ni = 0; ni < nodes.length; ni++) nodes[ni].textContent = val;
+                  };
+                  applySel('.ynow-gate-body', map.body);
+                  applySel('.ynow-gate-promo-kicker', map.kicker);
+                  applySel('.ynow-gate-promo-lead', map.lead);
+                  applySel('.ynow-gate-promo-b1', map.b1);
+                  applySel('.ynow-gate-promo-b2', map.b2);
+                  applySel('.ynow-gate-promo-b3', map.b3);
+                  applySel('.ynow-gate-demo-caption', map.demo_caption);
+                }
+                // Body ids on member gates live outside data-feature children sometimes —
+                // also set known gate body element ids.
+                if (feat === 'lab') set('ynow_lab_gate_body', map.body);
+                if (feat === 'checklist') set('ynow_chk_gate_body', map.body);
+                if (feat === 'alerts') set('ynow_pa_gate_body', map.body);
+                if (feat === 'snap_defaults') set('ynow_snapshot_defaults_locked_msg', map.body);
+              };
+              setFeature('lab', {
+                body: payload.gate_lab_body, kicker: payload.gate_lab_kicker,
+                lead: payload.gate_lab_lead, b1: payload.gate_lab_b1,
+                b2: payload.gate_lab_b2, b3: payload.gate_lab_b3,
+                demo_caption: payload.gate_lab_demo_caption
+              });
+              setFeature('checklist', {
+                body: payload.gate_checklist_body, kicker: payload.gate_checklist_kicker,
+                lead: payload.gate_checklist_lead, b1: payload.gate_checklist_b1,
+                b2: payload.gate_checklist_b2, b3: payload.gate_checklist_b3,
+                demo_caption: payload.gate_checklist_demo_caption
+              });
+              setFeature('alerts', {
+                body: payload.gate_alerts_body, kicker: payload.gate_alerts_kicker,
+                lead: payload.gate_alerts_lead, b1: payload.gate_alerts_b1,
+                b2: payload.gate_alerts_b2, b3: payload.gate_alerts_b3,
+                demo_caption: payload.gate_alerts_demo_caption
+              });
+              setFeature('account', {
+                body: payload.gate_account_body, kicker: payload.gate_account_kicker,
+                lead: payload.gate_account_lead, b1: payload.gate_account_b1,
+                b2: payload.gate_account_b2, b3: payload.gate_account_b3,
+                demo_caption: payload.gate_account_demo_caption
+              });
+              setFeature('pdf', {
+                body: payload.gate_pdf_body, kicker: payload.gate_pdf_kicker,
+                lead: payload.gate_pdf_lead, b1: payload.gate_pdf_b1,
+                b2: payload.gate_pdf_b2, b3: payload.gate_pdf_b3,
+                demo_caption: payload.gate_pdf_demo_caption
+              });
+              setFeature('snap_defaults', {
+                body: payload.gate_snap_defaults_body, kicker: payload.gate_snap_defaults_kicker,
+                lead: payload.gate_snap_defaults_lead, b1: payload.gate_snap_defaults_b1,
+                b2: payload.gate_snap_defaults_b2, b3: payload.gate_snap_defaults_b3,
+                demo_caption: payload.gate_snap_defaults_demo_caption
+              });
+              setAll('.ynow-gate-faq-title', payload.gate_faq_title);
+              setAll('.ynow-gate-faq-q1', payload.gate_faq_q1);
+              setAll('.ynow-gate-faq-a1', payload.gate_faq_a1);
+              setAll('.ynow-gate-faq-q2', payload.gate_faq_q2);
+              setAll('.ynow-gate-faq-a2', payload.gate_faq_a2);
+              setAll('.ynow-gate-faq-q3', payload.gate_faq_q3);
+              setAll('.ynow-gate-faq-a3', payload.gate_faq_a3);
+              setAll('.ynow-gate-faq-q4', payload.gate_faq_q4);
+              setAll('.ynow-gate-faq-a4', payload.gate_faq_a4);
             });
             addHandler('ynowPtsBanner', function (payload) {
               if (!payload) return;
@@ -12058,7 +12359,7 @@ ui <- dashboardPage(
               var t = ev.target;
               if (!t || !t.closest) return;
               var hit = t.closest(
-                'a.ynow-auth-open, .ynow-auth-open, #ynow_pa_gate_signin, #ynow_pa_gate_signin_label'
+                'a.ynow-auth-open, .ynow-auth-open, #ynow_pa_gate_signin, #ynow_pa_gate_signin_label, #ynow_lab_gate_signin, #ynow_lab_gate_signin_label, #ynow_chk_gate_signin, #ynow_chk_gate_signin_label, #ynow_pdf_gate_signin, #ynow_pdf_gate_signin_label'
               );
               if (!hit) return;
               var authed = ynowIsAuthed();
@@ -16827,14 +17128,25 @@ ui <- dashboardPage(
         tags$div(
           id = "ynow_snapshot_defaults_locked",
           class = "ynow-snap-defaults-locked ynow-gate-callout",
+          `data-ynow-gate-feature` = "snap_defaults",
           tags$span(
             id = "ynow_snapshot_defaults_locked_msg",
+            class = "ynow-gate-body",
             paste0(
               "System defaults (APP_DEFAULTS) require System admin unlock ",
               "(same session as Points → System admin). ",
               "After Exit system admin, this tab locks again."
             )
-          )
+          ),
+          if (exists("ynow_gate_promo_faq_ui", mode = "function")) {
+            ynow_gate_promo_faq_ui(
+              feature = "snap_defaults",
+              include_faq = FALSE,
+              compact = FALSE
+            )
+          } else {
+            NULL
+          }
         ),
         tabBox(
           # No right-side chrome title (page h2 already says Snapshot; avoids wrong remaps)
@@ -17856,7 +18168,8 @@ ui <- dashboardPage(
             "ynow_lab_guest_gate",
             "ynow_lab_gate_title",
             "ynow_lab_gate_body",
-            "ynow_lab_gate_signin"
+            "ynow_lab_gate_signin",
+            feature = "lab"
           )
         },
         tags$div(
