@@ -461,8 +461,6 @@ server <- function(input, output, session) {
   .ynow_pdf_authorize <- function(file) {
     auth_on <- exists("ynow_auth_enabled", mode = "function") && isTRUE(ynow_auth_enabled())
     claim_ok <- exists("ynow_pdf_claim", mode = "function")
-    logged <- tryCatch(isTRUE(ynow_auth$is_logged_in()), error = function(e) NA)
-    lite <- tryCatch(isTRUE(isolate(lite_mode())), error = function(e) NA)
     uid <- .ynow_access_subject_id()
     if (!auth_on || !claim_ok) {
       return(list(ok = TRUE, kind = "bypass"))
