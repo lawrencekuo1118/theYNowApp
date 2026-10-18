@@ -372,6 +372,7 @@ decision_checklist_tab_ui <- function() {
     tags$div(
       id = "ynow_chk_body",
       class = "ynow-member-body",
+      `data-ynow-lock` = "section:checklist_body",
       uiOutput("ynow_lazy_host_decision_checklist")
     )
   )

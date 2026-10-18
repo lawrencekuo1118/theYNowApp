@@ -1665,6 +1665,8 @@ beta_rolling_section_ui <- function() {
 }
 
 .shared_bridge_box <- function() {
+  tags$div(
+    `data-ynow-lock` = "section:shared_bridge",
   box(
     title = tagList(
       icon("link"),
@@ -1694,6 +1696,7 @@ beta_rolling_section_ui <- function() {
       icon("sync"),
       tags$span(id = "ynow_shared_bridge_reset", "從財報重新帶入")
     )
+  )
   )
 }
 
@@ -1771,6 +1774,8 @@ beta_rolling_section_ui <- function() {
 }
 
 .dcf_two_stage_params_box <- function() {
+  tags$div(
+    `data-ynow-lock` = "section:dcf_two_stage",
   conditionalPanel(
     condition = "input.dcf_mode == 'two_stage'",
     box(
@@ -1798,6 +1803,7 @@ beta_rolling_section_ui <- function() {
         helpText("FCFE 模式以 Ke（WACC 分頁之 rₑ／CAPM）折現，不再分 WACC1／WACC2。兩階段成長率仍適用；終值約束 g < Ke。")
       )
     )
+  )
   )
 }
 
@@ -4355,6 +4361,24 @@ ui <- dashboardPage(
           font-size: 12px;
         }
         /* Sysadmin portal: after login hide all login/intro chrome */
+        .sidebar-menu li.ynow-access-locked { display: none !important; }
+        .form-group.ynow-access-locked,
+        .shiny-input-container.ynow-access-locked,
+        [data-ynow-lock].ynow-access-locked,
+        a.btn.ynow-access-locked,
+        button.ynow-access-locked { display: none !important; }
+        .tab-pane.ynow-access-locked-pane > * { display: none !important; }
+        .tab-pane.ynow-access-locked-pane::before {
+          content: attr(data-lock-note);
+          display: block;
+          margin: 18px;
+          padding: 14px 16px;
+          border: 1px solid #e0c36a;
+          background: #fff8e6;
+          color: #6b5420;
+          border-radius: 6px;
+          white-space: normal;
+        }
         body.ynow-sysadmin-on .ynow-sysadmin-login-chrome,
         body.ynow-sysadmin-on .ynow-sysadmin-login-row {
           display: none !important;
@@ -10366,6 +10390,58 @@ ui <- dashboardPage(
               if (payload.on) document.body.classList.add('ynow-sysadmin-on');
               else document.body.classList.remove('ynow-sysadmin-on');
             });
+            window.ynowApplyAccessLocks = function () {
+              var ids = window.__ynowAccessLocks || [];
+              var note = window.__ynowAccessLockNote || '';
+              var set = {};
+              ids.forEach(function (id) { set[String(id)] = true; });
+              document.querySelectorAll('.ynow-access-locked').forEach(function (el) {
+                el.classList.remove('ynow-access-locked');
+              });
+              document.querySelectorAll('.ynow-access-locked-pane').forEach(function (el) {
+                el.classList.remove('ynow-access-locked-pane');
+                el.removeAttribute('data-lock-note');
+              });
+              Object.keys(set).forEach(function (id) {
+                if (id.indexOf('tab:') === 0) {
+                  var tab = id.slice(4);
+                  document.querySelectorAll('a[data-value]').forEach(function (a) {
+                    if (a.getAttribute('data-value') !== tab) return;
+                    var li = a.closest('li');
+                    if (li) li.classList.add('ynow-access-locked');
+                  });
+                  var pane = document.getElementById('shiny-tab-' + tab);
+                  if (pane) {
+                    pane.classList.add('ynow-access-locked-pane');
+                    pane.setAttribute('data-lock-note', note);
+                  }
+                } else if (id.indexOf('input:') === 0) {
+                  var inp = document.getElementById(id.slice(6));
+                  var fg = inp && (inp.closest('.form-group') || inp.closest('.shiny-input-container'));
+                  if (fg) fg.classList.add('ynow-access-locked');
+                } else if (id.indexOf('report:') === 0) {
+                  var btn = document.getElementById(id.slice(7));
+                  if (btn) btn.classList.add('ynow-access-locked');
+                } else if (id.indexOf('section:') === 0) {
+                  document.querySelectorAll('[data-ynow-lock]').forEach(function (el) {
+                    if (el.getAttribute('data-ynow-lock') !== id) return;
+                    el.classList.add('ynow-access-locked');
+                  });
+                }
+              });
+            };
+            addHandler('ynowAccessLocks', function (payload) {
+              if (!payload) return;
+              window.__ynowAccessLocks = payload.ids || [];
+              window.__ynowAccessLockNote = payload.note || '';
+              if (window.ynowApplyAccessLocks) window.ynowApplyAccessLocks();
+            });
+            document.addEventListener('shiny:inputchanged', function () {
+              if (window.ynowApplyAccessLocks) window.ynowApplyAccessLocks();
+            });
+            document.addEventListener('shiny:value', function () {
+              if (window.ynowApplyAccessLocks) window.ynowApplyAccessLocks();
+            });
             (function bindViewAsChromeExit() {
               var btn = document.getElementById('ynow_viewas_chrome_exit');
               if (!btn || btn.__ynowBound) return;
@@ -15903,6 +15979,7 @@ ui <- dashboardPage(
             ),
             tags$div(
               class = "ynow-param-restore-box",
+              `data-ynow-lock` = "section:snapshot_restore",
               style = "margin:0 0 14px 0; padding:12px 14px; background:#f7f9fc; border:1px solid #e2e8f0; border-radius:6px; border-left:4px solid #3c8dbc;",
               tags$h4(
                 id = "ynow_param_restore_title",
@@ -16817,6 +16894,7 @@ ui <- dashboardPage(
         tags$div(
           id = "ynow_lab_body",
           class = "ynow-member-body",
+          `data-ynow-lock` = "section:backtest_body",
           uiOutput("ynow_lazy_host_lab_notes")
         )
       ),

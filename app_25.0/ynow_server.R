@@ -390,6 +390,52 @@ server <- function(input, output, session) {
   # Sysadmin view-as: list(public_id=, user_id=, role=) or NULL. No PII.
   ynow_pts_view_as <- reactiveVal(NULL)
 
+  .ynow_access_subject_id <- function() {
+    va <- tryCatch(isolate(ynow_pts_view_as()), error = function(e) NULL)
+    if (is.list(va)) {
+      vid <- as.character(va$user_id %||% "")[1]
+      if (nzchar(vid)) return(vid)
+    }
+    u <- tryCatch(isolate(ynow_auth$user()), error = function(e) NULL)
+    if (is.function(u)) u <- tryCatch(u(), error = function(e) NULL)
+    if (!is.list(u)) return("")
+    as.character(u$id %||% "")[1]
+  }
+
+  .ynow_push_access_locks <- function() {
+    if (!exists("ynow_access_locked_ids", mode = "function")) return(invisible(NULL))
+    uid <- .ynow_access_subject_id()
+    ids <- if (nzchar(uid)) ynow_access_locked_ids(uid) else character()
+    loc <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "en")
+    note <- tryCatch(
+      ui_str("access_pane_note", loc),
+      error = function(e) "This page is locked for the signed-in account."
+    )
+    session$sendCustomMessage("ynowAccessLocks", list(ids = as.list(ids), note = note))
+    invisible(ids)
+  }
+
+  .ynow_access_deny_download <- function(item_id, file) {
+    if (!exists("ynow_access_is_locked", mode = "function")) return(FALSE)
+    uid <- .ynow_access_subject_id()
+    if (!nzchar(uid) || !isTRUE(ynow_access_is_locked(uid, item_id))) return(FALSE)
+    loc <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "en")
+    msg <- tryCatch(
+      ui_str("access_denied_report", loc),
+      error = function(e) "This report is locked for the signed-in account."
+    )
+    tryCatch(showNotification(msg, type = "warning", duration = 6), error = function(e) NULL)
+    writeLines(msg, file, useBytes = TRUE)
+    TRUE
+  }
+
+  observe({
+    tryCatch(ynow_auth$is_logged_in(), error = function(e) FALSE)
+    tryCatch(ynow_auth$user(), error = function(e) NULL)
+    ynow_pts_view_as()
+    .ynow_push_access_locks()
+  })
+
   #' Effective points user: view-as uuid when active, else signed-in account.
   .ynow_pts_effective_user <- function() {
     va <- tryCatch(ynow_pts_view_as(), error = function(e) NULL)
@@ -1032,9 +1078,104 @@ server <- function(input, output, session) {
           ),
           class = "btn-warning"
         )
-      )
+      ),
+      tags$hr(),
+      tags$h4(.lab("access_lock_title", "Item locks")),
+      tags$p(
+        class = "text-muted",
+        style = "font-size:12.5px;",
+        .lab(
+          "access_lock_help",
+          "Lock or unlock a tab, a section, a numeric input, or a report for the selected user."
+        )
+      ),
+      {
+        cat_df <- if (exists("ynow_access_catalog", mode = "function")) {
+          ynow_access_catalog()
+        } else {
+          data.frame(id = character(), kind = character(), label_en = character(), label_zh = character())
+        }
+        item_labels <- if (nrow(cat_df)) {
+          paste0(
+            vapply(cat_df$kind, function(k) {
+              if (exists("ynow_access_kind_label", mode = "function")) {
+                ynow_access_kind_label(k, loc)
+              } else {
+                k
+              }
+            }, character(1)),
+            " · ",
+            if (identical(loc, "zh-TW")) cat_df$label_zh else cat_df$label_en
+          )
+        } else {
+          character()
+        }
+        item_choices <- if (length(item_labels)) stats::setNames(cat_df$id, item_labels) else character()
+        locked_ids <- if (nzchar(sel) && exists("ynow_access_locked_ids", mode = "function")) {
+          ynow_access_locked_ids(sel)
+        } else {
+          character()
+        }
+        locked_txt <- if (!length(locked_ids)) {
+          .lab("access_none", "Nothing is locked for this user.")
+        } else {
+          paste(vapply(locked_ids, function(id) {
+            if (exists("ynow_access_label", mode = "function")) ynow_access_label(id, loc) else id
+          }, character(1)), collapse = "、")
+        }
+        tagList(
+          selectInput(
+            "ynow_access_item",
+            .lab("access_lock_item", "Item"),
+            choices = item_choices
+          ),
+          tags$div(
+            style = "margin-top:4px; display:flex; flex-wrap:wrap; gap:8px; align-items:center;",
+            actionButton(
+              "ynow_access_lock",
+              .lab("access_lock_btn", "Lock item"),
+              class = "btn-warning"
+            ),
+            actionButton(
+              "ynow_access_unlock",
+              .lab("access_unlock_btn", "Unlock item"),
+              class = "btn-default"
+            )
+          ),
+          tags$p(
+            style = "margin-top:10px; font-size:12.5px;",
+            tags$b(.lab("access_locked_now", "Currently locked")),
+            ": ",
+            locked_txt
+          )
+        )
+      }
     )
   })
+
+  .ynow_access_admin_set <- function(locked) {
+    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+    .lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
+    if (!isTRUE(ynow_pts_sysadmin_on())) {
+      showNotification(.lab("pts_admin_denied", "Only admins can add points."), type = "error")
+      return()
+    }
+    if (!exists("ynow_access_set", mode = "function")) return()
+    uid <- as.character(input$ynow_pts_sysadmin_user %||% "")[1]
+    item <- as.character(input$ynow_access_item %||% "")[1]
+    res <- ynow_access_set(uid, item, locked = isTRUE(locked))
+    showNotification(
+      .lab(res$message_key %||% "access_bad_item", "Choose an item from the catalog."),
+      type = if (isTRUE(res$ok)) "message" else "warning"
+    )
+    if (isTRUE(res$ok)) {
+      ynow_pts_sysadmin_tick(isolate(ynow_pts_sysadmin_tick()) + 1L)
+      .ynow_push_access_locks()
+    }
+  }
+
+  observeEvent(input$ynow_access_lock, .ynow_access_admin_set(TRUE))
+  observeEvent(input$ynow_access_unlock, .ynow_access_admin_set(FALSE))
 
   observeEvent(input$ynow_pts_sysadmin_apply, {
     loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
@@ -3968,6 +4109,7 @@ server <- function(input, output, session) {
       paste0("YNow_snapshot_", ticker, "_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".csv")
     },
     content = function(file) {
+      if (isTRUE(.ynow_access_deny_download("report:download_snapshot", file))) return()
       df <- snapshot_rows()
       df$Downloaded_At <- format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z")
       write.csv(df, file, row.names = FALSE, fileEncoding = "UTF-8")
@@ -3980,6 +4122,7 @@ server <- function(input, output, session) {
       paste0("YNow_param_restore_", ticker, "_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".csv")
     },
     content = function(file) {
+      if (isTRUE(.ynow_access_deny_download("report:download_param_restore", file))) return()
       df <- ynow_param_restore_export_df(
         input,
         ticker = display_ticker_for_market(
@@ -4444,15 +4587,24 @@ server <- function(input, output, session) {
   
   output$IS_download <- downloadHandler(
     filename = function() paste0(current_ticker(), "_incomestatement_", Sys.Date(), ".csv"),
-    content = function(file) write.csv(d_income_statement(), file, row.names = FALSE)
+    content = function(file) {
+      if (isTRUE(.ynow_access_deny_download("report:IS_download", file))) return()
+      write.csv(d_income_statement(), file, row.names = FALSE)
+    }
   )
   output$BS_download <- downloadHandler(
     filename = function() paste0(current_ticker(), "_balancesheet_", Sys.Date(), ".csv"),
-    content = function(file) write.csv(d_balance_sheet(), file, row.names = FALSE)
+    content = function(file) {
+      if (isTRUE(.ynow_access_deny_download("report:BS_download", file))) return()
+      write.csv(d_balance_sheet(), file, row.names = FALSE)
+    }
   )
   output$CF_download <- downloadHandler(
     filename = function() paste0(current_ticker(), "_cashflow_", Sys.Date(), ".csv"),
-    content = function(file) write.csv(d_cash_flow(), file, row.names = FALSE)
+    content = function(file) {
+      if (isTRUE(.ynow_access_deny_download("report:CF_download", file))) return()
+      write.csv(d_cash_flow(), file, row.names = FALSE)
+    }
   )
   
   # ==========================================
@@ -13967,6 +14119,7 @@ server <- function(input, output, session) {
       paste0("YNow_Report_", mm, "_", ed, "_", tk, "_", Sys.Date(), ".pdf")
     },
     content = function(file) {
+      if (isTRUE(.ynow_access_deny_download("report:download_report", file))) return()
       tryCatch({
         showNotification(.ui_msg("notif_pdf_busy"), type = "message", duration = 8)
         tempReport <- file.path(tempdir(), "report_template.Rmd")
