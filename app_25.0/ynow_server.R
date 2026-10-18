@@ -457,24 +457,6 @@ server <- function(input, output, session) {
     invisible(TRUE)
   }
 
-  .ynow_dbg_pdf <- function(hypothesisId, message, data = list()) {
-    # #region agent log
-    tryCatch({
-      payload <- list(
-        sessionId = "ef0f33",
-        runId = "pre",
-        hypothesisId = hypothesisId,
-        location = "ynow_server.R:pdf",
-        message = message,
-        data = data,
-        timestamp = round(as.numeric(Sys.time()) * 1000)
-      )
-      line <- jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null")
-      cat(line, "\n", file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-ef0f33.log", append = TRUE)
-    }, error = function(e) NULL)
-    # #endregion
-  }
-
   #' Login + daily free quota, then 10 FYN. NULL means the denial file is already written.
   .ynow_pdf_authorize <- function(file) {
     auth_on <- exists("ynow_auth_enabled", mode = "function") && isTRUE(ynow_auth_enabled())
@@ -482,18 +464,12 @@ server <- function(input, output, session) {
     logged <- tryCatch(isTRUE(ynow_auth$is_logged_in()), error = function(e) NA)
     lite <- tryCatch(isTRUE(isolate(lite_mode())), error = function(e) NA)
     uid <- .ynow_access_subject_id()
-    .ynow_dbg_pdf("A", "pdf authorize entry", list(
-      auth_on = auth_on, claim_ok = claim_ok, logged_in = logged, lite = lite,
-      uid_nchar = nchar(uid)
-    ))
     if (!auth_on || !claim_ok) {
-      .ynow_dbg_pdf("A", "pdf authorize bypass", list(auth_on = auth_on, claim_ok = claim_ok))
       return(list(ok = TRUE, kind = "bypass"))
     }
     loc <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "en")
     .lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
     if (!nzchar(uid)) {
-      .ynow_dbg_pdf("B", "pdf authorize deny guest", list(logged_in = logged, lite = lite))
       msg <- .lab("pdf_need_login", "Sign in to download the valuation report (PDF).")
       showNotification(msg, type = "warning", duration = 6)
       tryCatch(shinyBS::toggleModal(session, "ynow_auth_modal", "open"), error = function(e) NULL)
@@ -501,9 +477,6 @@ server <- function(input, output, session) {
       return(NULL)
     }
     ticket <- ynow_pdf_claim(uid)
-    .ynow_dbg_pdf("B", "pdf claim result", list(
-      ok = isTRUE(ticket$ok), kind = as.character(ticket$kind %||% "")[1]
-    ))
     if (!isTRUE(ticket$ok)) {
       cost <- ticket$cost %||% 10L
       bal <- ticket$fyn %||% 0L
@@ -14442,13 +14415,6 @@ server <- function(input, output, session) {
         }
 
         rating_info <- derive_investment_rating(cur_price, rating_anchor)
-        .ynow_dbg_pdf("R", "pdf numbers bound", list(
-          ticket_kind = as.character(pdf_ticket$kind %||% "")[1],
-          price_finite = is.finite(cur_price),
-          dcf_finite = is.finite(dcf_price),
-          anchor_finite = is.finite(rating_anchor),
-          rating = as.character(rating_info$rating %||% "")[1]
-        ))
 
         sum_df <- isolate(summary_data())
         co_name <- isolate(attr(sum_df, "company_name"))
