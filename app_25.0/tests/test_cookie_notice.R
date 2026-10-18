@@ -31,7 +31,7 @@ keys <- c(
   "cookie_necessary_label", "cookie_necessary_hint",
   "cookie_analytics_label", "cookie_analytics_hint",
   "cookie_preferences_label", "cookie_preferences_hint",
-  "cookie_always_on", "cookie_reopen"
+  "cookie_always_on", "cookie_reopen", "sidebar_copyright"
 )
 for (k in keys) {
   check(paste("en has", k), !is.null(en[[k]]) && nzchar(as.character(en[[k]])[1]))
@@ -77,6 +77,15 @@ check("preferences toggle", grepl('id = "ynow_cookie_preferences"', ui, fixed = 
 check("persist localStorage", grepl("localStorage.setItem(KEY, raw)", ui, fixed = TRUE))
 check("persist cookie", grepl("document.cookie = KEY", ui, fixed = TRUE))
 check("applyUiLocale body", grepl("setBtText('ynow_cookie_banner_body', 'cookie_banner_body')", ui, fixed = TRUE))
+check("reopen pinned bottom-right", grepl(".ynow-cookie-reopen", ui, fixed = TRUE) &&
+  grepl("right: 16px;", ui, fixed = TRUE) &&
+  !grepl("left: 12px;\n          bottom: 12px;", ui, fixed = TRUE))
+check(
+  "sidebar copyright copy",
+  identical(as.character(en$sidebar_copyright)[1], "2026 © YNow Team. All rights reserved.") &&
+    identical(as.character(zh$sidebar_copyright)[1], "2026 © YNow Team. 版權所有。")
+)
+check("sidebar copyright markup", grepl('id = "ynow_sidebar_copyright"', ui, fixed = TRUE))
 check("reduced motion", grepl("prefers-reduced-motion: reduce", ui, fixed = TRUE) &&
   grepl(".ynow-cookie-banner", ui, fixed = TRUE))
 check("no login gate on banner", !grepl("ynow_cookie_banner[\\s\\S]{0,400}ynow-menu-lock", ui, perl = TRUE))

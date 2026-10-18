@@ -4037,6 +4037,11 @@ ui <- dashboardPage(
         onclick = "if (window.Shiny) { Shiny.setInputValue('sidebar_feedback_click', (window.__ynowFeedbackClicks=(window.__ynowFeedbackClicks||0)+1), {priority: 'event'}); } if (window.ynowShowSidebarFootTab) { window.ynowShowSidebarFootTab('feedback'); } else if (window.Shiny) { Shiny.setInputValue('sidebar_tabs', 'feedback', {priority: 'event'}); } return false;",
         icon("comment-dots", class = "fa-fw"),
         tags$span(id = "ynow_feedback_link_label", " 意見區")
+      ),
+      tags$p(
+        id = "ynow_sidebar_copyright",
+        class = "ynow-sidebar-copyright",
+        "2026 © YNow Team. All rights reserved."
       )
     )
   ),
@@ -4172,7 +4177,9 @@ ui <- dashboardPage(
       type = "button",
       class = "btn btn-default btn-sm ynow-cookie-reopen",
       hidden = "hidden",
-      "Cookie settings"
+      title = "Cookie settings",
+      icon("thumbtack"),
+      tags$span(id = "ynow_cookie_reopen_label", "Cookie settings")
     ),
     tags$script(HTML('
       (function () {
@@ -4756,11 +4763,16 @@ ui <- dashboardPage(
         .ynow-cookie-reopen {
           position: fixed;
           z-index: 18400;
-          left: 12px;
-          bottom: 12px;
+          right: 16px;
+          left: auto;
+          bottom: 16px;
           margin: 0;
-          padding: 4px 10px;
+          padding: 6px 12px;
           font-size: 12px;
+          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.22);
+        }
+        .ynow-cookie-reopen .fa {
+          margin-right: 6px;
         }
         .ynow-cookie-reopen[hidden] {
           display: none !important;
@@ -4777,7 +4789,8 @@ ui <- dashboardPage(
             font-size: 13px;
           }
           .ynow-cookie-reopen {
-            left: 8px;
+            right: 8px;
+            left: auto;
             bottom: 8px;
           }
         }
@@ -6570,6 +6583,24 @@ ui <- dashboardPage(
           box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35);
         }
         /* 側欄完整 LOGO：Recent Search 橫線下、Download Report 正上方；等比例放大 */
+        .ynow-sidebar-copyright {
+          clear: both;
+          margin: 14px 0 0;
+          padding: 8px 10px 12px;
+          font-size: 10px;
+          line-height: 1.35;
+          text-align: center;
+          color: rgba(255, 255, 255, 0.55);
+          letter-spacing: 0.01em;
+        }
+        body.sidebar-collapse .ynow-sidebar-copyright {
+          display: none;
+        }
+        @media (min-width: 768px) {
+          body.sidebar-mini.sidebar-collapse .main-sidebar:hover .ynow-sidebar-copyright {
+            display: block;
+          }
+        }
         .ynow-sidebar-brand {
           display: flex;
           justify-content: center;
@@ -10066,7 +10097,10 @@ ui <- dashboardPage(
             setBtText('ynow_cookie_preferences_label', 'cookie_preferences_label');
             setBtText('ynow_cookie_preferences_hint', 'cookie_preferences_hint');
             setBtText('ynow_cookie_always_on', 'cookie_always_on');
-            setBtText('ynow_cookie_reopen', 'cookie_reopen');
+            setBtText('ynow_cookie_reopen_label', 'cookie_reopen');
+            setBtText('ynow_sidebar_copyright', 'sidebar_copyright');
+            var cookiePin = document.getElementById('ynow_cookie_reopen');
+            if (cookiePin && s.cookie_reopen) cookiePin.setAttribute('title', s.cookie_reopen);
             ['ynow_home_title', 'ynow_home_lead', 'ynow_home_method', 'ynow_home_method_lite',
              'ynow_home_market_k', 'ynow_home_market_d',
              'ynow_home_bluechip_k', 'ynow_home_bluechip_d',

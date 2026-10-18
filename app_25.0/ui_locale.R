@@ -3660,7 +3660,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     cookie_preferences_label = "Preference cookies",
     cookie_preferences_hint = "Optional. Remember choices such as language on this device.",
     cookie_always_on = "Always on",
-    cookie_reopen = "Cookie settings"
+    cookie_reopen = "Cookie settings",
+    sidebar_copyright = "2026 © YNow Team. All rights reserved."
   ),
   `zh-TW` = list(
     recent_search = "最近搜尋：",
@@ -7136,7 +7137,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     cookie_preferences_label = "偏好 Cookie",
     cookie_preferences_hint = "選用。在此裝置上記住語言等選擇。",
     cookie_always_on = "一律開啟",
-    cookie_reopen = "Cookie 設定"
+    cookie_reopen = "Cookie 設定",
+    sidebar_copyright = "2026 © YNow Team. 版權所有。"
   )
 )
 
@@ -7263,7 +7265,7 @@ ui_locale_boot_bundle <- function() {
   slim_strings <- function(loc) {
     s <- ui_locale_payload(loc)
     keep <- grepl(
-      "^(menu_|hdr_|about|home_|btn_|feedback_|test_link|smart_|market_|lite_|pts_fyn_label|pts_pyn_label|cookie_)",
+      "^(menu_|hdr_|about|home_|btn_|feedback_|test_link|smart_|market_|lite_|pts_fyn_label|pts_pyn_label|cookie_|sidebar_copyright)",
       names(s)
     )
     as.list(s[keep])
