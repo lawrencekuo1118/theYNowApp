@@ -7210,6 +7210,13 @@ ui <- dashboardPage(
         body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .sidebar-menu a:has(.ynow-menu-lock) > i:not(.ynow-menu-lock):not(.pull-right) {
           display: none !important;
         }
+        /* Sysadmin "lock" on a sidebar tab: same glyph swap, including after sign-in. */
+        .sidebar-menu li.ynow-access-locked-nav .ynow-menu-lock {
+          display: inline-block;
+        }
+        .sidebar-menu li.ynow-access-locked-nav > a > i:not(.ynow-menu-lock):not(.pull-right) {
+          display: none !important;
+        }
         body:not(.ynow-lite) .sidebar-menu > li:has(> a[data-value="bluechip"]),
         body:not(.ynow-lite) .sidebar-menu > li:has(> a[data-value="get_started"]),
         body:not(.ynow-lite) .sidebar-menu > li:has(> a[data-value="lab_notes"]) {
@@ -10047,6 +10054,9 @@ ui <- dashboardPage(
             if (typeof window.ynowReapplyAllTabBusyVisuals === 'function') {
               try { window.ynowReapplyAllTabBusyVisuals(); } catch (eBusyVis) {}
             }
+            if (typeof window.ynowApplyAccessLocks === 'function') {
+              try { window.ynowApplyAccessLocks(); } catch (eAccessLock) {}
+            }
             var menuMacro = document.getElementById('ynow_menu_macro');
             if (menuMacro && s.menu_macro_market) menuMacro.textContent = s.menu_macro_market;
             var menuAtx = document.getElementById('ynow_menu_asset_transmission');
@@ -11424,6 +11434,9 @@ ui <- dashboardPage(
             window.ynowApplyAccessLocks = function () {
               var entries = window.__ynowAccessEntries || [];
               var note = window.__ynowAccessLockNote || '';
+              document.querySelectorAll('i.ynow-access-lock').forEach(function (el) {
+                if (el.parentNode) el.parentNode.removeChild(el);
+              });
               var clearSel = [
                 '.ynow-access-hidden',
                 '.ynow-access-locked-nav',
@@ -11497,6 +11510,15 @@ ui <- dashboardPage(
                     }
                   });
                 }
+              });
+              document.querySelectorAll('.sidebar-menu li.ynow-access-locked-nav > a').forEach(function (a) {
+                if (a.querySelector('.ynow-menu-lock')) return;
+                var lock = document.createElement('i');
+                lock.className = 'fas fa-lock ynow-menu-lock ynow-access-lock';
+                lock.setAttribute('aria-hidden', 'true');
+                var glyph = a.querySelector(':scope > i:not(.ynow-menu-lock):not(.pull-right)');
+                if (glyph) glyph.insertAdjacentElement('afterend', lock);
+                else a.insertBefore(lock, a.firstChild);
               });
             };
             addHandler('ynowAccessLocks', function (payload) {

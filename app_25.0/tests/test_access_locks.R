@@ -108,6 +108,12 @@ check("ui distinguishes hide vs lock classes", {
     grepl("ynow-access-locked-nav", ui, fixed = TRUE) &&
     grepl("ynow-access-locked-pane", ui, fixed = TRUE)
 })
+check("sysadmin sidebar lock swaps the glyph for a lock", {
+  grepl("li.ynow-access-locked-nav .ynow-menu-lock", ui, fixed = TRUE) &&
+    grepl("li.ynow-access-locked-nav > a > i:not(.ynow-menu-lock)", ui, fixed = TRUE) &&
+    grepl("ynow-access-lock", ui, fixed = TRUE) &&
+    grepl("ynowApplyAccessLocks()", ui, fixed = TRUE)
+})
 check("locked sidebar labels are light gray", {
   grepl("li.ynow-access-locked-nav > a", ui, fixed = TRUE) &&
     grepl("a:has(.ynow-menu-lock)", ui, fixed = TRUE) &&
