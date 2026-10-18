@@ -14780,8 +14780,21 @@ server <- function(input, output, session) {
   # ==========================================
   lab_sec_result <- reactiveVal(NULL)
 
-  # 側邊欄「系統管理」入口（完整版；Lite 隱藏）
+  # 側邊欄「系統管理」入口（完整版；Lite／已登入帳號隱藏）
   observeEvent(input$sidebar_test_click, {
+    logged <- tryCatch(isTRUE(ynow_auth$is_logged_in()), error = function(e) FALSE)
+    if (isTRUE(logged)) {
+      tryCatch(
+        updateTabItems(session, "sidebar_tabs", "home"),
+        error = function(e) {
+          tryCatch(
+            session$sendInputMessage("sidebar_tabs", list(value = "home")),
+            error = function(e2) NULL
+          )
+        }
+      )
+      return()
+    }
     showNotification(.ui_msg("notif_test_opened"), type = "message", duration = 3)
   }, ignoreInit = TRUE)
 
