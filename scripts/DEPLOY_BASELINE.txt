@@ -7,5 +7,5 @@ commit=2d13816feddffbfcef5e92d6b34d136e0dd473c4
 short=2d13816f
 message=chore: record shipped display version v25.60
 captured_at=2026-10-18T16:01:15Z
-display_version=v25.60
+display_version=v25.61
 note=Canonical live line is app_25.0. Bundle 12706797: guest sidebar locks dim gray + PDF lock icon; no sidebar promo chrome (PR #307).
