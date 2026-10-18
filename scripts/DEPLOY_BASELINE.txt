@@ -1,15 +1,4 @@
 source=shinyapps.io TheYNowApp
-<<<<<<< HEAD
-bundleId=12705526
-appId=10907657
-url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=6e0ddf7cdcaa0931cc3a922ad4e7e3a92b24bd9d
-commit=6e0ddf7cdcaa0931cc3a922ad4e7e3a92b24bd9d
-short=6e0ddf7
-message=chore: bump display version to v25.42
-captured_at=2026-10-18T07:06:50Z
-display_version=v25.42
-=======
 bundleId=12705568
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
@@ -19,4 +8,3 @@ short=82907e49
 message=chore: bump display version to v25.43
 captured_at=2026-10-18T07:27:01Z
 display_version=v25.43
->>>>>>> cursor/signin-gate-mono-3550
