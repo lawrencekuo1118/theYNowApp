@@ -412,6 +412,20 @@ check("locale pts_sysadmin_need_enter en+zh-TW", {
     !grepl("数据", zh, fixed = TRUE) &&
     !grepl("一鍵", zh, fixed = TRUE)
 })
+check("locale pts_sysadmin_loading en+zh-TW", {
+  en <- ui_str("pts_sysadmin_loading", "en")
+  zh <- ui_str("pts_sysadmin_loading", "zh-TW")
+  grepl("Loading", en, fixed = TRUE) &&
+    grepl("載入", zh, fixed = TRUE) &&
+    !grepl("加载", zh, fixed = TRUE) &&
+    !grepl("数据", zh, fixed = TRUE)
+})
+check("server loads sysadmin users async via later", {
+  srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("ynow_pts_sysadmin_panel_state", srv, fixed = TRUE) &&
+    grepl('kind = "loading"', srv, fixed = TRUE) &&
+    grepl("later::later", srv, fixed = TRUE)
+})
 check("locale sysadmin login keys en+zh-TW", {
   keys <- c(
     "pts_sysadmin_login_user", "pts_sysadmin_login_pass",

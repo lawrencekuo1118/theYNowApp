@@ -4359,6 +4359,10 @@ ui <- dashboardPage(
         body.ynow-sysadmin-on .ynow-sysadmin-login-row {
           display: none !important;
         }
+        /* Belt-and-suspenders: never show the locked hint while unlocked */
+        body.ynow-sysadmin-on #ynow_pts_sysadmin_need_enter {
+          display: none !important;
+        }
         body.ynow-sysadmin-on:not(.ynow-view-as) .ynow-sysadmin-unlocked-actions {
           display: flex !important;
         }

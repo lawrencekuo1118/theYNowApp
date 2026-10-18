@@ -384,6 +384,9 @@ server <- function(input, output, session) {
   ynow_pts_panel_tick <- reactiveVal(0L)
   ynow_pts_sysadmin_on <- reactiveVal(FALSE)
   ynow_pts_sysadmin_tick <- reactiveVal(0L)
+  # Panel payload: list(kind="locked"|"loading"|"ready"|"error", ...). Built async
+  # so Postgres list_users cannot block the session (exit / Switch view stay live).
+  ynow_pts_sysadmin_panel_state <- reactiveVal(list(kind = "locked"))
   # Sysadmin view-as: list(public_id=, user_id=, role=) or NULL. No PII.
   ynow_pts_view_as <- reactiveVal(NULL)
 
@@ -823,12 +826,63 @@ server <- function(input, output, session) {
     ynow_pts_sysadmin_tick(isolate(ynow_pts_sysadmin_tick()) + 1L)
   }, ignoreInit = TRUE)
 
+  # Load user list off the reactive flush so Exit / Switch view stay responsive.
+  observeEvent(ynow_pts_sysadmin_tick(), {
+    if (!isTRUE(isolate(ynow_pts_sysadmin_on()))) {
+      ynow_pts_sysadmin_panel_state(list(kind = "locked"))
+      return()
+    }
+    load_id <- isolate(ynow_pts_sysadmin_tick())
+    ynow_pts_sysadmin_panel_state(list(kind = "loading", load_id = load_id))
+    fetch_users <- function() {
+      if (!isTRUE(isolate(ynow_pts_sysadmin_on()))) return()
+      if (!identical(isolate(ynow_pts_sysadmin_tick()), load_id)) return()
+      backend <- tryCatch(ynow_points_backend(), error = function(e) "memory")
+      backend_label <- tryCatch({
+        if (exists("ynow_points_backend_label", mode = "function")) {
+          ynow_points_backend_label()
+        } else {
+          as.character(backend)
+        }
+      }, error = function(e) as.character(backend))
+      uses_db <- tryCatch({
+        if (exists("ynow_points_uses_db", mode = "function")) ynow_points_uses_db()
+        else identical(backend, "postgres")
+      }, error = function(e) FALSE)
+      db_ready <- exists("ynow_db_ready", mode = "function") && isTRUE(ynow_db_ready())
+      df <- if (exists("ynow_points_admin_list_users", mode = "function")) {
+        tryCatch(ynow_points_admin_list_users(), error = function(e) NULL)
+      } else {
+        NULL
+      }
+      if (!isTRUE(isolate(ynow_pts_sysadmin_on()))) return()
+      if (!identical(isolate(ynow_pts_sysadmin_tick()), load_id)) return()
+      ynow_pts_sysadmin_panel_state(list(
+        kind = "ready",
+        load_id = load_id,
+        backend_label = backend_label,
+        uses_db = uses_db,
+        db_ready = db_ready,
+        df = df,
+        has_list_fn = exists("ynow_points_admin_list_users", mode = "function")
+      ))
+    }
+    if (requireNamespace("later", quietly = TRUE)) {
+      later::later(fetch_users, delay = 0)
+    } else {
+      fetch_users()
+    }
+  }, ignoreNULL = FALSE)
+
   output$ynow_pts_sysadmin_panel <- renderUI({
-    ynow_pts_sysadmin_tick()
-    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+    st <- ynow_pts_sysadmin_panel_state()
+    loc <- tryCatch(
+      normalize_ui_locale(isolate(ui_locale())),
+      error = function(e) "zh-TW"
+    )
     .lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
-    if (!isTRUE(ynow_pts_sysadmin_on())) {
-      # Avoid blank white void — clear hint to sign in.
+    kind <- as.character(st$kind %||% "locked")[1]
+    if (identical(kind, "locked")) {
       return(tags$div(
         tags$hr(),
         tags$p(
@@ -841,26 +895,23 @@ server <- function(input, output, session) {
         )
       ))
     }
-    if (!exists("ynow_points_admin_list_users", mode = "function")) {
+    if (identical(kind, "loading")) {
+      return(tags$div(
+        tags$p(
+          class = "text-muted",
+          id = "ynow_pts_sysadmin_loading",
+          style = "margin-top:8px;",
+          .lab("pts_sysadmin_loading", "Loading de-identified users…")
+        )
+      ))
+    }
+    if (!isTRUE(st$has_list_fn)) {
       return(tags$p(class = "text-danger", .lab("pts_msg_backend", "Points backend is unavailable.")))
     }
-    # Without Postgres creds (YNOW_DB_*) / RPostgres, points fall back to empty per-process memory.
-    backend <- tryCatch(ynow_points_backend(), error = function(e) "memory")
-    backend_label <- tryCatch({
-      if (exists("ynow_points_backend_label", mode = "function")) {
-        ynow_points_backend_label()
-      } else {
-        as.character(backend)
-      }
-    }, error = function(e) as.character(backend))
-    uses_db <- tryCatch({
-      if (exists("ynow_points_uses_db", mode = "function")) ynow_points_uses_db()
-      else identical(backend, "postgres")
-    }, error = function(e) FALSE)
-    db_ready <- exists("ynow_db_ready", mode = "function") && isTRUE(ynow_db_ready())
-    df <- tryCatch(ynow_points_admin_list_users(), error = function(e) NULL)
+    backend_label <- as.character(st$backend_label %||% "—")[1]
+    df <- st$df
     if (!is.data.frame(df) || nrow(df) < 1L) {
-      empty_key <- if (!isTRUE(db_ready) || !isTRUE(uses_db)) {
+      empty_key <- if (!isTRUE(st$db_ready) || !isTRUE(st$uses_db)) {
         "pts_sysadmin_no_db"
       } else {
         "pts_sysadmin_empty"
@@ -877,14 +928,14 @@ server <- function(input, output, session) {
         .lab("pts_sysadmin_empty", "No users in the database yet.")
       }
       return(tags$div(
-        tags$hr(),
         tags$p(
           class = "text-muted",
+          style = "font-size:12.5px; margin-top:4px;",
           tags$span(
             id = "ynow_pts_sysadmin_backend",
             sprintf(
               .lab("pts_sysadmin_backend_fmt", "Points backend: %s"),
-              as.character(backend_label)
+              backend_label
             )
           )
         ),
@@ -893,17 +944,14 @@ server <- function(input, output, session) {
     }
     status_ok <- .lab("pts_sysadmin_status_ok", "Active")
     status_off <- .lab("pts_sysadmin_status_disabled", "Disabled")
-    # Value = internal user_id; label = opaque public_id (avoids a second DB resolve on Switch view).
     choices <- stats::setNames(as.character(df$user_id), as.character(df$public_id))
-    va <- tryCatch(ynow_pts_view_as(), error = function(e) NULL)
+    va <- tryCatch(isolate(ynow_pts_view_as()), error = function(e) NULL)
     va_uid <- if (is.list(va)) as.character(va$user_id %||% "")[1] else ""
-    va_pid <- if (is.list(va)) as.character(va$public_id %||% "")[1] else ""
     sel <- if (nzchar(va_uid) && va_uid %in% as.character(choices)) {
       va_uid
     } else {
       as.character(choices[[1]])
     }
-    # View-as chrome is the fixed top bar; keep the unlocked workspace clean.
     tags$div(
       tags$p(
         class = "text-muted",
@@ -912,7 +960,7 @@ server <- function(input, output, session) {
           id = "ynow_pts_sysadmin_backend",
           sprintf(
             .lab("pts_sysadmin_backend_fmt", "Points backend: %s"),
-            as.character(backend_label)
+            backend_label
           )
         )
       ),
