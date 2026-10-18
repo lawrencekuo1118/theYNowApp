@@ -352,7 +352,7 @@
     ),
     tags$li(
       tags$b("Blue Chip Leaderboard: "),
-      "Keeps Candidate truncate rules and Universe size (N), Earnings Quality and ADR filters, the detail table at the bottom of Rankings, Clustering, and Custom screen. Hides other advanced Ranking filters."
+      "Keeps Candidate truncate rules and Universe size (N), Earnings Quality and ADR filters, the detail table at the bottom of Rankings, Clustering, and Custom Screen. Hides other advanced Ranking filters."
     )
   )
 
@@ -2535,7 +2535,7 @@ beta_rolling_section_ui <- function() {
               if (exists("screener_panel_ui", mode = "function")) {
                 screener_panel_ui(embed = "bluechip")
               } else {
-                tags$p(id = "ynow_scr_missing", "Custom screen unavailable.")
+                tags$p(id = "ynow_scr_missing", "Custom Screen unavailable.")
               }
             )
           )

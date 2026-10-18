@@ -639,6 +639,11 @@ price_alert_tab_ui <- function() {
           actionButton("pa_check", .pa_bi("pa_check"), class = "btn-default"),
           actionButton("pa_rearm", .pa_bi("pa_rearm"), class = "btn-default"),
           actionButton("pa_delete", .pa_bi("pa_delete"), class = "btn-danger"),
+          tags$div(
+            style = "margin-top:16px;",
+            tags$p(.pa_bi("scr_from_screen_help")),
+            actionButton("scr_add", .pa_bi("scr_add"), class = "btn-primary")
+          ),
           tags$div(style = "margin-top:12px;", DT::DTOutput("pa_table"))
         ),
         tabPanel(

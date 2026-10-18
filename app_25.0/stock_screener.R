@@ -451,28 +451,7 @@ screener_panel_ui <- function(embed = c("standalone", "bluechip")) {
         )
       )
     ),
-    tags$div(style = "margin-top:12px;", DT::DTOutput("scr_table")),
-    fluidRow(
-      style = "margin-top:8px;",
-      column(4, selectInput(
-        "scr_alert_kind", .screener_bi("scr_alert_kind"),
-        choices = c(
-          "Last price ≤ target" = "price_lte",
-          "Last price ≥ target" = "price_gte"
-        ),
-        selected = "price_lte", width = "100%"
-      )),
-      column(3, numericInput(
-        "scr_alert_level", .screener_bi("scr_alert_level"), value = NA, width = "100%"
-      )),
-      column(5, tags$div(
-        style = "margin-top:25px;",
-        actionButton(
-          "scr_add", .screener_bi("scr_add"),
-          class = if (in_bluechip) "btn-success" else "btn-primary"
-        )
-      ))
-    )
+    tags$div(style = "margin-top:12px;", DT::DTOutput("scr_table"))
   )
   if (in_bluechip) {
     # Tab title already names the panel; keep content flush with Blue Chip ocean chrome.
@@ -550,20 +529,9 @@ screener_server <- function(input, output, session, ui_locale_rv = NULL,
       tryCatch(normalize_ui_locale(ui_locale_rv()), error = function(e) "en")
     }
     mkts <- stats::setNames(c("US", "TW"), c(ui_str("scr_market_us", locale), ui_str("scr_market_tw", locale)))
-    kinds <- stats::setNames(
-      c("price_lte", "price_gte", "day_chg_lte", "day_chg_gte"),
-      vapply(
-        c("pa_kind_price_lte", "pa_kind_price_gte", "pa_kind_day_chg_lte", "pa_kind_day_chg_gte"),
-        function(k) ui_str(k, locale),
-        character(1)
-      )
-    )
     cur_m <- isolate(input$scr_market)
     if (is.null(cur_m) || !cur_m %in% c("US", "TW")) cur_m <- "US"
     updateSelectInput(session, "scr_market", choices = mkts, selected = cur_m)
-    cur_k <- isolate(input$scr_alert_kind)
-    if (is.null(cur_k) || !cur_k %in% names(kinds) && !cur_k %in% unname(kinds)) cur_k <- "price_lte"
-    updateSelectInput(session, "scr_alert_kind", choices = kinds, selected = cur_k)
   })
 
   observeEvent(input$market_mode_pick, {
@@ -685,13 +653,16 @@ screener_server <- function(input, output, session, ui_locale_rv = NULL,
       showNotification(say_now("scr_none_selected"), type = "warning")
       return()
     }
-    level <- suppressWarnings(as.numeric(input$scr_alert_level)[1])
+    level <- suppressWarnings(as.numeric(input$pa_level)[1])
     if (!is.finite(level)) {
       showNotification(say_now("pa_bad_level"), type = "warning")
       return()
     }
-    kind <- as.character(input$scr_alert_kind %||% "price_lte")[1]
-    if (!kind %in% c("price_lte", "price_gte", "day_chg_lte", "day_chg_gte")) kind <- "price_lte"
+    kind <- as.character(input$pa_kind %||% "price_lte")[1]
+    if (!kind %in% c("price_lte", "price_gte", "day_chg_lte", "day_chg_gte", "below_fair")) {
+      showNotification(say_now("scr_price_kind_only"), type = "warning")
+      return()
+    }
     ref <- screener_make_ref(meta$label)
     alerts <- price_alert_read()
     n_ok <- 0L
@@ -737,7 +708,7 @@ screener_server <- function(input, output, session, ui_locale_rv = NULL,
         ticker = res_df$ticker[[i]],
         kind = kind,
         level = level,
-        mos_pct = 0,
+        mos_pct = suppressWarnings(as.numeric(input$pa_mos)[1]),
         note = input$pa_note %||% "",
         notify_app = notify_app,
         notify_email = notify_email,
