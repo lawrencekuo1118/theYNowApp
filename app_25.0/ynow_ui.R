@@ -4065,6 +4065,12 @@ ui <- dashboardPage(
           --ynow-ink-soft: #333333;
           --ynow-line: #d0d0d0;
           --ynow-wash: #f5f5f5;
+          /* Sign-in / unlock gates: logo mono (not AdminLTE warning amber) */
+          --ynow-gate-bg: #f5f5f5;
+          --ynow-gate-border: #d0d0d0;
+          --ynow-gate-accent: #1a1a1a;
+          --ynow-gate-ink: #1a1a1a;
+          --ynow-gate-ink-soft: #333333;
           /* 亮面金屬金（非土黃／ochre）；fallback 給不支援 clip 的環境） */
           --ynow-gold: #F5C518;
           /* 白底標題用深金（對比足夠）；圖標可用亮金 */
@@ -4378,11 +4384,87 @@ ui <- dashboardPage(
           display: block;
           margin: 18px;
           padding: 14px 16px;
-          border: 1px solid #e0c36a;
-          background: #fff8e6;
-          color: #6b5420;
+          border: 1px solid var(--ynow-gate-border, #d0d0d0);
+          border-left: 4px solid var(--ynow-gate-accent, #1a1a1a);
+          background: var(--ynow-gate-bg, #f5f5f5);
+          color: var(--ynow-gate-ink-soft, #333333);
           border-radius: 6px;
           white-space: normal;
+        }
+        /* Shared sign-in / unlock gate chrome (black–white logo palette) */
+        .ynow-gate-callout {
+          margin: 0 0 12px 0;
+          padding: 12px 14px;
+          background: var(--ynow-gate-bg, #f5f5f5);
+          border: 1px solid var(--ynow-gate-border, #d0d0d0);
+          border-left: 4px solid var(--ynow-gate-accent, #1a1a1a);
+          border-radius: 4px;
+          color: var(--ynow-gate-ink-soft, #333333);
+          font-size: 13px;
+          line-height: 1.45;
+        }
+        .box.ynow-gate-box,
+        .box.ynow-member-gate,
+        .box.ynow-auth-gate {
+          border: 1px solid var(--ynow-gate-accent, #1a1a1a) !important;
+          border-top: 3px solid var(--ynow-gate-accent, #1a1a1a) !important;
+          background: #fff !important;
+          box-shadow: none !important;
+        }
+        .box.ynow-gate-box > .box-header,
+        .box.ynow-member-gate > .box-header,
+        .box.ynow-auth-gate > .box-header {
+          color: #fff !important;
+          background: var(--ynow-gate-accent, #1a1a1a) !important;
+          background-color: var(--ynow-gate-accent, #1a1a1a) !important;
+          border-bottom: 1px solid var(--ynow-gate-accent, #1a1a1a) !important;
+        }
+        .box.ynow-gate-box > .box-header .box-title,
+        .box.ynow-member-gate > .box-header .box-title,
+        .box.ynow-auth-gate > .box-header .box-title,
+        .box.ynow-gate-box > .box-header .box-title *,
+        .box.ynow-member-gate > .box-header .box-title *,
+        .box.ynow-auth-gate > .box-header .box-title * {
+          color: #fff !important;
+        }
+        .box.ynow-gate-box > .box-body,
+        .box.ynow-member-gate > .box-body,
+        .box.ynow-auth-gate > .box-body {
+          background: #fff !important;
+          color: var(--ynow-gate-ink-soft, #333333);
+        }
+        .box.ynow-gate-box .btn-primary,
+        .box.ynow-member-gate .btn-primary,
+        .box.ynow-auth-gate .btn-primary {
+          background-color: var(--ynow-gate-accent, #1a1a1a) !important;
+          border-color: #000 !important;
+          color: #fff !important;
+        }
+        /* Keep gates mono under model / Blue Chip / ATX accent themes */
+        body.ynow-theme-model .content-wrapper .box.ynow-gate-box,
+        body.ynow-theme-model .content-wrapper .box.ynow-member-gate,
+        body.ynow-theme-model .content-wrapper .box.ynow-auth-gate,
+        body.ynow-theme-bluechip .content-wrapper .box.ynow-gate-box,
+        body.ynow-theme-bluechip .content-wrapper .box.ynow-member-gate,
+        body.ynow-theme-bluechip .content-wrapper .box.ynow-auth-gate,
+        body.ynow-theme-atx .content-wrapper .box.ynow-gate-box,
+        body.ynow-theme-atx .content-wrapper .box.ynow-member-gate,
+        body.ynow-theme-atx .content-wrapper .box.ynow-auth-gate {
+          border-color: var(--ynow-gate-accent, #1a1a1a) !important;
+          border-top-color: var(--ynow-gate-accent, #1a1a1a) !important;
+        }
+        body.ynow-theme-model .content-wrapper .box.ynow-gate-box > .box-header,
+        body.ynow-theme-model .content-wrapper .box.ynow-member-gate > .box-header,
+        body.ynow-theme-model .content-wrapper .box.ynow-auth-gate > .box-header,
+        body.ynow-theme-bluechip .content-wrapper .box.ynow-gate-box > .box-header,
+        body.ynow-theme-bluechip .content-wrapper .box.ynow-member-gate > .box-header,
+        body.ynow-theme-bluechip .content-wrapper .box.ynow-auth-gate > .box-header,
+        body.ynow-theme-atx .content-wrapper .box.ynow-gate-box > .box-header,
+        body.ynow-theme-atx .content-wrapper .box.ynow-member-gate > .box-header,
+        body.ynow-theme-atx .content-wrapper .box.ynow-auth-gate > .box-header {
+          background: var(--ynow-gate-accent, #1a1a1a) !important;
+          background-color: var(--ynow-gate-accent, #1a1a1a) !important;
+          color: #fff !important;
         }
         body.ynow-sysadmin-on .ynow-sysadmin-login-chrome,
         body.ynow-sysadmin-on .ynow-sysadmin-login-row {
@@ -6462,11 +6544,11 @@ ui <- dashboardPage(
           display: none;
           margin: 0 0 12px 0;
           padding: 12px 14px;
-          background: #fff8e6;
-          border: 1px solid #f0d78c;
-          border-left: 4px solid #e0a800;
+          background: var(--ynow-gate-bg, #f5f5f5);
+          border: 1px solid var(--ynow-gate-border, #d0d0d0);
+          border-left: 4px solid var(--ynow-gate-accent, #1a1a1a);
           border-radius: 4px;
-          color: #5c4a00;
+          color: var(--ynow-gate-ink-soft, #333333);
           font-size: 13px;
           line-height: 1.45;
         }
@@ -15942,7 +16024,7 @@ ui <- dashboardPage(
         ),
         tags$div(
           id = "ynow_snapshot_defaults_locked",
-          class = "ynow-snap-defaults-locked",
+          class = "ynow-snap-defaults-locked ynow-gate-callout",
           tags$span(
             id = "ynow_snapshot_defaults_locked_msg",
             paste0(
