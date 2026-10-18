@@ -917,7 +917,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Value Alerts in Full mode require an account. ",
       "Lite mode does not require sign-in and remains fully usable."
     ),
-    test_link = " System admin",
+    test_link = " Sys. Admin",
     testing_page_title = "System admin",
     testing_page_sub = paste0(
       "Dedicated system-admin portal (Full mode). Lite hides this entry. ",
@@ -4427,7 +4427,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "完整版的到值通知需登入帳號後才可使用。",
       "Lite 版無需登入，功能可完整使用。"
     ),
-    test_link = " 系統管理",
+    test_link = " Sys. Admin",
     testing_page_title = "系統管理",
     testing_page_sub = paste0(
       "系統管理專用入口（完整版）；簡化版不顯示此入口。",

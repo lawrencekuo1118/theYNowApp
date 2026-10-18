@@ -527,12 +527,12 @@ check("price_alert prefers effective user for points gate", {
   pa <- paste(readLines(file.path(app_dir, "price_alert.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   grepl("ynow_pts_effective_user", pa, fixed = TRUE)
 })
-check("sidebar foot link is System admin not Testing sandbox", {
+check("sidebar foot link is Sys. Admin not Testing sandbox", {
   ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   en <- ui_str("test_link", "en")
   zh <- ui_str("test_link", "zh-TW")
-  grepl("System admin", en, fixed = TRUE) &&
-    grepl("系統管理", zh, fixed = TRUE) &&
+  grepl("Sys. Admin", en, fixed = TRUE) &&
+    grepl("Sys. Admin", zh, fixed = TRUE) &&
     grepl("user-shield", ui, fixed = TRUE) &&
     !grepl("一鍵", zh, fixed = TRUE)
 })

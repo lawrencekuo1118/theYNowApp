@@ -3987,7 +3987,7 @@ ui <- dashboardPage(
         class = "ynow-sidebar-snapshot-link ynow-sidebar-test-link ynow-full-only",
         onclick = "if (window.Shiny) { Shiny.setInputValue('sidebar_test_click', (window.__ynowTestClicks=(window.__ynowTestClicks||0)+1), {priority: 'event'}); } if (window.ynowShowSidebarFootTab) { window.ynowShowSidebarFootTab('testing'); } else if (window.Shiny) { Shiny.setInputValue('sidebar_tabs', 'testing', {priority: 'event'}); } return false;",
         icon("user-shield", class = "fa-fw"),
-        tags$span(id = "ynow_test_link_label", " System admin")
+        tags$span(id = "ynow_test_link_label", " Sys. Admin")
       ),
       # 意見區：收集使用者回饋，系統性開 GitHub Issue
       tags$a(
