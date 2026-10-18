@@ -5922,32 +5922,58 @@ ui <- dashboardPage(
           font-weight: 700 !important;
           border-left-color: #fff;
         }
-        /* Snapshot：側邊欄內容底部低調捷徑（正常文件流，避免 absolute 跑位） */
+        /* Snapshot／Sys. Admin／Feedback：側邊欄底部同一列，不換行 */
         .ynow-sidebar-snapshot-foot {
+          display: flex !important;
+          flex-direction: row !important;
+          flex-wrap: nowrap !important;
+          align-items: center;
+          justify-content: space-between;
+          gap: 2px;
+          width: 100%;
+          box-sizing: border-box;
           margin-top: 8px !important;
           margin-bottom: 10px !important;
-          padding: 0 10px !important;
+          padding: 0 4px !important;
           text-align: left !important;
         }
+        .main-sidebar .ynow-sidebar-snapshot-foot.col-sm-12,
+        .main-sidebar .ynow-sidebar-snapshot-foot.col-xs-12 {
+          padding-left: 4px !important;
+          padding-right: 4px !important;
+        }
         .ynow-sidebar-snapshot-link {
-          display: inline-block;
-          font-size: 11px !important;
+          display: inline-flex !important;
+          align-items: center;
+          justify-content: center;
+          flex: 1 1 0;
+          min-width: 0;
+          white-space: nowrap;
+          font-size: 10px !important;
           font-weight: 400 !important;
           color: rgba(255,255,255,0.45) !important;
           text-decoration: none !important;
-          padding: 2px 4px;
+          padding: 2px 1px;
           border-radius: 3px;
           opacity: 0.75;
           line-height: 1.2;
+        }
+        .ynow-sidebar-snapshot-link .fa,
+        .ynow-sidebar-snapshot-link .fas,
+        .ynow-sidebar-snapshot-link .fa-fw {
+          width: 1em;
+          min-width: 1em;
+          margin-right: 2px;
+          text-align: center;
+          flex: 0 0 auto;
         }
         .ynow-sidebar-snapshot-link:hover {
           color: rgba(255,255,255,0.85) !important;
           opacity: 1;
           background: rgba(255,255,255,0.06);
         }
-        .ynow-sidebar-feedback-link { margin-left: 8px; }
-        .ynow-sidebar-feedback-link { margin-left: 8px; }
-        .ynow-sidebar-test-link { margin-left: 8px; }
+        .ynow-sidebar-feedback-link,
+        .ynow-sidebar-test-link { margin-left: 0; }
         /* Recent Search: clickable tickers → re-Search + 個股 */
         .ynow-recent-search {
           display: flex;

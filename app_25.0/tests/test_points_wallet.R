@@ -534,6 +534,8 @@ check("sidebar foot link is Sys. Admin not Testing sandbox", {
   grepl("Sys. Admin", en, fixed = TRUE) &&
     grepl("Sys. Admin", zh, fixed = TRUE) &&
     grepl("user-shield", ui, fixed = TRUE) &&
+    grepl(".ynow-sidebar-snapshot-foot", ui, fixed = TRUE) &&
+    grepl("flex-wrap: nowrap", ui, fixed = TRUE) &&
     !grepl("一鍵", zh, fixed = TRUE)
 })
 check("no leftover agent debug instrumentation", {
