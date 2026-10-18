@@ -82,6 +82,10 @@ check("Server Snapshot extras include Stage-2 g2 sync note", {
 check("Server Snapshot extras include statutory tax fallback", {
   grepl("Statutory tax fallback", srv_txt, fixed = TRUE)
 })
+check("Server Snapshot extras document SOTP conglomerate discount not applied", {
+  grepl("Conglomerate discount", srv_txt, fixed = TRUE) &&
+    grepl("not applied", srv_txt, fixed = TRUE)
+})
 
 # Mock live Snapshot rows include Multiples when inputs present.
 inp <- as.environment(list(

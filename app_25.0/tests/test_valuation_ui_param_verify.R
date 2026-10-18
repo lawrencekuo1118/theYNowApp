@@ -233,11 +233,27 @@ for (s in samples) {
 
 # Live scorer with statement shapes matching attributes
 live_cases <- list(
+  # Asset shell: rev/equity < 0.20 and FCFF not positive. Conglomerate *label alone*
+  # never forces NAV — see valuation_guard holdings override.
   list(
     tag = "holding_live",
+    key = "fn.Conglomerate_Holding", text = "Conglomerate Holding",
+    d_is = base_is(ni = c(8, 6), rev = c(40, 38), pretax = c(10, 8), tax = c(2, 2), interest = c(2, 2)),
+    d_bs = base_bs(
+      equity = c(700, 680), debt = c(80, 80), assets = c(900, 880),
+      goodwill = c(10, 10), investments = c(400, 390)
+    ),
+    d_cf = base_cf(cfo = c(5, 4), capex = c(-12, -11), div = c(0, 0)),
+    expect_prim = "nav", expect_sec = "sotp"
+  ),
+  # Operating cash-flow conglomerate: usable FCFF → cash-flow primary stays;
+  # industry label must not replace it with NAV.
+  list(
+    tag = "holding_operating_live",
     key = "fn.Conglomerate_Holding", text = "Conglomerate",
     d_is = base_is(), d_bs = base_bs(investments = c(300, 280)), d_cf = base_cf(),
-    expect_prim = "nav", expect_sec = "sotp"
+    expect_prim_in = c("dcf", "pb", "ri", "ddm"),
+    expect_not_forced_nav = TRUE
   ),
   list(
     tag = "bank_live",
@@ -314,6 +330,10 @@ for (lc in live_cases) {
   if (isTRUE(lc$expect_not_forced_pb)) {
     check(paste0("live [", lc$tag, "] not forced PB primary"),
           !identical(as.character(rec$primary), "pb"))
+  }
+  if (isTRUE(lc$expect_not_forced_nav)) {
+    check(paste0("live [", lc$tag, "] not forced NAV by conglomerate label alone"),
+          !identical(as.character(rec$primary), "nav"))
   }
   # Multiples/SOTP never primary; Multiples never secondary
   check(paste0("live [", lc$tag, "] never primary multiples/sotp"),

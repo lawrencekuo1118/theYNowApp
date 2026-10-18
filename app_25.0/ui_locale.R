@@ -208,7 +208,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "A Meta-Framework that breaks the absolute／relative boundary: split the firm into segments, ",
       "value each with the best lens (DCF, EV/EBITDA, EV/Sales／ARR, NAV), sum EV, then deduct corporate overhead and net debt. ",
       "This app’s engine implements the revenue × EV/Sales path (≥2 segments) with the shared Cash − Debt × Shares bridge. ",
-      "Classic for Big Tech, conglomerates, and spin-off cases; markets often apply a 10%–30% conglomerate discount."
+      "Markets often cite a 10%–30% conglomerate discount — this app does not auto-apply that discount; adjust segment multiples if needed."
     ),
     sotp_box_title = "SOTP",
     sotp_tab_overview = "Overview",
@@ -269,7 +269,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     sotp_disclaimer = paste0(
       "Meta-Framework output (app path: revenue × EV/Sales) — do not treat as a single-model Intrinsic Value, ",
       "and do not equal-weight-average it with DCF / DDM / RI / P/B. ",
-      "Conglomerate discount (often 10%–30%) may explain SOTP > market price."
+      "Conglomerate discount (often 10%–30%) is market narrative only — not applied in this engine."
     ),
     rel_multiples_btn_calc = "Run multiples",
     rel_multiples_btn_sync = "Sync from statements",
@@ -3944,7 +3944,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "綜合型估值框架（Meta-Framework）：打破絕對／相對界線，把公司拆成事業板塊，",
       "各板塊可混用 DCF、EV/EBITDA、EV/Sales／ARR、NAV 等最適模型，加總 EV 後扣除集團 Overhead 與淨負債。",
       "本 App 引擎實作為部門營收 × EV/Sales（需 ≥2 部門）並共用 Cash − Debt × Shares 橋接。",
-      "經典場景：Big Tech、綜合集團、分拆上市潛力；市場常給 10%–30% 控股折價（Conglomerate Discount）。"
+      "市場常提及 10%–30% 控股折價（Conglomerate Discount）——本引擎不自動套用；若需折價請自行調整部門倍數。"
     ),
     sotp_box_title = "SOTP",
     sotp_tab_overview = "總覽",
@@ -4006,7 +4006,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     sotp_disclaimer = paste0(
       "綜合型框架輸出（本 App 路徑：營收 × EV/Sales）——請勿視為單一模型 Intrinsic Value，",
       "亦勿與 DCF／DDM／RI／P/B 等權平均。",
-      "控股折價（常見 10%–30%）可解釋 SOTP 總值高於市價。"
+      "控股折價（常見 10%–30%）僅為市場敘事——本引擎不套用。"
     ),
     rel_multiples_btn_calc = "試算倍數",
     rel_multiples_btn_sync = "自財報同步",

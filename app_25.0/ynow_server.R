@@ -4435,6 +4435,11 @@ server <- function(input, output, session) {
         "Backtest", "Mode B sentiment blend (fixed)",
         "clip(0.28 + 0.40×w_avg, 0.28, 0.60)",
         "Quant Lab Mode B; mixes Mode A with momentum/RSI — not editable"
+      ),
+      c(
+        "SOTP", "Conglomerate discount",
+        "not applied",
+        "Market narrative often 10%–30%; engine never auto-discounts Σ(seg×EV/Sales) — adjust multiples manually if needed"
       )
     )
     ynow_snapshot_registry_rows(input, lite = lite, extras = extras)
