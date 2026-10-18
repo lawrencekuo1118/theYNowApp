@@ -4771,17 +4771,33 @@ server <- function(input, output, session) {
 
   observeEvent(input$param_audit_pdf_go, {
     loc <- isolate(ui_locale())
-    tabs <- as.character(input$param_audit_pdf_pages %||% character(0))
-    tabs <- tabs[nzchar(tabs)]
-    if (!length(tabs)) {
+    ids <- as.character(input$param_audit_pdf_pages %||% character(0))
+    ids <- ids[nzchar(ids)]
+    if (!length(ids)) {
       showNotification(ui_str("param_audit_pdf_need_pages", loc), type = "warning", duration = 4)
       return()
     }
-    pages <- ynow_param_audit_pdf_pages()
+    catalog <- ynow_param_audit_pdf_pages()
+    # Preserve user checkbox order; drop unknown ids.
+    ids <- ids[ids %in% catalog$id]
+    if (!length(ids)) {
+      showNotification(ui_str("param_audit_pdf_need_pages", loc), type = "warning", duration = 4)
+      return()
+    }
+    sel <- catalog[match(ids, catalog$id), , drop = FALSE]
     page_titles <- stats::setNames(
-      vapply(pages$locale_key, function(k) ui_str(k, loc), character(1)),
-      pages$tab
+      vapply(catalog$locale_key, function(k) ui_str(k, loc), character(1)),
+      catalog$id
     )
+    pages_payload <- lapply(seq_len(nrow(sel)), function(i) {
+      list(
+        id = as.character(sel$id[[i]]),
+        tab = as.character(sel$tab[[i]]),
+        inner = as.character(sel$inner[[i]]),
+        annotate_tab = as.character(sel$annotate_tab[[i]]),
+        title = unname(page_titles[[sel$id[[i]]]] %||% sel$id[[i]])
+      )
+    })
     baseline <- isolate(param_audit_baseline())
     cur <- ynow_capture_tracked_params(input)
     diff_df <- ynow_param_diff_df(baseline, cur, locale = loc)
@@ -4809,7 +4825,8 @@ server <- function(input, output, session) {
       "—"
     }
     session$sendCustomMessage("ynowParamAuditPdf", list(
-      tabs = as.list(tabs),
+      tabs = as.list(as.character(sel$tab)),
+      pages = pages_payload,
       changes = changes,
       page_titles = as.list(page_titles),
       ticker = as.character(tk)[1],

@@ -4,18 +4,142 @@
 # 2B：結構化視覺報告（非整頁螢幕截圖）
 # ==========================================
 
-#' Main pages available for annotated screenshot PDF (2A)
+#' Pages / block ranges available for annotated screenshot PDF (2A).
+#' `id` = checkbox value; `tab` = shinydashboard tabName to activate;
+#' `inner` = optional in-page tab label or data-value (Company statements, etc.);
+#' `annotate_tab` = registry tab key used to match changed inputs for boxes.
 ynow_param_audit_pdf_pages <- function() {
+  rows <- list(
+    # ---- Overview ----
+    c("get_started", "get_started", "", "get_started",
+      "param_audit_pdf_page_basic", "overview", "param_audit_pdf_cat_overview", "TRUE"),
+    c("smart_analysis", "smart_analysis", "", "smart_analysis",
+      "param_audit_pdf_page_smart", "overview", "param_audit_pdf_cat_overview", "FALSE"),
+    c("sensitivity", "sensitivity", "", "sensitivity",
+      "param_audit_pdf_page_ynow", "overview", "param_audit_pdf_cat_overview", "FALSE"),
+    c("company_advance", "company_advance", "", "company_advance",
+      "param_audit_pdf_page_bblab", "overview", "param_audit_pdf_cat_overview", "FALSE"),
+    # ---- Statements (Company) ----
+    c("dashboard", "dashboard", "", "dashboard",
+      "param_audit_pdf_page_company", "statements", "param_audit_pdf_cat_statements", "FALSE"),
+    c("dashboard_fs", "dashboard", "Finance Summary", "dashboard",
+      "param_audit_pdf_page_fs_summary", "statements", "param_audit_pdf_cat_statements", "FALSE"),
+    c("dashboard_is", "dashboard", "Income Statement", "dashboard",
+      "param_audit_pdf_page_fs_is", "statements", "param_audit_pdf_cat_statements", "FALSE"),
+    c("dashboard_bs", "dashboard", "Balance Sheet", "dashboard",
+      "param_audit_pdf_page_fs_bs", "statements", "param_audit_pdf_cat_statements", "FALSE"),
+    c("dashboard_cf", "dashboard", "Cash Flow", "dashboard",
+      "param_audit_pdf_page_fs_cf", "statements", "param_audit_pdf_cat_statements", "FALSE"),
+    c("dashboard_corp", "dashboard", "corp_events", "dashboard",
+      "param_audit_pdf_page_fs_corp", "statements", "param_audit_pdf_cat_statements", "FALSE"),
+    c("dashboard_sec", "dashboard", "sec_notes", "dashboard",
+      "param_audit_pdf_page_fs_sec", "statements", "param_audit_pdf_cat_statements", "FALSE"),
+    c("dashboard_kpi", "dashboard", "KPI by Sheet", "dashboard",
+      "param_audit_pdf_page_fs_kpi", "statements", "param_audit_pdf_cat_statements", "FALSE"),
+    c("dashboard_xkpi", "dashboard", "Crossover KPIs", "dashboard",
+      "param_audit_pdf_page_fs_xkpi", "statements", "param_audit_pdf_cat_statements", "FALSE"),
+    # ---- Valuation models ----
+    c("dcf_calculator", "dcf_calculator", "", "dcf_calculator",
+      "param_audit_pdf_page_dcf", "valuation", "param_audit_pdf_cat_valuation", "TRUE"),
+    c("ddm_calculator", "ddm_calculator", "", "ddm_calculator",
+      "param_audit_pdf_page_ddm", "valuation", "param_audit_pdf_cat_valuation", "TRUE"),
+    c("ri_calculator", "ri_calculator", "", "ri_calculator",
+      "param_audit_pdf_page_ri", "valuation", "param_audit_pdf_cat_valuation", "TRUE"),
+    c("pb_calculator", "pb_calculator", "", "pb_calculator",
+      "param_audit_pdf_page_pb", "valuation", "param_audit_pdf_cat_valuation", "TRUE"),
+    c("nav_calculator", "nav_calculator", "", "nav_calculator",
+      "param_audit_pdf_page_nav", "valuation", "param_audit_pdf_cat_valuation", "TRUE"),
+    c("rel_mult_ev", "rel_mult_ev", "", "rel_mult_ev",
+      "param_audit_pdf_page_rel_ev", "valuation", "param_audit_pdf_cat_valuation", "FALSE"),
+    c("rel_multiples_calculator", "rel_multiples_calculator", "", "rel_multiples_calculator",
+      "param_audit_pdf_page_rel_earn", "valuation", "param_audit_pdf_cat_valuation", "FALSE"),
+    c("rel_mult_rev", "rel_mult_rev", "", "rel_mult_rev",
+      "param_audit_pdf_page_rel_rev", "valuation", "param_audit_pdf_cat_valuation", "FALSE"),
+    c("sotp_calculator", "sotp_calculator", "", "sotp_calculator",
+      "param_audit_pdf_page_sotp", "valuation", "param_audit_pdf_cat_valuation", "FALSE"),
+    # ---- Snapshot ----
+    c("snapshot", "snapshot", "", "snapshot",
+      "param_audit_pdf_page_snapshot", "snapshot", "param_audit_pdf_cat_snapshot", "FALSE"),
+    # ---- Backtest ----
+    c("hfv", "hfv", "", "hfv",
+      "param_audit_pdf_page_hfv", "backtest", "param_audit_pdf_cat_backtest", "FALSE"),
+    c("lab_notes", "lab_notes", "", "lab_notes",
+      "param_audit_pdf_page_lab", "backtest", "param_audit_pdf_cat_backtest", "FALSE"),
+    # ---- Decision Checklist ----
+    c("decision_checklist", "decision_checklist", "", "decision_checklist",
+      "param_audit_pdf_page_checklist", "checklist", "param_audit_pdf_cat_checklist", "FALSE"),
+    # ---- Value Alerts ----
+    c("price_alerts", "price_alerts", "", "price_alerts",
+      "param_audit_pdf_page_alerts", "alerts", "param_audit_pdf_cat_alerts", "FALSE"),
+    # ---- Blue Chip ----
+    c("bluechip", "bluechip", "", "bluechip",
+      "param_audit_pdf_page_bluechip", "bluechip", "param_audit_pdf_cat_bluechip", "FALSE")
+  )
+  mat <- do.call(rbind, rows)
   data.frame(
-    tab = c(
-      "get_started", "dcf_calculator", "ddm_calculator",
-      "ri_calculator", "pb_calculator", "nav_calculator"
-    ),
-    locale_key = c(
-      "param_audit_pdf_page_basic", "param_audit_pdf_page_dcf", "param_audit_pdf_page_ddm",
-      "param_audit_pdf_page_ri", "param_audit_pdf_page_pb", "param_audit_pdf_page_nav"
-    ),
+    id = mat[, 1],
+    tab = mat[, 2],
+    inner = mat[, 3],
+    annotate_tab = mat[, 4],
+    locale_key = mat[, 5],
+    category = mat[, 6],
+    category_key = mat[, 7],
+    selected_default = mat[, 8] == "TRUE",
     stringsAsFactors = FALSE
+  )
+}
+
+#' Grouped checkbox UI for Pages to capture (keeps Shiny input id param_audit_pdf_pages).
+ynow_param_audit_pdf_pages_ui <- function(selected = NULL) {
+  pages <- ynow_param_audit_pdf_pages()
+  if (is.null(selected)) {
+    selected <- pages$id[pages$selected_default]
+  }
+  selected <- as.character(selected %||% character(0))
+  cats <- unique(pages$category)
+  groups <- lapply(cats, function(cat) {
+    sub <- pages[pages$category == cat, , drop = FALSE]
+    cat_key <- sub$category_key[[1]]
+    cbs <- lapply(seq_len(nrow(sub)), function(i) {
+      id <- sub$id[[i]]
+      input_tag <- htmltools::tags$input(
+        type = "checkbox", name = "param_audit_pdf_pages", value = id
+      )
+      if (isTRUE(id %in% selected)) input_tag$attribs$checked <- "checked"
+      htmltools::tags$label(
+        class = "checkbox-inline ynow-pdf-page-opt",
+        input_tag,
+        htmltools::tags$span(
+          class = "ynow-pdf-page-lab",
+          `data-key` = sub$locale_key[[i]],
+          sub$locale_key[[i]]
+        )
+      )
+    })
+    htmltools::tags$div(
+      class = paste0("ynow-pdf-pages-group ynow-pdf-pages-group--", cat),
+      htmltools::tags$span(
+        class = "ynow-pdf-pages-group-label",
+        `data-key` = cat_key,
+        id = paste0("ynow_", cat_key),
+        cat_key
+      ),
+      htmltools::tags$div(class = "shiny-options-group", cbs)
+    )
+  })
+  htmltools::tags$div(
+    id = "param_audit_pdf_pages",
+    class = paste(
+      "form-group shiny-input-checkboxgroup shiny-input-container",
+      "shiny-input-container-inline ynow-pdf-pages"
+    ),
+    htmltools::tags$label(
+      class = "control-label",
+      id = "param_audit_pdf_pages-label",
+      `for` = "param_audit_pdf_pages",
+      htmltools::tags$span(id = "ynow_param_audit_pdf_pages_label", "Pages to capture")
+    ),
+    htmltools::tags$div(class = "ynow-pdf-pages-groups", groups)
   )
 }
 
@@ -151,25 +275,25 @@ ynow_tracked_param_registry <- function() {
     c("bt_w_mom", "Backtest", "Momentum weight", "hfv", "slider", "TRUE", "Sentiment overlay relative weight"),
     c("bt_w_rsi", "Backtest", "RSI weight", "hfv", "slider", "TRUE", "Sentiment overlay relative weight"),
     # ---- Blue Chip Lab ----
-    c("lab_im_pool_rank", "Lab", "Pool rank logic", "bluechip_lab", "select", "FALSE", "Candidate truncation logic"),
-    c("lab_im_concepts", "Lab", "Concept groups", "bluechip_lab", "select_multi", "FALSE", "Concept-stock groups when pool = concept"),
-    c("lab_im_max_n", "Lab", "Universe size N", "bluechip_lab", "select", "FALSE", "Post-analysis display cap"),
-    c("lab_im_max_n_custom", "Lab", "Custom universe N", "bluechip_lab", "numeric", "FALSE", "When N = custom"),
-    c("lab_im_chains", "Lab", "Industry chains", "bluechip_lab", "picker", "TRUE", "Industry-chain filter (Full)"),
-    c("lab_im_industries", "Lab", "Sub-industries", "bluechip_lab", "picker", "TRUE", "Sub-industry filter (Full)"),
-    c("lab_im_methods", "Lab", "Valuation models", "bluechip_lab", "checkboxGroup", "TRUE", "Models included in Lab scoring"),
-    c("lab_im_eq_only", "Lab", "Earnings quality only", "bluechip_lab", "checkbox", "FALSE", "Filter to earnings-quality pass"),
-    c("lab_im_no_alert", "Lab", "No FS alerts", "bluechip_lab", "checkbox", "FALSE", "Filter to zero financial-statement alerts"),
-    c("lab_im_include_adr", "Lab", "Include ADRs", "bluechip_lab", "checkbox", "FALSE", "Include ADR tickers"),
-    c("lab_im_gate_only", "Lab", "Gate only", "bluechip_lab", "checkbox", "TRUE", "Show only gate-pass names"),
-    c("lab_im_lb_mode", "Lab", "Leaderboard mode", "bluechip_lab", "radio", "FALSE", "overall / by_industry / undervalued"),
-    c("lab_cluster_k", "Lab", "Cluster k", "bluechip_lab", "numeric", "FALSE", "Number of clusters"),
-    c("lab_cluster_x", "Lab", "Cluster scatter X", "bluechip_lab", "select", "FALSE", "Scatter X metric"),
-    c("lab_cluster_y", "Lab", "Cluster scatter Y", "bluechip_lab", "select", "FALSE", "Scatter Y metric"),
-    c("lab_cluster_focus", "Lab", "Cluster focus ticker", "bluechip_lab", "text", "FALSE", "Highlight ticker in cluster map"),
-    c("lab_sec_form", "Lab", "SEC form type", "bluechip_lab", "select", "TRUE", "10-K / 10-Q etc."),
-    c("lab_sec_important_only", "Lab", "Important notes only", "bluechip_lab", "checkbox", "TRUE", "Filter SEC notes"),
-    c("lab_sec_keyword", "Lab", "SEC keyword", "bluechip_lab", "text", "TRUE", "Keyword search in notes")
+    c("lab_im_pool_rank", "Lab", "Pool rank logic", "bluechip", "select", "FALSE", "Candidate truncation logic"),
+    c("lab_im_concepts", "Lab", "Concept groups", "bluechip", "select_multi", "FALSE", "Concept-stock groups when pool = concept"),
+    c("lab_im_max_n", "Lab", "Universe size N", "bluechip", "select", "FALSE", "Post-analysis display cap"),
+    c("lab_im_max_n_custom", "Lab", "Custom universe N", "bluechip", "numeric", "FALSE", "When N = custom"),
+    c("lab_im_chains", "Lab", "Industry chains", "bluechip", "picker", "TRUE", "Industry-chain filter (Full)"),
+    c("lab_im_industries", "Lab", "Sub-industries", "bluechip", "picker", "TRUE", "Sub-industry filter (Full)"),
+    c("lab_im_methods", "Lab", "Valuation models", "bluechip", "checkboxGroup", "TRUE", "Models included in Lab scoring"),
+    c("lab_im_eq_only", "Lab", "Earnings quality only", "bluechip", "checkbox", "FALSE", "Filter to earnings-quality pass"),
+    c("lab_im_no_alert", "Lab", "No FS alerts", "bluechip", "checkbox", "FALSE", "Filter to zero financial-statement alerts"),
+    c("lab_im_include_adr", "Lab", "Include ADRs", "bluechip", "checkbox", "FALSE", "Include ADR tickers"),
+    c("lab_im_gate_only", "Lab", "Gate only", "bluechip", "checkbox", "TRUE", "Show only gate-pass names"),
+    c("lab_im_lb_mode", "Lab", "Leaderboard mode", "bluechip", "radio", "FALSE", "overall / by_industry / undervalued"),
+    c("lab_cluster_k", "Lab", "Cluster k", "bluechip", "numeric", "FALSE", "Number of clusters"),
+    c("lab_cluster_x", "Lab", "Cluster scatter X", "bluechip", "select", "FALSE", "Scatter X metric"),
+    c("lab_cluster_y", "Lab", "Cluster scatter Y", "bluechip", "select", "FALSE", "Scatter Y metric"),
+    c("lab_cluster_focus", "Lab", "Cluster focus ticker", "bluechip", "text", "FALSE", "Highlight ticker in cluster map"),
+    c("lab_sec_form", "Lab", "SEC form type", "bluechip", "select", "TRUE", "10-K / 10-Q etc."),
+    c("lab_sec_important_only", "Lab", "Important notes only", "bluechip", "checkbox", "TRUE", "Filter SEC notes"),
+    c("lab_sec_keyword", "Lab", "SEC keyword", "bluechip", "text", "TRUE", "Keyword search in notes")
   )
   mat <- do.call(rbind, rows)
   data.frame(
