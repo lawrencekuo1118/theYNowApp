@@ -7,5 +7,5 @@ commit=5c51cd0155187ae7c0a500153dd65a5f8fe8dfa3
 short=5c51cd01
 message=chore: bump display version to v25.57
 captured_at=2026-10-18T14:24:04Z
-display_version=v25.57
+display_version=v25.58
 note=Canonical live line is app_25.0. Bundle 12706559: Pages to capture expanded with categorized fundamentals/backtest options (PR #303).
