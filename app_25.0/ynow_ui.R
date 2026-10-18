@@ -4004,39 +4004,43 @@ ui <- dashboardPage(
     ),
 
     # Snapshot：側邊欄內容流最底部低調捷徑（勿用 absolute，會跑到搜尋框）
+    # Foot links row + copyright directly below (copyright must not overlap the three links).
     column(
       width = 12,
       class = "ynow-sidebar-snapshot-foot",
-      tags$a(
-        href = "#shiny-tab-snapshot",
-        `data-toggle` = "tab",
-        `data-value` = "snapshot",
-        class = "ynow-sidebar-snapshot-link",
-        onclick = "if (window.ynowShowSidebarFootTab) { window.ynowShowSidebarFootTab('snapshot'); } else if (window.Shiny) { Shiny.setInputValue('sidebar_tabs', 'snapshot', {priority: 'event'}); } return false;",
-        icon("camera", class = "fa-fw"),
-        tags$span(id = "ynow_snapshot_link_label", " Snapshot")
-      ),
-      # System admin：側邊欄專用入口（完整版）；Lite 隱藏；內部 tabName 仍為 testing
-      tags$a(
-        id = "ynow_sidebar_test_btn",
-        href = "#shiny-tab-testing",
-        `data-toggle` = "tab",
-        `data-value` = "testing",
-        class = "ynow-sidebar-snapshot-link ynow-sidebar-test-link ynow-full-only",
-        onclick = "if (window.Shiny) { Shiny.setInputValue('sidebar_test_click', (window.__ynowTestClicks=(window.__ynowTestClicks||0)+1), {priority: 'event'}); } if (window.ynowShowSidebarFootTab) { window.ynowShowSidebarFootTab('testing'); } else if (window.Shiny) { Shiny.setInputValue('sidebar_tabs', 'testing', {priority: 'event'}); } return false;",
-        icon("user-shield", class = "fa-fw"),
-        tags$span(id = "ynow_test_link_label", " Sys. Admin")
-      ),
-      # 意見區：收集使用者回饋，系統性開 GitHub Issue
-      tags$a(
-        id = "ynow_sidebar_feedback_btn",
-        href = "#shiny-tab-feedback",
-        `data-toggle` = "tab",
-        `data-value` = "feedback",
-        class = "ynow-sidebar-snapshot-link ynow-sidebar-feedback-link",
-        onclick = "if (window.Shiny) { Shiny.setInputValue('sidebar_feedback_click', (window.__ynowFeedbackClicks=(window.__ynowFeedbackClicks||0)+1), {priority: 'event'}); } if (window.ynowShowSidebarFootTab) { window.ynowShowSidebarFootTab('feedback'); } else if (window.Shiny) { Shiny.setInputValue('sidebar_tabs', 'feedback', {priority: 'event'}); } return false;",
-        icon("comment-dots", class = "fa-fw"),
-        tags$span(id = "ynow_feedback_link_label", " 意見區")
+      tags$div(
+        class = "ynow-sidebar-snapshot-foot-links",
+        tags$a(
+          href = "#shiny-tab-snapshot",
+          `data-toggle` = "tab",
+          `data-value` = "snapshot",
+          class = "ynow-sidebar-snapshot-link",
+          onclick = "if (window.ynowShowSidebarFootTab) { window.ynowShowSidebarFootTab('snapshot'); } else if (window.Shiny) { Shiny.setInputValue('sidebar_tabs', 'snapshot', {priority: 'event'}); } return false;",
+          icon("camera", class = "fa-fw"),
+          tags$span(id = "ynow_snapshot_link_label", " Snapshot")
+        ),
+        # System admin：側邊欄專用入口（完整版）；Lite 隱藏；內部 tabName 仍為 testing
+        tags$a(
+          id = "ynow_sidebar_test_btn",
+          href = "#shiny-tab-testing",
+          `data-toggle` = "tab",
+          `data-value` = "testing",
+          class = "ynow-sidebar-snapshot-link ynow-sidebar-test-link ynow-full-only",
+          onclick = "if (window.Shiny) { Shiny.setInputValue('sidebar_test_click', (window.__ynowTestClicks=(window.__ynowTestClicks||0)+1), {priority: 'event'}); } if (window.ynowShowSidebarFootTab) { window.ynowShowSidebarFootTab('testing'); } else if (window.Shiny) { Shiny.setInputValue('sidebar_tabs', 'testing', {priority: 'event'}); } return false;",
+          icon("user-shield", class = "fa-fw"),
+          tags$span(id = "ynow_test_link_label", " Sys. Admin")
+        ),
+        # 意見區：收集使用者回饋，系統性開 GitHub Issue
+        tags$a(
+          id = "ynow_sidebar_feedback_btn",
+          href = "#shiny-tab-feedback",
+          `data-toggle` = "tab",
+          `data-value` = "feedback",
+          class = "ynow-sidebar-snapshot-link ynow-sidebar-feedback-link",
+          onclick = "if (window.Shiny) { Shiny.setInputValue('sidebar_feedback_click', (window.__ynowFeedbackClicks=(window.__ynowFeedbackClicks||0)+1), {priority: 'event'}); } if (window.ynowShowSidebarFootTab) { window.ynowShowSidebarFootTab('feedback'); } else if (window.Shiny) { Shiny.setInputValue('sidebar_tabs', 'feedback', {priority: 'event'}); } return false;",
+          icon("comment-dots", class = "fa-fw"),
+          tags$span(id = "ynow_feedback_link_label", " 意見區")
+        ),
       ),
       tags$p(
         id = "ynow_sidebar_copyright",
@@ -4924,6 +4928,15 @@ ui <- dashboardPage(
           background: var(--ynow-gate-accent, #1a1a1a) !important;
           background-color: var(--ynow-gate-accent, #1a1a1a) !important;
           color: #fff !important;
+        }
+        /* Guest 「Sign in required」gates: hide stock Ticker / Yahoo industry chrome */
+        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed)
+          .content-wrapper:has(#shiny-tab-lab_notes.active) .ynow-stock-chrome,
+        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed)
+          .content-wrapper:has(#shiny-tab-decision_checklist.active) .ynow-stock-chrome,
+        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed)
+          .content-wrapper:has(#shiny-tab-price_alerts.active) .ynow-stock-chrome {
+          display: none !important;
         }
         body.ynow-sysadmin-on .ynow-sysadmin-login-chrome,
         body.ynow-sysadmin-on .ynow-sysadmin-login-row {
@@ -6502,8 +6515,22 @@ ui <- dashboardPage(
           font-weight: 700 !important;
           border-left-color: #fff;
         }
-        /* Snapshot／Sys. Admin／Feedback：側邊欄底部同一列，不換行 */
+        /* Snapshot／Sys. Admin／Feedback：同一列；版權宣告在按鈕列正下方（勿重疊） */
         .ynow-sidebar-snapshot-foot {
+          display: flex !important;
+          flex-direction: column !important;
+          flex-wrap: nowrap !important;
+          align-items: stretch;
+          justify-content: flex-start;
+          gap: 0;
+          width: 100%;
+          box-sizing: border-box;
+          margin-top: 8px !important;
+          margin-bottom: 10px !important;
+          padding: 0 4px !important;
+          text-align: left !important;
+        }
+        .ynow-sidebar-snapshot-foot-links {
           display: flex !important;
           flex-direction: row !important;
           flex-wrap: nowrap !important;
@@ -6512,10 +6539,6 @@ ui <- dashboardPage(
           gap: 2px;
           width: 100%;
           box-sizing: border-box;
-          margin-top: 8px !important;
-          margin-bottom: 10px !important;
-          padding: 0 4px !important;
-          text-align: left !important;
         }
         .main-sidebar .ynow-sidebar-snapshot-foot.col-sm-12,
         .main-sidebar .ynow-sidebar-snapshot-foot.col-xs-12 {
@@ -6592,11 +6615,14 @@ ui <- dashboardPage(
         .ynow-recent-chip:focus-visible {
           box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35);
         }
-        /* 側欄完整 LOGO：Recent Search 橫線下、Download Report 正上方；等比例放大 */
+        /* 側欄版權：緊接 Snapshot／Sys. Admin／意見區列下方，全寬、不與按鈕重疊 */
         .ynow-sidebar-copyright {
+          flex: 0 0 auto;
+          width: 100%;
+          box-sizing: border-box;
           clear: both;
-          margin: 14px 0 0;
-          padding: 8px 10px 12px;
+          margin: 6px 0 0;
+          padding: 6px 4px 8px;
           font-size: 10px;
           line-height: 1.35;
           text-align: center;
@@ -16224,61 +16250,75 @@ ui <- dashboardPage(
         tags$span(class = "ynow-credit-text", "a lawrence kuo shiny app")
       )
     ),
-    # Ticker search + Yahoo industry chrome: hide on Home, About, Macro, Blue Chip, Testing
+    # Ticker search + Yahoo industry chrome: hide on Home, About, Macro, Blue Chip,
+    # Testing, and account maintenance (gate / 會員管理 / points). Guest Sign-in-required
+    # surfaces (Lab / Checklist / Value Alerts) hide the same chrome via CSS while gated.
     # (Business Breakdown shares global Ticker / Stock Code chrome;
     # Blue Chip uses its own universe Search, not the global ticker chrome).
     conditionalPanel(
-      condition = "input.sidebar_tabs != 'about' && input.sidebar_tabs != 'macro_market' && input.sidebar_tabs != 'asset_transmission' && input.sidebar_tabs != 'bluechip' && input.sidebar_tabs != 'testing' && input.sidebar_tabs != 'home'",
-      fluidRow(
-        column(width = 12,
-               div(
-                 class = "ynow-sc-row",
+      condition = paste(
+        "input.sidebar_tabs != 'about' &&",
+        "input.sidebar_tabs != 'macro_market' &&",
+        "input.sidebar_tabs != 'asset_transmission' &&",
+        "input.sidebar_tabs != 'bluechip' &&",
+        "input.sidebar_tabs != 'testing' &&",
+        "input.sidebar_tabs != 'home' &&",
+        "input.sidebar_tabs != 'account_admin' &&",
+        "input.sidebar_tabs != 'account_points'"
+      ),
+      tags$div(
+        class = "ynow-stock-chrome",
+        fluidRow(
+          column(width = 12,
                  div(
-                   class = "ynow-sc-wrap",
-                   textInput(
-                     "sc",
-                     "Ticker / Stock Code",
-                     value = "",
-                     placeholder = "e.g. AAPL / TSM"
+                   class = "ynow-sc-row",
+                   div(
+                     class = "ynow-sc-wrap",
+                     textInput(
+                       "sc",
+                       "Ticker / Stock Code",
+                       value = "",
+                       placeholder = "e.g. AAPL / TSM"
+                     ),
+                     uiOutput("sc_ticker_suggest_ui")
                    ),
-                   uiOutput("sc_ticker_suggest_ui")
-                 ),
-                 actionButton(
-                   "search",
-                   "Search",
-                   icon = icon("search"),
-                   class = "ynow-search-btn"
+                   actionButton(
+                     "search",
+                     "Search",
+                     icon = icon("search"),
+                     class = "ynow-search-btn"
+                   )
                  )
-               )
-        )
-      ),
-      fluidRow(
-        column(
-          width = 12,
-          h2(uiOutput("txt_corpname", inline = TRUE), class = "ynow-corpname")
-        )
-      ),
-      fluidRow(
-        column(
-          width = 12,
-          uiOutput("ynow_data_gap_banner")
-        )
-      ),
-      fluidRow(
-        column(
-          width = 12,
-          tags$div(
-            style = "width: 100%; text-align: left; margin-top: 8px;",
-            tags$p(
-              id = "ynow_industry_info_yahoo",
-              "industry info from Yahoo",
-              style = "font-size: 12px; color: #888; margin: 0 0 4px 0; font-weight: bold;"
-            ),
-            verbatimTextOutput("search_results")
           )
-        )
-      ),
-      br()
+        ),
+        fluidRow(
+          column(
+            width = 12,
+            h2(uiOutput("txt_corpname", inline = TRUE), class = "ynow-corpname")
+          )
+        ),
+        fluidRow(
+          column(
+            width = 12,
+            uiOutput("ynow_data_gap_banner")
+          )
+        ),
+        fluidRow(
+          column(
+            width = 12,
+            tags$div(
+              style = "width: 100%; text-align: left; margin-top: 8px;",
+              tags$p(
+                id = "ynow_industry_info_yahoo",
+                "industry info from Yahoo",
+                style = "font-size: 12px; color: #888; margin: 0 0 4px 0; font-weight: bold;"
+              ),
+              verbatimTextOutput("search_results")
+            )
+          )
+        ),
+        br()
+      )
     ),
     # Shared ticker typeahead (Ticker/Stock Code + Radar focus); always loaded
     tags$script(HTML("
