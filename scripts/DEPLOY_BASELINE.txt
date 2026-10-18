@@ -3,10 +3,8 @@ bundleId=12706315
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
 aligned_git=646ce354
-977d61569ab6a8f3c1a8a4137eae7e3a452c9fb5
 commit=646ce354
-977d61569ab6a8f3c1a8a4137eae7e3a452c9fb5
 short=
 message=chore: bump display version to v25.50
-captured_at=2026-10-18T13:03:57Z
+captured_at=2026-10-18T13:04:03Z
 display_version=v25.50
