@@ -313,6 +313,32 @@ check("UI mounts auth on sidebar date + home legal", {
 check("UI About mentions account sign-in", grepl("Account sign-in", ui, fixed = TRUE) &&
         grepl("帳號登入", ui, fixed = TRUE))
 check("UI wires ynowAuthState handler", grepl("ynowAuthState", ui, fixed = TRUE))
+check("Sys. Admin foot link hidden when signed in", {
+  grepl("body.ynow-authed .ynow-sidebar-snapshot-foot #ynow_sidebar_test_btn", ui, fixed = TRUE) &&
+    grepl("a#ynow_sidebar_test_btn.ynow-sidebar-test-link", ui, fixed = TRUE) &&
+    grepl("display: none !important", ui, fixed = TRUE) &&
+    grepl("ynowSyncSysAdminFootVisibility", ui, fixed = TRUE) &&
+    grepl("tab === 'testing') tab = 'home'", ui, fixed = TRUE)
+})
+check("post-login server remaps testing tab to home", {
+  auth_txt <- paste(readLines(src_auth, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl('identical(tab, "testing")) tab <- "home"', auth_txt, fixed = TRUE)
+})
+check("server blocks Sys. Admin click when signed in", {
+  grepl("sidebar_test_click", srv, fixed = TRUE) &&
+    grepl("ynow_auth$is_logged_in", srv, fixed = TRUE) &&
+    grepl('updateTabItems(session, "sidebar_tabs", "home")', srv, fixed = TRUE)
+})
+check("client remaps testing→home when authed (goto + foot)", {
+  grepl("tab === 'testing' && document.body &&", ui, fixed = TRUE) &&
+    grepl("document.body.classList.contains('ynow-authed')", ui, fixed = TRUE) &&
+    grepl("classList.contains('ynow-authed')) { return false; }", ui, fixed = TRUE) &&
+    grepl("pointer-events", ui, fixed = TRUE)
+})
+check("server blocks testing tab + lazy mount when signed in", {
+  grepl('identical(tab, "testing")', srv, fixed = TRUE) &&
+    grepl("ynow-sysadmin-blocked", srv, fixed = TRUE)
+})
 check("UI wires ynowAuthFeature handler", grepl("ynowAuthFeature", ui, fixed = TRUE))
 check("UI wires OAuth redirect + callback", grepl("ynowAuthOAuthRedirect", ui, fixed = TRUE) &&
         grepl("ynow_auth_oauth_callback", ui, fixed = TRUE))

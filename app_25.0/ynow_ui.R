@@ -4019,14 +4019,14 @@ ui <- dashboardPage(
           icon("camera", class = "fa-fw"),
           tags$span(id = "ynow_snapshot_link_label", " Snapshot")
         ),
-        # System admin：側邊欄專用入口（完整版）；Lite 隱藏；內部 tabName 仍為 testing
+        # System admin：側邊欄專用入口（完整版）；Lite／已登入帳號隱藏；內部 tabName 仍為 testing
         tags$a(
           id = "ynow_sidebar_test_btn",
           href = "#shiny-tab-testing",
           `data-toggle` = "tab",
           `data-value` = "testing",
           class = "ynow-sidebar-snapshot-link ynow-sidebar-test-link ynow-full-only",
-          onclick = "if (window.Shiny) { Shiny.setInputValue('sidebar_test_click', (window.__ynowTestClicks=(window.__ynowTestClicks||0)+1), {priority: 'event'}); } if (window.ynowShowSidebarFootTab) { window.ynowShowSidebarFootTab('testing'); } else if (window.Shiny) { Shiny.setInputValue('sidebar_tabs', 'testing', {priority: 'event'}); } return false;",
+          onclick = "if (document.body && document.body.classList.contains('ynow-authed')) { return false; } if (window.Shiny) { Shiny.setInputValue('sidebar_test_click', (window.__ynowTestClicks=(window.__ynowTestClicks||0)+1), {priority: 'event'}); } if (window.ynowShowSidebarFootTab) { window.ynowShowSidebarFootTab('testing'); } else if (window.Shiny) { Shiny.setInputValue('sidebar_tabs', 'testing', {priority: 'event'}); } return false;",
           icon("user-shield", class = "fa-fw"),
           tags$span(id = "ynow_test_link_label", " Sys. Admin")
         ),
@@ -7051,6 +7051,15 @@ ui <- dashboardPage(
         body.ynow-lite .ynow-company-advance-bblab,
         body.ynow-lite .ynow-bblab {
           display: none !important;
+        }
+        /* Signed-in account users: hide Sys. Admin foot link (portal is guest/ops only).
+           Beat .ynow-sidebar-snapshot-link { display: inline-flex !important }. */
+        body.ynow-authed .ynow-sidebar-snapshot-foot a.ynow-sidebar-snapshot-link.ynow-sidebar-test-link,
+        body.ynow-authed .ynow-sidebar-snapshot-foot #ynow_sidebar_test_btn,
+        body.ynow-authed a#ynow_sidebar_test_btn.ynow-sidebar-test-link {
+          display: none !important;
+          visibility: hidden !important;
+          pointer-events: none !important;
         }
         /* Lite Snapshot: only System defaults tab (when sysadmin unlocked).
            Note: shiny tabset id may sit on the ul.nav-tabs itself (not a wrapper). */
@@ -11260,12 +11269,32 @@ ui <- dashboardPage(
                 finish(baseUrl, !!tab, false);
               }
             });
+            /* Sys. Admin foot link: hide while signed in (CSS + inline, sign-out restores). */
+            function ynowSyncSysAdminFootVisibility(loggedIn) {
+              var el = document.getElementById('ynow_sidebar_test_btn');
+              if (!el) return;
+              if (loggedIn) {
+                el.style.setProperty('display', 'none', 'important');
+                el.style.setProperty('visibility', 'hidden', 'important');
+                el.style.setProperty('pointer-events', 'none', 'important');
+                el.setAttribute('aria-hidden', 'true');
+                el.setAttribute('tabindex', '-1');
+              } else {
+                el.style.removeProperty('display');
+                el.style.removeProperty('visibility');
+                el.style.removeProperty('pointer-events');
+                el.removeAttribute('aria-hidden');
+                el.removeAttribute('tabindex');
+              }
+            }
+            window.ynowSyncSysAdminFootVisibility = ynowSyncSysAdminFootVisibility;
             addHandler('ynowAuthPostLogin', function (payload) {
               if (!payload) return;
               /* Success: mark authed BEFORE tab restore / sidebar work so any
                  subsequent Sign-in / BS toggleModal open is vetoed. */
               if (payload.ok && document.body) {
                 document.body.classList.add('ynow-authed');
+                ynowSyncSysAdminFootVisibility(true);
               }
               try {
                 if (window.jQuery) jQuery('#ynow_auth_modal').modal('hide');
@@ -11276,10 +11305,12 @@ ui <- dashboardPage(
                 sessionStorage.removeItem('ynow_oauth_code_verifier');
                 sessionStorage.removeItem('ynow_pre_oauth_tab');
               } catch (eClr) {}
+              /* Sys. Admin is guest/ops-only: never restore testing after sign-in. */
+              if (payload.ok && tab === 'testing') tab = 'home';
               if (payload.ok && tab && window.Shiny && Shiny.setInputValue) {
                 try {
                   if (typeof window.ynowShowSidebarFootTab === 'function' &&
-                      (tab === 'snapshot' || tab === 'testing' || tab === 'feedback')) {
+                      (tab === 'snapshot' || tab === 'feedback')) {
                     window.ynowShowSidebarFootTab(tab);
                   } else {
                     Shiny.setInputValue('sidebar_tabs', tab, { priority: 'event' });
@@ -11308,6 +11339,7 @@ ui <- dashboardPage(
               var loggedIn = !!(payload.logged_in);
               if (loggedIn) document.body.classList.add('ynow-authed');
               else document.body.classList.remove('ynow-authed');
+              ynowSyncSysAdminFootVisibility(loggedIn);
               var openLinks = document.querySelectorAll('.ynow-auth-open');
               var outLinks = document.querySelectorAll('.ynow-auth-signout');
               var i;
@@ -11324,6 +11356,24 @@ ui <- dashboardPage(
               if (payload.label_sign_out) {
                 var outLbls = document.querySelectorAll('.ynow-auth-signout-label');
                 for (i = 0; i < outLbls.length; i++) outLbls[i].textContent = payload.label_sign_out;
+              }
+              /* Leave Sys. Admin tab if still open after sign-in (link is CSS-hidden). */
+              if (loggedIn && window.Shiny && Shiny.setInputValue) {
+                try {
+                  var active = document.querySelector(
+                    '.sidebar-menu li.active > a[data-value], .sidebar-menu a.active[data-value]'
+                  );
+                  var footActive = document.querySelector(
+                    '.ynow-sidebar-snapshot-foot a.active[data-value], ' +
+                    '.ynow-sidebar-snapshot-foot a[aria-expanded=\"true\"][data-value]'
+                  );
+                  var cur = (active && active.getAttribute('data-value')) ||
+                    (footActive && footActive.getAttribute('data-value')) || '';
+                  var hash = (window.location.hash || '').replace(/^#shiny-tab-/, '');
+                  if (cur === 'testing' || hash === 'testing') {
+                    Shiny.setInputValue('sidebar_tabs', 'home', { priority: 'event' });
+                  }
+                } catch (eLeaveTest) {}
               }
             });
             addHandler('ynowDcLocale', applyDcLocale);
@@ -11605,6 +11655,11 @@ ui <- dashboardPage(
             function gotoTab(tab) {
               tab = remapLegacyTab(tab);
               if (!tab) return;
+              /* Signed-in members: Sys. Admin portal is guest/ops only. */
+              if (tab === 'testing' && document.body &&
+                  document.body.classList.contains('ynow-authed')) {
+                tab = 'home';
+              }
               if (window.Shiny && Shiny.setInputValue) {
                 Shiny.setInputValue('sidebar_tabs', tab, {priority: 'event'});
               }
@@ -11721,6 +11776,11 @@ ui <- dashboardPage(
             function showSidebarFootTab(tab) {
               tab = remapLegacyTab(tab);
               if (!tab) return;
+              /* Signed-in members: never open Sys. Admin (testing) via foot link. */
+              if (tab === 'testing' && document.body &&
+                  document.body.classList.contains('ynow-authed')) {
+                tab = 'home';
+              }
               if (window.Shiny && Shiny.setInputValue) {
                 Shiny.setInputValue('sidebar_tabs', tab, {priority: 'event'});
               }
@@ -11918,13 +11978,6 @@ ui <- dashboardPage(
             return !!(document.body && document.body.classList.contains('ynow-authed'));
           }
           window.ynowIsAuthed = ynowIsAuthed;
-          document.addEventListener('click', function (ev) {
-            var node = ev.target && ev.target.closest ? ev.target.closest('#download_report') : null;
-            if (!node || !document.body) return;
-            // #region agent log
-            fetch('http://127.0.0.1:7302/ingest/e3a0dcdf-71e1-4bba-855e-f942118bd315',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ef0f33'},body:JSON.stringify({sessionId:'ef0f33',runId:'pre',hypothesisId:'C',location:'ynow_ui.R:download_click',message:'pdf button click',data:{authed:document.body.classList.contains('ynow-authed'),lite:document.body.classList.contains('ynow-lite'),authFeature:document.body.classList.contains('ynow-auth-feature'),label:(node.textContent||'').replace(/\\s+/g,' ').trim().slice(0,80)},timestamp:Date.now()})}).catch(function(){});
-            // #endregion
-          }, true);
           function ynowShowAuthModal() {
             // Already signed in: never reopen login modal (post-login sidebar race).
             if (ynowIsAuthed()) return;
