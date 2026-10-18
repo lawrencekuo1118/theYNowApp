@@ -208,7 +208,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "A Meta-Framework that breaks the absolute／relative boundary: split the firm into segments, ",
       "value each with the best lens (DCF, EV/EBITDA, EV/Sales／ARR, NAV), sum EV, then deduct corporate overhead and net debt. ",
       "This app’s engine implements the revenue × EV/Sales path (≥2 segments) with the shared Cash − Debt × Shares bridge. ",
-      "Classic for Big Tech, conglomerates, and spin-off cases; markets often apply a 10%–30% conglomerate discount."
+      "Markets often cite a 10%–30% conglomerate discount — this app does not auto-apply that discount; adjust segment multiples if needed."
     ),
     sotp_box_title = "SOTP",
     sotp_tab_overview = "Overview",
@@ -269,7 +269,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     sotp_disclaimer = paste0(
       "Meta-Framework output (app path: revenue × EV/Sales) — do not treat as a single-model Intrinsic Value, ",
       "and do not equal-weight-average it with DCF / DDM / RI / P/B. ",
-      "Conglomerate discount (often 10%–30%) may explain SOTP > market price."
+      "Conglomerate discount (often 10%–30%) is market narrative only — not applied in this engine."
     ),
     rel_multiples_btn_calc = "Run multiples",
     rel_multiples_btn_sync = "Sync from statements",
@@ -719,16 +719,47 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     param_audit_pdf_title = "Annotated page screenshots (PDF)",
     param_audit_pdf_help = paste0(
-      "Select main pages to include. The app switches to each page, captures the live layout, ",
-      "draws boxes on inputs you changed vs the post-Search baseline, and downloads one PDF."
+      "Select pages by category. The app switches to each page (and statement block when chosen), ",
+      "captures the live layout, draws boxes on inputs you changed vs the post-Search baseline, ",
+      "and downloads one PDF."
     ),
     param_audit_pdf_pages_label = "Pages to capture",
-    param_audit_pdf_page_basic = "Basic Setup (SGR / CAPM / WACC / Beta)",
+    param_audit_pdf_cat_overview = "Overview",
+    param_audit_pdf_cat_statements = "Statements",
+    param_audit_pdf_cat_valuation = "Valuation models",
+    param_audit_pdf_cat_snapshot = "Snapshot",
+    param_audit_pdf_cat_backtest = "Backtest",
+    param_audit_pdf_cat_checklist = "Decision Checklist",
+    param_audit_pdf_cat_alerts = "Value Alerts",
+    param_audit_pdf_cat_bluechip = "Blue Chip",
+    param_audit_pdf_page_basic = "Model Dashboard (SGR / CAPM / WACC / Beta)",
+    param_audit_pdf_page_smart = "Smart Analysis",
+    param_audit_pdf_page_ynow = "YNOW",
+    param_audit_pdf_page_bblab = "Business Breakdown",
+    param_audit_pdf_page_company = "Company (overview)",
+    param_audit_pdf_page_fs_summary = "Finance Summary",
+    param_audit_pdf_page_fs_is = "Income Statement",
+    param_audit_pdf_page_fs_bs = "Balance Sheet",
+    param_audit_pdf_page_fs_cf = "Cash Flow",
+    param_audit_pdf_page_fs_corp = "Board / CB",
+    param_audit_pdf_page_fs_sec = "SEC notes",
+    param_audit_pdf_page_fs_kpi = "KPI by Sheet",
+    param_audit_pdf_page_fs_xkpi = "Crossover KPIs",
     param_audit_pdf_page_dcf = "DCF",
     param_audit_pdf_page_ddm = "DDM",
     param_audit_pdf_page_ri = "RI",
     param_audit_pdf_page_pb = "P/B",
     param_audit_pdf_page_nav = "NAV",
+    param_audit_pdf_page_rel_ev = "Relative — Enterprise value",
+    param_audit_pdf_page_rel_earn = "Relative — Earnings",
+    param_audit_pdf_page_rel_rev = "Relative — Revenue",
+    param_audit_pdf_page_sotp = "SOTP",
+    param_audit_pdf_page_snapshot = "Snapshot",
+    param_audit_pdf_page_hfv = "Hist. FV Validation (HFV)",
+    param_audit_pdf_page_lab = "Quant Backtest Lab",
+    param_audit_pdf_page_checklist = "Decision Checklist",
+    param_audit_pdf_page_alerts = "Value Alerts",
+    param_audit_pdf_page_bluechip = "Blue Chip Leaderboard",
     param_audit_pdf_btn = "Generate annotated PDF",
     param_audit_pdf_busy = "Capturing pages… please wait (do not navigate).",
     param_audit_pdf_done = "PDF downloaded.",
@@ -895,6 +926,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     pts_sysadmin_login_ok = "System admin unlocked.",
     pts_sysadmin_login_bad = "Invalid system-admin username or password.",
     pts_sysadmin_need_enter = "Sign in with the system-admin username and password to load the de-identified user list.",
+    pts_sysadmin_member_blocked = "System admin is available only before account sign-in. Sign out to open the ops portal.",
     pts_sysadmin_loading = "Loading de-identified users…",
     pts_sysadmin_users = "Users (de-identified)",
     pts_sysadmin_col_id = "User id",
@@ -968,6 +1000,105 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Quantitative Backtest Lab, Decision Checklist, and Value Alerts ",
       "require a signed-in account in Full mode. ",
       "Lite mode does not require sign-in and remains fully usable."
+    ),
+    # Per-gate promo (feature-specific) + shared FAQ
+    auth_gate_lab_body = paste0(
+      "Quantitative Backtest Lab requires a signed-in account in Full mode. ",
+      "Lite mode does not require sign-in and remains fully usable."
+    ),
+    auth_gate_lab_kicker = "Unlock Quantitative Backtest Lab",
+    auth_gate_lab_lead = paste0(
+      "Sign in to run HFV and Quant backtests, replay Fair Value paths, ",
+      "and use Lab controls reserved for APP members in Full mode."
+    ),
+    auth_gate_lab_b1 = "HFV and Quant Backtest Lab worksheets",
+    auth_gate_lab_b2 = "Fair Value replay, strategy filters, and Lab reports",
+    auth_gate_lab_b3 = "FYN spend for Lab runs (bt_run / hfv_run) when points are on",
+    auth_gate_lab_demo_caption = "Lab demo — what you unlock after sign-in",
+    auth_gate_checklist_body = paste0(
+      "Decision Checklist requires a signed-in account in Full mode. ",
+      "Lite mode does not require sign-in and remains fully usable."
+    ),
+    auth_gate_checklist_kicker = "Unlock Decision Checklist",
+    auth_gate_checklist_lead = paste0(
+      "Sign in to open Decision SOP gates, live checks, ",
+      "and the unlock path for the YNOW verdict."
+    ),
+    auth_gate_checklist_b1 = "Mandatory Decision SOP gates and live checklist items",
+    auth_gate_checklist_b2 = "Bear/Base MOS, F-Score, and quality acknowledgements",
+    auth_gate_checklist_b3 = "YNOW verdict unlock after SOP gates pass",
+    auth_gate_checklist_demo_caption = "Checklist demo — Decision SOP flow",
+    auth_gate_alerts_body = paste0(
+      "Value Alerts require a signed-in account in Full mode. ",
+      "Lite mode does not require sign-in and remains fully usable."
+    ),
+    auth_gate_alerts_kicker = "Unlock Value Alerts",
+    auth_gate_alerts_lead = paste0(
+      "Sign in to create and manage Value Alerts, ",
+      "and send email notify to your registered mailbox."
+    ),
+    auth_gate_alerts_b1 = "Save and manage value / price alert rules",
+    auth_gate_alerts_b2 = "Email notify defaults to your account mailbox",
+    auth_gate_alerts_b3 = "Alert history and FYN alert_slot spend when points are on",
+    auth_gate_alerts_demo_caption = "Value Alerts demo — rules and notify",
+    auth_gate_account_body = "Sign in to open the Account workspace and Points ledger.",
+    auth_gate_account_kicker = "Unlock Account workspace",
+    auth_gate_account_lead = paste0(
+      "Sign in to open Account overview, FYN / PYN balances, ",
+      "and the full Points ledger."
+    ),
+    auth_gate_account_b1 = "Account overview and page theme preferences",
+    auth_gate_account_b2 = "FYN / PYN balances — welcome gift and daily check-in (Asia/Taipei)",
+    auth_gate_account_b3 = "Complete Points ledger history for this account",
+    auth_gate_account_demo_caption = "Account demo — overview and points",
+    auth_gate_pdf_body = paste0(
+      "Valuation PDF downloads require a signed-in account. ",
+      "Three free downloads each Asia/Taipei day; each extra costs 10 FYN."
+    ),
+    auth_gate_pdf_kicker = "Unlock valuation PDF downloads",
+    auth_gate_pdf_lead = paste0(
+      "Sign in to download the broker-style valuation report for the active ticker. ",
+      "Daily free quota applies; extras spend FYN."
+    ),
+    auth_gate_pdf_b1 = "Valuation PDF for the active ticker (DCF / DDM / RI / P/B and more)",
+    auth_gate_pdf_b2 = "Three free downloads each Asia/Taipei day",
+    auth_gate_pdf_b3 = "Extra downloads cost 10 FYN from your account balance",
+    auth_gate_pdf_demo_caption = "PDF demo — report download",
+    auth_gate_snap_defaults_body = paste0(
+      "System defaults (APP_DEFAULTS) require System admin unlock ",
+      "(same session as Points → System admin). ",
+      "After Exit system admin, this tab locks again."
+    ),
+    auth_gate_snap_defaults_kicker = "APP_DEFAULTS locked",
+    auth_gate_snap_defaults_lead = paste0(
+      "Unlock System defaults for this session via System admin. ",
+      "This is an ops unlock, not a membership gate."
+    ),
+    auth_gate_snap_defaults_b1 = "View and edit APP_DEFAULTS for the live line",
+    auth_gate_snap_defaults_b2 = "Download / restore defaults CSV while unlocked",
+    auth_gate_snap_defaults_b3 = "Locks again when you exit System admin",
+    auth_gate_snap_defaults_demo_caption = "APP_DEFAULTS demo — sysadmin unlock",
+    auth_gate_faq_title = "Member benefits — FAQ",
+    auth_gate_faq_q1 = "Why sign in?",
+    auth_gate_faq_a1 = paste0(
+      "In Full mode, member areas and account tools need a signed-in account. ",
+      "Lite does not require sign-in and remains fully usable."
+    ),
+    auth_gate_faq_q2 = "What does membership unlock?",
+    auth_gate_faq_a2 = paste0(
+      "Quantitative Backtest Lab, Decision Checklist, Value Alerts, ",
+      "the Account workspace and Points ledger, FYN/PYN balances, ",
+      "and valuation PDF downloads with a daily free quota."
+    ),
+    auth_gate_faq_q3 = "What are FYN and PYN?",
+    auth_gate_faq_a3 = paste0(
+      "FYN is free points (welcome gift and daily check-in). ",
+      "PYN is the paid wallet. History lives in Points ledger after you sign in."
+    ),
+    auth_gate_faq_q4 = "Does Lite stay open?",
+    auth_gate_faq_a4 = paste0(
+      "Yes. Lite never requires an account. ",
+      "Signing in unlocks Full-mode member surfaces; it does not lock Lite features."
     ),
     test_link = " Sys. Admin",
     testing_page_title = "System admin",
@@ -3947,7 +4078,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "綜合型估值框架（Meta-Framework）：打破絕對／相對界線，把公司拆成事業板塊，",
       "各板塊可混用 DCF、EV/EBITDA、EV/Sales／ARR、NAV 等最適模型，加總 EV 後扣除集團 Overhead 與淨負債。",
       "本 App 引擎實作為部門營收 × EV/Sales（需 ≥2 部門）並共用 Cash − Debt × Shares 橋接。",
-      "經典場景：Big Tech、綜合集團、分拆上市潛力；市場常給 10%–30% 控股折價（Conglomerate Discount）。"
+      "市場常提及 10%–30% 控股折價（Conglomerate Discount）——本引擎不自動套用；若需折價請自行調整部門倍數。"
     ),
     sotp_box_title = "SOTP",
     sotp_tab_overview = "總覽",
@@ -4009,7 +4140,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     sotp_disclaimer = paste0(
       "綜合型框架輸出（本 App 路徑：營收 × EV/Sales）——請勿視為單一模型 Intrinsic Value，",
       "亦勿與 DCF／DDM／RI／P/B 等權平均。",
-      "控股折價（常見 10%–30%）可解釋 SOTP 總值高於市價。"
+      "控股折價（常見 10%–30%）僅為市場敘事——本引擎不套用。"
     ),
     rel_multiples_btn_calc = "試算倍數",
     rel_multiples_btn_sync = "自財報同步",
@@ -4451,16 +4582,46 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     param_audit_pdf_title = "頁面截圖＋手改標記（PDF）",
     param_audit_pdf_help = paste0(
-      "勾選要納入的主要頁面。系統會依序切換到各頁、擷取目前版面，",
-      "並在相對 Search 後基準有手動覆寫的輸入框上畫框標註，最後下載一份 PDF。"
+      "依分類勾選要納入的頁面。系統會依序切換到各頁（若勾選財報區塊會先開該分頁），",
+      "擷取目前版面，並在相對 Search 後基準有手動覆寫的輸入框上畫框標註，最後下載一份 PDF。"
     ),
     param_audit_pdf_pages_label = "要擷取的頁面",
-    param_audit_pdf_page_basic = "基本設定（SGR／CAPM／WACC／Beta）",
+    param_audit_pdf_cat_overview = "總覽",
+    param_audit_pdf_cat_statements = "財報",
+    param_audit_pdf_cat_valuation = "估值模型",
+    param_audit_pdf_cat_snapshot = "Snapshot",
+    param_audit_pdf_cat_backtest = "回測",
+    param_audit_pdf_cat_checklist = "決策檢核",
+    param_audit_pdf_cat_alerts = "到值通知",
+    param_audit_pdf_cat_bluechip = "Blue Chip",
+    param_audit_pdf_page_basic = "模型儀表板（SGR／CAPM／WACC／Beta）",
+    param_audit_pdf_page_smart = "智慧分析",
+    param_audit_pdf_page_ynow = "YNOW",
+    param_audit_pdf_page_bblab = "業務拆解",
+    param_audit_pdf_page_company = "個股總覽",
+    param_audit_pdf_page_fs_summary = "財務摘要",
+    param_audit_pdf_page_fs_is = "損益表",
+    param_audit_pdf_page_fs_bs = "資產負債表",
+    param_audit_pdf_page_fs_cf = "現金流量表",
+    param_audit_pdf_page_fs_corp = "董監／可轉債",
+    param_audit_pdf_page_fs_sec = "SEC 附註",
+    param_audit_pdf_page_fs_kpi = "各表 KPI",
+    param_audit_pdf_page_fs_xkpi = "跨表 KPI",
     param_audit_pdf_page_dcf = "DCF",
     param_audit_pdf_page_ddm = "DDM",
     param_audit_pdf_page_ri = "RI",
     param_audit_pdf_page_pb = "P/B",
     param_audit_pdf_page_nav = "NAV",
+    param_audit_pdf_page_rel_ev = "相對估值 — 企業價值",
+    param_audit_pdf_page_rel_earn = "相對估值 — 盈餘",
+    param_audit_pdf_page_rel_rev = "相對估值 — 營收",
+    param_audit_pdf_page_sotp = "SOTP",
+    param_audit_pdf_page_snapshot = "Snapshot",
+    param_audit_pdf_page_hfv = "歷史基本面驗證（HFV）",
+    param_audit_pdf_page_lab = "量化回測實驗室",
+    param_audit_pdf_page_checklist = "決策檢核",
+    param_audit_pdf_page_alerts = "到值通知",
+    param_audit_pdf_page_bluechip = "Blue Chip 排行榜",
     param_audit_pdf_btn = "產生標記 PDF",
     param_audit_pdf_busy = "正在擷取頁面…請稍候（勿切換分頁）。",
     param_audit_pdf_done = "PDF 已下載。",
@@ -4626,6 +4787,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     pts_sysadmin_login_ok = "已進入系統管理。",
     pts_sysadmin_login_bad = "系統管理使用者名稱或密碼不正確。",
     pts_sysadmin_need_enter = "請以系統管理使用者名稱與密碼登入，以載入去識別化使用者清單。",
+    pts_sysadmin_member_blocked = "系統管理僅供未登入帳號的維運入口使用。請先登出後再開啟。",
     pts_sysadmin_loading = "正在載入去識別化使用者…",
     pts_sysadmin_users = "使用者（去識別化）",
     pts_sysadmin_col_id = "使用者代號",
@@ -4698,6 +4860,103 @@ locale_for_market <- function(mode = get_market_mode()) {
     auth_pa_gate_body = paste0(
       "完整版的量化回測實驗室、決策檢核、到值通知需登入帳號後才能使用。",
       "Lite 版無需登入，功能可完整使用。"
+    ),
+    auth_gate_lab_body = paste0(
+      "完整版的量化回測實驗室需登入帳號後才能使用。",
+      "Lite 版無需登入，功能可完整使用。"
+    ),
+    auth_gate_lab_kicker = "解鎖量化回測實驗室",
+    auth_gate_lab_lead = paste0(
+      "登入後可執行 HFV 與量化回測、重播 Fair Value 路徑，",
+      "並使用完整版 APP 會員專屬的實驗室控制項。"
+    ),
+    auth_gate_lab_b1 = "HFV 與量化回測實驗室工作區",
+    auth_gate_lab_b2 = "Fair Value 重播、策略篩選與實驗室報告",
+    auth_gate_lab_b3 = "點數開啟時，實驗室執行可使用 FYN（bt_run／hfv_run）",
+    auth_gate_lab_demo_caption = "實驗室示範——登入後可解鎖的功能",
+    auth_gate_checklist_body = paste0(
+      "完整版的決策檢核需登入帳號後才能使用。",
+      "Lite 版無需登入，功能可完整使用。"
+    ),
+    auth_gate_checklist_kicker = "解鎖決策檢核",
+    auth_gate_checklist_lead = paste0(
+      "登入後可開啟 Decision SOP 門檻、即時檢核項目，",
+      "以及 YNOW 結論的解鎖流程。"
+    ),
+    auth_gate_checklist_b1 = "必要 Decision SOP 門檻與即時檢核項目",
+    auth_gate_checklist_b2 = "Bear／Base MOS、F-Score 與品質確認",
+    auth_gate_checklist_b3 = "SOP 通過後解鎖 YNOW 結論",
+    auth_gate_checklist_demo_caption = "決策檢核示範——Decision SOP 流程",
+    auth_gate_alerts_body = paste0(
+      "完整版的到值通知需登入帳號後才能使用。",
+      "Lite 版無需登入，功能可完整使用。"
+    ),
+    auth_gate_alerts_kicker = "解鎖到值通知",
+    auth_gate_alerts_lead = paste0(
+      "登入後可建立與管理到值通知，",
+      "並將信件寄至註冊信箱。"
+    ),
+    auth_gate_alerts_b1 = "儲存與管理到值／價格通知規則",
+    auth_gate_alerts_b2 = "寄信預設使用帳號註冊信箱",
+    auth_gate_alerts_b3 = "通知紀錄；點數開啟時可使用 FYN（alert_slot）",
+    auth_gate_alerts_demo_caption = "到值通知示範——規則與寄信",
+    auth_gate_account_body = "請先登入以開啟帳號工作區與點數流水。",
+    auth_gate_account_kicker = "解鎖帳號工作區",
+    auth_gate_account_lead = paste0(
+      "登入後可開啟帳號總覽、FYN／PYN 餘額，",
+      "以及完整點數流水。"
+    ),
+    auth_gate_account_b1 = "帳號總覽與本分頁主色系偏好",
+    auth_gate_account_b2 = "FYN／PYN 餘額——歡迎贈點與每日簽到（台北時間）",
+    auth_gate_account_b3 = "本帳號完整點數流水紀錄",
+    auth_gate_account_demo_caption = "帳號示範——總覽與點數",
+    auth_gate_pdf_body = paste0(
+      "下載估值報告 PDF 需先登入。",
+      "每個台北時間日曆日可免費下載 3 次；超過後每次扣 10 FYN。"
+    ),
+    auth_gate_pdf_kicker = "解鎖估值報告 PDF 下載",
+    auth_gate_pdf_lead = paste0(
+      "登入後可下載目前標的的估值報告 PDF。",
+      "每日有免費額度；額外下載以 FYN 計費。"
+    ),
+    auth_gate_pdf_b1 = "目前標的的估值報告 PDF（含 DCF／DDM／RI／P/B 等）",
+    auth_gate_pdf_b2 = "每個台北時間日曆日免費 3 次",
+    auth_gate_pdf_b3 = "額外下載每次扣 10 FYN（自帳號餘額）",
+    auth_gate_pdf_demo_caption = "PDF 示範——報告下載",
+    auth_gate_snap_defaults_body = paste0(
+      "系統預設（APP_DEFAULTS）需先以系統管理解鎖",
+      "（與「點數 → 系統管理」同一工作階段）。",
+      "結束系統管理後，此分頁會再次鎖定。"
+    ),
+    auth_gate_snap_defaults_kicker = "APP_DEFAULTS 已鎖定",
+    auth_gate_snap_defaults_lead = paste0(
+      "請以系統管理解鎖本工作階段的系統預設。",
+      "此為維運解鎖，不是會員閘。"
+    ),
+    auth_gate_snap_defaults_b1 = "檢視與編輯線上版 APP_DEFAULTS",
+    auth_gate_snap_defaults_b2 = "解鎖期間可下載／還原預設 CSV",
+    auth_gate_snap_defaults_b3 = "結束系統管理後再次鎖定",
+    auth_gate_snap_defaults_demo_caption = "APP_DEFAULTS 示範——系統管理解鎖",
+    auth_gate_faq_title = "會員權益 — 常見問題",
+    auth_gate_faq_q1 = "為什麼需要登入？",
+    auth_gate_faq_a1 = paste0(
+      "完整版的會員專區與帳號工具需登入後才能使用。",
+      "Lite 版無需登入，功能可完整使用。"
+    ),
+    auth_gate_faq_q2 = "會員可解鎖哪些功能？",
+    auth_gate_faq_a2 = paste0(
+      "量化回測實驗室、決策檢核、到值通知、帳號工作區與點數流水、FYN／PYN 餘額，",
+      "以及具每日免費額度的估值報告 PDF 下載。"
+    ),
+    auth_gate_faq_q3 = "FYN 與 PYN 是什麼？",
+    auth_gate_faq_a3 = paste0(
+      "FYN 為免費點數（含歡迎贈點與每日簽到）。",
+      "PYN 為付費錢包。登入後可於「點數流水」查看完整紀錄。"
+    ),
+    auth_gate_faq_q4 = "Lite 版會被鎖上嗎？",
+    auth_gate_faq_a4 = paste0(
+      "不會。Lite 版從不要求帳號。",
+      "登入是解鎖完整版會員介面，不會鎖住 Lite 功能。"
     ),
     test_link = " Sys. Admin",
     testing_page_title = "系統管理",

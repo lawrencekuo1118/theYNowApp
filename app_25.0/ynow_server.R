@@ -238,6 +238,26 @@ server <- function(input, output, session) {
       session$sendCustomMessage("ynowGotoTab", list(tab = "company_advance"))
       tab <- "company_advance"
     }
+    # Signed-in account members cannot open Sys. Admin (internal tab `testing`).
+    if (identical(tab, "testing")) {
+      logged <- tryCatch(isTRUE(ynow_auth$is_logged_in()), error = function(e) FALSE)
+      if (isTRUE(logged)) {
+        tryCatch(
+          updateTabItems(session, "sidebar_tabs", "home"),
+          error = function(e) {
+            tryCatch(
+              session$sendInputMessage("sidebar_tabs", list(value = "home")),
+              error = function(e2) NULL
+            )
+          }
+        )
+        tryCatch(
+          session$sendCustomMessage("ynowGotoTab", list(tab = "home")),
+          error = function(e) NULL
+        )
+        return()
+      }
+    }
     session$sendCustomMessage("ynowModelTheme", list(tab = tab))
   }, ignoreNULL = FALSE, ignoreInit = FALSE)
 
@@ -656,15 +676,49 @@ server <- function(input, output, session) {
     }
     u <- tryCatch(ynow_auth$user(), error = function(e) NULL)
     if (is.null(u)) {
+      extras <- if (exists("ynow_gate_promo_faq_ui", mode = "function")) {
+        ynow_gate_promo_faq_ui(feature = "account", include_faq = TRUE)
+      } else {
+        NULL
+      }
+      acct_body <- tryCatch(
+        ui_str("auth_gate_account_body", loc),
+        error = function(e) tryCatch(
+          ui_str("auth_admin_need_login", loc),
+          error = function(e2) "Sign in to open the account workspace."
+        )
+      )
       return(tags$div(
         class = "box box-solid ynow-auth-gate ynow-gate-box",
-        tags$div(class = "box-body", tags$p(tryCatch(
-          ui_str("auth_admin_need_login", loc),
-          error = function(e) "Sign in to open the account workspace."
-        )),
-        actionButton("ynow_pa_gate_signin", tryCatch(
-          ui_str("auth_sign_in", loc), error = function(e) "Sign in"
-        ), class = "btn-primary"))
+        `data-ynow-gate-feature` = "account",
+        style = "max-width:760px; margin:18px auto;",
+        tags$div(
+          class = "box-header with-border",
+          tags$h3(
+            class = "box-title",
+            tags$span(
+              class = "ynow-auth-gate-title",
+              tryCatch(
+                ui_str("auth_pa_gate_title", loc),
+                error = function(e) "Sign in required"
+              )
+            )
+          )
+        ),
+        tags$div(
+          class = "box-body",
+          tags$p(class = "ynow-gate-body", acct_body),
+          extras,
+          actionButton(
+            "ynow_pa_gate_signin",
+            label = tags$span(
+              id = "ynow_pa_gate_signin_label",
+              class = "ynow-member-gate-signin-label",
+              tryCatch(ui_str("auth_sign_in", loc), error = function(e) "Sign in")
+            ),
+            class = "btn-primary ynow-auth-open"
+          )
+        )
       ))
     }
     NULL
@@ -702,11 +756,27 @@ server <- function(input, output, session) {
 
   .ynow_pts_push_banner <- function() {
     loc <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "en")
-    # View-as prefers target DB balances; otherwise signed-in user.
-    u <- .ynow_pts_effective_user()
     pts_colon <- if (identical(loc, "zh-TW")) "：" else ":"
     fyn_lab <- tryCatch(paste0(ui_str("pts_fyn_label", loc), pts_colon), error = function(e) "FYN points:")
     pyn_lab <- tryCatch(paste0(ui_str("pts_pyn_label", loc), pts_colon), error = function(e) "PYN points:")
+    # Sys. Admin portal chrome is ops context, not a member wallet → show ∞.
+    # View-as of a specific user still shows that user's real FYN / PYN.
+    sys_on <- isTRUE(tryCatch(isolate(ynow_pts_sysadmin_on()), error = function(e) FALSE))
+    va <- tryCatch(isolate(ynow_pts_view_as()), error = function(e) NULL)
+    view_as_on <- is.list(va) && nzchar(as.character(va$user_id %||% "")[1])
+    if (isTRUE(sys_on) && !isTRUE(view_as_on)) {
+      session$sendCustomMessage(
+        "ynowPtsBanner",
+        list(
+          fyn = "\u221E", pyn = "\u221E",
+          fyn_label = fyn_lab, pyn_label = pyn_lab,
+          visible = TRUE
+        )
+      )
+      return(invisible(NULL))
+    }
+    # View-as prefers target DB balances; otherwise signed-in user.
+    u <- .ynow_pts_effective_user()
     if (is.null(u)) {
       # Guests: hide FYN/PYN header entirely (no placeholder "—" next to locale).
       session$sendCustomMessage(
@@ -886,6 +956,7 @@ server <- function(input, output, session) {
   observe({
     ynow_pts_panel_tick()
     ynow_pts_view_as()
+    ynow_pts_sysadmin_on()
     tryCatch(ynow_auth$user(), error = function(e) NULL)
     tryCatch(ui_locale(), error = function(e) NULL)
     .ynow_pts_push_banner()
@@ -922,6 +993,7 @@ server <- function(input, output, session) {
     }
     ynow_pts_sysadmin_on(TRUE)
     .ynow_sysadmin_push_mode()
+    tryCatch(.ynow_pts_push_banner(), error = function(e) NULL)
     ynow_pts_sysadmin_tick(isolate(ynow_pts_sysadmin_tick()) + 1L)
     showNotification(
       .lab("pts_sysadmin_login_ok", "System admin unlocked."),
@@ -1951,7 +2023,27 @@ server <- function(input, output, session) {
       },
       hfv = function() .ynow_page_ui_hfv(),
       lab_notes = function() .ynow_page_ui_lab_notes(),
-      testing = function() .ynow_page_ui_testing(),
+      testing = function() {
+        # Signed-in account members must not receive the Sys. Admin portal UI.
+        logged <- tryCatch(isTRUE(ynow_auth$is_logged_in()), error = function(e) FALSE)
+        if (isTRUE(logged)) {
+          loc <- tryCatch(
+            normalize_ui_locale(isolate(ui_locale())),
+            error = function(e2) "en"
+          )
+          return(tags$div(
+            class = "ynow-sysadmin-blocked",
+            style = "padding:1.25rem;color:#666;",
+            tryCatch(
+              ui_str("pts_sysadmin_member_blocked", loc),
+              error = function(e) {
+                "System admin is available only before account sign-in. Sign out to open the ops portal."
+              }
+            )
+          ))
+        }
+        .ynow_page_ui_testing()
+      },
       asset_transmission = function() {
         .ynow_page_ui_asset_transmission(isolate(ui_locale()))
       },
@@ -4412,6 +4504,30 @@ server <- function(input, output, session) {
     est_g <- tryCatch(central_perpetual_g(), error = function(e) NULL)
     lite <- isTRUE(input$ynow_lite_mode)
 
+    # Engine assumptions that are not editable inputs but still affect results —
+    # must appear on Snapshot so nothing is a fully hidden substitute.
+    hfv_thr <- tryCatch(
+      if (exists("hfv_scenario_threshold_defaults", mode = "function")) {
+        hfv_scenario_threshold_defaults()
+      } else {
+        list()
+      },
+      error = function(e) list()
+    )
+    capex_prior <- tryCatch(
+      as.integer(APP_DEFAULTS$capex_spike_prior_years %||% 2L)[1],
+      error = function(e) 2L
+    )
+    g2_sync <- if (!is.null(est_g) && is.finite(suppressWarnings(as.numeric(est_g$g_pct)[1]))) {
+      .snapshot_value(est_g$g_pct)
+    } else {
+      .snapshot_value(tryCatch(input$sgr, error = function(e) APP_DEFAULTS$sgr))
+    }
+    statutory_tax <- tryCatch({
+      mode <- normalize_market_mode(market_mode())
+      if (identical(mode, "TW")) 20 else 21
+    }, error = function(e) 21)
+
     extras <- list(
       c("Meta", "Downloaded At", ts, "Timestamp at download/render"),
       c("Meta", "Ticker", .snapshot_value(ticker), "Selected ticker"),
@@ -4429,6 +4545,61 @@ server <- function(input, output, session) {
         "SGR", "Estimated g (%)",
         if (!is.null(est_g)) .snapshot_value(est_g$g_pct) else NA_character_,
         "Selected perpetual-growth method output (derived)"
+      ),
+      c(
+        "Two-Stage", "Stage-2 g2 (%) (synced to SGR)",
+        g2_sync,
+        "No separate UI; DCF stage-2 g follows central SGR / Estimated g"
+      ),
+      c(
+        "FCF", "CapEx spike prior years",
+        .snapshot_value(capex_prior),
+        "APP_DEFAULTS; prior-window years excluding latest year for spike detect"
+      ),
+      c(
+        "Tax", "Statutory tax fallback (%)",
+        .snapshot_value(statutory_tax),
+        "Used when income-statement effective tax is missing/NaN (TW 20 / US 21)"
+      ),
+      c(
+        "HFV", "Scenario |Δ|/prev flat band",
+        .snapshot_value(hfv_thr$momentum_flat_band),
+        "Fixed heuristic; classifies FV/price momentum as flat (not editable)"
+      ),
+      c(
+        "HFV", "Scenario Price≪FV MOS floor",
+        .snapshot_value(hfv_thr$mos_deep_cheap),
+        "Fixed heuristic; MOS ≥ this → Price ≪ FV (scenario A/B)"
+      ),
+      c(
+        "HFV", "Scenario Price≫FV MOS ceiling",
+        .snapshot_value(hfv_thr$mos_deep_rich),
+        "Fixed heuristic; MOS ≤ this → Price ≫ FV"
+      ),
+      c(
+        "HFV", "Scenario Price≈FV |MOS| band",
+        .snapshot_value(hfv_thr$mos_near),
+        "Fixed heuristic; |MOS| ≤ this → Price ≈ FV"
+      ),
+      c(
+        "HFV", "Scenario D price strong-up",
+        .snapshot_value(hfv_thr$price_strong_up),
+        "Fixed heuristic; price momentum ≥ this for scenario D"
+      ),
+      c(
+        "Backtest", "MOS hysteresis ladder (fixed)",
+        "MOS≥30%→max_exp; ≥10%→~72%×cap; ≥0%→~44%; ≥−10%→~17%; else 0; blend vs flat≤40% via w_vg",
+        "Quant Lab Mode A exposure; not editable — documented here for transparency"
+      ),
+      c(
+        "Backtest", "Mode B sentiment blend (fixed)",
+        "clip(0.28 + 0.40×w_avg, 0.28, 0.60)",
+        "Quant Lab Mode B; mixes Mode A with momentum/RSI — not editable"
+      ),
+      c(
+        "SOTP", "Conglomerate discount",
+        "not applied",
+        "Market narrative often 10%–30%; engine never auto-discounts Σ(seg×EV/Sales) — adjust multiples manually if needed"
       )
     )
     ynow_snapshot_registry_rows(input, lite = lite, extras = extras)
@@ -4630,6 +4801,15 @@ server <- function(input, output, session) {
       nav_low = c("NAV", "NAV Low 倍數", "Bear 倍數"),
       nav_mid = c("NAV", "NAV Mid 倍數", "Base 倍數"),
       nav_high = c("NAV", "NAV High 倍數", "Bull 倍數"),
+      rel_mode = c("Multiples", "Relative mode", "equity / enterprise"),
+      rel_pe_multiple = c("Multiples", "Selected P/E", "App／產業假設；非 Yahoo 回推"),
+      rel_fwd_pe_multiple = c("Multiples", "Selected Forward P/E", "App／產業假設"),
+      rel_ev_fcf_multiple = c("Multiples", "EV/FCF", "App／產業假設"),
+      rel_ev_ebit_multiple = c("Multiples", "EV/EBIT", "App／產業假設"),
+      rel_ev_ebitda_multiple = c("Multiples", "EV/EBITDA", "App／產業假設"),
+      rel_ev_sales_multiple = c("Multiples", "EV/Sales", "App／產業假設；SOTP 預設亦用此鍵"),
+      rel_ps_multiple = c("Multiples", "P/S", "App／產業假設"),
+      rel_ev_arr_multiple = c("Multiples", "EV/ARR", "App／產業假設"),
       apply_capex_spike_smooth = c("FCF", "啟用 CapEx 暴衝平滑", "TRUE = 暴衝時改採均值"),
       capex_spike_mult = c("FCF", "暴衝倍數閾值", "最新 CapEx/Rev > mult × 前期均值"),
       capex_spike_avg_years = c("FCF", "暴衝均值年數", "暴衝時投影採最近 N 年均值"),
@@ -4816,17 +4996,33 @@ server <- function(input, output, session) {
   observeEvent(input$param_audit_pdf_go, {
     if (isTRUE(.ynow_deny_guest_download(NULL))) return()
     loc <- isolate(ui_locale())
-    tabs <- as.character(input$param_audit_pdf_pages %||% character(0))
-    tabs <- tabs[nzchar(tabs)]
-    if (!length(tabs)) {
+    ids <- as.character(input$param_audit_pdf_pages %||% character(0))
+    ids <- ids[nzchar(ids)]
+    if (!length(ids)) {
       showNotification(ui_str("param_audit_pdf_need_pages", loc), type = "warning", duration = 4)
       return()
     }
-    pages <- ynow_param_audit_pdf_pages()
+    catalog <- ynow_param_audit_pdf_pages()
+    # Preserve user checkbox order; drop unknown ids.
+    ids <- ids[ids %in% catalog$id]
+    if (!length(ids)) {
+      showNotification(ui_str("param_audit_pdf_need_pages", loc), type = "warning", duration = 4)
+      return()
+    }
+    sel <- catalog[match(ids, catalog$id), , drop = FALSE]
     page_titles <- stats::setNames(
-      vapply(pages$locale_key, function(k) ui_str(k, loc), character(1)),
-      pages$tab
+      vapply(catalog$locale_key, function(k) ui_str(k, loc), character(1)),
+      catalog$id
     )
+    pages_payload <- lapply(seq_len(nrow(sel)), function(i) {
+      list(
+        id = as.character(sel$id[[i]]),
+        tab = as.character(sel$tab[[i]]),
+        inner = as.character(sel$inner[[i]]),
+        annotate_tab = as.character(sel$annotate_tab[[i]]),
+        title = unname(page_titles[[sel$id[[i]]]] %||% sel$id[[i]])
+      )
+    })
     baseline <- isolate(param_audit_baseline())
     cur <- ynow_capture_tracked_params(input)
     diff_df <- ynow_param_diff_df(baseline, cur, locale = loc)
@@ -4854,7 +5050,8 @@ server <- function(input, output, session) {
       "—"
     }
     session$sendCustomMessage("ynowParamAuditPdf", list(
-      tabs = as.list(tabs),
+      tabs = as.list(as.character(sel$tab)),
+      pages = pages_payload,
       changes = changes,
       page_titles = as.list(page_titles),
       ticker = as.character(tk)[1],
@@ -14825,8 +15022,21 @@ server <- function(input, output, session) {
   # ==========================================
   lab_sec_result <- reactiveVal(NULL)
 
-  # 側邊欄「系統管理」入口（完整版；Lite 隱藏）
+  # 側邊欄「系統管理」入口（完整版；Lite／已登入帳號隱藏）
   observeEvent(input$sidebar_test_click, {
+    logged <- tryCatch(isTRUE(ynow_auth$is_logged_in()), error = function(e) FALSE)
+    if (isTRUE(logged)) {
+      tryCatch(
+        updateTabItems(session, "sidebar_tabs", "home"),
+        error = function(e) {
+          tryCatch(
+            session$sendInputMessage("sidebar_tabs", list(value = "home")),
+            error = function(e2) NULL
+          )
+        }
+      )
+      return()
+    }
     showNotification(.ui_msg("notif_test_opened"), type = "message", duration = 3)
   }, ignoreInit = TRUE)
 

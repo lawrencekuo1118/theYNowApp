@@ -16,7 +16,7 @@
       return(sub('^"version"\\s*:\\s*"([^"]+)".*$', "\\1", m[[1]]))
     }
   }
-  "v25.53"
+  "v25.58"
 }
 .YNOW_BUILD_VERSION <- .ynow_read_build_version()
 
@@ -230,7 +230,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v25.53) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+          "The YNow App (v25.58) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
         ),
         tags$p(
           class = "ynow-about-method",
@@ -258,7 +258,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v25.53) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
+          "The YNow App (v25.58) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
         ),
         tags$p(
           class = "ynow-about-method",
@@ -368,7 +368,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App（簡化版）")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite（v25.53）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
+          "The YNow App Lite（v25.58）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
           "以自動判別主／副模型與預設參數完成試算，讓使用者先看到合理價區間與產業 KPI，再決定是否回到完整版深入調整。"
         ),
         tags$p(
@@ -385,7 +385,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App (Lite)")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite (v25.53) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
+          "The YNow App Lite (v25.58) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
           "auto-selects primary/secondary models with App defaults, and surfaces fair-value ranges plus industry KPIs before you open Full for deeper calibration."
         ),
         tags$p(
@@ -3639,9 +3639,9 @@ ui <- dashboardPage(
                   'data-ynow-build="', .YNOW_BUILD_VERSION, '" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v25.53</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v25.58</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v25.53</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v25.58</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -3987,6 +3987,28 @@ ui <- dashboardPage(
                  id = "ynow_download_report_quota",
                  class = "ynow-download-report-quota",
                  "Sign-in required. Three free downloads each Asia/Taipei day; each extra download costs 10 FYN."
+               ),
+               tags$div(
+                 id = "ynow_pdf_guest_gate",
+                 class = "ynow-pdf-guest-gate",
+                 if (exists("ynow_gate_promo_faq_ui", mode = "function")) {
+                   ynow_gate_promo_faq_ui(
+                     feature = "pdf",
+                     include_faq = TRUE,
+                     compact = TRUE
+                   )
+                 } else {
+                   NULL
+                 },
+                 actionButton(
+                   "ynow_pdf_gate_signin",
+                   label = tags$span(
+                     id = "ynow_pdf_gate_signin_label",
+                     class = "ynow-member-gate-signin-label",
+                     "Sign in"
+                   ),
+                   class = "btn-primary ynow-auth-open ynow-pdf-gate-signin"
+                 )
                )
            )
     ),
@@ -4004,39 +4026,43 @@ ui <- dashboardPage(
     ),
 
     # Snapshot：側邊欄內容流最底部低調捷徑（勿用 absolute，會跑到搜尋框）
+    # Foot links row + copyright directly below (copyright must not overlap the three links).
     column(
       width = 12,
       class = "ynow-sidebar-snapshot-foot",
-      tags$a(
-        href = "#shiny-tab-snapshot",
-        `data-toggle` = "tab",
-        `data-value` = "snapshot",
-        class = "ynow-sidebar-snapshot-link",
-        onclick = "if (window.ynowShowSidebarFootTab) { window.ynowShowSidebarFootTab('snapshot'); } else if (window.Shiny) { Shiny.setInputValue('sidebar_tabs', 'snapshot', {priority: 'event'}); } return false;",
-        icon("camera", class = "fa-fw"),
-        tags$span(id = "ynow_snapshot_link_label", " Snapshot")
-      ),
-      # System admin：側邊欄專用入口（完整版）；Lite 隱藏；內部 tabName 仍為 testing
-      tags$a(
-        id = "ynow_sidebar_test_btn",
-        href = "#shiny-tab-testing",
-        `data-toggle` = "tab",
-        `data-value` = "testing",
-        class = "ynow-sidebar-snapshot-link ynow-sidebar-test-link ynow-full-only",
-        onclick = "if (window.Shiny) { Shiny.setInputValue('sidebar_test_click', (window.__ynowTestClicks=(window.__ynowTestClicks||0)+1), {priority: 'event'}); } if (window.ynowShowSidebarFootTab) { window.ynowShowSidebarFootTab('testing'); } else if (window.Shiny) { Shiny.setInputValue('sidebar_tabs', 'testing', {priority: 'event'}); } return false;",
-        icon("user-shield", class = "fa-fw"),
-        tags$span(id = "ynow_test_link_label", " Sys. Admin")
-      ),
-      # 意見區：收集使用者回饋，系統性開 GitHub Issue
-      tags$a(
-        id = "ynow_sidebar_feedback_btn",
-        href = "#shiny-tab-feedback",
-        `data-toggle` = "tab",
-        `data-value` = "feedback",
-        class = "ynow-sidebar-snapshot-link ynow-sidebar-feedback-link",
-        onclick = "if (window.Shiny) { Shiny.setInputValue('sidebar_feedback_click', (window.__ynowFeedbackClicks=(window.__ynowFeedbackClicks||0)+1), {priority: 'event'}); } if (window.ynowShowSidebarFootTab) { window.ynowShowSidebarFootTab('feedback'); } else if (window.Shiny) { Shiny.setInputValue('sidebar_tabs', 'feedback', {priority: 'event'}); } return false;",
-        icon("comment-dots", class = "fa-fw"),
-        tags$span(id = "ynow_feedback_link_label", " 意見區")
+      tags$div(
+        class = "ynow-sidebar-snapshot-foot-links",
+        tags$a(
+          href = "#shiny-tab-snapshot",
+          `data-toggle` = "tab",
+          `data-value` = "snapshot",
+          class = "ynow-sidebar-snapshot-link",
+          onclick = "if (window.ynowShowSidebarFootTab) { window.ynowShowSidebarFootTab('snapshot'); } else if (window.Shiny) { Shiny.setInputValue('sidebar_tabs', 'snapshot', {priority: 'event'}); } return false;",
+          icon("camera", class = "fa-fw"),
+          tags$span(id = "ynow_snapshot_link_label", " Snapshot")
+        ),
+        # System admin：側邊欄專用入口（完整版）；Lite／已登入帳號隱藏；內部 tabName 仍為 testing
+        tags$a(
+          id = "ynow_sidebar_test_btn",
+          href = "#shiny-tab-testing",
+          `data-toggle` = "tab",
+          `data-value` = "testing",
+          class = "ynow-sidebar-snapshot-link ynow-sidebar-test-link ynow-full-only",
+          onclick = "if (document.body && document.body.classList.contains('ynow-authed')) { return false; } if (window.Shiny) { Shiny.setInputValue('sidebar_test_click', (window.__ynowTestClicks=(window.__ynowTestClicks||0)+1), {priority: 'event'}); } if (window.ynowShowSidebarFootTab) { window.ynowShowSidebarFootTab('testing'); } else if (window.Shiny) { Shiny.setInputValue('sidebar_tabs', 'testing', {priority: 'event'}); } return false;",
+          icon("user-shield", class = "fa-fw"),
+          tags$span(id = "ynow_test_link_label", " Sys. Admin")
+        ),
+        # 意見區：收集使用者回饋，系統性開 GitHub Issue
+        tags$a(
+          id = "ynow_sidebar_feedback_btn",
+          href = "#shiny-tab-feedback",
+          `data-toggle` = "tab",
+          `data-value` = "feedback",
+          class = "ynow-sidebar-snapshot-link ynow-sidebar-feedback-link",
+          onclick = "if (window.Shiny) { Shiny.setInputValue('sidebar_feedback_click', (window.__ynowFeedbackClicks=(window.__ynowFeedbackClicks||0)+1), {priority: 'event'}); } if (window.ynowShowSidebarFootTab) { window.ynowShowSidebarFootTab('feedback'); } else if (window.Shiny) { Shiny.setInputValue('sidebar_tabs', 'feedback', {priority: 'event'}); } return false;",
+          icon("comment-dots", class = "fa-fw"),
+          tags$span(id = "ynow_feedback_link_label", " 意見區")
+        ),
       ),
       tags$p(
         id = "ynow_sidebar_copyright",
@@ -4862,6 +4888,215 @@ ui <- dashboardPage(
           font-size: 13px;
           line-height: 1.45;
         }
+        /* Sign-in gate promo + member FAQ (logo mono; mobile-scannable) */
+        .ynow-gate-extras {
+          margin: 12px 0 16px 0;
+        }
+        .ynow-gate-promo {
+          margin: 0 0 10px 0;
+          padding: 0;
+          border: 1px solid var(--ynow-gate-border, #d0d0d0);
+          border-radius: 4px;
+          overflow: hidden;
+          background:
+            repeating-linear-gradient(
+              -45deg,
+              #ffffff 0,
+              #ffffff 6px,
+              #f5f5f5 6px,
+              #f5f5f5 12px
+            );
+        }
+        .ynow-gate-promo__banner {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 10px 12px;
+          background: var(--ynow-gate-accent, #1a1a1a);
+          color: #fff;
+        }
+        .ynow-gate-promo__badge {
+          display: inline-block;
+          flex: 0 0 auto;
+          padding: 2px 8px;
+          border: 1px solid #fff;
+          border-radius: 2px;
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          line-height: 1.4;
+        }
+        .ynow-gate-promo-kicker {
+          font-size: 13px;
+          font-weight: 600;
+          letter-spacing: 0.02em;
+          line-height: 1.35;
+        }
+        .ynow-gate-promo-lead {
+          margin: 10px 12px 6px 12px;
+          font-size: 13px;
+          line-height: 1.45;
+          color: var(--ynow-gate-ink-soft, #333333);
+        }
+        .ynow-gate-promo__list {
+          margin: 0 12px 12px 12px;
+          padding: 0 0 0 18px;
+          color: var(--ynow-gate-ink-soft, #333333);
+          font-size: 12.5px;
+          line-height: 1.45;
+        }
+        .ynow-gate-promo__list > li {
+          margin: 0 0 4px 0;
+        }
+        .ynow-gate-promo__list > li::marker {
+          color: var(--ynow-gate-accent, #1a1a1a);
+        }
+        .ynow-gate-demo {
+          margin: 0 0 10px 0;
+          padding: 8px;
+          border: 1px solid var(--ynow-gate-border, #d0d0d0);
+          border-radius: 4px;
+          background: #fff;
+        }
+        .ynow-gate-demo-caption {
+          margin: 0 0 6px 0;
+          font-size: 12px;
+          font-weight: 600;
+          color: var(--ynow-gate-ink, #1a1a1a);
+        }
+        .ynow-gate-demo-video {
+          display: block;
+          width: 100%;
+          max-width: 100%;
+          height: auto;
+          max-height: 220px;
+          background: #1a1a1a;
+          border: 1px solid #000;
+          border-radius: 2px;
+        }
+        .ynow-gate-extras--compact .ynow-gate-demo-video {
+          max-height: 140px;
+        }
+        .ynow-gate-extras--compact .ynow-gate-promo-lead,
+        .ynow-gate-extras--compact .ynow-gate-promo__list {
+          font-size: 11.5px;
+        }
+        /* Sidebar PDF guest promo: guests only when auth feature is on */
+        .ynow-pdf-guest-gate {
+          display: none;
+          margin-top: 10px;
+          padding: 8px;
+          border: 1px solid #666;
+          border-radius: 4px;
+          background: #111;
+          color: #e8e8e8;
+        }
+        body.ynow-auth-feature:not(.ynow-authed) .ynow-pdf-guest-gate {
+          display: block;
+        }
+        .ynow-pdf-guest-gate .ynow-gate-promo {
+          background: repeating-linear-gradient(
+            -45deg,
+            #1a1a1a 0,
+            #1a1a1a 6px,
+            #222 6px,
+            #222 12px
+          );
+          border-color: #666;
+        }
+        .ynow-pdf-guest-gate .ynow-gate-promo-lead,
+        .ynow-pdf-guest-gate .ynow-gate-promo__list,
+        .ynow-pdf-guest-gate .ynow-gate-demo-caption,
+        .ynow-pdf-guest-gate .ynow-gate-faq__summary,
+        .ynow-pdf-guest-gate .ynow-gate-faq-q,
+        .ynow-pdf-guest-gate .ynow-gate-faq-a {
+          color: #ddd;
+        }
+        .ynow-pdf-guest-gate .ynow-gate-faq {
+          background: #1a1a1a;
+          border-color: #666;
+        }
+        .ynow-pdf-guest-gate .ynow-gate-demo {
+          background: #1a1a1a;
+          border-color: #666;
+        }
+        .ynow-pdf-guest-gate .ynow-pdf-gate-signin,
+        .ynow-pdf-guest-gate .btn-primary {
+          width: 100%;
+          margin-top: 8px;
+          background-color: #fff !important;
+          border-color: #fff !important;
+          color: #1a1a1a !important;
+        }
+        .ynow-snap-defaults-locked .ynow-gate-extras {
+          margin-top: 10px;
+        }
+        .ynow-gate-faq {
+          margin: 0;
+          border: 1px solid var(--ynow-gate-border, #d0d0d0);
+          border-left: 4px solid var(--ynow-gate-accent, #1a1a1a);
+          border-radius: 4px;
+          background: #fff;
+        }
+        .ynow-gate-faq > .ynow-gate-faq__summary {
+          list-style: none;
+          cursor: pointer;
+          padding: 10px 12px;
+          font-size: 13px;
+          font-weight: 600;
+          color: var(--ynow-gate-ink, #1a1a1a);
+          user-select: none;
+        }
+        .ynow-gate-faq > .ynow-gate-faq__summary::-webkit-details-marker {
+          display: none;
+        }
+        .ynow-gate-faq > .ynow-gate-faq__summary::marker {
+          content: "";
+        }
+        .ynow-gate-faq > .ynow-gate-faq__summary::before {
+          content: "+";
+          display: inline-block;
+          width: 1.1em;
+          margin-right: 6px;
+          font-weight: 700;
+          color: var(--ynow-gate-accent, #1a1a1a);
+        }
+        .ynow-gate-faq[open] > .ynow-gate-faq__summary::before {
+          content: "–";
+        }
+        .ynow-gate-faq__body {
+          padding: 0 12px 10px 12px;
+          border-top: 1px solid var(--ynow-gate-border, #d0d0d0);
+        }
+        .ynow-gate-faq-item {
+          margin: 10px 0 0 0;
+        }
+        .ynow-gate-faq-item > .ynow-gate-faq-q {
+          margin: 0 0 2px 0;
+          font-size: 12.5px;
+          font-weight: 600;
+          color: var(--ynow-gate-ink, #1a1a1a);
+        }
+        .ynow-gate-faq-item > .ynow-gate-faq-a {
+          margin: 0;
+          font-size: 12.5px;
+          line-height: 1.45;
+          color: var(--ynow-gate-ink-soft, #333333);
+        }
+        @media (max-width: 767px) {
+          .box.ynow-member-gate,
+          .box.ynow-auth-gate,
+          .box.ynow-gate-box {
+            max-width: 100% !important;
+            margin-left: 8px !important;
+            margin-right: 8px !important;
+          }
+          .ynow-gate-promo-lead,
+          .ynow-gate-promo__list,
+          .ynow-gate-faq-item > .ynow-gate-faq-a {
+            font-size: 12px;
+          }
+        }
         .box.ynow-gate-box,
         .box.ynow-member-gate,
         .box.ynow-auth-gate {
@@ -4924,6 +5159,15 @@ ui <- dashboardPage(
           background: var(--ynow-gate-accent, #1a1a1a) !important;
           background-color: var(--ynow-gate-accent, #1a1a1a) !important;
           color: #fff !important;
+        }
+        /* Guest 「Sign in required」gates: hide stock Ticker / Yahoo industry chrome */
+        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed)
+          .content-wrapper:has(#shiny-tab-lab_notes.active) .ynow-stock-chrome,
+        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed)
+          .content-wrapper:has(#shiny-tab-decision_checklist.active) .ynow-stock-chrome,
+        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed)
+          .content-wrapper:has(#shiny-tab-price_alerts.active) .ynow-stock-chrome {
+          display: none !important;
         }
         body.ynow-sysadmin-on .ynow-sysadmin-login-chrome,
         body.ynow-sysadmin-on .ynow-sysadmin-login-row {
@@ -6502,8 +6746,22 @@ ui <- dashboardPage(
           font-weight: 700 !important;
           border-left-color: #fff;
         }
-        /* Snapshot／Sys. Admin／Feedback：側邊欄底部同一列，不換行 */
+        /* Snapshot／Sys. Admin／Feedback：同一列；版權宣告在按鈕列正下方（勿重疊） */
         .ynow-sidebar-snapshot-foot {
+          display: flex !important;
+          flex-direction: column !important;
+          flex-wrap: nowrap !important;
+          align-items: stretch;
+          justify-content: flex-start;
+          gap: 0;
+          width: 100%;
+          box-sizing: border-box;
+          margin-top: 8px !important;
+          margin-bottom: 10px !important;
+          padding: 0 4px !important;
+          text-align: left !important;
+        }
+        .ynow-sidebar-snapshot-foot-links {
           display: flex !important;
           flex-direction: row !important;
           flex-wrap: nowrap !important;
@@ -6512,10 +6770,6 @@ ui <- dashboardPage(
           gap: 2px;
           width: 100%;
           box-sizing: border-box;
-          margin-top: 8px !important;
-          margin-bottom: 10px !important;
-          padding: 0 4px !important;
-          text-align: left !important;
         }
         .main-sidebar .ynow-sidebar-snapshot-foot.col-sm-12,
         .main-sidebar .ynow-sidebar-snapshot-foot.col-xs-12 {
@@ -6592,11 +6846,14 @@ ui <- dashboardPage(
         .ynow-recent-chip:focus-visible {
           box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35);
         }
-        /* 側欄完整 LOGO：Recent Search 橫線下、Download Report 正上方；等比例放大 */
+        /* 側欄版權：緊接 Snapshot／Sys. Admin／意見區列下方，全寬、不與按鈕重疊 */
         .ynow-sidebar-copyright {
+          flex: 0 0 auto;
+          width: 100%;
+          box-sizing: border-box;
           clear: both;
-          margin: 14px 0 0;
-          padding: 8px 10px 12px;
+          margin: 6px 0 0;
+          padding: 6px 4px 8px;
           font-size: 10px;
           line-height: 1.35;
           text-align: center;
@@ -7025,6 +7282,15 @@ ui <- dashboardPage(
         body.ynow-lite .ynow-company-advance-bblab,
         body.ynow-lite .ynow-bblab {
           display: none !important;
+        }
+        /* Signed-in account users: hide Sys. Admin foot link (portal is guest/ops only).
+           Beat .ynow-sidebar-snapshot-link { display: inline-flex !important }. */
+        body.ynow-authed .ynow-sidebar-snapshot-foot a.ynow-sidebar-snapshot-link.ynow-sidebar-test-link,
+        body.ynow-authed .ynow-sidebar-snapshot-foot #ynow_sidebar_test_btn,
+        body.ynow-authed a#ynow_sidebar_test_btn.ynow-sidebar-test-link {
+          display: none !important;
+          visibility: hidden !important;
+          pointer-events: none !important;
         }
         /* Lite Snapshot: only System defaults tab (when sysadmin unlocked).
            Note: shiny tabset id may sit on the ul.nav-tabs itself (not a wrapper). */
@@ -10639,6 +10905,10 @@ ui <- dashboardPage(
               var k = el.getAttribute('data-key');
               if (k && s[k]) el.textContent = s[k];
             });
+            document.querySelectorAll('.ynow-pdf-pages-group-label').forEach(function (el) {
+              var k = el.getAttribute('data-key');
+              if (k && s[k]) el.textContent = s[k];
+            });
             var testL = document.getElementById('ynow_test_link_label');
             if (testL && s.test_link) testL.textContent = s.test_link;
             var fb = document.getElementById('ynow_feedback_link_label');
@@ -10984,14 +11254,84 @@ ui <- dashboardPage(
               set('ynow_pts_box_title', payload.pts_box_title);
               set('ynow_pts_ledger_intro', payload.pts_ledger_intro);
               set('ynow_pa_gate_title', payload.pa_gate_title);
-              set('ynow_pa_gate_body', payload.pa_gate_body);
               set('ynow_pa_gate_signin_label', payload.sign_in);
               set('ynow_lab_gate_title', payload.pa_gate_title);
-              set('ynow_lab_gate_body', payload.pa_gate_body);
               set('ynow_lab_gate_signin_label', payload.sign_in);
               set('ynow_chk_gate_title', payload.pa_gate_title);
-              set('ynow_chk_gate_body', payload.pa_gate_body);
               set('ynow_chk_gate_signin_label', payload.sign_in);
+              set('ynow_pdf_gate_signin_label', payload.sign_in);
+              setAll('.ynow-auth-gate-title', payload.pa_gate_title);
+              setAll('.ynow-member-gate-signin-label', payload.sign_in);
+              var setFeature = function (feat, map) {
+                if (!feat || !map) return;
+                var roots = document.querySelectorAll('[data-ynow-gate-feature=\"' + feat + '\"]');
+                for (var ri = 0; ri < roots.length; ri++) {
+                  var root = roots[ri];
+                  var applySel = function (sel, val) {
+                    if (!val) return;
+                    var nodes = root.querySelectorAll(sel);
+                    for (var ni = 0; ni < nodes.length; ni++) nodes[ni].textContent = val;
+                  };
+                  applySel('.ynow-gate-body', map.body);
+                  applySel('.ynow-gate-promo-kicker', map.kicker);
+                  applySel('.ynow-gate-promo-lead', map.lead);
+                  applySel('.ynow-gate-promo-b1', map.b1);
+                  applySel('.ynow-gate-promo-b2', map.b2);
+                  applySel('.ynow-gate-promo-b3', map.b3);
+                  applySel('.ynow-gate-demo-caption', map.demo_caption);
+                }
+                // Body ids on member gates live outside data-feature children sometimes —
+                // also set known gate body element ids.
+                if (feat === 'lab') set('ynow_lab_gate_body', map.body);
+                if (feat === 'checklist') set('ynow_chk_gate_body', map.body);
+                if (feat === 'alerts') set('ynow_pa_gate_body', map.body);
+                if (feat === 'snap_defaults') set('ynow_snapshot_defaults_locked_msg', map.body);
+              };
+              setFeature('lab', {
+                body: payload.gate_lab_body, kicker: payload.gate_lab_kicker,
+                lead: payload.gate_lab_lead, b1: payload.gate_lab_b1,
+                b2: payload.gate_lab_b2, b3: payload.gate_lab_b3,
+                demo_caption: payload.gate_lab_demo_caption
+              });
+              setFeature('checklist', {
+                body: payload.gate_checklist_body, kicker: payload.gate_checklist_kicker,
+                lead: payload.gate_checklist_lead, b1: payload.gate_checklist_b1,
+                b2: payload.gate_checklist_b2, b3: payload.gate_checklist_b3,
+                demo_caption: payload.gate_checklist_demo_caption
+              });
+              setFeature('alerts', {
+                body: payload.gate_alerts_body, kicker: payload.gate_alerts_kicker,
+                lead: payload.gate_alerts_lead, b1: payload.gate_alerts_b1,
+                b2: payload.gate_alerts_b2, b3: payload.gate_alerts_b3,
+                demo_caption: payload.gate_alerts_demo_caption
+              });
+              setFeature('account', {
+                body: payload.gate_account_body, kicker: payload.gate_account_kicker,
+                lead: payload.gate_account_lead, b1: payload.gate_account_b1,
+                b2: payload.gate_account_b2, b3: payload.gate_account_b3,
+                demo_caption: payload.gate_account_demo_caption
+              });
+              setFeature('pdf', {
+                body: payload.gate_pdf_body, kicker: payload.gate_pdf_kicker,
+                lead: payload.gate_pdf_lead, b1: payload.gate_pdf_b1,
+                b2: payload.gate_pdf_b2, b3: payload.gate_pdf_b3,
+                demo_caption: payload.gate_pdf_demo_caption
+              });
+              setFeature('snap_defaults', {
+                body: payload.gate_snap_defaults_body, kicker: payload.gate_snap_defaults_kicker,
+                lead: payload.gate_snap_defaults_lead, b1: payload.gate_snap_defaults_b1,
+                b2: payload.gate_snap_defaults_b2, b3: payload.gate_snap_defaults_b3,
+                demo_caption: payload.gate_snap_defaults_demo_caption
+              });
+              setAll('.ynow-gate-faq-title', payload.gate_faq_title);
+              setAll('.ynow-gate-faq-q1', payload.gate_faq_q1);
+              setAll('.ynow-gate-faq-a1', payload.gate_faq_a1);
+              setAll('.ynow-gate-faq-q2', payload.gate_faq_q2);
+              setAll('.ynow-gate-faq-a2', payload.gate_faq_a2);
+              setAll('.ynow-gate-faq-q3', payload.gate_faq_q3);
+              setAll('.ynow-gate-faq-a3', payload.gate_faq_a3);
+              setAll('.ynow-gate-faq-q4', payload.gate_faq_q4);
+              setAll('.ynow-gate-faq-a4', payload.gate_faq_a4);
             });
             addHandler('ynowPtsBanner', function (payload) {
               if (!payload) return;
@@ -11234,12 +11574,32 @@ ui <- dashboardPage(
                 finish(baseUrl, !!tab, false);
               }
             });
+            /* Sys. Admin foot link: hide while signed in (CSS + inline, sign-out restores). */
+            function ynowSyncSysAdminFootVisibility(loggedIn) {
+              var el = document.getElementById('ynow_sidebar_test_btn');
+              if (!el) return;
+              if (loggedIn) {
+                el.style.setProperty('display', 'none', 'important');
+                el.style.setProperty('visibility', 'hidden', 'important');
+                el.style.setProperty('pointer-events', 'none', 'important');
+                el.setAttribute('aria-hidden', 'true');
+                el.setAttribute('tabindex', '-1');
+              } else {
+                el.style.removeProperty('display');
+                el.style.removeProperty('visibility');
+                el.style.removeProperty('pointer-events');
+                el.removeAttribute('aria-hidden');
+                el.removeAttribute('tabindex');
+              }
+            }
+            window.ynowSyncSysAdminFootVisibility = ynowSyncSysAdminFootVisibility;
             addHandler('ynowAuthPostLogin', function (payload) {
               if (!payload) return;
               /* Success: mark authed BEFORE tab restore / sidebar work so any
                  subsequent Sign-in / BS toggleModal open is vetoed. */
               if (payload.ok && document.body) {
                 document.body.classList.add('ynow-authed');
+                ynowSyncSysAdminFootVisibility(true);
               }
               try {
                 if (window.jQuery) jQuery('#ynow_auth_modal').modal('hide');
@@ -11250,10 +11610,12 @@ ui <- dashboardPage(
                 sessionStorage.removeItem('ynow_oauth_code_verifier');
                 sessionStorage.removeItem('ynow_pre_oauth_tab');
               } catch (eClr) {}
+              /* Sys. Admin is guest/ops-only: never restore testing after sign-in. */
+              if (payload.ok && tab === 'testing') tab = 'home';
               if (payload.ok && tab && window.Shiny && Shiny.setInputValue) {
                 try {
                   if (typeof window.ynowShowSidebarFootTab === 'function' &&
-                      (tab === 'snapshot' || tab === 'testing' || tab === 'feedback')) {
+                      (tab === 'snapshot' || tab === 'feedback')) {
                     window.ynowShowSidebarFootTab(tab);
                   } else {
                     Shiny.setInputValue('sidebar_tabs', tab, { priority: 'event' });
@@ -11282,6 +11644,7 @@ ui <- dashboardPage(
               var loggedIn = !!(payload.logged_in);
               if (loggedIn) document.body.classList.add('ynow-authed');
               else document.body.classList.remove('ynow-authed');
+              ynowSyncSysAdminFootVisibility(loggedIn);
               var openLinks = document.querySelectorAll('.ynow-auth-open');
               var outLinks = document.querySelectorAll('.ynow-auth-signout');
               var i;
@@ -11298,6 +11661,24 @@ ui <- dashboardPage(
               if (payload.label_sign_out) {
                 var outLbls = document.querySelectorAll('.ynow-auth-signout-label');
                 for (i = 0; i < outLbls.length; i++) outLbls[i].textContent = payload.label_sign_out;
+              }
+              /* Leave Sys. Admin tab if still open after sign-in (link is CSS-hidden). */
+              if (loggedIn && window.Shiny && Shiny.setInputValue) {
+                try {
+                  var active = document.querySelector(
+                    '.sidebar-menu li.active > a[data-value], .sidebar-menu a.active[data-value]'
+                  );
+                  var footActive = document.querySelector(
+                    '.ynow-sidebar-snapshot-foot a.active[data-value], ' +
+                    '.ynow-sidebar-snapshot-foot a[aria-expanded=\"true\"][data-value]'
+                  );
+                  var cur = (active && active.getAttribute('data-value')) ||
+                    (footActive && footActive.getAttribute('data-value')) || '';
+                  var hash = (window.location.hash || '').replace(/^#shiny-tab-/, '');
+                  if (cur === 'testing' || hash === 'testing') {
+                    Shiny.setInputValue('sidebar_tabs', 'home', { priority: 'event' });
+                  }
+                } catch (eLeaveTest) {}
               }
             });
             addHandler('ynowDcLocale', applyDcLocale);
@@ -11556,6 +11937,7 @@ ui <- dashboardPage(
             function remapLegacyTab(tab) {
               tab = String(tab || '');
               if (tab === 'business_breakdown_lab') return 'company_advance';
+              if (tab === 'bluechip_lab') return 'bluechip';
               return tab;
             }
             window.ynowRemapLegacyTab = remapLegacyTab;
@@ -11579,6 +11961,11 @@ ui <- dashboardPage(
             function gotoTab(tab) {
               tab = remapLegacyTab(tab);
               if (!tab) return;
+              /* Signed-in members: Sys. Admin portal is guest/ops only. */
+              if (tab === 'testing' && document.body &&
+                  document.body.classList.contains('ynow-authed')) {
+                tab = 'home';
+              }
               if (window.Shiny && Shiny.setInputValue) {
                 Shiny.setInputValue('sidebar_tabs', tab, {priority: 'event'});
               }
@@ -11695,6 +12082,11 @@ ui <- dashboardPage(
             function showSidebarFootTab(tab) {
               tab = remapLegacyTab(tab);
               if (!tab) return;
+              /* Signed-in members: never open Sys. Admin (testing) via foot link. */
+              if (tab === 'testing' && document.body &&
+                  document.body.classList.contains('ynow-authed')) {
+                tab = 'home';
+              }
               if (window.Shiny && Shiny.setInputValue) {
                 Shiny.setInputValue('sidebar_tabs', tab, {priority: 'event'});
               }
@@ -11995,7 +12387,7 @@ ui <- dashboardPage(
               var t = ev.target;
               if (!t || !t.closest) return;
               var hit = t.closest(
-                'a.ynow-auth-open, .ynow-auth-open, #ynow_pa_gate_signin, #ynow_pa_gate_signin_label'
+                'a.ynow-auth-open, .ynow-auth-open, #ynow_pa_gate_signin, #ynow_pa_gate_signin_label, #ynow_lab_gate_signin, #ynow_lab_gate_signin_label, #ynow_chk_gate_signin, #ynow_chk_gate_signin_label, #ynow_pdf_gate_signin, #ynow_pdf_gate_signin_label'
               );
               if (!hit) return;
               var authed = ynowIsAuthed();
@@ -12090,6 +12482,11 @@ ui <- dashboardPage(
           }
           function ynowActivateTab(tab) {
             tab = window.ynowRemapLegacyTab ? window.ynowRemapLegacyTab(tab) : tab;
+            if (typeof window.ynowShowSidebarFootTab === 'function' &&
+                (tab === 'snapshot' || tab === 'testing' || tab === 'feedback')) {
+              try { window.ynowShowSidebarFootTab(tab); } catch (eFoot) {}
+              return;
+            }
             if (window.Shiny && Shiny.setInputValue) {
               Shiny.setInputValue('sidebar_tabs', tab, {priority: 'event'});
             }
@@ -12101,9 +12498,45 @@ ui <- dashboardPage(
             }
           }
           function ynowTabPane(tab) {
+            tab = window.ynowRemapLegacyTab ? window.ynowRemapLegacyTab(tab) : tab;
             return document.getElementById('shiny-tab-' + tab) ||
                    document.querySelector('.tab-pane[data-value=\"' + tab + '\"]') ||
                    document.querySelector('.tab-content > .tab-pane.active');
+          }
+          function ynowActivateInnerTab(pane, inner) {
+            if (!pane || !inner) return false;
+            var key = String(inner).trim();
+            if (!key) return false;
+            var links = pane.querySelectorAll(
+              '.nav-tabs a[data-toggle=\"tab\"], .nav-tabs a[data-bs-toggle=\"tab\"], ' +
+              'a[data-toggle=\"tab\"], a[data-bs-toggle=\"tab\"]'
+            );
+            for (var i = 0; i < links.length; i++) {
+              var a = links[i];
+              var dv = (a.getAttribute('data-value') || '').trim();
+              var href = (a.getAttribute('href') || '').replace(/^#/, '');
+              var text = (a.textContent || '').replace(/\\s+/g, ' ').trim();
+              if (dv === key || href === key || text === key ||
+                  text.indexOf(key) === 0 || key.indexOf(text) === 0) {
+                try { a.click(); } catch (eClick) {}
+                return true;
+              }
+            }
+            return false;
+          }
+          async function ynowWaitForCapturePane(tab, maxMs) {
+            var deadline = Date.now() + (maxMs || 4000);
+            var lazyHost = document.getElementById('ynow_lazy_host_' + tab);
+            while (Date.now() < deadline) {
+              var pane = ynowTabPane(tab);
+              if (pane && pane.classList.contains('active')) {
+                if (!lazyHost) return pane;
+                if (lazyHost.children && lazyHost.children.length > 0) return pane;
+                if (lazyHost.querySelector && lazyHost.querySelector('*')) return pane;
+              }
+              await ynowSleep(120);
+            }
+            return ynowTabPane(tab);
           }
           function ynowFindInputBox(inputId) {
             var el = ynowFindInputEl(inputId);
@@ -12168,10 +12601,16 @@ ui <- dashboardPage(
               var html2canvasFn = window.html2canvas;
               var jsPDF = (window.jspdf && window.jspdf.jsPDF) ? window.jspdf.jsPDF : window.jsPDF;
               if (!html2canvasFn || !jsPDF) throw new Error('libs missing');
+              var pageSpecs = (payload && payload.pages) || [];
               var tabs = (payload && payload.tabs) || [];
               var changes = (payload && payload.changes) || [];
               var pageTitles = (payload && payload.page_titles) || {};
-              if (!tabs.length) {
+              if (!pageSpecs.length && tabs.length) {
+                pageSpecs = tabs.map(function (t) {
+                  return { id: t, tab: t, inner: '', annotate_tab: t, title: pageTitles[t] || t };
+                });
+              }
+              if (!pageSpecs.length) {
                 setStatus(strings.need_pages || 'Select pages');
                 return;
               }
@@ -12200,13 +12639,25 @@ ui <- dashboardPage(
                   y += lines.length * 12 + 4;
                 });
               }
-              for (var i = 0; i < tabs.length; i++) {
-                var tab = tabs[i];
-                setStatus((strings.busy || 'Capturing…') + ' (' + (i + 1) + '/' + tabs.length + ')');
+              var lazyTabs = { bluechip: 1, hfv: 1, lab_notes: 1, company_advance: 1,
+                               macro_market: 1, asset_transmission: 1, testing: 1 };
+              for (var i = 0; i < pageSpecs.length; i++) {
+                var spec = pageSpecs[i] || {};
+                var tab = spec.tab || spec.id || '';
+                var inner = spec.inner || '';
+                var annotateTab = spec.annotate_tab || tab;
+                var title = spec.title || pageTitles[spec.id] || pageTitles[tab] || tab;
+                setStatus((strings.busy || 'Capturing…') + ' (' + (i + 1) + '/' + pageSpecs.length + ')');
                 ynowActivateTab(tab);
-                await ynowSleep(650);
-                var pane = ynowTabPane(tab);
+                var waitMs = lazyTabs[tab] ? 4500 : 900;
+                var pane = await ynowWaitForCapturePane(tab, waitMs);
                 if (!pane) continue;
+                if (inner) {
+                  ynowActivateInnerTab(pane, inner);
+                  await ynowSleep(400);
+                } else {
+                  await ynowSleep(200);
+                }
                 try { pane.scrollTop = 0; } catch (e0) {}
                 var canvas = await html2canvasFn(pane, {
                   scale: 1,
@@ -12216,10 +12667,15 @@ ui <- dashboardPage(
                   windowWidth: Math.max(pane.scrollWidth, pane.clientWidth || 800),
                   height: Math.min(pane.scrollHeight || pane.clientHeight || 800, 5000)
                 });
-                var tabChanges = changes.filter(function (c) { return c.tab === tab; });
+                var tabChanges = changes.filter(function (c) {
+                  var ct = c.tab || '';
+                  if (window.ynowRemapLegacyTab) ct = window.ynowRemapLegacyTab(ct);
+                  return ct === annotateTab || ct === tab ||
+                         (annotateTab === 'bluechip' && (c.tab === 'bluechip_lab' || ct === 'bluechip'));
+                });
                 ynowAnnotateCanvas(canvas, pane, tabChanges);
                 pdf.addPage();
-                ynowAddCanvasToPdf(pdf, canvas, pageTitles[tab] || tab);
+                ynowAddCanvasToPdf(pdf, canvas, title);
               }
               ynowActivateTab('snapshot');
               await ynowSleep(200);
@@ -13502,6 +13958,45 @@ ui <- dashboardPage(
           font-weight: 700;
           color: #555;
           letter-spacing: 0.02em;
+        }
+        .ynow-pdf-pages-groups {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          margin-top: 4px;
+        }
+        .ynow-pdf-pages-group {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: flex-start;
+          gap: 6px 12px;
+          padding: 8px 10px;
+          background: #f7f9fc;
+          border: 1px solid #e2e8f0;
+          border-radius: 4px;
+        }
+        .ynow-pdf-pages-group-label {
+          flex: 0 0 100%;
+          font-size: 12px;
+          font-weight: 700;
+          color: #334;
+          letter-spacing: 0.02em;
+          margin: 0 0 2px 0;
+        }
+        .ynow-pdf-pages-group .shiny-options-group {
+          display: inline-flex;
+          flex-wrap: wrap;
+          flex-direction: row;
+          align-items: center;
+          column-gap: 12px;
+          row-gap: 6px;
+          flex: 1 1 auto;
+        }
+        .ynow-pdf-pages .checkbox-inline {
+          margin-left: 0 !important;
+          margin-right: 0 !important;
+          padding-left: 18px;
+          font-size: 12.5px;
         }
         .ynow-lab-im-methods .shiny-options-group,
         .ynow-lab-im-boards .shiny-options-group,
@@ -16245,61 +16740,75 @@ ui <- dashboardPage(
         tags$span(class = "ynow-credit-text", "a lawrence kuo shiny app")
       )
     ),
-    # Ticker search + Yahoo industry chrome: hide on Home, About, Macro, Blue Chip, Testing
+    # Ticker search + Yahoo industry chrome: hide on Home, About, Macro, Blue Chip,
+    # Testing, and account maintenance (gate / 會員管理 / points). Guest Sign-in-required
+    # surfaces (Lab / Checklist / Value Alerts) hide the same chrome via CSS while gated.
     # (Business Breakdown shares global Ticker / Stock Code chrome;
     # Blue Chip uses its own universe Search, not the global ticker chrome).
     conditionalPanel(
-      condition = "input.sidebar_tabs != 'about' && input.sidebar_tabs != 'macro_market' && input.sidebar_tabs != 'asset_transmission' && input.sidebar_tabs != 'bluechip' && input.sidebar_tabs != 'testing' && input.sidebar_tabs != 'home'",
-      fluidRow(
-        column(width = 12,
-               div(
-                 class = "ynow-sc-row",
+      condition = paste(
+        "input.sidebar_tabs != 'about' &&",
+        "input.sidebar_tabs != 'macro_market' &&",
+        "input.sidebar_tabs != 'asset_transmission' &&",
+        "input.sidebar_tabs != 'bluechip' &&",
+        "input.sidebar_tabs != 'testing' &&",
+        "input.sidebar_tabs != 'home' &&",
+        "input.sidebar_tabs != 'account_admin' &&",
+        "input.sidebar_tabs != 'account_points'"
+      ),
+      tags$div(
+        class = "ynow-stock-chrome",
+        fluidRow(
+          column(width = 12,
                  div(
-                   class = "ynow-sc-wrap",
-                   textInput(
-                     "sc",
-                     "Ticker / Stock Code",
-                     value = "",
-                     placeholder = "e.g. AAPL / TSM"
+                   class = "ynow-sc-row",
+                   div(
+                     class = "ynow-sc-wrap",
+                     textInput(
+                       "sc",
+                       "Ticker / Stock Code",
+                       value = "",
+                       placeholder = "e.g. AAPL / TSM"
+                     ),
+                     uiOutput("sc_ticker_suggest_ui")
                    ),
-                   uiOutput("sc_ticker_suggest_ui")
-                 ),
-                 actionButton(
-                   "search",
-                   "Search",
-                   icon = icon("search"),
-                   class = "ynow-search-btn"
+                   actionButton(
+                     "search",
+                     "Search",
+                     icon = icon("search"),
+                     class = "ynow-search-btn"
+                   )
                  )
-               )
-        )
-      ),
-      fluidRow(
-        column(
-          width = 12,
-          h2(uiOutput("txt_corpname", inline = TRUE), class = "ynow-corpname")
-        )
-      ),
-      fluidRow(
-        column(
-          width = 12,
-          uiOutput("ynow_data_gap_banner")
-        )
-      ),
-      fluidRow(
-        column(
-          width = 12,
-          tags$div(
-            style = "width: 100%; text-align: left; margin-top: 8px;",
-            tags$p(
-              id = "ynow_industry_info_yahoo",
-              "industry info from Yahoo",
-              style = "font-size: 12px; color: #888; margin: 0 0 4px 0; font-weight: bold;"
-            ),
-            verbatimTextOutput("search_results")
           )
-        )
-      ),
-      br()
+        ),
+        fluidRow(
+          column(
+            width = 12,
+            h2(uiOutput("txt_corpname", inline = TRUE), class = "ynow-corpname")
+          )
+        ),
+        fluidRow(
+          column(
+            width = 12,
+            uiOutput("ynow_data_gap_banner")
+          )
+        ),
+        fluidRow(
+          column(
+            width = 12,
+            tags$div(
+              style = "width: 100%; text-align: left; margin-top: 8px;",
+              tags$p(
+                id = "ynow_industry_info_yahoo",
+                "industry info from Yahoo",
+                style = "font-size: 12px; color: #888; margin: 0 0 4px 0; font-weight: bold;"
+              ),
+              verbatimTextOutput("search_results")
+            )
+          )
+        ),
+        br()
+      )
     ),
     # Shared ticker typeahead (Ticker/Stock Code + Radar focus); always loaded
     tags$script(HTML("
@@ -16647,14 +17156,25 @@ ui <- dashboardPage(
         tags$div(
           id = "ynow_snapshot_defaults_locked",
           class = "ynow-snap-defaults-locked ynow-gate-callout",
+          `data-ynow-gate-feature` = "snap_defaults",
           tags$span(
             id = "ynow_snapshot_defaults_locked_msg",
+            class = "ynow-gate-body",
             paste0(
               "System defaults (APP_DEFAULTS) require System admin unlock ",
               "(same session as Points → System admin). ",
               "After Exit system admin, this tab locks again."
             )
-          )
+          ),
+          if (exists("ynow_gate_promo_faq_ui", mode = "function")) {
+            ynow_gate_promo_faq_ui(
+              feature = "snap_defaults",
+              include_faq = FALSE,
+              compact = FALSE
+            )
+          } else {
+            NULL
+          }
         ),
         tabBox(
           # No right-side chrome title (page h2 already says Snapshot; avoids wrong remaps)
@@ -16688,31 +17208,36 @@ ui <- dashboardPage(
               id = "ynow_param_audit_pdf_help",
               style = "font-size:12.5px; color:#666; line-height:1.45; margin:0 0 10px 0;",
               paste0(
-                "Select main pages to include. The app switches to each page, captures the live layout, ",
-                "draws boxes on inputs you changed vs the post-Search baseline, and downloads one PDF."
+                "Select pages by category. The app switches to each page (and statement block when chosen), ",
+                "captures the live layout, draws boxes on inputs you changed vs the post-Search baseline, ",
+                "and downloads one PDF."
               )
             ),
-            checkboxGroupInput(
-              "param_audit_pdf_pages",
-              label = tags$span(id = "ynow_param_audit_pdf_pages_label", "Pages to capture"),
-              choiceNames = list(
-                tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_basic",
-                          "Basic Setup (SGR / CAPM / WACC / Beta)"),
-                tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_dcf", "DCF"),
-                tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_ddm", "DDM"),
-                tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_ri", "RI"),
-                tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_pb", "P/B"),
-                tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_nav", "NAV")
-              ),
-              choiceValues = c(
-                "get_started", "dcf_calculator", "ddm_calculator",
-                "ri_calculator", "pb_calculator", "nav_calculator"
-              ),
-              selected = c(
-                "get_started", "dcf_calculator", "ddm_calculator",
-                "ri_calculator", "pb_calculator", "nav_calculator"
+            if (exists("ynow_param_audit_pdf_pages_ui", mode = "function")) {
+              ynow_param_audit_pdf_pages_ui()
+            } else {
+              checkboxGroupInput(
+                "param_audit_pdf_pages",
+                label = tags$span(id = "ynow_param_audit_pdf_pages_label", "Pages to capture"),
+                choiceNames = list(
+                  tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_basic",
+                            "Model Dashboard (SGR / CAPM / WACC / Beta)"),
+                  tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_dcf", "DCF"),
+                  tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_ddm", "DDM"),
+                  tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_ri", "RI"),
+                  tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_pb", "P/B"),
+                  tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_nav", "NAV")
+                ),
+                choiceValues = c(
+                  "get_started", "dcf_calculator", "ddm_calculator",
+                  "ri_calculator", "pb_calculator", "nav_calculator"
+                ),
+                selected = c(
+                  "get_started", "dcf_calculator", "ddm_calculator",
+                  "ri_calculator", "pb_calculator", "nav_calculator"
+                )
               )
-            ),
+            },
             div(
               style = "display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:8px;",
               actionButton(
@@ -17671,7 +18196,8 @@ ui <- dashboardPage(
             "ynow_lab_guest_gate",
             "ynow_lab_gate_title",
             "ynow_lab_gate_body",
-            "ynow_lab_gate_signin"
+            "ynow_lab_gate_signin",
+            feature = "lab"
           )
         },
         tags$div(

@@ -229,6 +229,30 @@ check("auth css includes maint theme + JS", {
     grepl("data-ynow-maint-theme", html, fixed = TRUE)
 })
 check("pa guest gate builds", inherits(ynow_pa_guest_gate_ui(), "shiny.tag"))
+check("member gate includes promo and FAQ", {
+  html <- paste(as.character(ynow_pa_guest_gate_ui()), collapse = "\n")
+  grepl("ynow-gate-promo", html, fixed = TRUE) &&
+    grepl("ynow-gate-faq", html, fixed = TRUE) &&
+    grepl("ynow-gate-promo-kicker", html, fixed = TRUE) &&
+    grepl("ynow-gate-faq-q1", html, fixed = TRUE) &&
+    grepl("ynow-auth-open", html, fixed = TRUE) &&
+    grepl('data-ynow-gate-feature="alerts"', html, fixed = TRUE) &&
+    grepl("ynow-gate-demo-video", html, fixed = TRUE) &&
+    grepl("demos/alerts.mp4", html, fixed = TRUE)
+})
+check("lab and checklist gates are feature-specific", {
+  lab <- paste(as.character(ynow_member_gate_ui(
+    "g", "t", "b", "btn", feature = "lab"
+  )), collapse = "\n")
+  chk <- paste(as.character(ynow_member_gate_ui(
+    "g2", "t2", "b2", "btn2", feature = "checklist"
+  )), collapse = "\n")
+  grepl("demos/lab.mp4", lab, fixed = TRUE) &&
+    grepl("Unlock Quantitative Backtest Lab", lab, fixed = TRUE) &&
+    grepl("demos/checklist.mp4", chk, fixed = TRUE) &&
+    grepl("Unlock Decision Checklist", chk, fixed = TRUE) &&
+    !grepl("Unlock Value Alerts", lab, fixed = TRUE)
+})
 check("backtest and checklist require the member gate", {
   ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   dc <- paste(readLines(file.path(app_dir, "decision_checklist_module.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
@@ -248,13 +272,49 @@ check("login tabs show a lock before sign-in", {
     grepl("not(.ynow-lite):not(.ynow-authed) .sidebar-menu .ynow-menu-lock", ui, fixed = TRUE) &&
     grepl("a:has(.ynow-menu-lock) > i:not(.ynow-menu-lock):not(.pull-right)", ui, fixed = TRUE)
 })
+check("stock chrome hidden on guest gate tabs and account panels", {
+  ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("ynow-stock-chrome", ui, fixed = TRUE) &&
+    grepl("input.sidebar_tabs != 'account_admin'", ui, fixed = TRUE) &&
+    grepl("input.sidebar_tabs != 'account_points'", ui, fixed = TRUE) &&
+    grepl("shiny-tab-lab_notes.active) .ynow-stock-chrome", ui, fixed = TRUE) &&
+    grepl("shiny-tab-decision_checklist.active) .ynow-stock-chrome", ui, fixed = TRUE) &&
+    grepl("shiny-tab-price_alerts.active) .ynow-stock-chrome", ui, fixed = TRUE) &&
+    grepl("ynow-sidebar-snapshot-foot-links", ui, fixed = TRUE)
+})
 check("member gate uses mono gate box not warning amber", {
   auth <- paste(readLines(src_auth, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   grepl("ynow-gate-box", auth, fixed = TRUE) &&
     !grepl('class = "box box-warning ynow-member-gate"', auth, fixed = TRUE) &&
     grepl("\\.box\\.ynow-gate-box", ui) &&
-    grepl("--ynow-gate-accent", ui, fixed = TRUE)
+    grepl("--ynow-gate-accent", ui, fixed = TRUE) &&
+    grepl("ynow-gate-promo", ui, fixed = TRUE) &&
+    grepl("ynow-gate-faq", ui, fixed = TRUE)
+})
+check("account gate uses shared promo FAQ helper", {
+  srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("ynow_gate_promo_faq_ui", srv, fixed = TRUE) &&
+    grepl('feature = "account"', srv, fixed = TRUE) &&
+    grepl("ynow-auth-gate", srv, fixed = TRUE) &&
+    grepl("ynow-auth-open", srv, fixed = TRUE)
+})
+check("pdf and snap_defaults gates wired in UI", {
+  ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  auth <- paste(readLines(src_auth, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("ynow_pdf_guest_gate", ui, fixed = TRUE) &&
+    grepl('feature = "pdf"', ui, fixed = TRUE) &&
+    grepl('feature = "snap_defaults"', ui, fixed = TRUE) &&
+    grepl("ynow-gate-demo-video", auth, fixed = TRUE) &&
+    grepl("demos/", auth, fixed = TRUE)
+})
+check("demo clips exist under www/demos", {
+  demos <- file.path(app_dir, "www", "demos")
+  files <- c(
+    "lab.mp4", "lab.webm", "checklist.mp4", "alerts.mp4",
+    "account.mp4", "pdf.mp4", "snap_defaults.mp4"
+  )
+  all(file.exists(file.path(demos, files)))
 })
 Sys.setenv(YNOW_ENABLE_ACCOUNT_LOGIN = "0")
 check("admin menu NULL when disabled", is.null(ynow_admin_menu_item()))
@@ -274,6 +334,26 @@ keys <- c(
   "auth_msg_forgot_soon", "auth_msg_resend_soon", "auth_about_note",
   "menu_admin", "auth_admin_title", "auth_admin_intro", "auth_pa_gate_title",
   "auth_pa_gate_body", "auth_admin_tool_lite", "pa_email_account_help",
+  "auth_gate_lab_body", "auth_gate_lab_kicker", "auth_gate_lab_lead",
+  "auth_gate_lab_b1", "auth_gate_lab_b2", "auth_gate_lab_b3", "auth_gate_lab_demo_caption",
+  "auth_gate_checklist_body", "auth_gate_checklist_kicker", "auth_gate_checklist_lead",
+  "auth_gate_checklist_b1", "auth_gate_checklist_b2", "auth_gate_checklist_b3",
+  "auth_gate_checklist_demo_caption",
+  "auth_gate_alerts_body", "auth_gate_alerts_kicker", "auth_gate_alerts_lead",
+  "auth_gate_alerts_b1", "auth_gate_alerts_b2", "auth_gate_alerts_b3",
+  "auth_gate_alerts_demo_caption",
+  "auth_gate_account_body", "auth_gate_account_kicker", "auth_gate_account_lead",
+  "auth_gate_account_b1", "auth_gate_account_b2", "auth_gate_account_b3",
+  "auth_gate_account_demo_caption",
+  "auth_gate_pdf_body", "auth_gate_pdf_kicker", "auth_gate_pdf_lead",
+  "auth_gate_pdf_b1", "auth_gate_pdf_b2", "auth_gate_pdf_b3", "auth_gate_pdf_demo_caption",
+  "auth_gate_snap_defaults_body", "auth_gate_snap_defaults_kicker",
+  "auth_gate_snap_defaults_lead", "auth_gate_snap_defaults_b1",
+  "auth_gate_snap_defaults_b2", "auth_gate_snap_defaults_b3",
+  "auth_gate_snap_defaults_demo_caption",
+  "auth_gate_faq_title",
+  "auth_gate_faq_q1", "auth_gate_faq_a1", "auth_gate_faq_q2", "auth_gate_faq_a2",
+  "auth_gate_faq_q3", "auth_gate_faq_a3", "auth_gate_faq_q4", "auth_gate_faq_a4",
   "auth_admin_theme", "auth_admin_theme_scope", "auth_admin_theme_logo",
   "auth_admin_theme_mono", "auth_admin_theme_ocean", "auth_admin_theme_forest"
 )
@@ -303,6 +383,32 @@ check("UI mounts auth on sidebar date + home legal", {
 check("UI About mentions account sign-in", grepl("Account sign-in", ui, fixed = TRUE) &&
         grepl("帳號登入", ui, fixed = TRUE))
 check("UI wires ynowAuthState handler", grepl("ynowAuthState", ui, fixed = TRUE))
+check("Sys. Admin foot link hidden when signed in", {
+  grepl("body.ynow-authed .ynow-sidebar-snapshot-foot #ynow_sidebar_test_btn", ui, fixed = TRUE) &&
+    grepl("a#ynow_sidebar_test_btn.ynow-sidebar-test-link", ui, fixed = TRUE) &&
+    grepl("display: none !important", ui, fixed = TRUE) &&
+    grepl("ynowSyncSysAdminFootVisibility", ui, fixed = TRUE) &&
+    grepl("tab === 'testing') tab = 'home'", ui, fixed = TRUE)
+})
+check("post-login server remaps testing tab to home", {
+  auth_txt <- paste(readLines(src_auth, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl('identical(tab, "testing")) tab <- "home"', auth_txt, fixed = TRUE)
+})
+check("server blocks Sys. Admin click when signed in", {
+  grepl("sidebar_test_click", srv, fixed = TRUE) &&
+    grepl("ynow_auth$is_logged_in", srv, fixed = TRUE) &&
+    grepl('updateTabItems(session, "sidebar_tabs", "home")', srv, fixed = TRUE)
+})
+check("client remaps testing→home when authed (goto + foot)", {
+  grepl("tab === 'testing' && document.body &&", ui, fixed = TRUE) &&
+    grepl("document.body.classList.contains('ynow-authed')", ui, fixed = TRUE) &&
+    grepl("classList.contains('ynow-authed')) { return false; }", ui, fixed = TRUE) &&
+    grepl("pointer-events", ui, fixed = TRUE)
+})
+check("server blocks testing tab + lazy mount when signed in", {
+  grepl('identical(tab, "testing")', srv, fixed = TRUE) &&
+    grepl("ynow-sysadmin-blocked", srv, fixed = TRUE)
+})
 check("UI wires ynowAuthFeature handler", grepl("ynowAuthFeature", ui, fixed = TRUE))
 check("UI wires OAuth redirect + callback", grepl("ynowAuthOAuthRedirect", ui, fixed = TRUE) &&
         grepl("ynow_auth_oauth_callback", ui, fixed = TRUE))
