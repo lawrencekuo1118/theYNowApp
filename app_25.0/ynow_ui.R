@@ -11892,12 +11892,33 @@ ui <- dashboardPage(
             return !!(document.body && document.body.classList.contains('ynow-authed'));
           }
           window.ynowIsAuthed = ynowIsAuthed;
+          /* Guest click gate for proprietary downloads / capture exports.
+             Public statement CSVs (IS/BS/CF/FS) stay open. */
           document.addEventListener('click', function (ev) {
-            var node = ev.target && ev.target.closest ? ev.target.closest('#download_report') : null;
-            if (!node || !document.body) return;
-            // #region agent log
-            fetch('http://127.0.0.1:7302/ingest/e3a0dcdf-71e1-4bba-855e-f942118bd315',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ef0f33'},body:JSON.stringify({sessionId:'ef0f33',runId:'pre',hypothesisId:'C',location:'ynow_ui.R:download_click',message:'pdf button click',data:{authed:document.body.classList.contains('ynow-authed'),lite:document.body.classList.contains('ynow-lite'),authFeature:document.body.classList.contains('ynow-auth-feature'),label:(node.textContent||'').replace(/\\s+/g,' ').trim().slice(0,80)},timestamp:Date.now()})}).catch(function(){});
-            // #endregion
+            if (!document.body) return;
+            if (!document.body.classList.contains('ynow-auth-feature')) return;
+            if (ynowIsAuthed()) return;
+            var sel = [
+              '#download_report',
+              '#download_snapshot',
+              '#download_param_restore',
+              '#download_defaults',
+              '#lab_im_download_report',
+              '#bblab-export_data',
+              '#bblab-export_chart',
+              '#param_audit_pdf_go'
+            ].join(',');
+            var node = ev.target && ev.target.closest ? ev.target.closest(sel) : null;
+            if (!node) return;
+            try { ev.preventDefault(); } catch (ePd) {}
+            try { ev.stopPropagation(); } catch (eSp) {}
+            try {
+              if (typeof window.ynowRequestAuthModal === 'function') {
+                window.ynowRequestAuthModal();
+              } else if (typeof window.ynowShowAuthModal === 'function') {
+                window.ynowShowAuthModal();
+              }
+            } catch (eModal) {}
           }, true);
           function ynowShowAuthModal() {
             // Already signed in: never reopen login modal (post-login sidebar race).

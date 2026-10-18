@@ -444,6 +444,42 @@ server <- function(input, output, session) {
     TRUE
   }
 
+  #' Deny guest downloads of app-generated artifacts. Writes a note file when
+  #' `file` is supplied (downloadHandler). Opens the mono Sign-in modal.
+  .ynow_deny_guest_download <- function(file = NULL, msg_key = "download_need_login") {
+    uid <- .ynow_access_subject_id()
+    denied <- if (exists("ynow_guest_download_denied", mode = "function")) {
+      isTRUE(ynow_guest_download_denied(uid))
+    } else {
+      auth_on <- exists("ynow_auth_enabled", mode = "function") && isTRUE(ynow_auth_enabled())
+      isTRUE(auth_on) && !nzchar(uid)
+    }
+    if (!denied) return(FALSE)
+    loc <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "en")
+    msg <- tryCatch(
+      ui_str(msg_key, loc),
+      error = function(e) "Sign in to download this file."
+    )
+    if (identical(msg, msg_key) || !nzchar(as.character(msg)[1])) {
+      msg <- tryCatch(
+        ui_str("auth_pa_gate_title", loc),
+        error = function(e) "Sign in required"
+      )
+    }
+    tryCatch(showNotification(msg, type = "warning", duration = 6), error = function(e) NULL)
+    tryCatch(
+      session$sendCustomMessage("ynowAuthOpenModal", list(ok = TRUE)),
+      error = function(e) {
+        tryCatch(shinyBS::toggleModal(session, "ynow_auth_modal", "open"), error = function(e2) NULL)
+      }
+    )
+    if (!is.null(file)) {
+      tryCatch(writeLines(as.character(msg)[1], file, useBytes = TRUE), error = function(e) NULL)
+    }
+    TRUE
+  }
+  session$userData$ynow_deny_guest_download <- .ynow_deny_guest_download
+
   .ynow_pdf_note_file <- function(file, msg) {
     msg <- as.character(msg %||% "")[1]
     tryCatch({
@@ -489,7 +525,12 @@ server <- function(input, output, session) {
     if (!nzchar(uid)) {
       msg <- .lab("pdf_need_login", "Sign in to download the valuation report (PDF).")
       showNotification(msg, type = "warning", duration = 6)
-      tryCatch(shinyBS::toggleModal(session, "ynow_auth_modal", "open"), error = function(e) NULL)
+      tryCatch(
+        session$sendCustomMessage("ynowAuthOpenModal", list(ok = TRUE)),
+        error = function(e) {
+          tryCatch(shinyBS::toggleModal(session, "ynow_auth_modal", "open"), error = function(e2) NULL)
+        }
+      )
       .ynow_pdf_note_file(file, msg)
       return(NULL)
     }
@@ -4407,6 +4448,7 @@ server <- function(input, output, session) {
       paste0("YNow_snapshot_", ticker, "_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".csv")
     },
     content = function(file) {
+      if (isTRUE(.ynow_deny_guest_download(file))) return()
       if (isTRUE(.ynow_access_deny_download("report:download_snapshot", file))) return()
       df <- snapshot_rows()
       df$Downloaded_At <- format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z")
@@ -4420,6 +4462,7 @@ server <- function(input, output, session) {
       paste0("YNow_param_restore_", ticker, "_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".csv")
     },
     content = function(file) {
+      if (isTRUE(.ynow_deny_guest_download(file))) return()
       if (isTRUE(.ynow_access_deny_download("report:download_param_restore", file))) return()
       df <- ynow_param_restore_export_df(
         input,
@@ -4707,6 +4750,7 @@ server <- function(input, output, session) {
       paste0("YNow_defaults_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".csv")
     },
     content = function(file) {
+      if (isTRUE(.ynow_deny_guest_download(file))) return()
       if (!isTRUE(isolate(ynow_pts_sysadmin_on()))) {
         write.csv(
           data.frame(
@@ -4770,6 +4814,7 @@ server <- function(input, output, session) {
   })
 
   observeEvent(input$param_audit_pdf_go, {
+    if (isTRUE(.ynow_deny_guest_download(NULL))) return()
     loc <- isolate(ui_locale())
     tabs <- as.character(input$param_audit_pdf_pages %||% character(0))
     tabs <- tabs[nzchar(tabs)]
@@ -16546,6 +16591,7 @@ server <- function(input, output, session) {
       }
     },
     content = function(file) {
+      if (isTRUE(.ynow_deny_guest_download(file))) return()
       meta <- tryCatch(lab_us_universe_meta(), error = function(e) NULL)
       if (is.null(meta) || as.integer(meta$n %||% 0L) < 1L) {
         meta <- tryCatch(lab_sp500_universe_meta(), error = function(e) NULL)

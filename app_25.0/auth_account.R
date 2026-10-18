@@ -368,6 +368,36 @@ ynow_auth_requires_login <- function(lite = FALSE) {
   isTRUE(ynow_auth_enabled())
 }
 
+#' App-generated / proprietary download output ids that require sign-in when auth is on.
+#' (Applies in Full and Lite — same floor as the valuation PDF quota gate.)
+ynow_gated_download_ids <- function() {
+  c(
+    "download_report",
+    "download_snapshot",
+    "download_param_restore",
+    "download_defaults",
+    "lab_im_download_report",
+    "param_audit_pdf_go",
+    "bblab-export_data",
+    "bblab-export_chart"
+  )
+}
+
+#' Public-data passthrough downloads left open for guests (raw statements).
+#' FS_download has a UI button but no server handler today; kept here as public intent.
+ynow_public_download_ids <- function() {
+  c("IS_download", "BS_download", "CF_download", "FS_download")
+}
+
+#' TRUE when auth is on and the subject has no signed-in user id (guest).
+ynow_guest_download_denied <- function(user_id = "", auth_enabled = NULL) {
+  if (is.null(auth_enabled)) {
+    auth_enabled <- exists("ynow_auth_enabled", mode = "function") &&
+      isTRUE(ynow_auth_enabled())
+  }
+  isTRUE(auth_enabled) && !nzchar(as.character(user_id %||% "")[1])
+}
+
 #' Account email for the current session user (or "").
 ynow_auth_session_email <- function(auth) {
   if (is.null(auth) || !is.list(auth) || is.null(auth$user)) return("")
