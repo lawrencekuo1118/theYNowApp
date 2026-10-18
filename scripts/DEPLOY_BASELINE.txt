@@ -1,10 +1,10 @@
 source=shinyapps.io TheYNowApp
-bundleId=12706424
+bundleId=12706514
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=f79ee61edce98674714f7766ece568882c030fd3
-commit=f79ee61edce98674714f7766ece568882c030fd3
-short=f79ee61e
-message=Require a ticker before a valuation PDF download, and skip the free-download count and FYN charge when that ticker and its settings were already downloaded.
-captured_at=2026-10-18T13:39:30Z
+aligned_git=7261ea7729c55217ce0b1bc4877776053f5048d1
+commit=7261ea7729c55217ce0b1bc4877776053f5048d1
+short=7261ea7
+message=chore: record shipped display version v25.54
+captured_at=2026-10-18T14:09:46Z
 display_version=v25.54
