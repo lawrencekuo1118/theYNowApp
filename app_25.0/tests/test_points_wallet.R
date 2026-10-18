@@ -245,11 +245,21 @@ check("sysadmin portal has login + entry", {
   grepl("ynow_pts_sysadmin_enter", ui, fixed = TRUE) &&
     grepl("ynow_pts_sysadmin_login_user", ui, fixed = TRUE) &&
     grepl("ynow_pts_sysadmin_login_pass", ui, fixed = TRUE) &&
+    grepl('value = "ynow"', ui, fixed = TRUE) &&
+    grepl("ynow-sysadmin-login-chrome", ui, fixed = TRUE) &&
+    grepl("ynow-sysadmin-unlocked-actions", ui, fixed = TRUE) &&
     grepl("ynow_viewas_chrome", ui, fixed = TRUE) &&
     grepl("ynow-view-as", ui, fixed = TRUE) &&
     grepl("ynow-silver-gradient", ui, fixed = TRUE) &&
     grepl("ynow_pts_banner", ui, fixed = TRUE) &&
-    grepl("ynow-pts-header", ui, fixed = TRUE)
+    grepl("ynow-pts-header", ui, fixed = TRUE) &&
+    !grepl("ynow_pts_sysadmin_refresh", ui, fixed = TRUE)
+})
+check("sysadmin hides login chrome when unlocked via CSS/class", {
+  ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("body.ynow-sysadmin-on .ynow-sysadmin-login-chrome", ui, fixed = TRUE) &&
+    grepl("ynowSysadminMode", ui, fixed = TRUE) &&
+    grepl("body.ynow-view-as .ynow-pts-sysadmin-box", ui, fixed = TRUE)
 })
 check("mobile CSS includes pts header with lang/logo flex+z-index", {
   ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
@@ -491,9 +501,12 @@ check("server wires view-as + silver chrome + effective user", {
     grepl("ynow_pts_sysadmin_viewas", srv, fixed = TRUE) &&
     grepl("pts_sysadmin_viewas_exit", srv, fixed = TRUE) &&
     grepl(".ynow_view_as_push_chrome", srv, fixed = TRUE) &&
+    grepl(".ynow_sysadmin_push_mode", srv, fixed = TRUE) &&
+    grepl("ynowSysadminMode", srv, fixed = TRUE) &&
     grepl("ynowViewAsMode", srv, fixed = TRUE) &&
     grepl("ynowViewAsMode", ui, fixed = TRUE) &&
     grepl("ynow-silver-shine", ui, fixed = TRUE) &&
+    !grepl("ynow_pts_sysadmin_refresh", srv, fixed = TRUE) &&
     grepl("verified", paste(readLines(file.path(app_dir, "points_wallet.R"), warn = FALSE), collapse = "\n"), fixed = TRUE)
 })
 check("price_alert prefers effective user for points gate", {

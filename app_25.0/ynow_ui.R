@@ -3467,30 +3467,33 @@ beta_rolling_section_ui <- function() {
     fluidRow(
       column(
         width = 12,
-        h2(tags$b(id = "ynow_testing_page_title", "System admin")),
-        p(
-          id = "ynow_testing_page_sub",
-          paste0(
-            "Dedicated system-admin portal (Full mode). Lite hides this entry. ",
-            "Sign in with the portal credentials below, then manage points ",
-            "or switch to a de-identified user’s live view."
-          )
-        ),
-        tags$hr(),
-        tags$p(
-          id = "ynow_testing_box_body",
-          style = "color:#555; line-height:1.5;",
-          paste0(
-            "This portal replaces the old Testing sandbox home. ",
-            "Adjust FYN / PYN, then use Switch view to open that user’s current UI ",
-            "(balances, spend gates, and other persisted account state). ",
-            "Title Loading turns silver while view-as is active."
+        tags$div(
+          class = "ynow-sysadmin-login-chrome",
+          h2(tags$b(id = "ynow_testing_page_title", "System admin")),
+          p(
+            id = "ynow_testing_page_sub",
+            paste0(
+              "Dedicated system-admin portal (Full mode). Lite hides this entry. ",
+              "Sign in with the portal credentials below, then manage points ",
+              "or switch to a de-identified user’s live view."
+            )
+          ),
+          tags$hr(),
+          tags$p(
+            id = "ynow_testing_box_body",
+            style = "color:#555; line-height:1.5;",
+            paste0(
+              "This portal replaces the old Testing sandbox home. ",
+              "Adjust FYN / PYN, then use Switch view to open that user’s current UI ",
+              "(balances, spend gates, and other persisted account state). ",
+              "Title Loading turns silver while view-as is active."
+            )
           )
         ),
         tags$div(
           class = "box box-solid ynow-pts-sysadmin-box",
           tags$div(
-            class = "box-header with-border",
+            class = "box-header with-border ynow-sysadmin-login-chrome",
             tags$h3(
               class = "box-title",
               tags$span(id = "ynow_pts_sysadmin_title", "System admin")
@@ -3500,6 +3503,7 @@ beta_rolling_section_ui <- function() {
             class = "box-body",
             tags$p(
               id = "ynow_pts_sysadmin_intro",
+              class = "ynow-sysadmin-login-chrome",
               style = "color:#555; line-height:1.5;",
               paste0(
                 "Dedicated system-admin login (separate from end-user Email sign-in). ",
@@ -3508,7 +3512,9 @@ beta_rolling_section_ui <- function() {
                 "Switch view replays that user’s persisted settings in the live UI."
               )
             ),
+            # Locked: username + password + Enter only (hidden after unlock).
             fluidRow(
+              class = "ynow-sysadmin-login-chrome",
               column(
                 width = 4,
                 textInput(
@@ -3517,7 +3523,7 @@ beta_rolling_section_ui <- function() {
                     id = "ynow_pts_sysadmin_login_user_label",
                     "Username"
                   ),
-                  value = "",
+                  value = "ynow",
                   placeholder = "ynow"
                 )
               ),
@@ -3536,6 +3542,7 @@ beta_rolling_section_ui <- function() {
               column(
                 width = 4,
                 tags$div(
+                  class = "ynow-sysadmin-enter-wrap",
                   style = "margin-top: 25px;",
                   actionButton(
                     "ynow_pts_sysadmin_enter",
@@ -3548,8 +3555,11 @@ beta_rolling_section_ui <- function() {
                 )
               )
             ),
+            # Unlocked (not view-as): Leave + Switch view only (stable bindings).
+            # View-as exit lives only in the fixed chrome bar.
             tags$div(
-              style = "margin-top: 8px; display:flex; flex-wrap:wrap; gap:8px; align-items:center;",
+              class = "ynow-sysadmin-unlocked-actions",
+              style = "margin-top: 8px; display:none; flex-wrap:wrap; gap:8px; align-items:center;",
               actionButton(
                 "ynow_pts_sysadmin_exit",
                 label = tags$span(
@@ -3559,29 +3569,12 @@ beta_rolling_section_ui <- function() {
                 class = "btn-default"
               ),
               actionButton(
-                "ynow_pts_sysadmin_refresh",
-                label = tags$span(
-                  id = "ynow_pts_sysadmin_refresh_label",
-                  "Refresh user list"
-                ),
-                class = "btn-default"
-              ),
-              # Stable bindings (outside renderUI) so Switch view / exit always fire.
-              actionButton(
                 "ynow_pts_sysadmin_viewas",
                 label = tags$span(
                   id = "ynow_pts_sysadmin_viewas_label",
                   "Switch view"
                 ),
                 class = "btn-info"
-              ),
-              actionButton(
-                "ynow_pts_sysadmin_viewas_exit",
-                label = tags$span(
-                  id = "ynow_pts_sysadmin_viewas_exit_label",
-                  "Exit user view"
-                ),
-                class = "btn-default"
               )
             ),
             uiOutput("ynow_pts_sysadmin_panel")
@@ -4361,6 +4354,29 @@ ui <- dashboardPage(
           padding: 4px 10px;
           font-size: 12px;
         }
+        /* Sysadmin portal: after login hide all login/intro chrome */
+        body.ynow-sysadmin-on .ynow-sysadmin-login-chrome,
+        body.ynow-sysadmin-on .ynow-sysadmin-login-row {
+          display: none !important;
+        }
+        body.ynow-sysadmin-on:not(.ynow-view-as) .ynow-sysadmin-unlocked-actions {
+          display: flex !important;
+        }
+        /* View-as: hide grant workspace; exit lives only in fixed chrome */
+        body.ynow-view-as .ynow-sysadmin-unlocked-actions,
+        body.ynow-view-as .ynow-pts-sysadmin-box,
+        body.ynow-view-as .ynow-sysadmin-login-chrome {
+          display: none !important;
+        }
+        @media (max-width: 767px) {
+          .ynow-sysadmin-unlocked-actions {
+            width: 100%;
+          }
+          .ynow-sysadmin-unlocked-actions .btn {
+            flex: 1 1 auto;
+            min-width: 40%;
+          }
+        }
         /* Pending deploy: flame title must override gold fill/shine (place after gold rules) */
         body.ynow-update-available .main-header .logo .ynow-app-title-base {
           color: rgba(192, 57, 43, 0.38) !important;
@@ -4408,6 +4424,35 @@ ui <- dashboardPage(
             animation: none !important;
             background-position: 0% 50% !important;
           }
+        }
+        /* View-as silver must win over gold AND deploy-flame (impersonation signal) */
+        body.ynow-view-as .main-header .logo,
+        body.ynow-view-as.ynow-update-available .main-header .logo {
+          color: var(--ynow-silver, #C0C0C0) !important;
+        }
+        body.ynow-view-as .main-header .logo .ynow-app-title-base,
+        body.ynow-view-as.ynow-update-available .main-header .logo .ynow-app-title-base {
+          color: rgba(192, 192, 192, 0.42) !important;
+          -webkit-text-fill-color: rgba(192, 192, 192, 0.42) !important;
+          animation: none !important;
+        }
+        body.ynow-view-as .main-header .logo .ynow-app-title-fill-inner,
+        body.ynow-view-as .main-header .logo .ynow-app-title.is-complete .ynow-app-title-fill-inner,
+        body.ynow-view-as.ynow-update-available .main-header .logo .ynow-app-title-fill-inner,
+        body.ynow-view-as.ynow-update-available .main-header .logo .ynow-app-title.is-complete .ynow-app-title-fill-inner {
+          color: var(--ynow-silver, #C0C0C0) !important;
+          background-image: var(--ynow-silver-gradient) !important;
+          background-size: 220% 100% !important;
+          background-repeat: no-repeat !important;
+          -webkit-background-clip: text !important;
+          background-clip: text !important;
+          -webkit-text-fill-color: transparent !important;
+          animation: ynow-silver-shine 2.6s ease-in-out infinite !important;
+          filter: none !important;
+        }
+        body.ynow-view-as .main-header .logo .ynow-app-title.is-complete .ynow-app-title-fill,
+        body.ynow-view-as .main-header .logo .ynow-app-title-fill {
+          width: 100% !important;
         }
         /* 美股：logo 區塊黑底（容器層，不影響內層文字漸層） */
         .skin-black .main-header .logo::before {
@@ -9898,16 +9943,12 @@ ui <- dashboardPage(
             if (ptsSysEnter && s.pts_sysadmin_enter) ptsSysEnter.textContent = s.pts_sysadmin_enter;
             var ptsSysExit = document.getElementById('ynow_pts_sysadmin_exit_label');
             if (ptsSysExit && s.pts_sysadmin_exit) ptsSysExit.textContent = s.pts_sysadmin_exit;
-            var ptsSysRefresh = document.getElementById('ynow_pts_sysadmin_refresh_label');
-            if (ptsSysRefresh && s.pts_sysadmin_refresh) ptsSysRefresh.textContent = s.pts_sysadmin_refresh;
             var ptsLoginUserLab = document.getElementById('ynow_pts_sysadmin_login_user_label');
             if (ptsLoginUserLab && s.pts_sysadmin_login_user) ptsLoginUserLab.textContent = s.pts_sysadmin_login_user;
             var ptsLoginPassLab = document.getElementById('ynow_pts_sysadmin_login_pass_label');
             if (ptsLoginPassLab && s.pts_sysadmin_login_pass) ptsLoginPassLab.textContent = s.pts_sysadmin_login_pass;
             var ptsViewAs = document.getElementById('ynow_pts_sysadmin_viewas_label');
             if (ptsViewAs && s.pts_sysadmin_viewas) ptsViewAs.textContent = s.pts_sysadmin_viewas;
-            var ptsViewAsExit = document.getElementById('ynow_pts_sysadmin_viewas_exit_label');
-            if (ptsViewAsExit && s.pts_sysadmin_viewas_exit) ptsViewAsExit.textContent = s.pts_sysadmin_viewas_exit;
             var ptsViewAsActive = document.getElementById('ynow_pts_sysadmin_viewas_active_label');
             if (ptsViewAsActive && s.pts_sysadmin_viewas_active) ptsViewAsActive.textContent = s.pts_sysadmin_viewas_active;
             var vaChromeActive = document.getElementById('ynow_viewas_chrome_active_label');
@@ -10283,6 +10324,11 @@ ui <- dashboardPage(
               if (hintEl && payload.hint) hintEl.textContent = String(payload.hint);
               var exitLab = document.getElementById('ynow_viewas_chrome_exit_label');
               if (exitLab && payload.exit_label) exitLab.textContent = String(payload.exit_label);
+            });
+            addHandler('ynowSysadminMode', function (payload) {
+              if (!payload) return;
+              if (payload.on) document.body.classList.add('ynow-sysadmin-on');
+              else document.body.classList.remove('ynow-sysadmin-on');
             });
             (function bindViewAsChromeExit() {
               var btn = document.getElementById('ynow_viewas_chrome_exit');

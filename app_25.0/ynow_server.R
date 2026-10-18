@@ -446,6 +446,16 @@ server <- function(input, output, session) {
     .ynow_view_as_push_chrome(va)
   })
 
+  #' Toggle body.ynow-sysadmin-on — hides login/intro chrome when unlocked.
+  .ynow_sysadmin_push_mode <- function() {
+    on <- isTRUE(tryCatch(ynow_pts_sysadmin_on(), error = function(e) FALSE))
+    tryCatch(
+      session$sendCustomMessage("ynowSysadminMode", list(on = on)),
+      error = function(e) NULL
+    )
+    invisible(on)
+  }
+
   .ynow_account_gate_ui <- function(loc) {
     if (!isTRUE(ynow_auth_enabled())) {
       return(tags$p(style = "color:#888;", tryCatch(
@@ -726,6 +736,7 @@ server <- function(input, output, session) {
       return()
     }
     ynow_pts_sysadmin_on(TRUE)
+    .ynow_sysadmin_push_mode()
     ynow_pts_sysadmin_tick(isolate(ynow_pts_sysadmin_tick()) + 1L)
     showNotification(
       .lab("pts_sysadmin_login_ok", "System admin unlocked."),
@@ -736,12 +747,9 @@ server <- function(input, output, session) {
   observeEvent(input$ynow_pts_sysadmin_exit, {
     ynow_pts_sysadmin_on(FALSE)
     ynow_pts_view_as(NULL)
-    .ynow_view_as_push_chrome()
-    .ynow_pts_push_banner()
-    ynow_pts_sysadmin_tick(isolate(ynow_pts_sysadmin_tick()) + 1L)
-  }, ignoreInit = TRUE)
-  observeEvent(input$ynow_pts_sysadmin_refresh, {
-    if (!isTRUE(ynow_pts_sysadmin_on())) return()
+    .ynow_sysadmin_push_mode()
+    .ynow_view_as_push_chrome(NULL)
+    tryCatch(.ynow_pts_push_banner(), error = function(e) NULL)
     ynow_pts_sysadmin_tick(isolate(ynow_pts_sysadmin_tick()) + 1L)
   }, ignoreInit = TRUE)
   observeEvent(input$ynow_pts_sysadmin_viewas, {
@@ -895,33 +903,11 @@ server <- function(input, output, session) {
     } else {
       as.character(choices[[1]])
     }
-    viewas_banner <- if (nzchar(va_pid)) {
-      tags$div(
-        class = "alert alert-info",
-        style = "margin:8px 0 12px 0; padding:8px 12px;",
-        id = "ynow_pts_sysadmin_viewas_banner",
-        tags$strong(
-          id = "ynow_pts_sysadmin_viewas_active_label",
-          .lab("pts_sysadmin_viewas_active", "User view active")
-        ),
-        tags$span(" — "),
-        tags$code(va_pid),
-        tags$span(
-          style = "margin-left:8px;",
-          .lab(
-            "pts_sysadmin_viewas_active_hint",
-            "Title Loading is silver. Banner, spend gates, and role follow this user’s DB state."
-          )
-        )
-      )
-    } else {
-      NULL
-    }
+    # View-as chrome is the fixed top bar; keep the unlocked workspace clean.
     tags$div(
-      tags$hr(),
       tags$p(
         class = "text-muted",
-        style = "font-size:12.5px;",
+        style = "font-size:12.5px; margin-top:4px;",
         tags$span(
           id = "ynow_pts_sysadmin_backend",
           sprintf(
@@ -930,7 +916,6 @@ server <- function(input, output, session) {
           )
         )
       ),
-      viewas_banner,
       tags$h4(.lab("pts_sysadmin_users", "Users (de-identified)")),
       tags$div(
         style = "overflow-x:auto; max-height:40vh; margin-bottom:12px;",
@@ -998,14 +983,6 @@ server <- function(input, output, session) {
             .lab("pts_sysadmin_apply", "Apply change")
           ),
           class = "btn-warning"
-        ),
-        tags$span(
-          class = "text-muted",
-          style = "font-size:12.5px;",
-          .lab(
-            "pts_sysadmin_viewas_toolbar_hint",
-            "Use Switch view / Exit user view in the toolbar above."
-          )
         )
       )
     )
