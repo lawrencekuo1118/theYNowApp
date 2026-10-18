@@ -212,6 +212,14 @@ check("backtest and checklist require the member gate", {
     grepl("ynow-member-gate", auth, fixed = TRUE) &&
     grepl("not(.ynow-lite):not(.ynow-authed) .ynow-member-body", auth, fixed = TRUE)
 })
+check("member gate uses mono gate box not warning amber", {
+  auth <- paste(readLines(src_auth, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("ynow-gate-box", auth, fixed = TRUE) &&
+    !grepl('class = "box box-warning ynow-member-gate"', auth, fixed = TRUE) &&
+    grepl("\\.box\\.ynow-gate-box", ui) &&
+    grepl("--ynow-gate-accent", ui, fixed = TRUE)
+})
 Sys.setenv(YNOW_ENABLE_ACCOUNT_LOGIN = "0")
 check("admin menu NULL when disabled", is.null(ynow_admin_menu_item()))
 

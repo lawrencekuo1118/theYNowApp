@@ -575,7 +575,7 @@ server <- function(input, output, session) {
     u <- tryCatch(ynow_auth$user(), error = function(e) NULL)
     if (is.null(u)) {
       return(tags$div(
-        class = "box box-warning",
+        class = "box box-solid ynow-auth-gate ynow-gate-box",
         tags$div(class = "box-body", tags$p(tryCatch(
           ui_str("auth_admin_need_login", loc),
           error = function(e) "Sign in to open the account workspace."

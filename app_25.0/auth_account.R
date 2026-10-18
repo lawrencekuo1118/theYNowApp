@@ -859,7 +859,7 @@ ynow_points_panel_ui <- function(user, locale = "zh-TW",
 ynow_member_gate_ui <- function(gate_id, title_id, body_id, btn_id) {
   tags$div(
     id = gate_id,
-    class = "box box-warning ynow-member-gate",
+    class = "box box-solid ynow-member-gate ynow-gate-box",
     style = "display:none; max-width:760px; margin:18px auto;",
     tags$div(
       class = "box-header with-border",

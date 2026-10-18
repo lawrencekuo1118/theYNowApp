@@ -60,6 +60,20 @@ check("ui has locked placeholder", {
     grepl("ynow_snapshot_defaults_locked_msg", ui, fixed = TRUE) &&
     grepl("ynow-snap-defaults-body", ui, fixed = TRUE)
 })
+check("locked placeholder uses mono gate palette", {
+  grepl("--ynow-gate-accent", ui, fixed = TRUE) &&
+    grepl("ynow-gate-callout", ui, fixed = TRUE) &&
+    grepl("ynow-snap-defaults-locked", ui, fixed = TRUE) &&
+    !grepl("\\.ynow-snap-defaults-locked[^}]*#fff8e6", ui) &&
+    !grepl("\\.ynow-snap-defaults-locked[^}]*#e0a800", ui) &&
+    !grepl("\\.ynow-snap-defaults-locked[^}]*#f0d78c", ui)
+})
+check("access-locked pane callout is mono", {
+  grepl("ynow-access-locked-pane::before", ui, fixed = TRUE) &&
+    grepl("--ynow-gate-bg", ui, fixed = TRUE) &&
+    !grepl("ynow-access-locked-pane::before[^}]*#fff8e6", ui) &&
+    !grepl("ynow-access-locked-pane::before[^}]*#e0c36a", ui)
+})
 check("ui applyUiLocale wired for locked msg", {
   grepl("ynow_snapshot_defaults_locked_msg", ui, fixed = TRUE) &&
     grepl("snapshot_defaults_locked", ui, fixed = TRUE)
