@@ -452,6 +452,14 @@ ynow_points_ensure_schema <- function(conn = NULL) {
         PRIMARY KEY (user_id, day_key)
       )
     ")
+    DBI::dbExecute(con, "
+      CREATE TABLE IF NOT EXISTS ynow_pdf_repeat (
+        user_id TEXT NOT NULL,
+        fingerprint TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (user_id, fingerprint)
+      )
+    ")
     defs <- ynow_points_catalog_defaults()
     for (i in seq_len(nrow(defs))) {
       DBI::dbExecute(
@@ -1049,6 +1057,7 @@ ynow_pdf_free_per_day <- function() {
 
 ynow_pdf_reset_memory <- function() {
   .ynow_pdf_quota$used <- new.env(parent = emptyenv())
+  .ynow_pdf_quota$repeats <- new.env(parent = emptyenv())
   invisible(TRUE)
 }
 ynow_pdf_reset_memory()
@@ -1114,15 +1123,73 @@ ynow_pdf_reset_memory()
   invisible(TRUE)
 }
 
+#' Stable key for one ticker plus its valuation settings. Empty when there is no ticker.
+ynow_pdf_settings_key <- function(ticker, settings = list()) {
+  tk <- toupper(trimws(as.character(ticker %||% "")[1]))
+  if (!nzchar(tk) || identical(tk, "NA")) return("")
+  if (!is.list(settings)) settings <- list()
+  nms <- sort(unique(names(settings)))
+  parts <- vapply(nms, function(nm) {
+    paste0(nm, "=", trimws(as.character(settings[[nm]] %||% "")[1]))
+  }, character(1))
+  paste(c(paste0("ticker=", tk), parts), collapse = "|")
+}
+
+ynow_pdf_repeat_seen <- function(user_id, fingerprint) {
+  uid <- as.character(user_id %||% "")[1]
+  fp <- trimws(as.character(fingerprint %||% "")[1])
+  if (!nzchar(uid) || !nzchar(fp)) return(FALSE)
+  if (isTRUE(ynow_points_uses_db()) && exists("ynow_db_with", mode = "function")) {
+    hit <- tryCatch(ynow_db_with(function(con) {
+      DBI::dbGetQuery(
+        con,
+        "SELECT 1 AS hit FROM ynow_pdf_repeat WHERE user_id = $1 AND fingerprint = $2 LIMIT 1",
+        params = list(uid, fp)
+      )
+    }), error = function(e) NULL)
+    if (is.data.frame(hit) && nrow(hit) >= 1L) return(TRUE)
+  }
+  remembered <- .ynow_pdf_quota$repeats[[uid]]
+  is.character(remembered) && fp %in% remembered
+}
+
+ynow_pdf_repeat_mark <- function(user_id, fingerprint) {
+  uid <- as.character(user_id %||% "")[1]
+  fp <- trimws(as.character(fingerprint %||% "")[1])
+  if (!nzchar(uid) || !nzchar(fp)) return(invisible(FALSE))
+  remembered <- .ynow_pdf_quota$repeats[[uid]]
+  if (is.null(remembered)) remembered <- character()
+  .ynow_pdf_quota$repeats[[uid]] <- unique(c(remembered, fp))
+  if (isTRUE(ynow_points_uses_db()) && exists("ynow_db_with", mode = "function")) {
+    tryCatch(ynow_db_with(function(con) {
+      DBI::dbExecute(
+        con,
+        "INSERT INTO ynow_pdf_repeat (user_id, fingerprint) VALUES ($1, $2)
+         ON CONFLICT (user_id, fingerprint) DO NOTHING",
+        params = list(uid, fp)
+      )
+    }), error = function(e) NULL)
+  }
+  invisible(TRUE)
+}
+
 #' Reserve one PDF download: free slot, else spend pdf_report.
+#' A non-empty `fingerprint` that was already marked is a free repeat.
 #' `day` is Asia/Taipei YYYY-MM-DD (tests may pass a fixed day).
-ynow_pdf_claim <- function(user_id, day = NULL) {
+ynow_pdf_claim <- function(user_id, day = NULL, fingerprint = NULL) {
   uid <- as.character(user_id %||% "")[1]
   if (!nzchar(uid)) {
     return(list(ok = FALSE, kind = "login", message_key = "pdf_need_login"))
   }
+  fp <- trimws(as.character(fingerprint %||% "")[1])
   if (is.null(day) || !nzchar(as.character(day)[1])) day <- ynow_points_taipei_day()
   day <- as.character(day)[1]
+  if (nzchar(fp) && isTRUE(ynow_pdf_repeat_seen(uid, fp))) {
+    return(list(
+      ok = TRUE, kind = "repeat", user_id = uid, day = day, fingerprint = fp,
+      message_key = "pdf_repeat_free"
+    ))
+  }
   limit <- ynow_pdf_free_per_day()
   if (isTRUE(ynow_points_uses_db())) {
     tryCatch(ynow_points_ensure_schema(), error = function(e) NULL)
@@ -1130,7 +1197,7 @@ ynow_pdf_claim <- function(user_id, day = NULL) {
   free <- .ynow_pdf_try_free(uid, day, limit)
   if (isTRUE(free$ok)) {
     return(list(
-      ok = TRUE, kind = "free", user_id = uid, day = day,
+      ok = TRUE, kind = "free", user_id = uid, day = day, fingerprint = fp,
       used = free$used, limit = limit, left = free$left,
       message_key = "pdf_free_ok_fmt"
     ))
@@ -1143,7 +1210,7 @@ ynow_pdf_claim <- function(user_id, day = NULL) {
   res <- ynow_points_try_spend(uid, "pdf_report", ref, meta = list(day = day))
   if (isTRUE(res$ok)) {
     return(list(
-      ok = TRUE, kind = "paid", user_id = uid, day = day, ref_id = ref,
+      ok = TRUE, kind = "paid", user_id = uid, day = day, ref_id = ref, fingerprint = fp,
       cost = ynow_points_sku_cost("pdf_report"),
       fyn = res$fyn %||% res$balance,
       message_key = "pdf_paid_ok_fmt"

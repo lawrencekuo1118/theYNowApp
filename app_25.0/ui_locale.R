@@ -517,6 +517,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     pdf_need_login = "Sign in to download the valuation report (PDF).",
     pdf_free_ok_fmt = "Free PDF download (%s of %s today).",
     pdf_paid_ok_fmt = "PDF download charged %s FYN (balance %s).",
+    pdf_need_ticker = "Enter a stock ticker before downloading the report.",
+    pdf_repeat_free = "This download does not use a free download or FYN. The ticker and settings match a report you already downloaded.",
     download_report_about = paste0(
       "One-Click Investment Reports: Compiles ticker-only valuation (DCF／DDM／RI／P/B), ",
       "KPIs, MOS, F-Score, and WACC×g sensitivity into a broker-style PDF — ",
@@ -4254,6 +4256,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     pdf_need_login = "請先登入再下載估值報告（PDF）。",
     pdf_free_ok_fmt = "免費下載 PDF（今日第 %s／%s 次）。",
     pdf_paid_ok_fmt = "本次 PDF 下載已扣 %s FYN（餘額 %s）。",
+    pdf_need_ticker = "請先輸入股票代碼，再下載報告。",
+    pdf_repeat_free = "本次下載不計免費次數，也不扣 FYN。",
     download_report_about = paste0(
       "一次產出投資意見報告：彙整個股估值（DCF／DDM／RI／P/B）、KPI、MOS、F-Score ",
       "與 WACC×g 敏感度為券商風格 PDF——不含同業排名或 Lab 宇宙敘事。"

@@ -573,7 +573,28 @@ check("pdf blocked when FYN is short", isTRUE(!broke$ok) && identical(broke$mess
 check("next Taipei day is free again", identical(ynow_pdf_claim(pdf_uid, day = "2026-10-19")$kind, "free"))
 check("pdf download requires the claim helper", {
   srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-  grepl("ynow_pdf_claim", srv, fixed = TRUE) && grepl("pdf_need_login", srv, fixed = TRUE)
+  grepl("ynow_pdf_claim", srv, fixed = TRUE) && grepl("pdf_need_login", srv, fixed = TRUE) &&
+    grepl("pdf_need_ticker", srv, fixed = TRUE) && grepl("ynow_pdf_repeat_mark", srv, fixed = TRUE)
+})
+check("empty ticker has no settings key", identical(ynow_pdf_settings_key(""), "") && identical(ynow_pdf_settings_key("NA"), ""))
+fp_same <- ynow_pdf_settings_key("aapl", list(market = "US", wacc_gordon = "8", sgr = "3"))
+fp_other <- ynow_pdf_settings_key("msft", list(market = "US", wacc_gordon = "8", sgr = "3"))
+ynow_pdf_reset_memory()
+.ynow_points_mem_reset()
+invisible(ynow_points_credit("pdf-user-2", 100L, reason = "earn_signup", ref_id = "pdf-seed-2", wallet = "fyn"))
+first_fp <- ynow_pdf_claim("pdf-user-2", day = "2026-10-20", fingerprint = fp_same)
+check("first fingerprint uses a free download", isTRUE(first_fp$ok) && identical(first_fp$kind, "free") && identical(first_fp$used, 1L))
+ynow_pdf_repeat_mark("pdf-user-2", fp_same)
+repeat_fp <- ynow_pdf_claim("pdf-user-2", day = "2026-10-20", fingerprint = fp_same)
+check("same ticker and settings do not spend again", isTRUE(repeat_fp$ok) && identical(repeat_fp$kind, "repeat"))
+check("different ticker still spends a free download", {
+  diff_fp <- ynow_pdf_claim("pdf-user-2", day = "2026-10-20", fingerprint = fp_other)
+  isTRUE(diff_fp$ok) && identical(diff_fp$kind, "free") && identical(diff_fp$used, 2L)
+})
+check("pdf ticker and repeat copy", {
+  identical(ui_str("pdf_need_ticker", "zh-TW"), "請先輸入股票代碼，再下載報告。") &&
+    grepl("FYN", ui_str("pdf_repeat_free", "en"), fixed = TRUE) &&
+    grepl("不計免費次數", ui_str("pdf_repeat_free", "zh-TW"), fixed = TRUE)
 })
 check("pdf quota hint is bilingual", {
   grepl("10 FYN", ui_str("pdf_quota_hint", "en"), fixed = TRUE) &&

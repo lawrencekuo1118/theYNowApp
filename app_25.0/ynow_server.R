@@ -457,6 +457,25 @@ server <- function(input, output, session) {
     invisible(TRUE)
   }
 
+  .ynow_pdf_fingerprint <- function() {
+    grab <- function(id) {
+      tryCatch(trimws(as.character(isolate(input[[id]]) %||% "")[1]), error = function(e) "")
+    }
+    tk <- tryCatch(trimws(as.character(isolate(current_ticker()) %||% "")[1]), error = function(e) "")
+    settings <- list(
+      market = tryCatch(trimws(as.character(isolate(market_mode()) %||% "")[1]), error = function(e) ""),
+      dcf_mode = grab("dcf_mode"),
+      wacc_gordon = grab("wacc_gordon"),
+      wacc_stage1 = grab("wacc_stage1"),
+      wacc_stage2 = grab("wacc_stage2"),
+      sgr = grab("sgr"),
+      g_stage1 = grab("g_stage1"),
+      industry = grab("industry_choice")
+    )
+    if (!exists("ynow_pdf_settings_key", mode = "function")) return("")
+    ynow_pdf_settings_key(tk, settings)
+  }
+
   #' Login + daily free quota, then 10 FYN. NULL means the denial file is already written.
   .ynow_pdf_authorize <- function(file) {
     auth_on <- exists("ynow_auth_enabled", mode = "function") && isTRUE(ynow_auth_enabled())
@@ -474,7 +493,15 @@ server <- function(input, output, session) {
       .ynow_pdf_note_file(file, msg)
       return(NULL)
     }
-    ticket <- ynow_pdf_claim(uid)
+    tk <- tryCatch(trimws(as.character(isolate(current_ticker()) %||% "")[1]), error = function(e) "")
+    if (!nzchar(tk) || identical(toupper(tk), "NA")) {
+      msg <- .lab("pdf_need_ticker", "Enter a stock ticker before downloading the report.")
+      showNotification(msg, type = "warning", duration = 6)
+      .ynow_pdf_note_file(file, msg)
+      return(NULL)
+    }
+    fp <- tryCatch(.ynow_pdf_fingerprint(), error = function(e) "")
+    ticket <- ynow_pdf_claim(uid, fingerprint = fp)
     if (!isTRUE(ticket$ok)) {
       cost <- ticket$cost %||% 10L
       bal <- ticket$fyn %||% 0L
@@ -14693,8 +14720,23 @@ server <- function(input, output, session) {
         )
 
         render_report_pdf(tmp_html, file)
+        if (nzchar(as.character(pdf_ticket$fingerprint %||% "")[1]) &&
+            exists("ynow_pdf_repeat_mark", mode = "function")) {
+          tryCatch(
+            ynow_pdf_repeat_mark(pdf_ticket$user_id, pdf_ticket$fingerprint),
+            error = function(e) NULL
+          )
+        }
         loc_pdf <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "en")
-        if (identical(pdf_ticket$kind, "free")) {
+        if (identical(pdf_ticket$kind, "repeat")) {
+          showNotification(
+            tryCatch(
+              ui_str("pdf_repeat_free", loc_pdf),
+              error = function(e) "This download does not use a free download or FYN."
+            ),
+            type = "message"
+          )
+        } else if (identical(pdf_ticket$kind, "free")) {
           showNotification(
             sprintf(
               tryCatch(ui_str("pdf_free_ok_fmt", loc_pdf), error = function(e) "Free PDF download (%s of %s today)."),
