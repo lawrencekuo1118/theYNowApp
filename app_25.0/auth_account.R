@@ -1237,7 +1237,7 @@ ynow_points_panel_ui <- function(user, locale = "zh-TW",
 
 #' Known gate feature ids (promo + demo are keyed per feature).
 ynow_gate_features <- function() {
-  c("lab", "checklist", "alerts", "account", "pdf", "snap_defaults")
+  c("lab", "checklist", "alerts", "account", "pdf", "snap_defaults", "inner_lock")
 }
 
 #' Locale key helpers for a feature-specific gate promo.
@@ -1793,6 +1793,13 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
         gate_snap_defaults_b2 = tryCatch(ui_str("auth_gate_snap_defaults_b2", loc), error = function(e) ""),
         gate_snap_defaults_b3 = tryCatch(ui_str("auth_gate_snap_defaults_b3", loc), error = function(e) ""),
         gate_snap_defaults_demo_caption = tryCatch(ui_str("auth_gate_snap_defaults_demo_caption", loc), error = function(e) ""),
+        gate_inner_lock_body = tryCatch(ui_str("auth_gate_inner_lock_body", loc), error = function(e) ""),
+        gate_inner_lock_kicker = tryCatch(ui_str("auth_gate_inner_lock_kicker", loc), error = function(e) ""),
+        gate_inner_lock_lead = tryCatch(ui_str("auth_gate_inner_lock_lead", loc), error = function(e) ""),
+        gate_inner_lock_b1 = tryCatch(ui_str("auth_gate_inner_lock_b1", loc), error = function(e) ""),
+        gate_inner_lock_b2 = tryCatch(ui_str("auth_gate_inner_lock_b2", loc), error = function(e) ""),
+        gate_inner_lock_b3 = tryCatch(ui_str("auth_gate_inner_lock_b3", loc), error = function(e) ""),
+        gate_inner_lock_demo_caption = tryCatch(ui_str("auth_gate_inner_lock_demo_caption", loc), error = function(e) ""),
         gate_faq_title = tryCatch(ui_str("auth_gate_faq_title", loc), error = function(e) "Member benefits — FAQ"),
         gate_faq_q1 = tryCatch(ui_str("auth_gate_faq_q1", loc), error = function(e) ""),
         gate_faq_a1 = tryCatch(ui_str("auth_gate_faq_a1", loc), error = function(e) ""),

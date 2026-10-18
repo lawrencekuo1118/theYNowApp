@@ -44,16 +44,29 @@ check("locale page help mentions unlock zh-TW", {
   grepl("系統管理解鎖", ui_str("snapshot_page_help", "zh-TW"), fixed = TRUE)
 })
 
-check("ui hides snap_defaults unless sysadmin-on", {
-  grepl(
+check("snap_defaults tab stays visible and title becomes a lock", {
+  !grepl(
     'body:not(.ynow-sysadmin-on) #snapshot_report > li:has(> a[data-value="snap_defaults"])',
     ui,
     fixed = TRUE
-  ) || grepl(
-    'body:not(.ynow-sysadmin-on) #snapshot_report .nav-tabs > li:has(> a[data-value="snap_defaults"])',
-    ui,
-    fixed = TRUE
-  )
+  ) &&
+    grepl("ynow-snap-tab-lock", ui, fixed = TRUE) &&
+    grepl(
+      'body:not(.ynow-sysadmin-on) #snapshot_report a[data-value="snap_defaults"] > i:not(.ynow-snap-tab-lock)',
+      ui,
+      fixed = TRUE
+    ) &&
+    grepl(
+      'body:not(.ynow-sysadmin-on) #shiny-tab-snap_defaults .ynow-snap-defaults-locked',
+      ui,
+      fixed = TRUE
+    )
+})
+check("locked promo sits inside the snap_defaults pane", {
+  def <- regexpr('value = "snap_defaults"', ui, fixed = TRUE)[1]
+  locked <- regexpr('id = "ynow_snapshot_defaults_locked"', ui, fixed = TRUE)[1]
+  body <- regexpr('class = "ynow-snap-defaults-body"', ui, fixed = TRUE)[1]
+  def > 0 && locked > def && body > locked
 })
 check("ui has locked placeholder", {
   grepl("ynow-snap-defaults-locked", ui, fixed = TRUE) &&
@@ -78,9 +91,10 @@ check("ui applyUiLocale wired for locked msg", {
   grepl("ynow_snapshot_defaults_locked_msg", ui, fixed = TRUE) &&
     grepl("snapshot_defaults_locked", ui, fixed = TRUE)
 })
-check("js ensureLite requires sysadmin-on", {
+check("js ensureLite selects snap_defaults even while locked", {
   grepl("ensureLiteSnapshotDefaultsTab", ui, fixed = TRUE) &&
-    grepl(
+    grepl("select APP_DEFAULTS even while locked", ui, fixed = TRUE) &&
+    !grepl(
       "if (!document.body.classList.contains('ynow-sysadmin-on')) return;",
       ui,
       fixed = TRUE

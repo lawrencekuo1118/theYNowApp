@@ -337,7 +337,7 @@ check("demo clips exist under www/demos", {
   demos <- file.path(app_dir, "www", "demos")
   files <- c(
     "lab.mp4", "lab.webm", "checklist.mp4", "alerts.mp4",
-    "account.mp4", "pdf.mp4", "snap_defaults.mp4"
+    "account.mp4", "pdf.mp4", "snap_defaults.mp4", "inner_lock.mp4"
   )
   all(file.exists(file.path(demos, files)))
 })
@@ -376,6 +376,10 @@ keys <- c(
   "auth_gate_snap_defaults_lead", "auth_gate_snap_defaults_b1",
   "auth_gate_snap_defaults_b2", "auth_gate_snap_defaults_b3",
   "auth_gate_snap_defaults_demo_caption",
+  "auth_gate_inner_lock_body", "auth_gate_inner_lock_kicker",
+  "auth_gate_inner_lock_lead", "auth_gate_inner_lock_b1",
+  "auth_gate_inner_lock_b2", "auth_gate_inner_lock_b3",
+  "auth_gate_inner_lock_demo_caption",
   "auth_gate_faq_title",
   "auth_gate_faq_q1", "auth_gate_faq_a1", "auth_gate_faq_q2", "auth_gate_faq_a2",
   "auth_gate_faq_q3", "auth_gate_faq_a3", "auth_gate_faq_q4", "auth_gate_faq_a4",

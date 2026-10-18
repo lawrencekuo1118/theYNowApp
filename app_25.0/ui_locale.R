@@ -530,7 +530,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     snapshot_page_help = paste0(
       "Three tabs: manual adjustments vs the post-Search baseline (with annotated PDF); ",
       "current live parameters (download / upload restore CSV); and APP_DEFAULTS ",
-      "(visible only after System admin unlock)."
+      "(that tab shows a lock until System admin unlock; the defaults table appears only after unlock)."
     ),
     snapshot_page_help_lite = paste0(
       "Lite can show System defaults (APP_DEFAULTS) for parameters you can set in Lite ",
@@ -971,6 +971,19 @@ locale_for_market <- function(mode = get_market_mode()) {
     access_bad_user = "Select a user from the list.",
     access_denied_report = "This report is locked for the signed-in account.",
     access_pane_note = "This page is locked for the signed-in account. Ask a system admin to unlock it.",
+    auth_gate_inner_lock_body = paste0(
+      "Sign in to open this locked tab. ",
+      "If you are already signed in, a system admin must clear the restriction."
+    ),
+    auth_gate_inner_lock_kicker = "Sign-in required",
+    auth_gate_inner_lock_lead = paste0(
+      "This tab is locked. The lock icon replaces its title until the restriction is cleared. ",
+      "Other tabs on the page stay available."
+    ),
+    auth_gate_inner_lock_b1 = "Sign in with your account to request access",
+    auth_gate_inner_lock_b2 = "A system admin can clear the lock for your account or for everyone",
+    auth_gate_inner_lock_b3 = "The demo shows how a locked tab opens after the restriction is cleared",
+    auth_gate_inner_lock_demo_caption = "Locked tab demo",
     pts_sysadmin_ok = "Balances updated.",
     pts_sysadmin_ok_verify_fmt = "Balances updated and verified (FYN %s, PYN %s).",
     pts_sysadmin_verify_failed = "Balance change did not persist — check the points backend / database.",
@@ -4400,7 +4413,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     snapshot_page_help = paste0(
       "三個小頁籤：相對 Search 後基準的手改參數（含標記截圖 PDF）；",
       "目前 App 執行中參數（可下載／上傳還原 CSV）；系統載入時 APP_DEFAULTS",
-      "（僅系統管理解鎖後可見）。"
+      "（該分頁籤在系統管理解鎖前顯示上鎖圖示；預設表僅解鎖後顯示）。"
     ),
     snapshot_page_help_lite = paste0(
       "簡化版可在系統管理解鎖後，顯示目前介面可設定的系統預設參數（APP_DEFAULTS）",
@@ -4832,6 +4845,19 @@ locale_for_market <- function(mode = get_market_mode()) {
     access_bad_user = "請從清單選擇使用者。",
     access_denied_report = "此報表已對目前登入帳號鎖上。",
     access_pane_note = "此分頁已對目前登入帳號鎖上。請洽系統管理員解鎖。",
+    auth_gate_inner_lock_body = paste0(
+      "請先登入才能使用此上鎖分頁籤。",
+      "若已登入仍顯示上鎖，請洽系統管理員解除限制。"
+    ),
+    auth_gate_inner_lock_kicker = "需要登入",
+    auth_gate_inner_lock_lead = paste0(
+      "此分頁籤已鎖定。上鎖圖示會取代原標題，直到限制清除。",
+      "同一頁的其他分頁籤仍可使用。"
+    ),
+    auth_gate_inner_lock_b1 = "以帳號登入後才能申請使用",
+    auth_gate_inner_lock_b2 = "系統管理員可對您的帳號或所有使用者解除鎖定",
+    auth_gate_inner_lock_b3 = "下方示範影片說明限制清除後，上鎖分頁如何開啟",
+    auth_gate_inner_lock_demo_caption = "上鎖分頁示範",
     pts_sysadmin_ok = "餘額已更新。",
     pts_sysadmin_ok_verify_fmt = "餘額已更新並核對（FYN %s、PYN %s）。",
     pts_sysadmin_verify_failed = "餘額變更未寫入——請檢查點數後端／資料庫。",

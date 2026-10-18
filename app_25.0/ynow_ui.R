@@ -4841,6 +4841,30 @@ ui <- dashboardPage(
         }
         .tab-pane.ynow-access-hidden-pane { display: none !important; }
         .tab-pane.ynow-access-locked-pane > * { display: none !important; }
+        /* Inner-tab lock (section / input / report): promo only while that tab is selected. */
+        .ynow-inner-tab-lock-tpl { display: none !important; }
+        .nav-tabs > li.ynow-inner-tab-locked > a {
+          font-size: 0 !important;
+          line-height: 1;
+        }
+        .nav-tabs > li.ynow-inner-tab-locked > a > .ynow-inner-tab-lock,
+        .nav-tabs > li.ynow-inner-tab-locked > a > i.ynow-menu-lock {
+          display: inline-block !important;
+          font-size: 13px !important;
+          width: auto;
+          margin: 0;
+        }
+        .nav-tabs > li.ynow-inner-tab-locked > a > i:not(.ynow-menu-lock),
+        .nav-tabs > li.ynow-inner-tab-locked > a > span {
+          display: none !important;
+        }
+        .tab-pane.ynow-inner-locked-pane > .ynow-inner-tab-lock-host { display: none; }
+        .tab-pane.active.ynow-inner-locked-pane > .ynow-inner-tab-lock-host { display: block; }
+        .tab-pane.ynow-inner-locked-pane .ynow-access-locked-section,
+        .tab-pane.ynow-inner-locked-pane .ynow-access-locked-input,
+        .tab-pane.ynow-inner-locked-pane .ynow-access-locked-btn {
+          display: none !important;
+        }
         .tab-pane.ynow-access-locked-pane::before {
           content: attr(data-lock-note);
           display: block;
@@ -7268,9 +7292,22 @@ ui <- dashboardPage(
         body.ynow-lite #snapshot_report .nav-tabs > li:has(> a[data-value="snap_current"]) {
           display: none !important;
         }
-        /* Snapshot APP_DEFAULTS: same session unlock as Points → System admin */
-        body:not(.ynow-sysadmin-on) #snapshot_report > li:has(> a[data-value="snap_defaults"]),
-        body:not(.ynow-sysadmin-on) #snapshot_report .nav-tabs > li:has(> a[data-value="snap_defaults"]) {
+        /* Snapshot APP_DEFAULTS: tab stays in the strip; title becomes a lock until sysadmin. */
+        #snapshot_report a[data-value="snap_defaults"] > .ynow-snap-tab-lock {
+          display: none;
+        }
+        body:not(.ynow-sysadmin-on) #snapshot_report a[data-value="snap_defaults"] {
+          font-size: 0 !important;
+          line-height: 1;
+        }
+        body:not(.ynow-sysadmin-on) #snapshot_report a[data-value="snap_defaults"] > .ynow-snap-tab-lock {
+          display: inline-block !important;
+          font-size: 13px !important;
+          width: auto;
+          margin: 0;
+        }
+        body:not(.ynow-sysadmin-on) #snapshot_report a[data-value="snap_defaults"] > i:not(.ynow-snap-tab-lock),
+        body:not(.ynow-sysadmin-on) #snapshot_report a[data-value="snap_defaults"] > span {
           display: none !important;
         }
         body:not(.ynow-sysadmin-on) .ynow-snap-defaults-body {
@@ -7288,7 +7325,8 @@ ui <- dashboardPage(
           font-size: 13px;
           line-height: 1.45;
         }
-        body:not(.ynow-sysadmin-on) .ynow-snap-defaults-locked {
+        /* Promo lives in the snap_defaults pane, so inactive tabs do not show it. */
+        body:not(.ynow-sysadmin-on) #shiny-tab-snap_defaults .ynow-snap-defaults-locked {
           display: block !important;
         }
         body.ynow-sysadmin-on .ynow-snap-defaults-locked {
@@ -11297,6 +11335,12 @@ ui <- dashboardPage(
                 b2: payload.gate_snap_defaults_b2, b3: payload.gate_snap_defaults_b3,
                 demo_caption: payload.gate_snap_defaults_demo_caption
               });
+              setFeature('inner_lock', {
+                body: payload.gate_inner_lock_body, kicker: payload.gate_inner_lock_kicker,
+                lead: payload.gate_inner_lock_lead, b1: payload.gate_inner_lock_b1,
+                b2: payload.gate_inner_lock_b2, b3: payload.gate_inner_lock_b3,
+                demo_caption: payload.gate_inner_lock_demo_caption
+              });
               setAll('.ynow-gate-faq-title', payload.gate_faq_title);
               setAll('.ynow-gate-faq-q1', payload.gate_faq_q1);
               setAll('.ynow-gate-faq-a1', payload.gate_faq_a1);
@@ -11384,7 +11428,8 @@ ui <- dashboardPage(
                   var activeSnap = document.querySelector('#snapshot_report .nav-tabs li.active a');
                   var onDefaults = activeSnap &&
                     activeSnap.getAttribute('data-value') === 'snap_defaults';
-                  if (onDefaults) {
+                  /* Lite only has this tab; stay on it so the lock promo remains visible. */
+                  if (onDefaults && !document.body.classList.contains('ynow-lite')) {
                     var fallback = document.querySelector('#snapshot_report a[data-value=\"snap_current\"]') ||
                       document.querySelector('#snapshot_report a[data-value=\"snap_audit\"]');
                     if (fallback) {
@@ -11395,10 +11440,60 @@ ui <- dashboardPage(
                 } catch (eOff) {}
               }
             });
+            function ynowEnsureInnerLockPromo(pane) {
+              if (!pane) return;
+              var kids = pane.children || [];
+              for (var hi = 0; hi < kids.length; hi++) {
+                if (kids[hi].classList && kids[hi].classList.contains('ynow-inner-tab-lock-host')) return;
+              }
+              var tpl = document.getElementById('ynow_inner_tab_lock_promo_tpl');
+              if (!tpl) return;
+              var host = tpl.cloneNode(true);
+              host.removeAttribute('id');
+              host.removeAttribute('hidden');
+              host.classList.remove('ynow-inner-tab-lock-tpl');
+              host.classList.add('ynow-inner-tab-lock-host');
+              pane.insertBefore(host, pane.firstChild);
+            }
+            /* Lock target is a block, input, or report inside a tab — not a whole sidebar page. */
+            function ynowMarkLockedInnerTarget(el) {
+              if (!el || !el.closest) return;
+              var pane = el.closest('.tab-pane');
+              if (!pane || !pane.id) return;
+              var value = pane.id.indexOf('shiny-tab-') === 0 ? pane.id.slice(10) : '';
+              var anchor = null;
+              if (value) {
+                var links = document.querySelectorAll('a[data-value]');
+                for (var i = 0; i < links.length; i++) {
+                  if (links[i].getAttribute('data-value') === value) { anchor = links[i]; break; }
+                }
+              }
+              if (!anchor) anchor = document.querySelector('a[href=\"#' + pane.id + '\"]');
+              if (!anchor) return;
+              var li = anchor.closest ? anchor.closest('li') : null;
+              if (!li) return;
+              var inSidebar = !!(anchor.closest && anchor.closest('.sidebar-menu'));
+              if (inSidebar) {
+                li.classList.add('ynow-access-locked-nav');
+              } else {
+                li.classList.add('ynow-inner-tab-locked');
+                if (!anchor.querySelector('.ynow-inner-tab-lock')) {
+                  var lock = document.createElement('i');
+                  lock.className = 'fas fa-lock ynow-menu-lock ynow-inner-tab-lock';
+                  lock.setAttribute('aria-hidden', 'true');
+                  anchor.insertBefore(lock, anchor.firstChild);
+                }
+              }
+              pane.classList.add('ynow-inner-locked-pane');
+              ynowEnsureInnerLockPromo(pane);
+            }
             window.ynowApplyAccessLocks = function () {
               var entries = window.__ynowAccessEntries || [];
               var note = window.__ynowAccessLockNote || '';
-              document.querySelectorAll('i.ynow-access-lock').forEach(function (el) {
+              document.querySelectorAll('i.ynow-access-lock, i.ynow-inner-tab-lock').forEach(function (el) {
+                if (el.parentNode) el.parentNode.removeChild(el);
+              });
+              document.querySelectorAll('.ynow-inner-tab-lock-host').forEach(function (el) {
                 if (el.parentNode) el.parentNode.removeChild(el);
               });
               var clearSel = [
@@ -11409,7 +11504,9 @@ ui <- dashboardPage(
                 '.ynow-access-locked-btn',
                 '.ynow-access-locked-pane',
                 '.ynow-access-hidden-pane',
-                '.ynow-access-locked'
+                '.ynow-access-locked',
+                '.ynow-inner-tab-locked',
+                '.ynow-inner-locked-pane'
               ].join(',');
               document.querySelectorAll(clearSel).forEach(function (el) {
                 el.classList.remove(
@@ -11420,7 +11517,9 @@ ui <- dashboardPage(
                   'ynow-access-locked-btn',
                   'ynow-access-locked-pane',
                   'ynow-access-hidden-pane',
-                  'ynow-access-locked'
+                  'ynow-access-locked',
+                  'ynow-inner-tab-locked',
+                  'ynow-inner-locked-pane'
                 );
                 el.removeAttribute('data-lock-note');
               });
@@ -11455,6 +11554,7 @@ ui <- dashboardPage(
                   else {
                     fg.classList.add('ynow-access-locked-input');
                     fg.setAttribute('data-lock-note', note);
+                    ynowMarkLockedInnerTarget(fg);
                   }
                 } else if (id.indexOf('report:') === 0) {
                   var btn = document.getElementById(id.slice(7));
@@ -11463,6 +11563,7 @@ ui <- dashboardPage(
                   else {
                     btn.classList.add('ynow-access-locked-btn');
                     btn.setAttribute('title', note);
+                    ynowMarkLockedInnerTarget(btn);
                   }
                 } else if (id.indexOf('section:') === 0) {
                   document.querySelectorAll('[data-ynow-lock]').forEach(function (el) {
@@ -11471,6 +11572,7 @@ ui <- dashboardPage(
                     else {
                       el.classList.add('ynow-access-locked-section');
                       el.setAttribute('data-lock-note', note);
+                      ynowMarkLockedInnerTarget(el);
                     }
                   });
                 }
@@ -12090,8 +12192,7 @@ ui <- dashboardPage(
             }
             function ensureLiteSnapshotDefaultsTab() {
               if (!document.body.classList.contains('ynow-lite')) return;
-              /* APP_DEFAULTS only after System admin unlock */
-              if (!document.body.classList.contains('ynow-sysadmin-on')) return;
+              /* Lite hides the other Snapshot tabs, so select APP_DEFAULTS even while locked. */
               var a = document.querySelector('#snapshot_report a[data-value=\"snap_defaults\"]');
               if (!a) return;
               try {
@@ -17170,7 +17271,7 @@ ui <- dashboardPage(
           paste0(
             "Three tabs: manual adjustments vs the post-Search baseline (with annotated PDF); ",
             "current live parameters (download / upload restore CSV); and APP_DEFAULTS ",
-            "(visible only after System admin unlock)."
+            "(that tab shows a lock until System admin unlock; the defaults table appears only after unlock)."
           )
         ),
         tags$p(
@@ -17183,27 +17284,28 @@ ui <- dashboardPage(
           )
         ),
         tags$div(
-          id = "ynow_snapshot_defaults_locked",
-          class = "ynow-snap-defaults-locked ynow-gate-callout",
-          `data-ynow-gate-feature` = "snap_defaults",
-          tags$span(
-            id = "ynow_snapshot_defaults_locked_msg",
+          id = "ynow_inner_tab_lock_promo_tpl",
+          class = "ynow-inner-tab-lock-tpl ynow-gate-callout",
+          hidden = NA,
+          `data-ynow-gate-feature` = "inner_lock",
+          tags$p(
             class = "ynow-gate-body",
-            paste0(
-              "System defaults (APP_DEFAULTS) require System admin unlock ",
-              "(same session as Points → System admin). ",
-              "After Exit system admin, this tab locks again."
-            )
+            "Sign in to open this locked tab. If you are already signed in, a system admin must clear the restriction."
           ),
           if (exists("ynow_gate_promo_faq_ui", mode = "function")) {
             ynow_gate_promo_faq_ui(
-              feature = "snap_defaults",
+              feature = "inner_lock",
               include_faq = FALSE,
               compact = FALSE
             )
           } else {
             NULL
-          }
+          },
+          tags$button(
+            type = "button",
+            class = "btn btn-primary ynow-auth-open",
+            tags$span(class = "ynow-member-gate-signin-label", "Sign in")
+          )
         ),
         tabBox(
           # No right-side chrome title (page h2 already says Snapshot; avoids wrong remaps)
@@ -17368,10 +17470,34 @@ ui <- dashboardPage(
 
           tabPanel(
             title = tagList(
+              icon("lock", class = "ynow-snap-tab-lock"),
               icon("sliders-h"),
               tags$span(id = "ynow_snapshot_tab_defaults", "System defaults (APP_DEFAULTS)")
             ),
             value = "snap_defaults",
+            tags$div(
+              id = "ynow_snapshot_defaults_locked",
+              class = "ynow-snap-defaults-locked ynow-gate-callout",
+              `data-ynow-gate-feature` = "snap_defaults",
+              tags$span(
+                id = "ynow_snapshot_defaults_locked_msg",
+                class = "ynow-gate-body",
+                paste0(
+                  "System defaults (APP_DEFAULTS) require System admin unlock ",
+                  "(same session as Points → System admin). ",
+                  "After Exit system admin, this tab locks again."
+                )
+              ),
+              if (exists("ynow_gate_promo_faq_ui", mode = "function")) {
+                ynow_gate_promo_faq_ui(
+                  feature = "snap_defaults",
+                  include_faq = FALSE,
+                  compact = FALSE
+                )
+              } else {
+                NULL
+              }
+            ),
             div(
               class = "ynow-snap-defaults-body",
               div(

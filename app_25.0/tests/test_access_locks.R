@@ -120,6 +120,14 @@ check("locked sidebar labels are light gray", {
     grepl("color: #a3a3a3 !important;", ui, fixed = TRUE) &&
     grepl("not(.ynow-lite):not(.ynow-authed)", ui, fixed = TRUE)
 })
+check("inner targets lock the containing tab and promo", {
+  grepl("ynowMarkLockedInnerTarget", ui, fixed = TRUE) &&
+    grepl("ynow-inner-tab-locked", ui, fixed = TRUE) &&
+    grepl("ynow-inner-tab-lock-host", ui, fixed = TRUE) &&
+    grepl("ynow_inner_tab_lock_promo_tpl", ui, fixed = TRUE) &&
+    grepl('feature = "inner_lock"', ui, fixed = TRUE) &&
+    grepl("ynow-inner-locked-pane > .ynow-inner-tab-lock-host", ui, fixed = TRUE)
+})
 check("js reads entries effect", {
   grepl("__ynowAccessEntries", ui, fixed = TRUE) &&
     grepl("effect === 'hide'", ui, fixed = TRUE)
