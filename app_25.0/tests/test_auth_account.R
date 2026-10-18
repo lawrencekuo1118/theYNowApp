@@ -314,9 +314,10 @@ check("UI About mentions account sign-in", grepl("Account sign-in", ui, fixed = 
         grepl("帳號登入", ui, fixed = TRUE))
 check("UI wires ynowAuthState handler", grepl("ynowAuthState", ui, fixed = TRUE))
 check("Sys. Admin foot link hidden when signed in", {
-  grepl("body.ynow-authed .ynow-sidebar-test-link", ui, fixed = TRUE) &&
-    grepl("body.ynow-authed #ynow_sidebar_test_btn", ui, fixed = TRUE) &&
+  grepl("body.ynow-authed .ynow-sidebar-snapshot-foot #ynow_sidebar_test_btn", ui, fixed = TRUE) &&
+    grepl("a#ynow_sidebar_test_btn.ynow-sidebar-test-link", ui, fixed = TRUE) &&
     grepl("display: none !important", ui, fixed = TRUE) &&
+    grepl("ynowSyncSysAdminFootVisibility", ui, fixed = TRUE) &&
     grepl("tab === 'testing') tab = 'home'", ui, fixed = TRUE)
 })
 check("post-login server remaps testing tab to home", {

@@ -7052,10 +7052,14 @@ ui <- dashboardPage(
         body.ynow-lite .ynow-bblab {
           display: none !important;
         }
-        /* Signed-in account users: hide Sys. Admin foot link (portal is guest/ops only). */
-        body.ynow-authed .ynow-sidebar-test-link,
-        body.ynow-authed #ynow_sidebar_test_btn {
+        /* Signed-in account users: hide Sys. Admin foot link (portal is guest/ops only).
+           Beat .ynow-sidebar-snapshot-link { display: inline-flex !important }. */
+        body.ynow-authed .ynow-sidebar-snapshot-foot a.ynow-sidebar-snapshot-link.ynow-sidebar-test-link,
+        body.ynow-authed .ynow-sidebar-snapshot-foot #ynow_sidebar_test_btn,
+        body.ynow-authed a#ynow_sidebar_test_btn.ynow-sidebar-test-link {
           display: none !important;
+          visibility: hidden !important;
+          pointer-events: none !important;
         }
         /* Lite Snapshot: only System defaults tab (when sysadmin unlocked).
            Note: shiny tabset id may sit on the ul.nav-tabs itself (not a wrapper). */
@@ -11265,12 +11269,26 @@ ui <- dashboardPage(
                 finish(baseUrl, !!tab, false);
               }
             });
+            /* Sys. Admin foot link: hide while signed in (CSS + inline, sign-out restores). */
+            function ynowSyncSysAdminFootVisibility(loggedIn) {
+              var el = document.getElementById('ynow_sidebar_test_btn');
+              if (!el) return;
+              if (loggedIn) {
+                el.style.setProperty('display', 'none', 'important');
+                el.setAttribute('aria-hidden', 'true');
+              } else {
+                el.style.removeProperty('display');
+                el.removeAttribute('aria-hidden');
+              }
+            }
+            window.ynowSyncSysAdminFootVisibility = ynowSyncSysAdminFootVisibility;
             addHandler('ynowAuthPostLogin', function (payload) {
               if (!payload) return;
               /* Success: mark authed BEFORE tab restore / sidebar work so any
                  subsequent Sign-in / BS toggleModal open is vetoed. */
               if (payload.ok && document.body) {
                 document.body.classList.add('ynow-authed');
+                ynowSyncSysAdminFootVisibility(true);
               }
               try {
                 if (window.jQuery) jQuery('#ynow_auth_modal').modal('hide');
@@ -11315,6 +11333,7 @@ ui <- dashboardPage(
               var loggedIn = !!(payload.logged_in);
               if (loggedIn) document.body.classList.add('ynow-authed');
               else document.body.classList.remove('ynow-authed');
+              ynowSyncSysAdminFootVisibility(loggedIn);
               var openLinks = document.querySelectorAll('.ynow-auth-open');
               var outLinks = document.querySelectorAll('.ynow-auth-signout');
               var i;
