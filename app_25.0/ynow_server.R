@@ -4395,6 +4395,8 @@ server <- function(input, output, session) {
   })
 
   output$defaults_table <- renderDataTable({
+    # Same unlock as Points → System admin (ynow + Taipei YYYYMMDD).
+    req(isTRUE(ynow_pts_sysadmin_on()))
     datatable(
       defaults_rows(),
       rownames = FALSE,
@@ -4407,6 +4409,18 @@ server <- function(input, output, session) {
       paste0("YNow_defaults_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".csv")
     },
     content = function(file) {
+      if (!isTRUE(isolate(ynow_pts_sysadmin_on()))) {
+        write.csv(
+          data.frame(
+            error = "System defaults (APP_DEFAULTS) require System admin unlock.",
+            stringsAsFactors = FALSE
+          ),
+          file,
+          row.names = FALSE,
+          fileEncoding = "UTF-8"
+        )
+        return(invisible(NULL))
+      }
       df <- defaults_rows()
       df$Downloaded_At <- format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z")
       write.csv(df, file, row.names = FALSE, fileEncoding = "UTF-8")

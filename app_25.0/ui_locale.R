@@ -521,12 +521,13 @@ locale_for_market <- function(mode = get_market_mode()) {
     snapshot_page_title = "Snapshot",
     snapshot_page_help = paste0(
       "Three tabs: manual adjustments vs the post-Search baseline (with annotated PDF); ",
-      "current live parameters (download / upload restore CSV); and APP_DEFAULTS."
+      "current live parameters (download / upload restore CSV); and APP_DEFAULTS ",
+      "(visible only after System admin unlock)."
     ),
     snapshot_page_help_lite = paste0(
-      "Lite shows only System defaults for parameters you can set in Lite ",
-      "(Dashboard industry / currency / default ticker, Blue Chip ranking and Clustering). ",
-      "Manual audit and live snapshot restore stay in Full mode."
+      "Lite can show System defaults (APP_DEFAULTS) for parameters you can set in Lite ",
+      "(Dashboard industry / currency / default ticker, Blue Chip ranking and Clustering) ",
+      "after System admin unlock. Manual audit and live snapshot restore stay in Full mode."
     ),
     snapshot_tab_audit = "Manual adjustments (vs post-Search baseline)",
     snapshot_tab_current = "Current App Parameter Snapshot",
@@ -539,6 +540,11 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Only parameters Lite can set (Dashboard industry / currency / default ticker, ",
       "plus Blue Chip ranking and Clustering). Smart Analysis engine seeds and Full-only ",
       "model parameters are hidden here."
+    ),
+    snapshot_defaults_locked = paste0(
+      "System defaults (APP_DEFAULTS) require System admin unlock ",
+      "(same session as Points → System admin). ",
+      "After Exit system admin, this tab locks again."
     ),
     download_snapshot_btn = "Download Snapshot CSV",
     download_param_restore_btn = "Download restore CSV",
@@ -4055,10 +4061,12 @@ locale_for_market <- function(mode = get_market_mode()) {
     snapshot_page_title = "快照 Snapshot",
     snapshot_page_help = paste0(
       "三個小頁籤：相對 Search 後基準的手改參數（含標記截圖 PDF）；",
-      "目前 App 執行中參數（可下載／上傳還原 CSV）；系統載入時 APP_DEFAULTS。"
+      "目前 App 執行中參數（可下載／上傳還原 CSV）；系統載入時 APP_DEFAULTS",
+      "（僅系統管理解鎖後可見）。"
     ),
     snapshot_page_help_lite = paste0(
-      "簡化版僅顯示目前介面可設定的系統預設參數（Dashboard 產業／幣別／預設代號，以及績優股排行與分群）。",
+      "簡化版可在系統管理解鎖後，顯示目前介面可設定的系統預設參數（APP_DEFAULTS）",
+      "（Dashboard 產業／幣別／預設代號，以及績優股排行與分群）。",
       "手改稽核與即時參數還原等完整版工具請切回完整版。"
     ),
     snapshot_tab_audit = "手改參數（相對 Search 後基準）",
@@ -4071,6 +4079,11 @@ locale_for_market <- function(mode = get_market_mode()) {
     snapshot_defaults_help_lite = paste0(
       "僅列出簡化版介面可設定的參數（Dashboard 產業／幣別／預設代號，以及績優股排行與分群）。",
       "智慧分析引擎種子與完整版模型參數於此隱藏。"
+    ),
+    snapshot_defaults_locked = paste0(
+      "系統預設參數（APP_DEFAULTS）需先進入系統管理後才可檢視",
+      "（與點數頁「系統管理」同一解鎖狀態）。",
+      "按「離開系統管理」後會再次鎖定。"
     ),
     download_snapshot_btn = "下載 Snapshot CSV",
     download_param_restore_btn = "下載還原 CSV",
