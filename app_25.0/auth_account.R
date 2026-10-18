@@ -382,6 +382,8 @@ ynow_auth_css <- function() {
   if (!isTRUE(ynow_auth_enabled())) return(NULL)
   # Sign-in lives in sidebar date row + Home legal row (not under ZH/EN).
   # Email chip stays hidden (account email lives in Maintenance).
+  # Returns style + maintenance theme JS (page-scoped color picker).
+  tagList(
   tags$style(HTML(paste0(
     ".ynow-sidebar-date-row {",
     "  display:flex; flex-direction:row; align-items:center; justify-content:flex-start;",
@@ -601,7 +603,6 @@ ynow_auth_css <- function() {
     "body.ynow-auth-feature:not(.ynow-authed) .sidebar-menu li.treeview:has(a[data-value=\"account_points\"]) {",
     "  display:none !important;",
     "}",
-    ".ynow-pts-ledger-panel { max-width:1100px; margin:12px auto; }",
     "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) #ynow_pa_body { display:none !important; }",
     "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) #ynow_pa_guest_gate { display:block !important; }",
     "#ynow_pa_guest_gate { display:none; }",
@@ -611,12 +612,264 @@ ynow_auth_css <- function() {
     "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .ynow-alert-bell {",
     "  opacity:0.35; pointer-events:none; cursor:not-allowed;",
     "}",
-    ".ynow-admin-panel { max-width:960px; margin:12px auto; }",
-    ".ynow-admin-panel .ynow-admin-meta { color:#555; font-size:13px; line-height:1.5; }",
+    # Account maintenance: flat block (Blue Chip ind-mcap style) + page-scoped themes
+    ".ynow-admin-panel,",
+    ".ynow-pts-ledger-panel { max-width:1100px; margin:12px auto; }",
+    ".ynow-maint-shell {",
+    "  --ynow-maint-accent: var(--ynow-logo-blue, #0C5484);",
+    "  --ynow-maint-accent-2: var(--ynow-logo-green, #249C60);",
+    "  --ynow-maint-accent-3: var(--ynow-logo-cyan, #1AA8B8);",
+    "  --ynow-maint-ink: #1a1a1a;",
+    "  --ynow-maint-muted: #666;",
+    "  --ynow-maint-line: #e5e5e5;",
+    "  --ynow-maint-wash: #f7faf8;",
+    "  --ynow-maint-card-bg: #fafafa;",
+    "  --ynow-maint-btn-fg: #fff;",
+    "}",
+    ".ynow-maint-shell[data-ynow-maint-theme=\"logo\"] {",
+    "  --ynow-maint-accent: var(--ynow-logo-blue, #0C5484);",
+    "  --ynow-maint-accent-2: var(--ynow-logo-green, #249C60);",
+    "  --ynow-maint-accent-3: var(--ynow-logo-cyan, #1AA8B8);",
+    "  --ynow-maint-wash: #f3f8f6;",
+    "  --ynow-maint-card-bg: #f7fbf9;",
+    "  --ynow-maint-line: #d5e5dc;",
+    "}",
+    ".ynow-maint-shell[data-ynow-maint-theme=\"mono\"] {",
+    "  --ynow-maint-accent: #1a1a1a;",
+    "  --ynow-maint-accent-2: #444;",
+    "  --ynow-maint-accent-3: #666;",
+    "  --ynow-maint-ink: #111;",
+    "  --ynow-maint-muted: #666;",
+    "  --ynow-maint-line: #ddd;",
+    "  --ynow-maint-wash: #f5f5f5;",
+    "  --ynow-maint-card-bg: #fafafa;",
+    "}",
+    ".ynow-maint-shell[data-ynow-maint-theme=\"ocean\"] {",
+    "  --ynow-maint-accent: #0A4D8C;",
+    "  --ynow-maint-accent-2: #1B7BB5;",
+    "  --ynow-maint-accent-3: #3AA0C8;",
+    "  --ynow-maint-wash: #f2f7fb;",
+    "  --ynow-maint-card-bg: #f6fafc;",
+    "  --ynow-maint-line: #d0e0ec;",
+    "}",
+    ".ynow-maint-shell[data-ynow-maint-theme=\"forest\"] {",
+    "  --ynow-maint-accent: #1B5E3B;",
+    "  --ynow-maint-accent-2: #2E8B57;",
+    "  --ynow-maint-accent-3: #3FA06A;",
+    "  --ynow-maint-wash: #f3f8f4;",
+    "  --ynow-maint-card-bg: #f6fbf7;",
+    "  --ynow-maint-line: #d2e5d8;",
+    "}",
+    ".ynow-maint-block {",
+    "  margin: 0 0 16px 0;",
+    "  padding: 12px 14px;",
+    "  border: 1px solid var(--ynow-maint-line, #e5e5e5);",
+    "  border-radius: 4px;",
+    "  background: var(--ynow-maint-card-bg, #fafafa);",
+    "  color: var(--ynow-maint-ink, #1a1a1a);",
+    "}",
+    ".ynow-maint-title-row {",
+    "  display: flex;",
+    "  align-items: center;",
+    "  justify-content: space-between;",
+    "  gap: 10px;",
+    "  width: 100%;",
+    "  margin: 0 0 6px 0;",
+    "  flex-wrap: wrap;",
+    "}",
+    ".ynow-maint-title-left {",
+    "  display: flex;",
+    "  flex-wrap: wrap;",
+    "  align-items: baseline;",
+    "  gap: 8px;",
+    "  flex: 1 1 auto;",
+    "  min-width: 0;",
+    "}",
+    ".ynow-maint-title-left h4 {",
+    "  margin: 0;",
+    "  font-size: 15px;",
+    "  font-weight: 600;",
+    "  color: var(--ynow-maint-accent, #0C5484);",
+    "}",
+    ".ynow-maint-badge {",
+    "  font-size: 11px;",
+    "  color: var(--ynow-maint-muted, #888);",
+    "}",
+    ".ynow-maint-help {",
+    "  color: var(--ynow-maint-muted, #888);",
+    "  font-size: 12px;",
+    "  line-height: 1.45;",
+    "  margin: 0 0 10px 0;",
+    "}",
+    ".ynow-maint-theme-wrap {",
+    "  display: flex;",
+    "  align-items: center;",
+    "  gap: 6px;",
+    "  flex: 0 0 auto;",
+    "}",
+    ".ynow-maint-theme-label {",
+    "  margin: 0;",
+    "  font-size: 11.5px;",
+    "  font-weight: 600;",
+    "  color: var(--ynow-maint-muted, #666);",
+    "  white-space: nowrap;",
+    "}",
+    ".ynow-maint-theme-select.form-control {",
+    "  width: auto;",
+    "  min-width: 132px;",
+    "  height: 28px;",
+    "  padding: 2px 8px;",
+    "  font-size: 12px;",
+    "  line-height: 1.35;",
+    "  border-radius: 3px;",
+    "  border: 1px solid var(--ynow-maint-line, #ccc);",
+    "  background: #fff;",
+    "  color: var(--ynow-maint-ink, #1a1a1a);",
+    "  box-shadow: none;",
+    "}",
+    ".ynow-maint-meta-grid {",
+    "  display: grid;",
+    "  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));",
+    "  gap: 8px 14px;",
+    "  margin: 0 0 12px 0;",
+    "  font-size: 13px;",
+    "  line-height: 1.45;",
+    "}",
+    ".ynow-maint-meta-grid b { color: var(--ynow-maint-ink, #1a1a1a); }",
+    ".ynow-maint-meta-grid code {",
+    "  color: var(--ynow-maint-accent, #0C5484);",
+    "  background: var(--ynow-maint-wash, #f3f8f6);",
+    "  padding: 1px 5px;",
+    "  border-radius: 2px;",
+    "}",
+    ".ynow-admin-panel .ynow-admin-meta,",
+    ".ynow-pts-ledger-panel .ynow-admin-meta {",
+    "  color: var(--ynow-maint-muted, #555);",
+    "  font-size: 13px;",
+    "  line-height: 1.5;",
+    "}",
+    ".ynow-maint-note {",
+    "  color: var(--ynow-maint-muted, #666);",
+    "  font-size: 12.5px;",
+    "  line-height: 1.45;",
+    "  margin: 0 0 8px 0;",
+    "}",
+    ".ynow-maint-section-h {",
+    "  margin: 12px 0 6px;",
+    "  font-size: 13.5px;",
+    "  font-weight: 600;",
+    "  color: var(--ynow-maint-accent-2, #249C60);",
+    "}",
+    ".ynow-maint-tools {",
+    "  margin: 0 0 12px 1.1em;",
+    "  padding: 0;",
+    "  font-size: 13px;",
+    "  color: var(--ynow-maint-ink, #1a1a1a);",
+    "}",
+    ".ynow-maint-tools li { margin: 0 0 4px; }",
+    ".ynow-maint-actions {",
+    "  display: flex;",
+    "  flex-wrap: wrap;",
+    "  gap: 8px;",
+    "  margin: 10px 0 0;",
+    "}",
+    ".ynow-maint-shell .btn.ynow-maint-btn-primary,",
+    ".ynow-maint-shell .btn.btn-primary.ynow-maint-btn-primary {",
+    "  background: var(--ynow-maint-accent, #0C5484) !important;",
+    "  border: 1px solid var(--ynow-maint-accent, #0C5484) !important;",
+    "  color: var(--ynow-maint-btn-fg, #fff) !important;",
+    "  box-shadow: none !important;",
+    "}",
+    ".ynow-maint-shell .btn.ynow-maint-btn-primary:hover {",
+    "  filter: brightness(0.92);",
+    "  color: #fff !important;",
+    "}",
+    ".ynow-maint-shell .btn.ynow-maint-btn-default,",
+    ".ynow-maint-shell .btn.btn-default.ynow-maint-btn-default {",
+    "  background: #fff !important;",
+    "  border: 1px solid var(--ynow-maint-accent-2, #249C60) !important;",
+    "  color: var(--ynow-maint-accent-2, #249C60) !important;",
+    "  box-shadow: none !important;",
+    "}",
+    ".ynow-maint-shell .btn.ynow-maint-btn-default:hover {",
+    "  background: var(--ynow-maint-wash, #f3f8f6) !important;",
+    "}",
+    ".ynow-maint-shell .btn.ynow-maint-btn-warn,",
+    ".ynow-maint-shell .btn.btn-warning.ynow-maint-btn-warn {",
+    "  background: transparent !important;",
+    "  border: 1px solid var(--ynow-maint-accent-3, #1AA8B8) !important;",
+    "  color: var(--ynow-maint-accent-3, #1AA8B8) !important;",
+    "  box-shadow: none !important;",
+    "}",
+    ".ynow-maint-shell .btn.ynow-maint-btn-warn:hover {",
+    "  background: var(--ynow-maint-wash, #f3f8f6) !important;",
+    "}",
+    ".ynow-maint-shell[data-ynow-maint-theme=\"mono\"] .btn.ynow-maint-btn-warn,",
+    ".ynow-maint-shell[data-ynow-maint-theme=\"mono\"] .btn.btn-warning.ynow-maint-btn-warn {",
+    "  border-color: #888 !important;",
+    "  color: #444 !important;",
+    "}",
+    "#ynow_pts_ledger_wrap {",
+    "  margin: 4px 0 8px;",
+    "  border: 1px solid var(--ynow-maint-line, #e5e5e5);",
+    "  border-radius: 3px;",
+    "  background: #fff;",
+    "  padding: 6px;",
+    "  overflow-x: auto;",
+    "}",
     "body.ynow-authed #pa_email, body.ynow-authed #pa_quick_email {",
     "  background:#f5f5f5;",
     "}"
+  ))),
+  tags$script(HTML(paste0(
+    "(function(){",
+    "  var KEY='ynow_maint_theme';",
+    "  var ALLOWED={logo:1,mono:1,ocean:1,forest:1};",
+    "  function norm(v){",
+    "    v=String(v||'logo');",
+    "    return ALLOWED[v]?v:'logo';",
+    "  }",
+    "  function read(){",
+    "    try{return norm(localStorage.getItem(KEY));}catch(e){return 'logo';}",
+    "  }",
+    "  function write(v){",
+    "    try{localStorage.setItem(KEY,norm(v));}catch(e){}",
+    "  }",
+    "  function apply(theme){",
+    "    theme=norm(theme);",
+    "    var shells=document.querySelectorAll('.ynow-maint-shell');",
+    "    for(var i=0;i<shells.length;i++){",
+    "      shells[i].setAttribute('data-ynow-maint-theme',theme);",
+    "    }",
+    "    var sels=document.querySelectorAll('select.ynow-maint-theme-select');",
+    "    for(var j=0;j<sels.length;j++){",
+    "      if(sels[j].value!==theme) sels[j].value=theme;",
+    "    }",
+    "  }",
+    "  function onChange(ev){",
+    "    var t=norm(ev&&ev.target&&ev.target.value);",
+    "    write(t);",
+    "    apply(t);",
+    "  }",
+    "  function bind(){",
+    "    var sels=document.querySelectorAll('select.ynow-maint-theme-select');",
+    "    for(var i=0;i<sels.length;i++){",
+    "      if(sels[i].dataset.ynowMaintBound==='1') continue;",
+    "      sels[i].dataset.ynowMaintBound='1';",
+    "      sels[i].addEventListener('change',onChange);",
+    "    }",
+    "    apply(read());",
+    "  }",
+    "  if(document.readyState==='loading'){",
+    "    document.addEventListener('DOMContentLoaded',bind);",
+    "  } else { bind(); }",
+    "  if(window.jQuery){",
+    "    jQuery(document).on('shiny:value shiny:idle', function(){ setTimeout(bind,0); });",
+    "  }",
+    "  window.ynowMaintThemeApply=apply;",
+    "})();"
   )))
+  )
 }
 
 #' Sidebar: Account tree with Overview + Points ledger (Full + signed-in).
@@ -654,7 +907,34 @@ ynow_admin_tab_ui <- function() {
   )
 }
 
+#' Theme picker for Account maintenance pages (client-side; localStorage).
+#' Default = logo blue-green; alternates = mono / ocean / forest.
+ynow_maint_theme_select_ui <- function(locale = "zh-TW") {
+  loc <- as.character(locale %||% "zh-TW")[1]
+  .lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
+  tags$div(
+    class = "ynow-maint-theme-wrap",
+    tags$span(
+      class = "ynow-maint-theme-label",
+      .lab("auth_admin_theme", "Color theme")
+    ),
+    tags$select(
+      class = "ynow-maint-theme-select form-control input-sm",
+      `aria-label` = .lab("auth_admin_theme", "Color theme"),
+      tags$option(
+        value = "logo",
+        selected = "selected",
+        .lab("auth_admin_theme_logo", "Logo blue-green")
+      ),
+      tags$option(value = "mono", .lab("auth_admin_theme_mono", "Monochrome")),
+      tags$option(value = "ocean", .lab("auth_admin_theme_ocean", "Ocean blue")),
+      tags$option(value = "forest", .lab("auth_admin_theme_forest", "Forest green"))
+    )
+  )
+}
+
 #' Build Account overview panel (signed-in). Ledger lives on account_points tab.
+#' Flat block layout (Blue Chip ind-mcap style) — no AdminLTE box.
 ynow_admin_panel_ui <- function(user, locale = "zh-TW", build_version = "",
                                 points_balance = NA_integer_,
                                 points_ledger = NULL,
@@ -670,96 +950,126 @@ ynow_admin_panel_ui <- function(user, locale = "zh-TW", build_version = "",
   pyn_txt <- if (is.finite(pyn)) as.character(pyn) else "—"
   pts_on <- exists("ynow_points_enabled", mode = "function") && isTRUE(ynow_points_enabled())
   tags$div(
-    class = "ynow-admin-panel",
+    class = "ynow-admin-panel ynow-maint-shell",
+    `data-ynow-maint-theme` = "logo",
     fluidRow(
-      box(
+      column(
         width = 12,
-        status = "primary",
-        solidHeader = TRUE,
-        title = tags$span(id = "ynow_admin_box_title", .lab("auth_admin_title", "Account overview")),
-        tags$p(
-          class = "ynow-admin-meta",
-          tags$span(id = "ynow_admin_intro", .lab(
-            "auth_admin_intro",
-            "Signed-in maintenance workspace. Lite mode never requires an account."
-          ))
-        ),
-        tags$hr(),
-        tags$p(
-          tags$b(id = "ynow_admin_account_label", .lab("auth_admin_account", "Account")),
-          ": ",
-          tags$code(if (nzchar(email)) email else "—")
-        ),
-        tags$p(
-          tags$b(id = "ynow_admin_since_label", .lab("auth_admin_since", "Signed in at")),
-          ": ",
-          if (nzchar(at)) at else "—"
-        ),
-        tags$p(
-          tags$b(id = "ynow_admin_build_label", .lab("auth_admin_build", "Display version")),
-          ": ",
-          tags$code(if (nzchar(build_version)) build_version else "—")
-        ),
-        tags$p(
-          tags$b(id = "ynow_pts_fyn_label", .lab("pts_fyn_label", "FYN points")),
-          ": ",
-          tags$code(id = "ynow_pts_fyn_value", fyn_txt),
-          " · ",
-          tags$b(id = "ynow_pts_pyn_label", .lab("pts_pyn_label", "PYN points")),
-          ": ",
-          tags$code(id = "ynow_pts_pyn_value", pyn_txt)
-        ),
-        tags$p(
-          class = "text-muted",
-          style = "font-size:12.5px;",
-          if (isTRUE(pts_on)) {
-            .lab("pts_enabled_note", "Points enforcement is on.")
-          } else {
-            .lab("pts_disabled_note", "Points enforcement is off.")
-          }
-        ),
-        tags$p(
-          class = "text-muted",
-          style = "font-size:12.5px;",
-          id = "ynow_pts_rules_note",
-          .lab(
-            "pts_rules_note",
-            "New accounts receive 100 FYN once. Daily check-in adds +30 FYN once per Asia/Taipei day. Balances are never reset on login."
-          )
-        ),
-        tags$hr(),
-        tags$h4(id = "ynow_admin_tools_h", .lab("auth_admin_tools", "Tools")),
-        tags$ul(
-          tags$li(id = "ynow_admin_tool_alerts", .lab(
-            "auth_admin_tool_alerts",
-            "Value Alerts: email notifications default to this account mailbox."
-          )),
-          tags$li(id = "ynow_admin_tool_lite", .lab(
-            "auth_admin_tool_lite",
-            "Lite mode stays fully usable without sign-in (no maintenance nav)."
-          )),
-          tags$li(id = "ynow_admin_tool_points", .lab(
-            "auth_admin_tool_points",
-            "Points: FYN (free) and PYN (paid) are stored separately; open Points ledger for history."
-          ))
-        ),
-        actionButton(
-          "ynow_admin_goto_points",
-          label = tags$span(
-            id = "ynow_admin_goto_points_label",
-            .lab("pts_goto_ledger", "Open Points ledger")
+        tags$div(
+          class = "ynow-maint-block",
+          tags$div(
+            class = "ynow-maint-title-row",
+            tags$div(
+              class = "ynow-maint-title-left",
+              tags$h4(
+                id = "ynow_admin_box_title",
+                .lab("auth_admin_title", "Account overview")
+              ),
+              tags$span(
+                class = "ynow-maint-badge",
+                id = "ynow_admin_theme_badge",
+                .lab("auth_admin_theme_scope", "This page only")
+              )
+            ),
+            ynow_maint_theme_select_ui(loc)
           ),
-          class = "btn-primary"
-        ),
-        actionButton(
-          "ynow_admin_goto_alerts",
-          label = tags$span(id = "ynow_admin_goto_alerts_label", .lab("auth_admin_goto_alerts", "Open Value Alerts")),
-          class = "btn-default"
-        ),
-        actionButton(
-          "ynow_auth_sign_out_admin",
-          label = tags$span(id = "ynow_admin_sign_out_label", .lab("auth_sign_out", "Sign out")),
-          class = "btn-warning"
+          tags$div(
+            class = "ynow-maint-help ynow-admin-meta",
+            tags$span(id = "ynow_admin_intro", .lab(
+              "auth_admin_intro",
+              "Signed-in maintenance workspace. Lite mode never requires an account."
+            ))
+          ),
+          tags$div(
+            class = "ynow-maint-meta-grid",
+            tags$div(
+              tags$b(id = "ynow_admin_account_label", .lab("auth_admin_account", "Account")),
+              ": ",
+              tags$code(if (nzchar(email)) email else "—")
+            ),
+            tags$div(
+              tags$b(id = "ynow_admin_since_label", .lab("auth_admin_since", "Signed in at")),
+              ": ",
+              if (nzchar(at)) at else "—"
+            ),
+            tags$div(
+              tags$b(id = "ynow_admin_build_label", .lab("auth_admin_build", "Display version")),
+              ": ",
+              tags$code(if (nzchar(build_version)) build_version else "—")
+            ),
+            tags$div(
+              tags$b(id = "ynow_pts_fyn_label", .lab("pts_fyn_label", "FYN points")),
+              ": ",
+              tags$code(id = "ynow_pts_fyn_value", fyn_txt),
+              " · ",
+              tags$b(id = "ynow_pts_pyn_label", .lab("pts_pyn_label", "PYN points")),
+              ": ",
+              tags$code(id = "ynow_pts_pyn_value", pyn_txt)
+            )
+          ),
+          tags$p(
+            class = "ynow-maint-note",
+            if (isTRUE(pts_on)) {
+              .lab("pts_enabled_note", "Points enforcement is on.")
+            } else {
+              .lab("pts_disabled_note", "Points enforcement is off.")
+            }
+          ),
+          tags$p(
+            class = "ynow-maint-note",
+            id = "ynow_pts_rules_note",
+            .lab(
+              "pts_rules_note",
+              "New accounts receive 100 FYN once. Daily check-in adds +30 FYN once per Asia/Taipei day. Balances are never reset on login."
+            )
+          ),
+          tags$h4(
+            class = "ynow-maint-section-h",
+            id = "ynow_admin_tools_h",
+            .lab("auth_admin_tools", "Tools")
+          ),
+          tags$ul(
+            class = "ynow-maint-tools",
+            tags$li(id = "ynow_admin_tool_alerts", .lab(
+              "auth_admin_tool_alerts",
+              "Value Alerts: email notifications default to this account mailbox."
+            )),
+            tags$li(id = "ynow_admin_tool_lite", .lab(
+              "auth_admin_tool_lite",
+              "Lite mode stays fully usable without sign-in (no maintenance nav)."
+            )),
+            tags$li(id = "ynow_admin_tool_points", .lab(
+              "auth_admin_tool_points",
+              "Points: FYN (free) and PYN (paid) are stored separately; open Points ledger for history."
+            ))
+          ),
+          tags$div(
+            class = "ynow-maint-actions",
+            actionButton(
+              "ynow_admin_goto_points",
+              label = tags$span(
+                id = "ynow_admin_goto_points_label",
+                .lab("pts_goto_ledger", "Open Points ledger")
+              ),
+              class = "btn-primary btn-sm ynow-maint-btn-primary"
+            ),
+            actionButton(
+              "ynow_admin_goto_alerts",
+              label = tags$span(
+                id = "ynow_admin_goto_alerts_label",
+                .lab("auth_admin_goto_alerts", "Open Value Alerts")
+              ),
+              class = "btn-default btn-sm ynow-maint-btn-default"
+            ),
+            actionButton(
+              "ynow_auth_sign_out_admin",
+              label = tags$span(
+                id = "ynow_admin_sign_out_label",
+                .lab("auth_sign_out", "Sign out")
+              ),
+              class = "btn-warning btn-sm ynow-maint-btn-warn"
+            )
+          )
         )
       )
     )
@@ -767,6 +1077,7 @@ ynow_admin_panel_ui <- function(user, locale = "zh-TW", build_version = "",
 }
 
 #' Points ledger panel — full history for the signed-in user.
+#' Flat block layout (same maintenance shell / theme as Account overview).
 #' Table body is filled by server via DT::dataTableOutput("ynow_pts_ledger_dt").
 #' System admin adjust lives on the System admin portal (de-identified user list).
 ynow_points_panel_ui <- function(user, locale = "zh-TW",
@@ -791,63 +1102,91 @@ ynow_points_panel_ui <- function(user, locale = "zh-TW",
     }
   )
   tags$div(
-    class = "ynow-pts-ledger-panel",
+    class = "ynow-pts-ledger-panel ynow-maint-shell",
+    `data-ynow-maint-theme` = "logo",
     fluidRow(
-      box(
+      column(
         width = 12,
-        status = "primary",
-        solidHeader = TRUE,
-        title = tags$span(id = "ynow_pts_box_title", .lab("pts_ledger_title", "Points ledger")),
-        tags$p(
-          class = "ynow-admin-meta",
-          tags$span(id = "ynow_pts_ledger_intro", .lab(
-            "pts_ledger_intro",
-            "Every points change for this account is stored in the database and listed here."
-          ))
-        ),
-        tags$p(
-          class = "text-muted",
-          style = "font-size:12.5px;",
-          id = "ynow_pts_ledger_rules_note",
-          .lab(
-            "pts_rules_note",
-            "New accounts receive 100 FYN once. Daily check-in adds +30 FYN once per Asia/Taipei day. Balances are never reset on login."
-          )
-        ),
-        tags$p(
-          tags$b(id = "ynow_pts_ledger_account_label", .lab("auth_admin_account", "Account")),
-          ": ",
-          tags$code(if (nzchar(email)) email else "—"),
-          " · ",
-          tags$b(id = "ynow_pts_ledger_fyn_label", .lab("pts_fyn_label", "FYN points")),
-          ": ",
-          tags$code(id = "ynow_pts_ledger_fyn_value", fyn_txt),
-          " · ",
-          tags$b(id = "ynow_pts_ledger_pyn_label", .lab("pts_pyn_label", "PYN points")),
-          ": ",
-          tags$code(id = "ynow_pts_ledger_pyn_value", pyn_txt),
-          " · ",
-          tags$span(
-            id = "ynow_pts_ledger_count",
-            sprintf(.lab("pts_ledger_count_fmt", "%s records"), as.character(n_rows))
-          )
-        ),
-        tags$hr(),
-        tags$h4(id = "ynow_pts_ledger_h", .lab("pts_ledger", "All points activity")),
-        ledger_ui,
-        tags$hr(),
-        actionButton(
-          "ynow_pts_goto_overview",
-          label = tags$span(
-            id = "ynow_pts_goto_overview_label",
-            .lab("pts_goto_overview", "Back to Account overview")
+        tags$div(
+          class = "ynow-maint-block",
+          tags$div(
+            class = "ynow-maint-title-row",
+            tags$div(
+              class = "ynow-maint-title-left",
+              tags$h4(
+                id = "ynow_pts_box_title",
+                .lab("pts_ledger_title", "Points ledger")
+              ),
+              tags$span(
+                class = "ynow-maint-badge",
+                .lab("auth_admin_theme_scope", "This page only")
+              )
+            ),
+            ynow_maint_theme_select_ui(loc)
           ),
-          class = "btn-default"
-        ),
-        actionButton(
-          "ynow_auth_sign_out_points",
-          label = tags$span(id = "ynow_pts_sign_out_label", .lab("auth_sign_out", "Sign out")),
-          class = "btn-warning"
+          tags$div(
+            class = "ynow-maint-help ynow-admin-meta",
+            tags$span(id = "ynow_pts_ledger_intro", .lab(
+              "pts_ledger_intro",
+              "Every points change for this account is stored in the database and listed here."
+            ))
+          ),
+          tags$p(
+            class = "ynow-maint-note",
+            id = "ynow_pts_ledger_rules_note",
+            .lab(
+              "pts_rules_note",
+              "New accounts receive 100 FYN once. Daily check-in adds +30 FYN once per Asia/Taipei day. Balances are never reset on login."
+            )
+          ),
+          tags$div(
+            class = "ynow-maint-meta-grid",
+            tags$div(
+              tags$b(id = "ynow_pts_ledger_account_label", .lab("auth_admin_account", "Account")),
+              ": ",
+              tags$code(if (nzchar(email)) email else "—")
+            ),
+            tags$div(
+              tags$b(id = "ynow_pts_ledger_fyn_label", .lab("pts_fyn_label", "FYN points")),
+              ": ",
+              tags$code(id = "ynow_pts_ledger_fyn_value", fyn_txt),
+              " · ",
+              tags$b(id = "ynow_pts_ledger_pyn_label", .lab("pts_pyn_label", "PYN points")),
+              ": ",
+              tags$code(id = "ynow_pts_ledger_pyn_value", pyn_txt)
+            ),
+            tags$div(
+              tags$span(
+                id = "ynow_pts_ledger_count",
+                sprintf(.lab("pts_ledger_count_fmt", "%s records"), as.character(n_rows))
+              )
+            )
+          ),
+          tags$h4(
+            class = "ynow-maint-section-h",
+            id = "ynow_pts_ledger_h",
+            .lab("pts_ledger", "All points activity")
+          ),
+          ledger_ui,
+          tags$div(
+            class = "ynow-maint-actions",
+            actionButton(
+              "ynow_pts_goto_overview",
+              label = tags$span(
+                id = "ynow_pts_goto_overview_label",
+                .lab("pts_goto_overview", "Back to Account overview")
+              ),
+              class = "btn-default btn-sm ynow-maint-btn-default"
+            ),
+            actionButton(
+              "ynow_auth_sign_out_points",
+              label = tags$span(
+                id = "ynow_pts_sign_out_label",
+                .lab("auth_sign_out", "Sign out")
+              ),
+              class = "btn-warning btn-sm ynow-maint-btn-warn"
+            )
+          )
         )
       )
     )
