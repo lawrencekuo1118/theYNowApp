@@ -1,10 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12706465
+bundleId=12706487
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=a28c0ae128a8a5feb5c7c304741e1e7a2794f250
-commit=a28c0ae128a8a5feb5c7c304741e1e7a2794f250
-short=a28c0ae1
-message=chore: bump display version to v25.54
-captured_at=2026-10-18T13:57:14Z
+aligned_git=fb8e89b1
+commit=fb8e89b17fa34a28b2e848aab6b1c5a9c1d0da8d
+short=fb8e89b1
+message=chore: bump display version to v25.55
+captured_at=2026-10-18T14:03:49Z
 display_version=v25.55
+note=Canonical live line is app_25.0. Bundle 12706487 after merge #305: Snapshot assumption surface + holding asset-shell NAV/SOTP + SOTP conglomerate discount not applied.
