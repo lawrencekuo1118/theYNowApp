@@ -605,6 +605,9 @@ ynow_auth_css <- function() {
     "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) #ynow_pa_body { display:none !important; }",
     "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) #ynow_pa_guest_gate { display:block !important; }",
     "#ynow_pa_guest_gate { display:none; }",
+    ".ynow-member-gate { display:none; }",
+    "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .ynow-member-gate { display:block !important; }",
+    "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .ynow-member-body { display:none !important; }",
     "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .ynow-alert-bell {",
     "  opacity:0.35; pointer-events:none; cursor:not-allowed;",
     "}",
@@ -851,31 +854,47 @@ ynow_points_panel_ui <- function(user, locale = "zh-TW",
   )
 }
 
-#' Guest gate copy for Full-mode Value Alerts when auth is on (CSS-hidden otherwise).
-ynow_pa_guest_gate_ui <- function() {
+#' Sign-in panel for Full-mode pages that stay closed until the user is logged in.
+#' Hidden until body has ynow-auth-feature and lacks ynow-lite / ynow-authed.
+ynow_member_gate_ui <- function(gate_id, title_id, body_id, btn_id) {
   tags$div(
-    id = "ynow_pa_guest_gate",
-    class = "box box-warning",
-    style = "display:none;",
+    id = gate_id,
+    class = "box box-warning ynow-member-gate",
+    style = "display:none; max-width:760px; margin:18px auto;",
     tags$div(
       class = "box-header with-border",
       tags$h3(
         class = "box-title",
-        tags$span(id = "ynow_pa_gate_title", "Sign in required")
+        tags$span(id = title_id, "Sign in required")
       )
     ),
     tags$div(
       class = "box-body",
-      tags$p(id = "ynow_pa_gate_body", paste0(
-        "Value Alerts in Full mode require an account. ",
+      tags$p(id = body_id, paste0(
+        "Quantitative Backtest Lab, Decision Checklist, and Value Alerts ",
+        "require a signed-in account in Full mode. ",
         "Lite mode does not require sign-in and remains fully usable."
       )),
       actionButton(
-        "ynow_pa_gate_signin",
-        label = tags$span(id = "ynow_pa_gate_signin_label", "Sign in"),
-        class = "btn-primary"
+        btn_id,
+        label = tags$span(
+          id = paste0(btn_id, "_label"),
+          class = "ynow-member-gate-signin-label",
+          "Sign in"
+        ),
+        class = "btn-primary ynow-auth-open"
       )
     )
+  )
+}
+
+#' Guest gate for Full-mode Value Alerts (same member-gate rule as Backtest and Checklist).
+ynow_pa_guest_gate_ui <- function() {
+  ynow_member_gate_ui(
+    "ynow_pa_guest_gate",
+    "ynow_pa_gate_title",
+    "ynow_pa_gate_body",
+    "ynow_pa_gate_signin"
   )
 }
 

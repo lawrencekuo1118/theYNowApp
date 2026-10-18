@@ -202,6 +202,16 @@ check("admin panel builds", {
   inherits(p, "shiny.tag") || inherits(p, "shiny.tag.list")
 })
 check("pa guest gate builds", inherits(ynow_pa_guest_gate_ui(), "shiny.tag"))
+check("backtest and checklist require the member gate", {
+  ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  dc <- paste(readLines(file.path(app_dir, "decision_checklist_module.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  auth <- paste(readLines(src_auth, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("ynow_lab_body", ui, fixed = TRUE) &&
+    grepl("ynow-member-body", ui, fixed = TRUE) &&
+    grepl("ynow_chk_body", dc, fixed = TRUE) &&
+    grepl("ynow-member-gate", auth, fixed = TRUE) &&
+    grepl("not(.ynow-lite):not(.ynow-authed) .ynow-member-body", auth, fixed = TRUE)
+})
 Sys.setenv(YNOW_ENABLE_ACCOUNT_LOGIN = "0")
 check("admin menu NULL when disabled", is.null(ynow_admin_menu_item()))
 

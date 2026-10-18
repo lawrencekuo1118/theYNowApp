@@ -788,7 +788,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Account sign-in is on by default (set YNOW_ENABLE_ACCOUNT_LOGIN=0 to disable). ",
       "Anyone may self-register with Google, Facebook, LinkedIn, or Email — no per-user admin approval. ",
       "Account store: Postgres via YNOW_DB_* (own users table; e.g. Neon Free or Supabase pooler). ",
-      "Full-mode Value Alerts require sign-in; email notify defaults to the registered mailbox. ",
+      "Full mode requires sign-in for Quantitative Backtest Lab, Decision Checklist, and Value Alerts; email notify defaults to the registered mailbox. ",
       "Lite mode stays fully usable without an account."
     ),
     menu_admin = "Account",
@@ -914,7 +914,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     pts_sysadmin_backend_fmt = "Points backend: %s",
     auth_pa_gate_title = "Sign in required",
     auth_pa_gate_body = paste0(
-      "Value Alerts in Full mode require an account. ",
+      "Quantitative Backtest Lab, Decision Checklist, and Value Alerts ",
+      "require a signed-in account in Full mode. ",
       "Lite mode does not require sign-in and remains fully usable."
     ),
     test_link = " Sys. Admin",
@@ -4299,7 +4300,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "帳號登入預設啟用（設 YNOW_ENABLE_ACCOUNT_LOGIN=0 可關閉）。",
       "一般使用者可用 Google、Facebook、LinkedIn 或 Email 自行註冊，無需逐一後台開權限。",
       "帳號表：經 YNOW_DB_* 的 Postgres（自管 users；例如 Neon Free 或 Supabase pooler）。",
-      "完整版到值通知需登入；寄信預設註冊信箱。",
+      "完整版的量化回測實驗室、決策檢核、到值通知需登入；寄信預設註冊信箱。",
       "Lite 版無需帳號即可完整使用。"
     ),
     menu_admin = "帳號",
@@ -4424,7 +4425,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     pts_sysadmin_backend_fmt = "點數後端：%s",
     auth_pa_gate_title = "需登入帳號",
     auth_pa_gate_body = paste0(
-      "完整版的到值通知需登入帳號後才可使用。",
+      "完整版的量化回測實驗室、決策檢核、到值通知需登入帳號後才能使用。",
       "Lite 版無需登入，功能可完整使用。"
     ),
     test_link = " Sys. Admin",

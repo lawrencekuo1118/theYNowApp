@@ -246,7 +246,7 @@
           class = "ynow-about-method",
           tags$b("帳號登入："),
           "帳號登入預設啟用；一般使用者可用 Google、Facebook、LinkedIn 或 Email 自行註冊並立即使用，無需後台開權限；",
-          "帳號表經 YNOW_DB_* 的 Postgres（自管 users；例如 Neon Free 或 Supabase pooler）；完整版到值通知需登入（寄信預設註冊信箱）；",
+          "帳號表經 YNOW_DB_* 的 Postgres（自管 users；例如 Neon Free 或 Supabase pooler）；完整版的量化回測實驗室、決策檢核、到值通知需登入（寄信預設註冊信箱）；",
           "登入後（完整版）可開啟維護後台。Lite 版無需帳號即可完整使用。"
         ),
         tags$h4(class = "ynow-about-feat-h", tags$b("核心功能亮點：")),
@@ -274,7 +274,7 @@
         tags$p(
           class = "ynow-about-method",
           tags$b("Account sign-in:"),
-          " Account sign-in is on by default. Anyone may self-register with Google, Facebook, LinkedIn, or Email — no per-user admin approval. Account store: Postgres via YNOW_DB_* (own users table; e.g. Neon Free or Supabase pooler). Full-mode Value Alerts require sign-in; email notify defaults to the registered mailbox. After sign-in, Maintenance opens; Lite never requires an account."
+          " Account sign-in is on by default. Anyone may self-register with Google, Facebook, LinkedIn, or Email — no per-user admin approval. Account store: Postgres via YNOW_DB_* (own users table; e.g. Neon Free or Supabase pooler). Quantitative Backtest Lab, Decision Checklist, and Value Alerts require sign-in in Full mode; email notify defaults to the registered mailbox. After sign-in, Maintenance opens; Lite never requires an account."
         ),
         tags$h4(class = "ynow-about-feat-h", tags$b("Core Features:")),
         en_features
@@ -10290,6 +10290,12 @@ ui <- dashboardPage(
               set('ynow_pa_gate_title', payload.pa_gate_title);
               set('ynow_pa_gate_body', payload.pa_gate_body);
               set('ynow_pa_gate_signin_label', payload.sign_in);
+              set('ynow_lab_gate_title', payload.pa_gate_title);
+              set('ynow_lab_gate_body', payload.pa_gate_body);
+              set('ynow_lab_gate_signin_label', payload.sign_in);
+              set('ynow_chk_gate_title', payload.pa_gate_title);
+              set('ynow_chk_gate_body', payload.pa_gate_body);
+              set('ynow_chk_gate_signin_label', payload.sign_in);
             });
             addHandler('ynowPtsBanner', function (payload) {
               if (!payload) return;
@@ -16800,7 +16806,19 @@ ui <- dashboardPage(
       # ==========================================
       tabItem(
         tabName = "lab_notes",
-        uiOutput("ynow_lazy_host_lab_notes")
+        if (exists("ynow_member_gate_ui", mode = "function")) {
+          ynow_member_gate_ui(
+            "ynow_lab_guest_gate",
+            "ynow_lab_gate_title",
+            "ynow_lab_gate_body",
+            "ynow_lab_gate_signin"
+          )
+        },
+        tags$div(
+          id = "ynow_lab_body",
+          class = "ynow-member-body",
+          uiOutput("ynow_lazy_host_lab_notes")
+        )
       ),
 
       # ==========================================

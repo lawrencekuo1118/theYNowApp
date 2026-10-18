@@ -595,7 +595,7 @@ price_alert_tab_ui <- function() {
     },
     tags$div(
       id = "ynow_pa_body",
-      class = "ynow-pa-tabs-wrap",
+      class = "ynow-pa-tabs-wrap ynow-member-body",
       tabBox(
         title = .pa_bi("menu_price_alert"),
         id = "ynow_pa_report",
