@@ -65,6 +65,7 @@ price_alert_empty <- function() {
     source = character(0),
     metric = character(0),
     screen_ref = character(0),
+    latched = logical(0),
     stringsAsFactors = FALSE
   )
 }
@@ -125,6 +126,8 @@ price_alert_read <- function(path = price_alert_store_path()) {
   raw$metric[is.na(raw$metric)] <- ""
   raw$screen_ref <- as.character(raw$screen_ref)
   raw$screen_ref[is.na(raw$screen_ref)] <- ""
+  raw$latched <- as.logical(raw$latched)
+  raw$latched[is.na(raw$latched)] <- FALSE
   raw
 }
 
@@ -282,7 +285,8 @@ price_alert_add <- function(
     as.character(note)[1], TRUE, "armed", NA_real_, "", "", "",
     notify_app, notify_email,
     as.character(source)[1], as.character(metric)[1],
-    as.character(screen_ref)[1]
+    as.character(screen_ref)[1],
+    FALSE
   )
   list(ok = TRUE, reason = "saved", df = rbind(df, row))
 }
@@ -298,6 +302,19 @@ price_alert_smtp_config <- function() {
   list(ok = TRUE, user = user, password = password, server = server, from = from)
 }
 
+price_alert_set_armed <- function(df, id, on) {
+  if (is.null(df) || !is.data.frame(df) || !nrow(df)) return(price_alert_empty())
+  df <- .pa_fill_cols(df, price_alert_empty())
+  hit <- df$id == as.character(id)[1]
+  if (!any(hit)) return(df)
+  on <- isTRUE(on)
+  df$armed[hit] <- on
+  df$latched[hit] <- FALSE
+  df$status[hit] <- if (on) "armed" else "off"
+  if (!on) df$last_error[hit] <- ""
+  df
+}
+
 price_alert_compose <- function(row, price) {
   kind <- as.character(row$kind)[1]
   ticker <- as.character(row$ticker)[1]
@@ -311,7 +328,7 @@ price_alert_compose <- function(row, price) {
     sprintf("MOS %%: %s", format(mos, trim = TRUE, scientific = FALSE)),
     sprintf("Last price: %s", format(price, trim = TRUE, scientific = FALSE)),
     sprintf("Note: %s", as.character(row$note)[1]),
-    "This rule is now disarmed. Arm it again in the app to be notified next time.",
+    "This rule stays on until you turn it off in the app.",
     sep = "\n"
   )
   list(subject = subject, body = body)
@@ -412,10 +429,15 @@ price_alert_apply_checks <- function(df, quotes, send_fn = price_alert_send, now
       if (isTRUE(q$ok)) df$last_price[[i]] <- q$price
       cur <- suppressWarnings(as.numeric(q$price %||% NA_real_)[1])
     }
-    hit <- isTRUE(df$armed[[i]]) && isTRUE(price_alert_condition_met(
+    if (!isTRUE(df$armed[[i]])) next
+    hit <- isTRUE(price_alert_condition_met(
       kind_i, df$level[[i]], cur, prev, df$mos_pct[[i]]
     ))
-    if (!hit) next
+    if (!hit) {
+      df$latched[[i]] <- FALSE
+      next
+    }
+    if (isTRUE(df$latched[[i]])) next
     met <- met + 1L
     want_app <- isTRUE(df$notify_app[[i]])
     want_email <- isTRUE(df$notify_email[[i]])
@@ -440,14 +462,8 @@ price_alert_apply_checks <- function(df, quotes, send_fn = price_alert_send, now
     if (want_app) channels <- c(channels, "app")
     if (want_email && email_ok) channels <- c(channels, "email")
 
-    # Disarm when: app-only notified, or email succeeded, or email not requested
-    can_disarm <- (!want_email && want_app) || (want_email && email_ok) || (!want_email && !want_app)
-    if (want_email && !email_ok && !want_app) {
-      can_disarm <- FALSE
-    }
-    if (want_email && !email_ok && want_app) {
-      # App toast delivered; keep armed only if user insisted on email — disarm app side done via history
-      can_disarm <- FALSE
+    email_failed <- isTRUE(want_email) && !email_ok
+    if (email_failed) {
       df$status[[i]] <- email_reason
       df$last_error[[i]] <- email_reason
     }
@@ -475,14 +491,12 @@ price_alert_apply_checks <- function(df, quotes, send_fn = price_alert_send, now
       )
     }
 
-    if (isTRUE(can_disarm) || (want_app && !want_email)) {
-      df$armed[[i]] <- FALSE
-      df$status[[i]] <- if (want_email && email_ok) "sent" else if (want_app) "notified_app" else "sent"
+    if (!email_failed && (want_app || want_email)) {
+      df$armed[[i]] <- TRUE
+      df$latched[[i]] <- TRUE
+      df$status[[i]] <- "armed"
       df$last_sent[[i]] <- stamp
       df$last_error[[i]] <- ""
-    } else if (want_email && !email_ok) {
-      df$status[[i]] <- email_reason
-      df$last_error[[i]] <- email_reason
     }
   }
   list(df = df, sent = sent, met = met, app_toasts = app_toasts)
@@ -637,8 +651,26 @@ price_alert_tab_ui <- function() {
           ),
           actionButton("pa_save", .pa_bi("pa_save"), class = "btn-primary"),
           actionButton("pa_check", .pa_bi("pa_check"), class = "btn-default"),
-          actionButton("pa_rearm", .pa_bi("pa_rearm"), class = "btn-default"),
           actionButton("pa_delete", .pa_bi("pa_delete"), class = "btn-danger"),
+          tags$div(style = "margin-top:16px;", uiOutput("pa_rule_switches")),
+          tags$style(HTML("
+            .ynow-pa-row { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:12px 2px; border-bottom:1px solid #ececec; }
+            .ynow-pa-row-label { display:block; font-size:15px; color:#243038; }
+            .ynow-pa-row-sub { display:block; margin-top:2px; font-size:12px; color:#7a8690; }
+            .ynow-pa-arm { appearance:none; -webkit-appearance:none; width:52px; height:30px; margin:0; border:0; border-radius:15px; background:#d5dbe3; position:relative; cursor:pointer; flex:0 0 auto; transition:background .15s ease; }
+            .ynow-pa-arm:checked { background:#1aa6a6; }
+            .ynow-pa-arm::after { content:''; position:absolute; top:3px; left:3px; width:24px; height:24px; border-radius:50%; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.18); transition:transform .15s ease; }
+            .ynow-pa-arm:checked::after { transform:translateX(22px); }
+          ")),
+          tags$script(HTML("
+            $(document).off('change.ynowPaArm').on('change.ynowPaArm', '.ynow-pa-arm', function() {
+              Shiny.setInputValue('pa_arm_set', {
+                id: this.getAttribute('data-id'),
+                on: this.checked,
+                nonce: Date.now()
+              }, {priority: 'event'});
+            });
+          ")),
           tags$div(
             style = "margin-top:16px;",
             tags$p(.pa_bi("scr_from_screen_help")),
@@ -854,6 +886,35 @@ price_alert_server <- function(input, output, session, ui_locale_rv = NULL,
     }
   }
 
+  output$pa_rule_switches <- renderUI({
+    pa_refresh()
+    if (!is.null(ui_locale_rv)) {
+      tryCatch(ui_locale_rv(), error = function(e) NULL)
+    }
+    df <- price_alert_read()
+    if (!nrow(df)) return(NULL)
+    locale <- loc()
+    lapply(seq_len(nrow(df)), function(i) {
+      kind <- as.character(df$kind[[i]])[1]
+      kind_lab <- tryCatch(ui_str(paste0("pa_kind_", kind), locale), error = function(e) kind)
+      level <- suppressWarnings(as.numeric(df$level[[i]])[1])
+      level_txt <- if (is.finite(level)) format(level, trim = TRUE, scientific = FALSE) else ""
+      tags$div(
+        class = "ynow-pa-row",
+        tags$div(
+          tags$span(class = "ynow-pa-row-label", paste0(df$ticker[[i]], " · ", kind_lab)),
+          tags$span(class = "ynow-pa-row-sub", paste(ui_str("pa_col_level", locale), level_txt))
+        ),
+        tags$input(
+          type = "checkbox",
+          class = "ynow-pa-arm",
+          `data-id` = df$id[[i]],
+          checked = if (isTRUE(df$armed[[i]])) "checked" else NULL
+        )
+      )
+    })
+  })
+
   output$pa_table <- DT::renderDT({
     pa_refresh()
     df <- price_alert_read()
@@ -1037,6 +1098,17 @@ price_alert_server <- function(input, output, session, ui_locale_rv = NULL,
     df$id[[idx]]
   }
 
+  observeEvent(input$pa_arm_set, {
+    payload <- input$pa_arm_set
+    if (is.null(payload)) return()
+    id <- as.character(payload$id %||% "")[1]
+    if (!nzchar(id)) return()
+    on <- isTRUE(payload$on)
+    df <- price_alert_set_armed(price_alert_read(), id, on)
+    price_alert_write(df)
+    pa_refresh(isolate(pa_refresh()) + 1L)
+  }, ignoreInit = TRUE)
+
   observeEvent(input$pa_delete, {
     id <- .selected_id()
     if (is.na(id)) {
@@ -1045,20 +1117,6 @@ price_alert_server <- function(input, output, session, ui_locale_rv = NULL,
     }
     df <- price_alert_read()
     price_alert_write(df[df$id != id, , drop = FALSE])
-    pa_refresh(isolate(pa_refresh()) + 1L)
-  })
-
-  observeEvent(input$pa_rearm, {
-    id <- .selected_id()
-    if (is.na(id)) {
-      showNotification(say("pa_need_row"), type = "warning")
-      return()
-    }
-    df <- price_alert_read()
-    hit <- df$id == id
-    df$armed[hit] <- TRUE
-    df$status[hit] <- "armed"
-    price_alert_write(df)
     pa_refresh(isolate(pa_refresh()) + 1L)
   })
 

@@ -367,7 +367,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Set YNOW_SMTP_USER, YNOW_SMTP_PASSWORD, and YNOW_SMTP_SERVER (default smtps://smtp.gmail.com:465). ",
       "Right-click or long-press a ready KPI (bell mark) to set a rule quickly. ",
       "Values that need Search/Run stay locked until they are calculated. ",
-      "A fired rule stays off until you arm it again. Trigger history is kept below."
+      "A rule stays on until you turn its switch off. It notifies again only after the condition clears and is met once more. Trigger history is kept below."
     ),
     pa_email = "Email",
     pa_email_account_help = paste0(
@@ -383,7 +383,6 @@ locale_for_market <- function(mode = get_market_mode()) {
     pa_save = "Save rule",
     pa_check = "Check now",
     pa_delete = "Delete selected",
-    pa_rearm = "Arm again",
     pa_notify_app = "Notify in app",
     pa_notify_email = "Notify by email",
     pa_no_channel = "Turn on App toast and/or email.",
@@ -3932,7 +3931,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "請設定 YNOW_SMTP_USER、YNOW_SMTP_PASSWORD，以及 YNOW_SMTP_SERVER（預設 smtps://smtp.gmail.com:465）。",
       "在已就緒、帶鈴鐺標記的數值框上按右鍵或長按可快捷設定。",
       "需先按 Search／Run 才算出的數值，未就緒時無法快捷設定通知。",
-      "觸發後該規則會停用，要再通知請重新啟用。觸發紀錄見下方。"
+      "規則會維持啟用，直到你關掉該列的開關。條件解除後再次成立才會再通知。觸發紀錄見下方。"
     ),
     pa_email = "電子郵件",
     pa_email_account_help = paste0(
@@ -3948,7 +3947,6 @@ locale_for_market <- function(mode = get_market_mode()) {
     pa_save = "儲存規則",
     pa_check = "立即檢查",
     pa_delete = "刪除所選",
-    pa_rearm = "重新啟用",
     pa_notify_app = "App 內通知",
     pa_notify_email = "Email 通知",
     pa_no_channel = "請至少開啟 App 內通知或 Email。",
