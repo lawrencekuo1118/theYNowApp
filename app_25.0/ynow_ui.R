@@ -6522,15 +6522,39 @@ ui <- dashboardPage(
         .skin-black .sidebar-menu > li.menu-open > a {
           color: #ffffff !important;
         }
-        /* Locked sidebar items stay visible, with light-gray labels. */
+        /* Locked sidebar items stay visible, with light-gray labels + icons. */
         .skin-black .main-sidebar .sidebar-menu li.ynow-access-locked-nav > a,
         .skin-black .main-sidebar .sidebar-menu li.ynow-access-locked-nav > a:hover,
         .skin-black .main-sidebar .sidebar-menu li.ynow-access-locked-nav > a:focus,
         body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .skin-black .main-sidebar .sidebar-menu a:has(.ynow-menu-lock),
         body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .skin-black .main-sidebar .sidebar-menu a:has(.ynow-menu-lock):hover,
-        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .skin-black .main-sidebar .sidebar-menu a:has(.ynow-menu-lock):focus {
+        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .skin-black .main-sidebar .sidebar-menu a:has(.ynow-menu-lock):focus,
+        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .skin-black .main-sidebar .sidebar-menu li.treeview:has(a:has(.ynow-menu-lock)) > a,
+        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .skin-black .main-sidebar .sidebar-menu li.treeview:has(a:has(.ynow-menu-lock)) > a:hover,
+        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .skin-black .main-sidebar .sidebar-menu li.treeview:has(a:has(.ynow-menu-lock)) > a:focus {
           color: #a3a3a3 !important;
           opacity: 1;
+        }
+        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .skin-black .main-sidebar .sidebar-menu a:has(.ynow-menu-lock) > i,
+        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .skin-black .main-sidebar .sidebar-menu li.treeview:has(a:has(.ynow-menu-lock)) > a > i {
+          color: #a3a3a3 !important;
+        }
+        /* Guest PDF download: muted / light-gray locked control (lock icon via JS). */
+        body.ynow-auth-feature:not(.ynow-authed) .ynow-sidebar-download-wrap #download_report,
+        body.ynow-auth-feature:not(.ynow-authed) .ynow-sidebar-download-btn {
+          background-color: #2e2e2e !important;
+          color: #a3a3a3 !important;
+          border-color: #666666 !important;
+          box-shadow: none !important;
+        }
+        body.ynow-auth-feature:not(.ynow-authed) .ynow-sidebar-download-wrap #download_report:hover,
+        body.ynow-auth-feature:not(.ynow-authed) .ynow-sidebar-download-btn:hover {
+          background-color: #353535 !important;
+          color: #b8b8b8 !important;
+          border-color: #777777 !important;
+        }
+        body.ynow-auth-feature:not(.ynow-authed) .ynow-download-report-quota {
+          color: #a3a3a3;
         }
         .label-primary, .badge-primary {
           background-color: var(--ynow-ink) !important;
@@ -9852,7 +9876,9 @@ ui <- dashboardPage(
             var loginTabs = {
               lab_notes: true,
               decision_checklist: true,
-              price_alerts: true
+              price_alerts: true,
+              account_admin: true,
+              account_points: true
             };
             if (loginTabs[tab]) {
               var lock = document.createElement('i');
