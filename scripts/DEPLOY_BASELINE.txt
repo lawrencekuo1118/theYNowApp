@@ -7,4 +7,4 @@ commit=4d52dbd3c098f8017f5b51da7fcbf5c49843cfc7
 short=4d52dbd
 message=chore: bump display version to v25.41
 captured_at=2026-10-18T06:37:01Z
-display_version=v25.41
+display_version=v25.42
