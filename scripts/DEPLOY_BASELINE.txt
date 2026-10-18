@@ -7,4 +7,4 @@ commit=a3874693cc2d54a343e0bafaeb5f6c95a41a85dd
 short=a387469
 message=chore: bump display version to v25.38
 captured_at=2026-10-18T05:51:07Z
-display_version=v25.38
+display_version=v25.39
