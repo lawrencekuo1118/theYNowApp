@@ -185,8 +185,15 @@ check(
   grepl('embed = c\\("standalone", "bluechip"\\)', scr_src, perl = TRUE)
 )
 check(
+  "screen rows are added from Value Alerts settings",
+  grepl('actionButton\\("scr_add"', pa_txt) &&
+    !grepl("scr_alert_kind", scr_src, fixed = TRUE) &&
+    grepl("input\\$pa_kind", scr_src) &&
+    grepl("input\\$pa_level", scr_src)
+)
+check(
   "locale has tab_im_screener both sides",
-  identical(.UI_STRINGS$en$tab_im_screener, "Custom screen") &&
+  identical(.UI_STRINGS$en$tab_im_screener, "Custom Screen") &&
     identical(.UI_STRINGS$`zh-TW`$tab_im_screener, "自訂選股")
 )
 

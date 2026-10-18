@@ -61,6 +61,10 @@ When unsure: use the **English term** + brief Taiwan Chinese gloss on first ment
 2. 字串必須進 `app_25.0/ui_locale.R` 的 `.UI_STRINGS$en` / `.UI_STRINGS$zh-TW`（同一 key），再經 `ui_str`、`.push_ui_locale`、市場→locale 推送，以及前端 `applyUiLocale` / `ynowUiLocale` 套用。
 3. **禁止**只硬編碼單一語言；僅財經專有名詞維持正式英文（WACC、FCFF、MOS…）可例外。詳見 `.cursor/rules/i18n-after-feature.mdc`。
 
+## Lite free features stay open
+
+Lite 免費就能用的功能，完整版**不能**鎖上（登入閘、選單鎖、`ynow-full-only` 藏起來、或付費旗標都不行）。若設定上必須鎖完整版、而 Lite 仍開放，**先提醒使用者 Lite 還開著**，等確認再改。詳見 `.cursor/rules/lite-free-stays-open.mdc`。
+
 ## Testing
 
 - **Debug = auto-verify (required):** on any bugfix / debug session, run targeted verification tests automatically before claiming done. Do not wait for the user to ask. See `.cursor/rules/auto-verify-on-debug.mdc`.

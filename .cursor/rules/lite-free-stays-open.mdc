@@ -1,0 +1,19 @@
+---
+description: Lite-free features must stay unlocked in the full app
+alwaysApply: true
+---
+
+# Lite free features stay open in the full app
+
+Lite is the free surface. Anything a Lite user can open or use without signing in must stay available in the full app.
+
+## Do
+
+- Before adding a lock (login gate, `ynow-menu-lock`, `ynow-full-only` hide, auth redirect, or a paid-only flag), check whether Lite still shows that tab, control, or result.
+- If the full app must lock it and Lite still leaves it open, **stop and tell the user** in the same turn: name the Lite path that remains free, and do not ship the lock until they confirm.
+- Keep the two surfaces consistent: a Lite-free feature is either open in both, or the user has explicitly accepted that Lite stays open while the full app is locked.
+
+## Do not
+
+- Hide or gate a feature in the full app that Lite still renders (`body.ynow-lite`, `ynow-lite-only`, or an unlocked sidebar item).
+- Treat “full app” as the stricter product by default. Lite-free is the floor.

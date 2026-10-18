@@ -9,8 +9,9 @@
 #   YNOW_POINTS_PRICE_ALERT_SLOT / HFV_RUN / BT_RUN  (optional overrides)
 #   YNOW_POINTS_BACKEND=memory  (tests / no Neon)
 #
-# SKUs (v1): alert_slot=1, hfv_run=3, bt_run=5 — spent from FYN.
-# Lite never spends points. Spend is server-side only (idempotent ref_id).
+# SKUs (v1): alert_slot=1, hfv_run=3, bt_run=5, pdf_report=10 — spent from FYN.
+# Lite never spends points except the valuation PDF (login, 3 free / Taipei day, then 10 FYN).
+# Spend is server-side only (idempotent ref_id).
 # Legacy single `points_balance` migrates into FYN (no paid evidence → FYN).
 
 .ynow_points_mem <- new.env(parent = emptyenv())
@@ -93,15 +94,19 @@ ynow_points_catalog_defaults <- function() {
     if (is.finite(n) && n >= 0L) as.integer(n) else as.integer(default)
   }
   data.frame(
-    sku = c("alert_slot", "hfv_run", "bt_run"),
-    title_en = c("Value Alert slot", "HFV full recalculation", "Backtest full run"),
-    title_zh_tw = c("到值通知一筆", "HFV 完整重算", "回測完整執行"),
+    sku = c("alert_slot", "hfv_run", "bt_run", "pdf_report"),
+    title_en = c(
+      "Value Alert slot", "HFV full recalculation", "Backtest full run",
+      "Valuation report (PDF)"
+    ),
+    title_zh_tw = c("到值通知一筆", "HFV 完整重算", "回測完整執行", "估值報告（PDF）"),
     cost = c(
       env_cost("YNOW_POINTS_PRICE_ALERT_SLOT", 1L),
       env_cost("YNOW_POINTS_PRICE_HFV_RUN", 3L),
-      env_cost("YNOW_POINTS_PRICE_BT_RUN", 5L)
+      env_cost("YNOW_POINTS_PRICE_BT_RUN", 5L),
+      env_cost("YNOW_POINTS_PRICE_PDF_REPORT", 10L)
     ),
-    enabled = c(TRUE, TRUE, TRUE),
+    enabled = c(TRUE, TRUE, TRUE, TRUE),
     stringsAsFactors = FALSE
   )
 }
@@ -439,6 +444,14 @@ ynow_points_ensure_schema <- function(conn = NULL) {
         mode TEXT NOT NULL DEFAULT 'per_use'
       )
     ")
+    DBI::dbExecute(con, "
+      CREATE TABLE IF NOT EXISTS ynow_pdf_quota (
+        user_id TEXT NOT NULL,
+        day_key TEXT NOT NULL,
+        free_used INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (user_id, day_key)
+      )
+    ")
     defs <- ynow_points_catalog_defaults()
     for (i in seq_len(nrow(defs))) {
       DBI::dbExecute(
@@ -515,7 +528,9 @@ ynow_points_ensure_schema <- function(conn = NULL) {
   )
   bal_col <- if (identical(w, "pyn")) "pyn_balance" else "fyn_balance"
 
-  ynow_db_with(function(con) {
+  # con is a checked-out DBI connection (not Pool) — dbWithTransaction works.
+  # Nested balances/idempotent reads reuse the same checkout via ynow_db_with stack.
+  out <- ynow_db_with(function(con) {
     ynow_points_ensure_schema(con)
     prev <- DBI::dbGetQuery(
       con,
@@ -525,7 +540,18 @@ ynow_points_ensure_schema <- function(conn = NULL) {
       params = list(uid, ref)
     )
     if (is.data.frame(prev) && nrow(prev) >= 1L) {
-      bals <- .ynow_points_neon_balances(uid)
+      # Same connection — avoid nested checkout / second pool slot.
+      bals_df <- DBI::dbGetQuery(
+        con,
+        "SELECT COALESCE(fyn_balance, 0) AS fyn, COALESCE(pyn_balance, 0) AS pyn
+           FROM ynow_users WHERE id = $1::uuid LIMIT 1",
+        params = list(uid)
+      )
+      bals <- if (is.data.frame(bals_df) && nrow(bals_df) >= 1L) {
+        list(fyn = as.integer(bals_df$fyn[[1]]), pyn = as.integer(bals_df$pyn[[1]]))
+      } else {
+        list(fyn = NA_integer_, pyn = NA_integer_)
+      }
       return(list(
         ok = TRUE,
         balance = as.integer(prev$balance_after[[1]]),
@@ -579,8 +605,9 @@ ynow_points_ensure_schema <- function(conn = NULL) {
       list(ok = TRUE, balance = new_bal, fyn = fyn, pyn = pyn, wallet = w,
            message_key = "pts_msg_ok", delta = dlt)
     })
-  }) %||% list(ok = FALSE, balance = NA_integer_, fyn = NA_integer_, pyn = NA_integer_,
-               message_key = "pts_msg_backend")
+  })
+  out %||% list(ok = FALSE, balance = NA_integer_, fyn = NA_integer_, pyn = NA_integer_,
+                message_key = "pts_msg_backend")
 }
 
 .ynow_points_neon_ledger_empty <- function() {
@@ -702,6 +729,7 @@ ynow_points_credit <- function(user_id, delta, reason = "adjust", ref_id = NULL,
 }
 
 #' Admin adjust: add or subtract FYN and/or PYN in one call (separate ledger refs).
+#' Re-reads balances after credit; fails if expected deltas are not reflected (no silent OK).
 ynow_points_admin_adjust <- function(user_id, fyn_delta = 0L, pyn_delta = 0L,
                                      note = "", by = "testing_admin") {
   uid <- as.character(user_id %||% "")[1]
@@ -713,10 +741,10 @@ ynow_points_admin_adjust <- function(user_id, fyn_delta = 0L, pyn_delta = 0L,
   pd <- suppressWarnings(as.integer(pyn_delta)[1])
   if (!is.finite(fd)) fd <- 0L
   if (!is.finite(pd)) pd <- 0L
+  before <- ynow_points_balances(uid)
   if (identical(fd, 0L) && identical(pd, 0L)) {
-    bals <- ynow_points_balances(uid)
     return(list(ok = FALSE, message_key = "pts_msg_bad_delta",
-                fyn = bals$fyn, pyn = bals$pyn))
+                fyn = before$fyn, pyn = before$pyn))
   }
   stamp <- paste0(
     as.integer(as.numeric(Sys.time())), ":",
@@ -757,9 +785,31 @@ ynow_points_admin_adjust <- function(user_id, fyn_delta = 0L, pyn_delta = 0L,
       ))
     }
   }
+  # Post-write verify against the same backend the credit used (DB or memory).
   bals <- ynow_points_balances(uid)
-  list(ok = TRUE, message_key = "pts_msg_ok", fyn = bals$fyn, pyn = bals$pyn,
-       fyn_delta = fd, pyn_delta = pd)
+  bf <- suppressWarnings(as.integer(before$fyn %||% NA_integer_)[1])
+  bp <- suppressWarnings(as.integer(before$pyn %||% NA_integer_)[1])
+  af <- suppressWarnings(as.integer(bals$fyn %||% NA_integer_)[1])
+  ap <- suppressWarnings(as.integer(bals$pyn %||% NA_integer_)[1])
+  expect_fyn <- if (is.finite(bf)) bf + fd else NA_integer_
+  expect_pyn <- if (is.finite(bp)) bp + pd else NA_integer_
+  ok_fyn <- identical(fd, 0L) || (is.finite(af) && is.finite(expect_fyn) && identical(af, expect_fyn))
+  ok_pyn <- identical(pd, 0L) || (is.finite(ap) && is.finite(expect_pyn) && identical(ap, expect_pyn))
+  if (!isTRUE(ok_fyn) || !isTRUE(ok_pyn)) {
+    return(list(
+      ok = FALSE,
+      message_key = "pts_msg_backend",
+      fyn = bals$fyn,
+      pyn = bals$pyn,
+      verified = FALSE,
+      fyn_delta = fd,
+      pyn_delta = pd
+    ))
+  }
+  list(
+    ok = TRUE, message_key = "pts_msg_ok", fyn = bals$fyn, pyn = bals$pyn,
+    fyn_delta = fd, pyn_delta = pd, verified = TRUE
+  )
 }
 
 #' Spend FYN for a SKU (negative delta = cost). Idempotent on ref_id.
@@ -798,12 +848,30 @@ ynow_points_ledger_all <- function(user_id) {
   ynow_points_ledger_tail(user_id, n = NULL)
 }
 
-#' De-identified user list for Testing-tab system admin.
+#' De-identified user list for system-admin portal.
 ynow_points_admin_list_users <- function() {
   if (ynow_points_uses_db()) {
     return(.ynow_points_neon_list_users())
   }
   .ynow_points_mem_list_users()
+}
+
+#' Expected system-admin portal password for `when` (Asia/Taipei YYYYMMDD).
+#' Dynamic — never a fixed hardcoded secret. Same TZ as daily check-in.
+ynow_sysadmin_expected_password <- function(when = Sys.time()) {
+  format(as.POSIXlt(when, tz = ynow_points_tz()), "%Y%m%d")
+}
+
+#' Validate dedicated sysadmin portal credentials (not end-user Email login).
+#' Username must be `ynow`; password = Asia/Taipei calendar date as YYYYMMDD.
+#' Never logs the password. Returns list(ok=TRUE/FALSE) only.
+ynow_sysadmin_validate_login <- function(username, password, when = Sys.time()) {
+  u <- tolower(trimws(as.character(username %||% "")[1]))
+  p <- as.character(password %||% "")[1]
+  user_ok <- identical(u, "ynow")
+  expect <- ynow_sysadmin_expected_password(when)
+  pass_ok <- identical(p, expect)
+  list(ok = isTRUE(user_ok) && isTRUE(pass_ok))
 }
 
 #' Resolve internal user_id from opaque public_id (admin UI).
@@ -967,4 +1035,147 @@ ynow_points_user_id <- function(auth_or_user) {
   }
   u <- tryCatch(auth_or_user$user(), error = function(e) NULL)
   as.character(u$id %||% "")[1]
+}
+
+# Valuation PDF: 3 free downloads per Asia/Taipei day, then sku pdf_report (10 FYN).
+# Charged even when YNOW_POINTS_ENABLED is off. Login is enforced by the download handler.
+
+.ynow_pdf_quota <- new.env(parent = emptyenv())
+
+ynow_pdf_free_per_day <- function() {
+  n <- suppressWarnings(as.integer(Sys.getenv("YNOW_PDF_FREE_PER_DAY", unset = "3")))
+  if (!is.finite(n) || n < 0L) 3L else as.integer(n)
+}
+
+ynow_pdf_reset_memory <- function() {
+  .ynow_pdf_quota$used <- new.env(parent = emptyenv())
+  invisible(TRUE)
+}
+ynow_pdf_reset_memory()
+
+.ynow_pdf_key <- function(user_id, day) {
+  paste0(as.character(user_id)[1], "|", as.character(day)[1])
+}
+
+.ynow_pdf_mem_used <- function(user_id, day) {
+  key <- .ynow_pdf_key(user_id, day)
+  n <- .ynow_pdf_quota$used[[key]]
+  if (is.null(n) || !is.finite(n)) 0L else as.integer(n)
+}
+
+.ynow_pdf_try_free <- function(user_id, day, limit) {
+  uid <- as.character(user_id %||% "")[1]
+  day <- as.character(day)[1]
+  limit <- as.integer(limit)[1]
+  if (isTRUE(ynow_points_uses_db()) && exists("ynow_db_with", mode = "function")) {
+    df <- ynow_db_with(function(con) {
+      DBI::dbGetQuery(
+        con,
+        paste(
+          "INSERT INTO ynow_pdf_quota (user_id, day_key, free_used)",
+          "VALUES ($1, $2, 1)",
+          "ON CONFLICT (user_id, day_key) DO UPDATE",
+          "SET free_used = ynow_pdf_quota.free_used + 1",
+          "WHERE ynow_pdf_quota.free_used < $3",
+          "RETURNING free_used"
+        ),
+        params = list(uid, day, limit)
+      )
+    })
+    if (is.data.frame(df) && nrow(df) >= 1L) {
+      used <- as.integer(df$free_used[[1]])
+      return(list(ok = TRUE, used = used, left = max(0L, limit - used)))
+    }
+    return(list(ok = FALSE, used = limit, left = 0L))
+  }
+  used <- .ynow_pdf_mem_used(uid, day)
+  if (used >= limit) return(list(ok = FALSE, used = used, left = 0L))
+  used <- used + 1L
+  .ynow_pdf_quota$used[[.ynow_pdf_key(uid, day)]] <- used
+  list(ok = TRUE, used = used, left = max(0L, limit - used))
+}
+
+.ynow_pdf_release_free <- function(user_id, day) {
+  uid <- as.character(user_id %||% "")[1]
+  day <- as.character(day)[1]
+  if (isTRUE(ynow_points_uses_db()) && exists("ynow_db_with", mode = "function")) {
+    ynow_db_with(function(con) {
+      DBI::dbExecute(
+        con,
+        "UPDATE ynow_pdf_quota SET free_used = GREATEST(free_used - 1, 0)
+          WHERE user_id = $1 AND day_key = $2",
+        params = list(uid, day)
+      )
+    })
+    return(invisible(TRUE))
+  }
+  used <- .ynow_pdf_mem_used(uid, day)
+  .ynow_pdf_quota$used[[.ynow_pdf_key(uid, day)]] <- max(0L, used - 1L)
+  invisible(TRUE)
+}
+
+#' Reserve one PDF download: free slot, else spend pdf_report.
+#' `day` is Asia/Taipei YYYY-MM-DD (tests may pass a fixed day).
+ynow_pdf_claim <- function(user_id, day = NULL) {
+  uid <- as.character(user_id %||% "")[1]
+  if (!nzchar(uid)) {
+    return(list(ok = FALSE, kind = "login", message_key = "pdf_need_login"))
+  }
+  if (is.null(day) || !nzchar(as.character(day)[1])) day <- ynow_points_taipei_day()
+  day <- as.character(day)[1]
+  limit <- ynow_pdf_free_per_day()
+  if (isTRUE(ynow_points_uses_db())) {
+    tryCatch(ynow_points_ensure_schema(), error = function(e) NULL)
+  }
+  free <- .ynow_pdf_try_free(uid, day, limit)
+  if (isTRUE(free$ok)) {
+    return(list(
+      ok = TRUE, kind = "free", user_id = uid, day = day,
+      used = free$used, limit = limit, left = free$left,
+      message_key = "pdf_free_ok_fmt"
+    ))
+  }
+  ref <- paste0(
+    "pdf:", uid, ":", day, ":",
+    format(Sys.time(), "%Y%m%d%H%M%OS3"), ":",
+    paste(sample(c(letters, 0:9), 4L, replace = TRUE), collapse = "")
+  )
+  res <- ynow_points_try_spend(uid, "pdf_report", ref, meta = list(day = day))
+  if (isTRUE(res$ok)) {
+    return(list(
+      ok = TRUE, kind = "paid", user_id = uid, day = day, ref_id = ref,
+      cost = ynow_points_sku_cost("pdf_report"),
+      fyn = res$fyn %||% res$balance,
+      message_key = "pdf_paid_ok_fmt"
+    ))
+  }
+  list(
+    ok = FALSE, kind = "paid", user_id = uid, day = day,
+    message_key = res$message_key %||% "pts_msg_insufficient",
+    fyn = res$fyn %||% res$balance,
+    cost = ynow_points_sku_cost("pdf_report")
+  )
+}
+
+#' Give back a free slot or refund FYN when PDF rendering fails.
+ynow_pdf_release <- function(ticket) {
+  if (!is.list(ticket) || !isTRUE(ticket$ok)) return(invisible(FALSE))
+  if (identical(ticket$kind, "free")) {
+    .ynow_pdf_release_free(ticket$user_id, ticket$day)
+    return(invisible(TRUE))
+  }
+  if (identical(ticket$kind, "paid") && nzchar(as.character(ticket$ref_id %||% "")[1])) {
+    cost <- as.integer(ticket$cost %||% ynow_points_sku_cost("pdf_report"))
+    if (is.finite(cost) && cost > 0L) {
+      ynow_points_credit(
+        ticket$user_id,
+        delta = cost,
+        reason = "pdf_refund",
+        ref_id = paste0("refund:", ticket$ref_id),
+        sku = "pdf_report",
+        wallet = "fyn"
+      )
+    }
+  }
+  invisible(TRUE)
 }

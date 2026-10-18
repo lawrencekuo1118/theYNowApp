@@ -367,7 +367,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Set YNOW_SMTP_USER, YNOW_SMTP_PASSWORD, and YNOW_SMTP_SERVER (default smtps://smtp.gmail.com:465). ",
       "Right-click or long-press a ready KPI (bell mark) to set a rule quickly. ",
       "Values that need Search/Run stay locked until they are calculated. ",
-      "A fired rule stays off until you arm it again. Trigger history is kept below."
+      "A rule stays on until you turn its switch off. It notifies again only after the condition clears and is met once more. Trigger history is kept below."
     ),
     pa_email = "Email",
     pa_email_account_help = paste0(
@@ -383,7 +383,6 @@ locale_for_market <- function(mode = get_market_mode()) {
     pa_save = "Save rule",
     pa_check = "Check now",
     pa_delete = "Delete selected",
-    pa_rearm = "Arm again",
     pa_notify_app = "Notify in app",
     pa_notify_email = "Notify by email",
     pa_no_channel = "Turn on App toast and/or email.",
@@ -427,7 +426,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     pa_quick_not_ready = "This value is not ready. Run Search/Run first, then set the alert.",
     pa_app_triggered = "Value alert triggered.",
     pa_col_screen = "Screen",
-    scr_title = "Custom screen",
+    scr_title = "Custom Screen",
     scr_help = paste0(
       "Drag conditions from the left into the workspace (or press >). ",
       "Every selected card must pass (AND). Fields come from the bundled US / Taiwan snapshots: ",
@@ -475,7 +474,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     scr_card_f_pb = "P/B ≤ level",
     scr_card_f_market_cap_bn = "Market cap (USD bn) ≥ level",
     scr_card_f_ret_1y_pct = "1-year return (%) ≥ level",
-    scr_add = "Add selected to value alerts",
+    scr_add = "Add selected Custom Screen rows",
+    scr_from_screen_help = "Select rows on Blue Chip → Custom Screen, then use the condition, target, MOS, note, and notify choices on this page. The screen label is stored on each rule.",
+    scr_price_kind_only = "Custom Screen rows can use a price, daily-change, or fair-value condition from this page.",
     scr_alert_kind = "Alert when",
     scr_alert_level = "Alert level",
     scr_idle = "Run a screen to list names.",
@@ -512,6 +513,10 @@ locale_for_market <- function(mode = get_market_mode()) {
       "and API resources, applying comprehensive models for valuation."
     ),
     download_report = "Download Report (PDF)",
+    pdf_quota_hint = "Sign-in required. Three free downloads each Asia/Taipei day; each extra download costs 10 FYN.",
+    pdf_need_login = "Sign in to download the valuation report (PDF).",
+    pdf_free_ok_fmt = "Free PDF download (%s of %s today).",
+    pdf_paid_ok_fmt = "PDF download charged %s FYN (balance %s).",
     download_report_about = paste0(
       "One-Click Investment Reports: Compiles ticker-only valuation (DCF／DDM／RI／P/B), ",
       "KPIs, MOS, F-Score, and WACC×g sensitivity into a broker-style PDF — ",
@@ -521,12 +526,13 @@ locale_for_market <- function(mode = get_market_mode()) {
     snapshot_page_title = "Snapshot",
     snapshot_page_help = paste0(
       "Three tabs: manual adjustments vs the post-Search baseline (with annotated PDF); ",
-      "current live parameters (download / upload restore CSV); and APP_DEFAULTS."
+      "current live parameters (download / upload restore CSV); and APP_DEFAULTS ",
+      "(visible only after System admin unlock)."
     ),
     snapshot_page_help_lite = paste0(
-      "Lite shows only System defaults for parameters you can set in Lite ",
-      "(Dashboard industry / currency / default ticker, Blue Chip ranking and Clustering). ",
-      "Manual audit and live snapshot restore stay in Full mode."
+      "Lite can show System defaults (APP_DEFAULTS) for parameters you can set in Lite ",
+      "(Dashboard industry / currency / default ticker, Blue Chip ranking and Clustering) ",
+      "after System admin unlock. Manual audit and live snapshot restore stay in Full mode."
     ),
     snapshot_tab_audit = "Manual adjustments (vs post-Search baseline)",
     snapshot_tab_current = "Current App Parameter Snapshot",
@@ -539,6 +545,11 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Only parameters Lite can set (Dashboard industry / currency / default ticker, ",
       "plus Blue Chip ranking and Clustering). Smart Analysis engine seeds and Full-only ",
       "model parameters are hidden here."
+    ),
+    snapshot_defaults_locked = paste0(
+      "System defaults (APP_DEFAULTS) require System admin unlock ",
+      "(same session as Points → System admin). ",
+      "After Exit system admin, this tab locks again."
     ),
     download_snapshot_btn = "Download Snapshot CSV",
     download_param_restore_btn = "Download restore CSV",
@@ -788,7 +799,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Account sign-in is on by default (set YNOW_ENABLE_ACCOUNT_LOGIN=0 to disable). ",
       "Anyone may self-register with Google, Facebook, LinkedIn, or Email — no per-user admin approval. ",
       "Account store: Postgres via YNOW_DB_* (own users table; e.g. Neon Free or Supabase pooler). ",
-      "Full-mode Value Alerts require sign-in; email notify defaults to the registered mailbox. ",
+      "Full mode requires sign-in for Quantitative Backtest Lab, Decision Checklist, and Value Alerts; email notify defaults to the registered mailbox. ",
       "Lite mode stays fully usable without an account."
     ),
     menu_admin = "Account",
@@ -865,15 +876,23 @@ locale_for_market <- function(mode = get_market_mode()) {
     pts_login_reset_fmt = "Welcome gift / check-in applied (balances are not reset).",
     pts_login_reset_note = "Balances persist across logins. New accounts get 100 FYN once; daily check-in adds +30 FYN (Asia/Taipei).",
     auth_admin_tool_points = "Points: FYN (free) and PYN (paid) are stored separately; every change is in the ledger — open Points ledger for history.",
-    pts_sysadmin_title = "System admin (points)",
+    pts_sysadmin_title = "System admin",
     pts_sysadmin_intro = paste0(
-      "Dedicated Testing entry — no separate account or password. ",
+      "Dedicated system-admin login (separate from end-user Email sign-in). ",
       "Users are listed with opaque ids only (no raw email, name, or phone). ",
-      "Adjust FYN / PYN; changes persist and match what the user sees after sign-in."
+      "Adjust FYN / PYN; changes persist and match what the user sees after sign-in. ",
+      "Switch view replays that user’s persisted settings in the live UI. ",
+      "Item locks can close a tab, a section, a numeric input, or a report for one user."
     ),
     pts_sysadmin_enter = "Enter system admin",
     pts_sysadmin_exit = "Exit system admin",
     pts_sysadmin_refresh = "Refresh user list",
+    pts_sysadmin_login_user = "Username",
+    pts_sysadmin_login_pass = "Password",
+    pts_sysadmin_login_ok = "System admin unlocked.",
+    pts_sysadmin_login_bad = "Invalid system-admin username or password.",
+    pts_sysadmin_need_enter = "Sign in with the system-admin username and password to load the de-identified user list.",
+    pts_sysadmin_loading = "Loading de-identified users…",
     pts_sysadmin_users = "Users (de-identified)",
     pts_sysadmin_col_id = "User id",
     pts_sysadmin_col_fyn = "FYN",
@@ -887,7 +906,46 @@ locale_for_market <- function(mode = get_market_mode()) {
     pts_sysadmin_pyn_delta = "PYN change (+/−)",
     pts_sysadmin_note = "Note (optional)",
     pts_sysadmin_apply = "Apply change",
+    access_lock_title = "Item locks",
+    access_lock_help = paste0(
+      "Choose Lock (show a locked placeholder) or Hide (remove from the UI), ",
+      "then apply to the selected user or all users. ",
+      "Per-user rules override all-users rules for the same item. ",
+      "Clear removes only the chosen scope. All-users also applies to guests."
+    ),
+    access_lock_item = "Item",
+    access_scope_label = "Apply to",
+    access_scope_user = "Selected user",
+    access_scope_all = "All users",
+    access_scope_user_short = "User",
+    access_scope_all_short = "All",
+    access_effect_label = "Restriction",
+    access_effect_lock = "Lock (show locked placeholder)",
+    access_effect_hide = "Hide (remove from UI)",
+    access_lock_btn = "Apply restriction",
+    access_unlock_btn = "Clear restriction",
+    access_locked_now = "Currently restricted",
+    access_none = "Nothing is restricted for this scope.",
+    access_ok_lock = "Item locked for this user.",
+    access_ok_hide = "Item hidden for this user.",
+    access_ok_unlock = "Restriction cleared for this user.",
+    access_ok_lock_all = "Item locked for all users.",
+    access_ok_hide_all = "Item hidden for all users.",
+    access_ok_unlock_all = "Restriction cleared for all users.",
+    access_bad_item = "Choose an item from the catalog.",
+    access_bad_user = "Select a user from the list.",
+    access_denied_report = "This report is locked for the signed-in account.",
+    access_pane_note = "This page is locked for the signed-in account. Ask a system admin to unlock it.",
     pts_sysadmin_ok = "Balances updated.",
+    pts_sysadmin_ok_verify_fmt = "Balances updated and verified (FYN %s, PYN %s).",
+    pts_sysadmin_verify_failed = "Balance change did not persist — check the points backend / database.",
+    pts_sysadmin_viewas = "Switch view",
+    pts_sysadmin_viewas_exit = "Exit user view",
+    pts_sysadmin_viewas_active = "User view active",
+    pts_sysadmin_viewas_active_hint = "Title Loading is silver. Banner, spend gates, and role follow this user’s DB state.",
+    pts_sysadmin_viewas_chrome_hint = "Title Loading is silver. Balances and spend gates follow this user.",
+    pts_sysadmin_viewas_toolbar_hint = "Use Switch view / Exit user view in the toolbar above.",
+    pts_sysadmin_viewas_ok_fmt = "Viewing as %s (de-identified).",
     pts_sysadmin_bad_user = "Select a user from the list.",
     pts_sysadmin_bad_delta = "Enter a non-zero whole-number change for FYN and/or PYN.",
     pts_sysadmin_empty = "No users in the database yet.",
@@ -899,24 +957,28 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Account database is not configured on this deployment ",
       "(missing YNOW_DB_* / YNOW_DATABASE_URL in app_25.0/.Renviron, ",
       "or RPostgres/pool not installed in the bundle). ",
-      "Testing admin reads the same ynow_users table as sign-in — without it the list stays empty."
+      "System admin reads the same ynow_users table as sign-in — without it the list stays empty."
     ),
     pts_sysadmin_backend_fmt = "Points backend: %s",
     auth_pa_gate_title = "Sign in required",
     auth_pa_gate_body = paste0(
-      "Value Alerts in Full mode require an account. ",
+      "Quantitative Backtest Lab, Decision Checklist, and Value Alerts ",
+      "require a signed-in account in Full mode. ",
       "Lite mode does not require sign-in and remains fully usable."
     ),
-    test_link = " Testing",
-    testing_page_title = "Testing",
+    test_link = " Sys. Admin",
+    testing_page_title = "System admin",
     testing_page_sub = paste0(
-      "Full-only sandbox for experiments. Lite mode hides this entry. ",
-      "Asset Transmission Root now lives in its own sidebar tab (after Macro & Market Trends)."
+      "Dedicated system-admin portal (Full mode). Lite hides this entry. ",
+      "Sign in with the portal credentials below, then manage points ",
+      "or switch to a de-identified user’s live view."
     ),
-    testing_box_title = "Sandbox",
+    testing_box_title = "System admin",
     testing_box_body = paste0(
-      "Use the sidebar entry Asset Transmission Root for the inflation → rates → liquidity → asset map. ",
-      "System admin for FYN / PYN points is below — dedicated entry, no separate account or password."
+      "This portal replaces the old Testing sandbox home. ",
+      "Adjust FYN / PYN, then use Switch view to open that user’s current UI ",
+      "(balances, spend gates, and other persisted account state). ",
+      "Title Loading turns silver while view-as is active."
     ),
     atx_page_title = "Asset Transmission Root",
     atx_page_sub = paste0(
@@ -1756,6 +1818,25 @@ locale_for_market <- function(mode = get_market_mode()) {
     bt_w_mom_hint = "With RSI forms the sentiment score, then mixes with Exp_A.",
     bt_w_rsi_label = "RSI relative weight",
     bt_w_rsi_hint = "Overbought lowers the sentiment target; oversold raises it.",
+    bt_news_on = "News sentiment factor",
+    bt_news_hint = paste0(
+      "Uses today's headline score only on the latest rebalance. ",
+      "Very negative news blocks an RSI oversold add; very positive news blocks an overbought cut. ",
+      "Earlier dates stay momentum / RSI."
+    ),
+    news_thermo_title = "Sentiment thermometer",
+    news_thermo_method = "Headline lexicon on every Yahoo Finance headline from the last 24 hours (cached 24 hours). Not a FinBERT score.",
+    news_thermo_n = "%d headlines in the last 24 hours",
+    news_thermo_empty = "No headlines for this ticker yet.",
+    news_thermo_pessimistic = "Pessimistic",
+    news_thermo_neutral = "Neutral",
+    news_thermo_optimistic = "Optimistic",
+    news_flag_title = "News red flags",
+    news_flag_management = "Management change",
+    news_flag_sec = "Regulatory investigation",
+    news_flag_lawsuit = "Lawsuit",
+    news_nudge_capex = "Headlines mention expansion or higher capital spending. Review the DCF CapEx ratio.",
+    news_nudge_dividend = "Headlines mention a special dividend or buyback. Review DDM D0 or the payout ratio.",
     bt_max_exp_label = "Max holding cap",
     bt_max_exp_hint = "Set to 1.00 to remove structural underweight vs buy-and-hold.",
     bt_min_exp_label = "Min holding after gate pass",
@@ -2605,7 +2686,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     notif_pdf_busy = "Generating ticker PDF investment report — please wait…",
     notif_pdf_ok = "✅ Ticker PDF investment report ready",
     notif_pdf_fail = "Report generation failed: {err}",
-    notif_test_opened = "Opened Testing",
+    notif_test_opened = "Opened System admin",
     notif_industry_catalog_fail = "Industry catalog load failed: {err}",
     notif_update_cache_fallback = "Update failed; using last cache / built-in snapshot.",
     notif_no_candidates = "No evaluable candidates under the current filters.",
@@ -2834,7 +2915,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     tab_im_filters = "Rankings",
     tab_im_detail = "Detail",
     tab_im_cluster = "Clustering",
-    tab_im_screener = "Custom screen",
+    tab_im_screener = "Custom Screen",
     tab_bt_fundamental = "Fundamental Strategy",
     tab_bt_sentiment = "Sentiment Strategy",
     lab_cluster_blurb = paste0(
@@ -3562,7 +3643,24 @@ locale_for_market <- function(mode = get_market_mode()) {
     notif_bblab_business_history_insufficient_years = paste0(
       "Fewer than two fiscal years of comparable revenue shares are available. ",
       "The five-year mix series is omitted; current mix, cards, and reconciliation remain."
-    )
+    ),
+    cookie_banner_body = paste0(
+      "To improve your experience, please allow this site to use cookies. ",
+      "Select Cookie settings to learn more and manage cookies on this site."
+    ),
+    cookie_settings_btn = "Cookie settings",
+    cookie_accept_all = "Accept all",
+    cookie_reject_optional = "Reject optional",
+    cookie_save = "Save settings",
+    cookie_panel_title = "Cookie settings",
+    cookie_necessary_label = "Necessary cookies",
+    cookie_necessary_hint = "Required for this site to work. Always on and cannot be turned off.",
+    cookie_analytics_label = "Analytics cookies",
+    cookie_analytics_hint = "Optional. Help us understand how this site is used.",
+    cookie_preferences_label = "Preference cookies",
+    cookie_preferences_hint = "Optional. Remember choices such as language on this device.",
+    cookie_always_on = "Always on",
+    cookie_reopen = "Cookie settings"
   ),
   `zh-TW` = list(
     recent_search = "最近搜尋：",
@@ -3874,7 +3972,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "請設定 YNOW_SMTP_USER、YNOW_SMTP_PASSWORD，以及 YNOW_SMTP_SERVER（預設 smtps://smtp.gmail.com:465）。",
       "在已就緒、帶鈴鐺標記的數值框上按右鍵或長按可快捷設定。",
       "需先按 Search／Run 才算出的數值，未就緒時無法快捷設定通知。",
-      "觸發後該規則會停用，要再通知請重新啟用。觸發紀錄見下方。"
+      "規則會維持啟用，直到你關掉該列的開關。條件解除後再次成立才會再通知。觸發紀錄見下方。"
     ),
     pa_email = "電子郵件",
     pa_email_account_help = paste0(
@@ -3890,7 +3988,6 @@ locale_for_market <- function(mode = get_market_mode()) {
     pa_save = "儲存規則",
     pa_check = "立即檢查",
     pa_delete = "刪除所選",
-    pa_rearm = "重新啟用",
     pa_notify_app = "App 內通知",
     pa_notify_email = "Email 通知",
     pa_no_channel = "請至少開啟 App 內通知或 Email。",
@@ -3982,7 +4079,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     scr_card_f_pb = "P/B ≤ 水準",
     scr_card_f_market_cap_bn = "市值（USD 十億）≥ 水準",
     scr_card_f_ret_1y_pct = "近一年報酬 (%) ≥ 水準",
-    scr_add = "將所選加入到值通知",
+    scr_add = "加入自訂選股已選標的",
+    scr_from_screen_help = "請先在 Blue Chip 的自訂選股勾選結果列，再用本頁的條件、目標值、MOS、備註與通知方式加入。選股條件會記在每一條規則上。",
+    scr_price_kind_only = "自訂選股的標的請用本頁的價格、日漲跌幅或公允價值條件。",
     scr_alert_kind = "通知條件",
     scr_alert_level = "通知水準",
     scr_idle = "執行選股後才會列出標的。",
@@ -4019,6 +4118,10 @@ locale_for_market <- function(mode = get_market_mode()) {
       "並套用完整估值模型。"
     ),
     download_report = "下載報告 (PDF)",
+    pdf_quota_hint = "需登入。每個台北時間日曆日可免費下載 3 次；超過後每次下載扣 10 FYN。",
+    pdf_need_login = "請先登入再下載估值報告（PDF）。",
+    pdf_free_ok_fmt = "免費下載 PDF（今日第 %s／%s 次）。",
+    pdf_paid_ok_fmt = "本次 PDF 下載已扣 %s FYN（餘額 %s）。",
     download_report_about = paste0(
       "一次產出投資意見報告：彙整個股估值（DCF／DDM／RI／P/B）、KPI、MOS、F-Score ",
       "與 WACC×g 敏感度為券商風格 PDF——不含同業排名或 Lab 宇宙敘事。"
@@ -4027,10 +4130,12 @@ locale_for_market <- function(mode = get_market_mode()) {
     snapshot_page_title = "快照 Snapshot",
     snapshot_page_help = paste0(
       "三個小頁籤：相對 Search 後基準的手改參數（含標記截圖 PDF）；",
-      "目前 App 執行中參數（可下載／上傳還原 CSV）；系統載入時 APP_DEFAULTS。"
+      "目前 App 執行中參數（可下載／上傳還原 CSV）；系統載入時 APP_DEFAULTS",
+      "（僅系統管理解鎖後可見）。"
     ),
     snapshot_page_help_lite = paste0(
-      "簡化版僅顯示目前介面可設定的系統預設參數（Dashboard 產業／幣別／預設代號，以及績優股排行與分群）。",
+      "簡化版可在系統管理解鎖後，顯示目前介面可設定的系統預設參數（APP_DEFAULTS）",
+      "（Dashboard 產業／幣別／預設代號，以及績優股排行與分群）。",
       "手改稽核與即時參數還原等完整版工具請切回完整版。"
     ),
     snapshot_tab_audit = "手改參數（相對 Search 後基準）",
@@ -4043,6 +4148,11 @@ locale_for_market <- function(mode = get_market_mode()) {
     snapshot_defaults_help_lite = paste0(
       "僅列出簡化版介面可設定的參數（Dashboard 產業／幣別／預設代號，以及績優股排行與分群）。",
       "智慧分析引擎種子與完整版模型參數於此隱藏。"
+    ),
+    snapshot_defaults_locked = paste0(
+      "系統預設參數（APP_DEFAULTS）需先進入系統管理後才可檢視",
+      "（與點數頁「系統管理」同一解鎖狀態）。",
+      "按「離開系統管理」後會再次鎖定。"
     ),
     download_snapshot_btn = "下載 Snapshot CSV",
     download_param_restore_btn = "下載還原 CSV",
@@ -4286,7 +4396,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "帳號登入預設啟用（設 YNOW_ENABLE_ACCOUNT_LOGIN=0 可關閉）。",
       "一般使用者可用 Google、Facebook、LinkedIn 或 Email 自行註冊，無需逐一後台開權限。",
       "帳號表：經 YNOW_DB_* 的 Postgres（自管 users；例如 Neon Free 或 Supabase pooler）。",
-      "完整版到值通知需登入；寄信預設註冊信箱。",
+      "完整版的量化回測實驗室、決策檢核、到值通知需登入；寄信預設註冊信箱。",
       "Lite 版無需帳號即可完整使用。"
     ),
     menu_admin = "帳號",
@@ -4362,15 +4472,23 @@ locale_for_market <- function(mode = get_market_mode()) {
     pts_login_reset_fmt = "已套用歡迎贈點／每日簽到（餘額不會重設）。",
     pts_login_reset_note = "餘額會跨登入保留。新帳號一次贈 100 FYN；每日簽到加 +30 FYN（Asia/Taipei）。",
     auth_admin_tool_points = "點數：FYN（免費）與 PYN（付費）分開儲存；所有異動皆入庫，完整紀錄請開「點數流水」。",
-    pts_sysadmin_title = "系統管理（點數）",
+    pts_sysadmin_title = "系統管理",
     pts_sysadmin_intro = paste0(
-      "Testing 專用入口——無需另設帳號或密碼。",
+      "系統管理專用登入（與一般使用者 Email 登入分開）。",
       "使用者清單僅顯示去識別化代號（不含原始 Email、姓名、電話）。",
-      "可加減 FYN／PYN；變更會持久化，並與該使用者登入後所見餘額一致。"
+      "可加減 FYN／PYN；變更會持久化，並與該使用者登入後所見餘額一致。",
+      "「切換檢視」會比照該使用者的持久化設定狀態復刻顯示。",
+      "項目鎖定可對單一使用者關閉分頁、區塊、數值框或報表。"
     ),
     pts_sysadmin_enter = "進入系統管理",
     pts_sysadmin_exit = "離開系統管理",
     pts_sysadmin_refresh = "重新整理使用者清單",
+    pts_sysadmin_login_user = "使用者名稱",
+    pts_sysadmin_login_pass = "密碼",
+    pts_sysadmin_login_ok = "已進入系統管理。",
+    pts_sysadmin_login_bad = "系統管理使用者名稱或密碼不正確。",
+    pts_sysadmin_need_enter = "請以系統管理使用者名稱與密碼登入，以載入去識別化使用者清單。",
+    pts_sysadmin_loading = "正在載入去識別化使用者…",
     pts_sysadmin_users = "使用者（去識別化）",
     pts_sysadmin_col_id = "使用者代號",
     pts_sysadmin_col_fyn = "FYN",
@@ -4384,7 +4502,46 @@ locale_for_market <- function(mode = get_market_mode()) {
     pts_sysadmin_pyn_delta = "PYN 變動（+/−）",
     pts_sysadmin_note = "備註（選填）",
     pts_sysadmin_apply = "套用變更",
+    access_lock_title = "項目鎖定",
+    access_lock_help = paste0(
+      "可選擇「鎖上」（顯示鎖定提示）或「隱藏」（自介面移除），",
+      "並套用到選定使用者或所有使用者。",
+      "同一項目若有個人規則，會覆寫「所有使用者」規則。",
+      "清除僅移除所選範圍；「所有使用者」亦套用至訪客。"
+    ),
+    access_lock_item = "項目",
+    access_scope_label = "套用對象",
+    access_scope_user = "選定使用者",
+    access_scope_all = "所有使用者",
+    access_scope_user_short = "個人",
+    access_scope_all_short = "全部",
+    access_effect_label = "限制方式",
+    access_effect_lock = "鎖上（顯示鎖定提示）",
+    access_effect_hide = "隱藏（自介面移除）",
+    access_lock_btn = "套用限制",
+    access_unlock_btn = "清除限制",
+    access_locked_now = "目前限制",
+    access_none = "此範圍沒有限制項目。",
+    access_ok_lock = "已為該使用者鎖上此項目。",
+    access_ok_hide = "已為該使用者隱藏此項目。",
+    access_ok_unlock = "已清除該使用者的此項限制。",
+    access_ok_lock_all = "已為所有使用者鎖上此項目。",
+    access_ok_hide_all = "已為所有使用者隱藏此項目。",
+    access_ok_unlock_all = "已清除所有使用者的此項限制。",
+    access_bad_item = "請從清單選擇項目。",
+    access_bad_user = "請從清單選擇使用者。",
+    access_denied_report = "此報表已對目前登入帳號鎖上。",
+    access_pane_note = "此分頁已對目前登入帳號鎖上。請洽系統管理員解鎖。",
     pts_sysadmin_ok = "餘額已更新。",
+    pts_sysadmin_ok_verify_fmt = "餘額已更新並核對（FYN %s、PYN %s）。",
+    pts_sysadmin_verify_failed = "餘額變更未寫入——請檢查點數後端／資料庫。",
+    pts_sysadmin_viewas = "切換檢視",
+    pts_sysadmin_viewas_exit = "結束使用者視角",
+    pts_sysadmin_viewas_active = "使用者視角啟用中",
+    pts_sysadmin_viewas_active_hint = "標題 Loading 改為銀色。橫幅、扣點閘門與角色改用此使用者的資料庫狀態。",
+    pts_sysadmin_viewas_chrome_hint = "標題 Loading 為銀色。餘額與扣點閘門依此使用者。",
+    pts_sysadmin_viewas_toolbar_hint = "請使用上方工具列的「切換檢視」／「結束使用者視角」。",
+    pts_sysadmin_viewas_ok_fmt = "已切換為 %s（去識別化）視角。",
     pts_sysadmin_bad_user = "請從清單選擇使用者。",
     pts_sysadmin_bad_delta = "請輸入非零整數，調整 FYN 與／或 PYN。",
     pts_sysadmin_empty = "資料庫尚無使用者。",
@@ -4396,24 +4553,26 @@ locale_for_market <- function(mode = get_market_mode()) {
       "此部署尚未設定帳號資料庫",
       "（缺少 app_25.0/.Renviron 的 YNOW_DB_*／YNOW_DATABASE_URL，",
       "或套件包未含 RPostgres／pool）。",
-      "Testing 系統管理讀取的是與登入相同的 ynow_users 表——未設定時清單會是空的。"
+      "系統管理讀取的是與登入相同的 ynow_users 表——未設定時清單會是空的。"
     ),
     pts_sysadmin_backend_fmt = "點數後端：%s",
     auth_pa_gate_title = "需登入帳號",
     auth_pa_gate_body = paste0(
-      "完整版的到值通知需登入帳號後才可使用。",
+      "完整版的量化回測實驗室、決策檢核、到值通知需登入帳號後才能使用。",
       "Lite 版無需登入，功能可完整使用。"
     ),
-    test_link = " 測試",
-    testing_page_title = "測試",
+    test_link = " Sys. Admin",
+    testing_page_title = "系統管理",
     testing_page_sub = paste0(
-      "完整版實驗沙盒；簡化版不顯示此入口。",
-      "資產傳導根系已獨立成側邊欄分頁（接在「總體經濟與大盤趨勢」之後）。"
+      "系統管理專用入口（完整版）；簡化版不顯示此入口。",
+      "請以入口憑證登入後管理點數，或切換至去識別化使用者的即時介面。"
     ),
-    testing_box_title = "沙盒",
+    testing_box_title = "系統管理",
     testing_box_body = paste0(
-      "通膨→利率→流動性→資產的傳導圖，請改用側邊欄「資產傳導根系」。",
-      "下方為 FYN／PYN 系統管理專用入口——無需另設帳號或密碼。"
+      "此入口已取代原 Testing 沙盒首頁。",
+      "可調整 FYN／PYN，再以「切換檢視」開啟該使用者目前介面",
+      "（餘額、扣點閘門與其他已持久化的帳號狀態）。",
+      "視角啟用時標題 Loading 改為銀色。"
     ),
     atx_page_title = "資產傳導根系",
     atx_page_sub = paste0(
@@ -5218,6 +5377,25 @@ locale_for_market <- function(mode = get_market_mode()) {
     bt_w_mom_hint = "與 RSI 組成情緒分數，再與 Exp_A 混合。",
     bt_w_rsi_label = "RSI 相對權重",
     bt_w_rsi_hint = "過熱降低情緒目標；超賣提高。",
+    bt_news_on = "新聞情緒因子",
+    bt_news_hint = paste0(
+      "只用今日標題分數調整最近一次再平衡。",
+      "消息極度悲觀時，不因 RSI 超賣加碼；極度樂觀時，不因 RSI 過熱減碼。",
+      "更早的日期仍只用動能／RSI。"
+    ),
+    news_thermo_title = "市場溫度計",
+    news_thermo_method = "近 24 小時內全部 Yahoo Finance 新聞標題的金融詞彙分數（快取 24 小時）。不是 FinBERT。",
+    news_thermo_n = "近 24 小時共 %d 則",
+    news_thermo_empty = "這檔股票目前沒有標題可評。",
+    news_thermo_pessimistic = "偏悲觀",
+    news_thermo_neutral = "中性",
+    news_thermo_optimistic = "偏樂觀",
+    news_flag_title = "消息面預警",
+    news_flag_management = "高層異動",
+    news_flag_sec = "監管調查",
+    news_flag_lawsuit = "訴訟",
+    news_nudge_capex = "標題出現擴廠或資本支出增加。請到 DCF 檢查 CapEx 佔營收比。",
+    news_nudge_dividend = "標題出現特別股息或庫藏股。請到 DDM 檢查 D0 或目標配息率。",
     bt_max_exp_label = "最大持股上限",
     bt_max_exp_hint = "拉到 1.00 可消除結構性少倉，利於貼近買進持有。",
     bt_min_exp_label = "通過條件後最低持股",
@@ -6043,7 +6221,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     notif_pdf_busy = "正在產出個股 PDF 投資意見報告，請稍候…",
     notif_pdf_ok = "✅ 個股 PDF 投資意見報告已產出",
     notif_pdf_fail = "報告產出失敗: {err}",
-    notif_test_opened = "已開啟 Testing",
+    notif_test_opened = "已開啟系統管理",
     notif_industry_catalog_fail = "產業目錄載入失敗: {err}",
     notif_update_cache_fallback = "更新失敗，沿用上次快取／內建快照。",
     notif_no_candidates = "目前篩選下沒有可評估的候選。",
@@ -6941,7 +7119,24 @@ locale_for_market <- function(mode = get_market_mode()) {
     notif_bblab_business_history_insufficient_years = paste0(
       "可比較的營收佔比不足兩個會計年度，因此不呈現五年結構佔比序列。",
       "當期組成、事業卡片與對帳仍保留。"
-    )
+    ),
+    cookie_banner_body = paste0(
+      "為增進您的使用體驗，請允許本網站使用您的 Cookie。",
+      "點選「Cookie 設定」了解更多資訊並管理本網站上的 Cookie。"
+    ),
+    cookie_settings_btn = "Cookie 設定",
+    cookie_accept_all = "全部允許",
+    cookie_reject_optional = "拒絕選用",
+    cookie_save = "儲存設定",
+    cookie_panel_title = "Cookie 設定",
+    cookie_necessary_label = "必要 Cookie",
+    cookie_necessary_hint = "網站運作所需，一律開啟且無法關閉。",
+    cookie_analytics_label = "分析 Cookie",
+    cookie_analytics_hint = "選用。協助了解本網站的使用情形。",
+    cookie_preferences_label = "偏好 Cookie",
+    cookie_preferences_hint = "選用。在此裝置上記住語言等選擇。",
+    cookie_always_on = "一律開啟",
+    cookie_reopen = "Cookie 設定"
   )
 )
 
@@ -7068,7 +7263,7 @@ ui_locale_boot_bundle <- function() {
   slim_strings <- function(loc) {
     s <- ui_locale_payload(loc)
     keep <- grepl(
-      "^(menu_|hdr_|about|home_|btn_|feedback_|test_link|smart_|market_|lite_|pts_fyn_label|pts_pyn_label)",
+      "^(menu_|hdr_|about|home_|btn_|feedback_|test_link|smart_|market_|lite_|pts_fyn_label|pts_pyn_label|cookie_)",
       names(s)
     )
     as.list(s[keep])

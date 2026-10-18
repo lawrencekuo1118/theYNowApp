@@ -384,6 +384,223 @@ server <- function(input, output, session) {
   ynow_pts_panel_tick <- reactiveVal(0L)
   ynow_pts_sysadmin_on <- reactiveVal(FALSE)
   ynow_pts_sysadmin_tick <- reactiveVal(0L)
+  # Panel payload: list(kind="locked"|"loading"|"ready"|"error", ...). Built async
+  # so Postgres list_users cannot block the session (exit / Switch view stay live).
+  ynow_pts_sysadmin_panel_state <- reactiveVal(list(kind = "locked"))
+  # Sysadmin view-as: list(public_id=, user_id=, role=) or NULL. No PII.
+  ynow_pts_view_as <- reactiveVal(NULL)
+
+  .ynow_access_subject_id <- function() {
+    va <- tryCatch(isolate(ynow_pts_view_as()), error = function(e) NULL)
+    if (is.list(va)) {
+      vid <- as.character(va$user_id %||% "")[1]
+      if (nzchar(vid)) return(vid)
+    }
+    u <- tryCatch(isolate(ynow_auth$user()), error = function(e) NULL)
+    if (is.function(u)) u <- tryCatch(u(), error = function(e) NULL)
+    if (!is.list(u)) return("")
+    as.character(u$id %||% "")[1]
+  }
+
+  .ynow_push_access_locks <- function() {
+    if (!exists("ynow_access_entries", mode = "function")) return(invisible(NULL))
+    uid <- .ynow_access_subject_id()
+    # Guests still receive global (__all__) restrictions.
+    ent <- tryCatch(ynow_access_entries(uid), error = function(e) {
+      data.frame(id = character(), effect = character(), stringsAsFactors = FALSE)
+    })
+    loc <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "en")
+    note <- tryCatch(
+      ui_str("access_pane_note", loc),
+      error = function(e) "This page is locked for the signed-in account."
+    )
+    entries <- if (is.data.frame(ent) && nrow(ent) > 0L) {
+      lapply(seq_len(nrow(ent)), function(i) {
+        list(id = as.character(ent$id[[i]]), effect = as.character(ent$effect[[i]]))
+      })
+    } else {
+      list()
+    }
+    ids <- if (is.data.frame(ent)) as.character(ent$id) else character()
+    session$sendCustomMessage(
+      "ynowAccessLocks",
+      list(ids = as.list(ids), entries = entries, note = note)
+    )
+    invisible(ids)
+  }
+
+  .ynow_access_deny_download <- function(item_id, file) {
+    if (!exists("ynow_access_is_locked", mode = "function")) return(FALSE)
+    uid <- .ynow_access_subject_id()
+    # Global (__all__) applies even when not signed in.
+    if (!isTRUE(ynow_access_is_locked(uid, item_id))) return(FALSE)
+    loc <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "en")
+    msg <- tryCatch(
+      ui_str("access_denied_report", loc),
+      error = function(e) "This report is locked for the signed-in account."
+    )
+    tryCatch(showNotification(msg, type = "warning", duration = 6), error = function(e) NULL)
+    writeLines(msg, file, useBytes = TRUE)
+    TRUE
+  }
+
+  .ynow_pdf_note_file <- function(file, msg) {
+    msg <- as.character(msg %||% "")[1]
+    tryCatch({
+      grDevices::pdf(file, width = 8.27, height = 11.69)
+      plot.new()
+      text(0.5, 0.55, msg, cex = 1.05)
+      grDevices::dev.off()
+    }, error = function(e) {
+      writeLines(msg, file, useBytes = TRUE)
+    })
+    invisible(TRUE)
+  }
+
+  .ynow_dbg_pdf <- function(hypothesisId, message, data = list()) {
+    # #region agent log
+    tryCatch({
+      payload <- list(
+        sessionId = "ef0f33",
+        runId = "pre",
+        hypothesisId = hypothesisId,
+        location = "ynow_server.R:pdf",
+        message = message,
+        data = data,
+        timestamp = round(as.numeric(Sys.time()) * 1000)
+      )
+      line <- jsonlite::toJSON(payload, auto_unbox = TRUE, null = "null")
+      cat(line, "\n", file = "/Users/lawrencekuo/coding/theYNowApp/.cursor/debug-ef0f33.log", append = TRUE)
+    }, error = function(e) NULL)
+    # #endregion
+  }
+
+  #' Login + daily free quota, then 10 FYN. NULL means the denial file is already written.
+  .ynow_pdf_authorize <- function(file) {
+    auth_on <- exists("ynow_auth_enabled", mode = "function") && isTRUE(ynow_auth_enabled())
+    claim_ok <- exists("ynow_pdf_claim", mode = "function")
+    logged <- tryCatch(isTRUE(ynow_auth$is_logged_in()), error = function(e) NA)
+    lite <- tryCatch(isTRUE(isolate(lite_mode())), error = function(e) NA)
+    uid <- .ynow_access_subject_id()
+    .ynow_dbg_pdf("A", "pdf authorize entry", list(
+      auth_on = auth_on, claim_ok = claim_ok, logged_in = logged, lite = lite,
+      uid_nchar = nchar(uid)
+    ))
+    if (!auth_on || !claim_ok) {
+      .ynow_dbg_pdf("A", "pdf authorize bypass", list(auth_on = auth_on, claim_ok = claim_ok))
+      return(list(ok = TRUE, kind = "bypass"))
+    }
+    loc <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "en")
+    .lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
+    if (!nzchar(uid)) {
+      .ynow_dbg_pdf("B", "pdf authorize deny guest", list(logged_in = logged, lite = lite))
+      msg <- .lab("pdf_need_login", "Sign in to download the valuation report (PDF).")
+      showNotification(msg, type = "warning", duration = 6)
+      tryCatch(shinyBS::toggleModal(session, "ynow_auth_modal", "open"), error = function(e) NULL)
+      .ynow_pdf_note_file(file, msg)
+      return(NULL)
+    }
+    ticket <- ynow_pdf_claim(uid)
+    .ynow_dbg_pdf("B", "pdf claim result", list(
+      ok = isTRUE(ticket$ok), kind = as.character(ticket$kind %||% "")[1]
+    ))
+    if (!isTRUE(ticket$ok)) {
+      cost <- ticket$cost %||% 10L
+      bal <- ticket$fyn %||% 0L
+      title <- if (exists("ynow_points_sku_title", mode = "function")) {
+        ynow_points_sku_title("pdf_report", loc)
+      } else {
+        "PDF"
+      }
+      msg <- tryCatch(
+        sprintf(
+          ui_str("pts_msg_insufficient_fmt", loc),
+          as.character(cost), title, as.character(bal)
+        ),
+        error = function(e) "Not enough FYN points for this PDF download."
+      )
+      showNotification(msg, type = "warning", duration = 8)
+      .ynow_pdf_note_file(file, msg)
+      return(NULL)
+    }
+    ticket
+  }
+
+  observe({
+    tryCatch(ynow_auth$is_logged_in(), error = function(e) FALSE)
+    tryCatch(ynow_auth$user(), error = function(e) NULL)
+    ynow_pts_view_as()
+    .ynow_push_access_locks()
+  })
+
+  #' Effective points user: view-as uuid when active, else signed-in account.
+  .ynow_pts_effective_user <- function() {
+    va <- tryCatch(ynow_pts_view_as(), error = function(e) NULL)
+    if (is.list(va)) {
+      vid <- as.character(va$user_id %||% "")[1]
+      if (nzchar(vid)) {
+        return(list(
+          id = vid,
+          role = as.character(va$role %||% "user")[1],
+          public_id = as.character(va$public_id %||% "")[1],
+          view_as = TRUE
+        ))
+      }
+    }
+    tryCatch(ynow_auth$user(), error = function(e) NULL)
+  }
+  session$userData$ynow_pts_effective_user <- .ynow_pts_effective_user
+  session$userData$ynow_pts_view_as <- ynow_pts_view_as
+
+  #' Push / clear view-as chrome + silver title Loading (no PII beyond public_id).
+  .ynow_view_as_push_chrome <- function(va = NULL) {
+    loc <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "en")
+    .lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
+    if (is.null(va)) {
+      va <- tryCatch(ynow_pts_view_as(), error = function(e) NULL)
+    }
+    if (!is.list(va) || !nzchar(as.character(va$public_id %||% "")[1])) {
+      tryCatch(
+        session$sendCustomMessage("ynowViewAsMode", list(active = FALSE)),
+        error = function(e) NULL
+      )
+      return(invisible(FALSE))
+    }
+    pid <- as.character(va$public_id %||% "")[1]
+    tryCatch(
+      session$sendCustomMessage(
+        "ynowViewAsMode",
+        list(
+          active = TRUE,
+          public_id = pid,
+          active_label = .lab("pts_sysadmin_viewas_active", "User view active"),
+          hint = .lab(
+            "pts_sysadmin_viewas_chrome_hint",
+            "Title Loading is silver. Balances and spend gates follow this user."
+          ),
+          exit_label = .lab("pts_sysadmin_viewas_exit", "Exit user view")
+        )
+      ),
+      error = function(e) NULL
+    )
+    invisible(TRUE)
+  }
+
+  # Keep silver Loading / chrome in sync whenever view-as changes.
+  observe({
+    va <- ynow_pts_view_as()
+    .ynow_view_as_push_chrome(va)
+  })
+
+  #' Toggle body.ynow-sysadmin-on — hides login/intro chrome when unlocked.
+  .ynow_sysadmin_push_mode <- function() {
+    on <- isTRUE(tryCatch(ynow_pts_sysadmin_on(), error = function(e) FALSE))
+    tryCatch(
+      session$sendCustomMessage("ynowSysadminMode", list(on = on)),
+      error = function(e) NULL
+    )
+    invisible(on)
+  }
 
   .ynow_account_gate_ui <- function(loc) {
     if (!isTRUE(ynow_auth_enabled())) {
@@ -401,7 +618,7 @@ server <- function(input, output, session) {
     u <- tryCatch(ynow_auth$user(), error = function(e) NULL)
     if (is.null(u)) {
       return(tags$div(
-        class = "box box-warning",
+        class = "box box-solid ynow-auth-gate ynow-gate-box",
         tags$div(class = "box-body", tags$p(tryCatch(
           ui_str("auth_admin_need_login", loc),
           error = function(e) "Sign in to open the account workspace."
@@ -446,7 +663,8 @@ server <- function(input, output, session) {
 
   .ynow_pts_push_banner <- function() {
     loc <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "en")
-    u <- tryCatch(ynow_auth$user(), error = function(e) NULL)
+    # View-as prefers target DB balances; otherwise signed-in user.
+    u <- .ynow_pts_effective_user()
     pts_colon <- if (identical(loc, "zh-TW")) "：" else ":"
     fyn_lab <- tryCatch(paste0(ui_str("pts_fyn_label", loc), pts_colon), error = function(e) "FYN points:")
     pyn_lab <- tryCatch(paste0(ui_str("pts_pyn_label", loc), pts_colon), error = function(e) "PYN points:")
@@ -628,48 +846,220 @@ server <- function(input, output, session) {
   # Header FYN / PYN banner (right of locale switch).
   observe({
     ynow_pts_panel_tick()
+    ynow_pts_view_as()
     tryCatch(ynow_auth$user(), error = function(e) NULL)
     tryCatch(ui_locale(), error = function(e) NULL)
     .ynow_pts_push_banner()
   })
 
-  # Testing tab — system admin (no separate account/password).
+  # System-admin portal — username `ynow` + Asia/Taipei YYYYMMDD password.
   observeEvent(input$ynow_pts_sysadmin_enter, {
+    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+    .lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
+    user_in <- as.character(input$ynow_pts_sysadmin_login_user %||% "")[1]
+    pass_in <- as.character(input$ynow_pts_sysadmin_login_pass %||% "")[1]
+    # Clear password field immediately; never log credentials.
+    tryCatch(
+      updateTextInput(session, "ynow_pts_sysadmin_login_pass", value = ""),
+      error = function(e) NULL
+    )
+    ok <- FALSE
+    if (exists("ynow_sysadmin_validate_login", mode = "function")) {
+      res <- tryCatch(
+        ynow_sysadmin_validate_login(user_in, pass_in),
+        error = function(e) list(ok = FALSE)
+      )
+      ok <- isTRUE(res$ok)
+    }
+    # Drop local copies; do not include password in any message.
+    pass_in <- NULL
+    if (!isTRUE(ok)) {
+      showNotification(
+        .lab("pts_sysadmin_login_bad", "Invalid system-admin username or password."),
+        type = "error",
+        duration = 5
+      )
+      return()
+    }
     ynow_pts_sysadmin_on(TRUE)
+    .ynow_sysadmin_push_mode()
     ynow_pts_sysadmin_tick(isolate(ynow_pts_sysadmin_tick()) + 1L)
+    showNotification(
+      .lab("pts_sysadmin_login_ok", "System admin unlocked."),
+      type = "message",
+      duration = 3
+    )
   }, ignoreInit = TRUE)
   observeEvent(input$ynow_pts_sysadmin_exit, {
     ynow_pts_sysadmin_on(FALSE)
+    ynow_pts_view_as(NULL)
+    .ynow_sysadmin_push_mode()
+    .ynow_view_as_push_chrome(NULL)
+    tryCatch(.ynow_pts_push_banner(), error = function(e) NULL)
+    ynow_pts_sysadmin_tick(isolate(ynow_pts_sysadmin_tick()) + 1L)
   }, ignoreInit = TRUE)
-  observeEvent(input$ynow_pts_sysadmin_refresh, {
+  observeEvent(input$ynow_pts_sysadmin_viewas, {
+    if (!isTRUE(ynow_pts_sysadmin_on())) {
+      showNotification(
+        tryCatch(
+          ui_str("pts_sysadmin_need_enter", normalize_ui_locale(ui_locale())),
+          error = function(e) "Sign in to system admin first."
+        ),
+        type = "warning"
+      )
+      return()
+    }
+    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+    .lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
+    # selectInput value is internal user_id; label (names) is opaque public_id.
+    # Race: freshly rendered select may not have reported yet — fall back to first listed user.
+    uid <- as.character(input$ynow_pts_sysadmin_user %||% "")[1]
+    pid <- ""
+    role <- "user"
+    if (!nzchar(uid) && exists("ynow_points_admin_list_users", mode = "function")) {
+      df0 <- tryCatch(ynow_points_admin_list_users(), error = function(e) NULL)
+      if (is.data.frame(df0) && nrow(df0) > 0L) {
+        uid <- as.character(df0$user_id[[1]] %||% "")[1]
+        pid <- as.character(df0$public_id[[1]] %||% "")[1]
+        if ("role" %in% names(df0)) role <- as.character(df0$role[[1]] %||% "user")[1]
+      }
+    }
+    if (nzchar(uid) && !nzchar(pid) && exists("ynow_points_public_id", mode = "function")) {
+      pid <- tryCatch(ynow_points_public_id(uid), error = function(e) "")
+    }
+    if (!nzchar(uid)) {
+      showNotification(.lab("pts_sysadmin_bad_user", "Select a user from the list."), type = "warning")
+      return()
+    }
+    if (!nzchar(pid)) pid <- uid
+    va <- list(public_id = pid, user_id = uid, role = role)
+    ynow_pts_view_as(va)
+    # Chrome/silver first (no DB); banner may hit Postgres and must not block the signal.
+    .ynow_view_as_push_chrome(va)
+    showNotification(
+      sprintf(
+        .lab("pts_sysadmin_viewas_ok_fmt", "Viewing as %s (de-identified)."),
+        pid
+      ),
+      type = "message",
+      duration = 4
+    )
+    tryCatch(.ynow_pts_push_banner(), error = function(e) NULL)
+    # Navigate after chrome so silver Loading is visible on Home.
+    tryCatch({
+      if (exists("updateTabItems", mode = "function")) {
+        updateTabItems(session, "sidebar_tabs", "home")
+      }
+      session$sendCustomMessage("ynowGotoTab", list(tab = "home"))
+    }, error = function(e) NULL)
+    # Refresh panel last (avoid interrupting view-as side effects).
+    ynow_pts_sysadmin_tick(isolate(ynow_pts_sysadmin_tick()) + 1L)
+  }, ignoreInit = TRUE)
+  observeEvent(input$ynow_pts_sysadmin_viewas_exit, {
+    ynow_pts_view_as(NULL)
+    .ynow_view_as_push_chrome(NULL)
+    tryCatch(.ynow_pts_push_banner(), error = function(e) NULL)
+    # Return to the system-admin portal after exiting view-as.
+    tryCatch({
+      if (exists("updateTabItems", mode = "function")) {
+        updateTabItems(session, "sidebar_tabs", "testing")
+      }
+      session$sendCustomMessage("ynowGotoTab", list(tab = "testing"))
+    }, error = function(e) NULL)
     ynow_pts_sysadmin_tick(isolate(ynow_pts_sysadmin_tick()) + 1L)
   }, ignoreInit = TRUE)
 
+  # Load user list off the reactive flush so Exit / Switch view stay responsive.
+  observeEvent(ynow_pts_sysadmin_tick(), {
+    if (!isTRUE(isolate(ynow_pts_sysadmin_on()))) {
+      ynow_pts_sysadmin_panel_state(list(kind = "locked"))
+      return()
+    }
+    load_id <- isolate(ynow_pts_sysadmin_tick())
+    ynow_pts_sysadmin_panel_state(list(kind = "loading", load_id = load_id))
+    fetch_users <- function() {
+      if (!isTRUE(isolate(ynow_pts_sysadmin_on()))) return()
+      if (!identical(isolate(ynow_pts_sysadmin_tick()), load_id)) return()
+      backend <- tryCatch(ynow_points_backend(), error = function(e) "memory")
+      backend_label <- tryCatch({
+        if (exists("ynow_points_backend_label", mode = "function")) {
+          ynow_points_backend_label()
+        } else {
+          as.character(backend)
+        }
+      }, error = function(e) as.character(backend))
+      uses_db <- tryCatch({
+        if (exists("ynow_points_uses_db", mode = "function")) ynow_points_uses_db()
+        else identical(backend, "postgres")
+      }, error = function(e) FALSE)
+      db_ready <- exists("ynow_db_ready", mode = "function") && isTRUE(ynow_db_ready())
+      df <- if (exists("ynow_points_admin_list_users", mode = "function")) {
+        tryCatch(ynow_points_admin_list_users(), error = function(e) NULL)
+      } else {
+        NULL
+      }
+      if (!isTRUE(isolate(ynow_pts_sysadmin_on()))) return()
+      if (!identical(isolate(ynow_pts_sysadmin_tick()), load_id)) return()
+      ynow_pts_sysadmin_panel_state(list(
+        kind = "ready",
+        load_id = load_id,
+        backend_label = backend_label,
+        uses_db = uses_db,
+        db_ready = db_ready,
+        df = df,
+        has_list_fn = exists("ynow_points_admin_list_users", mode = "function")
+      ))
+    }
+    if (requireNamespace("later", quietly = TRUE)) {
+      later::later(fetch_users, delay = 0)
+    } else {
+      fetch_users()
+    }
+  }, ignoreNULL = FALSE)
+
   output$ynow_pts_sysadmin_panel <- renderUI({
-    ynow_pts_sysadmin_tick()
-    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+    st <- ynow_pts_sysadmin_panel_state()
+    loc <- tryCatch(
+      normalize_ui_locale(isolate(ui_locale())),
+      error = function(e) "zh-TW"
+    )
     .lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
-    if (!isTRUE(ynow_pts_sysadmin_on())) return(NULL)
-    if (!exists("ynow_points_admin_list_users", mode = "function")) {
+    kind <- as.character(st$kind %||% "locked")[1]
+    if (identical(kind, "locked")) {
+      return(tags$div(
+        tags$hr(),
+        tags$p(
+          class = "text-muted",
+          id = "ynow_pts_sysadmin_need_enter",
+          .lab(
+            "pts_sysadmin_need_enter",
+            "Sign in with the system-admin username and password to load the de-identified user list."
+          )
+        )
+      ))
+    }
+    if (identical(kind, "loading")) {
+      return(tags$div(
+        tags$p(
+          class = "text-muted",
+          id = "ynow_pts_sysadmin_loading",
+          style = "margin-top:8px;",
+          .lab("pts_sysadmin_loading", "Loading de-identified users…")
+        )
+      ))
+    }
+    if (!isTRUE(st$has_list_fn)) {
       return(tags$p(class = "text-danger", .lab("pts_msg_backend", "Points backend is unavailable.")))
     }
-    # Without Postgres creds (YNOW_DB_*) / RPostgres, points fall back to empty per-process memory.
-    backend <- tryCatch(ynow_points_backend(), error = function(e) "memory")
-    backend_label <- tryCatch({
-      if (exists("ynow_points_backend_label", mode = "function")) {
-        ynow_points_backend_label()
-      } else {
-        as.character(backend)
-      }
-    }, error = function(e) as.character(backend))
-    uses_db <- tryCatch({
-      if (exists("ynow_points_uses_db", mode = "function")) ynow_points_uses_db()
-      else identical(backend, "postgres")
-    }, error = function(e) FALSE)
-    db_ready <- exists("ynow_db_ready", mode = "function") && isTRUE(ynow_db_ready())
-    df <- tryCatch(ynow_points_admin_list_users(), error = function(e) NULL)
+    backend_label <- as.character(st$backend_label %||% "—")[1]
+    df <- st$df
     if (!is.data.frame(df) || nrow(df) < 1L) {
-      empty_msg <- if (!isTRUE(db_ready) || !isTRUE(uses_db)) {
+      empty_key <- if (!isTRUE(st$db_ready) || !isTRUE(st$uses_db)) {
+        "pts_sysadmin_no_db"
+      } else {
+        "pts_sysadmin_empty"
+      }
+      empty_msg <- if (identical(empty_key, "pts_sysadmin_no_db")) {
         .lab(
           "pts_sysadmin_no_db",
           .lab(
@@ -681,14 +1071,14 @@ server <- function(input, output, session) {
         .lab("pts_sysadmin_empty", "No users in the database yet.")
       }
       return(tags$div(
-        tags$hr(),
         tags$p(
           class = "text-muted",
+          style = "font-size:12.5px; margin-top:4px;",
           tags$span(
             id = "ynow_pts_sysadmin_backend",
             sprintf(
               .lab("pts_sysadmin_backend_fmt", "Points backend: %s"),
-              as.character(backend_label)
+              backend_label
             )
           )
         ),
@@ -697,17 +1087,23 @@ server <- function(input, output, session) {
     }
     status_ok <- .lab("pts_sysadmin_status_ok", "Active")
     status_off <- .lab("pts_sysadmin_status_disabled", "Disabled")
-    choices <- stats::setNames(as.character(df$public_id), as.character(df$public_id))
+    choices <- stats::setNames(as.character(df$user_id), as.character(df$public_id))
+    va <- tryCatch(isolate(ynow_pts_view_as()), error = function(e) NULL)
+    va_uid <- if (is.list(va)) as.character(va$user_id %||% "")[1] else ""
+    sel <- if (nzchar(va_uid) && va_uid %in% as.character(choices)) {
+      va_uid
+    } else {
+      as.character(choices[[1]])
+    }
     tags$div(
-      tags$hr(),
       tags$p(
         class = "text-muted",
-        style = "font-size:12.5px;",
+        style = "font-size:12.5px; margin-top:4px;",
         tags$span(
           id = "ynow_pts_sysadmin_backend",
           sprintf(
             .lab("pts_sysadmin_backend_fmt", "Points backend: %s"),
-            as.character(backend_label)
+            backend_label
           )
         )
       ),
@@ -741,7 +1137,7 @@ server <- function(input, output, session) {
             "ynow_pts_sysadmin_user",
             .lab("pts_sysadmin_select", "Select user id"),
             choices = choices,
-            selected = choices[[1]]
+            selected = sel
           )
         ),
         column(
@@ -769,16 +1165,191 @@ server <- function(input, output, session) {
           )
         )
       ),
-      actionButton(
-        "ynow_pts_sysadmin_apply",
-        label = tags$span(
-          id = "ynow_pts_sysadmin_apply_label",
-          .lab("pts_sysadmin_apply", "Apply change")
-        ),
-        class = "btn-warning"
-      )
+      tags$div(
+        style = "margin-top:4px; display:flex; flex-wrap:wrap; gap:8px; align-items:center;",
+        actionButton(
+          "ynow_pts_sysadmin_apply",
+          label = tags$span(
+            id = "ynow_pts_sysadmin_apply_label",
+            .lab("pts_sysadmin_apply", "Apply change")
+          ),
+          class = "btn-warning"
+        )
+      ),
+      tags$hr(),
+      tags$h4(.lab("access_lock_title", "Item locks")),
+      tags$p(
+        class = "text-muted",
+        style = "font-size:12.5px;",
+        .lab(
+          "access_lock_help",
+          paste0(
+            "Choose lock (show a locked placeholder) or hide (remove from the UI), ",
+            "and apply to the selected user or all users."
+          )
+        )
+      ),
+      {
+        cat_df <- if (exists("ynow_access_catalog", mode = "function")) {
+          ynow_access_catalog()
+        } else {
+          data.frame(id = character(), kind = character(), label_en = character(), label_zh = character())
+        }
+        item_labels <- if (nrow(cat_df)) {
+          paste0(
+            vapply(cat_df$kind, function(k) {
+              if (exists("ynow_access_kind_label", mode = "function")) {
+                ynow_access_kind_label(k, loc)
+              } else {
+                k
+              }
+            }, character(1)),
+            " · ",
+            if (identical(loc, "zh-TW")) cat_df$label_zh else cat_df$label_en
+          )
+        } else {
+          character()
+        }
+        item_choices <- if (length(item_labels)) stats::setNames(cat_df$id, item_labels) else character()
+        all_uid <- if (exists("YNOW_ACCESS_ALL_USERS", inherits = TRUE)) {
+          as.character(get("YNOW_ACCESS_ALL_USERS", inherits = TRUE))[1]
+        } else {
+          "__all__"
+        }
+        .fmt_entries <- function(uid_show, scope_lab) {
+          if (!exists("ynow_access_entries", mode = "function")) return(character())
+          # Raw map for this store key only (not merged), via locked file/db uid.
+          ent <- tryCatch({
+            if (exists(".ynow_access_map_for_uid", mode = "function")) {
+              mp <- .ynow_access_map_for_uid(uid_show)
+              if (!length(mp)) {
+                data.frame(id = character(), effect = character(), stringsAsFactors = FALSE)
+              } else {
+                data.frame(
+                  id = names(mp),
+                  effect = unname(as.character(mp)),
+                  stringsAsFactors = FALSE
+                )
+              }
+            } else {
+              ynow_access_entries(uid_show)
+            }
+          }, error = function(e) {
+            data.frame(id = character(), effect = character(), stringsAsFactors = FALSE)
+          })
+          if (!is.data.frame(ent) || nrow(ent) < 1L) return(character())
+          vapply(seq_len(nrow(ent)), function(i) {
+            lab <- if (exists("ynow_access_label", mode = "function")) {
+              ynow_access_label(ent$id[[i]], loc)
+            } else {
+              ent$id[[i]]
+            }
+            eff <- if (exists("ynow_access_effect_label", mode = "function")) {
+              ynow_access_effect_label(ent$effect[[i]], loc)
+            } else {
+              ent$effect[[i]]
+            }
+            paste0(scope_lab, " · ", lab, "（", eff, "）")
+          }, character(1))
+        }
+        user_lines <- if (nzchar(sel)) {
+          .fmt_entries(sel, .lab("access_scope_user_short", "User"))
+        } else {
+          character()
+        }
+        all_lines <- .fmt_entries(all_uid, .lab("access_scope_all_short", "All"))
+        locked_lines <- c(all_lines, user_lines)
+        locked_txt <- if (!length(locked_lines)) {
+          .lab("access_none", "Nothing is locked for this user.")
+        } else {
+          paste(locked_lines, collapse = if (identical(loc, "zh-TW")) "、" else "; ")
+        }
+        tagList(
+          selectInput(
+            "ynow_access_item",
+            .lab("access_lock_item", "Item"),
+            choices = item_choices
+          ),
+          radioButtons(
+            "ynow_access_scope",
+            .lab("access_scope_label", "Apply to"),
+            choiceNames = list(
+              .lab("access_scope_user", "Selected user"),
+              .lab("access_scope_all", "All users")
+            ),
+            choiceValues = c("user", "all"),
+            selected = "user",
+            inline = TRUE
+          ),
+          radioButtons(
+            "ynow_access_effect",
+            .lab("access_effect_label", "Restriction"),
+            choiceNames = list(
+              .lab("access_effect_lock", "Lock (show locked placeholder)"),
+              .lab("access_effect_hide", "Hide (remove from UI)")
+            ),
+            choiceValues = c("lock", "hide"),
+            selected = "lock",
+            inline = TRUE
+          ),
+          tags$div(
+            style = "margin-top:4px; display:flex; flex-wrap:wrap; gap:8px; align-items:center;",
+            actionButton(
+              "ynow_access_lock",
+              .lab("access_lock_btn", "Apply restriction"),
+              class = "btn-warning"
+            ),
+            actionButton(
+              "ynow_access_unlock",
+              .lab("access_unlock_btn", "Clear restriction"),
+              class = "btn-default"
+            )
+          ),
+          tags$p(
+            style = "margin-top:10px; font-size:12.5px;",
+            tags$b(.lab("access_locked_now", "Currently restricted")),
+            ": ",
+            locked_txt
+          )
+        )
+      }
     )
   })
+
+  .ynow_access_admin_set <- function(locked) {
+    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+    .lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
+    if (!isTRUE(ynow_pts_sysadmin_on())) {
+      showNotification(.lab("pts_admin_denied", "Only admins can add points."), type = "error")
+      return()
+    }
+    if (!exists("ynow_access_set", mode = "function")) return()
+    scope <- as.character(input$ynow_access_scope %||% "user")[1]
+    all_uid <- if (exists("YNOW_ACCESS_ALL_USERS", inherits = TRUE)) {
+      as.character(get("YNOW_ACCESS_ALL_USERS", inherits = TRUE))[1]
+    } else {
+      "__all__"
+    }
+    uid <- if (identical(scope, "all")) {
+      all_uid
+    } else {
+      as.character(input$ynow_pts_sysadmin_user %||% "")[1]
+    }
+    item <- as.character(input$ynow_access_item %||% "")[1]
+    effect <- as.character(input$ynow_access_effect %||% "lock")[1]
+    res <- ynow_access_set(uid, item, locked = isTRUE(locked), effect = effect)
+    showNotification(
+      .lab(res$message_key %||% "access_bad_item", "Choose an item from the catalog."),
+      type = if (isTRUE(res$ok)) "message" else "warning"
+    )
+    if (isTRUE(res$ok)) {
+      ynow_pts_sysadmin_tick(isolate(ynow_pts_sysadmin_tick()) + 1L)
+      .ynow_push_access_locks()
+    }
+  }
+
+  observeEvent(input$ynow_access_lock, .ynow_access_admin_set(TRUE))
+  observeEvent(input$ynow_access_unlock, .ynow_access_admin_set(FALSE))
 
   observeEvent(input$ynow_pts_sysadmin_apply, {
     loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
@@ -791,12 +1362,8 @@ server <- function(input, output, session) {
       showNotification(.lab("pts_msg_backend", "Points backend is unavailable."), type = "error")
       return()
     }
-    pid <- as.character(input$ynow_pts_sysadmin_user %||% "")[1]
-    uid <- if (exists("ynow_points_resolve_public_id", mode = "function")) {
-      ynow_points_resolve_public_id(pid)
-    } else {
-      ""
-    }
+    # selectInput value is internal user_id (label remains opaque public_id).
+    uid <- as.character(input$ynow_pts_sysadmin_user %||% "")[1]
     if (!nzchar(uid)) {
       showNotification(.lab("pts_sysadmin_bad_user", "Select a user from the list."), type = "warning")
       return()
@@ -814,16 +1381,32 @@ server <- function(input, output, session) {
     }
     note <- as.character(input$ynow_pts_sysadmin_note %||% "")[1]
     res <- ynow_points_admin_adjust(
-      uid, fyn_delta = fd, pyn_delta = pd, note = note, by = "testing_sysadmin"
+      uid, fyn_delta = fd, pyn_delta = pd, note = note, by = "sysadmin_portal"
     )
     if (isTRUE(res$ok)) {
-      showNotification(.lab("pts_sysadmin_ok", "Balances updated."), type = "message")
+      showNotification(
+        sprintf(
+          .lab("pts_sysadmin_ok_verify_fmt", "Balances updated and verified (FYN %s, PYN %s)."),
+          as.character(res$fyn %||% "—"),
+          as.character(res$pyn %||% "—")
+        ),
+        type = "message"
+      )
       ynow_pts_sysadmin_tick(isolate(ynow_pts_sysadmin_tick()) + 1L)
       ynow_pts_panel_tick(isolate(ynow_pts_panel_tick()) + 1L)
-      .ynow_pts_push_banner()
+      # Refresh banner only when the effective user is the grant target
+      # (signed-in self or active view-as) — avoid overwriting with the wrong wallet.
+      eff <- .ynow_pts_effective_user()
+      eff_id <- as.character(eff$id %||% "")[1]
+      if (identical(eff_id, uid)) {
+        .ynow_pts_push_banner()
+      }
     } else {
       showNotification(
-        .lab(res$message_key %||% "pts_msg_backend", "Points backend error."),
+        .lab(
+          res$message_key %||% "pts_sysadmin_verify_failed",
+          .lab("pts_msg_backend", "Points backend error.")
+        ),
         type = "error"
       )
     }
@@ -2363,6 +2946,76 @@ server <- function(input, output, session) {
     s
   }
 
+  ynow_news_now <- reactive({
+    tk <- tryCatch(as.character(current_ticker() %||% "")[1], error = function(e) "")
+    empty <- list(
+      ok = FALSE, score = NA_real_, n = 0L, flags = character(), nudges = character(),
+      rows = data.frame(title = character(), score = numeric(), stringsAsFactors = FALSE)
+    )
+    if (!nzchar(tk)) return(empty)
+    tryCatch(ynow_news_bundle(tk), error = function(e) empty)
+  })
+
+  output$ynow_news_thermometer <- renderUI({
+    loc <- tryCatch(ui_locale(), error = function(e) "en")
+    pack <- ynow_news_now()
+    score <- suppressWarnings(as.numeric(pack$score)[1])
+    tone_cls <- if (!is.finite(score)) {
+      "ynow-thermo-empty"
+    } else if (score <= -0.25) {
+      "ynow-thermo-flame"
+    } else if (score >= 0.25) {
+      "ynow-thermo-ocean"
+    } else {
+      "ynow-thermo-mix"
+    }
+    tone <- if (!is.finite(score)) {
+      ui_str("news_thermo_empty", loc)
+    } else if (score <= -0.25) {
+      ui_str("news_thermo_pessimistic", loc)
+    } else if (score >= 0.25) {
+      ui_str("news_thermo_optimistic", loc)
+    } else {
+      ui_str("news_thermo_neutral", loc)
+    }
+    pct <- if (is.finite(score)) round((score + 1) / 2 * 100) else 50
+    n_head <- suppressWarnings(as.integer(pack$n)[1])
+    if (!is.finite(n_head) || n_head < 0L) n_head <- 0L
+    flag_lab <- c(
+      management = ui_str("news_flag_management", loc),
+      sec = ui_str("news_flag_sec", loc),
+      lawsuit = ui_str("news_flag_lawsuit", loc)
+    )
+    flags <- intersect(as.character(pack$flags %||% character()), names(flag_lab))
+    nudges <- as.character(pack$nudges %||% character())
+    nudge_txt <- character()
+    if ("capex" %in% nudges) nudge_txt <- c(nudge_txt, ui_str("news_nudge_capex", loc))
+    if ("dividend" %in% nudges) nudge_txt <- c(nudge_txt, ui_str("news_nudge_dividend", loc))
+    tags$div(
+      class = "ynow-full-only",
+      style = "margin: 8px 0 14px; padding: 10px 12px; border: 1px solid #d9d9d9; border-radius: 6px;",
+      tags$b(ui_str("news_thermo_title", loc)),
+      tags$span(class = paste("ynow-thermo-tone", tone_cls), tone),
+      if (is.finite(score)) tags$span(style = "margin-left: 8px;", sprintf("%+.2f", score)),
+      tags$div(
+        class = paste("ynow-thermo-track", tone_cls),
+        tags$div(class = "ynow-thermo-marker", style = sprintf("left:%s%%;", pct))
+      ),
+      if (is.finite(score) && n_head > 0L) tags$p(
+        style = "margin: 6px 0 0; color: #666; font-size: 12px;",
+        sprintf(ui_str("news_thermo_n", loc), n_head)
+      ),
+      tags$p(style = "margin: 6px 0 0; color: #666; font-size: 12px;", ui_str("news_thermo_method", loc)),
+      if (length(flags)) tags$p(
+        style = "margin: 6px 0 0; color: #c62828;",
+        paste(ui_str("news_flag_title", loc), paste(flag_lab[flags], collapse = " · "))
+      ),
+      if (length(nudge_txt)) tags$ul(
+        lapply(nudge_txt, function(x) tags$li(style = "font-size: 13px;", x))
+      )
+    )
+  })
+
   output$company_overview_ui <- renderUI({
     loc <- tryCatch(ui_locale(), error = function(e) "en")
     loc <- normalize_ui_locale(loc)
@@ -3700,6 +4353,7 @@ server <- function(input, output, session) {
       paste0("YNow_snapshot_", ticker, "_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".csv")
     },
     content = function(file) {
+      if (isTRUE(.ynow_access_deny_download("report:download_snapshot", file))) return()
       df <- snapshot_rows()
       df$Downloaded_At <- format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z")
       write.csv(df, file, row.names = FALSE, fileEncoding = "UTF-8")
@@ -3712,6 +4366,7 @@ server <- function(input, output, session) {
       paste0("YNow_param_restore_", ticker, "_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".csv")
     },
     content = function(file) {
+      if (isTRUE(.ynow_access_deny_download("report:download_param_restore", file))) return()
       df <- ynow_param_restore_export_df(
         input,
         ticker = display_ticker_for_market(
@@ -3984,6 +4639,8 @@ server <- function(input, output, session) {
   })
 
   output$defaults_table <- renderDataTable({
+    # Same unlock as Points → System admin (ynow + Taipei YYYYMMDD).
+    req(isTRUE(ynow_pts_sysadmin_on()))
     datatable(
       defaults_rows(),
       rownames = FALSE,
@@ -3996,6 +4653,18 @@ server <- function(input, output, session) {
       paste0("YNow_defaults_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".csv")
     },
     content = function(file) {
+      if (!isTRUE(isolate(ynow_pts_sysadmin_on()))) {
+        write.csv(
+          data.frame(
+            error = "System defaults (APP_DEFAULTS) require System admin unlock.",
+            stringsAsFactors = FALSE
+          ),
+          file,
+          row.names = FALSE,
+          fileEncoding = "UTF-8"
+        )
+        return(invisible(NULL))
+      }
       df <- defaults_rows()
       df$Downloaded_At <- format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z")
       write.csv(df, file, row.names = FALSE, fileEncoding = "UTF-8")
@@ -4176,15 +4845,24 @@ server <- function(input, output, session) {
   
   output$IS_download <- downloadHandler(
     filename = function() paste0(current_ticker(), "_incomestatement_", Sys.Date(), ".csv"),
-    content = function(file) write.csv(d_income_statement(), file, row.names = FALSE)
+    content = function(file) {
+      if (isTRUE(.ynow_access_deny_download("report:IS_download", file))) return()
+      write.csv(d_income_statement(), file, row.names = FALSE)
+    }
   )
   output$BS_download <- downloadHandler(
     filename = function() paste0(current_ticker(), "_balancesheet_", Sys.Date(), ".csv"),
-    content = function(file) write.csv(d_balance_sheet(), file, row.names = FALSE)
+    content = function(file) {
+      if (isTRUE(.ynow_access_deny_download("report:BS_download", file))) return()
+      write.csv(d_balance_sheet(), file, row.names = FALSE)
+    }
   )
   output$CF_download <- downloadHandler(
     filename = function() paste0(current_ticker(), "_cashflow_", Sys.Date(), ".csv"),
-    content = function(file) write.csv(d_cash_flow(), file, row.names = FALSE)
+    content = function(file) {
+      if (isTRUE(.ynow_access_deny_download("report:CF_download", file))) return()
+      write.csv(d_cash_flow(), file, row.names = FALSE)
+    }
   )
   
   # ==========================================
@@ -11645,7 +12323,7 @@ server <- function(input, output, session) {
     if (!isTRUE(tryCatch(lite_mode(), error = function(e) FALSE)) &&
         exists("ynow_points_enabled", mode = "function") && isTRUE(ynow_points_enabled()) &&
         exists("ynow_points_gate", mode = "function")) {
-      u <- tryCatch(ynow_auth$user(), error = function(e) NULL)
+      u <- .ynow_pts_effective_user()
       ref <- paste0(
         "bt_run:", as.character(u$id %||% "anon")[1], ":",
         toupper(as.character(current_ticker())[1]), ":",
@@ -11692,7 +12370,9 @@ server <- function(input, output, session) {
         bt_w_vg = input$bt_w_vg,
         bt_max_exp = input$bt_max_exp,
         bt_min_exp_pass = input$bt_min_exp_pass,
-        bt_rebal_freq = .bt_selected_rebal_freq()
+        bt_rebal_freq = .bt_selected_rebal_freq(),
+        bt_news_on = isTRUE(input$bt_news_on),
+        bt_news_score = tryCatch(ynow_news_now()$score, error = function(e) NA_real_)
       )
       mp <- bt_current_model_params()
       withProgress(message = paste("V12 回測", current_ticker(), "…"), value = 0.15, {
@@ -13699,6 +14379,9 @@ server <- function(input, output, session) {
       paste0("YNow_Report_", mm, "_", ed, "_", tk, "_", Sys.Date(), ".pdf")
     },
     content = function(file) {
+      if (isTRUE(.ynow_access_deny_download("report:download_report", file))) return()
+      pdf_ticket <- .ynow_pdf_authorize(file)
+      if (is.null(pdf_ticket)) return()
       tryCatch({
         showNotification(.ui_msg("notif_pdf_busy"), type = "message", duration = 8)
         tempReport <- file.path(tempdir(), "report_template.Rmd")
@@ -13759,6 +14442,13 @@ server <- function(input, output, session) {
         }
 
         rating_info <- derive_investment_rating(cur_price, rating_anchor)
+        .ynow_dbg_pdf("R", "pdf numbers bound", list(
+          ticket_kind = as.character(pdf_ticket$kind %||% "")[1],
+          price_finite = is.finite(cur_price),
+          dcf_finite = is.finite(dcf_price),
+          anchor_finite = is.finite(rating_anchor),
+          rating = as.character(rating_info$rating %||% "")[1]
+        ))
 
         sum_df <- isolate(summary_data())
         co_name <- isolate(attr(sum_df, "company_name"))
@@ -13983,8 +14673,33 @@ server <- function(input, output, session) {
         )
 
         render_report_pdf(tmp_html, file)
-        showNotification(.ui_msg("notif_pdf_ok"), type = "message")
+        loc_pdf <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "en")
+        if (identical(pdf_ticket$kind, "free")) {
+          showNotification(
+            sprintf(
+              tryCatch(ui_str("pdf_free_ok_fmt", loc_pdf), error = function(e) "Free PDF download (%s of %s today)."),
+              as.character(pdf_ticket$used %||% ""),
+              as.character(pdf_ticket$limit %||% 3L)
+            ),
+            type = "message"
+          )
+        } else if (identical(pdf_ticket$kind, "paid")) {
+          showNotification(
+            sprintf(
+              tryCatch(ui_str("pdf_paid_ok_fmt", loc_pdf), error = function(e) "PDF download charged %s FYN (balance %s)."),
+              as.character(pdf_ticket$cost %||% 10L),
+              as.character(pdf_ticket$fyn %||% "")
+            ),
+            type = "message"
+          )
+          tryCatch(.ynow_pts_push_banner(), error = function(e) NULL)
+        } else {
+          showNotification(.ui_msg("notif_pdf_ok"), type = "message")
+        }
       }, error = function(e) {
+        if (exists("ynow_pdf_release", mode = "function")) {
+          tryCatch(ynow_pdf_release(pdf_ticket), error = function(e2) NULL)
+        }
         showNotification(.ui_msg("notif_pdf_fail", err = e$message), type = "error", duration = 12)
         # 寫入最小錯誤 PDF 避免下載 handler 空檔
         tryCatch({
@@ -14003,7 +14718,7 @@ server <- function(input, output, session) {
   # ==========================================
   lab_sec_result <- reactiveVal(NULL)
 
-  # 側邊欄「Testing」小按鈕（完整版；Lite 隱藏）
+  # 側邊欄「系統管理」入口（完整版；Lite 隱藏）
   observeEvent(input$sidebar_test_click, {
     showNotification(.ui_msg("notif_test_opened"), type = "message", duration = 3)
   }, ignoreInit = TRUE)

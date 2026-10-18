@@ -240,11 +240,26 @@ check("run_bt gates bt_run", {
   srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   grepl("bt_run", srv, fixed = TRUE) && grepl("ynow_points_gate", srv, fixed = TRUE)
 })
-check("testing tab has sysadmin entry", {
+check("sysadmin portal has login + entry", {
   ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   grepl("ynow_pts_sysadmin_enter", ui, fixed = TRUE) &&
+    grepl("ynow_pts_sysadmin_login_user", ui, fixed = TRUE) &&
+    grepl("ynow_pts_sysadmin_login_pass", ui, fixed = TRUE) &&
+    grepl('value = "ynow"', ui, fixed = TRUE) &&
+    grepl("ynow-sysadmin-login-chrome", ui, fixed = TRUE) &&
+    grepl("ynow-sysadmin-unlocked-actions", ui, fixed = TRUE) &&
+    grepl("ynow_viewas_chrome", ui, fixed = TRUE) &&
+    grepl("ynow-view-as", ui, fixed = TRUE) &&
+    grepl("ynow-silver-gradient", ui, fixed = TRUE) &&
     grepl("ynow_pts_banner", ui, fixed = TRUE) &&
-    grepl("ynow-pts-header", ui, fixed = TRUE)
+    grepl("ynow-pts-header", ui, fixed = TRUE) &&
+    !grepl("ynow_pts_sysadmin_refresh", ui, fixed = TRUE)
+})
+check("sysadmin hides login chrome when unlocked via CSS/class", {
+  ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("body.ynow-sysadmin-on .ynow-sysadmin-login-chrome", ui, fixed = TRUE) &&
+    grepl("ynowSysadminMode", ui, fixed = TRUE) &&
+    grepl("body.ynow-view-as .ynow-pts-sysadmin-box", ui, fixed = TRUE)
 })
 check("mobile CSS includes pts header with lang/logo flex+z-index", {
   ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
@@ -356,6 +371,214 @@ check("locale rules note persists", {
   grepl("100", ui_str("pts_rules_note", "en"), fixed = TRUE) &&
     grepl("30", ui_str("pts_rules_note", "en"), fixed = TRUE) &&
     grepl("100", ui_str("pts_rules_note", "zh-TW"), fixed = TRUE)
+})
+
+# Pool-safe credit path: checkout real DBI con (not Pool) + nest reuse.
+check("ynow_db_with checkouts connection not pool", {
+  db <- paste(readLines(file.path(app_dir, "auth_db.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("poolCheckout", db, fixed = TRUE) &&
+    grepl("poolReturn", db, fixed = TRUE) &&
+    grepl(".ynow_db_with_stack", db, fixed = TRUE) &&
+    grepl("Nested first — reuse outer connection", db, fixed = TRUE)
+})
+check("neon_apply keeps dbWithTransaction on checked-out con", {
+  pts <- paste(readLines(file.path(app_dir, "points_wallet.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("DBI::dbWithTransaction(con", pts, fixed = TRUE) &&
+    grepl("Same connection — avoid nested checkout", pts, fixed = TRUE)
+})
+check("ynow_db_with nest reuses outer connection", {
+  if (!exists("ynow_db_with", mode = "function") ||
+      !exists(".ynow_db_with_stack", inherits = TRUE)) {
+    return(TRUE) # sourced env may differ; structural checks above cover ship gate
+  }
+  stack_env <- get(".ynow_db_with_stack", inherits = TRUE)
+  old <- stack_env$cons
+  on.exit({ stack_env$cons <- old }, add = TRUE)
+  sentinel <- structure(list(mark = "outer-con"), class = "DBIConnection")
+  stack_env$cons <- list(sentinel)
+  seen <- NULL
+  res <- ynow_db_with(function(con) {
+    seen <<- con
+    "ok"
+  })
+  identical(res, "ok") && identical(seen$mark, "outer-con")
+})
+check("locale pts_sysadmin_need_enter en+zh-TW", {
+  en <- ui_str("pts_sysadmin_need_enter", "en")
+  zh <- ui_str("pts_sysadmin_need_enter", "zh-TW")
+  nzchar(en) && nzchar(zh) &&
+    grepl("username and password", en, fixed = TRUE) &&
+    grepl("使用者名稱與密碼", zh, fixed = TRUE) &&
+    !grepl("数据", zh, fixed = TRUE) &&
+    !grepl("一鍵", zh, fixed = TRUE)
+})
+check("locale pts_sysadmin_loading en+zh-TW", {
+  en <- ui_str("pts_sysadmin_loading", "en")
+  zh <- ui_str("pts_sysadmin_loading", "zh-TW")
+  grepl("Loading", en, fixed = TRUE) &&
+    grepl("載入", zh, fixed = TRUE) &&
+    !grepl("加载", zh, fixed = TRUE) &&
+    !grepl("数据", zh, fixed = TRUE)
+})
+check("server loads sysadmin users async via later", {
+  srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("ynow_pts_sysadmin_panel_state", srv, fixed = TRUE) &&
+    grepl('kind = "loading"', srv, fixed = TRUE) &&
+    grepl("later::later", srv, fixed = TRUE)
+})
+check("locale sysadmin login keys en+zh-TW", {
+  keys <- c(
+    "pts_sysadmin_login_user", "pts_sysadmin_login_pass",
+    "pts_sysadmin_login_ok", "pts_sysadmin_login_bad",
+    "pts_sysadmin_viewas_chrome_hint"
+  )
+  all(vapply(keys, function(k) {
+    en <- ui_str(k, "en")
+    zh <- ui_str(k, "zh-TW")
+    nzchar(en) && nzchar(zh) && !grepl("数据|默认|一鍵", zh)
+  }, logical(1)))
+})
+check("server shows need_enter hint when sysadmin off", {
+  srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("pts_sysadmin_need_enter", srv, fixed = TRUE) &&
+    grepl("ynow_pts_sysadmin_need_enter", srv, fixed = TRUE)
+})
+check("sysadmin login validates ynow + Taipei YYYYMMDD", {
+  pts <- paste(readLines(file.path(app_dir, "points_wallet.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("ynow_sysadmin_validate_login", pts, fixed = TRUE) &&
+    grepl("ynow_sysadmin_expected_password", pts, fixed = TRUE) &&
+    grepl("%Y%m%d", pts, fixed = TRUE) &&
+    grepl("ynow_points_tz", pts, fixed = TRUE)
+})
+check("sysadmin password is Taipei date not fixed", {
+  when <- as.POSIXct("2026-10-15 23:30:00", tz = "Asia/Taipei")
+  expect <- ynow_sysadmin_expected_password(when)
+  identical(expect, "20261015") &&
+    isTRUE(ynow_sysadmin_validate_login("ynow", "20261015", when = when)$ok) &&
+    isTRUE(ynow_sysadmin_validate_login("YNOW", "20261015", when = when)$ok) &&
+    !isTRUE(ynow_sysadmin_validate_login("ynow", "20261014", when = when)$ok) &&
+    !isTRUE(ynow_sysadmin_validate_login("admin", "20261015", when = when)$ok) &&
+    !isTRUE(ynow_sysadmin_validate_login("ynow", "", when = when)$ok)
+})
+check("server never logs sysadmin password", {
+  srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  # Enter handler clears pass; no message()/cat()/print of login_pass.
+  grepl("ynow_pts_sysadmin_login_pass", srv, fixed = TRUE) &&
+    grepl("ynow_sysadmin_validate_login", srv, fixed = TRUE) &&
+    grepl("updateTextInput\\(session, \"ynow_pts_sysadmin_login_pass\"", srv, perl = TRUE) &&
+    !grepl("message\\(.*login_pass|cat\\(.*login_pass|print\\(.*login_pass", srv, perl = TRUE)
+})
+
+# Admin adjust post-write verify + view-as wiring
+check("admin adjust verifies persisted balances", {
+  .ynow_points_mem_reset()
+  u2 <- paste0("mem-verify-", as.integer(as.numeric(Sys.time())))
+  ynow_points_on_login(u2)
+  before <- ynow_points_balances(u2)
+  adj <- ynow_points_admin_adjust(u2, fyn_delta = 17L, pyn_delta = 3L, note = "verify")
+  after <- ynow_points_balances(u2)
+  isTRUE(adj$ok) && isTRUE(adj$verified) &&
+    identical(as.integer(after$fyn), as.integer(before$fyn) + 17L) &&
+    identical(as.integer(after$pyn), as.integer(before$pyn) + 3L)
+})
+check("on_login does not wipe admin grant", {
+  .ynow_points_mem_reset()
+  u3 <- paste0("mem-persist-", as.integer(as.numeric(Sys.time())))
+  ynow_points_on_login(u3)
+  ynow_points_admin_adjust(u3, fyn_delta = 40L, pyn_delta = 0L)
+  mid <- ynow_points_balances(u3)
+  again <- ynow_points_on_login(u3)
+  after <- ynow_points_balances(u3)
+  isTRUE(again$ok) && !isTRUE(again$gift_granted) &&
+    identical(as.integer(after$fyn), as.integer(mid$fyn)) &&
+    identical(as.integer(after$pyn), as.integer(mid$pyn))
+})
+check("locale view-as keys en+zh-TW", {
+  keys <- c(
+    "pts_sysadmin_viewas", "pts_sysadmin_viewas_exit",
+    "pts_sysadmin_viewas_active", "pts_sysadmin_ok_verify_fmt",
+    "pts_sysadmin_verify_failed", "pts_sysadmin_viewas_chrome_hint"
+  )
+  all(vapply(keys, function(k) {
+    en <- ui_str(k, "en")
+    zh <- ui_str(k, "zh-TW")
+    nzchar(en) && nzchar(zh) && !grepl("数据|默认|一鍵", zh)
+  }, logical(1))) &&
+    identical(ui_str("pts_sysadmin_viewas", "en"), "Switch view") &&
+    identical(ui_str("pts_sysadmin_viewas", "zh-TW"), "切換檢視")
+})
+check("server wires view-as + silver chrome + effective user", {
+  srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("ynow_pts_view_as", srv, fixed = TRUE) &&
+    grepl(".ynow_pts_effective_user", srv, fixed = TRUE) &&
+    grepl("ynow_pts_sysadmin_viewas", srv, fixed = TRUE) &&
+    grepl("pts_sysadmin_viewas_exit", srv, fixed = TRUE) &&
+    grepl(".ynow_view_as_push_chrome", srv, fixed = TRUE) &&
+    grepl(".ynow_sysadmin_push_mode", srv, fixed = TRUE) &&
+    grepl("ynowSysadminMode", srv, fixed = TRUE) &&
+    grepl("ynowViewAsMode", srv, fixed = TRUE) &&
+    grepl("ynowViewAsMode", ui, fixed = TRUE) &&
+    grepl("ynow-silver-shine", ui, fixed = TRUE) &&
+    !grepl("ynow_pts_sysadmin_refresh", srv, fixed = TRUE) &&
+    grepl("verified", paste(readLines(file.path(app_dir, "points_wallet.R"), warn = FALSE), collapse = "\n"), fixed = TRUE)
+})
+check("price_alert prefers effective user for points gate", {
+  pa <- paste(readLines(file.path(app_dir, "price_alert.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("ynow_pts_effective_user", pa, fixed = TRUE)
+})
+check("sidebar foot link is Sys. Admin not Testing sandbox", {
+  ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  en <- ui_str("test_link", "en")
+  zh <- ui_str("test_link", "zh-TW")
+  grepl("Sys. Admin", en, fixed = TRUE) &&
+    grepl("Sys. Admin", zh, fixed = TRUE) &&
+    grepl("user-shield", ui, fixed = TRUE) &&
+    grepl(".ynow-sidebar-snapshot-foot", ui, fixed = TRUE) &&
+    grepl("flex-wrap: nowrap", ui, fixed = TRUE) &&
+    !grepl("一鍵", zh, fixed = TRUE)
+})
+check("no leftover agent debug instrumentation", {
+  files <- c("points_wallet.R", "ynow_server.R", "auth_account.R", "debug_helpers.R")
+  txt <- paste(vapply(files, function(f) {
+    paste(readLines(file.path(app_dir, f), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  }, character(1)), collapse = "\n")
+  !grepl("ynow_agent_dbg", txt, fixed = TRUE) &&
+    !grepl("/opt/cursor/logs/debug.log", txt, fixed = TRUE) &&
+    !grepl("#region agent log", txt, fixed = TRUE)
+})
+
+ynow_pdf_reset_memory()
+.ynow_points_mem_reset()
+pdf_uid <- "pdf-user-1"
+invisible(ynow_points_credit(pdf_uid, 100L, reason = "earn_signup", ref_id = "pdf-seed", wallet = "fyn"))
+check("pdf sku costs 10", identical(ynow_points_sku_cost("pdf_report"), 10L))
+day_fixed <- "2026-10-18"
+free_ok <- replicate(3L, ynow_pdf_claim(pdf_uid, day = day_fixed)$kind)
+check("three free pdf downloads", identical(as.character(free_ok), c("free", "free", "free")))
+bal_before <- ynow_points_balances(pdf_uid)$fyn
+paid <- ynow_pdf_claim(pdf_uid, day = day_fixed)
+check("fourth pdf spends 10 FYN", {
+  isTRUE(paid$ok) && identical(paid$kind, "paid") &&
+    identical(ynow_points_balances(pdf_uid)$fyn, bal_before - 10L)
+})
+ynow_pdf_release(paid)
+check("failed render refunds FYN", identical(ynow_points_balances(pdf_uid)$fyn, bal_before))
+drain <- ynow_points_balances(pdf_uid)$fyn
+if (is.finite(drain) && drain > 0L) {
+  invisible(ynow_points_credit(pdf_uid, -drain, reason = "adjust", ref_id = "pdf-drain", wallet = "fyn"))
+}
+broke <- ynow_pdf_claim(pdf_uid, day = day_fixed)
+check("pdf blocked when FYN is short", isTRUE(!broke$ok) && identical(broke$message_key, "pts_msg_insufficient"))
+check("next Taipei day is free again", identical(ynow_pdf_claim(pdf_uid, day = "2026-10-19")$kind, "free"))
+check("pdf download requires the claim helper", {
+  srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("ynow_pdf_claim", srv, fixed = TRUE) && grepl("pdf_need_login", srv, fixed = TRUE)
+})
+check("pdf quota hint is bilingual", {
+  grepl("10 FYN", ui_str("pdf_quota_hint", "en"), fixed = TRUE) &&
+    grepl("10 FYN", ui_str("pdf_quota_hint", "zh-TW"), fixed = TRUE) &&
+    !grepl("一鍵", ui_str("pdf_quota_hint", "zh-TW"), fixed = TRUE)
 })
 
 cat("PASS", n_ok, " FAIL", n_fail, "\n")

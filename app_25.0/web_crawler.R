@@ -5,13 +5,16 @@
 # Cache architecture (strict fast vs slow — do not mix TTLs):
 #
 #   SLOW (fundamentals): income / balance / cash flow, SEC notes, industry labels.
-#     Change cadence = quarter / year. Use cache_disk (fallback: cache_mem) with
-#     ≥24h TTL so statement pulls are stable and do not thrash Yahoo.
+#     Change cadence = quarter / year. Disk memoise stays ≥24h (L1). When Postgres
+#     is configured (YNOW_DB_*), statements are also stored in ynow_market_cache
+#     for 90 days so the next user reads the database instead of Yahoo.
 #
 #   FAST (market / macro): live quotes, Rf (10Y), USD/TWD FX.
 #     High-frequency; drives CAPM Ke, MOS vs market, and sensitivity baselines.
 #     Local/dev: cache_mem ≤15m. Hosted / YNOW_CACHE_ROOT / YNOW_FAST_CACHE_DIR:
 #     cache_disk ≤15m so workers on the same host share quote/Rf/FX hits.
+#     Price history used for Rolling β is a daily Postgres row (not a quarterly
+#     statement). Short windows (1d–3mo) stay on the 15m quote tier.
 #
 # Yahoo commercial hardening:
 #   - Shared sticky dirs (YNOW_CACHE_ROOT or hosted /tmp/ynow_cache) cut miss storms.
@@ -212,6 +215,16 @@ ynow_cache_tier_info <- function() {
     cache_root = tryCatch(.ynow_cache_root(), error = function(e) NA_character_),
     fast_shared_disk = isTRUE(.ynow_use_shared_fast_disk()) &&
       grepl("cache_disk", paste(class(.ynow_fast_cache), collapse = "/"), fixed = TRUE),
+    statement_db_ttl_sec = if (exists("ynow_market_statement_ttl_sec", mode = "function")) {
+      ynow_market_statement_ttl_sec()
+    } else {
+      90L * 86400L
+    },
+    price_day_ttl_sec = if (exists("ynow_market_price_day_ttl_sec", mode = "function")) {
+      ynow_market_price_day_ttl_sec()
+    } else {
+      86400L
+    },
     yahoo_gate_enabled = isTRUE(.ynow_yahoo_gate_enabled()),
     yahoo_min_interval_ms = as.integer(round(.ynow_yahoo_min_interval_sec() * 1000)),
     yahoo_gate_dir = tryCatch(.ynow_yahoo_gate_dir(), error = function(e) NA_character_)
@@ -289,11 +302,38 @@ ynow_cache_tier_info <- function() {
 # Important: never leave EMPTY frames in the slow cache — Yahoo rate-limits and
 # transient misses would otherwise poison Multiples / DCF for 24h.
 .scrape_financials_uncached <- function(stock_code) {
+  tk <- toupper(trimws(as.character(stock_code %||% "")[1]))
+  stmt_key <- paste0("stmt:", tk)
+  if (nzchar(tk) && exists("ynow_market_cache_get", mode = "function")) {
+    hit <- tryCatch(
+      ynow_market_cache_get(stmt_key, ynow_market_cache_ttl("statement")),
+      error = function(e) NULL
+    )
+    empty_fn <- if (exists("financials_is_bs_cf_all_empty", mode = "function")) {
+      financials_is_bs_cf_all_empty
+    } else {
+      function(x) FALSE
+    }
+    if (!is.null(hit) && !isTRUE(empty_fn(hit))) return(hit)
+  }
   .ynow_log(paste("🚀 正在啟動 Python 財報抓取:", stock_code))
   if (!isTRUE(.ensure_python_scraper())) {
     stop("scrape_all_financials 未載入（Python / reticulate 失敗）")
   }
-  normalize_all_financials(scrape_all_financials(stock_code))
+  res <- normalize_all_financials(scrape_all_financials(stock_code))
+  empty_fn2 <- if (exists("financials_is_bs_cf_all_empty", mode = "function")) {
+    financials_is_bs_cf_all_empty
+  } else {
+    function(x) FALSE
+  }
+  if (nzchar(tk) && !is.null(res) && !isTRUE(empty_fn2(res)) &&
+      exists("ynow_market_cache_put", mode = "function")) {
+    tryCatch(
+      ynow_market_cache_put(stmt_key, "statement", tk, res),
+      error = function(e) NULL
+    )
+  }
+  res
 }
 
 .cached_scrape_financials_memo <- memoise::memoise(

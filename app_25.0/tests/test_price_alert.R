@@ -84,11 +84,21 @@ fake_send <- function(to, subject, body) {
 }
 once <- price_alert_apply_checks(added$df, quotes, send_fn = fake_send, history_path = hist)
 check("hit sends once", once$sent == 1L && identical(sent_to, "owner@example.com"))
-check("sent rule is disarmed", isTRUE(!once$df$armed[[1]]) && identical(once$df$status[[1]], "sent"))
+check("sent rule stays armed", isTRUE(once$df$armed[[1]]) && isTRUE(once$df$latched[[1]]) && identical(once$df$status[[1]], "armed"))
 hist_df <- price_alert_history_read(hist)
 check("history records email fire", nrow(hist_df) >= 1L && grepl("email", hist_df$channel[[1]]))
 twice <- price_alert_apply_checks(once$df, quotes, send_fn = fake_send, history_path = hist)
-check("disarmed rule does not send again", twice$sent == 0L && length(sent_to) == 1L)
+check("latched rule does not send again", twice$sent == 0L && length(sent_to) == 1L && isTRUE(twice$df$armed[[1]]))
+cleared <- twice$df
+cleared_q <- list(ASML = list(ok = TRUE, price = 700, prev = 710))
+released <- price_alert_apply_checks(cleared, cleared_q, send_fn = fake_send, history_path = hist)
+check("clearing the condition unlatches", isTRUE(released$df$armed[[1]]) && !isTRUE(released$df$latched[[1]]) && released$sent == 0L)
+again <- price_alert_apply_checks(released$df, quotes, send_fn = fake_send, history_path = hist)
+check("rule fires again after it clears", again$sent == 1L && length(sent_to) == 2L)
+off <- price_alert_set_armed(again$df, again$df$id[[1]], FALSE)
+check("manual switch turns the rule off", !isTRUE(off$armed[[1]]) && identical(off$status[[1]], "off"))
+quiet <- price_alert_apply_checks(off, quotes, send_fn = fake_send, history_path = hist)
+check("off rule does not send", quiet$sent == 0L && length(sent_to) == 2L)
 
 no_smtp <- price_alert_apply_checks(
   added$df, quotes,
@@ -103,11 +113,16 @@ app_hit <- price_alert_apply_checks(
   history_path = hist
 )
 check("app-only fires toast channel", length(app_hit$app_toasts) == 1L)
-check("app-only disarms without email", isTRUE(!app_hit$df$armed[[1]]) && identical(app_hit$df$status[[1]], "notified_app"))
+check("app-only stays armed", isTRUE(app_hit$df$armed[[1]]) && isTRUE(app_hit$df$latched[[1]]))
 
-price_alert_write(added$df, store)
+price_alert_write(once$df, store)
 round <- price_alert_read(store)
-check("json round trip", identical(round$ticker[[1]], "ASML") && isTRUE(round$armed[[1]]))
+check("json round trip", identical(round$ticker[[1]], "ASML") && isTRUE(round$armed[[1]]) && isTRUE(round$latched[[1]]))
+legacy <- added$df
+legacy$latched <- NULL
+price_alert_write(legacy, store)
+legacy_read <- price_alert_read(store)
+check("legacy row without latched reads unlatched", !isTRUE(legacy_read$latched[[1]]) && isTRUE(legacy_read$armed[[1]]))
 
 wrap <- ynow_alertable(tags$span("x"), metric = "last_price", ticker = "ASML", value = 10, ready = TRUE)
 check("alertable ready attr", identical(wrap$attribs$`data-ynow-alert-ready`, "1"))
@@ -135,6 +150,11 @@ check("zh table col is 目標值", identical(.UI_STRINGS$`zh-TW`$pa_col_level, "
 ui_txt <- paste(readLines("ynow_ui.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check("gesture JS wired", grepl("ynow_kpi_alert_open", ui_txt, fixed = TRUE))
 check("blocked input wired", grepl("ynow_kpi_alert_blocked", ui_txt, fixed = TRUE))
+pa_txt <- paste(readLines("price_alert.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+check("arm switch wired", grepl("ynow-pa-arm", pa_txt, fixed = TRUE) &&
+        grepl("pa_arm_set", pa_txt, fixed = TRUE))
+check("rearm button removed", !grepl("pa_rearm", pa_txt, fixed = TRUE) &&
+        !grepl("pa_rearm", paste(readLines("ui_locale.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n"), fixed = TRUE))
 srv_txt <- paste(readLines("ynow_server.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check("last price uses alertable", grepl("ynow_alertable", srv_txt, fixed = TRUE) &&
         grepl('metric = \"last_price\"', srv_txt, fixed = TRUE))
