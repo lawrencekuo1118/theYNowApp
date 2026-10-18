@@ -7,4 +7,4 @@ commit=f79ee61edce98674714f7766ece568882c030fd3
 short=f79ee61e
 message=Require a ticker before a valuation PDF download, and skip the free-download count and FYN charge when that ticker and its settings were already downloaded.
 captured_at=2026-10-18T13:39:30Z
-display_version=v25.53
+display_version=v25.54
