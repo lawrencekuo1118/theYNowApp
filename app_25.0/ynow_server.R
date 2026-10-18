@@ -403,22 +403,37 @@ server <- function(input, output, session) {
   }
 
   .ynow_push_access_locks <- function() {
-    if (!exists("ynow_access_locked_ids", mode = "function")) return(invisible(NULL))
+    if (!exists("ynow_access_entries", mode = "function")) return(invisible(NULL))
     uid <- .ynow_access_subject_id()
-    ids <- if (nzchar(uid)) ynow_access_locked_ids(uid) else character()
+    # Guests still receive global (__all__) restrictions.
+    ent <- tryCatch(ynow_access_entries(uid), error = function(e) {
+      data.frame(id = character(), effect = character(), stringsAsFactors = FALSE)
+    })
     loc <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "en")
     note <- tryCatch(
       ui_str("access_pane_note", loc),
       error = function(e) "This page is locked for the signed-in account."
     )
-    session$sendCustomMessage("ynowAccessLocks", list(ids = as.list(ids), note = note))
+    entries <- if (is.data.frame(ent) && nrow(ent) > 0L) {
+      lapply(seq_len(nrow(ent)), function(i) {
+        list(id = as.character(ent$id[[i]]), effect = as.character(ent$effect[[i]]))
+      })
+    } else {
+      list()
+    }
+    ids <- if (is.data.frame(ent)) as.character(ent$id) else character()
+    session$sendCustomMessage(
+      "ynowAccessLocks",
+      list(ids = as.list(ids), entries = entries, note = note)
+    )
     invisible(ids)
   }
 
   .ynow_access_deny_download <- function(item_id, file) {
     if (!exists("ynow_access_is_locked", mode = "function")) return(FALSE)
     uid <- .ynow_access_subject_id()
-    if (!nzchar(uid) || !isTRUE(ynow_access_is_locked(uid, item_id))) return(FALSE)
+    # Global (__all__) applies even when not signed in.
+    if (!isTRUE(ynow_access_is_locked(uid, item_id))) return(FALSE)
     loc <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "en")
     msg <- tryCatch(
       ui_str("access_denied_report", loc),
@@ -1168,7 +1183,10 @@ server <- function(input, output, session) {
         style = "font-size:12.5px;",
         .lab(
           "access_lock_help",
-          "Lock or unlock a tab, a section, a numeric input, or a report for the selected user."
+          paste0(
+            "Choose lock (show a locked placeholder) or hide (remove from the UI), ",
+            "and apply to the selected user or all users."
+          )
         )
       ),
       {
@@ -1193,17 +1211,58 @@ server <- function(input, output, session) {
           character()
         }
         item_choices <- if (length(item_labels)) stats::setNames(cat_df$id, item_labels) else character()
-        locked_ids <- if (nzchar(sel) && exists("ynow_access_locked_ids", mode = "function")) {
-          ynow_access_locked_ids(sel)
+        all_uid <- if (exists("YNOW_ACCESS_ALL_USERS", inherits = TRUE)) {
+          as.character(get("YNOW_ACCESS_ALL_USERS", inherits = TRUE))[1]
+        } else {
+          "__all__"
+        }
+        .fmt_entries <- function(uid_show, scope_lab) {
+          if (!exists("ynow_access_entries", mode = "function")) return(character())
+          # Raw map for this store key only (not merged), via locked file/db uid.
+          ent <- tryCatch({
+            if (exists(".ynow_access_map_for_uid", mode = "function")) {
+              mp <- .ynow_access_map_for_uid(uid_show)
+              if (!length(mp)) {
+                data.frame(id = character(), effect = character(), stringsAsFactors = FALSE)
+              } else {
+                data.frame(
+                  id = names(mp),
+                  effect = unname(as.character(mp)),
+                  stringsAsFactors = FALSE
+                )
+              }
+            } else {
+              ynow_access_entries(uid_show)
+            }
+          }, error = function(e) {
+            data.frame(id = character(), effect = character(), stringsAsFactors = FALSE)
+          })
+          if (!is.data.frame(ent) || nrow(ent) < 1L) return(character())
+          vapply(seq_len(nrow(ent)), function(i) {
+            lab <- if (exists("ynow_access_label", mode = "function")) {
+              ynow_access_label(ent$id[[i]], loc)
+            } else {
+              ent$id[[i]]
+            }
+            eff <- if (exists("ynow_access_effect_label", mode = "function")) {
+              ynow_access_effect_label(ent$effect[[i]], loc)
+            } else {
+              ent$effect[[i]]
+            }
+            paste0(scope_lab, " · ", lab, "（", eff, "）")
+          }, character(1))
+        }
+        user_lines <- if (nzchar(sel)) {
+          .fmt_entries(sel, .lab("access_scope_user_short", "User"))
         } else {
           character()
         }
-        locked_txt <- if (!length(locked_ids)) {
+        all_lines <- .fmt_entries(all_uid, .lab("access_scope_all_short", "All"))
+        locked_lines <- c(all_lines, user_lines)
+        locked_txt <- if (!length(locked_lines)) {
           .lab("access_none", "Nothing is locked for this user.")
         } else {
-          paste(vapply(locked_ids, function(id) {
-            if (exists("ynow_access_label", mode = "function")) ynow_access_label(id, loc) else id
-          }, character(1)), collapse = "、")
+          paste(locked_lines, collapse = if (identical(loc, "zh-TW")) "、" else "; ")
         }
         tagList(
           selectInput(
@@ -1211,22 +1270,44 @@ server <- function(input, output, session) {
             .lab("access_lock_item", "Item"),
             choices = item_choices
           ),
+          radioButtons(
+            "ynow_access_scope",
+            .lab("access_scope_label", "Apply to"),
+            choiceNames = list(
+              .lab("access_scope_user", "Selected user"),
+              .lab("access_scope_all", "All users")
+            ),
+            choiceValues = c("user", "all"),
+            selected = "user",
+            inline = TRUE
+          ),
+          radioButtons(
+            "ynow_access_effect",
+            .lab("access_effect_label", "Restriction"),
+            choiceNames = list(
+              .lab("access_effect_lock", "Lock (show locked placeholder)"),
+              .lab("access_effect_hide", "Hide (remove from UI)")
+            ),
+            choiceValues = c("lock", "hide"),
+            selected = "lock",
+            inline = TRUE
+          ),
           tags$div(
             style = "margin-top:4px; display:flex; flex-wrap:wrap; gap:8px; align-items:center;",
             actionButton(
               "ynow_access_lock",
-              .lab("access_lock_btn", "Lock item"),
+              .lab("access_lock_btn", "Apply restriction"),
               class = "btn-warning"
             ),
             actionButton(
               "ynow_access_unlock",
-              .lab("access_unlock_btn", "Unlock item"),
+              .lab("access_unlock_btn", "Clear restriction"),
               class = "btn-default"
             )
           ),
           tags$p(
             style = "margin-top:10px; font-size:12.5px;",
-            tags$b(.lab("access_locked_now", "Currently locked")),
+            tags$b(.lab("access_locked_now", "Currently restricted")),
             ": ",
             locked_txt
           )
@@ -1243,9 +1324,20 @@ server <- function(input, output, session) {
       return()
     }
     if (!exists("ynow_access_set", mode = "function")) return()
-    uid <- as.character(input$ynow_pts_sysadmin_user %||% "")[1]
+    scope <- as.character(input$ynow_access_scope %||% "user")[1]
+    all_uid <- if (exists("YNOW_ACCESS_ALL_USERS", inherits = TRUE)) {
+      as.character(get("YNOW_ACCESS_ALL_USERS", inherits = TRUE))[1]
+    } else {
+      "__all__"
+    }
+    uid <- if (identical(scope, "all")) {
+      all_uid
+    } else {
+      as.character(input$ynow_pts_sysadmin_user %||% "")[1]
+    }
     item <- as.character(input$ynow_access_item %||% "")[1]
-    res <- ynow_access_set(uid, item, locked = isTRUE(locked))
+    effect <- as.character(input$ynow_access_effect %||% "lock")[1]
+    res <- ynow_access_set(uid, item, locked = isTRUE(locked), effect = effect)
     showNotification(
       .lab(res$message_key %||% "access_bad_item", "Choose an item from the catalog."),
       type = if (isTRUE(res$ok)) "message" else "warning"

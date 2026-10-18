@@ -4789,13 +4789,40 @@ ui <- dashboardPage(
             animation: none;
           }
         }
-        /* Sysadmin portal: after login hide all login/intro chrome */
-        .sidebar-menu li.ynow-access-locked { display: none !important; }
-        .form-group.ynow-access-locked,
-        .shiny-input-container.ynow-access-locked,
-        [data-ynow-lock].ynow-access-locked,
-        a.btn.ynow-access-locked,
-        button.ynow-access-locked { display: none !important; }
+        /* Access restrictions: hide = remove; lock = keep visible with locked chrome */
+        .sidebar-menu li.ynow-access-hidden { display: none !important; }
+        .sidebar-menu li.ynow-access-locked-nav > a {
+          opacity: 0.55;
+        }
+        .form-group.ynow-access-hidden,
+        .shiny-input-container.ynow-access-hidden,
+        [data-ynow-lock].ynow-access-hidden,
+        a.btn.ynow-access-hidden,
+        button.ynow-access-hidden { display: none !important; }
+        .form-group.ynow-access-locked-input,
+        .shiny-input-container.ynow-access-locked-input,
+        [data-ynow-lock].ynow-access-locked-section {
+          position: relative;
+          opacity: 0.72;
+          pointer-events: none;
+        }
+        .form-group.ynow-access-locked-input::after,
+        .shiny-input-container.ynow-access-locked-input::after,
+        [data-ynow-lock].ynow-access-locked-section::after {
+          content: attr(data-lock-note);
+          display: block;
+          margin-top: 6px;
+          font-size: 12px;
+          color: var(--ynow-gate-ink-soft, #333333);
+          white-space: normal;
+        }
+        a.btn.ynow-access-locked-btn,
+        button.ynow-access-locked-btn {
+          opacity: 0.55;
+          pointer-events: none;
+          cursor: not-allowed;
+        }
+        .tab-pane.ynow-access-hidden-pane { display: none !important; }
         .tab-pane.ynow-access-locked-pane > * { display: none !important; }
         .tab-pane.ynow-access-locked-pane::before {
           content: attr(data-lock-note);
@@ -4809,6 +4836,7 @@ ui <- dashboardPage(
           border-radius: 6px;
           white-space: normal;
         }
+        /* Sysadmin portal: after login hide all login/intro chrome */
         /* Shared sign-in / unlock gate chrome (black–white logo palette) */
         .ynow-gate-callout {
           margin: 0 0 12px 0;
@@ -10998,48 +11026,96 @@ ui <- dashboardPage(
               }
             });
             window.ynowApplyAccessLocks = function () {
-              var ids = window.__ynowAccessLocks || [];
+              var entries = window.__ynowAccessEntries || [];
               var note = window.__ynowAccessLockNote || '';
-              var set = {};
-              ids.forEach(function (id) { set[String(id)] = true; });
-              document.querySelectorAll('.ynow-access-locked').forEach(function (el) {
-                el.classList.remove('ynow-access-locked');
-              });
-              document.querySelectorAll('.ynow-access-locked-pane').forEach(function (el) {
-                el.classList.remove('ynow-access-locked-pane');
+              var clearSel = [
+                '.ynow-access-hidden',
+                '.ynow-access-locked-nav',
+                '.ynow-access-locked-input',
+                '.ynow-access-locked-section',
+                '.ynow-access-locked-btn',
+                '.ynow-access-locked-pane',
+                '.ynow-access-hidden-pane',
+                '.ynow-access-locked'
+              ].join(',');
+              document.querySelectorAll(clearSel).forEach(function (el) {
+                el.classList.remove(
+                  'ynow-access-hidden',
+                  'ynow-access-locked-nav',
+                  'ynow-access-locked-input',
+                  'ynow-access-locked-section',
+                  'ynow-access-locked-btn',
+                  'ynow-access-locked-pane',
+                  'ynow-access-hidden-pane',
+                  'ynow-access-locked'
+                );
                 el.removeAttribute('data-lock-note');
               });
-              Object.keys(set).forEach(function (id) {
+              entries.forEach(function (row) {
+                if (!row || !row.id) return;
+                var id = String(row.id);
+                var effect = String(row.effect || 'hide').toLowerCase();
+                if (effect !== 'lock') effect = 'hide';
                 if (id.indexOf('tab:') === 0) {
                   var tab = id.slice(4);
                   document.querySelectorAll('a[data-value]').forEach(function (a) {
                     if (a.getAttribute('data-value') !== tab) return;
                     var li = a.closest('li');
-                    if (li) li.classList.add('ynow-access-locked');
+                    if (!li) return;
+                    if (effect === 'hide') li.classList.add('ynow-access-hidden');
+                    else li.classList.add('ynow-access-locked-nav');
                   });
                   var pane = document.getElementById('shiny-tab-' + tab);
                   if (pane) {
-                    pane.classList.add('ynow-access-locked-pane');
-                    pane.setAttribute('data-lock-note', note);
+                    if (effect === 'hide') {
+                      pane.classList.add('ynow-access-hidden-pane');
+                    } else {
+                      pane.classList.add('ynow-access-locked-pane');
+                      pane.setAttribute('data-lock-note', note);
+                    }
                   }
                 } else if (id.indexOf('input:') === 0) {
                   var inp = document.getElementById(id.slice(6));
                   var fg = inp && (inp.closest('.form-group') || inp.closest('.shiny-input-container'));
-                  if (fg) fg.classList.add('ynow-access-locked');
+                  if (!fg) return;
+                  if (effect === 'hide') fg.classList.add('ynow-access-hidden');
+                  else {
+                    fg.classList.add('ynow-access-locked-input');
+                    fg.setAttribute('data-lock-note', note);
+                  }
                 } else if (id.indexOf('report:') === 0) {
                   var btn = document.getElementById(id.slice(7));
-                  if (btn) btn.classList.add('ynow-access-locked');
+                  if (!btn) return;
+                  if (effect === 'hide') btn.classList.add('ynow-access-hidden');
+                  else {
+                    btn.classList.add('ynow-access-locked-btn');
+                    btn.setAttribute('title', note);
+                  }
                 } else if (id.indexOf('section:') === 0) {
                   document.querySelectorAll('[data-ynow-lock]').forEach(function (el) {
                     if (el.getAttribute('data-ynow-lock') !== id) return;
-                    el.classList.add('ynow-access-locked');
+                    if (effect === 'hide') el.classList.add('ynow-access-hidden');
+                    else {
+                      el.classList.add('ynow-access-locked-section');
+                      el.setAttribute('data-lock-note', note);
+                    }
                   });
                 }
               });
             };
             addHandler('ynowAccessLocks', function (payload) {
               if (!payload) return;
-              window.__ynowAccessLocks = payload.ids || [];
+              var entries = payload.entries;
+              if (!entries || !entries.length) {
+                /* Backward compat: plain ids list → hide */
+                entries = (payload.ids || []).map(function (id) {
+                  return { id: id, effect: 'hide' };
+                });
+              }
+              window.__ynowAccessEntries = entries;
+              window.__ynowAccessLocks = (payload.ids || entries.map(function (e) {
+                return e && e.id;
+              })).filter(Boolean);
               window.__ynowAccessLockNote = payload.note || '';
               if (window.ynowApplyAccessLocks) window.ynowApplyAccessLocks();
             });
