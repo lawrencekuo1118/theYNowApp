@@ -201,6 +201,33 @@ check("admin panel builds", {
   p <- ynow_admin_panel_ui(list(email = "demo@ynow.app", logged_in_at = "t"), "en", "v25.01")
   inherits(p, "shiny.tag") || inherits(p, "shiny.tag.list")
 })
+check("admin panel flat block (no AdminLTE box)", {
+  p <- ynow_admin_panel_ui(list(email = "demo@ynow.app", logged_in_at = "t"), "en", "v25.01")
+  html <- as.character(p)
+  grepl("ynow-maint-block", html, fixed = TRUE) &&
+    grepl("ynow-maint-shell", html, fixed = TRUE) &&
+    grepl("ynow-maint-theme-select", html, fixed = TRUE) &&
+    grepl('data-ynow-maint-theme="logo"', html, fixed = TRUE) &&
+    !grepl("box-solid", html, fixed = TRUE) &&
+    !grepl("box-primary", html, fixed = TRUE)
+})
+check("points panel flat block + theme", {
+  p <- ynow_points_panel_ui(list(email = "demo@ynow.app"), "zh-TW", fyn_balance = 10L, pyn_balance = 0L)
+  html <- as.character(p)
+  grepl("ynow-maint-block", html, fixed = TRUE) &&
+    grepl("ynow-maint-theme-select", html, fixed = TRUE) &&
+    grepl("黑白色系", html, fixed = TRUE) &&
+    grepl("藍海色系", html, fixed = TRUE) &&
+    grepl("森林色系", html, fixed = TRUE) &&
+    !grepl("box-solid", html, fixed = TRUE)
+})
+check("auth css includes maint theme + JS", {
+  css <- ynow_auth_css()
+  html <- paste(as.character(css), collapse = "\n")
+  grepl("ynow-maint-shell", html, fixed = TRUE) &&
+    grepl("ynow_maint_theme", html, fixed = TRUE) &&
+    grepl("data-ynow-maint-theme", html, fixed = TRUE)
+})
 check("pa guest gate builds", inherits(ynow_pa_guest_gate_ui(), "shiny.tag"))
 Sys.setenv(YNOW_ENABLE_ACCOUNT_LOGIN = "0")
 check("admin menu NULL when disabled", is.null(ynow_admin_menu_item()))
@@ -219,7 +246,9 @@ keys <- c(
   "auth_msg_disabled_account", "auth_about_neon",
   "auth_msg_forgot_soon", "auth_msg_resend_soon", "auth_about_note",
   "menu_admin", "auth_admin_title", "auth_admin_intro", "auth_pa_gate_title",
-  "auth_pa_gate_body", "auth_admin_tool_lite", "pa_email_account_help"
+  "auth_pa_gate_body", "auth_admin_tool_lite", "pa_email_account_help",
+  "auth_admin_theme", "auth_admin_theme_scope", "auth_admin_theme_logo",
+  "auth_admin_theme_mono", "auth_admin_theme_ocean", "auth_admin_theme_forest"
 )
 for (k in keys) {
   check(paste("en key", k), k %in% names(.UI_STRINGS$en) && nzchar(ui_str(k, "en")))
