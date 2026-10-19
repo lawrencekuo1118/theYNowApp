@@ -7,5 +7,5 @@ commit=78007ad64fb4d4d5037406ea14bfad1bbe7ec5f8
 short=78007ad
 message=chore: record shipped display version v25.70
 captured_at=2026-10-19T14:29:34Z
-display_version=v25.70
+display_version=v25.71
 note=Canonical live line is app_25.0. Bundle 12710742: YNOW statement-only verdict (QoE/F-Score/M-Score/Schilit; no MOS/momentum).
