@@ -2089,10 +2089,9 @@ server <- function(input, output, session) {
     ),
     after_mount = function(tab) {
       lazy_mount_nonce(isolate(as.integer(lazy_mount_nonce()) %||% 0L) + 1L)
-      # Push once immediately and once after DOM paint so lazy-tab chrome
-      # (ATX titles etc.) receives applyUiLocale even if first message races.
-      # A second nonce bump after paint re-applies select/picker choice labels
-      # (update* can no-op if inputs are not bound yet on first mount tick).
+      # One immediate push + one delayed after paint (selectize may not bind yet).
+      # Avoid the old triple push (0 / 0.05 / 0.25) which re-invalidated locale
+      # reactives three times on every first visit to a lazy tab.
       push_loc <- function() {
         tryCatch(
           .push_ui_locale(isolate(ui_locale()), sync_picker = FALSE),
@@ -2101,17 +2100,24 @@ server <- function(input, output, session) {
       }
       push_loc()
       if (requireNamespace("later", quietly = TRUE)) {
-        later::later(push_loc, delay = 0.05)
         later::later(function() {
           tryCatch({
             lazy_mount_nonce(isolate(as.integer(lazy_mount_nonce()) %||% 0L) + 1L)
             push_loc()
           }, error = function(e) NULL)
-        }, delay = 0.25)
+        }, delay = 0.12)
       }
       invisible(tab)
     }
   )
+
+  # Active sidebar tab (for gating heavy Lab / Dashboard / Snapshot work).
+  .ynow_sidebar_tab <- reactive({
+    as.character(input$sidebar_tabs %||% "")[1]
+  })
+  .ynow_bluechip_mounted <- function() {
+    tryCatch(isTRUE(.ynow_lazy_tab_ctrl$mounted("bluechip")), error = function(e) FALSE)
+  }
 
   # Starter (1 GB / 1 worker): drop heavy session payloads on disconnect so the
   # next browser can reuse RAM instead of waiting for opportunistic GC.
@@ -4609,9 +4615,20 @@ server <- function(input, output, session) {
     tags$span(style = "font-size:12px; color:#666;", "Snapshot time: ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z"))
   })
 
-  output$snapshot_table <- renderDataTable({
-    datatable(snapshot_rows(), rownames = FALSE, options = list(pageLength = 25, scrollX = TRUE))
-  })
+  output$snapshot_table <- DT::renderDT({
+    req(identical(.ynow_sidebar_tab(), "snapshot"))
+    DT::datatable(
+      snapshot_rows(),
+      rownames = FALSE,
+      options = list(
+        pageLength = 25,
+        scrollX = TRUE,
+        deferRender = TRUE,
+        processing = TRUE,
+        dom = "ltip"
+      )
+    )
+  }, server = TRUE)
 
   output$download_snapshot <- downloadHandler(
     filename = function() {
@@ -5101,6 +5118,8 @@ server <- function(input, output, session) {
   )
 
   output$tbIncomeStatement <- DT::renderDT({
+    req(identical(.ynow_sidebar_tab(), "dashboard"))
+    req(identical(as.character(input$dashboard_fin_report %||% "")[1], "Income Statement"))
     req(scraped_financials())
     session_currency(); fx_usd_twd(); market_mode(); ui_locale()
     raw <- scraped_financials()[["Income Statement"]]$collapsed
@@ -5114,6 +5133,8 @@ server <- function(input, output, session) {
   }, server = TRUE)
   
   output$tbBalanceSheet <- DT::renderDT({
+    req(identical(.ynow_sidebar_tab(), "dashboard"))
+    req(identical(as.character(input$dashboard_fin_report %||% "")[1], "Balance Sheet"))
     req(scraped_financials())
     session_currency(); fx_usd_twd(); market_mode(); ui_locale()
     raw <- scraped_financials()[["Balance Sheet"]]$collapsed
@@ -5127,6 +5148,8 @@ server <- function(input, output, session) {
   }, server = TRUE)
   
   output$tbCashFlow <- DT::renderDT({
+    req(identical(.ynow_sidebar_tab(), "dashboard"))
+    req(identical(as.character(input$dashboard_fin_report %||% "")[1], "Cash Flow"))
     req(scraped_financials())
     session_currency(); fx_usd_twd(); market_mode(); ui_locale()
     raw <- scraped_financials()[["Cash Flow"]]$collapsed
@@ -5177,6 +5200,8 @@ server <- function(input, output, session) {
   })
   
   output$is_plot <- renderPlotly({
+    req(identical(.ynow_sidebar_tab(), "dashboard"))
+    req(identical(as.character(input$dashboard_fin_report %||% "")[1], "Income Statement"))
     generate_safe_line_plot(
       data = selected_is_data(), 
       ticker_name = current_ticker(), 
@@ -5199,21 +5224,18 @@ server <- function(input, output, session) {
     equity_structure_slices(bs, sum_df, ticker = tk, locale = loc)
   })
 
+  # Stable Plotly hosts: do not swap column layouts on locale/slice changes
+  # (that tore down and rebuilt Plotly DOM on every currency/locale tick).
   output$bs_equity_charts_ui <- renderUI({
-    ui_locale()
-    slices <- tryCatch(.eq_structure_slices_now(), error = function(e) NULL)
-    has_eq <- is.data.frame(slices) && nrow(slices) >= 2L
-    if (isTRUE(has_eq)) {
-      fluidRow(
-        column(6, plotlyOutput("bs_plot", height = "380px")),
-        column(6, plotlyOutput("eq_structure_plot", height = "380px"))
-      )
-    } else {
-      plotlyOutput("bs_plot", height = "380px")
-    }
+    fluidRow(
+      column(6, plotlyOutput("bs_plot", height = "380px")),
+      column(6, plotlyOutput("eq_structure_plot", height = "380px"))
+    )
   })
 
   output$bs_plot <- renderPlotly({
+    req(identical(.ynow_sidebar_tab(), "dashboard"))
+    req(identical(as.character(input$dashboard_fin_report %||% "")[1], "Balance Sheet"))
     tk <- current_ticker()
     loc <- tryCatch(ui_locale(), error = function(e) "en")
     empty_title <- paste0(
@@ -5320,6 +5342,8 @@ server <- function(input, output, session) {
   })
 
   output$eq_structure_plot <- renderPlotly({
+    req(identical(.ynow_sidebar_tab(), "dashboard"))
+    req(identical(as.character(input$dashboard_fin_report %||% "")[1], "Balance Sheet"))
     tk <- current_ticker()
     loc <- tryCatch(ui_locale(), error = function(e) "en")
     slices <- tryCatch(.eq_structure_slices_now(), error = function(e) NULL)
@@ -5400,6 +5424,8 @@ server <- function(input, output, session) {
   }
 
   output$cf_plot <- renderPlotly({
+    req(identical(.ynow_sidebar_tab(), "dashboard"))
+    req(identical(as.character(input$dashboard_fin_report %||% "")[1], "Cash Flow"))
     session_currency(); fx_usd_twd()
     empty_plot <- function(msg) {
       plotly::plotly_empty() %>%
@@ -15058,6 +15084,8 @@ server <- function(input, output, session) {
 
   lab_im_catalog <- reactive({
     lab_im_catalog_nonce()
+    # Defer catalog build until Blue Chip has been opened at least once this session.
+    req(isTRUE(.ynow_bluechip_mounted()))
     mode <- market_mode()
     boards <- tryCatch(.lab_im_boards(), error = function(e) c("TWSE", "TPEX"))
     tryCatch(
@@ -15104,6 +15132,7 @@ server <- function(input, output, session) {
   observeEvent(
     list(ui_locale(), lazy_mount_nonce()),
     {
+      if (!isTRUE(.ynow_bluechip_mounted())) return()
       .lab_im_schedule_picker_locale(function() {
         loc <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "zh-TW")
         chain_choices <- lab_industry_chain_picker_choices(loc)
@@ -15129,6 +15158,7 @@ server <- function(input, output, session) {
   observeEvent(
     list(input$lab_im_chains, ui_locale(), lazy_mount_nonce()),
     {
+      if (!isTRUE(.ynow_bluechip_mounted())) return()
       .lab_im_schedule_picker_locale(function() {
         loc <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "zh-TW")
         chains <- as.character(isolate(input$lab_im_chains) %||% character(0))
@@ -15673,6 +15703,7 @@ server <- function(input, output, session) {
   )
 
   output$lab_im_summary <- DT::renderDT({
+    req(identical(.ynow_sidebar_tab(), "bluechip"))
     loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
     empty_msg <- tryCatch(
       ui_str("lab_im_summary_empty", loc),
@@ -15697,11 +15728,12 @@ server <- function(input, output, session) {
       c("建議評價方法", "產業數", "候選檔數")
     }
     ynow_sortable_datatable(sm[, want, drop = FALSE])
-  }, server = FALSE)
+  }, server = TRUE)
 
   # Live pool size under current query filters (industry × model × board × ADR).
   # Quality checkboxes apply only through the on-disk quality snapshot.
   output$lab_im_filter_count <- renderUI({
+    req(identical(.ynow_sidebar_tab(), "bluechip"))
     lab_quality_snap_nonce()
     loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
     catlg <- tryCatch(lab_im_catalog(), error = function(e) NULL)
@@ -16005,6 +16037,7 @@ server <- function(input, output, session) {
   # Defer while Blue Chip eval/universe is busy so ZH/EN chrome can finish first.
   observe({
     lazy_mount_nonce()
+    if (!isTRUE(.ynow_bluechip_mounted())) return()
     mm <- tryCatch(market_mode(), error = function(e) "US")
     loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
     .lab_im_schedule_picker_locale(function() {
@@ -16252,8 +16285,9 @@ server <- function(input, output, session) {
     )
   })
 
-  # Reload default snapshot when market switches (arm reset elsewhere)
+  # Reload default snapshot when market switches — only if Blue Chip was opened.
   observeEvent(market_mode(), {
+    if (!isTRUE(.ynow_bluechip_mounted())) return()
     mm <- tryCatch(normalize_market_mode(market_mode()), error = function(e) "US")
     snap <- tryCatch(
       lab_load_ind_mcap_chain_snapshot(mm, force = TRUE),
@@ -16355,6 +16389,7 @@ server <- function(input, output, session) {
   })
 
   output$lab_im_ind_mcap_treemap <- plotly::renderPlotly({
+    req(identical(.ynow_sidebar_tab(), "bluechip"))
     board <- .lab_im_ind_mcap_board()
     loc <- board$loc %||% "zh-TW"
     mm <- tryCatch(normalize_market_mode(market_mode()), error = function(e) "US")
@@ -16366,6 +16401,7 @@ server <- function(input, output, session) {
   })
 
   output$lab_im_ind_mcap_table <- DT::renderDT({
+    req(identical(.ynow_sidebar_tab(), "bluechip"))
     board <- .lab_im_ind_mcap_board()
     loc <- board$loc %||% "zh-TW"
     msg_col <- if (identical(loc, "en")) "Message" else "訊息"
@@ -16390,9 +16426,10 @@ server <- function(input, output, session) {
       ))
     }
     ynow_sortable_datatable(lab_localize_im_colnames(tbl, loc))
-  }, server = FALSE)
+  }, server = TRUE)
 
   output$lab_im_leaderboard <- DT::renderDT({
+    req(identical(.ynow_sidebar_tab(), "bluechip"))
     loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
     msg_col <- if (identical(loc, "en")) "Message" else "訊息"
     scores <- lab_im_scores()
@@ -16517,7 +16554,7 @@ server <- function(input, output, session) {
       }
     }
     ynow_sortable_datatable(lab_localize_im_colnames(lb, loc))
-  }, server = FALSE)
+  }, server = TRUE)
 
   output$lab_im_leaderboard_status <- renderUI({
     scores <- lab_im_scores()
@@ -16608,6 +16645,7 @@ server <- function(input, output, session) {
   })
 
   output$lab_im_table <- DT::renderDT({
+    req(identical(.ynow_sidebar_tab(), "bluechip"))
     loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
     msg_col <- if (identical(loc, "en")) "Message" else "訊息"
     catlg <- lab_im_catalog()
@@ -16717,7 +16755,7 @@ server <- function(input, output, session) {
         backgroundColor = "#f3f6fb",
         fontWeight = "700"
       )
-  }, server = FALSE)
+  }, server = TRUE)
 
   lab_im_detail_export_df <- function() {
     catlg <- tryCatch(lab_im_catalog(), error = function(e) NULL)
@@ -17300,6 +17338,7 @@ server <- function(input, output, session) {
   })
 
   output$lab_cluster_scatter <- plotly::renderPlotly({
+    req(identical(.ynow_sidebar_tab(), "lab_notes"))
     res <- lab_cluster_result()
     req(lab_cluster_has_result(res))
     lab_cluster_scatter_plotly(
@@ -17312,6 +17351,7 @@ server <- function(input, output, session) {
   })
 
   output$lab_cluster_radar <- plotly::renderPlotly({
+    req(identical(.ynow_sidebar_tab(), "lab_notes"))
     res <- lab_cluster_result()
     req(lab_cluster_has_result(res))
     focus <- as.character(input$lab_cluster_focus %||% "")[1]
@@ -17341,6 +17381,7 @@ server <- function(input, output, session) {
   })
 
   output$lab_cluster_table <- DT::renderDT({
+    req(identical(.ynow_sidebar_tab(), "lab_notes"))
     res <- lab_cluster_result()
     req(lab_cluster_has_result(res))
     loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
@@ -17389,7 +17430,7 @@ server <- function(input, output, session) {
       dt <- DT::formatRound(dt, columns = num_cols, digits = 2)
     }
     dt
-  }, server = FALSE)
+  }, server = TRUE)
 
   # 沿用主頁 Ticker / Stock Code：優先用已搜尋的代碼，否則用主頁輸入框
   lab_ticker <- reactive({

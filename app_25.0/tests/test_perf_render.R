@@ -111,6 +111,31 @@ check(
     grepl("cached_get_yahoo_industry", bb, fixed = TRUE)
 )
 
+# --- Tab-switch load efficiency contracts ---
+check(
+  "Lab leaderboard / detail / cluster DT use server=TRUE",
+  grepl("lab_im_leaderboard <- DT::renderDT[\\s\\S]{0,6000}?server = TRUE", srv, perl = TRUE) &&
+    grepl("lab_im_table <- DT::renderDT[\\s\\S]{0,5000}?server = TRUE", srv, perl = TRUE) &&
+    grepl("lab_cluster_table <- DT::renderDT[\\s\\S]{0,2500}?server = TRUE", srv, perl = TRUE)
+)
+check(
+  "snapshot table is server-side DT with deferRender",
+  grepl("snapshot_table <- DT::renderDT", srv, fixed = TRUE) &&
+    grepl("snapshot_table <- DT::renderDT[\\s\\S]{0,400}?server = TRUE", srv, perl = TRUE) &&
+    grepl("snapshot_table <- DT::renderDT[\\s\\S]{0,350}?deferRender = TRUE", srv, perl = TRUE)
+)
+check(
+  "statement / Lab outputs gate on active sidebar tab",
+  grepl("tbIncomeStatement[\\s\\S]{0,200}?\\.ynow_sidebar_tab\\(\\)", srv, perl = TRUE) &&
+    grepl("lab_im_summary <- DT::renderDT[\\s\\S]{0,120}?\\.ynow_sidebar_tab\\(\\)", srv, perl = TRUE) &&
+    grepl("lab_im_catalog <- reactive\\(\\{[\\s\\S]{0,200}?\\.ynow_bluechip_mounted\\(\\)", srv, perl = TRUE)
+)
+check(
+  "bs equity chart hosts are stable (no has_eq layout swap)",
+  grepl("bs_equity_charts_ui <- renderUI", srv, fixed = TRUE) &&
+    !grepl("bs_equity_charts_ui <- renderUI\\(\\{[\\s\\S]{0,400}?has_eq", srv, perl = TRUE)
+)
+
 # --- Slow cache dir override hook ---
 info <- ynow_cache_tier_info()
 check("slow cache dir exists", is.character(info$slow_dir) && nzchar(info$slow_dir) && dir.exists(info$slow_dir))
