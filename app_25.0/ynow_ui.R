@@ -11808,9 +11808,9 @@ ui <- dashboardPage(
             /* Collapse sidebar, then show login modal (Sign in / PA gate).
                Uses window.ynowRequestAuthModal (defined later). Shiny 1.14+
                requires handler.length === 1 — zero-arg handlers never register. */
-            addHandler('ynowAuthOpenModal', function (msg) {
+            addHandler('ynowAuthOpenModal', function (_msg) {
               if (document.body && document.body.classList.contains('ynow-authed')) return;
-              var mode = (msg && msg.mode) ? String(msg.mode) : '';
+              var mode = (_msg && _msg.mode) ? String(_msg.mode) : '';
               if (typeof window.ynowRequestAuthModal === 'function') {
                 window.ynowRequestAuthModal(mode);
               } else {
@@ -12565,8 +12565,9 @@ ui <- dashboardPage(
             }
           }
           window.ynowApplyAuthModalMode = ynowApplyAuthModalMode;
-          function ynowRequestAuthModal(mode) {
+          function ynowRequestAuthModal() {
             if (ynowIsAuthed()) return;
+            var mode = (arguments.length && arguments[0]) ? arguments[0] : '';
             try { ynowApplyAuthModalMode(mode); } catch (eMode) {}
             try {
               if (typeof window.ynowPersistPreAuthTab === 'function') window.ynowPersistPreAuthTab();
