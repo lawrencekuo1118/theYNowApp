@@ -61,8 +61,9 @@ check("JS creates three dot spans", grepl("<span>\\\\.<\\\\/span><span>\\\\.<\\\
 check("server .ynow_set_tab_busy", grepl("\\.ynow_set_tab_busy", srv))
 check("server sendCustomMessage ynowTabBusy", grepl("ynowTabBusy", srv, fixed = TRUE))
 check("server mirrors bluechip eval busy",
-      grepl('\\.ynow_set_tab_busy\\(\"bluechip\"', srv) ||
-        grepl("\\.ynow_set_tab_busy\\(\"bluechip\"", srv))
+      grepl('\\.ynow_set_tab_busy\\(\\s*[\\r\\n]*\\s*\"bluechip\"', srv, perl = TRUE) ||
+        grepl("\\.ynow_set_tab_busy\\(\\s*[\\r\\n]*\\s*\"bluechip\"", srv, perl = TRUE) ||
+        grepl('.ynow_set_tab_busy("bluechip"', srv, fixed = TRUE))
 check("server company scrape marks tab",
       grepl("\\.ynow_busy_tab_now\\(\"dashboard\"\\)", srv) ||
         grepl('.ynow_busy_tab_now("dashboard")', srv, fixed = TRUE))

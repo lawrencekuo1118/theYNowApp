@@ -603,6 +603,8 @@ decision_checklist_server <- function(
   }
 
   observe({
+    # Skip locale chrome work while Checklist is not the active sidebar tab.
+    if (!identical(as.character(input$sidebar_tabs %||% "")[1], "decision_checklist")) return()
     loc <- tryCatch(ui_locale(), error = function(e) "en")
     .dc_apply_locale_labels(loc)
     session$sendCustomMessage("ynowDcSopLocale", list(
@@ -634,6 +636,7 @@ decision_checklist_server <- function(
   }, ignoreInit = TRUE)
 
   observe({
+    if (!identical(as.character(input$sidebar_tabs %||% "")[1], "decision_checklist")) return()
     loc <- tryCatch(ui_locale(), error = function(e) "en")
     rec <- tryCatch(model_rec(), error = function(e) NULL)
     prim <- as.character(rec$primary %||% "")[1]
