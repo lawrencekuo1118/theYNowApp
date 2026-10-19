@@ -17435,10 +17435,18 @@ ui <- dashboardPage(
           } else {
             NULL
           },
-          tags$button(
-            type = "button",
-            class = "btn btn-primary ynow-auth-open",
-            tags$span(class = "ynow-member-gate-signin-label", "Sign in")
+          tags$div(
+            class = "ynow-auth-pair ynow-auth-pair--gate",
+            tags$button(
+              type = "button",
+              class = "btn btn-primary ynow-auth-open ynow-auth-btn",
+              tags$span(class = "ynow-member-gate-signin-label", "Sign in")
+            ),
+            tags$button(
+              type = "button",
+              class = "btn btn-default ynow-auth-register-open ynow-auth-btn",
+              tags$span(class = "ynow-auth-register-label", "Register")
+            )
           )
         ),
         tags$div(
@@ -17459,10 +17467,18 @@ ui <- dashboardPage(
           } else {
             NULL
           },
-          tags$button(
-            type = "button",
-            class = "btn btn-primary ynow-auth-open",
-            tags$span(class = "ynow-member-gate-signin-label", "Sign in")
+          tags$div(
+            class = "ynow-auth-pair ynow-auth-pair--gate",
+            tags$button(
+              type = "button",
+              class = "btn btn-primary ynow-auth-open ynow-auth-btn",
+              tags$span(class = "ynow-member-gate-signin-label", "Sign in")
+            ),
+            tags$button(
+              type = "button",
+              class = "btn btn-default ynow-auth-register-open ynow-auth-btn",
+              tags$span(class = "ynow-auth-register-label", "Register")
+            )
           )
         ),
         tabBox(

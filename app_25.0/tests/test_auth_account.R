@@ -344,7 +344,7 @@ keys <- c(
   "auth_sign_in", "auth_sign_out", "auth_modal_title", "auth_modal_help",
   "auth_email_label", "auth_password_label", "auth_submit", "auth_cancel",
   "auth_or_email", "auth_google", "auth_facebook", "auth_linkedin", "auth_forgot",
-  "auth_register", "auth_resend",
+  "auth_register", "auth_register_btn", "auth_modal_title_register", "auth_resend",
   "auth_msg_ok", "auth_msg_disabled", "auth_msg_missing", "auth_msg_invalid",
   "auth_msg_no_backend", "auth_msg_oauth_soon", "auth_msg_oauth_need_google",
   "auth_msg_oauth_need_facebook", "auth_msg_oauth_need_linkedin",
@@ -393,6 +393,13 @@ check("zh uses 登入", grepl("登入", ui_str("auth_sign_in", "zh-TW"), fixed =
 check("zh no simplified 登录", !grepl("登录", ui_str("auth_sign_in", "zh-TW"), fixed = TRUE))
 check("zh uses 帳號", grepl("帳號", ui_str("auth_register", "zh-TW"), fixed = TRUE))
 check("zh no 账户", !grepl("账户", ui_str("auth_register", "zh-TW"), fixed = TRUE))
+check("register button is 註冊 / Register", {
+  identical(ui_str("auth_register_btn", "en"), "Register") &&
+    identical(ui_str("auth_register_btn", "zh-TW"), "註冊") &&
+    !grepl("注册", ui_str("auth_register_btn", "zh-TW"), fixed = TRUE) &&
+    grepl("Register for The YNow App", ui_str("auth_modal_title_register", "en"), fixed = TRUE) &&
+    grepl("註冊 The YNow App", ui_str("auth_modal_title_register", "zh-TW"), fixed = TRUE)
+})
 check("zh modal title YNow", grepl("The YNow App", ui_str("auth_modal_title", "zh-TW"), fixed = TRUE))
 check("zh Email 登入 submit", grepl("Email 登入", ui_str("auth_submit", "zh-TW"), fixed = TRUE))
 
@@ -812,6 +819,33 @@ check("sidebar auth UI is div not navbar li", {
     grepl("ynow-auth-links--sidebar", paste(as.character(h), collapse = ""), fixed = TRUE) &&
     grepl("ynow-auth-links--home", paste(as.character(home), collapse = ""), fixed = TRUE) &&
     grepl("ynow_auth_open_home", paste(as.character(home), collapse = ""), fixed = TRUE)
+})
+check("sign-in and register share one row", {
+  Sys.setenv(YNOW_ENABLE_ACCOUNT_LOGIN = "1")
+  h <- paste(as.character(ynow_auth_links_ui("sidebar")), collapse = "")
+  home <- paste(as.character(ynow_auth_home_ui()), collapse = "")
+  gate <- paste(as.character(ynow_member_gate_ui(
+    "g", "t", "b", "btn_pair", feature = "lab"
+  )), collapse = "")
+  Sys.setenv(YNOW_ENABLE_ACCOUNT_LOGIN = "0")
+  grepl("ynow-auth-pair", h, fixed = TRUE) &&
+    grepl("ynow_auth_register_open", h, fixed = TRUE) &&
+    grepl("ynow-auth-register-open", home, fixed = TRUE) &&
+    grepl("ynow_auth_register_open_home", home, fixed = TRUE) &&
+    grepl("ynow-auth-pair--gate", gate, fixed = TRUE) &&
+    grepl("btn_pair_register", gate, fixed = TRUE) &&
+    grepl("ynow_auth_try_register", auth_src, fixed = TRUE) &&
+    grepl("ynow-auth-pair--modal", auth_src, fixed = TRUE) &&
+    grepl("height:28px", auth_src, fixed = TRUE) &&
+    grepl("height:40px", auth_src, fixed = TRUE) &&
+    grepl("height:46px", auth_src, fixed = TRUE)
+})
+check("home card titles are centered", {
+  k <- regexpr(".ynow-home-card-k \\{", ui)
+  ok <- k[1] > 0
+  if (!ok) return(FALSE)
+  tail <- substr(ui, k[1], k[1] + 220)
+  grepl("text-align: center;", tail, fixed = TRUE)
 })
 check("modal card layout present when enabled", {
   Sys.setenv(YNOW_ENABLE_ACCOUNT_LOGIN = "1")

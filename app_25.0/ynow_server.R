@@ -717,14 +717,26 @@ server <- function(input, output, session) {
           class = "box-body",
           tags$p(class = "ynow-gate-body", acct_body),
           extras,
-          actionButton(
-            "ynow_pa_gate_signin",
-            label = tags$span(
-              id = "ynow_pa_gate_signin_label",
-              class = "ynow-member-gate-signin-label",
-              tryCatch(ui_str("auth_sign_in", loc), error = function(e) "Sign in")
+          tags$div(
+            class = "ynow-auth-pair ynow-auth-pair--gate",
+            actionButton(
+              "ynow_pa_gate_signin",
+              label = tags$span(
+                id = "ynow_pa_gate_signin_label",
+                class = "ynow-member-gate-signin-label",
+                tryCatch(ui_str("auth_sign_in", loc), error = function(e) "Sign in")
+              ),
+              class = "btn-primary ynow-auth-open ynow-auth-btn"
             ),
-            class = "btn-primary ynow-auth-open"
+            actionButton(
+              "ynow_acct_gate_register",
+              label = tags$span(
+                id = "ynow_acct_gate_register_label",
+                class = "ynow-auth-register-label",
+                tryCatch(ui_str("auth_register_btn", loc), error = function(e) "Register")
+              ),
+              class = "btn-default ynow-auth-register-open ynow-auth-btn"
+            )
           )
         )
       ))
