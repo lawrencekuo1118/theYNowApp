@@ -7,5 +7,5 @@ commit=6f8e75d958489bbc91deba559e8ef70477aeadb1
 short=6f8e75d9
 message=chore: bump display version to v25.64
 captured_at=2026-10-19T02:13:03Z
-display_version=v25.64
+display_version=v25.65
 note=Canonical live line is app_25.0. Bundle 12708117: tab-switch perf — active-tab gates, Lab/Snapshot server DT, Blue Chip catalog deferral, stable BS Plotly hosts, dual lazy locale push.
