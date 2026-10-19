@@ -7,5 +7,5 @@ commit=042f8620281bf691903c13fccaf3ee1a17f4af34
 short=042f862
 message=chore: record shipped display version v25.68
 captured_at=2026-10-19T07:01:06Z
-display_version=v25.68
+display_version=v25.69
 note=Canonical live line is app_25.0. Bundle 12709031: rename 三表共通警訊 → 財報交叉檢查 (investor-facing).
