@@ -1,0 +1,61 @@
+# Cursor indexing exclusions — reduce background memory.
+# Does not change Git tracking.
+
+# Large media / documents
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.webm
+*.pdf
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.7z
+*.iso
+
+# Python / Node / build trees
+.venv/
+venv/
+my_python_env/
+.ynow_venv/
+node_modules/
+build/
+dist/
+__pycache__/
+*.pyc
+
+# R / Shiny derived
+.Rproj.user/
+rsconnect/
+renv/library/
+renv/staging/
+*.RData
+*.rda
+*.rds
+
+# Historical app trees (archived; live line is app_25.0 only)
+# Keep on disk for Git; exclude from Cursor index to cut RAM.
+app\ 3.0/
+app\ 4.0/
+app\ 5.0/
+app\ 6.0/
+app\ 7.0/
+app_8.0/
+app_9.0/
+app_10.0/
+app_11.0/
+app_12.0/
+app_13.0/
+app_14.0/
+app_18.0/
+app_20.0/
+app_22.0/
+app_23.0/
+app_24.0/
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+.cursor/debug-*.log
