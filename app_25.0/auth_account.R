@@ -369,7 +369,7 @@ ynow_auth_requires_login <- function(lite = FALSE) {
 }
 
 #' App-generated / proprietary download output ids that require sign-in when auth is on.
-#' (Applies in Full and Lite — same floor as the valuation PDF quota gate.)
+#' Full guests are gated; Lite keeps Download Report (and other Lite-visible downloads) open.
 ynow_gated_download_ids <- function() {
   c(
     "download_report",
@@ -390,7 +390,9 @@ ynow_public_download_ids <- function() {
 }
 
 #' TRUE when auth is on and the subject has no signed-in user id (guest).
-ynow_guest_download_denied <- function(user_id = "", auth_enabled = NULL) {
+#' Lite never denies downloads — free surface stays open (hide Full-only locks elsewhere).
+ynow_guest_download_denied <- function(user_id = "", auth_enabled = NULL, lite = FALSE) {
+  if (isTRUE(lite)) return(FALSE)
   if (is.null(auth_enabled)) {
     auth_enabled <- exists("ynow_auth_enabled", mode = "function") &&
       isTRUE(ynow_auth_enabled())

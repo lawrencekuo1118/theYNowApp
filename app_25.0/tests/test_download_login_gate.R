@@ -40,6 +40,9 @@ check("signed-in allowed when auth on", {
 check("guest allowed when auth off", {
   !isTRUE(ynow_guest_download_denied("", auth_enabled = FALSE))
 })
+check("Lite guest never denied downloads", {
+  !isTRUE(ynow_guest_download_denied("", auth_enabled = TRUE, lite = TRUE))
+})
 
 srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
@@ -115,11 +118,13 @@ check("client click gate lists proprietary ids", {
     !grepl("7302/ingest", ui, fixed = TRUE)
 })
 check("client does not gate public statement buttons", {
-  start <- regexpr("Guest click gate for proprietary", ui, fixed = TRUE)
+  start <- regexpr("Full guest click gate for proprietary", ui, fixed = TRUE)
+  if (start < 1L) start <- regexpr("Guest click gate for proprietary", ui, fixed = TRUE)
   if (start < 1L) return(FALSE)
-  chunk <- substr(ui, start, min(nchar(ui), start + 1200L))
+  chunk <- substr(ui, start, min(nchar(ui), start + 1400L))
   grepl("#download_report", chunk, fixed = TRUE) &&
     grepl("#download_snapshot", chunk, fixed = TRUE) &&
+    grepl("ynow-lite", chunk, fixed = TRUE) &&
     !grepl("#IS_download", chunk, fixed = TRUE) &&
     !grepl("#BS_download", chunk, fixed = TRUE) &&
     !grepl("#CF_download", chunk, fixed = TRUE)
@@ -139,6 +144,21 @@ check("sidebar guest download uses lock icon sync", {
   grepl("ynowSyncSidebarDownloadIcon", ui, fixed = TRUE) &&
     grepl("fas fa-lock ynow-sidebar-dl-lock", ui, fixed = TRUE) &&
     grepl("fas fa-download", ui, fixed = TRUE)
+})
+check("Lite excludes PDF lock chrome and click gate", {
+  grepl("not(.ynow-lite):not(.ynow-authed) .ynow-sidebar-download-wrap #download_report", ui, fixed = TRUE) &&
+    grepl("if (document.body.classList.contains('ynow-lite')) return;", ui, fixed = TRUE) &&
+    grepl("var isLite = document.body.classList.contains('ynow-lite');", ui, fixed = TRUE) &&
+    grepl("body.ynow-lite .ynow-menu-lock", ui, fixed = TRUE)
+})
+check("server PDF authorize skips login in Lite", {
+  grepl("kind = \"lite\"", srv, fixed = TRUE) &&
+    grepl(".ynow_pdf_authorize", srv, fixed = TRUE) &&
+    grepl("ynow_lite_mode", srv, fixed = TRUE)
+})
+check("locale ships Lite PDF quota hint en+zh-TW", {
+  grepl('pdf_quota_hint_lite = "Lite: free PDF downloads. Enter a ticker first."', loc, fixed = TRUE) &&
+    grepl('pdf_quota_hint_lite = "Lite：可免費下載 PDF。請先輸入股票代號。"', loc, fixed = TRUE)
 })
 check("server parses", inherits(tryCatch(parse(file.path(app_dir, "ynow_server.R")), error = function(e) e), "expression"))
 check("ui parses", inherits(tryCatch(parse(file.path(app_dir, "ynow_ui.R")), error = function(e) e), "expression"))

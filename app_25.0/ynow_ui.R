@@ -6566,22 +6566,30 @@ ui <- dashboardPage(
         body.skin-black.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .main-sidebar .sidebar-menu li.treeview:has(a:has(.ynow-menu-lock)) > a > i {
           color: #a3a3a3 !important;
         }
-        /* Guest PDF download: muted / light-gray locked control (lock icon via JS). */
-        body.ynow-auth-feature:not(.ynow-authed) .ynow-sidebar-download-wrap #download_report,
-        body.ynow-auth-feature:not(.ynow-authed) .ynow-sidebar-download-btn {
+        /* Full guest PDF download: muted / light-gray locked control (lock icon via JS).
+           Lite keeps Download Report open — never apply the locked chrome. */
+        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .ynow-sidebar-download-wrap #download_report,
+        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .ynow-sidebar-download-btn {
           background-color: #2e2e2e !important;
           color: #a3a3a3 !important;
           border-color: #666666 !important;
           box-shadow: none !important;
         }
-        body.ynow-auth-feature:not(.ynow-authed) .ynow-sidebar-download-wrap #download_report:hover,
-        body.ynow-auth-feature:not(.ynow-authed) .ynow-sidebar-download-btn:hover {
+        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .ynow-sidebar-download-wrap #download_report:hover,
+        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .ynow-sidebar-download-btn:hover {
           background-color: #353535 !important;
           color: #b8b8b8 !important;
           border-color: #777777 !important;
         }
-        body.ynow-auth-feature:not(.ynow-authed) .ynow-download-report-quota {
+        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .ynow-download-report-quota {
           color: #a3a3a3;
+        }
+        /* Lite: hide lock glyphs — Full-only locked surfaces are hidden, not shown locked. */
+        body.ynow-lite .ynow-menu-lock,
+        body.ynow-lite .ynow-sidebar-dl-lock,
+        body.ynow-lite .ynow-inner-tab-lock,
+        body.ynow-lite .ynow-access-lock {
+          display: none !important;
         }
         .label-primary, .badge-primary {
           background-color: var(--ynow-ink) !important;
@@ -7295,22 +7303,27 @@ ui <- dashboardPage(
         body.ynow-lite #snapshot_report .nav-tabs > li:has(> a[data-value="snap_current"]) {
           display: none !important;
         }
-        /* Snapshot APP_DEFAULTS: tab stays in the strip; title becomes a lock until sysadmin. */
+        /* Lite: locked APP_DEFAULTS → hide (do not show a lock glyph). */
+        body.ynow-lite:not(.ynow-sysadmin-on) #snapshot_report > li:has(> a[data-value="snap_defaults"]),
+        body.ynow-lite:not(.ynow-sysadmin-on) #snapshot_report .nav-tabs > li:has(> a[data-value="snap_defaults"]) {
+          display: none !important;
+        }
+        /* Snapshot APP_DEFAULTS (Full): tab stays; title becomes a lock until sysadmin. */
         #snapshot_report a[data-value="snap_defaults"] > .ynow-snap-tab-lock {
           display: none;
         }
-        body:not(.ynow-sysadmin-on) #snapshot_report a[data-value="snap_defaults"] {
+        body:not(.ynow-lite):not(.ynow-sysadmin-on) #snapshot_report a[data-value="snap_defaults"] {
           font-size: 0 !important;
           line-height: 1;
         }
-        body:not(.ynow-sysadmin-on) #snapshot_report a[data-value="snap_defaults"] > .ynow-snap-tab-lock {
+        body:not(.ynow-lite):not(.ynow-sysadmin-on) #snapshot_report a[data-value="snap_defaults"] > .ynow-snap-tab-lock {
           display: inline-block !important;
           font-size: 13px !important;
           width: auto;
           margin: 0;
         }
-        body:not(.ynow-sysadmin-on) #snapshot_report a[data-value="snap_defaults"] > i:not(.ynow-snap-tab-lock),
-        body:not(.ynow-sysadmin-on) #snapshot_report a[data-value="snap_defaults"] > span {
+        body:not(.ynow-lite):not(.ynow-sysadmin-on) #snapshot_report a[data-value="snap_defaults"] > i:not(.ynow-snap-tab-lock),
+        body:not(.ynow-lite):not(.ynow-sysadmin-on) #snapshot_report a[data-value="snap_defaults"] > span {
           display: none !important;
         }
         body:not(.ynow-sysadmin-on) .ynow-snap-defaults-body {
@@ -9212,18 +9225,6 @@ ui <- dashboardPage(
             pushLeft(langHdr);
             pushLeft(document.querySelector('.main-header .ynow-auth-header'));
             if (custom) pushLeft(custom);
-            // #region agent log
-            try {
-              var rows = ['lab_notes','decision_checklist','price_alerts'].map(function (tab) {
-                var link = document.querySelector('.sidebar-menu a[data-value=\"' + tab + '\"]');
-                return { tab: tab, color: link ? getComputedStyle(link).color : null };
-              });
-              var authEl = document.querySelector('.main-header .ynow-auth-header');
-              var langEl = document.querySelector('.main-header .ynow-lang-header');
-              var titleEl = document.querySelector('.main-header .logo .ynow-app-title');
-              fetch('http://127.0.0.1:7302/ingest/e3a0dcdf-71e1-4bba-855e-f942118bd315',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f91dce'},body:JSON.stringify({sessionId:'f91dce',hypothesisId:'A',location:'ynow_ui.R:placeMobileAppTitle',message:'lock colors and header auth',data:{rows:rows,body:document.body.className,auth:authEl?Math.round(authEl.getBoundingClientRect().left):null,lang:langEl?Math.round(langEl.getBoundingClientRect().left):null,titleRight:titleEl?Math.round(titleEl.getBoundingClientRect().right):null,width:window.innerWidth},timestamp:Date.now()})}).catch(function(){});
-            } catch (eLog) {}
-            // #endregion
             var rightClear = Math.max(80, Math.round(window.innerWidth - rightEdge));
             var maxW = Math.max(64, window.innerWidth - leftClear - rightClear - gap * 2);
             title.style.maxWidth = maxW + 'px';
@@ -10042,6 +10043,11 @@ ui <- dashboardPage(
             if (bootGuard && incoming === bootGuard && !opts.fromBoot) {
               window.__ynowLocaleBootGuard = null;
             }
+            try {
+              if (payload && payload.strings) {
+                window.__ynowUiLocaleStrings = payload.strings;
+              }
+            } catch (eStoreLoc) {}
             if (typeof window.ynowSetUpdateLocaleStrings === 'function') {
               window.ynowSetUpdateLocaleStrings(s);
             }
@@ -10812,7 +10818,13 @@ ui <- dashboardPage(
               }
             }
             var pdfQuota = document.getElementById('ynow_download_report_quota');
-            if (pdfQuota && s.pdf_quota_hint) pdfQuota.textContent = s.pdf_quota_hint;
+            if (pdfQuota) {
+              var liteOn = document.body && document.body.classList.contains('ynow-lite');
+              var qHint = liteOn
+                ? (s.pdf_quota_hint_lite || s.pdf_quota_hint)
+                : s.pdf_quota_hint;
+              if (qHint) pdfQuota.textContent = qHint;
+            }
             var snap = document.getElementById('ynow_snapshot_link_label');
             if (snap && s.snapshot_link) snap.textContent = s.snapshot_link;
             var snapTitle = document.getElementById('ynow_snapshot_page_title');
@@ -11705,12 +11717,14 @@ ui <- dashboardPage(
               }
             }
             window.ynowSyncSysAdminFootVisibility = ynowSyncSysAdminFootVisibility;
-            /* Sidebar PDF button: lock icon while guest; download icon after sign-in.
-               Click gate still opens Sign-in; no promo/FAQ/video in the sidebar. */
+            /* Sidebar PDF button: Full guest → lock icon; Lite / signed-in → download icon.
+               Lite never locks Download Report (free surface). */
             function ynowSyncSidebarDownloadIcon() {
               var dl = document.getElementById('download_report');
               if (!dl || !document.body) return;
-              var locked = document.body.classList.contains('ynow-auth-feature') &&
+              var isLite = document.body.classList.contains('ynow-lite');
+              var locked = !isLite &&
+                document.body.classList.contains('ynow-auth-feature') &&
                 !document.body.classList.contains('ynow-authed');
               var icon = dl.querySelector('i');
               if (!icon) {
@@ -12202,6 +12216,21 @@ ui <- dashboardPage(
                 Shiny.setInputValue('ynow_lite_mode', enabled, {priority: 'event'});
               }
               if (enabled) ensureLiteSnapshotDefaultsTab();
+              try {
+                if (typeof window.ynowSyncSidebarDownloadIcon === 'function') {
+                  window.ynowSyncSidebarDownloadIcon();
+                }
+              } catch (eDlLite) {}
+              try {
+                var pdfQuota = document.getElementById('ynow_download_report_quota');
+                var locBundle = window.__ynowUiLocaleStrings || null;
+                if (pdfQuota && locBundle) {
+                  var qHint = enabled
+                    ? (locBundle.pdf_quota_hint_lite || locBundle.pdf_quota_hint)
+                    : locBundle.pdf_quota_hint;
+                  if (qHint) pdfQuota.textContent = qHint;
+                }
+              } catch (eQLite) {}
               remapLegacyHash();
               if (opts.navigate === false) return;
               var tab = currentSidebarTab();
@@ -12435,11 +12464,12 @@ ui <- dashboardPage(
               window.ynowSyncSidebarDownloadIcon();
             }
           } catch (eDlIcon) {}
-          /* Guest click gate for proprietary downloads / capture exports.
-             Public statement CSVs (IS/BS/CF/FS) stay open. */
+          /* Full guest click gate for proprietary downloads / capture exports.
+             Lite stays open (Download Report free). Public statement CSVs stay open. */
           document.addEventListener('click', function (ev) {
             if (!document.body) return;
             if (!document.body.classList.contains('ynow-auth-feature')) return;
+            if (document.body.classList.contains('ynow-lite')) return;
             if (ynowIsAuthed()) return;
             var sel = [
               '#download_report',

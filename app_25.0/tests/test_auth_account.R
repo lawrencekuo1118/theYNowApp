@@ -284,7 +284,7 @@ check("guest PDF download control uses muted locked styling", {
   grepl("ynowSyncSidebarDownloadIcon", ui, fixed = TRUE) &&
     grepl("ynow-sidebar-dl-lock", ui, fixed = TRUE) &&
     grepl(
-      "body.ynow-auth-feature:not(.ynow-authed) .ynow-sidebar-download-wrap #download_report",
+      "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .ynow-sidebar-download-wrap #download_report",
       ui,
       fixed = TRUE
     ) &&
