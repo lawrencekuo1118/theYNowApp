@@ -2696,6 +2696,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     funnel_fscore_n_pass = "Pass {n}",
     funnel_fscore_n_fail = "Fail {n}",
     funnel_primary_fallback = "Primary model",
+    funnel_v_waiting_text = paste0(
+      "Waiting for Search to load statements and valuation inputs ",
+      "(F-Score / earnings quality required for this scenario label)."
+    ),
     funnel_v_trap_title = "Value-trap warning",
     funnel_v_trap_text = paste0(
       "Financial quality looks weak, or operating cash flow struggles to support reported earnings. ",
@@ -6512,6 +6516,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     funnel_fscore_n_pass = "通過 {n} 項",
     funnel_fscore_n_fail = "未達標 {n} 項",
     funnel_primary_fallback = "主模型",
+    funnel_v_waiting_text = paste0(
+      "等待搜尋載入財報與估值輸入後顯示",
+      "（此情境標籤需 F-Score／盈餘品質）。"
+    ),
     funnel_v_trap_title = "價值陷阱警訊",
     funnel_v_trap_text = paste0(
       "財務品質偏弱，或營業現金流難以支撐帳面獲利。",

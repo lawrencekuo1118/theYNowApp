@@ -45,7 +45,8 @@ decision_ui <- function(id) {
           paste0(
             "點選 MOS／Reliability（跳至情境結論）、品質檢核 (F-Score)、財報警訊（含 Beneish M-Score）可捲動至對應區塊。",
             "閱讀順序：情境結論 → 自動化風險矩陣 → 財報體質（QoE／F-Score）→ 財報警訊（M-Score／Schilit）。",
-            "情境結論須先完成「決策檢核」Decision SOP 才解鎖；風險矩陣為綜合概覽、非解鎖條件。",
+            "YNOW 依已載入之股價／財報與估值結果獨立分析並顯示，不需先完成「決策檢核」Decision SOP；",
+            "決策檢核仍可作選用紀律流程。風險矩陣為綜合概覽。",
             "動態產業泡沫與權重集中度在「總體經濟與大盤趨勢」分頁最下方。"
           )
         )
@@ -88,7 +89,7 @@ decision_ui <- function(id) {
         )
       ),
 
-      # Scenario verdict — MOS / F-Score / momentum inputs; SOP-gated unlock
+      # Scenario verdict — MOS / F-Score / momentum; no Decision SOP prerequisite
       tags$section(
         class = "ynow-funnel-chapter ynow-funnel-verdict",
         id = "ynow_funnel_verdict",
@@ -114,8 +115,8 @@ decision_ui <- function(id) {
               class = "ynow-funnel-chapter__lead",
               paste0(
                 "綜合 MOS、F-Score／盈餘品質與趨勢動能的研究情境標籤（非下單指令）。",
-                "Full 模式須先至「決策檢核」完成 Decision SOP（含強制閘門）才解鎖；",
-                "與下方自動化風險矩陣並列參考——矩陣不是解鎖條件。"
+                "搜尋載入財報與估值後即可顯示，不需先解鎖「決策檢核」Decision SOP；",
+                "決策檢核仍可作選用紀律。下方自動化風險矩陣為並列參考。"
               )
             )
           ),
@@ -352,10 +353,8 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
                             current_ticker = reactive("")) {
   moduleServer(id, function(input, output, session) {
 
-    .sop_unlocked <- function() {
-      g <- tryCatch(sop_verdict_gate(), error = function(e) NULL)
-      is.list(g) && isTRUE(g$unlocked)
-    }
+    # YNOW analyzes independently — Decision Checklist / Decision SOP is optional.
+    .sop_unlocked <- function() TRUE
 
     .pick_num <- function(x) {
       x <- suppressWarnings(as.numeric(x)[1])
@@ -840,18 +839,16 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
 
     output$ui_recommendation <- renderUI({
       .ui_loc()
-      if (!.sop_unlocked()) {
-        # Decision SOP lives on Decision Checklist — point YNOW verdict here only.
+      rec <- final_recommendation()
+      if (is.null(rec) || !is.list(rec)) {
         return(div(
-          class = "alert alert-secondary ynow-sop-verdict-locked",
+          class = "alert alert-info ynow-waiting-verdict",
           tags$p(
             style = "margin:0;font-size:13px;line-height:1.5;",
-            icon("lock"), " ", .str("funnel_sop_locked_hint")
+            .str("funnel_v_waiting_text")
           )
         ))
       }
-      rec <- final_recommendation()
-      if (is.null(rec) || !is.list(rec)) return(NULL)
       div(class = paste("alert", rec$class),
           h4(icon(rec$icon), " ", rec$title),
           p(rec$text))
@@ -890,25 +887,8 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
       model_vals <- model_vals[is.finite(model_vals)]
       has_primary_base <- !is.na(base)
       has_any_model_fv <- length(model_vals) > 0L || !is.na(sec_pt)
-      sop_g <- tryCatch(sop_verdict_gate(), error = function(e) NULL)
-      sop_unlocked <- is.list(sop_g) && isTRUE(sop_g$unlocked)
 
       if (!has_primary_base && !has_any_model_fv) {
-        # Model / Smart Analysis composite: show SOP-locked status only.
-        # Do not redirect to Decision Checklist / YNOW unlock here (that cue stays on YNOW).
-        if (!isTRUE(sop_unlocked)) {
-          return(div(
-            class = "alert alert-secondary ynow-sop-verdict-locked",
-            tags$h4(
-              style = "margin:0;font-weight:700;",
-              htmltools::htmlEscape(str("composite_status_prefix")),
-              tags$span(
-                style = "color:#6c757d;",
-                htmltools::htmlEscape(str("composite_sop_locked"))
-              )
-            )
-          ))
-        }
         return(div(class = "alert alert-info ynow-waiting-val", str("composite_waiting_val")))
       }
 
@@ -960,13 +940,7 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
       pos_base_css <- if (is.na(pos_base)) 0 else pos_base
 
       # Assessment verdict only when primary Base is available (no cold-load Fair/Overvalued)
-      if (!.sop_unlocked()) {
-        status_color <- "#6c757d"
-        status_html <- paste0(
-          "<span style='color: ", status_color, ";'>",
-          htmltools::htmlEscape(str("composite_sop_locked")), "</span>"
-        )
-      } else if (isTRUE(has_primary_base)) {
+      if (isTRUE(has_primary_base)) {
         status_text <- str("composite_fair")
         status_color <- "#f39c12"
         if (p_curr < base * 0.8) {
