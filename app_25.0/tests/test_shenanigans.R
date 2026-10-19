@@ -79,7 +79,7 @@ check("judgment rules include EQ", "EQ_M" %in% rules$code)
 check("judgment rules count 31", nrow(rules) == 31L)
 x1_ok <- ev_ok$items[ev_ok$items$code == "X1", ]
 check("healthy X1 not alert", !identical(x1_ok$status[1], "警示"))
-check("X1 category 三表共通警訊", identical(x1_ok$category[1], "三表共通警訊"))
+check("X1 category 財報交叉檢查", identical(x1_ok$category[1], "財報交叉檢查"))
 x2_ok <- ev_ok$items[ev_ok$items$code == "X2", ]
 check("X2 title uses 收款天數", grepl("收款天數", x2_ok$name[1], fixed = TRUE))
 check("X2 title has no DSO", !grepl("DSO", x2_ok$name[1], fixed = TRUE))
@@ -182,7 +182,7 @@ ui_ok <- as.character(shenanigans_results_ui(ev_ok))
 check("UI has no 某一招 explainer", !grepl("這不是某一招", ui_ok, fixed = TRUE))
 check("UI has no 會計把戲 intro", !grepl("會計把戲", ui_ok, fixed = TRUE))
 check("UI has no 舊有五項 aside", !grepl("舊有五項", ui_ok, fixed = TRUE))
-check("UI still has 三表共通警訊 heading", grepl("三表共通警訊", ui_ok, fixed = TRUE))
+check("UI still has 財報交叉檢查 heading", grepl("財報交叉檢查", ui_ok, fixed = TRUE))
 
 if (fail > 0L) {
   cat("FAILED ", fail, " checks\n", sep = "")
