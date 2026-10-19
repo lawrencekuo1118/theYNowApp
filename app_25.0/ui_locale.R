@@ -2573,23 +2573,24 @@ locale_for_market <- function(mode = get_market_mode()) {
     # --- YNOW page (verdict → risk matrix → quality → alerts) ---
     funnel_page_title = "YNOW",
     funnel_page_sub = paste0(
-      "Click MOS / Reliability (jumps to the scenario verdict), Quality screen (F-Score), ",
+      "Click Quality of Earnings (QoE), Quality screen (F-Score), ",
       "or Statement alerts (includes Beneish M-Score) to scroll. ",
-      "Reading order: scenario verdict → automated risk matrix → statement quality (QoE / F-Score) → ",
+      "Reading order: statement verdict → automated risk matrix → statement quality (QoE / F-Score) → ",
       "statement alerts (M-Score / Schilit). ",
-      "YNOW analyzes and displays from loaded price, statements, and valuation results — ",
+      "YNOW focuses on earnings-manipulation / statement-quality screens and labels from loaded statements only — ",
       "no Decision Checklist / Decision SOP unlock is required; the Checklist remains an optional discipline workflow. ",
       "The risk matrix is a composite overview. ",
       "Dynamic industry bubble and weight concentration sit at the bottom of Macro & Market Trends."
     ),
-    funnel_kpi_jump_mos_aria = "Jump to YNOW scenario verdict (MOS and Reliability are inputs to that verdict)",
+    funnel_kpi_jump_qoe_aria = "Jump to YNOW statement verdict (Quality of Earnings is an input to that verdict)",
     funnel_kpi_jump_fscore_aria = "Jump to Quality screen (F-Score) checklist",
     funnel_kpi_jump_alerts_aria = "Jump to Section II Statement alerts (includes Beneish M-Score)",
-    funnel_verdict_kicker = "Verdict",
-    funnel_verdict_title = "YNOW scenario verdict",
+    funnel_verdict_kicker = "Statement verdict",
+    funnel_verdict_title = "YNOW statement verdict",
     funnel_verdict_lead = paste0(
-      "Research scenario label from MOS, F-Score / earnings quality, and trend momentum ",
-      "(not a trade ticket). Results appear after Search loads statements and valuation inputs — ",
+      "Manipulation / earnings-quality label from statement numbers only — QoE, F-Score, Beneish M-Score, ",
+      "and Schilit alerts (not a trade ticket; no MOS, price, or momentum). ",
+      "Results appear after Search loads statements — ",
       "no Decision Checklist / Decision SOP unlock is required; the Checklist remains optional discipline. ",
       "The automated risk matrix below is parallel context."
     ),
@@ -2627,11 +2628,12 @@ locale_for_market <- function(mode = get_market_mode()) {
     notes_toggle_aria = "Show or hide notes",
     funnel_sec_method = "How to read this report",
     funnel_method_body = paste0(
-      "Reading order: scenario verdict → automated risk matrix → statement quality (QoE / F-Score) → ",
+      "Reading order: statement verdict → automated risk matrix → statement quality (QoE / F-Score) → ",
       "statement alerts (M-Score / Schilit). ",
-      "Click MOS / Reliability to jump to the verdict; F-Score and Statement alerts jump to their sections. ",
+      "Click QoE to jump to the statement verdict; F-Score and Statement alerts jump to their sections. ",
+      "The verdict uses statement numbers only (no MOS / price / momentum). ",
       "Dynamic industry bubble and weight concentration sit at the bottom of Macro & Market Trends. ",
-      "Trend momentum (Timing) lives under Quant Backtest Lab and does not set fair value."
+      "Trend momentum (Timing) lives under Quant Backtest Lab and does not set fair value or the YNOW verdict."
     ),
     funnel_method_caveat = paste0(
       "Labels and scores are research / decision support only. ",
@@ -2686,8 +2688,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     lab_im_gate_on = "F-Score≥7",
     lab_im_gate_off = "No F-Score gate",
-    funnel_vbox_mos = "Margin of Safety (vs Base)",
-    funnel_vbox_mos_conf = "｜Reliability {level}",
+    funnel_vbox_qoe = "Quality of Earnings (cash earnings)",
     funnel_vbox_fraud = "Statement alerts (Schilit + M-Score)",
     funnel_fraud_items = "{n} item(s)",
     funnel_pass = "✅ Pass",
@@ -2697,44 +2698,39 @@ locale_for_market <- function(mode = get_market_mode()) {
     funnel_fscore_n_fail = "Fail {n}",
     funnel_primary_fallback = "Primary model",
     funnel_v_waiting_text = paste0(
-      "Waiting for Search to load statements and valuation inputs ",
-      "(F-Score / earnings quality required for this scenario label)."
+      "Waiting for Search to load statements ",
+      "(F-Score / earnings-quality inputs required for this statement verdict)."
     ),
-    funnel_v_trap_title = "Value-trap warning",
-    funnel_v_trap_text = paste0(
-      "Financial quality looks weak, or operating cash flow struggles to support reported earnings. ",
-      "Even if valuation looks cheap, do not rush a bottom-fish."
+    funnel_v_manip_title = "Elevated manipulation risk",
+    funnel_v_manip_text = paste0(
+      "Beneish M-Score and/or the automated risk matrix flag elevated earnings-manipulation risk from the statements. ",
+      "Treat as a veto / dig-deeper cue — not a valuation or buy signal."
     ),
-    funnel_v_hot_over_title = "Strong momentum, rich valuation",
-    funnel_v_hot_over_text = paste0(
-      "Trend momentum remains firm, but price is above the primary-model Base FV. ",
-      "Holders may stay; cash buyers should avoid chasing here."
+    funnel_v_quality_weak_title = "Weak earnings quality",
+    funnel_v_quality_weak_text = paste0(
+      "F-Score / cash-earnings quality looks weak on the loaded statements ",
+      "(operating cash flow may not support reported earnings). ",
+      "Veto / risk context only — not a trade ticket."
     ),
-    funnel_v_over_weak_title = "Rich valuation, softening momentum",
-    funnel_v_over_weak_text = paste0(
-      "Quality clears the screen, but price is above Base fair value and the trend is not yet strong. ",
-      "Wait patiently for a pullback before reassessing."
+    funnel_v_watch_title = "Watch — statement red flags",
+    funnel_v_watch_text = paste0(
+      "Soft flags appear on M-Score, QoE, accruals / AR–Revenue, or Schilit alerts. ",
+      "Review Section I–II detail before relying on reported earnings."
     ),
-    funnel_v_davis_title = "Davis double-play zone",
-    funnel_v_davis_text = paste0(
-      "Valuation offers MOS, quality is solid, and technical momentum is confirmed. ",
-      "Scale in gradually and still size for risk."
+    funnel_v_clear_title = "Statement screens clear",
+    funnel_v_clear_text = paste0(
+      "On loaded statements, QoE / F-Score / M-Score and Schilit alerts do not raise a composite alert. ",
+      "This is a quality screen only — never a buy signal."
     ),
-    funnel_v_value_wait_title = "Value stands out — wait for trend",
-    funnel_v_value_wait_text = paste0(
-      "Fundamental value looks attractive, but market attention is still thin. ",
-      "Scale in gradually; consider adding after a trend turn."
-    ),
-    funnel_v_neutral_title = "Neutral / wait-and-see",
-    funnel_v_neutral_text = paste0(
-      "Price sits near the primary-model fair band with steady quality. ",
-      "Decide flexibly by asset allocation needs."
+    funnel_v_mixed_title = "Mixed / inconclusive from statements",
+    funnel_v_mixed_text = paste0(
+      "Statement metrics do not align into a single clear manipulation or quality label. ",
+      "Use the risk matrix and Section I–II line items for judgment."
     ),
     funnel_mom_box_title = "Trend momentum (trading aid)",
     funnel_mom_intro = paste0(
-      "Technical Timing aid only — it does not set fair value. ",
-      "The Decision Funnel prioritizes F-Score / MOS; this panel only asks whether ",
-      "near-term trend has turned bullish, for sizing rhythm."
+      "Technical Timing aid only — it does not set fair value or the YNOW statement verdict. ",
+      "This panel only asks whether near-term trend has turned bullish, for sizing rhythm."
     ),
     funnel_mom_logic_title = "Logic & conditions",
     funnel_mom_cond1 = "Latest close > SMA(20) and > SMA(60)",
@@ -6404,20 +6400,20 @@ locale_for_market <- function(mode = get_market_mode()) {
     # --- YNOW 頁（結論 → 風險矩陣 → 體質 → 警訊） ---
     funnel_page_title = "YNOW",
     funnel_page_sub = paste0(
-      "點選 MOS／Reliability（跳至情境結論）、品質檢核 (F-Score)、財報警訊（含 Beneish M-Score）可捲動至對應區塊。",
-      "閱讀順序：情境結論 → 自動化風險矩陣 → 財報體質（QoE／F-Score）→ 財報警訊（M-Score／Schilit）。",
-      "YNOW 依已載入之股價／財報與估值結果獨立分析並顯示，不需先完成「決策檢核」Decision SOP；",
+      "點選盈餘品質 (QoE)、品質檢核 (F-Score)、財報警訊（含 Beneish M-Score）可捲動至對應區塊。",
+      "閱讀順序：財報結論 → 自動化風險矩陣 → 財報體質（QoE／F-Score）→ 財報警訊（M-Score／Schilit）。",
+      "YNOW 專注財報操縱／盈餘品質，結論僅依已載入財報數字；不需先完成「決策檢核」Decision SOP；",
       "決策檢核仍可作選用紀律流程。風險矩陣為綜合概覽。",
       "動態產業泡沫與權重集中度在「總體經濟與大盤趨勢」分頁最下方。"
     ),
-    funnel_kpi_jump_mos_aria = "跳至 YNOW 情境結論（MOS 與 Reliability 為此結論輸入）",
+    funnel_kpi_jump_qoe_aria = "跳至 YNOW 財報結論（QoE 為結論輸入）",
     funnel_kpi_jump_fscore_aria = "跳至品質檢核 (F-Score) 清單",
     funnel_kpi_jump_alerts_aria = "跳至第二章財報警訊（含 Beneish M-Score）",
-    funnel_verdict_kicker = "情境結論",
-    funnel_verdict_title = "YNOW 情境結論",
+    funnel_verdict_kicker = "財報結論",
+    funnel_verdict_title = "YNOW 財報結論",
     funnel_verdict_lead = paste0(
-      "綜合 MOS、F-Score／盈餘品質與趨勢動能的研究情境標籤（非下單指令）。",
-      "搜尋載入財報與估值後即可顯示，不需先解鎖「決策檢核」Decision SOP；",
+      "依財報數字綜合 QoE、F-Score、Beneish M-Score 與 Schilit 警訊的操縱／品質標籤（非下單指令，亦不含 MOS／股價／動能）。",
+      "搜尋載入財報後即可顯示，不需先解鎖「決策檢核」Decision SOP；",
       "決策檢核仍可作選用紀律。下方自動化風險矩陣為並列參考。"
     ),
     funnel_risk_kicker = "綜合概覽",
@@ -6452,10 +6448,11 @@ locale_for_market <- function(mode = get_market_mode()) {
     notes_toggle_aria = "展開或收合附註",
     funnel_sec_method = "如何閱讀本報告",
     funnel_method_body = paste0(
-      "閱讀順序：情境結論 → 自動化風險矩陣 → 財報體質（QoE／F-Score）→ 財報警訊（M-Score／Schilit）。",
-      "點選 MOS／Reliability 跳至情境結論；F-Score 與財報警訊跳至對應章節。",
+      "閱讀順序：財報結論 → 自動化風險矩陣 → 財報體質（QoE／F-Score）→ 財報警訊（M-Score／Schilit）。",
+      "點選 QoE 跳至財報結論；F-Score 與財報警訊跳至對應章節。",
+      "結論僅依財報數字（不含 MOS／股價／動能）。",
       "動態產業泡沫與權重集中度在「總體經濟與大盤趨勢」分頁最下方。",
-      "趨勢動能（Timing）輔助在「量化回測實驗室」分頁，不決定合理價。"
+      "趨勢動能（Timing）輔助在「量化回測實驗室」分頁，不決定合理價，亦不進入 YNOW 財報結論。"
     ),
     funnel_method_caveat = "標籤與分數僅供研究／決策輔助；HFV 情境僅作否決語境，不作看漲依據。",
     funnel_fscore_list_title = "F-Score 品質檢核清單",
@@ -6506,8 +6503,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     lab_im_gate_on = "F-Score≥7",
     lab_im_gate_off = "不設 F-Score 門檻",
-    funnel_vbox_mos = "安全邊際 (vs Base)",
-    funnel_vbox_mos_conf = "｜可信度{level}",
+    funnel_vbox_qoe = "盈餘品質 (QoE／獲利含金量)",
     funnel_vbox_fraud = "財報警訊（Schilit＋M-Score）",
     funnel_fraud_items = "{n} 項",
     funnel_pass = "✅ 通過",
@@ -6517,43 +6513,38 @@ locale_for_market <- function(mode = get_market_mode()) {
     funnel_fscore_n_fail = "未達標 {n} 項",
     funnel_primary_fallback = "主模型",
     funnel_v_waiting_text = paste0(
-      "等待搜尋載入財報與估值輸入後顯示",
-      "（此情境標籤需 F-Score／盈餘品質）。"
+      "等待搜尋載入財報後顯示",
+      "（此財報結論需 F-Score／盈餘品質輸入）。"
     ),
-    funnel_v_trap_title = "價值陷阱警訊",
-    funnel_v_trap_text = paste0(
-      "財務品質偏弱，或營業現金流難以支撐帳面獲利。",
-      "即便估值看似便宜，亦不宜貿然抄底。"
+    funnel_v_manip_title = "操縱風險偏高",
+    funnel_v_manip_text = paste0(
+      "Beneish M-Score 與／或自動化風險矩陣依財報顯示盈餘操縱風險偏高。",
+      "屬否決／需深挖警語，非估值或買進訊號。"
     ),
-    funnel_v_hot_over_title = "動能強勁但估值偏高",
-    funnel_v_hot_over_text = paste0(
-      "趨勢動能仍佳，惟市價已高於主模型基準內在價值。",
-      "若已持有可續抱；空手者不宜此時追高。"
+    funnel_v_quality_weak_title = "盈餘品質偏弱",
+    funnel_v_quality_weak_text = paste0(
+      "依已載入財報，F-Score／獲利含金量偏弱（營業現金流可能難以支撐帳面獲利）。",
+      "僅供否決／風險參考，非下單指令。"
     ),
-    funnel_v_over_weak_title = "估值偏高且動能轉弱",
-    funnel_v_over_weak_text = paste0(
-      "品質檢核通過，但市價已高於基準合理價，且趨勢尚未轉強。",
-      "建議耐心等待拉回再評估。"
+    funnel_v_watch_title = "觀察——財報紅旗",
+    funnel_v_watch_text = paste0(
+      "M-Score、QoE、應計／應收脫鉤或 Schilit 出現軟性警訊。",
+      "採信帳面獲利前，請先檢視第一～二章細節。"
     ),
-    funnel_v_davis_title = "戴維斯雙擊區",
-    funnel_v_davis_text = paste0(
-      "估值具安全邊際、體質佳，且技術動能已確認。",
-      "可分批布局，惟仍應控制部位與風險。"
+    funnel_v_clear_title = "財報檢核暫無複合警示",
+    funnel_v_clear_text = paste0(
+      "依已載入財報，QoE／F-Score／M-Score 與 Schilit 未形成複合警示。",
+      "此為品質檢核結果，絕非買進訊號。"
     ),
-    funnel_v_value_wait_title = "價值突出、等待趨勢",
-    funnel_v_value_wait_text = paste0(
-      "基本面價值突出，惟市場資金尚未顯著關注。",
-      "可分批布局，待趨勢轉折後再考慮加碼。"
-    ),
-    funnel_v_neutral_title = "觀望中立",
-    funnel_v_neutral_text = paste0(
-      "市價約在主模型合理區間附近，體質穩健。",
-      "可依資產配置彈性決定是否介入。"
+    funnel_v_mixed_title = "財報訊號混雜／尚難定論",
+    funnel_v_mixed_text = paste0(
+      "財報指標未能收斂為單一操縱或品質標籤。",
+      "請以風險矩陣與第一～二章分項自行判斷。"
     ),
     funnel_mom_box_title = "趨勢動能（交易輔助）",
     funnel_mom_intro = paste0(
-      "技術面 Timing 輔助，不決定合理價。",
-      "決策漏斗以 F-Score／安全邊際為主；此處僅回答「短中期趨勢是否轉多」，供布局節奏參考。"
+      "技術面 Timing 輔助，不決定合理價，亦不進入 YNOW 財報結論。",
+      "此處僅回答「短中期趨勢是否轉多」，供布局節奏參考。"
     ),
     funnel_mom_logic_title = "判斷邏輯與條件",
     funnel_mom_cond1 = "最新收盤價 > SMA(20) 且 > SMA(60)",

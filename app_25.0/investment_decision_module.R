@@ -1,12 +1,13 @@
 # =========================================================================
 # Investment Decision Scorecard — YNOW page + composite valuation
 # Top → bottom:
-#   Masthead → KPI jump row (MOS｜Reliability → F-Score → Statement alerts)
-#   → YNOW scenario verdict (SOP-gated)
+#   Masthead → KPI jump row (QoE → F-Score → Statement alerts)
+#   → YNOW statement verdict (manipulation / earnings-quality label only)
 #   → Automated risk matrix (independent composite overview)
 #   → I. Statement quality — QoE → F-Score
 #   → II. Statement alerts — Beneish M-Score → Schilit
-# MOS KPI jumps to the verdict (MOS feeds the scenario label, not Ch.1).
+# Verdict uses statement numbers only (QoE, F-Score, M-Score, Schilit alerts) —
+# never MOS, price, or momentum. Veto / risk context; not a buy signal.
 # Alerts KPI counts Schilit + QoE red flags (incl. Beneish M-Score alerts).
 # Dynamic industry bubble & weight concentration lives on Macro (page bottom).
 # Same markup for Lite/Full.
@@ -17,6 +18,57 @@ library(shiny)
 library(shinydashboard)
 library(TTR)
 library(glue)
+
+#' Statement-only YNOW verdict from financials (no MOS / price / momentum).
+#' @return list(class, icon, title_key, text_key) or NULL if inputs insufficient
+ynow_statement_verdict <- function(eq_pack, f_score, f_quality, n_alert) {
+  f_score <- suppressWarnings(as.numeric(f_score)[1])
+  f_quality <- suppressWarnings(as.numeric(f_quality)[1])
+  n_alert <- suppressWarnings(as.integer(n_alert)[1])
+  if (!is.finite(f_score) || !is.finite(f_quality)) return(NULL)
+
+  eq_ok <- is.list(eq_pack) && isTRUE(eq_pack$ok)
+  m_flag <- if (eq_ok) as.character(eq_pack$m_flag %||% "")[1] else ""
+  qoe_flag <- if (eq_ok) as.character(eq_pack$qoe_flag %||% "")[1] else ""
+  risk_level <- if (eq_ok) as.character(eq_pack$risk_level %||% "")[1] else ""
+  n_red <- if (eq_ok) length(eq_pack$red_flags %||% character(0)) else 0L
+  if (!is.finite(n_alert)) n_alert <- 0L
+
+  # 1) Elevated manipulation / fraud screen
+  if (identical(m_flag, "警示") || identical(risk_level, "高") || n_red >= 2L) {
+    return(list(
+      class = "alert-danger", icon = "skull-crossbones",
+      title_key = "funnel_v_manip_title", text_key = "funnel_v_manip_text"
+    ))
+  }
+  # 2) Weak cash-earnings / F-Score quality gate
+  if (f_score < 4 || identical(as.numeric(f_quality), 0) || identical(qoe_flag, "警示")) {
+    return(list(
+      class = "alert-danger", icon = "exclamation-triangle",
+      title_key = "funnel_v_quality_weak_title", text_key = "funnel_v_quality_weak_text"
+    ))
+  }
+  # 3) Watch band — soft flags or Schilit alerts
+  if (identical(m_flag, "觀察") || identical(risk_level, "中") ||
+      identical(qoe_flag, "觀察") || n_alert > 0L) {
+    return(list(
+      class = "alert-warning", icon = "eye",
+      title_key = "funnel_v_watch_title", text_key = "funnel_v_watch_text"
+    ))
+  }
+  # 4) Screens clear on loaded statements (still not a buy signal)
+  if (identical(risk_level, "低") && f_score >= 7 &&
+      (identical(qoe_flag, "通過") || !nzchar(qoe_flag)) && n_alert == 0L) {
+    return(list(
+      class = "alert-info", icon = "check-circle",
+      title_key = "funnel_v_clear_title", text_key = "funnel_v_clear_text"
+    ))
+  }
+  list(
+    class = "alert-secondary", icon = "balance-scale",
+    title_key = "funnel_v_mixed_title", text_key = "funnel_v_mixed_text"
+  )
+}
 
 # -------------------------------------------
 # 1. UI：YNOW two-block page + momentum panel
@@ -43,9 +95,9 @@ decision_ui <- function(id) {
           id = "ynow_funnel_page_sub",
           class = "ynow-funnel-report__lead",
           paste0(
-            "點選 MOS／Reliability（跳至情境結論）、品質檢核 (F-Score)、財報警訊（含 Beneish M-Score）可捲動至對應區塊。",
-            "閱讀順序：情境結論 → 自動化風險矩陣 → 財報體質（QoE／F-Score）→ 財報警訊（M-Score／Schilit）。",
-            "YNOW 依已載入之股價／財報與估值結果獨立分析並顯示，不需先完成「決策檢核」Decision SOP；",
+            "點選盈餘品質 (QoE)、品質檢核 (F-Score)、財報警訊（含 Beneish M-Score）可捲動至對應區塊。",
+            "閱讀順序：財報結論 → 自動化風險矩陣 → 財報體質（QoE／F-Score）→ 財報警訊（M-Score／Schilit）。",
+            "YNOW 專注財報操縱／盈餘品質，結論僅依已載入財報數字；不需先完成「決策檢核」Decision SOP；",
             "決策檢核仍可作選用紀律流程。風險矩陣為綜合概覽。",
             "動態產業泡沫與權重集中度在「總體經濟與大盤趨勢」分頁最下方。"
           )
@@ -59,10 +111,10 @@ decision_ui <- function(id) {
           tags$a(
             href = "#ynow_funnel_verdict",
             class = "ynow-funnel-kpi-jump",
-            id = "ynow_kpi_jump_mos",
+            id = "ynow_kpi_jump_qoe",
             role = "button",
-            `aria-label` = "跳至 YNOW 情境結論（MOS 與 Reliability 為此結論輸入）",
-            uiOutput(ns("vbox_mos"))
+            `aria-label` = "跳至 YNOW 財報結論（QoE 為結論輸入）",
+            uiOutput(ns("vbox_qoe"))
           )
         ),
         column(
@@ -89,7 +141,7 @@ decision_ui <- function(id) {
         )
       ),
 
-      # Scenario verdict — MOS / F-Score / momentum; no Decision SOP prerequisite
+      # Statement verdict — QoE / F-Score / M-Score / Schilit only; no SOP prerequisite
       tags$section(
         class = "ynow-funnel-chapter ynow-funnel-verdict",
         id = "ynow_funnel_verdict",
@@ -99,12 +151,12 @@ decision_ui <- function(id) {
           tags$span(
             class = "ynow-funnel-chapter__kicker",
             id = "ynow_funnel_verdict_kicker",
-            "情境結論"
+            "財報結論"
           ),
           tags$h3(
             class = "ynow-funnel-chapter__title",
             id = "ynow_funnel_verdict_title",
-            "YNOW 情境結論"
+            "YNOW 財報結論"
           )
         ),
         tags$div(
@@ -114,8 +166,8 @@ decision_ui <- function(id) {
               id = "ynow_funnel_verdict_lead",
               class = "ynow-funnel-chapter__lead",
               paste0(
-                "綜合 MOS、F-Score／盈餘品質與趨勢動能的研究情境標籤（非下單指令）。",
-                "搜尋載入財報與估值後即可顯示，不需先解鎖「決策檢核」Decision SOP；",
+                "依財報數字綜合 QoE、F-Score、Beneish M-Score 與 Schilit 警訊的操縱／品質標籤（非下單指令，亦不含 MOS／股價／動能）。",
+                "搜尋載入財報後即可顯示，不需先解鎖「決策檢核」Decision SOP；",
                 "決策檢核仍可作選用紀律。下方自動化風險矩陣為並列參考。"
               )
             )
@@ -272,9 +324,8 @@ decision_momentum_panel_ui <- function(id) {
         tags$span(
           id = "ynow_funnel_mom_intro",
           paste0(
-            "Technical Timing aid only — it does not set fair value. ",
-            "The Decision Funnel prioritizes F-Score / MOS; this panel only asks whether ",
-            "near-term trend has turned bullish, for sizing rhythm."
+            "Technical Timing aid only — it does not set fair value or the YNOW statement verdict. ",
+            "This panel only asks whether near-term trend has turned bullish, for sizing rhythm."
           )
         )
       ),
@@ -507,48 +558,15 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
       ev <- tryCatch(f_score_eval(), error = function(e) NULL)
       f_score <- if (is.list(ev)) ev$total else NA_real_
       f_quality <- if (is.list(ev)) ev$quality_flag else NA_real_
-      if (!is.finite(f_score) || !is.finite(f_quality)) return(NULL)
-      mos <- mos_calc()
-      mom <- mom_status()
-      if (f_score < 4 || f_quality == 0) {
-        return(list(
-          class = "alert-danger", icon = "skull-crossbones",
-          title = .str("funnel_v_trap_title"),
-          text = .str("funnel_v_trap_text")
-        ))
-      }
-      if (!is.na(mos) && mos < 0) {
-        if (mom$triggered) {
-          return(list(
-            class = "alert-warning", icon = "fire",
-            title = .str("funnel_v_hot_over_title"),
-            text = .str("funnel_v_hot_over_text")
-          ))
-        }
-        return(list(
-          class = "alert-warning", icon = "hourglass-half",
-          title = .str("funnel_v_over_weak_title"),
-          text = .str("funnel_v_over_weak_text")
-        ))
-      }
-      if (!is.na(mos) && mos >= 0.2) {
-        if (mom$triggered) {
-          return(list(
-            class = "alert-success", icon = "rocket",
-            title = .str("funnel_v_davis_title"),
-            text = .str("funnel_v_davis_text")
-          ))
-        }
-        return(list(
-          class = "alert-info", icon = "anchor",
-          title = .str("funnel_v_value_wait_title"),
-          text = .str("funnel_v_value_wait_text")
-        ))
-      }
+      eq <- tryCatch(eq_eval(), error = function(e) NULL)
+      n_al <- tryCatch(fraud_flag_n(), error = function(e) NA_integer_)
+      pack <- ynow_statement_verdict(eq, f_score, f_quality, n_al)
+      if (is.null(pack) || !is.list(pack)) return(NULL)
       list(
-        class = "alert-secondary", icon = "balance-scale",
-        title = .str("funnel_v_neutral_title"),
-        text = .str("funnel_v_neutral_text")
+        class = pack$class,
+        icon = pack$icon,
+        title = .str(pack$title_key),
+        text = .str(pack$text_key)
       )
     })
 
@@ -594,49 +612,58 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
       )
     })
 
-    output$vbox_mos <- renderUI({
+    output$vbox_qoe <- renderUI({
       .ui_loc()
-      val <- tryCatch(mos_calc(), error = function(e) NA_real_)
-      conf <- tryCatch(confidence(), error = function(e) NULL)
-      conf_lab <- if (is.list(conf) && !is.null(conf$level)) {
-        .str("funnel_vbox_mos_conf", level = conf$level)
+      eq <- tryCatch(eq_eval(), error = function(e) NULL)
+      tk <- .alert_tk()
+      grade <- if (is.list(eq) && isTRUE(eq$ok)) {
+        as.character(eq$qoe_grade %||% "")[1]
       } else {
         ""
       }
-      subtitle <- paste0(.str("funnel_vbox_mos"), conf_lab)
-      tk <- .alert_tk()
-      if (length(val) != 1L || is.null(val) || is.na(val) || !is.finite(val)) {
+      score <- if (is.list(eq) && isTRUE(eq$ok)) {
+        suppressWarnings(as.numeric(eq$qoe_score)[1])
+      } else {
+        NA_real_
+      }
+      subtitle <- .str("funnel_vbox_qoe")
+      ready <- nzchar(tk) && nzchar(grade) && grade != "—" && is.finite(score)
+      if (!ready) {
         box <- valueBox(
           "—",
           subtitle,
-          icon = icon("shield-halved"),
+          icon = icon("flask"),
           color = "light-blue",
           width = NULL
         )
         if (!exists("ynow_alertable", mode = "function")) return(box)
         return(ynow_alertable(
-          box, metric = "ynow_mos_pct", ticker = tk, value = NA_real_,
-          label = .str("funnel_vbox_mos"), ready = FALSE, default_kind = "value_lte"
+          box, metric = "qoe_grade", ticker = tk, value = NA_real_,
+          label = subtitle, ready = FALSE, default_kind = "grade_lte"
         ))
       }
-      v_pct <- round(as.numeric(val) * 100, 1)
-      color <- if (v_pct >= 20) "green" else if (v_pct >= 0) "yellow" else "red"
+      color <- if (grade %in% c("A", "B")) "green" else if (identical(grade, "C")) "yellow" else "red"
       box <- valueBox(
-        paste0(v_pct, "%"),
+        paste0(grade, " · ", as.integer(round(score))),
         subtitle,
-        icon = icon("shield-halved"),
+        icon = icon("flask"),
         color = color,
         width = NULL
       )
       if (!exists("ynow_alertable", mode = "function")) return(box)
+      g_ord <- if (exists("price_alert_grade_to_ord", mode = "function")) {
+        price_alert_grade_to_ord(grade)
+      } else {
+        NA_real_
+      }
       ynow_alertable(
         box,
-        metric = "ynow_mos_pct",
+        metric = "qoe_grade",
         ticker = tk,
-        value = v_pct,
-        label = .str("funnel_vbox_mos"),
-        ready = nzchar(tk),
-        default_kind = "value_lte"
+        value = g_ord,
+        label = subtitle,
+        ready = nzchar(tk) && is.finite(g_ord),
+        default_kind = "grade_lte"
       )
     })
 

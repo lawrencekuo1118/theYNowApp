@@ -35,7 +35,10 @@ check("Gold focus KPIs (module)", grepl("fund_focus_", kpi, fixed = TRUE) &&
 check("Gold focus FS cards", grepl("fund_focus_", srv, fixed = TRUE) &&
         grepl("ynow-focus-metric-box", srv, fixed = TRUE))
 check("YNOW F-Score", grepl('metric = "f_score"', dec, fixed = TRUE))
-check("YNOW MOS", grepl('metric = "ynow_mos_pct"', dec, fixed = TRUE))
+check("YNOW MOS metric still published", grepl('metric = "ynow_mos_pct"', dec, fixed = TRUE) ||
+        grepl("ynow_mos_pct", dec, fixed = TRUE))
+check("YNOW QoE KPI alertable", grepl('metric = "qoe_grade"', dec, fixed = TRUE) &&
+        grepl("vbox_qoe", dec, fixed = TRUE))
 check("YNOW statement alerts", grepl('metric = "statement_alert_count"', dec, fixed = TRUE))
 check("QoE Grade", grepl('metric = "qoe_grade"', eq, fixed = TRUE) &&
         grepl("grade_lte", eq, fixed = TRUE))

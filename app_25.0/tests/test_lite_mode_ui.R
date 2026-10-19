@@ -951,14 +951,14 @@ testthat::test_that("YNOW page title and two-block order are shared by Lite and 
 
   pos_v <- regexpr('`data-ynow-block` = "verdict"', ui_fn, fixed = TRUE)[1]
   pos_r <- regexpr('`data-ynow-block` = "risk_matrix"', ui_fn, fixed = TRUE)[1]
-  pos_mos <- regexpr("vbox_mos", ui_fn, fixed = TRUE)[1]
+  pos_qoe_kpi <- regexpr("vbox_qoe", ui_fn, fixed = TRUE)[1]
   pos_fs <- regexpr("vbox_fscore", ui_fn, fixed = TRUE)[1]
   pos_fraud <- regexpr("vbox_fraud", ui_fn, fixed = TRUE)[1]
   pos_ch1_title <- regexpr("ynow_funnel_ch1_title", ui_fn, fixed = TRUE)[1]
   pos_tbl <- regexpr("fscore_panel", ui_fn, fixed = TRUE)[1]
   pos_shen <- regexpr("shenanigans_panel", ui_fn, fixed = TRUE)[1]
   pos_mscore <- regexpr("mscore_widget", ui_fn, fixed = TRUE)[1]
-  testthat::expect_true(pos_mos > 0 && pos_fs > pos_mos && pos_fraud > pos_fs)
+  testthat::expect_true(pos_qoe_kpi > 0 && pos_fs > pos_qoe_kpi && pos_fraud > pos_fs)
   testthat::expect_true(pos_v > pos_fraud && pos_r > pos_v && pos_q > pos_r)
   testthat::expect_true(pos_ch1_title > pos_fraud)
   testthat::expect_true(pos_tbl > pos_q && pos_tbl < pos_a)
@@ -966,13 +966,15 @@ testthat::test_that("YNOW page title and two-block order are shared by Lite and 
   ch1_body <- substr(ui_fn, pos_q, pos_a)
   ch2_body <- substr(ui_fn, pos_a, nchar(ui_fn))
   testthat::expect_false(grepl("vbox_fscore", ch1_body, fixed = TRUE))
-  testthat::expect_false(grepl("vbox_mos", ch1_body, fixed = TRUE))
+  testthat::expect_false(grepl("vbox_qoe", ch1_body, fixed = TRUE))
+  testthat::expect_false(grepl("vbox_mos", ui_fn, fixed = TRUE))
   testthat::expect_false(grepl("vbox_fraud", ch2_body, fixed = TRUE))
   testthat::expect_false(grepl("mscore_widget", ch1_body, fixed = TRUE))
   testthat::expect_false(grepl("risk_matrix_panel", ch2_body, fixed = TRUE))
   testthat::expect_true(grepl('href = "#ynow_funnel_verdict"', ui_fn, fixed = TRUE))
   testthat::expect_true(grepl('href = "#ynow_funnel_ch2"', ui_fn, fixed = TRUE))
   testthat::expect_true(grepl("ynow-funnel-kpi-jump-row", ui_fn, fixed = TRUE))
+  testthat::expect_true(grepl("ynow_statement_verdict", dec, fixed = TRUE))
   testthat::expect_identical(.UI_STRINGS$en$notes_title, "Notes")
   testthat::expect_identical(.UI_STRINGS$`zh-TW`$notes_title, "附註")
   .notes_calls <- function(txt) {

@@ -10747,8 +10747,8 @@ ui <- dashboardPage(
               msDimsSummary.setAttribute('title', s.gs_ms_dims_toggle_aria);
               msDimsSummary.setAttribute('aria-label', s.gs_ms_dims_toggle_aria);
             }
-            var kpiJumpMos = document.getElementById('ynow_kpi_jump_mos');
-            if (kpiJumpMos && s.funnel_kpi_jump_mos_aria) kpiJumpMos.setAttribute('aria-label', s.funnel_kpi_jump_mos_aria);
+            var kpiJumpQoe = document.getElementById('ynow_kpi_jump_qoe');
+            if (kpiJumpQoe && s.funnel_kpi_jump_qoe_aria) kpiJumpQoe.setAttribute('aria-label', s.funnel_kpi_jump_qoe_aria);
             var kpiJumpFs = document.getElementById('ynow_kpi_jump_fscore');
             if (kpiJumpFs && s.funnel_kpi_jump_fscore_aria) kpiJumpFs.setAttribute('aria-label', s.funnel_kpi_jump_fscore_aria);
             var kpiJumpAl = document.getElementById('ynow_kpi_jump_alerts');
