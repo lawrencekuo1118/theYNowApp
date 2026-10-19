@@ -467,9 +467,11 @@ server <- function(input, output, session) {
   #' Deny guest downloads of app-generated artifacts. Writes a note file when
   #' `file` is supplied (downloadHandler). Opens the mono Sign-in modal.
   .ynow_deny_guest_download <- function(file = NULL, msg_key = "download_need_login") {
+    lite <- isTRUE(tryCatch(isolate(input$ynow_lite_mode), error = function(e) FALSE))
+    if (isTRUE(lite)) return(FALSE)
     uid <- .ynow_access_subject_id()
     denied <- if (exists("ynow_guest_download_denied", mode = "function")) {
-      isTRUE(ynow_guest_download_denied(uid))
+      isTRUE(ynow_guest_download_denied(uid, lite = FALSE))
     } else {
       auth_on <- exists("ynow_auth_enabled", mode = "function") && isTRUE(ynow_auth_enabled())
       isTRUE(auth_on) && !nzchar(uid)
@@ -533,15 +535,28 @@ server <- function(input, output, session) {
   }
 
   #' Login + daily free quota, then 10 FYN. NULL means the denial file is already written.
+  #' Lite: free PDF (no login / FYN); still requires a ticker.
   .ynow_pdf_authorize <- function(file) {
+    lite <- isTRUE(tryCatch(isolate(input$ynow_lite_mode), error = function(e) FALSE)) ||
+      isTRUE(tryCatch(isolate(lite_mode()), error = function(e) FALSE))
     auth_on <- exists("ynow_auth_enabled", mode = "function") && isTRUE(ynow_auth_enabled())
     claim_ok <- exists("ynow_pdf_claim", mode = "function")
     uid <- .ynow_access_subject_id()
+    loc <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "en")
+    .lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
+    tk <- tryCatch(trimws(as.character(isolate(current_ticker()) %||% "")[1]), error = function(e) "")
+    if (!nzchar(tk) || identical(toupper(tk), "NA")) {
+      msg <- .lab("pdf_need_ticker", "Enter a stock ticker before downloading the report.")
+      showNotification(msg, type = "warning", duration = 6)
+      .ynow_pdf_note_file(file, msg)
+      return(NULL)
+    }
+    if (isTRUE(lite)) {
+      return(list(ok = TRUE, kind = "lite"))
+    }
     if (!auth_on || !claim_ok) {
       return(list(ok = TRUE, kind = "bypass"))
     }
-    loc <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "en")
-    .lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
     if (!nzchar(uid)) {
       msg <- .lab("pdf_need_login", "Sign in to download the valuation report (PDF).")
       showNotification(msg, type = "warning", duration = 6)
@@ -551,13 +566,6 @@ server <- function(input, output, session) {
           tryCatch(shinyBS::toggleModal(session, "ynow_auth_modal", "open"), error = function(e2) NULL)
         }
       )
-      .ynow_pdf_note_file(file, msg)
-      return(NULL)
-    }
-    tk <- tryCatch(trimws(as.character(isolate(current_ticker()) %||% "")[1]), error = function(e) "")
-    if (!nzchar(tk) || identical(toupper(tk), "NA")) {
-      msg <- .lab("pdf_need_ticker", "Enter a stock ticker before downloading the report.")
-      showNotification(msg, type = "warning", duration = 6)
       .ynow_pdf_note_file(file, msg)
       return(NULL)
     }
