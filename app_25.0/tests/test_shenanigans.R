@@ -69,7 +69,10 @@ cf_ok <- mk_stmt(
 )
 ev_ok <- evaluate_shenanigans(is_ok, bs_ok, cf_ok, industry_key = "tech.Hardware")
 check("healthy ok flag", isTRUE(ev_ok$ok))
-check("healthy 21 items", nrow(ev_ok$items) == 21L)
+check("healthy 22 items", nrow(ev_ok$items) == 22L)
+cat_sh <- list_shenanigan_red_flag_catalog()
+check("catalog has 22 codes", nrow(cat_sh) == 22L)
+check("catalog includes X7", "X7" %in% cat_sh$code)
 x1_ok <- ev_ok$items[ev_ok$items$code == "X1", ]
 check("healthy X1 not alert", !identical(x1_ok$status[1], "警示"))
 check("X1 category 三表共通警訊", identical(x1_ok$category[1], "三表共通警訊"))
@@ -78,6 +81,9 @@ check("X2 title uses 收款天數", grepl("收款天數", x2_ok$name[1], fixed =
 check("X2 title has no DSO", !grepl("DSO", x2_ok$name[1], fixed = TRUE))
 x6 <- ev_ok$items[ev_ok$items$code == "X6", ]
 check("X6 insufficient without non-GAAP", identical(x6$status[1], "資料不足"))
+x7_ok <- ev_ok$items[ev_ok$items$code == "X7", ]
+check("healthy X7 not alert", !identical(x7_ok$status[1], "警示"))
+check("cash_ni_alert is 0.50", isTRUE(abs(SHENANIGAN_THRESHOLDS$cash_ni_alert - 0.50) < 1e-9))
 
 # NI persistently > OCF and NI>0 OCF<0 → X1 警示; D/E > 2 → #12 警示
 is_bad <- mk_stmt(
@@ -117,6 +123,20 @@ bs_noar <- bs_noar[bs_noar$Metric != "Accounts Receivable", , drop = FALSE]
 ev_noar <- evaluate_shenanigans(is_noar, bs_noar, cf_ok)
 x2 <- ev_noar$items[ev_noar$items$code == "X2", ]
 check("missing AR is 資料不足", identical(x2$status[1], "資料不足"))
+
+# X7：營收大增 + 毛利率明顯下滑 → 警示
+is_x7 <- mk_stmt(
+  `Total Revenue` = c(130, 100, 95, 90),
+  `Gross Profit` = c(35, 40, 38, 36),
+  `Cost Of Revenue` = c(95, 60, 57, 54),
+  `Operating Income` = c(15, 20, 18, 17),
+  `Net Income` = c(10, 14, 12, 11)
+)
+bs_x7 <- bs_ok
+cf_x7 <- cf_ok
+ev_x7 <- evaluate_shenanigans(is_x7, bs_x7, cf_x7)
+x7 <- ev_x7$items[ev_x7$items$code == "X7", ]
+check("X7 revenue-up margin-down alert", identical(x7$status[1], "警示"))
 
 suppressPackageStartupMessages(library(shiny))
 ui_ok <- as.character(shenanigans_results_ui(ev_ok))

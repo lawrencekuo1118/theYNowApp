@@ -8,7 +8,47 @@
 #   Production–Valuation Divergence: AR YoY vs Revenue YoY (pp gap)
 #   Accruals / cash conversion → 0–100 Quality of Earnings (QoE) score
 #   Risk matrix: F-Score × M-Score × AR–Rev × Accruals → composite flag
+#   Cash conversion alert <0.50 aligns with CT「盈餘品質比率」與 Schilit #11
 # =========================================================================
+
+#' Catalog of earnings-quality red-flag keys (static; pairs with Schilit catalog).
+list_earnings_quality_red_flag_catalog <- function() {
+  data.frame(
+    code = c("EQ_M", "EQ_AR", "EQ_ACC", "EQ_F", "EQ_QOE"),
+    category = rep("盈餘品質", 5L),
+    name_zh = c(
+      "Beneish M-Score 偏高",
+      "應收帳款與營收成長脫鉤",
+      "應計項目偏高",
+      "Piotroski F-Score 偏弱",
+      "盈餘品質 QoE 偏弱"
+    ),
+    name_en = c(
+      "Elevated Beneish M-Score",
+      "AR–revenue growth divergence",
+      "High accruals ratio",
+      "Weak Piotroski F-Score",
+      "Weak Quality of Earnings (QoE)"
+    ),
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+}
+
+#' Combined statement-alert catalog: Schilit items + EQ red-flag keys.
+list_all_statement_red_flag_catalog <- function() {
+  sh <- if (exists("list_shenanigan_red_flag_catalog", mode = "function")) {
+    list_shenanigan_red_flag_catalog()
+  } else {
+    data.frame(
+      code = character(0), category = character(0),
+      name_zh = character(0), name_en = character(0),
+      stringsAsFactors = FALSE
+    )
+  }
+  eq <- list_earnings_quality_red_flag_catalog()
+  rbind(sh, eq)
+}
 
 if (!exists("%||%", mode = "function")) {
   `%||%` <- function(a, b) if (is.null(a)) b else a

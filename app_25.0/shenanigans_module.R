@@ -3,16 +3,24 @@
 # 以已抓年報（損益／資產負債／現金流）做相對規則；缺欄位給「資料不足」，不捏造附註。
 # 數列慣例：select_clean_metric_row 為 最新財年 → 最舊（不含 TTM）。
 #
+# 對齊參考（工程啟發式，非準則硬門檻）：
+#   Schilit《財報詭計》15 手法 + 三表共通警訊
+#   CT 財經〈財報地雷怎麼避〉識別清單（營收／現金／備抵／合約負債／CapEx）
+#
 # 門檻（相對規則，避免魔術常數堆疊）：
 #   AR／存貨「明顯快於營收」：YoY 差距 ≥ 15 pp；觀察 ≥ 8 pp
-#   收款／存貨／付款天數惡化：≥ 10 天警示、≥ 5 天觀察
+#   收款／存貨／付款天數惡化：≥ 10 天警示、≥ 5 天觀察；存貨天數 +≥15 天單獨觀察
 #   毛利率下滑：≥ 1.5 pp 警示（搭配存貨）、單獨 ≥ 3 pp 觀察
+#   營收成長但毛利／淨利率下滑（X7）：營收 YoY≥15% 且毛利或淨利率 −≥3 pp → 警示
 #   淨利 vs OCF：連續 ≥ 3 年淨利 > OCF 為警示；2 年觀察
+#   盈餘品質（OCF／淨利）：警示 <0.50×、觀察 <0.70×（對齊 CT／QoE）
 #   營業利益為正但 OCF 為負：直接警示（舊 Fraud Warning）
 #   負債／權益 > 2：警示（舊 Fraud Warning）；> 1.5 觀察
 #   商譽／資產年增 ≥ 8 pp 或商譽年增 ≥ 期初資產 25%：併購相關警示
 #   一次性收益：其他收益／處分利益佔營收年增 ≥ 3 pp 且佔 |淨利| ≥ 15%
-#   費用資本化：無形資產 YoY 超營收 ≥ 25 pp
+#   費用資本化：無形資產 YoY 超營收 ≥ 25 pp；備抵佔應收下降且應收成長 → 警示
+#   合約負債落後營收：營收成長但預收／合約負債明顯落後 → 提前認列觀察／警示
+#   CapEx ≫ 折舊：資本支出／折舊 ≥2.5× 且營收未明顯擴張 → 觀察／警示
 #   Big bath：前期減損／非常項目 ≤ −5% 營收，且本期毛利率回升 ≥ 3 pp
 #   FCF 為負且 OCF 為正：觀察；OCF 亦負：警示
 # =========================================================================
@@ -26,9 +34,14 @@ SHENANIGAN_THRESHOLDS <- list(
   ar_vs_rev_watch_pp = 8,
   dso_alert_days = 10,
   dso_watch_days = 5,
+  dio_watch_days = 15,
   inv_vs_rev_alert_pp = 15,
   gm_drop_alert_pp = 1.5,
   gm_drop_watch_pp = 3,
+  rev_up_gm_alert_rev = 0.15,
+  rev_up_gm_alert_pp = 3,
+  rev_up_gm_watch_rev = 0.10,
+  rev_up_gm_watch_pp = 1.5,
   ni_gt_ocf_years_alert = 3L,
   ni_gt_ocf_years_watch = 2L,
   de_alert = 2,
@@ -41,19 +54,22 @@ SHENANIGAN_THRESHOLDS <- list(
   opex_drop_alert_pp = 4,
   opex_drop_watch_pp = 2,
   defrev_vs_rev_pp = 25,
+  defrev_lag_pp = 15,
   bath_impair_rev = -0.05,
   bath_gm_rebound_pp = 3,
   oc_f_surge = 0.40,
   ar_drop_factor = -0.20,
   at_drop_rel = 0.10,
   asset_jump = 0.20,
-  cash_ni_alert = 0.40,
+  cash_ni_alert = 0.50,
   cash_ni_watch = 0.70,
   gm_vs_ind_alert_pp = 15,
   gm_vs_ind_watch_pp = 5,
   gm_vs_own_watch_pp = 8,
   dpo_alert_days = 15,
-  wc_asset_pp = 10
+  wc_asset_pp = 10,
+  capex_dep_alert = 2.5,
+  capex_dep_watch = 2.0
 )
 
 .sh_finite <- function(x) {
@@ -297,15 +313,20 @@ SHENANIGAN_THRESHOLDS <- list(
   val <- sprintf("存貨 YoY %s vs 營收 YoY %s（差 %s）；毛利率 %s；週轉天數 %+s",
                  .sh_pct_txt(inv_g), .sh_pct_txt(rev_g), .sh_pp_txt(gap),
                  .sh_pp_txt(gm_d), .sh_num_txt(dio_d, 0, " 天"))
-  thr <- sprintf("警示：存貨快於營收 ≥%d pp 且毛利率下滑 ≥%.1f pp",
-                 th$inv_vs_rev_alert_pp, th$gm_drop_alert_pp)
-  slow <- .sh_finite(dio_d) && dio_d >= th$dso_watch_days
+  thr <- sprintf("警示：存貨快於營收 ≥%d pp 且毛利率下滑 ≥%.1f pp；存貨天數 +≥%d 天為觀察",
+                 th$inv_vs_rev_alert_pp, th$gm_drop_alert_pp, th$dio_watch_days)
+  slow <- .sh_finite(dio_d) && dio_d >= th$dio_watch_days
   if (.sh_finite(gap) && gap >= th$inv_vs_rev_alert_pp &&
       .sh_finite(gm_d) && gm_d <= -th$gm_drop_alert_pp) {
     st <- "警示"; why <- "存貨堆積快於銷售，同時毛利率下滑，滯銷或促銷壓力上升。"
   } else if ((.sh_finite(gap) && gap >= th$ar_vs_rev_watch_pp) ||
              (.sh_finite(gm_d) && gm_d <= -th$gm_drop_watch_pp) || isTRUE(slow)) {
-    st <- "觀察"; why <- "存貨、週轉或毛利其中一項轉差，尚未同時達警示。"
+    st <- "觀察"
+    why <- if (isTRUE(slow)) {
+      "存貨週轉天數明顯拉長，需對照同業與跌價提列。"
+    } else {
+      "存貨、週轉或毛利其中一項轉差，尚未同時達警示。"
+    }
   } else {
     st <- "通過"; why <- "存貨與營收步調尚可，毛利率未明顯惡化。"
   }
@@ -407,6 +428,35 @@ SHENANIGAN_THRESHOLDS <- list(
   )
 }
 
+.sh_eval_x7 <- function(ctx, th) {
+  # CT：營收成長遠快於本業體質，但毛利率／淨利率反而下降。
+  if (length(ctx$rev) < 2L || length(ctx$gp) < 2L) {
+    return(.sh_na_item("X7", "三表共通警訊", "營收成長但毛利／淨利率下滑", "營收或毛利年期不足。"))
+  }
+  rev_g <- .sh_yoy(ctx$rev)
+  gm_d <- .sh_pp(.sh_gm(ctx, 1L), .sh_gm(ctx, 2L))
+  nm0 <- .sh_ratio(ctx$ni[1], ctx$rev[1])
+  nm1 <- .sh_ratio(if (length(ctx$ni) >= 2L) ctx$ni[2] else NA_real_,
+                   if (length(ctx$rev) >= 2L) ctx$rev[2] else NA_real_)
+  nm_d <- .sh_pp(nm0, nm1)
+  margin_drop <- (.sh_finite(gm_d) && gm_d <= -th$rev_up_gm_alert_pp) ||
+    (.sh_finite(nm_d) && nm_d <= -th$rev_up_gm_alert_pp)
+  margin_watch <- (.sh_finite(gm_d) && gm_d <= -th$rev_up_gm_watch_pp) ||
+    (.sh_finite(nm_d) && nm_d <= -th$rev_up_gm_watch_pp)
+  val <- sprintf("營收 YoY %s；毛利率 %s；淨利率 %s",
+                 .sh_pct_txt(rev_g), .sh_pp_txt(gm_d), .sh_pp_txt(nm_d))
+  thr <- sprintf("警示：營收 YoY≥%.0f%% 且毛利或淨利率下滑 ≥%d pp",
+                 th$rev_up_gm_alert_rev * 100, th$rev_up_gm_alert_pp)
+  if (.sh_finite(rev_g) && rev_g >= th$rev_up_gm_alert_rev && isTRUE(margin_drop)) {
+    st <- "警示"; why <- "營收在衝，毛利或淨利率卻變薄，成長品質可疑（促銷、塞貨或成本失控）。"
+  } else if (.sh_finite(rev_g) && rev_g >= th$rev_up_gm_watch_rev && isTRUE(margin_watch)) {
+    st <- "觀察"; why <- "營收成長伴隨獲利率下滑，尚未達警示組合。"
+  } else {
+    st <- "通過"; why <- "未出現「營收變快、獲利率變差」的組合。"
+  }
+  .sh_item("X7", "三表共通警訊", "營收成長但毛利／淨利率下滑", st, why, val, thr)
+}
+
 # ----- 15 手法 -----
 .sh_eval_01 <- function(ctx, th) {
   if (length(ctx$rev) < 2L || length(ctx$ocf) < 2L) {
@@ -416,22 +466,30 @@ SHENANIGAN_THRESHOLDS <- list(
   ocf_g <- .sh_yoy(ctx$ocf)
   ar_g <- .sh_yoy(ctx$ar)
   ca_g <- .sh_yoy(ctx$contract_ast)
+  def_g <- .sh_yoy(ctx$defrev)
   gap_ar <- .sh_pp(ar_g, rev_g)
   gap_ca <- .sh_pp(ca_g, rev_g)
+  # CT：營收大增但合約負債／預收未跟進 → 提前認列
+  def_lag_pp <- if (.sh_finite(rev_g) && .sh_finite(def_g)) (rev_g - def_g) * 100 else NA_real_
+  def_lag <- .sh_finite(rev_g) && rev_g >= 0.10 && .sh_finite(def_lag_pp) &&
+    def_lag_pp >= th$defrev_lag_pp
   cash_lag <- .sh_finite(rev_g) && .sh_finite(ocf_g) && (rev_g - ocf_g) >= 0.15
   ar_surge <- (.sh_finite(gap_ar) && gap_ar >= th$ar_vs_rev_alert_pp) ||
     (.sh_finite(gap_ca) && gap_ca >= th$ar_vs_rev_alert_pp)
-  val <- sprintf("營收 YoY %s；OCF YoY %s；應收差 %s；合約資產差 %s",
-                 .sh_pct_txt(rev_g), .sh_pct_txt(ocf_g), .sh_pp_txt(gap_ar), .sh_pp_txt(gap_ca))
-  thr <- "警示：營收明顯成長，但現金與應收／合約資產品質跟不上"
+  val <- sprintf("營收 YoY %s；OCF YoY %s；應收差 %s；合約資產差 %s；預收落後 %s",
+                 .sh_pct_txt(rev_g), .sh_pct_txt(ocf_g), .sh_pp_txt(gap_ar),
+                 .sh_pp_txt(gap_ca), .sh_pp_txt(def_lag_pp))
+  thr <- sprintf("警示：營收成長但現金／應收惡化；或預收落後營收 ≥%d pp", th$defrev_lag_pp)
   if (.sh_finite(rev_g) && rev_g >= 0.08 && isTRUE(cash_lag) && isTRUE(ar_surge)) {
     st <- "警示"; why <- "營收往前衝，應收或合約資產更快，現金沒跟上，有提前認列疑慮。"
-  } else if (isTRUE(cash_lag) || isTRUE(ar_surge)) {
-    st <- "觀察"; why <- "營收與現金／應收步調不一致，尚未同時達到警示組合。"
-  } else if (length(ctx$ar) < 1L && length(ctx$contract_ast) < 1L) {
-    st <- "資料不足"; why <- "無應收或合約資產，無法評估出貨品質。"
+  } else if (isTRUE(def_lag) && (isTRUE(cash_lag) || isTRUE(ar_surge))) {
+    st <- "警示"; why <- "營收成長但預收／合約負債明顯落後，且現金或應收同步轉差，提前認列風險上升。"
+  } else if (isTRUE(cash_lag) || isTRUE(ar_surge) || isTRUE(def_lag)) {
+    st <- "觀察"; why <- "營收與現金／應收／預收步調不一致，尚未同時達到警示組合。"
+  } else if (length(ctx$ar) < 1L && length(ctx$contract_ast) < 1L && length(ctx$defrev) < 2L) {
+    st <- "資料不足"; why <- "無應收、合約資產或預收，無法評估出貨品質。"
   } else {
-    st <- "通過"; why <- "未同時出現營收暴衝、應收惡化與現金落後。"
+    st <- "通過"; why <- "未同時出現營收暴衝、應收惡化、預收落後與現金落後。"
   }
   .sh_item("1", "盈餘操縱", "提前認列營收", st, why, val, thr)
 }
@@ -508,12 +566,18 @@ SHENANIGAN_THRESHOLDS <- list(
   allow_ar1 <- .sh_ratio(if (length(ctx$allow) >= 2L) abs(ctx$allow[2]) else NA_real_,
                         if (length(ctx$ar) >= 2L) ctx$ar[2] else NA_real_)
   allow_drop <- .sh_finite(allow_ar0) && .sh_finite(allow_ar1) && allow_ar0 < allow_ar1 * 0.8
-  val <- sprintf("無形資產 YoY %s vs 營收 YoY %s（差 %s）；折舊率 %s→%s",
+  ar_g <- .sh_yoy(ctx$ar)
+  # CT：應收持續增加，備抵比例卻下降 → 刻意壓低費用
+  allow_alert <- isTRUE(allow_drop) && .sh_finite(ar_g) && ar_g >= 0.10
+  val <- sprintf("無形資產 YoY %s vs 營收 YoY %s（差 %s）；折舊率 %s→%s；備抵／應收 %s→%s",
                  .sh_pct_txt(int_g), .sh_pct_txt(rev_g), .sh_pp_txt(gap),
-                 .sh_pct_txt(dep_rate1), .sh_pct_txt(dep_rate0))
-  thr <- sprintf("警示：無形資產成長超營收 ≥%d pp", th$intang_vs_rev_pp)
+                 .sh_pct_txt(dep_rate1), .sh_pct_txt(dep_rate0),
+                 .sh_pct_txt(allow_ar1), .sh_pct_txt(allow_ar0))
+  thr <- sprintf("警示：無形資產成長超營收 ≥%d pp；或應收成長且備抵佔比下降", th$intang_vs_rev_pp)
   if (.sh_finite(gap) && gap >= th$intang_vs_rev_pp) {
     st <- "警示"; why <- "無形資產擴張遠快於營收，費用可能被資本化延後。"
+  } else if (isTRUE(allow_alert)) {
+    st <- "警示"; why <- "應收在增加，備抵呆帳佔比卻下降，可能刻意少提費用美化盈餘。"
   } else if (isTRUE(dep_drop) || isTRUE(allow_drop)) {
     st <- "觀察"
     why <- if (isTRUE(allow_drop)) {
@@ -522,7 +586,7 @@ SHENANIGAN_THRESHOLDS <- list(
       "折舊率偏低，資產可能折得太慢。"
     }
   } else {
-    st <- "通過"; why <- "未看到無形資產暴衝或折舊率明顯下滑。"
+    st <- "通過"; why <- "未看到無形資產暴衝、折舊率明顯下滑或備抵異常放寬。"
   }
   .sh_item("4", "盈餘操縱", "把當期費用移到後期", st, why, val, thr)
 }
@@ -649,16 +713,29 @@ SHENANIGAN_THRESHOLDS <- list(
   rev_g <- .sh_yoy(ctx$rev)
   cap_vs_dep <- .sh_ratio(if (length(ctx$capex)) abs(ctx$capex[1]) else NA_real_,
                          if (length(ctx$dep)) abs(ctx$dep[1]) else NA_real_)
-  val <- sprintf("OCF %s；FCF %s；資本支出／折舊 %s",
-                 .sh_num_txt(ocf, 0), .sh_num_txt(fcf, 0), .sh_num_txt(cap_vs_dep, 2, "×"))
-  thr <- "警示：營業現金為負；觀察：OCF 為正但 FCF 為負且資本支出成長遠快於營收"
+  # CT：資本支出遠高於折舊攤銷，卻看不到明確擴產／營收成長
+  capex_heavy <- .sh_finite(cap_vs_dep) && cap_vs_dep >= th$capex_dep_alert &&
+    (.sh_finite(rev_g) && rev_g < 0.10)
+  capex_watch <- .sh_finite(cap_vs_dep) && cap_vs_dep >= th$capex_dep_watch &&
+    (.sh_finite(rev_g) && rev_g < 0.08)
+  ni_up_fcf_neg <- length(ctx$ni) >= 2L && .sh_finite(ctx$ni[1]) && .sh_finite(ctx$ni[2]) &&
+    ctx$ni[1] > ctx$ni[2] && .sh_finite(fcf) && fcf < 0
+  val <- sprintf("OCF %s；FCF %s；資本支出／折舊 %s；營收 YoY %s",
+                 .sh_num_txt(ocf, 0), .sh_num_txt(fcf, 0), .sh_num_txt(cap_vs_dep, 2, "×"),
+                 .sh_pct_txt(rev_g))
+  thr <- sprintf("警示：OCF＜0，或 CapEx／折舊≥%.1f× 且營收未明顯擴張；淨利升但 FCF＜0 亦警示",
+                 th$capex_dep_alert)
   if (.sh_finite(ocf) && ocf < 0) {
     st <- "警示"; why <- "核心營業現金流為負，本業在失血（舊有現金／槓桿檢核一併納入）。"
+  } else if (isTRUE(capex_heavy) && .sh_finite(fcf) && fcf < 0) {
+    st <- "警示"; why <- "資本支出遠高於折舊、營收未明顯擴張，自由現金流又為負，投資流出品質可疑。"
+  } else if (isTRUE(ni_up_fcf_neg)) {
+    st <- "警示"; why <- "淨利持續成長但自由現金流為負，獲利未轉成可自由運用現金。"
   } else if (.sh_finite(ocf) && ocf > 0 && .sh_finite(fcf) && fcf < 0 &&
              .sh_finite(cap_g) && .sh_finite(rev_g) && (cap_g - rev_g) >= 0.25) {
     st <- "觀察"; why <- "帳上營業現金看起來不錯，自由現金流卻很差，投資流出偏像日常開銷或過度資本化。"
-  } else if (.sh_finite(ocf) && ocf > 0 && .sh_finite(fcf) && fcf < 0) {
-    st <- "觀察"; why <- "自由現金流為負。成長型資本支出也可能如此，需對照折舊與無形資產。"
+  } else if (isTRUE(capex_watch) || (.sh_finite(ocf) && ocf > 0 && .sh_finite(fcf) && fcf < 0)) {
+    st <- "觀察"; why <- "自由現金流為負，或 CapEx 相對折舊偏高。成長型資本支出也可能如此，需對照擴產計畫。"
   } else {
     st <- "通過"; why <- "營業現金與自由現金流未出現「帳上很好、口袋很差」的組合。"
   }
@@ -819,6 +896,74 @@ SHENANIGAN_THRESHOLDS <- list(
   .sh_item("15", "購併作帳", "購併後美化週轉等指標", st, why, val, thr)
 }
 
+#' Catalog of all Schilit / 三表共通 red-flag codes (static; for docs / Lab filters).
+list_shenanigan_red_flag_catalog <- function() {
+  data.frame(
+    code = c(
+      "X1", "X2", "X3", "X4", "X5", "X6", "X7",
+      "1", "2", "3", "4", "5", "6", "7",
+      "8", "9", "10", "11", "12", "13", "14", "15"
+    ),
+    category = c(
+      rep("三表共通警訊", 7L),
+      rep("盈餘操縱", 7L),
+      rep("現金流作假", 3L),
+      rep("關鍵數字灌水", 2L),
+      rep("購併作帳", 3L)
+    ),
+    name_zh = c(
+      "淨利長期高於營業現金流",
+      "應收成長快過營收、收款天數變長",
+      "存貨增速高於營收且毛利下滑",
+      "一次性收益／反覆非常項目",
+      "大量購併／關係人交易／更換財務長",
+      "常講調整後獲利、定義卻常改",
+      "營收成長但毛利／淨利率下滑",
+      "提前認列營收",
+      "虛增營收",
+      "靠一次性項目灌營收",
+      "把當期費用移到後期",
+      "隱藏費用或損失",
+      "把當期收益移到後期",
+      "把未來費用移到當期（大洗澡）",
+      "把融資當成營業現金",
+      "把營業現金流出藏到別項",
+      "用不持久的方式灌營業現金",
+      "用關鍵數字誇大業績",
+      "美化資產負債表數字",
+      "購併後灌營收與獲利",
+      "購併後灌現金流",
+      "購併後美化週轉等指標"
+    ),
+    name_en = c(
+      "NI persistently above OCF",
+      "AR growth outpaces revenue / DSO stretch",
+      "Inventory outpaces revenue with GM decline",
+      "One-time gains / recurring special items",
+      "Heavy M&A / related parties / CFO change",
+      "Heavy non-GAAP with shifting definitions",
+      "Revenue up but margins down",
+      "Recognize revenue too soon",
+      "Record bogus revenue",
+      "Boost income with one-time items",
+      "Shift current expenses to later periods",
+      "Hide expenses or losses",
+      "Shift current income to later periods",
+      "Big bath: pull future expenses forward",
+      "Shift financing inflows into CFFO",
+      "Shift operating cash outflows elsewhere",
+      "Boost CFFO with unsustainable WC moves",
+      "Misleading key performance metrics",
+      "Distort balance-sheet metrics",
+      "M&A: inflate revenue and earnings",
+      "M&A: inflate cash flow",
+      "M&A: dress up turnover metrics"
+    ),
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+}
+
 #' Schilit 15 招 + 三表共通警訊 + 舊 Fraud Warning 合併評估
 evaluate_shenanigans <- function(d_is, d_bs, d_cf, industry_key = NULL) {
   if (is.null(d_is) || is.null(d_bs) || is.null(d_cf) ||
@@ -839,6 +984,7 @@ evaluate_shenanigans <- function(d_is, d_bs, d_cf, industry_key = NULL) {
       .sh_eval_x4(ctx, th),
       .sh_eval_x5(ctx, th),
       .sh_eval_x6(ctx, th),
+      .sh_eval_x7(ctx, th),
       .sh_eval_01(ctx, th),
       .sh_eval_02(ctx, th, industry_key),
       .sh_eval_03(ctx, th),
