@@ -7,5 +7,5 @@ commit=4fc691a4115a66418c4b7aa7f6b74bfca55bd028
 short=4fc691a4
 message=chore: bump display version to v25.65
 captured_at=2026-10-19T02:30:17Z
-display_version=v25.65
+display_version=v25.66
 note=Canonical live line is app_25.0. Bundle 12708156: Lite Download Report unlocked (no guest lock/FYN); Lite hides lock glyphs and locked Snapshot defaults; Full guests keep PDF login gate.
