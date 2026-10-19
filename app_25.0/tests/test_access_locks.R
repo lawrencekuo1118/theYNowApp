@@ -114,11 +114,19 @@ check("sysadmin sidebar lock swaps the glyph for a lock", {
     grepl("ynow-access-lock", ui, fixed = TRUE) &&
     grepl("ynowApplyAccessLocks()", ui, fixed = TRUE)
 })
-check("locked sidebar labels are light gray", {
-  grepl("li.ynow-access-locked-nav > a", ui, fixed = TRUE) &&
-    grepl("a:has(.ynow-menu-lock)", ui, fixed = TRUE) &&
-    grepl("color: #a3a3a3 !important;", ui, fixed = TRUE) &&
-    grepl("not(.ynow-lite):not(.ynow-authed)", ui, fixed = TRUE)
+check("guest lock titles keep the same sidebar color as Asset Transmission Root", {
+  grepl("a:has(.ynow-menu-lock) > i:not(.ynow-menu-lock)", ui, fixed = TRUE) &&
+    !grepl("a:has(.ynow-menu-lock),", ui, fixed = TRUE) &&
+    !grepl("color: #a3a3a3 !important;\n          opacity: 1;", ui, fixed = TRUE)
+})
+check("locked asset transmission pane shows feature promo and sign-in", {
+  auth_src <- paste(readLines(file.path(app_dir, "auth_account.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("ynow_atx_lock_promo_tpl", ui, fixed = TRUE) &&
+    grepl("ynowEnsureAtxLockPromo", ui, fixed = TRUE) &&
+    grepl("tab === 'asset_transmission'", ui, fixed = TRUE) &&
+    grepl("ynow-atx-locked-pane", ui, fixed = TRUE) &&
+    grepl('feature = "atx"', ui, fixed = TRUE) &&
+    grepl("\"atx\"", auth_src, fixed = TRUE)
 })
 check("inner targets lock the containing tab and promo", {
   grepl("ynowMarkLockedInnerTarget", ui, fixed = TRUE) &&

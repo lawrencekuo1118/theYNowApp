@@ -272,7 +272,7 @@ check("login tabs show a lock before sign-in", {
     grepl("price_alerts: true", ui, fixed = TRUE) &&
     !grepl("account_admin: true", ui, fixed = TRUE) &&
     !grepl("account_points: true", ui, fixed = TRUE) &&
-    grepl("body.skin-black.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .main-sidebar", ui, fixed = TRUE) &&
+    !grepl("body.skin-black.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .main-sidebar .sidebar-menu a:has(.ynow-menu-lock)", ui, fixed = TRUE) &&
     grepl("not(.ynow-lite):not(.ynow-authed) .sidebar-menu .ynow-menu-lock", ui, fixed = TRUE) &&
     grepl("a:has(.ynow-menu-lock) > i:not(.ynow-menu-lock):not(.pull-right)", ui, fixed = TRUE) &&
     grepl("ynow-auth-header", ui, fixed = TRUE) &&
@@ -332,7 +332,8 @@ check("demo clips exist under www/demos", {
   demos <- file.path(app_dir, "www", "demos")
   files <- c(
     "lab.mp4", "lab.webm", "checklist.mp4", "alerts.mp4",
-    "account.mp4", "pdf.mp4", "snap_defaults.mp4", "inner_lock.mp4"
+    "account.mp4", "pdf.mp4", "snap_defaults.mp4", "inner_lock.mp4",
+    "atx.mp4", "atx.webm"
   )
   all(file.exists(file.path(demos, files)))
 })
@@ -375,6 +376,9 @@ keys <- c(
   "auth_gate_inner_lock_lead", "auth_gate_inner_lock_b1",
   "auth_gate_inner_lock_b2", "auth_gate_inner_lock_b3",
   "auth_gate_inner_lock_demo_caption",
+  "auth_gate_atx_body", "auth_gate_atx_kicker", "auth_gate_atx_lead",
+  "auth_gate_atx_b1", "auth_gate_atx_b2", "auth_gate_atx_b3",
+  "auth_gate_atx_demo_caption",
   "auth_gate_faq_title",
   "auth_gate_faq_q1", "auth_gate_faq_a1", "auth_gate_faq_q2", "auth_gate_faq_a2",
   "auth_gate_faq_q3", "auth_gate_faq_a3", "auth_gate_faq_q4", "auth_gate_faq_a4",

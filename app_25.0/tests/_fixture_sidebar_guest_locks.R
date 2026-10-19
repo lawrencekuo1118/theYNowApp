@@ -50,13 +50,6 @@ page <- function(title, body_class, extra_note = "") {
       ".ynow-menu-lock{display:none;font-size:11px;margin:0 4px 0 2px;}",
       "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .sidebar-menu .ynow-menu-lock{display:inline-block;}",
       "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .sidebar-menu a:has(.ynow-menu-lock) > i:not(.ynow-menu-lock):not(.pull-right){display:none!important;}",
-      "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .skin-black .main-sidebar .sidebar-menu a:has(.ynow-menu-lock),",
-      "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .skin-black .main-sidebar .sidebar-menu a:has(.ynow-menu-lock):hover,",
-      "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .skin-black .main-sidebar .sidebar-menu li.treeview:has(a:has(.ynow-menu-lock)) > a{",
-      "color:#a3a3a3!important;opacity:1;}",
-      "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .skin-black .main-sidebar .sidebar-menu a:has(.ynow-menu-lock) > i,",
-      "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .skin-black .main-sidebar .sidebar-menu li.treeview:has(a:has(.ynow-menu-lock)) > a > i{",
-      "color:#a3a3a3!important;}",
       ".ynow-sidebar-download-wrap{padding:10px;text-align:center;}",
       ".ynow-sidebar-download-btn{display:inline-block;width:100%%;box-sizing:border-box;",
       "background:#1a1a1a;color:#fff;border:1px solid #000;padding:8px 10px;font-size:13px;font-weight:bold;text-decoration:none;}",
@@ -104,7 +97,7 @@ writeLines(
   page(
     "Guest sidebar locks",
     "ynow-auth-feature",
-    "GUEST: Lab/Checklist/Alerts/Account = light gray + lock; PDF = lock + muted; Home/DCF/About = bright."
+    "GUEST: Lab/Checklist/Alerts keep the same title color as Asset Transmission Root; lock replaces the glyph. PDF stays muted."
   ),
   file.path(out_dir, "guest-sidebar-locks.html"),
   useBytes = TRUE
@@ -123,7 +116,11 @@ writeLines(
 stopifnot(grepl("ynowSyncSidebarDownloadIcon", ui_txt, fixed = TRUE))
 stopifnot(grepl("color: #a3a3a3 !important", ui_txt, fixed = TRUE))
 stopifnot(!grepl("account_admin: true", ui_txt, fixed = TRUE))
-stopifnot(grepl("body.skin-black.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .main-sidebar", ui_txt, fixed = TRUE))
+stopifnot(!grepl(
+  "body.skin-black.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .main-sidebar .sidebar-menu a:has(.ynow-menu-lock)",
+  ui_txt,
+  fixed = TRUE
+))
 stopifnot(grepl("treeview:has(a[data-value=\\\"account_admin\\\"])", auth_css, fixed = TRUE))
 stopifnot(grepl("display:none !important;", auth_css, fixed = TRUE))
 

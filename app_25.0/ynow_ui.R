@@ -4844,6 +4844,11 @@ ui <- dashboardPage(
         }
         .tab-pane.ynow-access-hidden-pane { display: none !important; }
         .tab-pane.ynow-access-locked-pane > * { display: none !important; }
+        .ynow-atx-lock-tpl { display: none !important; }
+        .tab-pane.ynow-access-locked-pane.ynow-atx-locked-pane > .ynow-atx-lock-host {
+          display: block !important;
+        }
+        .tab-pane.ynow-atx-locked-pane::before { content: none; display: none !important; }
         /* Inner-tab lock (section / input / report): promo only while that tab is selected. */
         .ynow-inner-tab-lock-tpl { display: none !important; }
         .nav-tabs > li.ynow-inner-tab-locked > a {
@@ -6549,23 +6554,9 @@ ui <- dashboardPage(
         .skin-black .sidebar-menu > li.menu-open > a {
           color: #ffffff !important;
         }
-        /* Locked sidebar items stay visible, with light-gray labels + icons. */
-        .skin-black .main-sidebar .sidebar-menu li.ynow-access-locked-nav > a,
-        .skin-black .main-sidebar .sidebar-menu li.ynow-access-locked-nav > a:hover,
-        .skin-black .main-sidebar .sidebar-menu li.ynow-access-locked-nav > a:focus,
-        body.skin-black.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .main-sidebar .sidebar-menu a:has(.ynow-menu-lock),
-        body.skin-black.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .main-sidebar .sidebar-menu a:has(.ynow-menu-lock):hover,
-        body.skin-black.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .main-sidebar .sidebar-menu a:has(.ynow-menu-lock):focus,
-        body.skin-black.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .main-sidebar .sidebar-menu li.treeview:has(a:has(.ynow-menu-lock)) > a,
-        body.skin-black.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .main-sidebar .sidebar-menu li.treeview:has(a:has(.ynow-menu-lock)) > a:hover,
-        body.skin-black.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .main-sidebar .sidebar-menu li.treeview:has(a:has(.ynow-menu-lock)) > a:focus {
-          color: #a3a3a3 !important;
-          opacity: 1;
-        }
-        body.skin-black.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .main-sidebar .sidebar-menu a:has(.ynow-menu-lock) > i,
-        body.skin-black.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .main-sidebar .sidebar-menu li.treeview:has(a:has(.ynow-menu-lock)) > a > i {
-          color: #a3a3a3 !important;
-        }
+        /* Guest product locks (Lab / Checklist / Alerts) keep the same sidebar
+           title color as Asset Transmission Root. The lock glyph replaces the
+           original icon; it does not dim the label. */
         /* Full guest PDF download: muted / light-gray locked control (lock icon via JS).
            Lite keeps Download Report open — never apply the locked chrome. */
         body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .ynow-sidebar-download-wrap #download_report,
@@ -7439,6 +7430,7 @@ ui <- dashboardPage(
           font-size: 14px;
           font-weight: 650;
           color: #111;
+          text-align: center;
         }
         .ynow-home-card-d {
           margin: 0;
@@ -11374,6 +11366,12 @@ ui <- dashboardPage(
                 b2: payload.gate_inner_lock_b2, b3: payload.gate_inner_lock_b3,
                 demo_caption: payload.gate_inner_lock_demo_caption
               });
+              setFeature('atx', {
+                body: payload.gate_atx_body, kicker: payload.gate_atx_kicker,
+                lead: payload.gate_atx_lead, b1: payload.gate_atx_b1,
+                b2: payload.gate_atx_b2, b3: payload.gate_atx_b3,
+                demo_caption: payload.gate_atx_demo_caption
+              });
               setAll('.ynow-gate-faq-title', payload.gate_faq_title);
               setAll('.ynow-gate-faq-q1', payload.gate_faq_q1);
               setAll('.ynow-gate-faq-a1', payload.gate_faq_a1);
@@ -11473,6 +11471,21 @@ ui <- dashboardPage(
                 } catch (eOff) {}
               }
             });
+            function ynowEnsureAtxLockPromo(pane) {
+              if (!pane) return;
+              var kids = pane.children || [];
+              for (var hi = 0; hi < kids.length; hi++) {
+                if (kids[hi].classList && kids[hi].classList.contains('ynow-atx-lock-host')) return;
+              }
+              var tpl = document.getElementById('ynow_atx_lock_promo_tpl');
+              if (!tpl) return;
+              var host = tpl.cloneNode(true);
+              host.removeAttribute('id');
+              host.removeAttribute('hidden');
+              host.classList.remove('ynow-atx-lock-tpl');
+              host.classList.add('ynow-atx-lock-host');
+              pane.insertBefore(host, pane.firstChild);
+            }
             function ynowEnsureInnerLockPromo(pane) {
               if (!pane) return;
               var kids = pane.children || [];
@@ -11526,7 +11539,7 @@ ui <- dashboardPage(
               document.querySelectorAll('i.ynow-access-lock, i.ynow-inner-tab-lock').forEach(function (el) {
                 if (el.parentNode) el.parentNode.removeChild(el);
               });
-              document.querySelectorAll('.ynow-inner-tab-lock-host').forEach(function (el) {
+              document.querySelectorAll('.ynow-inner-tab-lock-host, .ynow-atx-lock-host').forEach(function (el) {
                 if (el.parentNode) el.parentNode.removeChild(el);
               });
               var clearSel = [
@@ -11539,7 +11552,8 @@ ui <- dashboardPage(
                 '.ynow-access-hidden-pane',
                 '.ynow-access-locked',
                 '.ynow-inner-tab-locked',
-                '.ynow-inner-locked-pane'
+                '.ynow-inner-locked-pane',
+                '.ynow-atx-locked-pane'
               ].join(',');
               document.querySelectorAll(clearSel).forEach(function (el) {
                 el.classList.remove(
@@ -11552,7 +11566,8 @@ ui <- dashboardPage(
                   'ynow-access-hidden-pane',
                   'ynow-access-locked',
                   'ynow-inner-tab-locked',
-                  'ynow-inner-locked-pane'
+                  'ynow-inner-locked-pane',
+                  'ynow-atx-locked-pane'
                 );
                 el.removeAttribute('data-lock-note');
               });
@@ -11577,6 +11592,10 @@ ui <- dashboardPage(
                     } else {
                       pane.classList.add('ynow-access-locked-pane');
                       pane.setAttribute('data-lock-note', note);
+                      if (tab === 'asset_transmission') {
+                        pane.classList.add('ynow-atx-locked-pane');
+                        ynowEnsureAtxLockPromo(pane);
+                      }
                     }
                   }
                 } else if (id.indexOf('input:') === 0) {
@@ -16125,8 +16144,18 @@ ui <- dashboardPage(
             height: 26px !important;
           }
           .main-header .navbar-custom-menu .navbar-nav > li.ynow-auth-header {
-            padding: 0 10px 0 6px !important;
-            margin-left: 8px !important;
+            padding: 0 6px 0 4px !important;
+            margin-left: 4px !important;
+            max-width: 42vw;
+          }
+          .ynow-auth-links--sidebar .ynow-auth-pair {
+            gap: 4px !important;
+          }
+          .ynow-auth-links--sidebar .ynow-auth-pair a.ynow-auth-btn {
+            height: 26px !important;
+            min-height: 26px !important;
+            padding: 0 6px !important;
+            font-size: 11px !important;
           }
           .main-header .navbar-custom-menu .navbar-nav > li.ynow-lang-header {
             padding: 0 4px 0 0 !important;
@@ -17352,6 +17381,30 @@ ui <- dashboardPage(
             ynow_gate_promo_faq_ui(
               feature = "inner_lock",
               include_faq = FALSE,
+              compact = FALSE
+            )
+          } else {
+            NULL
+          },
+          tags$button(
+            type = "button",
+            class = "btn btn-primary ynow-auth-open",
+            tags$span(class = "ynow-member-gate-signin-label", "Sign in")
+          )
+        ),
+        tags$div(
+          id = "ynow_atx_lock_promo_tpl",
+          class = "ynow-atx-lock-tpl ynow-gate-callout",
+          hidden = NA,
+          `data-ynow-gate-feature` = "atx",
+          tags$p(
+            class = "ynow-gate-body",
+            "Asset Transmission Root is locked. Sign in to open this page. If you are already signed in, a system admin must clear the restriction."
+          ),
+          if (exists("ynow_gate_promo_faq_ui", mode = "function")) {
+            ynow_gate_promo_faq_ui(
+              feature = "atx",
+              include_faq = TRUE,
               compact = FALSE
             )
           } else {

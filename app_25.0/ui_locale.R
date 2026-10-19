@@ -783,6 +783,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     auth_linkedin = "Continue with LinkedIn",
     auth_forgot = "Forgot password?",
     auth_register = "Register a new account",
+    auth_register_btn = "Register",
+    auth_modal_title_register = "Register for The YNow App",
     auth_resend = "Didn't receive the verification email",
     auth_msg_ok = "Signed in.",
     auth_msg_disabled = "Account sign-in is not enabled on this deployment.",
@@ -985,6 +987,20 @@ locale_for_market <- function(mode = get_market_mode()) {
     auth_gate_inner_lock_b2 = "A system admin can clear the lock for your account or for everyone",
     auth_gate_inner_lock_b3 = "The demo shows how a locked tab opens after the restriction is cleared",
     auth_gate_inner_lock_demo_caption = "Locked tab demo",
+    auth_gate_atx_body = paste0(
+      "Asset Transmission Root is locked. Sign in to open this page in Full mode. ",
+      "If you are already signed in, a system admin must clear the restriction. ",
+      "Lite mode does not require sign-in and remains fully usable."
+    ),
+    auth_gate_atx_kicker = "Unlock Asset Transmission Root",
+    auth_gate_atx_lead = paste0(
+      "The root map traces macro drivers through rate, dollar, and liquidity hubs ",
+      "into major asset classes, including the FX market."
+    ),
+    auth_gate_atx_b1 = "§1 macro drivers into §2 rate, dollar, and liquidity hubs",
+    auth_gate_atx_b2 = "§4 asset classes: bonds, equities, metals, commodities, FX, and crypto",
+    auth_gate_atx_b3 = "Regime card is a surveillance label, not a trading signal and not a WACC input",
+    auth_gate_atx_demo_caption = "Asset Transmission Root demo — the map after unlock",
     pts_sysadmin_ok = "Balances updated.",
     pts_sysadmin_ok_verify_fmt = "Balances updated and verified (FYN %s, PYN %s).",
     pts_sysadmin_verify_failed = "Balance change did not persist — check the points backend / database.",
@@ -4659,6 +4675,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     auth_linkedin = "使用 LinkedIn 繼續",
     auth_forgot = "忘記密碼？",
     auth_register = "註冊新帳號",
+    auth_register_btn = "註冊",
+    auth_modal_title_register = "註冊 The YNow App",
     auth_resend = "沒有收到註冊認證信",
     auth_msg_ok = "已登入。",
     auth_msg_disabled = "此部署尚未啟用帳號登入。",
@@ -4860,6 +4878,20 @@ locale_for_market <- function(mode = get_market_mode()) {
     auth_gate_inner_lock_b2 = "系統管理員可對您的帳號或所有使用者解除鎖定",
     auth_gate_inner_lock_b3 = "下方示範影片說明限制清除後，上鎖分頁如何開啟",
     auth_gate_inner_lock_demo_caption = "上鎖分頁示範",
+    auth_gate_atx_body = paste0(
+      "資產傳導根系已上鎖。完整版請先登入才能開啟此分頁。",
+      "若已登入仍顯示上鎖，請洽系統管理員解除限制。",
+      "Lite 版無需登入，功能可完整使用。"
+    ),
+    auth_gate_atx_kicker = "解鎖資產傳導根系",
+    auth_gate_atx_lead = paste0(
+      "根系圖把總體驅動經利率、美元與流動性樞紐，",
+      "傳到主要資產類別（含外匯市場）。"
+    ),
+    auth_gate_atx_b1 = "§1 總體驅動進入 §2 利率、美元與流動性樞紐",
+    auth_gate_atx_b2 = "§4 資產類別：債券、股市、貴金屬、原物料、外匯市場與加密貨幣",
+    auth_gate_atx_b3 = "情境卡是監控標籤，不是交易訊號，也不寫入 WACC",
+    auth_gate_atx_demo_caption = "資產傳導根系示範——解鎖後的根系圖",
     pts_sysadmin_ok = "餘額已更新。",
     pts_sysadmin_ok_verify_fmt = "餘額已更新並核對（FYN %s、PYN %s）。",
     pts_sysadmin_verify_failed = "餘額變更未寫入——請檢查點數後端／資料庫。",

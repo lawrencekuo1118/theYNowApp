@@ -181,15 +181,33 @@ ynow_auth_links_ui <- function(placement = c("sidebar", "home")) {
   } else {
     "ynow-auth-links ynow-auth-links--home"
   }
+  reg_id <- if (identical(placement, "sidebar")) {
+    "ynow_auth_register_open"
+  } else {
+    "ynow_auth_register_open_home"
+  }
+  reg_lbl <- if (identical(placement, "sidebar")) {
+    "ynow_auth_register_header_label"
+  } else {
+    "ynow_auth_register_home_label"
+  }
   tags$div(
     id = wrap_id,
     class = wrap_class,
     role = "group",
     `aria-label` = "Account",
-    actionLink(
-      inputId = open_id,
-      label = tags$span(id = open_lbl, class = "ynow-auth-open-label", "Sign in"),
-      class = "ynow-auth-link ynow-auth-open"
+    tags$div(
+      class = "ynow-auth-pair",
+      actionLink(
+        inputId = open_id,
+        label = tags$span(id = open_lbl, class = "ynow-auth-open-label", "Sign in"),
+        class = "ynow-auth-link ynow-auth-btn ynow-auth-open"
+      ),
+      actionLink(
+        inputId = reg_id,
+        label = tags$span(id = reg_lbl, class = "ynow-auth-register-label", "Register"),
+        class = "ynow-auth-link ynow-auth-btn ynow-auth-register-open"
+      )
     ),
     tags$span(
       class = "ynow-auth-user-chip",
@@ -1224,7 +1242,7 @@ ynow_points_panel_ui <- function(user, locale = "zh-TW",
 
 #' Known gate feature ids (promo + demo are keyed per feature).
 ynow_gate_features <- function() {
-  c("lab", "checklist", "alerts", "account", "pdf", "snap_defaults", "inner_lock")
+  c("lab", "checklist", "alerts", "account", "pdf", "snap_defaults", "inner_lock", "atx")
 }
 
 #' Locale key helpers for a feature-specific gate promo.
@@ -1787,6 +1805,13 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
         gate_inner_lock_b2 = tryCatch(ui_str("auth_gate_inner_lock_b2", loc), error = function(e) ""),
         gate_inner_lock_b3 = tryCatch(ui_str("auth_gate_inner_lock_b3", loc), error = function(e) ""),
         gate_inner_lock_demo_caption = tryCatch(ui_str("auth_gate_inner_lock_demo_caption", loc), error = function(e) ""),
+        gate_atx_body = tryCatch(ui_str("auth_gate_atx_body", loc), error = function(e) ""),
+        gate_atx_kicker = tryCatch(ui_str("auth_gate_atx_kicker", loc), error = function(e) ""),
+        gate_atx_lead = tryCatch(ui_str("auth_gate_atx_lead", loc), error = function(e) ""),
+        gate_atx_b1 = tryCatch(ui_str("auth_gate_atx_b1", loc), error = function(e) ""),
+        gate_atx_b2 = tryCatch(ui_str("auth_gate_atx_b2", loc), error = function(e) ""),
+        gate_atx_b3 = tryCatch(ui_str("auth_gate_atx_b3", loc), error = function(e) ""),
+        gate_atx_demo_caption = tryCatch(ui_str("auth_gate_atx_demo_caption", loc), error = function(e) ""),
         gate_faq_title = tryCatch(ui_str("auth_gate_faq_title", loc), error = function(e) "Member benefits — FAQ"),
         gate_faq_q1 = tryCatch(ui_str("auth_gate_faq_q1", loc), error = function(e) ""),
         gate_faq_a1 = tryCatch(ui_str("auth_gate_faq_a1", loc), error = function(e) ""),
