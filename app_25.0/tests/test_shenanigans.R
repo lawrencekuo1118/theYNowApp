@@ -69,10 +69,14 @@ cf_ok <- mk_stmt(
 )
 ev_ok <- evaluate_shenanigans(is_ok, bs_ok, cf_ok, industry_key = "tech.Hardware")
 check("healthy ok flag", isTRUE(ev_ok$ok))
-check("healthy 22 items", nrow(ev_ok$items) == 22L)
+check("healthy 26 items", nrow(ev_ok$items) == 26L)
 cat_sh <- list_shenanigan_red_flag_catalog()
-check("catalog has 22 codes", nrow(cat_sh) == 22L)
+check("catalog has 26 codes", nrow(cat_sh) == 26L)
 check("catalog includes X7", "X7" %in% cat_sh$code)
+check("catalog includes X10", "X10" %in% cat_sh$code)
+rules <- list_all_judgment_rules()
+check("judgment rules include EQ", "EQ_M" %in% rules$code)
+check("judgment rules count 31", nrow(rules) == 31L)
 x1_ok <- ev_ok$items[ev_ok$items$code == "X1", ]
 check("healthy X1 not alert", !identical(x1_ok$status[1], "警示"))
 check("X1 category 三表共通警訊", identical(x1_ok$category[1], "三表共通警訊"))
@@ -137,6 +141,41 @@ cf_x7 <- cf_ok
 ev_x7 <- evaluate_shenanigans(is_x7, bs_x7, cf_x7)
 x7 <- ev_x7$items[ev_x7$items$code == "X7", ]
 check("X7 revenue-up margin-down alert", identical(x7$status[1], "警示"))
+
+# X8：存貨大增 + 毛利率上升 → 矛盾警示
+is_x8 <- mk_stmt(
+  `Total Revenue` = c(100, 95, 90, 85),
+  `Gross Profit` = c(48, 38, 36, 34),
+  `Cost Of Revenue` = c(52, 57, 54, 51),
+  `Operating Income` = c(22, 19, 18, 17),
+  `Net Income` = c(14, 11, 10, 9)
+)
+bs_x8 <- bs_ok
+bs_x8[bs_x8$Metric == "Inventory", paste0("Y", 1:4)] <- c(20, 10, 9.2, 8.8)
+ev_x8 <- evaluate_shenanigans(is_x8, bs_x8, cf_ok)
+x8 <- ev_x8$items[ev_x8$items$code == "X8", ]
+check("X8 inventory-GM contradiction alert", identical(x8$status[1], "警示"))
+
+# X9：流動比 < 1 → 警示
+bs_x9 <- bs_ok
+bs_x9[bs_x9$Metric == "Current Assets", paste0("Y", 1:4)] <- c(10, 29, 28, 27)
+bs_x9[bs_x9$Metric == "Current Liabilities", paste0("Y", 1:4)] <- c(20, 14.5, 14, 13.5)
+ev_x9 <- evaluate_shenanigans(is_ok, bs_x9, cf_ok)
+x9 <- ev_x9$items[ev_x9$items$code == "X9", ]
+check("X9 current-ratio alert", identical(x9$status[1], "警示"))
+
+# X10：營業費用率明顯下降且獲利未崩 → 警示
+is_x10 <- mk_stmt(
+  `Total Revenue` = c(100, 98, 95, 90),
+  `Gross Profit` = c(40, 39, 38, 36),
+  `Cost Of Revenue` = c(60, 59, 57, 54),
+  `Operating Expense` = c(12, 20, 19, 18),
+  `Operating Income` = c(28, 19, 19, 18),
+  `Net Income` = c(16, 12, 11, 10)
+)
+ev_x10 <- evaluate_shenanigans(is_x10, bs_ok, cf_ok)
+x10 <- ev_x10$items[ev_x10$items$code == "X10", ]
+check("X10 discretionary cut alert", identical(x10$status[1], "警示"))
 
 suppressPackageStartupMessages(library(shiny))
 ui_ok <- as.character(shenanigans_results_ui(ev_ok))
