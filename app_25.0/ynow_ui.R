@@ -7292,21 +7292,8 @@ ui <- dashboardPage(
         body.ynow-lite .sidebar-menu li:has(> a[data-value="smart_analysis"]) {
           display: block !important;
         }
-        body.ynow-lite .sidebar-menu a[data-value="get_started"],
-        body.ynow-lite .sidebar-menu li:has(> a[data-value="get_started"]),
-        body.ynow-lite .sidebar-menu li:has(a[data-value="nav_calculator"]),
-        body.ynow-lite .sidebar-menu li:has(a[data-value="dcf_calculator"]),
-        body.ynow-lite .sidebar-menu li:has(a[data-value="pb_calculator"]),
-        body.ynow-lite .sidebar-menu li:has(a[data-value="rel_mult_ev"]),
-        body.ynow-lite .sidebar-menu li:has(a[data-value="rel_multiples_calculator"]),
-        body.ynow-lite .sidebar-menu li:has(a[data-value="rel_mult_rev"]),
-        body.ynow-lite .sidebar-menu li:has(a[data-value="sotp_calculator"]),
-        body.ynow-lite .sidebar-menu a[data-value="hfv"],
-        body.ynow-lite .sidebar-menu li:has(> a[data-value="hfv"]) {
-          display: none !important;
-        }
-        /* Guest-locked tabs (lab_notes / decision_checklist / price_alerts):
-           Lite hide CSS is injected from ynow_sidebar_guest_lock_lite_css(). */
+        /* Lite sidebar omit (guest-locked + Full-only models + Account):
+           injected from ynow_sidebar_lite_omit_css() / ynow_sidebar_lite_omit_tabs(). */
         body.ynow-lite .ynow-full-only {
           display: none !important;
         }
@@ -7323,13 +7310,8 @@ ui <- dashboardPage(
         body.ynow-lite #dashboard_fin_report .nav-tabs > li:has(> a[data-value="Annotation"]) {
           display: none !important;
         }
-        /* Lite: under Data Source keep Snapshot + Feedback only;
-           Guest-locked Lab/Checklist/Alerts omitted via ynow_sidebar_guest_lock_lite_css().
-           Testing foot link + Business Breakdown (company_advance) stay Full-only. */
-        body.ynow-lite .sidebar-menu a[data-value="company_advance"],
-        body.ynow-lite .sidebar-menu li:has(> a[data-value="company_advance"]) {
-          display: none !important;
-        }
+        /* Lite foot: Snapshot + Feedback only. Sys. Admin + BBLab chrome stay Full-only.
+           company_advance / guest-locked tabs come from ynow_sidebar_lite_omit_css(). */
         body.ynow-lite .ynow-sidebar-test-link,
         body.ynow-lite .ynow-company-advance-bblab,
         body.ynow-lite .ynow-bblab {
@@ -8978,18 +8960,33 @@ ui <- dashboardPage(
           padding-left: 20px;
         }
       ')),
-      # Lite: hide Full guest-locked sidebar tabs (single source: ynow_sidebar_guest_lock_tabs)
-      if (exists("ynow_sidebar_guest_lock_lite_css", mode = "function")) {
+      # Lite sidebar omit CSS (guest-locked ∪ Full-only ∪ Account)
+      if (exists("ynow_sidebar_lite_omit_css", mode = "function")) {
+        tags$style(HTML(ynow_sidebar_lite_omit_css()))
+      } else if (exists("ynow_sidebar_guest_lock_lite_css", mode = "function")) {
         tags$style(HTML(ynow_sidebar_guest_lock_lite_css()))
       },
-      # Guest-lock tab map for locale menu rebuild (same set as Lite hide + HTML locks)
-      if (exists("ynow_sidebar_guest_lock_js_map", mode = "function")) {
-        tags$script(HTML(paste0(
-          "window.__YNOW_SIDEBAR_GUEST_LOCK_TABS = ",
-          jsonlite::toJSON(ynow_sidebar_guest_lock_js_map(), auto_unbox = TRUE, null = "null"),
-          ";"
-        )))
-      },
+      # Guest-lock map (lock glyphs) + Lite omit list (FULL_ONLY_TABS / bounce on toggle)
+      tags$script(HTML(paste0(
+        if (exists("ynow_sidebar_guest_lock_js_map", mode = "function")) {
+          paste0(
+            "window.__YNOW_SIDEBAR_GUEST_LOCK_TABS = ",
+            jsonlite::toJSON(ynow_sidebar_guest_lock_js_map(), auto_unbox = TRUE, null = "null"),
+            ";"
+          )
+        } else {
+          "window.__YNOW_SIDEBAR_GUEST_LOCK_TABS = {lab_notes:true,decision_checklist:true,price_alerts:true};"
+        },
+        if (exists("ynow_sidebar_lite_omit_tabs", mode = "function")) {
+          paste0(
+            "window.__YNOW_LITE_OMIT_TABS = ",
+            jsonlite::toJSON(ynow_sidebar_lite_omit_tabs(), auto_unbox = TRUE),
+            ";"
+          )
+        } else {
+          "window.__YNOW_LITE_OMIT_TABS = [];"
+        }
+      ))),
       # Boot locale maps (slim): click-time apply so 繁中／EN do not depend on websocket timing
       tags$script(HTML(paste0(
         "window.__YNOW_UI_LOCALE_BOOT = ",
@@ -12193,11 +12190,18 @@ ui <- dashboardPage(
 
           /* ---- Lite mode: sidebar logo click toggles body.ynow-lite + LITE badge ---- */
           (function () {
-            var FULL_ONLY_TABS = [
-              'get_started', 'nav_calculator', 'dcf_calculator', 'ddm_calculator',
-              'ri_calculator', 'pb_calculator', 'rel_mult_ev', 'rel_multiples_calculator', 'rel_mult_rev', 'sotp_calculator', 'hfv',
-              'decision_checklist', 'lab_notes', 'testing', 'company_advance'
-            ];
+            /* Sidebar tabs Lite must leave (ynow_sidebar_lite_omit_tabs) + Sys. Admin foot. */
+            var FULL_ONLY_TABS = (window.__YNOW_LITE_OMIT_TABS || []).slice();
+            if (FULL_ONLY_TABS.indexOf('testing') < 0) FULL_ONLY_TABS.push('testing');
+            if (!FULL_ONLY_TABS.length) {
+              FULL_ONLY_TABS = [
+                'get_started', 'nav_calculator', 'dcf_calculator', 'ddm_calculator',
+                'ri_calculator', 'pb_calculator', 'rel_mult_ev', 'rel_multiples_calculator',
+                'rel_mult_rev', 'sotp_calculator', 'hfv',
+                'decision_checklist', 'lab_notes', 'price_alerts', 'testing', 'company_advance',
+                'account_admin', 'account_points'
+              ];
+            }
             function remapLegacyTab(tab) {
               tab = String(tab || '');
               if (tab === 'business_breakdown_lab') return 'company_advance';
