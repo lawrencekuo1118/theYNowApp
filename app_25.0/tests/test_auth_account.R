@@ -533,6 +533,30 @@ check("authed guards skip auth modal reopen (server + CSS)", {
     !grepl("ynow_auth_sidebar_dbg", auth_txt, fixed = TRUE) &&
     !grepl("ynow_auth_sidebar_dbg_event", auth_txt, fixed = TRUE)
 })
+check("authed auth chrome beats guest display:!important (hide open/register, show Sign out)", {
+  auth_txt <- paste(readLines(src_auth, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl(
+    "body.ynow-authed .ynow-auth-links .ynow-auth-pair a.ynow-auth-btn",
+    auth_txt,
+    fixed = TRUE
+  ) &&
+    grepl(
+      "body.ynow-authed .ynow-auth-links--home .ynow-auth-pair a.ynow-auth-open",
+      auth_txt,
+      fixed = TRUE
+    ) &&
+    grepl("body.ynow-authed .ynow-auth-links .ynow-auth-pair,", auth_txt, fixed = TRUE) &&
+    grepl(
+      "body.ynow-authed .ynow-auth-links a.ynow-auth-signout",
+      auth_txt,
+      fixed = TRUE
+    ) &&
+    grepl(
+      "body.ynow-authed .ynow-auth-links a.ynow-auth-signout",
+      auth_txt,
+      fixed = TRUE
+    )
+})
 check("DB not ready without env", {
   Sys.unsetenv("YNOW_DB_HOST")
   Sys.unsetenv("YNOW_DB_USER")

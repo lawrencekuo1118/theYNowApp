@@ -11735,12 +11735,20 @@ ui <- dashboardPage(
                 var tab = a.getAttribute('data-value') || '';
                 var li = a.closest ? a.closest('li') : a.parentElement;
                 if (!li || !li.classList) return;
+                /* ACL locks always keep unified chrome (class-based, survives auth). */
                 if (li.classList.contains('ynow-access-locked-nav')) {
                   li.classList.add('ynow-sidebar-locked');
                   return;
                 }
-                if (guest && tabs[tab]) li.classList.add('ynow-sidebar-locked');
-                else li.classList.remove('ynow-sidebar-locked');
+                if (guest && tabs[tab]) {
+                  li.classList.add('ynow-sidebar-locked');
+                  return;
+                }
+                /* Authed: strip guest-lock class only from guest-lock tabs — never
+                   clear .ynow-sidebar-locked from other LIs (ACL already returned). */
+                if (!guest && tabs[tab]) {
+                  li.classList.remove('ynow-sidebar-locked');
+                }
               });
             };
             addHandler('ynowAccessLocks', function (payload) {
