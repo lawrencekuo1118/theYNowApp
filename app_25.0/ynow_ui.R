@@ -7344,17 +7344,11 @@ ui <- dashboardPage(
           visibility: hidden !important;
           pointer-events: none !important;
         }
-        /* Lite Snapshot: only System defaults tab (when sysadmin unlocked).
+        /* Lite Snapshot stays free: keep snap_audit + snap_current.
+           Only omit System defaults (APP_DEFAULTS) — never show a lock glyph here.
            Note: shiny tabset id may sit on the ul.nav-tabs itself (not a wrapper). */
-        body.ynow-lite #snapshot_report > li:has(> a[data-value="snap_audit"]),
-        body.ynow-lite #snapshot_report > li:has(> a[data-value="snap_current"]),
-        body.ynow-lite #snapshot_report .nav-tabs > li:has(> a[data-value="snap_audit"]),
-        body.ynow-lite #snapshot_report .nav-tabs > li:has(> a[data-value="snap_current"]) {
-          display: none !important;
-        }
-        /* Lite: locked APP_DEFAULTS → hide (do not show a lock glyph). */
-        body.ynow-lite:not(.ynow-sysadmin-on) #snapshot_report > li:has(> a[data-value="snap_defaults"]),
-        body.ynow-lite:not(.ynow-sysadmin-on) #snapshot_report .nav-tabs > li:has(> a[data-value="snap_defaults"]) {
+        body.ynow-lite #snapshot_report > li:has(> a[data-value="snap_defaults"]),
+        body.ynow-lite #snapshot_report .nav-tabs > li:has(> a[data-value="snap_defaults"]) {
           display: none !important;
         }
         /* Snapshot APP_DEFAULTS (Full): tab stays; title becomes a lock until sysadmin. */
@@ -11533,17 +11527,15 @@ ui <- dashboardPage(
               if (!payload) return;
               if (payload.on) {
                 document.body.classList.add('ynow-sysadmin-on');
-                try {
-                  if (window.ensureLiteSnapshotDefaultsTab) window.ensureLiteSnapshotDefaultsTab();
-                } catch (eOn) {}
+                /* Lite omits snap_defaults entirely — do not force that locked tab. */
               } else {
                 document.body.classList.remove('ynow-sysadmin-on');
                 try {
                   var activeSnap = document.querySelector('#snapshot_report .nav-tabs li.active a');
                   var onDefaults = activeSnap &&
                     activeSnap.getAttribute('data-value') === 'snap_defaults';
-                  /* Lite only has this tab; stay on it so the lock promo remains visible. */
-                  if (onDefaults && !document.body.classList.contains('ynow-lite')) {
+                  /* Leaving sysadmin: leave APP_DEFAULTS; Lite uses free Snapshot tabs. */
+                  if (onDefaults) {
                     var fallback = document.querySelector('#snapshot_report a[data-value=\"snap_current\"]') ||
                       document.querySelector('#snapshot_report a[data-value=\"snap_audit\"]');
                     if (fallback) {
@@ -12326,7 +12318,7 @@ ui <- dashboardPage(
               if (window.Shiny && Shiny.setInputValue) {
                 Shiny.setInputValue('ynow_lite_mode', enabled, {priority: 'event'});
               }
-              if (enabled) ensureLiteSnapshotDefaultsTab();
+              if (enabled) ensureLiteSnapshotFreeTab();
               try {
                 if (typeof window.ynowSyncSidebarDownloadIcon === 'function') {
                   window.ynowSyncSidebarDownloadIcon();
@@ -12351,17 +12343,23 @@ ui <- dashboardPage(
                 gotoTab('dashboard');
               }
             }
-            function ensureLiteSnapshotDefaultsTab() {
+            function ensureLiteSnapshotFreeTab() {
               if (!document.body.classList.contains('ynow-lite')) return;
-              /* Lite hides the other Snapshot tabs, so select APP_DEFAULTS even while locked. */
-              var a = document.querySelector('#snapshot_report a[data-value=\"snap_defaults\"]');
+              /* Lite keeps Snapshot free: audit + current. Never land on locked APP_DEFAULTS. */
+              var active = document.querySelector('#snapshot_report .nav-tabs li.active a');
+              var dv = active && active.getAttribute('data-value');
+              if (dv === 'snap_audit' || dv === 'snap_current') return;
+              var a = document.querySelector('#snapshot_report a[data-value=\"snap_current\"]') ||
+                document.querySelector('#snapshot_report a[data-value=\"snap_audit\"]');
               if (!a) return;
               try {
                 if (window.jQuery) window.jQuery(a).tab('show');
                 else if (typeof a.click === 'function') a.click();
               } catch (eSnap) {}
             }
-            window.ensureLiteSnapshotDefaultsTab = ensureLiteSnapshotDefaultsTab;
+            window.ensureLiteSnapshotFreeTab = ensureLiteSnapshotFreeTab;
+            /* Legacy alias — older call sites / tests. */
+            window.ensureLiteSnapshotDefaultsTab = ensureLiteSnapshotFreeTab;
             /* Foot links (Snapshot / Testing / Feedback) are outside .sidebar-menu.
                Activate the pane directly — do not a.click() the foot anchor (recursion
                with return false) and do not rely on Bootstrap after preventDefault. */
@@ -12399,7 +12397,7 @@ ui <- dashboardPage(
               if (tab === 'snapshot') {
                 setTimeout(function () {
                   try {
-                    if (window.ensureLiteSnapshotDefaultsTab) window.ensureLiteSnapshotDefaultsTab();
+                    if (window.ensureLiteSnapshotFreeTab) window.ensureLiteSnapshotFreeTab();
                   } catch (eSnap2) {}
                 }, 0);
               }
