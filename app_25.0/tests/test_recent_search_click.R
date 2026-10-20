@@ -17,18 +17,27 @@ ui <- paste(readLines(file.path(root, "ynow_ui.R"), warn = FALSE, encoding = "UT
 loc <- paste(readLines(file.path(root, "ui_locale.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 
 check("uiOutput recentsearch", grepl('uiOutput\\(\"recentsearch\"\\)', ui, perl = TRUE))
+check("uiOutput pinned_recent_search", grepl('uiOutput\\(\"pinned_recent_search\"\\)', ui, perl = TRUE))
 check("textOutput recentsearch removed", !grepl('textOutput\\(\"recentsearch\"\\)', ui, perl = TRUE))
 check("chip CSS class", grepl("ynow-recent-chip", ui, fixed = TRUE))
+check("pinned chip CSS class", grepl("ynow-pinned-chip", ui, fixed = TRUE))
 check("JS sets recent_search_pick", grepl("recent_search_pick", ui, fixed = TRUE))
+check("JS long-press pin toggle", grepl("pinned_search_toggle", ui, fixed = TRUE))
 check("server observes recent_search_pick", grepl("observeEvent\\(input\\$recent_search_pick", srv, perl = TRUE))
+check("server observes pinned_search_toggle", grepl("observeEvent\\(input\\$pinned_search_toggle", srv, perl = TRUE))
 check("shared fire helper", grepl("\\.ynow_fire_ticker_search", srv, perl = TRUE))
 check("goto dashboard on recent", grepl('goto_tab = \"dashboard\"', srv, fixed = TRUE))
-check("pending cross-market fetch", grepl("pending_recent_fetch", srv, fixed = TRUE))
+check("pending cross-market fetch", grepl("pending_recent_fetch", srv, perl = TRUE))
 check("en recent_search_aria", grepl("recent_search_aria", loc, fixed = TRUE))
 check("zh recent_search_empty", grepl("尚無最近搜尋代號", loc, fixed = TRUE))
+check("zh pin hint", grepl("長按 2 秒釘選", loc, fixed = TRUE))
 check(
   "reorder recent on search",
   grepl("setdiff\\(values\\$recentsearch, stock_code\\)", srv, perl = TRUE)
+)
+check(
+  "exclude pinned from recent render",
+  grepl("setdiff\\(raw, pinned\\)", srv, perl = TRUE)
 )
 
 if (fail > 0L) {
