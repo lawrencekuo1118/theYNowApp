@@ -2,9 +2,47 @@
 # item id = kind:target  (tab | section | input | report)
 # effect  = "lock" (show locked placeholder / disable) | "hide" (remove from UI)
 # scope   = selected user id, or YNOW_ACCESS_ALL_USERS for every account (+ guests)
+#
+# Product freemium A/B gates live in membership_locks.R — do not merge domains.
+# Identical bilingual labels for overlapping surfaces come from
+# lock_catalog_shared.R (tabs lab_notes / decision_checklist / price_alerts,
+# and section:checklist_body). Download/report ACL labels stay ACL-specific.
 
 if (!exists("%||%", mode = "function")) {
   `%||%` <- function(a, b) if (is.null(a) || length(a) == 0L) b else a
+}
+
+# Ensure shared catalog helpers (standalone source / tests).
+if (!exists("ynow_lock_shared_surface_labels", mode = "function")) {
+  .ynow_lcs_ofile <- tryCatch(
+    normalizePath(sys.frame(1)$ofile, mustWork = FALSE),
+    error = function(e) ""
+  )
+  .ynow_lcs_cands <- unique(c(
+    if (is.character(.ynow_lcs_ofile) && nzchar(.ynow_lcs_ofile)) {
+      file.path(dirname(.ynow_lcs_ofile), "lock_catalog_shared.R")
+    } else {
+      character()
+    },
+    "lock_catalog_shared.R",
+    file.path("app_25.0", "lock_catalog_shared.R"),
+    file.path("..", "lock_catalog_shared.R")
+  ))
+  .ynow_lcs_loaded <- FALSE
+  for (.ynow_lcs_p in .ynow_lcs_cands) {
+    if (is.character(.ynow_lcs_p) && nzchar(.ynow_lcs_p) && file.exists(.ynow_lcs_p)) {
+      sys.source(.ynow_lcs_p, envir = environment(), keep.source = TRUE)
+      .ynow_lcs_loaded <- exists("ynow_lock_shared_surface_labels", mode = "function")
+      if (isTRUE(.ynow_lcs_loaded)) break
+    }
+  }
+  if (!isTRUE(.ynow_lcs_loaded)) {
+    warning("lock_catalog_shared.R not found; shared lock labels unavailable", call. = FALSE)
+  }
+  rm(list = intersect(
+    c(".ynow_lcs_ofile", ".ynow_lcs_cands", ".ynow_lcs_p", ".ynow_lcs_loaded"),
+    ls(all.names = TRUE)
+  ))
 }
 
 YNOW_ACCESS_ALL_USERS <- "__all__"
@@ -14,6 +52,11 @@ YNOW_ACCESS_ALL_USERS <- "__all__"
 .ynow_access_mem$by_user <- list()
 
 ynow_access_catalog <- function() {
+  .sl <- function(key) ynow_lock_shared_label_pair(key)
+  lab_notes <- .sl("lab_notes")
+  decision_checklist <- .sl("decision_checklist")
+  price_alerts <- .sl("price_alerts")
+  checklist_body <- .sl("checklist_body")
   rows <- list(
     c("tab:macro_market", "tab", "Macro & Market Trends", "總體與市場趨勢"),
     c("tab:asset_transmission", "tab", "Asset Transmission Root", "資產傳導根"),
@@ -33,16 +76,18 @@ ynow_access_catalog <- function() {
     c("tab:rel_mult_rev", "tab", "Revenue", "營收倍數"),
     c("tab:sotp_calculator", "tab", "SOTP", "SOTP"),
     c("tab:hfv", "tab", "Hist. FV Validation", "歷史公允價值驗證"),
-    c("tab:lab_notes", "tab", "Quant Backtest Lab", "量化回測實驗室"),
-    c("tab:decision_checklist", "tab", "Decision Checklist", "決策檢核"),
-    c("tab:price_alerts", "tab", "Value Alerts", "到值通知"),
+    # Shared labels with membership sidebar_tab rows
+    c("tab:lab_notes", "tab", lab_notes$en, lab_notes$zh),
+    c("tab:decision_checklist", "tab", decision_checklist$en, decision_checklist$zh),
+    c("tab:price_alerts", "tab", price_alerts$en, price_alerts$zh),
     c("tab:snapshot", "tab", "Snapshot", "快照"),
     c("section:shared_bridge", "section", "Shared bridge (Cash / Debt / Shares / Revenue)", "共用橋接（Cash／Debt／股數／營收）"),
     c("section:dcf_two_stage", "section", "DCF two-stage assumptions", "DCF 兩階段假設"),
     c("section:snapshot_restore", "section", "Snapshot restore", "快照還原"),
+    # Lab / alerts body wording stays ACL-specific (≠ membership surface copy)
     c("section:value_alerts_body", "section", "Value Alerts body", "到值通知內容"),
     c("section:backtest_body", "section", "Quant Backtest Lab body", "量化回測實驗室內容"),
-    c("section:checklist_body", "section", "Decision Checklist body", "決策檢核內容"),
+    c("section:checklist_body", "section", checklist_body$en, checklist_body$zh),
     c("input:bridge_cash", "input", "Cash", "Cash"),
     c("input:bridge_debt", "input", "Total Debt", "Total Debt"),
     c("input:bridge_shares", "input", "Shares", "股數"),
@@ -52,6 +97,7 @@ ynow_access_catalog <- function() {
     c("input:yr_stage1", "input", "Stage-1 years", "第一階段年數"),
     c("input:wacc_stage1", "input", "WACC1", "WACC1"),
     c("input:wacc_stage2", "input", "WACC2", "WACC2"),
+    # ACL report labels intentionally differ from membership download_* guest-gate copy
     c("report:download_report", "report", "Valuation report (PDF)", "估值報表（PDF）"),
     c("report:download_snapshot", "report", "Snapshot CSV", "快照 CSV"),
     c("report:download_param_restore", "report", "Parameter restore CSV", "參數還原 CSV"),
@@ -60,12 +106,11 @@ ynow_access_catalog <- function() {
     c("report:BS_download", "report", "Balance sheet", "資產負債表"),
     c("report:CF_download", "report", "Cash flow statement", "現金流量表")
   )
-  data.frame(
-    id = vapply(rows, function(r) r[[1]], character(1)),
-    kind = vapply(rows, function(r) r[[2]], character(1)),
-    label_en = vapply(rows, function(r) r[[3]], character(1)),
-    label_zh = vapply(rows, function(r) r[[4]], character(1)),
-    stringsAsFactors = FALSE
+  # Column name label_zh kept for admin UI / ynow_server.R API stability
+  # (membership uses label_zh_tw; shared helper stores label_zh_tw).
+  .ynow_lock_catalog_df(
+    rows,
+    c("id", "kind", "label_en", "label_zh")
   )
 }
 
@@ -73,8 +118,11 @@ ynow_access_label <- function(id, locale = "en") {
   cat <- ynow_access_catalog()
   hit <- which(cat$id == as.character(id)[1])
   if (!length(hit)) return(as.character(id)[1])
-  zh <- identical(as.character(locale)[1], "zh-TW")
-  if (zh) cat$label_zh[[hit[[1]]]] else cat$label_en[[hit[[1]]]]
+  ynow_lock_pick_locale_label(
+    cat$label_en[[hit[[1]]]],
+    cat$label_zh[[hit[[1]]]],
+    locale
+  )
 }
 
 ynow_access_kind_label <- function(kind, locale = "en") {

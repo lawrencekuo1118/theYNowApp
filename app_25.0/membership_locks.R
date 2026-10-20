@@ -16,9 +16,45 @@
 # Lite: member gates + proprietary download login gates stay open / omitted per
 # ynow_sidebar_lite_omit_tabs() and free PDF prefs — this catalog does not
 # change Lite exemptions.
+#
+# Shared bilingual labels for surfaces that also appear in access_locks.R live
+# in lock_catalog_shared.R (domains stay separate; only true duplicate copy).
 
 if (!exists("%||%", mode = "function")) {
   `%||%` <- function(a, b) if (is.null(a) || length(a) == 0L) b else a
+}
+
+# Ensure shared catalog helpers (standalone source / tests).
+if (!exists("ynow_lock_shared_surface_labels", mode = "function")) {
+  .ynow_lcs_ofile <- tryCatch(
+    normalizePath(sys.frame(1)$ofile, mustWork = FALSE),
+    error = function(e) ""
+  )
+  .ynow_lcs_cands <- unique(c(
+    if (is.character(.ynow_lcs_ofile) && nzchar(.ynow_lcs_ofile)) {
+      file.path(dirname(.ynow_lcs_ofile), "lock_catalog_shared.R")
+    } else {
+      character()
+    },
+    "lock_catalog_shared.R",
+    file.path("app_25.0", "lock_catalog_shared.R"),
+    file.path("..", "lock_catalog_shared.R")
+  ))
+  .ynow_lcs_loaded <- FALSE
+  for (.ynow_lcs_p in .ynow_lcs_cands) {
+    if (is.character(.ynow_lcs_p) && nzchar(.ynow_lcs_p) && file.exists(.ynow_lcs_p)) {
+      sys.source(.ynow_lcs_p, envir = environment(), keep.source = TRUE)
+      .ynow_lcs_loaded <- exists("ynow_lock_shared_surface_labels", mode = "function")
+      if (isTRUE(.ynow_lcs_loaded)) break
+    }
+  }
+  if (!isTRUE(.ynow_lcs_loaded)) {
+    warning("lock_catalog_shared.R not found; shared lock labels unavailable", call. = FALSE)
+  }
+  rm(list = intersect(
+    c(".ynow_lcs_ofile", ".ynow_lcs_cands", ".ynow_lcs_p", ".ynow_lcs_loaded"),
+    ls(all.names = TRUE)
+  ))
 }
 
 YNOW_LOCK_TIER_A <- "A"
@@ -32,13 +68,19 @@ YNOW_LOCK_TIER_B <- "B"
 #' mechanism: stable code path tag (guest_menu_lock, member_gate, guest_download,
 #'            points_spend, css_hide, display_only, parent_gate)
 ynow_membership_lock_catalog <- function() {
+  .sl <- function(key) ynow_lock_shared_label_pair(key)
+  lab_notes <- .sl("lab_notes")
+  decision_checklist <- .sl("decision_checklist")
+  price_alerts <- .sl("price_alerts")
+  checklist_body <- .sl("checklist_body")
   rows <- list(
     # --- Sidebar tabs (Full guest lock glyph / hide) ---
-    c("lab_notes", "sidebar_tab", "A", "Quant Backtest Lab", "量化回測實驗室",
+    # Labels from lock_catalog_shared (also used by access tab:*)
+    c("lab_notes", "sidebar_tab", "A", lab_notes$en, lab_notes$zh,
       "guest_menu_lock", "Full guest lock; Lite omitted"),
-    c("decision_checklist", "sidebar_tab", "A", "Decision Checklist", "決策檢核",
+    c("decision_checklist", "sidebar_tab", "A", decision_checklist$en, decision_checklist$zh,
       "guest_menu_lock", "Full guest lock; Lite omitted"),
-    c("price_alerts", "sidebar_tab", "A", "Value Alerts", "到值通知",
+    c("price_alerts", "sidebar_tab", "A", price_alerts$en, price_alerts$zh,
       "guest_menu_lock", "Full guest lock; Lite omitted (prefs)"),
     c("account_admin", "sidebar_tab", "A", "Account / Overview", "帳號／總覽",
       "css_hide", "Guest CSS hide; signed-in visible; Lite omitted"),
@@ -58,6 +100,7 @@ ynow_membership_lock_catalog <- function() {
       "guest_download", "Login then free quota / FYN (pdf_report)"),
 
     # --- Proprietary downloads (Full guest login gate; Lite open) ---
+    # Wording intentionally differs from access report:* ACL labels.
     c("download_report", "download", "B", "Download Report (PDF)", "下載報告 (PDF)",
       "guest_download", "After login: free×3/day then pdf_report SKU"),
     c("download_snapshot", "download", "A", "Download Snapshot CSV", "下載快照 CSV",
@@ -84,9 +127,10 @@ ynow_membership_lock_catalog <- function() {
       "points_spend", "Default cost 10 FYN after free quota"),
 
     # --- Nested surfaces inherit parent tab (explicit for inventory/tests) ---
+    # Lab / alerts body copy intentionally differs from access section:* body labels.
     c("ynow_lab_body", "surface", "A", "Lab worksheets / charts", "實驗室工作表／圖表",
       "parent_gate", "Hidden behind lab member gate"),
-    c("ynow_chk_body", "surface", "A", "Decision Checklist body", "決策檢核內容",
+    c("ynow_chk_body", "surface", "A", checklist_body$en, checklist_body$zh,
       "parent_gate", "Hidden behind checklist member gate"),
     c("ynow_pa_body", "surface", "A", "Value Alerts tables", "到值通知表格",
       "parent_gate", "Hidden behind alerts member gate"),
@@ -99,15 +143,9 @@ ynow_membership_lock_catalog <- function() {
     c("ynow-alert-bell", "surface", "A", "KPI Value Alert bell", "KPI 到值鈴鐺",
       "css_hide", "Full guest: pointer-events none; create spend is alert_slot B")
   )
-  out <- data.frame(
-    id = vapply(rows, function(r) r[[1]], character(1)),
-    kind = vapply(rows, function(r) r[[2]], character(1)),
-    tier = vapply(rows, function(r) r[[3]], character(1)),
-    label_en = vapply(rows, function(r) r[[4]], character(1)),
-    label_zh_tw = vapply(rows, function(r) r[[5]], character(1)),
-    mechanism = vapply(rows, function(r) r[[6]], character(1)),
-    notes = vapply(rows, function(r) r[[7]], character(1)),
-    stringsAsFactors = FALSE
+  out <- .ynow_lock_catalog_df(
+    rows,
+    c("id", "kind", "tier", "label_en", "label_zh_tw", "mechanism", "notes")
   )
   if (anyDuplicated(out$id)) {
     stop("ynow_membership_lock_catalog: duplicate id(s): ",
@@ -152,14 +190,9 @@ ynow_non_membership_lock_catalog <- function() {
       "HFV full recalculation (retired SKU)", "HFV 完整重算（已下架 SKU）",
       "Removed from points catalog — never wired to ynow_points_gate")
   )
-  data.frame(
-    id = vapply(rows, function(r) r[[1]], character(1)),
-    kind = vapply(rows, function(r) r[[2]], character(1)),
-    scope = vapply(rows, function(r) r[[3]], character(1)),
-    label_en = vapply(rows, function(r) r[[4]], character(1)),
-    label_zh_tw = vapply(rows, function(r) r[[5]], character(1)),
-    notes = vapply(rows, function(r) r[[6]], character(1)),
-    stringsAsFactors = FALSE
+  .ynow_lock_catalog_df(
+    rows,
+    c("id", "kind", "scope", "label_en", "label_zh_tw", "notes")
   )
 }
 
@@ -213,13 +246,23 @@ ynow_membership_points_skus <- function() {
 }
 
 #' Default cost / titles for membership points SKUs (env overrides applied by caller).
+#' Titles come from the membership lock catalog (single source).
 ynow_membership_points_sku_defaults <- function() {
   # Cost defaults live here so points_wallet stays aligned with the A/B catalog.
   skus <- c("alert_slot", "bt_run", "pdf_report")
+  cat <- ynow_membership_lock_catalog()
+  title_en <- vapply(skus, function(s) {
+    hit <- cat[cat$id == s, , drop = FALSE]
+    if (!nrow(hit)) s else as.character(hit$label_en[[1]])
+  }, character(1))
+  title_zh_tw <- vapply(skus, function(s) {
+    hit <- cat[cat$id == s, , drop = FALSE]
+    if (!nrow(hit)) s else as.character(hit$label_zh_tw[[1]])
+  }, character(1))
   data.frame(
     sku = skus,
-    title_en = c("Value Alert slot", "Backtest full run", "Valuation report (PDF)"),
-    title_zh_tw = c("到值通知一筆", "回測完整執行", "估值報告（PDF）"),
+    title_en = title_en,
+    title_zh_tw = title_zh_tw,
     cost_default = c(1L, 5L, 10L),
     env_key = c(
       "YNOW_POINTS_PRICE_ALERT_SLOT",

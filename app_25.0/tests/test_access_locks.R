@@ -98,6 +98,26 @@ check("zh kind", identical(ynow_access_kind_label("section", "zh-TW"), "區塊")
 check("zh effect lock", grepl("鎖上", ynow_access_effect_label("lock", "zh-TW"), fixed = TRUE))
 check("en effect hide", identical(ynow_access_effect_label("hide", "en"), "Hide"))
 
+# Shared labels with membership_locks (true duplicates only; domains stay separate)
+check("shared helpers loaded", exists("ynow_lock_shared_surface_labels", mode = "function"))
+check("access tabs match shared labels", {
+  identical(ynow_access_label("tab:lab_notes", "en"), ynow_lock_shared_label("lab_notes", "en")) &&
+    identical(ynow_access_label("tab:decision_checklist", "zh-TW"),
+              ynow_lock_shared_label("decision_checklist", "zh-TW")) &&
+    identical(ynow_access_label("tab:price_alerts", "en"), ynow_lock_shared_label("price_alerts", "en")) &&
+    identical(ynow_access_label("section:checklist_body", "zh-TW"),
+              ynow_lock_shared_label("checklist_body", "zh-TW"))
+})
+check("ACL report labels stay distinct from membership download copy", {
+  # membership guest-gate: "Download Report (PDF)" / ACL: "Valuation report (PDF)"
+  "report:download_report" %in% cat$id &&
+    identical(ynow_access_label("report:download_report", "en"), "Valuation report (PDF)") &&
+    identical(ynow_access_label("report:download_report", "zh-TW"), "估值報表（PDF）")
+})
+check("Lab body ACL label stays ACL-specific", {
+  identical(ynow_access_label("section:backtest_body", "en"), "Quant Backtest Lab body")
+})
+
 ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 loc <- paste(readLines(file.path(app_dir, "ui_locale.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
