@@ -130,6 +130,32 @@ check(
     grepl("cached_scrape_financials\\s*<-\\s*function", src)
 )
 
+# Offline put/get on the fast tier object (no network; asserts cachem API)
+check(
+  "fast cache set/get roundtrip",
+  {
+    key <- paste0("ynow_test_cache_tiers_", as.integer(Sys.time()))
+    .ynow_fast_cache$set(key, list(ok = TRUE, n = 42L))
+    got <- .ynow_fast_cache$get(key)
+    .ynow_fast_cache$remove(key)
+    is.list(got) && isTRUE(got$ok) && identical(got$n, 42L)
+  }
+)
+check(
+  "slow cache set/get roundtrip",
+  {
+    key <- paste0("ynow_test_cache_tiers_slow_", as.integer(Sys.time()))
+    .ynow_slow_cache$set(key, "slow-ok")
+    got <- .ynow_slow_cache$get(key)
+    .ynow_slow_cache$remove(key)
+    identical(got, "slow-ok")
+  }
+)
+check(
+  "fast and slow caches are distinct objects",
+  !identical(.ynow_fast_cache, .ynow_slow_cache)
+)
+
 if (fail > 0L) {
   cat("FAILED ", fail, " checks\n", sep = "")
   quit(status = 1L)
