@@ -161,7 +161,7 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
     txt,
     perl = TRUE
   ))
-  # Snapshot foot → pane helper (Lite snap_defaults); home Value → ynowGotoTab(smart_analysis)
+  # Snapshot foot → pane helper (Lite free tabs); home Value → ynowGotoTab(smart_analysis)
   testthat::expect_true(grepl("ynowShowSidebarFootTab", txt, fixed = TRUE))
   testthat::expect_true(grepl("showSidebarFootTab", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynowShowSidebarFootTab('snapshot')", txt, fixed = TRUE))
@@ -429,7 +429,7 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   ))
   testthat::expect_true(grepl('screener_panel_ui\\(embed = "bluechip"\\)', txt, perl = TRUE))
   testthat::expect_false(grepl("screener_panel_ui\\(\\)", txt, perl = TRUE))
-  testthat::expect_true(grepl("The YNow App v25.74", txt, fixed = TRUE))
+  testthat::expect_true(grepl("The YNow App v25.75", txt, fixed = TRUE))
   testthat::expect_true(grepl('title = "The YNow App"', txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-hfv-report", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-hfv-toolbar", txt, fixed = TRUE))
@@ -532,9 +532,26 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(grepl("ynow-sidebar-test-link", txt, fixed = TRUE))
   testthat::expect_true(grepl('tabName = "testing"', txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_sidebar_test_btn", txt, fixed = TRUE))
-  testthat::expect_true(grepl("ensureLiteSnapshotDefaultsTab", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ensureLiteSnapshotFreeTab", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ensureLiteSnapshotDefaultsTab", txt, fixed = TRUE)) # legacy alias
   testthat::expect_true(grepl('value = "snap_defaults"', txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_snapshot_page_help_lite", txt, fixed = TRUE))
+  # Lite keeps free Snapshot tabs; only System defaults is omitted
+  testthat::expect_true(grepl(
+    'body.ynow-lite #snapshot_report > li:has(> a[data-value="snap_defaults"])',
+    txt,
+    fixed = TRUE
+  ))
+  testthat::expect_false(grepl(
+    'body.ynow-lite #snapshot_report > li:has(> a[data-value="snap_audit"])',
+    txt,
+    fixed = TRUE
+  ))
+  testthat::expect_false(grepl(
+    'body.ynow-lite #snapshot_report > li:has(> a[data-value="snap_current"])',
+    txt,
+    fixed = TRUE
+  ))
   # Lite must hide Full guest-locked sidebar tabs (Lab / Checklist / Alerts)
   # via ynow_sidebar_guest_lock_lite_css(), plus Testing foot link (Full-only)
   testthat::expect_true(grepl("ynow_sidebar_guest_lock_lite_css", txt, fixed = TRUE))
@@ -609,11 +626,13 @@ testthat::expect_true(grepl(
     perl = TRUE
   ))
 
+  # snap_defaults omit rule still present; free tabs are not display:none'd in Lite
   testthat::expect_true(grepl(
-    "body\\.ynow-lite[\\s\\S]*snap_audit",
+    "body\\.ynow-lite[\\s\\S]*snap_defaults",
     txt,
     perl = TRUE
   ))
+  testthat::expect_true(grepl("ensureLiteSnapshotFreeTab", txt, fixed = TRUE))
   # Header quote KPIs are Company (dashboard) only (not Smart Analysis)
   testthat::expect_true(grepl(
     "Header KPIs: Company (dashboard) only",

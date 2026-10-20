@@ -16,7 +16,7 @@
       return(sub('^"version"\\s*:\\s*"([^"]+)".*$', "\\1", m[[1]]))
     }
   }
-  "v25.74"
+  "v25.75"
 }
 .YNOW_BUILD_VERSION <- .ynow_read_build_version()
 
@@ -230,7 +230,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v25.74) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+          "The YNow App (v25.75) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
         ),
         tags$p(
           class = "ynow-about-method",
@@ -258,7 +258,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v25.74) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
+          "The YNow App (v25.75) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
         ),
         tags$p(
           class = "ynow-about-method",
@@ -368,7 +368,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App（簡化版）")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite（v25.74）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
+          "The YNow App Lite（v25.75）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
           "以自動判別主／副模型與預設參數完成試算，讓使用者先看到合理價區間與產業 KPI，再決定是否回到完整版深入調整。"
         ),
         tags$p(
@@ -385,7 +385,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App (Lite)")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite (v25.74) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
+          "The YNow App Lite (v25.75) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
           "auto-selects primary/secondary models with App defaults, and surfaces fair-value ranges plus industry KPIs before you open Full for deeper calibration."
         ),
         tags$p(
@@ -3639,9 +3639,9 @@ ui <- dashboardPage(
                   'data-ynow-build="', .YNOW_BUILD_VERSION, '" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v25.74</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v25.75</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v25.74</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v25.75</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -7344,17 +7344,11 @@ ui <- dashboardPage(
           visibility: hidden !important;
           pointer-events: none !important;
         }
-        /* Lite Snapshot: only System defaults tab (when sysadmin unlocked).
+        /* Lite Snapshot stays free: keep snap_audit + snap_current.
+           Only omit System defaults (APP_DEFAULTS) — never show a lock glyph here.
            Note: shiny tabset id may sit on the ul.nav-tabs itself (not a wrapper). */
-        body.ynow-lite #snapshot_report > li:has(> a[data-value="snap_audit"]),
-        body.ynow-lite #snapshot_report > li:has(> a[data-value="snap_current"]),
-        body.ynow-lite #snapshot_report .nav-tabs > li:has(> a[data-value="snap_audit"]),
-        body.ynow-lite #snapshot_report .nav-tabs > li:has(> a[data-value="snap_current"]) {
-          display: none !important;
-        }
-        /* Lite: locked APP_DEFAULTS → hide (do not show a lock glyph). */
-        body.ynow-lite:not(.ynow-sysadmin-on) #snapshot_report > li:has(> a[data-value="snap_defaults"]),
-        body.ynow-lite:not(.ynow-sysadmin-on) #snapshot_report .nav-tabs > li:has(> a[data-value="snap_defaults"]) {
+        body.ynow-lite #snapshot_report > li:has(> a[data-value="snap_defaults"]),
+        body.ynow-lite #snapshot_report .nav-tabs > li:has(> a[data-value="snap_defaults"]) {
           display: none !important;
         }
         /* Snapshot APP_DEFAULTS (Full): tab stays; title becomes a lock until sysadmin. */
@@ -11533,17 +11527,15 @@ ui <- dashboardPage(
               if (!payload) return;
               if (payload.on) {
                 document.body.classList.add('ynow-sysadmin-on');
-                try {
-                  if (window.ensureLiteSnapshotDefaultsTab) window.ensureLiteSnapshotDefaultsTab();
-                } catch (eOn) {}
+                /* Lite omits snap_defaults entirely — do not force that locked tab. */
               } else {
                 document.body.classList.remove('ynow-sysadmin-on');
                 try {
                   var activeSnap = document.querySelector('#snapshot_report .nav-tabs li.active a');
                   var onDefaults = activeSnap &&
                     activeSnap.getAttribute('data-value') === 'snap_defaults';
-                  /* Lite only has this tab; stay on it so the lock promo remains visible. */
-                  if (onDefaults && !document.body.classList.contains('ynow-lite')) {
+                  /* Leaving sysadmin: leave APP_DEFAULTS; Lite uses free Snapshot tabs. */
+                  if (onDefaults) {
                     var fallback = document.querySelector('#snapshot_report a[data-value=\"snap_current\"]') ||
                       document.querySelector('#snapshot_report a[data-value=\"snap_audit\"]');
                     if (fallback) {
@@ -12326,7 +12318,7 @@ ui <- dashboardPage(
               if (window.Shiny && Shiny.setInputValue) {
                 Shiny.setInputValue('ynow_lite_mode', enabled, {priority: 'event'});
               }
-              if (enabled) ensureLiteSnapshotDefaultsTab();
+              if (enabled) ensureLiteSnapshotFreeTab();
               try {
                 if (typeof window.ynowSyncSidebarDownloadIcon === 'function') {
                   window.ynowSyncSidebarDownloadIcon();
@@ -12351,17 +12343,23 @@ ui <- dashboardPage(
                 gotoTab('dashboard');
               }
             }
-            function ensureLiteSnapshotDefaultsTab() {
+            function ensureLiteSnapshotFreeTab() {
               if (!document.body.classList.contains('ynow-lite')) return;
-              /* Lite hides the other Snapshot tabs, so select APP_DEFAULTS even while locked. */
-              var a = document.querySelector('#snapshot_report a[data-value=\"snap_defaults\"]');
+              /* Lite keeps Snapshot free: audit + current. Never land on locked APP_DEFAULTS. */
+              var active = document.querySelector('#snapshot_report .nav-tabs li.active a');
+              var dv = active && active.getAttribute('data-value');
+              if (dv === 'snap_audit' || dv === 'snap_current') return;
+              var a = document.querySelector('#snapshot_report a[data-value=\"snap_current\"]') ||
+                document.querySelector('#snapshot_report a[data-value=\"snap_audit\"]');
               if (!a) return;
               try {
                 if (window.jQuery) window.jQuery(a).tab('show');
                 else if (typeof a.click === 'function') a.click();
               } catch (eSnap) {}
             }
-            window.ensureLiteSnapshotDefaultsTab = ensureLiteSnapshotDefaultsTab;
+            window.ensureLiteSnapshotFreeTab = ensureLiteSnapshotFreeTab;
+            /* Legacy alias — older call sites / tests. */
+            window.ensureLiteSnapshotDefaultsTab = ensureLiteSnapshotFreeTab;
             /* Foot links (Snapshot / Testing / Feedback) are outside .sidebar-menu.
                Activate the pane directly — do not a.click() the foot anchor (recursion
                with return false) and do not rely on Bootstrap after preventDefault. */
@@ -12399,7 +12397,7 @@ ui <- dashboardPage(
               if (tab === 'snapshot') {
                 setTimeout(function () {
                   try {
-                    if (window.ensureLiteSnapshotDefaultsTab) window.ensureLiteSnapshotDefaultsTab();
+                    if (window.ensureLiteSnapshotFreeTab) window.ensureLiteSnapshotFreeTab();
                   } catch (eSnap2) {}
                 }, 0);
               }
