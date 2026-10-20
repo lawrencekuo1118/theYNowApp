@@ -41,7 +41,7 @@ server <- function(input, output, session) {
   tw_is_esb <- reactiveVal(FALSE)
   tw_tpex_fs_fallback <- reactiveVal(FALSE)  # TRUE 時 IS／BS 來自櫃買簡報（非完整三表）
 
-  values <- reactiveValues(recentsearch = c())
+  values <- reactiveValues(recentsearch = c(), pinned_search = c())
   corp_industry_text <- reactiveVal("等待搜尋...")
   corp_display_name <- reactiveVal("")
   # 台股雙語：英文全稱（中文在 corp_display_name）；美股維持空字串
@@ -401,6 +401,131 @@ server <- function(input, output, session) {
     )
   }
   session$userData$ynow_auth <- ynow_auth
+
+  # ---- Pinned recent search (long-press 2s) ----
+  .ynow_pinned_auth_uid <- function() {
+    u <- tryCatch(isolate(ynow_auth$user()), error = function(e) NULL)
+    if (is.function(u)) u <- tryCatch(u(), error = function(e) NULL)
+    if (!is.list(u)) return("")
+    as.character(u$id %||% "")[1]
+  }
+  .ynow_pinned_sync_guest_client <- function(pins) {
+    tryCatch(
+      session$sendCustomMessage(
+        "ynowPinnedGuestSync",
+        list(tickers = as.list(ynow_prefs_normalize_tickers(pins)))
+      ),
+      error = function(e) NULL
+    )
+  }
+  .ynow_pinned_load_for_user <- function(uid) {
+    if (!nzchar(uid) || !exists("ynow_prefs_get_pinned_recent", mode = "function")) {
+      return(character(0))
+    }
+    tryCatch(ynow_prefs_get_pinned_recent(uid), error = function(e) character(0))
+  }
+  .ynow_pinned_persist <- function(uid, pins) {
+    if (!nzchar(uid) || !exists("ynow_prefs_set_pinned_recent", mode = "function")) {
+      return(invisible(pins))
+    }
+    tryCatch(ynow_prefs_set_pinned_recent(uid, pins), error = function(e) pins)
+  }
+
+  # Guest localStorage → session (browser-local only; not account-durable).
+  observeEvent(input$pinned_search_guest_load, {
+    uid <- .ynow_pinned_auth_uid()
+    if (nzchar(uid)) return(invisible(NULL))
+    raw <- as.character(input$pinned_search_guest_load %||% "")[1]
+    part <- strsplit(raw, "|", fixed = TRUE)[[1]][1]
+    tickers <- if (nzchar(part %||% "")) {
+      strsplit(part, ",", fixed = TRUE)[[1]]
+    } else {
+      character(0)
+    }
+    values$pinned_search <- ynow_prefs_normalize_tickers(tickers)
+  }, ignoreInit = TRUE)
+
+  # Auth transitions: load durable pins on login; drop account pins on logout.
+  # ignoreInit: guests hydrate via pinned_search_guest_load; do not wipe that race.
+  .ynow_pinned_last_uid <- reactiveVal("")
+  observeEvent(
+    {
+      list(
+        logged = tryCatch(isTRUE(ynow_auth$is_logged_in()), error = function(e) FALSE),
+        uid = .ynow_pinned_auth_uid()
+      )
+    },
+    {
+      uid <- .ynow_pinned_auth_uid()
+      prev <- isolate(as.character(.ynow_pinned_last_uid() %||% "")[1])
+      if (nzchar(uid)) {
+        guest_pins <- isolate(as.character(values$pinned_search %||% character(0)))
+        server_pins <- .ynow_pinned_load_for_user(uid)
+        # One-time merge of guest local pins into the account store.
+        if (length(guest_pins) && exists("ynow_prefs_normalize_tickers", mode = "function")) {
+          merged <- ynow_prefs_normalize_tickers(c(server_pins, guest_pins))
+          if (!identical(merged, server_pins)) {
+            server_pins <- .ynow_pinned_persist(uid, merged)
+          }
+        }
+        values$pinned_search <- server_pins
+        tryCatch(
+          session$sendCustomMessage("ynowPinnedGuestSync", list(clear = TRUE)),
+          error = function(e) NULL
+        )
+        .ynow_pinned_last_uid(uid)
+      } else if (nzchar(prev)) {
+        # Signed out: hide account pins (guest may pin again via localStorage).
+        values$pinned_search <- character(0)
+        .ynow_pinned_last_uid("")
+      }
+    },
+    ignoreInit = TRUE
+  )
+
+  observeEvent(input$pinned_search_toggle, {
+    raw <- as.character(input$pinned_search_toggle %||% "")[1]
+    req(nzchar(raw))
+    tk <- strsplit(raw, "|", fixed = TRUE)[[1]][1]
+    tk <- ynow_prefs_normalize_tickers(tk, max_n = 1L)
+    req(length(tk) == 1L)
+    uid <- .ynow_pinned_auth_uid()
+    cur <- isolate(as.character(values$pinned_search %||% character(0)))
+    was_pinned <- tk[[1]] %in% cur
+    if (nzchar(uid) && exists("ynow_prefs_toggle_pinned_recent", mode = "function")) {
+      nxt <- tryCatch(
+        ynow_prefs_toggle_pinned_recent(uid, tk[[1]]),
+        error = function(e) {
+          if (was_pinned) setdiff(cur, tk[[1]]) else head(c(tk[[1]], setdiff(cur, tk[[1]])), 8L)
+        }
+      )
+    } else {
+      nxt <- if (was_pinned) {
+        setdiff(cur, tk[[1]])
+      } else {
+        head(c(tk[[1]], setdiff(cur, tk[[1]])), 8L)
+      }
+      .ynow_pinned_sync_guest_client(nxt)
+    }
+    values$pinned_search <- nxt
+    # Keep recent list free of pinned tickers (display + session order).
+    values$recentsearch <- setdiff(
+      as.character(isolate(values$recentsearch %||% character(0))),
+      nxt
+    )
+    loc <- tryCatch(ui_locale(), error = function(e) "en")
+    now_pinned <- tk[[1]] %in% nxt
+    msg <- tryCatch(
+      ui_str(if (now_pinned) "recent_search_pinned_toast" else "recent_search_unpinned_toast", loc),
+      error = function(e) if (now_pinned) "Pinned." else "Unpinned."
+    )
+    msg <- gsub("{ticker}", tk[[1]], msg, fixed = TRUE)
+    tryCatch(
+      showNotification(msg, type = "message", duration = 2.2),
+      error = function(e) NULL
+    )
+  }, ignoreInit = TRUE)
+
   ynow_pts_panel_tick <- reactiveVal(0L)
   ynow_pts_sysadmin_on <- reactiveVal(FALSE)
   ynow_pts_sysadmin_tick <- reactiveVal(0L)
@@ -2809,10 +2934,14 @@ server <- function(input, output, session) {
         corp_name_logo_colors(.ensure_logo_color_pair(logo_cols))
 
         # Keep most-recent first; re-Search moves an existing ticker to the front.
-        values$recentsearch <- head(
-          c(stock_code, setdiff(values$recentsearch, stock_code)),
-          5L
-        )
+        # Skip the recent list when the ticker is already pinned (shown above the label).
+        pinned_now <- as.character(isolate(values$pinned_search %||% character(0)))
+        if (!(stock_code %in% pinned_now)) {
+          values$recentsearch <- head(
+            c(stock_code, setdiff(values$recentsearch, stock_code)),
+            5L
+          )
+        }
         # 成功載入後：輸入框維持顯示乾淨代號
         tryCatch(
           updateTextInput(
@@ -3502,27 +3631,78 @@ server <- function(input, output, session) {
     )
   })
 
-  output$recentsearch <- renderUI({
+  output$pinned_recent_search <- renderUI({
     loc <- tryCatch(ui_locale(), error = function(e) "en")
     mode <- tryCatch(
       normalize_market_mode(market_mode()),
       error = function(e) "US"
     )
-    raw <- unique(as.character(values$recentsearch %||% character(0)))
+    raw <- unique(as.character(values$pinned_search %||% character(0)))
     raw <- raw[nzchar(raw) & !is.na(raw)]
-    if (!length(raw)) {
-      return(tags$p(
-        class = "ynow-recent-search-empty",
-        ui_str("recent_search_empty", loc)
-      ))
-    }
+    if (!length(raw)) return(NULL)
+    pin_hint <- tryCatch(
+      ui_str("recent_search_unpin_hint", loc),
+      error = function(e) "Hold 2 seconds to unpin"
+    )
     chips <- lapply(raw, function(fetch_tk) {
       disp <- display_ticker_for_market(fetch_tk, mode)
       if (!nzchar(disp)) disp <- fetch_tk
       aria <- tryCatch(
         {
           msg <- ui_str("recent_search_aria", loc)
-          gsub("{ticker}", disp, msg, fixed = TRUE)
+          paste0(gsub("{ticker}", disp, msg, fixed = TRUE), " — ", pin_hint)
+        },
+        error = function(e) disp
+      )
+      tags$button(
+        type = "button",
+        class = "ynow-pinned-chip",
+        `data-ticker` = fetch_tk,
+        title = paste(aria, pin_hint, sep = " · "),
+        `aria-label` = aria,
+        disp
+      )
+    })
+    tags$div(
+      class = "ynow-pinned-search",
+      id = "ynow_pinned_recent_search",
+      role = "list",
+      `aria-label` = tryCatch(
+        ui_str("recent_search_pinned_label", loc),
+        error = function(e) "Pinned"
+      ),
+      chips
+    )
+  })
+
+  output$recentsearch <- renderUI({
+    loc <- tryCatch(ui_locale(), error = function(e) "en")
+    mode <- tryCatch(
+      normalize_market_mode(market_mode()),
+      error = function(e) "US"
+    )
+    pinned <- unique(as.character(values$pinned_search %||% character(0)))
+    raw <- unique(as.character(values$recentsearch %||% character(0)))
+    raw <- raw[nzchar(raw) & !is.na(raw)]
+    # Pinned items render above the label — keep them out of the recent list.
+    if (length(pinned)) raw <- setdiff(raw, pinned)
+    if (!length(raw)) {
+      return(tags$p(
+        class = "ynow-recent-search-empty",
+        ui_str("recent_search_empty", loc)
+      ))
+    }
+    pin_hint <- tryCatch(
+      ui_str("recent_search_pin_hint", loc),
+      error = function(e) "Hold 2 seconds to pin"
+    )
+    chips <- lapply(raw, function(fetch_tk) {
+      disp <- display_ticker_for_market(fetch_tk, mode)
+      if (!nzchar(disp)) disp <- fetch_tk
+      aria <- tryCatch(
+        {
+          msg <- ui_str("recent_search_aria", loc)
+          paste0(gsub("{ticker}", disp, msg, fixed = TRUE), " — ", pin_hint)
         },
         error = function(e) disp
       )
@@ -3530,7 +3710,7 @@ server <- function(input, output, session) {
         type = "button",
         class = "ynow-recent-chip",
         `data-ticker` = fetch_tk,
-        title = aria,
+        title = paste(aria, pin_hint, sep = " · "),
         `aria-label` = aria,
         disp
       )

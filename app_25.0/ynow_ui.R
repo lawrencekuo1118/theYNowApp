@@ -3953,6 +3953,8 @@ ui <- dashboardPage(
     ),
     
     column(width = 12,
+           # Pinned tickers sit between the white separator above and "Recent Search:".
+           uiOutput("pinned_recent_search"),
            h5(id = "ynow_recent_search_label", "Recent Search:"),
            uiOutput("recentsearch"),
            hr()
@@ -6803,13 +6805,22 @@ ui <- dashboardPage(
           padding: 0 2px 2px 2px;
           min-height: 1.4em;
         }
+        .ynow-pinned-search {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+          padding: 2px 2px 6px 2px;
+          min-height: 0;
+        }
+        .ynow-pinned-search:empty { display: none; padding: 0; }
         .ynow-recent-search-empty {
           color: rgba(255, 255, 255, 0.45);
           font-size: 12px;
           line-height: 1.4;
           margin: 0;
         }
-        .ynow-recent-chip {
+        .ynow-recent-chip,
+        .ynow-pinned-chip {
           display: inline-block;
           padding: 2px 8px;
           border-radius: 3px;
@@ -6822,16 +6833,49 @@ ui <- dashboardPage(
           line-height: 1.45;
           cursor: pointer;
           user-select: none;
+          -webkit-user-select: none;
+          touch-action: manipulation;
           text-decoration: none !important;
         }
+        .ynow-pinned-chip {
+          border-color: rgba(255, 214, 102, 0.55);
+          background: rgba(255, 214, 102, 0.12);
+          box-shadow: inset 0 0 0 1px rgba(255, 214, 102, 0.08);
+        }
+        .ynow-pinned-chip::before {
+          content: "";
+          display: inline-block;
+          width: 0.55em;
+          height: 0.55em;
+          margin-right: 5px;
+          vertical-align: 0.05em;
+          border: 1.5px solid rgba(255, 214, 102, 0.95);
+          border-radius: 1px 1px 55% 55%;
+          box-shadow: 0 2px 0 -0.5px rgba(255, 214, 102, 0.7);
+          transform: rotate(-35deg);
+        }
         .ynow-recent-chip:hover,
-        .ynow-recent-chip:focus {
+        .ynow-recent-chip:focus,
+        .ynow-pinned-chip:hover,
+        .ynow-pinned-chip:focus {
           background: rgba(255, 255, 255, 0.14);
           border-color: rgba(255, 255, 255, 0.4);
           outline: none;
         }
-        .ynow-recent-chip:focus-visible {
+        .ynow-pinned-chip:hover,
+        .ynow-pinned-chip:focus {
+          background: rgba(255, 214, 102, 0.22);
+          border-color: rgba(255, 214, 102, 0.75);
+        }
+        .ynow-recent-chip:focus-visible,
+        .ynow-pinned-chip:focus-visible {
           box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35);
+        }
+        .ynow-recent-chip.ynow-chip-longpress,
+        .ynow-pinned-chip.ynow-chip-longpress {
+          transform: scale(1.06);
+          border-color: rgba(255, 214, 102, 0.9);
+          transition: transform 0.12s ease-out, border-color 0.12s ease-out;
         }
         /* 側欄版權：緊接 Snapshot／Sys. Admin／意見區列下方，全寬、不與按鈕重疊 */
         .ynow-sidebar-copyright {
@@ -17146,14 +17190,91 @@ ui <- dashboardPage(
           hideSuggest('sc');
         });
 
-        // Recent Search chips → reload ticker + jump to Company / 個股
-        $(document).on('click keydown', '.ynow-recent-chip', function(e) {
-          if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;
-          e.preventDefault();
-          var tk = this.getAttribute('data-ticker') || '';
-          if (!tk || !(window.Shiny && Shiny.setInputValue)) return;
-          Shiny.setInputValue('recent_search_pick', tk, {priority: 'event'});
-        });
+        // Recent / pinned chips: click → reload ticker; long-press 2s → pin/unpin.
+        (function() {
+          var LONG_MS = 2000;
+          var GUEST_KEY = 'ynow_pinned_recent_v1';
+          var pressTimer = null;
+          var pressEl = null;
+          var longFired = false;
+          var suppressClickUntil = 0;
+
+          function guestRead() {
+            try {
+              var raw = localStorage.getItem(GUEST_KEY);
+              if (!raw) return [];
+              var arr = JSON.parse(raw);
+              if (!Array.isArray(arr)) return [];
+              return arr.map(function(x) { return String(x || '').trim().toUpperCase(); })
+                .filter(function(x) { return !!x; });
+            } catch (e) { return []; }
+          }
+          function guestWrite(arr) {
+            try { localStorage.setItem(GUEST_KEY, JSON.stringify(arr || [])); } catch (e) {}
+          }
+          window.ynowGuestPinnedRecent = {
+            read: guestRead,
+            write: guestWrite,
+            clear: function() { try { localStorage.removeItem(GUEST_KEY); } catch (e) {} }
+          };
+
+          function clearPress() {
+            if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+            pressEl = null;
+          }
+
+          function fireToggle(el) {
+            var tk = el.getAttribute('data-ticker') || '';
+            if (!tk || !(window.Shiny && Shiny.setInputValue)) return;
+            longFired = true;
+            suppressClickUntil = Date.now() + 400;
+            try { el.classList.add('ynow-chip-longpress'); } catch (e) {}
+            setTimeout(function() {
+              try { el.classList.remove('ynow-chip-longpress'); } catch (e2) {}
+            }, 280);
+            Shiny.setInputValue('pinned_search_toggle', tk + '|' + Date.now(), {priority: 'event'});
+          }
+
+          $(document).on('pointerdown', '.ynow-recent-chip, .ynow-pinned-chip', function(e) {
+            if (e.pointerType === 'mouse' && e.button !== 0) return;
+            clearPress();
+            longFired = false;
+            pressEl = this;
+            var el = this;
+            pressTimer = setTimeout(function() {
+              if (pressEl === el) fireToggle(el);
+            }, LONG_MS);
+          });
+          $(document).on('pointerup pointercancel pointerleave', '.ynow-recent-chip, .ynow-pinned-chip', function() {
+            clearPress();
+          });
+          $(document).on('click keydown', '.ynow-recent-chip, .ynow-pinned-chip', function(e) {
+            if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;
+            if (e.type === 'click' && (longFired || Date.now() < suppressClickUntil)) {
+              e.preventDefault();
+              e.stopImmediatePropagation();
+              longFired = false;
+              return;
+            }
+            e.preventDefault();
+            var tk = this.getAttribute('data-ticker') || '';
+            if (!tk || !(window.Shiny && Shiny.setInputValue)) return;
+            Shiny.setInputValue('recent_search_pick', tk, {priority: 'event'});
+          });
+
+          // Guest: hydrate session from localStorage after Shiny connects.
+          $(document).on('shiny:connected', function() {
+            var pins = guestRead();
+            if (pins.length && window.Shiny && Shiny.setInputValue) {
+              Shiny.setInputValue('pinned_search_guest_load', pins.join(',') + '|' + Date.now(), {priority: 'event'});
+            }
+          });
+          Shiny.addCustomMessageHandler('ynowPinnedGuestSync', function(msg) {
+            if (!msg) return;
+            if (msg.clear) { guestWrite([]); return; }
+            if (Array.isArray(msg.tickers)) guestWrite(msg.tickers);
+          });
+        })();
 
         $(document).on('mousedown', '#sc_ticker_suggest .ynow-suggest-item, #lab_cluster_focus_suggest .ynow-suggest-item', function(e) {
           e.preventDefault();
