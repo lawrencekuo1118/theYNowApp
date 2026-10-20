@@ -429,7 +429,7 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   ))
   testthat::expect_true(grepl('screener_panel_ui\\(embed = "bluechip"\\)', txt, perl = TRUE))
   testthat::expect_false(grepl("screener_panel_ui\\(\\)", txt, perl = TRUE))
-  testthat::expect_true(grepl("The YNow App v25.75", txt, fixed = TRUE))
+  testthat::expect_true(grepl("The YNow App v25.76", txt, fixed = TRUE))
   testthat::expect_true(grepl('title = "The YNow App"', txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-hfv-report", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-hfv-toolbar", txt, fixed = TRUE))
@@ -552,16 +552,15 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
     txt,
     fixed = TRUE
   ))
-  # Lite must hide Full guest-locked sidebar tabs (Lab / Checklist / Alerts)
-  # via ynow_sidebar_guest_lock_lite_css(), plus Testing foot link (Full-only)
-  testthat::expect_true(grepl("ynow_sidebar_guest_lock_lite_css", txt, fixed = TRUE))
+  # Lite omit set (guest-locked + Full-only) via ynow_sidebar_lite_omit_css()
+  testthat::expect_true(
+    grepl("ynow_sidebar_lite_omit_css", txt, fixed = TRUE) ||
+      grepl("ynow_sidebar_guest_lock_lite_css", txt, fixed = TRUE)
+  )
   testthat::expect_true(grepl("__YNOW_SIDEBAR_GUEST_LOCK_TABS", txt, fixed = TRUE))
-  testthat::expect_true(grepl("price_alerts: true", txt, fixed = TRUE))
-  testthat::expect_true(grepl(
-    "body\\.ynow-lite[\\s\\S]*data-value=\"lab_notes\"",
-    txt,
-    perl = TRUE
-  ) || grepl("ynow_sidebar_guest_lock_lite_css", txt, fixed = TRUE))
+  testthat::expect_true(grepl("__YNOW_LITE_OMIT_TABS", txt, fixed = TRUE))
+  testthat::expect_true(grepl("price_alerts: true", txt, fixed = TRUE) ||
+                          grepl("price_alerts", txt, fixed = TRUE))
     testthat::expect_false(grepl('tabName = "business_breakdown_lab"', txt, fixed = TRUE))
   testthat::expect_true(grepl('tabName = "company_advance"', txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_menu_company_advance", txt, fixed = TRUE))

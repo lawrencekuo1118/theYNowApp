@@ -40,6 +40,7 @@ check("price_alerts is guest-locked", isTRUE(ynow_sidebar_tab_guest_locked("pric
 check("home is not guest-locked", !isTRUE(ynow_sidebar_tab_guest_locked("home")))
 check("about is not guest-locked", !isTRUE(ynow_sidebar_tab_guest_locked("about")))
 
+css <- ynow_sidebar_lite_omit_css()
 check("Lite CSS hides lab_notes", grepl('data-value="lab_notes"', css, fixed = TRUE))
 check("Lite CSS hides decision_checklist", grepl('data-value="decision_checklist"', css, fixed = TRUE))
 check("Lite CSS hides price_alerts", grepl('data-value="price_alerts"', css, fixed = TRUE))
@@ -52,10 +53,15 @@ check(
   }, logical(1)))
 )
 
-check("ynow_ui injects Lite hide CSS helper", grepl("ynow_sidebar_guest_lock_lite_css", ui, fixed = TRUE))
+check(
+  "ynow_ui injects Lite omit CSS helper",
+  grepl("ynow_sidebar_lite_omit_css", ui, fixed = TRUE) ||
+    grepl("ynow_sidebar_guest_lock_lite_css", ui, fixed = TRUE)
+)
 check("ynow_ui injects JS lock map", grepl("__YNOW_SIDEBAR_GUEST_LOCK_TABS", ui, fixed = TRUE))
 check("ynow_ui uses guest lock label helper", grepl("ynow_sidebar_guest_lock_label", ui, fixed = TRUE))
 check("JS map helper referenced", grepl("ynow_sidebar_guest_lock_js_map", ui, fixed = TRUE))
+check("Lite omit list includes price_alerts", "price_alerts" %in% ynow_sidebar_lite_omit_tabs())
 check("fallback loginTabs keep lab_notes", grepl("lab_notes: true", ui, fixed = TRUE))
 check("fallback loginTabs keep decision_checklist", grepl("decision_checklist: true", ui, fixed = TRUE))
 check("fallback loginTabs keep price_alerts", grepl("price_alerts: true", ui, fixed = TRUE))

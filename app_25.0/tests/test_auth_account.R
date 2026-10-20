@@ -285,11 +285,14 @@ check("Lite CSS omits every Full guest-locked sidebar tab", {
   auth <- paste(readLines(src_auth, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   tabs <- tryCatch(ynow_sidebar_guest_lock_tabs(), error = function(e) character(0))
-  css <- tryCatch(ynow_sidebar_guest_lock_lite_css(), error = function(e) "")
+  css <- tryCatch(ynow_sidebar_lite_omit_css(), error = function(e) {
+    tryCatch(ynow_sidebar_guest_lock_lite_css(), error = function(e2) "")
+  })
   length(tabs) >= 3L &&
     all(c("lab_notes", "decision_checklist", "price_alerts") %in% tabs) &&
-    grepl("ynow_sidebar_guest_lock_lite_css", ui, fixed = TRUE) &&
-    grepl("ynow_sidebar_guest_lock_lite_css", auth, fixed = TRUE) &&
+    (grepl("ynow_sidebar_lite_omit_css", ui, fixed = TRUE) ||
+       grepl("ynow_sidebar_guest_lock_lite_css", ui, fixed = TRUE)) &&
+    grepl("ynow_sidebar_lite_omit", auth, fixed = TRUE) &&
     all(vapply(tabs, function(t) grepl(sprintf('data-value="%s"', t), css, fixed = TRUE), logical(1)))
 })
 check("guest PDF download control uses muted locked styling", {

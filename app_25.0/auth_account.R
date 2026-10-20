@@ -24,11 +24,35 @@ ynow_compact_ui <- function(...) {
 }
 
 #' Sidebar tabNames that Full shows with a guest lock glyph (auth on + guest).
-#' Lite must omit these entirely (no grayed locks) — single source of truth for
-#' menu HTML locks, locale JS re-inject, and body.ynow-lite hide CSS.
+#' Lite must omit these entirely (no grayed locks).
 #' @return character vector of shinydashboard tabName values
 ynow_sidebar_guest_lock_tabs <- function() {
   c("lab_notes", "decision_checklist", "price_alerts")
+}
+
+#' Full-only model / advance sidebar tabs (unlocked on Full, omitted in Lite).
+#' Not guest-locked; still must not appear in the Lite sidebar.
+ynow_sidebar_full_only_tabs <- function() {
+  c(
+    "get_started",
+    "nav_calculator", "pb_calculator",
+    "dcf_calculator", "ddm_calculator", "ri_calculator",
+    "rel_mult_ev", "rel_multiples_calculator", "rel_mult_rev",
+    "sotp_calculator",
+    "hfv",
+    "company_advance"
+  )
+}
+
+#' Every sidebar tab Lite must omit (guest-locked ∪ Full-only ∪ Account workspace).
+#' Snapshot foot stays open in Lite (only inner snap_defaults is hidden elsewhere).
+#' Sys. Admin foot uses `.ynow-full-only` / `.ynow-sidebar-test-link`, not this list.
+ynow_sidebar_lite_omit_tabs <- function() {
+  unique(c(
+    ynow_sidebar_guest_lock_tabs(),
+    ynow_sidebar_full_only_tabs(),
+    "account_admin", "account_points"
+  ))
 }
 
 #' TRUE when tabName is in the Full guest-lock set.
@@ -43,21 +67,33 @@ ynow_sidebar_guest_lock_label <- function(tab, span_id, label) {
   tagList(icon("lock", class = "ynow-menu-lock"), lab)
 }
 
-#' CSS: hide every Full guest-locked sidebar tab in Lite (do not render locks).
-ynow_sidebar_guest_lock_lite_css <- function() {
-  tabs <- ynow_sidebar_guest_lock_tabs()
-  if (!length(tabs)) return("/* no guest-locked sidebar tabs */\n")
-  sels <- unlist(lapply(tabs, function(t) {
-    c(
-      sprintf('body.ynow-lite .sidebar-menu a[data-value="%s"]', t),
-      sprintf('body.ynow-lite .sidebar-menu li:has(> a[data-value="%s"])', t)
-    )
-  }), use.names = FALSE)
+#' CSS selectors hiding one sidebar tabName in Lite (item + parent treeview when nested).
+.ynow_sidebar_lite_omit_selectors <- function(tab) {
+  t <- as.character(tab %||% "")[1]
+  if (!nzchar(t)) return(character())
+  c(
+    sprintf('body.ynow-lite .sidebar-menu a[data-value="%s"]', t),
+    sprintf('body.ynow-lite .sidebar-menu li:has(> a[data-value="%s"])', t),
+    # Nested menuSubItem: also hide ancestor treeview that contains it
+    sprintf('body.ynow-lite .sidebar-menu li:has(a[data-value="%s"])', t)
+  )
+}
+
+#' CSS: hide every Lite-omitted sidebar tab (guest locks + Full-only + Account).
+ynow_sidebar_lite_omit_css <- function() {
+  tabs <- ynow_sidebar_lite_omit_tabs()
+  if (!length(tabs)) return("/* no Lite-omitted sidebar tabs */\n")
+  sels <- unique(unlist(lapply(tabs, .ynow_sidebar_lite_omit_selectors), use.names = FALSE))
   paste0(
-    "/* Lite: omit Full guest-locked sidebar tabs (ynow_sidebar_guest_lock_tabs). */\n",
+    "/* Lite sidebar omit (ynow_sidebar_lite_omit_tabs): guest-locked + Full-only + Account. */\n",
     paste(sels, collapse = ",\n"),
     " {\n  display: none !important;\n}\n"
   )
+}
+
+#' @deprecated Use ynow_sidebar_lite_omit_css(); kept for older call sites / tests.
+ynow_sidebar_guest_lock_lite_css <- function() {
+  ynow_sidebar_lite_omit_css()
 }
 
 #' Named list / JSON-ready object for client loginTabs (glyph re-inject on locale apply).
