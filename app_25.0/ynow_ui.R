@@ -533,6 +533,8 @@
       ),
       tags$div(
         class = "ynow-home-legal",
+        # Full home stack under quick-pick: Sign in · Register → disclaimer → About links.
+        if (exists("ynow_auth_home_ui", mode = "function")) ynow_auth_home_ui(),
         tags$p(
           id = "ynow_home_legal",
           class = "ynow-home-legal-text",
@@ -543,8 +545,6 @@
         ),
         tags$div(
           class = "ynow-home-legal-links",
-          # Sign in sits left of About · Privacy (same row).
-          if (exists("ynow_auth_home_ui", mode = "function")) ynow_auth_home_ui(),
           tags$button(
             type = "button",
             id = "ynow_home_legal_about",
@@ -7406,14 +7406,14 @@ ui <- dashboardPage(
           display: grid;
           grid-template-columns: 1fr 1fr;
           gap: 10px;
-          text-align: left;
+          text-align: center;
         }
         .ynow-home-card {
           display: block;
           width: 100%;
           margin: 0;
           padding: 14px 14px 15px;
-          text-align: left;
+          text-align: center;
           color: #222;
           background: transparent;
           border: 1px solid #d0d5da;
@@ -7437,6 +7437,7 @@ ui <- dashboardPage(
           font-size: 12.5px;
           line-height: 1.45;
           color: #555;
+          text-align: center;
         }
         @media (max-width: 720px) {
           .ynow-home { padding: 24px 12px 18px; max-width: 100%; }
@@ -7454,11 +7455,17 @@ ui <- dashboardPage(
           border-top: 1px solid #e5e8eb;
           text-align: center;
         }
+        .ynow-home-legal > .ynow-auth-links--home {
+          display: flex;
+          justify-content: center;
+          margin: 0 0 10px 0;
+        }
         .ynow-home-legal-text {
           margin: 0 0 8px 0;
           font-size: 11.5px;
           line-height: 1.5;
           color: #666;
+          text-align: center;
         }
         .ynow-home-legal-links {
           display: inline-flex;

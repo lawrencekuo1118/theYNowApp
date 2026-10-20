@@ -840,11 +840,46 @@ check("sign-in and register share one row", {
     grepl("height:40px", auth_src, fixed = TRUE) &&
     grepl("height:46px", auth_src, fixed = TRUE)
 })
+check("home Sign in · Register are plain text links not buttons", {
+  Sys.setenv(YNOW_ENABLE_ACCOUNT_LOGIN = "1")
+  home <- paste(as.character(ynow_auth_home_ui()), collapse = "")
+  Sys.setenv(YNOW_ENABLE_ACCOUNT_LOGIN = "0")
+  grepl("ynow-auth-pair--home-text", home, fixed = TRUE) &&
+    grepl("ynow-auth-pair-sep", home, fixed = TRUE) &&
+    !grepl("ynow-auth-btn", home, fixed = TRUE) &&
+    grepl("background:transparent !important; color:#0b57d0", auth_src, fixed = TRUE) &&
+    grepl("text-decoration:underline !important; text-underline-offset:2px", auth_src, fixed = TRUE) &&
+    !grepl(
+      "ynow-auth-links--home .ynow-auth-pair a.ynow-auth-register-open \\{[\\s\\S]*?background:#0b57d0",
+      auth_src,
+      perl = TRUE
+    )
+})
+check("home legal stack order: auth → disclaimer → About", {
+  legal <- regmatches(
+    ui,
+    regexpr('class = "ynow-home-legal"[\\s\\S]*?tags\\$script', ui, perl = TRUE)
+  )
+  if (!length(legal) || !nzchar(legal[[1]])) return(FALSE)
+  block <- legal[[1]]
+  i_auth <- regexpr("ynow_auth_home_ui", block, fixed = TRUE)[1]
+  i_disc <- regexpr('id = "ynow_home_legal"', block, fixed = TRUE)[1]
+  i_about <- regexpr('id = "ynow_home_legal_about"', block, fixed = TRUE)[1]
+  i_auth > 0 && i_disc > 0 && i_about > 0 &&
+    i_auth < i_disc && i_disc < i_about
+})
 check("home card titles are centered", {
   k <- regexpr(".ynow-home-card-k \\{", ui)
   ok <- k[1] > 0
   if (!ok) return(FALSE)
   tail <- substr(ui, k[1], k[1] + 220)
+  grepl("text-align: center;", tail, fixed = TRUE)
+})
+check("home card descriptions are centered", {
+  d <- regexpr(".ynow-home-card-d \\{", ui)
+  ok <- d[1] > 0
+  if (!ok) return(FALSE)
+  tail <- substr(ui, d[1], d[1] + 220)
   grepl("text-align: center;", tail, fixed = TRUE)
 })
 check("modal card layout present when enabled", {

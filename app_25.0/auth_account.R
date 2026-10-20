@@ -191,22 +191,35 @@ ynow_auth_links_ui <- function(placement = c("sidebar", "home")) {
   } else {
     "ynow_auth_register_home_label"
   }
+  # Home: plain text links (About-style). Sidebar / gates keep compact buttons.
+  home_text <- identical(placement, "home")
+  link_class <- if (home_text) {
+    "ynow-auth-link ynow-auth-open"
+  } else {
+    "ynow-auth-link ynow-auth-btn ynow-auth-open"
+  }
+  reg_class <- if (home_text) {
+    "ynow-auth-link ynow-auth-register-open"
+  } else {
+    "ynow-auth-link ynow-auth-btn ynow-auth-register-open"
+  }
   tags$div(
     id = wrap_id,
     class = wrap_class,
     role = "group",
     `aria-label` = "Account",
     tags$div(
-      class = "ynow-auth-pair",
+      class = if (home_text) "ynow-auth-pair ynow-auth-pair--home-text" else "ynow-auth-pair",
       actionLink(
         inputId = open_id,
         label = tags$span(id = open_lbl, class = "ynow-auth-open-label", "Sign in"),
-        class = "ynow-auth-link ynow-auth-btn ynow-auth-open"
+        class = link_class
       ),
+      if (home_text) tags$span(class = "ynow-auth-pair-sep", "·", `aria-hidden` = "true"),
       actionLink(
         inputId = reg_id,
         label = tags$span(id = reg_lbl, class = "ynow-auth-register-label", "Register"),
-        class = "ynow-auth-link ynow-auth-btn ynow-auth-register-open"
+        class = reg_class
       )
     ),
     tags$span(
@@ -229,7 +242,7 @@ ynow_auth_header_ui <- function() {
   ynow_auth_links_ui("sidebar")
 }
 
-#' Home legal-row companion (left of About · Privacy).
+#' Home legal stack companion (Sign in · Register above disclaimer / About).
 ynow_auth_home_ui <- function() {
   ynow_auth_links_ui("home")
 }
@@ -500,13 +513,30 @@ ynow_auth_css <- function() {
     ".ynow-auth-links--sidebar .ynow-auth-pair a.ynow-auth-register-open {",
     "  color:#1a1a1a !important; background:#fff !important; border:1px solid #fff !important;",
     "}",
-    ".ynow-auth-links--home .ynow-auth-pair a.ynow-auth-open {",
-    "  color:#0b57d0 !important; background:#fff !important;",
-    "  border:1px solid #0b57d0 !important; text-decoration:none !important;",
+    # Home: plain blue underlined text links (match .ynow-home-legal-link), not buttons.
+    ".ynow-auth-links--home .ynow-auth-pair--home-text {",
+    "  display:inline-flex; flex-direction:row; align-items:center;",
+    "  justify-content:center; gap:0; flex-wrap:wrap;",
     "}",
+    ".ynow-auth-links--home .ynow-auth-pair-sep {",
+    "  display:inline-block; margin:0 6px; color:#0b57d0; font-size:12px;",
+    "  line-height:1.4; user-select:none;",
+    "}",
+    ".ynow-auth-links--home .ynow-auth-pair a.ynow-auth-link,",
+    ".ynow-auth-links--home .ynow-auth-pair a.ynow-auth-open,",
     ".ynow-auth-links--home .ynow-auth-pair a.ynow-auth-register-open {",
-    "  color:#fff !important; background:#0b57d0 !important; border:1px solid #0b57d0 !important;",
-    "  text-decoration:none !important;",
+    "  display:inline !important; height:auto !important; min-height:0 !important;",
+    "  padding:0 !important; margin:0 !important; border:0 !important;",
+    "  border-radius:0 !important; box-shadow:none !important;",
+    "  background:transparent !important; color:#0b57d0 !important;",
+    "  font-size:12px !important; font-weight:500 !important; line-height:1.4 !important;",
+    "  text-decoration:underline !important; text-underline-offset:2px !important;",
+    "  white-space:nowrap !important;",
+    "}",
+    ".ynow-auth-links--home .ynow-auth-pair a.ynow-auth-link:hover,",
+    ".ynow-auth-links--home .ynow-auth-pair a.ynow-auth-open:hover,",
+    ".ynow-auth-links--home .ynow-auth-pair a.ynow-auth-register-open:hover {",
+    "  color:#0842a0 !important; background:transparent !important;",
     "}",
     ".ynow-auth-pair--gate {",
     "  display:flex; flex-direction:row; align-items:stretch; gap:8px;",
