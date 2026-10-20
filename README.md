@@ -3,7 +3,7 @@
 US / Taiwan stock fundamental analysis Shiny app（雲端版：yfinance，無 Chromote）。
 
 **Live:** https://hopesmasher1118.shinyapps.io/TheYNowApp/  
-**Display version:** v24.00 · **App folder:** `app_24.0/`  
+**Display version:** v25.88 · **App folder:** `app_25.0/`  
 **Deploy baseline:** `scripts/DEPLOY_BASELINE.txt`（bundleId／commit／URL；開發比對以此為準，不是單純看 Git tip）
 
 ## 維護方式
@@ -15,9 +15,9 @@ US / Taiwan stock fundamental analysis Shiny app（雲端版：yfinance，無 Ch
 | Coding（建議 git） | `/Users/lawrencekuo/coding/theYNowApp` | commit／push／deploy |
 | OneDrive mirror | `/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp` | 同步鏡像（勿在此跑 `git status`／`git push`） |
 
-- **每個整階版本一個資料夾**（目前活動線：`app_24.0/`；顯示版號 `v24.00`，其後 deploy 以 +0.01 補丁）
-- 歷史版本：`app 3.0` … `app_23.0`（本機／repo 封存；[GitHub Releases](https://github.com/lawrencekuo1118/theYNowApp/releases) 另有標籤）
-- 詳細版號變更紀錄：見 [`app_24.0/README.md`](app_24.0/README.md)
+- **每個整階版本一個資料夾**（目前活動線：`app_25.0/`；顯示版號 `v25.88`，其後 deploy 以 +0.01 補丁）
+- 歷史版本：本機空間命名封存 `app 3.0` … `app 7.0`；較新的 `app_8.0`…`app_24.0` 已自 git 移除（見 Git history／[GitHub Releases](https://github.com/lawrencekuo1118/theYNowApp/releases)）
+- 詳細版號變更紀錄：見 [`app_25.0/README.md`](app_25.0/README.md)
 
 ## 本機開發（建議）
 
@@ -27,12 +27,12 @@ git pull origin master
 ```
 
 ```r
-shiny::runApp("app_24.0")
+shiny::runApp("app_25.0")
 ```
 
-Cursor Cloud：`bash scripts/cloud-agent-start.sh`（`app_24.0/` → `0.0.0.0:3838`）。
+Cursor Cloud：`bash scripts/cloud-agent-start.sh`（`app_25.0/` → `0.0.0.0:3838`）。
 
-Requires R packages used by `app_24.0/setup.R` / `app_24.0/global.R`, and Python deps from `app_24.0/requirements.txt`（可選本機 `app_24.0/.ynow_venv`）。
+Requires R packages used by `app_25.0/setup.R` / `app_25.0/global.R`, and Python deps from `app_25.0/requirements.txt`（可選本機 `app_25.0/.ynow_venv`）。
 
 ## 本機部署到 shinyapps.io
 
@@ -53,7 +53,7 @@ Rscript scripts/deploy_app_21.R
 
 ```r
 rsconnect::deployApp(
-  appDir = "app_24.0",
+  appDir = "app_25.0",
   appName = "TheYNowApp",
   appId = 10907657,
   forceUpdate = TRUE
@@ -62,7 +62,7 @@ rsconnect::deployApp(
 
 Deploy 後請更新 `scripts/DEPLOY_BASELINE.txt`（bundleId、commit、`display_version`）。
 
-## 目前線重點（v18 → v21）
+## 目前線重點（v18 → v25）
 
 - **方法論：** 產業／生命週期分類 → 主／副模型；Bear／Base／Bull；Decision Checklist、HFV（否決工具，非買進訊號）、YNOW 漏斗
 - **估值：** DCF（FCFF／FCFE）、DDM、RI、P/B／NAV、相對倍數、SOTP；CapEx 暴衝平滑；終值 g／WACC 防呆
@@ -77,10 +77,10 @@ Deploy 後請更新 `scripts/DEPLOY_BASELINE.txt`（bundleId、commit、`display
 ## Cloud notes
 
 - Financials via **yfinance** (no Chromote / Chrome on shinyapps.io)
-- `app_24.0/requirements.txt` / `py_require` for cloud Python
-- UI copy：en-US + zh-TW（台灣投資界用語）；見 `app_24.0/ui_locale.R`
+- `app_25.0/requirements.txt` / `py_require` for cloud Python
+- UI copy：en-US + zh-TW（台灣投資界用語）；見 `app_25.0/ui_locale.R`
 
-## Layout (`app_24.0/`)
+## Layout (`app_25.0/`)
 
 | File / area | Role |
 |-------------|------|
@@ -99,4 +99,4 @@ Deploy 後請更新 `scripts/DEPLOY_BASELINE.txt`（bundleId、commit、`display
 
 ## Older versions
 
-Historical snapshots live in version folders and as [GitHub Releases](https://github.com/lawrencekuo1118/theYNowApp/releases).
+Historical `app_N.0` trees were removed from git (gate C-DEAD-05); recover from git history or [GitHub Releases](https://github.com/lawrencekuo1118/theYNowApp/releases). Local space-named folders `app 3.0` … `app 7.0` may still exist on disk only.

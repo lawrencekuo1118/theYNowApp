@@ -61,8 +61,7 @@ lab_us_cache_paths <- function() {
     LAB_US_CACHE_REL,
     file.path(getwd(), LAB_US_CACHE_REL),
     file.path(dirname(getwd()), LAB_US_CACHE_REL),
-    file.path("app_18.0", LAB_US_CACHE_REL),
-    file.path("app_21.0", LAB_US_CACHE_REL)
+    file.path("app_25.0", LAB_US_CACHE_REL)
   ))
 }
 
@@ -148,7 +147,7 @@ lab_us_industry_overlay_paths <- function() {
   unique(c(
     LAB_US_INDUSTRY_OVERLAY_REL,
     file.path(getwd(), LAB_US_INDUSTRY_OVERLAY_REL),
-    file.path("app_18.0", LAB_US_INDUSTRY_OVERLAY_REL)
+    file.path("app_25.0", LAB_US_INDUSTRY_OVERLAY_REL)
   ))
 }
 

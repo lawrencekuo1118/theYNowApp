@@ -1,4 +1,4 @@
-# app_11.0 — Python deps for shinyapps.io (reticulate)
+# app_25.0 — Python deps for shinyapps.io (reticulate)
 yfinance==0.2.54
 pandas==2.2.3
 numpy==2.1.3
