@@ -1152,7 +1152,6 @@ source("lab_sp500_universe.R", local = TRUE, encoding = "UTF-8")
 source("lab_adr.R", local = TRUE, encoding = "UTF-8")
 source("lab_us_universe.R", local = TRUE, encoding = "UTF-8")
 source("lab_tw_universe.R", local = TRUE, encoding = "UTF-8")
-source("lab_concept_groups.R", local = TRUE, encoding = "UTF-8")
 
 #' 產業 CAPM Ke（%）
 lab_industry_ke_pct <- function(industry_key) {
