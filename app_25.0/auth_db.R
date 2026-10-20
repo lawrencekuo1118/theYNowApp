@@ -623,26 +623,50 @@ ynow_auth_delete_confirm_ok <- function(text) {
   out
 }
 
+#' Map Auth IdP delete result → locale message key after a successful DB purge.
+#'
+#' Policy: Postgres / local purge always proceeds; Auth Admin delete is best-effort.
+#' Report Auth status so the member knows when the login identity may remain.
+#'
+#' @param auth_idp list from [ynow_oauth_delete_supabase_user()] (or skip stub)
+#' @return character scalar locale key
+ynow_auth_delete_message_key <- function(auth_idp) {
+  idp <- if (is.list(auth_idp)) auth_idp else list()
+  needed <- isTRUE(idp$needed)
+  if (!isTRUE(needed)) {
+    # Email-only / non-Supabase provider id / no Auth uid — DB purge is enough.
+    return("auth_delete_msg_ok")
+  }
+  if (isTRUE(idp$ok)) return("auth_delete_msg_ok")
+  if (isTRUE(idp$skipped)) return("auth_delete_msg_ok_auth_skipped")
+  "auth_delete_msg_ok_auth_failed"
+}
+
 #' Hard-delete one member account and user-linked app rows (server-side only).
 #'
 #' Purge order (single transaction when Postgres is ready):
 #' `ynow_points_ledger` → `ynow_pdf_quota` → `ynow_pdf_repeat` →
 #' `ynow_user_prefs` → `ynow_access_locks` → `ynow_users`.
 #' Also clears memory/file prefs, access locks, points/PDF mem, and price alerts
-#' keyed by email. Optionally deletes the Supabase Auth user when
-#' `YNOW_SUPABASE_SERVICE_ROLE` is set (OAuth IdP); never sent to the client.
+#' keyed by email. Always attempts Supabase Auth Admin delete when a Supabase
+#' Auth UUID is known; requires `YNOW_SUPABASE_SERVICE_ROLE` (never sent to the
+#' client). DB purge succeeds even if Auth delete is skipped or fails — see
+#' [ynow_auth_delete_message_key()].
 #'
 #' @param user_id UUID or mem: id
 #' @param email optional mailbox for alert purge / lookup
 #' @param confirm must be exactly `DELETE` (see [ynow_auth_delete_confirm_ok()])
+#' @param provider_uid optional Supabase Auth user id from the signed-in session
+#'   (used when DB row is already gone or memory-only)
 #' @return list(ok=, message_key=, purged=, auth_idp=, user_id=, email=)
-ynow_db_purge_user <- function(user_id, email = NULL, confirm = NULL) {
+ynow_db_purge_user <- function(user_id, email = NULL, confirm = NULL,
+                               provider_uid = NULL) {
   if (!isTRUE(ynow_auth_delete_confirm_ok(confirm))) {
     return(list(
       ok = FALSE,
       message_key = "auth_delete_msg_confirm",
       purged = list(),
-      auth_idp = list(ok = FALSE, skipped = TRUE)
+      auth_idp = list(ok = FALSE, skipped = TRUE, needed = FALSE)
     ))
   }
   uid <- as.character(user_id %||% "")[1]
@@ -651,6 +675,7 @@ ynow_db_purge_user <- function(user_id, email = NULL, confirm = NULL) {
   } else {
     tolower(trimws(as.character(email %||% "")[1]))
   }
+  session_puid <- as.character(provider_uid %||% "")[1]
   if (!nzchar(uid) && nzchar(em) && isTRUE(ynow_db_ready())) {
     u <- tryCatch(ynow_db_get_user_by_email(em), error = function(e) NULL)
     if (!is.null(u)) uid <- as.character(u$id %||% "")[1]
@@ -660,11 +685,11 @@ ynow_db_purge_user <- function(user_id, email = NULL, confirm = NULL) {
       ok = FALSE,
       message_key = "auth_delete_msg_no_user",
       purged = list(),
-      auth_idp = list(ok = FALSE, skipped = TRUE)
+      auth_idp = list(ok = FALSE, skipped = TRUE, needed = FALSE)
     ))
   }
 
-  provider_uid <- ""
+  puid <- session_puid
   if (isTRUE(ynow_db_ready()) && isTRUE(.ynow_db_is_uuid(uid))) {
     urow <- tryCatch(
       ynow_db_with(function(con) {
@@ -685,7 +710,8 @@ ynow_db_purge_user <- function(user_id, email = NULL, confirm = NULL) {
           tolower(trimws(as.character(urow$email[[1]])))
         }
       }
-      provider_uid <- as.character(urow$provider_uid %||% "")[1]
+      db_puid <- as.character(urow$provider_uid %||% "")[1]
+      if (nzchar(db_puid)) puid <- db_puid
     }
   }
 
@@ -769,12 +795,20 @@ ynow_db_purge_user <- function(user_id, email = NULL, confirm = NULL) {
   local <- .ynow_purge_user_local_stores(uid, em)
   for (nm in names(local)) purged[[nm]] <- local[[nm]]
 
-  auth_idp <- list(ok = FALSE, skipped = TRUE)
-  if (nzchar(provider_uid) &&
+  auth_idp <- list(ok = FALSE, skipped = TRUE, needed = FALSE, reason = "no_uid")
+  if (nzchar(puid) &&
         exists("ynow_oauth_delete_supabase_user", mode = "function")) {
     auth_idp <- tryCatch(
-      ynow_oauth_delete_supabase_user(provider_uid),
-      error = function(e) list(ok = FALSE, skipped = FALSE, error = conditionMessage(e))
+      ynow_oauth_delete_supabase_user(puid),
+      error = function(e) {
+        list(
+          ok = FALSE,
+          skipped = FALSE,
+          needed = TRUE,
+          error = conditionMessage(e),
+          reason = "error"
+        )
+      }
     )
   }
 
@@ -788,9 +822,19 @@ ynow_db_purge_user <- function(user_id, email = NULL, confirm = NULL) {
       email = em
     ))
   }
+
+  mk <- ynow_auth_delete_message_key(auth_idp)
+  message(
+    "ynow_db_purge_user: ok user=", uid,
+    " message_key=", mk,
+    " auth_idp.needed=", isTRUE(auth_idp$needed),
+    " auth_idp.ok=", isTRUE(auth_idp$ok),
+    " auth_idp.skipped=", isTRUE(auth_idp$skipped),
+    " auth_idp.reason=", as.character(auth_idp$reason %||% "")[1]
+  )
   list(
     ok = TRUE,
-    message_key = "auth_delete_msg_ok",
+    message_key = mk,
     purged = purged,
     auth_idp = auth_idp,
     user_id = uid,
