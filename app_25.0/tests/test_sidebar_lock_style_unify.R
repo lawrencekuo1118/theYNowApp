@@ -65,6 +65,13 @@ check("ynowSyncGuestSidebarLocked wires guest LIs", {
     grepl("classList.remove('ynow-sidebar-locked')", ui, fixed = TRUE)
 })
 
+check("SyncGuest strips only guest-lock tabs when authed (keeps ACL chrome)", {
+  grepl("ynow-access-locked-nav", ui, fixed = TRUE) &&
+    grepl("else if (tabs[tab])", ui, fixed = TRUE) &&
+    grepl("Only clear guest-lock tabs; leave ACL / other locks alone.", ui, fixed = TRUE) &&
+    grepl("ynow-view-as", ui, fixed = TRUE)
+})
+
 check("ACL apply also stamps ynow-sidebar-locked", {
   grepl("li.classList.add('ynow-access-locked-nav')", ui, fixed = TRUE) &&
     grepl("ynow-sidebar-locked", ui, fixed = TRUE) &&

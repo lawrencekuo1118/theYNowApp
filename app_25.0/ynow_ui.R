@@ -11784,6 +11784,7 @@ ui <- dashboardPage(
                 var tab = a.getAttribute('data-value') || '';
                 var li = a.closest ? a.closest('li') : a.parentElement;
                 if (!li || !li.classList) return;
+                /* ACL locks always keep unified chrome (class-based, survives auth). */
                 if (li.classList.contains('ynow-access-locked-nav')) {
                   li.classList.add('ynow-sidebar-locked');
                   return;
