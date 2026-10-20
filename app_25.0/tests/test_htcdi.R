@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 # HTCDI engine + Macro placement (no network)
-# Run: cd app_21.0 && Rscript tests/test_htcdi.R
+# Run: cd app_25.0 && Rscript tests/test_htcdi.R
 
 Sys.setenv(YNOW_DEBUG_SKIP_PY = "1")
 args <- commandArgs(trailingOnly = FALSE)
@@ -10,8 +10,8 @@ root <- if (file.exists(file.path(test_dir, "..", "htcdi_engine.R"))) {
   normalizePath(file.path(test_dir, ".."))
 } else if (file.exists("htcdi_engine.R")) {
   normalizePath(".")
-} else if (dir.exists("app_21.0") && file.exists("app_21.0/htcdi_engine.R")) {
-  normalizePath("app_21.0")
+} else if (dir.exists("app_25.0") && file.exists("app_25.0/htcdi_engine.R")) {
+  normalizePath("app_25.0")
 } else stop("Cannot locate htcdi_engine.R")
 setwd(root)
 

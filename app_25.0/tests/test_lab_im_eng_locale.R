@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 # Blue Chip Leaderboard ENG mode: American English only (no CJK in en helpers / keys).
-# Run: cd app_21.0/tests && Rscript test_lab_im_eng_locale.R
+# Run: cd app_25.0/tests && Rscript test_lab_im_eng_locale.R
 
 args <- commandArgs(trailingOnly = FALSE)
 file_arg <- sub("^--file=", "", args[grep("^--file=", args)])

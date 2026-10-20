@@ -1,14 +1,14 @@
 # Institutional SOP unlock logic
-# Run: cd app_21.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_institutional_sop.R
+# Run: cd app_25.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_institutional_sop.R
 
 root <- if (file.exists("decision_checklist_module.R")) {
   getwd()
 } else if (file.exists(file.path("..", "decision_checklist_module.R"))) {
   normalizePath(file.path(".."))
-} else if (file.exists("app_21.0/decision_checklist_module.R")) {
-  file.path(getwd(), "app_21.0")
+} else if (file.exists("app_25.0/decision_checklist_module.R")) {
+  file.path(getwd(), "app_25.0")
 } else {
-  stop("Cannot find app_21.0 root")
+  stop("Cannot find app_25.0 root")
 }
 setwd(root)
 

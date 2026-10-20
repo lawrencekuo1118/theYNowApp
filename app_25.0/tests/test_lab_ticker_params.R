@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 # Per-ticker lab n / Ke / g from statements (not APP_DEFAULTS one-size-fits-all).
-# Run: cd app_21.0/tests && YNOW_DEBUG_SKIP_PY=1 Rscript test_lab_ticker_params.R
+# Run: cd app_25.0/tests && YNOW_DEBUG_SKIP_PY=1 Rscript test_lab_ticker_params.R
 
 args <- commandArgs(trailingOnly = FALSE)
 file_arg <- sub("^--file=", "", args[grep("^--file=", args)])

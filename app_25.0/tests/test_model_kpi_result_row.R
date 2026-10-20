@@ -1,12 +1,14 @@
 # Valuation model Overview KPI rows: result leftmost, family tones, flow numeral only on result.
-# Run: cd app_21.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_model_kpi_result_row.R
+# Run: cd app_25.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_model_kpi_result_row.R
 
 root <- if (file.exists("ynow_ui.R")) {
   getwd()
-} else if (file.exists("app_21.0/ynow_ui.R")) {
-  file.path(getwd(), "app_21.0")
+} else if (file.exists("../ynow_ui.R")) {
+  normalizePath("..")
+} else if (file.exists("app_25.0/ynow_ui.R")) {
+  file.path(getwd(), "app_25.0")
 } else {
-  stop("Cannot find app_21.0 root")
+  stop("Cannot locate app_25.0 root")
 }
 setwd(root)
 

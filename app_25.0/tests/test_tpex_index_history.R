@@ -1,5 +1,5 @@
 # TPEx capitalization index history (Yahoo IX0043.TWO is thin; official API fallback)
-# Run: cd app_21.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_tpex_index_history.R
+# Run: cd app_25.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_tpex_index_history.R
 
 Sys.setenv(YNOW_DEBUG_SKIP_PY = "1")
 root <- if (file.exists("backtest_module.R")) {

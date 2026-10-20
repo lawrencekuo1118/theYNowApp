@@ -1,13 +1,14 @@
 # Unit tests: MOS next-period stats + hist PIT helpers
 app_dir <- {
   candidates <- c(
+    if (basename(getwd()) == "tests") dirname(getwd()) else getwd(),
+    normalizePath("..", mustWork = FALSE),
     getwd(),
-    dirname(getwd()),
-    file.path(getwd(), "app_21.0"),
-    file.path(dirname(getwd()), "app_21.0")
+    file.path(getwd(), "app_25.0"),
+    file.path(dirname(getwd()), "app_25.0")
   )
   hit <- candidates[file.exists(file.path(candidates, "backtest_validation.R"))]
-  if (!length(hit)) stop("Cannot locate app_21.0 (backtest_validation.R)")
+  if (!length(hit)) stop("Cannot locate app_25.0 (backtest_validation.R)")
   normalizePath(hit[[1]], winslash = "/", mustWork = TRUE)
 }
 

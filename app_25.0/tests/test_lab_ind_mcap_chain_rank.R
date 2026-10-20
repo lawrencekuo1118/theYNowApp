@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 # Industry-chain mcap-weighted upside: all chains + snapshot + Refresh ranking UI
-# Run: cd app_22.0/tests && Rscript test_lab_ind_mcap_chain_rank.R
+# Run: cd app_25.0/tests && Rscript test_lab_ind_mcap_chain_rank.R
 
 args <- commandArgs(trailingOnly = FALSE)
 file_arg <- sub("^--file=", "", args[grep("^--file=", args)])

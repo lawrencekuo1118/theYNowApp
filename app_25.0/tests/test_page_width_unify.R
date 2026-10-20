@@ -1,6 +1,6 @@
 # test_page_width_unify.R — all tabs share Macro page max-width + responsive shell
 #
-# Run: YNOW_DEBUG_SKIP_PY=1 Rscript app_21.0/tests/test_page_width_unify.R
+# Run: YNOW_DEBUG_SKIP_PY=1 Rscript app_25.0/tests/test_page_width_unify.R
 
 Sys.setenv(YNOW_DEBUG_SKIP_PY = "1")
 options(warn = 1)

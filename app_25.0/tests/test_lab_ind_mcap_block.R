@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 # Industry mcap-weighted upside is a dedicated board above Candidate truncate.
-# Run: cd app_21.0/tests && Rscript test_lab_ind_mcap_block.R
+# Run: cd app_25.0/tests && Rscript test_lab_ind_mcap_block.R
 
 args <- commandArgs(trailingOnly = FALSE)
 file_arg <- sub("^--file=", "", args[grep("^--file=", args)])

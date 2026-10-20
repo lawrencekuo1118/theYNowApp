@@ -1,5 +1,5 @@
 # Contract: Value Alert (到值通知) wiring for required KPI surfaces
-# Run: cd app_24.0 && Rscript tests/test_alertable_coverage.R
+# Run: cd app_25.0 && Rscript tests/test_alertable_coverage.R
 args <- commandArgs(trailingOnly = FALSE)
 file_arg <- sub("^--file=", "", args[grep("^--file=", args)])
 app_dir <- if (length(file_arg) == 1L && nzchar(file_arg)) {

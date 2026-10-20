@@ -1,5 +1,5 @@
 # Explainability as a core surface (not appendix)
-# Run: cd app_24.0 && Rscript tests/test_explainability_core.R
+# Run: cd app_25.0 && Rscript tests/test_explainability_core.R
 
 args <- commandArgs(trailingOnly = FALSE)
 file_arg <- grep("^--file=", args, value = TRUE)

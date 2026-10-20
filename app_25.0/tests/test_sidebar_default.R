@@ -1,6 +1,6 @@
 # test_sidebar_default.R — first visit: sidebar starts collapsed
 #
-# Run: YNOW_DEBUG_SKIP_PY=1 Rscript app_21.0/tests/test_sidebar_default.R
+# Run: YNOW_DEBUG_SKIP_PY=1 Rscript app_25.0/tests/test_sidebar_default.R
 
 Sys.setenv(YNOW_DEBUG_SKIP_PY = "1")
 options(warn = 1)

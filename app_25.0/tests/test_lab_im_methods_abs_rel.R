@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 # Models filter Absolute / Relative groups (Blue Chip 查詢條件).
-# Run: cd app_22.0/tests && Rscript test_lab_im_methods_abs_rel.R
+# Run: cd app_25.0/tests && Rscript test_lab_im_methods_abs_rel.R
 
 args <- commandArgs(trailingOnly = FALSE)
 file_arg <- sub("^--file=", "", args[grep("^--file=", args)])

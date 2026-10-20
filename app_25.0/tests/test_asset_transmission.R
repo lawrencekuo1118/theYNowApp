@@ -1,13 +1,13 @@
 # Asset transmission map — graph, shocks, locale (no network).
-# Run: cd app_21.0 && Rscript tests/test_asset_transmission.R
+# Run: cd app_25.0 && Rscript tests/test_asset_transmission.R
 
 Sys.setenv(YNOW_DEBUG_SKIP_PY = "1")
 root <- if (file.exists("asset_transmission_module.R")) {
   normalizePath(".")
 } else if (file.exists("../asset_transmission_module.R")) {
   normalizePath("..")
-} else if (dir.exists("app_21.0") && file.exists("app_21.0/asset_transmission_module.R")) {
-  normalizePath("app_21.0")
+} else if (dir.exists("app_25.0") && file.exists("app_25.0/asset_transmission_module.R")) {
+  normalizePath("app_25.0")
 } else {
   stop("Cannot locate asset_transmission_module.R")
 }
