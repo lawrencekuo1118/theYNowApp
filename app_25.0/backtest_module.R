@@ -2467,143 +2467,33 @@ nav_perf_metrics <- function(equity_df) {
 }
 
 # ---------- rebalance calendar (Date_t frequency) ----------
-
-#' Normalize rebalance / analysis frequency keys.
-.normalize_rebal_freq <- function(x, default = "quarterly") {
-  x <- tolower(trimws(as.character(x %||% default)[1]))
-  if (!nzchar(x)) return(default)
-  if (x %in% c("monthly", "month", "m", "mo", "每月", "月")) return("monthly")
-  if (x %in% c("yearly", "annual", "annually", "year", "y", "yr", "每年", "年")) {
-    return("yearly")
-  }
-  if (x %in% c("quarterly", "quarter", "q", "每季", "季")) return("quarterly")
-  default
-}
-
-.rebal_freq_label_zh <- function(freq) {
-  switch(.normalize_rebal_freq(freq),
-    monthly = "每月",
-    yearly = "每年",
-    "每季"
-  )
-}
-
-.rebal_min_points <- function(freq) {
-  switch(.normalize_rebal_freq(freq),
-    monthly = 12L,
-    yearly = 3L,
-    4L
-  )
-}
-
-#' Period keys for month / quarter / year buckets (US & TW share same calendar logic).
-.rebal_period_keys <- function(dates, freq = "quarterly") {
-  dates <- as.Date(dates)
-  freq <- .normalize_rebal_freq(freq)
-  if (identical(freq, "monthly")) {
-    return(format(dates, "%Y-%m"))
-  }
-  if (identical(freq, "yearly")) {
-    return(format(dates, "%Y"))
-  }
-  sprintf(
-    "%d-Q%d",
-    as.integer(format(dates, "%Y")),
-    ((as.integer(format(dates, "%m")) - 1L) %/% 3L) + 1L
-  )
-}
-
-#' Last trading-day index per period that also has RSI / ret20 (rebalance-ready).
-.rebal_indices_for_freq <- function(df, freq = "quarterly") {
-  if (is.null(df) || !is.data.frame(df) || nrow(df) < 1L || !"Date" %in% names(df)) {
-    return(integer(0))
-  }
-  freq <- .normalize_rebal_freq(freq)
-  keys <- .rebal_period_keys(df$Date, freq)
-  ends <- !duplicated(keys, fromLast = TRUE)
-  rsi_ok <- if ("RSI" %in% names(df)) !is.na(df$RSI) else TRUE
-  ret_ok <- if ("ret20" %in% names(df)) !is.na(df$ret20) else TRUE
-  which(ends & rsi_ok & ret_ok)
-}
-
-#' Which analysis frequencies daily price history can honestly support.
-#' Monthly only if a near-complete monthly series exists (≥12 months, ≥80% coverage).
-#' Same calendar logic for US and TW.
-detect_supported_rebal_freqs <- function(dates,
-                                         min_monthly = 12L,
-                                         min_quarterly = 4L,
-                                         min_yearly = 3L,
-                                         min_coverage = 0.80) {
-  dates <- as.Date(dates)
-  dates <- sort(unique(dates[!is.na(dates)]))
-  if (length(dates) < 40L) return(character(0))
-  span_days <- as.numeric(diff(range(dates)))
-  if (!is.finite(span_days) || span_days < 60) return(character(0))
-
-  coverage_ok <- function(freq, min_n) {
-    keys <- unique(.rebal_period_keys(dates, freq))
-    n <- length(keys)
-    if (n < as.integer(min_n)) return(FALSE)
-    expected <- switch(
-      .normalize_rebal_freq(freq),
-      monthly = max(as.integer(min_n), as.integer(round(span_days / 30.4375))),
-      yearly = max(as.integer(min_n), as.integer(round(span_days / 365.25))),
-      max(as.integer(min_n), as.integer(round(span_days / 91.3125)))
-    )
-    (n / expected) >= as.numeric(min_coverage)
-  }
-
-  out <- character(0)
-  if (coverage_ok("monthly", min_monthly)) out <- c(out, "monthly")
-  if (coverage_ok("quarterly", min_quarterly)) out <- c(out, "quarterly")
-  if (coverage_ok("yearly", min_yearly)) out <- c(out, "yearly")
-  out
-}
-
-#' Infer realized Date_t spacing from valuation / rebalance dates.
-infer_rebal_freq_from_dates <- function(dates) {
-  dates <- sort(unique(as.Date(dates[!is.na(as.Date(dates))])))
-  if (length(dates) < 2L) return(NA_character_)
-  med <- stats::median(as.numeric(diff(dates)), na.rm = TRUE)
-  if (!is.finite(med)) return(NA_character_)
-  if (med <= 45) return("monthly")
-  if (med <= 140) return("quarterly")
-  "yearly"
-}
-
-#' Frequencies the UI may offer: engine-capable from prices ∪ realized valuation_df spacing.
-#' Never advertise 每月 unless monthly Date_t can be (or already were) produced.
-supported_analysis_freqs <- function(price_dates = NULL, valuation_dates = NULL) {
-  from_px <- if (!is.null(price_dates) && length(price_dates) > 0) {
-    detect_supported_rebal_freqs(price_dates)
-  } else {
-    character(0)
-  }
-  from_vd <- character(0)
-  if (!is.null(valuation_dates) && length(valuation_dates) > 0) {
-    inferred <- infer_rebal_freq_from_dates(valuation_dates)
-    if (identical(inferred, "monthly")) {
-      # Realized monthly series → also allow coarser analysis freqs if enough points
-      n <- length(unique(as.Date(valuation_dates[!is.na(as.Date(valuation_dates))])))
-      from_vd <- c("monthly")
-      if (n >= 4L) from_vd <- c(from_vd, "quarterly")
-      if (n >= 3L) from_vd <- c(from_vd, "yearly")
-    } else if (identical(inferred, "quarterly")) {
-      n <- length(unique(as.Date(valuation_dates[!is.na(as.Date(valuation_dates))])))
-      from_vd <- c("quarterly")
-      if (n >= 3L) from_vd <- c(from_vd, "yearly")
-      # Do NOT add monthly from quarterly-only valuation_df
-    } else if (identical(inferred, "yearly")) {
-      from_vd <- "yearly"
+# Canonical helpers live in rebal_freq.R (sourced by global.R before this file).
+# Do not redefine .normalize_rebal_freq / detect_supported_rebal_freqs /
+# supported_analysis_freqs / infer_rebal_freq_from_dates / .rebal_* here —
+# that would shadow the shared module.
+if (!exists(".normalize_rebal_freq", mode = "function") ||
+    !exists("detect_supported_rebal_freqs", mode = "function") ||
+    !exists("supported_analysis_freqs", mode = "function")) {
+  .rebal_freq_path <- local({
+    cands <- c("rebal_freq.R", file.path("..", "rebal_freq.R"))
+    # Prefer sibling of this file when sourced via absolute/relative path.
+    for (i in seq_len(sys.nframe())) {
+      ofile <- tryCatch(sys.frame(i)$ofile, error = function(e) NULL)
+      if (!is.null(ofile) && length(ofile) == 1L && nzchar(ofile[[1]])) {
+        sib <- file.path(dirname(normalizePath(ofile[[1]], mustWork = FALSE)),
+                         "rebal_freq.R")
+        cands <- c(sib, cands)
+      }
     }
+    hit <- cands[file.exists(cands)]
+    if (length(hit)) hit[[1]] else NA_character_
+  })
+  if (is.na(.rebal_freq_path)) {
+    stop("rebal_freq.R helpers missing; source rebal_freq.R before backtest_module.R",
+         call. = FALSE)
   }
-  # Prefer engine capability (price history) so 每月 can appear before a monthly run.
-  # If only valuation_df exists and is quarterly, monthly stays hidden.
-  if (length(from_px) > 0) {
-    unique(c(from_px, from_vd))
-  } else {
-    unique(from_vd)
-  }
+  source(.rebal_freq_path, local = FALSE, encoding = "UTF-8")
+  rm(.rebal_freq_path)
 }
 
 # ---------- internal daily backtest core ----------
