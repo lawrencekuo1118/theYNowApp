@@ -67,6 +67,13 @@ locale_for_market <- function(mode = get_market_mode()) {
     menu_home = "Home",
     header_logo_home_title = "Go to Home",
     update_available_click = "New version available — click The YNow App to refresh",
+    update_major_click = "Major update — click The YNow App to refresh",
+    update_major_title = "Major update available",
+    update_major_body = paste0(
+      "A new major version is live. Click the flaming The YNow App title to refresh. ",
+      "Your session stays signed in — we never auto-reload or force sign-out."
+    ),
+    update_major_hint = "Click the flaming The YNow App title to refresh",
     home_title = "The YNow App",
     home_lead = "A valuation desk for US and Taiwan equities.",
     home_method = "Classify the business, choose the model, then decide.",
@@ -3998,6 +4005,13 @@ locale_for_market <- function(mode = get_market_mode()) {
     menu_home = "首頁",
     header_logo_home_title = "回到首頁",
     update_available_click = "有新版本 — 請點一下 The YNow App 重新整理",
+    update_major_click = "重大版本更新 — 請點一下 The YNow App 重新整理",
+    update_major_title = "重大版本更新",
+    update_major_body = paste0(
+      "線上已有新的重大版本。請點選標題列會火焰動畫的 The YNow App 重新整理。",
+      "登入狀態會保留 — 不會自動重新載入，也不會強制登出。"
+    ),
+    update_major_hint = "請點選標題列會火焰動畫的 The YNow App 重新整理",
     home_title = "The YNow App",
     home_lead = "美股與台股的估值工作台。",
     home_method = "先分類，再選模型，再做決策。",

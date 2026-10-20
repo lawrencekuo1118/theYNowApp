@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Major update reminder demo</title>
+  <style>
+    :root {
+      --ynow-htcdi-flame-gradient: linear-gradient(
+        105deg, #8B1A1A 0%, #E67E22 40%, #FFE66D 70%, #C0392B 100%
+      );
+    }
+    @keyframes ynow-htcdi-flame-flow {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    html, body { margin: 0; min-height: 100%; font-family: "Segoe UI", sans-serif; background: #0f1318; color: #eee; }
+    .main-header {
+      position: relative;
+      height: 50px;
+      background: #1a1f27;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      border-bottom: 1px solid #2a313c;
+    }
+    .main-header .logo { display: inline-flex; align-items: center; text-decoration: none; }
+    .ynow-app-title {
+      position: relative;
+      font-weight: 700;
+      font-size: 18px;
+      color: #FFD700;
+    }
+    .ynow-app-title-base { color: rgba(245, 197, 24, 0.32); }
+    .ynow-app-title-fill { position: absolute; inset: 0; width: 100%; overflow: hidden; }
+    .ynow-app-title-fill-inner {
+      display: inline-block;
+      font-weight: 700;
+      background-image: linear-gradient(90deg, #FFD700, #FFA500);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    body.ynow-update-available .main-header .logo,
+    body.ynow-update-available .main-header .logo .ynow-app-title { cursor: pointer; }
+    body.ynow-update-available .main-header .logo .ynow-app-title-base {
+      color: rgba(192, 57, 43, 0.38) !important;
+      -webkit-text-fill-color: rgba(192, 57, 43, 0.38) !important;
+    }
+    body.ynow-update-available .main-header .logo .ynow-app-title-fill-inner {
+      background-image: var(--ynow-htcdi-flame-gradient) !important;
+      background-size: 220% 100% !important;
+      -webkit-background-clip: text !important;
+      background-clip: text !important;
+      -webkit-text-fill-color: transparent !important;
+      animation: ynow-htcdi-flame-flow 2.4s ease-in-out infinite !important;
+    }
+    .ynow-major-update-reminder {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 11000;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 72px 16px 24px;
+      box-sizing: border-box;
+      background: rgba(12, 14, 18, 0.55);
+      pointer-events: none;
+    }
+    body.ynow-authed.ynow-update-major .ynow-major-update-reminder {
+      display: flex;
+      pointer-events: none;
+    }
+    body.ynow-authed.ynow-update-major .main-header { z-index: 11050 !important; }
+    .ynow-major-update-card {
+      width: min(440px, 100%);
+      margin-top: 8px;
+      padding: 18px 20px 16px;
+      border-radius: 10px;
+      background: linear-gradient(165deg, #1a1f27 0%, #12161c 100%);
+      border: 1px solid rgba(230, 126, 34, 0.55);
+      box-shadow: 0 0 0 1px rgba(192, 57, 43, 0.25), 0 18px 40px rgba(0, 0, 0, 0.45);
+      color: #f3f4f6;
+      pointer-events: auto;
+    }
+    .ynow-major-update-title { margin: 0 0 8px; font-size: 17px; font-weight: 700; color: #ffd27a; }
+    .ynow-major-update-body { margin: 0 0 12px; font-size: 13.5px; line-height: 1.5; color: #e5e7eb; }
+    .ynow-major-update-hint { margin: 0; font-size: 12.5px; line-height: 1.45; color: #f0a36b; font-weight: 600; }
+    body.ynow-authed.ynow-update-major .main-header .logo .ynow-app-title {
+      outline: 2px solid rgba(230, 126, 34, 0.85);
+      outline-offset: 3px;
+      border-radius: 4px;
+    }
+    .content { padding: 24px; max-width: 640px; }
+    .meta { font-size: 13px; color: #9aa3b2; }
+    .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0; }
+    button {
+      background: #243041; color: #fff; border: 1px solid #3a4658;
+      border-radius: 6px; padding: 8px 12px; cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <header class="main-header">
+    <a class="logo" href="#">
+      <span id="ynow_app_title" class="ynow-app-title is-complete" data-ynow-build="v25.85" tabindex="0" role="button">
+        <span class="ynow-app-title-base">The YNow App v25.85</span>
+        <span class="ynow-app-title-fill"><span class="ynow-app-title-fill-inner">The YNow App v25.85</span></span>
+      </span>
+    </a>
+  </header>
+  <main class="content">
+    <h1>Major update reminder demo</h1>
+    <p class="meta">Session build: <code id="session_ver">v25.85</code> · Remote: <code id="remote_ver">—</code></p>
+    <div class="toolbar">
+      <button type="button" id="btn_patch">Simulate patch (v25.86)</button>
+      <button type="button" id="btn_major">Simulate major (v26.00) + signed-in</button>
+      <button type="button" id="btn_guest_major">Simulate major as guest</button>
+      <button type="button" id="btn_clear">Clear update</button>
+      <button type="button" id="btn_zh">zh-TW copy</button>
+    </div>
+    <p class="meta">Flame click refreshes (logs only here). Reminder never auto-reloads.</p>
+    <pre id="log" class="meta"></pre>
+  </main>
+  <script>
+    (function () {
+      var sessionBuild = 'v25.85';
+      var remoteBuild = null;
+      var locale = {
+        en: {
+          update_available_click: 'New version available — click The YNow App to refresh',
+          update_major_click: 'Major update — click The YNow App to refresh',
+          update_major_title: 'Major update available',
+          update_major_body: 'A new major version is live. Click the flaming The YNow App title to refresh. Your session stays signed in — we never auto-reload or force sign-out.',
+          update_major_hint: 'Click the flaming The YNow App title to refresh'
+        },
+        zh: {
+          update_available_click: '有新版本 — 請點一下 The YNow App 重新整理',
+          update_major_click: '重大版本更新 — 請點一下 The YNow App 重新整理',
+          update_major_title: '重大版本更新',
+          update_major_body: '線上已有新的重大版本。請點選標題列會火焰動畫的 The YNow App 重新整理。登入狀態會保留 — 不會自動重新載入，也不會強制登出。',
+          update_major_hint: '請點選標題列會火焰動畫的 The YNow App 重新整理'
+        }
+      };
+      var strings = locale.en;
+      function log(msg) {
+        var el = document.getElementById('log');
+        el.textContent = String(msg) + '\n' + el.textContent;
+      }
+      function displayMajor(version) {
+        var m = String(version || '').trim().match(/^[vV]?(\d+)/);
+        return m ? parseInt(m[1], 10) : NaN;
+      }
+      function isMajorBump(sessionVer, remoteVer) {
+        var a = displayMajor(sessionVer), b = displayMajor(remoteVer);
+        return isFinite(a) && isFinite(b) && b > a;
+      }
+      function ensureMajorReminderEl() {
+        var el = document.getElementById('ynow_major_update_reminder');
+        if (el) return el;
+        el = document.createElement('div');
+        el.id = 'ynow_major_update_reminder';
+        el.className = 'ynow-major-update-reminder';
+        el.setAttribute('role', 'alertdialog');
+        el.innerHTML =
+          '<div class="ynow-major-update-card">' +
+            '<p id="ynow_major_update_title" class="ynow-major-update-title"></p>' +
+            '<p id="ynow_major_update_body" class="ynow-major-update-body"></p>' +
+            '<p class="ynow-major-update-hint" data-ynow-major-hint="1"></p>' +
+          '</div>';
+        document.body.appendChild(el);
+        return el;
+      }
+      function fillMajorReminderStrings() {
+        var root = ensureMajorReminderEl();
+        root.querySelector('#ynow_major_update_title').textContent = strings.update_major_title;
+        root.querySelector('#ynow_major_update_body').textContent = strings.update_major_body;
+        root.querySelector('[data-ynow-major-hint]').textContent = strings.update_major_hint;
+      }
+      function applyUpdateChrome() {
+        var pending = !!(remoteBuild && sessionBuild && remoteBuild !== sessionBuild);
+        var major = pending && isMajorBump(sessionBuild, remoteBuild);
+        document.body.classList.toggle('ynow-update-available', pending);
+        document.body.classList.toggle('ynow-update-major', !!major);
+        if (major && document.body.classList.contains('ynow-authed')) {
+          fillMajorReminderStrings();
+        }
+        var tip = major ? strings.update_major_click : strings.update_available_click;
+        var title = document.getElementById('ynow_app_title');
+        if (title) {
+          if (pending) {
+            title.setAttribute('title', tip);
+            title.setAttribute('aria-label', tip);
+          } else {
+            title.removeAttribute('title');
+          }
+        }
+        document.getElementById('remote_ver').textContent = remoteBuild || '—';
+      }
+      function simulate(remote, signedIn) {
+        remoteBuild = remote;
+        document.body.classList.toggle('ynow-authed', !!signedIn);
+        applyUpdateChrome();
+        log('remote=' + remote + ' signedIn=' + !!signedIn +
+          ' major=' + isMajorBump(sessionBuild, remote));
+      }
+      document.getElementById('btn_patch').onclick = function () {
+        document.body.classList.add('ynow-authed');
+        simulate('v25.86', true);
+      };
+      document.getElementById('btn_major').onclick = function () { simulate('v26.00', true); };
+      document.getElementById('btn_guest_major').onclick = function () { simulate('v26.00', false); };
+      document.getElementById('btn_clear').onclick = function () {
+        remoteBuild = null;
+        document.body.classList.remove('ynow-authed', 'ynow-update-available', 'ynow-update-major');
+        applyUpdateChrome();
+        log('cleared');
+      };
+      document.getElementById('btn_zh').onclick = function () {
+        strings = locale.zh;
+        document.documentElement.lang = 'zh-TW';
+        applyUpdateChrome();
+        log('locale=zh-TW');
+      };
+      document.addEventListener('click', function (ev) {
+        if (!document.body.classList.contains('ynow-update-available')) return;
+        var hit = ev.target.closest && ev.target.closest('#ynow_app_title, .main-header .logo');
+        if (!hit) return;
+        ev.preventDefault();
+        log('flame click → reloadForUpdate (demo: no navigation)');
+      }, true);
+      var params = new URLSearchParams(location.search);
+      var state = params.get('state') || 'major-en';
+      if (state === 'major-zh') { strings = locale.zh; document.documentElement.lang = 'zh-TW'; simulate('v26.00', true); }
+      else if (state === 'patch') { simulate('v25.86', true); }
+      else if (state === 'guest-major') { simulate('v26.00', false); }
+      else if (state === 'major-click') { simulate('v26.00', true); setTimeout(function(){ document.getElementById('ynow_app_title').click(); }, 200); }
+      else { simulate('v26.00', true); }
+    })();
+  </script>
+</body>
+</html>
