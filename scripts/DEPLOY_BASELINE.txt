@@ -7,5 +7,5 @@ commit=a6fc6cd0f440b0777919e9246fe1827f31383c76
 short=a6fc6cd0
 message=fix: parse-safe major reminder DOM (no R string quote breaks)
 captured_at=2026-10-20T14:52:47Z
-display_version=v25.86
+display_version=v25.87
 note=Canonical live line is app_25.0. Bundle 12715787: major-version must-click update reminder for signed-in users (#324). Will re-ship after merge with master (#325/#326 membership locks) as next +0.01.
