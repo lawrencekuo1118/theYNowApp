@@ -7,5 +7,5 @@ commit=9f53e126578999fbc96e63b902eb59b2f02cca1c
 short=9f53e126
 message=chore: bump display version to v25.85
 captured_at=2026-10-20T11:51:50Z
-display_version=v25.85
+display_version=v25.86
 note=Canonical live line is app_25.0. Bundle 12715045: PYN logo blue-green flow (.ynow-pyn-num) + gate demos + delete-account (#323). PR #321.
