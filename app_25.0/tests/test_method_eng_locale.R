@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 # Valuation Methodology ENG: American English tables/paragraphs (no CJK when lang=en).
-# Run: cd app_21.0/tests && Rscript test_method_eng_locale.R
+# Run: cd app_25.0/tests && Rscript test_method_eng_locale.R
 
 args <- commandArgs(trailingOnly = FALSE)
 file_arg <- sub("^--file=", "", args[grep("^--file=", args)])

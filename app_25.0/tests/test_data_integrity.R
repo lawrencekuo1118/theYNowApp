@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
 # Phase 2 — Data Integrity Audit (Completeness + Accuracy)
 # Offline / mock-driven; no live Yahoo / TPEx network required.
-# Run: cd app_24.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_data_integrity.R
+# Run: cd app_25.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_data_integrity.R
 
 args <- commandArgs(trailingOnly = FALSE)
 file_arg <- sub("^--file=", "", args[grep("^--file=", args)])

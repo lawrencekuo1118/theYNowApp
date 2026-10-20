@@ -1,12 +1,12 @@
 # test_mos_vs_fair_value.R — near-zero FV must not explode MOS
-# Run: Rscript app_24.0/tests/test_mos_vs_fair_value.R
+# Run: Rscript app_25.0/tests/test_mos_vs_fair_value.R
 
 .app_dir <- tryCatch(
   normalizePath(file.path(dirname(sys.frame(1)$ofile), "..")),
   error = function(e) normalizePath("..")
 )
 if (!file.exists(file.path(.app_dir, "setup.R"))) {
-  .app_dir <- normalizePath("app_24.0")
+  .app_dir <- normalizePath("app_25.0")
 }
 setwd(.app_dir)
 source("setup.R", local = TRUE)

@@ -1,5 +1,5 @@
 # test_tw_company_name_html_unescape.R — TWSE &#NNNN; in 公司名稱 must decode
-# Run: Rscript app_24.0/tests/test_tw_company_name_html_unescape.R
+# Run: Rscript app_25.0/tests/test_tw_company_name_html_unescape.R
 
 .app_dir <- tryCatch({
   args <- commandArgs(trailingOnly = FALSE)
@@ -8,7 +8,7 @@
 }, error = function(e) getwd())
 if (basename(.app_dir) == "tests") .app_dir <- dirname(.app_dir)
 if (!file.exists(file.path(.app_dir, "market_profile.R"))) {
-  .app_dir <- normalizePath(file.path(getwd(), "app_24.0"), mustWork = FALSE)
+  .app_dir <- normalizePath(file.path(getwd(), "app_25.0"), mustWork = FALSE)
 }
 setwd(.app_dir)
 

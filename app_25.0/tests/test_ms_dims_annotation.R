@@ -1,16 +1,9 @@
 #!/usr/bin/env Rscript
 # Model Selector consideration-dimensions annotation: relocated, collapsed, i18n
-# Run: cd app_21.0 && Rscript tests/test_ms_dims_annotation.R
+# Run: cd app_25.0/tests && Rscript test_ms_dims_annotation.R
 
-root <- if (file.exists("ynow_ui.R")) {
-  normalizePath(".")
-} else if (file.exists("../ynow_ui.R")) {
-  normalizePath("..")
-} else if (dir.exists("app_21.0") && file.exists("app_21.0/ynow_ui.R")) {
-  normalizePath("app_21.0")
-} else {
-  stop("Cannot locate app_21.0")
-}
+source("ynow_test_app_dir.R", local = FALSE)
+root <- ynow_test_app_dir("ynow_ui.R")
 setwd(root)
 
 if (!exists("%||%", mode = "function")) {

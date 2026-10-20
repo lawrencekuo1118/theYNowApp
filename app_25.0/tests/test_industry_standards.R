@@ -2,12 +2,13 @@
 root <- getwd()
 app_dir <- if (basename(root) == "tests") {
   dirname(root)
-} else if (dir.exists(file.path(root, "app_21.0"))) {
-  file.path(root, "app_21.0")
 } else if (file.exists(file.path(root, "industry_standards.R"))) {
   root
+} else if (dir.exists(file.path(root, "app_25.0")) &&
+           file.exists(file.path(root, "app_25.0", "industry_standards.R"))) {
+  file.path(root, "app_25.0")
 } else {
-  stop("Cannot locate app_21.0")
+  stop("Cannot locate app_25.0")
 }
 `%||%` <- function(a, b) if (is.null(a)) b else a
 

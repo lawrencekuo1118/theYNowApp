@@ -1,12 +1,14 @@
 # Macro bubble & concentration indicators (isolated from CAPM / valuation)
-# Run: cd app_18.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_macro_bubble_indicators.R
+# Run: cd app_25.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_macro_bubble_indicators.R
 
 root <- if (file.exists("macro_bubble_indicators.R")) {
   getwd()
-} else if (file.exists("app_18.0/macro_bubble_indicators.R")) {
-  file.path(getwd(), "app_18.0")
+} else if (file.exists("../macro_bubble_indicators.R")) {
+  normalizePath("..")
+} else if (file.exists("app_25.0/macro_bubble_indicators.R")) {
+  file.path(getwd(), "app_25.0")
 } else {
-  stop("Run from repo root or app_18.0")
+  stop("Run from app_25.0/tests or repo root")
 }
 setwd(root)
 

@@ -1,16 +1,9 @@
 #!/usr/bin/env Rscript
 # YNOW tab: masthead → KPI → verdict → risk matrix → Ch.1 quality → Ch.2 alerts
-# Run: cd app_21.0 && Rscript tests/test_ynow_tab_layout.R
+# Run: cd app_25.0/tests && Rscript test_ynow_tab_layout.R
 
-root <- if (file.exists("investment_decision_module.R")) {
-  normalizePath(".")
-} else if (file.exists("../investment_decision_module.R")) {
-  normalizePath("..")
-} else if (dir.exists("app_21.0") && file.exists("app_21.0/investment_decision_module.R")) {
-  normalizePath("app_21.0")
-} else {
-  stop("Cannot locate app_21.0")
-}
+source("ynow_test_app_dir.R", local = FALSE)
+root <- ynow_test_app_dir("investment_decision_module.R")
 setwd(root)
 
 if (!exists("%||%", mode = "function")) {

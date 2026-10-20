@@ -4,7 +4,7 @@
 # 2) Industry-attribute samples → primary/secondary recommendation rules
 # 3) Lite "best scenario" clamps (g < discount) yield finite FV, not unable-to-estimate
 #
-# Run: cd app_21.0/tests && YNOW_DEBUG_SKIP_PY=1 Rscript test_valuation_ui_param_verify.R
+# Run: cd app_25.0/tests && YNOW_DEBUG_SKIP_PY=1 Rscript test_valuation_ui_param_verify.R
 args <- commandArgs(trailingOnly = FALSE)
 file_arg <- sub("^--file=", "", args[grep("^--file=", args)])
 test_dir <- if (length(file_arg) == 1L && nzchar(file_arg)) {

@@ -1,5 +1,5 @@
 # Contract: KPI by Sheet / Crossover KPIs centered; values >> labels; mobile header 1:1:1
-# Run: cd app_24.0 && Rscript tests/test_box_value_center_css.R
+# Run: cd app_25.0 && Rscript tests/test_box_value_center_css.R
 args <- commandArgs(trailingOnly = FALSE)
 file_arg <- sub("^--file=", "", args[grep("^--file=", args)])
 app_dir <- if (length(file_arg) == 1L && nzchar(file_arg)) {

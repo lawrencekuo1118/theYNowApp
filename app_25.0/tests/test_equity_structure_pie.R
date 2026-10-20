@@ -1,5 +1,5 @@
 # Equity structure pie slices (share nature). No network.
-# Run: cd app_24.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_equity_structure_pie.R
+# Run: cd app_25.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_equity_structure_pie.R
 
 Sys.setenv(YNOW_DEBUG_SKIP_PY = "1")
 args <- commandArgs(trailingOnly = FALSE)

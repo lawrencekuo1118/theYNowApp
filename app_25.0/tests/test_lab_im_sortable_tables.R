@@ -1,5 +1,5 @@
 # Blue Chip Leaderboard tables: clickable column headers (client-side DT sort).
-# Run: cd app_21.0/tests && Rscript test_lab_im_sortable_tables.R
+# Run: cd app_25.0/tests && Rscript test_lab_im_sortable_tables.R
 Sys.setenv(YNOW_DEBUG_SKIP_PY = "1")
 
 args <- commandArgs(trailingOnly = FALSE)

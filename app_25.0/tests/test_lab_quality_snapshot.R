@@ -1,5 +1,5 @@
 # Quality snapshot: gates change the pool count; fresh rows are not recomputed.
-# Run: cd app_21.0/tests && Rscript test_lab_quality_snapshot.R
+# Run: cd app_25.0/tests && Rscript test_lab_quality_snapshot.R
 Sys.setenv(YNOW_DEBUG_SKIP_PY = "1")
 Sys.setenv(YNOW_SLOW_CACHE_DIR = tempfile("ynow-quality-"))
 

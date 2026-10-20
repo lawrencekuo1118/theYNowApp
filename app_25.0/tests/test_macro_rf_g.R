@@ -16,17 +16,18 @@ approx_eq <- function(a, b, tol = 1e-9) {
 
 root <- NULL
 for (cand in c(
+  if (basename(getwd()) == "tests") normalizePath("..", mustWork = FALSE) else NA_character_,
   normalizePath("..", mustWork = FALSE),
   normalizePath(getwd(), mustWork = FALSE),
-  "/Users/lawrencekuo/coding/theYNowApp/app_18.0",
-  normalizePath(file.path("..", ".."), mustWork = FALSE)
+  normalizePath(file.path(getwd(), "app_25.0"), mustWork = FALSE),
+  normalizePath(file.path("..", "app_25.0"), mustWork = FALSE)
 )) {
-  if (nzchar(cand) && file.exists(file.path(cand, "setup.R"))) {
+  if (!is.na(cand) && nzchar(cand) && file.exists(file.path(cand, "setup.R"))) {
     root <- cand
     break
   }
 }
-if (is.null(root)) stop("Cannot locate app_18.0/setup.R")
+if (is.null(root)) stop("Cannot locate app_25.0/setup.R")
 
 
 `%||%` <- function(x, y) if (is.null(x) || (length(x) == 1 && is.na(x))) y else x

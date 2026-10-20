@@ -1,5 +1,5 @@
 # Custom screen conditions and the value-alert cross-link.
-# Run: cd app_24.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_stock_screener.R
+# Run: cd app_25.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_stock_screener.R
 
 Sys.setenv(YNOW_DEBUG_SKIP_PY = "1")
 args <- commandArgs(trailingOnly = FALSE)

@@ -1,16 +1,9 @@
 #!/usr/bin/env Rscript
 # Fast vs slow cache tiers (no network).
-# Run: cd app_21.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_cache_tiers.R
+# Run: cd app_25.0/tests && YNOW_DEBUG_SKIP_PY=1 Rscript test_cache_tiers.R
 
-root <- if (file.exists("web_crawler.R")) {
-  getwd()
-} else if (file.exists("../web_crawler.R")) {
-  normalizePath("..")
-} else if (dir.exists("app_21.0") && file.exists("app_21.0/web_crawler.R")) {
-  normalizePath("app_21.0")
-} else {
-  stop("Cannot locate app_21.0 / web_crawler.R")
-}
+source("ynow_test_app_dir.R", local = FALSE)
+root <- ynow_test_app_dir("web_crawler.R")
 setwd(root)
 Sys.setenv(YNOW_DEBUG_SKIP_PY = "1")
 

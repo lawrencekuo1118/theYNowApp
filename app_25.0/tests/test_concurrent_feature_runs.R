@@ -19,7 +19,8 @@ check <- function(label, cond) {
   }
 }
 
-root <- if (dir.exists("app_22.0")) "app_22.0" else "."
+source("ynow_test_app_dir.R", local = FALSE)
+root <- ynow_test_app_dir("ynow_server.R")
 srv <- paste(readLines(file.path(root, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 glob <- paste(readLines(file.path(root, "global.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 async <- paste(readLines(file.path(root, "async_jobs.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")

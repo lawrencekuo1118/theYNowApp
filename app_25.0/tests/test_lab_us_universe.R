@@ -1,12 +1,14 @@
 # Blue Chip / Search US universe (primary listings; SEC-backed)
-# Run from app_18.0/: Rscript tests/test_lab_us_universe.R
+# Run from app_25.0/: Rscript tests/test_lab_us_universe.R
 
 root <- if (file.exists("lab_us_universe.R")) {
   getwd()
-} else if (file.exists("app_18.0/lab_us_universe.R")) {
-  file.path(getwd(), "app_18.0")
+} else if (file.exists("../lab_us_universe.R")) {
+  normalizePath("..")
+} else if (file.exists("app_25.0/lab_us_universe.R")) {
+  file.path(getwd(), "app_25.0")
 } else {
-  stop("Run from repo root or app_18.0")
+  stop("Run from app_25.0/tests or repo root")
 }
 setwd(root)
 

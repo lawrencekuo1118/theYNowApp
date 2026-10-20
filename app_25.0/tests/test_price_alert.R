@@ -1,5 +1,5 @@
 # Price / condition alert rules. No SMTP and no live quotes.
-# Run: cd app_24.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_price_alert.R
+# Run: cd app_25.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_price_alert.R
 
 Sys.setenv(YNOW_DEBUG_SKIP_PY = "1")
 args <- commandArgs(trailingOnly = FALSE)

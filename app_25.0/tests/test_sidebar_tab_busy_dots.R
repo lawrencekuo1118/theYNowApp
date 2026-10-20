@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 # Sidebar tab busy dots: Loading → animated 「…」 on menu label
-# Run: cd app_22.0/tests && Rscript test_sidebar_tab_busy_dots.R
+# Run: cd app_25.0/tests && Rscript test_sidebar_tab_busy_dots.R
 
 args <- commandArgs(trailingOnly = FALSE)
 file_arg <- sub("^--file=", "", args[grep("^--file=", args)])
