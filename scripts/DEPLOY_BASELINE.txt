@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12713760
+bundleId=12713808
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=1608cefde70f58f136137d9c69b016e62a070bc5
-commit=1608cefde70f58f136137d9c69b016e62a070bc5
-short=1608cefd
-message=chore: bump display version to v25.74
-captured_at=2026-10-20T04:56:40Z
+aligned_git=487d08b567c65fc17ee6c0be3580c3d2ba6f994d
+commit=487d08b567c65fc17ee6c0be3580c3d2ba6f994d
+short=487d08b5
+message=chore: record shipped display version v25.74
+captured_at=2026-10-20T05:15:51Z
 display_version=v25.74
-note=Canonical live line is app_25.0. Bundle 12713760: Sidebar recent-search long-press (2s) pins tickers between the white separator and「最近搜尋：」/ Recent Search. Signed-in pins persist in ynow_user_prefs (pref_key=pinned_recent_search) on Supabase Postgres; guests use localStorage only. Long-press again to unpin.
+note=Canonical live line is app_25.0. Bundle 12713808: Lite sidebar omits Full guest-locked tabs (lab_notes, decision_checklist, price_alerts) via ynow_sidebar_guest_lock_tabs(). PDF download stays open in Lite. Home quick-pick auth links and pin-recent-search from prior ships retained.

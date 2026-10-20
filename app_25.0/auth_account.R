@@ -23,6 +23,49 @@ ynow_compact_ui <- function(...) {
   Filter(Negate(is.null), list(...))
 }
 
+#' Sidebar tabNames that Full shows with a guest lock glyph (auth on + guest).
+#' Lite must omit these entirely (no grayed locks) — single source of truth for
+#' menu HTML locks, locale JS re-inject, and body.ynow-lite hide CSS.
+#' @return character vector of shinydashboard tabName values
+ynow_sidebar_guest_lock_tabs <- function() {
+  c("lab_notes", "decision_checklist", "price_alerts")
+}
+
+#' TRUE when tabName is in the Full guest-lock set.
+ynow_sidebar_tab_guest_locked <- function(tab) {
+  as.character(tab %||% "")[1] %in% ynow_sidebar_guest_lock_tabs()
+}
+
+#' Menu label with optional guest lock glyph (Full shows lock; Lite CSS hides the tab).
+ynow_sidebar_guest_lock_label <- function(tab, span_id, label) {
+  lab <- tags$span(id = span_id, label)
+  if (!isTRUE(ynow_sidebar_tab_guest_locked(tab))) return(lab)
+  tagList(icon("lock", class = "ynow-menu-lock"), lab)
+}
+
+#' CSS: hide every Full guest-locked sidebar tab in Lite (do not render locks).
+ynow_sidebar_guest_lock_lite_css <- function() {
+  tabs <- ynow_sidebar_guest_lock_tabs()
+  if (!length(tabs)) return("/* no guest-locked sidebar tabs */\n")
+  sels <- unlist(lapply(tabs, function(t) {
+    c(
+      sprintf('body.ynow-lite .sidebar-menu a[data-value="%s"]', t),
+      sprintf('body.ynow-lite .sidebar-menu li:has(> a[data-value="%s"])', t)
+    )
+  }), use.names = FALSE)
+  paste0(
+    "/* Lite: omit Full guest-locked sidebar tabs (ynow_sidebar_guest_lock_tabs). */\n",
+    paste(sels, collapse = ",\n"),
+    " {\n  display: none !important;\n}\n"
+  )
+}
+
+#' Named list / JSON-ready object for client loginTabs (glyph re-inject on locale apply).
+ynow_sidebar_guest_lock_js_map <- function() {
+  tabs <- ynow_sidebar_guest_lock_tabs()
+  as.list(stats::setNames(rep(list(TRUE), length(tabs)), tabs))
+}
+
 #' Normalize email for compare (trim + lower).
 ynow_auth_norm_email <- function(email) {
   tolower(trimws(as.character(email %||% "")[1]))

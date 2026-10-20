@@ -3913,28 +3913,44 @@ ui <- dashboardPage(
              ),
              # 歷史基本面驗證（HFV）：理論估值 vs 實際市值 — 非策略回測
              menuItem("Hist. FV Validation", tabName = "hfv", icon = icon("balance-scale")),
-             # 量化回測實驗室：主選單（完整版）；Lite 以 CSS 隱藏，不進簡化版
+             # Guest-locked on Full (ynow_sidebar_guest_lock_tabs); Lite omits via CSS
              menuItem(
-               text = tagList(
-                 icon("lock", class = "ynow-menu-lock"),
-                 tags$span(id = "ynow_menu_backtest", "Quant Backtest Lab")
-               ),
+               text = if (exists("ynow_sidebar_guest_lock_label", mode = "function")) {
+                 ynow_sidebar_guest_lock_label("lab_notes", "ynow_menu_backtest", "Quant Backtest Lab")
+               } else {
+                 tagList(
+                   icon("lock", class = "ynow-menu-lock"),
+                   tags$span(id = "ynow_menu_backtest", "Quant Backtest Lab")
+                 )
+               },
                tabName = "lab_notes",
                icon = icon("flask")
              ),
              menuItem(
-               text = tagList(
-                 icon("lock", class = "ynow-menu-lock"),
-                 tags$span(id = "ynow_menu_decision_checklist", "Decision Checklist")
-               ),
+               text = if (exists("ynow_sidebar_guest_lock_label", mode = "function")) {
+                 ynow_sidebar_guest_lock_label(
+                   "decision_checklist", "ynow_menu_decision_checklist", "Decision Checklist"
+                 )
+               } else {
+                 tagList(
+                   icon("lock", class = "ynow-menu-lock"),
+                   tags$span(id = "ynow_menu_decision_checklist", "Decision Checklist")
+                 )
+               },
                tabName = "decision_checklist",
                icon = icon("clipboard-check")
              ),
              menuItem(
-               text = tagList(
-                 icon("lock", class = "ynow-menu-lock"),
-                 tags$span(id = "ynow_menu_price_alert", "Value Alerts")
-               ),
+               text = if (exists("ynow_sidebar_guest_lock_label", mode = "function")) {
+                 ynow_sidebar_guest_lock_label(
+                   "price_alerts", "ynow_menu_price_alert", "Value Alerts"
+                 )
+               } else {
+                 tagList(
+                   icon("lock", class = "ynow-menu-lock"),
+                   tags$span(id = "ynow_menu_price_alert", "Value Alerts")
+                 )
+               },
                tabName = "price_alerts",
                icon = icon("bell")
              ),
@@ -7286,11 +7302,11 @@ ui <- dashboardPage(
         body.ynow-lite .sidebar-menu li:has(a[data-value="rel_mult_rev"]),
         body.ynow-lite .sidebar-menu li:has(a[data-value="sotp_calculator"]),
         body.ynow-lite .sidebar-menu a[data-value="hfv"],
-        body.ynow-lite .sidebar-menu li:has(> a[data-value="hfv"]),
-        body.ynow-lite .sidebar-menu a[data-value="decision_checklist"],
-        body.ynow-lite .sidebar-menu li:has(> a[data-value="decision_checklist"]) {
+        body.ynow-lite .sidebar-menu li:has(> a[data-value="hfv"]) {
           display: none !important;
         }
+        /* Guest-locked tabs (lab_notes / decision_checklist / price_alerts):
+           Lite hide CSS is injected from ynow_sidebar_guest_lock_lite_css(). */
         body.ynow-lite .ynow-full-only {
           display: none !important;
         }
@@ -7308,10 +7324,8 @@ ui <- dashboardPage(
           display: none !important;
         }
         /* Lite: under Data Source keep Snapshot + Feedback only;
-           Quant Backtest Lab + Testing foot link stay Full-only.
-           Business Breakdown (tab company_advance) is Full-only. */
-        body.ynow-lite .sidebar-menu a[data-value="lab_notes"],
-        body.ynow-lite .sidebar-menu li:has(> a[data-value="lab_notes"]),
+           Guest-locked Lab/Checklist/Alerts omitted via ynow_sidebar_guest_lock_lite_css().
+           Testing foot link + Business Breakdown (company_advance) stay Full-only. */
         body.ynow-lite .sidebar-menu a[data-value="company_advance"],
         body.ynow-lite .sidebar-menu li:has(> a[data-value="company_advance"]) {
           display: none !important;
@@ -8970,6 +8984,18 @@ ui <- dashboardPage(
           padding-left: 20px;
         }
       ')),
+      # Lite: hide Full guest-locked sidebar tabs (single source: ynow_sidebar_guest_lock_tabs)
+      if (exists("ynow_sidebar_guest_lock_lite_css", mode = "function")) {
+        tags$style(HTML(ynow_sidebar_guest_lock_lite_css()))
+      },
+      # Guest-lock tab map for locale menu rebuild (same set as Lite hide + HTML locks)
+      if (exists("ynow_sidebar_guest_lock_js_map", mode = "function")) {
+        tags$script(HTML(paste0(
+          "window.__YNOW_SIDEBAR_GUEST_LOCK_TABS = ",
+          jsonlite::toJSON(ynow_sidebar_guest_lock_js_map(), auto_unbox = TRUE, null = "null"),
+          ";"
+        )))
+      },
       # Boot locale maps (slim): click-time apply so 繁中／EN do not depend on websocket timing
       tags$script(HTML(paste0(
         "window.__YNOW_UI_LOCALE_BOOT = ",
@@ -9985,7 +10011,8 @@ ui <- dashboardPage(
             }
             a.innerHTML = '';
             if (iconClone) a.appendChild(iconClone);
-            var loginTabs = {
+            /* Full guest locks — same tab ids as ynow_sidebar_guest_lock_tabs() / Lite hide. */
+            var loginTabs = window.__YNOW_SIDEBAR_GUEST_LOCK_TABS || {
               lab_notes: true,
               decision_checklist: true,
               price_alerts: true
