@@ -836,7 +836,7 @@ check("sidebar auth UI is div not navbar li", {
     grepl("ynow-auth-links--home", paste(as.character(home), collapse = ""), fixed = TRUE) &&
     grepl("ynow_auth_open_home", paste(as.character(home), collapse = ""), fixed = TRUE)
 })
-check("sign-in and register share one row", {
+check("header Sign in only; Register on home / gate / modal", {
   Sys.setenv(YNOW_ENABLE_ACCOUNT_LOGIN = "1")
   h <- paste(as.character(ynow_auth_links_ui("sidebar")), collapse = "")
   home <- paste(as.character(ynow_auth_home_ui()), collapse = "")
@@ -844,8 +844,10 @@ check("sign-in and register share one row", {
     "g", "t", "b", "btn_pair", feature = "lab"
   )), collapse = "")
   Sys.setenv(YNOW_ENABLE_ACCOUNT_LOGIN = "0")
-  grepl("ynow-auth-pair", h, fixed = TRUE) &&
-    grepl("ynow_auth_register_open", h, fixed = TRUE) &&
+  grepl("ynow-auth-pair--signin-only", h, fixed = TRUE) &&
+    grepl("ynow_auth_open", h, fixed = TRUE) &&
+    !grepl("ynow_auth_register_open", h, fixed = TRUE) &&
+    !grepl("ynow-auth-register-open", h, fixed = TRUE) &&
     grepl("ynow-auth-register-open", home, fixed = TRUE) &&
     grepl("ynow_auth_register_open_home", home, fixed = TRUE) &&
     grepl("ynow-auth-pair--gate", gate, fixed = TRUE) &&
