@@ -7,5 +7,5 @@ commit=391adddf505c4a829ff6da5ed8d83b29afedba52
 short=391adddf
 message=chore: bump display version to v25.82
 captured_at=2026-10-20T08:19:26Z
-display_version=v25.82
+display_version=v25.83
 note=Canonical live line is app_25.0. Bundle 12714314: Post-login Sign out only (auth CSS specificity) + ACL locked sidebar chrome after auth; merged #320 with #319 view-as chrome.
