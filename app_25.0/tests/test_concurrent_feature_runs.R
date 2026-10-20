@@ -42,7 +42,14 @@ suppressMessages({
 srv <- paste(readLines(file.path(root, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 glob <- paste(readLines(file.path(root, "global.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 async <- paste(readLines(file.path(root, "async_jobs.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-lab <- paste(readLines(file.path(root, "lab_industry_method.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+# C-STRUCT-03: eval job defined in lab_im_bluechip_eval.R (sourced by facade).
+lab <- paste(
+  c(
+    readLines(file.path(root, "lab_im_bluechip_eval.R"), warn = FALSE, encoding = "UTF-8"),
+    readLines(file.path(root, "lab_industry_method.R"), warn = FALSE, encoding = "UTF-8")
+  ),
+  collapse = "\n"
+)
 clu <- paste(readLines(file.path(root, "lab_clustering.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 
 check("async_jobs.R present", grepl(".ynow_make_extended_task", async, fixed = TRUE))
