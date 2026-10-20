@@ -228,11 +228,23 @@ lab_sp500_existing_cache <- function() {
   NULL
 }
 
-.lab_http_download <- function(url, dest, timeout_sec = 12) {
+#' Canonical Lab HTTP download (S&P / TW / US wrappers).
+#' @param curl_fallback If TRUE (US SEC path), retry via curl when download.file
+#'   fails or the body is too small. If FALSE (default), retry download.file
+#'   without headers — preserves historic S&P / TW download semantics.
+.lab_http_download <- function(url, dest, timeout_sec = 12,
+                               user_agent = "theYNowApp/14.0 (lab S&P 500 universe)",
+                               curl_fallback = FALSE) {
   old <- getOption("timeout")
   on.exit(options(timeout = old), add = TRUE)
-  options(timeout = timeout_sec)
-  ua <- "theYNowApp/14.0 (lab S&P 500 universe)"
+  # US path floors timeout at 12s; S&P/TW keep the caller value verbatim.
+  if (isTRUE(curl_fallback)) {
+    options(timeout = max(12L, as.integer(timeout_sec)[1]))
+  } else {
+    options(timeout = timeout_sec)
+  }
+  ua <- as.character(user_agent)[1]
+  if (is.na(ua) || !nzchar(ua)) ua <- "theYNowApp/14.0 (lab S&P 500 universe)"
   ok <- tryCatch({
     utils::download.file(
       url, destfile = dest, quiet = TRUE, mode = "wb",
@@ -240,7 +252,21 @@ lab_sp500_existing_cache <- function() {
     )
     TRUE
   }, error = function(e) FALSE)
-  if (!isTRUE(ok)) {
+  if (isTRUE(curl_fallback)) {
+    if (!isTRUE(ok) || !file.exists(dest) || isTRUE(file.info(dest)$size < 80)) {
+      ok <- tryCatch({
+        status <- system2(
+          "curl",
+          c(
+            "-fsSL", "-A", ua, "-o", dest,
+            "--max-time", as.character(as.integer(timeout_sec)[1]), url
+          ),
+          stdout = FALSE, stderr = FALSE
+        )
+        identical(as.integer(status)[1], 0L)
+      }, error = function(e) FALSE)
+    }
+  } else if (!isTRUE(ok)) {
     ok <- tryCatch({
       utils::download.file(url, destfile = dest, quiet = TRUE, mode = "wb")
       TRUE
