@@ -5,7 +5,7 @@
 # 僅 mandatory_suggest（預設勾選）項目開機預勾；其餘 opt-in。
 # Decision SOP：精簡三勾確認（SGR／敏感度／品質）+ 強制閘門（選用紀律流程）。
 # SOP 面板掛在決策檢核頁頂部；YNOW 財報結論不需 SOP 解鎖即可顯示。
-# Lite：側欄隱藏（ynow_ui.R body.ynow-lite）。
+# Lite：側欄隱藏（ynow_sidebar_guest_lock_tabs → ynow_sidebar_guest_lock_lite_css）。
 # =========================================================================
 
 # SOP 強制納入評估（不受使用者取消勾選影響解鎖邏輯）

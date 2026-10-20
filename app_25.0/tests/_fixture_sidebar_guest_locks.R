@@ -1,4 +1,6 @@
 # Static HTML fixture: guest vs signed-in sidebar lock styling (no full Shiny).
+# Guest-locked tab ids must match ynow_sidebar_guest_lock_tabs()
+# (lab_notes, decision_checklist, price_alerts). Lite omits these entirely.
 # Writes under /opt/cursor/artifacts/sidebar-lock-fixtures/
 Sys.setenv(YNOW_DEBUG_SKIP_PY = "1", YNOW_ENABLE_ACCOUNT_LOGIN = "1")
 suppressPackageStartupMessages({
