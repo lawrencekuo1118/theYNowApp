@@ -86,6 +86,11 @@ check("JS long-press 2000", grepl("LONG_MS = 2000", ui, fixed = TRUE))
 check("JS pinned_search_toggle", grepl("pinned_search_toggle", ui, fixed = TRUE))
 check("server observes toggle", grepl("observeEvent\\(input\\$pinned_search_toggle", srv, perl = TRUE))
 check("server prefs get", grepl("ynow_prefs_get_pinned_recent", srv, fixed = TRUE))
+check("pinned prefs prefer view-as uid when active", {
+  grepl("ynow_pts_view_as", srv, fixed = TRUE) &&
+    grepl("va <- tryCatch\\(isolate\\(ynow_pts_view_as\\(\\)\\)", srv, perl = TRUE) &&
+    grepl("view_as = tryCatch\\(ynow_pts_view_as\\(\\)", srv, perl = TRUE)
+})
 check("en pin hint", grepl("recent_search_pin_hint", loc, fixed = TRUE))
 check("zh pin hint", grepl("長按 2 秒釘選", loc, fixed = TRUE))
 check("zh unpin hint", grepl("長按 2 秒取消釘選", loc, fixed = TRUE))

@@ -523,6 +523,30 @@ check("server wires view-as + silver chrome + effective user", {
     !grepl("ynow_pts_sysadmin_refresh", srv, fixed = TRUE) &&
     grepl("verified", paste(readLines(file.path(app_dir, "points_wallet.R"), warn = FALSE), collapse = "\n"), fixed = TRUE)
 })
+check("view-as mirrors target user session UI (authed chrome + unlocks)", {
+  srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("ynowApplySessionLikeAuthChrome", ui, fixed = TRUE) &&
+    grepl("__ynowViewAsSessionLike", ui, fixed = TRUE) &&
+    grepl("__ynowRealAuthed", ui, fixed = TRUE) &&
+    grepl("session_like = TRUE", srv, fixed = TRUE) &&
+    grepl("!document.body.classList.contains('ynow-view-as')", ui, fixed = TRUE) &&
+    grepl("var viewAs = !!(document.body && document.body.classList.contains('ynow-view-as'))", ui, fixed = TRUE) &&
+    grepl("var loggedIn = realLoggedIn || viewAs", ui, fixed = TRUE) &&
+    grepl(".ynow_view_as_exit_from_signout", srv, fixed = TRUE) &&
+    grepl("push_auth_state", srv, fixed = TRUE) &&
+    grepl("Chrome, unlocks, balances, and prefs", ui_str("pts_sysadmin_viewas_chrome_hint", "en"), fixed = TRUE) &&
+    grepl("登入介面、解鎖項目", ui_str("pts_sysadmin_viewas_chrome_hint", "zh-TW"), fixed = TRUE) &&
+    !grepl("默认|数据|一鍵", ui_str("pts_sysadmin_viewas_chrome_hint", "zh-TW"))
+})
+check("view-as pinned prefs use view-as subject uid", {
+  srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("ynow_pts_view_as", srv, fixed = TRUE) &&
+    grepl(".ynow_pinned_auth_uid", srv, fixed = TRUE) &&
+    grepl("va <- tryCatch\\(isolate\\(ynow_pts_view_as\\(\\)\\)", srv, perl = TRUE) &&
+    grepl("view_as = tryCatch\\(ynow_pts_view_as\\(\\)", srv, perl = TRUE) &&
+    grepl("!isTRUE\\(va_on\\) && length\\(guest_pins\\)", srv, perl = TRUE)
+})
 check("price_alert prefers effective user for points gate", {
   pa <- paste(readLines(file.path(app_dir, "price_alert.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   grepl("ynow_pts_effective_user", pa, fixed = TRUE)

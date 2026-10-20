@@ -4087,7 +4087,7 @@ ui <- dashboardPage(
       tags$span(
         id = "ynow_viewas_chrome_hint",
         style = "opacity:0.92;",
-        "Title Loading is silver. Balances and spend gates follow this user."
+        "Title Loading is silver. Chrome, unlocks, balances, and prefs follow this user."
       ),
       tags$button(
         id = "ynow_viewas_chrome_exit",
@@ -11506,11 +11506,58 @@ ui <- dashboardPage(
                 if (banner) banner.setAttribute('aria-hidden', 'false');
               }
             });
+            /* Apply signed-in chrome without mutating real auth (view-as preview). */
+            window.ynowApplySessionLikeAuthChrome = function (on, labels) {
+              if (!document.body) return;
+              var openLinks = document.querySelectorAll('.ynow-auth-open');
+              var regLinks = document.querySelectorAll('.ynow-auth-register-open');
+              var outLinks = document.querySelectorAll('.ynow-auth-signout');
+              var i;
+              for (i = 0; i < openLinks.length; i++) {
+                openLinks[i].style.display = on ? 'none' : '';
+              }
+              for (i = 0; i < regLinks.length; i++) {
+                regLinks[i].style.display = on ? 'none' : '';
+              }
+              for (i = 0; i < outLinks.length; i++) {
+                outLinks[i].style.display = on ? '' : 'none';
+              }
+              if (labels && labels.label_sign_out) {
+                var outLbls = document.querySelectorAll('.ynow-auth-signout-label');
+                for (i = 0; i < outLbls.length; i++) outLbls[i].textContent = labels.label_sign_out;
+              }
+              if (typeof window.ynowSyncSysAdminFootVisibility === 'function') {
+                window.ynowSyncSysAdminFootVisibility(!!on);
+              }
+              if (typeof window.ynowSyncSidebarDownloadIcon === 'function') {
+                window.ynowSyncSidebarDownloadIcon();
+              }
+              if (typeof window.ynowSyncGuestSidebarLocked === 'function') {
+                window.ynowSyncGuestSidebarLocked();
+              }
+            };
             addHandler('ynowViewAsMode', function (payload) {
               if (!payload) return;
               var on = !!payload.active;
-              if (on) document.body.classList.add('ynow-view-as');
-              else document.body.classList.remove('ynow-view-as');
+              if (on) {
+                document.body.classList.add('ynow-view-as');
+                /* Session-like Current App: unlock guest chrome as if this user is signed in. */
+                document.body.classList.add('ynow-authed');
+                window.__ynowViewAsSessionLike = true;
+                window.ynowApplySessionLikeAuthChrome(true, {
+                  label_sign_out: payload.label_sign_out || ''
+                });
+              } else {
+                document.body.classList.remove('ynow-view-as');
+                window.__ynowViewAsSessionLike = false;
+                /* Real AuthState restore is pushed by server; clear only if still fake. */
+                if (!window.__ynowRealAuthed) {
+                  document.body.classList.remove('ynow-authed');
+                  window.ynowApplySessionLikeAuthChrome(false, null);
+                } else {
+                  window.ynowApplySessionLikeAuthChrome(true, null);
+                }
+              }
               var pidEl = document.getElementById('ynow_viewas_chrome_pid');
               if (pidEl) pidEl.textContent = on && payload.public_id ? String(payload.public_id) : '';
               var actEl = document.getElementById('ynow_viewas_chrome_active_label');
@@ -11727,10 +11774,12 @@ ui <- dashboardPage(
                 decision_checklist: true,
                 price_alerts: true
               };
+              /* View-as is a signed-in preview of the target user — not guest-locked. */
               var guest = !!(document.body &&
                 document.body.classList.contains('ynow-auth-feature') &&
                 !document.body.classList.contains('ynow-lite') &&
-                !document.body.classList.contains('ynow-authed'));
+                !document.body.classList.contains('ynow-authed') &&
+                !document.body.classList.contains('ynow-view-as'));
               document.querySelectorAll('.sidebar-menu a[data-value]').forEach(function (a) {
                 var tab = a.getAttribute('data-value') || '';
                 var li = a.closest ? a.closest('li') : a.parentElement;
@@ -11739,8 +11788,12 @@ ui <- dashboardPage(
                   li.classList.add('ynow-sidebar-locked');
                   return;
                 }
-                if (guest && tabs[tab]) li.classList.add('ynow-sidebar-locked');
-                else li.classList.remove('ynow-sidebar-locked');
+                if (guest && tabs[tab]) {
+                  li.classList.add('ynow-sidebar-locked');
+                } else if (tabs[tab]) {
+                  /* Only clear guest-lock tabs; leave ACL / other locks alone. */
+                  li.classList.remove('ynow-sidebar-locked');
+                }
               });
             };
             addHandler('ynowAccessLocks', function (payload) {
@@ -11851,7 +11904,8 @@ ui <- dashboardPage(
               var isLite = document.body.classList.contains('ynow-lite');
               var locked = !isLite &&
                 document.body.classList.contains('ynow-auth-feature') &&
-                !document.body.classList.contains('ynow-authed');
+                !document.body.classList.contains('ynow-authed') &&
+                !document.body.classList.contains('ynow-view-as');
               var icon = dl.querySelector('i');
               if (!icon) {
                 icon = document.createElement('i');
@@ -11885,6 +11939,7 @@ ui <- dashboardPage(
                  subsequent Sign-in / BS toggleModal open is vetoed. */
               if (payload.ok && document.body) {
                 document.body.classList.add('ynow-authed');
+                window.__ynowRealAuthed = true;
                 ynowSyncSysAdminFootVisibility(true);
                 if (typeof window.ynowSyncSidebarDownloadIcon === 'function') {
                   window.ynowSyncSidebarDownloadIcon();
@@ -11934,7 +11989,11 @@ ui <- dashboardPage(
             });
             addHandler('ynowAuthState', function (payload) {
               if (!payload) return;
-              var loggedIn = !!(payload.logged_in);
+              var realLoggedIn = !!(payload.logged_in);
+              window.__ynowRealAuthed = realLoggedIn;
+              var viewAs = !!(document.body && document.body.classList.contains('ynow-view-as'));
+              /* View-as keeps session-like chrome even when ops admin is not email-authed. */
+              var loggedIn = realLoggedIn || viewAs;
               if (loggedIn) document.body.classList.add('ynow-authed');
               else document.body.classList.remove('ynow-authed');
               ynowSyncSysAdminFootVisibility(loggedIn);
@@ -11969,8 +12028,9 @@ ui <- dashboardPage(
                 var regLbls = document.querySelectorAll('.ynow-auth-register-label');
                 for (i = 0; i < regLbls.length; i++) regLbls[i].textContent = payload.label_register;
               }
-              /* Leave Sys. Admin tab if still open after sign-in (link is CSS-hidden). */
-              if (loggedIn && window.Shiny && Shiny.setInputValue) {
+              /* Leave Sys. Admin tab if still open after sign-in (link is CSS-hidden).
+                 Skip while view-as — Exit user view owns return to the portal. */
+              if (realLoggedIn && !viewAs && window.Shiny && Shiny.setInputValue) {
                 try {
                   var active = document.querySelector(
                     '.sidebar-menu li.active > a[data-value], .sidebar-menu a.active[data-value]'
