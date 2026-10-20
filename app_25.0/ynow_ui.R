@@ -16,7 +16,7 @@
       return(sub('^"version"\\s*:\\s*"([^"]+)".*$', "\\1", m[[1]]))
     }
   }
-  "v25.80"
+  "v25.81"
 }
 .YNOW_BUILD_VERSION <- .ynow_read_build_version()
 
@@ -230,7 +230,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v25.80) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+          "The YNow App (v25.81) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
         ),
         tags$p(
           class = "ynow-about-method",
@@ -258,7 +258,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v25.80) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
+          "The YNow App (v25.81) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
         ),
         tags$p(
           class = "ynow-about-method",
@@ -368,7 +368,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App（簡化版）")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite（v25.80）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
+          "The YNow App Lite（v25.81）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
           "以自動判別主／副模型與預設參數完成試算，讓使用者先看到合理價區間與產業 KPI，再決定是否回到完整版深入調整。"
         ),
         tags$p(
@@ -385,7 +385,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App (Lite)")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite (v25.80) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
+          "The YNow App Lite (v25.81) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
           "auto-selects primary/secondary models with App defaults, and surfaces fair-value ranges plus industry KPIs before you open Full for deeper calibration."
         ),
         tags$p(
@@ -3639,9 +3639,9 @@ ui <- dashboardPage(
                   'data-ynow-build="', .YNOW_BUILD_VERSION, '" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v25.80</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v25.81</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v25.80</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v25.81</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -4087,7 +4087,7 @@ ui <- dashboardPage(
       tags$span(
         id = "ynow_viewas_chrome_hint",
         style = "opacity:0.92;",
-        "Title Loading is silver. Balances and spend gates follow this user."
+        "Title Loading is silver. Chrome, unlocks, balances, and prefs follow this user."
       ),
       tags$button(
         id = "ynow_viewas_chrome_exit",
@@ -11506,11 +11506,58 @@ ui <- dashboardPage(
                 if (banner) banner.setAttribute('aria-hidden', 'false');
               }
             });
+            /* Apply signed-in chrome without mutating real auth (view-as preview). */
+            window.ynowApplySessionLikeAuthChrome = function (on, labels) {
+              if (!document.body) return;
+              var openLinks = document.querySelectorAll('.ynow-auth-open');
+              var regLinks = document.querySelectorAll('.ynow-auth-register-open');
+              var outLinks = document.querySelectorAll('.ynow-auth-signout');
+              var i;
+              for (i = 0; i < openLinks.length; i++) {
+                openLinks[i].style.display = on ? 'none' : '';
+              }
+              for (i = 0; i < regLinks.length; i++) {
+                regLinks[i].style.display = on ? 'none' : '';
+              }
+              for (i = 0; i < outLinks.length; i++) {
+                outLinks[i].style.display = on ? '' : 'none';
+              }
+              if (labels && labels.label_sign_out) {
+                var outLbls = document.querySelectorAll('.ynow-auth-signout-label');
+                for (i = 0; i < outLbls.length; i++) outLbls[i].textContent = labels.label_sign_out;
+              }
+              if (typeof window.ynowSyncSysAdminFootVisibility === 'function') {
+                window.ynowSyncSysAdminFootVisibility(!!on);
+              }
+              if (typeof window.ynowSyncSidebarDownloadIcon === 'function') {
+                window.ynowSyncSidebarDownloadIcon();
+              }
+              if (typeof window.ynowSyncGuestSidebarLocked === 'function') {
+                window.ynowSyncGuestSidebarLocked();
+              }
+            };
             addHandler('ynowViewAsMode', function (payload) {
               if (!payload) return;
               var on = !!payload.active;
-              if (on) document.body.classList.add('ynow-view-as');
-              else document.body.classList.remove('ynow-view-as');
+              if (on) {
+                document.body.classList.add('ynow-view-as');
+                /* Session-like Current App: unlock guest chrome as if this user is signed in. */
+                document.body.classList.add('ynow-authed');
+                window.__ynowViewAsSessionLike = true;
+                window.ynowApplySessionLikeAuthChrome(true, {
+                  label_sign_out: payload.label_sign_out || ''
+                });
+              } else {
+                document.body.classList.remove('ynow-view-as');
+                window.__ynowViewAsSessionLike = false;
+                /* Real AuthState restore is pushed by server; clear only if still fake. */
+                if (!window.__ynowRealAuthed) {
+                  document.body.classList.remove('ynow-authed');
+                  window.ynowApplySessionLikeAuthChrome(false, null);
+                } else {
+                  window.ynowApplySessionLikeAuthChrome(true, null);
+                }
+              }
               var pidEl = document.getElementById('ynow_viewas_chrome_pid');
               if (pidEl) pidEl.textContent = on && payload.public_id ? String(payload.public_id) : '';
               var actEl = document.getElementById('ynow_viewas_chrome_active_label');
@@ -11727,10 +11774,12 @@ ui <- dashboardPage(
                 decision_checklist: true,
                 price_alerts: true
               };
+              /* View-as is a signed-in preview of the target user — not guest-locked. */
               var guest = !!(document.body &&
                 document.body.classList.contains('ynow-auth-feature') &&
                 !document.body.classList.contains('ynow-lite') &&
-                !document.body.classList.contains('ynow-authed'));
+                !document.body.classList.contains('ynow-authed') &&
+                !document.body.classList.contains('ynow-view-as'));
               document.querySelectorAll('.sidebar-menu a[data-value]').forEach(function (a) {
                 var tab = a.getAttribute('data-value') || '';
                 var li = a.closest ? a.closest('li') : a.parentElement;
@@ -11742,11 +11791,8 @@ ui <- dashboardPage(
                 }
                 if (guest && tabs[tab]) {
                   li.classList.add('ynow-sidebar-locked');
-                  return;
-                }
-                /* Authed: strip guest-lock class only from guest-lock tabs — never
-                   clear .ynow-sidebar-locked from other LIs (ACL already returned). */
-                if (!guest && tabs[tab]) {
+                } else if (tabs[tab]) {
+                  /* Only clear guest-lock tabs; leave ACL / other locks alone. */
                   li.classList.remove('ynow-sidebar-locked');
                 }
               });
@@ -11859,7 +11905,8 @@ ui <- dashboardPage(
               var isLite = document.body.classList.contains('ynow-lite');
               var locked = !isLite &&
                 document.body.classList.contains('ynow-auth-feature') &&
-                !document.body.classList.contains('ynow-authed');
+                !document.body.classList.contains('ynow-authed') &&
+                !document.body.classList.contains('ynow-view-as');
               var icon = dl.querySelector('i');
               if (!icon) {
                 icon = document.createElement('i');
@@ -11893,6 +11940,7 @@ ui <- dashboardPage(
                  subsequent Sign-in / BS toggleModal open is vetoed. */
               if (payload.ok && document.body) {
                 document.body.classList.add('ynow-authed');
+                window.__ynowRealAuthed = true;
                 ynowSyncSysAdminFootVisibility(true);
                 if (typeof window.ynowSyncSidebarDownloadIcon === 'function') {
                   window.ynowSyncSidebarDownloadIcon();
@@ -11942,7 +11990,11 @@ ui <- dashboardPage(
             });
             addHandler('ynowAuthState', function (payload) {
               if (!payload) return;
-              var loggedIn = !!(payload.logged_in);
+              var realLoggedIn = !!(payload.logged_in);
+              window.__ynowRealAuthed = realLoggedIn;
+              var viewAs = !!(document.body && document.body.classList.contains('ynow-view-as'));
+              /* View-as keeps session-like chrome even when ops admin is not email-authed. */
+              var loggedIn = realLoggedIn || viewAs;
               if (loggedIn) document.body.classList.add('ynow-authed');
               else document.body.classList.remove('ynow-authed');
               ynowSyncSysAdminFootVisibility(loggedIn);
@@ -11977,8 +12029,9 @@ ui <- dashboardPage(
                 var regLbls = document.querySelectorAll('.ynow-auth-register-label');
                 for (i = 0; i < regLbls.length; i++) regLbls[i].textContent = payload.label_register;
               }
-              /* Leave Sys. Admin tab if still open after sign-in (link is CSS-hidden). */
-              if (loggedIn && window.Shiny && Shiny.setInputValue) {
+              /* Leave Sys. Admin tab if still open after sign-in (link is CSS-hidden).
+                 Skip while view-as — Exit user view owns return to the portal. */
+              if (realLoggedIn && !viewAs && window.Shiny && Shiny.setInputValue) {
                 try {
                   var active = document.querySelector(
                     '.sidebar-menu li.active > a[data-value], .sidebar-menu a.active[data-value]'
@@ -12253,7 +12306,7 @@ ui <- dashboardPage(
                 'ri_calculator', 'pb_calculator', 'rel_mult_ev', 'rel_multiples_calculator',
                 'rel_mult_rev', 'sotp_calculator', 'hfv',
                 'decision_checklist', 'lab_notes', 'price_alerts', 'testing', 'company_advance',
-                'account_admin', 'account_points'
+                'asset_transmission', 'account_admin', 'account_points'
               ];
             }
             function remapLegacyTab(tab) {

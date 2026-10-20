@@ -7,5 +7,5 @@ commit=18f12bb83566d0cdb3ec4d504cdaea7b9e5c27bc
 short=18f12bb8
 message=chore: bump display version to v25.80
 captured_at=2026-10-20T08:08:44Z
-display_version=v25.80
-note=Canonical live line is app_25.0. Bundle 12714286: Post-login auth chrome shows Sign out only (Sign in/Register hidden); ACL sidebar locks keep unified ynow-sidebar-locked chrome after auth.
+display_version=v25.81
+note=Canonical live line is app_25.0. Bundle 12714286: Post-login auth chrome (Sign out only) + ACL locked chrome; merge includes view-as chrome from #319. Redeploy pending for unified display version.

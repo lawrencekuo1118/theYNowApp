@@ -525,7 +525,11 @@ check("auth modal veto JS comments have no bare double-quotes", {
 })
 check("authed guards skip auth modal reopen (server + CSS)", {
   auth_txt <- paste(readLines(src_auth, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-  grepl("body.ynow-authed .ynow-auth-open", auth_txt, fixed = TRUE) &&
+  # Higher specificity beats guest `.ynow-auth-btn { display:inline-flex !important }`.
+  grepl("body.ynow-authed .ynow-auth-links .ynow-auth-open", auth_txt, fixed = TRUE) &&
+    grepl("body.ynow-view-as .ynow-auth-links .ynow-auth-open", auth_txt, fixed = TRUE) &&
+    grepl("body.ynow-authed .ynow-auth-links .ynow-auth-signout", auth_txt, fixed = TRUE) &&
+    grepl("body.ynow-view-as .ynow-auth-links .ynow-auth-signout", auth_txt, fixed = TRUE) &&
     grepl("body.ynow-authed #ynow_auth_modal", auth_txt, fixed = TRUE) &&
     grepl("pointer-events:none !important", auth_txt, fixed = TRUE) &&
     grepl("if (!is.null(account_user())) return()", auth_txt, fixed = TRUE) &&

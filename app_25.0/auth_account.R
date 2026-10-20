@@ -32,6 +32,7 @@ ynow_sidebar_guest_lock_tabs <- function() {
 
 #' Full-only model / advance sidebar tabs (unlocked on Full, omitted in Lite).
 #' Not guest-locked; still must not appear in the Lite sidebar.
+#' Includes Asset Transmission Root (`asset_transmission`) — Full only.
 ynow_sidebar_full_only_tabs <- function() {
   c(
     "get_started",
@@ -40,7 +41,8 @@ ynow_sidebar_full_only_tabs <- function() {
     "rel_mult_ev", "rel_multiples_calculator", "rel_mult_rev",
     "sotp_calculator",
     "hfv",
-    "company_advance"
+    "company_advance",
+    "asset_transmission"
   )
 }
 
@@ -85,7 +87,7 @@ ynow_sidebar_lite_omit_css <- function() {
   if (!length(tabs)) return("/* no Lite-omitted sidebar tabs */\n")
   sels <- unique(unlist(lapply(tabs, .ynow_sidebar_lite_omit_selectors), use.names = FALSE))
   paste0(
-    "/* Lite sidebar omit (ynow_sidebar_lite_omit_tabs): guest-locked + Full-only + Account. */\n",
+    "/* Lite sidebar omit (ynow_sidebar_lite_omit_tabs): guest-locked + Full-only (incl. ATX) + Account. */\n",
     paste(sels, collapse = ",\n"),
     " {\n  display: none !important;\n}\n"
   )
@@ -660,13 +662,19 @@ ynow_auth_css <- function() {
     "  justify-content:center; gap:14px; flex-wrap:wrap;",
     "}",
     "body.ynow-lite .ynow-auth-links { display:none !important; }",
-    # Logged-in: never show Sign-in modal or hit Sign-in links (post-login race).
+    # Logged-in / view-as session preview: never show Sign-in modal or open/register
+    # chrome. Specificity must beat `.ynow-auth-links .ynow-auth-pair a.ynow-auth-btn`
+    # (display:inline-flex !important) — see post-login lock-chrome debug.
     "body.ynow-authed #ynow_auth_modal,",
     "body.ynow-authed #ynow_auth_modal.in,",
-    "body.ynow-authed #ynow_auth_modal.show {",
+    "body.ynow-authed #ynow_auth_modal.show,",
+    "body.ynow-view-as #ynow_auth_modal,",
+    "body.ynow-view-as #ynow_auth_modal.in,",
+    "body.ynow-view-as #ynow_auth_modal.show {",
     "  display:none !important; visibility:hidden !important;",
     "}",
     # Beat guest display:!important (0,3,1) on header btn + home text links.
+    # Also cover body.ynow-view-as (sysadmin session preview).
     "body.ynow-authed .ynow-auth-links .ynow-auth-pair,",
     "body.ynow-authed .ynow-auth-links .ynow-auth-pair-sep,",
     "body.ynow-authed .ynow-auth-links .ynow-auth-pair a.ynow-auth-open,",
@@ -678,6 +686,13 @@ ynow_auth_css <- function() {
     "body.ynow-authed .ynow-auth-links--home .ynow-auth-pair a.ynow-auth-open,",
     "body.ynow-authed .ynow-auth-links--home .ynow-auth-pair a.ynow-auth-register-open,",
     "body.ynow-authed .ynow-auth-links--home .ynow-auth-pair a.ynow-auth-link,",
+    "body.ynow-authed .ynow-auth-links .ynow-auth-open,",
+    "body.ynow-authed .ynow-auth-links a.ynow-auth-open,",
+    "body.ynow-authed .ynow-auth-links .ynow-auth-register-open,",
+    "body.ynow-authed .ynow-auth-links a.ynow-auth-register-open,",
+    "body.ynow-authed .ynow-auth-pair a.ynow-auth-open,",
+    "body.ynow-authed .ynow-auth-pair a.ynow-auth-register-open,",
+    "body.ynow-authed .ynow-auth-pair .ynow-auth-pair-sep,",
     "body.ynow-authed .ynow-auth-pair--gate > .ynow-auth-open,",
     "body.ynow-authed .ynow-auth-pair--gate > .ynow-auth-register-open,",
     "body.ynow-authed .ynow-auth-pair--gate > .btn,",
@@ -685,18 +700,31 @@ ynow_auth_css <- function() {
     "body.ynow-authed .ynow-auth-open,",
     "body.ynow-authed a.ynow-auth-open,",
     "body.ynow-authed .ynow-auth-register-open,",
-    "body.ynow-authed a.ynow-auth-register-open {",
+    "body.ynow-authed a.ynow-auth-register-open,",
+    "body.ynow-view-as .ynow-auth-links .ynow-auth-pair,",
+    "body.ynow-view-as .ynow-auth-links .ynow-auth-pair-sep,",
+    "body.ynow-view-as .ynow-auth-links .ynow-auth-open,",
+    "body.ynow-view-as .ynow-auth-links a.ynow-auth-open,",
+    "body.ynow-view-as .ynow-auth-links .ynow-auth-register-open,",
+    "body.ynow-view-as .ynow-auth-links a.ynow-auth-register-open,",
+    "body.ynow-view-as .ynow-auth-pair a.ynow-auth-open,",
+    "body.ynow-view-as .ynow-auth-pair a.ynow-auth-register-open,",
+    "body.ynow-view-as .ynow-auth-pair .ynow-auth-pair-sep {",
     "  display:none !important; pointer-events:none !important;",
     "}",
     # Force Sign out only (inline style=display:none loses to !important otherwise).
     "body.ynow-authed .ynow-auth-links a.ynow-auth-signout,",
-    "body.ynow-authed .ynow-auth-links .ynow-auth-signout {",
+    "body.ynow-authed .ynow-auth-links .ynow-auth-signout,",
+    "body.ynow-view-as .ynow-auth-links a.ynow-auth-signout,",
+    "body.ynow-view-as .ynow-auth-links .ynow-auth-signout {",
     "  display:inline !important; pointer-events:auto !important;",
     "}",
-    "body.ynow-authed .ynow-auth-links--sidebar a.ynow-auth-signout {",
+    "body.ynow-authed .ynow-auth-links--sidebar a.ynow-auth-signout,",
+    "body.ynow-view-as .ynow-auth-links--sidebar a.ynow-auth-signout {",
     "  color:rgba(255,255,255,0.88) !important;",
     "}",
-    "body.ynow-authed .ynow-auth-links--home a.ynow-auth-signout {",
+    "body.ynow-authed .ynow-auth-links--home a.ynow-auth-signout,",
+    "body.ynow-view-as .ynow-auth-links--home a.ynow-auth-signout {",
     "  color:#0b57d0 !important; text-decoration:underline !important;",
     "  text-underline-offset:2px !important;",
     "}",
