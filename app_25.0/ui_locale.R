@@ -1071,7 +1071,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     auth_gate_lab_b1 = "HFV and Quant Backtest Lab worksheets",
     auth_gate_lab_b2 = "Fair Value replay, strategy filters, and Lab reports",
-    auth_gate_lab_b3 = "FYN spend for Lab runs (bt_run / hfv_run) when points are on",
+    auth_gate_lab_b3 = "FYN spend for Lab runs (bt_run) when points are on",
     auth_gate_lab_demo_caption = "Lab demo — what you unlock after sign-in",
     auth_gate_checklist_body = paste0(
       "Decision Checklist requires a signed-in account in Full mode. ",
@@ -4987,7 +4987,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     auth_gate_lab_b1 = "HFV 與量化回測實驗室工作區",
     auth_gate_lab_b2 = "Fair Value 重播、策略篩選與實驗室報告",
-    auth_gate_lab_b3 = "點數開啟時，實驗室執行可使用 FYN（bt_run／hfv_run）",
+    auth_gate_lab_b3 = "點數開啟時，實驗室執行可使用 FYN（bt_run）",
     auth_gate_lab_demo_caption = "實驗室示範——登入後可解鎖的功能",
     auth_gate_checklist_body = paste0(
       "完整版的決策檢核需登入帳號後才能使用。",

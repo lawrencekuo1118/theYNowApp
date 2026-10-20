@@ -8974,7 +8974,7 @@ ui <- dashboardPage(
       } else if (exists("ynow_sidebar_guest_lock_lite_css", mode = "function")) {
         tags$style(HTML(ynow_sidebar_guest_lock_lite_css()))
       },
-      # Guest-lock map (lock glyphs) + Lite omit list (FULL_ONLY_TABS / bounce on toggle)
+      # Guest-lock map (lock glyphs) + Lite omit list + membership A/B download ids
       tags$script(HTML(paste0(
         if (exists("ynow_sidebar_guest_lock_js_map", mode = "function")) {
           paste0(
@@ -8993,6 +8993,33 @@ ui <- dashboardPage(
           )
         } else {
           "window.__YNOW_LITE_OMIT_TABS = [];"
+        },
+        if (exists("ynow_gated_download_ids", mode = "function")) {
+          .ynow_dl_ids <- ynow_gated_download_ids()
+          .ynow_dl_tiers <- if (exists("ynow_membership_lock_tier", mode = "function")) {
+            stats::setNames(
+              lapply(.ynow_dl_ids, function(id) ynow_membership_lock_tier(id)),
+              .ynow_dl_ids
+            )
+          } else {
+            list()
+          }
+          paste0(
+            "window.__YNOW_GATED_DOWNLOAD_IDS = ",
+            jsonlite::toJSON(as.character(.ynow_dl_ids), auto_unbox = TRUE),
+            ";",
+            "window.__YNOW_GATED_DOWNLOAD_TIERS = ",
+            jsonlite::toJSON(.ynow_dl_tiers, auto_unbox = TRUE, null = "null"),
+            ";"
+          )
+        } else {
+          paste0(
+            "window.__YNOW_GATED_DOWNLOAD_IDS = ",
+            '["download_report","download_snapshot","download_param_restore",',
+            '"download_defaults","lab_im_download_report","bblab-export_data",',
+            '"bblab-export_chart","param_audit_pdf_go"];',
+            "window.__YNOW_GATED_DOWNLOAD_TIERS = {};"
+          )
         }
       ))),
       # Boot locale maps (slim): click-time apply so 繁中／EN do not depend on websocket timing
@@ -12699,22 +12726,27 @@ ui <- dashboardPage(
             }
           } catch (eDlIcon) {}
           /* Full guest click gate for proprietary downloads / capture exports.
+             Ids from membership_locks catalog (window.__YNOW_GATED_DOWNLOAD_IDS);
+             each has explicit A/B tier in __YNOW_GATED_DOWNLOAD_TIERS.
              Lite stays open (Download Report free). Public statement CSVs stay open. */
           document.addEventListener('click', function (ev) {
             if (!document.body) return;
             if (!document.body.classList.contains('ynow-auth-feature')) return;
             if (document.body.classList.contains('ynow-lite')) return;
             if (ynowIsAuthed()) return;
-            var sel = [
-              '#download_report',
-              '#download_snapshot',
-              '#download_param_restore',
-              '#download_defaults',
-              '#lab_im_download_report',
-              '#bblab-export_data',
-              '#bblab-export_chart',
-              '#param_audit_pdf_go'
-            ].join(',');
+            var ids = (window.__YNOW_GATED_DOWNLOAD_IDS && window.__YNOW_GATED_DOWNLOAD_IDS.length)
+              ? window.__YNOW_GATED_DOWNLOAD_IDS
+              : [
+                  'download_report',
+                  'download_snapshot',
+                  'download_param_restore',
+                  'download_defaults',
+                  'lab_im_download_report',
+                  'bblab-export_data',
+                  'bblab-export_chart',
+                  'param_audit_pdf_go'
+                ];
+            var sel = ids.map(function (id) { return '#' + id; }).join(',');
             var node = ev.target && ev.target.closest ? ev.target.closest(sel) : null;
             if (!node) return;
             try { ev.preventDefault(); } catch (ePd) {}
@@ -17718,6 +17750,7 @@ ui <- dashboardPage(
           class = "ynow-inner-tab-lock-tpl ynow-gate-callout",
           hidden = NA,
           `data-ynow-gate-feature` = "inner_lock",
+          `data-ynow-lock-scope` = "ops_acl",
           tags$p(
             class = "ynow-gate-body",
             "Sign in to open this locked tab. If you are already signed in, a system admin must clear the restriction."
@@ -17750,6 +17783,7 @@ ui <- dashboardPage(
           class = "ynow-atx-lock-tpl ynow-gate-callout",
           hidden = NA,
           `data-ynow-gate-feature` = "atx",
+          `data-ynow-lock-scope` = "ops_acl",
           tags$p(
             class = "ynow-gate-body",
             "Asset Transmission Root is locked. Sign in to open this page. If you are already signed in, a system admin must clear the restriction."
@@ -17949,6 +17983,7 @@ ui <- dashboardPage(
               id = "ynow_snapshot_defaults_locked",
               class = "ynow-snap-defaults-locked ynow-gate-callout",
               `data-ynow-gate-feature` = "snap_defaults",
+              `data-ynow-lock-scope` = "ops_sysadmin",
               tags$span(
                 id = "ynow_snapshot_defaults_locked_msg",
                 class = "ynow-gate-body",
