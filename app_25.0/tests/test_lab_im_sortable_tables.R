@@ -1,5 +1,7 @@
 # Blue Chip Leaderboard tables: clickable column headers (client-side DT sort).
-# Run: cd app_25.0/tests && Rscript test_lab_im_sortable_tables.R
+# Default: offline static asserts (UI dataTableOutput, server renderDT, helper wiring).
+# Optional env: DT widget runtime check when package DT is installed.
+# Run: cd app_25.0/tests && YNOW_DEBUG_SKIP_PY=1 Rscript test_lab_im_sortable_tables.R
 Sys.setenv(YNOW_DEBUG_SKIP_PY = "1")
 
 args <- commandArgs(trailingOnly = FALSE)
@@ -57,6 +59,7 @@ for (id in c(
   )
 }
 
+# Optional DT widget smoke — not required for default offline static path
 if (requireNamespace("DT", quietly = TRUE)) {
   owd <- getwd()
   setwd(app_dir)
@@ -75,8 +78,8 @@ if (requireNamespace("DT", quietly = TRUE)) {
   check("widget keeps incoming row order", identical(opts$order, list()))
   check("widget has sort render", !is.null(opts$columnDefs[[1]]$render))
 } else {
-  cat("NOTE: DT not installed; skipped widget check\n")
+  cat("SKIP optional DT widget check (package DT not installed)\n")
 }
 
 if (fail > 0L) quit(status = 1L)
-cat("All sortable-table checks passed.\n")
+cat("All sortable-table offline checks passed.\n")

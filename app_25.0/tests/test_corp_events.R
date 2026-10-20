@@ -1,5 +1,8 @@
 #!/usr/bin/env Rscript
-# Corp events: key-date chips, board election, CB dilution (offline unit + optional live).
+# Corp events: key-date chips, board election, CB dilution.
+# Default: offline asserts (locale, dilution math, chips UI, wiring).
+# Optional network: set YNOW_CORP_EVENTS_LIVE=1 for TWSE board/CB live smoke.
+# Run: cd app_25.0/tests && YNOW_DEBUG_SKIP_PY=1 Rscript test_corp_events.R
 Sys.setenv(YNOW_DEBUG_SKIP_PY = "1")
 
 fail <- 0L
@@ -119,7 +122,7 @@ check("py get_company_key_dates", grepl("def get_company_key_dates", py, fixed =
 check("locale tab map corp_events", grepl('"corp_events" = "tab_corp_events"', 
   paste(readLines(file.path(root, "ui_locale.R"), warn = FALSE), collapse = "\n"), fixed = TRUE))
 
-# Optional live smoke (skip if offline / blocked)
+# Optional live smoke (network) — not part of default offline path
 live <- identical(Sys.getenv("YNOW_CORP_EVENTS_LIVE"), "1")
 if (isTRUE(live)) {
   board <- tryCatch(fetch_tw_board_election("2330.TW"), error = function(e) NULL)
@@ -131,10 +134,12 @@ if (isTRUE(live)) {
   )
   check("live cb 1101 has_data", isTRUE(cb_live$has_data))
   check("live cb 1101 dilution", is.finite(cb_live$dilution_pct))
+} else {
+  message("SKIP live corp_events smoke (set YNOW_CORP_EVENTS_LIVE=1 to enable)")
 }
 
 if (fail > 0L) {
   message("FAILED: ", fail)
   quit(status = 1L)
 }
-message("All corp_events checks passed.")
+message("All corp_events offline checks passed.")

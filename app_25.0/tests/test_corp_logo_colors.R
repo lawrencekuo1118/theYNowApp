@@ -1,4 +1,7 @@
-# test_corp_logo_colors.R — offline logo → corp-name tint helpers
+# test_corp_logo_colors.R — logo → corp-name tint helpers
+# Default: offline R asserts (hex normalize/pair, UI/server wiring, source pad rules).
+# Optional env: Python fixture extract when .ynow_venv (or Pillow-ready python) is present.
+# Run: cd app_25.0/tests && YNOW_DEBUG_SKIP_PY=1 Rscript test_corp_logo_colors.R
 Sys.setenv(YNOW_DEBUG_SKIP_PY = "1")
 
 app_dir <- normalizePath("..", mustWork = TRUE)
@@ -71,13 +74,32 @@ check("pair empty stays empty", identical(
   character(0)
 ))
 
-# Python extract from fixture (no network)
-py <- file.path(app_dir, ".ynow_venv", "bin", "python")
-if (!file.exists(py)) py <- Sys.which("python3")
+# Optional Python extract (env) — not required for default offline path.
+# Prefer app venv; only use a python that can import Pillow + corp_logo_colors.
+.py_ready <- function(py_bin) {
+  if (!nzchar(py_bin) || !file.exists(py_bin)) return(FALSE)
+  .py_str <- function(x) {
+    paste0("'", gsub("\\\\", "\\\\\\\\", gsub("'", "\\\\'", x, fixed = TRUE), fixed = TRUE), "'")
+  }
+  code <- paste0(
+    "import sys; sys.path.insert(0, ", .py_str(app_dir), "); ",
+    "import PIL; import corp_logo_colors"
+  )
+  identical(as.integer(system2(py_bin, c("-c", code), stdout = FALSE, stderr = FALSE)), 0L)
+}
+.py_candidate <- function() {
+  venv_py <- file.path(app_dir, ".ynow_venv", "bin", "python")
+  for (cand in c(venv_py, Sys.which("python3"))) {
+    if (isTRUE(.py_ready(cand))) return(cand)
+  }
+  ""
+}
+py <- .py_candidate()
 fixture <- file.path(app_dir, "tests", "fixtures", "logo_red_blue.png")
 check("fixture png exists", file.exists(fixture))
+.py_ok <- nzchar(py) && file.exists(fixture)
 
-if (nzchar(py) && file.exists(fixture)) {
+if (isTRUE(.py_ok)) {
   py_script <- tempfile(fileext = ".py")
   .py_str <- function(x) {
     paste0("'", gsub("\\\\", "\\\\\\\\", gsub("'", "\\\\'", x, fixed = TRUE), fixed = TRUE), "'")
@@ -123,11 +145,11 @@ if (nzchar(py) && file.exists(fixture)) {
     }
   })
 } else {
-  cat("NOTE: skip python fixture extract (no venv python or fixture)\n")
+  cat("SKIP optional python fixture extract (need .ynow_venv or Pillow-ready python)\n")
 }
 
-# Python resolve pad rules (offline synthetic)
-if (nzchar(py)) {
+# Optional Python pad rules (offline synthetic) — same env gate
+if (isTRUE(.py_ok)) {
   py_script <- tempfile(fileext = ".py")
   .py_str <- function(x) {
     paste0("'", gsub("\\\\", "\\\\\\\\", gsub("'", "\\\\'", x, fixed = TRUE), fixed = TRUE), "'")
@@ -169,7 +191,7 @@ if (nzchar(py)) {
     length(blk_cols) == 2L && identical(blk_cols[[2]], "#FFFFFF")
   })
 } else {
-  cat("NOTE: skip python single-brand pad check\n")
+  cat("SKIP optional python single-brand pad check (need .ynow_venv or Pillow-ready python)\n")
 }
 
 # UI CSS hooks present

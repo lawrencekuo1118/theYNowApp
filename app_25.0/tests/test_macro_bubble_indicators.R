@@ -1,5 +1,7 @@
 # Macro bubble & concentration indicators (isolated from CAPM / valuation)
-# Run: cd app_25.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_macro_bubble_indicators.R
+# Default: offline asserts only (fixtures, CSV seeds, wiring, locale).
+# Optional network: set YNOW_MACRO_BUBBLE_LIVE=1 for TW DGBAS live fetch.
+# Run: cd app_25.0/tests && YNOW_DEBUG_SKIP_PY=1 Rscript test_macro_bubble_indicators.R
 
 root <- if (file.exists("macro_bubble_indicators.R")) {
   getwd()
@@ -210,18 +212,19 @@ check("TW DGBAS fetcher wired", {
     grepl("A110101010", src, fixed = TRUE) &&
     grepl("A018101010", src, fixed = TRUE)
 })
-check("TW DGBAS live fetch (network)", {
-  dg <- tryCatch(macro_bubble_fetch_buffett_dgbas(timeout_sec = 30), error = function(e) NULL)
-  if (is.null(dg)) {
-    cat("SKIP TW DGBAS live fetch (offline / unreachable)\n")
-    TRUE
-  } else {
+# Optional live smoke (network) — not part of default offline path
+live_dgbas <- identical(Sys.getenv("YNOW_MACRO_BUBBLE_LIVE"), "1")
+if (isTRUE(live_dgbas)) {
+  check("TW DGBAS live fetch (network)", {
+    dg <- tryCatch(macro_bubble_fetch_buffett_dgbas(timeout_sec = 30), error = function(e) NULL)
     is.data.frame(dg) && nrow(dg) >= 8L &&
       any(is.finite(dg$market_cap_usd)) && any(is.finite(dg$gdp_usd)) &&
       any(is.finite(dg$ratio_pct)) &&
       identical(unique(as.character(dg$source)), "dgbas")
-  }
-})
+  })
+} else {
+  cat("SKIP TW DGBAS live fetch (set YNOW_MACRO_BUBBLE_LIVE=1 to enable)\n")
+}
 check("buffett note wrapped", grepl("ynow_notes_block", bt_src, fixed = TRUE) &&
         grepl("ynow_macro_bubble_buffett_note", bt_src, fixed = TRUE))
 check("buffett KPI/plot not inside notes", {
