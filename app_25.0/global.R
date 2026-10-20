@@ -252,4 +252,7 @@ source("lab_industry_method.R", local = TRUE, encoding = "UTF-8")
 source("lab_clustering.R", local = TRUE, encoding = "UTF-8")
 source("async_jobs.R", local = TRUE, encoding = "UTF-8")
 tryCatch(.ynow_async_init(), error = function(e) NULL)
-# debug_lab.R is not sourced here; set YNOW_DEBUG=1 and source it locally if needed.
+# Quarantine (C-DEAD-02): debug_lab.R is local-only — not sourced by global.R / app.R,
+# and excluded from shinyapps deploy via .rscignore. Keep for interactive probes:
+#   Sys.setenv(YNOW_DEBUG = "1"); source("debug_lab.R")
+# Do not delete without confirming no human local workflow.

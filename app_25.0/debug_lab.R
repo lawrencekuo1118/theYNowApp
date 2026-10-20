@@ -1,7 +1,10 @@
 # ==========================================
-# debug_lab.R — local probes only (NOT sourced by global.R / app.R)
+# debug_lab.R — local probes only (quarantined; keep, do not ship)
 # ==========================================
-# Usage (interactive):
+# Not sourced by global.R / app.R. Listed in .rscignore so shinyapps
+# deploy omits it. Intentionally kept for human interactive workflows.
+#
+# Usage (interactive, from app_25.0/):
 #   Sys.setenv(YNOW_DEBUG = "1")
 #   source("backtest_module.R"); source("backtest_validation.R")
 #   source("debug_lab.R")

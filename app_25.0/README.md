@@ -87,6 +87,10 @@
 
 先分類，再選模型；先推導，再校正；先給區間，再給單點；先做基本面估值。
 
+## Local-only files
+
+- **`debug_lab.R`** — interactive valuation / backtest probes only. Not sourced by `global.R` / `app.R`; listed in `.rscignore` (excluded from shinyapps deploy). Keep for local `YNOW_DEBUG=1` workflows; do not delete without confirming no human use.
+
 ## v17.87 重點
 - **YNOW 決策漏斗**：改為報告式版面（結論分數卡 → F-Score 檢核 → 財報警訊 → 收合附錄），與 HFV 相同閱讀動線
 - **目錄**：`app_17.0/`；顯示版號 **v17.87**
