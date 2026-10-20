@@ -393,7 +393,7 @@ keys <- c(
   "auth_msg_oauth_failed", "auth_msg_oauth_state",
   "auth_msg_oauth_no_email", "auth_msg_register_soon", "auth_msg_register_ok",
   "auth_msg_register_failed", "auth_msg_email_taken", "auth_msg_password_short",
-  "auth_msg_disabled_account", "auth_about_neon",
+  "auth_msg_disabled_account", "auth_about_postgres",
   "auth_msg_forgot_soon", "auth_msg_resend_soon", "auth_about_note",
   "menu_admin", "auth_admin_title", "auth_admin_intro",
   "auth_delete_account", "auth_delete_modal_title", "auth_delete_modal_warn",
@@ -627,10 +627,11 @@ check("register without DB says soon", {
   r <- ynow_auth_try_register("a@b.com", "password123")
   isFALSE(r$ok) && identical(r$message_key, "auth_msg_register_soon")
 })
-check("UI About mentions Neon Free as example provider", {
-  grepl("Neon Free", ui, fixed = TRUE) &&
+check("UI About mentions Supabase Postgres store", {
+  grepl("Supabase Postgres", ui, fixed = TRUE) &&
     grepl("YNOW_DB_", ui, fixed = TRUE) &&
-    grepl("Supabase", ui, fixed = TRUE)
+    grepl("Supabase pooler", ui, fixed = TRUE) &&
+    !grepl("Neon Free", ui, fixed = TRUE)
 })
 check("no debug probe instrumentation in auth_db", {
   db_txt <- paste(readLines(src_db, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
