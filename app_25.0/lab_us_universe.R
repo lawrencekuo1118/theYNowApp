@@ -30,29 +30,17 @@ lab_empty_us <- function() {
   )
 }
 
+#' Thin wrapper → canonical `.lab_http_download` (curl fallback + SEC contact UA).
+#' Requires `lab_sp500_universe.R` sourced first (lab_industry_method / tests do).
 .lab_us_http_download <- function(url, dest, timeout_sec = 60) {
-  old <- getOption("timeout")
-  on.exit(options(timeout = old), add = TRUE)
-  options(timeout = max(12L, as.integer(timeout_sec)[1]))
-  ua <- "theYNowApp/17.0 (lab US universe; lawrencekuo1118@gmail.com)"
-  ok <- tryCatch({
-    utils::download.file(
-      url, destfile = dest, quiet = TRUE, mode = "wb",
-      headers = c("User-Agent" = ua)
-    )
-    TRUE
-  }, error = function(e) FALSE)
-  if (!isTRUE(ok) || !file.exists(dest) || isTRUE(file.info(dest)$size < 80)) {
-    ok <- tryCatch({
-      status <- system2(
-        "curl",
-        c("-fsSL", "-A", ua, "-o", dest, "--max-time", as.character(as.integer(timeout_sec)[1]), url),
-        stdout = FALSE, stderr = FALSE
-      )
-      identical(as.integer(status)[1], 0L)
-    }, error = function(e) FALSE)
+  if (!exists(".lab_http_download", mode = "function")) {
+    stop(".lab_us_http_download requires .lab_http_download (source lab_sp500_universe.R first)")
   }
-  isTRUE(ok) && file.exists(dest) && isTRUE(file.info(dest)$size > 80)
+  .lab_http_download(
+    url, dest, timeout_sec,
+    user_agent = "theYNowApp/17.0 (lab US universe; lawrencekuo1118@gmail.com)",
+    curl_fallback = TRUE
+  )
 }
 
 lab_us_cache_paths <- function() {
