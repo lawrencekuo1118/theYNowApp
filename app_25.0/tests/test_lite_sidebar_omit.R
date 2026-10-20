@@ -40,25 +40,30 @@ check(
   all(guest %in% omit)
 )
 check(
-  "omit includes Full-only models + company_advance",
+  "omit includes Full-only models + company_advance + ATX",
   all(c("get_started", "dcf_calculator", "ddm_calculator", "ri_calculator",
-        "hfv", "company_advance", "sotp_calculator") %in% omit)
+        "hfv", "company_advance", "sotp_calculator", "asset_transmission") %in% omit)
 )
 check(
   "omit includes Account workspace",
   all(c("account_admin", "account_points") %in% omit)
 )
 check(
+  "omit includes Asset Transmission Root",
+  "asset_transmission" %in% omit && "asset_transmission" %in% full_only
+)
+check(
   "omit does not include free Lite core tabs",
   !any(c("home", "smart_analysis", "macro_market", "bluechip", "dashboard",
-         "sensitivity", "asset_transmission", "about") %in% omit)
+         "sensitivity", "about") %in% omit)
 )
 check(
   "omit does not include Snapshot page (foot stays free)",
   !"snapshot" %in% omit
 )
 
-for (t in c("lab_notes", "price_alerts", "ddm_calculator", "ri_calculator", "get_started")) {
+for (t in c("lab_notes", "price_alerts", "ddm_calculator", "ri_calculator",
+            "get_started", "asset_transmission")) {
   check(
     paste0("Lite CSS hides ", t),
     grepl(sprintf('data-value="%s"', t), css, fixed = TRUE)

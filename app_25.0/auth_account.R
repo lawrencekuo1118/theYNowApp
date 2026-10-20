@@ -32,6 +32,7 @@ ynow_sidebar_guest_lock_tabs <- function() {
 
 #' Full-only model / advance sidebar tabs (unlocked on Full, omitted in Lite).
 #' Not guest-locked; still must not appear in the Lite sidebar.
+#' Includes Asset Transmission Root (`asset_transmission`) — Full only.
 ynow_sidebar_full_only_tabs <- function() {
   c(
     "get_started",
@@ -40,7 +41,8 @@ ynow_sidebar_full_only_tabs <- function() {
     "rel_mult_ev", "rel_multiples_calculator", "rel_mult_rev",
     "sotp_calculator",
     "hfv",
-    "company_advance"
+    "company_advance",
+    "asset_transmission"
   )
 }
 
@@ -85,7 +87,7 @@ ynow_sidebar_lite_omit_css <- function() {
   if (!length(tabs)) return("/* no Lite-omitted sidebar tabs */\n")
   sels <- unique(unlist(lapply(tabs, .ynow_sidebar_lite_omit_selectors), use.names = FALSE))
   paste0(
-    "/* Lite sidebar omit (ynow_sidebar_lite_omit_tabs): guest-locked + Full-only + Account. */\n",
+    "/* Lite sidebar omit (ynow_sidebar_lite_omit_tabs): guest-locked + Full-only (incl. ATX) + Account. */\n",
     paste(sels, collapse = ",\n"),
     " {\n  display: none !important;\n}\n"
   )

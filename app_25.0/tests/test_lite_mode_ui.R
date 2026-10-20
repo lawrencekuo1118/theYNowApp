@@ -429,7 +429,7 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   ))
   testthat::expect_true(grepl('screener_panel_ui\\(embed = "bluechip"\\)', txt, perl = TRUE))
   testthat::expect_false(grepl("screener_panel_ui\\(\\)", txt, perl = TRUE))
-  testthat::expect_true(grepl("The YNow App v25.79", txt, fixed = TRUE))
+  testthat::expect_true(grepl("The YNow App v25.80", txt, fixed = TRUE))
   testthat::expect_true(grepl('title = "The YNow App"', txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-hfv-report", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-hfv-toolbar", txt, fixed = TRUE))
@@ -581,14 +581,11 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(grepl("ynow-sidebar-snapshot-foot-links", txt, fixed = TRUE))
   testthat::expect_true(grepl("remapLegacyTab", txt, fixed = TRUE))
   testthat::expect_true(grepl("return 'company_advance'", txt, fixed = TRUE))
-  # Asset transmission is a first-class sidebar tab (Lite + Full); Testing stays Full-only sandbox
+  # Asset transmission is Full-only (Lite omits via ynow_sidebar_lite_omit_tabs)
   testthat::expect_true(grepl('uiOutput("ynow_lazy_host_asset_transmission")', txt, fixed = TRUE))
   testthat::expect_true(grepl('uiOutput("ynow_lazy_host_testing")', txt, fixed = TRUE))
-  testthat::expect_false(grepl(
-    "body\\.ynow-lite[\\s\\S]*data-value=\"asset_transmission\"[\\s\\S]*display:\\s*none",
-    txt,
-    perl = TRUE
-  ))
+  testthat::expect_true(grepl("__YNOW_LITE_OMIT_TABS", txt, fixed = TRUE))
+  testthat::expect_true(grepl("asset_transmission", txt, fixed = TRUE))
   testthat::expect_true(grepl(
     'tabItem\\(\\s*tabName = "company_advance"[\\s\\S]*business_breakdown_lab_ui\\(\"bblab\"\\)',
     txt,
