@@ -53,7 +53,7 @@ knitr::opts_knit$set(global.par = TRUE)
 options(scipen = 20, digits = 4, width = 90)
 
 # 📚 套件安裝與載入 --------------------------------------------------------
-# Ensure Neon / async packages are present for rsconnect snapshots + runtime.
+# Ensure Postgres account-store / async packages are present for rsconnect snapshots + runtime.
 if (file.exists("ynow_forced_deps.R")) {
   tryCatch(
     source("ynow_forced_deps.R", local = FALSE, encoding = "UTF-8"),
@@ -83,7 +83,7 @@ pacman::p_load(
   # 5. 效能優化與快取 (Performance & Cache)
   memoise, cachem, TTR, httr2, digest,
 
-  # 5b. Neon account store (Postgres) + password hashing
+  # 5b. Supabase Postgres account store + password hashing
   DBI, RPostgres, pool, sodium, openssl,
 
   # 6. 非阻塞並行任務 (ExtendedTask / future_promise — ≥2 features concurrent)
@@ -227,7 +227,7 @@ source("user_prefs.R", local = TRUE, encoding = "UTF-8")
 source("access_locks.R", local = TRUE, encoding = "UTF-8")
 source("market_cache.R", local = TRUE, encoding = "UTF-8")
 source("news_sentiment.R", local = TRUE, encoding = "UTF-8")
-# Ensure Neon schema + optional seed admin when DB env is present (best-effort).
+# Ensure Postgres schema + optional seed admin when DB env is present (best-effort).
 if (exists("ynow_db_ready", mode = "function") && isTRUE(ynow_db_ready())) {
   tryCatch({
     ynow_db_ensure_schema()
@@ -244,7 +244,7 @@ if (exists("ynow_db_ready", mode = "function") && isTRUE(ynow_db_ready())) {
       ynow_db_seed_admin_from_env()
     }
   }, error = function(e) {
-    warning("Neon auth bootstrap: ", conditionMessage(e), call. = FALSE)
+    warning("Postgres auth bootstrap: ", conditionMessage(e), call. = FALSE)
   })
 }
 source("corp_events.R", local = TRUE, encoding = "UTF-8")

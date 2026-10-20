@@ -351,7 +351,7 @@ check("server distinguishes no-db empty state", {
     !grepl("ynow_pts_sysadmin_db_diag", srv, fixed = TRUE) &&
     !grepl("ynow_db_debug_log_probe", srv, fixed = TRUE)
 })
-check("forced deps file sources Neon packages", {
+check("forced deps file sources Postgres packages", {
   deps <- paste(readLines(file.path(app_dir, "ynow_forced_deps.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   grepl("library(RPostgres)", deps, fixed = TRUE) &&
     grepl("library(pool)", deps, fixed = TRUE) &&
@@ -397,7 +397,7 @@ check("ynow_db_with checkouts connection not pool", {
     grepl(".ynow_db_with_stack", db, fixed = TRUE) &&
     grepl("Nested first — reuse outer connection", db, fixed = TRUE)
 })
-check("neon_apply keeps dbWithTransaction on checked-out con", {
+check("pg_apply keeps dbWithTransaction on checked-out con", {
   pts <- paste(readLines(file.path(app_dir, "points_wallet.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   grepl("DBI::dbWithTransaction(con", pts, fixed = TRUE) &&
     grepl("Same connection — avoid nested checkout", pts, fixed = TRUE)

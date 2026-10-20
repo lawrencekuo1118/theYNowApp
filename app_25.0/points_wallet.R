@@ -1,13 +1,13 @@
 # ==========================================
 # Points wallet — FYN (free) + PYN (paid)
 # ==========================================
-# Freemium usage points on Neon (ledger = source of truth).
+# Freemium usage points on Supabase Postgres (ledger = source of truth).
 # Env:
 #   YNOW_POINTS_ENABLED=0|1   (default 0 — shadow/off; gate always allows)
 #   YNOW_POINTS_SIGNUP_BONUS  (default 100 FYN — first registration / first-login gift, once)
 #   YNOW_POINTS_DAILY_CHECKIN (default 30 FYN — once per Asia/Taipei calendar day)
 #   YNOW_POINTS_PRICE_ALERT_SLOT / HFV_RUN / BT_RUN  (optional overrides)
-#   YNOW_POINTS_BACKEND=memory  (tests / no Neon)
+#   YNOW_POINTS_BACKEND=memory  (tests / no Postgres account store)
 #
 # SKUs (membership lock catalog tier B): alert_slot=1, bt_run=5, pdf_report=10 — spent from FYN.
 # Retired: hfv_run (never wired to ynow_points_gate; see ynow_non_membership_lock_catalog).
@@ -72,7 +72,7 @@ ynow_points_uses_db <- function() {
   identical(ynow_points_backend(), "postgres")
 }
 
-#' UI label for Testing admin: memory | supabase | neon | postgres (no secrets).
+#' UI label for Testing admin: memory | supabase | neon | postgres via host_kind (no secrets).
 ynow_points_backend_label <- function() {
   if (!isTRUE(ynow_points_uses_db())) return("memory")
   if (exists("ynow_db_host_kind", mode = "function")) {
@@ -359,9 +359,9 @@ ynow_points_mem_register_profile <- function(user_id, role = "user", disabled = 
   do.call(rbind, rows)
 }
 
-# ----- Neon schema helpers -----
+# ----- Postgres schema helpers -----
 
-.ynow_points_neon_has_column <- function(con, table, column) {
+.ynow_points_pg_has_column <- function(con, table, column) {
   df <- tryCatch(
     DBI::dbGetQuery(
       con,
@@ -374,7 +374,7 @@ ynow_points_mem_register_profile <- function(user_id, role = "user", disabled = 
   is.data.frame(df) && nrow(df) >= 1L
 }
 
-.ynow_points_neon_add_column <- function(con, sql_if, sql_plain) {
+.ynow_points_pg_add_column <- function(con, sql_if, sql_plain) {
   tryCatch(
     DBI::dbExecute(con, sql_if),
     error = function(e) {
@@ -386,23 +386,23 @@ ynow_points_mem_register_profile <- function(user_id, role = "user", disabled = 
 ynow_points_ensure_schema <- function(conn = NULL) {
   run <- function(con) {
     # Dual wallet columns
-    if (!.ynow_points_neon_has_column(con, "ynow_users", "fyn_balance")) {
-      .ynow_points_neon_add_column(
+    if (!.ynow_points_pg_has_column(con, "ynow_users", "fyn_balance")) {
+      .ynow_points_pg_add_column(
         con,
         "ALTER TABLE ynow_users ADD COLUMN IF NOT EXISTS fyn_balance INTEGER NOT NULL DEFAULT 0",
         "ALTER TABLE ynow_users ADD COLUMN fyn_balance INTEGER NOT NULL DEFAULT 0"
       )
     }
-    if (!.ynow_points_neon_has_column(con, "ynow_users", "pyn_balance")) {
-      .ynow_points_neon_add_column(
+    if (!.ynow_points_pg_has_column(con, "ynow_users", "pyn_balance")) {
+      .ynow_points_pg_add_column(
         con,
         "ALTER TABLE ynow_users ADD COLUMN IF NOT EXISTS pyn_balance INTEGER NOT NULL DEFAULT 0",
         "ALTER TABLE ynow_users ADD COLUMN pyn_balance INTEGER NOT NULL DEFAULT 0"
       )
     }
     # Keep legacy column for older readers; migrate into FYN once.
-    if (!.ynow_points_neon_has_column(con, "ynow_users", "points_balance")) {
-      .ynow_points_neon_add_column(
+    if (!.ynow_points_pg_has_column(con, "ynow_users", "points_balance")) {
+      .ynow_points_pg_add_column(
         con,
         "ALTER TABLE ynow_users ADD COLUMN IF NOT EXISTS points_balance INTEGER NOT NULL DEFAULT 0",
         "ALTER TABLE ynow_users ADD COLUMN points_balance INTEGER NOT NULL DEFAULT 0"
@@ -444,8 +444,8 @@ ynow_points_ensure_schema <- function(conn = NULL) {
         UNIQUE (user_id, ref_id)
       )
     ")
-    if (!.ynow_points_neon_has_column(con, "ynow_points_ledger", "wallet")) {
-      .ynow_points_neon_add_column(
+    if (!.ynow_points_pg_has_column(con, "ynow_points_ledger", "wallet")) {
+      .ynow_points_pg_add_column(
         con,
         "ALTER TABLE ynow_points_ledger ADD COLUMN IF NOT EXISTS wallet TEXT NOT NULL DEFAULT 'fyn'",
         "ALTER TABLE ynow_points_ledger ADD COLUMN wallet TEXT NOT NULL DEFAULT 'fyn'"
@@ -521,7 +521,7 @@ ynow_points_ensure_schema <- function(conn = NULL) {
   isTRUE(out)
 }
 
-.ynow_points_neon_balances <- function(user_id) {
+.ynow_points_pg_balances <- function(user_id) {
   uid <- as.character(user_id %||% "")[1]
   if (!nzchar(uid)) return(list(fyn = NA_integer_, pyn = NA_integer_))
   ynow_db_with(function(con) {
@@ -539,13 +539,13 @@ ynow_points_ensure_schema <- function(conn = NULL) {
   }) %||% list(fyn = NA_integer_, pyn = NA_integer_)
 }
 
-.ynow_points_neon_balance <- function(user_id, wallet = "fyn") {
-  bals <- .ynow_points_neon_balances(user_id)
+.ynow_points_pg_balance <- function(user_id, wallet = "fyn") {
+  bals <- .ynow_points_pg_balances(user_id)
   w <- ynow_points_norm_wallet(wallet)
   as.integer(bals[[w]] %||% NA_integer_)
 }
 
-.ynow_points_neon_apply <- function(user_id, delta, reason, sku = NULL, ref_id = NULL,
+.ynow_points_pg_apply <- function(user_id, delta, reason, sku = NULL, ref_id = NULL,
                                     meta = NULL, wallet = "fyn") {
   uid <- as.character(user_id %||% "")[1]
   ref <- as.character(ref_id %||% "")[1]
@@ -654,7 +654,7 @@ ynow_points_ensure_schema <- function(conn = NULL) {
                 message_key = "pts_msg_backend")
 }
 
-.ynow_points_neon_ledger_empty <- function() {
+.ynow_points_pg_ledger_empty <- function() {
   data.frame(
     id = character(), created_at = character(), delta = integer(),
     balance_after = integer(), wallet = character(), reason = character(),
@@ -663,9 +663,9 @@ ynow_points_ensure_schema <- function(conn = NULL) {
   )
 }
 
-.ynow_points_neon_ledger_tail <- function(user_id, n = NULL) {
+.ynow_points_pg_ledger_tail <- function(user_id, n = NULL) {
   uid <- as.character(user_id %||% "")[1]
-  if (!nzchar(uid)) return(.ynow_points_neon_ledger_empty())
+  if (!nzchar(uid)) return(.ynow_points_pg_ledger_empty())
   lim <- suppressWarnings(as.integer(n)[1])
   ynow_db_with(function(con) {
     ynow_points_ensure_schema(con)
@@ -684,10 +684,10 @@ ynow_points_ensure_schema <- function(conn = NULL) {
     } else {
       DBI::dbGetQuery(con, sql, params = list(uid))
     }
-  }) %||% .ynow_points_neon_ledger_empty()
+  }) %||% .ynow_points_pg_ledger_empty()
 }
 
-.ynow_points_neon_list_users <- function() {
+.ynow_points_pg_list_users <- function() {
   ynow_db_with(function(con) {
     ynow_points_ensure_schema(con)
     df <- DBI::dbGetQuery(
@@ -724,7 +724,7 @@ ynow_points_ensure_schema <- function(conn = NULL) {
 #' Dual balances: list(fyn=, pyn=).
 ynow_points_balances <- function(user_id) {
   if (ynow_points_uses_db()) {
-    return(.ynow_points_neon_balances(user_id))
+    return(.ynow_points_pg_balances(user_id))
   }
   .ynow_points_mem_balances(user_id)
 }
@@ -732,7 +732,7 @@ ynow_points_balances <- function(user_id) {
 #' FYN balance (spendable free points). Alias of balances$fyn for gate/spend.
 ynow_points_balance <- function(user_id, wallet = "fyn") {
   if (ynow_points_uses_db()) {
-    return(.ynow_points_neon_balance(user_id, wallet = wallet))
+    return(.ynow_points_pg_balance(user_id, wallet = wallet))
   }
   .ynow_points_mem_balance(user_id, wallet = wallet)
 }
@@ -765,7 +765,7 @@ ynow_points_credit <- function(user_id, delta, reason = "adjust", ref_id = NULL,
     ))
   }
   if (ynow_points_uses_db()) {
-    return(.ynow_points_neon_apply(user_id, dlt, reason, sku = sku,
+    return(.ynow_points_pg_apply(user_id, dlt, reason, sku = sku,
                                    ref_id = ref_id, meta = meta, wallet = w))
   }
   .ynow_points_mem_apply(user_id, dlt, reason, sku = sku, ref_id = ref_id,
@@ -883,7 +883,7 @@ ynow_points_try_spend <- function(user_id, sku, ref_id, meta = NULL) {
 #' Ledger rows for one user (newest first).
 ynow_points_ledger_tail <- function(user_id, n = NULL) {
   if (ynow_points_uses_db()) {
-    return(.ynow_points_neon_ledger_tail(user_id, n = n))
+    return(.ynow_points_pg_ledger_tail(user_id, n = n))
   }
   .ynow_points_mem_ledger_tail(user_id, n = n)
 }
@@ -895,7 +895,7 @@ ynow_points_ledger_all <- function(user_id) {
 #' De-identified user list for system-admin portal.
 ynow_points_admin_list_users <- function() {
   if (ynow_points_uses_db()) {
-    return(.ynow_points_neon_list_users())
+    return(.ynow_points_pg_list_users())
   }
   .ynow_points_mem_list_users()
 }

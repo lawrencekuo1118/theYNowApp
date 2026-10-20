@@ -839,15 +839,15 @@ locale_for_market <- function(mode = get_market_mode()) {
     auth_msg_disabled_account = "This account is disabled.",
     auth_msg_forgot_soon = "Password reset is not available yet.",
     auth_msg_resend_soon = "Verification email resend is not available yet.",
-    auth_about_neon = paste0(
-      "Account store: Postgres via YNOW_DB_* (own users table; e.g. Neon Free or Supabase pooler). ",
+    auth_about_postgres = paste0(
+      "Account store: Supabase Postgres via YNOW_DB_* (own users table; e.g. Supabase pooler). ",
       "Google / Facebook / LinkedIn / Email self-register into the same table (role=user); ",
       "no admin whitelist for ordinary users."
     ),
     auth_about_note = paste0(
       "Account sign-in is on by default (set YNOW_ENABLE_ACCOUNT_LOGIN=0 to disable). ",
       "Anyone may self-register with Google, Facebook, LinkedIn, or Email — no per-user admin approval. ",
-      "Account store: Postgres via YNOW_DB_* (own users table; e.g. Neon Free or Supabase pooler). ",
+      "Account store: Supabase Postgres via YNOW_DB_* (own users table; e.g. Supabase pooler). ",
       "Full mode requires sign-in for Quantitative Backtest Lab, Decision Checklist, and Value Alerts; email notify defaults to the registered mailbox. ",
       "Lite mode stays fully usable without an account."
     ),
@@ -930,7 +930,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     pts_msg_ok = "OK",
     pts_msg_insufficient = "Not enough FYN points.",
     pts_msg_insufficient_fmt = "Not enough FYN points (need %s for %s; FYN balance %s). Ask an admin to add points.",
-    pts_msg_no_user = "Points require a signed-in account stored in Neon.",
+    pts_msg_no_user = "Points require a signed-in account stored in Postgres.",
     pts_msg_bad_ref = "Missing points reference id.",
     pts_msg_bad_delta = "Invalid points amount.",
     pts_msg_unknown_sku = "Unknown points SKU.",
@@ -1049,7 +1049,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     pts_sysadmin_bad_user = "Select a user from the list.",
     pts_sysadmin_bad_delta = "Enter a non-zero whole-number change for FYN and/or PYN.",
     pts_sysadmin_empty = "No users in the database yet.",
-    pts_sysadmin_no_neon = paste0(
+    pts_sysadmin_no_postgres = paste0(
       "Account database is not configured on this deployment (set YNOW_DB_* in .Renviron, then redeploy). ",
       "The user list and FYN/PYN balances live in the account Postgres store — not in ephemeral app memory."
     ),
@@ -4766,15 +4766,15 @@ locale_for_market <- function(mode = get_market_mode()) {
     auth_msg_disabled_account = "此帳號已停用。",
     auth_msg_forgot_soon = "密碼重設尚未開放。",
     auth_msg_resend_soon = "認證信重寄尚未開放。",
-    auth_about_neon = paste0(
-      "帳號資料庫：經 YNOW_DB_* 的 Postgres（自管 users 表；例如 Neon Free 或 Supabase pooler）。",
+    auth_about_postgres = paste0(
+      "帳號資料庫：經 YNOW_DB_* 的 Supabase Postgres（自管 users 表；例如 Supabase pooler）。",
       "Google／Facebook／LinkedIn／Email 皆可自助註冊寫入同一表（role=user），",
       "一般使用者無需後台白名單。"
     ),
     auth_about_note = paste0(
       "帳號登入預設啟用（設 YNOW_ENABLE_ACCOUNT_LOGIN=0 可關閉）。",
       "一般使用者可用 Google、Facebook、LinkedIn 或 Email 自行註冊，無需逐一後台開權限。",
-      "帳號表：經 YNOW_DB_* 的 Postgres（自管 users；例如 Neon Free 或 Supabase pooler）。",
+      "帳號表：經 YNOW_DB_* 的 Supabase Postgres（自管 users；例如 Supabase pooler）。",
       "完整版的量化回測實驗室、決策檢核、到值通知需登入；寄信預設註冊信箱。",
       "Lite 版無需帳號即可完整使用。"
     ),
@@ -4855,7 +4855,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     pts_msg_ok = "完成",
     pts_msg_insufficient = "FYN 點數不足。",
     pts_msg_insufficient_fmt = "FYN 點數不足（需 %s 點用於 %s；目前 FYN 餘額 %s）。請聯絡管理員加點。",
-    pts_msg_no_user = "點數功能需要已儲存在 Neon 的登入帳號。",
+    pts_msg_no_user = "點數功能需要已儲存在 Postgres 的登入帳號。",
     pts_msg_bad_ref = "缺少點數參考編號。",
     pts_msg_bad_delta = "點數數量無效。",
     pts_msg_unknown_sku = "未知的點數 SKU。",
@@ -4974,7 +4974,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     pts_sysadmin_bad_user = "請從清單選擇使用者。",
     pts_sysadmin_bad_delta = "請輸入非零整數，調整 FYN 與／或 PYN。",
     pts_sysadmin_empty = "資料庫尚無使用者。",
-    pts_sysadmin_no_neon = paste0(
+    pts_sysadmin_no_postgres = paste0(
       "此部署尚未設定帳號資料庫（請在 .Renviron 設定 YNOW_DB_* 後重新部署）。",
       "使用者清單與 FYN／PYN 餘額存在帳號 Postgres，不會寫入應用程式暫存記憶體。"
     ),

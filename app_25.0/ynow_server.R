@@ -1375,7 +1375,7 @@ server <- function(input, output, session) {
         .lab(
           "pts_sysadmin_no_db",
           .lab(
-            "pts_sysadmin_no_neon",
+            "pts_sysadmin_no_postgres",
             "Account database is not configured on this deployment (missing YNOW_DB_* / YNOW_DATABASE_URL, or RPostgres/pool not installed). Testing admin reads the same ynow_users table as sign-in — without it the list stays empty."
           )
         )
@@ -1748,7 +1748,7 @@ server <- function(input, output, session) {
     )
   }, ignoreInit = TRUE)
 
-  # Admin-only: credit points to a Neon user by email.
+  # Admin-only: credit points to a Postgres account user by email.
   observeEvent(input$ynow_pts_admin_submit, {
     loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
     .pts_lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
