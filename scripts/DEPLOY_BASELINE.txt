@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12715846
+bundleId=12716154
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=1497495ac54438cb07e9e36cc20790e2e6846f23
-commit=1497495ac54438cb07e9e36cc20790e2e6846f23
-short=1497495a
-message=chore: bump display version to v25.87
-captured_at=2026-10-20T15:04:34Z
+aligned_git=66cd9a7a783a38c2408fb92709b588086fbe9091
+commit=66cd9a7a783a38c2408fb92709b588086fbe9091
+short=66cd9a7a
+message=chore: bump display version to v25.88
+captured_at=2026-10-20T16:04:51Z
 display_version=v25.88
-note=Canonical live line is app_25.0. Bundle 12715846: injected YNOW_SUPABASE_SERVICE_ROLE into gitignored app/.Renviron (with existing URL/anon) so Auth delete can purge Supabase IdP. JWT role=service_role ref=jxetwzrsnxhuuvrjhfdx. No secret values in git.
+note=Canonical live line is app_25.0. Bundle 12716154: ship master tip after #335 Neon→Postgres UI/helper rename (+ cleanup PRs #331–#334 already on tip). Secrets only in gitignored .Renviron restored from prior live bundle; no secret values in git.
