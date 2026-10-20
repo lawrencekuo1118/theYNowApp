@@ -452,6 +452,13 @@ check("zh Email 登入 submit", grepl("Email 登入", ui_str("auth_submit", "zh-
 
 ui <- paste(readLines(src_ui, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 srv <- paste(readLines(src_srv, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+# C-STRUCT-02: About bilingual copy lives in ynow_about_ui.R (sourced by facade).
+src_about <- file.path(app_dir, "ynow_about_ui.R")
+ui_about <- if (file.exists(src_about)) {
+  paste(c(ui, readLines(src_about, warn = FALSE, encoding = "UTF-8")), collapse = "\n")
+} else {
+  ui
+}
 check("UI mounts auth sidebar helper", grepl("ynow_auth_links_ui", ui, fixed = TRUE) ||
         grepl("ynow_auth_header_ui", ui, fixed = TRUE))
 check("UI mounts auth modal helper", grepl("ynow_auth_modal_ui", ui, fixed = TRUE))
@@ -462,8 +469,8 @@ check("UI mounts auth on sidebar date + home legal", {
     grepl("ynow-home-legal-links", ui, fixed = TRUE) &&
     !grepl("ynow-lang-col", ui, fixed = TRUE)
 })
-check("UI About mentions account sign-in", grepl("Account sign-in", ui, fixed = TRUE) &&
-        grepl("帳號登入", ui, fixed = TRUE))
+check("UI About mentions account sign-in", grepl("Account sign-in", ui_about, fixed = TRUE) &&
+        grepl("帳號登入", ui_about, fixed = TRUE))
 check("UI wires ynowAuthState handler", grepl("ynowAuthState", ui, fixed = TRUE))
 check("Sys. Admin foot link hidden when signed in", {
   grepl("body.ynow-authed .ynow-sidebar-snapshot-foot #ynow_sidebar_test_btn", ui, fixed = TRUE) &&
@@ -628,10 +635,10 @@ check("register without DB says soon", {
   isFALSE(r$ok) && identical(r$message_key, "auth_msg_register_soon")
 })
 check("UI About mentions Supabase Postgres store", {
-  grepl("Supabase Postgres", ui, fixed = TRUE) &&
-    grepl("YNOW_DB_", ui, fixed = TRUE) &&
-    grepl("Supabase pooler", ui, fixed = TRUE) &&
-    !grepl("Neon Free", ui, fixed = TRUE)
+  grepl("Supabase Postgres", ui_about, fixed = TRUE) &&
+    grepl("YNOW_DB_", ui_about, fixed = TRUE) &&
+    grepl("Supabase pooler", ui_about, fixed = TRUE) &&
+    !grepl("Neon Free", ui_about, fixed = TRUE)
 })
 check("no debug probe instrumentation in auth_db", {
   db_txt <- paste(readLines(src_db, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
@@ -869,8 +876,8 @@ check("locale says self-serve no admin", {
   grepl("no admin permission", ui_str("auth_modal_help", "en"), fixed = TRUE) &&
     grepl("無需後台開權限", ui_str("auth_modal_help", "zh-TW"), fixed = TRUE)
 })
-check("UI About Lite no account", grepl("Lite never requires an account", ui, fixed = TRUE) &&
-        grepl("Lite 版無需帳號即可完整使用", ui, fixed = TRUE))
+check("UI About Lite no account", grepl("Lite never requires an account", ui_about, fixed = TRUE) &&
+        grepl("Lite 版無需帳號即可完整使用", ui_about, fixed = TRUE))
 auth_src <- paste(readLines(src_auth, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check("auth link classes for sidebar + home", grepl("ynow-auth-links--sidebar", auth_src, fixed = TRUE) &&
         grepl("ynow-auth-links--home", auth_src, fixed = TRUE) &&

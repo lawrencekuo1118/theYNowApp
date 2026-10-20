@@ -37,10 +37,17 @@ writeLines("# fixture", file.path(tmp, "app_25.0", "app.R"))
 writeLines(
   c(
     "title The YNow App v17.94",
+    'source("ynow_about_ui.R", local = TRUE, encoding = "UTF-8")'
+  ),
+  file.path(tmp, "app_25.0", "ynow_ui.R")
+)
+# C-STRUCT-02: About copy (vN.xx) lives in sibling; bump must rewrite it too.
+writeLines(
+  c(
     "about The YNow App (v17.94) stays",
     "lite The YNow App Lite (v17.94) stays"
   ),
-  file.path(tmp, "app_25.0", "ynow_ui.R")
+  file.path(tmp, "app_25.0", "ynow_about_ui.R")
 )
 writeLines(
   c("---", "  app_version: \"v17.94\"", "---"),
@@ -96,6 +103,11 @@ out <- ynow_prepare_deploy_version(tmp, commit = TRUE)
 check("prepare bumps once", isTRUE(out$bumped) && identical(out$version, "v17.95"))
 ui <- paste(readLines(file.path(tmp, "app_25.0", "ynow_ui.R")), collapse = "\n")
 check("ui rewritten", grepl("v17.95", ui, fixed = TRUE) && !grepl("v17.94", ui, fixed = TRUE))
+about <- paste(readLines(file.path(tmp, "app_25.0", "ynow_about_ui.R")), collapse = "\n")
+check(
+  "about sibling rewritten",
+  grepl("v17.95", about, fixed = TRUE) && !grepl("v17.94", about, fixed = TRUE)
+)
 readme <- readLines(file.path(tmp, "app_25.0", "README.md"))
 check("readme title bumped", grepl("v17.95", readme[[1]], fixed = TRUE))
 check("readme history kept", grepl("v17.94", readme[[3]], fixed = TRUE) && grepl("v17.94", readme[[4]], fixed = TRUE))
