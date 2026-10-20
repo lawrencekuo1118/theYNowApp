@@ -4,18 +4,14 @@ name: ITGC Audit (Phases 2–4)
 on:
   push:
     paths:
-      - "app_25.0/tests/test_data_integrity.R"
-      - "app_25.0/tests/test_parameters_boundaries.R"
-      - "app_25.0/tests/test_formula_accuracy.R"
+      - "app_25.0/**"
       - "scripts/run_audit.sh"
       - "scripts/generate_audit_rcm.R"
       - "Audit_Mapping.md"
       - ".github/workflows/audit.yml"
   pull_request:
     paths:
-      - "app_25.0/tests/test_data_integrity.R"
-      - "app_25.0/tests/test_parameters_boundaries.R"
-      - "app_25.0/tests/test_formula_accuracy.R"
+      - "app_25.0/**"
       - "scripts/run_audit.sh"
       - "scripts/generate_audit_rcm.R"
       - "Audit_Mapping.md"

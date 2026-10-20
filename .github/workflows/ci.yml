@@ -1,0 +1,39 @@
+# Offline live-line checks — must run on app / scripts / workflow changes
+# (avoids vacuous green from narrow path filters).
+name: Live-line CI
+
+on:
+  push:
+    paths:
+      - "app_25.0/**"
+      - "scripts/**"
+      - ".github/workflows/**"
+      - "CHANGELOG.md"
+      - "README.md"
+      - "Audit_Mapping.md"
+  pull_request:
+    paths:
+      - "app_25.0/**"
+      - "scripts/**"
+      - ".github/workflows/**"
+      - "CHANGELOG.md"
+      - "README.md"
+      - "Audit_Mapping.md"
+  workflow_dispatch:
+
+jobs:
+  offline-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+      - name: Valuation formulas (offline)
+        env:
+          YNOW_DEBUG_SKIP_PY: "1"
+        run: Rscript app_25.0/tests/test_valuation_formulas.R
+      - name: Phase 1 formula independence (offline)
+        env:
+          YNOW_DEBUG_SKIP_PY: "1"
+        run: bash scripts/run_phase1_audit.sh

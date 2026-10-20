@@ -1,5 +1,8 @@
 # The YNow App v25.88 — Valuation Methodology
 
+**Live line:** `app_25.0/` · display version from header / `scripts/DEPLOY_BASELINE.txt`  
+**Ship notes:** root [`CHANGELOG.md`](../CHANGELOG.md) · [GitHub Releases](https://github.com/lawrencekuo1118/theYNowApp/releases) · CI: `.github/workflows/ci.yml`
+
 ## v24.10 重點
 
 - **國旗**：美／台同長度、各自等比；高度加總滿版 50px（flex 15:19，寬 calc(50×57/68)）
