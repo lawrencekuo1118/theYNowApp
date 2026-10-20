@@ -208,8 +208,7 @@ lab_sp500_cache_paths <- function() {
     LAB_SP500_CACHE_REL,
     file.path(getwd(), LAB_SP500_CACHE_REL),
     file.path(dirname(getwd()), LAB_SP500_CACHE_REL),
-    file.path("app_14.0", LAB_SP500_CACHE_REL),
-    file.path("app_21.0", LAB_SP500_CACHE_REL)
+    file.path("app_25.0", LAB_SP500_CACHE_REL)
   ))
 }
 

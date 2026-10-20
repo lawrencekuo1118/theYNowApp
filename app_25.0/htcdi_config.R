@@ -152,7 +152,7 @@ HTCDI_DEFAULT_CONFIG <- list(
 )
 
 htcdi_config_yaml_path <- function() {
-  candidates <- c("htcdi_config.yaml", file.path("app_21.0", "htcdi_config.yaml"))
+  candidates <- c("htcdi_config.yaml", file.path("app_25.0", "htcdi_config.yaml"))
   hit <- candidates[file.exists(candidates)]
   if (length(hit)) return(normalizePath(hit[[1]], mustWork = FALSE))
   NA_character_

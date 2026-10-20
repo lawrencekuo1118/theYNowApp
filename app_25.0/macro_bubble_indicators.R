@@ -37,7 +37,7 @@ macro_bubble_buffett_paths <- function(mode = "US") {
   } else {
     file.path("data", "macro_buffett_us.csv")
   }
-  unique(c(rel, file.path(getwd(), rel), file.path("app_18.0", rel)))
+  unique(c(rel, file.path(getwd(), rel), file.path("app_25.0", rel)))
 }
 
 #' Absolute market-cap / GDP CSV paths (TW fallback when World Bank / DGBAS unavailable).
@@ -52,7 +52,7 @@ macro_bubble_buffett_abs_paths <- function(mode = "US") {
   } else {
     file.path("data", "macro_buffett_us_abs.csv")
   }
-  unique(c(rel, file.path(getwd(), rel), file.path("app_21.0", rel)))
+  unique(c(rel, file.path(getwd(), rel), file.path("app_25.0", rel)))
 }
 
 # DGBAS NSTAT (行政院主計總處總體統計資料庫) — Taiwan macro Buffett legs.

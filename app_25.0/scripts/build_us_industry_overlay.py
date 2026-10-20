@@ -6,7 +6,7 @@ universe_metrics_snapshot.csv, fetches Yahoo Sector/Industry, writes rows.
 industry_key is filled later by R (resolve_industry_key_from_yahoo) on load
 and by scripts/fill_us_industry_overlay_keys.R after this script.
 
-Usage (from app_18.0/):
+Usage (from app_25.0/):
   python3 scripts/build_us_industry_overlay.py
   python3 scripts/build_us_industry_overlay.py --max-n 80
 """

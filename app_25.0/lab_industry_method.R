@@ -713,7 +713,7 @@ lab_universe_metrics_snapshot_path <- function() {
   }
   candidates <- c(
     file.path("data", "universe_metrics_snapshot.csv"),
-    file.path("app_18.0", "data", "universe_metrics_snapshot.csv")
+    file.path("app_25.0", "data", "universe_metrics_snapshot.csv")
   )
   for (p in candidates) {
     if (file.exists(p)) return(normalizePath(p, winslash = "/", mustWork = FALSE))
@@ -2922,8 +2922,8 @@ lab_ind_mcap_chain_snapshot_path <- function(market = "US") {
   candidates <- c(
     file.path("data", sprintf("ind_mcap_chain_rank_snapshot_%s.csv", mm)),
     file.path("data", "ind_mcap_chain_rank_snapshot.csv"),
-    file.path("app_22.0", "data", sprintf("ind_mcap_chain_rank_snapshot_%s.csv", mm)),
-    file.path("app_22.0", "data", "ind_mcap_chain_rank_snapshot.csv")
+    file.path("app_25.0", "data", sprintf("ind_mcap_chain_rank_snapshot_%s.csv", mm)),
+    file.path("app_25.0", "data", "ind_mcap_chain_rank_snapshot.csv")
   )
   for (p in candidates) {
     if (file.exists(p)) return(normalizePath(p, winslash = "/", mustWork = FALSE))

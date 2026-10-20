@@ -89,7 +89,7 @@ BBLAB_DEFAULT_CONFIG <- list(
 bblab_config_yaml_path <- function() {
   candidates <- c(
     "business_breakdown_config.yaml",
-    file.path("app_21.0", "business_breakdown_config.yaml")
+    file.path("app_25.0", "business_breakdown_config.yaml")
   )
   hit <- candidates[file.exists(candidates)]
   if (length(hit)) normalizePath(hit[[1]], mustWork = TRUE) else NA_character_

@@ -3,7 +3,7 @@
 # Ranks Unmapped names by market_cap (universe_metrics_snapshot), fetches Yahoo
 # Sector/Industry, maps via resolve_industry_key_from_yahoo.
 #
-# Usage (from app_18.0/):
+# Usage (from app_25.0/):
 #   Rscript scripts/build_us_industry_overlay.R
 #   Rscript scripts/build_us_industry_overlay.R --max-n 100
 #   YNOW_DEBUG_SKIP_PY=1 Rscript ...   # dry: keep existing overlay only
@@ -18,10 +18,10 @@ if ("--max-n" %in% args) {
 
 root <- if (file.exists("lab_us_universe.R")) {
   getwd()
-} else if (file.exists("app_18.0/lab_us_universe.R")) {
-  file.path(getwd(), "app_18.0")
+} else if (file.exists("app_25.0/lab_us_universe.R")) {
+  file.path(getwd(), "app_25.0")
 } else {
-  stop("Run from repo root or app_18.0")
+  stop("Run from repo root or app_25.0")
 }
 setwd(root)
 

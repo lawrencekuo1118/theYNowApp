@@ -2,14 +2,14 @@
 # Fill industry_key on data/us_industry_overlay.csv via resolve_industry_key_from_yahoo.
 # Run after scripts/build_us_industry_overlay.py (no network).
 #
-# Usage (from app_18.0/): Rscript scripts/fill_us_industry_overlay_keys.R
+# Usage (from app_25.0/): Rscript scripts/fill_us_industry_overlay_keys.R
 
 root <- if (file.exists("industry_standards.R")) {
   getwd()
-} else if (file.exists("app_18.0/industry_standards.R")) {
-  file.path(getwd(), "app_18.0")
+} else if (file.exists("app_25.0/industry_standards.R")) {
+  file.path(getwd(), "app_25.0")
 } else {
-  stop("Run from repo root or app_18.0")
+  stop("Run from repo root or app_25.0")
 }
 setwd(root)
 

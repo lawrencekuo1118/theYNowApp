@@ -2,7 +2,7 @@
 # Build default industry-chain mcap-weighted upside snapshot (US).
 # Samples top market-cap names per chain, evaluates FV upside, aggregates all chains.
 #
-# Usage (from app_22.0/):
+# Usage (from app_25.0/):
 #   RETICULATE_PYTHON=./.ynow_venv/bin/python \
 #     YNOW_IND_MCAP_PER_CHAIN=2 Rscript scripts/build_ind_mcap_chain_rank_snapshot.R
 
