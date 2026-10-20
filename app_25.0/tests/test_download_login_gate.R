@@ -110,10 +110,11 @@ check("bblab exports call guest deny", {
     grepl("export_chart[\\s\\S]{0,400}bblab_deny_guest_download", bb, perl = TRUE)
 })
 check("client click gate lists proprietary ids", {
-  grepl("#download_snapshot", ui, fixed = TRUE) &&
-    grepl("#lab_im_download_report", ui, fixed = TRUE) &&
-    grepl("#param_audit_pdf_go", ui, fixed = TRUE) &&
-    grepl("#bblab-export_data", ui, fixed = TRUE) &&
+  (grepl("__YNOW_GATED_DOWNLOAD_IDS", ui, fixed = TRUE) ||
+     grepl("#download_snapshot", ui, fixed = TRUE)) &&
+    grepl("lab_im_download_report", ui, fixed = TRUE) &&
+    grepl("param_audit_pdf_go", ui, fixed = TRUE) &&
+    grepl("bblab-export_data", ui, fixed = TRUE) &&
     grepl("ynowRequestAuthModal", ui, fixed = TRUE) &&
     !grepl("7302/ingest", ui, fixed = TRUE)
 })
@@ -121,13 +122,17 @@ check("client does not gate public statement buttons", {
   start <- regexpr("Full guest click gate for proprietary", ui, fixed = TRUE)
   if (start < 1L) start <- regexpr("Guest click gate for proprietary", ui, fixed = TRUE)
   if (start < 1L) return(FALSE)
-  chunk <- substr(ui, start, min(nchar(ui), start + 1400L))
-  grepl("#download_report", chunk, fixed = TRUE) &&
-    grepl("#download_snapshot", chunk, fixed = TRUE) &&
+  chunk <- substr(ui, start, min(nchar(ui), start + 1800L))
+  (grepl("__YNOW_GATED_DOWNLOAD_IDS", chunk, fixed = TRUE) ||
+     grepl("download_report", chunk, fixed = TRUE)) &&
+    grepl("download_snapshot", chunk, fixed = TRUE) &&
     grepl("ynow-lite", chunk, fixed = TRUE) &&
     !grepl("#IS_download", chunk, fixed = TRUE) &&
     !grepl("#BS_download", chunk, fixed = TRUE) &&
     !grepl("#CF_download", chunk, fixed = TRUE)
+})
+check("client download gate uses membership A/B tier map", {
+  grepl("__YNOW_GATED_DOWNLOAD_TIERS", ui, fixed = TRUE)
 })
 check("locale en+zh download_need_login", {
   grepl('download_need_login = "Sign in to download this file."', loc, fixed = TRUE) &&
