@@ -7,5 +7,5 @@ commit=487d08b567c65fc17ee6c0be3580c3d2ba6f994d
 short=487d08b5
 message=chore: record shipped display version v25.74
 captured_at=2026-10-20T05:15:51Z
-display_version=v25.74
+display_version=v25.75
 note=Canonical live line is app_25.0. Bundle 12713808: Lite sidebar omits Full guest-locked tabs (lab_notes, decision_checklist, price_alerts) via ynow_sidebar_guest_lock_tabs(). PDF download stays open in Lite. Home quick-pick auth links and pin-recent-search from prior ships retained.
