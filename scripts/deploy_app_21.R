@@ -12,6 +12,17 @@
 #       ship the tree as-is (retry). Default: +0.01 display version, then upload.
 #   YNOW_VERSION_BUMP_NO_COMMIT=1
 #       rewrite version files but do not git commit them.
+#
+# Version notes / GitHub Release (after a successful ship):
+#   1) Prefer editing CHANGELOG.md in the bump commit (or immediately after) with
+#      substantive en-US + zh-TW (Taiwan terms) for the new display_version —
+#      bump commit message stays "chore: bump display version to v…"; put detail
+#      in CHANGELOG, not only in the commit subject.
+#   2) Update scripts/DEPLOY_BASELINE.txt (bundleId, commit, display_version).
+#   3) Publish a GitHub Release tag matching display_version:
+#        bash scripts/record_github_release.sh v25.xx
+#      Soft-fail when gh / GH_TOKEN unavailable; never commit secrets.
+#      Set YNOW_SKIP_GITHUB_RELEASE=1 to skip the automatic post-deploy call.
 
 if (!requireNamespace("rsconnect", quietly = TRUE)) {
   install.packages("rsconnect", repos = "https://cloud.r-project.org")
@@ -241,5 +252,22 @@ if (!skip_bump && exists("ver") && nzchar(ver$version)) {
     "Deploy complete. Display version is ", ver$version,
     " (+0.01 from the previous shipped version when a bump was applied)."
   )
+}
+
+# Soft-fail GitHub Release for the shipped display version (needs gh + token).
+.release_ver <- if (exists("ver") && nzchar(ver$version)) {
+  ver$version
+} else {
+  tryCatch(ynow_read_display_version(app_dir), error = function(e) "")
+}
+if (nzchar(.release_ver) && !identical(Sys.getenv("YNOW_SKIP_GITHUB_RELEASE"), "1")) {
+  rel_script <- file.path(root, "scripts", "record_github_release.sh")
+  if (file.exists(rel_script)) {
+    message("Recording GitHub Release for ", .release_ver, " (soft-fail if gh unavailable)…")
+    rel_status <- system2("bash", c(rel_script, .release_ver), stdout = TRUE, stderr = TRUE)
+    writeLines(rel_status)
+  }
+} else if (identical(Sys.getenv("YNOW_SKIP_GITHUB_RELEASE"), "1")) {
+  message("YNOW_SKIP_GITHUB_RELEASE=1: skipped GitHub Release publish.")
 }
 invisible(res)

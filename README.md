@@ -4,7 +4,27 @@ US / Taiwan stock fundamental analysis Shiny app（雲端版：yfinance，無 Ch
 
 **Live:** https://hopesmasher1118.shinyapps.io/TheYNowApp/  
 **Display version:** v25.88 · **App folder:** `app_25.0/`  
-**Deploy baseline:** `scripts/DEPLOY_BASELINE.txt`（bundleId／commit／URL；開發比對以此為準，不是單純看 Git tip）
+**Deploy baseline:** `scripts/DEPLOY_BASELINE.txt`（bundleId／commit／URL；開發比對以此為準，不是單純看 Git tip）  
+**Changelog:** [`CHANGELOG.md`](CHANGELOG.md) · **Releases:** https://github.com/lawrencekuo1118/theYNowApp/releases
+
+## CI / CD
+
+PRs and pushes that touch `app_25.0/**`, `scripts/**`, or `.github/workflows/**` run meaningful **offline** checks (no live Yahoo):
+
+| Workflow | What it runs |
+|----------|----------------|
+| **Live-line CI** (`.github/workflows/ci.yml`) | `YNOW_DEBUG_SKIP_PY=1 Rscript app_25.0/tests/test_valuation_formulas.R` and `bash scripts/run_phase1_audit.sh` |
+| **ITGC Audit** (`.github/workflows/audit.yml`) | Phases 2–4 via `bash scripts/run_audit.sh` + RCM artifact |
+
+Do not rely on path filters that skip the live app tree. Docs/rules-only changes may skip app jobs; app behavior PRs must stay green on Live-line CI.
+
+**Ship flow（活動線）:**
+
+1. Commit + `git push origin HEAD`（coding clone）
+2. `Rscript scripts/deploy_app_21.R` → display version **+0.01** → shinyapps upload
+3. Update `scripts/DEPLOY_BASELINE.txt` and push
+4. Add／update [`CHANGELOG.md`](CHANGELOG.md) entry for that `display_version`（en-US + zh-TW 台灣用語；勿只留版號）
+5. `bash scripts/record_github_release.sh v25.xx`（needs `gh` + token; **soft-fail** if unavailable — secrets never in git）
 
 ## 維護方式
 
@@ -17,7 +37,7 @@ US / Taiwan stock fundamental analysis Shiny app（雲端版：yfinance，無 Ch
 
 - **每個整階版本一個資料夾**（目前活動線：`app_25.0/`；顯示版號 `v25.88`，其後 deploy 以 +0.01 補丁）
 - 歷史版本：本機空間命名封存 `app 3.0` … `app 7.0`；較新的 `app_8.0`…`app_24.0` 已自 git 移除（見 Git history／[GitHub Releases](https://github.com/lawrencekuo1118/theYNowApp/releases)）
-- 詳細版號變更紀錄：見 [`app_25.0/README.md`](app_25.0/README.md)
+- 顯示版號摘要：[`CHANGELOG.md`](CHANGELOG.md)；方法論／歷史細節：[`app_25.0/README.md`](app_25.0/README.md)
 
 ## 本機開發（建議）
 

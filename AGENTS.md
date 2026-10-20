@@ -86,7 +86,9 @@ Lite 免費就能用的功能，完整版**不能**鎖上（登入閘、選單�
 
 ## Git & deploy
 
-See `.cursor/rules/auto-deploy-after-optimize.mdc`, `.cursor/rules/auto-cloud-push-authorized.mdc`, and `.cursor/rules/dual-workspace-sync.mdc` for ship workflow and workspace sync.
+See `.cursor/rules/auto-deploy-after-optimize.mdc`, `.cursor/rules/auto-cloud-push-authorized.mdc`, `.cursor/rules/dual-workspace-sync.mdc`, and `.cursor/rules/ci-cd-readme-releases.mdc` for ship workflow, workspace sync, and CI/README/Release notes.
+
+**CI/CD（required for app PRs）:** `.github/workflows/ci.yml` must run offline valuation + Phase 1 on changes under `app_25.0/` / `scripts/` / workflows — no vacuous path-filter skips. Keep root `README.md` and `CHANGELOG.md` aligned with the live line; after each ship, publish a GitHub Release for `display_version` via `scripts/record_github_release.sh` when `gh` is available.
 
 **Commit / push 一律預先授權：** 本 repo 任何已完成的變更（含文件與規則）都直接 commit → `git push origin HEAD`，不必再問。此授權覆寫一般「未經要求勿 commit／push」習慣。略過僅限未完成、機密、`.tmp_dgbas/`，或使用者明確說不要 commit／push。
 
