@@ -1062,6 +1062,38 @@ ynow_pdf_reset_memory <- function() {
 }
 ynow_pdf_reset_memory()
 
+#' Drop one user's in-process points + PDF quota/repeat (account delete).
+ynow_points_purge_user_local <- function(user_id) {
+  uid <- as.character(user_id %||% "")[1]
+  if (!nzchar(uid)) return(invisible(FALSE))
+  if (!is.null(.ynow_points_mem$users) && exists(uid, envir = .ynow_points_mem$users, inherits = FALSE)) {
+    tryCatch(rm(list = uid, envir = .ynow_points_mem$users), error = function(e) NULL)
+  }
+  if (!is.null(.ynow_points_mem$profiles) &&
+        exists(uid, envir = .ynow_points_mem$profiles, inherits = FALSE)) {
+    tryCatch(rm(list = uid, envir = .ynow_points_mem$profiles), error = function(e) NULL)
+  }
+  if (is.list(.ynow_points_mem$ledger) && length(.ynow_points_mem$ledger)) {
+    .ynow_points_mem$ledger <- Filter(
+      function(r) !identical(as.character(r$user_id %||% "")[1], uid),
+      .ynow_points_mem$ledger
+    )
+  }
+  # PDF free-quota keys are "uid|day"; repeats keyed by uid.
+  if (!is.null(.ynow_pdf_quota$used)) {
+    keys <- ls(.ynow_pdf_quota$used, all.names = TRUE)
+    drop <- keys[startsWith(keys, paste0(uid, "|"))]
+    if (length(drop)) {
+      tryCatch(rm(list = drop, envir = .ynow_pdf_quota$used), error = function(e) NULL)
+    }
+  }
+  if (!is.null(.ynow_pdf_quota$repeats) &&
+        exists(uid, envir = .ynow_pdf_quota$repeats, inherits = FALSE)) {
+    tryCatch(rm(list = uid, envir = .ynow_pdf_quota$repeats), error = function(e) NULL)
+  }
+  invisible(TRUE)
+}
+
 .ynow_pdf_key <- function(user_id, day) {
   paste0(as.character(user_id)[1], "|", as.character(day)[1])
 }

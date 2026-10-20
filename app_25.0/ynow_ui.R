@@ -11363,6 +11363,12 @@ ui <- dashboardPage(
               set('ynow_menu_pts_ledger', payload.menu_pts_ledger);
               set('ynow_admin_box_title', payload.admin_title);
               set('ynow_admin_intro', payload.admin_intro);
+              set('ynow_admin_delete_account_label', payload.delete_account);
+              setAll('.ynow-auth-delete-account-label', payload.delete_account);
+              set('ynow_auth_delete_modal_title', payload.delete_modal_title);
+              set('ynow_auth_delete_modal_warn', payload.delete_modal_warn);
+              set('ynow_auth_delete_modal_type', payload.delete_modal_type);
+              set('ynow_auth_delete_confirm_label', payload.delete_modal_confirm);
               set('ynow_pts_box_title', payload.pts_box_title);
               set('ynow_pts_ledger_intro', payload.pts_ledger_intro);
               set('ynow_pa_gate_title', payload.pa_gate_title);
