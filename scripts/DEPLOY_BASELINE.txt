@@ -1,5 +1,4 @@
 source=shinyapps.io TheYNowApp
-<<<<<<< HEAD
 bundleId=12714968
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
@@ -8,17 +7,5 @@ commit=71b0aae5b3e944520249339fb5de0af04aad94c4
 short=71b0aae5
 message=chore: bump display version to v25.83
 captured_at=2026-10-20T11:33:47Z
-display_version=v25.83
-note=Canonical live line is app_25.0. Bundle 12714968: PYN point numerals use logo blue-green flow (.ynow-pyn-num / ynow-logo-flow); FYN unchanged. PR #321.
-=======
-bundleId=12714947
-appId=10907657
-url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=d7b29ff7083aad295b97b6ec64e5888c4ce3840c
-commit=d7b29ff7083aad295b97b6ec64e5888c4ce3840c
-short=d7b29ff7
-message=chore: bump display version to v25.83
-captured_at=2026-10-20T11:28:23Z
-display_version=v25.83
-note=Canonical live line is app_25.0. Bundle 12714947: Sign-in gate demos refreshed to ~10s clips for all ynow_gate_features (lab/checklist/alerts/account/pdf/snap_defaults/inner_lock/atx).
->>>>>>> origin/master
+display_version=v25.84
+note=Canonical live line is app_25.0. Bundle 12714968: PYN point numerals use logo blue-green flow (.ynow-pyn-num / ynow-logo-flow); FYN unchanged. PR #321. (Master also had #322 gate demos at 12714947 / same display v25.83 — next ship after merge will +0.01.)
