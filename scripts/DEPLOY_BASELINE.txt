@@ -7,5 +7,5 @@ commit=4baa277603fb6934aa9574e2b59a85d136ef83fc
 short=4baa277
 message=chore: bump display version to v25.72
 captured_at=2026-10-19T17:05:43Z
-display_version=v25.72
+display_version=v25.73
 note=Canonical live line is app_25.0. Bundle 12711350: Register sits beside Sign in (header, Home, feature gates, and the auth modal) and creates an Email account on the existing auth backend. Homepage card titles are centered. Lite still does not require an account.
