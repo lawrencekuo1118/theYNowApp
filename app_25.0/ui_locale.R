@@ -4814,9 +4814,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     pts_login_reset_fmt = "已套用歡迎贈點／每日簽到（餘額不會重設）。",
     pts_login_reset_note = "餘額會跨登入保留。新帳號一次贈 100 FYN；每日簽到加 +30 FYN（Asia/Taipei）。",
     auth_admin_tool_points = "點數：FYN（免費）與 PYN（付費）分開儲存；所有異動皆入庫，完整紀錄請開「點數流水」。",
-    pts_sysadmin_title = "系統管理",
+    pts_sysadmin_title = "系統管理員",
     pts_sysadmin_intro = paste0(
-      "系統管理專用登入（與一般使用者 Email 登入分開）。",
+      "系統管理員專用登入（與一般使用者 Email 登入分開）。",
       "使用者清單僅顯示去識別化代號（不含原始 Email、姓名、電話）。",
       "可加減 FYN／PYN；變更會持久化，並與該使用者登入後所見餘額一致。",
       "「切換檢視」會比照該使用者的持久化設定狀態復刻顯示。",
@@ -5028,13 +5028,13 @@ locale_for_market <- function(mode = get_market_mode()) {
       "不會。Lite 版從不要求帳號。",
       "登入是解鎖完整版會員介面，不會鎖住 Lite 功能。"
     ),
-    test_link = " Sys. Admin",
-    testing_page_title = "系統管理",
+    test_link = " 系統管理員",
+    testing_page_title = "系統管理員",
     testing_page_sub = paste0(
-      "系統管理專用入口（完整版）；簡化版不顯示此入口。",
+      "系統管理員專用入口（完整版）；簡化版不顯示此入口。",
       "請以入口憑證登入後管理點數，或切換至去識別化使用者的即時介面。"
     ),
-    testing_box_title = "系統管理",
+    testing_box_title = "系統管理員",
     testing_box_body = paste0(
       "此入口已取代原 Testing 沙盒首頁。",
       "可調整 FYN／PYN，再以「切換檢視」開啟該使用者目前介面",

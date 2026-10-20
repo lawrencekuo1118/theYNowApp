@@ -4044,7 +4044,7 @@ ui <- dashboardPage(
           class = "ynow-sidebar-snapshot-link ynow-sidebar-feedback-link",
           onclick = "if (window.Shiny) { Shiny.setInputValue('sidebar_feedback_click', (window.__ynowFeedbackClicks=(window.__ynowFeedbackClicks||0)+1), {priority: 'event'}); } if (window.ynowShowSidebarFootTab) { window.ynowShowSidebarFootTab('feedback'); } else if (window.Shiny) { Shiny.setInputValue('sidebar_tabs', 'feedback', {priority: 'event'}); } return false;",
           icon("comment-dots", class = "fa-fw"),
-          tags$span(id = "ynow_feedback_link_label", " 意見區")
+          tags$span(id = "ynow_feedback_link_label", " Feedback")
         ),
       ),
       tags$p(
