@@ -452,6 +452,13 @@ check("zh Email 登入 submit", grepl("Email 登入", ui_str("auth_submit", "zh-
 
 ui <- paste(readLines(src_ui, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 srv <- paste(readLines(src_srv, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+# C-STRUCT-02: About bilingual copy lives in ynow_about_ui.R (sourced by facade).
+src_about <- file.path(app_dir, "ynow_about_ui.R")
+ui_about <- if (file.exists(src_about)) {
+  paste(c(ui, readLines(src_about, warn = FALSE, encoding = "UTF-8")), collapse = "\n")
+} else {
+  ui
+}
 check("UI mounts auth sidebar helper", grepl("ynow_auth_links_ui", ui, fixed = TRUE) ||
         grepl("ynow_auth_header_ui", ui, fixed = TRUE))
 check("UI mounts auth modal helper", grepl("ynow_auth_modal_ui", ui, fixed = TRUE))
@@ -462,8 +469,8 @@ check("UI mounts auth on sidebar date + home legal", {
     grepl("ynow-home-legal-links", ui, fixed = TRUE) &&
     !grepl("ynow-lang-col", ui, fixed = TRUE)
 })
-check("UI About mentions account sign-in", grepl("Account sign-in", ui, fixed = TRUE) &&
-        grepl("帳號登入", ui, fixed = TRUE))
+check("UI About mentions account sign-in", grepl("Account sign-in", ui_about, fixed = TRUE) &&
+        grepl("帳號登入", ui_about, fixed = TRUE))
 check("UI wires ynowAuthState handler", grepl("ynowAuthState", ui, fixed = TRUE))
 check("Sys. Admin foot link hidden when signed in", {
   grepl("body.ynow-authed .ynow-sidebar-snapshot-foot #ynow_sidebar_test_btn", ui, fixed = TRUE) &&

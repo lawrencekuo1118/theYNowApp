@@ -105,6 +105,17 @@ ynow_apply_display_version <- function(root, old_label, new_label) {
     changed <- c(changed, ui_path)
   }
 
+  # C-STRUCT-02: About page bodies (Full / Lite copy with display version).
+  about_path <- file.path(app_dir, "ynow_about_ui.R")
+  if (file.exists(about_path)) {
+    about <- readLines(about_path, warn = FALSE, encoding = "UTF-8")
+    about_new <- ynow_replace_label(about, old_label, new_label)
+    if (!identical(about, about_new)) {
+      ynow_write_lines(about_path, about_new)
+      changed <- c(changed, about_path)
+    }
+  }
+
   rmd_path <- file.path(app_dir, "report_template.Rmd")
   if (file.exists(rmd_path)) {
     rmd <- readLines(rmd_path, warn = FALSE, encoding = "UTF-8")
