@@ -221,6 +221,26 @@ check("points panel flat block + theme", {
     grepl("森林色系", html, fixed = TRUE) &&
     !grepl("box-solid", html, fixed = TRUE)
 })
+check("account + ledger PYN values use logo-flow class; FYN does not", {
+  admin <- ynow_admin_panel_ui(
+    list(email = "demo@ynow.app", logged_in_at = "t"), "en", "v25.01",
+    fyn_balance = 10L, pyn_balance = 42L
+  )
+  ledger <- ynow_points_panel_ui(
+    list(email = "demo@ynow.app"), "en",
+    fyn_balance = 10L, pyn_balance = 42L
+  )
+  ahtml <- paste(as.character(admin), collapse = "\n")
+  lhtml <- paste(as.character(ledger), collapse = "\n")
+  grepl("ynow_pts_pyn_value", ahtml, fixed = TRUE) &&
+    grepl("ynow-pyn-num", ahtml, fixed = TRUE) &&
+    grepl("42", ahtml, fixed = TRUE) &&
+    !grepl("ynow_pts_fyn_value[^>]*ynow-pyn-num", ahtml, perl = TRUE) &&
+    grepl("ynow_pts_ledger_pyn_value", lhtml, fixed = TRUE) &&
+    grepl("ynow-pyn-num", lhtml, fixed = TRUE) &&
+    grepl("42", lhtml, fixed = TRUE) &&
+    !grepl("ynow_pts_ledger_fyn_value[^>]*ynow-pyn-num", lhtml, perl = TRUE)
+})
 check("auth css includes maint theme + JS", {
   css <- ynow_auth_css()
   html <- paste(as.character(css), collapse = "\n")

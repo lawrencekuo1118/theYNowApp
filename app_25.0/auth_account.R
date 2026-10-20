@@ -1282,7 +1282,7 @@ ynow_admin_panel_ui <- function(user, locale = "zh-TW", build_version = "",
               " · ",
               tags$b(id = "ynow_pts_pyn_label", .lab("pts_pyn_label", "PYN points")),
               ": ",
-              tags$code(id = "ynow_pts_pyn_value", pyn_txt)
+              tags$code(id = "ynow_pts_pyn_value", class = "ynow-pyn-num", pyn_txt)
             )
           ),
           tags$p(
@@ -1431,7 +1431,7 @@ ynow_points_panel_ui <- function(user, locale = "zh-TW",
               " · ",
               tags$b(id = "ynow_pts_ledger_pyn_label", .lab("pts_pyn_label", "PYN points")),
               ": ",
-              tags$code(id = "ynow_pts_ledger_pyn_value", pyn_txt)
+              tags$code(id = "ynow_pts_ledger_pyn_value", class = "ynow-pyn-num", pyn_txt)
             ),
             tags$div(
               tags$span(

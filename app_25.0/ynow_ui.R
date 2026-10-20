@@ -3741,7 +3741,11 @@ ui <- dashboardPage(
         tags$div(
           class = "ynow-pts-banner-line",
           tags$span(id = "ynow_pts_banner_pyn_label", ""),
-          tags$span(id = "ynow_pts_banner_pyn_value", class = "ynow-pts-banner-val", "")
+          tags$span(
+            id = "ynow_pts_banner_pyn_value",
+            class = "ynow-pts-banner-val ynow-pyn-num",
+            ""
+          )
         )
       )
     ),
@@ -3809,7 +3813,11 @@ ui <- dashboardPage(
             tags$div(
               class = "ynow-pts-sidebar-line",
               tags$span(id = "ynow_pts_sidebar_pyn_label", ""),
-              tags$span(id = "ynow_pts_sidebar_pyn_value", class = "ynow-pts-sidebar-val", "")
+              tags$span(
+                id = "ynow_pts_sidebar_pyn_value",
+                class = "ynow-pts-sidebar-val ynow-pyn-num",
+                ""
+              )
             )
           )
         )
@@ -15240,7 +15248,8 @@ ui <- dashboardPage(
         .ynow-macro-kpi--htcdi.ynow-htcdi-alert--unavailable {
           border-color: rgba(12, 84, 132, 0.35);
         }
-        .ynow-htcdi-flow {
+        .ynow-htcdi-flow,
+        .ynow-pyn-num {
           background-image: var(--ynow-logo-flow-gradient, linear-gradient(105deg, #0C5484 0%, #1AA8B8 50%, #249C60 100%));
           background-size: 220% 100%;
           background-repeat: no-repeat;
@@ -15250,6 +15259,21 @@ ui <- dashboardPage(
           color: transparent;
           animation: ynow-logo-flow 2.6s ease-in-out infinite;
           font-weight: 700;
+        }
+        /* Account / ledger <code> PYN balance: clear chip wash so logo-flow clip shows. */
+        .ynow-maint-meta-grid code.ynow-pyn-num,
+        #ynow_pts_pyn_value.ynow-pyn-num,
+        #ynow_pts_ledger_pyn_value.ynow-pyn-num {
+          background: transparent !important;
+          background-image: var(--ynow-logo-flow-gradient, linear-gradient(105deg, #0C5484 0%, #1AA8B8 50%, #249C60 100%)) !important;
+          background-size: 220% 100% !important;
+          background-repeat: no-repeat !important;
+          -webkit-background-clip: text !important;
+          background-clip: text !important;
+          -webkit-text-fill-color: transparent !important;
+          color: transparent !important;
+          animation: ynow-logo-flow 2.6s ease-in-out infinite !important;
+          padding: 0 !important;
         }
         /* HTCDI only: flame dynamic fill (KPI, four pillars, expand tables). */
         .ynow-macro-kpi--htcdi .ynow-htcdi-flow,
@@ -15277,7 +15301,8 @@ ui <- dashboardPage(
           color: inherit;
         }
         @media (prefers-reduced-motion: reduce) {
-          .ynow-htcdi-flow { animation: none; background-position: 0% 50%; }
+          .ynow-htcdi-flow,
+          .ynow-pyn-num { animation: none; background-position: 0% 50%; }
           .ynow-macro-kpi--htcdi .ynow-htcdi-flow,
           .ynow-htcdi-sub .ynow-htcdi-flow,
           .ynow-htcdi-table .ynow-htcdi-flow,
@@ -15288,6 +15313,7 @@ ui <- dashboardPage(
         }
         @supports not ((-webkit-background-clip: text) or (background-clip: text)) {
           .ynow-htcdi-flow,
+          .ynow-pyn-num,
           .ynow-fund-profile-badge .ynow-htcdi-flow {
             background-image: none;
             -webkit-text-fill-color: #0C5484;
