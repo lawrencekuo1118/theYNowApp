@@ -31,7 +31,14 @@ check("downsample keeps endpoints", identical(ds$Date[1], df_big$Date[1]) &&
 check("downsample no-op when small", identical(nrow(.ynow_downsample_df(df_big[1:10, ], 600L)), 10L))
 
 # --- IS plot uses native plot_ly (no ggplotly) ---
-setup_src <- paste(readLines(file.path(root, "setup.R"), warn = FALSE), collapse = "\n")
+# C-STRUCT-04: Plotly engine lives in setup_plotly.R (sourced by setup.R).
+setup_src <- paste(
+  c(
+    readLines(file.path(root, "setup_plotly.R"), warn = FALSE),
+    readLines(file.path(root, "setup.R"), warn = FALSE)
+  ),
+  collapse = "\n"
+)
 check(
   "generate_safe_line_plot is native plot_ly",
   grepl("generate_safe_line_plot\\s*<-\\s*function", setup_src) &&
