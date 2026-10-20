@@ -67,6 +67,7 @@ rsconnect::setAccountInfo(name = "hopesmasher1118", token = "...", secret = "...
 ```bash
 # 預設會 +0.01 顯示版號後上傳；重試可用 YNOW_SKIP_VERSION_BUMP=1
 Rscript scripts/deploy_app_21.R
+# optional alias (same ship path): Rscript scripts/deploy_app_25.R
 ```
 
 或：

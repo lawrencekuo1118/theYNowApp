@@ -17,7 +17,7 @@
 
 - **整階 +1**：活動線目錄 `app_20.0/` → `app_25.0/`；顯示版號 **v21**
 - **Asset transmission**：自 Testing 拆出，側邊欄獨立分頁（接在 Macro & Market Trends 之後）；**Lite 亦提供**
-- **目錄**：`app_25.0/`；顯示版號 **v21**；部署腳本 `scripts/deploy_app_21.R`
+- **目錄**：`app_25.0/`；顯示版號 **v21**；部署腳本 `scripts/deploy_app_21.R`（別名 `scripts/deploy_app_25.R` 仍保留；`deploy_app_22.R`…`24.R` 已移除）
 
 ## v20 重點
 
