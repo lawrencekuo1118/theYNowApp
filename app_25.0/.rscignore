@@ -3,6 +3,7 @@ __pycache__/
 .Rhistory
 .RData
 .DS_Store
+# Local-only interactive probes (not sourced by global.R); keep in repo, exclude from deploy:
 debug_lab.R
 # Keep requirements.txt for local venv builds, but do not ship it to shinyapps:
 # Connect still lacks a linked RETICULATE_PYTHON, and a root requirements.txt
