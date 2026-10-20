@@ -1087,6 +1087,41 @@ ynow_auth_css <- function() {
     "  border-color: #888 !important;",
     "  color: #444 !important;",
     "}",
+    ".ynow-maint-actions-auth {",
+    "  display: inline-flex;",
+    "  flex-direction: row;",
+    "  align-items: stretch;",
+    "  flex-wrap: nowrap;",
+    "  gap: 8px;",
+    "}",
+    ".ynow-maint-actions-auth > .btn {",
+    "  margin: 0 !important;",
+    "  min-height: 30px;",
+    "  height: 30px;",
+    "  line-height: 1.2;",
+    "  box-sizing: border-box;",
+    "  display: inline-flex;",
+    "  align-items: center;",
+    "  justify-content: center;",
+    "}",
+    ".ynow-maint-shell .btn.ynow-maint-btn-danger,",
+    ".ynow-maint-shell .btn.btn-danger.ynow-maint-btn-danger {",
+    "  background: #c0392b !important;",
+    "  border: 1px solid #a93226 !important;",
+    "  color: #fff !important;",
+    "  box-shadow: none !important;",
+    "}",
+    ".ynow-maint-shell .btn.ynow-maint-btn-danger:hover,",
+    ".ynow-maint-shell .btn.ynow-maint-btn-danger:focus {",
+    "  background: #a93226 !important;",
+    "  border-color: #922b21 !important;",
+    "  color: #fff !important;",
+    "}",
+    "#ynow_auth_delete_confirm[disabled],",
+    "#ynow_auth_delete_confirm.disabled {",
+    "  opacity: 0.45;",
+    "  cursor: not-allowed;",
+    "}",
     "#ynow_pts_ledger_wrap {",
     "  margin: 4px 0 8px;",
     "  border: 1px solid var(--ynow-maint-line, #e5e5e5);",
@@ -1208,6 +1243,86 @@ ynow_maint_theme_select_ui <- function(locale = "zh-TW") {
       tags$option(value = "ocean", .lab("auth_admin_theme_ocean", "Ocean blue")),
       tags$option(value = "forest", .lab("auth_admin_theme_forest", "Forest green"))
     )
+  )
+}
+
+#' Delete-account confirm dialog: type DELETE (all caps) before confirm enables.
+ynow_delete_account_modal <- function(locale = "zh-TW") {
+  loc <- as.character(locale %||% "zh-TW")[1]
+  .lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
+  token <- if (exists("ynow_auth_delete_confirm_token", mode = "function")) {
+    ynow_auth_delete_confirm_token()
+  } else {
+    "DELETE"
+  }
+  modalDialog(
+    title = tags$span(
+      id = "ynow_auth_delete_modal_title",
+      .lab("auth_delete_modal_title", "Delete account permanently?")
+    ),
+    tags$div(
+      class = "ynow-auth-delete-modal",
+      tags$p(
+        id = "ynow_auth_delete_modal_warn",
+        class = "text-danger",
+        .lab(
+          "auth_delete_modal_warn",
+          paste0(
+            "This permanently deletes your account and related data ",
+            "(FYN/PYN points, preferences, access locks, Value Alerts). ",
+            "This cannot be undone."
+          )
+        )
+      ),
+      tags$p(
+        id = "ynow_auth_delete_modal_type",
+        .lab(
+          "auth_delete_modal_type",
+          "Type DELETE (all caps) to confirm."
+        )
+      ),
+      textInput(
+        "ynow_auth_delete_confirm_text",
+        label = NULL,
+        value = "",
+        placeholder = token
+      )
+    ),
+    footer = tagList(
+      modalButton(.lab("auth_delete_modal_cancel", "Cancel")),
+      tags$button(
+        id = "ynow_auth_delete_confirm",
+        type = "button",
+        class = "btn btn-danger action-button",
+        disabled = "disabled",
+        tags$span(
+          id = "ynow_auth_delete_confirm_label",
+          .lab("auth_delete_modal_confirm", "Permanently delete")
+        )
+      )
+    ),
+    easyClose = TRUE,
+    fade = TRUE,
+    tags$script(HTML(paste0(
+      "(function(){",
+      "var tok=", jsonlite::toJSON(token, auto_unbox = TRUE), ";",
+      "function sync(){",
+      "  var inp=document.getElementById('ynow_auth_delete_confirm_text');",
+      "  var btn=document.getElementById('ynow_auth_delete_confirm');",
+      "  if(!btn) return;",
+      "  var ok=inp && String(inp.value||'').trim()===tok;",
+      "  if(ok){btn.removeAttribute('disabled');btn.classList.remove('disabled');}",
+      "  else{btn.setAttribute('disabled','disabled');btn.classList.add('disabled');}",
+      "}",
+      "var inp=document.getElementById('ynow_auth_delete_confirm_text');",
+      "if(inp){",
+      "  inp.addEventListener('input',sync);",
+      "  inp.addEventListener('keyup',sync);",
+      "  sync();",
+      "  setTimeout(function(){try{inp.focus();}catch(e){}},80);",
+      "}",
+      "})();"
+    )))
   )
 }
 
@@ -1339,13 +1454,25 @@ ynow_admin_panel_ui <- function(user, locale = "zh-TW", build_version = "",
               ),
               class = "btn-default btn-sm ynow-maint-btn-default"
             ),
-            actionButton(
-              "ynow_auth_sign_out_admin",
-              label = tags$span(
-                id = "ynow_admin_sign_out_label",
-                .lab("auth_sign_out", "Sign out")
+            tags$div(
+              class = "ynow-maint-actions-auth",
+              actionButton(
+                "ynow_auth_sign_out_admin",
+                label = tags$span(
+                  id = "ynow_admin_sign_out_label",
+                  .lab("auth_sign_out", "Sign out")
+                ),
+                class = "btn-warning btn-sm ynow-maint-btn-warn"
               ),
-              class = "btn-warning btn-sm ynow-maint-btn-warn"
+              actionButton(
+                "ynow_auth_delete_account",
+                label = tags$span(
+                  id = "ynow_admin_delete_account_label",
+                  class = "ynow-auth-delete-account-label",
+                  .lab("auth_delete_account", "Delete account")
+                ),
+                class = "btn-danger btn-sm ynow-maint-btn-danger"
+              )
             )
           )
         )
@@ -1957,6 +2084,87 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
     .sign_out()
   }, ignoreInit = TRUE)
 
+  observeEvent(input$ynow_auth_delete_account, {
+    if (!isTRUE(ynow_auth_enabled())) return()
+    u <- account_user()
+    if (is.null(u)) {
+      tryCatch(
+        showNotification(
+          .str("auth_delete_msg_no_user", "No signed-in account to delete."),
+          type = "warning",
+          duration = 5
+        ),
+        error = function(e) NULL
+      )
+      return()
+    }
+    showModal(ynow_delete_account_modal(.loc()))
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$ynow_auth_delete_confirm, {
+    if (!isTRUE(ynow_auth_enabled())) return()
+    u <- account_user()
+    if (is.null(u)) {
+      tryCatch(removeModal(), error = function(e) NULL)
+      tryCatch(
+        showNotification(
+          .str("auth_delete_msg_no_user", "No signed-in account to delete."),
+          type = "warning",
+          duration = 5
+        ),
+        error = function(e) NULL
+      )
+      return()
+    }
+    confirm_txt <- as.character(input$ynow_auth_delete_confirm_text %||% "")[1]
+    if (!exists("ynow_db_purge_user", mode = "function")) {
+      tryCatch(
+        showNotification(
+          .str("auth_delete_msg_fail", "Could not delete the account. Try again later."),
+          type = "error",
+          duration = 6
+        ),
+        error = function(e) NULL
+      )
+      return()
+    }
+    res <- tryCatch(
+      ynow_db_purge_user(
+        user_id = u$id %||% "",
+        email = u$email %||% "",
+        confirm = confirm_txt
+      ),
+      error = function(e) {
+        list(ok = FALSE, message_key = "auth_delete_msg_fail")
+      }
+    )
+    if (!isTRUE(res$ok)) {
+      mk <- as.character(res$message_key %||% "auth_delete_msg_fail")[1]
+      fb <- if (identical(mk, "auth_delete_msg_confirm")) {
+        "Type DELETE exactly to confirm account deletion."
+      } else if (identical(mk, "auth_delete_msg_no_user")) {
+        "No signed-in account to delete."
+      } else {
+        "Could not delete the account. Try again later."
+      }
+      tryCatch(
+        showNotification(.str(mk, fb), type = "error", duration = 6),
+        error = function(e) NULL
+      )
+      return()
+    }
+    tryCatch(removeModal(), error = function(e) NULL)
+    .sign_out()
+    tryCatch(
+      showNotification(
+        .str("auth_delete_msg_ok", "Account deleted. You have been signed out."),
+        type = "message",
+        duration = 6
+      ),
+      error = function(e) NULL
+    )
+  }, ignoreInit = TRUE)
+
   observeEvent(input$ynow_pa_gate_signin, {
     .open_auth_modal()
   }, ignoreInit = TRUE)
@@ -2030,6 +2238,30 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
         resend = tryCatch(ui_str("auth_resend", loc), error = function(e) "Didn't receive the verification email"),
         admin_title = tryCatch(ui_str("auth_admin_title", loc), error = function(e) "Account overview"),
         admin_intro = tryCatch(ui_str("auth_admin_intro", loc), error = function(e) ""),
+        delete_account = tryCatch(
+          ui_str("auth_delete_account", loc),
+          error = function(e) "Delete account"
+        ),
+        delete_modal_title = tryCatch(
+          ui_str("auth_delete_modal_title", loc),
+          error = function(e) "Delete account permanently?"
+        ),
+        delete_modal_warn = tryCatch(
+          ui_str("auth_delete_modal_warn", loc),
+          error = function(e) ""
+        ),
+        delete_modal_type = tryCatch(
+          ui_str("auth_delete_modal_type", loc),
+          error = function(e) "Type DELETE (all caps) to confirm."
+        ),
+        delete_modal_confirm = tryCatch(
+          ui_str("auth_delete_modal_confirm", loc),
+          error = function(e) "Permanently delete"
+        ),
+        delete_modal_cancel = tryCatch(
+          ui_str("auth_delete_modal_cancel", loc),
+          error = function(e) "Cancel"
+        ),
         pa_gate_title = tryCatch(ui_str("auth_pa_gate_title", loc), error = function(e) "Sign in required"),
         pa_gate_body = tryCatch(ui_str("auth_pa_gate_body", loc), error = function(e) ""),
         gate_lab_body = tryCatch(ui_str("auth_gate_lab_body", loc), error = function(e) ""),

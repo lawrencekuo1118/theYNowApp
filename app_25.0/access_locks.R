@@ -107,6 +107,22 @@ ynow_access_reset_memory <- function() {
   invisible(TRUE)
 }
 
+#' Remove one user's access locks from memory + file (never touches `__all__`).
+ynow_access_purge_user <- function(user_id) {
+  uid <- as.character(user_id %||% "")[1]
+  if (!nzchar(uid)) return(invisible(FALSE))
+  if (identical(uid, YNOW_ACCESS_ALL_USERS)) return(invisible(FALSE))
+  if (!is.null(.ynow_access_mem$by_user[[uid]])) {
+    .ynow_access_mem$by_user[[uid]] <- NULL
+  }
+  store <- tryCatch(.ynow_access_read_file(), error = function(e) list())
+  if (is.list(store) && !is.null(store[[uid]])) {
+    store[[uid]] <- NULL
+    tryCatch(.ynow_access_write_file(store), error = function(e) NULL)
+  }
+  invisible(TRUE)
+}
+
 .ynow_access_file <- function() {
   override <- Sys.getenv("YNOW_ACCESS_LOCKS_PATH", "")
   if (nzchar(override)) return(override)

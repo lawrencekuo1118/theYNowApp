@@ -461,3 +461,39 @@ ynow_oauth_complete <- function(payload) {
   }
   list(ok = FALSE, user = NULL, message_key = st$message_key %||% "auth_msg_oauth_state")
 }
+
+#' Optional service-role key for admin Auth API (server-only; never to client).
+ynow_oauth_supabase_service_role <- function() {
+  trimws(Sys.getenv("YNOW_SUPABASE_SERVICE_ROLE", unset = ""))
+}
+
+#' Best-effort delete of a Supabase Auth user (OAuth IdP row).
+#' Requires `YNOW_SUPABASE_SERVICE_ROLE` + URL. Skips cleanly when unset.
+ynow_oauth_delete_supabase_user <- function(provider_uid) {
+  uid <- as.character(provider_uid %||% "")[1]
+  if (!nzchar(uid)) {
+    return(list(ok = FALSE, skipped = TRUE, reason = "no_uid"))
+  }
+  key <- ynow_oauth_supabase_service_role()
+  base <- ynow_oauth_supabase_url()
+  if (!nzchar(key) || !nzchar(base)) {
+    return(list(ok = FALSE, skipped = TRUE, reason = "no_service_role"))
+  }
+  tryCatch(
+    {
+      resp <- httr2::request(paste0(base, "/auth/v1/admin/users/", utils::URLencode(uid, reserved = TRUE))) |>
+        httr2::req_method("DELETE") |>
+        httr2::req_headers(
+          apikey = key,
+          Authorization = paste("Bearer", key)
+        ) |>
+        httr2::req_timeout(12) |>
+        httr2::req_perform()
+      st <- httr2::resp_status(resp)
+      list(ok = isTRUE(st >= 200L && st < 300L), skipped = FALSE, status = st)
+    },
+    error = function(e) {
+      list(ok = FALSE, skipped = FALSE, error = conditionMessage(e))
+    }
+  )
+}
