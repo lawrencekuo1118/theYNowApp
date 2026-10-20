@@ -7,5 +7,5 @@ commit=10220b6a9be73764557b6cfb92b79500f6e5d35e
 short=10220b6a
 message=chore: bump display version to v25.80
 captured_at=2026-10-20T07:13:04Z
-display_version=v25.80
+display_version=v25.81
 note=Canonical live line is app_25.0. Bundle 12714102: Lite omits Asset Transmission Root (asset_transmission) via ynow_sidebar_full_only_tabs / lite omit set. Snapshot foot free except snap_defaults; Lite PDF free.
