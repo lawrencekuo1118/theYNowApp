@@ -32,6 +32,8 @@ tmp <- tempfile("ynow-bump-")
 dir.create(file.path(tmp, "app_25.0", "www"), recursive = TRUE)
 dir.create(file.path(tmp, "app_25.0", "tests"), recursive = TRUE)
 dir.create(file.path(tmp, "scripts"), recursive = TRUE)
+# Marker so ynow_live_app_dir() recognizes the fixture as the live line.
+writeLines("# fixture", file.path(tmp, "app_25.0", "app.R"))
 writeLines(
   c(
     "title The YNow App v17.94",
