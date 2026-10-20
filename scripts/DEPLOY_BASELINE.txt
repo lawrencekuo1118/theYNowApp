@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12713515
+bundleId=12713760
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=c8661c17dabf2882c875f6c9f12a98470bb3e2c8
-commit=c8661c17dabf2882c875f6c9f12a98470bb3e2c8
-short=c8661c17
-message=chore: bump display version to v25.73
-captured_at=2026-10-20T03:51:38Z
+aligned_git=1608cefde70f58f136137d9c69b016e62a070bc5
+commit=1608cefde70f58f136137d9c69b016e62a070bc5
+short=1608cefd
+message=chore: bump display version to v25.74
+captured_at=2026-10-20T04:56:40Z
 display_version=v25.74
-note=Canonical live line is app_25.0. Bundle 12713515: Full home under quick-pick stacks Sign in · Register as plain blue underlined text links, then research disclaimer, then About · Privacy / IP / risk. Quick-pick card titles and descriptions are centered. Sidebar auth buttons unchanged. Lite still hides auth links. Includes YNOW Notes-below-chapter from prior v25.73 ship.
+note=Canonical live line is app_25.0. Bundle 12713760: Sidebar recent-search long-press (2s) pins tickers between the white separator and「最近搜尋：」/ Recent Search. Signed-in pins persist in ynow_user_prefs (pref_key=pinned_recent_search) on Supabase Postgres; guests use localStorage only. Long-press again to unpin.
