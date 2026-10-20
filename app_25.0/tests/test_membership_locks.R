@@ -157,6 +157,32 @@ check("download_report remains gated id (Full B; Lite free elsewhere)", {
     identical(ynow_membership_lock_tier("download_report"), "B")
 })
 
+# Shared labels with access_locks (true duplicates only)
+check("shared surface labels wired", {
+  exists("ynow_lock_shared_surface_labels", mode = "function") &&
+    identical(ynow_lock_shared_label("lab_notes", "en"), "Quant Backtest Lab") &&
+    identical(ynow_lock_shared_label("decision_checklist", "zh-TW"), "決策檢核") &&
+    identical(ynow_lock_shared_label("price_alerts", "en"), "Value Alerts") &&
+    identical(ynow_lock_shared_label("checklist_body", "zh-TW"), "決策檢核內容")
+})
+check("membership sidebar tabs use shared labels", {
+  identical(cat$label_en[cat$id == "lab_notes"], "Quant Backtest Lab") &&
+    identical(cat$label_zh_tw[cat$id == "decision_checklist"], "決策檢核") &&
+    identical(cat$label_en[cat$id == "price_alerts"], "Value Alerts") &&
+    identical(cat$label_zh_tw[cat$id == "ynow_chk_body"], "決策檢核內容")
+})
+check("points SKU titles derive from membership catalog", {
+  defs <- ynow_membership_points_sku_defaults()
+  identical(defs$title_en[defs$sku == "pdf_report"], "Valuation report (PDF)") &&
+    identical(defs$title_zh_tw[defs$sku == "alert_slot"], "到值通知一筆")
+})
+check("global sources lock_catalog_shared before membership", {
+  g <- paste(readLines(file.path(app_dir, "global.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl('source("lock_catalog_shared.R"', g, fixed = TRUE) &&
+    regexpr('source("lock_catalog_shared.R"', g, fixed = TRUE) <
+      regexpr('source("membership_locks.R"', g, fixed = TRUE)
+})
+
 message("PASS ", ok, " FAIL ", bad)
 if (bad > 0L) quit(status = 1)
 quit(status = 0)
