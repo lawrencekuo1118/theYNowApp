@@ -1472,6 +1472,8 @@ ynow_points_panel_ui <- function(user, locale = "zh-TW",
 }
 
 #' Known gate feature ids (promo + demo are keyed per feature).
+#' Demo clips live in www/demos/<feature>.{mp4,webm} (~10s; regenerate with
+#' scripts/generate_gate_demo_videos.py).
 ynow_gate_features <- function() {
   c("lab", "checklist", "alerts", "account", "pdf", "snap_defaults", "inner_lock", "atx")
 }
