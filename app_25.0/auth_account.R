@@ -260,47 +260,45 @@ ynow_auth_links_ui <- function(placement = c("sidebar", "home")) {
   } else {
     "ynow-auth-links ynow-auth-links--home"
   }
-  reg_id <- if (identical(placement, "sidebar")) {
-    "ynow_auth_register_open"
-  } else {
-    "ynow_auth_register_open_home"
-  }
-  reg_lbl <- if (identical(placement, "sidebar")) {
-    "ynow_auth_register_header_label"
-  } else {
-    "ynow_auth_register_home_label"
-  }
-  # Home: plain text links (About-style). Sidebar / gates keep compact buttons.
+  # Home: plain text Sign in · Register (About-style).
+  # Header (sidebar placement): Sign in only — compact black bar has no Register entry.
+  # Register remains on Home, feature gates, and the auth modal.
   home_text <- identical(placement, "home")
   link_class <- if (home_text) {
     "ynow-auth-link ynow-auth-open"
   } else {
     "ynow-auth-link ynow-auth-btn ynow-auth-open"
   }
-  reg_class <- if (home_text) {
-    "ynow-auth-link ynow-auth-register-open"
+  sign_in_link <- actionLink(
+    inputId = open_id,
+    label = tags$span(id = open_lbl, class = "ynow-auth-open-label", "Sign in"),
+    class = link_class
+  )
+  auth_pair <- if (home_text) {
+    tags$div(
+      class = "ynow-auth-pair ynow-auth-pair--home-text",
+      sign_in_link,
+      tags$span(class = "ynow-auth-pair-sep", "·", `aria-hidden` = "true"),
+      actionLink(
+        inputId = "ynow_auth_register_open_home",
+        label = tags$span(
+          id = "ynow_auth_register_home_label",
+          class = "ynow-auth-register-label",
+          "Register"
+        ),
+        class = "ynow-auth-link ynow-auth-register-open"
+      )
+    )
   } else {
-    "ynow-auth-link ynow-auth-btn ynow-auth-register-open"
+    # Single Sign-in control (no pair / Register) for the top header bar.
+    tags$div(class = "ynow-auth-pair ynow-auth-pair--signin-only", sign_in_link)
   }
   tags$div(
     id = wrap_id,
     class = wrap_class,
     role = "group",
     `aria-label` = "Account",
-    tags$div(
-      class = if (home_text) "ynow-auth-pair ynow-auth-pair--home-text" else "ynow-auth-pair",
-      actionLink(
-        inputId = open_id,
-        label = tags$span(id = open_lbl, class = "ynow-auth-open-label", "Sign in"),
-        class = link_class
-      ),
-      if (home_text) tags$span(class = "ynow-auth-pair-sep", "·", `aria-hidden` = "true"),
-      actionLink(
-        inputId = reg_id,
-        label = tags$span(id = reg_lbl, class = "ynow-auth-register-label", "Register"),
-        class = reg_class
-      )
-    ),
+    auth_pair,
     tags$span(
       class = "ynow-auth-user-chip",
       style = "display:none;",
