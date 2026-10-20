@@ -12245,7 +12245,7 @@ ui <- dashboardPage(
                 'ri_calculator', 'pb_calculator', 'rel_mult_ev', 'rel_multiples_calculator',
                 'rel_mult_rev', 'sotp_calculator', 'hfv',
                 'decision_checklist', 'lab_notes', 'price_alerts', 'testing', 'company_advance',
-                'account_admin', 'account_points'
+                'asset_transmission', 'account_admin', 'account_points'
               ];
             }
             function remapLegacyTab(tab) {
