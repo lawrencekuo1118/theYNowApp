@@ -67,28 +67,51 @@ check(
   grepl("cookie_", paste(deparse(ui_locale_boot_bundle), collapse = "\n"), fixed = TRUE)
 )
 
-ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-check("banner markup", grepl('id = "ynow_cookie_banner"', ui, fixed = TRUE))
-check("settings control", grepl('id = "ynow_cookie_settings_btn"', ui, fixed = TRUE))
-check("necessary locked", grepl('id = "ynow_cookie_necessary"', ui, fixed = TRUE) &&
-  grepl("disabled = \"disabled\"", ui, fixed = TRUE))
-check("analytics toggle", grepl('id = "ynow_cookie_analytics"', ui, fixed = TRUE))
-check("preferences toggle", grepl('id = "ynow_cookie_preferences"', ui, fixed = TRUE))
-check("persist localStorage", grepl("localStorage.setItem(KEY, raw)", ui, fixed = TRUE))
-check("persist cookie", grepl("document.cookie = KEY", ui, fixed = TRUE))
-check("applyUiLocale body", grepl("setBtText('ynow_cookie_banner_body', 'cookie_banner_body')", ui, fixed = TRUE))
-check("reopen pinned bottom-right", grepl(".ynow-cookie-reopen", ui, fixed = TRUE) &&
-  grepl("right: 16px;", ui, fixed = TRUE) &&
-  !grepl("left: 12px;\n          bottom: 12px;", ui, fixed = TRUE))
+# C-STRUCT-02 seam 2: markup/JS in ynow_cookie_notice_ui.R; CSS + applyUiLocale on facade.
+ui_facade <- paste(
+  readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"),
+  collapse = "\n"
+)
+ui_cookie <- paste(
+  readLines(file.path(app_dir, "ynow_cookie_notice_ui.R"), warn = FALSE, encoding = "UTF-8"),
+  collapse = "\n"
+)
+ui <- paste(ui_facade, ui_cookie, sep = "\n")
+check(
+  "facade sources cookie sibling",
+  grepl(
+    'source("ynow_cookie_notice_ui.R", local = TRUE, encoding = "UTF-8")',
+    ui_facade,
+    fixed = TRUE
+  )
+)
+check("banner markup", grepl('id = "ynow_cookie_banner"', ui_cookie, fixed = TRUE))
+check("settings control", grepl('id = "ynow_cookie_settings_btn"', ui_cookie, fixed = TRUE))
+check("necessary locked", grepl('id = "ynow_cookie_necessary"', ui_cookie, fixed = TRUE) &&
+  grepl("disabled = \"disabled\"", ui_cookie, fixed = TRUE))
+check("analytics toggle", grepl('id = "ynow_cookie_analytics"', ui_cookie, fixed = TRUE))
+check("preferences toggle", grepl('id = "ynow_cookie_preferences"', ui_cookie, fixed = TRUE))
+check("persist localStorage", grepl("localStorage.setItem(KEY, raw)", ui_cookie, fixed = TRUE))
+check("persist cookie", grepl("document.cookie = KEY", ui_cookie, fixed = TRUE))
+check(
+  "applyUiLocale body",
+  grepl("setBtText('ynow_cookie_banner_body', 'cookie_banner_body')", ui_facade, fixed = TRUE)
+)
+check("reopen pinned bottom-right", grepl(".ynow-cookie-reopen", ui_facade, fixed = TRUE) &&
+  grepl("right: 16px;", ui_facade, fixed = TRUE) &&
+  !grepl("left: 12px;\n          bottom: 12px;", ui_facade, fixed = TRUE))
 check(
   "sidebar copyright copy",
   identical(as.character(en$sidebar_copyright)[1], "2026 © YNow Team. All rights reserved.") &&
     identical(as.character(zh$sidebar_copyright)[1], "2026 © YNow Team. 版權所有。")
 )
-check("sidebar copyright markup", grepl('id = "ynow_sidebar_copyright"', ui, fixed = TRUE))
-check("reduced motion", grepl("prefers-reduced-motion: reduce", ui, fixed = TRUE) &&
-  grepl(".ynow-cookie-banner", ui, fixed = TRUE))
-check("no login gate on banner", !grepl("ynow_cookie_banner[\\s\\S]{0,400}ynow-menu-lock", ui, perl = TRUE))
+check("sidebar copyright markup", grepl('id = "ynow_sidebar_copyright"', ui_facade, fixed = TRUE))
+check("reduced motion", grepl("prefers-reduced-motion: reduce", ui_facade, fixed = TRUE) &&
+  grepl(".ynow-cookie-banner", ui_facade, fixed = TRUE))
+check(
+  "no login gate on banner",
+  !grepl("ynow_cookie_banner[\\s\\S]{0,400}ynow-menu-lock", ui, perl = TRUE)
+)
 
 if (fail > 0L) {
   cat("FAILED ", fail, "\n", sep = "")
