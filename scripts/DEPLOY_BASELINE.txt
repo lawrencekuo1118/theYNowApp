@@ -7,5 +7,5 @@ commit=0568da2f516422afd903ee817c49e8e28a8637ce
 short=0568da2f
 message=chore: bump display version to v25.77
 captured_at=2026-10-20T05:52:30Z
-display_version=v25.77
+display_version=v25.78
 note=Canonical live line is app_25.0. Bundle 12713883: zh-TW sidebar Sys. Admin foot link is 系統管理員 (was identical English). Page titles pts_sysadmin_title / testing_page_title aligned. Feedback foot first-paint English.
