@@ -402,8 +402,18 @@ server <- function(input, output, session) {
   }
   session$userData$ynow_auth <- ynow_auth
 
+  # Sysadmin view-as (defined early so pinned prefs / ACL subject can prefer it).
+  # Value: list(public_id=, user_id=, role=) or NULL. No PII.
+  ynow_pts_view_as <- reactiveVal(NULL)
+
   # ---- Pinned recent search (long-press 2s) ----
+  #' Prefs subject: view-as target when active, else signed-in account.
   .ynow_pinned_auth_uid <- function() {
+    va <- tryCatch(isolate(ynow_pts_view_as()), error = function(e) NULL)
+    if (is.list(va)) {
+      vid <- as.character(va$user_id %||% "")[1]
+      if (nzchar(vid)) return(vid)
+    }
     u <- tryCatch(isolate(ynow_auth$user()), error = function(e) NULL)
     if (is.function(u)) u <- tryCatch(u(), error = function(e) NULL)
     if (!is.list(u)) return("")
@@ -445,24 +455,31 @@ server <- function(input, output, session) {
     values$pinned_search <- ynow_prefs_normalize_tickers(tickers)
   }, ignoreInit = TRUE)
 
-  # Auth transitions: load durable pins on login; drop account pins on logout.
+  # Auth / view-as transitions: load durable pins for the effective subject;
+  # drop them when neither real auth nor view-as applies.
   # ignoreInit: guests hydrate via pinned_search_guest_load; do not wipe that race.
   .ynow_pinned_last_uid <- reactiveVal("")
   observeEvent(
     {
       list(
         logged = tryCatch(isTRUE(ynow_auth$is_logged_in()), error = function(e) FALSE),
-        uid = .ynow_pinned_auth_uid()
+        uid = .ynow_pinned_auth_uid(),
+        view_as = tryCatch(ynow_pts_view_as(), error = function(e) NULL)
       )
     },
     {
       uid <- .ynow_pinned_auth_uid()
       prev <- isolate(as.character(.ynow_pinned_last_uid() %||% "")[1])
+      va_on <- {
+        va <- tryCatch(isolate(ynow_pts_view_as()), error = function(e) NULL)
+        is.list(va) && nzchar(as.character(va$user_id %||% "")[1])
+      }
       if (nzchar(uid)) {
         guest_pins <- isolate(as.character(values$pinned_search %||% character(0)))
         server_pins <- .ynow_pinned_load_for_user(uid)
-        # One-time merge of guest local pins into the account store.
-        if (length(guest_pins) && exists("ynow_prefs_normalize_tickers", mode = "function")) {
+        # Merge guest local pins only for a real sign-in (not view-as impersonation).
+        if (!isTRUE(va_on) && length(guest_pins) &&
+              exists("ynow_prefs_normalize_tickers", mode = "function")) {
           merged <- ynow_prefs_normalize_tickers(c(server_pins, guest_pins))
           if (!identical(merged, server_pins)) {
             server_pins <- .ynow_pinned_persist(uid, merged)
@@ -475,7 +492,7 @@ server <- function(input, output, session) {
         )
         .ynow_pinned_last_uid(uid)
       } else if (nzchar(prev)) {
-        # Signed out: hide account pins (guest may pin again via localStorage).
+        # Signed out / left view-as: hide account pins (guest may pin via localStorage).
         values$pinned_search <- character(0)
         .ynow_pinned_last_uid("")
       }
@@ -532,8 +549,7 @@ server <- function(input, output, session) {
   # Panel payload: list(kind="locked"|"loading"|"ready"|"error", ...). Built async
   # so Postgres list_users cannot block the session (exit / Switch view stay live).
   ynow_pts_sysadmin_panel_state <- reactiveVal(list(kind = "locked"))
-  # Sysadmin view-as: list(public_id=, user_id=, role=) or NULL. No PII.
-  ynow_pts_view_as <- reactiveVal(NULL)
+  # ynow_pts_view_as is created earlier (before pinned prefs).
 
   .ynow_access_subject_id <- function() {
     va <- tryCatch(isolate(ynow_pts_view_as()), error = function(e) NULL)
@@ -745,6 +761,7 @@ server <- function(input, output, session) {
   session$userData$ynow_pts_view_as <- ynow_pts_view_as
 
   #' Push / clear view-as chrome + silver title Loading (no PII beyond public_id).
+  #' Client mirrors that user's session UI (ynow-authed chrome, unlocks, prefs).
   .ynow_view_as_push_chrome <- function(va = NULL) {
     loc <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "en")
     .lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
@@ -756,6 +773,17 @@ server <- function(input, output, session) {
         session$sendCustomMessage("ynowViewAsMode", list(active = FALSE)),
         error = function(e) NULL
       )
+      # Restore real auth chrome (sysadmin portal is guest unless email-signed-in).
+      logged <- tryCatch(isTRUE(ynow_auth$is_logged_in()), error = function(e) FALSE)
+      email <- ""
+      if (isTRUE(logged)) {
+        u <- tryCatch(ynow_auth$user(), error = function(e) NULL)
+        if (is.function(u)) u <- tryCatch(u(), error = function(e) NULL)
+        if (is.list(u)) email <- as.character(u$email %||% "")[1]
+      }
+      if (is.function(tryCatch(ynow_auth$push_auth_state, error = function(e) NULL))) {
+        tryCatch(ynow_auth$push_auth_state(logged, email), error = function(e) NULL)
+      }
       return(invisible(FALSE))
     }
     pid <- as.character(va$public_id %||% "")[1]
@@ -765,12 +793,15 @@ server <- function(input, output, session) {
         list(
           active = TRUE,
           public_id = pid,
+          # Session-like UI: treat as signed-in for guest locks / member gates / chrome.
+          session_like = TRUE,
           active_label = .lab("pts_sysadmin_viewas_active", "User view active"),
           hint = .lab(
             "pts_sysadmin_viewas_chrome_hint",
-            "Title Loading is silver. Balances and spend gates follow this user."
+            "Title Loading is silver. Chrome, unlocks, balances, and prefs follow this user."
           ),
-          exit_label = .lab("pts_sysadmin_viewas_exit", "Exit user view")
+          exit_label = .lab("pts_sysadmin_viewas_exit", "Exit user view"),
+          label_sign_out = .lab("auth_sign_out", "Sign out")
         )
       ),
       error = function(e) NULL
@@ -1224,6 +1255,31 @@ server <- function(input, output, session) {
     }, error = function(e) NULL)
     ynow_pts_sysadmin_tick(isolate(ynow_pts_sysadmin_tick()) + 1L)
   }, ignoreInit = TRUE)
+
+  # Sign out during view-as = exit user preview (ops admin is not email-authed).
+  .ynow_view_as_exit_from_signout <- function() {
+    va <- tryCatch(isolate(ynow_pts_view_as()), error = function(e) NULL)
+    if (!is.list(va) || !nzchar(as.character(va$user_id %||% "")[1])) {
+      return(invisible(FALSE))
+    }
+    ynow_pts_view_as(NULL)
+    .ynow_view_as_push_chrome(NULL)
+    tryCatch(.ynow_pts_push_banner(), error = function(e) NULL)
+    tryCatch({
+      if (exists("updateTabItems", mode = "function")) {
+        updateTabItems(session, "sidebar_tabs", "testing")
+      }
+      session$sendCustomMessage("ynowGotoTab", list(tab = "testing"))
+    }, error = function(e) NULL)
+    ynow_pts_sysadmin_tick(isolate(ynow_pts_sysadmin_tick()) + 1L)
+    invisible(TRUE)
+  }
+  observeEvent(input$ynow_auth_sign_out, {
+    .ynow_view_as_exit_from_signout()
+  }, ignoreInit = TRUE, priority = 50)
+  observeEvent(input$ynow_auth_sign_out_home, {
+    .ynow_view_as_exit_from_signout()
+  }, ignoreInit = TRUE, priority = 50)
 
   # Load user list off the reactive flush so Exit / Switch view stay responsive.
   observeEvent(ynow_pts_sysadmin_tick(), {
