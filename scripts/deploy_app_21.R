@@ -75,7 +75,7 @@ inject_script <- file.path(root, "scripts", "inject_renviron_from_env.R")
   if (!file.exists(path)) {
     return(list(
       keys = character(), has_supabase = FALSE, has_google = FALSE,
-      has_oauth = FALSE, has_neon = FALSE
+      has_oauth = FALSE, has_neon = FALSE, has_service_role = FALSE
     ))
   }
   ren_lines <- readLines(path, warn = FALSE, encoding = "UTF-8")
@@ -84,12 +84,14 @@ inject_script <- file.path(root, "scripts", "inject_renviron_from_env.R")
   has_google <- all(c("YNOW_GOOGLE_CLIENT_ID", "YNOW_GOOGLE_CLIENT_SECRET") %in% ren_keys)
   has_neon <- all(c("YNOW_DB_HOST", "YNOW_DB_USER", "YNOW_DB_PASSWORD") %in% ren_keys) ||
     ("YNOW_DATABASE_URL" %in% ren_keys)
+  has_service_role <- "YNOW_SUPABASE_SERVICE_ROLE" %in% ren_keys
   list(
     keys = ren_keys,
     has_supabase = has_supabase,
     has_google = has_google,
     has_oauth = isTRUE(has_supabase) || isTRUE(has_google),
-    has_neon = isTRUE(has_neon)
+    has_neon = isTRUE(has_neon),
+    has_service_role = isTRUE(has_service_role)
   )
 }
 
@@ -163,9 +165,17 @@ if (file.exists(renviron_path)) {
   if (!isTRUE(flags$has_neon) && isTRUE(allow_missing_neon)) {
     message("WARNING: shipping WITHOUT account DB (YNOW_ALLOW_MISSING_NEON=1) — points stay memory-only.")
   }
+  if (isTRUE(flags$has_supabase) && !isTRUE(flags$has_service_role)) {
+    message(
+      "WARNING: YNOW_SUPABASE_SERVICE_ROLE unset — account delete will purge Postgres/local ",
+      "data but may leave the Supabase Auth identity. Add the Dashboard service_role key to ",
+      "gitignored .Renviron (or Cloud secrets → inject_renviron_from_env.R) and redeploy."
+    )
+  }
   message(
     "Deploy .Renviron OK: oauth=", flags$has_oauth,
     " account_db=", flags$has_neon,
+    " service_role=", flags$has_service_role,
     " (gitignored; not committed)."
   )
 }

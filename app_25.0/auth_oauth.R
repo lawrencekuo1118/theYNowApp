@@ -10,7 +10,12 @@
 # Preferred path — Supabase Auth (one project covers Google + Facebook + LinkedIn):
 #   YNOW_SUPABASE_URL=https://xxxx.supabase.co
 #   YNOW_SUPABASE_ANON_KEY=eyJ...
+#   YNOW_SUPABASE_SERVICE_ROLE=eyJ...   # server-only; Admin API (account delete IdP purge)
 #   YNOW_OAUTH_REDIRECT_URI=https://hopesmasher1118.shinyapps.io/TheYNowApp/
+#
+# Service role is required to DELETE /auth/v1/admin/users/{id} when a member
+# confirms account deletion. Never put it in client JS or git; only .Renviron /
+# shinyapps bundle / Cloud Agent secrets → scripts/inject_renviron_from_env.R.
 #
 # Owner must also enable each provider in the Supabase dashboard (env alone is not enough):
 #   1. https://supabase.com/dashboard → project (ref in YNOW_SUPABASE_URL)
@@ -467,17 +472,39 @@ ynow_oauth_supabase_service_role <- function() {
   trimws(Sys.getenv("YNOW_SUPABASE_SERVICE_ROLE", unset = ""))
 }
 
+#' TRUE when `uid` looks like a Supabase Auth user UUID (not a raw Google sub).
+ynow_oauth_is_supabase_auth_uid <- function(uid) {
+  grepl(
+    "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+    as.character(uid %||% "")[1]
+  )
+}
+
 #' Best-effort delete of a Supabase Auth user (OAuth IdP row).
-#' Requires `YNOW_SUPABASE_SERVICE_ROLE` + URL. Skips cleanly when unset.
+#' Requires `YNOW_SUPABASE_SERVICE_ROLE` + `YNOW_SUPABASE_URL`. Skips cleanly
+#' when unset or when `provider_uid` is not a Supabase Auth UUID.
+#' HTTP 404 (already gone) counts as success. Never logs the service-role value.
 ynow_oauth_delete_supabase_user <- function(provider_uid) {
   uid <- as.character(provider_uid %||% "")[1]
   if (!nzchar(uid)) {
-    return(list(ok = FALSE, skipped = TRUE, reason = "no_uid"))
+    return(list(ok = FALSE, skipped = TRUE, reason = "no_uid", needed = FALSE))
+  }
+  if (!isTRUE(ynow_oauth_is_supabase_auth_uid(uid))) {
+    message(
+      "ynow_oauth_delete_supabase_user: skipped (not_supabase_uid) — ",
+      "direct OAuth provider id is not a Supabase Auth user"
+    )
+    return(list(ok = FALSE, skipped = TRUE, reason = "not_supabase_uid", needed = FALSE))
   }
   key <- ynow_oauth_supabase_service_role()
   base <- ynow_oauth_supabase_url()
   if (!nzchar(key) || !nzchar(base)) {
-    return(list(ok = FALSE, skipped = TRUE, reason = "no_service_role"))
+    reason <- if (!nzchar(base)) "no_supabase_url" else "no_service_role"
+    message(
+      "ynow_oauth_delete_supabase_user: skipped (", reason, ") — ",
+      "set YNOW_SUPABASE_SERVICE_ROLE + YNOW_SUPABASE_URL (server-only) to purge Auth IdP"
+    )
+    return(list(ok = FALSE, skipped = TRUE, reason = reason, needed = TRUE))
   }
   tryCatch(
     {
@@ -489,11 +516,32 @@ ynow_oauth_delete_supabase_user <- function(provider_uid) {
         ) |>
         httr2::req_timeout(12) |>
         httr2::req_perform()
-      st <- httr2::resp_status(resp)
-      list(ok = isTRUE(st >= 200L && st < 300L), skipped = FALSE, status = st)
+      st <- as.integer(httr2::resp_status(resp))[1]
+      # 2xx deleted; 404 already absent — both OK for account purge.
+      ok <- isTRUE(st >= 200L && st < 300L) || identical(st, 404L)
+      if (!isTRUE(ok)) {
+        message(
+          "ynow_oauth_delete_supabase_user: Auth Admin DELETE failed status=", st
+        )
+      } else if (identical(st, 404L)) {
+        message("ynow_oauth_delete_supabase_user: Auth user already absent (404)")
+      } else {
+        message("ynow_oauth_delete_supabase_user: Auth user deleted status=", st)
+      }
+      list(ok = ok, skipped = FALSE, status = st, needed = TRUE, reason = if (ok) "deleted" else "http_error")
     },
     error = function(e) {
-      list(ok = FALSE, skipped = FALSE, error = conditionMessage(e))
+      message(
+        "ynow_oauth_delete_supabase_user: error — ",
+        conditionMessage(e)
+      )
+      list(
+        ok = FALSE,
+        skipped = FALSE,
+        error = conditionMessage(e),
+        needed = TRUE,
+        reason = "error"
+      )
     }
   )
 }

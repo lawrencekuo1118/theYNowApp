@@ -887,6 +887,15 @@ locale_for_market <- function(mode = get_market_mode()) {
     auth_delete_modal_cancel = "Cancel",
     auth_delete_msg_confirm = "Type DELETE exactly to confirm account deletion.",
     auth_delete_msg_ok = "Account deleted. You have been signed out.",
+    auth_delete_msg_ok_auth_skipped = paste0(
+      "Account data deleted and you are signed out. ",
+      "Login identity may still exist until the app owner configures ",
+      "YNOW_SUPABASE_SERVICE_ROLE on the server."
+    ),
+    auth_delete_msg_ok_auth_failed = paste0(
+      "Account data deleted and you are signed out. ",
+      "Removing the login identity failed — contact support if you can still sign in."
+    ),
     auth_delete_msg_fail = "Could not delete the account. Try again later.",
     auth_delete_msg_no_user = "No signed-in account to delete.",
     pts_balance = "Points balance",
@@ -1069,7 +1078,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     auth_gate_lab_b1 = "HFV and Quant Backtest Lab worksheets",
     auth_gate_lab_b2 = "Fair Value replay, strategy filters, and Lab reports",
-    auth_gate_lab_b3 = "FYN spend for Lab runs (bt_run / hfv_run) when points are on",
+    auth_gate_lab_b3 = "FYN spend for Lab runs (bt_run) when points are on",
     auth_gate_lab_demo_caption = "Lab demo — what you unlock after sign-in",
     auth_gate_checklist_body = paste0(
       "Decision Checklist requires a signed-in account in Full mode. ",
@@ -4803,6 +4812,15 @@ locale_for_market <- function(mode = get_market_mode()) {
     auth_delete_modal_cancel = "取消",
     auth_delete_msg_confirm = "請精確輸入 DELETE 以確認刪除帳號。",
     auth_delete_msg_ok = "帳號已刪除，您已登出。",
+    auth_delete_msg_ok_auth_skipped = paste0(
+      "帳號資料已刪除，您已登出。",
+      "登入身分可能仍存在；需由應用程式擁有者在伺服器設定 ",
+      "YNOW_SUPABASE_SERVICE_ROLE 後才會一併清除。"
+    ),
+    auth_delete_msg_ok_auth_failed = paste0(
+      "帳號資料已刪除，您已登出。",
+      "清除登入身分失敗；若仍可登入，請聯絡支援。"
+    ),
     auth_delete_msg_fail = "無法刪除帳號。請稍後再試。",
     auth_delete_msg_no_user = "目前沒有可刪除的登入帳號。",
     pts_balance = "點數餘額",
@@ -4983,7 +5001,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     auth_gate_lab_b1 = "HFV 與量化回測實驗室工作區",
     auth_gate_lab_b2 = "Fair Value 重播、策略篩選與實驗室報告",
-    auth_gate_lab_b3 = "點數開啟時，實驗室執行可使用 FYN（bt_run／hfv_run）",
+    auth_gate_lab_b3 = "點數開啟時，實驗室執行可使用 FYN（bt_run）",
     auth_gate_lab_demo_caption = "實驗室示範——登入後可解鎖的功能",
     auth_gate_checklist_body = paste0(
       "完整版的決策檢核需登入帳號後才能使用。",

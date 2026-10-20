@@ -8,6 +8,40 @@
 #   YNOW_AUTH_DEMO_EMAIL / YNOW_AUTH_DEMO_PASSWORD
 # Never ship real secrets in the repo; leave demo env unset on production
 # until a real identity backend is wired.
+#
+# Freemium A/B membership locks: see membership_locks.R (sourced into this env).
+if (!exists("ynow_membership_lock_catalog", mode = "function")) {
+  .ynow_ml_ofile <- tryCatch(
+    normalizePath(sys.frame(1)$ofile, mustWork = FALSE),
+    error = function(e) ""
+  )
+  .ynow_ml_cands <- unique(c(
+    if (nzchar(.ynow_ml_ofile)) {
+      file.path(dirname(.ynow_ml_ofile), "membership_locks.R")
+    } else {
+      character()
+    },
+    "membership_locks.R",
+    file.path("app_25.0", "membership_locks.R"),
+    file.path("..", "membership_locks.R")
+  ))
+  .ynow_ml_loaded <- FALSE
+  for (.ynow_ml_p in .ynow_ml_cands) {
+    if (is.character(.ynow_ml_p) && nzchar(.ynow_ml_p) && file.exists(.ynow_ml_p)) {
+      # environment() at top-level of source() is the caller's target env (local=TRUE safe).
+      sys.source(.ynow_ml_p, envir = environment(), keep.source = TRUE)
+      .ynow_ml_loaded <- exists("ynow_membership_lock_catalog", mode = "function")
+      if (isTRUE(.ynow_ml_loaded)) break
+    }
+  }
+  if (!isTRUE(.ynow_ml_loaded)) {
+    warning("membership_locks.R not found; membership A/B catalog unavailable", call. = FALSE)
+  }
+  rm(list = intersect(
+    c(".ynow_ml_ofile", ".ynow_ml_cands", ".ynow_ml_p", ".ynow_ml_loaded"),
+    ls(all.names = TRUE)
+  ))
+}
 
 #' TRUE when account login is enabled (default ON).
 #' Set YNOW_ENABLE_ACCOUNT_LOGIN=0/false/off to disable chrome + gates.
@@ -25,8 +59,17 @@ ynow_compact_ui <- function(...) {
 
 #' Sidebar tabNames that Full shows with a guest lock glyph (auth on + guest).
 #' Lite must omit these entirely (no grayed locks).
+#' Source of truth: membership_locks.R (tier A, mechanism guest_menu_lock).
 #' @return character vector of shinydashboard tabName values
 ynow_sidebar_guest_lock_tabs <- function() {
+  if (exists("ynow_membership_lock_ids", mode = "function")) {
+    tabs <- ynow_membership_lock_ids(
+      tier = "A",
+      kind = "sidebar_tab",
+      mechanism = "guest_menu_lock"
+    )
+    if (length(tabs)) return(tabs)
+  }
   c("lab_notes", "decision_checklist", "price_alerts")
 }
 
@@ -486,7 +529,12 @@ ynow_auth_requires_login <- function(lite = FALSE) {
 
 #' App-generated / proprietary download output ids that require sign-in when auth is on.
 #' Full guests are gated; Lite keeps Download Report (and other Lite-visible downloads) open.
+#' Source of truth: membership_locks.R (kind = download; tier A or B).
 ynow_gated_download_ids <- function() {
+  if (exists("ynow_membership_lock_ids", mode = "function")) {
+    ids <- ynow_membership_lock_ids(kind = "download")
+    if (length(ids)) return(ids)
+  }
   c(
     "download_report",
     "download_snapshot",
@@ -1601,8 +1649,20 @@ ynow_points_panel_ui <- function(user, locale = "zh-TW",
 #' Known gate feature ids (promo + demo are keyed per feature).
 #' Demo clips live in www/demos/<feature>.{mp4,webm} (~10s; regenerate with
 #' scripts/generate_gate_demo_videos.py).
+#' Membership gates (A/B) come from membership_locks.R; ops_acl / sysadmin gate
+#' ids (snap_defaults, inner_lock, atx) are non-membership but still listed for demos.
 ynow_gate_features <- function() {
-  c("lab", "checklist", "alerts", "account", "pdf", "snap_defaults", "inner_lock", "atx")
+  mem <- if (exists("ynow_membership_gate_features", mode = "function")) {
+    ynow_membership_gate_features()
+  } else {
+    c("lab", "checklist", "alerts", "account", "pdf")
+  }
+  ops <- if (exists("ynow_ops_gate_features", mode = "function")) {
+    ynow_ops_gate_features()
+  } else {
+    c("snap_defaults", "inner_lock", "atx")
+  }
+  unique(c(mem, ops))
 }
 
 #' Locale key helpers for a feature-specific gate promo.
@@ -1633,12 +1693,27 @@ ynow_gate_promo_faq_ui <- function(feature = "lab", include_faq = TRUE, compact 
   keys <- ynow_gate_promo_keys(feature)
   feature <- keys$feature
   demo_base <- paste0("demos/", feature)
+  tier_attr <- if (exists("ynow_membership_lock_tier_attr", mode = "function")) {
+    ynow_membership_lock_tier_attr(feature)
+  } else {
+    ""
+  }
+  scope_attr <- if (!nzchar(tier_attr) &&
+      exists("ynow_non_membership_lock_catalog", mode = "function")) {
+    nm <- ynow_non_membership_lock_catalog()
+    hit <- nm[nm$id == feature, , drop = FALSE]
+    if (nrow(hit)) as.character(hit$scope[[1]]) else "ops_acl"
+  } else {
+    NULL
+  }
   tags$div(
     class = paste(
       "ynow-gate-extras",
       if (isTRUE(compact)) "ynow-gate-extras--compact" else NULL
     ),
     `data-ynow-gate-feature` = feature,
+    `data-ynow-lock-tier` = if (nzchar(tier_attr)) tier_attr else NULL,
+    `data-ynow-lock-scope` = scope_attr,
     tags$div(
       class = "ynow-gate-promo",
       tags$div(
@@ -1752,10 +1827,16 @@ ynow_member_gate_ui <- function(gate_id, title_id, body_id, btn_id, feature = "l
     "This member area requires a signed-in account in Full mode. ",
     "Lite mode does not require sign-in and remains fully usable."
   )
+  tier_attr <- if (exists("ynow_membership_lock_tier_attr", mode = "function")) {
+    ynow_membership_lock_tier_attr(keys$feature)
+  } else {
+    "A"
+  }
   tags$div(
     id = gate_id,
     class = "box box-solid ynow-member-gate ynow-gate-box",
     `data-ynow-gate-feature` = keys$feature,
+    `data-ynow-lock-tier` = if (nzchar(tier_attr)) tier_attr else NULL,
     style = "display:none; max-width:760px; margin:18px auto;",
     tags$div(
       class = "box-header with-border",
@@ -2132,7 +2213,8 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
       ynow_db_purge_user(
         user_id = u$id %||% "",
         email = u$email %||% "",
-        confirm = confirm_txt
+        confirm = confirm_txt,
+        provider_uid = u$provider_uid %||% ""
       ),
       error = function(e) {
         list(ok = FALSE, message_key = "auth_delete_msg_fail")
@@ -2155,12 +2237,25 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
     }
     tryCatch(removeModal(), error = function(e) NULL)
     .sign_out()
+    mk_ok <- as.character(res$message_key %||% "auth_delete_msg_ok")[1]
+    fb_ok <- if (identical(mk_ok, "auth_delete_msg_ok_auth_skipped")) {
+      paste0(
+        "Account data deleted and you are signed out. ",
+        "Login identity may still exist until the app owner configures ",
+        "YNOW_SUPABASE_SERVICE_ROLE on the server."
+      )
+    } else if (identical(mk_ok, "auth_delete_msg_ok_auth_failed")) {
+      paste0(
+        "Account data deleted and you are signed out. ",
+        "Removing the login identity failed — contact support if you can still sign in."
+      )
+    } else {
+      "Account deleted. You have been signed out."
+    }
+    ntype <- if (identical(mk_ok, "auth_delete_msg_ok")) "message" else "warning"
+    ndur <- if (identical(mk_ok, "auth_delete_msg_ok")) 6 else 12
     tryCatch(
-      showNotification(
-        .str("auth_delete_msg_ok", "Account deleted. You have been signed out."),
-        type = "message",
-        duration = 6
-      ),
+      showNotification(.str(mk_ok, fb_ok), type = ntype, duration = ndur),
       error = function(e) NULL
     )
   }, ignoreInit = TRUE)

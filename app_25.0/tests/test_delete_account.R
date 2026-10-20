@@ -231,8 +231,8 @@ check("zh-TW modal uses Taiwan wording", {
 del_keys <- c(
   "auth_delete_account", "auth_delete_modal_title", "auth_delete_modal_warn",
   "auth_delete_modal_type", "auth_delete_modal_confirm", "auth_delete_modal_cancel",
-  "auth_delete_msg_confirm", "auth_delete_msg_ok", "auth_delete_msg_fail",
-  "auth_delete_msg_no_user"
+  "auth_delete_msg_confirm", "auth_delete_msg_ok", "auth_delete_msg_ok_auth_skipped",
+  "auth_delete_msg_ok_auth_failed", "auth_delete_msg_fail", "auth_delete_msg_no_user"
 )
 check("locale keys en + zh-TW", {
   all(vapply(del_keys, function(k) {
@@ -242,9 +242,136 @@ check("locale keys en + zh-TW", {
   }, logical(1)))
 })
 
-check("service-role delete skips when unset", {
+check("service-role delete skips when unset (needed=TRUE)", {
+  old_url <- Sys.getenv("YNOW_SUPABASE_URL", unset = NA_character_)
+  Sys.setenv(YNOW_SUPABASE_URL = "https://example.supabase.co")
+  on.exit({
+    if (is.na(old_url)) Sys.unsetenv("YNOW_SUPABASE_URL") else
+      Sys.setenv(YNOW_SUPABASE_URL = old_url)
+  }, add = TRUE)
+  Sys.unsetenv("YNOW_SUPABASE_SERVICE_ROLE")
   res <- ynow_oauth_delete_supabase_user("00000000-0000-0000-0000-000000000001")
-  isTRUE(isTRUE(res$skipped))
+  isTRUE(isTRUE(res$skipped)) &&
+    isTRUE(isTRUE(res$needed)) &&
+    identical(res$reason, "no_service_role")
+})
+
+check("non-UUID provider id is not treated as Supabase Auth uid", {
+  res <- ynow_oauth_delete_supabase_user("google-sub-12345")
+  isTRUE(isTRUE(res$skipped)) &&
+    isTRUE(!isTRUE(res$needed)) &&
+    identical(res$reason, "not_supabase_uid")
+})
+
+check("message key: full ok when Auth not needed", {
+  identical(
+    ynow_auth_delete_message_key(list(ok = FALSE, skipped = TRUE, needed = FALSE)),
+    "auth_delete_msg_ok"
+  )
+})
+check("message key: skipped service role → auth_skipped", {
+  identical(
+    ynow_auth_delete_message_key(list(
+      ok = FALSE, skipped = TRUE, needed = TRUE, reason = "no_service_role"
+    )),
+    "auth_delete_msg_ok_auth_skipped"
+  )
+})
+check("message key: Auth HTTP failure → auth_failed", {
+  identical(
+    ynow_auth_delete_message_key(list(
+      ok = FALSE, skipped = FALSE, needed = TRUE, status = 401L
+    )),
+    "auth_delete_msg_ok_auth_failed"
+  )
+})
+check("message key: Auth deleted → ok", {
+  identical(
+    ynow_auth_delete_message_key(list(ok = TRUE, skipped = FALSE, needed = TRUE, status = 200L)),
+    "auth_delete_msg_ok"
+  )
+})
+
+# Mock Auth Admin delete success path (no real network).
+.orig_oauth_del <- ynow_oauth_delete_supabase_user
+assign(
+  "ynow_oauth_delete_supabase_user",
+  function(provider_uid) {
+    list(
+      ok = TRUE,
+      skipped = FALSE,
+      needed = TRUE,
+      status = 200L,
+      reason = "deleted",
+      mocked = TRUE,
+      provider_uid = as.character(provider_uid %||% "")[1]
+    )
+  },
+  envir = globalenv()
+)
+on.exit({
+  assign("ynow_oauth_delete_supabase_user", .orig_oauth_del, envir = globalenv())
+}, add = TRUE)
+
+uid2 <- "mem:delete-account-auth-mock"
+em2 <- "delete.auth.mock@example.com"
+ynow_prefs_reset_memory()
+ynow_access_reset_memory()
+.ynow_points_mem_reset()
+ynow_pdf_reset_memory()
+ynow_points_mem_register_profile(uid2, role = "user")
+res_auth <- ynow_db_purge_user(
+  uid2,
+  email = em2,
+  confirm = "DELETE",
+  provider_uid = "11111111-2222-3333-4444-555555555555"
+)
+check("purge with mocked Auth delete reports full ok", {
+  isTRUE(res_auth$ok) &&
+    identical(res_auth$message_key, "auth_delete_msg_ok") &&
+    isTRUE(res_auth$auth_idp$ok) &&
+    isTRUE(res_auth$auth_idp$mocked)
+})
+
+# Mock skipped service-role path through purge + session provider_uid.
+assign(
+  "ynow_oauth_delete_supabase_user",
+  function(provider_uid) {
+    list(
+      ok = FALSE,
+      skipped = TRUE,
+      needed = TRUE,
+      reason = "no_service_role",
+      mocked = TRUE
+    )
+  },
+  envir = globalenv()
+)
+uid3 <- "mem:delete-account-auth-skip"
+em3 <- "delete.auth.skip@example.com"
+ynow_points_mem_register_profile(uid3, role = "user")
+res_skip <- ynow_db_purge_user(
+  uid3,
+  email = em3,
+  confirm = "DELETE",
+  provider_uid = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+)
+check("purge still ok when Auth delete skipped; message reports Auth pending", {
+  isTRUE(res_skip$ok) &&
+    identical(res_skip$message_key, "auth_delete_msg_ok_auth_skipped") &&
+    isTRUE(res_skip$auth_idp$skipped)
+})
+
+# Confirm DELETE gate still blocks before any Auth call.
+blocked <- ynow_db_purge_user(
+  uid3,
+  email = em3,
+  confirm = "delete",
+  provider_uid = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+)
+check("DELETE confirm still required before Auth path", {
+  isTRUE(!isTRUE(blocked$ok)) &&
+    identical(blocked$message_key, "auth_delete_msg_confirm")
 })
 
 cat(sprintf("\n%d passed, %d failed\n", pass, fail))

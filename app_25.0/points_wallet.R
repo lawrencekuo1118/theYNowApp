@@ -9,7 +9,8 @@
 #   YNOW_POINTS_PRICE_ALERT_SLOT / HFV_RUN / BT_RUN  (optional overrides)
 #   YNOW_POINTS_BACKEND=memory  (tests / no Neon)
 #
-# SKUs (v1): alert_slot=1, hfv_run=3, bt_run=5, pdf_report=10 — spent from FYN.
+# SKUs (membership lock catalog tier B): alert_slot=1, bt_run=5, pdf_report=10 — spent from FYN.
+# Retired: hfv_run (never wired to ynow_points_gate; see ynow_non_membership_lock_catalog).
 # Lite never spends points except the valuation PDF (login, 3 free / Taipei day, then 10 FYN).
 # Spend is server-side only (idempotent ref_id).
 # Legacy single `points_balance` migrates into FYN (no paid evidence → FYN).
@@ -88,25 +89,52 @@ ynow_points_norm_wallet <- function(wallet = "fyn") {
 }
 
 #' Default catalog (cost may be overridden by env).
+#' SKUs come from membership_locks.R (kind=points_sku, all tier B).
 ynow_points_catalog_defaults <- function() {
   env_cost <- function(key, default) {
     n <- suppressWarnings(as.integer(Sys.getenv(key, unset = "")))
     if (is.finite(n) && n >= 0L) as.integer(n) else as.integer(default)
   }
+  defs <- if (exists("ynow_membership_points_sku_defaults", mode = "function")) {
+    ynow_membership_points_sku_defaults()
+  } else {
+    data.frame(
+      sku = c("alert_slot", "bt_run", "pdf_report"),
+      title_en = c("Value Alert slot", "Backtest full run", "Valuation report (PDF)"),
+      title_zh_tw = c("到值通知一筆", "回測完整執行", "估值報告（PDF）"),
+      cost_default = c(1L, 5L, 10L),
+      env_key = c(
+        "YNOW_POINTS_PRICE_ALERT_SLOT",
+        "YNOW_POINTS_PRICE_BT_RUN",
+        "YNOW_POINTS_PRICE_PDF_REPORT"
+      ),
+      enabled = c(TRUE, TRUE, TRUE),
+      stringsAsFactors = FALSE
+    )
+  }
+  # Guard: every points SKU must be classified B in the membership catalog.
+  if (exists("ynow_membership_lock_tier", mode = "function")) {
+    for (sku in defs$sku) {
+      tier <- ynow_membership_lock_tier(sku)
+      if (!identical(tier, "B")) {
+        stop(
+          "points SKU '", sku, "' must be membership lock tier B (got ",
+          if (is.na(tier)) "NA" else tier, ")",
+          call. = FALSE
+        )
+      }
+    }
+  }
   data.frame(
-    sku = c("alert_slot", "hfv_run", "bt_run", "pdf_report"),
-    title_en = c(
-      "Value Alert slot", "HFV full recalculation", "Backtest full run",
-      "Valuation report (PDF)"
+    sku = defs$sku,
+    title_en = defs$title_en,
+    title_zh_tw = defs$title_zh_tw,
+    cost = vapply(
+      seq_len(nrow(defs)),
+      function(i) env_cost(defs$env_key[[i]], defs$cost_default[[i]]),
+      integer(1)
     ),
-    title_zh_tw = c("到值通知一筆", "HFV 完整重算", "回測完整執行", "估值報告（PDF）"),
-    cost = c(
-      env_cost("YNOW_POINTS_PRICE_ALERT_SLOT", 1L),
-      env_cost("YNOW_POINTS_PRICE_HFV_RUN", 3L),
-      env_cost("YNOW_POINTS_PRICE_BT_RUN", 5L),
-      env_cost("YNOW_POINTS_PRICE_PDF_REPORT", 10L)
-    ),
-    enabled = c(TRUE, TRUE, TRUE, TRUE),
+    enabled = as.logical(defs$enabled),
     stringsAsFactors = FALSE
   )
 }
@@ -477,6 +505,14 @@ ynow_points_ensure_schema <- function(conn = NULL) {
         )
       )
     }
+    # Retired membership SKU (never wired): keep row if present but disable spend.
+    tryCatch(
+      DBI::dbExecute(
+        con,
+        "UPDATE ynow_points_catalog SET enabled = FALSE WHERE sku = 'hfv_run'"
+      ),
+      error = function(e) NULL
+    )
     TRUE
   }
   if (!is.null(conn)) return(run(conn))
@@ -986,8 +1022,21 @@ ynow_points_reset_on_login <- function(user_id, target = NULL) {
 }
 
 #' Shiny gate helper. Returns TRUE if the action may proceed.
+#' SKU must be a membership lock tier B points_sku when the catalog is loaded.
 ynow_points_gate <- function(session, sku, ref_id, user = NULL, locale = "en") {
   if (!isTRUE(ynow_points_enabled())) return(TRUE)
+
+  sku <- as.character(sku %||% "")[1]
+  if (exists("ynow_membership_lock_tier", mode = "function") && nzchar(sku)) {
+    tier <- ynow_membership_lock_tier(sku)
+    if (!identical(tier, "B")) {
+      warning(
+        "ynow_points_gate: SKU '", sku, "' is not membership tier B; deny spend.",
+        call. = FALSE
+      )
+      return(FALSE)
+    }
+  }
 
   u <- user
   if (is.null(u)) {
