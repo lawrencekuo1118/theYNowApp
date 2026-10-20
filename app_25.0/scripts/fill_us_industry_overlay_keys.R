@@ -1,8 +1,11 @@
 #!/usr/bin/env Rscript
 # Fill industry_key on data/us_industry_overlay.csv via resolve_industry_key_from_yahoo.
-# Run after scripts/build_us_industry_overlay.py (no network).
+# Offline repair for rows with blank / missing keys (e.g. legacy incomplete overlays).
+# Not required after the canonical R builder (scripts/build_us_industry_overlay.R),
+# which maps keys in the same pass as the Yahoo fetch.
 #
 # Usage (from app_25.0/): Rscript scripts/fill_us_industry_overlay_keys.R
+# From repo root: Rscript app_25.0/scripts/fill_us_industry_overlay_keys.R
 
 root <- if (file.exists("industry_standards.R")) {
   getwd()

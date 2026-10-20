@@ -1,5 +1,6 @@
 #!/usr/bin/env Rscript
 # Build data/us_industry_overlay.csv for non–S&P US primary listings.
+# Canonical US industry overlay builder (prefer this over the Python wrapper).
 # Ranks Unmapped names by market_cap (universe_metrics_snapshot), fetches Yahoo
 # Sector/Industry, maps via resolve_industry_key_from_yahoo.
 #
@@ -7,6 +8,9 @@
 #   Rscript scripts/build_us_industry_overlay.R
 #   Rscript scripts/build_us_industry_overlay.R --max-n 100
 #   YNOW_DEBUG_SKIP_PY=1 Rscript ...   # dry: keep existing overlay only
+#
+# From repo root:
+#   Rscript app_25.0/scripts/build_us_industry_overlay.R
 
 args <- commandArgs(trailingOnly = TRUE)
 max_n <- 300L
