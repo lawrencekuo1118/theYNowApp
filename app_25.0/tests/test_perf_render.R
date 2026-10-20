@@ -99,7 +99,14 @@ check(
 )
 
 # --- Lab / BBLab route summary through fast cache ---
-lab <- paste(readLines(file.path(root, "lab_industry_method.R"), warn = FALSE), collapse = "\n")
+# C-STRUCT-03: summary fetch lives in lab_im_pool.R (sourced by facade).
+lab <- paste(
+  c(
+    readLines(file.path(root, "lab_im_pool.R"), warn = FALSE),
+    readLines(file.path(root, "lab_industry_method.R"), warn = FALSE)
+  ),
+  collapse = "\n"
+)
 bb <- paste(readLines(file.path(root, "business_breakdown_module.R"), warn = FALSE), collapse = "\n")
 check(
   "lab IM uses cached_get_summary_data",

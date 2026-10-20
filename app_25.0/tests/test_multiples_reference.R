@@ -23,7 +23,14 @@ source(file.path(root, "ui_locale.R"), local = TRUE)
 ui <- paste(readLines(file.path(root, "ynow_ui.R"), warn = FALSE), collapse = "\n")
 srv <- paste(readLines(file.path(root, "ynow_server.R"), warn = FALSE), collapse = "\n")
 vg <- paste(readLines(file.path(root, "valuation_guard.R"), warn = FALSE), collapse = "\n")
-lab <- paste(readLines(file.path(root, "lab_industry_method.R"), warn = FALSE), collapse = "\n")
+# C-STRUCT-03: industry defaults live in lab_im_bluechip_eval.R (sourced by facade).
+lab <- paste(
+  c(
+    readLines(file.path(root, "lab_im_bluechip_eval.R"), warn = FALSE),
+    readLines(file.path(root, "lab_industry_method.R"), warn = FALSE)
+  ),
+  collapse = "\n"
+)
 
 check("locale Reference en", identical(ui_str("menu_badge_reference", "en"), "Reference"))
 check("locale 參照 zh", identical(ui_str("menu_badge_reference", "zh-TW"), "參照"))

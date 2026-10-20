@@ -23,7 +23,14 @@ check <- function(label, cond) {
 
 ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-src <- paste(readLines(file.path(app_dir, "lab_industry_method.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+# C-STRUCT-03: DT sort helpers live in lab_im_sidebar.R (sourced by facade).
+src <- paste(
+  c(
+    readLines(file.path(app_dir, "lab_im_sidebar.R"), warn = FALSE, encoding = "UTF-8"),
+    readLines(file.path(app_dir, "lab_industry_method.R"), warn = FALSE, encoding = "UTF-8")
+  ),
+  collapse = "\n"
+)
 
 for (id in c("lab_im_ind_mcap_table", "lab_im_leaderboard", "lab_im_summary", "lab_im_table")) {
   check(

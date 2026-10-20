@@ -167,7 +167,14 @@ check("server board is snapshot-only", {
 check("server does not persist from Search scores",
       !grepl("\\.lab_im_persist_ind_mcap_from_scores", srv, fixed = TRUE))
 check("lab_im_run_ind_mcap_job defined in lab", {
-  lab_src <- paste(readLines(src_lab, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  # C-STRUCT-03: ind-mcap job defined in lab_im_ind_mcap.R (sourced by facade).
+  lab_src <- paste(
+    c(
+      readLines(file.path(app_dir, "lab_im_ind_mcap.R"), warn = FALSE, encoding = "UTF-8"),
+      readLines(src_lab, warn = FALSE, encoding = "UTF-8")
+    ),
+    collapse = "\n"
+  )
   grepl("lab_im_run_ind_mcap_job\\s*<-\\s*function", lab_src)
 })
 # Smoke: empty catalog returns structured failure (no Yahoo)
