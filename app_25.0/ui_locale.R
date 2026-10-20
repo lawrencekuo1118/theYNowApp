@@ -880,6 +880,15 @@ locale_for_market <- function(mode = get_market_mode()) {
     auth_delete_modal_cancel = "Cancel",
     auth_delete_msg_confirm = "Type DELETE exactly to confirm account deletion.",
     auth_delete_msg_ok = "Account deleted. You have been signed out.",
+    auth_delete_msg_ok_auth_skipped = paste0(
+      "Account data deleted and you are signed out. ",
+      "Login identity may still exist until the app owner configures ",
+      "YNOW_SUPABASE_SERVICE_ROLE on the server."
+    ),
+    auth_delete_msg_ok_auth_failed = paste0(
+      "Account data deleted and you are signed out. ",
+      "Removing the login identity failed — contact support if you can still sign in."
+    ),
     auth_delete_msg_fail = "Could not delete the account. Try again later.",
     auth_delete_msg_no_user = "No signed-in account to delete.",
     pts_balance = "Points balance",
@@ -4789,6 +4798,15 @@ locale_for_market <- function(mode = get_market_mode()) {
     auth_delete_modal_cancel = "取消",
     auth_delete_msg_confirm = "請精確輸入 DELETE 以確認刪除帳號。",
     auth_delete_msg_ok = "帳號已刪除，您已登出。",
+    auth_delete_msg_ok_auth_skipped = paste0(
+      "帳號資料已刪除，您已登出。",
+      "登入身分可能仍存在；需由應用程式擁有者在伺服器設定 ",
+      "YNOW_SUPABASE_SERVICE_ROLE 後才會一併清除。"
+    ),
+    auth_delete_msg_ok_auth_failed = paste0(
+      "帳號資料已刪除，您已登出。",
+      "清除登入身分失敗；若仍可登入，請聯絡支援。"
+    ),
     auth_delete_msg_fail = "無法刪除帳號。請稍後再試。",
     auth_delete_msg_no_user = "目前沒有可刪除的登入帳號。",
     pts_balance = "點數餘額",

@@ -55,6 +55,11 @@ YNOW_ENABLE_ACCOUNT_LOGIN=1
 # Apple needs Apple Developer Services ID credentials in the Supabase provider form.
 # YNOW_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
 # YNOW_SUPABASE_ANON_KEY=
+# Server-only Admin API key (Dashboard → Project Settings → API → service_role).
+# Required to remove the Supabase Auth identity on Account → Delete account.
+# Never commit; never expose to the browser. Deploy via gitignored .Renviron
+# (restore from shinyapps or inject from Cloud Agent secrets).
+# YNOW_SUPABASE_SERVICE_ROLE=
 #
 # Path B: direct Google / Facebook OAuth apps (Apple still needs Supabase / Path A):
 # YNOW_GOOGLE_CLIENT_ID=

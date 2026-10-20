@@ -2132,7 +2132,8 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
       ynow_db_purge_user(
         user_id = u$id %||% "",
         email = u$email %||% "",
-        confirm = confirm_txt
+        confirm = confirm_txt,
+        provider_uid = u$provider_uid %||% ""
       ),
       error = function(e) {
         list(ok = FALSE, message_key = "auth_delete_msg_fail")
@@ -2155,12 +2156,25 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
     }
     tryCatch(removeModal(), error = function(e) NULL)
     .sign_out()
+    mk_ok <- as.character(res$message_key %||% "auth_delete_msg_ok")[1]
+    fb_ok <- if (identical(mk_ok, "auth_delete_msg_ok_auth_skipped")) {
+      paste0(
+        "Account data deleted and you are signed out. ",
+        "Login identity may still exist until the app owner configures ",
+        "YNOW_SUPABASE_SERVICE_ROLE on the server."
+      )
+    } else if (identical(mk_ok, "auth_delete_msg_ok_auth_failed")) {
+      paste0(
+        "Account data deleted and you are signed out. ",
+        "Removing the login identity failed — contact support if you can still sign in."
+      )
+    } else {
+      "Account deleted. You have been signed out."
+    }
+    ntype <- if (identical(mk_ok, "auth_delete_msg_ok")) "message" else "warning"
+    ndur <- if (identical(mk_ok, "auth_delete_msg_ok")) 6 else 12
     tryCatch(
-      showNotification(
-        .str("auth_delete_msg_ok", "Account deleted. You have been signed out."),
-        type = "message",
-        duration = 6
-      ),
+      showNotification(.str(mk_ok, fb_ok), type = ntype, duration = ndur),
       error = function(e) NULL
     )
   }, ignoreInit = TRUE)
