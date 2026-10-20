@@ -16,7 +16,7 @@
       return(sub('^"version"\\s*:\\s*"([^"]+)".*$', "\\1", m[[1]]))
     }
   }
-  "v25.78"
+  "v25.79"
 }
 .YNOW_BUILD_VERSION <- .ynow_read_build_version()
 
@@ -230,7 +230,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v25.78) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
+          "The YNow App (v25.79) 是一套專為專業投資人與分析師打造的「全方位量化財務與估值決策系統」。本系統整合即時財報擷取、多模型估值、決策檢核、Blue Chip Lab 與動態回測，將繁雜的市場資料轉化為可執行的投資決策架構。"
         ),
         tags$p(
           class = "ynow-about-method",
@@ -258,7 +258,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App (v25.78) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
+          "The YNow App (v25.79) is a comprehensive quantitative financial analysis and valuation decision system for professional investors and analysts. It integrates real-time financials, multi-model valuation, Decision Checklist, Blue Chip Lab, and dynamic backtesting to turn complex market data into a disciplined decision framework."
         ),
         tags$p(
           class = "ynow-about-method",
@@ -368,7 +368,7 @@
         tags$h2(class = "ynow-about-title", tags$b("關於 The YNow App（簡化版）")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite（v25.78）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
+          "The YNow App Lite（v25.79）是完整版的精簡工作流：共用同一套財報資料與估值公式，",
           "以自動判別主／副模型與預設參數完成試算，讓使用者先看到合理價區間與產業 KPI，再決定是否回到完整版深入調整。"
         ),
         tags$p(
@@ -385,7 +385,7 @@
         tags$h2(class = "ynow-about-title", tags$b("About The YNow App (Lite)")),
         tags$p(
           class = "ynow-about-lead",
-          "The YNow App Lite (v25.78) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
+          "The YNow App Lite (v25.79) is a streamlined workflow of the Full app. It reuses the same financial data and valuation formulas, ",
           "auto-selects primary/secondary models with App defaults, and surfaces fair-value ranges plus industry KPIs before you open Full for deeper calibration."
         ),
         tags$p(
@@ -3639,9 +3639,9 @@ ui <- dashboardPage(
                   'data-ynow-build="', .YNOW_BUILD_VERSION, '" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v25.78</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v25.79</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v25.78</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v25.79</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -4827,9 +4827,13 @@ ui <- dashboardPage(
             animation: none;
           }
         }
-        /* Access restrictions: hide = remove; lock = keep visible with locked chrome */
+        /* Access restrictions: hide = remove; lock = keep visible with locked chrome.
+           Unified locked sidebar nav chrome (ACL + Full guest locks):
+           .ynow-sidebar-locked + .ynow-access-locked-nav share opacity + lock glyph. */
         .sidebar-menu li.ynow-access-hidden { display: none !important; }
-        .sidebar-menu li.ynow-access-locked-nav > a {
+        .sidebar-menu li.ynow-sidebar-locked > a,
+        .sidebar-menu li.ynow-access-locked-nav > a,
+        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .sidebar-menu a:has(> .ynow-menu-lock) {
           opacity: 0.55;
         }
         .form-group.ynow-access-hidden,
@@ -6572,10 +6576,8 @@ ui <- dashboardPage(
         .skin-black .sidebar-menu > li.menu-open > a {
           color: #ffffff !important;
         }
-        /* Guest product locks (Lab / Checklist / Alerts) keep the same sidebar
-           title color as Asset Transmission Root. The lock glyph replaces the
-           original icon; it does not dim the label. */
         /* Full guest PDF download: muted / light-gray locked control (lock icon via JS).
+           Menu-item locks use the shared .ynow-sidebar-locked / ACL opacity above.
            Lite keeps Download Report open — never apply the locked chrome. */
         body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .ynow-sidebar-download-wrap #download_report,
         body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .ynow-sidebar-download-btn {
@@ -7242,6 +7244,7 @@ ui <- dashboardPage(
            Hist. FV Validation | Quant Backtest Lab
            Inset via ::before so the dash is shorter than full sidebar width.
         */
+        /* Unified lock glyph: Full guest locks + ACL-locked tabs (.ynow-sidebar-locked). */
         .sidebar-menu .ynow-menu-lock {
           display: none;
           font-size: 11px;
@@ -7250,18 +7253,15 @@ ui <- dashboardPage(
           opacity: 0.95;
           vertical-align: -1px;
         }
+        .sidebar-menu li.ynow-sidebar-locked .ynow-menu-lock,
+        .sidebar-menu li.ynow-access-locked-nav .ynow-menu-lock,
         body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .sidebar-menu .ynow-menu-lock {
           display: inline-block;
         }
-        /* Lock replaces the tab glyph while the guest gate is showing. */
+        /* Lock replaces the tab glyph while locked (guest gate or ACL). */
+        .sidebar-menu li.ynow-sidebar-locked > a > i:not(.ynow-menu-lock):not(.pull-right),
+        .sidebar-menu li.ynow-access-locked-nav > a > i:not(.ynow-menu-lock):not(.pull-right),
         body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .sidebar-menu a:has(.ynow-menu-lock) > i:not(.ynow-menu-lock):not(.pull-right) {
-          display: none !important;
-        }
-        /* Sysadmin "lock" on a sidebar tab: same glyph swap, including after sign-in. */
-        .sidebar-menu li.ynow-access-locked-nav .ynow-menu-lock {
-          display: inline-block;
-        }
-        .sidebar-menu li.ynow-access-locked-nav > a > i:not(.ynow-menu-lock):not(.pull-right) {
           display: none !important;
         }
         body:not(.ynow-lite) .sidebar-menu > li:has(> a[data-value="bluechip"]),
@@ -11593,6 +11593,7 @@ ui <- dashboardPage(
               var inSidebar = !!(anchor.closest && anchor.closest('.sidebar-menu'));
               if (inSidebar) {
                 li.classList.add('ynow-access-locked-nav');
+                li.classList.add('ynow-sidebar-locked');
               } else {
                 li.classList.add('ynow-inner-tab-locked');
                 if (!anchor.querySelector('.ynow-inner-tab-lock')) {
@@ -11617,6 +11618,7 @@ ui <- dashboardPage(
               var clearSel = [
                 '.ynow-access-hidden',
                 '.ynow-access-locked-nav',
+                '.ynow-sidebar-locked',
                 '.ynow-access-locked-input',
                 '.ynow-access-locked-section',
                 '.ynow-access-locked-btn',
@@ -11631,6 +11633,7 @@ ui <- dashboardPage(
                 el.classList.remove(
                   'ynow-access-hidden',
                   'ynow-access-locked-nav',
+                  'ynow-sidebar-locked',
                   'ynow-access-locked-input',
                   'ynow-access-locked-section',
                   'ynow-access-locked-btn',
@@ -11655,7 +11658,10 @@ ui <- dashboardPage(
                     var li = a.closest('li');
                     if (!li) return;
                     if (effect === 'hide') li.classList.add('ynow-access-hidden');
-                    else li.classList.add('ynow-access-locked-nav');
+                    else {
+                      li.classList.add('ynow-access-locked-nav');
+                      li.classList.add('ynow-sidebar-locked');
+                    }
                   });
                   var pane = document.getElementById('shiny-tab-' + tab);
                   if (pane) {
@@ -11710,6 +11716,32 @@ ui <- dashboardPage(
                 if (glyph) glyph.insertAdjacentElement('afterend', lock);
                 else a.insertBefore(lock, a.firstChild);
               });
+              if (typeof window.ynowSyncGuestSidebarLocked === 'function') {
+                window.ynowSyncGuestSidebarLocked();
+              }
+            };
+            /* Full guest locks share .ynow-sidebar-locked with ACL locks (unified chrome). */
+            window.ynowSyncGuestSidebarLocked = function () {
+              var tabs = window.__YNOW_SIDEBAR_GUEST_LOCK_TABS || {
+                lab_notes: true,
+                decision_checklist: true,
+                price_alerts: true
+              };
+              var guest = !!(document.body &&
+                document.body.classList.contains('ynow-auth-feature') &&
+                !document.body.classList.contains('ynow-lite') &&
+                !document.body.classList.contains('ynow-authed'));
+              document.querySelectorAll('.sidebar-menu a[data-value]').forEach(function (a) {
+                var tab = a.getAttribute('data-value') || '';
+                var li = a.closest ? a.closest('li') : a.parentElement;
+                if (!li || !li.classList) return;
+                if (li.classList.contains('ynow-access-locked-nav')) {
+                  li.classList.add('ynow-sidebar-locked');
+                  return;
+                }
+                if (guest && tabs[tab]) li.classList.add('ynow-sidebar-locked');
+                else li.classList.remove('ynow-sidebar-locked');
+              });
             };
             addHandler('ynowAccessLocks', function (payload) {
               if (!payload) return;
@@ -11752,6 +11784,9 @@ ui <- dashboardPage(
               else document.body.classList.remove('ynow-auth-feature');
               if (typeof window.ynowSyncSidebarDownloadIcon === 'function') {
                 window.ynowSyncSidebarDownloadIcon();
+              }
+              if (typeof window.ynowSyncGuestSidebarLocked === 'function') {
+                window.ynowSyncGuestSidebarLocked();
               }
             });
             addHandler('ynowAuthOAuthRedirect', function (payload) {
@@ -11839,6 +11874,11 @@ ui <- dashboardPage(
             }
             window.ynowSyncSidebarDownloadIcon = ynowSyncSidebarDownloadIcon;
             try { ynowSyncSidebarDownloadIcon(); } catch (eDlIcon0) {}
+            try {
+              if (typeof window.ynowSyncGuestSidebarLocked === 'function') {
+                window.ynowSyncGuestSidebarLocked();
+              }
+            } catch (eGuestLock0) {}
             addHandler('ynowAuthPostLogin', function (payload) {
               if (!payload) return;
               /* Success: mark authed BEFORE tab restore / sidebar work so any
@@ -11848,6 +11888,9 @@ ui <- dashboardPage(
                 ynowSyncSysAdminFootVisibility(true);
                 if (typeof window.ynowSyncSidebarDownloadIcon === 'function') {
                   window.ynowSyncSidebarDownloadIcon();
+                }
+                if (typeof window.ynowSyncGuestSidebarLocked === 'function') {
+                  window.ynowSyncGuestSidebarLocked();
                 }
               }
               try {
@@ -11897,6 +11940,9 @@ ui <- dashboardPage(
               ynowSyncSysAdminFootVisibility(loggedIn);
               if (typeof window.ynowSyncSidebarDownloadIcon === 'function') {
                 window.ynowSyncSidebarDownloadIcon();
+              }
+              if (typeof window.ynowSyncGuestSidebarLocked === 'function') {
+                window.ynowSyncGuestSidebarLocked();
               }
               var openLinks = document.querySelectorAll('.ynow-auth-open');
               var regLinks = document.querySelectorAll('.ynow-auth-register-open');

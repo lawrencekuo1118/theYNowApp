@@ -52,6 +52,7 @@ page <- function(title, body_class, extra_note = "") {
       ".ynow-menu-lock{display:none;font-size:11px;margin:0 4px 0 2px;}",
       "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .sidebar-menu .ynow-menu-lock{display:inline-block;}",
       "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .sidebar-menu a:has(.ynow-menu-lock) > i:not(.ynow-menu-lock):not(.pull-right){display:none!important;}",
+      "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .sidebar-menu a:has(> .ynow-menu-lock){opacity:0.55;}",
       ".ynow-sidebar-download-wrap{padding:10px;text-align:center;}",
       ".ynow-sidebar-download-btn{display:inline-block;width:100%%;box-sizing:border-box;",
       "background:#1a1a1a;color:#fff;border:1px solid #000;padding:8px 10px;font-size:13px;font-weight:bold;text-decoration:none;}",
@@ -99,7 +100,7 @@ writeLines(
   page(
     "Guest sidebar locks",
     "ynow-auth-feature",
-    "GUEST: Lab/Checklist/Alerts keep the same title color as Asset Transmission Root; lock replaces the glyph. PDF stays muted."
+    "GUEST: Lab/Checklist/Alerts share dimmed locked chrome with ACL locks (opacity + lock glyph). PDF stays muted."
   ),
   file.path(out_dir, "guest-sidebar-locks.html"),
   useBytes = TRUE
@@ -118,8 +119,9 @@ writeLines(
 stopifnot(grepl("ynowSyncSidebarDownloadIcon", ui_txt, fixed = TRUE))
 stopifnot(grepl("color: #a3a3a3 !important", ui_txt, fixed = TRUE))
 stopifnot(!grepl("account_admin: true", ui_txt, fixed = TRUE))
-stopifnot(!grepl(
-  "body.skin-black.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .main-sidebar .sidebar-menu a:has(.ynow-menu-lock)",
+stopifnot(grepl("ynow-sidebar-locked", ui_txt, fixed = TRUE))
+stopifnot(grepl(
+  "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .sidebar-menu a:has(> .ynow-menu-lock)",
   ui_txt,
   fixed = TRUE
 ))
