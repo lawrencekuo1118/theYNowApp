@@ -2,13 +2,10 @@
 # Prefer: parent of tests/ (dirname), then cwd if it is the app, then app_25.0
 # from the repo root. Do not fall back to historical app_18/21/22/24 trees.
 #
-# From a sibling test (preferred: cd app_25.0/tests && Rscript test_….R):
-#   source("ynow_test_app_dir.R", local = FALSE)
-#   root <- ynow_test_app_dir("global.R")
-#   setwd(root)
-#
-# From repo root (Rscript app_25.0/tests/test_….R), use ynow_load_test_helper()
-# first, or keep an inline candidate list that includes app_25.0/tests/.
+# Load via --file=/cwd candidates (tests already inline this bootstrap), then:
+#   root <- ynow_test_app_dir("global.R"); setwd(root)
+# Preferred run: cd app_25.0/tests && YNOW_DEBUG_SKIP_PY=1 Rscript test_….R
+# Also works: Rscript app_25.0/tests/test_….R from repo root when bootstrap is used.
 
 ynow_load_test_helper <- function() {
   if (exists("ynow_test_app_dir", mode = "function", inherits = TRUE)) {

@@ -2,7 +2,27 @@
 # Collapsible Notes / 附註 chrome: details markup, default collapsed, locales, Lite=Full
 # Run: cd app_25.0/tests && Rscript test_ynow_notes_collapse.R
 
-source("ynow_test_app_dir.R", local = FALSE)
+local({
+  args <- commandArgs(trailingOnly = FALSE)
+  f <- sub("^--file=", "", args[grepl("^--file=", args)])
+  cands <- character()
+  if (length(f) == 1L && nzchar(f[[1]])) {
+    cands <- c(
+      cands,
+      file.path(dirname(normalizePath(f[[1]], mustWork = FALSE)), "ynow_test_app_dir.R")
+    )
+  }
+  wd <- normalizePath(getwd(), mustWork = FALSE)
+  cands <- c(
+    cands,
+    file.path(wd, "ynow_test_app_dir.R"),
+    file.path(wd, "tests", "ynow_test_app_dir.R"),
+    file.path(wd, "app_25.0", "tests", "ynow_test_app_dir.R")
+  )
+  hit <- cands[nzchar(cands) & !is.na(cands) & file.exists(cands)]
+  if (!length(hit)) stop("Cannot locate ynow_test_app_dir.R", call. = FALSE)
+  source(hit[[1]], local = FALSE)
+})
 root <- ynow_test_app_dir("ui_locale.R")
 setwd(root)
 
