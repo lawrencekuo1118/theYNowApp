@@ -161,6 +161,7 @@ decision_ui <- function(id) {
         ),
         tags$div(
           class = "ynow-funnel-chapter__body",
+          uiOutput(ns("ui_recommendation")),
           ynow_notes_block(
             tags$p(
               id = "ynow_funnel_verdict_lead",
@@ -171,8 +172,7 @@ decision_ui <- function(id) {
                 "決策檢核仍可作選用紀律。下方自動化風險矩陣為並列參考。"
               )
             )
-          ),
-          uiOutput(ns("ui_recommendation"))
+          )
         )
       ),
 
@@ -196,6 +196,11 @@ decision_ui <- function(id) {
         ),
         tags$div(
           class = "ynow-funnel-chapter__body",
+          tags$div(
+            class = "ynow-funnel-table-wrap",
+            id = "ynow_eq_risk_anchor",
+            uiOutput(ns("risk_matrix_panel"))
+          ),
           ynow_notes_block(
             tags$p(
               id = "ynow_funnel_risk_lead",
@@ -205,11 +210,6 @@ decision_ui <- function(id) {
                 "屬否決／風險警語，非買進訊號。細節分見下方第一章（品質）與第二章（舞弊／詭計）。"
               )
             )
-          ),
-          tags$div(
-            class = "ynow-funnel-table-wrap",
-            id = "ynow_eq_risk_anchor",
-            uiOutput(ns("risk_matrix_panel"))
           )
         )
       ),

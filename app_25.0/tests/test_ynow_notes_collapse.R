@@ -106,7 +106,18 @@ check("KPI row outside notes", grepl("ynow-funnel-kpi-jump-row", ui_fn, fixed = 
 check("F-Score boxes outside notes wrapper", {
   pos_box <- regexpr("fscore_panel", ui_fn, fixed = TRUE)[1]
   pos_lead <- regexpr("ynow_funnel_ch1_lead", ui_fn, fixed = TRUE)[1]
-  pos_box > pos_lead && !any(grepl("fscore_panel", notes_calls, fixed = TRUE))
+  # Notes sit after chapter content (lead id is inside the trailing notes block)
+  pos_lead > pos_box && !any(grepl("fscore_panel", notes_calls, fixed = TRUE))
+})
+check("verdict notes after recommendation content", {
+  pos_rec <- regexpr("ui_recommendation", ui_fn, fixed = TRUE)[1]
+  pos_lead <- regexpr("ynow_funnel_verdict_lead", ui_fn, fixed = TRUE)[1]
+  pos_lead > pos_rec && !any(grepl("ui_recommendation", notes_calls, fixed = TRUE))
+})
+check("risk notes after matrix panel", {
+  pos_panel <- regexpr("risk_matrix_panel", ui_fn, fixed = TRUE)[1]
+  pos_lead <- regexpr("ynow_funnel_risk_lead", ui_fn, fixed = TRUE)[1]
+  pos_lead > pos_panel && !any(grepl("risk_matrix_panel", notes_calls, fixed = TRUE))
 })
 if (exists("fscore_results_ui", mode = "function") && requireNamespace("htmltools", quietly = TRUE)) {
   empty_html <- paste(as.character(fscore_results_ui(NULL, "en")), collapse = "")
