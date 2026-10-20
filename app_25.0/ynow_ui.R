@@ -9734,7 +9734,8 @@ ui <- dashboardPage(
             }
             /* Major = integer before decimal (v25.86 → 25), same as YNOW_VERSION_BUMP_MAJOR cut. */
             function displayMajor(version) {
-              var m = String(version || '').trim().match(/^[vV]?(\d+)/);
+              /* Use [0-9] not \\d — this block lives in an R character string. */
+              var m = String(version || '').trim().match(/^[vV]?([0-9]+)/);
               if (!m) return NaN;
               return parseInt(m[1], 10);
             }
@@ -9775,18 +9776,28 @@ ui <- dashboardPage(
               el.setAttribute('aria-modal', 'true');
               el.setAttribute('aria-labelledby', 'ynow_major_update_title');
               el.setAttribute('aria-describedby', 'ynow_major_update_body');
-              el.innerHTML =
-                '<div class="ynow-major-update-card">' +
-                  '<p id="ynow_major_update_title" class="ynow-major-update-title"></p>' +
-                  '<p id="ynow_major_update_body" class="ynow-major-update-body"></p>' +
-                  '<p class="ynow-major-update-hint" data-ynow-major-hint="1"></p>' +
-                '</div>';
+              /* Build with DOM APIs — avoid quote conflicts inside the R HTML string. */
+              var card = document.createElement('div');
+              card.className = 'ynow-major-update-card';
+              var titleP = document.createElement('p');
+              titleP.id = 'ynow_major_update_title';
+              titleP.className = 'ynow-major-update-title';
+              var bodyP = document.createElement('p');
+              bodyP.id = 'ynow_major_update_body';
+              bodyP.className = 'ynow-major-update-body';
+              var hintP = document.createElement('p');
+              hintP.className = 'ynow-major-update-hint';
+              hintP.setAttribute('data-ynow-major-hint', '1');
+              card.appendChild(titleP);
+              card.appendChild(bodyP);
+              card.appendChild(hintP);
+              el.appendChild(card);
               /* Reminder is informational only — refresh stays on flame title click. */
               el.addEventListener('click', function (ev) {
-                var card = ev.target && ev.target.closest
+                var hitCard = ev.target && ev.target.closest
                   ? ev.target.closest('.ynow-major-update-card')
                   : null;
-                if (!card) {
+                if (!hitCard) {
                   ev.preventDefault();
                   ev.stopPropagation();
                   var t = titleEl();
