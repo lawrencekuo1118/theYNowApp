@@ -20,7 +20,8 @@ check <- function(label, cond) {
 .read <- function(path) paste(readLines(path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 
 ui_src <- .read("ynow_ui.R")
-setup_src <- .read("setup.R")
+# C-STRUCT-04: ynow_model_result_num lives in setup_fs.R (sourced by setup.R).
+setup_src <- paste(.read("setup_fs.R"), .read("setup.R"), sep = "\n")
 srv_src <- .read("ynow_server.R")
 ddm_src <- .read("ddm_module.R")
 nav_src <- .read("nav_module.R")
