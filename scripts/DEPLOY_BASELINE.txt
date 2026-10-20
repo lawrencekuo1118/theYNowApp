@@ -7,5 +7,5 @@ commit=1497495ac54438cb07e9e36cc20790e2e6846f23
 short=1497495a
 message=chore: bump display version to v25.87
 captured_at=2026-10-20T15:04:34Z
-display_version=v25.87
+display_version=v25.88
 note=Canonical live line is app_25.0. Bundle 12715846: injected YNOW_SUPABASE_SERVICE_ROLE into gitignored app/.Renviron (with existing URL/anon) so Auth delete can purge Supabase IdP. JWT role=service_role ref=jxetwzrsnxhuuvrjhfdx. No secret values in git.
