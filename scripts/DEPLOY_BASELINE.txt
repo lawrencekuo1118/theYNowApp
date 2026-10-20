@@ -7,5 +7,5 @@ commit=d696fac6fa6844d70d08db1fa3b2ffd16ca93062
 short=d696fac6
 message=chore: bump display version to v25.78
 captured_at=2026-10-20T06:22:26Z
-display_version=v25.78
+display_version=v25.79
 note=Canonical live line is app_25.0. Bundle 12713955: Top black header shows Sign in only (no Register/註冊). Register remains on Home text links, feature gates, and auth modal.
