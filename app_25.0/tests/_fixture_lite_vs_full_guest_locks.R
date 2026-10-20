@@ -42,6 +42,7 @@ page <- function(title, body_class, note) {
       ".ynow-menu-lock{display:none;font-size:11px;margin:0 4px 0 2px;}",
       "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .sidebar-menu .ynow-menu-lock{display:inline-block;}",
       "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .sidebar-menu a:has(.ynow-menu-lock) > i:not(.ynow-menu-lock):not(.pull-right){display:none!important;}",
+      "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .sidebar-menu a:has(> .ynow-menu-lock){opacity:0.55;}",
       "body.ynow-lite .ynow-menu-lock{display:none!important;}",
       "%s",
       ".badge{display:inline-block;margin:12px 16px;padding:4px 10px;border-radius:4px;",

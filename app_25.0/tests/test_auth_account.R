@@ -274,7 +274,13 @@ check("login tabs show a lock before sign-in", {
     grepl("price_alerts: true", ui, fixed = TRUE) &&
     !grepl("account_admin: true", ui, fixed = TRUE) &&
     !grepl("account_points: true", ui, fixed = TRUE) &&
-    !grepl("body.skin-black.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .main-sidebar .sidebar-menu a:has(.ynow-menu-lock)", ui, fixed = TRUE) &&
+    grepl("ynow-sidebar-locked", ui, fixed = TRUE) &&
+    grepl("ynowSyncGuestSidebarLocked", ui, fixed = TRUE) &&
+    grepl(
+      "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .sidebar-menu a:has(> .ynow-menu-lock)",
+      ui,
+      fixed = TRUE
+    ) &&
     grepl("not(.ynow-lite):not(.ynow-authed) .sidebar-menu .ynow-menu-lock", ui, fixed = TRUE) &&
     grepl("a:has(.ynow-menu-lock) > i:not(.ynow-menu-lock):not(.pull-right)", ui, fixed = TRUE) &&
     grepl("ynow-auth-header", ui, fixed = TRUE) &&

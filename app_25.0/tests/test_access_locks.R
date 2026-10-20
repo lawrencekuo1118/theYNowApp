@@ -114,10 +114,17 @@ check("sysadmin sidebar lock swaps the glyph for a lock", {
     grepl("ynow-access-lock", ui, fixed = TRUE) &&
     grepl("ynowApplyAccessLocks()", ui, fixed = TRUE)
 })
-check("guest lock titles keep the same sidebar color as Asset Transmission Root", {
-  grepl("a:has(.ynow-menu-lock) > i:not(.ynow-menu-lock)", ui, fixed = TRUE) &&
-    !grepl("a:has(.ynow-menu-lock),", ui, fixed = TRUE) &&
-    !grepl("color: #a3a3a3 !important;\n          opacity: 1;", ui, fixed = TRUE)
+check("guest locks share unified sidebar locked chrome with ACL (ATX)", {
+  grepl("ynow-sidebar-locked", ui, fixed = TRUE) &&
+    grepl("Unified locked sidebar", ui, fixed = TRUE) &&
+    grepl("ynowSyncGuestSidebarLocked", ui, fixed = TRUE) &&
+    grepl(
+      "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .sidebar-menu a:has(> .ynow-menu-lock)",
+      ui,
+      fixed = TRUE
+    ) &&
+    grepl("opacity: 0.55", ui, fixed = TRUE) &&
+    grepl("a:has(.ynow-menu-lock) > i:not(.ynow-menu-lock)", ui, fixed = TRUE)
 })
 check("locked asset transmission pane shows feature promo and sign-in", {
   auth_src <- paste(readLines(file.path(app_dir, "auth_account.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
