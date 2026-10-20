@@ -123,6 +123,14 @@ check("QoE dashboard before F-Score panel", pos_qoe > pos_q && pos_qoe < pos_tbl
 check("F-Score boxes still in Section I", pos_tbl > pos_q && pos_tbl < pos_a)
 check("M-Score in Section II (alerts)", pos_mscore > pos_a && pos_mscore < pos_shen)
 check("shenanigans still in Section II", pos_shen > pos_a)
+check("verdict notes after recommendation", {
+  pos_v_lead <- regexpr("ynow_funnel_verdict_lead", ui_fn, fixed = TRUE)[1]
+  pos_v_lead > pos_rec && pos_v_lead < pos_r
+})
+check("risk notes after risk panel", {
+  pos_r_lead <- regexpr("ynow_funnel_risk_lead", ui_fn, fixed = TRUE)[1]
+  pos_r_lead > pos_risk && pos_r_lead < pos_q
+})
 check("ch1 notes after F-Score panel", {
   pos_ch1_lead <- regexpr("ynow_funnel_ch1_lead", ui_fn, fixed = TRUE)[1]
   pos_ch1_lead > pos_tbl && pos_ch1_lead < pos_a

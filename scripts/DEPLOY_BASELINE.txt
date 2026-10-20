@@ -8,4 +8,4 @@ short=c8661c17
 message=chore: bump display version to v25.73
 captured_at=2026-10-20T03:51:38Z
 display_version=v25.73
-note=Canonical live line is app_25.0. Bundle 12713515: Full home under quick-pick stacks Sign in · Register as plain blue underlined text links, then research disclaimer, then About · Privacy / IP / risk. Quick-pick card titles and descriptions are centered. Sidebar auth buttons unchanged. Lite still hides auth links.
+note=Canonical live line is app_25.0. Bundle 12713515: Full home under quick-pick stacks Sign in · Register as plain blue underlined text links, then research disclaimer, then About · Privacy / IP / risk. Quick-pick card titles and descriptions are centered. Sidebar auth buttons unchanged. Lite still hides auth links. Includes YNOW Notes-below-chapter from prior v25.73 ship.
