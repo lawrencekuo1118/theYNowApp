@@ -318,6 +318,22 @@ check("mobile pts live in sidebar right of login date", {
     grepl("#ynow-pts-sidebar.ynow-pts-sidebar:not\\(.ynow-pts-hidden\\)", auth, perl = TRUE) &&
     grepl("Mobile override: points live in the sidebar", ui, fixed = TRUE)
 })
+check("PYN numeral uses logo blue-green flow; FYN does not", {
+  ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  auth <- paste(readLines(file.path(app_dir, "auth_account.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("ynow-pyn-num", ui, fixed = TRUE) &&
+    grepl("ynow_pts_banner_pyn_value", ui, fixed = TRUE) &&
+    grepl("ynow-pts-banner-val ynow-pyn-num", ui, fixed = TRUE) &&
+    grepl("ynow-pts-sidebar-val ynow-pyn-num", ui, fixed = TRUE) &&
+    grepl(".ynow-htcdi-flow,\n        .ynow-pyn-num", ui, fixed = TRUE) &&
+    grepl("animation: ynow-logo-flow 2.6s ease-in-out infinite", ui, fixed = TRUE) &&
+    grepl("--ynow-logo-flow-gradient", ui, fixed = TRUE) &&
+    grepl('class = "ynow-pyn-num"', auth, fixed = TRUE) &&
+    grepl("ynow_pts_pyn_value", auth, fixed = TRUE) &&
+    grepl("ynow_pts_ledger_pyn_value", auth, fixed = TRUE) &&
+    !grepl("ynow_pts_banner_fyn_value\", class = \"ynow-pts-banner-val ynow-pyn-num", ui, fixed = TRUE) &&
+    !grepl("ynow_pts_fyn_value\", class = \"ynow-pyn-num", auth, fixed = TRUE)
+})
 check("auth memory user id helper stable", {
   auth_src <- file.path(app_dir, "auth_account.R")
   if (!exists("ynow_auth_memory_user_id", mode = "function")) {
