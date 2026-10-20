@@ -47,10 +47,15 @@ check(
 )
 
 # Call site + Lite/Full wrappers stay on the facade (prefs: Lite free About stays open).
-pos_about <- regexpr('tabName = "about"', facade, fixed = TRUE)[1]
-check("facade has about tabItem", pos_about > 0L)
-about_slice <- if (pos_about > 0L) {
-  substr(facade, pos_about, min(nchar(facade), pos_about + 2500L))
+# Prefer tabItem (not sidebar menuItem("About", tabName = "about", ...)).
+m_tab <- regexpr(
+  'tabItem\\(\\s*\\n\\s*tabName = "about"',
+  facade,
+  perl = TRUE
+)[1]
+check("facade has about tabItem", m_tab > 0L)
+about_slice <- if (m_tab > 0L) {
+  substr(facade, m_tab, min(nchar(facade), m_tab + 800L))
 } else {
   ""
 }
@@ -74,8 +79,8 @@ check(
 check(
   "About copy carries display version",
   grepl("The YNow App (v", about, fixed = TRUE) &&
-    grepl("The YNow App Lite (v", about, fixed = TRUE) ||
-    grepl("The YNow App Lite（v", about, fixed = TRUE)
+    (grepl("The YNow App Lite (v", about, fixed = TRUE) ||
+      grepl("The YNow App Lite（v", about, fixed = TRUE))
 )
 check(
   "About mentions Supabase Postgres (not Neon)",

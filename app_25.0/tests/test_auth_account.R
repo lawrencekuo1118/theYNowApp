@@ -635,10 +635,10 @@ check("register without DB says soon", {
   isFALSE(r$ok) && identical(r$message_key, "auth_msg_register_soon")
 })
 check("UI About mentions Supabase Postgres store", {
-  grepl("Supabase Postgres", ui, fixed = TRUE) &&
-    grepl("YNOW_DB_", ui, fixed = TRUE) &&
-    grepl("Supabase pooler", ui, fixed = TRUE) &&
-    !grepl("Neon Free", ui, fixed = TRUE)
+  grepl("Supabase Postgres", ui_about, fixed = TRUE) &&
+    grepl("YNOW_DB_", ui_about, fixed = TRUE) &&
+    grepl("Supabase pooler", ui_about, fixed = TRUE) &&
+    !grepl("Neon Free", ui_about, fixed = TRUE)
 })
 check("no debug probe instrumentation in auth_db", {
   db_txt <- paste(readLines(src_db, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
@@ -876,8 +876,8 @@ check("locale says self-serve no admin", {
   grepl("no admin permission", ui_str("auth_modal_help", "en"), fixed = TRUE) &&
     grepl("無需後台開權限", ui_str("auth_modal_help", "zh-TW"), fixed = TRUE)
 })
-check("UI About Lite no account", grepl("Lite never requires an account", ui, fixed = TRUE) &&
-        grepl("Lite 版無需帳號即可完整使用", ui, fixed = TRUE))
+check("UI About Lite no account", grepl("Lite never requires an account", ui_about, fixed = TRUE) &&
+        grepl("Lite 版無需帳號即可完整使用", ui_about, fixed = TRUE))
 auth_src <- paste(readLines(src_auth, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check("auth link classes for sidebar + home", grepl("ynow-auth-links--sidebar", auth_src, fixed = TRUE) &&
         grepl("ynow-auth-links--home", auth_src, fixed = TRUE) &&
