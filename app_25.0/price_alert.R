@@ -145,6 +145,35 @@ price_alert_write <- function(df, path = price_alert_store_path()) {
   invisible(path)
 }
 
+#' Hard-delete Value Alerts + history rows for one mailbox (account delete).
+#' @return integer count of alerts removed
+price_alert_purge_email <- function(email,
+                                    store_path = price_alert_store_path(),
+                                    history_path = price_alert_history_path()) {
+  em <- tolower(trimws(as.character(email %||% "")[1]))
+  if (!nzchar(em)) return(0L)
+  df <- price_alert_read(store_path)
+  if (!nrow(df)) {
+    return(0L)
+  }
+  keep <- tolower(trimws(as.character(df$email))) != em
+  drop_ids <- as.character(df$id[!keep])
+  n <- as.integer(sum(!keep))
+  if (n > 0L) {
+    price_alert_write(df[keep, , drop = FALSE], store_path)
+  }
+  if (length(drop_ids)) {
+    hist <- price_alert_history_read(history_path)
+    if (nrow(hist)) {
+      hist_keep <- !(as.character(hist$alert_id) %in% drop_ids)
+      if (!all(hist_keep)) {
+        price_alert_history_write(hist[hist_keep, , drop = FALSE], history_path)
+      }
+    }
+  }
+  n
+}
+
 price_alert_history_read <- function(path = price_alert_history_path()) {
   empty <- price_alert_history_empty()
   if (!file.exists(path)) return(empty)

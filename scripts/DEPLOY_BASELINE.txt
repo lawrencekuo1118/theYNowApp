@@ -8,4 +8,4 @@ short=4a1a0316
 message=chore: bump display version to v25.84
 captured_at=2026-10-20T11:45:36Z
 display_version=v25.84
-note=Canonical live line is app_25.0. Bundle 12715019: PYN numerals logo blue-green flow (.ynow-pyn-num) + merged gate demo refresh from #322. PR #321.
+note=Canonical live line is app_25.0. Bundle 12715019: PYN numerals logo blue-green flow (.ynow-pyn-num) + merged gate demos. PR #321.

@@ -188,3 +188,18 @@ ynow_prefs_reset_memory <- function() {
   .ynow_prefs_mem$by_user <- list()
   invisible(TRUE)
 }
+
+#' Remove one user's prefs from memory + file fallback (DB rows deleted in purge txn).
+ynow_prefs_purge_user <- function(user_id) {
+  uid <- as.character(user_id %||% "")[1]
+  if (!nzchar(uid)) return(invisible(FALSE))
+  if (!is.null(.ynow_prefs_mem$by_user[[uid]])) {
+    .ynow_prefs_mem$by_user[[uid]] <- NULL
+  }
+  store <- tryCatch(.ynow_prefs_read_file(), error = function(e) list())
+  if (is.list(store) && !is.null(store[[uid]])) {
+    store[[uid]] <- NULL
+    tryCatch(.ynow_prefs_write_file(store), error = function(e) NULL)
+  }
+  invisible(TRUE)
+}

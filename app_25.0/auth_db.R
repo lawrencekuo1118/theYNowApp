@@ -566,3 +566,234 @@ ynow_db_seed_admin_from_env <- function() {
   res <- ynow_db_create_user(em, pw, display_name = em, role = "admin")
   isTRUE(res$ok)
 }
+
+#' Exact confirm token required before account hard-delete (UI + server gate).
+ynow_auth_delete_confirm_token <- function() {
+  "DELETE"
+}
+
+#' TRUE when `text` matches the delete-account confirm token exactly (after trim).
+ynow_auth_delete_confirm_ok <- function(text) {
+  identical(
+    trimws(as.character(text %||% "")[1]),
+    ynow_auth_delete_confirm_token()
+  )
+}
+
+.ynow_db_is_uuid <- function(user_id) {
+  grepl(
+    "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+    as.character(user_id %||% "")[1]
+  )
+}
+
+#' Clear process-local / file stores for one member (always safe; no secrets).
+.ynow_purge_user_local_stores <- function(user_id, email = "") {
+  uid <- as.character(user_id %||% "")[1]
+  em <- if (exists("ynow_auth_norm_email", mode = "function")) {
+    ynow_auth_norm_email(email %||% "")
+  } else {
+    tolower(trimws(as.character(email %||% "")[1]))
+  }
+  out <- list()
+  if (nzchar(uid) && exists("ynow_points_purge_user_local", mode = "function")) {
+    out$points_local <- tryCatch(
+      ynow_points_purge_user_local(uid),
+      error = function(e) FALSE
+    )
+  }
+  if (nzchar(uid) && exists("ynow_prefs_purge_user", mode = "function")) {
+    out$prefs_local <- tryCatch(
+      ynow_prefs_purge_user(uid),
+      error = function(e) FALSE
+    )
+  }
+  if (nzchar(uid) && exists("ynow_access_purge_user", mode = "function")) {
+    out$access_local <- tryCatch(
+      ynow_access_purge_user(uid),
+      error = function(e) FALSE
+    )
+  }
+  if (nzchar(em) && exists("price_alert_purge_email", mode = "function")) {
+    out$alerts <- tryCatch(
+      price_alert_purge_email(em),
+      error = function(e) 0L
+    )
+  }
+  out
+}
+
+#' Hard-delete one member account and user-linked app rows (server-side only).
+#'
+#' Purge order (single transaction when Postgres is ready):
+#' `ynow_points_ledger` → `ynow_pdf_quota` → `ynow_pdf_repeat` →
+#' `ynow_user_prefs` → `ynow_access_locks` → `ynow_users`.
+#' Also clears memory/file prefs, access locks, points/PDF mem, and price alerts
+#' keyed by email. Optionally deletes the Supabase Auth user when
+#' `YNOW_SUPABASE_SERVICE_ROLE` is set (OAuth IdP); never sent to the client.
+#'
+#' @param user_id UUID or mem: id
+#' @param email optional mailbox for alert purge / lookup
+#' @param confirm must be exactly `DELETE` (see [ynow_auth_delete_confirm_ok()])
+#' @return list(ok=, message_key=, purged=, auth_idp=, user_id=, email=)
+ynow_db_purge_user <- function(user_id, email = NULL, confirm = NULL) {
+  if (!isTRUE(ynow_auth_delete_confirm_ok(confirm))) {
+    return(list(
+      ok = FALSE,
+      message_key = "auth_delete_msg_confirm",
+      purged = list(),
+      auth_idp = list(ok = FALSE, skipped = TRUE)
+    ))
+  }
+  uid <- as.character(user_id %||% "")[1]
+  em <- if (exists("ynow_auth_norm_email", mode = "function")) {
+    ynow_auth_norm_email(email %||% "")
+  } else {
+    tolower(trimws(as.character(email %||% "")[1]))
+  }
+  if (!nzchar(uid) && nzchar(em) && isTRUE(ynow_db_ready())) {
+    u <- tryCatch(ynow_db_get_user_by_email(em), error = function(e) NULL)
+    if (!is.null(u)) uid <- as.character(u$id %||% "")[1]
+  }
+  if (!nzchar(uid)) {
+    return(list(
+      ok = FALSE,
+      message_key = "auth_delete_msg_no_user",
+      purged = list(),
+      auth_idp = list(ok = FALSE, skipped = TRUE)
+    ))
+  }
+
+  provider_uid <- ""
+  if (isTRUE(ynow_db_ready()) && isTRUE(.ynow_db_is_uuid(uid))) {
+    urow <- tryCatch(
+      ynow_db_with(function(con) {
+        DBI::dbGetQuery(
+          con,
+          "SELECT email, provider, COALESCE(provider_uid, '') AS provider_uid
+             FROM ynow_users WHERE id = $1::uuid LIMIT 1",
+          params = list(uid)
+        )
+      }),
+      error = function(e) NULL
+    )
+    if (is.data.frame(urow) && nrow(urow) >= 1L) {
+      if (!nzchar(em)) {
+        em <- if (exists("ynow_auth_norm_email", mode = "function")) {
+          ynow_auth_norm_email(urow$email[[1]])
+        } else {
+          tolower(trimws(as.character(urow$email[[1]])))
+        }
+      }
+      provider_uid <- as.character(urow$provider_uid %||% "")[1]
+    }
+  }
+
+  purged <- list(
+    points_ledger = 0L,
+    pdf_quota = 0L,
+    pdf_repeat = 0L,
+    user_prefs = 0L,
+    access_locks = 0L,
+    users = 0L
+  )
+  db_ok <- TRUE
+  if (isTRUE(ynow_db_ready()) && isTRUE(.ynow_db_is_uuid(uid))) {
+    tx <- tryCatch(
+      ynow_db_with(function(con) {
+        .exec <- function(sql) {
+          as.integer(tryCatch(
+            DBI::dbExecute(con, sql, params = list(uid)),
+            error = function(e) 0L
+          ))
+        }
+        if (requireNamespace("DBI", quietly = TRUE) &&
+              exists("dbWithTransaction", where = asNamespace("DBI"), mode = "function")) {
+          DBI::dbWithTransaction(con, {
+            list(
+              points_ledger = .exec(
+                "DELETE FROM ynow_points_ledger WHERE user_id = $1::uuid"
+              ),
+              pdf_quota = .exec("DELETE FROM ynow_pdf_quota WHERE user_id = $1"),
+              pdf_repeat = .exec("DELETE FROM ynow_pdf_repeat WHERE user_id = $1"),
+              user_prefs = .exec("DELETE FROM ynow_user_prefs WHERE user_id = $1"),
+              access_locks = .exec(
+                "DELETE FROM ynow_access_locks WHERE user_id = $1"
+              ),
+              users = .exec("DELETE FROM ynow_users WHERE id = $1::uuid")
+            )
+          })
+        } else {
+          list(
+            points_ledger = .exec(
+              "DELETE FROM ynow_points_ledger WHERE user_id = $1::uuid"
+            ),
+            pdf_quota = .exec("DELETE FROM ynow_pdf_quota WHERE user_id = $1"),
+            pdf_repeat = .exec("DELETE FROM ynow_pdf_repeat WHERE user_id = $1"),
+            user_prefs = .exec("DELETE FROM ynow_user_prefs WHERE user_id = $1"),
+            access_locks = .exec(
+              "DELETE FROM ynow_access_locks WHERE user_id = $1"
+            ),
+            users = .exec("DELETE FROM ynow_users WHERE id = $1::uuid")
+          )
+        }
+      }),
+      error = function(e) {
+        warning("ynow_db_purge_user: ", conditionMessage(e), call. = FALSE)
+        NULL
+      }
+    )
+    if (is.list(tx)) {
+      for (nm in names(purged)) {
+        if (!is.null(tx[[nm]])) purged[[nm]] <- as.integer(tx[[nm]])[1]
+      }
+      # UUID member with a live DB must remove the users row.
+      db_ok <- isTRUE(as.integer(purged$users %||% 0L)[1] >= 1L) ||
+        # Already gone (retry) — treat as success if no user remains.
+        isTRUE(is.null(tryCatch(
+          ynow_db_with(function(con) {
+            df <- DBI::dbGetQuery(
+              con,
+              "SELECT 1 AS ok FROM ynow_users WHERE id = $1::uuid LIMIT 1",
+              params = list(uid)
+            )
+            if (is.data.frame(df) && nrow(df) >= 1L) TRUE else NULL
+          }),
+          error = function(e) NULL
+        )))
+    } else {
+      db_ok <- FALSE
+    }
+  }
+
+  local <- .ynow_purge_user_local_stores(uid, em)
+  for (nm in names(local)) purged[[nm]] <- local[[nm]]
+
+  auth_idp <- list(ok = FALSE, skipped = TRUE)
+  if (nzchar(provider_uid) &&
+        exists("ynow_oauth_delete_supabase_user", mode = "function")) {
+    auth_idp <- tryCatch(
+      ynow_oauth_delete_supabase_user(provider_uid),
+      error = function(e) list(ok = FALSE, skipped = FALSE, error = conditionMessage(e))
+    )
+  }
+
+  if (!isTRUE(db_ok) && isTRUE(ynow_db_ready()) && isTRUE(.ynow_db_is_uuid(uid))) {
+    return(list(
+      ok = FALSE,
+      message_key = "auth_delete_msg_fail",
+      purged = purged,
+      auth_idp = auth_idp,
+      user_id = uid,
+      email = em
+    ))
+  }
+  list(
+    ok = TRUE,
+    message_key = "auth_delete_msg_ok",
+    purged = purged,
+    auth_idp = auth_idp,
+    user_id = uid,
+    email = em
+  )
+}
