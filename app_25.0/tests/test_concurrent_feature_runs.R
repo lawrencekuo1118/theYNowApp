@@ -33,6 +33,9 @@ local({
   source(hit[[1]], local = FALSE)
 })
 root <- ynow_test_app_dir("ynow_server.R")
+cat("root=", root, "\n", sep = "")
+# Live-line only via ynow_test_app_dir (C-TEST-01 / C-TEST-02).
+check("resolves live-line app_25.0", basename(root) == "app_25.0")
 suppressMessages({
   source(file.path(root, "ui_locale.R"), local = TRUE, encoding = "UTF-8")
 })
