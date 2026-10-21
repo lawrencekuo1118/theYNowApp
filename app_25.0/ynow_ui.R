@@ -3583,7 +3583,9 @@ ui <- dashboardPage(
     # Must stay inside column(width=12): bare sidebarMenu after Bootstrap
     # floated cols collapses to width:0 / left:250 (menu invisible).
     # 「推薦」badges are patched in-place (no renderMenu remount).
+    # Pinned sidebar tabs (max 12, 3 columns) sit above the main menu.
     column(width = 12,
+           uiOutput("pinned_sidebar_tabs"),
            sidebarMenu(
              id = "sidebar_tabs",
              menuItem(
@@ -6457,6 +6459,107 @@ ui <- dashboardPage(
           min-height: 0;
         }
         .ynow-pinned-search:empty { display: none; padding: 0; }
+        /* Sidebar tab pins: max 12 in a 3-column grid (up to 4 rows). */
+        .ynow-sidebar-pins {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 6px;
+          padding: 4px 6px 10px;
+          margin: 0 0 2px 0;
+        }
+        .ynow-sidebar-pins:empty { display: none; padding: 0; margin: 0; }
+        .ynow-sidebar-pins-label {
+          grid-column: 1 / -1;
+          margin: 0 0 2px 0;
+          padding: 0 2px;
+          font-size: 11px;
+          font-weight: 600;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+          color: rgba(255, 214, 102, 0.85);
+          opacity: 0.95;
+        }
+        .ynow-sidebar-pin-tile {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 3px;
+          min-height: 44px;
+          padding: 6px 4px 5px;
+          border-radius: 4px;
+          border: 1px solid rgba(255, 214, 102, 0.42);
+          background: rgba(255, 214, 102, 0.10);
+          color: rgba(255, 255, 255, 0.92) !important;
+          font-size: 10px;
+          font-weight: 600;
+          line-height: 1.15;
+          text-align: center;
+          cursor: pointer;
+          user-select: none;
+          -webkit-user-select: none;
+          touch-action: manipulation;
+          text-decoration: none !important;
+          overflow: hidden;
+        }
+        .ynow-sidebar-pin-tile > .fa,
+        .ynow-sidebar-pin-tile > .fas {
+          font-size: 13px;
+          line-height: 1;
+          color: rgba(255, 214, 102, 0.95);
+        }
+        .ynow-sidebar-pin-tile > .ynow-sidebar-pin-text {
+          display: block;
+          max-width: 100%;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .ynow-sidebar-pin-tile:hover,
+        .ynow-sidebar-pin-tile:focus {
+          background: rgba(255, 214, 102, 0.18);
+          border-color: rgba(255, 214, 102, 0.7);
+          outline: none;
+        }
+        .ynow-sidebar-pin-tile:focus-visible {
+          box-shadow: 0 0 0 2px rgba(255, 214, 102, 0.55);
+        }
+        .ynow-sidebar-pin-tile.ynow-chip-longpress {
+          transform: scale(0.96);
+          background: rgba(255, 214, 102, 0.28);
+        }
+        .ynow-sidebar-pin-tile.ynow-sidebar-locked {
+          opacity: 0.55;
+          border-color: rgba(255, 255, 255, 0.18);
+          background: rgba(255, 255, 255, 0.04);
+        }
+        .ynow-sidebar-pin-tile.ynow-sidebar-locked > .fa,
+        .ynow-sidebar-pin-tile.ynow-sidebar-locked > .fas {
+          color: rgba(255, 255, 255, 0.55);
+        }
+        .ynow-sidebar-pin-tile .ynow-menu-lock {
+          position: absolute;
+          top: 3px;
+          right: 4px;
+          font-size: 9px;
+          color: rgba(255, 255, 255, 0.7);
+        }
+        .ynow-sidebar-pin-tile.ynow-sidebar-locked {
+          position: relative;
+        }
+        .sidebar-menu a[data-value].ynow-menu-is-pinned::after {
+          content: "";
+          display: inline-block;
+          width: 0.45em;
+          height: 0.45em;
+          margin-left: 6px;
+          vertical-align: 0.1em;
+          border: 1.5px solid rgba(255, 214, 102, 0.9);
+          border-radius: 1px 1px 55% 55%;
+          box-shadow: 0 2px 0 -0.5px rgba(255, 214, 102, 0.65);
+          transform: rotate(-35deg);
+          opacity: 0.9;
+        }
         .ynow-recent-search-empty {
           color: rgba(255, 255, 255, 0.45);
           font-size: 12px;
@@ -11627,6 +11730,9 @@ ui <- dashboardPage(
                   li.classList.remove('ynow-sidebar-locked');
                 }
               });
+              if (typeof window.ynowSyncSidebarPinLocks === 'function') {
+                try { window.ynowSyncSidebarPinLocks(); } catch (ePinLock) {}
+              }
             };
             addHandler('ynowAccessLocks', function (payload) {
               if (!payload) return;
@@ -17283,6 +17389,221 @@ ui <- dashboardPage(
             if (msg.clear) { guestWrite([]); return; }
             if (Array.isArray(msg.tickers)) guestWrite(msg.tickers);
           });
+        })();
+
+        // Sidebar tab pins: long-press menu leaf / pin tile; click tile → navigate.
+        (function() {
+          var LONG_MS = 2000;
+          var GUEST_KEY = 'ynow_pinned_sidebar_v1';
+          var MAX_PINS = 12;
+          var pressTimer = null;
+          var pressEl = null;
+          var longFired = false;
+          var suppressClickUntil = 0;
+
+          function guestRead() {
+            try {
+              var raw = localStorage.getItem(GUEST_KEY);
+              if (!raw) return [];
+              var arr = JSON.parse(raw);
+              if (!Array.isArray(arr)) return [];
+              return arr.map(function(x) { return String(x || '').trim(); })
+                .filter(function(x) { return !!x; })
+                .slice(0, MAX_PINS);
+            } catch (e) { return []; }
+          }
+          function guestWrite(arr) {
+            try {
+              localStorage.setItem(GUEST_KEY, JSON.stringify((arr || []).slice(0, MAX_PINS)));
+            } catch (e) {}
+          }
+          window.ynowGuestPinnedSidebar = {
+            read: guestRead,
+            write: guestWrite,
+            clear: function() { try { localStorage.removeItem(GUEST_KEY); } catch (e) {} }
+          };
+
+          function pinHint(unpin) {
+            var s = window.__ynowUiLocaleStrings || {};
+            var k = unpin ? 'sidebar_pins_unpin_hint' : 'sidebar_pins_pin_hint';
+            if (s[k]) return String(s[k]);
+            return unpin ? 'Hold 2 seconds to unpin' : 'Hold 2 seconds to pin this page';
+          }
+
+          function clearPress() {
+            if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+            pressEl = null;
+          }
+
+          function fireToggle(tab) {
+            if (!tab || !(window.Shiny && Shiny.setInputValue)) return;
+            longFired = true;
+            suppressClickUntil = Date.now() + 400;
+            Shiny.setInputValue('pinned_sidebar_toggle', tab + '|' + Date.now(), {priority: 'event'});
+          }
+
+          function markMenuPinned(tabs) {
+            var set = {};
+            (tabs || []).forEach(function(t) { set[String(t)] = true; });
+            document.querySelectorAll('.sidebar-menu a[data-value]').forEach(function(a) {
+              var tab = a.getAttribute('data-value') || '';
+              if (set[tab]) a.classList.add('ynow-menu-is-pinned');
+              else a.classList.remove('ynow-menu-is-pinned');
+              try {
+                var unpin = !!set[tab];
+                var base = a.getAttribute('data-ynow-base-title') || a.getAttribute('title') || '';
+                if (!a.getAttribute('data-ynow-base-title') && base) {
+                  a.setAttribute('data-ynow-base-title', base);
+                }
+                var hint = pinHint(unpin);
+                var curBase = a.getAttribute('data-ynow-base-title') || '';
+                a.setAttribute('title', curBase ? (curBase + ' · ' + hint) : hint);
+              } catch (eT) {}
+            });
+          }
+          window.ynowMarkSidebarMenuPinned = markMenuPinned;
+
+          function syncPinTileLocks() {
+            var guestTabs = window.__YNOW_SIDEBAR_GUEST_LOCK_TABS || {};
+            var persist = window.__YNOW_SIDEBAR_PERSIST_LOCK_TABS || {};
+            var guest = !!(document.body &&
+              document.body.classList.contains('ynow-auth-feature') &&
+              !document.body.classList.contains('ynow-lite') &&
+              !document.body.classList.contains('ynow-authed') &&
+              !document.body.classList.contains('ynow-view-as'));
+            document.querySelectorAll('.ynow-sidebar-pin-tile[data-tab]').forEach(function(btn) {
+              var tab = btn.getAttribute('data-tab') || '';
+              var locked = false;
+              if (persist[tab]) locked = true;
+              else if (guest && guestTabs[tab]) locked = true;
+              /* Mirror ACL lock on matching sidebar li. */
+              var a = document.querySelector('.sidebar-menu a[data-value=\"' + tab + '\"]');
+              var li = a && a.closest ? a.closest('li') : null;
+              if (li && li.classList &&
+                  (li.classList.contains('ynow-access-locked-nav') ||
+                   li.classList.contains('ynow-sidebar-locked'))) {
+                locked = true;
+              }
+              if (locked) {
+                btn.classList.add('ynow-sidebar-locked');
+                if (!btn.querySelector('.ynow-menu-lock')) {
+                  var lock = document.createElement('i');
+                  lock.className = 'fas fa-lock ynow-menu-lock';
+                  lock.setAttribute('aria-hidden', 'true');
+                  btn.appendChild(lock);
+                }
+              } else {
+                btn.classList.remove('ynow-sidebar-locked');
+                var old = btn.querySelector('.ynow-menu-lock');
+                if (old && old.parentNode) old.parentNode.removeChild(old);
+              }
+            });
+          }
+          window.ynowSyncSidebarPinLocks = syncPinTileLocks;
+
+          function isMenuLeaf(el) {
+            if (!el || !el.getAttribute) return false;
+            if (!el.closest || !el.closest('.sidebar-menu')) return false;
+            var tab = el.getAttribute('data-value') || '';
+            if (!tab) return false;
+            /* Treeview parents expand; only pin leaves with a real tabName. */
+            var li = el.closest('li');
+            if (li && li.classList && li.classList.contains('treeview') &&
+                !el.getAttribute('data-value')) return false;
+            if (li && li.classList && li.classList.contains('treeview') &&
+                el.parentElement === li && li.querySelector(':scope > ul.treeview-menu')) {
+              /* Parent row of a treeview — not a leaf. */
+              return false;
+            }
+            return true;
+          }
+
+          $(document).on('pointerdown', '.sidebar-menu a[data-value], .ynow-sidebar-pin-tile', function(e) {
+            if (e.pointerType === 'mouse' && e.button !== 0) return;
+            var el = this;
+            if (el.classList && el.classList.contains('ynow-sidebar-pin-tile')) {
+              /* ok */
+            } else if (!isMenuLeaf(el)) {
+              return;
+            }
+            clearPress();
+            longFired = false;
+            pressEl = el;
+            pressTimer = setTimeout(function() {
+              if (pressEl !== el) return;
+              var tab = el.getAttribute('data-tab') || el.getAttribute('data-value') || '';
+              try { el.classList.add('ynow-chip-longpress'); } catch (e1) {}
+              setTimeout(function() {
+                try { el.classList.remove('ynow-chip-longpress'); } catch (e2) {}
+              }, 280);
+              fireToggle(tab);
+            }, LONG_MS);
+          });
+          $(document).on(
+            'pointerup pointercancel pointerleave',
+            '.sidebar-menu a[data-value], .ynow-sidebar-pin-tile',
+            function() { clearPress(); }
+          );
+          $(document).on('click', '.ynow-sidebar-pin-tile', function(e) {
+            if (longFired || Date.now() < suppressClickUntil) {
+              e.preventDefault();
+              e.stopImmediatePropagation();
+              longFired = false;
+              return;
+            }
+            e.preventDefault();
+            var tab = this.getAttribute('data-tab') || '';
+            if (!tab) return;
+            if (typeof window.ynowShowSidebarFootTab === 'function' &&
+                (tab === 'snapshot' || tab === 'feedback' || tab === 'testing')) {
+              window.ynowShowSidebarFootTab(tab);
+              return;
+            }
+            var a = document.querySelector('.sidebar-menu a[data-value=\"' + tab + '\"]');
+            if (a && typeof a.click === 'function') {
+              a.click();
+              return;
+            }
+            if (window.Shiny && Shiny.setInputValue) {
+              Shiny.setInputValue('sidebar_tabs', tab, {priority: 'event'});
+            }
+          });
+
+          $(document).on('shiny:connected', function() {
+            var pins = guestRead();
+            if (pins.length && window.Shiny && Shiny.setInputValue) {
+              Shiny.setInputValue(
+                'pinned_sidebar_guest_load',
+                pins.join(',') + '|' + Date.now(),
+                {priority: 'event'}
+              );
+            }
+          });
+          Shiny.addCustomMessageHandler('ynowPinnedSidebarGuestSync', function(msg) {
+            if (!msg) return;
+            if (msg.clear) { guestWrite([]); markMenuPinned([]); return; }
+            if (Array.isArray(msg.tabs)) {
+              guestWrite(msg.tabs);
+              markMenuPinned(msg.tabs);
+            }
+          });
+          Shiny.addCustomMessageHandler('ynowPinnedSidebarMark', function(msg) {
+            if (!msg) return;
+            markMenuPinned(Array.isArray(msg.tabs) ? msg.tabs : []);
+            setTimeout(syncPinTileLocks, 30);
+          });
+          document.addEventListener('shiny:value', function() {
+            setTimeout(syncPinTileLocks, 40);
+          });
+          var _syncGuest = window.ynowSyncGuestSidebarLocked;
+          if (typeof _syncGuest === 'function') {
+            window.ynowSyncGuestSidebarLocked = function() {
+              _syncGuest.apply(this, arguments);
+              syncPinTileLocks();
+            };
+          } else {
+            window.ynowSyncGuestSidebarLocked = function() { syncPinTileLocks(); };
+          }
         })();
 
         $(document).on('mousedown', '#sc_ticker_suggest .ynow-suggest-item, #lab_cluster_focus_suggest .ynow-suggest-item', function(e) {
