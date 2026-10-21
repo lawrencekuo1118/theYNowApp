@@ -3594,9 +3594,9 @@ ui <- dashboardPage(
     # Must stay inside column(width=12): bare sidebarMenu after Bootstrap
     # floated cols collapses to width:0 / left:250 (menu invisible).
     # 「推薦」badges are patched in-place (no renderMenu remount).
-    # Pinned sidebar tabs (max 12, 3 columns) sit above the main menu.
+    # Page-pin tray removed; stock pins live under Recent Search. Tab long-press
+    # is reorder-edit only (customize button).
     column(width = 12,
-           uiOutput("pinned_sidebar_tabs"),
            sidebarMenu(
              id = "sidebar_tabs",
              menuItem(
@@ -6473,24 +6473,17 @@ ui <- dashboardPage(
           padding: 0 2px 2px 2px;
           min-height: 1.4em;
         }
+        /* Pinned tickers from Recent Search: max 12 in a 3-column grid (4×3). */
         .ynow-pinned-search {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 6px;
-          padding: 2px 2px 6px 2px;
-          min-height: 0;
-        }
-        .ynow-pinned-search:empty { display: none; padding: 0; }
-        /* Sidebar tab pins: max 12 in a 3-column grid (up to 4 rows). */
-        .ynow-sidebar-pins {
           display: grid;
           grid-template-columns: repeat(3, minmax(0, 1fr));
           gap: 6px;
-          padding: 4px 6px 10px;
+          padding: 2px 2px 8px 2px;
+          min-height: 0;
           margin: 0 0 2px 0;
         }
-        .ynow-sidebar-pins:empty { display: none; padding: 0; margin: 0; }
-        .ynow-sidebar-pins-label {
+        .ynow-pinned-search:empty { display: none; padding: 0; margin: 0; }
+        .ynow-pinned-search-label {
           grid-column: 1 / -1;
           margin: 0 0 2px 0;
           padding: 0 2px;
@@ -6501,95 +6494,13 @@ ui <- dashboardPage(
           color: rgba(255, 214, 102, 0.85);
           opacity: 0.95;
         }
-        .ynow-sidebar-pin-tile {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: 3px;
-          min-height: 44px;
-          padding: 6px 4px 5px;
-          border-radius: 4px;
-          border: 1px solid rgba(255, 214, 102, 0.42);
-          background: rgba(255, 214, 102, 0.10);
-          color: rgba(255, 255, 255, 0.92) !important;
-          font-size: 10px;
-          font-weight: 600;
-          line-height: 1.15;
-          text-align: center;
-          cursor: pointer;
-          user-select: none;
-          -webkit-user-select: none;
-          touch-action: manipulation;
-          text-decoration: none !important;
-          overflow: hidden;
-        }
-        .ynow-sidebar-pin-tile > .fa,
-        .ynow-sidebar-pin-tile > .fas {
-          font-size: 13px;
-          line-height: 1;
-          color: rgba(255, 214, 102, 0.95);
-        }
-        .ynow-sidebar-pin-tile > .ynow-sidebar-pin-text {
-          display: block;
-          max-width: 100%;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
-        .ynow-sidebar-pin-tile:hover,
-        .ynow-sidebar-pin-tile:focus {
-          background: rgba(255, 214, 102, 0.18);
-          border-color: rgba(255, 214, 102, 0.7);
-          outline: none;
-        }
-        .ynow-sidebar-pin-tile:focus-visible {
-          box-shadow: 0 0 0 2px rgba(255, 214, 102, 0.55);
-        }
-        .ynow-sidebar-pin-tile.ynow-chip-longpress {
-          transform: scale(0.96);
-          background: rgba(255, 214, 102, 0.28);
-        }
-        .ynow-sidebar-pin-tile.ynow-sidebar-locked {
-          opacity: 0.55;
-          border-color: rgba(255, 255, 255, 0.18);
-          background: rgba(255, 255, 255, 0.04);
-        }
-        .ynow-sidebar-pin-tile.ynow-sidebar-locked > .fa,
-        .ynow-sidebar-pin-tile.ynow-sidebar-locked > .fas {
-          color: rgba(255, 255, 255, 0.55);
-        }
-        .ynow-sidebar-pin-tile .ynow-menu-lock {
-          position: absolute;
-          top: 3px;
-          right: 4px;
-          font-size: 9px;
-          color: rgba(255, 255, 255, 0.7);
-        }
-        .ynow-sidebar-pin-tile.ynow-sidebar-locked {
-          position: relative;
-        }
-        .sidebar-menu a[data-value].ynow-menu-is-pinned::after {
-          content: "";
-          display: inline-block;
-          width: 0.45em;
-          height: 0.45em;
-          margin-left: 6px;
-          vertical-align: 0.1em;
-          border: 1.5px solid rgba(255, 214, 102, 0.9);
-          border-radius: 1px 1px 55% 55%;
-          box-shadow: 0 2px 0 -0.5px rgba(255, 214, 102, 0.65);
-          transform: rotate(-35deg);
-          opacity: 0.9;
-        }
         .ynow-recent-search-empty {
           color: rgba(255, 255, 255, 0.45);
           font-size: 12px;
           line-height: 1.4;
           margin: 0;
         }
-        .ynow-recent-chip,
-        .ynow-pinned-chip {
+        .ynow-recent-chip {
           display: inline-block;
           padding: 2px 8px;
           border-radius: 3px;
@@ -6607,26 +6518,49 @@ ui <- dashboardPage(
           text-decoration: none !important;
         }
         .ynow-pinned-chip {
-          border-color: rgba(255, 214, 102, 0.55);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 4px;
+          min-height: 36px;
+          padding: 6px 4px;
+          border-radius: 4px;
+          border: 1px solid rgba(255, 214, 102, 0.55);
           background: rgba(255, 214, 102, 0.12);
           box-shadow: inset 0 0 0 1px rgba(255, 214, 102, 0.08);
+          color: rgba(255, 255, 255, 0.92) !important;
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.02em;
+          line-height: 1.2;
+          text-align: center;
+          cursor: pointer;
+          user-select: none;
+          -webkit-user-select: none;
+          touch-action: manipulation;
+          text-decoration: none !important;
+          overflow: hidden;
         }
         .ynow-pinned-chip::before {
           content: "";
+          flex: 0 0 auto;
           display: inline-block;
-          width: 0.55em;
-          height: 0.55em;
-          margin-right: 5px;
-          vertical-align: 0.05em;
+          width: 0.5em;
+          height: 0.5em;
           border: 1.5px solid rgba(255, 214, 102, 0.95);
           border-radius: 1px 1px 55% 55%;
           box-shadow: 0 2px 0 -0.5px rgba(255, 214, 102, 0.7);
           transform: rotate(-35deg);
         }
+        .ynow-pinned-chip-text {
+          display: block;
+          max-width: 100%;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
         .ynow-recent-chip:hover,
-        .ynow-recent-chip:focus,
-        .ynow-pinned-chip:hover,
-        .ynow-pinned-chip:focus {
+        .ynow-recent-chip:focus {
           background: rgba(255, 255, 255, 0.14);
           border-color: rgba(255, 255, 255, 0.4);
           outline: none;
@@ -6635,6 +6569,7 @@ ui <- dashboardPage(
         .ynow-pinned-chip:focus {
           background: rgba(255, 214, 102, 0.22);
           border-color: rgba(255, 214, 102, 0.75);
+          outline: none;
         }
         .ynow-recent-chip:focus-visible,
         .ynow-pinned-chip:focus-visible {
@@ -6642,8 +6577,9 @@ ui <- dashboardPage(
         }
         .ynow-recent-chip.ynow-chip-longpress,
         .ynow-pinned-chip.ynow-chip-longpress {
-          transform: scale(1.06);
+          transform: scale(0.96);
           border-color: rgba(255, 214, 102, 0.9);
+          background: rgba(255, 214, 102, 0.28);
           transition: transform 0.12s ease-out, border-color 0.12s ease-out;
         }
         /* 側欄版權：緊接 Snapshot／Sys. Admin／意見區列下方，全寬、不與按鈕重疊 */
@@ -17442,10 +17378,12 @@ ui <- dashboardPage(
           hideSuggest('sc');
         });
 
-        // Recent / pinned chips: click → reload ticker; long-press 2s → pin/unpin.
+        // Recent / pinned tickers: click → reload; long-press 2s → pin/unpin (max 12).
+        // Tab long-press is NOT pin — sibling customize+drag reorder owns that.
         (function() {
           var LONG_MS = 2000;
           var GUEST_KEY = 'ynow_pinned_recent_v1';
+          var MAX_PINS = 12;
           var pressTimer = null;
           var pressEl = null;
           var longFired = false;
@@ -17458,11 +17396,14 @@ ui <- dashboardPage(
               var arr = JSON.parse(raw);
               if (!Array.isArray(arr)) return [];
               return arr.map(function(x) { return String(x || '').trim().toUpperCase(); })
-                .filter(function(x) { return !!x; });
+                .filter(function(x) { return !!x; })
+                .slice(0, MAX_PINS);
             } catch (e) { return []; }
           }
           function guestWrite(arr) {
-            try { localStorage.setItem(GUEST_KEY, JSON.stringify(arr || [])); } catch (e) {}
+            try {
+              localStorage.setItem(GUEST_KEY, JSON.stringify((arr || []).slice(0, MAX_PINS)));
+            } catch (e) {}
           }
           window.ynowGuestPinnedRecent = {
             read: guestRead,

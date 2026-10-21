@@ -68,11 +68,11 @@ for (t in c("lab_notes", "price_alerts", "ddm_calculator", "ri_calculator",
     paste0("Lite CSS hides ", t),
     grepl(sprintf('data-value="%s"', t), css, fixed = TRUE)
   )
-  check(
-    paste0("Lite CSS hides pin tile ", t),
-    grepl(sprintf('.ynow-sidebar-pin-tile[data-tab="%s"]', t), css, fixed = TRUE)
-  )
 }
+check(
+  "Lite omit CSS has no page-pin tile selectors",
+  !grepl("ynow-sidebar-pin-tile", css, fixed = TRUE)
+)
 
 check("ynow_ui injects lite omit CSS", grepl("ynow_sidebar_lite_omit_css", ui, fixed = TRUE))
 check("ynow_ui injects __YNOW_LITE_OMIT_TABS", grepl("__YNOW_LITE_OMIT_TABS", ui, fixed = TRUE))
