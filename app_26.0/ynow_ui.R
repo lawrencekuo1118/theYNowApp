@@ -12114,6 +12114,46 @@ ui <- dashboardPage(
                 try { window.ynowSyncGuestSidebarLocked(); } catch (eSync) {}
               }
             });
+            /* Durable browser resume: localStorage token survives tab/browser close.
+               Cleared only on Sign out / revoke / expired resume. */
+            var YNOW_AUTH_RESUME_KEY = 'ynow_auth_resume_v1';
+            var ynowAuthResumeSent = false;
+            var ynowAuthPersistWrite = function (token) {
+              try {
+                if (token) localStorage.setItem(YNOW_AUTH_RESUME_KEY, String(token));
+                else localStorage.removeItem(YNOW_AUTH_RESUME_KEY);
+              } catch (ePersist) {}
+            };
+            var ynowAuthPersistRead = function () {
+              try { return localStorage.getItem(YNOW_AUTH_RESUME_KEY) || ''; }
+              catch (eRead) { return ''; }
+            };
+            var ynowAuthResumeOffer = function () {
+              if (ynowAuthResumeSent) return;
+              if (!window.Shiny || !Shiny.setInputValue) return;
+              var tok = ynowAuthPersistRead();
+              if (!tok) return;
+              ynowAuthResumeSent = true;
+              Shiny.setInputValue('ynow_auth_resume_token', String(tok), { priority: 'event' });
+            };
+            addHandler('ynowAuthPersist', function (payload) {
+              if (!payload) return;
+              if (payload.clear) {
+                ynowAuthPersistWrite('');
+                ynowAuthResumeSent = false;
+                return;
+              }
+              if (payload.token) {
+                ynowAuthPersistWrite(payload.token);
+                ynowAuthResumeSent = true;
+              }
+            });
+            document.addEventListener('shiny:connected', function () {
+              setTimeout(ynowAuthResumeOffer, 0);
+            });
+            document.addEventListener('shiny:sessioninitialized', function () {
+              setTimeout(ynowAuthResumeOffer, 0);
+            });
             addHandler('ynowAuthState', function (payload) {
               if (!payload) return;
               var realLoggedIn = !!(payload.logged_in);
