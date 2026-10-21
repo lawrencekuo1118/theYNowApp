@@ -6331,17 +6331,18 @@ ui <- dashboardPage(
         .sidebar-menu > li.menu-open > a {
           font-weight: 700 !important;
         }
-        /* 側邊欄圖示固定寬度欄：英文標籤左緣對齊（父層＋子分頁；勿動 pull-right 展開箭頭） */
-        .sidebar-menu > li > a > .fa:not(.pull-right),
-        .sidebar-menu > li > a > .fas:not(.pull-right),
-        .sidebar-menu > li > a > .far:not(.pull-right),
-        .sidebar-menu > li > a > .glyphicon:not(.pull-right),
-        .sidebar-menu > li > a > .ion:not(.pull-right),
-        .sidebar-menu .treeview-menu > li > a > .fa:not(.pull-right),
-        .sidebar-menu .treeview-menu > li > a > .fas:not(.pull-right),
-        .sidebar-menu .treeview-menu > li > a > .far:not(.pull-right),
-        .sidebar-menu .treeview-menu > li > a > .glyphicon:not(.pull-right),
-        .sidebar-menu .treeview-menu > li > a > .ion:not(.pull-right) {
+        /* 側邊欄圖示固定寬度欄：英文標籤左緣對齊（父層＋子分頁；勿動 pull-right 展開箭頭）
+           Exclude .ynow-menu-lock — FA .fas { display } must not override lock hide/show. */
+        .sidebar-menu > li > a > .fa:not(.pull-right):not(.ynow-menu-lock),
+        .sidebar-menu > li > a > .fas:not(.pull-right):not(.ynow-menu-lock),
+        .sidebar-menu > li > a > .far:not(.pull-right):not(.ynow-menu-lock),
+        .sidebar-menu > li > a > .glyphicon:not(.pull-right):not(.ynow-menu-lock),
+        .sidebar-menu > li > a > .ion:not(.pull-right):not(.ynow-menu-lock),
+        .sidebar-menu .treeview-menu > li > a > .fa:not(.pull-right):not(.ynow-menu-lock),
+        .sidebar-menu .treeview-menu > li > a > .fas:not(.pull-right):not(.ynow-menu-lock),
+        .sidebar-menu .treeview-menu > li > a > .far:not(.pull-right):not(.ynow-menu-lock),
+        .sidebar-menu .treeview-menu > li > a > .glyphicon:not(.pull-right):not(.ynow-menu-lock),
+        .sidebar-menu .treeview-menu > li > a > .ion:not(.pull-right):not(.ynow-menu-lock) {
           display: inline-block;
           flex: 0 0 1.35em;
           width: 1.35em;
@@ -6869,21 +6870,24 @@ ui <- dashboardPage(
            Hist. FV Validation | Quant Backtest Lab
            Inset via ::before so the dash is shorter than full sidebar width.
         */
-        /* Unified lock glyph: Full guest locks + ACL-locked tabs (.ynow-sidebar-locked). */
-        .sidebar-menu .ynow-menu-lock {
-          display: none;
+        /* Unified lock glyph: Full guest locks + ACL / still-locked tabs (.ynow-sidebar-locked).
+           !important beats Font Awesome .fas { display: var(--fa-display,inline-block) }. */
+        .sidebar-menu .ynow-menu-lock,
+        .sidebar-menu > li > a > .ynow-menu-lock,
+        .sidebar-menu .treeview-menu > li > a > .ynow-menu-lock {
+          display: none !important;
           font-size: 11px;
           width: 1em;
           margin: 0 4px 0 2px;
           opacity: 0.95;
           vertical-align: -1px;
         }
-        .sidebar-menu li.ynow-sidebar-locked .ynow-menu-lock,
-        .sidebar-menu li.ynow-access-locked-nav .ynow-menu-lock,
-        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .sidebar-menu .ynow-menu-lock {
-          display: inline-block;
+        .sidebar-menu li.ynow-sidebar-locked > a > .ynow-menu-lock,
+        .sidebar-menu li.ynow-access-locked-nav > a > .ynow-menu-lock,
+        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .sidebar-menu a > .ynow-menu-lock {
+          display: inline-block !important;
         }
-        /* Lock replaces the tab glyph while locked (guest gate or ACL). */
+        /* Lock replaces the tab glyph while locked (guest gate or ACL / persist). */
         .sidebar-menu li.ynow-sidebar-locked > a > i:not(.ynow-menu-lock):not(.pull-right),
         .sidebar-menu li.ynow-access-locked-nav > a > i:not(.ynow-menu-lock):not(.pull-right),
         body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .sidebar-menu a:has(.ynow-menu-lock) > i:not(.ynow-menu-lock):not(.pull-right) {
@@ -8601,6 +8605,15 @@ ui <- dashboardPage(
           )
         } else {
           "window.__YNOW_SIDEBAR_GUEST_LOCK_TABS = {lab_notes:true,decision_checklist:true,price_alerts:true};"
+        },
+        if (exists("ynow_sidebar_persist_lock_js_map", mode = "function")) {
+          paste0(
+            "window.__YNOW_SIDEBAR_PERSIST_LOCK_TABS = ",
+            jsonlite::toJSON(ynow_sidebar_persist_lock_js_map(), auto_unbox = TRUE, null = "null"),
+            ";"
+          )
+        } else {
+          "window.__YNOW_SIDEBAR_PERSIST_LOCK_TABS = {};"
         },
         if (exists("ynow_sidebar_lite_omit_tabs", mode = "function")) {
           paste0(
@@ -11547,26 +11560,44 @@ ui <- dashboardPage(
                   });
                 }
               });
-              document.querySelectorAll('.sidebar-menu li.ynow-access-locked-nav > a').forEach(function (a) {
-                if (a.querySelector('.ynow-menu-lock')) return;
-                var lock = document.createElement('i');
-                lock.className = 'fas fa-lock ynow-menu-lock ynow-access-lock';
-                lock.setAttribute('aria-hidden', 'true');
-                var glyph = a.querySelector(':scope > i:not(.ynow-menu-lock):not(.pull-right)');
-                if (glyph) glyph.insertAdjacentElement('afterend', lock);
-                else a.insertBefore(lock, a.firstChild);
-              });
+            document.querySelectorAll('.sidebar-menu li.ynow-access-locked-nav > a').forEach(function (a) {
+              if (a.querySelector('.ynow-menu-lock')) {
+                /* Ensure unified chrome class even when guest lock glyph already exists. */
+                var li0 = a.closest ? a.closest('li') : a.parentElement;
+                if (li0 && li0.classList) li0.classList.add('ynow-sidebar-locked');
+                return;
+              }
+              var lock = document.createElement('i');
+              lock.className = 'fas fa-lock ynow-menu-lock ynow-access-lock';
+              lock.setAttribute('aria-hidden', 'true');
+              var glyph = a.querySelector(':scope > i:not(.ynow-menu-lock):not(.pull-right)');
+              if (glyph) glyph.insertAdjacentElement('afterend', lock);
+              else a.insertBefore(lock, a.firstChild);
+            });
               if (typeof window.ynowSyncGuestSidebarLocked === 'function') {
                 window.ynowSyncGuestSidebarLocked();
               }
             };
-            /* Full guest locks share .ynow-sidebar-locked with ACL locks (unified chrome). */
+            /* Full guest locks share .ynow-sidebar-locked with ACL + persist (B) locks.
+               After sign-in: unlock-after-login (A) tabs drop chrome; still-locked
+               (ACL / persist B) keep guest-identical lock icon + gray — never hide. */
+            window.ynowEnsureSidebarLockGlyph = function (a) {
+              if (!a || a.querySelector('.ynow-menu-lock')) return;
+              var lock = document.createElement('i');
+              lock.className = 'fas fa-lock ynow-menu-lock';
+              lock.setAttribute('aria-hidden', 'true');
+              var glyph = a.querySelector(':scope > i:not(.ynow-menu-lock):not(.pull-right)');
+              if (glyph) glyph.insertAdjacentElement('afterend', lock);
+              else a.insertBefore(lock, a.firstChild);
+            };
             window.ynowSyncGuestSidebarLocked = function () {
               var tabs = window.__YNOW_SIDEBAR_GUEST_LOCK_TABS || {
                 lab_notes: true,
                 decision_checklist: true,
                 price_alerts: true
               };
+              /* Tier B / points-gated sidebar tabs: keep locked chrome after auth. */
+              var persist = window.__YNOW_SIDEBAR_PERSIST_LOCK_TABS || {};
               /* View-as is a signed-in preview of the target user — not guest-locked. */
               var guest = !!(document.body &&
                 document.body.classList.contains('ynow-auth-feature') &&
@@ -11577,15 +11608,22 @@ ui <- dashboardPage(
                 var tab = a.getAttribute('data-value') || '';
                 var li = a.closest ? a.closest('li') : a.parentElement;
                 if (!li || !li.classList) return;
-                /* ACL locks always keep unified chrome (class-based, survives auth). */
-                if (li.classList.contains('ynow-access-locked-nav')) {
+                /* Still-locked after auth: ACL + persist B — same chrome as guest. */
+                if (li.classList.contains('ynow-access-locked-nav') || persist[tab]) {
                   li.classList.add('ynow-sidebar-locked');
+                  li.classList.remove('ynow-access-hidden');
+                  if (typeof window.ynowEnsureSidebarLockGlyph === 'function') {
+                    window.ynowEnsureSidebarLockGlyph(a);
+                  }
                   return;
                 }
                 if (guest && tabs[tab]) {
                   li.classList.add('ynow-sidebar-locked');
+                  if (typeof window.ynowEnsureSidebarLockGlyph === 'function') {
+                    window.ynowEnsureSidebarLockGlyph(a);
+                  }
                 } else if (tabs[tab]) {
-                  /* Only clear guest-lock tabs; leave ACL / other locks alone. */
+                  /* A unlock-after-login: drop locked chrome only (item stays visible). */
                   li.classList.remove('ynow-sidebar-locked');
                 }
               });

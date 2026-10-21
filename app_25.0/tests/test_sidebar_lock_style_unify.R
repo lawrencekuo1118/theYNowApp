@@ -49,27 +49,36 @@ check("ACL + guest share opacity 0.55 rule", {
 })
 
 check("unified lock glyph visibility for ACL + guest", {
-  grepl("li.ynow-sidebar-locked .ynow-menu-lock", ui, fixed = TRUE) &&
-    grepl("li.ynow-access-locked-nav .ynow-menu-lock", ui, fixed = TRUE) &&
+  grepl("li.ynow-sidebar-locked > a > .ynow-menu-lock", ui, fixed = TRUE) &&
+    grepl("li.ynow-access-locked-nav > a > .ynow-menu-lock", ui, fixed = TRUE) &&
     grepl(
-      "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .sidebar-menu .ynow-menu-lock",
+      "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .sidebar-menu a > .ynow-menu-lock",
       ui,
       fixed = TRUE
-    )
+    ) &&
+    grepl("display: none !important", ui, fixed = TRUE) &&
+    grepl("display: inline-block !important", ui, fixed = TRUE)
+})
+
+check("sidebar icon column excludes ynow-menu-lock (FA display override)", {
+  grepl(":not(.pull-right):not(.ynow-menu-lock)", ui, fixed = TRUE)
 })
 
 check("ynowSyncGuestSidebarLocked wires guest LIs", {
   grepl("ynowSyncGuestSidebarLocked", ui, fixed = TRUE) &&
     grepl("__YNOW_SIDEBAR_GUEST_LOCK_TABS", ui, fixed = TRUE) &&
+    grepl("__YNOW_SIDEBAR_PERSIST_LOCK_TABS", ui, fixed = TRUE) &&
     grepl("classList.add('ynow-sidebar-locked')", ui, fixed = TRUE) &&
     grepl("classList.remove('ynow-sidebar-locked')", ui, fixed = TRUE)
 })
 
-check("SyncGuest strips only guest-lock tabs when authed (keeps ACL chrome)", {
+check("SyncGuest keeps ACL/persist chrome; A tabs unlock after auth", {
   grepl("ynow-access-locked-nav", ui, fixed = TRUE) &&
+    grepl("persist[tab]", ui, fixed = TRUE) &&
     grepl("else if (tabs[tab])", ui, fixed = TRUE) &&
-    grepl("Only clear guest-lock tabs; leave ACL / other locks alone.", ui, fixed = TRUE) &&
-    grepl("ynow-view-as", ui, fixed = TRUE)
+    grepl("A unlock-after-login: drop locked chrome only", ui, fixed = TRUE) &&
+    grepl("ynow-view-as", ui, fixed = TRUE) &&
+    grepl("ynowEnsureSidebarLockGlyph", ui, fixed = TRUE)
 })
 
 check("ACL apply also stamps ynow-sidebar-locked", {

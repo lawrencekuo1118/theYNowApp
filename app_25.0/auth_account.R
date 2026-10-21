@@ -147,6 +147,22 @@ ynow_sidebar_guest_lock_js_map <- function() {
   as.list(stats::setNames(rep(list(TRUE), length(tabs)), tabs))
 }
 
+#' Sidebar tabs that keep locked chrome after sign-in (tier B / points-gated).
+#' Unlock-after-login (A) guest_menu_lock tabs are NOT listed — they unlock normally.
+#' ACL still-locked tabs use `.ynow-access-locked-nav` separately (same chrome).
+#' @return named list for `window.__YNOW_SIDEBAR_PERSIST_LOCK_TABS`
+ynow_sidebar_persist_lock_js_map <- function() {
+  tabs <- character(0)
+  if (exists("ynow_membership_lock_ids", mode = "function")) {
+    tabs <- ynow_membership_lock_ids(
+      tier = "B",
+      kind = "sidebar_tab"
+    )
+  }
+  if (!length(tabs)) return(setNames(list(), character(0)))
+  as.list(stats::setNames(rep(list(TRUE), length(tabs)), tabs))
+}
+
 #' Normalize email for compare (trim + lower).
 ynow_auth_norm_email <- function(email) {
   tolower(trimws(as.character(email %||% "")[1]))
