@@ -24,7 +24,7 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 
 - **Mobile only:** Sign in / Sign out restored beside the sidebar date as **text links** matching the date font size (12px); not buttons. Desktop keeps the header Sign-in control (PR #367).
 - zh-TW：僅手機版將登入／登出改回側邊欄日期旁的文字連結（字級與日期一致）；桌面版維持頁首 Sign in。
-- Live baseline: see `scripts/DEPLOY_BASELINE.txt` after deploy.
+- Live baseline bundle `12720021` (`scripts/DEPLOY_BASELINE.txt`).
 
 ## [v26.05] — 2026-10-21
 
