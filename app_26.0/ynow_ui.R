@@ -8036,6 +8036,29 @@ ui <- dashboardPage(
           min-height: 34px;
           text-align: left;
         }
+        /* Header KPI strip: same content column as Company Overview (.tab-pane) */
+        .content-wrapper .ynow-header-kpi-shell {
+          max-width: var(--ynow-page-max, 1200px);
+          width: 100%;
+          margin-left: auto;
+          margin-right: auto;
+          box-sizing: border-box;
+        }
+        .content-wrapper .ynow-header-kpi-shell > .ynow-header-kpi-row {
+          margin-left: 0;
+          margin-right: 0;
+        }
+        .content-wrapper .ynow-header-kpi-shell > .ynow-header-kpi-row > [class*="col-"]:first-child {
+          padding-left: 0;
+        }
+        .content-wrapper .ynow-header-kpi-shell > .ynow-header-kpi-row > [class*="col-"]:last-child {
+          padding-right: 0;
+        }
+        @media (max-width: 767px) {
+          .content-wrapper .ynow-header-kpi-shell {
+            max-width: 100%;
+          }
+        }
         /* Header KPI：Last Price／Market Cap／EPS — logo 綠圖示；無金框 */
         .ynow-header-kpi-row .info-box {
           background: #ffffff;
@@ -17926,24 +17949,28 @@ ui <- dashboardPage(
     ")),
     # Header KPIs: Company (dashboard) only (Last Price / Market Cap / EPS TTM).
     # Smart Analysis (Lite) uses its own fair-value cards — no quote KPI strip.
+    # Shell matches Company Overview width (same --ynow-page-max as .tab-pane).
     conditionalPanel(
       condition = "input.sidebar_tabs == 'dashboard'",
-      fluidRow(
-        class = "ynow-header-kpi-row",
-        column(
-          width = 4,
-          class = "col-xs-4",
-          uiOutput("ibx_stockprice")
-        ),
-        column(
-          width = 4,
-          class = "col-xs-4",
-          infoBoxOutput("ibx_marketcap", width = NULL)
-        ),
-        column(
-          width = 4,
-          class = "col-xs-4",
-          uiOutput("ibx_EPS")
+      tags$div(
+        class = "ynow-header-kpi-shell",
+        fluidRow(
+          class = "ynow-header-kpi-row",
+          column(
+            width = 4,
+            class = "col-xs-4",
+            uiOutput("ibx_stockprice")
+          ),
+          column(
+            width = 4,
+            class = "col-xs-4",
+            infoBoxOutput("ibx_marketcap", width = NULL)
+          ),
+          column(
+            width = 4,
+            class = "col-xs-4",
+            uiOutput("ibx_EPS")
+          )
         )
       )
     ),
