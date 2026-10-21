@@ -1923,6 +1923,25 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
     )
   }
 
+  # Local-only: seed a signed-in session so gate-demo capture can scroll real tab UI.
+  # Never set YNOW_DEMO_CAPTURE=1 on shinyapps.io / production.
+  if (identical(Sys.getenv("YNOW_DEMO_CAPTURE"), "1")) {
+    session$onFlushed(function() {
+      tryCatch({
+        # Valid UUID shape so points/prefs DB helpers do not error on type uuid.
+        u <- list(
+          id = "00000000-0000-4000-8000-0000000000d1",
+          email = "demo.capture@local",
+          display_name = "Demo Capture",
+          role = "user",
+          logged_in_at = as.character(Sys.time())
+        )
+        account_user(u)
+        .push_auth_state(TRUE, u$email)
+      }, error = function(e) NULL)
+    }, once = TRUE)
+  }
+
   .sign_out <- function() {
     account_user(NULL)
     .push_auth_state(FALSE, "")

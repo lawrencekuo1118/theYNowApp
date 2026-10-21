@@ -68,7 +68,23 @@ for (f in feats) {
 auth <- paste(readLines(file.path(app_dir, "auth_account.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check("promo UI wires demos/<feature>.mp4", grepl('paste0(demo_base, ".mp4")', auth, fixed = TRUE))
 check("promo UI wires demos/<feature>.webm", grepl('paste0(demo_base, ".webm")', auth, fixed = TRUE))
-check("generator script present", file.exists(file.path(app_dir, "..", "scripts", "generate_gate_demo_videos.py")))
+gen <- file.path(app_dir, "..", "scripts", "generate_gate_demo_videos.py")
+check("generator script present", file.exists(gen))
+gen_txt <- paste(readLines(gen, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+check(
+  "generator uses scroll capture (not PIL text cards)",
+  grepl("gate_demo_pages", gen_txt, fixed = TRUE) &&
+    grepl("_record_scroll", gen_txt, fixed = TRUE) &&
+    !grepl("ImageDraw.Draw", gen_txt, fixed = TRUE)
+)
+fix_dir <- file.path(app_dir, "..", "scripts", "gate_demo_pages")
+check("fixture builder present", file.exists(file.path(fix_dir, "build_pages.py")))
+for (f in feats) {
+  check(
+    paste0(f, " html fixture present"),
+    file.exists(file.path(fix_dir, paste0(f, ".html")))
+  )
+}
 
 message("PASS ", ok, " FAIL ", bad)
 if (bad > 0L) quit(status = 1)

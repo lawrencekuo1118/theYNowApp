@@ -1,0 +1,57 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Account workspace</title><style>
+:root { --ink:#1a1a1a; --muted:#555; --line:#d0d0d0; --accent:#249c60; --gold:#c9a227; }
+* { box-sizing: border-box; }
+html, body { height:100%; overflow:hidden; }
+body { margin:0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  background:#ececec; color:var(--ink); }
+.top { background:#1a1a1a; color:#f5e6a8; padding:10px 16px; font-weight:700; letter-spacing:.02em; }
+.wrap { display:flex; height:calc(100vh - 40px); overflow:hidden; }
+.side { width:220px; background:#222d32; color:#b8c7ce; padding:12px 0; flex:0 0 auto; overflow:auto; }
+.side a { display:block; padding:8px 14px; color:#b8c7ce; text-decoration:none; font-size:13px; }
+.side a.active { background:#1e282c; color:#fff; border-left:3px solid var(--accent); }
+.main { flex:1; padding:16px 18px 80px; max-width:900px; overflow-y:auto; height:100%; }
+.h2 { margin:0 0 6px; font-size:22px; }
+.lead { margin:0 0 14px; color:var(--muted); font-size:13px; line-height:1.45; }
+.row { display:flex; gap:12px; flex-wrap:wrap; margin:0 0 14px; }
+.kpi { flex:1 1 140px; background:#fff; border:1px solid var(--line); border-radius:4px; padding:12px; min-height:88px; }
+.kpi .l { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
+.kpi .v { font-size:22px; font-weight:700; margin-top:6px; }
+.kpi .c { font-size:12px; color:var(--accent); margin-top:4px; }
+.box { background:#fff; border:1px solid var(--line); border-top:3px solid var(--ink); border-radius:3px; margin:0 0 14px; }
+.box-h { padding:10px 12px; border-bottom:1px solid var(--line); font-weight:700; font-size:14px; }
+.box-b { padding:12px; font-size:13px; line-height:1.5; color:#333; }
+table { width:100%; border-collapse:collapse; font-size:12px; }
+th,td { border-bottom:1px solid #eee; padding:7px 6px; text-align:left; }
+th { color:#666; font-weight:600; }
+.chart { height:180px; background:linear-gradient(180deg,#fafafa,#f0f0f0);
+  border:1px dashed #ccc; border-radius:4px; position:relative; overflow:hidden; }
+.chart svg { width:100%; height:100%; display:block; }
+.tag { display:inline-block; padding:2px 8px; border:1px solid #000; background:#1a1a1a; color:#fff;
+  font-size:11px; font-weight:700; letter-spacing:.06em; margin-right:6px; }
+.note { font-size:12px; color:var(--muted); margin-top:8px; }
+</style></head>
+<body>
+<div class="top">The YNow App · Account workspace</div>
+<div class="wrap">
+  <nav class="side"><a class="" href="#">Quant Backtest Lab</a>
+<a class="" href="#">Decision Checklist</a>
+<a class="" href="#">Value Alerts</a>
+<a class="active" href="#">Account</a>
+<a class="" href="#">Company / PDF</a>
+<a class="" href="#">Snapshot defaults</a>
+<a class="" href="#">Locked tab</a>
+<a class="" href="#">Asset Transmission</a></nav>
+  <main class="main" id="scroll-root">
+    <div class="h2">Account workspace</div>
+    <p class="lead"><span class="tag">DEMO</span>Overview, themes, FYN / PYN balances, and the Points ledger.</p>
+    <div class="row"><div class="kpi"><div class="l">FYN</div><div class="v">128</div><div class="c">spendable</div></div><div class="kpi"><div class="l">PYN</div><div class="v">40</div><div class="c">premium</div></div><div class="kpi"><div class="l">Check-in</div><div class="v">Done</div><div class="c">+30 FYN</div></div><div class="kpi"><div class="l">Theme</div><div class="v">Classic</div><div class="c">page theme</div></div></div>
+<div class="box"><div class="box-h">Overview</div><div class="box-b"><p>Signed-in APP member workspace. Daily check-in and welcome gift appear on the ledger.</p><p>Signed-in APP member workspace. Daily check-in and welcome gift appear on the ledger.</p><p>Signed-in APP member workspace. Daily check-in and welcome gift appear on the ledger.</p><p>Signed-in APP member workspace. Daily check-in and welcome gift appear on the ledger.</p><p>Signed-in APP member workspace. Daily check-in and welcome gift appear on the ledger.</p></div></div>
+<div class="box"><div class="box-h">Points ledger</div><div class="box-b"><table><tr><th>When</th><th>SKU</th><th>Δ FYN</th><th>Balance</th></tr>
+        <tr><td>Today</td><td>check-in</td><td>+30</td><td>128</td></tr>
+        <tr><td>Yesterday</td><td>bt_run</td><td>−5</td><td>98</td></tr>
+        <tr><td>Oct 18</td><td>alert_slot</td><td>−1</td><td>103</td></tr></table><p>…</p><p>…</p><p>…</p><p>…</p><p>…</p><p>…</p><p>…</p><p>…</p><p>…</p><p>…</p><p>…</p><p>…</p><p>…</p><p>…</p></div></div>
+  </main>
+</div>
+</body></html>
