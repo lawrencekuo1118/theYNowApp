@@ -1027,6 +1027,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     access_lock_title = "Item locks",
     access_lock_help = paste0(
       "Choose Lock (show a locked placeholder) or Hide (remove from the UI), ",
+      "set the unlock condition (after login / points / conditional free uses or time limit), ",
       "then apply to the selected user or all users. ",
       "Per-user rules override all-users rules for the same item. ",
       "Clear removes only the chosen scope. All-users also applies to guests."
@@ -1040,6 +1041,17 @@ locale_for_market <- function(mode = get_market_mode()) {
     access_effect_label = "Restriction",
     access_effect_lock = "Lock (show locked placeholder)",
     access_effect_hide = "Hide (remove from UI)",
+    access_unlock_type_label = "Unlock condition",
+    access_unlock_login = "Unlock after login",
+    access_unlock_points = "Points unlock",
+    access_unlock_conditional = "Conditional unlock",
+    access_unlock_points_cost = "Points required (FYN)",
+    access_unlock_free_count = "Free uses (0 = unused)",
+    access_unlock_time_hours = "Time limit (hours; 0 = unused)",
+    access_unlock_conditional_help = paste0(
+      "Set free uses and/or a time window. ",
+      "At least one must be greater than zero."
+    ),
     access_lock_btn = "Apply restriction",
     access_unlock_btn = "Clear restriction",
     access_locked_now = "Currently restricted",
@@ -1052,6 +1064,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     access_ok_unlock_all = "Restriction cleared for all users.",
     access_bad_item = "Choose an item from the catalog.",
     access_bad_user = "Select a user from the list.",
+    access_bad_points_cost = "Enter how many FYN are required for points unlock.",
+    access_bad_conditional = paste0(
+      "For conditional unlock, set free uses and/or a time limit greater than zero."
+    ),
     access_denied_report = "This report is locked for the signed-in account.",
     access_pane_note = "This page is locked for the signed-in account. Ask a system admin to unlock it.",
     auth_gate_inner_lock_body = paste0(
@@ -4992,7 +5008,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     access_lock_title = "項目鎖定",
     access_lock_help = paste0(
       "可選擇「鎖上」（顯示鎖定提示）或「隱藏」（自介面移除），",
-      "並套用到選定使用者或所有使用者。",
+      "並設定解鎖條件（登入即解鎖／點數解鎖／條件解鎖的免費次數或限時），",
+      "再套用到選定使用者或所有使用者。",
       "同一項目若有個人規則，會覆寫「所有使用者」規則。",
       "清除僅移除所選範圍；「所有使用者」亦套用至訪客。"
     ),
@@ -5005,6 +5022,17 @@ locale_for_market <- function(mode = get_market_mode()) {
     access_effect_label = "限制方式",
     access_effect_lock = "鎖上（顯示鎖定提示）",
     access_effect_hide = "隱藏（自介面移除）",
+    access_unlock_type_label = "解鎖條件",
+    access_unlock_login = "登入即解鎖",
+    access_unlock_points = "點數解鎖",
+    access_unlock_conditional = "條件解鎖",
+    access_unlock_points_cost = "所需點數（FYN）",
+    access_unlock_free_count = "免費次數（0＝不使用）",
+    access_unlock_time_hours = "限時（小時；0＝不使用）",
+    access_unlock_conditional_help = paste0(
+      "請設定免費次數及／或限時視窗；",
+      "至少一項需大於零。"
+    ),
     access_lock_btn = "套用限制",
     access_unlock_btn = "清除限制",
     access_locked_now = "目前限制",
@@ -5017,6 +5045,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     access_ok_unlock_all = "已清除所有使用者的此項限制。",
     access_bad_item = "請從清單選擇項目。",
     access_bad_user = "請從清單選擇使用者。",
+    access_bad_points_cost = "請輸入點數解鎖所需的 FYN。",
+    access_bad_conditional = "條件解鎖請設定免費次數及／或大於零的限時。",
     access_denied_report = "此報表已對目前登入帳號鎖上。",
     access_pane_note = "此分頁已對目前登入帳號鎖上。請洽系統管理員解鎖。",
     auth_gate_inner_lock_body = paste0(
