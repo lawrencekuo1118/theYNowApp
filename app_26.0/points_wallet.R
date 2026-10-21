@@ -8,6 +8,7 @@
 #   YNOW_POINTS_DAILY_CHECKIN (default 30 FYN — once per Asia/Taipei calendar day)
 #   YNOW_POINTS_PRICE_ALERT_SLOT / HFV_RUN / BT_RUN  (optional overrides)
 #   YNOW_POINTS_BACKEND=memory  (tests / no Postgres account store)
+#   YNOW_POINTS_REDEEM_SEED     (optional) CODE:wallet:amount[:max],… e.g. DEMO100:pyn:100:1
 #
 # SKUs (membership lock catalog tier B): alert_slot=1, bt_run=5, pdf_report=10 — spent from FYN.
 # Retired: hfv_run (never wired to ynow_points_gate; see ynow_non_membership_lock_catalog).
@@ -182,6 +183,7 @@ ynow_points_public_id <- function(user_id) {
   .ynow_points_mem$users <- new.env(parent = emptyenv())
   .ynow_points_mem$ledger <- list()
   .ynow_points_mem$profiles <- new.env(parent = emptyenv())
+  .ynow_points_mem$codes <- new.env(parent = emptyenv())
   invisible(TRUE)
 }
 
@@ -513,6 +515,21 @@ ynow_points_ensure_schema <- function(conn = NULL) {
       ),
       error = function(e) NULL
     )
+    # Redeem codes for Account points top-up (no payment processor).
+    DBI::dbExecute(con, "
+      CREATE TABLE IF NOT EXISTS ynow_points_redeem_codes (
+        code TEXT PRIMARY KEY,
+        wallet TEXT NOT NULL DEFAULT 'pyn',
+        amount INTEGER NOT NULL CHECK (amount > 0),
+        max_redemptions INTEGER,
+        redemption_count INTEGER NOT NULL DEFAULT 0,
+        enabled BOOLEAN NOT NULL DEFAULT TRUE,
+        expires_at TIMESTAMPTZ,
+        note TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    ")
+    tryCatch(ynow_points_redeem_seed_from_env(conn = con), error = function(e) NULL)
     TRUE
   }
   if (!is.null(conn)) return(run(conn))
@@ -853,6 +870,274 @@ ynow_points_admin_adjust <- function(user_id, fyn_delta = 0L, pyn_delta = 0L,
   list(
     ok = TRUE, message_key = "pts_msg_ok", fyn = bals$fyn, pyn = bals$pyn,
     fyn_delta = fd, pyn_delta = pd, verified = TRUE
+  )
+}
+
+# ----- redeem codes (Account 點數儲值 / points top-up) -----
+
+ynow_points_norm_redeem_code <- function(code) {
+  c0 <- toupper(trimws(as.character(code %||% "")[1]))
+  c0 <- gsub("[^A-Z0-9_-]", "", c0)
+  if (!nzchar(c0) || nchar(c0) < 4L || nchar(c0) > 64L) "" else c0
+}
+
+#' Upsert a redeem code (tests / ops / env seed). Does not invent payment.
+ynow_points_redeem_code_upsert <- function(code, amount, wallet = "pyn",
+                                           max_redemptions = 1L,
+                                           enabled = TRUE,
+                                           expires_at = NULL,
+                                           note = "") {
+  c0 <- ynow_points_norm_redeem_code(code)
+  amt <- suppressWarnings(as.integer(amount)[1])
+  w <- ynow_points_norm_wallet(wallet)
+  mx <- suppressWarnings(as.integer(max_redemptions)[1])
+  if (!nzchar(c0) || !is.finite(amt) || amt < 1L) {
+    return(list(ok = FALSE, message_key = "pts_topup_bad_code"))
+  }
+  if (!is.finite(mx) || mx < 1L) mx <- NA_integer_
+  note_s <- as.character(note %||% "")[1]
+  exp_s <- if (is.null(expires_at) || !nzchar(as.character(expires_at)[1])) {
+    NA_character_
+  } else {
+    as.character(expires_at)[1]
+  }
+  if (ynow_points_uses_db()) {
+    out <- ynow_db_with(function(con) {
+      ynow_points_ensure_schema(con)
+      DBI::dbExecute(
+        con,
+        "INSERT INTO ynow_points_redeem_codes
+           (code, wallet, amount, max_redemptions, enabled, expires_at, note)
+         VALUES ($1, $2, $3, $4, $5, $6::timestamptz, $7)
+         ON CONFLICT (code) DO UPDATE SET
+           wallet = EXCLUDED.wallet,
+           amount = EXCLUDED.amount,
+           max_redemptions = EXCLUDED.max_redemptions,
+           enabled = EXCLUDED.enabled,
+           expires_at = EXCLUDED.expires_at,
+           note = EXCLUDED.note",
+        params = list(
+          c0, w, amt,
+          if (is.na(mx)) NA else mx,
+          isTRUE(enabled),
+          if (is.na(exp_s)) NA else exp_s,
+          if (nzchar(note_s)) note_s else NA_character_
+        )
+      )
+      TRUE
+    })
+    return(list(ok = isTRUE(out), code = c0, wallet = w, amount = amt))
+  }
+  if (is.null(.ynow_points_mem$codes)) {
+    .ynow_points_mem$codes <- new.env(parent = emptyenv())
+  }
+  prev <- .ynow_points_mem$codes[[c0]]
+  .ynow_points_mem$codes[[c0]] <- list(
+    code = c0,
+    wallet = w,
+    amount = amt,
+    max_redemptions = if (is.na(mx)) NA_integer_ else mx,
+    redemption_count = as.integer(prev$redemption_count %||% 0L),
+    enabled = isTRUE(enabled),
+    expires_at = exp_s,
+    note = note_s
+  )
+  list(ok = TRUE, code = c0, wallet = w, amount = amt)
+}
+
+#' Seed redeem codes from YNOW_POINTS_REDEEM_SEED (CODE:wallet:amount[:max],…).
+#' When `conn` is set (inside ensure_schema), writes with that connection only —
+#' never re-enter ensure_schema / upsert to avoid recursion.
+ynow_points_redeem_seed_from_env <- function(conn = NULL) {
+  raw <- trimws(Sys.getenv("YNOW_POINTS_REDEEM_SEED", unset = ""))
+  if (!nzchar(raw)) return(invisible(0L))
+  parts <- strsplit(raw, "[,;]+")[[1]]
+  n <- 0L
+  for (p in parts) {
+    p <- trimws(p)
+    if (!nzchar(p)) next
+    bits <- strsplit(p, ":", fixed = TRUE)[[1]]
+    if (length(bits) < 3L) next
+    code <- bits[[1]]
+    wallet <- bits[[2]]
+    amount <- bits[[3]]
+    mx <- if (length(bits) >= 4L) bits[[4]] else "1"
+    if (!is.null(conn)) {
+      c0 <- ynow_points_norm_redeem_code(code)
+      amt <- suppressWarnings(as.integer(amount)[1])
+      w <- ynow_points_norm_wallet(wallet)
+      mx_i <- suppressWarnings(as.integer(mx)[1])
+      if (!nzchar(c0) || !is.finite(amt) || amt < 1L) next
+      if (!is.finite(mx_i) || mx_i < 1L) mx_i <- NA_integer_
+      ok <- tryCatch({
+        DBI::dbExecute(
+          conn,
+          "INSERT INTO ynow_points_redeem_codes
+             (code, wallet, amount, max_redemptions, enabled, note)
+           VALUES ($1, $2, $3, $4, TRUE, 'env_seed')
+           ON CONFLICT (code) DO UPDATE SET
+             wallet = EXCLUDED.wallet,
+             amount = EXCLUDED.amount,
+             max_redemptions = EXCLUDED.max_redemptions,
+             enabled = TRUE,
+             note = EXCLUDED.note",
+          params = list(c0, w, amt, if (is.na(mx_i)) NA else mx_i)
+        )
+        TRUE
+      }, error = function(e) FALSE)
+      if (isTRUE(ok)) n <- n + 1L
+      next
+    }
+    res <- ynow_points_redeem_code_upsert(
+      code, amount = amount, wallet = wallet, max_redemptions = mx,
+      note = "env_seed"
+    )
+    if (isTRUE(res$ok)) n <- n + 1L
+  }
+  invisible(n)
+}
+
+.ynow_points_redeem_lookup <- function(code) {
+  c0 <- ynow_points_norm_redeem_code(code)
+  if (!nzchar(c0)) return(NULL)
+  if (ynow_points_uses_db()) {
+    return(ynow_db_with(function(con) {
+      ynow_points_ensure_schema(con)
+      df <- DBI::dbGetQuery(
+        con,
+        "SELECT code, wallet, amount, max_redemptions, redemption_count,
+                enabled, expires_at, note
+           FROM ynow_points_redeem_codes WHERE code = $1 LIMIT 1",
+        params = list(c0)
+      )
+      if (!is.data.frame(df) || nrow(df) < 1L) return(NULL)
+      list(
+        code = as.character(df$code[[1]]),
+        wallet = ynow_points_norm_wallet(df$wallet[[1]]),
+        amount = as.integer(df$amount[[1]]),
+        max_redemptions = suppressWarnings(as.integer(df$max_redemptions[[1]])),
+        redemption_count = as.integer(df$redemption_count[[1]] %||% 0L),
+        enabled = isTRUE(df$enabled[[1]]),
+        expires_at = as.character(df$expires_at[[1]] %||% ""),
+        note = as.character(df$note[[1]] %||% "")
+      )
+    }))
+  }
+  if (is.null(.ynow_points_mem$codes)) return(NULL)
+  .ynow_points_mem$codes[[c0]]
+}
+
+.ynow_points_redeem_bump_count <- function(code) {
+  c0 <- ynow_points_norm_redeem_code(code)
+  if (!nzchar(c0)) return(FALSE)
+  if (ynow_points_uses_db()) {
+    out <- ynow_db_with(function(con) {
+      DBI::dbExecute(
+        con,
+        "UPDATE ynow_points_redeem_codes
+            SET redemption_count = COALESCE(redemption_count, 0) + 1
+          WHERE code = $1",
+        params = list(c0)
+      )
+      TRUE
+    })
+    return(isTRUE(out))
+  }
+  row <- .ynow_points_mem$codes[[c0]]
+  if (is.null(row)) return(FALSE)
+  row$redemption_count <- as.integer(row$redemption_count %||% 0L) + 1L
+  .ynow_points_mem$codes[[c0]] <- row
+  TRUE
+}
+
+#' Redeem a top-up code into the signed-in user's ledger (FYN or PYN).
+#' Idempotent per user+code via ref_id. No payment processor.
+ynow_points_redeem <- function(user_id, code) {
+  uid <- as.character(user_id %||% "")[1]
+  c0 <- ynow_points_norm_redeem_code(code)
+  empty <- list(
+    ok = FALSE, fyn = NA_integer_, pyn = NA_integer_,
+    amount = NA_integer_, wallet = NA_character_,
+    message_key = "pts_topup_bad_code"
+  )
+  if (!nzchar(uid)) {
+    empty$message_key <- "pts_topup_no_user"
+    return(empty)
+  }
+  if (!nzchar(c0)) return(empty)
+  row <- .ynow_points_redeem_lookup(c0)
+  if (is.null(row)) {
+    empty$message_key <- "pts_topup_bad_code"
+    bals <- ynow_points_balances(uid)
+    empty$fyn <- bals$fyn
+    empty$pyn <- bals$pyn
+    return(empty)
+  }
+  bals0 <- ynow_points_balances(uid)
+  if (!isTRUE(row$enabled)) {
+    return(list(
+      ok = FALSE, message_key = "pts_topup_disabled",
+      fyn = bals0$fyn, pyn = bals0$pyn,
+      amount = row$amount, wallet = row$wallet
+    ))
+  }
+  exp <- as.character(row$expires_at %||% "")[1]
+  if (nzchar(exp) && !identical(exp, "NA")) {
+    exp_t <- tryCatch(as.POSIXct(exp, tz = "UTC"), error = function(e) NA)
+    if (is.finite(as.numeric(exp_t)) && exp_t < Sys.time()) {
+      return(list(
+        ok = FALSE, message_key = "pts_topup_expired",
+        fyn = bals0$fyn, pyn = bals0$pyn,
+        amount = row$amount, wallet = row$wallet
+      ))
+    }
+  }
+  mx <- suppressWarnings(as.integer(row$max_redemptions)[1])
+  used <- suppressWarnings(as.integer(row$redemption_count)[1])
+  if (!is.finite(used)) used <- 0L
+  if (is.finite(mx) && mx > 0L && used >= mx) {
+    return(list(
+      ok = FALSE, message_key = "pts_topup_exhausted",
+      fyn = bals0$fyn, pyn = bals0$pyn,
+      amount = row$amount, wallet = row$wallet
+    ))
+  }
+  # Per-user uniqueness: same code cannot credit the same user twice (ledger ref_id).
+  ref <- paste0("redeem:", c0, ":", uid)
+  before <- bals0
+  res <- ynow_points_credit(
+    uid,
+    delta = as.integer(row$amount),
+    reason = "earn_redeem",
+    ref_id = ref,
+    sku = NULL,
+    meta = list(code = c0, source = "redeem"),
+    wallet = row$wallet
+  )
+  w <- ynow_points_norm_wallet(row$wallet)
+  if (isTRUE(res$idempotent)) {
+    return(list(
+      ok = FALSE, message_key = "pts_topup_used",
+      fyn = res$fyn %||% before$fyn, pyn = res$pyn %||% before$pyn,
+      amount = row$amount, wallet = w
+    ))
+  }
+  if (!isTRUE(res$ok)) {
+    return(list(
+      ok = FALSE,
+      message_key = res$message_key %||% "pts_msg_backend",
+      fyn = res$fyn %||% before$fyn, pyn = res$pyn %||% before$pyn,
+      amount = row$amount, wallet = w
+    ))
+  }
+  .ynow_points_redeem_bump_count(c0)
+  list(
+    ok = TRUE,
+    message_key = "pts_topup_ok",
+    fyn = res$fyn, pyn = res$pyn,
+    amount = as.integer(row$amount),
+    wallet = w,
+    code = c0
   )
 }
 

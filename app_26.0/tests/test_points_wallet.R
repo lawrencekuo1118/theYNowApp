@@ -688,6 +688,53 @@ check("pdf quota status decrements after claim", {
   identical(st$used, 1L) && identical(st$left, ynow_pdf_free_per_day() - 1L)
 })
 
+# ----- Account points top-up / redeem codes -----
+.ynow_points_mem_reset()
+check("redeem upsert creates PYN code", {
+  res <- ynow_points_redeem_code_upsert("DEMO100", 100L, wallet = "pyn", max_redemptions = 2L)
+  isTRUE(res$ok) && identical(res$code, "DEMO100") && identical(res$amount, 100L)
+})
+check("redeem credits PYN ledger", {
+  uid <- "redeem-user-1"
+  .ynow_points_mem_ensure_user(uid)
+  res <- ynow_points_redeem(uid, "demo100")
+  bals <- ynow_points_balances(uid)
+  isTRUE(res$ok) && identical(res$wallet, "pyn") &&
+    identical(as.integer(res$amount), 100L) &&
+    identical(as.integer(bals$pyn), 100L)
+})
+check("redeem same code twice is used", {
+  res <- ynow_points_redeem("redeem-user-1", "DEMO100")
+  isFALSE(res$ok) && identical(res$message_key, "pts_topup_used")
+})
+check("redeem second user until exhausted", {
+  res2 <- ynow_points_redeem("redeem-user-2", "DEMO100")
+  ok2 <- isTRUE(res2$ok) && identical(as.integer(res2$pyn), 100L)
+  res3 <- ynow_points_redeem("redeem-user-3", "DEMO100")
+  ok2 && isFALSE(res3$ok) && identical(res3$message_key, "pts_topup_exhausted")
+})
+check("redeem bad code", {
+  res <- ynow_points_redeem("redeem-user-1", "NOPE")
+  isFALSE(res$ok) && identical(res$message_key, "pts_topup_bad_code")
+})
+check("redeem disabled code", {
+  invisible(ynow_points_redeem_code_upsert("OFFCODE", 10L, wallet = "fyn", enabled = FALSE))
+  res <- ynow_points_redeem("redeem-user-1", "OFFCODE")
+  isFALSE(res$ok) && identical(res$message_key, "pts_topup_disabled")
+})
+check("top-up locale en + zh-TW", {
+  grepl("Redeem", ui_str("pts_topup_redeem_cta", "en"), fixed = TRUE) &&
+    identical(ui_str("pts_topup_redeem_cta", "zh-TW"), "兌換") &&
+    grepl("never charges", ui_str("pts_topup_copy", "en"), fixed = TRUE) &&
+    grepl("不會向您收費", ui_str("pts_topup_copy", "zh-TW"), fixed = TRUE) &&
+    !grepl("即將開放", ui_str("pts_topup_cta", "zh-TW"), fixed = TRUE)
+})
+check("server wires redeem submit", {
+  srv <- paste(readLines("ynow_server.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("ynow_pts_redeem_submit", srv, fixed = TRUE) &&
+    grepl("ynow_points_redeem", srv, fixed = TRUE)
+})
+
 cat("PASS", n_ok, " FAIL", n_fail, "\n")
 if (n_fail > 0L) quit(status = 1)
 cat("ALL PASS\n")

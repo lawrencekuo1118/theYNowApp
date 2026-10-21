@@ -946,10 +946,26 @@ locale_for_market <- function(mode = get_market_mode()) {
     settings_guest_toast = "Sign in to change settings.",
     pts_topup_title = "Points top-up",
     pts_topup_copy = paste0(
-      "A paid points top-up lane will land here. ",
-      "Checkout is not available yet — no charge will be taken from this page."
+      "Redeem a top-up code to credit FYN or PYN on this account. ",
+      "Card checkout is not available — this page never charges a payment method. ",
+      "FYN is free points (welcome gift / daily check-in); PYN is paid points from redeem codes or an admin grant."
     ),
-    pts_topup_cta = "Coming soon",
+    pts_topup_help = paste0(
+      "Enter a redeem code from the operator. Each code can be used once per account. ",
+      "Open Points ledger to confirm the credit."
+    ),
+    pts_topup_redeem_label = "Redeem code",
+    pts_topup_redeem_placeholder = "Enter code",
+    pts_topup_redeem_cta = "Redeem",
+    pts_topup_cta = "Redeem",
+    pts_topup_ok_fmt = "Redeemed +%s %s. FYN %s · PYN %s.",
+    pts_topup_bad_code = "That redeem code is not valid.",
+    pts_topup_used = "You already redeemed this code on this account.",
+    pts_topup_expired = "That redeem code has expired.",
+    pts_topup_disabled = "That redeem code is disabled.",
+    pts_topup_exhausted = "That redeem code has no redemptions left.",
+    pts_topup_no_user = "Sign in to redeem a top-up code.",
+    pts_topup_backend = "Points ledger is unavailable. Try again later.",
     auth_admin_title = "Account overview",
     auth_admin_intro = paste0(
       "Signed-in account workspace (Full mode). ",
@@ -5161,10 +5177,26 @@ locale_for_market <- function(mode = get_market_mode()) {
     settings_guest_toast = "請先登入才能變更設定。",
     pts_topup_title = "點數儲值",
     pts_topup_copy = paste0(
-      "付費點數儲值區塊將放在這裡。",
-      "結帳尚未開放——本頁不會向您收費。"
+      "可兌換儲值碼，將 FYN 或 PYN 記入本帳戶。",
+      "尚未提供刷卡結帳——本頁不會向您收費。",
+      "FYN＝免費點數（歡迎贈點／每日簽到）；PYN＝付費點數（儲值碼或管理員加點）。"
     ),
-    pts_topup_cta = "即將開放",
+    pts_topup_help = paste0(
+      "請輸入營運方提供的儲值碼；同一帳戶每個代碼僅可兌換一次。",
+      "兌換後可至「點數流水」確認入帳。"
+    ),
+    pts_topup_redeem_label = "儲值碼",
+    pts_topup_redeem_placeholder = "請輸入代碼",
+    pts_topup_redeem_cta = "兌換",
+    pts_topup_cta = "兌換",
+    pts_topup_ok_fmt = "已兌換 +%s %s。FYN %s · PYN %s。",
+    pts_topup_bad_code = "儲值碼無效。",
+    pts_topup_used = "此帳戶已兌換過此代碼。",
+    pts_topup_expired = "此儲值碼已過期。",
+    pts_topup_disabled = "此儲值碼已停用。",
+    pts_topup_exhausted = "此儲值碼已無可兌換次數。",
+    pts_topup_no_user = "請先登入再兌換儲值碼。",
+    pts_topup_backend = "點數流水無法使用，請稍後再試。",
     auth_admin_title = "帳號總覽",
     auth_admin_intro = paste0(
       "登入後的帳號工作區（完整版）。完整點數異動請至「點數流水」。",
