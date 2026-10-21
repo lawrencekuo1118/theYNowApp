@@ -62,6 +62,14 @@ norm_legacy <- ynow_prefs_normalize_last_ui_surface(
 )
 check("normalize remaps BB lab tab", identical(norm_legacy$tab, "company_advance"))
 
+norm_json <- ynow_prefs_normalize_last_ui_surface(
+  '{"tab":"hfv","ticker":"brk.b"}'
+)
+check(
+  "normalize json string from prefs store",
+  identical(norm_json$tab, "hfv") && identical(norm_json$ticker, "BRK.B")
+)
+
 uid <- "test-user-last-ui"
 check(
   "empty get",
@@ -132,6 +140,80 @@ check(
 check(
   "server restores ticker via input",
   grepl("ynow_auth_restore_ticker", srv, fixed = TRUE)
+)
+
+between <- function(src, a, b) {
+  ia <- regexpr(a, src, fixed = TRUE)
+  ib <- regexpr(b, src, fixed = TRUE)
+  if (ia < 1L || ib < 1L || ib <= ia) return("")
+  substr(src, as.integer(ia), as.integer(ib) - 1L)
+}
+finish_body <- between(
+  auth,
+  ".finish_auth_success <- function",
+  ".finish_auth_oauth_failure <- function"
+)
+resume_body <- between(
+  auth,
+  "observeEvent(input$ynow_auth_resume_token",
+  "observeEvent(input$ynow_auth_submit"
+)
+sign_body <- between(auth, ".sign_out <- function", ".open_auth_modal <- function")
+load_body <- between(auth, ".load_last_ui_surface <- function", ".sign_out <- function")
+check(
+  "finish loads saved surface",
+  grepl("saved <- .load_last_ui_surface", finish_body, fixed = TRUE) &&
+    grepl("if (!nzchar(tab))", finish_body, fixed = TRUE) &&
+    grepl("ynowAuthPostLogin", finish_body, fixed = TRUE)
+)
+check(
+  "resume loads saved surface",
+  grepl(".load_last_ui_surface", resume_body, fixed = TRUE) &&
+    grepl("ynowAuthPostLogin", resume_body, fixed = TRUE)
+)
+check(
+  "load reads get_last_ui_surface",
+  grepl("ynow_prefs_get_last_ui_surface", load_body, fixed = TRUE)
+)
+save_at <- regexpr(".persist_last_ui_surface", sign_body, fixed = TRUE)
+clear_at <- regexpr("account_user(NULL)", sign_body, fixed = TRUE)
+check(
+  "sign-out saves surface before clearing auth",
+  save_at > 0L && clear_at > save_at
+)
+
+ticker_fn <- between(ui, "var ynowApplyRestoredTicker", "var ynowAuthResumeOffer")
+check(
+  "client sets sc on restore",
+  grepl("setInputValue('sc'", ticker_fn, fixed = TRUE)
+)
+check(
+  "client sets ticker_typeahead on restore",
+  grepl("ticker_typeahead", ticker_fn, fixed = TRUE)
+)
+sidebar_mirror <- between(ui, "e.name !== 'sidebar_tabs'", "eLastUi")
+check(
+  "authed sidebar updates last UI mirror",
+  grepl("ynow-authed", sidebar_mirror, fixed = TRUE) &&
+    grepl("ynowLastUiWrite", sidebar_mirror, fixed = TRUE)
+)
+
+uid_helper <- between(
+  srv,
+  ".ynow_signed_in_uid <- function",
+  "Persist last member screen"
+)
+check(
+  "signed-in uid is not the view-as subject",
+  nzchar(uid_helper) && !grepl("ynow_pts_view_as", uid_helper, fixed = TRUE)
+)
+upd_hits <- gregexpr("ynow_prefs_update_last_ui_surface(", srv, fixed = TRUE)[[1]]
+check(
+  "surface writes use signed-in uid",
+  length(upd_hits) >= 1L && upd_hits[[1]] > 0L && all(vapply(upd_hits, function(pos) {
+    chunk <- substr(srv, max(1L, pos - 500L), pos)
+    grepl(".ynow_signed_in_uid", chunk, fixed = TRUE)
+  }, logical(1)))
 )
 
 if (fail > 0L) {
