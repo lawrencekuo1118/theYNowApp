@@ -26,6 +26,14 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 - CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_26.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).
 - Docs: root README ship/CI/Release pointers; `scripts/record_github_release.sh` for soft-fail Release publish after deploy.
 
+## [v25.97] — 2026-10-21
+
+### Fixed
+
+- Sysadmin Item locks: when **Apply to / 套用對象** is **Selected user / 選定使用者**, **Currently restricted / 目前限制** live-updates from the chosen **Select user id / 選擇使用者代號** (not stale first-row / not global-only) (PR #361).
+- zh-TW：套用對象為選定使用者時，「目前限制」隨選擇使用者代號即時更新。
+- Live baseline recorded in `scripts/DEPLOY_BASELINE.txt` after ship.
+
 ## [v25.96] — 2026-10-21
 
 ### Changed
