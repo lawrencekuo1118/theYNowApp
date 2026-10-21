@@ -18,6 +18,14 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 - CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_26.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).
 - Docs: root README ship/CI/Release pointers; `scripts/record_github_release.sh` for soft-fail Release publish after deploy.
 
+## [v26.06] — 2026-10-21
+
+### Changed
+
+- **Mobile only:** Sign in / Sign out restored beside the sidebar date as **text links** matching the date font size (12px); not buttons. Desktop keeps the header Sign-in control (PR #367).
+- zh-TW：僅手機版將登入／登出改回側邊欄日期旁的文字連結（字級與日期一致）；桌面版維持頁首 Sign in。
+- Live baseline: see `scripts/DEPLOY_BASELINE.txt` after deploy.
+
 ## [v26.05] — 2026-10-21
 
 ### Added
