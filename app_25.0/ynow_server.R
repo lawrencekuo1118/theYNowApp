@@ -41,7 +41,11 @@ server <- function(input, output, session) {
   tw_is_esb <- reactiveVal(FALSE)
   tw_tpex_fs_fallback <- reactiveVal(FALSE)  # TRUE 時 IS／BS 來自櫃買簡報（非完整三表）
 
-  values <- reactiveValues(recentsearch = c(), pinned_search = c())
+  values <- reactiveValues(
+    recentsearch = c(),
+    pinned_search = c(),
+    pinned_sidebar = c()
+  )
   corp_industry_text <- reactiveVal("等待搜尋...")
   corp_display_name <- reactiveVal("")
   # 台股雙語：英文全稱（中文在 corp_display_name）；美股維持空字串
@@ -584,6 +588,192 @@ server <- function(input, output, session) {
       error = function(e) if (now_pinned) "Pinned." else "Unpinned."
     )
     msg <- gsub("{ticker}", tk[[1]], msg, fixed = TRUE)
+    tryCatch(
+      showNotification(msg, type = "message", duration = 2.2),
+      error = function(e) NULL
+    )
+  }, ignoreInit = TRUE)
+
+  # ---- Pinned sidebar tabs (max 12, 3-column tray; durable after login) ----
+  .ynow_sidebar_pin_sync_guest <- function(pins) {
+    tryCatch(
+      session$sendCustomMessage(
+        "ynowPinnedSidebarGuestSync",
+        list(tabs = as.list(ynow_prefs_normalize_sidebar_tabs(pins)))
+      ),
+      error = function(e) NULL
+    )
+  }
+  .ynow_sidebar_pin_mark_client <- function(pins) {
+    tryCatch(
+      session$sendCustomMessage(
+        "ynowPinnedSidebarMark",
+        list(tabs = as.list(ynow_prefs_normalize_sidebar_tabs(pins)))
+      ),
+      error = function(e) NULL
+    )
+  }
+  .ynow_sidebar_pin_load_for_user <- function(uid) {
+    if (!nzchar(uid) || !exists("ynow_prefs_get_pinned_sidebar", mode = "function")) {
+      return(character(0))
+    }
+    tryCatch(ynow_prefs_get_pinned_sidebar(uid), error = function(e) character(0))
+  }
+  .ynow_sidebar_pin_persist <- function(uid, pins) {
+    if (!nzchar(uid) || !exists("ynow_prefs_set_pinned_sidebar", mode = "function")) {
+      return(invisible(pins))
+    }
+    tryCatch(ynow_prefs_set_pinned_sidebar(uid, pins), error = function(e) pins)
+  }
+  .ynow_sidebar_pin_label <- function(tab, loc = "en") {
+    meta <- if (exists("ynow_sidebar_pin_meta", mode = "function")) {
+      ynow_sidebar_pin_meta(tab)
+    } else {
+      list(locale = "", short_en = tab, short_zh = tab)
+    }
+    loc_key <- as.character(meta$locale %||% "")[1]
+    if (nzchar(loc_key) && exists("ui_str", mode = "function")) {
+      lab <- tryCatch(ui_str(loc_key, loc), error = function(e) "")
+      lab <- trimws(as.character(lab %||% "")[1])
+      if (nzchar(lab)) return(lab)
+    }
+    if (identical(loc, "zh-TW")) {
+      return(as.character(meta$short_zh %||% tab)[1])
+    }
+    as.character(meta$short_en %||% tab)[1]
+  }
+  .ynow_sidebar_pin_short <- function(tab, loc = "en") {
+    meta <- if (exists("ynow_sidebar_pin_meta", mode = "function")) {
+      ynow_sidebar_pin_meta(tab)
+    } else {
+      list(short_en = tab, short_zh = tab)
+    }
+    if (identical(loc, "zh-TW")) {
+      return(as.character(meta$short_zh %||% tab)[1])
+    }
+    as.character(meta$short_en %||% tab)[1]
+  }
+
+  observeEvent(input$pinned_sidebar_guest_load, {
+    uid <- .ynow_pinned_auth_uid()
+    if (nzchar(uid)) return(invisible(NULL))
+    raw <- as.character(input$pinned_sidebar_guest_load %||% "")[1]
+    part <- strsplit(raw, "|", fixed = TRUE)[[1]][1]
+    tabs <- if (nzchar(part %||% "")) {
+      strsplit(part, ",", fixed = TRUE)[[1]]
+    } else {
+      character(0)
+    }
+    pins <- ynow_prefs_normalize_sidebar_tabs(tabs)
+    values$pinned_sidebar <- pins
+    .ynow_sidebar_pin_mark_client(pins)
+  }, ignoreInit = TRUE)
+
+  .ynow_sidebar_pin_last_uid <- reactiveVal("")
+  observeEvent(
+    {
+      list(
+        logged = tryCatch(isTRUE(ynow_auth$is_logged_in()), error = function(e) FALSE),
+        uid = .ynow_pinned_auth_uid(),
+        view_as = tryCatch(ynow_pts_view_as(), error = function(e) NULL)
+      )
+    },
+    {
+      uid <- .ynow_pinned_auth_uid()
+      prev <- isolate(as.character(.ynow_sidebar_pin_last_uid() %||% "")[1])
+      va_on <- {
+        va <- tryCatch(isolate(ynow_pts_view_as()), error = function(e) NULL)
+        is.list(va) && nzchar(as.character(va$user_id %||% "")[1])
+      }
+      if (nzchar(uid)) {
+        guest_pins <- isolate(as.character(values$pinned_sidebar %||% character(0)))
+        server_pins <- .ynow_sidebar_pin_load_for_user(uid)
+        if (!isTRUE(va_on) && length(guest_pins) &&
+              exists("ynow_prefs_normalize_sidebar_tabs", mode = "function")) {
+          merged <- ynow_prefs_normalize_sidebar_tabs(c(server_pins, guest_pins))
+          if (!identical(merged, server_pins)) {
+            server_pins <- .ynow_sidebar_pin_persist(uid, merged)
+          }
+        }
+        values$pinned_sidebar <- server_pins
+        tryCatch(
+          session$sendCustomMessage("ynowPinnedSidebarGuestSync", list(clear = TRUE)),
+          error = function(e) NULL
+        )
+        .ynow_sidebar_pin_mark_client(server_pins)
+        .ynow_sidebar_pin_last_uid(uid)
+      } else if (nzchar(prev)) {
+        values$pinned_sidebar <- character(0)
+        .ynow_sidebar_pin_mark_client(character(0))
+        .ynow_sidebar_pin_last_uid("")
+      }
+    },
+    ignoreInit = TRUE
+  )
+
+  observeEvent(input$pinned_sidebar_toggle, {
+    raw <- as.character(input$pinned_sidebar_toggle %||% "")[1]
+    req(nzchar(raw))
+    tab <- strsplit(raw, "|", fixed = TRUE)[[1]][1]
+    tab <- ynow_prefs_normalize_sidebar_tabs(tab, max_n = 1L)
+    req(length(tab) == 1L)
+    # Do not pin Lite-omitted tabs while Lite is on (ACL / omit respect).
+    lite_on <- isTRUE(tryCatch(isolate(lite_mode()), error = function(e) FALSE)) ||
+      isTRUE(tryCatch(isolate(input$ynow_lite_mode), error = function(e) FALSE))
+    if (lite_on && exists("ynow_sidebar_lite_omit_tabs", mode = "function") &&
+          tab[[1]] %in% ynow_sidebar_lite_omit_tabs()) {
+      return(invisible(NULL))
+    }
+    uid <- .ynow_pinned_auth_uid()
+    cur <- isolate(as.character(values$pinned_sidebar %||% character(0)))
+    was_pinned <- tab[[1]] %in% cur
+    at_cap <- FALSE
+    if (nzchar(uid) && exists("ynow_prefs_toggle_pinned_sidebar", mode = "function")) {
+      nxt <- tryCatch(
+        ynow_prefs_toggle_pinned_sidebar(uid, tab[[1]]),
+        error = function(e) {
+          if (was_pinned) {
+            setdiff(cur, tab[[1]])
+          } else if (length(cur) >= 12L) {
+            at_cap <<- TRUE
+            cur
+          } else {
+            c(tab[[1]], setdiff(cur, tab[[1]]))
+          }
+        }
+      )
+      at_cap <- isTRUE(attr(nxt, "at_cap"))
+      attr(nxt, "at_cap") <- NULL
+    } else {
+      if (was_pinned) {
+        nxt <- setdiff(cur, tab[[1]])
+      } else if (length(cur) >= 12L) {
+        at_cap <- TRUE
+        nxt <- cur
+      } else {
+        nxt <- c(tab[[1]], setdiff(cur, tab[[1]]))
+      }
+      nxt <- ynow_prefs_normalize_sidebar_tabs(nxt)
+      .ynow_sidebar_pin_sync_guest(nxt)
+    }
+    values$pinned_sidebar <- as.character(nxt %||% character(0))
+    .ynow_sidebar_pin_mark_client(values$pinned_sidebar)
+    loc <- tryCatch(ui_locale(), error = function(e) "en")
+    if (isTRUE(at_cap)) {
+      msg <- tryCatch(
+        ui_str("sidebar_pins_max_toast", loc),
+        error = function(e) "You can pin up to 12 pages."
+      )
+      tryCatch(showNotification(msg, type = "warning", duration = 2.8), error = function(e) NULL)
+      return(invisible(NULL))
+    }
+    now_pinned <- tab[[1]] %in% values$pinned_sidebar
+    lab <- .ynow_sidebar_pin_label(tab[[1]], loc)
+    msg <- tryCatch(
+      ui_str(if (now_pinned) "sidebar_pins_pinned_toast" else "sidebar_pins_unpinned_toast", loc),
+      error = function(e) if (now_pinned) "Pinned." else "Unpinned."
+    )
+    msg <- gsub("{label}", lab, msg, fixed = TRUE)
     tryCatch(
       showNotification(msg, type = "message", duration = 2.2),
       error = function(e) NULL
@@ -3759,6 +3949,65 @@ server <- function(input, output, session) {
     helpText(
       style = "margin-top:-6px; margin-bottom:8px; font-size:12px;",
       "台股市場預設法定 T＝20%（可覆寫）；估值主源 Yahoo。"
+    )
+  })
+
+  output$pinned_sidebar_tabs <- renderUI({
+    loc <- tryCatch(ui_locale(), error = function(e) "en")
+    raw <- unique(as.character(values$pinned_sidebar %||% character(0)))
+    raw <- if (exists("ynow_prefs_normalize_sidebar_tabs", mode = "function")) {
+      ynow_prefs_normalize_sidebar_tabs(raw)
+    } else {
+      raw[nzchar(raw) & !is.na(raw)]
+    }
+    lite_on <- isTRUE(tryCatch(lite_mode(), error = function(e) FALSE))
+    if (lite_on && exists("ynow_sidebar_lite_omit_tabs", mode = "function")) {
+      raw <- setdiff(raw, ynow_sidebar_lite_omit_tabs())
+    }
+    if (!length(raw)) return(NULL)
+    unpin_hint <- tryCatch(
+      ui_str("sidebar_pins_unpin_hint", loc),
+      error = function(e) "Hold 2 seconds to unpin"
+    )
+    section_lab <- tryCatch(
+      ui_str("sidebar_pins_label", loc),
+      error = function(e) "Pinned"
+    )
+    tiles <- lapply(raw, function(tab) {
+      meta <- if (exists("ynow_sidebar_pin_meta", mode = "function")) {
+        ynow_sidebar_pin_meta(tab)
+      } else {
+        list(icon = "thumbtack", short_en = tab, short_zh = tab)
+      }
+      full_lab <- .ynow_sidebar_pin_label(tab, loc)
+      short_lab <- .ynow_sidebar_pin_short(tab, loc)
+      ic <- as.character(meta$icon %||% "thumbtack")[1]
+      guest_locked <- exists("ynow_sidebar_tab_guest_locked", mode = "function") &&
+        isTRUE(ynow_sidebar_tab_guest_locked(tab))
+      authed <- tryCatch(isTRUE(ynow_auth$is_logged_in()), error = function(e) FALSE)
+      lock_cls <- if (guest_locked && !isTRUE(authed) && !isTRUE(lite_on)) {
+        " ynow-sidebar-locked"
+      } else {
+        ""
+      }
+      tags$button(
+        type = "button",
+        class = paste0("ynow-sidebar-pin-tile", lock_cls),
+        `data-tab` = tab,
+        title = paste(full_lab, unpin_hint, sep = " · "),
+        `aria-label` = paste(full_lab, unpin_hint, sep = " — "),
+        icon(ic),
+        tags$span(class = "ynow-sidebar-pin-text", short_lab),
+        if (nzchar(lock_cls)) icon("lock", class = "ynow-menu-lock")
+      )
+    })
+    tags$div(
+      class = "ynow-sidebar-pins",
+      id = "ynow_pinned_sidebar_tabs",
+      role = "navigation",
+      `aria-label` = section_lab,
+      tags$div(class = "ynow-sidebar-pins-label", section_lab),
+      tiles
     )
   })
 

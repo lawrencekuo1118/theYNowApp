@@ -125,13 +125,21 @@ ynow_sidebar_guest_lock_label <- function(tab, span_id, label) {
 }
 
 #' CSS: hide every Lite-omitted sidebar tab (guest locks + Full-only + Account).
+#' Also hides matching pinned sidebar tiles so pins cannot surface Lite-omitted pages.
 ynow_sidebar_lite_omit_css <- function() {
   tabs <- ynow_sidebar_lite_omit_tabs()
   if (!length(tabs)) return("/* no Lite-omitted sidebar tabs */\n")
   sels <- unique(unlist(lapply(tabs, .ynow_sidebar_lite_omit_selectors), use.names = FALSE))
+  pin_sels <- sprintf(
+    'body.ynow-lite .ynow-sidebar-pin-tile[data-tab="%s"]',
+    tabs
+  )
   paste0(
     "/* Lite sidebar omit (ynow_sidebar_lite_omit_tabs): guest-locked + Full-only (incl. ATX) + Account. */\n",
     paste(sels, collapse = ",\n"),
+    " {\n  display: none !important;\n}\n",
+    "/* Lite: pinned tray must not surface omitted tabs. */\n",
+    paste(pin_sels, collapse = ",\n"),
     " {\n  display: none !important;\n}\n"
   )
 }

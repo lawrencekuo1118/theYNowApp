@@ -105,11 +105,30 @@ invisible(ynow_prefs_set_recent_search_24h(uid, many))
 got_cap <- ynow_prefs_get_recent_search_24h(uid)
 check("max 20 history", length(got_cap) == 20L)
 
-# Pref key must not collide with pinned / future sidebar pins.
+# Pref key must not collide with stock-chip pins or page/sidebar pin keys.
+# Sibling owns Recent-search stock pin grid (4×3); we only own timed history.
 check(
-  "distinct pref key",
+  "distinct pref key vs pinned recent",
   !identical(YNOW_PREF_RECENT_SEARCH_24H, YNOW_PREF_PINNED_RECENT) &&
     identical(YNOW_PREF_RECENT_SEARCH_24H, "recent_search_history_24h")
+)
+check(
+  "distinct pref key vs sidebar tabs",
+  exists("YNOW_PREF_PINNED_SIDEBAR") &&
+    !identical(YNOW_PREF_RECENT_SEARCH_24H, YNOW_PREF_PINNED_SIDEBAR)
+)
+# Coexistence: writing 24h history must not wipe pinned recent tickers.
+uid_co <- "test-user-coexist"
+invisible(ynow_prefs_set_pinned_recent(uid_co, c("NVDA", "META")))
+invisible(ynow_prefs_record_recent_search(uid_co, "AAPL", at = Sys.time() - 30))
+ynow_prefs_reset_memory()
+check(
+  "24h write keeps pinned recent",
+  identical(ynow_prefs_get_pinned_recent(uid_co), c("NVDA", "META"))
+)
+check(
+  "pinned write does not block 24h read",
+  identical(ynow_prefs_get_recent_search_24h(uid_co), "AAPL")
 )
 
 # Wiring smoke
