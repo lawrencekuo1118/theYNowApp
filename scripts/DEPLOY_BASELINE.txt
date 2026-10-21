@@ -7,5 +7,5 @@ commit=cca1467471bbb9530a25667f531b742671a1e931
 short=cca14674
 message=chore: bump display version to v26.12
 captured_at=2026-10-21T14:19:33Z
-display_version=v26.12
+display_version=v26.13
 note=Canonical live line is app_26.0. Bundle 12720797: post-login last UI restore (#375), Sign-in gate HFV Section chrome (#374), admin-only explainability (#373). Secrets only in gitignored .Renviron; no secret values in git.
