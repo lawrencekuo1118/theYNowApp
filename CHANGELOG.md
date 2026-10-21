@@ -13,20 +13,26 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 
 ## [Unreleased]
 
+### Changed
+
+- CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_26.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).
+- Docs: root README ship/CI/Release pointers; `scripts/record_github_release.sh` for soft-fail Release publish after deploy.
+
+## [v26.00] — 2026-10-21
+
 ### Added
 
-- Signed-in **Settings** sidebar tab (below About, above Account) with durable prefs: **quick-hide locked items**, preferred language, preferred market on sign-in, compact sidebar spacing (`ynow_user_prefs` key `user_settings`).
+- Signed-in **Settings** sidebar tab (below About, above Account) with durable prefs: **quick-hide locked items**, preferred language, preferred market on sign-in, compact sidebar spacing (`ynow_user_prefs` key `user_settings`) (PR #360).
 - White separator line under About before Settings / Account when signed in.
 - en-US / zh-TW: `menu_settings`, `settings_*` (zh-TW：**快速隱藏鎖住項目**; avoid Mainland「一鍵」).
 - zh-TW：登入後關於下方白線區隔帳號區；新增設定分頁，可快速隱藏仍鎖住的側邊欄項目並持久化。
 
 ### Changed
 
-- Major live-line cut: folder **`app_25.0/` → `app_26.0/`**; next ship is display **v26.00** via `YNOW_VERSION_BUMP_MAJOR=1`.
-- CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_26.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).
-- Docs: root README ship/CI/Release pointers; `scripts/record_github_release.sh` for soft-fail Release publish after deploy.
+- Major live-line cut: folder **`app_25.0/` → `app_26.0/`**; display **v26.00** (`YNOW_VERSION_BUMP_MAJOR=1`).
+- Live baseline bundle `12719094` (`scripts/DEPLOY_BASELINE.txt`).
 
-## [v25.97] — 2026-10-21
+## [v25.96] — 2026-10-21## [v25.97] — 2026-10-21
 
 ### Fixed
 
