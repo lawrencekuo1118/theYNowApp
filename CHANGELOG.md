@@ -15,6 +15,7 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 
 ### Changed
 
+- Sidebar **stock pins** from Recent Search: long-press tickers into a **4×3** grid (max **12**); page-pin chrome removed so tab long-press stays reorder-edit only.
 - CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_25.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).
 - Docs: root README ship/CI/Release pointers; `scripts/record_github_release.sh` for soft-fail Release publish after deploy.
 

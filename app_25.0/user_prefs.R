@@ -10,14 +10,15 @@ if (!exists("%||%", mode = "function")) {
   `%||%` <- function(a, b) if (is.null(a) || length(a) == 0L) b else a
 }
 
+# Pinned tickers from Recent Search: max 12 → 4×3 grid.
+# Page-pin UX removed (#355 misread); tab long-press is reorder-edit only.
 YNOW_PREF_PINNED_RECENT <- "pinned_recent_search"
-.YNOW_PINNED_RECENT_MAX <- 8L
+.YNOW_PINNED_RECENT_MAX <- 12L
 
 # Signed-in rolling search history (ticker lookups). Separate key from:
 # - pinned_recent_search (stock chips long-press pin)
-# - pinned_sidebar_tabs (legacy page pins — UX disabled; prefs API kept)
 # - sidebar_tab_order (signed-in menu reorder)
-# Additive only on ynow_user_prefs — sibling owns Recent-search stock pin grid UX.
+# Additive only on ynow_user_prefs.
 YNOW_PREF_RECENT_SEARCH_24H <- "recent_search_history_24h"
 .YNOW_RECENT_SEARCH_24H_MAX <- 20L
 .YNOW_RECENT_SEARCH_24H_SECS <- 24L * 3600L
@@ -275,18 +276,31 @@ ynow_prefs_set_pinned_recent <- function(user_id, tickers) {
 }
 
 #' Toggle one ticker in the pinned list. Returns the new pinned vector.
+#' When already at max (12) and adding a new ticker, returns current list
+#' unchanged; attribute `at_cap` is TRUE in that case.
 ynow_prefs_toggle_pinned_recent <- function(user_id, ticker) {
   tk <- ynow_prefs_normalize_tickers(ticker, max_n = 1L)
   if (!length(tk)) {
-    return(ynow_prefs_get_pinned_recent(user_id))
+    out <- ynow_prefs_get_pinned_recent(user_id)
+    attr(out, "at_cap") <- FALSE
+    return(out)
   }
   cur <- ynow_prefs_get_pinned_recent(user_id)
   if (tk[[1]] %in% cur) {
-    nxt <- setdiff(cur, tk[[1]])
-  } else {
-    nxt <- head(c(tk[[1]], setdiff(cur, tk[[1]])), .YNOW_PINNED_RECENT_MAX)
+    nxt <- ynow_prefs_set_pinned_recent(user_id, setdiff(cur, tk[[1]]))
+    attr(nxt, "at_cap") <- FALSE
+    return(nxt)
   }
-  ynow_prefs_set_pinned_recent(user_id, nxt)
+  if (length(cur) >= .YNOW_PINNED_RECENT_MAX) {
+    attr(cur, "at_cap") <- TRUE
+    return(cur)
+  }
+  nxt <- ynow_prefs_set_pinned_recent(
+    user_id,
+    c(tk[[1]], setdiff(cur, tk[[1]]))
+  )
+  attr(nxt, "at_cap") <- FALSE
+  nxt
 }
 
 .ynow_prefs_parse_json_tabs <- function(raw) {

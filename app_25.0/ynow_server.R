@@ -561,29 +561,51 @@ server <- function(input, output, session) {
     uid <- .ynow_pinned_auth_uid()
     cur <- isolate(as.character(values$pinned_search %||% character(0)))
     was_pinned <- tk[[1]] %in% cur
+    at_cap <- FALSE
     if (nzchar(uid) && exists("ynow_prefs_toggle_pinned_recent", mode = "function")) {
       nxt <- tryCatch(
         ynow_prefs_toggle_pinned_recent(uid, tk[[1]]),
         error = function(e) {
-          if (was_pinned) setdiff(cur, tk[[1]]) else head(c(tk[[1]], setdiff(cur, tk[[1]])), 8L)
+          if (was_pinned) {
+            setdiff(cur, tk[[1]])
+          } else if (length(cur) >= 12L) {
+            at_cap <<- TRUE
+            cur
+          } else {
+            c(tk[[1]], setdiff(cur, tk[[1]]))
+          }
         }
       )
+      at_cap <- isTRUE(attr(nxt, "at_cap"))
+      attr(nxt, "at_cap") <- NULL
     } else {
-      nxt <- if (was_pinned) {
-        setdiff(cur, tk[[1]])
+      if (was_pinned) {
+        nxt <- setdiff(cur, tk[[1]])
+      } else if (length(cur) >= 12L) {
+        at_cap <- TRUE
+        nxt <- cur
       } else {
-        head(c(tk[[1]], setdiff(cur, tk[[1]])), 8L)
+        nxt <- c(tk[[1]], setdiff(cur, tk[[1]]))
       }
+      nxt <- ynow_prefs_normalize_tickers(nxt)
       .ynow_pinned_sync_guest_client(nxt)
     }
-    values$pinned_search <- nxt
+    values$pinned_search <- as.character(nxt %||% character(0))
     # Keep recent list free of pinned tickers (display + session order).
     values$recentsearch <- setdiff(
       as.character(isolate(values$recentsearch %||% character(0))),
-      nxt
+      values$pinned_search
     )
     loc <- tryCatch(ui_locale(), error = function(e) "en")
-    now_pinned <- tk[[1]] %in% nxt
+    if (isTRUE(at_cap)) {
+      msg <- tryCatch(
+        ui_str("recent_search_max_toast", loc),
+        error = function(e) "You can pin up to 12 tickers."
+      )
+      tryCatch(showNotification(msg, type = "warning", duration = 2.8), error = function(e) NULL)
+      return(invisible(NULL))
+    }
+    now_pinned <- tk[[1]] %in% values$pinned_search
     msg <- tryCatch(
       ui_str(if (now_pinned) "recent_search_pinned_toast" else "recent_search_unpinned_toast", loc),
       error = function(e) if (now_pinned) "Pinned." else "Unpinned."
@@ -4111,23 +4133,32 @@ server <- function(input, output, session) {
     )
   })
 
-  # Page-pin tray disabled (v25.93 misread). Prefer stock pins + tab reorder.
+  # Page-pin tray removed (v25.93 misread). Stock pins 4×3 + tab reorder-edit.
   output$pinned_sidebar_tabs <- renderUI({
     NULL
   })
 
+  # Pinned tickers from Recent Search: 4×3 grid (max 12).
   output$pinned_recent_search <- renderUI({
     loc <- tryCatch(ui_locale(), error = function(e) "en")
     mode <- tryCatch(
       normalize_market_mode(market_mode()),
       error = function(e) "US"
     )
-    raw <- unique(as.character(values$pinned_search %||% character(0)))
-    raw <- raw[nzchar(raw) & !is.na(raw)]
+    raw <- as.character(values$pinned_search %||% character(0))
+    raw <- if (exists("ynow_prefs_normalize_tickers", mode = "function")) {
+      ynow_prefs_normalize_tickers(raw)
+    } else {
+      unique(raw[nzchar(raw) & !is.na(raw)])
+    }
     if (!length(raw)) return(NULL)
     pin_hint <- tryCatch(
       ui_str("recent_search_unpin_hint", loc),
       error = function(e) "Hold 2 seconds to unpin"
+    )
+    section_lab <- tryCatch(
+      ui_str("recent_search_pinned_label", loc),
+      error = function(e) "Pinned tickers"
     )
     chips <- lapply(raw, function(fetch_tk) {
       disp <- display_ticker_for_market(fetch_tk, mode)
@@ -4145,17 +4176,15 @@ server <- function(input, output, session) {
         `data-ticker` = fetch_tk,
         title = paste(aria, pin_hint, sep = " · "),
         `aria-label` = aria,
-        disp
+        tags$span(class = "ynow-pinned-chip-text", disp)
       )
     })
     tags$div(
       class = "ynow-pinned-search",
       id = "ynow_pinned_recent_search",
       role = "list",
-      `aria-label` = tryCatch(
-        ui_str("recent_search_pinned_label", loc),
-        error = function(e) "Pinned"
-      ),
+      `aria-label` = section_lab,
+      tags$div(class = "ynow-pinned-search-label", section_lab),
       chips
     )
   })
