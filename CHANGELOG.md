@@ -18,6 +18,14 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 - CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_26.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).
 - Docs: root README ship/CI/Release pointers; `scripts/record_github_release.sh` for soft-fail Release publish after deploy.
 
+## [v26.10] — 2026-10-21
+
+### Fixed
+
+- **Company / 公司**: Last Price, Market Cap, and EPS (TTM) strip uses the same content column width as Company Overview (`--ynow-page-max`, 1200px centered) (PR #371).
+- zh-TW：最新股價、Market Cap、EPS (TTM) 指標列寬度與「公司概況」區塊對齊。
+- Live baseline bundle `12720553` (`scripts/DEPLOY_BASELINE.txt`).
+
 ## [v26.09] — 2026-10-21
 
 ### Changed
