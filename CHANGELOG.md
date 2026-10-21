@@ -18,6 +18,18 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 - CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_25.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).
 - Docs: root README ship/CI/Release pointers; `scripts/record_github_release.sh` for soft-fail Release publish after deploy.
 
+## [v25.92] — 2026-10-21
+
+### Fixed
+
+- Sign-in gate demos (`www/demos/<feature>.{mp4,webm}`): ~10s teasers now scroll tab-style UI (KPI / chart / table fixtures) instead of PIL text cards (PR #354).
+- en-US: regenerate via `scripts/generate_gate_demo_videos.py` (Playwright scroll of `scripts/gate_demo_pages/`).
+- zh-TW：登入閘 demo 改為實際下滑該分頁風格畫面，不再只有文字卡片。
+
+### Changed
+
+- Live baseline bundle `12718190` (`scripts/DEPLOY_BASELINE.txt`).
+
 ## [v25.91] — 2026-10-21
 
 ### Fixed
