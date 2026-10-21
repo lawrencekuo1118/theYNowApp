@@ -7,5 +7,5 @@ commit=4dadc15a2eeb62a3f195c4b8ec8138b6f92bff1e
 short=4dadc15a
 message=chore: bump display version to v26.18
 captured_at=2026-10-21T17:56:18Z
-display_version=v26.18
+display_version=v26.19
 note=Canonical live line is app_26.0. Bundle 12721676: US earnings-call ingest (#380). Preserves mobile login/points + single-device tip. Secrets only in gitignored .Renviron.
