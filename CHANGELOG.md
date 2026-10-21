@@ -18,6 +18,16 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 - CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_26.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).
 - Docs: root README ship/CI/Release pointers; `scripts/record_github_release.sh` for soft-fail Release publish after deploy.
 
+## [v26.12] — 2026-10-21
+
+### Changed
+
+- **Sign in required / 需登入帳號**: Member and Account gates use the same Section block chrome as Historical Fundamental Validation (`ynow-hfv-chapter`): white B/W panel, kicker + title head. CTAs use logo blue (Sign in) and green outline on white (Register) (PR #374).
+- zh-TW：需登入閘改套 HFV 分頁 Section 區塊樣式（黑白面板）；按鈕為 logo 藍／綠／白。
+- **Account / 帳戶**: After sign-in or browser resume, restore the member’s last sidebar tab and ticker (`last_ui_surface`); Sign out keeps prefs and only revokes the resume token. Sys. Admin is never restored for members (PR #375).
+- zh-TW：登入或瀏覽器恢復後回到上次側邊欄分頁與 ticker；登出只撤銷恢復權杖、保留偏好。一般會員不會被帶回系統管理頁。
+- Live baseline bundle `12720734` (`scripts/DEPLOY_BASELINE.txt`).
+
 ## [v26.11] — 2026-10-21
 
 ### Added
