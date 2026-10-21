@@ -1,6 +1,6 @@
 # Changelog
 
-All notable **display-version** ships of the live line (`app_25.0/`) are recorded here.
+All notable **display-version** ships of the live line (`app_26.0/`) are recorded here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Section headers are en-US; prose uses **American English** and **Taiwan Traditional Chinese** (台灣投資界用語) where helpful. Formal finance terms stay in English (WACC, FCFF, MOS, …).
@@ -13,9 +13,17 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 
 ## [Unreleased]
 
+### Added
+
+- Signed-in **Settings** sidebar tab (below About, above Account) with durable prefs: **quick-hide locked items**, preferred language, preferred market on sign-in, compact sidebar spacing (`ynow_user_prefs` key `user_settings`).
+- White separator line under About before Settings / Account when signed in.
+- en-US / zh-TW: `menu_settings`, `settings_*` (zh-TW：**快速隱藏鎖住項目**; avoid Mainland「一鍵」).
+- zh-TW：登入後關於下方白線區隔帳號區；新增設定分頁，可快速隱藏仍鎖住的側邊欄項目並持久化。
+
 ### Changed
 
-- CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_25.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).
+- Major live-line cut: folder **`app_25.0/` → `app_26.0/`**; next ship is display **v26.00** via `YNOW_VERSION_BUMP_MAJOR=1`.
+- CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_26.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).
 - Docs: root README ship/CI/Release pointers; `scripts/record_github_release.sh` for soft-fail Release publish after deploy.
 
 ## [v25.96] — 2026-10-21

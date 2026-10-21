@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# Restore / merge gitignored app_25.0/.Renviron from the live shinyapps bundle.
+# Restore / merge gitignored app_26.0/.Renviron from the live shinyapps bundle.
 # Prevents Cloud deploys from dropping Supabase/Neon keys that only exist on the
 # server (shinyapps has no Secrets UI).
 #
@@ -27,10 +27,10 @@ if (length(file_arg) == 1L && nzchar(file_arg)) {
   root <- normalizePath(getwd(), mustWork = TRUE)
 }
 
-app_dir <- if (dir.exists(file.path(root, "app_25.0"))) {
-  file.path(root, "app_25.0")
+app_dir <- if (dir.exists(file.path(root, "app_26.0"))) {
+  file.path(root, "app_26.0")
 } else {
-  stop("app_25.0 not found under ", root, call. = FALSE)
+  stop("app_26.0 not found under ", root, call. = FALSE)
 }
 dest <- file.path(app_dir, ".Renviron")
 

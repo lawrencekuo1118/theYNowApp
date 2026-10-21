@@ -5,7 +5,7 @@ name: Live-line CI
 on:
   push:
     paths:
-      - "app_25.0/**"
+      - "app_26.0/**"
       - "scripts/**"
       - ".github/workflows/**"
       - "CHANGELOG.md"
@@ -13,7 +13,7 @@ on:
       - "Audit_Mapping.md"
   pull_request:
     paths:
-      - "app_25.0/**"
+      - "app_26.0/**"
       - "scripts/**"
       - ".github/workflows/**"
       - "CHANGELOG.md"
@@ -32,7 +32,7 @@ jobs:
       - name: Valuation formulas (offline)
         env:
           YNOW_DEBUG_SKIP_PY: "1"
-        run: Rscript app_25.0/tests/test_valuation_formulas.R
+        run: Rscript app_26.0/tests/test_valuation_formulas.R
       - name: Phase 1 formula independence (offline)
         env:
           YNOW_DEBUG_SKIP_PY: "1"

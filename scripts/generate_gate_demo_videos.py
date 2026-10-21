@@ -3,7 +3,7 @@
 
 Default mode (recommended):
   Build tall AdminLTE-style fixtures under scripts/gate_demo_pages/ and
-  Playwright-scroll each page while recording → app_25.0/www/demos/<id>.{mp4,webm}.
+  Playwright-scroll each page while recording → app_26.0/www/demos/<id>.{mp4,webm}.
 
 Optional live mode:
   YNOW_DEMO_CAPTURE=1 on a local Shiny process, then:
@@ -22,7 +22,7 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / "app_25.0" / "www" / "demos"
+OUT = ROOT / "app_26.0" / "www" / "demos"
 PAGES = ROOT / "scripts" / "gate_demo_pages"
 W, H, FPS = 960, 540, 24
 DUR = 10.0

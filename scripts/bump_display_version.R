@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# Display-version bump for the live line (app_25.0 only).
+# Display-version bump for the live line (app_26.0 only).
 #
 # Each successful deploy advances the display version by +0.01 and ships that
 # version. Set YNOW_VERSION_BUMP_MAJOR=1 for a full +1 cut (v22.09 -> v23.00).
@@ -49,9 +49,9 @@ ynow_major_display_label <- function(label) {
 }
 
 ynow_live_app_dir <- function(root) {
-  p <- file.path(root, "app_25.0")
+  p <- file.path(root, "app_26.0")
   if (file.exists(file.path(p, "app.R"))) return(p)
-  stop("live app directory app_25.0 not found under ", root)
+  stop("live app directory app_26.0 not found under ", root)
 }
 
 ynow_repo_root_from_script <- function() {
