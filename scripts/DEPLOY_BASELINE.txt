@@ -7,5 +7,5 @@ commit=d017c4f18d5a7baa07793647276e456d280da138
 short=d017c4f1
 message=chore: bump display version to v26.08
 captured_at=2026-10-21T12:06:45Z
-display_version=v26.08
+display_version=v26.09
 note=Canonical live line is app_26.0. Bundle 12720232: order research focuses on order quantity, major suppliers, and major-customer revenue mix, including earnings-call provenance (PR #369). Secrets only in gitignored .Renviron; no secret values in git.
