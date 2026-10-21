@@ -7,5 +7,5 @@ commit=274c2ae2ce4061c8b64dc22ac07caaf7ee3ffcce
 short=274c2ae2
 message=chore: bump display version to v26.06
 captured_at=2026-10-21T11:08:29Z
-display_version=v26.06
+display_version=v26.07
 note=Canonical live line is app_26.0. Bundle 12720021: mobile Sign in/out as text links beside sidebar date (PR #367). Secrets only in gitignored .Renviron restored from prior live bundle; no secret values in git.
