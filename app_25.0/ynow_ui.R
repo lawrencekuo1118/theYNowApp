@@ -14751,6 +14751,13 @@ ui <- dashboardPage(
           padding-right: 8px;
           margin-bottom: 12px;
         }
+        /* Static skeleton until nested index_kpi_row uiOutput flushes */
+        .ynow-macro-kpi-host .ynow-macro-kpi--skeleton {
+          opacity: 0.85;
+        }
+        .ynow-macro-kpi-host:has(#macro-index_kpi_row > *) > .ynow-macro-kpi-skeleton {
+          display: none !important;
+        }
         .ynow-macro-kpi,
         .ynow-macro-rf {
           background: var(--ynow-macro-ink);

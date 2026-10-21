@@ -410,6 +410,11 @@ if (requireNamespace("htmltools", quietly = TRUE) && exists("macro_market_ui", m
       "zh-TW first-paint no English page title",
       !grepl(">Macro &amp; Market Trends<|>Macro & Market Trends<", ui_html_zh)
     )
+    check(
+      "zh-TW first-paint KPI skeleton cards",
+      grepl("ynow-macro-kpi--skeleton", ui_html_zh, fixed = TRUE) &&
+        grepl("ynow-macro-kpi-row--skeleton", ui_html_zh, fixed = TRUE)
+    )
   } else {
     check("macro_market_ui zh render skipped", TRUE)
   }
@@ -447,6 +452,14 @@ check("progressive non-blocking index quotes", {
 })
 check("HTCDI deferred past first-paint KPIs", {
   grepl("later::later(run_job, delay = 1.25)", txt, fixed = TRUE)
+})
+check("static index KPI skeleton in first HTML", {
+  grepl("macro_index_kpi_skeleton_ui", txt, fixed = TRUE) &&
+    grepl("ynow-macro-kpi-skeleton", txt, fixed = TRUE) &&
+    grepl("ynow-macro-kpi-host", txt, fixed = TRUE)
+})
+check("CSS hides skeleton when live KPIs arrive", {
+  grepl("ynow-macro-kpi-host:has(#macro-index_kpi_row", ui_js <- paste(readLines("ynow_ui.R", warn = FALSE), collapse = "\n"), fixed = TRUE)
 })
 check("client re-applies Macro locale when lazy DOM appears", {
   ui_js <- paste(readLines("ynow_ui.R", warn = FALSE), collapse = "\n")

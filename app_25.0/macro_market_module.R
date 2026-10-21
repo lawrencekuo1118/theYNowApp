@@ -565,6 +565,60 @@ macro_rolling_beta_path <- function(theme_df, bench_df, lookback_months = 36L) {
 
 # ---- UI ----
 
+#' Static first-paint index KPI skeleton (no server round-trip).
+#' Nested `uiOutput("index_kpi_row")` can stay empty for many seconds while the
+#' R loop is busy; bake dash cards into the lazy HTML so the row is never blank.
+macro_index_kpi_skeleton_ui <- function(mode = "US", locale = "en") {
+  loc <- if (exists("normalize_ui_locale", mode = "function")) {
+    normalize_ui_locale(locale)
+  } else {
+    as.character(locale %||% "en")[1]
+  }
+  mm <- tryCatch({
+    if (exists("normalize_market_mode", mode = "function")) {
+      normalize_market_mode(mode)
+    } else {
+      toupper(as.character(mode %||% "US")[1])
+    }
+  }, error = function(e) "US")
+  if (!mm %in% c("US", "TW")) mm <- "US"
+  specs <- tryCatch(macro_click_index_specs(mm), error = function(e) character(0))
+  if (!length(specs)) return(NULL)
+  n_idx <- length(specs)
+  idx_col_w <- if (identical(n_idx, 3L)) 4L else 3L
+  idx_col_cls <- if (identical(n_idx, 3L)) {
+    "col-xs-12 col-sm-4 col-md-4"
+  } else {
+    "col-xs-6 col-sm-6 col-md-3"
+  }
+  cols <- lapply(names(specs), function(sym) {
+    name_key <- macro_index_name_key(sym)
+    lab <- if (exists("ui_str", mode = "function")) {
+      tryCatch({
+        v <- ui_str(name_key, loc)
+        if (nzchar(v) && !identical(v, name_key)) v else unname(specs[[sym]])
+      }, error = function(e) unname(specs[[sym]]))
+    } else {
+      unname(specs[[sym]])
+    }
+    column(
+      width = idx_col_w,
+      class = idx_col_cls,
+      tags$div(
+        # No stable id — live uiOutput owns ynow_macro_idx_* once it flushes.
+        class = "ynow-macro-kpi ynow-macro-kpi--skeleton",
+        `data-macro-index` = sym,
+        `aria-hidden` = "true",
+        tags$div(class = "ynow-macro-kpi__label", lab),
+        tags$div(class = "ynow-macro-kpi__value", "—"),
+        tags$div(class = "ynow-macro-kpi__chg", "—"),
+        tags$div(class = "ynow-macro-kpi__sym", sym)
+      )
+    )
+  })
+  do.call(fluidRow, c(list(class = "ynow-macro-kpi-row ynow-macro-kpi-row--skeleton"), cols))
+}
+
 #' Macro & Market Trends page body.
 #' @param locale first-paint locale (`en` / `zh-TW`); language switches still
 #'   update via `applyUiLocale`. Baking locale avoids English flash while lazy
@@ -604,8 +658,15 @@ macro_market_ui <- function(id = "macro", locale = "en", market_mode = "US") {
         .s("macro_page_sub")
       )
     ),
-    fluidRow(
-      column(width = 12, uiOutput(ns("index_kpi_row")))
+    tags$div(
+      class = "ynow-macro-kpi-host",
+      # Static skeleton paints with the lazy page HTML; hidden once live uiOutput
+      # has children (see ynow_ui.R CSS :has() rule).
+      tags$div(
+        class = "ynow-macro-kpi-skeleton",
+        macro_index_kpi_skeleton_ui(mm, loc)
+      ),
+      uiOutput(ns("index_kpi_row"))
     ),
     tags$p(
       id = "ynow_macro_index_hint",
