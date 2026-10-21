@@ -10,12 +10,16 @@
 # Preferred path — Supabase Auth (one project covers Google + Facebook + LinkedIn):
 #   YNOW_SUPABASE_URL=https://xxxx.supabase.co
 #   YNOW_SUPABASE_ANON_KEY=eyJ...
-#   YNOW_SUPABASE_SERVICE_ROLE=eyJ...   # server-only; Admin API (account delete IdP purge)
+#   YNOW_SUPABASE_SERVICE_ROLE=eyJ...   # server-only; Admin API (delete + password-reset bridge)
 #   YNOW_OAUTH_REDIRECT_URI=https://hopesmasher1118.shinyapps.io/TheYNowApp/
 #
 # Service role is required to DELETE /auth/v1/admin/users/{id} when a member
-# confirms account deletion. Never put it in client JS or git; only .Renviron /
+# confirms account deletion, and to ensure Auth users exist for Email password
+# recovery (/auth/v1/recover). Never put it in client JS or git; only .Renviron /
 # shinyapps bundle / Cloud Agent secrets → scripts/inject_renviron_from_env.R.
+#
+# Forgot password: POST /auth/v1/recover → email link (type=recovery) → set new
+# password via PUT /auth/v1/user, then sync password_hash in ynow_users.
 #
 # Owner must also enable each provider in the Supabase dashboard (env alone is not enough):
 #   1. https://supabase.com/dashboard → project (ref in YNOW_SUPABASE_URL)
@@ -385,7 +389,9 @@ ynow_oauth_supabase_exchange_code <- function(code, code_verifier = "") {
   if (!nzchar(access)) {
     return(list(ok = FALSE, user = NULL, message_key = "auth_msg_oauth_failed"))
   }
-  ynow_oauth_user_from_supabase(access)
+  out <- ynow_oauth_user_from_supabase(access)
+  if (is.list(out)) out$access_token <- access
+  out
 }
 
 #' Resolve Supabase access_token → user profile.
@@ -544,4 +550,279 @@ ynow_oauth_delete_supabase_user <- function(provider_uid) {
       )
     }
   )
+}
+
+# ------------------------------------------
+# Password recovery (Supabase Auth /recover)
+# ------------------------------------------
+# Email/password accounts live in ynow_users; Supabase Auth sends the recovery
+# email. When service_role is set, we ensure an Auth user exists for known
+# app accounts so /recover actually delivers mail. Never reveal whether an
+# email exists to the client (same generic success as GoTrue).
+
+#' TRUE when password recovery can be attempted (Supabase Auth configured).
+ynow_oauth_password_reset_ready <- function() {
+  isTRUE(ynow_oauth_supabase_ready())
+}
+
+#' POST /auth/v1/recover — request Supabase Auth recovery email.
+#' Always treats 2xx as success. Does not disclose whether the address exists.
+#' @return list(ok=, status=, message_key=)
+ynow_oauth_supabase_recover <- function(email, redirect_to = NULL) {
+  em <- ynow_auth_norm_email(email)
+  if (!nzchar(em) || !grepl("@", em, fixed = TRUE)) {
+    return(list(ok = FALSE, status = NA_integer_, message_key = "auth_msg_forgot_email"))
+  }
+  if (!isTRUE(ynow_oauth_supabase_ready())) {
+    return(list(ok = FALSE, status = NA_integer_, message_key = "auth_msg_forgot_soon"))
+  }
+  base <- ynow_oauth_supabase_url()
+  anon <- ynow_oauth_supabase_anon()
+  redir <- as.character(redirect_to %||% ynow_oauth_redirect_uri())[1]
+  body <- list(email = em)
+  if (nzchar(redir)) body$redirect_to <- redir
+  tryCatch(
+    {
+      resp <- httr2::request(paste0(base, "/auth/v1/recover")) |>
+        httr2::req_method("POST") |>
+        httr2::req_headers(
+          apikey = anon,
+          Authorization = paste("Bearer", anon),
+          `Content-Type` = "application/json"
+        ) |>
+        httr2::req_body_json(body) |>
+        httr2::req_timeout(12) |>
+        httr2::req_error(is_error = function(r) FALSE) |>
+        httr2::req_perform()
+      st <- as.integer(httr2::resp_status(resp))[1]
+      # GoTrue returns 200 even when the address is unknown (anti-enumeration).
+      ok <- isTRUE(st >= 200L && st < 300L)
+      if (!isTRUE(ok)) {
+        message("ynow_oauth_supabase_recover: status=", st)
+      }
+      list(
+        ok = ok,
+        status = st,
+        message_key = if (ok) "auth_msg_forgot_sent" else "auth_msg_forgot_failed"
+      )
+    },
+    error = function(e) {
+      message("ynow_oauth_supabase_recover: error — ", conditionMessage(e))
+      list(ok = FALSE, status = NA_integer_, message_key = "auth_msg_forgot_failed")
+    }
+  )
+}
+
+#' Admin: create a confirmed Auth user for email when missing (service_role).
+#' Used so app-store password users can receive recovery mail. Never logs secrets.
+#' @return list(ok=, created=, skipped=, reason=)
+ynow_oauth_supabase_admin_ensure_user <- function(email) {
+  em <- ynow_auth_norm_email(email)
+  if (!nzchar(em)) {
+    return(list(ok = FALSE, created = FALSE, skipped = TRUE, reason = "no_email"))
+  }
+  key <- ynow_oauth_supabase_service_role()
+  base <- ynow_oauth_supabase_url()
+  if (!nzchar(key) || !nzchar(base)) {
+    reason <- if (!nzchar(base)) "no_supabase_url" else "no_service_role"
+    return(list(ok = FALSE, created = FALSE, skipped = TRUE, reason = reason))
+  }
+  tryCatch(
+    {
+      resp <- httr2::request(paste0(base, "/auth/v1/admin/users")) |>
+        httr2::req_method("POST") |>
+        httr2::req_headers(
+          apikey = key,
+          Authorization = paste("Bearer", key),
+          `Content-Type` = "application/json"
+        ) |>
+        httr2::req_body_json(list(
+          email = em,
+          email_confirm = TRUE,
+          app_metadata = list(ynow_password_bridge = TRUE)
+        )) |>
+        httr2::req_timeout(12) |>
+        httr2::req_error(is_error = function(r) FALSE) |>
+        httr2::req_perform()
+      st <- as.integer(httr2::resp_status(resp))[1]
+      # 200/201 created; 422 already exists — both OK for bridge.
+      if (isTRUE(st >= 200L && st < 300L)) {
+        return(list(ok = TRUE, created = TRUE, skipped = FALSE, reason = "created", status = st))
+      }
+      if (identical(st, 422L)) {
+        return(list(ok = TRUE, created = FALSE, skipped = FALSE, reason = "exists", status = st))
+      }
+      message("ynow_oauth_supabase_admin_ensure_user: status=", st)
+      list(ok = FALSE, created = FALSE, skipped = FALSE, reason = "http_error", status = st)
+    },
+    error = function(e) {
+      message("ynow_oauth_supabase_admin_ensure_user: error — ", conditionMessage(e))
+      list(ok = FALSE, created = FALSE, skipped = FALSE, reason = "error")
+    }
+  )
+}
+
+#' PUT /auth/v1/user — set password for a recovery / signed-in Auth session.
+#' @return list(ok=, message_key=, user=)
+ynow_oauth_supabase_update_password <- function(access_token, password) {
+  access_token <- as.character(access_token %||% "")[1]
+  pw <- as.character(password %||% "")[1]
+  if (!nzchar(access_token)) {
+    return(list(ok = FALSE, user = NULL, message_key = "auth_msg_reset_session"))
+  }
+  if (!nzchar(pw) || nchar(pw) < 8L) {
+    return(list(ok = FALSE, user = NULL, message_key = "auth_msg_password_short"))
+  }
+  if (!isTRUE(ynow_oauth_supabase_ready())) {
+    return(list(ok = FALSE, user = NULL, message_key = "auth_msg_forgot_soon"))
+  }
+  base <- ynow_oauth_supabase_url()
+  anon <- ynow_oauth_supabase_anon()
+  tryCatch(
+    {
+      resp <- httr2::request(paste0(base, "/auth/v1/user")) |>
+        httr2::req_method("PUT") |>
+        httr2::req_headers(
+          apikey = anon,
+          Authorization = paste("Bearer", access_token),
+          `Content-Type` = "application/json"
+        ) |>
+        httr2::req_body_json(list(password = pw)) |>
+        httr2::req_timeout(12) |>
+        httr2::req_error(is_error = function(r) FALSE) |>
+        httr2::req_perform()
+      st <- as.integer(httr2::resp_status(resp))[1]
+      if (!isTRUE(st >= 200L && st < 300L)) {
+        message("ynow_oauth_supabase_update_password: status=", st)
+        return(list(ok = FALSE, user = NULL, message_key = "auth_msg_reset_failed"))
+      }
+      info <- tryCatch(
+        httr2::resp_body_json(resp, simplifyVector = TRUE),
+        error = function(e) NULL
+      )
+      email <- ynow_auth_norm_email(info$email %||% "")
+      list(
+        ok = TRUE,
+        user = list(
+          email = email,
+          display_name = as.character(info$user_metadata$full_name %||% email)[1],
+          provider = "password",
+          provider_uid = as.character(info$id %||% "")[1],
+          id = as.character(info$id %||% "")[1]
+        ),
+        message_key = "auth_msg_reset_ok"
+      )
+    },
+    error = function(e) {
+      message("ynow_oauth_supabase_update_password: error — ", conditionMessage(e))
+      list(ok = FALSE, user = NULL, message_key = "auth_msg_reset_failed")
+    }
+  )
+}
+
+#' Request password reset for an email (Supabase Auth recovery).
+#' Anti-enumeration: on a valid email shape + configured Auth, always returns
+#' the same success key whether or not the address exists. Fail closed when
+#' Auth is not configured. Never logs the email or secrets.
+#' @return list(ok=, message_key=)
+ynow_auth_request_password_reset <- function(email, redirect_to = NULL) {
+  if (!isTRUE(ynow_auth_enabled())) {
+    return(list(ok = FALSE, message_key = "auth_msg_disabled"))
+  }
+  em <- ynow_auth_norm_email(email)
+  if (!nzchar(em) || !grepl("@", em, fixed = TRUE)) {
+    return(list(ok = FALSE, message_key = "auth_msg_forgot_email"))
+  }
+  if (!isTRUE(ynow_oauth_password_reset_ready())) {
+    return(list(ok = FALSE, message_key = "auth_msg_forgot_soon"))
+  }
+  # Bridge known app accounts into Auth so recovery mail can deliver.
+  # Only when the address already exists in ynow_users (no new Auth users for
+  # random probes). Errors are swallowed — client still gets generic success.
+  if (exists("ynow_db_ready", mode = "function") && isTRUE(ynow_db_ready()) &&
+      exists("ynow_db_get_user_by_email", mode = "function")) {
+    u <- tryCatch(ynow_db_get_user_by_email(em), error = function(e) NULL)
+    if (!is.null(u)) {
+      tryCatch(ynow_oauth_supabase_admin_ensure_user(em), error = function(e) NULL)
+    }
+  }
+  res <- ynow_oauth_supabase_recover(em, redirect_to = redirect_to)
+  # Always generic success after a recover attempt when Auth is configured —
+  # matches GoTrue anti-enumeration (do not leak existence via error text).
+  # Network / Auth hard failure after config check: still generic to the client.
+  invisible(res)
+  list(ok = TRUE, message_key = "auth_msg_forgot_sent")
+}
+
+#' Apply a new password after recovery: Auth session + app users table.
+#' @return list(ok=, user=, message_key=)
+ynow_auth_complete_password_reset <- function(access_token, password, password_confirm = NULL) {
+  if (!isTRUE(ynow_auth_enabled())) {
+    return(list(ok = FALSE, user = NULL, message_key = "auth_msg_disabled"))
+  }
+  pw <- as.character(password %||% "")[1]
+  conf <- as.character(password_confirm %||% pw)[1]
+  if (!identical(pw, conf)) {
+    return(list(ok = FALSE, user = NULL, message_key = "auth_msg_password_mismatch"))
+  }
+  if (!nzchar(pw) || nchar(pw) < 8L) {
+    return(list(ok = FALSE, user = NULL, message_key = "auth_msg_password_short"))
+  }
+  upd <- ynow_oauth_supabase_update_password(access_token, pw)
+  if (!isTRUE(upd$ok)) {
+    return(list(ok = FALSE, user = NULL, message_key = upd$message_key %||% "auth_msg_reset_failed"))
+  }
+  em <- ynow_auth_norm_email(upd$user$email %||% "")
+  if (!nzchar(em)) {
+    # Fallback: resolve email from /auth/v1/user GET
+    info <- tryCatch(
+      ynow_oauth_user_from_supabase(access_token),
+      error = function(e) list(ok = FALSE)
+    )
+    if (isTRUE(info$ok)) em <- ynow_auth_norm_email(info$user$email %||% "")
+  }
+  if (!nzchar(em)) {
+    return(list(ok = FALSE, user = NULL, message_key = "auth_msg_reset_failed"))
+  }
+  # Sync app store so Email sign-in keeps working (ynow_users password_hash).
+  if (exists("ynow_db_ready", mode = "function") && isTRUE(ynow_db_ready()) &&
+      exists("ynow_db_set_password_by_email", mode = "function")) {
+    db_res <- tryCatch(
+      ynow_db_set_password_by_email(em, pw),
+      error = function(e) list(ok = FALSE, message_key = "auth_msg_reset_failed")
+    )
+    if (!isTRUE(db_res$ok)) {
+      # Auth password already changed; still try to sign the session in via upsert.
+      message("ynow_auth_complete_password_reset: app store sync failed")
+    }
+  }
+  # Build session user from app DB when possible.
+  sess_user <- NULL
+  if (exists("ynow_db_ready", mode = "function") && isTRUE(ynow_db_ready()) &&
+      exists("ynow_db_get_user_by_email", mode = "function")) {
+    u <- tryCatch(ynow_db_get_user_by_email(em), error = function(e) NULL)
+    if (!is.null(u)) {
+      sess_user <- list(
+        id = as.character(u$id %||% "")[1],
+        email = em,
+        display_name = as.character(u$display_name %||% em)[1],
+        provider = "password",
+        provider_uid = as.character(upd$user$provider_uid %||% u$provider_uid %||% "")[1],
+        role = as.character(u$role %||% "user")[1],
+        logged_in_at = as.character(Sys.time())
+      )
+    }
+  }
+  if (is.null(sess_user)) {
+    sess_user <- list(
+      id = ynow_auth_memory_user_id(em),
+      email = em,
+      display_name = em,
+      provider = "password",
+      provider_uid = as.character(upd$user$provider_uid %||% "")[1],
+      role = "user",
+      logged_in_at = as.character(Sys.time())
+    )
+  }
+  list(ok = TRUE, user = sess_user, message_key = "auth_msg_reset_ok")
 }

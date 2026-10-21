@@ -11290,6 +11290,17 @@ ui <- dashboardPage(
               set('ynow_auth_facebook_label', payload.facebook);
               set('ynow_auth_linkedin_label', payload.linkedin);
               set('ynow_auth_forgot_label', payload.forgot);
+              set('ynow_auth_reset_help', payload.reset_help);
+              set('ynow_auth_reset_password_label', payload.reset_password_label);
+              set('ynow_auth_reset_password2_label', payload.reset_password2_label);
+              set('ynow_auth_reset_submit_label', payload.reset_submit);
+              set('ynow_auth_reset_back_label', payload.reset_back);
+              set('ynow_auth_change_pw_title', payload.change_pw_title);
+              set('ynow_auth_change_pw_help', payload.change_pw_help);
+              set('ynow_auth_change_current_label', payload.change_pw_current);
+              set('ynow_auth_change_new_label', payload.change_pw_new);
+              set('ynow_auth_change_new2_label', payload.change_pw_confirm);
+              set('ynow_auth_change_submit_label', payload.change_pw_submit);
               set('ynow_auth_register_label', payload.register_btn || payload.register);
               set('ynow_auth_register_header_label', payload.register_btn || payload.register);
               set('ynow_auth_register_home_label', payload.register_btn || payload.register);
@@ -11886,6 +11897,20 @@ ui <- dashboardPage(
                 window.ynowSyncGuestSidebarLocked();
               }
             });
+            /* Forgot-password recovery return: swap modal to set-new-password panel. */
+            addHandler('ynowAuthResetMode', function (payload) {
+              var modal = document.getElementById('ynow_auth_modal');
+              if (!modal) return;
+              var on = !!(payload && payload.on);
+              if (on) modal.classList.add('ynow-auth-mode-reset');
+              else modal.classList.remove('ynow-auth-mode-reset');
+              var copy = window.__ynowAuthCopy || {};
+              var title = document.getElementById('ynow_auth_modal_title');
+              if (title) {
+                if (on && copy.modal_title_reset) title.textContent = copy.modal_title_reset;
+                else if (!on && copy.modal_title) title.textContent = copy.modal_title;
+              }
+            });
             addHandler('ynowAuthOAuthRedirect', function (payload) {
               if (!payload || !payload.url) return;
               var go = function (url) {
@@ -12301,6 +12326,7 @@ ui <- dashboardPage(
             var code = q.code || h.code || '';
             var state = q.state || h.state || '';
             var err = q.error || h.error || '';
+            var authType = h.type || q.type || '';
             if (!access && !code && !err) return;
             window.__ynowOAuthCallbackPushed = true;
             var storedTab = '';
@@ -12314,6 +12340,7 @@ ui <- dashboardPage(
               refresh_token: String(h.refresh_token || q.refresh_token || ''),
               code: String(code || ''),
               state: String(state || ''),
+              type: String(authType || ''),
               provider: String(q.provider || h.provider || ''),
               error: String(err || ''),
               code_verifier: String(codeVerifier || ''),
