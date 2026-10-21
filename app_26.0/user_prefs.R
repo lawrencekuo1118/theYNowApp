@@ -734,13 +734,122 @@ ynow_prefs_merge_recent_search_24h <- function(user_id, guest_tickers) {
 
 # ---- Signed-in Settings (user_settings JSON) ----
 
+#' Allowed gain/loss background schemes (Settings → 漲跌底色).
+YNOW_GAIN_LOSS_SCHEMES <- c(
+  "auto", "green_red", "red_green", "blue_red", "red_blue"
+)
+
+#' Normalize a gain/loss color scheme id.
+ynow_prefs_normalize_gain_loss_scheme <- function(x) {
+  s <- tolower(gsub("[\\s-]+", "_", trimws(as.character(x %||% "auto")[1]), perl = TRUE))
+  s <- gsub("__+", "_", s)
+  aliases <- c(
+    "default" = "auto",
+    "market" = "auto",
+    "follow" = "auto",
+    "follow_market" = "auto",
+    "green" = "green_red",
+    "greenup" = "green_red",
+    "green_up" = "green_red",
+    "green_up_red_down" = "green_red",
+    "us" = "green_red",
+    "red" = "red_green",
+    "redup" = "red_green",
+    "red_up" = "red_green",
+    "red_up_green_down" = "red_green",
+    "tw" = "red_green",
+    "taiwan" = "red_green",
+    "blue" = "blue_red",
+    "blueup" = "blue_red",
+    "blue_up" = "blue_red",
+    "blue_up_red_down" = "blue_red",
+    "red_up_blue_down" = "red_blue"
+  )
+  if (nzchar(s) && s %in% names(aliases)) s <- unname(aliases[[s]])
+  if (s %in% YNOW_GAIN_LOSS_SCHEMES) s else "auto"
+}
+
+#' Resolve up/down/flat hex colors for price-change chrome.
+#'
+#' @param scheme one of YNOW_GAIN_LOSS_SCHEMES (`auto` follows market US/TW convention)
+#' @param market US → green-up default; TW → red-up default when scheme is auto
+#' @return list(up, down, flat, scheme) where scheme is the resolved non-auto id
+ynow_gain_loss_colors <- function(scheme = "auto", market = "US") {
+  scheme <- ynow_prefs_normalize_gain_loss_scheme(scheme)
+  mm <- tryCatch({
+    if (exists("normalize_market_mode", mode = "function")) {
+      normalize_market_mode(market)
+    } else {
+      m <- toupper(trimws(as.character(market %||% "US")[1]))
+      if (identical(m, "TW") || identical(m, "TWN") || identical(m, "TAIWAN")) "TW" else "US"
+    }
+  }, error = function(e) "US")
+  green <- "#1e7a46"
+  red <- "#c0392b"
+  blue <- "#0C5484"
+  flat <- "#8d9399"
+  resolved <- if (identical(scheme, "auto")) {
+    if (identical(mm, "TW")) "red_green" else "green_red"
+  } else {
+    scheme
+  }
+  out <- switch(
+    resolved,
+    "green_red" = list(up = green, down = red),
+    "red_green" = list(up = red, down = green),
+    "blue_red" = list(up = blue, down = red),
+    "red_blue" = list(up = red, down = blue),
+    list(up = green, down = red)
+  )
+  list(
+    up = out$up,
+    down = out$down,
+    flat = flat,
+    scheme = if (resolved %in% c("green_red", "red_green", "blue_red", "red_blue")) {
+      resolved
+    } else {
+      "green_red"
+    }
+  )
+}
+
+#' Soft Plotly colorscale for signed % change (treemap / heat blocks).
+ynow_gain_loss_treemap_colorscale <- function(scheme = "auto", market = "US") {
+  cols <- ynow_gain_loss_colors(scheme = scheme, market = market)
+  up <- as.character(cols$up)[1]
+  down <- as.character(cols$down)[1]
+  # Mid greys keep missing/near-zero readable; ends follow the resolved pair.
+  list(
+    list(0, down),
+    list(0.35, .ynow_gain_loss_soft_mid(down)),
+    list(0.5, "#d8dde3"),
+    list(0.65, .ynow_gain_loss_soft_mid(up)),
+    list(1, up)
+  )
+}
+
+.ynow_gain_loss_soft_mid <- function(hex) {
+  hex <- gsub("#", "", as.character(hex %||% "")[1])
+  if (nchar(hex) < 6L) return("#d8dde3")
+  r <- strtoi(substr(hex, 1L, 2L), 16L)
+  g <- strtoi(substr(hex, 3L, 4L), 16L)
+  b <- strtoi(substr(hex, 5L, 6L), 16L)
+  if (any(!is.finite(c(r, g, b)))) return("#d8dde3")
+  # Blend ~55% toward white for a soft block-heatmap midtone.
+  r <- round(r + (255 - r) * 0.55)
+  g <- round(g + (255 - g) * 0.55)
+  b <- round(b + (255 - b) * 0.55)
+  sprintf("#%02x%02x%02x", r, g, b)
+}
+
 #' Default Settings values (hide-locked OFF so post-login lock chrome stays visible).
 ynow_prefs_default_user_settings <- function() {
   list(
     hide_locked_sidebar = FALSE,
     preferred_ui_locale = "auto",
     preferred_market = "auto",
-    sidebar_compact = FALSE
+    sidebar_compact = FALSE,
+    gain_loss_scheme = "auto"
   )
 }
 
@@ -771,11 +880,16 @@ ynow_prefs_normalize_user_settings <- function(raw) {
   compact <- raw$sidebar_compact %||% def$sidebar_compact
   compact <- isTRUE(compact) || identical(tolower(as.character(compact)[1]), "true") ||
     identical(as.character(compact)[1], "1")
+  gain <- ynow_prefs_normalize_gain_loss_scheme(
+    raw$gain_loss_scheme %||% raw$gain_loss_colors %||% raw$chg_color_scheme %||%
+      def$gain_loss_scheme
+  )
   list(
     hide_locked_sidebar = hide,
     preferred_ui_locale = loc,
     preferred_market = mkt,
-    sidebar_compact = compact
+    sidebar_compact = compact,
+    gain_loss_scheme = gain
   )
 }
 

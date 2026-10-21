@@ -847,7 +847,7 @@ server <- function(input, output, session) {
     tryCatch(showNotification(msg, type = "message", duration = 2.2), error = function(e) NULL)
   }, ignoreInit = TRUE)
 
-  # ---- Signed-in Settings (hide locked / locale / market / compact) ----
+  # ---- Signed-in Settings (hide locked / locale / market / compact / gain-loss) ----
   .ynow_settings_default <- function() {
     if (exists("ynow_prefs_default_user_settings", mode = "function")) {
       return(ynow_prefs_default_user_settings())
@@ -856,7 +856,8 @@ server <- function(input, output, session) {
       hide_locked_sidebar = FALSE,
       preferred_ui_locale = "auto",
       preferred_market = "auto",
-      sidebar_compact = FALSE
+      sidebar_compact = FALSE,
+      gain_loss_scheme = "auto"
     )
   }
   .ynow_settings_push_client <- function(settings) {
@@ -866,12 +867,18 @@ server <- function(input, output, session) {
       .ynow_settings_default()
     }
     values$user_settings <- s
+    gain <- if (exists("ynow_prefs_normalize_gain_loss_scheme", mode = "function")) {
+      ynow_prefs_normalize_gain_loss_scheme(s$gain_loss_scheme %||% "auto")
+    } else {
+      as.character(s$gain_loss_scheme %||% "auto")[1]
+    }
     tryCatch(
       session$sendCustomMessage(
         "ynowUserSettings",
         list(
           hide_locked_sidebar = isTRUE(s$hide_locked_sidebar),
-          sidebar_compact = isTRUE(s$sidebar_compact)
+          sidebar_compact = isTRUE(s$sidebar_compact),
+          gain_loss_scheme = gain
         )
       ),
       error = function(e) NULL
@@ -976,7 +983,8 @@ server <- function(input, output, session) {
       hide_locked_sidebar = isTRUE(input$ynow_settings_hide_locked),
       preferred_ui_locale = as.character(input$ynow_settings_ui_locale %||% "auto")[1],
       preferred_market = as.character(input$ynow_settings_market %||% "auto")[1],
-      sidebar_compact = isTRUE(input$ynow_settings_sidebar_compact)
+      sidebar_compact = isTRUE(input$ynow_settings_sidebar_compact),
+      gain_loss_scheme = as.character(input$ynow_settings_gain_loss %||% "auto")[1]
     )
     saved <- .ynow_settings_persist(uid, draft)
     .ynow_settings_apply_boot(saved, apply_locale_market = TRUE)
@@ -2962,6 +2970,10 @@ server <- function(input, output, session) {
           "atx",
           ui_locale_rv = ui_locale,
           market_mode_rv = market_mode,
+          gain_scheme_rv = reactive({
+            s <- tryCatch(values$user_settings, error = function(e) NULL)
+            as.character(s$gain_loss_scheme %||% "auto")[1]
+          }),
           tab_active_rv = reactive(identical(as.character(input$sidebar_tabs %||% ""), "asset_transmission"))
         )
       }
@@ -17394,7 +17406,16 @@ server <- function(input, output, session) {
     if (isTRUE(board$waiting) || is.null(snap) || !is.data.frame(snap) || nrow(snap) < 1L) {
       snap <- lab_ind_mcap_chain_snapshot_empty()
     }
-    lab_ind_mcap_treemap_plotly(snap, market = mm, locale = loc)
+    gain_scheme <- tryCatch({
+      s <- values$user_settings
+      as.character(s$gain_loss_scheme %||% "auto")[1]
+    }, error = function(e) "auto")
+    lab_ind_mcap_treemap_plotly(
+      snap,
+      market = mm,
+      locale = loc,
+      gain_scheme = gain_scheme
+    )
   })
 
   output$lab_im_ind_mcap_table <- DT::renderDT({

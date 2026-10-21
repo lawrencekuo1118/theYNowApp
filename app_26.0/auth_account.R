@@ -1008,6 +1008,38 @@ ynow_auth_css <- function() {
     ".ynow-settings-panel .ynow-settings-row { margin:0 0 14px; }",
     ".ynow-settings-panel .ynow-settings-help { color:#666; font-size:13px; margin:4px 0 0; }",
     ".ynow-settings-panel .ynow-settings-actions { margin-top:18px; }",
+    ".ynow-settings-gain-swatches { display:inline-flex; gap:6px; margin:6px 0 0; vertical-align:middle; }",
+    ".ynow-settings-gain-swatches .ynow-gain-swatch {",
+    "  display:inline-block; width:18px; height:18px; border-radius:3px;",
+    "  border:1px solid rgba(0,0,0,0.18);",
+    "}",
+    ".ynow-settings-gain-swatches .ynow-gain-swatch-up { background: var(--ynow-chg-up, #1e7a46); }",
+    ".ynow-settings-gain-swatches .ynow-gain-swatch-down { background: var(--ynow-chg-down, #c0392b); }",
+    ".ynow-pts-topup {",
+    "  margin: 16px 0 4px 0;",
+    "  padding: 12px 14px;",
+    "  border: 1px dashed var(--ynow-maint-line, #d5e5dc);",
+    "  border-radius: 4px;",
+    "  background: var(--ynow-maint-wash, #f3f8f6);",
+    "}",
+    ".ynow-pts-topup .ynow-pts-topup-title {",
+    "  margin: 0 0 6px 0;",
+    "  font-size: 15px;",
+    "  font-weight: 600;",
+    "  color: var(--ynow-maint-ink, #1a1a1a);",
+    "}",
+    ".ynow-pts-topup .ynow-pts-topup-copy {",
+    "  margin: 0 0 10px 0;",
+    "  font-size: 13px;",
+    "  line-height: 1.5;",
+    "  color: var(--ynow-maint-muted, #666);",
+    "}",
+    ".ynow-pts-topup .ynow-pts-topup-cta[disabled],",
+    ".ynow-pts-topup .ynow-pts-topup-cta:disabled {",
+    "  cursor: not-allowed;",
+    "  opacity: 0.7;",
+    "  pointer-events: none;",
+    "}",
     "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) #ynow_pa_body { display:none !important; }",
     "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) #ynow_pa_guest_gate { display:block !important; }",
     "#ynow_pa_guest_gate { display:none; }",
@@ -1373,13 +1405,19 @@ ynow_settings_panel_ui <- function(settings = NULL, locale = "zh-TW") {
       hide_locked_sidebar = FALSE,
       preferred_ui_locale = "auto",
       preferred_market = "auto",
-      sidebar_compact = FALSE
+      sidebar_compact = FALSE,
+      gain_loss_scheme = "auto"
     )
   }
   hide_on <- isTRUE(s$hide_locked_sidebar)
   compact_on <- isTRUE(s$sidebar_compact)
   loc_sel <- as.character(s$preferred_ui_locale %||% "auto")[1]
   mkt_sel <- as.character(s$preferred_market %||% "auto")[1]
+  gain_sel <- if (exists("ynow_prefs_normalize_gain_loss_scheme", mode = "function")) {
+    ynow_prefs_normalize_gain_loss_scheme(s$gain_loss_scheme %||% "auto")
+  } else {
+    as.character(s$gain_loss_scheme %||% "auto")[1]
+  }
   tags$div(
     class = "ynow-settings-panel ynow-maint-shell",
     `data-ynow-maint-theme` = "logo",
@@ -1479,6 +1517,42 @@ ynow_settings_panel_ui <- function(settings = NULL, locale = "zh-TW") {
             "settings_sidebar_compact_help",
             "Slightly tighter vertical padding on top-level sidebar tabs."
           )
+        )
+      ),
+      tags$div(
+        class = "ynow-settings-row",
+        selectInput(
+          "ynow_settings_gain_loss",
+          label = tags$span(
+            id = "ynow_settings_gain_loss_label",
+            .lab("settings_gain_loss", "Gain / loss colors")
+          ),
+          choices = stats::setNames(
+            c("auto", "green_red", "red_green", "blue_red", "red_blue"),
+            c(
+              .lab("settings_gain_opt_auto", "Follow market (US green-up / TW red-up)"),
+              .lab("settings_gain_opt_green_red", "Green up / red down"),
+              .lab("settings_gain_opt_red_green", "Red up / green down"),
+              .lab("settings_gain_opt_blue_red", "Blue up / red down"),
+              .lab("settings_gain_opt_red_blue", "Red up / blue down")
+            )
+          ),
+          selected = gain_sel,
+          width = "100%"
+        ),
+        tags$p(
+          id = "ynow_settings_gain_loss_help",
+          class = "ynow-settings-help",
+          .lab(
+            "settings_gain_loss_help",
+            "Applies to price-change chrome (tables, badges, and move-colored charts). Choose green/red, blue/red, or a swapped pair."
+          )
+        ),
+        tags$div(
+          class = "ynow-settings-gain-swatches",
+          `aria-hidden` = "true",
+          tags$span(class = "ynow-gain-swatch ynow-gain-swatch-up"),
+          tags$span(class = "ynow-gain-swatch ynow-gain-swatch-down")
         )
       ),
       tags$div(
@@ -1690,6 +1764,34 @@ ynow_admin_panel_ui <- function(user, locale = "zh-TW", build_version = "",
             .lab(
               "pts_rules_note",
               "New accounts receive 100 FYN once. Daily check-in adds +30 FYN once per Asia/Taipei day. Balances are never reset on login."
+            )
+          ),
+          tags$div(
+            class = "ynow-pts-topup",
+            id = "ynow_pts_topup_slot",
+            tags$h5(
+              class = "ynow-pts-topup-title",
+              id = "ynow_pts_topup_title",
+              .lab("pts_topup_title", "Points top-up")
+            ),
+            tags$p(
+              class = "ynow-pts-topup-copy",
+              id = "ynow_pts_topup_copy",
+              .lab(
+                "pts_topup_copy",
+                "A paid points top-up lane will land here. Checkout is not available yet — no charge will be taken from this page."
+              )
+            ),
+            tags$button(
+              id = "ynow_pts_topup_cta",
+              type = "button",
+              class = "btn btn-default btn-sm ynow-pts-topup-cta",
+              disabled = "disabled",
+              `aria-disabled` = "true",
+              tags$span(
+                id = "ynow_pts_topup_cta_label",
+                .lab("pts_topup_cta", "Coming soon")
+              )
             )
           ),
           tags$h4(
@@ -2701,9 +2803,20 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
           ui_str("settings_sidebar_compact_help", loc),
           error = function(e) ""
         ),
+        settings_gain_loss = tryCatch(
+          ui_str("settings_gain_loss", loc),
+          error = function(e) "Gain / loss colors"
+        ),
+        settings_gain_loss_help = tryCatch(
+          ui_str("settings_gain_loss_help", loc),
+          error = function(e) ""
+        ),
         settings_save = tryCatch(ui_str("settings_save", loc), error = function(e) "Save settings"),
         pts_box_title = tryCatch(ui_str("pts_ledger_title", loc), error = function(e) "Points ledger"),
-        pts_ledger_intro = tryCatch(ui_str("pts_ledger_intro", loc), error = function(e) "")
+        pts_ledger_intro = tryCatch(ui_str("pts_ledger_intro", loc), error = function(e) ""),
+        pts_topup_title = tryCatch(ui_str("pts_topup_title", loc), error = function(e) "Points top-up"),
+        pts_topup_copy = tryCatch(ui_str("pts_topup_copy", loc), error = function(e) ""),
+        pts_topup_cta = tryCatch(ui_str("pts_topup_cta", loc), error = function(e) "Coming soon")
       )
     )
   })

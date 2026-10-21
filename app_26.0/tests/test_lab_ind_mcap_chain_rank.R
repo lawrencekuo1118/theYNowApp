@@ -102,7 +102,11 @@ check("treemap colorscale TW ends red", {
 })
 check("treemap colorscale US ends green", {
   cs <- lab_ind_mcap_treemap_colorscale("US")
-  identical(tolower(cs[[length(cs)]][[2]]), "#1b7a4a")
+  identical(tolower(cs[[length(cs)]][[2]]), "#1e7a46")
+})
+check("treemap colorscale blue_red ends blue", {
+  cs <- lab_ind_mcap_treemap_colorscale("US", gain_scheme = "blue_red")
+  identical(tolower(cs[[length(cs)]][[2]]), "#0c5484")
 })
 check("treemap prepare includes all snap chains", {
   snap <- data.frame(
