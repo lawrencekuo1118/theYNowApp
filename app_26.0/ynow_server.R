@@ -1343,14 +1343,21 @@ server <- function(input, output, session) {
           error = function(e2) "Sign in to open the account workspace."
         )
       )
-      return(tags$div(
-        class = "box box-solid ynow-auth-gate ynow-gate-box",
+      return(tags$section(
+        class = "ynow-hfv-chapter ynow-auth-gate ynow-gate-box",
         `data-ynow-gate-feature` = "account",
         style = "max-width:760px; margin:18px auto;",
         tags$div(
-          class = "box-header with-border",
+          class = "ynow-hfv-chapter__head",
+          tags$span(
+            class = "ynow-hfv-chapter__kicker ynow-gate-section-kicker",
+            tryCatch(
+              ui_str("auth_gate_section_kicker", loc),
+              error = function(e) "Member access"
+            )
+          ),
           tags$h3(
-            class = "box-title",
+            class = "ynow-hfv-chapter__title",
             tags$span(
               class = "ynow-auth-gate-title",
               tryCatch(
@@ -1361,7 +1368,7 @@ server <- function(input, output, session) {
           )
         ),
         tags$div(
-          class = "box-body",
+          class = "ynow-hfv-chapter__body",
           tags$p(class = "ynow-gate-body", acct_body),
           extras,
           tags$div(

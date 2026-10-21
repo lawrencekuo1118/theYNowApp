@@ -845,9 +845,27 @@ ynow_auth_css <- function() {
     "  display:inline-flex !important; align-items:center !important; justify-content:center !important;",
     "  line-height:1.2 !important; white-space:nowrap;",
     "}",
+    # Beat Shiny actionButton default class (btn btn-default + btn-primary).
+    ".ynow-auth-pair--gate > .btn.ynow-auth-open,",
+    ".ynow-auth-pair--gate > .btn.btn-default.btn-primary.ynow-auth-open,",
+    ".ynow-auth-pair--gate > .btn-primary.ynow-auth-open {",
+    "  background:var(--ynow-logo-blue, #0C5484) !important;",
+    "  border-color:#0a446c !important; color:#fff !important;",
+    "}",
+    ".ynow-auth-pair--gate > .btn.ynow-auth-open:hover,",
+    ".ynow-auth-pair--gate > .btn.btn-default.btn-primary.ynow-auth-open:hover,",
+    ".ynow-auth-pair--gate > .btn-primary.ynow-auth-open:hover {",
+    "  background:#0a446c !important; border-color:#083554 !important; color:#fff !important;",
+    "}",
+    ".ynow-auth-pair--gate > .btn.ynow-auth-register-open,",
     ".ynow-auth-pair--gate > .ynow-auth-register-open {",
-    "  background:#fff !important; color:var(--ynow-ink, #1a1a1a) !important;",
-    "  border:1px solid var(--ynow-ink, #1a1a1a) !important;",
+    "  background:#fff !important; color:var(--ynow-logo-green, #249C60) !important;",
+    "  border:1px solid var(--ynow-logo-green, #249C60) !important;",
+    "}",
+    ".ynow-auth-pair--gate > .btn.ynow-auth-register-open:hover,",
+    ".ynow-auth-pair--gate > .ynow-auth-register-open:hover {",
+    "  background:#f3faf6 !important; color:#1e8552 !important;",
+    "  border-color:#1e8552 !important;",
     "}",
     ".ynow-auth-links .ynow-auth-link,",
     ".ynow-auth-links a.ynow-auth-link {",
@@ -2364,6 +2382,7 @@ ynow_gate_promo_faq_ui <- function(feature = "lab", include_faq = TRUE, compact 
 
 #' Sign-in panel for Full-mode pages that stay closed until the user is logged in.
 #' Hidden until body has ynow-auth-feature and lacks ynow-lite / ynow-authed.
+#' Chrome matches HFV tab Section blocks (`.ynow-hfv-chapter`); CTAs use logo blue–green–white.
 #' @param feature feature key for promo / demo (see [ynow_gate_features()])
 ynow_member_gate_ui <- function(gate_id, title_id, body_id, btn_id, feature = "lab") {
   keys <- ynow_gate_promo_keys(feature)
@@ -2376,21 +2395,25 @@ ynow_member_gate_ui <- function(gate_id, title_id, body_id, btn_id, feature = "l
   } else {
     "A"
   }
-  tags$div(
+  tags$section(
     id = gate_id,
-    class = "box box-solid ynow-member-gate ynow-gate-box",
+    class = "ynow-hfv-chapter ynow-member-gate ynow-gate-box",
     `data-ynow-gate-feature` = keys$feature,
     `data-ynow-lock-tier` = if (nzchar(tier_attr)) tier_attr else NULL,
     style = "display:none; max-width:760px; margin:18px auto;",
     tags$div(
-      class = "box-header with-border",
+      class = "ynow-hfv-chapter__head",
+      tags$span(
+        class = "ynow-hfv-chapter__kicker ynow-gate-section-kicker",
+        .ynow_gate_str("auth_gate_section_kicker", "Member access")
+      ),
       tags$h3(
-        class = "box-title",
+        class = "ynow-hfv-chapter__title",
         tags$span(id = title_id, "Sign in required")
       )
     ),
     tags$div(
-      class = "box-body",
+      class = "ynow-hfv-chapter__body",
       tags$p(
         id = body_id,
         class = "ynow-gate-body",
@@ -3248,6 +3271,10 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
           error = function(e) "Cancel"
         ),
         pa_gate_title = tryCatch(ui_str("auth_pa_gate_title", loc), error = function(e) "Sign in required"),
+        gate_section_kicker = tryCatch(
+          ui_str("auth_gate_section_kicker", loc),
+          error = function(e) "Member access"
+        ),
         pa_gate_body = tryCatch(ui_str("auth_pa_gate_body", loc), error = function(e) ""),
         gate_lab_body = tryCatch(ui_str("auth_gate_lab_body", loc), error = function(e) ""),
         gate_lab_kicker = tryCatch(ui_str("auth_gate_lab_kicker", loc), error = function(e) ""),
