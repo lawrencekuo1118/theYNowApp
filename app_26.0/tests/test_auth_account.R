@@ -916,7 +916,25 @@ check("mobile date-row auth is text links matching date font; header hidden on m
     grepl("@media \\(max-width:767px\\)", auth_src, perl = TRUE) &&
     grepl("li.ynow-auth-header", auth_src, fixed = TRUE) &&
     grepl(
-      "\\.ynow-auth-links--date-row[\\s\\S]*?font-size:12px !important",
+      "\\.ynow-auth-links--date-row a\\.ynow-auth-open \\{[\\s\\S]*?font-size:12px !important",
+      auth_src,
+      perl = TRUE
+    ) &&
+    # Guest Sign-out rule must not force display (would beat inline display:none).
+    # Match the first (unprefixed) date-row signout block only — stop at closing brace.
+    {
+      m <- regmatches(
+        auth_src,
+        regexpr(
+          "(?<!authed )(?<!view-as )\\.ynow-auth-links--date-row a\\.ynow-auth-signout \\{[^}]*\\}",
+          auth_src,
+          perl = TRUE
+        )
+      )
+      length(m) == 1L && !grepl("display:", m[[1]], fixed = TRUE)
+    } &&
+    grepl(
+      "body\\.ynow-authed \\.ynow-auth-links--date-row a\\.ynow-auth-signout[\\s\\S]*?display:inline !important",
       auth_src,
       perl = TRUE
     )
