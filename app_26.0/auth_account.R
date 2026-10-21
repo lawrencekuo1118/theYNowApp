@@ -300,32 +300,55 @@ ynow_auth_accept_social_user <- function(oauth_user) {
   )
 }
 
-#' Sign-in / Sign-out text links for a placement (sidebar date row or Home legal).
-#' @param placement "sidebar" | "home"
+#' Sign-in / Sign-out controls for a placement (header bar, mobile date row, or Home legal).
+#' @param placement "sidebar" (desktop header buttons) | "date_row" (mobile text links) | "home"
 #' @return shiny tag or NULL when auth disabled
-ynow_auth_links_ui <- function(placement = c("sidebar", "home")) {
+ynow_auth_links_ui <- function(placement = c("sidebar", "date_row", "home")) {
   placement <- match.arg(placement)
   if (!isTRUE(ynow_auth_enabled())) return(NULL)
   # Unique input ids per placement (Shiny forbids duplicate ids).
-  open_id <- if (identical(placement, "sidebar")) "ynow_auth_open" else "ynow_auth_open_home"
-  out_id <- if (identical(placement, "sidebar")) "ynow_auth_sign_out" else "ynow_auth_sign_out_home"
-  open_lbl <- if (identical(placement, "sidebar")) "ynow_auth_header_label" else "ynow_auth_home_label"
-  out_lbl <- if (identical(placement, "sidebar")) {
-    "ynow_auth_sign_out_label"
-  } else {
+  open_id <- switch(
+    placement,
+    sidebar = "ynow_auth_open",
+    date_row = "ynow_auth_open_date",
+    "ynow_auth_open_home"
+  )
+  out_id <- switch(
+    placement,
+    sidebar = "ynow_auth_sign_out",
+    date_row = "ynow_auth_sign_out_date",
+    "ynow_auth_sign_out_home"
+  )
+  open_lbl <- switch(
+    placement,
+    sidebar = "ynow_auth_header_label",
+    date_row = "ynow_auth_date_label",
+    "ynow_auth_home_label"
+  )
+  out_lbl <- switch(
+    placement,
+    sidebar = "ynow_auth_sign_out_label",
+    date_row = "ynow_auth_sign_out_date_label",
     "ynow_auth_sign_out_home_label"
-  }
-  wrap_id <- if (identical(placement, "sidebar")) "ynow-auth-sidebar" else "ynow-auth-home"
-  wrap_class <- if (identical(placement, "sidebar")) {
-    "ynow-auth-links ynow-auth-links--sidebar"
-  } else {
+  )
+  wrap_id <- switch(
+    placement,
+    sidebar = "ynow-auth-sidebar",
+    date_row = "ynow-auth-date-row",
+    "ynow-auth-home"
+  )
+  wrap_class <- switch(
+    placement,
+    sidebar = "ynow-auth-links ynow-auth-links--sidebar",
+    date_row = "ynow-auth-links ynow-auth-links--date-row",
     "ynow-auth-links ynow-auth-links--home"
-  }
-  # Home: plain text Sign in · Register (About-style).
+  )
+  # Home + mobile date row: plain text links (no button chrome).
   # Header (sidebar placement): Sign in only — compact black bar has no Register entry.
   # Register remains on Home, feature gates, and the auth modal.
   home_text <- identical(placement, "home")
-  link_class <- if (home_text) {
+  date_text <- identical(placement, "date_row")
+  link_class <- if (home_text || date_text) {
     "ynow-auth-link ynow-auth-open"
   } else {
     "ynow-auth-link ynow-auth-btn ynow-auth-open"
@@ -350,6 +373,9 @@ ynow_auth_links_ui <- function(placement = c("sidebar", "home")) {
         class = "ynow-auth-link ynow-auth-register-open"
       )
     )
+  } else if (date_text) {
+    # Mobile date row: Sign in / Sign out as text links matching date font size.
+    tags$div(class = "ynow-auth-pair ynow-auth-pair--date-text", sign_in_link)
   } else {
     # Single Sign-in control (no pair / Register) for the top header bar.
     tags$div(class = "ynow-auth-pair ynow-auth-pair--signin-only", sign_in_link)
@@ -661,6 +687,45 @@ ynow_auth_css <- function() {
     "  flex:0 0 auto; margin:0; padding:0; font-size:12px; line-height:1.2;",
     "  white-space:nowrap; color:inherit;",
     "}",
+    "/* Mobile date-row auth: text links beside date (hidden on desktop). */",
+    ".ynow-auth-links--date-row {",
+    "  display:none; flex:0 0 auto; margin:0; padding:0;",
+    "  align-items:center; gap:6px;",
+    "}",
+    ".ynow-auth-links--date-row .ynow-auth-pair--date-text {",
+    "  display:inline-flex; flex-direction:row; align-items:center;",
+    "  gap:0; margin:0; padding:0;",
+    "}",
+    ".ynow-auth-links--date-row .ynow-auth-link,",
+    ".ynow-auth-links--date-row a.ynow-auth-link,",
+    ".ynow-auth-links--date-row a.ynow-auth-open,",
+    ".ynow-auth-links--date-row a.ynow-auth-signout {",
+    "  display:inline !important; height:auto !important; min-height:0 !important;",
+    "  padding:0 !important; margin:0 !important; border:0 !important;",
+    "  border-radius:0 !important; box-shadow:none !important;",
+    "  background:transparent !important; color:rgba(255,255,255,0.88) !important;",
+    "  font-size:12px !important; font-weight:500 !important; line-height:1.2 !important;",
+    "  text-decoration:none !important; white-space:nowrap !important;",
+    "}",
+    ".ynow-auth-links--date-row .ynow-auth-link:hover,",
+    ".ynow-auth-links--date-row a.ynow-auth-link:hover,",
+    ".ynow-auth-links--date-row a.ynow-auth-open:hover,",
+    ".ynow-auth-links--date-row a.ynow-auth-signout:hover {",
+    "  color:#fff !important; text-decoration:underline !important;",
+    "  background:transparent !important;",
+    "}",
+    "body.ynow-authed .ynow-auth-links--date-row a.ynow-auth-signout,",
+    "body.ynow-view-as .ynow-auth-links--date-row a.ynow-auth-signout {",
+    "  color:rgba(255,255,255,0.88) !important;",
+    "}",
+    "@media (max-width:767px) {",
+    "  .ynow-auth-links--date-row { display:inline-flex !important; }",
+    "  .main-header .navbar-custom-menu .navbar-nav > li.ynow-auth-header {",
+    "    display:none !important; width:0 !important; min-width:0 !important;",
+    "    max-width:0 !important; padding:0 !important; margin:0 !important;",
+    "    overflow:hidden !important; pointer-events:none !important;",
+    "  }",
+    "}",
     "/* Customize / Done — same row as date; signed-in only. */",
     ".ynow-sidebar-reorder-btn {",
     "  display:none !important; margin-left:auto; flex:0 0 auto;",
@@ -831,6 +896,8 @@ ynow_auth_css <- function() {
     "body.ynow-authed .ynow-auth-links .ynow-auth-pair a.ynow-auth-btn.ynow-auth-open,",
     "body.ynow-authed .ynow-auth-links--sidebar .ynow-auth-pair a.ynow-auth-open,",
     "body.ynow-authed .ynow-auth-links--sidebar .ynow-auth-pair a.ynow-auth-register-open,",
+    "body.ynow-authed .ynow-auth-links--date-row .ynow-auth-pair a.ynow-auth-open,",
+    "body.ynow-authed .ynow-auth-links--date-row .ynow-auth-pair a.ynow-auth-link,",
     "body.ynow-authed .ynow-auth-links--home .ynow-auth-pair a.ynow-auth-open,",
     "body.ynow-authed .ynow-auth-links--home .ynow-auth-pair a.ynow-auth-register-open,",
     "body.ynow-authed .ynow-auth-links--home .ynow-auth-pair a.ynow-auth-link,",
@@ -868,7 +935,9 @@ ynow_auth_css <- function() {
     "  display:inline !important; pointer-events:auto !important;",
     "}",
     "body.ynow-authed .ynow-auth-links--sidebar a.ynow-auth-signout,",
-    "body.ynow-view-as .ynow-auth-links--sidebar a.ynow-auth-signout {",
+    "body.ynow-view-as .ynow-auth-links--sidebar a.ynow-auth-signout,",
+    "body.ynow-authed .ynow-auth-links--date-row a.ynow-auth-signout,",
+    "body.ynow-view-as .ynow-auth-links--date-row a.ynow-auth-signout {",
     "  color:rgba(255,255,255,0.88) !important;",
     "}",
     "body.ynow-authed .ynow-auth-links--home a.ynow-auth-signout,",
@@ -2446,6 +2515,9 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
   observeEvent(input$ynow_auth_open, {
     .open_auth_modal()
   }, ignoreInit = TRUE)
+  observeEvent(input$ynow_auth_open_date, {
+    .open_auth_modal()
+  }, ignoreInit = TRUE)
   observeEvent(input$ynow_auth_open_home, {
     .open_auth_modal()
   }, ignoreInit = TRUE)
@@ -2769,6 +2841,10 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
   }, ignoreInit = TRUE)
 
   observeEvent(input$ynow_auth_sign_out, {
+    if (!isTRUE(ynow_auth_enabled())) return()
+    .sign_out()
+  }, ignoreInit = TRUE)
+  observeEvent(input$ynow_auth_sign_out_date, {
     if (!isTRUE(ynow_auth_enabled())) return()
     .sign_out()
   }, ignoreInit = TRUE)
