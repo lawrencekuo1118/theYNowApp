@@ -7,5 +7,5 @@ commit=9923fe14bfe93e02e332c1dd83d6bef8c2a92018
 short=9923fe14
 message=chore: bump display version to v26.09
 captured_at=2026-10-21T12:42:32Z
-display_version=v26.09
+display_version=v26.10
 note=Canonical live line is app_26.0. Bundle 12720374: order research adds TW source stack (MOPS → IR → statement cross-check; broker/industry estimate-only) and credibility labels (PR #370). Secrets only in gitignored .Renviron; no secret values in git.
