@@ -98,28 +98,35 @@ check(
   identical(ynow_prefs_get_pinned_recent(uid), "AAPL")
 )
 
-# Wiring smoke (source text).
+# Wiring smoke: prefs API remains; page-pin UX disabled in favor of tab reorder.
 srv <- paste(readLines(file.path(root, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 ui <- paste(readLines(file.path(root, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 loc <- paste(readLines(file.path(root, "ui_locale.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 auth <- paste(readLines(file.path(root, "auth_account.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 
-check("uiOutput pinned_sidebar_tabs", grepl('uiOutput\\(\"pinned_sidebar_tabs\"\\)', ui, perl = TRUE))
-check("CSS 3-column grid", grepl("grid-template-columns: repeat\\(3,", ui, perl = TRUE))
-check("JS guest localStorage key", grepl("ynow_pinned_sidebar_v1", ui, fixed = TRUE))
-check("JS MAX_PINS 12", grepl("MAX_PINS = 12", ui, fixed = TRUE))
-check("JS pinned_sidebar_toggle", grepl("pinned_sidebar_toggle", ui, fixed = TRUE))
-check("server observes sidebar toggle", grepl("observeEvent\\(input\\$pinned_sidebar_toggle", srv, perl = TRUE))
-check("server prefs get sidebar", grepl("ynow_prefs_get_pinned_sidebar", srv, fixed = TRUE))
-check("server renderUI pins", grepl("output\\$pinned_sidebar_tabs", srv, perl = TRUE))
-check("en pin max toast", grepl("sidebar_pins_max_toast", loc, fixed = TRUE))
-check("zh pin label", grepl("sidebar_pins_label = \"釘選\"", loc, fixed = TRUE))
-check("zh max toast TW", grepl("最多可釘選 12 個頁面", loc, fixed = TRUE))
-check("Lite omit hides pin tiles", {
+check("uiOutput pinned_sidebar_tabs still mounted", grepl('uiOutput\\(\"pinned_sidebar_tabs\"\\)', ui, perl = TRUE))
+check("CSS 3-column grid retained (legacy)", grepl("grid-template-columns: repeat\\(3,", ui, perl = TRUE))
+check("JS guest localStorage key stub", grepl("ynow_pinned_sidebar_v1", ui, fixed = TRUE))
+check("page-pin UX disabled comment", grepl("page-pin UX disabled", ui, ignore.case = TRUE))
+check("no menu long-press pin toggle", {
+  !grepl("Shiny.setInputValue\\('pinned_sidebar_toggle'", ui, perl = TRUE)
+})
+check("server observes sidebar toggle (no-op)", grepl("observeEvent\\(input\\$pinned_sidebar_toggle", srv, perl = TRUE))
+check("server prefs get sidebar retained", grepl("ynow_prefs_get_pinned_sidebar", srv, fixed = TRUE))
+check("server pin tray render disabled", {
+  grepl("output\\$pinned_sidebar_tabs", srv, perl = TRUE) &&
+    grepl("Page-pin tray disabled", srv, fixed = TRUE)
+})
+check("en pin max toast locale kept", grepl("sidebar_pins_max_toast", loc, fixed = TRUE))
+check("zh pin label locale kept", grepl("sidebar_pins_label = \"釘選\"", loc, fixed = TRUE))
+check("zh max toast TW locale kept", grepl("最多可釘選 12 個頁面", loc, fixed = TRUE))
+check("Lite omit pin selectors retained", {
   grepl("ynow-sidebar-pin-tile\\[data-tab=", auth, perl = TRUE) &&
     grepl("Lite: pinned tray must not surface omitted tabs", auth, fixed = TRUE)
 })
-check("pin tiles use locked chrome class", grepl("ynow-sidebar-pin-tile.ynow-sidebar-locked", ui, fixed = TRUE))
+check("legacy pin tray CSS hidden", {
+  grepl(".ynow-sidebar-pins { display:none !important; }", auth, fixed = TRUE)
+})
 
 if (fail > 0L) {
   cat("FAILED:", fail, "\n")

@@ -15,15 +15,20 @@ YNOW_PREF_PINNED_RECENT <- "pinned_recent_search"
 
 # Signed-in rolling search history (ticker lookups). Separate key from:
 # - pinned_recent_search (stock chips long-press pin)
-# - pinned_sidebar_tabs (page pins, if present)
+# - pinned_sidebar_tabs (legacy page pins — UX disabled; prefs API kept)
+# - sidebar_tab_order (signed-in menu reorder)
 # Additive only on ynow_user_prefs — sibling owns Recent-search stock pin grid UX.
 YNOW_PREF_RECENT_SEARCH_24H <- "recent_search_history_24h"
 .YNOW_RECENT_SEARCH_24H_MAX <- 20L
 .YNOW_RECENT_SEARCH_24H_SECS <- 24L * 3600L
 
 # Sidebar menu tab pins (leaf tabNames): max 12 → 3-column tray.
+# Page-pin UX is disabled (misread vs stock pins); API retained for stored prefs.
 YNOW_PREF_PINNED_SIDEBAR <- "pinned_sidebar_tabs"
 .YNOW_PINNED_SIDEBAR_MAX <- 12L
+
+# Signed-in top-level sidebar menu order (edit mode + long-press drag).
+YNOW_PREF_SIDEBAR_TAB_ORDER <- "sidebar_tab_order"
 
 .ynow_prefs_mem <- new.env(parent = emptyenv())
 .ynow_prefs_mem$by_user <- list()
@@ -128,6 +133,35 @@ ynow_prefs_normalize_sidebar_tabs <- function(tabs, max_n = .YNOW_PINNED_SIDEBAR
   # Unique preserving first occurrence (pin order).
   raw <- raw[!duplicated(raw)]
   head(raw, as.integer(max_n)[1])
+}
+
+#' Default top-level sidebar order ids (leaves + category treeviews).
+#' Category parents without a tabName use synthetic ids (`cat_asset`, …).
+ynow_sidebar_default_order <- function() {
+  c(
+    "home", "macro_market", "asset_transmission", "bluechip", "dashboard",
+    "company_advance", "sensitivity", "smart_analysis", "get_started",
+    "cat_asset", "cat_income", "cat_relative", "cat_meta",
+    "hfv", "lab_notes", "decision_checklist", "price_alerts", "about",
+    "account_admin"
+  )
+}
+
+#' Allowed order-id vocabulary for sidebar_tab_order prefs.
+ynow_sidebar_orderable_ids <- function() {
+  ynow_sidebar_default_order()
+}
+
+#' Normalize a custom sidebar order: known ids only, unique, defaults fill gaps.
+ynow_prefs_normalize_sidebar_order <- function(ids, fill_defaults = TRUE) {
+  allow <- ynow_sidebar_orderable_ids()
+  raw <- as.character(ids %||% character(0))
+  raw <- trimws(raw)
+  raw <- raw[nzchar(raw) & !is.na(raw)]
+  raw <- raw[raw %in% allow]
+  raw <- raw[!duplicated(raw)]
+  if (!isTRUE(fill_defaults)) return(raw)
+  c(raw, setdiff(ynow_sidebar_default_order(), raw))
 }
 
 ynow_prefs_ensure_schema <- function(conn = NULL) {
@@ -364,6 +398,92 @@ ynow_prefs_toggle_pinned_sidebar <- function(user_id, tab) {
   )
   attr(nxt, "at_cap") <- FALSE
   nxt
+}
+
+.ynow_prefs_parse_json_order <- function(raw) {
+  if (is.null(raw)) return(character(0))
+  if (is.character(raw) && length(raw) == 1L) {
+    parsed <- tryCatch(
+      jsonlite::fromJSON(raw, simplifyVector = TRUE),
+      error = function(e) NULL
+    )
+    if (is.null(parsed)) return(character(0))
+    return(ynow_prefs_normalize_sidebar_order(parsed, fill_defaults = TRUE))
+  }
+  if (is.list(raw) || is.character(raw)) {
+    return(ynow_prefs_normalize_sidebar_order(
+      unlist(raw, use.names = FALSE),
+      fill_defaults = TRUE
+    ))
+  }
+  character(0)
+}
+
+#' Read custom sidebar tab order for a signed-in user (defaults filled).
+ynow_prefs_get_sidebar_tab_order <- function(user_id) {
+  uid <- as.character(user_id %||% "")[1]
+  if (!nzchar(uid)) return(ynow_sidebar_default_order())
+  if (.ynow_prefs_db_on()) {
+    ynow_prefs_ensure_schema()
+    df <- ynow_db_with(function(con) {
+      DBI::dbGetQuery(
+        con,
+        paste(
+          "SELECT pref_value::text AS pref_value",
+          "FROM ynow_user_prefs",
+          "WHERE user_id = $1 AND pref_key = $2",
+          "LIMIT 1"
+        ),
+        params = list(uid, YNOW_PREF_SIDEBAR_TAB_ORDER)
+      )
+    })
+    if (is.data.frame(df) && nrow(df) >= 1L) {
+      return(.ynow_prefs_parse_json_order(df$pref_value[[1]]))
+    }
+    return(ynow_sidebar_default_order())
+  }
+  mem <- .ynow_prefs_mem$by_user[[uid]]
+  if (is.null(mem)) {
+    store <- .ynow_prefs_read_file()
+    mem <- store[[uid]]
+  }
+  if (is.list(mem) && !is.null(mem[[YNOW_PREF_SIDEBAR_TAB_ORDER]])) {
+    return(ynow_prefs_normalize_sidebar_order(mem[[YNOW_PREF_SIDEBAR_TAB_ORDER]]))
+  }
+  ynow_sidebar_default_order()
+}
+
+#' Persist custom sidebar tab order for a signed-in user id.
+ynow_prefs_set_sidebar_tab_order <- function(user_id, ids) {
+  uid <- as.character(user_id %||% "")[1]
+  if (!nzchar(uid)) return(character(0))
+  order_ids <- ynow_prefs_normalize_sidebar_order(ids, fill_defaults = TRUE)
+  payload <- jsonlite::toJSON(as.list(order_ids), auto_unbox = TRUE)
+  if (.ynow_prefs_db_on()) {
+    ynow_prefs_ensure_schema()
+    ynow_db_with(function(con) {
+      DBI::dbExecute(
+        con,
+        paste(
+          "INSERT INTO ynow_user_prefs (user_id, pref_key, pref_value, updated_at)",
+          "VALUES ($1, $2, $3::jsonb, NOW())",
+          "ON CONFLICT (user_id, pref_key) DO UPDATE",
+          "SET pref_value = EXCLUDED.pref_value, updated_at = NOW()"
+        ),
+        params = list(uid, YNOW_PREF_SIDEBAR_TAB_ORDER, as.character(payload)[1])
+      )
+    })
+    return(order_ids)
+  }
+  store <- .ynow_prefs_read_file()
+  cur <- .ynow_prefs_mem$by_user[[uid]]
+  if (!is.list(cur)) cur <- store[[uid]]
+  if (!is.list(cur)) cur <- list()
+  cur[[YNOW_PREF_SIDEBAR_TAB_ORDER]] <- as.list(order_ids)
+  .ynow_prefs_mem$by_user[[uid]] <- cur
+  store[[uid]] <- cur
+  .ynow_prefs_write_file(store)
+  order_ids
 }
 
 # ---- Recent search history (signed-in, rolling 24h) ----
