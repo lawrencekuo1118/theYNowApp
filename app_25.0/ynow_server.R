@@ -2651,6 +2651,13 @@ server <- function(input, output, session) {
   output$sc_ticker_suggest_ui <- renderUI({
     .ynow_ticker_suggest_div("sc_ticker_suggest", sc_datalist_choices(), market_mode())
   })
+  # Keep suggest HTML warm while stock chrome is hidden (Home / Macro / Blue Chip).
+  # Otherwise Shiny suspends the output and the first keystrokes after return to
+  # Company/Dashboard hit an empty host until resume (~debounce + re-render).
+  tryCatch(
+    outputOptions(output, "sc_ticker_suggest_ui", suspendWhenHidden = FALSE),
+    error = function(e) NULL
+  )
 
   output$lab_cluster_focus_suggest_ui <- renderUI({
     mode <- market_mode()
