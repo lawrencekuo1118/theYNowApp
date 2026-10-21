@@ -1631,9 +1631,35 @@ beta_rolling_section_ui <- function() {
 # ---- Lazy page bodies (mounted once via uiOutput hosts) ----
 
 #' Lazy page body for tab `macro_market` (mounted once per session).
-.ynow_page_ui_macro_market <- function() {
+#' @param locale first-paint locale (`en` / `zh-TW`); language switches still update via applyUiLocale.
+#' @param market_mode Active market so industry choices bake US ≠ TW at mount.
+.ynow_page_ui_macro_market <- function(locale = NULL, market_mode = NULL) {
+  loc <- tryCatch({
+    if (!is.null(locale) && nzchar(as.character(locale)[1])) {
+      if (exists("normalize_ui_locale", mode = "function")) {
+        normalize_ui_locale(locale)
+      } else {
+        as.character(locale)[1]
+      }
+    } else {
+      "en"
+    }
+  }, error = function(e) "en")
+  mm <- tryCatch({
+    if (!is.null(market_mode) && nzchar(as.character(market_mode)[1])) {
+      if (exists("normalize_market_mode", mode = "function")) {
+        normalize_market_mode(market_mode)
+      } else {
+        toupper(as.character(market_mode)[1])
+      }
+    } else if (exists("get_market_mode", mode = "function")) {
+      get_market_mode()
+    } else {
+      "US"
+    }
+  }, error = function(e) "US")
   tagList(
-  macro_market_ui("macro")
+    macro_market_ui("macro", locale = loc, market_mode = mm)
   )
 }
 
@@ -10008,6 +10034,27 @@ ui <- dashboardPage(
               var runIconHtml = ri ? ri.outerHTML + ' ' : '';
               macroRefresh.innerHTML = runIconHtml + s.btn_macro_refresh;
             }
+            /* Lazy Macro host may insert after this push (hasDom false). Re-apply
+               once #ynow_macro_page_title appears so zh-TW chrome is not stuck English. */
+            try {
+              if (!document.getElementById('ynow_macro_page_title') &&
+                  typeof MutationObserver !== 'undefined' &&
+                  !window.__ynowMacroLocaleWatch) {
+                window.__ynowMacroLocaleWatch = true;
+                var macroWatchPayload = payload;
+                var macroHost = document.getElementById('ynow_lazy_host_macro_market') ||
+                  document.body;
+                var macroMo = new MutationObserver(function () {
+                  if (!document.getElementById('ynow_macro_page_title')) return;
+                  macroMo.disconnect();
+                  window.__ynowMacroLocaleWatch = false;
+                  try { applyUiLocale(macroWatchPayload); } catch (eRe) {}
+                });
+                if (macroHost) {
+                  macroMo.observe(macroHost, { childList: true, subtree: true });
+                }
+              }
+            } catch (eMacroWatch) {}
             var catAsset = document.getElementById('ynow_menu_cat_asset');
             if (catAsset && s.menu_cat_asset) catAsset.textContent = s.menu_cat_asset;
             var catIncome = document.getElementById('ynow_menu_cat_income');
@@ -14703,6 +14750,13 @@ ui <- dashboardPage(
           padding-left: 8px;
           padding-right: 8px;
           margin-bottom: 12px;
+        }
+        /* Static skeleton until nested index_kpi_row uiOutput flushes */
+        .ynow-macro-kpi-host .ynow-macro-kpi--skeleton {
+          opacity: 0.85;
+        }
+        .ynow-macro-kpi-host:has(#macro-index_kpi_row > *) > .ynow-macro-kpi-skeleton {
+          display: none !important;
         }
         .ynow-macro-kpi,
         .ynow-macro-rf {
