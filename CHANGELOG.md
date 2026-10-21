@@ -15,10 +15,16 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 
 ### Changed
 
-- **Business Breakdown / 業務拆解**: Order research now leads with three disclosed facts — order quantity, major suppliers, and major-customer revenue mix. Earnings-call figures are labeled separately from filings. Quality, conversion, cash, and valuation stay in a collapsed secondary section.
-- zh-TW：訂單研究改以訂單數量、主要供應商、重大客戶營收貢獻為主。法說會數字與財報分開標示來源。其餘層收在次要區。
 - CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_26.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).
 - Docs: root README ship/CI/Release pointers; `scripts/record_github_release.sh` for soft-fail Release publish after deploy.
+
+## [v26.08] — 2026-10-21
+
+### Changed
+
+- **Business Breakdown / 業務拆解**: Order research now leads with three disclosed facts — order quantity, major suppliers, and major-customer revenue mix. Earnings-call figures are labeled separately from filings. Quality, conversion, cash, and valuation stay in a collapsed secondary section (PR #369).
+- zh-TW：訂單研究改以訂單數量、主要供應商、重大客戶營收貢獻為主。法說會數字與財報分開標示來源。其餘層收在次要區。
+- Live baseline bundle `12720232` (`scripts/DEPLOY_BASELINE.txt`).
 
 ## [v26.07] — 2026-10-21
 
