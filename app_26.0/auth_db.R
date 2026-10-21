@@ -460,6 +460,116 @@ ynow_db_try_login <- function(email, password) {
   )
 }
 
+#' Set / replace password_hash for an email user (recovery or admin bridge).
+#' Creates no new rows — fail closed when the email is unknown.
+#' OAuth-only rows may gain a real hash so Email sign-in works after recovery.
+#' @return list(ok=, message_key=)
+ynow_db_set_password_by_email <- function(email, password) {
+  if (!isTRUE(ynow_db_ready())) {
+    return(list(ok = FALSE, message_key = "auth_msg_no_backend"))
+  }
+  em <- ynow_auth_norm_email(email)
+  pw <- as.character(password %||% "")[1]
+  if (!nzchar(em) || !nzchar(pw)) {
+    return(list(ok = FALSE, message_key = "auth_msg_missing"))
+  }
+  if (nchar(pw) < 8L) {
+    return(list(ok = FALSE, message_key = "auth_msg_password_short"))
+  }
+  u <- ynow_db_get_user_by_email(em)
+  if (is.null(u)) {
+    return(list(ok = FALSE, message_key = "auth_msg_reset_no_account"))
+  }
+  if (isTRUE(as.logical(u$disabled %||% FALSE))) {
+    return(list(ok = FALSE, message_key = "auth_msg_disabled_account"))
+  }
+  ph <- tryCatch(ynow_db_hash_password(pw), error = function(e) NULL)
+  if (is.null(ph)) {
+    return(list(ok = FALSE, message_key = "auth_msg_reset_failed"))
+  }
+  ok <- ynow_db_with(function(con) {
+    DBI::dbExecute(
+      con,
+      "UPDATE ynow_users
+          SET password_hash = $1,
+              provider = CASE
+                WHEN provider IN ('google', 'facebook', 'apple', 'linkedin', 'supabase', 'oauth')
+                THEN provider
+                ELSE 'password'
+              END
+        WHERE lower(email) = $2",
+      params = list(ph, em)
+    )
+    TRUE
+  })
+  if (!isTRUE(ok)) {
+    return(list(ok = FALSE, message_key = "auth_msg_reset_failed"))
+  }
+  list(ok = TRUE, message_key = "auth_msg_reset_ok")
+}
+
+#' Signed-in change password (current → new) against ynow_users.
+#' OAuth-only sentinel hashes may set a first password without current.
+#' @return list(ok=, message_key=)
+ynow_db_change_password <- function(user_id, current_password, new_password) {
+  if (!isTRUE(ynow_db_ready())) {
+    return(list(ok = FALSE, message_key = "auth_msg_no_backend"))
+  }
+  uid <- as.character(user_id %||% "")[1]
+  cur <- as.character(current_password %||% "")[1]
+  pw <- as.character(new_password %||% "")[1]
+  if (!nzchar(uid)) {
+    return(list(ok = FALSE, message_key = "auth_msg_change_need_login"))
+  }
+  if (!nzchar(pw) || nchar(pw) < 8L) {
+    return(list(ok = FALSE, message_key = "auth_msg_password_short"))
+  }
+  u <- ynow_db_with(function(con) {
+    df <- DBI::dbGetQuery(
+      con,
+      "SELECT id::text AS id, email, password_hash, disabled
+         FROM ynow_users
+        WHERE id = $1::uuid
+        LIMIT 1",
+      params = list(uid)
+    )
+    if (!is.data.frame(df) || nrow(df) < 1L) return(NULL)
+    as.list(df[1, , drop = FALSE])
+  })
+  if (is.null(u)) {
+    return(list(ok = FALSE, message_key = "auth_msg_change_need_login"))
+  }
+  if (isTRUE(as.logical(u$disabled %||% FALSE))) {
+    return(list(ok = FALSE, message_key = "auth_msg_disabled_account"))
+  }
+  hash <- as.character(u$password_hash %||% "")[1]
+  oauth_only <- startsWith(hash, "oauth$")
+  if (!isTRUE(oauth_only)) {
+    if (!nzchar(cur) || !isTRUE(ynow_db_verify_password(cur, hash))) {
+      return(list(ok = FALSE, message_key = "auth_msg_change_bad_current"))
+    }
+  }
+  if (nzchar(cur) && identical(cur, pw)) {
+    return(list(ok = FALSE, message_key = "auth_msg_change_same"))
+  }
+  ph <- tryCatch(ynow_db_hash_password(pw), error = function(e) NULL)
+  if (is.null(ph)) {
+    return(list(ok = FALSE, message_key = "auth_msg_change_failed"))
+  }
+  ok <- ynow_db_with(function(con) {
+    DBI::dbExecute(
+      con,
+      "UPDATE ynow_users SET password_hash = $1 WHERE id = $2::uuid",
+      params = list(ph, uid)
+    )
+    TRUE
+  })
+  if (!isTRUE(ok)) {
+    return(list(ok = FALSE, message_key = "auth_msg_change_failed"))
+  }
+  list(ok = TRUE, message_key = "auth_msg_change_ok")
+}
+
 #' Upsert a self-serve Google / Facebook user. No admin approval.
 #' Existing Email users with the same address are linked and signed in.
 #' New rows always get role = "user" and disabled = FALSE.

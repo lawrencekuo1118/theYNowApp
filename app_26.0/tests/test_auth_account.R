@@ -409,7 +409,16 @@ keys <- c(
   "auth_msg_oauth_no_email", "auth_msg_register_soon", "auth_msg_register_ok",
   "auth_msg_register_failed", "auth_msg_email_taken", "auth_msg_password_short",
   "auth_msg_disabled_account", "auth_about_postgres",
-  "auth_msg_forgot_soon", "auth_msg_resend_soon", "auth_about_note",
+  "auth_msg_forgot_soon", "auth_msg_forgot_email", "auth_msg_forgot_sent",
+  "auth_msg_forgot_failed", "auth_msg_reset_ready", "auth_msg_reset_ok",
+  "auth_msg_reset_failed", "auth_msg_reset_session", "auth_msg_reset_no_account",
+  "auth_msg_password_mismatch", "auth_reset_help", "auth_reset_password_label",
+  "auth_reset_password2_label", "auth_reset_submit", "auth_reset_back",
+  "auth_modal_title_reset", "auth_change_pw_title", "auth_change_pw_help",
+  "auth_change_pw_current", "auth_change_pw_new", "auth_change_pw_confirm",
+  "auth_change_pw_submit", "auth_msg_change_ok", "auth_msg_change_failed",
+  "auth_msg_change_need_login", "auth_msg_change_bad_current", "auth_msg_change_same",
+  "auth_msg_resend_soon", "auth_about_note",
   "menu_admin", "auth_admin_title", "auth_admin_intro",
   "auth_delete_account", "auth_delete_modal_title", "auth_delete_modal_warn",
   "auth_delete_modal_type", "auth_delete_modal_confirm", "auth_delete_modal_cancel",
@@ -1023,6 +1032,112 @@ check("display version v25/v26", grepl("The YNow App v2[56]", ui, perl = TRUE))
 
 # Live line folder name
 check("live folder is app_26.0", basename(app_dir) == "app_26.0")
+
+# ---- Forgot password / recovery (Supabase Auth) ----
+check("password reset helpers exist", {
+  exists("ynow_auth_request_password_reset", mode = "function") &&
+    exists("ynow_auth_complete_password_reset", mode = "function") &&
+    exists("ynow_oauth_supabase_recover", mode = "function") &&
+    exists("ynow_oauth_password_reset_ready", mode = "function") &&
+    exists("ynow_db_set_password_by_email", mode = "function") &&
+    exists("ynow_db_change_password", mode = "function")
+})
+check("forgot fails closed without Supabase", {
+  Sys.unsetenv("YNOW_SUPABASE_URL")
+  Sys.unsetenv("YNOW_SUPABASE_ANON_KEY")
+  Sys.setenv(YNOW_ENABLE_ACCOUNT_LOGIN = "1")
+  r <- ynow_auth_request_password_reset("someone@example.com")
+  identical(r$ok, FALSE) && identical(r$message_key, "auth_msg_forgot_soon")
+})
+check("forgot rejects empty / invalid email", {
+  Sys.setenv(
+    YNOW_ENABLE_ACCOUNT_LOGIN = "1",
+    YNOW_SUPABASE_URL = "https://abc.supabase.co",
+    YNOW_SUPABASE_ANON_KEY = "anon-key"
+  )
+  r1 <- ynow_auth_request_password_reset("")
+  r2 <- ynow_auth_request_password_reset("not-an-email")
+  identical(r1$message_key, "auth_msg_forgot_email") &&
+    identical(r2$message_key, "auth_msg_forgot_email")
+})
+check("forgot disabled when auth off", {
+  Sys.setenv(YNOW_ENABLE_ACCOUNT_LOGIN = "0")
+  r <- ynow_auth_request_password_reset("a@b.com")
+  identical(r$ok, FALSE) && identical(r$message_key, "auth_msg_disabled")
+})
+check("forgot request is anti-enumeration (source + stub recover)", {
+  oauth_src <- paste(readLines(src_oauth, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  anti <- grepl("auth_msg_forgot_sent", oauth_src, fixed = TRUE) &&
+    grepl("Always generic success", oauth_src, fixed = TRUE)
+  # Stub recover so the unit path never hits the network.
+  Sys.setenv(
+    YNOW_ENABLE_ACCOUNT_LOGIN = "1",
+    YNOW_SUPABASE_URL = "https://abc.supabase.co",
+    YNOW_SUPABASE_ANON_KEY = "anon-key"
+  )
+  Sys.unsetenv("YNOW_SUPABASE_SERVICE_ROLE")
+  stub_env <- environment(ynow_auth_request_password_reset)
+  old_recover <- get("ynow_oauth_supabase_recover", envir = stub_env, inherits = TRUE)
+  assign(
+    "ynow_oauth_supabase_recover",
+    function(email, redirect_to = NULL) {
+      list(ok = TRUE, status = 200L, message_key = "auth_msg_forgot_sent")
+    },
+    envir = stub_env
+  )
+  on.exit(
+    assign("ynow_oauth_supabase_recover", old_recover, envir = stub_env),
+    add = TRUE
+  )
+  r_known <- ynow_auth_request_password_reset("known@example.com")
+  r_unknown <- ynow_auth_request_password_reset("unknown.user@example.com")
+  anti && isTRUE(r_known$ok) && isTRUE(r_unknown$ok) &&
+    identical(r_known$message_key, "auth_msg_forgot_sent") &&
+    identical(r_unknown$message_key, "auth_msg_forgot_sent")
+})
+check("zh-TW forgot copy uses 忘記密碼 / 重設", {
+  grepl("忘記密碼", ui_str("auth_forgot", "zh-TW"), fixed = TRUE) &&
+    grepl("重設", ui_str("auth_msg_forgot_sent", "zh-TW"), fixed = TRUE) &&
+    grepl("變更密碼", ui_str("auth_change_pw_title", "zh-TW"), fixed = TRUE) &&
+    !grepl("忘记", ui_str("auth_forgot", "zh-TW"), fixed = TRUE) &&
+    !grepl("重置", ui_str("auth_msg_forgot_sent", "zh-TW"), fixed = TRUE)
+})
+check("modal includes forgot + reset panel", {
+  Sys.setenv(YNOW_ENABLE_ACCOUNT_LOGIN = "1")
+  m <- ynow_auth_modal_ui()
+  html <- paste(as.character(m), collapse = "")
+  grepl("ynow_auth_forgot", html, fixed = TRUE) &&
+    grepl("ynow-auth-reset-block", html, fixed = TRUE) &&
+    grepl("ynow_auth_reset_submit", html, fixed = TRUE) &&
+    grepl("ynow_auth_reset_password", html, fixed = TRUE)
+})
+check("UI wires recovery type + reset mode", {
+  grepl("ynowAuthResetMode", ui, fixed = TRUE) &&
+    grepl("ynow-auth-mode-reset", ui, fixed = TRUE) &&
+    grepl("type: String(authType", ui, fixed = TRUE)
+})
+check("admin panel includes change password", {
+  Sys.setenv(YNOW_ENABLE_ACCOUNT_LOGIN = "1")
+  p <- ynow_admin_panel_ui(
+    list(email = "u@example.com", logged_in_at = "now"),
+    locale = "en"
+  )
+  html <- paste(as.character(p), collapse = "")
+  grepl("ynow_auth_change_pw_slot", html, fixed = TRUE) &&
+    grepl("ynow_auth_change_submit", html, fixed = TRUE)
+})
+check("complete reset rejects mismatch / short", {
+  Sys.setenv(YNOW_ENABLE_ACCOUNT_LOGIN = "1")
+  r1 <- ynow_auth_complete_password_reset("tok", "abcdefghi", "different1")
+  r2 <- ynow_auth_complete_password_reset("tok", "short", "short")
+  identical(r1$message_key, "auth_msg_password_mismatch") &&
+    identical(r2$message_key, "auth_msg_password_short")
+})
+check("locale forgot_sent anti-enumeration wording", {
+  en <- ui_str("auth_msg_forgot_sent", "en")
+  grepl("If an account exists", en, fixed = TRUE) &&
+    !grepl("not found", en, ignore.case = TRUE)
+})
 
 cat(sprintf("PASS %d  FAIL %d\n", pass, fail))
 if (fail > 0L) quit(status = 1L)

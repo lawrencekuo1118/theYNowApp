@@ -416,7 +416,7 @@ ynow_auth_home_ui <- function() {
 }
 
 #' Login modal — StatementDog-style card; YNow ink / logo-blue / wash palette.
-#' Social / register / forgot are UI stubs until OAuth + free DB are wired.
+#' Forgot password uses Supabase Auth /recover; recovery return shows set-password.
 ynow_auth_modal_ui <- function() {
   if (!isTRUE(ynow_auth_enabled())) return(NULL)
   shinyBS::bsModal(
@@ -432,100 +432,154 @@ ynow_auth_modal_ui <- function() {
         class = "ynow-auth-help-sr",
         "Sign in with your account email and password."
       ),
-      actionButton(
-        inputId = "ynow_auth_google",
-        label = tagList(
-          .ynow_auth_google_icon(),
-          tags$span(id = "ynow_auth_google_label", "Continue with Google")
-        ),
-        class = "ynow-auth-social ynow-auth-social--google"
-      ),
-      actionButton(
-        inputId = "ynow_auth_facebook",
-        label = tagList(
-          .ynow_auth_facebook_icon(),
-          tags$span(id = "ynow_auth_facebook_label", "Continue with Facebook")
-        ),
-        class = "ynow-auth-social ynow-auth-social--facebook"
-      ),
-      actionButton(
-        inputId = "ynow_auth_linkedin",
-        label = tagList(
-          .ynow_auth_linkedin_icon(),
-          tags$span(id = "ynow_auth_linkedin_label", "Continue with LinkedIn")
-        ),
-        class = "ynow-auth-social ynow-auth-social--linkedin"
-      ),
       tags$div(
-        class = "ynow-auth-divider",
-        tags$span(id = "ynow_auth_or_email", "Or sign in with Email")
-      ),
-      tags$div(
-        class = "ynow-auth-field",
-        tags$label(
-          `for` = "ynow_auth_email",
-          tags$span(id = "ynow_auth_email_label", "Enter your Email account:")
+        class = "ynow-auth-signin-block",
+        actionButton(
+          inputId = "ynow_auth_google",
+          label = tagList(
+            .ynow_auth_google_icon(),
+            tags$span(id = "ynow_auth_google_label", "Continue with Google")
+          ),
+          class = "ynow-auth-social ynow-auth-social--google"
         ),
-        tags$input(
-          id = "ynow_auth_email",
-          type = "email",
-          class = "form-control ynow-auth-input",
-          value = "",
-          autocomplete = "username",
-          placeholder = "you@example.com"
-        )
-      ),
-      tags$div(
-        class = "ynow-auth-field",
-        tags$label(
-          `for` = "ynow_auth_password",
-          tags$span(id = "ynow_auth_password_label", "Enter password:")
+        actionButton(
+          inputId = "ynow_auth_facebook",
+          label = tagList(
+            .ynow_auth_facebook_icon(),
+            tags$span(id = "ynow_auth_facebook_label", "Continue with Facebook")
+          ),
+          class = "ynow-auth-social ynow-auth-social--facebook"
         ),
-        tags$input(
-          id = "ynow_auth_password",
-          type = "password",
-          class = "form-control ynow-auth-input",
-          value = "",
-          autocomplete = "current-password"
+        actionButton(
+          inputId = "ynow_auth_linkedin",
+          label = tagList(
+            .ynow_auth_linkedin_icon(),
+            tags$span(id = "ynow_auth_linkedin_label", "Continue with LinkedIn")
+          ),
+          class = "ynow-auth-social ynow-auth-social--linkedin"
         ),
         tags$div(
-          class = "ynow-auth-forgot-row",
+          class = "ynow-auth-divider",
+          tags$span(id = "ynow_auth_or_email", "Or sign in with Email")
+        ),
+        tags$div(
+          class = "ynow-auth-field",
+          tags$label(
+            `for` = "ynow_auth_email",
+            tags$span(id = "ynow_auth_email_label", "Enter your Email account:")
+          ),
+          tags$input(
+            id = "ynow_auth_email",
+            type = "email",
+            class = "form-control ynow-auth-input",
+            value = "",
+            autocomplete = "username",
+            placeholder = "you@example.com"
+          )
+        ),
+        tags$div(
+          class = "ynow-auth-field",
+          tags$label(
+            `for` = "ynow_auth_password",
+            tags$span(id = "ynow_auth_password_label", "Enter password:")
+          ),
+          tags$input(
+            id = "ynow_auth_password",
+            type = "password",
+            class = "form-control ynow-auth-input",
+            value = "",
+            autocomplete = "current-password"
+          ),
+          tags$div(
+            class = "ynow-auth-forgot-row",
+            actionLink(
+              "ynow_auth_forgot",
+              label = tags$span(id = "ynow_auth_forgot_label", "Forgot password?"),
+              class = "ynow-auth-text-link"
+            )
+          )
+        ),
+        tags$div(
+          class = "ynow-auth-pair ynow-auth-pair--modal",
+          actionButton(
+            "ynow_auth_submit",
+            label = tags$span(id = "ynow_auth_submit_label", "Email sign-in"),
+            class = "ynow-auth-email-submit ynow-auth-btn"
+          ),
+          actionButton(
+            "ynow_auth_register",
+            label = tags$span(
+              id = "ynow_auth_register_label",
+              class = "ynow-auth-register-label",
+              "Register"
+            ),
+            class = "ynow-auth-register-submit ynow-auth-btn"
+          )
+        ),
+        tags$div(
+          class = "ynow-auth-card-foot",
           actionLink(
-            "ynow_auth_forgot",
-            label = tags$span(id = "ynow_auth_forgot_label", "Forgot password?"),
+            "ynow_auth_resend",
+            label = tags$span(
+              id = "ynow_auth_resend_label",
+              "Didn't receive the verification email"
+            ),
             class = "ynow-auth-text-link"
           )
         )
       ),
-      uiOutput("ynow_auth_status"),
+      # Shown after Supabase recovery redirect (type=recovery); hides sign-in block.
       tags$div(
-        class = "ynow-auth-pair ynow-auth-pair--modal",
-        actionButton(
-          "ynow_auth_submit",
-          label = tags$span(id = "ynow_auth_submit_label", "Email sign-in"),
-          class = "ynow-auth-email-submit ynow-auth-btn"
+        class = "ynow-auth-reset-block",
+        style = "display:none;",
+        tags$p(
+          id = "ynow_auth_reset_help",
+          class = "ynow-auth-reset-help",
+          "Choose a new password for your account."
+        ),
+        tags$div(
+          class = "ynow-auth-field",
+          tags$label(
+            `for` = "ynow_auth_reset_password",
+            tags$span(id = "ynow_auth_reset_password_label", "New password:")
+          ),
+          tags$input(
+            id = "ynow_auth_reset_password",
+            type = "password",
+            class = "form-control ynow-auth-input",
+            value = "",
+            autocomplete = "new-password"
+          )
+        ),
+        tags$div(
+          class = "ynow-auth-field",
+          tags$label(
+            `for` = "ynow_auth_reset_password2",
+            tags$span(id = "ynow_auth_reset_password2_label", "Confirm new password:")
+          ),
+          tags$input(
+            id = "ynow_auth_reset_password2",
+            type = "password",
+            class = "form-control ynow-auth-input",
+            value = "",
+            autocomplete = "new-password"
+          )
         ),
         actionButton(
-          "ynow_auth_register",
-          label = tags$span(
-            id = "ynow_auth_register_label",
-            class = "ynow-auth-register-label",
-            "Register"
-          ),
-          class = "ynow-auth-register-submit ynow-auth-btn"
+          "ynow_auth_reset_submit",
+          label = tags$span(id = "ynow_auth_reset_submit_label", "Save new password"),
+          class = "ynow-auth-email-submit ynow-auth-btn ynow-auth-reset-submit"
+        ),
+        tags$div(
+          class = "ynow-auth-forgot-row",
+          actionLink(
+            "ynow_auth_reset_back",
+            label = tags$span(id = "ynow_auth_reset_back_label", "Back to sign in"),
+            class = "ynow-auth-text-link"
+          )
         )
       ),
-      tags$div(
-        class = "ynow-auth-card-foot",
-        actionLink(
-          "ynow_auth_resend",
-          label = tags$span(
-            id = "ynow_auth_resend_label",
-            "Didn't receive the verification email"
-          ),
-          class = "ynow-auth-text-link"
-        )
-      )
+      uiOutput("ynow_auth_status")
     ),
     footer = tags$button(
       type = "button",
@@ -918,6 +972,25 @@ ynow_auth_css <- function() {
     "  background:#fff !important;",
     "}",
     ".ynow-auth-forgot-row { margin:6px 0 0; }",
+    "#ynow_auth_modal.ynow-auth-mode-reset .ynow-auth-signin-block { display:none !important; }",
+    "#ynow_auth_modal.ynow-auth-mode-reset .ynow-auth-reset-block { display:block !important; }",
+    "#ynow_auth_modal:not(.ynow-auth-mode-reset) .ynow-auth-reset-block { display:none !important; }",
+    ".ynow-auth-reset-help { font-size:13px; color:#555; margin:0 0 12px; line-height:1.45; }",
+    ".ynow-auth-reset-submit { width:100%; margin-top:8px; }",
+    ".ynow-auth-change-pw {",
+    "  margin: 16px 0 8px 0;",
+    "  padding: 12px 14px;",
+    "  border: 1px solid var(--ynow-maint-line, #d5e5dc);",
+    "  border-radius: 4px;",
+    "  background: #fff;",
+    "}",
+    ".ynow-auth-change-pw .ynow-auth-change-pw-title {",
+    "  margin: 0 0 6px 0; font-size: 15px; font-weight: 600;",
+    "}",
+    ".ynow-auth-change-pw .ynow-auth-change-pw-help {",
+    "  margin: 0 0 10px 0; font-size: 13px; color: #666; line-height: 1.45;",
+    "}",
+    ".ynow-auth-change-pw .ynow-auth-field { margin: 0 0 10px 0; }",
     ".ynow-auth-text-link,",
     "#ynow_auth_modal a.ynow-auth-text-link {",
     "  color:var(--ynow-logo-blue, #0C5484) !important;",
@@ -1815,6 +1888,74 @@ ynow_admin_panel_ui <- function(user, locale = "zh-TW", build_version = "",
             ))
           ),
           tags$div(
+            class = "ynow-auth-change-pw",
+            id = "ynow_auth_change_pw_slot",
+            tags$h5(
+              class = "ynow-auth-change-pw-title",
+              id = "ynow_auth_change_pw_title",
+              .lab("auth_change_pw_title", "Change password")
+            ),
+            tags$p(
+              class = "ynow-auth-change-pw-help",
+              id = "ynow_auth_change_pw_help",
+              .lab(
+                "auth_change_pw_help",
+                "Update the Email sign-in password for this account. Social-only accounts can set a first password here without a current password."
+              )
+            ),
+            tags$div(
+              class = "ynow-auth-field",
+              tags$label(
+                `for` = "ynow_auth_change_current",
+                tags$span(id = "ynow_auth_change_current_label", .lab("auth_change_pw_current", "Current password"))
+              ),
+              tags$input(
+                id = "ynow_auth_change_current",
+                type = "password",
+                class = "form-control ynow-auth-input",
+                value = "",
+                autocomplete = "current-password"
+              )
+            ),
+            tags$div(
+              class = "ynow-auth-field",
+              tags$label(
+                `for` = "ynow_auth_change_new",
+                tags$span(id = "ynow_auth_change_new_label", .lab("auth_change_pw_new", "New password"))
+              ),
+              tags$input(
+                id = "ynow_auth_change_new",
+                type = "password",
+                class = "form-control ynow-auth-input",
+                value = "",
+                autocomplete = "new-password"
+              )
+            ),
+            tags$div(
+              class = "ynow-auth-field",
+              tags$label(
+                `for` = "ynow_auth_change_new2",
+                tags$span(id = "ynow_auth_change_new2_label", .lab("auth_change_pw_confirm", "Confirm new password"))
+              ),
+              tags$input(
+                id = "ynow_auth_change_new2",
+                type = "password",
+                class = "form-control ynow-auth-input",
+                value = "",
+                autocomplete = "new-password"
+              )
+            ),
+            actionButton(
+              "ynow_auth_change_submit",
+              label = tags$span(
+                id = "ynow_auth_change_submit_label",
+                .lab("auth_change_pw_submit", "Update password")
+              ),
+              class = "btn-primary btn-sm ynow-maint-btn-primary"
+            ),
+            uiOutput("ynow_auth_change_status")
+          ),
+          tags$div(
             class = "ynow-maint-actions",
             actionButton(
               "ynow_admin_goto_points",
@@ -2223,6 +2364,8 @@ ynow_pa_guest_gate_ui <- function() {
 #' @return list(enabled, user, is_logged_in, is_guest)
 ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
   account_user <- reactiveVal(NULL)
+  # Session-only recovery access_token (never logged / never sent to client).
+  recovery_access_token <- reactiveVal("")
 
   .loc <- function() {
     if (is.function(ui_locale)) {
@@ -2235,10 +2378,18 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
     tryCatch(ui_str(key, .loc()), error = function(e) fallback)
   }
 
+  .set_auth_modal_reset_mode <- function(on = TRUE) {
+    session$sendCustomMessage(
+      "ynowAuthResetMode",
+      list(on = isTRUE(on))
+    )
+  }
+
   output$ynow_auth_status <- renderUI({
     if (!isTRUE(ynow_auth_enabled())) return(NULL)
     NULL
   })
+  output$ynow_auth_change_status <- renderUI({ NULL })
 
   .push_auth_state <- function(logged_in = FALSE, email = "") {
     session$sendCustomMessage(
@@ -2443,15 +2594,45 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
   }, ignoreInit = TRUE)
 
   # Browser returned from Google / Facebook / LinkedIn / Supabase with code or access_token.
-  # Self-serve: upsert into Neon (role=user) and sign in — no admin permission step.
+  # Recovery links (type=recovery) open set-password UI instead of auto sign-in.
+  # Self-serve social: upsert into Neon (role=user) and sign in — no admin permission step.
   observeEvent(input$ynow_auth_oauth_callback, {
     if (!isTRUE(ynow_auth_enabled())) return()
+    payload <- input$ynow_auth_oauth_callback
+    restore_tab <- as.character(payload$restore_tab %||% "")[1]
+    cb_type <- tolower(trimws(as.character(payload$type %||% "")[1]))
+    access <- as.character(payload$access_token %||% "")[1]
+    if (identical(cb_type, "recovery")) {
+      # Implicit hash tokens, or PKCE ?code= → exchange for access_token.
+      if (!nzchar(access) && exists("ynow_oauth_supabase_exchange_code", mode = "function")) {
+        code <- as.character(payload$code %||% "")[1]
+        ver <- as.character(payload$code_verifier %||% "")[1]
+        if (nzchar(code)) {
+          ex <- tryCatch(
+            ynow_oauth_supabase_exchange_code(code, ver),
+            error = function(e) list(ok = FALSE)
+          )
+          access <- as.character(ex$access_token %||% "")[1]
+        }
+      }
+      if (!nzchar(access)) {
+        .show_auth_note("auth_msg_reset_session", "Reset session expired. Request a new link.", cls = "text-danger")
+        return()
+      }
+      recovery_access_token(access)
+      .set_auth_modal_reset_mode(TRUE)
+      tryCatch(shinyBS::toggleModal(session, "ynow_auth_modal", "open"), error = function(e) NULL)
+      .show_auth_note(
+        "auth_msg_reset_ready",
+        "Enter and confirm your new password.",
+        cls = "text-muted"
+      )
+      return()
+    }
     if (!exists("ynow_oauth_complete", mode = "function")) {
       .show_auth_note("auth_msg_oauth_failed", "Social sign-in failed.")
       return()
     }
-    payload <- input$ynow_auth_oauth_callback
-    restore_tab <- as.character(payload$restore_tab %||% "")[1]
     oauth_res <- ynow_oauth_complete(payload)
     if (!isTRUE(oauth_res$ok) || is.null(oauth_res$user)) {
       mk <- as.character(oauth_res$message_key %||% "auth_msg_oauth_failed")[1]
@@ -2472,7 +2653,98 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
   }, ignoreInit = TRUE)
   observeEvent(input$ynow_auth_forgot, {
     if (!isTRUE(ynow_auth_enabled())) return()
-    .show_auth_note("auth_msg_forgot_soon", "Password reset is not available yet.")
+    if (!exists("ynow_auth_request_password_reset", mode = "function")) {
+      .show_auth_note("auth_msg_forgot_soon", "Password reset is not available yet.")
+      return()
+    }
+    res <- ynow_auth_request_password_reset(input$ynow_auth_email)
+    mk <- as.character(res$message_key %||% "auth_msg_forgot_soon")[1]
+    cls <- if (isTRUE(res$ok) || identical(mk, "auth_msg_forgot_sent")) {
+      "text-success"
+    } else if (identical(mk, "auth_msg_forgot_email")) {
+      "text-danger"
+    } else {
+      "text-muted"
+    }
+    fallback <- if (identical(mk, "auth_msg_forgot_sent")) {
+      "If an account exists for that email, a reset link has been sent."
+    } else if (identical(mk, "auth_msg_forgot_email")) {
+      "Enter a valid email address to reset your password."
+    } else {
+      "Password reset is not available yet."
+    }
+    .show_auth_note(mk, fallback, cls = cls)
+  }, ignoreInit = TRUE)
+  observeEvent(input$ynow_auth_reset_submit, {
+    if (!isTRUE(ynow_auth_enabled())) return()
+    tok <- as.character(recovery_access_token() %||% "")[1]
+    if (!nzchar(tok)) {
+      .show_auth_note("auth_msg_reset_session", "Reset session expired. Request a new link.", cls = "text-danger")
+      .set_auth_modal_reset_mode(FALSE)
+      return()
+    }
+    if (!exists("ynow_auth_complete_password_reset", mode = "function")) {
+      .show_auth_note("auth_msg_reset_failed", "Could not update password.", cls = "text-danger")
+      return()
+    }
+    res <- ynow_auth_complete_password_reset(
+      tok,
+      input$ynow_auth_reset_password,
+      input$ynow_auth_reset_password2
+    )
+    if (isTRUE(res$ok) && !is.null(res$user)) {
+      recovery_access_token("")
+      .set_auth_modal_reset_mode(FALSE)
+      .finish_auth_success(
+        res$user,
+        message_key = res$message_key %||% "auth_msg_reset_ok",
+        fallback = "Password updated. Signed in.",
+        restore_tab = as.character(input$ynow_auth_restore_tab %||% "")[1]
+      )
+    } else {
+      mk <- as.character(res$message_key %||% "auth_msg_reset_failed")[1]
+      .show_auth_note(mk, "Could not update password.", cls = "text-danger")
+    }
+  }, ignoreInit = TRUE)
+  observeEvent(input$ynow_auth_reset_back, {
+    if (!isTRUE(ynow_auth_enabled())) return()
+    recovery_access_token("")
+    .set_auth_modal_reset_mode(FALSE)
+    output$ynow_auth_status <- renderUI({ NULL })
+  }, ignoreInit = TRUE)
+  observeEvent(input$ynow_auth_change_submit, {
+    if (!isTRUE(ynow_auth_enabled())) return()
+    u <- account_user()
+    if (!is.list(u) || !nzchar(as.character(u$id %||% "")[1])) {
+      output$ynow_auth_change_status <- renderUI({
+        tags$p(class = "text-danger", .str("auth_msg_change_need_login", "Sign in to change your password."))
+      })
+      return()
+    }
+    pw <- as.character(input$ynow_auth_change_new %||% "")[1]
+    conf <- as.character(input$ynow_auth_change_new2 %||% "")[1]
+    if (!identical(pw, conf)) {
+      output$ynow_auth_change_status <- renderUI({
+        tags$p(class = "text-danger", .str("auth_msg_password_mismatch", "New passwords do not match."))
+      })
+      return()
+    }
+    if (!exists("ynow_db_change_password", mode = "function")) {
+      output$ynow_auth_change_status <- renderUI({
+        tags$p(class = "text-muted", .str("auth_msg_no_backend", "Sign-in backend is not configured yet."))
+      })
+      return()
+    }
+    res <- ynow_db_change_password(
+      u$id,
+      input$ynow_auth_change_current,
+      pw
+    )
+    mk <- as.character(res$message_key %||% "auth_msg_change_failed")[1]
+    cls <- if (isTRUE(res$ok)) "text-success" else "text-danger"
+    output$ynow_auth_change_status <- renderUI({
+      tags$p(class = cls, .str(mk, if (isTRUE(res$ok)) "Password updated." else "Could not update password."))
+    })
   }, ignoreInit = TRUE)
   observeEvent(input$ynow_auth_register, {
     if (!isTRUE(ynow_auth_enabled())) return()
@@ -2673,6 +2945,42 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
         facebook = tryCatch(ui_str("auth_facebook", loc), error = function(e) "Continue with Facebook"),
         linkedin = tryCatch(ui_str("auth_linkedin", loc), error = function(e) "Continue with LinkedIn"),
         forgot = tryCatch(ui_str("auth_forgot", loc), error = function(e) "Forgot password?"),
+        reset_help = tryCatch(
+          ui_str("auth_reset_help", loc),
+          error = function(e) "Choose a new password for your account (at least 8 characters)."
+        ),
+        reset_password_label = tryCatch(
+          ui_str("auth_reset_password_label", loc),
+          error = function(e) "New password:"
+        ),
+        reset_password2_label = tryCatch(
+          ui_str("auth_reset_password2_label", loc),
+          error = function(e) "Confirm new password:"
+        ),
+        reset_submit = tryCatch(ui_str("auth_reset_submit", loc), error = function(e) "Save new password"),
+        reset_back = tryCatch(ui_str("auth_reset_back", loc), error = function(e) "Back to sign in"),
+        modal_title_reset = tryCatch(
+          ui_str("auth_modal_title_reset", loc),
+          error = function(e) "Set a new password"
+        ),
+        change_pw_title = tryCatch(
+          ui_str("auth_change_pw_title", loc),
+          error = function(e) "Change password"
+        ),
+        change_pw_help = tryCatch(ui_str("auth_change_pw_help", loc), error = function(e) ""),
+        change_pw_current = tryCatch(
+          ui_str("auth_change_pw_current", loc),
+          error = function(e) "Current password"
+        ),
+        change_pw_new = tryCatch(ui_str("auth_change_pw_new", loc), error = function(e) "New password"),
+        change_pw_confirm = tryCatch(
+          ui_str("auth_change_pw_confirm", loc),
+          error = function(e) "Confirm new password"
+        ),
+        change_pw_submit = tryCatch(
+          ui_str("auth_change_pw_submit", loc),
+          error = function(e) "Update password"
+        ),
         register = tryCatch(ui_str("auth_register", loc), error = function(e) "Register a new account"),
         register_btn = tryCatch(ui_str("auth_register_btn", loc), error = function(e) "Register"),
         modal_title_register = tryCatch(
