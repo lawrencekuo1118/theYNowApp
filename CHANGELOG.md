@@ -13,6 +13,10 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 
 ## [Unreleased]
 
+### Added
+
+- **US earnings-call ingest / 美股法說會擷取**: BBLab order-research path for US tickers — licensed transcript API (env keys only) → SEC 8-K body → company IR link-out. Seeking Alpha is human outbound only (no SA HTML scrape). Honest empty when undisclosed; TW leave-as-is. Attaches `order_disclosures$earnings_call` + UI block (en-US + zh-TW).
+
 ### Changed
 
 - CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_26.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).
