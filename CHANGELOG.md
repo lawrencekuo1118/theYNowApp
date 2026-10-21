@@ -18,6 +18,18 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 - CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_26.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).
 - Docs: root README ship/CI/Release pointers; `scripts/record_github_release.sh` for soft-fail Release publish after deploy.
 
+## [v26.04] — 2026-10-21
+
+### Added
+
+- **Business Breakdown / 業務拆解**: **Company orders & market concentration** block — major markets (filed geography / customer location), major customers, and major suppliers, charted with native plotly (PR #365).
+- Prefer SEC 10-K segment / concentration footnotes via existing slow statement cache; honest empty states when undisclosed; TW major-customer/supplier parsers marked pending (no marketing-page estimates).
+- zh-TW：業務拆解新增「公司訂單與市場集中度」— 主要市場分布、主要客戶、主要供應商來源；優先財報／附註，查無揭露時誠實空狀態、不推估。
+
+### Changed
+
+- Live baseline bundle `12719767` (`scripts/DEPLOY_BASELINE.txt`).
+
 ## [v26.03] — 2026-10-21
 
 ### Added
