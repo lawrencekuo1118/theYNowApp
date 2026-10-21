@@ -229,7 +229,7 @@ check("focus keeps filing backlog and call backlog", {
   facts <- focused$focus[[1]]$facts
   vals <- vapply(facts, function(f) f$value, numeric(1))
   srcs <- vapply(facts, function(f) f$source, character(1))
-  any(abs(vals - 500) < 1e-9 & srcs == "filing") &&
+  any(abs(vals - 500) < 1e-9 & srcs == "mops_filing") &&
     any(abs(vals - 540) < 1e-9 & srcs == "earnings_call")
 })
 check("supplier bucket keeps filing and earnings call", {
@@ -237,14 +237,121 @@ check("supplier bucket keeps filing and earnings call", {
   nms <- vapply(facts, function(f) f$name, character(1))
   srcs <- vapply(facts, function(f) f$source, character(1))
   "Supplier B" %in% nms && "Call Foundry" %in% nms &&
-    any(srcs == "mops") && any(srcs == "earnings_call")
+    any(srcs == "mops_filing") && any(srcs == "earnings_call")
 })
 check("customer revenue mix is the customer bucket", {
   facts <- focused$focus[[3]]$facts
   hit <- Filter(function(f) identical(f$name, "Customer A"), facts)[[1]]
-  near(hit$value, 0.22) && identical(hit$unit, "ratio") && identical(hit$source, "sec") &&
+  near(hit$value, 0.22) && identical(hit$unit, "ratio") && identical(hit$source, "sec_filing") &&
     any(vapply(facts, function(f) identical(f$name, "Call Customer") &&
                  identical(f$source, "earnings_call"), logical(1)))
+})
+
+stack_ids <- c(
+  "mops_material", "mops_filing", "sec_filing", "company_ir",
+  "earnings_call", "statement_proxy", "broker_estimate", "industry_proxy"
+)
+stack_pri <- c(1L, 2L, 2L, 3L, 4L, 5L, 6L, 7L)
+stack_fill <- c(TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE)
+xcheck_ids <- c(
+  "contract_liability", "rpo", "contract_assets", "inventory",
+  "accounts_receivable", "operating_cash_flow"
+)
+assert_stack <- function(pack) {
+  length(pack$source_stack) == 8L &&
+    identical(vapply(pack$source_stack, function(t) t$id, character(1)), stack_ids) &&
+    identical(vapply(pack$source_stack, function(t) as.integer(t$priority), integer(1)), stack_pri) &&
+    identical(vapply(pack$source_stack, function(t) isTRUE(t$can_fill_amount), logical(1)), stack_fill)
+}
+tier_contributed <- function(pack, id) {
+  hit <- Filter(function(t) identical(t$id, id), pack$source_stack)
+  length(hit) == 1L && isTRUE(hit[[1]]$contributed)
+}
+check("empty pack source stack matches the registry", assert_stack(empty) &&
+        !any(vapply(empty$source_stack, function(t) isTRUE(t$contributed), logical(1))))
+check("empty cross-check is six unavailable proxies", {
+  xc <- empty$cross_check
+  length(xc) == 6L &&
+    identical(vapply(xc, function(item) item$id, character(1)), xcheck_ids) &&
+    all(vapply(xc, function(item) {
+      identical(item$source, "statement_proxy") &&
+        identical(item$status, "UNAVAILABLE") &&
+        !is.finite(item$value)
+    }, logical(1)))
+})
+check("built pack source stack matches the registry", assert_stack(focused) && assert_stack(ranged))
+check("focus facts mark only the tiers they use", {
+  tier_contributed(focused, "mops_filing") &&
+    tier_contributed(focused, "sec_filing") &&
+    tier_contributed(focused, "earnings_call") &&
+    !tier_contributed(focused, "broker_estimate") &&
+    !tier_contributed(focused, "industry_proxy") &&
+    !tier_contributed(focused, "statement_proxy") &&
+    !tier_contributed(ranged, "broker_estimate") &&
+    !tier_contributed(ranged, "statement_proxy")
+})
+check("statement lines cross-check and do not fill order amounts", {
+  xc <- ranged$cross_check
+  by_id <- stats::setNames(xc, vapply(xc, function(item) item$id, character(1)))
+  near(by_id$contract_liability$value, 4) &&
+    near(by_id$inventory$value, 9) &&
+    near(by_id$accounts_receivable$value, 12) &&
+    near(by_id$operating_cash_flow$value, 18) &&
+    near(by_id$rpo$value, 150) &&
+    identical(by_id$rpo$source, "statement_proxy") &&
+    identical(by_id$rpo$credibility, "proxy") &&
+    !is.finite(by_id$contract_assets$value) &&
+    all(vapply(ranged$focus[[1]]$facts, function(f) {
+      !identical(f$source, "statement_proxy") &&
+        !identical(f$source, "broker_estimate") &&
+        !identical(f$source, "industry_proxy")
+    }, logical(1))) &&
+    any(vapply(ranged$focus[[1]]$facts, function(f) {
+      near(f$value, 150) && identical(f$source, "mops_filing")
+    }, logical(1)))
+})
+proxy_only <- bblab_build_order_research_pack(
+  consolidated = bblab_consolidated(100, 40, 60, "USD", "2024"),
+  balance_sheet = data.frame(
+    Metric = c("Accounts Receivable", "Inventory", "Current Deferred Revenue"),
+    Y2024 = c(12, 9, 4),
+    stringsAsFactors = FALSE
+  ),
+  cash_flow = data.frame(
+    Metric = "Operating Cash Flow",
+    Y2024 = 18,
+    stringsAsFactors = FALSE
+  ),
+  segment_tables = list(list(
+    kind = "orders",
+    source = "broker_estimate",
+    headers = c("Customer", "2024"),
+    rows = list(c("Guess Co", "999"))
+  ), list(
+    kind = "backlog",
+    source = "industry_proxy",
+    headers = c("Item", "2023", "2024"),
+    rows = list(c("Guess backlog", "10", "80"))
+  )),
+  frequency = "annual"
+)
+check("proxy and estimate tables do not fill focus order amounts", {
+  facts <- proxy_only$focus[[1]]$facts
+  nms <- if (length(facts)) vapply(facts, function(f) f$name, character(1)) else character(0)
+  vals <- if (length(facts)) vapply(facts, function(f) f$value, numeric(1)) else numeric(0)
+  identical(proxy_only$focus[[1]]$status, "gap") &&
+    !"Guess Co" %in% nms &&
+    !any(abs(vals - 999) < 1e-9) &&
+    !any(abs(vals - 80) < 1e-9) &&
+    is.na(proxy_only$kpis$backlog_yoy$value) &&
+    is.na(proxy_only$kpis$customer_concentration$value) &&
+    is.na(proxy_only$kpis$backlog_revenue_cover$value) &&
+    is.na(proxy_only$kpis$book_to_bill$value) &&
+    !tier_contributed(proxy_only, "broker_estimate") &&
+    !tier_contributed(proxy_only, "industry_proxy") &&
+    !tier_contributed(proxy_only, "statement_proxy") &&
+    near(proxy_only$cross_check[[4]]$value, 9) &&
+    identical(proxy_only$cross_check[[4]]$id, "inventory")
 })
 
 source("ui_locale.R", local = TRUE, encoding = "UTF-8")
@@ -283,7 +390,30 @@ if (requireNamespace("shiny", quietly = TRUE) && requireNamespace("plotly", quie
         grepl("Earnings call", html_focus, fixed = TRUE) &&
           grepl("Call Foundry", html_focus, fixed = TRUE) &&
           grepl("Customer A", html_focus, fixed = TRUE) &&
-          grepl("SEC filing", html_focus, fixed = TRUE))
+          grepl("SEC filing", html_focus, fixed = TRUE) &&
+          grepl("Confirmed", html_focus, fixed = TRUE) &&
+          grepl("Management", html_focus, fixed = TRUE))
+  check("panel shows sources and cross-check before secondary layers", {
+    primary <- sub("ynow-bblab-or__secondary.*", "", html_en)
+    grepl("Sources and credibility", primary, fixed = TRUE) &&
+      grepl("Cross-check", primary, fixed = TRUE) &&
+      grepl("It is not Backlog", primary, fixed = TRUE) &&
+      grepl("MOPS filing", primary, fixed = TRUE) &&
+      grepl("ynow-bblab-or__secondary", html_en, fixed = TRUE) &&
+      !grepl("Gross margin", primary, fixed = TRUE)
+  })
+  check("broker tier stays unused unless a fact used it", {
+    broker <- sub(
+      ".*data-tier=\"broker_estimate\"(.*?)data-tier=\"industry_proxy\".*",
+      "\\1",
+      html_en
+    )
+    grepl("Broker estimate", broker, fixed = TRUE) &&
+      grepl("Not used", broker, fixed = TRUE) &&
+      grepl("Cannot fill an order amount", broker, fixed = TRUE) &&
+      !grepl("Contributed", broker, fixed = TRUE) &&
+      !tier_contributed(ranged, "broker_estimate")
+  })
   html_idle <- paste(as.character(bblab_order_research_panel_ui(ranged, "en", FALSE)), collapse = " ")
   check("start gate hides figures until analysis",
         grepl("Start analysis", html_idle, fixed = TRUE) &&
