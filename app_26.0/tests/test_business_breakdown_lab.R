@@ -19,6 +19,7 @@ source("setup.R", local = TRUE, encoding = "UTF-8")
 source("ui_locale.R", local = TRUE, encoding = "UTF-8")
 source("business_breakdown_schema.R", local = TRUE, encoding = "UTF-8")
 source("business_breakdown_engine.R", local = TRUE, encoding = "UTF-8")
+source("business_breakdown_orders.R", local = TRUE, encoding = "UTF-8")
 source("business_breakdown_structure.R", local = TRUE, encoding = "UTF-8")
 source("business_breakdown_module.R", local = TRUE, encoding = "UTF-8")
 
@@ -554,7 +555,7 @@ check("26 Lab markup lives under Company - Advance tab",
         !grepl("ynow-testing-bblab", ui_src, fixed = TRUE) &&
         grepl("ynow_testing_page_title", testing_fn_src, fixed = TRUE))
 check("26 Lite CSS hide + remap to Company - Advance",
-      grepl('data-value="company_advance"', ui_src, fixed = TRUE) &&
+      grepl('tabName = "company_advance"', ui_src, fixed = TRUE) &&
         grepl("body.ynow-lite .ynow-company-advance-bblab", ui_src, fixed = TRUE) &&
         grepl("body.ynow-lite .ynow-bblab", ui_src, fixed = TRUE) &&
         grepl("ynow-sidebar-test-link", ui_src, fixed = TRUE) &&
@@ -575,6 +576,15 @@ for (k in c("menu_business_breakdown_lab", "bblab_page_sub", "bblab_report_kicke
             "bblab_ch1_help", "bblab_ch2_help", "bblab_ch3_help", "bblab_ch3_current_label",
             "bblab_ch4_help",
             "bblab_ch4_limited", "bblab_geo_veto_why", "bblab_overlap_why",
+            "bblab_orders_title", "bblab_orders_help",
+            "bblab_orders_markets_title", "bblab_orders_markets_help",
+            "bblab_orders_markets_empty", "bblab_orders_customers_title",
+            "bblab_orders_customers_empty", "bblab_orders_suppliers_title",
+            "bblab_orders_suppliers_empty", "bblab_orders_share_axis",
+            "notif_bblab_orders_geography_disclosure_missing",
+            "notif_bblab_orders_customer_disclosure_missing",
+            "notif_bblab_orders_supplier_disclosure_missing",
+            "notif_bblab_orders_tw_filing_parser_pending",
             "bblab_struct_title", "bblab_struct_help", "bblab_struct_biz_h",
             "bblab_struct_adj_h", "bblab_struct_conc_h", "bblab_struct_not_disclosed",
             "bblab_struct_c1", "bblab_struct_c2", "bblab_struct_c5",
@@ -620,7 +630,10 @@ check("applyUiLocale wires chapter titles", {
     grepl("setBtText('ynow_bblab_ch4_title', 'bblab_ch4_title')", ui_src, fixed = TRUE) &&
     grepl("setBtText('ynow_bblab_ch4_limited', 'bblab_ch4_limited')", ui_src, fixed = TRUE) &&
     grepl("setBtText('ynow_bblab_ch5_help', 'bblab_ch5_help')", ui_src, fixed = TRUE) &&
-    grepl("setBtText('ynow_bblab_ch7_title', 'bblab_ch7_title')", ui_src, fixed = TRUE)
+    grepl("setBtText('ynow_bblab_ch7_title', 'bblab_ch7_title')", ui_src, fixed = TRUE) &&
+    grepl("setBtText('ynow_bblab_orders_title', 'bblab_orders_title')", ui_src, fixed = TRUE) &&
+    grepl("setBtText('ynow_bblab_orders_markets_title', 'bblab_orders_markets_title')", ui_src, fixed = TRUE) &&
+    grepl("setBtText('ynow_bblab_orders_suppliers_title', 'bblab_orders_suppliers_title')", ui_src, fixed = TRUE)
 })
 check("mix chapters are one report section with history panel", {
   grepl("Revenue mix", mod_src, fixed = TRUE) &&
@@ -634,7 +647,10 @@ check("mix chapters are one report section with history panel", {
     grepl("ynow-bblab-struct-mix__chart", mod_src, fixed = TRUE) &&
     grepl("ynow-bblab-struct--tables", mod_src, fixed = TRUE) &&
     grepl('chapter = "6"', mod_src, fixed = TRUE) &&
-    !grepl('chapter = "7"', mod_src, fixed = TRUE) &&
+    grepl('chapter = "7"', mod_src, fixed = TRUE) &&
+    grepl("ynow_bblab_orders_title", mod_src, fixed = TRUE) &&
+    grepl("orders_markets_chart", mod_src, fixed = TRUE) &&
+    grepl("orders_suppliers_chart", mod_src, fixed = TRUE) &&
     grepl("ynow-bblab-report__section", mod_src, fixed = TRUE) &&
     grepl("per-business cards",
           paste(.UI_STRINGS$en$bblab_page_sub, collapse = " "), fixed = TRUE) &&
@@ -705,6 +721,7 @@ check("server remaps legacy BBL tab to Company - Advance",
         grepl('tab = "company_advance"', server_src, fixed = TRUE))
 
 parse_files <- c("business_breakdown_schema.R", "business_breakdown_engine.R",
+                 "business_breakdown_orders.R",
                  "business_breakdown_structure.R", "business_breakdown_module.R",
                  "global.R", "ui_locale.R",
                  "ynow_ui.R", "ynow_server.R")
@@ -802,6 +819,9 @@ if (requireNamespace("shiny", quietly = TRUE) &&
           grepl("ynow_bblab_ch3_current_label", lab_ui_html, fixed = TRUE) &&
           grepl("bcg_panel", lab_ui_html, fixed = TRUE) &&
           grepl("history_panel", lab_ui_html, fixed = TRUE) &&
+          grepl("ynow_bblab_orders_title", lab_ui_html, fixed = TRUE) &&
+          grepl("ynow_bblab_orders_markets_title", lab_ui_html, fixed = TRUE) &&
+          grepl("ynow_bblab_orders_suppliers_title", lab_ui_html, fixed = TRUE) &&
           grepl("ynow_bblab_ch5_title", lab_ui_html, fixed = TRUE) &&
           grepl("ynow_bblab_ch5_help", lab_ui_html, fixed = TRUE) &&
           grepl("ynow_bblab_ch6_title", lab_ui_html, fixed = TRUE) &&
@@ -823,7 +843,8 @@ if (requireNamespace("shiny", quietly = TRUE) &&
       grepl("data-bblab-chapter=\"3\"", lab_ui_html, fixed = TRUE) &&
       grepl("data-bblab-chapter=\"4\"", lab_ui_html, fixed = TRUE) &&
       grepl("data-bblab-chapter=\"6\"", lab_ui_html, fixed = TRUE) &&
-      !grepl("data-bblab-chapter=\"7\"", lab_ui_html, fixed = TRUE) &&
+      grepl("data-bblab-chapter=\"7\"", lab_ui_html, fixed = TRUE) &&
+      grepl("ynow-bblab-orders", lab_ui_html, fixed = TRUE) &&
       !grepl("data-bblab-chapter=\"2b\"", lab_ui_html, fixed = TRUE) &&
       !grepl(">Current revenue mix<", lab_ui_html, fixed = TRUE) &&
       !grepl("ynow-bblab-struct-mix__main", lab_ui_html, fixed = TRUE)
@@ -833,6 +854,7 @@ if (requireNamespace("shiny", quietly = TRUE) &&
              "ynow_bblab_ch1_title", "ynow_bblab_ch2_title",
              "ynow_bblab_struct_title", "ynow_bblab_ch3_title",
              "ynow_bblab_ch3_current_label",
+             "ynow_bblab_orders_title",
              "ynow_bblab_ch5_title", "ynow_bblab_ch6_title",
              "ynow_bblab_ch7_title")
     pos <- vapply(ids, function(id) {
@@ -1083,6 +1105,93 @@ check("vetoed geography does not hide reported cards",
         is.finite(rgeo$businesses[[1]]$revenue) &&
         abs(rgeo$businesses[[1]]$revenue - 200) < 1e-9 &&
         "BUSINESS_GEOGRAPHY_CUSTOMER_LOCATION_ONLY" %in% rgeo$codes)
+check("vetoed geography still feeds major-markets orders pack",
+      is.list(rgeo$order_concentration) &&
+        isTRUE(rgeo$order_concentration$market_geography$eligible) &&
+        length(rgeo$order_concentration$market_geography$slices) >= 2L &&
+        isTRUE(rgeo$order_concentration$market_geography$is_customer_location_only) &&
+        !isTRUE(rgeo$order_concentration$customer_concentration$eligible) &&
+        !isTRUE(rgeo$order_concentration$supplier_concentration$eligible))
+
+# Orders: customer + supplier concentration tables (orthogonal to business split)
+cust_tbl <- list(
+  short_name = "Concentration of Credit Risk",
+  kind = "customer_concentration",
+  layout = "stub",
+  scale = 1,
+  headers = c("Customer", "2024", "% of Revenue"),
+  rows = list(
+    c("Customer A", "240", "12%"),
+    c("Customer B", "200", "10%")
+  )
+)
+supp_tbl <- list(
+  short_name = "Significant Suppliers",
+  kind = "supplier_concentration",
+  layout = "stub",
+  scale = 1,
+  headers = c("Supplier", "2024"),
+  rows = list(
+    c("Supplier X", "180"),
+    c("Supplier Y", "120")
+  )
+)
+orders_payload <- list(
+  ticker = "ORD", entity = list(name = "Orders fixture"),
+  statement_currency = "USD", period = "2024",
+  consolidated = bblab_consolidated(2000, 800, 1200, "USD", "2024"),
+  dimensions = list(bblab_dimension(
+    "op", "operating_segment",
+    list(
+      bblab_component("a", "Segment A", revenue = 1200, cor = 480, gp = 720,
+                      period = "2024", currency = "USD", is_reported_segment = TRUE),
+      bblab_component("b", "Segment B", revenue = 800, cor = 320, gp = 480,
+                      period = "2024", currency = "USD", is_reported_segment = TRUE)
+    ),
+    flags = c("separate_revenue", "attributable_cor_gp", "reconciles", "filed_audited")
+  )),
+  segment_tables = list(cust_tbl, supp_tbl),
+  notes = list(
+    excerpts = c("Customer A and Customer B are significant customers."),
+    segment_tables_json = "[]"
+  )
+)
+rord <- bblab_analyze(orders_payload)
+check("orders: customer concentration eligible from filing table",
+      isTRUE(rord$ok) &&
+        isTRUE(rord$order_concentration$customer_concentration$eligible) &&
+        length(rord$order_concentration$customer_concentration$rows) >= 2L &&
+        is.finite(rord$order_concentration$customer_concentration$top1_share))
+check("orders: supplier concentration eligible from filing table",
+      isTRUE(rord$order_concentration$supplier_concentration$eligible) &&
+        length(rord$order_concentration$supplier_concentration$rows) >= 2L)
+check("orders: concentration kinds stay off primary dimension",
+      identical(rord$primary_dimension$kind, "operating_segment") &&
+        !identical(rord$primary_dimension$kind, "customer_concentration") &&
+        !identical(rord$primary_dimension$kind, "supplier_concentration"))
+check("orders: TW ticker gets honest pending empty (no fake numbers)", {
+  tw <- bblab_build_order_concentration(
+    dims = list(), notes = NULL, consolidated = bblab_consolidated(100, 40, 60, "TWD", "2024"),
+    segment_tables = NULL, ticker = "2330.TW"
+  )
+  identical(.bblab_orders_first_code(tw$customer_concentration),
+            "ORDERS_TW_FILING_PARSER_PENDING") &&
+    identical(.bblab_orders_first_code(tw$supplier_concentration),
+              "ORDERS_TW_FILING_PARSER_PENDING") &&
+    !isTRUE(tw$customer_concentration$eligible) &&
+    !isTRUE(tw$supplier_concentration$eligible)
+})
+check("orders: no-major-customer narrative is honest empty", {
+  scan_pack <- bblab_build_order_concentration(
+    dims = list(),
+    notes = list(excerpts = "No single customer accounted for more than 10% of net sales."),
+    consolidated = bblab_consolidated(1000, 400, 600, "USD", "2024"),
+    ticker = "USCO"
+  )
+  identical(.bblab_orders_first_code(scan_pack$customer_concentration),
+            "ORDERS_NO_MAJOR_CUSTOMER_ABOVE_THRESHOLD") &&
+    !isTRUE(scan_pack$customer_concentration$eligible)
+})
 
 engine_src2 <- paste(readLines("business_breakdown_engine.R", warn = FALSE, encoding = "UTF-8"),
                      collapse = "\n")
@@ -1816,6 +1925,9 @@ check("structure UI chapter wired in module",
         grepl("ynow_bblab_ch5_help", mod_src, fixed = TRUE))
 check("structure sourced from global.R",
       grepl("business_breakdown_structure.R",
+            paste(readLines("global.R", warn = FALSE), collapse = "\n"), fixed = TRUE))
+check("orders module sourced from global.R",
+      grepl("business_breakdown_orders.R",
             paste(readLines("global.R", warn = FALSE), collapse = "\n"), fixed = TRUE))
 
 if (fail > 0L) {

@@ -1445,6 +1445,11 @@ _SEC_SEGMENT_NOTE_HINTS = (
     "segment", "disaggregat", "revenue from contract", "products and service",
     "product revenue", "revenue by", "net sales by", "operating segment",
     "revenues by", "sales by reportable",
+    # Major-customer / supplier concentration footnotes (ASC 280 / credit risk).
+    "concentration of credit", "major customer", "significant customer",
+    "significant customers", "major customers", "customer concentration",
+    "concentration risk", "major supplier", "significant supplier",
+    "significant suppliers", "major suppliers", "supplier concentration",
 )
 
 
@@ -1574,6 +1579,7 @@ def _sec_segment_kind(short_name):
     Geography footnotes (customer location / countries) are not ASC 280 operating
     segments even when the XBRL title is nested under "Segment Information - …".
     Non-revenue rollforwards (goodwill, PP&E, D&A) are skipped.
+    Customer / supplier concentration notes are orthogonal to the business split.
     """
     s = (short_name or "").lower()
     if any(h in s for h in ("insider trading", "cybersecurity")):
@@ -1584,6 +1590,19 @@ def _sec_segment_kind(short_name):
         "net additions", "additional information",
     )) and not any(k in s for k in ("net sales", "revenue", "operating income")):
         return None
+    # Supplier before customer so "customers and suppliers" titles can still
+    # land as customer when supplier keywords are absent.
+    if any(k in s for k in (
+        "major supplier", "significant supplier", "supplier concentration",
+        "concentration of suppliers", "vendors representing",
+    )):
+        return "supplier_concentration"
+    if any(k in s for k in (
+        "concentration of credit", "major customer", "significant customer",
+        "customer concentration", "customers representing",
+        "concentration of customers",
+    )):
+        return "customer_concentration"
     if any(k in s for k in (
         "geograph", "by country", "by region", "customer location",
         "attributed to countries", "countries representing",
@@ -1932,6 +1951,33 @@ def _sec_classify_extracted_table(short_name, note_kind, headers, rows):
             "layout": "stub",
             "is_customer_location_only": True,
         }
+    # Named / anonymized major customers or suppliers (share or amount columns).
+    cust_hits = sum(
+        1 for n in data_names
+        if _re.search(r"\b(customer|client)\b", n) or n.startswith("customer ")
+    )
+    supp_hits = sum(
+        1 for n in data_names
+        if _re.search(r"\b(supplier|vendor)\b", n) or n.startswith("supplier ")
+    )
+    if note_kind == "customer_concentration" or (
+        cust_hits >= 1 and cust_hits >= supp_hits and len(data_names) >= 1
+    ):
+        if cust_hits >= 1 or note_kind == "customer_concentration":
+            return {
+                "kind": "customer_concentration",
+                "layout": "stub",
+                "is_customer_location_only": False,
+            }
+    if note_kind == "supplier_concentration" or (
+        supp_hits >= 1 and supp_hits > cust_hits and len(data_names) >= 1
+    ):
+        if supp_hits >= 1 or note_kind == "supplier_concentration":
+            return {
+                "kind": "supplier_concentration",
+                "layout": "stub",
+                "is_customer_location_only": False,
+            }
     has_ns_banner = any(
         _re.match(r"net sales:?$", (l or "").strip(), _re.IGNORECASE) for l in labels
     )

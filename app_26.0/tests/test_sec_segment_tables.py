@@ -162,8 +162,46 @@ def test_classify_and_append():
 def test_segment_note_filter():
     check("keeps Segment Information", _sec_note_matches_filter("Segment Information", "segment"))
     check("keeps revenue disaggregation", _sec_note_matches_filter("Revenue from contracts with customers", "segment"))
+    check("keeps concentration of credit", _sec_note_matches_filter("Concentration of Credit Risk", "segment"))
+    check("keeps major customers", _sec_note_matches_filter("Significant Customers", "segment"))
+    check("keeps major suppliers", _sec_note_matches_filter("Significant Suppliers", "segment"))
     check("skips Income Taxes", not _sec_note_matches_filter("Income Taxes", "segment"))
     check("no filter keeps taxes", _sec_note_matches_filter("Income Taxes", None))
+
+
+def test_concentration_kinds():
+    check(
+        "credit-risk note is customer_concentration",
+        _sec_segment_kind("Concentration of Credit Risk") == "customer_concentration",
+    )
+    check(
+        "significant customers note is customer_concentration",
+        _sec_segment_kind("Significant Customers (Details)") == "customer_concentration",
+    )
+    check(
+        "significant suppliers note is supplier_concentration",
+        _sec_segment_kind("Significant Suppliers") == "supplier_concentration",
+    )
+    role = _sec_classify_extracted_table(
+        "Concentration of Credit Risk",
+        "customer_concentration",
+        ["Customer", "2024", "% of Revenue"],
+        [
+            ["Customer A", "1200", "12%"],
+            ["Customer B", "950", "9.5%"],
+        ],
+    )
+    check("customer table classified", role and role["kind"] == "customer_concentration")
+    role_s = _sec_classify_extracted_table(
+        "Significant Suppliers",
+        "supplier_concentration",
+        ["Supplier", "2024"],
+        [
+            ["Supplier A", "800"],
+            ["Supplier B", "600"],
+        ],
+    )
+    check("supplier table classified", role_s and role_s["kind"] == "supplier_concentration")
 
 
 if __name__ == "__main__":
@@ -171,4 +209,5 @@ if __name__ == "__main__":
     test_html_tables()
     test_classify_and_append()
     test_segment_note_filter()
+    test_concentration_kinds()
     print("All SEC segment-table checks passed.")

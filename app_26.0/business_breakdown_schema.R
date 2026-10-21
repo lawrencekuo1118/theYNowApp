@@ -46,7 +46,14 @@ BBLAB_ERROR_CODES <- c(
     "BUSINESS_CHART_SINGLE_COMPONENT", # non-blocking; one slice still renders
     "BUSINESS_CHART_LEVEL_D",
     "BUSINESS_HISTORY_INSUFFICIENT_YEARS", # non-blocking; never fabricate a 5-year series
-    "BUSINESS_ADR_MISSING_NONBLOCKING"
+    "BUSINESS_ADR_MISSING_NONBLOCKING",
+    # Orders / concentration block (non-blocking; honest empty states)
+    "ORDERS_GEOGRAPHY_DISCLOSURE_MISSING",
+    "ORDERS_CUSTOMER_DISCLOSURE_MISSING",
+    "ORDERS_SUPPLIER_DISCLOSURE_MISSING",
+    "ORDERS_NO_MAJOR_CUSTOMER_ABOVE_THRESHOLD",
+    "ORDERS_NO_MAJOR_SUPPLIER_ABOVE_THRESHOLD",
+    "ORDERS_TW_FILING_PARSER_PENDING"
 )
 
 BBLAB_DEFAULT_CONFIG <- list(
@@ -284,6 +291,14 @@ bblab_empty_result <- function(codes = character(0), limitations = character(0))
       denominator = numeric(0), codes = "BUSINESS_HISTORY_INSUFFICIENT_YEARS",
       limitations = "history_insufficient_years", omitted_years = character(0),
       source = NA_character_
+    ),
+    order_concentration = list(
+      market_geography = list(eligible = FALSE, codes = "ORDERS_GEOGRAPHY_DISCLOSURE_MISSING",
+                              slices = list(), rows = list()),
+      customer_concentration = list(eligible = FALSE, codes = "ORDERS_CUSTOMER_DISCLOSURE_MISSING",
+                                    slices = list(), rows = list()),
+      supplier_concentration = list(eligible = FALSE, codes = "ORDERS_SUPPLIER_DISCLOSURE_MISSING",
+                                    slices = list(), rows = list())
     ),
     evidence = list(),
     confidence = list(overall = "UNAVAILABLE"),
