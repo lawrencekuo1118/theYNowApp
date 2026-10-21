@@ -18,6 +18,14 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 - CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_26.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).
 - Docs: root README ship/CI/Release pointers; `scripts/record_github_release.sh` for soft-fail Release publish after deploy.
 
+## [v26.16] — 2026-10-21
+
+### Added
+
+- **Single-device session / 單一裝置登入**: One active resume token per user. New sign-in (email / OAuth / register / password remint) soft-revokes other `ynow_auth_sessions` rows in the same mint transaction. Open tabs poll and clear local chrome when taken over (without wiping the newer token). Same-browser peer tabs get a `storage` hint. en-US + zh-TW kick copy (PR #379).
+- zh-TW：每位使用者僅保留一組有效恢復權杖；其他裝置／分頁登入會撤銷舊權杖，並以通知告知本裝置已登出。明確「登出」與變更密碼仍結束工作階段；30 天恢復機制保留。
+- Live baseline bundle recorded in `scripts/DEPLOY_BASELINE.txt` after deploy.
+
 ## [v26.15] — 2026-10-21
 
 ### Changed
