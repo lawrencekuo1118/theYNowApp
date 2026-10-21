@@ -7,5 +7,5 @@ commit=66cd9a7a783a38c2408fb92709b588086fbe9091
 short=66cd9a7a
 message=chore: bump display version to v25.88
 captured_at=2026-10-20T16:04:51Z
-display_version=v25.88
+display_version=v25.89
 note=Canonical live line is app_25.0. Bundle 12716154: ship master tip after #335 Neon→Postgres UI/helper rename (+ cleanup PRs #331–#334 already on tip). Secrets only in gitignored .Renviron restored from prior live bundle; no secret values in git.
