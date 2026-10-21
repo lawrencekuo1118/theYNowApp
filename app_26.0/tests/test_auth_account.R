@@ -530,6 +530,11 @@ check("server blocks testing tab + lazy mount when signed in", {
     grepl("ynow-sysadmin-blocked", srv, fixed = TRUE)
 })
 check("UI wires ynowAuthFeature handler", grepl("ynowAuthFeature", ui, fixed = TRUE))
+check("UI stamps ynow-auth-feature on body for first paint", {
+  auth_stamp <- paste(readLines(src_auth, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("ynow_stamp_auth_feature_body(ui)", ui, fixed = TRUE) &&
+    grepl("ynow_stamp_auth_feature_body <- function", auth_stamp, fixed = TRUE)
+})
 check("UI wires OAuth redirect + callback", grepl("ynowAuthOAuthRedirect", ui, fixed = TRUE) &&
         grepl("ynow_auth_oauth_callback", ui, fixed = TRUE))
 check("UI collapses sidebar before auth modal", {
