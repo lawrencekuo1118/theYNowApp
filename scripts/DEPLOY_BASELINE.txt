@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12720734
+bundleId=12720797
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
 aligned_git=cca1467471bbb9530a25667f531b742671a1e931
 commit=cca1467471bbb9530a25667f531b742671a1e931
 short=cca14674
 message=chore: bump display version to v26.12
-captured_at=2026-10-21T14:10:24Z
+captured_at=2026-10-21T14:19:33Z
 display_version=v26.12
-note=Canonical live line is app_26.0. Bundle 12720734 (running, v26.12): HFV Section-styled Sign in required gates (PR #374) + post-login last sidebar tab restore (PR #375). Concurrent deploy activated 12720734; a later upload 12720744 was not activated (HTTP 409). Secrets only in gitignored .Renviron; no secret values in git.
+note=Canonical live line is app_26.0. Bundle 12720797: post-login last UI restore (#375), Sign-in gate HFV Section chrome (#374), admin-only explainability (#373). Secrets only in gitignored .Renviron; no secret values in git.
