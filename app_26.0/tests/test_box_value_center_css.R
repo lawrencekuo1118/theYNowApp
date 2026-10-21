@@ -37,6 +37,14 @@ check("header kpi mobile 1:1:1", grepl("LAST PRICE / MARKET CAP / EPS (TTM) åŒå
         grepl('ynow-header-kpi-row > [class*="col-"]', ui, fixed = TRUE) &&
         grepl("33.333%", ui, fixed = TRUE))
 check("mobile full-width excludes header kpi row", grepl("row:not(.ynow-header-kpi-row)", ui, fixed = TRUE))
+# Same content column as Company Overview (.tab-pane --ynow-page-max)
+check("header kpi shell matches page max", {
+  grepl('class = "ynow-header-kpi-shell"', ui, fixed = TRUE) &&
+    grepl(".content-wrapper .ynow-header-kpi-shell", ui, fixed = TRUE) &&
+    grepl("max-width: var(--ynow-page-max, 1200px)", ui, fixed = TRUE) &&
+    grepl(".ynow-header-kpi-shell > .ynow-header-kpi-row", ui, fixed = TRUE) &&
+    grepl("margin-left: 0", ui, fixed = TRUE)
+})
 # Focus KPI alert bell: inner top-right of gold frame + thicker pulsing border
 check("kpi-grid alertable bell inset", grepl(".ynow-kpi-grid .ynow-alertable .ynow-alert-bell", ui, fixed = TRUE) &&
         grepl("z-index: 5", ui, fixed = TRUE))
