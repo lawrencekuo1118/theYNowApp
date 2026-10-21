@@ -18,6 +18,14 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 - CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_26.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).
 - Docs: root README ship/CI/Release pointers; `scripts/record_github_release.sh` for soft-fail Release publish after deploy.
 
+## [v26.11] — 2026-10-21
+
+### Added
+
+- **Account / 帳戶**: Signed-in members stay signed in after closing the browser or tab. A durable resume token (default 30 days) restores the session on the next visit. Sign out and password change revoke it (PR #372).
+- zh-TW：登入後關閉瀏覽器或分頁不會強制登出；下次開啟會自動恢復（預設 30 天）。只有「登出」或變更密碼才會撤銷。
+- Live baseline bundle `12720607` (`scripts/DEPLOY_BASELINE.txt`).
+
 ## [v26.10] — 2026-10-21
 
 ### Fixed
