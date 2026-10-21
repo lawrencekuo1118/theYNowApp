@@ -18,6 +18,20 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 - CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_26.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).
 - Docs: root README ship/CI/Release pointers; `scripts/record_github_release.sh` for soft-fail Release publish after deploy.
 
+## [v26.01] — 2026-10-21
+
+### Added
+
+- Sysadmin **Item locks**: configure **unlock condition** per locked item — **Unlock after login** / **Points unlock** (FYN amount) / **Conditional unlock** (free uses and/or time-limited window). Default scope = all users; selected-user overrides allowed (PR #362).
+- Persist unlock rules + runtime unlock state in Supabase Postgres (`ynow_access_locks` / `ynow_access_unlock_state`) with fail-closed RLS; file fallback for offline tests.
+- 「目前限制」 status lines include the unlock rule (en-US + zh-TW).
+- zh-TW：系統管理員項目鎖定可設定解鎖條件（登入即解鎖／點數解鎖／條件解鎖的免費次數或限時）；預設套用所有使用者，亦可覆寫選定使用者。
+
+### Changed
+
+- Admin ACL formal classes: **A login** / **B points** / **C conditional** (membership freemium catalog remains A/B only).
+- Live baseline bundle `12719128` (`scripts/DEPLOY_BASELINE.txt`).
+
 ## [v26.00] — 2026-10-21
 
 ### Added
