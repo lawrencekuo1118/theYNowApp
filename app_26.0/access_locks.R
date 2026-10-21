@@ -3,6 +3,12 @@
 # effect  = "lock" (show locked placeholder / disable) | "hide" (remove from UI)
 # scope   = selected user id, or YNOW_ACCESS_ALL_USERS for every account (+ guests)
 #
+# Unlock condition (per locked item; default scope = all users; per-user override):
+#   login       = unlock-after-login（登入即解鎖）
+#   points      = unlock-after-login-and-points（點數解鎖）+ points_cost
+#   conditional = 條件解鎖 — free_count and/or time_limit_hours (after login)
+# Legacy rows without unlock_type stay sticky (locked until admin clears).
+#
 # Product freemium A/B gates live in membership_locks.R — do not merge domains.
 # Identical bilingual labels for overlapping surfaces come from
 # lock_catalog_shared.R (tabs lab_notes / decision_checklist / price_alerts,
@@ -47,9 +53,14 @@ if (!exists("ynow_lock_shared_surface_labels", mode = "function")) {
 
 YNOW_ACCESS_ALL_USERS <- "__all__"
 .YNOW_ACCESS_EFFECTS <- c("lock", "hide")
+YNOW_UNLOCK_LOGIN <- "login"
+YNOW_UNLOCK_POINTS <- "points"
+YNOW_UNLOCK_CONDITIONAL <- "conditional"
+.YNOW_UNLOCK_TYPES <- c(YNOW_UNLOCK_LOGIN, YNOW_UNLOCK_POINTS, YNOW_UNLOCK_CONDITIONAL)
 
 .ynow_access_mem <- new.env(parent = emptyenv())
 .ynow_access_mem$by_user <- list()
+.ynow_access_mem$unlock_state <- list()
 
 ynow_access_catalog <- function() {
   .sl <- function(key) ynow_lock_shared_label_pair(key)
@@ -150,8 +161,117 @@ ynow_access_normalize_effect <- function(effect) {
   if (!nzchar(e) || !e %in% .YNOW_ACCESS_EFFECTS) "hide" else e
 }
 
+ynow_access_normalize_unlock_type <- function(unlock_type, allow_empty = TRUE) {
+  u <- tolower(trimws(as.character(unlock_type %||% "")[1]))
+  if (!nzchar(u)) {
+    if (isTRUE(allow_empty)) return(NA_character_)
+    return(YNOW_UNLOCK_LOGIN)
+  }
+  if (u %in% .YNOW_UNLOCK_TYPES) u else NA_character_
+}
+
+ynow_access_normalize_nonneg_int <- function(x, default = NA_integer_) {
+  n <- suppressWarnings(as.integer(x)[1])
+  if (!is.finite(n) || is.na(n) || n < 0L) {
+    as.integer(default)
+  } else {
+    as.integer(n)
+  }
+}
+
+#' Normalize one lock entry (effect + unlock condition fields).
+ynow_access_normalize_entry <- function(raw = NULL,
+                                        effect = "hide",
+                                        unlock_type = NA_character_,
+                                        points_cost = NA_integer_,
+                                        free_count = NA_integer_,
+                                        time_limit_hours = NA_integer_) {
+  if (is.list(raw) && !is.null(raw$effect)) {
+    effect <- raw$effect
+    unlock_type <- raw$unlock_type %||% unlock_type
+    points_cost <- raw$points_cost %||% points_cost
+    free_count <- raw$free_count %||% free_count
+    time_limit_hours <- raw$time_limit_hours %||% time_limit_hours
+  } else if (!is.null(raw) && (is.character(raw) || is.numeric(raw))) {
+    effect <- raw
+  }
+  ut <- ynow_access_normalize_unlock_type(unlock_type, allow_empty = TRUE)
+  pc <- ynow_access_normalize_nonneg_int(points_cost, NA_integer_)
+  fc <- ynow_access_normalize_nonneg_int(free_count, NA_integer_)
+  th <- ynow_access_normalize_nonneg_int(time_limit_hours, NA_integer_)
+  if (identical(ut, YNOW_UNLOCK_POINTS)) {
+    if (is.na(pc)) pc <- 1L
+  } else {
+    pc <- NA_integer_
+  }
+  if (!identical(ut, YNOW_UNLOCK_CONDITIONAL)) {
+    fc <- NA_integer_
+    th <- NA_integer_
+  } else {
+    # 0 means "unused" in the admin form — store as NA.
+    if (!is.na(fc) && fc <= 0L) fc <- NA_integer_
+    if (!is.na(th) && th <= 0L) th <- NA_integer_
+  }
+  list(
+    effect = ynow_access_normalize_effect(effect),
+    unlock_type = ut,
+    points_cost = pc,
+    free_count = fc,
+    time_limit_hours = th
+  )
+}
+
+ynow_access_unlock_type_label <- function(unlock_type, locale = "en",
+                                          points_cost = NA_integer_,
+                                          free_count = NA_integer_,
+                                          time_limit_hours = NA_integer_) {
+  zh <- identical(as.character(locale)[1], "zh-TW")
+  u <- ynow_access_normalize_unlock_type(unlock_type, allow_empty = TRUE)
+  if (is.na(u) || !nzchar(u)) {
+    return(if (zh) "管理員清除前維持鎖定" else "Sticky until admin clears")
+  }
+  if (identical(u, YNOW_UNLOCK_LOGIN)) {
+    return(if (zh) "登入即解鎖" else "Unlock after login")
+  }
+  if (identical(u, YNOW_UNLOCK_POINTS)) {
+    pc <- ynow_access_normalize_nonneg_int(points_cost, 1L)
+    if (zh) {
+      sprintf("點數解鎖（%s FYN）", as.character(pc))
+    } else {
+      sprintf("Points unlock (%s FYN)", as.character(pc))
+    }
+  } else if (identical(u, YNOW_UNLOCK_CONDITIONAL)) {
+    bits <- character()
+    fc <- ynow_access_normalize_nonneg_int(free_count, NA_integer_)
+    th <- ynow_access_normalize_nonneg_int(time_limit_hours, NA_integer_)
+    if (!is.na(fc)) {
+      bits <- c(bits, if (zh) sprintf("免費 %s 次", fc) else sprintf("%s free uses", fc))
+    }
+    if (!is.na(th) && th > 0L) {
+      bits <- c(bits, if (zh) sprintf("限時 %s 小時", th) else sprintf("%s h window", th))
+    }
+    detail <- if (length(bits)) paste(bits, collapse = if (zh) "／" else " / ") else {
+      if (zh) "未設定免費次數或限時" else "no free count or time window"
+    }
+    if (zh) paste0("條件解鎖（", detail, "）") else paste0("Conditional unlock (", detail, ")")
+  } else {
+    as.character(u)
+  }
+}
+
+#' Map admin unlock_type to freemium-style class letter.
+#' A = unlock-after-login; B = unlock-after-login-and-points; C = conditional.
+ynow_access_unlock_class <- function(unlock_type) {
+  u <- ynow_access_normalize_unlock_type(unlock_type, allow_empty = TRUE)
+  if (identical(u, YNOW_UNLOCK_LOGIN)) return("A")
+  if (identical(u, YNOW_UNLOCK_POINTS)) return("B")
+  if (identical(u, YNOW_UNLOCK_CONDITIONAL)) return("C")
+  NA_character_
+}
+
 ynow_access_reset_memory <- function() {
   .ynow_access_mem$by_user <- list()
+  .ynow_access_mem$unlock_state <- list()
   invisible(TRUE)
 }
 
@@ -168,6 +288,14 @@ ynow_access_purge_user <- function(user_id) {
     store[[uid]] <- NULL
     tryCatch(.ynow_access_write_file(store), error = function(e) NULL)
   }
+  if (!is.null(.ynow_access_mem$unlock_state[[uid]])) {
+    .ynow_access_mem$unlock_state[[uid]] <- NULL
+  }
+  state_store <- tryCatch(.ynow_access_read_state_file(), error = function(e) list())
+  if (is.list(state_store) && !is.null(state_store[[uid]])) {
+    state_store[[uid]] <- NULL
+    tryCatch(.ynow_access_write_state_file(state_store), error = function(e) NULL)
+  }
   invisible(TRUE)
 }
 
@@ -177,38 +305,58 @@ ynow_access_purge_user <- function(user_id) {
   file.path("data", "access_locks.json")
 }
 
-#' Normalize one user's stored map to named character vector: item_id -> effect.
+.ynow_access_state_file <- function() {
+  override <- Sys.getenv("YNOW_ACCESS_UNLOCK_STATE_PATH", "")
+  if (nzchar(override)) return(override)
+  file.path("data", "access_unlock_state.json")
+}
+
+#' Normalize one user's stored map to named list of entries.
 .ynow_access_coerce_map <- function(raw) {
-  if (is.null(raw)) return(character())
+  if (is.null(raw)) return(list())
+  # Named character vector of effects (legacy simple form)
   if (is.character(raw) && !is.null(names(raw)) && any(nzchar(names(raw)))) {
-    out <- vapply(raw, ynow_access_normalize_effect, character(1), USE.NAMES = TRUE)
+    out <- lapply(raw, function(v) ynow_access_normalize_entry(effect = v))
+    names(out) <- names(raw)
     out <- out[nzchar(names(out))]
     return(out)
   }
-  # Legacy: plain list/vector of item ids → hide (matches prior CSS)
   if (is.list(raw) || is.character(raw)) {
-    ids <- as.character(unlist(raw, use.names = FALSE))
-    ids <- ids[nzchar(ids)]
-    if (!length(ids)) return(character())
-    # Named list of effects: list(`tab:x` = "lock")
+    # Named list of effects or full entries
     if (is.list(raw) && !is.null(names(raw)) && any(nzchar(names(raw)))) {
       nms <- names(raw)
       keep <- nzchar(nms)
-      vals <- vapply(raw[keep], function(v) {
+      vals <- lapply(raw[keep], function(v) {
         if (is.list(v) && !is.null(v$effect)) {
-          ynow_access_normalize_effect(v$effect)
+          ynow_access_normalize_entry(raw = v)
         } else {
-          ynow_access_normalize_effect(v)
+          ynow_access_normalize_entry(effect = v)
         }
-      }, character(1))
+      })
       names(vals) <- nms[keep]
       return(vals)
     }
-    out <- rep("hide", length(ids))
+    # Legacy: plain list/vector of item ids → hide (matches prior CSS)
+    ids <- as.character(unlist(raw, use.names = FALSE))
+    ids <- ids[nzchar(ids)]
+    if (!length(ids)) return(list())
+    out <- lapply(ids, function(id) ynow_access_normalize_entry(effect = "hide"))
     names(out) <- ids
     return(out)
   }
-  character()
+  list()
+}
+
+.ynow_access_entry_to_jsonable <- function(entry) {
+  e <- ynow_access_normalize_entry(raw = entry)
+  out <- list(effect = e$effect)
+  if (!is.na(e$unlock_type) && nzchar(e$unlock_type)) {
+    out$unlock_type <- e$unlock_type
+  }
+  if (!is.na(e$points_cost)) out$points_cost <- as.integer(e$points_cost)
+  if (!is.na(e$free_count)) out$free_count <- as.integer(e$free_count)
+  if (!is.na(e$time_limit_hours)) out$time_limit_hours <- as.integer(e$time_limit_hours)
+  out
 }
 
 .ynow_access_read_file <- function() {
@@ -221,6 +369,21 @@ ynow_access_purge_user <- function(user_id) {
 
 .ynow_access_write_file <- function(store) {
   path <- .ynow_access_file()
+  dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
+  jsonlite::write_json(store, path, auto_unbox = TRUE, pretty = TRUE)
+  invisible(path)
+}
+
+.ynow_access_read_state_file <- function() {
+  path <- .ynow_access_state_file()
+  if (!file.exists(path)) return(list())
+  raw <- tryCatch(jsonlite::fromJSON(path, simplifyVector = FALSE), error = function(e) NULL)
+  if (!is.list(raw)) return(list())
+  raw
+}
+
+.ynow_access_write_state_file <- function(store) {
+  path <- .ynow_access_state_file()
   dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
   jsonlite::write_json(store, path, auto_unbox = TRUE, pretty = TRUE)
   invisible(path)
@@ -242,11 +405,14 @@ ynow_access_ensure_schema <- function() {
       "item_id TEXT NOT NULL,",
       "locked BOOLEAN NOT NULL DEFAULT TRUE,",
       "effect TEXT NOT NULL DEFAULT 'hide',",
+      "unlock_type TEXT,",
+      "points_cost INTEGER,",
+      "free_count INTEGER,",
+      "time_limit_hours INTEGER,",
       "updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),",
       "PRIMARY KEY (user_id, item_id)",
       ")"
     ))
-    # Older deploys may lack effect column.
     cols <- tryCatch(
       DBI::dbGetQuery(
         con,
@@ -257,29 +423,80 @@ ynow_access_ensure_schema <- function() {
       ),
       error = function(e) NULL
     )
-    if (is.data.frame(cols) && !"effect" %in% cols$column_name) {
-      tryCatch(
-        DBI::dbExecute(
-          con,
-          "ALTER TABLE ynow_access_locks ADD COLUMN IF NOT EXISTS effect TEXT NOT NULL DEFAULT 'hide'"
-        ),
-        error = function(e) NULL
-      )
+    if (is.data.frame(cols)) {
+      if (!"effect" %in% cols$column_name) {
+        tryCatch(
+          DBI::dbExecute(
+            con,
+            "ALTER TABLE ynow_access_locks ADD COLUMN IF NOT EXISTS effect TEXT NOT NULL DEFAULT 'hide'"
+          ),
+          error = function(e) NULL
+        )
+      }
+      for (col_sql in c(
+        "unlock_type TEXT",
+        "points_cost INTEGER",
+        "free_count INTEGER",
+        "time_limit_hours INTEGER"
+      )) {
+        col_name <- sub(" .*", "", col_sql)
+        if (!col_name %in% cols$column_name) {
+          tryCatch(
+            DBI::dbExecute(
+              con,
+              paste0("ALTER TABLE ynow_access_locks ADD COLUMN IF NOT EXISTS ", col_sql)
+            ),
+            error = function(e) NULL
+          )
+        }
+      }
+    }
+    DBI::dbExecute(con, paste(
+      "CREATE TABLE IF NOT EXISTS ynow_access_unlock_state (",
+      "user_id TEXT NOT NULL,",
+      "item_id TEXT NOT NULL,",
+      "free_used INTEGER NOT NULL DEFAULT 0,",
+      "points_unlocked BOOLEAN NOT NULL DEFAULT FALSE,",
+      "unlocked_until TIMESTAMPTZ,",
+      "updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),",
+      "PRIMARY KEY (user_id, item_id)",
+      ")"
+    ))
+    if (exists(".ynow_db_rls_fail_closed", mode = "function")) {
+      tryCatch(.ynow_db_rls_fail_closed(con, "ynow_access_locks"), error = function(e) NULL)
+      tryCatch(.ynow_db_rls_fail_closed(con, "ynow_access_unlock_state"), error = function(e) NULL)
     }
   })
   invisible(TRUE)
 }
 
+.ynow_access_df_to_map <- function(df) {
+  if (!is.data.frame(df) || nrow(df) < 1L) return(list())
+  out <- lapply(seq_len(nrow(df)), function(i) {
+    ynow_access_normalize_entry(
+      effect = df$effect[[i]],
+      unlock_type = if ("unlock_type" %in% names(df)) df$unlock_type[[i]] else NA_character_,
+      points_cost = if ("points_cost" %in% names(df)) df$points_cost[[i]] else NA_integer_,
+      free_count = if ("free_count" %in% names(df)) df$free_count[[i]] else NA_integer_,
+      time_limit_hours = if ("time_limit_hours" %in% names(df)) df$time_limit_hours[[i]] else NA_integer_
+    )
+  })
+  names(out) <- as.character(df$item_id)
+  out
+}
+
 .ynow_access_map_for_uid <- function(user_id) {
   uid <- as.character(user_id %||% "")[1]
-  if (!nzchar(uid)) return(character())
+  if (!nzchar(uid)) return(list())
   if (.ynow_access_db_on()) {
     ynow_access_ensure_schema()
     df <- ynow_db_with(function(con) {
       DBI::dbGetQuery(
         con,
         paste(
-          "SELECT item_id, COALESCE(NULLIF(effect, ''), 'hide') AS effect",
+          "SELECT item_id,",
+          "COALESCE(NULLIF(effect, ''), 'hide') AS effect,",
+          "unlock_type, points_cost, free_count, time_limit_hours",
           "FROM ynow_access_locks",
           "WHERE user_id = $1 AND locked IS TRUE",
           "ORDER BY item_id"
@@ -287,10 +504,7 @@ ynow_access_ensure_schema <- function() {
         params = list(uid)
       )
     })
-    if (!is.data.frame(df) || nrow(df) < 1L) return(character())
-    out <- vapply(df$effect, ynow_access_normalize_effect, character(1))
-    names(out) <- as.character(df$item_id)
-    return(out)
+    return(.ynow_access_df_to_map(df))
   }
   mem <- .ynow_access_mem$by_user[[uid]]
   if (is.null(mem)) {
@@ -300,51 +514,289 @@ ynow_access_ensure_schema <- function() {
   .ynow_access_coerce_map(mem)
 }
 
+.ynow_access_merge_maps <- function(global, personal) {
+  merged <- global
+  if (length(personal)) {
+    for (nm in names(personal)) merged[[nm]] <- personal[[nm]]
+  }
+  merged
+}
+
+.ynow_access_map_to_df <- function(mp) {
+  if (!length(mp)) {
+    return(data.frame(
+      id = character(),
+      effect = character(),
+      unlock_type = character(),
+      points_cost = integer(),
+      free_count = integer(),
+      time_limit_hours = integer(),
+      stringsAsFactors = FALSE
+    ))
+  }
+  data.frame(
+    id = names(mp),
+    effect = vapply(mp, function(e) e$effect, character(1)),
+    unlock_type = vapply(mp, function(e) {
+      u <- e$unlock_type
+      if (is.null(u) || length(u) < 1L || is.na(u)) NA_character_ else as.character(u)[1]
+    }, character(1)),
+    points_cost = vapply(mp, function(e) {
+      n <- e$points_cost
+      if (is.null(n) || length(n) < 1L || is.na(n)) NA_integer_ else as.integer(n)[1]
+    }, integer(1)),
+    free_count = vapply(mp, function(e) {
+      n <- e$free_count
+      if (is.null(n) || length(n) < 1L || is.na(n)) NA_integer_ else as.integer(n)[1]
+    }, integer(1)),
+    time_limit_hours = vapply(mp, function(e) {
+      n <- e$time_limit_hours
+      if (is.null(n) || length(n) < 1L || is.na(n)) NA_integer_ else as.integer(n)[1]
+    }, integer(1)),
+    stringsAsFactors = FALSE
+  )
+}
+
 #' Effective restrictions for a subject: global (__all__) then per-user override.
+#' Returns raw configured restrictions (does not apply unlock evaluation).
 ynow_access_entries <- function(user_id = "") {
   uid <- as.character(user_id %||% "")[1]
   global <- .ynow_access_map_for_uid(YNOW_ACCESS_ALL_USERS)
   personal <- if (nzchar(uid) && !identical(uid, YNOW_ACCESS_ALL_USERS)) {
     .ynow_access_map_for_uid(uid)
   } else {
-    character()
+    list()
   }
-  merged <- global
-  if (length(personal)) {
-    for (nm in names(personal)) merged[[nm]] <- personal[[nm]]
-  }
-  if (!length(merged)) {
-    return(data.frame(id = character(), effect = character(), stringsAsFactors = FALSE))
-  }
-  data.frame(
-    id = names(merged),
-    effect = unname(vapply(merged, ynow_access_normalize_effect, character(1))),
-    stringsAsFactors = FALSE
-  )
+  .ynow_access_map_to_df(.ynow_access_merge_maps(global, personal))
 }
 
 #' Raw store map for one uid key (not merged with __all__).
 ynow_access_store_entries <- function(user_id = "") {
   uid <- as.character(user_id %||% "")[1]
   if (!nzchar(uid)) {
-    return(data.frame(id = character(), effect = character(), stringsAsFactors = FALSE))
+    return(.ynow_access_map_to_df(list()))
   }
-  mp <- .ynow_access_map_for_uid(uid)
-  if (!length(mp)) {
-    return(data.frame(id = character(), effect = character(), stringsAsFactors = FALSE))
-  }
-  data.frame(
-    id = names(mp),
-    effect = unname(vapply(mp, ynow_access_normalize_effect, character(1))),
-    stringsAsFactors = FALSE
+  .ynow_access_map_to_df(.ynow_access_map_for_uid(uid))
+}
+
+ynow_access_item_entry <- function(user_id, item_id) {
+  id <- as.character(item_id %||% "")[1]
+  ent <- ynow_access_entries(user_id)
+  hit <- which(ent$id == id)
+  if (!length(hit)) return(NULL)
+  i <- hit[[1]]
+  ynow_access_normalize_entry(
+    effect = ent$effect[[i]],
+    unlock_type = ent$unlock_type[[i]],
+    points_cost = ent$points_cost[[i]],
+    free_count = ent$free_count[[i]],
+    time_limit_hours = ent$time_limit_hours[[i]]
   )
+}
+
+# --- Per-user unlock runtime state (points / conditional) ---
+
+.ynow_access_parse_until <- function(unlocked_until) {
+  if (inherits(unlocked_until, "POSIXt") && length(unlocked_until) >= 1L &&
+      !is.na(unlocked_until[1])) {
+    return(as.POSIXct(unlocked_until[1], tz = "UTC"))
+  }
+  if (is.character(unlocked_until) && nzchar(unlocked_until[1])) {
+    raw <- as.character(unlocked_until[1])
+    parsed <- tryCatch(
+      as.POSIXct(raw, format = "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
+      error = function(e) NA
+    )
+    if (inherits(parsed, "POSIXt") && length(parsed) >= 1L && !is.na(parsed[1])) {
+      return(as.POSIXct(parsed[1], tz = "UTC"))
+    }
+    parsed <- tryCatch(
+      as.POSIXct(raw, format = "%Y-%m-%d %H:%M:%S", tz = "UTC"),
+      error = function(e) NA
+    )
+    if (inherits(parsed, "POSIXt") && length(parsed) >= 1L && !is.na(parsed[1])) {
+      return(as.POSIXct(parsed[1], tz = "UTC"))
+    }
+  }
+  NA
+}
+
+.ynow_access_normalize_state <- function(raw = NULL) {
+  if (!is.list(raw)) raw <- list()
+  free_used <- ynow_access_normalize_nonneg_int(raw$free_used %||% 0L, 0L)
+  points_unlocked <- isTRUE(raw$points_unlocked)
+  unlocked_until <- .ynow_access_parse_until(raw$unlocked_until %||% NA)
+  list(
+    free_used = free_used,
+    points_unlocked = points_unlocked,
+    unlocked_until = unlocked_until
+  )
+}
+
+ynow_access_get_unlock_state <- function(user_id, item_id) {
+  uid <- as.character(user_id %||% "")[1]
+  id <- as.character(item_id %||% "")[1]
+  if (!nzchar(uid) || !nzchar(id) || identical(uid, YNOW_ACCESS_ALL_USERS)) {
+    return(.ynow_access_normalize_state())
+  }
+  if (.ynow_access_db_on()) {
+    ynow_access_ensure_schema()
+    df <- ynow_db_with(function(con) {
+      DBI::dbGetQuery(
+        con,
+        paste(
+          "SELECT free_used, points_unlocked, unlocked_until",
+          "FROM ynow_access_unlock_state",
+          "WHERE user_id = $1 AND item_id = $2 LIMIT 1"
+        ),
+        params = list(uid, id)
+      )
+    })
+    if (is.data.frame(df) && nrow(df) >= 1L) {
+      return(.ynow_access_normalize_state(as.list(df[1, , drop = FALSE])))
+    }
+    return(.ynow_access_normalize_state())
+  }
+  mem_u <- .ynow_access_mem$unlock_state[[uid]]
+  if (is.null(mem_u)) {
+    store <- .ynow_access_read_state_file()
+    mem_u <- store[[uid]]
+    .ynow_access_mem$unlock_state[[uid]] <- mem_u %||% list()
+  }
+  .ynow_access_normalize_state(mem_u[[id]])
+}
+
+ynow_access_set_unlock_state <- function(user_id, item_id, state) {
+  uid <- as.character(user_id %||% "")[1]
+  id <- as.character(item_id %||% "")[1]
+  if (!nzchar(uid) || !nzchar(id) || identical(uid, YNOW_ACCESS_ALL_USERS)) {
+    return(invisible(FALSE))
+  }
+  st <- .ynow_access_normalize_state(state)
+  until_sql <- if (inherits(st$unlocked_until, "POSIXt") && !is.na(st$unlocked_until)) {
+    format(as.POSIXct(st$unlocked_until, tz = "UTC"), "%Y-%m-%d %H:%M:%S", usetz = FALSE)
+  } else {
+    NA_character_
+  }
+  if (.ynow_access_db_on()) {
+    ynow_access_ensure_schema()
+    ynow_db_with(function(con) {
+      DBI::dbExecute(
+        con,
+        paste(
+          "INSERT INTO ynow_access_unlock_state",
+          "(user_id, item_id, free_used, points_unlocked, unlocked_until, updated_at)",
+          "VALUES ($1, $2, $3, $4, $5::timestamptz, NOW())",
+          "ON CONFLICT (user_id, item_id) DO UPDATE SET",
+          "free_used = EXCLUDED.free_used,",
+          "points_unlocked = EXCLUDED.points_unlocked,",
+          "unlocked_until = EXCLUDED.unlocked_until,",
+          "updated_at = NOW()"
+        ),
+        params = list(uid, id, as.integer(st$free_used), isTRUE(st$points_unlocked), until_sql)
+      )
+    })
+    return(invisible(TRUE))
+  }
+  mem_u <- .ynow_access_mem$unlock_state[[uid]] %||% list()
+  mem_u[[id]] <- list(
+    free_used = as.integer(st$free_used),
+    points_unlocked = isTRUE(st$points_unlocked),
+    unlocked_until = if (inherits(st$unlocked_until, "POSIXt") && !is.na(st$unlocked_until)) {
+      format(as.POSIXct(st$unlocked_until, tz = "UTC"), "%Y-%m-%dT%H:%M:%SZ")
+    } else {
+      NULL
+    }
+  )
+  .ynow_access_mem$unlock_state[[uid]] <- mem_u
+  store <- .ynow_access_read_state_file()
+  store[[uid]] <- mem_u
+  .ynow_access_write_state_file(store)
+  invisible(TRUE)
+}
+
+#' Whether the unlock condition is currently satisfied for user+item (usable).
+#' Returns TRUE when there is no restriction on that item.
+ynow_access_unlock_satisfied_for_item <- function(user_id, item_id,
+                                                  authed = NULL,
+                                                  now = Sys.time()) {
+  id <- as.character(item_id %||% "")[1]
+  entry <- ynow_access_item_entry(user_id, id)
+  if (is.null(entry)) return(TRUE) # not restricted
+  uid <- as.character(user_id %||% "")[1]
+  is_authed <- if (is.null(authed)) {
+    nzchar(uid) && !identical(uid, YNOW_ACCESS_ALL_USERS)
+  } else {
+    isTRUE(authed)
+  }
+  ut <- entry$unlock_type
+  if (is.na(ut) || !nzchar(ut)) return(FALSE) # legacy sticky
+  if (!is_authed) return(FALSE)
+  if (identical(ut, YNOW_UNLOCK_LOGIN)) return(TRUE)
+  st <- ynow_access_get_unlock_state(uid, id)
+  if (identical(ut, YNOW_UNLOCK_POINTS)) return(isTRUE(st$points_unlocked))
+  if (identical(ut, YNOW_UNLOCK_CONDITIONAL)) {
+    has_free <- !is.na(entry$free_count)
+    has_time <- !is.na(entry$time_limit_hours) && entry$time_limit_hours > 0L
+    ok_free <- FALSE
+    ok_time <- FALSE
+    if (has_free) ok_free <- as.integer(st$free_used) < as.integer(entry$free_count)
+    if (has_time) {
+      until <- st$unlocked_until
+      ok_time <- inherits(until, "POSIXt") && !is.na(until) &&
+        as.POSIXct(until) > as.POSIXct(now)
+    }
+    if (has_free || has_time) return(isTRUE(ok_free) || isTRUE(ok_time))
+    return(FALSE)
+  }
+  FALSE
+}
+
+#' Restrictions still in force after unlock evaluation (for client push / deny).
+ynow_access_effective_entries <- function(user_id = "", authed = NULL, now = Sys.time()) {
+  ent <- ynow_access_entries(user_id)
+  if (!is.data.frame(ent) || nrow(ent) < 1L) return(ent)
+  uid <- as.character(user_id %||% "")[1]
+  is_authed <- if (is.null(authed)) nzchar(uid) && !identical(uid, YNOW_ACCESS_ALL_USERS) else isTRUE(authed)
+  keep <- vapply(seq_len(nrow(ent)), function(i) {
+    !isTRUE(ynow_access_unlock_satisfied_for_item(
+      uid, ent$id[[i]], authed = is_authed, now = now
+    ))
+  }, logical(1))
+  ent[keep, , drop = FALSE]
+}
+
+#' Mark points unlock paid for one user+item (after FYN spend succeeds).
+ynow_access_mark_points_unlocked <- function(user_id, item_id) {
+  st <- ynow_access_get_unlock_state(user_id, item_id)
+  st$points_unlocked <- TRUE
+  ynow_access_set_unlock_state(user_id, item_id, st)
+  invisible(TRUE)
+}
+
+#' Start / refresh conditional time window; optionally consume one free use.
+#' @param consume_free TRUE to increment free_used by 1 when free_count is set
+ynow_access_touch_conditional <- function(user_id, item_id, consume_free = FALSE, now = Sys.time()) {
+  entry <- ynow_access_item_entry(user_id, item_id)
+  if (is.null(entry) || !identical(entry$unlock_type, YNOW_UNLOCK_CONDITIONAL)) {
+    return(list(ok = FALSE, message_key = "access_bad_item"))
+  }
+  st <- ynow_access_get_unlock_state(user_id, item_id)
+  if (isTRUE(consume_free) && !is.na(entry$free_count)) {
+    st$free_used <- as.integer(st$free_used) + 1L
+  }
+  if (!is.na(entry$time_limit_hours) && entry$time_limit_hours > 0L) {
+    st$unlocked_until <- as.POSIXct(now, tz = "UTC") + (as.integer(entry$time_limit_hours) * 3600)
+  }
+  ynow_access_set_unlock_state(user_id, item_id, st)
+  list(ok = TRUE, state = st)
 }
 
 #' Admin 「目前限制」 lines for the current apply-scope + selected user.
 #'
 #' When scope is "user" / selected user: personal store for that uid (not stale
 #' first-row / not global-only). When scope is "all": only the __all__ store.
-#' @return character vector of "scope · label（effect）" lines (may be empty)
+#' @return character vector of "scope · label（effect · unlock）" lines (may be empty)
 ynow_access_admin_status_lines <- function(user_id = "",
                                            scope = "user",
                                            locale = "en",
@@ -362,7 +814,14 @@ ynow_access_admin_status_lines <- function(user_id = "",
     vapply(seq_len(nrow(ent)), function(i) {
       lab <- ynow_access_label(ent$id[[i]], locale)
       eff <- ynow_access_effect_label(ent$effect[[i]], locale)
-      paste0(scope_lab, " · ", lab, "（", eff, "）")
+      unl <- ynow_access_unlock_type_label(
+        ent$unlock_type[[i]],
+        locale = locale,
+        points_cost = ent$points_cost[[i]],
+        free_count = ent$free_count[[i]],
+        time_limit_hours = ent$time_limit_hours[[i]]
+      )
+      paste0(scope_lab, " · ", lab, "（", eff, " · ", unl, "）")
     }, character(1))
   }
   if (identical(scope, "all")) {
@@ -391,14 +850,18 @@ ynow_access_admin_status_text <- function(user_id = "",
   paste(lines, collapse = sep)
 }
 
-ynow_access_locked_ids <- function(user_id) {
-  ent <- ynow_access_entries(user_id)
+ynow_access_locked_ids <- function(user_id, effective = FALSE, authed = NULL) {
+  ent <- if (isTRUE(effective)) {
+    ynow_access_effective_entries(user_id, authed = authed)
+  } else {
+    ynow_access_entries(user_id)
+  }
   sort(unique(as.character(ent$id)))
 }
 
-ynow_access_is_locked <- function(user_id, item_id) {
+ynow_access_is_locked <- function(user_id, item_id, effective = FALSE, authed = NULL) {
   id <- as.character(item_id %||% "")[1]
-  id %in% ynow_access_locked_ids(user_id)
+  id %in% ynow_access_locked_ids(user_id, effective = effective, authed = authed)
 }
 
 ynow_access_item_effect <- function(user_id, item_id) {
@@ -409,17 +872,50 @@ ynow_access_item_effect <- function(user_id, item_id) {
   as.character(ent$effect[[hit[[1]]]])
 }
 
-#' Set or clear a restriction.
+#' Set or clear a restriction (with optional unlock condition).
 #' @param user_id account uuid, or YNOW_ACCESS_ALL_USERS for everyone
 #' @param effect "lock" or "hide" (ignored when locked=FALSE)
-ynow_access_set <- function(user_id, item_id, locked = TRUE, effect = "hide") {
+#' @param unlock_type "login" | "points" | "conditional" (default login when locking)
+#' @param points_cost FYN required when unlock_type=points
+#' @param free_count free uses when unlock_type=conditional (optional)
+#' @param time_limit_hours hours window when unlock_type=conditional (optional)
+ynow_access_set <- function(user_id,
+                            item_id,
+                            locked = TRUE,
+                            effect = "hide",
+                            unlock_type = YNOW_UNLOCK_LOGIN,
+                            points_cost = NA_integer_,
+                            free_count = NA_integer_,
+                            time_limit_hours = NA_integer_) {
   uid <- as.character(user_id %||% "")[1]
   id <- as.character(item_id %||% "")[1]
   cat <- ynow_access_catalog()
   if (!nzchar(uid)) return(list(ok = FALSE, message_key = "access_bad_user"))
   if (!id %in% cat$id) return(list(ok = FALSE, message_key = "access_bad_item"))
   on <- isTRUE(locked)
-  eff <- ynow_access_normalize_effect(effect)
+  entry <- ynow_access_normalize_entry(
+    effect = effect,
+    unlock_type = if (on) {
+      ynow_access_normalize_unlock_type(unlock_type, allow_empty = FALSE)
+    } else {
+      NA_character_
+    },
+    points_cost = points_cost,
+    free_count = free_count,
+    time_limit_hours = time_limit_hours
+  )
+  if (on && identical(entry$unlock_type, YNOW_UNLOCK_POINTS) &&
+      (is.na(entry$points_cost) || entry$points_cost < 1L)) {
+    return(list(ok = FALSE, message_key = "access_bad_points_cost"))
+  }
+  if (on && identical(entry$unlock_type, YNOW_UNLOCK_CONDITIONAL)) {
+    has_free <- !is.na(entry$free_count)
+    has_time <- !is.na(entry$time_limit_hours) && entry$time_limit_hours > 0L
+    if (!has_free && !has_time) {
+      return(list(ok = FALSE, message_key = "access_bad_conditional"))
+    }
+  }
+  eff <- entry$effect
   if (.ynow_access_db_on()) {
     ynow_access_ensure_schema()
     ynow_db_with(function(con) {
@@ -427,12 +923,26 @@ ynow_access_set <- function(user_id, item_id, locked = TRUE, effect = "hide") {
         DBI::dbExecute(
           con,
           paste(
-            "INSERT INTO ynow_access_locks (user_id, item_id, locked, effect, updated_at)",
-            "VALUES ($1, $2, TRUE, $3, NOW())",
+            "INSERT INTO ynow_access_locks",
+            "(user_id, item_id, locked, effect, unlock_type, points_cost,",
+            " free_count, time_limit_hours, updated_at)",
+            "VALUES ($1, $2, TRUE, $3, $4, $5, $6, $7, NOW())",
             "ON CONFLICT (user_id, item_id) DO UPDATE SET",
-            "locked = TRUE, effect = EXCLUDED.effect, updated_at = NOW()"
+            "locked = TRUE,",
+            "effect = EXCLUDED.effect,",
+            "unlock_type = EXCLUDED.unlock_type,",
+            "points_cost = EXCLUDED.points_cost,",
+            "free_count = EXCLUDED.free_count,",
+            "time_limit_hours = EXCLUDED.time_limit_hours,",
+            "updated_at = NOW()"
           ),
-          params = list(uid, id, eff)
+          params = list(
+            uid, id, eff,
+            if (is.na(entry$unlock_type)) NA_character_ else entry$unlock_type,
+            if (is.na(entry$points_cost)) NA_integer_ else as.integer(entry$points_cost),
+            if (is.na(entry$free_count)) NA_integer_ else as.integer(entry$free_count),
+            if (is.na(entry$time_limit_hours)) NA_integer_ else as.integer(entry$time_limit_hours)
+          )
         )
       } else {
         DBI::dbExecute(
@@ -448,13 +958,12 @@ ynow_access_set <- function(user_id, item_id, locked = TRUE, effect = "hide") {
       .ynow_access_mem$by_user[[uid]] %||% store[[uid]]
     )
     if (on) {
-      cur[[id]] <- eff
+      cur[[id]] <- entry
     } else {
       cur <- cur[setdiff(names(cur), id)]
     }
     .ynow_access_mem$by_user[[uid]] <- cur
-    # Persist as named list for JSON clarity
-    store[[uid]] <- as.list(cur)
+    store[[uid]] <- lapply(cur, .ynow_access_entry_to_jsonable)
     .ynow_access_write_file(store)
   }
   list(
@@ -470,6 +979,10 @@ ynow_access_set <- function(user_id, item_id, locked = TRUE, effect = "hide") {
     },
     ids = ynow_access_locked_ids(uid),
     effect = if (on) eff else NA_character_,
+    unlock_type = if (on) entry$unlock_type else NA_character_,
+    points_cost = if (on) entry$points_cost else NA_integer_,
+    free_count = if (on) entry$free_count else NA_integer_,
+    time_limit_hours = if (on) entry$time_limit_hours else NA_integer_,
     scope = if (identical(uid, YNOW_ACCESS_ALL_USERS)) "all" else "user"
   )
 }

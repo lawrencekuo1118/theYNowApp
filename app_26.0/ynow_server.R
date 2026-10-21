@@ -1008,12 +1008,26 @@ server <- function(input, output, session) {
   }
 
   .ynow_push_access_locks <- function() {
-    if (!exists("ynow_access_entries", mode = "function")) return(invisible(NULL))
+    if (!exists("ynow_access_effective_entries", mode = "function") &&
+        !exists("ynow_access_entries", mode = "function")) {
+      return(invisible(NULL))
+    }
     uid <- .ynow_access_subject_id()
-    # Guests still receive global (__all__) restrictions.
-    ent <- tryCatch(ynow_access_entries(uid), error = function(e) {
-      data.frame(id = character(), effect = character(), stringsAsFactors = FALSE)
-    })
+    authed <- nzchar(as.character(uid %||% "")[1])
+    # Guests still receive global (__all__) restrictions; login/points/conditional
+    # unlock rules filter out items that are currently usable.
+    ent <- tryCatch(
+      {
+        if (exists("ynow_access_effective_entries", mode = "function")) {
+          ynow_access_effective_entries(uid, authed = authed)
+        } else {
+          ynow_access_entries(uid)
+        }
+      },
+      error = function(e) {
+        data.frame(id = character(), effect = character(), stringsAsFactors = FALSE)
+      }
+    )
     loc <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "en")
     note <- tryCatch(
       ui_str("access_pane_note", loc),
@@ -1037,8 +1051,8 @@ server <- function(input, output, session) {
   .ynow_access_deny_download <- function(item_id, file) {
     if (!exists("ynow_access_is_locked", mode = "function")) return(FALSE)
     uid <- .ynow_access_subject_id()
-    # Global (__all__) applies even when not signed in.
-    if (!isTRUE(ynow_access_is_locked(uid, item_id))) return(FALSE)
+    # Global (__all__) applies even when not signed in; honor unlock conditions.
+    if (!isTRUE(ynow_access_is_locked(uid, item_id, effective = TRUE))) return(FALSE)
     loc <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "en")
     msg <- tryCatch(
       ui_str("access_denied_report", loc),
@@ -1973,6 +1987,14 @@ server <- function(input, output, session) {
     if (!cur_scope %in% c("user", "all")) cur_scope <- "user"
     cur_effect <- as.character(isolate(input$ynow_access_effect) %||% "lock")[1]
     if (!cur_effect %in% c("lock", "hide")) cur_effect <- "lock"
+    cur_unlock <- as.character(isolate(input$ynow_access_unlock_type) %||% "login")[1]
+    if (!cur_unlock %in% c("login", "points", "conditional")) cur_unlock <- "login"
+    cur_points <- suppressWarnings(as.integer(isolate(input$ynow_access_points_cost) %||% 1L)[1])
+    if (!is.finite(cur_points) || cur_points < 1L) cur_points <- 1L
+    cur_free <- suppressWarnings(as.integer(isolate(input$ynow_access_free_count) %||% 0L)[1])
+    if (!is.finite(cur_free) || cur_free < 0L) cur_free <- 0L
+    cur_hours <- suppressWarnings(as.integer(isolate(input$ynow_access_time_hours) %||% 0L)[1])
+    if (!is.finite(cur_hours) || cur_hours < 0L) cur_hours <- 0L
     cur_item <- as.character(isolate(input$ynow_access_item) %||% "")[1]
     tags$div(
       tags$p(
@@ -2063,8 +2085,9 @@ server <- function(input, output, session) {
         .lab(
           "access_lock_help",
           paste0(
-            "Choose lock (show a locked placeholder) or hide (remove from the UI), ",
-            "and apply to the selected user or all users."
+            "Choose Lock or Hide, set the unlock condition ",
+            "(after login / points / conditional free count or time limit), ",
+            "then apply to the selected user or all users."
           )
         )
       ),
@@ -2125,6 +2148,61 @@ server <- function(input, output, session) {
             choiceValues = c("lock", "hide"),
             selected = cur_effect,
             inline = TRUE
+          ),
+          radioButtons(
+            "ynow_access_unlock_type",
+            .lab("access_unlock_type_label", "Unlock condition"),
+            choiceNames = list(
+              .lab("access_unlock_login", "Unlock after login"),
+              .lab("access_unlock_points", "Points unlock"),
+              .lab("access_unlock_conditional", "Conditional unlock")
+            ),
+            choiceValues = c("login", "points", "conditional"),
+            selected = cur_unlock,
+            inline = TRUE
+          ),
+          conditionalPanel(
+            condition = "input.ynow_access_unlock_type === 'points'",
+            numericInput(
+              "ynow_access_points_cost",
+              .lab("access_unlock_points_cost", "Points required (FYN)"),
+              value = cur_points,
+              min = 1L,
+              step = 1L
+            )
+          ),
+          conditionalPanel(
+            condition = "input.ynow_access_unlock_type === 'conditional'",
+            fluidRow(
+              column(
+                6,
+                numericInput(
+                  "ynow_access_free_count",
+                  .lab("access_unlock_free_count", "Free uses (0 = unused)"),
+                  value = cur_free,
+                  min = 0L,
+                  step = 1L
+                )
+              ),
+              column(
+                6,
+                numericInput(
+                  "ynow_access_time_hours",
+                  .lab("access_unlock_time_hours", "Time limit (hours; 0 = unused)"),
+                  value = cur_hours,
+                  min = 0L,
+                  step = 1L
+                )
+              )
+            ),
+            tags$p(
+              class = "text-muted",
+              style = "font-size:12px; margin-top:0;",
+              .lab(
+                "access_unlock_conditional_help",
+                "Set free uses and/or a time window. At least one must be greater than zero."
+              )
+            )
           ),
           tags$div(
             style = "margin-top:4px; display:flex; flex-wrap:wrap; gap:8px; align-items:center;",
@@ -2202,9 +2280,49 @@ server <- function(input, output, session) {
     }
     item <- as.character(input$ynow_access_item %||% "")[1]
     effect <- as.character(input$ynow_access_effect %||% "lock")[1]
-    res <- ynow_access_set(uid, item, locked = isTRUE(locked), effect = effect)
+    unlock_type <- as.character(input$ynow_access_unlock_type %||% "login")[1]
+    if (!unlock_type %in% c("login", "points", "conditional")) unlock_type <- "login"
+    points_cost <- suppressWarnings(as.integer(input$ynow_access_points_cost %||% 1L)[1])
+    if (!is.finite(points_cost) || points_cost < 1L) points_cost <- 1L
+    free_count <- suppressWarnings(as.integer(input$ynow_access_free_count %||% 0L)[1])
+    if (!is.finite(free_count) || free_count < 0L) free_count <- 0L
+    time_hours <- suppressWarnings(as.integer(input$ynow_access_time_hours %||% 0L)[1])
+    if (!is.finite(time_hours) || time_hours < 0L) time_hours <- 0L
+    # 0 means "unused" in the admin form → store as NA for conditional fields.
+    free_arg <- if (identical(unlock_type, "conditional") && free_count > 0L) {
+      free_count
+    } else {
+      NA_integer_
+    }
+    hours_arg <- if (identical(unlock_type, "conditional") && time_hours > 0L) {
+      time_hours
+    } else {
+      NA_integer_
+    }
+    res <- ynow_access_set(
+      uid,
+      item,
+      locked = isTRUE(locked),
+      effect = effect,
+      unlock_type = unlock_type,
+      points_cost = if (identical(unlock_type, "points")) points_cost else NA_integer_,
+      free_count = free_arg,
+      time_limit_hours = hours_arg
+    )
+    fb <- switch(
+      as.character(res$message_key %||% ""),
+      access_bad_points_cost = .lab(
+        "access_bad_points_cost",
+        "Enter how many FYN are required for points unlock."
+      ),
+      access_bad_conditional = .lab(
+        "access_bad_conditional",
+        "For conditional unlock, set free uses and/or a time limit greater than zero."
+      ),
+      .lab(res$message_key %||% "access_bad_item", "Choose an item from the catalog.")
+    )
     showNotification(
-      .lab(res$message_key %||% "access_bad_item", "Choose an item from the catalog."),
+      fb,
       type = if (isTRUE(res$ok)) "message" else "warning"
     )
     if (isTRUE(res$ok)) {

@@ -9,6 +9,10 @@
 #          YNOW_POINTS_ENABLED=1; guest still blocked first).
 #
 # Every membership-gated id MUST appear here with tier A or B.
+# Sysadmin ACL unlock rules (`access_locks.R`) add a third formal class for
+# admin-configured item locks only:
+#   A login | B points (+ cost) | C conditional (free count and/or time window).
+# That C class does NOT replace freemium A/B rows in this catalog.
 # Sysadmin ACL (`access_locks.R`), APP_DEFAULTS unlock, Decision SOP, Blue Chip
 # method locks, and numeric input locks are NON-membership — see
 # ynow_non_membership_lock_catalog(). They must not be left as "unclassified".
@@ -178,7 +182,7 @@ ynow_non_membership_lock_catalog <- function() {
       "Only when tab:asset_transmission is ACL-locked"),
     c("access_locks", "ops_catalog", "ops_acl",
       "Sysadmin access_locks catalog", "系統管理 ACL 目錄",
-      "access_locks.R ynow_access_catalog — per-user / __all__"),
+      "access_locks.R — lock/hide + unlock A/B/C (login/points/conditional); per-user / __all__"),
     c("dc_sop", "domain", "domain_discipline",
       "Decision SOP verdict banner", "決策 SOP 檢核橫幅",
       "Discipline unlock after acks — not membership"),

@@ -175,9 +175,16 @@ check("js reads entries effect", {
     grepl("effect === 'hide'", ui, fixed = TRUE)
 })
 check("server admin lock button", grepl("ynow_access_lock", srv, fixed = TRUE))
-check("server has scope + effect radios", {
+check("server has scope + effect + unlock radios", {
   grepl("ynow_access_scope", srv, fixed = TRUE) &&
-    grepl("ynow_access_effect", srv, fixed = TRUE)
+    grepl("ynow_access_effect", srv, fixed = TRUE) &&
+    grepl("ynow_access_unlock_type", srv, fixed = TRUE) &&
+    grepl("ynow_access_points_cost", srv, fixed = TRUE) &&
+    grepl("ynow_access_free_count", srv, fixed = TRUE) &&
+    grepl("ynow_access_time_hours", srv, fixed = TRUE)
+})
+check("server pushes effective entries", {
+  grepl("ynow_access_effective_entries", srv, fixed = TRUE)
 })
 check("server pushes entries", grepl("entries = entries", srv, fixed = TRUE) || grepl("entries =", srv, fixed = TRUE))
 check("server denies pdf", grepl("report:download_report", srv, fixed = TRUE))
@@ -201,6 +208,17 @@ check("locale scope all en+zh", {
 })
 check("locale effect lock zh", grepl("access_effect_lock = \"鎖上", loc, fixed = TRUE))
 check("locale zh currently restricted", grepl("access_locked_now = \"目前限制\"", loc, fixed = TRUE))
+check("locale unlock types en+zh", {
+  grepl("access_unlock_type_label = \"Unlock condition\"", loc, fixed = TRUE) &&
+    grepl("access_unlock_login = \"Unlock after login\"", loc, fixed = TRUE) &&
+    grepl("access_unlock_points = \"Points unlock\"", loc, fixed = TRUE) &&
+    grepl("access_unlock_conditional = \"Conditional unlock\"", loc, fixed = TRUE) &&
+    grepl("access_unlock_type_label = \"解鎖條件\"", loc, fixed = TRUE) &&
+    grepl("access_unlock_login = \"登入即解鎖\"", loc, fixed = TRUE) &&
+    grepl("access_unlock_points = \"點數解鎖\"", loc, fixed = TRUE) &&
+    grepl("access_unlock_conditional = \"條件解鎖\"", loc, fixed = TRUE) &&
+    !grepl("一鍵", loc, fixed = TRUE)
+})
 check("ui parses", inherits(tryCatch(parse(file.path(app_dir, "ynow_ui.R")), error = function(e) e), "expression"))
 check("server parses", inherits(tryCatch(parse(file.path(app_dir, "ynow_server.R")), error = function(e) e), "expression"))
 
@@ -254,6 +272,107 @@ check("zh status separator uses enumeration comma", {
                                        user_scope_lab = "個人", all_scope_lab = "全部",
                                        none_lab = "此範圍沒有限制項目。")
   grepl("、", txt, fixed = TRUE) && grepl("個人 ·", txt, fixed = TRUE)
+})
+
+# --- Unlock conditions (login / points / conditional) ---
+tmp_state <- tempfile(fileext = ".json")
+Sys.setenv(YNOW_ACCESS_UNLOCK_STATE_PATH = tmp_state)
+on.exit(unlink(tmp_state), add = TRUE)
+ynow_access_reset_memory()
+unlink(tmp)
+Sys.setenv(YNOW_ACCESS_LOCKS_PATH = tmp)
+
+check("login unlock lifts for signed-in subject", {
+  ynow_access_set(YNOW_ACCESS_ALL_USERS, "tab:lab_notes", TRUE,
+                  effect = "lock", unlock_type = "login")
+  isTRUE(ynow_access_is_locked("", "tab:lab_notes", effective = TRUE, authed = FALSE)) &&
+    !isTRUE(ynow_access_is_locked("user-a", "tab:lab_notes", effective = TRUE, authed = TRUE)) &&
+    identical(ynow_access_unlock_class("login"), "A")
+})
+check("points unlock stays locked until marked paid", {
+  ynow_access_reset_memory()
+  unlink(tmp); unlink(tmp_state)
+  Sys.setenv(YNOW_ACCESS_LOCKS_PATH = tmp, YNOW_ACCESS_UNLOCK_STATE_PATH = tmp_state)
+  ynow_access_set("user-a", "tab:decision_checklist", TRUE,
+                  effect = "lock", unlock_type = "points", points_cost = 7L)
+  still <- isTRUE(ynow_access_is_locked("user-a", "tab:decision_checklist",
+                                        effective = TRUE, authed = TRUE))
+  ynow_access_mark_points_unlocked("user-a", "tab:decision_checklist")
+  opened <- !isTRUE(ynow_access_is_locked("user-a", "tab:decision_checklist",
+                                          effective = TRUE, authed = TRUE))
+  entry <- ynow_access_item_entry("user-a", "tab:decision_checklist")
+  still && opened && identical(as.integer(entry$points_cost), 7L) &&
+    identical(ynow_access_unlock_class("points"), "B")
+})
+check("points cost required", {
+  res <- ynow_access_set("user-a", "tab:price_alerts", TRUE,
+                         effect = "lock", unlock_type = "points", points_cost = 0L)
+  isTRUE(!res$ok) && identical(res$message_key, "access_bad_points_cost")
+})
+check("conditional needs free count or time", {
+  res <- ynow_access_set("user-a", "tab:price_alerts", TRUE,
+                         effect = "lock", unlock_type = "conditional")
+  isTRUE(!res$ok) && identical(res$message_key, "access_bad_conditional")
+})
+check("conditional free count unlocks then exhausts", {
+  ynow_access_reset_memory()
+  unlink(tmp); unlink(tmp_state)
+  Sys.setenv(YNOW_ACCESS_LOCKS_PATH = tmp, YNOW_ACCESS_UNLOCK_STATE_PATH = tmp_state)
+  ynow_access_set("user-a", "report:download_snapshot", TRUE,
+                  effect = "hide", unlock_type = "conditional", free_count = 2L)
+  open1 <- isTRUE(ynow_access_unlock_satisfied_for_item("user-a", "report:download_snapshot",
+                                                       authed = TRUE))
+  ynow_access_touch_conditional("user-a", "report:download_snapshot", consume_free = TRUE)
+  ynow_access_touch_conditional("user-a", "report:download_snapshot", consume_free = TRUE)
+  closed <- !isTRUE(ynow_access_unlock_satisfied_for_item("user-a", "report:download_snapshot",
+                                                         authed = TRUE))
+  open1 && closed && identical(ynow_access_unlock_class("conditional"), "C")
+})
+check("conditional time window unlocks while active", {
+  ynow_access_reset_memory()
+  unlink(tmp); unlink(tmp_state)
+  Sys.setenv(YNOW_ACCESS_LOCKS_PATH = tmp, YNOW_ACCESS_UNLOCK_STATE_PATH = tmp_state)
+  ynow_access_set(YNOW_ACCESS_ALL_USERS, "input:sgr", TRUE,
+                  effect = "lock", unlock_type = "conditional", time_limit_hours = 2L)
+  # Before touch: no window yet → still locked for signed-in user
+  before <- !isTRUE(ynow_access_unlock_satisfied_for_item("user-z", "input:sgr", authed = TRUE))
+  ynow_access_touch_conditional("user-z", "input:sgr", consume_free = FALSE, now = Sys.time())
+  during <- isTRUE(ynow_access_unlock_satisfied_for_item("user-z", "input:sgr", authed = TRUE))
+  expired <- !isTRUE(ynow_access_unlock_satisfied_for_item(
+    "user-z", "input:sgr", authed = TRUE, now = Sys.time() + 3 * 3600
+  ))
+  before && during && expired
+})
+check("per-user unlock overrides all-users unlock type", {
+  ynow_access_reset_memory()
+  unlink(tmp); unlink(tmp_state)
+  Sys.setenv(YNOW_ACCESS_LOCKS_PATH = tmp, YNOW_ACCESS_UNLOCK_STATE_PATH = tmp_state)
+  ynow_access_set(YNOW_ACCESS_ALL_USERS, "tab:lab_notes", TRUE,
+                  effect = "lock", unlock_type = "login")
+  ynow_access_set("user-vip", "tab:lab_notes", TRUE,
+                  effect = "lock", unlock_type = "points", points_cost = 3L)
+  # VIP still needs points; other signed-in users unlock after login.
+  vip_locked <- isTRUE(ynow_access_is_locked("user-vip", "tab:lab_notes",
+                                            effective = TRUE, authed = TRUE))
+  other_open <- !isTRUE(ynow_access_is_locked("user-other", "tab:lab_notes",
+                                             effective = TRUE, authed = TRUE))
+  vip_locked && other_open
+})
+check("status lines include unlock condition", {
+  lines <- ynow_access_admin_status_lines("user-vip", scope = "user", locale = "en",
+                                          user_scope_lab = "User", all_scope_lab = "All")
+  length(lines) >= 1L && grepl("Points unlock", paste(lines, collapse = " "), fixed = TRUE)
+})
+check("legacy plain effect stays sticky (no auto unlock)", {
+  store <- list(`user-legacy2` = list(`tab:lab_notes` = "lock"))
+  jsonlite::write_json(store, tmp, auto_unbox = TRUE, pretty = TRUE)
+  ynow_access_reset_memory()
+  # Character-only map → no unlock_type → sticky after login
+  isTRUE(ynow_access_is_locked("user-legacy2", "tab:lab_notes",
+                               effective = TRUE, authed = TRUE))
+})
+check("zh unlock label for points", {
+  grepl("點數解鎖", ynow_access_unlock_type_label("points", "zh-TW", points_cost = 5L), fixed = TRUE)
 })
 
 message("PASS ", ok, " FAIL ", bad)
