@@ -18,6 +18,18 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 - CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_25.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).
 - Docs: root README ship/CI/Release pointers; `scripts/record_github_release.sh` for soft-fail Release publish after deploy.
 
+## [v25.89] — 2026-10-21
+
+### Fixed
+
+- Macro & Market Trends (`macro_market` / 大盤): zh-TW first paint no longer flashes English; index KPI skeleton paints with lazy HTML while quotes / HTCDI load (PR #351).
+- en-US: bake locale into Macro chrome; progressive index quotes; defer HTCDI past first paint.
+- zh-TW：總體經濟與大盤趨勢首屏繁中文案與指數 KPI 骨架同步出現，避免長時間空白／英文殘影。
+
+### Changed
+
+- Live baseline bundle `12718055` (`scripts/DEPLOY_BASELINE.txt`).
+
 ## [v25.88] — 2026-10-20
 
 ### Changed
