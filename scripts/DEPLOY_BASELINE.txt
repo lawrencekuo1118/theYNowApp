@@ -7,5 +7,5 @@ commit=4922667cd629151d404840f78df4eaf8b43afad1
 short=4922667c
 message=chore: bump display version to v26.10
 captured_at=2026-10-21T13:28:28Z
-display_version=v26.10
+display_version=v26.11
 note=Canonical live line is app_26.0. Bundle 12720553: Company header KPI strip (Last Price / Market Cap / EPS TTM) matches Company Overview width via --ynow-page-max shell (PR #371). Secrets only in gitignored .Renviron; no secret values in git.
