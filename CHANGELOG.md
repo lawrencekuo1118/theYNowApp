@@ -18,6 +18,19 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 - CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_25.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).
 - Docs: root README ship/CI/Release pointers; `scripts/record_github_release.sh` for soft-fail Release publish after deploy.
 
+## [v25.91] — 2026-10-21
+
+### Fixed
+
+- Ticker typeahead: suggest list stays warm when leaving Home/Macro and returns on Company / Blue Chip (PR #352).
+- `sc_ticker_suggest_ui` uses `suspendWhenHidden = FALSE`; client re-opens suggestions after tab switch when input has text.
+- en-US: stock input recommendations resume after tab changes.
+- zh-TW：股票輸入候選清單在切換分頁後仍可依輸入值跳出。
+
+### Changed
+
+- Live baseline bundle `12718171` (`scripts/DEPLOY_BASELINE.txt`).
+
 ## [v25.90] — 2026-10-21
 
 ### Fixed
