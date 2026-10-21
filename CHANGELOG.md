@@ -18,6 +18,14 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 - CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_26.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).
 - Docs: root README ship/CI/Release pointers; `scripts/record_github_release.sh` for soft-fail Release publish after deploy.
 
+## [v26.09] — 2026-10-21
+
+### Changed
+
+- **Business Breakdown / 業務拆解**: Order research adds a Taiwan-first source stack (MOPS → company IR → statement cross-check). Each fact shows credibility. Broker and industry sources are estimate-only and cannot fill Backlog or Bookings. Statement proxies (合約負債／RPO／合約資產／存貨／應收帳款／營業現金流) stay cross-checks, not invented Backlog (PR #370).
+- zh-TW：訂單研究新增台灣來源優先序（公開資訊觀測站 → 公司 IR → 財報交叉驗證）與可信度標示。券商與產業來源僅供估計，不填入 Backlog／Bookings。財報間接科目只做交叉驗證，不當成在手訂單。
+- Live baseline bundle `12720374` (`scripts/DEPLOY_BASELINE.txt`).
+
 ## [v26.08] — 2026-10-21
 
 ### Changed

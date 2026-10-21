@@ -88,7 +88,7 @@ Deploy 後請更新 `scripts/DEPLOY_BASELINE.txt`（bundleId、commit、`display
 - **方法論：** 產業／生命週期分類 → 主／副模型；Bear／Base／Bull；Decision Checklist、HFV（否決工具，非買進訊號）、YNOW 漏斗
 - **估值：** DCF（FCFF／FCFE）、DDM、RI、P/B／NAV、相對倍數、SOTP；CapEx 暴衝平滑；終值 g／WACC 防呆
 - **Macro & Market Trends：** US／TW 訂閱切換；指數 KPI、10Y Rf、產業／概念 vs 大盤、Rolling β（交叉檢驗）
-- **Business Breakdown**（完整版）：營運／獲利結構報告式分析；訂單研究聚焦已揭露的訂單數量、主要供應商、重大客戶營收貢獻（財報與法說會標示來源）
+- **Business Breakdown**（完整版）：營運／獲利結構報告式分析；訂單研究聚焦已揭露的訂單數量、主要供應商、重大客戶營收貢獻，並標示台灣來源優先序與可信度（MOPS → IR → 財報交叉驗證；券商／產業僅估計）
 - **Asset transmission：** 側邊欄獨立分頁（Lite 亦提供）
 - **Blue Chip Leaderboard／分群：** 宇宙檔數 N、ADR、概念股、候選截斷
 - **量化回測／HFV：** 報告式章節；Lite 隱藏完整回測實驗室
