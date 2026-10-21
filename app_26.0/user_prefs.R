@@ -35,6 +35,11 @@ YNOW_PREF_SIDEBAR_TAB_ORDER <- "sidebar_tab_order"
 # Single JSON object under ynow_user_prefs; guests never write here.
 YNOW_PREF_USER_SETTINGS <- "user_settings"
 
+# Last authenticated UI surface (sidebar tab + optional ticker).
+# Restored on sign-in / durable browser resume — not guest landing.
+# Guests never write here; Sign out keeps the last member surface.
+YNOW_PREF_LAST_UI_SURFACE <- "last_ui_surface"
+
 .ynow_prefs_mem <- new.env(parent = emptyenv())
 .ynow_prefs_mem$by_user <- list()
 
@@ -912,6 +917,65 @@ ynow_prefs_set_user_settings <- function(user_id, settings) {
   norm <- ynow_prefs_normalize_user_settings(settings)
   .ynow_prefs_write_pref_json(uid, YNOW_PREF_USER_SETTINGS, norm)
   norm
+}
+
+# ---- Last UI surface (signed-in tab + ticker) ----
+
+#' Empty last-UI surface.
+ynow_prefs_empty_last_ui_surface <- function() {
+  list(tab = "", ticker = "")
+}
+
+#' Normalize last UI surface; drop unknown / Sys. Admin (`testing`) tabs.
+ynow_prefs_normalize_last_ui_surface <- function(raw) {
+  empty <- ynow_prefs_empty_last_ui_surface()
+  if (is.null(raw)) return(empty)
+  if (is.character(raw) && length(raw) == 1L) {
+    raw <- tryCatch(
+      jsonlite::fromJSON(raw, simplifyVector = FALSE),
+      error = function(e) NULL
+    )
+  }
+  if (!is.list(raw)) return(empty)
+  tab <- as.character(raw$tab %||% raw$sidebar_tabs %||% raw$active_tab %||% "")[1]
+  tab <- trimws(tab)
+  if (identical(tab, "business_breakdown_lab")) tab <- "company_advance"
+  # Sys. Admin is ops/guest-only — never restore after member sign-in.
+  if (identical(tab, "testing")) tab <- ""
+  allowed <- ynow_sidebar_pinnable_tabs()
+  if (!nzchar(tab) || !(tab %in% allowed)) tab <- ""
+  tk <- ynow_prefs_normalize_tickers(raw$ticker %||% raw$symbol %||% "", max_n = 1L)
+  list(
+    tab = tab,
+    ticker = if (length(tk)) tk[[1]] else ""
+  )
+}
+
+#' Read last UI surface for a signed-in user (empty when missing).
+ynow_prefs_get_last_ui_surface <- function(user_id) {
+  uid <- as.character(user_id %||% "")[1]
+  if (!nzchar(uid)) return(ynow_prefs_empty_last_ui_surface())
+  raw <- .ynow_prefs_read_pref_raw(uid, YNOW_PREF_LAST_UI_SURFACE)
+  ynow_prefs_normalize_last_ui_surface(raw)
+}
+
+#' Persist last UI surface. Returns the normalized object.
+ynow_prefs_set_last_ui_surface <- function(user_id, surface) {
+  uid <- as.character(user_id %||% "")[1]
+  if (!nzchar(uid)) return(ynow_prefs_empty_last_ui_surface())
+  norm <- ynow_prefs_normalize_last_ui_surface(surface)
+  .ynow_prefs_write_pref_json(uid, YNOW_PREF_LAST_UI_SURFACE, norm)
+  norm
+}
+
+#' Merge a tab and/or ticker into the saved surface (keeps the other field).
+ynow_prefs_update_last_ui_surface <- function(user_id, tab = NULL, ticker = NULL) {
+  uid <- as.character(user_id %||% "")[1]
+  if (!nzchar(uid)) return(ynow_prefs_empty_last_ui_surface())
+  cur <- ynow_prefs_get_last_ui_surface(uid)
+  if (!is.null(tab)) cur$tab <- as.character(tab %||% "")[1]
+  if (!is.null(ticker)) cur$ticker <- as.character(ticker %||% "")[1]
+  ynow_prefs_set_last_ui_surface(uid, cur)
 }
 
 #' Test helper: clear in-process memory prefs.
