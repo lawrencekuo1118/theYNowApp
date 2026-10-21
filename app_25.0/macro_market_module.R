@@ -565,20 +565,43 @@ macro_rolling_beta_path <- function(theme_df, bench_df, lookback_months = 36L) {
 
 # ---- UI ----
 
-macro_market_ui <- function(id = "macro") {
+#' Macro & Market Trends page body.
+#' @param locale first-paint locale (`en` / `zh-TW`); language switches still
+#'   update via `applyUiLocale`. Baking locale avoids English flash while lazy
+#'   mount + sync quote fetches block the R event loop.
+#' @param market_mode Active market so industry choices bake US ≠ TW at mount.
+macro_market_ui <- function(id = "macro", locale = "en", market_mode = "US") {
   ns <- NS(id)
+  loc <- if (exists("normalize_ui_locale", mode = "function")) {
+    normalize_ui_locale(locale)
+  } else {
+    as.character(locale %||% "en")[1]
+  }
+  if (!nzchar(loc)) loc <- "en"
+  mm <- tryCatch({
+    if (exists("normalize_market_mode", mode = "function")) {
+      normalize_market_mode(market_mode)
+    } else {
+      toupper(as.character(market_mode %||% "US")[1])
+    }
+  }, error = function(e) "US")
+  if (!mm %in% c("US", "TW")) mm <- "US"
+  .s <- function(key) {
+    if (exists("ui_str", mode = "function")) {
+      tryCatch(ui_str(key, loc), error = function(e) key)
+    } else {
+      key
+    }
+  }
   tags$div(
     class = "ynow-macro-report",
     tags$div(
       class = "ynow-macro-report__masthead",
-      h2(tags$b(id = "ynow_macro_page_title", "Macro & Market Trends")),
+      h2(tags$b(id = "ynow_macro_page_title", .s("macro_page_title"))),
       p(
         id = "ynow_macro_page_sub",
         class = "ynow-macro-report__lead",
-        paste0(
-          "Follows the global US / TW market toggle. Index and theme price series stay in Yahoo’s native quote currency—",
-          "no historical FX conversion."
-        )
+        .s("macro_page_sub")
       )
     ),
     fluidRow(
@@ -587,12 +610,12 @@ macro_market_ui <- function(id = "macro") {
     tags$p(
       id = "ynow_macro_index_hint",
       class = "ynow-macro-hint ynow-full-only",
-      "Click an index box to show its historical line chart."
+      .s("macro_index_chart_hint")
     ),
     tags$p(
       id = "ynow_macro_ynow_index_hint",
       class = "ynow-macro-hint ynow-lite-only",
-      "Click YNOW / TYNOW or HTCDI to expand or collapse details."
+      .s("macro_ynow_index_chart_hint")
     ),
     uiOutput(ns("rf_signal_row")),
     # Shared expand slot for ^GSPC / boards and YNOW／TYNOW (same card style).
@@ -614,10 +637,10 @@ macro_market_ui <- function(id = "macro") {
       # keep it; place on the same row as the chapter title (right-aligned).
       tags$div(
         class = "ynow-macro-theme-title-row",
-        tags$h3(id = "ynow_macro_theme_title", "Relative performance vs benchmark"),
+        tags$h3(id = "ynow_macro_theme_title", .s("macro_theme_title")),
         actionButton(
           ns("refresh"),
-          "Refresh",
+          .s("btn_macro_refresh"),
           icon = icon("sync"),
           class = "btn-default ynow-macro-refresh-in-title"
         )
@@ -626,23 +649,16 @@ macro_market_ui <- function(id = "macro") {
       tags$p(
         id = "ynow_macro_theme_help",
         class = "ynow-macro-hint ynow-macro-chapter__lead",
-        paste0(
-          "Pick Industry from the menu and Concept from the word cloud (either, both, or neither). ",
-          "Click one or more concept chips to overlay rebased series on the same chart. ",
-          "The same picks drive Relative performance and Dynamic industry bubble below. ",
-          "US industry uses GICS sector ETFs; Taiwan industry uses the industry-standard snapshot. ",
-          "Concept chips are the concept-stock universe (chip size reflects basket breadth). ",
-          "Benchmark is gray dashed on the right axis (rebased = 100 at window start; native currency, no FX)."
-        )
+        .s("macro_theme_help")
       ),
       fluidRow(
         column(
           width = 6,
           selectInput(
             ns("industry_key"),
-            label = tags$span(id = "ynow_macro_industry_label", "Industry vs benchmark"),
+            label = tags$span(id = "ynow_macro_industry_label", .s("macro_industry_label")),
             choices = tryCatch(
-              macro_choices_with_none(macro_industry_choices("US", "en"), "en"),
+              macro_choices_with_none(macro_industry_choices(mm, loc), loc),
               error = function(e) c("—" = "")
             ),
             selected = ""
@@ -652,7 +668,7 @@ macro_market_ui <- function(id = "macro") {
           width = 6,
           selectInput(
             ns("hist_period"),
-            label = tags$span(id = "ynow_macro_period_label", "Window"),
+            label = tags$span(id = "ynow_macro_period_label", .s("macro_period_label")),
             choices = c("6M" = "6mo", "1Y" = "1y", "3Y" = "3y", "5Y" = "5y"),
             selected = "1y"
           )
@@ -663,25 +679,26 @@ macro_market_ui <- function(id = "macro") {
         tags$label(
           id = "ynow_macro_concept_label",
           class = "control-label",
-          "Concept vs benchmark"
+          .s("macro_concept_label")
         ),
         tags$p(
           id = "ynow_macro_concept_cloud_hint",
           class = "ynow-macro-hint",
-          "Click concepts in the word cloud to multi-select overlay series (rebased = 100)."
+          .s("macro_concept_cloud_hint")
         ),
         uiOutput(ns("concept_cloud_ui"))
       ),
       tags$div(
         class = "ynow-macro-overlay-plot-wrap",
-        plotlyOutput(ns("overlay_plot"), height = "380px", width = "100%") %>%
-          shinycssloaders::withSpinner()
+        shinycssloaders::withSpinner(
+          plotlyOutput(ns("overlay_plot"), height = "380px", width = "100%")
+        )
       ),
       ynow_notes_block(
         tags$p(
           id = "ynow_macro_fx_lock",
           class = "ynow-macro-hint",
-          "Currency lock: historical index / theme series are never converted by the session USD⇄TWD toggle."
+          .s("macro_fx_lock")
         )
       )
     ),
@@ -701,18 +718,12 @@ macro_market_ui <- function(id = "macro") {
       class = "ynow-macro-chapter ynow-macro-bubble-chapter",
       tags$h3(
         id = "ynow_macro_bubble_title",
-        "Dynamic industry bubble & weight concentration"
+        .s("macro_bubble_title")
       ),
       tags$p(
         id = "ynow_macro_bubble_sub",
         class = "ynow-macro-hint ynow-macro-chapter__lead",
-        paste0(
-          "Uses the shared Industry menu and Concept word-cloud picks above. ",
-          "Concentration uses market-cap weights on that basket (Industry when set; ",
-          "otherwise the first selected concept; GICS maps to S&P 500 sector peers). ",
-          "Buffett Indicator is market-level market-cap / GDP ",
-          "(research display only — never feeds CAPM / Ke / WACC)."
-        )
+        .s("macro_bubble_sub")
       ),
       macro_bubble_chapter_ui(ns)
     )
@@ -992,14 +1003,71 @@ macro_market_server <- function(id = "macro",
       tryCatch(ynow_index_read_cache(key, path), error = function(e) NULL)
     })
 
+    # Progressive / non-blocking quotes: paint skeleton KPIs immediately so lazy
+    # Macro mount does not hold the R event loop (which also delayed locale push).
+    index_quotes_rv <- reactiveVal(list())
+    index_quotes_gen <- reactiveVal(0L)
+    observeEvent(
+      list(refresh_token(), .mode()),
+      {
+        specs <- macro_click_index_specs(.mode())
+        syms <- names(specs)
+        if (!length(syms)) {
+          index_quotes_rv(list())
+          return(invisible(NULL))
+        }
+        gen <- isolate(as.integer(index_quotes_gen()) %||% 0L) + 1L
+        index_quotes_gen(gen)
+        skeleton <- lapply(syms, function(sym) {
+          list(
+            symbol = sym,
+            label = unname(specs[[sym]]),
+            last = NA_real_,
+            chg_pct = NA_real_
+          )
+        })
+        index_quotes_rv(skeleton)
+        .fetch_one <- function(i, acc) {
+          if (!identical(isolate(as.integer(index_quotes_gen()) %||% 0L), gen)) {
+            return(invisible(NULL))
+          }
+          if (i > length(syms)) {
+            tryCatch(index_quotes_rv(acc), error = function(e) NULL)
+            return(invisible(NULL))
+          }
+          sym <- syms[[i]]
+          df <- tryCatch(fetch_price_history_df(sym, "5d"), error = function(e) NULL)
+          q <- .px_last_chg(df)
+          acc[[i]] <- list(
+            symbol = sym,
+            label = unname(specs[[sym]]),
+            last = q$last,
+            chg_pct = q$chg
+          )
+          tryCatch(index_quotes_rv(acc), error = function(e) NULL)
+          if (requireNamespace("later", quietly = TRUE)) {
+            later::later(function() {
+              tryCatch(.fetch_one(i + 1L, acc), error = function(e) NULL)
+            }, delay = 0)
+          } else {
+            .fetch_one(i + 1L, acc)
+          }
+          invisible(NULL)
+        }
+        if (requireNamespace("later", quietly = TRUE)) {
+          # Yield past current flush / after_mount locale push (0.12s) before Yahoo work.
+          later::later(function() {
+            tryCatch(.fetch_one(1L, skeleton), error = function(e) NULL)
+          }, delay = 0.15)
+        } else {
+          .fetch_one(1L, skeleton)
+        }
+        invisible(NULL)
+      },
+      ignoreNULL = FALSE
+    )
     index_quotes <- reactive({
-      refresh_token()
-      specs <- macro_click_index_specs(.mode())
-      lapply(names(specs), function(sym) {
-        df <- tryCatch(fetch_price_history_df(sym, "5d"), error = function(e) NULL)
-        q <- .px_last_chg(df)
-        list(symbol = sym, label = unname(specs[[sym]]), last = q$last, chg_pct = q$chg)
-      })
+      index_quotes_rv()
     })
 
     .macro_wrap_alertable <- function(ui, metric, ticker, value, label,

@@ -13,14 +13,30 @@ root <- if (file.exists("macro_market_module.R")) {
 }
 setwd(root)
 
+suppressPackageStartupMessages({
+  if (requireNamespace("shiny", quietly = TRUE)) library(shiny)
+  if (requireNamespace("magrittr", quietly = TRUE)) library(magrittr)
+  if (requireNamespace("htmltools", quietly = TRUE)) library(htmltools)
+})
 source("debug_helpers.R", local = TRUE, encoding = "UTF-8")
 source("market_profile.R", local = TRUE, encoding = "UTF-8")
 source("ui_locale.R", local = TRUE, encoding = "UTF-8")
 source("lab_concept_groups.R", local = TRUE, encoding = "UTF-8")
 source("industry_standards.R", local = TRUE, encoding = "UTF-8")
 source("lab_tw_universe.R", local = TRUE, encoding = "UTF-8")
+source("macro_bubble_indicators.R", local = TRUE, encoding = "UTF-8")
 fetch_price_history_df <- function(...) NULL
 estimate_rolling_beta <- function(...) NA_real_
+# Offline HTML bake: stub plotly host (spinner still wraps the stub).
+if (!exists("plotlyOutput", mode = "function")) {
+  plotlyOutput <- function(outputId, width = "100%", height = "400px", ...) {
+    htmltools::tags$div(
+      id = outputId,
+      class = "plotly-stub",
+      style = sprintf("width:%s;height:%s;", width, height)
+    )
+  }
+}
 source("macro_market_module.R", local = TRUE, encoding = "UTF-8")
 
 check <- function(label, ok) {
@@ -301,10 +317,18 @@ theme_notes <- .notes_calls(theme_sec)
 check("theme help present", grepl("ynow_macro_theme_help", theme_sec, fixed = TRUE))
 check("theme help is chapter chrome", grepl("ynow-macro-chapter__lead", theme_sec, fixed = TRUE))
 check("theme help not in Notes", !any(grepl("ynow_macro_theme_help", theme_notes, fixed = TRUE)))
-check("theme help first-paint GICS", grepl("GICS sector ETFs", theme_sec, fixed = TRUE))
-check("theme help first-paint word cloud",
-      grepl("word cloud", theme_sec, fixed = TRUE) &&
-        grepl("multi-select", theme_sec, ignore.case = TRUE))
+check("theme help first-paint via ui_str", grepl('.s("macro_theme_help")', theme_sec, fixed = TRUE))
+check("theme help locale has GICS + word cloud", {
+  en_help <- ui_str("macro_theme_help", "en")
+  grepl("GICS sector ETFs", en_help, fixed = TRUE) &&
+    grepl("word cloud", en_help, fixed = TRUE) &&
+    grepl("one or more concept chips", en_help, fixed = TRUE)
+})
+check("macro_market_ui accepts locale + market_mode", {
+  grepl("locale = \"en\"", ui_fn, fixed = TRUE) &&
+    grepl("market_mode = \"US\"", ui_fn, fixed = TRUE) &&
+    grepl('.s("macro_page_title")', ui_fn, fixed = TRUE)
+})
 check("concept cloud wrap present", grepl("ynow-macro-concept-cloud-wrap", theme_sec, fixed = TRUE))
 check("concept cloud uiOutput", grepl('uiOutput(ns("concept_cloud_ui"))', theme_sec, fixed = TRUE))
 check("concept cloud hint id", grepl("ynow_macro_concept_cloud_hint", theme_sec, fixed = TRUE))
@@ -342,6 +366,9 @@ if (requireNamespace("htmltools", quietly = TRUE) && exists("macro_market_ui", m
   ui_html <- tryCatch({
     paste(as.character(macro_market_ui()), collapse = "")
   }, error = function(e) "")
+  ui_html_zh <- tryCatch({
+    paste(as.character(macro_market_ui(locale = "zh-TW", market_mode = "TW")), collapse = "")
+  }, error = function(e) "")
   if (nzchar(ui_html)) {
     help_pos <- regexpr("id=\"ynow_macro_theme_help\"", ui_html, fixed = TRUE)[1]
     details <- gregexpr("<details[^>]*class=\"[^\"]*ynow-notes", ui_html)[[1]]
@@ -358,14 +385,33 @@ if (requireNamespace("htmltools", quietly = TRUE) && exists("macro_market_ui", m
       }
     })
     check("rendered bottom Notes after plot", {
-      fx_in_details <- grepl(
-        "<details[^>]*class=\"[^\"]*ynow-notes[\\s\\S]*?ynow_macro_fx_lock",
-        ui_html
-      )
+      details_pos <- regexpr("<details[^>]*class=\"[^\"]*ynow-notes", ui_html)[1]
+      fx_in_details <- details_pos > 0 && fx_pos > details_pos
       plot_pos > 0 && fx_pos > plot_pos && fx_in_details
     })
+    check("en first-paint title", grepl("Macro &amp; Market Trends|Macro & Market Trends", ui_html))
   } else {
     check("macro_market_ui render skipped", TRUE)
+  }
+  if (nzchar(ui_html_zh)) {
+    check(
+      "zh-TW first-paint title baked",
+      grepl("總體經濟與大盤趨勢", ui_html_zh, fixed = TRUE)
+    )
+    check(
+      "zh-TW first-paint theme title baked",
+      grepl(ui_str("macro_theme_title", "zh-TW"), ui_html_zh, fixed = TRUE)
+    )
+    check(
+      "zh-TW first-paint refresh baked",
+      grepl(ui_str("btn_macro_refresh", "zh-TW"), ui_html_zh, fixed = TRUE)
+    )
+    check(
+      "zh-TW first-paint no English page title",
+      !grepl(">Macro &amp; Market Trends<|>Macro & Market Trends<", ui_html_zh)
+    )
+  } else {
+    check("macro_market_ui zh render skipped", TRUE)
   }
 }
 check("overlay industry input", grepl('ns("industry_key")', txt, fixed = TRUE))
@@ -378,8 +424,32 @@ check("relative performance plot width 100%", {
 })
 check("combined overlay theme_key gone", !grepl('ns("theme_key")', txt, fixed = TRUE))
 check("combined title gone", !grepl("Industry / concept vs benchmark", txt, fixed = TRUE))
-check("industry vs benchmark first paint", grepl("Industry vs benchmark", txt, fixed = TRUE))
-check("concept vs benchmark first paint", grepl("Concept vs benchmark", txt, fixed = TRUE))
+check("industry vs benchmark first paint via ui_str", {
+  grepl('.s("macro_industry_label")', txt, fixed = TRUE) &&
+    identical(ui_str("macro_industry_label", "en"), "Industry vs benchmark")
+})
+check("concept vs benchmark first paint via ui_str", {
+  grepl('.s("macro_concept_label")', txt, fixed = TRUE) &&
+    identical(ui_str("macro_concept_label", "en"), "Concept vs benchmark")
+})
+check("lazy Macro builder passes locale + market_mode", {
+  srv <- paste(readLines("ynow_server.R", warn = FALSE), collapse = "\n")
+  grepl(".ynow_page_ui_macro_market(", srv, fixed = TRUE) &&
+    grepl("macro_market = function()", srv, fixed = TRUE) &&
+    grepl("locale = isolate(ui_locale())", srv, fixed = TRUE)
+})
+check("progressive non-blocking index quotes", {
+  grepl("index_quotes_rv", txt, fixed = TRUE) &&
+    grepl("index_quotes_gen", txt, fixed = TRUE) &&
+    grepl("later::later", txt, fixed = TRUE) &&
+    grepl("delay = 0.15", txt, fixed = TRUE)
+})
+check("client re-applies Macro locale when lazy DOM appears", {
+  ui_js <- paste(readLines("ynow_ui.R", warn = FALSE), collapse = "\n")
+  grepl("__ynowMacroLocaleWatch", ui_js, fixed = TRUE) &&
+    grepl("ynow_lazy_host_macro_market", ui_js, fixed = TRUE) &&
+    grepl("ynow_macro_page_title", ui_js, fixed = TRUE)
+})
 check("industry defaults blank", {
   grepl(
     "ns\\(\"industry_key\"\\)[\\s\\S]{0,400}?selected = \"\"",
@@ -411,7 +481,8 @@ check("menu choices gated on lazy-bound hist_period", {
     grepl('updateSelectInput(session, "industry_key"', txt, fixed = TRUE)
 })
 check("UI seeds industry choices not placeholder-only", {
-  grepl('macro_industry_choices("US", "en")', txt, fixed = TRUE)
+  grepl("macro_industry_choices(mm, loc)", txt, fixed = TRUE) &&
+    grepl("macro_choices_with_none", txt, fixed = TRUE)
 })
 check("concept cloud helper present", {
   grepl("macro_concept_cloud_input", txt, fixed = TRUE) &&

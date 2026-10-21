@@ -2215,7 +2215,12 @@ server <- function(input, output, session) {
   .ynow_lazy_tab_ctrl <- .ynow_register_lazy_tabs(
     input, output, session,
     builders = list(
-      macro_market = function() .ynow_page_ui_macro_market(),
+      macro_market = function() {
+        .ynow_page_ui_macro_market(
+          locale = isolate(ui_locale()),
+          market_mode = isolate(market_mode())
+        )
+      },
       bluechip = function() {
         .ynow_page_ui_bluechip(
           market_mode = isolate(market_mode()),
