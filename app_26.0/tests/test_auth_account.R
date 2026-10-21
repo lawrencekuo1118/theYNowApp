@@ -489,6 +489,7 @@ check("UI mounts auth modal helper", grepl("ynow_auth_modal_ui", ui, fixed = TRU
 check("UI mounts auth on sidebar date + home legal", {
   grepl("ynow-sidebar-date-row", ui, fixed = TRUE) &&
     grepl('ynow_auth_links_ui("sidebar")', ui, fixed = TRUE) &&
+    grepl('ynow_auth_links_ui("date_row")', ui, fixed = TRUE) &&
     grepl("ynow_auth_home_ui", ui, fixed = TRUE) &&
     grepl("ynow-home-legal-links", ui, fixed = TRUE) &&
     !grepl("ynow-lang-col", ui, fixed = TRUE)
@@ -905,7 +906,49 @@ check("UI About Lite no account", grepl("Lite never requires an account", ui_abo
 auth_src <- paste(readLines(src_auth, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check("auth link classes for sidebar + home", grepl("ynow-auth-links--sidebar", auth_src, fixed = TRUE) &&
         grepl("ynow-auth-links--home", auth_src, fixed = TRUE) &&
+        grepl("ynow-auth-links--date-row", auth_src, fixed = TRUE) &&
         grepl("ynow-auth-link", auth_src, fixed = TRUE))
+check("mobile date-row auth is text links matching date font; header hidden on mobile", {
+  grepl("ynow-auth-links--date-row", auth_src, fixed = TRUE) &&
+    grepl("ynow-auth-pair--date-text", auth_src, fixed = TRUE) &&
+    grepl("ynow_auth_open_date", auth_src, fixed = TRUE) &&
+    grepl("ynow_auth_sign_out_date", auth_src, fixed = TRUE) &&
+    grepl("@media \\(max-width:767px\\)", auth_src, perl = TRUE) &&
+    grepl("li.ynow-auth-header", auth_src, fixed = TRUE) &&
+    grepl(
+      "\\.ynow-auth-links--date-row a\\.ynow-auth-open \\{[\\s\\S]*?font-size:12px !important",
+      auth_src,
+      perl = TRUE
+    ) &&
+    # Guest Sign-out rule must not force display (would beat inline display:none).
+    # Match the first (unprefixed) date-row signout block only — stop at closing brace.
+    {
+      m <- regmatches(
+        auth_src,
+        regexpr(
+          "(?<!authed )(?<!view-as )\\.ynow-auth-links--date-row a\\.ynow-auth-signout \\{[^}]*\\}",
+          auth_src,
+          perl = TRUE
+        )
+      )
+      length(m) == 1L && !grepl("display:", m[[1]], fixed = TRUE)
+    } &&
+    grepl(
+      "body\\.ynow-authed \\.ynow-auth-links--date-row a\\.ynow-auth-signout[\\s\\S]*?display:inline !important",
+      auth_src,
+      perl = TRUE
+    )
+})
+check("date_row auth UI is plain text link not button", {
+  Sys.setenv(YNOW_ENABLE_ACCOUNT_LOGIN = "1")
+  d <- paste(as.character(ynow_auth_links_ui("date_row")), collapse = "")
+  Sys.setenv(YNOW_ENABLE_ACCOUNT_LOGIN = "0")
+  grepl("ynow-auth-links--date-row", d, fixed = TRUE) &&
+    grepl("ynow-auth-pair--date-text", d, fixed = TRUE) &&
+    grepl("ynow_auth_open_date", d, fixed = TRUE) &&
+    !grepl("ynow-auth-btn", d, fixed = TRUE) &&
+    !grepl("ynow_auth_register_open", d, fixed = TRUE)
+})
 check("UI CSS hides auth in Lite", grepl("body.ynow-lite .ynow-auth-links", auth_src, fixed = TRUE))
 check("login card uses app palette tokens", {
   grepl("--ynow-ink", auth_src, fixed = TRUE) &&

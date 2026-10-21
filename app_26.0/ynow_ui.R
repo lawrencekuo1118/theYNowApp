@@ -3544,11 +3544,13 @@ ui <- dashboardPage(
   dashboardSidebar(
     width = 250,
     collapsed = TRUE,
-    # Sign in (left) + date (right-of-link) on one row above the white hr.
+    # Mobile: Sign in / Sign out text links beside date (desktop keeps header buttons).
     column(
       width = 12,
       tags$div(
         class = "ynow-sidebar-date-row",
+        # Mobile only (CSS): auth text links left of date; desktop hides this mount.
+        if (exists("ynow_auth_links_ui", mode = "function")) ynow_auth_links_ui("date_row"),
         tags$span(class = "ynow-sidebar-date", textOutput("today", inline = TRUE)),
         # Mobile only (CSS): FYN/PYN right of login date. Desktop keeps top header banner.
         tags$div(
@@ -11284,8 +11286,10 @@ ui <- dashboardPage(
               setAll('.ynow-auth-register-label', payload.register_btn || payload.register);
               window.__ynowAuthCopy = payload;
               set('ynow_auth_header_label', payload.sign_in);
+              set('ynow_auth_date_label', payload.sign_in);
               set('ynow_auth_home_label', payload.sign_in);
               set('ynow_auth_sign_out_label', payload.sign_out);
+              set('ynow_auth_sign_out_date_label', payload.sign_out);
               set('ynow_auth_sign_out_home_label', payload.sign_out);
               set('ynow_auth_modal_title', payload.modal_title);
               set('ynow_auth_modal_help', payload.modal_help);

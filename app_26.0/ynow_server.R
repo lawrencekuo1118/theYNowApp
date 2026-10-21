@@ -1858,6 +1858,9 @@ server <- function(input, output, session) {
   observeEvent(input$ynow_auth_sign_out, {
     .ynow_view_as_exit_from_signout()
   }, ignoreInit = TRUE, priority = 50)
+  observeEvent(input$ynow_auth_sign_out_date, {
+    .ynow_view_as_exit_from_signout()
+  }, ignoreInit = TRUE, priority = 50)
   observeEvent(input$ynow_auth_sign_out_home, {
     .ynow_view_as_exit_from_signout()
   }, ignoreInit = TRUE, priority = 50)
