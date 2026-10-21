@@ -2439,6 +2439,8 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
   account_user <- reactiveVal(NULL)
   # Session-only recovery access_token (never logged / never sent to client).
   recovery_access_token <- reactiveVal("")
+  # Opaque browser-resume token for this Shiny session (revoked on Sign out).
+  resume_token_held <- reactiveVal("")
 
   .loc <- function() {
     if (is.function(ui_locale)) {
@@ -2496,7 +2498,34 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
     }, once = TRUE)
   }
 
+  .persist_auth_browser <- function(user) {
+    uid <- as.character(user$id %||% "")[1]
+    if (!nzchar(uid) || !exists("ynow_auth_session_mint", mode = "function")) return()
+    minted <- tryCatch(ynow_auth_session_mint(uid), error = function(e) NULL)
+    tok <- as.character(minted$token %||% "")[1]
+    if (!isTRUE(minted$ok) || !nzchar(tok)) return()
+    resume_token_held(tok)
+    tryCatch(
+      session$sendCustomMessage("ynowAuthPersist", list(token = tok, clear = FALSE)),
+      error = function(e) NULL
+    )
+  }
+
+  .clear_auth_browser <- function(revoke_held = TRUE) {
+    tok <- as.character(isolate(resume_token_held()) %||% "")[1]
+    if (isTRUE(revoke_held) && nzchar(tok) &&
+          exists("ynow_auth_session_revoke", mode = "function")) {
+      tryCatch(ynow_auth_session_revoke(tok), error = function(e) NULL)
+    }
+    resume_token_held("")
+    tryCatch(
+      session$sendCustomMessage("ynowAuthPersist", list(token = "", clear = TRUE)),
+      error = function(e) NULL
+    )
+  }
+
   .sign_out <- function() {
+    .clear_auth_browser(TRUE)
     account_user(NULL)
     .push_auth_state(FALSE, "")
   }
@@ -2574,6 +2603,7 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
       tags$p(class = "text-success", msg)
     })
     .push_auth_state(TRUE, user$email %||% "")
+    .persist_auth_browser(user)
     tryCatch(shinyBS::toggleModal(session, "ynow_auth_modal", "close"), error = function(e) NULL)
     tryCatch(
       showNotification(msg, type = "message", duration = 5),
@@ -2617,6 +2647,29 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
       list(ok = FALSE, restore_tab = "", message = msg)
     )
   }
+
+  # Browser localStorage resume after tab / browser close (quiet; no toast).
+  observeEvent(input$ynow_auth_resume_token, {
+    if (!isTRUE(ynow_auth_enabled())) return()
+    if (!is.null(isolate(account_user()))) return()
+    tok <- as.character(input$ynow_auth_resume_token %||% "")[1]
+    if (!nzchar(tok) || !exists("ynow_auth_session_resume", mode = "function")) return()
+    res <- tryCatch(ynow_auth_session_resume(tok), error = function(e) NULL)
+    if (isTRUE(res$ok) && is.list(res$user)) {
+      resume_token_held(tok)
+      account_user(res$user)
+      .push_auth_state(TRUE, res$user$email %||% "")
+      # Daily check-in / first gift still run on resume when eligible.
+      if (exists("ynow_points_on_login", mode = "function")) {
+        uid <- as.character(res$user$id %||% "")[1]
+        if (nzchar(uid)) {
+          tryCatch(ynow_points_on_login(uid), error = function(e) NULL)
+        }
+      }
+    } else {
+      .clear_auth_browser(FALSE)
+    }
+  }, ignoreInit = TRUE)
 
   observeEvent(input$ynow_auth_submit, {
     if (!isTRUE(ynow_auth_enabled())) return()
@@ -2818,6 +2871,14 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
     )
     mk <- as.character(res$message_key %||% "auth_msg_change_failed")[1]
     cls <- if (isTRUE(res$ok)) "text-success" else "text-danger"
+    if (isTRUE(res$ok)) {
+      # Password change invalidates every durable browser resume for this user.
+      uid <- as.character(u$id %||% "")[1]
+      if (nzchar(uid) && exists("ynow_auth_session_revoke_user", mode = "function")) {
+        tryCatch(ynow_auth_session_revoke_user(uid), error = function(e) NULL)
+      }
+      .persist_auth_browser(u)
+    }
     output$ynow_auth_change_status <- renderUI({
       tags$p(class = cls, .str(mk, if (isTRUE(res$ok)) "Password updated." else "Could not update password."))
     })

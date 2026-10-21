@@ -329,6 +329,10 @@ ynow_db_ensure_schema <- function(conn = NULL) {
     if (exists("ynow_prefs_ensure_schema", mode = "function")) {
       tryCatch(ynow_prefs_ensure_schema(con), error = function(e) NULL)
     }
+    # Browser-resume sessions (survive tab/browser close; revoked on Sign out).
+    if (exists("ynow_auth_sessions_ensure_schema", mode = "function")) {
+      tryCatch(ynow_auth_sessions_ensure_schema(con), error = function(e) NULL)
+    }
     TRUE
   }
   if (!is.null(conn)) return(run(conn))
@@ -755,8 +759,8 @@ ynow_auth_delete_message_key <- function(auth_idp) {
 #' Hard-delete one member account and user-linked app rows (server-side only).
 #'
 #' Purge order (single transaction when Postgres is ready):
-#' `ynow_points_ledger` → `ynow_pdf_quota` → `ynow_pdf_repeat` →
-#' `ynow_user_prefs` → `ynow_access_locks` → `ynow_users`.
+#' `ynow_auth_sessions` → `ynow_points_ledger` → `ynow_pdf_quota` →
+#' `ynow_pdf_repeat` → `ynow_user_prefs` → `ynow_access_locks` → `ynow_users`.
 #' Also clears memory/file prefs, access locks, points/PDF mem, and price alerts
 #' keyed by email. Always attempts Supabase Auth Admin delete when a Supabase
 #' Auth UUID is known; requires `YNOW_SUPABASE_SERVICE_ROLE` (never sent to the
@@ -826,6 +830,7 @@ ynow_db_purge_user <- function(user_id, email = NULL, confirm = NULL,
   }
 
   purged <- list(
+    auth_sessions = 0L,
     points_ledger = 0L,
     pdf_quota = 0L,
     pdf_repeat = 0L,
@@ -847,6 +852,9 @@ ynow_db_purge_user <- function(user_id, email = NULL, confirm = NULL,
               exists("dbWithTransaction", where = asNamespace("DBI"), mode = "function")) {
           DBI::dbWithTransaction(con, {
             list(
+              auth_sessions = .exec(
+                "DELETE FROM ynow_auth_sessions WHERE user_id = $1::uuid"
+              ),
               points_ledger = .exec(
                 "DELETE FROM ynow_points_ledger WHERE user_id = $1::uuid"
               ),
@@ -861,6 +869,9 @@ ynow_db_purge_user <- function(user_id, email = NULL, confirm = NULL,
           })
         } else {
           list(
+            auth_sessions = .exec(
+              "DELETE FROM ynow_auth_sessions WHERE user_id = $1::uuid"
+            ),
             points_ledger = .exec(
               "DELETE FROM ynow_points_ledger WHERE user_id = $1::uuid"
             ),
@@ -950,4 +961,272 @@ ynow_db_purge_user <- function(user_id, email = NULL, confirm = NULL,
     user_id = uid,
     email = em
   )
+}
+
+# ---------------------------------------------------------------------------
+# Durable browser-resume sessions (survive tab / browser close)
+# Opaque token in localStorage; only SHA-256 hash is stored server-side.
+# ---------------------------------------------------------------------------
+
+ynow_auth_resume_ttl_days <- function() {
+  d <- suppressWarnings(as.integer(Sys.getenv("YNOW_AUTH_RESUME_DAYS", "30")))
+  if (!is.finite(d) || d < 1L) d <- 30L
+  if (d > 365L) d <- 365L
+  d
+}
+
+.ynow_auth_token_hash <- function(token) {
+  tok <- as.character(token %||% "")[1]
+  if (!nzchar(tok)) return("")
+  if (requireNamespace("digest", quietly = TRUE)) {
+    return(digest::digest(tok, algo = "sha256", serialize = FALSE))
+  }
+  if (requireNamespace("openssl", quietly = TRUE)) {
+    return(paste(as.character(openssl::sha256(charToRaw(tok))), collapse = ""))
+  }
+  ""
+}
+
+.ynow_auth_random_token <- function(nbytes = 32L) {
+  n <- as.integer(nbytes %||% 32L)[1]
+  if (!is.finite(n) || n < 16L) n <- 32L
+  raw <- if (requireNamespace("openssl", quietly = TRUE)) {
+    openssl::rand_bytes(n)
+  } else {
+    as.raw(sample.int(256L, n, replace = TRUE) - 1L)
+  }
+  paste(sprintf("%02x", as.integer(raw)), collapse = "")
+}
+
+ynow_auth_sessions_ensure_schema <- function(conn = NULL) {
+  run <- function(con) {
+    DBI::dbExecute(con, "
+      CREATE TABLE IF NOT EXISTS ynow_auth_sessions (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES ynow_users(id) ON DELETE CASCADE,
+        token_hash TEXT NOT NULL UNIQUE,
+        expires_at TIMESTAMPTZ NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        revoked BOOLEAN NOT NULL DEFAULT FALSE
+      )
+    ")
+    DBI::dbExecute(con, "
+      CREATE INDEX IF NOT EXISTS ynow_auth_sessions_user_idx
+        ON ynow_auth_sessions (user_id)
+    ")
+    DBI::dbExecute(con, "
+      CREATE INDEX IF NOT EXISTS ynow_auth_sessions_expires_idx
+        ON ynow_auth_sessions (expires_at)
+    ")
+    .ynow_db_rls_fail_closed(con, "ynow_auth_sessions")
+    TRUE
+  }
+  if (!is.null(conn)) return(run(conn))
+  if (!isTRUE(ynow_db_ready())) return(FALSE)
+  isTRUE(ynow_db_with(run))
+}
+
+ynow_db_get_user_by_id <- function(user_id) {
+  uid <- as.character(user_id %||% "")[1]
+  if (!nzchar(uid) || !isTRUE(.ynow_db_is_uuid(uid)) || !isTRUE(ynow_db_ready())) {
+    return(NULL)
+  }
+  ynow_db_with(function(con) {
+    df <- DBI::dbGetQuery(
+      con,
+      "SELECT id::text AS id, email, display_name, role,
+              provider, provider_uid, disabled
+         FROM ynow_users
+        WHERE id = $1::uuid
+        LIMIT 1",
+      params = list(uid)
+    )
+    if (!is.data.frame(df) || nrow(df) < 1L) return(NULL)
+    as.list(df[1, , drop = FALSE])
+  })
+}
+
+#' Mint a durable resume token for a UUID user. Returns list(ok=, token=, expires_at=).
+ynow_auth_session_mint <- function(user_id, ttl_days = NULL) {
+  uid <- as.character(user_id %||% "")[1]
+  if (!nzchar(uid) || !isTRUE(.ynow_db_is_uuid(uid))) {
+    return(list(ok = FALSE, token = "", expires_at = NA_character_))
+  }
+  if (!isTRUE(ynow_db_ready())) {
+    return(list(ok = FALSE, token = "", expires_at = NA_character_))
+  }
+  days <- if (is.null(ttl_days)) ynow_auth_resume_ttl_days() else as.integer(ttl_days)[1]
+  if (!is.finite(days) || days < 1L) days <- 30L
+  token <- .ynow_auth_random_token(32L)
+  th <- .ynow_auth_token_hash(token)
+  if (!nzchar(th)) {
+    return(list(ok = FALSE, token = "", expires_at = NA_character_))
+  }
+  exp_chr <- NA_character_
+  ok <- tryCatch(
+    ynow_db_with(function(con) {
+      ynow_auth_sessions_ensure_schema(con)
+      DBI::dbExecute(
+        con,
+        "INSERT INTO ynow_auth_sessions (user_id, token_hash, expires_at)
+         VALUES ($1::uuid, $2, NOW() + ($3 * INTERVAL '1 day'))",
+        params = list(uid, th, as.integer(days))
+      )
+      # Cap sessions per user (keep newest 10; drop older rows).
+      DBI::dbExecute(
+        con,
+        "DELETE FROM ynow_auth_sessions
+          WHERE user_id = $1::uuid
+            AND id IN (
+              SELECT id FROM ynow_auth_sessions
+               WHERE user_id = $1::uuid
+               ORDER BY created_at DESC
+               OFFSET 10
+            )",
+        params = list(uid)
+      )
+      df <- DBI::dbGetQuery(
+        con,
+        "SELECT expires_at::text AS expires_at
+           FROM ynow_auth_sessions
+          WHERE token_hash = $1
+          LIMIT 1",
+        params = list(th)
+      )
+      if (is.data.frame(df) && nrow(df) >= 1L) {
+        exp_chr <<- as.character(df$expires_at[[1]])
+      }
+      TRUE
+    }),
+    error = function(e) FALSE
+  )
+  if (!isTRUE(ok)) {
+    return(list(ok = FALSE, token = "", expires_at = NA_character_))
+  }
+  list(ok = TRUE, token = token, expires_at = exp_chr)
+}
+
+#' Resume a durable session from the opaque browser token.
+#' @return list(ok=, user=, message_key=)
+ynow_auth_session_resume <- function(token) {
+  tok <- as.character(token %||% "")[1]
+  if (!nzchar(tok) || nchar(tok) < 32L) {
+    return(list(ok = FALSE, user = NULL, message_key = "auth_msg_resume_invalid"))
+  }
+  if (!isTRUE(ynow_db_ready())) {
+    return(list(ok = FALSE, user = NULL, message_key = "auth_msg_no_backend"))
+  }
+  th <- .ynow_auth_token_hash(tok)
+  if (!nzchar(th)) {
+    return(list(ok = FALSE, user = NULL, message_key = "auth_msg_resume_invalid"))
+  }
+  row <- tryCatch(
+    ynow_db_with(function(con) {
+      ynow_auth_sessions_ensure_schema(con)
+      DBI::dbGetQuery(
+        con,
+        "SELECT s.user_id::text AS user_id, s.expires_at, s.revoked,
+                u.email, u.display_name, u.role, u.provider, u.provider_uid, u.disabled
+           FROM ynow_auth_sessions s
+           JOIN ynow_users u ON u.id = s.user_id
+          WHERE s.token_hash = $1
+          LIMIT 1",
+        params = list(th)
+      )
+    }),
+    error = function(e) NULL
+  )
+  if (!is.data.frame(row) || nrow(row) < 1L) {
+    return(list(ok = FALSE, user = NULL, message_key = "auth_msg_resume_invalid"))
+  }
+  if (isTRUE(as.logical(row$revoked[[1]] %||% FALSE))) {
+    return(list(ok = FALSE, user = NULL, message_key = "auth_msg_resume_invalid"))
+  }
+  if (isTRUE(as.logical(row$disabled[[1]] %||% FALSE))) {
+    return(list(ok = FALSE, user = NULL, message_key = "auth_msg_disabled_account"))
+  }
+  exp <- tryCatch(as.POSIXct(row$expires_at[[1]], tz = "UTC"), error = function(e) NA)
+  if (!is.finite(as.numeric(exp)) || isTRUE(exp < Sys.time())) {
+    tryCatch(
+      ynow_db_with(function(con) {
+        DBI::dbExecute(
+          con,
+          "UPDATE ynow_auth_sessions SET revoked = TRUE WHERE token_hash = $1",
+          params = list(th)
+        )
+      }),
+      error = function(e) NULL
+    )
+    return(list(ok = FALSE, user = NULL, message_key = "auth_msg_resume_expired"))
+  }
+  tryCatch(
+    ynow_db_with(function(con) {
+      DBI::dbExecute(
+        con,
+        "UPDATE ynow_auth_sessions SET last_seen_at = NOW() WHERE token_hash = $1",
+        params = list(th)
+      )
+    }),
+    error = function(e) NULL
+  )
+  tryCatch(ynow_db_touch_login(row$user_id[[1]]), error = function(e) NULL)
+  em <- if (exists("ynow_auth_norm_email", mode = "function")) {
+    ynow_auth_norm_email(row$email[[1]])
+  } else {
+    tolower(trimws(as.character(row$email[[1]])))
+  }
+  list(
+    ok = TRUE,
+    user = list(
+      id = as.character(row$user_id[[1]])[1],
+      email = em,
+      display_name = as.character(row$display_name %||% em)[1],
+      provider = as.character(row$provider %||% "password")[1],
+      provider_uid = as.character(row$provider_uid %||% "")[1],
+      role = as.character(row$role %||% "user")[1],
+      logged_in_at = as.character(Sys.time())
+    ),
+    message_key = "auth_msg_ok"
+  )
+}
+
+#' Revoke one resume token (Sign out). Safe no-op when missing / no DB.
+ynow_auth_session_revoke <- function(token) {
+  tok <- as.character(token %||% "")[1]
+  if (!nzchar(tok) || !isTRUE(ynow_db_ready())) return(invisible(FALSE))
+  th <- .ynow_auth_token_hash(tok)
+  if (!nzchar(th)) return(invisible(FALSE))
+  tryCatch(
+    ynow_db_with(function(con) {
+      DBI::dbExecute(
+        con,
+        "UPDATE ynow_auth_sessions SET revoked = TRUE WHERE token_hash = $1",
+        params = list(th)
+      )
+      TRUE
+    }),
+    error = function(e) FALSE
+  )
+  invisible(TRUE)
+}
+
+#' Revoke every resume token for a user (password change / account wipe).
+ynow_auth_session_revoke_user <- function(user_id) {
+  uid <- as.character(user_id %||% "")[1]
+  if (!nzchar(uid) || !isTRUE(.ynow_db_is_uuid(uid)) || !isTRUE(ynow_db_ready())) {
+    return(invisible(FALSE))
+  }
+  tryCatch(
+    ynow_db_with(function(con) {
+      DBI::dbExecute(
+        con,
+        "UPDATE ynow_auth_sessions SET revoked = TRUE WHERE user_id = $1::uuid",
+        params = list(uid)
+      )
+      TRUE
+    }),
+    error = function(e) FALSE
+  )
+  invisible(TRUE)
 }
