@@ -7,5 +7,5 @@ commit=4cef23fbef128defc94892a09af2fb8ec1d8b534
 short=4cef23fb
 message=chore: bump display version to v26.03
 captured_at=2026-10-21T07:58:48Z
-display_version=v26.03
+display_version=v26.04
 note=Canonical live line is app_26.0. Bundle 12719321: Forgot password via Supabase Auth recovery + Account change-password (PR #364). Secrets only in gitignored .Renviron restored from prior live bundle; no secret values in git.
