@@ -7,5 +7,5 @@ commit=1749d251ff8de8565e00d17937fa24bdd5ab3a60
 short=1749d251
 message=chore: bump display version to v26.15
 captured_at=2026-10-21T17:23:21Z
-display_version=v26.15
+display_version=v26.16
 note=Canonical live line is app_26.0. Bundle 12721544: Home load perf (#378) — MathJax deferred off first paint; gate demos preload=none no autoplay. Secrets only in gitignored .Renviron; no secret values in git.
