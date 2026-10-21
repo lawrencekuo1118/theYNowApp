@@ -19608,3 +19608,9 @@ ui <- dashboardPage(
     )
   )
 )
+
+# Fail-closed Full guest locks on first HTML paint (before Shiny auth websocket).
+# See ynow_stamp_auth_feature_body() / lock-first-paint grounding.
+if (exists("ynow_stamp_auth_feature_body", mode = "function")) {
+  ui <- ynow_stamp_auth_feature_body(ui)
+}

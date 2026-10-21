@@ -57,6 +57,24 @@ ynow_compact_ui <- function(...) {
   Filter(Negate(is.null), list(...))
 }
 
+#' Stamp `ynow-auth-feature` onto the shinydashboard `<body>` for first HTML paint.
+#'
+#' Guest lock CSS requires `body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed)`.
+#' Without this stamp, locks flash unlocked until the `ynowAuthFeature` websocket
+#' message arrives. Resume later adds `ynow-authed`; points-gated items keep
+#' `.ynow-sidebar-locked` chrome. No-op when account login is disabled.
+#'
+#' @param ui shiny.tag from `dashboardPage()` (name == "body")
+#' @return ui with body class updated, or unchanged
+ynow_stamp_auth_feature_body <- function(ui) {
+  if (!isTRUE(ynow_auth_enabled())) return(ui)
+  if (!inherits(ui, "shiny.tag") || !identical(ui$name, "body")) return(ui)
+  cls <- as.character(ui$attribs$class %||% "")
+  if (grepl("(^|\\s)ynow-auth-feature(\\s|$)", cls)) return(ui)
+  ui$attribs$class <- paste(trimws(cls), "ynow-auth-feature")
+  ui
+}
+
 #' Sidebar tabNames that Full shows with a guest lock glyph (auth on + guest).
 #' Lite must omit these entirely (no grayed locks).
 #' Source of truth: membership_locks.R (tier A, mechanism guest_menu_lock).
