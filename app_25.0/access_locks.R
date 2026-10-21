@@ -323,6 +323,74 @@ ynow_access_entries <- function(user_id = "") {
   )
 }
 
+#' Raw store map for one uid key (not merged with __all__).
+ynow_access_store_entries <- function(user_id = "") {
+  uid <- as.character(user_id %||% "")[1]
+  if (!nzchar(uid)) {
+    return(data.frame(id = character(), effect = character(), stringsAsFactors = FALSE))
+  }
+  mp <- .ynow_access_map_for_uid(uid)
+  if (!length(mp)) {
+    return(data.frame(id = character(), effect = character(), stringsAsFactors = FALSE))
+  }
+  data.frame(
+    id = names(mp),
+    effect = unname(vapply(mp, ynow_access_normalize_effect, character(1))),
+    stringsAsFactors = FALSE
+  )
+}
+
+#' Admin 「目前限制」 lines for the current apply-scope + selected user.
+#'
+#' When scope is "user" / selected user: personal store for that uid (not stale
+#' first-row / not global-only). When scope is "all": only the __all__ store.
+#' @return character vector of "scope · label（effect）" lines (may be empty)
+ynow_access_admin_status_lines <- function(user_id = "",
+                                           scope = "user",
+                                           locale = "en",
+                                           user_scope_lab = "User",
+                                           all_scope_lab = "All") {
+  scope <- as.character(scope %||% "user")[1]
+  if (!nzchar(scope)) scope <- "user"
+  all_uid <- if (exists("YNOW_ACCESS_ALL_USERS", inherits = TRUE)) {
+    as.character(get("YNOW_ACCESS_ALL_USERS", inherits = TRUE))[1]
+  } else {
+    "__all__"
+  }
+  .fmt <- function(ent, scope_lab) {
+    if (!is.data.frame(ent) || nrow(ent) < 1L) return(character())
+    vapply(seq_len(nrow(ent)), function(i) {
+      lab <- ynow_access_label(ent$id[[i]], locale)
+      eff <- ynow_access_effect_label(ent$effect[[i]], locale)
+      paste0(scope_lab, " · ", lab, "（", eff, "）")
+    }, character(1))
+  }
+  if (identical(scope, "all")) {
+    return(.fmt(ynow_access_store_entries(all_uid), all_scope_lab))
+  }
+  uid <- as.character(user_id %||% "")[1]
+  .fmt(ynow_access_store_entries(uid), user_scope_lab)
+}
+
+#' Collapse admin status lines into the UI paragraph text.
+ynow_access_admin_status_text <- function(user_id = "",
+                                          scope = "user",
+                                          locale = "en",
+                                          user_scope_lab = "User",
+                                          all_scope_lab = "All",
+                                          none_lab = "Nothing is restricted for this scope.") {
+  lines <- ynow_access_admin_status_lines(
+    user_id = user_id,
+    scope = scope,
+    locale = locale,
+    user_scope_lab = user_scope_lab,
+    all_scope_lab = all_scope_lab
+  )
+  if (!length(lines)) return(as.character(none_lab)[1])
+  sep <- if (identical(as.character(locale)[1], "zh-TW")) "、" else "; "
+  paste(lines, collapse = sep)
+}
+
 ynow_access_locked_ids <- function(user_id) {
   ent <- ynow_access_entries(user_id)
   sort(unique(as.character(ent$id)))
