@@ -104,7 +104,7 @@ need <- shiny::need
 .ynow_py_pkgs <- c(
   "pandas", "numpy", "yfinance", "requests", "beautifulsoup4", "lxml",
   "peewee", "platformdirs", "frozendict", "multitasking", "html5lib", "curl_cffi",
-  "xlrd", "Pillow"
+  "xlrd", "Pillow", "pypdf"
 )
 # Keep the old name for any callers that still read `py_pkgs`.
 py_pkgs <- .ynow_py_pkgs
@@ -250,6 +250,7 @@ if (exists("ynow_db_ready", mode = "function") && isTRUE(ynow_db_ready())) {
   })
 }
 source("corp_events.R", local = TRUE, encoding = "UTF-8")
+source("tw_annual_report_orders.R", local = TRUE, encoding = "UTF-8")
 source("lab_industry_method.R", local = TRUE, encoding = "UTF-8")
 source("lab_clustering.R", local = TRUE, encoding = "UTF-8")
 source("async_jobs.R", local = TRUE, encoding = "UTF-8")

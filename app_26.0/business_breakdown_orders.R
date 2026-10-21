@@ -449,10 +449,22 @@ bblab_build_order_concentration <- function(dims = list(),
       }
     }
   }
+  notes_source <- if (is.list(notes)) {
+    .bblab_chr(notes$source, "sec_concentration_note")
+  } else {
+    "sec_concentration_note"
+  }
   if (!is.null(geo_dim)) {
+    geo_src <- if (identical(notes_source, "mops_annual_report")) {
+      "mops_annual_report"
+    } else if (isTRUE(geo_dim$filed_audited)) {
+      "sec_segment_note"
+    } else {
+      "filing"
+    }
     out$market_geography <- bblab_orders_market_from_dimension(
       geo_dim, consolidated = consolidated,
-      source = if (isTRUE(geo_dim$filed_audited)) "sec_segment_note" else "filing"
+      source = geo_src
     )
   }
 
@@ -462,7 +474,8 @@ bblab_build_order_concentration <- function(dims = list(),
   out$customer_concentration <- .bblab_orders_pack_from_tables(
     if (length(cust_tables)) cust_tables else tables,
     kind = "customer_concentration",
-    consolidated = consolidated
+    consolidated = consolidated,
+    source = notes_source
   )
   if (!isTRUE(out$customer_concentration$eligible)) {
     scan <- .bblab_orders_scan_note_text(notes, "customer")
@@ -481,7 +494,8 @@ bblab_build_order_concentration <- function(dims = list(),
   out$supplier_concentration <- .bblab_orders_pack_from_tables(
     if (length(supp_tables)) supp_tables else list(),
     kind = "supplier_concentration",
-    consolidated = consolidated
+    consolidated = consolidated,
+    source = notes_source
   )
   if (!isTRUE(out$supplier_concentration$eligible)) {
     scan <- .bblab_orders_scan_note_text(notes, "supplier")
@@ -494,23 +508,56 @@ bblab_build_order_concentration <- function(dims = list(),
     }
   }
 
-  # Honest TW note: no MOPS major-customer/supplier parser yet.
+  # TW: when notes came from MOPS 年報, keep standard missing / threshold codes.
+  # Only use ORDERS_TW_FILING_PARSER_PENDING when no TW notes were attached at all
+  # (legacy / offline without the annual-report fetcher).
   tk <- .bblab_chr(ticker, "")
   if (grepl("\\.(TW|TWO)$", tk, ignore.case = TRUE)) {
-    if (!isTRUE(out$customer_concentration$eligible) &&
-        identical(.bblab_orders_first_code(out$customer_concentration),
-                  "ORDERS_CUSTOMER_DISCLOSURE_MISSING")) {
-      out$customer_concentration$codes <- "ORDERS_TW_FILING_PARSER_PENDING"
-    }
-    if (!isTRUE(out$supplier_concentration$eligible) &&
-        identical(.bblab_orders_first_code(out$supplier_concentration),
-                  "ORDERS_SUPPLIER_DISCLOSURE_MISSING")) {
-      out$supplier_concentration$codes <- "ORDERS_TW_FILING_PARSER_PENDING"
-    }
-    if (!isTRUE(out$market_geography$eligible) &&
-        identical(.bblab_orders_first_code(out$market_geography),
-                  "ORDERS_GEOGRAPHY_DISCLOSURE_MISSING")) {
-      out$market_geography$codes <- "ORDERS_TW_FILING_PARSER_PENDING"
+    src_blob <- tolower(paste(
+      c(
+        out$customer_concentration$source,
+        out$supplier_concentration$source,
+        out$market_geography$source,
+        if (is.list(notes)) notes$source else NULL
+      ),
+      collapse = " "
+    ))
+    tw_notes_wired <- grepl("mops_annual_report|sec_", src_blob) ||
+      (is.list(notes) && (
+        length(notes$segment_tables %||% list()) > 0L ||
+          length(notes$excerpts %||% character(0)) > 0L ||
+          nzchar(.bblab_chr(notes$segment_tables_json, ""))
+      ))
+    if (!isTRUE(tw_notes_wired)) {
+      if (!isTRUE(out$customer_concentration$eligible) &&
+          identical(.bblab_orders_first_code(out$customer_concentration),
+                    "ORDERS_CUSTOMER_DISCLOSURE_MISSING")) {
+        out$customer_concentration$codes <- "ORDERS_TW_FILING_PARSER_PENDING"
+      }
+      if (!isTRUE(out$supplier_concentration$eligible) &&
+          identical(.bblab_orders_first_code(out$supplier_concentration),
+                    "ORDERS_SUPPLIER_DISCLOSURE_MISSING")) {
+        out$supplier_concentration$codes <- "ORDERS_TW_FILING_PARSER_PENDING"
+      }
+      if (!isTRUE(out$market_geography$eligible) &&
+          identical(.bblab_orders_first_code(out$market_geography),
+                    "ORDERS_GEOGRAPHY_DISCLOSURE_MISSING")) {
+        out$market_geography$codes <- "ORDERS_TW_FILING_PARSER_PENDING"
+      }
+    } else {
+      # Prefer mops source label on eligible packs.
+      if (isTRUE(out$customer_concentration$eligible) &&
+          !nzchar(.bblab_chr(out$customer_concentration$source, ""))) {
+        out$customer_concentration$source <- "mops_annual_report"
+      }
+      if (isTRUE(out$supplier_concentration$eligible) &&
+          !nzchar(.bblab_chr(out$supplier_concentration$source, ""))) {
+        out$supplier_concentration$source <- "mops_annual_report"
+      }
+      if (isTRUE(out$market_geography$eligible) &&
+          identical(.bblab_chr(out$market_geography$source), "filing")) {
+        out$market_geography$source <- "mops_annual_report"
+      }
     }
   }
   out

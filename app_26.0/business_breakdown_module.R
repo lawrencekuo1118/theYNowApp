@@ -771,17 +771,26 @@ business_breakdown_lab_server <- function(id = "bblab",
         }
         notes <- NULL
         if (is.null(extra_disc) || !length(extra_disc)) {
-          us_edgar <- !grepl("\\.(TW|TWO)$", tk, ignore.case = TRUE)
-          if (isTRUE(us_edgar) && exists("cached_fetch_sec_segment_notes", mode = "function")) {
+          is_tw <- grepl("\\.(TW|TWO)$", tk, ignore.case = TRUE)
+          if (isTRUE(is_tw) &&
+              exists("cached_fetch_tw_annual_order_notes", mode = "function")) {
+            notes <- tryCatch(
+              cached_fetch_tw_annual_order_notes(tk),
+              error = function(e) NULL
+            )
+          } else if (!isTRUE(is_tw) &&
+                     exists("cached_fetch_sec_segment_notes", mode = "function")) {
             notes <- tryCatch(cached_fetch_sec_segment_notes(tk, "10-K"), error = function(e) NULL)
           }
         }
+        tw_seg_tables <- if (is.list(notes)) notes$segment_tables %||% NULL else NULL
         payload <- bblab_payload_from_statements(
           d_is, ticker = tk, entity_name = entity_name,
           statement_currency = f_ccy, period = NA_character_,
           frequency = isolate(input$frequency) %||% "annual",
           disclosures = extra_disc,
           notes = notes,
+          segment_tables = tw_seg_tables,
           instrument_type = inst, adr_ratio = adr, usd_twd = usd_twd,
           display_currency = f_ccy
         )

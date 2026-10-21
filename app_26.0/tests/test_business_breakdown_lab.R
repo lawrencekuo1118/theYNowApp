@@ -1169,7 +1169,7 @@ check("orders: concentration kinds stay off primary dimension",
       identical(rord$primary_dimension$kind, "operating_segment") &&
         !identical(rord$primary_dimension$kind, "customer_concentration") &&
         !identical(rord$primary_dimension$kind, "supplier_concentration"))
-check("orders: TW ticker gets honest pending empty (no fake numbers)", {
+check("orders: TW ticker without notes stays pending (no fake numbers)", {
   tw <- bblab_build_order_concentration(
     dims = list(), notes = NULL, consolidated = bblab_consolidated(100, 40, 60, "TWD", "2024"),
     segment_tables = NULL, ticker = "2330.TW"
@@ -1180,6 +1180,34 @@ check("orders: TW ticker gets honest pending empty (no fake numbers)", {
               "ORDERS_TW_FILING_PARSER_PENDING") &&
     !isTRUE(tw$customer_concentration$eligible) &&
     !isTRUE(tw$supplier_concentration$eligible)
+})
+check("orders: TW MOPS annual-report tables feed customer pack", {
+  tw_notes <- list(
+    source = "mops_annual_report",
+    excerpts = "MOPS annual report: major-customer concentration table parsed.",
+    segment_tables = list(list(
+      short_name = "Major Customers (MOPS Annual Report)",
+      kind = "customer_concentration",
+      layout = "stub",
+      scale = 1,
+      headers = c("Name", "Amount", "% of Total"),
+      rows = list(
+        c("Customer A", "624345477", "22%"),
+        c("Customer B", "352271213", "12%")
+      )
+    ))
+  )
+  tw2 <- bblab_build_order_concentration(
+    dims = list(), notes = tw_notes,
+    consolidated = bblab_consolidated(2894307699, 1e9, 1e9, "TWD", "2024"),
+    segment_tables = tw_notes$segment_tables,
+    ticker = "2330.TW"
+  )
+  isTRUE(tw2$customer_concentration$eligible) &&
+    length(tw2$customer_concentration$rows) >= 2L &&
+    identical(tw2$customer_concentration$source, "mops_annual_report") &&
+    !identical(.bblab_orders_first_code(tw2$customer_concentration),
+               "ORDERS_TW_FILING_PARSER_PENDING")
 })
 check("orders: no-major-customer narrative is honest empty", {
   scan_pack <- bblab_build_order_concentration(
