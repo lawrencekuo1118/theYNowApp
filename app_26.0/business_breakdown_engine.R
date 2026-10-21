@@ -2377,6 +2377,9 @@ bblab_analyze <- function(payload, options = list(), cfg = NULL) {
     out <- bblab_empty_result("BUSINESS_ISSUER_UNRESOLVED")
     out$progress <- list(stage = "resolve_issuer", completed = progress)
     out$toasts <- bblab_toast_payload(out$codes)
+    if (exists("bblab_attach_order_research", mode = "function")) {
+      out <- bblab_attach_order_research(out, payload)
+    }
     return(out)
   }
   mark("retrieve_statements")
@@ -2443,6 +2446,9 @@ bblab_analyze <- function(payload, options = list(), cfg = NULL) {
         ),
         error = function(e) out$order_concentration
       )
+    }
+    if (exists("bblab_attach_order_research", mode = "function")) {
+      out <- bblab_attach_order_research(out, payload)
     }
     return(out)
   }
@@ -2597,7 +2603,7 @@ bblab_analyze <- function(payload, options = list(), cfg = NULL) {
   } else {
     NULL
   }
-  list(
+  out <- list(
     ok = TRUE,
     level = level,
     primary_dimension = list(
@@ -2647,6 +2653,10 @@ bblab_analyze <- function(payload, options = list(), cfg = NULL) {
     period = payload$period %||% cons$period,
     frequency = payload$frequency %||% "annual"
   )
+  if (exists("bblab_attach_order_research", mode = "function")) {
+    out <- bblab_attach_order_research(out, payload)
+  }
+  out
 }
 
 #' Pull consolidated IS totals into a generic payload. Optional disclosures attached as-is.

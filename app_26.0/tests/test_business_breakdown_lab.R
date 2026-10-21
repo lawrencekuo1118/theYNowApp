@@ -20,6 +20,7 @@ source("ui_locale.R", local = TRUE, encoding = "UTF-8")
 source("business_breakdown_schema.R", local = TRUE, encoding = "UTF-8")
 source("business_breakdown_engine.R", local = TRUE, encoding = "UTF-8")
 source("business_breakdown_orders.R", local = TRUE, encoding = "UTF-8")
+source("business_breakdown_order_research.R", local = TRUE, encoding = "UTF-8")
 source("business_breakdown_structure.R", local = TRUE, encoding = "UTF-8")
 source("business_breakdown_module.R", local = TRUE, encoding = "UTF-8")
 
@@ -1209,6 +1210,12 @@ check("orders: TW MOPS annual-report tables feed customer pack", {
     !identical(.bblab_orders_first_code(tw2$customer_concentration),
                "ORDERS_TW_FILING_PARSER_PENDING")
 })
+check("orders: analyze attaches an order research pack",
+      is.list(rord$order_research) &&
+        length(rord$order_research$layers) == 6L &&
+        is.na(rord$order_research$kpis$customer_concentration$value) &&
+        "ORDERS_ORDER_DOLLARS_UNDISCLOSED" %in% rord$order_research$gaps &&
+        length(rord$order_research$layers[[2]]$evidence) >= 1L)
 check("orders: no-major-customer narrative is honest empty", {
   scan_pack <- bblab_build_order_concentration(
     dims = list(),
