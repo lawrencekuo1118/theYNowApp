@@ -2298,6 +2298,12 @@ bblab_extract_dimensions_from_filings <- function(d_is = NULL, notes = NULL,
     if (!is.list(tbl)) next
     lab <- .bblab_chr(tbl$short_name %||% tbl$label %||% tbl$caption, "segment_note")
     kind <- .bblab_chr(tbl$kind %||% .bblab_kind_from_label(lab), "segment_note")
+    # Customer / supplier concentration tables feed the Orders block, not the
+    # primary business-dimension split.
+    if (exists(".bblab_orders_skip_as_business_dim", mode = "function") &&
+        isTRUE(.bblab_orders_skip_as_business_dim(kind))) {
+      next
+    }
     if (!kind %in% BBLAB_DIMENSION_KINDS) kind <- "segment_note"
     packed <- tryCatch(
       .bblab_components_from_table(
@@ -2308,6 +2314,10 @@ bblab_extract_dimensions_from_filings <- function(d_is = NULL, notes = NULL,
     )
     if (is.null(packed) || length(packed$components) < 2L) next
     kind <- .bblab_chr(packed$kind %||% kind, kind)
+    if (exists(".bblab_orders_skip_as_business_dim", mode = "function") &&
+        isTRUE(.bblab_orders_skip_as_business_dim(kind))) {
+      next
+    }
     if (!kind %in% BBLAB_DIMENSION_KINDS) kind <- "segment_note"
     geo_only <- isTRUE(packed$is_customer_location_only)
     if (kind %in% c("operating_segment", "segment_note")) geo_only <- FALSE
@@ -2422,6 +2432,18 @@ bblab_analyze <- function(payload, options = list(), cfg = NULL) {
     out$toasts <- bblab_toast_payload(out$codes)
     out$fx <- fx
     out$ok <- FALSE
+    if (exists("bblab_build_order_concentration", mode = "function")) {
+      out$order_concentration <- tryCatch(
+        bblab_build_order_concentration(
+          dims = dims,
+          notes = payload$notes,
+          consolidated = cons,
+          segment_tables = payload$segment_tables,
+          ticker = payload$ticker
+        ),
+        error = function(e) out$order_concentration
+      )
+    }
     return(out)
   }
   mark("identify_businesses")
@@ -2559,6 +2581,22 @@ bblab_analyze <- function(payload, options = list(), cfg = NULL) {
     list(ok = FALSE, businesses = list(), adjustments = list(),
          conclusions = list(), summary_sentence = "", missing = character(0))
   }
+  order_concentration <- if (exists("bblab_build_order_concentration", mode = "function")) {
+    tryCatch(
+      bblab_build_order_concentration(
+        dims = dims,
+        notes = payload$notes,
+        consolidated = cons,
+        segment_tables = payload$segment_tables,
+        ticker = payload$ticker
+      ),
+      error = function(e) {
+        if (exists(".bblab_orders_empty", mode = "function")) .bblab_orders_empty() else NULL
+      }
+    )
+  } else {
+    NULL
+  }
   list(
     ok = TRUE,
     level = level,
@@ -2575,6 +2613,7 @@ bblab_analyze <- function(payload, options = list(), cfg = NULL) {
     recon_amount = pack$recon_amount,
     shared_corporate = shared,
     structure_analysis = structure_analysis,
+    order_concentration = order_concentration,
     reconciliation = pack$reconciliation,
     revaluation_available = isTRUE(pack$reval_any),
     chart = chart,

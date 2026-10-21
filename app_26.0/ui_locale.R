@@ -3793,6 +3793,63 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Geography that only describes customer location is not the primary business split; ",
       "it does not explain distinct economics."
     ),
+    bblab_orders_title = "Company orders & market concentration",
+    bblab_orders_help = paste0(
+      "Filed major-market geography and counterparty concentration from statements / notes. ",
+      "Major markets show revenue by customer location when disclosed. ",
+      "Major suppliers and major customers are shown only when the filer reports them — ",
+      "never estimated. This block is not the business-dimension split."
+    ),
+    bblab_orders_markets_title = "Major markets",
+    bblab_orders_markets_help = paste0(
+      "Revenue by customer location (geography) from filed segment notes when available."
+    ),
+    bblab_orders_markets_empty = paste0(
+      "No filed geography / major-market revenue breakdown was found for this ticker. ",
+      "Figures are not estimated."
+    ),
+    bblab_orders_markets_geo_note = paste0(
+      "Geography here is customer location — not the primary business split."
+    ),
+    bblab_orders_customers_title = "Major customers",
+    bblab_orders_customers_help = paste0(
+      "Named or anonymized major-customer concentration when disclosed in filings."
+    ),
+    bblab_orders_customers_empty = paste0(
+      "No major-customer concentration table was found in the retrieved filings. ",
+      "Figures are not estimated."
+    ),
+    bblab_orders_suppliers_title = "Major suppliers",
+    bblab_orders_suppliers_help = paste0(
+      "Major-supplier concentration when disclosed in filings (often rarer than customers)."
+    ),
+    bblab_orders_suppliers_empty = paste0(
+      "No major-supplier concentration table was found in the retrieved filings. ",
+      "Figures are not estimated."
+    ),
+    bblab_orders_share_label = "Share of consolidated revenue",
+    bblab_orders_share_axis = "Share of consolidated revenue (%)",
+    bblab_orders_top1 = "Top-1 share",
+    bblab_orders_top3 = "Top-3 share",
+    notif_bblab_orders_geography_disclosure_missing = paste0(
+      "No filed geography / major-market revenue breakdown was found. Figures are not estimated."
+    ),
+    notif_bblab_orders_customer_disclosure_missing = paste0(
+      "No major-customer concentration disclosure was found. Figures are not estimated."
+    ),
+    notif_bblab_orders_supplier_disclosure_missing = paste0(
+      "No major-supplier concentration disclosure was found. Figures are not estimated."
+    ),
+    notif_bblab_orders_no_major_customer_above_threshold = paste0(
+      "The filer disclosed that no customer exceeded the major-customer threshold."
+    ),
+    notif_bblab_orders_no_major_supplier_above_threshold = paste0(
+      "The filer disclosed that no supplier exceeded the major-supplier threshold."
+    ),
+    notif_bblab_orders_tw_filing_parser_pending = paste0(
+      "Taiwan major-customer / supplier / geography concentration parsers are not wired yet; ",
+      "figures are not estimated from marketing pages."
+    ),
     bblab_overlap_why = "Overlapping reporting dimensions are never added together.",
     bblab_history_yaxis = "Share of reported consolidated revenue (%)",
     bblab_dim_operating_segment = "Operating segment (filed)",
@@ -7732,6 +7789,36 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_geo_veto_why = paste0(
       "僅描述客戶所在地的地區別，不會被選為主要業務切分；",
       "它無法說明不同事業的經濟本質。"
+    ),
+    bblab_orders_title = "公司訂單與市場集中度",
+    bblab_orders_help = paste0(
+      "依財報／附註揭露的主要市場地區別與交易對手集中度。",
+      "主要市場在有揭露時顯示客戶所在地營收分布；",
+      "主要供應商與主要客戶僅在公司有申報時呈現——絕不推估。",
+      "本區塊不是事業維度切分。"
+    ),
+    bblab_orders_markets_title = "主要市場分布",
+    bblab_orders_markets_help = "有揭露時，依已申報部門附註顯示客戶所在地（地區別）營收。",
+    bblab_orders_markets_empty = "查無此代號的已申報地區別／主要市場營收拆解，不推估數字。",
+    bblab_orders_markets_geo_note = "此處地區別為客戶所在地，不是主要事業切分。",
+    bblab_orders_customers_title = "主要客戶",
+    bblab_orders_customers_help = "有揭露時顯示具名或匿名的主要客戶集中度。",
+    bblab_orders_customers_empty = "擷取之財報未見主要客戶集中度表，不推估數字。",
+    bblab_orders_suppliers_title = "主要供應商來源",
+    bblab_orders_suppliers_help = "有揭露時顯示主要供應商集中度（通常較客戶揭露更少見）。",
+    bblab_orders_suppliers_empty = "擷取之財報未見主要供應商集中度表，不推估數字。",
+    bblab_orders_share_label = "佔合併營收比重",
+    bblab_orders_share_axis = "佔合併營收比重（%）",
+    bblab_orders_top1 = "最大一戶占比",
+    bblab_orders_top3 = "前三大占比",
+    notif_bblab_orders_geography_disclosure_missing = "查無已申報地區別／主要市場營收拆解，不推估數字。",
+    notif_bblab_orders_customer_disclosure_missing = "查無主要客戶集中度揭露，不推估數字。",
+    notif_bblab_orders_supplier_disclosure_missing = "查無主要供應商集中度揭露，不推估數字。",
+    notif_bblab_orders_no_major_customer_above_threshold = "公司揭露並無單一客戶超過重大客戶門檻。",
+    notif_bblab_orders_no_major_supplier_above_threshold = "公司揭露並無單一供應商超過重大供應商門檻。",
+    notif_bblab_orders_tw_filing_parser_pending = paste0(
+      "台股重大客戶／供應商／地區別集中度擷取尚未接線；",
+      "不會改從行銷頁面推估數字。"
     ),
     bblab_overlap_why = "重疊的申報維度不會加總合併。",
     bblab_history_yaxis = "佔當期已申報合併營收比重（%）",

@@ -297,6 +297,14 @@ business_breakdown_lab_ui <- function(id = "bblab") {
           ".ynow-bblab-bcg__q-cash_cow{color:#249C60;font-weight:700;}",
           ".ynow-bblab-bcg__q-question_mark{color:#1AA8B8;font-weight:700;}",
           ".ynow-bblab-bcg__q-dog{color:#666;font-weight:700;}",
+          ".ynow-bblab-orders{width:100%;margin:0;}",
+          ".ynow-bblab-orders__grid{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;width:100%;}",
+          ".ynow-bblab-orders__col{flex:1 1 46%;min-width:280px;}",
+          ".ynow-bblab-orders__col .plotly,",
+          ".ynow-bblab-orders__col .js-plotly-plot,",
+          ".ynow-bblab-orders__col .plot-container,",
+          ".ynow-bblab-orders__col .svg-container{width:100% !important;overflow:visible !important;}",
+          ".ynow-bblab-orders__meta{font-size:12px;color:#555;margin:4px 0 8px 0;}",
           sep = ""
         ))),
         tags$p(
@@ -447,19 +455,82 @@ business_breakdown_lab_ui <- function(id = "bblab") {
       ),
 
       .bblab_report_section(
-        "IV", "ynow_bblab_ch5_title", "Business cards",
+        "IV", "ynow_bblab_orders_title", "Company orders & market concentration",
+        "ynow_bblab_orders_help",
+        paste0(
+          "Filed major-market geography and counterparty concentration from statements / notes. ",
+          "Major markets show revenue by customer location when disclosed. ",
+          "Major suppliers and major customers are shown only when the filer reports them — ",
+          "never estimated. This block is not the business-dimension split."
+        ),
+        chapter = "4",
+        tags$div(
+          class = "ynow-bblab-orders",
+          tags$div(
+            class = "ynow-bblab-orders__grid",
+            tags$div(
+              class = "ynow-bblab-orders__col",
+              tags$h4(
+                id = "ynow_bblab_orders_markets_title",
+                class = "ynow-bblab-subhead",
+                "Major markets"
+              ),
+              tags$p(
+                id = "ynow_bblab_orders_markets_help",
+                class = "help-block",
+                "Revenue by customer location (geography) from filed segment notes when available."
+              ),
+              uiOutput(ns("orders_markets_status")),
+              plotly::plotlyOutput(ns("orders_markets_chart"), height = "340px")
+            ),
+            tags$div(
+              class = "ynow-bblab-orders__col",
+              tags$h4(
+                id = "ynow_bblab_orders_customers_title",
+                class = "ynow-bblab-subhead",
+                "Major customers"
+              ),
+              tags$p(
+                id = "ynow_bblab_orders_customers_help",
+                class = "help-block",
+                "Named or anonymized major-customer concentration when disclosed in filings."
+              ),
+              uiOutput(ns("orders_customers_status")),
+              plotly::plotlyOutput(ns("orders_customers_chart"), height = "340px")
+            ),
+            tags$div(
+              class = "ynow-bblab-orders__col",
+              tags$h4(
+                id = "ynow_bblab_orders_suppliers_title",
+                class = "ynow-bblab-subhead",
+                "Major suppliers"
+              ),
+              tags$p(
+                id = "ynow_bblab_orders_suppliers_help",
+                class = "help-block",
+                "Major-supplier concentration when disclosed in filings (often rarer than customers)."
+              ),
+              uiOutput(ns("orders_suppliers_status")),
+              plotly::plotlyOutput(ns("orders_suppliers_chart"), height = "340px")
+            )
+          )
+        )
+      ),
+
+      .bblab_report_section(
+        "V", "ynow_bblab_ch5_title", "Business cards",
         "ynow_bblab_ch5_help",
         paste0(
           "One card per supportable business: reported Revenue, Cost of Revenue, ",
           "Gross Profit, and Gross Margin when disclosed or derived. Click a donut slice to focus a card."
         ),
-        chapter = "4",
+        chapter = "5",
         uiOutput(ns("cards"))
       ),
 
       .bblab_report_section(
-        "V", "ynow_bblab_ch6_title", "Reconciliation",
-        chapter = "5",
+        "VI", "ynow_bblab_ch6_title", "Reconciliation",
+        chapter = "6",
         uiOutput(ns("recon"))
       ),
 
@@ -477,8 +548,8 @@ business_breakdown_lab_ui <- function(id = "bblab") {
       ),
 
       .bblab_report_section(
-        "VI", "ynow_bblab_ch7_title", "Sources",
-        chapter = "6",
+        "VII", "ynow_bblab_ch7_title", "Sources",
+        chapter = "7",
         tags$p(
           id = "ynow_bblab_sources_chrome",
           class = "ynow-bblab-report__section-help",
@@ -1182,6 +1253,212 @@ business_breakdown_lab_server <- function(id = "bblab",
         ),
         margin = list(b = 40)
       )
+    })
+
+    .orders_pack <- function(which) {
+      res <- lab_result()
+      oc <- res$order_concentration
+      if (is.null(oc) || !is.list(oc)) return(NULL)
+      oc[[which]]
+    }
+
+    .orders_empty_msg <- function(pack, fallback_key) {
+      codes <- as.character(pack$codes %||% character(0))
+      if (!length(codes) || !nzchar(codes[[1]])) return(ui_msg(fallback_key))
+      key <- paste0("notif_bblab_", tolower(codes[[1]]))
+      mapped <- ui_msg(key)
+      if (identical(mapped, key)) ui_msg(fallback_key) else mapped
+    }
+
+    .orders_bar_plotly <- function(pack, empty_title = NULL) {
+      empty <- plotly::layout(
+        plotly::plot_ly(type = "bar"),
+        showlegend = FALSE, title = NULL,
+        xaxis = list(visible = FALSE), yaxis = list(visible = FALSE)
+      )
+      rows <- pack$rows %||% pack$slices %||% list()
+      if (!isTRUE(pack$eligible) || !length(rows)) return(empty)
+      labels <- vapply(rows, function(r) .bblab_chr(r$name, "—"), character(1))
+      shares <- vapply(rows, function(r) {
+        s <- suppressWarnings(as.numeric(r$share)[1])
+        if (is.finite(s)) {
+          if (abs(s) <= 1.0000001) s * 100 else s
+        } else {
+          NA_real_
+        }
+      }, numeric(1))
+      keep <- is.finite(shares) & shares > 0
+      if (!any(keep)) return(empty)
+      labels <- labels[keep]
+      shares <- shares[keep]
+      rows <- rows[keep]
+      pal <- c("#0C5484", "#1AA8B8", "#249C60", "#E8A838", "#8E6BB5", "#D96B5F")
+      cols <- pal[((seq_along(labels) - 1L) %% length(pal)) + 1L]
+      hover <- vapply(seq_along(rows), function(i) {
+        r <- rows[[i]]
+        paste0(
+          r$name,
+          "<br>", ui_msg("bblab_kpi_revenue"), ": ", .bblab_fmt_amt(r$revenue),
+          "<br>", ui_msg("bblab_orders_share_label"), ": ", .bblab_fmt_pct(r$share),
+          if (nzchar(.bblab_chr(r$status))) paste0("<br>", r$status) else "",
+          if (nzchar(.bblab_chr(pack$period))) paste0("<br>", pack$period) else "",
+          if (nzchar(.bblab_chr(pack$currency))) paste0(" · ", pack$currency) else ""
+        )
+      }, character(1))
+      # Horizontal bars: largest at top.
+      ord <- order(shares, decreasing = FALSE)
+      fig <- plotly::plot_ly(
+        x = shares[ord],
+        y = labels[ord],
+        type = "bar",
+        orientation = "h",
+        marker = list(color = cols[ord]),
+        hovertext = hover[ord],
+        hoverinfo = "text"
+      )
+      plotly::layout(
+        fig,
+        showlegend = FALSE,
+        xaxis = list(
+          title = ui_msg("bblab_orders_share_axis"),
+          ticksuffix = "%",
+          rangemode = "tozero"
+        ),
+        yaxis = list(title = "", automargin = TRUE),
+        margin = list(l = 20, r = 20, t = 10, b = 40)
+      )
+    }
+
+    .orders_donut_plotly <- function(pack) {
+      empty <- plotly::layout(plotly::plot_ly(type = "pie"), showlegend = FALSE, title = NULL)
+      slices <- pack$slices %||% pack$rows %||% list()
+      if (!isTRUE(pack$eligible) || !length(slices)) return(empty)
+      labels <- vapply(slices, function(s) .bblab_chr(s$name, "—"), character(1))
+      values <- vapply(slices, function(s) {
+        sh <- suppressWarnings(as.numeric(s$share)[1])
+        if (is.finite(sh) && sh > 0) {
+          if (abs(sh) <= 1.0000001) abs(sh) else abs(sh) / 100
+        } else {
+          rv <- suppressWarnings(as.numeric(s$revenue)[1])
+          if (is.finite(rv) && rv > 0) rv else 0
+        }
+      }, numeric(1))
+      if (!any(values > 0)) return(empty)
+      pal <- c("#0C5484", "#1AA8B8", "#249C60", "#E8A838", "#8E6BB5", "#D96B5F")
+      hover <- vapply(slices, function(s) {
+        paste0(
+          s$name,
+          "<br>", ui_msg("bblab_kpi_revenue"), ": ", .bblab_fmt_amt(s$revenue),
+          "<br>", ui_msg("bblab_orders_share_label"), ": ", .bblab_fmt_pct(s$share)
+        )
+      }, character(1))
+      fig <- plotly::plot_ly(
+        labels = labels, values = pmax(values, 0), type = "pie", hole = 0.42,
+        textinfo = "percent", textposition = "outside",
+        hovertext = hover, hoverinfo = "text",
+        marker = list(
+          colors = pal[((seq_along(labels) - 1L) %% length(pal)) + 1L],
+          line = list(color = "#ffffff", width = 1)
+        ),
+        domain = list(x = c(0.12, 0.88), y = c(0.08, 0.88))
+      )
+      plotly::layout(
+        fig,
+        showlegend = TRUE,
+        margin = list(l = 40, r = 40, t = 30, b = 40),
+        legend = list(orientation = "h", y = 1.12, x = 0.5, xanchor = "center"),
+        uniformtext = list(minsize = 10, mode = "hide")
+      )
+    }
+
+    output$orders_markets_status <- renderUI({
+      res <- lab_result()
+      if (is.null(res)) return(tags$p(class = "help-block", ui_msg("bblab_waiting")))
+      pack <- .orders_pack("market_geography")
+      if (is.null(pack)) {
+        return(tags$p(class = "help-block", ui_msg("bblab_orders_markets_empty")))
+      }
+      if (isTRUE(pack$eligible)) {
+        note <- if (isTRUE(pack$is_customer_location_only)) {
+          ui_msg("bblab_orders_markets_geo_note")
+        } else {
+          NULL
+        }
+        return(tags$p(class = "ynow-bblab-orders__meta help-block", note))
+      }
+      tags$p(class = "help-block", .orders_empty_msg(pack, "bblab_orders_markets_empty"))
+    })
+
+    output$orders_customers_status <- renderUI({
+      res <- lab_result()
+      if (is.null(res)) return(tags$p(class = "help-block", ui_msg("bblab_waiting")))
+      pack <- .orders_pack("customer_concentration")
+      if (is.null(pack) || !isTRUE(pack$eligible)) {
+        return(tags$p(
+          class = "help-block",
+          .orders_empty_msg(pack %||% list(), "bblab_orders_customers_empty")
+        ))
+      }
+      meta <- character(0)
+      if (.bblab_finite(pack$top1_share)) {
+        meta <- c(meta, paste0(ui_msg("bblab_orders_top1"), ": ", .bblab_fmt_pct(pack$top1_share)))
+      }
+      if (.bblab_finite(pack$top3_share)) {
+        meta <- c(meta, paste0(ui_msg("bblab_orders_top3"), ": ", .bblab_fmt_pct(pack$top3_share)))
+      }
+      if (!length(meta)) return(NULL)
+      tags$p(class = "ynow-bblab-orders__meta help-block", paste(meta, collapse = " · "))
+    })
+
+    output$orders_suppliers_status <- renderUI({
+      res <- lab_result()
+      if (is.null(res)) return(tags$p(class = "help-block", ui_msg("bblab_waiting")))
+      pack <- .orders_pack("supplier_concentration")
+      if (is.null(pack) || !isTRUE(pack$eligible)) {
+        return(tags$p(
+          class = "help-block",
+          .orders_empty_msg(pack %||% list(), "bblab_orders_suppliers_empty")
+        ))
+      }
+      meta <- character(0)
+      if (.bblab_finite(pack$top1_share)) {
+        meta <- c(meta, paste0(ui_msg("bblab_orders_top1"), ": ", .bblab_fmt_pct(pack$top1_share)))
+      }
+      if (.bblab_finite(pack$top3_share)) {
+        meta <- c(meta, paste0(ui_msg("bblab_orders_top3"), ": ", .bblab_fmt_pct(pack$top3_share)))
+      }
+      if (!length(meta)) return(NULL)
+      tags$p(class = "ynow-bblab-orders__meta help-block", paste(meta, collapse = " · "))
+    })
+
+    output$orders_markets_chart <- plotly::renderPlotly({
+      pack <- .orders_pack("market_geography")
+      if (is.null(pack)) {
+        return(plotly::layout(plotly::plot_ly(type = "pie"), showlegend = FALSE))
+      }
+      .orders_donut_plotly(pack)
+    })
+
+    output$orders_customers_chart <- plotly::renderPlotly({
+      pack <- .orders_pack("customer_concentration")
+      if (is.null(pack)) {
+        return(plotly::layout(
+          plotly::plot_ly(type = "bar"),
+          showlegend = FALSE, xaxis = list(visible = FALSE), yaxis = list(visible = FALSE)
+        ))
+      }
+      .orders_bar_plotly(pack)
+    })
+
+    output$orders_suppliers_chart <- plotly::renderPlotly({
+      pack <- .orders_pack("supplier_concentration")
+      if (is.null(pack)) {
+        return(plotly::layout(
+          plotly::plot_ly(type = "bar"),
+          showlegend = FALSE, xaxis = list(visible = FALSE), yaxis = list(visible = FALSE)
+        ))
+      }
+      .orders_bar_plotly(pack)
     })
 
     observeEvent(plotly::event_data("plotly_click", source = ns("donut")), {
