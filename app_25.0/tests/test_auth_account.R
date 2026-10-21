@@ -296,16 +296,21 @@ check("login tabs show a lock before sign-in", {
     !grepl("account_points: true", ui, fixed = TRUE) &&
     grepl("ynow-sidebar-locked", ui, fixed = TRUE) &&
     grepl("ynowSyncGuestSidebarLocked", ui, fixed = TRUE) &&
+    grepl("__YNOW_SIDEBAR_PERSIST_LOCK_TABS", ui, fixed = TRUE) &&
     grepl(
       "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .sidebar-menu a:has(> .ynow-menu-lock)",
       ui,
       fixed = TRUE
     ) &&
-    grepl("not(.ynow-lite):not(.ynow-authed) .sidebar-menu .ynow-menu-lock", ui, fixed = TRUE) &&
+    grepl("not(.ynow-lite):not(.ynow-authed) .sidebar-menu a > .ynow-menu-lock", ui, fixed = TRUE) &&
     grepl("a:has(.ynow-menu-lock) > i:not(.ynow-menu-lock):not(.pull-right)", ui, fixed = TRUE) &&
     grepl("ynow-auth-header", ui, fixed = TRUE) &&
     grepl("display:none !important;", auth, fixed = TRUE) &&
     grepl("treeview:has(a[data-value=\\\"account_admin\\\"])", auth, fixed = TRUE)
+})
+check("persist-lock map helper exists for post-login B chrome", {
+  exists("ynow_sidebar_persist_lock_js_map", mode = "function") &&
+    is.list(ynow_sidebar_persist_lock_js_map())
 })
 check("Lite CSS omits every Full guest-locked sidebar tab", {
   auth <- paste(readLines(src_auth, warn = FALSE, encoding = "UTF-8"), collapse = "\n")

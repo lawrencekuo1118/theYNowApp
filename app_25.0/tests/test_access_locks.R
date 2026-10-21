@@ -129,7 +129,7 @@ check("ui distinguishes hide vs lock classes", {
     grepl("ynow-access-locked-pane", ui, fixed = TRUE)
 })
 check("sysadmin sidebar lock swaps the glyph for a lock", {
-  grepl("li.ynow-access-locked-nav .ynow-menu-lock", ui, fixed = TRUE) &&
+  grepl("li.ynow-access-locked-nav > a > .ynow-menu-lock", ui, fixed = TRUE) &&
     grepl("li.ynow-access-locked-nav > a > i:not(.ynow-menu-lock)", ui, fixed = TRUE) &&
     grepl("ynow-access-lock", ui, fixed = TRUE) &&
     grepl("ynowApplyAccessLocks()", ui, fixed = TRUE)
@@ -144,7 +144,14 @@ check("guest locks share unified sidebar locked chrome with ACL (ATX)", {
       fixed = TRUE
     ) &&
     grepl("opacity: 0.55", ui, fixed = TRUE) &&
-    grepl("a:has(.ynow-menu-lock) > i:not(.ynow-menu-lock)", ui, fixed = TRUE)
+    grepl("a:has(.ynow-menu-lock) > i:not(.ynow-menu-lock)", ui, fixed = TRUE) &&
+    grepl("display: none !important", ui, fixed = TRUE) &&
+    grepl("__YNOW_SIDEBAR_PERSIST_LOCK_TABS", ui, fixed = TRUE)
+})
+check("post-login still-locked chrome kept for ACL/persist (not hidden)", {
+  grepl("Still-locked after auth: ACL + persist B", ui, fixed = TRUE) &&
+    grepl("li.classList.remove('ynow-access-hidden')", ui, fixed = TRUE) &&
+    grepl("ynowEnsureSidebarLockGlyph", ui, fixed = TRUE)
 })
 check("locked asset transmission pane shows feature promo and sign-in", {
   auth_src <- paste(readLines(file.path(app_dir, "auth_account.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
