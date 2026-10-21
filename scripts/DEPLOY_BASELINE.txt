@@ -7,5 +7,5 @@ commit=91b7960856d10bbac3fd91f073d5f93a64b244dd
 short=91b79608
 message=chore: bump display version to v26.13
 captured_at=2026-10-21T14:43:01Z
-display_version=v26.13
+display_version=v26.14
 note=Canonical live line is app_26.0. Bundle 12720900: last-UI ticker restore + signed-in uid prefs (#376) on tip with #375/#374/#373. Secrets only in gitignored .Renviron; no secret values in git.
