@@ -71,7 +71,8 @@ check(
 check(
   "Lite click gate still skips proprietary download gate",
   grepl("if (document.body.classList.contains('ynow-lite')) return;", ui, fixed = TRUE) &&
-    grepl("#download_snapshot", ui, fixed = TRUE)
+    grepl("'download_snapshot'", ui, fixed = TRUE) &&
+    grepl("ids.map(function (id) { return '#' + id; })", ui, fixed = TRUE)
 )
 check(
   "Full still shows snap_defaults lock until sysadmin",

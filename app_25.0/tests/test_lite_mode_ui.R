@@ -571,7 +571,21 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(grepl("ynow-company-advance-bblab", txt, fixed = TRUE))
   testthat::expect_true(grepl("business_breakdown_lab_ui", txt, fixed = TRUE))
   testthat::expect_true(grepl("body.ynow-lite .ynow-company-advance-bblab", txt, fixed = TRUE))
-  testthat::expect_true(grepl('data-value="company_advance"', txt, fixed = TRUE))
+  # shinydashboard emits data-value at runtime from tabName; Lite hide CSS comes from
+  # ynow_sidebar_lite_omit_css() (not a hardcoded data-value= string in ynow_ui.R).
+  auth_path <- file.path("..", "auth_account.R")
+  testthat::expect_true(file.exists(auth_path))
+  source(auth_path, local = TRUE, encoding = "UTF-8")
+  testthat::expect_true(exists("ynow_sidebar_lite_omit_tabs", mode = "function"))
+  testthat::expect_true(exists("ynow_sidebar_lite_omit_css", mode = "function"))
+  omit_tabs <- ynow_sidebar_lite_omit_tabs()
+  omit_css <- ynow_sidebar_lite_omit_css()
+  testthat::expect_true("company_advance" %in% omit_tabs)
+  testthat::expect_true(grepl(
+    'body.ynow-lite .sidebar-menu a[data-value="company_advance"]',
+    omit_css,
+    fixed = TRUE
+  ))
   testthat::expect_true(grepl("body.ynow-lite .ynow-bblab", txt, fixed = TRUE))
   testthat::expect_true(grepl("input.sidebar_tabs != 'asset_transmission'", txt, fixed = TRUE))
   testthat::expect_true(grepl("input.sidebar_tabs != 'testing'", txt, fixed = TRUE))
@@ -663,11 +677,14 @@ testthat::expect_true(grepl(
     about_slice,
     perl = TRUE
   ))
+  # Hardcoded Lite get_started hide block was removed; omit CSS builds the selector.
+  testthat::expect_true("get_started" %in% omit_tabs)
   testthat::expect_true(grepl(
     'body.ynow-lite .sidebar-menu a[data-value="get_started"]',
-    txt,
+    omit_css,
     fixed = TRUE
   ))
+  testthat::expect_true(grepl("ynow_sidebar_lite_omit_css", txt, fixed = TRUE))
   testthat::expect_true(grepl("Multiples（市場倍數）", txt, fixed = TRUE))
   testthat::expect_true(grepl("SOTP（分部加總）", txt, fixed = TRUE))
   testthat::expect_true(grepl('id = "ynow_method_section_title"', txt, fixed = TRUE))
@@ -1040,11 +1057,18 @@ testthat::test_that("YNOW page title and two-block order are shared by Lite and 
     readLines(file.path("..", "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"),
     collapse = "\n"
   )
+  # C-STRUCT-02: Lite About YNOW blurb lives in ynow_about_ui.R (sourced by facade).
+  about_path <- file.path("..", "ynow_about_ui.R")
+  ui_about <- if (file.exists(about_path)) {
+    paste(c(ui, readLines(about_path, warn = FALSE, encoding = "UTF-8")), collapse = "\n")
+  } else {
+    ui
+  }
   testthat::expect_true(grepl('tabName = "sensitivity"', ui, fixed = TRUE))
   testthat::expect_true(grepl('decision_ui("main_decision")', ui, fixed = TRUE))
-  testthat::expect_true(grepl("盈餘品質、F-Score 品質檢核、風險矩陣與財報警訊", ui, fixed = TRUE))
-  testthat::expect_true(grepl("Quality of Earnings, F-Score screen, risk matrix, and statement alerts", ui, fixed = TRUE))
-  testthat::expect_false(grepl("三區塊版面：品質檢核（F-Score）", ui, fixed = TRUE))
+  testthat::expect_true(grepl("盈餘品質、F-Score 品質檢核、風險矩陣與財報警訊", ui_about, fixed = TRUE))
+  testthat::expect_true(grepl("Quality of Earnings, F-Score screen, risk matrix, and statement alerts", ui_about, fixed = TRUE))
+  testthat::expect_false(grepl("三區塊版面：品質檢核（F-Score）", ui_about, fixed = TRUE))
 
   macro <- paste(
     readLines(file.path("..", "macro_market_module.R"), warn = FALSE, encoding = "UTF-8"),
