@@ -23,6 +23,19 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 - CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_25.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).
 - Docs: root README ship/CI/Release pointers; `scripts/record_github_release.sh` for soft-fail Release publish after deploy.
 
+## [v25.95] — 2026-10-21
+
+### Added
+
+- Signed-in sidebar tab reorder: **Customize / 自訂設定** on the date row enables long-press-drag of top-level menu items; **Done / 完成** persists order via `ynow_user_prefs` key `sidebar_tab_order` (PR #359).
+- en-US / zh-TW: `sidebar_reorder_*` locale keys.
+- zh-TW：登入後可自訂側邊欄分頁上下順序（先按自訂設定，長按拖移，再按完成儲存）。
+
+### Changed
+
+- Disabled mistaken page-pin long-press UX from v25.93 so menu long-press is edit-mode reorder only; stock recent-search chip pins unchanged. Prefs API for `pinned_sidebar_tabs` retained.
+- Live baseline bundle `12718919` (`scripts/DEPLOY_BASELINE.txt`).
+
 ## [v25.94] — 2026-10-21
 
 ### Added
