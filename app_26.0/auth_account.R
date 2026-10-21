@@ -2321,13 +2321,14 @@ ynow_gate_promo_faq_ui <- function(feature = "lab", include_faq = TRUE, compact 
         class = "ynow-gate-demo-caption",
         .ynow_gate_str(keys$demo_caption, "Feature demo")
       ),
+      # preload=none + no autoplay: avoid competing with Home first paint
+      # (~0.9MB webm). Client plays when the gate video scrolls into view.
       tags$video(
         class = "ynow-gate-demo-video",
         controls = NA,
         muted = NA,
         playsinline = NA,
-        preload = "metadata",
-        autoplay = NA,
+        preload = "none",
         loop = NA,
         tags$source(src = paste0(demo_base, ".webm"), type = "video/webm"),
         tags$source(src = paste0(demo_base, ".mp4"), type = "video/mp4"),

@@ -1108,7 +1108,15 @@ beta_rolling_section_ui <- function() {
           class = "ynow-about-section-title",
           tags$b(id = "ynow_method_section_title", "Valuation Methodology")
         ),
-        withMathJax(),
+        # Do NOT call shiny::withMathJax() here — it hoists a parser-blocking
+        # MathJax CDN <script> into <head> for the whole app (Home first paint).
+        # Client loads MathJax on demand when .ynow-needs-mathjax is shown.
+        tags$div(
+          class = "ynow-needs-mathjax",
+          `data-ynow-mathjax` = "methodology",
+          style = "display:none",
+          `aria-hidden` = "true"
+        ),
         p(
           class = "ynow-about-section-lead ynow-loc-zh",
           id = "ynow_method_lead_zh",
@@ -3905,10 +3913,113 @@ ui <- dashboardPage(
         list()
       }
     ),
-    # MathJax: load on pages that need it (Basic Setup methodology, HFV, Backtest Lab)
-    # rather than on every first paint of Home.
+    # MathJax: never on Home first paint. Basic Setup methodology uses
+    # .ynow-needs-mathjax + deferred loader below. HFV / Backtest Lab keep
+    # withMathJax() inside lazy tab builders (not in the initial HTML).
 
     tags$head(
+      # Deferred MathJax + gate-demo video arming (Home-critical-path hygiene).
+      tags$script(HTML("
+        (function () {
+          var MJ_SRC = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML';
+          var mjState = 'idle';
+          var mjWait = [];
+          function runMjQueue() {
+            var q = mjWait.slice();
+            mjWait = [];
+            q.forEach(function (fn) { try { fn(); } catch (eQ) {} });
+          }
+          function ensureMathJax(cb) {
+            if (typeof cb === 'function') mjWait.push(cb);
+            if (window.MathJax && window.MathJax.Hub) {
+              mjState = 'ready';
+              runMjQueue();
+              return;
+            }
+            if (mjState === 'loading') return;
+            mjState = 'loading';
+            var s = document.createElement('script');
+            s.src = MJ_SRC;
+            s.async = true;
+            s.onload = function () {
+              mjState = 'ready';
+              runMjQueue();
+            };
+            s.onerror = function () { mjState = 'idle'; mjWait = []; };
+            (document.head || document.documentElement).appendChild(s);
+          }
+          function typesetMathJax() {
+            ensureMathJax(function () {
+              try {
+                if (window.MathJax && MathJax.Hub) {
+                  MathJax.Hub.Queue(['Typeset', MathJax.Hub]);
+                }
+              } catch (eT) {}
+            });
+          }
+          function paneNeedsMathJax(pane) {
+            if (!pane) return false;
+            if (pane.querySelector && pane.querySelector('.ynow-needs-mathjax')) return true;
+            var id = pane.id || '';
+            return id === 'shiny-tab-hfv' || id === 'shiny-tab-lab_notes' ||
+              id === 'shiny-tab-get_started';
+          }
+          function maybeLoadMathJaxForActive() {
+            var active = document.querySelector('.tab-pane.active');
+            if (paneNeedsMathJax(active)) typesetMathJax();
+          }
+          window.ynowEnsureMathJax = ensureMathJax;
+          window.ynowTypesetMathJax = typesetMathJax;
+          document.addEventListener('shown.bs.tab', function () {
+            maybeLoadMathJaxForActive();
+          });
+          document.addEventListener('shiny:value', function (ev) {
+            try {
+              var name = ev && ev.detail && ev.detail.name;
+              if (!name) return;
+              if (String(name).indexOf('ynow_lazy_host_hfv') >= 0 ||
+                  String(name).indexOf('ynow_lazy_host_lab_notes') >= 0) {
+                typesetMathJax();
+              }
+            } catch (eV) {}
+          });
+          if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function () {
+              setTimeout(maybeLoadMathJaxForActive, 0);
+            });
+          } else {
+            setTimeout(maybeLoadMathJaxForActive, 0);
+          }
+
+          function armGateVideos(root) {
+            var scope = root && root.querySelectorAll ? root : document;
+            scope.querySelectorAll('video.ynow-gate-demo-video').forEach(function (v) {
+              if (v.__ynowGateArmed) return;
+              v.__ynowGateArmed = true;
+              if (!('IntersectionObserver' in window)) return;
+              var io = new IntersectionObserver(function (entries) {
+                entries.forEach(function (en) {
+                  if (en.isIntersecting && en.intersectionRatio >= 0.2) {
+                    try { if (v.paused) v.play(); } catch (eP) {}
+                  } else {
+                    try { if (!v.paused) v.pause(); } catch (eS) {}
+                  }
+                });
+              }, { threshold: [0, 0.2, 0.5] });
+              io.observe(v);
+            });
+          }
+          window.ynowArmGateDemoVideos = armGateVideos;
+          if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function () { armGateVideos(document); });
+          } else {
+            armGateVideos(document);
+          }
+          document.addEventListener('shiny:value', function () {
+            setTimeout(function () { armGateVideos(document); }, 0);
+          });
+        })();
+      ")),
       tags$style(HTML('
         /* YNOW monochrome chrome: black/white (keep KPI bg-blue / Schilit red-green) */
         :root {
