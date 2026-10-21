@@ -13,14 +13,19 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 
 ## [Unreleased]
 
-### Added
-
-- **Account points top-up / 點數儲值**: Redeem-code path on Account overview credits FYN or PYN via the existing points ledger (no payment processor). Shows FYN/PYN rules; en-US + zh-TW. Optional `YNOW_POINTS_REDEEM_SEED` for ops codes. Admin grant path unchanged.
-
 ### Changed
 
 - CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_26.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).
 - Docs: root README ship/CI/Release pointers; `scripts/record_github_release.sh` for soft-fail Release publish after deploy.
+
+## [v26.19] — 2026-10-21
+
+### Added
+
+- **Account points top-up / 點數儲值** (live ship of PR #381): Redeem-code path on Account overview credits FYN or PYN via the existing points ledger (no payment processor). Shows FYN/PYN rules; en-US + zh-TW. Optional `YNOW_POINTS_REDEEM_SEED` for ops codes. Admin grant path unchanged.
+- zh-TW：帳號總覽可兌換儲值碼入帳 FYN／PYN；無刷卡結帳；每帳戶每碼一次；可至點數流水確認。
+- Does not regress mobile login/points, single-device session, or US earnings-call ingest.
+- Live baseline bundle recorded in `scripts/DEPLOY_BASELINE.txt` after deploy.
 
 ## [v26.18] — 2026-10-21
 
