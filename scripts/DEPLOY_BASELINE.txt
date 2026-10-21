@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12721544
+bundleId=12721592
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
-aligned_git=1749d251ff8de8565e00d17937fa24bdd5ab3a60
-commit=1749d251ff8de8565e00d17937fa24bdd5ab3a60
-short=1749d251
-message=chore: bump display version to v26.15
-captured_at=2026-10-21T17:23:21Z
+aligned_git=dc155bb817abbff86e6fb5401fe23107cb1f42df
+commit=dc155bb817abbff86e6fb5401fe23107cb1f42df
+short=dc155bb8
+message=chore: bump display version to v26.16
+captured_at=2026-10-21T17:34:45Z
 display_version=v26.16
-note=Canonical live line is app_26.0. Bundle 12721544: Home load perf (#378) — MathJax deferred off first paint; gate demos preload=none no autoplay. Secrets only in gitignored .Renviron; no secret values in git.
+note=Canonical live line is app_26.0. Bundle 12721592: redeploy after concurrent-deploy race; includes mobile login/points UI + Home load perf. Secrets only in gitignored .Renviron.
