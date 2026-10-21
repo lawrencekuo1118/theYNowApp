@@ -18,6 +18,19 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 - CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_25.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).
 - Docs: root README ship/CI/Release pointers; `scripts/record_github_release.sh` for soft-fail Release publish after deploy.
 
+## [v25.90] — 2026-10-21
+
+### Fixed
+
+- Full mode after sign-in: still-locked sidebar items (ACL / points-gated persist-B) keep guest-identical lock chrome (lock icon + light gray / `.ynow-sidebar-locked`) and are not hidden (PR #353).
+- Font Awesome `.fas` display no longer overrides `.ynow-menu-lock` hide — unlock-after-login (A) tabs drop orphan lock glyphs cleanly.
+- en-US: post-login still-locked nav matches guest locked style; A tabs unlock normally; Lite omit unchanged.
+- zh-TW：登入後仍鎖定的側邊欄項目維持鎖頭圖示＋淺灰（與未登入鎖上相同），不會隱藏消失；僅登入解鎖項目正常解鎖。
+
+### Changed
+
+- Live baseline bundle `12718113` (`scripts/DEPLOY_BASELINE.txt`).
+
 ## [v25.89] — 2026-10-21
 
 ### Fixed
