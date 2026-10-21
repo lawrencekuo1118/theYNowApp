@@ -13,15 +13,18 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 
 ## [Unreleased]
 
-### Added
-
-- **Business Breakdown / 業務拆解**: Order research panel after concentration charts shows current disclosed status only (scale, quality, conversion, profitability, statement cash items, backlog coverage). KPI cards include Book-to-Bill and backlog coverage, plus an industry lens. Start analysis builds one `OrderResearchPack` for the current ticker. Missing backlog or bookings stays empty. No Bear/Base/Bull table, no EPS/FCFF extrapolation, and no assumed conversion rate.
-- zh-TW：業務拆解在集中度圖之後新增訂單研究，只顯示已揭露現況（Book-to-Bill、訂單營收覆蓋率、產業透鏡）。未揭露的 Backlog／Bookings 留白。不做 Bear／Base／Bull、EPS／FCFF 外推或假設轉換率。
-
 ### Changed
 
 - CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_26.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).
 - Docs: root README ship/CI/Release pointers; `scripts/record_github_release.sh` for soft-fail Release publish after deploy.
+
+## [v26.07] — 2026-10-21
+
+### Added
+
+- **Business Breakdown / 業務拆解**: Order research panel after concentration charts shows current disclosed status only (scale, quality, conversion, profitability, statement cash items, backlog coverage). KPI cards include Book-to-Bill and backlog coverage, plus an industry lens. Start analysis builds one `OrderResearchPack` for the current ticker. Missing backlog or bookings stays empty. No Bear/Base/Bull table, no EPS/FCFF extrapolation, and no assumed conversion rate (PR #368).
+- zh-TW：業務拆解在集中度圖之後新增訂單研究，只顯示已揭露現況（Book-to-Bill、訂單營收覆蓋率、產業透鏡）。未揭露的 Backlog／Bookings 留白。不做 Bear／Base／Bull、EPS／FCFF 外推或假設轉換率。
+- Live baseline bundle `12720126` (`scripts/DEPLOY_BASELINE.txt`).
 
 ## [v26.06] — 2026-10-21
 
