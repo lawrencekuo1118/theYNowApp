@@ -440,6 +440,30 @@ server <- function(input, output, session) {
     }
     tryCatch(ynow_prefs_set_pinned_recent(uid, pins), error = function(e) pins)
   }
+  .ynow_recent_24h_load_for_user <- function(uid) {
+    if (!nzchar(uid) || !exists("ynow_prefs_get_recent_search_24h", mode = "function")) {
+      return(character(0))
+    }
+    tryCatch(ynow_prefs_get_recent_search_24h(uid), error = function(e) character(0))
+  }
+  .ynow_recent_24h_record <- function(uid, ticker) {
+    if (!nzchar(uid) || !exists("ynow_prefs_record_recent_search", mode = "function")) {
+      return(invisible(character(0)))
+    }
+    tryCatch(
+      ynow_prefs_record_recent_search(uid, ticker),
+      error = function(e) character(0)
+    )
+  }
+  .ynow_recent_24h_merge_guest <- function(uid, guest_tickers) {
+    if (!nzchar(uid) || !exists("ynow_prefs_merge_recent_search_24h", mode = "function")) {
+      return(.ynow_recent_24h_load_for_user(uid))
+    }
+    tryCatch(
+      ynow_prefs_merge_recent_search_24h(uid, guest_tickers),
+      error = function(e) .ynow_recent_24h_load_for_user(uid)
+    )
+  }
 
   # Guest localStorage → session (browser-local only; not account-durable).
   observeEvent(input$pinned_search_guest_load, {
@@ -455,8 +479,8 @@ server <- function(input, output, session) {
     values$pinned_search <- ynow_prefs_normalize_tickers(tickers)
   }, ignoreInit = TRUE)
 
-  # Auth / view-as transitions: load durable pins for the effective subject;
-  # drop them when neither real auth nor view-as applies.
+  # Auth / view-as transitions: load durable pins + 24h search history for the
+  # effective subject; drop them when neither real auth nor view-as applies.
   # ignoreInit: guests hydrate via pinned_search_guest_load; do not wipe that race.
   .ynow_pinned_last_uid <- reactiveVal("")
   observeEvent(
@@ -486,14 +510,37 @@ server <- function(input, output, session) {
           }
         }
         values$pinned_search <- server_pins
+
+        # Signed-in 24h search history → Recent Search chips + empty typeahead.
+        guest_recent <- isolate(as.character(values$recentsearch %||% character(0)))
+        if (!isTRUE(va_on) && length(guest_recent)) {
+          server_recent <- .ynow_recent_24h_merge_guest(uid, guest_recent)
+        } else {
+          server_recent <- .ynow_recent_24h_load_for_user(uid)
+        }
+        # Keep pinned tickers out of the recent chip row (same rule as Search).
+        if (length(server_pins)) {
+          server_recent <- setdiff(server_recent, server_pins)
+        }
+        values$recentsearch <- head(
+          server_recent,
+          if (exists(".YNOW_RECENT_SEARCH_24H_MAX", inherits = TRUE)) {
+            as.integer(.YNOW_RECENT_SEARCH_24H_MAX)[1]
+          } else {
+            20L
+          }
+        )
+
         tryCatch(
           session$sendCustomMessage("ynowPinnedGuestSync", list(clear = TRUE)),
           error = function(e) NULL
         )
         .ynow_pinned_last_uid(uid)
       } else if (nzchar(prev)) {
-        # Signed out / left view-as: hide account pins (guest may pin via localStorage).
+        # Signed out / left view-as: hide account pins + durable recent history
+        # (guest session recent stays in-memory only for this browser session).
         values$pinned_search <- character(0)
+        values$recentsearch <- character(0)
         .ynow_pinned_last_uid("")
       }
     },
@@ -3003,12 +3050,28 @@ server <- function(input, output, session) {
 
         # Keep most-recent first; re-Search moves an existing ticker to the front.
         # Skip the recent list when the ticker is already pinned (shown above the label).
+        # Signed-in: also persist into rolling 24h history (ynow_user_prefs).
         pinned_now <- as.character(isolate(values$pinned_search %||% character(0)))
         if (!(stock_code %in% pinned_now)) {
+          recent_cap <- if (exists(".YNOW_RECENT_SEARCH_24H_MAX", inherits = TRUE)) {
+            as.integer(.YNOW_RECENT_SEARCH_24H_MAX)[1]
+          } else {
+            20L
+          }
           values$recentsearch <- head(
             c(stock_code, setdiff(values$recentsearch, stock_code)),
-            5L
+            recent_cap
           )
+          uid_hist <- tryCatch(.ynow_pinned_auth_uid(), error = function(e) "")
+          if (nzchar(uid_hist %||% "")) {
+            persisted <- .ynow_recent_24h_record(uid_hist, stock_code)
+            if (length(persisted)) {
+              values$recentsearch <- head(
+                setdiff(persisted, pinned_now),
+                recent_cap
+              )
+            }
+          }
         }
         # 成功載入後：輸入框維持顯示乾淨代號
         tryCatch(
@@ -3749,15 +3812,35 @@ server <- function(input, output, session) {
       normalize_market_mode(market_mode()),
       error = function(e) "US"
     )
+    signed_in <- tryCatch({
+      nzchar(.ynow_pinned_auth_uid() %||% "")
+    }, error = function(e) FALSE)
+    hint_24h <- tryCatch(
+      ui_str("recent_search_24h_hint", loc),
+      error = function(e) "Signed-in search history is kept for 24 hours."
+    )
+    # Keep the static label title in sync (24h hint for signed-in users).
+    tryCatch(
+      session$sendCustomMessage(
+        "ynowRecentSearchLabel",
+        list(
+          title = if (isTRUE(signed_in)) hint_24h else "",
+          hint = if (isTRUE(signed_in)) hint_24h else ""
+        )
+      ),
+      error = function(e) NULL
+    )
     pinned <- unique(as.character(values$pinned_search %||% character(0)))
     raw <- unique(as.character(values$recentsearch %||% character(0)))
     raw <- raw[nzchar(raw) & !is.na(raw)]
     # Pinned items render above the label — keep them out of the recent list.
     if (length(pinned)) raw <- setdiff(raw, pinned)
     if (!length(raw)) {
+      empty_key <- if (isTRUE(signed_in)) "recent_search_24h_empty" else "recent_search_empty"
       return(tags$p(
         class = "ynow-recent-search-empty",
-        ui_str("recent_search_empty", loc)
+        title = if (isTRUE(signed_in)) hint_24h else NULL,
+        ui_str(empty_key, loc)
       ))
     }
     pin_hint <- tryCatch(
@@ -3774,16 +3857,23 @@ server <- function(input, output, session) {
         },
         error = function(e) disp
       )
+      chip_title <- paste(aria, pin_hint, sep = " · ")
+      if (isTRUE(signed_in)) chip_title <- paste(chip_title, hint_24h, sep = " · ")
       tags$button(
         type = "button",
         class = "ynow-recent-chip",
         `data-ticker` = fetch_tk,
-        title = paste(aria, pin_hint, sep = " · "),
+        title = chip_title,
         `aria-label` = aria,
         disp
       )
     })
-    tags$div(class = "ynow-recent-search", role = "list", chips)
+    tags$div(
+      class = "ynow-recent-search",
+      role = "list",
+      title = if (isTRUE(signed_in)) hint_24h else NULL,
+      chips
+    )
   })
   output$today <- renderText({ format(Sys.Date(), "%Y/%m/%d") })
 

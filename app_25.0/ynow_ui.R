@@ -10340,6 +10340,9 @@ ui <- dashboardPage(
             setBtText('ynow_bt_sec_methodology', 'bt_sec_methodology');
             var recent = document.getElementById('ynow_recent_search_label');
             if (recent && s.recent_search) recent.textContent = s.recent_search;
+            if (recent && s.recent_search_24h_hint && recent.getAttribute('data-ynow-signed-in') === '1') {
+              recent.setAttribute('title', s.recent_search_24h_hint);
+            }
             var scLab = document.querySelector('label[for=\"sc\"]');
             if (scLab && s.ticker_label) scLab.textContent = s.ticker_label;
             var scInput = document.getElementById('sc');
@@ -17282,6 +17285,17 @@ ui <- dashboardPage(
             if (!msg) return;
             if (msg.clear) { guestWrite([]); return; }
             if (Array.isArray(msg.tickers)) guestWrite(msg.tickers);
+          });
+          Shiny.addCustomMessageHandler('ynowRecentSearchLabel', function(msg) {
+            var recent = document.getElementById('ynow_recent_search_label');
+            if (!recent || !msg) return;
+            if (msg.hint) {
+              recent.setAttribute('data-ynow-signed-in', '1');
+              recent.setAttribute('title', String(msg.title || msg.hint));
+            } else {
+              recent.removeAttribute('data-ynow-signed-in');
+              recent.removeAttribute('title');
+            }
           });
         })();
 

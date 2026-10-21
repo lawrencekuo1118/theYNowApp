@@ -39,6 +39,15 @@ check(
   "exclude pinned from recent render",
   grepl("setdiff\\(raw, pinned\\)", srv, perl = TRUE)
 )
+check(
+  "signed-in 24h history record",
+  grepl("ynow_prefs_record_recent_search", srv, fixed = TRUE)
+)
+check(
+  "signed-in 24h history load",
+  grepl("ynow_prefs_get_recent_search_24h", srv, fixed = TRUE)
+)
+check("zh 24h hint", grepl("登入後保留近 24 小時的搜尋紀錄", loc, fixed = TRUE))
 
 if (fail > 0L) {
   cat("FAILED:", fail, "\n")

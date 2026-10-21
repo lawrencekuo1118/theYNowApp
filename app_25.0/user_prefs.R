@@ -11,7 +11,12 @@ if (!exists("%||%", mode = "function")) {
 }
 
 YNOW_PREF_PINNED_RECENT <- "pinned_recent_search"
+# Signed-in rolling search history (ticker lookups). Separate key from pinned chips
+# and from any sidebar-pin prefs — additive only on ynow_user_prefs.
+YNOW_PREF_RECENT_SEARCH_24H <- "recent_search_history_24h"
 .YNOW_PINNED_RECENT_MAX <- 8L
+.YNOW_RECENT_SEARCH_24H_MAX <- 20L
+.YNOW_RECENT_SEARCH_24H_SECS <- 24L * 3600L
 
 .ynow_prefs_mem <- new.env(parent = emptyenv())
 .ynow_prefs_mem$by_user <- list()
@@ -181,6 +186,233 @@ ynow_prefs_toggle_pinned_recent <- function(user_id, ticker) {
     nxt <- head(c(tk[[1]], setdiff(cur, tk[[1]])), .YNOW_PINNED_RECENT_MAX)
   }
   ynow_prefs_set_pinned_recent(user_id, nxt)
+}
+
+# ---- Recent search history (signed-in, rolling 24h) ----
+
+.ynow_prefs_now_posix <- function() {
+  as.POSIXct(Sys.time(), tz = "UTC")
+}
+
+.ynow_prefs_parse_iso_time <- function(x) {
+  raw <- as.character(x %||% "")[1]
+  if (!nzchar(raw)) return(as.POSIXct(NA_real_, origin = "1970-01-01", tz = "UTC"))
+  # Accept ISO-8601 with trailing Z.
+  raw <- sub("Z$", "", raw, ignore.case = TRUE)
+  parsed <- tryCatch(
+    as.POSIXct(raw, format = "%Y-%m-%dT%H:%M:%OS", tz = "UTC"),
+    error = function(e) as.POSIXct(NA_real_, origin = "1970-01-01", tz = "UTC")
+  )
+  if (is.na(parsed)) {
+    parsed <- tryCatch(
+      as.POSIXct(raw, tz = "UTC"),
+      error = function(e) as.POSIXct(NA_real_, origin = "1970-01-01", tz = "UTC")
+    )
+  }
+  parsed
+}
+
+.ynow_prefs_format_iso_time <- function(t) {
+  format(as.POSIXct(t, tz = "UTC"), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
+}
+
+#' Normalize timed recent-search entries; drop older than 24h; newest first; dedupe.
+#'
+#' @param entries list of lists with `ticker` / `at`, or a character ticker vector
+#'   (treated as "now").
+#' @param now POSIXct reference time (UTC).
+#' @return list of list(ticker=, at=) within the rolling window.
+ynow_prefs_normalize_recent_entries <- function(entries,
+                                                now = .ynow_prefs_now_posix(),
+                                                max_n = .YNOW_RECENT_SEARCH_24H_MAX,
+                                                window_secs = .YNOW_RECENT_SEARCH_24H_SECS) {
+  now <- as.POSIXct(now, tz = "UTC")
+  cutoff <- now - as.numeric(window_secs)[1]
+  out <- list()
+  if (is.character(entries)) {
+    tickers <- ynow_prefs_normalize_tickers(entries, max_n = max_n)
+    if (!length(tickers)) return(list())
+    at <- .ynow_prefs_format_iso_time(now)
+    return(lapply(tickers, function(tk) list(ticker = tk, at = at)))
+  }
+  if (!is.list(entries) || !length(entries)) return(list())
+  for (el in entries) {
+    if (is.character(el) && length(el) >= 1L) {
+      tk <- ynow_prefs_normalize_tickers(el[[1]], max_n = 1L)
+      if (!length(tk)) next
+      out[[length(out) + 1L]] <- list(
+        ticker = tk[[1]],
+        at = .ynow_prefs_format_iso_time(now)
+      )
+      next
+    }
+    if (!is.list(el)) next
+    tk <- ynow_prefs_normalize_tickers(el$ticker %||% el[[1]], max_n = 1L)
+    if (!length(tk)) next
+    at_raw <- el$at %||% el$ts %||% el$time %||% NA
+    at <- .ynow_prefs_parse_iso_time(at_raw)
+    if (is.na(at)) at <- now
+    if (at < cutoff) next
+    out[[length(out) + 1L]] <- list(
+      ticker = tk[[1]],
+      at = .ynow_prefs_format_iso_time(at)
+    )
+  }
+  if (!length(out)) return(list())
+  # Newest first; keep first occurrence per ticker (most recent).
+  ords <- order(
+    vapply(out, function(x) as.numeric(.ynow_prefs_parse_iso_time(x$at)), numeric(1)),
+    decreasing = TRUE
+  )
+  out <- out[ords]
+  seen <- character(0)
+  kept <- list()
+  for (el in out) {
+    tk <- el$ticker
+    if (tk %in% seen) next
+    seen <- c(seen, tk)
+    kept[[length(kept) + 1L]] <- el
+    if (length(kept) >= as.integer(max_n)[1]) break
+  }
+  kept
+}
+
+ynow_prefs_recent_entries_tickers <- function(entries) {
+  ents <- ynow_prefs_normalize_recent_entries(entries)
+  if (!length(ents)) return(character(0))
+  vapply(ents, function(x) as.character(x$ticker)[1], character(1))
+}
+
+.ynow_prefs_parse_json_recent_entries <- function(raw) {
+  if (is.null(raw)) return(list())
+  if (is.character(raw) && length(raw) == 1L) {
+    parsed <- tryCatch(
+      jsonlite::fromJSON(raw, simplifyVector = FALSE),
+      error = function(e) NULL
+    )
+    if (is.null(parsed)) return(list())
+    return(ynow_prefs_normalize_recent_entries(parsed))
+  }
+  if (is.list(raw)) return(ynow_prefs_normalize_recent_entries(raw))
+  if (is.character(raw)) return(ynow_prefs_normalize_recent_entries(raw))
+  list()
+}
+
+.ynow_prefs_read_pref_raw <- function(user_id, pref_key) {
+  uid <- as.character(user_id %||% "")[1]
+  key <- as.character(pref_key %||% "")[1]
+  if (!nzchar(uid) || !nzchar(key)) return(NULL)
+  if (.ynow_prefs_db_on()) {
+    ynow_prefs_ensure_schema()
+    df <- ynow_db_with(function(con) {
+      DBI::dbGetQuery(
+        con,
+        paste(
+          "SELECT pref_value::text AS pref_value",
+          "FROM ynow_user_prefs",
+          "WHERE user_id = $1 AND pref_key = $2",
+          "LIMIT 1"
+        ),
+        params = list(uid, key)
+      )
+    })
+    if (is.data.frame(df) && nrow(df) >= 1L) return(df$pref_value[[1]])
+    return(NULL)
+  }
+  mem <- .ynow_prefs_mem$by_user[[uid]]
+  if (is.null(mem)) {
+    store <- .ynow_prefs_read_file()
+    mem <- store[[uid]]
+  }
+  if (is.list(mem) && !is.null(mem[[key]])) return(mem[[key]])
+  NULL
+}
+
+.ynow_prefs_write_pref_json <- function(user_id, pref_key, value_obj) {
+  uid <- as.character(user_id %||% "")[1]
+  key <- as.character(pref_key %||% "")[1]
+  if (!nzchar(uid) || !nzchar(key)) return(invisible(FALSE))
+  payload <- jsonlite::toJSON(value_obj, auto_unbox = TRUE)
+  if (.ynow_prefs_db_on()) {
+    ynow_prefs_ensure_schema()
+    ynow_db_with(function(con) {
+      DBI::dbExecute(
+        con,
+        paste(
+          "INSERT INTO ynow_user_prefs (user_id, pref_key, pref_value, updated_at)",
+          "VALUES ($1, $2, $3::jsonb, NOW())",
+          "ON CONFLICT (user_id, pref_key) DO UPDATE",
+          "SET pref_value = EXCLUDED.pref_value, updated_at = NOW()"
+        ),
+        params = list(uid, key, as.character(payload)[1])
+      )
+    })
+    return(invisible(TRUE))
+  }
+  store <- .ynow_prefs_read_file()
+  cur <- .ynow_prefs_mem$by_user[[uid]]
+  if (!is.list(cur)) cur <- store[[uid]]
+  if (!is.list(cur)) cur <- list()
+  cur[[key]] <- value_obj
+  .ynow_prefs_mem$by_user[[uid]] <- cur
+  store[[uid]] <- cur
+  .ynow_prefs_write_file(store)
+  invisible(TRUE)
+}
+
+#' Timed recent-search entries for a signed-in user (already pruned to 24h).
+ynow_prefs_get_recent_search_entries <- function(user_id) {
+  uid <- as.character(user_id %||% "")[1]
+  if (!nzchar(uid)) return(list())
+  raw <- .ynow_prefs_read_pref_raw(uid, YNOW_PREF_RECENT_SEARCH_24H)
+  .ynow_prefs_parse_json_recent_entries(raw)
+}
+
+#' Tickers only (newest first) within the rolling 24h window.
+ynow_prefs_get_recent_search_24h <- function(user_id) {
+  ynow_prefs_recent_entries_tickers(ynow_prefs_get_recent_search_entries(user_id))
+}
+
+#' Replace the signed-in 24h history with normalized entries / tickers.
+ynow_prefs_set_recent_search_24h <- function(user_id, entries) {
+  uid <- as.character(user_id %||% "")[1]
+  if (!nzchar(uid)) return(character(0))
+  ents <- ynow_prefs_normalize_recent_entries(entries)
+  .ynow_prefs_write_pref_json(uid, YNOW_PREF_RECENT_SEARCH_24H, ents)
+  ynow_prefs_recent_entries_tickers(ents)
+}
+
+#' Record one successful ticker lookup for a signed-in user (bumps to front / now).
+ynow_prefs_record_recent_search <- function(user_id, ticker, at = .ynow_prefs_now_posix()) {
+  uid <- as.character(user_id %||% "")[1]
+  tk <- ynow_prefs_normalize_tickers(ticker, max_n = 1L)
+  if (!nzchar(uid) || !length(tk)) {
+    return(ynow_prefs_get_recent_search_24h(uid))
+  }
+  cur <- ynow_prefs_get_recent_search_entries(uid)
+  # Drop prior rows for this ticker so the new timestamp wins.
+  cur <- Filter(function(el) !identical(el$ticker, tk[[1]]), cur)
+  cur <- c(
+    list(list(ticker = tk[[1]], at = .ynow_prefs_format_iso_time(at))),
+    cur
+  )
+  ynow_prefs_set_recent_search_24h(uid, cur)
+}
+
+#' Merge guest/session tickers into durable 24h history (login handoff).
+#' Guest tickers are stamped "now"; server entries keep their timestamps.
+ynow_prefs_merge_recent_search_24h <- function(user_id, guest_tickers) {
+  uid <- as.character(user_id %||% "")[1]
+  if (!nzchar(uid)) return(character(0))
+  server <- ynow_prefs_get_recent_search_entries(uid)
+  guest <- ynow_prefs_normalize_tickers(guest_tickers)
+  if (!length(guest)) {
+    return(ynow_prefs_recent_entries_tickers(server))
+  }
+  now_at <- .ynow_prefs_format_iso_time(.ynow_prefs_now_posix())
+  guest_ents <- lapply(guest, function(tk) list(ticker = tk, at = now_at))
+  # Guest session wins ordering for overlap (just searched this session).
+  ynow_prefs_set_recent_search_24h(uid, c(guest_ents, server))
 }
 
 #' Test helper: clear in-process memory prefs.
