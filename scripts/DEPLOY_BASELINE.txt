@@ -7,5 +7,5 @@ commit=6246d17c00797c101b13cba09b0a011fce889252
 short=6246d17c
 message=chore: bump display version to v26.17
 captured_at=2026-10-21T17:43:11Z
-display_version=v26.17
+display_version=v26.18
 note=Canonical live line is app_26.0. Bundle 12721625: single-device session (#379) live-verified (ynowAuthSessionTaken). Preserves mobile login/points tip. Secrets only in gitignored .Renviron.
