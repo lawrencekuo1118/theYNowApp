@@ -7,5 +7,5 @@ commit=7a325eac
 short=7a325eac
 message=chore: bump display version to v25.92
 captured_at=2026-10-21T02:11:00Z
-display_version=v25.92
+display_version=v25.93
 note=Canonical live line is app_25.0. Bundle 12718190: ship scroll-capture gate demos (PR #354). Secrets only in gitignored .Renviron restored from prior live bundle; no secret values in git.
