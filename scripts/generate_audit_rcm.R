@@ -120,15 +120,15 @@ parse_log <- function(path) {
 suite_meta <- list(
   data_integrity = list(
     title = "Phase 2 — Data Integrity",
-    script = "app_25.0/tests/test_data_integrity.R"
+    script = "app_26.0/tests/test_data_integrity.R"
   ),
   parameters_boundaries = list(
     title = "Phase 3 — Parameter & Boundary",
-    script = "app_25.0/tests/test_parameters_boundaries.R"
+    script = "app_26.0/tests/test_parameters_boundaries.R"
   ),
   formula_accuracy = list(
     title = "Phase 4 — Formula Accuracy",
-    script = "app_25.0/tests/test_formula_accuracy.R"
+    script = "app_26.0/tests/test_formula_accuracy.R"
   )
 )
 
@@ -154,7 +154,7 @@ esc <- function(x) {
 }
 
 lines_out <- c(
-  "# Audit RCM Report — theYNowApp (`app_25.0`)",
+  "# Audit RCM Report — theYNowApp (`app_26.0`)",
   "",
   "**Format:** Risk and Control Matrix (RCM)",
   paste0("**Generated at (UTC):** ", ts),
@@ -279,9 +279,9 @@ lines_out <- c(
   "```bash",
   "bash scripts/run_audit.sh",
   "# or:",
-  "cd app_25.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_data_integrity.R",
-  "cd app_25.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_parameters_boundaries.R",
-  "cd app_25.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_formula_accuracy.R",
+  "cd app_26.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_data_integrity.R",
+  "cd app_26.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_parameters_boundaries.R",
+  "cd app_26.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_formula_accuracy.R",
   "```",
   "",
   "## Scope notes",

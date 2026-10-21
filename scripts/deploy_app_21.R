@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# Deploy the live app directory (app_25.0) → shinyapps.io TheYNowApp
+# Deploy the live app directory (app_26.0) → shinyapps.io TheYNowApp
 # YNOW_VERSION_BUMP_MAJOR=1 ships the next whole version (v24.25 -> v25.00).
 #
 # Credentials (either):
@@ -165,7 +165,7 @@ if (file.exists(renviron_path)) {
       "Without an account DB (Supabase pooler, Neon, or other Postgres), live falls back to",
       "memory points (wiped every cold start) and Testing admin / Email login stay empty.",
       "Fix (any one):",
-      "  1) Paste pooled YNOW_DB_* (or YNOW_DATABASE_URL) into app_25.0/.Renviron (gitignored), or",
+      "  1) Paste pooled YNOW_DB_* (or YNOW_DATABASE_URL) into app_26.0/.Renviron (gitignored), or",
       "  2) Set those keys in the environment / Cloud Agent secrets, then re-run deploy",
       "     (scripts/inject_renviron_from_env.R merges them into .Renviron), or",
       "  3) Restore a prior live bundle that already has the account DB keys.",

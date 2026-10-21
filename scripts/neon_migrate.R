@@ -2,11 +2,11 @@
 # Create ynow_users on the account Postgres store (Supabase / any YNOW_DB_* Postgres).
 # Filename kept as neon_migrate.R for historical scripts; target is Postgres, not Neon-only.
 # Seed is NOT a whitelist — end users self-register via Google / Facebook / Email.
-# Usage (from repo root, with app_25.0/.Renviron filled):
+# Usage (from repo root, with app_26.0/.Renviron filled):
 #   Rscript scripts/neon_migrate.R
 
-app_dir <- if (dir.exists("app_25.0")) {
-  normalizePath("app_25.0")
+app_dir <- if (dir.exists("app_26.0")) {
+  normalizePath("app_26.0")
 } else {
   normalizePath(".")
 }
@@ -33,7 +33,7 @@ source(file.path(app_dir, "points_wallet.R"), local = TRUE, encoding = "UTF-8")
 
 if (!isTRUE(ynow_db_ready())) {
   stop(
-    "Postgres DB env not set. Copy app_25.0/.Renviron.example → .Renviron and fill ",
+    "Postgres DB env not set. Copy app_26.0/.Renviron.example → .Renviron and fill ",
     "YNOW_DB_* or YNOW_DATABASE_URL."
   )
 }

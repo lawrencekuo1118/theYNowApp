@@ -8,4 +8,4 @@ short=713a5d11
 message=chore: bump display version to v25.96
 captured_at=2026-10-21T06:05:20Z
 display_version=v25.96
-note=Canonical live line is app_25.0. Bundle 12718955: stock pins from Recent Search 4×3 max 12; page-pin chrome removed (PR #357). Secrets only in gitignored .Renviron restored from prior live bundle; no secret values in git.
+note=Canonical live line is app_26.0 (cut from app_25.0). Prior ship bundle 12718955 was v25.96 on app_25.0; next major deploy is v26.00.

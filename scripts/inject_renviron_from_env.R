@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# Merge selected secrets from process env into gitignored app_25.0/.Renviron.
+# Merge selected secrets from process env into gitignored app_26.0/.Renviron.
 # Used by deploy preflight so Cursor Cloud / CI secrets can bind Neon + OAuth
 # even when the live shinyapps bundle never had those keys.
 #
@@ -16,10 +16,10 @@ if (length(file_arg) == 1L && nzchar(file_arg)) {
   root <- normalizePath(getwd(), mustWork = TRUE)
 }
 
-app_dir <- if (dir.exists(file.path(root, "app_25.0"))) {
-  file.path(root, "app_25.0")
+app_dir <- if (dir.exists(file.path(root, "app_26.0"))) {
+  file.path(root, "app_26.0")
 } else {
-  stop("app_25.0 not found under ", root, call. = FALSE)
+  stop("app_26.0 not found under ", root, call. = FALSE)
 }
 dest <- file.path(app_dir, ".Renviron")
 

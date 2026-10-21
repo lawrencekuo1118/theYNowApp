@@ -3,17 +3,17 @@
 US / Taiwan stock fundamental analysis Shiny app（雲端版：yfinance，無 Chromote）。
 
 **Live:** https://hopesmasher1118.shinyapps.io/TheYNowApp/  
-**Display version:** v25.88 · **App folder:** `app_25.0/`  
+**Display version:** v25.88 · **App folder:** `app_26.0/`  
 **Deploy baseline:** `scripts/DEPLOY_BASELINE.txt`（bundleId／commit／URL；開發比對以此為準，不是單純看 Git tip）  
 **Changelog:** [`CHANGELOG.md`](CHANGELOG.md) · **Releases:** https://github.com/lawrencekuo1118/theYNowApp/releases
 
 ## CI / CD
 
-PRs and pushes that touch `app_25.0/**`, `scripts/**`, or `.github/workflows/**` run meaningful **offline** checks (no live Yahoo):
+PRs and pushes that touch `app_26.0/**`, `scripts/**`, or `.github/workflows/**` run meaningful **offline** checks (no live Yahoo):
 
 | Workflow | What it runs |
 |----------|----------------|
-| **Live-line CI** (`.github/workflows/ci.yml`) | `YNOW_DEBUG_SKIP_PY=1 Rscript app_25.0/tests/test_valuation_formulas.R` and `bash scripts/run_phase1_audit.sh` |
+| **Live-line CI** (`.github/workflows/ci.yml`) | `YNOW_DEBUG_SKIP_PY=1 Rscript app_26.0/tests/test_valuation_formulas.R` and `bash scripts/run_phase1_audit.sh` |
 | **ITGC Audit** (`.github/workflows/audit.yml`) | Phases 2–4 via `bash scripts/run_audit.sh` + RCM artifact |
 
 Do not rely on path filters that skip the live app tree. Docs/rules-only changes may skip app jobs; app behavior PRs must stay green on Live-line CI.
@@ -35,9 +35,9 @@ Do not rely on path filters that skip the live app tree. Docs/rules-only changes
 | Coding（建議 git） | `/Users/lawrencekuo/coding/theYNowApp` | commit／push／deploy |
 | OneDrive mirror | `/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp` | 同步鏡像（勿在此跑 `git status`／`git push`） |
 
-- **每個整階版本一個資料夾**（目前活動線：`app_25.0/`；顯示版號 `v25.88`，其後 deploy 以 +0.01 補丁）
+- **每個整階版本一個資料夾**（目前活動線：`app_26.0/`；顯示版號 `v25.88`，其後 deploy 以 +0.01 補丁）
 - 歷史版本：本機空間命名封存 `app 3.0` … `app 7.0`；較新的 `app_8.0`…`app_24.0` 已自 git 移除（見 Git history／[GitHub Releases](https://github.com/lawrencekuo1118/theYNowApp/releases)）
-- 顯示版號摘要：[`CHANGELOG.md`](CHANGELOG.md)；方法論／歷史細節：[`app_25.0/README.md`](app_25.0/README.md)
+- 顯示版號摘要：[`CHANGELOG.md`](CHANGELOG.md)；方法論／歷史細節：[`app_26.0/README.md`](app_26.0/README.md)
 
 ## 本機開發（建議）
 
@@ -47,12 +47,12 @@ git pull origin master
 ```
 
 ```r
-shiny::runApp("app_25.0")
+shiny::runApp("app_26.0")
 ```
 
-Cursor Cloud：`bash scripts/cloud-agent-start.sh`（`app_25.0/` → `0.0.0.0:3838`）。
+Cursor Cloud：`bash scripts/cloud-agent-start.sh`（`app_26.0/` → `0.0.0.0:3838`）。
 
-Requires R packages used by `app_25.0/setup.R` / `app_25.0/global.R`, and Python deps from `app_25.0/requirements.txt`（可選本機 `app_25.0/.ynow_venv`）。
+Requires R packages used by `app_26.0/setup.R` / `app_26.0/global.R`, and Python deps from `app_26.0/requirements.txt`（可選本機 `app_26.0/.ynow_venv`）。
 
 ## 本機部署到 shinyapps.io
 
@@ -74,7 +74,7 @@ Rscript scripts/deploy_app_21.R
 
 ```r
 rsconnect::deployApp(
-  appDir = "app_25.0",
+  appDir = "app_26.0",
   appName = "TheYNowApp",
   appId = 10907657,
   forceUpdate = TRUE
@@ -98,10 +98,10 @@ Deploy 後請更新 `scripts/DEPLOY_BASELINE.txt`（bundleId、commit、`display
 ## Cloud notes
 
 - Financials via **yfinance** (no Chromote / Chrome on shinyapps.io)
-- `app_25.0/requirements.txt` / `py_require` for cloud Python
-- UI copy：en-US + zh-TW（台灣投資界用語）；見 `app_25.0/ui_locale.R`
+- `app_26.0/requirements.txt` / `py_require` for cloud Python
+- UI copy：en-US + zh-TW（台灣投資界用語）；見 `app_26.0/ui_locale.R`
 
-## Layout (`app_25.0/`)
+## Layout (`app_26.0/`)
 
 | File / area | Role |
 |-------------|------|

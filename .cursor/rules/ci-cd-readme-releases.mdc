@@ -4,9 +4,9 @@ Standing preference: development uses CI/CD end-to-end; keep README current; rec
 
 ## Do
 
-- **CI:** Live-line PRs/pushes touching `app_25.0/**`, `scripts/**`, or `.github/workflows/**` must run meaningful offline checks (`.github/workflows/ci.yml`: valuation formulas + Phase 1). Do not reintroduce path filters that skip the live app tree (vacuous green).
+- **CI:** Live-line PRs/pushes touching `app_26.0/**`, `scripts/**`, or `.github/workflows/**` must run meaningful offline checks (`.github/workflows/ci.yml`: valuation formulas + Phase 1). Do not reintroduce path filters that skip the live app tree (vacuous green).
 - **Ship:** `Rscript scripts/deploy_app_21.R` → baseline update → push. Prefer a `CHANGELOG.md` entry for the new `display_version`, then `bash scripts/record_github_release.sh v…` (soft-fail without `gh`/token; never commit secrets).
-- **README:** After live-line / process changes, update root README (and `app_25.0/README` history only when needed) so pointers match `app_25.0/` and `DEPLOY_BASELINE.txt`.
+- **README:** After live-line / process changes, update root README (and `app_26.0/README` history only when needed) so pointers match `app_26.0/` and `DEPLOY_BASELINE.txt`.
 
 ## Do not
 

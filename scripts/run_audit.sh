@@ -6,7 +6,7 @@
 set -u
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-APP="${ROOT}/app_25.0"
+APP="${ROOT}/app_26.0"
 LOG_DIR="${AUDIT_LOG_DIR:-${ROOT}/audit_logs}"
 REPORT="${AUDIT_REPORT:-${ROOT}/Audit_RCM_Report.md}"
 export YNOW_DEBUG_SKIP_PY="${YNOW_DEBUG_SKIP_PY:-1}"
@@ -14,7 +14,7 @@ export YNOW_DEBUG_SKIP_PY="${YNOW_DEBUG_SKIP_PY:-1}"
 mkdir -p "${LOG_DIR}"
 
 if [[ ! -d "${APP}" ]]; then
-  echo "ERROR: app_25.0 not found at ${APP}" >&2
+  echo "ERROR: app_26.0 not found at ${APP}" >&2
   exit 2
 fi
 if ! command -v Rscript >/dev/null 2>&1; then
