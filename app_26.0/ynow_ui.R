@@ -4574,49 +4574,45 @@ ui <- dashboardPage(
           font-size: 13px;
           line-height: 1.45;
         }
-        /* Sign-in gate promo + member FAQ (logo mono; mobile-scannable) */
+        /* Sign-in gate promo + member FAQ (HFV Section B/W; mobile-scannable) */
         .ynow-gate-extras {
           margin: 12px 0 16px 0;
         }
         .ynow-gate-promo {
           margin: 0 0 10px 0;
           padding: 0;
-          border: 1px solid var(--ynow-gate-border, #d0d0d0);
-          border-radius: 4px;
+          border: 1px solid #e6e6e6;
+          border-radius: 8px;
           overflow: hidden;
-          background:
-            repeating-linear-gradient(
-              -45deg,
-              #ffffff 0,
-              #ffffff 6px,
-              #f5f5f5 6px,
-              #f5f5f5 12px
-            );
+          background: #fff;
         }
         .ynow-gate-promo__banner {
           display: flex;
           align-items: center;
           gap: 10px;
-          padding: 10px 12px;
-          background: var(--ynow-gate-accent, #1a1a1a);
-          color: #fff;
+          padding: 12px 16px;
+          background: #fff;
+          color: #1a1a1a;
+          border-bottom: 1px solid #ececec;
         }
         .ynow-gate-promo__badge {
           display: inline-block;
           flex: 0 0 auto;
           padding: 2px 8px;
-          border: 1px solid #fff;
+          border: 1px solid #d0d0d0;
           border-radius: 2px;
           font-size: 11px;
           font-weight: 700;
           letter-spacing: 0.08em;
           line-height: 1.4;
+          color: #888;
         }
         .ynow-gate-promo-kicker {
           font-size: 13px;
           font-weight: 600;
           letter-spacing: 0.02em;
           line-height: 1.35;
+          color: #1a1a1a;
         }
         .ynow-gate-promo-lead {
           margin: 10px 12px 6px 12px;
@@ -4729,9 +4725,11 @@ ui <- dashboardPage(
           color: var(--ynow-gate-ink-soft, #333333);
         }
         @media (max-width: 767px) {
-          .box.ynow-member-gate,
-          .box.ynow-auth-gate,
-          .box.ynow-gate-box {
+          .ynow-hfv-chapter.ynow-member-gate,
+          .ynow-hfv-chapter.ynow-auth-gate,
+          .ynow-hfv-chapter.ynow-gate-box,
+          .ynow-member-gate.ynow-gate-box,
+          .ynow-auth-gate.ynow-gate-box {
             max-width: 100% !important;
             margin-left: 8px !important;
             margin-right: 8px !important;
@@ -4742,68 +4740,112 @@ ui <- dashboardPage(
             font-size: 12px;
           }
         }
-        .box.ynow-gate-box,
-        .box.ynow-member-gate,
-        .box.ynow-auth-gate {
-          border: 1px solid var(--ynow-gate-accent, #1a1a1a) !important;
-          border-top: 3px solid var(--ynow-gate-accent, #1a1a1a) !important;
+        /* Sign-in required: reuse HFV Section chapter chrome (B/W panel) */
+        .ynow-hfv-chapter.ynow-gate-box,
+        .ynow-hfv-chapter.ynow-member-gate,
+        .ynow-hfv-chapter.ynow-auth-gate {
+          margin: 0 0 18px 0;
+          padding: 0;
           background: #fff !important;
+          border: 1px solid #e6e6e6 !important;
+          border-radius: 8px;
+          overflow: hidden;
           box-shadow: none !important;
         }
-        .box.ynow-gate-box > .box-header,
-        .box.ynow-member-gate > .box-header,
-        .box.ynow-auth-gate > .box-header {
-          color: #fff !important;
-          background: var(--ynow-gate-accent, #1a1a1a) !important;
-          background-color: var(--ynow-gate-accent, #1a1a1a) !important;
-          border-bottom: 1px solid var(--ynow-gate-accent, #1a1a1a) !important;
+        .ynow-gate-box > .ynow-hfv-chapter__head,
+        .ynow-member-gate > .ynow-hfv-chapter__head,
+        .ynow-auth-gate > .ynow-hfv-chapter__head {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: baseline;
+          gap: 6px 12px;
+          padding: 12px 16px;
+          background: #fff !important;
+          border-bottom: 1px solid #ececec;
+          color: #1a1a1a !important;
         }
-        .box.ynow-gate-box > .box-header .box-title,
-        .box.ynow-member-gate > .box-header .box-title,
-        .box.ynow-auth-gate > .box-header .box-title,
-        .box.ynow-gate-box > .box-header .box-title *,
-        .box.ynow-member-gate > .box-header .box-title *,
-        .box.ynow-auth-gate > .box-header .box-title * {
-          color: #fff !important;
+        .ynow-gate-box > .ynow-hfv-chapter__head .ynow-hfv-chapter__title,
+        .ynow-member-gate > .ynow-hfv-chapter__head .ynow-hfv-chapter__title,
+        .ynow-auth-gate > .ynow-hfv-chapter__head .ynow-hfv-chapter__title,
+        .ynow-gate-box > .ynow-hfv-chapter__head .ynow-hfv-chapter__title *,
+        .ynow-member-gate > .ynow-hfv-chapter__head .ynow-hfv-chapter__title *,
+        .ynow-auth-gate > .ynow-hfv-chapter__head .ynow-hfv-chapter__title * {
+          margin: 0;
+          font-size: 16px;
+          font-weight: 700;
+          line-height: 1.35;
+          color: #1a1a1a !important;
         }
-        .box.ynow-gate-box > .box-body,
-        .box.ynow-member-gate > .box-body,
-        .box.ynow-auth-gate > .box-body {
+        .ynow-gate-box > .ynow-hfv-chapter__body,
+        .ynow-member-gate > .ynow-hfv-chapter__body,
+        .ynow-auth-gate > .ynow-hfv-chapter__body {
+          padding: 12px 16px 16px 16px;
           background: #fff !important;
           color: var(--ynow-gate-ink-soft, #333333);
         }
-        .box.ynow-gate-box .btn-primary,
-        .box.ynow-member-gate .btn-primary,
-        .box.ynow-auth-gate .btn-primary {
-          background-color: var(--ynow-gate-accent, #1a1a1a) !important;
-          border-color: #000 !important;
+        /* CTAs: logo blue–green–white (beat Shiny btn-default + AdminLTE) */
+        .ynow-gate-box .btn.ynow-auth-open,
+        .ynow-member-gate .btn.ynow-auth-open,
+        .ynow-auth-gate .btn.ynow-auth-open,
+        .ynow-gate-box .btn.btn-default.btn-primary.ynow-auth-open,
+        .ynow-member-gate .btn.btn-default.btn-primary.ynow-auth-open,
+        .ynow-auth-gate .btn.btn-default.btn-primary.ynow-auth-open,
+        .ynow-gate-box .ynow-auth-pair--gate > .btn.ynow-auth-open,
+        .ynow-member-gate .ynow-auth-pair--gate > .btn.ynow-auth-open,
+        .ynow-auth-gate .ynow-auth-pair--gate > .btn.ynow-auth-open {
+          background-color: var(--ynow-logo-blue, #0C5484) !important;
+          background-image: none !important;
+          border-color: #0a446c !important;
           color: #fff !important;
         }
-        /* Keep gates mono under model / Blue Chip / ATX accent themes */
-        body.ynow-theme-model .content-wrapper .box.ynow-gate-box,
-        body.ynow-theme-model .content-wrapper .box.ynow-member-gate,
-        body.ynow-theme-model .content-wrapper .box.ynow-auth-gate,
-        body.ynow-theme-bluechip .content-wrapper .box.ynow-gate-box,
-        body.ynow-theme-bluechip .content-wrapper .box.ynow-member-gate,
-        body.ynow-theme-bluechip .content-wrapper .box.ynow-auth-gate,
-        body.ynow-theme-atx .content-wrapper .box.ynow-gate-box,
-        body.ynow-theme-atx .content-wrapper .box.ynow-member-gate,
-        body.ynow-theme-atx .content-wrapper .box.ynow-auth-gate {
-          border-color: var(--ynow-gate-accent, #1a1a1a) !important;
-          border-top-color: var(--ynow-gate-accent, #1a1a1a) !important;
-        }
-        body.ynow-theme-model .content-wrapper .box.ynow-gate-box > .box-header,
-        body.ynow-theme-model .content-wrapper .box.ynow-member-gate > .box-header,
-        body.ynow-theme-model .content-wrapper .box.ynow-auth-gate > .box-header,
-        body.ynow-theme-bluechip .content-wrapper .box.ynow-gate-box > .box-header,
-        body.ynow-theme-bluechip .content-wrapper .box.ynow-member-gate > .box-header,
-        body.ynow-theme-bluechip .content-wrapper .box.ynow-auth-gate > .box-header,
-        body.ynow-theme-atx .content-wrapper .box.ynow-gate-box > .box-header,
-        body.ynow-theme-atx .content-wrapper .box.ynow-member-gate > .box-header,
-        body.ynow-theme-atx .content-wrapper .box.ynow-auth-gate > .box-header {
-          background: var(--ynow-gate-accent, #1a1a1a) !important;
-          background-color: var(--ynow-gate-accent, #1a1a1a) !important;
+        .ynow-gate-box .btn.ynow-auth-open:hover,
+        .ynow-member-gate .btn.ynow-auth-open:hover,
+        .ynow-auth-gate .btn.ynow-auth-open:hover {
+          background-color: #0a446c !important;
+          border-color: #083554 !important;
           color: #fff !important;
+        }
+        .ynow-gate-box .btn.ynow-auth-register-open,
+        .ynow-member-gate .btn.ynow-auth-register-open,
+        .ynow-auth-gate .btn.ynow-auth-register-open,
+        .ynow-gate-box .ynow-auth-register-open,
+        .ynow-member-gate .ynow-auth-register-open,
+        .ynow-auth-gate .ynow-auth-register-open {
+          background: #fff !important;
+          color: var(--ynow-logo-green, #249C60) !important;
+          border: 1px solid var(--ynow-logo-green, #249C60) !important;
+        }
+        .ynow-gate-box .btn.ynow-auth-register-open:hover,
+        .ynow-member-gate .btn.ynow-auth-register-open:hover,
+        .ynow-auth-gate .btn.ynow-auth-register-open:hover {
+          background: #f3faf6 !important;
+          color: #1e8552 !important;
+          border-color: #1e8552 !important;
+        }
+        /* Keep HFV Section B/W under model / Blue Chip / ATX accent themes */
+        body.ynow-theme-model .content-wrapper .ynow-hfv-chapter.ynow-gate-box,
+        body.ynow-theme-model .content-wrapper .ynow-hfv-chapter.ynow-member-gate,
+        body.ynow-theme-model .content-wrapper .ynow-hfv-chapter.ynow-auth-gate,
+        body.ynow-theme-bluechip .content-wrapper .ynow-hfv-chapter.ynow-gate-box,
+        body.ynow-theme-bluechip .content-wrapper .ynow-hfv-chapter.ynow-member-gate,
+        body.ynow-theme-bluechip .content-wrapper .ynow-hfv-chapter.ynow-auth-gate,
+        body.ynow-theme-atx .content-wrapper .ynow-hfv-chapter.ynow-gate-box,
+        body.ynow-theme-atx .content-wrapper .ynow-hfv-chapter.ynow-member-gate,
+        body.ynow-theme-atx .content-wrapper .ynow-hfv-chapter.ynow-auth-gate {
+          border-color: #e6e6e6 !important;
+          background: #fff !important;
+        }
+        body.ynow-theme-model .content-wrapper .ynow-gate-box > .ynow-hfv-chapter__head,
+        body.ynow-theme-model .content-wrapper .ynow-member-gate > .ynow-hfv-chapter__head,
+        body.ynow-theme-model .content-wrapper .ynow-auth-gate > .ynow-hfv-chapter__head,
+        body.ynow-theme-bluechip .content-wrapper .ynow-gate-box > .ynow-hfv-chapter__head,
+        body.ynow-theme-bluechip .content-wrapper .ynow-member-gate > .ynow-hfv-chapter__head,
+        body.ynow-theme-bluechip .content-wrapper .ynow-auth-gate > .ynow-hfv-chapter__head,
+        body.ynow-theme-atx .content-wrapper .ynow-gate-box > .ynow-hfv-chapter__head,
+        body.ynow-theme-atx .content-wrapper .ynow-member-gate > .ynow-hfv-chapter__head,
+        body.ynow-theme-atx .content-wrapper .ynow-auth-gate > .ynow-hfv-chapter__head {
+          background: #fff !important;
+          color: #1a1a1a !important;
         }
         /* Guest 「Sign in required」gates: hide stock Ticker / Yahoo industry chrome */
         body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed)
@@ -11379,6 +11421,7 @@ ui <- dashboardPage(
               set('ynow_chk_gate_title', payload.pa_gate_title);
               set('ynow_chk_gate_signin_label', payload.sign_in);
               setAll('.ynow-auth-gate-title', payload.pa_gate_title);
+              setAll('.ynow-gate-section-kicker', payload.gate_section_kicker || 'Member access');
               setAll('.ynow-member-gate-signin-label', payload.sign_in);
               var setFeature = function (feat, map) {
                 if (!feat || !map) return;

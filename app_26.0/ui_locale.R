@@ -1167,6 +1167,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     pts_sysadmin_backend_fmt = "Points backend: %s",
     auth_pa_gate_title = "Sign in required",
+    auth_gate_section_kicker = "Member access",
     auth_pa_gate_body = paste0(
       "Quantitative Backtest Lab, Decision Checklist, and Value Alerts ",
       "require a signed-in account in Full mode. ",
@@ -5358,6 +5359,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     pts_sysadmin_backend_fmt = "點數後端：%s",
     auth_pa_gate_title = "需登入帳號",
+    auth_gate_section_kicker = "會員專區",
     auth_pa_gate_body = paste0(
       "完整版的量化回測實驗室、決策檢核、到值通知需登入帳號後才能使用。",
       "Lite 版無需登入，功能可完整使用。"

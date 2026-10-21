@@ -21,19 +21,25 @@ ynow_auth_enabled <- function() TRUE
 suppressWarnings(source("auth_account.R", encoding = "UTF-8", local = FALSE))
 
 fixture_css <- paste(
-  ":root{--ynow-gate-bg:#f5f5f5;--ynow-gate-border:#d0d0d0;--ynow-gate-accent:#1a1a1a;--ynow-gate-ink:#1a1a1a;--ynow-gate-ink-soft:#333333;}",
+  ":root{--ynow-gate-bg:#f5f5f5;--ynow-gate-border:#d0d0d0;--ynow-gate-accent:#1a1a1a;--ynow-gate-ink:#1a1a1a;--ynow-gate-ink-soft:#333333;--ynow-logo-blue:#0C5484;--ynow-logo-green:#249C60;}",
   "body{font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Helvetica,Arial,sans-serif;margin:0;background:#ececec;color:#333;}",
   ".content{padding:16px;}",
-  ".box{border-radius:3px;}",
-  ".box-header{padding:10px 15px;}",
-  ".box-title{margin:0;font-size:16px;}",
-  ".box-body{padding:15px;}",
-  ".btn-primary{display:inline-block;padding:8px 14px;border-radius:3px;border:1px solid #000;cursor:pointer;}",
+  ".ynow-hfv-chapter{margin:0 0 18px 0;padding:0;background:#fff;border:1px solid #e6e6e6;border-radius:8px;overflow:hidden;}",
+  ".ynow-hfv-chapter__head{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px;padding:12px 16px;background:#fff;border-bottom:1px solid #ececec;}",
+  ".ynow-hfv-chapter__kicker{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#888;}",
+  ".ynow-hfv-chapter__title{margin:0;font-size:16px;font-weight:700;color:#1a1a1a;line-height:1.35;}",
+  ".ynow-hfv-chapter__body{padding:12px 16px 16px 16px;}",
+  ".btn{display:inline-flex;align-items:center;justify-content:center;padding:8px 14px;border-radius:3px;cursor:pointer;font-size:14px;}",
+  # Shiny actionButton emits btn-default + btn-primary together — beat default.
+  ".ynow-auth-pair--gate>.btn.ynow-auth-open,.btn.btn-default.btn-primary.ynow-auth-open{background:var(--ynow-logo-blue)!important;border:1px solid #0a446c!important;color:#fff!important;}",
+  ".ynow-auth-pair--gate>.btn.ynow-auth-register-open,.btn.ynow-auth-register-open{background:#fff!important;border:1px solid var(--ynow-logo-green)!important;color:var(--ynow-logo-green)!important;}",
+  ".ynow-auth-pair--gate{display:flex;gap:8px;margin-top:12px;max-width:420px;}",
+  ".ynow-auth-pair--gate>.btn{flex:1 1 0;height:40px;}",
   ".ynow-gate-extras{margin:12px 0 16px 0;}",
-  ".ynow-gate-promo{margin:0 0 10px 0;border:1px solid var(--ynow-gate-border);border-radius:4px;overflow:hidden;background:repeating-linear-gradient(-45deg,#fff 0,#fff 6px,#f5f5f5 6px,#f5f5f5 12px);}",
-  ".ynow-gate-promo__banner{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--ynow-gate-accent);color:#fff;}",
-  ".ynow-gate-promo__badge{display:inline-block;padding:2px 8px;border:1px solid #fff;border-radius:2px;font-size:11px;font-weight:700;letter-spacing:.08em;}",
-  ".ynow-gate-promo-kicker{font-size:13px;font-weight:600;}",
+  ".ynow-gate-promo{margin:0 0 10px 0;border:1px solid #e6e6e6;border-radius:8px;overflow:hidden;background:#fff;}",
+  ".ynow-gate-promo__banner{display:flex;align-items:center;gap:10px;padding:12px 16px;background:#fff;color:#1a1a1a;border-bottom:1px solid #ececec;}",
+  ".ynow-gate-promo__badge{display:inline-block;padding:2px 8px;border:1px solid #d0d0d0;border-radius:2px;font-size:11px;font-weight:700;letter-spacing:.08em;color:#888;}",
+  ".ynow-gate-promo-kicker{font-size:13px;font-weight:600;color:#1a1a1a;}",
   ".ynow-gate-promo-lead{margin:10px 12px 6px 12px;font-size:13px;line-height:1.45;color:var(--ynow-gate-ink-soft);}",
   ".ynow-gate-promo__list{margin:0 12px 12px 12px;padding:0 0 0 18px;font-size:12.5px;line-height:1.45;color:var(--ynow-gate-ink-soft);}",
   ".ynow-gate-demo{margin:0 0 10px 0;padding:8px;border:1px solid var(--ynow-gate-border);border-radius:4px;background:#fff;}",
@@ -48,11 +54,8 @@ fixture_css <- paste(
   ".ynow-gate-faq-item{margin:10px 0 0 0;}",
   ".ynow-gate-faq-item>.ynow-gate-faq-q{margin:0 0 2px 0;font-size:12.5px;font-weight:600;}",
   ".ynow-gate-faq-item>.ynow-gate-faq-a{margin:0;font-size:12.5px;line-height:1.45;color:var(--ynow-gate-ink-soft);}",
-  ".box.ynow-gate-box,.box.ynow-member-gate{border:1px solid var(--ynow-gate-accent)!important;border-top:3px solid var(--ynow-gate-accent)!important;background:#fff!important;}",
-  ".box.ynow-gate-box>.box-header,.box.ynow-member-gate>.box-header{color:#fff!important;background:var(--ynow-gate-accent)!important;}",
-  ".box.ynow-gate-box>.box-header .box-title,.box.ynow-gate-box>.box-header .box-title *{color:#fff!important;}",
-  ".box.ynow-gate-box .btn-primary{background-color:var(--ynow-gate-accent)!important;border-color:#000!important;color:#fff!important;}",
-  "@media (max-width:767px){.box.ynow-member-gate,.box.ynow-gate-box{max-width:100%!important;margin-left:8px!important;margin-right:8px!important;}}",
+  ".ynow-hfv-chapter.ynow-gate-box,.ynow-hfv-chapter.ynow-member-gate{border:1px solid #e6e6e6!important;background:#fff!important;}",
+  "@media (max-width:767px){.ynow-member-gate,.ynow-gate-box{max-width:100%!important;margin-left:8px!important;margin-right:8px!important;}}",
   sep = "\n"
 )
 
@@ -109,9 +112,11 @@ zh_gate <- function(feature) {
   keys <- ynow_gate_promo_keys(feature)
   sprintf(
     paste0(
-      '<div class="box box-solid ynow-member-gate ynow-gate-box" style="display:block;max-width:760px;margin:18px auto;">',
-      '<div class="box-header with-border"><h3 class="box-title"><span>%s</span></h3></div>',
-      '<div class="box-body"><p class="ynow-gate-body">%s</p>',
+      '<section class="ynow-hfv-chapter ynow-member-gate ynow-gate-box" style="display:block;max-width:760px;margin:18px auto;">',
+      '<div class="ynow-hfv-chapter__head">',
+      '<span class="ynow-hfv-chapter__kicker ynow-gate-section-kicker">%s</span>',
+      '<h3 class="ynow-hfv-chapter__title"><span>%s</span></h3></div>',
+      '<div class="ynow-hfv-chapter__body"><p class="ynow-gate-body">%s</p>',
       '<div class="ynow-gate-extras" data-ynow-gate-feature="%s">',
       '<div class="ynow-gate-promo"><div class="ynow-gate-promo__banner">',
       '<span class="ynow-gate-promo__badge">APP</span>',
@@ -131,8 +136,12 @@ zh_gate <- function(feature) {
       '<div class="ynow-gate-faq-item"><p class="ynow-gate-faq-q">%s</p><p class="ynow-gate-faq-a">%s</p></div>',
       '<div class="ynow-gate-faq-item"><p class="ynow-gate-faq-q">%s</p><p class="ynow-gate-faq-a">%s</p></div>',
       '</div></details></div>',
-      '<button type="button" class="btn btn-primary">%s</button></div></div>'
+      '<div class="ynow-auth-pair ynow-auth-pair--gate">',
+      '<button type="button" class="btn btn-primary ynow-auth-open">%s</button>',
+      '<button type="button" class="btn btn-default ynow-auth-register-open">%s</button>',
+      '</div></div></section>'
     ),
+    esc(loc("auth_gate_section_kicker")),
     esc(loc("auth_pa_gate_title")),
     esc(loc(keys$body)),
     feature,
@@ -146,7 +155,8 @@ zh_gate <- function(feature) {
     esc(loc("auth_gate_faq_title")),
     esc(loc("auth_gate_faq_q1")), esc(loc("auth_gate_faq_a1")),
     esc(loc("auth_gate_faq_q2")), esc(loc("auth_gate_faq_a2")),
-    esc(loc("auth_sign_in"))
+    esc(loc("auth_sign_in")),
+    esc(loc("auth_register_btn"))
   )
 }
 writeLines(page("Gate lab ZH", zh_gate("lab")),

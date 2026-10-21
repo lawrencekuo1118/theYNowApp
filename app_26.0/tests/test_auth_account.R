@@ -357,13 +357,19 @@ check("stock chrome hidden on guest gate tabs and account panels", {
     grepl("shiny-tab-price_alerts.active) .ynow-stock-chrome", ui, fixed = TRUE) &&
     grepl("ynow-sidebar-snapshot-foot-links", ui, fixed = TRUE)
 })
-check("member gate uses mono gate box not warning amber", {
+check("member gate uses HFV Section chrome + logo CTAs", {
   auth <- paste(readLines(src_auth, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   grepl("ynow-gate-box", auth, fixed = TRUE) &&
+    grepl("ynow-hfv-chapter", auth, fixed = TRUE) &&
+    grepl("ynow-hfv-chapter__head", auth, fixed = TRUE) &&
+    grepl("ynow-gate-section-kicker", auth, fixed = TRUE) &&
     !grepl('class = "box box-warning ynow-member-gate"', auth, fixed = TRUE) &&
-    grepl("\\.box\\.ynow-gate-box", ui) &&
-    grepl("--ynow-gate-accent", ui, fixed = TRUE) &&
+    !grepl("box box-solid ynow-member-gate", auth, fixed = TRUE) &&
+    grepl("ynow-hfv-chapter\\.ynow-gate-box", ui) &&
+    grepl("--ynow-logo-blue", ui, fixed = TRUE) &&
+    grepl("ynow-gate-box .btn.ynow-auth-open", ui, fixed = TRUE) &&
+    grepl("btn.btn-default.btn-primary.ynow-auth-open", ui, fixed = TRUE) &&
     grepl("ynow-gate-promo", ui, fixed = TRUE) &&
     grepl("ynow-gate-faq", ui, fixed = TRUE)
 })
@@ -424,7 +430,7 @@ keys <- c(
   "auth_delete_modal_type", "auth_delete_modal_confirm", "auth_delete_modal_cancel",
   "auth_delete_msg_confirm", "auth_delete_msg_ok", "auth_delete_msg_ok_auth_skipped",
   "auth_delete_msg_ok_auth_failed", "auth_delete_msg_fail", "auth_delete_msg_no_user",
-  "auth_pa_gate_title",
+  "auth_pa_gate_title", "auth_gate_section_kicker",
   "auth_pa_gate_body", "auth_admin_tool_lite", "pa_email_account_help",
   "auth_gate_lab_body", "auth_gate_lab_kicker", "auth_gate_lab_lead",
   "auth_gate_lab_b1", "auth_gate_lab_b2", "auth_gate_lab_b3", "auth_gate_lab_demo_caption",
