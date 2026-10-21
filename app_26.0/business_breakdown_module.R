@@ -533,9 +533,8 @@ business_breakdown_lab_ui <- function(id = "bblab") {
               id = "ynow_bblab_or_help",
               class = "help-block",
               paste0(
-                "Current disclosed order status only: scale, quality, revenue conversion, ",
-                "profitability, cash items, and backlog coverage when the filing states them. ",
-                "No scenario table. Backlog and bookings stay blank when the filer does not report them."
+                "Three disclosed facts: order quantity, major suppliers, and major-customer ",
+                "revenue mix. Filings and earnings-call remarks are labeled. Nothing is estimated."
               )
             ),
             actionButton(
@@ -662,31 +661,39 @@ business_breakdown_lab_ui <- function(id = "bblab") {
   if (identical(mapped, key)) "—" else mapped
 }
 
-#' Order-research panel for the current pack. `started` is the Start analysis gate.
+.or_fact_label <- function(fact, locale) {
+  nm <- .bblab_chr(fact$name, "")
+  if (nzchar(nm)) return(nm)
+  key <- .bblab_chr(fact$label_key, "")
+  if (!nzchar(key)) return("")
+  .bblab_ui(key, locale)
+}
+
+#' Order-research panel. Primary surface is the three disclosed buckets.
 bblab_order_research_panel_ui <- function(pack, locale = "en", started = FALSE) {
   msg <- function(key) .bblab_ui(key, locale)
   if (!isTRUE(started)) return(tags$p(class = "help-block", msg("bblab_or_idle")))
   if (!is.list(pack) || !length(pack$kpis)) {
     return(tags$p(class = "help-block", msg("bblab_or_waiting")))
   }
-  profile <- .bblab_chr(pack$industry_profile, "other")
-  primary <- as.character(pack$industry_primary %||% character(0))
-  cards <- lapply(pack$kpis, function(kpi) {
-    id <- .bblab_chr(kpi$id, "")
-    cls <- c("ynow-bblab-or__card")
-    if (id %in% primary) cls <- c(cls, "ynow-bblab-or__card--primary")
-    if (isTRUE(kpi$callout)) cls <- c(cls, "ynow-bblab-or__card--callout")
-    shown <- if (is.finite(.bblab_num(kpi$value))) {
-      .or_fmt_value(kpi$value, kpi$unit)
-    } else {
-      .or_gap_text(kpi$gap, locale)
-    }
-    tags$div(
-      class = paste(cls, collapse = " "),
-      tags$div(class = "ynow-bblab-or__k", msg(paste0("bblab_or_kpi_", id))),
-      tags$p(class = "ynow-bblab-or__value", shown),
-      tags$p(class = "ynow-bblab-or__formula", msg(paste0("bblab_or_formula_", id))),
-      if (id %in% primary) tags$p(class = "help-block", msg("bblab_or_primary")) else NULL
+  focus <- lapply(pack$focus %||% list(), function(bucket) {
+    bid <- .bblab_chr(bucket$id, "")
+    bits <- lapply(bucket$facts %||% list(), function(f) {
+      if (!is.finite(.bblab_num(f$value))) return(NULL)
+      prov <- msg(paste0("bblab_or_prov_", .bblab_chr(f$source, "filing")))
+      tags$li(
+        tags$b(paste0(.or_fact_label(f, locale), ": ")),
+        .or_fmt_value(f$value, f$unit),
+        tags$span(class = "ynow-bblab-or__prov", paste0(" · ", prov))
+      )
+    })
+    bits <- Filter(Negate(is.null), bits)
+    if (!length(bits)) bits <- list(tags$li(.or_gap_text(bucket$gap, locale)))
+    tags$details(
+      class = "ynow-bblab-or__focus",
+      open = "open",
+      tags$summary(msg(paste0("bblab_or_focus_", bid))),
+      tags$ul(bits)
     )
   })
   layers <- lapply(pack$layers %||% list(), function(layer) {
@@ -715,7 +722,6 @@ bblab_order_research_panel_ui <- function(pack, locale = "en", started = FALSE) 
       )
     })
     tags$details(
-      open = "open",
       tags$summary(
         paste0(
           msg(paste0("bblab_or_layer_", key)),
@@ -728,13 +734,17 @@ bblab_order_research_panel_ui <- function(pack, locale = "en", started = FALSE) 
     )
   })
   tagList(
-    tags$p(class = "help-block", msg(paste0("bblab_or_emphasis_", profile))),
-    tags$div(class = "ynow-bblab-or__cards", cards),
-    tags$div(class = "ynow-bblab-or__layers", layers)
+    tags$div(class = "ynow-bblab-or__focuses", focus),
+    tags$details(
+      class = "ynow-bblab-or__secondary",
+      tags$summary(msg("bblab_or_secondary")),
+      tags$div(class = "ynow-bblab-or__layers", layers)
+    )
   )
 }
 
-bblab_order_research_bar <- function(pack, locale = "en", which = c("multiples", "rates"),
+bblab_order_research_bar <- function(pack, locale = "en",
+                                     which = c("orders", "customers", "multiples", "rates"),
                                      started = FALSE) {
   which <- match.arg(which)
   empty <- plotly::layout(
@@ -745,8 +755,14 @@ bblab_order_research_bar <- function(pack, locale = "en", which = c("multiples",
   if (!isTRUE(started) || !is.list(pack)) return(empty)
   points <- pack$chart[[which]] %||% list()
   if (!length(points)) return(empty)
-  as_pct <- identical(which, "rates")
+  as_pct <- which %in% c("rates", "customers")
+  as_amt <- identical(which, "orders")
   labels <- vapply(points, function(p) {
+    lab <- .bblab_chr(p$label, "")
+    if (nzchar(lab)) return(lab)
+    key <- paste0("bblab_or_metric_", .bblab_chr(p$id, ""))
+    mapped <- .bblab_ui(key, locale)
+    if (!identical(mapped, key)) return(mapped)
     .bblab_ui(paste0("bblab_or_kpi_", .bblab_chr(p$id, "")), locale)
   }, character(1))
   values <- vapply(points, function(p) {
@@ -755,11 +771,16 @@ bblab_order_research_bar <- function(pack, locale = "en", which = c("multiples",
   }, numeric(1))
   if (!any(is.finite(values))) return(empty)
   pal <- c("#0C5484", "#1AA8B8", "#249C60")
-  axis <- .bblab_ui(if (isTRUE(as_pct)) "bblab_or_chart_rates" else "bblab_or_chart_multiples", locale)
+  axis_key <- if (identical(which, "orders")) "bblab_or_chart_orders" else if (identical(which, "customers")) {
+    "bblab_or_chart_customers"
+  } else if (isTRUE(as_pct)) "bblab_or_chart_rates" else "bblab_or_chart_multiples"
+  axis <- .bblab_ui(axis_key, locale)
   fig <- plotly::plot_ly(
     x = labels, y = values, type = "bar",
     marker = list(color = pal[((seq_along(labels) - 1L) %% length(pal)) + 1L]),
-    text = if (isTRUE(as_pct)) sprintf("%.1f%%", values) else sprintf("%.2f×", values),
+    text = if (isTRUE(as_pct)) sprintf("%.1f%%", values) else if (isTRUE(as_amt)) {
+      vapply(values, .bblab_fmt_amt, character(1))
+    } else sprintf("%.2f×", values),
     textposition = "outside",
     hoverinfo = "text"
   )
@@ -1686,11 +1707,11 @@ business_breakdown_lab_server <- function(id = "bblab",
     })
 
     output$order_research_chart <- plotly::renderPlotly({
-      bblab_order_research_bar(.or_pack(), loc(), "multiples", isTRUE(or_started()))
+      bblab_order_research_bar(.or_pack(), loc(), "orders", isTRUE(or_started()))
     })
 
     output$order_research_rates_chart <- plotly::renderPlotly({
-      bblab_order_research_bar(.or_pack(), loc(), "rates", isTRUE(or_started()))
+      bblab_order_research_bar(.or_pack(), loc(), "customers", isTRUE(or_started()))
     })
 
     observeEvent(plotly::event_data("plotly_click", source = ns("donut")), {

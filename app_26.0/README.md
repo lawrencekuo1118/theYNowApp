@@ -22,7 +22,7 @@
 ## v20 重點
 
 - **整階 +1**：活動線目錄 `app_19.0/` → `app_20.0/`；顯示版號 **v20**
-- **Business Breakdown**：側邊欄 **Business Breakdown**（完整版；投資報告樣式；共用頁首 Ticker／Stock Code；內部 tab id 仍為 `company_advance`）；Lite 仍隱藏。訂單研究只顯示已揭露現況，接在集中度圖之後；Backlog／Bookings 未揭露則留白，不做假設分析
+- **Business Breakdown**：側邊欄 **Business Breakdown**（完整版；投資報告樣式；共用頁首 Ticker／Stock Code；內部 tab id 仍為 `company_advance`）；Lite 仍隱藏。訂單研究聚焦已揭露的訂單數量、主要供應商、重大客戶營收貢獻（含法說會來源標示）
 - **目錄**：`app_20.0/`；顯示版號 **v20**；當時部署腳本 `scripts/deploy_app_20.R`（已移除；現以 `scripts/deploy_app_21.R` 為 ship entry）
 
 ## v19 重點

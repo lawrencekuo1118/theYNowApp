@@ -229,32 +229,211 @@ bblab_order_research_industry_profile <- function(industry_key = NULL,
   )
 }
 
+.or_table_source <- function(tbl) {
+  raw <- tolower(.or_chr(if (is.list(tbl)) tbl$source %||% tbl$provenance else tbl, ""))
+  if (raw %in% c("earnings", "earnings_call", "transcript", "ir_deck", "management")) {
+    return("earnings_call")
+  }
+  if (grepl("mops", raw)) return("mops")
+  if (grepl("sec", raw)) return("sec")
+  if (nzchar(raw)) return("filing")
+  "filing"
+}
+
 .or_disclosures_from_tables <- function(tables) {
   out <- list()
   if (!length(tables)) return(out)
   for (tbl in tables) {
     if (!is.list(tbl)) next
     kind <- tolower(.or_chr(tbl$kind, ""))
+    src <- .or_table_source(tbl)
     if (kind %in% c("backlog", "rpo", "remaining_performance")) {
       pair <- .or_table_latest_pair(tbl)
       if (is.finite(pair$current)) out$backlog <- pair$current
       if (is.finite(pair$prior)) out$backlog_prior <- pair$prior
-      out$backlog_source <- "filing"
+      out$backlog_source <- src
     } else if (kind %in% c("bookings", "orders_received")) {
       pair <- .or_table_latest_pair(tbl)
       if (is.finite(pair$current)) {
         out$bookings <- pair$current
-        out$bookings_source <- "filing"
+        out$bookings_source <- src
       }
     } else if (kind %in% c("orders", "order_concentration")) {
       amts <- .or_table_amounts(tbl)
       if (length(amts)) {
         out$order_amounts <- amts
-        out$order_amounts_source <- "filing"
+        out$order_amounts_source <- src
       }
     }
   }
   out
+}
+
+.or_focus_fact <- function(name, value, unit, source, label_key = NA_character_) {
+  v <- .or_num(value)
+  list(
+    name = .or_chr(name, ""),
+    label_key = .or_chr(label_key, NA_character_),
+    value = if (is.finite(v)) v else NA_real_,
+    unit = unit,
+    source = .or_table_source(list(source = source)),
+    status = if (is.finite(v) || nzchar(.or_chr(name, ""))) "REPORTED" else "UNAVAILABLE"
+  )
+}
+
+.or_named_amount_facts <- function(tbl, source = NULL) {
+  if (!is.list(tbl)) return(list())
+  rows <- tbl$rows %||% list()
+  headers <- as.character(tbl$headers %||% character(0))
+  scale <- .or_num(tbl$scale)
+  if (!is.finite(scale) || scale <= 0) scale <- 1
+  src <- if (!is.null(source)) source else .or_table_source(tbl)
+  year_i <- integer(0)
+  pct_i <- integer(0)
+  if (length(headers)) {
+    y <- suppressWarnings(as.integer(sub(".*?((?:19|20)\\d{2}).*", "\\1", headers)))
+    year_i <- which(is.finite(y) & y >= 1900L & y <= 2100L)
+    pct_i <- which(grepl("%|share|pct|占比|佔比", headers, ignore.case = TRUE))
+  }
+  facts <- list()
+  for (r in rows) {
+    r <- as.character(r)
+    if (length(r) < 2L) next
+    nm <- r[[1]]
+    if (!nzchar(nm) || grepl("^(total|consolidated)\\b", nm, ignore.case = TRUE)) next
+    if (length(pct_i) && pct_i[[1]] <= length(r)) {
+      pct <- if (exists(".bblab_parse_amount", mode = "function")) {
+        .bblab_parse_amount(r[[pct_i[[1]]]])
+      } else {
+        .or_num(gsub("[^0-9.\\-]", "", r[[pct_i[[1]]]]))
+      }
+      if (is.finite(pct) && grepl("%", r[[pct_i[[1]]]])) pct <- pct / 100
+      if (is.finite(pct) && pct > 1) pct <- pct / 100
+      if (is.finite(pct)) {
+        facts[[length(facts) + 1L]] <- .or_focus_fact(nm, pct, "ratio", src)
+        next
+      }
+    }
+    idx <- if (length(year_i)) year_i[length(year_i)] else length(r)
+    if (idx < 1L || idx > length(r)) next
+    amt <- if (exists(".bblab_parse_amount", mode = "function")) {
+      .bblab_parse_amount(r[[idx]])
+    } else {
+      .or_num(gsub("[^0-9.\\-]", "", r[[idx]]))
+    }
+    if (is.finite(amt)) {
+      facts[[length(facts) + 1L]] <- .or_focus_fact(nm, amt * scale, "amount", src)
+    }
+  }
+  facts
+}
+
+.or_facts_from_slices <- function(node) {
+  if (!is.list(node) || !isTRUE(node$eligible)) return(list())
+  rows <- node$rows %||% node$slices %||% list()
+  src <- .or_table_source(list(source = node$source))
+  facts <- list()
+  for (r in rows) {
+    if (!is.list(r)) next
+    nm <- .or_chr(r$name, "")
+    if (!nzchar(nm)) next
+    share <- .or_num(r$share %||% r$revenue_pct)
+    rev <- .or_num(r$revenue)
+    if (is.finite(share)) {
+      facts[[length(facts) + 1L]] <- .or_focus_fact(nm, share, "ratio", src)
+    } else if (is.finite(rev)) {
+      facts[[length(facts) + 1L]] <- .or_focus_fact(nm, rev, "amount", src)
+    }
+  }
+  facts
+}
+
+.or_call_party_facts <- function(rows, source = "earnings_call") {
+  if (!is.list(rows)) return(list())
+  facts <- list()
+  for (r in rows) {
+    if (!is.list(r)) next
+    nm <- .or_chr(r$name %||% r$label, "")
+    share <- .or_num(r$share %||% r$revenue_pct)
+    amt <- .or_num(r$revenue %||% r$amount %||% r$value)
+    if (!nzchar(nm)) next
+    if (is.finite(share)) {
+      facts[[length(facts) + 1L]] <- .or_focus_fact(nm, share, "ratio", source)
+    } else if (is.finite(amt)) {
+      facts[[length(facts) + 1L]] <- .or_focus_fact(nm, amt, "amount", source)
+    }
+  }
+  facts
+}
+
+#' Three disclosed buckets: order quantity, major suppliers, major-customer revenue mix.
+.or_build_focus <- function(inputs, order_concentration, disclosures, tables) {
+  inputs <- inputs %||% list()
+  disclosures <- disclosures %||% list()
+  call <- disclosures$earnings_call %||% list()
+  orders <- list()
+  push_order <- function(label_key, value, source) {
+    v <- .or_num(value)
+    if (!is.finite(v)) return()
+    orders[[length(orders) + 1L]] <<- .or_focus_fact(
+      "", v, "amount", source, label_key = label_key
+    )
+  }
+  push_order("bblab_or_metric_backlog", inputs$backlog, inputs$backlog_source %||% "filing")
+  push_order("bblab_or_metric_bookings", inputs$bookings, inputs$bookings_source %||% "filing")
+  if (is.finite(.or_num(call$backlog))) {
+    orders[[length(orders) + 1L]] <- .or_focus_fact(
+      "", call$backlog, "amount", "earnings_call", label_key = "bblab_or_metric_backlog"
+    )
+  }
+  if (is.finite(.or_num(call$bookings))) {
+    orders[[length(orders) + 1L]] <- .or_focus_fact(
+      "", call$bookings, "amount", "earnings_call", label_key = "bblab_or_metric_bookings"
+    )
+  }
+  for (tbl in tables %||% list()) {
+    if (!is.list(tbl)) next
+    kind <- tolower(.or_chr(tbl$kind, ""))
+    if (identical(.or_table_source(tbl), "earnings_call") &&
+        kind %in% c("backlog", "rpo", "bookings", "orders_received", "orders", "order_concentration")) {
+      if (kind %in% c("orders", "order_concentration")) {
+        orders <- c(orders, .or_named_amount_facts(tbl))
+      }
+    } else if (kind %in% c("orders", "order_concentration")) {
+      orders <- c(orders, .or_named_amount_facts(tbl))
+    }
+  }
+  orders <- c(orders, .or_call_party_facts(call$order_lines, "earnings_call"))
+
+  suppliers <- .or_facts_from_slices(order_concentration$supplier_concentration)
+  customers <- .or_facts_from_slices(order_concentration$customer_concentration)
+  # Filing counterparties already sit on the concentration pack. Call tables are extra facts.
+  for (tbl in tables %||% list()) {
+    if (!is.list(tbl) || !identical(.or_table_source(tbl), "earnings_call")) next
+    kind <- tolower(.or_chr(tbl$kind, ""))
+    if (kind %in% c("supplier", "supplier_concentration", "suppliers")) {
+      suppliers <- c(suppliers, .or_named_amount_facts(tbl))
+    } else if (kind %in% c("customer", "customer_concentration", "customers")) {
+      customers <- c(customers, .or_named_amount_facts(tbl))
+    }
+  }
+  suppliers <- c(suppliers, .or_call_party_facts(call$suppliers, "earnings_call"))
+  customers <- c(customers, .or_call_party_facts(call$customers, "earnings_call"))
+
+  bucket <- function(id, facts, gap) {
+    finite <- vapply(facts, function(f) is.finite(.or_num(f$value)), logical(1))
+    list(
+      id = id,
+      status = if (any(finite)) "disclosed" else "gap",
+      facts = facts,
+      gap = if (any(finite)) NA_character_ else gap
+    )
+  }
+  list(
+    bucket("orders", orders, "ORDERS_BACKLOG_UNDISCLOSED"),
+    bucket("suppliers", suppliers, "ORDERS_SUPPLIER_DISCLOSURE_MISSING"),
+    bucket("customers", customers, "ORDERS_CUSTOMER_DISCLOSURE_MISSING")
+  )
 }
 
 .or_top5_share <- function(amounts) {
@@ -327,7 +506,8 @@ bblab_order_research_empty <- function(gaps = character(0)) {
     industry_primary = character(0),
     sources = list(),
     gaps = unique(as.character(gaps)),
-    chart = list(multiples = list(), rates = list())
+    focus = .or_build_focus(list(), NULL, NULL, list()),
+    chart = list(multiples = list(), rates = list(), orders = list(), customers = list())
   )
 }
 
@@ -699,6 +879,26 @@ bblab_build_order_research_pack <- function(order_concentration = NULL,
   }
   for (kpi in kpis) collect_gap(kpi)
   for (layer in layers) for (m in layer$metrics) collect_gap(m)
+  focus <- .or_build_focus(inputs, order_concentration, disclosures, tables)
+  chart <- .or_chart_points(kpis)
+  chart_pts <- function(facts) {
+    pts <- list()
+    for (f in facts %||% list()) {
+      if (!is.finite(.or_num(f$value))) next
+      label <- if (nzchar(.or_chr(f$name, ""))) f$name else NA_character_
+      id <- if (nzchar(.or_chr(f$label_key, ""))) {
+        sub("^bblab_or_metric_", "", f$label_key)
+      } else {
+        .or_chr(f$name, "fact")
+      }
+      pts[[length(pts) + 1L]] <- list(
+        id = id, label = label, value = f$value, unit = f$unit, source = f$source
+      )
+    }
+    pts
+  }
+  chart$orders <- chart_pts(Filter(function(f) identical(f$unit, "amount"), focus[[1]]$facts))
+  chart$customers <- chart_pts(Filter(function(f) identical(f$unit, "ratio"), focus[[3]]$facts))
 
   list(
     layers = layers,
@@ -707,7 +907,8 @@ bblab_build_order_research_pack <- function(order_concentration = NULL,
     industry_primary = as.character(primary),
     sources = sources,
     gaps = unique(gaps),
-    chart = .or_chart_points(kpis)
+    focus = focus,
+    chart = chart
   )
 }
 

@@ -43,6 +43,11 @@ check("empty does not invent backlog", !is.finite(empty$kpis$backlog_yoy$value) 
         "ORDERS_BACKLOG_UNDISCLOSED" %in% empty$gaps &&
         "ORDERS_BOOKINGS_UNDISCLOSED" %in% empty$gaps)
 check("empty pack has no scenario field", is.null(empty$scenarios))
+check("empty focus is three gaps", {
+  ids <- vapply(empty$focus, function(b) b$id, character(1))
+  identical(ids, c("orders", "suppliers", "customers")) &&
+    all(vapply(empty$focus, function(b) identical(b$status, "gap"), logical(1)))
+})
 check("empty valuation layer stays a gap",
       identical(empty$layers[[6]]$status, "gap") && !length(empty$layers[[6]]$metrics))
 check("empty profile is other", identical(empty$industry_profile, "other"))
@@ -198,6 +203,50 @@ check("filing backlog table feeds yoy", near(filing$kpis$backlog_yoy$value, 500 
 check("filing order dollars feed concentration", near(filing$kpis$customer_concentration$value, 1))
 check("no fake amount on missing bookings", is.na(filing$kpis$book_to_bill$value))
 
+focused <- bblab_build_order_research_pack(
+  order_concentration = list(
+    customer_concentration = list(
+      eligible = TRUE, source = "sec_concentration_note",
+      rows = list(list(name = "Customer A", share = 0.22, revenue = 220))
+    ),
+    supplier_concentration = list(
+      eligible = TRUE, source = "mops_annual_report",
+      rows = list(list(name = "Supplier B", share = 0.15, revenue = 90))
+    )
+  ),
+  consolidated = bblab_consolidated(1000, 400, 600, "USD", "2024"),
+  disclosures = list(
+    backlog = 500,
+    earnings_call = list(
+      backlog = 540,
+      suppliers = list(list(name = "Call Foundry", share = 0.40)),
+      customers = list(list(name = "Call Customer", share = 0.18))
+    )
+  ),
+  frequency = "annual"
+)
+check("focus keeps filing backlog and call backlog", {
+  facts <- focused$focus[[1]]$facts
+  vals <- vapply(facts, function(f) f$value, numeric(1))
+  srcs <- vapply(facts, function(f) f$source, character(1))
+  any(abs(vals - 500) < 1e-9 & srcs == "filing") &&
+    any(abs(vals - 540) < 1e-9 & srcs == "earnings_call")
+})
+check("supplier bucket keeps filing and earnings call", {
+  facts <- focused$focus[[2]]$facts
+  nms <- vapply(facts, function(f) f$name, character(1))
+  srcs <- vapply(facts, function(f) f$source, character(1))
+  "Supplier B" %in% nms && "Call Foundry" %in% nms &&
+    any(srcs == "mops") && any(srcs == "earnings_call")
+})
+check("customer revenue mix is the customer bucket", {
+  facts <- focused$focus[[3]]$facts
+  hit <- Filter(function(f) identical(f$name, "Customer A"), facts)[[1]]
+  near(hit$value, 0.22) && identical(hit$unit, "ratio") && identical(hit$source, "sec") &&
+    any(vapply(facts, function(f) identical(f$name, "Call Customer") &&
+                 identical(f$source, "earnings_call"), logical(1)))
+})
+
 source("ui_locale.R", local = TRUE, encoding = "UTF-8")
 or_keys <- grep("^bblab_or_|^notif_bblab_orders_(backlog|bookings|ttm|conversion|order_|growth_source|quality_terms|gross_margin|cash_item)",
                 names(.UI_STRINGS$en), value = TRUE)
@@ -219,16 +268,22 @@ if (requireNamespace("shiny", quietly = TRUE) && requireNamespace("plotly", quie
   })
   source("business_breakdown_module.R", local = TRUE, encoding = "UTF-8")
   html_en <- paste(as.character(bblab_order_research_panel_ui(ranged, "en", TRUE)), collapse = " ")
-  check("panel shows Book-to-Bill and coverage",
-        grepl("Book-to-Bill", html_en, fixed = TRUE) &&
-          grepl("1.10×", html_en, fixed = TRUE) &&
-          grepl("1.50×", html_en, fixed = TRUE) &&
-          grepl("40.0%", html_en, fixed = TRUE) &&
-          !grepl("Bear", html_en, fixed = TRUE) &&
-          !grepl("Bull", html_en, fixed = TRUE) &&
-          !grepl("Next-four-quarter", html_en, fixed = TRUE) &&
-          !grepl(">EPS<", html_en, fixed = TRUE) &&
-          !grepl(">FCF<", html_en, fixed = TRUE))
+    check("panel leads with the three buckets", {
+    primary <- sub("ynow-bblab-or__secondary.*", "", html_en)
+    grepl("Order quantity", primary, fixed = TRUE) &&
+      grepl("Major suppliers", primary, fixed = TRUE) &&
+      grepl("Major-customer revenue mix", primary, fixed = TRUE) &&
+      !grepl("Gross margin", primary, fixed = TRUE) &&
+      grepl("ynow-bblab-or__secondary", html_en, fixed = TRUE) &&
+      !grepl("Bear", html_en, fixed = TRUE) &&
+      !grepl("Bull", html_en, fixed = TRUE)
+  })
+  html_focus <- paste(as.character(bblab_order_research_panel_ui(focused, "en", TRUE)), collapse = " ")
+  check("panel labels earnings-call provenance",
+        grepl("Earnings call", html_focus, fixed = TRUE) &&
+          grepl("Call Foundry", html_focus, fixed = TRUE) &&
+          grepl("Customer A", html_focus, fixed = TRUE) &&
+          grepl("SEC filing", html_focus, fixed = TRUE))
   html_idle <- paste(as.character(bblab_order_research_panel_ui(ranged, "en", FALSE)), collapse = " ")
   check("start gate hides figures until analysis",
         grepl("Start analysis", html_idle, fixed = TRUE) &&
