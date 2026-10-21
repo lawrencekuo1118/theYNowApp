@@ -2460,6 +2460,67 @@ server <- function(input, output, session) {
     )
   }, ignoreInit = TRUE)
 
+  # Account top-up: redeem code → ledger credit (no payment processor).
+  observeEvent(input$ynow_pts_redeem_submit, {
+    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+    .lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
+    .set_status <- function(msg, ok = NA) {
+      tryCatch(
+        session$sendCustomMessage(
+          "ynowPtsRedeemStatus",
+          list(text = as.character(msg %||% "")[1], ok = ok)
+        ),
+        error = function(e) NULL
+      )
+    }
+    u <- tryCatch(ynow_auth$user(), error = function(e) NULL)
+    uid <- as.character(u$id %||% "")[1]
+    if (!nzchar(uid)) {
+      msg <- .lab("pts_topup_no_user", "Sign in to redeem a top-up code.")
+      .set_status(msg, FALSE)
+      showNotification(msg, type = "warning", duration = 4)
+      return()
+    }
+    if (!exists("ynow_points_redeem", mode = "function")) {
+      msg <- .lab("pts_topup_backend", "Points ledger is unavailable. Try again later.")
+      .set_status(msg, FALSE)
+      showNotification(msg, type = "error", duration = 5)
+      return()
+    }
+    code <- as.character(input$ynow_pts_redeem_code %||% "")[1]
+    res <- ynow_points_redeem(uid, code)
+    if (isTRUE(res$ok)) {
+      wlab <- toupper(as.character(res$wallet %||% "PYN")[1])
+      msg <- sprintf(
+        .lab("pts_topup_ok_fmt", "Redeemed +%s %s. FYN %s · PYN %s."),
+        as.character(res$amount %||% ""),
+        wlab,
+        as.character(res$fyn %||% "—"),
+        as.character(res$pyn %||% "—")
+      )
+      .set_status(msg, TRUE)
+      showNotification(msg, type = "message", duration = 5)
+      tryCatch(updateTextInput(session, "ynow_pts_redeem_code", value = ""), error = function(e) NULL)
+      ynow_pts_panel_tick(isolate(ynow_pts_panel_tick()) + 1L)
+      tryCatch(.ynow_pts_push_banner(), error = function(e) NULL)
+    } else {
+      key <- as.character(res$message_key %||% "pts_topup_bad_code")[1]
+      fb <- switch(
+        key,
+        pts_topup_used = "You already redeemed this code on this account.",
+        pts_topup_expired = "That redeem code has expired.",
+        pts_topup_disabled = "That redeem code is disabled.",
+        pts_topup_exhausted = "That redeem code has no redemptions left.",
+        pts_topup_no_user = "Sign in to redeem a top-up code.",
+        pts_msg_backend = "Points ledger is unavailable. Try again later.",
+        "That redeem code is not valid."
+      )
+      msg <- .lab(key, fb)
+      .set_status(msg, FALSE)
+      showNotification(msg, type = "warning", duration = 5)
+    }
+  }, ignoreInit = TRUE)
+
   observeEvent(input$ynow_pts_goto_overview, {
     tryCatch(
       updateTabItems(session, "sidebar_tabs", "account_admin"),

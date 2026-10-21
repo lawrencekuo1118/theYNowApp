@@ -83,10 +83,13 @@ check("HFV uses CSS vars", {
   grepl("\\.ynow-hfv-bull \\{ color: var\\(--ynow-chg-up\\)", ui, perl = TRUE) &&
     grepl("\\.ynow-hfv-bear \\{ color: var\\(--ynow-chg-down\\)", ui, perl = TRUE)
 })
-check("Account top-up is disabled scaffold", {
+check("Account top-up redeem path (no payment processor)", {
+  wallet <- paste(readLines(file.path(root, "points_wallet.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   grepl("ynow_pts_topup_slot", auth, fixed = TRUE) &&
     grepl("pts_topup_title", auth, fixed = TRUE) &&
-    grepl("disabled = \"disabled\"", auth, fixed = TRUE) &&
+    grepl("ynow_pts_redeem_code", auth, fixed = TRUE) &&
+    grepl("ynow_pts_redeem_submit", auth, fixed = TRUE) &&
+    grepl("ynow_points_redeem", wallet, fixed = TRUE) &&
     !grepl("stripe|paypal|chargeCard|paymentIntent", auth, ignore.case = TRUE)
 })
 check("no Mainland 一鍵 wording", {

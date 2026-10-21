@@ -154,13 +154,15 @@ check(
     !grepl("一鍵", loc, fixed = TRUE)
 )
 check(
-  "settings UI + account top-up scaffold",
+  "settings UI + account top-up redeem",
   grepl("ynow_settings_gain_loss", auth, fixed = TRUE) &&
     grepl("gain_loss_scheme", srv, fixed = TRUE) &&
     grepl("data-ynow-gain-scheme", ui, fixed = TRUE) &&
     grepl("ynow_pts_topup_slot", auth, fixed = TRUE) &&
     grepl("ynow-pts-topup", auth, fixed = TRUE) &&
-    grepl("disabled", auth, fixed = TRUE)
+    grepl("ynow_pts_redeem_code", auth, fixed = TRUE) &&
+    grepl("ynow_pts_redeem_submit", auth, fixed = TRUE) &&
+    !grepl("stripe|paypal|checkout.session", auth, ignore.case = TRUE)
 )
 check(
   "Lite omit includes settings",

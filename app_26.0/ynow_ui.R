@@ -11518,7 +11518,16 @@ ui <- dashboardPage(
               set('ynow_settings_save_label', payload.settings_save);
               set('ynow_pts_topup_title', payload.pts_topup_title);
               set('ynow_pts_topup_copy', payload.pts_topup_copy);
+              set('ynow_pts_topup_help', payload.pts_topup_help);
+              set('ynow_pts_redeem_label', payload.pts_topup_redeem_label);
+              set('ynow_pts_redeem_submit_label', payload.pts_topup_redeem_cta);
               set('ynow_pts_topup_cta_label', payload.pts_topup_cta);
+              (function () {
+                var inp = document.getElementById('ynow_pts_redeem_code');
+                if (inp && payload.pts_topup_redeem_placeholder) {
+                  inp.setAttribute('placeholder', payload.pts_topup_redeem_placeholder);
+                }
+              })();
               set('ynow_admin_box_title', payload.admin_title);
               set('ynow_admin_intro', payload.admin_intro);
               set('ynow_admin_delete_account_label', payload.delete_account);
@@ -11677,6 +11686,14 @@ ui <- dashboardPage(
               if (rem) rem.textContent = payload.remaining || '';
               if (rules) rules.textContent = payload.rules || '';
               if (snap && payload.snap != null) snap.textContent = payload.snap || '';
+            });
+            addHandler('ynowPtsRedeemStatus', function (payload) {
+              var el = document.getElementById('ynow_pts_redeem_status');
+              if (!el || !payload) return;
+              el.textContent = payload.text || '';
+              if (payload.ok === true) el.setAttribute('data-ok', '1');
+              else if (payload.ok === false) el.setAttribute('data-ok', '0');
+              else el.setAttribute('data-ok', '');
             });
             addHandler('ynowPtsBanner', function (payload) {
               if (!payload) return;

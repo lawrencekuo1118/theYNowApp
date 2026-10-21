@@ -1216,12 +1216,25 @@ ynow_auth_css <- function() {
     "  line-height: 1.5;",
     "  color: var(--ynow-maint-muted, #666);",
     "}",
-    ".ynow-pts-topup .ynow-pts-topup-cta[disabled],",
-    ".ynow-pts-topup .ynow-pts-topup-cta:disabled {",
-    "  cursor: not-allowed;",
-    "  opacity: 0.7;",
-    "  pointer-events: none;",
+    ".ynow-pts-topup .ynow-pts-topup-help {",
+    "  margin: 0 0 10px 0;",
+    "  font-size: 12px;",
+    "  line-height: 1.45;",
+    "  color: var(--ynow-maint-muted, #666);",
     "}",
+    ".ynow-pts-topup .ynow-pts-redeem-row {",
+    "  display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end;",
+    "  margin: 0 0 8px 0;",
+    "}",
+    ".ynow-pts-topup .ynow-pts-redeem-field { flex: 1 1 180px; min-width: 160px; }",
+    ".ynow-pts-topup .ynow-pts-redeem-field label {",
+    "  display: block; font-size: 12px; font-weight: 600; margin: 0 0 4px;",
+    "}",
+    ".ynow-pts-topup .ynow-pts-redeem-status {",
+    "  font-size: 12px; min-height: 1.2em; color: var(--ynow-maint-muted, #666);",
+    "}",
+    ".ynow-pts-topup .ynow-pts-redeem-status[data-ok='1'] { color: #1e7a46; }",
+    ".ynow-pts-topup .ynow-pts-redeem-status[data-ok='0'] { color: #a94442; }",
     "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) #ynow_pa_body { display:none !important; }",
     "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) #ynow_pa_guest_gate { display:block !important; }",
     "#ynow_pa_guest_gate { display:none; }",
@@ -1961,19 +1974,60 @@ ynow_admin_panel_ui <- function(user, locale = "zh-TW", build_version = "",
               id = "ynow_pts_topup_copy",
               .lab(
                 "pts_topup_copy",
-                "A paid points top-up lane will land here. Checkout is not available yet — no charge will be taken from this page."
+                paste0(
+                  "Redeem a top-up code to credit FYN or PYN on this account. ",
+                  "Card checkout is not available — this page never charges a payment method. ",
+                  "FYN is free points (welcome gift / daily check-in); PYN is paid points from redeem codes or an admin grant."
+                )
               )
             ),
-            tags$button(
-              id = "ynow_pts_topup_cta",
-              type = "button",
-              class = "btn btn-default btn-sm ynow-pts-topup-cta",
-              disabled = "disabled",
-              `aria-disabled` = "true",
-              tags$span(
-                id = "ynow_pts_topup_cta_label",
-                .lab("pts_topup_cta", "Coming soon")
+            tags$p(
+              class = "ynow-pts-topup-help",
+              id = "ynow_pts_topup_help",
+              .lab(
+                "pts_topup_help",
+                "Enter a redeem code from the operator. Each code can be used once per account. Open Points ledger to confirm the credit."
               )
+            ),
+            tags$div(
+              class = "ynow-pts-redeem-row",
+              tags$div(
+                class = "ynow-pts-redeem-field",
+                tags$label(
+                  `for` = "ynow_pts_redeem_code",
+                  tags$span(
+                    id = "ynow_pts_redeem_label",
+                    .lab("pts_topup_redeem_label", "Redeem code")
+                  )
+                ),
+                tags$input(
+                  id = "ynow_pts_redeem_code",
+                  type = "text",
+                  class = "form-control ynow-auth-input",
+                  value = "",
+                  autocomplete = "off",
+                  spellcheck = "false",
+                  maxlength = "64",
+                  placeholder = .lab(
+                    "pts_topup_redeem_placeholder",
+                    "Enter code"
+                  )
+                )
+              ),
+              actionButton(
+                "ynow_pts_redeem_submit",
+                label = tags$span(
+                  id = "ynow_pts_redeem_submit_label",
+                  .lab("pts_topup_redeem_cta", "Redeem")
+                ),
+                class = "btn-primary btn-sm ynow-maint-btn-primary ynow-pts-redeem-cta"
+              )
+            ),
+            tags$p(
+              class = "ynow-pts-redeem-status",
+              id = "ynow_pts_redeem_status",
+              `data-ok` = "",
+              ""
             )
           ),
           tags$h4(
@@ -3466,7 +3520,20 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
         pts_ledger_intro = tryCatch(ui_str("pts_ledger_intro", loc), error = function(e) ""),
         pts_topup_title = tryCatch(ui_str("pts_topup_title", loc), error = function(e) "Points top-up"),
         pts_topup_copy = tryCatch(ui_str("pts_topup_copy", loc), error = function(e) ""),
-        pts_topup_cta = tryCatch(ui_str("pts_topup_cta", loc), error = function(e) "Coming soon")
+        pts_topup_help = tryCatch(ui_str("pts_topup_help", loc), error = function(e) ""),
+        pts_topup_redeem_label = tryCatch(
+          ui_str("pts_topup_redeem_label", loc),
+          error = function(e) "Redeem code"
+        ),
+        pts_topup_redeem_placeholder = tryCatch(
+          ui_str("pts_topup_redeem_placeholder", loc),
+          error = function(e) "Enter code"
+        ),
+        pts_topup_redeem_cta = tryCatch(
+          ui_str("pts_topup_redeem_cta", loc),
+          error = function(e) "Redeem"
+        ),
+        pts_topup_cta = tryCatch(ui_str("pts_topup_redeem_cta", loc), error = function(e) "Redeem")
       )
     )
   })

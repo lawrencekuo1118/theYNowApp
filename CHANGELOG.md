@@ -13,6 +13,10 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 
 ## [Unreleased]
 
+### Added
+
+- **Account points top-up / 點數儲值**: Redeem-code path on Account overview credits FYN or PYN via the existing points ledger (no payment processor). Shows FYN/PYN rules; en-US + zh-TW. Optional `YNOW_POINTS_REDEEM_SEED` for ops codes. Admin grant path unchanged.
+
 ### Changed
 
 - CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_26.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).

@@ -216,8 +216,10 @@ check("account panel reserves points top-up slot", {
   html <- paste(as.character(p), collapse = "\n")
   grepl("ynow_pts_topup_slot", html, fixed = TRUE) &&
     grepl("點數儲值", html, fixed = TRUE) &&
-    grepl("即將開放", html, fixed = TRUE) &&
-    grepl("disabled", html, fixed = TRUE) &&
+    grepl("ynow_pts_redeem_code", html, fixed = TRUE) &&
+    grepl("ynow_pts_redeem_submit", html, fixed = TRUE) &&
+    grepl("兌換", html, fixed = TRUE) &&
+    !grepl("即將開放", html, fixed = TRUE) &&
     !grepl("stripe|paypal|checkout.session", html, ignore.case = TRUE)
 })
 check("points panel flat block + theme", {
