@@ -7091,6 +7091,10 @@ ui <- dashboardPage(
         body:not(.ynow-sysadmin-on) .ynow-snap-defaults-body {
           display: none !important;
         }
+        /* Developer explainability / audit Why panels: sysadmin portal only */
+        body:not(.ynow-sysadmin-on) .ynow-admin-dev-explain {
+          display: none !important;
+        }
         .ynow-snap-defaults-locked {
           display: none;
           margin: 0 0 12px 0;
@@ -18237,7 +18241,7 @@ ui <- dashboardPage(
         tabName = "get_started",
         tags$div(
           id = "ynow_explain_core_callout",
-          class = "ynow-explain-core-callout ynow-full-only",
+          class = "ynow-explain-core-callout ynow-full-only ynow-admin-dev-explain",
           style = paste0(
             "margin:0 0 14px 0; padding:10px 14px; ",
             "border:1px solid #c5d8ea; border-left:4px solid #0C5484; ",
