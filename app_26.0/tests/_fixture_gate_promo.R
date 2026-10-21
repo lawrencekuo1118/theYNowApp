@@ -127,7 +127,7 @@ zh_gate <- function(feature) {
       '<li><span class="ynow-gate-promo-b2">%s</span></li>',
       '<li><span class="ynow-gate-promo-b3">%s</span></li></ul></div>',
       '<div class="ynow-gate-demo"><p class="ynow-gate-demo-caption">%s</p>',
-      '<video class="ynow-gate-demo-video" controls muted playsinline preload="metadata" autoplay loop>',
+      '<video class="ynow-gate-demo-video" controls muted playsinline preload="none" loop>',
       '<source src="file://%s/www/demos/%s.webm" type="video/webm">',
       '<source src="file://%s/www/demos/%s.mp4" type="video/mp4"></video></div>',
       '<details class="ynow-gate-faq" open><summary class="ynow-gate-faq__summary">',
