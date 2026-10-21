@@ -7,5 +7,5 @@ commit=21547d07a8830242e296126eb621c5f77c54a899
 short=21547d07
 message=chore: bump display version to v26.07
 captured_at=2026-10-21T11:36:08Z
-display_version=v26.07
+display_version=v26.08
 note=Canonical live line is app_26.0. Bundle 12720126: disclosed order status only on Business Breakdown (PR #368). Secrets only in gitignored .Renviron restored from prior live bundle; no secret values in git.
