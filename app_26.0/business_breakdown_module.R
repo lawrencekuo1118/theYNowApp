@@ -534,7 +534,8 @@ business_breakdown_lab_ui <- function(id = "bblab") {
               class = "help-block",
               paste0(
                 "Three disclosed facts: order quantity, major suppliers, and major-customer ",
-                "revenue mix. Filings and earnings-call remarks are labeled. Nothing is estimated."
+                "revenue mix. Taiwan source priority is MOPS, then company IR, then a statement ",
+                "cross-check. Broker and industry sources are estimates only and do not fill order amounts."
               )
             ),
             actionButton(
@@ -680,11 +681,15 @@ bblab_order_research_panel_ui <- function(pack, locale = "en", started = FALSE) 
     bid <- .bblab_chr(bucket$id, "")
     bits <- lapply(bucket$facts %||% list(), function(f) {
       if (!is.finite(.bblab_num(f$value))) return(NULL)
-      prov <- msg(paste0("bblab_or_prov_", .bblab_chr(f$source, "filing")))
+      src <- .bblab_chr(f$source, "")
+      prov <- msg(if (nzchar(src)) paste0("bblab_or_prov_", src) else "bblab_or_prov_filing")
+      cred_id <- .bblab_chr(f$credibility, "")
+      cred <- if (nzchar(cred_id)) msg(paste0("bblab_or_cred_", cred_id)) else ""
       tags$li(
         tags$b(paste0(.or_fact_label(f, locale), ": ")),
         .or_fmt_value(f$value, f$unit),
-        tags$span(class = "ynow-bblab-or__prov", paste0(" · ", prov))
+        tags$span(class = "ynow-bblab-or__prov", paste0(" · ", prov)),
+        if (nzchar(cred)) tags$span(class = "ynow-bblab-or__cred", paste0(" · ", cred)) else NULL
       )
     })
     bits <- Filter(Negate(is.null), bits)
@@ -733,8 +738,52 @@ bblab_order_research_panel_ui <- function(pack, locale = "en", started = FALSE) 
       tags$ul(bits, ev_bits)
     )
   })
+  stack_bits <- lapply(pack$source_stack %||% list(), function(t) {
+    tid <- .bblab_chr(t$id, "")
+    label <- msg(paste0("bblab_or_prov_", tid))
+    cred <- msg(paste0("bblab_or_cred_", .bblab_chr(t$credibility, "")))
+    state <- msg(if (isTRUE(t$contributed)) "bblab_or_stack_contributed" else "bblab_or_stack_idle")
+    amt <- msg(if (isTRUE(t$can_fill_amount)) "bblab_or_stack_amount_ok" else "bblab_or_stack_amount_no")
+    tags$li(
+      class = "ynow-bblab-or__tier",
+      `data-tier` = tid,
+      tags$span(class = "ynow-bblab-or__prio", as.character(.bblab_num(t$priority))),
+      " ",
+      tags$b(label),
+      tags$span(class = "ynow-bblab-or__cred", paste0(" · ", cred)),
+      tags$span(class = "ynow-bblab-or__stack-state", paste0(" · ", state)),
+      tags$span(class = "ynow-bblab-or__stack-amt", paste0(" · ", amt))
+    )
+  })
+  x_bits <- lapply(pack$cross_check %||% list(), function(item) {
+    iid <- .bblab_chr(item$id, "")
+    label <- msg(paste0("bblab_or_xcheck_", iid))
+    val <- if (is.finite(.bblab_num(item$value))) {
+      .or_fmt_value(item$value, item$unit)
+    } else {
+      .or_gap_text(item$gap, locale)
+    }
+    note <- msg(.bblab_chr(item$note_key, paste0("bblab_or_xcheck_note_", iid)))
+    tags$li(
+      class = "ynow-bblab-or__xrow",
+      `data-xcheck` = iid,
+      tags$b(paste0(label, ": ")),
+      val,
+      tags$span(class = "ynow-bblab-or__xnote", paste0(" · ", note))
+    )
+  })
   tagList(
     tags$div(class = "ynow-bblab-or__focuses", focus),
+    tags$div(
+      class = "ynow-bblab-or__sources",
+      tags$p(tags$b(msg("bblab_or_sources_title"))),
+      tags$ul(stack_bits)
+    ),
+    tags$div(
+      class = "ynow-bblab-or__xcheck",
+      tags$p(tags$b(msg("bblab_or_xcheck_title"))),
+      tags$ul(x_bits)
+    ),
     tags$details(
       class = "ynow-bblab-or__secondary",
       tags$summary(msg("bblab_or_secondary")),

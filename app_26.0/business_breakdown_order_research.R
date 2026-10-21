@@ -1,9 +1,21 @@
-# Order research pack — six layers from disclosed filings and statements.
+# Order research pack — disclosed facts with a TW-first source stack.
 # One builder. Missing backlog / bookings stay empty. Never invent amounts.
 
 if (!exists("%||%", mode = "function")) {
   `%||%` <- function(a, b) if (is.null(a)) b else a
 }
+
+# Priority registry. can_fill_amount=FALSE means corroboration / estimate only.
+BBLAB_ORDER_SOURCE_STACK <- list(
+  list(id = "mops_material", priority = 1L, credibility = "confirmed", can_fill_amount = TRUE),
+  list(id = "mops_filing", priority = 2L, credibility = "confirmed", can_fill_amount = TRUE),
+  list(id = "sec_filing", priority = 2L, credibility = "confirmed", can_fill_amount = TRUE),
+  list(id = "company_ir", priority = 3L, credibility = "management", can_fill_amount = TRUE),
+  list(id = "earnings_call", priority = 4L, credibility = "management", can_fill_amount = TRUE),
+  list(id = "statement_proxy", priority = 5L, credibility = "proxy", can_fill_amount = FALSE),
+  list(id = "broker_estimate", priority = 6L, credibility = "estimate", can_fill_amount = FALSE),
+  list(id = "industry_proxy", priority = 7L, credibility = "estimate", can_fill_amount = FALSE)
+)
 
 BBLAB_ORDER_RESEARCH_LAYER_KEYS <- c(
   "scale", "quality", "conversion", "profit", "cash", "valuation"
@@ -229,15 +241,31 @@ bblab_order_research_industry_profile <- function(industry_key = NULL,
   )
 }
 
-.or_table_source <- function(tbl) {
-  raw <- tolower(.or_chr(if (is.list(tbl)) tbl$source %||% tbl$provenance else tbl, ""))
-  if (raw %in% c("earnings", "earnings_call", "transcript", "ir_deck", "management")) {
-    return("earnings_call")
+.or_source_tier <- function(raw) {
+  s <- tolower(.or_chr(raw, ""))
+  if (!nzchar(s)) return("mops_filing")
+  if (grepl("mops_material|material_info|重大訊息", s)) return("mops_material")
+  if (grepl("mops", s)) return("mops_filing")
+  if (grepl("sec", s)) return("sec_filing")
+  if (s %in% c("company_ir", "ir", "ir_deck") || grepl("\\bir\\b", s)) return("company_ir")
+  if (s %in% c("earnings", "earnings_call", "transcript", "management")) return("earnings_call")
+  if (grepl("broker|estimate|research", s)) return("broker_estimate")
+  if (grepl("industry|customs|supply.?chain", s)) return("industry_proxy")
+  if (grepl("statement|proxy", s)) return("statement_proxy")
+  if (identical(s, "filing")) return("mops_filing")
+  "mops_filing"
+}
+
+.or_tier_meta <- function(tier_id) {
+  for (t in BBLAB_ORDER_SOURCE_STACK) {
+    if (identical(t$id, tier_id)) return(t)
   }
-  if (grepl("mops", raw)) return("mops")
-  if (grepl("sec", raw)) return("sec")
-  if (nzchar(raw)) return("filing")
-  "filing"
+  list(id = tier_id, priority = 99L, credibility = "estimate", can_fill_amount = FALSE)
+}
+
+.or_table_source <- function(tbl) {
+  raw <- if (is.list(tbl)) tbl$source %||% tbl$provenance else tbl
+  .or_source_tier(raw)
 }
 
 .or_disclosures_from_tables <- function(tables) {
@@ -247,6 +275,7 @@ bblab_order_research_industry_profile <- function(industry_key = NULL,
     if (!is.list(tbl)) next
     kind <- tolower(.or_chr(tbl$kind, ""))
     src <- .or_table_source(tbl)
+    if (!isTRUE(.or_tier_meta(src)$can_fill_amount)) next
     if (kind %in% c("backlog", "rpo", "remaining_performance")) {
       pair <- .or_table_latest_pair(tbl)
       if (is.finite(pair$current)) out$backlog <- pair$current
@@ -269,16 +298,42 @@ bblab_order_research_industry_profile <- function(industry_key = NULL,
   out
 }
 
-.or_focus_fact <- function(name, value, unit, source, label_key = NA_character_) {
+.or_focus_fact <- function(name, value, unit, source, label_key = NA_character_,
+                           order_type = "unknown", url = NA_character_) {
   v <- .or_num(value)
+  tier <- .or_source_tier(source)
+  meta <- .or_tier_meta(tier)
   list(
     name = .or_chr(name, ""),
     label_key = .or_chr(label_key, NA_character_),
     value = if (is.finite(v)) v else NA_real_,
     unit = unit,
-    source = .or_table_source(list(source = source)),
+    source = tier,
+    credibility = .or_chr(meta$credibility, "estimate"),
+    order_type = .or_chr(order_type, "unknown"),
+    url = .or_chr(url, NA_character_),
     status = if (is.finite(v) || nzchar(.or_chr(name, ""))) "REPORTED" else "UNAVAILABLE"
   )
+}
+
+.or_dedupe_facts <- function(facts) {
+  if (!length(facts)) return(list())
+  seen <- character(0)
+  out <- list()
+  for (f in facts) {
+    if (!is.finite(.or_num(f$value))) next
+    key <- paste(
+      tolower(.or_chr(f$name, "")),
+      sprintf("%.8g", .or_num(f$value)),
+      .or_chr(f$unit, ""),
+      .or_chr(f$order_type, "unknown"),
+      sep = "|"
+    )
+    if (key %in% seen) next
+    seen <- c(seen, key)
+    out[[length(out) + 1L]] <- f
+  }
+  out
 }
 
 .or_named_amount_facts <- function(tbl, source = NULL) {
@@ -366,50 +421,79 @@ bblab_order_research_industry_profile <- function(industry_key = NULL,
   facts
 }
 
+.or_filter_amount_tiers <- function(facts) {
+  Filter(function(f) {
+    meta <- .or_tier_meta(f$source)
+    isTRUE(meta$can_fill_amount)
+  }, facts %||% list())
+}
+
+.or_material_facts <- function(rows) {
+  if (!is.list(rows)) return(list())
+  facts <- list()
+  for (r in rows) {
+    if (!is.list(r)) next
+    nm <- .or_chr(r$name %||% r$label %||% r$title, "")
+    amt <- .or_num(r$amount %||% r$value %||% r$revenue)
+    if (!is.finite(amt)) next
+    facts[[length(facts) + 1L]] <- .or_focus_fact(
+      if (nzchar(nm)) nm else "",
+      amt, "amount", "mops_material",
+      label_key = if (!nzchar(nm)) "bblab_or_metric_bookings" else NA_character_,
+      order_type = .or_chr(r$order_type, "award"),
+      url = .or_chr(r$url, NA_character_)
+    )
+  }
+  facts
+}
+
 #' Three disclosed buckets: order quantity, major suppliers, major-customer revenue mix.
 .or_build_focus <- function(inputs, order_concentration, disclosures, tables) {
   inputs <- inputs %||% list()
   disclosures <- disclosures %||% list()
   call <- disclosures$earnings_call %||% list()
+  ir <- disclosures$company_ir %||% list()
   orders <- list()
-  push_order <- function(label_key, value, source) {
+  push_order <- function(label_key, value, source, order_type = "unknown") {
     v <- .or_num(value)
     if (!is.finite(v)) return()
     orders[[length(orders) + 1L]] <<- .or_focus_fact(
-      "", v, "amount", source, label_key = label_key
+      "", v, "amount", source, label_key = label_key, order_type = order_type
     )
   }
-  push_order("bblab_or_metric_backlog", inputs$backlog, inputs$backlog_source %||% "filing")
-  push_order("bblab_or_metric_bookings", inputs$bookings, inputs$bookings_source %||% "filing")
+  push_order("bblab_or_metric_backlog", inputs$backlog, inputs$backlog_source %||% "mops_filing")
+  push_order("bblab_or_metric_bookings", inputs$bookings, inputs$bookings_source %||% "mops_filing")
   if (is.finite(.or_num(call$backlog))) {
-    orders[[length(orders) + 1L]] <- .or_focus_fact(
-      "", call$backlog, "amount", "earnings_call", label_key = "bblab_or_metric_backlog"
-    )
+    push_order("bblab_or_metric_backlog", call$backlog, "earnings_call", "guidance")
   }
   if (is.finite(.or_num(call$bookings))) {
-    orders[[length(orders) + 1L]] <- .or_focus_fact(
-      "", call$bookings, "amount", "earnings_call", label_key = "bblab_or_metric_bookings"
-    )
+    push_order("bblab_or_metric_bookings", call$bookings, "earnings_call", "guidance")
   }
+  if (is.finite(.or_num(ir$backlog))) {
+    push_order("bblab_or_metric_backlog", ir$backlog, "company_ir", "guidance")
+  }
+  if (is.finite(.or_num(ir$bookings))) {
+    push_order("bblab_or_metric_bookings", ir$bookings, "company_ir", "guidance")
+  }
+  orders <- c(orders, .or_material_facts(disclosures$mops_material %||% disclosures$material_awards))
   for (tbl in tables %||% list()) {
     if (!is.list(tbl)) next
     kind <- tolower(.or_chr(tbl$kind, ""))
-    if (identical(.or_table_source(tbl), "earnings_call") &&
-        kind %in% c("backlog", "rpo", "bookings", "orders_received", "orders", "order_concentration")) {
-      if (kind %in% c("orders", "order_concentration")) {
-        orders <- c(orders, .or_named_amount_facts(tbl))
-      }
-    } else if (kind %in% c("orders", "order_concentration")) {
+    tier <- .or_table_source(tbl)
+    if (!isTRUE(.or_tier_meta(tier)$can_fill_amount)) next
+    if (kind %in% c("orders", "order_concentration", "material", "award")) {
       orders <- c(orders, .or_named_amount_facts(tbl))
     }
   }
   orders <- c(orders, .or_call_party_facts(call$order_lines, "earnings_call"))
+  orders <- .or_dedupe_facts(.or_filter_amount_tiers(orders))
 
   suppliers <- .or_facts_from_slices(order_concentration$supplier_concentration)
   customers <- .or_facts_from_slices(order_concentration$customer_concentration)
-  # Filing counterparties already sit on the concentration pack. Call tables are extra facts.
   for (tbl in tables %||% list()) {
-    if (!is.list(tbl) || !identical(.or_table_source(tbl), "earnings_call")) next
+    if (!is.list(tbl)) next
+    tier <- .or_table_source(tbl)
+    if (!isTRUE(.or_tier_meta(tier)$can_fill_amount)) next
     kind <- tolower(.or_chr(tbl$kind, ""))
     if (kind %in% c("supplier", "supplier_concentration", "suppliers")) {
       suppliers <- c(suppliers, .or_named_amount_facts(tbl))
@@ -419,6 +503,8 @@ bblab_order_research_industry_profile <- function(industry_key = NULL,
   }
   suppliers <- c(suppliers, .or_call_party_facts(call$suppliers, "earnings_call"))
   customers <- c(customers, .or_call_party_facts(call$customers, "earnings_call"))
+  suppliers <- .or_dedupe_facts(.or_filter_amount_tiers(suppliers))
+  customers <- .or_dedupe_facts(.or_filter_amount_tiers(customers))
 
   bucket <- function(id, facts, gap) {
     finite <- vapply(facts, function(f) is.finite(.or_num(f$value)), logical(1))
@@ -433,6 +519,47 @@ bblab_order_research_industry_profile <- function(industry_key = NULL,
     bucket("orders", orders, "ORDERS_BACKLOG_UNDISCLOSED"),
     bucket("suppliers", suppliers, "ORDERS_SUPPLIER_DISCLOSURE_MISSING"),
     bucket("customers", customers, "ORDERS_CUSTOMER_DISCLOSURE_MISSING")
+  )
+}
+
+.or_build_source_stack <- function(focus) {
+  used <- unique(unlist(lapply(focus %||% list(), function(b) {
+    vapply(b$facts %||% list(), function(f) .or_chr(f$source, ""), character(1))
+  }), use.names = FALSE))
+  used <- used[nzchar(used)]
+  lapply(BBLAB_ORDER_SOURCE_STACK, function(t) {
+    list(
+      id = t$id,
+      priority = t$priority,
+      credibility = t$credibility,
+      can_fill_amount = isTRUE(t$can_fill_amount),
+      contributed = t$id %in% used
+    )
+  })
+}
+
+.or_build_cross_check <- function(inputs) {
+  inputs <- inputs %||% list()
+  item <- function(id, value) {
+    v <- .or_num(value)
+    list(
+      id = id,
+      value = if (is.finite(v)) v else NA_real_,
+      unit = "amount",
+      source = "statement_proxy",
+      credibility = "proxy",
+      status = if (is.finite(v)) "REPORTED" else "UNAVAILABLE",
+      gap = if (is.finite(v)) NA_character_ else "ORDERS_CASH_ITEM_UNDISCLOSED",
+      note_key = paste0("bblab_or_xcheck_note_", id)
+    )
+  }
+  list(
+    item("contract_liability", inputs$deferred_revenue),
+    item("rpo", inputs$backlog),
+    item("contract_assets", inputs$contract_assets),
+    item("inventory", inputs$inventory),
+    item("accounts_receivable", inputs$accounts_receivable),
+    item("operating_cash_flow", inputs$operating_cash_flow)
   )
 }
 
@@ -497,6 +624,7 @@ bblab_order_research_empty <- function(gaps = character(0)) {
       evidence = list()
     )
   }
+  focus <- .or_build_focus(list(), NULL, NULL, list())
   list(
     layers = lapply(seq_along(BBLAB_ORDER_RESEARCH_LAYER_KEYS), function(i) {
       layer(i, BBLAB_ORDER_RESEARCH_LAYER_KEYS[[i]])
@@ -506,7 +634,9 @@ bblab_order_research_empty <- function(gaps = character(0)) {
     industry_primary = character(0),
     sources = list(),
     gaps = unique(as.character(gaps)),
-    focus = .or_build_focus(list(), NULL, NULL, list()),
+    focus = focus,
+    source_stack = .or_build_source_stack(focus),
+    cross_check = .or_build_cross_check(list()),
     chart = list(multiples = list(), rates = list(), orders = list(), customers = list())
   )
 }
@@ -908,6 +1038,8 @@ bblab_build_order_research_pack <- function(order_concentration = NULL,
     sources = sources,
     gaps = unique(gaps),
     focus = focus,
+    source_stack = .or_build_source_stack(focus),
+    cross_check = .or_build_cross_check(inputs),
     chart = chart
   )
 }
