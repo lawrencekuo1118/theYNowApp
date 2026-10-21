@@ -12059,22 +12059,19 @@ ui <- dashboardPage(
                 if (window.jQuery) jQuery('#ynow_auth_modal').modal('hide');
               } catch (eHide) {}
               var tab = '';
+              var ticker = '';
               try {
                 tab = String(payload.restore_tab || sessionStorage.getItem('ynow_pre_oauth_tab') || '');
+                ticker = String(payload.restore_ticker || '');
                 sessionStorage.removeItem('ynow_oauth_code_verifier');
                 sessionStorage.removeItem('ynow_pre_oauth_tab');
               } catch (eClr) {}
               /* Sys. Admin is guest/ops-only: never restore testing after sign-in. */
               if (payload.ok && tab === 'testing') tab = 'home';
-              if (payload.ok && tab && window.Shiny && Shiny.setInputValue) {
-                try {
-                  if (typeof window.ynowShowSidebarFootTab === 'function' &&
-                      (tab === 'snapshot' || tab === 'feedback')) {
-                    window.ynowShowSidebarFootTab(tab);
-                  } else {
-                    Shiny.setInputValue('sidebar_tabs', tab, { priority: 'event' });
-                  }
-                } catch (eTab) {}
+              if (payload.ok) {
+                try { ynowLastUiWrite(tab || null, ticker || null); } catch (eUiW) {}
+                if (tab) ynowApplyRestoredTab(tab);
+                if (ticker) ynowApplyRestoredTicker(ticker);
               }
             });
             /* Collapse sidebar, then show login modal (Sign in / PA gate).
@@ -12117,6 +12114,9 @@ ui <- dashboardPage(
             /* Durable browser resume: localStorage token survives tab/browser close.
                Cleared only on Sign out / revoke / expired resume. */
             var YNOW_AUTH_RESUME_KEY = 'ynow_auth_resume_v1';
+            /* Last member UI surface (tab + ticker). Survives Sign out; used for
+               early restore when a resume token is present. */
+            var YNOW_LAST_UI_KEY = 'ynow_last_ui_v1';
             var ynowAuthResumeSent = false;
             var ynowAuthPersistWrite = function (token) {
               try {
@@ -12128,12 +12128,69 @@ ui <- dashboardPage(
               try { return localStorage.getItem(YNOW_AUTH_RESUME_KEY) || ''; }
               catch (eRead) { return ''; }
             };
+            var ynowLastUiRead = function () {
+              try {
+                var raw = localStorage.getItem(YNOW_LAST_UI_KEY) || '';
+                if (!raw) return { tab: '', ticker: '' };
+                var o = JSON.parse(raw);
+                return {
+                  tab: o && o.tab ? String(o.tab) : '',
+                  ticker: o && o.ticker ? String(o.ticker) : ''
+                };
+              } catch (eUi) { return { tab: '', ticker: '' }; }
+            };
+            var ynowLastUiWrite = function (tab, ticker) {
+              try {
+                var cur = ynowLastUiRead();
+                var next = {
+                  tab: (tab != null && String(tab)) ? String(tab) : (cur.tab || ''),
+                  ticker: (ticker != null && String(ticker)) ? String(ticker) : (cur.ticker || '')
+                };
+                if (next.tab === 'testing') next.tab = 'home';
+                localStorage.setItem(YNOW_LAST_UI_KEY, JSON.stringify(next));
+              } catch (eW) {}
+            };
+            window.ynowLastUiWrite = ynowLastUiWrite;
+            window.ynowLastUiRead = ynowLastUiRead;
+            var ynowApplyRestoredTab = function (tab) {
+              tab = String(tab || '');
+              if (!tab || tab === 'testing') return;
+              try {
+                if (typeof window.ynowShowSidebarFootTab === 'function' &&
+                    (tab === 'snapshot' || tab === 'feedback')) {
+                  window.ynowShowSidebarFootTab(tab);
+                } else if (typeof window.ynowGotoTab === 'function') {
+                  window.ynowGotoTab(tab);
+                } else if (window.Shiny && Shiny.setInputValue) {
+                  Shiny.setInputValue('sidebar_tabs', tab, { priority: 'event' });
+                }
+              } catch (eTab) {}
+            };
+            var ynowApplyRestoredTicker = function (ticker) {
+              var tk = String(ticker || '');
+              if (!tk || !(window.Shiny && Shiny.setInputValue)) return;
+              try {
+                Shiny.setInputValue('ynow_auth_restore_ticker', tk, { priority: 'event' });
+                var sc = document.getElementById('sc');
+                if (sc) {
+                  sc.value = tk;
+                  try {
+                    if (window.jQuery) jQuery(sc).trigger('change');
+                  } catch (eSc) {}
+                }
+              } catch (eTk) {}
+            };
             var ynowAuthResumeOffer = function () {
               if (ynowAuthResumeSent) return;
               if (!window.Shiny || !Shiny.setInputValue) return;
               var tok = ynowAuthPersistRead();
               if (!tok) return;
               ynowAuthResumeSent = true;
+              /* Apply last UI early so first authed paint is closer to last screen. */
+              try {
+                var ui = ynowLastUiRead();
+                if (ui.tab) ynowApplyRestoredTab(ui.tab);
+              } catch (eEarly) {}
               Shiny.setInputValue('ynow_auth_resume_token', String(tok), { priority: 'event' });
             };
             addHandler('ynowAuthPersist', function (payload) {
@@ -12520,6 +12577,10 @@ ui <- dashboardPage(
               var a = ynowTabAnchor(tab);
               if (a) {
                 try { a.click(); } catch (e) {}
+              }
+              if (document.body && document.body.classList.contains('ynow-authed') &&
+                  typeof window.ynowLastUiWrite === 'function') {
+                try { window.ynowLastUiWrite(tab, null); } catch (eUi) {}
               }
             }
             window.ynowGotoTab = gotoTab;

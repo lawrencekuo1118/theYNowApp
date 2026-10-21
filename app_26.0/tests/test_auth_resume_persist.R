@@ -84,6 +84,12 @@ check("client localStorage key", grepl("ynow_auth_resume_v1", ui, fixed = TRUE))
 check("client persist handler", grepl("ynowAuthPersist", ui, fixed = TRUE))
 check("client offers resume on connect", grepl("ynow_auth_resume_token", ui, fixed = TRUE) &&
         grepl("ynowAuthResumeOffer", ui, fixed = TRUE))
+check("client last UI localStorage key", grepl("ynow_last_ui_v1", ui, fixed = TRUE))
+check("resume restores last UI via PostLogin",
+      grepl("restore_ticker", auth, fixed = TRUE) &&
+        grepl("ynowAuthPostLogin", auth, fixed = TRUE) &&
+        grepl(".load_last_ui_surface", auth, fixed = TRUE) &&
+        grepl(".persist_last_ui_surface", auth, fixed = TRUE))
 
 if (fail > 0L) {
   cat("FAIL count=", fail, "\n", sep = "")

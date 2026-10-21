@@ -425,6 +425,31 @@ server <- function(input, output, session) {
     if (!is.list(u)) return("")
     as.character(u$id %||% "")[1]
   }
+
+  # Persist last member screen (tab) while signed in — survives Sign out / resume.
+  observeEvent(input$sidebar_tabs, {
+    logged <- tryCatch(isTRUE(ynow_auth$is_logged_in()), error = function(e) FALSE)
+    if (!isTRUE(logged)) return()
+    if (!exists("ynow_prefs_update_last_ui_surface", mode = "function")) return()
+    tab <- as.character(input$sidebar_tabs %||% "")[1]
+    if (!nzchar(tab) || identical(tab, "testing")) return()
+    if (identical(tab, "business_breakdown_lab")) tab <- "company_advance"
+    uid <- tryCatch(.ynow_pinned_auth_uid(), error = function(e) "")
+    if (!nzchar(uid %||% "")) return()
+    tryCatch(
+      ynow_prefs_update_last_ui_surface(uid, tab = tab),
+      error = function(e) NULL
+    )
+  }, ignoreInit = TRUE)
+
+  # Client/post-login asks server to re-run the last ticker search.
+  observeEvent(input$ynow_auth_restore_ticker, {
+    tk <- as.character(input$ynow_auth_restore_ticker %||% "")[1]
+    if (!nzchar(tk)) return()
+    logged <- tryCatch(isTRUE(ynow_auth$is_logged_in()), error = function(e) FALSE)
+    if (!isTRUE(logged)) return()
+    tryCatch(.ynow_fire_ticker_search(tk, goto_tab = NULL), error = function(e) NULL)
+  }, ignoreInit = TRUE)
   .ynow_pinned_sync_guest_client <- function(pins) {
     tryCatch(
       session$sendCustomMessage(
@@ -3421,6 +3446,16 @@ server <- function(input, output, session) {
     if (!(tk %in% unname(base))) {
       disp <- display_ticker_for_market(tk, mode)
       sc_datalist_choices(c(stats::setNames(tk, disp), base))
+    }
+    logged <- tryCatch(isTRUE(ynow_auth$is_logged_in()), error = function(e) FALSE)
+    if (isTRUE(logged) && exists("ynow_prefs_update_last_ui_surface", mode = "function")) {
+      uid <- tryCatch(.ynow_pinned_auth_uid(), error = function(e) "")
+      if (nzchar(uid %||% "")) {
+        tryCatch(
+          ynow_prefs_update_last_ui_surface(uid, ticker = tk),
+          error = function(e) NULL
+        )
+      }
     }
   }, ignoreInit = TRUE)
   

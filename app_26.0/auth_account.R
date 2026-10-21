@@ -2524,7 +2524,54 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
     )
   }
 
+  .persist_last_ui_surface <- function(user = NULL, tab = NULL, ticker = NULL) {
+    if (!exists("ynow_prefs_set_last_ui_surface", mode = "function") &&
+          !exists("ynow_prefs_update_last_ui_surface", mode = "function")) {
+      return(invisible(NULL))
+    }
+    u <- user
+    if (is.null(u)) u <- tryCatch(isolate(account_user()), error = function(e) NULL)
+    uid <- as.character(u$id %||% "")[1]
+    if (!nzchar(uid)) return(invisible(NULL))
+    tab_now <- as.character(tab %||% isolate(input$sidebar_tabs) %||% "")[1]
+    # Sys. Admin is ops-only; never overwrite the member's last screen with it
+    # (view-as exit can land on testing before Sign out reads the tab).
+    if (identical(tab_now, "testing")) tab_now <- NULL
+    tk_now <- as.character(ticker %||% "")[1]
+    if (!nzchar(tk_now) && exists("ynow_prefs_get_last_ui_surface", mode = "function")) {
+      prev <- tryCatch(ynow_prefs_get_last_ui_surface(uid), error = function(e) NULL)
+      if (is.list(prev)) tk_now <- as.character(prev$ticker %||% "")[1]
+    }
+    tryCatch({
+      if (exists("ynow_prefs_update_last_ui_surface", mode = "function")) {
+        if (is.null(tab_now)) {
+          ynow_prefs_update_last_ui_surface(uid, ticker = tk_now)
+        } else {
+          ynow_prefs_update_last_ui_surface(uid, tab = tab_now, ticker = tk_now)
+        }
+      } else if (!is.null(tab_now)) {
+        ynow_prefs_set_last_ui_surface(uid, list(tab = tab_now, ticker = tk_now))
+      }
+    }, error = function(e) NULL)
+    invisible(NULL)
+  }
+
+  .load_last_ui_surface <- function(user = NULL) {
+    empty <- list(tab = "", ticker = "")
+    if (!exists("ynow_prefs_get_last_ui_surface", mode = "function")) return(empty)
+    u <- user
+    if (is.null(u)) u <- tryCatch(isolate(account_user()), error = function(e) NULL)
+    uid <- as.character(u$id %||% "")[1]
+    if (!nzchar(uid)) return(empty)
+    tryCatch(
+      ynow_prefs_get_last_ui_surface(uid),
+      error = function(e) empty
+    )
+  }
+
   .sign_out <- function() {
+    # Keep last member screen for the next sign-in / resume (prefs survive logout).
+    tryCatch(.persist_last_ui_surface(), error = function(e) NULL)
     .clear_auth_browser(TRUE)
     account_user(NULL)
     .push_auth_state(FALSE, "")
@@ -2609,15 +2656,26 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
       showNotification(msg, type = "message", duration = 5),
       error = function(e) NULL
     )
-    tab <- as.character(restore_tab %||% "")[1]
+    saved <- .load_last_ui_surface(user)
+    tab <- as.character(saved$tab %||% "")[1]
+    # Prefer durable last member screen over same-session guest pre-auth tab.
+    if (!nzchar(tab)) {
+      tab <- as.character(restore_tab %||% "")[1]
+    }
     if (!nzchar(tab)) {
       tab <- as.character(isolate(input$sidebar_tabs) %||% "")[1]
     }
     # Sys. Admin (testing) is ops-only — never keep a signed-in user on that tab.
     if (identical(tab, "testing")) tab <- "home"
+    ticker <- as.character(saved$ticker %||% "")[1]
     session$sendCustomMessage(
       "ynowAuthPostLogin",
-      list(ok = TRUE, restore_tab = tab, message = msg)
+      list(
+        ok = TRUE,
+        restore_tab = tab,
+        restore_ticker = ticker,
+        message = msg
+      )
     )
     if (nzchar(tab) && !identical(tab, as.character(isolate(input$sidebar_tabs) %||% "")[1])) {
       tryCatch(
@@ -2630,6 +2688,11 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
         }
       )
     }
+    # Remember the surface we just restored (or current) as the new baseline.
+    tryCatch(
+      .persist_last_ui_surface(user, tab = tab, ticker = ticker),
+      error = function(e) NULL
+    )
   }
 
   #' OAuth failure after IdP return: toast only — do not auto-open login modal.
@@ -2665,6 +2728,35 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
         if (nzchar(uid)) {
           tryCatch(ynow_points_on_login(uid), error = function(e) NULL)
         }
+      }
+      # Restore last member screen with the authenticated shell (no toast).
+      saved <- .load_last_ui_surface(res$user)
+      tab <- as.character(saved$tab %||% "")[1]
+      if (identical(tab, "testing")) tab <- "home"
+      ticker <- as.character(saved$ticker %||% "")[1]
+      if (nzchar(tab) || nzchar(ticker)) {
+        session$sendCustomMessage(
+          "ynowAuthPostLogin",
+          list(
+            ok = TRUE,
+            restore_tab = tab,
+            restore_ticker = ticker,
+            message = "",
+            quiet = TRUE
+          )
+        )
+      }
+      if (nzchar(tab) &&
+            !identical(tab, as.character(isolate(input$sidebar_tabs) %||% "")[1])) {
+        tryCatch(
+          updateTabItems(session, "sidebar_tabs", tab),
+          error = function(e) {
+            tryCatch(
+              session$sendInputMessage("sidebar_tabs", list(value = tab)),
+              error = function(e2) NULL
+            )
+          }
+        )
       }
     } else {
       .clear_auth_browser(FALSE)
