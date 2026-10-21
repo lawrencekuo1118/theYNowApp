@@ -3795,7 +3795,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     bblab_orders_title = "Company orders & market concentration",
     bblab_orders_help = paste0(
-      "Filed major-market geography and counterparty concentration from statements / notes. ",
+      "Filed major-market geography and counterparty concentration from statements / notes ",
+      "(US: SEC EDGAR; TW: MOPS shareholder annual report Art. 18 tables). ",
       "Major markets show revenue by customer location when disclosed. ",
       "Major suppliers and major customers are shown only when the filer reports them — ",
       "never estimated. This block is not the business-dimension split."
@@ -3847,8 +3848,12 @@ locale_for_market <- function(mode = get_market_mode()) {
       "The filer disclosed that no supplier exceeded the major-supplier threshold."
     ),
     notif_bblab_orders_tw_filing_parser_pending = paste0(
-      "Taiwan major-customer / supplier / geography concentration parsers are not wired yet; ",
+      "Taiwan MOPS annual-report concentration notes were not available for this ticker in this session; ",
       "figures are not estimated from marketing pages."
+    ),
+    notif_bblab_orders_tw_annual_report_missing = paste0(
+      "No MOPS shareholder annual report with major-customer / supplier tables was retrieved; ",
+      "figures are not estimated."
     ),
     bblab_overlap_why = "Overlapping reporting dimensions are never added together.",
     bblab_history_yaxis = "Share of reported consolidated revenue (%)",
@@ -7792,7 +7797,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     bblab_orders_title = "公司訂單與市場集中度",
     bblab_orders_help = paste0(
-      "依財報／附註揭露的主要市場地區別與交易對手集中度。",
+      "依財報／附註揭露的主要市場地區別與交易對手集中度",
+      "（美股：SEC EDGAR；台股：公開資訊觀測站股東會年報第 18 條附表）。",
       "主要市場在有揭露時顯示客戶所在地營收分布；",
       "主要供應商與主要客戶僅在公司有申報時呈現——絕不推估。",
       "本區塊不是事業維度切分。"
@@ -7817,8 +7823,11 @@ locale_for_market <- function(mode = get_market_mode()) {
     notif_bblab_orders_no_major_customer_above_threshold = "公司揭露並無單一客戶超過重大客戶門檻。",
     notif_bblab_orders_no_major_supplier_above_threshold = "公司揭露並無單一供應商超過重大供應商門檻。",
     notif_bblab_orders_tw_filing_parser_pending = paste0(
-      "台股重大客戶／供應商／地區別集中度擷取尚未接線；",
+      "此工作階段未能取得該代號的公開資訊觀測站年報集中度附註；",
       "不會改從行銷頁面推估數字。"
+    ),
+    notif_bblab_orders_tw_annual_report_missing = paste0(
+      "未能取得含主要客戶／供應商附表的股東會年報；不推估數字。"
     ),
     bblab_overlap_why = "重疊的申報維度不會加總合併。",
     bblab_history_yaxis = "佔當期已申報合併營收比重（%）",

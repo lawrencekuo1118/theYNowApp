@@ -13,3 +13,4 @@ html5lib==1.1
 curl_cffi>=0.7.0
 xlrd==2.0.1
 Pillow>=10.0.0
+pypdf>=5.0.0
