@@ -18,6 +18,18 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 - CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_26.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).
 - Docs: root README ship/CI/Release pointers; `scripts/record_github_release.sh` for soft-fail Release publish after deploy.
 
+## [v26.02] — 2026-10-21
+
+### Added
+
+- Settings **Gain / loss colors**（漲跌底色）: choose follow-market, green/red, red/green, blue/red, or red/blue; persisted in `user_settings` and applied via `--ynow-chg-*` / `data-ynow-gain-scheme` (Macro, HFV, ATX move colors, Blue Chip treemap) (PR #363).
+- Account overview **Points top-up**（點數儲值）placeholder: title, short copy, disabled Coming soon CTA — no payment flow.
+- zh-TW：設定可選漲跌底色（跟隨市場／綠紅／紅綠／藍紅／紅藍對調）；帳號總覽預留點數儲值區塊（即將開放，不會收費）。
+
+### Changed
+
+- Live baseline bundle `12719276` (`scripts/DEPLOY_BASELINE.txt`).
+
 ## [v26.01] — 2026-10-21
 
 ### Added
