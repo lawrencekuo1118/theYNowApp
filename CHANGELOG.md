@@ -18,6 +18,18 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 - CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_26.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).
 - Docs: root README ship/CI/Release pointers; `scripts/record_github_release.sh` for soft-fail Release publish after deploy.
 
+## [v26.03] — 2026-10-21
+
+### Added
+
+- **Forgot password / 忘記密碼**: login modal requests Supabase Auth recovery email (`POST /auth/v1/recover`); anti-enumeration success copy; recovery return (`type=recovery`) opens set-new-password panel; syncs `ynow_users.password_hash` after `PUT /auth/v1/user` (PR #364).
+- Signed-in Account overview **Change password / 變更密碼** (social-only accounts may set a first password without a current password).
+- zh-TW：登入視窗可申請密碼重設信；重設連結返回後設定新密碼；帳號總覽可變更 Email 登入密碼。
+
+### Changed
+
+- Live baseline bundle `12719321` (`scripts/DEPLOY_BASELINE.txt`).
+
 ## [v26.02] — 2026-10-21
 
 ### Added
