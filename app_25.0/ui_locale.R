@@ -542,6 +542,18 @@ locale_for_market <- function(mode = get_market_mode()) {
     download_report = "Download Report (PDF)",
     pdf_quota_hint = "Sign-in required. Three free downloads each Asia/Taipei day; each extra download costs 10 FYN.",
     pdf_quota_hint_lite = "Lite: free PDF downloads. Enter a ticker first.",
+    pdf_quota_guest_remaining_fmt = "Sign-in required. After sign-in: %s free PDF downloads each Asia/Taipei day.",
+    pdf_quota_remaining_fmt = "Free PDF downloads left today: %s of %s (Asia/Taipei).",
+    pdf_quota_exhausted_fmt = "No free PDF downloads left today. Next new download costs %s FYN.",
+    pdf_quota_rules_fmt = paste0(
+      "Points rule: after the free quota, each new download costs %s FYN. ",
+      "Re-downloading the same ticker and settings is free."
+    ),
+    snapshot_download_quota_hint = paste0(
+      "Sign-in required. Snapshot / restore CSV downloads are free after sign-in (no FYN)."
+    ),
+    snapshot_download_quota_hint_authed = "Snapshot / restore CSV downloads are free (no FYN).",
+    snapshot_download_quota_hint_lite = "Lite: Snapshot downloads stay free.",
     pdf_need_login = "Sign in to download the valuation report (PDF).",
     download_need_login = "Sign in to download this file.",
     pdf_free_ok_fmt = "Free PDF download (%s of %s today).",
@@ -4493,6 +4505,16 @@ locale_for_market <- function(mode = get_market_mode()) {
     download_report = "下載報告 (PDF)",
     pdf_quota_hint = "需登入。每個台北時間日曆日可免費下載 3 次；超過後每次下載扣 10 FYN。",
     pdf_quota_hint_lite = "Lite：可免費下載 PDF。請先輸入股票代號。",
+    pdf_quota_guest_remaining_fmt = "需登入。登入後每個台北時間日曆日可免費下載 PDF %s 次。",
+    pdf_quota_remaining_fmt = "今日剩餘免費 PDF 下載：%s／%s 次（台北時間）。",
+    pdf_quota_exhausted_fmt = "今日免費次數已用完。下一次新下載扣 %s FYN。",
+    pdf_quota_rules_fmt = paste0(
+      "點數規則：免費次數用完後，每次新下載扣 %s FYN。",
+      "相同股票代號與參數再下載不扣次、不扣點。"
+    ),
+    snapshot_download_quota_hint = "需登入。登入後 Snapshot／還原 CSV 下載免費（不扣 FYN）。",
+    snapshot_download_quota_hint_authed = "Snapshot／還原 CSV 下載免費（不扣 FYN）。",
+    snapshot_download_quota_hint_lite = "Lite：Snapshot 下載維持免費。",
     pdf_need_login = "請先登入再下載估值報告（PDF）。",
     download_need_login = "請先登入再下載此檔案。",
     pdf_free_ok_fmt = "免費下載 PDF（今日第 %s／%s 次）。",

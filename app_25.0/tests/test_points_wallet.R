@@ -675,6 +675,18 @@ check("pdf quota hint is bilingual", {
     grepl("10 FYN", ui_str("pdf_quota_hint", "zh-TW"), fixed = TRUE) &&
     !grepl("一鍵", ui_str("pdf_quota_hint", "zh-TW"), fixed = TRUE)
 })
+ynow_pdf_reset_memory()
+.ynow_points_mem_reset()
+check("pdf quota status starts full", {
+  st <- ynow_pdf_quota_status("pdf-status-1", day = "2026-10-21")
+  isTRUE(st$ok) && identical(st$used, 0L) && identical(st$left, ynow_pdf_free_per_day())
+})
+invisible(ynow_points_credit("pdf-status-1", 30L, reason = "earn_signup", ref_id = "st-seed", wallet = "fyn"))
+invisible(ynow_pdf_claim("pdf-status-1", day = "2026-10-21"))
+check("pdf quota status decrements after claim", {
+  st <- ynow_pdf_quota_status("pdf-status-1", day = "2026-10-21")
+  identical(st$used, 1L) && identical(st$left, ynow_pdf_free_per_day() - 1L)
+})
 
 cat("PASS", n_ok, " FAIL", n_fail, "\n")
 if (n_fail > 0L) quit(status = 1)

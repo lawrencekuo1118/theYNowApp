@@ -1104,6 +1104,59 @@ ynow_pdf_free_per_day <- function() {
   if (!is.finite(n) || n < 0L) 3L else as.integer(n)
 }
 
+#' Read-only PDF free-quota status (does not consume a slot).
+#' Source of truth: `ynow_pdf_quota` DB row when connected, else in-process mem.
+ynow_pdf_quota_status <- function(user_id = "", day = NULL) {
+  uid <- as.character(user_id %||% "")[1]
+  limit <- ynow_pdf_free_per_day()
+  cost <- if (exists("ynow_points_sku_cost", mode = "function")) {
+    suppressWarnings(as.integer(ynow_points_sku_cost("pdf_report"))[1])
+  } else {
+    10L
+  }
+  if (!is.finite(cost) || cost < 0L) cost <- 10L
+  if (is.null(day) || !nzchar(as.character(day)[1])) {
+    day <- if (exists("ynow_points_taipei_day", mode = "function")) {
+      ynow_points_taipei_day()
+    } else {
+      format(Sys.Date(), "%Y-%m-%d")
+    }
+  }
+  day <- as.character(day)[1]
+  if (!nzchar(uid)) {
+    return(list(
+      ok = TRUE, logged_in = FALSE, used = 0L, left = as.integer(limit),
+      limit = as.integer(limit), day = day, cost = as.integer(cost)
+    ))
+  }
+  used <- 0L
+  if (isTRUE(ynow_points_uses_db()) && exists("ynow_db_with", mode = "function")) {
+    df <- tryCatch(ynow_db_with(function(con) {
+      DBI::dbGetQuery(
+        con,
+        "SELECT free_used FROM ynow_pdf_quota WHERE user_id = $1 AND day_key = $2 LIMIT 1",
+        params = list(uid, day)
+      )
+    }), error = function(e) NULL)
+    if (is.data.frame(df) && nrow(df) >= 1L) {
+      used <- suppressWarnings(as.integer(df$free_used[[1]])[1])
+    }
+  } else {
+    used <- .ynow_pdf_mem_used(uid, day)
+  }
+  if (!is.finite(used) || used < 0L) used <- 0L
+  used <- as.integer(used)
+  list(
+    ok = TRUE,
+    logged_in = TRUE,
+    used = used,
+    left = as.integer(max(0L, limit - used)),
+    limit = as.integer(limit),
+    day = day,
+    cost = as.integer(cost)
+  )
+}
+
 ynow_pdf_reset_memory <- function() {
   .ynow_pdf_quota$used <- new.env(parent = emptyenv())
   .ynow_pdf_quota$repeats <- new.env(parent = emptyenv())

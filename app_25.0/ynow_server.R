@@ -1256,6 +1256,118 @@ server <- function(input, output, session) {
     invisible(NULL)
   }
 
+  #' Push remaining free PDF downloads + points rules near download chrome.
+  #' Lite stays ungated; Full guests see policy; signed-in users see live left count.
+  .ynow_pdf_quota_push <- function() {
+    loc <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "en")
+    .lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
+    lite <- isTRUE(tryCatch(isolate(input$ynow_lite_mode), error = function(e) FALSE)) ||
+      isTRUE(tryCatch(isolate(lite_mode()), error = function(e) FALSE))
+    limit <- if (exists("ynow_pdf_free_per_day", mode = "function")) {
+      as.integer(ynow_pdf_free_per_day())[1]
+    } else {
+      3L
+    }
+    if (!is.finite(limit) || limit < 0L) limit <- 3L
+    cost <- if (exists("ynow_points_sku_cost", mode = "function")) {
+      suppressWarnings(as.integer(ynow_points_sku_cost("pdf_report"))[1])
+    } else {
+      10L
+    }
+    if (!is.finite(cost) || cost < 0L) cost <- 10L
+    rules <- sprintf(
+      .lab(
+        "pdf_quota_rules_fmt",
+        "Points rule: after the free quota, each new download costs %s FYN. Re-downloading the same ticker and settings is free."
+      ),
+      as.character(cost)
+    )
+    if (isTRUE(lite)) {
+      session$sendCustomMessage(
+        "ynowPdfQuota",
+        list(
+          state = "lite",
+          remaining = .lab("pdf_quota_hint_lite", "Lite: free PDF downloads. Enter a ticker first."),
+          rules = "",
+          snap = .lab("snapshot_download_quota_hint_lite", "Lite: Snapshot downloads stay free."),
+          left = NA_integer_,
+          limit = limit,
+          cost = cost
+        )
+      )
+      return(invisible(NULL))
+    }
+    uid <- tryCatch(.ynow_access_subject_id(), error = function(e) "")
+    uid <- as.character(uid %||% "")[1]
+    if (!nzchar(uid)) {
+      rem <- sprintf(
+        .lab(
+          "pdf_quota_guest_remaining_fmt",
+          "Sign-in required. After sign-in: %s free PDF downloads each Asia/Taipei day."
+        ),
+        as.character(limit)
+      )
+      session$sendCustomMessage(
+        "ynowPdfQuota",
+        list(
+          state = "guest",
+          remaining = rem,
+          rules = rules,
+          snap = .lab(
+            "snapshot_download_quota_hint",
+            "Sign-in required. Snapshot / restore CSV downloads are free after sign-in (no FYN)."
+          ),
+          left = limit,
+          limit = limit,
+          cost = cost
+        )
+      )
+      return(invisible(NULL))
+    }
+    st <- if (exists("ynow_pdf_quota_status", mode = "function")) {
+      tryCatch(ynow_pdf_quota_status(uid), error = function(e) NULL)
+    } else {
+      NULL
+    }
+    left <- if (is.list(st) && is.finite(st$left)) as.integer(st$left)[1] else limit
+    lim <- if (is.list(st) && is.finite(st$limit)) as.integer(st$limit)[1] else limit
+    if (!is.finite(left)) left <- lim
+    rem <- if (left <= 0L) {
+      sprintf(
+        .lab(
+          "pdf_quota_exhausted_fmt",
+          "No free PDF downloads left today. Next new download costs %s FYN."
+        ),
+        as.character(cost)
+      )
+    } else {
+      sprintf(
+        .lab(
+          "pdf_quota_remaining_fmt",
+          "Free PDF downloads left today: %s of %s (Asia/Taipei)."
+        ),
+        as.character(left),
+        as.character(lim)
+      )
+    }
+    session$sendCustomMessage(
+      "ynowPdfQuota",
+      list(
+        state = "authed",
+        remaining = rem,
+        rules = rules,
+        snap = .lab(
+          "snapshot_download_quota_hint_authed",
+          "Snapshot / restore CSV downloads are free (no FYN)."
+        ),
+        left = left,
+        limit = lim,
+        cost = cost
+      )
+    )
+    invisible(NULL)
+  }
+
   # Account overview (Full + signed-in). Lite never requires login.
   output$ynow_admin_panel <- renderUI({
     ynow_pts_panel_tick()
@@ -1409,14 +1521,17 @@ server <- function(input, output, session) {
     })
   }
 
-  # Header FYN / PYN banner (right of locale switch).
+  # Header FYN / PYN banner (right of locale switch) + PDF/Snapshot download quota chrome.
   observe({
     ynow_pts_panel_tick()
     ynow_pts_view_as()
     ynow_pts_sysadmin_on()
     tryCatch(ynow_auth$user(), error = function(e) NULL)
     tryCatch(ui_locale(), error = function(e) NULL)
+    tryCatch(input$ynow_lite_mode, error = function(e) NULL)
+    tryCatch(lite_mode(), error = function(e) NULL)
     .ynow_pts_push_banner()
+    tryCatch(.ynow_pdf_quota_push(), error = function(e) NULL)
   })
 
   # System-admin portal — username `ynow` + Asia/Taipei YYYYMMDD password.
@@ -15623,6 +15738,7 @@ server <- function(input, output, session) {
         } else {
           showNotification(.ui_msg("notif_pdf_ok"), type = "message")
         }
+        tryCatch(.ynow_pdf_quota_push(), error = function(e) NULL)
       }, error = function(e) {
         if (exists("ynow_pdf_release", mode = "function")) {
           tryCatch(ynow_pdf_release(pdf_ticket), error = function(e2) NULL)
