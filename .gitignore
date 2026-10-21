@@ -28,3 +28,4 @@ audit_logs/
 # Local secrets — never commit
 .Renviron
 *.Renviron
+.venv-demos/
