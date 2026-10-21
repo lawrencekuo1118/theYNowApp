@@ -15,9 +15,18 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 
 ### Changed
 
-- Sidebar **stock pins** from Recent Search: long-press tickers into a **4×3** grid (max **12**); page-pin chrome removed so tab long-press stays reorder-edit only.
 - CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_25.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).
 - Docs: root README ship/CI/Release pointers; `scripts/record_github_release.sh` for soft-fail Release publish after deploy.
+
+## [v25.96] — 2026-10-21
+
+### Changed
+
+- Sidebar **stock pins** from Recent Search: long-press tickers into a **4×3** grid (max **12**); refuse a 13th with toast; signed-in persistence via `pinned_recent_search` (PR #357).
+- Remove page-pin tray/CSS/locale so tab long-press stays **customize + drag reorder** only (#359).
+- en-US / zh-TW: `recent_search_max_toast`.
+- zh-TW：最近搜尋長按釘選股票，最多 12 檔（4×3）；側邊欄分頁長按留給自訂排序。
+- Live baseline bundle `12718955` (`scripts/DEPLOY_BASELINE.txt`).
 
 ## [v25.95] — 2026-10-21
 
