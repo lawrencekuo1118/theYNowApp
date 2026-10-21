@@ -99,7 +99,18 @@ $SUDO apt-get install -y --no-install-recommends \
   r-cran-dplyr \
   r-cran-stringr \
   r-cran-purrr \
-  r-cran-ggplot2
+  r-cran-ggplot2 \
+  r-cran-httr2 \
+  r-cran-digest \
+  r-cran-dbi \
+  r-cran-rpostgres \
+  r-cran-pool \
+  r-cran-sodium \
+  r-cran-openssl \
+  r-cran-future \
+  r-cran-promises \
+  r-cran-later \
+  r-cran-callr
 
 VENV="${ROOT}/app_25.0/.ynow_venv"
 REQ="${ROOT}/app_25.0/requirements.txt"
@@ -113,6 +124,6 @@ fi
 "${VENV}/bin/pip" install --disable-pip-version-check --upgrade pip
 "${VENV}/bin/pip" install --disable-pip-version-check -r "${REQ}"
 
-Rscript -e 'pkgs <- c("shiny","shinydashboard","tidyverse","reticulate","plotly","pacman","httr","quantmod","testthat","pagedown"); missing <- pkgs[!vapply(pkgs, requireNamespace, logical(1), quietly = TRUE)]; if (length(missing)) { message("Missing R packages: ", paste(missing, collapse = ", ")); quit(status = 1) }'
+Rscript -e 'pkgs <- c("shiny","shinydashboard","tidyverse","reticulate","plotly","pacman","httr","httr2","quantmod","testthat","pagedown","DBI","RPostgres","pool","sodium","openssl","future","promises","later","callr"); missing <- pkgs[!vapply(pkgs, requireNamespace, logical(1), quietly = TRUE)]; if (length(missing)) { message("Missing R packages: ", paste(missing, collapse = ", ")); quit(status = 1) }'
 "${VENV}/bin/python" -c 'import pandas, numpy, yfinance, requests, bs4, lxml, xlrd, curl_cffi'
 echo "cloud-agent-install: ok"
