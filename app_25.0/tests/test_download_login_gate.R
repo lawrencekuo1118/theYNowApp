@@ -165,6 +165,21 @@ check("locale ships Lite PDF quota hint en+zh-TW", {
   grepl('pdf_quota_hint_lite = "Lite: free PDF downloads. Enter a ticker first."', loc, fixed = TRUE) &&
     grepl('pdf_quota_hint_lite = "Lite：可免費下載 PDF。請先輸入股票代號。"', loc, fixed = TRUE)
 })
+check("locale ships remaining-free + points-rules keys", {
+  grepl("pdf_quota_remaining_fmt", loc, fixed = TRUE) &&
+    grepl("pdf_quota_rules_fmt", loc, fixed = TRUE) &&
+    grepl("pdf_quota_guest_remaining_fmt", loc, fixed = TRUE) &&
+    grepl("snapshot_download_quota_hint", loc, fixed = TRUE)
+})
+check("sidebar shows remaining + rules quota nodes", {
+  grepl("ynow_pdf_quota_remaining", ui, fixed = TRUE) &&
+    grepl("ynow_pdf_quota_rules", ui, fixed = TRUE) &&
+    grepl("ynowPdfQuota", ui, fixed = TRUE)
+})
+check("server pushes live PDF quota status", {
+  grepl(".ynow_pdf_quota_push", srv, fixed = TRUE) &&
+    grepl("ynow_pdf_quota_status", srv, fixed = TRUE)
+})
 check("server parses", inherits(tryCatch(parse(file.path(app_dir, "ynow_server.R")), error = function(e) e), "expression"))
 check("ui parses", inherits(tryCatch(parse(file.path(app_dir, "ynow_ui.R")), error = function(e) e), "expression"))
 check("bblab parses", inherits(tryCatch(parse(file.path(app_dir, "business_breakdown_module.R")), error = function(e) e), "expression"))

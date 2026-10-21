@@ -3780,10 +3780,21 @@ ui <- dashboardPage(
                downloadButton("download_report", "Download Report (PDF)",
                               class = "ynow-sidebar-download-btn",
                               style = "background-color: #1a1a1a; color: #ffffff; border: 1px solid #000000; box-shadow: none; text-shadow: none;"),
-               tags$p(
+               tags$div(
                  id = "ynow_download_report_quota",
                  class = "ynow-download-report-quota",
-                 "Sign-in required. Three free downloads each Asia/Taipei day; each extra download costs 10 FYN."
+                 role = "status",
+                 `aria-live` = "polite",
+                 tags$p(
+                   id = "ynow_pdf_quota_remaining",
+                   class = "ynow-pdf-quota-line ynow-pdf-quota-remaining",
+                   "Sign-in required. After sign-in: 3 free PDF downloads each Asia/Taipei day."
+                 ),
+                 tags$p(
+                   id = "ynow_pdf_quota_rules",
+                   class = "ynow-pdf-quota-line ynow-pdf-quota-rules",
+                   "Points rule: after free quota, each new download costs 10 FYN. Same ticker + settings repeat is free."
+                 )
                )
            )
     ),
@@ -7379,6 +7390,25 @@ ui <- dashboardPage(
           font-size: 11px;
           line-height: 1.35;
           color: #d9d9d9;
+          text-align: left;
+        }
+        .ynow-download-report-quota .ynow-pdf-quota-line {
+          margin: 0 0 4px 0;
+        }
+        .ynow-download-report-quota .ynow-pdf-quota-line:last-child {
+          margin-bottom: 0;
+        }
+        .ynow-download-report-quota .ynow-pdf-quota-rules {
+          color: #c4c4c4;
+        }
+        .ynow-snapshot-download-quota {
+          margin: 0 0 10px 0;
+          font-size: 12px;
+          line-height: 1.4;
+          color: #666;
+        }
+        body.ynow-lite .ynow-snapshot-download-quota {
+          color: #555;
         }
         .ynow-sidebar-download-wrap #download_report,
         .ynow-sidebar-download-btn {
@@ -10798,13 +10828,30 @@ ui <- dashboardPage(
                 window.ynowSyncSidebarDownloadIcon();
               }
             }
-            var pdfQuota = document.getElementById('ynow_download_report_quota');
-            if (pdfQuota) {
-              var liteOn = document.body && document.body.classList.contains('ynow-lite');
-              var qHint = liteOn
-                ? (s.pdf_quota_hint_lite || s.pdf_quota_hint)
-                : s.pdf_quota_hint;
-              if (qHint) pdfQuota.textContent = qHint;
+            try {
+              if (typeof window.ynowApplyPdfQuotaCopy === 'function') {
+                window.ynowApplyPdfQuotaCopy(s);
+              } else {
+                var remEl = document.getElementById('ynow_pdf_quota_remaining');
+                var rulesEl = document.getElementById('ynow_pdf_quota_rules');
+                var liteOn = document.body && document.body.classList.contains('ynow-lite');
+                if (liteOn) {
+                  if (remEl && (s.pdf_quota_hint_lite || s.pdf_quota_hint)) {
+                    remEl.textContent = s.pdf_quota_hint_lite || s.pdf_quota_hint;
+                  }
+                  if (rulesEl) rulesEl.textContent = '';
+                } else if (remEl && s.pdf_quota_hint) {
+                  remEl.textContent = s.pdf_quota_hint;
+                }
+              }
+            } catch (ePdfQ) {}
+            var snapQuota = document.getElementById('ynow_snapshot_download_quota');
+            if (snapQuota) {
+              var liteSnap = document.body && document.body.classList.contains('ynow-lite');
+              var snapHint = liteSnap
+                ? (s.snapshot_download_quota_hint_lite || s.snapshot_download_quota_hint)
+                : (s.snapshot_download_quota_hint || '');
+              if (snapHint) snapQuota.textContent = snapHint;
             }
             var snap = document.getElementById('ynow_snapshot_link_label');
             if (snap && s.snapshot_link) snap.textContent = s.snapshot_link;
@@ -11381,6 +11428,63 @@ ui <- dashboardPage(
               setAll('.ynow-gate-faq-a3', payload.gate_faq_a3);
               setAll('.ynow-gate-faq-q4', payload.gate_faq_q4);
               setAll('.ynow-gate-faq-a4', payload.gate_faq_a4);
+            });
+            window.__ynowPdfQuotaState = window.__ynowPdfQuotaState || {
+              state: 'guest',
+              left: null,
+              limit: 3,
+              cost: 10,
+              remaining: '',
+              rules: '',
+              snap: ''
+            };
+            window.ynowApplyPdfQuotaCopy = function (localeBundle) {
+              var st = window.__ynowPdfQuotaState || {};
+              var s = localeBundle || window.__ynowUiLocaleStrings || {};
+              var rem = document.getElementById('ynow_pdf_quota_remaining');
+              var rules = document.getElementById('ynow_pdf_quota_rules');
+              var snap = document.getElementById('ynow_snapshot_download_quota');
+              var liteOn = document.body && document.body.classList.contains('ynow-lite');
+              if (liteOn || st.state === 'lite') {
+                if (rem) rem.textContent = s.pdf_quota_hint_lite || st.remaining || '';
+                if (rules) rules.textContent = '';
+                if (snap) {
+                  snap.textContent = s.snapshot_download_quota_hint_lite || st.snap || '';
+                }
+                return;
+              }
+              if (st.remaining) {
+                if (rem) rem.textContent = st.remaining;
+                if (rules) rules.textContent = st.rules || '';
+                if (snap && st.snap) snap.textContent = st.snap;
+                return;
+              }
+              if (rem && s.pdf_quota_hint) rem.textContent = s.pdf_quota_hint;
+              if (rules && s.pdf_quota_rules_fmt) {
+                var cost = (st.cost != null) ? String(st.cost) : '10';
+                rules.textContent = String(s.pdf_quota_rules_fmt).replace('%s', cost);
+              }
+              if (snap && s.snapshot_download_quota_hint) {
+                snap.textContent = s.snapshot_download_quota_hint;
+              }
+            };
+            addHandler('ynowPdfQuota', function (payload) {
+              if (!payload) return;
+              window.__ynowPdfQuotaState = {
+                state: payload.state || 'guest',
+                left: payload.left,
+                limit: payload.limit,
+                cost: payload.cost,
+                remaining: payload.remaining || '',
+                rules: payload.rules || '',
+                snap: payload.snap || ''
+              };
+              var rem = document.getElementById('ynow_pdf_quota_remaining');
+              var rules = document.getElementById('ynow_pdf_quota_rules');
+              var snap = document.getElementById('ynow_snapshot_download_quota');
+              if (rem) rem.textContent = payload.remaining || '';
+              if (rules) rules.textContent = payload.rules || '';
+              if (snap && payload.snap != null) snap.textContent = payload.snap || '';
             });
             addHandler('ynowPtsBanner', function (payload) {
               if (!payload) return;
@@ -12390,13 +12494,29 @@ ui <- dashboardPage(
                 }
               } catch (eDlLite) {}
               try {
-                var pdfQuota = document.getElementById('ynow_download_report_quota');
-                var locBundle = window.__ynowUiLocaleStrings || null;
-                if (pdfQuota && locBundle) {
-                  var qHint = enabled
-                    ? (locBundle.pdf_quota_hint_lite || locBundle.pdf_quota_hint)
-                    : locBundle.pdf_quota_hint;
-                  if (qHint) pdfQuota.textContent = qHint;
+                if (typeof window.ynowApplyPdfQuotaCopy === 'function') {
+                  window.ynowApplyPdfQuotaCopy(window.__ynowUiLocaleStrings || null);
+                } else {
+                  var pdfQuotaRem = document.getElementById('ynow_pdf_quota_remaining');
+                  var pdfQuotaRules = document.getElementById('ynow_pdf_quota_rules');
+                  var locBundle = window.__ynowUiLocaleStrings || null;
+                  if (locBundle) {
+                    if (enabled) {
+                      if (pdfQuotaRem && (locBundle.pdf_quota_hint_lite || locBundle.pdf_quota_hint)) {
+                        pdfQuotaRem.textContent = locBundle.pdf_quota_hint_lite || locBundle.pdf_quota_hint;
+                      }
+                      if (pdfQuotaRules) pdfQuotaRules.textContent = '';
+                    } else if (pdfQuotaRem && locBundle.pdf_quota_hint) {
+                      pdfQuotaRem.textContent = locBundle.pdf_quota_hint;
+                    }
+                  }
+                }
+                var snapQ = document.getElementById('ynow_snapshot_download_quota');
+                var locB2 = window.__ynowUiLocaleStrings || null;
+                if (snapQ && locB2) {
+                  snapQ.textContent = enabled
+                    ? (locB2.snapshot_download_quota_hint_lite || locB2.snapshot_download_quota_hint || '')
+                    : (locB2.snapshot_download_quota_hint || '');
                 }
               } catch (eQLite) {}
               remapLegacyHash();
@@ -18170,6 +18290,13 @@ ui <- dashboardPage(
                   class = "btn-primary"
                 )
               )
+            ),
+            tags$p(
+              id = "ynow_snapshot_download_quota",
+              class = "ynow-snapshot-download-quota",
+              role = "status",
+              `aria-live` = "polite",
+              "Sign-in required. Snapshot / restore CSV downloads are free after sign-in (no FYN)."
             ),
             tags$div(
               class = "ynow-param-restore-box",
