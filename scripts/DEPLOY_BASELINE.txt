@@ -7,5 +7,5 @@ commit=f1d040a6239f60232ab3848acef41bb6aad5faa6
 short=f1d040a6
 message=chore: bump display version to v26.04
 captured_at=2026-10-21T09:55:00Z
-display_version=v26.04
+display_version=v26.05
 note=Canonical live line is app_26.0. Bundle 12719767: Business Breakdown company orders — major markets / customers / suppliers from filings (PR #365). Secrets only in gitignored .Renviron restored from prior live bundle; no secret values in git.
