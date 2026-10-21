@@ -325,7 +325,7 @@ ynow_db_ensure_schema <- function(conn = NULL) {
         error = function(e) NULL
       )
     }
-    # Durable UI prefs (pinned recent search, …).
+    # Durable UI prefs (pinned recent search, 24h search history, …).
     if (exists("ynow_prefs_ensure_schema", mode = "function")) {
       tryCatch(ynow_prefs_ensure_schema(con), error = function(e) NULL)
     }
