@@ -1,4 +1,4 @@
-# The YNow App v25.91 — Valuation Methodology
+# The YNow App v25.92 — Valuation Methodology
 
 **Live line:** `app_25.0/` · display version from header / `scripts/DEPLOY_BASELINE.txt`  
 **Ship notes:** root [`CHANGELOG.md`](../CHANGELOG.md) · [GitHub Releases](https://github.com/lawrencekuo1118/theYNowApp/releases) · CI: `.github/workflows/ci.yml`
