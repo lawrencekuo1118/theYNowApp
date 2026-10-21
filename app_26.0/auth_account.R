@@ -2619,6 +2619,69 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
     .push_auth_state(FALSE, "")
   }
 
+  #' Another device/browser took the single active resume row.
+  #' Clear local chrome only — do NOT revoke the held token (already revoked;
+  #' revoking again is harmless, but must not call paths that wipe a newer mint).
+  .kick_session_taken_elsewhere <- function() {
+    msg <- .str(
+      "auth_msg_session_taken",
+      paste0(
+        "You were signed out because your account signed in on another device ",
+        "or browser. Sign in again here if this was you."
+      )
+    )
+    tryCatch(.persist_last_ui_surface(), error = function(e) NULL)
+    .clear_auth_browser(FALSE)
+    account_user(NULL)
+    .push_auth_state(FALSE, "")
+    tryCatch(
+      showNotification(msg, type = "warning", duration = 12),
+      error = function(e) NULL
+    )
+    tryCatch(
+      session$sendCustomMessage(
+        "ynowAuthSessionTaken",
+        list(message = msg, message_key = "auth_msg_session_taken")
+      ),
+      error = function(e) NULL
+    )
+  }
+
+  # Live single-device kick: poll whether this websocket's resume hash is still valid.
+  observe({
+    if (!isTRUE(ynow_auth_enabled())) return()
+    u <- account_user()
+    if (is.null(u)) return()
+    tok <- as.character(resume_token_held() %||% "")[1]
+    if (!nzchar(tok) || !exists("ynow_auth_session_still_valid", mode = "function")) {
+      return()
+    }
+    invalidateLater(4000L, session)
+    valid <- tryCatch(ynow_auth_session_still_valid(tok), error = function(e) NA)
+    # Fail open on DB blips (NA); only kick on explicit FALSE.
+    if (identical(valid, FALSE)) {
+      .kick_session_taken_elsewhere()
+    }
+  })
+
+  # Same-browser peer tab replaced localStorage resume key.
+  observeEvent(input$ynow_auth_session_peer_takeover, {
+    if (!isTRUE(ynow_auth_enabled())) return()
+    if (is.null(isolate(account_user()))) return()
+    tok <- as.character(isolate(resume_token_held()) %||% "")[1]
+    if (!nzchar(tok)) {
+      .kick_session_taken_elsewhere()
+      return()
+    }
+    if (!exists("ynow_auth_session_still_valid", mode = "function")) {
+      .kick_session_taken_elsewhere()
+      return()
+    }
+    valid <- tryCatch(ynow_auth_session_still_valid(tok), error = function(e) NA)
+    # Kick only when this tab's held hash is explicitly revoked/missing.
+    if (identical(valid, FALSE)) .kick_session_taken_elsewhere()
+  }, ignoreInit = TRUE)
+
   #' Collapse sidebar first (client), then open the login modal.
   auth_open_mode <- "signin"
   .open_auth_modal <- function() {

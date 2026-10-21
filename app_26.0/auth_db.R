@@ -1048,6 +1048,8 @@ ynow_db_get_user_by_id <- function(user_id) {
 }
 
 #' Mint a durable resume token for a UUID user. Returns list(ok=, token=, expires_at=).
+#' Single-device policy: in the same DB transaction, soft-revoke every other
+#' resume row for this user, then insert the new hash (30-day TTL by default).
 ynow_auth_session_mint <- function(user_id, ttl_days = NULL) {
   uid <- as.character(user_id %||% "")[1]
   if (!nzchar(uid) || !isTRUE(.ynow_db_is_uuid(uid))) {
@@ -1067,37 +1069,58 @@ ynow_auth_session_mint <- function(user_id, ttl_days = NULL) {
   ok <- tryCatch(
     ynow_db_with(function(con) {
       ynow_auth_sessions_ensure_schema(con)
-      DBI::dbExecute(
-        con,
-        "INSERT INTO ynow_auth_sessions (user_id, token_hash, expires_at)
-         VALUES ($1::uuid, $2, NOW() + ($3 * INTERVAL '1 day'))",
-        params = list(uid, th, as.integer(days))
-      )
-      # Cap sessions per user (keep newest 10; drop older rows).
-      DBI::dbExecute(
-        con,
-        "DELETE FROM ynow_auth_sessions
-          WHERE user_id = $1::uuid
-            AND id IN (
-              SELECT id FROM ynow_auth_sessions
-               WHERE user_id = $1::uuid
-               ORDER BY created_at DESC
-               OFFSET 10
-            )",
-        params = list(uid)
-      )
-      df <- DBI::dbGetQuery(
-        con,
-        "SELECT expires_at::text AS expires_at
-           FROM ynow_auth_sessions
-          WHERE token_hash = $1
-          LIMIT 1",
-        params = list(th)
-      )
-      if (is.data.frame(df) && nrow(df) >= 1L) {
-        exp_chr <<- as.character(df$expires_at[[1]])
+      .mint_body <- function() {
+        DBI::dbExecute(
+          con,
+          "INSERT INTO ynow_auth_sessions (user_id, token_hash, expires_at)
+           VALUES ($1::uuid, $2, NOW() + ($3 * INTERVAL '1 day'))",
+          params = list(uid, th, as.integer(days))
+        )
+        # Single active resume row: revoke every other hash for this user.
+        DBI::dbExecute(
+          con,
+          "UPDATE ynow_auth_sessions
+              SET revoked = TRUE
+            WHERE user_id = $1::uuid
+              AND token_hash <> $2
+              AND COALESCE(revoked, FALSE) = FALSE",
+          params = list(uid, th)
+        )
+        # Housekeeping: drop oldest rows beyond 10 (revoked + live).
+        DBI::dbExecute(
+          con,
+          "DELETE FROM ynow_auth_sessions
+            WHERE user_id = $1::uuid
+              AND id IN (
+                SELECT id FROM ynow_auth_sessions
+                 WHERE user_id = $1::uuid
+                 ORDER BY created_at DESC
+                 OFFSET 10
+              )",
+          params = list(uid)
+        )
+        df <- DBI::dbGetQuery(
+          con,
+          "SELECT expires_at::text AS expires_at
+             FROM ynow_auth_sessions
+            WHERE token_hash = $1
+            LIMIT 1",
+          params = list(th)
+        )
+        if (is.data.frame(df) && nrow(df) >= 1L) {
+          exp_chr <<- as.character(df$expires_at[[1]])
+        }
+        TRUE
       }
-      TRUE
+      if (requireNamespace("DBI", quietly = TRUE) &&
+            exists("dbWithTransaction", where = asNamespace("DBI"), mode = "function")) {
+        # Brace form so .mint_body() runs inside the transaction, not before.
+        DBI::dbWithTransaction(con, {
+          .mint_body()
+        })
+      } else {
+        .mint_body()
+      }
     }),
     error = function(e) FALSE
   )
@@ -1105,6 +1128,36 @@ ynow_auth_session_mint <- function(user_id, ttl_days = NULL) {
     return(list(ok = FALSE, token = "", expires_at = NA_character_))
   }
   list(ok = TRUE, token = token, expires_at = exp_chr)
+}
+
+#' TRUE when the resume token is still an active (non-revoked, non-expired) row.
+#' Used by live single-device kick polls. On DB errors returns NA (caller fail-open).
+ynow_auth_session_still_valid <- function(token) {
+  tok <- as.character(token %||% "")[1]
+  if (!nzchar(tok) || nchar(tok) < 32L) return(FALSE)
+  if (!isTRUE(ynow_db_ready())) return(NA)
+  th <- .ynow_auth_token_hash(tok)
+  if (!nzchar(th)) return(FALSE)
+  row <- tryCatch(
+    ynow_db_with(function(con) {
+      ynow_auth_sessions_ensure_schema(con)
+      DBI::dbGetQuery(
+        con,
+        "SELECT expires_at, revoked
+           FROM ynow_auth_sessions
+          WHERE token_hash = $1
+          LIMIT 1",
+        params = list(th)
+      )
+    }),
+    error = function(e) NULL
+  )
+  if (is.null(row)) return(NA)
+  if (!is.data.frame(row) || nrow(row) < 1L) return(FALSE)
+  if (isTRUE(as.logical(row$revoked[[1]] %||% FALSE))) return(FALSE)
+  exp <- tryCatch(as.POSIXct(row$expires_at[[1]], tz = "UTC"), error = function(e) NA)
+  if (!is.finite(as.numeric(exp)) || isTRUE(exp < Sys.time())) return(FALSE)
+  TRUE
 }
 
 #' Resume a durable session from the opaque browser token.

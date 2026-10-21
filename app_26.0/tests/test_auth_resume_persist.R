@@ -80,6 +80,14 @@ check("server resumes from input", grepl("ynow_auth_resume_token", auth, fixed =
 check("sign-out clears browser resume", grepl(".clear_auth_browser", auth, fixed = TRUE) &&
         grepl("ynow_auth_session_revoke", auth, fixed = TRUE))
 check("password change revokes resume", grepl("ynow_auth_session_revoke_user", auth, fixed = TRUE))
+check("mint single-device revokes other rows", {
+  grepl("Single active resume row", db, fixed = TRUE) &&
+    grepl("ynow_auth_session_still_valid", db, fixed = TRUE)
+})
+check("live kick clears without revoke_held", {
+  grepl(".kick_session_taken_elsewhere", auth, fixed = TRUE) &&
+    grepl(".clear_auth_browser(FALSE)", auth, fixed = TRUE)
+})
 check("client localStorage key", grepl("ynow_auth_resume_v1", ui, fixed = TRUE))
 check("client persist handler", grepl("ynowAuthPersist", ui, fixed = TRUE))
 check("client offers resume on connect", grepl("ynow_auth_resume_token", ui, fixed = TRUE) &&
