@@ -890,6 +890,12 @@ locale_for_market <- function(mode = get_market_mode()) {
     auth_msg_change_bad_current = "Current password is incorrect.",
     auth_msg_change_same = "New password must differ from the current password.",
     auth_msg_resend_soon = "Verification email resend is not available yet.",
+    auth_msg_session_taken = paste0(
+      "You were signed out because your account signed in on another device ",
+      "or browser. Sign in again here if this was you."
+    ),
+    auth_msg_resume_expired = "Your saved sign-in expired. Please sign in again.",
+    auth_msg_resume_invalid = "Saved sign-in is no longer valid. Please sign in again.",
     auth_about_postgres = paste0(
       "Account store: Supabase Postgres via YNOW_DB_* (own users table; e.g. Supabase pooler). ",
       "Google / Facebook / LinkedIn / Email self-register into the same table (role=user); ",
@@ -5089,6 +5095,12 @@ locale_for_market <- function(mode = get_market_mode()) {
     auth_msg_change_bad_current = "目前密碼不正確。",
     auth_msg_change_same = "新密碼必須與目前密碼不同。",
     auth_msg_resend_soon = "認證信重寄尚未開放。",
+    auth_msg_session_taken = paste0(
+      "您已從本裝置登出，因為帳號在其他裝置或瀏覽器登入。",
+      "若是您本人操作，請在此重新登入。"
+    ),
+    auth_msg_resume_expired = "已儲存的登入已過期，請重新登入。",
+    auth_msg_resume_invalid = "已儲存的登入已失效，請重新登入。",
     auth_about_postgres = paste0(
       "帳號資料庫：經 YNOW_DB_* 的 Supabase Postgres（自管 users 表；例如 Supabase pooler）。",
       "Google／Facebook／LinkedIn／Email 皆可自助註冊寫入同一表（role=user），",

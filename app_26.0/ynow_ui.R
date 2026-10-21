@@ -12362,6 +12362,40 @@ ui <- dashboardPage(
                 ynowAuthResumeSent = true;
               }
             });
+            /* Single-device: another tab/device replaced or cleared the resume key. */
+            window.addEventListener('storage', function (ev) {
+              try {
+                if (!ev || ev.key !== 'ynow_auth_resume_v1') return;
+                if (!document.body || !document.body.classList.contains('ynow-authed')) return;
+                if (!window.Shiny || !Shiny.setInputValue) return;
+                Shiny.setInputValue(
+                  'ynow_auth_session_peer_takeover',
+                  (window.__ynowPeerTakeover = (window.__ynowPeerTakeover || 0) + 1),
+                  { priority: 'event' }
+                );
+              } catch (ePeer) {}
+            });
+            addHandler('ynowAuthSessionTaken', function (payload) {
+              try {
+                ynowAuthPersistWrite('');
+                ynowAuthResumeSent = false;
+                if (document.body) {
+                  document.body.classList.remove('ynow-authed');
+                  document.body.classList.remove('ynow-hide-locked-nav');
+                  document.body.classList.remove('ynow-sidebar-compact');
+                }
+                if (typeof window.ynowSyncGuestSidebarLocked === 'function') {
+                  window.ynowSyncGuestSidebarLocked();
+                }
+                if (typeof window.ynowSyncSidebarDownloadIcon === 'function') {
+                  window.ynowSyncSidebarDownloadIcon();
+                }
+                var msg = (payload && payload.message) ? String(payload.message) : '';
+                if (msg && window.Shiny && Shiny.notifications) {
+                  /* Server also showNotification; client toast is best-effort. */
+                }
+              } catch (eTaken) {}
+            });
             document.addEventListener('shiny:connected', function () {
               setTimeout(ynowAuthResumeOffer, 0);
             });
