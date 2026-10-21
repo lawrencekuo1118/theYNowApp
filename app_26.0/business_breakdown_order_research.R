@@ -1040,7 +1040,8 @@ bblab_build_order_research_pack <- function(order_concentration = NULL,
     focus = focus,
     source_stack = .or_build_source_stack(focus),
     cross_check = .or_build_cross_check(inputs),
-    chart = chart
+    chart = chart,
+    us_earnings_call = disclosures$earnings_call %||% NULL
   )
 }
 
@@ -1063,5 +1064,9 @@ bblab_attach_order_research <- function(result, payload = list()) {
     ),
     error = function(e) bblab_order_research_empty("ORDERS_BACKLOG_UNDISCLOSED")
   )
+  # Prefer explicit US earnings-call meta from the payload when present.
+  if (is.list(payload$us_earnings_call) && is.list(result$order_research)) {
+    result$order_research$us_earnings_call <- payload$us_earnings_call
+  }
   result
 }
