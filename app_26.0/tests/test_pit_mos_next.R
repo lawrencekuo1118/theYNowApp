@@ -608,14 +608,19 @@ if (file.exists(loc_path)) {
   check("ch4 toward/away pair zh", grepl("縮小.*擴大", ui_str("hfv_kpi_ch4_toward_away", "zh-TW")))
 }
 
-# HFV KPI bull/bear CSS: US green-up; TW red-up / green-down
+# HFV KPI bull/bear CSS: --ynow-chg-* vars; TW auto via data-ynow-gain-scheme / market
 ui_path <- file.path(app_dir, "ynow_ui.R")
 if (file.exists(ui_path)) {
   ui_txt <- paste(readLines(ui_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   check("HFV bull CSS class", grepl("\\.ynow-hfv-bull\\s*\\{", ui_txt))
   check("HFV bear CSS class", grepl("\\.ynow-hfv-bear\\s*\\{", ui_txt))
-  check("HFV TW invert bull", grepl("body\\.ynow-market-tw \\.ynow-hfv-bull", ui_txt))
-  check("HFV TW invert bear", grepl("body\\.ynow-market-tw \\.ynow-hfv-bear", ui_txt))
+  check("HFV uses chg-up var", grepl("--ynow-chg-up", ui_txt, fixed = TRUE))
+  check(
+    "HFV TW auto scheme",
+    grepl("body.ynow-market-tw\\[data-ynow-gain-scheme=\"auto\"\\]", ui_txt) ||
+      grepl('body.ynow-market-tw\\[data-ynow-gain-scheme="auto"\\]', ui_txt) ||
+      grepl("data-ynow-gain-scheme=\"auto\"", ui_txt, fixed = TRUE)
+  )
   check("HFV pair cell class", grepl("ynow-hfv-kpi-cell--pair", ui_txt, fixed = TRUE))
   srv_path <- file.path(app_dir, "ynow_server.R")
   if (file.exists(srv_path)) {

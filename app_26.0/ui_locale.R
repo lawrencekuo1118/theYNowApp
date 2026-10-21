@@ -891,6 +891,16 @@ locale_for_market <- function(mode = get_market_mode()) {
     settings_market = "Preferred market on sign-in",
     settings_sidebar_compact = "Compact sidebar spacing",
     settings_sidebar_compact_help = "Slightly tighter vertical padding on top-level sidebar tabs.",
+    settings_gain_loss = "Gain / loss colors",
+    settings_gain_loss_help = paste0(
+      "Applies to price-change chrome (tables, badges, and move-colored charts). ",
+      "Choose green/red, blue/red, or a swapped pair."
+    ),
+    settings_gain_opt_auto = "Follow market (US green-up / TW red-up)",
+    settings_gain_opt_green_red = "Green up / red down",
+    settings_gain_opt_red_green = "Red up / green down",
+    settings_gain_opt_blue_red = "Blue up / red down",
+    settings_gain_opt_red_blue = "Red up / blue down",
     settings_opt_auto = "Follow device / header",
     settings_opt_zh = "Traditional Chinese (Taiwan)",
     settings_opt_en = "English (US)",
@@ -899,6 +909,12 @@ locale_for_market <- function(mode = get_market_mode()) {
     settings_save = "Save settings",
     settings_saved_toast = "Settings saved.",
     settings_guest_toast = "Sign in to change settings.",
+    pts_topup_title = "Points top-up",
+    pts_topup_copy = paste0(
+      "A paid points top-up lane will land here. ",
+      "Checkout is not available yet — no charge will be taken from this page."
+    ),
+    pts_topup_cta = "Coming soon",
     auth_admin_title = "Account overview",
     auth_admin_intro = paste0(
       "Signed-in account workspace (Full mode). ",
@@ -4874,6 +4890,16 @@ locale_for_market <- function(mode = get_market_mode()) {
     settings_market = "登入後偏好市場",
     settings_sidebar_compact = "側邊欄緊湊間距",
     settings_sidebar_compact_help = "略為縮小側邊欄頂層分頁的上下間距。",
+    settings_gain_loss = "漲跌底色",
+    settings_gain_loss_help = paste0(
+      "套用到價格漲跌相關介面（表格、徽章與漲跌色圖表）。",
+      "可選綠紅、藍紅，或對調配色。"
+    ),
+    settings_gain_opt_auto = "跟隨市場（美股綠漲／台股紅漲）",
+    settings_gain_opt_green_red = "綠漲／紅跌",
+    settings_gain_opt_red_green = "紅漲／綠跌",
+    settings_gain_opt_blue_red = "藍漲／紅跌",
+    settings_gain_opt_red_blue = "紅漲／藍跌",
     settings_opt_auto = "跟隨裝置／頁首",
     settings_opt_zh = "繁體中文（台灣）",
     settings_opt_en = "英文（美式）",
@@ -4882,6 +4908,12 @@ locale_for_market <- function(mode = get_market_mode()) {
     settings_save = "儲存設定",
     settings_saved_toast = "已儲存設定。",
     settings_guest_toast = "請先登入才能變更設定。",
+    pts_topup_title = "點數儲值",
+    pts_topup_copy = paste0(
+      "付費點數儲值區塊將放在這裡。",
+      "結帳尚未開放——本頁不會向您收費。"
+    ),
+    pts_topup_cta = "即將開放",
     auth_admin_title = "帳號總覽",
     auth_admin_intro = paste0(
       "登入後的帳號工作區（完整版）。完整點數異動請至「點數流水」。",

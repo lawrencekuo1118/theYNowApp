@@ -8528,16 +8528,54 @@ ui <- dashboardPage(
           border-radius: 4px;
           background: #fff;
         }
-        /* HFV bullish/bearish tones: US green-up / red-down; TW inverts via body.ynow-market-tw */
-        .ynow-hfv-bull { color: #00a65a !important; }
-        .ynow-hfv-bear { color: #d9534f !important; }
+        /* Gain/loss chrome: CSS vars from Settings (auto follows US/TW market). */
+        body {
+          --ynow-chg-up: #1e7a46;
+          --ynow-chg-down: #c0392b;
+          --ynow-chg-up-wash: #f7fbf8;
+          --ynow-chg-down-wash: #fdf7f7;
+        }
+        body.ynow-market-tw:not([data-ynow-gain-scheme]),
+        body.ynow-market-tw[data-ynow-gain-scheme="auto"] {
+          --ynow-chg-up: #c0392b;
+          --ynow-chg-down: #1e7a46;
+          --ynow-chg-up-wash: #fdf7f7;
+          --ynow-chg-down-wash: #f7fbf8;
+        }
+        body[data-ynow-gain-scheme="green_red"] {
+          --ynow-chg-up: #1e7a46;
+          --ynow-chg-down: #c0392b;
+          --ynow-chg-up-wash: #f7fbf8;
+          --ynow-chg-down-wash: #fdf7f7;
+        }
+        body[data-ynow-gain-scheme="red_green"] {
+          --ynow-chg-up: #c0392b;
+          --ynow-chg-down: #1e7a46;
+          --ynow-chg-up-wash: #fdf7f7;
+          --ynow-chg-down-wash: #f7fbf8;
+        }
+        body[data-ynow-gain-scheme="blue_red"] {
+          --ynow-chg-up: #0C5484;
+          --ynow-chg-down: #c0392b;
+          --ynow-chg-up-wash: #f3f7fb;
+          --ynow-chg-down-wash: #fdf7f7;
+        }
+        body[data-ynow-gain-scheme="red_blue"] {
+          --ynow-chg-up: #c0392b;
+          --ynow-chg-down: #0C5484;
+          --ynow-chg-up-wash: #fdf7f7;
+          --ynow-chg-down-wash: #f3f7fb;
+        }
+        /* HFV bullish/bearish tones follow --ynow-chg-* (Settings / market auto). */
+        .ynow-hfv-bull { color: var(--ynow-chg-up) !important; }
+        .ynow-hfv-bear { color: var(--ynow-chg-down) !important; }
         .ynow-hfv-kpi-cell--bull {
-          background: #f7fbf8;
-          border-left: 4px solid #00a65a;
+          background: var(--ynow-chg-up-wash);
+          border-left: 4px solid var(--ynow-chg-up);
         }
         .ynow-hfv-kpi-cell--bear {
-          background: #fdf7f7;
-          border-left: 4px solid #d9534f;
+          background: var(--ynow-chg-down-wash);
+          border-left: 4px solid var(--ynow-chg-down);
         }
         .ynow-hfv-kpi-cell--pair {
           background: #fafafa;
@@ -8553,16 +8591,6 @@ ui <- dashboardPage(
         .ynow-hfv-kpi-pair-sep {
           color: #999 !important;
           font-weight: 500;
-        }
-        body.ynow-market-tw .ynow-hfv-bull { color: #c0392b !important; }
-        body.ynow-market-tw .ynow-hfv-bear { color: #00a65a !important; }
-        body.ynow-market-tw .ynow-hfv-kpi-cell--bull {
-          background: #fdf7f7;
-          border-left-color: #c0392b;
-        }
-        body.ynow-market-tw .ynow-hfv-kpi-cell--bear {
-          background: #f7fbf8;
-          border-left-color: #00a65a;
         }
         .ynow-hfv-overlay-replay-note {
           margin: 8px 0 0 0 !important;
@@ -11279,7 +11307,12 @@ ui <- dashboardPage(
               set('ynow_settings_market_label', payload.settings_market);
               set('ynow_settings_sidebar_compact_label', payload.settings_sidebar_compact);
               set('ynow_settings_sidebar_compact_help', payload.settings_sidebar_compact_help);
+              set('ynow_settings_gain_loss_label', payload.settings_gain_loss);
+              set('ynow_settings_gain_loss_help', payload.settings_gain_loss_help);
               set('ynow_settings_save_label', payload.settings_save);
+              set('ynow_pts_topup_title', payload.pts_topup_title);
+              set('ynow_pts_topup_copy', payload.pts_topup_copy);
+              set('ynow_pts_topup_cta_label', payload.pts_topup_cta);
               set('ynow_admin_box_title', payload.admin_title);
               set('ynow_admin_intro', payload.admin_intro);
               set('ynow_admin_delete_account_label', payload.delete_account);
@@ -12006,6 +12039,14 @@ ui <- dashboardPage(
               else document.body.classList.remove('ynow-hide-locked-nav');
               if (compact) document.body.classList.add('ynow-sidebar-compact');
               else document.body.classList.remove('ynow-sidebar-compact');
+              var gain = (payload && payload.gain_loss_scheme) ?
+                String(payload.gain_loss_scheme) : 'auto';
+              gain = gain.replace(/\\s+/g, '_').toLowerCase();
+              var allowedGain = {
+                auto: 1, green_red: 1, red_green: 1, blue_red: 1, red_blue: 1
+              };
+              if (!allowedGain[gain]) gain = 'auto';
+              document.body.setAttribute('data-ynow-gain-scheme', gain);
               if (typeof window.ynowSyncGuestSidebarLocked === 'function') {
                 try { window.ynowSyncGuestSidebarLocked(); } catch (eSync) {}
               }
@@ -12022,6 +12063,7 @@ ui <- dashboardPage(
                 document.body.classList.remove('ynow-authed');
                 document.body.classList.remove('ynow-hide-locked-nav');
                 document.body.classList.remove('ynow-sidebar-compact');
+                document.body.setAttribute('data-ynow-gain-scheme', 'auto');
               }
               ynowSyncSysAdminFootVisibility(loggedIn);
               if (typeof window.ynowSyncSidebarDownloadIcon === 'function') {
@@ -15121,18 +15163,20 @@ ui <- dashboardPage(
           margin: 6px 0 0 0;
         }
         .ynow-macro-kpi .ynow-macro-up,
-        .ynow-macro-rf .ynow-macro-up { color: var(--ynow-macro-green); }
+        .ynow-macro-rf .ynow-macro-up,
+        .ynow-macro-up { color: var(--ynow-chg-up, var(--ynow-macro-green)); }
         .ynow-macro-kpi .ynow-macro-down,
-        .ynow-macro-rf .ynow-macro-down { color: #ff7a70; }
-        .ynow-macro-up { color: var(--ynow-macro-green); }
-        .ynow-macro-down { color: #c0392b; }
-        /* TW market convention: red up / green down (opposite US) */
+        .ynow-macro-rf .ynow-macro-down,
+        .ynow-macro-down { color: var(--ynow-chg-down, #c0392b); }
+        /* TW auto scheme: red up / green down via --ynow-chg-* on body.ynow-market-tw. */
         body.ynow-market-tw .ynow-macro-kpi .ynow-macro-up,
         body.ynow-market-tw .ynow-macro-rf .ynow-macro-up,
-        body.ynow-market-tw .ynow-macro-up { color: #c0392b; }
+        body.ynow-market-tw .ynow-macro-up { color: var(--ynow-chg-up, #c0392b); }
         body.ynow-market-tw .ynow-macro-kpi .ynow-macro-down,
-        body.ynow-market-tw .ynow-macro-rf .ynow-macro-down { color: var(--ynow-macro-green); }
-        body.ynow-market-tw .ynow-macro-down { color: var(--ynow-macro-green); }
+        body.ynow-market-tw .ynow-macro-rf .ynow-macro-down,
+        body.ynow-market-tw .ynow-macro-down {
+          color: var(--ynow-chg-down, var(--ynow-macro-green));
+        }
         .ynow-macro-hint {
           margin: 6px 0 0 0;
           font-size: 12px;

@@ -190,7 +190,15 @@ asset_tx_window <- function(x) {
   as.integer(min(250L, w))
 }
 
-asset_tx_move_colors <- function(market_mode = "US") {
+asset_tx_move_colors <- function(market_mode = "US", gain_scheme = "auto") {
+  if (exists("ynow_gain_loss_colors", mode = "function")) {
+    cols <- ynow_gain_loss_colors(scheme = gain_scheme, market = market_mode)
+    return(list(
+      up = cols$up,
+      down = cols$down,
+      flat = cols$flat %||% "#8d9399"
+    ))
+  }
   tw <- identical(toupper(trimws(as.character(market_mode %||% "US")[1])), "TW")
   if (tw) {
     list(up = "#c0392b", down = "#1e7a46", flat = "#8d9399")
@@ -1018,8 +1026,8 @@ asset_tx_edge_table <- function(snap, locale = "en") {
   )
 }
 
-.asset_tx_traces <- function(snap, locale, market_mode) {
-  colors <- asset_tx_move_colors(market_mode)
+.asset_tx_traces <- function(snap, locale, market_mode, gain_scheme = "auto") {
+  colors <- asset_tx_move_colors(market_mode, gain_scheme = gain_scheme)
   nodes <- snap$catalog$nodes
   edges <- snap$edges
   # Solid black canvas only — no dot grid behind the cards.
@@ -1337,8 +1345,8 @@ asset_tx_yield_path <- function(snap, locale = "en") {
 }
 
 # Name traces and drop helpers that must not ship in frame payloads.
-.asset_tx_named_traces <- function(snap, locale, market_mode) {
-  traces <- .asset_tx_traces(snap, locale, market_mode)
+.asset_tx_named_traces <- function(snap, locale, market_mode, gain_scheme = "auto") {
+  traces <- .asset_tx_traces(snap, locale, market_mode, gain_scheme = gain_scheme)
   lapply(seq_along(traces), function(i) {
     tr <- traces[[i]]
     if (is.null(tr$name) || !nzchar(as.character(tr$name)[1])) {
@@ -1352,9 +1360,12 @@ asset_tx_yield_path <- function(snap, locale = "en") {
 # Attach Play frames without plotly's frame= regroup (that path is ~15s for
 # 22 sessions × ~84 traces). Build the latest session as the base plot, then
 # hang precomputed frame payloads + slider / Play button on the built object.
-.asset_tx_attach_play_frames <- function(p, snaps, locale, market_mode) {
+.asset_tx_attach_play_frames <- function(p, snaps, locale, market_mode, gain_scheme = "auto") {
   names_fr <- vapply(snaps, function(sn) format(sn$as_of, "%Y-%m-%d"), character(1))
-  trace_lists <- lapply(snaps, function(sn) .asset_tx_named_traces(sn, locale, market_mode))
+  trace_lists <- lapply(
+    snaps,
+    function(sn) .asset_tx_named_traces(sn, locale, market_mode, gain_scheme = gain_scheme)
+  )
   n_tr <- length(trace_lists[[1]])
   if (!n_tr) return(p)
   idx <- as.list(as.integer(seq_len(n_tr) - 1L))
@@ -1422,7 +1433,7 @@ asset_tx_yield_path <- function(snap, locale = "en") {
   p
 }
 
-.asset_tx_fig_cache_key <- function(snaps, locale, market_mode) {
+.asset_tx_fig_cache_key <- function(snaps, locale, market_mode, gain_scheme = "auto") {
   if (!length(snaps)) return("")
   last <- snaps[[length(snaps)]]
   fa <- attr(last, "fetched_at")
@@ -1431,12 +1442,18 @@ asset_tx_yield_path <- function(snap, locale = "en") {
   } else {
     paste(vapply(snaps, function(s) format(s$as_of, "%Y-%m-%d"), character(1)), collapse = "|")
   }
+  scheme <- if (exists("ynow_prefs_normalize_gain_loss_scheme", mode = "function")) {
+    ynow_prefs_normalize_gain_loss_scheme(gain_scheme)
+  } else {
+    as.character(gain_scheme %||% "auto")[1]
+  }
   paste(
     stamp,
     length(snaps),
     last$window %||% "",
     as.character(locale %||% "en")[1],
     toupper(as.character(market_mode %||% "US")[1]),
+    scheme,
     sep = "::"
   )
 }
@@ -1458,12 +1475,12 @@ asset_tx_yield_path <- function(snap, locale = "en") {
   invisible(value)
 }
 
-asset_tx_figure <- function(snaps, locale = "en", market_mode = "US") {
+asset_tx_figure <- function(snaps, locale = "en", market_mode = "US", gain_scheme = "auto") {
   snaps <- snaps[!vapply(snaps, is.null, logical(1))]
   if (!length(snaps)) return(NULL)
   if (!requireNamespace("plotly", quietly = TRUE)) return(NULL)
   locale <- if (exists("normalize_ui_locale", mode = "function")) normalize_ui_locale(locale) else locale
-  cache_key <- .asset_tx_fig_cache_key(snaps, locale, market_mode)
+  cache_key <- .asset_tx_fig_cache_key(snaps, locale, market_mode, gain_scheme = gain_scheme)
   cached <- .asset_tx_fig_cache_get(cache_key)
   if (!is.null(cached)) return(cached)
   last <- snaps[[length(snaps)]]
@@ -1473,7 +1490,7 @@ asset_tx_figure <- function(snaps, locale = "en", market_mode = "US") {
   # Base plot = latest session only. Play frames are attached afterward so we
   # never pay plotly's O(frames × traces) frame= regroup (~15s at n=22).
   p <- plotly::plot_ly()
-  for (tr in .asset_tx_named_traces(last, locale, market_mode)) {
+  for (tr in .asset_tx_named_traces(last, locale, market_mode, gain_scheme = gain_scheme)) {
     args <- tr
     args$p <- p
     args$inherit <- FALSE
@@ -1537,7 +1554,9 @@ asset_tx_figure <- function(snaps, locale = "en", market_mode = "US") {
     showlegend = FALSE
   )
   if (multi) {
-    p <- .asset_tx_attach_play_frames(p, snaps, locale, market_mode)
+    p <- .asset_tx_attach_play_frames(
+      p, snaps, locale, market_mode, gain_scheme = gain_scheme
+    )
     p <- .asset_tx_show_latest(p)
   }
   out <- plotly::config(
@@ -2277,7 +2296,11 @@ asset_transmission_ui <- function(id, locale = "en") {
   )
 }
 
-asset_transmission_server <- function(id, ui_locale_rv = NULL, market_mode_rv = NULL, tab_active_rv = NULL) {
+asset_transmission_server <- function(id,
+                                      ui_locale_rv = NULL,
+                                      market_mode_rv = NULL,
+                                      gain_scheme_rv = NULL,
+                                      tab_active_rv = NULL) {
   shiny::moduleServer(id, function(input, output, session) {
     locale <- shiny::reactive({
       loc <- if (is.function(ui_locale_rv)) {
@@ -2294,6 +2317,18 @@ asset_transmission_server <- function(id, ui_locale_rv = NULL, market_mode_rv = 
         "US"
       }
       toupper(trimws(as.character(m %||% "US")[1]))
+    })
+    gain_scheme <- shiny::reactive({
+      s <- if (is.function(gain_scheme_rv)) {
+        tryCatch(gain_scheme_rv(), error = function(e) "auto")
+      } else {
+        "auto"
+      }
+      if (exists("ynow_prefs_normalize_gain_loss_scheme", mode = "function")) {
+        ynow_prefs_normalize_gain_loss_scheme(s)
+      } else {
+        as.character(s %||% "auto")[1]
+      }
     })
     active <- shiny::reactive({
       if (!is.function(tab_active_rv)) return(TRUE)
@@ -2694,7 +2729,7 @@ asset_transmission_server <- function(id, ui_locale_rv = NULL, market_mode_rv = 
       tape <- snaps()
       shiny::req(length(tape) > 0L)
       fig <- tryCatch(
-        asset_tx_figure(tape, locale(), market()),
+        asset_tx_figure(tape, locale(), market(), gain_scheme = gain_scheme()),
         error = function(e) {
           err_rv(conditionMessage(e))
           NULL
@@ -2707,7 +2742,7 @@ asset_transmission_server <- function(id, ui_locale_rv = NULL, market_mode_rv = 
     output$legend <- shiny::renderUI({
       loc <- locale()
       node_key <- if (identical(market(), "TW")) "atx_legend_node_tw" else "atx_legend_node_us"
-      up_hex <- asset_tx_move_colors(market())$up
+      up_hex <- asset_tx_move_colors(market(), gain_scheme = gain_scheme())$up
       htmltools::tagList(
         htmltools::tags$div(
           class = "ynow-atx-legend",

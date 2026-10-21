@@ -46,7 +46,8 @@ check(
     identical(d$hide_locked_sidebar, FALSE) &&
       identical(d$preferred_ui_locale, "auto") &&
       identical(d$preferred_market, "auto") &&
-      identical(d$sidebar_compact, FALSE)
+      identical(d$sidebar_compact, FALSE) &&
+      identical(d$gain_loss_scheme, "auto")
   }
 )
 check(
@@ -57,12 +58,14 @@ check(
       preferred_ui_locale = "zh_tw",
       preferred_market = "tw",
       sidebar_compact = TRUE,
+      gain_loss_scheme = "Blue-Up-Red-Down",
       junk = 1
     ))
     isTRUE(n$hide_locked_sidebar) &&
       identical(n$preferred_ui_locale, "zh-TW") &&
       identical(n$preferred_market, "TW") &&
       isTRUE(n$sidebar_compact) &&
+      identical(n$gain_loss_scheme, "blue_red") &&
       is.null(n$junk)
   }
 )
@@ -77,13 +80,15 @@ saved <- ynow_prefs_set_user_settings(uid, list(
   hide_locked_sidebar = TRUE,
   preferred_ui_locale = "en",
   preferred_market = "US",
-  sidebar_compact = TRUE
+  sidebar_compact = TRUE,
+  gain_loss_scheme = "red_blue"
 ))
 check("set returns normalized", {
   isTRUE(saved$hide_locked_sidebar) &&
     identical(saved$preferred_ui_locale, "en") &&
     identical(saved$preferred_market, "US") &&
-    isTRUE(saved$sidebar_compact)
+    isTRUE(saved$sidebar_compact) &&
+    identical(saved$gain_loss_scheme, "red_blue")
 })
 check("get after set", identical(ynow_prefs_get_user_settings(uid), saved))
 
@@ -141,7 +146,21 @@ check(
     grepl("settings_hide_locked = \"快速隱藏鎖住項目\"", loc, fixed = TRUE) &&
     grepl("menu_settings = \"Settings\"", loc, fixed = TRUE) &&
     grepl("menu_settings = \"設定\"", loc, fixed = TRUE) &&
-    !grepl("一鍵隱藏", loc, fixed = TRUE)
+    grepl("settings_gain_loss = \"Gain / loss colors\"", loc, fixed = TRUE) &&
+    grepl("settings_gain_loss = \"漲跌底色\"", loc, fixed = TRUE) &&
+    grepl("pts_topup_title = \"Points top-up\"", loc, fixed = TRUE) &&
+    grepl("pts_topup_title = \"點數儲值\"", loc, fixed = TRUE) &&
+    !grepl("一鍵隱藏", loc, fixed = TRUE) &&
+    !grepl("一鍵", loc, fixed = TRUE)
+)
+check(
+  "settings UI + account top-up scaffold",
+  grepl("ynow_settings_gain_loss", auth, fixed = TRUE) &&
+    grepl("gain_loss_scheme", srv, fixed = TRUE) &&
+    grepl("data-ynow-gain-scheme", ui, fixed = TRUE) &&
+    grepl("ynow_pts_topup_slot", auth, fixed = TRUE) &&
+    grepl("ynow-pts-topup", auth, fixed = TRUE) &&
+    grepl("disabled", auth, fixed = TRUE)
 )
 check(
   "Lite omit includes settings",

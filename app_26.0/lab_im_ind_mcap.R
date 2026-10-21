@@ -332,8 +332,12 @@ lab_format_ind_mcap_chain_table <- function(agg_df, locale = "zh-TW") {
 
 #' Market-aware colorscale for industry mcap treemap (valuation upside %).
 #'
-#' US: green up / red down. TW: red up / green down (台灣投資慣例).
-lab_ind_mcap_treemap_colorscale <- function(market = "US") {
+#' Default (`gain_scheme = "auto"`): US green-up / red-down; TW red-up / green-down.
+#' Explicit schemes (green/red, blue/red, swapped) come from Settings → 漲跌底色.
+lab_ind_mcap_treemap_colorscale <- function(market = "US", gain_scheme = "auto") {
+  if (exists("ynow_gain_loss_treemap_colorscale", mode = "function")) {
+    return(ynow_gain_loss_treemap_colorscale(scheme = gain_scheme, market = market))
+  }
   mm <- tryCatch({
     if (exists("normalize_market_mode", mode = "function")) {
       normalize_market_mode(market)
@@ -342,24 +346,30 @@ lab_ind_mcap_treemap_colorscale <- function(market = "US") {
       if (identical(m, "TW") || identical(m, "TWN") || identical(m, "TAIWAN")) "TW" else "US"
     }
   }, error = function(e) "US")
-  # Soft block-heatmap palette (close to common market treemap UIs).
-  if (identical(mm, "TW")) {
-    list(
-      list(0, "#1b7a4a"),
-      list(0.35, "#8fd6a8"),
-      list(0.5, "#d8dde3"),
-      list(0.65, "#f0a2a2"),
-      list(1, "#c0392b")
-    )
-  } else {
-    list(
-      list(0, "#c0392b"),
-      list(0.35, "#f0a2a2"),
-      list(0.5, "#d8dde3"),
-      list(0.65, "#8fd6a8"),
-      list(1, "#1b7a4a")
-    )
+  scheme <- tolower(gsub("[\\s-]+", "_", trimws(as.character(gain_scheme %||% "auto")[1]), perl = TRUE))
+  if (!nzchar(scheme)) scheme <- "auto"
+  if (identical(scheme, "auto")) {
+    scheme <- if (identical(mm, "TW")) "red_green" else "green_red"
   }
+  green <- "#1e7a46"
+  red <- "#c0392b"
+  blue <- "#0C5484"
+  pair <- switch(
+    scheme,
+    "green_red" = list(up = green, down = red),
+    "red_green" = list(up = red, down = green),
+    "blue_red" = list(up = blue, down = red),
+    "red_blue" = list(up = red, down = blue),
+    list(up = green, down = red)
+  )
+  # Soft block-heatmap palette (aligned with ynow_gain_loss_colors).
+  list(
+    list(0, pair$down),
+    list(0.35, if (identical(pair$down, green)) "#8fd6a8" else if (identical(pair$down, blue)) "#8fb6d6" else "#f0a2a2"),
+    list(0.5, "#d8dde3"),
+    list(0.65, if (identical(pair$up, green)) "#8fd6a8" else if (identical(pair$up, blue)) "#8fb6d6" else "#f0a2a2"),
+    list(1, pair$up)
+  )
 }
 
 #' Prepare all industry-chain rows for the block treemap (size = total mcap).
@@ -447,11 +457,13 @@ lab_ind_mcap_prepare_treemap_df <- function(snap_df, locale = "zh-TW") {
 #' Plotly block treemap for industry mcap-weighted upside (all chains).
 #'
 #' Area = total market cap; color = mcap-weighted annualized valuation upside.
-#' @param market US → green-up; TW → red-up.
+#' @param market US → green-up; TW → red-up when gain_scheme is auto.
+#' @param gain_scheme Settings gain/loss scheme id (auto / green_red / …).
 lab_ind_mcap_treemap_plotly <- function(snap_df,
                                         market = "US",
                                         locale = "zh-TW",
-                                        color_abs_max = 20) {
+                                        color_abs_max = 20,
+                                        gain_scheme = "auto") {
   loc <- if (exists("normalize_ui_locale", mode = "function")) {
     normalize_ui_locale(locale)
   } else {
@@ -562,7 +574,7 @@ lab_ind_mcap_treemap_plotly <- function(snap_df,
     hoverinfo = "text",
     marker = list(
       colors = z,
-      colorscale = lab_ind_mcap_treemap_colorscale(mm),
+      colorscale = lab_ind_mcap_treemap_colorscale(mm, gain_scheme = gain_scheme),
       cmin = -cabsm,
       cmax = cabsm,
       cmid = 0,

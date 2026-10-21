@@ -211,6 +211,15 @@ check("admin panel flat block (no AdminLTE box)", {
     !grepl("box-solid", html, fixed = TRUE) &&
     !grepl("box-primary", html, fixed = TRUE)
 })
+check("account panel reserves points top-up slot", {
+  p <- ynow_admin_panel_ui(list(email = "demo@ynow.app", logged_in_at = "t"), "zh-TW", "v26.01")
+  html <- paste(as.character(p), collapse = "\n")
+  grepl("ynow_pts_topup_slot", html, fixed = TRUE) &&
+    grepl("點數儲值", html, fixed = TRUE) &&
+    grepl("即將開放", html, fixed = TRUE) &&
+    grepl("disabled", html, fixed = TRUE) &&
+    !grepl("stripe|paypal|checkout.session", html, ignore.case = TRUE)
+})
 check("points panel flat block + theme", {
   p <- ynow_points_panel_ui(list(email = "demo@ynow.app"), "zh-TW", fyn_balance = 10L, pyn_balance = 0L)
   html <- as.character(p)
