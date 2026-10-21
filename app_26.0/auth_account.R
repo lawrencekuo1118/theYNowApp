@@ -2534,16 +2534,22 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
     uid <- as.character(u$id %||% "")[1]
     if (!nzchar(uid)) return(invisible(NULL))
     tab_now <- as.character(tab %||% isolate(input$sidebar_tabs) %||% "")[1]
+    # Sys. Admin is ops-only; never overwrite the member's last screen with it
+    # (view-as exit can land on testing before Sign out reads the tab).
+    if (identical(tab_now, "testing")) tab_now <- NULL
     tk_now <- as.character(ticker %||% "")[1]
     if (!nzchar(tk_now) && exists("ynow_prefs_get_last_ui_surface", mode = "function")) {
-      # Keep prior ticker when only tab is known at this call site.
       prev <- tryCatch(ynow_prefs_get_last_ui_surface(uid), error = function(e) NULL)
       if (is.list(prev)) tk_now <- as.character(prev$ticker %||% "")[1]
     }
     tryCatch({
       if (exists("ynow_prefs_update_last_ui_surface", mode = "function")) {
-        ynow_prefs_update_last_ui_surface(uid, tab = tab_now, ticker = tk_now)
-      } else {
+        if (is.null(tab_now)) {
+          ynow_prefs_update_last_ui_surface(uid, ticker = tk_now)
+        } else {
+          ynow_prefs_update_last_ui_surface(uid, tab = tab_now, ticker = tk_now)
+        }
+      } else if (!is.null(tab_now)) {
         ynow_prefs_set_last_ui_surface(uid, list(tab = tab_now, ticker = tk_now))
       }
     }, error = function(e) NULL)
