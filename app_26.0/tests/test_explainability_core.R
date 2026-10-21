@@ -28,6 +28,7 @@ src_explain <- file.path(app_dir, "explainability.R")
 src_locale <- file.path(app_dir, "ui_locale.R")
 src_global <- file.path(app_dir, "global.R")
 src_ui <- file.path(app_dir, "ynow_ui.R")
+src_about <- file.path(app_dir, "ynow_about_ui.R")
 src_srv <- file.path(app_dir, "ynow_server.R")
 src_ri <- file.path(app_dir, "ri_module.R")
 src_pb <- file.path(app_dir, "pb_asset_module.R")
@@ -170,11 +171,22 @@ panel <- ynow_value_why_panel(
   footnote = "core"
 )
 check("panel is shiny tag", inherits(panel, "shiny.tag") || inherits(panel, "shiny.tag.list"))
+check("panel has admin-dev-explain class", {
+  grepl("ynow-admin-dev-explain", as.character(panel), fixed = TRUE)
+})
+check("admin helper class constant", identical(ynow_admin_dev_explain_class(), "ynow-admin-dev-explain"))
+check("admin helper wrap", {
+  w <- ynow_admin_dev_explain(tags$span("x"))
+  inherits(w, "shiny.tag") && grepl("ynow-admin-dev-explain", as.character(w), fixed = TRUE)
+})
 smart <- ynow_smart_explain_ui(
   fv_title = "FV", fv_rows = rows_fcff, fv_empty = "e", fv_foot = "f",
   gate_title = "Gate", gate_rows = gate_rows, gate_empty = "ge"
 )
 check("smart explain ui", inherits(smart, "shiny.tag.list") || inherits(smart, "shiny.tag"))
+check("smart explain panels gated", {
+  grepl("ynow-admin-dev-explain", as.character(smart), fixed = TRUE)
+})
 mult_panel <- ynow_value_why_panel(
   title = "Mult", rows = mult_rows, empty_message = "e", footnote = "f"
 )
@@ -188,6 +200,11 @@ check("smart explain ui accepts extra_panels", {
 })
 
 ui <- paste(readLines(src_ui, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+about_ui <- if (file.exists(src_about)) {
+  paste(readLines(src_about, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+} else {
+  ""
+}
 srv <- paste(readLines(src_srv, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 ri_txt <- paste(readLines(src_ri, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 pb_txt <- paste(readLines(src_pb, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
@@ -218,11 +235,22 @@ check("param sensitivity default expanded", {
   grepl("collapsed = FALSE", ui, fixed = TRUE) &&
     grepl("Core explainability: keep open by default", ui, fixed = TRUE)
 })
-check("About zh 可解釋性是核心", grepl("可解釋性是核心功能，不是附註", ui, fixed = TRUE))
+check("About zh 可解釋性是核心", {
+  grepl("可解釋性是核心功能，不是附註", about_ui, fixed = TRUE) ||
+    grepl("可解釋性是核心功能，不是附註", ui, fixed = TRUE)
+})
 check("About en Explainability is a core feature", {
-  grepl("Explainability is a core feature, not an appendix", ui, fixed = TRUE)
+  grepl("Explainability is a core feature, not an appendix", about_ui, fixed = TRUE) ||
+    grepl("Explainability is a core feature, not an appendix", ui, fixed = TRUE)
 })
 check("Model Dashboard explainability callout", grepl("ynow_explain_core_callout", ui, fixed = TRUE))
+check("callout uses admin-dev-explain class", {
+  grepl("ynow-explain-core-callout ynow-full-only ynow-admin-dev-explain", ui, fixed = TRUE)
+})
+check("CSS hides admin-dev-explain without sysadmin", {
+  grepl("body:not(.ynow-sysadmin-on) .ynow-admin-dev-explain", ui, fixed = TRUE) &&
+    grepl("ynow-admin-dev-explain", ui, fixed = TRUE)
+})
 check("applyUiLocale wires explain callout", {
   grepl("ynow_explain_core_callout_title", ui, fixed = TRUE) &&
     grepl("explain_core_callout_title", ui, fixed = TRUE)

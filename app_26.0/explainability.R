@@ -2,7 +2,23 @@
 # explainability.R — first-class「可解釋性」panels (not appendix)
 # Compact Why-this-value cards for valuation results + decision gates.
 # Schema for every key number: formula path, inputs, data source, gate rationale.
+#
+# Visibility: developer / audit Why panels use class ynow-admin-dev-explain and
+# show only when body.ynow-sysadmin-on (signed-in system admin portal unlock).
+# Do not use that class for end-user investment help or Decision Checklist HFV veto copy.
 # ==========================================
+
+#' CSS class for admin-only developer explainability / audit rationale blocks.
+ynow_admin_dev_explain_class <- function() {
+  "ynow-admin-dev-explain"
+}
+
+#' Wrap UI in the shared admin-only developer-explainability shell.
+#'
+#' Visible only when `body.ynow-sysadmin-on` (see CSS in ynow_ui.R).
+ynow_admin_dev_explain <- function(...) {
+  tags$div(class = ynow_admin_dev_explain_class(), ...)
+}
 
 #' Build a compact Why-this-value panel (core explainability surface).
 #'
@@ -51,7 +67,7 @@ ynow_value_why_panel <- function(title,
     NULL
   }
   tags$div(
-    class = "ynow-value-why",
+    class = paste("ynow-value-why", ynow_admin_dev_explain_class()),
     style = paste0(
       "margin:10px 0 14px 0; padding:12px 14px; ",
       "border:1px solid #d9e2ec; border-left:4px solid #0C5484; ",
