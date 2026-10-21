@@ -1820,11 +1820,19 @@ server <- function(input, output, session) {
     choices <- stats::setNames(as.character(df$user_id), as.character(df$public_id))
     va <- tryCatch(isolate(ynow_pts_view_as()), error = function(e) NULL)
     va_uid <- if (is.list(va)) as.character(va$user_id %||% "")[1] else ""
+    cur_uid <- as.character(isolate(input$ynow_pts_sysadmin_user) %||% "")[1]
     sel <- if (nzchar(va_uid) && va_uid %in% as.character(choices)) {
       va_uid
+    } else if (nzchar(cur_uid) && cur_uid %in% as.character(choices)) {
+      cur_uid
     } else {
       as.character(choices[[1]])
     }
+    cur_scope <- as.character(isolate(input$ynow_access_scope) %||% "user")[1]
+    if (!cur_scope %in% c("user", "all")) cur_scope <- "user"
+    cur_effect <- as.character(isolate(input$ynow_access_effect) %||% "lock")[1]
+    if (!cur_effect %in% c("lock", "hide")) cur_effect <- "lock"
+    cur_item <- as.character(isolate(input$ynow_access_item) %||% "")[1]
     tags$div(
       tags$p(
         class = "text-muted",
@@ -1941,64 +1949,19 @@ server <- function(input, output, session) {
           character()
         }
         item_choices <- if (length(item_labels)) stats::setNames(cat_df$id, item_labels) else character()
-        all_uid <- if (exists("YNOW_ACCESS_ALL_USERS", inherits = TRUE)) {
-          as.character(get("YNOW_ACCESS_ALL_USERS", inherits = TRUE))[1]
+        item_sel <- if (nzchar(cur_item) && cur_item %in% as.character(item_choices)) {
+          cur_item
+        } else if (length(item_choices)) {
+          as.character(item_choices[[1]])
         } else {
-          "__all__"
-        }
-        .fmt_entries <- function(uid_show, scope_lab) {
-          if (!exists("ynow_access_entries", mode = "function")) return(character())
-          # Raw map for this store key only (not merged), via locked file/db uid.
-          ent <- tryCatch({
-            if (exists(".ynow_access_map_for_uid", mode = "function")) {
-              mp <- .ynow_access_map_for_uid(uid_show)
-              if (!length(mp)) {
-                data.frame(id = character(), effect = character(), stringsAsFactors = FALSE)
-              } else {
-                data.frame(
-                  id = names(mp),
-                  effect = unname(as.character(mp)),
-                  stringsAsFactors = FALSE
-                )
-              }
-            } else {
-              ynow_access_entries(uid_show)
-            }
-          }, error = function(e) {
-            data.frame(id = character(), effect = character(), stringsAsFactors = FALSE)
-          })
-          if (!is.data.frame(ent) || nrow(ent) < 1L) return(character())
-          vapply(seq_len(nrow(ent)), function(i) {
-            lab <- if (exists("ynow_access_label", mode = "function")) {
-              ynow_access_label(ent$id[[i]], loc)
-            } else {
-              ent$id[[i]]
-            }
-            eff <- if (exists("ynow_access_effect_label", mode = "function")) {
-              ynow_access_effect_label(ent$effect[[i]], loc)
-            } else {
-              ent$effect[[i]]
-            }
-            paste0(scope_lab, " · ", lab, "（", eff, "）")
-          }, character(1))
-        }
-        user_lines <- if (nzchar(sel)) {
-          .fmt_entries(sel, .lab("access_scope_user_short", "User"))
-        } else {
-          character()
-        }
-        all_lines <- .fmt_entries(all_uid, .lab("access_scope_all_short", "All"))
-        locked_lines <- c(all_lines, user_lines)
-        locked_txt <- if (!length(locked_lines)) {
-          .lab("access_none", "Nothing is locked for this user.")
-        } else {
-          paste(locked_lines, collapse = if (identical(loc, "zh-TW")) "、" else "; ")
+          NULL
         }
         tagList(
           selectInput(
             "ynow_access_item",
             .lab("access_lock_item", "Item"),
-            choices = item_choices
+            choices = item_choices,
+            selected = item_sel
           ),
           radioButtons(
             "ynow_access_scope",
@@ -2008,7 +1971,7 @@ server <- function(input, output, session) {
               .lab("access_scope_all", "All users")
             ),
             choiceValues = c("user", "all"),
-            selected = "user",
+            selected = cur_scope,
             inline = TRUE
           ),
           radioButtons(
@@ -2019,7 +1982,7 @@ server <- function(input, output, session) {
               .lab("access_effect_hide", "Hide (remove from UI)")
             ),
             choiceValues = c("lock", "hide"),
-            selected = "lock",
+            selected = cur_effect,
             inline = TRUE
           ),
           tags$div(
@@ -2035,14 +1998,45 @@ server <- function(input, output, session) {
               class = "btn-default"
             )
           ),
-          tags$p(
-            style = "margin-top:10px; font-size:12.5px;",
-            tags$b(.lab("access_locked_now", "Currently restricted")),
-            ": ",
-            locked_txt
-          )
+          # Live host: reacts to selected user id + apply-scope without rebuilding the panel.
+          uiOutput("ynow_access_locked_now")
         )
       }
+    )
+  })
+
+  # Lightweight invalidation for 「目前限制」 after apply/clear (avoid full panel rebuild).
+  ynow_access_display_tick <- reactiveVal(0L)
+
+  output$ynow_access_locked_now <- renderUI({
+    # Depend on selection + scope + post-apply tick so the line stays current.
+    ynow_access_display_tick()
+    ynow_pts_sysadmin_tick()
+    uid <- as.character(input$ynow_pts_sysadmin_user %||% "")[1]
+    scope <- as.character(input$ynow_access_scope %||% "user")[1]
+    loc <- tryCatch(
+      normalize_ui_locale(isolate(ui_locale())),
+      error = function(e) "zh-TW"
+    )
+    .lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
+    locked_txt <- if (exists("ynow_access_admin_status_text", mode = "function")) {
+      ynow_access_admin_status_text(
+        user_id = uid,
+        scope = scope,
+        locale = loc,
+        user_scope_lab = .lab("access_scope_user_short", "User"),
+        all_scope_lab = .lab("access_scope_all_short", "All"),
+        none_lab = .lab("access_none", "Nothing is restricted for this scope.")
+      )
+    } else {
+      .lab("access_none", "Nothing is restricted for this scope.")
+    }
+    tags$p(
+      id = "ynow_access_locked_now_txt",
+      style = "margin-top:10px; font-size:12.5px;",
+      tags$b(.lab("access_locked_now", "Currently restricted")),
+      ": ",
+      tags$span(id = "ynow_access_locked_now_value", locked_txt)
     )
   })
 
@@ -2073,7 +2067,9 @@ server <- function(input, output, session) {
       type = if (isTRUE(res$ok)) "message" else "warning"
     )
     if (isTRUE(res$ok)) {
-      ynow_pts_sysadmin_tick(isolate(ynow_pts_sysadmin_tick()) + 1L)
+      # Refresh 「目前限制」 without rebuilding the whole sysadmin panel
+      # (keeps 選擇使用者代號 / radios stable while the line live-updates).
+      ynow_access_display_tick(isolate(ynow_access_display_tick()) + 1L)
       .ynow_push_access_locks()
     }
   }

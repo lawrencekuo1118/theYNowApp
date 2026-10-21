@@ -181,6 +181,18 @@ check("server has scope + effect radios", {
 })
 check("server pushes entries", grepl("entries = entries", srv, fixed = TRUE) || grepl("entries =", srv, fixed = TRUE))
 check("server denies pdf", grepl("report:download_report", srv, fixed = TRUE))
+check("server live-updates locked-now from selected user", {
+  grepl('uiOutput("ynow_access_locked_now")', srv, fixed = TRUE) &&
+    grepl("output$ynow_access_locked_now", srv, fixed = TRUE) &&
+    grepl("input$ynow_pts_sysadmin_user", srv, fixed = TRUE) &&
+    grepl("ynow_access_admin_status_text", srv, fixed = TRUE) &&
+    grepl("ynow_access_display_tick", srv, fixed = TRUE) &&
+    grepl("ynow_access_locked_now_value", srv, fixed = TRUE)
+})
+check("server preserves selected user across panel refresh", {
+  grepl("isolate(input$ynow_pts_sysadmin_user)", srv, fixed = TRUE) &&
+    grepl("cur_uid %in% as.character(choices)", srv, fixed = TRUE)
+})
 check("locale en apply", grepl("access_lock_btn = \"Apply restriction\"", loc, fixed = TRUE))
 check("locale zh clear", grepl("access_unlock_btn = \"清除限制\"", loc, fixed = TRUE))
 check("locale scope all en+zh", {
@@ -188,8 +200,61 @@ check("locale scope all en+zh", {
     grepl("access_scope_all = \"所有使用者\"", loc, fixed = TRUE)
 })
 check("locale effect lock zh", grepl("access_effect_lock = \"鎖上", loc, fixed = TRUE))
+check("locale zh currently restricted", grepl("access_locked_now = \"目前限制\"", loc, fixed = TRUE))
 check("ui parses", inherits(tryCatch(parse(file.path(app_dir, "ynow_ui.R")), error = function(e) e), "expression"))
 check("server parses", inherits(tryCatch(parse(file.path(app_dir, "ynow_server.R")), error = function(e) e), "expression"))
+
+# Live status text must track the selected user under scope=user (not global-only / not other user).
+ynow_access_reset_memory()
+unlink(tmp)
+Sys.setenv(YNOW_ACCESS_LOCKS_PATH = tmp)
+ynow_access_set("user-alice", "tab:lab_notes", TRUE, effect = "lock")
+ynow_access_set("user-bob", "input:sgr", TRUE, effect = "hide")
+ynow_access_set(YNOW_ACCESS_ALL_USERS, "report:download_report", TRUE, effect = "hide")
+check("status lines for alice under user scope", {
+  lines <- ynow_access_admin_status_lines("user-alice", scope = "user", locale = "en",
+                                          user_scope_lab = "User", all_scope_lab = "All")
+  length(lines) == 1L &&
+    grepl("Quant Backtest", lines[[1]], fixed = TRUE) &&
+    grepl("Lock", lines[[1]], fixed = TRUE) &&
+    !grepl("SGR", paste(lines, collapse = " "), fixed = TRUE) &&
+    !grepl("Valuation report", paste(lines, collapse = " "), fixed = TRUE)
+})
+check("status lines switch when selected user changes", {
+  a <- ynow_access_admin_status_text("user-alice", scope = "user", locale = "en",
+                                     user_scope_lab = "User", all_scope_lab = "All",
+                                     none_lab = "NONE")
+  b <- ynow_access_admin_status_text("user-bob", scope = "user", locale = "en",
+                                     user_scope_lab = "User", all_scope_lab = "All",
+                                     none_lab = "NONE")
+  grepl("Quant Backtest", a, fixed = TRUE) &&
+    grepl("SGR", b, fixed = TRUE) &&
+    !identical(a, b) &&
+    !grepl("SGR", a, fixed = TRUE) &&
+    !grepl("Quant Backtest", b, fixed = TRUE)
+})
+check("status lines for all-users scope ignore selected uid", {
+  lines <- ynow_access_admin_status_lines("user-alice", scope = "all", locale = "en",
+                                          user_scope_lab = "User", all_scope_lab = "All")
+  length(lines) == 1L &&
+    grepl("Valuation report", lines[[1]], fixed = TRUE) &&
+    !grepl("Quant Backtest", paste(lines, collapse = " "), fixed = TRUE)
+})
+check("status text empty for user with no personal locks", {
+  identical(
+    ynow_access_admin_status_text("user-carol", scope = "user", locale = "zh-TW",
+                                  user_scope_lab = "個人", all_scope_lab = "全部",
+                                  none_lab = "此範圍沒有限制項目。"),
+    "此範圍沒有限制項目。"
+  )
+})
+check("zh status separator uses enumeration comma", {
+  ynow_access_set("user-alice", "input:sgr", TRUE, effect = "hide")
+  txt <- ynow_access_admin_status_text("user-alice", scope = "user", locale = "zh-TW",
+                                       user_scope_lab = "個人", all_scope_lab = "全部",
+                                       none_lab = "此範圍沒有限制項目。")
+  grepl("、", txt, fixed = TRUE) && grepl("個人 ·", txt, fixed = TRUE)
+})
 
 message("PASS ", ok, " FAIL ", bad)
 if (bad > 0L) quit(status = 1)
