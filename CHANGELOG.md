@@ -15,9 +15,9 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 
 ### Added
 
-- Signed-in search history: persist ticker/company lookups for the last 24 hours via `ynow_user_prefs` (`recent_search_history_24h`); reload into Recent Search chips + empty typeahead on login. Guests stay in-session only.
+- Signed-in search history: persist ticker/company lookups for the last 24 hours via `ynow_user_prefs` key `recent_search_history_24h` (additive; does not share `pinned_recent_search` / stock-pin grid keys); reload into Recent Search chips + empty typeahead on login. Guests stay in-session only.
 - en-US / zh-TW: `recent_search_24h_hint`, `recent_search_24h_empty`.
-- zh-TW：登入後記住近 24 小時搜尋紀錄；超過則自動清除。
+- zh-TW：登入後記住近 24 小時搜尋紀錄；超過則自動清除。與釘選代號／頁面釘選分鍵儲存。
 
 ### Changed
 
