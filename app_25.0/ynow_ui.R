@@ -17112,6 +17112,18 @@ ui <- dashboardPage(
           }
         }
 
+        /* If suggest DOM is still mounting (tab just shown), re-try briefly. */
+        function showSuggestWhenReady(inputId, tries) {
+          tries = (typeof tries === 'number') ? tries : 8;
+          var el = document.getElementById(suggestIdForInput(inputId));
+          if (el && el.children.length) {
+            showSuggest(inputId);
+            return;
+          }
+          if (tries <= 0) return;
+          setTimeout(function() { showSuggestWhenReady(inputId, tries - 1); }, 60);
+        }
+
         function hideSuggest(inputId) {
           if (inputId) {
             typingOpen[inputId] = false;
@@ -17250,6 +17262,14 @@ ui <- dashboardPage(
         $(document).on('shiny:value', function(e) {
           if (e.name === 'sc_ticker_suggest_ui') setTimeout(function() { showSuggest('sc'); }, 0);
           if (e.name === 'lab_cluster_focus_suggest_ui') setTimeout(function() { showSuggest('lab_cluster_focus'); }, 0);
+        });
+        /* Leaving Home/Macro/Blue Chip remounts stock chrome; re-open if still typing. */
+        $(document).on('shiny:inputchanged', function(e) {
+          if (!e || e.name !== 'sidebar_tabs') return;
+          setTimeout(function() {
+            if (typingOpen.sc) showSuggestWhenReady('sc');
+            if (typingOpen.lab_cluster_focus) showSuggestWhenReady('lab_cluster_focus');
+          }, 0);
         });
       })();
     ")),
