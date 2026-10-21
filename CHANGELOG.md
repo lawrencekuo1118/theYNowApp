@@ -13,11 +13,6 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 
 ## [Unreleased]
 
-### Added
-
-- Download Report UI: live remaining free PDF downloads (Asia/Taipei day) plus FYN points rules near the sidebar button; Snapshot CSV shows free-after-sign-in / Lite-free hints (no points gate on Lite).
-- zh-TW：下載報告旁顯示今日剩餘免費次數與點數規則；Snapshot 下載標明登入後免費；Lite 維持完全免費。
-
 ### Changed
 
 - CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_25.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).
@@ -27,6 +22,8 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 
 ### Added
 
+- Download Report UI: live remaining free PDF downloads (Asia/Taipei day) plus FYN points rules near the sidebar button; Snapshot CSV shows free-after-sign-in / Lite-free hints (no points gate on Lite) (PR #358).
+- zh-TW：下載報告旁顯示今日剩餘免費次數與點數規則；Snapshot 下載標明登入後免費；Lite 維持完全免費。
 - Signed-in sidebar tab reorder: **Customize / 自訂設定** on the date row enables long-press-drag of top-level menu items; **Done / 完成** persists order via `ynow_user_prefs` key `sidebar_tab_order` (PR #359).
 - en-US / zh-TW: `sidebar_reorder_*` locale keys.
 - zh-TW：登入後可自訂側邊欄分頁上下順序（先按自訂設定，長按拖移，再按完成儲存）。
@@ -34,7 +31,7 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 ### Changed
 
 - Disabled mistaken page-pin long-press UX from v25.93 so menu long-press is edit-mode reorder only; stock recent-search chip pins unchanged. Prefs API for `pinned_sidebar_tabs` retained.
-- Live baseline bundle `12718919` (`scripts/DEPLOY_BASELINE.txt`).
+- Live baseline bundle `12718935` (`scripts/DEPLOY_BASELINE.txt`) — supersedes interim #359-only bundle `12718919` after #358 merge deploy.
 
 ## [v25.94] — 2026-10-21
 
