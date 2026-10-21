@@ -18,6 +18,22 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 - CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_26.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).
 - Docs: root README ship/CI/Release pointers; `scripts/record_github_release.sh` for soft-fail Release publish after deploy.
 
+## [v26.14] — 2026-10-21
+
+### Fixed
+
+- **Lock first-paint / 鎖定首屏**: Full-mode guest locks (sidebar lock icon + light gray, member gates, Download Report) paint locked in the initial HTML. `ynow-auth-feature` is stamped on `<body>` when account login is enabled, so chrome no longer flashes unlocked while waiting for the Shiny `ynowAuthFeature` websocket message (PR #377).
+- zh-TW：完整版訪客鎖定（側邊欄鎖圖示＋淺灰、會員閘、下載報告）在首屏 HTML 即顯示鎖定；登入後點數／ACL 仍鎖定項目維持鎖住樣式，不會被藏起。
+- Live baseline bundle recorded in `scripts/DEPLOY_BASELINE.txt` after deploy.
+
+## [v26.13] — 2026-10-21
+
+### Changed
+
+- **Last UI / 上次畫面**: After sign-in or resume, restore last ticker with the last sidebar tab for signed-in members; uid prefs path (PR #376).
+- zh-TW：登入或恢復後一併還原上次 ticker 與側邊欄分頁。
+- Live baseline bundle `12720900` (`scripts/DEPLOY_BASELINE.txt`).
+
 ## [v26.12] — 2026-10-21
 
 ### Changed
