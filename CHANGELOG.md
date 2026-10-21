@@ -13,16 +13,21 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 
 ## [Unreleased]
 
-### Added
-
-- **Business Breakdown / 業務拆解**: TW major customers / suppliers / markets now ingest from **MOPS shareholder annual reports** (Art. 18 附表十六; official `doc.twse.com.tw` PDFs via `pypdf`). US path remains SEC EDGAR concentration notes. Honest empty when undisclosed — no marketing scrapes.
-- zh-TW：台股主要客戶／供應商／地區別改由公開資訊觀測站股東會年報穩定來源擷取；查無揭露時維持誠實空狀態。
-
 ### Changed
 
 - CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_26.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).
 - Docs: root README ship/CI/Release pointers; `scripts/record_github_release.sh` for soft-fail Release publish after deploy.
-- Research note (Project store): `docs/supplier-customer-data-sources.md` — ASC 280 / IFRS 8 / 年報準則第 18 條 + source stack.
+
+## [v26.05] — 2026-10-21
+
+### Added
+
+- **Business Breakdown / 業務拆解**: TW major customers / suppliers / markets now ingest from **MOPS shareholder annual reports** (Art. 18 附表十六; official `doc.twse.com.tw` PDFs via `pypdf`). US path remains SEC EDGAR concentration notes. Honest empty when undisclosed — no marketing scrapes (PR #366).
+- zh-TW：台股主要客戶／供應商／地區別改由公開資訊觀測站股東會年報穩定來源擷取；查無揭露時維持誠實空狀態。
+
+### Changed
+
+- Live baseline bundle `12719937` (`scripts/DEPLOY_BASELINE.txt`).
 
 ## [v26.04] — 2026-10-21
 
