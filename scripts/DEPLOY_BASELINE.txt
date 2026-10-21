@@ -7,5 +7,5 @@ commit=510df613
 short=510df613
 message=chore: bump display version to v25.91
 captured_at=2026-10-21T02:05:00Z
-display_version=v25.91
+display_version=v25.92
 note=Canonical live line is app_25.0. Bundle 12718171: ship ticker suggest stays warm after Home/Macro (PR #352). Secrets only in gitignored .Renviron restored from prior live bundle; no secret values in git.
