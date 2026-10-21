@@ -13,14 +13,19 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 
 ## [Unreleased]
 
-### Added
-
-- **US earnings-call ingest / 美股法說會擷取**: BBLab order-research path for US tickers — licensed transcript API (env keys only) → SEC 8-K body → company IR link-out. Seeking Alpha is human outbound only (no SA HTML scrape). Honest empty when undisclosed; TW leave-as-is. Attaches `order_disclosures$earnings_call` + UI block (en-US + zh-TW).
-
 ### Changed
 
 - CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_26.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).
 - Docs: root README ship/CI/Release pointers; `scripts/record_github_release.sh` for soft-fail Release publish after deploy.
+
+## [v26.18] — 2026-10-21
+
+### Added
+
+- **US earnings-call ingest / 美股法說會擷取** (live ship of PR #380): BBLab order-research path for US tickers — licensed transcript API (env keys only) → SEC 8-K body → company IR link-out. Seeking Alpha is human outbound only (no SA HTML scrape). Honest empty when undisclosed; TW leave-as-is. Attaches `order_disclosures$earnings_call` + UI block (en-US + zh-TW).
+- zh-TW：美股 BBLab 訂單研究可走法說／8-K 擷取路徑；Seeking Alpha 僅人工外連；未揭露時誠實空白；台股路徑不變。
+- Does not regress mobile login/points or single-device session (redeployed from current master tip).
+- Live baseline bundle recorded in `scripts/DEPLOY_BASELINE.txt` after deploy.
 
 ## [v26.17] — 2026-10-21
 
