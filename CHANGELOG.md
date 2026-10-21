@@ -13,16 +13,33 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 
 ## [Unreleased]
 
+### Changed
+
+- CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_25.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).
+- Docs: root README ship/CI/Release pointers; `scripts/record_github_release.sh` for soft-fail Release publish after deploy.
+
+## [v25.94] — 2026-10-21
+
 ### Added
 
-- Signed-in search history: persist ticker/company lookups for the last 24 hours via `ynow_user_prefs` key `recent_search_history_24h` (additive; does not share `pinned_recent_search` / stock-pin grid keys); reload into Recent Search chips + empty typeahead on login. Guests stay in-session only.
+- Signed-in search history: persist ticker/company lookups for the last 24 hours via `ynow_user_prefs` key `recent_search_history_24h` (additive; does not share `pinned_recent_search` / stock-pin grid keys); reload into Recent Search chips + empty typeahead on login. Guests stay in-session only (PR #356).
 - en-US / zh-TW: `recent_search_24h_hint`, `recent_search_24h_empty`.
 - zh-TW：登入後記住近 24 小時搜尋紀錄；超過則自動清除。與釘選代號／頁面釘選分鍵儲存。
 
 ### Changed
 
-- CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_25.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).
-- Docs: root README ship/CI/Release pointers; `scripts/record_github_release.sh` for soft-fail Release publish after deploy.
+- Live baseline bundle `12718890` (`scripts/DEPLOY_BASELINE.txt`).
+
+## [v25.93] — 2026-10-21
+
+### Added
+
+- Sidebar page pins: up to 12 tabs in a 3-column tray; persist after login (PR #355).
+- zh-TW：側邊欄頁面釘選（最多 12、三欄）；登入後跨工作階段保留。
+
+### Changed
+
+- Live baseline bundle `12718845` (`scripts/DEPLOY_BASELINE.txt`).
 
 ## [v25.92] — 2026-10-21
 
