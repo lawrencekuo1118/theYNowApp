@@ -1005,27 +1005,33 @@ macro_market_server <- function(id = "macro",
 
     # Progressive / non-blocking quotes: paint skeleton KPIs immediately so lazy
     # Macro mount does not hold the R event loop (which also delayed locale push).
-    index_quotes_rv <- reactiveVal(list())
+    .index_quote_skeleton <- function(mode) {
+      specs <- tryCatch(macro_click_index_specs(mode), error = function(e) character(0))
+      if (!length(specs)) return(list())
+      lapply(names(specs), function(sym) {
+        list(
+          symbol = sym,
+          label = unname(specs[[sym]]),
+          last = NA_real_,
+          chg_pct = NA_real_
+        )
+      })
+    }
+    # Seed US skeleton at register time so the first index_kpi_row paint is never 0 cards.
+    index_quotes_rv <- reactiveVal(.index_quote_skeleton("US"))
     index_quotes_gen <- reactiveVal(0L)
     observeEvent(
       list(refresh_token(), .mode()),
       {
-        specs <- macro_click_index_specs(.mode())
-        syms <- names(specs)
+        mode <- .mode()
+        skeleton <- .index_quote_skeleton(mode)
+        syms <- vapply(skeleton, function(r) as.character(r$symbol)[1], character(1))
         if (!length(syms)) {
           index_quotes_rv(list())
           return(invisible(NULL))
         }
         gen <- isolate(as.integer(index_quotes_gen()) %||% 0L) + 1L
         index_quotes_gen(gen)
-        skeleton <- lapply(syms, function(sym) {
-          list(
-            symbol = sym,
-            label = unname(specs[[sym]]),
-            last = NA_real_,
-            chg_pct = NA_real_
-          )
-        })
         index_quotes_rv(skeleton)
         .fetch_one <- function(i, acc) {
           if (!identical(isolate(as.integer(index_quotes_gen()) %||% 0L), gen)) {
@@ -1040,7 +1046,7 @@ macro_market_server <- function(id = "macro",
           q <- .px_last_chg(df)
           acc[[i]] <- list(
             symbol = sym,
-            label = unname(specs[[sym]]),
+            label = acc[[i]]$label %||% sym,
             last = q$last,
             chg_pct = q$chg
           )
@@ -1055,7 +1061,7 @@ macro_market_server <- function(id = "macro",
           invisible(NULL)
         }
         if (requireNamespace("later", quietly = TRUE)) {
-          # Yield past current flush / after_mount locale push (0.12s) before Yahoo work.
+          # Yield past after_mount locale push (0.12s); HTCDI is delayed further below.
           later::later(function() {
             tryCatch(.fetch_one(1L, skeleton), error = function(e) NULL)
           }, delay = 0.15)
@@ -1067,7 +1073,9 @@ macro_market_server <- function(id = "macro",
       ignoreNULL = FALSE
     )
     index_quotes <- reactive({
-      index_quotes_rv()
+      rows <- index_quotes_rv()
+      if (length(rows)) return(rows)
+      .index_quote_skeleton(.mode())
     })
 
     .macro_wrap_alertable <- function(ui, metric, ticker, value, label,
@@ -1559,8 +1567,8 @@ macro_market_server <- function(id = "macro",
     })
 
     # HTCDI pulls 5y prices and statements for every issuer. That work used to
-    # run inside the first paint. Queue it after the session flushes so the
-    # index cards and the rest of the page can appear first.
+    # run inside the first paint and also starved later(0) queues (index KPIs /
+    # locale). Defer past first-paint KPI skeleton + progressive quote ticks.
     htcdi_val <- reactiveVal(NULL)
     htcdi_job <- reactiveVal(0L)
     .htcdi_compute <- function(mode) {
@@ -1617,7 +1625,8 @@ macro_market_server <- function(id = "macro",
         htcdi_val(out$res %||% list(availability = "unavailable"))
       }
       if (requireNamespace("later", quietly = TRUE)) {
-        later::later(run_job, delay = 0)
+        # After index-quote starter (0.15) and a few per-symbol yields (~4×0).
+        later::later(run_job, delay = 1.25)
       } else {
         run_job()
       }

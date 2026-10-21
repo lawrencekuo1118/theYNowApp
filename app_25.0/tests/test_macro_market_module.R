@@ -441,8 +441,12 @@ check("lazy Macro builder passes locale + market_mode", {
 check("progressive non-blocking index quotes", {
   grepl("index_quotes_rv", txt, fixed = TRUE) &&
     grepl("index_quotes_gen", txt, fixed = TRUE) &&
+    grepl(".index_quote_skeleton", txt, fixed = TRUE) &&
     grepl("later::later", txt, fixed = TRUE) &&
     grepl("delay = 0.15", txt, fixed = TRUE)
+})
+check("HTCDI deferred past first-paint KPIs", {
+  grepl("later::later(run_job, delay = 1.25)", txt, fixed = TRUE)
 })
 check("client re-applies Macro locale when lazy DOM appears", {
   ui_js <- paste(readLines("ynow_ui.R", warn = FALSE), collapse = "\n")
