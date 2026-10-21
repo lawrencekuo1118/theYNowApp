@@ -44,7 +44,8 @@ server <- function(input, output, session) {
   values <- reactiveValues(
     recentsearch = c(),
     pinned_search = c(),
-    pinned_sidebar = c()
+    pinned_sidebar = c(),
+    sidebar_tab_order = c()
   )
   corp_industry_text <- reactiveVal("等待搜尋...")
   corp_display_name <- reactiveVal("")
@@ -711,73 +712,116 @@ server <- function(input, output, session) {
     ignoreInit = TRUE
   )
 
+  # Page-pin toggle disabled — long-press on tabs is edit-mode reorder only.
   observeEvent(input$pinned_sidebar_toggle, {
-    raw <- as.character(input$pinned_sidebar_toggle %||% "")[1]
-    req(nzchar(raw))
-    tab <- strsplit(raw, "|", fixed = TRUE)[[1]][1]
-    tab <- ynow_prefs_normalize_sidebar_tabs(tab, max_n = 1L)
-    req(length(tab) == 1L)
-    # Do not pin Lite-omitted tabs while Lite is on (ACL / omit respect).
-    lite_on <- isTRUE(tryCatch(isolate(lite_mode()), error = function(e) FALSE)) ||
-      isTRUE(tryCatch(isolate(input$ynow_lite_mode), error = function(e) FALSE))
-    if (lite_on && exists("ynow_sidebar_lite_omit_tabs", mode = "function") &&
-          tab[[1]] %in% ynow_sidebar_lite_omit_tabs()) {
-      return(invisible(NULL))
-    }
-    uid <- .ynow_pinned_auth_uid()
-    cur <- isolate(as.character(values$pinned_sidebar %||% character(0)))
-    was_pinned <- tab[[1]] %in% cur
-    at_cap <- FALSE
-    if (nzchar(uid) && exists("ynow_prefs_toggle_pinned_sidebar", mode = "function")) {
-      nxt <- tryCatch(
-        ynow_prefs_toggle_pinned_sidebar(uid, tab[[1]]),
-        error = function(e) {
-          if (was_pinned) {
-            setdiff(cur, tab[[1]])
-          } else if (length(cur) >= 12L) {
-            at_cap <<- TRUE
-            cur
-          } else {
-            c(tab[[1]], setdiff(cur, tab[[1]]))
-          }
-        }
-      )
-      at_cap <- isTRUE(attr(nxt, "at_cap"))
-      attr(nxt, "at_cap") <- NULL
+    invisible(NULL)
+  }, ignoreInit = TRUE)
+
+  # ---- Sidebar tab order (signed-in customize + long-press drag) ----
+  .ynow_sidebar_order_push <- function(order) {
+    ids <- if (exists("ynow_prefs_normalize_sidebar_order", mode = "function")) {
+      ynow_prefs_normalize_sidebar_order(order, fill_defaults = TRUE)
     } else {
-      if (was_pinned) {
-        nxt <- setdiff(cur, tab[[1]])
-      } else if (length(cur) >= 12L) {
-        at_cap <- TRUE
-        nxt <- cur
-      } else {
-        nxt <- c(tab[[1]], setdiff(cur, tab[[1]]))
-      }
-      nxt <- ynow_prefs_normalize_sidebar_tabs(nxt)
-      .ynow_sidebar_pin_sync_guest(nxt)
+      as.character(order %||% character(0))
     }
-    values$pinned_sidebar <- as.character(nxt %||% character(0))
-    .ynow_sidebar_pin_mark_client(values$pinned_sidebar)
-    loc <- tryCatch(ui_locale(), error = function(e) "en")
-    if (isTRUE(at_cap)) {
-      msg <- tryCatch(
-        ui_str("sidebar_pins_max_toast", loc),
-        error = function(e) "You can pin up to 12 pages."
-      )
-      tryCatch(showNotification(msg, type = "warning", duration = 2.8), error = function(e) NULL)
-      return(invisible(NULL))
-    }
-    now_pinned <- tab[[1]] %in% values$pinned_sidebar
-    lab <- .ynow_sidebar_pin_label(tab[[1]], loc)
-    msg <- tryCatch(
-      ui_str(if (now_pinned) "sidebar_pins_pinned_toast" else "sidebar_pins_unpinned_toast", loc),
-      error = function(e) if (now_pinned) "Pinned." else "Unpinned."
-    )
-    msg <- gsub("{label}", lab, msg, fixed = TRUE)
+    values$sidebar_tab_order <- ids
     tryCatch(
-      showNotification(msg, type = "message", duration = 2.2),
+      session$sendCustomMessage(
+        "ynowSidebarTabOrder",
+        list(order = as.list(ids))
+      ),
       error = function(e) NULL
     )
+  }
+  .ynow_sidebar_order_load <- function(uid) {
+    if (!nzchar(uid) || !exists("ynow_prefs_get_sidebar_tab_order", mode = "function")) {
+      if (exists("ynow_sidebar_default_order", mode = "function")) {
+        return(ynow_sidebar_default_order())
+      }
+      return(character(0))
+    }
+    tryCatch(
+      ynow_prefs_get_sidebar_tab_order(uid),
+      error = function(e) {
+        if (exists("ynow_sidebar_default_order", mode = "function")) {
+          ynow_sidebar_default_order()
+        } else {
+          character(0)
+        }
+      }
+    )
+  }
+  .ynow_sidebar_order_persist <- function(uid, ids) {
+    if (!nzchar(uid) || !exists("ynow_prefs_set_sidebar_tab_order", mode = "function")) {
+      return(invisible(ids))
+    }
+    tryCatch(ynow_prefs_set_sidebar_tab_order(uid, ids), error = function(e) ids)
+  }
+
+  .ynow_sidebar_order_last_uid <- reactiveVal("")
+  observeEvent(
+    {
+      list(
+        logged = tryCatch(isTRUE(ynow_auth$is_logged_in()), error = function(e) FALSE),
+        uid = .ynow_pinned_auth_uid(),
+        view_as = tryCatch(ynow_pts_view_as(), error = function(e) NULL)
+      )
+    },
+    {
+      uid <- .ynow_pinned_auth_uid()
+      prev <- isolate(as.character(.ynow_sidebar_order_last_uid() %||% "")[1])
+      if (nzchar(uid)) {
+        order_ids <- .ynow_sidebar_order_load(uid)
+        .ynow_sidebar_order_push(order_ids)
+        .ynow_sidebar_order_last_uid(uid)
+      } else if (nzchar(prev)) {
+        if (exists("ynow_sidebar_default_order", mode = "function")) {
+          .ynow_sidebar_order_push(ynow_sidebar_default_order())
+        }
+        .ynow_sidebar_order_last_uid("")
+      }
+    },
+    ignoreInit = FALSE
+  )
+
+  observeEvent(input$sidebar_tab_order_guest, {
+    loc <- tryCatch(ui_locale(), error = function(e) "en")
+    msg <- tryCatch(
+      ui_str("sidebar_reorder_guest_toast", loc),
+      error = function(e) "Sign in to customize sidebar order."
+    )
+    tryCatch(showNotification(msg, type = "message", duration = 2.4), error = function(e) NULL)
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$sidebar_tab_order_save, {
+    uid <- .ynow_pinned_auth_uid()
+    if (!nzchar(uid)) {
+      loc <- tryCatch(ui_locale(), error = function(e) "en")
+      msg <- tryCatch(
+        ui_str("sidebar_reorder_guest_toast", loc),
+        error = function(e) "Sign in to customize sidebar order."
+      )
+      tryCatch(showNotification(msg, type = "message", duration = 2.4), error = function(e) NULL)
+      return(invisible(NULL))
+    }
+    raw <- as.character(input$sidebar_tab_order_save %||% "")[1]
+    req(nzchar(raw))
+    part <- strsplit(raw, "|", fixed = TRUE)[[1]][1]
+    ids <- if (nzchar(part %||% "")) {
+      strsplit(part, ",", fixed = TRUE)[[1]]
+    } else {
+      character(0)
+    }
+    # Do not invent Lite-omitted tabs into the saved order beyond defaults fill;
+    # normalize keeps known vocabulary only (ACL / Lite omit still hide items in CSS).
+    saved <- .ynow_sidebar_order_persist(uid, ids)
+    .ynow_sidebar_order_push(saved)
+    loc <- tryCatch(ui_locale(), error = function(e) "en")
+    msg <- tryCatch(
+      ui_str("sidebar_reorder_saved_toast", loc),
+      error = function(e) "Sidebar order saved."
+    )
+    tryCatch(showNotification(msg, type = "message", duration = 2.2), error = function(e) NULL)
   }, ignoreInit = TRUE)
 
   ynow_pts_panel_tick <- reactiveVal(0L)
@@ -3952,63 +3996,9 @@ server <- function(input, output, session) {
     )
   })
 
+  # Page-pin tray disabled (v25.93 misread). Prefer stock pins + tab reorder.
   output$pinned_sidebar_tabs <- renderUI({
-    loc <- tryCatch(ui_locale(), error = function(e) "en")
-    raw <- unique(as.character(values$pinned_sidebar %||% character(0)))
-    raw <- if (exists("ynow_prefs_normalize_sidebar_tabs", mode = "function")) {
-      ynow_prefs_normalize_sidebar_tabs(raw)
-    } else {
-      raw[nzchar(raw) & !is.na(raw)]
-    }
-    lite_on <- isTRUE(tryCatch(lite_mode(), error = function(e) FALSE))
-    if (lite_on && exists("ynow_sidebar_lite_omit_tabs", mode = "function")) {
-      raw <- setdiff(raw, ynow_sidebar_lite_omit_tabs())
-    }
-    if (!length(raw)) return(NULL)
-    unpin_hint <- tryCatch(
-      ui_str("sidebar_pins_unpin_hint", loc),
-      error = function(e) "Hold 2 seconds to unpin"
-    )
-    section_lab <- tryCatch(
-      ui_str("sidebar_pins_label", loc),
-      error = function(e) "Pinned"
-    )
-    tiles <- lapply(raw, function(tab) {
-      meta <- if (exists("ynow_sidebar_pin_meta", mode = "function")) {
-        ynow_sidebar_pin_meta(tab)
-      } else {
-        list(icon = "thumbtack", short_en = tab, short_zh = tab)
-      }
-      full_lab <- .ynow_sidebar_pin_label(tab, loc)
-      short_lab <- .ynow_sidebar_pin_short(tab, loc)
-      ic <- as.character(meta$icon %||% "thumbtack")[1]
-      guest_locked <- exists("ynow_sidebar_tab_guest_locked", mode = "function") &&
-        isTRUE(ynow_sidebar_tab_guest_locked(tab))
-      authed <- tryCatch(isTRUE(ynow_auth$is_logged_in()), error = function(e) FALSE)
-      lock_cls <- if (guest_locked && !isTRUE(authed) && !isTRUE(lite_on)) {
-        " ynow-sidebar-locked"
-      } else {
-        ""
-      }
-      tags$button(
-        type = "button",
-        class = paste0("ynow-sidebar-pin-tile", lock_cls),
-        `data-tab` = tab,
-        title = paste(full_lab, unpin_hint, sep = " · "),
-        `aria-label` = paste(full_lab, unpin_hint, sep = " — "),
-        icon(ic),
-        tags$span(class = "ynow-sidebar-pin-text", short_lab),
-        if (nzchar(lock_cls)) icon("lock", class = "ynow-menu-lock")
-      )
-    })
-    tags$div(
-      class = "ynow-sidebar-pins",
-      id = "ynow_pinned_sidebar_tabs",
-      role = "navigation",
-      `aria-label` = section_lab,
-      tags$div(class = "ynow-sidebar-pins-label", section_lab),
-      tiles
-    )
+    NULL
   })
 
   output$pinned_recent_search <- renderUI({

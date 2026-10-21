@@ -3575,6 +3575,17 @@ ui <- dashboardPage(
               )
             )
           )
+        ),
+        # Signed-in only (CSS): customize sidebar tab order (edit gate for drag-reorder).
+        tags$button(
+          type = "button",
+          id = "ynow_sidebar_reorder_btn",
+          class = "ynow-sidebar-reorder-btn",
+          title = "Customize sidebar tab order",
+          `aria-label` = "Customize sidebar tab order",
+          `aria-pressed` = "false",
+          tags$i(class = "fas fa-sliders-h", `aria-hidden` = "true"),
+          tags$span(id = "ynow_sidebar_reorder_btn_label", class = "ynow-sidebar-reorder-btn-label", "Customize")
         )
       ),
       tags$hr(class = "ynow-sidebar-date-hr")
@@ -10040,6 +10051,9 @@ ui <- dashboardPage(
             if (headerLogoHome && s.header_logo_home_title) {
               headerLogoHome.setAttribute('title', s.header_logo_home_title);
               headerLogoHome.setAttribute('aria-label', s.header_logo_home_title);
+            }
+            if (typeof window.ynowSyncSidebarReorderBtnLocale === 'function') {
+              try { window.ynowSyncSidebarReorderBtnLocale(s); } catch (eReorderLoc) {}
             }
             var smartLab = document.getElementById('ynow_menu_smart');
             if (smartLab && s.menu_smart_analysis) smartLab.textContent = s.menu_smart_analysis;
@@ -17405,219 +17419,303 @@ ui <- dashboardPage(
           });
         })();
 
-        // Sidebar tab pins: long-press menu leaf / pin tile; click tile → navigate.
+        // Legacy page-pin UX disabled (v25.93 misread). Stock chips keep long-press;
+        // menu long-press is edit-mode drag-reorder only. Stubs keep old handlers safe.
         (function() {
-          var LONG_MS = 2000;
           var GUEST_KEY = 'ynow_pinned_sidebar_v1';
-          var MAX_PINS = 12;
-          var pressTimer = null;
-          var pressEl = null;
-          var longFired = false;
-          var suppressClickUntil = 0;
-
-          function guestRead() {
-            try {
-              var raw = localStorage.getItem(GUEST_KEY);
-              if (!raw) return [];
-              var arr = JSON.parse(raw);
-              if (!Array.isArray(arr)) return [];
-              return arr.map(function(x) { return String(x || '').trim(); })
-                .filter(function(x) { return !!x; })
-                .slice(0, MAX_PINS);
-            } catch (e) { return []; }
-          }
-          function guestWrite(arr) {
-            try {
-              localStorage.setItem(GUEST_KEY, JSON.stringify((arr || []).slice(0, MAX_PINS)));
-            } catch (e) {}
-          }
           window.ynowGuestPinnedSidebar = {
-            read: guestRead,
-            write: guestWrite,
+            read: function() { return []; },
+            write: function() {},
             clear: function() { try { localStorage.removeItem(GUEST_KEY); } catch (e) {} }
           };
+          window.ynowMarkSidebarMenuPinned = function() {};
+          window.ynowSyncSidebarPinLocks = function() {};
+          Shiny.addCustomMessageHandler('ynowPinnedSidebarGuestSync', function(msg) {
+            if (msg && msg.clear) {
+              try { localStorage.removeItem(GUEST_KEY); } catch (e) {}
+            }
+          });
+          Shiny.addCustomMessageHandler('ynowPinnedSidebarMark', function() {});
+        })();
 
-          function pinHint(unpin) {
+        // Signed-in sidebar tab reorder: customize button → long-press drag → Done persists.
+        (function() {
+          var LONG_MS = 420;
+          var editOn = false;
+          var pressTimer = null;
+          var pressLi = null;
+          var dragging = false;
+          var dragLi = null;
+          var startY = 0;
+          var suppressClickUntil = 0;
+          var pendingOrder = null;
+
+          function locStr(key, fallback) {
             var s = window.__ynowUiLocaleStrings || {};
-            var k = unpin ? 'sidebar_pins_unpin_hint' : 'sidebar_pins_pin_hint';
-            if (s[k]) return String(s[k]);
-            return unpin ? 'Hold 2 seconds to unpin' : 'Hold 2 seconds to pin this page';
+            if (s[key]) return String(s[key]);
+            return fallback;
+          }
+
+          function syncBtnLocale(s) {
+            s = s || window.__ynowUiLocaleStrings || {};
+            var btn = document.getElementById('ynow_sidebar_reorder_btn');
+            var lab = document.getElementById('ynow_sidebar_reorder_btn_label');
+            if (!btn) return;
+            var editing = !!(document.body && document.body.classList.contains('ynow-sidebar-reorder-edit'));
+            var label = editing
+              ? (s.sidebar_reorder_btn_done || 'Done')
+              : (s.sidebar_reorder_btn || 'Customize');
+            var title = editing
+              ? (s.sidebar_reorder_btn_done_title || 'Save order and exit edit mode')
+              : (s.sidebar_reorder_btn_title || 'Customize sidebar tab order');
+            if (lab) lab.textContent = label;
+            btn.setAttribute('title', title);
+            btn.setAttribute('aria-label', title);
+            btn.setAttribute('aria-pressed', editing ? 'true' : 'false');
+          }
+          window.ynowSyncSidebarReorderBtnLocale = syncBtnLocale;
+
+          function menuRoot() {
+            return document.getElementById('sidebar_tabs') ||
+              document.querySelector('.sidebar-menu');
+          }
+
+          function isVisibleLi(li) {
+            if (!li || li.tagName !== 'LI') return false;
+            try {
+              var st = window.getComputedStyle(li);
+              if (st && (st.display === 'none' || st.visibility === 'hidden')) return false;
+            } catch (e) {}
+            return true;
+          }
+
+          function orderIdForLi(li) {
+            if (!li) return '';
+            var existing = li.getAttribute('data-ynow-order-id');
+            if (existing) return existing;
+            var a = li.querySelector(':scope > a') || li.firstElementChild;
+            if (!a) return '';
+            var dv = a.getAttribute('data-value') || '';
+            if (dv) {
+              li.setAttribute('data-ynow-order-id', dv);
+              return dv;
+            }
+            var cat = a.querySelector('[id^=\"ynow_menu_cat_\"]');
+            if (cat && cat.id) {
+              var id = String(cat.id).replace(/^ynow_menu_/, '');
+              li.setAttribute('data-ynow-order-id', id);
+              return id;
+            }
+            var admin = a.querySelector('#ynow_menu_admin');
+            if (admin) {
+              li.setAttribute('data-ynow-order-id', 'account_admin');
+              return 'account_admin';
+            }
+            return '';
+          }
+
+          function tagMenuItems() {
+            var ul = menuRoot();
+            if (!ul) return;
+            Array.prototype.forEach.call(ul.children, function(li) {
+              if (li.tagName === 'LI') orderIdForLi(li);
+            });
+          }
+
+          function readOrderFromDom() {
+            var ul = menuRoot();
+            if (!ul) return [];
+            var out = [];
+            Array.prototype.forEach.call(ul.children, function(li) {
+              if (li.tagName !== 'LI') return;
+              var id = orderIdForLi(li);
+              if (id) out.push(id);
+            });
+            return out;
+          }
+
+          function applyOrder(order) {
+            var ul = menuRoot();
+            if (!ul || !order || !order.length) return;
+            tagMenuItems();
+            var map = {};
+            Array.prototype.forEach.call(ul.children, function(li) {
+              if (li.tagName !== 'LI') return;
+              var id = orderIdForLi(li);
+              if (id) map[id] = li;
+            });
+            var used = {};
+            order.forEach(function(id) {
+              var li = map[id];
+              if (!li || used[id]) return;
+              used[id] = true;
+              ul.appendChild(li);
+            });
+            Object.keys(map).forEach(function(id) {
+              if (!used[id]) ul.appendChild(map[id]);
+            });
+          }
+          window.ynowApplySidebarTabOrder = applyOrder;
+
+          function setEditMode(on) {
+            editOn = !!on;
+            if (document.body) {
+              document.body.classList.toggle('ynow-sidebar-reorder-edit', editOn);
+            }
+            syncBtnLocale();
+            if (editOn) tagMenuItems();
           }
 
           function clearPress() {
             if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
-            pressEl = null;
+            pressLi = null;
           }
 
-          function fireToggle(tab) {
-            if (!tab || !(window.Shiny && Shiny.setInputValue)) return;
-            longFired = true;
-            suppressClickUntil = Date.now() + 400;
-            Shiny.setInputValue('pinned_sidebar_toggle', tab + '|' + Date.now(), {priority: 'event'});
+          function clearDragClasses() {
+            document.querySelectorAll('.sidebar-menu > li.ynow-sidebar-reorder-dragging, .sidebar-menu > li.ynow-sidebar-reorder-drop-target')
+              .forEach(function(li) {
+                li.classList.remove('ynow-sidebar-reorder-dragging');
+                li.classList.remove('ynow-sidebar-reorder-drop-target');
+              });
           }
 
-          function markMenuPinned(tabs) {
-            var set = {};
-            (tabs || []).forEach(function(t) { set[String(t)] = true; });
-            document.querySelectorAll('.sidebar-menu a[data-value]').forEach(function(a) {
-              var tab = a.getAttribute('data-value') || '';
-              if (set[tab]) a.classList.add('ynow-menu-is-pinned');
-              else a.classList.remove('ynow-menu-is-pinned');
-              try {
-                var unpin = !!set[tab];
-                var base = a.getAttribute('data-ynow-base-title') || a.getAttribute('title') || '';
-                if (!a.getAttribute('data-ynow-base-title') && base) {
-                  a.setAttribute('data-ynow-base-title', base);
-                }
-                var hint = pinHint(unpin);
-                var curBase = a.getAttribute('data-ynow-base-title') || '';
-                a.setAttribute('title', curBase ? (curBase + ' · ' + hint) : hint);
-              } catch (eT) {}
-            });
-          }
-          window.ynowMarkSidebarMenuPinned = markMenuPinned;
-
-          function syncPinTileLocks() {
-            var guestTabs = window.__YNOW_SIDEBAR_GUEST_LOCK_TABS || {};
-            var persist = window.__YNOW_SIDEBAR_PERSIST_LOCK_TABS || {};
-            var guest = !!(document.body &&
-              document.body.classList.contains('ynow-auth-feature') &&
-              !document.body.classList.contains('ynow-lite') &&
-              !document.body.classList.contains('ynow-authed') &&
-              !document.body.classList.contains('ynow-view-as'));
-            document.querySelectorAll('.ynow-sidebar-pin-tile[data-tab]').forEach(function(btn) {
-              var tab = btn.getAttribute('data-tab') || '';
-              var locked = false;
-              if (persist[tab]) locked = true;
-              else if (guest && guestTabs[tab]) locked = true;
-              /* Mirror ACL lock on matching sidebar li. */
-              var a = document.querySelector('.sidebar-menu a[data-value=\"' + tab + '\"]');
-              var li = a && a.closest ? a.closest('li') : null;
-              if (li && li.classList &&
-                  (li.classList.contains('ynow-access-locked-nav') ||
-                   li.classList.contains('ynow-sidebar-locked'))) {
-                locked = true;
-              }
-              if (locked) {
-                btn.classList.add('ynow-sidebar-locked');
-                if (!btn.querySelector('.ynow-menu-lock')) {
-                  var lock = document.createElement('i');
-                  lock.className = 'fas fa-lock ynow-menu-lock';
-                  lock.setAttribute('aria-hidden', 'true');
-                  btn.appendChild(lock);
-                }
-              } else {
-                btn.classList.remove('ynow-sidebar-locked');
-                var old = btn.querySelector('.ynow-menu-lock');
-                if (old && old.parentNode) old.parentNode.removeChild(old);
-              }
-            });
-          }
-          window.ynowSyncSidebarPinLocks = syncPinTileLocks;
-
-          function isMenuLeaf(el) {
-            if (!el || !el.getAttribute) return false;
-            if (!el.closest || !el.closest('.sidebar-menu')) return false;
-            var tab = el.getAttribute('data-value') || '';
-            if (!tab) return false;
-            /* Treeview parents expand; only pin leaves with a real tabName. */
-            var li = el.closest('li');
-            if (li && li.classList && li.classList.contains('treeview') &&
-                !el.getAttribute('data-value')) return false;
-            if (li && li.classList && li.classList.contains('treeview') &&
-                el.parentElement === li && li.querySelector(':scope > ul.treeview-menu')) {
-              /* Parent row of a treeview — not a leaf. */
-              return false;
-            }
-            return true;
-          }
-
-          $(document).on('pointerdown', '.sidebar-menu a[data-value], .ynow-sidebar-pin-tile', function(e) {
-            if (e.pointerType === 'mouse' && e.button !== 0) return;
-            var el = this;
-            if (el.classList && el.classList.contains('ynow-sidebar-pin-tile')) {
-              /* ok */
-            } else if (!isMenuLeaf(el)) {
-              return;
-            }
+          function endDrag(commit) {
             clearPress();
-            longFired = false;
-            pressEl = el;
-            pressTimer = setTimeout(function() {
-              if (pressEl !== el) return;
-              var tab = el.getAttribute('data-tab') || el.getAttribute('data-value') || '';
-              try { el.classList.add('ynow-chip-longpress'); } catch (e1) {}
-              setTimeout(function() {
-                try { el.classList.remove('ynow-chip-longpress'); } catch (e2) {}
-              }, 280);
-              fireToggle(tab);
-            }, LONG_MS);
-          });
-          $(document).on(
-            'pointerup pointercancel pointerleave',
-            '.sidebar-menu a[data-value], .ynow-sidebar-pin-tile',
-            function() { clearPress(); }
-          );
-          $(document).on('click', '.ynow-sidebar-pin-tile', function(e) {
-            if (longFired || Date.now() < suppressClickUntil) {
-              e.preventDefault();
-              e.stopImmediatePropagation();
-              longFired = false;
-              return;
+            if (dragging && dragLi) {
+              suppressClickUntil = Date.now() + 350;
             }
-            e.preventDefault();
-            var tab = this.getAttribute('data-tab') || '';
-            if (!tab) return;
-            if (typeof window.ynowShowSidebarFootTab === 'function' &&
-                (tab === 'snapshot' || tab === 'feedback' || tab === 'testing')) {
-              window.ynowShowSidebarFootTab(tab);
-              return;
-            }
-            var a = document.querySelector('.sidebar-menu a[data-value=\"' + tab + '\"]');
-            if (a && typeof a.click === 'function') {
-              a.click();
-              return;
-            }
-            if (window.Shiny && Shiny.setInputValue) {
-              Shiny.setInputValue('sidebar_tabs', tab, {priority: 'event'});
-            }
-          });
+            dragging = false;
+            dragLi = null;
+            clearDragClasses();
+            if (commit) pendingOrder = readOrderFromDom();
+          }
 
-          $(document).on('shiny:connected', function() {
-            var pins = guestRead();
-            if (pins.length && window.Shiny && Shiny.setInputValue) {
+          function topLiFromEventTarget(t) {
+            if (!t || !t.closest) return null;
+            var a = t.closest('.sidebar-menu > li > a');
+            if (!a) return null;
+            /* Submenu leaves live under .treeview-menu — not top-level reorder targets. */
+            if (a.closest('.treeview-menu')) return null;
+            var li = a.parentElement;
+            if (!li || li.tagName !== 'LI') return null;
+            if (!isVisibleLi(li)) return null;
+            return li;
+          }
+
+          function liAtPoint(x, y) {
+            var el = document.elementFromPoint(x, y);
+            return topLiFromEventTarget(el);
+          }
+
+          $(document).on('click', '#ynow_sidebar_reorder_btn', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var authed = !!(document.body && document.body.classList.contains('ynow-authed'));
+            if (!authed) {
+              if (window.Shiny && Shiny.setInputValue) {
+                Shiny.setInputValue('sidebar_tab_order_guest', Date.now(), {priority: 'event'});
+              }
+              return;
+            }
+            if (!editOn) {
+              setEditMode(true);
+              pendingOrder = readOrderFromDom();
+              return;
+            }
+            /* Confirm + exit */
+            var order = readOrderFromDom();
+            setEditMode(false);
+            if (window.Shiny && Shiny.setInputValue) {
               Shiny.setInputValue(
-                'pinned_sidebar_guest_load',
-                pins.join(',') + '|' + Date.now(),
+                'sidebar_tab_order_save',
+                order.join(',') + '|' + Date.now(),
                 {priority: 'event'}
               );
             }
           });
-          Shiny.addCustomMessageHandler('ynowPinnedSidebarGuestSync', function(msg) {
-            if (!msg) return;
-            if (msg.clear) { guestWrite([]); markMenuPinned([]); return; }
-            if (Array.isArray(msg.tabs)) {
-              guestWrite(msg.tabs);
-              markMenuPinned(msg.tabs);
+
+          $(document).on('pointerdown', '.sidebar-menu > li > a', function(e) {
+            if (!editOn) return;
+            if (e.pointerType === 'mouse' && e.button !== 0) return;
+            if (this.closest && this.closest('.treeview-menu')) return;
+            var li = this.parentElement;
+            if (!li || li.tagName !== 'LI' || !isVisibleLi(li)) return;
+            clearPress();
+            pressLi = li;
+            startY = e.clientY || 0;
+            var captured = li;
+            pressTimer = setTimeout(function() {
+              if (pressLi !== captured) return;
+              dragging = true;
+              dragLi = captured;
+              captured.classList.add('ynow-sidebar-reorder-dragging');
+              try { captured.setPointerCapture && e.pointerId != null && captured.setPointerCapture(e.pointerId); } catch (eCap) {}
+            }, LONG_MS);
+          });
+
+          $(document).on('pointermove', function(e) {
+            if (!editOn) return;
+            if (!dragging && pressLi) {
+              var dy = Math.abs((e.clientY || 0) - startY);
+              if (dy > 10) clearPress();
+              return;
+            }
+            if (!dragging || !dragLi) return;
+            e.preventDefault();
+            var over = liAtPoint(e.clientX, e.clientY);
+            document.querySelectorAll('.sidebar-menu > li.ynow-sidebar-reorder-drop-target')
+              .forEach(function(n) { n.classList.remove('ynow-sidebar-reorder-drop-target'); });
+            if (!over || over === dragLi) return;
+            over.classList.add('ynow-sidebar-reorder-drop-target');
+            var ul = menuRoot();
+            if (!ul) return;
+            var mid = over.getBoundingClientRect().top + over.getBoundingClientRect().height / 2;
+            if ((e.clientY || 0) < mid) {
+              ul.insertBefore(dragLi, over);
+            } else if (over.nextSibling) {
+              ul.insertBefore(dragLi, over.nextSibling);
+            } else {
+              ul.appendChild(dragLi);
             }
           });
-          Shiny.addCustomMessageHandler('ynowPinnedSidebarMark', function(msg) {
+
+          $(document).on('pointerup pointercancel', function() {
+            if (!editOn) { clearPress(); return; }
+            if (dragging) endDrag(true);
+            else clearPress();
+          });
+
+          $(document).on('click', '.sidebar-menu > li > a', function(e) {
+            if (!editOn) return;
+            if (dragging || Date.now() < suppressClickUntil) {
+              e.preventDefault();
+              e.stopImmediatePropagation();
+            }
+          });
+
+          Shiny.addCustomMessageHandler('ynowSidebarTabOrder', function(msg) {
             if (!msg) return;
-            markMenuPinned(Array.isArray(msg.tabs) ? msg.tabs : []);
-            setTimeout(syncPinTileLocks, 30);
+            var order = Array.isArray(msg.order) ? msg.order : [];
+            applyOrder(order.map(function(x) { return String(x || ''); }).filter(Boolean));
           });
-          document.addEventListener('shiny:value', function() {
-            setTimeout(syncPinTileLocks, 40);
+
+          $(document).on('shiny:connected', function() {
+            tagMenuItems();
+            syncBtnLocale();
           });
-          var _syncGuest = window.ynowSyncGuestSidebarLocked;
-          if (typeof _syncGuest === 'function') {
-            window.ynowSyncGuestSidebarLocked = function() {
-              _syncGuest.apply(this, arguments);
-              syncPinTileLocks();
-            };
-          } else {
-            window.ynowSyncGuestSidebarLocked = function() { syncPinTileLocks(); };
-          }
+
+          /* Exit edit mode on sign-out */
+          var _authState = null;
+          try {
+            /* Observe body class changes for ynow-authed removal */
+            if (window.MutationObserver && document.body) {
+              new MutationObserver(function() {
+                var authed = document.body.classList.contains('ynow-authed');
+                if (!authed && editOn) setEditMode(false);
+                syncBtnLocale();
+              }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+            }
+          } catch (eObs) {}
         })();
 
         $(document).on('mousedown', '#sc_ticker_suggest .ynow-suggest-item, #lab_cluster_focus_suggest .ynow-suggest-item', function(e) {
