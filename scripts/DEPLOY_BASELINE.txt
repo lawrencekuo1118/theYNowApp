@@ -7,5 +7,5 @@ commit=00a2d7df71f7c97f464b42558b51efa17bd00870
 short=00a2d7df
 message=chore: bump display version to v26.16
 captured_at=2026-10-21T17:35:59Z
-display_version=v26.16
+display_version=v26.17
 note=Canonical live line is app_26.0. Bundle 12721592: mobile login/points verified + tip redeploy. Secrets only in gitignored .Renviron.
