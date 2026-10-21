@@ -426,6 +426,14 @@ server <- function(input, output, session) {
     as.character(u$id %||% "")[1]
   }
 
+  # Last screen is the signed-in member's. View-as is a different subject.
+  .ynow_signed_in_uid <- function() {
+    u <- tryCatch(isolate(ynow_auth$user()), error = function(e) NULL)
+    if (is.function(u)) u <- tryCatch(u(), error = function(e) NULL)
+    if (!is.list(u)) return("")
+    as.character(u$id %||% "")[1]
+  }
+
   # Persist last member screen (tab) while signed in — survives Sign out / resume.
   observeEvent(input$sidebar_tabs, {
     logged <- tryCatch(isTRUE(ynow_auth$is_logged_in()), error = function(e) FALSE)
@@ -434,7 +442,7 @@ server <- function(input, output, session) {
     tab <- as.character(input$sidebar_tabs %||% "")[1]
     if (!nzchar(tab) || identical(tab, "testing")) return()
     if (identical(tab, "business_breakdown_lab")) tab <- "company_advance"
-    uid <- tryCatch(.ynow_pinned_auth_uid(), error = function(e) "")
+    uid <- tryCatch(.ynow_signed_in_uid(), error = function(e) "")
     if (!nzchar(uid %||% "")) return()
     tryCatch(
       ynow_prefs_update_last_ui_surface(uid, tab = tab),
@@ -3456,7 +3464,7 @@ server <- function(input, output, session) {
     }
     logged <- tryCatch(isTRUE(ynow_auth$is_logged_in()), error = function(e) FALSE)
     if (isTRUE(logged) && exists("ynow_prefs_update_last_ui_surface", mode = "function")) {
-      uid <- tryCatch(.ynow_pinned_auth_uid(), error = function(e) "")
+      uid <- tryCatch(.ynow_signed_in_uid(), error = function(e) "")
       if (nzchar(uid %||% "")) {
         tryCatch(
           ynow_prefs_update_last_ui_surface(uid, ticker = tk),

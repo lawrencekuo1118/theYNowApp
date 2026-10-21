@@ -12221,9 +12221,8 @@ ui <- dashboardPage(
                 var sc = document.getElementById('sc');
                 if (sc) {
                   sc.value = tk;
-                  try {
-                    if (window.jQuery) jQuery(sc).trigger('change');
-                  } catch (eSc) {}
+                  Shiny.setInputValue('sc', tk, { priority: 'event' });
+                  Shiny.setInputValue('ticker_typeahead', tk, { priority: 'event' });
                 }
               } catch (eTk) {}
             };
@@ -18088,6 +18087,12 @@ ui <- dashboardPage(
         /* Leaving Home/Macro/Blue Chip remounts stock chrome; re-open if still typing. */
         $(document).on('shiny:inputchanged', function(e) {
           if (!e || e.name !== 'sidebar_tabs') return;
+          var tabNow = String(e.value || '');
+          if (tabNow && tabNow !== 'testing' && document.body &&
+              document.body.classList.contains('ynow-authed') &&
+              typeof window.ynowLastUiWrite === 'function') {
+            try { window.ynowLastUiWrite(tabNow, null); } catch (eLastUi) {}
+          }
           setTimeout(function() {
             if (typingOpen.sc) showSuggestWhenReady('sc');
             if (typingOpen.lab_cluster_focus) showSuggestWhenReady('lab_cluster_focus');
