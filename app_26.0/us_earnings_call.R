@@ -336,40 +336,56 @@ ynow_us_earnings_call_ir_search_url <- function(ticker) {
   }
   res <- tryCatch(fetch_fn(tk, "8-K", max_chars = 4000L), error = function(e) NULL)
   if (!is.list(res) || !isTRUE(res$ok %||% FALSE)) return(NULL)
-  # Prefer Item 2.02 when present in note titles; else use primary body text.
-  titles <- as.character(res$title %||% res$note_title %||% character(0))
-  texts <- as.character(res$text %||% res$note_text %||% character(0))
-  urls <- as.character(res$url %||% res$note_url %||% character(0))
+  # Python sec_report_notes returns parallel lists: short_names / urls /
+  # excerpts / full_texts (see deep_scraper._sec_empty_result). Older probes
+  # looked for title/text and always got empty → skipped free SEC path.
+  titles <- as.character(unlist(res$short_names %||% character(0)))
+  urls <- as.character(unlist(res$urls %||% character(0)))
+  texts_full <- as.character(unlist(res$full_texts %||% character(0)))
+  texts_ex <- as.character(unlist(res$excerpts %||% character(0)))
+  texts <- if (length(texts_full)) texts_full else texts_ex
+  # Legacy / alternate shapes (keep as fallback only).
+  if (!length(titles)) {
+    titles <- as.character(res$title %||% res$note_title %||% character(0))
+  }
+  if (!length(texts)) {
+    texts <- as.character(res$text %||% res$note_text %||% character(0))
+  }
+  if (!length(urls)) {
+    urls <- as.character(res$url %||% res$note_url %||% character(0))
+  }
   if (!length(texts) && nzchar(.ynow_us_ec_chr(res$primary_text %||% ""))) {
     texts <- .ynow_us_ec_chr(res$primary_text)
     titles <- .ynow_us_ec_chr(res$form %||% "8-K")
     urls <- .ynow_us_ec_chr(res$primary_doc_url %||% "")
   }
-  # Parallel-list shape from Python.
-  if (is.list(res$items) && length(res$items)) {
-    # ignore
-  }
   pick <- 1L
   if (length(titles)) {
-    hit <- which(grepl("2\\.02|Results of Operations|earnings", titles, ignore.case = TRUE))
+    hit <- which(grepl(
+      "2\\.02|Results of Operations|earnings|transcript|Exhibit\\s*99",
+      titles,
+      ignore.case = TRUE
+    ))
     if (length(hit)) pick <- hit[[1]]
   }
   text <- if (length(texts) >= pick) texts[[pick]] else paste(texts, collapse = "\n")
   if (!nzchar(text) && length(res$text)) {
     text <- paste(as.character(res$text), collapse = "\n")
   }
-  # Flatten common reticulate list-of-columns shape.
   if (!nzchar(text) && is.list(res) && !is.null(res$note_text)) {
     text <- paste(as.character(unlist(res$note_text)), collapse = "\n")
   }
   if (!nzchar(text)) {
-    # Try named columns from parallel lists
-    for (nm in c("text", "body", "content")) {
+    for (nm in c("text", "body", "content", "excerpts", "full_texts")) {
       if (!is.null(res[[nm]])) {
         text <- paste(as.character(unlist(res[[nm]])), collapse = "\n")
         if (nzchar(text)) break
       }
     }
+  }
+  # Cap extractor input (full_texts can be long HTML-stripped bodies).
+  if (nzchar(text) && nchar(text) > 24000L) {
+    text <- substr(text, 1L, 24000L)
   }
   facts <- .ynow_us_ec_extract_facts(text)
   list(
