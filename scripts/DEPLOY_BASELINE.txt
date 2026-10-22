@@ -7,5 +7,5 @@ commit=d855a133fd709c7cf3ef7ad11b9aab029c1e1604
 short=d855a133
 message=chore: bump display version to v26.38
 captured_at=2026-10-22T09:41:09Z
-display_version=v26.38
+display_version=v26.39
 note=Canonical live line is app_26.0. Bundle 12724506: Header wordmark single title + opaque logo strip; veins beside title only (#405). Secrets only in gitignored .Renviron; no secret values in git.
