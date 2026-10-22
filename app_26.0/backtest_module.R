@@ -1635,13 +1635,22 @@ fetch_price_history_df <- function(ticker, period = "5y") {
   if (!is.null(df)) {
     df <- df[is.finite(df$Close) & !is.na(df$Date), , drop = FALSE]
     df <- df[order(df$Date), , drop = FALSE]
-    if (nrow(df) >= 30) {
+    # Quote windows must stay short even when an upstream source ignores period.
+    if (isTRUE(quote_window) && nrow(df) >= 1L) {
+      max_days <- if (exists("macro_quote_window_days", mode = "function")) {
+        macro_quote_window_days(period_s)
+      } else {
+        switch(period_s, "1d" = 5L, "5d" = 12L, "1wk" = 14L, "1mo" = 45L, "3mo" = 120L, 12L)
+      }
+      cutoff <- Sys.Date() - as.integer(max_days)
+      df <- df[df$Date >= cutoff, , drop = FALSE]
+      if (nrow(df) >= 2L) return(df)
+      if (nrow(df) >= 1L) short_df <- df
+    } else if (nrow(df) >= 30) {
       return(df)
+    } else if (nrow(df) >= 1L) {
+      short_df <- df
     }
-    if (isTRUE(quote_window) && nrow(df) >= 2L) {
-      return(df)
-    }
-    if (nrow(df) >= 1L) short_df <- df
   }
 
   # TPEx capitalization index: Yahoo often has a single live bar and no tape.
@@ -1654,8 +1663,22 @@ fetch_price_history_df <- function(ticker, period = "5y") {
   qm_have <- requireNamespace("quantmod", quietly = TRUE)
   out <- tryCatch({
     if (!qm_have) stop("quantmod missing")
-    xt <- quantmod::getSymbols(ticker, src = "yahoo", auto.assign = FALSE,
-                               from = Sys.Date() - 365 * 5, to = Sys.Date())
+    # Honor short quote windows (1d–3mo). A fixed 5y lookback made Macro KPI
+    # "5d" fetches return ~1250 rows and burned Yahoo-gate budget.
+    lookback_days <- if (exists("macro_quote_window_days", mode = "function")) {
+      macro_quote_window_days(period_s)
+    } else if (isTRUE(quote_window)) {
+      switch(period_s, "1d" = 5L, "5d" = 12L, "1wk" = 14L, "1mo" = 45L, "3mo" = 120L, 12L)
+    } else {
+      365L * 5L
+    }
+    xt <- quantmod::getSymbols(
+      ticker,
+      src = "yahoo",
+      auto.assign = FALSE,
+      from = Sys.Date() - as.integer(lookback_days),
+      to = Sys.Date()
+    )
     out <- data.frame(Date = zoo::index(xt), zoo::coredata(xt), stringsAsFactors = FALSE)
     names(out) <- c("Date", "Open", "High", "Low", "Close", "Volume", "Adjusted")
     out[, c("Date", "Close", "Volume")]

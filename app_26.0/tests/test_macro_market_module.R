@@ -451,7 +451,10 @@ check("progressive non-blocking index quotes", {
     grepl("delay = 0.15", txt, fixed = TRUE)
 })
 check("HTCDI deferred past first-paint KPIs", {
-  grepl("later::later(run_job, delay = 1.25)", txt, fixed = TRUE)
+  # Starts only after index_quotes_ready_gen (quote strip finished), not onFlushed/1.25s race.
+  grepl("index_quotes_ready_gen", txt, fixed = TRUE) &&
+    grepl("observeEvent(index_quotes_ready_gen()", txt, fixed = TRUE) &&
+    !grepl("session$onFlushed(function() .queue_htcdi()", txt, fixed = TRUE)
 })
 check("static index KPI skeleton in first HTML", {
   grepl("macro_index_kpi_skeleton_ui", txt, fixed = TRUE) &&
@@ -639,6 +642,10 @@ check("Rf CAPM note sentence gone", !grepl("Same live Rf path as CAPM", txt, fix
 check("Rf note id gone", !grepl("ynow_macro_rf_note", txt, fixed = TRUE))
 check("Rf KPI kept", grepl("ynow-macro-kpi--rf", txt, fixed = TRUE))
 check("Rf box kept", grepl("rf_box", txt, fixed = TRUE))
+check("Rf value inlined (no nested renderUI rf_box)", {
+  !grepl("output$rf_box <- renderUI", txt, fixed = TRUE) &&
+    grepl("ynow-macro-rf__value", txt, fixed = TRUE)
+})
 check("live CAPM Rf path kept", grepl("cached_get_risk_free_rate", txt, fixed = TRUE))
 check("Rf row has no Notes wrapper", {
   pos <- regexpr("output$rf_signal_row", txt, fixed = TRUE)[1]
@@ -646,6 +653,23 @@ check("Rf row has no Notes wrapper", {
   chunk <- if (pos > 0 && pos2 > pos) substr(txt, pos, pos2) else ""
   nzchar(chunk) && !grepl("ynow_notes_block", chunk, fixed = TRUE) &&
     grepl("rf_box", chunk, fixed = TRUE) && grepl("macro_rf_title", chunk, fixed = TRUE)
+})
+check("fast quote helpers present", {
+  exists("macro_yahoo_chart_df", mode = "function") &&
+    exists("macro_fetch_last_quotes", mode = "function") &&
+    identical(macro_quote_window_days("5d"), 12L)
+})
+check("KPI strip uses macro_fetch_last_quotes", {
+  grepl("macro_fetch_last_quotes", txt, fixed = TRUE)
+})
+check("HTCDI waits for index quotes ready", {
+  grepl("index_quotes_ready_gen", txt, fixed = TRUE) &&
+    grepl("observeEvent(index_quotes_ready_gen()", txt, fixed = TRUE) &&
+    !grepl("session$onFlushed(function() .queue_htcdi()", txt, fixed = TRUE)
+})
+check("HTCDI phases prices then statements", {
+  grepl(".htcdi_enrich_fs", txt, fixed = TRUE) &&
+    grepl(".htcdi_score_from_maps", txt, fixed = TRUE)
 })
 check("locale dropped rf note wiring", !grepl("ynow_macro_rf_note", ui_src, fixed = TRUE))
 check("locale dropped rf note sentence", !grepl("Same live Rf path as CAPM", ui_src, fixed = TRUE))
