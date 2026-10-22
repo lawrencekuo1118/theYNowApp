@@ -1,4 +1,4 @@
 {
-  "version": "v26.32",
+  "version": "v26.33",
   "note": "Bumped with display version on each ship. Clients poll this file; when the version differs from the page's data-ynow-build, the UI prompts a click on The YNow App title to refresh — never auto-reloads and never force-logout. Patch (+0.01): soft flame only. Major (vN→vN+1): must-click reminder for every signed-in session. Pending update uses flame title color."
 }
