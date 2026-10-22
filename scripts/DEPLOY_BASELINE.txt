@@ -7,5 +7,5 @@ commit=fed4bfd19449411302db03880b9786871a932b65
 short=fed4bfd1
 message=chore: bump display version to v26.37
 captured_at=2026-10-22T08:54:09Z
-display_version=v26.37
+display_version=v26.38
 note=Canonical live line is app_26.0. Bundle 12724341: Chrome glow line-stroke veins far-left + opaque title pill + circuit chip (#404). Secrets only in gitignored .Renviron; no secret values in git.
