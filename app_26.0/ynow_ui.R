@@ -3882,18 +3882,6 @@ ui <- dashboardPage(
            )
     ),
     
-    column(width = 12,
-           div(
-             id = "ynow_data_source_block",
-             style = "padding: 15px; border-radius: 5px; border-left: 4px",
-             tags$b(id = "ynow_data_source_title", "Data Source:"), tags$br(),
-             tags$span(
-               id = "ynow_data_source_body",
-               "This application integrates real-time financial data via web parsing and API resources, applying comprehensive models for valuation."
-             )
-           )
-    ),
-
     # Snapshot：側邊欄內容流最底部低調捷徑（勿用 absolute，會跑到搜尋框）
     # Foot links row + copyright directly below (copyright must not overlap the three links).
     column(
@@ -11468,10 +11456,6 @@ ui <- dashboardPage(
               var pkey = pid ? ('fund_profile_' + pid) : '';
               if (pkey && s[pkey]) fundBadge.textContent = s[pkey];
             }
-            var dsTitle = document.getElementById('ynow_data_source_title');
-            if (dsTitle && s.data_source_title) dsTitle.textContent = s.data_source_title;
-            var dsBody = document.getElementById('ynow_data_source_body');
-            if (dsBody && s.data_source_body) dsBody.textContent = s.data_source_body;
             var dl = document.getElementById('download_report');
             if (dl && s.download_report) {
               /* Keep current icon (download vs lock); sync may swap after. */
@@ -18031,15 +18015,23 @@ ui <- dashboardPage(
           color: #0b57d0;
           word-break: break-all;
         }
+        .ynow-about-data-sources,
         .ynow-legal-notices {
           margin: 20px 0 8px 0;
           padding-top: 8px;
         }
+        .ynow-about-data-sources .ynow-about-section-title,
         .ynow-legal-notices .ynow-about-section-title {
           margin: 0 0 14px 0;
           font-size: 18px;
           line-height: 1.35;
           color: #1a1a1a;
+        }
+        .ynow-about-data-sources .ynow-about-section-lead {
+          margin: 0 0 14px 0;
+          font-size: 13px;
+          line-height: 1.6;
+          color: #444;
         }
         .ynow-legal-row {
           margin: 0 0 12px 0;
@@ -20659,6 +20651,8 @@ ui <- dashboardPage(
           class = "ynow-lite-only",
           .about_lite_intro_ui()
         ),
+        tags$hr(style = "margin: 20px 0 12px 0; border-color: #e5e8eb;"),
+        .about_data_sources_ui(),
         tags$hr(style = "margin: 20px 0 12px 0; border-color: #e5e8eb;"),
         .legal_notices_ui()
       )

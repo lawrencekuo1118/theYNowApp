@@ -145,7 +145,19 @@ check("TW locale zh-TW", identical(locale_for_market("TW"), "zh-TW"))
 check("US locale en", identical(locale_for_market("US"), "en"))
 check("ui_str zh ticker", grepl("代號", ui_str("ticker_label", "zh-TW")))
 check("ui_str en ticker", grepl("Ticker", ui_str("ticker_label", "en")))
-check("no simplified 默认", !grepl("默认", ui_str("data_source_body", "zh-TW")))
+check(
+  "no simplified 默认 in About data sources",
+  !grepl("默认", ui_str("about_data_sources_markets_body", "zh-TW")) &&
+    !grepl("默认", ui_str("about_data_sources_lead", "zh-TW"))
+)
+check(
+  "About data sources title zh-TW",
+  identical(ui_str("about_data_sources_section_title", "zh-TW"), "資料來源")
+)
+check(
+  "About data sources title en",
+  identical(ui_str("about_data_sources_section_title", "en"), "Data sources")
+)
 check("tab income zh", identical(ui_str("tab_income_statement", "zh-TW"), "損益表"))
 check("tab income en", identical(ui_str("tab_income_statement", "en"), "Income Statement"))
 check("tab wacc kept EN", identical(ui_str("tab_wacc", "zh-TW"), "WACC"))
