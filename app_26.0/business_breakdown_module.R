@@ -413,20 +413,26 @@ business_breakdown_lab_ui <- function(id = "bblab") {
           ".ynow-bblab-bcg__q-question_mark{color:#1AA8B8;font-weight:700;}",
           ".ynow-bblab-bcg__q-dog{color:#666;font-weight:700;}",
           ".ynow-bblab-orders{width:100%;margin:0;}",
-          ".ynow-bblab-orders__grid{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;width:100%;}",
-          ".ynow-bblab-orders__col{flex:1 1 46%;min-width:280px;}",
-          ".ynow-bblab-orders__col .plotly,",
-          ".ynow-bblab-orders__col .js-plotly-plot,",
-          ".ynow-bblab-orders__col .plot-container,",
-          ".ynow-bblab-orders__col .svg-container{width:100% !important;overflow:visible !important;}",
+          ".ynow-bblab-orders__toolbar{margin:0 0 14px 0;padding-bottom:10px;border-bottom:1px solid #e5e5e5;}",
+          ".ynow-bblab-orders__toolbar .btn{margin-top:6px;}",
+          ".ynow-bblab-orders__groups{display:flex;flex-direction:column;gap:18px;width:100%;}",
+          ".ynow-bblab-orders__group{width:100%;padding:12px 14px;border:1px solid #e8e8e8;",
+          "border-radius:6px;background:#fff;}",
+          ".ynow-bblab-orders__group .plotly,",
+          ".ynow-bblab-orders__group .js-plotly-plot,",
+          ".ynow-bblab-orders__group .plot-container,",
+          ".ynow-bblab-orders__group .svg-container{width:100% !important;overflow:visible !important;}",
+          ".ynow-bblab-orders__sublabel{font-size:12px;font-weight:650;color:#333;margin:10px 0 4px 0;}",
           ".ynow-bblab-orders__meta{font-size:12px;color:#555;margin:4px 0 8px 0;}",
-          ".ynow-bblab-or{width:100%;margin:18px 0 0 0;padding-top:8px;border-top:1px solid #e5e5e5;}",
+          ".ynow-bblab-orders__context{width:100%;margin:4px 0 0 0;}",
+          ".ynow-bblab-or{width:100%;margin:0;}",
           ".ynow-bblab-or__cards{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0;}",
           ".ynow-bblab-or__card{flex:1 1 200px;min-width:180px;border:1px solid #e5e5e5;border-radius:6px;padding:8px 10px;background:#fff;}",
           ".ynow-bblab-or__card--primary{border-color:#0C5484;}",
           ".ynow-bblab-or__card--callout{background:#f4f8fb;}",
           ".ynow-bblab-or__formula{font-size:12px;color:#555;margin:2px 0;}",
           ".ynow-bblab-or__value{font-size:18px;font-weight:650;margin:0;}",
+          ".ynow-bblab-or__focus{margin:6px 0;border:1px solid #eee;border-radius:6px;padding:6px 10px;background:#fafafa;}",
           ".ynow-bblab-or__layers details{margin:6px 0;border:1px solid #eee;border-radius:6px;padding:6px 10px;background:#fff;}",
           ".ynow-bblab-recon-commercial{width:100%;}",
           ".ynow-bblab-recon-verdict{margin:0 0 12px 0;padding:10px 12px;",
@@ -589,18 +595,114 @@ business_breakdown_lab_ui <- function(id = "bblab") {
         "IV", "ynow_bblab_orders_title", "Company orders & market concentration",
         "ynow_bblab_orders_help",
         paste0(
-          "Filed major-market geography and counterparty concentration from statements / notes. ",
-          "Major markets show revenue by customer location when disclosed. ",
-          "Major suppliers and major customers are shown only when the filer reports them — ",
-          "never estimated. This block is not the business-dimension split."
+          "Same analysis types are grouped together: order quantity, major-customer revenue mix, ",
+          "major suppliers, then major-market geography. Filing concentration charts sit with the ",
+          "matching disclosed order facts. Empty when undisclosed — never estimated. ",
+          "This block is not the business-dimension split."
         ),
         chapter = "4",
         tags$div(
           class = "ynow-bblab-orders",
           tags$div(
-            class = "ynow-bblab-orders__grid",
+            class = "ynow-bblab-orders__toolbar",
+            tags$p(
+              id = "ynow_bblab_or_help",
+              class = "help-block",
+              paste0(
+                "Start analysis to surface disclosed order quantity, supplier, and customer facts ",
+                "beside the matching filing charts. Taiwan source priority is MOPS, then company IR, ",
+                "then a statement cross-check. Broker and industry sources are estimates only and ",
+                "do not fill order amounts."
+              )
+            ),
+            actionButton(
+              ns("order_research_run"),
+              label = tags$span(id = "ynow_bblab_or_start", "Start analysis"),
+              class = "btn-primary btn-sm"
+            )
+          ),
+          tags$div(
+            class = "ynow-bblab-orders__groups",
             tags$div(
-              class = "ynow-bblab-orders__col",
+              class = "ynow-bblab-orders__group",
+              `data-orders-group` = "orders",
+              tags$h4(
+                id = "ynow_bblab_orders_qty_title",
+                class = "ynow-bblab-subhead",
+                "Order quantity"
+              ),
+              tags$p(
+                id = "ynow_bblab_orders_qty_help",
+                class = "help-block",
+                "Disclosed backlog, bookings, and named order amounts when a filing or call states them."
+              ),
+              uiOutput(ns("order_research_orders_facts")),
+              plotly::plotlyOutput(ns("order_research_chart"), height = "280px")
+            ),
+            tags$div(
+              class = "ynow-bblab-orders__group",
+              `data-orders-group` = "customers",
+              tags$h4(
+                id = "ynow_bblab_orders_customers_title",
+                class = "ynow-bblab-subhead",
+                "Major-customer revenue mix"
+              ),
+              tags$p(
+                id = "ynow_bblab_orders_customers_help",
+                class = "help-block",
+                paste0(
+                  "Filed major-customer concentration and disclosed customer revenue-mix facts, ",
+                  "shown together when available."
+                )
+              ),
+              tags$p(
+                id = "ynow_bblab_orders_from_filings_customers",
+                class = "ynow-bblab-orders__sublabel",
+                "Filed concentration"
+              ),
+              uiOutput(ns("orders_customers_status")),
+              plotly::plotlyOutput(ns("orders_customers_chart"), height = "320px"),
+              tags$p(
+                id = "ynow_bblab_orders_disclosed_facts_customers",
+                class = "ynow-bblab-orders__sublabel",
+                "Disclosed order facts"
+              ),
+              uiOutput(ns("order_research_customers_facts")),
+              plotly::plotlyOutput(ns("order_research_rates_chart"), height = "280px")
+            ),
+            tags$div(
+              class = "ynow-bblab-orders__group",
+              `data-orders-group` = "suppliers",
+              tags$h4(
+                id = "ynow_bblab_orders_suppliers_title",
+                class = "ynow-bblab-subhead",
+                "Major suppliers"
+              ),
+              tags$p(
+                id = "ynow_bblab_orders_suppliers_help",
+                class = "help-block",
+                paste0(
+                  "Filed major-supplier concentration and disclosed supplier facts, ",
+                  "shown together when available (often rarer than customers)."
+                )
+              ),
+              tags$p(
+                id = "ynow_bblab_orders_from_filings_suppliers",
+                class = "ynow-bblab-orders__sublabel",
+                "Filed concentration"
+              ),
+              uiOutput(ns("orders_suppliers_status")),
+              plotly::plotlyOutput(ns("orders_suppliers_chart"), height = "320px"),
+              tags$p(
+                id = "ynow_bblab_orders_disclosed_facts_suppliers",
+                class = "ynow-bblab-orders__sublabel",
+                "Disclosed order facts"
+              ),
+              uiOutput(ns("order_research_suppliers_facts"))
+            ),
+            tags$div(
+              class = "ynow-bblab-orders__group",
+              `data-orders-group` = "markets",
               tags$h4(
                 id = "ynow_bblab_orders_markets_title",
                 class = "ynow-bblab-subhead",
@@ -615,60 +717,15 @@ business_breakdown_lab_ui <- function(id = "bblab") {
               plotly::plotlyOutput(ns("orders_markets_chart"), height = "340px")
             ),
             tags$div(
-              class = "ynow-bblab-orders__col",
+              class = "ynow-bblab-orders__group ynow-bblab-orders__context",
+              `data-orders-group` = "context",
               tags$h4(
-                id = "ynow_bblab_orders_customers_title",
+                id = "ynow_bblab_or_title",
                 class = "ynow-bblab-subhead",
-                "Major customers"
+                "Sources, cross-check, and call context"
               ),
-              tags$p(
-                id = "ynow_bblab_orders_customers_help",
-                class = "help-block",
-                "Named or anonymized major-customer concentration when disclosed in filings."
-              ),
-              uiOutput(ns("orders_customers_status")),
-              plotly::plotlyOutput(ns("orders_customers_chart"), height = "340px")
-            ),
-            tags$div(
-              class = "ynow-bblab-orders__col",
-              tags$h4(
-                id = "ynow_bblab_orders_suppliers_title",
-                class = "ynow-bblab-subhead",
-                "Major suppliers"
-              ),
-              tags$p(
-                id = "ynow_bblab_orders_suppliers_help",
-                class = "help-block",
-                "Major-supplier concentration when disclosed in filings (often rarer than customers)."
-              ),
-              uiOutput(ns("orders_suppliers_status")),
-              plotly::plotlyOutput(ns("orders_suppliers_chart"), height = "340px")
+              uiOutput(ns("order_research_panel"))
             )
-          ),
-          tags$div(
-            class = "ynow-bblab-or",
-            tags$h4(
-              id = "ynow_bblab_or_title",
-              class = "ynow-bblab-subhead",
-              "Order research"
-            ),
-            tags$p(
-              id = "ynow_bblab_or_help",
-              class = "help-block",
-              paste0(
-                "Three disclosed facts: order quantity, major suppliers, and major-customer ",
-                "revenue mix. Taiwan source priority is MOPS, then company IR, then a statement ",
-                "cross-check. Broker and industry sources are estimates only and do not fill order amounts."
-              )
-            ),
-            actionButton(
-              ns("order_research_run"),
-              label = tags$span(id = "ynow_bblab_or_start", "Start analysis"),
-              class = "btn-primary btn-sm"
-            ),
-            uiOutput(ns("order_research_panel")),
-            plotly::plotlyOutput(ns("order_research_chart"), height = "280px"),
-            plotly::plotlyOutput(ns("order_research_rates_chart"), height = "280px")
           )
         )
       ),
@@ -800,37 +857,65 @@ business_breakdown_lab_ui <- function(id = "bblab") {
   .bblab_ui(key, locale)
 }
 
-#' Order-research panel. Primary surface is the three disclosed buckets.
-bblab_order_research_panel_ui <- function(pack, locale = "en", started = FALSE) {
+#' One disclosed focus bucket (orders / suppliers / customers).
+bblab_order_research_focus_bucket_ui <- function(bucket, locale = "en") {
+  msg <- function(key) .bblab_ui(key, locale)
+  if (!is.list(bucket)) return(NULL)
+  bid <- .bblab_chr(bucket$id, "")
+  bits <- lapply(bucket$facts %||% list(), function(f) {
+    if (!is.finite(.bblab_num(f$value))) return(NULL)
+    src <- .bblab_chr(f$source, "")
+    prov <- msg(if (nzchar(src)) paste0("bblab_or_prov_", src) else "bblab_or_prov_filing")
+    cred_id <- .bblab_chr(f$credibility, "")
+    cred <- if (nzchar(cred_id)) msg(paste0("bblab_or_cred_", cred_id)) else ""
+    tags$li(
+      tags$b(paste0(.or_fact_label(f, locale), ": ")),
+      .or_fmt_value(f$value, f$unit),
+      tags$span(class = "ynow-bblab-or__prov", paste0(" · ", prov)),
+      if (nzchar(cred)) tags$span(class = "ynow-bblab-or__cred", paste0(" · ", cred)) else NULL
+    )
+  })
+  bits <- Filter(Negate(is.null), bits)
+  if (!length(bits)) bits <- list(tags$li(.or_gap_text(bucket$gap, locale)))
+  tags$details(
+    class = "ynow-bblab-or__focus",
+    `data-focus` = bid,
+    open = "open",
+    tags$summary(msg(paste0("bblab_or_focus_", bid))),
+    tags$ul(bits)
+  )
+}
+
+#' Focus buckets for order research (optional id filter).
+bblab_order_research_focus_ui <- function(pack, locale = "en", started = FALSE,
+                                          bucket_id = NULL, show_idle = TRUE) {
+  msg <- function(key) .bblab_ui(key, locale)
+  if (!isTRUE(started)) {
+    if (!isTRUE(show_idle)) return(NULL)
+    return(tags$p(class = "help-block", msg("bblab_or_idle")))
+  }
+  if (!is.list(pack) || !length(pack$kpis)) {
+    if (!isTRUE(show_idle)) return(NULL)
+    return(tags$p(class = "help-block", msg("bblab_or_waiting")))
+  }
+  buckets <- pack$focus %||% list()
+  if (!is.null(bucket_id) && nzchar(.bblab_chr(bucket_id, ""))) {
+    want <- .bblab_chr(bucket_id, "")
+    buckets <- Filter(function(b) identical(.bblab_chr(b$id, ""), want), buckets)
+  }
+  focus <- lapply(buckets, function(bucket) bblab_order_research_focus_bucket_ui(bucket, locale))
+  focus <- Filter(Negate(is.null), focus)
+  if (!length(focus)) return(NULL)
+  tags$div(class = "ynow-bblab-or__focuses", focus)
+}
+
+#' Sources, cross-check, earnings-call context, and secondary layers (no focus buckets).
+bblab_order_research_meta_ui <- function(pack, locale = "en", started = FALSE) {
   msg <- function(key) .bblab_ui(key, locale)
   if (!isTRUE(started)) return(tags$p(class = "help-block", msg("bblab_or_idle")))
   if (!is.list(pack) || !length(pack$kpis)) {
     return(tags$p(class = "help-block", msg("bblab_or_waiting")))
   }
-  focus <- lapply(pack$focus %||% list(), function(bucket) {
-    bid <- .bblab_chr(bucket$id, "")
-    bits <- lapply(bucket$facts %||% list(), function(f) {
-      if (!is.finite(.bblab_num(f$value))) return(NULL)
-      src <- .bblab_chr(f$source, "")
-      prov <- msg(if (nzchar(src)) paste0("bblab_or_prov_", src) else "bblab_or_prov_filing")
-      cred_id <- .bblab_chr(f$credibility, "")
-      cred <- if (nzchar(cred_id)) msg(paste0("bblab_or_cred_", cred_id)) else ""
-      tags$li(
-        tags$b(paste0(.or_fact_label(f, locale), ": ")),
-        .or_fmt_value(f$value, f$unit),
-        tags$span(class = "ynow-bblab-or__prov", paste0(" · ", prov)),
-        if (nzchar(cred)) tags$span(class = "ynow-bblab-or__cred", paste0(" · ", cred)) else NULL
-      )
-    })
-    bits <- Filter(Negate(is.null), bits)
-    if (!length(bits)) bits <- list(tags$li(.or_gap_text(bucket$gap, locale)))
-    tags$details(
-      class = "ynow-bblab-or__focus",
-      open = "open",
-      tags$summary(msg(paste0("bblab_or_focus_", bid))),
-      tags$ul(bits)
-    )
-  })
   layers <- lapply(pack$layers %||% list(), function(layer) {
     key <- .bblab_chr(layer$key, "")
     bits <- lapply(layer$metrics %||% list(), function(m) {
@@ -1051,7 +1136,6 @@ bblab_order_research_panel_ui <- function(pack, locale = "en", started = FALSE) 
   tagList(
     us_block,
     tw_block,
-    tags$div(class = "ynow-bblab-or__focuses", focus),
     tags$div(
       class = "ynow-bblab-or__sources",
       tags$p(tags$b(msg("bblab_or_sources_title"))),
@@ -1069,6 +1153,21 @@ bblab_order_research_panel_ui <- function(pack, locale = "en", started = FALSE) 
     )
   )
 }
+
+#' Order-research panel. Composite of focus buckets + meta (tests / legacy callers).
+bblab_order_research_panel_ui <- function(pack, locale = "en", started = FALSE) {
+  if (!isTRUE(started)) {
+    return(tags$p(class = "help-block", .bblab_ui("bblab_or_idle", locale)))
+  }
+  if (!is.list(pack) || !length(pack$kpis)) {
+    return(tags$p(class = "help-block", .bblab_ui("bblab_or_waiting", locale)))
+  }
+  tagList(
+    bblab_order_research_focus_ui(pack, locale, TRUE, show_idle = FALSE),
+    bblab_order_research_meta_ui(pack, locale, TRUE)
+  )
+}
+
 
 bblab_order_research_bar <- function(pack, locale = "en",
                                      which = c("orders", "customers", "multiples", "rates"),
@@ -2065,8 +2164,30 @@ business_breakdown_lab_server <- function(id = "bblab",
       or_started(TRUE)
     }, ignoreInit = TRUE)
 
+    output$order_research_orders_facts <- renderUI({
+      bblab_order_research_focus_ui(
+        .or_pack(), loc(), isTRUE(or_started()),
+        bucket_id = "orders", show_idle = TRUE
+      )
+    })
+
+    output$order_research_customers_facts <- renderUI({
+      bblab_order_research_focus_ui(
+        .or_pack(), loc(), isTRUE(or_started()),
+        bucket_id = "customers", show_idle = FALSE
+      )
+    })
+
+    output$order_research_suppliers_facts <- renderUI({
+      bblab_order_research_focus_ui(
+        .or_pack(), loc(), isTRUE(or_started()),
+        bucket_id = "suppliers", show_idle = FALSE
+      )
+    })
+
+    # Context group: sources / cross-check / call excerpts (focus buckets live in analysis groups).
     output$order_research_panel <- renderUI({
-      bblab_order_research_panel_ui(.or_pack(), loc(), isTRUE(or_started()))
+      bblab_order_research_meta_ui(.or_pack(), loc(), isTRUE(or_started()))
     })
 
     output$order_research_chart <- plotly::renderPlotly({

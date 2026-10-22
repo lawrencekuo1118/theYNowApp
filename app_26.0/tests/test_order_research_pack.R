@@ -375,7 +375,7 @@ if (requireNamespace("shiny", quietly = TRUE) && requireNamespace("plotly", quie
   })
   source("business_breakdown_module.R", local = TRUE, encoding = "UTF-8")
   html_en <- paste(as.character(bblab_order_research_panel_ui(ranged, "en", TRUE)), collapse = " ")
-    check("panel leads with the three buckets", {
+  check("panel leads with the three buckets", {
     primary <- sub("ynow-bblab-or__secondary.*", "", html_en)
     grepl("Order quantity", primary, fixed = TRUE) &&
       grepl("Major suppliers", primary, fixed = TRUE) &&
@@ -384,6 +384,28 @@ if (requireNamespace("shiny", quietly = TRUE) && requireNamespace("plotly", quie
       grepl("ynow-bblab-or__secondary", html_en, fixed = TRUE) &&
       !grepl("Bear", html_en, fixed = TRUE) &&
       !grepl("Bull", html_en, fixed = TRUE)
+  })
+  html_orders_only <- paste(
+    as.character(bblab_order_research_focus_ui(ranged, "en", TRUE, bucket_id = "orders")),
+    collapse = " "
+  )
+  html_meta_only <- paste(
+    as.character(bblab_order_research_meta_ui(ranged, "en", TRUE)),
+    collapse = " "
+  )
+  check("focus helper isolates one bucket", {
+    grepl("Order quantity", html_orders_only, fixed = TRUE) &&
+      !grepl("Major suppliers", html_orders_only, fixed = TRUE) &&
+      !grepl("Sources and credibility", html_orders_only, fixed = TRUE)
+  })
+  check("meta helper has sources without focus buckets", {
+    meta_primary <- sub("ynow-bblab-or__secondary.*", "", html_meta_only)
+    grepl("Sources and credibility", meta_primary, fixed = TRUE) &&
+      grepl("Cross-check", meta_primary, fixed = TRUE) &&
+      !grepl("data-focus=\"orders\"", html_meta_only, fixed = TRUE) &&
+      !grepl("Order quantity", meta_primary, fixed = TRUE) &&
+      !grepl("Gross margin", meta_primary, fixed = TRUE) &&
+      grepl("ynow-bblab-or__secondary", html_meta_only, fixed = TRUE)
   })
   html_focus <- paste(as.character(bblab_order_research_panel_ui(focused, "en", TRUE)), collapse = " ")
   check("panel labels earnings-call provenance",

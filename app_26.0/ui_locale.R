@@ -3987,12 +3987,17 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     bblab_orders_title = "Company orders & market concentration",
     bblab_orders_help = paste0(
-      "Filed major-market geography and counterparty concentration from statements / notes ",
-      "(US: SEC EDGAR; TW: MOPS shareholder annual report Art. 18 tables). ",
-      "Major markets show revenue by customer location when disclosed. ",
-      "Major suppliers and major customers are shown only when the filer reports them — ",
-      "never estimated. This block is not the business-dimension split."
+      "Same analysis types are grouped together: order quantity, major-customer revenue mix, ",
+      "major suppliers, then major-market geography. Filing concentration charts sit with the ",
+      "matching disclosed order facts (US: SEC EDGAR; TW: MOPS shareholder annual report Art. 18). ",
+      "Empty when undisclosed — never estimated. This block is not the business-dimension split."
     ),
+    bblab_orders_qty_title = "Order quantity",
+    bblab_orders_qty_help = paste0(
+      "Disclosed backlog, bookings, and named order amounts when a filing or call states them."
+    ),
+    bblab_orders_from_filings = "Filed concentration",
+    bblab_orders_disclosed_facts = "Disclosed order facts",
     bblab_orders_markets_title = "Major markets",
     bblab_orders_markets_help = paste0(
       "Revenue by customer location (geography) from filed segment notes when available."
@@ -4004,9 +4009,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_orders_markets_geo_note = paste0(
       "Geography here is customer location — not the primary business split."
     ),
-    bblab_orders_customers_title = "Major customers",
+    bblab_orders_customers_title = "Major-customer revenue mix",
     bblab_orders_customers_help = paste0(
-      "Named or anonymized major-customer concentration when disclosed in filings."
+      "Filed major-customer concentration and disclosed customer revenue-mix facts, ",
+      "shown together when available."
     ),
     bblab_orders_customers_empty = paste0(
       "No major-customer concentration table was found in the retrieved filings. ",
@@ -4014,7 +4020,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     bblab_orders_suppliers_title = "Major suppliers",
     bblab_orders_suppliers_help = paste0(
-      "Major-supplier concentration when disclosed in filings (often rarer than customers)."
+      "Filed major-supplier concentration and disclosed supplier facts, ",
+      "shown together when available (often rarer than customers)."
     ),
     bblab_orders_suppliers_empty = paste0(
       "No major-supplier concentration table was found in the retrieved filings. ",
@@ -4047,11 +4054,12 @@ locale_for_market <- function(mode = get_market_mode()) {
       "No MOPS shareholder annual report with major-customer / supplier tables was retrieved; ",
       "figures are not estimated."
     ),
-    bblab_or_title = "Order research",
+    bblab_or_title = "Sources, cross-check, and call context",
     bblab_or_help = paste0(
-      "Three disclosed facts: order quantity, major suppliers, and major-customer ",
-      "revenue mix. Taiwan source priority is MOPS, then company IR, then a statement ",
-      "cross-check. Broker and industry sources are estimates only and do not fill order amounts."
+      "Start analysis to surface disclosed order quantity, supplier, and customer facts ",
+      "beside the matching filing charts. Taiwan source priority is MOPS, then company IR, ",
+      "then a statement cross-check. Broker and industry sources are estimates only and ",
+      "do not fill order amounts."
     ),
     bblab_or_focus_orders = "Order quantity",
     bblab_or_focus_suppliers = "Major suppliers",
@@ -4128,7 +4136,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_or_chart_orders = "Disclosed order amounts",
     bblab_or_chart_customers = "Major-customer revenue share",
     bblab_or_start = "Start analysis",
-    bblab_or_idle = "Press Start analysis to open the six-layer pack for the current ticker.",
+    bblab_or_idle = "Press Start analysis to load disclosed order facts for the current ticker.",
     bblab_or_waiting = "Statements for this ticker are not ready yet.",
     bblab_or_primary = "Primary for this industry lens",
     bblab_or_disclosed_flag = "Disclosed",
@@ -8309,21 +8317,24 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     bblab_orders_title = "公司訂單與市場集中度",
     bblab_orders_help = paste0(
-      "依財報／附註揭露的主要市場地區別與交易對手集中度",
+      "相同分析整併同組：訂單數量、重大客戶營收貢獻、主要供應商，再接主要市場地區別。",
+      "財報集中度圖與對應的已揭露訂單事實放在一起",
       "（美股：SEC EDGAR；台股：公開資訊觀測站股東會年報第 18 條附表）。",
-      "主要市場在有揭露時顯示客戶所在地營收分布；",
-      "主要供應商與主要客戶僅在公司有申報時呈現——絕不推估。",
-      "本區塊不是事業維度切分。"
+      "未揭露則留白——絕不推估。本區塊不是事業維度切分。"
     ),
+    bblab_orders_qty_title = "訂單數量",
+    bblab_orders_qty_help = "僅在財報或法說會明列時，顯示已揭露的 backlog、bookings 與具名訂單金額。",
+    bblab_orders_from_filings = "財報集中度",
+    bblab_orders_disclosed_facts = "已揭露訂單事實",
     bblab_orders_markets_title = "主要市場分布",
     bblab_orders_markets_help = "有揭露時，依已申報部門附註顯示客戶所在地（地區別）營收。",
     bblab_orders_markets_empty = "查無此代號的已申報地區別／主要市場營收拆解，不推估數字。",
     bblab_orders_markets_geo_note = "此處地區別為客戶所在地，不是主要事業切分。",
-    bblab_orders_customers_title = "主要客戶",
-    bblab_orders_customers_help = "有揭露時顯示具名或匿名的主要客戶集中度。",
+    bblab_orders_customers_title = "重大客戶營收貢獻",
+    bblab_orders_customers_help = "有揭露時，將財報主要客戶集中度與已揭露的客戶營收貢獻事實整併呈現。",
     bblab_orders_customers_empty = "擷取之財報未見主要客戶集中度表，不推估數字。",
-    bblab_orders_suppliers_title = "主要供應商來源",
-    bblab_orders_suppliers_help = "有揭露時顯示主要供應商集中度（通常較客戶揭露更少見）。",
+    bblab_orders_suppliers_title = "主要供應商",
+    bblab_orders_suppliers_help = "有揭露時，將財報主要供應商集中度與已揭露的供應商事實整併呈現（通常較客戶揭露更少見）。",
     bblab_orders_suppliers_empty = "擷取之財報未見主要供應商集中度表，不推估數字。",
     bblab_orders_share_label = "佔合併營收比重",
     bblab_orders_share_axis = "佔合併營收比重（%）",
@@ -8341,9 +8352,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     notif_bblab_orders_tw_annual_report_missing = paste0(
       "未能取得含主要客戶／供應商附表的股東會年報；不推估數字。"
     ),
-    bblab_or_title = "訂單研究",
+    bblab_or_title = "來源、交叉驗證與法說會脈絡",
     bblab_or_help = paste0(
-      "只顯示三項已揭露事實：訂單數量、主要供應商、重大客戶營收貢獻。",
+      "點選開始分析後，已揭露的訂單數量、供應商與客戶事實會出現在對應的財報圖旁。",
       "台灣來源優先序為公開資訊觀測站、公司 IR，再以財報科目交叉驗證。",
       "券商與產業來源僅供估計，不填入訂單金額。"
     ),
@@ -8421,7 +8432,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_or_chart_orders = "已揭露訂單數量",
     bblab_or_chart_customers = "重大客戶營收佔比",
     bblab_or_start = "開始分析",
-    bblab_or_idle = "點選「開始分析」，開啟目前代號的六層訂單研究。",
+    bblab_or_idle = "點選「開始分析」，載入目前代號的已揭露訂單事實。",
     bblab_or_waiting = "此代號的財報尚未就緒。",
     bblab_or_primary = "此產業透鏡的主要指標",
     bblab_or_disclosed_flag = "已揭露",

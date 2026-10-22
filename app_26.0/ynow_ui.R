@@ -11124,6 +11124,12 @@ ui <- dashboardPage(
             setBtText('ynow_bblab_geo_veto_why', 'bblab_geo_veto_why');
             setBtText('ynow_bblab_orders_title', 'bblab_orders_title');
             setBtText('ynow_bblab_orders_help', 'bblab_orders_help');
+            setBtText('ynow_bblab_orders_qty_title', 'bblab_orders_qty_title');
+            setBtText('ynow_bblab_orders_qty_help', 'bblab_orders_qty_help');
+            setBtText('ynow_bblab_orders_from_filings_customers', 'bblab_orders_from_filings');
+            setBtText('ynow_bblab_orders_from_filings_suppliers', 'bblab_orders_from_filings');
+            setBtText('ynow_bblab_orders_disclosed_facts_customers', 'bblab_orders_disclosed_facts');
+            setBtText('ynow_bblab_orders_disclosed_facts_suppliers', 'bblab_orders_disclosed_facts');
             setBtText('ynow_bblab_orders_markets_title', 'bblab_orders_markets_title');
             setBtText('ynow_bblab_orders_markets_help', 'bblab_orders_markets_help');
             setBtText('ynow_bblab_orders_customers_title', 'bblab_orders_customers_title');

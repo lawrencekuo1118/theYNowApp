@@ -582,6 +582,8 @@ for (k in c("menu_business_breakdown_lab", "bblab_page_sub", "bblab_report_kicke
             "bblab_ch4_help",
             "bblab_ch4_limited", "bblab_geo_veto_why", "bblab_overlap_why",
             "bblab_orders_title", "bblab_orders_help",
+            "bblab_orders_qty_title", "bblab_orders_qty_help",
+            "bblab_orders_from_filings", "bblab_orders_disclosed_facts",
             "bblab_orders_markets_title", "bblab_orders_markets_help",
             "bblab_orders_markets_empty", "bblab_orders_customers_title",
             "bblab_orders_customers_empty", "bblab_orders_suppliers_title",
@@ -649,8 +651,10 @@ check("applyUiLocale wires chapter titles", {
     grepl("setBtText('ynow_bblab_ch5_help', 'bblab_ch5_help')", ui_src, fixed = TRUE) &&
     grepl("setBtText('ynow_bblab_ch7_title', 'bblab_ch7_title')", ui_src, fixed = TRUE) &&
     grepl("setBtText('ynow_bblab_orders_title', 'bblab_orders_title')", ui_src, fixed = TRUE) &&
+    grepl("setBtText('ynow_bblab_orders_qty_title', 'bblab_orders_qty_title')", ui_src, fixed = TRUE) &&
     grepl("setBtText('ynow_bblab_orders_markets_title', 'bblab_orders_markets_title')", ui_src, fixed = TRUE) &&
-    grepl("setBtText('ynow_bblab_orders_suppliers_title', 'bblab_orders_suppliers_title')", ui_src, fixed = TRUE)
+    grepl("setBtText('ynow_bblab_orders_suppliers_title', 'bblab_orders_suppliers_title')", ui_src, fixed = TRUE) &&
+    grepl("setBtText('ynow_bblab_orders_from_filings_customers', 'bblab_orders_from_filings')", ui_src, fixed = TRUE)
 })
 check("mix chapters are one report section with history panel", {
   grepl("Revenue mix", mod_src, fixed = TRUE) &&
@@ -666,6 +670,12 @@ check("mix chapters are one report section with history panel", {
     grepl('chapter = "6"', mod_src, fixed = TRUE) &&
     grepl('chapter = "7"', mod_src, fixed = TRUE) &&
     grepl("ynow_bblab_orders_title", mod_src, fixed = TRUE) &&
+    grepl("ynow-bblab-orders__groups", mod_src, fixed = TRUE) &&
+    grepl('data-orders-group` = "orders"', mod_src, fixed = TRUE) &&
+    grepl('data-orders-group` = "customers"', mod_src, fixed = TRUE) &&
+    grepl('data-orders-group` = "suppliers"', mod_src, fixed = TRUE) &&
+    grepl('data-orders-group` = "markets"', mod_src, fixed = TRUE) &&
+    grepl("order_research_orders_facts", mod_src, fixed = TRUE) &&
     grepl("orders_markets_chart", mod_src, fixed = TRUE) &&
     grepl("orders_suppliers_chart", mod_src, fixed = TRUE) &&
     grepl("ynow-bblab-report__section", mod_src, fixed = TRUE) &&
@@ -837,8 +847,13 @@ if (requireNamespace("shiny", quietly = TRUE) &&
           grepl("bcg_panel", lab_ui_html, fixed = TRUE) &&
           grepl("history_panel", lab_ui_html, fixed = TRUE) &&
           grepl("ynow_bblab_orders_title", lab_ui_html, fixed = TRUE) &&
+          grepl("ynow_bblab_orders_qty_title", lab_ui_html, fixed = TRUE) &&
           grepl("ynow_bblab_orders_markets_title", lab_ui_html, fixed = TRUE) &&
           grepl("ynow_bblab_orders_suppliers_title", lab_ui_html, fixed = TRUE) &&
+          grepl("data-orders-group=\"orders\"", lab_ui_html, fixed = TRUE) &&
+          grepl("data-orders-group=\"customers\"", lab_ui_html, fixed = TRUE) &&
+          grepl("data-orders-group=\"suppliers\"", lab_ui_html, fixed = TRUE) &&
+          grepl("data-orders-group=\"markets\"", lab_ui_html, fixed = TRUE) &&
           grepl("ynow_bblab_ch5_title", lab_ui_html, fixed = TRUE) &&
           grepl("ynow_bblab_ch5_help", lab_ui_html, fixed = TRUE) &&
           grepl("ynow_bblab_ch6_title", lab_ui_html, fixed = TRUE) &&
