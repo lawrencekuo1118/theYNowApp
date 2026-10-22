@@ -49,7 +49,7 @@ check(
     grepl("rgba(12, 84, 132", chrome_vars, fixed = TRUE) &&
     grepl("rgba(36, 156, 96", chrome_vars, fixed = TRUE) &&
     length(leaves_css) == 1L &&
-    grepl("stroke='%23249C60'", leaves_css, fixed = TRUE) &&
+    grepl("stroke=%27%23249C60%27", leaves_css, fixed = TRUE) &&
     !grepl("#7c3aed|#a855f7|#2ea8e6|#3ecf8e", paste(chrome_vars, leaves_css), ignore.case = TRUE)
 )
 

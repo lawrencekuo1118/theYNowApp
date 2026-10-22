@@ -5539,7 +5539,7 @@ ui <- dashboardPage(
           pointer-events: none;
           background:
             radial-gradient(ellipse 80% 120% at 8% 50%, var(--ynow-chrome-green-glow), transparent 55%),
-            url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='280' height='50' viewBox='0 0 280 50'%3E%3Cg fill='none' stroke='%23249C60' stroke-opacity='0.35' stroke-width='1'%3E%3Cpath d='M0 40 C40 10, 70 45, 110 18 S180 42, 220 12'/%3E%3Cpath d='M30 38 C45 22, 55 22, 62 34'/%3E%3Cpath d='M90 28 C105 12, 118 14, 125 28'/%3E%3Cpath d='M150 36 C165 18, 178 20, 188 34'/%3E%3Cpath d='M48 30 c8-10 16-10 18 2'/%3E%3Cpath d='M108 22 c7-9 14-9 16 1'/%3E%3Cpath d='M168 28 c8-10 15-9 17 2'/%3E%3C/g%3E%3C/svg%3E") left center / auto 100% no-repeat;
+            url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27280%27 height=%2750%27 viewBox=%270 0 280 50%27%3E%3Cg fill=%27none%27 stroke=%27%23249C60%27 stroke-opacity=%270.35%27 stroke-width=%271%27%3E%3Cpath d=%27M0 40 C40 10, 70 45, 110 18 S180 42, 220 12%27/%3E%3Cpath d=%27M30 38 C45 22, 55 22, 62 34%27/%3E%3Cpath d=%27M90 28 C105 12, 118 14, 125 28%27/%3E%3Cpath d=%27M150 36 C165 18, 178 20, 188 34%27/%3E%3Cpath d=%27M48 30 c8-10 16-10 18 2%27/%3E%3Cpath d=%27M108 22 c7-9 14-9 16 1%27/%3E%3Cpath d=%27M168 28 c8-10 15-9 17 2%27/%3E%3C/g%3E%3C/svg%3E") left center / auto 100% no-repeat;
           opacity: 0.9;
           animation: ynow-chrome-green-pulse 4.8s ease-in-out infinite;
         }
