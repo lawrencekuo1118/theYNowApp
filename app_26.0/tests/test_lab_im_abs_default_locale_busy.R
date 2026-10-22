@@ -8,8 +8,17 @@ check <- function(label, cond) {
   invisible(ok)
 }
 
-root <- normalizePath("..", mustWork = TRUE)
-if (!file.exists(file.path(root, "default_config.R"))) root <- normalizePath(getwd(), mustWork = TRUE)
+args <- commandArgs(trailingOnly = FALSE)
+file_arg <- sub("^--file=", "", args[grep("^--file=", args)])
+test_dir <- if (length(file_arg) == 1L && nzchar(file_arg)) {
+  dirname(normalizePath(file_arg))
+} else {
+  getwd()
+}
+root <- normalizePath(file.path(test_dir, ".."), mustWork = TRUE)
+if (!file.exists(file.path(root, "default_config.R"))) {
+  root <- normalizePath(getwd(), mustWork = TRUE)
+}
 
 # Minimal sources for APP_DEFAULTS
 source(file.path(root, "industry_standards.R"), local = TRUE, encoding = "UTF-8")
