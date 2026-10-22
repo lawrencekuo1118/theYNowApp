@@ -1,13 +1,14 @@
 # ==========================================
 # TW earnings-call / 法說會結論 ingest (product path)
 # ==========================================
-# Preferred: AlphaMemo free-transcripts index
+# Preferred automatable: Fugle 法說會備忘錄 HTML (free; Estimate; robots Allow /).
+# AlphaMemo free-transcripts index:
 #   https://www.alphamemo.ai/free-transcripts
 # AlphaMemo robots.txt disallows /api/; Terms forbid bots/crawlers without
 # written permission → outbound index link only (no AlphaMemo HTML/API scrape).
-# Last-resort (user override): Seeking Alpha HTML scrape when AlphaMemo cannot
-# supply automatable facts. Credibility = last_resort (third-party HTML).
-# Fail closed with honest empty if SA also fails. Never invent amounts.
+# Last-resort (user override): Seeking Alpha HTML scrape when preferred paths
+# cannot supply automatable facts. Credibility = last_resort (third-party HTML).
+# Fail closed with honest empty if Fugle + SA fail. Never invent amounts.
 
 .ynow_tw_ec_chr <- function(x, default = "") {
   v <- as.character(x %||% default)[1]
@@ -52,13 +53,18 @@ ynow_tw_earnings_call_alphamemo_search_url <- function(ticker) {
 }
 
 #' Fetch TW earnings-call disclosure for BBLab order research.
-#' AlphaMemo = preferred outbound/empty; SA HTML = last-resort only.
+#' Fugle memo HTML (Estimate) → SA HTML last-resort → AlphaMemo outbound empty.
 ynow_tw_earnings_call_fetch <- function(ticker) {
   tk <- toupper(trimws(.ynow_tw_ec_chr(ticker)))
   bare <- sub("\\.(TW|TWO)$", "", tk, ignore.case = TRUE)
   meta_links <- list(
     alphamemo_url = ynow_tw_earnings_call_alphamemo_index_url(),
     alphamemo_search_url = ynow_tw_earnings_call_alphamemo_search_url(bare),
+    fugle_url = if (exists("ynow_fugle_earnings_call_topic_url", mode = "function")) {
+      ynow_fugle_earnings_call_topic_url()
+    } else {
+      "https://blog.fugle.tw/topic/earnings-call-memo"
+    },
     sa_url = if (exists("ynow_sa_earnings_call_index_url", mode = "function")) {
       ynow_sa_earnings_call_index_url(bare)
     } else {
@@ -74,28 +80,39 @@ ynow_tw_earnings_call_fetch <- function(ticker) {
     return(c(.ynow_tw_ec_empty(tk, "us_leave_as_is"), meta_links))
   }
 
-  # 1) AlphaMemo: no automatable licensed/public API that respects ToS → structured empty.
-  # 2) Seeking Alpha HTML last-resort (often empty for pure TW names; fail closed).
   usable <- if (exists("ynow_ec_result_usable", mode = "function")) {
     ynow_ec_result_usable
   } else {
     function(res) is.list(res) && isTRUE(res$ok) && identical(res$status %||% "", "ok")
   }
-  if (exists("ynow_sa_earnings_call_fetch_last_resort", mode = "function")) {
-    extract_fun <- if (exists(".ynow_us_ec_extract_facts", mode = "function")) {
-      .ynow_us_ec_extract_facts
-    } else {
-      NULL
-    }
-    sa <- tryCatch(
-      ynow_sa_earnings_call_fetch_last_resort(bare, extract_fun = extract_fun),
-      error = function(e) NULL
-    )
-    if (isTRUE(usable(sa))) {
-      return(c(sa, meta_links))
-    }
+  extract_fun <- if (exists(".ynow_us_ec_extract_facts", mode = "function")) {
+    .ynow_us_ec_extract_facts
+  } else {
+    NULL
   }
-  c(.ynow_tw_ec_empty(bare, "alphamemo_human_only_sa_empty"), meta_links)
+
+  # Named list order is the waterfall. AlphaMemo is meta_links only.
+  steps <- list(
+    fugle_earnings_memo = function() {
+      if (!exists("ynow_fugle_earnings_call_fetch", mode = "function")) return(NULL)
+      tryCatch(
+        ynow_fugle_earnings_call_fetch(bare, extract_fun = extract_fun),
+        error = function(e) NULL
+      )
+    },
+    seeking_alpha_html = function() {
+      if (!exists("ynow_sa_earnings_call_fetch_last_resort", mode = "function")) return(NULL)
+      tryCatch(
+        ynow_sa_earnings_call_fetch_last_resort(bare, extract_fun = extract_fun),
+        error = function(e) NULL
+      )
+    }
+  )
+  for (step in steps) {
+    got <- step()
+    if (isTRUE(usable(got))) return(c(got, meta_links))
+  }
+  c(.ynow_tw_ec_empty(bare, "fugle_empty_alphamemo_human_only_sa_empty"), meta_links)
 }
 
 #' Shape for payload$order_disclosures$earnings_call (numeric facts only when stated).
@@ -120,6 +137,7 @@ ynow_tw_earnings_call_to_disclosure <- function(fetched) {
     status = .ynow_tw_ec_chr(fetched$status, "empty"),
     alphamemo_url = .ynow_tw_ec_chr(fetched$alphamemo_url),
     alphamemo_search_url = .ynow_tw_ec_chr(fetched$alphamemo_search_url),
+    fugle_url = .ynow_tw_ec_chr(fetched$fugle_url),
     sa_url = .ynow_tw_ec_chr(fetched$sa_url),
     empty_reason = .ynow_tw_ec_chr(fetched$empty_reason, "human_browsable_only")
   )

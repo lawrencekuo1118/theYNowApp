@@ -139,6 +139,49 @@ check("captcha index yields no links", {
   length(.ynow_sa_ec_parse_index_links("<html>Access to this page has been denied px-captcha</html>")) == 0L
 })
 
+# SEC free path: read Python parallel-list shape (short_names/excerpts/full_texts).
+sec_stub <- function(ticker, form = "8-K", max_chars = 4000L) {
+  list(
+    ok = TRUE,
+    form = "8-K",
+    filing_date = "2026-01-30",
+    primary_doc_url = "https://www.sec.gov/Archives/edgar/data/0/stub.htm",
+    short_names = c("Item 2.02 Results of Operations", "Other"),
+    urls = c("https://www.sec.gov/Archives/edgar/data/0/ex99.htm", "https://example.invalid/other"),
+    excerpts = c(
+      "Remaining performance obligations were $9.1 billion. CapEx of $0.8 billion.",
+      "Unrelated note."
+    ),
+    full_texts = c(
+      paste(
+        "Item 2.02. Remaining performance obligations were $9.1 billion at quarter end.",
+        "Net new bookings of $2.0 billion. CapEx of $0.8 billion.",
+        "Largest customer Acme Corp accounted for 12% of revenue."
+      ),
+      "Unrelated note body."
+    )
+  )
+}
+cached_fetch_sec_report_notes <- sec_stub
+fetch_sec_report_notes <- sec_stub
+Sys.setenv(YNOW_SA_SCRAPE = "0")
+Sys.unsetenv("YNOW_FMP_API_KEY")
+Sys.unsetenv("FMP_API_KEY")
+Sys.unsetenv("YNOW_TRANSCRIPT_API_KEY")
+sec_got <- ynow_us_earnings_call_fetch("STUB")
+check("SEC parallel-list shape yields filing credibility", {
+  identical(sec_got$credibility %||% "", "filing") &&
+    identical(sec_got$source_id %||% "", "sec_8k") &&
+    identical(sec_got$status %||% "", "ok")
+})
+check("SEC path extracts backlog from full_texts", {
+  isTRUE(abs((sec_got$backlog %||% 0) - 9.1e9) < 1e6)
+})
+check("SEC path prefers Item 2.02 title", {
+  grepl("2\\.02|Results of Operations", sec_got$title %||% "", ignore.case = TRUE)
+})
+rm(cached_fetch_sec_report_notes, fetch_sec_report_notes)
+
 mod <- paste(readLines("business_breakdown_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check("BBLab wires US earnings-call fetch", {
   grepl("ynow_us_earnings_call_fetch", mod, fixed = TRUE) &&

@@ -4099,11 +4099,16 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_or_tw_ec_title = "TW earnings call / conclusions",
     bblab_or_tw_ec_empty = paste0(
       "No automatable TW earnings-call conclusion with measurable backlog / bookings was ingested. ",
-      "AlphaMemo free transcripts are human-browsable only; Seeking Alpha last-resort also returned empty."
+      "Fugle memo and Seeking Alpha last-resort returned empty; AlphaMemo free transcripts stay human-browsable only."
     ),
     bblab_or_tw_ec_note = paste0(
-      "Preferred: AlphaMemo.ai free-transcripts (Estimate — AI aggregator memo; no AlphaMemo HTML/API scrape). ",
-      "Last-resort: Seeking Alpha HTML (Last-resort / third-party) only when AlphaMemo cannot supply facts."
+      "Automatable source: Fugle earnings-call memos. Seeking Alpha HTML is last-resort only. ",
+      "AlphaMemo free transcripts stay human links."
+    ),
+    bblab_or_tw_ec_fugle_link = "Fugle earnings-call memo (Estimate)",
+    bblab_or_tw_ec_fugle_note = paste0(
+      "Fugle memos are blog posts labeled Estimate. Stated orders, CapEx, customers, and outlook ",
+      "are read from that HTML. AlphaMemo is not scraped."
     ),
     bblab_or_tw_ec_alphamemo_link = "AlphaMemo free transcripts (human)",
     bblab_or_tw_ec_search_link = "Search AlphaMemo for this ticker (human)",
@@ -8395,11 +8400,16 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_or_tw_ec_title = "台股法說會結論",
     bblab_or_tw_ec_empty = paste0(
       "此 ticker 未自動擷取可量化 backlog／bookings 的台股法說結論。",
-      "AlphaMemo 公開逐字稿僅供人工瀏覽；Seeking Alpha 最後備援亦無可用內容。"
+      "富果法說備忘錄與 Seeking Alpha 最後備援皆無可用內容；AlphaMemo 公開逐字稿仍僅供人工瀏覽。"
     ),
     bblab_or_tw_ec_note = paste0(
-      "優先：AlphaMemo.ai 公開法說逐字稿（估計 — AI 彙整 Memo；不擷取 AlphaMemo HTML／API）。",
-      "最後備援：僅在 AlphaMemo 無法提供可自動化事實時，才擷取 Seeking Alpha HTML（最後備援／第三方）。"
+      "可自動擷取來源是 Fugle 法說會備忘錄。Seeking Alpha HTML 只作最後備援。",
+      "AlphaMemo 公開逐字稿只留人工連結。"
+    ),
+    bblab_or_tw_ec_fugle_link = "富果法說會備忘錄（估計）",
+    bblab_or_tw_ec_fugle_note = paste0(
+      "Fugle 備忘錄是部落格文章，可信度為估計。只擷取文中明列的訂單、CapEx、客戶與展望，",
+      "不會擷取 AlphaMemo。"
     ),
     bblab_or_tw_ec_alphamemo_link = "AlphaMemo 公開法說逐字稿（人工）",
     bblab_or_tw_ec_search_link = "以 ticker 搜尋 AlphaMemo（人工）",

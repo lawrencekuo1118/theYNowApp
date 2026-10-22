@@ -1069,6 +1069,12 @@ bblab_order_research_meta_ui <- function(pack, locale = "en", started = FALSE) {
     src_id <- .bblab_chr(tw_ec$source_id, "alphamemo_index")
     cred <- .bblab_chr(tw_ec$credibility, "estimate")
     links <- list()
+    if (nzchar(.bblab_chr(tw_ec$fugle_url, ""))) {
+      links[[length(links) + 1L]] <- tags$a(
+        href = tw_ec$fugle_url, target = "_blank", rel = "noopener noreferrer",
+        msg("bblab_or_tw_ec_fugle_link")
+      )
+    }
     if (nzchar(.bblab_chr(tw_ec$alphamemo_url, ""))) {
       links[[length(links) + 1L]] <- tags$a(
         href = tw_ec$alphamemo_url, target = "_blank", rel = "noopener noreferrer",
@@ -1088,7 +1094,7 @@ bblab_order_research_meta_ui <- function(pack, locale = "en", started = FALSE) {
       )
     }
     if (nzchar(.bblab_chr(tw_ec$url, "")) &&
-          identical(.bblab_chr(tw_ec$source_id, ""), "seeking_alpha_html")) {
+          .bblab_chr(tw_ec$source_id, "") %in% c("seeking_alpha_html", "fugle_earnings_memo")) {
       links[[length(links) + 1L]] <- tags$a(
         href = tw_ec$url, target = "_blank", rel = "noopener noreferrer",
         msg("bblab_or_us_ec_source_link")
@@ -1130,6 +1136,7 @@ bblab_order_research_meta_ui <- function(pack, locale = "en", started = FALSE) {
         )
       },
       tags$p(class = "help-block", msg("bblab_or_tw_ec_note")),
+      tags$p(class = "help-block", msg("bblab_or_tw_ec_fugle_note")),
       link_row
     )
   }
