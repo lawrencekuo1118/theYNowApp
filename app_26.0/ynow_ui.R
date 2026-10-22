@@ -4388,10 +4388,13 @@ ui <- dashboardPage(
         }
 
         /* 標題＝載入進度條：底層淡金軌道 + 金色填滿層（隨 --ynow-load-pct） */
+        /* z-index must stay above header veins (z4) on :hover too — otherwise
+           AdminLTE/skin hover specificity drops the logo under foliage and the
+           branch graphic flashes through the wordmark. */
         .main-header .logo,
         .main-header .logo:hover {
           position: relative;
-          z-index: 1;
+          z-index: 5;
           font-weight: bold;
           color: #FFD700 !important;
           background-color: var(--ynow-ink) !important;
@@ -5572,18 +5575,31 @@ ui <- dashboardPage(
           0%, 100% { opacity: 0.72; }
           50% { opacity: 0.95; }
         }
-        /* Opaque brand strip: plain black under the wordmark (no veins in title block). */
+        /* Opaque brand strip: plain black under the wordmark (no veins in title block).
+           Idle + :hover must match — never drop z-index or clear the fill so foliage
+           flashes through the title on mouseover. */
         .skin-black .main-header .logo,
-        .skin-black .main-header .logo:hover {
+        .skin-black .main-header .logo:hover,
+        .skin-black .main-header .logo:focus,
+        .skin-black .main-header .logo:active {
+          background-color: #000 !important;
+          background-image: none !important;
+          z-index: 5 !important;
+        }
+        .skin-black .main-header .logo::before,
+        .skin-black .main-header .logo:hover::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          z-index: -1;
+          pointer-events: none;
           background-color: #000 !important;
           background-image: none !important;
         }
-        .skin-black .main-header .logo::before {
-          background-color: #000;
-        }
         /* No padding on .ynow-app-title: #404 pill padding offset the absolute fill vs
            in-flow base and painted a second ghost wordmark. Keep load-bar layers aligned. */
-        .main-header .logo .ynow-app-title {
+        .main-header .logo .ynow-app-title,
+        .main-header .logo:hover .ynow-app-title {
           position: relative;
           z-index: 6;
           display: inline-block;
@@ -5600,9 +5616,10 @@ ui <- dashboardPage(
         .main-header .logo .ynow-app-title.is-complete .ynow-app-title-base {
           visibility: hidden;
         }
-        .main-header > .logo {
+        .main-header > .logo,
+        .main-header > .logo:hover {
           position: relative;
-          z-index: 5;
+          z-index: 5 !important;
         }
         .main-header > .navbar {
           position: relative;
@@ -7101,8 +7118,9 @@ ui <- dashboardPage(
           border-left-color: #fff;
         }
         /* Snapshot／Sys. Admin／Feedback：同一列；版權宣告在按鈕列正下方（勿重疊） */
-        /* A+B chip foot: clearer chip + circuit LINE strokes only (no teal fill wash).
-           Asset: www/ynow-chrome-veins-circuit.png (bg removed) + soft logo-blue halo. */
+        /* A+B chip foot: circuit LINE strokes only on #000 (no photo/block fill).
+           Asset: www/ynow-chrome-veins-circuit.png (bg removed). Bottom-up blue glow
+           expands and fades out toward the top so strokes dissolve into the sidebar. */
         .ynow-sidebar-snapshot-foot {
           display: flex !important;
           flex-direction: column !important;
@@ -7120,28 +7138,37 @@ ui <- dashboardPage(
         }
         .ynow-sidebar-foot-glow {
           position: absolute;
-          left: 22%;
-          right: 22%;
-          bottom: 12px;
-          height: 18px;
-          background: radial-gradient(ellipse at center, rgba(12, 84, 132, 0.35), transparent 72%);
-          filter: blur(5px);
+          left: 18%;
+          right: 18%;
+          bottom: 8px;
+          height: 42%;
+          background: radial-gradient(
+            ellipse 80% 100% at 50% 100%,
+            rgba(12, 84, 132, 0.4),
+            transparent 70%
+          );
+          filter: blur(6px);
+          transform-origin: bottom center;
           animation: ynow-chrome-blue-pulse 3.6s ease-in-out infinite;
           pointer-events: none;
           z-index: 0;
+          /* Soft dissolve upward into black sidebar */
+          -webkit-mask-image: linear-gradient(to top, #000 0%, #000 25%, transparent 100%);
+          mask-image: linear-gradient(to top, #000 0%, #000 25%, transparent 100%);
         }
         @keyframes ynow-chrome-blue-pulse {
-          0%, 100% { opacity: 0.45; transform: scaleX(0.96); }
-          50% { opacity: 0.9; transform: scaleX(1.02); }
+          0%, 100% { opacity: 0.4; transform: scaleY(0.72) scaleX(0.96); }
+          50% { opacity: 0.85; transform: scaleY(1.08) scaleX(1.02); }
         }
         .ynow-sidebar-foot-chip {
           position: relative;
           z-index: 1;
           overflow: hidden;
           border-radius: 16px;
-          border: 1px solid rgba(12, 84, 132, 0.45);
+          /* Thin edge only — chip must not read as a filled photo panel */
+          border: 1px solid rgba(12, 84, 132, 0.28);
           background: #000;
-          box-shadow: 0 0 10px rgba(12, 84, 132, 0.18);
+          box-shadow: none;
           padding: 8px 12px 6px;
           box-sizing: border-box;
           width: 100%;
@@ -7149,18 +7176,31 @@ ui <- dashboardPage(
         .ynow-sidebar-foot-chip::before {
           content: "";
           position: absolute;
-          inset: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          top: 0;
           border-radius: inherit;
           background-color: transparent;
           background-image: url("ynow-chrome-veins-circuit.png");
           background-repeat: no-repeat;
-          background-size: 150% auto;
-          background-position: center 72%;
-          opacity: 0.85;
-          /* strokes already blue on transparent — no screen wash / hue fill */
-          filter: drop-shadow(0 0 2px rgba(12, 84, 132, 0.4));
+          /* Anchor strokes at the foot; grow upward via scaleY (not a filled wash) */
+          background-size: 135% auto;
+          background-position: center bottom;
+          opacity: 0.88;
+          transform-origin: bottom center;
+          animation: ynow-chrome-circuit-rise 3.6s ease-in-out infinite;
+          /* strokes already blue on transparent — soft glow only */
+          filter: drop-shadow(0 0 2px rgba(12, 84, 132, 0.5));
+          /* Strong upward dissolve into black (asset also bakes a bottom-weighted alpha) */
+          -webkit-mask-image: linear-gradient(to top, #000 0%, #000 22%, transparent 72%);
+          mask-image: linear-gradient(to top, #000 0%, #000 22%, transparent 72%);
           pointer-events: none;
           z-index: 0;
+        }
+        @keyframes ynow-chrome-circuit-rise {
+          0%, 100% { opacity: 0.55; transform: scaleY(0.78); }
+          50% { opacity: 0.95; transform: scaleY(1.05); }
         }
         .ynow-sidebar-foot-chip > * {
           position: relative;
@@ -7169,7 +7209,12 @@ ui <- dashboardPage(
         @media (prefers-reduced-motion: reduce) {
           .ynow-sidebar-foot-glow {
             animation: none;
-            opacity: 0.65;
+            opacity: 0.55;
+            transform: none;
+          }
+          .ynow-sidebar-foot-chip::before {
+            animation: none;
+            opacity: 0.75;
             transform: none;
           }
         }
