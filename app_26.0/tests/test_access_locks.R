@@ -162,6 +162,18 @@ check("locked asset transmission pane shows feature promo and sign-in", {
     grepl('feature = "atx"', ui, fixed = TRUE) &&
     grepl("\"atx\"", auth_src, fixed = TRUE)
 })
+check("ATX ACL template is the surface overlay shell", {
+  grepl("ynow-atx-lock-tpl ynow-member-gate-surface", ui, fixed = TRUE) &&
+    grepl("ynow-member-gate-surface--locked", ui, fixed = TRUE) &&
+    grepl("ynow_member_gate_fade_backdrop_ui", ui, fixed = TRUE) &&
+    grepl("ynow-member-gate--surface-overlay", ui, fixed = TRUE) &&
+    grepl("ynow-atx-lock-host > .ynow-member-gate-fade-backdrop", ui, fixed = TRUE)
+})
+check("other sidebar tab locks mount a surface host", {
+  grepl("ynowEnsureSidebarTabLockSurface", ui, fixed = TRUE) &&
+    grepl("ynow-tab-lock-host", ui, fixed = TRUE) &&
+    grepl("ynow-member-gate-surface--locked ynow-tab-lock-host", ui, fixed = TRUE)
+})
 check("inner targets lock the containing tab and promo", {
   grepl("ynowMarkLockedInnerTarget", ui, fixed = TRUE) &&
     grepl("ynow-inner-tab-locked", ui, fixed = TRUE) &&
