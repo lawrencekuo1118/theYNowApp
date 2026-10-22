@@ -1,3 +1,12 @@
+## [v26.52] — 2026-10-22
+
+### Fixed
+- shinyapps.io start crash (`exit status 1`): unescaped `"` in `ynowMacroOpenIndex` `querySelector` inside `tags$script(HTML("…"))` broke R parse of `ynow_ui.R` (v26.51 / #419).
+
+### Notes
+- en-US: Live tip restored — parse + Listening; no formula changes.
+- zh-TW: 修復線上啟動失敗（R 剖析錯誤）；無評價公式變更。
+
 ## [v26.47] — 2026-10-22
 
 ### Fixed
