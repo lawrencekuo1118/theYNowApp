@@ -7,5 +7,5 @@ commit=523f233a45948a8b65fabf791f07b683a40a789d
 short=523f233a
 message=chore: bump display version to v26.50
 captured_at=2026-10-22T15:58:20Z
-display_version=v26.50
+display_version=v26.51
 note=Canonical live line is app_26.0. Bundle 12725942: Model Dashboard plain-language Cash/Debt/Shares/Revenue (shared) copy + BETA above shared inputs (#416).
