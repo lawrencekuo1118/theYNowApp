@@ -284,7 +284,7 @@ check("lab and checklist gates are feature-specific", {
     grepl("Unlock Decision Checklist", chk, fixed = TRUE) &&
     !grepl("Unlock Value Alerts", lab, fixed = TRUE)
 })
-check("checklist and lab gates are side-by-side overlays; account stays stacked", {
+check("checklist and lab gates are side-by-side overlays; account has no promo", {
   lab <- paste(as.character(ynow_member_gate_ui(
     "g", "t", "b", "btn", feature = "lab"
   )), collapse = "\n")
@@ -298,13 +298,14 @@ check("checklist and lab gates are side-by-side overlays; account stays stacked"
   lay_acct <- ynow_gate_layout("account")
   isTRUE(lay_lab$surface_overlay) && isTRUE(lay_lab$split_promo_demo) &&
     isFALSE(lay_acct$surface_overlay) && isFALSE(lay_acct$split_promo_demo) &&
+    isFALSE(ynow_gate_has_promo("account")) &&
     grepl("ynow-gate-promo-demo-row", chk, fixed = TRUE) &&
     grepl("ynow-gate-extras--checklist-split", chk, fixed = TRUE) &&
     grepl("ynow-member-gate--surface-overlay", chk, fixed = TRUE) &&
     grepl("ynow-gate-promo-demo-row", lab, fixed = TRUE) &&
     grepl("ynow-member-gate--surface-overlay", lab, fixed = TRUE) &&
     !grepl("ynow-member-gate--surface-overlay", acct, fixed = TRUE) &&
-    !grepl("ynow-gate-promo-demo-row", acct, fixed = TRUE)
+    !grepl("ynow-gate-promo", acct, fixed = TRUE)
 })
 check("backtest and checklist require the member gate", {
   ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
@@ -399,12 +400,11 @@ check("member gate uses HFV Section chrome + logo CTAs", {
     grepl("ynow-gate-promo", ui, fixed = TRUE) &&
     grepl("ynow-gate-faq", ui, fixed = TRUE)
 })
-check("account gate uses shared promo FAQ helper", {
+check("account guest path has no Sign-in promo page", {
   srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-  grepl("ynow_gate_promo_faq_ui", srv, fixed = TRUE) &&
-    grepl('feature = "account"', srv, fixed = TRUE) &&
-    grepl("ynow-auth-gate", srv, fixed = TRUE) &&
-    grepl("ynow-auth-open", srv, fixed = TRUE)
+  grepl("ynow-account-guest-hidden", srv, fixed = TRUE) &&
+    !grepl('ynow_gate_promo_faq_ui(feature = "account"', srv, fixed = TRUE) &&
+    !grepl("auth_gate_account_body", srv, fixed = TRUE)
 })
 check("snap_defaults gate keeps promo; sidebar has no PDF promo chrome", {
   ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
@@ -421,9 +421,11 @@ check("product demo clips exist under www/demos; non-product absent", {
   demos <- file.path(app_dir, "www", "demos")
   files <- c(
     "lab.mp4", "lab.webm", "checklist.mp4", "alerts.mp4",
-    "account.mp4", "pdf.mp4", "atx.mp4", "atx.webm"
+    "pdf.mp4", "atx.mp4", "atx.webm"
   )
   all(file.exists(file.path(demos, files))) &&
+    !file.exists(file.path(demos, "account.mp4")) &&
+    !file.exists(file.path(demos, "account.webm")) &&
     !file.exists(file.path(demos, "snap_defaults.mp4")) &&
     !file.exists(file.path(demos, "inner_lock.mp4")) &&
     !file.exists(file.path(demos, "snap_defaults.webm")) &&
@@ -469,9 +471,6 @@ keys <- c(
   "auth_gate_alerts_body", "auth_gate_alerts_kicker", "auth_gate_alerts_lead",
   "auth_gate_alerts_b1", "auth_gate_alerts_b2", "auth_gate_alerts_b3",
   "auth_gate_alerts_demo_caption",
-  "auth_gate_account_body", "auth_gate_account_kicker", "auth_gate_account_lead",
-  "auth_gate_account_b1", "auth_gate_account_b2", "auth_gate_account_b3",
-  "auth_gate_account_demo_caption",
   "auth_gate_pdf_body", "auth_gate_pdf_kicker", "auth_gate_pdf_lead",
   "auth_gate_pdf_b1", "auth_gate_pdf_b2", "auth_gate_pdf_b3", "auth_gate_pdf_demo_caption",
   "auth_gate_snap_defaults_body", "auth_gate_snap_defaults_kicker",

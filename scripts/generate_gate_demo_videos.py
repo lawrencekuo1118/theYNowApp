@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Capture ~10s Sign-in-gate demo clips from the running App UI only.
 
-Product-facing locked tabs/features only (lab, checklist, alerts, account,
-pdf, atx). Non-product / service ids (snap_defaults, inner_lock) are
-hide-vs-show only — no Sign-in promo page and no teaser; do not add them here.
+Product-facing locked tabs/features only (lab, checklist, alerts, pdf, atx).
+Non-product / guest-hidden / service ids (account, snap_defaults, inner_lock)
+are hide-vs-show only — no Sign-in promo page and no teaser; do not add them.
 
 Each clip is a Playwright scroll of the live Shiny App, then ffmpeg writes
 app_26.0/www/demos/<id>.mp4 and .webm. There is no fixture HTML path.
@@ -38,7 +38,6 @@ FEATURES: dict[str, CaptureTarget] = {
     "lab": {"tab": "lab_notes", "wait_ms": 4500},
     "checklist": {"tab": "decision_checklist", "wait_ms": 4500},
     "alerts": {"tab": "price_alerts", "wait_ms": 3500},
-    "account": {"tab": "account_admin", "wait_ms": 3500},
     "pdf": {"tab": "dashboard", "wait_ms": 3500},
     "atx": {"tab": "asset_transmission", "wait_ms": 4500},
 }

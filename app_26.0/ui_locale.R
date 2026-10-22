@@ -1282,16 +1282,6 @@ locale_for_market <- function(mode = get_market_mode()) {
     auth_gate_alerts_b2 = "Email notify defaults to your account mailbox",
     auth_gate_alerts_b3 = "Alert history and FYN alert_slot spend when points are on",
     auth_gate_alerts_demo_caption = "Value Alerts demo — rules and notify",
-    auth_gate_account_body = "Sign in to open the Account workspace and Points ledger.",
-    auth_gate_account_kicker = "Unlock Account workspace",
-    auth_gate_account_lead = paste0(
-      "Sign in to open Account overview, FYN / PYN balances, ",
-      "and the full Points ledger."
-    ),
-    auth_gate_account_b1 = "Account overview and page theme preferences",
-    auth_gate_account_b2 = "FYN / PYN balances — welcome gift and daily check-in (Asia/Taipei)",
-    auth_gate_account_b3 = "Complete Points ledger history for this account",
-    auth_gate_account_demo_caption = "Account demo — overview and points",
     auth_gate_pdf_body = paste0(
       "Valuation PDF downloads require a signed-in account. ",
       "Three free downloads each Asia/Taipei day; each extra costs 10 FYN."
@@ -5618,16 +5608,6 @@ locale_for_market <- function(mode = get_market_mode()) {
     auth_gate_alerts_b2 = "寄信預設使用帳號註冊信箱",
     auth_gate_alerts_b3 = "通知紀錄；點數開啟時可使用 FYN（alert_slot）",
     auth_gate_alerts_demo_caption = "到值通知示範——規則與寄信",
-    auth_gate_account_body = "請先登入以開啟帳號工作區與點數流水。",
-    auth_gate_account_kicker = "解鎖帳號工作區",
-    auth_gate_account_lead = paste0(
-      "登入後可開啟帳號總覽、FYN／PYN 餘額，",
-      "以及完整點數流水。"
-    ),
-    auth_gate_account_b1 = "帳號總覽與本分頁主色系偏好",
-    auth_gate_account_b2 = "FYN／PYN 餘額——歡迎贈點與每日簽到（台北時間）",
-    auth_gate_account_b3 = "本帳號完整點數流水紀錄",
-    auth_gate_account_demo_caption = "帳號示範——總覽與點數",
     auth_gate_pdf_body = paste0(
       "下載估值報告 PDF 需先登入。",
       "每個台北時間日曆日可免費下載 3 次；超過後每次扣 10 FYN。"
