@@ -12,5 +12,6 @@ ts	phase	decision	why	evidence	result
 2026-10-22T12:26:22Z	handback	shipped v26.43 bundle 12725040	offline predicate green; historical rollback not warranted	925f0e41 .audit/crawler-efficiency.tsv	VERIFIED
 2026-10-22T12:26:37Z	audit	ingested historical crawler audit	top candidate was boot-time memoise forget wipe; already shipped in 925f0e41	bc-e361e027	aligned
 2026-10-22T12:26:37Z	handback	leave peer-beta batch and cluster cache root as backlog	higher risk than forget/logo; await explicit ask	bc-e361e027 candidates 2-3	open
-2026-10-22T12:40:00Z	unit	chunked get_beta_unlever_inputs_batch (quote fields=beta + quoteSummary D/E + .info fallback)	user 好都改 backlog	deep_scraper.py test_beta_unlever_batch_offline.R	open
-2026-10-22T12:40:00Z	unit	cluster feat JSON under YNOW_CACHE_ROOT/cluster_feat_cache	shared worker cache; drop tempfile-only path	deep_scraper.py get_cluster_features_batch	open
+2026-10-22T12:40:00Z	unit	chunked get_beta_unlever_inputs_batch (quote fields=beta + quoteSummary D/E + .info fallback)	user 好都改 backlog	deep_scraper.py test_beta_unlever_batch_offline.R	VERIFIED
+2026-10-22T12:40:00Z	unit	cluster feat JSON under YNOW_CACHE_ROOT/cluster_feat_cache	shared worker cache; drop tempfile-only path	deep_scraper.py get_cluster_features_batch	VERIFIED
+2026-10-22T12:44:00Z	handback	shipped v26.44 bundle 12725115	offline + live AAPL/MSFT/2330.TW batch 3/3 ok	e833e2d9	VERIFIED
