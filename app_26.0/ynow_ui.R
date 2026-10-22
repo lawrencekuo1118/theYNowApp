@@ -4094,8 +4094,9 @@ ui <- dashboardPage(
       # Far-left of .main-header; opaque .logo brand strip keeps veins out of the wordmark.
       "h.insertBefore(el,h.firstChild);",
       "}",
-      # Full-sidebar circuit: line strokes from foot chip upward across the black panel,
-      # fade-out toward the top; logo blue + white dynamic fill (PNG used as mask).
+      # Longer drawn PCB traces (SVG paths) continue upward from the foot chip —
+      # do NOT stretch the chip PNG. Foot keeps natural-size stroke art; SVG draws
+      # longer geometry that fades out toward the top (logo blue ↔ white).
       "function ynowPlaceChromeCircuit(){",
       "var s=document.querySelector('.main-sidebar');",
       "if(!s||s.querySelector('.ynow-chrome-sidebar-circuit'))return;",
@@ -4104,10 +4105,47 @@ ui <- dashboardPage(
       "el.setAttribute('aria-hidden','true');",
       "var glow=document.createElement('div');",
       "glow.className='ynow-chrome-sidebar-circuit-glow';",
-      "var strokes=document.createElement('div');",
-      "strokes.className='ynow-chrome-sidebar-circuit-strokes';",
+      "var wrap=document.createElement('div');",
+      "wrap.className='ynow-chrome-sidebar-circuit-strokes';",
+      "wrap.innerHTML=",
+      "'<svg class=\"ynow-chrome-sidebar-circuit-svg\" viewBox=\"0 0 230 900\" ",
+      "preserveAspectRatio=\"xMidYMax meet\" aria-hidden=\"true\" focusable=\"false\">",
+      "<defs>",
+      "<linearGradient id=\"ynowCircuitStrokeGrad\" x1=\"0\" y1=\"1\" x2=\"0\" y2=\"0\">",
+      "<stop offset=\"0%\" stop-color=\"#0C5484\">",
+      "<animate attributeName=\"stop-color\" values=\"#0C5484;#ffffff;#0C5484\" dur=\"4.8s\" repeatCount=\"indefinite\"/>",
+      "</stop>",
+      "<stop offset=\"45%\" stop-color=\"#ffffff\">",
+      "<animate attributeName=\"stop-color\" values=\"#ffffff;#0C5484;#ffffff\" dur=\"4.8s\" repeatCount=\"indefinite\"/>",
+      "</stop>",
+      "<stop offset=\"100%\" stop-color=\"#0C5484\">",
+      "<animate attributeName=\"stop-color\" values=\"#0C5484;#ffffff;#0C5484\" dur=\"4.8s\" repeatCount=\"indefinite\"/>",
+      "</stop>",
+      "</linearGradient>",
+      "</defs>",
+      "<g fill=\"none\" stroke=\"url(#ynowCircuitStrokeGrad)\" stroke-linecap=\"round\" stroke-linejoin=\"round\">",
+      # Paths originate near foot (y~900) and run upward to staggered tops (longer geometry).
+      "<path class=\"ynow-ckt-p\" stroke-width=\"1.35\" d=\"M18 900 V620 L32 606 V480 L18 466 V310\"/>",
+      "<path class=\"ynow-ckt-p\" stroke-width=\"1.1\" d=\"M36 900 V700 L48 688 V520 L36 508 V390 L50 376 V250\"/>",
+      "<path class=\"ynow-ckt-p\" stroke-width=\"1.45\" d=\"M58 900 V640 L72 626 V440 L58 426 V280 L72 266 V160\"/>",
+      "<path class=\"ynow-ckt-p\" stroke-width=\"1.2\" d=\"M84 900 V720 L98 706 V560 L84 546 V400 L98 386 V220\"/>",
+      "<path class=\"ynow-ckt-p\" stroke-width=\"1.5\" d=\"M112 900 V600 L126 586 V420 L112 406 V240 L126 226 V120\"/>",
+      "<path class=\"ynow-ckt-p\" stroke-width=\"1.15\" d=\"M138 900 V680 L152 666 V500 L138 486 V340 L152 326 V190\"/>",
+      "<path class=\"ynow-ckt-p\" stroke-width=\"1.4\" d=\"M164 900 V610 L178 596 V450 L164 436 V290 L178 276 V140\"/>",
+      "<path class=\"ynow-ckt-p\" stroke-width=\"1.2\" d=\"M190 900 V730 L204 716 V580 L190 566 V410 L204 396 V260\"/>",
+      "<path class=\"ynow-ckt-p\" stroke-width=\"1.35\" d=\"M212 900 V650 L222 640 V470 L212 460 V300 L222 290 V170\"/>",
+      "</g>",
+      # Terminal pads at staggered heights (PCB nodes)
+      "<g fill=\"url(#ynowCircuitStrokeGrad)\">",
+      "<circle cx=\"18\" cy=\"310\" r=\"2.2\"/><circle cx=\"50\" cy=\"250\" r=\"2\"/>",
+      "<circle cx=\"72\" cy=\"160\" r=\"2.4\"/><circle cx=\"98\" cy=\"220\" r=\"2\"/>",
+      "<circle cx=\"126\" cy=\"120\" r=\"2.5\"/><circle cx=\"152\" cy=\"190\" r=\"2.1\"/>",
+      "<circle cx=\"178\" cy=\"140\" r=\"2.3\"/><circle cx=\"204\" cy=\"260\" r=\"2\"/>",
+      "<circle cx=\"222\" cy=\"170\" r=\"2.2\"/>",
+      "</g>",
+      "</svg>';",
       "el.appendChild(glow);",
-      "el.appendChild(strokes);",
+      "el.appendChild(wrap);",
       "s.insertBefore(el,s.firstChild);",
       "}",
       "function ynowPlaceChromeAtmosphere(){",
@@ -7313,10 +7351,10 @@ ui <- dashboardPage(
           border-left-color: #fff;
         }
         /* Snapshot／Sys. Admin／Feedback：同一列；版權宣告在按鈕列正下方（勿重疊） */
-        /* A+B chip foot + full-sidebar circuit: LINE strokes only on #000 (no photo/block fill).
-           Asset www/ynow-chrome-veins-circuit.png is a stroke mask. Traces extend from the
-           foot chip upward across the full dark sidebar and fade out toward the top.
-           Stroke fill = logo blue (#0C5484) + white, subtly animated (no neon accents). */
+        /* A+B chip foot + longer DRAWN traces: LINE strokes only on #000.
+           Foot chip keeps www/ynow-chrome-veins-circuit.png at NATURAL size (no stretch).
+           Upward continuation = SVG path geometry (longer traces), fade-out toward top,
+           logo blue (#0C5484) ↔ white dynamic stroke — never scale the PNG to panel height. */
         .ynow-chrome-sidebar-circuit {
           position: absolute;
           left: 0;
@@ -7326,24 +7364,23 @@ ui <- dashboardPage(
           pointer-events: none;
           z-index: 0;
           overflow: hidden;
-          /* Full-panel upward dissolve: strong near foot, faint through mid,
-             nearly gone under the logo/date band at the top */
+          /* Soft dissolve of the drawn traces toward the top */
           -webkit-mask-image: linear-gradient(
             to top,
             #000 0%,
-            #000 6%,
-            rgba(0, 0, 0, 0.88) 22%,
-            rgba(0, 0, 0, 0.55) 48%,
-            rgba(0, 0, 0, 0.22) 72%,
+            #000 8%,
+            rgba(0, 0, 0, 0.85) 28%,
+            rgba(0, 0, 0, 0.45) 55%,
+            rgba(0, 0, 0, 0.16) 78%,
             transparent 96%
           );
           mask-image: linear-gradient(
             to top,
             #000 0%,
-            #000 6%,
-            rgba(0, 0, 0, 0.88) 22%,
-            rgba(0, 0, 0, 0.55) 48%,
-            rgba(0, 0, 0, 0.22) 72%,
+            #000 8%,
+            rgba(0, 0, 0, 0.85) 28%,
+            rgba(0, 0, 0, 0.45) 55%,
+            rgba(0, 0, 0, 0.16) 78%,
             transparent 96%
           );
         }
@@ -7352,10 +7389,10 @@ ui <- dashboardPage(
           left: 8%;
           right: 8%;
           bottom: 0;
-          height: 55%;
+          height: 48%;
           background: radial-gradient(
             ellipse 78% 100% at 50% 100%,
-            rgba(12, 84, 132, 0.38),
+            rgba(12, 84, 132, 0.36),
             transparent 72%
           );
           filter: blur(8px);
@@ -7365,42 +7402,32 @@ ui <- dashboardPage(
         }
         .ynow-chrome-sidebar-circuit-strokes {
           position: absolute;
-          left: -10%;
-          right: -10%;
+          left: 0;
+          right: 0;
           bottom: 0;
-          height: 100%;
-          /* Logo blue base with white pulse bands; PNG alpha = stroke shape only */
-          background-image: linear-gradient(
-            168deg,
-            var(--ynow-logo-blue, #0C5484) 0%,
-            #ffffff 18%,
-            var(--ynow-logo-blue, #0C5484) 36%,
-            rgba(255, 255, 255, 0.95) 52%,
-            var(--ynow-logo-blue, #0C5484) 70%,
-            #ffffff 86%,
-            var(--ynow-logo-blue, #0C5484) 100%
-          );
-          background-size: 100% 280%;
-          background-position: 50% 85%;
-          -webkit-mask-image: url("ynow-chrome-veins-circuit.png");
-          mask-image: url("ynow-chrome-veins-circuit.png");
-          -webkit-mask-size: 155% auto;
-          mask-size: 155% auto;
-          -webkit-mask-position: center bottom;
-          mask-position: center bottom;
-          -webkit-mask-repeat: no-repeat;
-          mask-repeat: no-repeat;
-          opacity: 0.92;
-          transform-origin: bottom center;
-          filter: drop-shadow(0 0 3px rgba(12, 84, 132, 0.55));
-          animation:
-            ynow-chrome-circuit-rise 3.6s ease-in-out infinite,
-            ynow-chrome-circuit-bw-flow 4.8s ease-in-out infinite;
+          top: 0;
           pointer-events: none;
         }
+        .ynow-chrome-sidebar-circuit-svg {
+          position: absolute;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          width: 100%;
+          height: 100%;
+          display: block;
+          overflow: visible;
+          filter: drop-shadow(0 0 2px rgba(12, 84, 132, 0.5));
+          opacity: 0.88;
+          transform-origin: bottom center;
+          animation: ynow-chrome-circuit-rise 3.6s ease-in-out infinite;
+        }
+        .ynow-chrome-sidebar-circuit-svg .ynow-ckt-p {
+          stroke: url(#ynowCircuitStrokeGrad);
+        }
         @keyframes ynow-chrome-circuit-bw-flow {
-          0%, 100% { background-position: 50% 92%; }
-          50% { background-position: 50% 8%; }
+          0%, 100% { opacity: 0.78; }
+          50% { opacity: 0.95; }
         }
         /* Keep scrollable sidebar content above the fixed circuit overlay */
         .main-sidebar > .sidebar,
@@ -7428,10 +7455,10 @@ ui <- dashboardPage(
           left: 18%;
           right: 18%;
           bottom: 8px;
-          height: 55%;
+          height: 42%;
           background: radial-gradient(
             ellipse 80% 100% at 50% 100%,
-            rgba(12, 84, 132, 0.42),
+            rgba(12, 84, 132, 0.4),
             transparent 70%
           );
           filter: blur(6px);
@@ -7454,8 +7481,7 @@ ui <- dashboardPage(
           border-radius: 16px;
           /* Thin edge only — chip must not read as a filled photo panel */
           border: 1px solid rgba(12, 84, 132, 0.28);
-          /* Near-clear so full-sidebar circuit reads through the foot chip */
-          background: rgba(0, 0, 0, 0.55);
+          background: #000;
           box-shadow: none;
           padding: 8px 12px 6px;
           box-sizing: border-box;
@@ -7469,46 +7495,29 @@ ui <- dashboardPage(
           bottom: 0;
           top: 0;
           border-radius: inherit;
-          /* Local denser reinforcement of the same blue/white stroke language */
-          background-image: linear-gradient(
-            168deg,
-            var(--ynow-logo-blue, #0C5484) 0%,
-            #ffffff 18%,
-            var(--ynow-logo-blue, #0C5484) 36%,
-            rgba(255, 255, 255, 0.95) 52%,
-            var(--ynow-logo-blue, #0C5484) 70%,
-            #ffffff 86%,
-            var(--ynow-logo-blue, #0C5484) 100%
-          );
-          background-size: 100% 280%;
-          background-position: 50% 85%;
-          /* Dual-mask: circuit shape ∩ vertical fade (WebKit + standard) */
-          -webkit-mask-image:
-            url("ynow-chrome-veins-circuit.png"),
-            linear-gradient(to top, #000 0%, #000 28%, transparent 78%);
-          mask-image:
-            url("ynow-chrome-veins-circuit.png"),
-            linear-gradient(to top, #000 0%, #000 28%, transparent 78%);
-          -webkit-mask-size: 135% auto, 100% 100%;
-          mask-size: 135% auto, 100% 100%;
-          -webkit-mask-position: center bottom, center bottom;
-          mask-position: center bottom, center bottom;
-          -webkit-mask-repeat: no-repeat, no-repeat;
-          mask-repeat: no-repeat, no-repeat;
-          -webkit-mask-composite: source-in;
-          mask-composite: intersect;
-          opacity: 0.9;
+          /* NATURAL-size chip stroke art — never stretch to full sidebar height */
+          background-color: transparent;
+          background-image: url("ynow-chrome-veins-circuit.png");
+          background-repeat: no-repeat;
+          background-size: 118% auto;
+          background-position: center bottom;
+          opacity: 0.88;
           transform-origin: bottom center;
           animation:
             ynow-chrome-circuit-rise 3.6s ease-in-out infinite,
             ynow-chrome-circuit-bw-flow 4.8s ease-in-out infinite;
-          filter: drop-shadow(0 0 2px rgba(12, 84, 132, 0.5));
+          filter:
+            drop-shadow(0 0 2px rgba(12, 84, 132, 0.55))
+            hue-rotate(-8deg)
+            saturate(1.15);
+          -webkit-mask-image: linear-gradient(to top, #000 0%, #000 35%, transparent 88%);
+          mask-image: linear-gradient(to top, #000 0%, #000 35%, transparent 88%);
           pointer-events: none;
           z-index: 0;
         }
         @keyframes ynow-chrome-circuit-rise {
-          0%, 100% { opacity: 0.55; transform: scaleY(0.82); }
-          50% { opacity: 0.95; transform: scaleY(1.06); }
+          0%, 100% { opacity: 0.55; transform: scaleY(0.92); }
+          50% { opacity: 0.95; transform: scaleY(1.02); }
         }
         .ynow-sidebar-foot-chip > * {
           position: relative;
@@ -7522,11 +7531,13 @@ ui <- dashboardPage(
             transform: none;
           }
           .ynow-sidebar-foot-chip::before,
-          .ynow-chrome-sidebar-circuit-strokes {
+          .ynow-chrome-sidebar-circuit-svg {
             animation: none;
             opacity: 0.75;
             transform: none;
-            background-position: 50% 70%;
+          }
+          .ynow-chrome-sidebar-circuit-svg stop animate {
+            display: none;
           }
         }
         .ynow-sidebar-snapshot-foot-links {
