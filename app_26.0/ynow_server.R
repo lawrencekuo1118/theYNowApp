@@ -2036,6 +2036,8 @@ server <- function(input, output, session) {
     }
     cur_scope <- as.character(isolate(input$ynow_access_scope) %||% "user")[1]
     if (!cur_scope %in% c("user", "all")) cur_scope <- "user"
+    cur_action <- as.character(isolate(input$ynow_access_action) %||% "apply")[1]
+    if (!cur_action %in% c("apply", "remove")) cur_action <- "apply"
     cur_effect <- as.character(isolate(input$ynow_access_effect) %||% "lock")[1]
     if (!cur_effect %in% c("lock", "hide")) cur_effect <- "lock"
     cur_unlock <- as.character(isolate(input$ynow_access_unlock_type) %||% "login")[1]
@@ -2060,10 +2062,17 @@ server <- function(input, output, session) {
         )
       ),
       tags$h4(.lab("pts_sysadmin_users", "Users (de-identified)")),
+      textInput(
+        "ynow_pts_sysadmin_user_search",
+        .lab("pts_sysadmin_user_search", "Search users"),
+        value = "",
+        placeholder = .lab("pts_sysadmin_user_search_ph", "Filter by user id…")
+      ),
       tags$div(
         style = "overflow-x:auto; max-height:40vh; margin-bottom:12px;",
         tags$table(
           class = "table table-condensed table-striped",
+          id = "ynow_pts_sysadmin_users_table",
           tags$thead(tags$tr(
             tags$th(.lab("pts_sysadmin_col_id", "User id")),
             tags$th(.lab("pts_sysadmin_col_fyn", "FYN")),
@@ -2071,17 +2080,42 @@ server <- function(input, output, session) {
             tags$th(.lab("pts_sysadmin_col_role", "Role")),
             tags$th(.lab("pts_sysadmin_col_status", "Status"))
           )),
-          tags$tbody(lapply(seq_len(nrow(df)), function(i) {
-            tags$tr(
-              tags$td(tags$code(as.character(df$public_id[[i]]))),
-              tags$td(as.character(df$fyn[[i]])),
-              tags$td(as.character(df$pyn[[i]])),
-              tags$td(as.character(df$role[[i]] %||% "user")),
-              tags$td(if (isTRUE(df$disabled[[i]])) status_off else status_ok)
-            )
-          }))
+          tags$tbody(
+            id = "ynow_pts_sysadmin_users_tbody",
+            lapply(seq_len(nrow(df)), function(i) {
+              tags$tr(
+                `data-ynow-uid` = as.character(df$user_id[[i]]),
+                `data-ynow-search` = tolower(paste(
+                  as.character(df$public_id[[i]]),
+                  as.character(df$role[[i]] %||% "user"),
+                  if (isTRUE(df$disabled[[i]])) "disabled" else "active"
+                )),
+                tags$td(tags$code(as.character(df$public_id[[i]]))),
+                tags$td(as.character(df$fyn[[i]])),
+                tags$td(as.character(df$pyn[[i]])),
+                tags$td(as.character(df$role[[i]] %||% "user")),
+                tags$td(if (isTRUE(df$disabled[[i]])) status_off else status_ok)
+              )
+            })
+          )
         )
       ),
+      tags$script(HTML(paste(
+        "(function(){",
+        "function ynowFilterSysadminUsers(){",
+        "  var inp=document.getElementById('ynow_pts_sysadmin_user_search');",
+        "  var q=((inp&&inp.value)||'').toLowerCase().trim();",
+        "  var rows=document.querySelectorAll('#ynow_pts_sysadmin_users_tbody tr');",
+        "  rows.forEach(function(tr){",
+        "    var hay=(tr.getAttribute('data-ynow-search')||tr.textContent||'').toLowerCase();",
+        "    tr.style.display=(!q||hay.indexOf(q)>=0)?'':'none';",
+        "  });",
+        "}",
+        "var inp=document.getElementById('ynow_pts_sysadmin_user_search');",
+        "if(inp&&!inp.__ynowBound){inp.__ynowBound=1;inp.addEventListener('input',ynowFilterSysadminUsers);}",
+        "ynowFilterSysadminUsers();",
+        "})();"
+      , collapse = "\n"))),
       fluidRow(
         column(
           4,
@@ -2130,162 +2164,113 @@ server <- function(input, output, session) {
       ),
       tags$hr(),
       tags$h4(.lab("access_lock_title", "Item locks")),
-      {
-        # Field order (UX): Item first, then help + Apply to / Restriction / Unlock…
-        # so admins lock the catalog target before scope or unlock params.
-        cat_df <- if (exists("ynow_access_catalog", mode = "function")) {
-          ynow_access_catalog()
-        } else {
-          data.frame(id = character(), kind = character(), label_en = character(), label_zh = character())
-        }
-        item_labels <- if (nrow(cat_df)) {
+      tags$p(
+        class = "text-muted",
+        style = "font-size:12.5px;",
+        .lab(
+          "access_lock_help",
           paste0(
-            vapply(cat_df$kind, function(k) {
-              if (exists("ynow_access_kind_label", mode = "function")) {
-                ynow_access_kind_label(k, loc)
-              } else {
-                k
-              }
-            }, character(1)),
-            " · ",
-            if (identical(loc, "zh-TW")) cat_df$label_zh else cat_df$label_en
+            "Choose the apply target first, then Apply restriction or Remove restriction. ",
+            "Apply only lists items still restrictable for that target; already-restricted ",
+            "items are shown read-only. Remove only lists items already restricted. ",
+            "Selected user(s) keeps the user list with keyword search and multi-select. ",
+            "Per-user rules override all-users rules for the same item. ",
+            "All-users also applies to guests."
           )
-        } else {
-          character()
-        }
-        item_choices <- if (length(item_labels)) stats::setNames(cat_df$id, item_labels) else character()
-        item_sel <- if (nzchar(cur_item) && cur_item %in% as.character(item_choices)) {
-          cur_item
-        } else if (length(item_choices)) {
-          as.character(item_choices[[1]])
-        } else {
-          NULL
-        }
-        tagList(
-          selectInput(
-            "ynow_access_item",
-            .lab("access_lock_item", "Item"),
-            choices = item_choices,
-            selected = item_sel
-          ),
-          tags$p(
-            class = "text-muted",
-            style = "font-size:12.5px;",
-            .lab(
-              "access_lock_help",
-              paste0(
-                "First select the item, then set Apply to, Restriction (Lock or Hide), ",
-                "and the unlock condition ",
-                "(after login / points / conditional free count or time limit)."
-              )
-            )
-          ),
-          radioButtons(
-            "ynow_access_scope",
-            .lab("access_scope_label", "Apply to"),
-            choiceNames = list(
-              .lab("access_scope_user", "Selected user"),
-              .lab("access_scope_all", "All users")
-            ),
-            choiceValues = c("user", "all"),
-            selected = cur_scope,
-            inline = TRUE
-          ),
-          radioButtons(
-            "ynow_access_effect",
-            .lab("access_effect_label", "Restriction"),
-            choiceNames = list(
-              .lab("access_effect_lock", "Lock (show locked placeholder)"),
-              .lab("access_effect_hide", "Hide (remove from UI)")
-            ),
-            choiceValues = c("lock", "hide"),
-            selected = cur_effect,
-            inline = TRUE
-          ),
-          radioButtons(
-            "ynow_access_unlock_type",
-            .lab("access_unlock_type_label", "Unlock condition"),
-            choiceNames = list(
-              .lab("access_unlock_login", "Unlock after login"),
-              .lab("access_unlock_points", "Points unlock"),
-              .lab("access_unlock_conditional", "Conditional unlock")
-            ),
-            choiceValues = c("login", "points", "conditional"),
-            selected = cur_unlock,
-            inline = TRUE
-          ),
-          conditionalPanel(
-            condition = "input.ynow_access_unlock_type === 'points'",
-            numericInput(
-              "ynow_access_points_cost",
-              .lab("access_unlock_points_cost", "Points required (FYN)"),
-              value = cur_points,
-              min = 1L,
-              step = 1L
-            )
-          ),
-          conditionalPanel(
-            condition = "input.ynow_access_unlock_type === 'conditional'",
-            fluidRow(
-              column(
-                6,
-                numericInput(
-                  "ynow_access_free_count",
-                  .lab("access_unlock_free_count", "Free uses (0 = unused)"),
-                  value = cur_free,
-                  min = 0L,
-                  step = 1L
-                )
-              ),
-              column(
-                6,
-                numericInput(
-                  "ynow_access_time_hours",
-                  .lab("access_unlock_time_hours", "Time limit (hours; 0 = unused)"),
-                  value = cur_hours,
-                  min = 0L,
-                  step = 1L
-                )
-              )
-            ),
-            tags$p(
-              class = "text-muted",
-              style = "font-size:12px; margin-top:0;",
-              .lab(
-                "access_unlock_conditional_help",
-                "Set free uses and/or a time window. At least one must be greater than zero."
-              )
-            )
-          ),
-          tags$div(
-            style = "margin-top:4px; display:flex; flex-wrap:wrap; gap:8px; align-items:center;",
-            actionButton(
-              "ynow_access_lock",
-              .lab("access_lock_btn", "Apply restriction"),
-              class = "btn-warning"
-            ),
-            actionButton(
-              "ynow_access_unlock",
-              .lab("access_unlock_btn", "Clear restriction"),
-              class = "btn-default"
-            )
-          ),
-          # Live host: reacts to selected user id + apply-scope without rebuilding the panel.
-          uiOutput("ynow_access_locked_now")
         )
-      }
+      ),
+      radioButtons(
+        "ynow_access_scope",
+        .lab("access_scope_label", "Apply to"),
+        choiceNames = list(
+          .lab("access_scope_user", "Selected user(s)"),
+          .lab("access_scope_all", "All users")
+        ),
+        choiceValues = c("user", "all"),
+        selected = cur_scope,
+        inline = TRUE
+      ),
+      conditionalPanel(
+        condition = "input.ynow_access_scope === 'user'",
+        {
+          cur_access_users <- as.character(isolate(input$ynow_access_users) %||% character())
+          cur_access_users <- cur_access_users[nzchar(cur_access_users) & cur_access_users %in% as.character(choices)]
+          if (!length(cur_access_users) && nzchar(sel) && sel %in% as.character(choices)) {
+            cur_access_users <- sel
+          }
+          selectizeInput(
+            "ynow_access_users",
+            .lab("access_users_multi", "Selected users (multi-select)"),
+            choices = choices,
+            selected = cur_access_users,
+            multiple = TRUE,
+            options = list(
+              plugins = list("remove_button"),
+              placeholder = .lab("access_users_multi_ph", "Search and select one or more users…")
+            )
+          )
+        }
+      ),
+      # Live: currently restricted under the selected apply-target (always visible).
+      uiOutput("ynow_access_locked_now"),
+      radioButtons(
+        "ynow_access_action",
+        .lab("access_action_label", "Action"),
+        choiceNames = list(
+          .lab("access_action_apply", "Apply restriction"),
+          .lab("access_action_remove", "Remove restriction")
+        ),
+        choiceValues = c("apply", "remove"),
+        selected = cur_action,
+        inline = TRUE
+      ),
+      uiOutput("ynow_access_action_fields"),
+      tags$div(
+        style = "margin-top:8px; display:flex; flex-wrap:wrap; gap:8px; align-items:center;",
+        actionButton(
+          "ynow_access_apply_changes",
+          .lab("access_apply_changes_btn", "Apply changes"),
+          class = "btn-warning"
+        )
+      )
     )
   })
 
-  # Lightweight invalidation for 「目前限制」 after apply/clear (avoid full panel rebuild).
+  # Lightweight invalidation for currently-restricted / item pickers after apply/remove.
   ynow_access_display_tick <- reactiveVal(0L)
 
+  .ynow_access_admin_target_uids <- function() {
+    scope <- as.character(input$ynow_access_scope %||% "user")[1]
+    all_uid <- if (exists("YNOW_ACCESS_ALL_USERS", inherits = TRUE)) {
+      as.character(get("YNOW_ACCESS_ALL_USERS", inherits = TRUE))[1]
+    } else {
+      "__all__"
+    }
+    if (identical(scope, "all")) return(all_uid)
+    uids <- as.character(input$ynow_access_users %||% character())
+    uids <- uids[nzchar(uids)]
+    if (!length(uids)) {
+      # Fallback: points single-select when multi-select empty.
+      one <- as.character(input$ynow_pts_sysadmin_user %||% "")[1]
+      if (nzchar(one)) uids <- one
+    }
+    unique(uids)
+  }
+
   output$ynow_access_locked_now <- renderUI({
-    # Depend on selection + scope + post-apply tick so the line stays current.
     ynow_access_display_tick()
     ynow_pts_sysadmin_tick()
-    uid <- as.character(input$ynow_pts_sysadmin_user %||% "")[1]
     scope <- as.character(input$ynow_access_scope %||% "user")[1]
+    uids <- if (identical(scope, "all")) {
+      character()
+    } else {
+      as.character(input$ynow_access_users %||% character())
+    }
+    uids <- uids[nzchar(uids)]
+    if (!identical(scope, "all") && !length(uids)) {
+      one <- as.character(input$ynow_pts_sysadmin_user %||% "")[1]
+      if (nzchar(one)) uids <- one
+    }
     loc <- tryCatch(
       normalize_ui_locale(isolate(ui_locale())),
       error = function(e) "zh-TW"
@@ -2293,7 +2278,7 @@ server <- function(input, output, session) {
     .lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
     locked_txt <- if (exists("ynow_access_admin_status_text", mode = "function")) {
       ynow_access_admin_status_text(
-        user_id = uid,
+        user_id = uids,
         scope = scope,
         locale = loc,
         user_scope_lab = .lab("access_scope_user_short", "User"),
@@ -2303,16 +2288,207 @@ server <- function(input, output, session) {
     } else {
       .lab("access_none", "Nothing is restricted for this scope.")
     }
-    tags$p(
+    tags$div(
       id = "ynow_access_locked_now_txt",
-      style = "margin-top:10px; font-size:12.5px;",
+      style = "margin:8px 0 10px; font-size:12.5px;",
       tags$b(.lab("access_locked_now", "Currently restricted")),
       ": ",
       tags$span(id = "ynow_access_locked_now_value", locked_txt)
     )
   })
 
-  .ynow_access_admin_set <- function(locked) {
+  output$ynow_access_action_fields <- renderUI({
+    ynow_access_display_tick()
+    ynow_pts_sysadmin_tick()
+    scope <- as.character(input$ynow_access_scope %||% "user")[1]
+    action <- as.character(input$ynow_access_action %||% "apply")[1]
+    if (!action %in% c("apply", "remove")) action <- "apply"
+    uids <- if (identical(scope, "all")) {
+      character()
+    } else {
+      as.character(input$ynow_access_users %||% character())
+    }
+    uids <- uids[nzchar(uids)]
+    if (!identical(scope, "all") && !length(uids)) {
+      one <- as.character(input$ynow_pts_sysadmin_user %||% "")[1]
+      if (nzchar(one)) uids <- one
+    }
+    loc <- tryCatch(
+      normalize_ui_locale(isolate(ui_locale())),
+      error = function(e) "zh-TW"
+    )
+    .lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
+    cur_effect <- as.character(isolate(input$ynow_access_effect) %||% "lock")[1]
+    if (!cur_effect %in% c("lock", "hide")) cur_effect <- "lock"
+    cur_unlock <- as.character(isolate(input$ynow_access_unlock_type) %||% "login")[1]
+    if (!cur_unlock %in% c("login", "points", "conditional")) cur_unlock <- "login"
+    cur_points <- suppressWarnings(as.integer(isolate(input$ynow_access_points_cost) %||% 1L)[1])
+    if (!is.finite(cur_points) || cur_points < 1L) cur_points <- 1L
+    cur_free <- suppressWarnings(as.integer(isolate(input$ynow_access_free_count) %||% 0L)[1])
+    if (!is.finite(cur_free) || cur_free < 0L) cur_free <- 0L
+    cur_hours <- suppressWarnings(as.integer(isolate(input$ynow_access_time_hours) %||% 0L)[1])
+    if (!is.finite(cur_hours) || cur_hours < 0L) cur_hours <- 0L
+    cur_item <- as.character(isolate(input$ynow_access_item) %||% "")[1]
+
+    if (identical(action, "remove")) {
+      rem_ids <- if (exists("ynow_access_restricted_ids_for_scope", mode = "function")) {
+        ynow_access_restricted_ids_for_scope(uids, scope, multi_mode = "union")
+      } else {
+        character()
+      }
+      rem_choices <- if (exists("ynow_access_item_choice_list", mode = "function")) {
+        ynow_access_item_choice_list(rem_ids, locale = loc, group = TRUE)
+      } else {
+        character()
+      }
+      rem_flat <- if (is.list(rem_choices)) unlist(rem_choices, use.names = TRUE) else rem_choices
+      rem_sel <- if (nzchar(cur_item) && cur_item %in% as.character(rem_flat)) {
+        cur_item
+      } else if (length(rem_flat)) {
+        as.character(rem_flat[[1]])
+      } else {
+        NULL
+      }
+      return(tagList(
+        if (!length(rem_flat)) {
+          tags$p(
+            class = "text-muted",
+            style = "font-size:12.5px;",
+            .lab("access_none_remove", "No restricted items for this apply target.")
+          )
+        } else {
+          selectInput(
+            "ynow_access_item",
+            .lab("access_remove_item", "Items to unlock"),
+            choices = rem_choices,
+            selected = rem_sel
+          )
+        }
+      ))
+    }
+
+    apply_ids <- if (exists("ynow_access_restrictable_ids_for_scope", mode = "function")) {
+      ynow_access_restrictable_ids_for_scope(uids, scope)
+    } else {
+      character()
+    }
+    apply_choices <- if (exists("ynow_access_item_choice_list", mode = "function")) {
+      ynow_access_item_choice_list(apply_ids, locale = loc, group = TRUE)
+    } else {
+      character()
+    }
+    apply_flat <- if (is.list(apply_choices)) unlist(apply_choices, use.names = TRUE) else apply_choices
+    apply_sel <- if (nzchar(cur_item) && cur_item %in% as.character(apply_flat)) {
+      cur_item
+    } else if (length(apply_flat)) {
+      as.character(apply_flat[[1]])
+    } else {
+      NULL
+    }
+    restricted_txt <- if (exists("ynow_access_admin_status_text", mode = "function")) {
+      ynow_access_admin_status_text(
+        user_id = uids,
+        scope = scope,
+        locale = loc,
+        user_scope_lab = .lab("access_scope_user_short", "User"),
+        all_scope_lab = .lab("access_scope_all_short", "All"),
+        none_lab = .lab("access_none", "Nothing is restricted for this scope.")
+      )
+    } else {
+      .lab("access_none", "Nothing is restricted for this scope.")
+    }
+    tagList(
+      radioButtons(
+        "ynow_access_effect",
+        .lab("access_effect_label", "Restriction"),
+        choiceNames = list(
+          .lab("access_effect_lock", "Lock (show locked placeholder)"),
+          .lab("access_effect_hide", "Hide (remove from UI)")
+        ),
+        choiceValues = c("lock", "hide"),
+        selected = cur_effect,
+        inline = TRUE
+      ),
+      if (!length(apply_flat)) {
+        tags$p(
+          class = "text-muted",
+          style = "font-size:12.5px;",
+          .lab("access_none_apply", "Every catalog item is already restricted for this apply target.")
+        )
+      } else {
+        selectInput(
+          "ynow_access_item",
+          .lab("access_apply_item", "Items to restrict"),
+          choices = apply_choices,
+          selected = apply_sel
+        )
+      },
+      tags$p(
+        id = "ynow_access_already_restricted_txt",
+        style = "margin-top:4px; font-size:12.5px;",
+        tags$b(.lab("access_already_restricted_label", "Currently restricted (not selectable)")),
+        ": ",
+        tags$span(id = "ynow_access_already_restricted_value", restricted_txt)
+      ),
+      radioButtons(
+        "ynow_access_unlock_type",
+        .lab("access_unlock_type_label", "Unlock condition"),
+        choiceNames = list(
+          .lab("access_unlock_login", "Unlock after login"),
+          .lab("access_unlock_points", "Points unlock"),
+          .lab("access_unlock_conditional", "Conditional unlock")
+        ),
+        choiceValues = c("login", "points", "conditional"),
+        selected = cur_unlock,
+        inline = TRUE
+      ),
+      conditionalPanel(
+        condition = "input.ynow_access_unlock_type === 'points'",
+        numericInput(
+          "ynow_access_points_cost",
+          .lab("access_unlock_points_cost", "Points required (FYN)"),
+          value = cur_points,
+          min = 1L,
+          step = 1L
+        )
+      ),
+      conditionalPanel(
+        condition = "input.ynow_access_unlock_type === 'conditional'",
+        fluidRow(
+          column(
+            6,
+            numericInput(
+              "ynow_access_free_count",
+              .lab("access_unlock_free_count", "Free uses (0 = unused)"),
+              value = cur_free,
+              min = 0L,
+              step = 1L
+            )
+          ),
+          column(
+            6,
+            numericInput(
+              "ynow_access_time_hours",
+              .lab("access_unlock_time_hours", "Time limit (hours; 0 = unused)"),
+              value = cur_hours,
+              min = 0L,
+              step = 1L
+            )
+          )
+        ),
+        tags$p(
+          class = "text-muted",
+          style = "font-size:12px; margin-top:0;",
+          .lab(
+            "access_unlock_conditional_help",
+            "Set free uses and/or a time window. At least one must be greater than zero."
+          )
+        )
+      )
+    )
+  })
+
+  .ynow_access_admin_apply_changes <- function() {
     loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
     .lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
     if (!isTRUE(ynow_pts_sysadmin_on())) {
@@ -2321,17 +2497,28 @@ server <- function(input, output, session) {
     }
     if (!exists("ynow_access_set", mode = "function")) return()
     scope <- as.character(input$ynow_access_scope %||% "user")[1]
-    all_uid <- if (exists("YNOW_ACCESS_ALL_USERS", inherits = TRUE)) {
-      as.character(get("YNOW_ACCESS_ALL_USERS", inherits = TRUE))[1]
-    } else {
-      "__all__"
-    }
-    uid <- if (identical(scope, "all")) {
-      all_uid
-    } else {
-      as.character(input$ynow_pts_sysadmin_user %||% "")[1]
+    action <- as.character(input$ynow_access_action %||% "apply")[1]
+    if (!action %in% c("apply", "remove")) action <- "apply"
+    locked <- identical(action, "apply")
+    uids <- .ynow_access_admin_target_uids()
+    if (!length(uids) || !any(nzchar(uids))) {
+      showNotification(
+        .lab("access_bad_user", "Select a user from the list."),
+        type = "warning"
+      )
+      return()
     }
     item <- as.character(input$ynow_access_item %||% "")[1]
+    if (!nzchar(item)) {
+      showNotification(
+        .lab(
+          if (locked) "access_bad_item" else "access_none_remove",
+          if (locked) "Choose an item from the catalog." else "No restricted items for this apply target."
+        ),
+        type = "warning"
+      )
+      return()
+    }
     effect <- as.character(input$ynow_access_effect %||% "lock")[1]
     unlock_type <- as.character(input$ynow_access_unlock_type %||% "login")[1]
     if (!unlock_type %in% c("login", "points", "conditional")) unlock_type <- "login"
@@ -2341,7 +2528,6 @@ server <- function(input, output, session) {
     if (!is.finite(free_count) || free_count < 0L) free_count <- 0L
     time_hours <- suppressWarnings(as.integer(input$ynow_access_time_hours %||% 0L)[1])
     if (!is.finite(time_hours) || time_hours < 0L) time_hours <- 0L
-    # 0 means "unused" in the admin form → store as NA for conditional fields.
     free_arg <- if (identical(unlock_type, "conditional") && free_count > 0L) {
       free_count
     } else {
@@ -2352,42 +2538,69 @@ server <- function(input, output, session) {
     } else {
       NA_integer_
     }
-    res <- ynow_access_set(
-      uid,
-      item,
-      locked = isTRUE(locked),
-      effect = effect,
-      unlock_type = unlock_type,
-      points_cost = if (identical(unlock_type, "points")) points_cost else NA_integer_,
-      free_count = free_arg,
-      time_limit_hours = hours_arg
-    )
-    fb <- switch(
-      as.character(res$message_key %||% ""),
-      access_bad_points_cost = .lab(
-        "access_bad_points_cost",
-        "Enter how many FYN are required for points unlock."
-      ),
-      access_bad_conditional = .lab(
-        "access_bad_conditional",
-        "For conditional unlock, set free uses and/or a time limit greater than zero."
-      ),
-      .lab(res$message_key %||% "access_bad_item", "Choose an item from the catalog.")
-    )
-    showNotification(
-      fb,
-      type = if (isTRUE(res$ok)) "message" else "warning"
-    )
-    if (isTRUE(res$ok)) {
-      # Refresh 「目前限制」 without rebuilding the whole sysadmin panel
-      # (keeps 選擇使用者代號 / radios stable while the line live-updates).
+    n_ok <- 0L
+    n_fail <- 0L
+    last_key <- "access_bad_item"
+    for (uid in uids) {
+      res <- ynow_access_set(
+        uid,
+        item,
+        locked = locked,
+        effect = effect,
+        unlock_type = unlock_type,
+        points_cost = if (identical(unlock_type, "points")) points_cost else NA_integer_,
+        free_count = free_arg,
+        time_limit_hours = hours_arg
+      )
+      last_key <- as.character(res$message_key %||% last_key)
+      if (isTRUE(res$ok)) n_ok <- n_ok + 1L else n_fail <- n_fail + 1L
+    }
+    msg_for <- function(key) {
+      switch(
+        as.character(key %||% ""),
+        access_bad_points_cost = .lab(
+          "access_bad_points_cost",
+          "Enter how many FYN are required for points unlock."
+        ),
+        access_bad_conditional = .lab(
+          "access_bad_conditional",
+          "For conditional unlock, set free uses and/or a time limit greater than zero."
+        ),
+        access_already_restricted = .lab(
+          "access_already_restricted",
+          "This item is already restricted for the selected apply target. Remove it first to change the rule."
+        ),
+        access_not_restricted = .lab(
+          "access_not_restricted",
+          "This item is not restricted for the selected apply target."
+        ),
+        .lab(key %||% "access_bad_item", "Choose an item from the catalog.")
+      )
+    }
+    if (n_ok > 0L && n_fail == 0L) {
+      showNotification(msg_for(last_key), type = "message")
       ynow_access_display_tick(isolate(ynow_access_display_tick()) + 1L)
       .ynow_push_access_locks()
+    } else if (n_ok > 0L && n_fail > 0L) {
+      showNotification(
+        sprintf(
+          .lab(
+            "access_partial_fmt",
+            "Updated %s user(s); %s skipped (already restricted or not restricted)."
+          ),
+          as.character(n_ok),
+          as.character(n_fail)
+        ),
+        type = "warning"
+      )
+      ynow_access_display_tick(isolate(ynow_access_display_tick()) + 1L)
+      .ynow_push_access_locks()
+    } else {
+      showNotification(msg_for(last_key), type = "warning")
     }
   }
 
-  observeEvent(input$ynow_access_lock, .ynow_access_admin_set(TRUE))
-  observeEvent(input$ynow_access_unlock, .ynow_access_admin_set(FALSE))
+  observeEvent(input$ynow_access_apply_changes, .ynow_access_admin_apply_changes())
 
   observeEvent(input$ynow_pts_sysadmin_apply, {
     loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")

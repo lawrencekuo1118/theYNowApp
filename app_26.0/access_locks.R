@@ -146,6 +146,104 @@ ynow_access_kind_label <- function(kind, locale = "en") {
   }
 }
 
+#' Menu layer for admin item picker: main tabs/chrome vs nested sub-options.
+#' tab + report = 主選單; section + input = 子選項.
+ynow_access_menu_layer <- function(kind) {
+  k <- as.character(kind %||% "")[1]
+  if (k %in% c("tab", "report")) "main" else "sub"
+}
+
+ynow_access_menu_layer_label <- function(layer, locale = "en") {
+  zh <- identical(as.character(locale)[1], "zh-TW")
+  ly <- as.character(layer %||% "")[1]
+  if (identical(ly, "main")) {
+    if (zh) "主選單" else "Main menu"
+  } else if (identical(ly, "sub")) {
+    if (zh) "子選項" else "Sub-options"
+  } else {
+    ly
+  }
+}
+
+#' Resolve store uid for an admin apply-target (all users vs selected user).
+ynow_access_scope_store_uid <- function(scope = "user", user_id = "") {
+  scope <- as.character(scope %||% "user")[1]
+  if (identical(scope, "all")) {
+    return(as.character(YNOW_ACCESS_ALL_USERS)[1])
+  }
+  as.character(user_id %||% "")[1]
+}
+
+#' Item ids already restricted under the selected apply-target (raw store, not merged).
+#' @param user_id character scalar or vector (multi-select); ignored when scope=all
+ynow_access_restricted_ids_for_scope <- function(user_id = "", scope = "user",
+                                                 multi_mode = c("union", "intersect")) {
+  multi_mode <- match.arg(multi_mode)
+  scope <- as.character(scope %||% "user")[1]
+  if (identical(scope, "all")) {
+    uid <- ynow_access_scope_store_uid("all", "")
+    ent <- ynow_access_store_entries(uid)
+    if (!is.data.frame(ent) || nrow(ent) < 1L) return(character())
+    return(sort(unique(as.character(ent$id))))
+  }
+  uids <- unique(as.character(user_id %||% character()))
+  uids <- uids[nzchar(uids)]
+  if (!length(uids)) return(character())
+  id_lists <- lapply(uids, function(u) {
+    ent <- ynow_access_store_entries(u)
+    if (!is.data.frame(ent) || nrow(ent) < 1L) character() else as.character(ent$id)
+  })
+  out <- if (identical(multi_mode, "intersect")) {
+    if (!length(id_lists)) character() else Reduce(intersect, id_lists)
+  } else {
+    unique(unlist(id_lists, use.names = FALSE))
+  }
+  sort(unique(as.character(out)))
+}
+
+#' Catalog ids still restrictable under the selected apply-target.
+#' For multi-selected users (scope=user): intersection — only items none already have.
+ynow_access_restrictable_ids_for_scope <- function(user_id = "", scope = "user") {
+  cat <- ynow_access_catalog()
+  restricted <- ynow_access_restricted_ids_for_scope(
+    user_id, scope, multi_mode = if (identical(scope, "all")) "union" else "union"
+  )
+  # For apply with multi users we want ids restricted by *any* selected user excluded
+  # (intersection of restrictable ≡ catalog minus union of restricted).
+  setdiff(as.character(cat$id), restricted)
+}
+
+#' Build labeled select choices (optgrouped Main menu / Sub-options when group=TRUE).
+ynow_access_item_choice_list <- function(ids, locale = "en", group = TRUE) {
+  ids <- unique(as.character(ids %||% character()))
+  ids <- ids[nzchar(ids)]
+  if (!length(ids)) return(character())
+  cat <- ynow_access_catalog()
+  hit <- cat[cat$id %in% ids, , drop = FALSE]
+  if (!nrow(hit)) return(character())
+  # Preserve catalog order.
+  hit <- hit[order(match(hit$id, cat$id)), , drop = FALSE]
+  labs <- paste0(
+    vapply(hit$kind, function(k) ynow_access_kind_label(k, locale), character(1)),
+    " · ",
+    if (identical(as.character(locale)[1], "zh-TW")) hit$label_zh else hit$label_en
+  )
+  named <- stats::setNames(as.character(hit$id), labs)
+  if (!isTRUE(group)) return(named)
+  layers <- vapply(hit$kind, ynow_access_menu_layer, character(1))
+  main_ids <- named[layers == "main"]
+  sub_ids <- named[layers == "sub"]
+  out <- list()
+  if (length(main_ids)) {
+    out[[ynow_access_menu_layer_label("main", locale)]] <- main_ids
+  }
+  if (length(sub_ids)) {
+    out[[ynow_access_menu_layer_label("sub", locale)]] <- sub_ids
+  }
+  if (!length(out)) return(character())
+  out
+}
+
 ynow_access_effect_label <- function(effect, locale = "en") {
   zh <- identical(as.character(locale)[1], "zh-TW")
   e <- ynow_access_normalize_effect(effect)
@@ -838,8 +936,32 @@ ynow_access_admin_status_text <- function(user_id = "",
                                           user_scope_lab = "User",
                                           all_scope_lab = "All",
                                           none_lab = "Nothing is restricted for this scope.") {
+  scope <- as.character(scope %||% "user")[1]
+  uids <- unique(as.character(user_id %||% character()))
+  uids <- uids[nzchar(uids)]
+  # Multi-select (scope=user): one status block per selected uid.
+  if (identical(scope, "user") && length(uids) > 1L) {
+    zh <- identical(as.character(locale)[1], "zh-TW")
+    blocks <- vapply(uids, function(u) {
+      lines <- ynow_access_admin_status_lines(
+        user_id = u,
+        scope = "user",
+        locale = locale,
+        user_scope_lab = user_scope_lab,
+        all_scope_lab = all_scope_lab
+      )
+      body <- if (!length(lines)) {
+        as.character(none_lab)[1]
+      } else {
+        sep <- if (zh) "、" else "; "
+        paste(lines, collapse = sep)
+      }
+      paste0(u, ": ", body)
+    }, character(1))
+    return(paste(blocks, collapse = if (zh) " ｜ " else " | "))
+  }
   lines <- ynow_access_admin_status_lines(
-    user_id = user_id,
+    user_id = if (length(uids)) uids[[1]] else "",
     scope = scope,
     locale = locale,
     user_scope_lab = user_scope_lab,
@@ -893,6 +1015,18 @@ ynow_access_set <- function(user_id,
   if (!nzchar(uid)) return(list(ok = FALSE, message_key = "access_bad_user"))
   if (!id %in% cat$id) return(list(ok = FALSE, message_key = "access_bad_item"))
   on <- isTRUE(locked)
+  # Enforce apply/remove invariants against the raw store for this target uid
+  # (not merged effective locks): no double-restrict; no remove of missing.
+  store_ids <- {
+    ent <- ynow_access_store_entries(uid)
+    if (!is.data.frame(ent) || nrow(ent) < 1L) character() else as.character(ent$id)
+  }
+  if (on && id %in% store_ids) {
+    return(list(ok = FALSE, message_key = "access_already_restricted"))
+  }
+  if (!on && !id %in% store_ids) {
+    return(list(ok = FALSE, message_key = "access_not_restricted"))
+  }
   entry <- ynow_access_normalize_entry(
     effect = effect,
     unlock_type = if (on) {
