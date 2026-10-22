@@ -18,6 +18,14 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 - CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_26.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).
 - Docs: root README ship/CI/Release pointers; `scripts/record_github_release.sh` for soft-fail Release publish after deploy.
 
+## [v26.30] — 2026-10-22
+
+### Added
+
+- **Maintenance item catalog completeness** (PR #397): Sys. Admin Maintenance **項目** lists the full shared product/service catalog with Item locks (~99 ids — tabs through fine numeric inputs / sections / reports). Entries with a configured window show **Expected:** / **預計時間:** start–end in the menu (active or scheduled).
+- zh-TW：維護「項目」選單補齊產品／服務目錄；已設定時段者顯示「預計時間: 開始-結束」。
+- Live baseline bundle **12723900** / display **v26.30**.
+
 ## [v26.29] — 2026-10-22
 
 ### Added
