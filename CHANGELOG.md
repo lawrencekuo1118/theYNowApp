@@ -13,24 +13,24 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 
 ## [Unreleased]
 
-### Added
-
-- **System admin Maintenance / 維護** (PR #390, pending next ship): time-windowed page/tab/element outage for **all users**; copy「維護中」+ newline「預計時間: start-end」(en-US: Under maintenance / Expected: …). Content unusable like a lock, but sidebar/menu is **non-clickable** (unlike Item locks / guest_menu_lock). When the configured **end** time is reached, restrictions **auto-lift** on the server clock (no admin click). Persist in Supabase `ynow_maintenance` (fail-closed); distinct from Checklist gate overlay.
-- zh-TW：系統管理「維護」可對目錄項目設定時段；進行中顯示「維護中／預計時間」且選單不可點；結束時間到自動恢復。Merged on master after v26.24 live upload — not in bundle 12723569.
-
 ### Changed
 
-- Home Sign-in · Register · About on one row (PR #389, pending next ship): merged on master after v26.24 live upload — not in bundle 12723569.
 - CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_26.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).
 - Docs: root README ship/CI/Release pointers; `scripts/record_github_release.sh` for soft-fail Release publish after deploy.
 
 ## [v26.25] — 2026-10-22
 
-### Fixed
+### Added
 
+- **System admin Maintenance / 維護** (PR #390): time-windowed page/tab/element outage for **all users**; copy「維護中」+ newline「預計時間: start-end」(en-US: Under maintenance / Expected: …). Content unusable like a lock, but sidebar/menu is **non-clickable** (unlike Item locks / guest_menu_lock). When the configured **end** time is reached, restrictions **auto-lift** on the server clock (no admin click). Persist in Supabase `ynow_maintenance` (fail-closed); distinct from Checklist gate overlay.
+- zh-TW：系統管理「維護」可對目錄項目設定時段；進行中顯示「維護中／預計時間」且選單不可點；結束時間到自動恢復。
+
+### Changed
+
+- Home Sign-in · Register · About on one row (PR #389) landed in this tip with #390/#391.
 - **Black top-banner Sign in: no white outer border** (PR #392): remove border/outline/box-shadow on header auth controls; keep black banner, white label, and hover wash. Single-entry viewport rule unchanged (≤767 date-row text links; ≥768 banner).
 - zh-TW：頂部黑列登入控制項去掉白框／外框，僅保留文字與 hover；窄／寬單一登入入口規則不變。
-- Live baseline bundle recorded in `scripts/DEPLOY_BASELINE.txt` after deploy.
+- Live baseline bundle **12723615** recorded in `scripts/DEPLOY_BASELINE.txt` after deploy.
 
 ## [v26.24] — 2026-10-22
 
