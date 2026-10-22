@@ -27,8 +27,11 @@
   cache <- new.env(parent = emptyenv())
   mounted <- new.env(parent = emptyenv())
   flags <- shiny::reactiveValues()
+  # Bumped by refresh() so renderUI rebuilds host UI without re-running moduleServer.
+  refresh_tokens <- shiny::reactiveValues()
   for (nm in names(builders)) {
     flags[[nm]] <- FALSE
+    refresh_tokens[[nm]] <- 0L
   }
 
   for (nm in names(builders)) {
@@ -38,6 +41,7 @@
       build <- builders[[tab]]
       output[[host]] <- shiny::renderUI({
         shiny::req(isTRUE(flags[[tab]]))
+        invisible(refresh_tokens[[tab]])
         if (is.null(cache[[tab]])) {
           cache[[tab]] <- tryCatch(
             build(),
@@ -84,6 +88,24 @@
         return(vapply(names(builders), function(nm) isTRUE(mounted[[nm]]), logical(1)))
       }
       isTRUE(mounted[[as.character(tab)[1]]])
+    },
+    #' Soft-refresh a mounted lazy host: rebuild UI tags; do not re-call moduleServer.
+    refresh = function(tab) {
+      tab <- as.character(if (is.null(tab)) "" else tab)[1]
+      if (is.na(tab) || !nzchar(tab) || !tab %in% names(builders)) {
+        return(invisible(FALSE))
+      }
+      if (!isTRUE(mounted[[tab]])) return(invisible(FALSE))
+      cache[[tab]] <- NULL
+      cur <- tryCatch(as.integer(shiny::isolate(refresh_tokens[[tab]]))[1], error = function(e) 0L)
+      if (is.na(cur)) cur <- 0L
+      refresh_tokens[[tab]] <- cur + 1L
+      if (is.function(after_mount)) {
+        session$onFlushed(function() {
+          tryCatch(after_mount(tab), error = function(e) NULL)
+        }, once = TRUE)
+      }
+      invisible(TRUE)
     }
   ))
 }

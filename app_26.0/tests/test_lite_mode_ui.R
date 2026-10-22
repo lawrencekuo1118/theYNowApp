@@ -133,8 +133,10 @@ testthat::test_that("Lite locale keys exist in en and zh-TW", {
   testthat::expect_null(.UI_STRINGS$`zh-TW`$macro_rf_note)
   testthat::expect_identical(.UI_STRINGS$en$menu_dashboard, "Company")
   testthat::expect_identical(.UI_STRINGS$`zh-TW`$menu_dashboard, "個股")
-  testthat::expect_identical(.UI_STRINGS$en$header_logo_home_title, "Go to Home")
-  testthat::expect_identical(.UI_STRINGS$`zh-TW`$header_logo_home_title, "回到首頁")
+  testthat::expect_identical(.UI_STRINGS$en$header_logo_home_title, "Refresh current page")
+  testthat::expect_identical(.UI_STRINGS$`zh-TW`$header_logo_home_title, "重新整理目前分頁")
+  testthat::expect_identical(.UI_STRINGS$en$header_logo_refresh_title, "Refresh current page")
+  testthat::expect_identical(.UI_STRINGS$`zh-TW`$header_logo_refresh_title, "重新整理目前分頁")
 })
 
 testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hooks", {
@@ -565,9 +567,14 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(grepl('tabName = "company_advance"', txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_menu_company_advance", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_header_logo_home", txt, fixed = TRUE))
-  testthat::expect_true(grepl("bindHeaderLogoHome", txt, fixed = TRUE))
-  testthat::expect_true(grepl("gotoTab('home')", txt, fixed = TRUE))
-  testthat::expect_true(grepl("header_logo_home_title", txt, fixed = TRUE))
+  testthat::expect_true(grepl("bindHeaderLogoRefresh", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow_tab_refresh", txt, fixed = TRUE))
+  testthat::expect_true(grepl("refreshCurrentSidebarTab", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-logo-spinning", txt, fixed = TRUE))
+  testthat::expect_true(
+    grepl("header_logo_refresh_title", txt, fixed = TRUE) ||
+      grepl("header_logo_home_title", txt, fixed = TRUE)
+  )
   testthat::expect_true(grepl("ynow-company-advance-bblab", txt, fixed = TRUE))
   testthat::expect_true(grepl("business_breakdown_lab_ui", txt, fixed = TRUE))
   testthat::expect_true(grepl("body.ynow-lite .ynow-company-advance-bblab", txt, fixed = TRUE))

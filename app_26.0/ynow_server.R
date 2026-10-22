@@ -3754,6 +3754,82 @@ server <- function(input, output, session) {
     tryCatch(isTRUE(.ynow_lazy_tab_ctrl$mounted("bluechip")), error = function(e) FALSE)
   }
 
+  # Banner right logo: soft-refresh the active sidebar tab only (no session$reload).
+  .ynow_ticker_refresh_tabs <- c(
+    "dashboard", "smart_analysis", "company_advance",
+    "dcf_calculator", "ddm_calculator", "pb_calculator", "nav_calculator",
+    "ri_calculator", "sotp_calculator", "rel_mult_ev", "rel_multiples_calculator",
+    "rel_mult_rev", "hfv", "decision_checklist", "lab_notes", "get_started"
+  )
+  observeEvent(input$ynow_tab_refresh, {
+    payload <- input$ynow_tab_refresh
+    tab <- if (is.list(payload)) {
+      as.character(payload$tab %||% "")[1]
+    } else {
+      as.character(payload %||% "")[1]
+    }
+    if (identical(tab, "business_breakdown_lab")) tab <- "company_advance"
+    if (identical(tab, "bluechip_lab")) tab <- "bluechip"
+    if (!nzchar(tab)) {
+      tab <- as.character(isolate(input$sidebar_tabs) %||% "")[1]
+    }
+    if (!nzchar(tab)) return()
+
+    tryCatch(
+      session$sendCustomMessage("ynowTabBusy", list(tab = tab, busy = TRUE)),
+      error = function(e) NULL
+    )
+    tryCatch(
+      session$sendCustomMessage("ynowHeaderLogoSpin", list(spin = TRUE, tab = tab)),
+      error = function(e) NULL
+    )
+
+    refreshed <- tryCatch(
+      isTRUE(.ynow_lazy_tab_ctrl$refresh(tab)),
+      error = function(e) FALSE
+    )
+    lazy_mount_nonce(isolate(as.integer(lazy_mount_nonce()) %||% 0L) + 1L)
+    tryCatch(
+      .push_ui_locale(isolate(ui_locale()), sync_picker = FALSE),
+      error = function(e) NULL
+    )
+
+    # Company / model tabs: re-run the current ticker search without leaving the tab.
+    if (isTRUE(tab %in% .ynow_ticker_refresh_tabs)) {
+      tk <- tryCatch(as.character(isolate(current_ticker()) %||% "")[1], error = function(e) "")
+      if (!nzchar(tk)) {
+        tk <- tryCatch(as.character(isolate(input$sc) %||% "")[1], error = function(e) "")
+      }
+      if (nzchar(tk) && !identical(toupper(tk), "NA")) {
+        tryCatch(.ynow_fire_ticker_search(tk, goto_tab = NULL), error = function(e) NULL)
+      }
+    }
+
+    # Blue Chip: re-arm auto-eval when scores are empty (same path as first open).
+    if (identical(tab, "bluechip") && isTRUE(refreshed)) {
+      tryCatch(lab_im_auto_start_armed(FALSE), error = function(e) NULL)
+    }
+
+    done_tab <- tab
+    session$onFlushed(function() {
+      finish <- function() {
+        tryCatch(
+          session$sendCustomMessage("ynowTabBusy", list(tab = done_tab, busy = FALSE)),
+          error = function(e) NULL
+        )
+        tryCatch(
+          session$sendCustomMessage("ynowHeaderLogoSpin", list(spin = FALSE, tab = done_tab)),
+          error = function(e) NULL
+        )
+      }
+      if (requireNamespace("later", quietly = TRUE)) {
+        later::later(finish, delay = 0.2)
+      } else {
+        finish()
+      }
+    }, once = TRUE)
+  }, ignoreInit = TRUE, ignoreNULL = TRUE)
+
   # Starter (1 GB / 1 worker): drop heavy session payloads on disconnect so the
   # next browser can reuse RAM instead of waiting for opportunistic GC.
   session$onSessionEnded(function() {

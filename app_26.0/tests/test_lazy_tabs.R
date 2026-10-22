@@ -81,6 +81,13 @@ testthat::test_that("register mounts once and caches builder result", {
     session$setInputs(sidebar_tabs = "bluechip")
     session$flushReact()
     testthat::expect_identical(builds, 1L)
+
+    # Soft refresh rebuilds UI tags without a second module mount hook.
+    testthat::expect_true(isTRUE(ctrl$refresh("bluechip")))
+    session$flushReact()
+    testthat::expect_identical(builds, 2L)
+    testthat::expect_true(ctrl$mounted("bluechip"))
+    testthat::expect_false(isTRUE(ctrl$refresh("home")))
   })
 })
 
