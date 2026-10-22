@@ -7,5 +7,5 @@ commit=1094e2504349686bb0837ea62e207a1304c21657
 short=1094e250
 message=chore: bump display version to v26.36
 captured_at=2026-10-22T08:31:10Z
-display_version=v26.36
+display_version=v26.37
 note=Canonical live line is app_26.0. Bundle 12724261: Chrome glow A+B filled-vein first ship (#403). Follow-up will switch to line-stroke-only veins. Secrets only in gitignored .Renviron; no secret values in git.
