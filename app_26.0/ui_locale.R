@@ -4110,13 +4110,27 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_or_us_ec_sa_link = "Seeking Alpha Transcripts",
     bblab_or_tw_ec_title = "TW earnings call / conclusions",
     bblab_or_tw_ec_empty = paste0(
-      "No automatable TW earnings-call conclusion with measurable backlog / bookings was ingested. ",
-      "Fugle memo and Seeking Alpha last-resort returned empty; AlphaMemo free transcripts stay human-browsable only."
+      "No automatable TW earnings-call conclusion with measurable backlog / bookings, ",
+      "or status-only order / supply-chain / outlook notes, was ingested. ",
+      "FinmoConf presentation PDF, Fugle memo, and Seeking Alpha last-resort returned empty; ",
+      "AlphaMemo free transcripts stay human-browsable only."
     ),
     bblab_or_tw_ec_note = paste0(
-      "Automatable source: Fugle earnings-call memos. Seeking Alpha HTML is last-resort only. ",
+      "Automatable sources: FinmoConf → latest MOPS presentation PDF (zh preferred), ",
+      "then Fugle earnings-call memos. Seeking Alpha HTML is last-resort only. ",
       "AlphaMemo free transcripts stay human links."
     ),
+    bblab_or_tw_ec_finmoconf_link = "FinmoConf company page (Estimate)",
+    bblab_or_tw_ec_pdf_link = "Latest presentation PDF",
+    bblab_or_tw_ec_finmoconf_note = paste0(
+      "FinmoConf indexes official TWSE STR presentation PDFs (zh preferred, else en). ",
+      "Credibility is Estimate because PDF text extract is incomplete for scanned or image-heavy decks. ",
+      "Orders, supply-chain status, and outlook are status-only — amounts only when the deck states them. ",
+      "FinmoConf /api/ is never called (robots Disallow)."
+    ),
+    bblab_or_tw_ec_orders_title = "Orders / backlog (status-only)",
+    bblab_or_tw_ec_supply_title = "Supply-chain status (status-only)",
+    bblab_or_tw_ec_outlook_title = "Outlook / forward view (status-only)",
     bblab_or_tw_ec_fugle_link = "Fugle earnings-call memo (Estimate)",
     bblab_or_tw_ec_fugle_note = paste0(
       "Fugle memos are blog posts labeled Estimate. Stated orders, CapEx, customers, and outlook ",
@@ -8422,13 +8436,26 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_or_us_ec_sa_link = "Seeking Alpha Transcripts",
     bblab_or_tw_ec_title = "台股法說會結論",
     bblab_or_tw_ec_empty = paste0(
-      "此 ticker 未自動擷取可量化 backlog／bookings 的台股法說結論。",
-      "富果法說備忘錄與 Seeking Alpha 最後備援皆無可用內容；AlphaMemo 公開逐字稿仍僅供人工瀏覽。"
+      "此 ticker 未自動擷取可量化 backlog／bookings，或狀態型訂單／供應鏈／今後發展摘錄的台股法說結論。",
+      "FinmoConf 簡報 PDF、富果法說備忘錄與 Seeking Alpha 最後備援皆無可用內容；",
+      "AlphaMemo 公開逐字稿仍僅供人工瀏覽。"
     ),
     bblab_or_tw_ec_note = paste0(
-      "可自動擷取來源是 Fugle 法說會備忘錄。Seeking Alpha HTML 只作最後備援。",
+      "可自動擷取來源：FinmoConf 最新一期公開資訊觀測站法說會簡報 PDF（中文優先），",
+      "以及 Fugle 法說會備忘錄。Seeking Alpha HTML 只作最後備援。",
       "AlphaMemo 公開逐字稿只留人工連結。"
     ),
+    bblab_or_tw_ec_finmoconf_link = "FinmoConf 公司頁（估計）",
+    bblab_or_tw_ec_pdf_link = "最新法說會簡報 PDF",
+    bblab_or_tw_ec_finmoconf_note = paste0(
+      "FinmoConf 索引公開資訊觀測站 STR 法說會簡報 PDF（中文優先，否則英文）。",
+      "可信度為估計：PDF 文字擷取對掃描／圖檔型簡報不完整。",
+      "訂單、供應鏈狀況、今後發展僅作狀態摘錄；金額只在簡報明列時填入。",
+      "不會呼叫 FinmoConf /api/（robots 禁止）。"
+    ),
+    bblab_or_tw_ec_orders_title = "訂單／在手（狀態摘錄）",
+    bblab_or_tw_ec_supply_title = "供應鏈狀況（狀態摘錄）",
+    bblab_or_tw_ec_outlook_title = "今後發展／展望（狀態摘錄）",
     bblab_or_tw_ec_fugle_link = "富果法說會備忘錄（估計）",
     bblab_or_tw_ec_fugle_note = paste0(
       "Fugle 備忘錄是部落格文章，可信度為估計。只擷取文中明列的訂單、CapEx、客戶與展望，",

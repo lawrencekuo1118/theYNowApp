@@ -275,6 +275,10 @@ ynow_ec_result_usable <- function(res) {
   if (length(res$suppliers %||% list()) > 0L) return(TRUE)
   if (length(res$customers %||% list()) > 0L) return(TRUE)
   if (length(res$order_lines %||% list()) > 0L) return(TRUE)
+  # Status-only notes from FinmoConf presentation PDF (orders / supply chain / outlook).
+  if (length(res$order_notes %||% character(0)) > 0L) return(TRUE)
+  if (length(res$supply_chain_notes %||% character(0)) > 0L) return(TRUE)
+  if (length(res$outlook_notes %||% character(0)) > 0L) return(TRUE)
   if (nzchar(.ynow_sa_ec_chr(res$excerpt)) && identical(.ynow_sa_ec_chr(res$status), "ok")) {
     return(TRUE)
   }
