@@ -7,5 +7,5 @@ commit=cf524c11d8f5e0f0f0f0f0f0f0f0f0f0f0f0f0f0
 short=cf524c11
 message=chore: bump display version to v26.32
 captured_at=2026-10-22T06:56:31Z
-display_version=v26.32
+display_version=v26.33
 note=Canonical live line is app_26.0. Bundle 12723993: System admin Audit log / 操作紀錄 24h append-only ops audit (#399). Secrets only in gitignored .Renviron; no secret values in git.
