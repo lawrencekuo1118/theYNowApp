@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """Capture ~10s Sign-in-gate demo clips from the running App UI only.
 
+Product-facing locked tabs/features only (lab, checklist, alerts, account,
+pdf, atx). Non-product gate ids (snap_defaults, inner_lock) intentionally have
+no teaser — do not add them here.
+
 Each clip is a Playwright scroll of the live Shiny App, then ffmpeg writes
 app_26.0/www/demos/<id>.mp4 and .webm. There is no fixture HTML path.
 
@@ -14,7 +18,7 @@ import subprocess
 import tempfile
 import time
 from pathlib import Path
-from typing import NotRequired, TypedDict
+from typing import TypedDict
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "app_26.0" / "www" / "demos"
@@ -27,17 +31,15 @@ BASE_URL = os.environ.get("YNOW_DEMO_BASE_URL", "http://127.0.0.1:3840/")
 class CaptureTarget(TypedDict):
     tab: str
     wait_ms: int
-    open: NotRequired[str]  # sidebar (default) | foot_snapshot
 
 
+# Keep in sync with ynow_gate_demo_features() in app_26.0/auth_account.R
 FEATURES: dict[str, CaptureTarget] = {
     "lab": {"tab": "lab_notes", "wait_ms": 4500},
     "checklist": {"tab": "decision_checklist", "wait_ms": 4500},
     "alerts": {"tab": "price_alerts", "wait_ms": 3500},
     "account": {"tab": "account_admin", "wait_ms": 3500},
     "pdf": {"tab": "dashboard", "wait_ms": 3500},
-    "snap_defaults": {"tab": "snap_defaults", "wait_ms": 4500, "open": "foot_snapshot"},
-    "inner_lock": {"tab": "hfv", "wait_ms": 3500},
     "atx": {"tab": "asset_transmission", "wait_ms": 4500},
 }
 
@@ -186,57 +188,8 @@ def _open_sidebar(page, tab: str) -> None:
     _require_active(page, tab)
 
 
-def _open_foot_snapshot(page, inner_tab: str) -> None:
-    _ensure_sidebar_open(page)
-    # Foot Snapshot often has display:none on the sidebar clone; drive via helper.
-    opened = page.evaluate(
-        """() => {
-          if (typeof window.ynowShowSidebarFootTab === 'function') {
-            window.ynowShowSidebarFootTab('snapshot');
-            return true;
-          }
-          const foot = document.querySelector("a[data-value='snapshot'], a[href='#shiny-tab-snapshot']");
-          if (foot) { foot.click(); return true; }
-          return false;
-        }"""
-    )
-    if not opened:
-        raise SystemExit("could not open Snapshot foot tab")
-    page.wait_for_timeout(1200)
-    page.evaluate(
-        """(tab) => {
-          const a = document.querySelector(
-            "#shiny-tab-snapshot a[data-value='" + tab + "'], a[data-value='" + tab + "']"
-          );
-          if (!a) return;
-          try { a.click(); } catch (e) {}
-          try { if (window.$ && $(a).tab) $(a).tab('show'); } catch (e2) {}
-          const href = a.getAttribute('href');
-          if (href && href.charAt(0) === '#') {
-            document.querySelectorAll('#shiny-tab-snapshot .tab-pane')
-              .forEach((p) => p.classList.remove('active', 'show', 'in'));
-            const pane = document.querySelector(href);
-            if (pane) pane.classList.add('active', 'show', 'in');
-            if (a.parentElement) {
-              document.querySelectorAll('#shiny-tab-snapshot li, #snapshot_report li')
-                .forEach((li) => li.classList.remove('active'));
-              a.parentElement.classList.add('active');
-            }
-          }
-        }""",
-        inner_tab,
-    )
-    page.wait_for_timeout(600)
-
-
 def _open_target(page, target: CaptureTarget) -> None:
-    how = target.get("open", "sidebar")
-    if how == "sidebar":
-        _open_sidebar(page, target["tab"])
-    elif how == "foot_snapshot":
-        _open_foot_snapshot(page, target["tab"])
-    else:
-        raise SystemExit(f"unknown open {how!r}")
+    _open_sidebar(page, target["tab"])
 
 
 def _scroll_state(page) -> dict:

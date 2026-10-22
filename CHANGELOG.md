@@ -15,6 +15,8 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 
 ### Changed
 
+- **Gate demos product-only**: Sign-in teasers ship only for product surfaces (`lab`, `checklist`, `alerts`, `account`, `pdf`, `atx`). Non-product `snap_defaults` / `inner_lock` keep Sign-in promo chrome without a demo video; removed their `www/demos` assets and generator targets.
+- zh-TW：示範短片僅產品頁／功能；系統預設分頁與內層 ACL 鎖定不再附示範影片（登入閘文案仍在）。
 - CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_26.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).
 - Docs: root README ship/CI/Release pointers; `scripts/record_github_release.sh` for soft-fail Release publish after deploy.
 

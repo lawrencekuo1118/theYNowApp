@@ -171,6 +171,19 @@ check("pdf snap_defaults and inner_lock promo stay stacked", {
   }
   stacked("pdf") && stacked("snap_defaults") && stacked("inner_lock")
 })
+check("non-product gates keep promo without demo teaser", {
+  no_teaser <- function(feature) {
+    html <- page_gate_html(feature)
+    grepl("ynow-gate-promo", html, fixed = TRUE) &&
+      !grepl("ynow-gate-demo-video", html, fixed = TRUE) &&
+      !grepl(paste0("demos/", feature, ".mp4"), html, fixed = TRUE)
+  }
+  isFALSE(ynow_gate_has_demo("snap_defaults")) &&
+    isFALSE(ynow_gate_has_demo("inner_lock")) &&
+    no_teaser("snap_defaults") &&
+    no_teaser("inner_lock") &&
+    grepl("demos/pdf.mp4", page_gate_html("pdf"), fixed = TRUE)
+})
 check("en/zh demo captions match Decision Checklist copy", {
   identical(
     ui_str("auth_gate_checklist_demo_caption", "en"),

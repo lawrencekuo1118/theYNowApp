@@ -417,14 +417,17 @@ check("snap_defaults gate keeps promo; sidebar has no PDF promo chrome", {
     grepl("ynow-gate-demo-video", auth, fixed = TRUE) &&
     grepl("demos/", auth, fixed = TRUE)
 })
-check("demo clips exist under www/demos", {
+check("product demo clips exist under www/demos; non-product absent", {
   demos <- file.path(app_dir, "www", "demos")
   files <- c(
     "lab.mp4", "lab.webm", "checklist.mp4", "alerts.mp4",
-    "account.mp4", "pdf.mp4", "snap_defaults.mp4", "inner_lock.mp4",
-    "atx.mp4", "atx.webm"
+    "account.mp4", "pdf.mp4", "atx.mp4", "atx.webm"
   )
-  all(file.exists(file.path(demos, files)))
+  all(file.exists(file.path(demos, files))) &&
+    !file.exists(file.path(demos, "snap_defaults.mp4")) &&
+    !file.exists(file.path(demos, "inner_lock.mp4")) &&
+    !file.exists(file.path(demos, "snap_defaults.webm")) &&
+    !file.exists(file.path(demos, "inner_lock.webm"))
 })
 Sys.setenv(YNOW_ENABLE_ACCOUNT_LOGIN = "0")
 check("admin menu NULL when disabled", is.null(ynow_admin_menu_item()))
