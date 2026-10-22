@@ -33,9 +33,13 @@ css <- ynow_sidebar_guest_lock_lite_css()
 js_map <- ynow_sidebar_guest_lock_js_map()
 
 check(
-  "guest-lock tab set is Lab + Checklist + Value Alerts",
-  identical(sort(tabs), sort(c("lab_notes", "decision_checklist", "price_alerts")))
+  "guest-lock tab set is Lab + Checklist + Value Alerts + ATX",
+  identical(
+    sort(tabs),
+    sort(c("lab_notes", "decision_checklist", "price_alerts", "asset_transmission"))
+  )
 )
+check("asset_transmission is guest-locked", isTRUE(ynow_sidebar_tab_guest_locked("asset_transmission")))
 check("price_alerts is guest-locked", isTRUE(ynow_sidebar_tab_guest_locked("price_alerts")))
 check("home is not guest-locked", !isTRUE(ynow_sidebar_tab_guest_locked("home")))
 check("about is not guest-locked", !isTRUE(ynow_sidebar_tab_guest_locked("about")))
@@ -65,6 +69,7 @@ check("Lite omit list includes price_alerts", "price_alerts" %in% ynow_sidebar_l
 check("fallback loginTabs keep lab_notes", grepl("lab_notes: true", ui, fixed = TRUE))
 check("fallback loginTabs keep decision_checklist", grepl("decision_checklist: true", ui, fixed = TRUE))
 check("fallback loginTabs keep price_alerts", grepl("price_alerts: true", ui, fixed = TRUE))
+check("fallback loginTabs keep asset_transmission", grepl("asset_transmission: true", ui, fixed = TRUE))
 
 check(
   "JS map keys match guest-lock tab set",

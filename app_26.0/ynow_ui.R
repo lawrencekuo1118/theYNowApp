@@ -3621,7 +3621,13 @@ ui <- dashboardPage(
                icon = icon("globe-asia")
              ),
              menuItem(
-               text = tags$span(id = "ynow_menu_asset_transmission", "Asset Transmission Root"),
+               text = if (exists("ynow_sidebar_guest_lock_label", mode = "function")) {
+                 ynow_sidebar_guest_lock_label(
+                   "asset_transmission", "ynow_menu_asset_transmission", "Asset Transmission Root"
+                 )
+               } else {
+                 tags$span(id = "ynow_menu_asset_transmission", "Asset Transmission Root")
+               },
                tabName = "asset_transmission",
                icon = icon("project-diagram")
              ),
@@ -9058,7 +9064,7 @@ ui <- dashboardPage(
             ";"
           )
         } else {
-          "window.__YNOW_SIDEBAR_GUEST_LOCK_TABS = {lab_notes:true,decision_checklist:true,price_alerts:true};"
+          "window.__YNOW_SIDEBAR_GUEST_LOCK_TABS = {lab_notes:true,decision_checklist:true,price_alerts:true,asset_transmission:true};"
         },
         if (exists("ynow_sidebar_persist_lock_js_map", mode = "function")) {
           paste0(
@@ -10239,7 +10245,8 @@ ui <- dashboardPage(
             var loginTabs = window.__YNOW_SIDEBAR_GUEST_LOCK_TABS || {
               lab_notes: true,
               decision_checklist: true,
-              price_alerts: true
+              price_alerts: true,
+              asset_transmission: true
             };
             if (loginTabs[tab]) {
               var lock = document.createElement('i');
@@ -12190,7 +12197,8 @@ ui <- dashboardPage(
               var tabs = window.__YNOW_SIDEBAR_GUEST_LOCK_TABS || {
                 lab_notes: true,
                 decision_checklist: true,
-                price_alerts: true
+                price_alerts: true,
+                asset_transmission: true
               };
               /* Tier B / points-gated sidebar tabs: keep locked chrome after auth. */
               var persist = window.__YNOW_SIDEBAR_PERSIST_LOCK_TABS || {};

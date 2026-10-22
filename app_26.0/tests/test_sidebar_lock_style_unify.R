@@ -28,8 +28,11 @@ auth <- paste(readLines(file.path(app_dir, "auth_account.R"), warn = FALSE, enco
 source(file.path(app_dir, "auth_account.R"), local = TRUE)
 
 guest_tabs <- ynow_sidebar_guest_lock_tabs()
-check("guest lock set is Lab / Checklist / Alerts", {
-  identical(sort(guest_tabs), sort(c("lab_notes", "decision_checklist", "price_alerts")))
+check("guest lock set is Lab / Checklist / Alerts / ATX", {
+  identical(
+    sort(guest_tabs),
+    sort(c("lab_notes", "decision_checklist", "price_alerts", "asset_transmission"))
+  )
 })
 
 check("shared class token ynow-sidebar-locked exists", {

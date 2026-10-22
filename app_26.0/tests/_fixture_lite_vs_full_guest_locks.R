@@ -87,7 +87,10 @@ for (d in out_dirs) {
   writeLines(lite_html, file.path(d, "lite-sidebar-locked-tabs-hidden.html"), useBytes = TRUE)
 }
 
-stopifnot(identical(sort(tabs), sort(c("lab_notes", "decision_checklist", "price_alerts"))))
+stopifnot(identical(
+  sort(tabs),
+  sort(c("lab_notes", "decision_checklist", "price_alerts", "asset_transmission"))
+))
 stopifnot(grepl('data-value="price_alerts"', lite_css, fixed = TRUE))
 cat("wrote fixtures for Full vs Lite guest-lock compare\n")
 cat("tabs:", paste(tabs, collapse = ", "), "\n")

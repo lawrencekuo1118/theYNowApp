@@ -354,8 +354,8 @@ check("Lite CSS omits every Full guest-locked sidebar tab", {
   css <- tryCatch(ynow_sidebar_lite_omit_css(), error = function(e) {
     tryCatch(ynow_sidebar_guest_lock_lite_css(), error = function(e2) "")
   })
-  length(tabs) >= 3L &&
-    all(c("lab_notes", "decision_checklist", "price_alerts") %in% tabs) &&
+  length(tabs) >= 4L &&
+    all(c("lab_notes", "decision_checklist", "price_alerts", "asset_transmission") %in% tabs) &&
     (grepl("ynow_sidebar_lite_omit_css", ui, fixed = TRUE) ||
        grepl("ynow_sidebar_guest_lock_lite_css", ui, fixed = TRUE)) &&
     grepl("ynow_sidebar_lite_omit", auth, fixed = TRUE) &&

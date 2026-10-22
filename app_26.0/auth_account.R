@@ -88,12 +88,11 @@ ynow_sidebar_guest_lock_tabs <- function() {
     )
     if (length(tabs)) return(tabs)
   }
-  c("lab_notes", "decision_checklist", "price_alerts")
+  c("lab_notes", "decision_checklist", "price_alerts", "asset_transmission")
 }
 
 #' Full-only model / advance sidebar tabs (unlocked on Full, omitted in Lite).
-#' Not guest-locked; still must not appear in the Lite sidebar.
-#' Includes Asset Transmission Root (`asset_transmission`) — Full only.
+#' Not guest-locked. Asset Transmission Root is a guest lock, not in this list.
 ynow_sidebar_full_only_tabs <- function() {
   c(
     "get_started",
@@ -102,8 +101,7 @@ ynow_sidebar_full_only_tabs <- function() {
     "rel_mult_ev", "rel_multiples_calculator", "rel_mult_rev",
     "sotp_calculator",
     "hfv",
-    "company_advance",
-    "asset_transmission"
+    "company_advance"
   )
 }
 
