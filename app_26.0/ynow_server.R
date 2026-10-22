@@ -1035,8 +1035,15 @@ server <- function(input, output, session) {
   # so Postgres list_users cannot block the session (exit / Switch view stay live).
   ynow_pts_sysadmin_panel_state <- reactiveVal(list(kind = "locked"))
   # ynow_pts_view_as is created earlier (before pinned prefs).
+  # Self view modes (admin preview): "guest" | "signed_in" | "omniscient" | NULL.
+  ynow_pts_self_view_mode <- reactiveVal(NULL)
 
   .ynow_access_subject_id <- function() {
+    mode <- tryCatch(isolate(ynow_pts_self_view_mode()), error = function(e) NULL)
+    mode <- as.character(mode %||% "")[1]
+    if (identical(mode, "guest")) return("")
+    if (identical(mode, "omniscient")) return("__omniscient__")
+    if (identical(mode, "signed_in")) return("__self_member__")
     va <- tryCatch(isolate(ynow_pts_view_as()), error = function(e) NULL)
     if (is.list(va)) {
       vid <- as.character(va$user_id %||% "")[1]
@@ -1053,8 +1060,33 @@ server <- function(input, output, session) {
         !exists("ynow_access_entries", mode = "function")) {
       return(invisible(NULL))
     }
-    uid <- .ynow_access_subject_id()
-    authed <- nzchar(as.character(uid %||% "")[1])
+    mode <- tryCatch(isolate(ynow_pts_self_view_mode()), error = function(e) NULL)
+    mode <- as.character(mode %||% "")[1]
+    loc <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "en")
+    note <- tryCatch(
+      ui_str("access_pane_note", loc),
+      error = function(e) "This page is locked for the signed-in account."
+    )
+    if (identical(mode, "omniscient")) {
+      session$sendCustomMessage(
+        "ynowAccessLocks",
+        list(ids = list(), entries = list(), note = note)
+      )
+      return(invisible(character()))
+    }
+    # guest / signed_in: only global (__all__) — no per-user overrides.
+    # empty uid → ynow_access_entries merges global only.
+    if (identical(mode, "guest") || identical(mode, "signed_in")) {
+      uid <- ""
+      authed <- identical(mode, "signed_in")
+    } else {
+      uid <- .ynow_access_subject_id()
+      # Synthetic self-view subjects already handled above; treat real subjects normally.
+      if (identical(uid, "__self_member__") || identical(uid, "__omniscient__")) {
+        uid <- ""
+      }
+      authed <- nzchar(as.character(uid %||% "")[1])
+    }
     # Guests still receive global (__all__) restrictions; login/points/conditional
     # unlock rules filter out items that are currently usable.
     ent <- tryCatch(
@@ -1068,11 +1100,6 @@ server <- function(input, output, session) {
       error = function(e) {
         data.frame(id = character(), effect = character(), stringsAsFactors = FALSE)
       }
-    )
-    loc <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "en")
-    note <- tryCatch(
-      ui_str("access_pane_note", loc),
-      error = function(e) "This page is locked for the signed-in account."
     )
     entries <- if (is.data.frame(ent) && nrow(ent) > 0L) {
       lapply(seq_len(nrow(ent)), function(i) {
@@ -1109,6 +1136,8 @@ server <- function(input, output, session) {
   }
 
   .ynow_access_deny_download <- function(item_id, file) {
+    mode <- tryCatch(isolate(ynow_pts_self_view_mode()), error = function(e) NULL)
+    if (identical(as.character(mode %||% "")[1], "omniscient")) return(FALSE)
     if (exists("ynow_maintenance_is_active", mode = "function") &&
         isTRUE(ynow_maintenance_is_active(item_id))) {
       loc <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "en")
@@ -1122,7 +1151,9 @@ server <- function(input, output, session) {
     }
     if (!exists("ynow_access_is_locked", mode = "function")) return(FALSE)
     uid <- .ynow_access_subject_id()
+    if (identical(uid, "__omniscient__")) return(FALSE)
     # Global (__all__) applies even when not signed in; honor unlock conditions.
+    # signed_in self-view uses synthetic __self_member__ → global-only via entries merge.
     if (!isTRUE(ynow_access_is_locked(uid, item_id, effective = TRUE))) return(FALSE)
     loc <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "en")
     msg <- tryCatch(
@@ -1139,6 +1170,9 @@ server <- function(input, output, session) {
   .ynow_deny_guest_download <- function(file = NULL, msg_key = "download_need_login") {
     lite <- isTRUE(tryCatch(isolate(input$ynow_lite_mode), error = function(e) FALSE))
     if (isTRUE(lite)) return(FALSE)
+    mode <- tryCatch(isolate(ynow_pts_self_view_mode()), error = function(e) NULL)
+    mode <- as.character(mode %||% "")[1]
+    if (identical(mode, "omniscient") || identical(mode, "signed_in")) return(FALSE)
     uid <- .ynow_access_subject_id()
     denied <- if (exists("ynow_guest_download_denied", mode = "function")) {
       isTRUE(ynow_guest_download_denied(uid, lite = FALSE))
@@ -1224,8 +1258,19 @@ server <- function(input, output, session) {
     if (isTRUE(lite)) {
       return(list(ok = TRUE, kind = "lite"))
     }
+    # Omniscient self-view: lift download gates for admin preview.
+    if (identical(uid, "__omniscient__") ||
+        identical(as.character(
+          tryCatch(isolate(ynow_pts_self_view_mode()), error = function(e) NULL) %||% ""
+        )[1], "omniscient")) {
+      return(list(ok = TRUE, kind = "omniscient"))
+    }
     if (!auth_on || !claim_ok) {
       return(list(ok = TRUE, kind = "bypass"))
+    }
+    # Signed-in self-view: past login gate; skip real FYN claim (no wallet).
+    if (identical(uid, "__self_member__")) {
+      return(list(ok = TRUE, kind = "self_signed_in"))
     }
     if (!nzchar(uid)) {
       msg <- .lab("pdf_need_login", "Sign in to download the valuation report (PDF).")
@@ -1269,6 +1314,7 @@ server <- function(input, output, session) {
     tryCatch(ynow_auth$is_logged_in(), error = function(e) FALSE)
     tryCatch(ynow_auth$user(), error = function(e) NULL)
     ynow_pts_view_as()
+    ynow_pts_self_view_mode()
     .ynow_push_access_locks()
     .ynow_push_maintenance()
   })
@@ -1375,6 +1421,66 @@ server <- function(input, output, session) {
     .ynow_view_as_push_chrome(va)
   })
 
+  #' Push / clear self view chrome (guest / signed_in / omniscient).
+  .ynow_self_view_push_chrome <- function(mode = NULL) {
+    loc <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "en")
+    .lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
+    if (is.null(mode)) {
+      mode <- tryCatch(ynow_pts_self_view_mode(), error = function(e) NULL)
+    }
+    mode <- as.character(mode %||% "")[1]
+    if (!mode %in% c("guest", "signed_in", "omniscient")) {
+      tryCatch(
+        session$sendCustomMessage("ynowSelfViewMode", list(mode = "")),
+        error = function(e) NULL
+      )
+      return(invisible(FALSE))
+    }
+    mode_lab <- switch(
+      mode,
+      guest = .lab("pts_sysadmin_self_guest", "Guest mode"),
+      signed_in = .lab("pts_sysadmin_self_signed_in", "Signed-in user mode"),
+      omniscient = .lab("pts_sysadmin_self_omniscient", "Omniscient mode"),
+      mode
+    )
+    hint <- switch(
+      mode,
+      guest = .lab(
+        "pts_sysadmin_self_chrome_guest",
+        "Guest mode: locks and hides match all-user guest restrictions."
+      ),
+      signed_in = .lab(
+        "pts_sysadmin_self_chrome_signed_in",
+        "Signed-in user mode: only all-user member restrictions (no per-user overrides)."
+      ),
+      omniscient = .lab(
+        "pts_sysadmin_self_chrome_omniscient",
+        "Omniscient mode: all feature locks and hides lifted. Title Loading is warning red."
+      ),
+      ""
+    )
+    tryCatch(
+      session$sendCustomMessage(
+        "ynowSelfViewMode",
+        list(
+          mode = mode,
+          mode_label = mode_lab,
+          active_label = .lab("pts_sysadmin_self_active", "Self view active"),
+          hint = hint,
+          exit_label = .lab("pts_sysadmin_self_exit", "Exit self view"),
+          label_sign_out = .lab("auth_sign_out", "Sign out")
+        )
+      ),
+      error = function(e) NULL
+    )
+    invisible(TRUE)
+  }
+
+  observe({
+    mode <- ynow_pts_self_view_mode()
+    .ynow_self_view_push_chrome(mode)
+  })
+
   #' Toggle body.ynow-sysadmin-on — hides login/intro chrome when unlocked.
   .ynow_sysadmin_push_mode <- function() {
     on <- isTRUE(tryCatch(ynow_pts_sysadmin_on(), error = function(e) FALSE))
@@ -1383,6 +1489,81 @@ server <- function(input, output, session) {
       error = function(e) NULL
     )
     invisible(on)
+  }
+
+  .ynow_self_view_apply <- function(mode) {
+    mode <- as.character(mode %||% "")[1]
+    if (!mode %in% c("guest", "signed_in", "omniscient")) {
+      return(invisible(FALSE))
+    }
+    if (!isTRUE(ynow_pts_sysadmin_on())) {
+      showNotification(
+        tryCatch(
+          ui_str("pts_sysadmin_need_enter", normalize_ui_locale(ui_locale())),
+          error = function(e) "Sign in to system admin first."
+        ),
+        type = "warning"
+      )
+      return(invisible(FALSE))
+    }
+    # Mutually exclusive with selected-user view-as.
+    ynow_pts_view_as(NULL)
+    .ynow_view_as_push_chrome(NULL)
+    ynow_pts_self_view_mode(mode)
+    .ynow_self_view_push_chrome(mode)
+    tryCatch(.ynow_push_access_locks(), error = function(e) NULL)
+    tryCatch(.ynow_pts_push_banner(), error = function(e) NULL)
+    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "en")
+    .lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
+    ok_key <- switch(
+      mode,
+      guest = "pts_sysadmin_self_guest_ok",
+      signed_in = "pts_sysadmin_self_signed_in_ok",
+      omniscient = "pts_sysadmin_self_omniscient_ok",
+      "pts_sysadmin_self_guest_ok"
+    )
+    ok_fb <- switch(
+      mode,
+      guest = "Guest mode applied.",
+      signed_in = "Signed-in user mode applied (all-user restrictions only).",
+      omniscient = "Omniscient mode applied — all locks and hides lifted. Title is warning red.",
+      "Self view applied."
+    )
+    showNotification(.lab(ok_key, ok_fb), type = "message", duration = 4)
+    tryCatch({
+      if (exists("updateTabItems", mode = "function")) {
+        updateTabItems(session, "sidebar_tabs", "home")
+      }
+      session$sendCustomMessage("ynowGotoTab", list(tab = "home"))
+    }, error = function(e) NULL)
+    ynow_pts_sysadmin_tick(isolate(ynow_pts_sysadmin_tick()) + 1L)
+    invisible(TRUE)
+  }
+
+  .ynow_self_view_clear <- function(notify = TRUE) {
+    had <- !is.null(tryCatch(isolate(ynow_pts_self_view_mode()), error = function(e) NULL))
+    ynow_pts_self_view_mode(NULL)
+    .ynow_self_view_push_chrome(NULL)
+    tryCatch(.ynow_push_access_locks(), error = function(e) NULL)
+    tryCatch(.ynow_pts_push_banner(), error = function(e) NULL)
+    if (isTRUE(notify) && isTRUE(had)) {
+      showNotification(
+        tryCatch(
+          ui_str("pts_sysadmin_self_exit_ok", normalize_ui_locale(ui_locale())),
+          error = function(e) "Exited self view mode."
+        ),
+        type = "message",
+        duration = 3
+      )
+    }
+    tryCatch({
+      if (exists("updateTabItems", mode = "function")) {
+        updateTabItems(session, "sidebar_tabs", "testing")
+      }
+      session$sendCustomMessage("ynowGotoTab", list(tab = "testing"))
+    }, error = function(e) NULL)
+    ynow_pts_sysadmin_tick(isolate(ynow_pts_sysadmin_tick()) + 1L)
+    invisible(TRUE)
   }
 
   .ynow_account_gate_ui <- function(loc) {
@@ -1448,10 +1629,33 @@ server <- function(input, output, session) {
     pyn_lab <- tryCatch(paste0(ui_str("pts_pyn_label", loc), pts_colon), error = function(e) "PYN points:")
     # Sys. Admin portal chrome is ops context, not a member wallet → show ∞.
     # View-as of a specific user still shows that user's real FYN / PYN.
+    # Self-view: guest hides banner; signed-in shows placeholders; omniscient → ∞.
     sys_on <- isTRUE(tryCatch(isolate(ynow_pts_sysadmin_on()), error = function(e) FALSE))
     va <- tryCatch(isolate(ynow_pts_view_as()), error = function(e) NULL)
     view_as_on <- is.list(va) && nzchar(as.character(va$user_id %||% "")[1])
-    if (isTRUE(sys_on) && !isTRUE(view_as_on)) {
+    self_mode <- as.character(
+      tryCatch(isolate(ynow_pts_self_view_mode()), error = function(e) NULL) %||% ""
+    )[1]
+    if (identical(self_mode, "guest")) {
+      session$sendCustomMessage(
+        "ynowPtsBanner",
+        list(fyn = "", pyn = "", fyn_label = fyn_lab, pyn_label = pyn_lab, visible = FALSE)
+      )
+      return(invisible(NULL))
+    }
+    if (identical(self_mode, "signed_in")) {
+      session$sendCustomMessage(
+        "ynowPtsBanner",
+        list(
+          fyn = "—", pyn = "—",
+          fyn_label = fyn_lab, pyn_label = pyn_lab,
+          visible = TRUE
+        )
+      )
+      return(invisible(NULL))
+    }
+    if (identical(self_mode, "omniscient") ||
+        (isTRUE(sys_on) && !isTRUE(view_as_on) && !nzchar(self_mode))) {
       session$sendCustomMessage(
         "ynowPtsBanner",
         list(
@@ -1806,10 +2010,24 @@ server <- function(input, output, session) {
   observeEvent(input$ynow_pts_sysadmin_exit, {
     ynow_pts_sysadmin_on(FALSE)
     ynow_pts_view_as(NULL)
+    ynow_pts_self_view_mode(NULL)
     .ynow_sysadmin_push_mode()
     .ynow_view_as_push_chrome(NULL)
+    .ynow_self_view_push_chrome(NULL)
     tryCatch(.ynow_pts_push_banner(), error = function(e) NULL)
     ynow_pts_sysadmin_tick(isolate(ynow_pts_sysadmin_tick()) + 1L)
+  }, ignoreInit = TRUE)
+  observeEvent(input$ynow_pts_sysadmin_self_guest, {
+    .ynow_self_view_apply("guest")
+  }, ignoreInit = TRUE)
+  observeEvent(input$ynow_pts_sysadmin_self_signed_in, {
+    .ynow_self_view_apply("signed_in")
+  }, ignoreInit = TRUE)
+  observeEvent(input$ynow_pts_sysadmin_self_omniscient, {
+    .ynow_self_view_apply("omniscient")
+  }, ignoreInit = TRUE)
+  observeEvent(input$ynow_pts_sysadmin_self_exit, {
+    .ynow_self_view_clear(notify = TRUE)
   }, ignoreInit = TRUE)
   observeEvent(input$ynow_pts_sysadmin_viewas, {
     if (!isTRUE(ynow_pts_sysadmin_on())) {
@@ -1822,6 +2040,9 @@ server <- function(input, output, session) {
       )
       return()
     }
+    # Mutually exclusive with self view modes.
+    ynow_pts_self_view_mode(NULL)
+    .ynow_self_view_push_chrome(NULL)
     loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
     .lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
     # selectInput value is internal user_id; label (names) is opaque public_id.
@@ -1882,14 +2103,23 @@ server <- function(input, output, session) {
     ynow_pts_sysadmin_tick(isolate(ynow_pts_sysadmin_tick()) + 1L)
   }, ignoreInit = TRUE)
 
-  # Sign out during view-as = exit user preview (ops admin is not email-authed).
+  # Sign out during view-as / self-view = exit preview (ops admin is not email-authed).
   .ynow_view_as_exit_from_signout <- function() {
     va <- tryCatch(isolate(ynow_pts_view_as()), error = function(e) NULL)
-    if (!is.list(va) || !nzchar(as.character(va$user_id %||% "")[1])) {
-      return(invisible(FALSE))
+    self_mode <- tryCatch(isolate(ynow_pts_self_view_mode()), error = function(e) NULL)
+    cleared <- FALSE
+    if (is.list(va) && nzchar(as.character(va$user_id %||% "")[1])) {
+      ynow_pts_view_as(NULL)
+      .ynow_view_as_push_chrome(NULL)
+      cleared <- TRUE
     }
-    ynow_pts_view_as(NULL)
-    .ynow_view_as_push_chrome(NULL)
+    if (!is.null(self_mode) && nzchar(as.character(self_mode %||% "")[1])) {
+      ynow_pts_self_view_mode(NULL)
+      .ynow_self_view_push_chrome(NULL)
+      tryCatch(.ynow_push_access_locks(), error = function(e) NULL)
+      cleared <- TRUE
+    }
+    if (!isTRUE(cleared)) return(invisible(FALSE))
     tryCatch(.ynow_pts_push_banner(), error = function(e) NULL)
     tryCatch({
       if (exists("updateTabItems", mode = "function")) {

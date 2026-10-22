@@ -3343,8 +3343,8 @@ beta_rolling_section_ui <- function() {
                 )
               )
             ),
-            # Unlocked (not view-as): Leave + Switch view only (stable bindings).
-            # View-as exit lives only in the fixed chrome bar.
+            # Unlocked (not view-as / self-view): Leave + Switch view + self modes.
+            # View-as / self-view exit lives in the fixed chrome bar.
             tags$div(
               class = "ynow-sysadmin-unlocked-actions",
               style = "margin-top: 8px; display:none; flex-wrap:wrap; gap:8px; align-items:center;",
@@ -3363,6 +3363,51 @@ beta_rolling_section_ui <- function() {
                   "Switch view"
                 ),
                 class = "btn-info"
+              ),
+              tags$span(
+                class = "ynow-sysadmin-self-view-group",
+                style = "display:inline-flex; flex-wrap:wrap; gap:8px; align-items:center;",
+                tags$span(
+                  id = "ynow_pts_sysadmin_self_view_label",
+                  style = "font-weight:600; color:#444;",
+                  "Self view"
+                ),
+                actionButton(
+                  "ynow_pts_sysadmin_self_guest",
+                  label = tags$span(
+                    id = "ynow_pts_sysadmin_self_guest_label",
+                    "Guest mode"
+                  ),
+                  class = "btn-default btn-sm",
+                  title = "Quick apply guest restrictions"
+                ),
+                actionButton(
+                  "ynow_pts_sysadmin_self_signed_in",
+                  label = tags$span(
+                    id = "ynow_pts_sysadmin_self_signed_in_label",
+                    "Signed-in user mode"
+                  ),
+                  class = "btn-default btn-sm",
+                  title = "Quick apply all-user member restrictions"
+                ),
+                actionButton(
+                  "ynow_pts_sysadmin_self_omniscient",
+                  label = tags$span(
+                    id = "ynow_pts_sysadmin_self_omniscient_label",
+                    "Omniscient mode"
+                  ),
+                  class = "btn-warning btn-sm",
+                  title = "Quick apply — lift all locks and hides"
+                )
+              )
+            ),
+            tags$p(
+              id = "ynow_pts_sysadmin_self_help",
+              class = "ynow-sysadmin-unlocked-actions text-muted",
+              style = "margin:6px 0 0; font-size:12px; line-height:1.45; display:none;",
+              paste0(
+                "Quick apply self view (guest / signed-in / omniscient). ",
+                "Separate from Switch view of a selected user."
               )
             ),
             uiOutput("ynow_pts_sysadmin_panel")
@@ -3910,6 +3955,36 @@ ui <- dashboardPage(
         )
       )
     ),
+    # Self view chrome: guest / signed-in / omniscient (admin preview of self).
+    tags$div(
+      id = "ynow_selfview_chrome",
+      class = "ynow-selfview-chrome",
+      role = "status",
+      `aria-live` = "polite",
+      tags$strong(
+        id = "ynow_selfview_chrome_active_label",
+        "Self view active"
+      ),
+      tags$span(
+        id = "ynow_selfview_chrome_mode",
+        class = "ynow-selfview-chrome-mode",
+        ""
+      ),
+      tags$span(
+        id = "ynow_selfview_chrome_hint",
+        style = "opacity:0.92;",
+        "Self view mode is active."
+      ),
+      tags$button(
+        id = "ynow_selfview_chrome_exit",
+        type = "button",
+        class = "btn btn-default btn-sm",
+        tags$span(
+          id = "ynow_selfview_chrome_exit_label",
+          "Exit self view"
+        )
+      )
+    ),
     # C-STRUCT-02 seam 2: cookie banner / panel / reopen + prefs JS (sibling).
     .ynow_cookie_notice_ui(),
     # Account login modal/CSS — omit when disabled (do not inject NULL children)
@@ -4425,6 +4500,26 @@ ui <- dashboardPage(
         body.ynow-view-as .main-header .logo .ynow-app-title.is-complete .ynow-app-title-fill-inner {
           animation: ynow-silver-shine 2.6s ease-in-out infinite;
         }
+        /* Omniscient self-view: warning-red title (clear admin cue; after silver) */
+        body.ynow-omniscient .main-header .logo {
+          color: #DC3545 !important;
+        }
+        body.ynow-omniscient .main-header .logo .ynow-app-title-base {
+          color: rgba(220, 53, 69, 0.42) !important;
+          -webkit-text-fill-color: rgba(220, 53, 69, 0.42);
+        }
+        body.ynow-omniscient .main-header .logo .ynow-app-title-fill-inner {
+          color: #DC3545 !important;
+          background-image: none !important;
+          background-color: transparent !important;
+          -webkit-background-clip: border-box;
+          background-clip: border-box;
+          -webkit-text-fill-color: #DC3545 !important;
+          animation: none !important;
+        }
+        body.ynow-omniscient .main-header .logo .ynow-app-title.is-complete .ynow-app-title-fill-inner {
+          animation: none !important;
+        }
         @supports not ((-webkit-background-clip: text) or (background-clip: text)) {
           .main-header .logo .ynow-app-title-fill-inner {
             -webkit-text-fill-color: #FFD700 !important;
@@ -4452,6 +4547,16 @@ ui <- dashboardPage(
             color: rgba(192, 192, 192, 0.4) !important;
             -webkit-text-fill-color: rgba(192, 192, 192, 0.4);
           }
+          body.ynow-omniscient .main-header .logo .ynow-app-title-fill-inner {
+            -webkit-text-fill-color: #DC3545 !important;
+            color: #DC3545 !important;
+            background-image: none !important;
+            text-shadow: none;
+          }
+          body.ynow-omniscient .main-header .logo .ynow-app-title-base {
+            color: rgba(220, 53, 69, 0.42) !important;
+            -webkit-text-fill-color: rgba(220, 53, 69, 0.42);
+          }
         }
         /* Fixed chrome while view-as is active (exit back to system admin) */
         .ynow-viewas-chrome {
@@ -4476,6 +4581,43 @@ ui <- dashboardPage(
         }
         body.ynow-view-as .ynow-viewas-chrome {
           display: flex;
+        }
+        /* Self view chrome (guest / signed-in / omniscient) */
+        .ynow-selfview-chrome {
+          display: none;
+          position: fixed;
+          z-index: 19000;
+          left: 50%;
+          transform: translateX(-50%);
+          top: 8px;
+          max-width: min(920px, calc(100vw - 24px));
+          padding: 8px 12px;
+          border-radius: 6px;
+          background: rgba(32, 32, 36, 0.92);
+          color: #f0f0f0;
+          border: 1px solid rgba(220, 53, 69, 0.45);
+          box-shadow: 0 4px 18px rgba(0, 0, 0, 0.28);
+          font-size: 13px;
+          line-height: 1.4;
+          align-items: center;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+        body.ynow-self-view .ynow-selfview-chrome {
+          display: flex;
+        }
+        body.ynow-omniscient .ynow-selfview-chrome {
+          border-color: rgba(220, 53, 69, 0.85);
+        }
+        .ynow-selfview-chrome-mode {
+          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+          font-size: 12px;
+          padding: 1px 6px;
+          border-radius: 3px;
+          background: rgba(255, 255, 255, 0.08);
+        }
+        body.ynow-omniscient .ynow-selfview-chrome-mode {
+          color: #ff8a95;
         }
         .ynow-viewas-chrome code {
           color: #e8e8e8;
@@ -5227,13 +5369,21 @@ ui <- dashboardPage(
         body.ynow-sysadmin-on #ynow_pts_sysadmin_need_enter {
           display: none !important;
         }
-        body.ynow-sysadmin-on:not(.ynow-view-as) .ynow-sysadmin-unlocked-actions {
+        body.ynow-sysadmin-on:not(.ynow-view-as):not(.ynow-self-view) .ynow-sysadmin-unlocked-actions {
           display: flex !important;
         }
-        /* View-as: hide grant workspace; exit lives only in fixed chrome */
+        body.ynow-sysadmin-on:not(.ynow-view-as):not(.ynow-self-view) #ynow_pts_sysadmin_self_help {
+          display: block !important;
+        }
+        /* View-as / self-view: hide grant workspace; exit lives only in fixed chrome */
         body.ynow-view-as .ynow-sysadmin-unlocked-actions,
         body.ynow-view-as .ynow-pts-sysadmin-box,
-        body.ynow-view-as .ynow-sysadmin-login-chrome {
+        body.ynow-view-as .ynow-sysadmin-login-chrome,
+        body.ynow-view-as #ynow_pts_sysadmin_self_help,
+        body.ynow-self-view .ynow-sysadmin-unlocked-actions,
+        body.ynow-self-view .ynow-pts-sysadmin-box,
+        body.ynow-self-view .ynow-sysadmin-login-chrome,
+        body.ynow-self-view #ynow_pts_sysadmin_self_help {
           display: none !important;
         }
         @media (max-width: 767px) {
@@ -11460,6 +11610,24 @@ ui <- dashboardPage(
             if (vaChromeHint && s.pts_sysadmin_viewas_chrome_hint) vaChromeHint.textContent = s.pts_sysadmin_viewas_chrome_hint;
             var vaChromeExit = document.getElementById('ynow_viewas_chrome_exit_label');
             if (vaChromeExit && s.pts_sysadmin_viewas_exit) vaChromeExit.textContent = s.pts_sysadmin_viewas_exit;
+            var selfViewLab = document.getElementById('ynow_pts_sysadmin_self_view_label');
+            if (selfViewLab && s.pts_sysadmin_self_view_label) selfViewLab.textContent = s.pts_sysadmin_self_view_label;
+            var selfGuestLab = document.getElementById('ynow_pts_sysadmin_self_guest_label');
+            if (selfGuestLab && s.pts_sysadmin_self_guest) selfGuestLab.textContent = s.pts_sysadmin_self_guest;
+            var selfSignedLab = document.getElementById('ynow_pts_sysadmin_self_signed_in_label');
+            if (selfSignedLab && s.pts_sysadmin_self_signed_in) selfSignedLab.textContent = s.pts_sysadmin_self_signed_in;
+            var selfOmniLab = document.getElementById('ynow_pts_sysadmin_self_omniscient_label');
+            if (selfOmniLab && s.pts_sysadmin_self_omniscient) selfOmniLab.textContent = s.pts_sysadmin_self_omniscient;
+            var selfHelp = document.getElementById('ynow_pts_sysadmin_self_help');
+            if (selfHelp && s.pts_sysadmin_self_help) selfHelp.textContent = s.pts_sysadmin_self_help;
+            var svChromeActive = document.getElementById('ynow_selfview_chrome_active_label');
+            if (svChromeActive && s.pts_sysadmin_self_active) svChromeActive.textContent = s.pts_sysadmin_self_active;
+            var svChromeExit = document.getElementById('ynow_selfview_chrome_exit_label');
+            if (svChromeExit && s.pts_sysadmin_self_exit) svChromeExit.textContent = s.pts_sysadmin_self_exit;
+            /* Refresh self-view chrome hint/mode labels if a mode is already active. */
+            if (typeof window.ynowRefreshSelfViewChromeLocale === 'function') {
+              try { window.ynowRefreshSelfViewChromeLocale(s); } catch (eSvLoc) {}
+            }
             var ptsColon = (payload && payload.locale === 'zh-TW') ? '：' : ':';
             var ptsHdrForLocale = document.getElementById('ynow-pts-header');
             var ptsSideForLocale = document.getElementById('ynow-pts-sidebar');
@@ -12092,6 +12260,10 @@ ui <- dashboardPage(
                 /* Lite omits snap_defaults entirely — do not force that locked tab. */
               } else {
                 document.body.classList.remove('ynow-sysadmin-on');
+                /* Leaving portal also clears self-view chrome classes. */
+                document.body.classList.remove('ynow-self-view', 'ynow-omniscient',
+                  'ynow-self-view-guest', 'ynow-self-view-signed-in');
+                window.__ynowSelfViewMode = '';
                 try {
                   var activeSnap = document.querySelector('#snapshot_report .nav-tabs li.active a');
                   var onDefaults = activeSnap &&
@@ -12106,6 +12278,87 @@ ui <- dashboardPage(
                     }
                   }
                 } catch (eOff) {}
+              }
+            });
+            window.__ynowSelfViewMode = window.__ynowSelfViewMode || '';
+            window.ynowRefreshSelfViewChromeLocale = function (s) {
+              if (!s) return;
+              var mode = window.__ynowSelfViewMode || '';
+              var modeEl = document.getElementById('ynow_selfview_chrome_mode');
+              var hintEl = document.getElementById('ynow_selfview_chrome_hint');
+              var modeLab = '';
+              var hint = '';
+              if (mode === 'guest') {
+                modeLab = s.pts_sysadmin_self_guest || 'Guest mode';
+                hint = s.pts_sysadmin_self_chrome_guest || '';
+              } else if (mode === 'signed_in') {
+                modeLab = s.pts_sysadmin_self_signed_in || 'Signed-in user mode';
+                hint = s.pts_sysadmin_self_chrome_signed_in || '';
+              } else if (mode === 'omniscient') {
+                modeLab = s.pts_sysadmin_self_omniscient || 'Omniscient mode';
+                hint = s.pts_sysadmin_self_chrome_omniscient || '';
+              }
+              if (modeEl && modeLab) modeEl.textContent = modeLab;
+              if (hintEl && hint) hintEl.textContent = hint;
+            };
+            addHandler('ynowSelfViewMode', function (payload) {
+              if (!payload) return;
+              var mode = String(payload.mode || '').toLowerCase();
+              var on = mode === 'guest' || mode === 'signed_in' || mode === 'omniscient';
+              document.body.classList.remove(
+                'ynow-self-view', 'ynow-omniscient',
+                'ynow-self-view-guest', 'ynow-self-view-signed-in'
+              );
+              window.__ynowSelfViewMode = on ? mode : '';
+              if (on) {
+                document.body.classList.add('ynow-self-view');
+                if (mode === 'guest') {
+                  document.body.classList.add('ynow-self-view-guest');
+                  document.body.classList.remove('ynow-authed');
+                  window.__ynowSelfViewSessionLike = false;
+                  window.ynowApplySessionLikeAuthChrome(false, null);
+                } else if (mode === 'signed_in') {
+                  document.body.classList.add('ynow-self-view-signed-in');
+                  document.body.classList.add('ynow-authed');
+                  window.__ynowSelfViewSessionLike = true;
+                  window.ynowApplySessionLikeAuthChrome(true, {
+                    label_sign_out: payload.label_sign_out || ''
+                  });
+                } else if (mode === 'omniscient') {
+                  document.body.classList.add('ynow-omniscient');
+                  document.body.classList.add('ynow-authed');
+                  window.__ynowSelfViewSessionLike = true;
+                  window.ynowApplySessionLikeAuthChrome(true, {
+                    label_sign_out: payload.label_sign_out || ''
+                  });
+                }
+              } else {
+                window.__ynowSelfViewSessionLike = false;
+                /* Restore real auth chrome unless view-as is still faking it. */
+                if (window.__ynowViewAsSessionLike) {
+                  document.body.classList.add('ynow-authed');
+                  window.ynowApplySessionLikeAuthChrome(true, null);
+                } else if (!window.__ynowRealAuthed) {
+                  document.body.classList.remove('ynow-authed');
+                  window.ynowApplySessionLikeAuthChrome(false, null);
+                } else {
+                  document.body.classList.add('ynow-authed');
+                  window.ynowApplySessionLikeAuthChrome(true, null);
+                }
+              }
+              var actEl = document.getElementById('ynow_selfview_chrome_active_label');
+              if (actEl && payload.active_label) actEl.textContent = String(payload.active_label);
+              var modeEl = document.getElementById('ynow_selfview_chrome_mode');
+              if (modeEl) modeEl.textContent = on && payload.mode_label ? String(payload.mode_label) : '';
+              var hintEl = document.getElementById('ynow_selfview_chrome_hint');
+              if (hintEl && payload.hint) hintEl.textContent = String(payload.hint);
+              var exitLab = document.getElementById('ynow_selfview_chrome_exit_label');
+              if (exitLab && payload.exit_label) exitLab.textContent = String(payload.exit_label);
+              if (typeof window.ynowApplyAccessLocks === 'function') {
+                try { window.ynowApplyAccessLocks(); } catch (eAl) {}
+              }
+              if (typeof window.ynowSyncGuestSidebarLocked === 'function') {
+                try { window.ynowSyncGuestSidebarLocked(); } catch (eGs) {}
               }
             });
             function ynowEnsureAtxLockPromo(pane) {
@@ -12202,6 +12455,9 @@ ui <- dashboardPage(
             window.ynowApplyAccessLocks = function () {
               var entries = window.__ynowAccessEntries || [];
               var note = window.__ynowAccessLockNote || '';
+              /* Omniscient self-view: lift every ACL lock/hide (entries ignored). */
+              var omniscient = !!(document.body && document.body.classList.contains('ynow-omniscient'));
+              if (omniscient) entries = [];
               document.querySelectorAll('i.ynow-access-lock, i.ynow-inner-tab-lock').forEach(function (el) {
                 if (el.parentNode) el.parentNode.removeChild(el);
               });
@@ -12239,6 +12495,12 @@ ui <- dashboardPage(
                 );
                 el.removeAttribute('data-lock-note');
               });
+              if (omniscient) {
+                if (typeof window.ynowSyncGuestSidebarLocked === 'function') {
+                  window.ynowSyncGuestSidebarLocked();
+                }
+                return;
+              }
               entries.forEach(function (row) {
                 if (!row || !row.id) return;
                 var id = String(row.id);
@@ -12341,16 +12603,31 @@ ui <- dashboardPage(
               };
               /* Tier B / points-gated sidebar tabs: keep locked chrome after auth. */
               var persist = window.__YNOW_SIDEBAR_PERSIST_LOCK_TABS || {};
-              /* View-as is a signed-in preview of the target user — not guest-locked. */
+              var omniscient = !!(document.body && document.body.classList.contains('ynow-omniscient'));
+              /* View-as / signed-in self-view / omniscient are signed-in previews — not guest-locked. */
               var guest = !!(document.body &&
                 document.body.classList.contains('ynow-auth-feature') &&
                 !document.body.classList.contains('ynow-lite') &&
                 !document.body.classList.contains('ynow-authed') &&
-                !document.body.classList.contains('ynow-view-as'));
+                !document.body.classList.contains('ynow-view-as') &&
+                !document.body.classList.contains('ynow-omniscient'));
               document.querySelectorAll('.sidebar-menu a[data-value]').forEach(function (a) {
                 var tab = a.getAttribute('data-value') || '';
                 var li = a.closest ? a.closest('li') : a.parentElement;
                 if (!li || !li.classList) return;
+                if (omniscient) {
+                  /* Lift guest + persist B chrome; ACL already cleared by applyAccessLocks. */
+                  li.classList.remove('ynow-sidebar-locked');
+                  var glyph = a.querySelector('.ynow-menu-lock:not(.ynow-access-lock)');
+                  if (glyph && glyph.parentNode && !li.classList.contains('ynow-access-locked-nav')) {
+                    /* Keep ACL lock glyph only if somehow still marked; otherwise drop freemium glyph. */
+                  }
+                  if (tabs[tab] || persist[tab]) {
+                    var g0 = a.querySelector(':scope > .ynow-menu-lock');
+                    if (g0 && g0.parentNode) g0.parentNode.removeChild(g0);
+                  }
+                  return;
+                }
                 /* Still-locked after auth: ACL + persist B — same chrome as guest. */
                 if (li.classList.contains('ynow-access-locked-nav') || persist[tab]) {
                   li.classList.add('ynow-sidebar-locked');
@@ -12516,6 +12793,19 @@ ui <- dashboardPage(
                 Shiny.setInputValue(
                   'ynow_pts_sysadmin_viewas_exit',
                   (window.__ynowViewAsExitClicks = (window.__ynowViewAsExitClicks || 0) + 1),
+                  { priority: 'event' }
+                );
+              });
+            })();
+            (function bindSelfViewChromeExit() {
+              var btn = document.getElementById('ynow_selfview_chrome_exit');
+              if (!btn || btn.__ynowBound) return;
+              btn.__ynowBound = true;
+              btn.addEventListener('click', function () {
+                if (!window.Shiny || !Shiny.setInputValue) return;
+                Shiny.setInputValue(
+                  'ynow_pts_sysadmin_self_exit',
+                  (window.__ynowSelfViewExitClicks = (window.__ynowSelfViewExitClicks || 0) + 1),
                   { priority: 'event' }
                 );
               });
@@ -12845,8 +13135,12 @@ ui <- dashboardPage(
               var realLoggedIn = !!(payload.logged_in);
               window.__ynowRealAuthed = realLoggedIn;
               var viewAs = !!(document.body && document.body.classList.contains('ynow-view-as'));
-              /* View-as keeps session-like chrome even when ops admin is not email-authed. */
-              var loggedIn = realLoggedIn || viewAs;
+              var selfMode = window.__ynowSelfViewMode || '';
+              /* Self-view guest forces guest chrome; signed_in / omniscient force member chrome. */
+              var selfSigned = (selfMode === 'signed_in' || selfMode === 'omniscient');
+              var selfGuest = (selfMode === 'guest');
+              /* View-as / self signed-in keep session-like chrome even when ops admin is not email-authed. */
+              var loggedIn = selfGuest ? false : (realLoggedIn || viewAs || selfSigned);
               if (loggedIn) document.body.classList.add('ynow-authed');
               else {
                 document.body.classList.remove('ynow-authed');

@@ -548,7 +548,9 @@ check("view-as mirrors target user session UI (authed chrome + unlocks)", {
     grepl("session_like = TRUE", srv, fixed = TRUE) &&
     grepl("!document.body.classList.contains('ynow-view-as')", ui, fixed = TRUE) &&
     grepl("var viewAs = !!(document.body && document.body.classList.contains('ynow-view-as'))", ui, fixed = TRUE) &&
-    grepl("var loggedIn = realLoggedIn || viewAs", ui, fixed = TRUE) &&
+    # Auth chrome: view-as OR self signed-in/omniscient; self-guest forces guest.
+    grepl("realLoggedIn || viewAs", ui, fixed = TRUE) &&
+    grepl("__ynowSelfViewMode", ui, fixed = TRUE) &&
     grepl(".ynow_view_as_exit_from_signout", srv, fixed = TRUE) &&
     grepl("push_auth_state", srv, fixed = TRUE) &&
     grepl("Chrome, unlocks, balances, and prefs", ui_str("pts_sysadmin_viewas_chrome_hint", "en"), fixed = TRUE) &&
