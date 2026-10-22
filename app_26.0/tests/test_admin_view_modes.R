@@ -140,6 +140,68 @@ check("Exit omniscient restores via clearing ynow-omniscient class", {
     grepl("classList.remove(\\s*'ynow-self-view',\\s*'ynow-omniscient'", ui, perl = TRUE)
 })
 
+check("Signed-in / omniscient self-view opens Account+Settings (not guest-gated)", {
+  grepl(".ynow_self_view_is_member_like", srv, fixed = TRUE) &&
+    grepl(".ynow_self_view_preview_user", srv, fixed = TRUE) &&
+    grepl('identical(mode, "signed_in") || identical(mode, "omniscient")', srv, fixed = TRUE) &&
+    grepl("settings_self_view_toast", srv, fixed = TRUE) &&
+    grepl("Settings applied for this self view", srv, fixed = TRUE) &&
+    # Account / Settings / Points panels re-render on self-view apply.
+    grepl("ynow_pts_panel_tick(isolate(ynow_pts_panel_tick()) + 1L)", srv, fixed = TRUE) &&
+    grepl("tryCatch(ynow_pts_self_view_mode(), error = function(e) NULL)", srv, fixed = TRUE) &&
+    # Gate returns NULL for member-like self-view before real auth$user check.
+    grepl(
+      "Self-view: signed-in / omniscient open Account+Settings like a real member",
+      srv,
+      fixed = TRUE
+    ) &&
+    # Client: signed_in / omniscient add ynow-authed (CSS unhides Settings/Account).
+    grepl("ynow-self-view-signed-in", ui, fixed = TRUE) &&
+    grepl("document.body.classList.add('ynow-authed')", ui, fixed = TRUE)
+})
+
+check("Locale Settings self-view toast + signed-in chrome mentions Account", {
+  en_toast <- ui_str("settings_self_view_toast", "en")
+  zh_toast <- ui_str("settings_self_view_toast", "zh-TW")
+  en_chrome <- ui_str("pts_sysadmin_self_chrome_signed_in", "en")
+  zh_chrome <- ui_str("pts_sysadmin_self_chrome_signed_in", "zh-TW")
+  nzchar(en_toast) && nzchar(zh_toast) &&
+    grepl("self view", en_toast, ignore.case = TRUE) &&
+    grepl("自身視角", zh_toast, fixed = TRUE) &&
+    !grepl("一鍵|默认|数据|参数", zh_toast) &&
+    grepl("Settings and Account", en_chrome, fixed = TRUE) &&
+    grepl("設定與帳號", zh_chrome, fixed = TRUE)
+})
+
+# Permission matrix (static): CSS hide vs lock vs lift.
+auth <- paste(
+  readLines(file.path(app_dir, "auth_account.R"), warn = FALSE, encoding = "UTF-8"),
+  collapse = "\n"
+)
+check("Matrix: guest CSS-hides Settings+Account until ynow-authed", {
+  grepl(
+    "body.ynow-auth-feature:not(.ynow-authed) .sidebar-menu a[data-value=\\\"settings\\\"]",
+    auth,
+    fixed = TRUE
+  ) || grepl(
+    'body.ynow-auth-feature:not(.ynow-authed) .sidebar-menu a[data-value="settings"]',
+    auth,
+    fixed = TRUE
+  )
+})
+
+check("Matrix: signed-in self-view forces member chrome (ynow-authed)", {
+  grepl("mode === 'signed_in'", ui, fixed = TRUE) &&
+    grepl("ynow-self-view-signed-in", ui, fixed = TRUE) &&
+    grepl("selfSigned = (selfMode === 'signed_in' || selfMode === 'omniscient')", ui, fixed = TRUE)
+})
+
+check("Matrix: omniscient clears ACL entries client-side", {
+  grepl("if (omniscient) entries = []", ui, fixed = TRUE) &&
+    grepl("body.ynow-omniscient .main-header .logo", ui, fixed = TRUE) &&
+    grepl("#DC3545", ui, fixed = TRUE)
+})
+
 cat("\nSummary: PASS=", .pass, " FAIL=", .fail, "\n", sep = "")
 if (.fail > 0L) quit(status = 1L)
 invisible(NULL)
