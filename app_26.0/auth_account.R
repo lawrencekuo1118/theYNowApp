@@ -1257,8 +1257,14 @@ ynow_auth_css <- function() {
     ".ynow-member-gate { display:none; }",
     "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .ynow-member-gate { display:block !important; }",
     "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .ynow-member-body { display:none !important; }",
+    # Guest: dim bell affordance (Full). Keep Macro dark-card bells readable —
+    # opacity alone on black-on-ink made 到值通知 look missing on Macro.
     "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .ynow-alert-bell {",
-    "  opacity:0.35; pointer-events:none; cursor:not-allowed;",
+    "  opacity:0.55; pointer-events:none; cursor:not-allowed;",
+    "}",
+    "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .ynow-macro-kpi-row .ynow-alert-bell,",
+    "body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .ynow-alertable:has(> .ynow-macro-kpi) .ynow-alert-bell {",
+    "  color: rgba(255, 255, 255, 0.5); opacity:0.7;",
     "}",
     # Account maintenance: flat block (Blue Chip ind-mcap style) + page-scoped themes
     ".ynow-admin-panel,",

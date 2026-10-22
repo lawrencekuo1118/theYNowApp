@@ -571,6 +571,8 @@ price_alert_check_store <- function(path = price_alert_store_path(), send_fn = p
 #' Wrap a KPI / card so right-click / long-press can open the quick alert modal.
 #' Set ready=FALSE when the value needs Search/Run first.
 #' A small translucent bell sits at the inner top-right of ready/blocked targets.
+#' Bell is appended after the wrapped UI so it paints above `.small-box` / Macro KPI
+#' chrome (preceding-sibling bells were covered on Model Dashboard valueBoxes).
 ynow_alertable <- function(
   ...,
   metric,
@@ -582,6 +584,17 @@ ynow_alertable <- function(
   fair_value = NA_real_
 ) {
   ready_flag <- if (isTRUE(ready) && is.finite(suppressWarnings(as.numeric(value)[1]))) "1" else "0"
+  bell <- tags$span(
+    class = "ynow-alert-bell",
+    `aria-hidden` = "true",
+    HTML(
+      paste0(
+        '<svg viewBox="0 0 24 24" width="14" height="14" focusable="false">',
+        '<path fill="currentColor" d="M12 22a2.2 2.2 0 0 0 2.2-2.2h-4.4A2.2 2.2 0 0 0 12 22zm6.4-6.2V11a6.4 6.4 0 0 0-5.1-6.3V4a1.3 1.3 0 1 0-2.6 0v.7A6.4 6.4 0 0 0 5.6 11v4.8L4 17.4V18h16v-.6l-1.6-1.6z"/>',
+        "</svg>"
+      )
+    )
+  )
   tags$div(
     class = paste(
       "ynow-alertable",
@@ -603,18 +616,8 @@ ynow_alertable <- function(
     } else {
       ""
     },
-    tags$span(
-      class = "ynow-alert-bell",
-      `aria-hidden` = "true",
-      HTML(
-        paste0(
-          '<svg viewBox="0 0 24 24" width="14" height="14" focusable="false">',
-          '<path fill="currentColor" d="M12 22a2.2 2.2 0 0 0 2.2-2.2h-4.4A2.2 2.2 0 0 0 12 22zm6.4-6.2V11a6.4 6.4 0 0 0-5.1-6.3V4a1.3 1.3 0 1 0-2.6 0v.7A6.4 6.4 0 0 0 5.6 11v4.8L4 17.4V18h16v-.6l-1.6-1.6z"/>',
-          "</svg>"
-        )
-      )
-    ),
-    ...
+    ...,
+    bell
   )
 }
 
