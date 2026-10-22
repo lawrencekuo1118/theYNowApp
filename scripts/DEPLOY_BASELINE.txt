@@ -7,5 +7,5 @@ commit=1a5d8e7b0837e74a357103095f5771c09fc80a48
 short=1a5d8e7b
 message=chore: bump display version to v26.49
 captured_at=2026-10-22T15:44:21Z
-display_version=v26.49
+display_version=v26.50
 note=Canonical live line is app_26.0. Bundle 12725872: Macro index KPIs finish before HTCDI Yahoo-gate work; short chart quotes; inline Rf; empty get_last_quotes falls through (#417).
