@@ -1,6 +1,11 @@
-# TW earnings-call — Fugle memo + AlphaMemo outbound + SA last-resort; honest empty.
+# TW earnings-call — FinmoConf PDF + Fugle memo + AlphaMemo outbound + SA last-resort; honest empty.
 # Run: cd app_26.0 && Rscript tests/test_tw_earnings_call.R
-Sys.setenv(YNOW_DEBUG_SKIP_PY = "1", YNOW_SA_SCRAPE = "0", YNOW_FUGLE_SCRAPE = "0")
+Sys.setenv(
+  YNOW_DEBUG_SKIP_PY = "1",
+  YNOW_SA_SCRAPE = "0",
+  YNOW_FUGLE_SCRAPE = "0",
+  YNOW_FINMOCONF_SCRAPE = "0"
+)
 
 app_dir <- if (file.exists("tw_earnings_call.R")) {
   normalizePath(".", winslash = "/", mustWork = TRUE)
@@ -30,6 +35,7 @@ check <- function(label, cond) {
 source("seeking_alpha_earnings_call.R", local = TRUE, encoding = "UTF-8")
 source("us_earnings_call.R", local = TRUE, encoding = "UTF-8")
 source("fugle_earnings_call.R", local = TRUE, encoding = "UTF-8")
+source("finmoconf_earnings_call.R", local = TRUE, encoding = "UTF-8")
 source("tw_earnings_call.R", local = TRUE, encoding = "UTF-8")
 
 check("AlphaMemo index url stable", {
@@ -78,25 +84,28 @@ check("zh extract named customer supplier and themes", {
 
 Sys.setenv(YNOW_SA_SCRAPE = "0", YNOW_FUGLE_SCRAPE = "0")
 got <- ynow_tw_earnings_call_fetch("2330.TW")
-check("TW fetch returns AlphaMemo + Fugle links", {
+check("TW fetch returns AlphaMemo + Fugle + FinmoConf links", {
   is.list(got) &&
     grepl("alphamemo.ai/free-transcripts", got$alphamemo_url %||% "", fixed = TRUE) &&
-    grepl("blog.fugle.tw/topic/earnings-call-memo", got$fugle_url %||% "", fixed = TRUE)
+    grepl("blog.fugle.tw/topic/earnings-call-memo", got$fugle_url %||% "", fixed = TRUE) &&
+    grepl("finmoconf.diveinvest.net/company/2330", got$finmoconf_url %||% "", fixed = TRUE)
 })
 check("TW fetch honest empty without scrapers", {
   identical(got$status %||% "", "empty") &&
     identical(got$credibility %||% "", "estimate") &&
-    !is.finite(got$backlog %||% NA_real_)
+    !is.finite(got$backlog %||% NA_real_) &&
+    grepl("finmoconf_fugle_empty", got$empty_reason %||% "", fixed = TRUE)
 })
 check("US ticker leave TW path", {
   u <- ynow_tw_earnings_call_fetch("AAPL")
   identical(u$empty_reason %||% "", "us_leave_as_is")
 })
 
-# Fixture-driven Fugle preferred path.
+# Fixture-driven Fugle preferred path (FinmoConf off).
 Sys.setenv(
   YNOW_FUGLE_SCRAPE = "1",
   YNOW_SA_SCRAPE = "0",
+  YNOW_FINMOCONF_SCRAPE = "0",
   YNOW_FUGLE_SCRAPE_FIXTURE_HTML = file.path(app_dir, "tests/fixtures/fugle_earnings_memo_sample.html")
 )
 fugle_got <- ynow_tw_earnings_call_fetch("8182.TW")
@@ -154,34 +163,41 @@ Sys.unsetenv("YNOW_SA_SCRAPE_FIXTURE_HTML")
 Sys.setenv(YNOW_SA_SCRAPE = "0")
 
 disc <- ynow_tw_earnings_call_to_disclosure(got)
-check("TW disclosure shape includes fugle_url", {
-  all(c("status", "alphamemo_url", "fugle_url", "credibility", "source_id") %in% names(disc))
+check("TW disclosure shape includes fugle_url + finmoconf_url", {
+  all(c(
+    "status", "alphamemo_url", "fugle_url", "finmoconf_url",
+    "credibility", "source_id", "supply_chain_notes", "outlook_notes"
+  ) %in% names(disc))
 })
 
 mod <- paste(readLines("business_breakdown_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-check("BBLab wires TW earnings-call fetch + Fugle link", {
+check("BBLab wires TW earnings-call fetch + Fugle + FinmoConf link", {
   grepl("ynow_tw_earnings_call_fetch", mod, fixed = TRUE) &&
     grepl("tw_earnings_call", mod, fixed = TRUE) &&
     grepl("bblab_or_tw_ec_fugle_link", mod, fixed = TRUE) &&
-    grepl("bblab_or_tw_ec_fugle_note", mod, fixed = TRUE)
+    grepl("bblab_or_tw_ec_fugle_note", mod, fixed = TRUE) &&
+    grepl("bblab_or_tw_ec_finmoconf_link", mod, fixed = TRUE)
 })
-check("global sources fugle before tw", {
+check("global sources fugle/finmoconf before tw", {
   g <- paste(readLines("global.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   fi <- regexpr('source("fugle_earnings_call.R"', g, fixed = TRUE)
+  fc <- regexpr('source("finmoconf_earnings_call.R"', g, fixed = TRUE)
   ti <- regexpr('source("tw_earnings_call.R"', g, fixed = TRUE)
-  fi > 0L && ti > fi &&
+  fi > 0L && fc > 0L && ti > fi && ti > fc &&
     grepl('source("seeking_alpha_earnings_call.R"', g, fixed = TRUE)
 })
 loc <- paste(readLines("ui_locale.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-check("locale en + zh-TW TW EC + Fugle + last_resort", {
+check("locale en + zh-TW TW EC + Fugle + FinmoConf + last_resort", {
   grepl("bblab_or_tw_ec_empty", loc, fixed = TRUE) &&
     grepl("bblab_or_tw_ec_fugle_link", loc, fixed = TRUE) &&
     grepl("bblab_or_tw_ec_fugle_note", loc, fixed = TRUE) &&
+    grepl("bblab_or_tw_ec_finmoconf_link", loc, fixed = TRUE) &&
     grepl("bblab_or_cred_last_resort", loc, fixed = TRUE) &&
     grepl("富果法說會備忘錄", loc, fixed = TRUE) &&
     grepl("不會擷取 AlphaMemo", loc, fixed = TRUE) &&
     grepl("AlphaMemo is not scraped", loc, fixed = TRUE) &&
-    grepl("Last-resort (third-party HTML)", loc, fixed = TRUE)
+    grepl("Last-resort (third-party HTML)", loc, fixed = TRUE) &&
+    grepl("FinmoConf", loc, fixed = TRUE)
 })
 check("no AlphaMemo scrape in TW/Fugle sources", {
   tw <- paste(readLines("tw_earnings_call.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")

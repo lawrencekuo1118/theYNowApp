@@ -1021,7 +1021,34 @@ bblab_order_research_meta_ui <- function(pack, locale = "en", started = FALSE) {
     status <- .bblab_chr(tw_ec$status, "empty")
     src_id <- .bblab_chr(tw_ec$source_id, "alphamemo_index")
     cred <- .bblab_chr(tw_ec$credibility, "estimate")
+    .tw_ec_note_list <- function(items, title_key) {
+      items <- as.character(unlist(items %||% character(0)))
+      items <- trimws(items)
+      items <- items[nzchar(items)]
+      if (!length(items)) return(NULL)
+      tags$div(
+        class = "ynow-bblab-or__tw-ec-notes",
+        tags$p(tags$b(msg(title_key))),
+        tags$ul(lapply(utils::head(items, 6L), function(s) tags$li(s)))
+      )
+    }
     links <- list()
+    if (nzchar(.bblab_chr(tw_ec$finmoconf_url, ""))) {
+      links[[length(links) + 1L]] <- tags$a(
+        href = tw_ec$finmoconf_url, target = "_blank", rel = "noopener noreferrer",
+        msg("bblab_or_tw_ec_finmoconf_link")
+      )
+    }
+    pdf_url <- .bblab_chr(tw_ec$url, "")
+    if (!nzchar(pdf_url)) pdf_url <- .bblab_chr(tw_ec$finmoconf_zh_url, "")
+    if (!nzchar(pdf_url)) pdf_url <- .bblab_chr(tw_ec$finmoconf_en_url, "")
+    if (nzchar(pdf_url) &&
+          .bblab_chr(tw_ec$source_id, "") %in% c("finmoconf_presentation_pdf", "seeking_alpha_html", "fugle_earnings_memo")) {
+      links[[length(links) + 1L]] <- tags$a(
+        href = pdf_url, target = "_blank", rel = "noopener noreferrer",
+        msg("bblab_or_tw_ec_pdf_link")
+      )
+    }
     if (nzchar(.bblab_chr(tw_ec$fugle_url, ""))) {
       links[[length(links) + 1L]] <- tags$a(
         href = tw_ec$fugle_url, target = "_blank", rel = "noopener noreferrer",
@@ -1047,7 +1074,8 @@ bblab_order_research_meta_ui <- function(pack, locale = "en", started = FALSE) {
       )
     }
     if (nzchar(.bblab_chr(tw_ec$url, "")) &&
-          .bblab_chr(tw_ec$source_id, "") %in% c("seeking_alpha_html", "fugle_earnings_memo")) {
+          .bblab_chr(tw_ec$source_id, "") %in% c("seeking_alpha_html", "fugle_earnings_memo") &&
+          !identical(.bblab_chr(tw_ec$url, ""), pdf_url)) {
       links[[length(links) + 1L]] <- tags$a(
         href = tw_ec$url, target = "_blank", rel = "noopener noreferrer",
         msg("bblab_or_us_ec_source_link")
@@ -1065,6 +1093,9 @@ bblab_order_research_meta_ui <- function(pack, locale = "en", started = FALSE) {
     } else {
       NULL
     }
+    has_status_notes <- length(tw_ec$order_notes %||% character(0)) > 0L ||
+      length(tw_ec$supply_chain_notes %||% character(0)) > 0L ||
+      length(tw_ec$outlook_notes %||% character(0)) > 0L
     tw_block <- tags$div(
       class = "ynow-bblab-or__tw-ec",
       `data-status` = status,
@@ -1075,20 +1106,26 @@ bblab_order_research_meta_ui <- function(pack, locale = "en", started = FALSE) {
         class = "help-block ynow-bblab-or__cred-tier",
         paste0(msg("bblab_or_ec_cred_label"), ": ", msg(paste0("bblab_or_cred_", cred)))
       ),
-      if (identical(status, "empty") || !nzchar(title)) {
+      if (identical(status, "empty") || (!nzchar(title) && !isTRUE(has_status_notes))) {
         tags$p(class = "help-block", msg("bblab_or_tw_ec_empty"))
       } else {
         tagList(
-          tags$p(
-            tags$b(paste0(msg("bblab_or_us_ec_label"), ": ")),
-            title
-          ),
+          if (nzchar(title)) {
+            tags$p(
+              tags$b(paste0(msg("bblab_or_us_ec_label"), ": ")),
+              title
+            )
+          } else NULL,
           if (nzchar(excerpt)) {
             tags$p(class = "help-block ynow-bblab-or__tw-ec-excerpt", excerpt)
-          } else NULL
+          } else NULL,
+          .tw_ec_note_list(tw_ec$order_notes, "bblab_or_tw_ec_orders_title"),
+          .tw_ec_note_list(tw_ec$supply_chain_notes, "bblab_or_tw_ec_supply_title"),
+          .tw_ec_note_list(tw_ec$outlook_notes, "bblab_or_tw_ec_outlook_title")
         )
       },
       tags$p(class = "help-block", msg("bblab_or_tw_ec_note")),
+      tags$p(class = "help-block", msg("bblab_or_tw_ec_finmoconf_note")),
       tags$p(class = "help-block", msg("bblab_or_tw_ec_fugle_note")),
       link_row
     )
