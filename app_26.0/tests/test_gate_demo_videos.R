@@ -46,12 +46,17 @@ check(
   "demo features are product-only",
   identical(
     sort(demo_feats),
-    sort(c("lab", "checklist", "alerts", "account", "pdf", "atx"))
+    sort(c("lab", "checklist", "alerts", "pdf", "atx"))
   )
 )
 check(
-  "non-product gates are snap_defaults + inner_lock",
-  identical(sort(non_demo), sort(c("snap_defaults", "inner_lock")))
+  "non-product gates include account + snap_defaults + inner_lock",
+  identical(sort(non_demo), sort(c("account", "snap_defaults", "inner_lock")))
+)
+check(
+  "account has no promo page",
+  isFALSE(ynow_gate_has_promo("account")) &&
+    is.null(ynow_gate_promo_faq_ui(feature = "account", include_faq = FALSE))
 )
 
 ffprobe <- Sys.which("ffprobe")
@@ -92,13 +97,10 @@ for (f in non_demo) {
   check(paste0(f, " mp4 absent"), !file.exists(mp4))
   check(paste0(f, " webm absent"), !file.exists(webm))
   check(paste0(f, " has_demo FALSE"), isFALSE(ynow_gate_has_demo(f)))
-  html <- paste(as.character(ynow_gate_promo_faq_ui(feature = f, include_faq = FALSE)), collapse = "\n")
-  # Non-product policy: hide-vs-show, not Sign-in-promo targets — at minimum
-  # never ship a demo <video> when promo helpers are still invoked.
+  check(paste0(f, " has_promo FALSE"), isFALSE(ynow_gate_has_promo(f)))
   check(
-    paste0(f, " no demo video teaser"),
-    !grepl("ynow-gate-demo-video", html, fixed = TRUE) &&
-      !grepl(paste0("demos/", f, ".mp4"), html, fixed = TRUE)
+    paste0(f, " promo helper NULL"),
+    is.null(ynow_gate_promo_faq_ui(feature = f, include_faq = FALSE))
   )
 }
 
@@ -131,9 +133,9 @@ check(
   grepl('"lab"', gen_txt, fixed = TRUE) &&
     grepl('"checklist"', gen_txt, fixed = TRUE) &&
     grepl('"alerts"', gen_txt, fixed = TRUE) &&
-    grepl('"account"', gen_txt, fixed = TRUE) &&
     grepl('"pdf"', gen_txt, fixed = TRUE) &&
-    grepl('"atx"', gen_txt, fixed = TRUE)
+    grepl('"atx"', gen_txt, fixed = TRUE) &&
+    !grepl('"account"', gen_txt, fixed = TRUE)
 )
 orch <- file.path(app_dir, "..", "scripts", "record_gate_demos.sh")
 check("record_gate_demos.sh present", file.exists(orch))

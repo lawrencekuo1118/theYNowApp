@@ -102,8 +102,8 @@ ynow_membership_lock_catalog <- function() {
       "member_gate", "ynow_member_gate_ui feature=checklist"),
     c("alerts", "gate_feature", "A", "Value Alerts gate", "到值通知閘道",
       "member_gate", "ynow_member_gate_ui feature=alerts"),
-    c("account", "gate_feature", "A", "Account workspace gate", "帳號工作區閘道",
-      "member_gate", "ynow_account_gate_ui feature=account"),
+    c("account", "gate_feature", "A", "Account workspace (guest-hidden)", "帳號工作區（訪客隱藏）",
+      "css_hide", "Guest-hidden; no Sign-in promo page / demo; signed-in visible"),
     c("pdf", "gate_feature", "B", "Valuation PDF gate", "估值 PDF 閘道",
       "guest_download", "Login then free quota / FYN (pdf_report)"),
 

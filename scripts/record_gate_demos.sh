@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Record Sign-in gate demos from the local App UI (product surfaces only).
-# Non-product / service ids (snap_defaults, inner_lock) are hide-vs-show only —
-# no Sign-in promo page and no capture.
+# Non-product / guest-hidden / service ids (account, snap_defaults, inner_lock)
+# are hide-vs-show only — no Sign-in promo page and no capture.
 # The capture seed is local-only. Never set YNOW_DEMO_CAPTURE=1 on shinyapps.io or any production host.
 set -euo pipefail
 

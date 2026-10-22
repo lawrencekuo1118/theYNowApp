@@ -2300,9 +2300,9 @@ ynow_points_panel_ui <- function(user, locale = "zh-TW",
 #' Product demo clips live in www/demos/<feature>.{mp4,webm} (~10s; live App UI
 #' only — see [ynow_gate_demo_features()]; regenerate with
 #' bash scripts/record_gate_demos.sh).
-#' Non-product / service ids (snap_defaults, inner_lock) are hide-vs-show only
-#' in product policy — no Sign-in promo page and no demo teaser. They may still
-#' appear here as legacy ops promo *keys*; demos never ship for them.
+#' Non-product / service / guest-hidden ids (account, snap_defaults, inner_lock)
+#' are hide-vs-show only — no Sign-in promo page and no demo teaser. They may
+#' still appear here as legacy catalog *keys*; demos / 推廣登入 never ship for them.
 #' Membership gates (A/B) come from membership_locks.R; ops_acl / sysadmin gate
 #' ids include atx (product) plus non-product service keys.
 ynow_gate_features <- function() {
@@ -2319,11 +2319,22 @@ ynow_gate_features <- function() {
   unique(c(mem, ops))
 }
 
-#' Product-facing gate ids that ship a Sign-in demo teaser.
-#' Non-product service ids (snap_defaults, inner_lock) are hide-vs-show only —
-#' no 推廣登入頁面 and no demo.
+#' Product-facing gate ids that ship a Sign-in demo teaser (and promo page).
+#' Non-product: account (guest-hidden), snap_defaults, inner_lock — hide-vs-show
+#' only; no 推廣登入頁面 and no demo.
 ynow_gate_demo_features <- function() {
-  c("lab", "checklist", "alerts", "account", "pdf", "atx")
+  c("lab", "checklist", "alerts", "pdf", "atx")
+}
+
+#' Product ids that may render Sign-in promo chrome (same allowlist as demos).
+ynow_gate_promo_features <- function() {
+  ynow_gate_demo_features()
+}
+
+#' TRUE when this gate may render 推廣登入 / Sign-in promo extras.
+ynow_gate_has_promo <- function(feature) {
+  feature <- as.character(feature %||% "")[1]
+  nzchar(feature) && feature %in% ynow_gate_promo_features()
 }
 
 #' TRUE when this gate should include a demo <video> (product allowlist).
@@ -2379,6 +2390,10 @@ ynow_gate_layout <- function(feature) {
 ynow_gate_promo_faq_ui <- function(feature = "lab", include_faq = TRUE, compact = FALSE) {
   keys <- ynow_gate_promo_keys(feature)
   feature <- keys$feature
+  # Non-product / guest-hidden: no 推廣登入頁面 at all.
+  if (!isTRUE(ynow_gate_has_promo(feature))) {
+    return(NULL)
+  }
   demo_base <- paste0("demos/", feature)
   has_demo <- isTRUE(ynow_gate_has_demo(feature))
   # Class token stays --checklist-split. CSS selectors already key on it.
@@ -3570,13 +3585,6 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
         gate_alerts_b2 = tryCatch(ui_str("auth_gate_alerts_b2", loc), error = function(e) ""),
         gate_alerts_b3 = tryCatch(ui_str("auth_gate_alerts_b3", loc), error = function(e) ""),
         gate_alerts_demo_caption = tryCatch(ui_str("auth_gate_alerts_demo_caption", loc), error = function(e) ""),
-        gate_account_body = tryCatch(ui_str("auth_gate_account_body", loc), error = function(e) ""),
-        gate_account_kicker = tryCatch(ui_str("auth_gate_account_kicker", loc), error = function(e) ""),
-        gate_account_lead = tryCatch(ui_str("auth_gate_account_lead", loc), error = function(e) ""),
-        gate_account_b1 = tryCatch(ui_str("auth_gate_account_b1", loc), error = function(e) ""),
-        gate_account_b2 = tryCatch(ui_str("auth_gate_account_b2", loc), error = function(e) ""),
-        gate_account_b3 = tryCatch(ui_str("auth_gate_account_b3", loc), error = function(e) ""),
-        gate_account_demo_caption = tryCatch(ui_str("auth_gate_account_demo_caption", loc), error = function(e) ""),
         gate_pdf_body = tryCatch(ui_str("auth_gate_pdf_body", loc), error = function(e) ""),
         gate_pdf_kicker = tryCatch(ui_str("auth_gate_pdf_kicker", loc), error = function(e) ""),
         gate_pdf_lead = tryCatch(ui_str("auth_gate_pdf_lead", loc), error = function(e) ""),

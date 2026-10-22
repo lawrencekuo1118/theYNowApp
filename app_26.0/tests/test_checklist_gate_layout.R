@@ -155,32 +155,30 @@ check("lab alerts and atx gates use the page overlay split", {
     grepl("Unlock Quantitative Backtest Lab", lab_html, fixed = TRUE) &&
     grepl("Unlock Asset Transmission Root", atx_html, fixed = TRUE)
 })
-check("account gate stays a stacked callout", {
-  !grepl("ynow-member-gate--surface-overlay", acct_html, fixed = TRUE) &&
-    !grepl("ynow-gate-extras--checklist-split", acct_html, fixed = TRUE) &&
-    !grepl("ynow-gate-promo-demo-row", acct_html, fixed = TRUE) &&
-    grepl("ynow-gate-promo", acct_html, fixed = TRUE) &&
+check("account layout stays non-page; promo helper returns NULL", {
+  lay <- ynow_gate_layout("account")
+  isFALSE(lay$surface_overlay) &&
+    isFALSE(lay$split_promo_demo) &&
+    isFALSE(ynow_gate_has_promo("account")) &&
+    is.null(ynow_gate_promo_faq_ui(feature = "account", include_faq = TRUE)) &&
+    !grepl("ynow-member-gate--surface-overlay", acct_html, fixed = TRUE) &&
+    !grepl("ynow-gate-promo", acct_html, fixed = TRUE) &&
     grepl("max-width:760px", acct_html, fixed = TRUE)
 })
-check("pdf snap_defaults and inner_lock promo stay stacked", {
-  stacked <- function(feature) {
-    html <- page_gate_html(feature)
-    !grepl("ynow-gate-extras--checklist-split", html, fixed = TRUE) &&
-      !grepl("ynow-gate-promo-demo-row", html, fixed = TRUE) &&
-      grepl("ynow-gate-promo", html, fixed = TRUE)
-  }
-  stacked("pdf") && stacked("snap_defaults") && stacked("inner_lock")
+check("pdf promo stays stacked; non-product promo helpers return NULL", {
+  pdf_html <- page_gate_html("pdf")
+  stacked_pdf <- !grepl("ynow-gate-extras--checklist-split", pdf_html, fixed = TRUE) &&
+    !grepl("ynow-gate-promo-demo-row", pdf_html, fixed = TRUE) &&
+    grepl("ynow-gate-promo", pdf_html, fixed = TRUE)
+  stacked_pdf &&
+    is.null(ynow_gate_promo_faq_ui(feature = "snap_defaults", include_faq = TRUE)) &&
+    is.null(ynow_gate_promo_faq_ui(feature = "inner_lock", include_faq = TRUE)) &&
+    is.null(ynow_gate_promo_faq_ui(feature = "account", include_faq = TRUE))
 })
 check("non-product service ids ship no demo teaser", {
-  no_teaser <- function(feature) {
-    html <- page_gate_html(feature)
-    !grepl("ynow-gate-demo-video", html, fixed = TRUE) &&
-      !grepl(paste0("demos/", feature, ".mp4"), html, fixed = TRUE)
-  }
-  isFALSE(ynow_gate_has_demo("snap_defaults")) &&
+  isFALSE(ynow_gate_has_demo("account")) &&
+    isFALSE(ynow_gate_has_demo("snap_defaults")) &&
     isFALSE(ynow_gate_has_demo("inner_lock")) &&
-    no_teaser("snap_defaults") &&
-    no_teaser("inner_lock") &&
     grepl("demos/pdf.mp4", page_gate_html("pdf"), fixed = TRUE)
 })
 check("en/zh demo captions match Decision Checklist copy", {

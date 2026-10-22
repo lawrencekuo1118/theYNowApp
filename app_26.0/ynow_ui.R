@@ -11875,12 +11875,6 @@ ui <- dashboardPage(
                 b2: payload.gate_alerts_b2, b3: payload.gate_alerts_b3,
                 demo_caption: payload.gate_alerts_demo_caption
               });
-              setFeature('account', {
-                body: payload.gate_account_body, kicker: payload.gate_account_kicker,
-                lead: payload.gate_account_lead, b1: payload.gate_account_b1,
-                b2: payload.gate_account_b2, b3: payload.gate_account_b3,
-                demo_caption: payload.gate_account_demo_caption
-              });
               setFeature('pdf', {
                 body: payload.gate_pdf_body, kicker: payload.gate_pdf_kicker,
                 lead: payload.gate_pdf_lead, b1: payload.gate_pdf_b1,

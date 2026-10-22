@@ -1400,68 +1400,12 @@ server <- function(input, output, session) {
     }
     u <- tryCatch(ynow_auth$user(), error = function(e) NULL)
     if (is.null(u)) {
-      extras <- if (exists("ynow_gate_promo_faq_ui", mode = "function")) {
-        ynow_gate_promo_faq_ui(feature = "account", include_faq = TRUE)
-      } else {
-        NULL
-      }
-      acct_body <- tryCatch(
-        ui_str("auth_gate_account_body", loc),
-        error = function(e) tryCatch(
-          ui_str("auth_admin_need_login", loc),
-          error = function(e2) "Sign in to open the account workspace."
-        )
-      )
-      return(tags$section(
-        class = "ynow-hfv-chapter ynow-auth-gate ynow-gate-box",
-        `data-ynow-gate-feature` = "account",
-        style = "max-width:760px; margin:18px auto;",
-        tags$div(
-          class = "ynow-hfv-chapter__head",
-          tags$span(
-            class = "ynow-hfv-chapter__kicker ynow-gate-section-kicker",
-            tryCatch(
-              ui_str("auth_gate_section_kicker", loc),
-              error = function(e) "Member access"
-            )
-          ),
-          tags$h3(
-            class = "ynow-hfv-chapter__title",
-            tags$span(
-              class = "ynow-auth-gate-title",
-              tryCatch(
-                ui_str("auth_pa_gate_title", loc),
-                error = function(e) "Sign in required"
-              )
-            )
-          )
-        ),
-        tags$div(
-          class = "ynow-hfv-chapter__body",
-          tags$p(class = "ynow-gate-body", acct_body),
-          extras,
-          tags$div(
-            class = "ynow-auth-pair ynow-auth-pair--gate",
-            actionButton(
-              "ynow_pa_gate_signin",
-              label = tags$span(
-                id = "ynow_pa_gate_signin_label",
-                class = "ynow-member-gate-signin-label",
-                tryCatch(ui_str("auth_sign_in", loc), error = function(e) "Sign in")
-              ),
-              class = "btn-primary ynow-auth-open ynow-auth-btn"
-            ),
-            actionButton(
-              "ynow_acct_gate_register",
-              label = tags$span(
-                id = "ynow_acct_gate_register_label",
-                class = "ynow-auth-register-label",
-                tryCatch(ui_str("auth_register_btn", loc), error = function(e) "Register")
-              ),
-              class = "btn-default ynow-auth-register-open ynow-auth-btn"
-            )
-          )
-        )
+      # Guest-hidden workspace (css_hide): hide vs show only — no 推廣登入頁面.
+      return(tags$div(
+        class = "ynow-account-guest-hidden",
+        style = "display:none;",
+        `aria-hidden` = "true",
+        `data-ynow-gate-feature` = "account"
       ))
     }
     NULL
