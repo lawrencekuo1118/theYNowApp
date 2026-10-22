@@ -671,11 +671,16 @@ check("mix chapters are one report section with history panel", {
     grepl('chapter = "7"', mod_src, fixed = TRUE) &&
     grepl("ynow_bblab_orders_title", mod_src, fixed = TRUE) &&
     grepl("ynow-bblab-orders__groups", mod_src, fixed = TRUE) &&
-    grepl('data-orders-group` = "orders"', mod_src, fixed = TRUE) &&
-    grepl('data-orders-group` = "customers"', mod_src, fixed = TRUE) &&
-    grepl('data-orders-group` = "suppliers"', mod_src, fixed = TRUE) &&
-    grepl('data-orders-group` = "markets"', mod_src, fixed = TRUE) &&
-    grepl("order_research_orders_facts", mod_src, fixed = TRUE) &&
+    grepl('uiOutput(ns("orders_group_orders"))', mod_src, fixed = TRUE) &&
+    grepl('uiOutput(ns("orders_group_customers"))', mod_src, fixed = TRUE) &&
+    grepl('uiOutput(ns("orders_group_suppliers"))', mod_src, fixed = TRUE) &&
+    grepl('uiOutput(ns("orders_group_markets"))', mod_src, fixed = TRUE) &&
+    grepl('uiOutput(ns("orders_group_context"))', mod_src, fixed = TRUE) &&
+    grepl('uiOutput(ns("donut_shell"))', mod_src, fixed = TRUE) &&
+    grepl('uiOutput(ns("cards_section"))', mod_src, fixed = TRUE) &&
+    grepl('uiOutput(ns("recon_section"))', mod_src, fixed = TRUE) &&
+    grepl('uiOutput(ns("shared_section"))', mod_src, fixed = TRUE) &&
+    grepl(".bblab_orders_group_visible", mod_src, fixed = TRUE) &&
     grepl("orders_markets_chart", mod_src, fixed = TRUE) &&
     grepl("orders_suppliers_chart", mod_src, fixed = TRUE) &&
     grepl("ynow-bblab-report__section", mod_src, fixed = TRUE) &&
@@ -847,17 +852,18 @@ if (requireNamespace("shiny", quietly = TRUE) &&
           grepl("bcg_panel", lab_ui_html, fixed = TRUE) &&
           grepl("history_panel", lab_ui_html, fixed = TRUE) &&
           grepl("ynow_bblab_orders_title", lab_ui_html, fixed = TRUE) &&
-          grepl("ynow_bblab_orders_qty_title", lab_ui_html, fixed = TRUE) &&
-          grepl("ynow_bblab_orders_markets_title", lab_ui_html, fixed = TRUE) &&
-          grepl("ynow_bblab_orders_suppliers_title", lab_ui_html, fixed = TRUE) &&
-          grepl("data-orders-group=\"orders\"", lab_ui_html, fixed = TRUE) &&
-          grepl("data-orders-group=\"customers\"", lab_ui_html, fixed = TRUE) &&
-          grepl("data-orders-group=\"suppliers\"", lab_ui_html, fixed = TRUE) &&
-          grepl("data-orders-group=\"markets\"", lab_ui_html, fixed = TRUE) &&
-          grepl("ynow_bblab_ch5_title", lab_ui_html, fixed = TRUE) &&
-          grepl("ynow_bblab_ch5_help", lab_ui_html, fixed = TRUE) &&
-          grepl("ynow_bblab_ch6_title", lab_ui_html, fixed = TRUE) &&
-          grepl("ynow_bblab_ch6_help", lab_ui_html, fixed = TRUE) &&
+          grepl("orders_group_orders", lab_ui_html, fixed = TRUE) &&
+          grepl("orders_group_customers", lab_ui_html, fixed = TRUE) &&
+          grepl("orders_group_suppliers", lab_ui_html, fixed = TRUE) &&
+          grepl("orders_group_markets", lab_ui_html, fixed = TRUE) &&
+          grepl("orders_group_context", lab_ui_html, fixed = TRUE) &&
+          grepl("donut_shell", lab_ui_html, fixed = TRUE) &&
+          grepl("cards_section", lab_ui_html, fixed = TRUE) &&
+          grepl("recon_section", lab_ui_html, fixed = TRUE) &&
+          grepl("shared_section", lab_ui_html, fixed = TRUE) &&
+          # Empty groups are server-mounted; static shell must not leave blank bordered boxes.
+          !grepl("data-orders-group=\"orders\"", lab_ui_html, fixed = TRUE) &&
+          !grepl("data-orders-group=\"markets\"", lab_ui_html, fixed = TRUE) &&
           grepl("ynow_bblab_ch7_title", lab_ui_html, fixed = TRUE))
   check("lab UI HTML: full-width tables; conclusions beside revenue mix", {
     grepl("ynow-bblab-struct-mix", lab_ui_html, fixed = TRUE) &&
@@ -870,12 +876,13 @@ if (requireNamespace("shiny", quietly = TRUE) &&
       grepl("ynow-bblab-subhead", lab_ui_html, fixed = TRUE) &&
       grepl(">Revenue mix<", lab_ui_html, fixed = TRUE) &&
       grepl(">Current period<", lab_ui_html, fixed = TRUE) &&
-      grepl(">Business cards<", lab_ui_html, fixed = TRUE) &&
+      # Ch V/VI mount only when packs have data (collapse empty chrome).
+      grepl("cards_section", lab_ui_html, fixed = TRUE) &&
+      grepl("recon_section", lab_ui_html, fixed = TRUE) &&
       grepl("history_panel", lab_ui_html, fixed = TRUE) &&
       !grepl(">Five-year mix evolution<", lab_ui_html, fixed = TRUE) &&
       grepl("data-bblab-chapter=\"3\"", lab_ui_html, fixed = TRUE) &&
       grepl("data-bblab-chapter=\"4\"", lab_ui_html, fixed = TRUE) &&
-      grepl("data-bblab-chapter=\"6\"", lab_ui_html, fixed = TRUE) &&
       grepl("data-bblab-chapter=\"7\"", lab_ui_html, fixed = TRUE) &&
       grepl("ynow-bblab-orders", lab_ui_html, fixed = TRUE) &&
       !grepl("data-bblab-chapter=\"2b\"", lab_ui_html, fixed = TRUE) &&
@@ -883,17 +890,19 @@ if (requireNamespace("shiny", quietly = TRUE) &&
       !grepl("ynow-bblab-struct-mix__main", lab_ui_html, fixed = TRUE)
   })
   check("chapter order in report markup", {
+    # Ch V/VI/shared mount only when packs have data (server uiOutput).
     ids <- c("ynow_bblab_page_title",
              "ynow_bblab_ch1_title", "ynow_bblab_ch2_title",
              "ynow_bblab_struct_title", "ynow_bblab_ch3_title",
              "ynow_bblab_ch3_current_label",
              "ynow_bblab_orders_title",
-             "ynow_bblab_ch5_title", "ynow_bblab_ch6_title",
              "ynow_bblab_ch7_title")
     pos <- vapply(ids, function(id) {
       as.integer(regexpr(id, lab_ui_html, fixed = TRUE)[1])
     }, integer(1))
-    all(pos > 0L) && all(diff(pos) > 0L)
+    all(pos > 0L) && all(diff(pos) > 0L) &&
+      grepl("cards_section", lab_ui_html, fixed = TRUE) &&
+      grepl("recon_section", lab_ui_html, fixed = TRUE)
   })
   check("lab titles use report section numbers without repeating them in the heading",
         grepl("ynow-bblab-report__section-num", lab_ui_html, fixed = TRUE) &&
@@ -1421,6 +1430,59 @@ check("five-year mix panel shows only when a series is eligible", {
     grepl(".bblab_history_visible", mod_src, fixed = TRUE) &&
     grepl("history_panel", mod_src, fixed = TRUE) &&
     !grepl("history_status", mod_src, fixed = TRUE)
+})
+check("empty Section IV groups collapse when packs are ineligible", {
+  empty_oc <- list(
+    market_geography = list(eligible = FALSE, slices = list(), codes = "ORDERS_GEOGRAPHY_DISCLOSURE_MISSING"),
+    customer_concentration = list(eligible = FALSE, rows = list(), codes = "ORDERS_CUSTOMER_DISCLOSURE_MISSING"),
+    supplier_concentration = list(eligible = FALSE, rows = list(), codes = "ORDERS_SUPPLIER_DISCLOSURE_MISSING")
+  )
+  empty_or <- list(kpis = list(), focus = list(), chart = list())
+  filled_oc <- list(
+    market_geography = list(
+      eligible = TRUE,
+      slices = list(list(name = "TW", share = 0.4, revenue = 40))
+    ),
+    customer_concentration = list(
+      eligible = TRUE,
+      rows = list(list(name = "A", share = 0.12, revenue = 12)),
+      top1_share = 0.12
+    ),
+    supplier_concentration = list(eligible = FALSE, rows = list())
+  )
+  filled_or <- list(
+    kpis = list(backlog = 1),
+    focus = list(
+      list(id = "orders", facts = list(list(name = "Backlog", value = 100))),
+      list(id = "customers", facts = list()),
+      list(id = "suppliers", facts = list())
+    ),
+    chart = list(
+      orders = list(list(id = "backlog", value = 100)),
+      customers = list()
+    )
+  )
+  isTRUE(!.bblab_orders_group_visible("markets", empty_oc, empty_or, FALSE)) &&
+    isTRUE(!.bblab_orders_group_visible("customers", empty_oc, empty_or, FALSE)) &&
+    isTRUE(!.bblab_orders_group_visible("suppliers", empty_oc, empty_or, FALSE)) &&
+    isTRUE(!.bblab_orders_group_visible("orders", empty_oc, empty_or, FALSE)) &&
+    isTRUE(!.bblab_orders_group_visible("orders", empty_oc, empty_or, TRUE)) &&
+    isTRUE(!.bblab_orders_group_visible("context", empty_oc, empty_or, FALSE)) &&
+    isTRUE(!.bblab_orders_group_visible("context", empty_oc, empty_or, TRUE)) &&
+    isTRUE(.bblab_orders_group_visible("markets", filled_oc, filled_or, FALSE)) &&
+    isTRUE(.bblab_orders_group_visible("customers", filled_oc, filled_or, FALSE)) &&
+    isTRUE(!.bblab_orders_group_visible("suppliers", filled_oc, filled_or, FALSE)) &&
+    isTRUE(.bblab_orders_group_visible("orders", filled_oc, filled_or, TRUE)) &&
+    isTRUE(!.bblab_orders_group_visible("orders", filled_oc, filled_or, FALSE)) &&
+    isTRUE(.bblab_orders_group_visible("context", filled_oc, filled_or, TRUE)) &&
+    isTRUE(.bblab_revenue_mix_visible(list(chart = list(eligible = TRUE, slices = list(list(id = "a")))))) &&
+    isTRUE(!.bblab_revenue_mix_visible(list(chart = list(eligible = FALSE, slices = list())))) &&
+    isTRUE(.bblab_cards_visible(list(businesses = list(list(id = "x"))))) &&
+    isTRUE(!.bblab_cards_visible(list(businesses = list()))) &&
+    isTRUE(!.bblab_shared_visible(list(shared_corporate = list()))) &&
+    grepl("donut_shell", mod_src, fixed = TRUE) &&
+    grepl("Groups with no disclosed data collapse", .UI_STRINGS$en$bblab_orders_help, fixed = TRUE) &&
+    grepl("收合", .UI_STRINGS$`zh-TW`$bblab_orders_help, fixed = TRUE)
 })
 
 # ---- BCG matrix from structure + history ----
@@ -1988,7 +2050,8 @@ check("structure UI chapter wired in module",
         grepl("ynow-bblab-struct-mix__conc", mod_src, fixed = TRUE) &&
         grepl("ynow-bblab-struct-mix__chart", mod_src, fixed = TRUE) &&
         grepl("bblab_build_structure_analysis", mod_src, fixed = TRUE) &&
-        grepl("bblab_cards_empty", mod_src, fixed = TRUE) &&
+        grepl("cards_section", mod_src, fixed = TRUE) &&
+        grepl(".bblab_cards_visible", mod_src, fixed = TRUE) &&
         grepl("ynow_bblab_ch5_help", mod_src, fixed = TRUE))
 check("structure sourced from global.R",
       grepl("business_breakdown_structure.R",

@@ -17,6 +17,89 @@ if (!exists("%||%", mode = "function")) {
   isTRUE(hist$eligible) && length(hist$years) >= 2L && length(hist$series) >= 1L
 }
 
+#' TRUE when a filed concentration pack has chartable slices/rows.
+.bblab_orders_pack_has_chart <- function(pack) {
+  if (!is.list(pack) || !isTRUE(pack$eligible)) return(FALSE)
+  rows <- pack$rows %||% pack$slices %||% list()
+  length(rows) > 0L
+}
+
+#' TRUE when order-research focus bucket has at least one finite disclosed fact.
+.bblab_or_focus_has_finite_facts <- function(pack, bucket_id) {
+  if (!is.list(pack)) return(FALSE)
+  want <- .bblab_chr(bucket_id, "")
+  if (!nzchar(want)) return(FALSE)
+  buckets <- pack$focus %||% list()
+  for (b in buckets) {
+    if (!identical(.bblab_chr(b$id, ""), want)) next
+    facts <- b$facts %||% list()
+    for (f in facts) {
+      if (is.finite(.bblab_num(f$value))) return(TRUE)
+    }
+  }
+  FALSE
+}
+
+#' TRUE when order-research chart series has at least one finite point.
+.bblab_or_chart_has_points <- function(pack, which) {
+  if (!is.list(pack)) return(FALSE)
+  points <- pack$chart[[which]] %||% list()
+  if (!length(points)) return(FALSE)
+  any(vapply(points, function(p) is.finite(.bblab_num(p$value)), logical(1)))
+}
+
+#' Gate Section IV analysis groups — hide bordered chrome when there is nothing to show.
+.bblab_orders_group_visible <- function(group,
+                                        order_concentration = NULL,
+                                        order_research = NULL,
+                                        or_started = FALSE) {
+  group <- as.character(group %||% "")[1]
+  oc <- order_concentration
+  or <- order_research
+  started <- isTRUE(or_started)
+  if (identical(group, "markets")) {
+    return(.bblab_orders_pack_has_chart(if (is.list(oc)) oc$market_geography else NULL))
+  }
+  if (identical(group, "customers")) {
+    filing <- .bblab_orders_pack_has_chart(if (is.list(oc)) oc$customer_concentration else NULL)
+    facts <- started && (
+      .bblab_or_focus_has_finite_facts(or, "customers") ||
+        .bblab_or_chart_has_points(or, "customers")
+    )
+    return(isTRUE(filing) || isTRUE(facts))
+  }
+  if (identical(group, "suppliers")) {
+    filing <- .bblab_orders_pack_has_chart(if (is.list(oc)) oc$supplier_concentration else NULL)
+    facts <- started && .bblab_or_focus_has_finite_facts(or, "suppliers")
+    return(isTRUE(filing) || isTRUE(facts))
+  }
+  if (identical(group, "orders")) {
+    return(started && (
+      .bblab_or_focus_has_finite_facts(or, "orders") ||
+        .bblab_or_chart_has_points(or, "orders")
+    ))
+  }
+  if (identical(group, "context")) {
+    return(started && is.list(or) && length(or$kpis) > 0L)
+  }
+  FALSE
+}
+
+.bblab_revenue_mix_visible <- function(res) {
+  if (is.null(res) || !is.list(res)) return(FALSE)
+  isTRUE(res$chart$eligible) && length(res$chart$slices) >= 1L
+}
+
+.bblab_cards_visible <- function(res) {
+  if (is.null(res) || !is.list(res)) return(FALSE)
+  length(res$businesses %||% list()) > 0L || !is.null(res$other)
+}
+
+.bblab_shared_visible <- function(res) {
+  if (is.null(res) || !is.list(res)) return(FALSE)
+  length(res$shared_corporate %||% list()) > 0L
+}
+
 .bblab_fmt_amt <- function(x, digits = 0) {
   num <- suppressWarnings(as.numeric(x)[1])
   if (!is.finite(num)) return("—")
@@ -584,7 +667,8 @@ business_breakdown_lab_ui <- function(id = "bblab") {
               )
             ),
             uiOutput(ns("chart_status")),
-            plotly::plotlyOutput(ns("donut"), height = "360px")
+            # Mount plotly only when slices exist — avoid a tall blank 360px shell.
+            uiOutput(ns("donut_shell"))
           )
         ),
         uiOutput(ns("bcg_panel")),
@@ -597,7 +681,7 @@ business_breakdown_lab_ui <- function(id = "bblab") {
         paste0(
           "Same analysis types are grouped together: order quantity, major-customer revenue mix, ",
           "major suppliers, then major-market geography. Filing concentration charts sit with the ",
-          "matching disclosed order facts. Empty when undisclosed — never estimated. ",
+          "matching disclosed order facts. Empty groups collapse — never estimated. ",
           "This block is not the business-dimension split."
         ),
         chapter = "4",
@@ -612,7 +696,7 @@ business_breakdown_lab_ui <- function(id = "bblab") {
                 "Start analysis to surface disclosed order quantity, supplier, and customer facts ",
                 "beside the matching filing charts. Taiwan source priority is MOPS, then company IR, ",
                 "then a statement cross-check. Broker and industry sources are estimates only and ",
-                "do not fill order amounts."
+                "do not fill order amounts. Groups with no disclosed data stay collapsed."
               )
             ),
             actionButton(
@@ -623,149 +707,18 @@ business_breakdown_lab_ui <- function(id = "bblab") {
           ),
           tags$div(
             class = "ynow-bblab-orders__groups",
-            tags$div(
-              class = "ynow-bblab-orders__group",
-              `data-orders-group` = "orders",
-              tags$h4(
-                id = "ynow_bblab_orders_qty_title",
-                class = "ynow-bblab-subhead",
-                "Order quantity"
-              ),
-              tags$p(
-                id = "ynow_bblab_orders_qty_help",
-                class = "help-block",
-                "Disclosed backlog, bookings, and named order amounts when a filing or call states them."
-              ),
-              uiOutput(ns("order_research_orders_facts")),
-              plotly::plotlyOutput(ns("order_research_chart"), height = "280px")
-            ),
-            tags$div(
-              class = "ynow-bblab-orders__group",
-              `data-orders-group` = "customers",
-              tags$h4(
-                id = "ynow_bblab_orders_customers_title",
-                class = "ynow-bblab-subhead",
-                "Major-customer revenue mix"
-              ),
-              tags$p(
-                id = "ynow_bblab_orders_customers_help",
-                class = "help-block",
-                paste0(
-                  "Filed major-customer concentration and disclosed customer revenue-mix facts, ",
-                  "shown together when available."
-                )
-              ),
-              tags$p(
-                id = "ynow_bblab_orders_from_filings_customers",
-                class = "ynow-bblab-orders__sublabel",
-                "Filed concentration"
-              ),
-              uiOutput(ns("orders_customers_status")),
-              plotly::plotlyOutput(ns("orders_customers_chart"), height = "320px"),
-              tags$p(
-                id = "ynow_bblab_orders_disclosed_facts_customers",
-                class = "ynow-bblab-orders__sublabel",
-                "Disclosed order facts"
-              ),
-              uiOutput(ns("order_research_customers_facts")),
-              plotly::plotlyOutput(ns("order_research_rates_chart"), height = "280px")
-            ),
-            tags$div(
-              class = "ynow-bblab-orders__group",
-              `data-orders-group` = "suppliers",
-              tags$h4(
-                id = "ynow_bblab_orders_suppliers_title",
-                class = "ynow-bblab-subhead",
-                "Major suppliers"
-              ),
-              tags$p(
-                id = "ynow_bblab_orders_suppliers_help",
-                class = "help-block",
-                paste0(
-                  "Filed major-supplier concentration and disclosed supplier facts, ",
-                  "shown together when available (often rarer than customers)."
-                )
-              ),
-              tags$p(
-                id = "ynow_bblab_orders_from_filings_suppliers",
-                class = "ynow-bblab-orders__sublabel",
-                "Filed concentration"
-              ),
-              uiOutput(ns("orders_suppliers_status")),
-              plotly::plotlyOutput(ns("orders_suppliers_chart"), height = "320px"),
-              tags$p(
-                id = "ynow_bblab_orders_disclosed_facts_suppliers",
-                class = "ynow-bblab-orders__sublabel",
-                "Disclosed order facts"
-              ),
-              uiOutput(ns("order_research_suppliers_facts"))
-            ),
-            tags$div(
-              class = "ynow-bblab-orders__group",
-              `data-orders-group` = "markets",
-              tags$h4(
-                id = "ynow_bblab_orders_markets_title",
-                class = "ynow-bblab-subhead",
-                "Major markets"
-              ),
-              tags$p(
-                id = "ynow_bblab_orders_markets_help",
-                class = "help-block",
-                "Revenue by customer location (geography) from filed segment notes when available."
-              ),
-              uiOutput(ns("orders_markets_status")),
-              plotly::plotlyOutput(ns("orders_markets_chart"), height = "340px")
-            ),
-            tags$div(
-              class = "ynow-bblab-orders__group ynow-bblab-orders__context",
-              `data-orders-group` = "context",
-              tags$h4(
-                id = "ynow_bblab_or_title",
-                class = "ynow-bblab-subhead",
-                "Sources, cross-check, and call context"
-              ),
-              uiOutput(ns("order_research_panel"))
-            )
+            uiOutput(ns("orders_group_orders")),
+            uiOutput(ns("orders_group_customers")),
+            uiOutput(ns("orders_group_suppliers")),
+            uiOutput(ns("orders_group_markets")),
+            uiOutput(ns("orders_group_context"))
           )
         )
       ),
 
-      .bblab_report_section(
-        "V", "ynow_bblab_ch5_title", "Business cards",
-        "ynow_bblab_ch5_help",
-        paste0(
-          "One card per supportable business: reported Revenue, Cost of Revenue, ",
-          "Gross Profit, and Gross Margin when disclosed or derived. Click a donut slice to focus a card."
-        ),
-        chapter = "5",
-        uiOutput(ns("cards"))
-      ),
-
-      .bblab_report_section(
-        "VI", "ynow_bblab_ch6_title", "Reconciliation",
-        "ynow_bblab_ch6_help",
-        paste0(
-          "Check whether the business cards add up to the filed consolidated Income Statement. ",
-          "Filed consolidated = what the company reported; Sum of businesses = what we assigned ",
-          "to operating businesses; Unassigned gap = the leftover not yet attributed. ",
-          "This is a disclosure cross-check — not a valuation engine."
-        ),
-        chapter = "6",
-        uiOutput(ns("recon"))
-      ),
-
-      tags$section(
-        class = "ynow-bblab-report__section ynow-bblab-report__section--muted",
-        tags$header(
-          class = "ynow-bblab-report__section-head",
-          tags$h3(
-            id = "ynow_bblab_shared_title",
-            class = "ynow-bblab-report__section-title",
-            "Shared and Corporate Items"
-          )
-        ),
-        tags$div(class = "ynow-bblab-report__section-body", uiOutput(ns("shared")))
-      ),
+      uiOutput(ns("cards_section")),
+      uiOutput(ns("recon_section")),
+      uiOutput(ns("shared_section")),
 
       .bblab_report_section(
         "VII", "ynow_bblab_ch7_title", "Sources",
@@ -1725,7 +1678,10 @@ business_breakdown_lab_server <- function(id = "bblab",
       sa <- .structure_analysis_sa()
       if (is.null(sa) || !isTRUE(sa$ok) || !length(sa$businesses)) return(NULL)
       bcg <- .bcg_analysis()
-      if (is.null(bcg) || !isTRUE(bcg$ok)) return(NULL)
+      # Collapse when not eligible — no bordered empty "need history" box.
+      if (is.null(bcg) || !isTRUE(bcg$ok) || !isTRUE(bcg$eligible) || !length(bcg$points)) {
+        return(NULL)
+      }
 
       q_name <- function(q) {
         switch(
@@ -1738,52 +1694,48 @@ business_breakdown_lab_server <- function(id = "bblab",
         )
       }
 
-      body <- if (isTRUE(bcg$eligible) && length(bcg$points)) {
-        rows <- lapply(bcg$points, function(p) {
-          q <- as.character(p$quadrant %||% "")[1]
-          tags$tr(
-            tags$td(p$business),
-            tags$td(sprintf("%.2f×", p$relative_share)),
-            tags$td(
-              if (is.finite(p$growth)) sprintf("%.1f%%", p$growth * 100) else "—"
-            ),
-            tags$td(
-              class = paste0("ynow-bblab-bcg__q-", if (nzchar(q)) q else "dog"),
-              q_name(q)
-            )
-          )
-        })
-        tags$div(
-          class = "ynow-bblab-bcg__grid",
-          tags$div(
-            class = "ynow-bblab-bcg__chart",
-            plotly::plotlyOutput(ns("bcg_plot"), height = "420px")
+      rows <- lapply(bcg$points, function(p) {
+        q <- as.character(p$quadrant %||% "")[1]
+        tags$tr(
+          tags$td(p$business),
+          tags$td(sprintf("%.2f×", p$relative_share)),
+          tags$td(
+            if (is.finite(p$growth)) sprintf("%.1f%%", p$growth * 100) else "—"
           ),
-          tags$div(
-            class = "ynow-bblab-bcg__list",
-            tags$table(
-              class = "table table-condensed ynow-bblab-bcg__table",
-              tags$thead(tags$tr(
-                tags$th(ui_msg("bblab_bcg_col_business")),
-                tags$th(ui_msg("bblab_bcg_col_rel_share")),
-                tags$th(ui_msg("bblab_bcg_col_growth")),
-                tags$th(ui_msg("bblab_bcg_col_quadrant"))
-              )),
-              tags$tbody(rows)
-            ),
-            tags$p(
-              class = "help-block",
-              sprintf(
-                ui_msg("bblab_bcg_midline"),
-                sprintf("%.2f", bcg$x_mid),
-                sprintf("%.1f%%", bcg$y_mid * 100)
-              )
+          tags$td(
+            class = paste0("ynow-bblab-bcg__q-", if (nzchar(q)) q else "dog"),
+            q_name(q)
+          )
+        )
+      })
+      body <- tags$div(
+        class = "ynow-bblab-bcg__grid",
+        tags$div(
+          class = "ynow-bblab-bcg__chart",
+          plotly::plotlyOutput(ns("bcg_plot"), height = "420px")
+        ),
+        tags$div(
+          class = "ynow-bblab-bcg__list",
+          tags$table(
+            class = "table table-condensed ynow-bblab-bcg__table",
+            tags$thead(tags$tr(
+              tags$th(ui_msg("bblab_bcg_col_business")),
+              tags$th(ui_msg("bblab_bcg_col_rel_share")),
+              tags$th(ui_msg("bblab_bcg_col_growth")),
+              tags$th(ui_msg("bblab_bcg_col_quadrant"))
+            )),
+            tags$tbody(rows)
+          ),
+          tags$p(
+            class = "help-block",
+            sprintf(
+              ui_msg("bblab_bcg_midline"),
+              sprintf("%.2f", bcg$x_mid),
+              sprintf("%.1f%%", bcg$y_mid * 100)
             )
           )
         )
-      } else {
-        tags$p(class = "help-block", ui_msg("bblab_bcg_need_history"))
-      }
+      )
 
       tags$div(
         class = "ynow-bblab-bcg",
@@ -1814,14 +1766,20 @@ business_breakdown_lab_server <- function(id = "bblab",
 
     output$chart_status <- renderUI({
       res <- lab_result()
-      if (is.null(res) || isTRUE(res$chart$eligible)) return(NULL)
+      if (is.null(res) || isTRUE(.bblab_revenue_mix_visible(res))) return(NULL)
       tags$p(class = "help-block", paste(res$chart$codes, collapse = "; "))
+    })
+
+    output$donut_shell <- renderUI({
+      res <- lab_result()
+      if (!isTRUE(.bblab_revenue_mix_visible(res))) return(NULL)
+      plotly::plotlyOutput(ns("donut"), height = "360px")
     })
 
     output$donut <- plotly::renderPlotly({
       res <- lab_result()
       empty <- plotly::layout(plotly::plot_ly(type = "pie"), showlegend = FALSE, title = NULL)
-      if (is.null(res) || !isTRUE(res$chart$eligible) || !length(res$chart$slices)) {
+      if (!isTRUE(.bblab_revenue_mix_visible(res))) {
         return(empty)
       }
       slices <- res$chart$slices
@@ -1962,14 +1920,6 @@ business_breakdown_lab_server <- function(id = "bblab",
       oc[[which]]
     }
 
-    .orders_empty_msg <- function(pack, fallback_key) {
-      codes <- as.character(pack$codes %||% character(0))
-      if (!length(codes) || !nzchar(codes[[1]])) return(ui_msg(fallback_key))
-      key <- paste0("notif_bblab_", tolower(codes[[1]]))
-      mapped <- ui_msg(key)
-      if (identical(mapped, key)) ui_msg(fallback_key) else mapped
-    }
-
     .orders_bar_plotly <- function(pack, empty_title = NULL) {
       empty <- plotly::layout(
         plotly::plot_ly(type = "bar"),
@@ -2071,69 +2021,204 @@ business_breakdown_lab_server <- function(id = "bblab",
       )
     }
 
-    output$orders_markets_status <- renderUI({
+    .or_pack <- function() {
       res <- lab_result()
-      if (is.null(res)) return(tags$p(class = "help-block", ui_msg("bblab_waiting")))
-      pack <- .orders_pack("market_geography")
-      if (is.null(pack)) {
-        return(tags$p(class = "help-block", ui_msg("bblab_orders_markets_empty")))
+      if (!is.list(res)) return(NULL)
+      res$order_research
+    }
+
+    .orders_group_gate <- function(group) {
+      res <- lab_result()
+      oc <- if (is.list(res)) res$order_concentration else NULL
+      .bblab_orders_group_visible(
+        group,
+        order_concentration = oc,
+        order_research = .or_pack(),
+        or_started = isTRUE(or_started())
+      )
+    }
+
+    .orders_top_meta <- function(pack) {
+      if (!is.list(pack) || !isTRUE(pack$eligible)) return(NULL)
+      meta <- character(0)
+      if (.bblab_finite(pack$top1_share)) {
+        meta <- c(meta, paste0(ui_msg("bblab_orders_top1"), ": ", .bblab_fmt_pct(pack$top1_share)))
       }
-      if (isTRUE(pack$eligible)) {
-        note <- if (isTRUE(pack$is_customer_location_only)) {
-          ui_msg("bblab_orders_markets_geo_note")
-        } else {
-          NULL
-        }
-        return(tags$p(class = "ynow-bblab-orders__meta help-block", note))
+      if (.bblab_finite(pack$top3_share)) {
+        meta <- c(meta, paste0(ui_msg("bblab_orders_top3"), ": ", .bblab_fmt_pct(pack$top3_share)))
       }
-      tags$p(class = "help-block", .orders_empty_msg(pack, "bblab_orders_markets_empty"))
+      if (!length(meta)) return(NULL)
+      tags$p(class = "ynow-bblab-orders__meta help-block", paste(meta, collapse = " · "))
+    }
+
+    observeEvent(input$order_research_run, {
+      or_started(TRUE)
+    }, ignoreInit = TRUE)
+
+    output$orders_group_orders <- renderUI({
+      if (!isTRUE(.orders_group_gate("orders"))) return(NULL)
+      or <- .or_pack()
+      started <- isTRUE(or_started())
+      show_facts <- .bblab_or_focus_has_finite_facts(or, "orders")
+      show_chart <- .bblab_or_chart_has_points(or, "orders")
+      tags$div(
+        class = "ynow-bblab-orders__group",
+        `data-orders-group` = "orders",
+        tags$h4(
+          id = "ynow_bblab_orders_qty_title",
+          class = "ynow-bblab-subhead",
+          ui_msg("bblab_orders_qty_title")
+        ),
+        tags$p(
+          id = "ynow_bblab_orders_qty_help",
+          class = "help-block",
+          ui_msg("bblab_orders_qty_help")
+        ),
+        if (isTRUE(show_facts)) {
+          bblab_order_research_focus_ui(
+            or, loc(), started, bucket_id = "orders", show_idle = FALSE
+          )
+        } else NULL,
+        if (isTRUE(show_chart)) {
+          plotly::plotlyOutput(ns("order_research_chart"), height = "280px")
+        } else NULL
+      )
     })
 
-    output$orders_customers_status <- renderUI({
-      res <- lab_result()
-      if (is.null(res)) return(tags$p(class = "help-block", ui_msg("bblab_waiting")))
+    output$orders_group_customers <- renderUI({
+      if (!isTRUE(.orders_group_gate("customers"))) return(NULL)
       pack <- .orders_pack("customer_concentration")
-      if (is.null(pack) || !isTRUE(pack$eligible)) {
-        return(tags$p(
+      or <- .or_pack()
+      started <- isTRUE(or_started())
+      show_filing <- .bblab_orders_pack_has_chart(pack)
+      show_facts <- started && .bblab_or_focus_has_finite_facts(or, "customers")
+      show_rates <- started && .bblab_or_chart_has_points(or, "customers")
+      tags$div(
+        class = "ynow-bblab-orders__group",
+        `data-orders-group` = "customers",
+        tags$h4(
+          id = "ynow_bblab_orders_customers_title",
+          class = "ynow-bblab-subhead",
+          ui_msg("bblab_orders_customers_title")
+        ),
+        tags$p(
+          id = "ynow_bblab_orders_customers_help",
           class = "help-block",
-          .orders_empty_msg(pack %||% list(), "bblab_orders_customers_empty")
-        ))
-      }
-      meta <- character(0)
-      if (.bblab_finite(pack$top1_share)) {
-        meta <- c(meta, paste0(ui_msg("bblab_orders_top1"), ": ", .bblab_fmt_pct(pack$top1_share)))
-      }
-      if (.bblab_finite(pack$top3_share)) {
-        meta <- c(meta, paste0(ui_msg("bblab_orders_top3"), ": ", .bblab_fmt_pct(pack$top3_share)))
-      }
-      if (!length(meta)) return(NULL)
-      tags$p(class = "ynow-bblab-orders__meta help-block", paste(meta, collapse = " · "))
+          ui_msg("bblab_orders_customers_help")
+        ),
+        if (isTRUE(show_filing)) tagList(
+          tags$p(
+            id = "ynow_bblab_orders_from_filings_customers",
+            class = "ynow-bblab-orders__sublabel",
+            ui_msg("bblab_orders_from_filings")
+          ),
+          .orders_top_meta(pack),
+          plotly::plotlyOutput(ns("orders_customers_chart"), height = "320px")
+        ) else NULL,
+        if (isTRUE(show_facts) || isTRUE(show_rates)) tagList(
+          tags$p(
+            id = "ynow_bblab_orders_disclosed_facts_customers",
+            class = "ynow-bblab-orders__sublabel",
+            ui_msg("bblab_orders_disclosed_facts")
+          ),
+          if (isTRUE(show_facts)) {
+            bblab_order_research_focus_ui(
+              or, loc(), started, bucket_id = "customers", show_idle = FALSE
+            )
+          } else NULL,
+          if (isTRUE(show_rates)) {
+            plotly::plotlyOutput(ns("order_research_rates_chart"), height = "280px")
+          } else NULL
+        ) else NULL
+      )
     })
 
-    output$orders_suppliers_status <- renderUI({
-      res <- lab_result()
-      if (is.null(res)) return(tags$p(class = "help-block", ui_msg("bblab_waiting")))
+    output$orders_group_suppliers <- renderUI({
+      if (!isTRUE(.orders_group_gate("suppliers"))) return(NULL)
       pack <- .orders_pack("supplier_concentration")
-      if (is.null(pack) || !isTRUE(pack$eligible)) {
-        return(tags$p(
+      or <- .or_pack()
+      started <- isTRUE(or_started())
+      show_filing <- .bblab_orders_pack_has_chart(pack)
+      show_facts <- started && .bblab_or_focus_has_finite_facts(or, "suppliers")
+      tags$div(
+        class = "ynow-bblab-orders__group",
+        `data-orders-group` = "suppliers",
+        tags$h4(
+          id = "ynow_bblab_orders_suppliers_title",
+          class = "ynow-bblab-subhead",
+          ui_msg("bblab_orders_suppliers_title")
+        ),
+        tags$p(
+          id = "ynow_bblab_orders_suppliers_help",
           class = "help-block",
-          .orders_empty_msg(pack %||% list(), "bblab_orders_suppliers_empty")
-        ))
-      }
-      meta <- character(0)
-      if (.bblab_finite(pack$top1_share)) {
-        meta <- c(meta, paste0(ui_msg("bblab_orders_top1"), ": ", .bblab_fmt_pct(pack$top1_share)))
-      }
-      if (.bblab_finite(pack$top3_share)) {
-        meta <- c(meta, paste0(ui_msg("bblab_orders_top3"), ": ", .bblab_fmt_pct(pack$top3_share)))
-      }
-      if (!length(meta)) return(NULL)
-      tags$p(class = "ynow-bblab-orders__meta help-block", paste(meta, collapse = " · "))
+          ui_msg("bblab_orders_suppliers_help")
+        ),
+        if (isTRUE(show_filing)) tagList(
+          tags$p(
+            id = "ynow_bblab_orders_from_filings_suppliers",
+            class = "ynow-bblab-orders__sublabel",
+            ui_msg("bblab_orders_from_filings")
+          ),
+          .orders_top_meta(pack),
+          plotly::plotlyOutput(ns("orders_suppliers_chart"), height = "320px")
+        ) else NULL,
+        if (isTRUE(show_facts)) tagList(
+          tags$p(
+            id = "ynow_bblab_orders_disclosed_facts_suppliers",
+            class = "ynow-bblab-orders__sublabel",
+            ui_msg("bblab_orders_disclosed_facts")
+          ),
+          bblab_order_research_focus_ui(
+            or, loc(), started, bucket_id = "suppliers", show_idle = FALSE
+          )
+        ) else NULL
+      )
+    })
+
+    output$orders_group_markets <- renderUI({
+      if (!isTRUE(.orders_group_gate("markets"))) return(NULL)
+      pack <- .orders_pack("market_geography")
+      note <- if (isTRUE(pack$is_customer_location_only)) {
+        tags$p(
+          class = "ynow-bblab-orders__meta help-block",
+          ui_msg("bblab_orders_markets_geo_note")
+        )
+      } else NULL
+      tags$div(
+        class = "ynow-bblab-orders__group",
+        `data-orders-group` = "markets",
+        tags$h4(
+          id = "ynow_bblab_orders_markets_title",
+          class = "ynow-bblab-subhead",
+          ui_msg("bblab_orders_markets_title")
+        ),
+        tags$p(
+          id = "ynow_bblab_orders_markets_help",
+          class = "help-block",
+          ui_msg("bblab_orders_markets_help")
+        ),
+        note,
+        plotly::plotlyOutput(ns("orders_markets_chart"), height = "340px")
+      )
+    })
+
+    output$orders_group_context <- renderUI({
+      if (!isTRUE(.orders_group_gate("context"))) return(NULL)
+      tags$div(
+        class = "ynow-bblab-orders__group ynow-bblab-orders__context",
+        `data-orders-group` = "context",
+        tags$h4(
+          id = "ynow_bblab_or_title",
+          class = "ynow-bblab-subhead",
+          ui_msg("bblab_or_title")
+        ),
+        bblab_order_research_meta_ui(.or_pack(), loc(), TRUE)
+      )
     })
 
     output$orders_markets_chart <- plotly::renderPlotly({
       pack <- .orders_pack("market_geography")
-      if (is.null(pack)) {
+      if (is.null(pack) || !isTRUE(.bblab_orders_pack_has_chart(pack))) {
         return(plotly::layout(plotly::plot_ly(type = "pie"), showlegend = FALSE))
       }
       .orders_donut_plotly(pack)
@@ -2141,7 +2226,7 @@ business_breakdown_lab_server <- function(id = "bblab",
 
     output$orders_customers_chart <- plotly::renderPlotly({
       pack <- .orders_pack("customer_concentration")
-      if (is.null(pack)) {
+      if (is.null(pack) || !isTRUE(.bblab_orders_pack_has_chart(pack))) {
         return(plotly::layout(
           plotly::plot_ly(type = "bar"),
           showlegend = FALSE, xaxis = list(visible = FALSE), yaxis = list(visible = FALSE)
@@ -2152,49 +2237,13 @@ business_breakdown_lab_server <- function(id = "bblab",
 
     output$orders_suppliers_chart <- plotly::renderPlotly({
       pack <- .orders_pack("supplier_concentration")
-      if (is.null(pack)) {
+      if (is.null(pack) || !isTRUE(.bblab_orders_pack_has_chart(pack))) {
         return(plotly::layout(
           plotly::plot_ly(type = "bar"),
           showlegend = FALSE, xaxis = list(visible = FALSE), yaxis = list(visible = FALSE)
         ))
       }
       .orders_bar_plotly(pack)
-    })
-
-    .or_pack <- function() {
-      res <- lab_result()
-      if (!is.list(res)) return(NULL)
-      res$order_research
-    }
-
-    observeEvent(input$order_research_run, {
-      or_started(TRUE)
-    }, ignoreInit = TRUE)
-
-    output$order_research_orders_facts <- renderUI({
-      bblab_order_research_focus_ui(
-        .or_pack(), loc(), isTRUE(or_started()),
-        bucket_id = "orders", show_idle = TRUE
-      )
-    })
-
-    output$order_research_customers_facts <- renderUI({
-      bblab_order_research_focus_ui(
-        .or_pack(), loc(), isTRUE(or_started()),
-        bucket_id = "customers", show_idle = FALSE
-      )
-    })
-
-    output$order_research_suppliers_facts <- renderUI({
-      bblab_order_research_focus_ui(
-        .or_pack(), loc(), isTRUE(or_started()),
-        bucket_id = "suppliers", show_idle = FALSE
-      )
-    })
-
-    # Context group: sources / cross-check / call excerpts (focus buckets live in analysis groups).
-    output$order_research_panel <- renderUI({
-      bblab_order_research_meta_ui(.or_pack(), loc(), isTRUE(or_started()))
     })
 
     output$order_research_chart <- plotly::renderPlotly({
@@ -2210,10 +2259,9 @@ business_breakdown_lab_server <- function(id = "bblab",
       if (!is.null(ev) && !is.null(ev$customdata)) focus_id(as.character(ev$customdata)[1])
     }, ignoreNULL = TRUE)
 
-    output$cards <- renderUI({
+    output$cards_section <- renderUI({
       res <- lab_result()
-      if (is.null(res)) return(tags$p(class = "help-block", ui_msg("bblab_waiting")))
-      # Missing revaluation never withholds reported / derived Rev, CoR, GP cards.
+      if (!isTRUE(.bblab_cards_visible(res))) return(NULL)
       biz <- res$businesses %||% list()
       cons_rev <- .bblab_num(res$consolidated$revenue)
       cards <- lapply(biz, function(c) {
@@ -2225,25 +2273,46 @@ business_breakdown_lab_server <- function(id = "bblab",
           width = 4, .bblab_card_html(res$other, loc(), FALSE, cons_rev)
         )
       }
-      if (!length(cards) && !length(extra)) {
-        return(tags$p(class = "help-block", ui_msg("bblab_cards_empty")))
-      }
-      tagList(fluidRow(cards), if (length(extra)) fluidRow(extra) else NULL)
+      .bblab_report_section(
+        "V", "ynow_bblab_ch5_title", ui_msg("bblab_ch5_title"),
+        "ynow_bblab_ch5_help", ui_msg("bblab_ch5_help"),
+        chapter = "5",
+        tagList(fluidRow(cards), if (length(extra)) fluidRow(extra) else NULL)
+      )
     })
 
-    output$recon <- renderUI({
+    output$recon_section <- renderUI({
       res <- lab_result()
-      if (is.null(res) || is.null(res$reconciliation)) {
-        return(tags$p(class = "help-block", ui_msg("bblab_waiting")))
-      }
-      .bblab_recon_commercial_html(res$reconciliation, locale = loc(), ui_msg = ui_msg)
+      if (is.null(res) || is.null(res$reconciliation)) return(NULL)
+      .bblab_report_section(
+        "VI", "ynow_bblab_ch6_title", ui_msg("bblab_ch6_title"),
+        "ynow_bblab_ch6_help", ui_msg("bblab_ch6_help"),
+        chapter = "6",
+        .bblab_recon_commercial_html(res$reconciliation, locale = loc(), ui_msg = ui_msg)
+      )
     })
 
-    output$shared <- renderUI({
+    output$shared_section <- renderUI({
       res <- lab_result()
+      if (!isTRUE(.bblab_shared_visible(res))) return(NULL)
       items <- res$shared_corporate %||% list()
-      if (!length(items)) return(tags$p(class = "help-block", ui_msg("bblab_shared_empty")))
-      tags$ul(lapply(names(items), function(nm) tags$li(tags$b(nm), ": ", .bblab_fmt_amt(items[[nm]]))))
+      tags$section(
+        class = "ynow-bblab-report__section ynow-bblab-report__section--muted",
+        tags$header(
+          class = "ynow-bblab-report__section-head",
+          tags$h3(
+            id = "ynow_bblab_shared_title",
+            class = "ynow-bblab-report__section-title",
+            ui_msg("bblab_shared_title")
+          )
+        ),
+        tags$div(
+          class = "ynow-bblab-report__section-body",
+          tags$ul(lapply(names(items), function(nm) {
+            tags$li(tags$b(nm), ": ", .bblab_fmt_amt(items[[nm]]))
+          }))
+        )
+      )
     })
 
     output$notes <- renderUI({

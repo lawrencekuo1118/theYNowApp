@@ -3990,7 +3990,8 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Same analysis types are grouped together: order quantity, major-customer revenue mix, ",
       "major suppliers, then major-market geography. Filing concentration charts sit with the ",
       "matching disclosed order facts (US: SEC EDGAR; TW: MOPS shareholder annual report Art. 18). ",
-      "Empty when undisclosed — never estimated. This block is not the business-dimension split."
+      "Groups with no disclosed data collapse — never estimated. ",
+      "This block is not the business-dimension split."
     ),
     bblab_orders_qty_title = "Order quantity",
     bblab_orders_qty_help = paste0(
@@ -4059,7 +4060,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Start analysis to surface disclosed order quantity, supplier, and customer facts ",
       "beside the matching filing charts. Taiwan source priority is MOPS, then company IR, ",
       "then a statement cross-check. Broker and industry sources are estimates only and ",
-      "do not fill order amounts."
+      "do not fill order amounts. Groups with no disclosed data stay collapsed."
     ),
     bblab_or_focus_orders = "Order quantity",
     bblab_or_focus_suppliers = "Major suppliers",
@@ -8325,7 +8326,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "相同分析整併同組：訂單數量、重大客戶營收貢獻、主要供應商，再接主要市場地區別。",
       "財報集中度圖與對應的已揭露訂單事實放在一起",
       "（美股：SEC EDGAR；台股：公開資訊觀測站股東會年報第 18 條附表）。",
-      "未揭露則留白——絕不推估。本區塊不是事業維度切分。"
+      "無資料的區塊會收合——絕不推估。本區塊不是事業維度切分。"
     ),
     bblab_orders_qty_title = "訂單數量",
     bblab_orders_qty_help = "僅在財報或法說會明列時，顯示已揭露的 backlog、bookings 與具名訂單金額。",
@@ -8361,7 +8362,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_or_help = paste0(
       "點選開始分析後，已揭露的訂單數量、供應商與客戶事實會出現在對應的財報圖旁。",
       "台灣來源優先序為公開資訊觀測站、公司 IR，再以財報科目交叉驗證。",
-      "券商與產業來源僅供估計，不填入訂單金額。"
+      "券商與產業來源僅供估計，不填入訂單金額。無資料的區塊維持收合。"
     ),
     bblab_or_focus_orders = "訂單數量",
     bblab_or_focus_suppliers = "主要供應商",
