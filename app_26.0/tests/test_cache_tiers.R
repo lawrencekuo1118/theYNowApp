@@ -129,6 +129,12 @@ check(
     grepl("lookup_statement_fallback_ticker", src, fixed = TRUE) &&
     grepl("cached_scrape_financials\\s*<-\\s*function", src)
 )
+# Source-time memoise::forget() calls cache$reset() on the shared tier and
+# wipes sticky hosted hits for every key. Tests may still forget intentionally.
+check(
+  "no source-time memoise::forget on shared tiers",
+  !grepl("tryCatch\\(memoise::forget\\(", src)
+)
 
 # Offline put/get on the fast tier object (no network; asserts cachem API)
 check(

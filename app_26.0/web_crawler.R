@@ -340,8 +340,8 @@ ynow_cache_tier_info <- function() {
   .scrape_financials_uncached,
   cache = .ynow_slow_cache
 )
-
-tryCatch(memoise::forget(.cached_scrape_financials_memo), error = function(e) NULL)
+# Do not memoise::forget at source time: forget() resets the whole shared
+# cachem tier, wiping sticky hosted hits for every other memoised key.
 
 #' Config-driven local ordinary share ticker for ADRs (HTCDI issuers).
 #' Not a valuation formula branch — only used when Yahoo returns empty statements
@@ -486,7 +486,6 @@ get_yahoo_industry <- function(stock_code) {
 
 # SLOW: sector / industry labels (rarely change within a day)
 cached_get_yahoo_industry <- memoise::memoise(get_yahoo_industry, cache = .ynow_slow_cache)
-tryCatch(memoise::forget(cached_get_yahoo_industry), error = function(e) NULL)
 
 # ==========================================
 # 🎨 Company full-name tint from official logo (≤2 primary colors)
@@ -553,7 +552,6 @@ cached_get_corp_logo_colors <- memoise::memoise(
   get_corp_logo_colors,
   cache = .ynow_slow_cache
 )
-tryCatch(memoise::forget(cached_get_corp_logo_colors), error = function(e) NULL)
 
 # ==========================================
 # 🌐 3. Summary（僅 yfinance，shinyapps 無 Chrome）
@@ -620,7 +618,6 @@ get_summary_data <- function(stock_code) {
 
 # FAST: live quote / market cap / last price (≤15m) — never park on slow statement cache
 cached_get_summary_data <- memoise::memoise(get_summary_data, cache = .ynow_fast_cache)
-tryCatch(memoise::forget(cached_get_summary_data), error = function(e) NULL)
 
 # ==========================================
 # 💱 USD/TWD 即期匯率
@@ -642,7 +639,6 @@ get_usd_twd_fx <- function() {
 
 # FAST: FX
 cached_get_usd_twd_fx <- memoise::memoise(get_usd_twd_fx, cache = .ynow_fast_cache)
-tryCatch(memoise::forget(cached_get_usd_twd_fx), error = function(e) NULL)
 
 # ==========================================
 # 🇺🇸／🇹🇼 4. 無風險利率 Rf（US: Yahoo ^TNX；TW: TPEx Curve 10Y）
@@ -707,8 +703,6 @@ if (!exists("%||%", mode = "function")) {
   function() .fetch_risk_free_rate_live("TW"),
   cache = .ynow_fast_cache
 )
-tryCatch(memoise::forget(.cached_fetch_rf_live_us), error = function(e) NULL)
-tryCatch(memoise::forget(.cached_fetch_rf_live_tw), error = function(e) NULL)
 
 #' Resolve Rf with explicit source for Macro／CAPM UI.
 #' @return list(rf_pct, source, label, symbol, is_fallback)

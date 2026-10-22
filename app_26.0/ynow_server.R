@@ -4875,21 +4875,6 @@ server <- function(input, output, session) {
           corp_display_name_en("")
         }
 
-        # 公司全稱字體色：自官方 logo 擷取至多兩色（失敗則維持預設灰黑）
-        logo_web <- tryCatch({
-          p <- isolate(company_profile())
-          as.character(p$website %||% "")[1]
-        }, error = function(e) "")
-        logo_cols <- tryCatch(
-          cached_get_corp_logo_colors(
-            stock_code,
-            website = if (nzchar(logo_web %||% "")) logo_web else NULL
-          ),
-          error = function(e) character(0)
-        )
-        # Always store a 2-color pair (single brand → black; sole black → white)
-        corp_name_logo_colors(.ensure_logo_color_pair(logo_cols))
-
         # Keep most-recent first; re-Search moves an existing ticker to the front.
         # Skip the recent list when the ticker is already pinned (shown above the label).
         # Signed-in: also persist into rolling 24h history (ynow_user_prefs).
@@ -5044,6 +5029,21 @@ server <- function(input, output, session) {
             updateNumericInput(session, "capm_rf", value = round(as.numeric(rf_now), 2))
           }
         }, error = function(e) NULL)
+
+        # Brand tint after statements / Rf — not a valuation input; keep off the
+        # Yahoo gate critical path that blocks financials.
+        logo_web <- tryCatch({
+          p <- isolate(company_profile())
+          as.character(p$website %||% "")[1]
+        }, error = function(e) "")
+        logo_cols <- tryCatch(
+          cached_get_corp_logo_colors(
+            stock_code,
+            website = if (nzchar(logo_web %||% "")) logo_web else NULL
+          ),
+          error = function(e) character(0)
+        )
+        corp_name_logo_colors(.ensure_logo_color_pair(logo_cols))
 
         incProgress(0.9, detail = "資料同步完成！✅")
 

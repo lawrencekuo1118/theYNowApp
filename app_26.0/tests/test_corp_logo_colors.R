@@ -211,6 +211,11 @@ check("server stores logo colors", grepl("corp_name_logo_colors", srv, fixed = T
 check("server pushes logo colors to quote icons", grepl("ynowCorpLogoColors", srv, fixed = TRUE))
 check("server ensures color pair", grepl("ensure_logo_color_pair", srv, fixed = TRUE))
 check("server calls cached_get_corp_logo_colors", grepl("cached_get_corp_logo_colors", srv, fixed = TRUE))
+check("logo fetch after financials scrape", {
+  pos_fs <- regexpr("cached_scrape_financials(", srv, fixed = TRUE)[1]
+  pos_logo <- regexpr("cached_get_corp_logo_colors(", srv, fixed = TRUE)[1]
+  is.finite(pos_fs) && pos_fs > 0 && is.finite(pos_logo) && pos_logo > pos_fs
+})
 wc <- paste(readLines(file.path(app_dir, "web_crawler.R"), warn = FALSE), collapse = "\n")
 check("crawler near-black helper", grepl("is_near_black_hex", wc, fixed = TRUE))
 py_src <- paste(readLines(file.path(app_dir, "corp_logo_colors.py"), warn = FALSE), collapse = "\n")
