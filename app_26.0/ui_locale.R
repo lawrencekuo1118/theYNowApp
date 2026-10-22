@@ -1243,7 +1243,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     auth_gate_checklist_b1 = "Mandatory Decision SOP gates and live checklist items",
     auth_gate_checklist_b2 = "Bear/Base MOS, F-Score, and quality acknowledgements",
     auth_gate_checklist_b3 = "YNOW verdict unlock after SOP gates pass",
-    auth_gate_checklist_demo_caption = "Checklist demo — Decision SOP flow",
+    auth_gate_checklist_demo_caption = "Decision Checklist demo — Decision SOP flow",
     auth_gate_alerts_body = paste0(
       "Value Alerts require a signed-in account in Full mode. ",
       "Lite mode does not require sign-in and remains fully usable."

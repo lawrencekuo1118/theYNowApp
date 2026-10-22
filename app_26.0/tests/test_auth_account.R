@@ -284,6 +284,19 @@ check("lab and checklist gates are feature-specific", {
     grepl("Unlock Decision Checklist", chk, fixed = TRUE) &&
     !grepl("Unlock Value Alerts", lab, fixed = TRUE)
 })
+check("checklist gate is side-by-side overlay; lab stays stacked", {
+  lab <- paste(as.character(ynow_member_gate_ui(
+    "g", "t", "b", "btn", feature = "lab"
+  )), collapse = "\n")
+  chk <- paste(as.character(ynow_member_gate_ui(
+    "g2", "t2", "b2", "btn2", feature = "checklist"
+  )), collapse = "\n")
+  grepl("ynow-gate-promo-demo-row", chk, fixed = TRUE) &&
+    grepl("ynow-gate-extras--checklist-split", chk, fixed = TRUE) &&
+    grepl("ynow-member-gate--surface-overlay", chk, fixed = TRUE) &&
+    !grepl("ynow-gate-promo-demo-row", lab, fixed = TRUE) &&
+    !grepl("ynow-member-gate--surface-overlay", lab, fixed = TRUE)
+})
 check("backtest and checklist require the member gate", {
   ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   dc <- paste(readLines(file.path(app_dir, "decision_checklist_module.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
@@ -291,6 +304,8 @@ check("backtest and checklist require the member gate", {
   grepl("ynow_lab_body", ui, fixed = TRUE) &&
     grepl("ynow-member-body", ui, fixed = TRUE) &&
     grepl("ynow_chk_body", dc, fixed = TRUE) &&
+    grepl("ynow-member-gate-surface--checklist", dc, fixed = TRUE) &&
+    grepl("ynow_checklist_gate_fade_backdrop_ui", dc, fixed = TRUE) &&
     grepl("ynow-member-gate", auth, fixed = TRUE) &&
     grepl("not(.ynow-lite):not(.ynow-authed) .ynow-member-body", auth, fixed = TRUE)
 })

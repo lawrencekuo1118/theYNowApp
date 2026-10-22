@@ -2327,6 +2327,8 @@ ynow_gate_promo_faq_ui <- function(feature = "lab", include_faq = TRUE, compact 
   keys <- ynow_gate_promo_keys(feature)
   feature <- keys$feature
   demo_base <- paste0("demos/", feature)
+  # Decision Checklist: unlock promo + SOP demo sit 1:1 on one row.
+  checklist_split <- identical(feature, "checklist")
   tier_attr <- if (exists("ynow_membership_lock_tier_attr", mode = "function")) {
     ynow_membership_lock_tier_attr(feature)
   } else {
@@ -2340,55 +2342,62 @@ ynow_gate_promo_faq_ui <- function(feature = "lab", include_faq = TRUE, compact 
   } else {
     NULL
   }
+  promo <- tags$div(
+    class = "ynow-gate-promo",
+    tags$div(
+      class = "ynow-gate-promo__banner",
+      tags$span(class = "ynow-gate-promo__badge", "APP"),
+      tags$span(
+        class = "ynow-gate-promo-kicker",
+        .ynow_gate_str(keys$kicker, "APP member exclusive")
+      )
+    ),
+    tags$p(
+      class = "ynow-gate-promo-lead",
+      .ynow_gate_str(keys$lead, "")
+    ),
+    tags$ul(
+      class = "ynow-gate-promo__list",
+      tags$li(tags$span(class = "ynow-gate-promo-b1", .ynow_gate_str(keys$b1, ""))),
+      tags$li(tags$span(class = "ynow-gate-promo-b2", .ynow_gate_str(keys$b2, ""))),
+      tags$li(tags$span(class = "ynow-gate-promo-b3", .ynow_gate_str(keys$b3, "")))
+    )
+  )
+  demo <- tags$div(
+    class = "ynow-gate-demo",
+    tags$p(
+      class = "ynow-gate-demo-caption",
+      .ynow_gate_str(keys$demo_caption, "Feature demo")
+    ),
+    # preload=none + no autoplay: avoid competing with Home first paint
+    # (~0.9MB webm). Client plays when the gate video scrolls into view.
+    tags$video(
+      class = "ynow-gate-demo-video",
+      controls = NA,
+      muted = NA,
+      playsinline = NA,
+      preload = "none",
+      loop = NA,
+      tags$source(src = paste0(demo_base, ".webm"), type = "video/webm"),
+      tags$source(src = paste0(demo_base, ".mp4"), type = "video/mp4"),
+      "Demo video unavailable."
+    )
+  )
+  promo_demo <- if (isTRUE(checklist_split)) {
+    tags$div(class = "ynow-gate-promo-demo-row", promo, demo)
+  } else {
+    tagList(promo, demo)
+  }
   tags$div(
     class = paste(
       "ynow-gate-extras",
-      if (isTRUE(compact)) "ynow-gate-extras--compact" else NULL
+      if (isTRUE(compact)) "ynow-gate-extras--compact" else NULL,
+      if (isTRUE(checklist_split)) "ynow-gate-extras--checklist-split" else NULL
     ),
     `data-ynow-gate-feature` = feature,
     `data-ynow-lock-tier` = if (nzchar(tier_attr)) tier_attr else NULL,
     `data-ynow-lock-scope` = scope_attr,
-    tags$div(
-      class = "ynow-gate-promo",
-      tags$div(
-        class = "ynow-gate-promo__banner",
-        tags$span(class = "ynow-gate-promo__badge", "APP"),
-        tags$span(
-          class = "ynow-gate-promo-kicker",
-          .ynow_gate_str(keys$kicker, "APP member exclusive")
-        )
-      ),
-      tags$p(
-        class = "ynow-gate-promo-lead",
-        .ynow_gate_str(keys$lead, "")
-      ),
-      tags$ul(
-        class = "ynow-gate-promo__list",
-        tags$li(tags$span(class = "ynow-gate-promo-b1", .ynow_gate_str(keys$b1, ""))),
-        tags$li(tags$span(class = "ynow-gate-promo-b2", .ynow_gate_str(keys$b2, ""))),
-        tags$li(tags$span(class = "ynow-gate-promo-b3", .ynow_gate_str(keys$b3, "")))
-      )
-    ),
-    tags$div(
-      class = "ynow-gate-demo",
-      tags$p(
-        class = "ynow-gate-demo-caption",
-        .ynow_gate_str(keys$demo_caption, "Feature demo")
-      ),
-      # preload=none + no autoplay: avoid competing with Home first paint
-      # (~0.9MB webm). Client plays when the gate video scrolls into view.
-      tags$video(
-        class = "ynow-gate-demo-video",
-        controls = NA,
-        muted = NA,
-        playsinline = NA,
-        preload = "none",
-        loop = NA,
-        tags$source(src = paste0(demo_base, ".webm"), type = "video/webm"),
-        tags$source(src = paste0(demo_base, ".mp4"), type = "video/mp4"),
-        "Demo video unavailable."
-      )
-    ),
+    promo_demo,
     if (isTRUE(include_faq)) {
       tags$details(
         class = "ynow-gate-faq",
@@ -2468,12 +2477,21 @@ ynow_member_gate_ui <- function(gate_id, title_id, body_id, btn_id, feature = "l
   } else {
     "A"
   }
+  # Checklist gate covers the faded page surface (not a distant narrow box).
+  checklist_surface <- identical(keys$feature, "checklist")
   tags$section(
     id = gate_id,
-    class = "ynow-hfv-chapter ynow-member-gate ynow-gate-box",
+    class = paste(
+      "ynow-hfv-chapter ynow-member-gate ynow-gate-box",
+      if (isTRUE(checklist_surface)) "ynow-member-gate--surface-overlay" else NULL
+    ),
     `data-ynow-gate-feature` = keys$feature,
     `data-ynow-lock-tier` = if (nzchar(tier_attr)) tier_attr else NULL,
-    style = "display:none; max-width:760px; margin:18px auto;",
+    style = if (isTRUE(checklist_surface)) {
+      "display:none;"
+    } else {
+      "display:none; max-width:760px; margin:18px auto;"
+    },
     tags$div(
       class = "ynow-hfv-chapter__head",
       tags$span(
@@ -2513,6 +2531,38 @@ ynow_member_gate_ui <- function(gate_id, title_id, body_id, btn_id, feature = "l
           ),
           class = "btn-default ynow-auth-register-open ynow-auth-btn"
         )
+      )
+    )
+  )
+}
+
+#' Decorative faded Decision Checklist shell behind the guest Sign-in overlay.
+#' Visible only for Full-mode guests; aria-hidden; not interactive.
+ynow_checklist_gate_fade_backdrop_ui <- function() {
+  tags$div(
+    class = "ynow-member-gate-fade-backdrop",
+    `aria-hidden` = "true",
+    tags$div(
+      class = "ynow-dc-fade-skel",
+      tags$div(
+        class = "ynow-dc-fade-skel__box ynow-dc-fade-skel__box--summary",
+        tags$div(class = "ynow-dc-fade-skel__bar ynow-dc-fade-skel__bar--title"),
+        tags$div(class = "ynow-dc-fade-skel__bar"),
+        tags$div(class = "ynow-dc-fade-skel__bar ynow-dc-fade-skel__bar--short"),
+        tags$div(class = "ynow-dc-fade-skel__grid",
+          tags$div(class = "ynow-dc-fade-skel__cell"),
+          tags$div(class = "ynow-dc-fade-skel__cell"),
+          tags$div(class = "ynow-dc-fade-skel__cell"),
+          tags$div(class = "ynow-dc-fade-skel__cell")
+        )
+      ),
+      tags$div(
+        class = "ynow-dc-fade-skel__box",
+        tags$div(class = "ynow-dc-fade-skel__bar ynow-dc-fade-skel__bar--title"),
+        tags$div(class = "ynow-dc-fade-skel__bar"),
+        tags$div(class = "ynow-dc-fade-skel__bar ynow-dc-fade-skel__bar--mid"),
+        tags$div(class = "ynow-dc-fade-skel__bar"),
+        tags$div(class = "ynow-dc-fade-skel__bar ynow-dc-fade-skel__bar--short")
       )
     )
   )

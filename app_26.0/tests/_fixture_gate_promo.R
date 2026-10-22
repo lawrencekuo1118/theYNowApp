@@ -36,6 +36,17 @@ fixture_css <- paste(
   ".ynow-auth-pair--gate{display:flex;gap:8px;margin-top:12px;max-width:420px;}",
   ".ynow-auth-pair--gate>.btn{flex:1 1 0;height:40px;}",
   ".ynow-gate-extras{margin:12px 0 16px 0;}",
+  ".ynow-gate-extras--checklist-split .ynow-gate-promo-demo-row{display:flex;flex-wrap:nowrap;align-items:stretch;gap:12px;margin:0 0 10px 0;}",
+  ".ynow-gate-extras--checklist-split .ynow-gate-promo-demo-row>.ynow-gate-promo,",
+  ".ynow-gate-extras--checklist-split .ynow-gate-promo-demo-row>.ynow-gate-demo{flex:1 1 0;width:0;min-width:0;margin:0;}",
+  "@media (max-width:767px){.ynow-gate-extras--checklist-split .ynow-gate-promo-demo-row{flex-direction:column;}.ynow-gate-extras--checklist-split .ynow-gate-promo-demo-row>.ynow-gate-promo,.ynow-gate-extras--checklist-split .ynow-gate-promo-demo-row>.ynow-gate-demo{width:100%;flex:1 1 auto;}}",
+  ".ynow-member-gate-surface--checklist{position:relative;min-height:560px;max-width:980px;margin:12px auto;}",
+  ".ynow-member-gate-fade-backdrop{display:block;position:absolute;inset:0;z-index:0;background:#f7f7f7;pointer-events:none;}",
+  ".ynow-member-gate-fade-backdrop::after{content:\"\";position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.55),rgba(255,255,255,.97));}",
+  ".ynow-dc-fade-skel{padding:12px;opacity:.55;}",
+  ".ynow-dc-fade-skel__box{margin:0 0 12px;padding:12px;border:1px solid #e0e0e0;background:#fff;}",
+  ".ynow-dc-fade-skel__bar{height:10px;margin:0 0 8px;background:#d8d8d8;width:80%;}",
+  ".ynow-member-gate--surface-overlay{position:absolute;inset:0;z-index:2;max-width:none!important;margin:0!important;background:rgba(255,255,255,.92)!important;overflow:auto;}",
   ".ynow-gate-promo{margin:0 0 10px 0;border:1px solid #e6e6e6;border-radius:8px;overflow:hidden;background:#fff;}",
   ".ynow-gate-promo__banner{display:flex;align-items:center;gap:10px;padding:12px 16px;background:#fff;color:#1a1a1a;border-bottom:1px solid #ececec;}",
   ".ynow-gate-promo__badge{display:inline-block;padding:2px 8px;border:1px solid #d0d0d0;border-radius:2px;font-size:11px;font-weight:700;letter-spacing:.08em;color:#888;}",
@@ -96,8 +107,18 @@ for (feat in features) {
     paste0("g_", feat), paste0("t_", feat), paste0("b_", feat),
     paste0("btn_", feat), feature = feat
   )
-  gate$attribs$style <- "display:block; max-width:760px; margin:18px auto;"
-  html <- open_faq(rewrite_demo_src(as.character(gate)))
+  if (identical(feat, "checklist")) {
+    gate$attribs$style <- "display:block;"
+    wrap <- tags$div(
+      class = "ynow-member-gate-surface ynow-member-gate-surface--checklist",
+      ynow_checklist_gate_fade_backdrop_ui(),
+      gate
+    )
+    html <- open_faq(rewrite_demo_src(as.character(wrap)))
+  } else {
+    gate$attribs$style <- "display:block; max-width:760px; margin:18px auto;"
+    html <- open_faq(rewrite_demo_src(as.character(gate)))
+  }
   writeLines(page(paste("Gate", feat, "EN"), html),
              file.path(out_dir, paste0("gate-", feat, "-en.html")), useBytes = TRUE)
 }
@@ -110,54 +131,84 @@ esc <- function(x) htmltools::htmlEscape(as.character(x %||% "")[1])
 loc <- function(key) ui_str(key, "zh-TW")
 zh_gate <- function(feature) {
   keys <- ynow_gate_promo_keys(feature)
-  sprintf(
+  split <- identical(feature, "checklist")
+  extras_cls <- if (split) {
+    "ynow-gate-extras ynow-gate-extras--checklist-split"
+  } else {
+    "ynow-gate-extras"
+  }
+  promo_demo <- if (split) {
     paste0(
-      '<section class="ynow-hfv-chapter ynow-member-gate ynow-gate-box" style="display:block;max-width:760px;margin:18px auto;">',
-      '<div class="ynow-hfv-chapter__head">',
-      '<span class="ynow-hfv-chapter__kicker ynow-gate-section-kicker">%s</span>',
-      '<h3 class="ynow-hfv-chapter__title"><span>%s</span></h3></div>',
-      '<div class="ynow-hfv-chapter__body"><p class="ynow-gate-body">%s</p>',
-      '<div class="ynow-gate-extras" data-ynow-gate-feature="%s">',
+      '<div class="ynow-gate-promo-demo-row">',
       '<div class="ynow-gate-promo"><div class="ynow-gate-promo__banner">',
       '<span class="ynow-gate-promo__badge">APP</span>',
-      '<span class="ynow-gate-promo-kicker">%s</span></div>',
-      '<p class="ynow-gate-promo-lead">%s</p>',
+      sprintf('<span class="ynow-gate-promo-kicker">%s</span></div>', esc(loc(keys$kicker))),
+      sprintf('<p class="ynow-gate-promo-lead">%s</p>', esc(loc(keys$lead))),
       '<ul class="ynow-gate-promo__list">',
-      '<li><span class="ynow-gate-promo-b1">%s</span></li>',
-      '<li><span class="ynow-gate-promo-b2">%s</span></li>',
-      '<li><span class="ynow-gate-promo-b3">%s</span></li></ul></div>',
-      '<div class="ynow-gate-demo"><p class="ynow-gate-demo-caption">%s</p>',
+      sprintf('<li><span class="ynow-gate-promo-b1">%s</span></li>', esc(loc(keys$b1))),
+      sprintf('<li><span class="ynow-gate-promo-b2">%s</span></li>', esc(loc(keys$b2))),
+      sprintf('<li><span class="ynow-gate-promo-b3">%s</span></li></ul></div>', esc(loc(keys$b3))),
+      sprintf('<div class="ynow-gate-demo"><p class="ynow-gate-demo-caption">%s</p>', esc(loc(keys$demo_caption))),
       '<video class="ynow-gate-demo-video" controls muted playsinline preload="none" loop>',
-      '<source src="file://%s/www/demos/%s.webm" type="video/webm">',
-      '<source src="file://%s/www/demos/%s.mp4" type="video/mp4"></video></div>',
-      '<details class="ynow-gate-faq" open><summary class="ynow-gate-faq__summary">',
-      '<span class="ynow-gate-faq-title">%s</span></summary>',
-      '<div class="ynow-gate-faq__body">',
-      '<div class="ynow-gate-faq-item"><p class="ynow-gate-faq-q">%s</p><p class="ynow-gate-faq-a">%s</p></div>',
-      '<div class="ynow-gate-faq-item"><p class="ynow-gate-faq-q">%s</p><p class="ynow-gate-faq-a">%s</p></div>',
-      '</div></details></div>',
-      '<div class="ynow-auth-pair ynow-auth-pair--gate">',
-      '<button type="button" class="btn btn-primary ynow-auth-open">%s</button>',
-      '<button type="button" class="btn btn-default ynow-auth-register-open">%s</button>',
-      '</div></div></section>'
-    ),
-    esc(loc("auth_gate_section_kicker")),
-    esc(loc("auth_pa_gate_title")),
-    esc(loc(keys$body)),
-    feature,
-    esc(loc(keys$kicker)),
-    esc(loc(keys$lead)),
-    esc(loc(keys$b1)),
-    esc(loc(keys$b2)),
-    esc(loc(keys$b3)),
-    esc(loc(keys$demo_caption)),
-    app_dir, feature, app_dir, feature,
-    esc(loc("auth_gate_faq_title")),
-    esc(loc("auth_gate_faq_q1")), esc(loc("auth_gate_faq_a1")),
-    esc(loc("auth_gate_faq_q2")), esc(loc("auth_gate_faq_a2")),
-    esc(loc("auth_sign_in")),
-    esc(loc("auth_register_btn"))
+      sprintf('<source src="file://%s/www/demos/%s.webm" type="video/webm">', app_dir, feature),
+      sprintf('<source src="file://%s/www/demos/%s.mp4" type="video/mp4"></video></div></div>', app_dir, feature)
+    )
+  } else {
+    paste0(
+      '<div class="ynow-gate-promo"><div class="ynow-gate-promo__banner">',
+      '<span class="ynow-gate-promo__badge">APP</span>',
+      sprintf('<span class="ynow-gate-promo-kicker">%s</span></div>', esc(loc(keys$kicker))),
+      sprintf('<p class="ynow-gate-promo-lead">%s</p>', esc(loc(keys$lead))),
+      '<ul class="ynow-gate-promo__list">',
+      sprintf('<li><span class="ynow-gate-promo-b1">%s</span></li>', esc(loc(keys$b1))),
+      sprintf('<li><span class="ynow-gate-promo-b2">%s</span></li>', esc(loc(keys$b2))),
+      sprintf('<li><span class="ynow-gate-promo-b3">%s</span></li></ul></div>', esc(loc(keys$b3))),
+      sprintf('<div class="ynow-gate-demo"><p class="ynow-gate-demo-caption">%s</p>', esc(loc(keys$demo_caption))),
+      '<video class="ynow-gate-demo-video" controls muted playsinline preload="none" loop>',
+      sprintf('<source src="file://%s/www/demos/%s.webm" type="video/webm">', app_dir, feature),
+      sprintf('<source src="file://%s/www/demos/%s.mp4" type="video/mp4"></video></div>', app_dir, feature)
+    )
+  }
+  section_cls <- if (split) {
+    "ynow-hfv-chapter ynow-member-gate ynow-gate-box ynow-member-gate--surface-overlay"
+  } else {
+    "ynow-hfv-chapter ynow-member-gate ynow-gate-box"
+  }
+  section_style <- if (split) "display:block;" else "display:block;max-width:760px;margin:18px auto;"
+  inner <- paste0(
+    sprintf('<section class="%s" style="%s">', section_cls, section_style),
+    '<div class="ynow-hfv-chapter__head">',
+    sprintf('<span class="ynow-hfv-chapter__kicker ynow-gate-section-kicker">%s</span>', esc(loc("auth_gate_section_kicker"))),
+    sprintf('<h3 class="ynow-hfv-chapter__title"><span>%s</span></h3></div>', esc(loc("auth_pa_gate_title"))),
+    '<div class="ynow-hfv-chapter__body">',
+    sprintf('<p class="ynow-gate-body">%s</p>', esc(loc(keys$body))),
+    sprintf('<div class="%s" data-ynow-gate-feature="%s">', extras_cls, feature),
+    promo_demo,
+    '<details class="ynow-gate-faq" open><summary class="ynow-gate-faq__summary">',
+    sprintf('<span class="ynow-gate-faq-title">%s</span></summary>', esc(loc("auth_gate_faq_title"))),
+    '<div class="ynow-gate-faq__body">',
+    sprintf('<div class="ynow-gate-faq-item"><p class="ynow-gate-faq-q">%s</p><p class="ynow-gate-faq-a">%s</p></div>',
+            esc(loc("auth_gate_faq_q1")), esc(loc("auth_gate_faq_a1"))),
+    sprintf('<div class="ynow-gate-faq-item"><p class="ynow-gate-faq-q">%s</p><p class="ynow-gate-faq-a">%s</p></div>',
+            esc(loc("auth_gate_faq_q2")), esc(loc("auth_gate_faq_a2"))),
+    '</div></details></div>',
+    '<div class="ynow-auth-pair ynow-auth-pair--gate">',
+    sprintf('<button type="button" class="btn btn-primary ynow-auth-open">%s</button>', esc(loc("auth_sign_in"))),
+    sprintf('<button type="button" class="btn btn-default ynow-auth-register-open">%s</button>', esc(loc("auth_register_btn"))),
+    '</div></div></section>'
   )
+  if (split) {
+    paste0(
+      '<div class="ynow-member-gate-surface ynow-member-gate-surface--checklist">',
+      '<div class="ynow-member-gate-fade-backdrop" aria-hidden="true">',
+      '<div class="ynow-dc-fade-skel"><div class="ynow-dc-fade-skel__box">',
+      '<div class="ynow-dc-fade-skel__bar"></div></div></div></div>',
+      inner,
+      '</div>'
+    )
+  } else {
+    inner
+  }
 }
 writeLines(page("Gate lab ZH", zh_gate("lab")),
            file.path(out_dir, "gate-lab-zh.html"), useBytes = TRUE)
