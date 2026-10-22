@@ -18,6 +18,14 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 - CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_26.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).
 - Docs: root README ship/CI/Release pointers; `scripts/record_github_release.sh` for soft-fail Release publish after deploy.
 
+## [v26.31] — 2026-10-22
+
+### Added
+
+- **Banner right logo tab refresh** (PR #398): black top-banner right small logo click soft-refreshes the **current sidebar tab** only (lazy-host remount + optional ticker re-search; no full session reload). While that tab is loading/refreshing, the logo **slowly rotates clockwise** and stops when idle.
+- zh-TW：黑色頂欄右側小 logo 點選後只重新整理**目前分頁**；載入／重新整理期間 logo 順時針慢轉，完成後停止。Title／aria：**Refresh current page**／**重新整理目前分頁**。
+- Live baseline bundle **12723970** / display **v26.31**.
+
 ## [v26.30] — 2026-10-22
 
 ### Added
