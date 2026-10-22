@@ -7,5 +7,5 @@ commit=7b475e1fefe25794a65f428703bc83329b2d4777
 short=7b475e1f
 message=chore: bump display version to v26.29
 captured_at=2026-10-22T06:05:48Z
-display_version=v26.29
+display_version=v26.30
 note=Canonical live line is app_26.0. Bundle 12723867: System admin self view modes (guest / signed-in / omniscient + warning-red title) (#396). Secrets only in gitignored .Renviron; no secret values in git.
