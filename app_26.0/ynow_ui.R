@@ -7326,22 +7326,25 @@ ui <- dashboardPage(
           pointer-events: none;
           z-index: 0;
           overflow: hidden;
-          /* Full-panel upward dissolve: strong near foot, nearly gone at top */
+          /* Full-panel upward dissolve: strong near foot, faint through mid,
+             nearly gone under the logo/date band at the top */
           -webkit-mask-image: linear-gradient(
             to top,
             #000 0%,
-            #000 10%,
-            rgba(0, 0, 0, 0.72) 32%,
-            rgba(0, 0, 0, 0.28) 58%,
-            transparent 88%
+            #000 6%,
+            rgba(0, 0, 0, 0.88) 22%,
+            rgba(0, 0, 0, 0.55) 48%,
+            rgba(0, 0, 0, 0.22) 72%,
+            transparent 96%
           );
           mask-image: linear-gradient(
             to top,
             #000 0%,
-            #000 10%,
-            rgba(0, 0, 0, 0.72) 32%,
-            rgba(0, 0, 0, 0.28) 58%,
-            transparent 88%
+            #000 6%,
+            rgba(0, 0, 0, 0.88) 22%,
+            rgba(0, 0, 0, 0.55) 48%,
+            rgba(0, 0, 0, 0.22) 72%,
+            transparent 96%
           );
         }
         .ynow-chrome-sidebar-circuit-glow {
@@ -7366,35 +7369,38 @@ ui <- dashboardPage(
           right: -10%;
           bottom: 0;
           height: 100%;
-          /* Logo blue ↔ white dynamic fill; PNG alpha = stroke shape only */
+          /* Logo blue base with white pulse bands; PNG alpha = stroke shape only */
           background-image: linear-gradient(
             168deg,
-            #ffffff 0%,
-            var(--ynow-logo-blue, #0C5484) 26%,
-            rgba(255, 255, 255, 0.92) 48%,
-            var(--ynow-logo-blue, #0C5484) 74%,
-            #ffffff 100%
+            var(--ynow-logo-blue, #0C5484) 0%,
+            #ffffff 18%,
+            var(--ynow-logo-blue, #0C5484) 36%,
+            rgba(255, 255, 255, 0.95) 52%,
+            var(--ynow-logo-blue, #0C5484) 70%,
+            #ffffff 86%,
+            var(--ynow-logo-blue, #0C5484) 100%
           );
-          background-size: 100% 260%;
-          background-position: 50% 100%;
+          background-size: 100% 280%;
+          background-position: 50% 85%;
           -webkit-mask-image: url("ynow-chrome-veins-circuit.png");
           mask-image: url("ynow-chrome-veins-circuit.png");
-          -webkit-mask-size: 148% auto;
-          mask-size: 148% auto;
+          -webkit-mask-size: 155% auto;
+          mask-size: 155% auto;
           -webkit-mask-position: center bottom;
           mask-position: center bottom;
           -webkit-mask-repeat: no-repeat;
           mask-repeat: no-repeat;
+          opacity: 0.92;
           transform-origin: bottom center;
-          filter: drop-shadow(0 0 2px rgba(12, 84, 132, 0.45));
+          filter: drop-shadow(0 0 3px rgba(12, 84, 132, 0.55));
           animation:
             ynow-chrome-circuit-rise 3.6s ease-in-out infinite,
             ynow-chrome-circuit-bw-flow 4.8s ease-in-out infinite;
           pointer-events: none;
         }
         @keyframes ynow-chrome-circuit-bw-flow {
-          0%, 100% { background-position: 50% 100%; }
-          50% { background-position: 50% 0%; }
+          0%, 100% { background-position: 50% 92%; }
+          50% { background-position: 50% 8%; }
         }
         /* Keep scrollable sidebar content above the fixed circuit overlay */
         .main-sidebar > .sidebar,
@@ -7466,14 +7472,16 @@ ui <- dashboardPage(
           /* Local denser reinforcement of the same blue/white stroke language */
           background-image: linear-gradient(
             168deg,
-            #ffffff 0%,
-            var(--ynow-logo-blue, #0C5484) 26%,
-            rgba(255, 255, 255, 0.92) 48%,
-            var(--ynow-logo-blue, #0C5484) 74%,
-            #ffffff 100%
+            var(--ynow-logo-blue, #0C5484) 0%,
+            #ffffff 18%,
+            var(--ynow-logo-blue, #0C5484) 36%,
+            rgba(255, 255, 255, 0.95) 52%,
+            var(--ynow-logo-blue, #0C5484) 70%,
+            #ffffff 86%,
+            var(--ynow-logo-blue, #0C5484) 100%
           );
-          background-size: 100% 260%;
-          background-position: 50% 100%;
+          background-size: 100% 280%;
+          background-position: 50% 85%;
           /* Dual-mask: circuit shape ∩ vertical fade (WebKit + standard) */
           -webkit-mask-image:
             url("ynow-chrome-veins-circuit.png"),
