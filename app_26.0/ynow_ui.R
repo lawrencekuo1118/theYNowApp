@@ -3956,9 +3956,8 @@ ui <- dashboardPage(
       "img.setAttribute('aria-hidden','true');",
       "img.draggable=false;",
       "el.appendChild(img);",
-      # Place beside the brand title box (after .logo), not inside it.
-      "var logo=h.querySelector('.logo');",
-      "if(logo&&logo.nextSibling){h.insertBefore(el,logo.nextSibling);}else{h.appendChild(el);}",
+      # Far-left of .main-header (flush left); title stays clear via opaque wordmark pill.
+      "h.insertBefore(el,h.firstChild);",
       "}",
       "if(document.readyState==='loading'){",
       "document.addEventListener('DOMContentLoaded',ynowPlaceChromeLeaves);",
@@ -5534,21 +5533,21 @@ ui <- dashboardPage(
           z-index: 1030 !important;
           overflow: hidden;
         }
-        /* Black top-banner left (A+B): line-stroke organic branch veins only (no fill wash).
-           Asset: www/ynow-chrome-veins-branches.png (bg removed). Sits in navbar chrome
-           beside the brand title box — never inside .logo / title text bounding box. */
+        /* Black top-banner left (A+B): line-stroke veins flush left (left:0) of .main-header.
+           Asset: www/ynow-chrome-veins-branches.png (bg removed). Brand wordmark sits on an
+           opaque black pill so strokes never fill under「The YNow App」text. */
         .ynow-chrome-header-leaves {
           position: absolute;
-          /* titleWidth = 250; stay outside the title text block */
-          left: 250px;
+          left: 0;
           top: 0;
           bottom: 0;
-          width: min(36%, 420px);
-          z-index: 2;
+          width: min(42%, 520px);
+          /* Above opaque navbar/logo fills; below wordmark pill + nav hit targets. */
+          z-index: 4;
           pointer-events: none;
           overflow: hidden;
           background: transparent;
-          opacity: 0.9;
+          opacity: 0.95;
           animation: ynow-chrome-green-pulse 4.8s ease-in-out infinite;
         }
         .ynow-chrome-header-veins {
@@ -5560,10 +5559,10 @@ ui <- dashboardPage(
           object-fit: cover;
           object-position: left 42%;
           /* PNG is already green strokes on transparent — soft glow only, no invert/fill */
-          filter: drop-shadow(0 0 3px rgba(36, 156, 96, 0.45));
-          opacity: 0.92;
-          -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 55%, transparent 100%);
-          mask-image: linear-gradient(90deg, #000 0%, #000 55%, transparent 100%);
+          filter: drop-shadow(0 0 3px rgba(36, 156, 96, 0.4));
+          opacity: 0.9;
+          -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 62%, transparent 100%);
+          mask-image: linear-gradient(90deg, #000 0%, #000 62%, transparent 100%);
           pointer-events: none;
           user-select: none;
         }
@@ -5571,18 +5570,40 @@ ui <- dashboardPage(
           0%, 100% { opacity: 0.72; }
           50% { opacity: 0.95; }
         }
-        /* Keep title block solid black so veins never read as a fill under the wordmark. */
+        /* Logo strip transparent so far-left strokes show; wordmark gets opaque black pill. */
         .skin-black .main-header .logo,
         .skin-black .main-header .logo:hover {
-          background-color: var(--ynow-ink) !important;
+          background-color: transparent !important;
+          background-image: none !important;
         }
         .skin-black .main-header .logo::before {
-          background-color: var(--ynow-ink);
+          background-color: transparent;
         }
-        .main-header > .logo,
+        .main-header .logo .ynow-app-title {
+          position: relative;
+          z-index: 6;
+          display: inline-block;
+          max-width: calc(100% - 16px);
+          box-sizing: border-box;
+          padding: 4px 10px;
+          margin: 6px 8px;
+          border-radius: 6px;
+          background-color: #000 !important;
+          background-image: none !important;
+          box-shadow: 0 0 0 1px #000;
+        }
+        .main-header > .logo {
+          position: relative;
+          z-index: 5;
+        }
         .main-header > .navbar {
           position: relative;
           z-index: 3;
+        }
+        .main-header .navbar > .sidebar-toggle,
+        .main-header .navbar .nav {
+          position: relative;
+          z-index: 5;
         }
         @media (prefers-reduced-motion: reduce) {
           .ynow-chrome-header-leaves {
@@ -5590,11 +5611,14 @@ ui <- dashboardPage(
             opacity: 0.88;
           }
         }
-        /* Mobile: logo block collapses; keep veins beside hamburger, outside title chrome. */
         @media (max-width: 767px) {
           .ynow-chrome-header-leaves {
-            left: 48px;
-            width: min(55%, 300px);
+            left: 0;
+            width: min(70%, 360px);
+          }
+          .main-header .logo .ynow-app-title {
+            margin: 6px 4px;
+            padding: 3px 8px;
           }
         }
         .content-wrapper,

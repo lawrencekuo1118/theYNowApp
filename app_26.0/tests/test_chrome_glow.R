@@ -32,9 +32,10 @@ check(
 )
 
 check(
-  "header veins placed outside title box (left 250px)",
-  grepl("left:\\s*250px", txt) &&
-    grepl("never inside \\.logo|outside the title", txt)
+  "header veins flush left (left 0) with opaque wordmark pill",
+  grepl("\\.ynow-chrome-header-leaves \\{[\\s\\S]*?left:\\s*0;", txt, perl = TRUE) &&
+    grepl("\\.main-header \\.logo \\.ynow-app-title \\{[\\s\\S]*?background-color:\\s*#000", txt, perl = TRUE) &&
+    !grepl("left:\\s*250px", txt)
 )
 
 check(
@@ -53,7 +54,7 @@ check(
 
 check(
   "chip is black with stroke overlay (not teal panel wash)",
-  grepl("\\.ynow-sidebar-foot-chip \\{[\\s\\S]*?background:\\s*#0a0a0a", txt, perl = TRUE) &&
+  grepl("\\.ynow-sidebar-foot-chip \\{[\\s\\S]*?background:\\s*#000", txt, perl = TRUE) &&
     grepl("ynow-chrome-veins-circuit.png", txt, fixed = TRUE) &&
     !grepl("inset 0 0 18px rgba\\(12, 84, 132", txt)
 )
