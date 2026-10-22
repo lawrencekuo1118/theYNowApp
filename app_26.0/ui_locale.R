@@ -1159,6 +1159,31 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     access_denied_report = "This report is locked for the signed-in account.",
     access_pane_note = "This page is locked for the signed-in account. Ask a system admin to unlock it.",
+    maint_title = "Maintenance",
+    maint_help = paste0(
+      "Put a page, tab, or element into maintenance for all users during a start–end window. ",
+      "While active, content is unusable and the menu item cannot be clicked ",
+      "(unlike Item locks). When the end time is reached, access restores automatically."
+    ),
+    maint_item = "Item",
+    maint_start = "Window start (UTC)",
+    maint_end = "Window end (UTC)",
+    maint_apply_btn = "Set maintenance",
+    maint_clear_btn = "Clear maintenance",
+    maint_status_now = "Current maintenance",
+    maint_none = "No maintenance entries.",
+    maint_ok_set = "Maintenance window set for all users.",
+    maint_ok_clear = "Maintenance cleared.",
+    maint_bad_item = "Choose an item from the catalog.",
+    maint_bad_window = "Set both start and end times for the maintenance window.",
+    maint_bad_window_order = "End time must be after start time.",
+    maint_window_preview_help = paste0(
+      "Users see: Under maintenance, then Expected: start-end ",
+      "(zh-TW: 維護中 / 預計時間: …). Ends restore access automatically."
+    ),
+    maint_denied_report = "This report is under maintenance.",
+    maint_title_short = "Under maintenance",
+    maint_expected_prefix = "Expected:",
     auth_gate_inner_lock_body = paste0(
       "Sign in to open this locked tab. ",
       "If you are already signed in, a system admin must clear the restriction."
@@ -5472,6 +5497,31 @@ locale_for_market <- function(mode = get_market_mode()) {
     access_bad_conditional = "條件解鎖請設定免費次數及／或大於零的限時。",
     access_denied_report = "此報表已對目前登入帳號鎖上。",
     access_pane_note = "此分頁已對目前登入帳號鎖上。請洽系統管理員解鎖。",
+    maint_title = "維護",
+    maint_help = paste0(
+      "可將頁面／分頁／特定元素設為維護時段（開始–結束），套用至所有使用者。",
+      "維護進行中內容不可用，且選單項目不可點選（與項目鎖定不同）。",
+      "到達結束時間後會自動恢復，無需管理員再操作。"
+    ),
+    maint_item = "項目",
+    maint_start = "維護開始（UTC）",
+    maint_end = "維護結束（UTC）",
+    maint_apply_btn = "設定維護",
+    maint_clear_btn = "清除維護",
+    maint_status_now = "目前維護項目",
+    maint_none = "目前沒有維護項目。",
+    maint_ok_set = "已為所有使用者設定維護時段。",
+    maint_ok_clear = "已清除維護。",
+    maint_bad_item = "請從清單選擇項目。",
+    maint_bad_window = "請設定維護時段的開始與結束時間。",
+    maint_bad_window_order = "結束時間必須晚於開始時間。",
+    maint_window_preview_help = paste0(
+      "使用者會看到「維護中」換行「預計時間: 開始-結束」",
+      "（en-US: Under maintenance / Expected: …）。結束後自動恢復。"
+    ),
+    maint_denied_report = "此報表維護中。",
+    maint_title_short = "維護中",
+    maint_expected_prefix = "預計時間:",
     auth_gate_inner_lock_body = paste0(
       "請先登入才能使用此上鎖分頁籤。",
       "若已登入仍顯示上鎖，請洽系統管理員解除限制。"

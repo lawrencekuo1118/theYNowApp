@@ -13,6 +13,10 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 
 ## [Unreleased]
 
+### Added
+
+- **System admin Maintenance / 維護** (pending ship): time-windowed page/tab/element outage for all users; copy「維護中」+「預計時間: start-end」(en-US: Under maintenance / Expected: …); menu non-clickable (unlike Item locks); auto-lift at window end on server clock.
+
 ### Changed
 
 - CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_26.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).

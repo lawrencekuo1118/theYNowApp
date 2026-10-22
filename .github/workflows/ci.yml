@@ -37,3 +37,7 @@ jobs:
         env:
           YNOW_DEBUG_SKIP_PY: "1"
         run: bash scripts/run_phase1_audit.sh
+      - name: Maintenance mode (offline)
+        env:
+          YNOW_DEBUG_SKIP_PY: "1"
+        run: Rscript app_26.0/tests/test_maintenance_mode.R

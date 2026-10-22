@@ -4612,6 +4612,49 @@ ui <- dashboardPage(
         body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .sidebar-menu a:has(> .ynow-menu-lock) {
           opacity: 0.55;
         }
+        /* Maintenance (維護): unusable like lock, but menu is NON-clickable
+           (unlike ACL / guest_menu_lock which still navigate into a gate). */
+        .sidebar-menu li.ynow-maintenance-nav > a,
+        .nav-tabs > li.ynow-maintenance-nav > a {
+          opacity: 0.55;
+          pointer-events: none !important;
+          cursor: not-allowed !important;
+        }
+        .tab-pane.ynow-maintenance-pane > *:not(.ynow-maintenance-banner) {
+          display: none !important;
+        }
+        .tab-pane.ynow-maintenance-pane::before {
+          content: attr(data-maint-note);
+          display: block;
+          margin: 18px;
+          padding: 14px 16px;
+          border: 1px solid var(--ynow-gate-border, #d0d0d0);
+          border-left: 4px solid var(--ynow-gate-accent, #1a1a1a);
+          background: var(--ynow-gate-bg, #f5f5f5);
+          color: var(--ynow-gate-ink-soft, #333333);
+          border-radius: 6px;
+          white-space: pre-line;
+        }
+        .form-group.ynow-maintenance-item,
+        .shiny-input-container.ynow-maintenance-item,
+        [data-ynow-lock].ynow-maintenance-item,
+        a.btn.ynow-maintenance-item,
+        button.ynow-maintenance-item {
+          position: relative;
+          opacity: 0.72;
+          pointer-events: none !important;
+          cursor: not-allowed !important;
+        }
+        .form-group.ynow-maintenance-item::after,
+        .shiny-input-container.ynow-maintenance-item::after,
+        [data-ynow-lock].ynow-maintenance-item::after {
+          content: attr(data-maint-note);
+          display: block;
+          margin-top: 6px;
+          font-size: 12px;
+          color: var(--ynow-gate-ink-soft, #333333);
+          white-space: pre-line;
+        }
         .form-group.ynow-access-hidden,
         .shiny-input-container.ynow-access-hidden,
         [data-ynow-lock].ynow-access-hidden,
@@ -12352,12 +12395,123 @@ ui <- dashboardPage(
               })).filter(Boolean);
               window.__ynowAccessLockNote = payload.note || '';
               if (window.ynowApplyAccessLocks) window.ynowApplyAccessLocks();
+              if (window.ynowApplyMaintenance) window.ynowApplyMaintenance();
             });
+            /* System admin maintenance: separate from ACL / guest locks.
+               Menu items are non-clickable; content shows 維護中 / Under maintenance. */
+            window.ynowApplyMaintenance = function () {
+              var entries = window.__ynowMaintEntries || [];
+              var clearSel = [
+                '.ynow-maintenance-nav',
+                '.ynow-maintenance-pane',
+                '.ynow-maintenance-item'
+              ].join(',');
+              document.querySelectorAll(clearSel).forEach(function (el) {
+                el.classList.remove(
+                  'ynow-maintenance-nav',
+                  'ynow-maintenance-pane',
+                  'ynow-maintenance-item'
+                );
+                el.removeAttribute('data-maint-note');
+                el.removeAttribute('aria-disabled');
+                el.removeAttribute('tabindex');
+              });
+              entries.forEach(function (row) {
+                if (!row || !row.id) return;
+                var id = String(row.id);
+                var note = String(row.note || '');
+                if (id.indexOf('tab:') === 0) {
+                  var tab = id.slice(4);
+                  document.querySelectorAll('a[data-value]').forEach(function (a) {
+                    if (a.getAttribute('data-value') !== tab) return;
+                    var li = a.closest ? a.closest('li') : a.parentElement;
+                    if (!li || !li.classList) return;
+                    li.classList.add('ynow-maintenance-nav');
+                    a.setAttribute('aria-disabled', 'true');
+                    a.setAttribute('tabindex', '-1');
+                    if (note) li.setAttribute('data-maint-note', note);
+                  });
+                  var pane = document.getElementById('shiny-tab-' + tab);
+                  if (pane) {
+                    pane.classList.add('ynow-maintenance-pane');
+                    if (note) pane.setAttribute('data-maint-note', note);
+                  }
+                } else if (id.indexOf('input:') === 0) {
+                  var inp = document.getElementById(id.slice(6));
+                  var fg = inp && (inp.closest('.form-group') || inp.closest('.shiny-input-container'));
+                  if (!fg) return;
+                  fg.classList.add('ynow-maintenance-item');
+                  if (note) fg.setAttribute('data-maint-note', note);
+                } else if (id.indexOf('report:') === 0) {
+                  var btn = document.getElementById(id.slice(7));
+                  if (!btn) return;
+                  btn.classList.add('ynow-maintenance-item');
+                  if (note) btn.setAttribute('title', note.replace(/\\n/g, ' '));
+                  if (note) btn.setAttribute('data-maint-note', note);
+                } else if (id.indexOf('section:') === 0) {
+                  document.querySelectorAll('[data-ynow-lock]').forEach(function (el) {
+                    if (el.getAttribute('data-ynow-lock') !== id) return;
+                    el.classList.add('ynow-maintenance-item');
+                    if (note) el.setAttribute('data-maint-note', note);
+                  });
+                }
+              });
+            };
+            window.__ynowMaintRefreshTimer = null;
+            window.ynowScheduleMaintRefresh = function (nextEndIso) {
+              if (window.__ynowMaintRefreshTimer) {
+                try { clearTimeout(window.__ynowMaintRefreshTimer); } catch (eClr) {}
+                window.__ynowMaintRefreshTimer = null;
+              }
+              if (!nextEndIso) return;
+              var endMs = Date.parse(nextEndIso);
+              if (!isFinite(endMs)) return;
+              var delay = Math.max(500, endMs - Date.now() + 400);
+              /* Cap client wait; server invalidateLater also pushes. */
+              if (delay > 120000) delay = 120000;
+              window.__ynowMaintRefreshTimer = setTimeout(function () {
+                window.__ynowMaintRefreshTimer = null;
+                if (window.Shiny && Shiny.setInputValue) {
+                  Shiny.setInputValue(
+                    'ynow_maint_refresh',
+                    (window.__ynowMaintRefreshClicks = (window.__ynowMaintRefreshClicks || 0) + 1),
+                    { priority: 'event' }
+                  );
+                }
+              }, delay);
+            };
+            addHandler('ynowMaintenance', function (payload) {
+              if (!payload) payload = {};
+              var entries = payload.entries || [];
+              window.__ynowMaintEntries = entries;
+              window.__ynowMaintIds = (payload.ids || entries.map(function (e) {
+                return e && e.id;
+              })).filter(Boolean);
+              if (window.ynowApplyMaintenance) window.ynowApplyMaintenance();
+              if (window.ynowScheduleMaintRefresh) {
+                window.ynowScheduleMaintRefresh(payload.next_end || null);
+              }
+            });
+            /* Hard block navigation clicks on maintenance menu items (capture). */
+            if (!document.documentElement.getAttribute('data-ynow-maint-click-guard')) {
+              document.documentElement.setAttribute('data-ynow-maint-click-guard', '1');
+              document.addEventListener('click', function (ev) {
+                var a = ev.target && ev.target.closest ? ev.target.closest('a') : null;
+                if (!a) return;
+                var li = a.closest ? a.closest('li.ynow-maintenance-nav') : null;
+                if (!li) return;
+                try { ev.preventDefault(); } catch (ePd) {}
+                try { ev.stopPropagation(); } catch (eSp) {}
+                return false;
+              }, true);
+            }
             document.addEventListener('shiny:inputchanged', function () {
               if (window.ynowApplyAccessLocks) window.ynowApplyAccessLocks();
+              if (window.ynowApplyMaintenance) window.ynowApplyMaintenance();
             });
             document.addEventListener('shiny:value', function () {
               if (window.ynowApplyAccessLocks) window.ynowApplyAccessLocks();
+              if (window.ynowApplyMaintenance) window.ynowApplyMaintenance();
             });
             (function bindViewAsChromeExit() {
               var btn = document.getElementById('ynow_viewas_chrome_exit');
