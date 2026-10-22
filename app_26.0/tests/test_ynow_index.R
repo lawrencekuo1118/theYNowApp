@@ -215,6 +215,17 @@ check("search opens Macro own index", {
     grepl("ynowMacroOpenIndex", srv, fixed = TRUE) &&
     grepl("ynowMacroOpenIndex", ui_src, fixed = TRUE)
 })
+# ynow_ui.R wraps the big chrome script in tags$script(HTML("...")); raw " in JS
+# breaks R parse (shinyapps exit status 1 / v26.51). Keep selector escapes.
+check("ynow_ui.R parses", {
+  ok <- TRUE
+  tryCatch(parse("ynow_ui.R"), error = function(e) { ok <<- FALSE })
+  isTRUE(ok)
+})
+check("macro openIndex selector escapes R HTML string", {
+  grepl('data-macro-index=\\\\"', ui_src, perl = TRUE) ||
+    grepl("data-macro-index=\\\"", ui_src, fixed = TRUE)
+})
 check("about documents YNOW/TYNOW", {
   about <- paste(readLines("ynow_about_ui.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   grepl("about_data_sources_ynow_index", about, fixed = TRUE) &&

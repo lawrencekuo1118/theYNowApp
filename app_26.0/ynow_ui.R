@@ -14390,7 +14390,7 @@ ui <- dashboardPage(
                 function tryOpen() {
                   tries += 1;
                   var el = document.querySelector(
-                    '.ynow-macro-kpi[data-macro-index="' + sym + '"], #ynow_macro_idx_' +
+                    '.ynow-macro-kpi[data-macro-index=\"' + sym + '\"], #ynow_macro_idx_' +
                       String(sym).toLowerCase().replace(/[^a-z0-9]+/g, '')
                   );
                   if (el && typeof el.click === 'function') {
