@@ -779,6 +779,7 @@ bblab_order_research_panel_ui <- function(pack, locale = "en", started = FALSE) 
     src_id <- .bblab_chr(us_ec$source_id, "empty")
     title <- .bblab_chr(us_ec$title, "")
     excerpt <- .bblab_chr(us_ec$excerpt, "")
+    cred <- .bblab_chr(us_ec$credibility, "management")
     links <- list()
     if (nzchar(.bblab_chr(us_ec$url, ""))) {
       links[[length(links) + 1L]] <- tags$a(
@@ -819,7 +820,12 @@ bblab_order_research_panel_ui <- function(pack, locale = "en", started = FALSE) 
       class = "ynow-bblab-or__us-ec",
       `data-status` = status,
       `data-source` = src_id,
+      `data-credibility` = cred,
       tags$p(tags$b(msg("bblab_or_us_ec_title"))),
+      tags$p(
+        class = "help-block ynow-bblab-or__cred-tier",
+        paste0(msg("bblab_or_ec_cred_label"), ": ", msg(paste0("bblab_or_cred_", cred)))
+      ),
       if (identical(status, "empty") || !nzchar(title)) {
         tags$p(class = "help-block", msg("bblab_or_us_ec_empty"))
       } else {
@@ -836,12 +842,85 @@ bblab_order_research_panel_ui <- function(pack, locale = "en", started = FALSE) 
           } else NULL
         )
       },
+      tags$p(class = "help-block", msg("bblab_or_us_ec_method_note")),
       tags$p(class = "help-block", msg("bblab_or_us_ec_sa_note")),
+      link_row
+    )
+  }
+  tw_ec <- pack$tw_earnings_call
+  tw_block <- NULL
+  if (is.list(tw_ec) && length(tw_ec)) {
+    status <- .bblab_chr(tw_ec$status, "empty")
+    src_id <- .bblab_chr(tw_ec$source_id, "alphamemo_index")
+    cred <- .bblab_chr(tw_ec$credibility, "estimate")
+    links <- list()
+    if (nzchar(.bblab_chr(tw_ec$alphamemo_url, ""))) {
+      links[[length(links) + 1L]] <- tags$a(
+        href = tw_ec$alphamemo_url, target = "_blank", rel = "noopener noreferrer",
+        msg("bblab_or_tw_ec_alphamemo_link")
+      )
+    }
+    if (nzchar(.bblab_chr(tw_ec$alphamemo_search_url, ""))) {
+      links[[length(links) + 1L]] <- tags$a(
+        href = tw_ec$alphamemo_search_url, target = "_blank", rel = "noopener noreferrer",
+        msg("bblab_or_tw_ec_search_link")
+      )
+    }
+    if (nzchar(.bblab_chr(tw_ec$sa_url, ""))) {
+      links[[length(links) + 1L]] <- tags$a(
+        href = tw_ec$sa_url, target = "_blank", rel = "noopener noreferrer",
+        msg("bblab_or_tw_ec_sa_link")
+      )
+    }
+    if (nzchar(.bblab_chr(tw_ec$url, "")) &&
+          identical(.bblab_chr(tw_ec$source_id, ""), "seeking_alpha_html")) {
+      links[[length(links) + 1L]] <- tags$a(
+        href = tw_ec$url, target = "_blank", rel = "noopener noreferrer",
+        msg("bblab_or_us_ec_source_link")
+      )
+    }
+    title <- .bblab_chr(tw_ec$title, "")
+    excerpt <- .bblab_chr(tw_ec$excerpt, "")
+    link_row <- if (length(links)) {
+      tags$p(
+        class = "ynow-bblab-or__tw-ec-links",
+        lapply(seq_along(links), function(i) {
+          tagList(if (i > 1L) tags$span(" · "), links[[i]])
+        })
+      )
+    } else {
+      NULL
+    }
+    tw_block <- tags$div(
+      class = "ynow-bblab-or__tw-ec",
+      `data-status` = status,
+      `data-source` = src_id,
+      `data-credibility` = cred,
+      tags$p(tags$b(msg("bblab_or_tw_ec_title"))),
+      tags$p(
+        class = "help-block ynow-bblab-or__cred-tier",
+        paste0(msg("bblab_or_ec_cred_label"), ": ", msg(paste0("bblab_or_cred_", cred)))
+      ),
+      if (identical(status, "empty") || !nzchar(title)) {
+        tags$p(class = "help-block", msg("bblab_or_tw_ec_empty"))
+      } else {
+        tagList(
+          tags$p(
+            tags$b(paste0(msg("bblab_or_us_ec_label"), ": ")),
+            title
+          ),
+          if (nzchar(excerpt)) {
+            tags$p(class = "help-block ynow-bblab-or__tw-ec-excerpt", excerpt)
+          } else NULL
+        )
+      },
+      tags$p(class = "help-block", msg("bblab_or_tw_ec_note")),
       link_row
     )
   }
   tagList(
     us_block,
+    tw_block,
     tags$div(class = "ynow-bblab-or__focuses", focus),
     tags$div(
       class = "ynow-bblab-or__sources",
@@ -1134,7 +1213,7 @@ business_breakdown_lab_server <- function(id = "bblab",
         payload$cash_flow <- d_cf
         payload$industry_key <- industry_key
         payload$industry_text <- industry_text
-        # US earnings-call / 8-K path for order-research provenance (TW left as-is).
+        # US: licensed API / SEC 8-K / IR outbound. TW: AlphaMemo index outbound only.
         is_tw_tk <- grepl("\\.(TW|TWO)$", tk, ignore.case = TRUE)
         if (!isTRUE(is_tw_tk) && exists("ynow_us_earnings_call_fetch", mode = "function")) {
           us_ec <- tryCatch(ynow_us_earnings_call_fetch(tk), error = function(e) NULL)
@@ -1149,6 +1228,25 @@ business_breakdown_lab_server <- function(id = "bblab",
               list(earnings_call = disc)
             )
             payload$us_earnings_call <- disc
+          }
+        }
+        if (isTRUE(is_tw_tk) && exists("ynow_tw_earnings_call_fetch", mode = "function")) {
+          tw_ec <- tryCatch(ynow_tw_earnings_call_fetch(tk), error = function(e) NULL)
+          if (is.list(tw_ec)) {
+            disc <- if (exists("ynow_tw_earnings_call_to_disclosure", mode = "function")) {
+              ynow_tw_earnings_call_to_disclosure(tw_ec)
+            } else {
+              tw_ec
+            }
+            # Do not overwrite a richer earnings_call fact list if already present.
+            if (is.null(payload$order_disclosures$earnings_call) ||
+                  !length(payload$order_disclosures$earnings_call)) {
+              payload$order_disclosures <- c(
+                payload$order_disclosures %||% list(),
+                list(earnings_call = disc)
+              )
+            }
+            payload$tw_earnings_call <- disc
           }
         }
         lab_payload(payload)

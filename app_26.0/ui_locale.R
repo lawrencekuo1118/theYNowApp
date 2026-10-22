@@ -3920,26 +3920,48 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_or_prov_sec_filing = "SEC filing",
     bblab_or_prov_company_ir = "Company IR",
     bblab_or_prov_earnings_call = "Earnings call",
+    bblab_or_ec_cred_label = "Credibility tier",
     bblab_or_us_ec_title = "US earnings call / transcript",
     bblab_or_us_ec_label = "Source",
     bblab_or_us_ec_empty = paste0(
       "No US earnings-call transcript or Item 2.02-style 8-K excerpt with measurable ",
-      "backlog / bookings language was found for this ticker. Links below are for human research only."
+      "backlog / bookings / CapEx language was found for this ticker. Links below are for human research only."
+    ),
+    bblab_or_us_ec_method_note = paste0(
+      "Purpose: feed Business Breakdown order research (orders / suppliers / customers) with status-only facts. ",
+      "Reading framework (Statementdog methodology): prefer company IR, SEC 8-K Item 2.02, ",
+      "and licensed transcript APIs. Extract backlog, bookings, CapEx, and named customer/supplier shares ",
+      "only when the source states them — never invent."
     ),
     bblab_or_us_ec_sa_note = paste0(
-      "Seeking Alpha Transcripts is an outbound research link only — the app does not scrape SA HTML."
+      "Seeking Alpha HTML is a last-resort fallback only when IR / SEC / licensed paths are empty — ",
+      "labeled Last-resort (third-party HTML), not official IR. Fail closed if SA is blocked or unusable."
     ),
     bblab_or_us_ec_source_link = "Open source document",
     bblab_or_us_ec_sec_link = "SEC EDGAR 8-K search",
     bblab_or_us_ec_ir_link = "Company IR search",
-    bblab_or_us_ec_sa_link = "Seeking Alpha Transcripts (human)",
+    bblab_or_us_ec_sa_link = "Seeking Alpha Transcripts",
+    bblab_or_tw_ec_title = "TW earnings call / conclusions",
+    bblab_or_tw_ec_empty = paste0(
+      "No automatable TW earnings-call conclusion with measurable backlog / bookings was ingested. ",
+      "AlphaMemo free transcripts are human-browsable only; Seeking Alpha last-resort also returned empty."
+    ),
+    bblab_or_tw_ec_note = paste0(
+      "Preferred: AlphaMemo.ai free-transcripts (Estimate — AI aggregator memo; no AlphaMemo HTML/API scrape). ",
+      "Last-resort: Seeking Alpha HTML (Last-resort / third-party) only when AlphaMemo cannot supply facts."
+    ),
+    bblab_or_tw_ec_alphamemo_link = "AlphaMemo free transcripts (human)",
+    bblab_or_tw_ec_search_link = "Search AlphaMemo for this ticker (human)",
+    bblab_or_tw_ec_sa_link = "Seeking Alpha Transcripts (last-resort)",
     bblab_or_prov_statement_proxy = "Statement proxy",
     bblab_or_prov_broker_estimate = "Broker estimate",
     bblab_or_prov_industry_proxy = "Industry proxy",
     bblab_or_cred_confirmed = "Confirmed",
     bblab_or_cred_management = "Management",
+    bblab_or_cred_filing = "Filing",
     bblab_or_cred_proxy = "Proxy",
     bblab_or_cred_estimate = "Estimate",
+    bblab_or_cred_last_resort = "Last-resort (third-party HTML)",
     bblab_or_stack_contributed = "Contributed",
     bblab_or_stack_idle = "Not used",
     bblab_or_stack_amount_ok = "Can fill an order amount",
@@ -8054,26 +8076,47 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_or_prov_sec_filing = "SEC 申報",
     bblab_or_prov_company_ir = "公司 IR",
     bblab_or_prov_earnings_call = "法說會",
+    bblab_or_ec_cred_label = "可信度層級",
     bblab_or_us_ec_title = "美股法說會／逐字稿",
     bblab_or_us_ec_label = "來源",
     bblab_or_us_ec_empty = paste0(
-      "此 ticker 未取得可量化 backlog／bookings 用語的美股法說逐字稿或 8-K（Item 2.02 類）摘錄。",
+      "此 ticker 未取得可量化 backlog／bookings／CapEx 用語的美股法說逐字稿或 8-K（Item 2.02 類）摘錄。",
       "下方連結僅供人工查閱，不會自動擷取。"
     ),
+    bblab_or_us_ec_method_note = paste0(
+      "目的：補足「業務拆解」訂單研究（訂單量／主要供應商／重大客戶）的狀態事實。",
+      "閱讀架構（財報狗 Statementdog 方法論啟發）：優先公司 IR、SEC 8-K Item 2.02、授權逐字稿 API；",
+      "僅在來源明列時擷取 backlog、bookings、CapEx 與具名客戶／供應商占比——不外推、不虛構。"
+    ),
     bblab_or_us_ec_sa_note = paste0(
-      "Seeking Alpha Transcripts 僅提供人工外連；本 App 不會擷取 SA 網頁 HTML。"
+      "Seeking Alpha 網頁 HTML 僅在 IR／SEC／授權路徑皆空時作為最後備援，",
+      "標示為「最後備援（第三方 HTML）」，非官方 IR。若 SA 被擋或無法解析則誠實空白。"
     ),
     bblab_or_us_ec_source_link = "開啟來源文件",
     bblab_or_us_ec_sec_link = "SEC EDGAR 8-K 搜尋",
     bblab_or_us_ec_ir_link = "公司 IR 搜尋",
-    bblab_or_us_ec_sa_link = "Seeking Alpha Transcripts（人工）",
+    bblab_or_us_ec_sa_link = "Seeking Alpha Transcripts",
+    bblab_or_tw_ec_title = "台股法說會結論",
+    bblab_or_tw_ec_empty = paste0(
+      "此 ticker 未自動擷取可量化 backlog／bookings 的台股法說結論。",
+      "AlphaMemo 公開逐字稿僅供人工瀏覽；Seeking Alpha 最後備援亦無可用內容。"
+    ),
+    bblab_or_tw_ec_note = paste0(
+      "優先：AlphaMemo.ai 公開法說逐字稿（估計 — AI 彙整 Memo；不擷取 AlphaMemo HTML／API）。",
+      "最後備援：僅在 AlphaMemo 無法提供可自動化事實時，才擷取 Seeking Alpha HTML（最後備援／第三方）。"
+    ),
+    bblab_or_tw_ec_alphamemo_link = "AlphaMemo 公開法說逐字稿（人工）",
+    bblab_or_tw_ec_search_link = "以 ticker 搜尋 AlphaMemo（人工）",
+    bblab_or_tw_ec_sa_link = "Seeking Alpha Transcripts（最後備援）",
     bblab_or_prov_statement_proxy = "財報科目（間接）",
     bblab_or_prov_broker_estimate = "券商估計",
     bblab_or_prov_industry_proxy = "產業間接指標",
     bblab_or_cred_confirmed = "已確認",
     bblab_or_cred_management = "管理層",
+    bblab_or_cred_filing = "申報文件",
     bblab_or_cred_proxy = "間接",
     bblab_or_cred_estimate = "估計",
+    bblab_or_cred_last_resort = "最後備援（第三方 HTML）",
     bblab_or_stack_contributed = "已採用",
     bblab_or_stack_idle = "未採用",
     bblab_or_stack_amount_ok = "可填入訂單金額",
