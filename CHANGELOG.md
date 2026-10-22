@@ -18,6 +18,14 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 - CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_26.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).
 - Docs: root README ship/CI/Release pointers; `scripts/record_github_release.sh` for soft-fail Release publish after deploy.
 
+## [v26.33] — 2026-10-22
+
+### Changed
+
+- **Sidebar Rearrange label** (PR #400): after login, the date-row tab-order control reads **Rearrange** (en-US) / **重新排列** (zh-TW) instead of Customize / 自訂設定. Title + guest toast aligned.
+- zh-TW：登入後側邊欄日期列「重新排列」；勿用陸系「自定义／自訂設定」行銷口吻。
+- Live baseline bundle **12724005** / display **v26.33**.
+
 ## [v26.32] — 2026-10-22
 
 ### Added
