@@ -14291,7 +14291,7 @@ server <- function(input, output, session) {
           if (is.na(val_cash) || is.na(scraped_debt)) {
             tags$p(
               class = "help-block",
-              "Cash 與 Total Debt 請到 Model Dashboard → 共用橋接填寫，DCF、WACC、倍數與 SOTP 會一起套用。"
+              "Cash 與 Total Debt 請到 Model Dashboard → Cash、Debt、股數與營收（各模型共用）填寫，DCF、WACC、倍數與 SOTP 會一起套用。"
             )
           } else {
             NULL

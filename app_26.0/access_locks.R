@@ -100,7 +100,7 @@ ynow_access_catalog <- function() {
     c("tab:snapshot", "tab", "Snapshot", "快照"),
     c("tab:feedback", "tab", "Feedback", "意見回饋"),
     # ---- Sections (need matching data-ynow-lock wrappers in UI) ----
-    c("section:shared_bridge", "section", "Shared bridge (Cash / Debt / Shares / Revenue)", "共用橋接（Cash／Debt／股數／營收）"),
+    c("section:shared_bridge", "section", "Cash, Debt, Shares & Revenue (shared)", "Cash、Debt、股數與營收（各模型共用）"),
     c("section:sgr_box", "section", "SGR (sustainable growth rate)", "永續成長率 g（SGR）區塊"),
     c("section:beta_box", "section", "Beta (Model Dashboard)", "Beta（模型儀表板）"),
     c("section:wacc_box", "section", "WACC settings", "WACC 設定"),
