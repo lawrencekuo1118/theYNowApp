@@ -1,3 +1,13 @@
+## [v26.38] — 2026-10-22
+
+### Fixed
+- Header wordmark: only one 「The YNow App v…」 — removed #404 pill padding that offset the load-bar base/fill into a ghost duplicate; hide the base track when load is complete.
+- Branch veins no longer paint the title block background — restore opaque black `.logo` brand strip; veins remain visible beside the strip (navbar side) only.
+
+### Notes
+- en-US: Single gold title on plain black brand chrome; organic vein strokes stay clear of the wordmark box.
+- zh-TW: 標題列只保留一個「The YNow App v…」；枝狀 veins 不進入標題區塊黑底，僅在標題旁裝飾。
+
 ## [v26.37] — 2026-10-22
 
 ### Changed
