@@ -573,7 +573,11 @@ for (k in c("menu_business_breakdown_lab", "bblab_page_sub", "bblab_report_kicke
             "bblab_fallback_gm_label",
             "bblab_ch1_title", "bblab_ch2_title", "bblab_ch3_title", "bblab_ch4_title",
             "bblab_ch5_title", "bblab_ch5_help", "bblab_cards_empty",
-            "bblab_ch6_title", "bblab_ch7_title",
+            "bblab_ch6_title", "bblab_ch6_help",
+            "bblab_recon_verdict_pass", "bblab_recon_verdict_fail",
+            "bblab_recon_col_reported", "bblab_recon_col_recast",
+            "bblab_recon_col_leftover", "bblab_recon_commercial_foot",
+            "bblab_ch7_title",
             "bblab_ch1_help", "bblab_ch2_help", "bblab_ch3_help", "bblab_ch3_current_label",
             "bblab_ch4_help",
             "bblab_ch4_limited", "bblab_geo_veto_why", "bblab_overlap_why",
@@ -616,6 +620,18 @@ check("i18n chapter titles en + zh-TW", {
     identical(.UI_STRINGS$`zh-TW`$bblab_ch5_title, "各事業簡化財報") &&
     identical(.UI_STRINGS$en$bblab_ch6_title, "Reconciliation") &&
     identical(.UI_STRINGS$`zh-TW`$bblab_ch6_title, "對帳") &&
+    grepl("Filed consolidated", .UI_STRINGS$en$bblab_recon_col_reported, fixed = TRUE) &&
+    grepl("合併財報已申報", .UI_STRINGS$`zh-TW`$bblab_recon_col_reported, fixed = TRUE) &&
+    grepl("Sum of businesses", .UI_STRINGS$en$bblab_recon_col_recast, fixed = TRUE) &&
+    grepl("各事業加總", .UI_STRINGS$`zh-TW`$bblab_recon_col_recast, fixed = TRUE) &&
+    grepl("Unassigned gap", .UI_STRINGS$en$bblab_recon_col_leftover, fixed = TRUE) &&
+    grepl("尚未歸屬差額", .UI_STRINGS$`zh-TW`$bblab_recon_col_leftover, fixed = TRUE) &&
+    !grepl("默认|参数|数据|用户|口徑|帶寬|點擊|一鍵", paste(
+      .UI_STRINGS$`zh-TW`$bblab_ch6_help,
+      .UI_STRINGS$`zh-TW`$bblab_recon_verdict_fail_body,
+      .UI_STRINGS$`zh-TW`$bblab_recon_commercial_foot,
+      sep = " "
+    )) &&
     identical(.UI_STRINGS$en$bblab_ch7_title, "Sources") &&
     identical(.UI_STRINGS$`zh-TW`$bblab_ch7_title, "來源與方法") &&
     grepl("不足兩個會計年度", .UI_STRINGS$`zh-TW`$bblab_ch4_limited, fixed = TRUE) &&
@@ -826,6 +842,7 @@ if (requireNamespace("shiny", quietly = TRUE) &&
           grepl("ynow_bblab_ch5_title", lab_ui_html, fixed = TRUE) &&
           grepl("ynow_bblab_ch5_help", lab_ui_html, fixed = TRUE) &&
           grepl("ynow_bblab_ch6_title", lab_ui_html, fixed = TRUE) &&
+          grepl("ynow_bblab_ch6_help", lab_ui_html, fixed = TRUE) &&
           grepl("ynow_bblab_ch7_title", lab_ui_html, fixed = TRUE))
   check("lab UI HTML: full-width tables; conclusions beside revenue mix", {
     grepl("ynow-bblab-struct-mix", lab_ui_html, fixed = TRUE) &&
@@ -1964,6 +1981,43 @@ check("structure sourced from global.R",
 check("orders module sourced from global.R",
       grepl("business_breakdown_orders.R",
             paste(readLines("global.R", warn = FALSE), collapse = "\n"), fixed = TRUE))
+
+# Commercial reconciliation copy (investment-desk wording, not raw Reported/Recast)
+check("recon UI uses commercial helper and locale columns",
+      grepl(".bblab_recon_commercial_html", mod_src, fixed = TRUE) &&
+        grepl("ynow_bblab_ch6_help", mod_src, fixed = TRUE) &&
+        grepl("bblab_recon_col_reported", mod_src, fixed = TRUE) &&
+        !grepl('tags$th("Reported")', mod_src, fixed = TRUE) &&
+        !grepl('tags$th("Recast")', mod_src, fixed = TRUE) &&
+        grepl("setBtText('ynow_bblab_ch6_help', 'bblab_ch6_help')", ui_src, fixed = TRUE))
+check("recon commercial HTML renders match + glossary", {
+  rec_ok <- list(
+    pass = TRUE,
+    revenue = list(reported = 100, recast = 100, leftover = 0, pass = TRUE),
+    cor = list(reported = 40, recast = 40, leftover = 0, pass = TRUE),
+    gp = list(reported = 60, recast = 60, leftover = 0, pass = TRUE)
+  )
+  html_ok <- paste(as.character(.bblab_recon_commercial_html(rec_ok, locale = "en")), collapse = " ")
+  grepl("ynow-bblab-recon-verdict--pass", html_ok, fixed = TRUE) &&
+    grepl("Filed consolidated", html_ok, fixed = TRUE) &&
+    grepl("Sum of businesses", html_ok, fixed = TRUE) &&
+    grepl("Unassigned gap", html_ok, fixed = TRUE) &&
+    grepl("Adds up", html_ok, fixed = TRUE)
+})
+check("recon commercial HTML explains gap in zh-TW", {
+  rec_gap <- list(
+    pass = FALSE,
+    revenue = list(reported = 100, recast = 80, leftover = 20, pass = FALSE),
+    cor = list(reported = 40, recast = 40, leftover = 0, pass = TRUE),
+    gp = list(reported = 60, recast = 40, leftover = 20, pass = FALSE)
+  )
+  html_zh <- paste(as.character(.bblab_recon_commercial_html(rec_gap, locale = "zh-TW")), collapse = " ")
+  grepl("ynow-bblab-recon-verdict--fail", html_zh, fixed = TRUE) &&
+    grepl("合併財報已申報", html_zh, fixed = TRUE) &&
+    grepl("尚未歸屬差額", html_zh, fixed = TRUE) &&
+    grepl("各事業加總仍低於合併財報已申報", html_zh, fixed = TRUE) &&
+    !grepl("默认|参数|数据|用户", html_zh)
+})
 
 if (fail > 0L) {
   cat("FAILED ", fail, " checks\n", sep = "")

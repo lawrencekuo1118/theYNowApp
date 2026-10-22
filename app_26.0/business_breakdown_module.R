@@ -30,6 +30,121 @@ if (!exists("%||%", mode = "function")) {
   sprintf("%.1f%%", num)
 }
 
+#' Commercial (investment-desk) HTML for the Reconciliation chapter.
+#' Explains filed vs sum-of-businesses vs unassigned gap in plain language.
+.bblab_recon_commercial_html <- function(rec, locale = "en", ui_msg = NULL) {
+  msg <- if (is.function(ui_msg)) {
+    ui_msg
+  } else {
+    function(key, ...) .bblab_ui(key, locale)
+  }
+  if (is.null(rec) || !is.list(rec)) {
+    return(tags$p(class = "help-block", msg("bblab_waiting")))
+  }
+  overall_ok <- isTRUE(rec$pass)
+  verdict <- if (isTRUE(overall_ok)) {
+    tags$div(
+      class = "ynow-bblab-recon-verdict ynow-bblab-recon-verdict--pass",
+      tags$span(class = "ynow-bblab-recon ynow-bblab-recon--pass", msg("bblab_recon_verdict_pass")),
+      tags$p(class = "ynow-bblab-recon-verdict__body", msg("bblab_recon_verdict_pass_body"))
+    )
+  } else {
+    tags$div(
+      class = "ynow-bblab-recon-verdict ynow-bblab-recon-verdict--fail",
+      tags$span(class = "ynow-bblab-recon ynow-bblab-recon--fail", msg("bblab_recon_verdict_fail")),
+      tags$p(class = "ynow-bblab-recon-verdict__body", msg("bblab_recon_verdict_fail_body"))
+    )
+  }
+  glossary <- tags$ul(
+    class = "ynow-bblab-recon-glossary help-block",
+    tags$li(tags$b(msg("bblab_recon_col_reported")), " — ", msg("bblab_recon_col_reported_help")),
+    tags$li(tags$b(msg("bblab_recon_col_recast")), " — ", msg("bblab_recon_col_recast_help")),
+    tags$li(tags$b(msg("bblab_recon_col_leftover")), " — ", msg("bblab_recon_col_leftover_help")),
+    tags$li(tags$b(msg("bblab_recon_col_share")), " — ", msg("bblab_recon_col_share_help"))
+  )
+  line_note <- function(chk, line_key) {
+    if (is.null(chk) || !is.list(chk)) return(NULL)
+    if (isTRUE(chk$pass)) return(msg("bblab_recon_line_match"))
+    lo <- suppressWarnings(as.numeric(chk$leftover)[1])
+    rep <- suppressWarnings(as.numeric(chk$reported)[1])
+    if (!is.finite(lo) || abs(lo) < 1e-12) return(msg("bblab_recon_line_gap_unknown"))
+    share <- if (is.finite(rep) && abs(rep) > 0) abs(lo) / abs(rep) else NA_real_
+    direction <- if (lo > 0) {
+      msg("bblab_recon_line_gap_under")
+    } else {
+      msg("bblab_recon_line_gap_over")
+    }
+    paste0(
+      direction, " ",
+      msg("bblab_recon_line_gap_amt"), " ", .bblab_fmt_amt(abs(lo)),
+      if (is.finite(share)) paste0(" (", .bblab_fmt_pct(share), " ", msg("bblab_recon_of_filed"), ")") else "",
+      "."
+    )
+  }
+  row <- function(label_key, chk) {
+    if (is.null(chk)) return(NULL)
+    lo <- suppressWarnings(as.numeric(chk$leftover)[1])
+    rep <- suppressWarnings(as.numeric(chk$reported)[1])
+    share <- if (is.finite(lo) && is.finite(rep) && abs(rep) > 0) lo / abs(rep) else NA_real_
+    status_lab <- if (isTRUE(chk$pass)) {
+      msg("bblab_recon_status_match")
+    } else {
+      msg("bblab_recon_status_gap")
+    }
+    tags$tr(
+      class = if (isTRUE(chk$pass)) "ynow-bblab-recon-row--ok" else "ynow-bblab-recon-row--gap",
+      tags$td(msg(label_key)),
+      tags$td(.bblab_fmt_amt(chk$reported)),
+      tags$td(.bblab_fmt_amt(chk$recast)),
+      tags$td(.bblab_fmt_amt(chk$leftover)),
+      tags$td(if (is.finite(share)) .bblab_fmt_pct(share) else "—"),
+      tags$td(status_lab)
+    )
+  }
+  note_block <- function(label_key, chk) {
+    note <- line_note(chk, label_key)
+    if (is.null(note) || !nzchar(as.character(note)[1])) return(NULL)
+    tags$li(
+      tags$b(msg(label_key)), ": ", note
+    )
+  }
+  tags$div(
+    class = "ynow-bblab-recon-commercial",
+    verdict,
+    glossary,
+    tags$table(
+      class = "table table-condensed ynow-bblab-recon-table",
+      tags$thead(tags$tr(
+        tags$th(msg("bblab_recon_col_line")),
+        tags$th(msg("bblab_recon_col_reported")),
+        tags$th(msg("bblab_recon_col_recast")),
+        tags$th(msg("bblab_recon_col_leftover")),
+        tags$th(msg("bblab_recon_col_share")),
+        tags$th(msg("bblab_recon_col_status"))
+      )),
+      tags$tbody(
+        row("bblab_kpi_revenue", rec$revenue),
+        row("bblab_kpi_cor", rec$cor),
+        row("bblab_kpi_gp", rec$gp)
+      )
+    ),
+    tags$div(
+      class = "ynow-bblab-recon-line-notes",
+      tags$h5(
+        id = "ynow_bblab_recon_notes_title",
+        class = "ynow-bblab-subhead",
+        msg("bblab_recon_notes_title")
+      ),
+      tags$ul(
+        note_block("bblab_kpi_revenue", rec$revenue),
+        note_block("bblab_kpi_cor", rec$cor),
+        note_block("bblab_kpi_gp", rec$gp)
+      ),
+      tags$p(class = "help-block", msg("bblab_recon_commercial_foot"))
+    )
+  )
+}
+
 .bblab_snapshot_is_html <- function(cons, locale = "en",
                                     statement_currency = NA_character_,
                                     period = NA_character_) {
@@ -313,6 +428,14 @@ business_breakdown_lab_ui <- function(id = "bblab") {
           ".ynow-bblab-or__formula{font-size:12px;color:#555;margin:2px 0;}",
           ".ynow-bblab-or__value{font-size:18px;font-weight:650;margin:0;}",
           ".ynow-bblab-or__layers details{margin:6px 0;border:1px solid #eee;border-radius:6px;padding:6px 10px;background:#fff;}",
+          ".ynow-bblab-recon-commercial{width:100%;}",
+          ".ynow-bblab-recon-verdict{margin:0 0 12px 0;padding:10px 12px;",
+          "border:1px solid #e5e5e5;border-radius:6px;background:#fff;}",
+          ".ynow-bblab-recon-verdict__body{margin:6px 0 0 0;}",
+          ".ynow-bblab-recon-glossary{margin:0 0 12px 0;padding-left:18px;}",
+          ".ynow-bblab-recon-glossary li{margin:2px 0;}",
+          ".ynow-bblab-recon-line-notes{margin-top:12px;}",
+          ".ynow-bblab-recon-row--gap td{background:#fff8f6;}",
           sep = ""
         ))),
         tags$p(
@@ -563,6 +686,13 @@ business_breakdown_lab_ui <- function(id = "bblab") {
 
       .bblab_report_section(
         "VI", "ynow_bblab_ch6_title", "Reconciliation",
+        "ynow_bblab_ch6_help",
+        paste0(
+          "Check whether the business cards add up to the filed consolidated Income Statement. ",
+          "Filed consolidated = what the company reported; Sum of businesses = what we assigned ",
+          "to operating businesses; Unassigned gap = the leftover not yet attributed. ",
+          "This is a disclosure cross-check — not a valuation engine."
+        ),
         chapter = "6",
         uiOutput(ns("recon"))
       ),
@@ -1978,35 +2108,7 @@ business_breakdown_lab_server <- function(id = "bblab",
       if (is.null(res) || is.null(res$reconciliation)) {
         return(tags$p(class = "help-block", ui_msg("bblab_waiting")))
       }
-      rec <- res$reconciliation
-      badge <- if (isTRUE(rec$pass)) {
-        tags$span(class = "ynow-bblab-recon ynow-bblab-recon--pass", ui_msg("bblab_pass"))
-      } else {
-        tags$span(class = "ynow-bblab-recon ynow-bblab-recon--fail", ui_msg("bblab_fail"))
-      }
-      row <- function(label, chk) {
-        if (is.null(chk)) return(NULL)
-        tags$tr(
-          tags$td(label),
-          tags$td(.bblab_fmt_amt(chk$reported)),
-          tags$td(.bblab_fmt_amt(chk$recast)),
-          tags$td(.bblab_fmt_amt(chk$leftover)),
-          tags$td(if (isTRUE(chk$pass)) ui_msg("bblab_pass") else ui_msg("bblab_fail"))
-        )
-      }
-      tags$div(
-        badge,
-        tags$table(
-          class = "table table-condensed ynow-bblab-recon-table",
-          tags$thead(tags$tr(tags$th(""), tags$th("Reported"), tags$th("Recast"),
-                             tags$th("Leftover"), tags$th("Status"))),
-          tags$tbody(
-            row("Revenue", rec$revenue),
-            row("Cost of Revenue", rec$cor),
-            row("Gross Profit", rec$gp)
-          )
-        )
-      )
+      .bblab_recon_commercial_html(res$reconciliation, locale = loc(), ui_msg = ui_msg)
     })
 
     output$shared <- renderUI({
