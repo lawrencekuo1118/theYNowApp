@@ -7,5 +7,5 @@ commit=7af212b65ffdc2f62959fb75bde5f4c58a4ea895
 short=7af212b6
 message=chore: record shipped display version v26.28
 captured_at=2026-10-22T05:34:37Z
-display_version=v26.28
+display_version=v26.29
 note=Canonical live line is app_26.0. Bundle 12723808: Account guest-hidden — no demo / Sign-in promo (#395). Secrets only in gitignored .Renviron; no secret values in git.
