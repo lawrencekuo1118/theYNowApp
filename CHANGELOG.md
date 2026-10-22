@@ -1,3 +1,13 @@
+## [v26.46] — 2026-10-22
+
+### en-US
+- **業務拆解 / order research:** TW preferred automatable path is now Fugle 法說會備忘錄 HTML (`estimate`). Fact extractors read stated backlog / CapEx / customer share in zh-TW when present. AlphaMemo free transcripts stay human-outbound only (no HTML/API scrape). Seeking Alpha HTML remains last-resort.
+- **US free SEC path:** `.ynow_us_ec_from_sec_8k` now reads Python `short_names` / `excerpts` / `full_texts` so Item 2.02-style 8-K text can reach extractors without a paid transcript API key.
+
+### zh-TW
+- **業務拆解／訂單研究：** 台股可自動化偏好路徑改為富果直送法說會備忘錄 HTML（估計）。來源文字若明列在手訂單、資本支出、客戶營收占比，才寫入事實。AlphaMemo 公開逐字稿仍僅人工外連（不擷取 HTML／API）。Seeking Alpha HTML 維持最後備援。
+- **美股免費 SEC 路徑：** 修正 8-K 附註平行欄位對應，使 Item 2.02 類內文可進入分析，無需付費逐字稿 API key。
+
 ## [v26.45] — 2026-10-22
 
 ### Changed
