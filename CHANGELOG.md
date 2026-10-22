@@ -18,6 +18,18 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 - CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_26.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).
 - Docs: root README ship/CI/Release pointers; `scripts/record_github_release.sh` for soft-fail Release publish after deploy.
 
+## [v26.21] — 2026-10-22
+
+### Added
+
+- **Business Breakdown Reconciliation / 對帳 — commercial copy** (PR #386): investment-desk labels (Filed consolidated / Sum of businesses / Unassigned gap), match-vs-gap verdict, per-line gap notes with share of filed; en-US + zh-TW.
+- zh-TW：對帳改為「合併財報已申報／各事業加總／尚未歸屬差額／差額佔比」，並以「對得上／尚有差額」結論說明數字怎麼讀。
+- Also ships tip with **earnings-call source stack** from PR #385 (AlphaMemo TW outbound + Statementdog US; Seeking Alpha HTML last-resort) when deploying this tip.
+
+### Changed
+
+- Live baseline bundle recorded in `scripts/DEPLOY_BASELINE.txt` after deploy.
+
 ## [v26.19] — 2026-10-21
 
 ### Added
