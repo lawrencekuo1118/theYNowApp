@@ -90,7 +90,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     home_method = "Classify the business, choose the model, then decide.",
     home_method_lite = "Classify the business, then read fair value and YNOW.",
     home_market_k = "Market",
-    home_market_d = "Index levels, and industry performance versus the benchmark.",
+    home_market_d = "YNOW / TYNOW, major boards, Rf, and industry performance versus the benchmark.",
     home_bluechip_k = "Blue Chip",
     home_bluechip_d = "Peer ranking pools, truncate rules, clustering, and custom screen.",
     home_company_k = "Company",
@@ -151,6 +151,15 @@ locale_for_market <- function(mode = get_market_mode()) {
       "latest trading-day 10-year tenor. If a live fetch fails, the last successful value is reused; ",
       "only then does an engineering fallback apply (US 5%, TW 1.8%) — labeled as fallback, ",
       "not treated as the official bond. Display currency (USD｜TWD) is separate from market mode."
+    ),
+    about_data_sources_ynow_index_title = "YNOW and TYNOW indices",
+    about_data_sources_ynow_index_body = paste0(
+      "On Macro & Market Trends, US mode shows YNOW and TW mode shows TYNOW — equal-weight baskets ",
+      "of ten names reconstituted monthly (Asia/Taipei) from F-Score and statement-alert screens. ",
+      "Levels are recalculated from fixed constituent prices (not re-screened mid-month). ",
+      "Click the KPI to expand the rule, optional board overlays, chart, and constituents table. ",
+      "Search accepts YNOW, TYNOW, /YNOW, or /TYNOW and opens that Macro expand. ",
+      "These symbols are app indices, not Yahoo listings."
     ),
     about_data_sources_filings_title = "Listings, filings, and open data",
     about_data_sources_filings_body = paste0(
@@ -3665,6 +3674,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     macro_index_name_twoii = "TPEx",
     macro_index_name_0050 = "0050",
     ynow_index_title = "YNOW",
+    ynow_index_chapter_title = "YNOW",
+    notif_open_own_index = "Opening {symbol} on Macro…",
     ynow_index_rule = paste0(
       "Constituents stay fixed until the next monthly reconstitution (Asia/Taipei): ",
       "the largest US primary listings with F-Score 8 or higher and zero statement alerts, equal weight. ",
@@ -4542,7 +4553,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     home_method = "先分類，再選模型，再做決策。",
     home_method_lite = "先分類，再看合理價與 YNOW。",
     home_market_k = "大盤",
-    home_market_d = "指數水位，以及產業相對大盤。",
+    home_market_d = "YNOW／TYNOW、大盤指數、Rf，以及產業相對大盤。",
     home_bluechip_k = "績優股",
     home_bluechip_d = "同業候選池、截斷規則、分群與自訂選股。",
     home_company_k = "個股",
@@ -4598,6 +4609,15 @@ locale_for_market <- function(mode = get_market_mode()) {
       "美股模式：即時 Yahoo ^TNX（10 年期）。台股模式：櫃買 TPEx 公債殖利率曲線最近交易日 10 年期。",
       "即時擷取失敗時先沿用最近成功值；再失敗才使用工程 fallback（美股 5%、台股 1.8%），",
       "並標明為 fallback，不作官方公債。顯示幣別（USD｜TWD）與市場模式分開設定。"
+    ),
+    about_data_sources_ynow_index_title = "YNOW 與 TYNOW 指數",
+    about_data_sources_ynow_index_body = paste0(
+      "在「總體經濟與大盤趨勢」：美股模式顯示 YNOW、台股模式顯示 TYNOW——",
+      "每月（台北時間）依 F-Score 與財報警訊篩選後的等權重十檔籃；",
+      "月內成分固定，水位僅依成分股價格重算（不中途重篩）。",
+      "點選 KPI 可展開規則、可選大盤疊圖、走勢與成分表。",
+      "搜尋可輸入 YNOW、TYNOW、/YNOW 或 /TYNOW，直接開啟該 Macro 展開卡。",
+      "此為 App 自建指數代號，不是 Yahoo 上市代號。"
     ),
     about_data_sources_filings_title = "上市櫃名單、申報與開放資料",
     about_data_sources_filings_body = paste0(
@@ -8013,6 +8033,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     macro_index_name_twoii = "櫃買（TPEx）",
     macro_index_name_0050 = "0050（台灣50）",
     ynow_index_title = "YNOW",
+    ynow_index_chapter_title = "YNOW",
+    notif_open_own_index = "正在開啟 Macro 上的 {symbol}…",
     ynow_index_rule = paste0(
       "成分在下次月汰換（台北時間）前固定：",
       "F-Score 8 分以上且無財報警示的美股主要上市市值前段，等權重。",

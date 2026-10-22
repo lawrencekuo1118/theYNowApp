@@ -60,6 +60,10 @@
       en$about_data_sources_rf_title, en$about_data_sources_rf_body
     ),
     .about_bilingual_pair(
+      zh$about_data_sources_ynow_index_title, zh$about_data_sources_ynow_index_body,
+      en$about_data_sources_ynow_index_title, en$about_data_sources_ynow_index_body
+    ),
+    .about_bilingual_pair(
       zh$about_data_sources_filings_title, zh$about_data_sources_filings_body,
       en$about_data_sources_filings_title, en$about_data_sources_filings_body
     ),

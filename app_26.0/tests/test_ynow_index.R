@@ -42,6 +42,15 @@ tw_keep <- ynow_index_filter_tw_rows(tw_uni)$ticker
 check("TW keeps listed and OTC", identical(sort(tw_keep), c("2330.TW", "6488.TWO")))
 check("TYNOW symbol", identical(ynow_index_symbol("TW"), "TYNOW"))
 check("YNOW symbol", identical(ynow_index_symbol("US"), "YNOW"))
+check("parse YNOW", {
+  p <- ynow_index_parse_symbol("YNOW")
+  is.list(p) && identical(p$symbol, "YNOW") && identical(p$market, "US")
+})
+check("parse /TYNOW slash", {
+  p <- ynow_index_parse_symbol("/TYNOW")
+  is.list(p) && identical(p$symbol, "TYNOW") && identical(p$market, "TW")
+})
+check("parse rejects ordinary ticker", is.null(ynow_index_parse_symbol("AAPL")))
 check("TW cache file", grepl("tynow_index_basket.csv", ynow_index_cache_path("TW"), fixed = TRUE))
 check("US cache file", grepl("ynow_index_basket.csv", ynow_index_cache_path("US"), fixed = TRUE))
 
@@ -83,6 +92,12 @@ check("write cache", isTRUE(ynow_index_write_cache(toy, tmp)))
 back <- ynow_index_read_cache("2026-10", tmp)
 check("read cache month", identical(vapply(back$members, function(m) m$ticker, character(1)), c("BBB", "DDD")))
 check("other month miss", is.null(ynow_index_read_cache("2026-09", tmp)))
+check("prior month fallback", {
+  nxt <- ynow_index_read_cache("2026-11", tmp, allow_prior = TRUE)
+  is.list(nxt) && isTRUE(nxt$prior_month) && identical(nxt$month, "2026-10") &&
+    identical(vapply(nxt$members, function(m) m$ticker, character(1)), c("BBB", "DDD"))
+})
+check("prior disabled stays null", is.null(ynow_index_read_cache("2026-11", tmp, allow_prior = FALSE)))
 cur <- ynow_index_current(
   as_of = as.POSIXct("2026-10-15 12:00:00", tz = "Asia/Taipei"),
   rebuild = TRUE,
@@ -194,6 +209,23 @@ check("TW market", grepl("TYNOW", macro, fixed = TRUE))
 check("yahoo catalog untouched", !grepl('"YNOW" = "YNOW"', macro, fixed = TRUE))
 ui_src <- paste(readLines("ynow_ui.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check("locale wire", grepl("ynow_index_rule", ui_src, fixed = TRUE))
+check("search opens Macro own index", {
+  srv <- paste(readLines("ynow_server.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("ynow_index_parse_symbol", srv, fixed = TRUE) &&
+    grepl("ynowMacroOpenIndex", srv, fixed = TRUE) &&
+    grepl("ynowMacroOpenIndex", ui_src, fixed = TRUE)
+})
+check("about documents YNOW/TYNOW", {
+  about <- paste(readLines("ynow_about_ui.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("about_data_sources_ynow_index", about, fixed = TRUE) &&
+    grepl("YNOW and TYNOW", ui_str("about_data_sources_ynow_index_title", "en"), fixed = TRUE) &&
+    grepl("YNOW 與 TYNOW", ui_str("about_data_sources_ynow_index_title", "zh-TW"), fixed = TRUE)
+})
+check("rebuild_ynow script exists", {
+  root <- normalizePath("..")
+  file.exists(file.path(root, "scripts", "rebuild_ynow_index.R")) ||
+    file.exists(file.path(root, "rebuild_ynow_index.R"))
+})
 
 if (fail > 0L) {
   cat("\n", fail, " failure(s)\n", sep = "")
