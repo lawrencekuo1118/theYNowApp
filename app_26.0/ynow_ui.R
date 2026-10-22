@@ -5547,17 +5547,17 @@ ui <- dashboardPage(
         .ynow-chrome-header-leaves::before {
           content: "";
           position: absolute;
-          inset: -8% -4% -8% -2%;
+          inset: -12% -6% -12% -4%;
           background-image: url("ynow-chrome-veins-branches.jpg");
           background-repeat: no-repeat;
           background-size: cover;
-          background-position: 18% 42%;
-          /* Photo is black twigs on white sky → invert so twigs glow on black chrome */
-          filter: invert(1) contrast(1.25) brightness(1.05);
+          background-position: 12% 40%;
+          /* Black twigs on white sky → invert + green tint so dense veins read on black chrome */
+          filter: invert(1) sepia(1) saturate(4.2) hue-rotate(78deg) brightness(0.95) contrast(1.2);
           mix-blend-mode: screen;
-          opacity: 0.62;
-          -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 48%, transparent 92%);
-          mask-image: linear-gradient(90deg, #000 0%, #000 48%, transparent 92%);
+          opacity: 0.78;
+          -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 55%, transparent 96%);
+          mask-image: linear-gradient(90deg, #000 0%, #000 55%, transparent 96%);
           pointer-events: none;
         }
         .ynow-chrome-header-leaves::after {
@@ -5565,7 +5565,7 @@ ui <- dashboardPage(
           position: absolute;
           inset: 0;
           background:
-            linear-gradient(90deg, rgba(36, 156, 96, 0.28) 0%, rgba(36, 156, 96, 0.12) 42%, transparent 78%);
+            linear-gradient(90deg, rgba(36, 156, 96, 0.34) 0%, rgba(36, 156, 96, 0.16) 45%, transparent 82%);
           mix-blend-mode: soft-light;
           pointer-events: none;
         }
@@ -7111,11 +7111,11 @@ ui <- dashboardPage(
           border-radius: inherit;
           background-image: url("ynow-chrome-veins-circuit.jpg");
           background-repeat: no-repeat;
-          background-size: 165% auto;
-          background-position: center 70%;
-          opacity: 0.38;
+          background-size: 175% auto;
+          background-position: center 65%;
+          opacity: 0.55;
           mix-blend-mode: screen;
-          filter: saturate(0.9) brightness(0.95) hue-rotate(-8deg);
+          filter: saturate(1.05) brightness(1.02) hue-rotate(-12deg);
           pointer-events: none;
           z-index: 0;
         }
