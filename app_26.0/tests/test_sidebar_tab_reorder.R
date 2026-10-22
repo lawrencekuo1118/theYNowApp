@@ -150,6 +150,56 @@ check("legacy page-pin tray CSS hidden", {
     grepl(".ynow-sidebar-pins { display:none !important; }", auth, fixed = TRUE)
 })
 
+# Regression: Shiny 1.14 arity-0 handler threw and aborted the reorder IIFE.
+check("page-pin stub handler is unary (Shiny 1.14)", {
+  grepl(
+    "addCustomMessageHandler('ynowPinnedSidebarMark', function(_msg)",
+    ui,
+    fixed = TRUE
+  ) ||
+    grepl(
+      "addCustomMessageHandler('ynowPinnedSidebarMark', function(msg)",
+      ui,
+      fixed = TRUE
+    )
+})
+check("menuRoot prefers ul.sidebar-menu (not #sidebar_tabs DIV)", {
+  grepl("ul.sidebar-menu", ui, fixed = TRUE) &&
+    grepl("sidebarMenuSelectedTabItem", ui, fixed = TRUE) &&
+    !grepl(
+      "return document.getElementById('sidebar_tabs') ||",
+      ui,
+      fixed = TRUE
+    )
+})
+check("applyUiLocale merges boot strings (keeps reorder keys)", {
+  grepl("opts.fromBoot && window.__ynowUiLocaleStrings", ui, fixed = TRUE) &&
+    grepl("ynowSyncSidebarReorderBtnLocale", ui, fixed = TRUE)
+})
+
+# Boot slim map must carry rearrange labels so zh-TW click is not stuck English.
+Sys.setenv(YNOW_DEBUG_SKIP_PY = "1")
+source(file.path(root, "ui_locale.R"), local = FALSE, encoding = "UTF-8")
+boot <- ui_locale_boot_bundle()
+check("boot en includes sidebar_reorder_btn", {
+  identical(boot$en$strings$sidebar_reorder_btn, "Rearrange")
+})
+check("boot zh-TW includes sidebar_reorder_btn", {
+  identical(boot[["zh-TW"]]$strings$sidebar_reorder_btn, "重新排列")
+})
+check("boot zh-TW includes Done label", {
+  identical(boot[["zh-TW"]]$strings$sidebar_reorder_btn_done, "完成")
+})
+
+dnd <- paste(
+  readLines(file.path(root, "www", "ynow_screener_dnd.js"), warn = FALSE, encoding = "UTF-8"),
+  collapse = "\n"
+)
+check("screener DnD clear handler is unary", {
+  grepl("ynowScrDndClear', function (_msg)", dnd, fixed = TRUE) ||
+    grepl("ynowScrDndClear', function(_msg)", dnd, fixed = TRUE)
+})
+
 if (fail > 0L) {
   cat("FAILED:", fail, "\n")
   quit(status = 1L)

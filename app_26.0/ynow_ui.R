@@ -10980,7 +10980,21 @@ ui <- dashboardPage(
             }
             try {
               if (payload && payload.strings) {
-                window.__ynowUiLocaleStrings = payload.strings;
+                /* Boot slim maps must merge into any prior full push; replacing
+                   wiped keys like sidebar_reorder_* and stuck the button in English. */
+                if (opts.fromBoot && window.__ynowUiLocaleStrings &&
+                    typeof window.__ynowUiLocaleStrings === 'object') {
+                  var mergedBoot = {};
+                  var prevS = window.__ynowUiLocaleStrings;
+                  Object.keys(prevS).forEach(function (k) { mergedBoot[k] = prevS[k]; });
+                  Object.keys(payload.strings).forEach(function (k) {
+                    mergedBoot[k] = payload.strings[k];
+                  });
+                  window.__ynowUiLocaleStrings = mergedBoot;
+                  s = mergedBoot;
+                } else {
+                  window.__ynowUiLocaleStrings = payload.strings;
+                }
               }
             } catch (eStoreLoc) {}
             if (typeof window.ynowSetUpdateLocaleStrings === 'function') {
@@ -19334,7 +19348,9 @@ ui <- dashboardPage(
               try { localStorage.removeItem(GUEST_KEY); } catch (e) {}
             }
           });
-          Shiny.addCustomMessageHandler('ynowPinnedSidebarMark', function() {});
+          /* Shiny 1.14+ requires handler.length === 1; arity-0 throws and aborts
+             the rest of this script (including the reorder IIFE below). */
+          Shiny.addCustomMessageHandler('ynowPinnedSidebarMark', function(_msg) {});
         })();
 
         // Signed-in sidebar tab reorder: customize button → long-press drag → Done persists.
@@ -19356,17 +19372,20 @@ ui <- dashboardPage(
           }
 
           function syncBtnLocale(s) {
-            s = s || window.__ynowUiLocaleStrings || {};
+            var full = window.__ynowUiLocaleStrings || {};
+            s = s || full;
             var btn = document.getElementById('ynow_sidebar_reorder_btn');
             var lab = document.getElementById('ynow_sidebar_reorder_btn_label');
             if (!btn) return;
             var editing = !!(document.body && document.body.classList.contains('ynow-sidebar-reorder-edit'));
             var label = editing
-              ? (s.sidebar_reorder_btn_done || 'Done')
-              : (s.sidebar_reorder_btn || 'Rearrange');
+              ? (s.sidebar_reorder_btn_done || full.sidebar_reorder_btn_done || 'Done')
+              : (s.sidebar_reorder_btn || full.sidebar_reorder_btn || 'Rearrange');
             var title = editing
-              ? (s.sidebar_reorder_btn_done_title || 'Save order and exit edit mode')
-              : (s.sidebar_reorder_btn_title || 'Rearrange sidebar tab order');
+              ? (s.sidebar_reorder_btn_done_title || full.sidebar_reorder_btn_done_title ||
+                 'Save order and exit edit mode')
+              : (s.sidebar_reorder_btn_title || full.sidebar_reorder_btn_title ||
+                 'Rearrange sidebar tab order');
             if (lab) lab.textContent = label;
             btn.setAttribute('title', title);
             btn.setAttribute('aria-label', title);
@@ -19375,8 +19394,10 @@ ui <- dashboardPage(
           window.ynowSyncSidebarReorderBtnLocale = syncBtnLocale;
 
           function menuRoot() {
-            return document.getElementById('sidebar_tabs') ||
-              document.querySelector('.sidebar-menu');
+            /* shinydashboard puts id=sidebar_tabs on a hidden DIV
+               (.sidebarMenuSelectedTabItem), not the UL. Prefer the real menu. */
+            return document.querySelector('.main-sidebar ul.sidebar-menu') ||
+              document.querySelector('ul.sidebar-menu');
           }
 
           function isVisibleLi(li) {
