@@ -24,6 +24,14 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 - CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_26.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).
 - Docs: root README ship/CI/Release pointers; `scripts/record_github_release.sh` for soft-fail Release publish after deploy.
 
+## [v26.25] — 2026-10-22
+
+### Fixed
+
+- **Black top-banner Sign in: no white outer border** (PR #392): remove border/outline/box-shadow on header auth controls; keep black banner, white label, and hover wash. Single-entry viewport rule unchanged (≤767 date-row text links; ≥768 banner).
+- zh-TW：頂部黑列登入控制項去掉白框／外框，僅保留文字與 hover；窄／寬單一登入入口規則不變。
+- Live baseline bundle recorded in `scripts/DEPLOY_BASELINE.txt` after deploy.
+
 ## [v26.24] — 2026-10-22
 
 ### Changed
