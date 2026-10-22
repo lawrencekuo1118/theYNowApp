@@ -1045,6 +1045,113 @@ def _safe_float(v):
         return None
 
 
+def _yahoo_raw(v):
+    """Unwrap quoteSummary {raw,fmt} shells or plain scalars."""
+    if isinstance(v, dict) and "raw" in v:
+        return v.get("raw")
+    return v
+
+
+def _beta_unlever_empty(tk):
+    return {
+        "ticker": tk,
+        "ok": False,
+        "beta": None,
+        "market_cap": None,
+        "total_debt": None,
+        "de_ratio": None,
+        "de_source": "",
+        "name": tk or "",
+        "error": "",
+    }
+
+
+def _beta_unlever_apply_de(out, de_raw=None):
+    """D/E preference: totalDebt / marketCap (market); else Yahoo debtToEquity.
+
+    Yahoo debtToEquity is usually Equity×100 style (e.g. 54.2 → 0.542).
+    """
+    mcap = out.get("market_cap")
+    debt = out.get("total_debt")
+    de = None
+    de_src = ""
+    if mcap is not None and mcap > 0 and debt is not None and debt >= 0:
+        de = debt / mcap
+        de_src = "market_D/E"
+    elif de_raw is not None and de_raw >= 0:
+        de = (de_raw / 100.0) if de_raw > 5.0 else de_raw
+        de_src = "yahoo_debtToEquity"
+    out["de_ratio"] = de
+    out["de_source"] = de_src
+    beta = out.get("beta")
+    out["ok"] = beta is not None and de is not None
+    err = str(out.get("error") or "")
+    if out["ok"]:
+        if err in ("missing beta", "missing D/E", "empty ticker"):
+            out["error"] = ""
+    elif beta is None:
+        out["error"] = err or "missing beta"
+    elif de is None:
+        out["error"] = err or "missing D/E"
+    return out
+
+
+def _beta_unlever_from_quote_summary(sym):
+    """Crumb-authenticated quoteSummary → beta / mcap / debt / D/E scalars."""
+    out = _beta_unlever_empty(sym)
+    try:
+        from yfinance.data import YfData
+
+        yd = YfData()
+        last_err = None
+        for host in (
+            "https://query2.finance.yahoo.com",
+            "https://query1.finance.yahoo.com",
+        ):
+            try:
+                url = f"{host}/v10/finance/quoteSummary/{sym}"
+                raw = yd.get(
+                    url,
+                    params={
+                        "modules": "financialData,defaultKeyStatistics,price"
+                    },
+                )
+                if hasattr(raw, "json") and not isinstance(raw, dict):
+                    raw = raw.json()
+                if not isinstance(raw, dict):
+                    continue
+                results = (raw.get("quoteSummary") or {}).get("result") or []
+                if not results:
+                    err = (raw.get("quoteSummary") or {}).get("error") or {}
+                    last_err = err.get("description") or err.get("code")
+                    continue
+                mod = results[0] or {}
+                fd = mod.get("financialData") or {}
+                ks = mod.get("defaultKeyStatistics") or {}
+                pr = mod.get("price") or {}
+                name = (
+                    _yahoo_raw(pr.get("shortName"))
+                    or _yahoo_raw(pr.get("longName"))
+                    or sym
+                )
+                out["name"] = str(name)
+                out["beta"] = _safe_float(_yahoo_raw(ks.get("beta")))
+                out["market_cap"] = _safe_float(
+                    _yahoo_raw(pr.get("marketCap") or ks.get("enterpriseValue"))
+                )
+                out["total_debt"] = _safe_float(_yahoo_raw(fd.get("totalDebt")))
+                de_raw = _safe_float(_yahoo_raw(fd.get("debtToEquity")))
+                return _beta_unlever_apply_de(out, de_raw=de_raw)
+            except Exception as e:  # noqa: BLE001
+                last_err = str(e)
+                continue
+        if last_err:
+            out["error"] = str(last_err)
+    except Exception as e:  # noqa: BLE001
+        out["error"] = str(e)
+    return out
+
+
 def get_beta_unlever_inputs(ticker="AAPL"):
     """
     Lightweight Yahoo fields for unlevered / bottom-up beta.
@@ -1054,17 +1161,7 @@ def get_beta_unlever_inputs(ticker="AAPL"):
     Yahoo debtToEquity is usually Equity*100 style (e.g. 54.2 → 0.542).
     """
     tk = str(ticker or "").strip().upper()
-    out = {
-        "ticker": tk,
-        "ok": False,
-        "beta": None,
-        "market_cap": None,
-        "total_debt": None,
-        "de_ratio": None,
-        "de_source": "",
-        "name": tk,
-        "error": "",
-    }
+    out = _beta_unlever_empty(tk)
     if not tk:
         out["error"] = "empty ticker"
         return out
@@ -1079,37 +1176,26 @@ def get_beta_unlever_inputs(ticker="AAPL"):
             out["error"] = f"info failed: {e}"
             info = {}
         out["name"] = _best_company_name(info, tk)
-        beta = _safe_float(info.get("beta"))
-        mcap = _safe_float(info.get("marketCap"))
-        debt = _safe_float(info.get("totalDebt"))
+        out["beta"] = _safe_float(info.get("beta"))
+        out["market_cap"] = _safe_float(info.get("marketCap"))
+        out["total_debt"] = _safe_float(info.get("totalDebt"))
         de_raw = _safe_float(info.get("debtToEquity"))
-        out["beta"] = beta
-        out["market_cap"] = mcap
-        out["total_debt"] = debt
-
-        de = None
-        de_src = ""
-        if mcap is not None and mcap > 0 and debt is not None and debt >= 0:
-            de = debt / mcap
-            de_src = "market_D/E"
-        elif de_raw is not None and de_raw >= 0:
-            # Yahoo often stores Debt/Equity × 100
-            de = (de_raw / 100.0) if de_raw > 5.0 else de_raw
-            de_src = "yahoo_debtToEquity"
-        out["de_ratio"] = de
-        out["de_source"] = de_src
-        out["ok"] = beta is not None and de is not None
-        if beta is None:
-            out["error"] = out["error"] or "missing beta"
-        elif de is None:
-            out["error"] = out["error"] or "missing D/E"
+        _beta_unlever_apply_de(out, de_raw=de_raw)
     except Exception as e:
         out["error"] = str(e)
     return out
 
 
 def get_beta_unlever_inputs_batch(tickers):
-    """Batch wrapper; tickers may be list/tuple from reticulate."""
+    """Peer β / D/E via chunked Yahoo quote + quoteSummary gap-fill.
+
+    1) Chunked v7/finance/quote with fields=beta,marketCap (one HTTP / ≤40 names)
+    2) quoteSummary financialData for D/E on names still missing debt ratios
+    3) Per-name fallback to get_beta_unlever_inputs (.info) when still incomplete
+
+    Tickers may be list/tuple from reticulate. Returns list of plain dicts
+    in input order (deduped).
+    """
     if tickers is None:
         return []
     try:
@@ -1118,10 +1204,118 @@ def get_beta_unlever_inputs_batch(tickers):
         seq = [tickers]
     cleaned = []
     for t in seq:
-        s = str(t or "").strip().upper()
+        s = str(t or "").strip().upper().replace("/", "-")
         if s and s not in cleaned:
             cleaned.append(s)
-    return [get_beta_unlever_inputs(t) for t in cleaned]
+    if not cleaned:
+        return []
+
+    out_map = {t: _beta_unlever_empty(t) for t in cleaned}
+
+    def _apply_quote_row(q):
+        if not isinstance(q, dict):
+            return
+        sym = str(q.get("symbol") or "").strip().upper()
+        if not sym:
+            return
+        keys = (sym, sym.replace(".", "-"), sym.replace("-", "."))
+        target = None
+        for key in keys:
+            if key in out_map:
+                target = out_map[key]
+                break
+        if target is None:
+            return
+        name = q.get("shortName") or q.get("longName") or q.get("displayName")
+        if name:
+            target["name"] = str(name)
+        beta = _safe_float(q.get("beta"))
+        mcap = _safe_float(q.get("marketCap"))
+        if beta is not None:
+            target["beta"] = beta
+        if mcap is not None:
+            target["market_cap"] = mcap
+        _beta_unlever_apply_de(target)
+
+    chunk_size = 40
+    got_quote = False
+    try:
+        from yfinance.data import YfData
+
+        yd = YfData()
+        url = "https://query2.finance.yahoo.com/v7/finance/quote"
+        fields = "symbol,shortName,longName,displayName,marketCap,beta"
+        for i in range(0, len(cleaned), chunk_size):
+            chunk = cleaned[i : i + chunk_size]
+            _yahoo_gate_acquire()
+            try:
+                raw = yd.get(
+                    url,
+                    params={"symbols": ",".join(chunk), "fields": fields},
+                )
+                if hasattr(raw, "json") and not isinstance(raw, dict):
+                    raw = raw.json()
+                quotes = []
+                if isinstance(raw, dict):
+                    quotes = (raw.get("quoteResponse") or {}).get("result") or []
+                for q in quotes:
+                    _apply_quote_row(q)
+                    got_quote = True
+            except Exception as e:  # noqa: BLE001
+                _dbg(f"⚠️ beta-unlever quote chunk failed: {e}")
+    except Exception as e:  # noqa: BLE001
+        _dbg(f"⚠️ beta-unlever YfData quote batch unavailable: {e}")
+
+    # D/E is not on the multi-quote payload — fill via quoteSummary (gated).
+    need_de = [t for t in cleaned if not out_map[t].get("ok")]
+    for sym in need_de:
+        _yahoo_gate_acquire()
+        try:
+            filled = _beta_unlever_from_quote_summary(sym)
+            cur = out_map[sym]
+            # Keep chunked-quote beta / mcap / name when quoteSummary omits them
+            if cur.get("beta") is not None and filled.get("beta") is None:
+                filled["beta"] = cur["beta"]
+            if cur.get("market_cap") is not None and filled.get("market_cap") is None:
+                filled["market_cap"] = cur["market_cap"]
+            if (
+                cur.get("name")
+                and cur["name"] != sym
+                and (not filled.get("name") or filled.get("name") == sym)
+            ):
+                filled["name"] = cur["name"]
+            if filled.get("de_ratio") is not None:
+                filled["ok"] = filled.get("beta") is not None
+                if filled["ok"] and filled.get("error") in (
+                    "missing beta",
+                    "missing D/E",
+                ):
+                    filled["error"] = ""
+                elif not filled["ok"]:
+                    filled["error"] = filled.get("error") or "missing beta"
+            else:
+                # Retry market D/E with merged mcap + debt from quoteSummary
+                _beta_unlever_apply_de(filled)
+            out_map[sym] = filled
+        except Exception as e:  # noqa: BLE001
+            _dbg(f"⚠️ beta-unlever quoteSummary {sym}: {e}")
+
+    # Per-name .info fallback for anything still incomplete
+    misses = [t for t in cleaned if not out_map[t].get("ok")]
+    if misses:
+        _dbg(f"↻ beta-unlever serial fallback {len(misses)}/{len(cleaned)}")
+        for sym in misses:
+            try:
+                out_map[sym] = get_beta_unlever_inputs(sym)
+            except Exception as e:  # noqa: BLE001
+                _dbg(f"⚠️ beta-unlever fallback {sym}: {e}")
+
+    n_ok = sum(1 for t in cleaned if out_map[t].get("ok"))
+    if got_quote or n_ok:
+        _dbg(f"✅ beta-unlever batch {n_ok}/{len(cleaned)}")
+    else:
+        _dbg("⚠️ beta-unlever batch empty")
+    return [out_map[t] for t in cleaned]
 
 
 def _stmt_to_payload(df):
@@ -2247,7 +2441,6 @@ def get_cluster_features_batch(tickers):
     Uses a small thread pool + 24h disk cache so shinyapps can finish N≈25.
     """
     import json
-    import tempfile
     import time
     from concurrent.futures import ThreadPoolExecutor, as_completed
     from pathlib import Path
@@ -2308,7 +2501,9 @@ def get_cluster_features_batch(tickers):
             "PB_Ratio": None,
         }
 
-    cache_dir = Path(tempfile.gettempdir()) / "ynow_cluster_feat_cache"
+    # Persist under YNOW_CACHE_ROOT (same root as Yahoo gate / statement cache)
+    # so shinyapps workers and local sessions share the 24h feature JSON.
+    cache_dir = Path(_yahoo_cache_root()) / "cluster_feat_cache"
     try:
         cache_dir.mkdir(parents=True, exist_ok=True)
     except Exception:  # noqa: BLE001
@@ -2334,12 +2529,6 @@ def get_cluster_features_batch(tickers):
             p.write_text(json.dumps(row), encoding="utf-8")
         except Exception:  # noqa: BLE001
             pass
-
-    def _yahoo_raw(v):
-        """Unwrap quoteSummary {raw,fmt} shells or plain scalars."""
-        if isinstance(v, dict) and "raw" in v:
-            return v.get("raw")
-        return v
 
     def _row_usable(r):
         if not isinstance(r, dict):
