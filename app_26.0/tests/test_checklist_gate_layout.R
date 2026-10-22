@@ -243,6 +243,21 @@ check("lab tab source wraps the member surface", {
     grepl("ynow-member-body", ui_txt, fixed = TRUE) &&
     grepl("ynow_lab_guest_gate", ui_txt, fixed = TRUE)
 })
+check("atx tab source wraps the member surface", {
+  grepl('ynow_member_gate_surface_ui(feature = "atx"', ui_txt, fixed = TRUE) &&
+    grepl("ynow_atx_guest_gate", ui_txt, fixed = TRUE) &&
+    grepl("ynow_atx_gate_title", ui_txt, fixed = TRUE) &&
+    grepl("ynow_atx_gate_body", ui_txt, fixed = TRUE) &&
+    grepl("ynow_atx_gate_signin", ui_txt, fixed = TRUE) &&
+    grepl('id = "ynow_atx_body"', ui_txt, fixed = TRUE) &&
+    grepl("ynow-member-body", ui_txt, fixed = TRUE) &&
+    grepl('uiOutput("ynow_lazy_host_asset_transmission")', ui_txt, fixed = TRUE)
+})
+check("guest CSS shows member gates and hides member bodies", {
+  css <- paste(as.character(ynow_auth_css()), collapse = "\n")
+  grepl("body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .ynow-member-gate { display:block !important; }", css, fixed = TRUE) &&
+    grepl("body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed) .ynow-member-body { display:none !important; }", css, fixed = TRUE)
+})
 check("UI CSS defines 1:1 row + surface overlay fade", {
   grepl("ynow-gate-promo-demo-row", ui_txt, fixed = TRUE) &&
     grepl("ynow-gate-extras--checklist-split", ui_txt, fixed = TRUE) &&

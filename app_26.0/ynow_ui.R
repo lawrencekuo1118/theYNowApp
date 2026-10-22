@@ -11712,6 +11712,8 @@ ui <- dashboardPage(
               set('ynow_pa_gate_signin_label', payload.sign_in);
               set('ynow_lab_gate_title', payload.pa_gate_title);
               set('ynow_lab_gate_signin_label', payload.sign_in);
+              set('ynow_atx_gate_title', payload.pa_gate_title);
+              set('ynow_atx_gate_signin_label', payload.sign_in);
               set('ynow_chk_gate_title', payload.pa_gate_title);
               set('ynow_chk_gate_signin_label', payload.sign_in);
               setAll('.ynow-auth-gate-title', payload.pa_gate_title);
@@ -11740,6 +11742,7 @@ ui <- dashboardPage(
                 if (feat === 'lab') set('ynow_lab_gate_body', map.body);
                 if (feat === 'checklist') set('ynow_chk_gate_body', map.body);
                 if (feat === 'alerts') set('ynow_pa_gate_body', map.body);
+                if (feat === 'atx') set('ynow_atx_gate_body', map.body);
                 if (feat === 'snap_defaults') set('ynow_snapshot_defaults_locked_msg', map.body);
               };
               setFeature('lab', {
@@ -19842,11 +19845,31 @@ ui <- dashboardPage(
       ),
 
       # ==========================================
-      # Asset transmission（側邊欄；Lite + Full）
+      # Asset Transmission Root（Full guest lock；Lite 側欄省略）
       # ==========================================
       tabItem(
         tabName = "asset_transmission",
-        uiOutput("ynow_lazy_host_asset_transmission")
+        {
+          atx_gate <- if (exists("ynow_member_gate_ui", mode = "function")) {
+            ynow_member_gate_ui(
+              "ynow_atx_guest_gate",
+              "ynow_atx_gate_title",
+              "ynow_atx_gate_body",
+              "ynow_atx_gate_signin",
+              feature = "atx"
+            )
+          }
+          atx_body <- tags$div(
+            id = "ynow_atx_body",
+            class = "ynow-member-body",
+            uiOutput("ynow_lazy_host_asset_transmission")
+          )
+          if (exists("ynow_member_gate_surface_ui", mode = "function")) {
+            ynow_member_gate_surface_ui(feature = "atx", gate = atx_gate, body = atx_body)
+          } else {
+            tagList(atx_gate, atx_body)
+          }
+        }
       ),
 
       # ==========================================
