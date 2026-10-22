@@ -18,6 +18,14 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 - CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_26.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).
 - Docs: root README ship/CI/Release pointers; `scripts/record_github_release.sh` for soft-fail Release publish after deploy.
 
+## [v26.22] — 2026-10-22
+
+### Changed
+
+- **Decision Checklist Sign-in gate** (PR #387): Unlock Decision Checklist / 解鎖決策檢核 sits **1:1 side-by-side** with Decision Checklist demo — Decision SOP flow / 決策檢核示範——Decision SOP 流程. Locked page fades to white under a surface **Sign in required** / **需登入帳號** overlay (HFV Section B/W; logo blue–green–white CTAs). Lab/alerts stay stacked; Lite omit unchanged.
+- zh-TW：決策檢核訪客閘門改為解鎖區塊與 SOP 示範並排 1:1，鎖定頁面淡白為底、需登入帳號覆層覆蓋（非遠處空盒）。
+- Live baseline bundle recorded in `scripts/DEPLOY_BASELINE.txt` after deploy.
+
 ## [v26.21] — 2026-10-22
 
 ### Added
