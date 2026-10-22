@@ -1090,7 +1090,17 @@ server <- function(input, output, session) {
     if (identical(mode, "omniscient")) {
       session$sendCustomMessage(
         "ynowAccessLocks",
-        list(ids = list(), entries = list(), note = note)
+        list(
+          ids = list(),
+          entries = list(),
+          note = note,
+          badges = list(),
+          server_now = format(
+            as.POSIXct(Sys.time(), tz = "UTC"),
+            "%Y-%m-%dT%H:%M:%SZ",
+            tz = "UTC"
+          )
+        )
       )
       return(invisible(character()))
     }
@@ -1129,11 +1139,62 @@ server <- function(input, output, session) {
       list()
     }
     ids <- if (is.data.frame(ent)) as.character(ent$id) else character()
+    badges <- if (exists("ynow_access_quota_badges", mode = "function")) {
+      tryCatch(
+        ynow_access_quota_badges(uid, authed = authed),
+        error = function(e) list()
+      )
+    } else {
+      list()
+    }
+    server_now <- format(as.POSIXct(Sys.time(), tz = "UTC"), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
     session$sendCustomMessage(
       "ynowAccessLocks",
-      list(ids = as.list(ids), entries = entries, note = note)
+      list(
+        ids = as.list(ids),
+        entries = entries,
+        note = note,
+        badges = badges,
+        server_now = server_now
+      )
     )
     invisible(ids)
+  }
+
+  #' Consume Class C free use and/or start time window after a successful use.
+  .ynow_access_note_conditional_use <- function(item_id, consume_free = TRUE) {
+    if (!exists("ynow_access_item_entry", mode = "function") ||
+        !exists("ynow_access_touch_conditional", mode = "function")) {
+      return(invisible(FALSE))
+    }
+    mode <- tryCatch(isolate(ynow_pts_self_view_mode()), error = function(e) NULL)
+    mode <- as.character(mode %||% "")[1]
+    if (identical(mode, "omniscient") || identical(mode, "guest")) {
+      return(invisible(FALSE))
+    }
+    uid <- .ynow_access_subject_id()
+    uid <- as.character(uid %||% "")[1]
+    if (!nzchar(uid) || identical(uid, "__omniscient__") ||
+        identical(uid, "__self_member__")) {
+      return(invisible(FALSE))
+    }
+    id <- as.character(item_id %||% "")[1]
+    if (!nzchar(id)) return(invisible(FALSE))
+    entry <- tryCatch(ynow_access_item_entry(uid, id), error = function(e) NULL)
+    if (is.null(entry) || !identical(entry$unlock_type, "conditional")) {
+      return(invisible(FALSE))
+    }
+    has_free <- !is.na(entry$free_count) && as.integer(entry$free_count) > 0L
+    has_time <- !is.na(entry$time_limit_hours) && as.integer(entry$time_limit_hours) > 0L
+    do_consume <- isTRUE(consume_free) && isTRUE(has_free)
+    # Time-only: start window on first use; free+time: consume and refresh window.
+    if (!do_consume && !isTRUE(has_time)) return(invisible(FALSE))
+    tryCatch(
+      ynow_access_touch_conditional(uid, id, consume_free = do_consume),
+      error = function(e) NULL
+    )
+    tryCatch(.ynow_push_access_locks(), error = function(e) NULL)
+    invisible(TRUE)
   }
 
   #' Push active maintenance windows (all users). Separate from ACL / guest locks.
@@ -1365,6 +1426,13 @@ server <- function(input, output, session) {
   observeEvent(input$ynow_maint_refresh, {
     .ynow_push_maintenance()
     ynow_maint_display_tick(isolate(ynow_maint_display_tick()) + 1L)
+  }, ignoreInit = TRUE)
+
+  # Client countdown expired → refresh Class C badge remaining / ends_at.
+  observeEvent(input$ynow_quota_badge_refresh, {
+    tryCatch(.ynow_push_access_locks(), error = function(e) NULL)
+    tryCatch(.ynow_push_maintenance(), error = function(e) NULL)
+    tryCatch(.ynow_pdf_quota_push(), error = function(e) NULL)
   }, ignoreInit = TRUE)
 
   #' Effective points user: view-as uuid when active, else signed-in account.
@@ -6710,6 +6778,10 @@ server <- function(input, output, session) {
     content = function(file) {
       if (isTRUE(.ynow_deny_guest_download(file))) return()
       if (isTRUE(.ynow_access_deny_download("report:download_snapshot", file))) return()
+      tryCatch(
+        .ynow_access_note_conditional_use("report:download_snapshot", consume_free = TRUE),
+        error = function(e) NULL
+      )
       df <- snapshot_rows()
       df$Downloaded_At <- format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z")
       write.csv(df, file, row.names = FALSE, fileEncoding = "UTF-8")
@@ -6724,6 +6796,10 @@ server <- function(input, output, session) {
     content = function(file) {
       if (isTRUE(.ynow_deny_guest_download(file))) return()
       if (isTRUE(.ynow_access_deny_download("report:download_param_restore", file))) return()
+      tryCatch(
+        .ynow_access_note_conditional_use("report:download_param_restore", consume_free = TRUE),
+        error = function(e) NULL
+      )
       df <- ynow_param_restore_export_df(
         input,
         ticker = display_ticker_for_market(
@@ -7239,6 +7315,10 @@ server <- function(input, output, session) {
     content = function(file) {
       if (isTRUE(.ynow_access_deny_download("report:IS_download", file))) return()
       write.csv(d_income_statement(), file, row.names = FALSE)
+      tryCatch(
+        .ynow_access_note_conditional_use("report:IS_download", consume_free = TRUE),
+        error = function(e) NULL
+      )
     }
   )
   output$BS_download <- downloadHandler(
@@ -7246,6 +7326,10 @@ server <- function(input, output, session) {
     content = function(file) {
       if (isTRUE(.ynow_access_deny_download("report:BS_download", file))) return()
       write.csv(d_balance_sheet(), file, row.names = FALSE)
+      tryCatch(
+        .ynow_access_note_conditional_use("report:BS_download", consume_free = TRUE),
+        error = function(e) NULL
+      )
     }
   )
   output$CF_download <- downloadHandler(
@@ -7253,6 +7337,10 @@ server <- function(input, output, session) {
     content = function(file) {
       if (isTRUE(.ynow_access_deny_download("report:CF_download", file))) return()
       write.csv(d_cash_flow(), file, row.names = FALSE)
+      tryCatch(
+        .ynow_access_note_conditional_use("report:CF_download", consume_free = TRUE),
+        error = function(e) NULL
+      )
     }
   )
   
@@ -17098,6 +17186,10 @@ server <- function(input, output, session) {
         } else {
           showNotification(.ui_msg("notif_pdf_ok"), type = "message")
         }
+        tryCatch(
+          .ynow_access_note_conditional_use("report:download_report", consume_free = TRUE),
+          error = function(e) NULL
+        )
         tryCatch(.ynow_pdf_quota_push(), error = function(e) NULL)
       }, error = function(e) {
         if (exists("ynow_pdf_release", mode = "function")) {
@@ -18922,6 +19014,11 @@ server <- function(input, output, session) {
     },
     content = function(file) {
       if (isTRUE(.ynow_deny_guest_download(file))) return()
+      if (isTRUE(.ynow_access_deny_download("report:lab_im_download_report", file))) return()
+      tryCatch(
+        .ynow_access_note_conditional_use("report:lab_im_download_report", consume_free = TRUE),
+        error = function(e) NULL
+      )
       meta <- tryCatch(lab_us_universe_meta(), error = function(e) NULL)
       if (is.null(meta) || as.integer(meta$n %||% 0L) < 1L) {
         meta <- tryCatch(lab_sp500_universe_meta(), error = function(e) NULL)
