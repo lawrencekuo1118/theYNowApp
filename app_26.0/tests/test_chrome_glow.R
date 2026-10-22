@@ -16,6 +16,7 @@ check <- function(label, ok) {
 check(
   "header leaves class + aria-hidden inject",
   grepl("ynow-chrome-header-leaves", txt, fixed = TRUE) &&
+    grepl("ynow-chrome-header-veins", txt, fixed = TRUE) &&
     grepl("ynowPlaceChromeLeaves", txt, fixed = TRUE) &&
     grepl("el.setAttribute('aria-hidden','true')", txt, fixed = TRUE)
 )
