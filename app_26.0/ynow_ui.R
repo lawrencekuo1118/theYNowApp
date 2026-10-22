@@ -4689,6 +4689,142 @@ ui <- dashboardPage(
         .ynow-gate-extras {
           margin: 12px 0 16px 0;
         }
+        /* Decision Checklist: unlock block + SOP demo 1:1 side-by-side */
+        .ynow-gate-extras--checklist-split .ynow-gate-promo-demo-row {
+          display: flex;
+          flex-wrap: nowrap;
+          align-items: stretch;
+          gap: 12px;
+          margin: 0 0 10px 0;
+        }
+        .ynow-gate-extras--checklist-split .ynow-gate-promo-demo-row > .ynow-gate-promo,
+        .ynow-gate-extras--checklist-split .ynow-gate-promo-demo-row > .ynow-gate-demo {
+          flex: 1 1 0;
+          width: 0;
+          min-width: 0;
+          margin: 0;
+          display: flex;
+          flex-direction: column;
+        }
+        .ynow-gate-extras--checklist-split .ynow-gate-promo-demo-row > .ynow-gate-demo .ynow-gate-demo-video {
+          flex: 1 1 auto;
+          max-height: none;
+          min-height: 160px;
+          object-fit: contain;
+        }
+        @media (max-width: 767px) {
+          .ynow-gate-extras--checklist-split .ynow-gate-promo-demo-row {
+            flex-direction: column;
+            flex-wrap: wrap;
+          }
+          .ynow-gate-extras--checklist-split .ynow-gate-promo-demo-row > .ynow-gate-promo,
+          .ynow-gate-extras--checklist-split .ynow-gate-promo-demo-row > .ynow-gate-demo {
+            width: 100%;
+            flex: 1 1 auto;
+          }
+          .ynow-gate-extras--checklist-split .ynow-gate-promo-demo-row > .ynow-gate-demo .ynow-gate-demo-video {
+            max-height: 220px;
+            min-height: 0;
+          }
+        }
+        /* Checklist guest: faded page shell + Sign-in overlay covering the surface */
+        .ynow-member-gate-surface--checklist {
+          position: relative;
+          min-height: min(72vh, 760px);
+        }
+        .ynow-member-gate-fade-backdrop {
+          display: none;
+          pointer-events: none;
+          user-select: none;
+        }
+        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed)
+          .ynow-member-gate-surface--checklist > .ynow-member-gate-fade-backdrop {
+          display: block;
+          position: absolute;
+          inset: 0;
+          z-index: 0;
+          overflow: hidden;
+          background: #f7f7f7;
+        }
+        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed)
+          .ynow-member-gate-surface--checklist > .ynow-member-gate-fade-backdrop::after {
+          content: "";
+          position: absolute;
+          inset: 0;
+          z-index: 1;
+          pointer-events: none;
+          background: linear-gradient(
+            180deg,
+            rgba(255, 255, 255, 0.55) 0%,
+            rgba(255, 255, 255, 0.88) 42%,
+            rgba(255, 255, 255, 0.97) 100%
+          );
+        }
+        .ynow-dc-fade-skel {
+          position: relative;
+          z-index: 0;
+          padding: 12px 10px 24px 10px;
+          opacity: 0.55;
+          filter: grayscale(0.15);
+        }
+        .ynow-dc-fade-skel__box {
+          margin: 0 0 14px 0;
+          padding: 14px 16px 16px 16px;
+          border: 1px solid #e0e0e0;
+          border-radius: 4px;
+          background: #fff;
+        }
+        .ynow-dc-fade-skel__bar {
+          height: 10px;
+          margin: 0 0 10px 0;
+          border-radius: 2px;
+          background: #d8d8d8;
+          width: 88%;
+        }
+        .ynow-dc-fade-skel__bar--title {
+          height: 14px;
+          width: 42%;
+          background: #c8c8c8;
+        }
+        .ynow-dc-fade-skel__bar--mid { width: 64%; }
+        .ynow-dc-fade-skel__bar--short { width: 36%; margin-bottom: 0; }
+        .ynow-dc-fade-skel__grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 10px;
+          margin-top: 12px;
+        }
+        .ynow-dc-fade-skel__cell {
+          height: 48px;
+          border-radius: 3px;
+          background: #ececec;
+          border: 1px solid #e2e2e2;
+        }
+        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed)
+          .ynow-member-gate-surface--checklist > .ynow-member-gate.ynow-member-gate--surface-overlay {
+          position: absolute;
+          inset: 0;
+          z-index: 2;
+          display: flex !important;
+          flex-direction: column;
+          max-width: none !important;
+          width: auto !important;
+          margin: 0 !important;
+          border-radius: 8px;
+          overflow: auto;
+          background: rgba(255, 255, 255, 0.92) !important;
+          border: 1px solid #e6e6e6 !important;
+          box-shadow: none !important;
+        }
+        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed)
+          .ynow-member-gate-surface--checklist > .ynow-member-gate--surface-overlay > .ynow-hfv-chapter__body {
+          flex: 1 1 auto;
+          overflow: auto;
+        }
+        body.ynow-lite .ynow-member-gate-fade-backdrop,
+        body.ynow-authed .ynow-member-gate-fade-backdrop {
+          display: none !important;
+        }
         .ynow-gate-promo {
           margin: 0 0 10px 0;
           padding: 0;
@@ -4836,14 +4972,19 @@ ui <- dashboardPage(
           color: var(--ynow-gate-ink-soft, #333333);
         }
         @media (max-width: 767px) {
-          .ynow-hfv-chapter.ynow-member-gate,
+          .ynow-hfv-chapter.ynow-member-gate:not(.ynow-member-gate--surface-overlay),
           .ynow-hfv-chapter.ynow-auth-gate,
-          .ynow-hfv-chapter.ynow-gate-box,
-          .ynow-member-gate.ynow-gate-box,
+          .ynow-hfv-chapter.ynow-gate-box:not(.ynow-member-gate--surface-overlay),
+          .ynow-member-gate.ynow-gate-box:not(.ynow-member-gate--surface-overlay),
           .ynow-auth-gate.ynow-gate-box {
             max-width: 100% !important;
             margin-left: 8px !important;
             margin-right: 8px !important;
+          }
+          .ynow-member-gate-surface--checklist {
+            min-height: min(78vh, 820px);
+            margin-left: 0;
+            margin-right: 0;
           }
           .ynow-gate-promo-lead,
           .ynow-gate-promo__list,
