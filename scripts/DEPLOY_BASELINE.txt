@@ -7,5 +7,5 @@ commit=463b8f993ddcecfb1c1225d814eae39fb1457c19
 short=463b8f99
 message=chore: bump display version to v26.30
 captured_at=2026-10-22T06:19:53Z
-display_version=v26.30
+display_version=v26.31
 note=Canonical live line is app_26.0. Bundle 12723900: Maintenance item catalog completeness + in-menu Expected/預計時間 windows (#397). Secrets only in gitignored .Renviron; no secret values in git.
