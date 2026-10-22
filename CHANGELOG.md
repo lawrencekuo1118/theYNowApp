@@ -1,3 +1,12 @@
+## [v26.37] — 2026-10-22
+
+### Changed
+- Chrome glow: line-stroke-only organic veins flush to the far-left of the black top banner; 「The YNow App」 on an opaque black wordmark pill (no fill under the text).
+- Sidebar foot chip: black background with logo-blue circuit line traces only (no teal wash).
+
+### Notes
+- en-US / zh-TW: no new user-facing copy.
+
 ## [v26.36] — 2026-10-22
 
 ### Added
