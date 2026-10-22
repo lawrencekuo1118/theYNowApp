@@ -1,3 +1,13 @@
+## [v26.40] — 2026-10-22
+
+### Fixed
+- Sidebar **Rearrange / 重新排列**: locale switch now updates the button (boot slim map keeps `sidebar_reorder_*`; boot merge no longer wipes full strings).
+- Sidebar tab reorder after login: Shiny 1.14 arity-0 page-pin stub no longer aborts the reorder IIFE; `menuRoot()` targets `ul.sidebar-menu` (not the empty `#sidebar_tabs` DIV).
+
+### Notes
+- en-US: After sign-in, Rearrange enters edit mode (Done to save); long-press-drag reorders top-level tabs; order persists.
+- zh-TW: 登入後按「重新排列」進入編輯（「完成」儲存）；長按拖移調整側邊欄分頁順序並持久化。
+
 ## [v26.39] — 2026-10-22
 
 ### Fixed
