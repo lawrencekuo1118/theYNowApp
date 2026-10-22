@@ -7929,6 +7929,50 @@ ui <- dashboardPage(
         body.ynow-lite .ynow-snapshot-download-quota {
           color: #555;
         }
+        /* Count (remaining/total) + time-window mini countdown — never cover primary label. */
+        .ynow-count-badge {
+          font-weight: 600;
+          white-space: nowrap;
+          margin-left: 0.2em;
+        }
+        .ynow-ttl-countdown {
+          display: block;
+          font-size: 10px;
+          line-height: 1.2;
+          font-variant-numeric: tabular-nums;
+          opacity: 0.88;
+          margin-top: 2px;
+          white-space: nowrap;
+          max-width: 100%;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .sidebar-menu li > a .ynow-ttl-countdown,
+        .sidebar-menu li .ynow-ttl-countdown {
+          color: inherit;
+          font-weight: 400;
+        }
+        .form-group.ynow-quota-badge-host,
+        .shiny-input-container.ynow-quota-badge-host,
+        [data-ynow-lock].ynow-quota-badge-host {
+          position: relative;
+          padding-bottom: 14px;
+        }
+        .form-group.ynow-quota-badge-host > .ynow-ttl-countdown,
+        .shiny-input-container.ynow-quota-badge-host > .ynow-ttl-countdown,
+        [data-ynow-lock].ynow-quota-badge-host > .ynow-ttl-countdown {
+          position: absolute;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          margin-top: 0;
+          pointer-events: none;
+        }
+        a.btn.ynow-quota-badge-host,
+        button.ynow-quota-badge-host,
+        #download_report.ynow-quota-badge-host {
+          position: relative;
+        }
         .ynow-sidebar-download-wrap #download_report,
         .ynow-sidebar-download-btn {
           display: inline-block;
@@ -11456,14 +11500,18 @@ ui <- dashboardPage(
               var pkey = pid ? ('fund_profile_' + pid) : '';
               if (pkey && s[pkey]) fundBadge.textContent = s[pkey];
             }
-            var dl = document.getElementById('download_report');
-            if (dl && s.download_report) {
-              /* Keep current icon (download vs lock); sync may swap after. */
-              var icon = dl.querySelector('i');
-              var iconHtml = icon ? icon.outerHTML + ' ' : '';
-              dl.innerHTML = iconHtml + s.download_report;
-              if (typeof window.ynowSyncSidebarDownloadIcon === 'function') {
-                window.ynowSyncSidebarDownloadIcon();
+            if (typeof window.ynowSyncDownloadReportLabel === 'function') {
+              window.ynowSyncDownloadReportLabel();
+            } else {
+              var dl = document.getElementById('download_report');
+              if (dl && s.download_report) {
+                /* Keep current icon (download vs lock); sync may swap after. */
+                var icon = dl.querySelector('i');
+                var iconHtml = icon ? icon.outerHTML + ' ' : '';
+                dl.innerHTML = iconHtml + s.download_report;
+                if (typeof window.ynowSyncSidebarDownloadIcon === 'function') {
+                  window.ynowSyncSidebarDownloadIcon();
+                }
               }
             }
             try {
@@ -12141,6 +12189,209 @@ ui <- dashboardPage(
               rules: '',
               snap: ''
             };
+            window.__ynowQuotaBadges = window.__ynowQuotaBadges || [];
+            window.__ynowQuotaServerSkewMs = window.__ynowQuotaServerSkewMs || 0;
+            window.ynowFmtCountdown = function (endsAtIso) {
+              if (!endsAtIso) return '';
+              var endMs = Date.parse(endsAtIso);
+              if (!isFinite(endMs)) return '';
+              var nowMs = Date.now() + (window.__ynowQuotaServerSkewMs || 0);
+              var sec = Math.floor((endMs - nowMs) / 1000);
+              if (sec <= 0) return '';
+              var h = Math.floor(sec / 3600);
+              var m = Math.floor((sec % 3600) / 60);
+              var s = sec % 60;
+              var pad = function (n) { return (n < 10 ? '0' : '') + String(n); };
+              if (h > 0) return h + ':' + pad(m) + ':' + pad(s);
+              return m + ':' + pad(s);
+            };
+            window.ynowSyncDownloadReportLabel = function () {
+              var dl = document.getElementById('download_report');
+              if (!dl) return;
+              var s = window.__ynowUiLocaleStrings || {};
+              var base = s.download_report || 'Download Report (PDF)';
+              var st = window.__ynowPdfQuotaState || {};
+              var liteOn = document.body && document.body.classList.contains('ynow-lite');
+              var label = base;
+              if (!liteOn && st.state !== 'lite' &&
+                  st.left != null && st.limit != null &&
+                  isFinite(Number(st.left)) && isFinite(Number(st.limit))) {
+                var fmt = s.quota_count_fmt || '(%s/%s)';
+                var countTxt = String(fmt)
+                  .replace('%s', String(st.left))
+                  .replace('%s', String(st.limit));
+                label = base + ' ' + countTxt;
+              }
+              var icon = dl.querySelector(':scope > i, i');
+              var iconHtml = '';
+              if (icon && icon.parentNode === dl) {
+                iconHtml = icon.outerHTML + ' ';
+              } else if (icon) {
+                iconHtml = icon.outerHTML + ' ';
+              }
+              var ttl = dl.querySelector(':scope > .ynow-ttl-countdown');
+              var ttlHtml = ttl ? ttl.outerHTML : '';
+              dl.innerHTML = iconHtml + label + ttlHtml;
+              if (typeof window.ynowSyncSidebarDownloadIcon === 'function') {
+                window.ynowSyncSidebarDownloadIcon();
+              }
+            };
+            window.ynowClearQuotaBadgeChrome = function () {
+              document.querySelectorAll('.ynow-count-badge, .ynow-ttl-countdown').forEach(function (el) {
+                /* Keep PDF label-embedded count; only remove Class C / maint nodes. */
+                if (el.classList.contains('ynow-count-badge') &&
+                    el.getAttribute('data-ynow-badge-src') === 'pdf') {
+                  return;
+                }
+                if (el.parentNode) el.parentNode.removeChild(el);
+              });
+              document.querySelectorAll('.ynow-quota-badge-host').forEach(function (el) {
+                el.classList.remove('ynow-quota-badge-host');
+              });
+            };
+            window.ynowQuotaBadgeHosts = function (itemId) {
+              var id = String(itemId || '');
+              var hosts = [];
+              if (id.indexOf('tab:') === 0) {
+                var tab = id.slice(4);
+                document.querySelectorAll('a[data-value]').forEach(function (a) {
+                  if (a.getAttribute('data-value') === tab) hosts.push(a);
+                });
+              } else if (id.indexOf('input:') === 0) {
+                var inp = document.getElementById(id.slice(6));
+                var fg = inp && (inp.closest('.form-group') || inp.closest('.shiny-input-container'));
+                if (fg) hosts.push(fg);
+              } else if (id.indexOf('report:') === 0) {
+                var btn = document.getElementById(id.slice(7));
+                if (btn) hosts.push(btn);
+              } else if (id.indexOf('section:') === 0) {
+                document.querySelectorAll('[data-ynow-lock]').forEach(function (el) {
+                  if (el.getAttribute('data-ynow-lock') === id) hosts.push(el);
+                });
+              }
+              return hosts;
+            };
+            window.ynowEnsureCountBadge = function (host, remaining, total, src) {
+              if (!host || remaining == null || total == null) return;
+              if (!isFinite(Number(remaining)) || !isFinite(Number(total))) return;
+              var s = window.__ynowUiLocaleStrings || {};
+              var fmt = s.quota_count_fmt || '(%s/%s)';
+              var txt = String(fmt)
+                .replace('%s', String(remaining))
+                .replace('%s', String(total));
+              /* Download Report PDF freemium already embeds count in the button label. */
+              if (host.id === 'download_report' && src !== 'pdf') return;
+              if (host.id === 'download_report' && src === 'pdf') {
+                if (typeof window.ynowSyncDownloadReportLabel === 'function') {
+                  window.ynowSyncDownloadReportLabel();
+                }
+                return;
+              }
+              var badge = null;
+              var kids = host.children || [];
+              var bi;
+              for (bi = 0; bi < kids.length; bi++) {
+                if (kids[bi].classList && kids[bi].classList.contains('ynow-count-badge')) {
+                  badge = kids[bi];
+                  break;
+                }
+              }
+              if (!badge) {
+                badge = document.createElement('span');
+                badge.className = 'ynow-count-badge';
+                host.appendChild(badge);
+              }
+              badge.setAttribute('data-ynow-badge-src', src || 'acl');
+              badge.textContent = ' ' + txt;
+              host.classList.add('ynow-quota-badge-host');
+            };
+            window.ynowEnsureTtlCountdown = function (host, endsAtIso, src) {
+              if (!host || !endsAtIso) return;
+              var txt = window.ynowFmtCountdown(endsAtIso);
+              var el = null;
+              var kids = host.children || [];
+              var i;
+              for (i = 0; i < kids.length; i++) {
+                if (kids[i].classList && kids[i].classList.contains('ynow-ttl-countdown')) {
+                  el = kids[i];
+                  break;
+                }
+              }
+              if (!txt) {
+                if (el && el.parentNode) el.parentNode.removeChild(el);
+                return;
+              }
+              if (!el) {
+                el = document.createElement('span');
+                el.className = 'ynow-ttl-countdown';
+                host.appendChild(el);
+              }
+              el.setAttribute('data-ends-at', endsAtIso);
+              el.setAttribute('data-ynow-badge-src', src || 'acl');
+              el.setAttribute('aria-live', 'off');
+              el.textContent = txt;
+              host.classList.add('ynow-quota-badge-host');
+            };
+            window.ynowApplyQuotaBadges = function () {
+              if (typeof window.ynowClearQuotaBadgeChrome === 'function') {
+                window.ynowClearQuotaBadgeChrome();
+              }
+              var badges = window.__ynowQuotaBadges || [];
+              badges.forEach(function (row) {
+                if (!row || !row.id) return;
+                var hosts = window.ynowQuotaBadgeHosts(row.id) || [];
+                hosts.forEach(function (host) {
+                  if (row.remaining != null && row.total != null) {
+                    window.ynowEnsureCountBadge(host, row.remaining, row.total, 'acl');
+                  }
+                  if (row.ends_at) {
+                    window.ynowEnsureTtlCountdown(host, row.ends_at, 'acl');
+                  }
+                });
+              });
+              /* Maintenance windows: live countdown to window_end. */
+              var maint = window.__ynowMaintEntries || [];
+              maint.forEach(function (row) {
+                if (!row || !row.id || !row.window_end) return;
+                var hosts = window.ynowQuotaBadgeHosts(row.id) || [];
+                hosts.forEach(function (host) {
+                  window.ynowEnsureTtlCountdown(host, row.window_end, 'maint');
+                });
+              });
+              if (typeof window.ynowSyncDownloadReportLabel === 'function') {
+                window.ynowSyncDownloadReportLabel();
+              }
+            };
+            window.ynowTickQuotaCountdowns = function () {
+              var expired = false;
+              document.querySelectorAll('.ynow-ttl-countdown[data-ends-at]').forEach(function (el) {
+                var ends = el.getAttribute('data-ends-at');
+                var txt = window.ynowFmtCountdown(ends);
+                if (!txt) {
+                  expired = true;
+                  if (el.parentNode) el.parentNode.removeChild(el);
+                  return;
+                }
+                el.textContent = txt;
+              });
+              if (expired) {
+                if (window.Shiny && Shiny.setInputValue) {
+                  Shiny.setInputValue(
+                    'ynow_quota_badge_refresh',
+                    (window.__ynowQuotaBadgeRefreshClicks =
+                      (window.__ynowQuotaBadgeRefreshClicks || 0) + 1),
+                    { priority: 'event' }
+                  );
+                }
+              }
+            };
+            if (!window.__ynowQuotaTickTimer) {
+              window.__ynowQuotaTickTimer = setInterval(function () {
+                if (typeof window.ynowTickQuotaCountdowns === 'function') {
+                  window.ynowTickQuotaCountdowns();
+                }
+              }, 1000);
+            }
             window.ynowApplyPdfQuotaCopy = function (localeBundle) {
               var st = window.__ynowPdfQuotaState || {};
               var s = localeBundle || window.__ynowUiLocaleStrings || {};
@@ -12154,12 +12405,18 @@ ui <- dashboardPage(
                 if (snap) {
                   snap.textContent = s.snapshot_download_quota_hint_lite || st.snap || '';
                 }
+                if (typeof window.ynowSyncDownloadReportLabel === 'function') {
+                  window.ynowSyncDownloadReportLabel();
+                }
                 return;
               }
               if (st.remaining) {
                 if (rem) rem.textContent = st.remaining;
                 if (rules) rules.textContent = st.rules || '';
                 if (snap && st.snap) snap.textContent = st.snap;
+                if (typeof window.ynowSyncDownloadReportLabel === 'function') {
+                  window.ynowSyncDownloadReportLabel();
+                }
                 return;
               }
               if (rem && s.pdf_quota_hint) rem.textContent = s.pdf_quota_hint;
@@ -12169,6 +12426,9 @@ ui <- dashboardPage(
               }
               if (snap && s.snapshot_download_quota_hint) {
                 snap.textContent = s.snapshot_download_quota_hint;
+              }
+              if (typeof window.ynowSyncDownloadReportLabel === 'function') {
+                window.ynowSyncDownloadReportLabel();
               }
             };
             addHandler('ynowPdfQuota', function (payload) {
@@ -12188,6 +12448,9 @@ ui <- dashboardPage(
               if (rem) rem.textContent = payload.remaining || '';
               if (rules) rules.textContent = payload.rules || '';
               if (snap && payload.snap != null) snap.textContent = payload.snap || '';
+              if (typeof window.ynowSyncDownloadReportLabel === 'function') {
+                window.ynowSyncDownloadReportLabel();
+              }
             });
             addHandler('ynowPtsRedeemStatus', function (payload) {
               var el = document.getElementById('ynow_pts_redeem_status');
@@ -12720,8 +12983,14 @@ ui <- dashboardPage(
                 return e && e.id;
               })).filter(Boolean);
               window.__ynowAccessLockNote = payload.note || '';
+              window.__ynowQuotaBadges = payload.badges || [];
+              if (payload.server_now) {
+                var sn = Date.parse(payload.server_now);
+                if (isFinite(sn)) window.__ynowQuotaServerSkewMs = sn - Date.now();
+              }
               if (window.ynowApplyAccessLocks) window.ynowApplyAccessLocks();
               if (window.ynowApplyMaintenance) window.ynowApplyMaintenance();
+              if (window.ynowApplyQuotaBadges) window.ynowApplyQuotaBadges();
             });
             /* System admin maintenance: separate from ACL / guest locks.
                Menu items are non-clickable; content shows 維護中 / Under maintenance. */
@@ -12813,7 +13082,12 @@ ui <- dashboardPage(
               window.__ynowMaintIds = (payload.ids || entries.map(function (e) {
                 return e && e.id;
               })).filter(Boolean);
+              if (payload.server_now) {
+                var sn2 = Date.parse(payload.server_now);
+                if (isFinite(sn2)) window.__ynowQuotaServerSkewMs = sn2 - Date.now();
+              }
               if (window.ynowApplyMaintenance) window.ynowApplyMaintenance();
+              if (window.ynowApplyQuotaBadges) window.ynowApplyQuotaBadges();
               if (window.ynowScheduleMaintRefresh) {
                 window.ynowScheduleMaintRefresh(payload.next_end || null);
               }

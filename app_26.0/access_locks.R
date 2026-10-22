@@ -931,6 +931,71 @@ ynow_access_mark_points_unlocked <- function(user_id, item_id) {
   invisible(TRUE)
 }
 
+#' Format ISO-8601 UTC end time for client countdown badges.
+ynow_access_ends_at_iso <- function(unlocked_until) {
+  until <- .ynow_access_parse_until(unlocked_until)
+  if (!inherits(until, "POSIXt") || is.na(until)) return(NA_character_)
+  format(as.POSIXct(until, tz = "UTC"), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
+}
+
+#' Client payload rows for Class C free-count / time-window badges.
+#'
+#' Includes configured conditional restrictions even while currently unlocked
+#' (so remaining/total stays visible). Guests see total with remaining = total
+#' when no per-user state exists.
+#'
+#' @return list of lists: id, remaining, total, ends_at (ISO or NA)
+ynow_access_quota_badges <- function(user_id = "", authed = NULL, now = Sys.time()) {
+  ent <- ynow_access_entries(user_id)
+  if (!is.data.frame(ent) || nrow(ent) < 1L) return(list())
+  uid <- as.character(user_id %||% "")[1]
+  is_authed <- if (is.null(authed)) {
+    nzchar(uid) && !identical(uid, YNOW_ACCESS_ALL_USERS)
+  } else {
+    isTRUE(authed)
+  }
+  now <- as.POSIXct(now, tz = "UTC")
+  out <- list()
+  for (i in seq_len(nrow(ent))) {
+    ut <- as.character(ent$unlock_type[[i]] %||% "")[1]
+    if (!identical(ut, YNOW_UNLOCK_CONDITIONAL)) next
+    id <- as.character(ent$id[[i]])[1]
+    if (!nzchar(id)) next
+    fc <- suppressWarnings(as.integer(ent$free_count[[i]])[1])
+    th <- suppressWarnings(as.integer(ent$time_limit_hours[[i]])[1])
+    has_free <- is.finite(fc) && !is.na(fc) && fc > 0L
+    has_time <- is.finite(th) && !is.na(th) && th > 0L
+    if (!has_free && !has_time) next
+    remaining <- NA_integer_
+    total <- NA_integer_
+    ends_at <- NA_character_
+    st <- if (is_authed && nzchar(uid) && !identical(uid, YNOW_ACCESS_ALL_USERS)) {
+      ynow_access_get_unlock_state(uid, id)
+    } else {
+      .ynow_access_normalize_state()
+    }
+    if (has_free) {
+      total <- as.integer(fc)
+      used <- as.integer(st$free_used %||% 0L)[1]
+      if (!is.finite(used) || used < 0L) used <- 0L
+      remaining <- max(0L, total - used)
+    }
+    if (has_time) {
+      until <- st$unlocked_until
+      if (inherits(until, "POSIXt") && !is.na(until) && as.POSIXct(until) > now) {
+        ends_at <- ynow_access_ends_at_iso(until)
+      }
+    }
+    out[[length(out) + 1L]] <- list(
+      id = id,
+      remaining = if (is.na(remaining)) NULL else remaining,
+      total = if (is.na(total)) NULL else total,
+      ends_at = if (is.na(ends_at) || !nzchar(ends_at)) NULL else ends_at
+    )
+  }
+  out
+}
+
 #' Start / refresh conditional time window; optionally consume one free use.
 #' @param consume_free TRUE to increment free_used by 1 when free_count is set
 ynow_access_touch_conditional <- function(user_id, item_id, consume_free = FALSE, now = Sys.time()) {
