@@ -563,6 +563,129 @@ macro_rolling_beta_path <- function(theme_df, bench_df, lookback_months = 36L) {
   data.frame(Date = ends$Date, Beta = betas, stringsAsFactors = FALSE)
 }
 
+# ---- Fast index quotes (KPI strip) ----
+
+#' Map Yahoo chart range → approximate calendar lookback (quantmod fallback).
+macro_quote_window_days <- function(period = "5d") {
+  p <- tolower(trimws(as.character(period %||% "5d")[1]))
+  days <- switch(
+    p,
+    "1d" = 5L,
+    "5d" = 12L,
+    "1wk" = 14L,
+    "1mo" = 45L,
+    "3mo" = 120L,
+    "6mo" = 200L,
+    "1y" = 400L,
+    "2y" = 800L,
+    "5y" = 365L * 5L,
+    "max" = 365L * 20L,
+    365L * 5L
+  )
+  as.integer(days)
+}
+
+#' Short Yahoo chart history for Macro KPI last/chg (fast tier; not statements).
+#' Avoids `fetch_price_history_df(..., "5d")` when that path returns a full 5y tape.
+macro_yahoo_chart_df <- function(symbol, range = "5d", interval = "1d") {
+  sym <- as.character(symbol %||% "")[1]
+  if (!nzchar(sym) || is.na(sym)) return(NULL)
+  if (exists(".ynow_yahoo_gate_acquire", mode = "function")) {
+    tryCatch(.ynow_yahoo_gate_acquire(timeout_sec = 10), error = function(e) NULL)
+  }
+  enc <- utils::URLencode(sym, reserved = TRUE)
+  url <- sprintf(
+    "https://query1.finance.yahoo.com/v8/finance/chart/%s?range=%s&interval=%s",
+    enc,
+    as.character(range %||% "5d")[1],
+    as.character(interval %||% "1d")[1]
+  )
+  if (!requireNamespace("httr", quietly = TRUE)) return(NULL)
+  resp <- tryCatch(
+    httr::GET(
+      url,
+      httr::user_agent("Mozilla/5.0 (compatible; YNowMacro/1.0)"),
+      httr::timeout(15)
+    ),
+    error = function(e) NULL
+  )
+  if (is.null(resp) || httr::status_code(resp) != 200L) return(NULL)
+  body <- tryCatch(httr::content(resp, as = "text", encoding = "UTF-8"), error = function(e) "")
+  if (!nzchar(body) || !requireNamespace("jsonlite", quietly = TRUE)) return(NULL)
+  j <- tryCatch(jsonlite::fromJSON(body, simplifyVector = FALSE), error = function(e) NULL)
+  res <- tryCatch(j$chart$result[[1]], error = function(e) NULL)
+  ts <- tryCatch(unlist(res$timestamp, use.names = FALSE), error = function(e) NULL)
+  closes <- tryCatch(
+    unlist(res$indicators$quote[[1]]$close, use.names = FALSE),
+    error = function(e) NULL
+  )
+  if (is.null(ts) || is.null(closes) || !length(ts) || !length(closes)) return(NULL)
+  n <- min(length(ts), length(closes))
+  close_n <- suppressWarnings(as.numeric(closes[seq_len(n)]))
+  dates <- as.Date(as.POSIXct(as.numeric(ts[seq_len(n)]), origin = "1970-01-01", tz = "UTC"))
+  ok <- is.finite(close_n) & !is.na(dates)
+  if (!any(ok)) return(NULL)
+  data.frame(Date = dates[ok], Close = close_n[ok], stringsAsFactors = FALSE)
+}
+
+#' Last + day-chg for Macro index KPI symbols (native Yahoo currency; no FX).
+#' Prefers short chart windows; falls back to history helper only when chart fails.
+macro_fetch_last_quotes <- function(symbols) {
+  syms <- unique(as.character(symbols %||% character(0)))
+  syms <- syms[nzchar(syms) & !is.na(syms)]
+  if (!length(syms)) return(list())
+
+  .from_closes_df <- function(sym, df) {
+    last <- NA_real_
+    chg <- NA_real_
+    if (is.data.frame(df) && nrow(df) && "Close" %in% names(df)) {
+      cc <- df$Close[is.finite(df$Close)]
+      if (length(cc)) last <- tail(cc, 1)
+      if (length(cc) >= 2L) chg <- 100 * (tail(cc, 1) / cc[length(cc) - 1L] - 1)
+    }
+    list(symbol = sym, last = last, chg_pct = chg)
+  }
+
+  # Optional Python batch helper when already loaded. Only keep it if at least one
+  # last is finite — empty Last lists used to skip the chart fallback and leave
+  # Macro KPI dashes forever while HTCDI still scored from history.
+  py_out <- NULL
+  if (exists("get_last_quotes", mode = "function")) {
+    raw <- tryCatch(get_last_quotes(as.list(syms)), error = function(e) NULL)
+    if (is.list(raw) && !is.null(raw$Symbol)) {
+      out <- list()
+      n <- length(raw$Symbol)
+      for (i in seq_len(n)) {
+        sym <- as.character(raw$Symbol[[i]] %||% "")[1]
+        if (!nzchar(sym)) next
+        out[[length(out) + 1L]] <- list(
+          symbol = sym,
+          last = suppressWarnings(as.numeric(raw$Last[[i]] %||% NA_real_)[1]),
+          chg_pct = suppressWarnings(as.numeric(raw$ChangePct[[i]] %||% NA_real_)[1])
+        )
+      }
+      if (length(out) && any(vapply(out, function(r) is.finite(r$last), logical(1)))) {
+        py_out <- out
+      }
+    }
+  }
+  if (!is.null(py_out)) return(py_out)
+
+  lapply(syms, function(sym) {
+    df <- tryCatch(macro_yahoo_chart_df(sym, "5d"), error = function(e) NULL)
+    row <- .from_closes_df(sym, df)
+    if (is.finite(row$last)) return(row)
+    df2 <- tryCatch({
+      if (exists("fetch_price_history_df", mode = "function")) {
+        fetch_price_history_df(sym, "5d")
+      } else {
+        NULL
+      }
+    }, error = function(e) NULL)
+    .from_closes_df(sym, df2)
+  })
+}
+
 # ---- UI ----
 
 #' Static first-paint index KPI skeleton (no server round-trip).
@@ -1081,6 +1204,7 @@ macro_market_server <- function(id = "macro",
     # Seed US skeleton at register time so the first index_kpi_row paint is never 0 cards.
     index_quotes_rv <- reactiveVal(.index_quote_skeleton("US"))
     index_quotes_gen <- reactiveVal(0L)
+    index_quotes_ready_gen <- reactiveVal(0L)
     observeEvent(
       list(refresh_token(), .mode()),
       {
@@ -1094,22 +1218,25 @@ macro_market_server <- function(id = "macro",
         gen <- isolate(as.integer(index_quotes_gen()) %||% 0L) + 1L
         index_quotes_gen(gen)
         index_quotes_rv(skeleton)
+        # Short-window chart quotes (or get_last_quotes). Finish the whole strip
+        # before HTCDI so Yahoo-gate Sys.sleep inside HTCDI cannot starve DJI/SOX.
         .fetch_one <- function(i, acc) {
           if (!identical(isolate(as.integer(index_quotes_gen()) %||% 0L), gen)) {
             return(invisible(NULL))
           }
           if (i > length(syms)) {
             tryCatch(index_quotes_rv(acc), error = function(e) NULL)
+            # Signal completion; HTCDI observer below starts only after this gen.
+            index_quotes_ready_gen(gen)
             return(invisible(NULL))
           }
           sym <- syms[[i]]
-          df <- tryCatch(fetch_price_history_df(sym, "5d"), error = function(e) NULL)
-          q <- .px_last_chg(df)
+          qrow <- tryCatch(macro_fetch_last_quotes(sym)[[1]], error = function(e) NULL)
           acc[[i]] <- list(
             symbol = sym,
             label = acc[[i]]$label %||% sym,
-            last = q$last,
-            chg_pct = q$chg
+            last = suppressWarnings(as.numeric(qrow$last %||% NA_real_)[1]),
+            chg_pct = suppressWarnings(as.numeric(qrow$chg_pct %||% NA_real_)[1])
           )
           tryCatch(index_quotes_rv(acc), error = function(e) NULL)
           if (requireNamespace("later", quietly = TRUE)) {
@@ -1122,7 +1249,7 @@ macro_market_server <- function(id = "macro",
           invisible(NULL)
         }
         if (requireNamespace("later", quietly = TRUE)) {
-          # Yield past after_mount locale push (0.12s); HTCDI is delayed further below.
+          # Yield past after_mount locale push (0.12s).
           later::later(function() {
             tryCatch(.fetch_one(1L, skeleton), error = function(e) NULL)
           }, delay = 0.15)
@@ -1595,107 +1722,132 @@ macro_market_server <- function(id = "macro",
       NULL
     })
 
-    output$rf_box <- renderUI({
-      refresh_token()
-      mode <- .mode()
-      det <- tryCatch({
-        if (exists("cached_get_risk_free_rate_detail", mode = "function")) {
-          cached_get_risk_free_rate_detail(mode)
-        } else {
-          list(rf_pct = cached_get_risk_free_rate(mode), source = "")
-        }
-      }, error = function(e) list(rf_pct = NA_real_, source = e$message))
-      rf <- suppressWarnings(as.numeric(det$rf_pct %||% NA_real_)[1])
-      src <- as.character(det$source %||% "")[1]
-      lab <- as.character(det$label %||% "")[1]
-      src_lab <- switch(
-        src,
-        live = .ui("macro_rf_src_live"),
-        last_known = .ui("macro_rf_src_last"),
-        fallback = .ui("macro_rf_src_fallback"),
-        .ui("macro_rf_source_fallback")
-      )
-      tags$div(
-        tags$div(
-          class = "ynow-macro-kpi__value ynow-macro-rf__value",
-          if (is.finite(rf)) sprintf("%.2f%%", rf) else "—"
-        ),
-        tags$div(
-          class = "ynow-macro-hint",
-          paste(lab, "·", src_lab)
-        )
-      )
-    })
+    # rf_box is inlined inside rf_signal_row (stable id for locale / tests).
 
-    # HTCDI pulls 5y prices and statements for every issuer. That work used to
-    # run inside the first paint and also starved later(0) queues (index KPIs /
-    # locale). Defer past first-paint KPI skeleton + progressive quote ticks.
+    # HTCDI: 5y prices (+ optional statements). Must not start until index KPI
+    # quotes finish — Yahoo-gate Sys.sleep inside a sync HTCDI loop starved DJI/SOX.
+    # Phase A = prices only (publish score). Phase B = statement scrape enrich.
     htcdi_val <- reactiveVal(NULL)
     htcdi_job <- reactiveVal(0L)
-    .htcdi_compute <- function(mode) {
-      # Always attempt live Yahoo/history and statements. Never score from config placeholders.
-      cfg <- if (exists("htcdi_load_config", mode = "function")) htcdi_load_config() else NULL
-      price_map <- list(); bench_df <- NULL
-      n_iss <- 0L
-      if (exists("fetch_price_history_df", mode = "function") &&
-          exists("htcdi_issuers", mode = "function")) {
-        issuers <- htcdi_issuers(cfg)
-        n_iss <- length(issuers)
-        for (iss in issuers) {
-          tk <- as.character(iss$tickers[[1]] %||% "")[1]
-          if (!nzchar(tk)) next
-          pdf <- tryCatch(fetch_price_history_df(tk, "5y"), error = function(e) NULL)
-          if (!is.null(pdf) && is.data.frame(pdf) && nrow(pdf) >= 2L) price_map[[tk]] <- pdf
-        }
-        bench_tk <- tryCatch(macro_bench_ticker(mode), error = function(e) "^GSPC")
-        bench_df <- tryCatch(fetch_price_history_df(bench_tk, "5y"), error = function(e) NULL)
-      }
-      fs_map <- list()
-      if (exists("cached_scrape_financials", mode = "function") &&
-          exists("htcdi_issuers", mode = "function")) {
-        for (iss in htcdi_issuers(cfg)) {
-          tk <- as.character(iss$tickers[[1]] %||% "")[1]
-          if (!nzchar(tk)) next
-# Skip statement scrape for ETFs / futures proxies (oil index) — market pillars only.
-          if (identical(tolower(as.character(iss$instrument_type %||% "")[1]), "etf") ||
-              identical(tolower(as.character(iss$instrument_type %||% "")[1]), "commodity")) {
-            next
-          }
-          fs <- tryCatch(cached_scrape_financials(tk), error = function(e) NULL)
-          if (!is.null(fs)) fs_map[[tk]] <- fs
-        }
-      }
+    .htcdi_score_from_maps <- function(price_map, bench_df, cfg, fs_map = list()) {
       inputs <- if (exists("htcdi_live_inputs_from_prices", mode = "function")) {
         htcdi_live_inputs_from_prices(price_map, bench_df, cfg, fs_map)
-      } else NULL
-      res <- if (exists("htcdi_score", mode = "function")) {
+      } else {
+        NULL
+      }
+      if (exists("htcdi_score", mode = "function")) {
         tryCatch(htcdi_score(inputs, cfg), error = function(e) NULL)
       } else {
         NULL
       }
-      list(res = res, n_iss = n_iss, n_px = length(price_map), n_fs = length(fs_map))
+    }
+    .htcdi_enrich_fs <- function(job_id, cfg0, issuers0, price_map0, bench_df0) {
+      if (!identical(isolate(htcdi_job()), job_id)) return()
+      if (!exists("cached_scrape_financials", mode = "function")) return()
+      fs_map <- list()
+      for (iss in issuers0) {
+        if (!identical(isolate(htcdi_job()), job_id)) return()
+        tk <- as.character(iss$tickers[[1]] %||% "")[1]
+        if (!nzchar(tk)) next
+        itype <- tolower(as.character(iss$instrument_type %||% "")[1])
+        if (identical(itype, "etf") || identical(itype, "commodity")) next
+        fs <- tryCatch(cached_scrape_financials(tk), error = function(e) NULL)
+        if (!is.null(fs)) fs_map[[tk]] <- fs
+      }
+      if (!length(fs_map)) return()
+      res2 <- tryCatch(
+        .htcdi_score_from_maps(price_map0, bench_df0, cfg0, fs_map),
+        error = function(e) NULL
+      )
+      if (!identical(isolate(htcdi_job()), job_id)) return()
+      if (!is.null(res2)) htcdi_val(res2)
     }
     .queue_htcdi <- function() {
       mode <- isolate(.mode())
       job <- isolate(htcdi_job()) + 1L
       htcdi_job(job)
-      run_job <- function() {
-        if (!identical(isolate(htcdi_job()), job)) return()
-        out <- tryCatch(.htcdi_compute(mode), error = function(e) list(res = NULL, n_iss = 0L, n_px = 0L, n_fs = 0L))
-        if (!identical(isolate(htcdi_job()), job)) return()
-        htcdi_val(out$res %||% list(availability = "unavailable"))
-      }
-      if (requireNamespace("later", quietly = TRUE)) {
-        # After index-quote starter (0.15) and a few per-symbol yields (~4×0).
-        later::later(run_job, delay = 1.25)
+      htcdi_val(list(availability = "loading"))
+      cfg <- if (exists("htcdi_load_config", mode = "function")) {
+        tryCatch(htcdi_load_config(), error = function(e) NULL)
       } else {
-        run_job()
+        NULL
+      }
+      issuers <- if (exists("htcdi_issuers", mode = "function")) {
+        tryCatch(htcdi_issuers(cfg), error = function(e) list())
+      } else {
+        list()
+      }
+      if (!is.list(issuers)) issuers <- list()
+      state <- new.env(parent = emptyenv())
+      state$price_map <- list()
+      state$bench_df <- NULL
+      bench_tk <- tryCatch(macro_bench_ticker(mode), error = function(e) "^GSPC")
+
+      .fetch_price_i <- function(i) {
+        if (!identical(isolate(htcdi_job()), job)) return()
+        if (i > length(issuers)) {
+          if (exists("fetch_price_history_df", mode = "function")) {
+            state$bench_df <- tryCatch(
+              fetch_price_history_df(bench_tk, "5y"),
+              error = function(e) NULL
+            )
+          }
+          res <- tryCatch(
+            .htcdi_score_from_maps(state$price_map, state$bench_df, cfg, list()),
+            error = function(e) NULL
+          )
+          if (!identical(isolate(htcdi_job()), job)) return()
+          htcdi_val(res %||% list(availability = "unavailable"))
+          # Phase B: slow-tier statements; re-score when done (honest empty if fail).
+          if (requireNamespace("later", quietly = TRUE)) {
+            later::later(function() {
+              tryCatch(
+                .htcdi_enrich_fs(job, cfg, issuers, state$price_map, state$bench_df),
+                error = function(e) NULL
+              )
+            }, delay = 0.25)
+          }
+          return()
+        }
+        iss <- issuers[[i]]
+        tk <- as.character(iss$tickers[[1]] %||% "")[1]
+        if (nzchar(tk) && exists("fetch_price_history_df", mode = "function")) {
+          pdf <- tryCatch(fetch_price_history_df(tk, "5y"), error = function(e) NULL)
+          if (!is.null(pdf) && is.data.frame(pdf) && nrow(pdf) >= 2L) {
+            state$price_map[[tk]] <- pdf
+          }
+        }
+        if (requireNamespace("later", quietly = TRUE)) {
+          later::later(function() {
+            tryCatch(.fetch_price_i(i + 1L), error = function(e) NULL)
+          }, delay = 0)
+        } else {
+          .fetch_price_i(i + 1L)
+        }
+      }
+
+      if (requireNamespace("later", quietly = TRUE)) {
+        later::later(function() {
+          tryCatch(.fetch_price_i(1L), error = function(e) {
+            if (identical(isolate(htcdi_job()), job)) {
+              htcdi_val(list(availability = "unavailable"))
+            }
+          })
+        }, delay = 0)
+      } else {
+        .fetch_price_i(1L)
       }
     }
-    session$onFlushed(function() .queue_htcdi(), once = TRUE)
+    # Start HTCDI only after index KPI quotes complete (same gen).
+    observeEvent(index_quotes_ready_gen(), {
+      gen <- as.integer(index_quotes_ready_gen() %||% 0L)[1]
+      if (!is.finite(gen) || gen < 1L) return()
+      if (!identical(gen, isolate(as.integer(index_quotes_gen()) %||% 0L))) return()
+      .queue_htcdi()
+    }, ignoreInit = TRUE)
     observeEvent(refresh_token(), {
       htcdi_val(NULL)
-      .queue_htcdi()
+      # Quotes observer also listens to refresh_token and will re-signal ready.
     }, ignoreInit = TRUE)
     htcdi_result <- reactive(htcdi_val())
 
@@ -1723,12 +1875,33 @@ macro_market_server <- function(id = "macro",
         }
       }, error = function(e) list(rf_pct = NA_real_, source = e$message))
       rf <- suppressWarnings(as.numeric(det$rf_pct %||% NA_real_)[1])
+      rf_src <- as.character(det$source %||% "")[1]
+      rf_src_lab <- switch(
+        rf_src,
+        live = .ui("macro_rf_src_live"),
+        last_known = .ui("macro_rf_src_last"),
+        fallback = .ui("macro_rf_src_fallback"),
+        .ui("macro_rf_source_fallback")
+      )
+      rf_det_lab <- as.character(det$label %||% "")[1]
       rf_tk <- if (is_tw) "RF_TW" else "RF_US"
       rf_lab <- .ui("macro_rf_title")
+      # Inline Rf value (no nested uiOutput). HTCDI updates used to rebuild this
+      # row and orphan nested rf_box, leaving a blank black card.
       rf_kpi <- tags$div(
         class = "ynow-macro-kpi ynow-macro-kpi--rf",
         tags$div(class = "ynow-macro-kpi__label", id = "ynow_macro_rf_title", rf_lab),
-        uiOutput(ns("rf_box"))
+        tags$div(
+          id = ns("rf_box"),
+          tags$div(
+            class = "ynow-macro-kpi__value ynow-macro-rf__value",
+            if (is.finite(rf)) sprintf("%.2f%%", rf) else "—"
+          ),
+          tags$div(
+            class = "ynow-macro-hint",
+            paste(rf_det_lab, "·", rf_src_lab)
+          )
+        )
       )
       if (is.finite(rf)) {
         .macro_publish_alert_metrics(setNames(list(list(macro_rf_pct = rf)), rf_tk))
