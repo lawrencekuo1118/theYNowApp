@@ -7,5 +7,5 @@ commit=45cba2d107edac771be6da71e763e25bd2fda3e0
 short=45cba2d1
 message=chore: bump display version to v26.42
 captured_at=2026-10-22T11:19:28Z
-display_version=v26.42
+display_version=v26.43
 note=Canonical live line is app_26.0. Bundle 12724827: Transparent header wordmark strip; veins masked clear of title (#409). Secrets only in gitignored .Renviron; no secret values in git.
