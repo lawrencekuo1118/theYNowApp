@@ -32,10 +32,42 @@ check(
 )
 
 check(
-  "header veins flush left (left 0) with opaque wordmark pill",
+  "header veins flush left (left 0) with opaque logo brand strip",
   grepl("\\.ynow-chrome-header-leaves \\{[\\s\\S]*?left:\\s*0;", txt, perl = TRUE) &&
-    grepl("\\.main-header \\.logo \\.ynow-app-title \\{[\\s\\S]*?background-color:\\s*#000", txt, perl = TRUE) &&
+    grepl(
+      "\\.skin-black \\.main-header \\.logo,[\\s\\S]*?background-color:\\s*#000\\s*!important",
+      txt,
+      perl = TRUE
+    ) &&
+    grepl("\\.main-header \\.logo \\.ynow-app-title \\{[\\s\\S]*?padding:\\s*0;", txt, perl = TRUE) &&
+    grepl(
+      "\\.ynow-app-title\\.is-complete \\.ynow-app-title-base \\{[\\s\\S]*?visibility:\\s*hidden",
+      txt,
+      perl = TRUE
+    ) &&
     !grepl("left:\\s*250px", txt)
+)
+
+# Restrict to each .ynow-app-title { ... } block so unrelated padding: 4px 10px
+# (buttons, cookie banner) cannot false-trigger.
+title_blocks <- regmatches(
+  txt,
+  gregexpr(
+    "\\.main-header \\.logo \\.ynow-app-title \\{[^}]*\\}",
+    txt,
+    perl = TRUE
+  )
+)[[1]]
+check(
+  "no title-pill padding that would ghost-offset the load fill",
+  length(title_blocks) > 0 &&
+    !any(grepl("padding:\\s*4px\\s+10px", title_blocks, perl = TRUE)) &&
+    any(grepl("padding:\\s*0", title_blocks, perl = TRUE)) &&
+    !grepl(
+      "Logo strip transparent so far-left strokes show; wordmark gets opaque black pill",
+      txt,
+      fixed = TRUE
+    )
 )
 
 check(

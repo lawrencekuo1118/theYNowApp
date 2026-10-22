@@ -3956,7 +3956,7 @@ ui <- dashboardPage(
       "img.setAttribute('aria-hidden','true');",
       "img.draggable=false;",
       "el.appendChild(img);",
-      # Far-left of .main-header (flush left); title stays clear via opaque wordmark pill.
+      # Far-left of .main-header; opaque .logo brand strip keeps veins out of the wordmark.
       "h.insertBefore(el,h.firstChild);",
       "}",
       "if(document.readyState==='loading'){",
@@ -5533,16 +5533,18 @@ ui <- dashboardPage(
           z-index: 1030 !important;
           overflow: hidden;
         }
-        /* Black top-banner left (A+B): line-stroke veins flush left (left:0) of .main-header.
-           Asset: www/ynow-chrome-veins-branches.png (bg removed). Brand wordmark sits on an
-           opaque black pill so strokes never fill under「The YNow App」text. */
+        /* Black top-banner left (A+B): line-stroke veins flush left of .main-header.
+           Asset: www/ynow-chrome-veins-branches.png. Opaque .logo brand strip covers the
+           wordmark box so strokes never paint under「The YNow App」; veins remain visible
+           in the far-left banner where the logo strip does not cover (navbar side). */
         .ynow-chrome-header-leaves {
           position: absolute;
           left: 0;
           top: 0;
           bottom: 0;
           width: min(42%, 520px);
-          /* Above opaque navbar/logo fills; below wordmark pill + nav hit targets. */
+          /* Above navbar fill (z3) so strokes show beside the brand strip;
+             below opaque .logo (z5) so they never paint the title block. */
           z-index: 4;
           pointer-events: none;
           overflow: hidden;
@@ -5570,27 +5572,33 @@ ui <- dashboardPage(
           0%, 100% { opacity: 0.72; }
           50% { opacity: 0.95; }
         }
-        /* Logo strip transparent so far-left strokes show; wordmark gets opaque black pill. */
+        /* Opaque brand strip: plain black under the wordmark (no veins in title block). */
         .skin-black .main-header .logo,
         .skin-black .main-header .logo:hover {
-          background-color: transparent !important;
+          background-color: #000 !important;
           background-image: none !important;
         }
         .skin-black .main-header .logo::before {
-          background-color: transparent;
+          background-color: #000;
         }
+        /* No padding on .ynow-app-title: #404 pill padding offset the absolute fill vs
+           in-flow base and painted a second ghost wordmark. Keep load-bar layers aligned. */
         .main-header .logo .ynow-app-title {
           position: relative;
           z-index: 6;
           display: inline-block;
           max-width: calc(100% - 16px);
           box-sizing: border-box;
-          padding: 4px 10px;
-          margin: 6px 8px;
-          border-radius: 6px;
+          padding: 0;
+          margin: 0 8px;
+          border-radius: 0;
           background-color: #000 !important;
           background-image: none !important;
-          box-shadow: 0 0 0 1px #000;
+          box-shadow: none;
+        }
+        /* After load completes, hide the faint base track so only one wordmark remains. */
+        .main-header .logo .ynow-app-title.is-complete .ynow-app-title-base {
+          visibility: hidden;
         }
         .main-header > .logo {
           position: relative;
@@ -5617,8 +5625,8 @@ ui <- dashboardPage(
             width: min(70%, 360px);
           }
           .main-header .logo .ynow-app-title {
-            margin: 6px 4px;
-            padding: 3px 8px;
+            margin: 0 4px;
+            padding: 0;
           }
         }
         .content-wrapper,
