@@ -1035,6 +1035,24 @@ check("sidebar auth UI is div not navbar li", {
     grepl("ynow-auth-links--home", paste(as.character(home), collapse = ""), fixed = TRUE) &&
     grepl("ynow_auth_open_home", paste(as.character(home), collapse = ""), fixed = TRUE)
 })
+check("banner auth has no white outer border/outline", {
+  grepl("no white outer border/outline/ring", auth_src, fixed = TRUE) &&
+    grepl(
+      "\\.ynow-auth-links--sidebar \\.ynow-auth-pair a\\.ynow-auth-open[\\s\\S]*?border:0 !important",
+      auth_src,
+      perl = TRUE
+    ) &&
+    !grepl(
+      "\\.ynow-auth-links--sidebar \\.ynow-auth-pair a\\.ynow-auth-open \\{[\\s\\S]*?border:1px solid rgba\\(255,255,255",
+      auth_src,
+      perl = TRUE
+    ) &&
+    grepl(
+      "\\.ynow-auth-links--sidebar \\.ynow-auth-pair a\\.ynow-auth-open:hover[\\s\\S]*?outline:none !important",
+      auth_src,
+      perl = TRUE
+    )
+})
 check("header Sign in only; Register on home / gate / modal", {
   Sys.setenv(YNOW_ENABLE_ACCOUNT_LOGIN = "1")
   h <- paste(as.character(ynow_auth_links_ui("sidebar")), collapse = "")
