@@ -1,5 +1,6 @@
 # Chrome atmosphere A+B: line-stroke veins only (no filled wash).
-# Header veins beside title box (left: 250px); circuit strokes on black chip.
+# Header veins beside title box (left: 250px); circuit strokes on black sidebar
+# (full-panel upward extend + fade-out + logo blue/white dynamic).
 
 Sys.setenv(YNOW_DEBUG_SKIP_PY = "1")
 
@@ -29,6 +30,15 @@ check(
     grepl("ynow-chrome-veins-circuit.png", txt, fixed = TRUE) &&
     file.exists(file.path(www_dir, "ynow-chrome-veins-branches.png")) &&
     file.exists(file.path(www_dir, "ynow-chrome-veins-circuit.png"))
+)
+
+check(
+  "full-sidebar circuit overlay inject + classes",
+  grepl("ynowPlaceChromeCircuit", txt, fixed = TRUE) &&
+    grepl("ynow-chrome-sidebar-circuit", txt, fixed = TRUE) &&
+    grepl("ynow-chrome-sidebar-circuit-strokes", txt, fixed = TRUE) &&
+    grepl("ynow-chrome-sidebar-circuit-glow", txt, fixed = TRUE) &&
+    grepl("ynowPlaceChromeAtmosphere", txt, fixed = TRUE)
 )
 
 check(
@@ -96,16 +106,55 @@ check(
 )
 
 check(
-  "chip is black with stroke overlay (not teal panel wash)",
-  grepl("\\.ynow-sidebar-foot-chip \\{[\\s\\S]*?background:\\s*#000", txt, perl = TRUE) &&
+  "chip is dark with stroke overlay (not teal panel wash)",
+  grepl(
+    "\\.ynow-sidebar-foot-chip \\{[\\s\\S]*?background:\\s*rgba\\(0,\\s*0,\\s*0",
+    txt,
+    perl = TRUE
+  ) &&
     grepl("ynow-chrome-veins-circuit.png", txt, fixed = TRUE) &&
     !grepl("inset 0 0 18px rgba\\(12, 84, 132", txt)
 )
 
 check(
+  "full-sidebar circuit fades out upward across panel",
+  grepl(
+    "\\.ynow-chrome-sidebar-circuit \\{[\\s\\S]*?mask-image:\\s*linear-gradient\\(\\s*to top",
+    txt,
+    perl = TRUE
+  ) &&
+    grepl(
+      "\\.ynow-chrome-sidebar-circuit-strokes \\{[\\s\\S]*?mask-image:\\s*url\\(\"ynow-chrome-veins-circuit\\.png\"\\)",
+      txt,
+      perl = TRUE
+    ) &&
+    grepl("ynow-chrome-circuit-rise", txt, fixed = TRUE) &&
+    grepl("ynow-chrome-circuit-bw-flow", txt, fixed = TRUE) &&
+    grepl("transform-origin:\\s*bottom center", txt, perl = TRUE)
+)
+
+circuit_css_start <- regexpr("\\.ynow-chrome-sidebar-circuit \\{", txt, perl = TRUE)[1]
+circuit_css_chunk <- if (circuit_css_start > 0) {
+  substr(txt, circuit_css_start, min(nchar(txt), circuit_css_start + 4500L))
+} else {
+  ""
+}
+check(
+  "circuit strokes use logo blue + white dynamic (no neon accents)",
+  grepl("ynow-chrome-circuit-bw-flow", circuit_css_chunk, fixed = TRUE) &&
+    grepl("--ynow-logo-blue|#0C5484", circuit_css_chunk, perl = TRUE) &&
+    grepl("#ffffff", circuit_css_chunk, fixed = TRUE) &&
+    !grepl(
+      "purple|violet|#a0[0-9a-f]{2}ff|#7[cC]3[aA][eE][dD]",
+      circuit_css_chunk,
+      ignore.case = TRUE
+    )
+)
+
+check(
   "chip circuit fades out upward + rises from bottom",
   grepl(
-    "\\.ynow-sidebar-foot-chip::before \\{[\\s\\S]*?mask-image:\\s*linear-gradient\\(to top",
+    "\\.ynow-sidebar-foot-chip::before \\{[\\s\\S]*?linear-gradient\\(to top",
     txt,
     perl = TRUE
   ) &&
@@ -162,6 +211,7 @@ check(
   grepl("ynow-chrome-green-pulse 4.8s", txt, fixed = TRUE) &&
     grepl("ynow-chrome-blue-pulse 3.6s", txt, fixed = TRUE) &&
     grepl("ynow-chrome-circuit-rise 3.6s", txt, fixed = TRUE) &&
+    grepl("ynow-chrome-circuit-bw-flow 4.8s", txt, fixed = TRUE) &&
     grepl(
       "prefers-reduced-motion: reduce[\\s\\S]*?\\.ynow-chrome-header-leaves[\\s\\S]*?animation:\\s*none",
       txt,
@@ -169,6 +219,11 @@ check(
     ) &&
     grepl(
       "prefers-reduced-motion: reduce[\\s\\S]*?\\.ynow-sidebar-foot-chip::before[\\s\\S]*?animation:\\s*none",
+      txt,
+      perl = TRUE
+    ) &&
+    grepl(
+      "prefers-reduced-motion: reduce[\\s\\S]*?\\.ynow-chrome-sidebar-circuit-strokes[\\s\\S]*?animation:\\s*none",
       txt,
       perl = TRUE
     )
