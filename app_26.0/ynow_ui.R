@@ -4390,14 +4390,15 @@ ui <- dashboardPage(
         /* 標題＝載入進度條：底層淡金軌道 + 金色填滿層（隨 --ynow-load-pct） */
         /* z-index must stay above header veins (z4) on :hover too — otherwise
            AdminLTE/skin hover specificity drops the logo under foliage and the
-           branch graphic flashes through the wordmark. */
+           branch graphic flashes through the wordmark. Logo/title bg is
+           transparent; veins are masked clear of the wordmark band. */
         .main-header .logo,
         .main-header .logo:hover {
           position: relative;
           z-index: 5;
           font-weight: bold;
           color: #FFD700 !important;
-          background-color: var(--ynow-ink) !important;
+          background-color: transparent !important;
           background-image: none !important;
           filter: none !important;
         }
@@ -5517,14 +5518,14 @@ ui <- dashboardPage(
         body.ynow-view-as .main-header .logo .ynow-app-title-fill {
           width: 100% !important;
         }
-        /* 美股：logo 區塊黑底（容器層，不影響內層文字漸層） */
+        /* 美股：logo 區塊透明（與黑頂欄融合；veins 以 mask 避開 wordmark） */
         .skin-black .main-header .logo::before {
           content: "";
           position: absolute;
           inset: 0;
           z-index: -1;
           pointer-events: none;
-          background-color: var(--ynow-ink);
+          background-color: transparent;
         }
 
         .content-wrapper, .right-side { background-color: #f7f7f7; }
@@ -5539,23 +5540,41 @@ ui <- dashboardPage(
           overflow: hidden;
         }
         /* Black top-banner left (A+B): line-stroke veins flush left of .main-header.
-           Asset: www/ynow-chrome-veins-branches.png. Opaque .logo brand strip covers the
-           wordmark box so strokes never paint under「The YNow App」; veins remain visible
-           in the far-left banner where the logo strip does not cover (navbar side). */
+           Asset: www/ynow-chrome-veins-branches.png. Logo/title bg is transparent so the
+           strip blends with the banner; a horizontal mask keeps strokes out of the
+           wordmark band (far-left gutter + navbar only). */
         .ynow-chrome-header-leaves {
           position: absolute;
           left: 0;
           top: 0;
           bottom: 0;
           width: min(42%, 520px);
-          /* Above navbar fill (z3) so strokes show beside the brand strip;
-             below opaque .logo (z5) so they never paint the title block. */
+          /* Above navbar fill (z3); below .logo (z5). Mask excludes wordmark column. */
           z-index: 4;
           pointer-events: none;
           overflow: hidden;
           background: transparent;
           opacity: 0.95;
           animation: ynow-chrome-green-pulse 4.8s ease-in-out infinite;
+          /* Far-left gutter (~0–40px) + resume after logo (~250px); hole under title text */
+          -webkit-mask-image: linear-gradient(
+            90deg,
+            #000 0%,
+            #000 32px,
+            transparent 48px,
+            transparent 248px,
+            #000 252px,
+            #000 100%
+          );
+          mask-image: linear-gradient(
+            90deg,
+            #000 0%,
+            #000 32px,
+            transparent 48px,
+            transparent 248px,
+            #000 252px,
+            #000 100%
+          );
         }
         .ynow-chrome-header-veins {
           position: absolute;
@@ -5577,14 +5596,13 @@ ui <- dashboardPage(
           0%, 100% { opacity: 0.72; }
           50% { opacity: 0.95; }
         }
-        /* Opaque brand strip: plain black under the wordmark (no veins in title block).
-           Idle + :hover must match — never drop z-index or clear the fill so foliage
-           flashes through the title on mouseover. */
+        /* Transparent brand strip (blend with black banner). Idle + :hover must match —
+           keep z-index above veins; never reintroduce opaque fill that blocks the banner. */
         .skin-black .main-header .logo,
         .skin-black .main-header .logo:hover,
         .skin-black .main-header .logo:focus,
         .skin-black .main-header .logo:active {
-          background-color: #000 !important;
+          background-color: transparent !important;
           background-image: none !important;
           z-index: 5 !important;
         }
@@ -5595,13 +5613,13 @@ ui <- dashboardPage(
           inset: 0;
           z-index: -1;
           pointer-events: none;
-          background-color: #000 !important;
+          background-color: transparent !important;
           background-image: none !important;
         }
         /* No padding on .ynow-app-title: #404 pill padding offset the absolute fill vs
            in-flow base and painted a second ghost wordmark. Keep load-bar layers aligned.
            Shrink-wrap to the full wordmark (incl. trailing version digit); do not let
-           AdminLTE .logo overflow:hidden + 15px pad clip 「…v26.41」. */
+           AdminLTE .logo overflow:hidden + 15px pad clip 「…v26.xx」. Transparent bg. */
         .main-header .logo,
         .main-header .logo:hover {
           overflow: visible !important;
@@ -5620,7 +5638,7 @@ ui <- dashboardPage(
           padding: 0;
           margin: 0 4px;
           border-radius: 0;
-          background-color: #000 !important;
+          background-color: transparent !important;
           background-image: none !important;
           box-shadow: none;
           white-space: nowrap;
@@ -5658,10 +5676,14 @@ ui <- dashboardPage(
           .ynow-chrome-header-leaves {
             left: 0;
             width: min(70%, 360px);
+            /* Mobile: far-left strokes only — keep clear of centered wordmark */
+            -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 16%, transparent 28%);
+            mask-image: linear-gradient(90deg, #000 0%, #000 16%, transparent 28%);
           }
           .main-header .logo .ynow-app-title {
             margin: 0 4px;
             padding: 0;
+            background-color: transparent !important;
           }
         }
         .content-wrapper,

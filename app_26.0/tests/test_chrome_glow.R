@@ -32,13 +32,24 @@ check(
 )
 
 check(
-  "header veins flush left (left 0) with opaque logo brand strip",
+  "header veins flush left (left 0) with transparent logo + wordmark hole mask",
   grepl("\\.ynow-chrome-header-leaves \\{[\\s\\S]*?left:\\s*0;", txt, perl = TRUE) &&
     grepl(
-      "\\.skin-black \\.main-header \\.logo,[\\s\\S]*?background-color:\\s*#000\\s*!important",
+      "\\.skin-black \\.main-header \\.logo,[\\s\\S]*?background-color:\\s*transparent\\s*!important",
       txt,
       perl = TRUE
     ) &&
+    grepl(
+      "\\.main-header \\.logo \\.ynow-app-title,[\\s\\S]*?background-color:\\s*transparent\\s*!important",
+      txt,
+      perl = TRUE
+    ) &&
+    grepl(
+      "\\.ynow-chrome-header-leaves \\{[\\s\\S]*?mask-image:\\s*linear-gradient\\(\\s*90deg",
+      txt,
+      perl = TRUE
+    ) &&
+    grepl("transparent 248px", txt, fixed = TRUE) &&
     grepl("\\.main-header \\.logo \\.ynow-app-title \\{[\\s\\S]*?padding:\\s*0;", txt, perl = TRUE) &&
     grepl(
       "\\.ynow-app-title\\.is-complete \\.ynow-app-title-base \\{[\\s\\S]*?visibility:\\s*hidden",
@@ -103,18 +114,23 @@ check(
 )
 
 check(
-  "logo hover stays above veins with opaque black (no branch flash)",
+  "logo hover stays above veins with transparent bg (no branch flash)",
   grepl(
     "\\.main-header \\.logo,[\\s\\S]*?\\.main-header \\.logo:hover \\{[\\s\\S]*?z-index:\\s*5",
     txt,
     perl = TRUE
   ) &&
     grepl(
-      "\\.skin-black \\.main-header \\.logo:hover[\\s\\S]*?background-color:\\s*#000\\s*!important",
+      "\\.skin-black \\.main-header \\.logo:hover[\\s\\S]*?background-color:\\s*transparent\\s*!important",
       txt,
       perl = TRUE
     ) &&
-    grepl("z-index:\\s*5\\s*!important", txt, perl = TRUE)
+    grepl("z-index:\\s*5\\s*!important", txt, perl = TRUE) &&
+    !grepl(
+      "\\.skin-black \\.main-header \\.logo:hover[\\s\\S]{0,120}?background-color:\\s*#000\\s*!important",
+      txt,
+      perl = TRUE
+    )
 )
 
 check(
