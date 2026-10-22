@@ -7,5 +7,5 @@ commit=79dc8733caf5e2288193584de2a4964ec6ea04cb
 short=79dc8733
 message=chore: bump display version to v26.39
 captured_at=2026-10-22T10:30:23Z
-display_version=v26.39
+display_version=v26.40
 note=Canonical live line is app_26.0. Bundle 12724668: Sidebar chip line-only upward fade + no title-hover vein flash + unclipped wordmark digit (#406). Secrets only in gitignored .Renviron; no secret values in git.
