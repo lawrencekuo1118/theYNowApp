@@ -18,6 +18,14 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 - CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_26.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).
 - Docs: root README ship/CI/Release pointers; `scripts/record_github_release.sh` for soft-fail Release publish after deploy.
 
+## [v26.26] — 2026-10-22
+
+### Changed
+
+- **Gate demo videos from live App UI** (PR #393): Sign-in-required teasers under `www/demos/<feature>.{mp4,webm}` are ~10s Playwright scrolls of the running App (real chrome / tabs), not fixture HTML. Regenerate with `bash scripts/record_gate_demos.sh` (local Shiny + `YNOW_DEMO_CAPTURE=1`; never on shinyapps). Deleted `scripts/gate_demo_pages/`.
+- zh-TW：需登入閘的示範影片改為本機實際 App 畫面錄製（約 10 秒），不再用假 HTML 頁；以 `record_gate_demos.sh` 重錄。
+- Live baseline bundle **12723730** / display **v26.26**.
+
 ## [v26.25] — 2026-10-22
 
 ### Added
