@@ -101,7 +101,7 @@ fcf_projection_module_ui <- function(id) {
            tags$p(
              id = "ynow_fcf_revenue_shared_help",
              class = "help-block",
-             "總營收在 Model Dashboard → 共用橋接設定一次。"
+             "總營收在 Model Dashboard → Cash、Debt、股數與營收（各模型共用）設定一次。"
            ),
            fluidRow(
              column(4, lock_numeric_input(numericInput(ns("fcf_revenue"), "當期營收 (Revenue)", value = 100))),

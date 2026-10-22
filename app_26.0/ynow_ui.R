@@ -1412,17 +1412,17 @@ beta_rolling_section_ui <- function() {
   box(
     title = tagList(
       icon("link"),
-      tags$span(id = "ynow_shared_bridge_title", "共用橋接")
+      tags$span(id = "ynow_shared_bridge_title", "Cash、Debt、股數與營收（各模型共用）")
     ),
     width = 12, status = "primary", solidHeader = TRUE,
     tags$p(
       id = "ynow_shared_bridge_help",
       class = "help-block",
       paste0(
-        "Cash、Total Debt、股數與總營收只在這裡設定一次。",
-        "DCF、WACC 權重、Enterprise Multiples、P/S 與 SOTP 都讀這組數值。",
-        "終值 g 與 Ke 仍用 SGR 與 CAPM。",
-        "SOTP 部門營收、股利 g、近端營收成長維持各自的控制。"
+        "Cash、Total Debt、股數與總營收請只在這裡填一次。",
+        "需要這些數字的模型——DCF、WACC 權重、Enterprise Multiples、P/S、SOTP——都會讀這裡。",
+        "終值 g 與 Ke 仍在 SGR 與 CAPM 調整。",
+        "SOTP 部門營收、股利 g、近端營收成長各自設定。"
       )
     ),
     fluidRow(
@@ -20006,11 +20006,9 @@ ui <- dashboardPage(
           )
         ),
         # SGR 與 BETA 同層、同 col-sm-12（勿只對 SGR 外包 fluidRow，否則欄寬會不一致）
+        # Order: SGR → BETA → shared Cash/Debt/Shares/Revenue (plain-language shared inputs)
         fluidRow(
           .dcf_core_params_box()
-        ),
-        fluidRow(
-          .shared_bridge_box()
         ),
         fluidRow(
           tags$div(
@@ -20060,6 +20058,9 @@ ui <- dashboardPage(
               )
             )
           )
+        ),
+        fluidRow(
+          .shared_bridge_box()
         ),
         # Valuation Methodology at bottom of Basic Setup (Full only; Lite hides get_started)
         tags$div(

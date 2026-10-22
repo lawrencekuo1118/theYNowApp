@@ -84,5 +84,38 @@ ui <- paste(readLines("ynow_ui.R", warn = FALSE, encoding = "UTF-8"), collapse =
 check("one shared bridge editor", grepl("bridge_cash", ui, fixed = TRUE) && grepl(".shared_bridge", srv, fixed = TRUE))
 check("models no longer copy each other's fields", !grepl(".watch_bridge", srv, fixed = TRUE))
 
+# Model Dashboard order: SGR → BETA → shared Cash/Debt/Shares/Revenue
+# Use the last get_started tabItem (menuItem may appear earlier); match call site
+# `.shared_bridge_box()` — the section:shared_bridge lock lives inside the helper.
+gs_matches <- gregexpr('tabName = "get_started"', ui, fixed = TRUE)[[1]]
+gs_start <- if (length(gs_matches) && gs_matches[1] > 0L) gs_matches[length(gs_matches)] else -1L
+gs_end <- if (gs_start > 0L) regexpr('tabName = "snapshot"', substr(ui, gs_start, nchar(ui)), fixed = TRUE)[1] else -1L
+gs_chunk <- if (gs_start > 0L && gs_end > 0L) {
+  substr(ui, gs_start, gs_start + gs_end - 1L)
+} else {
+  ""
+}
+pos_beta <- if (nzchar(gs_chunk)) regexpr("section:beta_box", gs_chunk, fixed = TRUE)[1] else -1L
+pos_bridge <- if (nzchar(gs_chunk)) regexpr(".shared_bridge_box()", gs_chunk, fixed = TRUE)[1] else -1L
+check("get_started has BETA and shared inputs", pos_beta > 0L && pos_bridge > 0L)
+check("BETA block sits above shared inputs", pos_beta > 0L && pos_bridge > pos_beta)
+
+# Plain-language locale (no jargon title 「共用橋接」/ "Shared bridge")
+loc <- paste(readLines("ui_locale.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+check(
+  "en shared_bridge_title is plain",
+  grepl('shared_bridge_title = "Cash, Debt, Shares & Revenue \\(shared\\)"', loc)
+)
+check(
+  "zh-TW shared_bridge_title is plain",
+  grepl("shared_bridge_title = \"Cash、Debt、股數與營收（各模型共用）\"", loc, fixed = TRUE)
+)
+check("no jargon UI title 共用橋接", !grepl('shared_bridge_title = "共用橋接"', loc, fixed = TRUE))
+check("no jargon UI title Shared bridge", !grepl('shared_bridge_title = "Shared bridge"', loc, fixed = TRUE))
+check(
+  "default box title matches zh-TW plain copy",
+  grepl("Cash、Debt、股數與營收（各模型共用）", ui, fixed = TRUE)
+)
+
 if (fail > 0L) quit(status = 1)
 cat("ALL PASS\n")

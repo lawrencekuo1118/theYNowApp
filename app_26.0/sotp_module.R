@@ -151,7 +151,7 @@ sotp_module_ui <- function(id) {
         tags$p(
           id = "ynow_sotp_bridge_help",
           class = "help-block",
-          "Implied EV = Σ(segment revenue × segment EV/Sales) + non-operating; Equity = EV + Cash − Debt. Cash, Total Debt, and Shares are set once on Model Dashboard → Shared bridge."
+          "Implied EV = Σ(segment revenue × segment EV/Sales) + non-operating; Equity = EV + Cash − Debt. Cash, Total Debt, and Shares are set once on Model Dashboard → Cash, Debt, Shares & Revenue (shared)."
         )
       )
     )
