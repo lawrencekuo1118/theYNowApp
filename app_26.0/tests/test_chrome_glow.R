@@ -55,7 +55,8 @@ check(
 
 check(
   "denser header vein band + pulse timings",
-  grepl("width:\\s*52%", txt) &&
+  grepl("width:\\s*55%", txt) &&
+    grepl("ynow-chrome-header-veins", txt, fixed = TRUE) &&
     grepl("ynow-chrome-green-pulse 4.8s", txt, fixed = TRUE) &&
     grepl("ynow-chrome-blue-pulse 3.6s", txt, fixed = TRUE) &&
     grepl("blur(6px)", txt, fixed = TRUE)

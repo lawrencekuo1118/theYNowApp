@@ -5540,55 +5540,63 @@ ui <- dashboardPage(
           left: 0;
           top: 0;
           bottom: 0;
-          width: 52%;
-          max-width: 640px;
-          /* Above TW flag dark ::after (z-index 0); logo/navbar siblings paint later on top. */
-          z-index: 1;
+          width: 55%;
+          max-width: 720px;
+          /* Sit above logo black wash so veins remain visible under the title. */
+          z-index: 2;
           pointer-events: none;
           overflow: hidden;
           background:
-            radial-gradient(ellipse 95% 140% at 10% 50%, var(--ynow-chrome-green-glow), transparent 62%);
-          opacity: 0.95;
+            radial-gradient(ellipse 95% 140% at 10% 50%, var(--ynow-chrome-green-glow), transparent 66%);
+          opacity: 0.88;
           animation: ynow-chrome-green-pulse 4.8s ease-in-out infinite;
         }
-        .ynow-chrome-header-leaves::before {
-          content: "";
+        .ynow-chrome-header-veins {
           position: absolute;
-          inset: -12% -6% -12% -4%;
-          background-image: url("ynow-chrome-veins-branches.jpg");
-          background-repeat: no-repeat;
-          background-size: cover;
-          background-position: 12% 40%;
-          /* Black twigs on white sky → invert + green tint so dense veins read on black chrome */
-          filter: invert(1) sepia(1) saturate(4.2) hue-rotate(78deg) brightness(0.95) contrast(1.2);
+          left: -4%;
+          top: -30%;
+          width: 108%;
+          height: 160%;
+          object-fit: cover;
+          object-position: 10% 38%;
+          /* Black twigs on white sky → invert + soft logo-green tint (not neon) */
+          filter: invert(1) sepia(1) saturate(3.4) hue-rotate(82deg) brightness(0.88) contrast(1.18);
           mix-blend-mode: screen;
-          opacity: 0.78;
-          -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 55%, transparent 96%);
-          mask-image: linear-gradient(90deg, #000 0%, #000 55%, transparent 96%);
+          opacity: 0.72;
+          -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 58%, transparent 100%);
+          mask-image: linear-gradient(90deg, #000 0%, #000 58%, transparent 100%);
           pointer-events: none;
+          user-select: none;
         }
         .ynow-chrome-header-leaves::after {
           content: "";
           position: absolute;
           inset: 0;
           background:
-            linear-gradient(90deg, rgba(36, 156, 96, 0.34) 0%, rgba(36, 156, 96, 0.16) 45%, transparent 82%);
-          mix-blend-mode: soft-light;
+            linear-gradient(90deg, rgba(36, 156, 96, 0.22) 0%, rgba(36, 156, 96, 0.1) 48%, transparent 85%);
           pointer-events: none;
         }
         @keyframes ynow-chrome-green-pulse {
-          0%, 100% { filter: brightness(0.95); opacity: 0.78; }
-          50% { filter: brightness(1.22); opacity: 1; }
+          0%, 100% { opacity: 0.72; }
+          50% { opacity: 0.95; }
+        }
+        /* Let branch veins show through the title block (keep text above). */
+        .skin-black .main-header .logo,
+        .skin-black .main-header .logo:hover {
+          background-color: transparent !important;
+          background-image: none !important;
+        }
+        .skin-black .main-header .logo::before {
+          background-color: transparent;
         }
         .main-header > .logo,
         .main-header > .navbar {
           position: relative;
-          z-index: 1;
+          z-index: 3;
         }
         @media (prefers-reduced-motion: reduce) {
           .ynow-chrome-header-leaves {
             animation: none;
-            filter: none;
             opacity: 0.9;
           }
         }
