@@ -1,3 +1,14 @@
+## [v26.39] — 2026-10-22
+
+### Fixed
+- Sidebar chip: blue circuit is **line strokes only** on black (de-backgrounded PNG); bottom-up glow **fades out upward** into the sidebar.
+- Header wordmark hover: no branch/vein flash (`.logo` stays above foliage with opaque black).
+- Header wordmark: trailing version digit no longer clipped (e.g. `8` in v26.38 / v26.39).
+
+### Notes
+- en-US: Circuit traces dissolve upward on the black sidebar chip; title stays plain black on hover with the full version string visible.
+- zh-TW: 側邊欄晶片藍線路僅保留線條並向上淡出融入黑底；標題列懸停不閃枝狀背景；版本號末位數字完整可見。
+
 ## [v26.38] — 2026-10-22
 
 ### Fixed
