@@ -268,7 +268,17 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_false(grepl("Industry / concept[^\n]*ynow-lite-only", macro_txt))
   testthat::expect_true(grepl("ynow_macro_theme_help", macro_txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-macro-chapter__lead", macro_txt, fixed = TRUE))
-  testthat::expect_true(grepl("Pick Industry from the menu and Concept from the word cloud", macro_txt, fixed = TRUE))
+  # Copy lives in ui_locale (en/zh-TW); module wires via .s("macro_theme_help").
+  testthat::expect_true(grepl('.s("macro_theme_help")', macro_txt, fixed = TRUE))
+  loc_for_theme <- paste(
+    readLines(file.path("..", "ui_locale.R"), warn = FALSE, encoding = "UTF-8"),
+    collapse = "\n"
+  )
+  testthat::expect_true(grepl(
+    "Pick Industry from the menu and Concept from the word cloud",
+    loc_for_theme,
+    fixed = TRUE
+  ))
   .notes_calls <- function(src) {
     calls <- character(0)
     remaining <- src

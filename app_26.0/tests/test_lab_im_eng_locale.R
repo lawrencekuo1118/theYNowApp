@@ -93,7 +93,11 @@ check(
     grepl("lab_im_max_n_select_choices(loc", srv, fixed = TRUE)
 )
 check("server summary uses locale", grepl("lab_method_group_summary\\(.*locale\\s*=\\s*loc", srv))
-check("server delayed locale remount", grepl("delay = 0.25", srv, fixed = TRUE))
+# Busy Blue Chip picker remount uses later::later(..., delay = 0.35).
+check("server delayed locale remount", {
+  grepl(".lab_im_schedule_picker_locale", srv, fixed = TRUE) &&
+    grepl("later::later(run, delay = 0.35)", srv, fixed = TRUE)
+})
 
 if (fail > 0L) {
   cat("FAILED ", fail, " / ", pass + fail, " checks\n", sep = "")

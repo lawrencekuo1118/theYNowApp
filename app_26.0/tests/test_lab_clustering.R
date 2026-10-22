@@ -4,6 +4,16 @@ suppressPackageStartupMessages({
   library(plotly)
 })
 
+args <- commandArgs(trailingOnly = FALSE)
+file_arg <- sub("^--file=", "", args[grep("^--file=", args)])
+test_dir <- if (length(file_arg) == 1L && nzchar(file_arg)) {
+  dirname(normalizePath(file_arg))
+} else {
+  getwd()
+}
+app_dir <- normalizePath(file.path(test_dir, ".."), mustWork = TRUE)
+setwd(app_dir)
+
 if (!exists("%||%", mode = "function")) {
   `%||%` <- function(a, b) if (is.null(a)) b else a
 }

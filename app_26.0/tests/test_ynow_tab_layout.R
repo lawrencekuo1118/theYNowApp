@@ -284,8 +284,13 @@ check("applyUiLocale kpi jump aria", grepl("ynow_kpi_jump_qoe", ui, fixed = TRUE
 check("click handler scrollIntoView", grepl("ynowOnFunnelKpiJump", ui, fixed = TRUE) &&
         grepl("ynowScrollFunnelAnchor", ui, fixed = TRUE) &&
         grepl("scrollIntoView", ui, fixed = TRUE))
-check("Lite About YNOW keeps QoE and 財報警訊", grepl("盈餘品質、F-Score 品質檢核、風險矩陣與財報警訊", ui, fixed = TRUE))
-check("Lite About EN uses Quality of Earnings", grepl("Quality of Earnings, F-Score screen, risk matrix, and statement alerts", ui, fixed = TRUE))
+about <- if (file.exists("ynow_about_ui.R")) {
+  paste(readLines("ynow_about_ui.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+} else {
+  ui
+}
+check("Lite About YNOW keeps QoE and 財報警訊", grepl("盈餘品質、F-Score 品質檢核、風險矩陣與財報警訊", about, fixed = TRUE))
+check("Lite About EN uses Quality of Earnings", grepl("Quality of Earnings, F-Score screen, risk matrix, and statement alerts", about, fixed = TRUE))
 check("first-paint F-Score list title zh", grepl("F-Score 品質檢核清單", dec, fixed = TRUE))
 check("KPI valueBox numbers stay one line", {
   grepl("small-box .inner h3", ui, fixed = TRUE) &&
@@ -316,7 +321,16 @@ check("concept word cloud multi-select", {
     grepl("ynow-macro-concept-cloud", macro, fixed = TRUE) &&
     !grepl('ns("concept_key")', macro, fixed = TRUE)
 })
-check("Macro first-paint bubble title", grepl("Dynamic industry bubble", macro, fixed = TRUE))
+# First-paint title is localized via .s("macro_bubble_title"); English lives in ui_locale.
+check("Macro first-paint bubble title", {
+  grepl('.s("macro_bubble_title")', macro, fixed = TRUE) &&
+    grepl("ynow_macro_bubble_title", macro, fixed = TRUE) &&
+    grepl(
+      "Dynamic industry bubble & weight concentration",
+      .UI_STRINGS$en$macro_bubble_title,
+      fixed = TRUE
+    )
+})
 
 # Composite valuation: model notes sit under chart footer note (same block)
 cmp_start <- regexpr("output\\$ui_valuation_compare", dec)[1]

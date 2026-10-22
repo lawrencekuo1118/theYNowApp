@@ -28,6 +28,17 @@ check("complete uses gold shine sweep", {
   )
 })
 check("gold-shine keyframes present", grepl("@keyframes ynow-gold-shine", ui, fixed = TRUE))
-check("display version v25.00", grepl("v25.00", ui, fixed = TRUE))
+build_path <- file.path(root, "www", "ynow_build.json")
+build_ver <- if (file.exists(build_path)) {
+  raw <- paste(readLines(build_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  m <- regmatches(raw, regexpr('"version"\\s*:\\s*"([^"]+)"', raw, perl = TRUE))
+  if (length(m)) sub('.*"([^"]+)".*', "\\1", m) else ""
+} else {
+  ""
+}
+check(
+  "display version matches ynow_build.json",
+  nzchar(build_ver) && grepl(build_ver, ui, fixed = TRUE)
+)
 if (fail > 0L) { message("FAILED: ", fail); quit(status = 1L) }
 message("All gold-title (no-stardust) checks passed.")
