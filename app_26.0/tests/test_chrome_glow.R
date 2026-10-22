@@ -1,6 +1,7 @@
 # Chrome atmosphere A+B: line-stroke veins only (no filled wash).
 # Header veins beside title box; sidebar foot keeps natural-size circuit PNG;
-# longer upward traces are DRAWN (SVG paths) — never stretch the chip PNG.
+# drawn SVG traces clamp below YNow brand logo; electric stroke glow (not image scroll).
+# Title strip stays solid #000 (no AdminLTE white / no veins through wordmark).
 
 Sys.setenv(YNOW_DEBUG_SKIP_PY = "1")
 
@@ -33,7 +34,7 @@ check(
 )
 
 check(
-  "full-sidebar circuit overlay inject + SVG longer traces",
+  "full-sidebar circuit overlay inject + SVG traces",
   grepl("ynowPlaceChromeCircuit", txt, fixed = TRUE) &&
     grepl("ynow-chrome-sidebar-circuit", txt, fixed = TRUE) &&
     grepl("ynow-chrome-sidebar-circuit-strokes", txt, fixed = TRUE) &&
@@ -45,10 +46,10 @@ check(
 )
 
 check(
-  "header veins flush left (left 0) with transparent logo + wordmark hole mask",
+  "header veins flush left (left 0) with black logo + wordmark hole mask",
   grepl("\\.ynow-chrome-header-leaves \\{[\\s\\S]*?left:\\s*0;", txt, perl = TRUE) &&
     grepl(
-      "\\.skin-black \\.main-header \\.logo,[\\s\\S]*?background-color:\\s*transparent\\s*!important",
+      "\\.skin-black \\.main-header \\.logo,[\\s\\S]*?background-color:\\s*#000\\s*!important",
       txt,
       perl = TRUE
     ) &&
@@ -135,27 +136,50 @@ check(
     grepl("never stretch|NATURAL-size|do NOT stretch|never scale the PNG", txt, ignore.case = TRUE)
 )
 
+circuit_block <- regmatches(
+  txt,
+  regexpr("\\.ynow-chrome-sidebar-circuit \\{[^}]*\\}", txt, perl = TRUE)
+)[1]
 check(
-  "full-sidebar uses drawn SVG paths + upward fade",
-  grepl(
-    "\\.ynow-chrome-sidebar-circuit \\{[\\s\\S]*?mask-image:\\s*linear-gradient\\(\\s*to top",
-    txt,
-    perl = TRUE
-  ) &&
+  "circuit clamped below YNow logo + upward fade (not full-sidebar top:0)",
+  length(circuit_block) == 1L && nzchar(circuit_block) &&
+    grepl("bottom:\\s*0", circuit_block, perl = TRUE) &&
+    grepl("top:\\s*auto", circuit_block, perl = TRUE) &&
+    grepl("height:\\s*min\\(42vh,\\s*380px\\)", circuit_block, perl = TRUE) &&
+    grepl("mask-image:\\s*linear-gradient\\(\\s*to top", circuit_block, perl = TRUE) &&
+    !grepl("top:\\s*0\\s*;", circuit_block, perl = TRUE) &&
     grepl("ynow-chrome-sidebar-circuit-svg", txt, fixed = TRUE) &&
-    grepl("ynow-chrome-circuit-rise", txt, fixed = TRUE) &&
-    grepl("ynowCircuitStrokeGrad", txt, fixed = TRUE) &&
-    grepl("transform-origin:\\s*bottom center", txt, perl = TRUE)
+    grepl("viewBox=\\\"0 0 230 480\\\"", txt, fixed = TRUE) &&
+    grepl("ynowCircuitStrokeGrad", txt, fixed = TRUE)
+)
+
+check(
+  "electric stroke travel glow (not image scaleY / translate scroll)",
+  grepl("ynow-chrome-circuit-travel", txt, fixed = TRUE) &&
+    grepl("ynow-chrome-circuit-electric", txt, fixed = TRUE) &&
+    grepl("stroke-dasharray", txt, fixed = TRUE) &&
+    grepl("stroke-dashoffset", txt, fixed = TRUE) &&
+    !grepl("ynow-chrome-circuit-rise", txt, fixed = TRUE) &&
+    !grepl(
+      "\\.ynow-chrome-sidebar-circuit-svg \\{[\\s\\S]*?animation:\\s*ynow-chrome-circuit-rise",
+      txt,
+      perl = TRUE
+    ) &&
+    !grepl(
+      "@keyframes ynow-chrome-circuit-rise \\{[\\s\\S]*?scaleY",
+      txt,
+      perl = TRUE
+    )
 )
 
 grad_start <- regexpr("ynowCircuitStrokeGrad", txt, fixed = TRUE)[1]
 grad_chunk <- if (grad_start > 0) {
-  substr(txt, max(1L, grad_start - 80L), min(nchar(txt), grad_start + 900L))
+  substr(txt, max(1L, grad_start - 80L), min(nchar(txt), grad_start + 1200L))
 } else {
   ""
 }
 check(
-  "circuit strokes use logo blue + white dynamic (no neon accents)",
+  "circuit strokes use logo blue + electric cyan/white (no neon accents)",
   grepl("ynowCircuitStrokeGrad", grad_chunk, fixed = TRUE) &&
     grepl("#0C5484", grad_chunk, fixed = TRUE) &&
     grepl("#ffffff", grad_chunk, fixed = TRUE) &&
@@ -168,31 +192,40 @@ check(
 )
 
 check(
-  "chip circuit fades out upward + rises from bottom",
+  "chip circuit fades out upward + glow pulse (no scaleY scroll)",
   grepl(
     "\\.ynow-sidebar-foot-chip::before \\{[\\s\\S]*?linear-gradient\\(to top",
     txt,
     perl = TRUE
   ) &&
-    grepl("ynow-chrome-circuit-rise", txt, fixed = TRUE) &&
-    grepl("transform-origin:\\s*bottom center", txt, perl = TRUE)
+    grepl("ynow-chrome-circuit-bw-flow", txt, fixed = TRUE) &&
+    !grepl(
+      "\\.ynow-sidebar-foot-chip::before \\{[\\s\\S]*?ynow-chrome-circuit-rise",
+      txt,
+      perl = TRUE
+    )
 )
 
 check(
-  "logo hover stays above veins with transparent bg (no branch flash)",
+  "logo hover stays above veins with solid black bg (no branch flash / no white)",
   grepl(
     "\\.main-header \\.logo,[\\s\\S]*?\\.main-header \\.logo:hover \\{[\\s\\S]*?z-index:\\s*5",
     txt,
     perl = TRUE
   ) &&
     grepl(
-      "\\.skin-black \\.main-header \\.logo:hover[\\s\\S]*?background-color:\\s*transparent\\s*!important",
+      "\\.skin-black \\.main-header \\.logo:hover[\\s\\S]*?background-color:\\s*#000\\s*!important",
       txt,
       perl = TRUE
     ) &&
     grepl("z-index:\\s*5\\s*!important", txt, perl = TRUE) &&
+    grepl(
+      "sidebar-collapse[\\s\\S]*?\\.main-header[\\s\\S]*?\\.logo[\\s\\S]*?background-color:\\s*#000\\s*!important",
+      txt,
+      perl = TRUE
+    ) &&
     !grepl(
-      "\\.skin-black \\.main-header \\.logo:hover[\\s\\S]{0,120}?background-color:\\s*#000\\s*!important",
+      "\\.skin-black \\.main-header \\.logo:hover[\\s\\S]{0,120}?background-color:\\s*#fff",
       txt,
       perl = TRUE
     )
@@ -223,10 +256,11 @@ check(
 )
 
 check(
-  "Balanced pulse timings + reduced-motion",
+  "Balanced pulse timings + reduced-motion (electric, not rise)",
   grepl("ynow-chrome-green-pulse 4.8s", txt, fixed = TRUE) &&
     grepl("ynow-chrome-blue-pulse 3.6s", txt, fixed = TRUE) &&
-    grepl("ynow-chrome-circuit-rise 3.6s", txt, fixed = TRUE) &&
+    grepl("ynow-chrome-circuit-electric 3.6s", txt, fixed = TRUE) &&
+    grepl("ynow-chrome-circuit-travel 2.8s", txt, fixed = TRUE) &&
     grepl(
       "prefers-reduced-motion: reduce[\\s\\S]*?\\.ynow-chrome-header-leaves[\\s\\S]*?animation:\\s*none",
       txt,
@@ -239,6 +273,11 @@ check(
     ) &&
     grepl(
       "prefers-reduced-motion: reduce[\\s\\S]*?\\.ynow-chrome-sidebar-circuit-svg[\\s\\S]*?animation:\\s*none",
+      txt,
+      perl = TRUE
+    ) &&
+    grepl(
+      "prefers-reduced-motion: reduce[\\s\\S]*?\\.ynow-ckt-p[\\s\\S]*?animation:\\s*none",
       txt,
       perl = TRUE
     )
