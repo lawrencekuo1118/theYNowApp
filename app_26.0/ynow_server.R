@@ -844,7 +844,7 @@ server <- function(input, output, session) {
     loc <- tryCatch(ui_locale(), error = function(e) "en")
     msg <- tryCatch(
       ui_str("sidebar_reorder_guest_toast", loc),
-      error = function(e) "Sign in to customize sidebar order."
+      error = function(e) "Sign in to rearrange sidebar order."
     )
     tryCatch(showNotification(msg, type = "message", duration = 2.4), error = function(e) NULL)
   }, ignoreInit = TRUE)
@@ -855,7 +855,7 @@ server <- function(input, output, session) {
       loc <- tryCatch(ui_locale(), error = function(e) "en")
       msg <- tryCatch(
         ui_str("sidebar_reorder_guest_toast", loc),
-        error = function(e) "Sign in to customize sidebar order."
+        error = function(e) "Sign in to rearrange sidebar order."
       )
       tryCatch(showNotification(msg, type = "message", duration = 2.4), error = function(e) NULL)
       return(invisible(NULL))

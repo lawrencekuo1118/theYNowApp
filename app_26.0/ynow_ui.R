@@ -3650,16 +3650,16 @@ ui <- dashboardPage(
             )
           )
         ),
-        # Signed-in only (CSS): customize sidebar tab order (edit gate for drag-reorder).
+        # Signed-in only (CSS): rearrange sidebar tab order (edit gate for drag-reorder).
         tags$button(
           type = "button",
           id = "ynow_sidebar_reorder_btn",
           class = "ynow-sidebar-reorder-btn",
-          title = "Customize sidebar tab order",
-          `aria-label` = "Customize sidebar tab order",
+          title = "Rearrange sidebar tab order",
+          `aria-label` = "Rearrange sidebar tab order",
           `aria-pressed` = "false",
           tags$i(class = "fas fa-sliders-h", `aria-hidden` = "true"),
-          tags$span(id = "ynow_sidebar_reorder_btn_label", class = "ynow-sidebar-reorder-btn-label", "Customize")
+          tags$span(id = "ynow_sidebar_reorder_btn_label", class = "ynow-sidebar-reorder-btn-label", "Rearrange")
         )
       ),
       tags$hr(class = "ynow-sidebar-date-hr")
@@ -18815,10 +18815,10 @@ ui <- dashboardPage(
             var editing = !!(document.body && document.body.classList.contains('ynow-sidebar-reorder-edit'));
             var label = editing
               ? (s.sidebar_reorder_btn_done || 'Done')
-              : (s.sidebar_reorder_btn || 'Customize');
+              : (s.sidebar_reorder_btn || 'Rearrange');
             var title = editing
               ? (s.sidebar_reorder_btn_done_title || 'Save order and exit edit mode')
-              : (s.sidebar_reorder_btn_title || 'Customize sidebar tab order');
+              : (s.sidebar_reorder_btn_title || 'Rearrange sidebar tab order');
             if (lab) lab.textContent = label;
             btn.setAttribute('title', title);
             btn.setAttribute('aria-label', title);

@@ -759,7 +759,7 @@ ynow_auth_css <- function() {
     "    visibility:hidden !important;",
     "  }",
     "}",
-    "/* Customize / Done — same row as date; signed-in only. */",
+    "/* Rearrange / Done — same row as date; signed-in only. */",
     ".ynow-sidebar-reorder-btn {",
     "  display:none !important; margin-left:auto; flex:0 0 auto;",
     "  align-items:center; justify-content:center; gap:4px;",
