@@ -1,3 +1,13 @@
+## [v26.45] — 2026-10-22
+
+### Changed
+- Business Breakdown **Company orders & market concentration**: same analysis types are grouped together (order quantity → major-customer revenue mix → major suppliers → major markets → sources/cross-check context) instead of a scattered three-column filing grid plus a separate Order research block.
+- Filing concentration charts sit with the matching disclosed order facts; empty when undisclosed.
+
+### Notes
+- en-US: Consolidated UX only — no new valuation formulas; Start analysis still gates disclosed order facts.
+- zh-TW: 業務拆解「公司訂單與市場集中度」將相同分析整併同組（訂單數量／重大客戶營收貢獻／主要供應商／主要市場／來源與交叉驗證）；財報集中度與已揭露訂單事實並陳，未揭露留白。
+
 ## [v26.42] — 2026-10-22
 
 ### Fixed
