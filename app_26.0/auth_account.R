@@ -2296,11 +2296,15 @@ ynow_points_panel_ui <- function(user, locale = "zh-TW",
   )
 }
 
-#' Known gate feature ids (promo + demo are keyed per feature).
-#' Demo clips live in www/demos/<feature>.{mp4,webm} (~10s; live App UI only.
-#' Regenerate with bash scripts/record_gate_demos.sh).
+#' Known gate feature ids (promo templates keyed per feature).
+#' Product demo clips live in www/demos/<feature>.{mp4,webm} (~10s; live App UI
+#' only — see [ynow_gate_demo_features()]; regenerate with
+#' bash scripts/record_gate_demos.sh).
+#' Non-product / service ids (snap_defaults, inner_lock) are hide-vs-show only
+#' in product policy — no Sign-in promo page and no demo teaser. They may still
+#' appear here as legacy ops promo *keys*; demos never ship for them.
 #' Membership gates (A/B) come from membership_locks.R; ops_acl / sysadmin gate
-#' ids (snap_defaults, inner_lock, atx) are non-membership but still listed for demos.
+#' ids include atx (product) plus non-product service keys.
 ynow_gate_features <- function() {
   mem <- if (exists("ynow_membership_gate_features", mode = "function")) {
     ynow_membership_gate_features()
@@ -2313,6 +2317,29 @@ ynow_gate_features <- function() {
     c("snap_defaults", "inner_lock", "atx")
   }
   unique(c(mem, ops))
+}
+
+#' Product-facing gate ids that ship a Sign-in demo teaser.
+#' Non-product service ids (snap_defaults, inner_lock) are hide-vs-show only —
+#' no 推廣登入頁面 and no demo.
+ynow_gate_demo_features <- function() {
+  c("lab", "checklist", "alerts", "account", "pdf", "atx")
+}
+
+#' TRUE when this gate should include a demo <video> (product allowlist).
+#' Missing www/demos files: omit the teaser block (no empty video chrome).
+ynow_gate_has_demo <- function(feature) {
+  feature <- as.character(feature %||% "")[1]
+  if (!nzchar(feature) || !(feature %in% ynow_gate_demo_features())) {
+    return(FALSE)
+  }
+  demos <- file.path(getwd(), "www", "demos")
+  if (!dir.exists(demos)) {
+    # UI/tests sometimes run with cwd outside the app root; trust the allowlist.
+    return(TRUE)
+  }
+  file.exists(file.path(demos, paste0(feature, ".mp4"))) ||
+    file.exists(file.path(demos, paste0(feature, ".webm")))
 }
 
 #' Locale key helpers for a feature-specific gate promo.
@@ -2353,8 +2380,10 @@ ynow_gate_promo_faq_ui <- function(feature = "lab", include_faq = TRUE, compact 
   keys <- ynow_gate_promo_keys(feature)
   feature <- keys$feature
   demo_base <- paste0("demos/", feature)
+  has_demo <- isTRUE(ynow_gate_has_demo(feature))
   # Class token stays --checklist-split. CSS selectors already key on it.
-  split_promo <- isTRUE(ynow_gate_layout(feature)$split_promo_demo)
+  # Promo|demo 1:1 only when a demo teaser exists (prefs / overlay shell).
+  split_promo <- isTRUE(ynow_gate_layout(feature)$split_promo_demo) && has_demo
   tier_attr <- if (exists("ynow_membership_lock_tier_attr", mode = "function")) {
     ynow_membership_lock_tier_attr(feature)
   } else {
@@ -2389,26 +2418,30 @@ ynow_gate_promo_faq_ui <- function(feature = "lab", include_faq = TRUE, compact 
       tags$li(tags$span(class = "ynow-gate-promo-b3", .ynow_gate_str(keys$b3, "")))
     )
   )
-  demo <- tags$div(
-    class = "ynow-gate-demo",
-    tags$p(
-      class = "ynow-gate-demo-caption",
-      .ynow_gate_str(keys$demo_caption, "Feature demo")
-    ),
-    # preload=none + no autoplay: avoid competing with Home first paint
-    # (~0.9MB webm). Client plays when the gate video scrolls into view.
-    tags$video(
-      class = "ynow-gate-demo-video",
-      controls = NA,
-      muted = NA,
-      playsinline = NA,
-      preload = "none",
-      loop = NA,
-      tags$source(src = paste0(demo_base, ".webm"), type = "video/webm"),
-      tags$source(src = paste0(demo_base, ".mp4"), type = "video/mp4"),
-      "Demo video unavailable."
+  demo <- if (isTRUE(has_demo)) {
+    tags$div(
+      class = "ynow-gate-demo",
+      tags$p(
+        class = "ynow-gate-demo-caption",
+        .ynow_gate_str(keys$demo_caption, "Feature demo")
+      ),
+      # preload=none + no autoplay: avoid competing with Home first paint
+      # (~0.9MB webm). Client plays when the gate video scrolls into view.
+      tags$video(
+        class = "ynow-gate-demo-video",
+        controls = NA,
+        muted = NA,
+        playsinline = NA,
+        preload = "none",
+        loop = NA,
+        tags$source(src = paste0(demo_base, ".webm"), type = "video/webm"),
+        tags$source(src = paste0(demo_base, ".mp4"), type = "video/mp4"),
+        "Demo video unavailable."
+      )
     )
-  )
+  } else {
+    NULL
+  }
   promo_demo <- if (isTRUE(split_promo)) {
     tags$div(class = "ynow-gate-promo-demo-row", promo, demo)
   } else {

@@ -242,7 +242,8 @@ ynow_membership_gate_features <- function() {
   ynow_membership_lock_ids(kind = "gate_feature")
 }
 
-#' Ops / non-membership gate feature ids still used for promo templates + demos.
+#' Ops / non-membership gate feature ids still used for promo templates.
+#' Demo teasers are product-only — see [ynow_gate_demo_features()].
 ynow_ops_gate_features <- function() {
   cat <- ynow_non_membership_lock_catalog()
   as.character(cat$id[cat$kind == "gate_feature"])
