@@ -74,6 +74,39 @@ lab_html <- paste(as.character(ynow_member_gate_ui(
   "ynow_lab_gate_signin", feature = "lab"
 )), collapse = "\n")
 
+alerts_html <- paste(as.character(ynow_member_gate_ui(
+  "ynow_pa_guest_gate", "ynow_pa_gate_title", "ynow_pa_gate_body",
+  "ynow_pa_gate_signin", feature = "alerts"
+)), collapse = "\n")
+
+atx_html <- paste(as.character(ynow_member_gate_ui(
+  "ynow_atx_guest_gate", "ynow_atx_gate_title", "ynow_atx_gate_body",
+  "ynow_atx_gate_signin", feature = "atx"
+)), collapse = "\n")
+
+acct_html <- paste(as.character(ynow_member_gate_ui(
+  "ynow_acct_gate", "ynow_acct_gate_title", "ynow_acct_gate_body",
+  "ynow_acct_gate_signin", feature = "account"
+)), collapse = "\n")
+
+page_gate_html <- function(feature) {
+  paste(as.character(ynow_gate_promo_faq_ui(feature = feature, include_faq = TRUE)), collapse = "\n")
+}
+
+check("layout helper marks page gates and leaves callouts stacked", {
+  page <- c("lab", "checklist", "alerts", "atx")
+  callout <- c("account", "pdf", "snap_defaults", "inner_lock")
+  page_ok <- all(vapply(page, function(f) {
+    lay <- ynow_gate_layout(f)
+    isTRUE(lay$surface_overlay) && isTRUE(lay$split_promo_demo)
+  }, logical(1)))
+  callout_ok <- all(vapply(callout, function(f) {
+    lay <- ynow_gate_layout(f)
+    isFALSE(lay$surface_overlay) && isFALSE(lay$split_promo_demo)
+  }, logical(1)))
+  page_ok && callout_ok
+})
+
 check("checklist gate has surface-overlay class", {
   grepl("ynow-member-gate--surface-overlay", chk_html, fixed = TRUE)
 })
@@ -84,12 +117,34 @@ check("checklist extras use promo-demo row + split class", {
     grepl("ynow-gate-demo-caption", chk_html, fixed = TRUE) &&
     grepl("demos/checklist.mp4", chk_html, fixed = TRUE)
 })
-check("lab gate stays stacked (no checklist split)", {
-  !grepl("ynow-gate-extras--checklist-split", lab_html, fixed = TRUE) &&
-    !grepl("ynow-gate-promo-demo-row", lab_html, fixed = TRUE) &&
-    !grepl("ynow-member-gate--surface-overlay", lab_html, fixed = TRUE) &&
-    grepl("ynow-gate-promo", lab_html, fixed = TRUE) &&
-    grepl("ynow-gate-demo", lab_html, fixed = TRUE)
+split_ok <- function(html, feature) {
+  grepl("ynow-member-gate--surface-overlay", html, fixed = TRUE) &&
+    grepl("ynow-gate-extras--checklist-split", html, fixed = TRUE) &&
+    grepl("ynow-gate-promo-demo-row", html, fixed = TRUE) &&
+    grepl(paste0("demos/", feature, ".mp4"), html, fixed = TRUE)
+}
+check("lab alerts and atx gates use the page overlay split", {
+  split_ok(lab_html, "lab") &&
+    split_ok(alerts_html, "alerts") &&
+    split_ok(atx_html, "atx") &&
+    grepl("Unlock Quantitative Backtest Lab", lab_html, fixed = TRUE) &&
+    grepl("Unlock Asset Transmission Root", atx_html, fixed = TRUE)
+})
+check("account gate stays a stacked callout", {
+  !grepl("ynow-member-gate--surface-overlay", acct_html, fixed = TRUE) &&
+    !grepl("ynow-gate-extras--checklist-split", acct_html, fixed = TRUE) &&
+    !grepl("ynow-gate-promo-demo-row", acct_html, fixed = TRUE) &&
+    grepl("ynow-gate-promo", acct_html, fixed = TRUE) &&
+    grepl("max-width:760px", acct_html, fixed = TRUE)
+})
+check("pdf snap_defaults and inner_lock promo stay stacked", {
+  stacked <- function(feature) {
+    html <- page_gate_html(feature)
+    !grepl("ynow-gate-extras--checklist-split", html, fixed = TRUE) &&
+      !grepl("ynow-gate-promo-demo-row", html, fixed = TRUE) &&
+      grepl("ynow-gate-promo", html, fixed = TRUE)
+  }
+  stacked("pdf") && stacked("snap_defaults") && stacked("inner_lock")
 })
 check("en/zh demo captions match Decision Checklist copy", {
   identical(

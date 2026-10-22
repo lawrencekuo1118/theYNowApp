@@ -284,18 +284,27 @@ check("lab and checklist gates are feature-specific", {
     grepl("Unlock Decision Checklist", chk, fixed = TRUE) &&
     !grepl("Unlock Value Alerts", lab, fixed = TRUE)
 })
-check("checklist gate is side-by-side overlay; lab stays stacked", {
+check("checklist and lab gates are side-by-side overlays; account stays stacked", {
   lab <- paste(as.character(ynow_member_gate_ui(
     "g", "t", "b", "btn", feature = "lab"
   )), collapse = "\n")
   chk <- paste(as.character(ynow_member_gate_ui(
     "g2", "t2", "b2", "btn2", feature = "checklist"
   )), collapse = "\n")
-  grepl("ynow-gate-promo-demo-row", chk, fixed = TRUE) &&
+  acct <- paste(as.character(ynow_member_gate_ui(
+    "g3", "t3", "b3", "btn3", feature = "account"
+  )), collapse = "\n")
+  lay_lab <- ynow_gate_layout("lab")
+  lay_acct <- ynow_gate_layout("account")
+  isTRUE(lay_lab$surface_overlay) && isTRUE(lay_lab$split_promo_demo) &&
+    isFALSE(lay_acct$surface_overlay) && isFALSE(lay_acct$split_promo_demo) &&
+    grepl("ynow-gate-promo-demo-row", chk, fixed = TRUE) &&
     grepl("ynow-gate-extras--checklist-split", chk, fixed = TRUE) &&
     grepl("ynow-member-gate--surface-overlay", chk, fixed = TRUE) &&
-    !grepl("ynow-gate-promo-demo-row", lab, fixed = TRUE) &&
-    !grepl("ynow-member-gate--surface-overlay", lab, fixed = TRUE)
+    grepl("ynow-gate-promo-demo-row", lab, fixed = TRUE) &&
+    grepl("ynow-member-gate--surface-overlay", lab, fixed = TRUE) &&
+    !grepl("ynow-member-gate--surface-overlay", acct, fixed = TRUE) &&
+    !grepl("ynow-gate-promo-demo-row", acct, fixed = TRUE)
 })
 check("backtest and checklist require the member gate", {
   ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")

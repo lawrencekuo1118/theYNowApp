@@ -2332,6 +2332,16 @@ ynow_gate_promo_keys <- function(feature) {
   tryCatch(ui_str(key, "en"), error = function(e) fallback)
 }
 
+#' Layout for a gate feature.
+#' Page gates (Lab, Checklist, Alerts, ATX) use the Checklist shell.
+#' Account, PDF, snap_defaults, and inner_lock stay stacked callouts.
+#' @return list(surface_overlay, split_promo_demo)
+ynow_gate_layout <- function(feature) {
+  feature <- as.character(feature %||% "")[1]
+  page <- feature %in% c("lab", "checklist", "alerts", "atx")
+  list(surface_overlay = page, split_promo_demo = page)
+}
+
 #' Shared promo + demo + member FAQ for Sign-in / unlock gate surfaces.
 #' @param feature one of [ynow_gate_features()]
 #' @param include_faq shared membership Q&A (accordion)
@@ -2340,8 +2350,8 @@ ynow_gate_promo_faq_ui <- function(feature = "lab", include_faq = TRUE, compact 
   keys <- ynow_gate_promo_keys(feature)
   feature <- keys$feature
   demo_base <- paste0("demos/", feature)
-  # Decision Checklist: unlock promo + SOP demo sit 1:1 on one row.
-  checklist_split <- identical(feature, "checklist")
+  # Class token stays --checklist-split. CSS selectors already key on it.
+  split_promo <- isTRUE(ynow_gate_layout(feature)$split_promo_demo)
   tier_attr <- if (exists("ynow_membership_lock_tier_attr", mode = "function")) {
     ynow_membership_lock_tier_attr(feature)
   } else {
@@ -2396,7 +2406,7 @@ ynow_gate_promo_faq_ui <- function(feature = "lab", include_faq = TRUE, compact 
       "Demo video unavailable."
     )
   )
-  promo_demo <- if (isTRUE(checklist_split)) {
+  promo_demo <- if (isTRUE(split_promo)) {
     tags$div(class = "ynow-gate-promo-demo-row", promo, demo)
   } else {
     tagList(promo, demo)
@@ -2405,7 +2415,7 @@ ynow_gate_promo_faq_ui <- function(feature = "lab", include_faq = TRUE, compact 
     class = paste(
       "ynow-gate-extras",
       if (isTRUE(compact)) "ynow-gate-extras--compact" else NULL,
-      if (isTRUE(checklist_split)) "ynow-gate-extras--checklist-split" else NULL
+      if (isTRUE(split_promo)) "ynow-gate-extras--checklist-split" else NULL
     ),
     `data-ynow-gate-feature` = feature,
     `data-ynow-lock-tier` = if (nzchar(tier_attr)) tier_attr else NULL,
@@ -2490,17 +2500,17 @@ ynow_member_gate_ui <- function(gate_id, title_id, body_id, btn_id, feature = "l
   } else {
     "A"
   }
-  # Checklist gate covers the faded page surface (not a distant narrow box).
-  checklist_surface <- identical(keys$feature, "checklist")
+  # Page gates cover the faded surface. Stacked gates stay a narrow box.
+  surface <- isTRUE(ynow_gate_layout(keys$feature)$surface_overlay)
   tags$section(
     id = gate_id,
     class = paste(
       "ynow-hfv-chapter ynow-member-gate ynow-gate-box",
-      if (isTRUE(checklist_surface)) "ynow-member-gate--surface-overlay" else NULL
+      if (isTRUE(surface)) "ynow-member-gate--surface-overlay" else NULL
     ),
     `data-ynow-gate-feature` = keys$feature,
     `data-ynow-lock-tier` = if (nzchar(tier_attr)) tier_attr else NULL,
-    style = if (isTRUE(checklist_surface)) {
+    style = if (isTRUE(surface)) {
       "display:none;"
     } else {
       "display:none; max-width:760px; margin:18px auto;"
