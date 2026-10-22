@@ -1,3 +1,17 @@
+## [v26.54] — 2026-10-22
+
+### Added
+- TW Business Breakdown: FinmoConf → latest MOPS 法說會 presentation PDF (zh preferred) as automatable Estimate source for status-only 訂單／供應鏈／今後發展 (#421).
+
+### Notes
+- en-US: FinmoConf company HTML only (no `/api/`); amounts only when stated; merges with Fugle; SA last-resort; AlphaMemo human outbound. Bundle `12726282`.
+- zh-TW: FinmoConf 公司頁發現最新簡報 PDF（不呼叫 `/api/`）；狀態摘錄＋明列金額；與 Fugle 合併。Bundle `12726282`。
+
+## [v26.53] — 2026-10-22
+
+### Fixed
+- Sidebar chip: longer SVG PCB circuit traces (natural-size foot PNG, no stretch) with logo blue↔white strokes and upward fade (#418).
+
 ## [v26.52] — 2026-10-22
 
 ### Fixed
