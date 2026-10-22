@@ -3394,6 +3394,946 @@ beta_rolling_section_ui <- function() {
   )
 }
 
+
+.ynow_page_ui_ri_calculator <- function() {
+  ri_module_ui("mod_ri")
+}
+
+.ynow_page_ui_pb_calculator <- function() {
+  pb_asset_module_ui("mod_pb")
+}
+
+.ynow_page_ui_rel_mult_ev <- function() {
+  relative_multiples_module_ui("mod_rel", part = "rel_mult_ev")
+}
+
+.ynow_page_ui_rel_multiples_calculator <- function() {
+  relative_multiples_module_ui("mod_rel", part = "rel_multiples_calculator")
+}
+
+.ynow_page_ui_rel_mult_rev <- function() {
+  relative_multiples_module_ui("mod_rel", part = "rel_mult_rev")
+}
+
+.ynow_page_ui_sotp_calculator <- function() {
+  sotp_module_ui("mod_sotp")
+}
+
+.ynow_page_ui_nav_calculator <- function() {
+  nav_module_ui("mod_nav")
+}
+
+.ynow_page_ui_price_alerts <- function() {
+  price_alert_tab_body_ui()
+}
+
+
+.ynow_page_ui_snapshot <- function() {
+  tagList(
+        h2(tags$span(id = "ynow_snapshot_page_title", "Snapshot")),
+        tags$p(
+          id = "ynow_snapshot_page_help",
+          class = "help-block ynow-full-only",
+          paste0(
+            "Three tabs: manual adjustments vs the post-Search baseline (with annotated PDF); ",
+            "current live parameters (download / upload restore CSV); and APP_DEFAULTS ",
+            "(that tab shows a lock until System admin unlock; the defaults table appears only after unlock)."
+          )
+        ),
+        tags$p(
+          id = "ynow_snapshot_page_help_lite",
+          class = "help-block ynow-lite-only",
+          paste0(
+            "Lite can show System defaults (APP_DEFAULTS) for parameters you can set in Lite ",
+            "(Dashboard industry / currency / default ticker, Blue Chip ranking and Clustering) ",
+            "after System admin unlock. Manual audit and live snapshot restore stay in Full mode."
+          )
+        ),
+        tags$div(
+          id = "ynow_inner_tab_lock_promo_tpl",
+          class = "ynow-inner-tab-lock-tpl ynow-gate-callout",
+          hidden = NA,
+          `data-ynow-gate-feature` = "inner_lock",
+          `data-ynow-lock-scope` = "ops_acl",
+          tags$p(
+            class = "ynow-gate-body",
+            "Sign in to open this locked tab. If you are already signed in, a system admin must clear the restriction."
+          ),
+          if (exists("ynow_gate_promo_faq_ui", mode = "function")) {
+            ynow_gate_promo_faq_ui(
+              feature = "inner_lock",
+              include_faq = FALSE,
+              compact = FALSE
+            )
+          } else {
+            NULL
+          },
+          tags$div(
+            class = "ynow-auth-pair ynow-auth-pair--gate",
+            tags$button(
+              type = "button",
+              class = "btn btn-primary ynow-auth-open ynow-auth-btn",
+              tags$span(class = "ynow-member-gate-signin-label", "Sign in")
+            ),
+            tags$button(
+              type = "button",
+              class = "btn btn-default ynow-auth-register-open ynow-auth-btn",
+              tags$span(class = "ynow-auth-register-label", "Register")
+            )
+          )
+        ),
+        tags$div(
+          id = "ynow_atx_lock_promo_tpl",
+          class = "ynow-atx-lock-tpl ynow-member-gate-surface ynow-member-gate-surface--checklist ynow-member-gate-surface--locked",
+          hidden = NA,
+          `data-ynow-gate-feature` = "atx",
+          if (exists("ynow_member_gate_fade_backdrop_ui", mode = "function")) {
+            ynow_member_gate_fade_backdrop_ui("atx")
+          } else {
+            tags$div(class = "ynow-member-gate-fade-backdrop", `aria-hidden` = "true")
+          },
+          tags$section(
+            class = "ynow-hfv-chapter ynow-member-gate ynow-gate-box ynow-member-gate--surface-overlay",
+            `data-ynow-gate-feature` = "atx",
+            `data-ynow-lock-scope` = "ops_acl",
+            tags$div(
+              class = "ynow-hfv-chapter__head",
+              tags$span(class = "ynow-hfv-chapter__kicker ynow-gate-section-kicker", "Member access"),
+              tags$h3(
+                class = "ynow-hfv-chapter__title",
+                tags$span(class = "ynow-auth-gate-title", "Sign in required")
+              )
+            ),
+            tags$div(
+              class = "ynow-hfv-chapter__body",
+              tags$p(
+                class = "ynow-gate-body",
+                "Asset Transmission Root is locked. Sign in to open this page. If you are already signed in, a system admin must clear the restriction."
+              ),
+              if (exists("ynow_gate_promo_faq_ui", mode = "function")) {
+                ynow_gate_promo_faq_ui(
+                  feature = "atx",
+                  include_faq = TRUE,
+                  compact = FALSE
+                )
+              } else {
+                NULL
+              },
+              tags$div(
+                class = "ynow-auth-pair ynow-auth-pair--gate",
+                tags$button(
+                  type = "button",
+                  class = "btn btn-primary ynow-auth-open ynow-auth-btn",
+                  tags$span(class = "ynow-member-gate-signin-label", "Sign in")
+                ),
+                tags$button(
+                  type = "button",
+                  class = "btn btn-default ynow-auth-register-open ynow-auth-btn",
+                  tags$span(class = "ynow-auth-register-label", "Register")
+                )
+              )
+            )
+          )
+        ),
+        tabBox(
+          # No right-side chrome title (page h2 already says Snapshot; avoids wrong remaps)
+          id = "snapshot_report",
+          width = "auto",
+
+          tabPanel(
+            title = tagList(
+              icon("user-edit"),
+              tags$span(id = "ynow_snapshot_tab_audit", "Manual adjustments (vs post-Search baseline)")
+            ),
+            value = "snap_audit",
+            tags$div(
+              `data-ynow-lock` = "section:snap_audit",
+              tags$p(
+                id = "ynow_param_audit_help",
+                style = "font-size:12.5px; color:#666; line-height:1.45; margin:0 0 10px 0;",
+                paste0(
+                  "Baseline locks after Search and statement auto-fill. ",
+                  "Later manual overrides are listed by page. ",
+                  "Use Go & highlight to jump and frame the input. ",
+                  "Below: select pages and generate an annotated screenshot PDF."
+                )
+              ),
+              uiOutput("param_audit_report"),
+              tags$hr(style = "margin:14px 0;"),
+              tags$h4(
+                id = "ynow_param_audit_pdf_title",
+                style = "margin:0 0 8px 0; font-size:15px; font-weight:700;",
+                "Annotated page screenshots (PDF)"
+              ),
+              tags$p(
+                id = "ynow_param_audit_pdf_help",
+                style = "font-size:12.5px; color:#666; line-height:1.45; margin:0 0 10px 0;",
+                paste0(
+                  "Select pages by category. The app switches to each page (and statement block when chosen), ",
+                  "captures the live layout, draws boxes on inputs you changed vs the post-Search baseline, ",
+                  "and downloads one PDF."
+                )
+              ),
+              if (exists("ynow_param_audit_pdf_pages_ui", mode = "function")) {
+                ynow_param_audit_pdf_pages_ui()
+              } else {
+                checkboxGroupInput(
+                  "param_audit_pdf_pages",
+                  label = tags$span(id = "ynow_param_audit_pdf_pages_label", "Pages to capture"),
+                  choiceNames = list(
+                    tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_basic",
+                              "Model Dashboard (SGR / CAPM / WACC / Beta)"),
+                    tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_dcf", "DCF"),
+                    tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_ddm", "DDM"),
+                    tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_ri", "RI"),
+                    tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_pb", "P/B"),
+                    tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_nav", "NAV")
+                  ),
+                  choiceValues = c(
+                    "get_started", "dcf_calculator", "ddm_calculator",
+                    "ri_calculator", "pb_calculator", "nav_calculator"
+                  ),
+                  selected = c(
+                    "get_started", "dcf_calculator", "ddm_calculator",
+                    "ri_calculator", "pb_calculator", "nav_calculator"
+                  )
+                )
+              },
+              div(
+                style = "display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:8px;",
+                actionButton(
+                  "param_audit_pdf_go",
+                  tagList(icon("file-pdf"), tags$span(id = "ynow_param_audit_pdf_btn", "Generate annotated PDF")),
+                  class = "btn-success"
+                ),
+                tags$span(
+                  id = "ynow_param_audit_pdf_status",
+                  style = "font-size:12.5px; color:#555;"
+                )
+              )
+            )
+          ),
+
+          tabPanel(
+            title = tagList(
+              icon("camera"),
+              tags$span(id = "ynow_snapshot_tab_current", "Current App Parameter Snapshot")
+            ),
+            value = "snap_current",
+            tags$p(
+              id = "ynow_param_restore_help",
+              style = "font-size:12.5px; color:#666; line-height:1.45; margin:0 0 10px 0;",
+              paste0(
+                "Download a restore CSV to save your current valuation inputs. ",
+                "Later, upload that file and click Restore to write the values back into the App, ",
+                "then continue DCF / DDM / RI / P/B / NAV analysis. ",
+                "Prefer Search (load statements) first when the ticker differs."
+              )
+            ),
+            div(
+              style = "display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:12px; margin-bottom:10px;",
+              uiOutput("snapshot_timestamp"),
+              div(
+                style = "display:flex; flex-wrap:wrap; gap:8px; align-items:center;",
+                downloadButton(
+                  "download_snapshot",
+                  tags$span(id = "ynow_download_snapshot_btn", "Download Snapshot CSV"),
+                  icon = icon("download")
+                ),
+                downloadButton(
+                  "download_param_restore",
+                  tags$span(id = "ynow_download_param_restore_btn", "Download restore CSV"),
+                  icon = icon("save"),
+                  class = "btn-primary"
+                )
+              )
+            ),
+            tags$p(
+              id = "ynow_snapshot_download_quota",
+              class = "ynow-snapshot-download-quota",
+              role = "status",
+              `aria-live` = "polite",
+              "Sign-in required. Snapshot / restore CSV downloads are free after sign-in (no FYN)."
+            ),
+            tags$div(
+              class = "ynow-param-restore-box",
+              `data-ynow-lock` = "section:snapshot_restore",
+              style = "margin:0 0 14px 0; padding:12px 14px; background:#f7f9fc; border:1px solid #e2e8f0; border-radius:6px; border-left:4px solid #3c8dbc;",
+              tags$h4(
+                id = "ynow_param_restore_title",
+                style = "margin:0 0 8px 0; font-size:15px; font-weight:700;",
+                "Restore parameters from file"
+              ),
+              fluidRow(
+                column(
+                  width = 7,
+                  fileInput(
+                    "param_restore_file",
+                    label = tags$span(id = "ynow_param_restore_file_label", "Upload restore CSV"),
+                    accept = c(".csv", "text/csv", "text/comma-separated-values"),
+                    buttonLabel = "Browse…",
+                    placeholder = "No file selected"
+                  )
+                ),
+                column(
+                  width = 5,
+                  tags$div(
+                    style = "margin-top:24px;",
+                    actionButton(
+                      "param_restore_go",
+                      tagList(
+                        icon("upload"),
+                        tags$span(id = "ynow_param_restore_btn", "Restore parameters")
+                      ),
+                      class = "btn-success"
+                    )
+                  )
+                )
+              ),
+              tags$span(
+                id = "ynow_param_restore_status",
+                style = "font-size:12.5px; color:#555;"
+              ),
+              uiOutput("param_restore_status_ui")
+            ),
+            # Bear／Base／Bull scenario rules for every valuation engine
+            # (moved from Model Dashboard SGR box — Snapshot is the review surface).
+            tags$div(
+              class = "ynow-scenario-audit-wrap",
+              style = "margin:0 0 16px 0; padding:12px 14px; background:#fafbfc; border:1px solid #e5e7eb; border-radius:6px;",
+              uiOutput("txt_scenario_audit")
+            ),
+            dataTableOutput("snapshot_table")
+          ),
+
+          tabPanel(
+            title = tagList(
+              icon("lock", class = "ynow-snap-tab-lock"),
+              icon("sliders-h"),
+              tags$span(id = "ynow_snapshot_tab_defaults", "System defaults (APP_DEFAULTS)")
+            ),
+            value = "snap_defaults",
+            tags$div(
+              id = "ynow_snapshot_defaults_locked",
+              class = "ynow-snap-defaults-locked ynow-gate-callout",
+              `data-ynow-gate-feature` = "snap_defaults",
+              `data-ynow-lock-scope` = "ops_sysadmin",
+              tags$span(
+                id = "ynow_snapshot_defaults_locked_msg",
+                class = "ynow-gate-body",
+                paste0(
+                  "System defaults (APP_DEFAULTS) require System admin unlock ",
+                  "(same session as Points → System admin). ",
+                  "After Exit system admin, this tab locks again."
+                )
+              ),
+              if (exists("ynow_gate_promo_faq_ui", mode = "function")) {
+                ynow_gate_promo_faq_ui(
+                  feature = "snap_defaults",
+                  include_faq = FALSE,
+                  compact = FALSE
+                )
+              } else {
+                NULL
+              }
+            ),
+            div(
+              class = "ynow-snap-defaults-body",
+              div(
+                style = "display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:10px; flex-wrap:wrap;",
+                tags$span(
+                  id = "ynow_snapshot_defaults_help",
+                  class = "ynow-full-only",
+                  style = "font-size:12.5px; color:#666; line-height:1.45;",
+                  paste0(
+                    "Defaults written at App start (including items estimated from the default industry / Rf). ",
+                    "May differ from Current App Parameter Snapshot; fields can still be overridden on each page."
+                  )
+                ),
+                tags$span(
+                  id = "ynow_snapshot_defaults_help_lite",
+                  class = "ynow-lite-only",
+                  style = "font-size:12.5px; color:#666; line-height:1.45;",
+                  paste0(
+                    "Only parameters Lite can set (Dashboard industry / currency / default ticker, ",
+                    "plus Blue Chip ranking and Clustering). Smart Analysis engine seeds and Full-only ",
+                    "model parameters are hidden here."
+                  )
+                ),
+                downloadButton(
+                  "download_defaults",
+                  tags$span(id = "ynow_download_defaults_btn", "Download Defaults CSV"),
+                  icon = icon("download")
+                )
+              ),
+              dataTableOutput("defaults_table")
+            )
+          )
+        )
+      )
+}
+
+.ynow_page_ui_dashboard <- function() {
+  tagList(
+
+              uiOutput("company_overview_ui"),
+              uiOutput("ynow_news_thermometer"),
+
+              tags$div(
+                class = "ynow-full-only",
+              tabBox(title = "FINANCIAL REPORT",
+                     id = "dashboard_fin_report",
+                     width = "auto",
+                     
+                     tabPanel("Finance Summary",
+                              p("This section imports Finance Summaries from Yahoo Finance",
+                                style = "margin-bottom: 12px; color: #666; font-size: 13px;"),
+                              uiOutput("fs_summary_ui"),
+                              downloadButton('FS_download', "Download Finance Summary")
+                     ),
+                     
+                     tabPanel(
+                       "Income Statement",
+                       icon = icon("chart-line"),
+                       p("This section imports Income Statements from Yahoo Finance"),
+                       
+                       # 🌟 新增：Income Statement 下拉選單與互動圖表
+                       selectInput("is_type", "Select Income Statement Metric",
+                                   choices = c("Total Revenue", "Gross Profit", "EBITDA")),
+                       tags$div(
+                         class = "ynow-fs-chart ynow-fs-chart-is",
+                         tags$div(
+                           class = "ynow-fs-chart-heading",
+                           icon("chart-line"),
+                           tags$span(id = "ynow_fs_is_chart_heading", "Income Statement")
+                         ),
+                         plotlyOutput("is_plot")
+                       ),
+                       tags$hr(),
+                       
+                       DT::dataTableOutput("tbIncomeStatement"), 
+                       downloadButton('IS_download', "Download Income Statement")
+                     ),
+                     
+                     tabPanel("Balance Sheet",
+                              p("This section imports Balance Sheets from Yahoo Finance"),
+                              uiOutput("bs_equity_charts_ui"),
+                              tags$hr(),
+                              DT::dataTableOutput("tbBalanceSheet"),
+                              downloadButton('BS_download', "Download Balance Sheet")
+                     ),
+                     
+                     tabPanel(
+                       "Cash Flow",
+                       icon = icon("money-bill-wave"),
+                       p("This section imports Cash Flow data from Yahoo Finance"),
+                       tags$div(
+                         class = "ynow-fs-chart ynow-fs-chart-cf",
+                         tags$div(
+                           class = "ynow-fs-chart-heading",
+                           icon("money-bill-wave"),
+                           tags$span(id = "ynow_fs_cf_chart_heading", "Cash Flow")
+                         ),
+                         plotlyOutput("cf_plot", height = "460px") %>% withSpinner()
+                       ),
+                       tags$hr(),
+                       DT::dataTableOutput("tbCashFlow"),
+                       downloadButton('CF_download', "Download Cash Flow Data")
+                     ),
+
+                     # 董監改選／可轉債稀釋（Search 代號勾稽；台股 MOPS／TPEx，美股 SEC 連結）
+                     tabPanel(
+                       title = "Board / CB",
+                       value = "corp_events",
+                       icon = icon("landmark"),
+                       id = "corp_events_panel",
+                       uiOutput("corp_events_ui")
+                     ),
+
+                     # 財報附註擷取 (SEC EDGAR) — 僅美股模式顯示（server 以 shinyjs 控制）
+                     tabPanel(
+                       title = ui_i18n("tab_sec_notes"),
+                       value = "sec_notes",
+                       icon = icon("file-alt"),
+                       id = "sec_notes_panel",
+                       p(
+                         ui_i18n("sec_notes_lead"),
+                         " ",
+                         tags$b(ui_i18n("sec_notes_forms")),
+                         tags$br(),
+                         tags$span(
+                           style = "color:#888;",
+                           ui_i18n("sec_notes_source")
+                         )
+                       ),
+                       tags$hr(),
+                       fluidRow(
+                         column(
+                           width = 4,
+                           box(
+                             width = 12, status = "primary", solidHeader = TRUE,
+                             title = ui_i18n("sec_query_title"),
+                             tags$div(
+                               style = "margin-bottom:10px;",
+                               tags$label(ui_i18n("sec_ticker_label"), class = "control-label"),
+                               uiOutput("lab_sec_ticker_display"),
+                               tags$span(
+                                 style = "color:#888; font-size:12px;",
+                                 ui_i18n("sec_ticker_hint")
+                               )
+                             ),
+                             radioButtons(
+                               "lab_sec_form", ui_i18n("sec_form_label"),
+                               choiceNames = list(
+                                 ui_i18n("sec_form_10k"),
+                                 ui_i18n("sec_form_10q"),
+                                 ui_i18n("sec_form_8k")
+                               ),
+                               choiceValues = list("10-K", "10-Q", "8-K"),
+                               selected = "10-K", inline = TRUE
+                             ),
+                             checkboxInput(
+                               "lab_sec_important_only", ui_i18n("sec_important_only"), value = isTRUE(APP_DEFAULTS$lab_sec_important_only)
+                             ),
+                             textInput(
+                               "lab_sec_keyword", ui_i18n("sec_keyword_label"),
+                               value = "",
+                               placeholder = ui_str("sec_keyword_ph", "en")
+                             ) %>% tagAppendAttributes(`data-i18n-ph` = "sec_keyword_ph"),
+                             tags$span(
+                               style = "color:#888; font-size:12px; display:block; margin:-6px 0 10px 0;",
+                               ui_i18n("sec_keyword_hint")
+                             ),
+                             actionButton(
+                               "lab_sec_fetch", ui_i18n("sec_fetch_btn"),
+                               class = "btn-success btn-block",
+                               icon = icon("download"),
+                               style = "font-weight:bold;"
+                             ),
+                             tags$p(
+                               style = "margin-top:10px; color:#888; font-size:12px;",
+                               ui_i18n("sec_fetch_hint")
+                             )
+                           ),
+                           uiOutput("lab_sec_meta")
+                         ),
+                         column(
+                           width = 8,
+                           box(
+                             width = 12, status = "info", solidHeader = TRUE,
+                             title = ui_i18n("sec_index_title"),
+                             uiOutput("lab_sec_index")
+                           ),
+                           box(
+                             width = 12, status = "info", solidHeader = TRUE,
+                             title = ui_i18n("sec_body_title"),
+                             uiOutput("lab_sec_notes")
+                           )
+                         )
+                       )
+                     )
+              )
+              ),
+              
+              tags$div(
+                class = "ynow-ind-overview-block",
+                tags$div(
+                  class = "ynow-ind-overview-title",
+                  id = "ynow_ind_overview_title",
+                  "目前產業標準快覽"
+                ),
+                tags$div(
+                  class = "ynow-ind-overview-row",
+                  tags$div(
+                    class = "ynow-ind-overview-picker",
+                    pickerInput(
+                      inputId = "industry_choice",
+                      label = NULL,
+                      choices = industry_picker_choices(),
+                      selected = APP_DEFAULTS$industry_choice,
+                      # container=body: dropdown is portaled out of the picker cell so
+                      # data-size menu height cannot create a huge in-flow white gap on mobile.
+                      options = list(
+                        `live-search` = TRUE,
+                        size = 12,
+                        container = "body"
+                      )
+                    )
+                  ),
+                  tags$div(
+                    class = "ynow-ind-overview-summary",
+                    uiOutput("dashboard_selected_industry")
+                  )
+                ),
+                tags$div(
+                  class = "ynow-ind-overview-metrics",
+                  uiOutput("dashboard_industry_metric_chips")
+                )
+              ),
+              .kpi_band_color_legend_ui(),
+              
+              tabBox(title = "PERFORMANCE",
+                     width = "auto",
+                     
+                     tabPanel("KPI by Sheet", fluidRow(
+                       column(width = 12,
+                              tags$h4("Balance Sheet KPI", class = "ynow-kpi-section-title"),
+                              div(class = "ynow-kpi-grid",
+                                  uiOutput(NS("kpi", "vbx_eqt_multiplier"))
+                              ),
+                              tags$h4("Income Statement KPI", class = "ynow-kpi-section-title"),
+                              div(class = "ynow-kpi-grid",
+                                  uiOutput(NS("kpi", "vbx_net_profit_margin")),
+                                  uiOutput(NS("kpi", "vbx_gross_profit_margin")),
+                                  uiOutput(NS("kpi", "vbx_opex_ratio")),
+                                  uiOutput(NS("kpi", "vbx_rev_growth")),
+                                  uiOutput(NS("kpi", "vbx_gross_profit_growth"))
+                              ),
+                              tags$h4("Cash Flow KPI", class = "ynow-kpi-section-title"),
+                              div(class = "ynow-kpi-grid",
+                                  uiOutput(NS("kpi", "vbx_op_cash_flow_growth")),
+                                  uiOutput(NS("kpi", "vbx_inv_cash_flow_growth")),
+                                  uiOutput(NS("kpi", "vbx_fin_cash_flow_growth"))
+                              )
+                       )
+                     )),
+                     
+                     tabPanel("Crossover KPIs", fluidRow(
+                       column(width = 12,
+                              div(class = "ynow-kpi-grid",
+                                  uiOutput(NS("kpi", "vbx_ROA")),
+                                  uiOutput(NS("kpi", "vbx_ROE")),
+                                  uiOutput(NS("kpi", "vbx_asset_turnover")),
+                                  uiOutput(NS("kpi", "vbx_ocf_net_income"))
+                              )
+                       )
+                     )),
+                     
+                     tabPanel(
+                       title = tags$span(id = "ynow_dash_annotation_tab", "Annotation"),
+                       fluidRow(
+                         column(
+                           width = 12,
+                           tags$p(
+                             class = "ynow-ann-note",
+                             ui_i18n("ann_kpi_purpose")
+                           ),
+                           tags$p(
+                             style = "margin:-4px 0 12px 0; font-size:12px; color:#777; line-height:1.45;",
+                             ui_i18n("ann_kpi_rules")
+                           ),
+                           tags$h4(ui_i18n("ann_kpi_calc_title"), class = "ynow-ann-h"),
+                           DT::dataTableOutput("annotation_kpi_guide"),
+                           tags$h4(ui_i18n("ann_kpi_stability_title"), class = "ynow-ann-h"),
+                           tableOutput("annotation_stability_table"),
+                           tags$p(
+                             id = "ynow_ann_fscore_crossref",
+                             style = "margin-top:10px; font-size:12px; color:#888;",
+                             "提示：資產週轉率、OCF／淨利無同業區間時固定為白；",
+                             "現金品質另可對照 YNOW／F-Score 品質檢核中的盈餘品質項。"
+                           )
+                         )
+                       )
+                     )
+              ),
+      )
+}
+
+.ynow_page_ui_ddm_calculator <- function() {
+  tagList(
+              tabBox(width = "auto",
+                     tabPanel("",
+                              fluidRow(
+                                column(
+                                  width = 6,
+                                  radioButtons(
+                                    "mod_ddm-ddm_mode",
+                                    "選擇 DDM 估值模型：",
+                                    choices = list(
+                                      "Gordon 永續成長 (GGM)" = "gordon",
+                                      "SPM 永續和 (Sum of Perpetuities)" = "spm",
+                                      "二階段成長法 (Two-Stage Model)" = "two_stage"
+                                    ),
+                                    selected = APP_DEFAULTS$ddm_mode
+                                  ),
+                                  tags$p(
+                                    id = "ynow_ddm_mode_help",
+                                    class = "help-block",
+                                    "Gordon (GGM)：V0 = D1/(r−g)。SPM：定額股利永續 + 保留盈餘成長（V0 = E·g/r² + D/r）。二階段：g1 後接 Gordon 終值 Pn。折現率 r = Ke（CAPM）。"
+                                  )
+                                ),
+                                column(
+                                  width = 6,
+                                  numericInput(
+                                    "mod_ddm-d0",
+                                    "剛配股利 D0",
+                                    value = APP_DEFAULTS$ddm_d0
+                                  ),
+                                  tags$p(
+                                    id = "ynow_ddm_d0_help",
+                                    class = "help-block",
+                                    "由財報自動帶入：現金股利（現金流量表）÷ 股數；若無則顯示 0。可手動覆寫，或至 D0 以配息率／歷史平均覆寫。SPM 模式下此值為定額永續股利 D。"
+                                  ),
+                                  conditionalPanel(
+                                    condition = "input['mod_ddm-ddm_mode'] == 'spm'",
+                                    tags$div(
+                                      id = "ynow_ddm_spm_tip",
+                                      style = "margin-top: 8px; padding: 8px 10px; background: #FFF8E7; border-left: 3px solid #E0A800; border-radius: 4px; font-size: 13px;",
+                                      tags$b("SPM："), " 請至下方 D0 分頁確認「預估／最新 EPS」；公式使用 E（EPS）與 D（上方股利）。"
+                                    )
+                                  )
+                                )
+                              )
+                     )
+              ),
+
+              tabBox(title = "DIVIDEND DISCOUNT", width = "auto",
+                     tabPanel(
+                       "DDM Overview",
+                       icon = icon("calculator"),
+                       fluidRow(
+                         column(
+                           width = 12,
+                           fluidRow(
+                             class = "ynow-model-kpi-row",
+                             column(6, class = "ynow-model-kpi-result ynow-model-kpi-outline",
+                                    infoBoxOutput("mod_ddm-ibx_ddm_price", width = NULL)),
+                             column(6, class = "ynow-model-kpi-tone-2",
+                                    infoBoxOutput("mod_ddm-ibx_ddm_d1", width = NULL))
+                           )
+                         )
+                       ),
+                       uiOutput("ddm_value_why"),
+                       fluidRow(
+                         column(
+                           width = 12,
+                           .ddm_formula_banner(),
+                           uiOutput("mod_ddm-ui_ddm_result"),
+                           h6(helpText(id = "ynow_ddm_overview_hint", ui_str("ddm_overview_hint", "en"))),
+                           fluidRow(
+                             column(
+                               width = 6,
+                               ynow_calc_btn("mod_ddm-btn_calc_ddm", "試算 DDM")
+                             ),
+                             column(
+                               width = 6,
+                               ynow_reset_defaults_btn("mod_ddm-reset_ddm")
+                             )
+                           ),
+                           tags$div(style = "margin-top: 10px;", htmlOutput("mod_ddm-vtxt_ddm_setting_details"))
+                         )
+                       )
+                     ),
+                     tabPanel(
+                       "DDM Calculation Details",
+                       fluidRow(
+                         infoBoxOutput("mod_ddm-ibx_d0_scraped", width = 4),
+                         infoBoxOutput("mod_ddm-ibx_d0_eps", width = 4),
+                         infoBoxOutput("mod_ddm-ibx_d0_payout", width = 4)
+                       ),
+                       fluidRow(
+                         column(
+                           width = 12,
+                           div(
+                             ui_i18n("ddm_details_smooth_note"),
+                             style = "font-size: 15px; font-weight: bold; color: #2C3E50; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;"
+                           )
+                         )
+                       )
+                     )
+              ),
+
+              tabBox(width = "auto",
+                     tabPanel(
+                       "Overview",
+                       fluidRow(
+                         column(
+                           width = 12,
+                           numericInput(
+                             "mod_ddm-g",
+                             ui_i18n("ddm_g_label"),
+                             value = APP_DEFAULTS$ddm_g
+                           ),
+                           checkboxInput(
+                             "mod_ddm-sync_g",
+                             ui_i18n("ddm_sync_g_label"),
+                             value = isTRUE(APP_DEFAULTS$ddm_sync_central_g)
+                           ),
+                           tags$p(
+                             id = "ynow_ddm_g_sync_help",
+                             class = "help-block",
+                             "勾選時跟隨中央 SGR；取消勾選後可單獨覆寫股利成長率（不必等於 FCFF 終值 g）。二階段時此值即 g₂；SPM 時為公式中的盈餘成長 g。"
+                           ),
+                           tags$div(style = "margin-top: 12px;", .ddm_two_stage_params_box()),
+                           conditionalPanel(
+                             condition = "input['mod_ddm-ddm_mode'] == 'spm'",
+                             tags$div(
+                               style = "margin-top: 12px;",
+                               tags$p(
+                                 id = "ynow_ddm_spm_g_note",
+                                 class = "help-block",
+                                 "SPM 另需 EPS（E）：請至 D0 分頁確認「預估／最新 EPS」。成長 g 常用 ROE×保留率或 ROA×保留率。"
+                               )
+                             )
+                           )
+                         )
+                       )
+                     ),
+                     tabPanel(
+                       "D0",
+                       icon = icon("cogs"),
+                       fluidRow(
+                         column(
+                           width = 12,
+                           div(
+                             id = "ynow_ddm_d0_banner",
+                             "D0 = 現金股利（現金流量表）÷ 股數（或 EPS × 配息率）　｜　D1 = D0 × (1 + g)",
+                             style = "font-size: 18px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;"
+                           )
+                         ),
+                         box(
+                           h4(tags$b(ui_i18n("ddm_d0_m1_title"))),
+                           p(helpText(ui_i18n("ddm_d0_m1_help"))),
+                           div(
+                             ui_i18n("ddm_d0_formula"),
+                             style = "font-size: 18px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;"
+                           ),
+                           numericInput("mod_ddm-est_eps", ui_i18n("ddm_est_eps_label"), value = NA, step = 0.01),
+                           numericInput("mod_ddm-est_payout", ui_i18n("ddm_est_payout_label"), value = NA, min = 0, max = 100, step = 0.01),
+                           actionButton("mod_ddm-calc_d0_payout", ui_i18n("btn_calc_d0_payout"), class = "btn-primary"),
+                           tags$br(),
+                           htmlOutput("mod_ddm-txt_d0_payout_res")
+                         ),
+                         box(
+                           h4(tags$b(ui_i18n("ddm_d0_m2_title"))),
+                           p(helpText(ui_i18n("ddm_d0_m2_help"))),
+                           numericInput("mod_ddm-cycle_years", ui_i18n("ddm_cycle_years_label"), value = 5, min = 1, max = 10, step = 0.01),
+                           actionButton("mod_ddm-calc_d0_average", ui_i18n("btn_calc_d0_avg"), class = "btn-primary"),
+                           tags$br(),
+                           htmlOutput("mod_ddm-txt_d0_avg_res")
+                         )
+                       )
+                     ),
+                     # Ke ↔ Beta 左右對調：Ke 在前（對齊 DCF 的 WACC → Beta 節奏）
+                     tabPanel(
+                       "Ke",
+                       icon = icon("balance-scale"),
+                       uiOutput("ddm_ke_tab_note"),
+                       fluidRow(
+                         infoBoxOutput("ibx_ddm_ke", width = 4),
+                         infoBoxOutput("ibx_ddm_beta", width = 4),
+                         infoBoxOutput("ibx_ddm_erp", width = 4)
+                       ),
+                       div(
+                         id = "ynow_ddm_ke_formula_banner",
+                         "Ke = Rf + β × (Rm − Rf)",
+                         style = "font-size: 18px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;"
+                       ),
+                       # 上列 100%：Ke 估算（對齊 WACC 估算盒）；下列左說明、右 CAPM
+                       fluidRow(
+                         box(
+                           width = 12,
+                           h4("Ke 估算", id = "ynow_ddm_ke_box_title"),
+                           fluidRow(
+                             column(
+                               4,
+                               numericInput(
+                                 "mod_ddm-ke", ui_i18n("ddm_r_ke_label"),
+                                 value = APP_DEFAULTS$ddm_ke, min = 0, step = 0.01
+                               )
+                             ),
+                             column(
+                               4,
+                               tags$div(
+                                 style = "margin-top: 25px;",
+                                 htmlOutput("ddm_ke_erp_summary")
+                               )
+                             ),
+                             column(
+                               4,
+                               tags$div(
+                                 style = "margin-top: 25px;",
+                                 htmlOutput("ddm_ke_source_chip")
+                               )
+                             )
+                           ),
+                           checkboxInput(
+                             "ddm_use_estimated_re",
+                             tags$span(
+                               id = "ynow_ddm_use_estimated_ke_label",
+                               "Use estimated Ke (from CAPM)"
+                             ),
+                             value = isTRUE(APP_DEFAULTS$use_est_re)
+                           ),
+                           tags$p(
+                             id = "ynow_ddm_ke_help",
+                             style = "margin:0 0 8px 0;color:#666;font-size:12px;",
+                             paste0(
+                               "Ke = Rf + β × (Rm − Rf). Bidirectionally synced with DCF→WACC \"Use estimated rₑ\" and the rₑ value; ",
+                               "when checked, Ke follows CAPM; uncheck to override manually."
+                             )
+                           ),
+                           actionButton("calc_ddm_ke", "計算 Ke（CAPM）", class = "btn-primary"),
+                           tags$br(), htmlOutput("ddm_beta_ke_status")
+                         )
+                       ),
+                       fluidRow(
+                         ddm_ke_bridge_settings_ui(width = 6),
+                         capm_beta_settings_ui(
+                           title = "CAPM Estimate Ke",
+                           calc_id = "calc_ddm_capm",
+                           result_id = "ddm_capm_result",
+                           width = 6,
+                           id_prefix = "ddm_",
+                           box_title_id = "ynow_ddm_capm_box_title",
+                           sync_label_id = "ynow_ddm_sync_gs_beta_label",
+                           rf_note_id = "ddm_capm_rf_source_note",
+                           btn_label = "Estimate Ke (CAPM)"
+                         )
+                       )
+                     ),
+                     tabPanel(
+                       "Beta (β)",
+                       icon = icon("chart-line"),
+                       .beta_model_source_section_ui(
+                         "ddm_beta_u_apply_source",
+                         "ddm_apply_beta_u_selected"
+                       )
+                     )
+              ),
+
+              tabBox(title = "SENSITIVITY", width = "auto",
+                     fluidRow(
+                       column(
+                         width = 12,
+                         h4(ui_i18n("sens_matrix_title")),
+                         p(helpText(ui_i18n("ddm_sens_help")))
+                       )
+                     ),
+                     fluidRow(
+                       column(
+                         width = 12,
+                         div(
+                           style = "width: 100%; overflow-x: auto;",
+                           tags$style(HTML("#ddm_sensitivity_table table { width: 100% !important; table-layout: fixed; }")),
+                           tableOutput("ddm_sensitivity_table")
+                         )
+                       )
+                     ),
+                     fluidRow(
+                       column(
+                         width = 12,
+                         uiOutput("ddm_sensitivity_analysis_panel")
+                       )
+                     )
+              ),
+              .model_param_sensitivity_box(
+                ui_i18n("ddm_formula_contrib_title"),
+                "mod_ddm-param_sensitivity_table"
+              )
+      )
+}
+
 #' Lazy page body for tab `testing` — dedicated system-admin portal (Full-only).
 #' Internal tabName stays `testing` for sidebar/lazy wiring; UI copy is System admin.
 #' Login: username `ynow` + Asia/Taipei calendar password YYYYMMDD (not end-user Email login).
@@ -20072,346 +21012,7 @@ ui <- dashboardPage(
 
       tabItem(
         tabName = "snapshot",
-        h2(tags$span(id = "ynow_snapshot_page_title", "Snapshot")),
-        tags$p(
-          id = "ynow_snapshot_page_help",
-          class = "help-block ynow-full-only",
-          paste0(
-            "Three tabs: manual adjustments vs the post-Search baseline (with annotated PDF); ",
-            "current live parameters (download / upload restore CSV); and APP_DEFAULTS ",
-            "(that tab shows a lock until System admin unlock; the defaults table appears only after unlock)."
-          )
-        ),
-        tags$p(
-          id = "ynow_snapshot_page_help_lite",
-          class = "help-block ynow-lite-only",
-          paste0(
-            "Lite can show System defaults (APP_DEFAULTS) for parameters you can set in Lite ",
-            "(Dashboard industry / currency / default ticker, Blue Chip ranking and Clustering) ",
-            "after System admin unlock. Manual audit and live snapshot restore stay in Full mode."
-          )
-        ),
-        tags$div(
-          id = "ynow_inner_tab_lock_promo_tpl",
-          class = "ynow-inner-tab-lock-tpl ynow-gate-callout",
-          hidden = NA,
-          `data-ynow-gate-feature` = "inner_lock",
-          `data-ynow-lock-scope` = "ops_acl",
-          tags$p(
-            class = "ynow-gate-body",
-            "Sign in to open this locked tab. If you are already signed in, a system admin must clear the restriction."
-          ),
-          if (exists("ynow_gate_promo_faq_ui", mode = "function")) {
-            ynow_gate_promo_faq_ui(
-              feature = "inner_lock",
-              include_faq = FALSE,
-              compact = FALSE
-            )
-          } else {
-            NULL
-          },
-          tags$div(
-            class = "ynow-auth-pair ynow-auth-pair--gate",
-            tags$button(
-              type = "button",
-              class = "btn btn-primary ynow-auth-open ynow-auth-btn",
-              tags$span(class = "ynow-member-gate-signin-label", "Sign in")
-            ),
-            tags$button(
-              type = "button",
-              class = "btn btn-default ynow-auth-register-open ynow-auth-btn",
-              tags$span(class = "ynow-auth-register-label", "Register")
-            )
-          )
-        ),
-        tags$div(
-          id = "ynow_atx_lock_promo_tpl",
-          class = "ynow-atx-lock-tpl ynow-member-gate-surface ynow-member-gate-surface--checklist ynow-member-gate-surface--locked",
-          hidden = NA,
-          `data-ynow-gate-feature` = "atx",
-          if (exists("ynow_member_gate_fade_backdrop_ui", mode = "function")) {
-            ynow_member_gate_fade_backdrop_ui("atx")
-          } else {
-            tags$div(class = "ynow-member-gate-fade-backdrop", `aria-hidden` = "true")
-          },
-          tags$section(
-            class = "ynow-hfv-chapter ynow-member-gate ynow-gate-box ynow-member-gate--surface-overlay",
-            `data-ynow-gate-feature` = "atx",
-            `data-ynow-lock-scope` = "ops_acl",
-            tags$div(
-              class = "ynow-hfv-chapter__head",
-              tags$span(class = "ynow-hfv-chapter__kicker ynow-gate-section-kicker", "Member access"),
-              tags$h3(
-                class = "ynow-hfv-chapter__title",
-                tags$span(class = "ynow-auth-gate-title", "Sign in required")
-              )
-            ),
-            tags$div(
-              class = "ynow-hfv-chapter__body",
-              tags$p(
-                class = "ynow-gate-body",
-                "Asset Transmission Root is locked. Sign in to open this page. If you are already signed in, a system admin must clear the restriction."
-              ),
-              if (exists("ynow_gate_promo_faq_ui", mode = "function")) {
-                ynow_gate_promo_faq_ui(
-                  feature = "atx",
-                  include_faq = TRUE,
-                  compact = FALSE
-                )
-              } else {
-                NULL
-              },
-              tags$div(
-                class = "ynow-auth-pair ynow-auth-pair--gate",
-                tags$button(
-                  type = "button",
-                  class = "btn btn-primary ynow-auth-open ynow-auth-btn",
-                  tags$span(class = "ynow-member-gate-signin-label", "Sign in")
-                ),
-                tags$button(
-                  type = "button",
-                  class = "btn btn-default ynow-auth-register-open ynow-auth-btn",
-                  tags$span(class = "ynow-auth-register-label", "Register")
-                )
-              )
-            )
-          )
-        ),
-        tabBox(
-          # No right-side chrome title (page h2 already says Snapshot; avoids wrong remaps)
-          id = "snapshot_report",
-          width = "auto",
-
-          tabPanel(
-            title = tagList(
-              icon("user-edit"),
-              tags$span(id = "ynow_snapshot_tab_audit", "Manual adjustments (vs post-Search baseline)")
-            ),
-            value = "snap_audit",
-            tags$div(
-              `data-ynow-lock` = "section:snap_audit",
-              tags$p(
-                id = "ynow_param_audit_help",
-                style = "font-size:12.5px; color:#666; line-height:1.45; margin:0 0 10px 0;",
-                paste0(
-                  "Baseline locks after Search and statement auto-fill. ",
-                  "Later manual overrides are listed by page. ",
-                  "Use Go & highlight to jump and frame the input. ",
-                  "Below: select pages and generate an annotated screenshot PDF."
-                )
-              ),
-              uiOutput("param_audit_report"),
-              tags$hr(style = "margin:14px 0;"),
-              tags$h4(
-                id = "ynow_param_audit_pdf_title",
-                style = "margin:0 0 8px 0; font-size:15px; font-weight:700;",
-                "Annotated page screenshots (PDF)"
-              ),
-              tags$p(
-                id = "ynow_param_audit_pdf_help",
-                style = "font-size:12.5px; color:#666; line-height:1.45; margin:0 0 10px 0;",
-                paste0(
-                  "Select pages by category. The app switches to each page (and statement block when chosen), ",
-                  "captures the live layout, draws boxes on inputs you changed vs the post-Search baseline, ",
-                  "and downloads one PDF."
-                )
-              ),
-              if (exists("ynow_param_audit_pdf_pages_ui", mode = "function")) {
-                ynow_param_audit_pdf_pages_ui()
-              } else {
-                checkboxGroupInput(
-                  "param_audit_pdf_pages",
-                  label = tags$span(id = "ynow_param_audit_pdf_pages_label", "Pages to capture"),
-                  choiceNames = list(
-                    tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_basic",
-                              "Model Dashboard (SGR / CAPM / WACC / Beta)"),
-                    tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_dcf", "DCF"),
-                    tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_ddm", "DDM"),
-                    tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_ri", "RI"),
-                    tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_pb", "P/B"),
-                    tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_nav", "NAV")
-                  ),
-                  choiceValues = c(
-                    "get_started", "dcf_calculator", "ddm_calculator",
-                    "ri_calculator", "pb_calculator", "nav_calculator"
-                  ),
-                  selected = c(
-                    "get_started", "dcf_calculator", "ddm_calculator",
-                    "ri_calculator", "pb_calculator", "nav_calculator"
-                  )
-                )
-              },
-              div(
-                style = "display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:8px;",
-                actionButton(
-                  "param_audit_pdf_go",
-                  tagList(icon("file-pdf"), tags$span(id = "ynow_param_audit_pdf_btn", "Generate annotated PDF")),
-                  class = "btn-success"
-                ),
-                tags$span(
-                  id = "ynow_param_audit_pdf_status",
-                  style = "font-size:12.5px; color:#555;"
-                )
-              )
-            )
-          ),
-
-          tabPanel(
-            title = tagList(
-              icon("camera"),
-              tags$span(id = "ynow_snapshot_tab_current", "Current App Parameter Snapshot")
-            ),
-            value = "snap_current",
-            tags$p(
-              id = "ynow_param_restore_help",
-              style = "font-size:12.5px; color:#666; line-height:1.45; margin:0 0 10px 0;",
-              paste0(
-                "Download a restore CSV to save your current valuation inputs. ",
-                "Later, upload that file and click Restore to write the values back into the App, ",
-                "then continue DCF / DDM / RI / P/B / NAV analysis. ",
-                "Prefer Search (load statements) first when the ticker differs."
-              )
-            ),
-            div(
-              style = "display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:12px; margin-bottom:10px;",
-              uiOutput("snapshot_timestamp"),
-              div(
-                style = "display:flex; flex-wrap:wrap; gap:8px; align-items:center;",
-                downloadButton(
-                  "download_snapshot",
-                  tags$span(id = "ynow_download_snapshot_btn", "Download Snapshot CSV"),
-                  icon = icon("download")
-                ),
-                downloadButton(
-                  "download_param_restore",
-                  tags$span(id = "ynow_download_param_restore_btn", "Download restore CSV"),
-                  icon = icon("save"),
-                  class = "btn-primary"
-                )
-              )
-            ),
-            tags$p(
-              id = "ynow_snapshot_download_quota",
-              class = "ynow-snapshot-download-quota",
-              role = "status",
-              `aria-live` = "polite",
-              "Sign-in required. Snapshot / restore CSV downloads are free after sign-in (no FYN)."
-            ),
-            tags$div(
-              class = "ynow-param-restore-box",
-              `data-ynow-lock` = "section:snapshot_restore",
-              style = "margin:0 0 14px 0; padding:12px 14px; background:#f7f9fc; border:1px solid #e2e8f0; border-radius:6px; border-left:4px solid #3c8dbc;",
-              tags$h4(
-                id = "ynow_param_restore_title",
-                style = "margin:0 0 8px 0; font-size:15px; font-weight:700;",
-                "Restore parameters from file"
-              ),
-              fluidRow(
-                column(
-                  width = 7,
-                  fileInput(
-                    "param_restore_file",
-                    label = tags$span(id = "ynow_param_restore_file_label", "Upload restore CSV"),
-                    accept = c(".csv", "text/csv", "text/comma-separated-values"),
-                    buttonLabel = "Browse…",
-                    placeholder = "No file selected"
-                  )
-                ),
-                column(
-                  width = 5,
-                  tags$div(
-                    style = "margin-top:24px;",
-                    actionButton(
-                      "param_restore_go",
-                      tagList(
-                        icon("upload"),
-                        tags$span(id = "ynow_param_restore_btn", "Restore parameters")
-                      ),
-                      class = "btn-success"
-                    )
-                  )
-                )
-              ),
-              tags$span(
-                id = "ynow_param_restore_status",
-                style = "font-size:12.5px; color:#555;"
-              ),
-              uiOutput("param_restore_status_ui")
-            ),
-            # Bear／Base／Bull scenario rules for every valuation engine
-            # (moved from Model Dashboard SGR box — Snapshot is the review surface).
-            tags$div(
-              class = "ynow-scenario-audit-wrap",
-              style = "margin:0 0 16px 0; padding:12px 14px; background:#fafbfc; border:1px solid #e5e7eb; border-radius:6px;",
-              uiOutput("txt_scenario_audit")
-            ),
-            dataTableOutput("snapshot_table")
-          ),
-
-          tabPanel(
-            title = tagList(
-              icon("lock", class = "ynow-snap-tab-lock"),
-              icon("sliders-h"),
-              tags$span(id = "ynow_snapshot_tab_defaults", "System defaults (APP_DEFAULTS)")
-            ),
-            value = "snap_defaults",
-            tags$div(
-              id = "ynow_snapshot_defaults_locked",
-              class = "ynow-snap-defaults-locked ynow-gate-callout",
-              `data-ynow-gate-feature` = "snap_defaults",
-              `data-ynow-lock-scope` = "ops_sysadmin",
-              tags$span(
-                id = "ynow_snapshot_defaults_locked_msg",
-                class = "ynow-gate-body",
-                paste0(
-                  "System defaults (APP_DEFAULTS) require System admin unlock ",
-                  "(same session as Points → System admin). ",
-                  "After Exit system admin, this tab locks again."
-                )
-              ),
-              if (exists("ynow_gate_promo_faq_ui", mode = "function")) {
-                ynow_gate_promo_faq_ui(
-                  feature = "snap_defaults",
-                  include_faq = FALSE,
-                  compact = FALSE
-                )
-              } else {
-                NULL
-              }
-            ),
-            div(
-              class = "ynow-snap-defaults-body",
-              div(
-                style = "display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:10px; flex-wrap:wrap;",
-                tags$span(
-                  id = "ynow_snapshot_defaults_help",
-                  class = "ynow-full-only",
-                  style = "font-size:12.5px; color:#666; line-height:1.45;",
-                  paste0(
-                    "Defaults written at App start (including items estimated from the default industry / Rf). ",
-                    "May differ from Current App Parameter Snapshot; fields can still be overridden on each page."
-                  )
-                ),
-                tags$span(
-                  id = "ynow_snapshot_defaults_help_lite",
-                  class = "ynow-lite-only",
-                  style = "font-size:12.5px; color:#666; line-height:1.45;",
-                  paste0(
-                    "Only parameters Lite can set (Dashboard industry / currency / default ticker, ",
-                    "plus Blue Chip ranking and Clustering). Smart Analysis engine seeds and Full-only ",
-                    "model parameters are hidden here."
-                  )
-                ),
-                downloadButton(
-                  "download_defaults",
-                  tags$span(id = "ynow_download_defaults_btn", "Download Defaults CSV"),
-                  icon = icon("download")
-                )
-              ),
-              dataTableOutput("defaults_table")
-            )
-          )
-        )
+        uiOutput("ynow_lazy_host_snapshot")
       ),
 
       tabItem(
@@ -20420,267 +21021,7 @@ ui <- dashboardPage(
       ),
 
       tabItem(tabName = "dashboard",
-
-              uiOutput("company_overview_ui"),
-              uiOutput("ynow_news_thermometer"),
-
-              tags$div(
-                class = "ynow-full-only",
-              tabBox(title = "FINANCIAL REPORT",
-                     id = "dashboard_fin_report",
-                     width = "auto",
-                     
-                     tabPanel("Finance Summary",
-                              p("This section imports Finance Summaries from Yahoo Finance",
-                                style = "margin-bottom: 12px; color: #666; font-size: 13px;"),
-                              uiOutput("fs_summary_ui"),
-                              downloadButton('FS_download', "Download Finance Summary")
-                     ),
-                     
-                     tabPanel(
-                       "Income Statement",
-                       icon = icon("chart-line"),
-                       p("This section imports Income Statements from Yahoo Finance"),
-                       
-                       # 🌟 新增：Income Statement 下拉選單與互動圖表
-                       selectInput("is_type", "Select Income Statement Metric",
-                                   choices = c("Total Revenue", "Gross Profit", "EBITDA")),
-                       tags$div(
-                         class = "ynow-fs-chart ynow-fs-chart-is",
-                         tags$div(
-                           class = "ynow-fs-chart-heading",
-                           icon("chart-line"),
-                           tags$span(id = "ynow_fs_is_chart_heading", "Income Statement")
-                         ),
-                         plotlyOutput("is_plot")
-                       ),
-                       tags$hr(),
-                       
-                       DT::dataTableOutput("tbIncomeStatement"), 
-                       downloadButton('IS_download', "Download Income Statement")
-                     ),
-                     
-                     tabPanel("Balance Sheet",
-                              p("This section imports Balance Sheets from Yahoo Finance"),
-                              uiOutput("bs_equity_charts_ui"),
-                              tags$hr(),
-                              DT::dataTableOutput("tbBalanceSheet"),
-                              downloadButton('BS_download', "Download Balance Sheet")
-                     ),
-                     
-                     tabPanel(
-                       "Cash Flow",
-                       icon = icon("money-bill-wave"),
-                       p("This section imports Cash Flow data from Yahoo Finance"),
-                       tags$div(
-                         class = "ynow-fs-chart ynow-fs-chart-cf",
-                         tags$div(
-                           class = "ynow-fs-chart-heading",
-                           icon("money-bill-wave"),
-                           tags$span(id = "ynow_fs_cf_chart_heading", "Cash Flow")
-                         ),
-                         plotlyOutput("cf_plot", height = "460px") %>% withSpinner()
-                       ),
-                       tags$hr(),
-                       DT::dataTableOutput("tbCashFlow"),
-                       downloadButton('CF_download', "Download Cash Flow Data")
-                     ),
-
-                     # 董監改選／可轉債稀釋（Search 代號勾稽；台股 MOPS／TPEx，美股 SEC 連結）
-                     tabPanel(
-                       title = "Board / CB",
-                       value = "corp_events",
-                       icon = icon("landmark"),
-                       id = "corp_events_panel",
-                       uiOutput("corp_events_ui")
-                     ),
-
-                     # 財報附註擷取 (SEC EDGAR) — 僅美股模式顯示（server 以 shinyjs 控制）
-                     tabPanel(
-                       title = ui_i18n("tab_sec_notes"),
-                       value = "sec_notes",
-                       icon = icon("file-alt"),
-                       id = "sec_notes_panel",
-                       p(
-                         ui_i18n("sec_notes_lead"),
-                         " ",
-                         tags$b(ui_i18n("sec_notes_forms")),
-                         tags$br(),
-                         tags$span(
-                           style = "color:#888;",
-                           ui_i18n("sec_notes_source")
-                         )
-                       ),
-                       tags$hr(),
-                       fluidRow(
-                         column(
-                           width = 4,
-                           box(
-                             width = 12, status = "primary", solidHeader = TRUE,
-                             title = ui_i18n("sec_query_title"),
-                             tags$div(
-                               style = "margin-bottom:10px;",
-                               tags$label(ui_i18n("sec_ticker_label"), class = "control-label"),
-                               uiOutput("lab_sec_ticker_display"),
-                               tags$span(
-                                 style = "color:#888; font-size:12px;",
-                                 ui_i18n("sec_ticker_hint")
-                               )
-                             ),
-                             radioButtons(
-                               "lab_sec_form", ui_i18n("sec_form_label"),
-                               choiceNames = list(
-                                 ui_i18n("sec_form_10k"),
-                                 ui_i18n("sec_form_10q"),
-                                 ui_i18n("sec_form_8k")
-                               ),
-                               choiceValues = list("10-K", "10-Q", "8-K"),
-                               selected = "10-K", inline = TRUE
-                             ),
-                             checkboxInput(
-                               "lab_sec_important_only", ui_i18n("sec_important_only"), value = isTRUE(APP_DEFAULTS$lab_sec_important_only)
-                             ),
-                             textInput(
-                               "lab_sec_keyword", ui_i18n("sec_keyword_label"),
-                               value = "",
-                               placeholder = ui_str("sec_keyword_ph", "en")
-                             ) %>% tagAppendAttributes(`data-i18n-ph` = "sec_keyword_ph"),
-                             tags$span(
-                               style = "color:#888; font-size:12px; display:block; margin:-6px 0 10px 0;",
-                               ui_i18n("sec_keyword_hint")
-                             ),
-                             actionButton(
-                               "lab_sec_fetch", ui_i18n("sec_fetch_btn"),
-                               class = "btn-success btn-block",
-                               icon = icon("download"),
-                               style = "font-weight:bold;"
-                             ),
-                             tags$p(
-                               style = "margin-top:10px; color:#888; font-size:12px;",
-                               ui_i18n("sec_fetch_hint")
-                             )
-                           ),
-                           uiOutput("lab_sec_meta")
-                         ),
-                         column(
-                           width = 8,
-                           box(
-                             width = 12, status = "info", solidHeader = TRUE,
-                             title = ui_i18n("sec_index_title"),
-                             uiOutput("lab_sec_index")
-                           ),
-                           box(
-                             width = 12, status = "info", solidHeader = TRUE,
-                             title = ui_i18n("sec_body_title"),
-                             uiOutput("lab_sec_notes")
-                           )
-                         )
-                       )
-                     )
-              )
-              ),
-              
-              tags$div(
-                class = "ynow-ind-overview-block",
-                tags$div(
-                  class = "ynow-ind-overview-title",
-                  id = "ynow_ind_overview_title",
-                  "目前產業標準快覽"
-                ),
-                tags$div(
-                  class = "ynow-ind-overview-row",
-                  tags$div(
-                    class = "ynow-ind-overview-picker",
-                    pickerInput(
-                      inputId = "industry_choice",
-                      label = NULL,
-                      choices = industry_picker_choices(),
-                      selected = APP_DEFAULTS$industry_choice,
-                      # container=body: dropdown is portaled out of the picker cell so
-                      # data-size menu height cannot create a huge in-flow white gap on mobile.
-                      options = list(
-                        `live-search` = TRUE,
-                        size = 12,
-                        container = "body"
-                      )
-                    )
-                  ),
-                  tags$div(
-                    class = "ynow-ind-overview-summary",
-                    uiOutput("dashboard_selected_industry")
-                  )
-                ),
-                tags$div(
-                  class = "ynow-ind-overview-metrics",
-                  uiOutput("dashboard_industry_metric_chips")
-                )
-              ),
-              .kpi_band_color_legend_ui(),
-              
-              tabBox(title = "PERFORMANCE",
-                     width = "auto",
-                     
-                     tabPanel("KPI by Sheet", fluidRow(
-                       column(width = 12,
-                              tags$h4("Balance Sheet KPI", class = "ynow-kpi-section-title"),
-                              div(class = "ynow-kpi-grid",
-                                  uiOutput(NS("kpi", "vbx_eqt_multiplier"))
-                              ),
-                              tags$h4("Income Statement KPI", class = "ynow-kpi-section-title"),
-                              div(class = "ynow-kpi-grid",
-                                  uiOutput(NS("kpi", "vbx_net_profit_margin")),
-                                  uiOutput(NS("kpi", "vbx_gross_profit_margin")),
-                                  uiOutput(NS("kpi", "vbx_opex_ratio")),
-                                  uiOutput(NS("kpi", "vbx_rev_growth")),
-                                  uiOutput(NS("kpi", "vbx_gross_profit_growth"))
-                              ),
-                              tags$h4("Cash Flow KPI", class = "ynow-kpi-section-title"),
-                              div(class = "ynow-kpi-grid",
-                                  uiOutput(NS("kpi", "vbx_op_cash_flow_growth")),
-                                  uiOutput(NS("kpi", "vbx_inv_cash_flow_growth")),
-                                  uiOutput(NS("kpi", "vbx_fin_cash_flow_growth"))
-                              )
-                       )
-                     )),
-                     
-                     tabPanel("Crossover KPIs", fluidRow(
-                       column(width = 12,
-                              div(class = "ynow-kpi-grid",
-                                  uiOutput(NS("kpi", "vbx_ROA")),
-                                  uiOutput(NS("kpi", "vbx_ROE")),
-                                  uiOutput(NS("kpi", "vbx_asset_turnover")),
-                                  uiOutput(NS("kpi", "vbx_ocf_net_income"))
-                              )
-                       )
-                     )),
-                     
-                     tabPanel(
-                       title = tags$span(id = "ynow_dash_annotation_tab", "Annotation"),
-                       fluidRow(
-                         column(
-                           width = 12,
-                           tags$p(
-                             class = "ynow-ann-note",
-                             ui_i18n("ann_kpi_purpose")
-                           ),
-                           tags$p(
-                             style = "margin:-4px 0 12px 0; font-size:12px; color:#777; line-height:1.45;",
-                             ui_i18n("ann_kpi_rules")
-                           ),
-                           tags$h4(ui_i18n("ann_kpi_calc_title"), class = "ynow-ann-h"),
-                           DT::dataTableOutput("annotation_kpi_guide"),
-                           tags$h4(ui_i18n("ann_kpi_stability_title"), class = "ynow-ann-h"),
-                           tableOutput("annotation_stability_table"),
-                           tags$p(
-                             id = "ynow_ann_fscore_crossref",
-                             style = "margin-top:10px; font-size:12px; color:#888;",
-                             "提示：資產週轉率、OCF／淨利無同業區間時固定為白；",
-                             "現金品質另可對照 YNOW／F-Score 品質檢核中的盈餘品質項。"
-                           )
-                         )
-                       )
-                     )
-              ),
+        uiOutput("ynow_lazy_host_dashboard")
       ),
 
       # ==========================================
@@ -20703,296 +21044,7 @@ ui <- dashboardPage(
       # DDM：版面節奏對齊 DCF（模式列 → Overview → 參數 → 敏感度）
       # ==========================================
       tabItem(tabName = "ddm_calculator",
-              tabBox(width = "auto",
-                     tabPanel("",
-                              fluidRow(
-                                column(
-                                  width = 6,
-                                  radioButtons(
-                                    "mod_ddm-ddm_mode",
-                                    "選擇 DDM 估值模型：",
-                                    choices = list(
-                                      "Gordon 永續成長 (GGM)" = "gordon",
-                                      "SPM 永續和 (Sum of Perpetuities)" = "spm",
-                                      "二階段成長法 (Two-Stage Model)" = "two_stage"
-                                    ),
-                                    selected = APP_DEFAULTS$ddm_mode
-                                  ),
-                                  tags$p(
-                                    id = "ynow_ddm_mode_help",
-                                    class = "help-block",
-                                    "Gordon (GGM)：V0 = D1/(r−g)。SPM：定額股利永續 + 保留盈餘成長（V0 = E·g/r² + D/r）。二階段：g1 後接 Gordon 終值 Pn。折現率 r = Ke（CAPM）。"
-                                  )
-                                ),
-                                column(
-                                  width = 6,
-                                  numericInput(
-                                    "mod_ddm-d0",
-                                    "剛配股利 D0",
-                                    value = APP_DEFAULTS$ddm_d0
-                                  ),
-                                  tags$p(
-                                    id = "ynow_ddm_d0_help",
-                                    class = "help-block",
-                                    "由財報自動帶入：現金股利（現金流量表）÷ 股數；若無則顯示 0。可手動覆寫，或至 D0 以配息率／歷史平均覆寫。SPM 模式下此值為定額永續股利 D。"
-                                  ),
-                                  conditionalPanel(
-                                    condition = "input['mod_ddm-ddm_mode'] == 'spm'",
-                                    tags$div(
-                                      id = "ynow_ddm_spm_tip",
-                                      style = "margin-top: 8px; padding: 8px 10px; background: #FFF8E7; border-left: 3px solid #E0A800; border-radius: 4px; font-size: 13px;",
-                                      tags$b("SPM："), " 請至下方 D0 分頁確認「預估／最新 EPS」；公式使用 E（EPS）與 D（上方股利）。"
-                                    )
-                                  )
-                                )
-                              )
-                     )
-              ),
-
-              tabBox(title = "DIVIDEND DISCOUNT", width = "auto",
-                     tabPanel(
-                       "DDM Overview",
-                       icon = icon("calculator"),
-                       fluidRow(
-                         column(
-                           width = 12,
-                           fluidRow(
-                             class = "ynow-model-kpi-row",
-                             column(6, class = "ynow-model-kpi-result ynow-model-kpi-outline",
-                                    infoBoxOutput("mod_ddm-ibx_ddm_price", width = NULL)),
-                             column(6, class = "ynow-model-kpi-tone-2",
-                                    infoBoxOutput("mod_ddm-ibx_ddm_d1", width = NULL))
-                           )
-                         )
-                       ),
-                       uiOutput("ddm_value_why"),
-                       fluidRow(
-                         column(
-                           width = 12,
-                           .ddm_formula_banner(),
-                           uiOutput("mod_ddm-ui_ddm_result"),
-                           h6(helpText(id = "ynow_ddm_overview_hint", ui_str("ddm_overview_hint", "en"))),
-                           fluidRow(
-                             column(
-                               width = 6,
-                               ynow_calc_btn("mod_ddm-btn_calc_ddm", "試算 DDM")
-                             ),
-                             column(
-                               width = 6,
-                               ynow_reset_defaults_btn("mod_ddm-reset_ddm")
-                             )
-                           ),
-                           tags$div(style = "margin-top: 10px;", htmlOutput("mod_ddm-vtxt_ddm_setting_details"))
-                         )
-                       )
-                     ),
-                     tabPanel(
-                       "DDM Calculation Details",
-                       fluidRow(
-                         infoBoxOutput("mod_ddm-ibx_d0_scraped", width = 4),
-                         infoBoxOutput("mod_ddm-ibx_d0_eps", width = 4),
-                         infoBoxOutput("mod_ddm-ibx_d0_payout", width = 4)
-                       ),
-                       fluidRow(
-                         column(
-                           width = 12,
-                           div(
-                             ui_i18n("ddm_details_smooth_note"),
-                             style = "font-size: 15px; font-weight: bold; color: #2C3E50; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;"
-                           )
-                         )
-                       )
-                     )
-              ),
-
-              tabBox(width = "auto",
-                     tabPanel(
-                       "Overview",
-                       fluidRow(
-                         column(
-                           width = 12,
-                           numericInput(
-                             "mod_ddm-g",
-                             ui_i18n("ddm_g_label"),
-                             value = APP_DEFAULTS$ddm_g
-                           ),
-                           checkboxInput(
-                             "mod_ddm-sync_g",
-                             ui_i18n("ddm_sync_g_label"),
-                             value = isTRUE(APP_DEFAULTS$ddm_sync_central_g)
-                           ),
-                           tags$p(
-                             id = "ynow_ddm_g_sync_help",
-                             class = "help-block",
-                             "勾選時跟隨中央 SGR；取消勾選後可單獨覆寫股利成長率（不必等於 FCFF 終值 g）。二階段時此值即 g₂；SPM 時為公式中的盈餘成長 g。"
-                           ),
-                           tags$div(style = "margin-top: 12px;", .ddm_two_stage_params_box()),
-                           conditionalPanel(
-                             condition = "input['mod_ddm-ddm_mode'] == 'spm'",
-                             tags$div(
-                               style = "margin-top: 12px;",
-                               tags$p(
-                                 id = "ynow_ddm_spm_g_note",
-                                 class = "help-block",
-                                 "SPM 另需 EPS（E）：請至 D0 分頁確認「預估／最新 EPS」。成長 g 常用 ROE×保留率或 ROA×保留率。"
-                               )
-                             )
-                           )
-                         )
-                       )
-                     ),
-                     tabPanel(
-                       "D0",
-                       icon = icon("cogs"),
-                       fluidRow(
-                         column(
-                           width = 12,
-                           div(
-                             id = "ynow_ddm_d0_banner",
-                             "D0 = 現金股利（現金流量表）÷ 股數（或 EPS × 配息率）　｜　D1 = D0 × (1 + g)",
-                             style = "font-size: 18px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;"
-                           )
-                         ),
-                         box(
-                           h4(tags$b(ui_i18n("ddm_d0_m1_title"))),
-                           p(helpText(ui_i18n("ddm_d0_m1_help"))),
-                           div(
-                             ui_i18n("ddm_d0_formula"),
-                             style = "font-size: 18px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;"
-                           ),
-                           numericInput("mod_ddm-est_eps", ui_i18n("ddm_est_eps_label"), value = NA, step = 0.01),
-                           numericInput("mod_ddm-est_payout", ui_i18n("ddm_est_payout_label"), value = NA, min = 0, max = 100, step = 0.01),
-                           actionButton("mod_ddm-calc_d0_payout", ui_i18n("btn_calc_d0_payout"), class = "btn-primary"),
-                           tags$br(),
-                           htmlOutput("mod_ddm-txt_d0_payout_res")
-                         ),
-                         box(
-                           h4(tags$b(ui_i18n("ddm_d0_m2_title"))),
-                           p(helpText(ui_i18n("ddm_d0_m2_help"))),
-                           numericInput("mod_ddm-cycle_years", ui_i18n("ddm_cycle_years_label"), value = 5, min = 1, max = 10, step = 0.01),
-                           actionButton("mod_ddm-calc_d0_average", ui_i18n("btn_calc_d0_avg"), class = "btn-primary"),
-                           tags$br(),
-                           htmlOutput("mod_ddm-txt_d0_avg_res")
-                         )
-                       )
-                     ),
-                     # Ke ↔ Beta 左右對調：Ke 在前（對齊 DCF 的 WACC → Beta 節奏）
-                     tabPanel(
-                       "Ke",
-                       icon = icon("balance-scale"),
-                       uiOutput("ddm_ke_tab_note"),
-                       fluidRow(
-                         infoBoxOutput("ibx_ddm_ke", width = 4),
-                         infoBoxOutput("ibx_ddm_beta", width = 4),
-                         infoBoxOutput("ibx_ddm_erp", width = 4)
-                       ),
-                       div(
-                         id = "ynow_ddm_ke_formula_banner",
-                         "Ke = Rf + β × (Rm − Rf)",
-                         style = "font-size: 18px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;"
-                       ),
-                       # 上列 100%：Ke 估算（對齊 WACC 估算盒）；下列左說明、右 CAPM
-                       fluidRow(
-                         box(
-                           width = 12,
-                           h4("Ke 估算", id = "ynow_ddm_ke_box_title"),
-                           fluidRow(
-                             column(
-                               4,
-                               numericInput(
-                                 "mod_ddm-ke", ui_i18n("ddm_r_ke_label"),
-                                 value = APP_DEFAULTS$ddm_ke, min = 0, step = 0.01
-                               )
-                             ),
-                             column(
-                               4,
-                               tags$div(
-                                 style = "margin-top: 25px;",
-                                 htmlOutput("ddm_ke_erp_summary")
-                               )
-                             ),
-                             column(
-                               4,
-                               tags$div(
-                                 style = "margin-top: 25px;",
-                                 htmlOutput("ddm_ke_source_chip")
-                               )
-                             )
-                           ),
-                           checkboxInput(
-                             "ddm_use_estimated_re",
-                             tags$span(
-                               id = "ynow_ddm_use_estimated_ke_label",
-                               "Use estimated Ke (from CAPM)"
-                             ),
-                             value = isTRUE(APP_DEFAULTS$use_est_re)
-                           ),
-                           tags$p(
-                             id = "ynow_ddm_ke_help",
-                             style = "margin:0 0 8px 0;color:#666;font-size:12px;",
-                             paste0(
-                               "Ke = Rf + β × (Rm − Rf). Bidirectionally synced with DCF→WACC \"Use estimated rₑ\" and the rₑ value; ",
-                               "when checked, Ke follows CAPM; uncheck to override manually."
-                             )
-                           ),
-                           actionButton("calc_ddm_ke", "計算 Ke（CAPM）", class = "btn-primary"),
-                           tags$br(), htmlOutput("ddm_beta_ke_status")
-                         )
-                       ),
-                       fluidRow(
-                         ddm_ke_bridge_settings_ui(width = 6),
-                         capm_beta_settings_ui(
-                           title = "CAPM Estimate Ke",
-                           calc_id = "calc_ddm_capm",
-                           result_id = "ddm_capm_result",
-                           width = 6,
-                           id_prefix = "ddm_",
-                           box_title_id = "ynow_ddm_capm_box_title",
-                           sync_label_id = "ynow_ddm_sync_gs_beta_label",
-                           rf_note_id = "ddm_capm_rf_source_note",
-                           btn_label = "Estimate Ke (CAPM)"
-                         )
-                       )
-                     ),
-                     tabPanel(
-                       "Beta (β)",
-                       icon = icon("chart-line"),
-                       .beta_model_source_section_ui(
-                         "ddm_beta_u_apply_source",
-                         "ddm_apply_beta_u_selected"
-                       )
-                     )
-              ),
-
-              tabBox(title = "SENSITIVITY", width = "auto",
-                     fluidRow(
-                       column(
-                         width = 12,
-                         h4(ui_i18n("sens_matrix_title")),
-                         p(helpText(ui_i18n("ddm_sens_help")))
-                       )
-                     ),
-                     fluidRow(
-                       column(
-                         width = 12,
-                         div(
-                           style = "width: 100%; overflow-x: auto;",
-                           tags$style(HTML("#ddm_sensitivity_table table { width: 100% !important; table-layout: fixed; }")),
-                           tableOutput("ddm_sensitivity_table")
-                         )
-                       )
-                     ),
-                     fluidRow(
-                       column(
-                         width = 12,
-                         uiOutput("ddm_sensitivity_analysis_panel")
-                       )
-                     )
-              ),
-              .model_param_sensitivity_box(
-                ui_i18n("ddm_formula_contrib_title"),
-                "mod_ddm-param_sensitivity_table"
-              )
+        uiOutput("ynow_lazy_host_ddm_calculator")
       ),
       
       # ==========================================
@@ -21171,19 +21223,42 @@ ui <- dashboardPage(
       ),
       
       # 🌟 呼叫 RI 模型分頁介面
-      ri_module_ui("mod_ri"),
+      tabItem(
+        tabName = "ri_calculator",
+        uiOutput("ynow_lazy_host_ri_calculator")
+      ),
       
       # 🌟 呼叫 P/B 相對估值分頁介面
-      pb_asset_module_ui("mod_pb"),
+      tabItem(
+        tabName = "pb_calculator",
+        uiOutput("ynow_lazy_host_pb_calculator")
+      ),
 
       # Relative multiples: enterprise value, earnings, revenue (book value is P/B above)
-      relative_multiples_module_ui("mod_rel"),
+      tabItem(
+        tabName = "rel_mult_ev",
+        uiOutput("ynow_lazy_host_rel_mult_ev")
+      ),
+      tabItem(
+        tabName = "rel_multiples_calculator",
+        uiOutput("ynow_lazy_host_rel_multiples_calculator")
+      ),
+      tabItem(
+        tabName = "rel_mult_rev",
+        uiOutput("ynow_lazy_host_rel_mult_rev")
+      ),
 
       # SOTP — structural Sum-of-the-Parts (separate sidebar)
-      sotp_module_ui("mod_sotp"),
+      tabItem(
+        tabName = "sotp_calculator",
+        uiOutput("ynow_lazy_host_sotp_calculator")
+      ),
 
       # 🌟 呼叫純 NAV 分頁介面
-      nav_module_ui("mod_nav"),
+      tabItem(
+        tabName = "nav_calculator",
+        uiOutput("ynow_lazy_host_nav_calculator")
+      ),
       
       tabItem(
         tabName = "sensitivity",

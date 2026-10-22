@@ -142,6 +142,9 @@ ddm_module_server <- function(id, auto_calc_pulse = reactive(0L),
     observeEvent(d_cash_flow(), {
       sync_ddm_to_financials()
     }, ignoreNULL = TRUE)
+
+    # Lazy DDM host: cash-flow sync may have run before mod_ddm-* inputs existed.
+    .ynow_once_input_ready(input, "d0", sync_ddm_to_financials)
     
     observeEvent(input$reset_ddm, {
       updateCheckboxInput(session, "sync_g", value = TRUE)

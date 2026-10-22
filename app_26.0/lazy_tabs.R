@@ -109,3 +109,17 @@
     }
   ))
 }
+
+#' Run handler once when input_id first becomes non-NULL.
+#' Statement sync often fires before a lazy host is in the DOM, and
+#' update*Input is then dropped. Re-apply the same sync on first bind
+#' without following later edits.
+.ynow_once_input_ready <- function(input, input_id, handler) {
+  did <- FALSE
+  shiny::observe({
+    if (is.null(input[[input_id]])) return()
+    if (isTRUE(did)) return()
+    did <<- TRUE
+    handler()
+  })
+}

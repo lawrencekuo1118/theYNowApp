@@ -3601,14 +3601,17 @@ server <- function(input, output, session) {
   }, ignoreInit = TRUE)
 
   # Prefill Value Alert email with the signed-in account mailbox (Full; Lite unchanged).
-  observe({
+  .ynow_prefill_pa_email <- function() {
     if (!isTRUE(ynow_auth_enabled())) return()
     if (isTRUE(tryCatch(lite_mode(), error = function(e) FALSE))) return()
     em <- ynow_auth_session_email(ynow_auth)
     if (!nzchar(em)) return()
     tryCatch(updateTextInput(session, "pa_email", value = em), error = function(e) NULL)
     tryCatch(updateTextInput(session, "pa_quick_email", value = em), error = function(e) NULL)
-  })
+  }
+  observe(.ynow_prefill_pa_email())
+  # Alerts body is lazy: login-time update* is dropped until pa_email exists.
+  .ynow_once_input_ready(input, "pa_email", .ynow_prefill_pa_email)
 
   .ui_msg <- function(key, ..., loc = NULL) {
     if (is.null(loc)) {
@@ -4058,7 +4061,17 @@ server <- function(input, output, session) {
       sensitivity = function() .ynow_page_ui_sensitivity(),
       smart_analysis = function() .ynow_page_ui_smart_analysis(),
       company_advance = function() .ynow_page_ui_company_advance(),
-      price_alerts = function() price_alert_tab_body_ui()
+      price_alerts = function() .ynow_page_ui_price_alerts(),
+      snapshot = function() .ynow_page_ui_snapshot(),
+      dashboard = function() .ynow_page_ui_dashboard(),
+      ddm_calculator = function() .ynow_page_ui_ddm_calculator(),
+      ri_calculator = function() .ynow_page_ui_ri_calculator(),
+      pb_calculator = function() .ynow_page_ui_pb_calculator(),
+      rel_mult_ev = function() .ynow_page_ui_rel_mult_ev(),
+      rel_multiples_calculator = function() .ynow_page_ui_rel_multiples_calculator(),
+      rel_mult_rev = function() .ynow_page_ui_rel_mult_rev(),
+      sotp_calculator = function() .ynow_page_ui_sotp_calculator(),
+      nav_calculator = function() .ynow_page_ui_nav_calculator()
     ),
     on_first_mount = list(
       macro_market = function() {

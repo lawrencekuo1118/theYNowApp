@@ -71,14 +71,25 @@ about_slice <- if (m_tab > 0L) {
 } else {
   ""
 }
+about_fn_m <- regexpr(
+  "\\.ynow_page_ui_about\\s*<-\\s*function\\s*\\([^)]*\\)\\s*\\{[\\s\\S]*?\\n\\}",
+  facade,
+  perl = TRUE
+)
+about_fn <- if (about_fn_m[1] > 0L) {
+  substr(facade, about_fn_m[1], about_fn_m[1] + attr(about_fn_m, "match.length") - 1L)
+} else {
+  ""
+}
 check(
   "about tab mounts Full + Lite + data sources + legal",
-  grepl("ynow-full-only", about_slice, fixed = TRUE) &&
-    grepl(".about_bilingual_intro_ui()", about_slice, fixed = TRUE) &&
-    grepl("ynow-lite-only", about_slice, fixed = TRUE) &&
-    grepl(".about_lite_intro_ui()", about_slice, fixed = TRUE) &&
-    grepl(".about_data_sources_ui()", about_slice, fixed = TRUE) &&
-    grepl(".legal_notices_ui()", about_slice, fixed = TRUE)
+  grepl('uiOutput("ynow_lazy_host_about")', about_slice, fixed = TRUE) &&
+    grepl("ynow-full-only", about_fn, fixed = TRUE) &&
+    grepl(".about_bilingual_intro_ui()", about_fn, fixed = TRUE) &&
+    grepl("ynow-lite-only", about_fn, fixed = TRUE) &&
+    grepl(".about_lite_intro_ui()", about_fn, fixed = TRUE) &&
+    grepl(".about_data_sources_ui()", about_fn, fixed = TRUE) &&
+    grepl(".legal_notices_ui()", about_fn, fixed = TRUE)
 )
 check(
   "about tab does not mount methodology section",

@@ -13,7 +13,7 @@
 pb_asset_module_ui <- function(id) {
   ns <- NS(id)
   
-  tabItem(tabName = "pb_calculator",
+  tagList(
           tabBox(title = "P/B & ASSET VALUE", width = "auto",
                  
                  tabPanel("P/B Overview", icon = icon("landmark"),
@@ -386,9 +386,15 @@ pb_asset_module_server <- function(id,
       }
     }
     
+    pb_bind_tick <- reactiveVal(0L)
+    .ynow_once_input_ready(input, "bvps", function() {
+      pb_bind_tick(isolate(pb_bind_tick()) + 1L)
+    })
+
     observeEvent(
       list(
-        d_balance_sheet(), current_price(), quote_price(), market_cap(), current_ticker()
+        d_balance_sheet(), current_price(), quote_price(), market_cap(), current_ticker(),
+        pb_bind_tick()
       ),
       {
         sync_book_values()

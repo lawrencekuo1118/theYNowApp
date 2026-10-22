@@ -523,12 +523,11 @@ calc_sotp_revenue_implied <- function(segments, ev_sales_multiple, cash, debt, s
   )
 }
 
-relative_multiples_module_ui <- function(id) {
+relative_multiples_module_ui <- function(id, part = NULL) {
   ns <- NS(id)
   .mode <- function(val) sprintf("input['mod_rel-rel_mode'] == '%s'", val)
-  list(
-    tabItem(
-      tabName = "rel_mult_ev",
+  parts <- list(
+    rel_mult_ev = tagList(
       tabBox(
         title = tags$span(id = "ynow_rel_ev_box", "Enterprise value multiples"),
         width = "auto",
@@ -585,8 +584,7 @@ relative_multiples_module_ui <- function(id) {
         )
       )
     ),
-    tabItem(
-      tabName = "rel_multiples_calculator",
+    rel_multiples_calculator = tagList(
       div(
         style = "display:none;",
         radioButtons(
@@ -660,8 +658,7 @@ relative_multiples_module_ui <- function(id) {
         )
       )
     ),
-    tabItem(
-      tabName = "rel_mult_rev",
+    rel_mult_rev = tagList(
       tabBox(
         title = tags$span(id = "ynow_rel_rev_box", "Revenue multiples"),
         width = "auto",
@@ -707,6 +704,8 @@ relative_multiples_module_ui <- function(id) {
       )
     )
   )
+  if (is.null(part)) parts else parts[[as.character(part)[1]]]
+
 }
 
 # ==========================================
@@ -855,6 +854,11 @@ relative_multiples_module_server <- function(id,
         arr = NA_real_
       )
     }
+
+    # Each family is its own lazy tab. Re-sync when that family's inputs bind.
+    .ynow_once_input_ready(input, "ebitda", sync_from_statements)
+    .ynow_once_input_ready(input, "pe_multiple", sync_from_statements)
+    .ynow_once_input_ready(input, "ps_multiple", sync_from_statements)
 
     observeEvent(
       list(summary_df(), d_income_statement(), d_balance_sheet(), d_cash_flow(),

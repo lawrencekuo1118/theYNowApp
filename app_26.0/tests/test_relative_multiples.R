@@ -347,7 +347,7 @@ check(
 ui_src <- paste(readLines("ynow_ui.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check("sidebar mounts rel multiples", grepl("rel_multiples_calculator", ui_src, fixed = TRUE))
 check("sidebar mounts sotp", grepl("sotp_calculator", ui_src, fixed = TRUE))
-check("module UI call", grepl('relative_multiples_module_ui("mod_rel")', ui_src, fixed = TRUE))
+check("module UI call", grepl('relative_multiples_module_ui("mod_rel"', ui_src, fixed = TRUE))
 check("sotp UI call", grepl('sotp_module_ui("mod_sotp")', ui_src, fixed = TRUE))
 check("lite hides rel multiples", grepl("rel_multiples_calculator", ui_src, fixed = TRUE) &&
         grepl("body.ynow-lite .sidebar-menu li:has(a[data-value=\"rel_multiples_calculator\"])", ui_src, fixed = TRUE))

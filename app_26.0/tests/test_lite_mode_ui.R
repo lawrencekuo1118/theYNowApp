@@ -618,7 +618,12 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(grepl("__YNOW_LITE_OMIT_TABS", txt, fixed = TRUE))
   testthat::expect_true(grepl("asset_transmission", txt, fixed = TRUE))
   testthat::expect_true(grepl(
-    'tabItem\\(\\s*tabName = "company_advance"[\\s\\S]*business_breakdown_lab_ui\\(\"bblab\"\\)',
+    'uiOutput("ynow_lazy_host_company_advance")',
+    txt,
+    fixed = TRUE
+  ))
+  testthat::expect_true(grepl(
+    '\\.ynow_page_ui_company_advance\\s*<-\\s*function[\\s\\S]*business_breakdown_lab_ui\\(\"bblab\"\\)',
     txt,
     perl = TRUE
   ))

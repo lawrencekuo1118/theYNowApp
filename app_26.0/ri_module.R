@@ -191,8 +191,7 @@ compute_ri_valuation <- function(b0,
 ri_module_ui <- function(id) {
   ns <- NS(id)
 
-  tabItem(
-    tabName = "ri_calculator",
+  tagList(
     tabBox(
       title = "RESIDUAL INCOME", width = "auto",
 
@@ -437,8 +436,16 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
       list(shares = NA_real_, method = "none")
     }
 
+    # Bumps once when the RI host binds, so statement / Ke / g sync that
+    # already ran against a missing input is applied to the mounted controls.
+    ri_bind_tick <- reactiveVal(0L)
+    .ynow_once_input_ready(input, "b0", function() {
+      ri_bind_tick(isolate(ri_bind_tick()) + 1L)
+    })
+
     # Keep Industry Average ROE aligned with Dashboard industry (still editable)
-    observeEvent(industry_choice(), {
+    observeEvent(list(industry_choice(), ri_bind_tick()), {
+      req(industry_choice())
       updateNumericInput(session, "roe_industry", value = industry_roe_pct())
     }, ignoreNULL = TRUE, ignoreInit = FALSE)
 
@@ -449,7 +456,8 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
 
     # ----- Sync B0 / ROE / payout from statements -----
     observeEvent(list(d_balance_sheet(), d_income_statement(), d_cash_flow(),
-                      current_price(), quote_price(), market_cap(), current_ticker()), {
+                      current_price(), quote_price(), market_cap(), current_ticker(),
+                      ri_bind_tick()), {
       req(d_balance_sheet(), d_income_statement())
       df_bs <- d_balance_sheet()
 
@@ -599,12 +607,12 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
       showNotification("🔁 RI 參數已回復預設", type = "message")
     })
 
-    observeEvent(global_re(), {
+    observeEvent(list(global_re(), ri_bind_tick()), {
       req(global_re())
       updateNumericInput(session, "ri_ke", value = round(global_re() * 100, 2))
     })
 
-    observeEvent(global_g(), {
+    observeEvent(list(global_g(), ri_bind_tick()), {
       req(!is.null(global_g()), is.finite(global_g()))
       g_val <- round(as.numeric(global_g()), 2)
       if (is.null(input$ri_g) || abs(as.numeric(input$ri_g) - g_val) > 1e-4) {

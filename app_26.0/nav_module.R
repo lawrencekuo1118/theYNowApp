@@ -20,8 +20,7 @@
 nav_module_ui <- function(id) {
   ns <- NS(id)
 
-  tabItem(
-    tabName = "nav_calculator",
+  tagList(
     fluidRow(
       column(
         12,
@@ -222,8 +221,14 @@ nav_module_server <- function(id,
       invisible(NULL)
     }
 
+    nav_bind_tick <- reactiveVal(0L)
+    .ynow_once_input_ready(input, "navps", function() {
+      nav_bind_tick(isolate(nav_bind_tick()) + 1L)
+    })
+
     observeEvent(
-      list(d_balance_sheet(), current_price(), quote_price(), market_cap(), current_ticker()),
+      list(d_balance_sheet(), current_price(), quote_price(), market_cap(), current_ticker(),
+           nav_bind_tick()),
       { sync_nav_from_bs() },
       ignoreInit = FALSE
     )

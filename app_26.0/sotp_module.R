@@ -31,8 +31,7 @@
 
 sotp_module_ui <- function(id) {
   ns <- NS(id)
-  tabItem(
-    tabName = "sotp_calculator",
+  tagList(
     fluidRow(
       column(
         12,
@@ -270,6 +269,8 @@ sotp_module_server <- function(id,
       updateNumericInput(session, "shares", value = if (is.finite(shares)) round(shares, 0) else NA)
       invisible(NULL)
     }
+
+    .ynow_once_input_ready(input, "default_ev_sales", sync_from_statements)
 
     observeEvent(
       list(d_income_statement(), d_balance_sheet(), current_price(), quote_price(),

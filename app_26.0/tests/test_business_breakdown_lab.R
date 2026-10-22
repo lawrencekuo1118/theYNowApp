@@ -526,7 +526,7 @@ testing_fn_src <- {
 }
 advance_block <- {
   m <- regexpr(
-    "tabItem\\(\\s*tabName\\s*=\\s*\"company_advance\"[\\s\\S]*?\\n\\s*\\),",
+    "\\.ynow_page_ui_company_advance\\s*<-\\s*function\\s*\\([^)]*\\)\\s*\\{[\\s\\S]*?\\n\\}",
     ui_src,
     perl = TRUE
   )
