@@ -1444,72 +1444,75 @@ beta_rolling_section_ui <- function() {
 
 .dcf_core_params_box <- function() {
   # Chrome／欄寬對齊下方 BETA tabBox：左側單一頁籤 + 右側大標英文；同為 col-sm-12
-  tabBox(
-    title = "SUSTAINABLE GROWTH RATE",
-    width = 12,
-    tabPanel(
-      "SGR",
-      icon = icon("seedling"),
-      # 與 BETA Overview 同款 valueBox 列：各 50% 並排
-      fluidRow(
-        valueBoxOutput("vbx_sgr_pct", width = 6),
-        valueBoxOutput("vbx_session_g", width = 6)
-      ),
-      fluidRow(
-        column(
-          width = 6,
-          tags$h5(tags$b(id = "ynow_sgr_method_title", "終值永續成長率 (SGR) 評價方法")),
-          selectInput(
-            "perpetual_g_method",
-            NULL,
-            choices = c(
-              "總體經濟錨定（Macro）" = "macro",
-              "基本面公式（Fundamental／SGR）" = "fundamental",
-              "產業生命週期（Lifecycle）" = "lifecycle"
+  tags$div(
+    `data-ynow-lock` = "section:sgr_box",
+    tabBox(
+      title = "SUSTAINABLE GROWTH RATE",
+      width = 12,
+      tabPanel(
+        "SGR",
+        icon = icon("seedling"),
+        # 與 BETA Overview 同款 valueBox 列：各 50% 並排
+        fluidRow(
+          valueBoxOutput("vbx_sgr_pct", width = 6),
+          valueBoxOutput("vbx_session_g", width = 6)
+        ),
+        fluidRow(
+          column(
+            width = 6,
+            tags$h5(tags$b(id = "ynow_sgr_method_title", "終值永續成長率 (SGR) 評價方法")),
+            selectInput(
+              "perpetual_g_method",
+              NULL,
+              choices = c(
+                "總體經濟錨定（Macro）" = "macro",
+                "基本面公式（Fundamental／SGR）" = "fundamental",
+                "產業生命週期（Lifecycle）" = "lifecycle"
+              ),
+              selected = APP_DEFAULTS$perpetual_g_method
+            )
+          ),
+          column(
+            width = 6,
+            tags$h5(tags$b(id = "ynow_lifecycle_stage_title", "生命週期檔位")),
+            selectInput(
+              "lifecycle_stage",
+              NULL,
+              choices = c(
+                "自動偵測" = "auto",
+                "High Growth" = "HIGH_GROWTH",
+                "Growth-to-Mature" = "GROWTH_TO_MATURE",
+                "Mature Growth" = "MATURE_GROWTH",
+                "Mature Stable" = "MATURE_STABLE",
+                "Declining / Finite Life" = "DECLINING_OR_FINITE_LIFE",
+                "Regulated Utility" = "REGULATED_UTILITY",
+                "Financial Institution" = "FINANCIAL_INSTITUTION"
+              ),
+              selected = APP_DEFAULTS$lifecycle_stage
             ),
-            selected = APP_DEFAULTS$perpetual_g_method
+            helpText(
+              id = "ynow_lifecycle_stage_help",
+              "Auto-detect 依多因子評分；手動選擇不會被覆寫。選項不含固定終值 g。"
+            )
           )
         ),
-        column(
-          width = 6,
-          tags$h5(tags$b(id = "ynow_lifecycle_stage_title", "生命週期檔位")),
-          selectInput(
-            "lifecycle_stage",
-            NULL,
-            choices = c(
-              "自動偵測" = "auto",
-              "High Growth" = "HIGH_GROWTH",
-              "Growth-to-Mature" = "GROWTH_TO_MATURE",
-              "Mature Growth" = "MATURE_GROWTH",
-              "Mature Stable" = "MATURE_STABLE",
-              "Declining / Finite Life" = "DECLINING_OR_FINITE_LIFE",
-              "Regulated Utility" = "REGULATED_UTILITY",
-              "Financial Institution" = "FINANCIAL_INSTITUTION"
-            ),
-            selected = APP_DEFAULTS$lifecycle_stage
-          ),
-          helpText(
-            id = "ynow_lifecycle_stage_help",
-            "Auto-detect 依多因子評分；手動選擇不會被覆寫。選項不含固定終值 g。"
-          )
+        helpText(
+          id = "ynow_sgr_method_help",
+          "Macro：採用即時擷取的市場 10 年期公債 Rf（美股 Yahoo ^TNX；台股櫃買 TPEx 公債殖利率曲線 10 年期；失敗則最近成功值，再失敗才工程 fallback 並標明）。",
+          "Fundamental：Retention×ROE（僅適合成熟穩健企業）。",
+          "Lifecycle：以經濟錨定估計終值 g，生命週期檔位不寫入固定百分比。"
+        ),
+        uiOutput("txt_perpetual_g_method_suggest"),
+        uiOutput("txt_lifecycle_classification"),
+        tags$h5(tags$b("估計依據")),
+        uiOutput("txt_perpetual_g_reason"),
+        uiOutput("txt_sgr_identity"),
+        tags$hr(style = "margin: 12px 0;"),
+        numericInput(
+          "sgr",
+          "自訂 SGR (%)",
+          value = APP_DEFAULTS$sgr
         )
-      ),
-      helpText(
-        id = "ynow_sgr_method_help",
-        "Macro：採用即時擷取的市場 10 年期公債 Rf（美股 Yahoo ^TNX；台股櫃買 TPEx 公債殖利率曲線 10 年期；失敗則最近成功值，再失敗才工程 fallback 並標明）。",
-        "Fundamental：Retention×ROE（僅適合成熟穩健企業）。",
-        "Lifecycle：以經濟錨定估計終值 g，生命週期檔位不寫入固定百分比。"
-      ),
-      uiOutput("txt_perpetual_g_method_suggest"),
-      uiOutput("txt_lifecycle_classification"),
-      tags$h5(tags$b("估計依據")),
-      uiOutput("txt_perpetual_g_reason"),
-      uiOutput("txt_sgr_identity"),
-      tags$hr(style = "margin: 12px 0;"),
-      numericInput(
-        "sgr",
-        "自訂 SGR (%)",
-        value = APP_DEFAULTS$sgr
       )
     )
   )
@@ -1550,22 +1553,25 @@ beta_rolling_section_ui <- function() {
 }
 
 .ddm_two_stage_params_box <- function() {
-  conditionalPanel(
-    condition = "input['mod_ddm-ddm_mode'] == 'two_stage'",
-    box(
-      title = tagList(icon("layer-group"), ui_i18n("ddm_two_stage_title")),
-      width = 12, status = "warning", solidHeader = TRUE,
-      tags$p(style = "margin: 0 0 6px 0; font-size: 12.5px; color: #555;", tags$b(ui_i18n("ddm_stage1_heading"))),
-      numericInput(
-        "mod_ddm-yr_stage1", ui_i18n("ddm_yr_stage1_label"),
-        value = APP_DEFAULTS$ddm_yr_stage1, min = 1, max = 30, step = 1
-      ),
-      numericInput(
-        "mod_ddm-g_stage1", ui_i18n("ddm_g1_label"),
-        value = APP_DEFAULTS$ddm_g_stage1, step = 0.1
-      ),
-      tags$p(style = "margin: 10px 0 6px 0; font-size: 12.5px; color: #555;", tags$b(ui_i18n("ddm_stage2_heading"))),
-      helpText(id = "ynow_ddm_two_stage_help", ui_str("ddm_two_stage_help", "en"))
+  tags$div(
+    `data-ynow-lock` = "section:ddm_two_stage",
+    conditionalPanel(
+      condition = "input['mod_ddm-ddm_mode'] == 'two_stage'",
+      box(
+        title = tagList(icon("layer-group"), ui_i18n("ddm_two_stage_title")),
+        width = 12, status = "warning", solidHeader = TRUE,
+        tags$p(style = "margin: 0 0 6px 0; font-size: 12.5px; color: #555;", tags$b(ui_i18n("ddm_stage1_heading"))),
+        numericInput(
+          "mod_ddm-yr_stage1", ui_i18n("ddm_yr_stage1_label"),
+          value = APP_DEFAULTS$ddm_yr_stage1, min = 1, max = 30, step = 1
+        ),
+        numericInput(
+          "mod_ddm-g_stage1", ui_i18n("ddm_g1_label"),
+          value = APP_DEFAULTS$ddm_g_stage1, step = 0.1
+        ),
+        tags$p(style = "margin: 10px 0 6px 0; font-size: 12.5px; color: #555;", tags$b(ui_i18n("ddm_stage2_heading"))),
+        helpText(id = "ynow_ddm_two_stage_help", ui_str("ddm_two_stage_help", "en"))
+      )
     )
   )
 }
@@ -2900,57 +2906,60 @@ beta_rolling_section_ui <- function() {
             ),
 
             # --- Ch III controls: Holding gate (default collapsed) ---
-            box(
-              title = tagList(
-                icon("filter"),
-                tags$span(id = "ynow_bt_sec_hold_gate", "Holding gate: position filters")
-              ),
-              width = NULL,
-              status = "warning",
-              solidHeader = FALSE,
-              collapsible = TRUE,
-              collapsed = TRUE,
-              tags$p(
-                id = "ynow_bt_hold_gate_intro",
-                class = "ynow-backtest-chapter__lead",
-                paste0(
-                  "On each rebalance date (monthly / quarterly / yearly by analysis frequency), all four filters must pass ",
-                  "to allow a position; otherwise both Fundamental and Sentiment strategies stay flat (Exp_A = Exp_B = 0). ",
-                  "Thresholds are shared with the backtest engine and the KPI filter."
-                )
-              ),
-              fluidRow(
-                column(3, tipify(numericInput("bt_net_margin", "Net margin threshold (%)", APP_DEFAULTS$bt_net_margin),
-                                 "Auto mode uses about half of the company's historical net margin.", placement = "top")),
-                column(3, tipify(numericInput("bt_rev_growth", "Revenue growth threshold (%)", APP_DEFAULTS$bt_rev_growth),
-                                 "Auto mode uses about half of historical revenue growth.", placement = "top")),
-                column(3, tipify(numericInput("bt_eps_growth", "EPS / net income growth threshold (%)", APP_DEFAULTS$bt_eps_growth),
-                                 "Auto mode uses about half of net income growth.", placement = "top")),
-                column(3, tipify(numericInput("bt_fcf_cv", "FCF CV ceiling (%)", APP_DEFAULTS$bt_fcf_cv),
-                                 "Auto mode uses FCF CV × 1.25.", placement = "top"))
-              ),
-              tags$hr(),
-              tags$div(
-                style = "display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:8px;",
-                tags$span(
-                  style = "font-size:13px; font-weight:600;",
-                  id = "ynow_bt_kpi_filter_label",
-                  "KPI filter"
+            tags$div(
+              `data-ynow-lock` = "section:bt_holding_gate",
+              box(
+                title = tagList(
+                  icon("filter"),
+                  tags$span(id = "ynow_bt_sec_hold_gate", "Holding gate: position filters")
                 ),
-                actionButton(
-                  "bt_kpi_filter", "Match current company",
-                  icon = icon("filter"),
-                  class = "btn-sm",
-                  style = "background-color: #222222; color: #ffffff; border: 1px solid #111111; font-size: 12px; padding: 6px 14px; border-radius: 4px; font-weight: 600;"
+                width = NULL,
+                status = "warning",
+                solidHeader = FALSE,
+                collapsible = TRUE,
+                collapsed = TRUE,
+                tags$p(
+                  id = "ynow_bt_hold_gate_intro",
+                  class = "ynow-backtest-chapter__lead",
+                  paste0(
+                    "On each rebalance date (monthly / quarterly / yearly by analysis frequency), all four filters must pass ",
+                    "to allow a position; otherwise both Fundamental and Sentiment strategies stay flat (Exp_A = Exp_B = 0). ",
+                    "Thresholds are shared with the backtest engine and the KPI filter."
+                  )
                 ),
-                uiOutput("bt_filter_badge")
-              ),
-              tags$p(
-                id = "ynow_bt_kpi_filter_hint",
-                style = "margin: 0 0 8px 0; font-size: 12px; color: #666;",
-                "Compare Dashboard-loaded company KPIs to the thresholds above (same Great Filter as the backtest)."
-              ),
-              uiOutput("bt_filter_detail")
+                fluidRow(
+                  column(3, tipify(numericInput("bt_net_margin", "Net margin threshold (%)", APP_DEFAULTS$bt_net_margin),
+                                   "Auto mode uses about half of the company's historical net margin.", placement = "top")),
+                  column(3, tipify(numericInput("bt_rev_growth", "Revenue growth threshold (%)", APP_DEFAULTS$bt_rev_growth),
+                                   "Auto mode uses about half of historical revenue growth.", placement = "top")),
+                  column(3, tipify(numericInput("bt_eps_growth", "EPS / net income growth threshold (%)", APP_DEFAULTS$bt_eps_growth),
+                                   "Auto mode uses about half of net income growth.", placement = "top")),
+                  column(3, tipify(numericInput("bt_fcf_cv", "FCF CV ceiling (%)", APP_DEFAULTS$bt_fcf_cv),
+                                   "Auto mode uses FCF CV × 1.25.", placement = "top"))
+                ),
+                tags$hr(),
+                tags$div(
+                  style = "display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:8px;",
+                  tags$span(
+                    style = "font-size:13px; font-weight:600;",
+                    id = "ynow_bt_kpi_filter_label",
+                    "KPI filter"
+                  ),
+                  actionButton(
+                    "bt_kpi_filter", "Match current company",
+                    icon = icon("filter"),
+                    class = "btn-sm",
+                    style = "background-color: #222222; color: #ffffff; border: 1px solid #111111; font-size: 12px; padding: 6px 14px; border-radius: 4px; font-weight: 600;"
+                  ),
+                  uiOutput("bt_filter_badge")
+                ),
+                tags$p(
+                  id = "ynow_bt_kpi_filter_hint",
+                  style = "margin: 0 0 8px 0; font-size: 12px; color: #666;",
+                  "Compare Dashboard-loaded company KPIs to the thresholds above (same Great Filter as the backtest)."
+                ),
+                uiOutput("bt_filter_detail")
+              )
             ),
 
             # --- Chapter IV: MOS / FV signal validation ---
@@ -3016,6 +3025,8 @@ beta_rolling_section_ui <- function() {
             ),
 
             # --- Ch IV controls: Strategy parameters (default collapsed) ---
+            tags$div(
+              `data-ynow-lock` = "section:bt_strategy_params",
             box(
               title = tagList(
                 icon("sliders-h"),
@@ -3175,6 +3186,7 @@ beta_rolling_section_ui <- function() {
                   )
                 )
               )
+            )
             ),
 
             # --- Appendix: trend momentum (timing aid) ---
@@ -19173,48 +19185,51 @@ ui <- dashboardPage(
           .shared_bridge_box()
         ),
         fluidRow(
-          tabBox(
-            title = "BETA",
-            width = 12,
-            tabPanel(
-              "Beta Overview",
-              icon = icon("th-large"),
-              helpText(
-                id = "ynow_gs_beta_overview_help",
-                paste0(
-                  "Intrinsic-value path: Summary β is written into CAPM by default; ",
-                  "you can switch to industry / Bottom-Up / unlevered / manual. ",
-                  "Rolling estimates are for cross-check only and are not written into CAPM."
-                )
+          tags$div(
+            `data-ynow-lock` = "section:beta_box",
+            tabBox(
+              title = "BETA",
+              width = 12,
+              tabPanel(
+                "Beta Overview",
+                icon = icon("th-large"),
+                helpText(
+                  id = "ynow_gs_beta_overview_help",
+                  paste0(
+                    "Intrinsic-value path: Summary β is written into CAPM by default; ",
+                    "you can switch to industry / Bottom-Up / unlevered / manual. ",
+                    "Rolling estimates are for cross-check only and are not written into CAPM."
+                  )
+                ),
+                beta_overview_section_ui()
               ),
-              beta_overview_section_ui()
-            ),
-            tabPanel(
-              "Peer Unlever",
-              value = "peer_unlever",
-              icon = icon("users"),
-              helpText(
-                id = "ynow_gs_peer_unlever_help",
-                paste0(
-                  "Left: enter peers, unlever, then average (Bottom-Up). ",
-                  "Right: this firm's Hamada unlever and manual βe. ",
-                  "To write into CAPM: pick the matching β source on Beta Overview or DCF → Beta."
-                )
+              tabPanel(
+                "Peer Unlever",
+                value = "peer_unlever",
+                icon = icon("users"),
+                helpText(
+                  id = "ynow_gs_peer_unlever_help",
+                  paste0(
+                    "Left: enter peers, unlever, then average (Bottom-Up). ",
+                    "Right: this firm's Hamada unlever and manual βe. ",
+                    "To write into CAPM: pick the matching β source on Beta Overview or DCF → Beta."
+                  )
+                ),
+                beta_unlever_section_ui()
               ),
-              beta_unlever_section_ui()
-            ),
-            tabPanel(
-              "Rolling β",
-              icon = icon("chart-area"),
-              helpText(
-                id = "ynow_gs_rolling_help",
-                paste0(
-                  "Use Rolling β to cross-check valuation β (includes sentiment / event noise). ",
-                  "It is not written into CAPM; if it diverges sharply from Bottom-Up βᵤ, ",
-                  "review peers, capital structure, events, and liquidity."
-                )
-              ),
-              beta_rolling_section_ui()
+              tabPanel(
+                "Rolling β",
+                icon = icon("chart-area"),
+                helpText(
+                  id = "ynow_gs_rolling_help",
+                  paste0(
+                    "Use Rolling β to cross-check valuation β (includes sentiment / event noise). ",
+                    "It is not written into CAPM; if it diverges sharply from Bottom-Up βᵤ, ",
+                    "review peers, capital structure, events, and liquidity."
+                  )
+                ),
+                beta_rolling_section_ui()
+              )
             )
           )
         ),
@@ -19345,67 +19360,70 @@ ui <- dashboardPage(
               tags$span(id = "ynow_snapshot_tab_audit", "Manual adjustments (vs post-Search baseline)")
             ),
             value = "snap_audit",
-            tags$p(
-              id = "ynow_param_audit_help",
-              style = "font-size:12.5px; color:#666; line-height:1.45; margin:0 0 10px 0;",
-              paste0(
-                "Baseline locks after Search and statement auto-fill. ",
-                "Later manual overrides are listed by page. ",
-                "Use Go & highlight to jump and frame the input. ",
-                "Below: select pages and generate an annotated screenshot PDF."
-              )
-            ),
-            uiOutput("param_audit_report"),
-            tags$hr(style = "margin:14px 0;"),
-            tags$h4(
-              id = "ynow_param_audit_pdf_title",
-              style = "margin:0 0 8px 0; font-size:15px; font-weight:700;",
-              "Annotated page screenshots (PDF)"
-            ),
-            tags$p(
-              id = "ynow_param_audit_pdf_help",
-              style = "font-size:12.5px; color:#666; line-height:1.45; margin:0 0 10px 0;",
-              paste0(
-                "Select pages by category. The app switches to each page (and statement block when chosen), ",
-                "captures the live layout, draws boxes on inputs you changed vs the post-Search baseline, ",
-                "and downloads one PDF."
-              )
-            ),
-            if (exists("ynow_param_audit_pdf_pages_ui", mode = "function")) {
-              ynow_param_audit_pdf_pages_ui()
-            } else {
-              checkboxGroupInput(
-                "param_audit_pdf_pages",
-                label = tags$span(id = "ynow_param_audit_pdf_pages_label", "Pages to capture"),
-                choiceNames = list(
-                  tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_basic",
-                            "Model Dashboard (SGR / CAPM / WACC / Beta)"),
-                  tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_dcf", "DCF"),
-                  tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_ddm", "DDM"),
-                  tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_ri", "RI"),
-                  tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_pb", "P/B"),
-                  tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_nav", "NAV")
-                ),
-                choiceValues = c(
-                  "get_started", "dcf_calculator", "ddm_calculator",
-                  "ri_calculator", "pb_calculator", "nav_calculator"
-                ),
-                selected = c(
-                  "get_started", "dcf_calculator", "ddm_calculator",
-                  "ri_calculator", "pb_calculator", "nav_calculator"
+            tags$div(
+              `data-ynow-lock` = "section:snap_audit",
+              tags$p(
+                id = "ynow_param_audit_help",
+                style = "font-size:12.5px; color:#666; line-height:1.45; margin:0 0 10px 0;",
+                paste0(
+                  "Baseline locks after Search and statement auto-fill. ",
+                  "Later manual overrides are listed by page. ",
+                  "Use Go & highlight to jump and frame the input. ",
+                  "Below: select pages and generate an annotated screenshot PDF."
                 )
-              )
-            },
-            div(
-              style = "display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:8px;",
-              actionButton(
-                "param_audit_pdf_go",
-                tagList(icon("file-pdf"), tags$span(id = "ynow_param_audit_pdf_btn", "Generate annotated PDF")),
-                class = "btn-success"
               ),
-              tags$span(
-                id = "ynow_param_audit_pdf_status",
-                style = "font-size:12.5px; color:#555;"
+              uiOutput("param_audit_report"),
+              tags$hr(style = "margin:14px 0;"),
+              tags$h4(
+                id = "ynow_param_audit_pdf_title",
+                style = "margin:0 0 8px 0; font-size:15px; font-weight:700;",
+                "Annotated page screenshots (PDF)"
+              ),
+              tags$p(
+                id = "ynow_param_audit_pdf_help",
+                style = "font-size:12.5px; color:#666; line-height:1.45; margin:0 0 10px 0;",
+                paste0(
+                  "Select pages by category. The app switches to each page (and statement block when chosen), ",
+                  "captures the live layout, draws boxes on inputs you changed vs the post-Search baseline, ",
+                  "and downloads one PDF."
+                )
+              ),
+              if (exists("ynow_param_audit_pdf_pages_ui", mode = "function")) {
+                ynow_param_audit_pdf_pages_ui()
+              } else {
+                checkboxGroupInput(
+                  "param_audit_pdf_pages",
+                  label = tags$span(id = "ynow_param_audit_pdf_pages_label", "Pages to capture"),
+                  choiceNames = list(
+                    tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_basic",
+                              "Model Dashboard (SGR / CAPM / WACC / Beta)"),
+                    tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_dcf", "DCF"),
+                    tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_ddm", "DDM"),
+                    tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_ri", "RI"),
+                    tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_pb", "P/B"),
+                    tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_nav", "NAV")
+                  ),
+                  choiceValues = c(
+                    "get_started", "dcf_calculator", "ddm_calculator",
+                    "ri_calculator", "pb_calculator", "nav_calculator"
+                  ),
+                  selected = c(
+                    "get_started", "dcf_calculator", "ddm_calculator",
+                    "ri_calculator", "pb_calculator", "nav_calculator"
+                  )
+                )
+              },
+              div(
+                style = "display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:8px;",
+                actionButton(
+                  "param_audit_pdf_go",
+                  tagList(icon("file-pdf"), tags$span(id = "ynow_param_audit_pdf_btn", "Generate annotated PDF")),
+                  class = "btn-success"
+                ),
+                tags$span(
+                  id = "ynow_param_audit_pdf_status",
+                  style = "font-size:12.5px; color:#555;"
+                )
               )
             )
           ),
@@ -20235,64 +20253,67 @@ ui <- dashboardPage(
                      # 在 ui.R 的某個 tabBox 或 navbarMenu 中：
                      fcf_projection_module_ui(id = "mod_fcf"),
                      
-                     tabPanel("WACC",
-                              icon = icon("balance-scale"),
-                              uiOutput("dcf_wacc_fcfe_note"),
-                              fluidRow(
-                                valueBoxOutput("vbx_equity_val", width = 4), # 股權市值 (E)
-                                valueBoxOutput("vbx_debt_val", width = 4),   # 總負債 (D)
-                                valueBoxOutput("vbx_tax_rate", width = 4)    # 有效稅率 (T)
-                              ),
-                              fluidRow(
-                                infoBoxOutput("ibx_wacc", width = 4),
-                                infoBoxOutput("ibx_rd", width = 4), 
-                                infoBoxOutput("ibx_re", width = 4)
-                              ),
-                              
-                              uiOutput("dcf_disc_formula_banner"),
-                              # 上列 100%：WACC 估算；下列左 50% rᵈ、右 50% CAPM
-                              fluidRow(
-                                box(
-                                  width = 12,
-                                  h4("WACC 估算", id = "ynow_wacc_box_title"),
-                                  fluidRow(
-                                    column(4, numericInput(
-                                      "wacc_re", ui_i18n("wacc_re_label"),
-                                      value = APP_DEFAULTS$wacc_re, min = 0, step = 0.01
-                                    )),
-                                    column(4, numericInput(
-                                      "wacc_rd", ui_i18n("wacc_rd_label"),
-                                      value = APP_DEFAULTS$wacc_rd, min = 0, step = 0.01
-                                    )),
-                                    column(4, numericInput(
-                                      "wacc_tax", ui_i18n("wacc_tax_label"),
-                                      value = APP_DEFAULTS$wacc_tax, min = 0, max = 100, step = 0.01
-                                    ))
-                                  ),
-                                  checkboxInput(
-                                    "use_estimated_re",
-                                    tags$span(id = "ynow_use_estimated_re_label", "Use estimated rₑ (from CAPM)"),
-                                    value = APP_DEFAULTS$use_est_re
-                                  ),
-                                  uiOutput("wacc_tax_source_note"),
-                                  tags$p(
-                                    id = "ynow_wacc_help",
-                                    style = "margin:0 0 8px 0;color:#666;font-size:12px;",
-                                    "WACC = We×rₑ + Wd×rᵈ×(1−T)。rᵈ 可由下方「估算 rᵈ」以利息費用／有息負債推估（稅前），再於此套用稅盾。"
-                                  ),
-                                  actionButton("calc_wacc", "計算 WACC", class = "btn-primary"),
-                                  tags$br(), htmlOutput("wacc_result")
-                                )
-                              ),
-                              fluidRow(
-                                rd_estimate_settings_ui(width = 6),
-                                capm_beta_settings_ui(
-                                  title = "CAPM Estimate rₑ",
-                                  calc_id = "calc_capm",
-                                  result_id = "capm_result",
-                                  width = 6
-                                )
-                              )
+                     tabPanel(
+                       "WACC",
+                       icon = icon("balance-scale"),
+                       tags$div(
+                         `data-ynow-lock` = "section:wacc_box",
+                         uiOutput("dcf_wacc_fcfe_note"),
+                         fluidRow(
+                           valueBoxOutput("vbx_equity_val", width = 4), # 股權市值 (E)
+                           valueBoxOutput("vbx_debt_val", width = 4),   # 總負債 (D)
+                           valueBoxOutput("vbx_tax_rate", width = 4)    # 有效稅率 (T)
+                         ),
+                         fluidRow(
+                           infoBoxOutput("ibx_wacc", width = 4),
+                           infoBoxOutput("ibx_rd", width = 4),
+                           infoBoxOutput("ibx_re", width = 4)
+                         ),
+                         uiOutput("dcf_disc_formula_banner"),
+                         # 上列 100%：WACC 估算；下列左 50% rᵈ、右 50% CAPM
+                         fluidRow(
+                           box(
+                             width = 12,
+                             h4("WACC 估算", id = "ynow_wacc_box_title"),
+                             fluidRow(
+                               column(4, numericInput(
+                                 "wacc_re", ui_i18n("wacc_re_label"),
+                                 value = APP_DEFAULTS$wacc_re, min = 0, step = 0.01
+                               )),
+                               column(4, numericInput(
+                                 "wacc_rd", ui_i18n("wacc_rd_label"),
+                                 value = APP_DEFAULTS$wacc_rd, min = 0, step = 0.01
+                               )),
+                               column(4, numericInput(
+                                 "wacc_tax", ui_i18n("wacc_tax_label"),
+                                 value = APP_DEFAULTS$wacc_tax, min = 0, max = 100, step = 0.01
+                               ))
+                             ),
+                             checkboxInput(
+                               "use_estimated_re",
+                               tags$span(id = "ynow_use_estimated_re_label", "Use estimated rₑ (from CAPM)"),
+                               value = APP_DEFAULTS$use_est_re
+                             ),
+                             uiOutput("wacc_tax_source_note"),
+                             tags$p(
+                               id = "ynow_wacc_help",
+                               style = "margin:0 0 8px 0;color:#666;font-size:12px;",
+                               "WACC = We×rₑ + Wd×rᵈ×(1−T)。rᵈ 可由下方「估算 rᵈ」以利息費用／有息負債推估（稅前），再於此套用稅盾。"
+                             ),
+                             actionButton("calc_wacc", "計算 WACC", class = "btn-primary"),
+                             tags$br(), htmlOutput("wacc_result")
+                           )
+                         ),
+                         fluidRow(
+                           rd_estimate_settings_ui(width = 6),
+                           capm_beta_settings_ui(
+                             title = "CAPM Estimate rₑ",
+                             calc_id = "calc_capm",
+                             result_id = "capm_result",
+                             width = 6
+                           )
+                         )
+                       )
                      ),
 
                      tabPanel(

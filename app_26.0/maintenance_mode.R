@@ -162,11 +162,79 @@ ynow_maintenance_label <- function(id, locale = "en") {
   as.character(id)[1]
 }
 
-ynow_maintenance_item_choice_list <- function(ids, locale = "en", group = TRUE) {
-  if (exists("ynow_access_item_choice_list", mode = "function")) {
-    return(ynow_access_item_choice_list(ids, locale = locale, group = group))
+#' Map of catalog item_id → display window "start-end" for configured
+#' (active flag + not yet past end) maintenance rows. Empty character named vector when none.
+ynow_maintenance_configured_window_map <- function(now = NULL) {
+  now <- if (is.null(now)) ynow_maintenance_now() else ynow_maintenance_parse_time(now)
+  df <- tryCatch(
+    ynow_maintenance_expire_past(now = now),
+    error = function(e) .ynow_maint_empty_df()
+  )
+  if (!is.data.frame(df) || nrow(df) < 1L) {
+    return(stats::setNames(character(), character()))
   }
-  character()
+  keep <- as.logical(df$active) & !is.na(df$window_end) & df$window_end > now
+  df <- df[keep, , drop = FALSE]
+  if (!nrow(df)) {
+    return(stats::setNames(character(), character()))
+  }
+  rng <- vapply(seq_len(nrow(df)), function(i) {
+    ws <- ynow_maintenance_format_time(df$window_start[[i]])
+    we <- ynow_maintenance_format_time(df$window_end[[i]])
+    paste0(ws, "-", we)
+  }, character(1))
+  stats::setNames(rng, as.character(df$id))
+}
+
+#' Suffix for admin item picker when a maintenance window is configured.
+#' en-US: " · Expected: start-end"; zh-TW: " · 預計時間: start-end"
+ynow_maintenance_choice_window_suffix <- function(window_range, locale = "en") {
+  rng <- as.character(window_range %||% "")[1]
+  if (!nzchar(rng)) return("")
+  zh <- identical(as.character(locale)[1], "zh-TW")
+  prefix <- if (zh) "預計時間:" else "Expected:"
+  paste0(" · ", prefix, " ", rng)
+}
+
+#' Annotate named choice vector labels with configured maintenance windows.
+.ynow_maint_annotate_choice_labels <- function(named, locale = "en", now = NULL) {
+  if (!length(named)) return(named)
+  labs <- names(named)
+  if (is.null(labs)) labs <- rep("", length(named))
+  ids <- as.character(unname(named))
+  win_map <- ynow_maintenance_configured_window_map(now = now)
+  win_names <- names(win_map)
+  new_labs <- vapply(seq_along(ids), function(i) {
+    base <- as.character(labs[[i]] %||% "")[1]
+    if (!nzchar(base)) base <- ids[[i]]
+    id_i <- ids[[i]]
+    rng <- if (nzchar(id_i) && length(win_names) && id_i %in% win_names) {
+      as.character(win_map[[id_i]])[1]
+    } else {
+      ""
+    }
+    paste0(base, ynow_maintenance_choice_window_suffix(rng, locale = locale))
+  }, character(1))
+  stats::setNames(ids, new_labs)
+}
+
+ynow_maintenance_item_choice_list <- function(ids, locale = "en", group = TRUE,
+                                              now = NULL) {
+  if (!exists("ynow_access_item_choice_list", mode = "function")) {
+    return(character())
+  }
+  base <- ynow_access_item_choice_list(ids, locale = locale, group = group)
+  if (!length(base)) return(base)
+  if (is.list(base) && !is.null(names(base))) {
+    out <- lapply(base, function(named) {
+      .ynow_maint_annotate_choice_labels(named, locale = locale, now = now)
+    })
+    # Drop empty groups if any became empty (should not).
+    out <- out[vapply(out, length, integer(1)) > 0L]
+    if (!length(out)) return(character())
+    return(out)
+  }
+  .ynow_maint_annotate_choice_labels(base, locale = locale, now = now)
 }
 
 .ynow_maint_empty_df <- function() {

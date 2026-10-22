@@ -13,7 +13,8 @@ fcf_projection_module_ui <- function(id) {
     title = span(textOutput(ns("fcf_tab_title"), inline = TRUE)),
     value = "fcf_projection",
     icon = icon("seedling"),
-           
+    tags$div(
+      `data-ynow-lock` = "section:fcf_projection",
            fluidRow(
              column(4, valueBoxOutput(ns("vbx_est_ocf"), width = 12)),
              column(4, valueBoxOutput(ns("vbx_est_fcf"), width = 12)),
@@ -217,6 +218,7 @@ fcf_projection_module_ui <- function(id) {
                )
              )
            )
+    ) # data-ynow-lock section:fcf_projection
   )
 }
 

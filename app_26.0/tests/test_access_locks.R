@@ -35,6 +35,20 @@ check("checklist tab is lockable", "tab:decision_checklist" %in% cat$id)
 check("alerts tab is lockable", "tab:price_alerts" %in% cat$id)
 check("sgr input is lockable", "input:sgr" %in% cat$id)
 check("pdf report is lockable", "report:download_report" %in% cat$id)
+check("product service tabs in catalog", {
+  all(c(
+    "tab:home", "tab:about", "tab:settings",
+    "tab:account_admin", "tab:account_points", "tab:feedback"
+  ) %in% cat$id) &&
+    !"tab:testing" %in% cat$id
+})
+check("fine inputs and sections in catalog", {
+  all(c(
+    "input:years", "input:wacc_re", "input:mod_ddm-ke",
+    "section:sgr_box", "section:wacc_box", "section:fcf_projection",
+    "report:download_defaults", "report:bblab-export_data"
+  ) %in% cat$id)
+})
 
 check("unknown item rejected", {
   res <- ynow_access_set("user-a", "tab:not_a_page", TRUE)
