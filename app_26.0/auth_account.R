@@ -1642,14 +1642,22 @@ ynow_settings_panel_ui <- function(settings = NULL, locale = "zh-TW") {
             id = "ynow_settings_box_title",
             .lab("settings_title", "Settings")
           ),
-          tags$p(
-            id = "ynow_settings_intro",
-            class = "ynow-settings-help",
-            .lab(
-              "settings_intro",
-              "Preferences for this signed-in account. Saved settings reload on the next sign-in."
-            )
+          tags$span(
+            class = "ynow-maint-badge",
+            id = "ynow_settings_theme_badge",
+            .lab("auth_admin_theme_scope", "This page only")
           )
+        ),
+        # Same 主色系 / Color theme picker as Account overview + Points ledger
+        # (localStorage ynow_maint_theme; applies to all .ynow-maint-shell pages).
+        ynow_maint_theme_select_ui(loc)
+      ),
+      tags$p(
+        id = "ynow_settings_intro",
+        class = "ynow-settings-help ynow-maint-help",
+        .lab(
+          "settings_intro",
+          "Preferences for this signed-in account. Saved settings reload on the next sign-in."
         )
       ),
       tags$div(
