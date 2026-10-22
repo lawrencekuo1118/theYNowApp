@@ -1229,8 +1229,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     maint_bad_window = "Set both start and end times for the maintenance window.",
     maint_bad_window_order = "End time must be after start time.",
     maint_window_preview_help = paste0(
-      "Users see: Under maintenance, then Expected: start-end ",
-      "(zh-TW: 維護中 / 預計時間: …). Ends restore access automatically. ",
+      "Users see: Under maintenance, then Expected: start-end. ",
+      "Ends restore access automatically. ",
       "Configured items also show Expected: start-end in this Item menu."
     ),
     maint_denied_report = "This report is under maintenance.",
