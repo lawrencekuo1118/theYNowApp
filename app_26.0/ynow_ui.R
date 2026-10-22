@@ -262,24 +262,29 @@ source("ynow_cookie_notice_ui.R", local = TRUE, encoding = "UTF-8")
       ),
       tags$div(
         class = "ynow-home-legal",
-        # Full home stack under quick-pick: Sign in · Register → disclaimer → About links.
-        if (exists("ynow_auth_home_ui", mode = "function")) ynow_auth_home_ui(),
-        tags$p(
-          id = "ynow_home_legal",
-          class = "ynow-home-legal-text",
-          paste0(
-            "Research and education only — not investment advice. ",
-            "You alone bear all investment decisions and losses."
-          )
-        ),
+        # One row under quick-pick: Sign in · Register · About; disclaimer below.
         tags$div(
           class = "ynow-home-legal-links",
+          if (exists("ynow_auth_home_ui", mode = "function")) ynow_auth_home_ui(),
+          tags$span(
+            class = "ynow-home-legal-sep ynow-auth-pair-sep",
+            "·",
+            `aria-hidden` = "true"
+          ),
           tags$button(
             type = "button",
             id = "ynow_home_legal_about",
             class = "ynow-home-legal-link",
             `data-tab` = "about",
             "About · Privacy, IP & risk"
+          )
+        ),
+        tags$p(
+          id = "ynow_home_legal",
+          class = "ynow-home-legal-text",
+          paste0(
+            "Research and education only — not investment advice. ",
+            "You alone bear all investment decisions and losses."
           )
         )
       )
@@ -7545,25 +7550,41 @@ ui <- dashboardPage(
           border-top: 1px solid #e5e8eb;
           text-align: center;
         }
-        .ynow-home-legal > .ynow-auth-links--home {
-          display: flex;
+        /* Sign in · Register · About on one horizontal row (not stacked). */
+        .ynow-home-legal-links {
+          display: inline-flex;
+          flex-direction: row;
+          flex-wrap: wrap;
+          align-items: center;
           justify-content: center;
+          gap: 0;
           margin: 0 0 10px 0;
+          max-width: 100%;
+        }
+        .ynow-home-legal-links > .ynow-auth-links--home {
+          display: inline-flex;
+          margin: 0;
+          justify-content: center;
+        }
+        .ynow-home-legal-links > .ynow-home-legal-sep {
+          display: inline-block;
+          margin: 0 6px;
+          color: #0b57d0;
+          font-size: 12px;
+          line-height: 1.4;
+          user-select: none;
+        }
+        /* Lite / no auth mount: hide orphan · before About (signed-in keeps · between Sign out and About). */
+        body.ynow-lite .ynow-home-legal-links > .ynow-home-legal-sep,
+        .ynow-home-legal-links:not(:has(.ynow-auth-links--home)) > .ynow-home-legal-sep {
+          display: none;
         }
         .ynow-home-legal-text {
-          margin: 0 0 8px 0;
+          margin: 0;
           font-size: 11.5px;
           line-height: 1.5;
           color: #666;
           text-align: center;
-        }
-        .ynow-home-legal-links {
-          display: inline-flex;
-          flex-direction: row;
-          align-items: center;
-          justify-content: center;
-          gap: 14px;
-          flex-wrap: wrap;
         }
         .ynow-home-legal-link {
           display: inline-block;
@@ -7577,6 +7598,7 @@ ui <- dashboardPage(
           cursor: pointer;
           text-decoration: underline;
           text-underline-offset: 2px;
+          white-space: nowrap;
         }
         .ynow-home-legal-link:hover,
         .ynow-home-legal-link:focus-visible {

@@ -422,7 +422,7 @@ ynow_auth_header_ui <- function() {
   ynow_auth_links_ui("sidebar")
 }
 
-#' Home legal stack companion (Sign in · Register above disclaimer / About).
+#' Home legal row companion (Sign in · Register beside About; disclaimer below).
 ynow_auth_home_ui <- function() {
   ynow_auth_links_ui("home")
 }
@@ -921,10 +921,7 @@ ynow_auth_css <- function() {
     "  color:#0842a0 !important;",
     "}",
     ".ynow-auth-links .ynow-auth-user-chip { display:none !important; }",
-    ".ynow-home-legal-links {",
-    "  display:inline-flex; flex-direction:row; align-items:center;",
-    "  justify-content:center; gap:14px; flex-wrap:wrap;",
-    "}",
+    # Home legal row chrome also lives in ynow_ui.R (.ynow-home-legal-links).
     "body.ynow-lite .ynow-auth-links { display:none !important; }",
     # Logged-in / view-as session preview: never show Sign-in modal or open/register
     # chrome. Specificity must beat `.ynow-auth-links .ynow-auth-pair a.ynow-auth-btn`
