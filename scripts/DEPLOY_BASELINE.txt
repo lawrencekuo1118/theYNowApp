@@ -7,5 +7,5 @@ commit=44089044d33fba7b6f7b06729756a88f81b61df6
 short=44089044
 message=chore: bump display version to v26.34
 captured_at=2026-10-22T07:16:25Z
-display_version=v26.34
+display_version=v26.35
 note=Canonical live line is app_26.0. Bundle 12724056: About Data sources section; sidebar data-source blurb removed (#401). Secrets only in gitignored .Renviron; no secret values in git.
