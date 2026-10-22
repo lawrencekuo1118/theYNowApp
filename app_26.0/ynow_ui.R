@@ -5525,27 +5525,53 @@ ui <- dashboardPage(
           z-index: 1030 !important;
           overflow: hidden;
         }
-        /* Black top-banner left: sparse leaf/branch + Balanced logo-green glow.
+        /* Black top-banner left (A+B): denser organic branch veins + Balanced logo-green glow.
+           Pattern language: www/ynow-chrome-veins-branches.jpg (leafless twig silhouette).
            Decorative only (aria-hidden); must not cover title / nav hit targets. */
         .ynow-chrome-header-leaves {
           position: absolute;
           left: 0;
           top: 0;
           bottom: 0;
-          width: 42%;
-          max-width: 520px;
+          width: 52%;
+          max-width: 640px;
           /* Above TW flag dark ::after (z-index 0); logo/navbar siblings paint later on top. */
           z-index: 1;
           pointer-events: none;
+          overflow: hidden;
           background:
-            radial-gradient(ellipse 80% 120% at 8% 50%, var(--ynow-chrome-green-glow), transparent 55%),
-            url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27280%27 height=%2750%27 viewBox=%270 0 280 50%27%3E%3Cg fill=%27none%27 stroke=%27%23249C60%27 stroke-opacity=%270.35%27 stroke-width=%271%27%3E%3Cpath d=%27M0 40 C40 10, 70 45, 110 18 S180 42, 220 12%27/%3E%3Cpath d=%27M30 38 C45 22, 55 22, 62 34%27/%3E%3Cpath d=%27M90 28 C105 12, 118 14, 125 28%27/%3E%3Cpath d=%27M150 36 C165 18, 178 20, 188 34%27/%3E%3Cpath d=%27M48 30 c8-10 16-10 18 2%27/%3E%3Cpath d=%27M108 22 c7-9 14-9 16 1%27/%3E%3Cpath d=%27M168 28 c8-10 15-9 17 2%27/%3E%3C/g%3E%3C/svg%3E") left center / auto 100% no-repeat;
-          opacity: 0.9;
+            radial-gradient(ellipse 95% 140% at 10% 50%, var(--ynow-chrome-green-glow), transparent 62%);
+          opacity: 0.95;
           animation: ynow-chrome-green-pulse 4.8s ease-in-out infinite;
         }
+        .ynow-chrome-header-leaves::before {
+          content: "";
+          position: absolute;
+          inset: -8% -4% -8% -2%;
+          background-image: url("ynow-chrome-veins-branches.jpg");
+          background-repeat: no-repeat;
+          background-size: cover;
+          background-position: 18% 42%;
+          /* Photo is black twigs on white sky → invert so twigs glow on black chrome */
+          filter: invert(1) contrast(1.25) brightness(1.05);
+          mix-blend-mode: screen;
+          opacity: 0.62;
+          -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 48%, transparent 92%);
+          mask-image: linear-gradient(90deg, #000 0%, #000 48%, transparent 92%);
+          pointer-events: none;
+        }
+        .ynow-chrome-header-leaves::after {
+          content: "";
+          position: absolute;
+          inset: 0;
+          background:
+            linear-gradient(90deg, rgba(36, 156, 96, 0.28) 0%, rgba(36, 156, 96, 0.12) 42%, transparent 78%);
+          mix-blend-mode: soft-light;
+          pointer-events: none;
+        }
         @keyframes ynow-chrome-green-pulse {
-          0%, 100% { filter: brightness(0.95); opacity: 0.75; }
-          50% { filter: brightness(1.25); opacity: 1; }
+          0%, 100% { filter: brightness(0.95); opacity: 0.78; }
+          50% { filter: brightness(1.22); opacity: 1; }
         }
         .main-header > .logo,
         .main-header > .navbar {
@@ -5556,7 +5582,7 @@ ui <- dashboardPage(
           .ynow-chrome-header-leaves {
             animation: none;
             filter: none;
-            opacity: 0.85;
+            opacity: 0.9;
           }
         }
         .content-wrapper,
@@ -7031,7 +7057,8 @@ ui <- dashboardPage(
           border-left-color: #fff;
         }
         /* Snapshot／Sys. Admin／Feedback：同一列；版權宣告在按鈕列正下方（勿重疊） */
-        /* Chip-style foot + Balanced logo-blue glow (decorative; no layout squeeze of nav). */
+        /* A+B chip foot: clearer readable chip + circuit veins + Balanced logo-blue glow.
+           Pattern language: www/ynow-chrome-veins-circuit.jpg (PCB traces / nodes). */
         .ynow-sidebar-snapshot-foot {
           display: flex !important;
           flex-direction: column !important;
@@ -7049,10 +7076,10 @@ ui <- dashboardPage(
         }
         .ynow-sidebar-foot-glow {
           position: absolute;
-          left: 18%;
-          right: 18%;
-          bottom: 10px;
-          height: 28px;
+          left: 12%;
+          right: 12%;
+          bottom: 8px;
+          height: 34px;
           background: radial-gradient(ellipse at center, var(--ynow-chrome-blue-glow), transparent 70%);
           filter: blur(6px);
           animation: ynow-chrome-blue-pulse 3.6s ease-in-out infinite;
@@ -7066,13 +7093,35 @@ ui <- dashboardPage(
         .ynow-sidebar-foot-chip {
           position: relative;
           z-index: 1;
-          border-radius: 999px;
-          border: 1px solid var(--ynow-chrome-blue-edge);
-          background: linear-gradient(180deg, #1c1c1c, #121212);
-          box-shadow: 0 0 12px var(--ynow-chrome-blue-halo);
-          padding: 6px 10px 4px;
+          overflow: hidden;
+          border-radius: 16px;
+          border: 1px solid rgba(12, 84, 132, 0.55);
+          background: linear-gradient(180deg, #1a1f24 0%, #0e1216 100%);
+          box-shadow:
+            0 0 16px var(--ynow-chrome-blue-halo),
+            inset 0 0 18px rgba(12, 84, 132, 0.14);
+          padding: 8px 12px 6px;
           box-sizing: border-box;
           width: 100%;
+        }
+        .ynow-sidebar-foot-chip::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          border-radius: inherit;
+          background-image: url("ynow-chrome-veins-circuit.jpg");
+          background-repeat: no-repeat;
+          background-size: 165% auto;
+          background-position: center 70%;
+          opacity: 0.38;
+          mix-blend-mode: screen;
+          filter: saturate(0.9) brightness(0.95) hue-rotate(-8deg);
+          pointer-events: none;
+          z-index: 0;
+        }
+        .ynow-sidebar-foot-chip > * {
+          position: relative;
+          z-index: 1;
         }
         @media (prefers-reduced-motion: reduce) {
           .ynow-sidebar-foot-glow {
@@ -7087,7 +7136,7 @@ ui <- dashboardPage(
           flex-wrap: nowrap !important;
           align-items: center;
           justify-content: space-between;
-          gap: 2px;
+          gap: 4px;
           width: 100%;
           box-sizing: border-box;
         }
@@ -7095,6 +7144,22 @@ ui <- dashboardPage(
         .main-sidebar .ynow-sidebar-snapshot-foot.col-xs-12 {
           padding-left: 8px !important;
           padding-right: 8px !important;
+        }
+        .ynow-sidebar-foot-chip .ynow-sidebar-snapshot-link {
+          display: inline-flex !important;
+          align-items: center;
+          justify-content: center;
+          flex: 1 1 0;
+          min-width: 0;
+          white-space: nowrap;
+          font-size: 11px !important;
+          font-weight: 500 !important;
+          color: rgba(255,255,255,0.78) !important;
+          text-decoration: none !important;
+          padding: 3px 2px;
+          border-radius: 4px;
+          opacity: 1;
+          line-height: 1.25;
         }
         .ynow-sidebar-snapshot-link {
           display: inline-flex !important;
@@ -7125,6 +7190,16 @@ ui <- dashboardPage(
           color: rgba(255,255,255,0.85) !important;
           opacity: 1;
           background: rgba(255,255,255,0.06);
+        }
+        .ynow-sidebar-foot-chip .ynow-sidebar-snapshot-link:hover {
+          color: #fff !important;
+          background: rgba(46, 168, 230, 0.12);
+        }
+        .ynow-sidebar-foot-chip .ynow-sidebar-copyright {
+          color: rgba(255, 255, 255, 0.72);
+          margin-top: 4px;
+          padding-top: 4px;
+          border-top: 1px solid rgba(12, 84, 132, 0.28);
         }
         .ynow-sidebar-feedback-link,
         .ynow-sidebar-test-link { margin-left: 0; }
