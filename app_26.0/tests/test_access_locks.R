@@ -174,49 +174,55 @@ check("js reads entries effect", {
   grepl("__ynowAccessEntries", ui, fixed = TRUE) &&
     grepl("effect === 'hide'", ui, fixed = TRUE)
 })
-check("server admin lock button", grepl("ynow_access_lock", srv, fixed = TRUE))
-check("server has scope + effect + unlock radios", {
+check("server apply-changes button", grepl("ynow_access_apply_changes", srv, fixed = TRUE))
+check("server has scope + action + effect + unlock", {
   grepl("ynow_access_scope", srv, fixed = TRUE) &&
+    grepl("ynow_access_action", srv, fixed = TRUE) &&
     grepl("ynow_access_effect", srv, fixed = TRUE) &&
     grepl("ynow_access_unlock_type", srv, fixed = TRUE) &&
     grepl("ynow_access_points_cost", srv, fixed = TRUE) &&
     grepl("ynow_access_free_count", srv, fixed = TRUE) &&
-    grepl("ynow_access_time_hours", srv, fixed = TRUE)
+    grepl("ynow_access_time_hours", srv, fixed = TRUE) &&
+    grepl("ynow_access_users", srv, fixed = TRUE) &&
+    grepl("ynow_pts_sysadmin_user_search", srv, fixed = TRUE)
 })
-check("admin Item locks form puts Item select before scope/effect/unlock", {
-  # Extract the Item locks admin tagList body (item → help → scope → …).
+check("admin Item locks form order: scope → action → fields → apply", {
   m <- regexpr(
-    'selectInput\\(\\s*"ynow_access_item"[\\s\\S]*?uiOutput\\("ynow_access_locked_now"\\)',
+    'access_lock_title[\\s\\S]*?ynow_access_apply_changes',
     srv,
     perl = TRUE
   )
   if (m[1] < 0) return(FALSE)
   block <- substr(srv, as.integer(m[1]), as.integer(m[1]) + attr(m, "match.length") - 1L)
-  pos_item <- regexpr('"ynow_access_item"', block, fixed = TRUE)[1]
-  pos_help <- regexpr("access_lock_help", block, fixed = TRUE)[1]
-  pos_scope <- regexpr('"ynow_access_scope"', block, fixed = TRUE)[1]
-  pos_effect <- regexpr('"ynow_access_effect"', block, fixed = TRUE)[1]
-  pos_unlock <- regexpr('"ynow_access_unlock_type"', block, fixed = TRUE)[1]
-  pos_item > 0 &&
-    pos_help > pos_item &&
-    pos_scope > pos_help &&
-    pos_effect > pos_scope &&
-    pos_unlock > pos_effect
+  pos_scope <- regexpr("ynow_access_scope", block, fixed = TRUE)[1]
+  pos_locked <- regexpr("ynow_access_locked_now", block, fixed = TRUE)[1]
+  pos_action <- regexpr("ynow_access_action", block, fixed = TRUE)[1]
+  pos_fields <- regexpr("ynow_access_action_fields", block, fixed = TRUE)[1]
+  pos_apply <- regexpr("ynow_access_apply_changes", block, fixed = TRUE)[1]
+  # Match ends at apply-changes id (closing quote may be outside non-greedy slice).
+  pos_scope > 0 &&
+    pos_locked > pos_scope &&
+    pos_action > pos_locked &&
+    pos_fields > pos_action &&
+    pos_apply > pos_fields
 })
-check("locale help leads with select item first (en+zh)", {
-  grepl("First select the item", loc, fixed = TRUE) &&
-    grepl("請先選擇項目", loc, fixed = TRUE) &&
-    !grepl("Choose Lock \\(show a locked placeholder\\) or Hide", loc)
+check("locale help leads with apply target (en+zh)", {
+  grepl("Choose the apply target first", loc, fixed = TRUE) &&
+    grepl("請先選擇套用對象", loc, fixed = TRUE) &&
+    grepl("multi-select", loc, fixed = TRUE) &&
+    grepl("複選", loc, fixed = TRUE) &&
+    !grepl("First select the item", loc, fixed = TRUE) &&
+    !grepl("請先選擇項目", loc, fixed = TRUE)
 })
 check("server pushes effective entries", {
   grepl("ynow_access_effective_entries", srv, fixed = TRUE)
 })
 check("server pushes entries", grepl("entries = entries", srv, fixed = TRUE) || grepl("entries =", srv, fixed = TRUE))
 check("server denies pdf", grepl("report:download_report", srv, fixed = TRUE))
-check("server live-updates locked-now from selected user", {
+check("server live-updates locked-now from selected users", {
   grepl('uiOutput("ynow_access_locked_now")', srv, fixed = TRUE) &&
     grepl("output$ynow_access_locked_now", srv, fixed = TRUE) &&
-    grepl("input$ynow_pts_sysadmin_user", srv, fixed = TRUE) &&
+    grepl("input$ynow_access_users", srv, fixed = TRUE) &&
     grepl("ynow_access_admin_status_text", srv, fixed = TRUE) &&
     grepl("ynow_access_display_tick", srv, fixed = TRUE) &&
     grepl("ynow_access_locked_now_value", srv, fixed = TRUE)
@@ -225,14 +231,21 @@ check("server preserves selected user across panel refresh", {
   grepl("isolate(input$ynow_pts_sysadmin_user)", srv, fixed = TRUE) &&
     grepl("cur_uid %in% as.character(choices)", srv, fixed = TRUE)
 })
-check("locale en apply", grepl("access_lock_btn = \"Apply restriction\"", loc, fixed = TRUE))
-check("locale zh clear", grepl("access_unlock_btn = \"清除限制\"", loc, fixed = TRUE))
+check("server keeps user list table with search", {
+  grepl("ynow_pts_sysadmin_users_tbody", srv, fixed = TRUE) &&
+    grepl("ynow_pts_sysadmin_user_search", srv, fixed = TRUE) &&
+    grepl("ynowFilterSysadminUsers", srv, fixed = TRUE) &&
+    grepl("selectizeInput", srv, fixed = TRUE) &&
+    grepl("ynow_access_users", srv, fixed = TRUE)
+})
+check("locale en apply changes", grepl("access_apply_changes_btn = \"Apply changes\"", loc, fixed = TRUE))
+check("locale zh action remove", grepl("access_action_remove = \"解除限制\"", loc, fixed = TRUE))
 check("locale scope all en+zh", {
   grepl("access_scope_all = \"All users\"", loc, fixed = TRUE) &&
     grepl("access_scope_all = \"所有使用者\"", loc, fixed = TRUE)
 })
 check("locale effect lock zh", grepl("access_effect_lock = \"鎖上", loc, fixed = TRUE))
-check("locale zh currently restricted", grepl("access_locked_now = \"目前限制\"", loc, fixed = TRUE))
+check("locale zh currently restricted", grepl("access_locked_now = \"目前已限制者\"", loc, fixed = TRUE))
 check("locale unlock types en+zh", {
   grepl("access_unlock_type_label = \"Unlock condition\"", loc, fixed = TRUE) &&
     grepl("access_unlock_login = \"Unlock after login\"", loc, fixed = TRUE) &&
@@ -242,7 +255,15 @@ check("locale unlock types en+zh", {
     grepl("access_unlock_login = \"登入即解鎖\"", loc, fixed = TRUE) &&
     grepl("access_unlock_points = \"點數解鎖\"", loc, fixed = TRUE) &&
     grepl("access_unlock_conditional = \"條件解鎖\"", loc, fixed = TRUE) &&
+    grepl("access_already_restricted =", loc, fixed = TRUE) &&
+    grepl("access_not_restricted =", loc, fixed = TRUE) &&
     !grepl("一鍵", loc, fixed = TRUE)
+})
+check("locale menu main/sub en+zh", {
+  grepl("access_menu_main = \"Main menu\"", loc, fixed = TRUE) &&
+    grepl("access_menu_sub = \"Sub-options\"", loc, fixed = TRUE) &&
+    grepl("access_menu_main = \"主選單\"", loc, fixed = TRUE) &&
+    grepl("access_menu_sub = \"子選項\"", loc, fixed = TRUE)
 })
 check("ui parses", inherits(tryCatch(parse(file.path(app_dir, "ynow_ui.R")), error = function(e) e), "expression"))
 check("server parses", inherits(tryCatch(parse(file.path(app_dir, "ynow_server.R")), error = function(e) e), "expression"))
@@ -398,6 +419,73 @@ check("legacy plain effect stays sticky (no auto unlock)", {
 })
 check("zh unlock label for points", {
   grepl("點數解鎖", ynow_access_unlock_type_label("points", "zh-TW", points_cost = 5L), fixed = TRUE)
+})
+
+# --- Apply / remove invariants + menu layers + multi-user helpers ---
+ynow_access_reset_memory()
+unlink(tmp); unlink(tmp_state)
+Sys.setenv(YNOW_ACCESS_LOCKS_PATH = tmp, YNOW_ACCESS_UNLOCK_STATE_PATH = tmp_state)
+
+check("menu layer tab/report are main", {
+  identical(ynow_access_menu_layer("tab"), "main") &&
+    identical(ynow_access_menu_layer("report"), "main")
+})
+check("menu layer section/input are sub", {
+  identical(ynow_access_menu_layer("section"), "sub") &&
+    identical(ynow_access_menu_layer("input"), "sub")
+})
+check("menu layer labels zh", {
+  identical(ynow_access_menu_layer_label("main", "zh-TW"), "主選單") &&
+    identical(ynow_access_menu_layer_label("sub", "zh-TW"), "子選項")
+})
+check("item choice list groups main/sub", {
+  ch <- ynow_access_item_choice_list(
+    c("tab:lab_notes", "input:sgr", "report:download_report"),
+    locale = "en",
+    group = TRUE
+  )
+  is.list(ch) &&
+    "Main menu" %in% names(ch) &&
+    "Sub-options" %in% names(ch) &&
+    "tab:lab_notes" %in% unname(ch[["Main menu"]]) &&
+    "input:sgr" %in% unname(ch[["Sub-options"]])
+})
+check("reject apply when already restricted", {
+  ynow_access_set("user-a", "tab:lab_notes", TRUE, effect = "lock", unlock_type = "login")
+  res <- ynow_access_set("user-a", "tab:lab_notes", TRUE, effect = "hide", unlock_type = "points",
+                         points_cost = 3L)
+  isTRUE(!res$ok) && identical(res$message_key, "access_already_restricted") &&
+    identical(ynow_access_item_effect("user-a", "tab:lab_notes"), "lock")
+})
+check("reject remove when not restricted", {
+  res <- ynow_access_set("user-a", "tab:price_alerts", FALSE)
+  isTRUE(!res$ok) && identical(res$message_key, "access_not_restricted")
+})
+check("restrictable excludes already restricted for scope", {
+  ids <- ynow_access_restrictable_ids_for_scope("user-a", "user")
+  !"tab:lab_notes" %in% ids && "tab:price_alerts" %in% ids
+})
+check("restricted ids for multi-user union", {
+  ynow_access_set("user-b", "input:sgr", TRUE, effect = "hide", unlock_type = "login")
+  ids <- ynow_access_restricted_ids_for_scope(c("user-a", "user-b"), "user", multi_mode = "union")
+  all(c("tab:lab_notes", "input:sgr") %in% ids)
+})
+check("restrictable for multi-user excludes any restricted", {
+  ids <- ynow_access_restrictable_ids_for_scope(c("user-a", "user-b"), "user")
+  !"tab:lab_notes" %in% ids && !"input:sgr" %in% ids
+})
+check("multi-user status text includes both uids", {
+  txt <- ynow_access_admin_status_text(
+    c("user-a", "user-b"), scope = "user", locale = "en",
+    user_scope_lab = "User", all_scope_lab = "All", none_lab = "NONE"
+  )
+  grepl("user-a:", txt, fixed = TRUE) && grepl("user-b:", txt, fixed = TRUE) &&
+    grepl("Quant Backtest", txt, fixed = TRUE) && grepl("SGR", txt, fixed = TRUE)
+})
+check("clear then re-apply allowed", {
+  ynow_access_set("user-a", "tab:lab_notes", FALSE)
+  res <- ynow_access_set("user-a", "tab:lab_notes", TRUE, effect = "hide", unlock_type = "login")
+  isTRUE(res$ok) && identical(ynow_access_item_effect("user-a", "tab:lab_notes"), "hide")
 })
 
 message("PASS ", ok, " FAIL ", bad)
