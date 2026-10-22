@@ -232,6 +232,7 @@ source("points_wallet.R", local = TRUE, encoding = "UTF-8")
 source("user_prefs.R", local = TRUE, encoding = "UTF-8")
 source("access_locks.R", local = TRUE, encoding = "UTF-8")
 source("maintenance_mode.R", local = TRUE, encoding = "UTF-8")
+source("admin_ops_audit.R", local = TRUE, encoding = "UTF-8")
 source("market_cache.R", local = TRUE, encoding = "UTF-8")
 source("news_sentiment.R", local = TRUE, encoding = "UTF-8")
 # Ensure Postgres schema + optional seed admin when DB env is present (best-effort).
@@ -246,6 +247,9 @@ if (exists("ynow_db_ready", mode = "function") && isTRUE(ynow_db_ready())) {
     }
     if (exists("ynow_maintenance_ensure_schema", mode = "function")) {
       ynow_maintenance_ensure_schema()
+    }
+    if (exists("ynow_admin_ops_ensure_schema", mode = "function")) {
+      ynow_admin_ops_ensure_schema()
     }
     if (exists("ynow_market_cache_ensure_schema", mode = "function")) {
       ynow_market_cache_ensure_schema()
