@@ -2297,8 +2297,8 @@ ynow_points_panel_ui <- function(user, locale = "zh-TW",
 }
 
 #' Known gate feature ids (promo + demo are keyed per feature).
-#' Demo clips live in www/demos/<feature>.{mp4,webm} (~10s; regenerate with
-#' scripts/generate_gate_demo_videos.py).
+#' Demo clips live in www/demos/<feature>.{mp4,webm} (~10s; live App UI only.
+#' Regenerate with bash scripts/record_gate_demos.sh).
 #' Membership gates (A/B) come from membership_locks.R; ops_acl / sysadmin gate
 #' ids (snap_defaults, inner_lock, atx) are non-membership but still listed for demos.
 ynow_gate_features <- function() {

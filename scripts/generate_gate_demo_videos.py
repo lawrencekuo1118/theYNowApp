@@ -1,16 +1,10 @@
 #!/usr/bin/env python3
-"""Generate ~10s Sign-in-gate demo clips with real page scroll (not text cards).
+"""Capture ~10s Sign-in-gate demo clips from the running App UI only.
 
-Default mode (recommended):
-  Build tall AdminLTE-style fixtures under scripts/gate_demo_pages/ and
-  Playwright-scroll each page while recording → app_26.0/www/demos/<id>.{mp4,webm}.
+Each clip is a Playwright scroll of the live Shiny App, then ffmpeg writes
+app_26.0/www/demos/<id>.mp4 and .webm. There is no fixture HTML path.
 
-Optional live mode:
-  YNOW_DEMO_CAPTURE=1 on a local Shiny process, then:
-    YNOW_DEMO_MODE=live python3 scripts/generate_gate_demo_videos.py
-
-Usage (repo root):
-  .venv-demos/bin/python scripts/generate_gate_demo_videos.py
+  YNOW_DEMO_BASE_URL=http://127.0.0.1:3840/ .venv-demos/bin/python scripts/generate_gate_demo_videos.py
 """
 from __future__ import annotations
 
@@ -20,24 +14,31 @@ import subprocess
 import tempfile
 import time
 from pathlib import Path
+from typing import NotRequired, TypedDict
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "app_26.0" / "www" / "demos"
-PAGES = ROOT / "scripts" / "gate_demo_pages"
 W, H, FPS = 960, 540, 24
 DUR = 10.0
-MODE = os.environ.get("YNOW_DEMO_MODE", "fixture").strip().lower()  # fixture | live
+AUTH_WAIT_MS = 15_000
 BASE_URL = os.environ.get("YNOW_DEMO_BASE_URL", "http://127.0.0.1:3840/")
 
-FEATURES = {
-    "lab": {"tab": "lab_notes", "wait_ms": 2500},
-    "checklist": {"tab": "decision_checklist", "wait_ms": 2500},
-    "alerts": {"tab": "price_alerts", "wait_ms": 2500},
-    "account": {"tab": "account_admin", "wait_ms": 2500},
-    "pdf": {"tab": "dashboard", "wait_ms": 2000},
-    "snap_defaults": {"tab": "snapshot", "wait_ms": 2500},
-    "inner_lock": {"tab": "hfv", "wait_ms": 2500},
-    "atx": {"tab": "asset_transmission", "wait_ms": 3000},
+
+class CaptureTarget(TypedDict):
+    tab: str
+    wait_ms: int
+    open: NotRequired[str]  # sidebar (default) | foot_snapshot
+
+
+FEATURES: dict[str, CaptureTarget] = {
+    "lab": {"tab": "lab_notes", "wait_ms": 4500},
+    "checklist": {"tab": "decision_checklist", "wait_ms": 4500},
+    "alerts": {"tab": "price_alerts", "wait_ms": 3500},
+    "account": {"tab": "account_admin", "wait_ms": 3500},
+    "pdf": {"tab": "dashboard", "wait_ms": 3500},
+    "snap_defaults": {"tab": "snap_defaults", "wait_ms": 4500, "open": "foot_snapshot"},
+    "inner_lock": {"tab": "hfv", "wait_ms": 3500},
+    "atx": {"tab": "asset_transmission", "wait_ms": 4500},
 }
 
 
@@ -61,116 +62,253 @@ def _encode(pattern: str, mp4: Path, webm: Path) -> None:
     )
 
 
-def _scroll_info(page):
-    return page.evaluate(
+def _require_live_mode() -> None:
+    mode = os.environ.get("YNOW_DEMO_MODE", "live").strip().lower()
+    if mode != "live":
+        raise SystemExit(
+            "Demos are captured from the running App UI only "
+            f"(YNOW_DEMO_MODE={mode!r} is refused)."
+        )
+
+
+def _require_authed(page) -> None:
+    try:
+        page.wait_for_function(
+            "() => document.body && document.body.classList.contains('ynow-authed')",
+            timeout=AUTH_WAIT_MS,
+        )
+    except Exception as exc:
+        raise SystemExit(
+            "body.ynow-authed did not appear within 15s. "
+            "Demos are captured from the running App UI only."
+        ) from exc
+
+
+def _dismiss_consent(page) -> None:
+    try:
+        page.locator("#ynow_cookie_accept_all").first.click(timeout=1500)
+        return
+    except Exception:
+        pass
+    for name in ("Accept all", "全部允許", "Accept", "同意"):
+        try:
+            page.get_by_role("button", name=name).first.click(timeout=800)
+            return
+        except Exception:
+            continue
+
+
+def _ensure_sidebar_open(page) -> None:
+    page.evaluate(
         """() => {
-          const el = document.querySelector('#scroll-root')
-            || document.querySelector('.content-wrapper')
-            || document.querySelector('.content')
-            || document.scrollingElement
-            || document.documentElement;
-          const max = Math.max(0, (el.scrollHeight || 0) - (el.clientHeight || window.innerHeight));
-          return { max, id: el.id || el.className || el.tagName };
+          if (window.ynowEnsureSidebarOpen) window.ynowEnsureSidebarOpen();
+          document.body.classList.remove('sidebar-collapse');
         }"""
     )
-
-
-def _scroll_to(page, y: float) -> None:
-    page.evaluate(
-        """(y) => {
-          const el = document.querySelector('#scroll-root')
-            || document.querySelector('.content-wrapper')
-            || document.querySelector('.content')
-            || document.scrollingElement
-            || document.documentElement;
-          if (el && el.scrollTo) el.scrollTo({ top: y, behavior: 'instant' });
-          else window.scrollTo(0, y);
-        }""",
-        y,
-    )
-
-
-def _record_scroll(page, frames_dir: Path) -> None:
-    frames_dir.mkdir(parents=True, exist_ok=True)
-    info = _scroll_info(page)
-    max_y = float(info.get("max") or 0)
-    if max_y < 200:
-        page.evaluate(
+    try:
+        page.wait_for_function(
             """() => {
-              const pad = document.createElement('div');
-              pad.style.height = '1600px';
-              pad.style.opacity = '0';
-              (document.querySelector('#scroll-root') || document.body).appendChild(pad);
-            }"""
+              if (document.body.classList.contains('sidebar-collapse')) return false;
+              const s = document.querySelector('.main-sidebar');
+              if (!s) return true;
+              const b = s.getBoundingClientRect();
+              return b.width > 40;
+            }""",
+            timeout=5000,
         )
-        max_y = max(float(_scroll_info(page).get("max") or 0), 1000.0)
-
-    n = int(DUR * FPS)
-    for i in range(n):
-        t = i / max(n - 1, 1)
-        u = t * t * (3 - 2 * t)
-        _scroll_to(page, max_y * u)
-        page.wait_for_timeout(int(1000 / FPS))
-        page.screenshot(path=str(frames_dir / f"f{i:04d}.png"), type="png")
+    except Exception:
+        page.evaluate("() => document.body.classList.remove('sidebar-collapse')")
 
 
-def capture_fixture(page, feature: str, frames_dir: Path) -> None:
-    html = (PAGES / f"{feature}.html").resolve()
-    if not html.is_file():
-        raise FileNotFoundError(f"missing fixture {html} — run scripts/gate_demo_pages/build_pages.py")
-    page.goto(html.as_uri(), wait_until="domcontentloaded", timeout=30000)
-    page.wait_for_timeout(400)
-    _record_scroll(page, frames_dir)
+def _scroll_link_into_sidebar(page, selector: str) -> None:
+    # The sidebar is position:fixed and taller than the window. A link can be
+    # "visible" in CSS and still sit outside the viewport, so Playwright will not click it.
+    found = page.evaluate(
+        """(sel) => {
+          const a = document.querySelector(sel);
+          if (!a) return false;
+          let node = a.parentElement;
+          while (node && node !== document.documentElement) {
+            const s = getComputedStyle(node);
+            if (/(auto|scroll)/.test(s.overflowY) && node.scrollHeight > node.clientHeight + 4) {
+              const top = a.getBoundingClientRect().top - node.getBoundingClientRect().top + node.scrollTop;
+              node.scrollTop = Math.max(0, top - node.clientHeight / 2);
+              return true;
+            }
+            node = node.parentElement;
+          }
+          try { a.scrollIntoView({block: 'center'}); } catch (e) {}
+          return true;
+        }""",
+        selector,
+    )
+    if not found:
+        raise SystemExit(f"missing {selector}")
 
 
-def _open_tab(page, tab: str) -> None:
+def _require_active(page, tab: str) -> None:
+    ok = page.evaluate(
+        """(tab) => {
+          const nodes = document.querySelectorAll("a[data-value='" + tab + "']");
+          for (const a of nodes) {
+            const li = a.closest('li');
+            if (li && li.classList.contains('active')) return true;
+            const href = a.getAttribute('href');
+            const pane = href ? document.querySelector(href) : null;
+            if (pane && pane.classList.contains('active')) return true;
+          }
+          return false;
+        }""",
+        tab,
+    )
+    if not ok:
+        raise SystemExit(f"{tab} did not become the active tab")
+
+
+def _open_sidebar(page, tab: str) -> None:
+    _ensure_sidebar_open(page)
     page.evaluate(
-        """(t) => {
-          try { document.body.classList.remove('sidebar-collapse'); } catch (e) {}
-          const a = document.querySelector(".sidebar-menu a[data-value='" + t + "']");
-          if (a) { try { a.scrollIntoView({block:'center'}); a.click(); } catch (e2) {} }
-          if (window.Shiny && Shiny.setInputValue) {
-            Shiny.setInputValue('sidebar_tabs', t, {priority: 'event'});
+        """(tab) => {
+          const a = document.querySelector(".sidebar-menu a[data-value='" + tab + "']");
+          if (!a) return;
+          const tree = a.closest('li.treeview');
+          if (tree && !tree.classList.contains('active') && !tree.classList.contains('menu-open')) {
+            const parent = tree.querySelector(':scope > a');
+            if (parent) parent.click();
           }
         }""",
         tab,
     )
+    page.wait_for_timeout(250)
+    sel = f".sidebar-menu a[data-value='{tab}']"
+    _scroll_link_into_sidebar(page, sel)
+    page.locator(sel).first.click(timeout=8000)
+    _require_active(page, tab)
+
+
+def _open_foot_snapshot(page, inner_tab: str) -> None:
+    _ensure_sidebar_open(page)
+    # Foot Snapshot often has display:none on the sidebar clone; drive via helper.
+    opened = page.evaluate(
+        """() => {
+          if (typeof window.ynowShowSidebarFootTab === 'function') {
+            window.ynowShowSidebarFootTab('snapshot');
+            return true;
+          }
+          const foot = document.querySelector("a[data-value='snapshot'], a[href='#shiny-tab-snapshot']");
+          if (foot) { foot.click(); return true; }
+          return false;
+        }"""
+    )
+    if not opened:
+        raise SystemExit("could not open Snapshot foot tab")
+    page.wait_for_timeout(1200)
+    page.evaluate(
+        """(tab) => {
+          const a = document.querySelector(
+            "#shiny-tab-snapshot a[data-value='" + tab + "'], a[data-value='" + tab + "']"
+          );
+          if (!a) return;
+          try { a.click(); } catch (e) {}
+          try { if (window.$ && $(a).tab) $(a).tab('show'); } catch (e2) {}
+          const href = a.getAttribute('href');
+          if (href && href.charAt(0) === '#') {
+            document.querySelectorAll('#shiny-tab-snapshot .tab-pane')
+              .forEach((p) => p.classList.remove('active', 'show', 'in'));
+            const pane = document.querySelector(href);
+            if (pane) pane.classList.add('active', 'show', 'in');
+            if (a.parentElement) {
+              document.querySelectorAll('#shiny-tab-snapshot li, #snapshot_report li')
+                .forEach((li) => li.classList.remove('active'));
+              a.parentElement.classList.add('active');
+            }
+          }
+        }""",
+        inner_tab,
+    )
+    page.wait_for_timeout(600)
+
+
+def _open_target(page, target: CaptureTarget) -> None:
+    how = target.get("open", "sidebar")
+    if how == "sidebar":
+        _open_sidebar(page, target["tab"])
+    elif how == "foot_snapshot":
+        _open_foot_snapshot(page, target["tab"])
+    else:
+        raise SystemExit(f"unknown open {how!r}")
+
+
+def _scroll_state(page) -> dict:
+    # .content-wrapper is overflow:visible and grows the document. Scrolling
+    # that element does not move the page. The window does, under the fixed header.
+    return page.evaluate(
+        """() => {
+          const doc = document.scrollingElement || document.documentElement;
+          const docMax = Math.max(0, doc.scrollHeight - window.innerHeight);
+          let elMax = 0;
+          let sel = '';
+          for (const candidate of ['.content-wrapper', '.content']) {
+            const el = document.querySelector(candidate);
+            if (!el) continue;
+            const style = getComputedStyle(el);
+            const max = Math.max(0, el.scrollHeight - el.clientHeight);
+            if (/(auto|scroll)/.test(style.overflowY) && max > elMax) {
+              elMax = max;
+              sel = candidate;
+            }
+          }
+          if (elMax > docMax + 20) return {mode: 'el', sel, max: elMax};
+          return {mode: 'window', sel: '', max: docMax};
+        }"""
+    )
+
+
+def _scroll_to(page, state: dict, y: float) -> None:
+    if state.get("mode") == "el":
+        page.evaluate(
+            """([sel, y]) => {
+              const el = document.querySelector(sel);
+              if (el && el.scrollTo) el.scrollTo({top: y, behavior: 'instant'});
+            }""",
+            [state["sel"], y],
+        )
+        return
+    page.evaluate("(y) => window.scrollTo(0, y)", y)
+
+
+def _record_scroll(page, frames_dir: Path) -> None:
+    frames_dir.mkdir(parents=True, exist_ok=True)
+    state = _scroll_state(page)
+    max_y = float(state.get("max") or 0)
+    _scroll_to(page, state, 0)
+    n = int(DUR * FPS)
+    for i in range(n):
+        t = i / max(n - 1, 1)
+        u = t * t * (3 - 2 * t)
+        _scroll_to(page, state, max_y * u)
+        page.wait_for_timeout(int(1000 / FPS))
+        page.screenshot(path=str(frames_dir / f"f{i:04d}.png"), type="png")
 
 
 def capture_live(page, feature: str, frames_dir: Path) -> None:
-    meta = FEATURES[feature]
-    page.goto(BASE_URL, wait_until="domcontentloaded", timeout=90000)
-    page.wait_for_timeout(3500)
-    page.evaluate("() => { try { document.body.classList.remove('sidebar-collapse'); } catch (e) {} }")
-    try:
-        page.locator("button:has-text('Accept'), button:has-text('同意')").first.click(timeout=1200)
-    except Exception:
-        pass
-    for _ in range(24):
-        if page.evaluate("() => document.body.classList.contains('ynow-authed')"):
-            break
-        page.wait_for_timeout(250)
-    _open_tab(page, meta["tab"])
-    page.wait_for_timeout(int(meta.get("wait_ms", 2000)))
+    target = FEATURES[feature]
+    _open_target(page, target)
+    page.wait_for_timeout(int(target["wait_ms"]))
     _record_scroll(page, frames_dir)
 
 
 def main() -> None:
+    _require_live_mode()
     if not shutil.which("ffmpeg"):
         raise SystemExit("ffmpeg required")
     try:
         from playwright.sync_api import sync_playwright
-    except ImportError as e:
+    except ImportError as exc:
         raise SystemExit(
-            "playwright required — .venv-demos/bin/python or: pip install playwright && playwright install chromium"
-        ) from e
-
-    # Ensure fixtures exist for fixture mode
-    if MODE != "live":
-        subprocess.check_call(
-            [os.environ.get("PYTHON", "python3"), str(PAGES / "build_pages.py")],
-            cwd=str(ROOT),
-        )
+            "playwright required. Use .venv-demos/bin/python "
+            "or pip install playwright && playwright install chromium"
+        ) from exc
 
     OUT.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="ynow-gate-demos-") as td:
@@ -181,19 +319,19 @@ def main() -> None:
                 viewport={"width": W, "height": H},
                 device_scale_factor=1,
             ).new_page()
+            page.goto(BASE_URL, wait_until="domcontentloaded", timeout=90000)
+            _require_authed(page)
+            _dismiss_consent(page)
             for feat in FEATURES:
-                print(f"capturing {feat} ({MODE}) …")
+                print(f"capturing {feat} (live) …", flush=True)
                 t0 = time.time()
                 frames = tmp / feat
-                if MODE == "live":
-                    capture_live(page, feat, frames)
-                else:
-                    capture_fixture(page, feat, frames)
+                capture_live(page, feat, frames)
                 pattern = str(frames / "f%04d.png")
                 _encode(pattern, OUT / f"{feat}.mp4", OUT / f"{feat}.webm")
-                print(f"  wrote {feat}.mp4 + {feat}.webm ({time.time() - t0:.1f}s)")
+                print(f"  wrote {feat}.mp4 + {feat}.webm ({time.time() - t0:.1f}s)", flush=True)
             browser.close()
-    print("done →", OUT, f"(mode={MODE})")
+    print("done →", OUT, "(live App UI)")
 
 
 if __name__ == "__main__":
