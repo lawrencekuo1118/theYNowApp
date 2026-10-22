@@ -18,6 +18,15 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 - CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_26.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).
 - Docs: root README ship/CI/Release pointers; `scripts/record_github_release.sh` for soft-fail Release publish after deploy.
 
+## [v26.35] — 2026-10-22
+
+### Added
+
+- **Count / countdown badges** (PR #402): count-gated controls append `(remaining)/(total)` after the label (Download Report PDF freemium daily free quota; Class C ACL `free_count`). Time-limited Class C windows and active maintenance show a live mini countdown on a secondary/reserved line so the primary label is not covered or squeezed.
+- Server-authoritative badges via `ynow_access_quota_badges` + PDF quota push; client tick; refresh after use / expiry.
+- zh-TW：次數限制控件標籤後顯示「(剩餘／總次數)」；限時條件與維護視窗以迷你倒數顯示剩餘時間（勿遮住原標籤）。
+- Live baseline bundle **12724087** / display **v26.35**.
+
 ## [v26.34] — 2026-10-22
 
 ### Changed
