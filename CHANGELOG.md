@@ -1,3 +1,14 @@
+## [v26.42] — 2026-10-22
+
+### Fixed
+- Header wordmark strip (`.logo` / `.ynow-app-title`) is **transparent** again so it blends with the black banner.
+- Branch veins stay clear of the title text via a horizontal leaves mask (far-left gutter + after ~252px hole under the wordmark), including on hover.
+- Trailing version digit remains unclipped (`overflow:visible` + shrink-wrap).
+
+### Notes
+- en-US: Single gold title on a transparent brand strip; organic veins decorate beside the wordmark, not through it.
+- zh-TW: 標題列字樣底透明融入黑底橫幅；枝狀 veins 不穿過標題文字（含懸停）；版本號末位數字完整可見。
+
 ## [v26.40] — 2026-10-22
 
 ### Fixed
