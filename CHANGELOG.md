@@ -15,10 +15,16 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 
 ### Changed
 
-- **Account guest-hidden (no demo / no Sign-in promo)**: `account` joins non-product hide-vs-show surfaces — removed `www/demos/account.*`, generator target, and Account 推廣登入文案 / promo page (guest path is css_hide only).
-- zh-TW：帳號工作區對訪客為隱藏／顯示（不鎖、不做推廣登入頁），不再附示範影片。
 - CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_26.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).
 - Docs: root README ship/CI/Release pointers; `scripts/record_github_release.sh` for soft-fail Release publish after deploy.
+
+## [v26.28] — 2026-10-22
+
+### Changed
+
+- **Account guest-hidden (no demo / no Sign-in promo)** (PR #395): `account` joins non-product hide-vs-show surfaces — removed `www/demos/account.*`, generator target, and Account 推廣登入文案 / promo page (guest path is css_hide only).
+- zh-TW：帳號工作區對訪客為隱藏／顯示（不鎖、不做推廣登入頁），不再附示範影片。
+- Live baseline bundle **12723808** / display **v26.28**.
 
 ## [v26.27] — 2026-10-22
 
