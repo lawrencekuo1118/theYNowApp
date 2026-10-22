@@ -18,6 +18,15 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 - CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_26.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).
 - Docs: root README ship/CI/Release pointers; `scripts/record_github_release.sh` for soft-fail Release publish after deploy.
 
+## [v26.23] — 2026-10-22
+
+### Fixed
+
+- **Single sign-in entry by viewport** (PR #388): at the **768px** breakpoint, only one auth chrome surface is visible. Narrow (`max-width: 767`): Sign in / Sign out as text links beside the sidebar date (12px). Wider (`min-width: 768`): black top-banner Sign in button; date-row auth hidden. Never both.
+- zh-TW：窄螢幕僅側欄日期旁登入文字連結；寬螢幕僅頂部黑列按鈕；兩處不同時顯示。
+- Root cause: later header `display:flex !important` beat mobile hide; date-row `display:none` lost to shared `.ynow-auth-links { inline-flex }` on desktop.
+- Live baseline bundle recorded in `scripts/DEPLOY_BASELINE.txt` after deploy.
+
 ## [v26.22] — 2026-10-22
 
 ### Changed
