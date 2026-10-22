@@ -2299,10 +2299,12 @@ ynow_points_panel_ui <- function(user, locale = "zh-TW",
 #' Known gate feature ids (promo templates keyed per feature).
 #' Product demo clips live in www/demos/<feature>.{mp4,webm} (~10s; live App UI
 #' only — see [ynow_gate_demo_features()]; regenerate with
-#' bash scripts/record_gate_demos.sh). Non-product gate ids still get Sign-in
-#' chrome / promo, but no shipped teaser video.
+#' bash scripts/record_gate_demos.sh).
+#' Non-product / service ids (snap_defaults, inner_lock) are hide-vs-show only
+#' in product policy — no Sign-in promo page and no demo teaser. They may still
+#' appear here as legacy ops promo *keys*; demos never ship for them.
 #' Membership gates (A/B) come from membership_locks.R; ops_acl / sysadmin gate
-#' ids (snap_defaults, inner_lock, atx) are non-membership promo keys.
+#' ids include atx (product) plus non-product service keys.
 ynow_gate_features <- function() {
   mem <- if (exists("ynow_membership_gate_features", mode = "function")) {
     ynow_membership_gate_features()
@@ -2318,14 +2320,14 @@ ynow_gate_features <- function() {
 }
 
 #' Product-facing gate ids that ship a Sign-in demo teaser.
-#' Non-product (no demo): snap_defaults (sysadmin APP_DEFAULTS), inner_lock
-#' (inner/partial ACL chrome — not a product tab).
+#' Non-product service ids (snap_defaults, inner_lock) are hide-vs-show only —
+#' no 推廣登入頁面 and no demo.
 ynow_gate_demo_features <- function() {
   c("lab", "checklist", "alerts", "account", "pdf", "atx")
 }
 
 #' TRUE when this gate should include a demo <video> (product allowlist).
-#' Missing www/demos files stay honest-empty: omit the teaser block.
+#' Missing www/demos files: omit the teaser block (no empty video chrome).
 ynow_gate_has_demo <- function(feature) {
   feature <- as.character(feature %||% "")[1]
   if (!nzchar(feature) || !(feature %in% ynow_gate_demo_features())) {

@@ -2,8 +2,8 @@
 """Capture ~10s Sign-in-gate demo clips from the running App UI only.
 
 Product-facing locked tabs/features only (lab, checklist, alerts, account,
-pdf, atx). Non-product gate ids (snap_defaults, inner_lock) intentionally have
-no teaser — do not add them here.
+pdf, atx). Non-product / service ids (snap_defaults, inner_lock) are
+hide-vs-show only — no Sign-in promo page and no teaser; do not add them here.
 
 Each clip is a Playwright scroll of the live Shiny App, then ffmpeg writes
 app_26.0/www/demos/<id>.mp4 and .webm. There is no fixture HTML path.

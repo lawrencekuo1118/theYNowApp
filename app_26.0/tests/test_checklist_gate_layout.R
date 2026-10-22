@@ -171,11 +171,10 @@ check("pdf snap_defaults and inner_lock promo stay stacked", {
   }
   stacked("pdf") && stacked("snap_defaults") && stacked("inner_lock")
 })
-check("non-product gates keep promo without demo teaser", {
+check("non-product service ids ship no demo teaser", {
   no_teaser <- function(feature) {
     html <- page_gate_html(feature)
-    grepl("ynow-gate-promo", html, fixed = TRUE) &&
-      !grepl("ynow-gate-demo-video", html, fixed = TRUE) &&
+    !grepl("ynow-gate-demo-video", html, fixed = TRUE) &&
       !grepl(paste0("demos/", feature, ".mp4"), html, fixed = TRUE)
   }
   isFALSE(ynow_gate_has_demo("snap_defaults")) &&

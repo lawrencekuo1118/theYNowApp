@@ -93,10 +93,11 @@ for (f in non_demo) {
   check(paste0(f, " webm absent"), !file.exists(webm))
   check(paste0(f, " has_demo FALSE"), isFALSE(ynow_gate_has_demo(f)))
   html <- paste(as.character(ynow_gate_promo_faq_ui(feature = f, include_faq = FALSE)), collapse = "\n")
+  # Non-product policy: hide-vs-show, not Sign-in-promo targets — at minimum
+  # never ship a demo <video> when promo helpers are still invoked.
   check(
-    paste0(f, " promo without video teaser"),
-    grepl("ynow-gate-promo", html, fixed = TRUE) &&
-      !grepl("ynow-gate-demo-video", html, fixed = TRUE) &&
+    paste0(f, " no demo video teaser"),
+    !grepl("ynow-gate-demo-video", html, fixed = TRUE) &&
       !grepl(paste0("demos/", f, ".mp4"), html, fixed = TRUE)
   )
 }
