@@ -7,5 +7,5 @@ commit=4a74cb70aaa5a11d3f2ef7ec75af30f39a252e1b
 short=4a74cb70
 message=chore: record shipped display version v26.47
 captured_at=2026-10-22T14:16:06Z
-display_version=v26.47
+display_version=v26.48
 note=Canonical live line is app_26.0. Bundle 12725502: collapse empty Business Breakdown (業務拆解) Section IV groups and tall blank plotly shells when packs are ineligible / honest-empty; gate cards/recon/shared/BCG similarly (#414).
