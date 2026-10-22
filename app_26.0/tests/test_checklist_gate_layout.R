@@ -159,15 +159,38 @@ check("en/zh demo captions match Decision Checklist copy", {
     identical(ui_str("auth_pa_gate_title", "zh-TW"), "需登入帳號")
 })
 check("fade backdrop helper renders skeleton", {
-  bd <- paste(as.character(ynow_checklist_gate_fade_backdrop_ui()), collapse = "\n")
-  grepl("ynow-member-gate-fade-backdrop", bd, fixed = TRUE) &&
+  bd <- paste(as.character(ynow_member_gate_fade_backdrop_ui("checklist")), collapse = "\n")
+  alias <- paste(as.character(ynow_checklist_gate_fade_backdrop_ui()), collapse = "\n")
+  identical(bd, alias) &&
+    grepl("ynow-member-gate-fade-backdrop", bd, fixed = TRUE) &&
     grepl("ynow-dc-fade-skel", bd, fixed = TRUE) &&
     grepl('aria-hidden="true"', bd, fixed = TRUE)
+})
+check("surface helper wraps page gates and skips account", {
+  page <- ynow_member_gate_surface_ui(
+    feature = "checklist",
+    gate = ynow_member_gate_ui("g", "t", "b", "btn", feature = "checklist"),
+    body = tags$div(id = "ynow_chk_body", class = "ynow-member-body", "body")
+  )
+  acct <- ynow_member_gate_surface_ui(
+    feature = "account",
+    gate = ynow_member_gate_ui("ga", "ta", "ba", "btna", feature = "account"),
+    body = tags$div(id = "acct_body", class = "ynow-member-body", "body")
+  )
+  page_html <- paste(as.character(page), collapse = "\n")
+  acct_html <- paste(as.character(acct), collapse = "\n")
+  grepl("ynow-member-gate-surface--checklist", page_html, fixed = TRUE) &&
+    grepl("ynow-member-gate-surface--locked", page_html, fixed = TRUE) &&
+    grepl("ynow-member-gate-fade-backdrop", page_html, fixed = TRUE) &&
+    grepl("ynow-member-gate--surface-overlay", page_html, fixed = TRUE) &&
+    !grepl("ynow-member-gate-surface", acct_html, fixed = TRUE) &&
+    grepl("acct_body", acct_html, fixed = TRUE)
 })
 
 tab_html <- paste(as.character(decision_checklist_tab_ui()), collapse = "\n")
 check("checklist tab wraps surface + fade + gate + body", {
   grepl("ynow-member-gate-surface--checklist", tab_html, fixed = TRUE) &&
+    grepl("ynow-member-gate-surface--locked", tab_html, fixed = TRUE) &&
     grepl("ynow-member-gate-fade-backdrop", tab_html, fixed = TRUE) &&
     grepl("ynow_chk_guest_gate", tab_html, fixed = TRUE) &&
     grepl("ynow_chk_body", tab_html, fixed = TRUE) &&
@@ -183,6 +206,7 @@ check("UI CSS defines 1:1 row + surface overlay fade", {
     grepl("flex: 1 1 0", ui_txt, fixed = TRUE) &&
     grepl("ynow-member-gate--surface-overlay", ui_txt, fixed = TRUE) &&
     grepl("ynow-member-gate-fade-backdrop", ui_txt, fixed = TRUE) &&
+    grepl("ynow-member-gate-surface--locked", ui_txt, fixed = TRUE) &&
     grepl("rgba(255, 255, 255", ui_txt, fixed = TRUE)
 })
 

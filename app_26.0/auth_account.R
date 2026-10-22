@@ -2559,9 +2559,10 @@ ynow_member_gate_ui <- function(gate_id, title_id, body_id, btn_id, feature = "l
   )
 }
 
-#' Decorative faded Decision Checklist shell behind the guest Sign-in overlay.
-#' Visible only for Full-mode guests; aria-hidden; not interactive.
-ynow_checklist_gate_fade_backdrop_ui <- function() {
+#' Decorative faded page shell behind a guest Sign-in overlay.
+#' Shared skeleton for every page gate. aria-hidden. Not interactive.
+#' @param feature reserved. v1 uses one skeleton for every page gate.
+ynow_member_gate_fade_backdrop_ui <- function(feature = NULL) {
   tags$div(
     class = "ynow-member-gate-fade-backdrop",
     `aria-hidden` = "true",
@@ -2588,6 +2589,33 @@ ynow_checklist_gate_fade_backdrop_ui <- function() {
         tags$div(class = "ynow-dc-fade-skel__bar ynow-dc-fade-skel__bar--short")
       )
     )
+  )
+}
+
+#' Checklist name kept for existing callers. Same node as the shared fade.
+ynow_checklist_gate_fade_backdrop_ui <- function() {
+  ynow_member_gate_fade_backdrop_ui()
+}
+
+#' Surface + fade + gate + body for a displayed page lock.
+#' Callouts (surface_overlay FALSE) return gate and body with no shell.
+ynow_member_gate_surface_ui <- function(feature, gate, body, ..., fade = NULL) {
+  feature <- as.character(feature %||% "")[1]
+  if (!isTRUE(ynow_gate_layout(feature)$surface_overlay)) {
+    return(tagList(gate, body, ...))
+  }
+  if (is.null(fade)) fade <- ynow_member_gate_fade_backdrop_ui(feature)
+  tags$div(
+    class = paste(
+      "ynow-member-gate-surface",
+      "ynow-member-gate-surface--checklist",
+      "ynow-member-gate-surface--locked"
+    ),
+    `data-ynow-gate-feature` = feature,
+    fade,
+    gate,
+    body,
+    ...
   )
 }
 

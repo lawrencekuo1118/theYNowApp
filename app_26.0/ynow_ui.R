@@ -4727,8 +4727,9 @@ ui <- dashboardPage(
             min-height: 0;
           }
         }
-        /* Checklist guest: faded page shell + Sign-in overlay covering the surface */
-        .ynow-member-gate-surface--checklist {
+        /* Page-gate guest: faded shell + Sign-in overlay. --checklist kept as alias. */
+        .ynow-member-gate-surface--checklist,
+        .ynow-member-gate-surface--locked {
           position: relative;
           min-height: min(72vh, 760px);
         }
@@ -4738,7 +4739,9 @@ ui <- dashboardPage(
           user-select: none;
         }
         body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed)
-          .ynow-member-gate-surface--checklist > .ynow-member-gate-fade-backdrop {
+          .ynow-member-gate-surface--checklist > .ynow-member-gate-fade-backdrop,
+        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed)
+          .ynow-member-gate-surface--locked > .ynow-member-gate-fade-backdrop {
           display: block;
           position: absolute;
           inset: 0;
@@ -4747,7 +4750,9 @@ ui <- dashboardPage(
           background: #f7f7f7;
         }
         body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed)
-          .ynow-member-gate-surface--checklist > .ynow-member-gate-fade-backdrop::after {
+          .ynow-member-gate-surface--checklist > .ynow-member-gate-fade-backdrop::after,
+        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed)
+          .ynow-member-gate-surface--locked > .ynow-member-gate-fade-backdrop::after {
           content: "";
           position: absolute;
           inset: 0;
@@ -4801,7 +4806,9 @@ ui <- dashboardPage(
           border: 1px solid #e2e2e2;
         }
         body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed)
-          .ynow-member-gate-surface--checklist > .ynow-member-gate.ynow-member-gate--surface-overlay {
+          .ynow-member-gate-surface--checklist > .ynow-member-gate.ynow-member-gate--surface-overlay,
+        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed)
+          .ynow-member-gate-surface--locked > .ynow-member-gate.ynow-member-gate--surface-overlay {
           position: absolute;
           inset: 0;
           z-index: 2;
@@ -4817,7 +4824,9 @@ ui <- dashboardPage(
           box-shadow: none !important;
         }
         body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed)
-          .ynow-member-gate-surface--checklist > .ynow-member-gate--surface-overlay > .ynow-hfv-chapter__body {
+          .ynow-member-gate-surface--checklist > .ynow-member-gate--surface-overlay > .ynow-hfv-chapter__body,
+        body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed)
+          .ynow-member-gate-surface--locked > .ynow-member-gate--surface-overlay > .ynow-hfv-chapter__body {
           flex: 1 1 auto;
           overflow: auto;
         }
@@ -4981,7 +4990,8 @@ ui <- dashboardPage(
             margin-left: 8px !important;
             margin-right: 8px !important;
           }
-          .ynow-member-gate-surface--checklist {
+          .ynow-member-gate-surface--checklist,
+          .ynow-member-gate-surface--locked {
             min-height: min(78vh, 820px);
             margin-left: 0;
             margin-right: 0;
