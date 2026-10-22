@@ -1,5 +1,6 @@
 # Chrome atmosphere A+B: line-stroke veins only (no filled wash).
-# Header veins beside title box (left: 250px); circuit strokes on black chip.
+# Header veins beside title box; sidebar foot keeps natural-size circuit PNG;
+# longer upward traces are DRAWN (SVG paths) — never stretch the chip PNG.
 
 Sys.setenv(YNOW_DEBUG_SKIP_PY = "1")
 
@@ -29,6 +30,18 @@ check(
     grepl("ynow-chrome-veins-circuit.png", txt, fixed = TRUE) &&
     file.exists(file.path(www_dir, "ynow-chrome-veins-branches.png")) &&
     file.exists(file.path(www_dir, "ynow-chrome-veins-circuit.png"))
+)
+
+check(
+  "full-sidebar circuit overlay inject + SVG longer traces",
+  grepl("ynowPlaceChromeCircuit", txt, fixed = TRUE) &&
+    grepl("ynow-chrome-sidebar-circuit", txt, fixed = TRUE) &&
+    grepl("ynow-chrome-sidebar-circuit-strokes", txt, fixed = TRUE) &&
+    grepl("ynow-chrome-sidebar-circuit-svg", txt, fixed = TRUE) &&
+    grepl("ynow-chrome-sidebar-circuit-glow", txt, fixed = TRUE) &&
+    grepl("ynowPlaceChromeAtmosphere", txt, fixed = TRUE) &&
+    grepl("ynowCircuitStrokeGrad", txt, fixed = TRUE) &&
+    grepl("<path class=\\\"ynow-ckt-p\\\"", txt, fixed = TRUE)
 )
 
 check(
@@ -96,16 +109,68 @@ check(
 )
 
 check(
-  "chip is black with stroke overlay (not teal panel wash)",
+  "chip is black with natural-size stroke PNG (not teal panel wash)",
   grepl("\\.ynow-sidebar-foot-chip \\{[\\s\\S]*?background:\\s*#000", txt, perl = TRUE) &&
-    grepl("ynow-chrome-veins-circuit.png", txt, fixed = TRUE) &&
+    grepl(
+      "\\.ynow-sidebar-foot-chip::before \\{[\\s\\S]*?background-image:\\s*url\\(\"ynow-chrome-veins-circuit\\.png\"\\)",
+      txt,
+      perl = TRUE
+    ) &&
+    grepl(
+      "\\.ynow-sidebar-foot-chip::before \\{[\\s\\S]*?background-size:\\s*118%\\s+auto",
+      txt,
+      perl = TRUE
+    ) &&
     !grepl("inset 0 0 18px rgba\\(12, 84, 132", txt)
+)
+
+check(
+  "no full-panel PNG stretch / mask-size stretch of circuit asset",
+  !grepl(
+    "\\.ynow-chrome-sidebar-circuit-strokes \\{[\\s\\S]*?mask-image:\\s*url\\(\"ynow-chrome-veins-circuit\\.png\"\\)",
+    txt,
+    perl = TRUE
+  ) &&
+    !grepl("mask-size:\\s*155%\\s+auto", txt, perl = TRUE) &&
+    grepl("never stretch|NATURAL-size|do NOT stretch|never scale the PNG", txt, ignore.case = TRUE)
+)
+
+check(
+  "full-sidebar uses drawn SVG paths + upward fade",
+  grepl(
+    "\\.ynow-chrome-sidebar-circuit \\{[\\s\\S]*?mask-image:\\s*linear-gradient\\(\\s*to top",
+    txt,
+    perl = TRUE
+  ) &&
+    grepl("ynow-chrome-sidebar-circuit-svg", txt, fixed = TRUE) &&
+    grepl("ynow-chrome-circuit-rise", txt, fixed = TRUE) &&
+    grepl("ynowCircuitStrokeGrad", txt, fixed = TRUE) &&
+    grepl("transform-origin:\\s*bottom center", txt, perl = TRUE)
+)
+
+grad_start <- regexpr("ynowCircuitStrokeGrad", txt, fixed = TRUE)[1]
+grad_chunk <- if (grad_start > 0) {
+  substr(txt, max(1L, grad_start - 80L), min(nchar(txt), grad_start + 900L))
+} else {
+  ""
+}
+check(
+  "circuit strokes use logo blue + white dynamic (no neon accents)",
+  grepl("ynowCircuitStrokeGrad", grad_chunk, fixed = TRUE) &&
+    grepl("#0C5484", grad_chunk, fixed = TRUE) &&
+    grepl("#ffffff", grad_chunk, fixed = TRUE) &&
+    grepl("animate attributeName=\\\\\"stop-color\\\\\"", grad_chunk, perl = TRUE) &&
+    !grepl(
+      "purple|violet|#a0[0-9a-f]{2}ff|#7[cC]3[aA][eE][dD]",
+      grad_chunk,
+      ignore.case = TRUE
+    )
 )
 
 check(
   "chip circuit fades out upward + rises from bottom",
   grepl(
-    "\\.ynow-sidebar-foot-chip::before \\{[\\s\\S]*?mask-image:\\s*linear-gradient\\(to top",
+    "\\.ynow-sidebar-foot-chip::before \\{[\\s\\S]*?linear-gradient\\(to top",
     txt,
     perl = TRUE
   ) &&
@@ -169,6 +234,11 @@ check(
     ) &&
     grepl(
       "prefers-reduced-motion: reduce[\\s\\S]*?\\.ynow-sidebar-foot-chip::before[\\s\\S]*?animation:\\s*none",
+      txt,
+      perl = TRUE
+    ) &&
+    grepl(
+      "prefers-reduced-motion: reduce[\\s\\S]*?\\.ynow-chrome-sidebar-circuit-svg[\\s\\S]*?animation:\\s*none",
       txt,
       perl = TRUE
     )

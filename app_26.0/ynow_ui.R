@@ -4094,9 +4094,67 @@ ui <- dashboardPage(
       # Far-left of .main-header; opaque .logo brand strip keeps veins out of the wordmark.
       "h.insertBefore(el,h.firstChild);",
       "}",
+      # Longer drawn PCB traces (SVG paths) continue upward from the foot chip —
+      # do NOT stretch the chip PNG. Foot keeps natural-size stroke art; SVG draws
+      # longer geometry that fades out toward the top (logo blue ↔ white).
+      "function ynowPlaceChromeCircuit(){",
+      "var s=document.querySelector('.main-sidebar');",
+      "if(!s||s.querySelector('.ynow-chrome-sidebar-circuit'))return;",
+      "var el=document.createElement('div');",
+      "el.className='ynow-chrome-sidebar-circuit';",
+      "el.setAttribute('aria-hidden','true');",
+      "var glow=document.createElement('div');",
+      "glow.className='ynow-chrome-sidebar-circuit-glow';",
+      "var wrap=document.createElement('div');",
+      "wrap.className='ynow-chrome-sidebar-circuit-strokes';",
+      "wrap.innerHTML=",
+      "'<svg class=\"ynow-chrome-sidebar-circuit-svg\" viewBox=\"0 0 230 900\" ",
+      "preserveAspectRatio=\"xMidYMax meet\" aria-hidden=\"true\" focusable=\"false\">",
+      "<defs>",
+      "<linearGradient id=\"ynowCircuitStrokeGrad\" x1=\"0\" y1=\"1\" x2=\"0\" y2=\"0\">",
+      "<stop offset=\"0%\" stop-color=\"#0C5484\">",
+      "<animate attributeName=\"stop-color\" values=\"#0C5484;#ffffff;#0C5484\" dur=\"4.8s\" repeatCount=\"indefinite\"/>",
+      "</stop>",
+      "<stop offset=\"45%\" stop-color=\"#ffffff\">",
+      "<animate attributeName=\"stop-color\" values=\"#ffffff;#0C5484;#ffffff\" dur=\"4.8s\" repeatCount=\"indefinite\"/>",
+      "</stop>",
+      "<stop offset=\"100%\" stop-color=\"#0C5484\">",
+      "<animate attributeName=\"stop-color\" values=\"#0C5484;#ffffff;#0C5484\" dur=\"4.8s\" repeatCount=\"indefinite\"/>",
+      "</stop>",
+      "</linearGradient>",
+      "</defs>",
+      "<g fill=\"none\" stroke=\"url(#ynowCircuitStrokeGrad)\" stroke-linecap=\"round\" stroke-linejoin=\"round\">",
+      # Paths originate near foot (y~900) and run upward to staggered tops (longer geometry).
+      "<path class=\"ynow-ckt-p\" stroke-width=\"1.35\" d=\"M18 900 V620 L32 606 V480 L18 466 V280 L32 266 V95\"/>",
+      "<path class=\"ynow-ckt-p\" stroke-width=\"1.1\" d=\"M36 900 V700 L48 688 V520 L36 508 V360 L50 346 V175\"/>",
+      "<path class=\"ynow-ckt-p\" stroke-width=\"1.45\" d=\"M58 900 V640 L72 626 V440 L58 426 V250 L72 236 V70\"/>",
+      "<path class=\"ynow-ckt-p\" stroke-width=\"1.2\" d=\"M84 900 V720 L98 706 V560 L84 546 V370 L98 356 V140\"/>",
+      "<path class=\"ynow-ckt-p\" stroke-width=\"1.5\" d=\"M112 900 V600 L126 586 V420 L112 406 V210 L126 196 V55\"/>",
+      "<path class=\"ynow-ckt-p\" stroke-width=\"1.15\" d=\"M138 900 V680 L152 666 V500 L138 486 V300 L152 286 V110\"/>",
+      "<path class=\"ynow-ckt-p\" stroke-width=\"1.4\" d=\"M164 900 V610 L178 596 V450 L164 436 V260 L178 246 V80\"/>",
+      "<path class=\"ynow-ckt-p\" stroke-width=\"1.2\" d=\"M190 900 V730 L204 716 V580 L190 566 V380 L204 366 V155\"/>",
+      "<path class=\"ynow-ckt-p\" stroke-width=\"1.35\" d=\"M212 900 V650 L222 640 V470 L212 460 V270 L222 260 V100\"/>",
+      "</g>",
+      # Terminal pads at staggered heights (PCB nodes)
+      "<g fill=\"url(#ynowCircuitStrokeGrad)\">",
+      "<circle cx=\"32\" cy=\"95\" r=\"2.2\"/><circle cx=\"50\" cy=\"175\" r=\"2\"/>",
+      "<circle cx=\"72\" cy=\"70\" r=\"2.4\"/><circle cx=\"98\" cy=\"140\" r=\"2\"/>",
+      "<circle cx=\"126\" cy=\"55\" r=\"2.5\"/><circle cx=\"152\" cy=\"110\" r=\"2.1\"/>",
+      "<circle cx=\"178\" cy=\"80\" r=\"2.3\"/><circle cx=\"204\" cy=\"155\" r=\"2\"/>",
+      "<circle cx=\"222\" cy=\"100\" r=\"2.2\"/>",
+      "</g>",
+      "</svg>';",
+      "el.appendChild(glow);",
+      "el.appendChild(wrap);",
+      "s.insertBefore(el,s.firstChild);",
+      "}",
+      "function ynowPlaceChromeAtmosphere(){",
+      "ynowPlaceChromeLeaves();",
+      "ynowPlaceChromeCircuit();",
+      "}",
       "if(document.readyState==='loading'){",
-      "document.addEventListener('DOMContentLoaded',ynowPlaceChromeLeaves);",
-      "}else{ynowPlaceChromeLeaves();}",
+      "document.addEventListener('DOMContentLoaded',ynowPlaceChromeAtmosphere);",
+      "}else{ynowPlaceChromeAtmosphere();}",
       "})();"
     ))),
     # View-as chrome: visible on every tab while admin impersonates a user.
@@ -7293,9 +7351,90 @@ ui <- dashboardPage(
           border-left-color: #fff;
         }
         /* Snapshot／Sys. Admin／Feedback：同一列；版權宣告在按鈕列正下方（勿重疊） */
-        /* A+B chip foot: circuit LINE strokes only on #000 (no photo/block fill).
-           Asset: www/ynow-chrome-veins-circuit.png (bg removed). Bottom-up blue glow
-           expands and fades out toward the top so strokes dissolve into the sidebar. */
+        /* A+B chip foot + longer DRAWN traces: LINE strokes only on #000.
+           Foot chip keeps www/ynow-chrome-veins-circuit.png at NATURAL size (no stretch).
+           Upward continuation = SVG path geometry (longer traces), fade-out toward top,
+           logo blue (#0C5484) ↔ white dynamic stroke — never scale the PNG to panel height. */
+        .ynow-chrome-sidebar-circuit {
+          position: absolute;
+          left: 0;
+          right: 0;
+          top: 0;
+          bottom: 0;
+          pointer-events: none;
+          z-index: 0;
+          overflow: hidden;
+          /* Soft dissolve of the drawn traces toward the top */
+          -webkit-mask-image: linear-gradient(
+            to top,
+            #000 0%,
+            #000 8%,
+            rgba(0, 0, 0, 0.85) 28%,
+            rgba(0, 0, 0, 0.45) 55%,
+            rgba(0, 0, 0, 0.16) 78%,
+            transparent 96%
+          );
+          mask-image: linear-gradient(
+            to top,
+            #000 0%,
+            #000 8%,
+            rgba(0, 0, 0, 0.85) 28%,
+            rgba(0, 0, 0, 0.45) 55%,
+            rgba(0, 0, 0, 0.16) 78%,
+            transparent 96%
+          );
+        }
+        .ynow-chrome-sidebar-circuit-glow {
+          position: absolute;
+          left: 8%;
+          right: 8%;
+          bottom: 0;
+          height: 48%;
+          background: radial-gradient(
+            ellipse 78% 100% at 50% 100%,
+            rgba(12, 84, 132, 0.36),
+            transparent 72%
+          );
+          filter: blur(8px);
+          transform-origin: bottom center;
+          animation: ynow-chrome-blue-pulse 3.6s ease-in-out infinite;
+          pointer-events: none;
+        }
+        .ynow-chrome-sidebar-circuit-strokes {
+          position: absolute;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          top: 0;
+          pointer-events: none;
+        }
+        .ynow-chrome-sidebar-circuit-svg {
+          position: absolute;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          width: 100%;
+          height: 100%;
+          display: block;
+          overflow: visible;
+          filter: drop-shadow(0 0 2px rgba(12, 84, 132, 0.5));
+          opacity: 0.88;
+          transform-origin: bottom center;
+          animation: ynow-chrome-circuit-rise 3.6s ease-in-out infinite;
+        }
+        .ynow-chrome-sidebar-circuit-svg .ynow-ckt-p {
+          stroke: url(#ynowCircuitStrokeGrad);
+        }
+        @keyframes ynow-chrome-circuit-bw-flow {
+          0%, 100% { opacity: 0.78; }
+          50% { opacity: 0.95; }
+        }
+        /* Keep scrollable sidebar content above the fixed circuit overlay */
+        .main-sidebar > .sidebar,
+        .main-sidebar > #sidebarItemExpanded {
+          position: relative;
+          z-index: 1;
+        }
         .ynow-sidebar-snapshot-foot {
           display: flex !important;
           flex-direction: column !important;
@@ -7356,41 +7495,49 @@ ui <- dashboardPage(
           bottom: 0;
           top: 0;
           border-radius: inherit;
+          /* NATURAL-size chip stroke art — never stretch to full sidebar height */
           background-color: transparent;
           background-image: url("ynow-chrome-veins-circuit.png");
           background-repeat: no-repeat;
-          /* Anchor strokes at the foot; grow upward via scaleY (not a filled wash) */
-          background-size: 135% auto;
+          background-size: 118% auto;
           background-position: center bottom;
           opacity: 0.88;
           transform-origin: bottom center;
-          animation: ynow-chrome-circuit-rise 3.6s ease-in-out infinite;
-          /* strokes already blue on transparent — soft glow only */
-          filter: drop-shadow(0 0 2px rgba(12, 84, 132, 0.5));
-          /* Strong upward dissolve into black (asset also bakes a bottom-weighted alpha) */
-          -webkit-mask-image: linear-gradient(to top, #000 0%, #000 22%, transparent 72%);
-          mask-image: linear-gradient(to top, #000 0%, #000 22%, transparent 72%);
+          animation:
+            ynow-chrome-circuit-rise 3.6s ease-in-out infinite,
+            ynow-chrome-circuit-bw-flow 4.8s ease-in-out infinite;
+          filter:
+            drop-shadow(0 0 2px rgba(12, 84, 132, 0.55))
+            hue-rotate(-8deg)
+            saturate(1.15);
+          -webkit-mask-image: linear-gradient(to top, #000 0%, #000 35%, transparent 88%);
+          mask-image: linear-gradient(to top, #000 0%, #000 35%, transparent 88%);
           pointer-events: none;
           z-index: 0;
         }
         @keyframes ynow-chrome-circuit-rise {
-          0%, 100% { opacity: 0.55; transform: scaleY(0.78); }
-          50% { opacity: 0.95; transform: scaleY(1.05); }
+          0%, 100% { opacity: 0.55; transform: scaleY(0.92); }
+          50% { opacity: 0.95; transform: scaleY(1.02); }
         }
         .ynow-sidebar-foot-chip > * {
           position: relative;
           z-index: 1;
         }
         @media (prefers-reduced-motion: reduce) {
-          .ynow-sidebar-foot-glow {
+          .ynow-sidebar-foot-glow,
+          .ynow-chrome-sidebar-circuit-glow {
             animation: none;
             opacity: 0.55;
             transform: none;
           }
-          .ynow-sidebar-foot-chip::before {
+          .ynow-sidebar-foot-chip::before,
+          .ynow-chrome-sidebar-circuit-svg {
             animation: none;
             opacity: 0.75;
             transform: none;
+          }
+          .ynow-chrome-sidebar-circuit-svg stop animate {
+            display: none;
           }
         }
         .ynow-sidebar-snapshot-foot-links {
