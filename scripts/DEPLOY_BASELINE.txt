@@ -7,5 +7,5 @@ commit=a24c747ea90e2eee038b15466f982456ece812dc
 short=a24c747e
 message=chore: bump display version to v26.33
 captured_at=2026-10-22T07:03:42Z
-display_version=v26.33
+display_version=v26.34
 note=Canonical live line is app_26.0. Bundle 12724005: Sidebar tab-order control label Customize→Rearrange / 重新排列 (#400). Secrets only in gitignored .Renviron; no secret values in git.
