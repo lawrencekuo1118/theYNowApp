@@ -3259,6 +3259,141 @@ beta_rolling_section_ui <- function() {
   )
 }
 
+#' Lazy page body for tab `about` (no inputs; safe for Home first HTML).
+.ynow_page_ui_about <- function() {
+  tagList(
+    tags$div(
+      class = "ynow-full-only",
+      .about_bilingual_intro_ui()
+    ),
+    tags$div(
+      class = "ynow-lite-only",
+      .about_lite_intro_ui()
+    ),
+    tags$hr(style = "margin: 20px 0 12px 0; border-color: #e5e8eb;"),
+    .about_data_sources_ui(),
+    tags$hr(style = "margin: 20px 0 12px 0; border-color: #e5e8eb;"),
+    .legal_notices_ui()
+  )
+}
+
+#' Lazy page body for tab `feedback` (submit-only inputs).
+.ynow_page_ui_feedback <- function() {
+  tagList(
+    fluidRow(
+      column(
+        width = 12,
+        h2(tags$b(ui_i18n("feedback_page_title"))),
+        p(ui_i18n("feedback_page_lead")),
+        tags$p(
+          style = "color:#888;font-size:13px;",
+          ui_i18n("feedback_token_note")
+        ),
+        tags$hr()
+      )
+    ),
+    fluidRow(
+      column(
+        width = 7,
+        box(
+          width = 12, status = "primary", solidHeader = TRUE,
+          title = tagList(icon("edit"), ui_i18n("feedback_form_title")),
+          selectInput(
+            "feedback_category", ui_i18n("feedback_category_label"),
+            choices = c(
+              "Suggestion" = "enhancement",
+              "Bug report" = "bug",
+              "Experience" = "ux",
+              "Other" = "other"
+            ),
+            selected = "enhancement"
+          ),
+          textInput(
+            "feedback_title", ui_i18n("feedback_title_label"),
+            value = "",
+            placeholder = ui_str("feedback_title_ph", "en")
+          ) %>% tagAppendAttributes(`data-i18n-ph` = "feedback_title_ph"),
+          textAreaInput(
+            "feedback_body", ui_i18n("feedback_body_label"),
+            value = "",
+            rows = 8,
+            placeholder = ui_str("feedback_body_ph", "en")
+          ) %>% tagAppendAttributes(`data-i18n-ph` = "feedback_body_ph"),
+          textInput(
+            "feedback_contact", ui_i18n("feedback_contact_label"),
+            value = "",
+            placeholder = ui_str("feedback_contact_ph", "en")
+          ) %>% tagAppendAttributes(`data-i18n-ph` = "feedback_contact_ph"),
+          checkboxInput(
+            "feedback_include_context",
+            ui_i18n("feedback_include_context"),
+            value = TRUE
+          ),
+          actionButton(
+            "feedback_submit", ui_i18n("feedback_submit"),
+            class = "btn-success",
+            icon = icon("paper-plane")
+          ),
+          uiOutput("feedback_status")
+        )
+      ),
+      column(
+        width = 5,
+        box(
+          width = 12, status = "info", solidHeader = TRUE,
+          title = ui_i18n("feedback_track_title"),
+          tags$ul(
+            tags$li(ui_i18n("feedback_track_1")),
+            tags$li(
+              ui_i18n("feedback_track_2"),
+              " ",
+              tags$code("feedback"),
+              " ",
+              tags$a(
+                href = "https://github.com/lawrencekuo1118/theYNowApp/issues?q=is%3Aissue+label%3Afeedback",
+                target = "_blank",
+                rel = "noopener noreferrer",
+                ui_i18n("feedback_track_link")
+              )
+            ),
+            tags$li(ui_i18n("feedback_track_3"))
+          )
+        )
+      )
+    )
+  )
+}
+
+#' Lazy page body for tab `sensitivity` (YNOW; display-only decision_ui).
+.ynow_page_ui_sensitivity <- function() {
+  decision_ui("main_decision")
+}
+
+#' Lazy page body for tab `smart_analysis` (outputs only).
+.ynow_page_ui_smart_analysis <- function() {
+  tagList(
+    uiOutput("smart_analysis_summary"),
+    uiOutput("smart_value_why"),
+    fluidRow(
+      box(
+        width = 12, status = "primary", solidHeader = TRUE,
+        title = tags$span(id = "ynow_smart_chart_title", "Fair value comparison"),
+        plotlyOutput("smart_analysis_chart", height = "360px") %>% shinycssloaders::withSpinner()
+      )
+    ),
+    uiOutput("smart_analysis_reason")
+  )
+}
+
+#' Lazy page body for tab `company_advance` (BBLab UI; server stays eager).
+.ynow_page_ui_company_advance <- function() {
+  tags$div(
+    class = "ynow-full-only ynow-company-advance-bblab",
+    id = "ynow_company_advance_bblab",
+    business_breakdown_lab_ui("bblab")
+  )
+}
+
 #' Lazy page body for tab `testing` — dedicated system-admin portal (Full-only).
 #' Internal tabName stays `testing` for sidebar/lazy wiring; UI copy is System admin.
 #' Login: username `ynow` + Asia/Taipei calendar password YYYYMMDD (not end-user Email login).
@@ -20553,11 +20688,7 @@ ui <- dashboardPage(
       # ==========================================
       tabItem(
         tabName = "company_advance",
-        tags$div(
-          class = "ynow-full-only ynow-company-advance-bblab",
-          id = "ynow_company_advance_bblab",
-          business_breakdown_lab_ui("bblab")
-        )
+        uiOutput("ynow_lazy_host_company_advance")
       ),
 
       # ==========================================
@@ -20565,18 +20696,7 @@ ui <- dashboardPage(
       # ==========================================
       tabItem(
         tabName = "smart_analysis",
-        # Page heading removed (Lite): blurb lives immediately above composite status in the header.
-        uiOutput("smart_analysis_summary"),
-        # Core explainability (primary workflow): Why Fair Value + Decision Checklist gates
-        uiOutput("smart_value_why"),
-        fluidRow(
-          box(
-            width = 12, status = "primary", solidHeader = TRUE,
-            title = tags$span(id = "ynow_smart_chart_title", "Fair value comparison"),
-            plotlyOutput("smart_analysis_chart", height = "360px") %>% shinycssloaders::withSpinner()
-          )
-        ),
-        uiOutput("smart_analysis_reason")
+        uiOutput("ynow_lazy_host_smart_analysis")
       ),
       
       # ==========================================
@@ -21065,8 +21185,9 @@ ui <- dashboardPage(
       # 🌟 呼叫純 NAV 分頁介面
       nav_module_ui("mod_nav"),
       
-      tabItem(tabName = "sensitivity",
-              decision_ui("main_decision")
+      tabItem(
+        tabName = "sensitivity",
+        uiOutput("ynow_lazy_host_sensitivity")
       ),
 
       # Blue Chip：美股績優篩選（版面節奏對齊 Dashboard FINANCIAL REPORT）
@@ -21160,87 +21281,7 @@ ui <- dashboardPage(
       # ==========================================
       tabItem(
         tabName = "feedback",
-        fluidRow(
-          column(
-            width = 12,
-            h2(tags$b(ui_i18n("feedback_page_title"))),
-            p(ui_i18n("feedback_page_lead")),
-            tags$p(
-              style = "color:#888;font-size:13px;",
-              ui_i18n("feedback_token_note")
-            ),
-            tags$hr()
-          )
-        ),
-        fluidRow(
-          column(
-            width = 7,
-            box(
-              width = 12, status = "primary", solidHeader = TRUE,
-              title = tagList(icon("edit"), ui_i18n("feedback_form_title")),
-              selectInput(
-                "feedback_category", ui_i18n("feedback_category_label"),
-                choices = c(
-                  "Suggestion" = "enhancement",
-                  "Bug report" = "bug",
-                  "Experience" = "ux",
-                  "Other" = "other"
-                ),
-                selected = "enhancement"
-              ),
-              textInput(
-                "feedback_title", ui_i18n("feedback_title_label"),
-                value = "",
-                placeholder = ui_str("feedback_title_ph", "en")
-              ) %>% tagAppendAttributes(`data-i18n-ph` = "feedback_title_ph"),
-              textAreaInput(
-                "feedback_body", ui_i18n("feedback_body_label"),
-                value = "",
-                rows = 8,
-                placeholder = ui_str("feedback_body_ph", "en")
-              ) %>% tagAppendAttributes(`data-i18n-ph` = "feedback_body_ph"),
-              textInput(
-                "feedback_contact", ui_i18n("feedback_contact_label"),
-                value = "",
-                placeholder = ui_str("feedback_contact_ph", "en")
-              ) %>% tagAppendAttributes(`data-i18n-ph` = "feedback_contact_ph"),
-              checkboxInput(
-                "feedback_include_context",
-                ui_i18n("feedback_include_context"),
-                value = TRUE
-              ),
-              actionButton(
-                "feedback_submit", ui_i18n("feedback_submit"),
-                class = "btn-success",
-                icon = icon("paper-plane")
-              ),
-              uiOutput("feedback_status")
-            )
-          ),
-          column(
-            width = 5,
-            box(
-              width = 12, status = "info", solidHeader = TRUE,
-              title = ui_i18n("feedback_track_title"),
-              tags$ul(
-                tags$li(ui_i18n("feedback_track_1")),
-                tags$li(
-                  ui_i18n("feedback_track_2"),
-                  " ",
-                  tags$code("feedback"),
-                  " ",
-                  tags$a(
-                    href = "https://github.com/lawrencekuo1118/theYNowApp/issues?q=is%3Aissue+label%3Afeedback",
-                    target = "_blank",
-                    rel = "noopener noreferrer",
-                    ui_i18n("feedback_track_link")
-                  )
-                ),
-                tags$li(ui_i18n("feedback_track_3"))
-              )
-            )
-          )
-        )
+        uiOutput("ynow_lazy_host_feedback")
       ),
 
       # ==========================================
@@ -21248,18 +21289,7 @@ ui <- dashboardPage(
       # ==========================================
       tabItem(
         tabName = "about",
-        tags$div(
-          class = "ynow-full-only",
-          .about_bilingual_intro_ui()
-        ),
-        tags$div(
-          class = "ynow-lite-only",
-          .about_lite_intro_ui()
-        ),
-        tags$hr(style = "margin: 20px 0 12px 0; border-color: #e5e8eb;"),
-        .about_data_sources_ui(),
-        tags$hr(style = "margin: 20px 0 12px 0; border-color: #e5e8eb;"),
-        .legal_notices_ui()
+        uiOutput("ynow_lazy_host_about")
       )
     )
   )
