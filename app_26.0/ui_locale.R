@@ -3833,6 +3833,51 @@ locale_for_market <- function(mode = get_market_mode()) {
       "disclosures, or wait until statements finish retrieving."
     ),
     bblab_ch6_title = "Reconciliation",
+    bblab_ch6_help = paste0(
+      "Check whether the business cards add up to the filed consolidated Income Statement. ",
+      "Filed consolidated = what the company reported; Sum of businesses = what we assigned ",
+      "to operating businesses; Unassigned gap = the leftover not yet attributed. ",
+      "This is a disclosure cross-check — not a valuation engine."
+    ),
+    bblab_recon_verdict_pass = "Match — the business split adds up",
+    bblab_recon_verdict_pass_body = paste0(
+      "Revenue, Cost of Revenue, and Gross Profit assigned to businesses sum to the ",
+      "filed consolidated totals (within tolerance). The mix you see on the cards is ",
+      "consistent with the company's reported Income Statement."
+    ),
+    bblab_recon_verdict_fail = "Gap remains — part of the statement is still unassigned",
+    bblab_recon_verdict_fail_body = paste0(
+      "The sum of business cards does not yet equal the filed consolidated totals. ",
+      "The unassigned gap is kept visible — we never force a plug with Net Income. ",
+      "Treat the mix as incomplete until the gap is explained by filings."
+    ),
+    bblab_recon_col_line = "Line item",
+    bblab_recon_col_reported = "Filed consolidated",
+    bblab_recon_col_reported_help = "Amount on the company's consolidated Income Statement for this period.",
+    bblab_recon_col_recast = "Sum of businesses",
+    bblab_recon_col_recast_help = "Total of the amounts assigned to operating businesses (plus disclosed reconciling items).",
+    bblab_recon_col_leftover = "Unassigned gap",
+    bblab_recon_col_leftover_help = paste0(
+      "Filed consolidated minus sum of businesses. Positive = still unassigned to a business; ",
+      "negative = businesses sum above the filed total (often eliminations / overlap)."
+    ),
+    bblab_recon_col_share = "Gap vs filed",
+    bblab_recon_col_share_help = "Unassigned gap as a share of the filed consolidated amount for that line.",
+    bblab_recon_col_status = "Business check",
+    bblab_recon_status_match = "Adds up",
+    bblab_recon_status_gap = "Gap remains",
+    bblab_recon_notes_title = "What the numbers mean",
+    bblab_recon_line_match = "Adds up to the filed consolidated amount — no material unassigned gap.",
+    bblab_recon_line_gap_under = "Businesses still under-explain the filed total.",
+    bblab_recon_line_gap_over = "Businesses sum above the filed total.",
+    bblab_recon_line_gap_amt = "Unassigned gap",
+    bblab_recon_line_gap_unknown = "A gap remains, but the size could not be measured from available figures.",
+    bblab_recon_of_filed = "of filed",
+    bblab_recon_commercial_foot = paste0(
+      "Investment use: a clean match supports reading the revenue / GP mix on the cards as ",
+      "faithful to the consolidated statement. A remaining gap means some economics are still ",
+      "outside the named businesses — do not treat the mix as a complete P&L bridge."
+    ),
     bblab_ch7_title = "Sources",
     bblab_geo_veto_why = paste0(
       "Geography that only describes customer location is not the primary business split; ",
@@ -7995,6 +8040,49 @@ locale_for_market <- function(mode = get_market_mode()) {
       "或等待財報擷取完成。"
     ),
     bblab_ch6_title = "對帳",
+    bblab_ch6_help = paste0(
+      "檢核各事業卡片加總是否等於已申報的合併損益表。",
+      "「合併財報已申報」＝公司申報總數；「各事業加總」＝已歸入營運事業的金額；",
+      "「尚未歸屬差額」＝仍未歸入事業的剩餘。",
+      "這是揭露交叉檢核，不是估值引擎。"
+    ),
+    bblab_recon_verdict_pass = "對得上 — 事業拆解加總與合併財報一致",
+    bblab_recon_verdict_pass_body = paste0(
+      "已歸入各事業的營收、營業成本與毛利，加總後與合併財報總數相符（在容許誤差內）。",
+      "卡片上看到的組成，可對應公司已申報的合併損益表。"
+    ),
+    bblab_recon_verdict_fail = "尚有差額 — 部分財報金額仍未歸入事業",
+    bblab_recon_verdict_fail_body = paste0(
+      "各事業卡片加總尚未等於合併財報已申報總數。",
+      "差額會原樣呈現，絕不以淨利硬湊。",
+      "在差額被財報說明前，請把事業組成視為尚未完整。"
+    ),
+    bblab_recon_col_line = "科目",
+    bblab_recon_col_reported = "合併財報已申報",
+    bblab_recon_col_reported_help = "該期公司合併損益表上的已申報金額。",
+    bblab_recon_col_recast = "各事業加總",
+    bblab_recon_col_recast_help = "已歸入營運事業（含已揭露調節項目）的金額合計。",
+    bblab_recon_col_leftover = "尚未歸屬差額",
+    bblab_recon_col_leftover_help = paste0(
+      "合併財報已申報減去各事業加總。正數＝仍未歸入事業；",
+      "負數＝事業加總高於合併總數（常見於內部交易銷除或重疊）。"
+    ),
+    bblab_recon_col_share = "差額佔比",
+    bblab_recon_col_share_help = "尚未歸屬差額佔該科目合併財報已申報金額的比重。",
+    bblab_recon_col_status = "商業檢核",
+    bblab_recon_status_match = "對得上",
+    bblab_recon_status_gap = "尚有差額",
+    bblab_recon_notes_title = "數字怎麼讀",
+    bblab_recon_line_match = "與合併財報已申報金額對得上，無重大尚未歸屬差額。",
+    bblab_recon_line_gap_under = "各事業加總仍低於合併財報已申報。",
+    bblab_recon_line_gap_over = "各事業加總高於合併財報已申報。",
+    bblab_recon_line_gap_amt = "尚未歸屬差額",
+    bblab_recon_line_gap_unknown = "仍有差額，但依現有數字無法量測大小。",
+    bblab_recon_of_filed = "相對已申報",
+    bblab_recon_commercial_foot = paste0(
+      "投資解讀：對得上時，可把卡片上的營收／毛利組成視為與合併損益表一致；",
+      "若尚有差額，代表部分經濟實質仍在具名事業之外——勿把組成當成完整損益銜接。"
+    ),
     bblab_ch7_title = "來源與方法",
     bblab_geo_veto_why = paste0(
       "僅描述客戶所在地的地區別，不會被選為主要業務切分；",
