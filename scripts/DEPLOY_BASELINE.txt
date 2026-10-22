@@ -7,5 +7,5 @@ commit=1bbb6369f72e5c27add133b9c5e12d256147dcce
 short=1bbb6369
 message=chore: bump display version to v26.40
 captured_at=2026-10-22T10:43:28Z
-display_version=v26.40
+display_version=v26.41
 note=Canonical live line is app_26.0. Bundle 12724703: Rearrange locale (en-US/zh-TW) + sidebar tab reorder after login (#407). Secrets only in gitignored .Renviron; no secret values in git.
