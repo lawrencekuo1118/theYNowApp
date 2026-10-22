@@ -5560,8 +5560,8 @@ ui <- dashboardPage(
           object-fit: cover;
           object-position: left 42%;
           /* PNG is already green strokes on transparent — soft glow only, no invert/fill */
-          filter: drop-shadow(0 0 4px rgba(36, 156, 96, 0.35));
-          opacity: 0.78;
+          filter: drop-shadow(0 0 3px rgba(36, 156, 96, 0.45));
+          opacity: 0.92;
           -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 55%, transparent 100%);
           mask-image: linear-gradient(90deg, #000 0%, #000 55%, transparent 100%);
           pointer-events: none;
@@ -7088,12 +7088,12 @@ ui <- dashboardPage(
         }
         .ynow-sidebar-foot-glow {
           position: absolute;
-          left: 12%;
-          right: 12%;
-          bottom: 8px;
-          height: 34px;
-          background: radial-gradient(ellipse at center, var(--ynow-chrome-blue-glow), transparent 70%);
-          filter: blur(6px);
+          left: 22%;
+          right: 22%;
+          bottom: 12px;
+          height: 18px;
+          background: radial-gradient(ellipse at center, rgba(12, 84, 132, 0.35), transparent 72%);
+          filter: blur(5px);
           animation: ynow-chrome-blue-pulse 3.6s ease-in-out infinite;
           pointer-events: none;
           z-index: 0;
@@ -7108,8 +7108,8 @@ ui <- dashboardPage(
           overflow: hidden;
           border-radius: 16px;
           border: 1px solid rgba(12, 84, 132, 0.45);
-          background: #0a0a0a;
-          box-shadow: 0 0 14px var(--ynow-chrome-blue-halo);
+          background: #000;
+          box-shadow: 0 0 10px rgba(12, 84, 132, 0.18);
           padding: 8px 12px 6px;
           box-sizing: border-box;
           width: 100%;
@@ -7122,11 +7122,11 @@ ui <- dashboardPage(
           background-color: transparent;
           background-image: url("ynow-chrome-veins-circuit.png");
           background-repeat: no-repeat;
-          background-size: 160% auto;
-          background-position: center 70%;
-          opacity: 0.7;
+          background-size: 150% auto;
+          background-position: center 72%;
+          opacity: 0.85;
           /* strokes already blue on transparent — no screen wash / hue fill */
-          filter: drop-shadow(0 0 3px rgba(12, 84, 132, 0.35));
+          filter: drop-shadow(0 0 2px rgba(12, 84, 132, 0.4));
           pointer-events: none;
           z-index: 0;
         }
