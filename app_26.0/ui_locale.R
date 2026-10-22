@@ -4099,12 +4099,14 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_or_tw_ec_title = "TW earnings call / conclusions",
     bblab_or_tw_ec_empty = paste0(
       "No automatable TW earnings-call conclusion with measurable backlog / bookings was ingested. ",
-      "AlphaMemo free transcripts are human-browsable only; Seeking Alpha last-resort also returned empty."
+      "Fugle memo and Seeking Alpha last-resort returned empty; AlphaMemo free transcripts stay human-browsable only."
     ),
     bblab_or_tw_ec_note = paste0(
-      "Preferred: AlphaMemo.ai free-transcripts (Estimate — AI aggregator memo; no AlphaMemo HTML/API scrape). ",
-      "Last-resort: Seeking Alpha HTML (Last-resort / third-party) only when AlphaMemo cannot supply facts."
+      "Preferred automatable: Fugle 法說會備忘錄 HTML (Estimate — blog memo; not a full official transcript). ",
+      "AlphaMemo.ai free-transcripts stay human outbound only (no AlphaMemo HTML/API scrape). ",
+      "Last-resort: Seeking Alpha HTML (Last-resort / third-party) when preferred paths cannot supply facts."
     ),
+    bblab_or_tw_ec_fugle_link = "Fugle earnings-call memo (Estimate)",
     bblab_or_tw_ec_alphamemo_link = "AlphaMemo free transcripts (human)",
     bblab_or_tw_ec_search_link = "Search AlphaMemo for this ticker (human)",
     bblab_or_tw_ec_sa_link = "Seeking Alpha Transcripts (last-resort)",
@@ -8395,12 +8397,14 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_or_tw_ec_title = "台股法說會結論",
     bblab_or_tw_ec_empty = paste0(
       "此 ticker 未自動擷取可量化 backlog／bookings 的台股法說結論。",
-      "AlphaMemo 公開逐字稿僅供人工瀏覽；Seeking Alpha 最後備援亦無可用內容。"
+      "富果法說備忘錄與 Seeking Alpha 最後備援皆無可用內容；AlphaMemo 公開逐字稿仍僅供人工瀏覽。"
     ),
     bblab_or_tw_ec_note = paste0(
-      "優先：AlphaMemo.ai 公開法說逐字稿（估計 — AI 彙整 Memo；不擷取 AlphaMemo HTML／API）。",
-      "最後備援：僅在 AlphaMemo 無法提供可自動化事實時，才擷取 Seeking Alpha HTML（最後備援／第三方）。"
+      "優先可自動化：富果直送法說會備忘錄 HTML（估計 — 部落格摘要，非完整官方逐字稿）。",
+      "AlphaMemo.ai 公開法說逐字稿維持人工外連（不擷取 AlphaMemo HTML／API）。",
+      "最後備援：僅在偏好路徑無法提供事實時，才擷取 Seeking Alpha HTML（最後備援／第三方）。"
     ),
+    bblab_or_tw_ec_fugle_link = "富果法說會備忘錄（估計）",
     bblab_or_tw_ec_alphamemo_link = "AlphaMemo 公開法說逐字稿（人工）",
     bblab_or_tw_ec_search_link = "以 ticker 搜尋 AlphaMemo（人工）",
     bblab_or_tw_ec_sa_link = "Seeking Alpha Transcripts（最後備援）",

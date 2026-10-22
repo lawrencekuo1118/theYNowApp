@@ -64,6 +64,9 @@ ynow_us_earnings_call_ir_search_url <- function(ticker) {
 .ynow_us_ec_money_to_num <- function(piece) {
   piece <- as.character(piece %||% "")[1]
   if (!nzchar(piece)) return(NA_real_)
+  # zh-TW: 8.54億元 / 1,404 百萬 / 7,043 萬元 (absolute TWD when unit is 台幣-scale).
+  zh <- .ynow_us_ec_money_to_num_zh(piece)
+  if (is.finite(zh)) return(zh)
   m <- regexpr(
     "([0-9]+(?:\\.[0-9]+)?)\\s*(billion|million|bn|mm|m)\\b",
     piece,
@@ -85,6 +88,51 @@ ynow_us_earnings_call_ir_search_url <- function(ticker) {
   if (!is.finite(n)) return(NA_real_)
   if (unit %in% c("billion", "bn")) return(n * 1e9)
   if (unit %in% c("million", "mm", "m")) return(n * 1e6)
+  NA_real_
+}
+
+#' Parse zh-TW money phrases (億／百萬／萬). Returns absolute currency units.
+.ynow_us_ec_money_to_num_zh <- function(piece) {
+  piece <- as.character(piece %||% "")[1]
+  if (!nzchar(piece)) return(NA_real_)
+  piece <- gsub(",", "", piece, fixed = TRUE)
+  # 億美元 → USD scale (treat like English billion for extract magnitude).
+  m_usd <- regexpr(
+    "([0-9]+(?:\\.[0-9]+)?)\\s*億\\s*美元",
+    piece,
+    perl = TRUE
+  )
+  if (m_usd[1] > 0) {
+    n <- suppressWarnings(as.numeric(sub(
+      "^.*?([0-9]+(?:\\.[0-9]+)?)\\s*億\\s*美元.*$", "\\1",
+      regmatches(piece, m_usd)[1], perl = TRUE
+    )))
+    if (is.finite(n)) return(n * 1e8)
+  }
+  m_yi <- regexpr("([0-9]+(?:\\.[0-9]+)?)\\s*億\\s*元?", piece, perl = TRUE)
+  if (m_yi[1] > 0) {
+    n <- suppressWarnings(as.numeric(sub(
+      "^.*?([0-9]+(?:\\.[0-9]+)?)\\s*億.*$", "\\1",
+      regmatches(piece, m_yi)[1], perl = TRUE
+    )))
+    if (is.finite(n)) return(n * 1e8)
+  }
+  m_bai <- regexpr("([0-9]+(?:\\.[0-9]+)?)\\s*百萬", piece, perl = TRUE)
+  if (m_bai[1] > 0) {
+    n <- suppressWarnings(as.numeric(sub(
+      "^.*?([0-9]+(?:\\.[0-9]+)?)\\s*百萬.*$", "\\1",
+      regmatches(piece, m_bai)[1], perl = TRUE
+    )))
+    if (is.finite(n)) return(n * 1e6)
+  }
+  m_wan <- regexpr("([0-9]+(?:\\.[0-9]+)?)\\s*萬\\s*元?", piece, perl = TRUE)
+  if (m_wan[1] > 0) {
+    n <- suppressWarnings(as.numeric(sub(
+      "^.*?([0-9]+(?:\\.[0-9]+)?)\\s*萬.*$", "\\1",
+      regmatches(piece, m_wan)[1], perl = TRUE
+    )))
+    if (is.finite(n)) return(n * 1e4)
+  }
   NA_real_
 }
 
@@ -212,25 +260,97 @@ ynow_us_earnings_call_ir_search_url <- function(ticker) {
     "(?i)(?:capital expenditures?|\\bCapEx\\b|capex)[^.]{0,80}(?:of|=|:)?[^.]{0,40}([0-9]+(?:\\.[0-9]+)?)\\s*(billion|million|bn|mm|m)\\b",
     "(?i)([0-9]+(?:\\.[0-9]+)?)\\s*(billion|million|bn|mm|m)\\b[^.]{0,40}(?:capital expenditures?|\\bCapEx\\b|capex)"
   ))
+  # zh-TW amount patterns (Fugle memo / TW IR text). Only when stated near keywords.
+  grab_zh <- function(patterns) {
+    for (pat in patterns) {
+      m <- regexpr(pat, txt, perl = TRUE)
+      if (m[1] < 0) next
+      hit <- regmatches(txt, m)[1]
+      n <- .ynow_us_ec_money_to_num_zh(hit)
+      if (is.finite(n)) return(n)
+    }
+    NA_real_
+  }
+  if (!is.finite(out$backlog)) {
+    out$backlog <- grab_zh(c(
+      "在手訂單[^。]{0,40}([0-9,\\.]+)\\s*億\\s*元?",
+      "訂單[^。]{0,40}([0-9,\\.]+)\\s*億\\s*元?",
+      "([0-9,\\.]+)\\s*億\\s*元?[^。]{0,20}在手訂單"
+    ))
+  }
+  if (!is.finite(out$bookings)) {
+    out$bookings <- grab_zh(c(
+      "新訂單[^。]{0,40}([0-9,\\.]+)\\s*億\\s*元?",
+      "接單[^。]{0,40}([0-9,\\.]+)\\s*億\\s*元?",
+      "bookings?[^。]{0,40}([0-9,\\.]+)\\s*億\\s*元?"
+    ))
+  }
+  if (!is.finite(out$capex)) {
+    out$capex <- grab_zh(c(
+      "資本支出[^。]{0,40}([0-9,\\.]+)\\s*(?:億\\s*元?|百萬|萬\\s*元?)",
+      "CapEx[^。]{0,40}([0-9,\\.]+)\\s*(?:億\\s*元?|百萬|萬\\s*元?)",
+      "([0-9,\\.]+)\\s*(?:億\\s*元?|百萬)[^。]{0,20}資本支出"
+    ))
+  }
   themes <- character(0)
-  if (grepl("(?i)\\b(guidance|outlook|expect(?:s|ed|ing)?\\s+(?:revenue|EPS|margin)|next\\s+quarter)", txt, perl = TRUE)) {
+  if (grepl("(?i)\\b(guidance|outlook|expect(?:s|ed|ing)?\\s+(?:revenue|EPS|margin)|next\\s+quarter)", txt, perl = TRUE) ||
+        grepl("展望|指引|預估|謹慎樂觀", txt, perl = TRUE)) {
     themes <- c(themes, "cfo_guidance")
   }
-  if (grepl("(?i)\\b(capital expenditures?|\\bCapEx\\b|capex|capacity\\s+investment|fab\\s+build)", txt, perl = TRUE)) {
+  if (grepl("(?i)\\b(capital expenditures?|\\bCapEx\\b|capex|capacity\\s+investment|fab\\s+build)", txt, perl = TRUE) ||
+        grepl("資本支出|擴產|產能", txt, perl = TRUE)) {
     themes <- c(themes, "capex_plan")
   }
-  if (grepl("(?i)\\b(question[- ]and[- ]answer|\\bQ\\s*&\\s*A\\b|analyst\\s+question)", txt, perl = TRUE)) {
+  if (grepl("(?i)\\b(question[- ]and[- ]answer|\\bQ\\s*&\\s*A\\b|analyst\\s+question)", txt, perl = TRUE) ||
+        grepl("問答|Q\\s*&\\s*A|法說會問答", txt, perl = TRUE)) {
     themes <- c(themes, "analyst_qa")
   }
-  if (grepl("(?i)\\b(long[- ]term|multi[- ]year|secular|competitive\\s+advantage)\\b", txt, perl = TRUE)) {
+  if (grepl("(?i)\\b(long[- ]term|multi[- ]year|secular|competitive\\s+advantage)\\b", txt, perl = TRUE) ||
+        grepl("長期|未來展望|競爭優勢", txt, perl = TRUE)) {
     themes <- c(themes, "ceo_outlook")
   }
   out$themes <- unique(themes)
   parties <- .ynow_us_ec_extract_parties(txt)
+  # zh-TW party hints (name + share/% only when both appear nearby).
+  zh_parties <- .ynow_us_ec_extract_parties_zh(txt)
+  if (length(zh_parties$customers)) {
+    parties$customers <- c(parties$customers, zh_parties$customers)
+  }
+  if (length(zh_parties$suppliers)) {
+    parties$suppliers <- c(parties$suppliers, zh_parties$suppliers)
+  }
+  if (length(zh_parties$order_lines)) {
+    parties$order_lines <- c(parties$order_lines, zh_parties$order_lines)
+  }
   out$suppliers <- parties$suppliers
   out$customers <- parties$customers
   out$order_lines <- parties$order_lines
   out
+}
+
+#' Conservative zh-TW customer/supplier/order rows (share or amount required).
+.ynow_us_ec_extract_parties_zh <- function(text) {
+  txt <- as.character(text %||% "")[1]
+  empty <- list(suppliers = list(), customers = list(), order_lines = list())
+  if (!nzchar(txt)) return(empty)
+  rows <- list()
+  # e.g. 主要客戶甲佔營收 18% / 客戶 Acme 營收佔比 12%
+  pat_cust <- "([\u4e00-\u9fffA-Za-z0-9&]{2,20})[^。]{0,12}(?:佔|占)(?:營收|銷售)[^。]{0,12}([0-9]+(?:\\.[0-9]+)?)\\s*%"
+  m <- gregexpr(pat_cust, txt, perl = TRUE)
+  if (m[[1]][1] > 0) {
+    starts <- as.integer(m[[1]])
+    lens <- attr(m[[1]], "match.length")
+    for (i in seq_along(starts)) {
+      hit <- substr(txt, starts[[i]], starts[[i]] + lens[[i]] - 1L)
+      nm <- sub(pat_cust, "\\1", hit, perl = TRUE)
+      sh <- suppressWarnings(as.numeric(sub(pat_cust, "\\2", hit, perl = TRUE))) / 100
+      if (!nzchar(nm) || !is.finite(sh)) next
+      if (nm %in% c("主要", "最大", "單一", "前大", "營收", "公司")) next
+      rows[[length(rows) + 1L]] <- list(name = nm, share = sh, amount = NA_real_, kind = "customer")
+      if (length(rows) >= 5L) break
+    }
+  }
+  list(customers = rows, suppliers = list(), order_lines = list())
 }
 
 .ynow_us_ec_from_fmp <- function(ticker, api_key) {

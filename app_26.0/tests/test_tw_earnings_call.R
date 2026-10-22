@@ -1,6 +1,6 @@
-# TW earnings-call — AlphaMemo outbound + SA last-resort; honest empty.
+# TW earnings-call — Fugle memo + AlphaMemo outbound + SA last-resort; honest empty.
 # Run: cd app_26.0 && Rscript tests/test_tw_earnings_call.R
-Sys.setenv(YNOW_DEBUG_SKIP_PY = "1", YNOW_SA_SCRAPE = "0")
+Sys.setenv(YNOW_DEBUG_SKIP_PY = "1", YNOW_SA_SCRAPE = "0", YNOW_FUGLE_SCRAPE = "0")
 
 app_dir <- if (file.exists("tw_earnings_call.R")) {
   normalizePath(".", winslash = "/", mustWork = TRUE)
@@ -29,6 +29,7 @@ check <- function(label, cond) {
 
 source("seeking_alpha_earnings_call.R", local = TRUE, encoding = "UTF-8")
 source("us_earnings_call.R", local = TRUE, encoding = "UTF-8")
+source("fugle_earnings_call.R", local = TRUE, encoding = "UTF-8")
 source("tw_earnings_call.R", local = TRUE, encoding = "UTF-8")
 
 check("AlphaMemo index url stable", {
@@ -37,17 +38,30 @@ check("AlphaMemo index url stable", {
     "https://www.alphamemo.ai/free-transcripts"
   )
 })
+check("Fugle topic url stable", {
+  identical(
+    ynow_fugle_earnings_call_topic_url(),
+    "https://blog.fugle.tw/topic/earnings-call-memo"
+  )
+})
 check("search url mentions alphamemo + ticker", {
   u <- ynow_tw_earnings_call_alphamemo_search_url("2330.TW")
   grepl("alphamemo", u, fixed = TRUE) && grepl("2330", u, fixed = TRUE)
 })
-
-Sys.setenv(YNOW_SA_SCRAPE = "0")
-got <- ynow_tw_earnings_call_fetch("2330.TW")
-check("TW fetch returns AlphaMemo link", {
-  is.list(got) && grepl("alphamemo.ai/free-transcripts", got$alphamemo_url %||% "", fixed = TRUE)
+check("zh extract backlog 億元", {
+  f <- .ynow_us_ec_extract_facts("在手訂單約 12.5 億元，資本支出約 3.2 億元。")
+  isTRUE(abs((f$backlog %||% 0) - 12.5e8) < 1e5) &&
+    isTRUE(abs((f$capex %||% 0) - 3.2e8) < 1e5)
 })
-check("TW fetch honest empty without SA when scrape off", {
+
+Sys.setenv(YNOW_SA_SCRAPE = "0", YNOW_FUGLE_SCRAPE = "0")
+got <- ynow_tw_earnings_call_fetch("2330.TW")
+check("TW fetch returns AlphaMemo + Fugle links", {
+  is.list(got) &&
+    grepl("alphamemo.ai/free-transcripts", got$alphamemo_url %||% "", fixed = TRUE) &&
+    grepl("blog.fugle.tw/topic/earnings-call-memo", got$fugle_url %||% "", fixed = TRUE)
+})
+check("TW fetch honest empty without scrapers", {
   identical(got$status %||% "", "empty") &&
     identical(got$credibility %||% "", "estimate") &&
     !is.finite(got$backlog %||% NA_real_)
@@ -57,9 +71,26 @@ check("US ticker leave TW path", {
   identical(u$empty_reason %||% "", "us_leave_as_is")
 })
 
-# Fixture-driven SA last-resort for TW bare ticker.
+# Fixture-driven Fugle preferred path.
+Sys.setenv(
+  YNOW_FUGLE_SCRAPE = "1",
+  YNOW_SA_SCRAPE = "0",
+  YNOW_FUGLE_SCRAPE_FIXTURE_HTML = file.path(app_dir, "tests/fixtures/fugle_earnings_memo_sample.html")
+)
+fugle_got <- ynow_tw_earnings_call_fetch("8182.TW")
+check("TW Fugle fixture labels estimate + fugle_earnings_memo", {
+  is.list(fugle_got) &&
+    identical(fugle_got$credibility %||% "", "estimate") &&
+    identical(fugle_got$source_id %||% "", "fugle_earnings_memo") &&
+    is.finite(fugle_got$backlog %||% NA_real_)
+})
+Sys.unsetenv("YNOW_FUGLE_SCRAPE_FIXTURE_HTML")
+Sys.setenv(YNOW_FUGLE_SCRAPE = "0")
+
+# Fixture-driven SA last-resort for TW bare ticker (Fugle off).
 Sys.setenv(
   YNOW_SA_SCRAPE = "1",
+  YNOW_FUGLE_SCRAPE = "0",
   YNOW_SA_SCRAPE_FIXTURE_HTML = file.path(app_dir, "tests/fixtures/sa_transcript_sample.html")
 )
 sa_got <- ynow_tw_earnings_call_fetch("8916.TW")
@@ -73,26 +104,35 @@ Sys.unsetenv("YNOW_SA_SCRAPE_FIXTURE_HTML")
 Sys.setenv(YNOW_SA_SCRAPE = "0")
 
 disc <- ynow_tw_earnings_call_to_disclosure(got)
-check("TW disclosure shape", {
-  all(c("status", "alphamemo_url", "credibility", "source_id") %in% names(disc))
+check("TW disclosure shape includes fugle_url", {
+  all(c("status", "alphamemo_url", "fugle_url", "credibility", "source_id") %in% names(disc))
 })
 
 mod <- paste(readLines("business_breakdown_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-check("BBLab wires TW earnings-call fetch", {
+check("BBLab wires TW earnings-call fetch + Fugle link", {
   grepl("ynow_tw_earnings_call_fetch", mod, fixed = TRUE) &&
-    grepl("tw_earnings_call", mod, fixed = TRUE)
+    grepl("tw_earnings_call", mod, fixed = TRUE) &&
+    grepl("bblab_or_tw_ec_fugle_link", mod, fixed = TRUE)
 })
-check("global sources tw + sa helpers", {
+check("global sources fugle + tw + sa helpers", {
   g <- paste(readLines("global.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-  grepl('source("tw_earnings_call.R"', g, fixed = TRUE) &&
+  grepl('source("fugle_earnings_call.R"', g, fixed = TRUE) &&
+    grepl('source("tw_earnings_call.R"', g, fixed = TRUE) &&
     grepl('source("seeking_alpha_earnings_call.R"', g, fixed = TRUE)
 })
 loc <- paste(readLines("ui_locale.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-check("locale en + zh-TW TW EC + last_resort", {
+check("locale en + zh-TW TW EC + Fugle + last_resort", {
   grepl("bblab_or_tw_ec_empty", loc, fixed = TRUE) &&
+    grepl("bblab_or_tw_ec_fugle_link", loc, fixed = TRUE) &&
     grepl("bblab_or_cred_last_resort", loc, fixed = TRUE) &&
-    grepl("最後備援（第三方 HTML）", loc, fixed = TRUE) &&
+    grepl("富果法說會備忘錄", loc, fixed = TRUE) &&
     grepl("Last-resort (third-party HTML)", loc, fixed = TRUE)
+})
+check("no AlphaMemo scrape in TW/Fugle sources", {
+  tw <- paste(readLines("tw_earnings_call.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  fg <- paste(readLines("fugle_earnings_call.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  !grepl("alphamemo.ai/free-transcripts/", fg, fixed = TRUE) &&
+    grepl("no AlphaMemo HTML/API scrape", tw, fixed = TRUE)
 })
 
 message("PASS ", ok, " FAIL ", bad)
