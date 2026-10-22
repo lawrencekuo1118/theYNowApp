@@ -92,11 +92,67 @@ check(
 )
 
 check(
+  "chip circuit fades out upward + rises from bottom",
+  grepl(
+    "\\.ynow-sidebar-foot-chip::before \\{[\\s\\S]*?mask-image:\\s*linear-gradient\\(to top",
+    txt,
+    perl = TRUE
+  ) &&
+    grepl("ynow-chrome-circuit-rise", txt, fixed = TRUE) &&
+    grepl("transform-origin:\\s*bottom center", txt, perl = TRUE)
+)
+
+check(
+  "logo hover stays above veins with opaque black (no branch flash)",
+  grepl(
+    "\\.main-header \\.logo,[\\s\\S]*?\\.main-header \\.logo:hover \\{[\\s\\S]*?z-index:\\s*5",
+    txt,
+    perl = TRUE
+  ) &&
+    grepl(
+      "\\.skin-black \\.main-header \\.logo:hover[\\s\\S]*?background-color:\\s*#000\\s*!important",
+      txt,
+      perl = TRUE
+    ) &&
+    grepl("z-index:\\s*5\\s*!important", txt, perl = TRUE)
+)
+
+check(
+  "wordmark not clipped by logo overflow / tight max-width",
+  grepl(
+    "\\.main-header \\.logo,[\\s\\S]*?\\.main-header \\.logo:hover \\{[\\s\\S]*?overflow:\\s*visible\\s*!important",
+    txt,
+    perl = TRUE
+  ) &&
+    grepl(
+      "\\.main-header \\.logo \\.ynow-app-title,[\\s\\S]*?width:\\s*max-content",
+      txt,
+      perl = TRUE
+    ) &&
+    grepl(
+      "\\.ynow-app-title\\.is-complete \\.ynow-app-title-fill \\{[\\s\\S]*?overflow:\\s*visible",
+      txt,
+      perl = TRUE
+    ) &&
+    !grepl(
+      "\\.main-header \\.logo \\.ynow-app-title,[\\s\\S]*?max-width:\\s*calc\\(100% - 16px\\)",
+      txt,
+      perl = TRUE
+    )
+)
+
+check(
   "Balanced pulse timings + reduced-motion",
   grepl("ynow-chrome-green-pulse 4.8s", txt, fixed = TRUE) &&
     grepl("ynow-chrome-blue-pulse 3.6s", txt, fixed = TRUE) &&
+    grepl("ynow-chrome-circuit-rise 3.6s", txt, fixed = TRUE) &&
     grepl(
       "prefers-reduced-motion: reduce[\\s\\S]*?\\.ynow-chrome-header-leaves[\\s\\S]*?animation:\\s*none",
+      txt,
+      perl = TRUE
+    ) &&
+    grepl(
+      "prefers-reduced-motion: reduce[\\s\\S]*?\\.ynow-sidebar-foot-chip::before[\\s\\S]*?animation:\\s*none",
       txt,
       perl = TRUE
     )
