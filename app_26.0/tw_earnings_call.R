@@ -1,0 +1,123 @@
+# ==========================================
+# TW earnings-call / 法說會結論 ingest (product path)
+# ==========================================
+# Preferred: AlphaMemo free-transcripts index
+#   https://www.alphamemo.ai/free-transcripts
+# AlphaMemo robots.txt disallows /api/; Terms forbid bots/crawlers without
+# written permission → outbound index link only (no AlphaMemo HTML/API scrape).
+# Last-resort (user override): Seeking Alpha HTML scrape when AlphaMemo cannot
+# supply automatable facts. Credibility = last_resort (third-party HTML).
+# Fail closed with honest empty if SA also fails. Never invent amounts.
+
+.ynow_tw_ec_chr <- function(x, default = "") {
+  v <- as.character(x %||% default)[1]
+  if (!nzchar(v) || is.na(v)) default else v
+}
+
+.ynow_tw_ec_num <- function(x) {
+  v <- suppressWarnings(as.numeric(x))
+  if (length(v) != 1L || !is.finite(v)) NA_real_ else v
+}
+
+#' Canonical AlphaMemo public free-transcripts index (human outbound).
+ynow_tw_earnings_call_alphamemo_index_url <- function() {
+  "https://www.alphamemo.ai/free-transcripts"
+}
+
+#' Optional Google query that helps a human find a ticker on AlphaMemo (no scrape).
+ynow_tw_earnings_call_alphamemo_search_url <- function(ticker) {
+  tk <- toupper(trimws(.ynow_tw_ec_chr(ticker)))
+  tk <- sub("\\.(TW|TWO)$", "", tk, ignore.case = TRUE)
+  if (!nzchar(tk)) return("")
+  q <- paste("site:alphamemo.ai/free-transcripts", tk, "法說會")
+  paste0("https://www.google.com/search?q=", utils::URLencode(q, reserved = TRUE))
+}
+
+.ynow_tw_ec_empty <- function(ticker, reason = "human_browsable_only") {
+  list(
+    ok = FALSE,
+    status = "empty",
+    source_id = "alphamemo_index",
+    credibility = "estimate",
+    title = "",
+    url = "",
+    published = "",
+    backlog = NA_real_,
+    bookings = NA_real_,
+    capex = NA_real_,
+    themes = character(0),
+    excerpt = "",
+    empty_reason = reason
+  )
+}
+
+#' Fetch TW earnings-call disclosure for BBLab order research.
+#' AlphaMemo = preferred outbound/empty; SA HTML = last-resort only.
+ynow_tw_earnings_call_fetch <- function(ticker) {
+  tk <- toupper(trimws(.ynow_tw_ec_chr(ticker)))
+  bare <- sub("\\.(TW|TWO)$", "", tk, ignore.case = TRUE)
+  meta_links <- list(
+    alphamemo_url = ynow_tw_earnings_call_alphamemo_index_url(),
+    alphamemo_search_url = ynow_tw_earnings_call_alphamemo_search_url(bare),
+    sa_url = if (exists("ynow_sa_earnings_call_index_url", mode = "function")) {
+      ynow_sa_earnings_call_index_url(bare)
+    } else {
+      ""
+    }
+  )
+  if (!nzchar(tk)) {
+    return(c(.ynow_tw_ec_empty("", "blank_ticker"), meta_links))
+  }
+  # US tickers leave TW path alone.
+  if (!grepl("\\.(TW|TWO)$", ticker, ignore.case = TRUE) &&
+        !grepl("^[0-9]{4}$", bare)) {
+    return(c(.ynow_tw_ec_empty(tk, "us_leave_as_is"), meta_links))
+  }
+
+  # 1) AlphaMemo: no automatable licensed/public API that respects ToS → structured empty.
+  # 2) Seeking Alpha HTML last-resort (often empty for pure TW names; fail closed).
+  usable <- if (exists("ynow_ec_result_usable", mode = "function")) {
+    ynow_ec_result_usable
+  } else {
+    function(res) is.list(res) && isTRUE(res$ok) && identical(res$status %||% "", "ok")
+  }
+  if (exists("ynow_sa_earnings_call_fetch_last_resort", mode = "function")) {
+    extract_fun <- if (exists(".ynow_us_ec_extract_facts", mode = "function")) {
+      .ynow_us_ec_extract_facts
+    } else {
+      NULL
+    }
+    sa <- tryCatch(
+      ynow_sa_earnings_call_fetch_last_resort(bare, extract_fun = extract_fun),
+      error = function(e) NULL
+    )
+    if (isTRUE(usable(sa))) {
+      return(c(sa, meta_links))
+    }
+  }
+  c(.ynow_tw_ec_empty(bare, "alphamemo_human_only_sa_empty"), meta_links)
+}
+
+#' Shape for payload$order_disclosures$earnings_call (numeric facts only when stated).
+ynow_tw_earnings_call_to_disclosure <- function(fetched) {
+  if (!is.list(fetched)) return(list())
+  themes <- fetched$themes %||% character(0)
+  if (!is.character(themes)) themes <- as.character(unlist(themes))
+  list(
+    backlog = .ynow_tw_ec_num(fetched$backlog),
+    bookings = .ynow_tw_ec_num(fetched$bookings),
+    capex = .ynow_tw_ec_num(fetched$capex),
+    themes = themes,
+    excerpt = .ynow_tw_ec_chr(fetched$excerpt),
+    title = .ynow_tw_ec_chr(fetched$title),
+    url = .ynow_tw_ec_chr(fetched$url),
+    published = .ynow_tw_ec_chr(fetched$published),
+    source_id = .ynow_tw_ec_chr(fetched$source_id, "alphamemo_index"),
+    credibility = .ynow_tw_ec_chr(fetched$credibility, "estimate"),
+    status = .ynow_tw_ec_chr(fetched$status, "empty"),
+    alphamemo_url = .ynow_tw_ec_chr(fetched$alphamemo_url),
+    alphamemo_search_url = .ynow_tw_ec_chr(fetched$alphamemo_search_url),
+    sa_url = .ynow_tw_ec_chr(fetched$sa_url),
+    empty_reason = .ynow_tw_ec_chr(fetched$empty_reason, "human_browsable_only")
+  )
+}

@@ -1,9 +1,13 @@
 # ==========================================
 # US earnings-call / transcript ingest (product path)
 # ==========================================
-# Sources (ranked): licensed transcript API (env key) → SEC EDGAR 8-K/6-K body →
-# company IR link-out. Seeking Alpha is an outbound human link only — never scrape.
-# Never invent backlog / bookings amounts. Honest empty when undisclosed.
+# Methodology inspiration (財報狗 Statementdog blog — reading framework only,
+# not a scrape target of their site): CEO outlook / CFO near-term guidance /
+# CapEx & capital plan / analyst Q&A themes. Product sources (ranked):
+# licensed transcript API (env key) → SEC EDGAR 8-K/6-K body (Item 2.02) →
+# company IR link-out → Seeking Alpha HTML scrape as **last-resort** only
+# (credibility = last_resort; third-party HTML — not official IR).
+# Never invent backlog / bookings / CapEx amounts. Honest empty when all fail.
 
 .ynow_us_ec_chr <- function(x, default = "") {
   v <- as.character(x %||% default)[1]
@@ -15,11 +19,14 @@
   if (length(v) != 1L || !is.finite(v)) NA_real_ else v
 }
 
-#' Seeking Alpha transcripts page for humans (never scraped by the app).
+#' Seeking Alpha transcripts index URL (human outbound; scrape is last-resort only).
 ynow_us_earnings_call_sa_url <- function(ticker) {
   tk <- toupper(trimws(.ynow_us_ec_chr(ticker)))
   tk <- sub("\\.(US)$", "", tk, ignore.case = TRUE)
   if (!nzchar(tk) || grepl("\\.(TW|TWO)$", tk, ignore.case = TRUE)) return("")
+  if (exists("ynow_sa_earnings_call_index_url", mode = "function")) {
+    return(ynow_sa_earnings_call_index_url(tk))
+  }
   paste0("https://seekingalpha.com/symbol/", utils::URLencode(tk, reserved = TRUE), "/earnings/transcripts")
 }
 
@@ -54,15 +61,22 @@ ynow_us_earnings_call_ir_search_url <- function(ticker) {
   if (!length(keys)) "" else keys[[1]]
 }
 
-#' Pull numbers only when the transcript/filing text states them explicitly.
+#' Pull numbers / theme flags only when the transcript/filing text states them.
+#' Theme flags follow Statementdog reading axes (status-only; no invented amounts).
 .ynow_us_ec_extract_facts <- function(text) {
   txt <- as.character(text %||% "")[1]
-  out <- list(backlog = NA_real_, bookings = NA_real_, excerpt = "")
+  out <- list(
+    backlog = NA_real_,
+    bookings = NA_real_,
+    capex = NA_real_,
+    excerpt = "",
+    themes = character(0)
+  )
   if (!nzchar(txt)) return(out)
   # Keep a short excerpt for UI (not a full republished transcript).
   clean <- gsub("\\s+", " ", txt)
   out$excerpt <- substr(clean, 1L, 420L)
-  # Capture "$X.X billion/million" near backlog / RPO / bookings — no invented amounts.
+  # Capture "$X.X billion/million" near backlog / RPO / bookings / CapEx — no invented amounts.
   grab <- function(patterns) {
     for (pat in patterns) {
       m <- regexpr(pat, txt, ignore.case = TRUE, perl = TRUE)
@@ -92,6 +106,24 @@ ynow_us_earnings_call_ir_search_url <- function(ticker) {
     "(?i)(?:bookings|net new bookings)[^.]{0,80}(?:of|=|:)?[^.]{0,40}([0-9]+(?:\\.[0-9]+)?)\\s*(billion|million|bn|mm|m)\\b",
     "(?i)([0-9]+(?:\\.[0-9]+)?)\\s*(billion|million|bn|mm|m)\\b[^.]{0,40}(?:bookings|net new bookings)"
   ))
+  out$capex <- grab(c(
+    "(?i)(?:capital expenditures?|\\bCapEx\\b|capex)[^.]{0,80}(?:of|=|:)?[^.]{0,40}([0-9]+(?:\\.[0-9]+)?)\\s*(billion|million|bn|mm|m)\\b",
+    "(?i)([0-9]+(?:\\.[0-9]+)?)\\s*(billion|million|bn|mm|m)\\b[^.]{0,40}(?:capital expenditures?|\\bCapEx\\b|capex)"
+  ))
+  themes <- character(0)
+  if (grepl("(?i)\\b(guidance|outlook|expect(?:s|ed|ing)?\\s+(?:revenue|EPS|margin)|next\\s+quarter)", txt, perl = TRUE)) {
+    themes <- c(themes, "cfo_guidance")
+  }
+  if (grepl("(?i)\\b(capital expenditures?|\\bCapEx\\b|capex|capacity\\s+investment|fab\\s+build)", txt, perl = TRUE)) {
+    themes <- c(themes, "capex_plan")
+  }
+  if (grepl("(?i)\\b(question[- ]and[- ]answer|\\bQ\\s*&\\s*A\\b|analyst\\s+question)", txt, perl = TRUE)) {
+    themes <- c(themes, "analyst_qa")
+  }
+  if (grepl("(?i)\\b(long[- ]term|multi[- ]year|secular|competitive\\s+advantage)\\b", txt, perl = TRUE)) {
+    themes <- c(themes, "ceo_outlook")
+  }
+  out$themes <- unique(themes)
   out
 }
 
@@ -155,7 +187,8 @@ ynow_us_earnings_call_ir_search_url <- function(ticker) {
   facts <- .ynow_us_ec_extract_facts(body$`_content`)
   list(
     ok = TRUE,
-    status = if (is.finite(facts$backlog) || is.finite(facts$bookings) || nzchar(facts$excerpt)) {
+    status = if (is.finite(facts$backlog) || is.finite(facts$bookings) ||
+                 is.finite(facts$capex) || nzchar(facts$excerpt)) {
       "ok"
     } else {
       "empty"
@@ -170,6 +203,8 @@ ynow_us_earnings_call_ir_search_url <- function(ticker) {
     published = .ynow_us_ec_chr(body$date %||% body$publishedDate %||% ""),
     backlog = facts$backlog,
     bookings = facts$bookings,
+    capex = facts$capex,
+    themes = facts$themes,
     excerpt = facts$excerpt,
     api_endpoint_host = tryCatch(httr::parse_url(used)$hostname, error = function(e) "financialmodelingprep.com")
   )
@@ -228,7 +263,8 @@ ynow_us_earnings_call_ir_search_url <- function(ticker) {
   facts <- .ynow_us_ec_extract_facts(text)
   list(
     ok = TRUE,
-    status = if (is.finite(facts$backlog) || is.finite(facts$bookings) || nzchar(facts$excerpt)) {
+    status = if (is.finite(facts$backlog) || is.finite(facts$bookings) ||
+                 is.finite(facts$capex) || nzchar(facts$excerpt)) {
       "ok"
     } else {
       "empty"
@@ -246,6 +282,8 @@ ynow_us_earnings_call_ir_search_url <- function(ticker) {
     published = .ynow_us_ec_chr(res$filing_date %||% res$report_date %||% ""),
     backlog = facts$backlog,
     bookings = facts$bookings,
+    capex = facts$capex,
+    themes = facts$themes,
     excerpt = facts$excerpt
   )
 }
@@ -262,6 +300,8 @@ ynow_us_earnings_call_ir_search_url <- function(ticker) {
     published = "",
     backlog = NA_real_,
     bookings = NA_real_,
+    capex = NA_real_,
+    themes = character(0),
     excerpt = "",
     empty_reason = reason
   )
@@ -280,29 +320,48 @@ ynow_us_earnings_call_fetch <- function(ticker) {
   if (!nzchar(tk) || grepl("\\.(TW|TWO)$", ticker, ignore.case = TRUE)) {
     return(c(.ynow_us_ec_empty(tk, "tw_leave_as_is"), meta_links))
   }
+  usable <- if (exists("ynow_ec_result_usable", mode = "function")) {
+    ynow_ec_result_usable
+  } else {
+    function(res) is.list(res) && isTRUE(res$ok) && identical(res$status %||% "", "ok")
+  }
   # 1) Licensed API when key present (env only — never committed).
   api_key <- .ynow_us_ec_api_key()
   if (nzchar(api_key)) {
     licensed <- tryCatch(.ynow_us_ec_from_fmp(tk, api_key), error = function(e) NULL)
-    if (is.list(licensed) && isTRUE(licensed$ok)) {
+    if (isTRUE(usable(licensed))) {
       return(c(licensed, meta_links))
     }
   }
   # 2) SEC 8-K / 6-K primary body (Item 2.02 when titled).
   sec <- tryCatch(.ynow_us_ec_from_sec_8k(tk), error = function(e) NULL)
-  if (is.list(sec) && isTRUE(sec$ok)) {
+  if (isTRUE(usable(sec))) {
     return(c(sec, meta_links))
   }
-  # 3) Honest empty + outbound IR / SEC / SA links for humans.
-  c(.ynow_us_ec_empty(tk, "no_transcript_or_8k"), meta_links)
+  # 3) Seeking Alpha HTML — last-resort only (third-party; not official IR).
+  if (exists("ynow_sa_earnings_call_fetch_last_resort", mode = "function")) {
+    sa <- tryCatch(
+      ynow_sa_earnings_call_fetch_last_resort(tk, extract_fun = .ynow_us_ec_extract_facts),
+      error = function(e) NULL
+    )
+    if (isTRUE(usable(sa))) {
+      return(c(sa, meta_links))
+    }
+  }
+  # 4) Honest empty + outbound IR / SEC / SA links for humans.
+  c(.ynow_us_ec_empty(tk, "no_transcript_or_8k_or_sa"), meta_links)
 }
 
 #' Shape for payload$order_disclosures$earnings_call (numeric facts only).
 ynow_us_earnings_call_to_disclosure <- function(fetched) {
   if (!is.list(fetched)) return(list())
+  themes <- fetched$themes %||% character(0)
+  if (!is.character(themes)) themes <- as.character(unlist(themes))
   out <- list(
     backlog = .ynow_us_ec_num(fetched$backlog),
     bookings = .ynow_us_ec_num(fetched$bookings),
+    capex = .ynow_us_ec_num(fetched$capex),
+    themes = themes,
     excerpt = .ynow_us_ec_chr(fetched$excerpt),
     title = .ynow_us_ec_chr(fetched$title),
     url = .ynow_us_ec_chr(fetched$url),

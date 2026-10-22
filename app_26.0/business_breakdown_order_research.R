@@ -1064,9 +1064,12 @@ bblab_attach_order_research <- function(result, payload = list()) {
     ),
     error = function(e) bblab_order_research_empty("ORDERS_BACKLOG_UNDISCLOSED")
   )
-  # Prefer explicit US earnings-call meta from the payload when present.
+  # Prefer explicit US / TW earnings-call meta from the payload when present.
   if (is.list(payload$us_earnings_call) && is.list(result$order_research)) {
     result$order_research$us_earnings_call <- payload$us_earnings_call
+  }
+  if (is.list(payload$tw_earnings_call) && is.list(result$order_research)) {
+    result$order_research$tw_earnings_call <- payload$tw_earnings_call
   }
   result
 }
