@@ -346,7 +346,8 @@
   }
 
   if (typeof Shiny !== 'undefined' && Shiny.addCustomMessageHandler) {
-    Shiny.addCustomMessageHandler('ynowScrDndClear', function () {
+    /* Shiny 1.14+ requires handler.length === 1. */
+    Shiny.addCustomMessageHandler('ynowScrDndClear', function (_msg) {
       clearSelected();
     });
     Shiny.addCustomMessageHandler('ynowScrDndSet', function (cards) {
@@ -355,7 +356,7 @@
   } else {
     document.addEventListener('shiny:connected', function () {
       if (window.Shiny && Shiny.addCustomMessageHandler) {
-        Shiny.addCustomMessageHandler('ynowScrDndClear', function () {
+        Shiny.addCustomMessageHandler('ynowScrDndClear', function (_msg) {
           clearSelected();
         });
         Shiny.addCustomMessageHandler('ynowScrDndSet', function (cards) {
