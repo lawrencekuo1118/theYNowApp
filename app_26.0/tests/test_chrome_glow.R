@@ -118,6 +118,30 @@ check(
 )
 
 check(
+  "wordmark not clipped by logo overflow / tight max-width",
+  grepl(
+    "\\.main-header \\.logo,[\\s\\S]*?\\.main-header \\.logo:hover \\{[\\s\\S]*?overflow:\\s*visible\\s*!important",
+    txt,
+    perl = TRUE
+  ) &&
+    grepl(
+      "\\.main-header \\.logo \\.ynow-app-title,[\\s\\S]*?width:\\s*max-content",
+      txt,
+      perl = TRUE
+    ) &&
+    grepl(
+      "\\.ynow-app-title\\.is-complete \\.ynow-app-title-fill \\{[\\s\\S]*?overflow:\\s*visible",
+      txt,
+      perl = TRUE
+    ) &&
+    !grepl(
+      "\\.main-header \\.logo \\.ynow-app-title,[\\s\\S]*?max-width:\\s*calc\\(100% - 16px\\)",
+      txt,
+      perl = TRUE
+    )
+)
+
+check(
   "Balanced pulse timings + reduced-motion",
   grepl("ynow-chrome-green-pulse 4.8s", txt, fixed = TRUE) &&
     grepl("ynow-chrome-blue-pulse 3.6s", txt, fixed = TRUE) &&

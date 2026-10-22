@@ -4518,6 +4518,8 @@ ui <- dashboardPage(
         }
         .main-header .logo .ynow-app-title.is-complete .ynow-app-title-fill {
           width: 100%;
+          max-width: none;
+          overflow: visible;
           transition: width 0.2s ease-out;
         }
         .main-header .logo .ynow-app-title.is-complete .ynow-app-title-fill-inner {
@@ -5597,20 +5599,36 @@ ui <- dashboardPage(
           background-image: none !important;
         }
         /* No padding on .ynow-app-title: #404 pill padding offset the absolute fill vs
-           in-flow base and painted a second ghost wordmark. Keep load-bar layers aligned. */
+           in-flow base and painted a second ghost wordmark. Keep load-bar layers aligned.
+           Shrink-wrap to the full wordmark (incl. trailing version digit); do not let
+           AdminLTE .logo overflow:hidden + 15px pad clip 「…v26.38」. */
+        .main-header .logo,
+        .main-header .logo:hover {
+          overflow: visible !important;
+          padding-left: 8px !important;
+          padding-right: 8px !important;
+          box-sizing: border-box;
+        }
         .main-header .logo .ynow-app-title,
         .main-header .logo:hover .ynow-app-title {
           position: relative;
           z-index: 6;
           display: inline-block;
-          max-width: calc(100% - 16px);
+          width: max-content;
+          max-width: none;
           box-sizing: border-box;
           padding: 0;
-          margin: 0 8px;
+          margin: 0 4px;
           border-radius: 0;
           background-color: #000 !important;
           background-image: none !important;
           box-shadow: none;
+          white-space: nowrap;
+          overflow: visible;
+        }
+        .main-header .logo .ynow-app-title-base,
+        .main-header .logo .ynow-app-title-fill-inner {
+          white-space: nowrap;
         }
         /* After load completes, hide the faint base track so only one wordmark remains. */
         .main-header .logo .ynow-app-title.is-complete .ynow-app-title-base {
