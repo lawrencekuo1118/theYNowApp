@@ -1,8 +1,20 @@
 #!/usr/bin/env Rscript
 # System admin maintenance windows: active/inactive, auto-lift, non-clickable chrome, i18n.
+# Run from repo root: Rscript app_26.0/tests/test_maintenance_mode.R
+# Needs jsonlite (file-store fallback); CI installs it when missing.
 Sys.setenv(YNOW_DEBUG_SKIP_PY = "1")
 Sys.setenv(YNOW_MAINTENANCE_FORCE_FILE = "1")
 Sys.setenv(YNOW_ACCESS_LOCKS_FORCE_FILE = "1")
+if (!requireNamespace("jsonlite", quietly = TRUE)) {
+  repos <- getOption("repos")
+  if (is.null(repos) || identical(as.character(repos)[1], "@CRAN@")) {
+    options(repos = c(CRAN = "https://cloud.r-project.org"))
+  }
+  install.packages("jsonlite", quiet = TRUE)
+}
+if (!requireNamespace("jsonlite", quietly = TRUE)) {
+  stop("jsonlite is required for maintenance file-store tests")
+}
 tmp <- tempfile(fileext = ".json")
 tmp_acl <- tempfile(fileext = ".json")
 Sys.setenv(YNOW_MAINTENANCE_PATH = tmp)

@@ -40,4 +40,6 @@ jobs:
       - name: Maintenance mode (offline)
         env:
           YNOW_DEBUG_SKIP_PY: "1"
-        run: Rscript app_26.0/tests/test_maintenance_mode.R
+        run: |
+          Rscript -e 'if (!requireNamespace("jsonlite", quietly = TRUE)) install.packages("jsonlite", quiet = TRUE)'
+          Rscript app_26.0/tests/test_maintenance_mode.R
