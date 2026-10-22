@@ -3574,7 +3574,8 @@ ui <- dashboardPage(
         )
       )
     ),
-    # Logo + USD／TWD under logo (modest gap below black header)
+    # Logo + USD／TWD under logo (modest gap below black header).
+    # Click = soft-refresh the active sidebar tab (not a full session reload).
     tags$li(
       id = "ynow-header-logo",
       class = "dropdown ynow-header-logo",
@@ -3587,8 +3588,9 @@ ui <- dashboardPage(
         alt = "YNow",
         role = "button",
         tabindex = "0",
-        title = "Go to Home",
-        `aria-label` = "Go to Home"
+        title = "Refresh current page",
+        `aria-label` = "Refresh current page",
+        `aria-busy` = "false"
       ),
       tags$div(
         class = "ynow-ccy-float",
@@ -9902,10 +9904,28 @@ ui <- dashboardPage(
               else a.appendChild(dots);
               return dots;
             }
+            function syncHeaderLogoSpin() {
+              var mark = document.getElementById('ynow_header_logo_home');
+              if (!mark || !mark.classList) return;
+              var tab = currentTab();
+              var busy = !!(tab && sourcesByTab[tab] && Object.keys(sourcesByTab[tab]).length > 0);
+              /* Pending nav/refresh: spin even before the pane switch settles. */
+              if (!busy) {
+                Object.keys(sourcesByTab).forEach(function (t) {
+                  var s = sourcesByTab[t] || {};
+                  if (s.refresh || s.nav) busy = true;
+                });
+              }
+              mark.classList.toggle('ynow-logo-spinning', busy);
+              try { mark.setAttribute('aria-busy', busy ? 'true' : 'false'); } catch (eSpin) {}
+            }
             function applyVisual(tab) {
               tab = remapTab(tab);
               var a = tabAnchor(tab);
-              if (!a) return;
+              if (!a) {
+                syncHeaderLogoSpin();
+                return;
+              }
               var src = sourcesByTab[tab] || {};
               var busy = Object.keys(src).length > 0;
               ensureDots(a);
@@ -9917,6 +9937,7 @@ ui <- dashboardPage(
               } else {
                 try { a.removeAttribute('aria-busy'); } catch (e2) {}
               }
+              syncHeaderLogoSpin();
             }
             function setTabBusy(tab, on, source) {
               tab = remapTab(tab);
@@ -9966,6 +9987,8 @@ ui <- dashboardPage(
               clearSource('shiny');
               clearSource('nav');
               clearSource('progress');
+              clearSource('refresh');
+              syncHeaderLogoSpin();
             }
             function onSidebarTabClick(ev) {
               var t = ev.target;
@@ -10017,11 +10040,34 @@ ui <- dashboardPage(
                 setTimeout(register, 50);
               }
             }
+            function registerLogoSpinHandler() {
+              if (!window.Shiny || !Shiny.addCustomMessageHandler) {
+                setTimeout(registerLogoSpinHandler, 50);
+                return;
+              }
+              Shiny.addCustomMessageHandler('ynowHeaderLogoSpin', function (payload) {
+                var mark = document.getElementById('ynow_header_logo_home');
+                if (!mark || !mark.classList) return;
+                var on = !!(payload && (payload.spin === true || payload.spin === 'true' || payload.spin === 1));
+                var tab = payload && payload.tab ? remapTab(payload.tab) : currentTab();
+                if (on && tab) {
+                  setTabBusy(tab, true, 'refresh');
+                } else if (tab) {
+                  setTabBusy(tab, false, 'refresh');
+                } else {
+                  mark.classList.toggle('ynow-logo-spinning', on);
+                  try { mark.setAttribute('aria-busy', on ? 'true' : 'false'); } catch (eHs) {}
+                }
+              });
+            }
             register();
+            registerLogoSpinHandler();
             window.ynowSetSidebarTabBusy = setTabBusy;
+            window.ynowSyncHeaderLogoSpin = syncHeaderLogoSpin;
             /* After applyUiLocale rewrites menu HTML, restore busy-dot visuals. */
             window.ynowReapplyAllTabBusyVisuals = function () {
               Object.keys(sourcesByTab).forEach(function (tab) { applyVisual(tab); });
+              syncHeaderLogoSpin();
             };
           })();
 
@@ -10672,9 +10718,10 @@ ui <- dashboardPage(
               menuCompanyAdvance.textContent = s.menu_company_advance;
             }
             var headerLogoHome = document.getElementById('ynow_header_logo_home');
-            if (headerLogoHome && s.header_logo_home_title) {
-              headerLogoHome.setAttribute('title', s.header_logo_home_title);
-              headerLogoHome.setAttribute('aria-label', s.header_logo_home_title);
+            var headerLogoTitle = (s.header_logo_refresh_title || s.header_logo_home_title || '');
+            if (headerLogoHome && headerLogoTitle) {
+              headerLogoHome.setAttribute('title', headerLogoTitle);
+              headerLogoHome.setAttribute('aria-label', headerLogoTitle);
             }
             if (typeof window.ynowSyncSidebarReorderBtnLocale === 'function') {
               try { window.ynowSyncSidebarReorderBtnLocale(s); } catch (eReorderLoc) {}
@@ -13544,28 +13591,52 @@ ui <- dashboardPage(
               });
             }
             bindModelSelectorJump();
-            function bindHeaderLogoHome() {
-              if (document.documentElement.getAttribute('data-ynow-header-logo-home') === '1') return;
+            function refreshCurrentSidebarTab() {
+              var tab = currentSidebarTab();
+              if (!tab) tab = 'home';
+              if (typeof window.ynowSetSidebarTabBusy === 'function') {
+                try { window.ynowSetSidebarTabBusy(tab, true, 'refresh'); } catch (eBusy) {}
+              } else {
+                var mark0 = document.getElementById('ynow_header_logo_home');
+                if (mark0 && mark0.classList) {
+                  mark0.classList.add('ynow-logo-spinning');
+                  try { mark0.setAttribute('aria-busy', 'true'); } catch (eA0) {}
+                }
+              }
+              if (window.Shiny && Shiny.setInputValue) {
+                Shiny.setInputValue('ynow_tab_refresh', {
+                  tab: tab,
+                  t: Date.now()
+                }, { priority: 'event' });
+              }
+            }
+            window.ynowRefreshCurrentSidebarTab = refreshCurrentSidebarTab;
+            function bindHeaderLogoRefresh() {
+              if (document.documentElement.getAttribute('data-ynow-header-logo-refresh') === '1') return;
+              document.documentElement.setAttribute('data-ynow-header-logo-refresh', '1');
+              /* Keep legacy flag so older tests still see a bind marker. */
               document.documentElement.setAttribute('data-ynow-header-logo-home', '1');
               document.addEventListener('click', function (ev) {
                 var mark = ev.target && ev.target.closest
                   ? ev.target.closest('#ynow_header_logo_home, .ynow-header-logo-mark')
                   : null;
                 if (!mark) return;
-                // Currency controls sit under the same <li>; only the mark goes home.
+                // Currency controls sit under the same <li>; only the mark refreshes.
                 if (ev.target && ev.target.closest && ev.target.closest('.ynow-ccy-float')) return;
                 ev.preventDefault();
-                gotoTab('home');
+                refreshCurrentSidebarTab();
               });
               document.addEventListener('keydown', function (ev) {
                 var t = ev.target;
                 if (!t || t.id !== 'ynow_header_logo_home') return;
                 if (ev.key !== 'Enter' && ev.key !== ' ') return;
                 ev.preventDefault();
-                gotoTab('home');
+                refreshCurrentSidebarTab();
               });
             }
-            bindHeaderLogoHome();
+            bindHeaderLogoRefresh();
+            /* Alias for older references / tests. */
+            window.bindHeaderLogoHome = bindHeaderLogoRefresh;
             function remapLegacyHash() {
               var h = String(location.hash || '');
               if (h === '#shiny-tab-business_breakdown_lab') {
@@ -17447,10 +17518,23 @@ ui <- dashboardPage(
           object-fit: contain;
           display: block;
           cursor: pointer;
+          transform-origin: 50% 50%;
         }
         .ynow-header-logo-mark:focus {
           outline: 2px solid rgba(255, 215, 0, 0.85);
           outline-offset: 2px;
+        }
+        @keyframes ynow-logo-spin-cw {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        .ynow-header-logo-mark.ynow-logo-spinning {
+          animation: ynow-logo-spin-cw 2.8s linear infinite;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .ynow-header-logo-mark.ynow-logo-spinning {
+            animation-duration: 6s;
+          }
         }
         body.ynow-market-tw .ynow-header-logo-mark {
           filter: drop-shadow(0 0 2px rgba(0,0,0,0.35));
