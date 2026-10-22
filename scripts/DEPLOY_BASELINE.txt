@@ -7,5 +7,5 @@ commit=990cddec6bb778f37df7f082938997e33b0e1fcc
 short=990cddec
 message=chore: bump display version to v26.53
 captured_at=2026-10-22T17:04:26Z
-display_version=v26.53
+display_version=v26.54
 note=Canonical live line is app_26.0. Bundle 12726233: sidebar chip longer SVG PCB traces (natural-size foot PNG, no stretch) with logo blue↔white dynamic strokes + upward fade (#418).
