@@ -7193,7 +7193,7 @@ ui <- dashboardPage(
         }
         .ynow-sidebar-foot-chip .ynow-sidebar-snapshot-link:hover {
           color: #fff !important;
-          background: rgba(46, 168, 230, 0.12);
+          background: rgba(12, 84, 132, 0.28);
         }
         .ynow-sidebar-foot-chip .ynow-sidebar-copyright {
           color: rgba(255, 255, 255, 0.72);
