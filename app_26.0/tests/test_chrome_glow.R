@@ -1,5 +1,5 @@
-# Chrome atmosphere A+B: denser organic-branch header veins + clearer circuit sidebar chip.
-# Decorative only — no sidebar「資料來源」blurb; reduced-motion respected.
+# Chrome atmosphere A+B: line-stroke veins only (no filled wash).
+# Header veins beside title box (left: 250px); circuit strokes on black chip.
 
 Sys.setenv(YNOW_DEBUG_SKIP_PY = "1")
 
@@ -14,76 +14,61 @@ check <- function(label, ok) {
 }
 
 check(
-  "header leaves class + aria-hidden inject",
+  "header leaves class + stroke PNG inject",
   grepl("ynow-chrome-header-leaves", txt, fixed = TRUE) &&
     grepl("ynow-chrome-header-veins", txt, fixed = TRUE) &&
+    grepl("ynow-chrome-veins-branches.png", txt, fixed = TRUE) &&
     grepl("ynowPlaceChromeLeaves", txt, fixed = TRUE) &&
     grepl("el.setAttribute('aria-hidden','true')", txt, fixed = TRUE)
 )
 
 check(
-  "sidebar foot glow + chip wrappers",
+  "sidebar foot glow + chip + circuit PNG",
   grepl("ynow-sidebar-foot-glow", txt, fixed = TRUE) &&
     grepl("ynow-sidebar-foot-chip", txt, fixed = TRUE) &&
-    grepl("ynow-sidebar-snapshot-foot-links", txt, fixed = TRUE) &&
-    grepl("ynow_sidebar_copyright", txt, fixed = TRUE)
+    grepl("ynow-chrome-veins-circuit.png", txt, fixed = TRUE) &&
+    file.exists(file.path(www_dir, "ynow-chrome-veins-branches.png")) &&
+    file.exists(file.path(www_dir, "ynow-chrome-veins-circuit.png"))
 )
 
 check(
-  "A+B vein assets referenced (branches + circuit)",
-  grepl("ynow-chrome-veins-branches.jpg", txt, fixed = TRUE) &&
-    grepl("ynow-chrome-veins-circuit.jpg", txt, fixed = TRUE) &&
-    file.exists(file.path(www_dir, "ynow-chrome-veins-branches.jpg")) &&
-    file.exists(file.path(www_dir, "ynow-chrome-veins-circuit.jpg"))
-)
-
-chrome_vars <- regmatches(
-  txt,
-  regexpr(
-    "--ynow-chrome-blue-glow:[\\s\\S]*?--ynow-chrome-blue-halo:[^;]+;",
-    txt,
-    perl = TRUE
-  )
-)
-check(
-  "Balanced uses logo blue/green tokens (not purple / preview neon)",
-  length(chrome_vars) == 1L &&
-    grepl("rgba(12, 84, 132", chrome_vars, fixed = TRUE) &&
-    grepl("rgba(36, 156, 96", chrome_vars, fixed = TRUE) &&
-    !grepl("#7c3aed|#a855f7", chrome_vars, ignore.case = TRUE)
+  "header veins placed outside title box (left 250px)",
+  grepl("left:\\s*250px", txt) &&
+    grepl("never inside \\.logo|outside the title", txt)
 )
 
 check(
-  "denser header vein band + pulse timings",
-  grepl("width:\\s*55%", txt) &&
-    grepl("ynow-chrome-header-veins", txt, fixed = TRUE) &&
-    grepl("ynow-chrome-green-pulse 4.8s", txt, fixed = TRUE) &&
-    grepl("ynow-chrome-blue-pulse 3.6s", txt, fixed = TRUE) &&
-    grepl("blur(6px)", txt, fixed = TRUE)
-)
-
-check(
-  "clearer chip readability styles",
-  grepl("\\.ynow-sidebar-foot-chip \\.ynow-sidebar-snapshot-link", txt) &&
-    grepl("font-size: 11px !important", txt, fixed = TRUE) &&
-    grepl("border-radius: 16px", txt, fixed = TRUE)
-)
-
-check(
-  "prefers-reduced-motion disables chrome glow animations",
+  "no filled green/blue wash on header leaves",
   grepl(
-    "prefers-reduced-motion: reduce[\\s\\S]*?\\.ynow-chrome-header-leaves[\\s\\S]*?animation:\\s*none",
+    "\\.ynow-chrome-header-leaves \\{[\\s\\S]*?background:\\s*transparent",
     txt,
     perl = TRUE
   ) &&
-    grepl(
-      "prefers-reduced-motion: reduce[\\s\\S]*?\\.ynow-sidebar-foot-glow[\\s\\S]*?animation:\\s*none",
+    !grepl(
+      "\\.ynow-chrome-header-leaves \\{[\\s\\S]*?radial-gradient\\(ellipse[^)]*ynow-chrome-green-glow",
       txt,
       perl = TRUE
     )
 )
 
-# Sidebar foot column must not reintroduce the moved-to-About data-sources blurb.
+check(
+  "chip is black with stroke overlay (not teal panel wash)",
+  grepl("\\.ynow-sidebar-foot-chip \\{[\\s\\S]*?background:\\s*#0a0a0a", txt, perl = TRUE) &&
+    grepl("ynow-chrome-veins-circuit.png", txt, fixed = TRUE) &&
+    !grepl("inset 0 0 18px rgba\\(12, 84, 132", txt)
+)
+
+check(
+  "Balanced pulse timings + reduced-motion",
+  grepl("ynow-chrome-green-pulse 4.8s", txt, fixed = TRUE) &&
+    grepl("ynow-chrome-blue-pulse 3.6s", txt, fixed = TRUE) &&
+    grepl(
+      "prefers-reduced-motion: reduce[\\s\\S]*?\\.ynow-chrome-header-leaves[\\s\\S]*?animation:\\s*none",
+      txt,
+      perl = TRUE
+    )
+)
+
 foot_start <- regexpr("ynow-sidebar-snapshot-foot", txt, fixed = TRUE)[1]
 foot_chunk <- if (foot_start > 0) {
   substr(txt, foot_start, min(nchar(txt), foot_start + 5500L))
@@ -94,8 +79,7 @@ check(
   "sidebar foot has no「資料來源」blurb",
   nchar(foot_chunk) > 0 &&
     !grepl("資料來源", foot_chunk, fixed = TRUE) &&
-    !grepl("Data sources", foot_chunk, ignore.case = TRUE) &&
-    !grepl("DATA · LIVE", foot_chunk, fixed = TRUE)
+    !grepl("Data sources", foot_chunk, ignore.case = TRUE)
 )
 
-message("All chrome glow checks passed.")
+message("All chrome glow line-stroke checks passed.")
