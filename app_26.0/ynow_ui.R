@@ -3951,11 +3951,12 @@ ui <- dashboardPage(
       "el.setAttribute('aria-hidden','true');",
       "var img=document.createElement('img');",
       "img.className='ynow-chrome-header-veins';",
-      "img.src='ynow-chrome-veins-branches.jpg';",
+      "img.src='ynow-chrome-veins-branches.png';",
       "img.alt='';",
       "img.setAttribute('aria-hidden','true');",
       "img.draggable=false;",
       "el.appendChild(img);",
+      # Far-left of .main-header (flush left); title stays clear via opaque wordmark pill.
       "h.insertBefore(el,h.firstChild);",
       "}",
       "if(document.readyState==='loading'){",
@@ -5532,55 +5533,44 @@ ui <- dashboardPage(
           z-index: 1030 !important;
           overflow: hidden;
         }
-        /* Black top-banner left (A+B): denser organic branch veins + Balanced logo-green glow.
-           Pattern language: www/ynow-chrome-veins-branches.jpg (leafless twig silhouette).
-           Decorative only (aria-hidden); must not cover title / nav hit targets. */
+        /* Black top-banner left (A+B): line-stroke veins flush left (left:0) of .main-header.
+           Asset: www/ynow-chrome-veins-branches.png (bg removed). Brand wordmark sits on an
+           opaque black pill so strokes never fill under「The YNow App」text. */
         .ynow-chrome-header-leaves {
           position: absolute;
           left: 0;
           top: 0;
           bottom: 0;
-          width: 55%;
-          max-width: 720px;
-          /* Sit above logo black wash so veins remain visible under the title. */
-          z-index: 2;
+          width: min(42%, 520px);
+          /* Above opaque navbar/logo fills; below wordmark pill + nav hit targets. */
+          z-index: 4;
           pointer-events: none;
           overflow: hidden;
-          background:
-            radial-gradient(ellipse 95% 140% at 10% 50%, var(--ynow-chrome-green-glow), transparent 66%);
-          opacity: 0.88;
+          background: transparent;
+          opacity: 0.95;
           animation: ynow-chrome-green-pulse 4.8s ease-in-out infinite;
         }
         .ynow-chrome-header-veins {
           position: absolute;
-          left: -4%;
-          top: -30%;
-          width: 108%;
-          height: 160%;
+          left: 0;
+          top: -40%;
+          width: 100%;
+          height: 180%;
           object-fit: cover;
-          object-position: 10% 38%;
-          /* Black twigs on white sky → invert + soft logo-green tint (not neon) */
-          filter: invert(1) sepia(1) saturate(3.4) hue-rotate(82deg) brightness(0.88) contrast(1.18);
-          mix-blend-mode: screen;
-          opacity: 0.72;
-          -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 58%, transparent 100%);
-          mask-image: linear-gradient(90deg, #000 0%, #000 58%, transparent 100%);
+          object-position: left 42%;
+          /* PNG is already green strokes on transparent — soft glow only, no invert/fill */
+          filter: drop-shadow(0 0 3px rgba(36, 156, 96, 0.4));
+          opacity: 0.9;
+          -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 62%, transparent 100%);
+          mask-image: linear-gradient(90deg, #000 0%, #000 62%, transparent 100%);
           pointer-events: none;
           user-select: none;
-        }
-        .ynow-chrome-header-leaves::after {
-          content: "";
-          position: absolute;
-          inset: 0;
-          background:
-            linear-gradient(90deg, rgba(36, 156, 96, 0.22) 0%, rgba(36, 156, 96, 0.1) 48%, transparent 85%);
-          pointer-events: none;
         }
         @keyframes ynow-chrome-green-pulse {
           0%, 100% { opacity: 0.72; }
           50% { opacity: 0.95; }
         }
-        /* Let branch veins show through the title block (keep text above). */
+        /* Logo strip transparent so far-left strokes show; wordmark gets opaque black pill. */
         .skin-black .main-header .logo,
         .skin-black .main-header .logo:hover {
           background-color: transparent !important;
@@ -5589,15 +5579,46 @@ ui <- dashboardPage(
         .skin-black .main-header .logo::before {
           background-color: transparent;
         }
-        .main-header > .logo,
+        .main-header .logo .ynow-app-title {
+          position: relative;
+          z-index: 6;
+          display: inline-block;
+          max-width: calc(100% - 16px);
+          box-sizing: border-box;
+          padding: 4px 10px;
+          margin: 6px 8px;
+          border-radius: 6px;
+          background-color: #000 !important;
+          background-image: none !important;
+          box-shadow: 0 0 0 1px #000;
+        }
+        .main-header > .logo {
+          position: relative;
+          z-index: 5;
+        }
         .main-header > .navbar {
           position: relative;
           z-index: 3;
         }
+        .main-header .navbar > .sidebar-toggle,
+        .main-header .navbar .nav {
+          position: relative;
+          z-index: 5;
+        }
         @media (prefers-reduced-motion: reduce) {
           .ynow-chrome-header-leaves {
             animation: none;
-            opacity: 0.9;
+            opacity: 0.88;
+          }
+        }
+        @media (max-width: 767px) {
+          .ynow-chrome-header-leaves {
+            left: 0;
+            width: min(70%, 360px);
+          }
+          .main-header .logo .ynow-app-title {
+            margin: 6px 4px;
+            padding: 3px 8px;
           }
         }
         .content-wrapper,
@@ -7072,8 +7093,8 @@ ui <- dashboardPage(
           border-left-color: #fff;
         }
         /* Snapshot／Sys. Admin／Feedback：同一列；版權宣告在按鈕列正下方（勿重疊） */
-        /* A+B chip foot: clearer readable chip + circuit veins + Balanced logo-blue glow.
-           Pattern language: www/ynow-chrome-veins-circuit.jpg (PCB traces / nodes). */
+        /* A+B chip foot: clearer chip + circuit LINE strokes only (no teal fill wash).
+           Asset: www/ynow-chrome-veins-circuit.png (bg removed) + soft logo-blue halo. */
         .ynow-sidebar-snapshot-foot {
           display: flex !important;
           flex-direction: column !important;
@@ -7091,12 +7112,12 @@ ui <- dashboardPage(
         }
         .ynow-sidebar-foot-glow {
           position: absolute;
-          left: 12%;
-          right: 12%;
-          bottom: 8px;
-          height: 34px;
-          background: radial-gradient(ellipse at center, var(--ynow-chrome-blue-glow), transparent 70%);
-          filter: blur(6px);
+          left: 22%;
+          right: 22%;
+          bottom: 12px;
+          height: 18px;
+          background: radial-gradient(ellipse at center, rgba(12, 84, 132, 0.35), transparent 72%);
+          filter: blur(5px);
           animation: ynow-chrome-blue-pulse 3.6s ease-in-out infinite;
           pointer-events: none;
           z-index: 0;
@@ -7110,11 +7131,9 @@ ui <- dashboardPage(
           z-index: 1;
           overflow: hidden;
           border-radius: 16px;
-          border: 1px solid rgba(12, 84, 132, 0.55);
-          background: linear-gradient(180deg, #1a1f24 0%, #0e1216 100%);
-          box-shadow:
-            0 0 16px var(--ynow-chrome-blue-halo),
-            inset 0 0 18px rgba(12, 84, 132, 0.14);
+          border: 1px solid rgba(12, 84, 132, 0.45);
+          background: #000;
+          box-shadow: 0 0 10px rgba(12, 84, 132, 0.18);
           padding: 8px 12px 6px;
           box-sizing: border-box;
           width: 100%;
@@ -7124,13 +7143,14 @@ ui <- dashboardPage(
           position: absolute;
           inset: 0;
           border-radius: inherit;
-          background-image: url("ynow-chrome-veins-circuit.jpg");
+          background-color: transparent;
+          background-image: url("ynow-chrome-veins-circuit.png");
           background-repeat: no-repeat;
-          background-size: 175% auto;
-          background-position: center 65%;
-          opacity: 0.55;
-          mix-blend-mode: screen;
-          filter: saturate(1.05) brightness(1.02) hue-rotate(-12deg);
+          background-size: 150% auto;
+          background-position: center 72%;
+          opacity: 0.85;
+          /* strokes already blue on transparent — no screen wash / hue fill */
+          filter: drop-shadow(0 0 2px rgba(12, 84, 132, 0.4));
           pointer-events: none;
           z-index: 0;
         }
