@@ -240,6 +240,9 @@ ynow_sa_earnings_call_fetch_last_resort <- function(ticker, extract_fun = NULL) 
   usable <- is.finite(facts$backlog %||% NA_real_) ||
     is.finite(facts$bookings %||% NA_real_) ||
     is.finite(facts$capex %||% NA_real_) ||
+    length(facts$suppliers %||% list()) > 0L ||
+    length(facts$customers %||% list()) > 0L ||
+    length(facts$order_lines %||% list()) > 0L ||
     nzchar(excerpt)
   if (!isTRUE(usable)) return(NULL)
 
@@ -255,6 +258,9 @@ ynow_sa_earnings_call_fetch_last_resort <- function(ticker, extract_fun = NULL) 
     bookings = facts$bookings %||% NA_real_,
     capex = facts$capex %||% NA_real_,
     themes = facts$themes %||% character(0),
+    suppliers = facts$suppliers %||% list(),
+    customers = facts$customers %||% list(),
+    order_lines = facts$order_lines %||% list(),
     excerpt = excerpt,
     sa_url = ynow_sa_earnings_call_index_url(tk)
   )
@@ -266,6 +272,9 @@ ynow_ec_result_usable <- function(res) {
   if (is.finite(suppressWarnings(as.numeric(res$backlog)))) return(TRUE)
   if (is.finite(suppressWarnings(as.numeric(res$bookings)))) return(TRUE)
   if (is.finite(suppressWarnings(as.numeric(res$capex)))) return(TRUE)
+  if (length(res$suppliers %||% list()) > 0L) return(TRUE)
+  if (length(res$customers %||% list()) > 0L) return(TRUE)
+  if (length(res$order_lines %||% list()) > 0L) return(TRUE)
   if (nzchar(.ynow_sa_ec_chr(res$excerpt)) && identical(.ynow_sa_ec_chr(res$status), "ok")) {
     return(TRUE)
   }

@@ -3928,9 +3928,10 @@ locale_for_market <- function(mode = get_market_mode()) {
       "backlog / bookings / CapEx language was found for this ticker. Links below are for human research only."
     ),
     bblab_or_us_ec_method_note = paste0(
+      "Purpose: feed Business Breakdown order research (orders / suppliers / customers) with status-only facts. ",
       "Reading framework (Statementdog methodology): prefer company IR, SEC 8-K Item 2.02, ",
-      "and licensed transcript APIs. Focus CEO outlook, CFO guidance, CapEx plans, and analyst Q&A — ",
-      "status-only facts; amounts only when the source states them."
+      "and licensed transcript APIs. Extract backlog, bookings, CapEx, and named customer/supplier shares ",
+      "only when the source states them — never invent."
     ),
     bblab_or_us_ec_sa_note = paste0(
       "Seeking Alpha HTML is a last-resort fallback only when IR / SEC / licensed paths are empty — ",
@@ -8083,8 +8084,9 @@ locale_for_market <- function(mode = get_market_mode()) {
       "下方連結僅供人工查閱，不會自動擷取。"
     ),
     bblab_or_us_ec_method_note = paste0(
+      "目的：補足「業務拆解」訂單研究（訂單量／主要供應商／重大客戶）的狀態事實。",
       "閱讀架構（財報狗 Statementdog 方法論啟發）：優先公司 IR、SEC 8-K Item 2.02、授權逐字稿 API；",
-      "關注執行長展望、財務長短期財測／Guidance、CapEx 計畫與法人問答。僅狀態事實；金額以來源明列為限。"
+      "僅在來源明列時擷取 backlog、bookings、CapEx 與具名客戶／供應商占比——不外推、不虛構。"
     ),
     bblab_or_us_ec_sa_note = paste0(
       "Seeking Alpha 網頁 HTML 僅在 IR／SEC／授權路徑皆空時作為最後備援，",

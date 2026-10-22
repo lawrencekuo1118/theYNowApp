@@ -61,7 +61,109 @@ ynow_us_earnings_call_ir_search_url <- function(ticker) {
   if (!length(keys)) "" else keys[[1]]
 }
 
-#' Pull numbers / theme flags only when the transcript/filing text states them.
+.ynow_us_ec_money_to_num <- function(piece) {
+  piece <- as.character(piece %||% "")[1]
+  if (!nzchar(piece)) return(NA_real_)
+  m <- regexpr(
+    "([0-9]+(?:\\.[0-9]+)?)\\s*(billion|million|bn|mm|m)\\b",
+    piece,
+    ignore.case = TRUE,
+    perl = TRUE
+  )
+  if (m[1] < 0) return(NA_real_)
+  hit <- regmatches(piece, m)[1]
+  n <- suppressWarnings(as.numeric(sub(
+    "^([0-9.]+).*", "\\1", hit, perl = TRUE
+  )))
+  unit <- tolower(sub(
+    "^[0-9.]+\\s*(billion|million|bn|mm|m)\\b.*$",
+    "\\1",
+    hit,
+    ignore.case = TRUE,
+    perl = TRUE
+  ))
+  if (!is.finite(n)) return(NA_real_)
+  if (unit %in% c("billion", "bn")) return(n * 1e9)
+  if (unit %in% c("million", "mm", "m")) return(n * 1e6)
+  NA_real_
+}
+
+#' Conservative party rows for 業務拆解 order research (name + share or amount only).
+#' Never invent names or figures; skip vague "a large customer" without identity.
+.ynow_us_ec_extract_parties <- function(text) {
+  txt <- as.character(text %||% "")[1]
+  empty <- list(suppliers = list(), customers = list(), order_lines = list())
+  if (!nzchar(txt)) return(empty)
+  money_re <- "([0-9]+(?:\\.[0-9]+)?)\\s*(billion|million|bn|mm|m)\\b"
+  pct_re <- "([0-9]+(?:\\.[0-9]+)?)\\s*%"
+  # Capitalised English name tokens (Apple, TSMC, Foxconn Technology).
+  name_re <- "([A-Z][A-Za-z0-9&.'\\-]{1,40}(?:\\s+[A-Z][A-Za-z0-9&.'\\-]{1,40}){0,3})"
+  stop_names <- c(
+    "The", "Our", "A", "An", "This", "That", "Customer", "Supplier",
+    "Major", "Largest", "Key", "Revenue", "Sales", "Net", "Total"
+  )
+
+  push_rows <- function(patterns, kind) {
+    rows <- list()
+    seen <- character(0)
+    for (pat in patterns) {
+      m <- gregexpr(pat, txt, perl = TRUE)
+      if (m[[1]][1] < 0) next
+      starts <- as.integer(m[[1]])
+      lens <- attr(m[[1]], "match.length")
+      for (i in seq_along(starts)) {
+        hit <- substr(txt, starts[[i]], starts[[i]] + lens[[i]] - 1L)
+        nm_m <- regexpr(name_re, hit, perl = TRUE)
+        if (nm_m[1] < 0) next
+        nm <- regmatches(hit, nm_m)[1]
+        if (!nzchar(nm) || nm %in% seen || nm %in% stop_names) next
+        share <- NA_real_
+        amt <- NA_real_
+        pm <- regexpr(pct_re, hit, ignore.case = TRUE, perl = TRUE)
+        if (pm[1] > 0) {
+          share <- suppressWarnings(as.numeric(sub(
+            "^([0-9.]+).*", "\\1", regmatches(hit, pm)[1], perl = TRUE
+          ))) / 100
+        }
+        mm <- regexpr(money_re, hit, ignore.case = TRUE, perl = TRUE)
+        if (mm[1] > 0) amt <- .ynow_us_ec_money_to_num(regmatches(hit, mm)[1])
+        if (!is.finite(share) && !is.finite(amt)) next
+        seen <- c(seen, nm)
+        rows[[length(rows) + 1L]] <- list(
+          name = nm,
+          share = if (is.finite(share)) share else NA_real_,
+          amount = if (is.finite(amt)) amt else NA_real_,
+          kind = kind
+        )
+        if (length(rows) >= 5L) return(rows)
+      }
+    }
+    rows
+  }
+
+  customers <- push_rows(c(
+    paste0(name_re, "[^.]{0,80}(?:accounted for|contributed|represented|comprised)[^.]{0,50}", pct_re, "[^.]{0,40}(?:revenue|sales)"),
+    paste0("(?:[Ll]argest|[Mm]ajor|[Kk]ey) customer[, ]+", name_re, "[^.]{0,60}", pct_re),
+    paste0("(?:[Ll]argest|[Mm]ajor|[Kk]ey) customer[, ]+", name_re, "[^.]{0,60}", money_re),
+    paste0("[Cc]ustomer ", name_re, "[^.]{0,60}(?:accounted for|contributed)[^.]{0,40}", pct_re)
+  ), "customer")
+
+  suppliers <- push_rows(c(
+    paste0("(?:[Ll]argest|[Mm]ajor|[Kk]ey) supplier[, ]+", name_re, "[^.]{0,60}", pct_re),
+    paste0("(?:[Ll]argest|[Mm]ajor|[Kk]ey) supplier[, ]+", name_re, "[^.]{0,60}", money_re),
+    paste0("[Ss]upplier ", name_re, "[^.]{0,60}(?:accounted for|represented)[^.]{0,40}", pct_re)
+  ), "supplier")
+
+  order_lines <- push_rows(c(
+    paste0("(?:[Oo]rders?|[Bb]ookings?) from ", name_re, "[^.]{0,60}", money_re),
+    paste0(name_re, "[^.]{0,40}(?:orders?|bookings?)[^.]{0,40}", money_re)
+  ), "order")
+
+  list(suppliers = suppliers, customers = customers, order_lines = order_lines)
+}
+
+#' Pull numbers / theme flags / party rows only when the transcript text states them.
+#' End goal: feed 業務拆解 order-research buckets (orders / suppliers / customers).
 #' Theme flags follow Statementdog reading axes (status-only; no invented amounts).
 .ynow_us_ec_extract_facts <- function(text) {
   txt <- as.character(text %||% "")[1]
@@ -70,7 +172,10 @@ ynow_us_earnings_call_ir_search_url <- function(ticker) {
     bookings = NA_real_,
     capex = NA_real_,
     excerpt = "",
-    themes = character(0)
+    themes = character(0),
+    suppliers = list(),
+    customers = list(),
+    order_lines = list()
   )
   if (!nzchar(txt)) return(out)
   # Keep a short excerpt for UI (not a full republished transcript).
@@ -90,11 +195,8 @@ ynow_us_earnings_call_ir_search_url <- function(ticker) {
       )
       if (num_m[1] < 0) next
       piece <- regmatches(hit, num_m)[1]
-      n <- suppressWarnings(as.numeric(sub("^([0-9.]+).*", "\\1", piece, perl = TRUE)))
-      unit <- tolower(sub(".*?\\s*(billion|million|bn|mm|m)\\b.*", "\\1", piece, perl = TRUE, ignore.case = TRUE))
-      if (!is.finite(n)) next
-      mult <- if (unit %in% c("billion", "bn")) 1e9 else 1e6
-      return(n * mult)
+      n <- .ynow_us_ec_money_to_num(piece)
+      if (is.finite(n)) return(n)
     }
     NA_real_
   }
@@ -124,6 +226,10 @@ ynow_us_earnings_call_ir_search_url <- function(ticker) {
     themes <- c(themes, "ceo_outlook")
   }
   out$themes <- unique(themes)
+  parties <- .ynow_us_ec_extract_parties(txt)
+  out$suppliers <- parties$suppliers
+  out$customers <- parties$customers
+  out$order_lines <- parties$order_lines
   out
 }
 
@@ -188,7 +294,9 @@ ynow_us_earnings_call_ir_search_url <- function(ticker) {
   list(
     ok = TRUE,
     status = if (is.finite(facts$backlog) || is.finite(facts$bookings) ||
-                 is.finite(facts$capex) || nzchar(facts$excerpt)) {
+                 is.finite(facts$capex) || nzchar(facts$excerpt) ||
+                 length(facts$suppliers) || length(facts$customers) ||
+                 length(facts$order_lines)) {
       "ok"
     } else {
       "empty"
@@ -205,6 +313,9 @@ ynow_us_earnings_call_ir_search_url <- function(ticker) {
     bookings = facts$bookings,
     capex = facts$capex,
     themes = facts$themes,
+    suppliers = facts$suppliers %||% list(),
+    customers = facts$customers %||% list(),
+    order_lines = facts$order_lines %||% list(),
     excerpt = facts$excerpt,
     api_endpoint_host = tryCatch(httr::parse_url(used)$hostname, error = function(e) "financialmodelingprep.com")
   )
@@ -264,7 +375,9 @@ ynow_us_earnings_call_ir_search_url <- function(ticker) {
   list(
     ok = TRUE,
     status = if (is.finite(facts$backlog) || is.finite(facts$bookings) ||
-                 is.finite(facts$capex) || nzchar(facts$excerpt)) {
+                 is.finite(facts$capex) || nzchar(facts$excerpt) ||
+                 length(facts$suppliers) || length(facts$customers) ||
+                 length(facts$order_lines)) {
       "ok"
     } else {
       "empty"
@@ -284,6 +397,9 @@ ynow_us_earnings_call_ir_search_url <- function(ticker) {
     bookings = facts$bookings,
     capex = facts$capex,
     themes = facts$themes,
+    suppliers = facts$suppliers %||% list(),
+    customers = facts$customers %||% list(),
+    order_lines = facts$order_lines %||% list(),
     excerpt = facts$excerpt
   )
 }
@@ -302,6 +418,9 @@ ynow_us_earnings_call_ir_search_url <- function(ticker) {
     bookings = NA_real_,
     capex = NA_real_,
     themes = character(0),
+    suppliers = list(),
+    customers = list(),
+    order_lines = list(),
     excerpt = "",
     empty_reason = reason
   )
@@ -352,7 +471,7 @@ ynow_us_earnings_call_fetch <- function(ticker) {
   c(.ynow_us_ec_empty(tk, "no_transcript_or_8k_or_sa"), meta_links)
 }
 
-#' Shape for payload$order_disclosures$earnings_call (numeric facts only).
+#' Shape for payload$order_disclosures$earnings_call → 業務拆解 order research.
 ynow_us_earnings_call_to_disclosure <- function(fetched) {
   if (!is.list(fetched)) return(list())
   themes <- fetched$themes %||% character(0)
@@ -362,6 +481,9 @@ ynow_us_earnings_call_to_disclosure <- function(fetched) {
     bookings = .ynow_us_ec_num(fetched$bookings),
     capex = .ynow_us_ec_num(fetched$capex),
     themes = themes,
+    suppliers = fetched$suppliers %||% list(),
+    customers = fetched$customers %||% list(),
+    order_lines = fetched$order_lines %||% list(),
     excerpt = .ynow_us_ec_chr(fetched$excerpt),
     title = .ynow_us_ec_chr(fetched$title),
     url = .ynow_us_ec_chr(fetched$url),

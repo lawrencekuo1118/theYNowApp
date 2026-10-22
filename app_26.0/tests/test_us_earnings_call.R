@@ -87,6 +87,45 @@ check("SA last-resort fixture status ok", identical(sa$status %||% "", "ok"))
 check("SA last-resort credibility last_resort", identical(sa$credibility %||% "", "last_resort"))
 check("SA last-resort source_id seeking_alpha_html", identical(sa$source_id %||% "", "seeking_alpha_html"))
 check("SA last-resort extracts backlog from fixture", isTRUE(abs((sa$backlog %||% 0) - 4.5e9) < 1e6))
+check("SA fixture extracts named customer share", {
+  cust <- sa$customers %||% list()
+  length(cust) >= 1L &&
+    grepl("Acme", cust[[1]]$name %||% "", fixed = TRUE) &&
+    isTRUE(abs((cust[[1]]$share %||% 0) - 0.18) < 1e-6)
+})
+check("SA fixture extracts named supplier", {
+  sup <- sa$suppliers %||% list()
+  length(sup) >= 1L && grepl("Northwind", sup[[1]]$name %||% "", fixed = TRUE)
+})
+check("SA fixture extracts order line amount", {
+  ol <- sa$order_lines %||% list()
+  length(ol) >= 1L && is.finite(ol[[1]]$amount %||% NA_real_)
+})
+disc_sa <- ynow_us_earnings_call_to_disclosure(sa)
+check("disclosure carries parties for 業務拆解", {
+  length(disc_sa$customers %||% list()) >= 1L &&
+    length(disc_sa$suppliers %||% list()) >= 1L
+})
+# Order-research pack consumes earnings_call parties into focus buckets.
+if (file.exists("business_breakdown_order_research.R")) {
+  source("business_breakdown_order_research.R", local = TRUE, encoding = "UTF-8")
+  pack <- bblab_build_order_research_pack(
+    disclosures = list(earnings_call = disc_sa)
+  )
+  focus_ids <- vapply(pack$focus %||% list(), function(b) b$id %||% "", character(1))
+  cust_bucket <- pack$focus[[match("customers", focus_ids)]]
+  sup_bucket <- pack$focus[[match("suppliers", focus_ids)]]
+  ord_bucket <- pack$focus[[match("orders", focus_ids)]]
+  check("order pack customers from transcript", {
+    is.list(cust_bucket) && identical(cust_bucket$status, "disclosed")
+  })
+  check("order pack suppliers from transcript", {
+    is.list(sup_bucket) && identical(sup_bucket$status, "disclosed")
+  })
+  check("order pack orders include backlog from transcript", {
+    is.list(ord_bucket) && identical(ord_bucket$status, "disclosed")
+  })
+}
 Sys.unsetenv("YNOW_SA_SCRAPE_FIXTURE_HTML")
 Sys.setenv(YNOW_SA_SCRAPE = "0")
 
