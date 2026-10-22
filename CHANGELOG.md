@@ -18,6 +18,14 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 - CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_26.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).
 - Docs: root README ship/CI/Release pointers; `scripts/record_github_release.sh` for soft-fail Release publish after deploy.
 
+## [v26.34] — 2026-10-22
+
+### Changed
+
+- **About Data sources** (PR #401): remove the long sidebar「資料來源／Data Source」blurb; add a dedicated About section **資料來源 / Data sources** (en-US + zh-TW via `ui_locale.R`) covering Yahoo/yfinance, Rf (^TNX / TPEx), TWSE·TPEx·MOPS, SEC EDGAR, and how Fair Value / screens use those feeds.
+- zh-TW：側邊欄不再顯示長「資料來源」說明；改在關於分頁集中陳述現況來源與估值用法（台灣投資界用語）。
+- Live baseline bundle **12724056** / display **v26.34**.
+
 ## [v26.33] — 2026-10-22
 
 ### Changed
