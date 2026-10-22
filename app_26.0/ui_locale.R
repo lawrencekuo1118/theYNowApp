@@ -1093,9 +1093,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     pts_sysadmin_apply = "Apply change",
     access_lock_title = "Item locks",
     access_lock_help = paste0(
-      "Choose Lock (show a locked placeholder) or Hide (remove from the UI), ",
-      "set the unlock condition (after login / points / conditional free uses or time limit), ",
-      "then apply to the selected user or all users. ",
+      "First select the item, then set Apply to, Restriction ",
+      "(Lock = show a locked placeholder; Hide = remove from the UI), ",
+      "and the unlock condition (after login / points / conditional free uses or time limit). ",
       "Per-user rules override all-users rules for the same item. ",
       "Clear removes only the chosen scope. All-users also applies to guests."
     ),
@@ -5322,9 +5322,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     pts_sysadmin_apply = "套用變更",
     access_lock_title = "項目鎖定",
     access_lock_help = paste0(
-      "可選擇「鎖上」（顯示鎖定提示）或「隱藏」（自介面移除），",
-      "並設定解鎖條件（登入即解鎖／點數解鎖／條件解鎖的免費次數或限時），",
-      "再套用到選定使用者或所有使用者。",
+      "請先選擇項目，再設定套用對象、限制方式",
+      "（鎖上＝顯示鎖定提示；隱藏＝自介面移除），",
+      "以及解鎖條件（登入即解鎖／點數解鎖／條件解鎖的免費次數或限時）。",
       "同一項目若有個人規則，會覆寫「所有使用者」規則。",
       "清除僅移除所選範圍；「所有使用者」亦套用至訪客。"
     ),

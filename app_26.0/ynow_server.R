@@ -2130,19 +2130,9 @@ server <- function(input, output, session) {
       ),
       tags$hr(),
       tags$h4(.lab("access_lock_title", "Item locks")),
-      tags$p(
-        class = "text-muted",
-        style = "font-size:12.5px;",
-        .lab(
-          "access_lock_help",
-          paste0(
-            "Choose Lock or Hide, set the unlock condition ",
-            "(after login / points / conditional free count or time limit), ",
-            "then apply to the selected user or all users."
-          )
-        )
-      ),
       {
+        # Field order (UX): Item first, then help + Apply to / Restriction / Unlock…
+        # so admins lock the catalog target before scope or unlock params.
         cat_df <- if (exists("ynow_access_catalog", mode = "function")) {
           ynow_access_catalog()
         } else {
@@ -2177,6 +2167,18 @@ server <- function(input, output, session) {
             .lab("access_lock_item", "Item"),
             choices = item_choices,
             selected = item_sel
+          ),
+          tags$p(
+            class = "text-muted",
+            style = "font-size:12.5px;",
+            .lab(
+              "access_lock_help",
+              paste0(
+                "First select the item, then set Apply to, Restriction (Lock or Hide), ",
+                "and the unlock condition ",
+                "(after login / points / conditional free count or time limit)."
+              )
+            )
           ),
           radioButtons(
             "ynow_access_scope",

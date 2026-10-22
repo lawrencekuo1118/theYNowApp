@@ -183,6 +183,31 @@ check("server has scope + effect + unlock radios", {
     grepl("ynow_access_free_count", srv, fixed = TRUE) &&
     grepl("ynow_access_time_hours", srv, fixed = TRUE)
 })
+check("admin Item locks form puts Item select before scope/effect/unlock", {
+  # Extract the Item locks admin tagList body (item → help → scope → …).
+  m <- regexpr(
+    'selectInput\\(\\s*"ynow_access_item"[\\s\\S]*?uiOutput\\("ynow_access_locked_now"\\)',
+    srv,
+    perl = TRUE
+  )
+  if (m[1] < 0) return(FALSE)
+  block <- substr(srv, as.integer(m[1]), as.integer(m[1]) + attr(m, "match.length") - 1L)
+  pos_item <- regexpr('"ynow_access_item"', block, fixed = TRUE)[1]
+  pos_help <- regexpr("access_lock_help", block, fixed = TRUE)[1]
+  pos_scope <- regexpr('"ynow_access_scope"', block, fixed = TRUE)[1]
+  pos_effect <- regexpr('"ynow_access_effect"', block, fixed = TRUE)[1]
+  pos_unlock <- regexpr('"ynow_access_unlock_type"', block, fixed = TRUE)[1]
+  pos_item > 0 &&
+    pos_help > pos_item &&
+    pos_scope > pos_help &&
+    pos_effect > pos_scope &&
+    pos_unlock > pos_effect
+})
+check("locale help leads with select item first (en+zh)", {
+  grepl("First select the item", loc, fixed = TRUE) &&
+    grepl("請先選擇項目", loc, fixed = TRUE) &&
+    !grepl("Choose Lock \\(show a locked placeholder\\) or Hide", loc)
+})
 check("server pushes effective entries", {
   grepl("ynow_access_effective_entries", srv, fixed = TRUE)
 })
