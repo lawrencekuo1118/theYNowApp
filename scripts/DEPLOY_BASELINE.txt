@@ -7,5 +7,5 @@ commit=3d1b3b5ec39ed7f80b493c06c5a11a04eb25e495
 short=3d1b3b5e
 message=chore: record shipped display version v26.27
 captured_at=2026-10-22T05:15:40Z
-display_version=v26.27
+display_version=v26.28
 note=Canonical live line is app_26.0. Bundle 12723771: product-only gate demos; non-product snap_defaults/inner_lock assets removed (#394). Secrets only in gitignored .Renviron; no secret values in git.
