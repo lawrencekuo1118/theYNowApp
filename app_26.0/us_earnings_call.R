@@ -96,7 +96,7 @@ ynow_us_earnings_call_ir_search_url <- function(ticker) {
   piece <- as.character(piece %||% "")[1]
   if (!nzchar(piece)) return(NA_real_)
   piece <- gsub(",", "", piece, fixed = TRUE)
-  # 億美元 → USD scale (treat like English billion for extract magnitude).
+  # 1 億 = 1e8, including 億美元. Do not scale it as an English billion (1e9).
   m_usd <- regexpr(
     "([0-9]+(?:\\.[0-9]+)?)\\s*億\\s*美元",
     piece,
@@ -125,7 +125,8 @@ ynow_us_earnings_call_ir_search_url <- function(ticker) {
     )))
     if (is.finite(n)) return(n * 1e6)
   }
-  m_wan <- regexpr("([0-9]+(?:\\.[0-9]+)?)\\s*萬\\s*元?", piece, perl = TRUE)
+  # 萬元 only. Bare 萬 also matches 萬張 (share lots) and is not a currency amount.
+  m_wan <- regexpr("([0-9]+(?:\\.[0-9]+)?)\\s*萬\\s*元", piece, perl = TRUE)
   if (m_wan[1] > 0) {
     n <- suppressWarnings(as.numeric(sub(
       "^.*?([0-9]+(?:\\.[0-9]+)?)\\s*萬.*$", "\\1",
@@ -271,42 +272,41 @@ ynow_us_earnings_call_ir_search_url <- function(ticker) {
     }
     NA_real_
   }
+  zh_amt <- "(?:億\\s*元?|百萬|萬\\s*元)"
   if (!is.finite(out$backlog)) {
     out$backlog <- grab_zh(c(
-      "在手訂單[^。]{0,40}([0-9,\\.]+)\\s*億\\s*元?",
-      "訂單[^。]{0,40}([0-9,\\.]+)\\s*億\\s*元?",
-      "([0-9,\\.]+)\\s*億\\s*元?[^。]{0,20}在手訂單"
+      paste0("在手訂單[^。]{0,40}([0-9,\\.]+)\\s*", zh_amt),
+      paste0("([0-9,\\.]+)\\s*", zh_amt, "[^。]{0,20}在手訂單")
     ))
   }
   if (!is.finite(out$bookings)) {
+    # (?<!在手) keeps 在手訂單 on backlog. Bare 訂單 still counts when stated alone.
     out$bookings <- grab_zh(c(
-      "新訂單[^。]{0,40}([0-9,\\.]+)\\s*億\\s*元?",
-      "接單[^。]{0,40}([0-9,\\.]+)\\s*億\\s*元?",
-      "bookings?[^。]{0,40}([0-9,\\.]+)\\s*億\\s*元?"
+      paste0("(?<!在手)(?:新訂單|接單|訂單金額|訂單)[^。]{0,40}([0-9,\\.]+)\\s*", zh_amt),
+      paste0("([0-9,\\.]+)\\s*", zh_amt, "[^。]{0,16}(?<!在手)(?:新訂單|接單|訂單金額)")
     ))
   }
   if (!is.finite(out$capex)) {
     out$capex <- grab_zh(c(
-      "資本支出[^。]{0,40}([0-9,\\.]+)\\s*(?:億\\s*元?|百萬|萬\\s*元?)",
-      "CapEx[^。]{0,40}([0-9,\\.]+)\\s*(?:億\\s*元?|百萬|萬\\s*元?)",
-      "([0-9,\\.]+)\\s*(?:億\\s*元?|百萬)[^。]{0,20}資本支出"
+      paste0("(?:資本支出|CapEx|capex)[^。]{0,40}([0-9,\\.]+)\\s*", zh_amt),
+      paste0("([0-9,\\.]+)\\s*", zh_amt, "[^。]{0,20}(?:資本支出|CapEx|capex)")
     ))
   }
   themes <- character(0)
   if (grepl("(?i)\\b(guidance|outlook|expect(?:s|ed|ing)?\\s+(?:revenue|EPS|margin)|next\\s+quarter)", txt, perl = TRUE) ||
-        grepl("展望|指引|預估|謹慎樂觀", txt, perl = TRUE)) {
+        grepl("展望", txt, fixed = TRUE)) {
     themes <- c(themes, "cfo_guidance")
   }
   if (grepl("(?i)\\b(capital expenditures?|\\bCapEx\\b|capex|capacity\\s+investment|fab\\s+build)", txt, perl = TRUE) ||
-        grepl("資本支出|擴產|產能", txt, perl = TRUE)) {
+        grepl("資本支出", txt, fixed = TRUE)) {
     themes <- c(themes, "capex_plan")
   }
   if (grepl("(?i)\\b(question[- ]and[- ]answer|\\bQ\\s*&\\s*A\\b|analyst\\s+question)", txt, perl = TRUE) ||
-        grepl("問答|Q\\s*&\\s*A|法說會問答", txt, perl = TRUE)) {
+        grepl("問答", txt, fixed = TRUE)) {
     themes <- c(themes, "analyst_qa")
   }
   if (grepl("(?i)\\b(long[- ]term|multi[- ]year|secular|competitive\\s+advantage)\\b", txt, perl = TRUE) ||
-        grepl("長期|未來展望|競爭優勢", txt, perl = TRUE)) {
+        grepl("展望", txt, fixed = TRUE)) {
     themes <- c(themes, "ceo_outlook")
   }
   out$themes <- unique(themes)
@@ -333,24 +333,66 @@ ynow_us_earnings_call_ir_search_url <- function(ticker) {
   txt <- as.character(text %||% "")[1]
   empty <- list(suppliers = list(), customers = list(), order_lines = list())
   if (!nzchar(txt)) return(empty)
-  rows <- list()
-  # e.g. 主要客戶甲佔營收 18% / 客戶 Acme 營收佔比 12%
-  pat_cust <- "([\u4e00-\u9fffA-Za-z0-9&]{2,20})[^。]{0,12}(?:佔|占)(?:營收|銷售)[^。]{0,12}([0-9]+(?:\\.[0-9]+)?)\\s*%"
-  m <- gregexpr(pat_cust, txt, perl = TRUE)
-  if (m[[1]][1] > 0) {
-    starts <- as.integer(m[[1]])
-    lens <- attr(m[[1]], "match.length")
-    for (i in seq_along(starts)) {
-      hit <- substr(txt, starts[[i]], starts[[i]] + lens[[i]] - 1L)
-      nm <- sub(pat_cust, "\\1", hit, perl = TRUE)
-      sh <- suppressWarnings(as.numeric(sub(pat_cust, "\\2", hit, perl = TRUE))) / 100
-      if (!nzchar(nm) || !is.finite(sh)) next
-      if (nm %in% c("主要", "最大", "單一", "前大", "營收", "公司")) next
-      rows[[length(rows) + 1L]] <- list(name = nm, share = sh, amount = NA_real_, kind = "customer")
-      if (length(rows) >= 5L) break
+  name_re <- "([\u4e00-\u9fffA-Za-z0-9&]{2,16})"
+  stop_names <- c(
+    "主要", "最大", "單一", "前大", "營收", "公司", "客戶", "供應商",
+    "占營收", "佔營收", "我們", "本期", "其中", "訂單", "展望"
+  )
+  pct_re <- "([0-9]+(?:\\.[0-9]+)?)\\s*%"
+  money_re <- "([0-9,\\.]+)\\s*(?:億\\s*元?|百萬|萬\\s*元)"
+  push <- function(patterns, kind) {
+    rows <- list()
+    seen <- character(0)
+    for (pat in patterns) {
+      m <- gregexpr(pat, txt, perl = TRUE)
+      if (m[[1]][1] < 0) next
+      starts <- as.integer(m[[1]])
+      lens <- attr(m[[1]], "match.length")
+      for (i in seq_along(starts)) {
+        hit <- substr(txt, starts[[i]], starts[[i]] + lens[[i]] - 1L)
+        nm_m <- regexec(
+          "(?:客戶|供應商|來自)(?:為|是|包括)?\\s*([\u4e00-\u9fffA-Za-z0-9&]{2,16})",
+          hit,
+          perl = TRUE
+        )
+        parts <- regmatches(hit, nm_m)[[1]]
+        if (length(parts) < 2L) next
+        nm <- parts[[2]]
+        if (!nzchar(nm) || nm %in% seen || nm %in% stop_names) next
+        share <- NA_real_
+        amt <- NA_real_
+        pm <- regexpr(pct_re, hit, perl = TRUE)
+        if (pm[1] > 0) {
+          share <- suppressWarnings(as.numeric(sub(
+            "^([0-9.]+).*", "\\1", regmatches(hit, pm)[1], perl = TRUE
+          ))) / 100
+        }
+        amt <- .ynow_us_ec_money_to_num_zh(hit)
+        if (!is.finite(share) && !is.finite(amt)) next
+        seen <- c(seen, nm)
+        rows[[length(rows) + 1L]] <- list(
+          name = nm,
+          share = if (is.finite(share)) share else NA_real_,
+          amount = if (is.finite(amt)) amt else NA_real_,
+          kind = kind
+        )
+        if (length(rows) >= 5L) return(rows)
+      }
     }
+    rows
   }
-  list(customers = rows, suppliers = list(), order_lines = list())
+  customers <- push(c(
+    paste0("(?:主要|重大|關鍵)?客戶(?:為|是|包括)?\\s*", name_re, "[^。]{0,24}(?:佔|占)[^。]{0,12}", pct_re),
+    paste0("(?:主要|重大|關鍵)?客戶(?:為|是|包括)?\\s*", name_re, "[^。]{0,24}", money_re)
+  ), "customer")
+  suppliers <- push(c(
+    paste0("(?:主要|重大|關鍵)?供應商(?:為|是|包括)?\\s*", name_re, "[^。]{0,30}", money_re),
+    paste0("(?:主要|重大|關鍵)?供應商(?:為|是|包括)?\\s*", name_re, "[^。]{0,24}(?:佔|占)[^。]{0,12}", pct_re)
+  ), "supplier")
+  order_lines <- push(c(
+    paste0("來自", name_re, "(?:的)?訂單[^。]{0,24}", money_re)
+  ), "order")
+  list(suppliers = suppliers, customers = customers, order_lines = order_lines)
 }
 
 .ynow_us_ec_from_fmp <- function(ticker, api_key) {

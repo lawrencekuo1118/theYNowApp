@@ -4102,11 +4102,14 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Fugle memo and Seeking Alpha last-resort returned empty; AlphaMemo free transcripts stay human-browsable only."
     ),
     bblab_or_tw_ec_note = paste0(
-      "Preferred automatable: Fugle 法說會備忘錄 HTML (Estimate — blog memo; not a full official transcript). ",
-      "AlphaMemo.ai free-transcripts stay human outbound only (no AlphaMemo HTML/API scrape). ",
-      "Last-resort: Seeking Alpha HTML (Last-resort / third-party) when preferred paths cannot supply facts."
+      "Automatable source: Fugle earnings-call memos. Seeking Alpha HTML is last-resort only. ",
+      "AlphaMemo free transcripts stay human links."
     ),
     bblab_or_tw_ec_fugle_link = "Fugle earnings-call memo (Estimate)",
+    bblab_or_tw_ec_fugle_note = paste0(
+      "Fugle memos are blog posts labeled Estimate. Stated orders, CapEx, customers, and outlook ",
+      "are read from that HTML. AlphaMemo is not scraped."
+    ),
     bblab_or_tw_ec_alphamemo_link = "AlphaMemo free transcripts (human)",
     bblab_or_tw_ec_search_link = "Search AlphaMemo for this ticker (human)",
     bblab_or_tw_ec_sa_link = "Seeking Alpha Transcripts (last-resort)",
@@ -8400,11 +8403,14 @@ locale_for_market <- function(mode = get_market_mode()) {
       "富果法說備忘錄與 Seeking Alpha 最後備援皆無可用內容；AlphaMemo 公開逐字稿仍僅供人工瀏覽。"
     ),
     bblab_or_tw_ec_note = paste0(
-      "優先可自動化：富果直送法說會備忘錄 HTML（估計 — 部落格摘要，非完整官方逐字稿）。",
-      "AlphaMemo.ai 公開法說逐字稿維持人工外連（不擷取 AlphaMemo HTML／API）。",
-      "最後備援：僅在偏好路徑無法提供事實時，才擷取 Seeking Alpha HTML（最後備援／第三方）。"
+      "可自動擷取來源是 Fugle 法說會備忘錄。Seeking Alpha HTML 只作最後備援。",
+      "AlphaMemo 公開逐字稿只留人工連結。"
     ),
     bblab_or_tw_ec_fugle_link = "富果法說會備忘錄（估計）",
+    bblab_or_tw_ec_fugle_note = paste0(
+      "Fugle 備忘錄是部落格文章，可信度為估計。只擷取文中明列的訂單、CapEx、客戶與展望，",
+      "不會擷取 AlphaMemo。"
+    ),
     bblab_or_tw_ec_alphamemo_link = "AlphaMemo 公開法說逐字稿（人工）",
     bblab_or_tw_ec_search_link = "以 ticker 搜尋 AlphaMemo（人工）",
     bblab_or_tw_ec_sa_link = "Seeking Alpha Transcripts（最後備援）",

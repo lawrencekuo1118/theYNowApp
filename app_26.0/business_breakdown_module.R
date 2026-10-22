@@ -1136,6 +1136,7 @@ bblab_order_research_meta_ui <- function(pack, locale = "en", started = FALSE) {
         )
       },
       tags$p(class = "help-block", msg("bblab_or_tw_ec_note")),
+      tags$p(class = "help-block", msg("bblab_or_tw_ec_fugle_note")),
       link_row
     )
   }

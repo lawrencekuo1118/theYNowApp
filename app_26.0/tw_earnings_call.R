@@ -91,26 +91,26 @@ ynow_tw_earnings_call_fetch <- function(ticker) {
     NULL
   }
 
-  # 1) Fugle 法說會備忘錄 (free HTML memo; Estimate). AlphaMemo stays outbound-only.
-  if (exists("ynow_fugle_earnings_call_fetch", mode = "function")) {
-    fugle <- tryCatch(
-      ynow_fugle_earnings_call_fetch(bare, extract_fun = extract_fun),
-      error = function(e) NULL
-    )
-    if (isTRUE(usable(fugle))) {
-      return(c(fugle, meta_links))
+  # Named list order is the waterfall. AlphaMemo is meta_links only.
+  steps <- list(
+    fugle_earnings_memo = function() {
+      if (!exists("ynow_fugle_earnings_call_fetch", mode = "function")) return(NULL)
+      tryCatch(
+        ynow_fugle_earnings_call_fetch(bare, extract_fun = extract_fun),
+        error = function(e) NULL
+      )
+    },
+    seeking_alpha_html = function() {
+      if (!exists("ynow_sa_earnings_call_fetch_last_resort", mode = "function")) return(NULL)
+      tryCatch(
+        ynow_sa_earnings_call_fetch_last_resort(bare, extract_fun = extract_fun),
+        error = function(e) NULL
+      )
     }
-  }
-
-  # 2) Seeking Alpha HTML last-resort (often empty for pure TW names; fail closed).
-  if (exists("ynow_sa_earnings_call_fetch_last_resort", mode = "function")) {
-    sa <- tryCatch(
-      ynow_sa_earnings_call_fetch_last_resort(bare, extract_fun = extract_fun),
-      error = function(e) NULL
-    )
-    if (isTRUE(usable(sa))) {
-      return(c(sa, meta_links))
-    }
+  )
+  for (step in steps) {
+    got <- step()
+    if (isTRUE(usable(got))) return(c(got, meta_links))
   }
   c(.ynow_tw_ec_empty(bare, "fugle_empty_alphamemo_human_only_sa_empty"), meta_links)
 }

@@ -48,10 +48,32 @@ check("search url mentions alphamemo + ticker", {
   u <- ynow_tw_earnings_call_alphamemo_search_url("2330.TW")
   grepl("alphamemo", u, fixed = TRUE) && grepl("2330", u, fixed = TRUE)
 })
-check("zh extract backlog 億元", {
+check("zh extract backlog 億元 and capex", {
   f <- .ynow_us_ec_extract_facts("在手訂單約 12.5 億元，資本支出約 3.2 億元。")
   isTRUE(abs((f$backlog %||% 0) - 12.5e8) < 1e5) &&
-    isTRUE(abs((f$capex %||% 0) - 3.2e8) < 1e5)
+    isTRUE(abs((f$capex %||% 0) - 3.2e8) < 1e5) &&
+    !is.finite(f$bookings %||% NA_real_)
+})
+check("zh extract 百萬 萬元 and does not invent backlog from 新訂單", {
+  f <- .ynow_us_ec_extract_facts("在手訂單 80 百萬。資本支出 2500 萬元。新訂單 40 億元。")
+  isTRUE(abs((f$backlog %||% 0) - 80e6) < 1) &&
+    isTRUE(abs((f$capex %||% 0) - 2500 * 1e4) < 1) &&
+    isTRUE(abs((f$bookings %||% 0) - 40e8) < 1)
+})
+check("zh extract named customer supplier and themes", {
+  f <- .ynow_us_ec_extract_facts(
+    "主要客戶為台積電，占營收 18%。主要供應商為聯發科，採購金額 12 億元。展望與問答。"
+  )
+  cust <- f$customers %||% list()
+  sup <- f$suppliers %||% list()
+  length(cust) >= 1L &&
+    grepl("台積電", cust[[1]]$name %||% "", fixed = TRUE) &&
+    isTRUE(abs((cust[[1]]$share %||% 0) - 0.18) < 1e-6) &&
+    length(sup) >= 1L &&
+    grepl("聯發科", sup[[1]]$name %||% "", fixed = TRUE) &&
+    isTRUE(abs((sup[[1]]$amount %||% 0) - 12e8) < 1) &&
+    !is.finite(f$backlog %||% NA_real_) &&
+    all(c("cfo_guidance", "ceo_outlook", "analyst_qa") %in% (f$themes %||% character(0)))
 })
 
 Sys.setenv(YNOW_SA_SCRAPE = "0", YNOW_FUGLE_SCRAPE = "0")
@@ -82,10 +104,38 @@ check("TW Fugle fixture labels estimate + fugle_earnings_memo", {
   is.list(fugle_got) &&
     identical(fugle_got$credibility %||% "", "estimate") &&
     identical(fugle_got$source_id %||% "", "fugle_earnings_memo") &&
-    is.finite(fugle_got$backlog %||% NA_real_)
+    isTRUE(abs((fugle_got$backlog %||% 0) - 12.5e8) < 1e5) &&
+    isTRUE(abs((fugle_got$capex %||% 0) - 3.2e8) < 1e5) &&
+    grepl("earnings-call-8182-2026-10-21", fugle_got$url %||% "", fixed = TRUE) &&
+    identical(fugle_got$published %||% "", "2026-10-21") &&
+    grepl("alphamemo.ai/free-transcripts", fugle_got$alphamemo_url %||% "", fixed = TRUE) &&
+    grepl("blog.fugle.tw/topic/earnings-call-memo", fugle_got$fugle_url %||% "", fixed = TRUE)
+})
+check("TW Fugle fixture disclosure carries parties", {
+  disc_f <- ynow_tw_earnings_call_to_disclosure(fugle_got)
+  cust <- disc_f$customers %||% list()
+  length(cust) >= 1L &&
+    grepl("台積電", cust[[1]]$name %||% "", fixed = TRUE) &&
+    identical(disc_f$source_id %||% "", "fugle_earnings_memo") &&
+    is.finite(disc_f$backlog %||% NA_real_)
+})
+# Both fixtures on: Fugle wins for a ticker the memo names. SA stays last.
+Sys.setenv(
+  YNOW_SA_SCRAPE = "1",
+  YNOW_SA_SCRAPE_FIXTURE_HTML = file.path(app_dir, "tests/fixtures/sa_transcript_sample.html")
+)
+both <- ynow_tw_earnings_call_fetch("8182.TW")
+check("Fugle wins over SA fixture when both are on", {
+  identical(both$source_id %||% "", "fugle_earnings_memo")
+})
+miss <- ynow_tw_earnings_call_fetch("8916.TW")
+check("ticker absent from Fugle fixture falls through to SA", {
+  identical(miss$source_id %||% "", "seeking_alpha_html") &&
+    identical(miss$credibility %||% "", "last_resort")
 })
 Sys.unsetenv("YNOW_FUGLE_SCRAPE_FIXTURE_HTML")
-Sys.setenv(YNOW_FUGLE_SCRAPE = "0")
+Sys.unsetenv("YNOW_SA_SCRAPE_FIXTURE_HTML")
+Sys.setenv(YNOW_FUGLE_SCRAPE = "0", YNOW_SA_SCRAPE = "0")
 
 # Fixture-driven SA last-resort for TW bare ticker (Fugle off).
 Sys.setenv(
@@ -112,20 +162,25 @@ mod <- paste(readLines("business_breakdown_module.R", warn = FALSE, encoding = "
 check("BBLab wires TW earnings-call fetch + Fugle link", {
   grepl("ynow_tw_earnings_call_fetch", mod, fixed = TRUE) &&
     grepl("tw_earnings_call", mod, fixed = TRUE) &&
-    grepl("bblab_or_tw_ec_fugle_link", mod, fixed = TRUE)
+    grepl("bblab_or_tw_ec_fugle_link", mod, fixed = TRUE) &&
+    grepl("bblab_or_tw_ec_fugle_note", mod, fixed = TRUE)
 })
-check("global sources fugle + tw + sa helpers", {
+check("global sources fugle before tw", {
   g <- paste(readLines("global.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-  grepl('source("fugle_earnings_call.R"', g, fixed = TRUE) &&
-    grepl('source("tw_earnings_call.R"', g, fixed = TRUE) &&
+  fi <- regexpr('source("fugle_earnings_call.R"', g, fixed = TRUE)
+  ti <- regexpr('source("tw_earnings_call.R"', g, fixed = TRUE)
+  fi > 0L && ti > fi &&
     grepl('source("seeking_alpha_earnings_call.R"', g, fixed = TRUE)
 })
 loc <- paste(readLines("ui_locale.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check("locale en + zh-TW TW EC + Fugle + last_resort", {
   grepl("bblab_or_tw_ec_empty", loc, fixed = TRUE) &&
     grepl("bblab_or_tw_ec_fugle_link", loc, fixed = TRUE) &&
+    grepl("bblab_or_tw_ec_fugle_note", loc, fixed = TRUE) &&
     grepl("bblab_or_cred_last_resort", loc, fixed = TRUE) &&
     grepl("富果法說會備忘錄", loc, fixed = TRUE) &&
+    grepl("不會擷取 AlphaMemo", loc, fixed = TRUE) &&
+    grepl("AlphaMemo is not scraped", loc, fixed = TRUE) &&
     grepl("Last-resort (third-party HTML)", loc, fixed = TRUE)
 })
 check("no AlphaMemo scrape in TW/Fugle sources", {
