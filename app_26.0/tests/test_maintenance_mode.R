@@ -24,9 +24,45 @@ check <- function(name, cond) {
   }
 }
 
-app_dir <- normalizePath("..", mustWork = TRUE)
-if (!grepl("app_26.0$", app_dir)) {
-  app_dir <- normalizePath(".", mustWork = TRUE)
+# Resolve app_26.0/ whether invoked from repo root or from tests/ cwd.
+.args <- commandArgs(trailingOnly = FALSE)
+.file_arg <- grep("^--file=", .args, value = TRUE)
+.script_path <- if (length(.file_arg)) {
+  normalizePath(sub("^--file=", "", .file_arg[[1]]), mustWork = FALSE)
+} else {
+  NA_character_
+}
+.app_dir_cands <- unique(c(
+  if (!is.na(.script_path) && nzchar(.script_path)) {
+    normalizePath(file.path(dirname(.script_path), ".."), mustWork = FALSE)
+  } else {
+    character()
+  },
+  if (dir.exists("app_26.0")) normalizePath("app_26.0", mustWork = FALSE) else character(),
+  if (dir.exists(file.path("..", "app_26.0"))) {
+    normalizePath(file.path("..", "app_26.0"), mustWork = FALSE)
+  } else {
+    character()
+  },
+  normalizePath("..", mustWork = FALSE),
+  normalizePath(".", mustWork = FALSE)
+))
+app_dir <- ""
+for (.cand in .app_dir_cands) {
+  if (is.character(.cand) && nzchar(.cand) &&
+      file.exists(file.path(.cand, "maintenance_mode.R")) &&
+      file.exists(file.path(.cand, "access_locks.R")) &&
+      file.exists(file.path(.cand, "lock_catalog_shared.R"))) {
+    app_dir <- .cand
+    break
+  }
+}
+rm(list = intersect(
+  c(".args", ".file_arg", ".script_path", ".app_dir_cands", ".cand"),
+  ls(all.names = TRUE)
+))
+if (!nzchar(app_dir)) {
+  stop("Cannot locate app_26.0/ (maintenance_mode.R / access_locks.R / lock_catalog_shared.R)")
 }
 source(file.path(app_dir, "lock_catalog_shared.R"), local = FALSE)
 source(file.path(app_dir, "access_locks.R"), local = FALSE)
