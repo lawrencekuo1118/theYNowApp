@@ -18,6 +18,14 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 - CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_26.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).
 - Docs: root README ship/CI/Release pointers; `scripts/record_github_release.sh` for soft-fail Release publish after deploy.
 
+## [v26.32] — 2026-10-22
+
+### Added
+
+- **System admin Audit log / 操作紀錄** (PR #399): Sys. Admin pill tab records every ops mutation (Item locks apply/remove, maintenance set/clear, view-as / self-view, points adjust, portal enter/exit). Newest first; append-only (no clear/delete UI); each row retained at most **24 hours** (server clock) then auto-purged. Supabase Postgres `ynow_admin_ops_audit` with file fallback; fail closed.
+- zh-TW：系統管理「操作紀錄」分頁；累積列表（由新到舊）、介面不提供清除／刪除、逾 24 小時自動清除。
+- Live baseline bundle **12723993** / display **v26.32**.
+
 ## [v26.31] — 2026-10-22
 
 ### Added
