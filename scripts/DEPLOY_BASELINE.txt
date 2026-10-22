@@ -7,5 +7,5 @@ commit=26623e9a02d6c677e49ebbee38f66a7b5ff1faa5
 short=26623e9a
 message=chore: bump display version to v26.22
 captured_at=2026-10-22T03:06:10Z
-display_version=v26.22
+display_version=v26.23
 note=Canonical live line is app_26.0. Bundle 12723271: Decision Checklist guest gate unlock + SOP demo 1:1 side-by-side with white-fade Sign-in overlay (#387). Secrets only in gitignored .Renviron; no secret values in git.
