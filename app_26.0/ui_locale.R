@@ -131,6 +131,52 @@ locale_for_market <- function(mode = get_market_mode()) {
       "guarantee future outcomes. You alone bear all investment decisions and losses. ",
       "HFV is a veto / risk screen, not a buy signal; F-Score is a quality screen, not a buy signal."
     ),
+    about_data_sources_section_title = "Data sources",
+    about_data_sources_lead = paste0(
+      "This page states where live App numbers come from and how valuation uses them. ",
+      "It replaces the old sidebar data-source blurb. Sources differ by US vs TW market mode."
+    ),
+    about_data_sources_markets_title = "Quotes, statements, and company info",
+    about_data_sources_markets_body = paste0(
+      "Primary quotes, the three financial statements, and company / industry labels come from ",
+      "Yahoo Finance (yfinance). Live quotes, Rf, and USD/TWD FX use a short-lived fast cache ",
+      "(about ≤15 minutes). Statements, SEC notes, and industry labels use a slower disk cache ",
+      "(≥24 hours). For some Taiwan OTC / emerging names, when Yahoo annuals are empty the app ",
+      "may fill income and balance lines from TPEx financial summaries; cash-flow lines are ",
+      "never invented from those summaries."
+    ),
+    about_data_sources_rf_title = "Risk-free rate (Rf) and FX",
+    about_data_sources_rf_body = paste0(
+      "US mode: live Yahoo ^TNX (10-year). TW mode: TPEx government-bond yield curve, ",
+      "latest trading-day 10-year tenor. If a live fetch fails, the last successful value is reused; ",
+      "only then does an engineering fallback apply (US 5%, TW 1.8%) — labeled as fallback, ",
+      "not treated as the official bond. Display currency (USD｜TWD) is separate from market mode."
+    ),
+    about_data_sources_filings_title = "Listings, filings, and open data",
+    about_data_sources_filings_body = paste0(
+      "US: SEC-derived Nasdaq / NYSE primary-listing catalogs for Search and Blue Chip; ",
+      "SEC EDGAR for notes (10-K / 10-Q / 8-K; ADR and foreign issuers 20-F / 6-K) and ",
+      "board / convertible soft links. TW: TWSE / TPEx listing boards (ESB optional); ",
+      "MOPS open data for board elections, convertible / exchangeable bonds (with TPEx ISSBD), ",
+      "and major supplier / customer tables when disclosed; selected macro aggregates may use ",
+      "DGBAS NSTAT. Earnings-call facts follow preferred licensed or human-outbound paths; ",
+      "third-party HTML is last-resort only and labeled."
+    ),
+    about_data_sources_valuation_title = "How valuation uses these feeds",
+    about_data_sources_valuation_body = paste0(
+      "Fair Value engines — DCF (FCFF/WACC or FCFE/Ke), DDM (Gordon / SPM / two-stage), ",
+      "RI, P/B with holding NAV — consume the statement and price feeds above. ",
+      "Multiples stays a market-pricing Reference; SOTP is a Meta-Framework. ",
+      "Decision Checklist, Historical Fundamental Validation (HFV; veto only), ",
+      "Piotroski F-Score, and Margin of Safety (MOS) are screens and gates, not buy signals. ",
+      "Lite reuses the same engines and caches; it does not run a separate scraper stack."
+    ),
+    about_data_sources_limits_title = "Limits and honesty",
+    about_data_sources_limits_body = paste0(
+      "Incomplete or blocked feeds stay empty or show an explicit shortfall — the app does not ",
+      "pad missing cash flows or invent backlog. Provider rate limits and cache TTLs can delay ",
+      "refreshes. All outputs are for research and education only."
+    ),
     menu_dashboard = "Company",
     menu_company_advance = "Business Breakdown",
     kpi_last_price = "Last Price",
@@ -530,11 +576,6 @@ locale_for_market <- function(mode = get_market_mode()) {
     ticker_placeholder_us = "e.g. AAPL / TSM",
     ticker_placeholder_tw = "e.g. 2330",
     industry_info_yahoo = "industry info from Yahoo",
-    data_source_title = "Data Source:",
-    data_source_body = paste0(
-      "This application integrates real-time financial data via web parsing ",
-      "and API resources, applying comprehensive models for valuation."
-    ),
     download_report = "Download Report (PDF)",
     pdf_quota_hint = "Sign-in required. Three free downloads each Asia/Taipei day; each extra download costs 10 FYN.",
     pdf_quota_hint_lite = "Lite: free PDF downloads. Enter a ticker first.",
@@ -4516,6 +4557,48 @@ locale_for_market <- function(mode = get_market_mode()) {
       "過往績效與模型結果不保證未來表現。投資決策與損益一律由使用者自行承擔。",
       "HFV 屬否決／風險警語，非買進訊號；F-Score 為品質檢核，非買進訊號。"
     ),
+    about_data_sources_section_title = "資料來源",
+    about_data_sources_lead = paste0(
+      "本節說明線上 App 數字從何處取得、以及估值如何使用這些資料；",
+      "並取代以往側邊欄的資料來源說明。美股／台股市場模式來源不同。"
+    ),
+    about_data_sources_markets_title = "報價、三大報表與公司資訊",
+    about_data_sources_markets_body = paste0(
+      "股價報價、三大報表與公司／產業標籤主源為 Yahoo Finance（yfinance）。",
+      "即時報價、Rf 與 USD/TWD 匯率採短效快取（約 ≤15 分鐘）；",
+      "財報、SEC 附註與產業標籤採較長磁碟快取（≥24 小時）。",
+      "部分台股上櫃／興櫃若 Yahoo 年報為空，可能以櫃買（TPEx）財務摘要補齊損益表／資產負債表欄位；",
+      "現金流量表欄位不會由該摘要臆造。"
+    ),
+    about_data_sources_rf_title = "無風險利率（Rf）與匯率",
+    about_data_sources_rf_body = paste0(
+      "美股模式：即時 Yahoo ^TNX（10 年期）。台股模式：櫃買 TPEx 公債殖利率曲線最近交易日 10 年期。",
+      "即時擷取失敗時先沿用最近成功值；再失敗才使用工程 fallback（美股 5%、台股 1.8%），",
+      "並標明為 fallback，不作官方公債。顯示幣別（USD｜TWD）與市場模式分開設定。"
+    ),
+    about_data_sources_filings_title = "上市櫃名單、申報與開放資料",
+    about_data_sources_filings_body = paste0(
+      "美股：以 SEC 衍生之 Nasdaq／NYSE 主要上市目錄供 Search 與 Blue Chip；",
+      "SEC EDGAR 提供財報附註（10-K／10-Q／8-K；ADR／外國發行人 20-F／6-K）",
+      "以及董監／可轉債相關連結。台股：證交所（TWSE）／櫃買（TPEx）上市櫃名單（興櫃 ESB 可選）；",
+      "公開資訊觀測站（MOPS）開放資料用於董監改選、可轉債／可交換債（並參考櫃買 ISSBD），",
+      "以及有揭露時的主要供應商／重大客戶表；部分總體指標可能使用主計總處 NSTAT。",
+      "法說會事實依優先授權或人工外連路徑；第三方 HTML 僅為最後備援並標示。"
+    ),
+    about_data_sources_valuation_title = "估值如何使用上述資料",
+    about_data_sources_valuation_body = paste0(
+      "Fair Value 引擎——DCF（FCFF/WACC 或 FCFE/Ke）、DDM（Gordon／SPM／二階段）、",
+      "RI、P/B（含持股 NAV）——使用上述財報與報價。",
+      "Multiples 維持市場定價參照（Reference）；SOTP 為綜合型估值框架（Meta-Framework）。",
+      "決策檢核（Decision Checklist）、Historical Fundamental Validation（HFV；僅作否決）、",
+      "Piotroski F-Score 與安全邊際（MOS）屬檢核／閘門，非買進訊號。",
+      "Lite 共用同一套引擎與快取，不另開爬蟲堆疊。"
+    ),
+    about_data_sources_limits_title = "界限與誠實呈現",
+    about_data_sources_limits_body = paste0(
+      "資料不完整或遭阻擋時維持空白或明確標示不足——不會湊齊現金流或缺漏的訂單／積壓。",
+      "供應商速率限制與快取有效期間可能延後更新。所有輸出僅供研究與教育參考。"
+    ),
     menu_dashboard = "個股",
     menu_company_advance = "業務拆解",
     kpi_last_price = "最新股價",
@@ -4916,11 +4999,6 @@ locale_for_market <- function(mode = get_market_mode()) {
     ticker_placeholder_us = "例如 AAPL／TSM",
     ticker_placeholder_tw = "例如 2330",
     industry_info_yahoo = "Yahoo 產業資訊",
-    data_source_title = "資料來源：",
-    data_source_body = paste0(
-      "本應用程式整合即時財務資料（網頁解析與 API），",
-      "並套用完整估值模型。"
-    ),
     download_report = "下載報告 (PDF)",
     pdf_quota_hint = "需登入。每個台北時間日曆日可免費下載 3 次；超過後每次下載扣 10 FYN。",
     pdf_quota_hint_lite = "Lite：可免費下載 PDF。請先輸入股票代號。",

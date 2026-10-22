@@ -40,10 +40,22 @@ check(
     !grepl(".about_lite_intro_ui <- function()", facade, fixed = TRUE)
 )
 check(
-  "sibling defines three builders",
+  "sibling defines About builders (intro + data sources + legal)",
   grepl(".legal_notices_ui <- function()", about, fixed = TRUE) &&
+    grepl(".about_data_sources_ui <- function()", about, fixed = TRUE) &&
     grepl(".about_bilingual_intro_ui <- function()", about, fixed = TRUE) &&
     grepl(".about_lite_intro_ui <- function()", about, fixed = TRUE)
+)
+check(
+  "About data sources copy uses 資料來源 / Data sources keys",
+  grepl("about_data_sources_section_title", about, fixed = TRUE) &&
+    grepl("about_data_sources_markets_body", about, fixed = TRUE)
+)
+check(
+  "sidebar no longer hosts data-source blurb",
+  !grepl("ynow_data_source_block", facade, fixed = TRUE) &&
+    !grepl("ynow_data_source_title", facade, fixed = TRUE) &&
+    !grepl("ynow_data_source_body", facade, fixed = TRUE)
 )
 
 # Call site + Lite/Full wrappers stay on the facade (prefs: Lite free About stays open).
@@ -60,11 +72,12 @@ about_slice <- if (m_tab > 0L) {
   ""
 }
 check(
-  "about tab mounts Full + Lite + legal",
+  "about tab mounts Full + Lite + data sources + legal",
   grepl("ynow-full-only", about_slice, fixed = TRUE) &&
     grepl(".about_bilingual_intro_ui()", about_slice, fixed = TRUE) &&
     grepl("ynow-lite-only", about_slice, fixed = TRUE) &&
     grepl(".about_lite_intro_ui()", about_slice, fixed = TRUE) &&
+    grepl(".about_data_sources_ui()", about_slice, fixed = TRUE) &&
     grepl(".legal_notices_ui()", about_slice, fixed = TRUE)
 )
 check(
@@ -119,8 +132,20 @@ env$tags <- list(
 env$fluidRow <- function(...) NULL
 env$column <- function(...) NULL
 env$tagList <- function(...) NULL
-env$.UI_STRINGS <- list(
-  en = list(
+.env_about_locale_stub <- function() {
+  list(
+    about_data_sources_section_title = "Data sources",
+    about_data_sources_lead = "lead",
+    about_data_sources_markets_title = "m",
+    about_data_sources_markets_body = "mb",
+    about_data_sources_rf_title = "r",
+    about_data_sources_rf_body = "rb",
+    about_data_sources_filings_title = "f",
+    about_data_sources_filings_body = "fb",
+    about_data_sources_valuation_title = "v",
+    about_data_sources_valuation_body = "vb",
+    about_data_sources_limits_title = "l",
+    about_data_sources_limits_body = "lb",
     legal_section_title = "Legal",
     legal_privacy_title = "Privacy",
     legal_privacy_body = "p",
@@ -128,27 +153,31 @@ env$.UI_STRINGS <- list(
     legal_ip_body = "i",
     legal_risk_title = "Risk",
     legal_risk_body = "r"
-  ),
-  `zh-TW` = list(
-    legal_section_title = "法律",
-    legal_privacy_title = "隱私",
-    legal_privacy_body = "p",
-    legal_ip_title = "智財",
-    legal_ip_body = "i",
-    legal_risk_title = "風險",
-    legal_risk_body = "r"
   )
+}
+env$.UI_STRINGS <- list(
+  en = .env_about_locale_stub(),
+  `zh-TW` = {
+    zh <- .env_about_locale_stub()
+    zh$about_data_sources_section_title <- "資料來源"
+    zh$legal_section_title <- "法律"
+    zh$legal_privacy_title <- "隱私"
+    zh$legal_ip_title <- "智財"
+    zh$legal_risk_title <- "風險"
+    zh
+  }
 )
 source_ok <- tryCatch({
   sys.source(about_path, envir = env)
   exists(".legal_notices_ui", envir = env, inherits = FALSE) &&
+    exists(".about_data_sources_ui", envir = env, inherits = FALSE) &&
     exists(".about_bilingual_intro_ui", envir = env, inherits = FALSE) &&
     exists(".about_lite_intro_ui", envir = env, inherits = FALSE)
 }, error = function(e) {
   cat("source error:", conditionMessage(e), "\n")
   FALSE
 })
-check("sibling sources three builders into local env", source_ok)
+check("sibling sources About builders into local env", source_ok)
 
 if (fail > 0L) {
   stop(fail, " about-ui seam checks failed")

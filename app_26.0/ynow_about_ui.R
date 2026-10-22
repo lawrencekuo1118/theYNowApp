@@ -6,43 +6,94 @@
 # ynow_ui.R. No valuation / Lite-lock / auth semantic change.
 # ==========================================
 
-#' Privacy / IP / investment-risk notices (About: bilingual zh-TW | en-US)
-.legal_notices_ui <- function() {
+#' Shared bilingual row helper for About section pairs (zh-TW | en-US).
+.about_bilingual_pair <- function(title_zh, body_zh, title_en, body_en,
+                                  row_class = "ynow-legal-row") {
+  fluidRow(
+    class = row_class,
+    column(
+      width = 6,
+      class = "ynow-about-col ynow-about-col--zh",
+      tags$h4(class = "ynow-legal-h", title_zh),
+      tags$p(class = "ynow-legal-body", body_zh)
+    ),
+    column(
+      width = 6,
+      class = "ynow-about-col ynow-about-col--en",
+      tags$h4(class = "ynow-legal-h", title_en),
+      tags$p(class = "ynow-legal-body", body_en)
+    )
+  )
+}
+
+#' Data sources block on About (live feeds + how valuation uses them).
+#' Replaces the former sidebar「資料來源」blurb — keep accurate to app_26.0 reality.
+.about_data_sources_ui <- function() {
   en <- tryCatch(.UI_STRINGS$en, error = function(e) NULL)
   zh <- tryCatch(.UI_STRINGS$`zh-TW`, error = function(e) NULL)
   if (is.null(en) || is.null(zh)) return(NULL)
-  .legal_pair <- function(title_zh, body_zh, title_en, body_en) {
+  tags$div(
+    class = "ynow-about-data-sources",
+    tags$h3(
+      class = "ynow-about-section-title",
+      paste0(zh$about_data_sources_section_title, " / ", en$about_data_sources_section_title)
+    ),
     fluidRow(
       class = "ynow-legal-row",
       column(
         width = 6,
         class = "ynow-about-col ynow-about-col--zh",
-        tags$h4(class = "ynow-legal-h", title_zh),
-        tags$p(class = "ynow-legal-body", body_zh)
+        tags$p(class = "ynow-about-section-lead", zh$about_data_sources_lead)
       ),
       column(
         width = 6,
         class = "ynow-about-col ynow-about-col--en",
-        tags$h4(class = "ynow-legal-h", title_en),
-        tags$p(class = "ynow-legal-body", body_en)
+        tags$p(class = "ynow-about-section-lead", en$about_data_sources_lead)
       )
+    ),
+    .about_bilingual_pair(
+      zh$about_data_sources_markets_title, zh$about_data_sources_markets_body,
+      en$about_data_sources_markets_title, en$about_data_sources_markets_body
+    ),
+    .about_bilingual_pair(
+      zh$about_data_sources_rf_title, zh$about_data_sources_rf_body,
+      en$about_data_sources_rf_title, en$about_data_sources_rf_body
+    ),
+    .about_bilingual_pair(
+      zh$about_data_sources_filings_title, zh$about_data_sources_filings_body,
+      en$about_data_sources_filings_title, en$about_data_sources_filings_body
+    ),
+    .about_bilingual_pair(
+      zh$about_data_sources_valuation_title, zh$about_data_sources_valuation_body,
+      en$about_data_sources_valuation_title, en$about_data_sources_valuation_body
+    ),
+    .about_bilingual_pair(
+      zh$about_data_sources_limits_title, zh$about_data_sources_limits_body,
+      en$about_data_sources_limits_title, en$about_data_sources_limits_body
     )
-  }
+  )
+}
+
+#' Privacy / IP / investment-risk notices (About: bilingual zh-TW | en-US)
+.legal_notices_ui <- function() {
+  en <- tryCatch(.UI_STRINGS$en, error = function(e) NULL)
+  zh <- tryCatch(.UI_STRINGS$`zh-TW`, error = function(e) NULL)
+  if (is.null(en) || is.null(zh)) return(NULL)
   tags$div(
     class = "ynow-legal-notices",
     tags$h3(
       class = "ynow-about-section-title",
       paste0(zh$legal_section_title, " / ", en$legal_section_title)
     ),
-    .legal_pair(
+    .about_bilingual_pair(
       zh$legal_privacy_title, zh$legal_privacy_body,
       en$legal_privacy_title, en$legal_privacy_body
     ),
-    .legal_pair(
+    .about_bilingual_pair(
       zh$legal_ip_title, zh$legal_ip_body,
       en$legal_ip_title, en$legal_ip_body
     ),
-    .legal_pair(
+    .about_bilingual_pair(
       zh$legal_risk_title, zh$legal_risk_body,
       en$legal_risk_title, en$legal_risk_body
     )
