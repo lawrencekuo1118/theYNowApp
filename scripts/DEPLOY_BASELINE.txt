@@ -7,5 +7,5 @@ commit=defa2f645924959fb801ceb6525055a3f2f6aac3
 short=defa2f64
 message=chore: bump display version to v26.26
 captured_at=2026-10-22T04:56:34Z
-display_version=v26.26
+display_version=v26.27
 note=Canonical live line is app_26.0. Bundle 12723730: gate demos recorded from live App UI only (#393). Secrets only in gitignored .Renviron; no secret values in git.
