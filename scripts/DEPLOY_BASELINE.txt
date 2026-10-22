@@ -7,5 +7,5 @@ commit=4b6180fef53f5dd0ca0f62ad57637430b8e2e39f
 short=4b6180fe
 message=chore: bump display version to v26.31
 captured_at=2026-10-22T06:49:21Z
-display_version=v26.31
+display_version=v26.32
 note=Canonical live line is app_26.0. Bundle 12723970: Banner right logo soft-refreshes active tab + clockwise spin while busy (#398). Secrets only in gitignored .Renviron; no secret values in git.
