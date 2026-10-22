@@ -57,6 +57,24 @@ ynow_index_symbol <- function(market = "US") {
   if (identical(ynow_index_normalize_market(market), "TW")) TYNOW_INDEX_SYMBOL else YNOW_INDEX_SYMBOL
 }
 
+#' Parse user input for the in-app YNOW / TYNOW indices (not Yahoo listings).
+#' Accepts optional leading slash (e.g. `/TYNOW`) used in some TW desk shorthand.
+#' @return list(symbol, market) or NULL when the raw string is not an own-index ticker.
+ynow_index_parse_symbol <- function(raw) {
+  u <- toupper(trimws(as.character(raw %||% "")[1]))
+  if (!nzchar(u) || identical(u, "NA")) return(NULL)
+  u <- sub("\\s+[—\\-–].*$", "", u)
+  u <- toupper(gsub("\\s+", "", u))
+  u <- sub("^/+", "", u)
+  if (identical(u, YNOW_INDEX_SYMBOL)) {
+    return(list(symbol = YNOW_INDEX_SYMBOL, market = "US"))
+  }
+  if (identical(u, TYNOW_INDEX_SYMBOL)) {
+    return(list(symbol = TYNOW_INDEX_SYMBOL, market = "TW"))
+  }
+  NULL
+}
+
 ynow_index_scan_cap <- function(market = "US") {
   if (identical(ynow_index_normalize_market(market), "TW")) {
     YNOW_INDEX_SCAN_CAP_TW
@@ -266,12 +284,8 @@ ynow_index_tw_ranked <- function(scan_cap = YNOW_INDEX_SCAN_CAP_TW) {
   utils::head(snap, max(1L, as.integer(scan_cap)[1]))
 }
 
-ynow_index_read_cache <- function(month, path = ynow_index_cache_path()) {
-  if (!file.exists(path)) return(NULL)
-  df <- tryCatch(utils::read.csv(path, stringsAsFactors = FALSE), error = function(e) NULL)
-  if (is.null(df) || !nrow(df) || !("month" %in% names(df))) return(NULL)
-  df <- df[as.character(df$month) == as.character(month), , drop = FALSE]
-  if (!nrow(df)) return(NULL)
+.ynow_index_pack_cache_rows <- function(df, month_key, prior = FALSE) {
+  if (is.null(df) || !nrow(df)) return(NULL)
   if (!nzchar(as.character(df$ticker[1]))) {
     return(list(
       members = list(),
@@ -279,8 +293,9 @@ ynow_index_read_cache <- function(month, path = ynow_index_cache_path()) {
       n = 0L,
       complete = FALSE,
       hit_scan_cap = isTRUE(df$hit_scan_cap[1] %in% c(TRUE, "TRUE", "true", 1)),
-      month = as.character(month),
-      built_at = as.character(df$built_at[1])
+      month = as.character(month_key),
+      built_at = as.character(df$built_at[1]),
+      prior_month = isTRUE(prior)
     ))
   }
   members <- lapply(seq_len(nrow(df)), function(i) {
@@ -303,9 +318,41 @@ ynow_index_read_cache <- function(month, path = ynow_index_cache_path()) {
     n = length(members),
     complete = isTRUE(length(members) >= YNOW_INDEX_N),
     hit_scan_cap = isTRUE(df$hit_scan_cap[1] %in% c(TRUE, "TRUE", "true", 1)),
-    month = as.character(month),
-    built_at = as.character(df$built_at[1])
+    month = as.character(month_key),
+    built_at = as.character(df$built_at[1]),
+    prior_month = isTRUE(prior)
   )
+}
+
+#' Read the monthly YNOW / TYNOW basket CSV.
+#'
+#' When `allow_prior` is TRUE and the requested Asia/Taipei month is missing,
+#' reuse the latest basket month that is still ≤ the request (so the Macro KPI
+#' and expand card do not go blank between reconstitutions). Exact-month miss
+#' with no eligible prior stays NULL (honest empty).
+ynow_index_read_cache <- function(month, path = ynow_index_cache_path(),
+                                  allow_prior = TRUE) {
+  if (!file.exists(path)) return(NULL)
+  df <- tryCatch(utils::read.csv(path, stringsAsFactors = FALSE), error = function(e) NULL)
+  if (is.null(df) || !nrow(df) || !("month" %in% names(df))) return(NULL)
+  want <- as.character(month %||% "")[1]
+  hit <- df[as.character(df$month) == want, , drop = FALSE]
+  if (nrow(hit)) {
+    return(.ynow_index_pack_cache_rows(hit, want, prior = FALSE))
+  }
+  if (!isTRUE(allow_prior) || !nzchar(want)) return(NULL)
+  months <- unique(as.character(df$month))
+  months <- months[nzchar(months) & !is.na(months)]
+  # YYYY-MM lexicographic order matches calendar order.
+  prior <- months[months <= want]
+  if (!length(prior)) return(NULL)
+  use <- max(prior)
+  pack <- .ynow_index_pack_cache_rows(
+    df[as.character(df$month) == use, , drop = FALSE],
+    use,
+    prior = !identical(use, want)
+  )
+  pack
 }
 
 ynow_index_write_cache <- function(sel, path = ynow_index_cache_path()) {

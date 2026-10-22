@@ -299,6 +299,52 @@ server <- function(input, output, session) {
     )
     raw <- trimws(as.character(sym_raw %||% "")[1])
     if (!nzchar(raw) || identical(toupper(raw), "NA")) return(invisible(FALSE))
+    # YNOW / TYNOW (and /YNOW|/TYNOW) are Macro own-indices — open Macro expand,
+    # do not scrape them as company tickers (they are not Yahoo listings).
+    own_idx <- if (exists("ynow_index_parse_symbol", mode = "function")) {
+      tryCatch(ynow_index_parse_symbol(raw), error = function(e) NULL)
+    } else {
+      NULL
+    }
+    if (is.list(own_idx) && nzchar(as.character(own_idx$symbol %||% "")[1])) {
+      want_mkt <- as.character(own_idx$market %||% "US")[1]
+      sym <- as.character(own_idx$symbol)[1]
+      if (!identical(mode, want_mkt)) {
+        mkt_js <- if (identical(want_mkt, "TW")) {
+          "if (window.Shiny && Shiny.setInputValue) { Shiny.setInputValue('market_mode_pick', 'TW', {priority: 'event'}); }"
+        } else {
+          "if (window.Shiny && Shiny.setInputValue) { Shiny.setInputValue('market_mode_pick', 'US', {priority: 'event'}); }"
+        }
+        tryCatch(shinyjs::runjs(mkt_js), error = function(e) NULL)
+      }
+      tryCatch(updateTextInput(session, "sc", value = sym), error = function(e) NULL)
+      tryCatch(
+        session$sendCustomMessage("ynowGotoTab", list(tab = "macro_market")),
+        error = function(e) NULL
+      )
+      tryCatch(
+        session$sendCustomMessage(
+          "ynowMacroOpenIndex",
+          list(symbol = sym, market = want_mkt)
+        ),
+        error = function(e) NULL
+      )
+      tryCatch({
+        loc <- tryCatch(isolate(ui_locale()), error = function(e) "en")
+        tmpl <- if (exists("ui_str", mode = "function")) {
+          ui_str("notif_open_own_index", loc)
+        } else {
+          "Opening {symbol} on Macro…"
+        }
+        msg <- if (exists(".ynow_fmt_str", mode = "function")) {
+          .ynow_fmt_str(tmpl, symbol = sym)
+        } else {
+          gsub("\\{symbol\\}", sym, tmpl, fixed = FALSE)
+        }
+        showNotification(msg, type = "message", duration = 4)
+      }, error = function(e) NULL)
+      return(invisible(TRUE))
+    }
     # Prefer stored Yahoo suffix when it already matches the active market.
     tk <- if (identical(mode, "TW") &&
               grepl("\\.(TW|TWO)$", raw, ignore.case = TRUE)) {

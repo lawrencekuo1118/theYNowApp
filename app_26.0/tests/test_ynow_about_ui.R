@@ -58,8 +58,8 @@ check(
     !grepl("ynow_data_source_body", facade, fixed = TRUE)
 )
 
-# Call site + Lite/Full wrappers stay on the facade (prefs: Lite free About stays open).
-# Prefer tabItem (not sidebar menuItem("About", tabName = "about", ...)).
+# Call site + Lite/Full wrappers: About body is lazy (#415) via ynow_lazy_host_about;
+# Full/Lite + data sources + legal live in .ynow_page_ui_about (prefs: Lite free About).
 m_tab <- regexpr(
   'tabItem\\(\\s*\\n\\s*tabName = "about"',
   facade,
@@ -72,17 +72,30 @@ about_slice <- if (m_tab > 0L) {
   ""
 }
 check(
-  "about tab mounts Full + Lite + data sources + legal",
-  grepl("ynow-full-only", about_slice, fixed = TRUE) &&
-    grepl(".about_bilingual_intro_ui()", about_slice, fixed = TRUE) &&
-    grepl("ynow-lite-only", about_slice, fixed = TRUE) &&
-    grepl(".about_lite_intro_ui()", about_slice, fixed = TRUE) &&
-    grepl(".about_data_sources_ui()", about_slice, fixed = TRUE) &&
-    grepl(".legal_notices_ui()", about_slice, fixed = TRUE)
+  "about tab uses lazy host",
+  grepl("ynow_lazy_host_about", about_slice, fixed = TRUE)
+)
+page_about <- {
+  m <- regexpr("\\.ynow_page_ui_about\\s*<-\\s*function", facade, perl = TRUE)[1]
+  if (m > 0L) substr(facade, m, min(nchar(facade), m + 1200L)) else ""
+}
+check(
+  "about page builder mounts Full + Lite + data sources + legal",
+  grepl("ynow-full-only", page_about, fixed = TRUE) &&
+    grepl(".about_bilingual_intro_ui()", page_about, fixed = TRUE) &&
+    grepl("ynow-lite-only", page_about, fixed = TRUE) &&
+    grepl(".about_lite_intro_ui()", page_about, fixed = TRUE) &&
+    grepl(".about_data_sources_ui()", page_about, fixed = TRUE) &&
+    grepl(".legal_notices_ui()", page_about, fixed = TRUE)
 )
 check(
-  "about tab does not mount methodology section",
-  !grepl(".valuation_methodology_section_ui(", about_slice, fixed = TRUE)
+  "about page builder does not mount methodology section",
+  !grepl(".valuation_methodology_section_ui(", page_about, fixed = TRUE)
+)
+check(
+  "About data sources documents YNOW/TYNOW indices",
+  grepl("about_data_sources_ynow_index_title", about, fixed = TRUE) &&
+    grepl("about_data_sources_ynow_index_body", about, fixed = TRUE)
 )
 
 check(

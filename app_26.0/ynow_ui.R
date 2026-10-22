@@ -194,7 +194,7 @@ source("ynow_cookie_notice_ui.R", local = TRUE, encoding = "UTF-8")
           tags$p(
             id = "ynow_home_market_d",
             class = "ynow-home-card-d",
-            "Index levels, and industry performance versus the benchmark."
+            "YNOW / TYNOW, major boards, Rf, and industry performance versus the benchmark."
           )
         ),
         tags$button(
@@ -14381,6 +14381,30 @@ ui <- dashboardPage(
               Shiny.addCustomMessageHandler('ynowGotoTab', function (payload) {
                 var tab = payload && payload.tab;
                 if (tab) gotoTab(tab);
+              });
+              /* Search YNOW / TYNOW (/TYNOW): open Macro and expand the own-index KPI. */
+              Shiny.addCustomMessageHandler('ynowMacroOpenIndex', function (payload) {
+                var sym = payload && payload.symbol ? String(payload.symbol) : '';
+                if (!sym) return;
+                var tries = 0;
+                function tryOpen() {
+                  tries += 1;
+                  var el = document.querySelector(
+                    '.ynow-macro-kpi[data-macro-index="' + sym + '"], #ynow_macro_idx_' +
+                      String(sym).toLowerCase().replace(/[^a-z0-9]+/g, '')
+                  );
+                  if (el && typeof el.click === 'function') {
+                    el.click();
+                    return;
+                  }
+                  if (window.Shiny && Shiny.setInputValue) {
+                    try {
+                      Shiny.setInputValue('macro-index_click', sym, {priority: 'event'});
+                    } catch (eClick) {}
+                  }
+                  if (tries < 48) setTimeout(tryOpen, 250);
+                }
+                setTimeout(tryOpen, 400);
               });
             }
             registerGotoTabHandler();
