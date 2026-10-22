@@ -942,7 +942,9 @@ check("mobile date-row auth is text links matching date font; header hidden on m
     grepl("ynow_auth_open_date", auth_src, fixed = TRUE) &&
     grepl("ynow_auth_sign_out_date", auth_src, fixed = TRUE) &&
     grepl("@media \\(max-width:767px\\)", auth_src, perl = TRUE) &&
+    grepl("@media \\(min-width:768px\\)", auth_src, perl = TRUE) &&
     grepl("li.ynow-auth-header", auth_src, fixed = TRUE) &&
+    grepl("Single auth surface by viewport", auth_src, fixed = TRUE) &&
     grepl(
       "\\.ynow-auth-links--date-row a\\.ynow-auth-open \\{[\\s\\S]*?font-size:12px !important",
       auth_src,
@@ -965,7 +967,33 @@ check("mobile date-row auth is text links matching date font; header hidden on m
       "body\\.ynow-authed \\.ynow-auth-links--date-row a\\.ynow-auth-signout[\\s\\S]*?display:inline !important",
       auth_src,
       perl = TRUE
+    ) &&
+    # Mutual exclusion: narrow shows date-row + hides header; wide hides date-row.
+    grepl(
+      "@media \\(max-width:767px\\) \\{[\\s\\S]*?\\.ynow-auth-links--date-row \\{ display:inline-flex !important; \\}[\\s\\S]*?li\\.ynow-auth-header",
+      auth_src,
+      perl = TRUE
+    ) &&
+    grepl(
+      "@media \\(min-width:768px\\) \\{[\\s\\S]*?\\.ynow-auth-links--date-row[\\s\\S]*?display:none !important",
+      auth_src,
+      perl = TRUE
     )
+})
+check("UI CSS does not force header auth flex on mobile (single entry)", {
+  ui <- paste(readLines(src_ui, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  # Desktop-only flex for auth header — unconditional flex would beat mobile hide.
+  grepl(
+    "@media \\(min-width: 768px\\) \\{[\\s\\S]*?li\\.ynow-auth-header \\{[\\s\\S]*?display: flex !important",
+    ui,
+    perl = TRUE
+  ) &&
+    grepl(
+      "@media \\(max-width: 767px\\) \\{[\\s\\S]*?li\\.ynow-auth-header[\\s\\S]*?display: none !important",
+      ui,
+      perl = TRUE
+    ) &&
+    grepl("Do not force display:flex here or it beats the mobile", ui, fixed = TRUE)
 })
 check("date_row auth UI is plain text link not button", {
   Sys.setenv(YNOW_ENABLE_ACCOUNT_LOGIN = "1")

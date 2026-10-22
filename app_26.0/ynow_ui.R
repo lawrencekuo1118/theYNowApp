@@ -3552,15 +3552,15 @@ ui <- dashboardPage(
   dashboardSidebar(
     width = 250,
     collapsed = TRUE,
-    # Mobile: Sign in / Sign out text links beside date (desktop keeps header buttons).
+    # Single auth surface by viewport: ≤767 date-row text links; ≥768 header button.
     column(
       width = 12,
       tags$div(
         class = "ynow-sidebar-date-row",
-        # Mobile only (CSS): auth text links left of date; desktop hides this mount.
+        # Narrow only (CSS @media max-width:767): auth text links left of date.
         if (exists("ynow_auth_links_ui", mode = "function")) ynow_auth_links_ui("date_row"),
         tags$span(class = "ynow-sidebar-date", textOutput("today", inline = TRUE)),
-        # Mobile only (CSS): FYN/PYN right of login date. Desktop keeps top header banner.
+        # Narrow only (CSS): FYN/PYN right of login date. Wider keeps top header banner.
         tags$div(
           class = "ynow-pts-sidebar ynow-pts-hidden",
           id = "ynow-pts-sidebar",
@@ -7754,7 +7754,8 @@ ui <- dashboardPage(
           height: 50px !important;
           margin: 0 !important;
         }
-        .main-header .navbar-custom-menu .navbar-nav > li.ynow-auth-header,
+        /* Auth header: desktop-only flex (≤767 hides it — see mobile block + auth_account.R).
+           Do not force display:flex here or it beats the mobile display:none !important. */
         .main-header .navbar-custom-menu .navbar-nav > li.ynow-lang-header,
         .main-header .navbar-custom-menu .navbar-nav > li.ynow-pts-header,
         .main-header .navbar-custom-menu .navbar-nav > li#ynow-header-logo.ynow-header-logo {
@@ -7769,11 +7770,20 @@ ui <- dashboardPage(
           padding-bottom: 0 !important;
           flex-shrink: 0 !important;
         }
-        .main-header .navbar-custom-menu .navbar-nav > li.ynow-auth-header {
-          padding: 0 12px 0 8px !important;
-          list-style: none !important;
-          overflow: visible !important;
-          flex-shrink: 0 !important;
+        @media (min-width: 768px) {
+          .main-header .navbar-custom-menu .navbar-nav > li.ynow-auth-header {
+            float: none !important;
+            height: 50px !important;
+            min-height: 50px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            margin: 0 !important;
+            padding: 0 12px 0 8px !important;
+            flex-shrink: 0 !important;
+            list-style: none !important;
+            overflow: visible !important;
+          }
         }
         .main-header .navbar-custom-menu .navbar-nav > li.ynow-lang-header {
           padding: 0 10px 0 4px !important;
@@ -17218,6 +17228,22 @@ ui <- dashboardPage(
           .main-header .navbar-custom-menu .navbar-nav > li#ynow-header-logo.ynow-header-logo {
             position: relative !important;
             overflow: visible !important;
+          }
+          /* Mobile: one auth surface — sidebar date-row text links, not top-banner button. */
+          .main-header .navbar-custom-menu .navbar-nav > li.ynow-auth-header,
+          body.ynow-lite .main-header .navbar-custom-menu .navbar-nav > li.ynow-auth-header,
+          #ynow-auth-sidebar,
+          .ynow-auth-links--sidebar {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            width: 0 !important;
+            min-width: 0 !important;
+            max-width: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            overflow: hidden !important;
+            pointer-events: none !important;
           }
           /* Mobile override: points live in the sidebar (right of login date), not header. */
           .main-header .navbar-custom-menu .navbar-nav > li.ynow-pts-header,
