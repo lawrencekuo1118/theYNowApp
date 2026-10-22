@@ -1,3 +1,12 @@
+## [v26.36] — 2026-10-22
+
+### Added
+- Chrome atmosphere (A+B): organic-branch veins on black top banner left (logo-green glow) and circuit-trace sidebar foot chip (logo-blue glow).
+
+### Notes
+- en-US / zh-TW: no new user-facing copy.
+- Follow-up: line-stroke-only veins (no filled color wash); header veins outside title text box.
+
 # Changelog
 
 All notable **display-version** ships of the live line (`app_26.0/`) are recorded here.
