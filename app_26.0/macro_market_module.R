@@ -635,7 +635,21 @@ macro_fetch_last_quotes <- function(symbols) {
   syms <- syms[nzchar(syms) & !is.na(syms)]
   if (!length(syms)) return(list())
 
-  # Optional Python batch helper (deep_scraper.get_last_quotes) when already loaded.
+  .from_closes_df <- function(sym, df) {
+    last <- NA_real_
+    chg <- NA_real_
+    if (is.data.frame(df) && nrow(df) && "Close" %in% names(df)) {
+      cc <- df$Close[is.finite(df$Close)]
+      if (length(cc)) last <- tail(cc, 1)
+      if (length(cc) >= 2L) chg <- 100 * (tail(cc, 1) / cc[length(cc) - 1L] - 1)
+    }
+    list(symbol = sym, last = last, chg_pct = chg)
+  }
+
+  # Optional Python batch helper when already loaded. Only keep it if at least one
+  # last is finite — empty Last lists used to skip the chart fallback and leave
+  # Macro KPI dashes forever while HTCDI still scored from history.
+  py_out <- NULL
   if (exists("get_last_quotes", mode = "function")) {
     raw <- tryCatch(get_last_quotes(as.list(syms)), error = function(e) NULL)
     if (is.list(raw) && !is.null(raw$Symbol)) {
@@ -650,29 +664,25 @@ macro_fetch_last_quotes <- function(symbols) {
           chg_pct = suppressWarnings(as.numeric(raw$ChangePct[[i]] %||% NA_real_)[1])
         )
       }
-      if (length(out)) return(out)
+      if (length(out) && any(vapply(out, function(r) is.finite(r$last), logical(1)))) {
+        py_out <- out
+      }
     }
   }
+  if (!is.null(py_out)) return(py_out)
 
   lapply(syms, function(sym) {
     df <- tryCatch(macro_yahoo_chart_df(sym, "5d"), error = function(e) NULL)
-    if (is.null(df) || !nrow(df)) {
-      df <- tryCatch({
-        if (exists("fetch_price_history_df", mode = "function")) {
-          fetch_price_history_df(sym, "5d")
-        } else {
-          NULL
-        }
-      }, error = function(e) NULL)
-    }
-    last <- NA_real_
-    chg <- NA_real_
-    if (is.data.frame(df) && nrow(df) && "Close" %in% names(df)) {
-      cc <- df$Close[is.finite(df$Close)]
-      if (length(cc)) last <- tail(cc, 1)
-      if (length(cc) >= 2L) chg <- 100 * (tail(cc, 1) / cc[length(cc) - 1L] - 1)
-    }
-    list(symbol = sym, last = last, chg_pct = chg)
+    row <- .from_closes_df(sym, df)
+    if (is.finite(row$last)) return(row)
+    df2 <- tryCatch({
+      if (exists("fetch_price_history_df", mode = "function")) {
+        fetch_price_history_df(sym, "5d")
+      } else {
+        NULL
+      }
+    }, error = function(e) NULL)
+    .from_closes_df(sym, df2)
   })
 }
 
