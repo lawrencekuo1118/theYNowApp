@@ -3884,53 +3884,78 @@ ui <- dashboardPage(
     
     # Snapshot：側邊欄內容流最底部低調捷徑（勿用 absolute，會跑到搜尋框）
     # Foot links row + copyright directly below (copyright must not overlap the three links).
+    # Decorative chip + logo-blue glow only — do not reintroduce sidebar「資料來源」blurb.
     column(
       width = 12,
       class = "ynow-sidebar-snapshot-foot",
       tags$div(
-        class = "ynow-sidebar-snapshot-foot-links",
-        tags$a(
-          href = "#shiny-tab-snapshot",
-          `data-toggle` = "tab",
-          `data-value` = "snapshot",
-          class = "ynow-sidebar-snapshot-link",
-          onclick = "if (window.ynowShowSidebarFootTab) { window.ynowShowSidebarFootTab('snapshot'); } else if (window.Shiny) { Shiny.setInputValue('sidebar_tabs', 'snapshot', {priority: 'event'}); } return false;",
-          icon("camera", class = "fa-fw"),
-          tags$span(id = "ynow_snapshot_link_label", " Snapshot")
-        ),
-        # System admin：側邊欄專用入口（完整版）；Lite／已登入帳號隱藏；內部 tabName 仍為 testing
-        tags$a(
-          id = "ynow_sidebar_test_btn",
-          href = "#shiny-tab-testing",
-          `data-toggle` = "tab",
-          `data-value` = "testing",
-          class = "ynow-sidebar-snapshot-link ynow-sidebar-test-link ynow-full-only",
-          onclick = "if (document.body && document.body.classList.contains('ynow-authed')) { return false; } if (window.Shiny) { Shiny.setInputValue('sidebar_test_click', (window.__ynowTestClicks=(window.__ynowTestClicks||0)+1), {priority: 'event'}); } if (window.ynowShowSidebarFootTab) { window.ynowShowSidebarFootTab('testing'); } else if (window.Shiny) { Shiny.setInputValue('sidebar_tabs', 'testing', {priority: 'event'}); } return false;",
-          icon("user-shield", class = "fa-fw"),
-          tags$span(id = "ynow_test_link_label", " Sys. Admin")
-        ),
-        # 意見區：收集使用者回饋，系統性開 GitHub Issue
-        tags$a(
-          id = "ynow_sidebar_feedback_btn",
-          href = "#shiny-tab-feedback",
-          `data-toggle` = "tab",
-          `data-value` = "feedback",
-          class = "ynow-sidebar-snapshot-link ynow-sidebar-feedback-link",
-          onclick = "if (window.Shiny) { Shiny.setInputValue('sidebar_feedback_click', (window.__ynowFeedbackClicks=(window.__ynowFeedbackClicks||0)+1), {priority: 'event'}); } if (window.ynowShowSidebarFootTab) { window.ynowShowSidebarFootTab('feedback'); } else if (window.Shiny) { Shiny.setInputValue('sidebar_tabs', 'feedback', {priority: 'event'}); } return false;",
-          icon("comment-dots", class = "fa-fw"),
-          tags$span(id = "ynow_feedback_link_label", " Feedback")
-        ),
+        class = "ynow-sidebar-foot-glow",
+        `aria-hidden` = "true"
       ),
-      tags$p(
-        id = "ynow_sidebar_copyright",
-        class = "ynow-sidebar-copyright",
-        "2026 © YNow Team. All rights reserved."
+      tags$div(
+        class = "ynow-sidebar-foot-chip",
+        tags$div(
+          class = "ynow-sidebar-snapshot-foot-links",
+          tags$a(
+            href = "#shiny-tab-snapshot",
+            `data-toggle` = "tab",
+            `data-value` = "snapshot",
+            class = "ynow-sidebar-snapshot-link",
+            onclick = "if (window.ynowShowSidebarFootTab) { window.ynowShowSidebarFootTab('snapshot'); } else if (window.Shiny) { Shiny.setInputValue('sidebar_tabs', 'snapshot', {priority: 'event'}); } return false;",
+            icon("camera", class = "fa-fw"),
+            tags$span(id = "ynow_snapshot_link_label", " Snapshot")
+          ),
+          # System admin：側邊欄專用入口（完整版）；Lite／已登入帳號隱藏；內部 tabName 仍為 testing
+          tags$a(
+            id = "ynow_sidebar_test_btn",
+            href = "#shiny-tab-testing",
+            `data-toggle` = "tab",
+            `data-value` = "testing",
+            class = "ynow-sidebar-snapshot-link ynow-sidebar-test-link ynow-full-only",
+            onclick = "if (document.body && document.body.classList.contains('ynow-authed')) { return false; } if (window.Shiny) { Shiny.setInputValue('sidebar_test_click', (window.__ynowTestClicks=(window.__ynowTestClicks||0)+1), {priority: 'event'}); } if (window.ynowShowSidebarFootTab) { window.ynowShowSidebarFootTab('testing'); } else if (window.Shiny) { Shiny.setInputValue('sidebar_tabs', 'testing', {priority: 'event'}); } return false;",
+            icon("user-shield", class = "fa-fw"),
+            tags$span(id = "ynow_test_link_label", " Sys. Admin")
+          ),
+          # 意見區：收集使用者回饋，系統性開 GitHub Issue
+          tags$a(
+            id = "ynow_sidebar_feedback_btn",
+            href = "#shiny-tab-feedback",
+            `data-toggle` = "tab",
+            `data-value` = "feedback",
+            class = "ynow-sidebar-snapshot-link ynow-sidebar-feedback-link",
+            onclick = "if (window.Shiny) { Shiny.setInputValue('sidebar_feedback_click', (window.__ynowFeedbackClicks=(window.__ynowFeedbackClicks||0)+1), {priority: 'event'}); } if (window.ynowShowSidebarFootTab) { window.ynowShowSidebarFootTab('feedback'); } else if (window.Shiny) { Shiny.setInputValue('sidebar_tabs', 'feedback', {priority: 'event'}); } return false;",
+            icon("comment-dots", class = "fa-fw"),
+            tags$span(id = "ynow_feedback_link_label", " Feedback")
+          ),
+        ),
+        tags$p(
+          id = "ynow_sidebar_copyright",
+          class = "ynow-sidebar-copyright",
+          "2026 © YNow Team. All rights reserved."
+        )
       )
     )
   ),
   
   dashboardBody(
     shinyjs::useShinyjs(),
+    # Decorative leaf/branch motif for black top banner (logo-green glow).
+    # Injected into .main-header so it stacks under title/nav (not over them).
+    tags$script(HTML(paste0(
+      "(function(){",
+      "function ynowPlaceChromeLeaves(){",
+      "var h=document.querySelector('.main-header');",
+      "if(!h||h.querySelector('.ynow-chrome-header-leaves'))return;",
+      "var el=document.createElement('div');",
+      "el.className='ynow-chrome-header-leaves';",
+      "el.setAttribute('aria-hidden','true');",
+      "h.insertBefore(el,h.firstChild);",
+      "}",
+      "if(document.readyState==='loading'){",
+      "document.addEventListener('DOMContentLoaded',ynowPlaceChromeLeaves);",
+      "}else{ynowPlaceChromeLeaves();}",
+      "})();"
+    ))),
     # View-as chrome: visible on every tab while admin impersonates a user.
     tags$div(
       id = "ynow_viewas_chrome",
@@ -4130,6 +4155,11 @@ ui <- dashboardPage(
           --ynow-logo-blue: #0C5484;
           --ynow-logo-green: #249C60;
           --ynow-logo-cyan: #1AA8B8;
+          /* Chrome atmosphere (Balanced): soft glow alphas from logo blue/green */
+          --ynow-chrome-blue-glow: rgba(12, 84, 132, 0.55);
+          --ynow-chrome-green-glow: rgba(36, 156, 96, 0.45);
+          --ynow-chrome-blue-edge: rgba(12, 84, 132, 0.35);
+          --ynow-chrome-blue-halo: rgba(12, 84, 132, 0.22);
           /* Shared content column — same as Macro & Market Trends (.ynow-macro-report) */
           --ynow-page-max: 1200px;
           --ynow-logo-flow-gradient: linear-gradient(
@@ -5493,6 +5523,41 @@ ui <- dashboardPage(
           right: 0 !important;
           width: 100% !important;
           z-index: 1030 !important;
+          overflow: hidden;
+        }
+        /* Black top-banner left: sparse leaf/branch + Balanced logo-green glow.
+           Decorative only (aria-hidden); must not cover title / nav hit targets. */
+        .ynow-chrome-header-leaves {
+          position: absolute;
+          left: 0;
+          top: 0;
+          bottom: 0;
+          width: 42%;
+          max-width: 520px;
+          /* Above TW flag dark ::after (z-index 0); logo/navbar siblings paint later on top. */
+          z-index: 1;
+          pointer-events: none;
+          background:
+            radial-gradient(ellipse 80% 120% at 8% 50%, var(--ynow-chrome-green-glow), transparent 55%),
+            url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='280' height='50' viewBox='0 0 280 50'%3E%3Cg fill='none' stroke='%23249C60' stroke-opacity='0.35' stroke-width='1'%3E%3Cpath d='M0 40 C40 10, 70 45, 110 18 S180 42, 220 12'/%3E%3Cpath d='M30 38 C45 22, 55 22, 62 34'/%3E%3Cpath d='M90 28 C105 12, 118 14, 125 28'/%3E%3Cpath d='M150 36 C165 18, 178 20, 188 34'/%3E%3Cpath d='M48 30 c8-10 16-10 18 2'/%3E%3Cpath d='M108 22 c7-9 14-9 16 1'/%3E%3Cpath d='M168 28 c8-10 15-9 17 2'/%3E%3C/g%3E%3C/svg%3E") left center / auto 100% no-repeat;
+          opacity: 0.9;
+          animation: ynow-chrome-green-pulse 4.8s ease-in-out infinite;
+        }
+        @keyframes ynow-chrome-green-pulse {
+          0%, 100% { filter: brightness(0.95); opacity: 0.75; }
+          50% { filter: brightness(1.25); opacity: 1; }
+        }
+        .main-header > .logo,
+        .main-header > .navbar {
+          position: relative;
+          z-index: 1;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .ynow-chrome-header-leaves {
+            animation: none;
+            filter: none;
+            opacity: 0.85;
+          }
         }
         .content-wrapper,
         .right-side {
@@ -6966,6 +7031,7 @@ ui <- dashboardPage(
           border-left-color: #fff;
         }
         /* Snapshot／Sys. Admin／Feedback：同一列；版權宣告在按鈕列正下方（勿重疊） */
+        /* Chip-style foot + Balanced logo-blue glow (decorative; no layout squeeze of nav). */
         .ynow-sidebar-snapshot-foot {
           display: flex !important;
           flex-direction: column !important;
@@ -6977,8 +7043,43 @@ ui <- dashboardPage(
           box-sizing: border-box;
           margin-top: 8px !important;
           margin-bottom: 10px !important;
-          padding: 0 4px !important;
+          padding: 10px 8px 12px !important;
           text-align: left !important;
+          position: relative;
+        }
+        .ynow-sidebar-foot-glow {
+          position: absolute;
+          left: 18%;
+          right: 18%;
+          bottom: 10px;
+          height: 28px;
+          background: radial-gradient(ellipse at center, var(--ynow-chrome-blue-glow), transparent 70%);
+          filter: blur(6px);
+          animation: ynow-chrome-blue-pulse 3.6s ease-in-out infinite;
+          pointer-events: none;
+          z-index: 0;
+        }
+        @keyframes ynow-chrome-blue-pulse {
+          0%, 100% { opacity: 0.45; transform: scaleX(0.96); }
+          50% { opacity: 0.9; transform: scaleX(1.02); }
+        }
+        .ynow-sidebar-foot-chip {
+          position: relative;
+          z-index: 1;
+          border-radius: 999px;
+          border: 1px solid var(--ynow-chrome-blue-edge);
+          background: linear-gradient(180deg, #1c1c1c, #121212);
+          box-shadow: 0 0 12px var(--ynow-chrome-blue-halo);
+          padding: 6px 10px 4px;
+          box-sizing: border-box;
+          width: 100%;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .ynow-sidebar-foot-glow {
+            animation: none;
+            opacity: 0.65;
+            transform: none;
+          }
         }
         .ynow-sidebar-snapshot-foot-links {
           display: flex !important;
@@ -6992,8 +7093,8 @@ ui <- dashboardPage(
         }
         .main-sidebar .ynow-sidebar-snapshot-foot.col-sm-12,
         .main-sidebar .ynow-sidebar-snapshot-foot.col-xs-12 {
-          padding-left: 4px !important;
-          padding-right: 4px !important;
+          padding-left: 8px !important;
+          padding-right: 8px !important;
         }
         .ynow-sidebar-snapshot-link {
           display: inline-flex !important;
