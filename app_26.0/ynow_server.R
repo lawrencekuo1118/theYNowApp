@@ -4052,7 +4052,13 @@ server <- function(input, output, session) {
       asset_transmission = function() {
         .ynow_page_ui_asset_transmission(isolate(ui_locale()))
       },
-      decision_checklist = function() decision_checklist_tab_body_ui()
+      decision_checklist = function() decision_checklist_tab_body_ui(),
+      about = function() .ynow_page_ui_about(),
+      feedback = function() .ynow_page_ui_feedback(),
+      sensitivity = function() .ynow_page_ui_sensitivity(),
+      smart_analysis = function() .ynow_page_ui_smart_analysis(),
+      company_advance = function() .ynow_page_ui_company_advance(),
+      price_alerts = function() price_alert_tab_body_ui()
     ),
     on_first_mount = list(
       macro_market = function() {

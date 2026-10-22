@@ -627,6 +627,92 @@ ynow_alertable <- function(
   )
 }
 
+#' Value Alerts member body (lazy-mounted once per session).
+price_alert_tab_body_ui <- function() {
+  tags$div(
+    id = "ynow_pa_body",
+    class = "ynow-pa-tabs-wrap ynow-member-body",
+    `data-ynow-lock` = "section:value_alerts_body",
+    tabBox(
+      title = .pa_bi("menu_price_alert"),
+      id = "ynow_pa_report",
+      width = 12,
+      tabPanel(
+        title = .pa_bi("pa_title"),
+        value = "pa_alerts",
+        icon = icon("bell"),
+        tags$p(.pa_bi("pa_help")),
+        tags$p(class = "help-block", .pa_bi("pa_email_account_help")),
+        fluidRow(
+          column(4, textInput("pa_email", .pa_bi("pa_email"), value = Sys.getenv("YNOW_ALERT_TO", ""))),
+          column(3, textInput("pa_ticker", .pa_bi("pa_ticker"), value = "")),
+          column(5, selectInput(
+            "pa_kind", .pa_bi("pa_kind"),
+            choices = c(
+              "Last price ≥ target / 最新價 ≥ 目標價" = "price_gte",
+              "Last price ≤ target / 最新價 ≤ 目標價" = "price_lte",
+              "Daily change ≥ % / 日漲跌幅 ≥ %" = "day_chg_gte",
+              "Daily change ≤ % / 日漲跌幅 ≤ %" = "day_chg_lte",
+              "Price ≤ fair × (1 − MOS) / 最新價 ≤ 公允價值 × (1 − MOS)" = "below_fair",
+              "Value ≥ level / 數值 ≥ 水準" = "value_gte",
+              "Value ≤ level / 數值 ≤ 水準" = "value_lte",
+              "Grade ≥ / 評等 ≥" = "grade_gte",
+              "Grade ≤ / 評等 ≤" = "grade_lte"
+            ),
+            width = "100%"
+          ))
+        ),
+        fluidRow(
+          column(3, numericInput("pa_level", .pa_bi("pa_level"), value = NA, width = "100%")),
+          column(3, numericInput("pa_mos", .pa_bi("pa_mos"), value = 0, min = 0, max = 90, width = "100%")),
+          column(6, textInput("pa_note", .pa_bi("pa_note"), value = ""))
+        ),
+        fluidRow(
+          column(3, checkboxInput("pa_notify_app", .pa_bi("pa_notify_app"), value = TRUE)),
+          column(3, checkboxInput("pa_notify_email", .pa_bi("pa_notify_email"), value = FALSE))
+        ),
+        actionButton("pa_save", .pa_bi("pa_save"), class = "btn-primary"),
+        actionButton("pa_check", .pa_bi("pa_check"), class = "btn-default"),
+        actionButton("pa_delete", .pa_bi("pa_delete"), class = "btn-danger"),
+        tags$div(style = "margin-top:16px;", uiOutput("pa_rule_switches")),
+        tags$style(HTML("
+          .ynow-pa-row { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:12px 2px; border-bottom:1px solid #ececec; }
+          .ynow-pa-row-label { display:block; font-size:15px; color:#243038; }
+          .ynow-pa-row-sub { display:block; margin-top:2px; font-size:12px; color:#7a8690; }
+          .ynow-pa-arm { appearance:none; -webkit-appearance:none; width:52px; height:30px; margin:0; border:0; border-radius:15px; background:#d5dbe3; position:relative; cursor:pointer; flex:0 0 auto; transition:background .15s ease; }
+          .ynow-pa-arm:checked { background:#1aa6a6; }
+          .ynow-pa-arm::after { content:''; position:absolute; top:3px; left:3px; width:24px; height:24px; border-radius:50%; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.18); transition:transform .15s ease; }
+          .ynow-pa-arm:checked::after { transform:translateX(22px); }
+        ")),
+        tags$script(HTML("
+          $(document).off('change.ynowPaArm').on('change.ynowPaArm', '.ynow-pa-arm', function() {
+            Shiny.setInputValue('pa_arm_set', {
+              id: this.getAttribute('data-id'),
+              on: this.checked,
+              nonce: Date.now()
+            }, {priority: 'event'});
+          });
+        ")),
+        tags$div(
+          style = "margin-top:16px;",
+          tags$p(.pa_bi("scr_from_screen_help")),
+          actionButton("scr_add", .pa_bi("scr_add"), class = "btn-primary")
+        ),
+        tags$div(style = "margin-top:12px;", DT::DTOutput("pa_table"))
+      ),
+      tabPanel(
+        title = .pa_bi("pa_history_title"),
+        value = "pa_history",
+        icon = icon("history"),
+        tags$p(.pa_bi("pa_history_help")),
+        actionButton("pa_history_clear", .pa_bi("pa_history_clear"), class = "btn-default"),
+        tags$div(style = "margin-top:12px;", DT::DTOutput("pa_history_table"))
+      )
+    )
+  )
+}
+
+#' Gate stays in first HTML; member body is a lazy host (same pattern as Checklist).
 price_alert_tab_ui <- function() {
   pa_gate <- if (exists("ynow_pa_guest_gate_ui", mode = "function")) {
     ynow_pa_guest_gate_ui()
@@ -634,86 +720,11 @@ price_alert_tab_ui <- function() {
     tags$div(id = "ynow_pa_guest_gate", style = "display:none;")
   }
   pa_body <- tags$div(
-      id = "ynow_pa_body",
-      class = "ynow-pa-tabs-wrap ynow-member-body",
-      `data-ynow-lock` = "section:value_alerts_body",
-      tabBox(
-        title = .pa_bi("menu_price_alert"),
-        id = "ynow_pa_report",
-        width = 12,
-        tabPanel(
-          title = .pa_bi("pa_title"),
-          value = "pa_alerts",
-          icon = icon("bell"),
-          tags$p(.pa_bi("pa_help")),
-          tags$p(class = "help-block", .pa_bi("pa_email_account_help")),
-          fluidRow(
-            column(4, textInput("pa_email", .pa_bi("pa_email"), value = Sys.getenv("YNOW_ALERT_TO", ""))),
-            column(3, textInput("pa_ticker", .pa_bi("pa_ticker"), value = "")),
-            column(5, selectInput(
-              "pa_kind", .pa_bi("pa_kind"),
-              choices = c(
-                "Last price ≥ target / 最新價 ≥ 目標價" = "price_gte",
-                "Last price ≤ target / 最新價 ≤ 目標價" = "price_lte",
-                "Daily change ≥ % / 日漲跌幅 ≥ %" = "day_chg_gte",
-                "Daily change ≤ % / 日漲跌幅 ≤ %" = "day_chg_lte",
-                "Price ≤ fair × (1 − MOS) / 最新價 ≤ 公允價值 × (1 − MOS)" = "below_fair",
-                "Value ≥ level / 數值 ≥ 水準" = "value_gte",
-                "Value ≤ level / 數值 ≤ 水準" = "value_lte",
-                "Grade ≥ / 評等 ≥" = "grade_gte",
-                "Grade ≤ / 評等 ≤" = "grade_lte"
-              ),
-              width = "100%"
-            ))
-          ),
-          fluidRow(
-            column(3, numericInput("pa_level", .pa_bi("pa_level"), value = NA, width = "100%")),
-            column(3, numericInput("pa_mos", .pa_bi("pa_mos"), value = 0, min = 0, max = 90, width = "100%")),
-            column(6, textInput("pa_note", .pa_bi("pa_note"), value = ""))
-          ),
-          fluidRow(
-            column(3, checkboxInput("pa_notify_app", .pa_bi("pa_notify_app"), value = TRUE)),
-            column(3, checkboxInput("pa_notify_email", .pa_bi("pa_notify_email"), value = FALSE))
-          ),
-          actionButton("pa_save", .pa_bi("pa_save"), class = "btn-primary"),
-          actionButton("pa_check", .pa_bi("pa_check"), class = "btn-default"),
-          actionButton("pa_delete", .pa_bi("pa_delete"), class = "btn-danger"),
-          tags$div(style = "margin-top:16px;", uiOutput("pa_rule_switches")),
-          tags$style(HTML("
-            .ynow-pa-row { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:12px 2px; border-bottom:1px solid #ececec; }
-            .ynow-pa-row-label { display:block; font-size:15px; color:#243038; }
-            .ynow-pa-row-sub { display:block; margin-top:2px; font-size:12px; color:#7a8690; }
-            .ynow-pa-arm { appearance:none; -webkit-appearance:none; width:52px; height:30px; margin:0; border:0; border-radius:15px; background:#d5dbe3; position:relative; cursor:pointer; flex:0 0 auto; transition:background .15s ease; }
-            .ynow-pa-arm:checked { background:#1aa6a6; }
-            .ynow-pa-arm::after { content:''; position:absolute; top:3px; left:3px; width:24px; height:24px; border-radius:50%; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.18); transition:transform .15s ease; }
-            .ynow-pa-arm:checked::after { transform:translateX(22px); }
-          ")),
-          tags$script(HTML("
-            $(document).off('change.ynowPaArm').on('change.ynowPaArm', '.ynow-pa-arm', function() {
-              Shiny.setInputValue('pa_arm_set', {
-                id: this.getAttribute('data-id'),
-                on: this.checked,
-                nonce: Date.now()
-              }, {priority: 'event'});
-            });
-          ")),
-          tags$div(
-            style = "margin-top:16px;",
-            tags$p(.pa_bi("scr_from_screen_help")),
-            actionButton("scr_add", .pa_bi("scr_add"), class = "btn-primary")
-          ),
-          tags$div(style = "margin-top:12px;", DT::DTOutput("pa_table"))
-        ),
-        tabPanel(
-          title = .pa_bi("pa_history_title"),
-          value = "pa_history",
-          icon = icon("history"),
-          tags$p(.pa_bi("pa_history_help")),
-          actionButton("pa_history_clear", .pa_bi("pa_history_clear"), class = "btn-default"),
-          tags$div(style = "margin-top:12px;", DT::DTOutput("pa_history_table"))
-        )
-      )
-  ) # /#ynow_pa_body
+    id = "ynow_pa_body_host",
+    class = "ynow-member-body",
+    `data-ynow-lock` = "section:value_alerts_body",
+    uiOutput("ynow_lazy_host_price_alerts")
+  )
   surface <- if (exists("ynow_member_gate_surface_ui", mode = "function")) {
     ynow_member_gate_surface_ui(feature = "alerts", gate = pa_gate, body = pa_body)
   } else {
