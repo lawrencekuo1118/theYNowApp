@@ -989,6 +989,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     settings_save = "Save settings",
     settings_saved_toast = "Settings saved.",
     settings_guest_toast = "Sign in to change settings.",
+    settings_self_view_toast = paste0(
+      "Settings applied for this self view (not saved to an account)."
+    ),
     pts_topup_title = "Points top-up",
     pts_topup_copy = paste0(
       "Redeem a top-up code to credit FYN or PYN on this account. ",
@@ -1296,7 +1299,10 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Separate from Switch view of a selected user."
     ),
     pts_sysadmin_self_chrome_guest = "Guest mode: locks and hides match all-user guest restrictions.",
-    pts_sysadmin_self_chrome_signed_in = "Signed-in user mode: only all-user member restrictions (no per-user overrides).",
+    pts_sysadmin_self_chrome_signed_in = paste0(
+      "Signed-in user mode: only all-user member restrictions (no per-user overrides). ",
+      "Settings and Account are openable like a signed-in member."
+    ),
     pts_sysadmin_self_chrome_omniscient = "Omniscient mode: all feature locks and hides lifted. Title Loading is warning red.",
     pts_sysadmin_self_guest_ok = "Guest mode applied.",
     pts_sysadmin_self_signed_in_ok = "Signed-in user mode applied (all-user restrictions only).",
@@ -5401,6 +5407,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     settings_save = "儲存設定",
     settings_saved_toast = "已儲存設定。",
     settings_guest_toast = "請先登入才能變更設定。",
+    settings_self_view_toast = "已套用至此自身視角（不會寫入帳號）。",
     pts_topup_title = "點數儲值",
     pts_topup_copy = paste0(
       "可兌換儲值碼，將 FYN 或 PYN 記入本帳戶。",
@@ -5700,7 +5707,10 @@ locale_for_market <- function(mode = get_market_mode()) {
       "與「切換檢視」選定使用者無關。"
     ),
     pts_sysadmin_self_chrome_guest = "訪客模式：鎖定與隱藏比照全體訪客限制。",
-    pts_sysadmin_self_chrome_signed_in = "已登入使用者模式：僅套用全體共用限制（不含個別使用者覆寫）。",
+    pts_sysadmin_self_chrome_signed_in = paste0(
+      "已登入使用者模式：僅套用全體共用限制（不含個別使用者覆寫）。",
+      "設定與帳號可像一般已登入會員一樣開啟操作。"
+    ),
     pts_sysadmin_self_chrome_omniscient = "全知模式：已解除所有功能鎖定與隱藏。標題 Loading 為警示紅。",
     pts_sysadmin_self_guest_ok = "已套用訪客模式。",
     pts_sysadmin_self_signed_in_ok = "已套用已登入使用者模式（僅全體共用限制）。",

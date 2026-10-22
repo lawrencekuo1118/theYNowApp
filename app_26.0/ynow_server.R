@@ -985,6 +985,9 @@ server <- function(input, output, session) {
   )
 
   output$ynow_settings_panel <- renderUI({
+    # Re-render when self-view mode changes (signed-in / omniscient open Settings).
+    ynow_pts_panel_tick()
+    tryCatch(ynow_pts_self_view_mode(), error = function(e) NULL)
     loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
     gated <- .ynow_account_gate_ui(loc)
     if (!is.null(gated)) return(gated)
@@ -1004,7 +1007,8 @@ server <- function(input, output, session) {
   observeEvent(input$ynow_settings_save, {
     uid <- .ynow_pinned_auth_uid()
     loc <- tryCatch(ui_locale(), error = function(e) "en")
-    if (!nzchar(uid)) {
+    self_member <- isTRUE(tryCatch(.ynow_self_view_is_member_like(), error = function(e) FALSE))
+    if (!nzchar(uid) && !isTRUE(self_member)) {
       msg <- tryCatch(
         ui_str("settings_guest_toast", loc),
         error = function(e) "Sign in to change settings."
@@ -1019,6 +1023,23 @@ server <- function(input, output, session) {
       sidebar_compact = isTRUE(input$ynow_settings_sidebar_compact),
       gain_loss_scheme = as.character(input$ynow_settings_gain_loss %||% "auto")[1]
     )
+    # Self-view signed-in / omniscient: operate Settings like a member, session-local only.
+    if (isTRUE(self_member)) {
+      saved <- if (exists("ynow_prefs_normalize_user_settings", mode = "function")) {
+        ynow_prefs_normalize_user_settings(draft)
+      } else {
+        draft
+      }
+      .ynow_settings_apply_boot(saved, apply_locale_market = TRUE)
+      msg <- tryCatch(
+        ui_str("settings_self_view_toast", loc),
+        error = function(e) {
+          "Settings applied for this self view (not saved to an account)."
+        }
+      )
+      tryCatch(showNotification(msg, type = "message", duration = 2.4), error = function(e) NULL)
+      return(invisible(NULL))
+    }
     saved <- .ynow_settings_persist(uid, draft)
     .ynow_settings_apply_boot(saved, apply_locale_market = TRUE)
     msg <- tryCatch(
@@ -1539,7 +1560,10 @@ server <- function(input, output, session) {
       ),
       signed_in = .lab(
         "pts_sysadmin_self_chrome_signed_in",
-        "Signed-in user mode: only all-user member restrictions (no per-user overrides)."
+        paste0(
+          "Signed-in user mode: only all-user member restrictions (no per-user overrides). ",
+          "Settings and Account are openable like a signed-in member."
+        )
       ),
       omniscient = .lab(
         "pts_sysadmin_self_chrome_omniscient",
@@ -1626,6 +1650,8 @@ server <- function(input, output, session) {
       session$sendCustomMessage("ynowGotoTab", list(tab = "home"))
     }, error = function(e) NULL)
     ynow_pts_sysadmin_tick(isolate(ynow_pts_sysadmin_tick()) + 1L)
+    # Refresh Account / Settings / Points panels for the new self-view subject.
+    ynow_pts_panel_tick(isolate(ynow_pts_panel_tick()) + 1L)
     invisible(TRUE)
   }
 
@@ -1661,7 +1687,27 @@ server <- function(input, output, session) {
       session$sendCustomMessage("ynowGotoTab", list(tab = "testing"))
     }, error = function(e) NULL)
     ynow_pts_sysadmin_tick(isolate(ynow_pts_sysadmin_tick()) + 1L)
+    ynow_pts_panel_tick(isolate(ynow_pts_panel_tick()) + 1L)
     invisible(TRUE)
+  }
+
+  #' Self-view signed-in / omniscient act as a logged-in member for Account/Settings.
+  .ynow_self_view_is_member_like <- function() {
+    mode <- as.character(
+      tryCatch(isolate(ynow_pts_self_view_mode()), error = function(e) NULL) %||% ""
+    )[1]
+    identical(mode, "signed_in") || identical(mode, "omniscient")
+  }
+
+  #' Preview member for Account / Points when self-view has no email session.
+  .ynow_self_view_preview_user <- function() {
+    list(
+      id = "__self_member__",
+      email = "",
+      role = "user",
+      logged_in_at = format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z"),
+      self_view = TRUE
+    )
   }
 
   .ynow_account_gate_ui <- function(loc) {
@@ -1676,6 +1722,22 @@ server <- function(input, output, session) {
         ui_str("auth_admin_lite_blocked", loc),
         error = function(e) "Account pages are Full-mode only. Lite stays fully usable without an account."
       )))
+    }
+    # Self-view: signed-in / omniscient open Account+Settings like a real member.
+    # Guest self-view keeps css_hide empty shell (no Sign-in promo).
+    if (isTRUE(.ynow_self_view_is_member_like())) {
+      return(NULL)
+    }
+    mode <- as.character(
+      tryCatch(isolate(ynow_pts_self_view_mode()), error = function(e) NULL) %||% ""
+    )[1]
+    if (identical(mode, "guest")) {
+      return(tags$div(
+        class = "ynow-account-guest-hidden",
+        style = "display:none;",
+        `aria-hidden` = "true",
+        `data-ynow-gate-feature` = "account"
+      ))
     }
     u <- tryCatch(ynow_auth$user(), error = function(e) NULL)
     if (is.null(u)) {
@@ -1903,10 +1965,15 @@ server <- function(input, output, session) {
   # Account overview (Full + signed-in). Lite never requires login.
   output$ynow_admin_panel <- renderUI({
     ynow_pts_panel_tick()
+    tryCatch(ynow_pts_self_view_mode(), error = function(e) NULL)
     loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
     gated <- .ynow_account_gate_ui(loc)
     if (!is.null(gated)) return(gated)
-    u <- tryCatch(ynow_auth$user(), error = function(e) NULL)
+    u <- if (isTRUE(tryCatch(.ynow_self_view_is_member_like(), error = function(e) FALSE))) {
+      .ynow_self_view_preview_user()
+    } else {
+      tryCatch(ynow_auth$user(), error = function(e) NULL)
+    }
     build_ver <- tryCatch(
       as.character(.YNOW_BUILD_VERSION %||% "")[1],
       error = function(e) ""
@@ -1930,10 +1997,15 @@ server <- function(input, output, session) {
   # Points ledger tab — full history for the signed-in user.
   output$ynow_points_panel <- renderUI({
     ynow_pts_panel_tick()
+    tryCatch(ynow_pts_self_view_mode(), error = function(e) NULL)
     loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
     gated <- .ynow_account_gate_ui(loc)
     if (!is.null(gated)) return(gated)
-    u <- tryCatch(ynow_auth$user(), error = function(e) NULL)
+    u <- if (isTRUE(tryCatch(.ynow_self_view_is_member_like(), error = function(e) FALSE))) {
+      .ynow_self_view_preview_user()
+    } else {
+      tryCatch(ynow_auth$user(), error = function(e) NULL)
+    }
     bund <- .ynow_pts_user_bundle(u)
     if (exists("ynow_points_panel_ui", mode = "function")) {
       ynow_points_panel_ui(
