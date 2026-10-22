@@ -40,7 +40,7 @@ check("no duplicate ids", !anyDuplicated(cat$id))
 
 # Required product surfaces
 need_a <- c(
-  "lab_notes", "decision_checklist", "price_alerts",
+  "lab_notes", "decision_checklist", "price_alerts", "asset_transmission",
   "account_admin", "account_points",
   "lab", "checklist", "alerts", "account",
   "download_snapshot", "download_param_restore", "download_defaults",
@@ -150,7 +150,8 @@ check("global sources membership_locks before auth", {
 # Lite free PDF / omit intact
 check("Lite omit still includes guest-locked tabs", {
   omit <- ynow_sidebar_lite_omit_tabs()
-  all(c("lab_notes", "decision_checklist", "price_alerts") %in% omit)
+  all(c("lab_notes", "decision_checklist", "price_alerts", "asset_transmission") %in% omit) &&
+    !"asset_transmission" %in% ynow_sidebar_full_only_tabs()
 })
 check("download_report remains gated id (Full B; Lite free elsewhere)", {
   "download_report" %in% ynow_gated_download_ids() &&

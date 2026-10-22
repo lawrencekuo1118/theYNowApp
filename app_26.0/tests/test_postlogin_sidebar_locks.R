@@ -29,7 +29,10 @@ source(file.path(app_dir, "auth_account.R"), local = TRUE)
 
 guest <- ynow_sidebar_guest_lock_tabs()
 check("guest lock tabs are A (unlock-after-login)", {
-  identical(sort(guest), sort(c("lab_notes", "decision_checklist", "price_alerts"))) &&
+  identical(
+    sort(guest),
+    sort(c("lab_notes", "decision_checklist", "price_alerts", "asset_transmission"))
+  ) &&
     all(vapply(guest, function(t) identical(ynow_membership_lock_tier(t), "A"), logical(1)))
 })
 

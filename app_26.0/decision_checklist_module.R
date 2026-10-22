@@ -359,33 +359,40 @@ decision_checklist_tab_body_ui <- function() {
 }
 
 decision_checklist_tab_ui <- function() {
-  tabItem(
-    tabName = "decision_checklist",
-    # Surface: faded locked page behind Sign-in overlay (Full guest path).
+  gate <- if (exists("ynow_member_gate_ui", mode = "function")) {
+    ynow_member_gate_ui(
+      "ynow_chk_guest_gate",
+      "ynow_chk_gate_title",
+      "ynow_chk_gate_body",
+      "ynow_chk_gate_signin",
+      feature = "checklist"
+    )
+  } else {
+    NULL
+  }
+  body <- tags$div(
+    id = "ynow_chk_body",
+    class = "ynow-member-body",
+    `data-ynow-lock` = "section:checklist_body",
+    uiOutput("ynow_lazy_host_decision_checklist")
+  )
+  surface <- if (exists("ynow_member_gate_surface_ui", mode = "function")) {
+    ynow_member_gate_surface_ui(feature = "checklist", gate = gate, body = body)
+  } else {
     tags$div(
-      class = "ynow-member-gate-surface ynow-member-gate-surface--checklist",
+      class = paste(
+        "ynow-member-gate-surface",
+        "ynow-member-gate-surface--checklist",
+        "ynow-member-gate-surface--locked"
+      ),
       if (exists("ynow_checklist_gate_fade_backdrop_ui", mode = "function")) {
         ynow_checklist_gate_fade_backdrop_ui()
-      } else {
-        tags$div(class = "ynow-member-gate-fade-backdrop", `aria-hidden` = "true")
       },
-      if (exists("ynow_member_gate_ui", mode = "function")) {
-        ynow_member_gate_ui(
-          "ynow_chk_guest_gate",
-          "ynow_chk_gate_title",
-          "ynow_chk_gate_body",
-          "ynow_chk_gate_signin",
-          feature = "checklist"
-        )
-      },
-      tags$div(
-        id = "ynow_chk_body",
-        class = "ynow-member-body",
-        `data-ynow-lock` = "section:checklist_body",
-        uiOutput("ynow_lazy_host_decision_checklist")
-      )
+      gate,
+      body
     )
-  )
+  }
+  tabItem(tabName = "decision_checklist", surface)
 }
 
 .dc_eval_item <- function(item, on, conds, ctx) {

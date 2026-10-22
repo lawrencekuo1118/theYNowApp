@@ -32,8 +32,11 @@ guest <- ynow_sidebar_guest_lock_tabs()
 full_only <- ynow_sidebar_full_only_tabs()
 
 check(
-  "guest locks are Lab + Checklist + Value Alerts",
-  identical(sort(guest), sort(c("lab_notes", "decision_checklist", "price_alerts")))
+  "guest locks are Lab + Checklist + Value Alerts + ATX",
+  identical(
+    sort(guest),
+    sort(c("lab_notes", "decision_checklist", "price_alerts", "asset_transmission"))
+  )
 )
 check(
   "omit includes every guest lock",
@@ -49,8 +52,10 @@ check(
   all(c("account_admin", "account_points", "settings") %in% omit)
 )
 check(
-  "omit includes Asset Transmission Root",
-  "asset_transmission" %in% omit && "asset_transmission" %in% full_only
+  "omit includes Asset Transmission Root via guest lock, not full_only",
+  "asset_transmission" %in% omit &&
+    "asset_transmission" %in% guest &&
+    !"asset_transmission" %in% full_only
 )
 check(
   "omit does not include free Lite core tabs",
