@@ -139,8 +139,8 @@ check("server pin tray render is NULL", {
        grepl("Page-pin tray removed", srv, fixed = TRUE))
 })
 check("en + zh-TW i18n keys", {
-  grepl("sidebar_reorder_btn = \"Customize\"", loc, fixed = TRUE) &&
-    grepl("sidebar_reorder_btn = \"自訂設定\"", loc, fixed = TRUE) &&
+  grepl("sidebar_reorder_btn = \"Rearrange\"", loc, fixed = TRUE) &&
+    grepl("sidebar_reorder_btn = \"重新排列\"", loc, fixed = TRUE) &&
     grepl("sidebar_reorder_btn_done = \"Done\"", loc, fixed = TRUE) &&
     grepl("sidebar_reorder_btn_done = \"完成\"", loc, fixed = TRUE) &&
     grepl("sidebar_reorder_saved_toast", loc, fixed = TRUE)
