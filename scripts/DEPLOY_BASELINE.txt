@@ -1,1 +1,11 @@
+source=shinyapps.io TheYNowApp
+bundleId=12723140
+appId=10907657
+url=https://[REDACTED].shinyapps.io/TheYNowApp/
+aligned_git=09268c013bf69c61aa17d7c2c316dbe65c1e379b
+commit=09268c013bf69c61aa17d7c2c316dbe65c1e379b
+short=09268c01
+message=chore: record shipped display version to v26.20
+captured_at=2026-10-22T02:07:57Z
 display_version=v26.20
+note=Canonical live line is app_26.0. Bundle 12723140: admin Item locks apply/remove flow (#383) + item-first (#382). Secrets only in gitignored .Renviron; no secret values in git.
