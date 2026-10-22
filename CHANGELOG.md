@@ -1,3 +1,13 @@
+## [v26.47] — 2026-10-22
+
+### Fixed
+- Business Breakdown（業務拆解）empty sections collapse: Section IV analysis groups (`orders` / `customers` / `suppliers` / `markets` / `context`) and tall plotly shells no longer leave blank bordered panels when packs are ineligible or honest-empty.
+- Chapter III revenue-mix donut mounts only when slices exist; BCG collapses when not eligible. Chapters V–VI and shared chrome hide when empty.
+
+### Notes
+- en-US: Empty groups collapse — never estimated; Start analysis toolbar stays. No new valuation formulas.
+- zh-TW: 無資料的業務拆解區塊改為收合，不再留下空白面板；絕不推估。開始分析工具列仍保留。
+
 ## [v26.46] — 2026-10-22
 
 ### en-US
