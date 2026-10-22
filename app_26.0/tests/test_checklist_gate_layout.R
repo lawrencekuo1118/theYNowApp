@@ -49,8 +49,33 @@ if (!exists("checkboxInput", mode = "function")) {
 if (!exists("conditionalPanel", mode = "function")) {
   conditionalPanel <- function(condition, ...) tags$div(`data-display-if` = condition, ...)
 }
+if (!exists("tabBox", mode = "function")) {
+  tabBox <- function(...) tags$div(class = "nav-tabs-custom", ...)
+}
+if (!exists("tabPanel", mode = "function")) {
+  tabPanel <- function(title, ..., value = NULL) tags$div(class = "tab-pane", `data-value` = value, ...)
+}
+if (!exists("textInput", mode = "function")) {
+  textInput <- function(inputId, label, value = "", ...) tags$input(id = inputId)
+}
+if (!exists("selectInput", mode = "function")) {
+  selectInput <- function(inputId, label, choices, ...) tags$select(id = inputId)
+}
+if (!exists("numericInput", mode = "function")) {
+  numericInput <- function(inputId, label, value = NULL, ...) tags$input(id = inputId, type = "number")
+}
+if (!exists("actionButton", mode = "function")) {
+  actionButton <- function(inputId, label, ...) tags$button(id = inputId, label)
+}
+if (!exists("h2", mode = "function")) {
+  h2 <- function(...) tags$h2(...)
+}
+if (!exists("p", mode = "function")) {
+  p <- function(...) tags$p(...)
+}
 suppressWarnings(source("auth_account.R", encoding = "UTF-8", local = FALSE))
 suppressWarnings(source("decision_checklist_module.R", encoding = "UTF-8", local = FALSE))
+suppressWarnings(source("price_alert.R", encoding = "UTF-8", local = FALSE))
 
 n_ok <- 0L
 n_fail <- 0L
@@ -198,8 +223,26 @@ check("checklist tab wraps surface + fade + gate + body", {
     grepl("ynow-gate-promo-demo-row", tab_html, fixed = TRUE)
 })
 
+alerts_tab <- paste(as.character(price_alert_tab_ui()), collapse = "\n")
+check("alerts tab wraps surface + fade + gate + body", {
+  grepl("ynow-member-gate-surface--locked", alerts_tab, fixed = TRUE) &&
+    grepl("ynow-member-gate-surface--checklist", alerts_tab, fixed = TRUE) &&
+    grepl("ynow-member-gate-fade-backdrop", alerts_tab, fixed = TRUE) &&
+    grepl("ynow_pa_guest_gate", alerts_tab, fixed = TRUE) &&
+    grepl("ynow_pa_body", alerts_tab, fixed = TRUE) &&
+    grepl("ynow-member-body", alerts_tab, fixed = TRUE) &&
+    grepl("ynow-gate-promo-demo-row", alerts_tab, fixed = TRUE) &&
+    grepl("demos/alerts.mp4", alerts_tab, fixed = TRUE)
+})
+
 ui_txt <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"),
                 collapse = "\n")
+check("lab tab source wraps the member surface", {
+  grepl('ynow_member_gate_surface_ui(feature = "lab"', ui_txt, fixed = TRUE) &&
+    grepl("ynow_lab_body", ui_txt, fixed = TRUE) &&
+    grepl("ynow-member-body", ui_txt, fixed = TRUE) &&
+    grepl("ynow_lab_guest_gate", ui_txt, fixed = TRUE)
+})
 check("UI CSS defines 1:1 row + surface overlay fade", {
   grepl("ynow-gate-promo-demo-row", ui_txt, fixed = TRUE) &&
     grepl("ynow-gate-extras--checklist-split", ui_txt, fixed = TRUE) &&

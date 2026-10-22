@@ -628,15 +628,12 @@ ynow_alertable <- function(
 }
 
 price_alert_tab_ui <- function() {
-  tabItem(
-    tabName = "price_alerts",
-    # Full + auth-on + guest gate (CSS: body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed))
-    if (exists("ynow_pa_guest_gate_ui", mode = "function")) {
-      ynow_pa_guest_gate_ui()
-    } else {
-      tags$div(id = "ynow_pa_guest_gate", style = "display:none;")
-    },
-    tags$div(
+  pa_gate <- if (exists("ynow_pa_guest_gate_ui", mode = "function")) {
+    ynow_pa_guest_gate_ui()
+  } else {
+    tags$div(id = "ynow_pa_guest_gate", style = "display:none;")
+  }
+  pa_body <- tags$div(
       id = "ynow_pa_body",
       class = "ynow-pa-tabs-wrap ynow-member-body",
       `data-ynow-lock` = "section:value_alerts_body",
@@ -716,8 +713,13 @@ price_alert_tab_ui <- function() {
           tags$div(style = "margin-top:12px;", DT::DTOutput("pa_history_table"))
         )
       )
-    ) # /#ynow_pa_body
-  )
+  ) # /#ynow_pa_body
+  surface <- if (exists("ynow_member_gate_surface_ui", mode = "function")) {
+    ynow_member_gate_surface_ui(feature = "alerts", gate = pa_gate, body = pa_body)
+  } else {
+    tagList(pa_gate, pa_body)
+  }
+  tabItem(tabName = "price_alerts", surface)
 }
 
 .pa_metric_family <- function(metric) {

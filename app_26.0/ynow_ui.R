@@ -19809,21 +19809,28 @@ ui <- dashboardPage(
       # ==========================================
       tabItem(
         tabName = "lab_notes",
-        if (exists("ynow_member_gate_ui", mode = "function")) {
-          ynow_member_gate_ui(
-            "ynow_lab_guest_gate",
-            "ynow_lab_gate_title",
-            "ynow_lab_gate_body",
-            "ynow_lab_gate_signin",
-            feature = "lab"
+        {
+          lab_gate <- if (exists("ynow_member_gate_ui", mode = "function")) {
+            ynow_member_gate_ui(
+              "ynow_lab_guest_gate",
+              "ynow_lab_gate_title",
+              "ynow_lab_gate_body",
+              "ynow_lab_gate_signin",
+              feature = "lab"
+            )
+          }
+          lab_body <- tags$div(
+            id = "ynow_lab_body",
+            class = "ynow-member-body",
+            `data-ynow-lock` = "section:backtest_body",
+            uiOutput("ynow_lazy_host_lab_notes")
           )
-        },
-        tags$div(
-          id = "ynow_lab_body",
-          class = "ynow-member-body",
-          `data-ynow-lock` = "section:backtest_body",
-          uiOutput("ynow_lazy_host_lab_notes")
-        )
+          if (exists("ynow_member_gate_surface_ui", mode = "function")) {
+            ynow_member_gate_surface_ui(feature = "lab", gate = lab_gate, body = lab_body)
+          } else {
+            tagList(lab_gate, lab_body)
+          }
+        }
       ),
 
       # ==========================================
