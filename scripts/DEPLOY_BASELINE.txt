@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
 bundleId=12723569
 appId=10907657
-url=https://[REDACTED].shinyapps.io/TheYNowApp/
-aligned_git=a0d1e923e53c443838be17cef8bb3babd7a56c08
-commit=a0d1e923e53c443838be17cef8bb3babd7a56c08
-short=a0d1e923
+url=https://hopesmasher1118.shinyapps.io/TheYNowApp/
+aligned_git=a46bce4475f1f87677867b59df822ea9ba070d64
+commit=a46bce4475f1f87677867b59df822ea9ba070d64
+short=a46bce44
 message=chore: bump display version to v26.24
-captured_at=2026-10-22T04:13:37Z
+captured_at=2026-10-22T04:11:58Z
 display_version=v26.24
-note=Canonical live line is app_26.0. Bundle 12723569: tip ship after #389/#390/#391 (maintenance mode + home auth row + gate overlay). Baseline recorded to serialize before #392 banner-login-no-border deploy. Secrets only in gitignored .Renviron; no secret values in git.
+note=Canonical live line is app_26.0. Bundle 12723569: guest/ACL whole-tab Sign-in overlay shell (Checklist side-by-side; Lab/alerts/ATX stacked; ACL lock tabs same shell) (#391). Live tree is #391 + bump (a46bce44); #389/#390/#392 merged on master after this upload and are not in this bundle. Secrets only in gitignored .Renviron; no secret values in git.

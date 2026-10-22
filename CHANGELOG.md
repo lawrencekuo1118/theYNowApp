@@ -13,22 +13,24 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 
 ## [Unreleased]
 
+### Added
+
+- **System admin Maintenance / 維護** (PR #390, pending next ship): time-windowed page/tab/element outage for **all users**; copy「維護中」+ newline「預計時間: start-end」(en-US: Under maintenance / Expected: …). Content unusable like a lock, but sidebar/menu is **non-clickable** (unlike Item locks / guest_menu_lock). When the configured **end** time is reached, restrictions **auto-lift** on the server clock (no admin click). Persist in Supabase `ynow_maintenance` (fail-closed); distinct from Checklist gate overlay.
+- zh-TW：系統管理「維護」可對目錄項目設定時段；進行中顯示「維護中／預計時間」且選單不可點；結束時間到自動恢復。Merged on master after v26.24 live upload — not in bundle 12723569.
+
 ### Changed
 
+- Home Sign-in · Register · About on one row (PR #389, pending next ship): merged on master after v26.24 live upload — not in bundle 12723569.
 - CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_26.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).
 - Docs: root README ship/CI/Release pointers; `scripts/record_github_release.sh` for soft-fail Release publish after deploy.
 
 ## [v26.24] — 2026-10-22
 
-### Added
-
-- **System admin Maintenance / 維護** (PR #390): time-windowed page/tab/element outage for **all users**; copy「維護中」+ newline「預計時間: start-end」(en-US: Under maintenance / Expected: …). Content unusable like a lock, but sidebar/menu is **non-clickable** (unlike Item locks / guest_menu_lock). When the configured **end** time is reached, restrictions **auto-lift** on the server clock (no admin click). Persist in Supabase `ynow_maintenance` (fail-closed); distinct from Checklist gate overlay.
-- zh-TW：系統管理「維護」可對目錄項目設定時段；進行中顯示「維護中／預計時間」且選單不可點；結束時間到自動恢復。
-
 ### Changed
 
-- Also ships tip with Home auth/About row (#389) and gate overlay shell for whole-tab locks (#391) when deploying this tip after v26.23.
-- Live baseline bundle recorded in `scripts/DEPLOY_BASELINE.txt` after deploy.
+- **Sign-in gate overlay shell** (PR #391): guest `guest_menu_lock` and ACL whole-tab locks share the Checklist-style surface overlay (white-fade + **Sign in required** / **需登入帳號**). Decision Checklist keeps unlock + SOP demo **1:1 side-by-side**; Lab, Value Alerts, and Asset Transmission Root use the stacked shell; ACL `effect=lock` tabs use the same overlay. Lite omit set unchanged.
+- zh-TW：訪客選單鎖與 ACL 整頁鎖定共用決策檢核式覆層（淡白底＋需登入帳號）；決策檢核維持解鎖區與 SOP 示範並排；Lab／警報／資產傳導根系為堆疊殼層。
+- Live baseline bundle **12723569** recorded in `scripts/DEPLOY_BASELINE.txt` after deploy.
 
 ## [v26.23] — 2026-10-22
 
