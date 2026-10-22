@@ -19,6 +19,8 @@ root <- normalizePath(file.path(test_dir, ".."), mustWork = TRUE)
 if (!file.exists(file.path(root, "default_config.R"))) {
   root <- normalizePath(getwd(), mustWork = TRUE)
 }
+# lab_industry_method.R sources sibling files with relative paths.
+setwd(root)
 
 # Minimal sources for APP_DEFAULTS
 source(file.path(root, "industry_standards.R"), local = TRUE, encoding = "UTF-8")
