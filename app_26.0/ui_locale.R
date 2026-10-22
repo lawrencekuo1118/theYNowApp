@@ -1161,9 +1161,12 @@ locale_for_market <- function(mode = get_market_mode()) {
     access_pane_note = "This page is locked for the signed-in account. Ask a system admin to unlock it.",
     maint_title = "Maintenance",
     maint_help = paste0(
-      "Put a page, tab, or element into maintenance for all users during a start–end window. ",
-      "While active, content is unusable and the menu item cannot be clicked ",
-      "(unlike Item locks). When the end time is reached, access restores automatically."
+      "Put a page, tab, section, numeric input, or report into maintenance for all users ",
+      "during a start–end window. The Item menu lists the full product/service catalog ",
+      "(same ids as Item locks). Items that already have a configured window show ",
+      "Expected: start-end in the menu. While active, content is unusable and the menu ",
+      "item cannot be clicked (unlike Item locks). When the end time is reached, access ",
+      "restores automatically."
     ),
     maint_item = "Item",
     maint_start = "Window start (UTC)",
@@ -1179,7 +1182,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     maint_bad_window_order = "End time must be after start time.",
     maint_window_preview_help = paste0(
       "Users see: Under maintenance, then Expected: start-end ",
-      "(zh-TW: 維護中 / 預計時間: …). Ends restore access automatically."
+      "(zh-TW: 維護中 / 預計時間: …). Ends restore access automatically. ",
+      "Configured items also show Expected: start-end in this Item menu."
     ),
     maint_denied_report = "This report is under maintenance.",
     maint_title_short = "Under maintenance",
@@ -5507,7 +5511,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     access_pane_note = "此分頁已對目前登入帳號鎖上。請洽系統管理員解鎖。",
     maint_title = "維護",
     maint_help = paste0(
-      "可將頁面／分頁／特定元素設為維護時段（開始–結束），套用至所有使用者。",
+      "可將頁面／分頁／區塊／數值框／報表設為維護時段（開始–結束），套用至所有使用者。",
+      "「項目」選單列出完整產品／服務目錄（與項目鎖定共用 id）。",
+      "已設定時段的項目會在選單顯示「預計時間: 開始-結束」。",
       "維護進行中內容不可用，且選單項目不可點選（與項目鎖定不同）。",
       "到達結束時間後會自動恢復，無需管理員再操作。"
     ),
@@ -5525,7 +5531,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     maint_bad_window_order = "結束時間必須晚於開始時間。",
     maint_window_preview_help = paste0(
       "使用者會看到「維護中」換行「預計時間: 開始-結束」",
-      "（en-US: Under maintenance / Expected: …）。結束後自動恢復。"
+      "（en-US: Under maintenance / Expected: …）。結束後自動恢復。",
+      "已設定時段的項目也會在此「項目」選單顯示「預計時間: 開始-結束」。"
     ),
     maint_denied_report = "此報表維護中。",
     maint_title_short = "維護中",

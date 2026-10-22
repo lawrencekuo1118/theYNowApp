@@ -94,6 +94,67 @@ check("catalog shared with ACL", {
     )
 })
 
+check("catalog covers product service tabs", {
+  ids <- ynow_maintenance_catalog()$id
+  all(c(
+    "tab:home", "tab:about", "tab:settings",
+    "tab:account_admin", "tab:account_points", "tab:feedback"
+  ) %in% ids) &&
+    !"tab:testing" %in% ids
+})
+
+check("catalog covers fine valuation inputs", {
+  ids <- ynow_maintenance_catalog()$id
+  all(c(
+    "input:years", "input:wacc_re", "input:capm_rf",
+    "input:mod_ddm-d0", "input:mod_ri-ri_ke",
+    "input:mod_fcf-capex_spike_mult", "input:bt_net_margin",
+    "input:mod_rel-pe_multiple", "input:mod_sotp-nonop"
+  ) %in% ids)
+})
+
+check("catalog covers sections and extra reports", {
+  ids <- ynow_maintenance_catalog()$id
+  all(c(
+    "section:sgr_box", "section:wacc_box", "section:fcf_projection",
+    "section:bt_holding_gate", "section:snap_audit",
+    "report:download_defaults", "report:lab_im_download_report",
+    "report:bblab-export_data", "report:bblab-export_chart"
+  ) %in% ids)
+})
+
+check("choice list annotates configured window en-US", {
+  ynow_maintenance_reset_memory()
+  unlink(tmp)
+  Sys.setenv(YNOW_MAINTENANCE_PATH = tmp)
+  ynow_maintenance_set("tab:lab_notes", TRUE, t_start, t_end)
+  ynow_maintenance_set_now_override("2026-10-22T13:00:00Z")
+  ch <- ynow_maintenance_item_choice_list(
+    c("tab:lab_notes", "tab:home"),
+    locale = "en",
+    group = FALSE
+  )
+  lab_notes <- names(ch)[unname(ch) == "tab:lab_notes"]
+  lab_home <- names(ch)[unname(ch) == "tab:home"]
+  length(lab_notes) == 1L &&
+    grepl("Expected:", lab_notes, fixed = TRUE) &&
+    grepl("2026-10-22 12:00-2026-10-22 14:00", lab_notes, fixed = TRUE) &&
+    length(lab_home) == 1L &&
+    !grepl("Expected:", lab_home, fixed = TRUE)
+})
+
+check("choice list annotates configured window zh-TW", {
+  ynow_maintenance_set_now_override("2026-10-22T11:00:00Z") # scheduled, not yet active
+  ch <- ynow_maintenance_item_choice_list(
+    "tab:lab_notes",
+    locale = "zh-TW",
+    group = FALSE
+  )
+  lab <- names(ch)[1]
+  grepl("預計時間:", lab, fixed = TRUE) &&
+    grepl("2026-10-22 12:00-2026-10-22 14:00", lab, fixed = TRUE)
+})
+
 check("reject bad item", {
   res <- ynow_maintenance_set("tab:not_real", TRUE, t_start, t_end)
   isTRUE(!res$ok) && identical(res$message_key, "maint_bad_item")
@@ -234,12 +295,32 @@ loc <- paste(readLines(loc_path, warn = FALSE, encoding = "UTF-8"), collapse = "
 check("locale en maint keys", {
   grepl('maint_title = "Maintenance"', loc, fixed = TRUE) &&
     grepl('maint_title_short = "Under maintenance"', loc, fixed = TRUE) &&
-    grepl('maint_expected_prefix = "Expected:"', loc, fixed = TRUE)
+    grepl('maint_expected_prefix = "Expected:"', loc, fixed = TRUE) &&
+    grepl("full product/service catalog", loc, fixed = TRUE) &&
+    grepl("Expected: start-end in this Item menu", loc, fixed = TRUE)
 })
 check("locale zh-TW maint keys", {
   grepl('maint_title = "維護"', loc, fixed = TRUE) &&
     grepl('maint_title_short = "維護中"', loc, fixed = TRUE) &&
-    grepl('maint_expected_prefix = "預計時間:"', loc, fixed = TRUE)
+    grepl('maint_expected_prefix = "預計時間:"', loc, fixed = TRUE) &&
+    grepl("完整產品／服務目錄", loc, fixed = TRUE) &&
+    grepl("「項目」選單顯示「預計時間:", loc, fixed = TRUE)
+})
+check("UI wrappers for new maintenance sections", {
+  grepl('section:sgr_box', ui, fixed = TRUE) &&
+    grepl('section:wacc_box', ui, fixed = TRUE) &&
+    grepl('section:bt_holding_gate', ui, fixed = TRUE) &&
+    grepl('section:bt_strategy_params', ui, fixed = TRUE) &&
+    grepl('section:snap_audit', ui, fixed = TRUE) &&
+    grepl("data-ynow-lock", ui, fixed = TRUE)
+})
+check("FCF projection section wrapper", {
+  fcf <- paste(
+    readLines(file.path(app_dir, "fcf_projection_module.R"), warn = FALSE, encoding = "UTF-8"),
+    collapse = "\n"
+  )
+  grepl("section:fcf_projection", fcf, fixed = TRUE) &&
+    grepl("data-ynow-lock", fcf, fixed = TRUE)
 })
 
 glb <- paste(readLines(file.path(app_dir, "global.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
