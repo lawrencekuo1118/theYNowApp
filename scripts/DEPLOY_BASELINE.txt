@@ -7,5 +7,5 @@ commit=c9cad103554d71f2968fb5f563c29d457b611f0b
 short=c9cad103
 message=chore: bump display version to v26.48
 captured_at=2026-10-22T15:29:14Z
-display_version=v26.48
+display_version=v26.49
 note=Canonical live line is app_26.0. Bundle 12725828: Home Wave-1 lazy tabs (About/Feedback/YNOW/Smart Analysis/BBLab/Value Alerts body) via #415; clean tip redeploy after discarding concurrent WIP.
