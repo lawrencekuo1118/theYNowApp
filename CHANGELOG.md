@@ -18,6 +18,14 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 - CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_26.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).
 - Docs: root README ship/CI/Release pointers; `scripts/record_github_release.sh` for soft-fail Release publish after deploy.
 
+## [v26.29] — 2026-10-22
+
+### Added
+
+- **System admin self view modes** (PR #396): next to Switch view — **Guest mode**, **Signed-in user mode** (all-user ACL only), **Omniscient mode** (lift all locks/hides; header title warning red `#DC3545`). Quick apply / 快速套用 (en-US + zh-TW).
+- zh-TW：系統管理自身視角（訪客／已登入／全知）；全知模式標題為警示紅。
+- Live baseline bundle **12723867** / display **v26.29**.
+
 ## [v26.28] — 2026-10-22
 
 ### Changed
