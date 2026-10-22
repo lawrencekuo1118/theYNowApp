@@ -3884,53 +3884,85 @@ ui <- dashboardPage(
     
     # Snapshot：側邊欄內容流最底部低調捷徑（勿用 absolute，會跑到搜尋框）
     # Foot links row + copyright directly below (copyright must not overlap the three links).
+    # Decorative chip + logo-blue glow only — do not reintroduce sidebar「資料來源」blurb.
     column(
       width = 12,
       class = "ynow-sidebar-snapshot-foot",
       tags$div(
-        class = "ynow-sidebar-snapshot-foot-links",
-        tags$a(
-          href = "#shiny-tab-snapshot",
-          `data-toggle` = "tab",
-          `data-value` = "snapshot",
-          class = "ynow-sidebar-snapshot-link",
-          onclick = "if (window.ynowShowSidebarFootTab) { window.ynowShowSidebarFootTab('snapshot'); } else if (window.Shiny) { Shiny.setInputValue('sidebar_tabs', 'snapshot', {priority: 'event'}); } return false;",
-          icon("camera", class = "fa-fw"),
-          tags$span(id = "ynow_snapshot_link_label", " Snapshot")
-        ),
-        # System admin：側邊欄專用入口（完整版）；Lite／已登入帳號隱藏；內部 tabName 仍為 testing
-        tags$a(
-          id = "ynow_sidebar_test_btn",
-          href = "#shiny-tab-testing",
-          `data-toggle` = "tab",
-          `data-value` = "testing",
-          class = "ynow-sidebar-snapshot-link ynow-sidebar-test-link ynow-full-only",
-          onclick = "if (document.body && document.body.classList.contains('ynow-authed')) { return false; } if (window.Shiny) { Shiny.setInputValue('sidebar_test_click', (window.__ynowTestClicks=(window.__ynowTestClicks||0)+1), {priority: 'event'}); } if (window.ynowShowSidebarFootTab) { window.ynowShowSidebarFootTab('testing'); } else if (window.Shiny) { Shiny.setInputValue('sidebar_tabs', 'testing', {priority: 'event'}); } return false;",
-          icon("user-shield", class = "fa-fw"),
-          tags$span(id = "ynow_test_link_label", " Sys. Admin")
-        ),
-        # 意見區：收集使用者回饋，系統性開 GitHub Issue
-        tags$a(
-          id = "ynow_sidebar_feedback_btn",
-          href = "#shiny-tab-feedback",
-          `data-toggle` = "tab",
-          `data-value` = "feedback",
-          class = "ynow-sidebar-snapshot-link ynow-sidebar-feedback-link",
-          onclick = "if (window.Shiny) { Shiny.setInputValue('sidebar_feedback_click', (window.__ynowFeedbackClicks=(window.__ynowFeedbackClicks||0)+1), {priority: 'event'}); } if (window.ynowShowSidebarFootTab) { window.ynowShowSidebarFootTab('feedback'); } else if (window.Shiny) { Shiny.setInputValue('sidebar_tabs', 'feedback', {priority: 'event'}); } return false;",
-          icon("comment-dots", class = "fa-fw"),
-          tags$span(id = "ynow_feedback_link_label", " Feedback")
-        ),
+        class = "ynow-sidebar-foot-glow",
+        `aria-hidden` = "true"
       ),
-      tags$p(
-        id = "ynow_sidebar_copyright",
-        class = "ynow-sidebar-copyright",
-        "2026 © YNow Team. All rights reserved."
+      tags$div(
+        class = "ynow-sidebar-foot-chip",
+        tags$div(
+          class = "ynow-sidebar-snapshot-foot-links",
+          tags$a(
+            href = "#shiny-tab-snapshot",
+            `data-toggle` = "tab",
+            `data-value` = "snapshot",
+            class = "ynow-sidebar-snapshot-link",
+            onclick = "if (window.ynowShowSidebarFootTab) { window.ynowShowSidebarFootTab('snapshot'); } else if (window.Shiny) { Shiny.setInputValue('sidebar_tabs', 'snapshot', {priority: 'event'}); } return false;",
+            icon("camera", class = "fa-fw"),
+            tags$span(id = "ynow_snapshot_link_label", " Snapshot")
+          ),
+          # System admin：側邊欄專用入口（完整版）；Lite／已登入帳號隱藏；內部 tabName 仍為 testing
+          tags$a(
+            id = "ynow_sidebar_test_btn",
+            href = "#shiny-tab-testing",
+            `data-toggle` = "tab",
+            `data-value` = "testing",
+            class = "ynow-sidebar-snapshot-link ynow-sidebar-test-link ynow-full-only",
+            onclick = "if (document.body && document.body.classList.contains('ynow-authed')) { return false; } if (window.Shiny) { Shiny.setInputValue('sidebar_test_click', (window.__ynowTestClicks=(window.__ynowTestClicks||0)+1), {priority: 'event'}); } if (window.ynowShowSidebarFootTab) { window.ynowShowSidebarFootTab('testing'); } else if (window.Shiny) { Shiny.setInputValue('sidebar_tabs', 'testing', {priority: 'event'}); } return false;",
+            icon("user-shield", class = "fa-fw"),
+            tags$span(id = "ynow_test_link_label", " Sys. Admin")
+          ),
+          # 意見區：收集使用者回饋，系統性開 GitHub Issue
+          tags$a(
+            id = "ynow_sidebar_feedback_btn",
+            href = "#shiny-tab-feedback",
+            `data-toggle` = "tab",
+            `data-value` = "feedback",
+            class = "ynow-sidebar-snapshot-link ynow-sidebar-feedback-link",
+            onclick = "if (window.Shiny) { Shiny.setInputValue('sidebar_feedback_click', (window.__ynowFeedbackClicks=(window.__ynowFeedbackClicks||0)+1), {priority: 'event'}); } if (window.ynowShowSidebarFootTab) { window.ynowShowSidebarFootTab('feedback'); } else if (window.Shiny) { Shiny.setInputValue('sidebar_tabs', 'feedback', {priority: 'event'}); } return false;",
+            icon("comment-dots", class = "fa-fw"),
+            tags$span(id = "ynow_feedback_link_label", " Feedback")
+          ),
+        ),
+        tags$p(
+          id = "ynow_sidebar_copyright",
+          class = "ynow-sidebar-copyright",
+          "2026 © YNow Team. All rights reserved."
+        )
       )
     )
   ),
   
   dashboardBody(
     shinyjs::useShinyjs(),
+    # Decorative leaf/branch motif for black top banner (logo-green glow).
+    # Injected into .main-header so it stacks under title/nav (not over them).
+    tags$script(HTML(paste0(
+      "(function(){",
+      "function ynowPlaceChromeLeaves(){",
+      "var h=document.querySelector('.main-header');",
+      "if(!h||h.querySelector('.ynow-chrome-header-leaves'))return;",
+      "var el=document.createElement('div');",
+      "el.className='ynow-chrome-header-leaves';",
+      "el.setAttribute('aria-hidden','true');",
+      "var img=document.createElement('img');",
+      "img.className='ynow-chrome-header-veins';",
+      "img.src='ynow-chrome-veins-branches.jpg';",
+      "img.alt='';",
+      "img.setAttribute('aria-hidden','true');",
+      "img.draggable=false;",
+      "el.appendChild(img);",
+      "h.insertBefore(el,h.firstChild);",
+      "}",
+      "if(document.readyState==='loading'){",
+      "document.addEventListener('DOMContentLoaded',ynowPlaceChromeLeaves);",
+      "}else{ynowPlaceChromeLeaves();}",
+      "})();"
+    ))),
     # View-as chrome: visible on every tab while admin impersonates a user.
     tags$div(
       id = "ynow_viewas_chrome",
@@ -4130,6 +4162,11 @@ ui <- dashboardPage(
           --ynow-logo-blue: #0C5484;
           --ynow-logo-green: #249C60;
           --ynow-logo-cyan: #1AA8B8;
+          /* Chrome atmosphere (Balanced): soft glow alphas from logo blue/green */
+          --ynow-chrome-blue-glow: rgba(12, 84, 132, 0.55);
+          --ynow-chrome-green-glow: rgba(36, 156, 96, 0.45);
+          --ynow-chrome-blue-edge: rgba(12, 84, 132, 0.35);
+          --ynow-chrome-blue-halo: rgba(12, 84, 132, 0.22);
           /* Shared content column — same as Macro & Market Trends (.ynow-macro-report) */
           --ynow-page-max: 1200px;
           --ynow-logo-flow-gradient: linear-gradient(
@@ -5493,6 +5530,75 @@ ui <- dashboardPage(
           right: 0 !important;
           width: 100% !important;
           z-index: 1030 !important;
+          overflow: hidden;
+        }
+        /* Black top-banner left (A+B): denser organic branch veins + Balanced logo-green glow.
+           Pattern language: www/ynow-chrome-veins-branches.jpg (leafless twig silhouette).
+           Decorative only (aria-hidden); must not cover title / nav hit targets. */
+        .ynow-chrome-header-leaves {
+          position: absolute;
+          left: 0;
+          top: 0;
+          bottom: 0;
+          width: 55%;
+          max-width: 720px;
+          /* Sit above logo black wash so veins remain visible under the title. */
+          z-index: 2;
+          pointer-events: none;
+          overflow: hidden;
+          background:
+            radial-gradient(ellipse 95% 140% at 10% 50%, var(--ynow-chrome-green-glow), transparent 66%);
+          opacity: 0.88;
+          animation: ynow-chrome-green-pulse 4.8s ease-in-out infinite;
+        }
+        .ynow-chrome-header-veins {
+          position: absolute;
+          left: -4%;
+          top: -30%;
+          width: 108%;
+          height: 160%;
+          object-fit: cover;
+          object-position: 10% 38%;
+          /* Black twigs on white sky → invert + soft logo-green tint (not neon) */
+          filter: invert(1) sepia(1) saturate(3.4) hue-rotate(82deg) brightness(0.88) contrast(1.18);
+          mix-blend-mode: screen;
+          opacity: 0.72;
+          -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 58%, transparent 100%);
+          mask-image: linear-gradient(90deg, #000 0%, #000 58%, transparent 100%);
+          pointer-events: none;
+          user-select: none;
+        }
+        .ynow-chrome-header-leaves::after {
+          content: "";
+          position: absolute;
+          inset: 0;
+          background:
+            linear-gradient(90deg, rgba(36, 156, 96, 0.22) 0%, rgba(36, 156, 96, 0.1) 48%, transparent 85%);
+          pointer-events: none;
+        }
+        @keyframes ynow-chrome-green-pulse {
+          0%, 100% { opacity: 0.72; }
+          50% { opacity: 0.95; }
+        }
+        /* Let branch veins show through the title block (keep text above). */
+        .skin-black .main-header .logo,
+        .skin-black .main-header .logo:hover {
+          background-color: transparent !important;
+          background-image: none !important;
+        }
+        .skin-black .main-header .logo::before {
+          background-color: transparent;
+        }
+        .main-header > .logo,
+        .main-header > .navbar {
+          position: relative;
+          z-index: 3;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .ynow-chrome-header-leaves {
+            animation: none;
+            opacity: 0.9;
+          }
         }
         .content-wrapper,
         .right-side {
@@ -6966,6 +7072,8 @@ ui <- dashboardPage(
           border-left-color: #fff;
         }
         /* Snapshot／Sys. Admin／Feedback：同一列；版權宣告在按鈕列正下方（勿重疊） */
+        /* A+B chip foot: clearer readable chip + circuit veins + Balanced logo-blue glow.
+           Pattern language: www/ynow-chrome-veins-circuit.jpg (PCB traces / nodes). */
         .ynow-sidebar-snapshot-foot {
           display: flex !important;
           flex-direction: column !important;
@@ -6977,8 +7085,65 @@ ui <- dashboardPage(
           box-sizing: border-box;
           margin-top: 8px !important;
           margin-bottom: 10px !important;
-          padding: 0 4px !important;
+          padding: 10px 8px 12px !important;
           text-align: left !important;
+          position: relative;
+        }
+        .ynow-sidebar-foot-glow {
+          position: absolute;
+          left: 12%;
+          right: 12%;
+          bottom: 8px;
+          height: 34px;
+          background: radial-gradient(ellipse at center, var(--ynow-chrome-blue-glow), transparent 70%);
+          filter: blur(6px);
+          animation: ynow-chrome-blue-pulse 3.6s ease-in-out infinite;
+          pointer-events: none;
+          z-index: 0;
+        }
+        @keyframes ynow-chrome-blue-pulse {
+          0%, 100% { opacity: 0.45; transform: scaleX(0.96); }
+          50% { opacity: 0.9; transform: scaleX(1.02); }
+        }
+        .ynow-sidebar-foot-chip {
+          position: relative;
+          z-index: 1;
+          overflow: hidden;
+          border-radius: 16px;
+          border: 1px solid rgba(12, 84, 132, 0.55);
+          background: linear-gradient(180deg, #1a1f24 0%, #0e1216 100%);
+          box-shadow:
+            0 0 16px var(--ynow-chrome-blue-halo),
+            inset 0 0 18px rgba(12, 84, 132, 0.14);
+          padding: 8px 12px 6px;
+          box-sizing: border-box;
+          width: 100%;
+        }
+        .ynow-sidebar-foot-chip::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          border-radius: inherit;
+          background-image: url("ynow-chrome-veins-circuit.jpg");
+          background-repeat: no-repeat;
+          background-size: 175% auto;
+          background-position: center 65%;
+          opacity: 0.55;
+          mix-blend-mode: screen;
+          filter: saturate(1.05) brightness(1.02) hue-rotate(-12deg);
+          pointer-events: none;
+          z-index: 0;
+        }
+        .ynow-sidebar-foot-chip > * {
+          position: relative;
+          z-index: 1;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .ynow-sidebar-foot-glow {
+            animation: none;
+            opacity: 0.65;
+            transform: none;
+          }
         }
         .ynow-sidebar-snapshot-foot-links {
           display: flex !important;
@@ -6986,14 +7151,30 @@ ui <- dashboardPage(
           flex-wrap: nowrap !important;
           align-items: center;
           justify-content: space-between;
-          gap: 2px;
+          gap: 4px;
           width: 100%;
           box-sizing: border-box;
         }
         .main-sidebar .ynow-sidebar-snapshot-foot.col-sm-12,
         .main-sidebar .ynow-sidebar-snapshot-foot.col-xs-12 {
-          padding-left: 4px !important;
-          padding-right: 4px !important;
+          padding-left: 8px !important;
+          padding-right: 8px !important;
+        }
+        .ynow-sidebar-foot-chip .ynow-sidebar-snapshot-link {
+          display: inline-flex !important;
+          align-items: center;
+          justify-content: center;
+          flex: 1 1 0;
+          min-width: 0;
+          white-space: nowrap;
+          font-size: 11px !important;
+          font-weight: 500 !important;
+          color: rgba(255,255,255,0.78) !important;
+          text-decoration: none !important;
+          padding: 3px 2px;
+          border-radius: 4px;
+          opacity: 1;
+          line-height: 1.25;
         }
         .ynow-sidebar-snapshot-link {
           display: inline-flex !important;
@@ -7024,6 +7205,16 @@ ui <- dashboardPage(
           color: rgba(255,255,255,0.85) !important;
           opacity: 1;
           background: rgba(255,255,255,0.06);
+        }
+        .ynow-sidebar-foot-chip .ynow-sidebar-snapshot-link:hover {
+          color: #fff !important;
+          background: rgba(12, 84, 132, 0.28);
+        }
+        .ynow-sidebar-foot-chip .ynow-sidebar-copyright {
+          color: rgba(255, 255, 255, 0.72);
+          margin-top: 4px;
+          padding-top: 4px;
+          border-top: 1px solid rgba(12, 84, 132, 0.28);
         }
         .ynow-sidebar-feedback-link,
         .ynow-sidebar-test-link { margin-left: 0; }
