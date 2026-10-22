@@ -1188,6 +1188,20 @@ locale_for_market <- function(mode = get_market_mode()) {
     maint_denied_report = "This report is under maintenance.",
     maint_title_short = "Under maintenance",
     maint_expected_prefix = "Expected:",
+    admin_ops_tab = "Audit log",
+    admin_ops_controls_tab = "Controls",
+    admin_ops_title = "Audit log",
+    admin_ops_help = paste0(
+      "Append-only record of system-admin operations (newest first). ",
+      "Each entry is kept for at most 24 hours (server clock) and then expires automatically. ",
+      "There is no clear or delete control."
+    ),
+    admin_ops_empty = "No operations recorded in the last 24 hours.",
+    admin_ops_col_time = "Time (UTC)",
+    admin_ops_col_actor = "Actor",
+    admin_ops_col_action = "Action",
+    admin_ops_col_detail = "Detail",
+    admin_ops_unavailable = "Audit log store is unavailable.",
     auth_gate_inner_lock_body = paste0(
       "Sign in to open this locked tab. ",
       "If you are already signed in, a system admin must clear the restriction."
@@ -5537,6 +5551,20 @@ locale_for_market <- function(mode = get_market_mode()) {
     maint_denied_report = "此報表維護中。",
     maint_title_short = "維護中",
     maint_expected_prefix = "預計時間:",
+    admin_ops_tab = "操作紀錄",
+    admin_ops_controls_tab = "操作",
+    admin_ops_title = "操作紀錄",
+    admin_ops_help = paste0(
+      "系統管理員操作的累積紀錄（由新到舊）。",
+      "每筆最多保留 24 小時（以伺服器時鐘為準），逾時自動清除。",
+      "介面不提供清除或刪除。"
+    ),
+    admin_ops_empty = "近 24 小時內尚無操作紀錄。",
+    admin_ops_col_time = "時間（UTC）",
+    admin_ops_col_actor = "操作者",
+    admin_ops_col_action = "動作",
+    admin_ops_col_detail = "明細",
+    admin_ops_unavailable = "操作紀錄儲存目前無法使用。",
     auth_gate_inner_lock_body = paste0(
       "請先登入才能使用此上鎖分頁籤。",
       "若已登入仍顯示上鎖，請洽系統管理員解除限制。"

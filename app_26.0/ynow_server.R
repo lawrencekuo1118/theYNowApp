@@ -1031,12 +1031,32 @@ server <- function(input, output, session) {
   ynow_pts_panel_tick <- reactiveVal(0L)
   ynow_pts_sysadmin_on <- reactiveVal(FALSE)
   ynow_pts_sysadmin_tick <- reactiveVal(0L)
+  # Ops portal login username (actor for admin_ops_audit); never store password.
+  ynow_pts_sysadmin_actor <- reactiveVal("")
+  ynow_admin_ops_display_tick <- reactiveVal(0L)
   # Panel payload: list(kind="locked"|"loading"|"ready"|"error", ...). Built async
   # so Postgres list_users cannot block the session (exit / Switch view stay live).
   ynow_pts_sysadmin_panel_state <- reactiveVal(list(kind = "locked"))
   # ynow_pts_view_as is created earlier (before pinned prefs).
   # Self view modes (admin preview): "guest" | "signed_in" | "omniscient" | NULL.
   ynow_pts_self_view_mode <- reactiveVal(NULL)
+
+  #' Append one system-admin audit row (best-effort; fail closed inside store).
+  .ynow_admin_ops_log <- function(action, detail = "") {
+    if (!exists("ynow_admin_ops_append", mode = "function")) return(invisible(FALSE))
+    actor <- as.character(
+      tryCatch(isolate(ynow_pts_sysadmin_actor()), error = function(e) "") %||% ""
+    )[1]
+    tryCatch({
+      ynow_admin_ops_append(
+        action = action,
+        detail = detail,
+        actor = actor
+      )
+      ynow_admin_ops_display_tick(isolate(ynow_admin_ops_display_tick()) + 1L)
+      TRUE
+    }, error = function(e) FALSE)
+  }
 
   .ynow_access_subject_id <- function() {
     mode <- tryCatch(isolate(ynow_pts_self_view_mode()), error = function(e) NULL)
@@ -1530,6 +1550,7 @@ server <- function(input, output, session) {
       "Self view applied."
     )
     showNotification(.lab(ok_key, ok_fb), type = "message", duration = 4)
+    .ynow_admin_ops_log("self_view.apply", paste0("mode=", mode))
     tryCatch({
       if (exists("updateTabItems", mode = "function")) {
         updateTabItems(session, "sidebar_tabs", "home")
@@ -1542,10 +1563,19 @@ server <- function(input, output, session) {
 
   .ynow_self_view_clear <- function(notify = TRUE) {
     had <- !is.null(tryCatch(isolate(ynow_pts_self_view_mode()), error = function(e) NULL))
+    prev <- as.character(
+      tryCatch(isolate(ynow_pts_self_view_mode()), error = function(e) NULL) %||% ""
+    )[1]
     ynow_pts_self_view_mode(NULL)
     .ynow_self_view_push_chrome(NULL)
     tryCatch(.ynow_push_access_locks(), error = function(e) NULL)
     tryCatch(.ynow_pts_push_banner(), error = function(e) NULL)
+    if (isTRUE(had)) {
+      .ynow_admin_ops_log(
+        "self_view.exit",
+        if (nzchar(prev)) paste0("mode=", prev) else "cleared"
+      )
+    }
     if (isTRUE(notify) && isTRUE(had)) {
       showNotification(
         tryCatch(
@@ -1997,9 +2027,13 @@ server <- function(input, output, session) {
       )
       return()
     }
+    actor_name <- tolower(trimws(as.character(user_in %||% "")[1]))
+    if (!nzchar(actor_name)) actor_name <- "ynow"
+    ynow_pts_sysadmin_actor(actor_name)
     ynow_pts_sysadmin_on(TRUE)
     .ynow_sysadmin_push_mode()
     tryCatch(.ynow_pts_push_banner(), error = function(e) NULL)
+    .ynow_admin_ops_log("sysadmin.enter", paste0("actor=", actor_name))
     ynow_pts_sysadmin_tick(isolate(ynow_pts_sysadmin_tick()) + 1L)
     showNotification(
       .lab("pts_sysadmin_login_ok", "System admin unlocked."),
@@ -2008,7 +2042,9 @@ server <- function(input, output, session) {
     )
   }, ignoreInit = TRUE)
   observeEvent(input$ynow_pts_sysadmin_exit, {
+    .ynow_admin_ops_log("sysadmin.exit", "portal locked")
     ynow_pts_sysadmin_on(FALSE)
+    ynow_pts_sysadmin_actor("")
     ynow_pts_view_as(NULL)
     ynow_pts_self_view_mode(NULL)
     .ynow_sysadmin_push_mode()
@@ -2070,6 +2106,10 @@ server <- function(input, output, session) {
     ynow_pts_view_as(va)
     # Chrome/silver first (no DB); banner may hit Postgres and must not block the signal.
     .ynow_view_as_push_chrome(va)
+    .ynow_admin_ops_log(
+      "view_as.enter",
+      paste0("public_id=", pid, "; user_id=", uid)
+    )
     showNotification(
       sprintf(
         .lab("pts_sysadmin_viewas_ok_fmt", "Viewing as %s (de-identified)."),
@@ -2090,8 +2130,14 @@ server <- function(input, output, session) {
     ynow_pts_sysadmin_tick(isolate(ynow_pts_sysadmin_tick()) + 1L)
   }, ignoreInit = TRUE)
   observeEvent(input$ynow_pts_sysadmin_viewas_exit, {
+    va_prev <- tryCatch(isolate(ynow_pts_view_as()), error = function(e) NULL)
+    pid_prev <- if (is.list(va_prev)) as.character(va_prev$public_id %||% "")[1] else ""
     ynow_pts_view_as(NULL)
     .ynow_view_as_push_chrome(NULL)
+    .ynow_admin_ops_log(
+      "view_as.exit",
+      if (nzchar(pid_prev)) paste0("public_id=", pid_prev) else "cleared"
+    )
     tryCatch(.ynow_pts_push_banner(), error = function(e) NULL)
     # Return to the system-admin portal after exiting view-as.
     tryCatch({
@@ -2241,7 +2287,8 @@ server <- function(input, output, session) {
       } else {
         .lab("pts_sysadmin_empty", "No users in the database yet.")
       }
-      return(tags$div(
+      empty_controls <- tags$div(
+        class = "ynow-sysadmin-controls-pane",
         tags$p(
           class = "text-muted",
           style = "font-size:12.5px; margin-top:4px;",
@@ -2254,6 +2301,47 @@ server <- function(input, output, session) {
           )
         ),
         tags$p(class = "text-warning", empty_msg)
+      )
+      return(tabsetPanel(
+        id = "ynow_pts_sysadmin_tabs",
+        type = "pills",
+        tabPanel(
+          title = tags$span(
+            id = "ynow_admin_ops_controls_tab_label",
+            .lab("admin_ops_controls_tab", "Controls")
+          ),
+          value = "controls",
+          empty_controls
+        ),
+        tabPanel(
+          title = tags$span(
+            id = "ynow_admin_ops_tab_label",
+            .lab("admin_ops_tab", "Audit log")
+          ),
+          value = "audit",
+          tags$div(
+            class = "ynow-admin-ops-audit-pane",
+            tags$h4(
+              tags$span(id = "ynow_admin_ops_title", .lab("admin_ops_title", "Audit log"))
+            ),
+            tags$p(
+              class = "text-muted",
+              style = "font-size:12.5px;",
+              tags$span(
+                id = "ynow_admin_ops_help",
+                .lab(
+                  "admin_ops_help",
+                  paste0(
+                    "Append-only record of system-admin operations (newest first). ",
+                    "Each entry is kept for at most 24 hours (server clock) and then expires automatically. ",
+                    "There is no clear or delete control."
+                  )
+                )
+              )
+            ),
+            uiOutput("ynow_admin_ops_audit_list")
+          )
+        )
       ))
     }
     status_ok <- .lab("pts_sysadmin_status_ok", "Active")
@@ -2284,7 +2372,8 @@ server <- function(input, output, session) {
     cur_hours <- suppressWarnings(as.integer(isolate(input$ynow_access_time_hours) %||% 0L)[1])
     if (!is.finite(cur_hours) || cur_hours < 0L) cur_hours <- 0L
     cur_item <- as.character(isolate(input$ynow_access_item) %||% "")[1]
-    tags$div(
+    controls_pane <- tags$div(
+      class = "ynow-sysadmin-controls-pane",
       tags$p(
         class = "text-muted",
         style = "font-size:12.5px; margin-top:4px;",
@@ -2496,6 +2585,110 @@ server <- function(input, output, session) {
           .lab("maint_clear_btn", "Clear maintenance"),
           class = "btn-default"
         )
+      )
+    )
+    audit_pane <- tags$div(
+      class = "ynow-admin-ops-audit-pane",
+      tags$h4(
+        tags$span(id = "ynow_admin_ops_title", .lab("admin_ops_title", "Audit log"))
+      ),
+      tags$p(
+        class = "text-muted",
+        style = "font-size:12.5px;",
+        tags$span(
+          id = "ynow_admin_ops_help",
+          .lab(
+            "admin_ops_help",
+            paste0(
+              "Append-only record of system-admin operations (newest first). ",
+              "Each entry is kept for at most 24 hours (server clock) and then expires automatically. ",
+              "There is no clear or delete control."
+            )
+          )
+        )
+      ),
+      uiOutput("ynow_admin_ops_audit_list")
+    )
+    tabsetPanel(
+      id = "ynow_pts_sysadmin_tabs",
+      type = "pills",
+      tabPanel(
+        title = tags$span(
+          id = "ynow_admin_ops_controls_tab_label",
+          .lab("admin_ops_controls_tab", "Controls")
+        ),
+        value = "controls",
+        controls_pane
+      ),
+      tabPanel(
+        title = tags$span(
+          id = "ynow_admin_ops_tab_label",
+          .lab("admin_ops_tab", "Audit log")
+        ),
+        value = "audit",
+        audit_pane
+      )
+    )
+  })
+
+  output$ynow_admin_ops_audit_list <- renderUI({
+    ynow_admin_ops_display_tick()
+    ynow_pts_sysadmin_tick()
+    loc <- tryCatch(
+      normalize_ui_locale(isolate(ui_locale())),
+      error = function(e) "zh-TW"
+    )
+    .lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
+    if (!isTRUE(isolate(ynow_pts_sysadmin_on()))) {
+      return(tags$p(
+        class = "text-muted",
+        .lab("admin_ops_empty", "No operations recorded in the last 24 hours.")
+      ))
+    }
+    if (!exists("ynow_admin_ops_list", mode = "function")) {
+      return(tags$p(
+        class = "text-warning",
+        .lab("admin_ops_unavailable", "Audit log store is unavailable.")
+      ))
+    }
+    df <- tryCatch(ynow_admin_ops_list(), error = function(e) NULL)
+    if (!is.data.frame(df) || nrow(df) < 1L) {
+      return(tags$p(
+        id = "ynow_admin_ops_empty",
+        class = "text-muted",
+        .lab("admin_ops_empty", "No operations recorded in the last 24 hours.")
+      ))
+    }
+    rows <- lapply(seq_len(nrow(df)), function(i) {
+      fmt <- if (exists("ynow_admin_ops_format_row", mode = "function")) {
+        ynow_admin_ops_format_row(df[i, , drop = FALSE], locale = loc)
+      } else {
+        list(
+          timestamp = as.character(df$created_at[[i]]),
+          actor = as.character(df$actor[[i]]),
+          action = as.character(df$action[[i]]),
+          detail = as.character(df$detail[[i]])
+        )
+      }
+      tags$tr(
+        tags$td(fmt$timestamp %||% "—"),
+        tags$td(fmt$actor %||% "—"),
+        tags$td(fmt$action %||% "—"),
+        tags$td(fmt$detail %||% "—")
+      )
+    })
+    tags$div(
+      style = "overflow-x:auto; max-height:55vh;",
+      tags$table(
+        class = "table table-condensed table-striped ynow-admin-ops-audit-table",
+        id = "ynow_admin_ops_audit_table",
+        tags$thead(tags$tr(
+          tags$th(.lab("admin_ops_col_time", "Time (UTC)")),
+          tags$th(.lab("admin_ops_col_actor", "Actor")),
+          tags$th(.lab("admin_ops_col_action", "Action")),
+          tags$th(.lab("admin_ops_col_detail", "Detail"))
+        )),
+        tags$tbody(rows)
       )
     )
   })
@@ -2845,6 +3038,17 @@ server <- function(input, output, session) {
       showNotification(msg_for(last_key), type = "message")
       ynow_access_display_tick(isolate(ynow_access_display_tick()) + 1L)
       .ynow_push_access_locks()
+      .ynow_admin_ops_log(
+        if (locked) "acl.apply" else "acl.remove",
+        paste0(
+          "item=", item,
+          "; scope=", scope,
+          "; effect=", effect,
+          "; unlock=", unlock_type,
+          "; users=", paste(uids, collapse = ","),
+          "; ok=", as.character(n_ok)
+        )
+      )
     } else if (n_ok > 0L && n_fail > 0L) {
       showNotification(
         sprintf(
@@ -2859,6 +3063,15 @@ server <- function(input, output, session) {
       )
       ynow_access_display_tick(isolate(ynow_access_display_tick()) + 1L)
       .ynow_push_access_locks()
+      .ynow_admin_ops_log(
+        if (locked) "acl.apply" else "acl.remove",
+        paste0(
+          "item=", item,
+          "; scope=", scope,
+          "; partial ok=", as.character(n_ok),
+          " fail=", as.character(n_fail)
+        )
+      )
     } else {
       showNotification(msg_for(last_key), type = "warning")
     }
@@ -3019,6 +3232,18 @@ server <- function(input, output, session) {
       showNotification(msg, type = "message")
       ynow_maint_display_tick(isolate(ynow_maint_display_tick()) + 1L)
       .ynow_push_maintenance()
+      .ynow_admin_ops_log(
+        if (isTRUE(clear)) "maintenance.clear" else "maintenance.set",
+        if (isTRUE(clear)) {
+          paste0("item=", item)
+        } else {
+          paste0(
+            "item=", item,
+            "; start=", as.character(input$ynow_maint_start %||% "")[1],
+            "; end=", as.character(input$ynow_maint_end %||% "")[1]
+          )
+        }
+      )
     } else {
       showNotification(msg, type = "warning")
     }
@@ -3067,6 +3292,15 @@ server <- function(input, output, session) {
           as.character(res$pyn %||% "—")
         ),
         type = "message"
+      )
+      .ynow_admin_ops_log(
+        "points.adjust",
+        paste0(
+          "user_id=", uid,
+          "; fyn_delta=", as.character(fd),
+          "; pyn_delta=", as.character(pd),
+          if (nzchar(note)) paste0("; note=", note) else ""
+        )
       )
       ynow_pts_sysadmin_tick(isolate(ynow_pts_sysadmin_tick()) + 1L)
       ynow_pts_panel_tick(isolate(ynow_pts_panel_tick()) + 1L)

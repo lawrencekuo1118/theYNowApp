@@ -11640,6 +11640,18 @@ ui <- dashboardPage(
             if (typeof window.ynowRefreshSelfViewChromeLocale === 'function') {
               try { window.ynowRefreshSelfViewChromeLocale(s); } catch (eSvLoc) {}
             }
+            var adminOpsTab = document.getElementById('ynow_admin_ops_tab_label');
+            if (adminOpsTab && s.admin_ops_tab) adminOpsTab.textContent = s.admin_ops_tab;
+            var adminOpsControlsTab = document.getElementById('ynow_admin_ops_controls_tab_label');
+            if (adminOpsControlsTab && s.admin_ops_controls_tab) {
+              adminOpsControlsTab.textContent = s.admin_ops_controls_tab;
+            }
+            var adminOpsTitle = document.getElementById('ynow_admin_ops_title');
+            if (adminOpsTitle && s.admin_ops_title) adminOpsTitle.textContent = s.admin_ops_title;
+            var adminOpsHelp = document.getElementById('ynow_admin_ops_help');
+            if (adminOpsHelp && s.admin_ops_help) adminOpsHelp.textContent = s.admin_ops_help;
+            var adminOpsEmpty = document.getElementById('ynow_admin_ops_empty');
+            if (adminOpsEmpty && s.admin_ops_empty) adminOpsEmpty.textContent = s.admin_ops_empty;
             var ptsColon = (payload && payload.locale === 'zh-TW') ? '：' : ':';
             var ptsHdrForLocale = document.getElementById('ynow-pts-header');
             var ptsSideForLocale = document.getElementById('ynow-pts-sidebar');
