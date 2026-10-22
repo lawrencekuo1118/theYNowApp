@@ -1089,7 +1089,37 @@ server <- function(input, output, session) {
     invisible(ids)
   }
 
+  #' Push active maintenance windows (all users). Separate from ACL / guest locks.
+  .ynow_push_maintenance <- function() {
+    if (!exists("ynow_maintenance_client_payload", mode = "function")) {
+      return(invisible(NULL))
+    }
+    loc <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "en")
+    payload <- tryCatch(
+      ynow_maintenance_client_payload(locale = loc),
+      error = function(e) {
+        list(
+          entries = list(), ids = list(),
+          server_now = NA_character_, next_end = NA_character_
+        )
+      }
+    )
+    session$sendCustomMessage("ynowMaintenance", payload)
+    invisible(payload)
+  }
+
   .ynow_access_deny_download <- function(item_id, file) {
+    if (exists("ynow_maintenance_is_active", mode = "function") &&
+        isTRUE(ynow_maintenance_is_active(item_id))) {
+      loc <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "en")
+      msg <- tryCatch(
+        ui_str("maint_denied_report", loc),
+        error = function(e) "This report is under maintenance."
+      )
+      tryCatch(showNotification(msg, type = "warning", duration = 6), error = function(e) NULL)
+      writeLines(msg, file, useBytes = TRUE)
+      return(TRUE)
+    }
     if (!exists("ynow_access_is_locked", mode = "function")) return(FALSE)
     uid <- .ynow_access_subject_id()
     # Global (__all__) applies even when not signed in; honor unlock conditions.
@@ -1233,12 +1263,43 @@ server <- function(input, output, session) {
     ticket
   }
 
+  ynow_maint_display_tick <- reactiveVal(0L)
+
   observe({
     tryCatch(ynow_auth$is_logged_in(), error = function(e) FALSE)
     tryCatch(ynow_auth$user(), error = function(e) NULL)
     ynow_pts_view_as()
     .ynow_push_access_locks()
+    .ynow_push_maintenance()
   })
+
+  # Auto-lift: recompute on server clock when the next maintenance window ends
+  # (no admin click). Cap poll so long-empty sessions stay light.
+  observe({
+    if (!exists("ynow_maintenance_next_end", mode = "function")) {
+      return(invisible(NULL))
+    }
+    now <- tryCatch(ynow_maintenance_now(), error = function(e) Sys.time())
+    nxt <- tryCatch(ynow_maintenance_next_end(now = now), error = function(e) NA)
+    delay_ms <- 60000L
+    if (inherits(nxt, "POSIXt") && length(nxt) >= 1L && !is.na(nxt[[1]])) {
+      secs <- as.numeric(difftime(nxt[[1]], now, units = "secs"))
+      if (is.finite(secs)) {
+        # Wake shortly after end; also poll at least every 60s while windows exist.
+        delay_ms <- as.integer(max(1000L, min(60000L, ceiling(secs * 1000) + 250L)))
+      }
+    }
+    invalidateLater(delay_ms, session)
+    .ynow_push_maintenance()
+    ynow_maint_display_tick(isolate(ynow_maint_display_tick()) + 1L)
+    invisible(NULL)
+  })
+
+  # Client asks for a recompute after a scheduled window end (backup to invalidateLater).
+  observeEvent(input$ynow_maint_refresh, {
+    .ynow_push_maintenance()
+    ynow_maint_display_tick(isolate(ynow_maint_display_tick()) + 1L)
+  }, ignoreInit = TRUE)
 
   #' Effective points user: view-as uuid when active, else signed-in account.
   .ynow_pts_effective_user <- function() {
@@ -2232,6 +2293,35 @@ server <- function(input, output, session) {
           .lab("access_apply_changes_btn", "Apply changes"),
           class = "btn-warning"
         )
+      ),
+      tags$hr(),
+      tags$h4(.lab("maint_title", "Maintenance")),
+      tags$p(
+        class = "text-muted",
+        style = "font-size:12.5px;",
+        .lab(
+          "maint_help",
+          paste0(
+            "Put a page, tab, or element into maintenance for all users during a start–end window. ",
+            "While active, content is unusable and the menu item cannot be clicked ",
+            "(unlike Item locks). When the end time is reached, access restores automatically."
+          )
+        )
+      ),
+      uiOutput("ynow_maint_status_now"),
+      uiOutput("ynow_maint_fields"),
+      tags$div(
+        style = "margin-top:8px; display:flex; flex-wrap:wrap; gap:8px; align-items:center;",
+        actionButton(
+          "ynow_maint_apply",
+          .lab("maint_apply_btn", "Set maintenance"),
+          class = "btn-warning"
+        ),
+        actionButton(
+          "ynow_maint_clear",
+          .lab("maint_clear_btn", "Clear maintenance"),
+          class = "btn-default"
+        )
       )
     )
   })
@@ -2601,6 +2691,167 @@ server <- function(input, output, session) {
   }
 
   observeEvent(input$ynow_access_apply_changes, .ynow_access_admin_apply_changes())
+
+  output$ynow_maint_status_now <- renderUI({
+    ynow_maint_display_tick()
+    loc <- tryCatch(
+      normalize_ui_locale(isolate(ui_locale())),
+      error = function(e) "zh-TW"
+    )
+    .lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
+    status_txt <- if (exists("ynow_maintenance_admin_status_text", mode = "function")) {
+      ynow_maintenance_admin_status_text(
+        locale = loc,
+        none_lab = .lab("maint_none", "No maintenance entries.")
+      )
+    } else {
+      .lab("maint_none", "No maintenance entries.")
+    }
+    tags$div(
+      id = "ynow_maint_status_now_txt",
+      style = "margin:8px 0 10px; font-size:12.5px;",
+      tags$b(.lab("maint_status_now", "Current maintenance")),
+      ": ",
+      tags$span(id = "ynow_maint_status_now_value", status_txt)
+    )
+  })
+
+  output$ynow_maint_fields <- renderUI({
+    ynow_maint_display_tick()
+    loc <- tryCatch(
+      normalize_ui_locale(isolate(ui_locale())),
+      error = function(e) "zh-TW"
+    )
+    .lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
+    cat_ids <- if (exists("ynow_maintenance_catalog", mode = "function")) {
+      as.character(ynow_maintenance_catalog()$id)
+    } else if (exists("ynow_access_catalog", mode = "function")) {
+      as.character(ynow_access_catalog()$id)
+    } else {
+      character()
+    }
+    choices <- if (exists("ynow_maintenance_item_choice_list", mode = "function")) {
+      ynow_maintenance_item_choice_list(cat_ids, locale = loc, group = TRUE)
+    } else if (exists("ynow_access_item_choice_list", mode = "function")) {
+      ynow_access_item_choice_list(cat_ids, locale = loc, group = TRUE)
+    } else {
+      character()
+    }
+    flat <- if (is.list(choices)) unlist(choices, use.names = TRUE) else choices
+    cur_item <- as.character(isolate(input$ynow_maint_item) %||% "")[1]
+    sel <- if (nzchar(cur_item) && cur_item %in% as.character(flat)) {
+      cur_item
+    } else if (length(flat)) {
+      as.character(flat[[1]])
+    } else {
+      NULL
+    }
+    now <- tryCatch(ynow_maintenance_now(), error = function(e) Sys.time())
+    default_start <- as.POSIXct(now, tz = "UTC")
+    default_end <- default_start + 3600
+    parse_t <- function(x, fallback) {
+      if (exists("ynow_maintenance_parse_time", mode = "function")) {
+        tt <- ynow_maintenance_parse_time(x)
+        if (inherits(tt, "POSIXt") && length(tt) >= 1L && !is.na(tt[[1]])) return(tt)
+      }
+      fallback
+    }
+    cur_start <- parse_t(isolate(input$ynow_maint_start), default_start)
+    cur_end <- parse_t(isolate(input$ynow_maint_end), default_end)
+    tagList(
+      if (!length(flat)) {
+        tags$p(
+          class = "text-muted",
+          style = "font-size:12.5px;",
+          .lab("maint_bad_item", "Choose an item from the catalog.")
+        )
+      } else {
+        selectInput(
+          "ynow_maint_item",
+          .lab("maint_item", "Item"),
+          choices = choices,
+          selected = sel
+        )
+      },
+      fluidRow(
+        column(
+          6,
+          textInput(
+            "ynow_maint_start",
+            .lab("maint_start", "Window start (UTC)"),
+            value = format(as.POSIXct(cur_start, tz = "UTC"), "%Y-%m-%d %H:%M", tz = "UTC"),
+            placeholder = "YYYY-MM-DD HH:MM"
+          )
+        ),
+        column(
+          6,
+          textInput(
+            "ynow_maint_end",
+            .lab("maint_end", "Window end (UTC)"),
+            value = format(as.POSIXct(cur_end, tz = "UTC"), "%Y-%m-%d %H:%M", tz = "UTC"),
+            placeholder = "YYYY-MM-DD HH:MM"
+          )
+        )
+      ),
+      tags$p(
+        class = "text-muted",
+        style = "font-size:12px; margin-top:0;",
+        .lab(
+          "maint_window_preview_help",
+          "Users see: Under maintenance / 維護中, then Expected: / 預計時間: start-end."
+        )
+      )
+    )
+  })
+
+  .ynow_maint_admin_apply <- function(clear = FALSE) {
+    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+    .lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
+    if (!isTRUE(ynow_pts_sysadmin_on())) {
+      showNotification(.lab("pts_admin_denied", "Only admins can add points."), type = "error")
+      return()
+    }
+    if (!exists("ynow_maintenance_set", mode = "function")) return()
+    item <- as.character(input$ynow_maint_item %||% "")[1]
+    if (!nzchar(item)) {
+      showNotification(.lab("maint_bad_item", "Choose an item from the catalog."), type = "warning")
+      return()
+    }
+    res <- if (isTRUE(clear)) {
+      ynow_maintenance_set(item, locked = FALSE)
+    } else {
+      ynow_maintenance_set(
+        item,
+        locked = TRUE,
+        window_start = input$ynow_maint_start,
+        window_end = input$ynow_maint_end
+      )
+    }
+    msg <- switch(
+      as.character(res$message_key %||% ""),
+      maint_ok_set = .lab("maint_ok_set", "Maintenance window set for all users."),
+      maint_ok_clear = .lab("maint_ok_clear", "Maintenance cleared."),
+      maint_bad_window = .lab(
+        "maint_bad_window",
+        "Set both start and end times for the maintenance window."
+      ),
+      maint_bad_window_order = .lab(
+        "maint_bad_window_order",
+        "End time must be after start time."
+      ),
+      .lab("maint_bad_item", "Choose an item from the catalog.")
+    )
+    if (isTRUE(res$ok)) {
+      showNotification(msg, type = "message")
+      ynow_maint_display_tick(isolate(ynow_maint_display_tick()) + 1L)
+      .ynow_push_maintenance()
+    } else {
+      showNotification(msg, type = "warning")
+    }
+  }
+
+  observeEvent(input$ynow_maint_apply, .ynow_maint_admin_apply(FALSE))
+  observeEvent(input$ynow_maint_clear, .ynow_maint_admin_apply(TRUE))
 
   observeEvent(input$ynow_pts_sysadmin_apply, {
     loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
