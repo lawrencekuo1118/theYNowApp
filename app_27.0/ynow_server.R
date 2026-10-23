@@ -468,8 +468,35 @@ server <- function(input, output, session) {
     invisible(TRUE)
   }
 
+  # Search button / submit only — never switch market on ticker typing alone.
   observeEvent(input$search, {
     req(input$sc)
+    raw <- trimws(as.character(input$sc %||% "")[1])
+    mode <- tryCatch(
+      normalize_market_mode(isolate(market_mode())),
+      error = function(e) "US"
+    )
+    # US mode + clear 4-digit TW code (e.g. 2330) → same path as toggling TW,
+    # then search via pending_recent_fetch so the user is not stuck in US mode.
+    if (identical(mode, "US") &&
+        exists("looks_like_tw_stock_code", mode = "function") &&
+        isTRUE(looks_like_tw_stock_code(raw))) {
+      pend_sym <- toupper(gsub(
+        "\\s+", "",
+        sub("\\s+[—\\-–].*$", "", raw)
+      ))
+      pending_recent_fetch(list(
+        symbol = pend_sym,
+        goto_tab = NULL
+      ))
+      tryCatch(
+        shinyjs::runjs(
+          "if (window.Shiny && Shiny.setInputValue) { Shiny.setInputValue('market_mode_pick', 'TW', {priority: 'event'}); }"
+        ),
+        error = function(e) NULL
+      )
+      return(invisible(TRUE))
+    }
     .ynow_fire_ticker_search(input$sc, goto_tab = NULL)
   })
 
@@ -4628,13 +4655,26 @@ server <- function(input, output, session) {
       type = "message", duration = 8
     )
 
-    # Recent Search chip requested a cross-market reload — fire after clear settles.
+    # Cross-market pending (Recent Search chip or US→TW 4-digit auto-switch)
+    # — fire after clear settles.
     pend <- isolate(pending_recent_fetch())
-    pend <- trimws(as.character(pend %||% "")[1])
-    if (nzchar(pend)) {
-      pending_recent_fetch(NULL)
+    pending_recent_fetch(NULL)
+    pend_sym <- ""
+    pend_goto <- "dashboard"
+    if (is.list(pend)) {
+      pend_sym <- trimws(as.character(pend$symbol %||% "")[1])
+      gt <- pend$goto_tab
+      if (!is.null(gt) && nzchar(as.character(gt)[1])) {
+        pend_goto <- as.character(gt)[1]
+      } else {
+        pend_goto <- NULL
+      }
+    } else {
+      pend_sym <- trimws(as.character(pend %||% "")[1])
+    }
+    if (nzchar(pend_sym)) {
       shinyjs::delay(180L, {
-        .ynow_fire_ticker_search(pend, goto_tab = "dashboard")
+        .ynow_fire_ticker_search(pend_sym, goto_tab = pend_goto)
       })
     }
   }, ignoreInit = TRUE)

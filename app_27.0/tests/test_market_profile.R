@@ -25,6 +25,11 @@ if (!file.exists(file.path(root, "market_profile.R"))) {
 source(file.path(root, "market_profile.R"), local = TRUE, encoding = "UTF-8")
 source(file.path(root, "ui_locale.R"), local = TRUE, encoding = "UTF-8")
 
+check("looks_like 2330", isTRUE(looks_like_tw_stock_code("2330")))
+check("looks_like 0050", isTRUE(looks_like_tw_stock_code("0050")))
+check("looks_like 2330.TW", isTRUE(looks_like_tw_stock_code("2330.TW")))
+check("looks_like rejects AAPL", isFALSE(looks_like_tw_stock_code("AAPL")))
+check("looks_like rejects 5-digit", isFALSE(looks_like_tw_stock_code("12345")))
 check("US normalize AAPL", identical(normalize_ticker_for_market("aapl", "US"), "AAPL"))
 check("TW normalize 2330", identical(normalize_ticker_for_market("2330", "TW"), "2330.TW"))
 check("TW keep 2330.TW", identical(normalize_ticker_for_market("2330.TW", "TW"), "2330.TW"))
