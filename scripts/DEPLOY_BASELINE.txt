@@ -7,5 +7,5 @@ commit=d0edc81d81b7620ed2fcdfeba2f8e149a00429f4
 short=d0edc81d
 message=chore: bump display version to v27.01
 captured_at=2026-10-23T12:57:48Z
-display_version=v27.01
+display_version=v27.02
 note=Canonical live line is app_27.0. Bundle 12729945: Ownership Structure deepen free-float top-10 + 法人 drill-down (#444); co-ship Corporate AML Signals (#446).
