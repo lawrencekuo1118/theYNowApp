@@ -7,5 +7,5 @@ commit=c18252bbb62682c687c12fce863d5c0ce90957f2
 short=c18252bb
 message=chore: bump display version to v26.59
 captured_at=2026-10-23T06:35:06Z
-display_version=v26.59
+display_version=v26.60
 note=Canonical live line is app_26.0. Bundle 12728797: solid sidebar chip PCB strokes (#429).
