@@ -181,6 +181,22 @@ resolve_tw_bare_code <- function(code) {
   tks[[idx[[1]]]]
 }
 
+#' Detect clear Taiwan listing codes (TWSE/TPEx-style 4-digit).
+#'
+#' Matches bare `2330` / `0050` (leading zeros OK) or Yahoo-suffixed
+#' `2330.TW` / `3105.TWO`. Letter-suffix and 5–6 digit codes are out of
+#' scope — prefer unambiguous 4-digit TW codes for US→TW auto-switch.
+#' @param sym User ticker / stock-code input
+#' @return TRUE when the trimmed input is a clear TW-style code
+looks_like_tw_stock_code <- function(sym) {
+  raw <- trimws(as.character(sym %||% "")[1])
+  if (!nzchar(raw) || identical(toupper(raw), "NA")) return(FALSE)
+  # strip common labels "2330.TW — 台積電" / "2330 — 台積電"
+  raw <- sub("\\s+[—\\-–].*$", "", raw)
+  raw <- toupper(gsub("\\s+", "", trimws(raw)))
+  grepl("^[0-9]{4}(\\.(TW|TWO))?$", raw)
+}
+
 #' 依市場正規化使用者輸入代號
 #' TW：使用者只需輸入純數字（如 2330）；自動補 .TW。
 #' 優先查宇宙：上市→.TW；僅上櫃／興櫃→.TWO。已含 .TW／.TWO 會去空白並正規化大小寫。
