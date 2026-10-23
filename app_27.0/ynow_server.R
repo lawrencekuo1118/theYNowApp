@@ -1772,7 +1772,7 @@ server <- function(input, output, session) {
     invisible(on)
   }
 
-  .ynow_self_view_apply <- function(mode) {
+  .ynow_self_view_apply <- function(mode, notify = TRUE, goto_home = TRUE) {
     mode <- as.character(mode %||% "")[1]
     if (!mode %in% c("guest", "signed_in", "omniscient")) {
       return(invisible(FALSE))
@@ -1810,14 +1810,18 @@ server <- function(input, output, session) {
       omniscient = "Omniscient mode applied — all locks and hides lifted. Title is warning red.",
       "Self view applied."
     )
-    showNotification(.lab(ok_key, ok_fb), type = "message", duration = 4)
+    if (isTRUE(notify)) {
+      showNotification(.lab(ok_key, ok_fb), type = "message", duration = 4)
+    }
     .ynow_admin_ops_log("self_view.apply", paste0("mode=", mode))
-    tryCatch({
-      if (exists("updateTabItems", mode = "function")) {
-        updateTabItems(session, "sidebar_tabs", "home")
-      }
-      session$sendCustomMessage("ynowGotoTab", list(tab = "home"))
-    }, error = function(e) NULL)
+    if (isTRUE(goto_home)) {
+      tryCatch({
+        if (exists("updateTabItems", mode = "function")) {
+          updateTabItems(session, "sidebar_tabs", "home")
+        }
+        session$sendCustomMessage("ynowGotoTab", list(tab = "home"))
+      }, error = function(e) NULL)
+    }
     ynow_pts_sysadmin_tick(isolate(ynow_pts_sysadmin_tick()) + 1L)
     # Refresh Account / Settings / Points panels for the new self-view subject.
     ynow_pts_panel_tick(isolate(ynow_pts_panel_tick()) + 1L)
@@ -2341,8 +2345,10 @@ server <- function(input, output, session) {
     ynow_pts_sysadmin_actor(actor_name)
     ynow_pts_sysadmin_on(TRUE)
     .ynow_sysadmin_push_mode()
+    # Default self-view after unlock: Signed-in user mode (not guest / not omniscient).
+    .ynow_self_view_apply("signed_in", notify = FALSE, goto_home = FALSE)
     tryCatch(.ynow_pts_push_banner(), error = function(e) NULL)
-    .ynow_admin_ops_log("sysadmin.enter", paste0("actor=", actor_name))
+    .ynow_admin_ops_log("sysadmin.enter", paste0("actor=", actor_name, "; default_self_view=signed_in"))
     ynow_pts_sysadmin_tick(isolate(ynow_pts_sysadmin_tick()) + 1L)
     showNotification(
       .lab("pts_sysadmin_login_ok", "System admin unlocked."),
@@ -2680,7 +2686,6 @@ server <- function(input, output, session) {
     if (!is.finite(cur_free) || cur_free < 0L) cur_free <- 0L
     cur_hours <- suppressWarnings(as.integer(isolate(input$ynow_access_time_hours) %||% 0L)[1])
     if (!is.finite(cur_hours) || cur_hours < 0L) cur_hours <- 0L
-    cur_item <- as.character(isolate(input$ynow_access_item) %||% "")[1]
     controls_pane <- tags$div(
       class = "ynow-sysadmin-controls-pane",
       tags$p(
@@ -2694,12 +2699,19 @@ server <- function(input, output, session) {
           )
         )
       ),
-      tags$h4(.lab("pts_sysadmin_users", "Users (de-identified)")),
-      textInput(
-        "ynow_pts_sysadmin_user_search",
-        .lab("pts_sysadmin_user_search", "Search users"),
-        value = "",
-        placeholder = .lab("pts_sysadmin_user_search_ph", "Filter by user id…")
+      tags$div(
+        class = "ynow-sysadmin-users-title-row",
+        style = "display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin:8px 0 6px;",
+        tags$h4(
+          style = "margin:0;",
+          .lab("pts_sysadmin_users", "Users (de-identified)")
+        ),
+        tags$button(
+          id = "ynow_pts_sysadmin_user_search_btn",
+          type = "button",
+          class = "btn btn-default btn-sm",
+          .lab("pts_sysadmin_user_search", "Search users")
+        )
       ),
       tags$div(
         style = "overflow-x:auto; max-height:40vh; margin-bottom:12px;",
@@ -2707,7 +2719,22 @@ server <- function(input, output, session) {
           class = "table table-condensed table-striped",
           id = "ynow_pts_sysadmin_users_table",
           tags$thead(tags$tr(
-            tags$th(.lab("pts_sysadmin_col_id", "User id")),
+            tags$th(
+              style = "min-width:9em; vertical-align:bottom;",
+              tags$div(
+                style = "font-weight:bold; margin-bottom:4px;",
+                .lab("pts_sysadmin_col_id", "User id")
+              ),
+              tags$input(
+                id = "ynow_pts_sysadmin_user_search",
+                type = "search",
+                class = "form-control input-sm",
+                value = "",
+                placeholder = .lab("pts_sysadmin_user_search_ph", "Filter by user id…"),
+                `aria-label` = .lab("pts_sysadmin_col_id", "User id"),
+                autocomplete = "off"
+              )
+            ),
             tags$th(.lab("pts_sysadmin_col_fyn", "FYN")),
             tags$th(.lab("pts_sysadmin_col_pyn", "PYN")),
             tags$th(.lab("pts_sysadmin_col_role", "Role")),
@@ -2718,11 +2745,7 @@ server <- function(input, output, session) {
             lapply(seq_len(nrow(df)), function(i) {
               tags$tr(
                 `data-ynow-uid` = as.character(df$user_id[[i]]),
-                `data-ynow-search` = tolower(paste(
-                  as.character(df$public_id[[i]]),
-                  as.character(df$role[[i]] %||% "user"),
-                  if (isTRUE(df$disabled[[i]])) "disabled" else "active"
-                )),
+                `data-ynow-search` = tolower(as.character(df$public_id[[i]])),
                 tags$td(tags$code(as.character(df$public_id[[i]]))),
                 tags$td(as.character(df$fyn[[i]])),
                 tags$td(as.character(df$pyn[[i]])),
@@ -2740,12 +2763,18 @@ server <- function(input, output, session) {
         "  var q=((inp&&inp.value)||'').toLowerCase().trim();",
         "  var rows=document.querySelectorAll('#ynow_pts_sysadmin_users_tbody tr');",
         "  rows.forEach(function(tr){",
-        "    var hay=(tr.getAttribute('data-ynow-search')||tr.textContent||'').toLowerCase();",
+        "    var hay=(tr.getAttribute('data-ynow-search')||'').toLowerCase();",
         "    tr.style.display=(!q||hay.indexOf(q)>=0)?'':'none';",
         "  });",
         "}",
         "var inp=document.getElementById('ynow_pts_sysadmin_user_search');",
         "if(inp&&!inp.__ynowBound){inp.__ynowBound=1;inp.addEventListener('input',ynowFilterSysadminUsers);}",
+        "var btn=document.getElementById('ynow_pts_sysadmin_user_search_btn');",
+        "if(btn&&!btn.__ynowBound){btn.__ynowBound=1;btn.addEventListener('click',function(e){",
+        "  e.preventDefault();",
+        "  var target=document.getElementById('ynow_pts_sysadmin_user_search');",
+        "  if(target){target.focus(); if(target.select) target.select();}",
+        "});}",
         "ynowFilterSysadminUsers();",
         "})();"
       , collapse = "\n"))),
@@ -3094,7 +3123,8 @@ server <- function(input, output, session) {
     if (!is.finite(cur_free) || cur_free < 0L) cur_free <- 0L
     cur_hours <- suppressWarnings(as.integer(isolate(input$ynow_access_time_hours) %||% 0L)[1])
     if (!is.finite(cur_hours) || cur_hours < 0L) cur_hours <- 0L
-    cur_item <- as.character(isolate(input$ynow_access_item) %||% "")[1]
+    cur_items <- as.character(isolate(input$ynow_access_item) %||% character())
+    cur_items <- unique(cur_items[nzchar(cur_items)])
 
     if (identical(action, "remove")) {
       rem_ids <- if (exists("ynow_access_restricted_ids_for_scope", mode = "function")) {
@@ -3108,26 +3138,32 @@ server <- function(input, output, session) {
         character()
       }
       rem_flat <- if (is.list(rem_choices)) unlist(rem_choices, use.names = TRUE) else rem_choices
-      rem_sel <- if (nzchar(cur_item) && cur_item %in% as.character(rem_flat)) {
-        cur_item
-      } else if (length(rem_flat)) {
-        as.character(rem_flat[[1]])
-      } else {
-        NULL
+      rem_flat_chr <- as.character(rem_flat)
+      rem_sel <- cur_items[cur_items %in% rem_flat_chr]
+      if (!length(rem_sel) && length(rem_flat_chr)) {
+        rem_sel <- rem_flat_chr[[1]]
       }
       return(tagList(
-        if (!length(rem_flat)) {
+        if (!length(rem_flat_chr)) {
           tags$p(
             class = "text-muted",
             style = "font-size:12.5px;",
             .lab("access_none_remove", "No restricted items for this apply target.")
           )
         } else {
-          selectInput(
+          selectizeInput(
             "ynow_access_item",
             .lab("access_remove_item", "Items to unlock"),
             choices = rem_choices,
-            selected = rem_sel
+            selected = rem_sel,
+            multiple = TRUE,
+            options = list(
+              plugins = list("remove_button"),
+              placeholder = .lab(
+                "access_remove_item_ph",
+                "Search and select one or more items…"
+              )
+            )
           )
         }
       ))
@@ -3144,12 +3180,10 @@ server <- function(input, output, session) {
       character()
     }
     apply_flat <- if (is.list(apply_choices)) unlist(apply_choices, use.names = TRUE) else apply_choices
-    apply_sel <- if (nzchar(cur_item) && cur_item %in% as.character(apply_flat)) {
-      cur_item
-    } else if (length(apply_flat)) {
-      as.character(apply_flat[[1]])
-    } else {
-      NULL
+    apply_flat_chr <- as.character(apply_flat)
+    apply_sel <- cur_items[cur_items %in% apply_flat_chr]
+    if (!length(apply_sel) && length(apply_flat_chr)) {
+      apply_sel <- apply_flat_chr[[1]]
     }
     restricted_txt <- if (exists("ynow_access_admin_status_text", mode = "function")) {
       ynow_access_admin_status_text(
@@ -3175,18 +3209,26 @@ server <- function(input, output, session) {
         selected = cur_effect,
         inline = TRUE
       ),
-      if (!length(apply_flat)) {
+      if (!length(apply_flat_chr)) {
         tags$p(
           class = "text-muted",
           style = "font-size:12.5px;",
           .lab("access_none_apply", "Every catalog item is already restricted for this apply target.")
         )
       } else {
-        selectInput(
+        selectizeInput(
           "ynow_access_item",
           .lab("access_apply_item", "Items to restrict"),
           choices = apply_choices,
-          selected = apply_sel
+          selected = apply_sel,
+          multiple = TRUE,
+          options = list(
+            plugins = list("remove_button"),
+            placeholder = .lab(
+              "access_apply_item_ph",
+              "Search and select one or more items…"
+            )
+          )
         )
       },
       tags$p(
@@ -3274,8 +3316,9 @@ server <- function(input, output, session) {
       )
       return()
     }
-    item <- as.character(input$ynow_access_item %||% "")[1]
-    if (!nzchar(item)) {
+    items <- as.character(input$ynow_access_item %||% character())
+    items <- unique(items[nzchar(items)])
+    if (!length(items)) {
       showNotification(
         .lab(
           if (locked) "access_bad_item" else "access_none_remove",
@@ -3307,20 +3350,23 @@ server <- function(input, output, session) {
     n_ok <- 0L
     n_fail <- 0L
     last_key <- "access_bad_item"
-    for (uid in uids) {
-      res <- ynow_access_set(
-        uid,
-        item,
-        locked = locked,
-        effect = effect,
-        unlock_type = unlock_type,
-        points_cost = if (identical(unlock_type, "points")) points_cost else NA_integer_,
-        free_count = free_arg,
-        time_limit_hours = hours_arg
-      )
-      last_key <- as.character(res$message_key %||% last_key)
-      if (isTRUE(res$ok)) n_ok <- n_ok + 1L else n_fail <- n_fail + 1L
+    for (item in items) {
+      for (uid in uids) {
+        res <- ynow_access_set(
+          uid,
+          item,
+          locked = locked,
+          effect = effect,
+          unlock_type = unlock_type,
+          points_cost = if (identical(unlock_type, "points")) points_cost else NA_integer_,
+          free_count = free_arg,
+          time_limit_hours = hours_arg
+        )
+        last_key <- as.character(res$message_key %||% last_key)
+        if (isTRUE(res$ok)) n_ok <- n_ok + 1L else n_fail <- n_fail + 1L
+      }
     }
+    items_csv <- paste(items, collapse = ",")
     msg_for <- function(key) {
       switch(
         as.character(key %||% ""),
@@ -3350,7 +3396,7 @@ server <- function(input, output, session) {
       .ynow_admin_ops_log(
         if (locked) "acl.apply" else "acl.remove",
         paste0(
-          "item=", item,
+          "item=", items_csv,
           "; scope=", scope,
           "; effect=", effect,
           "; unlock=", unlock_type,
@@ -3375,7 +3421,7 @@ server <- function(input, output, session) {
       .ynow_admin_ops_log(
         if (locked) "acl.apply" else "acl.remove",
         paste0(
-          "item=", item,
+          "item=", items_csv,
           "; scope=", scope,
           "; partial ok=", as.character(n_ok),
           " fail=", as.character(n_fail)

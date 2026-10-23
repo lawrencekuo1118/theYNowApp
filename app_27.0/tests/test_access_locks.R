@@ -273,6 +273,29 @@ check("server keeps user list table with search", {
     grepl("selectizeInput", srv, fixed = TRUE) &&
     grepl("ynow_access_users", srv, fixed = TRUE)
 })
+check("Search users sits on Users title row; User id field is the filter", {
+  grepl("ynow-sysadmin-users-title-row", srv, fixed = TRUE) &&
+    grepl("ynow_pts_sysadmin_user_search_btn", srv, fixed = TRUE) &&
+    grepl("pts_sysadmin_users", srv, fixed = TRUE) &&
+    grepl("pts_sysadmin_col_id", srv, fixed = TRUE) &&
+    grepl('id = "ynow_pts_sysadmin_user_search"', srv, fixed = TRUE) &&
+    grepl('type = "search"', srv, fixed = TRUE) &&
+    # No dedicated textInput search row under the title.
+    !grepl('textInput(\n        "ynow_pts_sysadmin_user_search"', srv, fixed = TRUE) &&
+    !grepl('textInput("ynow_pts_sysadmin_user_search"', srv, fixed = TRUE) &&
+    grepl("data-ynow-search", srv, fixed = TRUE) &&
+    grepl("ynowFilterSysadminUsers", srv, fixed = TRUE)
+})
+check("Items to restrict is multi-select selectize", {
+  grepl("access_apply_item", srv, fixed = TRUE) &&
+    grepl('"ynow_access_item"', srv, fixed = TRUE) &&
+    grepl("selectizeInput", srv, fixed = TRUE) &&
+    grepl("multiple = TRUE", srv, fixed = TRUE) &&
+    grepl("access_apply_item_ph", srv, fixed = TRUE) &&
+    grepl("for (item in items)", srv, fixed = TRUE) &&
+    grepl('access_apply_item_ph = "Search and select one or more items', loc, fixed = TRUE) &&
+    grepl('access_apply_item_ph = "搜尋並選取一個或多個項目', loc, fixed = TRUE)
+})
 check("locale en apply changes", grepl("access_apply_changes_btn = \"Apply changes\"", loc, fixed = TRUE))
 check("locale zh action remove", grepl("access_action_remove = \"解除限制\"", loc, fixed = TRUE))
 check("locale scope all en+zh", {
