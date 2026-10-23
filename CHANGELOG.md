@@ -1,3 +1,12 @@
+## [v27.03] — 2026-10-23
+
+### Changed
+- System admin button chrome (#447): every **套用變更** / Apply changes control uses red background + white text; **全知模式** / Omniscient mode matches **訪客模式** / Guest mode background with warning-red text. Mode behavior unchanged.
+
+### Notes
+- en-US: Shared `.ynow-sysadmin-btn-apply` / `.ynow-sysadmin-btn-omniscient` classes (no purple/glow redesign).
+- zh-TW: 系統管理「套用變更」改紅底白字；「全知模式」與「訪客模式」同底色、文字為警示紅；訪客／已登入／全知行為不變。
+
 ## [v27.02] — 2026-10-23
 
 ### Changed
