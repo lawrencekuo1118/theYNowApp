@@ -127,6 +127,11 @@ check("legacy row without latched reads unlatched", !isTRUE(legacy_read$latched[
 wrap <- ynow_alertable(tags$span("x"), metric = "last_price", ticker = "ASML", value = 10, ready = TRUE)
 check("alertable ready attr", identical(wrap$attribs$`data-ynow-alert-ready`, "1"))
 check("alertable has bell mark", grepl("ynow-alert-bell", as.character(wrap), fixed = TRUE))
+# Bell after wrapped UI so it paints above .small-box / Macro KPI chrome
+wrap_html <- as.character(wrap)
+bell_pos <- regexpr("ynow-alert-bell", wrap_html, fixed = TRUE)[1]
+body_pos <- regexpr(">x<", wrap_html, fixed = TRUE)[1]
+check("alertable bell after content", bell_pos > 0L && body_pos > 0L && bell_pos > body_pos)
 blocked_wrap <- ynow_alertable(tags$span("x"), metric = "last_price", ticker = "ASML", value = NA, ready = FALSE)
 check("alertable blocked when not ready", identical(blocked_wrap$attribs$`data-ynow-alert-ready`, "0"))
 

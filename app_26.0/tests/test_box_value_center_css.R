@@ -51,7 +51,7 @@ check("kpi-grid alertable bell inset", grepl(".ynow-kpi-grid .ynow-alertable .yn
 check("kpi-grid alertable col safety", grepl(".ynow-kpi-grid .ynow-alertable > [class*='col-']", ui, fixed = TRUE))
 check("focus gold pulse animation", grepl("@keyframes ynow-focus-gold-pulse", ui, fixed = TRUE) &&
         grepl("border: 3px solid var(--ynow-gold", ui, fixed = TRUE))
-# Value-alert marks: colorless translucent (no ready/hover blue tint)
+# Value-alert marks: colorless translucent on light cards (no ready/hover blue tint)
 check("alert bell colorless translucent", {
   grepl("color: rgba(0, 0, 0, 0.35)", ui, fixed = TRUE) &&
     !grepl("ynow-alertable--ready .ynow-alert-bell {\n          color: rgba(12, 84, 132", ui, fixed = TRUE) &&
@@ -60,6 +60,17 @@ check("alert bell colorless translucent", {
       ui,
       fixed = TRUE
     )
+})
+# Macro dark KPI ink: light translucent bells (black-on-#0b1220 was invisible)
+check("macro alert bell light on dark KPI", {
+  grepl(".ynow-macro-kpi-row .ynow-alert-bell", ui, fixed = TRUE) &&
+    grepl("rgba(255, 255, 255, 0.55)", ui, fixed = TRUE) &&
+    grepl(".ynow-alertable:has(> .ynow-macro-kpi) .ynow-alert-bell", ui, fixed = TRUE)
+})
+# Model Dashboard valueBox / infoBox: bell above AdminLTE icon chrome
+check("valueBox alert bell z-index above box", {
+  grepl(".ynow-alertable:has(> .small-box) .ynow-alert-bell", ui, fixed = TRUE) &&
+    grepl(".ynow-alertable:has(> .info-box) .ynow-alert-bell", ui, fixed = TRUE)
 })
 if (fail > 0L) quit(status = 1L)
 cat("ALL PASS\n")

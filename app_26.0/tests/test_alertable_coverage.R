@@ -59,6 +59,15 @@ check("Macro Rf alertable", grepl('metric = "macro_rf_pct"', macro, fixed = TRUE
 check("Macro YNOW/TYNOW alertable", grepl('metric = "macro_ynow_level"', macro, fixed = TRUE))
 check("Macro HTCDI alertable", grepl('metric = "macro_htcdi"', htcdi, fixed = TRUE) &&
         grepl('ticker = "HTCDI"', htcdi, fixed = TRUE))
+# Model Dashboard (get_started): Summary β + Hamada βᵤ stay alertable
+check("Model Dashboard Summary beta alertable", grepl('metric = "summary_beta"', srv, fixed = TRUE) &&
+        grepl("vbx_beta_summary", srv, fixed = TRUE))
+check("Model Dashboard Hamada beta_u alertable", grepl('metric = "hamada_beta_u"', srv, fixed = TRUE) &&
+        grepl("vbx_beta_unlever_firm", srv, fixed = TRUE) &&
+        grepl('uiOutput("vbx_beta_unlever_firm"', ui, fixed = TRUE))
+# Macro / MD bell contrast + paint order (see ynow_ui.R / price_alert.R)
+check("Macro dark KPI light bell CSS", grepl(".ynow-macro-kpi-row .ynow-alert-bell", ui, fixed = TRUE) &&
+        grepl("rgba(255, 255, 255, 0.55)", ui, fixed = TRUE))
 
 if (fail > 0L) quit(status = 1L)
 cat("ALL PASS\n")

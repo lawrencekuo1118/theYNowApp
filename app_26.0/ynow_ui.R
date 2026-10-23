@@ -15386,12 +15386,12 @@ ui <- dashboardPage(
           display: block;
           height: 100%;
         }
-        /* 到值通知標示：鈴鐺一律無色半透明（就緒／未就緒／hover 皆同） */
+        /* 到值通知標示：預設無色半透明黑（淺底）；深色 Macro KPI 另用淺色鈴鐺 */
         .ynow-alert-bell {
           position: absolute;
           top: 6px;
           right: 8px;
-          z-index: 3;
+          z-index: 6;
           width: 16px;
           height: 16px;
           display: inline-flex;
@@ -15406,11 +15406,37 @@ ui <- dashboardPage(
         .ynow-alertable--blocked .ynow-alert-bell {
           color: rgba(0, 0, 0, 0.35);
         }
+        /* Macro dark ink cards: black bells were invisible on #0b1220 */
+        .ynow-macro-kpi-row .ynow-alert-bell,
+        .ynow-alertable:has(> .ynow-macro-kpi) .ynow-alert-bell {
+          color: rgba(255, 255, 255, 0.55);
+        }
+        .ynow-macro-kpi-row .ynow-alertable--ready .ynow-alert-bell,
+        .ynow-macro-kpi-row .ynow-alertable--ready:hover .ynow-alert-bell,
+        .ynow-macro-kpi-row .ynow-alertable--blocked .ynow-alert-bell,
+        .ynow-alertable:has(> .ynow-macro-kpi).ynow-alertable--ready .ynow-alert-bell,
+        .ynow-alertable:has(> .ynow-macro-kpi).ynow-alertable--blocked .ynow-alert-bell {
+          color: rgba(255, 255, 255, 0.55);
+        }
+        /* Model Dashboard / valueBox: keep bell above AdminLTE icon chrome */
+        .ynow-alertable:has(> .small-box) .ynow-alert-bell,
+        .ynow-alertable:has(> .info-box) .ynow-alert-bell {
+          z-index: 8;
+          top: 8px;
+          right: 10px;
+        }
         .ynow-alertable--ready {
+          cursor: context-menu;
+        }
+        /* Macro index cards stay left-clickable; still advertise 到值通知 via context-menu */
+        .ynow-alertable--ready > .ynow-macro-kpi--clickable {
           cursor: context-menu;
         }
         .ynow-alertable--ready:hover {
           box-shadow: 0 0 0 1px rgba(12, 84, 132, 0.25);
+        }
+        .ynow-macro-kpi-row .ynow-alertable--ready:hover {
+          box-shadow: 0 0 0 1px rgba(201, 162, 39, 0.55);
         }
         .ynow-alertable--blocked {
           cursor: not-allowed;
