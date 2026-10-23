@@ -36,7 +36,7 @@ Do not rely on path filters that skip the live app tree. Docs/rules-only changes
 | OneDrive mirror | `/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp` | 同步鏡像（勿在此跑 `git status`／`git push`） |
 
 - **每個整階版本一個資料夾**（目前活動線：`app_27.0/`；顯示版號於 major cut 後為 `v27.00`，其後 deploy 以 +0.01 補丁）
-- 歷史版本：本機空間命名封存 `app 3.0` … `app 7.0`；較新的 `app_8.0`…`app_24.0` 已自 git 移除（見 Git history／[GitHub Releases](https://github.com/lawrencekuo1118/theYNowApp/releases)）
+- 歷史版本：空間命名封存 `app 3.0` … `app 7.0` 與較新的 `app_8.0`…`app_24.0` 皆已自 git 移除（見 Git history／[GitHub Releases](https://github.com/lawrencekuo1118/theYNowApp/releases)）
 - 顯示版號摘要：[`CHANGELOG.md`](CHANGELOG.md)；方法論／歷史細節：[`app_27.0/README.md`](app_27.0/README.md)
 
 ## 本機開發（建議）
@@ -120,4 +120,4 @@ Deploy 後請更新 `scripts/DEPLOY_BASELINE.txt`（bundleId、commit、`display
 
 ## Older versions
 
-Historical `app_N.0` trees were removed from git (gate C-DEAD-05); recover from git history or [GitHub Releases](https://github.com/lawrencekuo1118/theYNowApp/releases). Local space-named folders `app 3.0` … `app 7.0` may still exist on disk only.
+Historical `app_N.0` trees (including space-named `app 3.0` … `app 7.0`) were removed from git (C-DEAD-05 + follow-up); recover from git history or [GitHub Releases](https://github.com/lawrencekuo1118/theYNowApp/releases).
