@@ -268,6 +268,7 @@ check(
   grepl("input.sidebar_tabs != 'macro_market'", ui_src, fixed = TRUE) &&
     grepl("input.sidebar_tabs != 'bluechip'", ui_src, fixed = TRUE) &&
     grepl("input.sidebar_tabs != 'about'", ui_src, fixed = TRUE) &&
+    grepl("input.sidebar_tabs != 'snapshot'", ui_src, fixed = TRUE) &&
     grepl("input.sidebar_tabs != 'account_admin'", ui_src, fixed = TRUE) &&
     grepl("input.sidebar_tabs != 'account_points'", ui_src, fixed = TRUE) &&
     grepl("ynow-stock-chrome", ui_src, fixed = TRUE)

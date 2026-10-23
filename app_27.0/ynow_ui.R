@@ -19733,16 +19733,18 @@ ui <- dashboardPage(
       )
     ),
     # Ticker search + Yahoo industry chrome: hide on Home, About, Macro, Blue Chip,
-    # Testing, and account maintenance (gate / 會員管理 / points). Guest Sign-in-required
-    # surfaces (Lab / Checklist / Value Alerts) hide the same chrome via CSS while gated.
-    # (Business Breakdown shares global Ticker / Stock Code chrome;
-    # Blue Chip uses its own universe Search, not the global ticker chrome).
+    # Snapshot, Testing, and account maintenance (gate / 會員管理 / points). Guest
+    # Sign-in-required surfaces (Lab / Checklist / Value Alerts) hide the same chrome
+    # via CSS while gated. Snapshot is parameter audit / restore only — no Ticker /
+    # Stock Code or Yahoo industry titles. (Business Breakdown shares global Ticker /
+    # Stock Code chrome; Blue Chip uses its own universe Search, not this chrome).
     conditionalPanel(
       condition = paste(
         "input.sidebar_tabs != 'about' &&",
         "input.sidebar_tabs != 'macro_market' &&",
         "input.sidebar_tabs != 'asset_transmission' &&",
         "input.sidebar_tabs != 'bluechip' &&",
+        "input.sidebar_tabs != 'snapshot' &&",
         "input.sidebar_tabs != 'testing' &&",
         "input.sidebar_tabs != 'home' &&",
         "input.sidebar_tabs != 'account_admin' &&",
