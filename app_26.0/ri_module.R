@@ -284,7 +284,7 @@ ri_module_ui <- function(id) {
           column(
             8, br(),
             actionButton(
-              ns("btn_sync_b0"), "從最新財報自動帶入數值",
+              ns("btn_sync_b0"), "從財報帶入",
               icon = icon("sync"), class = "btn-sm",
               style = "background-color: #1a1a1a; color: white; border: none; padding: 8px 15px; font-weight: bold; border-radius: 5px; margin-top: 5px;"
             )

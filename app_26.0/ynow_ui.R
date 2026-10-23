@@ -3176,7 +3176,7 @@ beta_rolling_section_ui <- function() {
                               tags$div(
                                 id = "ynow_bt_fit_bh_hint",
                                 style = "margin-top:8px;font-size:11px;color:#666;",
-                                "One-click: max=100%, min=40%, w_vg=0.35 (weaker de-risking). Turns auto-sync off."
+                                "Quick apply: max=100%, min=40%, w_vg=0.35 (weaker de-risking). Turns auto-update parameters off."
                               )
                             )
                           )

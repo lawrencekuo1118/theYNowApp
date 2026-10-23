@@ -96,7 +96,7 @@ nav_module_ui <- function(id) {
             min = 0, max = 50, step = 1
           )),
           column(4, br(), actionButton(
-            ns("btn_sync_nav"), "從最新財報自動帶入",
+            ns("btn_sync_nav"), "從財報帶入",
             icon = icon("sync"), class = "btn-sm",
             style = paste(
               "background-color:#1a1a1a; color:white; border:none;",

@@ -89,7 +89,7 @@ fcf_projection_module_ui <- function(id) {
              column(
                12,
                actionButton(
-                 ns("btn_sync_fcf_params"), "從最新財報自動帶入數值",
+                 ns("btn_sync_fcf_params"), "從財報帶入",
                  icon = icon("sync"),
                  class = "btn-sm",
                  style = "background-color: #222222; color: #ffffff; border: 1px solid #555555; font-size: 12px; padding: 4px 12px; border-radius: 4px;"

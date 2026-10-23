@@ -7128,7 +7128,7 @@ server <- function(input, output, session) {
       bt_w_rsi = c("Backtest", "RSI weight", "情緒相對權重"),
       bt_max_exp = c("Backtest", "Max exposure", "持倉上限"),
       bt_min_exp_pass = c("Backtest", "Min exp after pass", "通過閘門後下限"),
-      bt_param_auto = c("Backtest", "Auto-update params", "換股時自動更新參數"),
+      bt_param_auto = c("Backtest", "Auto-update parameters", "換股時自動更新參數"),
       bt_fv_replay_model = c("Backtest", "Replay model", "HFV 復盤單選模型"),
       bt_fv_models = c("Backtest", "Chart overlay models", "HFV 圖疊加；預設不勾選"),
       bt_fv_conv_window = c("Backtest", "Sample window", "all / 1y / 3y / 5y / custom"),
