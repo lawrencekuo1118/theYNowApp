@@ -3,10 +3,12 @@
 #
 # Sources (no invented holdings):
 #   US: Yahoo quoteSummary (majorHoldersBreakdown / institutionOwnership /
-#       insiderHolders / insiderTransactions) via deep_scraper.get_ownership_quote
-#   TW: TWSE MI_QFIIS (foreign %), T86 (三大法人買賣超), MOPS t187ap11 (董監／內部人)
-#   Volume: existing fetch_price_history_df (Yahoo); credibility labeled
-#   Institution drill-down / cross-hold: only when a second holder fetch discloses it
+#       fundOwnership / insiderHolders / insiderTransactions) via
+#       deep_scraper.get_ownership_quote — free-float–relevant top-10 when present
+#   TW: Prefer Yahoo institution/fund (local or HTCDI ADR) as free-float top-10;
+#       else MOPS t187ap11 (董監／內部人). Structure: TWSE MI_QFIIS + T86.
+#   Volume: existing fetch_price_history_df (Yahoo); TWSE STOCK_DAY fallback
+#   Institution drill-down / cross-hold: name→public ticker map + second fetch only
 # ==========================================
 
 YNOW_TWSE_MI_QFIIS_URL <- "https://www.twse.com.tw/rwd/zh/fund/MI_QFIIS"
@@ -16,6 +18,21 @@ YNOW_MOPS_INSIDER_L_JSON <- "https://openapi.twse.com.tw/v1/opendata/t187ap11_L"
 YNOW_MOPS_INSIDER_O_JSON <- "https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap11_O"
 YNOW_MOPS_INSIDER_L_CSV <- "https://mopsfin.twse.com.tw/opendata/t187ap11_L.csv"
 YNOW_MOPS_INSIDER_O_CSV <- "https://mopsfin.twse.com.tw/opendata/t187ap11_O.csv"
+
+.ownership_empty_holders_df <- function() {
+  data.frame(
+    rank = integer(),
+    name = character(),
+    shares = numeric(),
+    pct = numeric(),
+    holder_type = character(),
+    report_date = character(),
+    source = character(),
+    credibility = character(),
+    clickable = logical(),
+    stringsAsFactors = FALSE
+  )
+}
 
 .ownership_empty_snapshot <- function(ticker = "", market = "US") {
   list(
@@ -33,18 +50,9 @@ YNOW_MOPS_INSIDER_O_CSV <- "https://mopsfin.twse.com.tw/opendata/t187ap11_O.csv"
       credibility = "unavailable"
     ),
     volume = data.frame(Date = as.Date(character()), Volume = numeric(), stringsAsFactors = FALSE),
-    holders = data.frame(
-      rank = integer(),
-      name = character(),
-      shares = numeric(),
-      pct = numeric(),
-      holder_type = character(),
-      report_date = character(),
-      source = character(),
-      credibility = character(),
-      clickable = logical(),
-      stringsAsFactors = FALSE
-    ),
+    holders = .ownership_empty_holders_df(),
+    holders_kind = "empty",
+    holders_source_ticker = "",
     detail = NULL,
     sources = character(),
     notes = character(),
@@ -116,19 +124,34 @@ YNOW_MOPS_INSIDER_O_CSV <- "https://mopsfin.twse.com.tw/opendata/t187ap11_O.csv"
   )
 }
 
+.ownership_holders_has_institution <- function(holders) {
+  is.data.frame(holders) && nrow(holders) > 0 &&
+    any(holders$holder_type %in% c("institution", "fund", "法人"))
+}
+
+.ownership_holders_kind_from_df <- function(holders) {
+  if (!is.data.frame(holders) || !nrow(holders)) return("empty")
+  if (.ownership_holders_has_institution(holders)) return("free_float")
+  "insider"
+}
+
 #' Normalize Yahoo get_ownership_quote list → structure slices + holders.
 .ownership_from_yahoo <- function(raw, ticker = "") {
   structure <- list()
-  holders <- .ownership_empty_snapshot()$holders
+  holders <- .ownership_empty_holders_df()
   flow <- .ownership_empty_snapshot()$flow
   sources <- character()
   notes <- character()
   as_of <- ""
+  float_shares <- NA_real_
+  shares_out <- NA_real_
 
   if (is.null(raw) || !is.list(raw)) {
     return(list(
       structure = structure, holders = holders, flow = flow,
-      sources = sources, notes = c(notes, "yahoo_unavailable"), as_of = as_of, ok = FALSE
+      sources = sources, notes = c(notes, "yahoo_unavailable"), as_of = as_of,
+      holders_kind = "empty", float_shares = float_shares,
+      shares_outstanding = shares_out, ok = FALSE
     ))
   }
   if (!isTRUE(raw$ok)) {
@@ -136,19 +159,32 @@ YNOW_MOPS_INSIDER_O_CSV <- "https://mopsfin.twse.com.tw/opendata/t187ap11_O.csv"
     if (nzchar(err)) notes <- c(notes, paste0("yahoo:", err))
     return(list(
       structure = structure, holders = holders, flow = flow,
-      sources = sources, notes = notes, as_of = as_of, ok = FALSE
+      sources = sources, notes = notes, as_of = as_of,
+      holders_kind = "empty", float_shares = float_shares,
+      shares_outstanding = shares_out, ok = FALSE
     ))
   }
   sources <- c(sources, "Yahoo Finance quoteSummary")
   inst <- suppressWarnings(as.numeric(raw$institutions_pct)[1])
   ins <- suppressWarnings(as.numeric(raw$insiders_pct)[1])
+  inst_float <- suppressWarnings(as.numeric(raw$institutions_float_pct)[1])
+  float_shares <- suppressWarnings(as.numeric(raw$float_shares)[1])
+  shares_out <- suppressWarnings(as.numeric(raw$shares_outstanding)[1])
   # Yahoo fractions are usually 0–1
   if (is.finite(inst) && inst > 1.5) inst <- inst / 100
   if (is.finite(ins) && ins > 1.5) ins <- ins / 100
+  if (is.finite(inst_float) && inst_float > 1.5) inst_float <- inst_float / 100
   if (is.finite(inst)) {
     structure[[length(structure) + 1L]] <- list(
       key = "institutions", pct = inst, credibility = "yahoo",
       source = "Yahoo majorHoldersBreakdown"
+    )
+  }
+  # Prefer float-relative institution % when Yahoo discloses it (free-float path)
+  if (is.finite(inst_float) && (!is.finite(inst) || abs(inst_float - inst) > 0.005)) {
+    structure[[length(structure) + 1L]] <- list(
+      key = "institutions_float", pct = inst_float, credibility = "yahoo",
+      source = "Yahoo institutionsFloatPercentHeld"
     )
   }
   if (is.finite(ins)) {
@@ -221,7 +257,9 @@ YNOW_MOPS_INSIDER_O_CSV <- "https://mopsfin.twse.com.tw/opendata/t187ap11_O.csv"
 
   list(
     structure = structure, holders = holders, flow = flow,
-    sources = sources, notes = notes, as_of = as_of, ok = TRUE
+    sources = sources, notes = notes, as_of = as_of,
+    holders_kind = .ownership_holders_kind_from_df(holders),
+    float_shares = float_shares, shares_outstanding = shares_out, ok = TRUE
   )
 }
 
@@ -532,19 +570,213 @@ YNOW_MOPS_INSIDER_O_CSV <- "https://mopsfin.twse.com.tw/opendata/t187ap11_O.csv"
   tryCatch(get_ownership_quote(ticker), error = function(e) NULL)
 }
 
+#' HTCDI ADR ticker for a TW ordinary listing (free-float Yahoo fallback only).
+.ownership_adr_ticker_for_tw <- function(ticker) {
+  tk <- toupper(trimws(as.character(ticker %||% "")[1]))
+  if (!nzchar(tk) || !grepl("\\.(TW|TWO)$", tk)) return("")
+  if (!exists("htcdi_find_issuer", mode = "function")) return("")
+  iss <- tryCatch(htcdi_find_issuer(tk), error = function(e) NULL)
+  if (is.null(iss)) return("")
+  itype <- toupper(as.character(iss$instrument_type %||% "")[1])
+  # Issuer may be keyed by ADR id with local_ordinary_ticker = this TW code
+  loc <- toupper(trimws(as.character(iss$local_ordinary_ticker %||% "")[1]))
+  adr <- toupper(trimws(as.character(iss$tickers[[1]] %||% iss$id %||% "")[1]))
+  if (!nzchar(adr) || identical(adr, tk)) return("")
+  if (nzchar(loc) && identical(loc, tk)) return(adr)
+  if (identical(itype, "ADR") && nzchar(loc) && identical(loc, tk)) return(adr)
+  # Also accept when find_issuer matched via local_ordinary and primary ticker is ADR
+  if (nzchar(loc) && identical(loc, tk) && !grepl("\\.(TW|TWO)$", adr)) return(adr)
+  ""
+}
+
+#' Free-float–relevant Yahoo holders for a ticker; optional ADR retry for TW.
+.ownership_yahoo_float_holders <- function(ticker, market = NULL) {
+  tk <- toupper(trimws(as.character(ticker %||% "")[1]))
+  empty <- list(
+    holders = .ownership_empty_holders_df(),
+    holders_kind = "empty",
+    source_ticker = "",
+    as_of = "",
+    sources = character(),
+    notes = character(),
+    structure_extra = list(),
+    ok = FALSE
+  )
+  if (!nzchar(tk)) return(empty)
+
+  try_one <- function(sym, note_tag = NULL) {
+    raw <- .ownership_yahoo_live(sym)
+    y <- .ownership_from_yahoo(raw, sym)
+    if (!isTRUE(y$ok) || !is.data.frame(y$holders) || !nrow(y$holders)) {
+      return(NULL)
+    }
+    if (!.ownership_holders_has_institution(y$holders)) {
+      return(NULL)
+    }
+    list(
+      holders = y$holders,
+      holders_kind = "free_float",
+      source_ticker = sym,
+      as_of = y$as_of %||% "",
+      sources = y$sources %||% character(),
+      notes = c(
+        if (!is.null(note_tag)) note_tag else "holders_free_float_yahoo",
+        y$notes %||% character()
+      ),
+      structure_extra = {
+        # Keep institutions_float slice only
+        Filter(function(s) identical(s$key, "institutions_float"), y$structure %||% list())
+      },
+      ok = TRUE
+    )
+  }
+
+  hit <- try_one(tk, "holders_free_float_yahoo")
+  if (!is.null(hit)) return(hit)
+
+  mode <- if (!is.null(market) && nzchar(as.character(market)[1])) {
+    toupper(as.character(market)[1])
+  } else if (grepl("\\.(TW|TWO)$", tk)) {
+    "TW"
+  } else {
+    "US"
+  }
+  if (identical(mode, "TW")) {
+    adr <- .ownership_adr_ticker_for_tw(tk)
+    if (nzchar(adr) && !identical(adr, tk)) {
+      hit <- try_one(adr, "holders_free_float_yahoo_adr")
+      if (!is.null(hit)) return(hit)
+    }
+  }
+  empty
+}
+
+#' Curated institution / 法人 name → public ticker (disclosure path only).
+#' Private managers (Vanguard, Fidelity Management) stay unmapped — honest empty top-5.
+.ownership_institution_ticker_map <- function() {
+  list(
+    list(pattern = "(?i)blackrock", ticker = "BLK", intro_key = "own_detail_intro_mapped"),
+    list(pattern = "(?i)state\\s*street", ticker = "STT", intro_key = "own_detail_intro_mapped"),
+    list(pattern = "(?i)t\\.?\\s*rowe", ticker = "TROW", intro_key = "own_detail_intro_mapped"),
+    list(pattern = "(?i)goldman\\s*sachs", ticker = "GS", intro_key = "own_detail_intro_mapped"),
+    list(pattern = "(?i)morgan\\s*stanley", ticker = "MS", intro_key = "own_detail_intro_mapped"),
+    list(pattern = "(?i)j\\.?p\\.?\\s*morgan|jpmorgan", ticker = "JPM", intro_key = "own_detail_intro_mapped"),
+    list(pattern = "(?i)bank\\s*of\\s*america|bofa\\b", ticker = "BAC", intro_key = "own_detail_intro_mapped"),
+    list(pattern = "(?i)charles\\s*schwab", ticker = "SCHW", intro_key = "own_detail_intro_mapped"),
+    list(pattern = "(?i)northern\\s*trust", ticker = "NTRS", intro_key = "own_detail_intro_mapped"),
+    list(pattern = "(?i)\\binvesco\\b", ticker = "IVZ", intro_key = "own_detail_intro_mapped"),
+    list(pattern = "(?i)franklin\\s*(resources|templeton)", ticker = "BEN", intro_key = "own_detail_intro_mapped"),
+    list(pattern = "(?i)ameriprise", ticker = "AMP", intro_key = "own_detail_intro_mapped"),
+    list(pattern = "(?i)\\bubs\\b", ticker = "UBS", intro_key = "own_detail_intro_mapped"),
+    list(pattern = "(?i)deutsche\\s*bank", ticker = "DB", intro_key = "own_detail_intro_mapped"),
+    list(pattern = "(?i)berkshire\\s*hathaway", ticker = "BRK-B", intro_key = "own_detail_intro_mapped"),
+    list(pattern = "(?i)\\bhsbc\\b", ticker = "HSBC", intro_key = "own_detail_intro_mapped"),
+    # TW listed 金控 / banks (common MOPS 法人 names)
+    list(pattern = "國泰(金融|金控|人壽|世華|證)", ticker = "2882.TW", intro_key = "own_detail_intro_tw_mapped"),
+    list(pattern = "富邦(金融|金控|人壽|銀行|證)", ticker = "2881.TW", intro_key = "own_detail_intro_tw_mapped"),
+    list(pattern = "中(國)?信託|中信金", ticker = "2891.TW", intro_key = "own_detail_intro_tw_mapped"),
+    list(pattern = "兆豐(金|國際|商銀|銀行)", ticker = "2886.TW", intro_key = "own_detail_intro_tw_mapped"),
+    list(pattern = "第一(金|銀行|金控)", ticker = "2892.TW", intro_key = "own_detail_intro_tw_mapped"),
+    list(pattern = "合作金庫|合庫金", ticker = "5880.TW", intro_key = "own_detail_intro_tw_mapped"),
+    list(pattern = "華南(金|銀行|金控)", ticker = "2880.TW", intro_key = "own_detail_intro_tw_mapped"),
+    list(pattern = "元大(金|證券|投信|銀行)", ticker = "2885.TW", intro_key = "own_detail_intro_tw_mapped"),
+    list(pattern = "永豐(金|銀行|金控)", ticker = "2890.TW", intro_key = "own_detail_intro_tw_mapped"),
+    list(pattern = "玉山(金|銀行)", ticker = "2884.TW", intro_key = "own_detail_intro_tw_mapped"),
+    list(pattern = "台新(金|銀行)", ticker = "2887.TW", intro_key = "own_detail_intro_tw_mapped"),
+    list(pattern = "新光(金|人壽)", ticker = "2888.TW", intro_key = "own_detail_intro_tw_mapped"),
+    list(pattern = "開發金|凱基(證|銀行|人壽)", ticker = "2883.TW", intro_key = "own_detail_intro_tw_mapped"),
+    list(pattern = "中華郵政|郵政公司", ticker = "", intro_key = "own_detail_intro_tw_gov"),
+    list(pattern = "勞工退休|勞退基金|勞保局", ticker = "", intro_key = "own_detail_intro_tw_gov"),
+    list(pattern = "行政院國家發展基金|國發基金", ticker = "", intro_key = "own_detail_intro_tw_ndf"),
+    list(pattern = "(?i)\\bvanguard\\b", ticker = "", intro_key = "own_detail_intro_private_mgr"),
+    list(pattern = "(?i)fidelity\\s*(management|investments)?", ticker = "", intro_key = "own_detail_intro_private_mgr")
+  )
+}
+
+.ownership_resolve_institution_ticker <- function(holder_name) {
+  nm <- trimws(as.character(holder_name %||% "")[1])
+  if (!nzchar(nm)) {
+    return(list(ticker = "", intro_key = "own_detail_intro_generic", matched = FALSE))
+  }
+  for (row in .ownership_institution_ticker_map()) {
+    if (grepl(row$pattern, nm, perl = TRUE)) {
+      return(list(
+        ticker = as.character(row$ticker %||% "")[1],
+        intro_key = as.character(row$intro_key %||% "own_detail_intro_generic")[1],
+        matched = TRUE
+      ))
+    }
+  }
+  # Rare: name is already a ticker token
+  maybe_tk <- toupper(gsub("[^A-Z0-9.\\-]", "", nm))
+  if (nzchar(maybe_tk) && nchar(maybe_tk) <= 8L &&
+      grepl("^[A-Z]{1,5}(-[A-Z])?$", maybe_tk)) {
+    return(list(ticker = maybe_tk, intro_key = "own_detail_intro_yahoo", matched = TRUE))
+  }
+  list(ticker = "", intro_key = "own_detail_intro_generic", matched = FALSE)
+}
+
+.ownership_cross_hold_match <- function(holder_names, subject_ticker,
+                                        subject_aliases = character()) {
+  names_v <- trimws(as.character(holder_names %||% character()))
+  if (!length(names_v)) {
+    return(list(status = "no", evidence = "empty_top5", credibility = "unavailable"))
+  }
+  tk <- toupper(trimws(as.character(subject_ticker %||% "")[1]))
+  bare <- gsub("\\.(TW|TWO)$", "", tk)
+  aliases <- unique(c(
+    bare,
+    tk,
+    trimws(as.character(subject_aliases %||% character()))
+  ))
+  aliases <- aliases[nzchar(aliases)]
+  names_l <- tolower(names_v)
+  for (a in aliases) {
+    # Avoid ultra-short numeric false positives (e.g. "2") — require ≥3 chars
+    if (nchar(a) < 3L) next
+    hit <- grepl(tolower(a), names_l, fixed = TRUE)
+    if (any(hit)) {
+      return(list(
+        status = "yes",
+        evidence = names_v[which(hit)[1]],
+        credibility = "yahoo"
+      ))
+    }
+  }
+  list(status = "no", evidence = "not_in_top5", credibility = "yahoo")
+}
+
+.ownership_top5_from_holders <- function(holders) {
+  empty <- data.frame(
+    rank = integer(), name = character(), pct = numeric(), shares = numeric(),
+    stringsAsFactors = FALSE
+  )
+  if (!is.data.frame(holders) || !nrow(holders)) return(empty)
+  top <- utils::head(holders, 5)
+  data.frame(
+    rank = seq_len(nrow(top)),
+    name = top$name,
+    pct = top$pct,
+    shares = top$shares,
+    stringsAsFactors = FALSE
+  )
+}
+
 #' Build institution detail panel; honest empty when undisclosed.
 #' @param holder_name selected holder
 #' @param subject_ticker currently searched company
 #' @param subject_holders top holders of subject (for reverse cross-hold hint only when names match)
 ownership_institution_detail <- function(holder_name, subject_ticker = "",
                                          subject_holders = NULL,
-                                         market = "US") {
+                                         market = "US",
+                                         subject_aliases = character()) {
   nm <- trimws(as.character(holder_name %||% "")[1])
   tk <- toupper(trimws(as.character(subject_ticker %||% "")[1]))
-  list(
+  detail <- list(
     name = nm,
     intro = "",
     intro_key = "own_detail_intro_generic",
+    mapped_ticker = "",
     top5 = data.frame(
       rank = integer(), name = character(), pct = numeric(), shares = numeric(),
       stringsAsFactors = FALSE
@@ -557,7 +789,7 @@ ownership_institution_detail <- function(holder_name, subject_ticker = "",
     source = "",
     credibility = "unavailable",
     ok = FALSE
-  ) -> detail
+  )
 
   if (!nzchar(nm)) return(detail)
 
@@ -565,24 +797,29 @@ ownership_institution_detail <- function(holder_name, subject_ticker = "",
   detail$source <- "disclosure_gap"
   detail$credibility <- "unavailable"
 
-  # Reverse presence: subject lists this institution (not true cross-hold)
+  # Reverse presence: subject lists this institution (not true cross-hold alone)
   if (is.data.frame(subject_holders) && nrow(subject_holders) > 0 &&
       "name" %in% names(subject_holders)) {
     if (any(trimws(as.character(subject_holders$name)) == nm)) {
       detail$cross_hold$status <- "unknown"
       detail$cross_hold$evidence <- "listed_as_holder_only"
-      detail$cross_hold$credibility <- "yahoo"
+      detail$cross_hold$credibility <- "estimate"
     }
   }
 
-  # Known TW government / development-fund holders — intro only, no invented top-5
-  if (identical(toupper(as.character(market)[1]), "TW") || grepl("\\.(TW|TWO)$", tk)) {
-    if (grepl("行政院國家發展基金|國發基金", nm)) {
-      detail$intro_key <- "own_detail_intro_tw_ndf"
-      detail$source <- "MOPS t187ap11 / public fund"
-      detail$credibility <- "official"
+  resolved <- .ownership_resolve_institution_ticker(nm)
+  if (isTRUE(resolved$matched)) {
+    detail$intro_key <- resolved$intro_key
+    detail$mapped_ticker <- resolved$ticker %||% ""
+    if (!nzchar(detail$mapped_ticker)) {
+      # Known private / gov fund — intro only
+      detail$source <- "name_map_no_public_ticker"
+      detail$credibility <- if (grepl("tw_", detail$intro_key)) "official" else "estimate"
       detail$ok <- TRUE
-    } else if (grepl("銀行|投信|保險|人壽|金控|證券", nm)) {
+      return(detail)
+    }
+  } else if (identical(toupper(as.character(market)[1]), "TW") || grepl("\\.(TW|TWO)$", tk)) {
+    if (grepl("銀行|投信|保險|人壽|金控|證券", nm)) {
       detail$intro_key <- "own_detail_intro_tw_institution"
       detail$source <- "MOPS t187ap11"
       detail$credibility <- "official"
@@ -590,40 +827,60 @@ ownership_institution_detail <- function(holder_name, subject_ticker = "",
     }
   }
 
-  # Attempt Yahoo ownership on a ticker-like token inside the name (rare)
-  maybe_tk <- toupper(gsub("[^A-Z0-9.]", "", nm))
-  if (nzchar(maybe_tk) && nchar(maybe_tk) <= 6L && grepl("^[A-Z]{1,5}$", maybe_tk) &&
-      !identical(maybe_tk, gsub("\\.(TW|TWO)$", "", tk))) {
-    raw <- .ownership_yahoo_live(maybe_tk)
-    y <- .ownership_from_yahoo(raw, maybe_tk)
+  fetch_tk <- detail$mapped_ticker
+  if (!nzchar(fetch_tk)) {
+    maybe_tk <- toupper(gsub("[^A-Z0-9.\\-]", "", nm))
+    if (nzchar(maybe_tk) && nchar(maybe_tk) <= 8L &&
+        grepl("^[A-Z]{1,5}(-[A-Z])?$", maybe_tk) &&
+        !identical(maybe_tk, gsub("\\.(TW|TWO)$", "", tk))) {
+      fetch_tk <- maybe_tk
+    }
+  }
+
+  if (nzchar(fetch_tk) && !identical(toupper(fetch_tk), tk)) {
+    raw <- .ownership_yahoo_live(fetch_tk)
+    y <- .ownership_from_yahoo(raw, fetch_tk)
     if (isTRUE(y$ok) && is.data.frame(y$holders) && nrow(y$holders) > 0) {
-      top <- utils::head(y$holders, 5)
-      detail$top5 <- data.frame(
-        rank = seq_len(nrow(top)),
-        name = top$name,
-        pct = top$pct,
-        shares = top$shares,
-        stringsAsFactors = FALSE
-      )
+      detail$top5 <- .ownership_top5_from_holders(y$holders)
       detail$ok <- TRUE
-      detail$source <- "Yahoo Finance quoteSummary"
+      detail$source <- paste0("Yahoo Finance quoteSummary (", fetch_tk, ")")
       detail$credibility <- "yahoo"
-      detail$intro_key <- "own_detail_intro_yahoo"
-      # Cross-hold if subject ticker/name appears in institution holders
-      subj_bare <- gsub("\\.(TW|TWO)$", "", tk)
-      hit <- grepl(subj_bare, top$name, ignore.case = TRUE)
-      if (any(hit)) {
-        detail$cross_hold <- list(
-          status = "yes",
-          evidence = paste(top$name[which(hit)[1]], collapse = ""),
-          credibility = "yahoo"
+      if (!nzchar(detail$intro_key) ||
+          identical(detail$intro_key, "own_detail_intro_generic") ||
+          identical(detail$intro_key, "own_detail_intro_tw_institution")) {
+        detail$intro_key <- if (grepl("\\.TW", fetch_tk)) {
+          "own_detail_intro_tw_mapped"
+        } else {
+          "own_detail_intro_mapped"
+        }
+      }
+      detail$cross_hold <- .ownership_cross_hold_match(
+        detail$top5$name, tk, subject_aliases = subject_aliases
+      )
+      return(detail)
+    }
+    # TW listed 法人: MOPS insider list of the mapped company as official top-5 proxy
+    if (grepl("\\.(TW|TWO)$", fetch_tk)) {
+      code <- .ownership_issuer_code(fetch_tk)
+      ins <- tryCatch(.ownership_tw_insiders(code), error = function(e) NULL)
+      if (is.data.frame(ins) && nrow(ins) > 0) {
+        detail$top5 <- .ownership_top5_from_holders(ins)
+        detail$ok <- TRUE
+        detail$source <- paste0("MOPS t187ap11 (", fetch_tk, ")")
+        detail$credibility <- "official"
+        detail$intro_key <- "own_detail_intro_tw_mapped"
+        detail$cross_hold <- .ownership_cross_hold_match(
+          detail$top5$name, tk, subject_aliases = subject_aliases
         )
-      } else {
-        detail$cross_hold <- list(
-          status = "no",
-          evidence = "not_in_top5",
-          credibility = "yahoo"
-        )
+        # Official list may not cover free-float mutual stakes — mark unknown if no hit
+        if (identical(detail$cross_hold$status, "no")) {
+          detail$cross_hold <- list(
+            status = "unknown",
+            evidence = "mops_insiders_only_no_match",
+            credibility = "official"
+          )
+        }
+        return(detail)
       }
     }
   }
@@ -649,11 +906,16 @@ fetch_ownership_structure <- function(ticker, market = NULL) {
   yahoo <- .ownership_from_yahoo(.ownership_yahoo_live(tk), tk)
   snap$structure <- yahoo$structure
   snap$holders <- yahoo$holders
+  snap$holders_kind <- yahoo$holders_kind %||% .ownership_holders_kind_from_df(yahoo$holders)
+  snap$holders_source_ticker <- if (.ownership_holders_has_institution(yahoo$holders)) tk else ""
   snap$flow <- yahoo$flow
   snap$sources <- yahoo$sources
   snap$notes <- yahoo$notes
   snap$as_of <- yahoo$as_of
   snap$ok <- isTRUE(yahoo$ok)
+  if (identical(snap$holders_kind, "free_float")) {
+    snap$notes <- c(snap$notes, "holders_free_float_yahoo")
+  }
 
   if (identical(mode, "TW")) {
     code <- .ownership_issuer_code(tk)
@@ -665,7 +927,12 @@ fetch_ownership_structure <- function(ticker, market = NULL) {
           source = q$source
         )
       )
-      # Keep Yahoo slices as supplemental notes only when TW official present
+      # Keep Yahoo float-institution slice as supplemental when disclosed
+      for (sl in yahoo$structure %||% list()) {
+        if (identical(sl$key, "institutions_float")) {
+          snap$structure[[length(snap$structure) + 1L]] <- sl
+        }
+      }
       if (isTRUE(yahoo$ok) && length(yahoo$structure)) {
         snap$notes <- c(snap$notes, "yahoo_structure_suppressed_for_tw_official")
       }
@@ -687,21 +954,78 @@ fetch_ownership_structure <- function(ticker, market = NULL) {
       snap$sources <- unique(c(snap$sources, t86$source))
       snap$ok <- TRUE
     }
+
+    # Free-float–relevant top-10: prefer Yahoo institution/fund (local or ADR)
+    float_hit <- NULL
+    if (.ownership_holders_has_institution(snap$holders)) {
+      float_hit <- list(
+        holders = snap$holders,
+        holders_kind = "free_float",
+        source_ticker = tk,
+        sources = snap$sources,
+        notes = "holders_free_float_yahoo",
+        ok = TRUE
+      )
+    } else {
+      float_hit <- tryCatch(
+        .ownership_yahoo_float_holders(tk, market = "TW"),
+        error = function(e) NULL
+      )
+    }
+
     ins <- tryCatch(.ownership_tw_insiders(code), error = function(e) NULL)
-    if (is.data.frame(ins) && nrow(ins) > 0) {
-      # Fill pct from issued shares when available
-      if (!is.null(q) && is.finite(q$issued_shares) && q$issued_shares > 0) {
-        ins$pct <- ins$shares / q$issued_shares
+    if (!is.null(float_hit) && isTRUE(float_hit$ok) &&
+        is.data.frame(float_hit$holders) && nrow(float_hit$holders) > 0) {
+      snap$holders <- float_hit$holders
+      snap$holders_kind <- "free_float"
+      snap$holders_source_ticker <- as.character(float_hit$source_ticker %||% tk)[1]
+      snap$sources <- unique(c(snap$sources, float_hit$sources %||% character()))
+      snap$notes <- unique(c(
+        setdiff(snap$notes, "holders_free_float_yahoo"),
+        float_hit$notes %||% "holders_free_float_yahoo"
+      ))
+      # Drop stale "insiders only" note if we upgraded to free-float
+      snap$notes <- setdiff(snap$notes, "tw_holders_are_insiders_not_free_float_top10")
+      snap$ok <- TRUE
+      # Still fold MOPS insider aggregate into structure when issued shares known
+      if (is.data.frame(ins) && nrow(ins) > 0 &&
+          !is.null(q) && is.finite(q$issued_shares) && q$issued_shares > 0) {
         insider_pct <- sum(ins$shares, na.rm = TRUE) / q$issued_shares
         if (is.finite(insider_pct) && insider_pct > 0) {
-          # Append insider aggregate to structure (foreign slice may already exist)
           snap$structure[[length(snap$structure) + 1L]] <- list(
             key = "insiders",
             pct = min(insider_pct, 1),
             credibility = "official",
             source = "MOPS t187ap11 ÷ MI_QFIIS issued shares"
           )
-          # Residual other only when foreign + insiders leave room (no double-count claim)
+          foreign_pct <- if (!is.null(q) && is.finite(q$foreign_pct)) q$foreign_pct else NA_real_
+          if (is.finite(foreign_pct)) {
+            other <- max(0, 1 - foreign_pct - insider_pct)
+            if (other > 0.001) {
+              snap$structure[[length(snap$structure) + 1L]] <- list(
+                key = "other",
+                pct = other,
+                credibility = "estimate",
+                source = "residual (1 − foreign − disclosed insiders)"
+              )
+            }
+          }
+        }
+        snap$sources <- unique(c(snap$sources, "MOPS t187ap11"))
+        snap$notes <- c(snap$notes, "tw_insiders_used_for_structure_only")
+      }
+    } else if (is.data.frame(ins) && nrow(ins) > 0) {
+      # Honest fallback: MOPS 董監／內部人 — not free-float top-10
+      if (!is.null(q) && is.finite(q$issued_shares) && q$issued_shares > 0) {
+        ins$pct <- ins$shares / q$issued_shares
+        insider_pct <- sum(ins$shares, na.rm = TRUE) / q$issued_shares
+        if (is.finite(insider_pct) && insider_pct > 0) {
+          snap$structure[[length(snap$structure) + 1L]] <- list(
+            key = "insiders",
+            pct = min(insider_pct, 1),
+            credibility = "official",
+            source = "MOPS t187ap11 ÷ MI_QFIIS issued shares"
+          )
           foreign_pct <- if (!is.null(q) && is.finite(q$foreign_pct)) q$foreign_pct else NA_real_
           if (is.finite(foreign_pct)) {
             other <- max(0, 1 - foreign_pct - insider_pct)
@@ -717,11 +1041,14 @@ fetch_ownership_structure <- function(ticker, market = NULL) {
         }
       }
       snap$holders <- ins
+      snap$holders_kind <- "insider"
+      snap$holders_source_ticker <- ""
       snap$sources <- unique(c(snap$sources, "MOPS t187ap11"))
       snap$notes <- c(snap$notes, "tw_holders_are_insiders_not_free_float_top10")
       snap$ok <- TRUE
     } else if (!isTRUE(yahoo$ok) || !nrow(snap$holders)) {
       snap$notes <- c(snap$notes, "tw_insider_holders_unavailable")
+      snap$holders_kind <- "empty"
     }
   }
 
@@ -783,6 +1110,7 @@ cached_fetch_ownership_structure <- if (
   k <- switch(
     as.character(key %||% "")[1],
     "institutions" = "own_slice_institutions",
+    "institutions_float" = "own_slice_institutions_float",
     "insiders" = "own_slice_insiders",
     "foreign" = "own_slice_foreign",
     "other" = "own_slice_other",
@@ -978,20 +1306,40 @@ cached_fetch_ownership_structure <- if (
 
   note_ui <- NULL
   if (length(snap$notes)) {
-    note_ui <- tags$ul(
-      class = "ynow-own-notes",
-      lapply(snap$notes, function(n) {
-        key <- switch(
-          as.character(n)[1],
-          "tw_holders_are_insiders_not_free_float_top10" = "own_note_tw_insiders",
-          "volume_history_unavailable" = "own_note_volume_empty",
-          "volume_from_twse_stock_day" = "own_note_volume_twse",
-          "tw_insider_holders_unavailable" = "own_note_holders_empty",
-          NULL
-        )
-        tags$li(if (!is.null(key)) ui_str(key, loc) else as.character(n))
-      })
-    )
+    note_keys_seen <- character()
+    note_items <- list()
+    for (n in snap$notes) {
+      key <- switch(
+        as.character(n)[1],
+        "tw_holders_are_insiders_not_free_float_top10" = "own_note_tw_insiders",
+        "holders_free_float_yahoo" = "own_note_float_yahoo",
+        "holders_free_float_yahoo_adr" = "own_note_float_yahoo_adr",
+        "tw_insiders_used_for_structure_only" = "own_note_tw_insiders_structure",
+        "volume_history_unavailable" = "own_note_volume_empty",
+        "volume_from_twse_stock_day" = "own_note_volume_twse",
+        "tw_insider_holders_unavailable" = "own_note_holders_empty",
+        NULL
+      )
+      if (is.null(key)) {
+        # Skip internal/noisy notes (yahoo_structure_suppressed…, yahoo:rate…)
+        if (grepl("^(yahoo_structure_suppressed|yahoo:)", as.character(n)[1])) next
+        note_items[[length(note_items) + 1L]] <- tags$li(as.character(n))
+      } else if (!(key %in% note_keys_seen)) {
+        note_keys_seen <- c(note_keys_seen, key)
+        note_items[[length(note_items) + 1L]] <- tags$li(ui_str(key, loc))
+      }
+    }
+    if (length(note_items)) {
+      note_ui <- tags$ul(class = "ynow-own-notes", note_items)
+    }
+  }
+
+  holders_title_key <- if (identical(snap$holders_kind %||% "", "free_float")) {
+    "own_holders_title_float"
+  } else if (identical(snap$holders_kind %||% "", "insider")) {
+    "own_holders_title_insider"
+  } else {
+    "own_holders_title"
   }
 
   tagList(
@@ -999,7 +1347,7 @@ cached_fetch_ownership_structure <- if (
     fluidRow(
       column(
         width = 7,
-        tags$h4(ui_str("own_holders_title", loc)),
+        tags$h4(ui_str(holders_title_key, loc)),
         if (length(holder_rows)) {
           tags$div(
             class = "ynow-own-holders-wrap",

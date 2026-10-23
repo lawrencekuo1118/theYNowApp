@@ -169,7 +169,8 @@ locale_for_market <- function(mode = get_market_mode()) {
       "MOPS open data for board elections, convertible / exchangeable bonds (with TPEx ISSBD), ",
       "insider / director holdings (t187ap11), and major supplier / customer tables when disclosed; ",
       "TWSE MI_QFIIS (foreign ownership) and T86 (institutional net buy/sell) feed Ownership Structure Analysis; ",
-      "US ownership uses Yahoo Finance quoteSummary when available. Selected macro aggregates may use ",
+      "holder top-10 prefers Yahoo institution/fund (free-float–relevant; TW may use a labeled ADR fallback) ",
+      "before MOPS t187ap11 insiders. Selected macro aggregates may use ",
       "DGBAS NSTAT. Earnings-call facts follow preferred licensed or human-outbound paths; ",
       "third-party HTML is last-resort only and labeled."
     ),
@@ -2717,9 +2718,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     tab_ownership_structure = "Ownership Structure Analysis",
     own_intro = paste0(
       "Ownership mix and recent buy/sell flow for the Search ticker, with historical volume ",
-      "and a top-10 holder list. TW: TWSE MI_QFIIS / T86 + MOPS insider holdings (t187ap11). ",
-      "US: Yahoo Finance quoteSummary. Empty when undisclosed; credibility labeled. ",
-      "Cross-holding is shown only when filings disclose it."
+      "and a top-10 holder list. Prefer free-float–relevant institution/fund holders when Yahoo ",
+      "discloses them (TW may use the HTCDI ADR quote as a labeled fallback); otherwise TW uses ",
+      "MOPS insider / director holdings (t187ap11). Structure: TWSE MI_QFIIS / T86. ",
+      "Empty when undisclosed; credibility labeled. Cross-holding only when filings disclose it."
     ),
     own_waiting = "Search a ticker to load ownership structure and volume.",
     own_kpi_structure = "Ownership structure",
@@ -2729,6 +2731,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "US: net insider transaction shares when Yahoo provides them."
     ),
     own_slice_institutions = "Institutions",
+    own_slice_institutions_float = "Institutions (of free float)",
     own_slice_insiders = "Insiders",
     own_slice_foreign = "Foreign ownership",
     own_slice_other = "Other / float",
@@ -2736,6 +2739,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     own_volume_title = "Historical volume",
     own_volume_empty = "No historical volume for this ticker.",
     own_holders_title = "Top 10 holders",
+    own_holders_title_float = "Top 10 holders (free-float–relevant)",
+    own_holders_title_insider = "Top 10 holders (insider / director filings)",
     own_holders_empty = "No holder list available for this ticker.",
     own_col_name = "Holder",
     own_col_shares = "Shares",
@@ -2749,6 +2754,23 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Top-5 shareholders and cross-holding stay empty until a disclosed source is available."
     ),
     own_detail_intro_yahoo = "Profile and holders from Yahoo Finance quoteSummary (when the holder maps to a public ticker).",
+    own_detail_intro_mapped = paste0(
+      "Mapped to a public ticker for disclosure lookup. ",
+      "Top-5 shareholders and cross-holding use Yahoo ownership when available; otherwise left empty."
+    ),
+    own_detail_intro_tw_mapped = paste0(
+      "Mapped to a Taiwan-listed 金控／銀行 ticker. ",
+      "Top-5 uses Yahoo ownership when present, else MOPS t187ap11 for that issuer; ",
+      "cross-holding only when those lists disclose the searched company."
+    ),
+    own_detail_intro_tw_gov = paste0(
+      "Government / public pension–style holder. ",
+      "No free public shareholder registry for this entity — top-5 and cross-holding left empty."
+    ),
+    own_detail_intro_private_mgr = paste0(
+      "Private asset manager (not a listed equity). ",
+      "Its own shareholders are not in free Yahoo/MOPS feeds — top-5 and cross-holding left empty."
+    ),
     own_detail_intro_tw_ndf = paste0(
       "Listed as a director / insider holder via MOPS open data (t187ap11). ",
       "This is Taiwan’s National Development Fund (行政院國家發展基金管理會). ",
@@ -2766,6 +2788,12 @@ locale_for_market <- function(mode = get_market_mode()) {
     own_cross_no = "No — not found in this institution’s available top holders.",
     own_cross_unknown = "Unknown — cross-holding is only shown when filings or Yahoo ownership lists disclose it.",
     own_note_tw_insiders = "TW top holders use MOPS insider / director holdings (t187ap11), not a free-float free top-10 registry.",
+    own_note_float_yahoo = "Top 10 uses Yahoo institution/fund ownership (free-float–relevant), not only MOPS insiders.",
+    own_note_float_yahoo_adr = paste0(
+      "TW ordinary had no local Yahoo institution list; ",
+      "showing free-float–relevant holders from the mapped ADR quote (labeled Yahoo)."
+    ),
+    own_note_tw_insiders_structure = "MOPS t187ap11 still informs the insider structure slice; the holder table prefers free-float Yahoo when available.",
     own_note_volume_empty = "Historical volume could not be loaded (Yahoo history empty or rate-limited).",
     own_note_holders_empty = "Holder list unavailable from MOPS / Yahoo for this ticker.",
     own_sources_label = "Sources:",
@@ -4734,7 +4762,8 @@ locale_for_market <- function(mode = get_market_mode()) {
       "公開資訊觀測站（MOPS）開放資料用於董監改選、可轉債／可交換債（並參考櫃買 ISSBD）、",
       "內部人／董監持股（t187ap11），以及有揭露時的主要供應商／重大客戶表；",
       "證交所外資持股（MI_QFIIS）與三大法人買賣超（T86）供股權結構分析；",
-      "美股持股以 Yahoo Finance quoteSummary（有資料時）。部分總體指標可能使用主計總處 NSTAT。",
+      "前十大持股人優先取 Yahoo 機構／基金（流通股相關；台股可標示對應 ADR 備援），",
+      "否則才用 MOPS t187ap11 內部人。部分總體指標可能使用主計總處 NSTAT。",
       "法說會事實依優先授權或人工外連路徑；第三方 HTML 僅為最後備援並標示。"
     ),
     about_data_sources_valuation_title = "估值如何使用上述資料",
@@ -7215,9 +7244,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     tab_ownership_structure = "股權結構分析",
     own_intro = paste0(
       "依 Search 代號顯示股權結構與近期買賣超成交量，下方為歷年成交量與前十大持股人。",
-      "台股：證交所外資持股（MI_QFIIS）、三大法人買賣超（T86）、公開資訊觀測站內部人持股（t187ap11）。",
-      "美股：Yahoo Finance quoteSummary。無揭露時誠實留空並標示可信度。",
-      "交叉持股僅在申報／資料明確揭露時顯示。"
+      "有 Yahoo 機構／基金持股時優先顯示流通股相關前十大（台股亦可依 HTCDI 對應 ADR 報價並標示來源）；",
+      "否則台股退回公開資訊觀測站內部人／董監持股（t187ap11）。結構面：證交所 MI_QFIIS／T86。",
+      "無揭露時誠實留空並標示可信度；交叉持股僅在申報／資料明確揭露時顯示。"
     ),
     own_waiting = "請先搜尋股票代號，以載入股權結構與成交量。",
     own_kpi_structure = "股權結構",
@@ -7227,6 +7256,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "美股：Yahoo 有提供時顯示內部人交易淨股數。"
     ),
     own_slice_institutions = "機構法人",
+    own_slice_institutions_float = "機構法人（占流通股）",
     own_slice_insiders = "內部人",
     own_slice_foreign = "外資持股",
     own_slice_other = "其他／流通",
@@ -7234,6 +7264,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     own_volume_title = "歷年成交量",
     own_volume_empty = "此代號尚無歷年成交量資料。",
     own_holders_title = "前十大持股人",
+    own_holders_title_float = "前十大持股人（流通股相關）",
+    own_holders_title_insider = "前十大持股人（內部人／董監申報）",
     own_holders_empty = "此代號尚無可顯示的持股人清單。",
     own_col_name = "持股人",
     own_col_shares = "股數",
@@ -7247,6 +7279,23 @@ locale_for_market <- function(mode = get_market_mode()) {
       "在取得揭露來源前，該法人前五大股東與交叉持股將留空。"
     ),
     own_detail_intro_yahoo = "簡介與持股來自 Yahoo Finance quoteSummary（僅在持股人可對應公開代號時）。",
+    own_detail_intro_mapped = paste0(
+      "已對應公開上市代號以查詢揭露資料。",
+      "前五大股東與交叉持股以 Yahoo 持股為準（有資料才顯示），否則留空。"
+    ),
+    own_detail_intro_tw_mapped = paste0(
+      "已對應台灣上市金控／銀行代號。",
+      "前五大優先取 Yahoo 持股；若無則用該發行人公開資訊觀測站 t187ap11。",
+      "交叉持股僅在上述名單明確出現目前搜尋公司時才判定。"
+    ),
+    own_detail_intro_tw_gov = paste0(
+      "政府／公營退休金類型持股人。",
+      "此實體無對應免費股東名冊，前五大與交叉持股留空。"
+    ),
+    own_detail_intro_private_mgr = paste0(
+      "未上市資產管理機構。",
+      "其自身股東不在免費 Yahoo／MOPS 資料中，前五大與交叉持股留空。"
+    ),
     own_detail_intro_tw_ndf = paste0(
       "依公開資訊觀測站開放資料（t187ap11）列為董事／內部人持股人。",
       "此為行政院國家發展基金管理會。該基金本身之前五大股東無對應免費開放資料，故留空。"
@@ -7263,6 +7312,12 @@ locale_for_market <- function(mode = get_market_mode()) {
     own_cross_no = "無——在該法人目前可得的前幾大持股中未見目前搜尋公司。",
     own_cross_unknown = "不明——僅在申報或 Yahoo 持股名單明確揭露時才判斷交叉持股。",
     own_note_tw_insiders = "台股前十大目前取公開資訊觀測站內部人／董監持股（t187ap11），非免費流通股前十大名冊。",
+    own_note_float_yahoo = "前十大取 Yahoo 機構／基金持股（流通股相關），非僅 MOPS 內部人。",
+    own_note_float_yahoo_adr = paste0(
+      "台股當地 Yahoo 無機構持股名單；",
+      "改以對應 ADR 報價之流通股相關持股顯示（標示 Yahoo）。"
+    ),
+    own_note_tw_insiders_structure = "結構面內部人占比仍參考公開資訊觀測站 t187ap11；持股人表在有 Yahoo 時優先流通股相關名單。",
     own_note_volume_empty = "無法載入歷年成交量（Yahoo 歷史為空或受流量限制）。",
     own_note_holders_empty = "此代號尚無 MOPS／Yahoo 持股人清單。",
     own_sources_label = "資料來源：",
