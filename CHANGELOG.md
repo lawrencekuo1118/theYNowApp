@@ -1,3 +1,12 @@
+## [v26.56] — 2026-10-23
+
+### Fixed
+- Settings (signed-in): restore **主色系 / Color theme** personalization picker (logo / mono / ocean / forest) on the Settings title row (#423).
+
+### Notes
+- en-US: Settings reused Account `ynow-maint-shell` chrome but omitted `ynow_maint_theme_select_ui()`; Account overview and Points ledger still had the control. Persistence unchanged (`localStorage` `ynow_maint_theme`). Bundle `12728551`.
+- zh-TW: 登入後「設定」補回與帳號維護頁相同的主色系選項（Logo 藍綠／黑白／藍海／森林）；仍以本機 `localStorage` 套用至維護殼層。Bundle `12728551`。
+
 ## [v26.55] — 2026-10-23
 
 ### Fixed
