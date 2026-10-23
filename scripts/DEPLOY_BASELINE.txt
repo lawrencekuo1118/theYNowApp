@@ -7,5 +7,5 @@ commit=4a8ccd41ef853c5c4062b308711aafd701f0554f
 short=4a8ccd41
 message=chore: bump display version to v26.62
 captured_at=2026-10-23T10:33:52Z
-display_version=v26.62
+display_version=v26.63
 note=Canonical live line is app_26.0. Bundle 12729485: parallel tab-switch latest-wins loads (#436).
