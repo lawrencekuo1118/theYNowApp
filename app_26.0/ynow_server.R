@@ -4873,10 +4873,14 @@ server <- function(input, output, session) {
           ))
         }
         # Ownership Structure Analysis (Lite + Full Company tab)
-        company_ownership(tryCatch(
-          fetch_ownership_structure(stock_code, market = mode_now),
-          error = function(e) NULL
-        ))
+        company_ownership(tryCatch({
+          fetch_fn <- if (exists("cached_fetch_ownership_structure", mode = "function")) {
+            cached_fetch_ownership_structure
+          } else {
+            fetch_ownership_structure
+          }
+          fetch_fn(stock_code, market = mode_now)
+        }, error = function(e) NULL))
         own_selected_holder(NULL)
         own_holder_detail(NULL)
         # Always sync Dashboard「目前產業標準快覽」to the searched ticker's industry
