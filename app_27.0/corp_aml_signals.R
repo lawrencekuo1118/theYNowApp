@@ -466,3 +466,108 @@ corp_aml_veto_keys <- function(pack) {
   }
   list(title_key = "aml_veto_title", text_key = "aml_veto_text")
 }
+
+#' Severity for one typology code in an AML pack (`alert` / `watch` / …).
+corp_aml_flag_severity <- function(pack, code) {
+  code <- as.character(code %||% "")[1]
+  if (!nzchar(code) || !is.list(pack) || !is.data.frame(pack$flags) ||
+      !nrow(pack$flags) || !"code" %in% names(pack$flags)) {
+    return(NA_character_)
+  }
+  i <- which(as.character(pack$flags$code) == code)
+  if (!length(i)) return(NA_character_)
+  as.character(pack$flags$severity[i[[1]]])[1]
+}
+
+#' Worst severity among codes (`alert` > `watch` > other).
+.corp_aml_worst_sev <- function(..., default = NA_character_) {
+  sevs <- unlist(list(...), use.names = FALSE)
+  sevs <- as.character(sevs)
+  sevs <- sevs[nzchar(sevs) & !is.na(sevs)]
+  if (!length(sevs)) return(as.character(default)[1])
+  if (any(sevs == "alert")) return("alert")
+  if (any(sevs == "watch")) return("watch")
+  sevs[[1]]
+}
+
+#' Which YNOW overlap surfaces should show an AML mark, and at what severity.
+#'
+#' Surfaces: `qoe`, `fscore`, `alerts`, `beneish`, `schilit`, `risk_matrix`.
+#' Driven by AML_C2 (QoE/accruals), AML_C7 (Beneish/Schilit), AML_C3 (AR–Inv theme).
+#' Alert/watch only — never a buy cue.
+corp_aml_surface_marks <- function(pack) {
+  empty <- list(
+    qoe = NULL, fscore = NULL, alerts = NULL,
+    beneish = NULL, schilit = NULL, risk_matrix = NULL
+  )
+  if (!is.list(pack) || !isTRUE(pack$ok)) return(empty)
+
+  c2 <- corp_aml_flag_severity(pack, "AML_C2")
+  c3 <- corp_aml_flag_severity(pack, "AML_C3")
+  c7 <- corp_aml_flag_severity(pack, "AML_C7")
+  active <- function(sev) identical(sev, "alert") || identical(sev, "watch")
+
+  out <- empty
+  if (active(c2)) {
+    out$qoe <- c2
+    out$fscore <- c2
+  }
+  if (active(c7)) {
+    out$alerts <- c7
+    out$beneish <- c7
+    out$schilit <- .corp_aml_worst_sev(c7, if (active(c3)) c3 else NULL)
+  } else if (active(c3)) {
+    out$schilit <- c3
+    out$alerts <- c3
+  }
+  rm_sev <- .corp_aml_worst_sev(
+    if (active(c2)) c2 else NULL,
+    if (active(c7)) c7 else NULL,
+    if (active(c3)) c3 else NULL
+  )
+  if (active(rm_sev)) out$risk_matrix <- rm_sev
+  out
+}
+
+#' Small 「AML」 mark for YNOW overlap chips (veto / risk only).
+#'
+#' @param severity `alert` or `watch` (or NULL / other → no mark)
+#' @param locale UI locale (`en` / `zh-TW`)
+corp_aml_mark_ui <- function(severity, locale = "zh-TW") {
+  sev <- as.character(severity %||% "")[1]
+  if (!identical(sev, "alert") && !identical(sev, "watch")) return(NULL)
+  loc <- if (exists("normalize_ui_locale", mode = "function")) {
+    tryCatch(normalize_ui_locale(locale), error = function(e) as.character(locale)[1])
+  } else {
+    as.character(locale)[1]
+  }
+  label <- if (exists("ui_str", mode = "function")) {
+    tryCatch(ui_str("aml_mark_label", loc), error = function(e) "AML")
+  } else {
+    "AML"
+  }
+  tip <- if (exists("ui_str", mode = "function")) {
+    tryCatch(ui_str("aml_mark_tooltip", loc), error = function(e) {
+      "Corporate AML proxy overlap — veto / risk only, not a buy cue."
+    })
+  } else {
+    "Corporate AML proxy overlap — veto / risk only, not a buy cue."
+  }
+  if (!nzchar(as.character(label)[1])) label <- "AML"
+  htmltools::tags$span(
+    class = paste(
+      "ynow-aml-mark",
+      if (identical(sev, "alert")) "ynow-aml-mark--alert" else "ynow-aml-mark--watch"
+    ),
+    title = tip,
+    `aria-label` = tip,
+    as.character(label)[1]
+  )
+}
+
+#' Append an AML mark after a subtitle / title node when severity is active.
+corp_aml_with_mark <- function(label, severity, locale = "zh-TW") {
+  mark <- corp_aml_mark_ui(severity, locale = locale)
+  if (is.null(mark)) return(label)
+  htmltools::tagList(htmltools::tags$span(label), " ", mark)
+}

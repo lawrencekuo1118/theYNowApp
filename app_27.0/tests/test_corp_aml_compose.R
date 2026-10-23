@@ -73,9 +73,23 @@ check("veto text key", identical(v$text_key, "aml_veto_text"))
 clear_pack <- list(ok = TRUE, tier = "clear")
 check("clear has no veto", is.null(corp_aml_veto_keys(clear_pack)))
 
+marks <- corp_aml_surface_marks(pack)
+check("surface marks list", is.list(marks))
+check("C2/C7 alert marks QoE", identical(marks$qoe, "alert") || identical(marks$qoe, "watch"))
+check("C7 marks Beneish", identical(marks$beneish, "alert") || identical(marks$beneish, "watch"))
+check("C7 marks Schilit", identical(marks$schilit, "alert") || identical(marks$schilit, "watch"))
+check("risk matrix marked", identical(marks$risk_matrix, "alert") || identical(marks$risk_matrix, "watch"))
+check("clear pack no marks", is.null(corp_aml_surface_marks(clear_pack)$qoe))
+check("mark ui null on clear", is.null(corp_aml_mark_ui(NULL)))
+check("mark ui alert class", {
+  m <- corp_aml_mark_ui("alert", locale = "en")
+  grepl("ynow-aml-mark--alert", as.character(m), fixed = TRUE)
+})
+
 dec <- paste(readLines(file.path(app_dir, "investment_decision_module.R"), warn = FALSE), collapse = "\n")
 check("ui_recommendation still uses ynow_statement_verdict", grepl("ynow_statement_verdict\\(", dec))
 check("veto rendered beside recommendation", grepl("corp_aml_veto_keys", dec, fixed = TRUE))
+check("AML marks wired in decision_server", grepl("corp_aml_surface_marks", dec, fixed = TRUE))
 
 if (fail > 0L) {
   cat("FAILED ", fail, " checks\n", sep = "")
