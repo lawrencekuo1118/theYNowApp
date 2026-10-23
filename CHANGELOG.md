@@ -1,3 +1,12 @@
+## [v26.59] — 2026-10-23
+
+### Fixed
+- Sidebar chip PCB traces: solid continuous strokes (not dashed); electric glow travels on a duplicate path layer (#429).
+
+### Notes
+- en-US: Base `.ynow-ckt-p` uses `stroke-dasharray: none`; traveling cyan glow stays on `.ynow-ckt-glow` with long-gap dashoffset. Bundle `12728797`.
+- zh-TW: 側邊欄晶片線路改為實線（非虛線）；電光沿複製路徑行進，底層線路維持連續實線。
+
 ## [v26.58] — 2026-10-23
 
 ### Changed
