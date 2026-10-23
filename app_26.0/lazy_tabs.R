@@ -1,6 +1,12 @@
 # Once-per-session lazy tab mounts.
 # First visit to a sidebar tab builds that page's UI (and optional server);
 # revisits reuse the mounted host — no remount / no duplicate moduleServer.
+#
+# on_first_mount runs via later after the UI flag flips so a sync hook
+# (moduleServer, snapshot load) cannot hold the sidebar_tabs observer and
+# serialize the next tab switch behind that work. delay=0.05 clears the
+# current flush's short later::run_now drain (MockShinySession ~30ms) so the
+# next sidebar_tabs input can mount before a slow hook starts.
 
 .ynow_lazy_host_id <- function(tab) {
   paste0("ynow_lazy_host_", gsub("[^A-Za-z0-9_]", "_", as.character(tab)[1]))
@@ -8,6 +14,18 @@
 
 .ynow_lazy_or <- function(x, y) {
   if (is.null(x) || length(x) == 0L || (is.character(x) && !nzchar(x[1]))) y else x
+}
+
+.ynow_lazy_defer <- function(fn, delay = 0) {
+  if (!is.function(fn)) return(invisible(NULL))
+  if (requireNamespace("later", quietly = TRUE)) {
+    later::later(function() {
+      tryCatch(fn(), error = function(e) NULL)
+    }, delay = delay)
+  } else {
+    tryCatch(fn(), error = function(e) NULL)
+  }
+  invisible(NULL)
 }
 
 #' Register lazy tab hosts.
@@ -65,13 +83,22 @@
       if (!nzchar(tab) || !tab %in% names(builders)) return()
       if (isTRUE(mounted[[tab]])) return()
       mounted[[tab]] <- TRUE
+      # Show the host before the mount hook so this observer returns quickly.
+      # Deferred hooks must not block the next sidebar_tabs event.
+      flags[[tab]] <- TRUE
       hook <- on_first_mount[[tab]]
       if (is.function(hook)) {
-        tryCatch(hook(), error = function(e) {
-          warning(sprintf("lazy tab on_first_mount(%s): %s", tab, conditionMessage(e)))
-        })
+        tab_hook <- tab
+        hook_fn <- hook
+        .ynow_lazy_defer(function() {
+          tryCatch(hook_fn(), error = function(e) {
+            warning(sprintf(
+              "lazy tab on_first_mount(%s): %s",
+              tab_hook, conditionMessage(e)
+            ))
+          })
+        }, delay = 0.05)
       }
-      flags[[tab]] <- TRUE
       if (is.function(after_mount)) {
         session$onFlushed(function() {
           tryCatch(after_mount(tab), error = function(e) NULL)

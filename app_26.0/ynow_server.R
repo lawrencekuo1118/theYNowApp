@@ -4117,6 +4117,9 @@ server <- function(input, output, session) {
           market_mode_rv = market_mode,
           ui_locale_rv = ui_locale,
           lite_mode_rv = reactive(isTRUE(input$ynow_lite_mode)),
+          tab_active_rv = reactive(
+            identical(as.character(input$sidebar_tabs %||% "")[1], "macro_market")
+          ),
           # Only link after a ticker is loaded — ignore APP_DEFAULTS industry alone.
           company_industry_rv = reactive({
             tk <- tryCatch(current_ticker(), error = function(e) NULL)
@@ -4708,12 +4711,191 @@ server <- function(input, output, session) {
       .tw_two_fallback_tried_for(NA_character_)
     }
     
+    my_gen <- isolate(as.integer(ticker_search_gen()) %||% 0L)
     busy_tab <- .ynow_busy_tab_now("dashboard")
     .ynow_set_tab_busy(busy_tab, TRUE)
-    on.exit(tryCatch(.ynow_set_tab_busy(busy_tab, FALSE), error = function(e) NULL), add = TRUE)
-    withProgress(message = paste(
-      '🚀 正在取得', display_ticker_for_market(stock_code, market_mode()), '的最新資料...'
-    ), value = 0, {
+    .search_alive <- function() {
+      identical(isolate(as.integer(ticker_search_gen()) %||% 0L), my_gen) &&
+        identical(isolate(current_ticker()), stock_code)
+    }
+    .search_done <- function() {
+      tryCatch(.ynow_set_tab_busy(busy_tab, FALSE), error = function(e) NULL)
+    }
+
+    .run_search_phase2 <- function(prog, sum_df, q_ccy, f_ccy) {
+      if (!isTRUE(.search_alive())) {
+        tryCatch(prog$close(), error = function(e) NULL)
+        .search_done()
+        return(invisible(NULL))
+      }
+      tryCatch({
+        prog$set(value = 0.5, detail = "正在擷取財報明細（yfinance）...")
+        # cached_scrape_financials already runs normalize_all_financials — do not re-normalize
+        res <- cached_scrape_financials(stock_code)
+
+        # Notify when ADR quoted ticker had empty Yahoo statements and we used
+        # the HTCDI local ordinary listing (config-driven, not ticker-hardcoded).
+        fb_src <- as.character(attr(res, "statement_source_ticker") %||% "")[1]
+        fb_why <- as.character(attr(res, "statement_fallback") %||% "")[1]
+        if (nzchar(fb_src) && grepl("local_ordinary", fb_why, fixed = TRUE)) {
+          showNotification(
+            paste0(
+              "Quoted ticker statements were empty; loaded filings from local ordinary ",
+              fb_src, "."
+            ),
+            type = "message", duration = 10, id = "ynow_fs_ordinary_fallback"
+          )
+        }
+
+        # .TWO：Yahoo IS／BS 缺漏（含全空或部分空）→ 櫃買「財務資料簡報」補齊
+        # （上櫃 O_／興櫃 U_）。只填空表、不捏造 CF；閘門用 should_try_* 而非要求三表全空。
+        tpex_used <- FALSE
+        if (exists("apply_tpex_financial_fallback", mode = "function") &&
+            grepl("\\.TWO$", stock_code, ignore.case = TRUE) &&
+            exists("should_try_tpex_financial_fallback", mode = "function") &&
+            isTRUE(should_try_tpex_financial_fallback(stock_code, res))) {
+          prog$set(value = 0.55, detail = "Yahoo 年報缺漏，改試櫃買季報彙總…")
+          fb <- tryCatch(
+            apply_tpex_financial_fallback(res, stock_code),
+            error = function(e) list(res = res, used = FALSE, error = conditionMessage(e))
+          )
+          if (isTRUE(fb$used)) {
+            res <- fb$res
+            tpex_used <- TRUE
+            tw_tpex_fs_fallback(TRUE)
+            showNotification(
+              .ui_msg(
+                "notif_data_gap_yahoo_tpex",
+                board = if (identical(fb$meta$board %||% "", "ESB")) "ESB" else "OTC"
+              ),
+              type = "message", duration = 12, id = "ynow_tpex_fs_fallback"
+            )
+          } else if (nzchar(as.character(fb$error %||% "")[1])) {
+            if (exists(".ynow_log", mode = "function")) {
+              .ynow_log("ℹ️ TPEx fallback 未採用: ", fb$error)
+            }
+          }
+        }
+        scraped_financials(res)
+
+        # 1A：財報寫入後延遲鎖定參數基準（等 WACC／SGR／模組自動帶入）
+        if (isTRUE(isolate(user_has_searched()))) {
+          .schedule_param_audit_baseline(2200L)
+        }
+
+        # P0／P2：IS／BS／CF 全空 → 明確提示（勿以為算完）；導向 MOPS／櫃買
+        empty_fs <- exists("financials_is_bs_cf_all_empty", mode = "function") &&
+          isTRUE(financials_is_bs_cf_all_empty(res))
+        fs_all_empty(empty_fs)
+        if (isTRUE(empty_fs)) {
+          showNotification(
+            .ui_msg("notif_data_gap_empty"),
+            type = "warning", duration = 12, id = "ynow_fs_empty_gap"
+          )
+        } else if (isTRUE(tpex_used)) {
+          # 摘要有資料但非完整三表：勿顯示「全空」紅標
+          fs_all_empty(FALSE)
+        }
+        if (isTRUE(tw_is_esb())) {
+          showNotification(
+            .ui_msg("notif_esb_beta_hint"),
+            type = "message", duration = 10, id = "ynow_esb_board_note"
+          )
+        }
+
+        # Prefer statement currency from financials _meta when Summary omitted it.
+        meta_fc <- normalize_ccy(attr(res, "financialCurrency") %||% "")
+        meta_qc <- normalize_ccy(attr(res, "currency") %||% "")
+        if (!is.na(meta_fc) && (is.na(statement_currency()) || identical(statement_currency(), quote_currency()))) {
+          if (!identical(meta_fc, quote_currency()) || is.na(statement_currency())) {
+            statement_currency(meta_fc)
+            set_ynow_currency_context(
+              session_currency(), fx_usd_twd(), quote_currency(), meta_fc
+            )
+          }
+        }
+        if (!is.na(meta_qc) && is.na(quote_currency())) {
+          quote_currency(meta_qc)
+        }
+
+        # 搜尋後：ADR／股數級距自動約當（市值÷報價股價）
+        tryCatch({
+          bs_df <- reorder_financial_columns(
+            coerce_financial_df(res[["Balance Sheet"]]$expanded)
+          )
+          sh_res <- resolve_valuation_shares(
+            bs_df, sum_df, ticker = stock_code,
+            quote_currency = q_ccy, financial_currency = f_ccy
+          )
+          if (shares_auto_adjust_method(sh_res$method)) {
+            msg <- sh_res$note
+            if (is.null(msg) || !nzchar(msg)) {
+              msg <- sprintf(
+                "已自動換算報價股約當股數（方法：%s）",
+                sh_res$method
+              )
+            }
+            showNotification(
+              msg, type = "message", duration = 8,
+              id = "ynow_shares_adr_note"
+            )
+          }
+        }, error = function(e) NULL)
+
+        # 先更新即時 Rf，其餘 CAPM／WACC 在財報 reactive 就緒後自動估算
+        tryCatch({
+          rf_now <- cached_get_risk_free_rate()
+          if (is.finite(rf_now) && rf_now > 0) {
+            updateNumericInput(session, "capm_rf", value = round(as.numeric(rf_now), 2))
+          }
+        }, error = function(e) NULL)
+
+        # Brand tint after statements / Rf — not a valuation input; keep off the
+        # Yahoo gate critical path that blocks financials.
+        logo_web <- tryCatch({
+          p <- isolate(company_profile())
+          as.character(p$website %||% "")[1]
+        }, error = function(e) "")
+        logo_cols <- tryCatch(
+          cached_get_corp_logo_colors(
+            stock_code,
+            website = if (nzchar(logo_web %||% "")) logo_web else NULL
+          ),
+          error = function(e) character(0)
+        )
+        corp_name_logo_colors(.ensure_logo_color_pair(logo_cols))
+
+        prog$set(value = 0.9, detail = "資料同步完成！✅")
+
+      }, error = function(e) {
+        fs_all_empty(FALSE)
+        # 興櫃旗標若已偵測仍保留短註（Summary 失敗也可能是興櫃）
+        showNotification(
+          .ui_msg("notif_fetch_fail", err = e$message),
+          type = "error",
+          duration = 12
+        )
+      })
+      tryCatch(prog$close(), error = function(e) NULL)
+      .search_done()
+      invisible(NULL)
+    }
+
+    .run_search_phase1 <- function() {
+      if (!isTRUE(.search_alive())) {
+        .search_done()
+        return(invisible(NULL))
+      }
+      prog <- shiny::Progress$new(session, min = 0, max = 1)
+      prog$set(
+        message = paste(
+          "🚀 正在取得", display_ticker_for_market(stock_code, market_mode()), "的最新資料..."
+        ),
+        value = 0
+      )
+      sum_df <- NULL
+      q_ccy <- NA_character_
+      f_ccy <- NA_character_
       tryCatch({
         # 換檔先清缺口旗標，避免殘留舊標的提示
         fs_all_empty(FALSE)
@@ -4735,7 +4917,7 @@ server <- function(input, output, session) {
           tw_is_esb(TRUE)
         }
 
-        incProgress(0.2, detail = "正在讀取 Summary（yfinance）...")
+        prog$set(value = 0.2, detail = "正在讀取 Summary（yfinance）...")
         sum_df <- tryCatch(cached_get_summary_data(stock_code), error = function(e) e)
         # TWSE 後綴無資料／失敗 → 試上櫃 .TWO（僅一次）
         if ((inherits(sum_df, "error") || !is.data.frame(sum_df) || nrow(sum_df) < 1L) &&
@@ -4755,6 +4937,8 @@ server <- function(input, output, session) {
             )
             current_ticker(alt)
             tryCatch(updateTextInput(session, "sc", value = alt_disp), error = function(e) NULL)
+            tryCatch(prog$close(), error = function(e) NULL)
+            .search_done()
             return()
           }
         }
@@ -4982,144 +5166,26 @@ server <- function(input, output, session) {
           error = function(e) NULL
         )
 
-        incProgress(0.5, detail = "正在擷取財報明細（yfinance）...")
-        # cached_scrape_financials already runs normalize_all_financials — do not re-normalize
-        res <- cached_scrape_financials(stock_code)
-
-        # Notify when ADR quoted ticker had empty Yahoo statements and we used
-        # the HTCDI local ordinary listing (config-driven, not ticker-hardcoded).
-        fb_src <- as.character(attr(res, "statement_source_ticker") %||% "")[1]
-        fb_why <- as.character(attr(res, "statement_fallback") %||% "")[1]
-        if (nzchar(fb_src) && grepl("local_ordinary", fb_why, fixed = TRUE)) {
-          showNotification(
-            paste0(
-              "Quoted ticker statements were empty; loaded filings from local ordinary ",
-              fb_src, "."
-            ),
-            type = "message", duration = 10, id = "ynow_fs_ordinary_fallback"
-          )
+        if (!isTRUE(.search_alive())) {
+          tryCatch(prog$close(), error = function(e) NULL)
+          .search_done()
+          return(invisible(NULL))
         }
-
-        # .TWO：Yahoo IS／BS 缺漏（含全空或部分空）→ 櫃買「財務資料簡報」補齊
-        # （上櫃 O_／興櫃 U_）。只填空表、不捏造 CF；閘門用 should_try_* 而非要求三表全空。
-        tpex_used <- FALSE
-        if (exists("apply_tpex_financial_fallback", mode = "function") &&
-            grepl("\\.TWO$", stock_code, ignore.case = TRUE) &&
-            exists("should_try_tpex_financial_fallback", mode = "function") &&
-            isTRUE(should_try_tpex_financial_fallback(stock_code, res))) {
-          incProgress(0.55, detail = "Yahoo 年報缺漏，改試櫃買季報彙總…")
-          fb <- tryCatch(
-            apply_tpex_financial_fallback(res, stock_code),
-            error = function(e) list(res = res, used = FALSE, error = conditionMessage(e))
-          )
-          if (isTRUE(fb$used)) {
-            res <- fb$res
-            tpex_used <- TRUE
-            tw_tpex_fs_fallback(TRUE)
-            showNotification(
-              .ui_msg(
-                "notif_data_gap_yahoo_tpex",
-                board = if (identical(fb$meta$board %||% "", "ESB")) "ESB" else "OTC"
-              ),
-              type = "message", duration = 12, id = "ynow_tpex_fs_fallback"
+        # Yield so sidebar_tabs / lazy mounts can start before financials scrape.
+        if (requireNamespace("later", quietly = TRUE)) {
+          later::later(function() {
+            tryCatch(
+              .run_search_phase2(prog, sum_df, q_ccy, f_ccy),
+              error = function(e) {
+                tryCatch(prog$close(), error = function(e2) NULL)
+                .search_done()
+              }
             )
-          } else if (nzchar(as.character(fb$error %||% "")[1])) {
-            if (exists(".ynow_log", mode = "function")) {
-              .ynow_log("ℹ️ TPEx fallback 未採用: ", fb$error)
-            }
-          }
+          }, delay = 0)
+        } else {
+          .run_search_phase2(prog, sum_df, q_ccy, f_ccy)
         }
-        scraped_financials(res)
-
-        # 1A：財報寫入後延遲鎖定參數基準（等 WACC／SGR／模組自動帶入）
-        if (isTRUE(isolate(user_has_searched()))) {
-          .schedule_param_audit_baseline(2200L)
-        }
-
-        # P0／P2：IS／BS／CF 全空 → 明確提示（勿以為算完）；導向 MOPS／櫃買
-        empty_fs <- exists("financials_is_bs_cf_all_empty", mode = "function") &&
-          isTRUE(financials_is_bs_cf_all_empty(res))
-        fs_all_empty(empty_fs)
-        if (isTRUE(empty_fs)) {
-          showNotification(
-            .ui_msg("notif_data_gap_empty"),
-            type = "warning", duration = 12, id = "ynow_fs_empty_gap"
-          )
-        } else if (isTRUE(tpex_used)) {
-          # 摘要有資料但非完整三表：勿顯示「全空」紅標
-          fs_all_empty(FALSE)
-        }
-        if (isTRUE(tw_is_esb())) {
-          showNotification(
-            .ui_msg("notif_esb_beta_hint"),
-            type = "message", duration = 10, id = "ynow_esb_board_note"
-          )
-        }
-
-        # Prefer statement currency from financials _meta when Summary omitted it.
-        meta_fc <- normalize_ccy(attr(res, "financialCurrency") %||% "")
-        meta_qc <- normalize_ccy(attr(res, "currency") %||% "")
-        if (!is.na(meta_fc) && (is.na(statement_currency()) || identical(statement_currency(), quote_currency()))) {
-          if (!identical(meta_fc, quote_currency()) || is.na(statement_currency())) {
-            statement_currency(meta_fc)
-            set_ynow_currency_context(
-              session_currency(), fx_usd_twd(), quote_currency(), meta_fc
-            )
-          }
-        }
-        if (!is.na(meta_qc) && is.na(quote_currency())) {
-          quote_currency(meta_qc)
-        }
-
-        # 搜尋後：ADR／股數級距自動約當（市值÷報價股價）
-        tryCatch({
-          bs_df <- reorder_financial_columns(
-            coerce_financial_df(res[["Balance Sheet"]]$expanded)
-          )
-          sh_res <- resolve_valuation_shares(
-            bs_df, sum_df, ticker = stock_code,
-            quote_currency = q_ccy, financial_currency = f_ccy
-          )
-          if (shares_auto_adjust_method(sh_res$method)) {
-            msg <- sh_res$note
-            if (is.null(msg) || !nzchar(msg)) {
-              msg <- sprintf(
-                "已自動換算報價股約當股數（方法：%s）",
-                sh_res$method
-              )
-            }
-            showNotification(
-              msg, type = "message", duration = 8,
-              id = "ynow_shares_adr_note"
-            )
-          }
-        }, error = function(e) NULL)
-
-        # 先更新即時 Rf，其餘 CAPM／WACC 在財報 reactive 就緒後自動估算
-        tryCatch({
-          rf_now <- cached_get_risk_free_rate()
-          if (is.finite(rf_now) && rf_now > 0) {
-            updateNumericInput(session, "capm_rf", value = round(as.numeric(rf_now), 2))
-          }
-        }, error = function(e) NULL)
-
-        # Brand tint after statements / Rf — not a valuation input; keep off the
-        # Yahoo gate critical path that blocks financials.
-        logo_web <- tryCatch({
-          p <- isolate(company_profile())
-          as.character(p$website %||% "")[1]
-        }, error = function(e) "")
-        logo_cols <- tryCatch(
-          cached_get_corp_logo_colors(
-            stock_code,
-            website = if (nzchar(logo_web %||% "")) logo_web else NULL
-          ),
-          error = function(e) character(0)
-        )
-        corp_name_logo_colors(.ensure_logo_color_pair(logo_cols))
-
-        incProgress(0.9, detail = "資料同步完成！✅")
-
+        return(invisible(NULL))
       }, error = function(e) {
         fs_all_empty(FALSE)
         # 興櫃旗標若已偵測仍保留短註（Summary 失敗也可能是興櫃）
@@ -5128,8 +5194,19 @@ server <- function(input, output, session) {
           type = "error",
           duration = 12
         )
+        tryCatch(prog$close(), error = function(e2) NULL)
+        .search_done()
       })
-    })
+      invisible(NULL)
+    }
+
+    if (requireNamespace("later", quietly = TRUE)) {
+      later::later(function() {
+        tryCatch(.run_search_phase1(), error = function(e) .search_done())
+      }, delay = 0)
+    } else {
+      .run_search_phase1()
+    }
   })
 
   # ==========================================
