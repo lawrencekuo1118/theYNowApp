@@ -919,11 +919,13 @@ macro_market_ui <- function(id = "macro", locale = "en", market_mode = "US") {
 #' @param market_mode_rv reactiveVal / reactive returning "US" | "TW"
 #' @param ui_locale_rv reactive returning locale id
 #' @param company_industry_rv reactive returning Company industry_choice key (optional)
+#' @param tab_active_rv optional reactive; when FALSE, cancel in-flight quote/HTCDI ticks
 macro_market_server <- function(id = "macro",
                                 market_mode_rv,
                                 ui_locale_rv = reactive("en"),
                                 lite_mode_rv = NULL,
-                                company_industry_rv = NULL) {
+                                company_industry_rv = NULL,
+                                tab_active_rv = NULL) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     `%||%` <- function(a, b) if (is.null(a)) b else a
@@ -944,6 +946,10 @@ macro_market_server <- function(id = "macro",
         return(isTRUE(tryCatch(lite_mode_rv(), error = function(e) FALSE)))
       }
       tryCatch(isTRUE(session$rootScope()$input$ynow_lite_mode), error = function(e) FALSE)
+    }
+    .tab_active <- function() {
+      if (is.null(tab_active_rv)) return(TRUE)
+      isTRUE(tryCatch(tab_active_rv(), error = function(e) TRUE))
     }
     .ui <- function(key, ...) {
       if (exists("ui_str", mode = "function")) {
@@ -1222,6 +1228,9 @@ macro_market_server <- function(id = "macro",
         # before HTCDI so Yahoo-gate Sys.sleep inside HTCDI cannot starve DJI/SOX.
         .fetch_one <- function(i, acc) {
           if (!identical(isolate(as.integer(index_quotes_gen()) %||% 0L), gen)) {
+            return(invisible(NULL))
+          }
+          if (!isTRUE(.tab_active())) {
             return(invisible(NULL))
           }
           if (i > length(syms)) {
@@ -1743,10 +1752,12 @@ macro_market_server <- function(id = "macro",
     }
     .htcdi_enrich_fs <- function(job_id, cfg0, issuers0, price_map0, bench_df0) {
       if (!identical(isolate(htcdi_job()), job_id)) return()
+      if (!isTRUE(.tab_active())) return()
       if (!exists("cached_scrape_financials", mode = "function")) return()
       fs_map <- list()
       for (iss in issuers0) {
         if (!identical(isolate(htcdi_job()), job_id)) return()
+        if (!isTRUE(.tab_active())) return()
         tk <- as.character(iss$tickers[[1]] %||% "")[1]
         if (!nzchar(tk)) next
         itype <- tolower(as.character(iss$instrument_type %||% "")[1])
@@ -1785,6 +1796,7 @@ macro_market_server <- function(id = "macro",
 
       .fetch_price_i <- function(i) {
         if (!identical(isolate(htcdi_job()), job)) return()
+        if (!isTRUE(.tab_active())) return()
         if (i > length(issuers)) {
           if (exists("fetch_price_history_df", mode = "function")) {
             state$bench_df <- tryCatch(
