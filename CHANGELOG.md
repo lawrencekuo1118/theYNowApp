@@ -4,8 +4,18 @@
 - Settings (signed-in): restore **主色系 / Color theme** personalization picker (logo / mono / ocean / forest) on the Settings title row (#423).
 
 ### Notes
-- en-US: Settings reused Account `ynow-maint-shell` chrome but omitted `ynow_maint_theme_select_ui()`; Account overview and Points ledger still had the control. Persistence unchanged (`localStorage` `ynow_maint_theme`).
-- zh-TW: 登入後「設定」補回與帳號維護頁相同的主色系選項（Logo 藍綠／黑白／藍海／森林）；仍以本機 `localStorage` 套用至維護殼層。
+- en-US: Settings reused Account `ynow-maint-shell` chrome but omitted `ynow_maint_theme_select_ui()`; Account overview and Points ledger still had the control. Persistence unchanged (`localStorage` `ynow_maint_theme`). Bundle `12728551`.
+- zh-TW: 登入後「設定」補回與帳號維護頁相同的主色系選項（Logo 藍綠／黑白／藍海／森林）；仍以本機 `localStorage` 套用至維護殼層。Bundle `12728551`。
+
+## [v26.55] — 2026-10-23
+
+### Fixed
+- Sidebar circuit: clamp vertical extent so fade-to-black starts by the YNow brand logo; electric blue stroke travel/glow (not image scaleY scroll) (#422).
+- Header wordmark: solid black title strip on collapsed-sidebar scroll; no AdminLTE white flash; no vein/pattern through the wordmark (#422).
+
+### Notes
+- en-US: Circuit overlay is bottom-anchored (`min(42vh, 380px)`); SVG stroke-dash travel + glow pulse. Title strip stays `#000` when the sidebar is collapsed and the page scrolls. Bundle `12728418`.
+- zh-TW: 側邊欄線路最長到 YNow logo 即 fade 至全黑；動態為線路電光（非整圖上下移動）。收合側欄捲動時「The YNow App」標題區維持黑底、無圖樣透出。Bundle `12728418`。
 
 ## [v26.54] — 2026-10-22
 
