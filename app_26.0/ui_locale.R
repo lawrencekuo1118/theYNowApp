@@ -167,7 +167,9 @@ locale_for_market <- function(mode = get_market_mode()) {
       "SEC EDGAR for notes (10-K / 10-Q / 8-K; ADR and foreign issuers 20-F / 6-K) and ",
       "board / convertible soft links. TW: TWSE / TPEx listing boards (ESB optional); ",
       "MOPS open data for board elections, convertible / exchangeable bonds (with TPEx ISSBD), ",
-      "and major supplier / customer tables when disclosed; selected macro aggregates may use ",
+      "insider / director holdings (t187ap11), and major supplier / customer tables when disclosed; ",
+      "TWSE MI_QFIIS (foreign ownership) and T86 (institutional net buy/sell) feed Ownership Structure Analysis; ",
+      "US ownership uses Yahoo Finance quoteSummary when available. Selected macro aggregates may use ",
       "DGBAS NSTAT. Earnings-call facts follow preferred licensed or human-outbound paths; ",
       "third-party HTML is last-resort only and labeled."
     ),
@@ -2535,6 +2537,7 @@ locale_for_market <- function(mode = get_market_mode()) {
 
     # --- tabBox headers ---
     box_financial_report = "FINANCIAL REPORT",
+    box_ownership_structure = "OWNERSHIP STRUCTURE",
     box_performance = "PERFORMANCE",
     box_dividend_discount = "DIVIDEND DISCOUNT",
     box_discounted_cf = "DISCOUNTED CASH FLOW",
@@ -2678,6 +2681,51 @@ locale_for_market <- function(mode = get_market_mode()) {
     key_date_guidance_soft = "Guidance (w/ earnings)",
     key_date_estimate_tip = "Date may be an estimate (Yahoo)",
     tab_corp_events = "Board / CB",
+    tab_ownership_structure = "Ownership Structure Analysis",
+    own_intro = paste0(
+      "Ownership mix and recent buy/sell flow for the Search ticker, with historical volume ",
+      "and a top-10 holder list. TW: TWSE MI_QFIIS / T86 + MOPS insider holdings (t187ap11). ",
+      "US: Yahoo Finance quoteSummary. Empty when undisclosed; credibility labeled. ",
+      "Cross-holding is shown only when filings disclose it."
+    ),
+    own_waiting = "Search a ticker to load ownership structure and volume.",
+    own_kpi_structure = "Ownership structure",
+    own_kpi_flow = "Recent buy/sell volume",
+    own_kpi_flow_help = paste0(
+      "TW: net shares of the three institutional groups (外資／投信／自營) for the latest session. ",
+      "US: net insider transaction shares when Yahoo provides them."
+    ),
+    own_slice_institutions = "Institutions",
+    own_slice_insiders = "Insiders",
+    own_slice_foreign = "Foreign ownership",
+    own_slice_other = "Other / float",
+    own_cred_unavailable = "unavailable",
+    own_volume_title = "Historical volume",
+    own_volume_empty = "No historical volume for this ticker.",
+    own_holders_title = "Top 10 holders",
+    own_holders_empty = "No holder list available for this ticker.",
+    own_col_name = "Holder",
+    own_col_shares = "Shares",
+    own_col_pct = "Pct",
+    own_col_type = "Type",
+    own_col_source = "Source",
+    own_detail_title = "Institution detail",
+    own_detail_idle = "Select an institution (法人) in the list to view details.",
+    own_detail_intro_generic = paste0(
+      "No free filing-backed profile for this holder. ",
+      "Top-5 shareholders and cross-holding stay empty until a disclosed source is available."
+    ),
+    own_detail_intro_yahoo = "Profile and holders from Yahoo Finance quoteSummary (when the holder maps to a public ticker).",
+    own_detail_top5_title = "Top 5 shareholders of this institution",
+    own_detail_top5_empty = "Top-5 shareholders not disclosed in available free sources.",
+    own_cross_title = "Cross-holding with searched company",
+    own_cross_yes = "Yes — the institution’s disclosed holders include the searched company (or a clear name match).",
+    own_cross_no = "No — not found in this institution’s available top holders.",
+    own_cross_unknown = "Unknown — cross-holding is only shown when filings or Yahoo ownership lists disclose it.",
+    own_note_tw_insiders = "TW top holders use MOPS insider / director holdings (t187ap11), not a free-float free top-10 registry.",
+    own_note_volume_empty = "Historical volume could not be loaded (Yahoo history empty or rate-limited).",
+    own_note_holders_empty = "Holder list unavailable from MOPS / Yahoo for this ticker.",
+    own_sources_label = "Sources:",
     corp_events_intro = paste0(
       "Board election and convertible-bond dilution for the Search ticker. ",
       "TW: MOPS open CSV + TPEx ISSBD; US: SEC EDGAR links and soft diluted-share gap."
@@ -4639,8 +4687,10 @@ locale_for_market <- function(mode = get_market_mode()) {
       "美股：以 SEC 衍生之 Nasdaq／NYSE 主要上市目錄供 Search 與 Blue Chip；",
       "SEC EDGAR 提供財報附註（10-K／10-Q／8-K；ADR／外國發行人 20-F／6-K）",
       "以及董監／可轉債相關連結。台股：證交所（TWSE）／櫃買（TPEx）上市櫃名單（興櫃 ESB 可選）；",
-      "公開資訊觀測站（MOPS）開放資料用於董監改選、可轉債／可交換債（並參考櫃買 ISSBD），",
-      "以及有揭露時的主要供應商／重大客戶表；部分總體指標可能使用主計總處 NSTAT。",
+      "公開資訊觀測站（MOPS）開放資料用於董監改選、可轉債／可交換債（並參考櫃買 ISSBD）、",
+      "內部人／董監持股（t187ap11），以及有揭露時的主要供應商／重大客戶表；",
+      "證交所外資持股（MI_QFIIS）與三大法人買賣超（T86）供股權結構分析；",
+      "美股持股以 Yahoo Finance quoteSummary（有資料時）。部分總體指標可能使用主計總處 NSTAT。",
       "法說會事實依優先授權或人工外連路徑；第三方 HTML 僅為最後備援並標示。"
     ),
     about_data_sources_valuation_title = "估值如何使用上述資料",
@@ -6941,6 +6991,7 @@ locale_for_market <- function(mode = get_market_mode()) {
 
     # --- tabBox headers ---
     box_financial_report = "財務報表",
+    box_ownership_structure = "股權結構",
     box_performance = "績效指標",
     box_dividend_discount = "股利折現 DDM",
     box_discounted_cf = "折現現金流 DCF",
@@ -7084,6 +7135,51 @@ locale_for_market <- function(mode = get_market_mode()) {
     key_date_guidance_soft = "財測（併財報日）",
     key_date_estimate_tip = "日期可能為預估（Yahoo）",
     tab_corp_events = "董監／可轉債",
+    tab_ownership_structure = "股權結構分析",
+    own_intro = paste0(
+      "依 Search 代號顯示股權結構與近期買賣超成交量，下方為歷年成交量與前十大持股人。",
+      "台股：證交所外資持股（MI_QFIIS）、三大法人買賣超（T86）、公開資訊觀測站內部人持股（t187ap11）。",
+      "美股：Yahoo Finance quoteSummary。無揭露時誠實留空並標示可信度。",
+      "交叉持股僅在申報／資料明確揭露時顯示。"
+    ),
+    own_waiting = "請先搜尋股票代號，以載入股權結構與成交量。",
+    own_kpi_structure = "股權結構",
+    own_kpi_flow = "近期買賣超成交量",
+    own_kpi_flow_help = paste0(
+      "台股：最近一交易日三大法人（外資／投信／自營）買賣超股數。",
+      "美股：Yahoo 有提供時顯示內部人交易淨股數。"
+    ),
+    own_slice_institutions = "機構法人",
+    own_slice_insiders = "內部人",
+    own_slice_foreign = "外資持股",
+    own_slice_other = "其他／流通",
+    own_cred_unavailable = "無資料",
+    own_volume_title = "歷年成交量",
+    own_volume_empty = "此代號尚無歷年成交量資料。",
+    own_holders_title = "前十大持股人",
+    own_holders_empty = "此代號尚無可顯示的持股人清單。",
+    own_col_name = "持股人",
+    own_col_shares = "股數",
+    own_col_pct = "持股比例",
+    own_col_type = "類型",
+    own_col_source = "來源",
+    own_detail_title = "法人明細",
+    own_detail_idle = "請點選清單中的機構／法人以檢視明細。",
+    own_detail_intro_generic = paste0(
+      "此持股人尚無免費、可勾稽的申報簡介。",
+      "在取得揭露來源前，該法人前五大股東與交叉持股將留空。"
+    ),
+    own_detail_intro_yahoo = "簡介與持股來自 Yahoo Finance quoteSummary（僅在持股人可對應公開代號時）。",
+    own_detail_top5_title = "該法人前五大股東",
+    own_detail_top5_empty = "可用的免費來源未揭露該法人前五大股東。",
+    own_cross_title = "與目前搜尋公司之交叉持股",
+    own_cross_yes = "有——該法人已揭露的持股名單含目前搜尋公司（或名稱明確相符）。",
+    own_cross_no = "無——在該法人目前可得的前幾大持股中未見目前搜尋公司。",
+    own_cross_unknown = "不明——僅在申報或 Yahoo 持股名單明確揭露時才判斷交叉持股。",
+    own_note_tw_insiders = "台股前十大目前取公開資訊觀測站內部人／董監持股（t187ap11），非免費流通股前十大名冊。",
+    own_note_volume_empty = "無法載入歷年成交量（Yahoo 歷史為空或受流量限制）。",
+    own_note_holders_empty = "此代號尚無 MOPS／Yahoo 持股人清單。",
+    own_sources_label = "資料來源：",
     corp_events_intro = paste0(
       "依 Search 代號彙整董監改選與可轉債對股權稀釋的影響。",
       "台股：公開資訊觀測站開放 CSV＋櫃買 ISSBD；美股：SEC EDGAR 連結與稀釋股數軟性差距。"
@@ -8830,6 +8926,7 @@ locale_for_market <- function(mode = get_market_mode()) {
   "Cash Flow" = "tab_cash_flow",
   "sec_notes" = "tab_sec_notes",
   "corp_events" = "tab_corp_events",
+  "ownership_structure" = "tab_ownership_structure",
   "KPI by Sheet" = "tab_kpi_by_sheet",
   "Crossover KPIs" = "tab_crossover_kpis",
   "Annotation" = "tab_annotation",
@@ -8880,12 +8977,15 @@ locale_for_market <- function(mode = get_market_mode()) {
   "觸發紀錄" = "pa_history_title",
   "財報附註 (SEC)" = "tab_sec_notes",
   "董監／可轉債" = "tab_corp_events",
-  "Board / CB" = "tab_corp_events"
+  "Board / CB" = "tab_corp_events",
+  "股權結構分析" = "tab_ownership_structure",
+  "Ownership Structure Analysis" = "tab_ownership_structure"
 )
 
 # English (canonical) header text → ui_str key; aliases include both locales for rematch
 .UI_BOX_HEADER_KEYS <- c(
   "FINANCIAL REPORT" = "box_financial_report",
+  "OWNERSHIP STRUCTURE" = "box_ownership_structure",
   "PERFORMANCE" = "box_performance",
   "DIVIDEND DISCOUNT" = "box_dividend_discount",
   "DISCOUNTED CASH FLOW" = "box_discounted_cf",

@@ -9048,6 +9048,71 @@ ui <- dashboardPage(
           font-variant-numeric: tabular-nums;
           font-weight: 700;
         }
+        .ynow-own-kpi-row { margin-bottom: 8px; }
+        .ynow-own-kpi-block h4 {
+          font-size: 14px;
+          font-weight: 700;
+          margin: 0 0 8px 0;
+          color: #222;
+        }
+        .ynow-own-kpi-grid {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 10px;
+        }
+        .ynow-own-kpi-cell {
+          min-width: 120px;
+          padding: 8px 10px;
+          border: 1px solid #e5e5e5;
+          background: #fafafa;
+        }
+        .ynow-own-kpi-label {
+          font-size: 12px;
+          color: #666;
+          margin-bottom: 4px;
+        }
+        .ynow-own-kpi-value {
+          font-size: 20px;
+          font-weight: 700;
+          font-variant-numeric: tabular-nums;
+          color: #111;
+        }
+        .ynow-own-flow-value { font-size: 22px; }
+        .ynow-own-kpi-cred,
+        .ynow-own-muted,
+        .ynow-own-waiting {
+          font-size: 12px;
+          color: #777;
+          line-height: 1.45;
+        }
+        .ynow-own-holders-wrap { overflow-x: auto; }
+        .ynow-own-holders,
+        .ynow-own-top5 { font-size: 12.5px; }
+        .ynow-own-holder-link {
+          color: #0A72AE;
+          font-weight: 600;
+          text-decoration: underline;
+          cursor: pointer;
+        }
+        .ynow-own-holder-selected { color: #0F5A90; }
+        .ynow-own-detail {
+          border: 1px solid #e5e5e5;
+          padding: 10px 12px;
+          background: #fcfcfc;
+          min-height: 160px;
+        }
+        .ynow-own-detail h4,
+        .ynow-own-detail h5 {
+          margin-top: 0;
+          font-size: 13px;
+          font-weight: 700;
+        }
+        .ynow-own-notes {
+          margin: 10px 0 0 0;
+          padding-left: 18px;
+          font-size: 12px;
+          color: #666;
+        }
         .ynow-corp-events {
           margin: 0;
           padding: 4px 0 8px 0;
@@ -20861,6 +20926,22 @@ ui <- dashboardPage(
               )
               ),
               
+              # Ownership Structure Analysis — Lite + Full (outside ynow-full-only)
+              tabBox(
+                title = "OWNERSHIP STRUCTURE",
+                id = "dashboard_ownership",
+                width = "auto",
+                tabPanel(
+                  title = ui_i18n("tab_ownership_structure"),
+                  value = "ownership_structure",
+                  icon = icon("sitemap"),
+                  id = "ownership_structure_panel",
+                  uiOutput("ownership_structure_top_ui"),
+                  plotly::plotlyOutput("own_volume_plot", height = "320px"),
+                  uiOutput("ownership_structure_holders_ui")
+                )
+              ),
+
               tags$div(
                 class = "ynow-ind-overview-block",
                 tags$div(

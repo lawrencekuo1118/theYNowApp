@@ -1,3 +1,12 @@
+## [v26.60] — 2026-10-23
+
+### Added
+- Company tab **Ownership Structure Analysis / 股權結構分析** (Lite + Full): ownership mix KPIs, recent buy/sell flow, historical volume chart, top-10 holders with institution detail panel.
+
+### Notes
+- en-US: TW uses TWSE MI_QFIIS / T86 + MOPS t187ap11; US uses Yahoo quoteSummary. Cross-holding only when disclosed. Honest empty + credibility labels. Not in Lite omit set (outside Full-only FINANCIAL REPORT).
+- zh-TW: 台股用證交所外資持股／三大法人買賣超與公開資訊觀測站內部人持股；美股用 Yahoo。交叉持股僅在有揭露時顯示。誠實留空並標可信度。
+
 ## [v26.59] — 2026-10-23
 
 ### Fixed

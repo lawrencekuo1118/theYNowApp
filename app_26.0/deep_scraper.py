@@ -833,6 +833,219 @@ def get_price_history(ticker="AMZN", period="5y"):
     return {"Date": dates, "Close": closes, "Volume": vols}
 
 
+def _ownership_empty(ticker=""):
+    return {
+        "ok": False,
+        "ticker": ticker or "",
+        "error": "",
+        "insiders_pct": None,
+        "institutions_pct": None,
+        "institutions_float_pct": None,
+        "institutions_count": None,
+        "holder_name": [],
+        "holder_pct": [],
+        "holder_shares": [],
+        "holder_value": [],
+        "holder_report_date": [],
+        "holder_kind": [],
+        "insider_net_shares": None,
+        "insider_txn_count": 0,
+        "source": "yahoo_quoteSummary",
+    }
+
+
+def _ownership_holder_row(entry, kind):
+    """Flatten one Yahoo ownershipList / insiderHolders row for reticulate."""
+    if not isinstance(entry, dict):
+        return None
+    org = (
+        _yahoo_raw(entry.get("organization"))
+        or _yahoo_raw(entry.get("name"))
+        or _yahoo_raw(entry.get("holder"))
+        or ""
+    )
+    org = str(org or "").strip()
+    if not org:
+        return None
+    pct = _safe_float(_yahoo_raw(entry.get("pctHeld")))
+    if pct is None:
+        pct = _safe_float(_yahoo_raw(entry.get("percentHeld")))
+    if pct is not None and pct > 1.5:
+        # Yahoo sometimes returns percent points (e.g. 8.2) not fraction
+        pct = pct / 100.0
+    shares = _safe_float(_yahoo_raw(entry.get("position")))
+    if shares is None:
+        shares = _safe_float(_yahoo_raw(entry.get("shares")))
+    value = _safe_float(_yahoo_raw(entry.get("value")))
+    rd = _yahoo_raw(entry.get("reportDate"))
+    if rd is None:
+        rd = _yahoo_raw(entry.get("latestTransDate"))
+    rd_s = ""
+    if rd is not None:
+        try:
+            if isinstance(rd, (int, float)) and rd > 1e9:
+                rd_s = pd.Timestamp(rd, unit="s").strftime("%Y-%m-%d")
+            else:
+                rd_s = str(rd)[:10]
+        except Exception:
+            rd_s = str(rd)[:10]
+    return {
+        "name": org,
+        "pct": pct,
+        "shares": shares,
+        "value": value,
+        "report_date": rd_s,
+        "kind": kind,
+    }
+
+
+def get_ownership_quote(ticker="AAPL"):
+    """Yahoo quoteSummary ownership modules → plain lists for reticulate.
+
+    Modules: majorHoldersBreakdown, institutionOwnership, fundOwnership,
+    insiderHolders, insiderTransactions, defaultKeyStatistics (pct fallback).
+    Never invents holders; empty lists when Yahoo rate-limits or omits data.
+    """
+    sym = str(ticker or "").strip().upper()
+    out = _ownership_empty(sym)
+    if not sym:
+        out["error"] = "empty ticker"
+        return out
+    _dbg(f"🏛 yfinance ownership quoteSummary: {sym}")
+    _yahoo_gate_acquire()
+    modules = (
+        "majorHoldersBreakdown,institutionOwnership,fundOwnership,"
+        "insiderHolders,insiderTransactions,defaultKeyStatistics"
+    )
+    last_err = None
+    try:
+        from yfinance.data import YfData
+
+        yd = YfData()
+        for host in (
+            "https://query2.finance.yahoo.com",
+            "https://query1.finance.yahoo.com",
+        ):
+            try:
+                url = f"{host}/v10/finance/quoteSummary/{sym}"
+                raw = yd.get(url, params={"modules": modules})
+                if hasattr(raw, "json") and not isinstance(raw, dict):
+                    raw = raw.json()
+                if not isinstance(raw, dict):
+                    continue
+                results = (raw.get("quoteSummary") or {}).get("result") or []
+                if not results:
+                    err = (raw.get("quoteSummary") or {}).get("error") or {}
+                    last_err = err.get("description") or err.get("code") or "empty"
+                    continue
+                mod = results[0] or {}
+                br = mod.get("majorHoldersBreakdown") or {}
+                out["insiders_pct"] = _safe_float(
+                    _yahoo_raw(br.get("insidersPercentHeld"))
+                )
+                out["institutions_pct"] = _safe_float(
+                    _yahoo_raw(br.get("institutionsPercentHeld"))
+                )
+                out["institutions_float_pct"] = _safe_float(
+                    _yahoo_raw(br.get("institutionsFloatPercentHeld"))
+                )
+                out["institutions_count"] = _safe_float(
+                    _yahoo_raw(br.get("institutionsCount"))
+                )
+                ks = mod.get("defaultKeyStatistics") or {}
+                if out["insiders_pct"] is None:
+                    out["insiders_pct"] = _safe_float(
+                        _yahoo_raw(ks.get("heldPercentInsiders"))
+                    )
+                if out["institutions_pct"] is None:
+                    out["institutions_pct"] = _safe_float(
+                        _yahoo_raw(ks.get("heldPercentInstitutions"))
+                    )
+                holders = []
+                for key, kind in (
+                    ("institutionOwnership", "institution"),
+                    ("fundOwnership", "institution"),
+                    ("insiderHolders", "insider"),
+                ):
+                    block = mod.get(key) or {}
+                    lst = (
+                        block.get("ownershipList")
+                        or block.get("holders")
+                        or block.get("insiderHolders")
+                        or []
+                    )
+                    if not isinstance(lst, list):
+                        continue
+                    for entry in lst:
+                        row = _ownership_holder_row(entry, kind)
+                        if row:
+                            holders.append(row)
+                # Dedupe by name keep higher pct
+                by_name = {}
+                for h in holders:
+                    nm = h["name"]
+                    prev = by_name.get(nm)
+                    if prev is None:
+                        by_name[nm] = h
+                    else:
+                        p0 = prev.get("pct")
+                        p1 = h.get("pct")
+                        if p1 is not None and (p0 is None or p1 > p0):
+                            by_name[nm] = h
+                ranked = list(by_name.values())
+                ranked.sort(
+                    key=lambda r: (
+                        -(r["pct"] if r.get("pct") is not None else -1.0),
+                        -(r["shares"] if r.get("shares") is not None else -1.0),
+                    )
+                )
+                ranked = ranked[:10]
+                out["holder_name"] = [h["name"] for h in ranked]
+                out["holder_pct"] = [h.get("pct") for h in ranked]
+                out["holder_shares"] = [h.get("shares") for h in ranked]
+                out["holder_value"] = [h.get("value") for h in ranked]
+                out["holder_report_date"] = [h.get("report_date") or "" for h in ranked]
+                out["holder_kind"] = [h.get("kind") or "" for h in ranked]
+                # Insider transaction net shares (recent window Yahoo returns)
+                txn = mod.get("insiderTransactions") or {}
+                tlist = txn.get("transactions") or []
+                net = 0.0
+                n_txn = 0
+                if isinstance(tlist, list):
+                    for t in tlist:
+                        if not isinstance(t, dict):
+                            continue
+                        sh = _safe_float(_yahoo_raw(t.get("shares")))
+                        if sh is None:
+                            continue
+                        text = str(
+                            _yahoo_raw(t.get("transactionText"))
+                            or _yahoo_raw(t.get("startDate"))
+                            or ""
+                        ).lower()
+                        # Sale / disposition → negative; purchase → positive
+                        sign = -1.0 if (
+                            "sale" in text or "sell" in text or "disposition" in text
+                        ) else 1.0
+                        if "purchase" in text or "buy" in text:
+                            sign = 1.0
+                        net += sign * abs(sh)
+                        n_txn += 1
+                out["insider_net_shares"] = net if n_txn else None
+                out["insider_txn_count"] = int(n_txn)
+                out["ok"] = True
+                out["error"] = ""
+                return out
+            except Exception as e:
+                last_err = str(e)
+                _dbg(f"⚠️ ownership quoteSummary {sym} {host}: {e}")
+    except Exception as e:
+        last_err = str(e)
+        _dbg(f"⚠️ ownership quoteSummary {sym}: {e}")
+    out["error"] = str(last_err or "unavailable")
+    return out
+
+
 def get_last_quotes(tickers=None):
     """
     Last closes for macro index KPI strip (native Yahoo currency; no FX).
