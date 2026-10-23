@@ -401,7 +401,8 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
                             industry_key = reactive(NULL),
                             ui_locale = reactive("en"),
                             sop_verdict_gate = reactive(list(unlocked = FALSE)),
-                            current_ticker = reactive("")) {
+                            current_ticker = reactive(""),
+                            aml_pack = reactive(NULL)) {
   moduleServer(id, function(input, output, session) {
 
     # YNOW analyzes independently — Decision Checklist / Decision SOP is optional.
@@ -867,18 +868,40 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
     output$ui_recommendation <- renderUI({
       .ui_loc()
       rec <- final_recommendation()
+      aml <- tryCatch(aml_pack(), error = function(e) NULL)
+      veto <- if (exists("corp_aml_veto_keys", mode = "function")) {
+        tryCatch(corp_aml_veto_keys(aml), error = function(e) NULL)
+      } else {
+        NULL
+      }
+      aml_note <- if (is.list(veto) && nzchar(as.character(veto$title_key %||% "")[1])) {
+        div(
+          class = "alert alert-danger ynow-aml-veto",
+          style = "margin-top:0.65rem;",
+          h5(icon("shield-alt"), " ", .str(veto$title_key)),
+          p(style = "margin:0;", .str(veto$text_key))
+        )
+      } else {
+        NULL
+      }
       if (is.null(rec) || !is.list(rec)) {
-        return(div(
-          class = "alert alert-info ynow-waiting-verdict",
-          tags$p(
-            style = "margin:0;font-size:13px;line-height:1.5;",
-            .str("funnel_v_waiting_text")
-          )
+        return(tagList(
+          div(
+            class = "alert alert-info ynow-waiting-verdict",
+            tags$p(
+              style = "margin:0;font-size:13px;line-height:1.5;",
+              .str("funnel_v_waiting_text")
+            )
+          ),
+          aml_note
         ))
       }
-      div(class = paste("alert", rec$class),
-          h4(icon(rec$icon), " ", rec$title),
-          p(rec$text))
+      tagList(
+        div(class = paste("alert", rec$class),
+            h4(icon(rec$icon), " ", rec$title),
+            p(rec$text)),
+        aml_note
+      )
     })
 
     output$fscore_panel <- renderUI({

@@ -433,6 +433,34 @@ locale_for_market <- function(mode = get_market_mode()) {
     menu_badge_secondary = "Secondary",
     menu_badge_reference = "Reference",
     menu_ynow = "YNOW",
+    menu_corp_aml = "Corporate AML Signals",
+    aml_page_title = "Corporate AML Signals",
+    aml_page_lead = paste0(
+      "Public-statement proxies for corporate money-laundering and fraud possibility. ",
+      "Veto / risk context only — not a bank AML finding and not a buy cue."
+    ),
+    aml_disclaimer = paste0(
+      "Uses issuer financial statements (and optional meta) as engineering heuristics. ",
+      "This is not bank KYC/transaction monitoring, not a SAR, and not legal advice."
+    ),
+    aml_waiting = "Search a ticker to score corporate AML statement proxies.",
+    aml_tier_label = "Risk tier",
+    aml_tier_alert = "Alert",
+    aml_tier_watch = "Watch",
+    aml_tier_clear = "Clear",
+    aml_tier_na = "Insufficient data",
+    aml_score_label = "Proxy score",
+    aml_flags_title = "Typology flags",
+    aml_col_code = "Code",
+    aml_col_severity = "Severity",
+    aml_col_value = "Value",
+    aml_col_note = "Note",
+    aml_empty_flags = "No typology rows yet.",
+    aml_veto_title = "Corporate AML proxy alert",
+    aml_veto_text = paste0(
+      "Statement proxies raised an alert tier. Treat as a veto / heightened scrutiny note only — ",
+      "not a buy cue and not a bank AML determination. Open Corporate AML Signals for evidence."
+    ),
     menu_backtest = "Quant Backtest Lab",
     menu_bluechip = "Blue Chip Leaderboard",
     menu_hfv = "Hist. FV Validation",
@@ -4969,6 +4997,34 @@ locale_for_market <- function(mode = get_market_mode()) {
     menu_badge_secondary = "備選",
     menu_badge_reference = "參照",
     menu_ynow = "YNOW",
+    menu_corp_aml = "法人洗錢跡象",
+    aml_page_title = "法人洗錢跡象",
+    aml_page_lead = paste0(
+      "以公開財報代理評估法人層面洗錢／財務舞弊可能性。",
+      "僅作否決或風險警訊，不是銀行 AML 判定，也不是買進訊號。"
+    ),
+    aml_disclaimer = paste0(
+      "依發行人財報（與可選中繼資料）作工程啟發式檢核。",
+      "非銀行 KYC／交易監控、非 SAR、亦非法律意見。"
+    ),
+    aml_waiting = "請先搜尋代號，以評分法人洗錢跡象之財報代理指標。",
+    aml_tier_label = "風險等級",
+    aml_tier_alert = "警示",
+    aml_tier_watch = "觀察",
+    aml_tier_clear = "通過",
+    aml_tier_na = "資料不足",
+    aml_score_label = "代理分數",
+    aml_flags_title = "態樣旗標",
+    aml_col_code = "代號",
+    aml_col_severity = "嚴重度",
+    aml_col_value = "數值",
+    aml_col_note = "說明",
+    aml_empty_flags = "尚無態樣列。",
+    aml_veto_title = "法人洗錢跡象代理：警示",
+    aml_veto_text = paste0(
+      "財報代理指標達警示等級。僅作否決或提高檢視強度，",
+      "不是買進訊號，也不是銀行 AML 判定。請開啟「法人洗錢跡象」查看證據。"
+    ),
     menu_backtest = "量化回測實驗室",
     menu_bluechip = "績優股排行榜",
     menu_hfv = "歷史基本面驗證",
