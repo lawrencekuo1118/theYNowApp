@@ -4198,6 +4198,7 @@ server <- function(input, output, session) {
       about = function() .ynow_page_ui_about(),
       feedback = function() .ynow_page_ui_feedback(),
       sensitivity = function() .ynow_page_ui_sensitivity(),
+      corp_aml = function() .ynow_page_ui_corp_aml(),
       smart_analysis = function() .ynow_page_ui_smart_analysis(),
       company_advance = function() .ynow_page_ui_company_advance(),
       price_alerts = function() price_alert_tab_body_ui()
@@ -8254,6 +8255,118 @@ server <- function(input, output, session) {
     })
   })
 
+  corp_aml_snapshot <- reactive({
+    if (!exists("evaluate_corp_aml_signals", mode = "function")) return(NULL)
+    tryCatch({
+      is_df <- d_income_statement()
+      bs_df <- d_balance_sheet()
+      cf_df <- d_cash_flow()
+      fs <- tryCatch(compute_report_f_score(is_df, bs_df, cf_df), error = function(e) NULL)
+      eq <- tryCatch(
+        evaluate_earnings_quality(is_df, bs_df, cf_df, f_score_pack = fs),
+        error = function(e) NULL
+      )
+      n_schilit <- tryCatch({
+        if (!exists("evaluate_shenanigans", mode = "function")) return(NA_integer_)
+        sh <- evaluate_shenanigans(is_df, bs_df, cf_df)
+        if (is.list(sh) && isTRUE(sh$ok)) {
+          as.integer(sh$n_alert %||% 0L)[1]
+        } else {
+          NA_integer_
+        }
+      }, error = function(e) NA_integer_)
+      prof <- tryCatch(company_profile(), error = function(e) NULL)
+      ctry <- if (is.list(prof)) as.character(prof$country %||% "")[1] else ""
+      evaluate_corp_aml_signals(
+        is_df, bs_df, cf_df,
+        meta = list(country = ctry, n_schilit = n_schilit),
+        eq_pack = eq
+      )
+    }, error = function(e) NULL)
+  })
+
+  output$corp_aml_body_ui <- renderUI({
+    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "en")
+    pack <- tryCatch(corp_aml_snapshot(), error = function(e) NULL)
+    if (is.null(pack) || !is.list(pack) || !isTRUE(pack$ok)) {
+      return(div(
+        class = "alert alert-info",
+        style = "margin:0;",
+        ui_str("aml_waiting", loc)
+      ))
+    }
+    tier <- as.character(pack$tier %||% "na")[1]
+    tier_lab <- switch(
+      tier,
+      alert = ui_str("aml_tier_alert", loc),
+      watch = ui_str("aml_tier_watch", loc),
+      clear = ui_str("aml_tier_clear", loc),
+      ui_str("aml_tier_na", loc)
+    )
+    badge_col <- switch(
+      tier,
+      alert = "#c0392b",
+      watch = "#9a7b1a",
+      clear = "#1e7a45",
+      "#666666"
+    )
+    badge_bg <- switch(
+      tier,
+      alert = "#faf0ef",
+      watch = "#fff6e0",
+      clear = "#e8f6ee",
+      "#f2f2f2"
+    )
+    score <- suppressWarnings(as.numeric(pack$score)[1])
+    score_txt <- if (is.finite(score)) sprintf("%.0f", score) else "—"
+    flags <- pack$flags
+    note_col <- if (identical(loc, "en")) "note_en" else "note_zh"
+    tbl <- if (is.data.frame(flags) && nrow(flags) > 0L) {
+      rows <- lapply(seq_len(nrow(flags)), function(i) {
+        tags$tr(
+          tags$td(flags$code[i]),
+          tags$td(flags$severity[i]),
+          tags$td(flags$value[i]),
+          tags$td(as.character(flags[[note_col]][i] %||% ""))
+        )
+      })
+      tags$table(
+        class = "table table-condensed table-striped",
+        style = "margin:0;font-size:13px;",
+        tags$thead(tags$tr(
+          tags$th(ui_str("aml_col_code", loc)),
+          tags$th(ui_str("aml_col_severity", loc)),
+          tags$th(ui_str("aml_col_value", loc)),
+          tags$th(ui_str("aml_col_note", loc))
+        )),
+        tags$tbody(rows)
+      )
+    } else {
+      tags$p(style = "margin:0;color:#777;", ui_str("aml_empty_flags", loc))
+    }
+    tagList(
+      tags$div(
+        style = "display:flex;flex-wrap:wrap;gap:0.75rem;align-items:center;margin-bottom:0.85rem;",
+        tags$span(
+          style = sprintf(
+            "display:inline-block;padding:0.35rem 0.7rem;border-radius:4px;font-weight:700;background:%s;color:%s;",
+            badge_bg, badge_col
+          ),
+          paste0(ui_str("aml_tier_label", loc), ": ", tier_lab)
+        ),
+        tags$span(
+          style = "color:#444;",
+          paste0(ui_str("aml_score_label", loc), ": ", score_txt)
+        )
+      ),
+      tags$h4(
+        style = "margin:0 0 0.4rem;font-size:15px;",
+        ui_str("aml_flags_title", loc)
+      ),
+      tbl
+    )
+  })
+
   # --- 新增 2：掛載投資決策漏斗模組 (Decision Funnel; v13 區間＋可信度) ---
   # primary_band / secondary / confidence 於各估值模組掛載後定義（lazy 查找）
   decision_server(
@@ -8302,6 +8415,7 @@ server <- function(input, output, session) {
     industry_key = reactive(input$industry_choice),
     ui_locale = ui_locale,
     current_ticker = current_ticker,
+    aml_pack = corp_aml_snapshot,
     sop_verdict_gate = reactive({
       if (isTRUE(tryCatch(isolate(lite_mode()), error = function(e) FALSE))) {
         return(list(unlocked = TRUE, reason = "lite"))
