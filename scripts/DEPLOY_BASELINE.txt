@@ -7,5 +7,5 @@ commit=a4c23b2584f980be91c4cc351a700fd08771b168
 short=a4c23b25
 message=chore: bump display version to v27.02
 captured_at=2026-10-23T13:36:10Z
-display_version=v27.02
+display_version=v27.03
 note=Canonical live line is app_27.0. Bundle 12730078: Snapshot tab strips Ticker/Stock Code and Yahoo industry chrome (#445).
