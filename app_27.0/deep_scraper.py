@@ -842,6 +842,8 @@ def _ownership_empty(ticker=""):
         "institutions_pct": None,
         "institutions_float_pct": None,
         "institutions_count": None,
+        "float_shares": None,
+        "shares_outstanding": None,
         "holder_name": [],
         "holder_pct": [],
         "holder_shares": [],
@@ -961,6 +963,11 @@ def get_ownership_quote(ticker="AAPL"):
                     out["institutions_pct"] = _safe_float(
                         _yahoo_raw(ks.get("heldPercentInstitutions"))
                     )
+                # Free-float share count (when Yahoo discloses); never invent.
+                out["float_shares"] = _safe_float(_yahoo_raw(ks.get("floatShares")))
+                out["shares_outstanding"] = _safe_float(
+                    _yahoo_raw(ks.get("sharesOutstanding"))
+                )
                 holders = []
                 for key, kind in (
                     ("institutionOwnership", "institution"),

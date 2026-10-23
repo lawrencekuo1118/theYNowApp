@@ -30,7 +30,11 @@ source("ownership_structure.R", local = TRUE)
 need_keys <- c(
   "tab_ownership_structure", "own_intro", "own_waiting",
   "own_kpi_structure", "own_kpi_flow", "own_volume_title",
-  "own_holders_title", "own_detail_title", "own_cross_unknown",
+  "own_holders_title", "own_holders_title_float", "own_holders_title_insider",
+  "own_detail_title", "own_cross_unknown",
+  "own_slice_institutions_float", "own_note_float_yahoo", "own_note_float_yahoo_adr",
+  "own_detail_intro_mapped", "own_detail_intro_tw_mapped",
+  "own_detail_intro_private_mgr", "own_detail_intro_tw_gov",
   "box_ownership_structure"
 )
 for (k in need_keys) {
@@ -41,9 +45,11 @@ for (k in need_keys) {
 }
 check("tab en Ownership", grepl("Ownership", ui_str("tab_ownership_structure", "en"), fixed = TRUE))
 check("tab zh 股權結構", grepl("股權結構", ui_str("tab_ownership_structure", "zh-TW"), fixed = TRUE))
+check("float title en free-float", grepl("free-float", ui_str("own_holders_title_float", "en"), fixed = TRUE))
+check("float title zh 流通股", grepl("流通股", ui_str("own_holders_title_float", "zh-TW"), fixed = TRUE))
 check("no Mainland 点击 in own strings", {
   zh_blob <- paste(vapply(need_keys, function(k) ui_str(k, "zh-TW"), character(1)), collapse = " ")
-  !grepl("点击|默认|数据|用户", zh_blob)
+  !grepl("点击|默认|数据|用户|口徑|點擊", zh_blob)
 })
 
 # --- Tab mount / wiring ---
@@ -105,7 +111,10 @@ raw <- list(
   ok = TRUE,
   error = "",
   institutions_pct = 0.61,
+  institutions_float_pct = 0.72,
   insiders_pct = 0.05,
+  float_shares = 1.5e10,
+  shares_outstanding = 1.6e10,
   holder_name = list("Vanguard Group Inc", "BlackRock Inc", "Cook Timothy"),
   holder_pct = list(0.08, 0.07, 0.01),
   holder_shares = list(1e9, 9e8, 1e7),
@@ -121,7 +130,13 @@ check("yahoo structure has institutions", {
   keys <- vapply(y$structure, function(s) s$key, character(1))
   "institutions" %in% keys
 })
+check("yahoo structure has institutions_float", {
+  keys <- vapply(y$structure, function(s) s$key, character(1))
+  "institutions_float" %in% keys
+})
+check("yahoo holders_kind free_float", identical(y$holders_kind, "free_float"))
 check("yahoo holders n=3", is.data.frame(y$holders) && nrow(y$holders) == 3L)
+check("yahoo has institution rows", .ownership_holders_has_institution(y$holders))
 check("yahoo vanguard clickable", {
   i <- match("Vanguard Group Inc", y$holders$name)
   isTRUE(y$holders$clickable[i])
@@ -131,11 +146,37 @@ check("yahoo cook not clickable", {
   !isTRUE(y$holders$clickable[i])
 })
 
-# Detail honest empty
+# Institution ticker map (no network)
+blk <- .ownership_resolve_institution_ticker("BlackRock Inc")
+check("map BlackRock → BLK", identical(blk$ticker, "BLK") && isTRUE(blk$matched))
+cathay <- .ownership_resolve_institution_ticker("國泰人壽保險股份有限公司")
+check("map 國泰人壽 → 2882.TW", identical(cathay$ticker, "2882.TW") && isTRUE(cathay$matched))
+vang <- .ownership_resolve_institution_ticker("Vanguard Group Inc")
+check("map Vanguard private empty ticker", isTRUE(vang$matched) && !nzchar(vang$ticker))
+check(
+  "map Vanguard private intro",
+  identical(vang$intro_key, "own_detail_intro_private_mgr")
+)
+
+# Detail: private manager honest empty top-5
 d <- ownership_institution_detail("Vanguard Group Inc", subject_ticker = "AAPL", subject_holders = y$holders)
 check("detail name set", identical(d$name, "Vanguard Group Inc"))
-check("detail top5 empty without ticker map", is.data.frame(d$top5) && nrow(d$top5) == 0L)
-check("detail cross unknown default", identical(d$cross_hold$status, "unknown") || identical(d$cross_hold$status, "unknown"))
+check("detail private intro", identical(d$intro_key, "own_detail_intro_private_mgr"))
+check("detail top5 empty for private mgr", is.data.frame(d$top5) && nrow(d$top5) == 0L)
+check("detail cross unknown when listed only", identical(d$cross_hold$status, "unknown"))
+
+# Cross-hold match helper
+ch_yes <- .ownership_cross_hold_match(
+  c("Foo Corp", "Apple Inc", "Bar LLC"), "AAPL", subject_aliases = c("Apple")
+)
+check("cross-hold yes on alias", identical(ch_yes$status, "yes"))
+ch_no <- .ownership_cross_hold_match(c("Foo Corp", "Bar LLC"), "AAPL")
+check("cross-hold no when absent", identical(ch_no$status, "no"))
+
+# Detail BlackRock maps to BLK; offline Yahoo empty → top5 empty but mapped
+d_blk <- ownership_institution_detail("BlackRock Fund Advisors", subject_ticker = "AAPL")
+check("detail BLK mapped ticker", identical(d_blk$mapped_ticker, "BLK"))
+check("detail BLK intro mapped", identical(d_blk$intro_key, "own_detail_intro_mapped"))
 
 # ROC date + TW NDF intro (no invented top-5)
 check(
@@ -157,6 +198,15 @@ check("locale volume twse note", nzchar(ui_str("own_note_volume_twse", "zh-TW"))
 check("server uses cached ownership", grepl("cached_fetch_ownership_structure", srv, fixed = TRUE))
 check("cached_fetch exists", exists("cached_fetch_ownership_structure", mode = "function") ||
         exists("fetch_ownership_structure", mode = "function"))
+py <- paste(readLines("deep_scraper.py", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+check("py float_shares field", grepl("float_shares", py, fixed = TRUE))
+
+# Prefer free-float holders in UI title
+float_snap <- .ownership_empty_snapshot("AAPL", "US")
+float_snap$holders <- y$holders
+float_snap$holders_kind <- "free_float"
+float_snap$notes <- c("holders_free_float_yahoo")
+float_snap$ok <- TRUE
 
 # Empty snapshot + UI (needs htmltools/shiny tags)
 empty <- .ownership_empty_snapshot("", "US")
@@ -171,13 +221,34 @@ if (requireNamespace("htmltools", quietly = TRUE) || requireNamespace("shiny", q
     inherits(ui_empty, "shiny.tag") || inherits(ui_empty, "shiny.tag.list") ||
       inherits(ui_empty, "html")
   )
+  ui_float <- .ynow_ownership_holders_ui(float_snap, loc = "en")
+  float_html <- paste(as.character(ui_float), collapse = " ")
+  check(
+    "float ui title",
+    grepl("free-float", float_html, fixed = TRUE) ||
+      grepl(ui_str("own_holders_title_float", "en"), float_html, fixed = TRUE)
+  )
+  check(
+    "float ui note",
+    grepl("free-float", float_html, ignore.case = TRUE)
+  )
 } else {
   message("SKIP empty ui (shiny/htmltools not installed)")
 }
 
 # py helper present in deep_scraper
-py <- paste(readLines("deep_scraper.py", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check("py get_ownership_quote", grepl("def get_ownership_quote", py, fixed = TRUE))
+
+# ADR helper: HTCDI TSM ↔ 2330 when config available
+if (file.exists("htcdi_config.R")) {
+  tryCatch(source("htcdi_config.R", local = TRUE), error = function(e) NULL)
+}
+if (exists("htcdi_find_issuer", mode = "function")) {
+  adr <- .ownership_adr_ticker_for_tw("2330.TW")
+  check("ADR map 2330 → TSM", identical(adr, "TSM") || identical(adr, "TSM"))
+} else {
+  message("SKIP ADR map (htcdi_find_issuer unavailable)")
+}
 
 # deep_scraper sourced in web_crawler path is out of scope offline
 
