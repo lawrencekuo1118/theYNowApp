@@ -90,7 +90,7 @@ ynow_prefs_normalize_tickers <- function(tickers, max_n = .YNOW_PINNED_RECENT_MA
 ynow_sidebar_pinnable_tabs <- function() {
   c(
     "home", "macro_market", "asset_transmission", "bluechip", "dashboard",
-    "company_advance", "sensitivity", "smart_analysis", "get_started",
+    "company_advance", "sensitivity", "corp_aml", "smart_analysis", "get_started",
     "nav_calculator", "pb_calculator", "dcf_calculator", "ddm_calculator",
     "ri_calculator", "rel_mult_ev", "rel_multiples_calculator", "rel_mult_rev",
     "sotp_calculator", "hfv", "lab_notes", "decision_checklist", "price_alerts",
@@ -109,6 +109,7 @@ ynow_sidebar_pin_meta <- function(tab) {
     dashboard = list(locale = "menu_dashboard", icon = "chart-line", short_en = "Company", short_zh = "個股"),
     company_advance = list(locale = "menu_company_advance", icon = "layer-group", short_en = "BB", short_zh = "拆解"),
     sensitivity = list(locale = "menu_ynow", icon = "clock", short_en = "YNOW", short_zh = "YNOW"),
+    corp_aml = list(locale = "menu_corp_aml", icon = "shield-alt", short_en = "AML", short_zh = "洗錢跡象"),
     smart_analysis = list(locale = "menu_smart_analysis", icon = "magic", short_en = "Smart", short_zh = "智慧"),
     get_started = list(locale = "menu_get_started", icon = "play-circle", short_en = "Models", short_zh = "儀表板"),
     nav_calculator = list(locale = "menu_nav", icon = "sitemap", short_en = "NAV", short_zh = "NAV"),
@@ -151,7 +152,7 @@ ynow_prefs_normalize_sidebar_tabs <- function(tabs, max_n = .YNOW_PINNED_SIDEBAR
 ynow_sidebar_default_order <- function() {
   c(
     "home", "macro_market", "asset_transmission", "bluechip", "dashboard",
-    "company_advance", "sensitivity", "smart_analysis", "get_started",
+    "company_advance", "sensitivity", "corp_aml", "smart_analysis", "get_started",
     "cat_asset", "cat_income", "cat_relative", "cat_meta",
     "hfv", "lab_notes", "decision_checklist", "price_alerts", "about",
     "settings", "account_admin"

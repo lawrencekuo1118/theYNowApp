@@ -3369,6 +3369,39 @@ beta_rolling_section_ui <- function() {
   decision_ui("main_decision")
 }
 
+#' Lazy page body for tab `corp_aml` (corporate AML statement proxies).
+.ynow_page_ui_corp_aml <- function() {
+  tagList(
+    tags$div(
+      class = "ynow-corp-aml-page",
+      style = "padding:0.5rem 0.25rem 1rem;",
+      tags$h3(
+        id = "ynow_aml_page_title",
+        style = "margin:0 0 0.35rem;font-weight:700;",
+        "Corporate AML Signals"
+      ),
+      tags$p(
+        id = "ynow_aml_page_lead",
+        style = "margin:0 0 0.75rem;color:#555;max-width:52rem;line-height:1.45;",
+        paste0(
+          "Public-statement proxies for corporate money-laundering and fraud possibility. ",
+          "Veto / risk context only — not a bank AML finding and not a buy cue."
+        )
+      ),
+      uiOutput("corp_aml_body_ui"),
+      tags$p(
+        id = "ynow_aml_disclaimer",
+        class = "ynow-aml-disclaimer",
+        style = "margin:1rem 0 0;font-size:12px;color:#777;max-width:52rem;line-height:1.45;",
+        paste0(
+          "Uses issuer financial statements (and optional meta) as engineering heuristics. ",
+          "This is not bank KYC/transaction monitoring, not a SAR, and not legal advice."
+        )
+      )
+    )
+  )
+}
+
 #' Lazy page body for tab `smart_analysis` (outputs only).
 .ynow_page_ui_smart_analysis <- function() {
   tagList(
@@ -3838,6 +3871,11 @@ ui <- dashboardPage(
                icon = icon("layer-group")
              ),
              menuItem("YNOW", tabName = "sensitivity", icon = icon("clock")),
+             menuItem(
+               text = tags$span(id = "ynow_menu_corp_aml", "Corporate AML Signals"),
+               tabName = "corp_aml",
+               icon = icon("shield-alt")
+             ),
              menuItem(
                text = tags$span(id = "ynow_menu_smart", "Smart Analysis"),
                tabName = "smart_analysis",
@@ -11498,6 +11536,7 @@ ui <- dashboardPage(
               ri_calculator: s.menu_ri,
               nav_calculator: s.menu_nav,
               sensitivity: s.menu_ynow,
+              corp_aml: s.menu_corp_aml,
               lab_notes: s.menu_backtest,
               bluechip: s.menu_bluechip,
               hfv: s.menu_hfv,
@@ -11536,6 +11575,11 @@ ui <- dashboardPage(
             }
             var smartLab = document.getElementById('ynow_menu_smart');
             if (smartLab && s.menu_smart_analysis) smartLab.textContent = s.menu_smart_analysis;
+            var menuCorpAml = document.getElementById('ynow_menu_corp_aml');
+            if (menuCorpAml && s.menu_corp_aml) menuCorpAml.textContent = s.menu_corp_aml;
+            setBtText('ynow_aml_page_title', 'aml_page_title');
+            setBtText('ynow_aml_page_lead', 'aml_page_lead');
+            setBtText('ynow_aml_disclaimer', 'aml_disclaimer');
             var menuBt = document.getElementById('ynow_menu_backtest');
             if (menuBt && s.menu_backtest) menuBt.textContent = s.menu_backtest;
             setBtText('ynow_bblab_page_title', 'bblab_page_title');
@@ -21648,6 +21692,11 @@ ui <- dashboardPage(
       tabItem(
         tabName = "sensitivity",
         uiOutput("ynow_lazy_host_sensitivity")
+      ),
+
+      tabItem(
+        tabName = "corp_aml",
+        uiOutput("ynow_lazy_host_corp_aml")
       ),
 
       # Blue Chip：美股績優篩選（版面節奏對齊 Dashboard FINANCIAL REPORT）
