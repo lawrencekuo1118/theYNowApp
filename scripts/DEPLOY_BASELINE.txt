@@ -7,5 +7,5 @@ commit=7de17fe06f595f91f74a0ec9782b7ee5d055cf02
 short=7de17fe0
 message=chore: bump display version to v26.55
 captured_at=2026-10-23T04:33:00Z
-display_version=v26.55
+display_version=v26.56
 note=Canonical live line is app_26.0. Bundle 12728418: sidebar circuit clamp + electric stroke glow; black title strip on collapse scroll (#422).
