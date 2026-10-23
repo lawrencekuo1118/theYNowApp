@@ -128,7 +128,7 @@
     ),
     tags$li(
       tags$b("智慧決策與量化回測："),
-      "結合 Piotroski F-Score（品質檢核）、安全邊際 (MOS)、決策檢核（Decision Checklist）、Historical Fundamental Validation (HFV)、法人洗錢跡象（公開財報代理風險板，僅否決／警訊），以及 Point-in-Time (PIT) 回測引擎，提供貼近實戰的策略驗證。"
+      "結合 Piotroski F-Score（品質檢核）、安全邊際 (MOS)、決策檢核（Decision Checklist）、Historical Fundamental Validation (HFV)、YNOW 上的法人洗錢跡象 AML 重疊標示（公開財報代理；僅否決／警訊），以及 Point-in-Time (PIT) 回測引擎，提供貼近實戰的策略驗證。"
     ),
     tags$li(
       tags$b("Blue Chip Lab："),
@@ -151,7 +151,7 @@
     ),
     tags$li(
       tags$b("Smart Decision Matrix & Backtesting: "),
-      "Combines the Piotroski F-Score (quality screen), Margin of Safety (MOS), Decision Checklist, Historical Fundamental Validation (HFV), Corporate AML Signals (public-statement proxy risk board; veto only), and an institutional-grade Point-in-Time (PIT) backtesting engine for real-world strategy checks."
+      "Combines the Piotroski F-Score (quality screen), Margin of Safety (MOS), Decision Checklist, Historical Fundamental Validation (HFV), AML overlap marks on YNOW (public-statement proxies; veto only), and an institutional-grade Point-in-Time (PIT) backtesting engine for real-world strategy checks."
     ),
     tags$li(
       tags$b("Blue Chip Lab: "),

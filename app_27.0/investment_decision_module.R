@@ -575,14 +575,50 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
       tryCatch(toupper(trimws(as.character(current_ticker() %||% "")[1])), error = function(e) "")
     }
 
+    .aml_marks <- function() {
+      aml <- tryCatch(aml_pack(), error = function(e) NULL)
+      if (exists("corp_aml_surface_marks", mode = "function")) {
+        tryCatch(corp_aml_surface_marks(aml), error = function(e) NULL)
+      } else {
+        NULL
+      }
+    }
+
+    .aml_lab <- function(label, surface) {
+      marks <- .aml_marks()
+      sev <- if (is.list(marks)) marks[[surface]] else NULL
+      if (exists("corp_aml_with_mark", mode = "function")) {
+        corp_aml_with_mark(label, sev, locale = .ui_loc())
+      } else {
+        label
+      }
+    }
+
+    .aml_wrap_panel <- function(ui, surface) {
+      marks <- .aml_marks()
+      sev <- if (is.list(marks)) marks[[surface]] else NULL
+      mark <- if (exists("corp_aml_mark_ui", mode = "function")) {
+        corp_aml_mark_ui(sev, locale = .ui_loc())
+      } else {
+        NULL
+      }
+      if (is.null(mark)) return(ui)
+      tagList(
+        tags$div(class = "ynow-aml-mark-row", mark),
+        ui
+      )
+    }
+
     output$vbox_fscore <- renderUI({
       .ui_loc()
       score <- tryCatch(f_score_eval()$total, error = function(e) NA_real_)
       tk <- .alert_tk()
+      sub_lab <- .str("funnel_vbox_fscore")
+      sub_ui <- .aml_lab(sub_lab, "fscore")
       if (length(score) != 1L || is.null(score) || is.na(score) || !is.finite(score)) {
         box <- valueBox(
           "—",
-          .str("funnel_vbox_fscore"),
+          sub_ui,
           icon = icon("gem"),
           color = "light-blue",
           width = NULL
@@ -590,13 +626,13 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
         if (!exists("ynow_alertable", mode = "function")) return(box)
         return(ynow_alertable(
           box, metric = "f_score", ticker = tk, value = NA_real_,
-          label = .str("funnel_vbox_fscore"), ready = FALSE, default_kind = "value_lte"
+          label = sub_lab, ready = FALSE, default_kind = "value_lte"
         ))
       }
       color <- if (score >= 7) "green" else if (score >= 4) "yellow" else "red"
       box <- valueBox(
         paste0(score, " / 9"),
-        .str("funnel_vbox_fscore"),
+        sub_ui,
         icon = icon("gem"),
         color = color,
         width = NULL
@@ -607,7 +643,7 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
         metric = "f_score",
         ticker = tk,
         value = as.numeric(score),
-        label = .str("funnel_vbox_fscore"),
+        label = sub_lab,
         ready = nzchar(tk),
         default_kind = "value_lte"
       )
@@ -628,11 +664,12 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
         NA_real_
       }
       subtitle <- .str("funnel_vbox_qoe")
+      sub_ui <- .aml_lab(subtitle, "qoe")
       ready <- nzchar(tk) && nzchar(grade) && grade != "—" && is.finite(score)
       if (!ready) {
         box <- valueBox(
           "—",
-          subtitle,
+          sub_ui,
           icon = icon("flask"),
           color = "light-blue",
           width = NULL
@@ -646,7 +683,7 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
       color <- if (grade %in% c("A", "B")) "green" else if (identical(grade, "C")) "yellow" else "red"
       box <- valueBox(
         paste0(grade, " · ", as.integer(round(score))),
-        subtitle,
+        sub_ui,
         icon = icon("flask"),
         color = color,
         width = NULL
@@ -711,10 +748,12 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
       .ui_loc()
       n <- tryCatch(fraud_flag_n(), error = function(e) NA_integer_)
       tk <- .alert_tk()
+      sub_lab <- .str("funnel_vbox_fraud")
+      sub_ui <- .aml_lab(sub_lab, "alerts")
       if (length(n) != 1L || is.null(n) || is.na(n) || !is.finite(n)) {
         box <- valueBox(
           "—",
-          .str("funnel_vbox_fraud"),
+          sub_ui,
           icon = icon("exclamation-triangle"),
           color = "light-blue",
           width = NULL
@@ -722,13 +761,13 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
         if (!exists("ynow_alertable", mode = "function")) return(box)
         return(ynow_alertable(
           box, metric = "statement_alert_count", ticker = tk, value = NA_real_,
-          label = .str("funnel_vbox_fraud"), ready = FALSE, default_kind = "value_gte"
+          label = sub_lab, ready = FALSE, default_kind = "value_gte"
         ))
       }
       n <- as.integer(n)
       box <- valueBox(
         .str("funnel_fraud_items", n = n),
-        .str("funnel_vbox_fraud"),
+        sub_ui,
         icon = icon("exclamation-triangle"),
         color = if (n > 0L) "red" else "green",
         width = NULL
@@ -739,7 +778,7 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
         metric = "statement_alert_count",
         ticker = tk,
         value = as.numeric(n),
-        label = .str("funnel_vbox_fraud"),
+        label = sub_lab,
         ready = nzchar(tk),
         default_kind = "value_gte"
       )
@@ -750,6 +789,7 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
       pack <- tryCatch(eq_eval(), error = function(e) NULL)
       tk <- .alert_tk()
       ui <- beneish_m_score_widget_ui(pack, locale = loc)
+      ui <- .aml_wrap_panel(ui, "beneish")
       if (!exists("ynow_alertable", mode = "function")) return(ui)
       m <- if (is.list(pack) && isTRUE(pack$ok)) suppressWarnings(as.numeric(pack$m_score)[1]) else NA_real_
       ynow_alertable(
@@ -772,7 +812,7 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
       pack <- tryCatch(eq_eval(), error = function(e) NULL)
       tk <- .alert_tk()
       ui <- earnings_quality_dashboard_ui(pack, locale = loc, alert_ticker = tk)
-      ui
+      .aml_wrap_panel(ui, "qoe")
     })
 
     # Publish YNOW quality metrics for 到值通知 checks (session-scoped).
@@ -804,12 +844,14 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
     output$risk_matrix_panel <- renderUI({
       loc <- .ui_loc()
       pack <- tryCatch(eq_eval(), error = function(e) NULL)
-      earnings_risk_matrix_ui(pack, locale = loc)
+      ui <- earnings_risk_matrix_ui(pack, locale = loc)
+      .aml_wrap_panel(ui, "risk_matrix")
     })
 
     output$shenanigans_panel <- renderUI({
       ev <- tryCatch(shen_eval(), error = function(e) NULL)
-      shenanigans_results_ui(ev)
+      ui <- shenanigans_results_ui(ev)
+      .aml_wrap_panel(ui, "schilit")
     })
 
     output$vbox_momentum <- renderValueBox({
