@@ -4812,9 +4812,25 @@ server <- function(input, output, session) {
         identical(isolate(current_ticker()), stock_code)
     }
     .search_done <- function() {
-      tryCatch(.ynow_set_tab_busy(busy_tab, FALSE), error = function(e) NULL)
-      tryCatch(ticker_search_busy(FALSE), error = function(e) NULL)
+      # Clear when this run is still current. Also clear when the ticker was
+      # dropped (market switch) so no later run will take the flag. A newer
+      # symbol owns the flag itself.
+      nxt <- tryCatch(isolate(current_ticker()), error = function(e) NULL)
+      nxt_s <- as.character(nxt %||% "")[1]
+      nxt_ok <- !is.null(nxt) && length(nxt_s) == 1L && !is.na(nxt_s) && nzchar(nxt_s)
+      if (isTRUE(.search_alive()) || !nxt_ok) {
+        tryCatch(.ynow_set_tab_busy(busy_tab, FALSE), error = function(e) NULL)
+        tryCatch(ticker_search_busy(FALSE), error = function(e) NULL)
+      }
     }
+    active_prog <- NULL
+    # shiny::incProgress only updates a withProgress stack frame, which does not survive later ticks.
+    incProgress <- function(amount = 0.1, message = NULL, detail = NULL) {
+      if (is.null(active_prog)) return(invisible(NULL))
+      active_prog$inc(amount, message = message, detail = detail)
+      invisible(NULL)
+    }
+    .mm <- function() isolate(market_mode())
 
     .run_search_phase1b <- function(prog, sum_df, q_ccy, f_ccy) {
       if (!isTRUE(.search_alive())) {
@@ -4822,12 +4838,13 @@ server <- function(input, output, session) {
         .search_done()
         return(invisible(NULL))
       }
+      active_prog <<- prog
       tryCatch({
         ind_info <- cached_get_yahoo_industry(stock_code)
         if (!is.null(ind_info)) {
           disp <- as.character(ind_info$display_text %||% "")[1]
           # TW: if Yahoo Sector/Industry is empty, fall back to exchange industry label
-          if (identical(market_mode(), "TW") &&
+          if (identical(.mm(), "TW") &&
               (is.null(disp) || !nzchar(disp) || grepl("N/A", disp, fixed = TRUE)) &&
               exists("lookup_tw_universe_industry_raw", mode = "function")) {
             tw_raw <- tryCatch(
@@ -4865,7 +4882,7 @@ server <- function(input, output, session) {
         )
         company_key_dates(kd)
         mode_now <- tryCatch(
-          normalize_market_mode(market_mode()),
+          normalize_market_mode(.mm()),
           error = function(e) "US"
         )
         if (identical(mode_now, "TW")) {
@@ -4874,7 +4891,7 @@ server <- function(input, output, session) {
             error = function(e) NULL
           ))
           fx_now <- tryCatch(
-            suppressWarnings(as.numeric(fx_usd_twd())[1]),
+            suppressWarnings(as.numeric(isolate(fx_usd_twd()))[1]),
             error = function(e) NA_real_
           )
           sh_now <- suppressWarnings(as.numeric(kd$shares_outstanding %||% NA_real_)[1])
@@ -4916,7 +4933,7 @@ server <- function(input, output, session) {
         mapped <- tryCatch(
           resolve_industry_key_for_ticker(
             ticker = stock_code,
-            market_mode = market_mode(),
+            market_mode = .mm(),
             display_text = if (!is.null(ind_info)) ind_info$display_text else "",
             sector = if (!is.null(ind_info)) ind_info$sector else "",
             industry = if (!is.null(ind_info)) ind_info$industry else ""
@@ -4948,7 +4965,7 @@ server <- function(input, output, session) {
         }
         yahoo_cname <- attr(sum_df, "company_name")
         ind_cname <- if (!is.null(ind_info)) ind_info$company_name else NULL
-        if (identical(market_mode(), "TW")) {
+        if (identical(.mm(), "TW")) {
           uni_zh <- tryCatch(
             lookup_tw_universe_company_name(stock_code),
             error = function(e) ""
@@ -4987,7 +5004,7 @@ server <- function(input, output, session) {
             20L
           }
           values$recentsearch <- head(
-            c(stock_code, setdiff(values$recentsearch, stock_code)),
+            c(stock_code, setdiff(isolate(values$recentsearch), stock_code)),
             recent_cap
           )
           uid_hist <- tryCatch(.ynow_pinned_auth_uid(), error = function(e) "")
@@ -5005,7 +5022,7 @@ server <- function(input, output, session) {
         tryCatch(
           updateTextInput(
             session, "sc",
-            value = display_ticker_for_market(stock_code, market_mode())
+            value = display_ticker_for_market(stock_code, .mm())
           ),
           error = function(e) NULL
         )
@@ -5049,8 +5066,9 @@ server <- function(input, output, session) {
         .search_done()
         return(invisible(NULL))
       }
+      active_prog <<- prog
       tryCatch({
-        prog$set(value = 0.5, detail = "正在擷取財報明細（yfinance）...")
+        incProgress(0.5, detail = "正在擷取財報明細（yfinance）...")
         # cached_scrape_financials already runs normalize_all_financials — do not re-normalize
         res <- cached_scrape_financials(stock_code)
 
@@ -5075,7 +5093,7 @@ server <- function(input, output, session) {
             grepl("\\.TWO$", stock_code, ignore.case = TRUE) &&
             exists("should_try_tpex_financial_fallback", mode = "function") &&
             isTRUE(should_try_tpex_financial_fallback(stock_code, res))) {
-          prog$set(value = 0.55, detail = "Yahoo 年報缺漏，改試櫃買季報彙總…")
+          incProgress(0.55, detail = "Yahoo 年報缺漏，改試櫃買季報彙總…")
           fb <- tryCatch(
             apply_tpex_financial_fallback(res, stock_code),
             error = function(e) list(res = res, used = FALSE, error = conditionMessage(e))
@@ -5117,7 +5135,7 @@ server <- function(input, output, session) {
           # 摘要有資料但非完整三表：勿顯示「全空」紅標
           fs_all_empty(FALSE)
         }
-        if (isTRUE(tw_is_esb())) {
+        if (isTRUE(isolate(tw_is_esb()))) {
           showNotification(
             .ui_msg("notif_esb_beta_hint"),
             type = "message", duration = 10, id = "ynow_esb_board_note"
@@ -5127,18 +5145,59 @@ server <- function(input, output, session) {
         # Prefer statement currency from financials _meta when Summary omitted it.
         meta_fc <- normalize_ccy(attr(res, "financialCurrency") %||% "")
         meta_qc <- normalize_ccy(attr(res, "currency") %||% "")
-        if (!is.na(meta_fc) && (is.na(statement_currency()) || identical(statement_currency(), quote_currency()))) {
-          if (!identical(meta_fc, quote_currency()) || is.na(statement_currency())) {
+        if (!is.na(meta_fc) && (is.na(isolate(statement_currency())) || identical(isolate(statement_currency()), isolate(quote_currency())))) {
+          if (!identical(meta_fc, isolate(quote_currency())) || is.na(isolate(statement_currency()))) {
             statement_currency(meta_fc)
             set_ynow_currency_context(
-              session_currency(), fx_usd_twd(), quote_currency(), meta_fc
+              isolate(session_currency()), isolate(fx_usd_twd()), isolate(quote_currency()), meta_fc
             )
           }
         }
-        if (!is.na(meta_qc) && is.na(quote_currency())) {
+        if (!is.na(meta_qc) && is.na(isolate(quote_currency()))) {
           quote_currency(meta_qc)
         }
 
+        if (!isTRUE(.search_alive())) {
+          tryCatch(prog$close(), error = function(e) NULL)
+          .search_done()
+          return(invisible(NULL))
+        }
+        # Yield before Rf and logo so sidebar_tabs can run after statements are stored.
+        nxt <- function() .run_search_phase3(prog, sum_df, q_ccy, f_ccy, res)
+        if (requireNamespace("later", quietly = TRUE)) {
+          later::later(function() {
+            tryCatch(nxt(), error = function(e) {
+              tryCatch(prog$close(), error = function(e2) NULL)
+              .search_done()
+            })
+          }, delay = 0)
+        } else {
+          nxt()
+        }
+        return(invisible(NULL))
+
+      }, error = function(e) {
+        fs_all_empty(FALSE)
+        # 興櫃旗標若已偵測仍保留短註（Summary 失敗也可能是興櫃）
+        showNotification(
+          .ui_msg("notif_fetch_fail", err = e$message),
+          type = "error",
+          duration = 12
+        )
+      })
+      tryCatch(prog$close(), error = function(e) NULL)
+      .search_done()
+      invisible(NULL)
+    }
+
+    .run_search_phase3 <- function(prog, sum_df, q_ccy, f_ccy, res) {
+      if (!isTRUE(.search_alive())) {
+        tryCatch(prog$close(), error = function(e) NULL)
+        .search_done()
+        return(invisible(NULL))
+      }
+      active_prog <<- prog
+      tryCatch({
         # 搜尋後：ADR／股數級距自動約當（市值÷報價股價）
         tryCatch({
           bs_df <- reorder_financial_columns(
@@ -5186,8 +5245,7 @@ server <- function(input, output, session) {
         )
         corp_name_logo_colors(.ensure_logo_color_pair(logo_cols))
 
-        prog$set(value = 0.9, detail = "資料同步完成！✅")
-
+        incProgress(0.9, detail = "資料同步完成！✅")
       }, error = function(e) {
         fs_all_empty(FALSE)
         # 興櫃旗標若已偵測仍保留短註（Summary 失敗也可能是興櫃）
@@ -5208,9 +5266,10 @@ server <- function(input, output, session) {
         return(invisible(NULL))
       }
       prog <- shiny::Progress$new(session, min = 0, max = 1)
+      active_prog <<- prog
       prog$set(
         message = paste(
-          "🚀 正在取得", display_ticker_for_market(stock_code, market_mode()), "的最新資料..."
+          "🚀 正在取得", display_ticker_for_market(stock_code, .mm()), "的最新資料..."
         ),
         value = 0
       )
@@ -5232,19 +5291,19 @@ server <- function(input, output, session) {
         company_cb_dilution(NULL)
 
         # 興櫃：宇宙板別（ESB）；可估但 Summary β／Blue Chip 有限制
-        if (identical(market_mode(), "TW") &&
+        if (identical(.mm(), "TW") &&
             exists("is_tw_esb_ticker", mode = "function") &&
             isTRUE(is_tw_esb_ticker(stock_code))) {
           tw_is_esb(TRUE)
         }
 
-        prog$set(value = 0.2, detail = "正在讀取 Summary（yfinance）...")
+        incProgress(0.2, detail = "正在讀取 Summary（yfinance）...")
         sum_df <- tryCatch(cached_get_summary_data(stock_code), error = function(e) e)
         # TWSE 後綴無資料／失敗 → 試上櫃 .TWO（僅一次）
         if ((inherits(sum_df, "error") || !is.data.frame(sum_df) || nrow(sum_df) < 1L) &&
-            identical(market_mode(), "TW") &&
+            identical(.mm(), "TW") &&
             grepl("\\.TW$", stock_code, ignore.case = TRUE) &&
-            is.na(.tw_two_fallback_tried_for())) {
+            is.na(isolate(.tw_two_fallback_tried_for()))) {
           alt <- tw_yahoo_alt_ticker(stock_code)
           if (!is.na(alt) && nzchar(alt) && !identical(toupper(alt), toupper(stock_code))) {
             .tw_two_fallback_tried_for(toupper(stock_code))

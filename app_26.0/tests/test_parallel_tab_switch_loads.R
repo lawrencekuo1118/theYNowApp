@@ -45,6 +45,7 @@ check(
   grepl(".run_search_phase1", srv, fixed = TRUE) &&
     grepl(".run_search_phase1b", srv, fixed = TRUE) &&
     grepl(".run_search_phase2", srv, fixed = TRUE) &&
+    grepl(".run_search_phase3", srv, fixed = TRUE) &&
     grepl(".search_alive", srv, fixed = TRUE) &&
     grepl("later::later", srv, fixed = TRUE)
 )
