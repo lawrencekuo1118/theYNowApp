@@ -1,3 +1,12 @@
+## [v27.05] — 2026-10-23
+
+### Changed
+- US stock mode: entering a clear **4-digit** Taiwan listing code (e.g. `2330`, `0050`, or `2330.TW`) and pressing **Search** auto-switches to Taiwan stock mode (same `market_mode_pick` path) then runs the search (#452). Does **not** switch on typing alone.
+
+### Notes
+- en-US: Detection via `looks_like_tw_stock_code()`; wired only in `observeEvent(input$search)`; pending cross-market fetch after switch.
+- zh-TW: 美股模式下輸入四碼台股代號後按 Search 才切換台股並搜尋；僅輸入不切換；沿用既有市場切換通知。
+
 ## [v27.04] — 2026-10-23
 
 ### Changed
