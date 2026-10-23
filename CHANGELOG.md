@@ -1,3 +1,13 @@
+## [v26.55] — 2026-10-23
+
+### Fixed
+- Sidebar circuit: clamp vertical extent so fade-to-black starts by the YNow brand logo; electric blue stroke travel/glow (not image scaleY scroll) (#422).
+- Header wordmark: solid black title strip on collapsed-sidebar scroll; no AdminLTE white flash; no vein/pattern through the wordmark (#422).
+
+### Notes
+- en-US: Circuit overlay is bottom-anchored (`min(42vh, 380px)`); SVG stroke-dash travel + glow pulse. Title strip stays `#000` when the sidebar is collapsed and the page scrolls. Bundle `12728418`.
+- zh-TW: 側邊欄線路最長到 YNow logo 即 fade 至全黑；動態為線路電光（非整圖上下移動）。收合側欄捲動時「The YNow App」標題區維持黑底、無圖樣透出。Bundle `12728418`。
+
 ## [v26.54] — 2026-10-22
 
 ### Added
