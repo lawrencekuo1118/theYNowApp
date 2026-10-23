@@ -127,6 +127,33 @@ check("Server reactive + apply/clear self view modes", {
     grepl('"omniscient"', srv, fixed = TRUE)
 })
 
+check("Sysadmin enter defaults to Signed-in user mode (not guest/omniscient)", {
+  # Unlock path must apply signed_in immediately after portal unlock.
+  grepl("ynow_pts_sysadmin_enter", srv, fixed = TRUE) &&
+    grepl(
+      '.ynow_self_view_apply("signed_in", notify = FALSE, goto_home = FALSE)',
+      srv,
+      fixed = TRUE
+    ) &&
+    grepl("default_self_view=signed_in", srv, fixed = TRUE) &&
+    grepl(
+      "Default self-view after unlock: Signed-in user mode",
+      srv,
+      fixed = TRUE
+    ) &&
+    # Must not default-apply guest or omniscient on enter.
+    !grepl(
+      'ynow_pts_sysadmin_on\\(TRUE\\)[\\s\\S]{0,400}\\.ynow_self_view_apply\\("guest"',
+      srv,
+      perl = TRUE
+    ) &&
+    !grepl(
+      'ynow_pts_sysadmin_on\\(TRUE\\)[\\s\\S]{0,400}\\.ynow_self_view_apply\\("omniscient"',
+      srv,
+      perl = TRUE
+    )
+})
+
 check("Self-view mutually exclusive with selected-user view-as", {
   grepl("Mutually exclusive with selected-user view-as", srv, fixed = TRUE) &&
     grepl("Mutually exclusive with self view modes", srv, fixed = TRUE)
