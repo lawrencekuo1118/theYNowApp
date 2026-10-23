@@ -13973,8 +13973,10 @@ ui <- dashboardPage(
                 else if (!on && copy.modal_title) title.textContent = copy.modal_title;
               }
             });
-            addHandler('ynowAuthOAuthRedirect', function (payload) {
-              if (!payload || !payload.url) return;
+            /* Immediate social OAuth: PKCE + location.assign (shared by custom
+               message + client click capture so the popup/redirect feels instant). */
+            window.ynowStartOAuthRedirect = function (payload) {
+              if (!payload || !payload.url) return false;
               var go = function (url) {
                 try { window.location.assign(String(url)); }
                 catch (eGo) { window.location.href = String(url); }
@@ -13983,16 +13985,14 @@ ui <- dashboardPage(
               var tab = (payload.restore_tab && String(payload.restore_tab)) ||
                 (tabEl ? (tabEl.getAttribute('data-value') || '') : '');
               var baseUrl = String(payload.url);
-              var finish = function (url, persisted, hasPkce) {
-                go(url);
-              };
+              var finish = function (url) { go(url); };
               try {
                 if (tab) sessionStorage.setItem('ynow_pre_oauth_tab', tab);
                 var verifier = (typeof window.ynowPkceVerifier === 'function')
                   ? window.ynowPkceVerifier() : '';
                 if (!verifier || typeof window.ynowPkceChallenge !== 'function') {
-                  finish(baseUrl, !!tab, false);
-                  return;
+                  finish(baseUrl);
+                  return true;
                 }
                 sessionStorage.setItem('ynow_oauth_code_verifier', verifier);
                 window.ynowPkceChallenge(verifier).then(function (challenge) {
@@ -14000,14 +14000,52 @@ ui <- dashboardPage(
                   var url = baseUrl + join +
                     'code_challenge=' + encodeURIComponent(challenge) +
                     '&code_challenge_method=S256';
-                  finish(url, !!tab, true);
+                  finish(url);
                 }).catch(function () {
-                  finish(baseUrl, !!tab, false);
+                  finish(baseUrl);
                 });
               } catch (ePkce) {
-                finish(baseUrl, !!tab, false);
+                finish(baseUrl);
               }
+              return true;
+            };
+            addHandler('ynowAuthOAuthRedirect', function (payload) {
+              window.ynowStartOAuthRedirect(payload);
             });
+            addHandler('ynowAuthOAuthBootstrap', function (payload) {
+              window.__ynowOAuthBootstrap = payload || null;
+            });
+            if (!window.__ynowOAuthSocialCapture) {
+              window.__ynowOAuthSocialCapture = true;
+              document.addEventListener('click', function (ev) {
+                var t = ev.target;
+                if (!t || !t.closest) return;
+                var hit = t.closest(
+                  '#ynow_auth_google, #ynow_auth_facebook, #ynow_auth_linkedin, button.ynow-auth-social'
+                );
+                if (!hit) return;
+                var boot = window.__ynowOAuthBootstrap;
+                if (!boot || !boot.ready || !boot.providers) return;
+                var id = hit.id || '';
+                var provider = '';
+                if (id === 'ynow_auth_google' || hit.classList.contains('ynow-auth-social--google')) {
+                  provider = 'google';
+                } else if (id === 'ynow_auth_facebook' || hit.classList.contains('ynow-auth-social--facebook')) {
+                  provider = 'facebook';
+                } else if (id === 'ynow_auth_linkedin' || hit.classList.contains('ynow-auth-social--linkedin')) {
+                  provider = 'linkedin';
+                }
+                if (!provider) return;
+                var meta = boot.providers[provider];
+                if (!meta || !meta.url) return;
+                /* Disabled in dashboard: let Shiny show the in-app note. */
+                if (meta.enabled === false) return;
+                try { ev.preventDefault(); } catch (ePd) {}
+                try { ev.stopImmediatePropagation(); } catch (eSip) {}
+                try { ev.stopPropagation(); } catch (eSp) {}
+                window.ynowStartOAuthRedirect({ url: String(meta.url), restore_tab: '' });
+              }, true);
+            }
             /* Sys. Admin foot link: hide while signed in (CSS + inline, sign-out restores). */
             function ynowSyncSysAdminFootVisibility(loggedIn) {
               var el = document.getElementById('ynow_sidebar_test_btn');

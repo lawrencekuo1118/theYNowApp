@@ -68,6 +68,7 @@ ynow_oauth_supabase_ready <- function() {
 
 #' Fetch Supabase Auth settings (which external providers are enabled).
 #' Cached per process; pass force=TRUE after dashboard changes in the same session.
+#' Keep timeout short: a cold probe on the click path used to stall social login.
 ynow_oauth_supabase_settings <- function(force = FALSE) {
   if (!isTRUE(force) && is.list(.ynow_oauth_cache$settings)) {
     return(.ynow_oauth_cache$settings)
@@ -79,7 +80,7 @@ ynow_oauth_supabase_settings <- function(force = FALSE) {
     {
       resp <- httr2::request(paste0(base, "/auth/v1/settings")) |>
         httr2::req_headers(apikey = anon, Authorization = paste("Bearer", anon)) |>
-        httr2::req_timeout(8) |>
+        httr2::req_timeout(2.5) |>
         httr2::req_perform()
       httr2::resp_body_json(resp, simplifyVector = TRUE)
     },
@@ -87,6 +88,63 @@ ynow_oauth_supabase_settings <- function(force = FALSE) {
   )
   if (is.list(settings)) .ynow_oauth_cache$settings <- settings
   settings
+}
+
+#' Warm Supabase Auth settings cache (session start / modal open). Non-fatal.
+ynow_oauth_warm_settings <- function() {
+  if (!isTRUE(ynow_oauth_supabase_ready())) return(invisible(FALSE))
+  tryCatch(
+    {
+      ynow_oauth_supabase_settings()
+      invisible(TRUE)
+    },
+    error = function(e) invisible(FALSE)
+  )
+}
+
+#' Client bootstrap for immediate social redirect (no Shiny round-trip on click).
+#' @return list(ready=, mode=, redirect_uri=, providers= named list of
+#'   list(enabled=, url=, slug=) for google/facebook/linkedin)
+ynow_oauth_client_bootstrap <- function() {
+  out <- list(
+    ready = FALSE,
+    mode = "none",
+    redirect_uri = ynow_oauth_redirect_uri(),
+    providers = list()
+  )
+  if (!isTRUE(ynow_auth_enabled())) return(out)
+  if (!isTRUE(ynow_oauth_supabase_ready())) return(out)
+  # Prefer cached settings; warm when empty so enabled flags are accurate.
+  if (!is.list(.ynow_oauth_cache$settings)) {
+    ynow_oauth_warm_settings()
+  }
+  base <- ynow_oauth_supabase_url()
+  redir <- ynow_oauth_redirect_uri()
+  providers <- list()
+  for (p in c("google", "facebook", "linkedin")) {
+    en <- ynow_oauth_supabase_provider_enabled(p)
+    slug <- ynow_oauth_supabase_slug(p)
+    url <- ""
+    if (!identical(en, FALSE)) {
+      url <- sprintf(
+        "%s/auth/v1/authorize?provider=%s&redirect_to=%s",
+        base,
+        utils::URLencode(slug, reserved = TRUE),
+        utils::URLencode(redir, reserved = TRUE)
+      )
+    }
+    providers[[p]] <- list(
+      enabled = if (isTRUE(is.na(en))) NULL else isTRUE(en),
+      slug = slug,
+      url = url
+    )
+  }
+  list(
+    ready = TRUE,
+    mode = "supabase",
+    redirect_uri = redir,
+    providers = providers
+  )
 }
 
 #' Map app provider id → Supabase /auth/v1/authorize slug.
@@ -205,14 +263,18 @@ ynow_oauth_authorize_url <- function(provider = c("google", "facebook", "linkedi
   }
   redir <- ynow_oauth_redirect_uri()
   if (isTRUE(ynow_oauth_supabase_ready())) {
-    enabled <- ynow_oauth_supabase_provider_enabled(provider)
-    if (identical(enabled, FALSE)) {
-      return(list(
-        ok = FALSE,
-        url = NULL,
-        message_key = "auth_msg_oauth_provider_disabled",
-        provider = provider
-      ))
+    # Only gate on a *cached* disabled flag. Never block the click path on a
+    # cold /auth/v1/settings probe (that was the social-login delay).
+    if (is.list(.ynow_oauth_cache$settings)) {
+      enabled <- ynow_oauth_supabase_provider_enabled(provider)
+      if (identical(enabled, FALSE)) {
+        return(list(
+          ok = FALSE,
+          url = NULL,
+          message_key = "auth_msg_oauth_provider_disabled",
+          provider = provider
+        ))
+      }
     }
     base <- ynow_oauth_supabase_url()
     slug <- ynow_oauth_supabase_slug(provider)
