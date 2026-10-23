@@ -7,5 +7,5 @@ commit=34e9d26f74cdbec2fccf58c158b2f26a9c4ebdd3
 short=34e9d26f
 message=chore: bump display version to v27.05
 captured_at=2026-10-23T14:49:54Z
-display_version=v27.05
+display_version=v27.06
 note=Canonical live line is app_27.0. Bundle 12730415: US mode 4-digit TW code + Search auto-switches to Taiwan mode (#452); Search-only (not on typing).
