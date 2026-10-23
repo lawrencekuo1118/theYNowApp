@@ -82,6 +82,19 @@ check(
     fixed = TRUE
   ) || grepl("ynow-snap-tab-lock", ui, fixed = TRUE)
 )
+check(
+  "Snapshot tab hides global Ticker / Yahoo industry chrome",
+  grepl("input.sidebar_tabs != 'snapshot'", ui, fixed = TRUE) &&
+    grepl("ynow-stock-chrome", ui, fixed = TRUE) &&
+    grepl("ynow_industry_info_yahoo", ui, fixed = TRUE)
+)
+check(
+  "Lite free Snapshot tabs remain (snap_audit + snap_current)",
+  grepl('value = "snap_audit"', ui, fixed = TRUE) &&
+    grepl('value = "snap_current"', ui, fixed = TRUE) &&
+    grepl("Manual adjustments", ui, fixed = TRUE) &&
+    grepl("Current App Parameter Snapshot", ui, fixed = TRUE)
+)
 
 message("PASS ", ok, " FAIL ", bad)
 if (bad > 0L) quit(status = 1)

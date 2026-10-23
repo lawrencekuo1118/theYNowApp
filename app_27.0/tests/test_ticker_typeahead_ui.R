@@ -38,12 +38,13 @@ check(
     grepl("sidebar_tabs", ui, fixed = TRUE)
 )
 check(
-  "stock chrome hidden on Macro/Home/Blue Chip",
+  "stock chrome hidden on Macro/Home/Blue Chip/Snapshot",
   grepl("macro_market", ui, fixed = TRUE) &&
     grepl("ynow-stock-chrome", ui, fixed = TRUE) &&
     grepl("sidebar_tabs != 'home'", ui, fixed = TRUE) &&
     grepl("sidebar_tabs != 'macro_market'", ui, fixed = TRUE) &&
-    grepl("sidebar_tabs != 'bluechip'", ui, fixed = TRUE)
+    grepl("sidebar_tabs != 'bluechip'", ui, fixed = TRUE) &&
+    grepl("sidebar_tabs != 'snapshot'", ui, fixed = TRUE)
 )
 
 if (fail > 0L) {
