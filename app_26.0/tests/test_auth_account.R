@@ -574,6 +574,35 @@ check("UI stamps ynow-auth-feature on body for first paint", {
 })
 check("UI wires OAuth redirect + callback", grepl("ynowAuthOAuthRedirect", ui, fixed = TRUE) &&
         grepl("ynow_auth_oauth_callback", ui, fixed = TRUE))
+check("UI wires immediate social OAuth bootstrap + click capture", {
+  grepl("ynowAuthOAuthBootstrap", ui, fixed = TRUE) &&
+    grepl("ynowStartOAuthRedirect", ui, fixed = TRUE) &&
+    grepl("__ynowOAuthSocialCapture", ui, fixed = TRUE) &&
+    grepl("__ynowOAuthBootstrap", ui, fixed = TRUE) &&
+    grepl("ynow_auth_google, #ynow_auth_facebook, #ynow_auth_linkedin", ui, fixed = TRUE)
+})
+check("server pushes OAuth bootstrap on flush/locale", {
+  auth_txt <- paste(readLines(src_auth, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("ynowAuthOAuthBootstrap", auth_txt, fixed = TRUE) &&
+    grepl(".push_oauth_bootstrap", auth_txt, fixed = TRUE) &&
+    grepl("ynow_oauth_client_bootstrap", auth_txt, fixed = TRUE) &&
+    grepl("ynow_oauth_warm_settings", auth_txt, fixed = TRUE)
+})
+check("Facebook social button uses Meta brand blue not logo blue", {
+  auth_txt <- paste(readLines(src_auth, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  # Scope to the facebook rule only (logo-blue still used elsewhere on the card).
+  m <- regexpr(
+    "ynow-auth-social--facebook \\{[^}]+\\}",
+    auth_txt,
+    perl = TRUE
+  )
+  block <- if (m[1] > 0) substr(auth_txt, m[1], m[1] + attr(m, "match.length") - 1L) else ""
+  nzchar(block) &&
+    grepl("#1877F2", block, fixed = TRUE) &&
+    grepl("#166FE5", auth_txt, fixed = TRUE) &&
+    !grepl("ynow-logo-blue", block, fixed = TRUE) &&
+    !grepl("#0C5484", block, fixed = TRUE)
+})
 check("UI collapses sidebar before auth modal", {
   auth_open <- paste(readLines(src_auth, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   grepl("ynowAuthOpenModal", ui, fixed = TRUE) &&
@@ -796,6 +825,36 @@ check("OAuth supabase authorize URL", {
   r <- ynow_oauth_authorize_url("google")
   isTRUE(r$ok) && grepl("abc.supabase.co/auth/v1/authorize", r$url, fixed = TRUE) &&
     grepl("provider=google", r$url, fixed = TRUE)
+})
+check("OAuth authorize skips cold settings probe", {
+  # Empty cache must not call /auth/v1/settings on the click path.
+  Sys.setenv(
+    YNOW_SUPABASE_URL = "https://abc.supabase.co",
+    YNOW_SUPABASE_ANON_KEY = "anon-key",
+    YNOW_OAUTH_REDIRECT_URI = "https://example.com/app",
+    YNOW_ENABLE_ACCOUNT_LOGIN = "1"
+  )
+  .ynow_oauth_cache$settings <- NULL
+  r <- ynow_oauth_authorize_url("google")
+  isTRUE(r$ok) && grepl("provider=google", r$url, fixed = TRUE) &&
+    is.null(.ynow_oauth_cache$settings)
+})
+check("OAuth client bootstrap returns supabase provider URLs", {
+  Sys.setenv(
+    YNOW_SUPABASE_URL = "https://abc.supabase.co",
+    YNOW_SUPABASE_ANON_KEY = "anon-key",
+    YNOW_OAUTH_REDIRECT_URI = "https://example.com/app",
+    YNOW_ENABLE_ACCOUNT_LOGIN = "1"
+  )
+  .ynow_oauth_cache$settings <- list(
+    external = list(google = TRUE, facebook = TRUE, linkedin_oidc = TRUE)
+  )
+  b <- ynow_oauth_client_bootstrap()
+  isTRUE(b$ready) && identical(b$mode, "supabase") &&
+    nzchar(b$providers$google$url) &&
+    grepl("provider=google", b$providers$google$url, fixed = TRUE) &&
+    grepl("provider=linkedin_oidc", b$providers$linkedin$url, fixed = TRUE) &&
+    isTRUE(b$providers$facebook$enabled)
 })
 check("OAuth supabase linkedin URL uses linkedin_oidc", {
   Sys.setenv(

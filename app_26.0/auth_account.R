@@ -1056,13 +1056,14 @@ ynow_auth_css <- function() {
     "  background:var(--ynow-wash, #f5f5f5) !important;",
     "  border-color:#b8b8b8 !important; color:var(--ynow-ink, #1a1a1a) !important;",
     "}",
+    # Official brand fills (not YNow logo blue). Google: white + multicolor G.
     ".ynow-auth-social--facebook {",
-    "  background:var(--ynow-logo-blue, #0C5484) !important;",
-    "  border:1px solid var(--ynow-logo-blue, #0C5484) !important;",
+    "  background:#1877F2 !important;",
+    "  border:1px solid #1877F2 !important;",
     "  color:#fff !important;",
     "}",
     ".ynow-auth-social--facebook:hover {",
-    "  background:#0a456c !important; border-color:#0a456c !important; color:#fff !important;",
+    "  background:#166FE5 !important; border-color:#166FE5 !important; color:#fff !important;",
     "}",
     ".ynow-auth-social--linkedin {",
     "  background:#0A66C2 !important; border:1px solid #0A66C2 !important; color:#fff !important;",
@@ -3476,9 +3477,27 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
   # Mark body as auth-feature so CSS gates Full-only surfaces; Lite stays exempt.
   # Also re-send from the locale observe below: onFlushed can race before the
   # client registers ynowAuthFeature (Shiny 1.14 custom handlers).
+  # Warm Supabase Auth settings + push OAuth bootstrap so social clicks redirect
+  # immediately in the browser (no click → server → settings probe stall).
+  .push_oauth_bootstrap <- function() {
+    if (!exists("ynow_oauth_client_bootstrap", mode = "function")) return()
+    tryCatch(
+      {
+        if (exists("ynow_oauth_warm_settings", mode = "function")) {
+          ynow_oauth_warm_settings()
+        }
+        session$sendCustomMessage(
+          "ynowAuthOAuthBootstrap",
+          ynow_oauth_client_bootstrap()
+        )
+      },
+      error = function(e) NULL
+    )
+  }
   if (isTRUE(ynow_auth_enabled())) {
     session$onFlushed(function() {
       session$sendCustomMessage("ynowAuthFeature", list(on = TRUE))
+      .push_oauth_bootstrap()
     }, once = TRUE)
   }
 
@@ -3487,6 +3506,7 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
     if (!isTRUE(ynow_auth_enabled())) return()
     loc <- .loc()
     session$sendCustomMessage("ynowAuthFeature", list(on = TRUE))
+    .push_oauth_bootstrap()
     session$sendCustomMessage(
       "ynowAuthLocale",
       list(
