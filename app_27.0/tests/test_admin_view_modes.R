@@ -41,6 +41,51 @@ check("UI has self-view mode buttons next to Switch view", {
     grepl("ynow-sysadmin-self-view-group", ui, fixed = TRUE)
 })
 
+check("Omniscient button shares Guest btn-default + red text class", {
+  grepl("ynow-sysadmin-btn-omniscient", ui, fixed = TRUE) &&
+    grepl(
+      'class = "btn-default btn-sm ynow-sysadmin-btn-omniscient"',
+      ui,
+      fixed = TRUE
+    ) &&
+    grepl(
+      ".ynow-sysadmin-self-view-group .btn.ynow-sysadmin-btn-omniscient",
+      ui,
+      fixed = TRUE
+    ) &&
+    grepl("color: #DC3545 !important;", ui, fixed = TRUE) &&
+    # Guest stays plain btn-default (no omniscient class).
+    grepl(
+      'id = "ynow_pts_sysadmin_self_guest_label"',
+      ui,
+      fixed = TRUE
+    ) &&
+    grepl('class = "btn-default btn-sm"', ui, fixed = TRUE) &&
+    !grepl(
+      'ynow_pts_sysadmin_self_omniscient"[\\s\\S]{0,400}btn-warning',
+      ui,
+      perl = TRUE
+    )
+})
+
+check("Admin Apply changes uses shared red-bg white-text class", {
+  grepl("ynow-sysadmin-btn-apply", ui, fixed = TRUE) &&
+    grepl(
+      ".ynow-pts-sysadmin-box .btn.ynow-sysadmin-btn-apply",
+      ui,
+      fixed = TRUE
+    ) &&
+    grepl("background: #c0392b !important;", ui, fixed = TRUE) &&
+    grepl("ynow-sysadmin-btn-apply", srv, fixed = TRUE) &&
+    grepl(
+      'class = "btn-danger ynow-sysadmin-btn-apply"',
+      srv,
+      fixed = TRUE
+    ) &&
+    grepl("ynow_pts_sysadmin_apply", srv, fixed = TRUE) &&
+    grepl("ynow_access_apply_changes", srv, fixed = TRUE)
+})
+
 check("UI has self-view chrome + exit", {
   grepl("ynow_selfview_chrome", ui, fixed = TRUE) &&
     grepl("ynow-selfview-chrome", ui, fixed = TRUE) &&
