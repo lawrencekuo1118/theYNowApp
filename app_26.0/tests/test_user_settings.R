@@ -165,6 +165,37 @@ check(
     !grepl("stripe|paypal|checkout.session", auth, ignore.case = TRUE)
 )
 check(
+  "Settings restores 主色系 / Color theme picker (same as Account maint)",
+  {
+    Sys.setenv(YNOW_DEBUG_SKIP_PY = "1", YNOW_ENABLE_ACCOUNT_LOGIN = "1")
+    if (!requireNamespace("shiny", quietly = TRUE) ||
+        !requireNamespace("shinydashboard", quietly = TRUE)) {
+      TRUE
+    } else {
+      suppressPackageStartupMessages({
+        library(shiny)
+        library(shinydashboard)
+      })
+      if (!exists("%||%", mode = "function")) {
+        `%||%` <- function(a, b) if (is.null(a) || length(a) == 0L) b else a
+      }
+      source(file.path(root, "ui_locale.R"), local = FALSE, encoding = "UTF-8")
+      source(file.path(root, "auth_account.R"), local = FALSE, encoding = "UTF-8")
+      zh <- paste(as.character(ynow_settings_panel_ui(NULL, "zh-TW")), collapse = "\n")
+      en <- paste(as.character(ynow_settings_panel_ui(NULL, "en")), collapse = "\n")
+      grepl("ynow-maint-theme-select", zh, fixed = TRUE) &&
+        grepl("ynow_maint_theme_select_ui", auth, fixed = TRUE) &&
+        grepl("主色系", zh, fixed = TRUE) &&
+        grepl("黑白色系", zh, fixed = TRUE) &&
+        grepl("藍海色系", zh, fixed = TRUE) &&
+        grepl("森林色系", zh, fixed = TRUE) &&
+        grepl("Color theme", en, fixed = TRUE) &&
+        grepl("Monochrome", en, fixed = TRUE) &&
+        grepl("ynow_settings_theme_badge", zh, fixed = TRUE)
+    }
+  }
+)
+check(
   "Lite omit includes settings",
   {
     Sys.setenv(YNOW_DEBUG_SKIP_PY = "1")

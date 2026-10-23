@@ -232,6 +232,15 @@ check("points panel flat block + theme", {
     grepl("森林色系", html, fixed = TRUE) &&
     !grepl("box-solid", html, fixed = TRUE)
 })
+check("settings panel includes 主色系 theme picker", {
+  p <- ynow_settings_panel_ui(NULL, "zh-TW")
+  html <- paste(as.character(p), collapse = "\n")
+  grepl("ynow-maint-shell", html, fixed = TRUE) &&
+    grepl("ynow-maint-theme-select", html, fixed = TRUE) &&
+    grepl("主色系", html, fixed = TRUE) &&
+    grepl("ynow_settings_theme_badge", html, fixed = TRUE) &&
+    grepl("僅本分頁", html, fixed = TRUE)
+})
 check("account + ledger PYN values use logo-flow class; FYN does not", {
   admin <- ynow_admin_panel_ui(
     list(email = "demo@ynow.app", logged_in_at = "t"), "en", "v25.01",
