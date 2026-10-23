@@ -1,3 +1,12 @@
+## [v27.06] — 2026-10-23
+
+### Changed
+- System admin: **Search users** on the **Users (de-identified)** title row (far right); filter via the **User id** column in place (no separate search-box row). **Items to restrict** is multi-select. System-admin unlock defaults to **Signed-in user mode** / 已登入使用者模式 (#458).
+
+### Notes
+- en-US: Title-row Search users focuses the User id filter; apply/remove ACL items support multi-select; default self-view after unlock is signed-in (not guest/omniscient).
+- zh-TW: 「搜尋使用者」在標題列右側；以「使用者代號」欄位即時篩選；欲限制項目可複選；系統管理員解鎖後預設為已登入使用者模式。
+
 ## [v27.05] — 2026-10-23
 
 ### Changed
