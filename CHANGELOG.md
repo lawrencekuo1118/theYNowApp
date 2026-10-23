@@ -1,3 +1,13 @@
+## [v27.01] — 2026-10-23
+
+### Changed
+- Ownership Structure Analysis deepen (#444): free-float–relevant top-10 when Yahoo institution/fund holders exist (TW may use labeled HTCDI ADR fallback); richer 法人 drill-down with name→public ticker map for top-5 + cross-hold when disclosed; honest empty otherwise.
+- Also on this ship tree: Corporate AML Signals tab (#446) — statement-proxy signals, Lite-open.
+
+### Notes
+- en-US: Prefer Yahoo free-float holder lists over MOPS insider-only tables when available; institution click shows intro / top-5 / cross-holding only from disclosed sources (credibility labeled).
+- zh-TW: 前十大優先顯示流通股相關（Yahoo 機構／基金；台股可標示對應 ADR）；點選法人時顯示簡介、前五大與交叉持股（僅在有揭露時），否則誠實留空。
+
 ## [v27.00] — 2026-10-23
 
 ### Changed
