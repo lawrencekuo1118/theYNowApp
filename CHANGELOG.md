@@ -1,3 +1,12 @@
+## [v26.57] — 2026-10-23
+
+### Fixed
+- Macro + Model Dashboard: restore visible Value Alert bells on KPI / valueBox surfaces (#424).
+
+### Notes
+- en-US: Macro bells were black-on-dark ink; Model Dashboard bells painted under AdminLTE `.small-box` / `.info-box`. Fix appends the bell after wrapped UI, lightens Macro marks, and keeps guest dim readable. Bundle `12728655`.
+- zh-TW: Macro KPI 鈴鐺改為淺色半透明；Model Dashboard 將鈴鐺畫在 valueBox／infoBox 之上，避免被 AdminLTE 蓋住。Guest 淡化仍可辨識。Bundle `12728655`。
+
 ## [v26.56] — 2026-10-23
 
 ### Fixed
