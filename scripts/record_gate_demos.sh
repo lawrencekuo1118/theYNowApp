@@ -29,7 +29,7 @@ else
   echo "record_gate_demos: starting local capture Shiny on ${PORT}"
   # Child process only. Do not export the capture seed into this shell or a deploy.
   nohup env YNOW_DEMO_CAPTURE=1 \
-    Rscript -e "shiny::runApp(appDir='${ROOT}/app_26.0', host='127.0.0.1', port=${PORT}, launch.browser=FALSE)" \
+    Rscript -e "shiny::runApp(appDir='${ROOT}/app_27.0', host='127.0.0.1', port=${PORT}, launch.browser=FALSE)" \
     >"${LOG}" 2>&1 &
   echo $! >"${TMPDIR:-/tmp}/ynow-demo-capture-${PORT}.pid"
   disown || true

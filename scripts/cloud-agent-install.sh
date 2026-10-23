@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Idempotent Cloud Agent bootstrap for theYNowApp (live line app_26.0).
+# Idempotent Cloud Agent bootstrap for theYNowApp (live line app_27.0).
 # Installs CRAN R, r2u binary packages, and the app Python virtualenv.
 set -euo pipefail
 
@@ -112,8 +112,8 @@ $SUDO apt-get install -y --no-install-recommends \
   r-cran-later \
   r-cran-callr
 
-VENV="${ROOT}/app_26.0/.ynow_venv"
-REQ="${ROOT}/app_26.0/requirements.txt"
+VENV="${ROOT}/app_27.0/.ynow_venv"
+REQ="${ROOT}/app_27.0/requirements.txt"
 if [[ ! -f "${REQ}" ]]; then
   echo "cloud-agent-install: missing ${REQ}" >&2
   exit 1
