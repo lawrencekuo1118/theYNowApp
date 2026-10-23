@@ -7,5 +7,5 @@ commit=0f1aa2c7c6dfa5d9c774defa52419c9c2be8f84c
 short=0f1aa2c7
 message=chore: bump display version to v26.56
 captured_at=2026-10-23T04:59:00Z
-display_version=v26.56
+display_version=v26.57
 note=Canonical live line is app_26.0. Bundle 12728551: Settings restore 主色系 / Color theme picker (#423).
