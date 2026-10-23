@@ -7,5 +7,5 @@ commit=3bce5449dae893f1b765ff774713c14d06ae4588
 short=3bce5449
 message=chore: bump display version to v27.00
 captured_at=2026-10-23T11:48:12Z
-display_version=v27.00
+display_version=v27.01
 note=Canonical live line is app_27.0. Bundle 12729729: major cut app_26.0→app_27.0; Ownership Structure Analysis landmark + #436/#437/#438.
