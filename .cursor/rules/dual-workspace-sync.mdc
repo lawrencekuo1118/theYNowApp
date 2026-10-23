@@ -22,11 +22,15 @@ Edited from either:
 Before any edit session, ensure both paths match the **deploy baseline** (prefer the commit in `DEPLOY_BASELINE.txt`; Git tip is OK only when its `app_27.0/` tree matches that baseline):
 
 ```bash
+# Canonical (in-repo; live line app_27.0):
+bash scripts/sync-workspaces.sh
+# Mac convenience wrapper (same script):
 /Users/lawrencekuo/coding/bin/sync-theynow-workspaces.sh
-# or: scripts/sync-workspaces.sh
+# Feature-branch / no checkout of master:
+YNOW_SYNC_MIRROR_ONLY=1 bash scripts/sync-workspaces.sh --force
 ```
 
-Use `--force` only if you intentionally want to overwrite dirty local changes.
+Use `--force` only if you intentionally want to overwrite dirty local changes. Verify with `bash scripts/check-od-sync.sh` (sha + `app_27.0/app.R`), never `git status` inside OneDrive.
 
 After finishing edits:
 
