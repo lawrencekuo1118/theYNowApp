@@ -7,5 +7,5 @@ commit=f17634cb339394654d06d020e72af55b02ca48a3
 short=f17634cb
 message=chore: bump display version to v27.03
 captured_at=2026-10-23T14:06:07Z
-display_version=v27.03
+display_version=v27.04
 note=Canonical live line is app_27.0. Bundle 12730210: System admin Apply changes red chrome + Omniscient red text (#447).
