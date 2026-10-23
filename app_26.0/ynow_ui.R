@@ -4094,9 +4094,10 @@ ui <- dashboardPage(
       # Far-left of .main-header; opaque .logo brand strip keeps veins out of the wordmark.
       "h.insertBefore(el,h.firstChild);",
       "}",
-      # Longer drawn PCB traces (SVG paths) continue upward from the foot chip —
-      # do NOT stretch the chip PNG. Foot keeps natural-size stroke art; SVG draws
-      # longer geometry that fades out toward the top (logo blue ↔ white).
+      # Drawn PCB traces from the foot chip upward — do NOT stretch the chip PNG.
+      # Vertical clamp: fade to full black by the YNow sidebar brand logo (never paint
+      # above/through it into the menu). Motion = electric stroke glow traveling along
+      # paths (dashoffset + pulse) — never translateY / scaleY scroll of the whole asset.
       "function ynowPlaceChromeCircuit(){",
       "var s=document.querySelector('.main-sidebar');",
       "if(!s||s.querySelector('.ynow-chrome-sidebar-circuit'))return;",
@@ -4108,40 +4109,49 @@ ui <- dashboardPage(
       "var wrap=document.createElement('div');",
       "wrap.className='ynow-chrome-sidebar-circuit-strokes';",
       "wrap.innerHTML=",
-      "'<svg class=\"ynow-chrome-sidebar-circuit-svg\" viewBox=\"0 0 230 900\" ",
+      # viewBox height 480: foot (y=480) up to brand-logo band (~y=40) — clamped short.
+      "'<svg class=\"ynow-chrome-sidebar-circuit-svg\" viewBox=\"0 0 230 480\" ",
       "preserveAspectRatio=\"xMidYMax meet\" aria-hidden=\"true\" focusable=\"false\">",
       "<defs>",
       "<linearGradient id=\"ynowCircuitStrokeGrad\" x1=\"0\" y1=\"1\" x2=\"0\" y2=\"0\">",
       "<stop offset=\"0%\" stop-color=\"#0C5484\">",
-      "<animate attributeName=\"stop-color\" values=\"#0C5484;#ffffff;#0C5484\" dur=\"4.8s\" repeatCount=\"indefinite\"/>",
+      "<animate attributeName=\"stop-color\" values=\"#0C5484;#7ec8f0;#0C5484\" dur=\"3.2s\" repeatCount=\"indefinite\"/>",
       "</stop>",
-      "<stop offset=\"45%\" stop-color=\"#ffffff\">",
-      "<animate attributeName=\"stop-color\" values=\"#ffffff;#0C5484;#ffffff\" dur=\"4.8s\" repeatCount=\"indefinite\"/>",
+      "<stop offset=\"42%\" stop-color=\"#5eb0e0\">",
+      "<animate attributeName=\"stop-color\" values=\"#5eb0e0;#ffffff;#0C5484;#5eb0e0\" dur=\"3.2s\" repeatCount=\"indefinite\"/>",
       "</stop>",
       "<stop offset=\"100%\" stop-color=\"#0C5484\">",
-      "<animate attributeName=\"stop-color\" values=\"#0C5484;#ffffff;#0C5484\" dur=\"4.8s\" repeatCount=\"indefinite\"/>",
+      "<animate attributeName=\"stop-color\" values=\"#0C5484;#ffffff;#0C5484\" dur=\"3.2s\" repeatCount=\"indefinite\"/>",
       "</stop>",
       "</linearGradient>",
+      "<filter id=\"ynowCircuitGlow\" x=\"-40%\" y=\"-40%\" width=\"180%\" height=\"180%\">",
+      "<feGaussianBlur stdDeviation=\"1.4\" result=\"b\"/>",
+      "<feMerge><feMergeNode in=\"b\"/><feMergeNode in=\"SourceGraphic\"/></feMerge>",
+      "</filter>",
       "</defs>",
-      "<g fill=\"none\" stroke=\"url(#ynowCircuitStrokeGrad)\" stroke-linecap=\"round\" stroke-linejoin=\"round\">",
-      # Paths originate near foot (y~900) and run upward to staggered tops (longer geometry).
-      "<path class=\"ynow-ckt-p\" stroke-width=\"1.35\" d=\"M18 900 V620 L32 606 V480 L18 466 V280 L32 266 V95\"/>",
-      "<path class=\"ynow-ckt-p\" stroke-width=\"1.1\" d=\"M36 900 V700 L48 688 V520 L36 508 V360 L50 346 V175\"/>",
-      "<path class=\"ynow-ckt-p\" stroke-width=\"1.45\" d=\"M58 900 V640 L72 626 V440 L58 426 V250 L72 236 V70\"/>",
-      "<path class=\"ynow-ckt-p\" stroke-width=\"1.2\" d=\"M84 900 V720 L98 706 V560 L84 546 V370 L98 356 V140\"/>",
-      "<path class=\"ynow-ckt-p\" stroke-width=\"1.5\" d=\"M112 900 V600 L126 586 V420 L112 406 V210 L126 196 V55\"/>",
-      "<path class=\"ynow-ckt-p\" stroke-width=\"1.15\" d=\"M138 900 V680 L152 666 V500 L138 486 V300 L152 286 V110\"/>",
-      "<path class=\"ynow-ckt-p\" stroke-width=\"1.4\" d=\"M164 900 V610 L178 596 V450 L164 436 V260 L178 246 V80\"/>",
-      "<path class=\"ynow-ckt-p\" stroke-width=\"1.2\" d=\"M190 900 V730 L204 716 V580 L190 566 V380 L204 366 V155\"/>",
-      "<path class=\"ynow-ckt-p\" stroke-width=\"1.35\" d=\"M212 900 V650 L222 640 V470 L212 460 V270 L222 260 V100\"/>",
+      "<g fill=\"none\" stroke=\"url(#ynowCircuitStrokeGrad)\" stroke-linecap=\"round\" ",
+      "stroke-linejoin=\"round\" filter=\"url(#ynowCircuitGlow)\">",
+      # Paths foot→up; tops stay in lower band (fade starts at YNow brand logo).
+      "<path class=\"ynow-ckt-p\" stroke-width=\"1.35\" d=\"M18 480 V340 L32 326 V250 L18 236 V140 L32 126 V48\"/>",
+      "<path class=\"ynow-ckt-p\" stroke-width=\"1.1\" d=\"M36 480 V360 L48 348 V270 L36 258 V175 L50 162 V72\"/>",
+      "<path class=\"ynow-ckt-p\" stroke-width=\"1.45\" d=\"M58 480 V330 L72 316 V230 L58 216 V130 L72 116 V40\"/>",
+      "<path class=\"ynow-ckt-p\" stroke-width=\"1.2\" d=\"M84 480 V370 L98 356 V280 L84 266 V185 L98 172 V60\"/>",
+      "<path class=\"ynow-ckt-p\" stroke-width=\"1.5\" d=\"M112 480 V320 L126 306 V220 L112 206 V120 L126 106 V36\"/>",
+      "<path class=\"ynow-ckt-p\" stroke-width=\"1.15\" d=\"M138 480 V350 L152 336 V255 L138 241 V155 L152 142 V52\"/>",
+      "<path class=\"ynow-ckt-p\" stroke-width=\"1.4\" d=\"M164 480 V325 L178 311 V235 L164 221 V135 L178 122 V44\"/>",
+      "<path class=\"ynow-ckt-p\" stroke-width=\"1.2\" d=\"M190 480 V375 L204 361 V290 L190 276 V190 L204 176 V68\"/>",
+      "<path class=\"ynow-ckt-p\" stroke-width=\"1.35\" d=\"M212 480 V345 L222 335 V260 L212 250 V150 L222 140 V55\"/>",
       "</g>",
-      # Terminal pads at staggered heights (PCB nodes)
       "<g fill=\"url(#ynowCircuitStrokeGrad)\">",
-      "<circle cx=\"32\" cy=\"95\" r=\"2.2\"/><circle cx=\"50\" cy=\"175\" r=\"2\"/>",
-      "<circle cx=\"72\" cy=\"70\" r=\"2.4\"/><circle cx=\"98\" cy=\"140\" r=\"2\"/>",
-      "<circle cx=\"126\" cy=\"55\" r=\"2.5\"/><circle cx=\"152\" cy=\"110\" r=\"2.1\"/>",
-      "<circle cx=\"178\" cy=\"80\" r=\"2.3\"/><circle cx=\"204\" cy=\"155\" r=\"2\"/>",
-      "<circle cx=\"222\" cy=\"100\" r=\"2.2\"/>",
+      "<circle class=\"ynow-ckt-node\" cx=\"32\" cy=\"48\" r=\"2.2\"/>",
+      "<circle class=\"ynow-ckt-node\" cx=\"50\" cy=\"72\" r=\"2\"/>",
+      "<circle class=\"ynow-ckt-node\" cx=\"72\" cy=\"40\" r=\"2.4\"/>",
+      "<circle class=\"ynow-ckt-node\" cx=\"98\" cy=\"60\" r=\"2\"/>",
+      "<circle class=\"ynow-ckt-node\" cx=\"126\" cy=\"36\" r=\"2.5\"/>",
+      "<circle class=\"ynow-ckt-node\" cx=\"152\" cy=\"52\" r=\"2.1\"/>",
+      "<circle class=\"ynow-ckt-node\" cx=\"178\" cy=\"44\" r=\"2.3\"/>",
+      "<circle class=\"ynow-ckt-node\" cx=\"204\" cy=\"68\" r=\"2\"/>",
+      "<circle class=\"ynow-ckt-node\" cx=\"222\" cy=\"55\" r=\"2.2\"/>",
       "</g>",
       "</svg>';",
       "el.appendChild(glow);",
@@ -4583,15 +4593,15 @@ ui <- dashboardPage(
         /* 標題＝載入進度條：底層淡金軌道 + 金色填滿層（隨 --ynow-load-pct） */
         /* z-index must stay above header veins (z4) on :hover too — otherwise
            AdminLTE/skin hover specificity drops the logo under foliage and the
-           branch graphic flashes through the wordmark. Logo/title bg is
-           transparent; veins are masked clear of the wordmark band. */
+           branch graphic flashes through the wordmark. Title strip stays #000
+           (never AdminLTE skin-black white / never vein pattern through wordmark). */
         .main-header .logo,
         .main-header .logo:hover {
           position: relative;
           z-index: 5;
           font-weight: bold;
           color: #FFD700 !important;
-          background-color: transparent !important;
+          background-color: #000 !important;
           background-image: none !important;
           filter: none !important;
         }
@@ -5711,14 +5721,15 @@ ui <- dashboardPage(
         body.ynow-view-as .main-header .logo .ynow-app-title-fill {
           width: 100% !important;
         }
-        /* 美股：logo 區塊透明（與黑頂欄融合；veins 以 mask 避開 wordmark） */
+        /* Logo strip underlay: solid black so veins never paint through wordmark */
         .skin-black .main-header .logo::before {
           content: "";
           position: absolute;
           inset: 0;
           z-index: -1;
           pointer-events: none;
-          background-color: transparent;
+          background-color: #000 !important;
+          background-image: none !important;
         }
 
         .content-wrapper, .right-side { background-color: #f7f7f7; }
@@ -5731,11 +5742,11 @@ ui <- dashboardPage(
           width: 100% !important;
           z-index: 1030 !important;
           overflow: hidden;
+          background-color: #000 !important;
         }
         /* Black top-banner left (A+B): line-stroke veins flush left of .main-header.
-           Asset: www/ynow-chrome-veins-branches.png. Logo/title bg is transparent so the
-           strip blends with the banner; a horizontal mask keeps strokes out of the
-           wordmark band (far-left gutter + navbar only). */
+           Asset: www/ynow-chrome-veins-branches.png. Logo/title strip is solid #000
+           (blocks veins + AdminLTE skin-black white). Mask still clears wordmark band. */
         .ynow-chrome-header-leaves {
           position: absolute;
           left: 0;
@@ -5789,36 +5800,46 @@ ui <- dashboardPage(
           0%, 100% { opacity: 0.72; }
           50% { opacity: 0.95; }
         }
-        /* Transparent brand strip (blend with black banner). Idle + :hover must match —
-           keep z-index above veins; never reintroduce opaque fill that blocks the banner. */
+        /* Solid black brand strip — idle / hover / focus / collapse+scroll must match.
+           Overrides AdminLTE .skin-black .main-header > .logo { background:#ffffff }.
+           Keep z-index above veins; no pattern through wordmark. */
         .skin-black .main-header .logo,
+        .skin-black .main-header > .logo,
         .skin-black .main-header .logo:hover,
+        .skin-black .main-header > .logo:hover,
         .skin-black .main-header .logo:focus,
-        .skin-black .main-header .logo:active {
-          background-color: transparent !important;
+        .skin-black .main-header .logo:active,
+        .skin-black.sidebar-collapse .main-header .logo,
+        .skin-black.sidebar-collapse .main-header > .logo,
+        .skin-black.sidebar-mini.sidebar-collapse .main-header .logo,
+        .skin-black.sidebar-mini.sidebar-collapse .main-header > .logo {
+          background-color: #000 !important;
           background-image: none !important;
           z-index: 5 !important;
         }
         .skin-black .main-header .logo::before,
-        .skin-black .main-header .logo:hover::before {
+        .skin-black .main-header .logo:hover::before,
+        .skin-black.sidebar-collapse .main-header .logo::before {
           content: "";
           position: absolute;
           inset: 0;
           z-index: -1;
           pointer-events: none;
-          background-color: transparent !important;
+          background-color: #000 !important;
           background-image: none !important;
         }
         /* No padding on .ynow-app-title: #404 pill padding offset the absolute fill vs
            in-flow base and painted a second ghost wordmark. Keep load-bar layers aligned.
            Shrink-wrap to the full wordmark (incl. trailing version digit); do not let
-           AdminLTE .logo overflow:hidden + 15px pad clip 「…v26.xx」. Transparent bg. */
+           AdminLTE .logo overflow:hidden + 15px pad clip 「…v26.xx」. Black strip, no pattern. */
         .main-header .logo,
         .main-header .logo:hover {
           overflow: visible !important;
           padding-left: 8px !important;
           padding-right: 8px !important;
           box-sizing: border-box;
+          background-color: #000 !important;
+          background-image: none !important;
         }
         .main-header .logo .ynow-app-title,
         .main-header .logo:hover .ynow-app-title {
@@ -7351,37 +7372,39 @@ ui <- dashboardPage(
           border-left-color: #fff;
         }
         /* Snapshot／Sys. Admin／Feedback：同一列；版權宣告在按鈕列正下方（勿重疊） */
-        /* A+B chip foot + longer DRAWN traces: LINE strokes only on #000.
+        /* A+B chip foot + DRAWN traces: LINE strokes only on #000.
            Foot chip keeps www/ynow-chrome-veins-circuit.png at NATURAL size (no stretch).
-           Upward continuation = SVG path geometry (longer traces), fade-out toward top,
-           logo blue (#0C5484) ↔ white dynamic stroke — never scale the PNG to panel height. */
+           Vertical clamp: bottom-anchored; fade to full black by YNow brand logo
+           (never paint above/through logo into menu/header). Motion = electric blue
+           glow traveling along strokes — never translateY/scaleY of the whole asset. */
         .ynow-chrome-sidebar-circuit {
           position: absolute;
           left: 0;
           right: 0;
-          top: 0;
           bottom: 0;
+          top: auto;
+          /* Cap: foot → YNow logo band only (~brandFromBottom); not full sidebar */
+          height: min(42vh, 380px);
+          max-height: 420px;
           pointer-events: none;
           z-index: 0;
           overflow: hidden;
-          /* Soft dissolve of the drawn traces toward the top */
+          /* Fade-out completes by overlay top (= YNow logo); full black above */
           -webkit-mask-image: linear-gradient(
             to top,
             #000 0%,
-            #000 8%,
-            rgba(0, 0, 0, 0.85) 28%,
-            rgba(0, 0, 0, 0.45) 55%,
-            rgba(0, 0, 0, 0.16) 78%,
-            transparent 96%
+            #000 22%,
+            rgba(0, 0, 0, 0.75) 48%,
+            rgba(0, 0, 0, 0.28) 72%,
+            transparent 92%
           );
           mask-image: linear-gradient(
             to top,
             #000 0%,
-            #000 8%,
-            rgba(0, 0, 0, 0.85) 28%,
-            rgba(0, 0, 0, 0.45) 55%,
-            rgba(0, 0, 0, 0.16) 78%,
-            transparent 96%
+            #000 22%,
+            rgba(0, 0, 0, 0.75) 48%,
+            rgba(0, 0, 0, 0.28) 72%,
+            transparent 92%
           );
         }
         .ynow-chrome-sidebar-circuit-glow {
@@ -7389,7 +7412,7 @@ ui <- dashboardPage(
           left: 8%;
           right: 8%;
           bottom: 0;
-          height: 48%;
+          height: 55%;
           background: radial-gradient(
             ellipse 78% 100% at 50% 100%,
             rgba(12, 84, 132, 0.36),
@@ -7417,13 +7440,48 @@ ui <- dashboardPage(
           height: 100%;
           display: block;
           overflow: visible;
-          filter: drop-shadow(0 0 2px rgba(12, 84, 132, 0.5));
-          opacity: 0.88;
-          transform-origin: bottom center;
-          animation: ynow-chrome-circuit-rise 3.6s ease-in-out infinite;
+          filter: drop-shadow(0 0 2.5px rgba(94, 176, 224, 0.55));
+          opacity: 0.9;
+          /* Electric glow pulse on strokes — NO scaleY / translate scroll */
+          animation: ynow-chrome-circuit-electric 3.6s ease-in-out infinite;
         }
         .ynow-chrome-sidebar-circuit-svg .ynow-ckt-p {
           stroke: url(#ynowCircuitStrokeGrad);
+          stroke-dasharray: 10 18;
+          stroke-dashoffset: 0;
+          animation: ynow-chrome-circuit-travel 2.8s linear infinite;
+        }
+        .ynow-chrome-sidebar-circuit-svg .ynow-ckt-p:nth-child(2n) {
+          animation-duration: 3.4s;
+          animation-direction: reverse;
+          stroke-dasharray: 7 16;
+        }
+        .ynow-chrome-sidebar-circuit-svg .ynow-ckt-p:nth-child(3n) {
+          animation-duration: 2.2s;
+          stroke-dasharray: 12 20;
+        }
+        .ynow-chrome-sidebar-circuit-svg .ynow-ckt-node {
+          animation: ynow-chrome-circuit-node-pulse 2.4s ease-in-out infinite;
+        }
+        .ynow-chrome-sidebar-circuit-svg .ynow-ckt-node:nth-child(2n) {
+          animation-delay: 0.4s;
+        }
+        @keyframes ynow-chrome-circuit-travel {
+          to { stroke-dashoffset: -56; }
+        }
+        @keyframes ynow-chrome-circuit-electric {
+          0%, 100% {
+            opacity: 0.72;
+            filter: drop-shadow(0 0 1.5px rgba(12, 84, 132, 0.45));
+          }
+          50% {
+            opacity: 0.98;
+            filter: drop-shadow(0 0 4px rgba(94, 176, 224, 0.75));
+          }
+        }
+        @keyframes ynow-chrome-circuit-node-pulse {
+          0%, 100% { opacity: 0.55; }
+          50% { opacity: 1; }
         }
         @keyframes ynow-chrome-circuit-bw-flow {
           0%, 100% { opacity: 0.78; }
@@ -7502,10 +7560,8 @@ ui <- dashboardPage(
           background-size: 118% auto;
           background-position: center bottom;
           opacity: 0.88;
-          transform-origin: bottom center;
-          animation:
-            ynow-chrome-circuit-rise 3.6s ease-in-out infinite,
-            ynow-chrome-circuit-bw-flow 4.8s ease-in-out infinite;
+          /* Glow/opacity pulse only — no scaleY image scroll */
+          animation: ynow-chrome-circuit-bw-flow 4.8s ease-in-out infinite;
           filter:
             drop-shadow(0 0 2px rgba(12, 84, 132, 0.55))
             hue-rotate(-8deg)
@@ -7514,10 +7570,6 @@ ui <- dashboardPage(
           mask-image: linear-gradient(to top, #000 0%, #000 35%, transparent 88%);
           pointer-events: none;
           z-index: 0;
-        }
-        @keyframes ynow-chrome-circuit-rise {
-          0%, 100% { opacity: 0.55; transform: scaleY(0.92); }
-          50% { opacity: 0.95; transform: scaleY(1.02); }
         }
         .ynow-sidebar-foot-chip > * {
           position: relative;
@@ -7534,7 +7586,11 @@ ui <- dashboardPage(
           .ynow-chrome-sidebar-circuit-svg {
             animation: none;
             opacity: 0.75;
-            transform: none;
+            filter: drop-shadow(0 0 2px rgba(12, 84, 132, 0.45));
+          }
+          .ynow-chrome-sidebar-circuit-svg .ynow-ckt-p,
+          .ynow-chrome-sidebar-circuit-svg .ynow-ckt-node {
+            animation: none !important;
           }
           .ynow-chrome-sidebar-circuit-svg stop animate {
             display: none;
