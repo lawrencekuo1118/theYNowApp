@@ -7,5 +7,5 @@ commit=d7a174c7de67486e317aee744017c6806ee81126
 short=d7a174c7
 message=chore: bump display version to v26.60
 captured_at=2026-10-23T07:46:05Z
-display_version=v26.60
+display_version=v26.61
 note=Canonical live line is app_26.0. Bundle 12729006: Ownership Structure Analysis Company tab Lite+Full (#432).
