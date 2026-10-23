@@ -151,6 +151,14 @@ server <- function(input, output, session) {
   lab_im_universe_busy <- reactiveVal(FALSE)
   lab_cluster_busy <- reactiveVal(FALSE)
   bt_async_busy <- reactiveVal(FALSE)
+  # Latest button click wins: bump gen on each press; pending args restart when
+  # the current ExtendedTask slot frees (cannot cancel hosted sequential workers).
+  lab_im_eval_gen <- reactiveVal(0L)
+  lab_im_eval_pending <- reactiveVal(NULL)
+  lab_im_ind_mcap_gen <- reactiveVal(0L)
+  lab_im_ind_mcap_pending <- reactiveVal(NULL)
+  lab_cluster_gen <- reactiveVal(0L)
+  lab_cluster_pending <- reactiveVal(NULL)
   # ExtendedTask runners: long jobs leave the session thread so ≥2 features can overlap.
   .ynow_async_ok <- isTRUE(tryCatch(.ynow_async_available(), error = function(e) FALSE))
   lab_im_bc_task <- if (isTRUE(.ynow_async_ok)) {
@@ -4722,6 +4730,233 @@ server <- function(input, output, session) {
       tryCatch(.ynow_set_tab_busy(busy_tab, FALSE), error = function(e) NULL)
     }
 
+    .run_search_phase1b <- function(prog, sum_df, q_ccy, f_ccy) {
+      if (!isTRUE(.search_alive())) {
+        tryCatch(prog$close(), error = function(e) NULL)
+        .search_done()
+        return(invisible(NULL))
+      }
+      tryCatch({
+        ind_info <- cached_get_yahoo_industry(stock_code)
+        if (!is.null(ind_info)) {
+          disp <- as.character(ind_info$display_text %||% "")[1]
+          # TW: if Yahoo Sector/Industry is empty, fall back to exchange industry label
+          if (identical(market_mode(), "TW") &&
+              (is.null(disp) || !nzchar(disp) || grepl("N/A", disp, fixed = TRUE)) &&
+              exists("lookup_tw_universe_industry_raw", mode = "function")) {
+            tw_raw <- tryCatch(
+              lookup_tw_universe_industry_raw(stock_code),
+              error = function(e) ""
+            )
+            if (nzchar(as.character(tw_raw %||% "")[1])) {
+              disp <- paste0("TW industry: ", tw_raw)
+              ind_info$display_text <- disp
+              if (!nzchar(as.character(ind_info$industry %||% "")[1]) ||
+                  identical(as.character(ind_info$industry)[1], "N/A")) {
+                ind_info$industry <- tw_raw
+              }
+            }
+          }
+          corp_industry_text(disp)
+          company_profile(list(
+            ticker = stock_code,
+            company_name = as.character(ind_info$company_name %||% "")[1],
+            sector = as.character(ind_info$sector %||% "")[1],
+            industry = as.character(ind_info$industry %||% "")[1],
+            summary = as.character(ind_info$summary %||% "")[1],
+            website = as.character(ind_info$website %||% "")[1],
+            country = as.character(ind_info$country %||% "")[1],
+            city = as.character(ind_info$city %||% "")[1],
+            exchange = as.character(ind_info$exchange %||% "")[1],
+            employees = suppressWarnings(as.numeric(ind_info$employees %||% NA_real_))
+          ))
+        }
+
+        # Key dates (Yahoo) + TW board / CB open data — tied to Search ticker
+        kd <- tryCatch(
+          cached_fetch_company_key_dates(stock_code),
+          error = function(e) NULL
+        )
+        company_key_dates(kd)
+        mode_now <- tryCatch(
+          normalize_market_mode(market_mode()),
+          error = function(e) "US"
+        )
+        if (identical(mode_now, "TW")) {
+          company_board_election(tryCatch(
+            cached_fetch_tw_board_election(stock_code),
+            error = function(e) NULL
+          ))
+          fx_now <- tryCatch(
+            suppressWarnings(as.numeric(fx_usd_twd())[1]),
+            error = function(e) NA_real_
+          )
+          sh_now <- suppressWarnings(as.numeric(kd$shares_outstanding %||% NA_real_)[1])
+          company_cb_dilution(tryCatch(
+            fetch_tw_convertible_bonds_live(
+              stock_code,
+              shares_out = sh_now,
+              fx_usd_twd = fx_now
+            ),
+            error = function(e) NULL
+          ))
+        } else {
+          company_board_election(tryCatch(
+            fetch_us_board_election_stub(stock_code),
+            error = function(e) NULL
+          ))
+          company_cb_dilution(tryCatch(
+            fetch_us_cb_soft(
+              stock_code,
+              shares_out = suppressWarnings(as.numeric(kd$shares_outstanding %||% NA_real_)[1]),
+              shares_diluted = suppressWarnings(as.numeric(kd$shares_diluted %||% NA_real_)[1])
+            ),
+            error = function(e) NULL
+          ))
+        }
+        # Ownership Structure Analysis (Lite + Full Company tab)
+        company_ownership(tryCatch({
+          fetch_fn <- if (exists("cached_fetch_ownership_structure", mode = "function")) {
+            cached_fetch_ownership_structure
+          } else {
+            fetch_ownership_structure
+          }
+          fetch_fn(stock_code, market = mode_now)
+        }, error = function(e) NULL))
+        own_selected_holder(NULL)
+        own_holder_detail(NULL)
+        # Always sync Dashboard「目前產業標準快覽」to the searched ticker's industry
+        # (TW universe / US overlay·S&P / Yahoo heuristic). Unknown → keep prior pick.
+        mapped <- tryCatch(
+          resolve_industry_key_for_ticker(
+            ticker = stock_code,
+            market_mode = market_mode(),
+            display_text = if (!is.null(ind_info)) ind_info$display_text else "",
+            sector = if (!is.null(ind_info)) ind_info$sector else "",
+            industry = if (!is.null(ind_info)) ind_info$industry else ""
+          ),
+          error = function(e) ""
+        )
+        mapped <- as.character(mapped %||% "")[1]
+        if (nzchar(mapped) && mapped %in% names(industry_standards)) {
+          tryCatch(
+            shinyWidgets::updatePickerInput(
+              session, "industry_choice", selected = mapped
+            ),
+            error = function(e) NULL
+          )
+        }
+
+        # Prefer full legal/display name from Summary or industry lookup (not ticker alone).
+        .pick_company_name <- function(..., ticker = "") {
+          cands <- unlist(list(...), use.names = FALSE)
+          cands <- trimws(as.character(cands))
+          cands <- cands[!is.na(cands) & nzchar(cands)]
+          if (!length(cands)) {
+            return(if (nzchar(ticker)) as.character(ticker) else "")
+          }
+          tk <- toupper(trimws(as.character(ticker)))
+          non_tk <- cands[toupper(cands) != tk]
+          pool <- if (length(non_tk)) non_tk else cands
+          pool[[which.max(nchar(pool))]]
+        }
+        yahoo_cname <- attr(sum_df, "company_name")
+        ind_cname <- if (!is.null(ind_info)) ind_info$company_name else NULL
+        if (identical(market_mode(), "TW")) {
+          uni_zh <- tryCatch(
+            lookup_tw_universe_company_name(stock_code),
+            error = function(e) ""
+          )
+          parts <- split_corp_names_zh_en(
+            yahoo_cname, ind_cname, uni_zh,
+            ticker = stock_code,
+            prefer_zh = uni_zh
+          )
+          if (nzchar(parts$zh) && nzchar(parts$en)) {
+            corp_display_name(parts$zh)
+            corp_display_name_en(parts$en)
+          } else if (nzchar(parts$zh)) {
+            corp_display_name(parts$zh)
+            corp_display_name_en("")
+          } else if (nzchar(parts$en)) {
+            corp_display_name(parts$en)
+            corp_display_name_en("")
+          } else {
+            corp_display_name(.pick_company_name(yahoo_cname, ind_cname, ticker = stock_code))
+            corp_display_name_en("")
+          }
+        } else {
+          corp_display_name(.pick_company_name(yahoo_cname, ind_cname, ticker = stock_code))
+          corp_display_name_en("")
+        }
+
+        # Keep most-recent first; re-Search moves an existing ticker to the front.
+        # Skip the recent list when the ticker is already pinned (shown above the label).
+        # Signed-in: also persist into rolling 24h history (ynow_user_prefs).
+        pinned_now <- as.character(isolate(values$pinned_search %||% character(0)))
+        if (!(stock_code %in% pinned_now)) {
+          recent_cap <- if (exists(".YNOW_RECENT_SEARCH_24H_MAX", inherits = TRUE)) {
+            as.integer(.YNOW_RECENT_SEARCH_24H_MAX)[1]
+          } else {
+            20L
+          }
+          values$recentsearch <- head(
+            c(stock_code, setdiff(values$recentsearch, stock_code)),
+            recent_cap
+          )
+          uid_hist <- tryCatch(.ynow_pinned_auth_uid(), error = function(e) "")
+          if (nzchar(uid_hist %||% "")) {
+            persisted <- .ynow_recent_24h_record(uid_hist, stock_code)
+            if (length(persisted)) {
+              values$recentsearch <- head(
+                setdiff(persisted, pinned_now),
+                recent_cap
+              )
+            }
+          }
+        }
+        # 成功載入後：輸入框維持顯示乾淨代號
+        tryCatch(
+          updateTextInput(
+            session, "sc",
+            value = display_ticker_for_market(stock_code, market_mode())
+          ),
+          error = function(e) NULL
+        )
+
+        if (!isTRUE(.search_alive())) {
+          tryCatch(prog$close(), error = function(e) NULL)
+          .search_done()
+          return(invisible(NULL))
+        }
+        # Yield so sidebar_tabs / lazy mounts can start before financials scrape.
+        if (requireNamespace("later", quietly = TRUE)) {
+          later::later(function() {
+            tryCatch(
+              .run_search_phase2(prog, sum_df, q_ccy, f_ccy),
+              error = function(e) {
+                tryCatch(prog$close(), error = function(e2) NULL)
+                .search_done()
+              }
+            )
+          }, delay = 0)
+        } else {
+          .run_search_phase2(prog, sum_df, q_ccy, f_ccy)
+        }
+        return(invisible(NULL))
+      }, error = function(e) {
+        fs_all_empty(FALSE)
+        showNotification(
+          .ui_msg("notif_fetch_fail", err = e$message),
+          type = "error",
+          duration = 12
+        )
+        tryCatch(prog$close(), error = function(e2) NULL)
+        .search_done()
+      })
+      invisible(NULL)
+    }
+
     .run_search_phase2 <- function(prog, sum_df, q_ccy, f_ccy) {
       if (!isTRUE(.search_alive())) {
         tryCatch(prog$close(), error = function(e) NULL)
@@ -4979,212 +5214,26 @@ server <- function(input, output, session) {
           session, "session_ccy_pick", selected = sess
         )
 
-        ind_info <- cached_get_yahoo_industry(stock_code)
-        if (!is.null(ind_info)) {
-          disp <- as.character(ind_info$display_text %||% "")[1]
-          # TW: if Yahoo Sector/Industry is empty, fall back to exchange industry label
-          if (identical(market_mode(), "TW") &&
-              (is.null(disp) || !nzchar(disp) || grepl("N/A", disp, fixed = TRUE)) &&
-              exists("lookup_tw_universe_industry_raw", mode = "function")) {
-            tw_raw <- tryCatch(
-              lookup_tw_universe_industry_raw(stock_code),
-              error = function(e) ""
-            )
-            if (nzchar(as.character(tw_raw %||% "")[1])) {
-              disp <- paste0("TW industry: ", tw_raw)
-              ind_info$display_text <- disp
-              if (!nzchar(as.character(ind_info$industry %||% "")[1]) ||
-                  identical(as.character(ind_info$industry)[1], "N/A")) {
-                ind_info$industry <- tw_raw
-              }
-            }
-          }
-          corp_industry_text(disp)
-          company_profile(list(
-            ticker = stock_code,
-            company_name = as.character(ind_info$company_name %||% "")[1],
-            sector = as.character(ind_info$sector %||% "")[1],
-            industry = as.character(ind_info$industry %||% "")[1],
-            summary = as.character(ind_info$summary %||% "")[1],
-            website = as.character(ind_info$website %||% "")[1],
-            country = as.character(ind_info$country %||% "")[1],
-            city = as.character(ind_info$city %||% "")[1],
-            exchange = as.character(ind_info$exchange %||% "")[1],
-            employees = suppressWarnings(as.numeric(ind_info$employees %||% NA_real_))
-          ))
-        }
-
-        # Key dates (Yahoo) + TW board / CB open data — tied to Search ticker
-        kd <- tryCatch(
-          cached_fetch_company_key_dates(stock_code),
-          error = function(e) NULL
-        )
-        company_key_dates(kd)
-        mode_now <- tryCatch(
-          normalize_market_mode(market_mode()),
-          error = function(e) "US"
-        )
-        if (identical(mode_now, "TW")) {
-          company_board_election(tryCatch(
-            cached_fetch_tw_board_election(stock_code),
-            error = function(e) NULL
-          ))
-          fx_now <- tryCatch(
-            suppressWarnings(as.numeric(fx_usd_twd())[1]),
-            error = function(e) NA_real_
-          )
-          sh_now <- suppressWarnings(as.numeric(kd$shares_outstanding %||% NA_real_)[1])
-          company_cb_dilution(tryCatch(
-            fetch_tw_convertible_bonds_live(
-              stock_code,
-              shares_out = sh_now,
-              fx_usd_twd = fx_now
-            ),
-            error = function(e) NULL
-          ))
-        } else {
-          company_board_election(tryCatch(
-            fetch_us_board_election_stub(stock_code),
-            error = function(e) NULL
-          ))
-          company_cb_dilution(tryCatch(
-            fetch_us_cb_soft(
-              stock_code,
-              shares_out = suppressWarnings(as.numeric(kd$shares_outstanding %||% NA_real_)[1]),
-              shares_diluted = suppressWarnings(as.numeric(kd$shares_diluted %||% NA_real_)[1])
-            ),
-            error = function(e) NULL
-          ))
-        }
-        # Ownership Structure Analysis (Lite + Full Company tab)
-        company_ownership(tryCatch({
-          fetch_fn <- if (exists("cached_fetch_ownership_structure", mode = "function")) {
-            cached_fetch_ownership_structure
-          } else {
-            fetch_ownership_structure
-          }
-          fetch_fn(stock_code, market = mode_now)
-        }, error = function(e) NULL))
-        own_selected_holder(NULL)
-        own_holder_detail(NULL)
-        # Always sync Dashboard「目前產業標準快覽」to the searched ticker's industry
-        # (TW universe / US overlay·S&P / Yahoo heuristic). Unknown → keep prior pick.
-        mapped <- tryCatch(
-          resolve_industry_key_for_ticker(
-            ticker = stock_code,
-            market_mode = market_mode(),
-            display_text = if (!is.null(ind_info)) ind_info$display_text else "",
-            sector = if (!is.null(ind_info)) ind_info$sector else "",
-            industry = if (!is.null(ind_info)) ind_info$industry else ""
-          ),
-          error = function(e) ""
-        )
-        mapped <- as.character(mapped %||% "")[1]
-        if (nzchar(mapped) && mapped %in% names(industry_standards)) {
-          tryCatch(
-            shinyWidgets::updatePickerInput(
-              session, "industry_choice", selected = mapped
-            ),
-            error = function(e) NULL
-          )
-        }
-
-        # Prefer full legal/display name from Summary or industry lookup (not ticker alone).
-        .pick_company_name <- function(..., ticker = "") {
-          cands <- unlist(list(...), use.names = FALSE)
-          cands <- trimws(as.character(cands))
-          cands <- cands[!is.na(cands) & nzchar(cands)]
-          if (!length(cands)) {
-            return(if (nzchar(ticker)) as.character(ticker) else "")
-          }
-          tk <- toupper(trimws(as.character(ticker)))
-          non_tk <- cands[toupper(cands) != tk]
-          pool <- if (length(non_tk)) non_tk else cands
-          pool[[which.max(nchar(pool))]]
-        }
-        yahoo_cname <- attr(sum_df, "company_name")
-        ind_cname <- if (!is.null(ind_info)) ind_info$company_name else NULL
-        if (identical(market_mode(), "TW")) {
-          uni_zh <- tryCatch(
-            lookup_tw_universe_company_name(stock_code),
-            error = function(e) ""
-          )
-          parts <- split_corp_names_zh_en(
-            yahoo_cname, ind_cname, uni_zh,
-            ticker = stock_code,
-            prefer_zh = uni_zh
-          )
-          if (nzchar(parts$zh) && nzchar(parts$en)) {
-            corp_display_name(parts$zh)
-            corp_display_name_en(parts$en)
-          } else if (nzchar(parts$zh)) {
-            corp_display_name(parts$zh)
-            corp_display_name_en("")
-          } else if (nzchar(parts$en)) {
-            corp_display_name(parts$en)
-            corp_display_name_en("")
-          } else {
-            corp_display_name(.pick_company_name(yahoo_cname, ind_cname, ticker = stock_code))
-            corp_display_name_en("")
-          }
-        } else {
-          corp_display_name(.pick_company_name(yahoo_cname, ind_cname, ticker = stock_code))
-          corp_display_name_en("")
-        }
-
-        # Keep most-recent first; re-Search moves an existing ticker to the front.
-        # Skip the recent list when the ticker is already pinned (shown above the label).
-        # Signed-in: also persist into rolling 24h history (ynow_user_prefs).
-        pinned_now <- as.character(isolate(values$pinned_search %||% character(0)))
-        if (!(stock_code %in% pinned_now)) {
-          recent_cap <- if (exists(".YNOW_RECENT_SEARCH_24H_MAX", inherits = TRUE)) {
-            as.integer(.YNOW_RECENT_SEARCH_24H_MAX)[1]
-          } else {
-            20L
-          }
-          values$recentsearch <- head(
-            c(stock_code, setdiff(values$recentsearch, stock_code)),
-            recent_cap
-          )
-          uid_hist <- tryCatch(.ynow_pinned_auth_uid(), error = function(e) "")
-          if (nzchar(uid_hist %||% "")) {
-            persisted <- .ynow_recent_24h_record(uid_hist, stock_code)
-            if (length(persisted)) {
-              values$recentsearch <- head(
-                setdiff(persisted, pinned_now),
-                recent_cap
-              )
-            }
-          }
-        }
-        # 成功載入後：輸入框維持顯示乾淨代號
-        tryCatch(
-          updateTextInput(
-            session, "sc",
-            value = display_ticker_for_market(stock_code, market_mode())
-          ),
-          error = function(e) NULL
-        )
-
         if (!isTRUE(.search_alive())) {
           tryCatch(prog$close(), error = function(e) NULL)
           .search_done()
           return(invisible(NULL))
         }
-        # Yield so sidebar_tabs / lazy mounts can start before financials scrape.
+        # Yield so a re-clicked Search can bump ticker_search_gen and preempt.
         if (requireNamespace("later", quietly = TRUE)) {
           later::later(function() {
             tryCatch(
-              .run_search_phase2(prog, sum_df, q_ccy, f_ccy),
+              .run_search_phase1b(prog, sum_df, q_ccy, f_ccy),
               error = function(e) {
                 tryCatch(prog$close(), error = function(e2) NULL)
                 .search_done()
               }
             )
           }, delay = 0)
-        } else {
-          .run_search_phase2(prog, sum_df, q_ccy, f_ccy)
+          return(invisible(NULL))
         }
+
+        .run_search_phase1b(prog, sum_df, q_ccy, f_ccy)
         return(invisible(NULL))
       }, error = function(e) {
         fs_all_empty(FALSE)
@@ -17735,7 +17784,11 @@ server <- function(input, output, session) {
 
   observeEvent(input$lab_im_refresh_universe, {
     # Exclusive with Blue Chip eval (shared quality snapshot IO) — Clustering / HFV OK.
-    if (isTRUE(isolate(lab_im_eval_busy())) || isTRUE(isolate(lab_im_universe_busy()))) {
+    # Re-click while this refresh itself is running: ignore duplicate (sync withProgress).
+    if (isTRUE(isolate(lab_im_universe_busy()))) {
+      return()
+    }
+    if (isTRUE(isolate(lab_im_eval_busy()))) {
       showNotification(.ui_msg("lab_im_quality_busy"), type = "warning", duration = 5)
       return()
     }
@@ -17980,14 +18033,100 @@ server <- function(input, output, session) {
     invisible(TRUE)
   }
 
-  observeEvent(lab_im_run_pulse(), {
-    # Quality snapshot IO: do not overlap universe refresh with Blue Chip eval.
-    if (isTRUE(isolate(lab_im_eval_busy())) || isTRUE(isolate(lab_im_universe_busy()))) {
-      return()
+  .lab_im_start_eval_args <- function(args, notify = TRUE) {
+    if (!is.list(args) || !is.data.frame(args$catlg) || nrow(args$catlg) == 0L) {
+      return(invisible(FALSE))
     }
+    gen <- as.integer(args$.gen %||% 0L)[1]
+    if (!isTRUE(ynow_heavy_job_try_acquire("lab_im_eval"))) {
+      # Same button pressed again: keep latest args; retry when the slot frees.
+      lab_im_eval_pending(args)
+      return(invisible(FALSE))
+    }
+    if (isTRUE(notify)) {
+      showNotification(
+        tryCatch(.ui_msg("lab_im_async_started"), error = function(e) .ui_msg("lab_im_progress")),
+        type = "message", duration = 4
+      )
+    }
+    lab_im_eval_busy(TRUE)
+    lab_im_eval_pending(NULL)
     if (!is.null(lab_im_bc_task)) {
-      st <- tryCatch(lab_im_bc_task$status(), error = function(e) "error")
-      if (identical(st, "running")) return()
+      tryCatch(
+        lab_im_bc_task$invoke(
+          catlg = args$catlg,
+          method_filter = args$method_filter,
+          industry_filter = args$industry_filter,
+          include_adr = args$include_adr,
+          display_n = args$display_n,
+          eval_n = args$eval_n,
+          rank_mode = args$rank_mode,
+          concept_keys = args$concept_keys,
+          market_mode = args$market_mode,
+          locale = args$locale
+        ),
+        error = function(e) {
+          lab_im_eval_busy(FALSE)
+          tryCatch(ynow_heavy_job_release("lab_im_eval"), error = function(e2) NULL)
+          showNotification(
+            paste("Blue Chip async start failed:", conditionMessage(e)),
+            type = "error", duration = 8
+          )
+        }
+      )
+      return(invisible(TRUE))
+    }
+    on.exit({
+      tryCatch(lab_im_eval_busy(FALSE), error = function(e) NULL)
+      tryCatch(ynow_heavy_job_release("lab_im_eval"), error = function(e) NULL)
+    }, add = TRUE)
+    out <- tryCatch(
+      lab_im_run_eval_job(
+        catlg = args$catlg,
+        method_filter = args$method_filter,
+        industry_filter = args$industry_filter,
+        include_adr = args$include_adr,
+        display_n = args$display_n,
+        eval_n = args$eval_n,
+        rank_mode = args$rank_mode,
+        concept_keys = args$concept_keys,
+        market_mode = args$market_mode,
+        locale = args$locale
+      ),
+      error = function(e) {
+        showNotification(paste("Blue Chip eval failed:", conditionMessage(e)),
+                         type = "error", duration = 8)
+        NULL
+      }
+    )
+    if (identical(isolate(as.integer(lab_im_eval_gen()) %||% 0L), gen)) {
+      .lab_im_apply_eval_result(out)
+    }
+    invisible(TRUE)
+  }
+
+  .lab_im_finish_eval_slot <- function(out = NULL, apply = TRUE, had_error = FALSE) {
+    lab_im_eval_busy(FALSE)
+    tryCatch(ynow_heavy_job_release("lab_im_eval"), error = function(e) NULL)
+    pending <- isolate(lab_im_eval_pending())
+    latest <- isolate(as.integer(lab_im_eval_gen()) %||% 0L)
+    if (is.list(pending) && identical(as.integer(pending$.gen %||% 0L)[1], latest)) {
+      lab_im_eval_pending(NULL)
+      .lab_im_start_eval_args(pending, notify = TRUE)
+      return(invisible(FALSE))
+    }
+    # Superseded by a newer click with no pending left: drop stale result.
+    if (is.list(pending) || !isTRUE(apply) || isTRUE(had_error)) {
+      return(invisible(TRUE))
+    }
+    .lab_im_apply_eval_result(out)
+    invisible(TRUE)
+  }
+
+  observeEvent(lab_im_run_pulse(), {
+    # Universe refresh still exclusive (shared quality snapshot IO).
+    if (isTRUE(isolate(lab_im_universe_busy()))) {
+      return()
     }
     catlg <- tryCatch(lab_im_catalog(), error = function(e) NULL)
     if (!is.data.frame(catlg) || nrow(catlg) == 0L) return()
@@ -18004,72 +18143,32 @@ server <- function(input, output, session) {
     loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
     method_filter <- input$lab_im_methods
     industry_filter <- lab_im_industry_filter()
-    if (!isTRUE(ynow_heavy_job_try_acquire("lab_im_eval"))) {
-      showNotification(
-        tryCatch(
-          .ui_msg("capacity_heavy_job_busy"),
-          error = function(e) "Another heavy job is running on this server. Please retry shortly."
-        ),
-        type = "warning",
-        duration = 8
-      )
-      return()
-    }
-    showNotification(
-      tryCatch(.ui_msg("lab_im_async_started"), error = function(e) .ui_msg("lab_im_progress")),
-      type = "message", duration = 4
+    gen <- isolate(as.integer(lab_im_eval_gen()) %||% 0L) + 1L
+    lab_im_eval_gen(gen)
+    args <- list(
+      .gen = gen,
+      catlg = catlg,
+      method_filter = method_filter,
+      industry_filter = industry_filter,
+      include_adr = include_adr,
+      display_n = display_n,
+      eval_n = eval_n,
+      rank_mode = rank_mode,
+      concept_keys = concept_keys,
+      market_mode = mm0,
+      locale = loc
     )
-    lab_im_eval_busy(TRUE)
+    running <- isTRUE(isolate(lab_im_eval_busy()))
     if (!is.null(lab_im_bc_task)) {
-      tryCatch(
-        lab_im_bc_task$invoke(
-          catlg = catlg,
-          method_filter = method_filter,
-          industry_filter = industry_filter,
-          include_adr = include_adr,
-          display_n = display_n,
-          eval_n = eval_n,
-          rank_mode = rank_mode,
-          concept_keys = concept_keys,
-          market_mode = mm0,
-          locale = loc
-        ),
-        error = function(e) {
-          lab_im_eval_busy(FALSE)
-          tryCatch(ynow_heavy_job_release("lab_im_eval"), error = function(e2) NULL)
-          showNotification(
-            paste("Blue Chip async start failed:", conditionMessage(e)),
-            type = "error", duration = 8
-          )
-        }
-      )
+      st <- tryCatch(lab_im_bc_task$status(), error = function(e) "error")
+      if (identical(st, "running")) running <- TRUE
+    }
+    if (isTRUE(running)) {
+      # Re-click: supersede in-flight result; restart as soon as the slot frees.
+      lab_im_eval_pending(args)
       return()
     }
-    # Fallback: synchronous path when ExtendedTask / future unavailable
-    on.exit({
-      tryCatch(lab_im_eval_busy(FALSE), error = function(e) NULL)
-      tryCatch(ynow_heavy_job_release("lab_im_eval"), error = function(e) NULL)
-    }, add = TRUE)
-    out <- tryCatch(
-      lab_im_run_eval_job(
-        catlg = catlg,
-        method_filter = method_filter,
-        industry_filter = industry_filter,
-        include_adr = include_adr,
-        display_n = display_n,
-        eval_n = eval_n,
-        rank_mode = rank_mode,
-        concept_keys = concept_keys,
-        market_mode = mm0,
-        locale = loc
-      ),
-      error = function(e) {
-        showNotification(paste("Blue Chip eval failed:", conditionMessage(e)),
-                         type = "error", duration = 8)
-        NULL
-      }
-    )
-    .lab_im_apply_eval_result(out)
+    .lab_im_start_eval_args(args, notify = TRUE)
   }, ignoreInit = TRUE)
 
   # Blue Chip ExtendedTask completion (session stays free while status == running)
@@ -18077,19 +18176,16 @@ server <- function(input, output, session) {
     observeEvent(lab_im_bc_task$status(), {
       st <- tryCatch(lab_im_bc_task$status(), error = function(e) "initial")
       if (identical(st, "error")) {
-        lab_im_eval_busy(FALSE)
-        tryCatch(ynow_heavy_job_release("lab_im_eval"), error = function(e) NULL)
         err <- tryCatch(lab_im_bc_task$result(), error = function(e) conditionMessage(e))
         if (is.character(err) && nzchar(err[1])) {
           showNotification(paste("Blue Chip eval failed:", err[1]), type = "error", duration = 8)
         }
+        .lab_im_finish_eval_slot(had_error = TRUE, apply = FALSE)
         return()
       }
       if (!identical(st, "success")) return()
       out <- tryCatch(lab_im_bc_task$result(), error = function(e) NULL)
-      lab_im_eval_busy(FALSE)
-      tryCatch(ynow_heavy_job_release("lab_im_eval"), error = function(e) NULL)
-      .lab_im_apply_eval_result(out)
+      .lab_im_finish_eval_slot(out = out, apply = TRUE)
     }, ignoreInit = TRUE)
   }
 
@@ -18598,35 +18694,6 @@ server <- function(input, output, session) {
 
   .lab_im_start_ind_mcap_job <- function(reason = "manual", notify_busy = TRUE) {
     loc <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "zh-TW")
-    if (isTRUE(isolate(lab_im_ind_mcap_busy()))) {
-      if (isTRUE(notify_busy)) {
-        showNotification(
-          tryCatch(
-            ui_str("lab_im_ind_mcap_refresh_busy", loc),
-            error = function(e) "產業鏈排名更新進行中…"
-          ),
-          type = "warning",
-          duration = 5
-        )
-      }
-      return(invisible(FALSE))
-    }
-    if (!is.null(lab_im_ind_mcap_task)) {
-      st <- tryCatch(lab_im_ind_mcap_task$status(), error = function(e) "error")
-      if (identical(st, "running")) {
-        if (isTRUE(notify_busy)) {
-          showNotification(
-            tryCatch(
-              ui_str("lab_im_ind_mcap_refresh_busy", loc),
-              error = function(e) "產業鏈排名更新進行中…"
-            ),
-            type = "warning",
-            duration = 5
-          )
-        }
-        return(invisible(FALSE))
-      }
-    }
     mm <- tryCatch(normalize_market_mode(isolate(market_mode())), error = function(e) "US")
     # Full market catalog — ignore page boards / industry / methods filters.
     catlg <- tryCatch(
@@ -18642,14 +18709,34 @@ server <- function(input, output, session) {
     if (!is.data.frame(catlg) || nrow(catlg) < 1L) {
       return(invisible(FALSE))
     }
+    gen <- isolate(as.integer(lab_im_ind_mcap_gen()) %||% 0L) + 1L
+    lab_im_ind_mcap_gen(gen)
+    args <- list(.gen = gen, catlg = catlg, market_mode = mm, locale = loc, per_chain = 2L)
+    running <- isTRUE(isolate(lab_im_ind_mcap_busy()))
+    if (!is.null(lab_im_ind_mcap_task)) {
+      st <- tryCatch(lab_im_ind_mcap_task$status(), error = function(e) "error")
+      if (identical(st, "running")) running <- TRUE
+    }
+    if (isTRUE(running)) {
+      lab_im_ind_mcap_pending(args)
+      return(invisible(TRUE))
+    }
+    .lab_im_invoke_ind_mcap(args)
+  }
+
+  .lab_im_invoke_ind_mcap <- function(args) {
+    if (!is.list(args) || !is.data.frame(args$catlg) || nrow(args$catlg) < 1L) {
+      return(invisible(FALSE))
+    }
     lab_im_ind_mcap_busy(TRUE)
+    lab_im_ind_mcap_pending(NULL)
     if (!is.null(lab_im_ind_mcap_task)) {
       tryCatch(
         lab_im_ind_mcap_task$invoke(
-          catlg = catlg,
-          market_mode = mm,
-          locale = loc,
-          per_chain = 2L
+          catlg = args$catlg,
+          market_mode = args$market_mode,
+          locale = args$locale,
+          per_chain = as.integer(args$per_chain %||% 2L)[1]
         ),
         error = function(e) {
           lab_im_ind_mcap_busy(FALSE)
@@ -18662,19 +18749,39 @@ server <- function(input, output, session) {
       )
       return(invisible(TRUE))
     }
-    # Sync fallback when ExtendedTask unavailable
     on.exit(tryCatch(lab_im_ind_mcap_busy(FALSE), error = function(e) NULL), add = TRUE)
     out <- tryCatch(
       lab_im_run_ind_mcap_job(
-        catlg = catlg,
-        market_mode = mm,
-        locale = loc,
-        per_chain = 2L
+        catlg = args$catlg,
+        market_mode = args$market_mode,
+        locale = args$locale,
+        per_chain = as.integer(args$per_chain %||% 2L)[1]
       ),
       error = function(e) list(ok = FALSE, reason = conditionMessage(e))
     )
     lab_im_ind_mcap_busy(FALSE)
-    .lab_im_apply_ind_mcap_result(out, notify = TRUE)
+    gen <- as.integer(args$.gen %||% 0L)[1]
+    if (identical(isolate(as.integer(lab_im_ind_mcap_gen()) %||% 0L), gen)) {
+      .lab_im_apply_ind_mcap_result(out, notify = TRUE)
+    }
+    invisible(TRUE)
+  }
+
+  .lab_im_finish_ind_mcap_slot <- function(out = NULL, apply = TRUE) {
+    tryCatch(lab_im_ind_mcap_busy(FALSE), error = function(e) NULL)
+    pending <- isolate(lab_im_ind_mcap_pending())
+    latest <- isolate(as.integer(lab_im_ind_mcap_gen()) %||% 0L)
+    if (is.list(pending) && identical(as.integer(pending$.gen %||% 0L)[1], latest)) {
+      lab_im_ind_mcap_pending(NULL)
+      .lab_im_invoke_ind_mcap(pending)
+      return(invisible(FALSE))
+    }
+    if (isTRUE(apply)) {
+      tryCatch(
+        .lab_im_apply_ind_mcap_result(out, notify = TRUE),
+        error = function(e) NULL
+      )
+    }
     invisible(TRUE)
   }
 
@@ -18682,7 +18789,6 @@ server <- function(input, output, session) {
     observeEvent(lab_im_ind_mcap_task$status(), {
       st <- tryCatch(lab_im_ind_mcap_task$status(), error = function(e) "initial")
       if (identical(st, "error")) {
-        tryCatch(lab_im_ind_mcap_busy(FALSE), error = function(e) NULL)
         err <- tryCatch(lab_im_ind_mcap_task$result(), error = function(e) conditionMessage(e))
         if (is.character(err) && nzchar(err[1])) {
           tryCatch(
@@ -18694,15 +18800,12 @@ server <- function(input, output, session) {
             error = function(e) NULL
           )
         }
+        .lab_im_finish_ind_mcap_slot(apply = FALSE)
         return()
       }
       if (!identical(st, "success")) return()
       out <- tryCatch(lab_im_ind_mcap_task$result(), error = function(e) NULL)
-      tryCatch(lab_im_ind_mcap_busy(FALSE), error = function(e) NULL)
-      tryCatch(
-        .lab_im_apply_ind_mcap_result(out, notify = TRUE),
-        error = function(e) NULL
-      )
+      .lab_im_finish_ind_mcap_slot(out = out, apply = TRUE)
     }, ignoreInit = TRUE)
   }
 
@@ -19546,19 +19649,102 @@ server <- function(input, output, session) {
     invisible(TRUE)
   }
 
-  observeEvent(input$lab_cluster_run, {
-    if (isTRUE(isolate(lab_cluster_busy()))) {
-      showNotification(
-        tryCatch(ui_str("lab_cluster_busy", ui_locale()),
-                 error = function(e) "Clustering already running…"),
-        type = "warning", duration = 5
-      )
-      return()
+  .lab_cluster_invoke <- function(job_args, notify = TRUE) {
+    if (!is.list(job_args)) return(invisible(FALSE))
+    loc <- job_args$locale %||% "en"
+    if (!isTRUE(ynow_heavy_job_try_acquire("lab_cluster"))) {
+      lab_cluster_pending(job_args)
+      return(invisible(FALSE))
     }
+    if (isTRUE(notify)) {
+      prog_msg <- if (identical(normalize_ui_locale(loc), "zh-TW")) {
+        "分群中（擷取比率特徵 → K-Means）…"
+      } else {
+        "Clustering (fetch ratios → K-Means)…"
+      }
+      showNotification(prog_msg, type = "message", duration = 4)
+    }
+    lab_cluster_busy(TRUE)
+    lab_cluster_pending(NULL)
     if (!is.null(lab_cluster_task)) {
-      st <- tryCatch(lab_cluster_task$status(), error = function(e) "error")
-      if (identical(st, "running")) return()
+      tryCatch(
+        lab_cluster_task$invoke(
+          catlg = job_args$catlg,
+          industry_filter = job_args$industry_filter,
+          method_filter = job_args$method_filter,
+          max_n = job_args$max_n,
+          max_n_label = job_args$max_n_label,
+          session_ticker = job_args$session_ticker,
+          focus_ticker = job_args$focus_ticker,
+          rank_mode = job_args$rank_mode,
+          concept_keys = job_args$concept_keys,
+          market_mode = job_args$market_mode,
+          include_adr = job_args$include_adr,
+          k = job_args$k,
+          locale = job_args$locale
+        ),
+        error = function(e) {
+          lab_cluster_busy(FALSE)
+          tryCatch(ynow_heavy_job_release("lab_cluster"), error = function(e2) NULL)
+          showNotification(
+            paste("Clustering async start failed:", conditionMessage(e)),
+            type = "error", duration = 8
+          )
+        }
+      )
+      return(invisible(TRUE))
     }
+    on.exit({
+      tryCatch(lab_cluster_busy(FALSE), error = function(e) NULL)
+      tryCatch(ynow_heavy_job_release("lab_cluster"), error = function(e) NULL)
+    }, add = TRUE)
+    out <- tryCatch(
+      lab_cluster_run_job(
+        catlg = job_args$catlg,
+        industry_filter = job_args$industry_filter,
+        method_filter = job_args$method_filter,
+        max_n = job_args$max_n,
+        max_n_label = job_args$max_n_label,
+        session_ticker = job_args$session_ticker,
+        focus_ticker = job_args$focus_ticker,
+        rank_mode = job_args$rank_mode,
+        concept_keys = job_args$concept_keys,
+        market_mode = job_args$market_mode,
+        include_adr = job_args$include_adr,
+        k = job_args$k,
+        locale = job_args$locale
+      ),
+      error = function(e) {
+        showNotification(paste("Clustering failed:", conditionMessage(e)),
+                         type = "error", duration = 12)
+        NULL
+      }
+    )
+    gen <- as.integer(job_args$.gen %||% 0L)[1]
+    if (identical(isolate(as.integer(lab_cluster_gen()) %||% 0L), gen)) {
+      .lab_cluster_apply_job_out(out, loc)
+    }
+    invisible(TRUE)
+  }
+
+  .lab_cluster_finish_slot <- function(out = NULL, apply = TRUE, had_error = FALSE) {
+    lab_cluster_busy(FALSE)
+    tryCatch(ynow_heavy_job_release("lab_cluster"), error = function(e) NULL)
+    pending <- isolate(lab_cluster_pending())
+    latest <- isolate(as.integer(lab_cluster_gen()) %||% 0L)
+    if (is.list(pending) && identical(as.integer(pending$.gen %||% 0L)[1], latest)) {
+      lab_cluster_pending(NULL)
+      .lab_cluster_invoke(pending, notify = TRUE)
+      return(invisible(FALSE))
+    }
+    if (isTRUE(apply) && !isTRUE(had_error)) {
+      loc <- tryCatch(ui_locale(), error = function(e) "en")
+      .lab_cluster_apply_job_out(out, loc)
+    }
+    invisible(TRUE)
+  }
+
+  observeEvent(input$lab_cluster_run, {
     catlg <- lab_im_catalog()
     req(is.data.frame(catlg), nrow(catlg) > 0)
     loc <- ui_locale()
@@ -19600,25 +19786,10 @@ server <- function(input, output, session) {
       mm_cl <- tryCatch(normalize_market_mode(mm), error = function(e) "US")
       if (identical(mm_cl, "TW")) TRUE else isTRUE(isolate(input$lab_im_include_adr %||% TRUE))
     }
-    prog_msg <- if (identical(normalize_ui_locale(loc), "zh-TW")) {
-      "分群中（擷取比率特徵 → K-Means）…"
-    } else {
-      "Clustering (fetch ratios → K-Means)…"
-    }
-    if (!isTRUE(ynow_heavy_job_try_acquire("lab_cluster"))) {
-      showNotification(
-        tryCatch(
-          .ui_msg("capacity_heavy_job_busy"),
-          error = function(e) "Another heavy job is running on this server. Please retry shortly."
-        ),
-        type = "warning",
-        duration = 8
-      )
-      return()
-    }
-    showNotification(prog_msg, type = "message", duration = 4)
-    lab_cluster_busy(TRUE)
+    gen <- isolate(as.integer(lab_cluster_gen()) %||% 0L) + 1L
+    lab_cluster_gen(gen)
     job_args <- list(
+      .gen = gen,
       catlg = catlg,
       industry_filter = lab_im_industry_filter(),
       method_filter = input$lab_im_methods,
@@ -19633,81 +19804,32 @@ server <- function(input, output, session) {
       k = k,
       locale = loc
     )
+    running <- isTRUE(isolate(lab_cluster_busy()))
     if (!is.null(lab_cluster_task)) {
-      tryCatch(
-        lab_cluster_task$invoke(
-          catlg = job_args$catlg,
-          industry_filter = job_args$industry_filter,
-          method_filter = job_args$method_filter,
-          max_n = job_args$max_n,
-          max_n_label = job_args$max_n_label,
-          session_ticker = job_args$session_ticker,
-          focus_ticker = job_args$focus_ticker,
-          rank_mode = job_args$rank_mode,
-          concept_keys = job_args$concept_keys,
-          market_mode = job_args$market_mode,
-          include_adr = job_args$include_adr,
-          k = job_args$k,
-          locale = job_args$locale
-        ),
-        error = function(e) {
-          lab_cluster_busy(FALSE)
-          tryCatch(ynow_heavy_job_release("lab_cluster"), error = function(e2) NULL)
-          showNotification(
-            paste("Clustering async start failed:", conditionMessage(e)),
-            type = "error", duration = 8
-          )
-        }
-      )
+      st <- tryCatch(lab_cluster_task$status(), error = function(e) "error")
+      if (identical(st, "running")) running <- TRUE
+    }
+    if (isTRUE(running)) {
+      lab_cluster_pending(job_args)
       return()
     }
-    on.exit({
-      tryCatch(lab_cluster_busy(FALSE), error = function(e) NULL)
-      tryCatch(ynow_heavy_job_release("lab_cluster"), error = function(e) NULL)
-    }, add = TRUE)
-    out <- tryCatch(
-      lab_cluster_run_job(
-        catlg = job_args$catlg,
-        industry_filter = job_args$industry_filter,
-        method_filter = job_args$method_filter,
-        max_n = job_args$max_n,
-        max_n_label = job_args$max_n_label,
-        session_ticker = job_args$session_ticker,
-        focus_ticker = job_args$focus_ticker,
-        rank_mode = job_args$rank_mode,
-        concept_keys = job_args$concept_keys,
-        market_mode = job_args$market_mode,
-        include_adr = job_args$include_adr,
-        k = job_args$k,
-        locale = job_args$locale
-      ),
-      error = function(e) {
-        showNotification(paste("Clustering failed:", conditionMessage(e)),
-                         type = "error", duration = 12)
-        NULL
-      }
-    )
-    .lab_cluster_apply_job_out(out, loc)
+    .lab_cluster_invoke(job_args, notify = TRUE)
   }, ignoreInit = TRUE)
 
   if (!is.null(lab_cluster_task)) {
     observeEvent(lab_cluster_task$status(), {
       st <- tryCatch(lab_cluster_task$status(), error = function(e) "initial")
       if (identical(st, "error")) {
-        lab_cluster_busy(FALSE)
-        tryCatch(ynow_heavy_job_release("lab_cluster"), error = function(e) NULL)
         err <- tryCatch(lab_cluster_task$result(), error = function(e) conditionMessage(e))
         if (is.character(err) && nzchar(err[1])) {
           showNotification(paste("Clustering failed:", err[1]), type = "error", duration = 12)
         }
+        .lab_cluster_finish_slot(had_error = TRUE, apply = FALSE)
         return()
       }
       if (!identical(st, "success")) return()
       out <- tryCatch(lab_cluster_task$result(), error = function(e) NULL)
-      lab_cluster_busy(FALSE)
-      tryCatch(ynow_heavy_job_release("lab_cluster"), error = function(e) NULL)
-      loc <- tryCatch(ui_locale(), error = function(e) "en")
-      .lab_cluster_apply_job_out(out, loc)
+      .lab_cluster_finish_slot(out = out, apply = TRUE)
     }, ignoreInit = TRUE)
   }
 

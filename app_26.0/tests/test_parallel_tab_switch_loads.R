@@ -43,9 +43,19 @@ check(
 check(
   "ticker search yields with later phases + gen check",
   grepl(".run_search_phase1", srv, fixed = TRUE) &&
+    grepl(".run_search_phase1b", srv, fixed = TRUE) &&
     grepl(".run_search_phase2", srv, fixed = TRUE) &&
     grepl(".search_alive", srv, fixed = TRUE) &&
     grepl("later::later", srv, fixed = TRUE)
+)
+
+check(
+  "same-button re-click queues latest-wins pending restart",
+  grepl("lab_im_eval_pending", srv, fixed = TRUE) &&
+    grepl("lab_im_ind_mcap_pending", srv, fixed = TRUE) &&
+    grepl("lab_cluster_pending", srv, fixed = TRUE) &&
+    grepl(".lab_im_finish_eval_slot", srv, fixed = TRUE) &&
+    grepl("lab_cluster_pending(job_args)", srv, fixed = TRUE)
 )
 
 check(
