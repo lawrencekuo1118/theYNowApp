@@ -7,5 +7,5 @@ commit=1d58f618ebd5f700e305c4dcac1adb193adce10e
 short=1d58f618
 message=chore: bump display version to v26.61
 captured_at=2026-10-23T09:07:40Z
-display_version=v26.61
+display_version=v26.62
 note=Canonical live line is app_26.0. Bundle 12729253: Ownership Structure harden TWSE volume + insider mix (#434).
