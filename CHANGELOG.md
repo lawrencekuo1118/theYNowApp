@@ -1,3 +1,12 @@
+## [v26.58] — 2026-10-23
+
+### Changed
+- Plain-language rename for statement fill vs parameter auto-update UX (#428).
+
+### Notes
+- en-US: Mechanism A is **Fill from statements** (manual copy into module fields). Mechanism B is **Auto-update parameters when the ticker changes** (toggle on ticker load), with one-shot **Update parameters from current statements**. Dropped sync jargon for these paths only. Bundle `12728711`.
+- zh-TW: 機制 A 統一為「從財報帶入」；機制 B 為「換股時自動更新參數」，單次為「依目前財報更新參數」。這兩條路徑不再用「同步」口吻。Bundle `12728711`。
+
 ## [v26.57] — 2026-10-23
 
 ### Fixed
