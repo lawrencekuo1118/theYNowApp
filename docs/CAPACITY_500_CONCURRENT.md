@@ -81,6 +81,6 @@ Design target while still on Starter: **maximize safe concurrent browse/search s
 ## Local verification
 
 ```bash
-cd app_26.0/tests && Rscript test_capacity_500.R
+cd app_27.0/tests && Rscript test_capacity_500.R
 Rscript scripts/configure_shinyapps_capacity.R --dry-run
 ```

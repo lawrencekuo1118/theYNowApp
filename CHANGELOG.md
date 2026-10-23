@@ -1,3 +1,39 @@
+## [v27.00] — 2026-10-23
+
+### Changed
+- Major live-line cut: folder **`app_26.0/` → `app_27.0/`**; display **v27.00** (`YNOW_VERSION_BUMP_MAJOR=1`).
+
+### Notes
+- en-US landmark (26.xx → 27): **Ownership Structure Analysis** / Company tab (Lite + Full) — ownership mix, recent buy/sell, historical volume, top-10 holders. Also: parallel tab-switch latest-wins loads (#436), Business Breakdown charts tinted from company logo brand colors (#437), social sign-in instant OAuth + Meta brand blue (#438).
+- zh-TW landmark：公司分頁 **股權結構分析**（Lite／完整版皆可用）— 持股結構、近期買賣超、歷年成交量、前十大股東。同期間：分頁切換立即載入（#436）、業務拆解圖表依公司品牌色（#437）、社群登入即時導向＋Meta 品牌藍（#438）。
+
+## [v26.64] — 2026-10-23
+
+### Fixed
+- Social sign-in: instant OAuth redirect; Meta / LinkedIn brand colors on sign-in controls (#438). Bundle `12729605`.
+
+### Notes
+- en-US: Remove artificial delay before social OAuth; Facebook/Meta button uses brand blue.
+- zh-TW: 社群登入改為立即導向 OAuth；Meta／Facebook 按鈕採品牌藍。
+
+## [v26.63] — 2026-10-23
+
+### Added
+- Business Breakdown charts use company logo brand colors when available (#437). Bundle `12729514`.
+
+### Notes
+- en-US: Segment / orders charts tint from logo palette; fallback to default chart colors.
+- zh-TW: 業務拆解／訂單圖表優先套用公司 Logo 主色；無法取得時用預設色盤。
+
+## [v26.62] — 2026-10-23
+
+### Changed
+- Tab switch: start selected page load without waiting on prior fetch (latest-wins) (#436). Bundle `12729485`.
+
+### Notes
+- en-US: Yield search / defer lazy mount / cancel stale Macro work so the new tab can start immediately.
+- zh-TW: 切換分頁時立即開始載入新頁；舊頁請求可取消／丟棄過期結果。
+
 ## [v26.61] — 2026-10-23
 
 ### Changed
@@ -177,7 +213,7 @@
 
 # Changelog
 
-All notable **display-version** ships of the live line (`app_26.0/`) are recorded here.
+All notable **display-version** ships of the live line (`app_27.0/`) are recorded here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Section headers are en-US; prose uses **American English** and **Taiwan Traditional Chinese** (台灣投資界用語) where helpful. Formal finance terms stay in English (WACC, FCFF, MOS, …).
@@ -192,7 +228,7 @@ Older folder trees (`app_8.0`…`app_24.0`) were removed from git (C-DEAD-05); r
 
 ### Changed
 
-- CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_26.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).
+- CI/CD: live-line GitHub Actions (`Live-line CI`) run offline valuation + Phase 1 checks on `app_27.0/**`, `scripts/**`, and workflow paths (no vacuous skip for app PRs).
 - Docs: root README ship/CI/Release pointers; `scripts/record_github_release.sh` for soft-fail Release publish after deploy.
 
 ## [v26.35] — 2026-10-22

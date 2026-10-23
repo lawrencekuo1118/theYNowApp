@@ -4,14 +4,14 @@ name: ITGC Audit (Phases 2–4)
 on:
   push:
     paths:
-      - "app_26.0/**"
+      - "app_27.0/**"
       - "scripts/run_audit.sh"
       - "scripts/generate_audit_rcm.R"
       - "Audit_Mapping.md"
       - ".github/workflows/audit.yml"
   pull_request:
     paths:
-      - "app_26.0/**"
+      - "app_27.0/**"
       - "scripts/run_audit.sh"
       - "scripts/generate_audit_rcm.R"
       - "Audit_Mapping.md"

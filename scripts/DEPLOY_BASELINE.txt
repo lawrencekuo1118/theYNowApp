@@ -8,4 +8,4 @@ short=dcea986b
 message=chore: bump display version to v26.64
 captured_at=2026-10-23T11:15:12Z
 display_version=v26.64
-note=Canonical live line is app_26.0. Bundle 12729605: Social sign-in instant OAuth + Meta brand blue (#438).
+note=Canonical live line is app_27.0. Bundle 12729605: Social sign-in instant OAuth + Meta brand blue (#438).

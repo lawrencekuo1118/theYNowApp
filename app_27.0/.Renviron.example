@@ -1,0 +1,75 @@
+# Copy to app_25.0/.Renviron (gitignored) and fill real values before deploy.
+
+# =============================================================================
+# Postgres account store (Neon Free or Supabase — same YNOW_DB_* shape)
+# =============================================================================
+# Prefer an IPv4 pooler host when the agent/runtime has no IPv6:
+#   Neon:    Console → Connect → pooled hostname (…-pooler…)
+#   Supabase: Connect → Session pooler (aws-N-REGION.pooler.supabase.com;
+#             user is postgres.<PROJECT_REF>, not plain postgres)
+# Example values below use Neon Free shape; swap host/dbname/user for Supabase.
+YNOW_DB_HOST=ep-xxxx-pooler.region.aws.neon.tech
+YNOW_DB_NAME=neondb
+YNOW_DB_USER=neondb_owner
+YNOW_DB_PASSWORD=
+YNOW_DB_PORT=5432
+YNOW_DB_SSLMODE=require
+# Or one URL instead of the fields above:
+# YNOW_DATABASE_URL=postgresql://USER:PASSWORD@ep-xxxx-pooler.region.aws.neon.tech/neondb?sslmode=require
+# Supabase session-pooler example (IPv4):
+# YNOW_DATABASE_URL=postgresql://postgres.PROJECT_REF:PASSWORD@aws-0-REGION.pooler.supabase.com:5432/postgres?sslmode=require
+
+# One-time: Rscript scripts/neon_migrate.R
+# Optional: YOUR maintenance admin only (NOT a whitelist for end users).
+# Ordinary users self-register via Google / Facebook / Apple / Email with role=user.
+# YNOW_AUTH_SEED_EMAIL=you@example.com
+# YNOW_AUTH_SEED_PASSWORD=change-me-long
+
+YNOW_ENABLE_ACCOUNT_LOGIN=1
+
+# =============================================================================
+# Points unlock (usage credits) — FYN (free) + PYN (paid)
+# =============================================================================
+# Default OFF (gate allows all actions; set 1 to enforce spend).
+# YNOW_POINTS_ENABLED=0
+# First registration / first-login gift (FYN, once per user). Default 100.
+# YNOW_POINTS_SIGNUP_BONUS=100
+# Daily check-in (FYN, once per Asia/Taipei calendar day). Default 30.
+# YNOW_POINTS_DAILY_CHECKIN=30
+# Optional price overrides (spent from FYN):
+# YNOW_POINTS_PRICE_ALERT_SLOT=1
+# YNOW_POINTS_PRICE_HFV_RUN=3
+# YNOW_POINTS_PRICE_BT_RUN=5
+# Tests / no account DB: YNOW_POINTS_BACKEND=memory
+# Testing-tab system admin lists ynow_users (de-identified). Without
+# YNOW_DB_* above, the admin list stays empty (memory backend has no shared users).
+
+# =============================================================================
+# Required for public Google / Facebook / Apple self-registration
+# =============================================================================
+# After this one-time owner setup + redeploy, ANY end user can register by
+# clicking Google / Facebook / Apple — no per-user admin permission step.
+#
+# Path A (recommended): Supabase Auth — enable Google + Facebook + Apple providers,
+# leave "Disable sign ups" OFF, set Site URL / redirect to the live app URL.
+# Apple needs Apple Developer Services ID credentials in the Supabase provider form.
+# YNOW_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+# YNOW_SUPABASE_ANON_KEY=
+# Server-only Admin API key (Dashboard → Project Settings → API → service_role).
+# Required to remove the Supabase Auth identity on Account → Delete account.
+# Never commit; never expose to the browser. Deploy via gitignored .Renviron
+# (restore from shinyapps or inject from Cloud Agent secrets).
+# YNOW_SUPABASE_SERVICE_ROLE=
+#
+# Path B: direct Google / Facebook OAuth apps (Apple still needs Supabase / Path A):
+# YNOW_GOOGLE_CLIENT_ID=
+# YNOW_GOOGLE_CLIENT_SECRET=
+# YNOW_FACEBOOK_APP_ID=
+# YNOW_FACEBOOK_APP_SECRET=
+# YNOW_OAUTH_STATE_SECRET=
+#
+YNOW_OAUTH_REDIRECT_URI=https://hopesmasher1118.shinyapps.io/TheYNowApp  # pragma: allowlist secret
+
+# Legacy Email demo fallback when account DB (YNOW_DB_*) is NOT configured (single demo account only):
+# YNOW_AUTH_DEMO_EMAIL=you@example.com
+# YNOW_AUTH_DEMO_PASSWORD=change-me
