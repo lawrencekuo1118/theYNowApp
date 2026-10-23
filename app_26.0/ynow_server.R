@@ -60,6 +60,10 @@ server <- function(input, output, session) {
   company_key_dates <- reactiveVal(NULL)
   company_board_election <- reactiveVal(NULL)
   company_cb_dilution <- reactiveVal(NULL)
+  # 股權結構分析（Yahoo / TWSE / MOPS）
+  company_ownership <- reactiveVal(NULL)
+  own_selected_holder <- reactiveVal(NULL)
+  own_holder_detail <- reactiveVal(NULL)
   
   # 初始值設為 NULL，避免一開啟 App 就自動執行爬蟲
   current_ticker <- reactiveVal(NULL)
@@ -4501,6 +4505,9 @@ server <- function(input, output, session) {
     company_key_dates(NULL)
     company_board_election(NULL)
     company_cb_dilution(NULL)
+    company_ownership(NULL)
+    own_selected_holder(NULL)
+    own_holder_detail(NULL)
 
     # SEC 頁籤：僅美股
     if (isTRUE(prof$show_sec_lab)) {
@@ -4716,6 +4723,9 @@ server <- function(input, output, session) {
         company_profile(NULL)
         company_key_dates(NULL)
         company_board_election(NULL)
+        company_ownership(NULL)
+        own_selected_holder(NULL)
+        own_holder_detail(NULL)
         company_cb_dilution(NULL)
 
         # 興櫃：宇宙板別（ESB）；可估但 Summary β／Blue Chip 有限制
@@ -4862,6 +4872,13 @@ server <- function(input, output, session) {
             error = function(e) NULL
           ))
         }
+        # Ownership Structure Analysis (Lite + Full Company tab)
+        company_ownership(tryCatch(
+          fetch_ownership_structure(stock_code, market = mode_now),
+          error = function(e) NULL
+        ))
+        own_selected_holder(NULL)
+        own_holder_detail(NULL)
         # Always sync Dashboard「目前產業標準快覽」to the searched ticker's industry
         # (TW universe / US overlay·S&P / Yahoo heuristic). Unknown → keep prior pick.
         mapped <- tryCatch(
@@ -5504,6 +5521,86 @@ server <- function(input, output, session) {
       if (length(chips)) tags$div(class = "ynow-company-overview-meta", chips),
       summary_node
     )
+  })
+
+  # 股權結構分析（Company → OWNERSHIP STRUCTURE；Lite + Full）
+  observeEvent(input$own_holder_click, {
+    click <- input$own_holder_click
+    nm <- if (is.list(click)) {
+      as.character(click$name %||% "")[1]
+    } else {
+      as.character(click %||% "")[1]
+    }
+    nm <- trimws(nm)
+    if (!nzchar(nm)) return()
+    own_selected_holder(nm)
+    snap <- tryCatch(company_ownership(), error = function(e) NULL)
+    tk <- tryCatch(as.character(current_ticker() %||% "")[1], error = function(e) "")
+    mode_now <- tryCatch(
+      normalize_market_mode(market_mode()),
+      error = function(e) "US"
+    )
+    holders <- if (is.list(snap)) snap$holders else NULL
+    own_holder_detail(tryCatch(
+      ownership_institution_detail(
+        nm,
+        subject_ticker = tk,
+        subject_holders = holders,
+        market = mode_now
+      ),
+      error = function(e) NULL
+    ))
+  }, ignoreNULL = TRUE)
+
+  output$ownership_structure_top_ui <- renderUI({
+    loc <- tryCatch(ui_locale(), error = function(e) "en")
+    loc <- normalize_ui_locale(loc)
+    snap <- tryCatch(company_ownership(), error = function(e) NULL)
+    .ynow_ownership_top_ui(snap, loc = loc)
+  })
+
+  output$ownership_structure_holders_ui <- renderUI({
+    loc <- tryCatch(ui_locale(), error = function(e) "en")
+    loc <- normalize_ui_locale(loc)
+    snap <- tryCatch(company_ownership(), error = function(e) NULL)
+    detail <- tryCatch(own_holder_detail(), error = function(e) NULL)
+    sel <- tryCatch(as.character(own_selected_holder() %||% "")[1], error = function(e) "")
+    .ynow_ownership_holders_ui(
+      snap, detail = detail, loc = loc, selected_name = sel
+    )
+  })
+
+  output$own_volume_plot <- renderPlotly({
+    req(identical(.ynow_sidebar_tab(), "dashboard"))
+    loc <- tryCatch(ui_locale(), error = function(e) "en")
+    loc <- normalize_ui_locale(loc)
+    snap <- tryCatch(company_ownership(), error = function(e) NULL)
+    vol <- if (is.list(snap)) snap$volume else NULL
+    empty_title <- ui_str("own_volume_empty", loc)
+    if (is.null(vol) || !is.data.frame(vol) || !nrow(vol)) {
+      return(plotly::plotly_empty() %>% plotly::layout(title = empty_title))
+    }
+    plotly::plot_ly(
+      vol,
+      x = ~Date,
+      y = ~Volume,
+      type = "scatter",
+      mode = "lines",
+      line = list(color = "#0A72AE", width = 1.5),
+      hovertemplate = paste0(
+        "%{x|%Y-%m-%d}<br>",
+        ui_str("own_volume_title", loc),
+        ": %{y:,.0f}<extra></extra>"
+      )
+    ) %>%
+      plotly::layout(
+        title = list(text = ui_str("own_volume_title", loc), font = list(size = 14)),
+        xaxis = list(title = ""),
+        yaxis = list(title = ui_str("own_volume_title", loc), tickformat = "~s"),
+        margin = list(l = 50, r = 20, t = 40, b = 40),
+        paper_bgcolor = "rgba(0,0,0,0)",
+        plot_bgcolor = "rgba(0,0,0,0)"
+      )
   })
 
   # 董監改選／可轉債稀釋（Company → FINANCIAL REPORT tab）

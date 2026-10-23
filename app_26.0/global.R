@@ -264,6 +264,7 @@ if (exists("ynow_db_ready", mode = "function") && isTRUE(ynow_db_ready())) {
   })
 }
 source("corp_events.R", local = TRUE, encoding = "UTF-8")
+source("ownership_structure.R", local = TRUE, encoding = "UTF-8")
 source("tw_annual_report_orders.R", local = TRUE, encoding = "UTF-8")
 source("lab_industry_method.R", local = TRUE, encoding = "UTF-8")
 source("lab_clustering.R", local = TRUE, encoding = "UTF-8")
