@@ -80,7 +80,7 @@ sotp_module_ui <- function(id) {
             br(),
             actionButton(
               ns("btn_sync_sotp"),
-              label = tags$span(id = "ynow_sotp_btn_sync", "Sync from statements"),
+              label = tags$span(id = "ynow_sotp_btn_sync", "Fill from statements"),
               icon = icon("sync"), class = "btn-sm",
               style = "background-color:#1a1a1a;color:white;border:none;padding:8px 15px;font-weight:bold;border-radius:5px;margin-top:5px;width:100%;"
             )

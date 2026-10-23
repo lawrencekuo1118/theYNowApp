@@ -247,7 +247,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     rel_multiples_bridge_heading = "Capital bridge & shares",
     rel_multiples_ps_rev_note = paste0(
-      "P/S Revenue syncs with Enterprise Revenue when you Sync from statements; ",
+      "P/S Revenue is filled together with Enterprise Revenue when you Fill from statements; ",
       "you may override either field."
     ),
     rel_mode_label = "Select capital-claim family:",
@@ -307,10 +307,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     sotp_bridge_heading = "Capital bridge & shares",
     sotp_nonop_help = "Non-operating assets are added to Σ(segment EV) before the Cash − Debt bridge.",
     sotp_btn_calc = "Run SOTP",
-    sotp_btn_sync = "Sync from statements",
+    sotp_btn_sync = "Fill from statements",
     sotp_btn_apply_mult = "Apply default to all segments",
     sotp_help = paste0(
-      "Each segment needs its own EV/Sales. Sync pulls multi-segment revenue via BB Lab ",
+      "Each segment needs its own EV/Sales. Fill from statements pulls multi-segment revenue via BB Lab ",
       "(income statement, plus US SEC segment notes when available). Not segment-EBIT SOTP."
     ),
     sotp_bridge_help = paste0(
@@ -320,7 +320,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     sotp_need_segments = "SOTP requires segment-level financial data (≥2 positive segment revenues).",
     sotp_status_shares_missing = paste0(
       "Cannot compute Implied Price: shares outstanding are missing or invalid. ",
-      "Reload Cash, Debt, Shares & Revenue (shared) on Model Dashboard, or wait for the statement sync."
+      "On Model Dashboard, use Fill from statements under Cash, Debt, Shares & Revenue (shared), ",
+      "or wait until statements finish loading."
     ),
     sotp_status_multiple_invalid = paste0(
       "Cannot compute Implied Price: EV/Sales multiples are missing or not positive. ",
@@ -333,8 +334,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     sotp_status_unavailable = "SOTP Implied Price unavailable with the current inputs.",
     sotp_need_run = "Click Run SOTP to compute Implied Price.",
     sotp_synced = paste0(
-      "Synced segment revenues (income statement and US SEC segment notes when available), ",
-      "cash, debt, and shares from statements."
+      "Filled from statements: segment revenues (income statement and US SEC segment notes when available), ",
+      "cash, debt, and shares."
     ),
     sotp_segments_heading = "Segment EV/Sales",
     sotp_col_name = "Segment",
@@ -350,7 +351,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Conglomerate discount (often 10%–30%) is market narrative only — not applied in this engine."
     ),
     rel_multiples_btn_calc = "Run multiples",
-    rel_multiples_btn_sync = "Sync from statements",
+    rel_multiples_btn_sync = "Fill from statements",
     rel_multiples_pe_heading = "P/E & Forward P/E",
     rel_multiples_peg_heading = "PEG (relative indicator)",
     rel_multiples_ev_heading = "Enterprise multiples",
@@ -416,7 +417,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Relative valuation only — do not treat these Implied Prices as Intrinsic Value, ",
       "and do not average them with DCF / DDM / RI / P/B."
     ),
-    rel_multiples_synced = "Synced EPS, FCFF, EBIT, EBITDA, Revenue, cash, debt, and shares from statements.",
+    rel_multiples_synced = "Filled from statements: EPS, FCFF, EBIT, EBITDA, Revenue, cash, debt, and shares.",
     rel_multiples_shares_fx_block = "Quote currency ≠ statement currency and ADR/FX alignment failed — shares withheld.",
     rel_multiples_shares_basic = "Using Basic / statement shares (not auto-adjusted diluted quote shares).",
     rel_multiples_growth_sgr = "Central terminal SGR",
@@ -2248,14 +2249,14 @@ locale_for_market <- function(mode = get_market_mode()) {
     bt_kpi_filter_label = "KPI filter",
     btn_bt_kpi_filter = "Match current company",
     bt_kpi_filter_hint = "Compare Dashboard-loaded company KPIs to the thresholds above (same Great Filter as the backtest).",
-    bt_sec_run_controls = "Run controls & parameter sync",
-    bt_param_auto_label = "Auto-sync parameters (derive from statements on ticker change)",
+    bt_sec_run_controls = "Run controls & parameter updates",
+    bt_param_auto_label = "Auto-update parameters when the ticker changes",
     bt_param_auto_hint = paste0(
-      "When on, searching / loading a new company overwrites holding thresholds, exposure / sentiment weights, ",
+      "When on, searching or loading a new company overwrites holding thresholds, exposure / sentiment weights, ",
       "and aligns the HFV recommended valuation model. Manual edits turn this off."
     ),
-    btn_bt_refresh_params = "Recompute once for current company",
-    bt_refresh_params_hint = "One-shot: recompute thresholds / weights from current statements (use after turning auto-sync off).",
+    btn_bt_refresh_params = "Update parameters from current statements",
+    bt_refresh_params_hint = "One-shot: recompute thresholds and weights from the loaded company statements (use after turning auto-update off).",
     bt_sec_strategy_params = "Strategy parameters",
     bt_params_gate_note = paste0(
       "Holding gate (net margin / revenue growth / EPS growth / FCF volatility — fail → Exp_A = 0) ",
@@ -2303,7 +2304,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     bt_min_exp_label = "Min holding after gate pass",
     bt_min_exp_hint = "Floor size when the gate passes and valuation is not extremely rich.",
     btn_bt_fit_bh = "Closer to buy-and-hold",
-    bt_fit_bh_hint = "One-click: max=100%, min=40%, w_vg=0.35 (weaker de-risking). Turns auto-sync off.",
+    bt_fit_bh_hint = "Quick apply: max=100%, min=40%, w_vg=0.35 (weaker de-risking). Turns auto-update parameters off.",
     bt_sec_methodology = "Data sources & methodology notes",
     box_hfv_discount = "FV vs Market Price",
     box_hfv_validation = "Historical Fundamental Validation: Odds, vs FV & Scenario Taxonomy",
@@ -2562,7 +2563,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     shared_bridge_debt = "Total Debt",
     shared_bridge_shares = "Shares",
     shared_bridge_revenue = "Total Revenue",
-    shared_bridge_reset = "Reload from statements",
+    shared_bridge_reset = "Fill from statements",
     fcf_revenue_shared_help = "Total Revenue is set once on Model Dashboard → Cash, Debt, Shares & Revenue (shared).",
     lifecycle_stage_title = "Lifecycle stage",
     lifecycle_stage_help = paste0(
@@ -4495,13 +4496,13 @@ locale_for_market <- function(mode = get_market_mode()) {
     fcf_custom_g_label = "Custom revenue growth (%)",
     fcf_g_ceiling_label = "Apply the 25% growth ceiling (recommended)",
     fcf_decomp_title = "Free cash flow (FCF) inputs",
-    fcf_decomp_body = "Use Sync to pull the latest statements, or edit inputs to see how FCF and fundamental sustainable growth (g) are built.",
+    fcf_decomp_body = "Use Fill from statements to pull the latest figures, or edit inputs to see how FCF and fundamental sustainable growth (g) are built.",
     pb_band_title = "Valuation band (Bear / Base / Bull)",
     pb_bv_title = "Book value per share (BVPS) and the asset base",
     pb_bv_formula = "BVPS = common equity ÷ shares. TBVPS also removes goodwill and intangibles. Holding-company NAV = equity − discount × identified investments. When quoted shares differ from statement shares (dual-class / ADR), shares are the market-cap ÷ price equivalent, same as DCF, RI, and backtest.",
     pb_bvps_label = "Book value per share BVPS",
     pb_tbvps_label = "Tangible book per share TBVPS",
-    pb_sync_bv = "Fill from the latest statements",
+    pb_sync_bv = "Fill from statements",
     pb_navps_label = "Net asset value per share NAVPS",
     pb_holdco_label = "Holding-company discount (%)",
     pb_holdco_help = "NAV = equity − discount × identified investments. With no investment line, NAV = book equity. Discount is 0–50%.",
@@ -4717,7 +4718,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     rel_multiples_bridge_heading = "資本橋接與股數",
     rel_multiples_ps_rev_note = paste0(
-      "自財報同步時，P/S 營收會與 Enterprise 營收一併帶入；",
+      "按「從財報帶入」時，P/S 營收會與 Enterprise 營收一併帶入；",
       "之後仍可各自覆寫。"
     ),
     rel_mode_label = "選擇資本請求權家族：",
@@ -4777,10 +4778,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     sotp_bridge_heading = "資本橋接與股數",
     sotp_nonop_help = "非營業資產會加在 Σ(部門 EV) 之後、Cash − Debt 橋接之前。",
     sotp_btn_calc = "試算 SOTP",
-    sotp_btn_sync = "自財報同步",
+    sotp_btn_sync = "從財報帶入",
     sotp_btn_apply_mult = "套用預設倍數至全部門",
     sotp_help = paste0(
-      "各部門需各自設定 EV/Sales。同步走 BB Lab 路徑：",
+      "各部門需各自設定 EV/Sales。「從財報帶入」走 BB Lab 路徑：",
       "損益表部門營收，美股另可併入 SEC segment notes（若有）。",
       "非部門 EBIT SOTP。"
     ),
@@ -4791,7 +4792,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     sotp_need_segments = "SOTP 需部門層級財報資料（≥2 筆正值部門營收）。",
     sotp_status_shares_missing = paste0(
       "無法計算 Implied Price：流通股數缺漏或無效。",
-      "請在 Model Dashboard 的 Cash、Debt、股數與營收（各模型共用）按「從財報重新帶入」。"
+      "請在 Model Dashboard 的 Cash、Debt、股數與營收（各模型共用）按「從財報帶入」，",
+      "或等待財報載入完成。"
     ),
     sotp_status_multiple_invalid = paste0(
       "無法計算 Implied Price：EV/Sales 倍數缺漏或非正值。",
@@ -4804,7 +4806,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     sotp_status_unavailable = "以目前輸入無法計算 SOTP Implied Price。",
     sotp_need_run = "請按「試算 SOTP」計算 Implied Price。",
     sotp_synced = paste0(
-      "已自財報同步部門營收（損益表；美股另含 SEC segment notes，若有）、",
+      "已從財報帶入部門營收（損益表；美股另含 SEC segment notes，若有）、",
       "現金、負債與股數。"
     ),
     sotp_segments_heading = "部門 EV/Sales",
@@ -4821,7 +4823,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "控股折價（常見 10%–30%）僅為市場敘事——本引擎不套用。"
     ),
     rel_multiples_btn_calc = "試算倍數",
-    rel_multiples_btn_sync = "自財報同步",
+    rel_multiples_btn_sync = "從財報帶入",
     rel_multiples_pe_heading = "P/E 與 Forward P/E",
     rel_multiples_peg_heading = "PEG（相對指標）",
     rel_multiples_ev_heading = "企業倍數",
@@ -4887,7 +4889,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "僅為相對估值——請勿將 Implied Price 視為 Intrinsic Value，",
       "亦勿與 DCF／DDM／RI／P/B 直接平均。"
     ),
-    rel_multiples_synced = "已自財報同步 EPS、FCFF、EBIT、EBITDA、營收、現金、負債與股數。",
+    rel_multiples_synced = "已從財報帶入 EPS、FCFF、EBIT、EBITDA、營收、現金、負債與股數。",
     rel_multiples_shares_fx_block = "報價幣≠財報幣且 ADR／FX 無法約當，已拒用股數。",
     rel_multiples_shares_basic = "使用基本／財報股數（非自動約當之稀釋報價股）。",
     rel_multiples_growth_sgr = "中央終值 SGR",
@@ -6656,14 +6658,14 @@ locale_for_market <- function(mode = get_market_mode()) {
     bt_kpi_filter_label = "KPI 濾鏡",
     btn_bt_kpi_filter = "比對目前公司",
     bt_kpi_filter_hint = "用 Dashboard 已載入公司的 KPI 對照上列門檻（與回測 Great Filter 同一套）。",
-    bt_sec_run_controls = "執行控制與參數同步",
-    bt_param_auto_label = "自動同步參數（換股時依財報推導）",
+    bt_sec_run_controls = "執行控制與參數更新",
+    bt_param_auto_label = "換股時自動更新參數",
     bt_param_auto_hint = paste0(
       "勾選後，搜尋／載入新公司時會自動覆寫持倉門檻、曝險／情緒權重，",
       "並對齊「歷史基本面驗證」推薦估值模型。手動改參數會自動取消勾選。"
     ),
-    btn_bt_refresh_params = "立即依目前公司重算一次",
-    bt_refresh_params_hint = "單次動作：立刻用目前公司財報重算門檻／權重（可在取消自動後使用）。",
+    btn_bt_refresh_params = "依目前財報更新參數",
+    bt_refresh_params_hint = "單次動作：立刻用目前已載入公司的財報重算門檻／權重（可在關閉「換股時自動更新參數」後使用）。",
     bt_sec_strategy_params = "策略參數",
     bt_params_gate_note = paste0(
       "持倉閘門（淨利率／營收成長／EPS 成長／FCF 波動，未過則 Exp_A＝0）見第三章。",
@@ -6711,7 +6713,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     bt_min_exp_label = "通過條件後最低持股",
     bt_min_exp_hint = "持倉條件通過且非極度高估時的地板部位。",
     btn_bt_fit_bh = "貼近買進持有",
-    bt_fit_bh_hint = "快速套用：最大持股=100%、最低持股=40%、w_vg=0.35（弱化減碼）。會關閉自動同步。",
+    bt_fit_bh_hint = "快速套用：最大持股=100%、最低持股=40%、w_vg=0.35（弱化減碼）。會關閉「換股時自動更新參數」。",
     bt_sec_methodology = "資料來源與方法論註解",
     box_hfv_discount = "折現比較（合理價 vs 實際股價）",
     box_hfv_validation = "歷史基本面驗證：漲跌機率、相對 FV 與情境分類",
@@ -6967,7 +6969,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     shared_bridge_debt = "Total Debt",
     shared_bridge_shares = "股數",
     shared_bridge_revenue = "總營收",
-    shared_bridge_reset = "從財報重新帶入",
+    shared_bridge_reset = "從財報帶入",
     fcf_revenue_shared_help = "總營收在 Model Dashboard → Cash、Debt、股數與營收（各模型共用）設定一次。",
     lifecycle_stage_title = "生命週期階段",
     lifecycle_stage_help = paste0(
@@ -8781,13 +8783,13 @@ locale_for_market <- function(mode = get_market_mode()) {
     fcf_custom_g_label = "自訂營收成長率 (%)",
     fcf_g_ceiling_label = "啟用 25% 成長率天花板防呆（建議）",
     fcf_decomp_title = "自由現金流 (FCF) 參數拆解",
-    fcf_decomp_body = "可點選同步按鈕帶入最新財報，或手動微調參數，還原 FCF 與基本面永續成長率 (g) 的計算過程。",
+    fcf_decomp_body = "可點選「從財報帶入」帶入最新財報數字，或手動微調參數，還原 FCF 與基本面永續成長率 (g) 的計算過程。",
     pb_band_title = "估值區間（Bear／Base／Bull）",
     pb_bv_title = "每股帳面淨值 (BVPS) 與資產基礎",
     pb_bv_formula = "BVPS = Common Equity ÷ 流通股數；TBVPS 另扣除商譽／無形資產。控股 NAV＝權益 − 折價×已辨識投資科目。雙重股權／ADR 等報價股數不等於財報股數時，與 DCF／RI／回測相同，一律以市值÷股價自動約當。",
     pb_bvps_label = "每股帳面淨值 BVPS",
     pb_tbvps_label = "有形每股淨值 TBVPS",
-    pb_sync_bv = "從最新財報自動帶入",
+    pb_sync_bv = "從財報帶入",
     pb_navps_label = "每股淨資產 NAVPS",
     pb_holdco_label = "控股折價 (%)",
     pb_holdco_help = "NAV＝股東權益 − 折價×已辨識投資科目。無投資科目時 NAV＝帳面權益。折價 0–50%。",

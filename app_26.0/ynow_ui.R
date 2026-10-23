@@ -1436,7 +1436,7 @@ beta_rolling_section_ui <- function() {
       type = "button",
       class = "btn btn-default action-button btn-sm",
       icon("sync"),
-      tags$span(id = "ynow_shared_bridge_reset", "從財報重新帶入")
+      tags$span(id = "ynow_shared_bridge_reset", "從財報帶入")
     )
   )
   )
@@ -2728,11 +2728,11 @@ beta_rolling_section_ui <- function() {
               )
             ),
 
-            # --- Ch I controls: parameter sync (default collapsed); Run lives in zone band above ---
+            # --- Ch I controls: parameter updates (default collapsed); Run lives in zone band above ---
             box(
               title = tagList(
                 icon("play-circle"),
-                tags$span(id = "ynow_bt_sec_run_controls", "Run controls & parameter sync")
+                tags$span(id = "ynow_bt_sec_run_controls", "Run controls & parameter updates")
               ),
               width = NULL,
               status = "warning",
@@ -2742,26 +2742,26 @@ beta_rolling_section_ui <- function() {
               class = "ynow-bt-run-panel",
               checkboxInput(
                 "bt_param_auto",
-                "Auto-sync parameters (derive from statements on ticker change)",
+                "Auto-update parameters when the ticker changes",
                 value = isTRUE(APP_DEFAULTS$bt_param_auto)
               ),
               tags$p(
                 id = "ynow_bt_param_auto_hint",
                 class = "ynow-backtest-inline-hint",
                 paste0(
-                  "When on, searching / loading a new company overwrites holding thresholds, exposure / sentiment weights, ",
+                  "When on, searching or loading a new company overwrites holding thresholds, exposure / sentiment weights, ",
                   "and aligns the HFV recommended valuation model. Manual edits turn this off."
                 )
               ),
               actionButton(
-                "bt_refresh_params", "Recompute once for current company",
+                "bt_refresh_params", "Update parameters from current statements",
                 icon = icon("sync"), class = "btn-default btn-block",
                 style = "margin-bottom: 10px;"
               ),
               tags$p(
                 id = "ynow_bt_refresh_params_hint",
                 class = "ynow-backtest-inline-hint",
-                "One-shot: recompute thresholds / weights from current statements (use after turning auto-sync off)."
+                "One-shot: recompute thresholds and weights from the loaded company statements (use after turning auto-update off)."
               )
             ),
 
@@ -3176,7 +3176,7 @@ beta_rolling_section_ui <- function() {
                               tags$div(
                                 id = "ynow_bt_fit_bh_hint",
                                 style = "margin-top:8px;font-size:11px;color:#666;",
-                                "One-click: max=100%, min=40%, w_vg=0.35 (weaker de-risking). Turns auto-sync off."
+                                "Quick apply: max=100%, min=40%, w_vg=0.35 (weaker de-risking). Turns auto-update parameters off."
                               )
                             )
                           )

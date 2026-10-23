@@ -96,7 +96,7 @@ nav_module_ui <- function(id) {
             min = 0, max = 50, step = 1
           )),
           column(4, br(), actionButton(
-            ns("btn_sync_nav"), "從最新財報自動帶入",
+            ns("btn_sync_nav"), "從財報帶入",
             icon = icon("sync"), class = "btn-sm",
             style = paste(
               "background-color:#1a1a1a; color:white; border:none;",
@@ -229,7 +229,7 @@ nav_module_server <- function(id,
     )
     observeEvent(input$btn_sync_nav, {
       sync_nav_from_bs()
-      showNotification("已自財報同步 NAV／NAVPS", type = "message")
+      showNotification("已從財報帶入 NAV／NAVPS", type = "message")
     })
     observeEvent(input$holdco_discount, {
       df_bs <- tryCatch(d_balance_sheet(), error = function(e) NULL)
