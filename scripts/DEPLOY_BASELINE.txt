@@ -7,5 +7,5 @@ commit=993eabfc7e9311180fb05a073aad0b4d0bc5c940
 short=993eabfc
 message=chore: bump display version to v26.57
 captured_at=2026-10-23T05:26:01Z
-display_version=v26.57
+display_version=v26.58
 note=Canonical live line is app_26.0. Bundle 12728655: Macro + Model Dashboard Value Alert bells (#424).
