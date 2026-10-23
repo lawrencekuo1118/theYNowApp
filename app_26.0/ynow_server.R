@@ -4387,7 +4387,8 @@ server <- function(input, output, session) {
     "bblab",
     market_mode_rv = market_mode,
     ui_locale_rv = ui_locale,
-    current_ticker_rv = current_ticker
+    current_ticker_rv = current_ticker,
+    logo_colors_rv = corp_name_logo_colors
   )
 
   value_alert_metric_snapshot <- reactive({

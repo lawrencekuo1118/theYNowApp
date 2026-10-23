@@ -11,6 +11,30 @@ if (!exists("%||%", mode = "function")) {
   } else key
 }
 
+#' Default BBLab series palette (matches `.YNOW_DEFAULT_CHART_PALETTE` when crawler loaded).
+.bblab_default_chart_palette <- function() {
+  if (exists(".YNOW_DEFAULT_CHART_PALETTE", inherits = TRUE)) {
+    as.character(get(".YNOW_DEFAULT_CHART_PALETTE", inherits = TRUE))
+  } else {
+    c("#0C5484", "#1AA8B8", "#249C60", "#E8A838", "#8E6BB5", "#D96B5F")
+  }
+}
+
+#' Chart series colors from company logo brand (fallback = YNow default).
+.bblab_chart_palette <- function(brand_cols = NULL, n = 6L) {
+  n <- suppressWarnings(as.integer(n)[1])
+  if (!is.finite(n) || n < 1L) n <- 6L
+  if (exists("brand_chart_palette", mode = "function")) {
+    cols <- tryCatch(
+      brand_chart_palette(brand_cols, n = n),
+      error = function(e) character(0)
+    )
+    if (length(cols) >= n) return(toupper(as.character(cols)[seq_len(n)]))
+    if (length(cols)) return(toupper(rep_len(as.character(cols), n)[seq_len(n)]))
+  }
+  toupper(rep_len(.bblab_default_chart_palette(), n)[seq_len(n)])
+}
+
 .bblab_history_visible <- function(res) {
   if (is.null(res) || !is.list(res)) return(FALSE)
   hist <- res$history
@@ -1168,7 +1192,8 @@ bblab_order_research_panel_ui <- function(pack, locale = "en", started = FALSE) 
 
 bblab_order_research_bar <- function(pack, locale = "en",
                                      which = c("orders", "customers", "multiples", "rates"),
-                                     started = FALSE) {
+                                     started = FALSE,
+                                     brand_cols = NULL) {
   which <- match.arg(which)
   empty <- plotly::layout(
     plotly::plot_ly(type = "bar"),
@@ -1193,7 +1218,7 @@ bblab_order_research_bar <- function(pack, locale = "en",
     if (isTRUE(as_pct)) v * 100 else v
   }, numeric(1))
   if (!any(is.finite(values))) return(empty)
-  pal <- c("#0C5484", "#1AA8B8", "#249C60")
+  pal <- .bblab_chart_palette(brand_cols, n = max(3L, length(labels)))
   axis_key <- if (identical(which, "orders")) "bblab_or_chart_orders" else if (identical(which, "customers")) {
     "bblab_or_chart_customers"
   } else if (isTRUE(as_pct)) "bblab_or_chart_rates" else "bblab_or_chart_multiples"
@@ -1220,6 +1245,7 @@ business_breakdown_lab_server <- function(id = "bblab",
                                           market_mode_rv = NULL,
                                           ui_locale_rv = NULL,
                                           current_ticker_rv = NULL,
+                                          logo_colors_rv = NULL,
                                           disclosures_provider = NULL) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
@@ -1247,6 +1273,28 @@ business_breakdown_lab_server <- function(id = "bblab",
         }
       }
       msg
+    }
+
+    # Company logo brand colors (from Search / corp_name_logo_colors); empty → default palette.
+    # Slow-tier cache when parent has not tinted yet (restored ticker / race with scrape).
+    .brand_cols_now <- function() {
+      cols <- tryCatch({
+        if (is.reactive(logo_colors_rv)) logo_colors_rv() else logo_colors_rv
+      }, error = function(e) character(0))
+      cols <- as.character(cols %||% character(0))
+      if (!length(cols)) {
+        tk <- tryCatch(as.character(lab_ticker() %||% "")[1], error = function(e) "")
+        if (nzchar(tk) && exists("cached_get_corp_logo_colors", mode = "function")) {
+          cols <- tryCatch(
+            as.character(cached_get_corp_logo_colors(tk) %||% character(0)),
+            error = function(e) character(0)
+          )
+        }
+      }
+      if (exists(".ensure_logo_color_pair", mode = "function")) {
+        cols <- tryCatch(.ensure_logo_color_pair(cols), error = function(e) cols)
+      }
+      as.character(cols %||% character(0))
     }
 
     # Shared global Ticker / Stock Code (current_ticker_rv) — no in-page Search.
@@ -1838,7 +1886,7 @@ business_breakdown_lab_server <- function(id = "bblab",
           if (is.finite(sh)) abs(sh) else 0
         }
       }, numeric(1))
-      pal <- c("#0C5484", "#1AA8B8", "#249C60", "#E8A838", "#8E6BB5", "#D96B5F")
+      pal <- .bblab_chart_palette(.brand_cols_now(), n = max(6L, length(slices)))
       col <- vapply(seq_along(slices), function(i) {
         if (.bblab_neutral_class(slices[[i]]$classification)) "#9AA3AB"
         else pal[((i - 1L) %% length(pal)) + 1L]
@@ -1910,7 +1958,7 @@ business_breakdown_lab_server <- function(id = "bblab",
         return(empty)
       }
       years <- as.character(hist$years)
-      pal <- c("#0C5484", "#1AA8B8", "#249C60", "#E8A838", "#8E6BB5", "#D96B5F")
+      pal <- .bblab_chart_palette(.brand_cols_now(), n = max(6L, length(hist$series)))
       fig <- plotly::plot_ly()
       for (i in seq_along(hist$series)) {
         s <- hist$series[[i]]
@@ -1979,7 +2027,7 @@ business_breakdown_lab_server <- function(id = "bblab",
       labels <- labels[keep]
       shares <- shares[keep]
       rows <- rows[keep]
-      pal <- c("#0C5484", "#1AA8B8", "#249C60", "#E8A838", "#8E6BB5", "#D96B5F")
+      pal <- .bblab_chart_palette(.brand_cols_now(), n = max(6L, length(labels)))
       cols <- pal[((seq_along(labels) - 1L) %% length(pal)) + 1L]
       hover <- vapply(seq_along(rows), function(i) {
         r <- rows[[i]]
@@ -2031,7 +2079,7 @@ business_breakdown_lab_server <- function(id = "bblab",
         }
       }, numeric(1))
       if (!any(values > 0)) return(empty)
-      pal <- c("#0C5484", "#1AA8B8", "#249C60", "#E8A838", "#8E6BB5", "#D96B5F")
+      pal <- .bblab_chart_palette(.brand_cols_now(), n = max(6L, length(labels)))
       hover <- vapply(slices, function(s) {
         paste0(
           s$name,
@@ -2284,11 +2332,17 @@ business_breakdown_lab_server <- function(id = "bblab",
     })
 
     output$order_research_chart <- plotly::renderPlotly({
-      bblab_order_research_bar(.or_pack(), loc(), "orders", isTRUE(or_started()))
+      bblab_order_research_bar(
+        .or_pack(), loc(), "orders", isTRUE(or_started()),
+        brand_cols = .brand_cols_now()
+      )
     })
 
     output$order_research_rates_chart <- plotly::renderPlotly({
-      bblab_order_research_bar(.or_pack(), loc(), "customers", isTRUE(or_started()))
+      bblab_order_research_bar(
+        .or_pack(), loc(), "customers", isTRUE(or_started()),
+        brand_cols = .brand_cols_now()
+      )
     })
 
     observeEvent(plotly::event_data("plotly_click", source = ns("donut")), {
