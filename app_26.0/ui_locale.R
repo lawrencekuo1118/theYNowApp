@@ -2716,6 +2716,16 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Top-5 shareholders and cross-holding stay empty until a disclosed source is available."
     ),
     own_detail_intro_yahoo = "Profile and holders from Yahoo Finance quoteSummary (when the holder maps to a public ticker).",
+    own_detail_intro_tw_ndf = paste0(
+      "Listed as a director / insider holder via MOPS open data (t187ap11). ",
+      "This is Taiwan’s National Development Fund (行政院國家發展基金管理會). ",
+      "Its own top-5 shareholders are not a free open-data feed — left empty."
+    ),
+    own_detail_intro_tw_institution = paste0(
+      "Listed as an institution / 法人 holder via MOPS open data (t187ap11). ",
+      "Top-5 shareholders of this institution stay empty unless a public ticker mapping discloses them."
+    ),
+    own_note_volume_twse = "Historical volume uses TWSE STOCK_DAY (official 成交股數) because Yahoo history was empty.",
     own_detail_top5_title = "Top 5 shareholders of this institution",
     own_detail_top5_empty = "Top-5 shareholders not disclosed in available free sources.",
     own_cross_title = "Cross-holding with searched company",
@@ -7170,6 +7180,15 @@ locale_for_market <- function(mode = get_market_mode()) {
       "在取得揭露來源前，該法人前五大股東與交叉持股將留空。"
     ),
     own_detail_intro_yahoo = "簡介與持股來自 Yahoo Finance quoteSummary（僅在持股人可對應公開代號時）。",
+    own_detail_intro_tw_ndf = paste0(
+      "依公開資訊觀測站開放資料（t187ap11）列為董事／內部人持股人。",
+      "此為行政院國家發展基金管理會。該基金本身之前五大股東無對應免費開放資料，故留空。"
+    ),
+    own_detail_intro_tw_institution = paste0(
+      "依公開資訊觀測站開放資料（t187ap11）列為機構／法人持股人。",
+      "除非可對應公開代號並有揭露，否則該法人前五大股東留空。"
+    ),
+    own_note_volume_twse = "歷年成交量改用證交所 STOCK_DAY（官方成交股數），因 Yahoo 歷史為空。",
     own_detail_top5_title = "該法人前五大股東",
     own_detail_top5_empty = "可用的免費來源未揭露該法人前五大股東。",
     own_cross_title = "與目前搜尋公司之交叉持股",

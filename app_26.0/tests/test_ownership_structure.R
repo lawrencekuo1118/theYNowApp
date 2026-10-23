@@ -137,6 +137,27 @@ check("detail name set", identical(d$name, "Vanguard Group Inc"))
 check("detail top5 empty without ticker map", is.data.frame(d$top5) && nrow(d$top5) == 0L)
 check("detail cross unknown default", identical(d$cross_hold$status, "unknown") || identical(d$cross_hold$status, "unknown"))
 
+# ROC date + TW NDF intro (no invented top-5)
+check(
+  "ROC slash date",
+  identical(as.character(.ownership_roc_slash_date("115/10/01")), "2026-10-01")
+)
+check("STOCK_DAY url constant", exists("YNOW_TWSE_STOCK_DAY_URL") && grepl("STOCK_DAY", YNOW_TWSE_STOCK_DAY_URL))
+ndf <- ownership_institution_detail(
+  "行政院國家發展基金管理會",
+  subject_ticker = "2330.TW",
+  market = "TW"
+)
+check("NDF intro key", identical(ndf$intro_key, "own_detail_intro_tw_ndf"))
+check("NDF top5 still empty", is.data.frame(ndf$top5) && nrow(ndf$top5) == 0L)
+check("NDF credibility official", identical(ndf$credibility, "official"))
+check("locale ndf en", nzchar(ui_str("own_detail_intro_tw_ndf", "en")))
+check("locale ndf zh", grepl("國家發展基金", ui_str("own_detail_intro_tw_ndf", "zh-TW")))
+check("locale volume twse note", nzchar(ui_str("own_note_volume_twse", "zh-TW")))
+check("server uses cached ownership", grepl("cached_fetch_ownership_structure", srv, fixed = TRUE))
+check("cached_fetch exists", exists("cached_fetch_ownership_structure", mode = "function") ||
+        exists("fetch_ownership_structure", mode = "function"))
+
 # Empty snapshot + UI (needs htmltools/shiny tags)
 empty <- .ownership_empty_snapshot("", "US")
 if (requireNamespace("htmltools", quietly = TRUE) || requireNamespace("shiny", quietly = TRUE)) {

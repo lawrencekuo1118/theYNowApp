@@ -11,6 +11,7 @@
 
 YNOW_TWSE_MI_QFIIS_URL <- "https://www.twse.com.tw/rwd/zh/fund/MI_QFIIS"
 YNOW_TWSE_T86_URL <- "https://www.twse.com.tw/rwd/zh/fund/T86"
+YNOW_TWSE_STOCK_DAY_URL <- "https://www.twse.com.tw/rwd/zh/afterTrading/STOCK_DAY"
 YNOW_MOPS_INSIDER_L_JSON <- "https://openapi.twse.com.tw/v1/opendata/t187ap11_L"
 YNOW_MOPS_INSIDER_O_JSON <- "https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap11_O"
 YNOW_MOPS_INSIDER_L_CSV <- "https://mopsfin.twse.com.tw/opendata/t187ap11_L.csv"
@@ -403,15 +404,127 @@ YNOW_MOPS_INSIDER_O_CSV <- "https://mopsfin.twse.com.tw/opendata/t187ap11_O.csv"
   )
 }
 
-.ownership_fetch_volume <- function(ticker, period = "5y") {
+.ownership_roc_slash_date <- function(x) {
+  # TWSE STOCK_DAY uses ROC dates like 115/10/01
+  s <- trimws(as.character(x %||% "")[1])
+  if (!nzchar(s)) return(as.Date(NA))
+  m <- regmatches(s, regexec("^([0-9]{2,3})/([0-9]{1,2})/([0-9]{1,2})$", s))[[1]]
+  if (length(m) < 4L) return(as.Date(NA))
+  y <- suppressWarnings(as.integer(m[2]))
+  mo <- suppressWarnings(as.integer(m[3]))
+  d <- suppressWarnings(as.integer(m[4]))
+  if (!is.finite(y) || !is.finite(mo) || !is.finite(d)) return(as.Date(NA))
+  tryCatch(
+    as.Date(sprintf("%04d-%02d-%02d", y + 1911L, mo, d)),
+    error = function(e) as.Date(NA)
+  )
+}
+
+#' TWSE STOCK_DAY volume series (official 成交股數). Up to `months` calendar months.
+.ownership_tw_stock_day_volume <- function(code, months = 24L) {
   empty <- data.frame(Date = as.Date(character()), Volume = numeric(), stringsAsFactors = FALSE)
-  if (!exists("fetch_price_history_df", mode = "function")) return(empty)
-  df <- tryCatch(fetch_price_history_df(ticker, period), error = function(e) NULL)
-  if (is.null(df) || !is.data.frame(df) || !nrow(df)) return(empty)
-  if (!all(c("Date", "Volume") %in% names(df))) return(empty)
-  out <- df[, c("Date", "Volume"), drop = FALSE]
-  out <- out[is.finite(out$Volume) & !is.na(out$Date), , drop = FALSE]
-  out[order(out$Date), , drop = FALSE]
+  code <- as.character(code %||% "")[1]
+  months <- max(1L, min(as.integer(months)[1], 60L))
+  if (!nzchar(code)) return(empty)
+  out <- list()
+  # Anchor on first of current month; walk back
+  anchor <- as.Date(format(Sys.Date(), "%Y-%m-01"))
+  for (i in seq_len(months) - 1L) {
+    ym <- if (identical(i, 0L)) {
+      anchor
+    } else {
+      tryCatch(
+        seq(anchor, by = paste0("-", i, " month"), length.out = 2L)[2],
+        error = function(e) NA
+      )
+    }
+    if (is.na(ym)) next
+    url <- sprintf(
+      "%s?response=json&date=%s&stockNo=%s",
+      YNOW_TWSE_STOCK_DAY_URL,
+      format(ym, "%Y%m%d"),
+      utils::URLencode(code, reserved = TRUE)
+    )
+    j <- .ownership_http_json(url, timeout_sec = 25)
+    if (is.null(j) || !identical(as.character(j$stat %||% "")[1], "OK")) next
+    data <- j$data
+    if (is.null(data) || !length(data)) next
+    if (is.matrix(data)) {
+      rows <- as.data.frame(data, stringsAsFactors = FALSE)
+    } else if (is.data.frame(data)) {
+      rows <- data
+    } else if (is.list(data)) {
+      rows <- tryCatch(
+        as.data.frame(do.call(rbind, data), stringsAsFactors = FALSE),
+        error = function(e) NULL
+      )
+    } else {
+      next
+    }
+    if (is.null(rows) || !nrow(rows) || ncol(rows) < 2L) next
+    fields <- as.character(j$fields %||% character())
+    if (length(fields) >= ncol(rows)) {
+      names(rows)[seq_len(ncol(rows))] <- fields[seq_len(ncol(rows))]
+    }
+    date_col <- if ("日期" %in% names(rows)) "日期" else names(rows)[1]
+    vol_col <- if ("成交股數" %in% names(rows)) "成交股數" else names(rows)[2]
+    # lapply (not vapply): Date FUN.VALUE is stored as numeric under vapply
+    dates <- as.Date(vapply(
+      as.character(rows[[date_col]]),
+      function(x) as.character(.ownership_roc_slash_date(x)),
+      character(1)
+    ))
+    vols <- vapply(rows[[vol_col]], .ownership_parse_num, numeric(1))
+    keep <- !is.na(dates) & is.finite(vols)
+    if (!any(keep)) next
+    out[[length(out) + 1L]] <- data.frame(
+      Date = dates[keep],
+      Volume = vols[keep],
+      stringsAsFactors = FALSE
+    )
+  }
+  if (!length(out)) return(empty)
+  df <- do.call(rbind, out)
+  df <- df[!duplicated(df$Date), , drop = FALSE]
+  df[order(df$Date), , drop = FALSE]
+}
+
+.ownership_fetch_volume <- function(ticker, period = "5y", market = NULL) {
+  empty <- data.frame(
+    Date = as.Date(character()),
+    Volume = numeric(),
+    source = character(),
+    stringsAsFactors = FALSE
+  )
+  tk <- toupper(trimws(as.character(ticker %||% "")[1]))
+  mode <- if (!is.null(market) && nzchar(as.character(market)[1])) {
+    toupper(as.character(market)[1])
+  } else if (grepl("\\.(TW|TWO)$", tk)) {
+    "TW"
+  } else {
+    "US"
+  }
+  if (exists("fetch_price_history_df", mode = "function")) {
+    df <- tryCatch(fetch_price_history_df(tk, period), error = function(e) NULL)
+    if (is.data.frame(df) && nrow(df) > 0 && all(c("Date", "Volume") %in% names(df))) {
+      out <- df[, c("Date", "Volume"), drop = FALSE]
+      out <- out[is.finite(out$Volume) & !is.na(out$Date), , drop = FALSE]
+      if (nrow(out) > 0) {
+        out$source <- "Yahoo price history"
+        return(out[order(out$Date), , drop = FALSE])
+      }
+    }
+  }
+  # TW official fallback when Yahoo history is empty / rate-limited
+  if (identical(mode, "TW")) {
+    code <- .ownership_issuer_code(tk)
+    tw <- tryCatch(.ownership_tw_stock_day_volume(code, months = 24L), error = function(e) NULL)
+    if (is.data.frame(tw) && nrow(tw) > 0) {
+      tw$source <- "TWSE STOCK_DAY"
+      return(tw)
+    }
+  }
+  empty
 }
 
 .ownership_yahoo_live <- function(ticker) {
@@ -459,6 +572,21 @@ ownership_institution_detail <- function(holder_name, subject_ticker = "",
       detail$cross_hold$status <- "unknown"
       detail$cross_hold$evidence <- "listed_as_holder_only"
       detail$cross_hold$credibility <- "yahoo"
+    }
+  }
+
+  # Known TW government / development-fund holders — intro only, no invented top-5
+  if (identical(toupper(as.character(market)[1]), "TW") || grepl("\\.(TW|TWO)$", tk)) {
+    if (grepl("行政院國家發展基金|國發基金", nm)) {
+      detail$intro_key <- "own_detail_intro_tw_ndf"
+      detail$source <- "MOPS t187ap11 / public fund"
+      detail$credibility <- "official"
+      detail$ok <- TRUE
+    } else if (grepl("銀行|投信|保險|人壽|金控|證券", nm)) {
+      detail$intro_key <- "own_detail_intro_tw_institution"
+      detail$source <- "MOPS t187ap11"
+      detail$credibility <- "official"
+      detail$ok <- TRUE
     }
   }
 
@@ -564,6 +692,29 @@ fetch_ownership_structure <- function(ticker, market = NULL) {
       # Fill pct from issued shares when available
       if (!is.null(q) && is.finite(q$issued_shares) && q$issued_shares > 0) {
         ins$pct <- ins$shares / q$issued_shares
+        insider_pct <- sum(ins$shares, na.rm = TRUE) / q$issued_shares
+        if (is.finite(insider_pct) && insider_pct > 0) {
+          # Append insider aggregate to structure (foreign slice may already exist)
+          snap$structure[[length(snap$structure) + 1L]] <- list(
+            key = "insiders",
+            pct = min(insider_pct, 1),
+            credibility = "official",
+            source = "MOPS t187ap11 ÷ MI_QFIIS issued shares"
+          )
+          # Residual other only when foreign + insiders leave room (no double-count claim)
+          foreign_pct <- if (!is.null(q) && is.finite(q$foreign_pct)) q$foreign_pct else NA_real_
+          if (is.finite(foreign_pct)) {
+            other <- max(0, 1 - foreign_pct - insider_pct)
+            if (other > 0.001) {
+              snap$structure[[length(snap$structure) + 1L]] <- list(
+                key = "other",
+                pct = other,
+                credibility = "estimate",
+                source = "residual (1 − foreign − disclosed insiders)"
+              )
+            }
+          }
+        }
       }
       snap$holders <- ins
       snap$sources <- unique(c(snap$sources, "MOPS t187ap11"))
@@ -574,15 +725,41 @@ fetch_ownership_structure <- function(ticker, market = NULL) {
     }
   }
 
-  snap$volume <- .ownership_fetch_volume(tk, "5y")
+  vol <- .ownership_fetch_volume(tk, "5y", market = mode)
+  snap$volume <- if (is.data.frame(vol) && "Date" %in% names(vol) && "Volume" %in% names(vol)) {
+    vol[, c("Date", "Volume"), drop = FALSE]
+  } else {
+    data.frame(Date = as.Date(character()), Volume = numeric(), stringsAsFactors = FALSE)
+  }
   if (nrow(snap$volume) > 0) {
-    snap$sources <- unique(c(snap$sources, "Yahoo price history"))
+    vol_src <- if ("source" %in% names(vol) && nzchar(as.character(vol$source[1] %||% "")[1])) {
+      as.character(vol$source[1])
+    } else {
+      "Yahoo price history"
+    }
+    snap$sources <- unique(c(snap$sources, vol_src))
+    if (identical(vol_src, "TWSE STOCK_DAY")) {
+      snap$notes <- c(snap$notes, "volume_from_twse_stock_day")
+    }
     snap$ok <- TRUE
   } else {
     snap$notes <- c(snap$notes, "volume_history_unavailable")
   }
 
   snap
+}
+
+#' Fast-tier memoized ownership fetch (T86/QFIIS change daily; ≤15m reuse is fine).
+cached_fetch_ownership_structure <- if (
+  requireNamespace("memoise", quietly = TRUE) &&
+    exists(".ynow_fast_cache", inherits = TRUE)
+) {
+  tryCatch(
+    memoise::memoise(fetch_ownership_structure, cache = .ynow_fast_cache),
+    error = function(e) fetch_ownership_structure
+  )
+} else {
+  fetch_ownership_structure
 }
 
 .ownership_fmt_shares <- function(x) {
@@ -808,6 +985,7 @@ fetch_ownership_structure <- function(ticker, market = NULL) {
           as.character(n)[1],
           "tw_holders_are_insiders_not_free_float_top10" = "own_note_tw_insiders",
           "volume_history_unavailable" = "own_note_volume_empty",
+          "volume_from_twse_stock_day" = "own_note_volume_twse",
           "tw_insider_holders_unavailable" = "own_note_holders_empty",
           NULL
         )

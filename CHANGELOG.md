@@ -1,3 +1,12 @@
+## [v26.61] — 2026-10-23
+
+### Changed
+- Ownership Structure Analysis harden: TWSE STOCK_DAY volume fallback when Yahoo history is empty; TW structure adds official insider aggregate %; NDF/法人 detail intros without invented top-5; fast-tier ownership fetch cache.
+
+### Notes
+- en-US: Volume chart can show official TWSE 成交股數; foreign + disclosed-insider mix with residual labeled estimate. Bundle TBD on ship.
+- zh-TW: 歷年成交量在 Yahoo 為空時改用證交所 STOCK_DAY；股權結構補內部人合計比例；國發基金等法人僅顯示官方簡介、不捏造前五大。
+
 ## [v26.60] — 2026-10-23
 
 ### Added
