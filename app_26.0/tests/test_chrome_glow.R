@@ -42,7 +42,10 @@ check(
     grepl("ynow-chrome-sidebar-circuit-glow", txt, fixed = TRUE) &&
     grepl("ynowPlaceChromeAtmosphere", txt, fixed = TRUE) &&
     grepl("ynowCircuitStrokeGrad", txt, fixed = TRUE) &&
-    grepl("<path class=\\\"ynow-ckt-p\\\"", txt, fixed = TRUE)
+    grepl("<path class=\\\"ynow-ckt-p\\\"", txt, fixed = TRUE) &&
+    grepl("<path class=\\\"ynow-ckt-glow\\\"", txt, fixed = TRUE) &&
+    grepl("ynow-ckt-base", txt, fixed = TRUE) &&
+    grepl("ynow-ckt-travel", txt, fixed = TRUE)
 )
 
 check(
@@ -172,6 +175,38 @@ check(
     )
 )
 
+ckt_p_block <- regmatches(
+  txt,
+  regexpr(
+    "\\.ynow-chrome-sidebar-circuit-svg \\.ynow-ckt-p \\{[^}]*\\}",
+    txt,
+    perl = TRUE
+  )
+)[1]
+ckt_glow_block <- regmatches(
+  txt,
+  regexpr(
+    "\\.ynow-chrome-sidebar-circuit-svg \\.ynow-ckt-glow \\{[^}]*\\}",
+    txt,
+    perl = TRUE
+  )
+)[1]
+check(
+  "base circuit paths are solid continuous (no dashed wire look)",
+  length(ckt_p_block) == 1L && nzchar(ckt_p_block) &&
+    grepl("stroke-dasharray:\\s*none", ckt_p_block, perl = TRUE) &&
+    !grepl("stroke-dasharray:\\s*[0-9]+\\s+[0-9]+", ckt_p_block, perl = TRUE) &&
+    !grepl("ynow-chrome-circuit-travel", ckt_p_block, fixed = TRUE) &&
+    !grepl("animation:", ckt_p_block, fixed = TRUE) &&
+    length(ckt_glow_block) == 1L && nzchar(ckt_glow_block) &&
+    grepl("stroke-dasharray:\\s*[0-9]+\\s+[0-9]+", ckt_glow_block, perl = TRUE) &&
+    grepl("ynow-chrome-circuit-travel", ckt_glow_block, fixed = TRUE) &&
+    # Traveler gap must be long (solid-wire read); reject old short-gap dashed style.
+    !grepl("stroke-dasharray:\\s*10\\s+18", txt, perl = TRUE) &&
+    !grepl("stroke-dasharray:\\s*7\\s+16", txt, perl = TRUE) &&
+    !grepl("stroke-dasharray:\\s*12\\s+20", txt, perl = TRUE)
+)
+
 grad_start <- regexpr("ynowCircuitStrokeGrad", txt, fixed = TRUE)[1]
 grad_chunk <- if (grad_start > 0) {
   substr(txt, max(1L, grad_start - 80L), min(nchar(txt), grad_start + 1200L))
@@ -278,6 +313,11 @@ check(
     ) &&
     grepl(
       "prefers-reduced-motion: reduce[\\s\\S]*?\\.ynow-ckt-p[\\s\\S]*?animation:\\s*none",
+      txt,
+      perl = TRUE
+    ) &&
+    grepl(
+      "prefers-reduced-motion: reduce[\\s\\S]*?\\.ynow-ckt-glow[\\s\\S]*?animation:\\s*none",
       txt,
       perl = TRUE
     )

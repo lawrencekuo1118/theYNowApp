@@ -4096,8 +4096,9 @@ ui <- dashboardPage(
       "}",
       # Drawn PCB traces from the foot chip upward — do NOT stretch the chip PNG.
       # Vertical clamp: fade to full black by the YNow sidebar brand logo (never paint
-      # above/through it into the menu). Motion = electric stroke glow traveling along
-      # paths (dashoffset + pulse) — never translateY / scaleY scroll of the whole asset.
+      # above/through it into the menu). Base traces = SOLID continuous strokes;
+      # motion = short electric glow segment traveling on duplicate paths (dashoffset)
+      # — never translateY / scaleY scroll of the whole asset; never dashed base lines.
       "function ynowPlaceChromeCircuit(){",
       "var s=document.querySelector('.main-sidebar');",
       "if(!s||s.querySelector('.ynow-chrome-sidebar-circuit'))return;",
@@ -4129,9 +4130,9 @@ ui <- dashboardPage(
       "<feMerge><feMergeNode in=\"b\"/><feMergeNode in=\"SourceGraphic\"/></feMerge>",
       "</filter>",
       "</defs>",
-      "<g fill=\"none\" stroke=\"url(#ynowCircuitStrokeGrad)\" stroke-linecap=\"round\" ",
-      "stroke-linejoin=\"round\" filter=\"url(#ynowCircuitGlow)\">",
-      # Paths foot→up; tops stay in lower band (fade starts at YNow brand logo).
+      # Solid continuous PCB traces (line strokes only — no dash gaps on base paths).
+      "<g class=\"ynow-ckt-base\" fill=\"none\" stroke=\"url(#ynowCircuitStrokeGrad)\" ",
+      "stroke-linecap=\"round\" stroke-linejoin=\"round\" filter=\"url(#ynowCircuitGlow)\">",
       "<path class=\"ynow-ckt-p\" stroke-width=\"1.35\" d=\"M18 480 V340 L32 326 V250 L18 236 V140 L32 126 V48\"/>",
       "<path class=\"ynow-ckt-p\" stroke-width=\"1.1\" d=\"M36 480 V360 L48 348 V270 L36 258 V175 L50 162 V72\"/>",
       "<path class=\"ynow-ckt-p\" stroke-width=\"1.45\" d=\"M58 480 V330 L72 316 V230 L58 216 V130 L72 116 V40\"/>",
@@ -4141,6 +4142,19 @@ ui <- dashboardPage(
       "<path class=\"ynow-ckt-p\" stroke-width=\"1.4\" d=\"M164 480 V325 L178 311 V235 L164 221 V135 L178 122 V44\"/>",
       "<path class=\"ynow-ckt-p\" stroke-width=\"1.2\" d=\"M190 480 V375 L204 361 V290 L190 276 V190 L204 176 V68\"/>",
       "<path class=\"ynow-ckt-p\" stroke-width=\"1.35\" d=\"M212 480 V345 L222 335 V260 L212 250 V150 L222 140 V55\"/>",
+      "</g>",
+      # Traveling electric glow: short dash on duplicate paths (not the visible wire style).
+      "<g class=\"ynow-ckt-travel\" fill=\"none\" stroke=\"#7ec8f0\" stroke-linecap=\"round\" ",
+      "stroke-linejoin=\"round\" filter=\"url(#ynowCircuitGlow)\">",
+      "<path class=\"ynow-ckt-glow\" stroke-width=\"1.7\" d=\"M18 480 V340 L32 326 V250 L18 236 V140 L32 126 V48\"/>",
+      "<path class=\"ynow-ckt-glow\" stroke-width=\"1.45\" d=\"M36 480 V360 L48 348 V270 L36 258 V175 L50 162 V72\"/>",
+      "<path class=\"ynow-ckt-glow\" stroke-width=\"1.8\" d=\"M58 480 V330 L72 316 V230 L58 216 V130 L72 116 V40\"/>",
+      "<path class=\"ynow-ckt-glow\" stroke-width=\"1.55\" d=\"M84 480 V370 L98 356 V280 L84 266 V185 L98 172 V60\"/>",
+      "<path class=\"ynow-ckt-glow\" stroke-width=\"1.85\" d=\"M112 480 V320 L126 306 V220 L112 206 V120 L126 106 V36\"/>",
+      "<path class=\"ynow-ckt-glow\" stroke-width=\"1.5\" d=\"M138 480 V350 L152 336 V255 L138 241 V155 L152 142 V52\"/>",
+      "<path class=\"ynow-ckt-glow\" stroke-width=\"1.75\" d=\"M164 480 V325 L178 311 V235 L164 221 V135 L178 122 V44\"/>",
+      "<path class=\"ynow-ckt-glow\" stroke-width=\"1.55\" d=\"M190 480 V375 L204 361 V290 L190 276 V190 L204 176 V68\"/>",
+      "<path class=\"ynow-ckt-glow\" stroke-width=\"1.7\" d=\"M212 480 V345 L222 335 V260 L212 250 V150 L222 140 V55\"/>",
       "</g>",
       "<g fill=\"url(#ynowCircuitStrokeGrad)\">",
       "<circle class=\"ynow-ckt-node\" cx=\"32\" cy=\"48\" r=\"2.2\"/>",
@@ -7375,8 +7389,9 @@ ui <- dashboardPage(
         /* A+B chip foot + DRAWN traces: LINE strokes only on #000.
            Foot chip keeps www/ynow-chrome-veins-circuit.png at NATURAL size (no stretch).
            Vertical clamp: bottom-anchored; fade to full black by YNow brand logo
-           (never paint above/through logo into menu/header). Motion = electric blue
-           glow traveling along strokes — never translateY/scaleY of the whole asset. */
+           (never paint above/through logo into menu/header). Base PCB traces are SOLID
+           continuous strokes; electric blue glow travels on duplicate .ynow-ckt-glow
+           paths — never dashed base wires; never translateY/scaleY of the whole asset. */
         .ynow-chrome-sidebar-circuit {
           position: absolute;
           left: 0;
@@ -7445,20 +7460,28 @@ ui <- dashboardPage(
           /* Electric glow pulse on strokes — NO scaleY / translate scroll */
           animation: ynow-chrome-circuit-electric 3.6s ease-in-out infinite;
         }
+        /* Visible circuit wires: solid continuous strokes (no dash gaps). */
         .ynow-chrome-sidebar-circuit-svg .ynow-ckt-p {
           stroke: url(#ynowCircuitStrokeGrad);
-          stroke-dasharray: 10 18;
+          stroke-dasharray: none;
           stroke-dashoffset: 0;
+        }
+        /* Traveling glow only: short lit segment + long gap (reads as pulse on solid wire). */
+        .ynow-chrome-sidebar-circuit-svg .ynow-ckt-glow {
+          stroke: #7ec8f0;
+          stroke-dasharray: 14 220;
+          stroke-dashoffset: 0;
+          opacity: 0.85;
           animation: ynow-chrome-circuit-travel 2.8s linear infinite;
         }
-        .ynow-chrome-sidebar-circuit-svg .ynow-ckt-p:nth-child(2n) {
+        .ynow-chrome-sidebar-circuit-svg .ynow-ckt-glow:nth-child(2n) {
           animation-duration: 3.4s;
           animation-direction: reverse;
-          stroke-dasharray: 7 16;
+          stroke-dasharray: 11 240;
         }
-        .ynow-chrome-sidebar-circuit-svg .ynow-ckt-p:nth-child(3n) {
+        .ynow-chrome-sidebar-circuit-svg .ynow-ckt-glow:nth-child(3n) {
           animation-duration: 2.2s;
-          stroke-dasharray: 12 20;
+          stroke-dasharray: 16 200;
         }
         .ynow-chrome-sidebar-circuit-svg .ynow-ckt-node {
           animation: ynow-chrome-circuit-node-pulse 2.4s ease-in-out infinite;
@@ -7467,7 +7490,7 @@ ui <- dashboardPage(
           animation-delay: 0.4s;
         }
         @keyframes ynow-chrome-circuit-travel {
-          to { stroke-dashoffset: -56; }
+          to { stroke-dashoffset: -234; }
         }
         @keyframes ynow-chrome-circuit-electric {
           0%, 100% {
@@ -7589,8 +7612,12 @@ ui <- dashboardPage(
             filter: drop-shadow(0 0 2px rgba(12, 84, 132, 0.45));
           }
           .ynow-chrome-sidebar-circuit-svg .ynow-ckt-p,
+          .ynow-chrome-sidebar-circuit-svg .ynow-ckt-glow,
           .ynow-chrome-sidebar-circuit-svg .ynow-ckt-node {
             animation: none !important;
+          }
+          .ynow-chrome-sidebar-circuit-svg .ynow-ckt-glow {
+            opacity: 0;
           }
           .ynow-chrome-sidebar-circuit-svg stop animate {
             display: none;
