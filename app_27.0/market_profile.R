@@ -186,6 +186,7 @@ resolve_tw_bare_code <- function(code) {
 #' Matches bare `2330` / `0050` (leading zeros OK) or Yahoo-suffixed
 #' `2330.TW` / `3105.TWO`. Letter-suffix and 5–6 digit codes are out of
 #' scope — prefer unambiguous 4-digit TW codes for US→TW auto-switch.
+#' Callers must gate on the Search action (button/submit), never on typing.
 #' @param sym User ticker / stock-code input
 #' @return TRUE when the trimmed input is a clear TW-style code
 looks_like_tw_stock_code <- function(sym) {

@@ -1,4 +1,4 @@
-# US mode + 4-digit TW code → auto-switch to Taiwan market then search.
+# US mode + 4-digit TW code → auto-switch to Taiwan market on Search only.
 # Offline structural + helper checks (no network).
 Sys.setenv(YNOW_DEBUG_SKIP_PY = "1")
 
@@ -43,60 +43,86 @@ check("empty not TW", isFALSE(looks_like_tw_stock_code("")))
 check("NA not TW", isFALSE(looks_like_tw_stock_code(NA_character_)))
 check("US numeric-looking BRK not", isFALSE(looks_like_tw_stock_code("BRK-B")))
 
-# --- server wires US→TW switch before normalize ---
+# --- server: Search action only (not typing / not shared fire helper) ---
 srv <- paste(readLines(file.path(root, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+
+search_obs_pos <- regexpr("observeEvent\\(input\\$search,", srv, perl = TRUE)[1]
+check("has Search observeEvent", search_obs_pos > 0L)
+
+# Slice from just before Search observer (include gate comment) until Recent Search.
+recent_pos <- regexpr(
+  "observeEvent\\(input\\$recent_search_pick,",
+  srv,
+  perl = TRUE
+)[1]
+search_start <- max(1L, search_obs_pos - 160L)
+search_chunk <- if (search_obs_pos > 0L && recent_pos > search_obs_pos) {
+  substr(srv, search_start, recent_pos - 1L)
+} else if (search_obs_pos > 0L) {
+  substr(srv, search_start, min(nchar(srv), search_obs_pos + 2500L))
+} else {
+  ""
+}
+
 check(
-  "fire helper calls looks_like_tw_stock_code",
-  grepl("looks_like_tw_stock_code\\(raw\\)", srv, perl = TRUE)
+  "Search observer calls looks_like_tw_stock_code",
+  grepl("looks_like_tw_stock_code\\(raw\\)", search_chunk, perl = TRUE)
 )
 check(
-  "US mode gate before pending",
-  grepl("identical\\(mode, \"US\"\\)", srv, perl = TRUE) &&
-    grepl("looks_like_tw_stock_code", srv, fixed = TRUE)
+  "Search observer US mode gate",
+  grepl("identical\\(mode, \"US\"\\)", search_chunk, perl = TRUE)
 )
 check(
-  "auto-switch sets market_mode_pick TW",
-  grepl(
-    "looks_like_tw_stock_code[\\s\\S]{0,600}?market_mode_pick', 'TW'",
+  "Search observer sets market_mode_pick TW",
+  grepl("market_mode_pick', 'TW'", search_chunk, fixed = TRUE)
+)
+check(
+  "Search observer uses pending_recent_fetch list",
+  grepl("pending_recent_fetch\\(list\\(", search_chunk, perl = TRUE)
+)
+check(
+  "Search observer comment: not on typing",
+  grepl("never switch market on ticker typing", search_chunk, fixed = TRUE) ||
+    grepl("Search button / submit only", search_chunk, fixed = TRUE)
+)
+
+# Must NOT live in the shared fire helper (other entry points / refresh).
+fire_pos <- regexpr("\\.ynow_fire_ticker_search <- function", srv, perl = TRUE)[1]
+fire_end <- if (fire_pos > 0L) {
+  # End at Search observeEvent which follows the helper.
+  if (search_obs_pos > fire_pos) search_obs_pos - 1L else fire_pos + 3500L
+} else {
+  0L
+}
+fire_chunk <- if (fire_pos > 0L) substr(srv, fire_pos, fire_end) else ""
+check(
+  "fire helper does NOT auto-switch on 4-digit",
+  !grepl("looks_like_tw_stock_code", fire_chunk, fixed = TRUE)
+)
+
+# No typing/input-change observer that switches market for sc.
+check(
+  "no observeEvent(input$sc) market switch",
+  !grepl(
+    "observeEvent\\(\\s*input\\$sc[\\s\\S]{0,800}?market_mode_pick",
     srv,
     perl = TRUE
   )
 )
 check(
-  "auto-switch uses pending_recent_fetch list",
-  grepl(
-    "looks_like_tw_stock_code[\\s\\S]{0,400}?pending_recent_fetch\\(list\\(",
+  "no observeEvent(list(...sc...)) looks_like",
+  !grepl(
+    "observeEvent\\(\\s*list\\([^)]*input\\$sc[\\s\\S]{0,800}?looks_like_tw_stock_code",
     srv,
     perl = TRUE
   )
 )
-check(
-  "pending list preserves goto_tab",
-  grepl("symbol = pend_sym", srv, fixed = TRUE) &&
-    grepl("goto_tab = goto_tab", srv, fixed = TRUE)
-)
+
 check(
   "market switch resolves list pending",
   grepl("is\\.list\\(pend\\)", srv, perl = TRUE) &&
     grepl("pend\\$symbol", srv, perl = TRUE) &&
     grepl("pend\\$goto_tab", srv, perl = TRUE)
-)
-# Ensure auto-detect sits before US normalize (so 2330 is not treated as US).
-fire_pos <- regexpr("\\.ynow_fire_ticker_search <- function", srv, perl = TRUE)[1]
-fire_chunk <- if (fire_pos > 0L) {
-  substr(srv, fire_pos, min(nchar(srv), fire_pos + 4500L))
-} else {
-  ""
-}
-like_rel <- regexpr("looks_like_tw_stock_code\\(raw\\)", fire_chunk, perl = TRUE)[1]
-norm_rel <- regexpr(
-  "normalize_ticker_for_market\\(raw, mode\\)",
-  fire_chunk,
-  perl = TRUE
-)[1]
-check(
-  "TW detect before normalize in fire helper",
-  fire_pos > 0L && like_rel > 0L && norm_rel > 0L && like_rel < norm_rel
 )
 
 if (fail > 0L) {

@@ -441,27 +441,6 @@ server <- function(input, output, session) {
       }, error = function(e) NULL)
       return(invisible(TRUE))
     }
-    # US mode + clear 4-digit TW code (e.g. 2330) → same path as toggling TW,
-    # then search via pending_recent_fetch so the user is not stuck in US mode.
-    if (identical(mode, "US") &&
-        exists("looks_like_tw_stock_code", mode = "function") &&
-        isTRUE(looks_like_tw_stock_code(raw))) {
-      pend_sym <- toupper(gsub(
-        "\\s+", "",
-        sub("\\s+[—\\-–].*$", "", raw)
-      ))
-      pending_recent_fetch(list(
-        symbol = pend_sym,
-        goto_tab = goto_tab
-      ))
-      tryCatch(
-        shinyjs::runjs(
-          "if (window.Shiny && Shiny.setInputValue) { Shiny.setInputValue('market_mode_pick', 'TW', {priority: 'event'}); }"
-        ),
-        error = function(e) NULL
-      )
-      return(invisible(TRUE))
-    }
     # Prefer stored Yahoo suffix when it already matches the active market.
     tk <- if (identical(mode, "TW") &&
               grepl("\\.(TW|TWO)$", raw, ignore.case = TRUE)) {
@@ -489,8 +468,35 @@ server <- function(input, output, session) {
     invisible(TRUE)
   }
 
+  # Search button / submit only — never switch market on ticker typing alone.
   observeEvent(input$search, {
     req(input$sc)
+    raw <- trimws(as.character(input$sc %||% "")[1])
+    mode <- tryCatch(
+      normalize_market_mode(isolate(market_mode())),
+      error = function(e) "US"
+    )
+    # US mode + clear 4-digit TW code (e.g. 2330) → same path as toggling TW,
+    # then search via pending_recent_fetch so the user is not stuck in US mode.
+    if (identical(mode, "US") &&
+        exists("looks_like_tw_stock_code", mode = "function") &&
+        isTRUE(looks_like_tw_stock_code(raw))) {
+      pend_sym <- toupper(gsub(
+        "\\s+", "",
+        sub("\\s+[—\\-–].*$", "", raw)
+      ))
+      pending_recent_fetch(list(
+        symbol = pend_sym,
+        goto_tab = NULL
+      ))
+      tryCatch(
+        shinyjs::runjs(
+          "if (window.Shiny && Shiny.setInputValue) { Shiny.setInputValue('market_mode_pick', 'TW', {priority: 'event'}); }"
+        ),
+        error = function(e) NULL
+      )
+      return(invisible(TRUE))
+    }
     .ynow_fire_ticker_search(input$sc, goto_tab = NULL)
   })
 
