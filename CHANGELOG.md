@@ -1,3 +1,12 @@
+## [v27.04] — 2026-10-23
+
+### Changed
+- Fold Corporate AML into YNOW (#450): remove standalone **Corporate AML Signals** / 法人洗錢跡象 sidebar tab (`corp_aml`, Lite + Full). Keep `evaluate_corp_aml_signals` server-side; show **AML** marks on overlapping YNOW indicators (QoE / F-Score / statement alerts / Beneish / Schilit / risk matrix) when AML_C2/C3/C7 are alert/watch; alert-tier veto remains veto-only (never a buy signal).
+
+### Notes
+- en-US: AML badge + tooltip via `aml_mark_label` / `aml_mark_tooltip`; About copy references AML marks on YNOW (not a separate board).
+- zh-TW: 法人洗錢跡象不再獨立側邊頁；YNOW 重疊指標旁標示 AML（僅否決／警訊）；About 改為「YNOW 上的 AML 重疊標示」。
+
 ## [v27.03] — 2026-10-23
 
 ### Changed
