@@ -553,6 +553,142 @@ cached_get_corp_logo_colors <- memoise::memoise(
   cache = .ynow_slow_cache
 )
 
+# Default Business Breakdown / series chart palette (YNow logo blues/greens + accents).
+.YNOW_DEFAULT_CHART_PALETTE <- c(
+  "#0C5484", "#1AA8B8", "#249C60", "#E8A838", "#8E6BB5", "#D96B5F"
+)
+
+.is_near_white_hex <- function(hex) {
+  hex <- toupper(trimws(as.character(hex %||% "")[1]))
+  if (!grepl("^#[0-9A-F]{6}$", hex)) return(FALSE)
+  r <- strtoi(substr(hex, 2L, 3L), 16L)
+  g <- strtoi(substr(hex, 4L, 5L), 16L)
+  b <- strtoi(substr(hex, 6L, 7L), 16L)
+  isTRUE(min(r, g, b, na.rm = TRUE) >= 235L)
+}
+
+.hex_to_rgb01 <- function(hex) {
+  hex <- toupper(trimws(as.character(hex %||% "")[1]))
+  if (!grepl("^#[0-9A-F]{6}$", hex)) return(c(0, 0, 0))
+  c(
+    strtoi(substr(hex, 2L, 3L), 16L) / 255,
+    strtoi(substr(hex, 4L, 5L), 16L) / 255,
+    strtoi(substr(hex, 6L, 7L), 16L) / 255
+  )
+}
+
+.rgb01_to_hex <- function(rgb) {
+  rgb <- as.numeric(rgb)
+  if (length(rgb) < 3L || any(!is.finite(rgb))) return("#0C5484")
+  r <- max(0, min(255, round(rgb[[1]] * 255)))
+  g <- max(0, min(255, round(rgb[[2]] * 255)))
+  b <- max(0, min(255, round(rgb[[3]] * 255)))
+  sprintf("#%02X%02X%02X", r, g, b)
+}
+
+.rgb01_to_hsl <- function(rgb) {
+  r <- rgb[[1]]; g <- rgb[[2]]; b <- rgb[[3]]
+  mx <- max(r, g, b); mn <- min(r, g, b)
+  l <- (mx + mn) / 2
+  if (mx <= mn + 1e-9) return(c(0, 0, l))
+  d <- mx - mn
+  s <- if (l > 0.5) d / (2 - mx - mn) else d / (mx + mn)
+  h <- if (mx == r) {
+    ((g - b) / d) %% 6
+  } else if (mx == g) {
+    (b - r) / d + 2
+  } else {
+    (r - g) / d + 4
+  }
+  c((h * 60) %% 360, s, l)
+}
+
+.hsl_to_rgb01 <- function(h, s, l) {
+  h <- ((as.numeric(h) %% 360) + 360) %% 360
+  s <- max(0, min(1, as.numeric(s)))
+  l <- max(0, min(1, as.numeric(l)))
+  if (s <= 1e-9) return(c(l, l, l))
+  q <- if (l < 0.5) l * (1 + s) else l + s - l * s
+  p <- 2 * l - q
+  hk <- h / 360
+  t <- function(tc) {
+    if (tc < 0) tc <- tc + 1
+    if (tc > 1) tc <- tc - 1
+    if (tc < 1 / 6) return(p + (q - p) * 6 * tc)
+    if (tc < 1 / 2) return(q)
+    if (tc < 2 / 3) return(p + (q - p) * (2 / 3 - tc) * 6)
+    p
+  }
+  c(t(hk + 1 / 3), t(hk), t(hk - 1 / 3))
+}
+
+#' Relative luminance (sRGB) for contrast checks vs light/dark plot backgrounds.
+.rel_luminance_hex <- function(hex) {
+  rgb <- .hex_to_rgb01(hex)
+  chan <- function(c) {
+    if (c <= 0.03928) c / 12.92 else ((c + 0.055) / 1.055)^2.4
+  }
+  0.2126 * chan(rgb[[1]]) + 0.7152 * chan(rgb[[2]]) + 0.0722 * chan(rgb[[3]])
+}
+
+#' Keep chart fills readable on light plotly paper and still visible on dark chrome.
+.chart_color_contrast_safe <- function(hex) {
+  hex <- toupper(trimws(as.character(hex %||% "")[1]))
+  if (!grepl("^#[0-9A-F]{6}$", hex)) return("#0C5484")
+  L <- .rel_luminance_hex(hex)
+  # Too light on white paper → darken; too near-black on dark chrome → lift slightly.
+  if (isTRUE(L > 0.72)) {
+    hsl <- .rgb01_to_hsl(.hex_to_rgb01(hex))
+    return(.rgb01_to_hex(.hsl_to_rgb01(hsl[[1]], min(1, hsl[[2]] + 0.05), 0.42)))
+  }
+  if (isTRUE(L < 0.04)) {
+    return("#2A2A2A")
+  }
+  hex
+}
+
+#' Expand logo brand colors into an n-slot plotly series palette.
+#' Empty / unusable brand → `.YNOW_DEFAULT_CHART_PALETTE` (honest fallback).
+#' @param brand_cols character vector of "#RRGGBB" (0–2 typical)
+#' @param n integer length of returned palette (≥1)
+#' @return character vector length n of "#RRGGBB"
+brand_chart_palette <- function(brand_cols = NULL, n = 6L) {
+  n <- suppressWarnings(as.integer(n)[1])
+  if (!is.finite(n) || n < 1L) n <- 6L
+  default <- .YNOW_DEFAULT_CHART_PALETTE
+  cols <- .normalize_logo_hex(brand_cols)
+  # Drop white pads / near-white washes — not useful as series fills.
+  usable <- cols[!vapply(cols, .is_near_white_hex, logical(1))]
+  if (!length(usable)) {
+    return(toupper(rep_len(default, n)[seq_len(n)]))
+  }
+  seeds <- unique(vapply(usable, .chart_color_contrast_safe, character(1)))
+  out <- character(0)
+  for (s in seeds) {
+    if (!s %in% out) out <- c(out, s)
+  }
+  # Generate siblings from the primary seed (hue steps + lightness) until n slots.
+  primary <- seeds[[1]]
+  hsl0 <- .rgb01_to_hsl(.hex_to_rgb01(primary))
+  step <- 0L
+  while (length(out) < n) {
+    step <- step + 1L
+    # Alternate hue rotation and lightness shifts so slices stay distinct.
+    hue <- (hsl0[[1]] + step * 38) %% 360
+    sat <- max(0.28, min(0.92, hsl0[[2]] * (if (step %% 2L) 0.92 else 1.05)))
+    lit <- max(0.22, min(0.58, hsl0[[3]] + ((step %% 3L) - 1) * 0.08))
+    cand <- .chart_color_contrast_safe(.rgb01_to_hex(.hsl_to_rgb01(hue, sat, lit)))
+    if (!cand %in% out) out <- c(out, cand)
+    # Safety: avoid infinite loop on pathological collisions.
+    if (step > n * 8L) {
+      need <- n - length(out)
+      out <- c(out, toupper(rep_len(default, need)))
+      break
+    }
+  }
+  toupper(out[seq_len(n)])
+}
+
 # ==========================================
 # 🌐 3. Summary（僅 yfinance，shinyapps 無 Chrome）
 # ==========================================
