@@ -3576,7 +3576,8 @@ beta_rolling_section_ui <- function() {
                     id = "ynow_pts_sysadmin_self_omniscient_label",
                     "Omniscient mode"
                   ),
-                  class = "btn-warning btn-sm",
+                  # Same chrome as Guest mode (btn-default); red text via shared class.
+                  class = "btn-default btn-sm ynow-sysadmin-btn-omniscient",
                   title = "Quick apply — lift all locks and hides"
                 )
               )
@@ -5675,6 +5676,33 @@ ui <- dashboardPage(
         }
         body.ynow-sysadmin-on:not(.ynow-view-as):not(.ynow-self-view) #ynow_pts_sysadmin_self_help {
           display: block !important;
+        }
+        /* System admin: 「套用變更」/ Apply changes → red bg + white text */
+        .ynow-pts-sysadmin-box .btn.ynow-sysadmin-btn-apply,
+        .ynow-pts-sysadmin-box .btn.btn-warning.ynow-sysadmin-btn-apply,
+        .ynow-pts-sysadmin-box .btn.btn-danger.ynow-sysadmin-btn-apply {
+          background: #c0392b !important;
+          border: 1px solid #a93226 !important;
+          color: #fff !important;
+          box-shadow: none !important;
+        }
+        .ynow-pts-sysadmin-box .btn.ynow-sysadmin-btn-apply:hover,
+        .ynow-pts-sysadmin-box .btn.ynow-sysadmin-btn-apply:focus,
+        .ynow-pts-sysadmin-box .btn.ynow-sysadmin-btn-apply:active {
+          background: #a93226 !important;
+          border-color: #922b21 !important;
+          color: #fff !important;
+        }
+        .ynow-pts-sysadmin-box .btn.ynow-sysadmin-btn-apply span {
+          color: #fff !important;
+        }
+        /* Omniscient: same bg as Guest (btn-default); warning-red text */
+        .ynow-sysadmin-self-view-group .btn.ynow-sysadmin-btn-omniscient,
+        .ynow-sysadmin-self-view-group .btn.btn-default.ynow-sysadmin-btn-omniscient {
+          color: #DC3545 !important;
+        }
+        .ynow-sysadmin-self-view-group .btn.ynow-sysadmin-btn-omniscient span {
+          color: #DC3545 !important;
         }
         /* View-as / self-view: hide grant workspace; exit lives only in fixed chrome */
         body.ynow-view-as .ynow-sysadmin-unlocked-actions,

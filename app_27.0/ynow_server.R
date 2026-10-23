@@ -2765,7 +2765,7 @@ server <- function(input, output, session) {
             id = "ynow_pts_sysadmin_apply_label",
             .lab("pts_sysadmin_apply", "Apply change")
           ),
-          class = "btn-warning"
+          class = "btn-danger ynow-sysadmin-btn-apply"
         )
       ),
       tags$hr(),
@@ -2836,7 +2836,7 @@ server <- function(input, output, session) {
         actionButton(
           "ynow_access_apply_changes",
           .lab("access_apply_changes_btn", "Apply changes"),
-          class = "btn-warning"
+          class = "btn-danger ynow-sysadmin-btn-apply"
         )
       ),
       tags$hr(),

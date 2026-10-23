@@ -201,6 +201,15 @@ check("js reads entries effect", {
     grepl("effect === 'hide'", ui, fixed = TRUE)
 })
 check("server apply-changes button", grepl("ynow_access_apply_changes", srv, fixed = TRUE))
+check("server apply-changes uses sysadmin red-apply class", {
+  grepl("ynow_access_apply_changes", srv, fixed = TRUE) &&
+    grepl("ynow-sysadmin-btn-apply", srv, fixed = TRUE) &&
+    grepl(
+      'class = "btn-danger ynow-sysadmin-btn-apply"',
+      srv,
+      fixed = TRUE
+    )
+})
 check("server has scope + action + effect + unlock", {
   grepl("ynow_access_scope", srv, fixed = TRUE) &&
     grepl("ynow_access_action", srv, fixed = TRUE) &&
