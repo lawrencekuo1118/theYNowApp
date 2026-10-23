@@ -10797,6 +10797,34 @@ ui <- dashboardPage(
                 var busy = payload.busy === true || payload.busy === 'true' || payload.busy === 1;
                 setTabBusy(tab, busy, 'server');
               });
+              Shiny.addCustomMessageHandler('ynowBtnBusy', function (payload) {
+                if (!payload || !payload.id) return;
+                var id = String(payload.id);
+                var busy = payload.busy === true || payload.busy === 'true' || payload.busy === 1;
+                var label = payload.label != null ? String(payload.label) : '';
+                window.__ynowBtnBusy = window.__ynowBtnBusy || {};
+                window.__ynowBtnBusy[id] = busy;
+                var el = document.getElementById(id);
+                if (!el) return;
+                var span = null;
+                if (payload.label_id) {
+                  span = document.getElementById(String(payload.label_id));
+                }
+                if (!span) {
+                  span = document.getElementById('ynow_' + id + '_label');
+                }
+                if (span) {
+                  span.textContent = label;
+                } else {
+                  var icon = el.querySelector('i');
+                  var iconHtml = icon ? icon.outerHTML + ' ' : '';
+                  el.innerHTML = iconHtml + label;
+                }
+                el.classList.toggle('ynow-btn-is-busy', busy);
+                try {
+                  el.setAttribute('aria-busy', busy ? 'true' : 'false');
+                } catch (eBusy) {}
+              });
               if (window.jQuery) {
                 jQuery(document).on('shiny:busy', onShinyBusy);
                 jQuery(document).on('shiny:idle', onShinyIdle);
@@ -12526,9 +12554,23 @@ ui <- dashboardPage(
             setBtnLabel('bt_fit_bh_preset', s.btn_bt_fit_bh);
             var labImRun = document.getElementById('lab_im_run_fscore');
             if (labImRun && s.btn_lab_im_run) {
+              var labBusyMap = window.__ynowBtnBusy || {};
+              var labRunLbl = labBusyMap['lab_im_run_fscore']
+                ? (s.btn_lab_im_run_busy || s.btn_lab_im_run)
+                : s.btn_lab_im_run;
               var labIcon = labImRun.querySelector('i');
               var labIconHtml = labIcon ? labIcon.outerHTML + ' ' : '';
-              labImRun.innerHTML = labIconHtml + s.btn_lab_im_run;
+              labImRun.innerHTML = labIconHtml + labRunLbl;
+            }
+            var tickerSearchBtn = document.getElementById('search');
+            if (tickerSearchBtn && s.btn_ticker_search) {
+              var tkBusyMap = window.__ynowBtnBusy || {};
+              var tkLbl = tkBusyMap['search']
+                ? (s.btn_ticker_search_busy || s.btn_ticker_search)
+                : s.btn_ticker_search;
+              var tkIcon = tickerSearchBtn.querySelector('i');
+              var tkIconHtml = tkIcon ? tkIcon.outerHTML + ' ' : '';
+              tickerSearchBtn.innerHTML = tkIconHtml + tkLbl;
             }
             var labMaxNLabel = document.getElementById('ynow_lab_im_max_n_label');
             if (labMaxNLabel && s.lab_im_max_n_label) labMaxNLabel.textContent = s.lab_im_max_n_label;
@@ -12561,7 +12603,10 @@ ui <- dashboardPage(
             }
             var labIndMcapRefreshLabel = document.getElementById('ynow_lab_im_refresh_ind_mcap_label');
             if (labIndMcapRefreshLabel && s.btn_lab_im_refresh_ind_mcap) {
-              labIndMcapRefreshLabel.textContent = s.btn_lab_im_refresh_ind_mcap;
+              var indBusyMap = window.__ynowBtnBusy || {};
+              labIndMcapRefreshLabel.textContent = indBusyMap['lab_im_refresh_ind_mcap']
+                ? (s.btn_lab_im_refresh_ind_mcap_busy || s.btn_lab_im_refresh_ind_mcap)
+                : s.btn_lab_im_refresh_ind_mcap;
             }
             var labIndMcapRefreshBtn = document.getElementById('lab_im_refresh_ind_mcap');
             if (labIndMcapRefreshBtn && s.lab_im_refresh_ind_mcap_title) {
@@ -12612,7 +12657,12 @@ ui <- dashboardPage(
             var labEvalHint = document.getElementById('ynow_lab_im_eval_hint');
             if (labEvalHint && s.lab_im_eval_hint) labEvalHint.textContent = s.lab_im_eval_hint;
             var labRefreshLabel = document.getElementById('ynow_lab_im_refresh_label');
-            if (labRefreshLabel && s.btn_lab_im_refresh) labRefreshLabel.textContent = s.btn_lab_im_refresh;
+            if (labRefreshLabel && s.btn_lab_im_refresh) {
+              var uniBusyMap = window.__ynowBtnBusy || {};
+              labRefreshLabel.textContent = uniBusyMap['lab_im_refresh_universe']
+                ? (s.btn_lab_im_refresh_busy || s.btn_lab_im_refresh)
+                : s.btn_lab_im_refresh;
+            }
             var labRefreshBtn = document.getElementById('lab_im_refresh_universe');
             if (labRefreshBtn && s.lab_im_refresh_title) labRefreshBtn.setAttribute('title', s.lab_im_refresh_title);
             var labDl = document.getElementById('lab_im_download_report');
@@ -12637,7 +12687,12 @@ ui <- dashboardPage(
             var clusterFocus = document.getElementById('ynow_lab_cluster_focus_label');
             if (clusterFocus && s.lab_cluster_focus_label) clusterFocus.textContent = s.lab_cluster_focus_label;
             var clusterRun = document.getElementById('ynow_lab_cluster_run_label');
-            if (clusterRun && s.btn_lab_cluster_run) clusterRun.textContent = s.btn_lab_cluster_run;
+            if (clusterRun && s.btn_lab_cluster_run) {
+              var clBusyMap = window.__ynowBtnBusy || {};
+              clusterRun.textContent = clBusyMap['lab_cluster_run']
+                ? (s.btn_lab_cluster_run_busy || s.btn_lab_cluster_run)
+                : s.btn_lab_cluster_run;
+            }
             var clusterMap = document.getElementById('ynow_lab_cluster_map_title');
             if (clusterMap && s.lab_cluster_map_title) clusterMap.textContent = s.lab_cluster_map_title;
             var clusterRadar = document.getElementById('ynow_lab_cluster_radar_title');
@@ -15816,6 +15871,11 @@ ui <- dashboardPage(
         .ynow-sc-wrap .control-label {
           display: block;
           margin-bottom: 5px;
+        }
+        .btn.ynow-btn-is-busy,
+        #search.ynow-btn-is-busy {
+          opacity: 0.92;
+          cursor: progress;
         }
         .ynow-sc-row #search.ynow-search-btn,
         #search.ynow-search-btn {

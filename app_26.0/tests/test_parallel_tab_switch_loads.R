@@ -58,6 +58,18 @@ check(
     grepl("lab_cluster_pending(job_args)", srv, fixed = TRUE)
 )
 
+ui_loc <- paste(readLines("ui_locale.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+ui_js <- paste(readLines("ynow_ui.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+check(
+  "busy button labels wired (en + zh-TW + JS)",
+  grepl("btn_ticker_search_busy", ui_loc, fixed = TRUE) &&
+    grepl("btn_lab_im_run_busy", ui_loc, fixed = TRUE) &&
+    grepl("btn_lab_cluster_run_busy", ui_loc, fixed = TRUE) &&
+    grepl("評估中", ui_loc, fixed = TRUE) &&
+    grepl("ynowBtnBusy", ui_js, fixed = TRUE) &&
+    grepl(".ynow_set_btn_busy", srv, fixed = TRUE)
+)
+
 check(
   "Macro cancels quote/HTCDI ticks when tab inactive",
   grepl("tab_active_rv", macro, fixed = TRUE) &&

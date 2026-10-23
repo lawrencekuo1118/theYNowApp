@@ -1789,6 +1789,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     fund_profile_why_fallback = "Limited data; use the full Annotation guide, not a single number.",
     btn_run_bt = "Run Backtest",
     btn_lab_im_run = "Search Blue Chips",
+    btn_lab_im_run_busy = "Evaluating…",
+    btn_ticker_search = "Search",
+    btn_ticker_search_busy = "Loading…",
     btn_lab_im_update_quality = "Update quality snapshot",
     lab_im_update_quality_title = paste0(
       "Write earnings quality, Piotroski F-Score, and FS alert counts ",
@@ -1925,6 +1928,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     lab_im_ind_mcap_snap_at = " (as of %s)",
     btn_lab_im_refresh_ind_mcap = "Refresh ranking",
+    btn_lab_im_refresh_ind_mcap_busy = "Updating ranking…",
     lab_im_refresh_ind_mcap_title = paste0(
       "Re-evaluate and recompute mcap-weighted annualized upside for every industry chain; ",
       "saves the result as the default snapshot for later sessions."
@@ -2095,6 +2099,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     btn_lab_im_download = "Download page report",
     lab_im_download_title = "Download current filters, summary, and detail (no re-evaluation)",
     btn_lab_im_refresh = "Refresh list",
+    btn_lab_im_refresh_busy = "Updating list…",
     lab_im_refresh_title = paste0(
       "Re-fetch the current market listing universe, then write earnings quality, ",
       "Piotroski F-Score, and FS alert counts for the current filter pool. ",
@@ -3450,6 +3455,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_cluster_y_label = "Scatter Y",
     lab_cluster_focus_label = "Radar focus ticker",
     btn_lab_cluster_run = "Run clustering",
+    btn_lab_cluster_run_busy = "Clustering…",
     lab_cluster_hint = paste0(
       "Uses the same industry/model filters as Rankings when set. ",
       "Shared controls above BLUE CHIP: first apply Candidate truncate rule to the full ",
@@ -6290,6 +6296,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     fund_profile_why_fallback = "資料不足；請先讀完整 Annotation 表，勿僅依單一數字。",
     btn_run_bt = "執行回測",
     btn_lab_im_run = "搜尋績優股",
+    btn_lab_im_run_busy = "評估中…",
+    btn_ticker_search = "搜尋",
+    btn_ticker_search_busy = "載入中…",
     btn_lab_im_update_quality = "更新品質快照",
     lab_im_update_quality_title = paste0(
       "為目前篩選池內每一檔寫入盈餘品質、Piotroski F-Score 與財報警訊數。",
@@ -6416,6 +6425,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     lab_im_ind_mcap_snap_at = "（資料時間 %s）",
     btn_lab_im_refresh_ind_mcap = "更新排名",
+    btn_lab_im_refresh_ind_mcap_busy = "更新排名中…",
     lab_im_refresh_ind_mcap_title = paste0(
       "重新評估並計算全部產業鏈的市值加權年化估值漲幅排名；",
       "完成後寫入預設快照，供之後開啟時直接顯示。"
@@ -6577,6 +6587,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     btn_lab_im_download = "下載本頁報告",
     lab_im_download_title = "下載目前篩選、摘要與明細（不必重新評估）",
     btn_lab_im_refresh = "更新名單",
+    btn_lab_im_refresh_busy = "更新名單中…",
     lab_im_refresh_title = paste0(
       "重新擷取目前市場的成分／上市／上櫃／興櫃名單，",
       "並為目前篩選池寫入盈餘品質、Piotroski F-Score 與財報警訊數。",
@@ -7889,6 +7900,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_cluster_y_label = "散點 Y",
     lab_cluster_focus_label = "雷達焦點代號",
     btn_lab_cluster_run = "執行分群",
+    btn_lab_cluster_run_busy = "分群中…",
     lab_cluster_hint = paste0(
       "沿用「排行」頁目前的產業／模型篩選（若有）。",
       "區塊上方共用控制語意：宇宙池先依「候選截斷邏輯」全市排序／篩選",

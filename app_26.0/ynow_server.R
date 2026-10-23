@@ -20,6 +20,41 @@ server <- function(input, output, session) {
     )
     invisible(TRUE)
   }
+  # Action button label while a long job runs (JS `ynowBtnBusy`).
+  .ynow_set_btn_busy <- function(id, busy = TRUE, idle_key = NULL, busy_key = NULL,
+                                 label_id = NULL) {
+    id <- as.character(id %||% "")[1]
+    if (!nzchar(id) || is.na(id)) return(invisible(FALSE))
+    loc <- tryCatch(
+      normalize_ui_locale(isolate(ui_locale())),
+      error = function(e) "en"
+    )
+    key <- if (isTRUE(busy)) {
+      as.character(busy_key %||% "")[1]
+    } else {
+      as.character(idle_key %||% "")[1]
+    }
+    label <- if (nzchar(key) && exists("ui_str", mode = "function")) {
+      tryCatch(ui_str(key, loc), error = function(e) key)
+    } else {
+      key
+    }
+    lid <- as.character(label_id %||% "")[1]
+    tryCatch(
+      session$sendCustomMessage(
+        "ynowBtnBusy",
+        list(
+          id = id,
+          label_id = if (nzchar(lid)) lid else NULL,
+          busy = isTRUE(busy),
+          label = as.character(label %||% "")[1],
+          ts = as.numeric(Sys.time())
+        )
+      ),
+      error = function(e) NULL
+    )
+    invisible(TRUE)
+  }
   .ynow_busy_tab_now <- function(fallback = "dashboard") {
     tab <- tryCatch(
       as.character(isolate(input$sidebar_tabs) %||% "")[1],
@@ -151,6 +186,7 @@ server <- function(input, output, session) {
   lab_im_universe_busy <- reactiveVal(FALSE)
   lab_cluster_busy <- reactiveVal(FALSE)
   bt_async_busy <- reactiveVal(FALSE)
+  ticker_search_busy <- reactiveVal(FALSE)
   # Latest button click wins: bump gen on each press; pending args restart when
   # the current ExtendedTask slot frees (cannot cancel hosted sequential workers).
   lab_im_eval_gen <- reactiveVal(0L)
@@ -206,6 +242,54 @@ server <- function(input, output, session) {
   })
   observe({
     .ynow_set_tab_busy("lab_notes", isTRUE(lab_cluster_busy()))
+  })
+  observe({
+    busy <- isTRUE(ticker_search_busy())
+    .ynow_set_btn_busy(
+      "search",
+      busy = busy,
+      idle_key = "btn_ticker_search",
+      busy_key = "btn_ticker_search_busy"
+    )
+  })
+  observe({
+    busy <- isTRUE(lab_im_eval_busy())
+    .ynow_set_btn_busy(
+      "lab_im_run_fscore",
+      busy = busy,
+      idle_key = "btn_lab_im_run",
+      busy_key = "btn_lab_im_run_busy"
+    )
+  })
+  observe({
+    busy <- isTRUE(lab_im_universe_busy())
+    .ynow_set_btn_busy(
+      "lab_im_refresh_universe",
+      busy = busy,
+      idle_key = "btn_lab_im_refresh",
+      busy_key = "btn_lab_im_refresh_busy",
+      label_id = "ynow_lab_im_refresh_label"
+    )
+  })
+  observe({
+    busy <- isTRUE(lab_im_ind_mcap_busy())
+    .ynow_set_btn_busy(
+      "lab_im_refresh_ind_mcap",
+      busy = busy,
+      idle_key = "btn_lab_im_refresh_ind_mcap",
+      busy_key = "btn_lab_im_refresh_ind_mcap_busy",
+      label_id = "ynow_lab_im_refresh_ind_mcap_label"
+    )
+  })
+  observe({
+    busy <- isTRUE(lab_cluster_busy())
+    .ynow_set_btn_busy(
+      "lab_cluster_run",
+      busy = busy,
+      idle_key = "btn_lab_cluster_run",
+      busy_key = "btn_lab_cluster_run_busy",
+      label_id = "ynow_lab_cluster_run_label"
+    )
   })
   # Industry-chain mcap rank: empty until Blue Chip first mount (Starter RSS).
   lab_im_ind_mcap_snap <- reactiveVal(
@@ -4722,12 +4806,14 @@ server <- function(input, output, session) {
     my_gen <- isolate(as.integer(ticker_search_gen()) %||% 0L)
     busy_tab <- .ynow_busy_tab_now("dashboard")
     .ynow_set_tab_busy(busy_tab, TRUE)
+    ticker_search_busy(TRUE)
     .search_alive <- function() {
       identical(isolate(as.integer(ticker_search_gen()) %||% 0L), my_gen) &&
         identical(isolate(current_ticker()), stock_code)
     }
     .search_done <- function() {
       tryCatch(.ynow_set_tab_busy(busy_tab, FALSE), error = function(e) NULL)
+      tryCatch(ticker_search_busy(FALSE), error = function(e) NULL)
     }
 
     .run_search_phase1b <- function(prog, sum_df, q_ccy, f_ccy) {
