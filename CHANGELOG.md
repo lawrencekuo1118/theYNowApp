@@ -1,3 +1,12 @@
+## [v27.02] — 2026-10-23
+
+### Changed
+- Snapshot tab: remove global **Ticker / Stock Code** and **industry info from Yahoo** chrome (#445). Parameter audit / restore surfaces unchanged; Lite keeps Manual adjustments + Current App Parameter Snapshot free.
+
+### Notes
+- en-US: Same clean `conditionalPanel` exclusion as Home / About / Macro / Blue Chip — not CSS hide. Locale keys remain for Company / model tabs.
+- zh-TW: Snapshot 不再顯示「Ticker／股票代號」與「Yahoo 產業資訊」標題列；手改參數與目前 App 參數 Snapshot 維持 Lite 免費可用。
+
 ## [v27.01] — 2026-10-23
 
 ### Changed
