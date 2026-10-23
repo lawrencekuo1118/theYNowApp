@@ -7128,7 +7128,7 @@ server <- function(input, output, session) {
       bt_w_rsi = c("Backtest", "RSI weight", "情緒相對權重"),
       bt_max_exp = c("Backtest", "Max exposure", "持倉上限"),
       bt_min_exp_pass = c("Backtest", "Min exp after pass", "通過閘門後下限"),
-      bt_param_auto = c("Backtest", "Auto derive params", "Ticker 載入時自動推導"),
+      bt_param_auto = c("Backtest", "Auto-update params", "換股時自動更新參數"),
       bt_fv_replay_model = c("Backtest", "Replay model", "HFV 復盤單選模型"),
       bt_fv_models = c("Backtest", "Chart overlay models", "HFV 圖疊加；預設不勾選"),
       bt_fv_conv_window = c("Backtest", "Sample window", "all / 1y / 3y / 5y / custom"),
@@ -14747,11 +14747,11 @@ server <- function(input, output, session) {
     if (isTRUE(input$bt_param_auto)) {
       tryCatch(refresh_bt_params(fetch_hist = FALSE), error = function(e) NULL)
       bt_param_notes_txt(
-        "自動同步已開啟：換股／載入財報時會覆寫門檻、權重與推薦估值模型。若只要算一次，可取消勾選後按「立即依目前公司重算一次」。"
+        "「換股時自動更新參數」已開啟：換股／載入財報時會覆寫門檻、權重與推薦估值模型。若只要算一次，可取消勾選後按「依目前財報更新參數」。"
       )
     } else {
       bt_param_notes_txt(
-        "自動同步已關閉：參數不會因換股被覆寫。需要時可按「立即依目前公司重算一次」單次推導。"
+        "「換股時自動更新參數」已關閉：參數不會因換股被覆寫。需要時可按「依目前財報更新參數」單次更新。"
       )
     }
   })

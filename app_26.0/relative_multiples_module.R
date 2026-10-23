@@ -515,7 +515,7 @@ calc_sotp_revenue_implied <- function(segments, ev_sales_multiple, cash, debt, s
       br(),
       actionButton(
         ns(sync_id),
-        label = tags$span(class = "ynow-rel-sync-lbl", "Sync from statements"),
+        label = tags$span(class = "ynow-rel-sync-lbl", "Fill from statements"),
         icon = icon("sync"), class = "btn-sm",
         style = "background-color:#1a1a1a;color:white;border:none;padding:8px 15px;font-weight:bold;border-radius:5px;margin-top:5px;width:100%;"
       )
@@ -693,7 +693,7 @@ relative_multiples_module_ui <- function(id) {
             column(4, numericInput(ns("ps_multiple"), tags$span(id = "ynow_rel_lbl_ps_mult", "P/S"), value = APP_DEFAULTS$rel_ps_multiple %||% 3, min = 0.01, step = 0.1))
           ),
           tags$p(id = "ynow_rel_multiples_ps_help", class = "help-block", "Equity-side: Implied Equity = Revenue × P/S; Implied Price = Equity ÷ shares. No Cash−Debt bridge (unlike EV/Sales)."),
-          tags$p(id = "ynow_rel_multiples_ps_rev_note", class = "help-block", "P/S Revenue syncs with Enterprise Revenue when you Sync from statements; you may override either field."),
+          tags$p(id = "ynow_rel_multiples_ps_rev_note", class = "help-block", "P/S Revenue is filled together with Enterprise Revenue when you Fill from statements; you may override either field."),
           hr(style = "border-top:1px solid #BDC3C7;"),
           h4(tags$b("EV/Sales & EV/ARR")),
           fluidRow(

@@ -398,7 +398,7 @@ pb_asset_module_server <- function(id,
     
     observeEvent(input$btn_sync_bv, {
       sync_book_values()
-      showNotification("已自財報同步 BVPS／TBVPS／NAVPS", type = "message")
+      showNotification("已從財報帶入 BVPS／TBVPS／NAVPS", type = "message")
     })
 
     observeEvent(input$holdco_discount, {

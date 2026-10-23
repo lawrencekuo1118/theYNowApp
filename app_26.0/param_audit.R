@@ -274,7 +274,7 @@ ynow_tracked_param_registry <- function() {
     c("bt_fcf_cv", "Backtest", "FCF CV ceiling (%)", "hfv", "numeric", "TRUE", "Holding filter: FCF CV <="),
     c("bt_max_exp", "Backtest", "Max exposure", "hfv", "slider", "TRUE", "Mode A ceiling; 1.0 can fit Buy&Hold"),
     c("bt_min_exp_pass", "Backtest", "Min exp after pass", "hfv", "slider", "TRUE", "Floor when filter passes & MOS >= -10%"),
-    c("bt_param_auto", "Backtest", "Auto derive params", "hfv", "checkbox", "TRUE", "Sync thresholds/weights/model on ticker load"),
+    c("bt_param_auto", "Backtest", "Auto-update params", "hfv", "checkbox", "TRUE", "Auto-update thresholds/weights/model on ticker load"),
     c("bt_fv_models", "Backtest", "Chart overlay models", "hfv", "checkboxGroup", "TRUE", "Multi-select HFV chart FV overlay"),
     c("bt_fv_replay_model", "Backtest", "Replay model", "hfv", "radio", "TRUE", "Single-select replay FV for odds/MOS"),
     c("bt_fv_conv_window", "Backtest", "Sample window", "hfv", "radio", "TRUE", "all / 1y / 3y / 5y / custom"),
