@@ -82,7 +82,13 @@ else
 fi
 CODING_SHA=$(git -C "$CODING" rev-parse HEAD)
 CODING_SHORT=$(git -C "$CODING" rev-parse --short HEAD)
-log "coding @ $CODING_SHORT"
+if [[ "${YNOW_SYNC_MIRROR_ONLY:-}" == "1" ]]; then
+  STATUS_BRANCH=$(git -C "$CODING" branch --show-current 2>/dev/null || echo "$BRANCH")
+  [[ -n "$STATUS_BRANCH" ]] || STATUS_BRANCH="$BRANCH"
+else
+  STATUS_BRANCH="$BRANCH"
+fi
+log "coding @ $CODING_SHORT ($STATUS_BRANCH)"
 
 set +e
 with_alarm 30 git -C "$CODING" diff-index --quiet HEAD --
@@ -133,7 +139,7 @@ fi
 printf '%s\n' "$CODING_SHA" >"$SHA_FILE_OD"
 BUNDLE=$(awk -F= '/^bundleId=/{print $2; exit}' "$CODING/scripts/DEPLOY_BASELINE.txt" 2>/dev/null || echo unknown)
 printf 'branch=%s\nsha=%s\nshort=%s\napp=%s\nbundle_baseline=%s\nsynced_at=%s\n' \
-  "$BRANCH" "$CODING_SHA" "$CODING_SHORT" "$LIVE_APP" "$BUNDLE" "$(date -Iseconds)" \
+  "$STATUS_BRANCH" "$CODING_SHA" "$CODING_SHORT" "$LIVE_APP" "$BUNDLE" "$(date -Iseconds)" \
   >"$ONEDRIVE/.ynow-sync-status.txt"
 
 date +%s >"$STAMP_FILE"
@@ -146,5 +152,5 @@ if ! cmp -s "$CODING/$LIVE_APP/app.R" "$ONEDRIVE/$LIVE_APP/app.R"; then
   die "$LIVE_APP/app.R mismatch after mirror"
 fi
 
-log "OK both @ $CODING_SHORT ($BRANCH / $LIVE_APP) — GitHub-aligned"
+log "OK both @ $CODING_SHORT ($STATUS_BRANCH / $LIVE_APP) — GitHub-aligned"
 printf '%s\n' "$CODING_SHA"
