@@ -7,5 +7,5 @@ commit=f50bf14138804c215a44ea02541d07cf8c8d7a10
 short=f50bf141
 message=chore: bump display version to v27.06
 captured_at=2026-10-23T18:50:28Z
-display_version=v27.06
+display_version=v27.07
 note=Canonical live line is app_27.0. Bundle 12731215: admin User id in-place search; Items to restrict multi-select; sysadmin unlock defaults to Signed-in user mode (#458).
