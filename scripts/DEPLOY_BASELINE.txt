@@ -7,5 +7,5 @@ commit=5075c89e1ddebd2d11f366b78d0593da9e8b344b
 short=5075c89e
 message=chore: bump display version to v27.17
 captured_at=2026-10-24T12:04:08Z
-display_version=v27.17
+display_version=v27.18
 note=Canonical live line is app_27.0. Bundle 12733540: industry mcap-weighted upside treemap label font scales with |wavg| (#479).
