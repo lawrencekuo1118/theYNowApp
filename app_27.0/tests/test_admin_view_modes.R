@@ -1,4 +1,4 @@
-# Self view modes (guest / signed-in / omniscient) + omniscient warning-red title.
+# Self view modes (guest / signed-in / omniscient) + control-panel bar.
 # Offline static checks — no network / shinyapps.
 
 options(warn = 1)
@@ -33,12 +33,25 @@ ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = 
 srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 loc <- paste(readLines(file.path(app_dir, "ui_locale.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 
-check("UI has self-view mode buttons next to Switch view", {
-  grepl("ynow_pts_sysadmin_self_guest", ui, fixed = TRUE) &&
-    grepl("ynow_pts_sysadmin_self_signed_in", ui, fixed = TRUE) &&
+check("UI has one control-panel bar (Exit / Switch / Guest / Omniscient)", {
+  grepl("ynow-sysadmin-control-panel", ui, fixed = TRUE) &&
+    grepl("ynow_sysadmin_control_panel", ui, fixed = TRUE) &&
+    grepl("ynow_pts_sysadmin_self_guest", ui, fixed = TRUE) &&
     grepl("ynow_pts_sysadmin_self_omniscient", ui, fixed = TRUE) &&
     grepl("ynow_pts_sysadmin_viewas", ui, fixed = TRUE) &&
-    grepl("ynow-sysadmin-self-view-group", ui, fixed = TRUE)
+    grepl("ynow_pts_sysadmin_exit", ui, fixed = TRUE) &&
+    grepl("ynow-sysadmin-self-view-group", ui, fixed = TRUE) &&
+    grepl("ynow-sysadmin-control-panel__inner", ui, fixed = TRUE)
+})
+
+check("Control panel omits Signed-in user mode button (default on enter)", {
+  !grepl("ynow_pts_sysadmin_self_signed_in", ui, fixed = TRUE) &&
+    !grepl("ynow_pts_sysadmin_self_signed_in_label", ui, fixed = TRUE) &&
+    grepl(
+      '.ynow_self_view_apply("signed_in", notify = FALSE, goto_home = FALSE)',
+      srv,
+      fixed = TRUE
+    )
 })
 
 check("Omniscient button shares Guest btn-default + red text class", {
@@ -86,11 +99,16 @@ check("Admin Apply changes uses shared red-bg white-text class", {
     grepl("ynow_access_apply_changes", srv, fixed = TRUE)
 })
 
-check("UI has self-view chrome + exit", {
-  grepl("ynow_selfview_chrome", ui, fixed = TRUE) &&
-    grepl("ynow-selfview-chrome", ui, fixed = TRUE) &&
-    grepl("ynow_selfview_chrome_exit", ui, fixed = TRUE) &&
-    grepl("ynowSelfViewMode", ui, fixed = TRUE)
+check("No Self view active toast/banner chrome", {
+  !grepl("ynow_selfview_chrome", ui, fixed = TRUE) &&
+    !grepl("ynow-selfview-chrome", ui, fixed = TRUE) &&
+    !grepl('id = "ynow_selfview_chrome"', ui, fixed = TRUE) &&
+    !grepl('class = "ynow-selfview-chrome"', ui, fixed = TRUE) &&
+    grepl("ynow_pts_sysadmin_self_exit", ui, fixed = TRUE) &&
+    grepl("ynow-sysadmin-control-panel__exit-self", ui, fixed = TRUE) &&
+    grepl("ynowSelfViewMode", ui, fixed = TRUE) &&
+    # Locale may still keep the unused key; UI must not render it as a banner.
+    !grepl("pts_sysadmin_self_active", ui, fixed = TRUE)
 })
 
 check("Omniscient title uses warning red #DC3545", {
@@ -100,9 +118,27 @@ check("Omniscient title uses warning red #DC3545", {
     grepl("ynow-omniscient", ui, fixed = TRUE)
 })
 
-check("Self-view CSS hides portal actions like view-as", {
-  grepl("body.ynow-self-view .ynow-sysadmin-unlocked-actions", ui, fixed = TRUE) &&
-    grepl(":not(.ynow-view-as):not(.ynow-self-view)", ui, fixed = TRUE)
+check("Control panel stays visible in self-view; grant box hides", {
+  grepl("body.ynow-sysadmin-on:not(.ynow-view-as) .ynow-sysadmin-control-panel", ui, fixed = TRUE) &&
+    grepl("body.ynow-self-view .ynow-pts-sysadmin-box", ui, fixed = TRUE) &&
+    grepl("body.ynow-view-as .ynow-sysadmin-control-panel", ui, fixed = TRUE) &&
+    grepl("body.ynow-self-view .ynow-sysadmin-control-panel__exit-self", ui, fixed = TRUE) &&
+    # Must not hide the whole control panel / unlocked strip during self-view.
+    !grepl(
+      "body.ynow-self-view .ynow-sysadmin-control-panel,",
+      ui,
+      fixed = TRUE
+    ) &&
+    !grepl(
+      "body.ynow-self-view .ynow-sysadmin-control-panel {",
+      ui,
+      fixed = TRUE
+    ) &&
+    !grepl(
+      "body.ynow-self-view .ynow-sysadmin-unlocked-actions",
+      ui,
+      fixed = TRUE
+    )
 })
 
 check("Client lifts ACL + guest/persist locks in omniscient", {
@@ -119,12 +155,17 @@ check("Server reactive + apply/clear self view modes", {
     grepl(".ynow_self_view_clear", srv, fixed = TRUE) &&
     grepl(".ynow_self_view_push_chrome", srv, fixed = TRUE) &&
     grepl('ynow_pts_sysadmin_self_guest', srv, fixed = TRUE) &&
-    grepl('ynow_pts_sysadmin_self_signed_in', srv, fixed = TRUE) &&
     grepl('ynow_pts_sysadmin_self_omniscient', srv, fixed = TRUE) &&
     grepl('ynow_pts_sysadmin_self_exit', srv, fixed = TRUE) &&
     grepl('"guest"', srv, fixed = TRUE) &&
     grepl('"signed_in"', srv, fixed = TRUE) &&
-    grepl('"omniscient"', srv, fixed = TRUE)
+    grepl('"omniscient"', srv, fixed = TRUE) &&
+    # Signed-in button observer removed; default apply remains on enter.
+    !grepl(
+      "observeEvent(input$ynow_pts_sysadmin_self_signed_in",
+      srv,
+      fixed = TRUE
+    )
 })
 
 check("Sysadmin enter defaults to Signed-in user mode (not guest/omniscient)", {
@@ -175,7 +216,7 @@ check("Locale en-US + zh-TW self-view keys (no 一鍵)", {
     "pts_sysadmin_self_omniscient",
     "pts_sysadmin_self_apply",
     "pts_sysadmin_self_exit",
-    "pts_sysadmin_self_active",
+    "pts_sysadmin_control_panel_aria",
     "pts_sysadmin_self_help",
     "pts_sysadmin_self_chrome_guest",
     "pts_sysadmin_self_chrome_signed_in",
@@ -196,14 +237,20 @@ check("Locale en-US + zh-TW self-view keys (no 一鍵)", {
     identical(ui_str("pts_sysadmin_self_omniscient", "zh-TW"), "全知模式") &&
     identical(ui_str("pts_sysadmin_self_apply", "en"), "Quick apply") &&
     identical(ui_str("pts_sysadmin_self_apply", "zh-TW"), "快速套用") &&
+    grepl("guest / omniscient", ui_str("pts_sysadmin_self_help", "en"), fixed = TRUE) &&
+    grepl("default", ui_str("pts_sysadmin_self_help", "en"), ignore.case = TRUE) &&
+    grepl("訪客／全知", ui_str("pts_sysadmin_self_help", "zh-TW"), fixed = TRUE) &&
+    grepl("預設", ui_str("pts_sysadmin_self_help", "zh-TW"), fixed = TRUE) &&
     grepl("warning red", ui_str("pts_sysadmin_self_chrome_omniscient", "en"), fixed = TRUE) &&
     grepl("警示紅", ui_str("pts_sysadmin_self_chrome_omniscient", "zh-TW"), fixed = TRUE)
 })
 
-check("applyUiLocale wires self-view labels", {
+check("applyUiLocale wires control-panel self-view labels", {
   grepl("ynow_pts_sysadmin_self_guest_label", ui, fixed = TRUE) &&
     grepl("pts_sysadmin_self_omniscient", ui, fixed = TRUE) &&
-    grepl("ynowRefreshSelfViewChromeLocale", ui, fixed = TRUE)
+    grepl("ynow_pts_sysadmin_self_exit_label", ui, fixed = TRUE) &&
+    grepl("pts_sysadmin_control_panel_aria", ui, fixed = TRUE) &&
+    !grepl("ynowRefreshSelfViewChromeLocale", ui, fixed = TRUE)
 })
 
 check("Exit omniscient restores via clearing ynow-omniscient class", {

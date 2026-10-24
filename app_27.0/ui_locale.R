@@ -1328,9 +1328,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     pts_sysadmin_self_apply = "Quick apply",
     pts_sysadmin_self_exit = "Exit self view",
     pts_sysadmin_self_active = "Self view active",
+    pts_sysadmin_control_panel_aria = "System admin control panel",
     pts_sysadmin_self_help = paste0(
-      "Quick apply self view (guest / signed-in / omniscient). ",
-      "Separate from Switch view of a selected user."
+      "Quick apply self view (guest / omniscient). ",
+      "Signed-in user mode is the default. Separate from Switch view of a selected user."
     ),
     pts_sysadmin_self_chrome_guest = "Guest mode: locks and hides match all-user guest restrictions.",
     pts_sysadmin_self_chrome_signed_in = paste0(
@@ -5889,9 +5890,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     pts_sysadmin_self_apply = "快速套用",
     pts_sysadmin_self_exit = "結束自身視角",
     pts_sysadmin_self_active = "自身視角啟用中",
+    pts_sysadmin_control_panel_aria = "系統管理控制列",
     pts_sysadmin_self_help = paste0(
-      "快速套用自身視角（訪客／已登入／全知）。",
-      "與「切換檢視」選定使用者無關。"
+      "快速套用自身視角（訪客／全知）。",
+      "預設為已登入使用者模式。與「切換檢視」選定使用者無關。"
     ),
     pts_sysadmin_self_chrome_guest = "訪客模式：鎖定與隱藏比照全體訪客限制。",
     pts_sysadmin_self_chrome_signed_in = paste0(
