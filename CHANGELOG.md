@@ -1,3 +1,12 @@
+## [v27.11] — 2026-10-24
+
+### Fixed
+- Live shinyapps cold start (#469): MOS Assumptions tab called `ynow_member_gate_surface_ui(gate, body)` without `feature`, so `body` was missing and the worker exited with status 1. Now uses named `feature` / `gate` / `body` like Checklist. Hub test stub matches the live signature.
+
+### Notes
+- en-US: App boots again on shinyapps.io after the v27.10 MOS Assumptions ship; guest gate overlay for MOS Assumptions is unchanged.
+- zh-TW: 修復 v27.10「MOS假設」上線後 shinyapps 無法啟動；訪客閘與 Checklist 相同，行為不變。
+
 ## [v27.10] — 2026-10-24
 
 ### Added

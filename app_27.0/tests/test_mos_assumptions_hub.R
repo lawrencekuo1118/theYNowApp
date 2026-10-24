@@ -48,8 +48,6 @@ if (!exists("ynow_notes_block", mode = "function")) {
 if (!exists("ynow_member_gate_ui", mode = "function")) {
   ynow_member_gate_ui <<- function(...) NULL
 }
-# Match live auth_account.R signature. A positional (gate, body) stub
-# hid the #467 shinyapps boot crash (body missing).
 if (!exists("ynow_member_gate_surface_ui", mode = "function")) {
   ynow_member_gate_surface_ui <<- function(feature, gate, body, ..., fade = NULL) {
     if (missing(body)) stop('argument "body" is missing, with no default', call. = FALSE)
