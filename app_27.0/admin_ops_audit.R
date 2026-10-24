@@ -31,6 +31,15 @@ YNOW_ADMIN_OPS_ACTIONS <- c(
 .ynow_admin_ops_mem$entries <- list()
 .ynow_admin_ops_mem$now_override <- NULL
 
+# Process-once schema cache (same pattern as access / points / prefs).
+.ynow_admin_ops_schema_cache <- new.env(parent = emptyenv())
+.ynow_admin_ops_schema_cache$ready <- FALSE
+
+ynow_admin_ops_schema_cache_reset <- function() {
+  .ynow_admin_ops_schema_cache$ready <- FALSE
+  invisible(TRUE)
+}
+
 .ynow_admin_ops_file <- function() {
   override <- Sys.getenv("YNOW_ADMIN_OPS_AUDIT_PATH", "")
   if (nzchar(override)) return(override)
@@ -189,7 +198,10 @@ ynow_admin_ops_normalize_action <- function(action) {
   )
 }
 
-ynow_admin_ops_ensure_schema <- function() {
+ynow_admin_ops_ensure_schema <- function(force = FALSE) {
+  if (!isTRUE(force) && isTRUE(.ynow_admin_ops_schema_cache$ready)) {
+    return(invisible(TRUE))
+  }
   if (!.ynow_admin_ops_db_on()) return(invisible(FALSE))
   ynow_db_with(function(con) {
     DBI::dbExecute(con, paste(
@@ -218,6 +230,7 @@ ynow_admin_ops_ensure_schema <- function() {
       )
     }
   })
+  .ynow_admin_ops_schema_cache$ready <- TRUE
   invisible(TRUE)
 }
 
@@ -284,40 +297,48 @@ ynow_admin_ops_ensure_schema <- function() {
 }
 
 #' Drop rows older than TTL (server clock). Called on write/list.
-#' @return data.frame remaining after purge
-ynow_admin_ops_purge_expired <- function(now = NULL, ttl_sec = YNOW_ADMIN_OPS_AUDIT_TTL_SEC) {
+#' Postgres: DELETE by cutoff only (no full-table SELECT before write).
+#' File/memory: filter in process, then rewrite.
+#' @return data.frame remaining after purge (for list); empty df ok after DB-only purge
+ynow_admin_ops_purge_expired <- function(now = NULL,
+                                         ttl_sec = YNOW_ADMIN_OPS_AUDIT_TTL_SEC,
+                                         return_rows = TRUE) {
   now <- if (is.null(now)) ynow_admin_ops_now() else ynow_admin_ops_parse_time(now)
   ttl <- suppressWarnings(as.integer(ttl_sec)[1])
   if (!is.finite(ttl) || ttl < 1L) ttl <- YNOW_ADMIN_OPS_AUDIT_TTL_SEC
   # At most 24h: drop when age >= TTL (created_at <= now - ttl).
   cutoff <- now - ttl
+  if (.ynow_admin_ops_db_on()) {
+    ynow_admin_ops_ensure_schema()
+    tryCatch(
+      ynow_db_with(function(con) {
+        DBI::dbExecute(
+          con,
+          "DELETE FROM ynow_admin_ops_audit WHERE created_at <= $1",
+          params = list(cutoff)
+        )
+      }),
+      error = function(e) NULL
+    )
+    if (!isTRUE(return_rows)) return(.ynow_admin_ops_empty_df())
+    return(.ynow_admin_ops_load_all_raw())
+  }
   df <- .ynow_admin_ops_load_all_raw()
   if (!nrow(df)) return(df)
   keep <- !is.na(df$created_at) & df$created_at > cutoff
   drop_ids <- as.character(df$id[!keep])
   if (!length(drop_ids)) return(df[keep, , drop = FALSE])
-  if (.ynow_admin_ops_db_on()) {
-    ynow_admin_ops_ensure_schema()
-    ynow_db_with(function(con) {
-      DBI::dbExecute(
-        con,
-        "DELETE FROM ynow_admin_ops_audit WHERE created_at <= $1",
-        params = list(cutoff)
-      )
-    })
-  } else {
-    kept <- lapply(which(keep), function(i) {
-      list(
-        id = df$id[[i]],
-        created_at = df$created_at[[i]],
-        actor = df$actor[[i]],
-        action = df$action[[i]],
-        detail = df$detail[[i]]
-      )
-    })
-    .ynow_admin_ops_mem$entries <- kept
-    .ynow_admin_ops_write_file(kept)
-  }
+  kept <- lapply(which(keep), function(i) {
+    list(
+      id = df$id[[i]],
+      created_at = df$created_at[[i]],
+      actor = df$actor[[i]],
+      action = df$action[[i]],
+      detail = df$detail[[i]]
+    )
+  })
+  .ynow_admin_ops_mem$entries <- kept
+  .ynow_admin_ops_write_file(kept)
   df[keep, , drop = FALSE]
 }
 
@@ -348,7 +369,11 @@ ynow_admin_ops_append <- function(action,
     detail = as.character(detail %||% "")[1]
   )
   # Purge first so append never rehydrates expired noise.
-  tryCatch(ynow_admin_ops_purge_expired(now = ts), error = function(e) NULL)
+  # DB path: DELETE-only (return_rows=FALSE) — avoid SELECT-all before INSERT.
+  tryCatch(
+    ynow_admin_ops_purge_expired(now = ts, return_rows = FALSE),
+    error = function(e) NULL
+  )
   if (.ynow_admin_ops_db_on()) {
     ynow_admin_ops_ensure_schema()
     ok <- tryCatch({

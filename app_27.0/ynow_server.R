@@ -2024,7 +2024,13 @@ server <- function(input, output, session) {
     invisible(on)
   }
 
-  .ynow_self_view_apply <- function(mode, notify = TRUE, goto_home = TRUE) {
+  #' Apply self-view chrome first; ACL / audit / panel refresh after flush.
+  #' Matches member login chrome-first (ynow_schedule_auth_heavy).
+  #' @param log_ops when FALSE, caller owns the audit row (e.g. sysadmin.enter).
+  .ynow_self_view_apply <- function(mode,
+                                    notify = TRUE,
+                                    goto_home = TRUE,
+                                    log_ops = TRUE) {
     mode <- as.character(mode %||% "")[1]
     if (!mode %in% c("guest", "signed_in", "omniscient")) {
       return(invisible(FALSE))
@@ -2044,7 +2050,7 @@ server <- function(input, output, session) {
     .ynow_view_as_push_chrome(NULL)
     ynow_pts_self_view_mode(mode)
     .ynow_self_view_push_chrome(mode)
-    tryCatch(.ynow_push_access_locks(), error = function(e) NULL)
+    # Banner for self modes is placeholder / ∞ — no DB.
     tryCatch(.ynow_pts_push_banner(), error = function(e) NULL)
     loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "en")
     .lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
@@ -2065,7 +2071,6 @@ server <- function(input, output, session) {
     if (isTRUE(notify)) {
       showNotification(.lab(ok_key, ok_fb), type = "message", duration = 4)
     }
-    .ynow_admin_ops_log("self_view.apply", paste0("mode=", mode))
     if (isTRUE(goto_home)) {
       tryCatch({
         if (exists("updateTabItems", mode = "function")) {
@@ -2074,9 +2079,17 @@ server <- function(input, output, session) {
         session$sendCustomMessage("ynowGotoTab", list(tab = "home"))
       }, error = function(e) NULL)
     }
-    ynow_pts_sysadmin_tick(isolate(ynow_pts_sysadmin_tick()) + 1L)
-    # Refresh Account / Settings / Points panels for the new self-view subject.
-    ynow_pts_panel_tick(isolate(ynow_pts_panel_tick()) + 1L)
+    mode_for_log <- mode
+    do_log <- isTRUE(log_ops)
+    session$onFlushed(function() {
+      # ACL + audit + panel/user-list tick after chrome (ynow-sysadmin-on / self-view) flushed.
+      tryCatch(.ynow_push_access_locks(), error = function(e) NULL)
+      if (isTRUE(do_log)) {
+        .ynow_admin_ops_log("self_view.apply", paste0("mode=", mode_for_log))
+      }
+      ynow_pts_sysadmin_tick(isolate(ynow_pts_sysadmin_tick()) + 1L)
+      ynow_pts_panel_tick(isolate(ynow_pts_panel_tick()) + 1L)
+    }, once = TRUE)
     invisible(TRUE)
   }
 
@@ -2087,14 +2100,7 @@ server <- function(input, output, session) {
     )[1]
     ynow_pts_self_view_mode(NULL)
     .ynow_self_view_push_chrome(NULL)
-    tryCatch(.ynow_push_access_locks(), error = function(e) NULL)
     tryCatch(.ynow_pts_push_banner(), error = function(e) NULL)
-    if (isTRUE(had)) {
-      .ynow_admin_ops_log(
-        "self_view.exit",
-        if (nzchar(prev)) paste0("mode=", prev) else "cleared"
-      )
-    }
     if (isTRUE(notify) && isTRUE(had)) {
       showNotification(
         tryCatch(
@@ -2111,8 +2117,19 @@ server <- function(input, output, session) {
       }
       session$sendCustomMessage("ynowGotoTab", list(tab = "testing"))
     }, error = function(e) NULL)
-    ynow_pts_sysadmin_tick(isolate(ynow_pts_sysadmin_tick()) + 1L)
-    ynow_pts_panel_tick(isolate(ynow_pts_panel_tick()) + 1L)
+    prev_for_log <- prev
+    had_for_log <- isTRUE(had)
+    session$onFlushed(function() {
+      tryCatch(.ynow_push_access_locks(), error = function(e) NULL)
+      if (isTRUE(had_for_log)) {
+        .ynow_admin_ops_log(
+          "self_view.exit",
+          if (nzchar(prev_for_log)) paste0("mode=", prev_for_log) else "cleared"
+        )
+      }
+      ynow_pts_sysadmin_tick(isolate(ynow_pts_sysadmin_tick()) + 1L)
+      ynow_pts_panel_tick(isolate(ynow_pts_panel_tick()) + 1L)
+    }, once = TRUE)
     invisible(TRUE)
   }
 
@@ -2606,10 +2623,28 @@ server <- function(input, output, session) {
     ynow_pts_sysadmin_on(TRUE)
     .ynow_sysadmin_push_mode()
     # Default self-view after unlock: Signed-in user mode (not guest / not omniscient).
-    .ynow_self_view_apply("signed_in", notify = FALSE, goto_home = FALSE)
-    tryCatch(.ynow_pts_push_banner(), error = function(e) NULL)
-    .ynow_admin_ops_log("sysadmin.enter", paste0("actor=", actor_name, "; default_self_view=signed_in"))
-    ynow_pts_sysadmin_tick(isolate(ynow_pts_sysadmin_tick()) + 1L)
+    # Chrome first; ACL / single audit row / panel tick after flush (no double banner/tick).
+    .ynow_self_view_apply(
+      "signed_in",
+      notify = FALSE,
+      goto_home = FALSE,
+      log_ops = FALSE
+    )
+    # Stay on System admin portal — signed-in self-view sets ynow-authed (member chrome)
+    # which used to hide the Sys. Admin foot link and drop the active tab to Home.
+    tryCatch({
+      if (exists("updateTabItems", mode = "function")) {
+        updateTabItems(session, "sidebar_tabs", "testing")
+      }
+      session$sendCustomMessage("ynowGotoTab", list(tab = "testing"))
+    }, error = function(e) NULL)
+    actor_for_log <- actor_name
+    session$onFlushed(function() {
+      .ynow_admin_ops_log(
+        "sysadmin.enter",
+        paste0("actor=", actor_for_log, "; default_self_view=signed_in")
+      )
+    }, once = TRUE)
     showNotification(
       .lab("pts_sysadmin_login_ok", "System admin unlocked."),
       type = "message",

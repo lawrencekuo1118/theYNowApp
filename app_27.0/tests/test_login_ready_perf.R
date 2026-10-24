@@ -29,6 +29,7 @@ source("points_wallet.R", local = FALSE)
 source("user_prefs.R", local = FALSE)
 source("access_locks.R", local = FALSE)
 source("maintenance_mode.R", local = FALSE)
+source("admin_ops_audit.R", local = FALSE)
 
 # --- Schema cache: second ensure is a no-op (no DB required) ---
 ynow_points_schema_cache_reset()
@@ -137,6 +138,54 @@ check(
   "points panel still requests ledger",
   grepl("include_ledger = TRUE", srv, fixed = TRUE)
 )
+
+# System-admin enter: chrome (sysadmin + signed-in self-view) before ACL / audit DB.
+apply_start <- regexpr(".ynow_self_view_apply <- function", srv, fixed = TRUE)
+apply_end <- regexpr(".ynow_self_view_clear <- function", srv, fixed = TRUE)
+apply_body <- substr(srv, apply_start, apply_end)
+chrome_pos <- regexpr(".ynow_self_view_push_chrome(mode)", apply_body, fixed = TRUE)[1]
+flush_pos <- regexpr("session$onFlushed", apply_body, fixed = TRUE)[1]
+acl_apply_pos <- regexpr(".ynow_push_access_locks()", apply_body, fixed = TRUE)[1]
+check(
+  "self-view chrome before deferred ACL flush",
+  chrome_pos > 0 && flush_pos > chrome_pos && acl_apply_pos > flush_pos
+)
+enter_start <- regexpr("observeEvent(input$ynow_pts_sysadmin_enter", srv, fixed = TRUE)
+enter_end <- regexpr("observeEvent(input$ynow_pts_sysadmin_exit", srv, fixed = TRUE)
+enter_body <- substr(srv, enter_start, enter_end)
+check(
+  "sysadmin enter skips duplicate self_view audit; defers enter log",
+  grepl("log_ops = FALSE", enter_body, fixed = TRUE) &&
+    grepl("sysadmin.enter", enter_body, fixed = TRUE) &&
+    grepl("session$onFlushed", enter_body, fixed = TRUE)
+)
+check(
+  "sysadmin enter pins testing tab after unlock",
+  grepl('tab = "testing"', enter_body, fixed = TRUE) ||
+    grepl("\"testing\"", enter_body, fixed = TRUE)
+)
+ui_src <- paste(readLines("ynow_ui.R", warn = FALSE), collapse = "\n")
+check(
+  "sysadmin foot hide exempts unlocked portal",
+  grepl("body.ynow-authed:not(.ynow-sysadmin-on)", ui_src, fixed = TRUE) &&
+    grepl("ynowSyncSysAdminFootVisibility", ui_src, fixed = TRUE)
+)
+check(
+  "gotoTab allows testing while sysadmin portal unlocked",
+  grepl("!document.body.classList.contains('ynow-sysadmin-on')", ui_src, fixed = TRUE) &&
+    grepl("function gotoTab(tab)", ui_src, fixed = TRUE) &&
+    grepl("function showSidebarFootTab(tab)", ui_src, fixed = TRUE)
+)
+if (exists("ynow_admin_ops_schema_cache_reset", mode = "function")) {
+  ynow_admin_ops_schema_cache_reset()
+  .ynow_admin_ops_schema_cache$ready <- TRUE
+  check(
+    "admin_ops ensure short-circuits when ready",
+    isTRUE(ynow_admin_ops_ensure_schema())
+  )
+} else {
+  check("admin_ops schema cache helper present", FALSE)
+}
 
 # Memory ACL unlock eval still works without DB
 uid <- "user-perf-test"
