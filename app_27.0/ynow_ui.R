@@ -20259,6 +20259,10 @@ ui <- dashboardPage(
             if (document.body) {
               document.body.classList.toggle('ynow-sidebar-reorder-edit', editOn);
             }
+            document.querySelectorAll('.sidebar-menu > li > a').forEach(function(a) {
+              if (editOn) a.setAttribute('draggable', 'false');
+              else a.removeAttribute('draggable');
+            });
             syncBtnLocale();
             if (editOn) tagMenuItems();
           }
@@ -20329,6 +20333,11 @@ ui <- dashboardPage(
                 {priority: 'event'}
               );
             }
+          });
+
+          $(document).on('dragstart', '.sidebar-menu > li > a', function(e) {
+            if (!editOn) return;
+            e.preventDefault();
           });
 
           $(document).on('pointerdown', '.sidebar-menu > li > a', function(e) {
