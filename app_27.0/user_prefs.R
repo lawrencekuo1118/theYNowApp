@@ -177,7 +177,18 @@ ynow_prefs_normalize_sidebar_order <- function(ids, fill_defaults = TRUE) {
   c(raw, setdiff(ynow_sidebar_default_order(), raw))
 }
 
-ynow_prefs_ensure_schema <- function(conn = NULL) {
+.ynow_prefs_schema_cache <- new.env(parent = emptyenv())
+.ynow_prefs_schema_cache$ready <- FALSE
+
+ynow_prefs_schema_cache_reset <- function() {
+  .ynow_prefs_schema_cache$ready <- FALSE
+  invisible(TRUE)
+}
+
+ynow_prefs_ensure_schema <- function(conn = NULL, force = FALSE) {
+  if (!isTRUE(force) && isTRUE(.ynow_prefs_schema_cache$ready)) {
+    return(invisible(TRUE))
+  }
   run <- function(con) {
     DBI::dbExecute(con, "
       CREATE TABLE IF NOT EXISTS ynow_user_prefs (
@@ -197,10 +208,15 @@ ynow_prefs_ensure_schema <- function(conn = NULL) {
     }
     TRUE
   }
-  if (!is.null(conn)) return(run(conn))
-  if (!.ynow_prefs_db_on()) return(invisible(FALSE))
-  out <- ynow_db_with(run)
-  invisible(isTRUE(out))
+  ok <- if (!is.null(conn)) {
+    isTRUE(run(conn))
+  } else if (!.ynow_prefs_db_on()) {
+    FALSE
+  } else {
+    isTRUE(ynow_db_with(run))
+  }
+  if (isTRUE(ok)) .ynow_prefs_schema_cache$ready <- TRUE
+  invisible(ok)
 }
 
 .ynow_prefs_parse_json_tickers <- function(raw) {

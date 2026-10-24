@@ -288,7 +288,18 @@ ynow_maintenance_item_choice_list <- function(ids, locale = "en", group = TRUE,
   )
 }
 
-ynow_maintenance_ensure_schema <- function() {
+.ynow_maint_schema_cache <- new.env(parent = emptyenv())
+.ynow_maint_schema_cache$ready <- FALSE
+
+ynow_maintenance_schema_cache_reset <- function() {
+  .ynow_maint_schema_cache$ready <- FALSE
+  invisible(TRUE)
+}
+
+ynow_maintenance_ensure_schema <- function(force = FALSE) {
+  if (!isTRUE(force) && isTRUE(.ynow_maint_schema_cache$ready)) {
+    return(invisible(TRUE))
+  }
   if (!.ynow_maint_db_on()) return(invisible(FALSE))
   ynow_db_with(function(con) {
     DBI::dbExecute(con, paste(
@@ -323,6 +334,7 @@ ynow_maintenance_ensure_schema <- function() {
       tryCatch(.ynow_db_rls_fail_closed(con, "ynow_maintenance"), error = function(e) NULL)
     }
   })
+  .ynow_maint_schema_cache$ready <- TRUE
   invisible(TRUE)
 }
 

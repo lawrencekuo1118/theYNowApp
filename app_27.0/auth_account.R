@@ -2940,48 +2940,19 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
     })
   }
 
-  #' After successful login: toast, close modal, restore pre-login tab (client).
+  #' After successful login: chrome first, then defer points / heavy prefs to next flush.
   .finish_auth_success <- function(user, message_key = "auth_msg_ok",
                                    fallback = "Signed in.", restore_tab = NULL) {
     account_user(user)
-    # First gift (100 FYN once) + daily check-in (+30 FYN / Asia/Taipei day). Never reset.
-    pts_login <- NULL
-    if (exists("ynow_points_on_login", mode = "function")) {
-      uid <- as.character(user$id %||% "")[1]
-      if (nzchar(uid)) {
-        pts_login <- tryCatch(
-          ynow_points_on_login(uid),
-          error = function(e) NULL
-        )
-      }
-    }
     mk <- as.character(message_key %||% "auth_msg_ok")[1]
     msg <- .str(mk, fallback)
-    if (isTRUE(pts_login$checkin_granted)) {
-      amt <- tryCatch(ynow_points_daily_checkin_amount(), error = function(e) 30L)
-      pts_note <- tryCatch(
-        sprintf(.str("pts_daily_checkin_fmt", "Daily check-in: +%s FYN."), as.character(amt)),
-        error = function(e) sprintf("Daily check-in: +%s FYN.", as.character(amt))
-      )
-      msg <- paste(msg, pts_note)
-    } else if (isTRUE(pts_login$gift_granted)) {
-      gift_n <- tryCatch(ynow_points_signup_bonus(), error = function(e) 100L)
-      pts_note <- tryCatch(
-        sprintf(.str("pts_first_gift_fmt", "Welcome gift: +%s FYN."), as.character(gift_n)),
-        error = function(e) sprintf("Welcome gift: +%s FYN.", as.character(gift_n))
-      )
-      msg <- paste(msg, pts_note)
-    }
     output$ynow_auth_status <- renderUI({
       tags$p(class = "text-success", msg)
     })
+    # Auth chrome + durable resume token before points / ACL observers.
     .push_auth_state(TRUE, user$email %||% "")
     .persist_auth_browser(user)
     tryCatch(shinyBS::toggleModal(session, "ynow_auth_modal", "close"), error = function(e) NULL)
-    tryCatch(
-      showNotification(msg, type = "message", duration = 5),
-      error = function(e) NULL
-    )
     saved <- .load_last_ui_surface(user)
     tab <- as.character(saved$tab %||% "")[1]
     # Prefer durable last member screen over same-session guest pre-auth tab.
@@ -3014,11 +2985,39 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
         }
       )
     }
-    # Remember the surface we just restored (or current) as the new baseline.
     tryCatch(
       .persist_last_ui_surface(user, tab = tab, ticker = ticker),
       error = function(e) NULL
     )
+    # Points gift/check-in + prefs/ACL fan-out after ynow-authed reaches the client.
+    uid <- as.character(user$id %||% "")[1]
+    sched <- session$userData$ynow_schedule_auth_heavy
+    if (is.function(sched)) {
+      tryCatch(sched(uid = uid, notify_base = msg), error = function(e) NULL)
+    } else if (nzchar(uid) && exists("ynow_points_on_login", mode = "function")) {
+      session$onFlushed(function() {
+        pts_login <- tryCatch(ynow_points_on_login(uid), error = function(e) NULL)
+        note <- msg
+        if (isTRUE(pts_login$checkin_granted)) {
+          amt <- tryCatch(ynow_points_daily_checkin_amount(), error = function(e) 30L)
+          pts_note <- tryCatch(
+            sprintf(.str("pts_daily_checkin_fmt", "Daily check-in: +%s FYN."), as.character(amt)),
+            error = function(e) sprintf("Daily check-in: +%s FYN.", as.character(amt))
+          )
+          note <- paste(msg, pts_note)
+        } else if (isTRUE(pts_login$gift_granted)) {
+          gift_n <- tryCatch(ynow_points_signup_bonus(), error = function(e) 100L)
+          pts_note <- tryCatch(
+            sprintf(.str("pts_first_gift_fmt", "Welcome gift: +%s FYN."), as.character(gift_n)),
+            error = function(e) sprintf("Welcome gift: +%s FYN.", as.character(gift_n))
+          )
+          note <- paste(msg, pts_note)
+        }
+        tryCatch(showNotification(note, type = "message", duration = 5), error = function(e) NULL)
+      }, once = TRUE)
+    } else {
+      tryCatch(showNotification(msg, type = "message", duration = 5), error = function(e) NULL)
+    }
   }
 
   #' OAuth failure after IdP return: toast only — do not auto-open login modal.
@@ -3048,13 +3047,6 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
       resume_token_held(tok)
       account_user(res$user)
       .push_auth_state(TRUE, res$user$email %||% "")
-      # Daily check-in / first gift still run on resume when eligible.
-      if (exists("ynow_points_on_login", mode = "function")) {
-        uid <- as.character(res$user$id %||% "")[1]
-        if (nzchar(uid)) {
-          tryCatch(ynow_points_on_login(uid), error = function(e) NULL)
-        }
-      }
       # Restore last member screen with the authenticated shell (no toast).
       saved <- .load_last_ui_surface(res$user)
       tab <- as.character(saved$tab %||% "")[1]
@@ -3083,6 +3075,16 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
             )
           }
         )
+      }
+      # Points / ACL / prefs after chrome flush (quiet; no toast on resume).
+      uid <- as.character(res$user$id %||% "")[1]
+      sched <- session$userData$ynow_schedule_auth_heavy
+      if (is.function(sched)) {
+        tryCatch(sched(uid = uid, notify_base = NULL), error = function(e) NULL)
+      } else if (nzchar(uid) && exists("ynow_points_on_login", mode = "function")) {
+        session$onFlushed(function() {
+          tryCatch(ynow_points_on_login(uid), error = function(e) NULL)
+        }, once = TRUE)
       }
     } else {
       .clear_auth_browser(FALSE)

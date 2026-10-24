@@ -622,6 +622,42 @@ server <- function(input, output, session) {
   }
   session$userData$ynow_auth <- ynow_auth
 
+  # Post-chrome login/resume work (points, ACL refresh, prefs). Tick advances after
+  # the flush that delivers ynow-authed so the client is interactive first.
+  ynow_auth_heavy_tick <- reactiveVal(0L)
+  session$userData$ynow_schedule_auth_heavy <- function(uid = "", notify_base = NULL) {
+    uid <- as.character(uid %||% "")[1]
+    base_msg <- if (is.null(notify_base)) NULL else as.character(notify_base)[1]
+    session$onFlushed(function() {
+      pts_login <- NULL
+      if (nzchar(uid) && exists("ynow_points_on_login", mode = "function")) {
+        pts_login <- tryCatch(ynow_points_on_login(uid), error = function(e) NULL)
+      }
+      if (!is.null(base_msg) && nzchar(base_msg)) {
+        note <- base_msg
+        loc_fb <- function(key, fb) {
+          tryCatch({
+            if (exists("ui_str", mode = "function")) {
+              ui_str(key, tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "en"))
+            } else fb
+          }, error = function(e) fb)
+        }
+        if (isTRUE(pts_login$checkin_granted)) {
+          amt <- tryCatch(ynow_points_daily_checkin_amount(), error = function(e) 30L)
+          fmt <- loc_fb("pts_daily_checkin_fmt", "Daily check-in: +%s FYN.")
+          note <- paste(base_msg, sprintf(fmt, as.character(amt)))
+        } else if (isTRUE(pts_login$gift_granted)) {
+          gift_n <- tryCatch(ynow_points_signup_bonus(), error = function(e) 100L)
+          fmt <- loc_fb("pts_first_gift_fmt", "Welcome gift: +%s FYN.")
+          note <- paste(base_msg, sprintf(fmt, as.character(gift_n)))
+        }
+        tryCatch(showNotification(note, type = "message", duration = 5), error = function(e) NULL)
+      }
+      ynow_auth_heavy_tick(isolate(ynow_auth_heavy_tick()) + 1L)
+    }, once = TRUE)
+    invisible(TRUE)
+  }
+
   # Sysadmin view-as (defined early so pinned prefs / ACL subject can prefer it).
   # Value: list(public_id=, user_id=, role=) or NULL. No PII.
   ynow_pts_view_as <- reactiveVal(NULL)
@@ -741,7 +777,8 @@ server <- function(input, output, session) {
       list(
         logged = tryCatch(isTRUE(ynow_auth$is_logged_in()), error = function(e) FALSE),
         uid = .ynow_pinned_auth_uid(),
-        view_as = tryCatch(ynow_pts_view_as(), error = function(e) NULL)
+        view_as = tryCatch(ynow_pts_view_as(), error = function(e) NULL),
+        heavy = ynow_auth_heavy_tick()
       )
     },
     {
@@ -750,6 +787,11 @@ server <- function(input, output, session) {
       va_on <- {
         va <- tryCatch(isolate(ynow_pts_view_as()), error = function(e) NULL)
         is.list(va) && nzchar(as.character(va$user_id %||% "")[1])
+      }
+      logged_now <- tryCatch(isTRUE(ynow_auth$is_logged_in()), error = function(e) FALSE)
+      if (isTRUE(logged_now) && !isTRUE(va_on) &&
+            as.integer(isolate(ynow_auth_heavy_tick()) %||% 0L)[1] < 1L) {
+        return(invisible(NULL))
       }
       if (nzchar(uid)) {
         guest_pins <- isolate(as.character(values$pinned_search %||% character(0)))
@@ -946,7 +988,8 @@ server <- function(input, output, session) {
       list(
         logged = tryCatch(isTRUE(ynow_auth$is_logged_in()), error = function(e) FALSE),
         uid = .ynow_pinned_auth_uid(),
-        view_as = tryCatch(ynow_pts_view_as(), error = function(e) NULL)
+        view_as = tryCatch(ynow_pts_view_as(), error = function(e) NULL),
+        heavy = ynow_auth_heavy_tick()
       )
     },
     {
@@ -955,6 +998,11 @@ server <- function(input, output, session) {
       va_on <- {
         va <- tryCatch(isolate(ynow_pts_view_as()), error = function(e) NULL)
         is.list(va) && nzchar(as.character(va$user_id %||% "")[1])
+      }
+      logged_now <- tryCatch(isTRUE(ynow_auth$is_logged_in()), error = function(e) FALSE)
+      if (isTRUE(logged_now) && !isTRUE(va_on) &&
+            as.integer(isolate(ynow_auth_heavy_tick()) %||% 0L)[1] < 1L) {
+        return(invisible(NULL))
       }
       if (nzchar(uid)) {
         guest_pins <- isolate(as.character(values$pinned_sidebar %||% character(0)))
@@ -1034,12 +1082,22 @@ server <- function(input, output, session) {
       list(
         logged = tryCatch(isTRUE(ynow_auth$is_logged_in()), error = function(e) FALSE),
         uid = .ynow_pinned_auth_uid(),
-        view_as = tryCatch(ynow_pts_view_as(), error = function(e) NULL)
+        view_as = tryCatch(ynow_pts_view_as(), error = function(e) NULL),
+        heavy = ynow_auth_heavy_tick()
       )
     },
     {
       uid <- .ynow_pinned_auth_uid()
       prev <- isolate(as.character(.ynow_sidebar_order_last_uid() %||% "")[1])
+      logged_now <- tryCatch(isTRUE(ynow_auth$is_logged_in()), error = function(e) FALSE)
+      va_on <- {
+        va <- tryCatch(isolate(ynow_pts_view_as()), error = function(e) NULL)
+        is.list(va) && nzchar(as.character(va$user_id %||% "")[1])
+      }
+      if (isTRUE(logged_now) && !isTRUE(va_on) &&
+            as.integer(isolate(ynow_auth_heavy_tick()) %||% 0L)[1] < 1L) {
+        return(invisible(NULL))
+      }
       if (nzchar(uid)) {
         order_ids <- .ynow_sidebar_order_load(uid)
         .ynow_sidebar_order_push(order_ids)
@@ -1178,12 +1236,22 @@ server <- function(input, output, session) {
       list(
         logged = tryCatch(isTRUE(ynow_auth$is_logged_in()), error = function(e) FALSE),
         uid = .ynow_pinned_auth_uid(),
-        view_as = tryCatch(ynow_pts_view_as(), error = function(e) NULL)
+        view_as = tryCatch(ynow_pts_view_as(), error = function(e) NULL),
+        heavy = ynow_auth_heavy_tick()
       )
     },
     {
       uid <- .ynow_pinned_auth_uid()
       prev <- isolate(as.character(.ynow_settings_last_uid() %||% "")[1])
+      logged_now <- tryCatch(isTRUE(ynow_auth$is_logged_in()), error = function(e) FALSE)
+      va_on <- {
+        va <- tryCatch(isolate(ynow_pts_view_as()), error = function(e) NULL)
+        is.list(va) && nzchar(as.character(va$user_id %||% "")[1])
+      }
+      if (isTRUE(logged_now) && !isTRUE(va_on) &&
+            as.integer(isolate(ynow_auth_heavy_tick()) %||% 0L)[1] < 1L) {
+        return(invisible(NULL))
+      }
       if (nzchar(uid)) {
         loaded <- .ynow_settings_load(uid)
         # Apply locale/market only on uid change (login / view-as switch), not every tick.
@@ -1627,10 +1695,15 @@ server <- function(input, output, session) {
   ynow_maint_display_tick <- reactiveVal(0L)
 
   observe({
-    tryCatch(ynow_auth$is_logged_in(), error = function(e) FALSE)
+    logged <- tryCatch(isTRUE(ynow_auth$is_logged_in()), error = function(e) FALSE)
     tryCatch(ynow_auth$user(), error = function(e) NULL)
     ynow_pts_view_as()
     ynow_pts_self_view_mode()
+    heavy <- ynow_auth_heavy_tick()
+    # Guest / view-mode: push immediately. Fresh sign-in waits for post-chrome tick.
+    if (isTRUE(logged) && as.integer(heavy %||% 0L)[1] < 1L) {
+      return(invisible(NULL))
+    }
     .ynow_push_access_locks()
     .ynow_push_maintenance()
   })
@@ -1942,7 +2015,7 @@ server <- function(input, output, session) {
     NULL
   }
 
-  .ynow_pts_user_bundle <- function(u) {
+  .ynow_pts_user_bundle <- function(u, include_ledger = FALSE) {
     uid <- as.character(u$id %||% "")[1]
     bals <- if (nzchar(uid) && exists("ynow_points_balances", mode = "function")) {
       tryCatch(ynow_points_balances(uid), error = function(e) list(fyn = NA_integer_, pyn = NA_integer_))
@@ -1955,13 +2028,16 @@ server <- function(input, output, session) {
       list(fyn = NA_integer_, pyn = NA_integer_)
     }
     pts_bal <- suppressWarnings(as.integer(bals$fyn %||% NA_integer_)[1])
-    # Full ledger for this user (every DB mutation).
-    pts_led <- if (nzchar(uid) && exists("ynow_points_ledger_all", mode = "function")) {
-      tryCatch(ynow_points_ledger_all(uid), error = function(e) NULL)
-    } else if (nzchar(uid) && exists("ynow_points_ledger_tail", mode = "function")) {
-      tryCatch(ynow_points_ledger_tail(uid, n = NULL), error = function(e) NULL)
-    } else {
-      NULL
+    # Header banner only needs balances. Full ledger is for the Points tab.
+    pts_led <- NULL
+    if (isTRUE(include_ledger) && nzchar(uid)) {
+      pts_led <- if (exists("ynow_points_ledger_all", mode = "function")) {
+        tryCatch(ynow_points_ledger_all(uid), error = function(e) NULL)
+      } else if (exists("ynow_points_ledger_tail", mode = "function")) {
+        tryCatch(ynow_points_ledger_tail(uid, n = NULL), error = function(e) NULL)
+      } else {
+        NULL
+      }
     }
     list(
       uid = uid,
@@ -2196,7 +2272,7 @@ server <- function(input, output, session) {
     } else {
       tryCatch(ynow_auth$user(), error = function(e) NULL)
     }
-    bund <- .ynow_pts_user_bundle(u)
+    bund <- .ynow_pts_user_bundle(u, include_ledger = TRUE)
     if (exists("ynow_points_panel_ui", mode = "function")) {
       ynow_points_panel_ui(
         u,
@@ -2221,7 +2297,7 @@ server <- function(input, output, session) {
         ref_id = character(), note = character(), stringsAsFactors = FALSE
       ))
     }
-    bund <- .ynow_pts_user_bundle(u)
+    bund <- .ynow_pts_user_bundle(u, include_ledger = TRUE)
     df <- bund$ledger
     if (!is.data.frame(df) || nrow(df) < 1L) {
       return(data.frame(
@@ -2320,10 +2396,15 @@ server <- function(input, output, session) {
     ynow_pts_panel_tick()
     ynow_pts_view_as()
     ynow_pts_sysadmin_on()
+    logged <- tryCatch(isTRUE(ynow_auth$is_logged_in()), error = function(e) FALSE)
     tryCatch(ynow_auth$user(), error = function(e) NULL)
     tryCatch(ui_locale(), error = function(e) NULL)
     tryCatch(input$ynow_lite_mode, error = function(e) NULL)
     tryCatch(lite_mode(), error = function(e) NULL)
+    heavy <- ynow_auth_heavy_tick()
+    if (isTRUE(logged) && as.integer(heavy %||% 0L)[1] < 1L) {
+      return(invisible(NULL))
+    }
     .ynow_pts_push_banner()
     tryCatch(.ynow_pdf_quota_push(), error = function(e) NULL)
   })
