@@ -89,7 +89,7 @@ for (d in out_dirs) {
 
 stopifnot(identical(
   sort(tabs),
-  sort(c("lab_notes", "decision_checklist", "price_alerts", "asset_transmission"))
+  sort(c("lab_notes", "decision_checklist", "mos_assumptions", "price_alerts", "asset_transmission"))
 ))
 stopifnot(grepl('data-value="price_alerts"', lite_css, fixed = TRUE))
 cat("wrote fixtures for Full vs Lite guest-lock compare\n")

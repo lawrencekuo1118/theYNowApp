@@ -88,7 +88,7 @@ ynow_sidebar_guest_lock_tabs <- function() {
     )
     if (length(tabs)) return(tabs)
   }
-  c("lab_notes", "decision_checklist", "price_alerts", "asset_transmission")
+  c("lab_notes", "decision_checklist", "mos_assumptions", "price_alerts", "asset_transmission")
 }
 
 #' Full-only model / advance sidebar tabs (unlocked on Full, omitted in Lite).

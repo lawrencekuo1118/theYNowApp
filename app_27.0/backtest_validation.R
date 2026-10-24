@@ -1170,8 +1170,15 @@ summarize_hist_param_fallbacks <- function(valuation_df, locale = "zh-TW") {
 
 #' Default HFV scenario threshold heuristics (relative / MOS bands).
 #'
-#' Documented in UI help; not user-adjustable (no existing HFV threshold inputs).
+#' Investor-tunable via MOS Assumptions tab (percent UI → decimals here).
+#' When APP_DEFAULTS / session overrides exist, prefer [mos_assumptions_hfv_thr].
 hfv_scenario_threshold_defaults <- function() {
+  if (exists("mos_assumptions_hfv_thr", mode = "function")) {
+    tryCatch(
+      return(mos_assumptions_hfv_thr(input = NULL)),
+      error = function(e) NULL
+    )
+  }
   list(
     momentum_flat_band = 0.02,  # |Δ|/prev ≤ 2% → flat
     price_strong_up = 0.05,     # Price≫ momentum for D: ≥ +5%
@@ -1324,9 +1331,14 @@ build_hfv_scenario_pairs <- function(valuation_df,
 #'
 #' Also returns most-frequent A–D code (ties → first in A…D) and the latest
 #' successive pair's scenario (last row by Date_next / row order).
-summarize_hfv_scenarios <- function(scenario_df) {
+summarize_hfv_scenarios <- function(scenario_df, thr = NULL) {
   codes <- .HFV_SCENARIO_CODES
   abcd <- c("A", "B", "C", "D")
+  thr_use <- if (is.null(thr)) {
+    hfv_scenario_threshold_defaults()
+  } else {
+    utils::modifyList(hfv_scenario_threshold_defaults(), as.list(thr))
+  }
   empty_counts <- setNames(as.integer(rep(0L, length(codes))), codes)
   empty <- list(
     n = 0L,
@@ -1337,7 +1349,7 @@ summarize_hfv_scenarios <- function(scenario_df) {
     latest = NA_character_,
     latest_date = as.Date(NA),
     latest_date_next = as.Date(NA),
-    thresholds = hfv_scenario_threshold_defaults(),
+    thresholds = thr_use,
     pairs = scenario_df
   )
   if (is.null(scenario_df) || !is.data.frame(scenario_df) || nrow(scenario_df) < 1) {
@@ -1391,7 +1403,7 @@ summarize_hfv_scenarios <- function(scenario_df) {
     latest = latest,
     latest_date = latest_date,
     latest_date_next = latest_date_next,
-    thresholds = hfv_scenario_threshold_defaults(),
+    thresholds = thr_use,
     pairs = scenario_df
   )
 }
@@ -1402,11 +1414,18 @@ summarize_hfv_scenarios <- function(scenario_df) {
 #' @param as_of Only count pairs with Date_next <= as_of when oos_mode uses realized filter
 #' @param oos_mode "realized" (default) = Date_next <= as_of;
 #'   "insample" = no Date_next filter; "expanding" = also report expanding-window hit rate
+#' @param thr Optional HFV scenario thresholds (from MOS Assumptions); defaults apply when NULL
 summarize_fv_market_validation <- function(valuation_df, from = NULL, to = NULL,
                                            as_of = Sys.Date(),
                                            oos_mode = c("realized", "insample", "expanding"),
-                                           locale = "zh-TW") {
+                                           locale = "zh-TW",
+                                           thr = NULL) {
   oos_mode <- match.arg(oos_mode)
+  thr_use <- if (is.null(thr)) {
+    hfv_scenario_threshold_defaults()
+  } else {
+    utils::modifyList(hfv_scenario_threshold_defaults(), as.list(thr))
+  }
   pairs <- build_fv_convergence_pairs(valuation_df)
   .empty_outlook <- list(
     mos_now = NA_real_, bucket = NA_character_, n = 0L,
@@ -1501,7 +1520,7 @@ summarize_fv_market_validation <- function(valuation_df, from = NULL, to = NULL,
   }
   pp <- pairs[keep, , drop = FALSE]
   n <- nrow(pp)
-  scenario_all <- build_hfv_scenario_pairs(valuation_df)
+  scenario_all <- build_hfv_scenario_pairs(valuation_df, thr = thr_use)
   sc_keep <- rep(TRUE, nrow(scenario_all))
   if (nrow(scenario_all) > 0L) {
     if (!is.null(from)) sc_keep <- sc_keep & scenario_all$Date >= from
@@ -1510,7 +1529,7 @@ summarize_fv_market_validation <- function(valuation_df, from = NULL, to = NULL,
       sc_keep <- sc_keep & !is.na(scenario_all$Date_next) & scenario_all$Date_next <= as_of
     }
   }
-  scenarios <- summarize_hfv_scenarios(scenario_all[sc_keep, , drop = FALSE])
+  scenarios <- summarize_hfv_scenarios(scenario_all[sc_keep, , drop = FALSE], thr = thr_use)
   if (n < 1) {
     empty$pairs <- pp
     empty$scenarios <- scenarios

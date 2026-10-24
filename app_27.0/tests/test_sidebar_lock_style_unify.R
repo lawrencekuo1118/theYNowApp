@@ -31,7 +31,7 @@ guest_tabs <- ynow_sidebar_guest_lock_tabs()
 check("guest lock set is Lab / Checklist / Alerts / ATX", {
   identical(
     sort(guest_tabs),
-    sort(c("lab_notes", "decision_checklist", "price_alerts", "asset_transmission"))
+    sort(c("lab_notes", "decision_checklist", "mos_assumptions", "price_alerts", "asset_transmission"))
   )
 })
 

@@ -93,8 +93,9 @@ ynow_sidebar_pinnable_tabs <- function() {
     "company_advance", "sensitivity", "smart_analysis", "get_started",
     "nav_calculator", "pb_calculator", "dcf_calculator", "ddm_calculator",
     "ri_calculator", "rel_mult_ev", "rel_multiples_calculator", "rel_mult_rev",
-    "sotp_calculator", "hfv", "lab_notes", "decision_checklist", "price_alerts",
-    "about", "settings", "snapshot", "feedback", "account_admin", "account_points"
+    "sotp_calculator", "hfv", "lab_notes", "decision_checklist", "mos_assumptions",
+    "price_alerts", "about", "settings", "snapshot", "feedback", "account_admin",
+    "account_points"
   )
 }
 
@@ -123,6 +124,7 @@ ynow_sidebar_pin_meta <- function(tab) {
     hfv = list(locale = "menu_hfv", icon = "balance-scale", short_en = "HFV", short_zh = "HFV"),
     lab_notes = list(locale = "menu_backtest", icon = "flask", short_en = "Lab", short_zh = "回測"),
     decision_checklist = list(locale = "menu_decision_checklist", icon = "clipboard-check", short_en = "Check", short_zh = "檢核"),
+    mos_assumptions = list(locale = "menu_mos_assumptions", icon = "shield-alt", short_en = "MOS", short_zh = "MOS"),
     price_alerts = list(locale = "menu_price_alert", icon = "bell", short_en = "Alerts", short_zh = "通知"),
     about = list(locale = "menu_about", icon = "info-circle", short_en = "About", short_zh = "關於"),
     settings = list(locale = "menu_settings", icon = "cog", short_en = "Settings", short_zh = "設定"),
@@ -153,7 +155,7 @@ ynow_sidebar_default_order <- function() {
     "home", "macro_market", "asset_transmission", "bluechip", "dashboard",
     "company_advance", "sensitivity", "smart_analysis", "get_started",
     "cat_asset", "cat_income", "cat_relative", "cat_meta",
-    "hfv", "lab_notes", "decision_checklist", "price_alerts", "about",
+    "hfv", "lab_notes", "decision_checklist", "mos_assumptions", "price_alerts", "about",
     "settings", "account_admin"
   )
 }

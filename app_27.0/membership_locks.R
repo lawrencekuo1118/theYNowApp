@@ -75,14 +75,18 @@ ynow_membership_lock_catalog <- function() {
   .sl <- function(key) ynow_lock_shared_label_pair(key)
   lab_notes <- .sl("lab_notes")
   decision_checklist <- .sl("decision_checklist")
+  mos_assumptions <- .sl("mos_assumptions")
   price_alerts <- .sl("price_alerts")
   checklist_body <- .sl("checklist_body")
+  mos_assumptions_body <- .sl("mos_assumptions_body")
   rows <- list(
     # --- Sidebar tabs (Full guest lock glyph / hide) ---
     # Labels from lock_catalog_shared (also used by access tab:*)
     c("lab_notes", "sidebar_tab", "A", lab_notes$en, lab_notes$zh,
       "guest_menu_lock", "Full guest lock; Lite omitted"),
     c("decision_checklist", "sidebar_tab", "A", decision_checklist$en, decision_checklist$zh,
+      "guest_menu_lock", "Full guest lock; Lite omitted"),
+    c("mos_assumptions", "sidebar_tab", "A", mos_assumptions$en, mos_assumptions$zh,
       "guest_menu_lock", "Full guest lock; Lite omitted"),
     c("price_alerts", "sidebar_tab", "A", price_alerts$en, price_alerts$zh,
       "guest_menu_lock", "Full guest lock; Lite omitted (prefs)"),
@@ -140,6 +144,8 @@ ynow_membership_lock_catalog <- function() {
       "parent_gate", "Hidden behind lab member gate"),
     c("ynow_chk_body", "surface", "A", checklist_body$en, checklist_body$zh,
       "parent_gate", "Hidden behind checklist member gate"),
+    c("ynow_mos_assump_body", "surface", "A", mos_assumptions_body$en, mos_assumptions_body$zh,
+      "parent_gate", "Hidden behind checklist member gate (shared)"),
     c("ynow_pa_body", "surface", "A", "Value Alerts tables", "到值通知表格",
       "parent_gate", "Hidden behind alerts member gate"),
     c("ynow_admin_panel", "surface", "A", "Account overview panel", "帳號總覽面板",
