@@ -135,21 +135,38 @@ check("Top-of-screen admin mode reminder on enter/switch", {
     grepl("ynow-admin-mode-reminder", ui, fixed = TRUE) &&
     grepl("ynowShowAdminModeReminder", ui, fixed = TRUE) &&
     grepl("ynowHideAdminModeReminder", ui, fixed = TRUE) &&
+    grepl('id = "ynow_admin_mode_reminder_exit"', ui, fixed = TRUE) &&
     grepl("ynow_pts_sysadmin_self_exit", ui, fixed = TRUE) &&
+    grepl("ynow_pts_sysadmin_viewas_exit", ui, fixed = TRUE) &&
     grepl("ynow-sysadmin-control-panel__exit-self", ui, fixed = TRUE) &&
     grepl("ynowSelfViewMode", ui, fixed = TRUE) &&
-    # Reminder is a sibling of the page — not nested in the sysadmin box.
-    grepl("ynow_admin_mode_reminder", ui, fixed = TRUE) &&
+    # Persistent while mode active — no auto-fade hide timer on the reminder.
+    !grepl("ynowHideAdminModeReminder(false)", ui, fixed = TRUE) &&
+    !grepl("ynow-admin-mode-reminder__dismiss", ui, fixed = TRUE)
+})
+
+check("Reminder Exit exits mode; portal box stays usable under self-view", {
+  grepl("ynow_pts_sysadmin_self_exit", ui, fixed = TRUE) &&
+    grepl("ynow_pts_sysadmin_viewas_exit", ui, fixed = TRUE) &&
+    grepl("ynow-admin-mode-reminder__exit", ui, fixed = TRUE) &&
     !grepl("body.ynow-self-view .ynow-admin-mode-reminder", ui, fixed = TRUE) &&
-    !grepl("body.ynow-self-view .ynow-pts-sysadmin-box", ui, fixed = TRUE)
+    !grepl("body.ynow-self-view .ynow-pts-sysadmin-box", ui, fixed = TRUE) &&
+    grepl("body.ynow-self-view #ynow_pts_sysadmin_panel", ui, fixed = TRUE)
 })
 
 check("Self-view / view-as push reminder copy from server", {
   grepl("reminder_title", srv, fixed = TRUE) &&
     grepl("reminder_body", srv, fixed = TRUE) &&
-    grepl("pts_sysadmin_mode_reminder_dismiss", srv, fixed = TRUE) &&
     grepl("pts_sysadmin_mode_reminder_viewas_title", srv, fixed = TRUE) &&
     grepl("pts_sysadmin_self_chrome_signed_in", srv, fixed = TRUE)
+})
+
+check("View-as silver + omniscient warning-red title chrome", {
+  grepl("body.ynow-view-as .main-header .logo", ui, fixed = TRUE) &&
+    grepl("--ynow-silver: #C0C0C0", ui, fixed = TRUE) &&
+    grepl("var(--ynow-silver, #C0C0C0)", ui, fixed = TRUE) &&
+    grepl("body.ynow-omniscient .main-header .logo", ui, fixed = TRUE) &&
+    grepl("#DC3545", ui, fixed = TRUE)
 })
 
 check("Omniscient title uses warning red #DC3545", {
@@ -300,8 +317,8 @@ check("Locale en-US + zh-TW self-view keys (no 一鍵)", {
 
 check("applyUiLocale wires control-panel self-view labels", {
   grepl("ynow_pts_sysadmin_self_guest_label", ui, fixed = TRUE) &&
-    grepl("ynow_admin_mode_reminder_dismiss_label", ui, fixed = TRUE) &&
-    grepl("pts_sysadmin_mode_reminder_dismiss", ui, fixed = TRUE) &&
+    grepl("ynow_admin_mode_reminder_exit_label", ui, fixed = TRUE) &&
+    grepl("pts_sysadmin_self_exit", ui, fixed = TRUE) &&
     grepl("pts_sysadmin_self_omniscient", ui, fixed = TRUE) &&
     grepl("ynow_pts_sysadmin_self_exit_label", ui, fixed = TRUE) &&
     grepl("pts_sysadmin_control_panel_aria", ui, fixed = TRUE) &&

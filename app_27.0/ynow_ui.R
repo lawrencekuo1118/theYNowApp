@@ -4260,8 +4260,8 @@ ui <- dashboardPage(
         )
       )
     ),
-    # Top-of-screen reminder on every self-view / view-as mode enter or switch.
-    # Dismissible + short auto-fade; does not nest inside .ynow-pts-sysadmin-box.
+    # Persistent top reminder while a view mode is active (Exit on this strip).
+    # Sibling of page chrome — not inside .ynow-pts-sysadmin-box (keeps portal usable).
     tags$div(
       id = "ynow_admin_mode_reminder",
       class = "ynow-admin-mode-reminder",
@@ -4282,12 +4282,12 @@ ui <- dashboardPage(
           ""
         ),
         tags$button(
-          id = "ynow_admin_mode_reminder_dismiss",
+          id = "ynow_admin_mode_reminder_exit",
           type = "button",
-          class = "btn btn-default btn-sm ynow-admin-mode-reminder__dismiss",
+          class = "btn btn-default btn-sm ynow-admin-mode-reminder__exit",
           tags$span(
-            id = "ynow_admin_mode_reminder_dismiss_label",
-            "Dismiss"
+            id = "ynow_admin_mode_reminder_exit_label",
+            "Exit self view"
           )
         )
       )
@@ -4897,8 +4897,9 @@ ui <- dashboardPage(
           gap: 10px;
           flex-wrap: wrap;
         }
+        /* Legacy view-as strip kept in DOM for exit wiring; unified reminder is primary. */
         body.ynow-view-as .ynow-viewas-chrome {
-          display: flex;
+          display: none !important;
         }
         .ynow-viewas-chrome code {
           color: #e8e8e8;
@@ -4911,8 +4912,8 @@ ui <- dashboardPage(
           padding: 4px 10px;
           font-size: 12px;
         }
-        /* Top reminder for guest / signed-in / omniscient / view-as enter+switch.
-           Fixed outside the sysadmin box so self-view CSS cannot hide it. */
+        /* Persistent top reminder while guest / signed-in / omniscient / view-as is active.
+           Fixed outside the sysadmin box so self-view CSS cannot hide it; Exit on this strip. */
         .ynow-admin-mode-reminder {
           display: none;
           position: fixed;
@@ -4929,9 +4930,6 @@ ui <- dashboardPage(
         }
         .ynow-admin-mode-reminder.is-visible .ynow-admin-mode-reminder__inner {
           animation: ynow-admin-mode-reminder-in 0.28s ease-out;
-        }
-        .ynow-admin-mode-reminder.is-fading .ynow-admin-mode-reminder__inner {
-          animation: ynow-admin-mode-reminder-out 0.45s ease-in forwards;
         }
         .ynow-admin-mode-reminder__inner {
           display: flex;
@@ -4957,7 +4955,7 @@ ui <- dashboardPage(
           flex: 1 1 12rem;
           min-width: 0;
         }
-        .ynow-admin-mode-reminder__dismiss {
+        .ynow-admin-mode-reminder__exit {
           margin: 0;
           padding: 4px 10px;
           font-size: 12px;
@@ -4971,17 +4969,9 @@ ui <- dashboardPage(
         .ynow-admin-mode-reminder[data-mode="view_as"] .ynow-admin-mode-reminder__inner {
           border-color: rgba(192, 192, 192, 0.75);
         }
-        /* When sticky view-as chrome is up, nudge the toast below it. */
-        body.ynow-view-as .ynow-admin-mode-reminder {
-          top: 56px;
-        }
         @keyframes ynow-admin-mode-reminder-in {
           from { opacity: 0; transform: translateY(-8px); }
           to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes ynow-admin-mode-reminder-out {
-          from { opacity: 1; }
-          to { opacity: 0; }
         }
         /* Site-wide cookie notice: bottom bar, not a full-screen lock */
         .ynow-cookie-banner {
@@ -12799,9 +12789,16 @@ ui <- dashboardPage(
             if (selfExitLab && s.pts_sysadmin_self_exit) selfExitLab.textContent = s.pts_sysadmin_self_exit;
             var selfHelp = document.getElementById('ynow_pts_sysadmin_self_help');
             if (selfHelp && s.pts_sysadmin_self_help) selfHelp.textContent = s.pts_sysadmin_self_help;
-            var modeRemDismiss = document.getElementById('ynow_admin_mode_reminder_dismiss_label');
-            if (modeRemDismiss && s.pts_sysadmin_mode_reminder_dismiss) {
-              modeRemDismiss.textContent = s.pts_sysadmin_mode_reminder_dismiss;
+            var modeRemExit = document.getElementById('ynow_admin_mode_reminder_exit_label');
+            if (modeRemExit) {
+              var remMode = (document.getElementById('ynow_admin_mode_reminder') || {})
+                .getAttribute && document.getElementById('ynow_admin_mode_reminder')
+                .getAttribute('data-mode');
+              if (remMode === 'view_as' && s.pts_sysadmin_viewas_exit) {
+                modeRemExit.textContent = s.pts_sysadmin_viewas_exit;
+              } else if (s.pts_sysadmin_self_exit) {
+                modeRemExit.textContent = s.pts_sysadmin_self_exit;
+              }
             }
             var modeRemEl = document.getElementById('ynow_admin_mode_reminder');
             if (modeRemEl && s.pts_sysadmin_mode_reminder_aria) {
@@ -13676,28 +13673,12 @@ ui <- dashboardPage(
                 window.ynowSyncGuestSidebarLocked();
               }
             };
-            window.__ynowAdminModeReminderTimer = null;
-            window.ynowHideAdminModeReminder = function (immediate) {
+            window.ynowHideAdminModeReminder = function () {
               var el = document.getElementById('ynow_admin_mode_reminder');
               if (!el) return;
-              if (window.__ynowAdminModeReminderTimer) {
-                clearTimeout(window.__ynowAdminModeReminderTimer);
-                window.__ynowAdminModeReminderTimer = null;
-              }
-              if (immediate) {
-                el.classList.remove('is-visible', 'is-fading');
-                el.setAttribute('hidden', 'hidden');
-                el.removeAttribute('data-mode');
-                return;
-              }
-              if (!el.classList.contains('is-visible')) return;
-              el.classList.add('is-fading');
-              window.__ynowAdminModeReminderTimer = setTimeout(function () {
-                el.classList.remove('is-visible', 'is-fading');
-                el.setAttribute('hidden', 'hidden');
-                el.removeAttribute('data-mode');
-                window.__ynowAdminModeReminderTimer = null;
-              }, 450);
+              el.classList.remove('is-visible');
+              el.setAttribute('hidden', 'hidden');
+              el.removeAttribute('data-mode');
             };
             window.ynowShowAdminModeReminder = function (opts) {
               opts = opts || {};
@@ -13708,31 +13689,37 @@ ui <- dashboardPage(
               if (!title && !body) return;
               var titleEl = document.getElementById('ynow_admin_mode_reminder_title');
               var bodyEl = document.getElementById('ynow_admin_mode_reminder_body');
-              var dismissLab = document.getElementById('ynow_admin_mode_reminder_dismiss_label');
+              var exitLab = document.getElementById('ynow_admin_mode_reminder_exit_label');
               if (titleEl) titleEl.textContent = title;
               if (bodyEl) bodyEl.textContent = body;
-              if (dismissLab && opts.dismiss) dismissLab.textContent = String(opts.dismiss);
+              if (exitLab && opts.exit_label) exitLab.textContent = String(opts.exit_label);
               if (opts.aria) el.setAttribute('aria-label', String(opts.aria));
               el.setAttribute('data-mode', String(opts.mode || ''));
               el.removeAttribute('hidden');
-              el.classList.remove('is-fading');
               el.classList.add('is-visible');
-              if (window.__ynowAdminModeReminderTimer) {
-                clearTimeout(window.__ynowAdminModeReminderTimer);
-                window.__ynowAdminModeReminderTimer = null;
-              }
-              /* Auto-fade after ~6s; dismissible earlier. Does not block the page. */
-              window.__ynowAdminModeReminderTimer = setTimeout(function () {
-                window.ynowHideAdminModeReminder(false);
-              }, 6000);
             };
-            (function bindAdminModeReminderDismiss() {
-              var btn = document.getElementById('ynow_admin_mode_reminder_dismiss');
+            (function bindAdminModeReminderExit() {
+              var btn = document.getElementById('ynow_admin_mode_reminder_exit');
               if (!btn || btn.__ynowBound) return;
               btn.__ynowBound = true;
               btn.addEventListener('click', function (ev) {
                 if (ev && ev.preventDefault) ev.preventDefault();
-                window.ynowHideAdminModeReminder(true);
+                var el = document.getElementById('ynow_admin_mode_reminder');
+                var mode = el ? String(el.getAttribute('data-mode') || '') : '';
+                if (!(window.Shiny && Shiny.setInputValue)) return;
+                if (mode === 'view_as') {
+                  Shiny.setInputValue(
+                    'ynow_pts_sysadmin_viewas_exit',
+                    (window.__ynowViewAsExitClicks = (window.__ynowViewAsExitClicks || 0) + 1),
+                    { priority: 'event' }
+                  );
+                } else {
+                  Shiny.setInputValue(
+                    'ynow_pts_sysadmin_self_exit',
+                    (window.__ynowSelfExitClicks = (window.__ynowSelfExitClicks || 0) + 1),
+                    { priority: 'event' }
+                  );
+                }
               });
             })();
             addHandler('ynowViewAsMode', function (payload) {
@@ -13757,7 +13744,7 @@ ui <- dashboardPage(
                     mode: 'view_as',
                     title: vaTitle,
                     body: vaBody,
-                    dismiss: payload.reminder_dismiss || '',
+                    exit_label: payload.exit_label || payload.reminder_dismiss || '',
                     aria: payload.reminder_aria || ''
                   });
                 }
@@ -13772,7 +13759,7 @@ ui <- dashboardPage(
                   window.ynowApplySessionLikeAuthChrome(true, null);
                 }
                 if (typeof window.ynowHideAdminModeReminder === 'function') {
-                  window.ynowHideAdminModeReminder(true);
+                  window.ynowHideAdminModeReminder();
                 }
               }
               var pidEl = document.getElementById('ynow_viewas_chrome_pid');
@@ -13801,7 +13788,7 @@ ui <- dashboardPage(
                   'ynow-self-view-guest', 'ynow-self-view-signed-in');
                 window.__ynowSelfViewMode = '';
                 if (typeof window.ynowHideAdminModeReminder === 'function') {
-                  window.ynowHideAdminModeReminder(true);
+                  window.ynowHideAdminModeReminder();
                 }
                 if (typeof window.ynowSyncSysAdminFootVisibility === 'function') {
                   var realOn = !!window.__ynowRealAuthed;
@@ -13860,7 +13847,7 @@ ui <- dashboardPage(
                     mode: mode,
                     title: payload.reminder_title || '',
                     body: payload.reminder_body || '',
-                    dismiss: payload.reminder_dismiss || '',
+                    exit_label: payload.exit_label || '',
                     aria: payload.reminder_aria || ''
                   });
                 }
@@ -13868,7 +13855,7 @@ ui <- dashboardPage(
                 window.__ynowSelfViewSessionLike = false;
                 if (typeof window.ynowHideAdminModeReminder === 'function' &&
                     !window.__ynowViewAsSessionLike) {
-                  window.ynowHideAdminModeReminder(true);
+                  window.ynowHideAdminModeReminder();
                 }
                 /* Restore real auth chrome unless view-as is still faking it. */
                 if (window.__ynowViewAsSessionLike) {
