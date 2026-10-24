@@ -4665,6 +4665,7 @@ server <- function(input, output, session) {
         global_prediction_server(
           "global_prediction",
           ui_locale_rv = ui_locale,
+          market_mode_rv = market_mode,
           tab_active_rv = atx_tab_active,
           subtab_active_rv = reactive(
             identical(as.character(input$atx_subtabs %||% ""), "global_prediction")

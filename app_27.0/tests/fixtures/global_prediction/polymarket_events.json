@@ -15,7 +15,8 @@
           "closed": false,
           "updatedAt": "2026-10-24T13:42:39.546261Z",
           "lastTradePrice": 0.968,
-          "bestBid": 0.961
+          "bestBid": 0.961,
+          "outcomes": "[\"Yes\", \"No\"]"
         }
       ]
     }

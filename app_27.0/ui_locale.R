@@ -1557,18 +1557,24 @@ locale_for_market <- function(mode = get_market_mode()) {
     atx_tab_map = "Transmission Map",
     atx_tab_global_prediction = "Global Prediction",
     gp_lead = paste0(
-      "Wisdom of crowds: when many independent participants price an event, the market aggregate ",
-      "can be more informative than any single desk view. Kalshi and Polymarket quotes below are ",
-      "crowd-implied probabilities (skin in the game), not App Fair Value and not a buy signal."
+      "Wisdom of crowds: diverse, independent, decentralized guesses can aggregate into a sharper estimate ",
+      "(classic Galton-style mean of many imperfect views). Kalshi and Polymarket below are two incentivized crowds ",
+      "with skin in the game — crowd-implied probabilities, not App Fair Value and not a buy signal."
     ),
     gp_context = paste0(
       "App Macro / ATX themes and model forecasts are desk or model views. ",
-      "These panels are crowd-priced. Read them side by side for contrast; do not merge them into one signal."
+      "These panels are crowd-priced by traders who chose to put capital at risk. ",
+      "Read Kalshi and Polymarket side by side for contrast; do not merge them into one population-wide signal."
     ),
     gp_caution = paste0(
-      "Caution: prediction markets can be thin, biased, or mismatched on contract wording. ",
-      "Large gaps often mean different designs or sparse books, not a single truth. ",
+      "Caution: these books are a self-selected, often more risk-tolerant slice — not all investors. ",
+      "Referenceability depends on who participates, their risk appetite, and liquidity; thin books weaken the signal. ",
+      "Herding on one headline or mismatched contract wording can also distort prices. ",
       "Empty panels mean the public feed was blocked or had no matching open market. Not investment advice."
+    ),
+    gp_participation_note = paste0(
+      "Even “crowds agree” is conditional on who showed up to trade (access, liquidity, risk appetite) — ",
+      "not a survey of the whole investing public."
     ),
     gp_refresh = "Refresh quotes",
     gp_loading = "Loading crowd quotes…",
@@ -1583,12 +1589,22 @@ locale_for_market <- function(mode = get_market_mode()) {
     gp_theme_recession = "Recession / labor",
     gp_theme_equities_index = "Equities / index",
     gp_theme_treasury_yields = "Treasury yields",
+    gp_theme_tw_equity = "Taiwan equities / TAIEX",
+    gp_theme_tw_macro = "Taiwan macro / elections",
+    gp_theme_tw_housing = "Taiwan housing",
+    gp_venue_feex = "未來事件交易所",
+    gp_feex_unavailable = paste0(
+      "未來事件交易所 (xFuture / NCCU) has no live public market feed. ",
+      "Historical academic archives require application; probabilities are left blank — never invented."
+    ),
+    gp_mode_us = "US equity mode · Kalshi + Polymarket priority",
+    gp_mode_tw = "Taiwan equity mode · 未來事件交易所 priority (honest empty if offline) + TW-relevant overlap",
     gp_crowd_agree = "Crowds agree",
     gp_crowd_diverge = "Crowds diverge",
     gp_crowd_mixed = "Crowds mixed",
     gp_crowd_insufficient = "One-sided / insufficient",
     gp_crowd_gap = "Implied gap:",
-    gp_crowd_simple_mean = "Simple mean of available implied probs (not fused truth):",
+    gp_crowd_simple_mean = "Simple mean of both venues’ implied probs (Galton-style aggregate; not fused truth):",
     atx_window = "Correlation window",
     atx_win_20 = "20 sessions",
     atx_win_60 = "60 sessions",
@@ -6221,17 +6237,22 @@ locale_for_market <- function(mode = get_market_mode()) {
     atx_tab_map = "傳導圖",
     atx_tab_global_prediction = "全球預測",
     gp_lead = paste0(
-      "群眾智慧：在參與者多樣、獨立且分散時，眾人對事件定價的加總，往往比單一專家觀點更有資訊含量。",
-      "下方 Kalshi 與 Polymarket 報價是市場群眾隱含機率（有真實資金曝險），不是 App Fair Value，也不是買進訊號。"
+      "群眾智慧：在意見多樣、獨立且分散時，把眾多不完美估計加總（經典如 Galton 式平均），往往比「非專家無用」的直覺更準。",
+      "下方 Kalshi 與 Polymarket 是兩群有真實資金曝險的誘因群眾——顯示的是群眾隱含機率，不是 App Fair Value，也不是買進訊號。"
     ),
     gp_context = paste0(
-      "App 的總體／ATX 主題與模型預測屬桌邊或模型觀點；此處面板屬群眾定價。",
-      "請並排對照，勿合成單一訊號。"
+      "App 的總體／ATX 主題與模型預測屬桌邊或模型觀點；此處面板由「選擇投入資金」的交易者群眾定價。",
+      "請並排對照 Kalshi 與 Polymarket，勿合成全體投資人的單一訊號。"
     ),
     gp_caution = paste0(
-      "風險警語：預測市場可能流動性不足、帶偏誤，或合約定義與主題不一致。",
-      "價差大時，多半是合約設計或簿冊深度不同，而非唯一正解。",
+      "風險警語：這些簿冊是自我選擇、往往風險偏好較高的參與者，並非全體投資人。",
+      "可參考性取決於誰進場、其風險偏好與流動性；簿冊越薄，訊號越弱。",
+      "跟隨單一新聞敘事（羊群）或合約定義與主題不一致，也可能扭曲價格。",
       "空白表示公開資料被擋或沒有對應未結市場。本頁非投資建議。"
+    ),
+    gp_participation_note = paste0(
+      "即使「兩市群眾一致」，仍取決於當時進場交易的人（門檻、流動性、風險偏好），",
+      "不是全體投資人的民意調查。"
     ),
     gp_refresh = "更新報價",
     gp_loading = "正在載入群眾報價…",
@@ -6246,12 +6267,22 @@ locale_for_market <- function(mode = get_market_mode()) {
     gp_theme_recession = "衰退／勞動",
     gp_theme_equities_index = "股市／指數",
     gp_theme_treasury_yields = "公債殖利率",
+    gp_theme_tw_equity = "台股／TAIEX",
+    gp_theme_tw_macro = "台灣總經／選舉",
+    gp_theme_tw_housing = "台灣房市",
+    gp_venue_feex = "未來事件交易所",
+    gp_feex_unavailable = paste0(
+      "未來事件交易所（xFuture／政大預測市場研究）目前沒有可用的公開即時行情。",
+      "歷史學術資料庫需申請；機率留白，絕不捏造。"
+    ),
+    gp_mode_us = "美股模式 · 優先 Kalshi + Polymarket",
+    gp_mode_tw = "台股模式 · 優先未來事件交易所（離線則誠實空白）＋台相關重疊合約",
     gp_crowd_agree = "兩市群眾一致",
     gp_crowd_diverge = "兩市群眾分歧",
     gp_crowd_mixed = "兩市群眾分歧有限",
     gp_crowd_insufficient = "單邊／資料不足",
     gp_crowd_gap = "隱含機率差距：",
-    gp_crowd_simple_mean = "可得隱含機率簡單平均（非融合正解）：",
+    gp_crowd_simple_mean = "兩市隱含機率簡單平均（Galton 式加總；非融合正解）：",
     atx_window = "滾動相關視窗",
     atx_win_20 = "20 個交易日",
     atx_win_60 = "60 個交易日",
