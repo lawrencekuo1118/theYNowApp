@@ -1,6 +1,6 @@
 # Global Prediction (全球預測)
 
-Status: **v27.22 / bundle 12733795 live** ([#492](https://github.com/lawrencekuo1118/theYNowApp/pull/492) + baseline [#493](https://github.com/lawrencekuo1118/theYNowApp/pull/493) + [Release v27.22](https://github.com/lawrencekuo1118/theYNowApp/releases/tag/v27.22)). Tip held by points-gate. Follow-up [#494](https://github.com/lawrencekuo1118/theYNowApp/pull/494): selection-bias + TW/US + FEEX + **macro→stock sort** + **時效性重掃規則**.
+Status: **v27.24 / bundle 12733971 live** ([#494](https://github.com/lawrencekuo1118/theYNowApp/pull/494) + baseline [#498](https://github.com/lawrencekuo1118/theYNowApp/pull/498) + [Release v27.24](https://github.com/lawrencekuo1118/theYNowApp/releases/tag/v27.24)). Tip free.
 
 ## Theme sort key（總體 → 個體）
 
@@ -38,41 +38,30 @@ Prediction themes are **time-bound** (next FOMC, CPI print, election windows). C
 
 ### Layers (fast cache only)
 
-| Layer | TTL | What | Key prefix |
+| Layer | TTL | What | Key helper |
 |---|---|---|---|
-| **Quote** | **3 min** (`.GP_QUOTE_TTL_SEC`) | Live Yes probs | `gp:kalshi:…` / `gp:poly:…` |
+| **Quote** | **3 min** (`.GP_QUOTE_TTL_SEC`) | Live Yes probs | `.gp_cache_key("kalshi"\|"poly"\|"feex", …)` |
 | **Discovery** | **15 min** (`.GP_DISCOVERY_TTL_SEC`) | Theme→contract series/query scan + reclassify | same keys, stamped `layer` |
 | App fast tier ceiling | ≤15 min | Shared `.ynow_fast_cache` (never slow/24h) | — |
 
-Entries are **stamped** (`cached_at` + `layer` + `value`). Legacy unstamped payloads are treated as **miss** (force refresh).
+Keys are **cachem-safe** (`^[a-z0-9]+$`, always prefixed `gp…`). Entries are **stamped** (`cached_at` + `layer` + `value`). Legacy unstamped payloads are treated as **miss** (force refresh). Hard triggers call `gp_invalidate_crawl_cache()` which drops every `gp*` key.
 
 ### Triggers (rescan)
 
 | Trigger | Kind | Behavior |
 |---|---|---|
-| `tab_open` | **Hard** | ATX → Global Prediction becomes visible: `gp_invalidate_crawl_cache` → discovery rescan |
+| `tab_open` | **Hard** | ATX → Global Prediction becomes visible: invalidate → discovery rescan |
 | `tab_focus` | **Hard** (rate-gated 30s) | `visibilitychange` / window `focus` while panel visible |
 | `mode_switch` | **Hard** | TW↔US market mode change → invalidate + rescan |
 | `manual_refresh` | **Hard** | Refresh button |
 | `periodic_visible` | **Soft** | Every **3 min** while panel visible; quote TTL; min gap **30s** |
 
-Hard triggers always invalidate `gp:*` keys before fetch, then rewrite fresh stamped entries. Soft periodic uses quote TTL and does **not** steal tip / block other work.
-
-API surface: `gp_crawl_policy()`, `gp_invalidate_crawl_cache()`, `gp_filter_live_quotes()`, `gp_reclassify_quotes()`, `gp_fetch_snapshot(..., trigger=, layer=)`.
-
 ### Rescan → update or reclassify
 
-1. **Drop** contracts with closed/settled/expired `raw_status` or past `expires_at` (Kalshi close / Poly endDate).
+1. **Drop** contracts with closed/settled/expired `raw_status` or past `expires_at`.
 2. **Dedupe** by `venue + market_id`.
-3. **Reclassify** live titles against registry `keywords`; promote into the best-fit `theme_id` / `breadth_tier` (macro → … → single-stock). Orphans with zero keyword hits keep the fetch theme.
-4. Re-bucket into the mode registry order for UI. Never invent Yes probs; fail closed / honest empty per venue (FEEX stays defunct until a public feed exists).
-
-### Rate limits & honesty
-
-- Min network gap: **30s** for `periodic_visible` and `tab_focus`.
-- `tab_open` / `mode_switch` / `manual_refresh` always proceed.
-- TW vs US still selects venue/theme priority; Fed/CPI **overlap is intentional**.
-- Fail-closed: empty or error → empty cards, no fabricated probabilities.
+3. **Reclassify** live titles against registry `keywords`; promote into best-fit `theme_id` / `breadth_tier`.
+4. Re-bucket into mode registry order. Never invent Yes probs; fail closed / honest empty (FEEX stays defunct until a public feed exists).
 
 ## 學習筆記
 
@@ -80,5 +69,5 @@ API surface: `gp_crawl_policy()`, `gp_invalidate_crawl_cache()`, `gp_filter_live
 
 ## Ship
 
-- Live: v27.22 / 12733795.
-- [#494](https://github.com/lawrencekuo1118/theYNowApp/pull/494) waits tip after points-gate (do not steal tip from `bc-993a737b…`).
+- Live: **v27.24 / 12733971** ([Release](https://github.com/lawrencekuo1118/theYNowApp/releases/tag/v27.24)).
+- Prior: v27.23 / 12733850 (#495 points gate); v27.22 / 12733795 (#492 GP initial).
