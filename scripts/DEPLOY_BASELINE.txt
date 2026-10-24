@@ -7,5 +7,5 @@ commit=f6c25a74c706db79d3a22b08123e61c1a906deb5
 short=f6c25a74
 message=chore: bump display version to v27.14
 captured_at=2026-10-24T10:03:00Z
-display_version=v27.14
+display_version=v27.15
 note=Canonical live line is app_27.0. Bundle 12733266: defer mint + durable last-ui until after ynow-authed flush; session_resume stays sync (#475).
