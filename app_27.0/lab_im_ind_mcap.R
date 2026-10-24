@@ -454,6 +454,31 @@ lab_ind_mcap_prepare_treemap_df <- function(snap_df, locale = "zh-TW") {
   out[ord, , drop = FALSE]
 }
 
+#' Per-cell treemap label sizes from |mcap-weighted upside|.
+#'
+#' Linear map of abs(wavg) onto [size_min, size_max], clipped at abs_max.
+#' Non-finite upside stays at size_min. Sign does not change size.
+lab_ind_mcap_treemap_label_font_sizes <- function(
+  wavg, abs_max = 20, size_min = 10, size_max = 18
+) {
+  w <- suppressWarnings(as.numeric(wavg))
+  am <- suppressWarnings(as.numeric(abs_max)[1])
+  if (!is.finite(am) || am <= 0) am <- 20
+  smin <- suppressWarnings(as.numeric(size_min)[1])
+  smax <- suppressWarnings(as.numeric(size_max)[1])
+  if (!is.finite(smin) || !is.finite(smax)) {
+    smin <- 10
+    smax <- 18
+  } else if (smax < smin) {
+    tmp <- smin
+    smin <- smax
+    smax <- tmp
+  }
+  t <- pmin(1, abs(w) / am)
+  sizes <- ifelse(is.finite(w), smin + t * (smax - smin), smin)
+  unname(as.numeric(sizes))
+}
+
 #' Plotly block treemap for industry mcap-weighted upside (all chains).
 #'
 #' Area = total market cap; color = mcap-weighted annualized valuation upside.
@@ -515,6 +540,7 @@ lab_ind_mcap_treemap_plotly <- function(snap_df,
   wavg <- suppressWarnings(as.numeric(df$wavg_cagr))
   cabsm <- suppressWarnings(as.numeric(color_abs_max)[1])
   if (!is.finite(cabsm) || cabsm <= 0) cabsm <- 20
+  sizes <- lab_ind_mcap_treemap_label_font_sizes(wavg, abs_max = cabsm)
   # Midpoint grey for missing upside; clip extremes for a readable scale.
   z <- ifelse(is.finite(wavg), pmax(-cabsm, pmin(cabsm, wavg)), 0)
 
@@ -570,6 +596,7 @@ lab_ind_mcap_treemap_plotly <- function(snap_df,
     ids = as.character(df$chain_id),
     text = labels,
     textinfo = "label",
+    textfont = list(size = sizes, color = "#222"),
     hovertext = custom,
     hoverinfo = "text",
     marker = list(
@@ -598,7 +625,7 @@ lab_ind_mcap_treemap_plotly <- function(snap_df,
     margin = list(l = 4, r = 4, t = 4, b = 4),
     paper_bgcolor = "rgba(0,0,0,0)",
     plot_bgcolor = "rgba(0,0,0,0)",
-    uniformtext = list(minsize = 10, mode = "hide"),
+    uniformtext = list(minsize = 8, mode = FALSE),
     font = list(family = "Helvetica Neue, Arial, sans-serif", size = 12, color = "#222")
   )
   plotly::config(p, displayModeBar = FALSE, responsive = TRUE)
