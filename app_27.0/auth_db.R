@@ -998,7 +998,18 @@ ynow_auth_resume_ttl_days <- function() {
   paste(sprintf("%02x", as.integer(raw)), collapse = "")
 }
 
-ynow_auth_sessions_ensure_schema <- function(conn = NULL) {
+.ynow_auth_sessions_schema_cache <- new.env(parent = emptyenv())
+.ynow_auth_sessions_schema_cache$ready <- FALSE
+
+ynow_auth_sessions_schema_cache_reset <- function() {
+  .ynow_auth_sessions_schema_cache$ready <- FALSE
+  invisible(TRUE)
+}
+
+ynow_auth_sessions_ensure_schema <- function(conn = NULL, force = FALSE) {
+  if (!isTRUE(force) && isTRUE(.ynow_auth_sessions_schema_cache$ready)) {
+    return(TRUE)
+  }
   run <- function(con) {
     DBI::dbExecute(con, "
       CREATE TABLE IF NOT EXISTS ynow_auth_sessions (
@@ -1022,9 +1033,15 @@ ynow_auth_sessions_ensure_schema <- function(conn = NULL) {
     .ynow_db_rls_fail_closed(con, "ynow_auth_sessions")
     TRUE
   }
-  if (!is.null(conn)) return(run(conn))
-  if (!isTRUE(ynow_db_ready())) return(FALSE)
-  isTRUE(ynow_db_with(run))
+  ok <- if (!is.null(conn)) {
+    isTRUE(run(conn))
+  } else if (!isTRUE(ynow_db_ready())) {
+    FALSE
+  } else {
+    isTRUE(ynow_db_with(run))
+  }
+  if (isTRUE(ok)) .ynow_auth_sessions_schema_cache$ready <- TRUE
+  ok
 }
 
 ynow_db_get_user_by_id <- function(user_id) {

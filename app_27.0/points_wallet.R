@@ -385,7 +385,19 @@ ynow_points_mem_register_profile <- function(user_id, role = "user", disabled = 
   )
 }
 
-ynow_points_ensure_schema <- function(conn = NULL) {
+# Process-once schema cache: login/resume used to re-run DDL/RLS ~5× per flush.
+.ynow_points_schema_cache <- new.env(parent = emptyenv())
+.ynow_points_schema_cache$ready <- FALSE
+
+ynow_points_schema_cache_reset <- function() {
+  .ynow_points_schema_cache$ready <- FALSE
+  invisible(TRUE)
+}
+
+ynow_points_ensure_schema <- function(conn = NULL, force = FALSE) {
+  if (!isTRUE(force) && isTRUE(.ynow_points_schema_cache$ready)) {
+    return(TRUE)
+  }
   run <- function(con) {
     # Dual wallet columns
     if (!.ynow_points_pg_has_column(con, "ynow_users", "fyn_balance")) {
@@ -532,10 +544,15 @@ ynow_points_ensure_schema <- function(conn = NULL) {
     tryCatch(ynow_points_redeem_seed_from_env(conn = con), error = function(e) NULL)
     TRUE
   }
-  if (!is.null(conn)) return(run(conn))
-  if (!ynow_points_uses_db()) return(TRUE)
-  out <- ynow_db_with(run)
-  isTRUE(out)
+  ok <- if (!is.null(conn)) {
+    isTRUE(run(conn))
+  } else if (!ynow_points_uses_db()) {
+    TRUE
+  } else {
+    isTRUE(ynow_db_with(run))
+  }
+  if (isTRUE(ok)) .ynow_points_schema_cache$ready <- TRUE
+  ok
 }
 
 .ynow_points_pg_balances <- function(user_id) {
@@ -1261,7 +1278,56 @@ ynow_points_grant_daily_checkin <- function(user_id, when = Sys.time()) {
   )
 }
 
+#' Cheap EXISTS for signup + today's check-in refs (one round-trip when DB).
+#' Used to skip full credit paths on resume when both grants already exist.
+.ynow_points_login_grants_done <- function(user_id, when = Sys.time()) {
+  uid <- as.character(user_id %||% "")[1]
+  day <- ynow_points_taipei_day(when)
+  signup_ref <- paste0("signup:", uid)
+  checkin_ref <- paste0("daily_checkin:", uid, ":", day)
+  if (!nzchar(uid)) {
+    return(list(signup = FALSE, checkin = FALSE, day = day))
+  }
+  if (identical(ynow_points_backend(), "memory")) {
+    led <- .ynow_points_mem$ledger
+    has <- function(ref) {
+      any(vapply(led, function(row) {
+        identical(as.character(row$user_id %||% "")[1], uid) &&
+          identical(as.character(row$ref_id %||% "")[1], ref)
+      }, logical(1)))
+    }
+    return(list(signup = has(signup_ref), checkin = has(checkin_ref), day = day))
+  }
+  if (!ynow_points_uses_db()) {
+    return(list(signup = FALSE, checkin = FALSE, day = day))
+  }
+  hit <- ynow_db_with(function(con) {
+    ynow_points_ensure_schema(con)
+    DBI::dbGetQuery(
+      con,
+      paste(
+        "SELECT",
+        "EXISTS(SELECT 1 FROM ynow_points_ledger",
+        "  WHERE user_id = $1::uuid AND ref_id = $2) AS signup,",
+        "EXISTS(SELECT 1 FROM ynow_points_ledger",
+        "  WHERE user_id = $1::uuid AND ref_id = $3) AS checkin"
+      ),
+      params = list(uid, signup_ref, checkin_ref)
+    )
+  })
+  if (!is.data.frame(hit) || nrow(hit) < 1L) {
+    return(list(signup = FALSE, checkin = FALSE, day = day))
+  }
+  list(
+    signup = isTRUE(hit$signup[[1]]),
+    checkin = isTRUE(hit$checkin[[1]]),
+    day = day
+  )
+}
+
 #' Login hook: first gift once + daily check-in once/day. Never resets balance to 100.
+#' When both grants already exist (typical resume same day), skip credit apply paths
+#' and only read balances — keeps chrome-first resume from paying full ledger work.
 ynow_points_on_login <- function(user_id, when = Sys.time()) {
   uid <- as.character(user_id %||% "")[1]
   if (!nzchar(uid)) {
@@ -1271,8 +1337,40 @@ ynow_points_on_login <- function(user_id, when = Sys.time()) {
   if (identical(ynow_points_backend(), "memory")) {
     .ynow_points_mem_ensure_user(uid)
   }
-  gift <- ynow_points_grant_signup_bonus(uid)
-  checkin <- ynow_points_grant_daily_checkin(uid, when = when)
+  done <- tryCatch(
+    .ynow_points_login_grants_done(uid, when = when),
+    error = function(e) list(signup = FALSE, checkin = FALSE, day = ynow_points_taipei_day(when))
+  )
+  # Both already on ledger → balances only (no credit / FOR UPDATE).
+  if (isTRUE(done$signup) && isTRUE(done$checkin)) {
+    bals <- ynow_points_balances(uid)
+    return(list(
+      ok = TRUE,
+      balance = bals$fyn,
+      fyn = bals$fyn,
+      pyn = bals$pyn,
+      message_key = "pts_msg_ok",
+      gift = list(ok = TRUE, idempotent = TRUE, delta = 0L, skipped = FALSE),
+      checkin = list(ok = TRUE, idempotent = TRUE, delta = 0L, skipped = FALSE,
+                     day = done$day %||% ynow_points_taipei_day(when)),
+      gift_granted = FALSE,
+      checkin_granted = FALSE,
+      resume_slim = TRUE
+    ))
+  }
+  gift <- if (isTRUE(done$signup)) {
+    list(ok = TRUE, idempotent = TRUE, delta = 0L, skipped = FALSE)
+  } else {
+    ynow_points_grant_signup_bonus(uid)
+  }
+  checkin <- if (isTRUE(done$checkin)) {
+    list(
+      ok = TRUE, idempotent = TRUE, delta = 0L, skipped = FALSE,
+      day = done$day %||% ynow_points_taipei_day(when)
+    )
+  } else {
+    ynow_points_grant_daily_checkin(uid, when = when)
+  }
   bals <- ynow_points_balances(uid)
   list(
     ok = TRUE,

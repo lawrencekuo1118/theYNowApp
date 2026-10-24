@@ -561,7 +561,18 @@ ynow_access_purge_user <- function(user_id) {
     !identical(Sys.getenv("YNOW_ACCESS_LOCKS_FORCE_FILE", ""), "1")
 }
 
-ynow_access_ensure_schema <- function() {
+.ynow_access_schema_cache <- new.env(parent = emptyenv())
+.ynow_access_schema_cache$ready <- FALSE
+
+ynow_access_schema_cache_reset <- function() {
+  .ynow_access_schema_cache$ready <- FALSE
+  invisible(TRUE)
+}
+
+ynow_access_ensure_schema <- function(force = FALSE) {
+  if (!isTRUE(force) && isTRUE(.ynow_access_schema_cache$ready)) {
+    return(invisible(TRUE))
+  }
   if (!.ynow_access_db_on()) return(invisible(FALSE))
   ynow_db_with(function(con) {
     DBI::dbExecute(con, paste(
@@ -632,6 +643,7 @@ ynow_access_ensure_schema <- function() {
       tryCatch(.ynow_db_rls_fail_closed(con, "ynow_access_unlock_state"), error = function(e) NULL)
     }
   })
+  .ynow_access_schema_cache$ready <- TRUE
   invisible(TRUE)
 }
 
@@ -880,25 +892,28 @@ ynow_access_set_unlock_state <- function(user_id, item_id, state) {
   invisible(TRUE)
 }
 
-#' Whether the unlock condition is currently satisfied for user+item (usable).
-#' Returns TRUE when there is no restriction on that item.
-ynow_access_unlock_satisfied_for_item <- function(user_id, item_id,
-                                                  authed = NULL,
-                                                  now = Sys.time()) {
-  id <- as.character(item_id %||% "")[1]
-  entry <- ynow_access_item_entry(user_id, id)
-  if (is.null(entry)) return(TRUE) # not restricted
+#' Whether unlock is satisfied given a normalized entry (no extra entries() load).
+ynow_access_unlock_satisfied_entry <- function(user_id, item_id, entry,
+                                               authed = NULL,
+                                               now = Sys.time(),
+                                               state = NULL) {
+  if (is.null(entry)) return(TRUE)
   uid <- as.character(user_id %||% "")[1]
+  id <- as.character(item_id %||% "")[1]
   is_authed <- if (is.null(authed)) {
     nzchar(uid) && !identical(uid, YNOW_ACCESS_ALL_USERS)
   } else {
     isTRUE(authed)
   }
   ut <- entry$unlock_type
-  if (is.na(ut) || !nzchar(ut)) return(FALSE) # legacy sticky
+  if (is.na(ut) || !nzchar(as.character(ut)[1])) return(FALSE)
   if (!is_authed) return(FALSE)
   if (identical(ut, YNOW_UNLOCK_LOGIN)) return(TRUE)
-  st <- ynow_access_get_unlock_state(uid, id)
+  st <- if (is.list(state)) {
+    .ynow_access_normalize_state(state)
+  } else {
+    ynow_access_get_unlock_state(uid, id)
+  }
   if (identical(ut, YNOW_UNLOCK_POINTS)) return(isTRUE(st$points_unlocked))
   if (identical(ut, YNOW_UNLOCK_CONDITIONAL)) {
     has_free <- !is.na(entry$free_count)
@@ -917,15 +932,81 @@ ynow_access_unlock_satisfied_for_item <- function(user_id, item_id,
   FALSE
 }
 
+#' Whether the unlock condition is currently satisfied for user+item (usable).
+#' Returns TRUE when there is no restriction on that item.
+ynow_access_unlock_satisfied_for_item <- function(user_id, item_id,
+                                                  authed = NULL,
+                                                  now = Sys.time()) {
+  id <- as.character(item_id %||% "")[1]
+  entry <- ynow_access_item_entry(user_id, id)
+  ynow_access_unlock_satisfied_entry(
+    user_id, id, entry, authed = authed, now = now
+  )
+}
+
+#' Load all unlock-state rows for one user in a single query (named by item_id).
+ynow_access_get_unlock_states_for_user <- function(user_id) {
+  uid <- as.character(user_id %||% "")[1]
+  if (!nzchar(uid) || identical(uid, YNOW_ACCESS_ALL_USERS)) return(list())
+  if (.ynow_access_db_on()) {
+    ynow_access_ensure_schema()
+    df <- ynow_db_with(function(con) {
+      DBI::dbGetQuery(
+        con,
+        paste(
+          "SELECT item_id, free_used, points_unlocked, unlocked_until",
+          "FROM ynow_access_unlock_state WHERE user_id = $1"
+        ),
+        params = list(uid)
+      )
+    })
+    if (!is.data.frame(df) || nrow(df) < 1L) return(list())
+    out <- lapply(seq_len(nrow(df)), function(i) {
+      .ynow_access_normalize_state(as.list(df[i, , drop = FALSE]))
+    })
+    names(out) <- as.character(df$item_id)
+    return(out)
+  }
+  mem_u <- .ynow_access_mem$unlock_state[[uid]]
+  if (is.null(mem_u)) {
+    store <- .ynow_access_read_state_file()
+    mem_u <- store[[uid]]
+    .ynow_access_mem$unlock_state[[uid]] <- mem_u %||% list()
+  }
+  if (!length(mem_u)) return(list())
+  out <- lapply(mem_u, .ynow_access_normalize_state)
+  names(out) <- names(mem_u)
+  out
+}
+
 #' Restrictions still in force after unlock evaluation (for client push / deny).
 ynow_access_effective_entries <- function(user_id = "", authed = NULL, now = Sys.time()) {
   ent <- ynow_access_entries(user_id)
   if (!is.data.frame(ent) || nrow(ent) < 1L) return(ent)
   uid <- as.character(user_id %||% "")[1]
-  is_authed <- if (is.null(authed)) nzchar(uid) && !identical(uid, YNOW_ACCESS_ALL_USERS) else isTRUE(authed)
+  is_authed <- if (is.null(authed)) {
+    nzchar(uid) && !identical(uid, YNOW_ACCESS_ALL_USERS)
+  } else {
+    isTRUE(authed)
+  }
+  states <- if (is_authed && nzchar(uid) && !identical(uid, YNOW_ACCESS_ALL_USERS)) {
+    ynow_access_get_unlock_states_for_user(uid)
+  } else {
+    list()
+  }
   keep <- vapply(seq_len(nrow(ent)), function(i) {
-    !isTRUE(ynow_access_unlock_satisfied_for_item(
-      uid, ent$id[[i]], authed = is_authed, now = now
+    entry <- ynow_access_normalize_entry(
+      effect = ent$effect[[i]],
+      unlock_type = ent$unlock_type[[i]],
+      points_cost = ent$points_cost[[i]],
+      free_count = ent$free_count[[i]],
+      time_limit_hours = ent$time_limit_hours[[i]]
+    )
+    id <- as.character(ent$id[[i]])[1]
+    !isTRUE(ynow_access_unlock_satisfied_entry(
+      uid, id, entry,
+      authed = is_authed, now = now,
+      state = states[[id]]
     ))
   }, logical(1))
   ent[keep, , drop = FALSE]
@@ -963,6 +1044,11 @@ ynow_access_quota_badges <- function(user_id = "", authed = NULL, now = Sys.time
     isTRUE(authed)
   }
   now <- as.POSIXct(now, tz = "UTC")
+  states <- if (is_authed && nzchar(uid) && !identical(uid, YNOW_ACCESS_ALL_USERS)) {
+    ynow_access_get_unlock_states_for_user(uid)
+  } else {
+    list()
+  }
   out <- list()
   for (i in seq_len(nrow(ent))) {
     ut <- as.character(ent$unlock_type[[i]] %||% "")[1]
@@ -977,8 +1063,8 @@ ynow_access_quota_badges <- function(user_id = "", authed = NULL, now = Sys.time
     remaining <- NA_integer_
     total <- NA_integer_
     ends_at <- NA_character_
-    st <- if (is_authed && nzchar(uid) && !identical(uid, YNOW_ACCESS_ALL_USERS)) {
-      ynow_access_get_unlock_state(uid, id)
+    st <- if (is.list(states[[id]])) {
+      states[[id]]
     } else {
       .ynow_access_normalize_state()
     }
