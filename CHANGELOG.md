@@ -1,3 +1,12 @@
+## [v27.23] — 2026-10-24
+
+### Changed
+- Post-login ACL lock gate (#495): signed-in users who click still-locked items see FYN spend / Account points top-up instead of Sign-in / Register. Guests keep Sign-in.
+
+### Notes
+- en-US: GateMode `spend` when `unlock_type=points` with positive cost; otherwise `topup` for sticky / NULL / conditional / zero-cost.
+- zh-TW：已登入仍鎖項目改顯示 FYN 花費／點數儲值，不再要求登入註冊；訪客維持登入閘。
+
 ## [v27.22] — 2026-10-24
 
 ### Added
