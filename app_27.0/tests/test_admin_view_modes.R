@@ -48,10 +48,41 @@ check("Control panel omits Signed-in user mode button (default on enter)", {
   !grepl("ynow_pts_sysadmin_self_signed_in", ui, fixed = TRUE) &&
     !grepl("ynow_pts_sysadmin_self_signed_in_label", ui, fixed = TRUE) &&
     grepl(
-      '.ynow_self_view_apply("signed_in", notify = FALSE, goto_home = FALSE)',
+      '.ynow_self_view_apply(',
       srv,
       fixed = TRUE
-    )
+    ) &&
+    grepl('log_ops = FALSE', srv, fixed = TRUE) &&
+    grepl('"signed_in"', srv, fixed = TRUE) &&
+    grepl("notify = FALSE", srv, fixed = TRUE) &&
+    grepl("goto_home = FALSE", srv, fixed = TRUE)
+})
+
+check("Self-view apply defers ACL / audit after chrome flush", {
+  # Chrome messages before onFlushed; ACL + ops log inside onFlushed.
+  grepl("\\.ynow_self_view_push_chrome\\(mode\\)", srv) &&
+    grepl("session\\$onFlushed\\(function\\(\\)", srv) &&
+    grepl("\\.ynow_push_access_locks\\(\\)", srv) &&
+    grepl("self_view\\.apply", srv) &&
+    # Enter: single sysadmin.enter audit (no duplicate self_view.apply on default).
+    grepl('"sysadmin.enter"', srv, fixed = TRUE) &&
+    grepl("default_self_view=signed_in", srv, fixed = TRUE)
+})
+
+check("Sys. Admin stays visible while portal unlocked under signed-in self-view", {
+  # Default enter applies signed_in → ynow-authed; must not hide foot / block click.
+  grepl(
+    "body.ynow-authed:not(.ynow-sysadmin-on)",
+    ui,
+    fixed = TRUE
+  ) &&
+    grepl("ynow-sysadmin-on", ui, fixed = TRUE) &&
+    grepl(
+      "!document.body.classList.contains('ynow-sysadmin-on')",
+      ui,
+      fixed = TRUE
+    ) &&
+    grepl('ynowGotoTab", list(tab = "testing")', srv, fixed = TRUE)
 })
 
 check("Omniscient button shares Guest btn-default + red text class", {
@@ -169,13 +200,13 @@ check("Server reactive + apply/clear self view modes", {
 })
 
 check("Sysadmin enter defaults to Signed-in user mode (not guest/omniscient)", {
-  # Unlock path must apply signed_in immediately after portal unlock.
+  # Unlock path must apply signed_in immediately after portal unlock (chrome-first).
   grepl("ynow_pts_sysadmin_enter", srv, fixed = TRUE) &&
-    grepl(
-      '.ynow_self_view_apply("signed_in", notify = FALSE, goto_home = FALSE)',
-      srv,
-      fixed = TRUE
-    ) &&
+    grepl('.ynow_self_view_apply(', srv, fixed = TRUE) &&
+    grepl('"signed_in"', srv, fixed = TRUE) &&
+    grepl("notify = FALSE", srv, fixed = TRUE) &&
+    grepl("goto_home = FALSE", srv, fixed = TRUE) &&
+    grepl("log_ops = FALSE", srv, fixed = TRUE) &&
     grepl("default_self_view=signed_in", srv, fixed = TRUE) &&
     grepl(
       "Default self-view after unlock: Signed-in user mode",

@@ -587,8 +587,16 @@ check("sidebar foot link is Sys. Admin (en) / 系統管理員 (zh-TW)", {
 check("Sys. Admin hidden for signed-in users", {
   ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   grepl("ynowSyncSysAdminFootVisibility", ui, fixed = TRUE) &&
-    grepl("body.ynow-authed .ynow-sidebar-snapshot-foot #ynow_sidebar_test_btn", ui, fixed = TRUE) &&
-    grepl("classList.contains('ynow-authed')) { return false; }", ui, fixed = TRUE) &&
+    grepl(
+      "body.ynow-authed:not(.ynow-sysadmin-on) .ynow-sidebar-snapshot-foot #ynow_sidebar_test_btn",
+      ui,
+      fixed = TRUE
+    ) &&
+    grepl(
+      "classList.contains('ynow-authed') && !document.body.classList.contains('ynow-sysadmin-on')",
+      ui,
+      fixed = TRUE
+    ) &&
     grepl("tab === 'testing' && document.body &&", ui, fixed = TRUE)
 })
 check("sysadmin chrome banner shows infinity not wallet balances", {

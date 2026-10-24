@@ -138,6 +138,28 @@ check("global sources admin_ops_audit.R + ensure schema", {
     grepl("ynow_admin_ops_ensure_schema", glb, fixed = TRUE)
 })
 
+check("admin_ops ensure_schema has process-once cache", {
+  src <- paste(readLines(file.path(app_dir, "admin_ops_audit.R"), warn = FALSE), collapse = "\n")
+  grepl("ynow_admin_ops_schema_cache_reset", src, fixed = TRUE) &&
+    grepl(".ynow_admin_ops_schema_cache$ready", src, fixed = TRUE) &&
+    grepl("force = FALSE", src, fixed = TRUE) &&
+    {
+      ynow_admin_ops_schema_cache_reset()
+      !isTRUE(.ynow_admin_ops_schema_cache$ready) && {
+        .ynow_admin_ops_schema_cache$ready <- TRUE
+        isTRUE(ynow_admin_ops_ensure_schema()) &&
+          isTRUE(.ynow_admin_ops_schema_cache$ready)
+      }
+    }
+})
+
+check("DB purge path supports return_rows=FALSE (append hot path)", {
+  src <- paste(readLines(file.path(app_dir, "admin_ops_audit.R"), warn = FALSE), collapse = "\n")
+  grepl("return_rows = FALSE", src, fixed = TRUE) &&
+    grepl("return_rows = TRUE", src, fixed = TRUE) &&
+    grepl("DELETE FROM ynow_admin_ops_audit WHERE created_at <=", src, fixed = TRUE)
+})
+
 check("i18n keys for audit tab (en + zh-TW)", {
   grepl("admin_ops_tab\\s*=\\s*\"Audit log\"", loc) &&
     grepl("admin_ops_tab\\s*=\\s*\"操作紀錄\"", loc) &&

@@ -4100,7 +4100,7 @@ ui <- dashboardPage(
             `data-toggle` = "tab",
             `data-value` = "testing",
             class = "ynow-sidebar-snapshot-link ynow-sidebar-test-link ynow-full-only",
-            onclick = "if (document.body && document.body.classList.contains('ynow-authed')) { return false; } if (window.Shiny) { Shiny.setInputValue('sidebar_test_click', (window.__ynowTestClicks=(window.__ynowTestClicks||0)+1), {priority: 'event'}); } if (window.ynowShowSidebarFootTab) { window.ynowShowSidebarFootTab('testing'); } else if (window.Shiny) { Shiny.setInputValue('sidebar_tabs', 'testing', {priority: 'event'}); } return false;",
+            onclick = "if (document.body && document.body.classList.contains('ynow-authed') && !document.body.classList.contains('ynow-sysadmin-on')) { return false; } if (window.Shiny) { Shiny.setInputValue('sidebar_test_click', (window.__ynowTestClicks=(window.__ynowTestClicks||0)+1), {priority: 'event'}); } if (window.ynowShowSidebarFootTab) { window.ynowShowSidebarFootTab('testing'); } else if (window.Shiny) { Shiny.setInputValue('sidebar_tabs', 'testing', {priority: 'event'}); } return false;",
             icon("user-shield", class = "fa-fw"),
             tags$span(id = "ynow_test_link_label", " Sys. Admin")
           ),
@@ -8363,10 +8363,13 @@ ui <- dashboardPage(
           display: none !important;
         }
         /* Signed-in account users: hide Sys. Admin foot link (portal is guest/ops only).
+           Exception: unlocked system-admin session (body.ynow-sysadmin-on) — signed-in /
+           omniscient self-view also set ynow-authed for member chrome, but the portal
+           must stay reachable (control panel / Exit).
            Beat .ynow-sidebar-snapshot-link { display: inline-flex !important }. */
-        body.ynow-authed .ynow-sidebar-snapshot-foot a.ynow-sidebar-snapshot-link.ynow-sidebar-test-link,
-        body.ynow-authed .ynow-sidebar-snapshot-foot #ynow_sidebar_test_btn,
-        body.ynow-authed a#ynow_sidebar_test_btn.ynow-sidebar-test-link {
+        body.ynow-authed:not(.ynow-sysadmin-on) .ynow-sidebar-snapshot-foot a.ynow-sidebar-snapshot-link.ynow-sidebar-test-link,
+        body.ynow-authed:not(.ynow-sysadmin-on) .ynow-sidebar-snapshot-foot #ynow_sidebar_test_btn,
+        body.ynow-authed:not(.ynow-sysadmin-on) a#ynow_sidebar_test_btn.ynow-sidebar-test-link {
           display: none !important;
           visibility: hidden !important;
           pointer-events: none !important;
@@ -13593,6 +13596,11 @@ ui <- dashboardPage(
               if (!payload) return;
               if (payload.on) {
                 document.body.classList.add('ynow-sysadmin-on');
+                /* Re-sync foot link after unlock — self-view may have set ynow-authed. */
+                if (typeof window.ynowSyncSysAdminFootVisibility === 'function') {
+                  var keepAuthed = document.body.classList.contains('ynow-authed');
+                  window.ynowSyncSysAdminFootVisibility(keepAuthed);
+                }
                 /* Lite omits snap_defaults entirely — do not force that locked tab. */
               } else {
                 document.body.classList.remove('ynow-sysadmin-on');
@@ -13600,6 +13608,10 @@ ui <- dashboardPage(
                 document.body.classList.remove('ynow-self-view', 'ynow-omniscient',
                   'ynow-self-view-guest', 'ynow-self-view-signed-in');
                 window.__ynowSelfViewMode = '';
+                if (typeof window.ynowSyncSysAdminFootVisibility === 'function') {
+                  var realOn = !!window.__ynowRealAuthed;
+                  window.ynowSyncSysAdminFootVisibility(realOn);
+                }
                 try {
                   var activeSnap = document.querySelector('#snapshot_report .nav-tabs li.active a');
                   var onDefaults = activeSnap &&
@@ -14408,11 +14420,13 @@ ui <- dashboardPage(
                 window.ynowStartOAuthRedirect({ url: String(meta.url), restore_tab: '' });
               }, true);
             }
-            /* Sys. Admin foot link: hide while signed in (CSS + inline, sign-out restores). */
+            /* Sys. Admin foot link: hide while signed in (CSS + inline, sign-out restores).
+               Keep visible while system-admin portal is unlocked (self-view sets ynow-authed). */
             function ynowSyncSysAdminFootVisibility(loggedIn) {
               var el = document.getElementById('ynow_sidebar_test_btn');
               if (!el) return;
-              if (loggedIn) {
+              var sysOn = !!(document.body && document.body.classList.contains('ynow-sysadmin-on'));
+              if (loggedIn && !sysOn) {
                 el.style.setProperty('display', 'none', 'important');
                 el.style.setProperty('visibility', 'hidden', 'important');
                 el.style.setProperty('pointer-events', 'none', 'important');
@@ -15030,9 +15044,11 @@ ui <- dashboardPage(
             function gotoTab(tab) {
               tab = remapLegacyTab(tab);
               if (!tab) return;
-              /* Signed-in members: Sys. Admin portal is guest/ops only. */
+              /* Signed-in members: Sys. Admin portal is guest/ops only.
+                 Unlocked system-admin session (self-view sets ynow-authed) may stay. */
               if (tab === 'testing' && document.body &&
-                  document.body.classList.contains('ynow-authed')) {
+                  document.body.classList.contains('ynow-authed') &&
+                  !document.body.classList.contains('ynow-sysadmin-on')) {
                 tab = 'home';
               }
               if (window.Shiny && Shiny.setInputValue) {
@@ -15269,9 +15285,11 @@ ui <- dashboardPage(
             function showSidebarFootTab(tab) {
               tab = remapLegacyTab(tab);
               if (!tab) return;
-              /* Signed-in members: never open Sys. Admin (testing) via foot link. */
+              /* Signed-in members: never open Sys. Admin (testing) via foot link.
+                 Exception: portal already unlocked (ynow-sysadmin-on). */
               if (tab === 'testing' && document.body &&
-                  document.body.classList.contains('ynow-authed')) {
+                  document.body.classList.contains('ynow-authed') &&
+                  !document.body.classList.contains('ynow-sysadmin-on')) {
                 tab = 'home';
               }
               if (window.Shiny && Shiny.setInputValue) {
