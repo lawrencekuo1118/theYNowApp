@@ -1,0 +1,35 @@
+{
+  "events": [
+    {
+      "slug": "how-many-fed-rate-cuts-in-2026",
+      "title": "How many Fed rate cuts in 2026?",
+      "markets": [
+        {
+          "id": "616902",
+          "question": "Will no Fed rate cuts happen in 2026?",
+          "outcomes": "[\"Yes\", \"No\"]",
+          "outcomePrices": "[\"0.965\", \"0.035\"]",
+          "active": true,
+          "closed": false
+        },
+        {
+          "id": "swap-yes",
+          "question": "Fed cut by June?",
+          "outcomes": ["No", "Yes"],
+          "outcomePrices": ["0.200", "0.800"],
+          "active": true,
+          "closed": false
+        },
+        {
+          "id": "no-yes-leg",
+          "question": "Fed path bucket",
+          "outcomes": "[\"Up\", \"Down\"]",
+          "outcomePrices": "[\"0.400\", \"0.600\"]",
+          "lastTradePrice": 0.4,
+          "active": true,
+          "closed": false
+        }
+      ]
+    }
+  ]
+}

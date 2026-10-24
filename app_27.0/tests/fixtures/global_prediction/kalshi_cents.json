@@ -1,0 +1,24 @@
+{
+  "markets": [
+    {
+      "ticker": "KXRATECUT-LEGACY",
+      "title": "Fed rate cut legacy cents",
+      "status": "open",
+      "last_price": 45,
+      "yes_bid": 40,
+      "yes_ask": 48
+    },
+    {
+      "ticker": "KXRATECUT-BADTEXT",
+      "title": "Unparseable dollar string",
+      "status": "active",
+      "last_price_dollars": "nope"
+    },
+    {
+      "ticker": "KXRATECUT-OOB",
+      "title": "Dollar price outside 0 to 1",
+      "status": "active",
+      "last_price_dollars": "1.5000"
+    }
+  ]
+}

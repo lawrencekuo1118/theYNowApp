@@ -14,7 +14,7 @@ if (!exists("%||%", mode = "function")) {
 .GP_POLYMARKET_COLOR <- "#2E5CFF"
 .GP_AGREE_PP <- 0.10
 .GP_DIVERGE_PP <- 0.25
-.GP_UA <- "theYNowApp/global-prediction"
+.GP_UA <- "theYNowApp"
 
 gp_brand_colors <- function() {
   list(kalshi = .GP_KALSHI_COLOR, polymarket = .GP_POLYMARKET_COLOR)
@@ -60,10 +60,19 @@ gp_theme_registry <- function() {
   if (is.null(x) || length(x) == 0L || is.na(x) || !nzchar(x)) default else x
 }
 
+# Dollar strings are already [0, 1]. Only a whole number above 1 is a legacy cent quote.
 .gp_num01 <- function(x) {
+  if (is.null(x) || length(x) == 0L) return(NA_real_)
+  if (is.character(x)) {
+    raw <- trimws(as.character(x)[1])
+    if (!nzchar(raw) || is.na(raw)) return(NA_real_)
+    v <- suppressWarnings(as.numeric(raw))
+    if (length(v) != 1L || is.na(v) || !is.finite(v) || v < 0 || v > 1) return(NA_real_)
+    return(v)
+  }
   v <- suppressWarnings(as.numeric(x)[1])
-  if (!is.finite(v)) return(NA_real_)
-  if (v > 1 && v <= 100) v <- v / 100
+  if (length(v) != 1L || is.na(v) || !is.finite(v)) return(NA_real_)
+  if (abs(v - round(v)) < 1e-9 && v > 1 && v <= 100) v <- v / 100
   if (v < 0 || v > 1) return(NA_real_)
   v
 }
@@ -174,22 +183,50 @@ gp_theme_registry <- function() {
 }
 
 #' Parse Kalshi /markets JSON list into MarketQuote rows.
+.gp_book_yes <- function(last, bid, ask) {
+  if (is.finite(last)) return(last)
+  if (is.finite(bid) && is.finite(ask)) return((bid + ask) / 2)
+  if (is.finite(bid)) return(bid)
+  if (is.finite(ask)) return(ask)
+  NA_real_
+}
+
+.gp_kalshi_yes <- function(m) {
+  has_dollars <- any(vapply(
+    c("last_price_dollars", "yes_bid_dollars", "yes_ask_dollars"),
+    function(k) nzchar(.gp_chr(m[[k]])),
+    logical(1)
+  ))
+  if (has_dollars) {
+    return(.gp_book_yes(
+      .gp_num01(m$last_price_dollars),
+      .gp_num01(m$yes_bid_dollars),
+      .gp_num01(m$yes_ask_dollars)
+    ))
+  }
+  .gp_book_yes(.gp_num01(m$last_price), .gp_num01(m$yes_bid), .gp_num01(m$yes_ask))
+}
+
 gp_parse_kalshi_markets <- function(payload, theme_id, limit = 3L) {
   theme_id <- .gp_chr(theme_id)
+  if (is.character(payload)) {
+    payload <- tryCatch(jsonlite::fromJSON(payload[[1]], simplifyVector = FALSE), error = function(e) NULL)
+    if (!is.list(payload)) return(.gp_empty_quote())
+  }
   markets <- payload
   if (is.list(payload) && !is.null(payload$markets)) markets <- payload$markets
   if (!is.list(markets) || length(markets) == 0L) return(.gp_empty_quote())
+  drop_status <- c("finalized", "closed", "settled", "determined", "inactive", "expired")
   rows <- list()
   n <- 0L
   for (m in markets) {
     if (!is.list(m)) next
+    status <- tolower(.gp_chr(m$status))
+    if (status %in% drop_status) next
     ticker <- .gp_chr(m$ticker %||% m$market_ticker)
     if (!nzchar(ticker)) next
     title <- .gp_chr(m$title %||% m$yes_sub_title %||% m$subtitle %||% ticker)
-    yes <- .gp_num01(
-      m$last_price_dollars %||% m$yes_bid_dollars %||% m$previous_price_dollars %||%
-        m$last_price %||% m$yes_bid
-    )
+    yes <- .gp_kalshi_yes(m)
     if (!is.finite(yes)) next
     n <- n + 1L
     rows[[n]] <- .gp_quote_row(
@@ -218,41 +255,51 @@ gp_parse_kalshi_markets <- function(payload, theme_id, limit = 3L) {
   NULL
 }
 
+# Yes is the outcome named Yes. The first price is not assumed to be Yes.
 .gp_poly_yes_prob <- function(market) {
   if (!is.list(market)) return(NA_real_)
   op <- .gp_poly_parse_json_vec(market$outcomePrices)
   outcomes <- .gp_poly_parse_json_vec(market$outcomes)
-  if (!is.null(op) && length(op) >= 1L) {
-    idx <- 1L
-    if (!is.null(outcomes) && length(outcomes) == length(op)) {
-      labs <- tolower(trimws(as.character(unlist(outcomes, use.names = FALSE))))
-      yes_i <- which(labs %in% c("yes", "y"))
-      if (length(yes_i) >= 1L) idx <- as.integer(yes_i[[1]])
-    }
-    return(.gp_num01(op[[idx]]))
-  }
-  .gp_num01(market$lastTradePrice %||% market$bestBid %||% market$probability)
+  if (is.null(op) || is.null(outcomes)) return(NA_real_)
+  labs <- tolower(trimws(as.character(unlist(outcomes, use.names = FALSE))))
+  prices <- unlist(op, use.names = FALSE)
+  if (length(labs) != length(prices)) return(NA_real_)
+  yes_i <- which(labs %in% c("yes", "y"))
+  if (length(yes_i) != 1L) return(NA_real_)
+  .gp_num01(prices[[yes_i[[1]]]])
 }
 
 #' Parse Polymarket public-search / events payload into MarketQuote rows.
-gp_parse_polymarket_events <- function(payload, theme_id, limit = 3L) {
+gp_parse_polymarket_events <- function(payload, theme_id, limit = 3L, keywords = NULL) {
   theme_id <- .gp_chr(theme_id)
+  if (is.character(payload)) {
+    payload <- tryCatch(jsonlite::fromJSON(payload[[1]], simplifyVector = FALSE), error = function(e) NULL)
+    if (!is.list(payload)) return(.gp_empty_quote())
+  }
   events <- payload
   if (is.list(payload) && !is.null(payload$events)) events <- payload$events
   if (!is.list(events) || length(events) == 0L) return(.gp_empty_quote())
   rows <- list()
   n <- 0L
   for (ev in events) {
-    if (!is.list(ev)) next
+    if (!is.list(ev) || isTRUE(ev$closed)) next
     markets <- ev$markets %||% list()
     if (!is.list(markets)) markets <- list()
     if (length(markets) == 0L) {
       markets <- list(ev)
     }
     for (m in markets) {
-      if (!is.list(m)) next
+      if (!is.list(m) || isTRUE(m$closed) || identical(m$active, FALSE)) next
       mid <- .gp_chr(m$id %||% m$conditionId %||% m$slug %||% ev$id %||% ev$slug)
       title <- .gp_chr(m$question %||% m$title %||% ev$title %||% mid)
+      if (!is.null(keywords) && length(keywords) > 0L) {
+        hay <- tolower(paste(c(ev$title, title), collapse = " "))
+        hit <- any(vapply(keywords, function(k) {
+          k <- tolower(.gp_chr(k))
+          nzchar(k) && grepl(k, hay, fixed = TRUE)
+        }, logical(1)))
+        if (!isTRUE(hit)) next
+      }
       yes <- .gp_poly_yes_prob(m)
       if (!is.finite(yes)) next
       slug <- .gp_chr(ev$slug %||% m$slug)
@@ -584,6 +631,9 @@ global_prediction_ui <- function(id, locale = "en") {
       .ynow-gp-crowd-insufficient { color: #7a7368; }
       .ynow-gp-crowd-meta { color: #5c5346; font-weight: 400; }
       .ynow-gp-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+      .ynow-gp-col { border-radius: 8px; padding: 8px 10px; }
+      .ynow-gp-col-kalshi { background: rgba(0, 214, 108, 0.12); }
+      .ynow-gp-col-polymarket { background: rgba(46, 92, 255, 0.10); }
       @media (max-width: 767px) {
         .ynow-gp-cols { grid-template-columns: 1fr; }
       }

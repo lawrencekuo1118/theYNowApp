@@ -64,6 +64,32 @@ check("polymarket parse rows", is.data.frame(pq) && nrow(pq) >= 1L)
 check("polymarket venue tag", all(pq$venue == "polymarket"))
 check("polymarket yes_prob in [0,1]", all(is.finite(pq$yes_prob) & pq$yes_prob >= 0 & pq$yes_prob <= 1))
 check("polymarket empty fail-closed", nrow(gp_parse_polymarket_events(list(), "fed_rates")) == 0L)
+check("bad json string is empty", nrow(gp_parse_kalshi_markets("{", "fed_rates")) == 0L)
+cents <- gp_parse_kalshi_markets(
+  jsonlite::fromJSON(file.path(fx_dir, "kalshi_cents.json"), simplifyVector = FALSE),
+  theme_id = "fed_rates",
+  limit = 10L
+)
+legacy <- cents$yes_prob[cents$market_id == "KXRATECUT-LEGACY"]
+check("legacy cents are a probability", length(legacy) == 1L && isTRUE(all.equal(legacy, 0.45)))
+check(
+  "out-of-range dollars are not rescaled",
+  !any(cents$market_id %in% c("KXRATECUT-BADTEXT", "KXRATECUT-OOB"))
+)
+swapped <- gp_parse_polymarket_events(
+  jsonlite::fromJSON(file.path(fx_dir, "polymarket_search.json"), simplifyVector = FALSE),
+  theme_id = "fed_rates",
+  limit = 10L
+)
+check(
+  "Yes price follows the Yes label",
+  isTRUE(all.equal(swapped$yes_prob[swapped$market_id == "616902"], 0.965))
+)
+check(
+  "Yes is not position zero",
+  isTRUE(all.equal(swapped$yes_prob[swapped$market_id == "swap-yes"], 0.80))
+)
+check("unlabeled outcome is dropped", !("no-yes-leg" %in% swapped$market_id))
 
 ag <- gp_crowd_agreement(c(0.40, 0.42), c(0.41, 0.43))
 check("crowd agree status", identical(ag$status, "agree"))
