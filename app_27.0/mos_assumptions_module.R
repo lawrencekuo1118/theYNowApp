@@ -104,6 +104,13 @@ mos_assumptions_tab_body_ui <- function() {
       .ynow-mos-assump-hint { margin: -4px 0 10px 0; color: #7a8690; font-size: 12px; }
       .ynow-mos-assump-risk { margin: 8px 0 0 0; padding: 8px 10px; background: #fff8f0;
         border-left: 3px solid #e67e22; font-size: 12px; color: #6b4e2e; }
+      .box.box-solid.box-primary.ynow-mos-assump-panel,
+      body.ynow-theme-model .content-wrapper .box.box-solid.box-primary.ynow-mos-assump-panel,
+      body.ynow-theme-bluechip .content-wrapper .box.box-solid.box-primary.ynow-mos-assump-panel,
+      body.ynow-theme-atx .content-wrapper .box.box-solid.box-primary.ynow-mos-assump-panel {
+        border: none !important;
+        box-shadow: none !important;
+      }
     ")),
     fluidRow(
       column(
@@ -116,12 +123,20 @@ mos_assumptions_tab_body_ui <- function() {
     fluidRow(
       column(
         width = 12,
-        box(
-          width = 12, status = "primary", solidHeader = TRUE,
-          title = tagList(
-            icon("shield-alt"),
-            tags$span(id = "ynow_mos_assump_box_title", .mos_assump_str("mos_assump_box_title", "en"))
+        tags$div(
+          class = "box box-solid box-primary ynow-mos-assump-panel",
+          tags$div(
+            class = "box-header",
+            tags$h3(
+              class = "box-title",
+              tagList(
+                icon("shield-alt"),
+                tags$span(id = "ynow_mos_assump_box_title", .mos_assump_str("mos_assump_box_title", "en"))
+              )
+            )
           ),
+          tags$div(
+            class = "box-body",
           # --- Block 1: Decision hygiene floors (canonical Checklist ids) ---
           .mos_assump_block(
             "ynow_mos_assump_b1_title", .mos_assump_str("mos_assump_b1_title", "en"),
@@ -263,6 +278,7 @@ mos_assumptions_tab_body_ui <- function() {
               class = "ynow-mos-assump-risk",
               .mos_assump_str("mos_assump_strat_risk", "en")
             )
+          )
           )
         )
       )
