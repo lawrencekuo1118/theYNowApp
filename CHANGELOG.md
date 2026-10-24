@@ -1,3 +1,12 @@
+## [v27.09] — 2026-10-24
+
+### Changed
+- System admin **Item locks** (#464): show an obvious read-only **Currently restricted / 目前已限制** list under the selected apply target (always-visible + Apply path). Multi-select users get per-user blocks; empty selection prompts to pick users (en-US + zh-TW) instead of a false “none”.
+
+### Notes
+- en-US: Restriction panel lists locked items for the current apply target; updates when scope or selected users change.
+- zh-TW: 項目鎖定面板清楚列出所選套用對象下目前已限制項目；複選時依使用者分列；未選定使用者時提示先選取。
+
 ## [v27.08] — 2026-10-24
 
 ### Changed
