@@ -1,3 +1,12 @@
+## [v27.08] — 2026-10-24
+
+### Changed
+- Admin **Items to restrict** fine catalog (#461): retire form `input:*` rows; add `output:*` numeric result targets (Composite / Smart Fair Value & MOS, DCF/DDM/RI/P/B/NAV/SOTP/rel KPIs, WACC, SGR %, estimated FCF). Kind label **Numeric result** / **數值結果**. Legacy `input:` store rows cleared on read (no remap). Lock/hide/maintenance wire via `data-ynow-lock`.
+
+### Notes
+- en-US: Restrict picker locks post-calculation figures, not form inputs or prose; multi-select Main menu includes outputs.
+- zh-TW: 欲限制項目改鎖定試算後的數值結果（非表單輸入、非說明文字）；複選主選單含數值結果；舊 input 列讀取時清除。
+
 ## [v27.07] — 2026-10-24
 
 ### Changed
