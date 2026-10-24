@@ -7,5 +7,5 @@ commit=cf2e922a5e00d8186e36f2175743939cafd27749
 short=cf2e922a
 message=chore: record shipped display version v27.22
 captured_at=2026-10-24T14:00:18Z
-display_version=v27.22
+display_version=v27.23
 note=Canonical live line is app_27.0. Bundle 12733795: Global Prediction under ATX with Kalshi/Polymarket crowd quotes (#492).
