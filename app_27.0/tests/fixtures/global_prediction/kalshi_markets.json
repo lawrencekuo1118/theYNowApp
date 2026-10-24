@@ -1,0 +1,15 @@
+{
+  "markets": [
+    {
+      "close_time": "2027-01-01T04:59:00Z",
+      "event_ticker": "KXRATECUT-26DEC31",
+      "last_price_dollars": "0.0390",
+      "status": "active",
+      "ticker": "KXRATECUT-26DEC31",
+      "title": "Will the Federal Reserve cut rates before 2027?",
+      "yes_ask_dollars": "0.0390",
+      "yes_bid_dollars": "0.0370",
+      "yes_sub_title": "Cuts"
+    }
+  ]
+}

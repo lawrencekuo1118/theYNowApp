@@ -1524,6 +1524,41 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Arrows run upstream to downstream. Purple marks links that can flip by regime. ",
       "The regime card is a surveillance label for this session, not a trading signal and not an input to WACC."
     ),
+    atx_tab_map = "Transmission Map",
+    atx_tab_global_prediction = "Global Prediction",
+    gp_lead = paste0(
+      "Wisdom of crowds: when many independent participants price an event, the market aggregate ",
+      "can be more informative than any single desk view. Kalshi and Polymarket quotes below are ",
+      "crowd-implied probabilities (skin in the game), not App Fair Value and not a buy signal."
+    ),
+    gp_context = paste0(
+      "App Macro / ATX themes and model forecasts are desk or model views. ",
+      "These panels are crowd-priced. Read them side by side for contrast; do not merge them into one signal."
+    ),
+    gp_caution = paste0(
+      "Caution: prediction markets can be thin, biased, or mismatched on contract wording. ",
+      "Large gaps often mean different designs or sparse books, not a single truth. ",
+      "Empty panels mean the public feed was blocked or had no matching open market. Not investment advice."
+    ),
+    gp_refresh = "Refresh quotes",
+    gp_loading = "Loading crowd quotes…",
+    gp_updated = "Last updated (UTC):",
+    gp_updated_none = "Not updated yet",
+    gp_empty_all = "No crowd quotes available right now. Public feeds may be blocked or empty.",
+    gp_empty_venue = "No open market for this theme from this venue.",
+    gp_partial_error = "Partial feed issue —",
+    gp_attribution = "Sources: Kalshi and Polymarket public market data. Probabilities are as reported; never invented.",
+    gp_theme_fed_rates = "Fed / policy rates",
+    gp_theme_inflation_cpi = "Inflation / CPI",
+    gp_theme_recession = "Recession / labor",
+    gp_theme_equities_index = "Equities / index",
+    gp_theme_treasury_yields = "Treasury yields",
+    gp_crowd_agree = "Crowds agree",
+    gp_crowd_diverge = "Crowds diverge",
+    gp_crowd_mixed = "Crowds mixed",
+    gp_crowd_insufficient = "One-sided / insufficient",
+    gp_crowd_gap = "Implied gap:",
+    gp_crowd_simple_mean = "Simple mean of available implied probs (not fused truth):",
     atx_window = "Correlation window",
     atx_win_20 = "20 sessions",
     atx_win_60 = "60 sessions",
@@ -6129,6 +6164,40 @@ locale_for_market <- function(mode = get_market_mode()) {
       "箭頭由上游指向下游。紫線是會隨情境翻轉的連結。",
       "情境卡是這個交易日的監控標籤，不是交易訊號，也不寫入 WACC。"
     ),
+    atx_tab_map = "傳導圖",
+    atx_tab_global_prediction = "全球預測",
+    gp_lead = paste0(
+      "群眾智慧：在參與者多樣、獨立且分散時，眾人對事件定價的加總，往往比單一專家觀點更有資訊含量。",
+      "下方 Kalshi 與 Polymarket 報價是市場群眾隱含機率（有真實資金曝險），不是 App Fair Value，也不是買進訊號。"
+    ),
+    gp_context = paste0(
+      "App 的總體／ATX 主題與模型預測屬桌邊或模型觀點；此處面板屬群眾定價。",
+      "請並排對照，勿合成單一訊號。"
+    ),
+    gp_caution = paste0(
+      "風險警語：預測市場可能流動性不足、帶偏誤，或合約定義與主題不一致。",
+      "價差大時，多半是合約設計或簿冊深度不同，而非唯一正解。",
+      "空白表示公開資料被擋或沒有對應未結市場。本頁非投資建議。"
+    ),
+    gp_refresh = "更新報價",
+    gp_loading = "正在載入群眾報價…",
+    gp_updated = "上次更新（UTC）：",
+    gp_updated_none = "尚未更新",
+    gp_empty_all = "目前沒有可用的群眾報價。公開資料來源可能被擋或為空。",
+    gp_empty_venue = "此主題在此平台沒有未結市場。",
+    gp_partial_error = "部分資料來源異常 —",
+    gp_attribution = "資料來源：Kalshi、Polymarket 公開市場資料。機率依來源回傳顯示，絕不捏造。",
+    gp_theme_fed_rates = "Fed／政策利率",
+    gp_theme_inflation_cpi = "通膨／CPI",
+    gp_theme_recession = "衰退／勞動",
+    gp_theme_equities_index = "股市／指數",
+    gp_theme_treasury_yields = "公債殖利率",
+    gp_crowd_agree = "兩市群眾一致",
+    gp_crowd_diverge = "兩市群眾分歧",
+    gp_crowd_mixed = "兩市群眾分歧有限",
+    gp_crowd_insufficient = "單邊／資料不足",
+    gp_crowd_gap = "隱含機率差距：",
+    gp_crowd_simple_mean = "可得隱含機率簡單平均（非融合正解）：",
     atx_window = "滾動相關視窗",
     atx_win_20 = "20 個交易日",
     atx_win_60 = "60 個交易日",
