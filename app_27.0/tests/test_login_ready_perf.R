@@ -92,12 +92,30 @@ check(
   "resume schedules heavy / no sync points before PostLogin",
   grepl("ynow_schedule_auth_heavy", auth, fixed = TRUE)
 )
+# Mint / durable last-ui must not run before first PostLogin in finish/resume.
+mint_pos <- regexpr(".persist_auth_browser", finish_body, fixed = TRUE)[1]
+load_pos <- regexpr(".load_last_ui_surface", finish_body, fixed = TRUE)[1]
+check(
+  "finish defers mint and last-ui after PostLogin",
+  post_pos > 0 && mint_pos > post_pos && load_pos > post_pos &&
+    grepl("after_chrome", finish_body, fixed = TRUE)
+)
+resume_start <- regexpr("observeEvent(input$ynow_auth_resume_token", auth, fixed = TRUE)
+resume_end <- regexpr("observeEvent(input$ynow_auth_submit", auth, fixed = TRUE)
+resume_body <- substr(auth, resume_start, resume_end)
+r_post <- regexpr("ynowAuthPostLogin", resume_body, fixed = TRUE)[1]
+r_load <- regexpr(".load_last_ui_surface", resume_body, fixed = TRUE)[1]
+check(
+  "resume defers last-ui after chrome PostLogin",
+  r_post > 0 && r_load > r_post && grepl("after_chrome", resume_body, fixed = TRUE)
+)
 
 srv <- paste(readLines("ynow_server.R", warn = FALSE), collapse = "\n")
 check(
   "server defines schedule + heavy tick",
   grepl("ynow_auth_heavy_tick", srv, fixed = TRUE) &&
-    grepl("ynow_schedule_auth_heavy", srv, fixed = TRUE)
+    grepl("ynow_schedule_auth_heavy", srv, fixed = TRUE) &&
+    grepl("after_chrome", srv, fixed = TRUE)
 )
 check(
   "banner bundle defaults without ledger",

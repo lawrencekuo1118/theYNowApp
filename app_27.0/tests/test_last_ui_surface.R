@@ -161,15 +161,24 @@ resume_body <- between(
 sign_body <- between(auth, ".sign_out <- function", ".open_auth_modal <- function")
 load_body <- between(auth, ".load_last_ui_surface <- function", ".sign_out <- function")
 check(
-  "finish loads saved surface",
-  grepl("saved <- .load_last_ui_surface", finish_body, fixed = TRUE) &&
-    grepl("if (!nzchar(tab))", finish_body, fixed = TRUE) &&
-    grepl("ynowAuthPostLogin", finish_body, fixed = TRUE)
+  "finish chrome PostLogin before durable last-ui load",
+  {
+    post_at <- regexpr("ynowAuthPostLogin", finish_body, fixed = TRUE)[1]
+    load_at <- regexpr(".load_last_ui_surface", finish_body, fixed = TRUE)[1]
+    post_at > 0L && load_at > post_at &&
+      grepl("after_chrome", finish_body, fixed = TRUE) &&
+      grepl("ynowAuthPostLogin", finish_body, fixed = TRUE)
+  }
 )
 check(
-  "resume loads saved surface",
-  grepl(".load_last_ui_surface", resume_body, fixed = TRUE) &&
-    grepl("ynowAuthPostLogin", resume_body, fixed = TRUE)
+  "resume chrome PostLogin before durable last-ui load",
+  {
+    post_at <- regexpr("ynowAuthPostLogin", resume_body, fixed = TRUE)[1]
+    load_at <- regexpr(".load_last_ui_surface", resume_body, fixed = TRUE)[1]
+    post_at > 0L && load_at > post_at &&
+      grepl("after_chrome", resume_body, fixed = TRUE) &&
+      grepl("ynowAuthPostLogin", resume_body, fixed = TRUE)
+  }
 )
 check(
   "load reads get_last_ui_surface",

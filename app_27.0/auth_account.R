@@ -2940,7 +2940,38 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
     })
   }
 
-  #' After successful login: chrome first, then defer points / heavy prefs to next flush.
+  #' Apply tab/ticker from durable prefs after chrome (reconcile with client early restore).
+  .ynow_auth_apply_surface <- function(tab = "", ticker = "", quiet = FALSE, message = "") {
+    tab <- as.character(tab %||% "")[1]
+    ticker <- as.character(ticker %||% "")[1]
+    if (identical(tab, "testing")) tab <- "home"
+    if (!nzchar(tab) && !nzchar(ticker)) return(invisible(NULL))
+    session$sendCustomMessage(
+      "ynowAuthPostLogin",
+      list(
+        ok = TRUE,
+        restore_tab = tab,
+        restore_ticker = ticker,
+        message = as.character(message %||% "")[1],
+        quiet = isTRUE(quiet)
+      )
+    )
+    if (nzchar(tab) &&
+          !identical(tab, as.character(isolate(input$sidebar_tabs) %||% "")[1])) {
+      tryCatch(
+        updateTabItems(session, "sidebar_tabs", tab),
+        error = function(e) {
+          tryCatch(
+            session$sendInputMessage("sidebar_tabs", list(value = tab)),
+            error = function(e2) NULL
+          )
+        }
+      )
+    }
+    invisible(NULL)
+  }
+
+  #' After successful login: chrome first (client tab); mint / durable last-ui later.
   .finish_auth_success <- function(user, message_key = "auth_msg_ok",
                                    fallback = "Signed in.", restore_tab = NULL) {
     account_user(user)
@@ -2949,28 +2980,21 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
     output$ynow_auth_status <- renderUI({
       tags$p(class = "text-success", msg)
     })
-    # Auth chrome + durable resume token before points / ACL observers.
+    # Auth chrome immediately — no mint / prefs DB before this flush ends.
     .push_auth_state(TRUE, user$email %||% "")
-    .persist_auth_browser(user)
     tryCatch(shinyBS::toggleModal(session, "ynow_auth_modal", "close"), error = function(e) NULL)
-    saved <- .load_last_ui_surface(user)
-    tab <- as.character(saved$tab %||% "")[1]
-    # Prefer durable last member screen over same-session guest pre-auth tab.
-    if (!nzchar(tab)) {
-      tab <- as.character(restore_tab %||% "")[1]
-    }
+    # Client / same-session tab only (localStorage early path + modal restore_tab).
+    tab <- as.character(restore_tab %||% "")[1]
     if (!nzchar(tab)) {
       tab <- as.character(isolate(input$sidebar_tabs) %||% "")[1]
     }
-    # Sys. Admin (testing) is ops-only — never keep a signed-in user on that tab.
     if (identical(tab, "testing")) tab <- "home"
-    ticker <- as.character(saved$ticker %||% "")[1]
     session$sendCustomMessage(
       "ynowAuthPostLogin",
       list(
         ok = TRUE,
         restore_tab = tab,
-        restore_ticker = ticker,
+        restore_ticker = "",
         message = msg
       )
     )
@@ -2985,38 +3009,67 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
         }
       )
     }
-    tryCatch(
-      .persist_last_ui_surface(user, tab = tab, ticker = ticker),
-      error = function(e) NULL
-    )
-    # Points gift/check-in + prefs/ACL fan-out after ynow-authed reaches the client.
     uid <- as.character(user$id %||% "")[1]
+    chrome_tab <- tab
+    after_chrome <- function() {
+      tryCatch(.persist_auth_browser(user), error = function(e) NULL)
+      saved <- tryCatch(.load_last_ui_surface(user), error = function(e) list(tab = "", ticker = ""))
+      stab <- as.character(saved$tab %||% "")[1]
+      stick <- as.character(saved$ticker %||% "")[1]
+      if (identical(stab, "testing")) stab <- "home"
+      # Durable prefs win when present (member last screen over guest pre-auth).
+      if (nzchar(stab) || nzchar(stick)) {
+        tryCatch(
+          .ynow_auth_apply_surface(
+            tab = if (nzchar(stab)) stab else chrome_tab,
+            ticker = stick,
+            quiet = TRUE,
+            message = ""
+          ),
+          error = function(e) NULL
+        )
+      }
+      tryCatch(
+        .persist_last_ui_surface(
+          user,
+          tab = if (nzchar(stab)) stab else chrome_tab,
+          ticker = stick
+        ),
+        error = function(e) NULL
+      )
+    }
     sched <- session$userData$ynow_schedule_auth_heavy
     if (is.function(sched)) {
-      tryCatch(sched(uid = uid, notify_base = msg), error = function(e) NULL)
-    } else if (nzchar(uid) && exists("ynow_points_on_login", mode = "function")) {
-      session$onFlushed(function() {
-        pts_login <- tryCatch(ynow_points_on_login(uid), error = function(e) NULL)
-        note <- msg
-        if (isTRUE(pts_login$checkin_granted)) {
-          amt <- tryCatch(ynow_points_daily_checkin_amount(), error = function(e) 30L)
-          pts_note <- tryCatch(
-            sprintf(.str("pts_daily_checkin_fmt", "Daily check-in: +%s FYN."), as.character(amt)),
-            error = function(e) sprintf("Daily check-in: +%s FYN.", as.character(amt))
-          )
-          note <- paste(msg, pts_note)
-        } else if (isTRUE(pts_login$gift_granted)) {
-          gift_n <- tryCatch(ynow_points_signup_bonus(), error = function(e) 100L)
-          pts_note <- tryCatch(
-            sprintf(.str("pts_first_gift_fmt", "Welcome gift: +%s FYN."), as.character(gift_n)),
-            error = function(e) sprintf("Welcome gift: +%s FYN.", as.character(gift_n))
-          )
-          note <- paste(msg, pts_note)
-        }
-        tryCatch(showNotification(note, type = "message", duration = 5), error = function(e) NULL)
-      }, once = TRUE)
+      tryCatch(
+        sched(uid = uid, notify_base = msg, after_chrome = after_chrome),
+        error = function(e) NULL
+      )
     } else {
-      tryCatch(showNotification(msg, type = "message", duration = 5), error = function(e) NULL)
+      session$onFlushed(function() {
+        tryCatch(after_chrome(), error = function(e) NULL)
+        if (nzchar(uid) && exists("ynow_points_on_login", mode = "function")) {
+          pts_login <- tryCatch(ynow_points_on_login(uid), error = function(e) NULL)
+          note <- msg
+          if (isTRUE(pts_login$checkin_granted)) {
+            amt <- tryCatch(ynow_points_daily_checkin_amount(), error = function(e) 30L)
+            pts_note <- tryCatch(
+              sprintf(.str("pts_daily_checkin_fmt", "Daily check-in: +%s FYN."), as.character(amt)),
+              error = function(e) sprintf("Daily check-in: +%s FYN.", as.character(amt))
+            )
+            note <- paste(msg, pts_note)
+          } else if (isTRUE(pts_login$gift_granted)) {
+            gift_n <- tryCatch(ynow_points_signup_bonus(), error = function(e) 100L)
+            pts_note <- tryCatch(
+              sprintf(.str("pts_first_gift_fmt", "Welcome gift: +%s FYN."), as.character(gift_n)),
+              error = function(e) sprintf("Welcome gift: +%s FYN.", as.character(gift_n))
+            )
+            note <- paste(msg, pts_note)
+          }
+          tryCatch(showNotification(note, type = "message", duration = 5), error = function(e) NULL)
+        } else {
+          tryCatch(showNotification(msg, type = "message", duration = 5), error = function(e) NULL)
+        }
+      }, once = TRUE)
     }
   }
 
@@ -3037,6 +3090,7 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
   }
 
   # Browser localStorage resume after tab / browser close (quiet; no toast).
+  # Token validate stays sync (security). Durable last-ui / ticker reconcile after chrome.
   observeEvent(input$ynow_auth_resume_token, {
     if (!isTRUE(ynow_auth_enabled())) return()
     if (!is.null(isolate(account_user()))) return()
@@ -3047,43 +3101,48 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
       resume_token_held(tok)
       account_user(res$user)
       .push_auth_state(TRUE, res$user$email %||% "")
-      # Restore last member screen with the authenticated shell (no toast).
-      saved <- .load_last_ui_surface(res$user)
-      tab <- as.character(saved$tab %||% "")[1]
-      if (identical(tab, "testing")) tab <- "home"
-      ticker <- as.character(saved$ticker %||% "")[1]
-      if (nzchar(tab) || nzchar(ticker)) {
-        session$sendCustomMessage(
-          "ynowAuthPostLogin",
-          list(
-            ok = TRUE,
-            restore_tab = tab,
-            restore_ticker = ticker,
-            message = "",
-            quiet = TRUE
-          )
+      # Chrome now — client already applied ynow_last_ui_v1 before sending the token.
+      session$sendCustomMessage(
+        "ynowAuthPostLogin",
+        list(
+          ok = TRUE,
+          restore_tab = "",
+          restore_ticker = "",
+          message = "",
+          quiet = TRUE
         )
-      }
-      if (nzchar(tab) &&
-            !identical(tab, as.character(isolate(input$sidebar_tabs) %||% "")[1])) {
-        tryCatch(
-          updateTabItems(session, "sidebar_tabs", tab),
-          error = function(e) {
-            tryCatch(
-              session$sendInputMessage("sidebar_tabs", list(value = tab)),
-              error = function(e2) NULL
-            )
-          }
-        )
-      }
-      # Points / ACL / prefs after chrome flush (quiet; no toast on resume).
+      )
       uid <- as.character(res$user$id %||% "")[1]
+      u_resume <- res$user
+      after_chrome <- function() {
+        saved <- tryCatch(
+          .load_last_ui_surface(u_resume),
+          error = function(e) list(tab = "", ticker = "")
+        )
+        stab <- as.character(saved$tab %||% "")[1]
+        stick <- as.character(saved$ticker %||% "")[1]
+        if (identical(stab, "testing")) stab <- "home"
+        if (nzchar(stab) || nzchar(stick)) {
+          tryCatch(
+            .ynow_auth_apply_surface(
+              tab = stab, ticker = stick, quiet = TRUE, message = ""
+            ),
+            error = function(e) NULL
+          )
+        }
+      }
       sched <- session$userData$ynow_schedule_auth_heavy
       if (is.function(sched)) {
-        tryCatch(sched(uid = uid, notify_base = NULL), error = function(e) NULL)
-      } else if (nzchar(uid) && exists("ynow_points_on_login", mode = "function")) {
+        tryCatch(
+          sched(uid = uid, notify_base = NULL, after_chrome = after_chrome),
+          error = function(e) NULL
+        )
+      } else {
         session$onFlushed(function() {
-          tryCatch(ynow_points_on_login(uid), error = function(e) NULL)
+          tryCatch(after_chrome(), error = function(e) NULL)
+          if (nzchar(uid) && exists("ynow_points_on_login", mode = "function")) {
+            tryCatch(ynow_points_on_login(uid), error = function(e) NULL)
+          }
         }, once = TRUE)
       }
     } else {
