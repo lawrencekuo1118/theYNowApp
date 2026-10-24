@@ -5378,6 +5378,47 @@ server <- function(input, output, session) {
           error = function(e) NULL
         )
 
+        # Brand tint for company name + LAST PRICE / MARKET CAP / EPS icons.
+        # Schedule off the financials critical path, but do NOT gate on phase2/3
+        # success — a statements miss must not leave chrome stuck on default gray/green.
+        .schedule_corp_logo_tint <- function(tk, website = NULL) {
+          tk <- as.character(tk %||% "")[1]
+          web <- trimws(as.character(website %||% "")[1])
+          if (!nzchar(tk)) return(invisible(NULL))
+          run_tint <- function() {
+            tk_now <- tryCatch(
+              as.character(isolate(current_ticker()) %||% "")[1],
+              error = function(e) ""
+            )
+            if (!identical(toupper(tk_now), toupper(tk))) return(invisible(NULL))
+            logo_cols <- tryCatch(
+              cached_get_corp_logo_colors(
+                tk,
+                website = if (nzchar(web)) web else NULL
+              ),
+              error = function(e) character(0)
+            )
+            corp_name_logo_colors(.ensure_logo_color_pair(logo_cols))
+            invisible(NULL)
+          }
+          if (requireNamespace("later", quietly = TRUE)) {
+            later::later(function() {
+              tryCatch(run_tint(), error = function(e) NULL)
+            }, delay = 0)
+          } else {
+            tryCatch(run_tint(), error = function(e) NULL)
+          }
+          invisible(NULL)
+        }
+        logo_web <- tryCatch({
+          p <- isolate(company_profile())
+          as.character(p$website %||% "")[1]
+        }, error = function(e) "")
+        .schedule_corp_logo_tint(
+          stock_code,
+          website = if (nzchar(logo_web %||% "")) logo_web else NULL
+        )
+
         if (!isTRUE(.search_alive())) {
           tryCatch(prog$close(), error = function(e) NULL)
           .search_done()
@@ -5581,20 +5622,25 @@ server <- function(input, output, session) {
           }
         }, error = function(e) NULL)
 
-        # Brand tint after statements / Rf — not a valuation input; keep off the
-        # Yahoo gate critical path that blocks financials.
-        logo_web <- tryCatch({
-          p <- isolate(company_profile())
-          as.character(p$website %||% "")[1]
-        }, error = function(e) "")
-        logo_cols <- tryCatch(
-          cached_get_corp_logo_colors(
-            stock_code,
-            website = if (nzchar(logo_web %||% "")) logo_web else NULL
-          ),
-          error = function(e) character(0)
-        )
-        corp_name_logo_colors(.ensure_logo_color_pair(logo_cols))
+        # Brand tint primary path is phase1b (independent of statements). Phase3
+        # only backfills when the async tint still empty (e.g. website arrived late).
+        have_logo <- tryCatch({
+          length(.ensure_logo_color_pair(isolate(corp_name_logo_colors()))) >= 2L
+        }, error = function(e) FALSE)
+        if (!isTRUE(have_logo)) {
+          logo_web <- tryCatch({
+            p <- isolate(company_profile())
+            as.character(p$website %||% "")[1]
+          }, error = function(e) "")
+          logo_cols <- tryCatch(
+            cached_get_corp_logo_colors(
+              stock_code,
+              website = if (nzchar(logo_web %||% "")) logo_web else NULL
+            ),
+            error = function(e) character(0)
+          )
+          corp_name_logo_colors(.ensure_logo_color_pair(logo_cols))
+        }
 
         incProgress(0.9, detail = "資料同步完成！✅")
       }, error = function(e) {

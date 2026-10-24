@@ -548,10 +548,36 @@ get_corp_logo_colors <- function(stock_code, website = NULL) {
 }
 
 # Brand colors change rarely — share the slow (disk) cache with industry labels.
-cached_get_corp_logo_colors <- memoise::memoise(
+# Never retain empty results: Python-not-ready / transient logo misses would
+# otherwise poison company-name + quote KPI brand chrome for 24h.
+.cached_get_corp_logo_colors_memo <- memoise::memoise(
   get_corp_logo_colors,
   cache = .ynow_slow_cache
 )
+
+.drop_corp_logo_colors_cache_key <- function(stock_code, website = NULL) {
+  tryCatch(
+    memoise::drop_cache(.cached_get_corp_logo_colors_memo)(
+      stock_code,
+      website = website
+    ),
+    error = function(e) NULL
+  )
+  invisible(NULL)
+}
+
+#' Public logo-color fetch: memoised when non-empty; empty results are not kept.
+cached_get_corp_logo_colors <- function(stock_code, website = NULL) {
+  cols <- tryCatch(
+    .cached_get_corp_logo_colors_memo(stock_code, website = website),
+    error = function(e) character(0)
+  )
+  cols <- tryCatch(.ensure_logo_color_pair(cols), error = function(e) character(0))
+  if (!length(cols)) {
+    .drop_corp_logo_colors_cache_key(stock_code, website = website)
+  }
+  cols
+}
 
 # Default Business Breakdown / series chart palette (YNow logo blues/greens + accents).
 .YNOW_DEFAULT_CHART_PALETTE <- c(
