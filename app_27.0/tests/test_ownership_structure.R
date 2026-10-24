@@ -59,32 +59,50 @@ gl <- paste(readLines("global.R", warn = FALSE, encoding = "UTF-8"), collapse = 
 loc <- paste(readLines("ui_locale.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 
 check("global sources ownership_structure", grepl('source("ownership_structure.R"', gl, fixed = TRUE))
-check("ui ownership tab value", grepl('value = "ownership_structure"', ui, fixed = TRUE))
+check("ui no standalone ownership tabBox", !grepl('id = "dashboard_ownership"', ui, fixed = TRUE))
+check("ui ownership panel under Board/CB", grepl('id = "ownership_structure_panel"', ui, fixed = TRUE))
 dash_pos <- regexpr("tabItem(tabName = \"dashboard\"", ui, fixed = TRUE)[1]
 dash_chunk <- if (dash_pos > 0) substr(ui, dash_pos, min(nchar(ui), dash_pos + 25000L)) else ui
-pos_own <- regexpr("id = \"dashboard_ownership\"", dash_chunk, fixed = TRUE)[1]
-pos_ind <- regexpr("class = \"ynow-ind-overview-block\"", dash_chunk, fixed = TRUE)[1]
-pos_fin <- regexpr("title = \"FINANCIAL REPORT\"", dash_chunk, fixed = TRUE)[1]
-own_block <- if (pos_own > 0) {
-  substr(dash_chunk, max(1L, pos_own - 120L), min(nchar(dash_chunk), pos_own + 350L))
+pos_corp <- regexpr('value = "corp_events"', dash_chunk, fixed = TRUE)[1]
+pos_own <- regexpr('id = "ownership_structure_panel"', dash_chunk, fixed = TRUE)[1]
+pos_own_out <- regexpr("ownership_structure_top_ui", dash_chunk, fixed = TRUE)[1]
+pos_vol <- regexpr("own_volume_plot", dash_chunk, fixed = TRUE)[1]
+# Board / CB tab chunk: from corp_events value to next tabPanel (sec_notes)
+corp_end <- regexpr('value = "sec_notes"', dash_chunk, fixed = TRUE)[1]
+corp_chunk <- if (pos_corp > 0 && corp_end > pos_corp) {
+  substr(dash_chunk, pos_corp, corp_end)
 } else {
   ""
 }
 check(
-  "ui ownership outside full-only before ind overview",
-  is.finite(pos_own) && pos_own > 0 &&
-    is.finite(pos_ind) && pos_own < pos_ind &&
-    is.finite(pos_fin) && pos_fin > 0 && pos_fin < pos_own &&
-    grepl("tabBox(", own_block, fixed = TRUE) &&
-    !grepl("class = \"ynow-full-only\"", own_block, fixed = TRUE)
+  "ui ownership inside Board/CB after corp_events_ui",
+  is.finite(pos_corp) && pos_corp > 0 &&
+    is.finite(pos_own) && pos_own > pos_corp &&
+    grepl("corp_events_ui", corp_chunk, fixed = TRUE) &&
+    grepl("ownership_structure_top_ui", corp_chunk, fixed = TRUE) &&
+    grepl("own_volume_plot", corp_chunk, fixed = TRUE) &&
+    grepl("ownership_structure_holders_ui", corp_chunk, fixed = TRUE) &&
+    grepl("ynow-ownership-under-cb", corp_chunk, fixed = TRUE) &&
+    # ownership block must come after corp_events_ui in the same tab
+    regexpr("corp_events_ui", corp_chunk, fixed = TRUE)[1] <
+      regexpr("ynow-ownership-under-cb", corp_chunk, fixed = TRUE)[1]
 )
-check("ui OWNERSHIP STRUCTURE box", grepl("OWNERSHIP STRUCTURE", ui, fixed = TRUE))
+check(
+  "ui fin-report wrap not full-only (Lite keeps Board/CB)",
+  grepl("ynow-dashboard-fin-report-wrap", ui, fixed = TRUE) &&
+    grepl("ensureLiteCorpEventsTab", ui, fixed = TRUE) &&
+    grepl('data-value="corp_events"', ui, fixed = TRUE)
+)
 check("server ownership top ui", grepl("output\\$ownership_structure_top_ui", srv))
 check("server ownership holders ui", grepl("output\\$ownership_structure_holders_ui", srv))
 check("server own_volume_plot", grepl("output\\$own_volume_plot", srv))
 check("ui static own_volume_plot", grepl("own_volume_plot", ui, fixed = TRUE))
 check("locale tab map ownership", grepl('"ownership_structure" = "tab_ownership_structure"', loc, fixed = TRUE))
 check("locale box map OWNERSHIP", grepl('"OWNERSHIP STRUCTURE" = "box_ownership_structure"', loc, fixed = TRUE))
+check(
+  "ui ownership outputs ordered top then volume then holders",
+  is.finite(pos_own_out) && is.finite(pos_vol) && pos_own_out < pos_vol
+)
 
 # Lite omit must NOT include ownership / dashboard (string scan; avoid sourcing auth stack)
 omit_src <- paste(readLines("auth_account.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")

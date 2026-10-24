@@ -8332,6 +8332,20 @@ ui <- dashboardPage(
         body.ynow-lite #dashboard_fin_report .nav-tabs > li:has(> a[data-value="Annotation"]) {
           display: none !important;
         }
+        /* Lite: keep Board / CB (Ownership Structure Analysis under CB dilution); hide Full-only FS tabs */
+        body.ynow-lite #dashboard_fin_report > .nav-tabs > li:not(:has(> a[data-value="corp_events"])) {
+          display: none !important;
+        }
+        body.ynow-lite #dashboard_fin_report > .tab-content > .tab-pane {
+          display: none !important;
+        }
+        body.ynow-lite #dashboard_fin_report > .tab-content > .tab-pane#shiny-tab-corp_events,
+        body.ynow-lite #dashboard_fin_report > .tab-content > .tab-pane[data-value="corp_events"] {
+          display: block !important;
+        }
+        body.ynow-lite #dashboard_fin_report > .nav-tabs > li:has(> a[data-value="corp_events"]) {
+          display: list-item !important;
+        }
         /* Lite foot: Snapshot + Feedback only. Sys. Admin + BBLab chrome stay Full-only.
            company_advance / guest-locked tabs come from ynow_sidebar_lite_omit_css(). */
         body.ynow-lite .ynow-sidebar-test-link,
@@ -14952,7 +14966,10 @@ ui <- dashboardPage(
               if (window.Shiny && Shiny.setInputValue) {
                 Shiny.setInputValue('ynow_lite_mode', enabled, {priority: 'event'});
               }
-              if (enabled) ensureLiteSnapshotFreeTab();
+              if (enabled) {
+                ensureLiteSnapshotFreeTab();
+                ensureLiteCorpEventsTab();
+              }
               try {
                 if (typeof window.ynowSyncSidebarDownloadIcon === 'function') {
                   window.ynowSyncSidebarDownloadIcon();
@@ -15008,6 +15025,20 @@ ui <- dashboardPage(
               } catch (eSnap) {}
             }
             window.ensureLiteSnapshotFreeTab = ensureLiteSnapshotFreeTab;
+            /* Lite: FINANCIAL REPORT shows Board / CB only (ownership under CB dilution). */
+            function ensureLiteCorpEventsTab() {
+              if (!document.body.classList.contains('ynow-lite')) return;
+              var active = document.querySelector('#dashboard_fin_report > .nav-tabs li.active a');
+              var dv = active && active.getAttribute('data-value');
+              if (dv === 'corp_events') return;
+              var a = document.querySelector('#dashboard_fin_report a[data-value=\"corp_events\"]');
+              if (!a) return;
+              try {
+                if (window.jQuery) window.jQuery(a).tab('show');
+                else if (typeof a.click === 'function') a.click();
+              } catch (eCorp) {}
+            }
+            window.ensureLiteCorpEventsTab = ensureLiteCorpEventsTab;
             /* Legacy alias — older call sites / tests. */
             window.ensureLiteSnapshotDefaultsTab = ensureLiteSnapshotFreeTab;
             /* Foot links (Snapshot / Testing / Feedback) are outside .sidebar-menu.
@@ -21078,8 +21109,9 @@ ui <- dashboardPage(
               uiOutput("company_overview_ui"),
               uiOutput("ynow_news_thermometer"),
 
+              # FINANCIAL REPORT: Board / CB (+ Ownership) stays Lite+Full; other FS tabs Full-only via CSS.
               tags$div(
-                class = "ynow-full-only",
+                class = "ynow-dashboard-fin-report-wrap",
               tabBox(title = "FINANCIAL REPORT",
                      id = "dashboard_fin_report",
                      width = "auto",
@@ -21140,13 +21172,26 @@ ui <- dashboardPage(
                        downloadButton('CF_download', "Download Cash Flow Data")
                      ),
 
-                     # 董監改選／可轉債稀釋（Search 代號勾稽；台股 MOPS／TPEx，美股 SEC 連結）
+                     # Board / CB + Ownership Structure Analysis（Lite + Full；見下方 ynow-full-only / Lite CSS）
                      tabPanel(
                        title = "Board / CB",
                        value = "corp_events",
                        icon = icon("landmark"),
                        id = "corp_events_panel",
-                       uiOutput("corp_events_ui")
+                       uiOutput("corp_events_ui"),
+                       # Ownership Structure Analysis — immediately below Convertible bonds — dilution
+                       tags$hr(class = "ynow-own-under-cb-hr"),
+                       tags$div(
+                         id = "ownership_structure_panel",
+                         class = "ynow-ownership-under-cb",
+                         tags$h4(
+                           class = "ynow-corp-events-h",
+                           ui_i18n("tab_ownership_structure")
+                         ),
+                         uiOutput("ownership_structure_top_ui"),
+                         plotly::plotlyOutput("own_volume_plot", height = "320px"),
+                         uiOutput("ownership_structure_holders_ui")
+                       )
                      ),
 
                      # 財報附註擷取 (SEC EDGAR) — 僅美股模式顯示（server 以 shinyjs 控制）
@@ -21232,22 +21277,6 @@ ui <- dashboardPage(
                        )
                      )
               )
-              ),
-              
-              # Ownership Structure Analysis — Lite + Full (outside ynow-full-only)
-              tabBox(
-                title = "OWNERSHIP STRUCTURE",
-                id = "dashboard_ownership",
-                width = "auto",
-                tabPanel(
-                  title = ui_i18n("tab_ownership_structure"),
-                  value = "ownership_structure",
-                  icon = icon("sitemap"),
-                  id = "ownership_structure_panel",
-                  uiOutput("ownership_structure_top_ui"),
-                  plotly::plotlyOutput("own_volume_plot", height = "320px"),
-                  uiOutput("ownership_structure_holders_ui")
-                )
               ),
 
               tags$div(
