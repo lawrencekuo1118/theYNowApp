@@ -1,3 +1,12 @@
+## [v27.22] — 2026-10-24
+
+### Added
+- Global Prediction / 全球預測 under Asset Transmission Root (#492): Kalshi + Polymarket crowd-implied probabilities for Macro/ATX themes (Fed, CPI, recession, equities, Treasury), side-by-side with brand colors `#00D66C` / `#2E5CFF`, agree/diverge, labeled simple mean, wisdom-of-crowds framing.
+
+### Notes
+- en-US: Crowd panels are not Fair Value and not a buy signal; desk/model vs crowd-priced contrast; honest empty when feeds are blocked. Fast-cache live quotes.
+- zh-TW：群眾報價≠ Fair Value、≠買進訊號；桌邊／模型觀點與群眾定價並排對照；資料被擋時誠實空白。即時報價走快取層。
+
 ## [v27.21] — 2026-10-24
 
 ### Fixed
