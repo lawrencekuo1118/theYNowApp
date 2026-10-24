@@ -1419,6 +1419,13 @@ locale_for_market <- function(mode = get_market_mode()) {
     pts_sysadmin_self_signed_in_ok = "Signed-in user mode applied (all-user restrictions only).",
     pts_sysadmin_self_omniscient_ok = "Omniscient mode applied — all locks and hides lifted. Title is warning red.",
     pts_sysadmin_self_exit_ok = "Exited self view mode.",
+    pts_sysadmin_mode_reminder_dismiss = "Dismiss",
+    pts_sysadmin_mode_reminder_aria = "Active system admin view mode",
+    pts_sysadmin_mode_reminder_viewas_title = "View-as selected user",
+    pts_sysadmin_mode_reminder_viewas_body = paste0(
+      "You are viewing the app as this de-identified user. ",
+      "Title Loading is silver. Exit from the top bar when finished."
+    ),
     pts_sysadmin_bad_user = "Select a user from the list.",
     pts_sysadmin_bad_delta = "Enter a non-zero whole-number change for FYN and/or PYN.",
     pts_sysadmin_empty = "No users in the database yet.",
@@ -6103,6 +6110,13 @@ locale_for_market <- function(mode = get_market_mode()) {
     pts_sysadmin_self_signed_in_ok = "已套用已登入使用者模式（僅全體共用限制）。",
     pts_sysadmin_self_omniscient_ok = "已套用全知模式——已解除所有鎖定與隱藏。標題為警示紅。",
     pts_sysadmin_self_exit_ok = "已結束自身視角。",
+    pts_sysadmin_mode_reminder_dismiss = "關閉",
+    pts_sysadmin_mode_reminder_aria = "目前系統管理視角模式",
+    pts_sysadmin_mode_reminder_viewas_title = "以選定使用者視角檢視",
+    pts_sysadmin_mode_reminder_viewas_body = paste0(
+      "目前正以此去識別化使用者的視角瀏覽應用程式。",
+      "標題 Loading 為銀色。結束時請從上方列離開。"
+    ),
     pts_sysadmin_bad_user = "請從清單選擇使用者。",
     pts_sysadmin_bad_delta = "請輸入非零整數，調整 FYN 與／或 PYN。",
     pts_sysadmin_empty = "資料庫尚無使用者。",

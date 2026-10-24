@@ -3515,7 +3515,7 @@ beta_rolling_section_ui <- function() {
             ),
             # Unlocked: one control-panel bar (Exit / Switch view / Self view modes).
             # Signed-in user mode is the default on enter — no Signed-in button.
-            # Self-view exit lives on this bar (no floating reminder banner).
+            # Self-view exit lives on this bar; top-of-screen mode reminder is separate.
             tags$div(
               id = "ynow_sysadmin_control_panel",
               class = "ynow-sysadmin-control-panel ynow-sysadmin-unlocked-actions",
@@ -4260,7 +4260,38 @@ ui <- dashboardPage(
         )
       )
     ),
-    # Self-view reminder toast removed — exit lives on the control-panel bar.
+    # Persistent top reminder while a view mode is active (Exit on this strip).
+    # Sibling of page chrome — not inside .ynow-pts-sysadmin-box (keeps portal usable).
+    tags$div(
+      id = "ynow_admin_mode_reminder",
+      class = "ynow-admin-mode-reminder",
+      role = "status",
+      `aria-live` = "polite",
+      `aria-label` = "Active system admin view mode",
+      hidden = NA,
+      tags$div(
+        class = "ynow-admin-mode-reminder__inner",
+        tags$strong(
+          id = "ynow_admin_mode_reminder_title",
+          class = "ynow-admin-mode-reminder__title",
+          ""
+        ),
+        tags$span(
+          id = "ynow_admin_mode_reminder_body",
+          class = "ynow-admin-mode-reminder__body",
+          ""
+        ),
+        tags$button(
+          id = "ynow_admin_mode_reminder_exit",
+          type = "button",
+          class = "btn btn-default btn-sm ynow-admin-mode-reminder__exit",
+          tags$span(
+            id = "ynow_admin_mode_reminder_exit_label",
+            "Exit self view"
+          )
+        )
+      )
+    ),
     # C-STRUCT-02 seam 2: cookie banner / panel / reopen + prefs JS (sibling).
     .ynow_cookie_notice_ui(),
     # Account login modal/CSS — omit when disabled (do not inject NULL children)
@@ -4866,10 +4897,10 @@ ui <- dashboardPage(
           gap: 10px;
           flex-wrap: wrap;
         }
+        /* Legacy view-as strip kept in DOM for exit wiring; unified reminder is primary. */
         body.ynow-view-as .ynow-viewas-chrome {
-          display: flex;
+          display: none !important;
         }
-        /* Self-view active toast/banner intentionally omitted (exit on control panel). */
         .ynow-viewas-chrome code {
           color: #e8e8e8;
           background: rgba(255, 255, 255, 0.08);
@@ -4880,6 +4911,67 @@ ui <- dashboardPage(
           margin: 0;
           padding: 4px 10px;
           font-size: 12px;
+        }
+        /* Persistent top reminder while guest / signed-in / omniscient / view-as is active.
+           Fixed outside the sysadmin box so self-view CSS cannot hide it; Exit on this strip. */
+        .ynow-admin-mode-reminder {
+          display: none;
+          position: fixed;
+          z-index: 19100;
+          left: 12px;
+          right: 12px;
+          top: 8px;
+          max-width: min(920px, calc(100vw - 24px));
+          margin: 0 auto;
+          pointer-events: none;
+        }
+        .ynow-admin-mode-reminder.is-visible {
+          display: block;
+        }
+        .ynow-admin-mode-reminder.is-visible .ynow-admin-mode-reminder__inner {
+          animation: ynow-admin-mode-reminder-in 0.28s ease-out;
+        }
+        .ynow-admin-mode-reminder__inner {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex-wrap: wrap;
+          padding: 8px 12px;
+          border-radius: 6px;
+          background: rgba(32, 32, 36, 0.94);
+          color: #f0f0f0;
+          border: 1px solid rgba(192, 192, 192, 0.55);
+          box-shadow: 0 4px 18px rgba(0, 0, 0, 0.28);
+          font-size: 13px;
+          line-height: 1.4;
+          pointer-events: auto;
+        }
+        .ynow-admin-mode-reminder__title {
+          font-weight: 600;
+          white-space: nowrap;
+        }
+        .ynow-admin-mode-reminder__body {
+          opacity: 0.92;
+          flex: 1 1 12rem;
+          min-width: 0;
+        }
+        .ynow-admin-mode-reminder__exit {
+          margin: 0;
+          padding: 4px 10px;
+          font-size: 12px;
+        }
+        .ynow-admin-mode-reminder[data-mode="omniscient"] .ynow-admin-mode-reminder__title {
+          color: #DC3545;
+        }
+        .ynow-admin-mode-reminder[data-mode="guest"] .ynow-admin-mode-reminder__inner {
+          border-color: rgba(160, 160, 160, 0.65);
+        }
+        .ynow-admin-mode-reminder[data-mode="view_as"] .ynow-admin-mode-reminder__inner {
+          border-color: rgba(192, 192, 192, 0.75);
+        }
+        @keyframes ynow-admin-mode-reminder-in {
+          from { opacity: 0; transform: translateY(-8px); }
+          to { opacity: 1; transform: translateY(0); }
         }
         /* Site-wide cookie notice: bottom bar, not a full-screen lock */
         .ynow-cookie-banner {
@@ -12697,6 +12789,21 @@ ui <- dashboardPage(
             if (selfExitLab && s.pts_sysadmin_self_exit) selfExitLab.textContent = s.pts_sysadmin_self_exit;
             var selfHelp = document.getElementById('ynow_pts_sysadmin_self_help');
             if (selfHelp && s.pts_sysadmin_self_help) selfHelp.textContent = s.pts_sysadmin_self_help;
+            var modeRemExit = document.getElementById('ynow_admin_mode_reminder_exit_label');
+            if (modeRemExit) {
+              var remMode = (document.getElementById('ynow_admin_mode_reminder') || {})
+                .getAttribute && document.getElementById('ynow_admin_mode_reminder')
+                .getAttribute('data-mode');
+              if (remMode === 'view_as' && s.pts_sysadmin_viewas_exit) {
+                modeRemExit.textContent = s.pts_sysadmin_viewas_exit;
+              } else if (s.pts_sysadmin_self_exit) {
+                modeRemExit.textContent = s.pts_sysadmin_self_exit;
+              }
+            }
+            var modeRemEl = document.getElementById('ynow_admin_mode_reminder');
+            if (modeRemEl && s.pts_sysadmin_mode_reminder_aria) {
+              modeRemEl.setAttribute('aria-label', s.pts_sysadmin_mode_reminder_aria);
+            }
             var ctrlPanel = document.getElementById('ynow_sysadmin_control_panel');
             if (ctrlPanel && s.pts_sysadmin_control_panel_aria) {
               ctrlPanel.setAttribute('aria-label', s.pts_sysadmin_control_panel_aria);
@@ -13566,6 +13673,55 @@ ui <- dashboardPage(
                 window.ynowSyncGuestSidebarLocked();
               }
             };
+            window.ynowHideAdminModeReminder = function () {
+              var el = document.getElementById('ynow_admin_mode_reminder');
+              if (!el) return;
+              el.classList.remove('is-visible');
+              el.setAttribute('hidden', 'hidden');
+              el.removeAttribute('data-mode');
+            };
+            window.ynowShowAdminModeReminder = function (opts) {
+              opts = opts || {};
+              var el = document.getElementById('ynow_admin_mode_reminder');
+              if (!el) return;
+              var title = String(opts.title || '');
+              var body = String(opts.body || '');
+              if (!title && !body) return;
+              var titleEl = document.getElementById('ynow_admin_mode_reminder_title');
+              var bodyEl = document.getElementById('ynow_admin_mode_reminder_body');
+              var exitLab = document.getElementById('ynow_admin_mode_reminder_exit_label');
+              if (titleEl) titleEl.textContent = title;
+              if (bodyEl) bodyEl.textContent = body;
+              if (exitLab && opts.exit_label) exitLab.textContent = String(opts.exit_label);
+              if (opts.aria) el.setAttribute('aria-label', String(opts.aria));
+              el.setAttribute('data-mode', String(opts.mode || ''));
+              el.removeAttribute('hidden');
+              el.classList.add('is-visible');
+            };
+            (function bindAdminModeReminderExit() {
+              var btn = document.getElementById('ynow_admin_mode_reminder_exit');
+              if (!btn || btn.__ynowBound) return;
+              btn.__ynowBound = true;
+              btn.addEventListener('click', function (ev) {
+                if (ev && ev.preventDefault) ev.preventDefault();
+                var el = document.getElementById('ynow_admin_mode_reminder');
+                var mode = el ? String(el.getAttribute('data-mode') || '') : '';
+                if (!(window.Shiny && Shiny.setInputValue)) return;
+                if (mode === 'view_as') {
+                  Shiny.setInputValue(
+                    'ynow_pts_sysadmin_viewas_exit',
+                    (window.__ynowViewAsExitClicks = (window.__ynowViewAsExitClicks || 0) + 1),
+                    { priority: 'event' }
+                  );
+                } else {
+                  Shiny.setInputValue(
+                    'ynow_pts_sysadmin_self_exit',
+                    (window.__ynowSelfExitClicks = (window.__ynowSelfExitClicks || 0) + 1),
+                    { priority: 'event' }
+                  );
+                }
+              });
+            })();
             addHandler('ynowViewAsMode', function (payload) {
               if (!payload) return;
               var on = !!payload.active;
@@ -13577,6 +13733,21 @@ ui <- dashboardPage(
                 window.ynowApplySessionLikeAuthChrome(true, {
                   label_sign_out: payload.label_sign_out || ''
                 });
+                if (typeof window.ynowShowAdminModeReminder === 'function') {
+                  var vaTitle = payload.reminder_title || payload.active_label || '';
+                  var vaBody = payload.reminder_body || payload.hint || '';
+                  if (payload.public_id) {
+                    vaBody = (vaBody ? (vaBody + ' ') : '') +
+                      '(' + String(payload.public_id) + ')';
+                  }
+                  window.ynowShowAdminModeReminder({
+                    mode: 'view_as',
+                    title: vaTitle,
+                    body: vaBody,
+                    exit_label: payload.exit_label || payload.reminder_dismiss || '',
+                    aria: payload.reminder_aria || ''
+                  });
+                }
               } else {
                 document.body.classList.remove('ynow-view-as');
                 window.__ynowViewAsSessionLike = false;
@@ -13586,6 +13757,9 @@ ui <- dashboardPage(
                   window.ynowApplySessionLikeAuthChrome(false, null);
                 } else {
                   window.ynowApplySessionLikeAuthChrome(true, null);
+                }
+                if (typeof window.ynowHideAdminModeReminder === 'function') {
+                  window.ynowHideAdminModeReminder();
                 }
               }
               var pidEl = document.getElementById('ynow_viewas_chrome_pid');
@@ -13613,6 +13787,9 @@ ui <- dashboardPage(
                 document.body.classList.remove('ynow-self-view', 'ynow-omniscient',
                   'ynow-self-view-guest', 'ynow-self-view-signed-in');
                 window.__ynowSelfViewMode = '';
+                if (typeof window.ynowHideAdminModeReminder === 'function') {
+                  window.ynowHideAdminModeReminder();
+                }
                 if (typeof window.ynowSyncSysAdminFootVisibility === 'function') {
                   var realOn = !!window.__ynowRealAuthed;
                   window.ynowSyncSysAdminFootVisibility(realOn);
@@ -13665,8 +13842,21 @@ ui <- dashboardPage(
                     label_sign_out: payload.label_sign_out || ''
                   });
                 }
+                if (typeof window.ynowShowAdminModeReminder === 'function') {
+                  window.ynowShowAdminModeReminder({
+                    mode: mode,
+                    title: payload.reminder_title || '',
+                    body: payload.reminder_body || '',
+                    exit_label: payload.exit_label || '',
+                    aria: payload.reminder_aria || ''
+                  });
+                }
               } else {
                 window.__ynowSelfViewSessionLike = false;
+                if (typeof window.ynowHideAdminModeReminder === 'function' &&
+                    !window.__ynowViewAsSessionLike) {
+                  window.ynowHideAdminModeReminder();
+                }
                 /* Restore real auth chrome unless view-as is still faking it. */
                 if (window.__ynowViewAsSessionLike) {
                   document.body.classList.add('ynow-authed');
