@@ -1,3 +1,11 @@
+## [v27.24] — 2026-10-24
+
+### Added / Changed
+- Global Prediction follow-up (#494): wisdom-of-crowds + selection-bias framing, FEEX stub / mode-split venues, macro→stock theme order, 3m/15m freshness rescan.
+
+### Notes
+- Live bundle **12733992**. Display **v27.24**.
+
 ## [v27.23] — 2026-10-24
 
 ### Changed
