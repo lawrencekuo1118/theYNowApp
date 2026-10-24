@@ -71,8 +71,10 @@ ynow_access_catalog <- function() {
   .sl <- function(key) ynow_lock_shared_label_pair(key)
   lab_notes <- .sl("lab_notes")
   decision_checklist <- .sl("decision_checklist")
+  mos_assumptions <- .sl("mos_assumptions")
   price_alerts <- .sl("price_alerts")
   checklist_body <- .sl("checklist_body")
+  mos_assumptions_body <- .sl("mos_assumptions_body")
   rows <- list(
     # ---- Tabs (pages / sidebar + foot product surfaces) ----
     c("tab:home", "tab", "Home", "首頁"),
@@ -97,6 +99,7 @@ ynow_access_catalog <- function() {
     # Shared labels with membership sidebar_tab rows
     c("tab:lab_notes", "tab", lab_notes$en, lab_notes$zh),
     c("tab:decision_checklist", "tab", decision_checklist$en, decision_checklist$zh),
+    c("tab:mos_assumptions", "tab", mos_assumptions$en, mos_assumptions$zh),
     c("tab:price_alerts", "tab", price_alerts$en, price_alerts$zh),
     c("tab:about", "tab", "About", "關於"),
     c("tab:settings", "tab", "Settings", "設定"),
@@ -120,6 +123,7 @@ ynow_access_catalog <- function() {
     c("section:value_alerts_body", "section", "Value Alerts body", "到值通知內容"),
     c("section:backtest_body", "section", "Quant Backtest Lab body", "量化回測實驗室內容"),
     c("section:checklist_body", "section", checklist_body$en, checklist_body$zh),
+    c("section:mos_assumptions_body", "section", mos_assumptions_body$en, mos_assumptions_body$zh),
     # ---- Numeric result outputs (post-calc figures; data-ynow-lock = full id) ----
     c("output:composite_fv", "output", "Composite Fair Value (Bear / Base / Bull)", "綜合 Fair Value（Bear／Base／Bull）"),
     c("output:smart_primary_fv", "output", "Smart Analysis primary Fair Value", "智慧分析主模型 Fair Value"),

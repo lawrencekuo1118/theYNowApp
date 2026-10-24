@@ -457,6 +457,51 @@ locale_for_market <- function(mode = get_market_mode()) {
     menu_bluechip = "Blue Chip Leaderboard",
     menu_hfv = "Hist. FV Validation",
     menu_decision_checklist = "Decision Checklist",
+
+    menu_mos_assumptions = "MOS Assumptions",
+    mos_assump_page_title = "MOS Assumptions",
+    mos_assump_page_sub = paste0(
+      "Investor settings for Margin of Safety floors, HFV scenario bands, alert discounts, ",
+      "and Quant Lab MOS exposure. Fair-value MOS results stay on Smart Analysis / Checklist / reports."
+    ),
+    mos_assump_box_title = "Investor MOS settings",
+    mos_assump_b1_title = "1 · Decision hygiene floors",
+    mos_assump_b1_lead = "Lowest MOS you still accept vs Bear / Base fair value before Decision Checklist gates pass.",
+    mos_assump_b2_title = "2 · Value Alert discount",
+    mos_assump_b2_lead = "Default MOS % applied when a below-fair Value Alert fires (price ≤ FV × (1 − MOS%)).",
+    mos_assump_alert_label = "Default alert MOS (%)",
+    mos_assump_alert_hint = "Used as the starting MOS % on new Value Alert rules; each rule can still override.",
+    mos_assump_b3_title = "3 · HFV scenario bands",
+    mos_assump_b3_lead = "Classify historical Replay FV vs price paths (A–D). Veto / education only — never a buy signal.",
+    mos_assump_hfv_near = "|MOS| ≈ FV band (%)",
+    mos_assump_hfv_cheap = "Deep-cheap MOS floor (%)",
+    mos_assump_hfv_rich = "Deep-rich MOS ceiling (%)",
+    mos_assump_hfv_flat = "Flat |Δ|/prev band (%)",
+    mos_assump_hfv_strong = "Scenario D price strong-up (%)",
+    mos_assump_hfv_hint = "HFV report chapters read these thresholds; results stay on Hist. FV Validation.",
+    mos_assump_hfv_risk = "Risk note: HFV scenario labels are educational veto tools, not trade tickets.",
+    mos_assump_b4_title = "4 · Quant Lab MOS exposure",
+    mos_assump_b4_lead = "Mode A sizing map and MOS / Value Gap weight. Strategy diagnostics — not a fundamental buy signal.",
+    mos_assump_ladder_title = "MOS lag exposure cut-points (%)",
+    mos_assump_lad_deep = "Deep cheap ≥",
+    mos_assump_lad_mid = "Mild cheap ≥",
+    mos_assump_lad_fair = "Near fair ≥",
+    mos_assump_lad_mild = "Mild rich ≥",
+    mos_assump_ladder_hint = paste0(
+      "Default exposure fracs (scaled to max holding): deep→100%; mid→~72%; fair→~44%; mild-rich→~17%; else flat. ",
+      "Blend vs flat via MOS / Value Gap weight."
+    ),
+    mos_assump_strat_risk = "Risk note: exposure sizing is a backtest diagnostic, not investment advice.",
+    mos_assump_gate_body = paste0(
+      "MOS Assumptions shares the Decision Checklist sign-in unlock. ",
+      "Set floors, HFV bands, alert discount, and Lab MOS exposure here."
+    ),
+    dc_mos_assump_note = "Enable and floors are set on the MOS Assumptions tab (shared with this checklist).",
+    dc_mos_assump_mirror_fmt = "Gate: %s · floor %+.0f%%",
+    dc_mos_assump_on = "ON",
+    dc_mos_assump_off = "OFF",
+    bt_w_vg_moved_title = "MOS / Value Gap weight",
+    bt_w_vg_moved_body = "Set on the MOS Assumptions tab (investor MOS exposure settings).",
     menu_price_alert = "Value Alerts",
     menu_about = "About",
     pa_title = "Value alerts",
@@ -2090,8 +2135,9 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Replay Model (single) drives odds, tip P(up), MOS, gap-to-FV, and the pair table."
     ),
     hfv_scenario_thresh_note = paste0(
-      "Scenario bands (engineering defaults): flat |Δ|/prev ≤ 2%; |MOS| ≤ 10% ≈ FV; ",
-      "MOS ≥ 20% ≪ FV; MOS ≤ −20% ≫ FV; D also needs price momentum ≥ +5%."
+      "Scenario bands (from MOS Assumptions; defaults shown): flat |Δ|/prev ≤ 2%; |MOS| ≤ 10% ≈ FV; ",
+      "MOS ≥ 20% ≪ FV; MOS ≤ −20% ≫ FV; D also needs price momentum ≥ +5%. ",
+      "Adjust thresholds on the MOS Assumptions tab."
     ),
     hfv_chart_models_label = "Chart overlay models",
     hfv_rel_models_note = paste0(
@@ -5044,6 +5090,51 @@ locale_for_market <- function(mode = get_market_mode()) {
     menu_bluechip = "績優股排行榜",
     menu_hfv = "歷史基本面驗證",
     menu_decision_checklist = "決策檢核",
+
+    menu_mos_assumptions = "MOS假設",
+    mos_assump_page_title = "MOS假設",
+    mos_assump_page_sub = paste0(
+      "投資人可調的安全邊際下限、HFV 情境帶、警示折價，以及 Quant Lab 的 MOS 部位設定。",
+      "合理價算出的 MOS 結果仍在智慧分析／決策檢核／報告。"
+    ),
+    mos_assump_box_title = "投資人 MOS 設定",
+    mos_assump_b1_title = "1 · 決策衛生下限",
+    mos_assump_b1_lead = "相對 Bear／Base 公允價值，決策檢核通過前你仍可接受的最低安全邊際。",
+    mos_assump_b2_title = "2 · 到值通知折價",
+    mos_assump_b2_lead = "「低於公允價值」類到值通知的預設 MOS%（價 ≤ FV × (1 − MOS%)）。",
+    mos_assump_alert_label = "預設警示 MOS（%）",
+    mos_assump_alert_hint = "新到值規則以此為起始 MOS%；單筆規則仍可覆寫。",
+    mos_assump_b3_title = "3 · HFV 情境帶",
+    mos_assump_b3_lead = "依 Replay FV 與市價路徑分類 A–D。僅否決／教育用途——絕非買進訊號。",
+    mos_assump_hfv_near = "|MOS| ≈ FV 帶（%）",
+    mos_assump_hfv_cheap = "深度便宜 MOS 下限（%）",
+    mos_assump_hfv_rich = "深度偏貴 MOS 上限（%）",
+    mos_assump_hfv_flat = "持平 |Δ|/前期 帶（%）",
+    mos_assump_hfv_strong = "情境 D 價格強升（%）",
+    mos_assump_hfv_hint = "歷史公允價值驗證報告讀取這些閾值；結果圖表仍在該分頁。",
+    mos_assump_hfv_risk = "風險警語：HFV 情境標籤是教育用否決工具，不是下單指令。",
+    mos_assump_b4_title = "4 · Quant Lab MOS 部位",
+    mos_assump_b4_lead = "模式 A 部位對映與 MOS／Value Gap 權重。屬策略診斷——不是基本面買訊。",
+    mos_assump_ladder_title = "MOS 滯後曝險切點（%）",
+    mos_assump_lad_deep = "深度便宜 ≥",
+    mos_assump_lad_mid = "溫和便宜 ≥",
+    mos_assump_lad_fair = "近公允 ≥",
+    mos_assump_lad_mild = "溫和偏貴 ≥",
+    mos_assump_ladder_hint = paste0(
+      "預設部位比例（依持股上限縮放）：深度→100%；溫和便宜→約 72%；近公允→約 44%；溫和偏貴→約 17%；否則空手。",
+      "再與中性部位依 MOS／Value Gap 權重混合。"
+    ),
+    mos_assump_strat_risk = "風險警語：部位設定屬回測診斷，非投資建議。",
+    mos_assump_gate_body = paste0(
+      "MOS假設與決策檢核共用登入解鎖。",
+      "請在此設定下限、HFV 情境帶、警示折價與 Lab MOS 部位。"
+    ),
+    dc_mos_assump_note = "啟用與下限請到「MOS假設」分頁設定（與本檢核共用）。",
+    dc_mos_assump_mirror_fmt = "閘門：%s · 下限 %+.0f%%",
+    dc_mos_assump_on = "開啟",
+    dc_mos_assump_off = "關閉",
+    bt_w_vg_moved_title = "MOS／Value Gap 權重",
+    bt_w_vg_moved_body = "請到「MOS假設」分頁設定（投資人 MOS 部位）。",
     menu_price_alert = "到值通知",
     menu_about = "關於",
     pa_title = "到值通知",
@@ -6629,8 +6720,9 @@ locale_for_market <- function(mode = get_market_mode()) {
       "復盤模型（單選）驅動機率、tip 上漲機率、MOS、相對 FV 與配對表。"
     ),
     hfv_scenario_thresh_note = paste0(
-      "情境區間（工程預設）：持平 |Δ|/前期 ≤ 2%；|MOS| ≤ 10% ≈ FV；",
-      "MOS ≥ 20% ≪ FV；MOS ≤ −20% ≫ FV；D 另需價格動能 ≥ +5%。"
+      "情境區間（來自 MOS假設；下列為預設）：持平 |Δ|/前期 ≤ 2%；|MOS| ≤ 10% ≈ FV；",
+      "MOS ≥ 20% ≪ FV；MOS ≤ −20% ≫ FV；D 另需價格動能 ≥ +5%。",
+      "請到「MOS假設」分頁調整閾值。"
     ),
     hfv_chart_models_label = "圖表疊加模型",
     hfv_rel_models_note = paste0(

@@ -179,6 +179,7 @@ APP_DEFAULTS <- list(
 
   # --- 10. Decision Checklist（啟發式門檻；HFV 僅否決）---
   # Only Default-ON / mandatory_suggest items start checked (bear_base, hfv_veto).
+  # Bear/Base MOS enable + floors are owned by the MOS Assumptions tab (same input ids).
   chk_bear_base = TRUE,
   cond_bear_base_bear_mos_floor = -10,
   chk_base_mos = FALSE,
@@ -193,6 +194,18 @@ APP_DEFAULTS <- list(
   chk_fscore = FALSE,
   cond_fscore_fscore_min = 5,
   chk_no_rank_chase = FALSE,
+
+  # --- 10b. MOS Assumptions hub (investor-tunable; % units in UI) ---
+  mos_alert_default_pct = 0,
+  mos_hfv_near_pct = 10,
+  mos_hfv_deep_cheap_pct = 20,
+  mos_hfv_deep_rich_pct = -20,
+  mos_hfv_flat_band_pct = 2,
+  mos_hfv_price_strong_up_pct = 5,
+  mos_ladder_deep_pct = 30,
+  mos_ladder_mid_pct = 10,
+  mos_ladder_fair_pct = 0,
+  mos_ladder_mild_rich_pct = -10,
 
   # --- 11. Backtest / HFV ---
   bt_net_margin = 5,

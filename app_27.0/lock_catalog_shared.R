@@ -57,9 +57,11 @@ ynow_lock_shared_surface_labels <- function() {
   rows <- list(
     c("lab_notes", "Quant Backtest Lab", "量化回測實驗室"),
     c("decision_checklist", "Decision Checklist", "決策檢核"),
+    c("mos_assumptions", "MOS Assumptions", "MOS假設"),
     c("price_alerts", "Value Alerts", "到值通知"),
     # membership surface ynow_chk_body == access section:checklist_body
-    c("checklist_body", "Decision Checklist body", "決策檢核內容")
+    c("checklist_body", "Decision Checklist body", "決策檢核內容"),
+    c("mos_assumptions_body", "MOS Assumptions body", "MOS假設內容")
   )
   .ynow_lock_catalog_df(
     rows,

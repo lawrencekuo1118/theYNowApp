@@ -667,7 +667,15 @@ price_alert_tab_body_ui <- function() {
         ),
         fluidRow(
           column(3, numericInput("pa_level", .pa_bi("pa_level"), value = NA, width = "100%")),
-          column(3, numericInput("pa_mos", .pa_bi("pa_mos"), value = 0, min = 0, max = 90, width = "100%")),
+          column(3, numericInput(
+            "pa_mos", .pa_bi("pa_mos"),
+            value = if (exists("APP_DEFAULTS") && is.finite(suppressWarnings(as.numeric(APP_DEFAULTS$mos_alert_default_pct)[1]))) {
+              as.numeric(APP_DEFAULTS$mos_alert_default_pct)[1]
+            } else {
+              0
+            },
+            min = 0, max = 90, width = "100%"
+          )),
           column(6, textInput("pa_note", .pa_bi("pa_note"), value = ""))
         ),
         fluidRow(

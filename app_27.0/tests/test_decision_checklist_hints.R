@@ -78,7 +78,17 @@ check("UI ships gate hints", grepl("ynow-dc-hint", ui_txt, fixed = TRUE))
 check("UI ships cond hints", grepl("ynow-dc-cond-hint", ui_txt, fixed = TRUE))
 check(
   "baked gate hint not empty",
-  grepl("Margin of Safety|Piotroski|Value Trap|Model Selector", ui_txt)
+  grepl("Margin of Safety|Piotroski|Value Trap|Model Selector|MOS Assumptions", ui_txt)
+)
+# Bear/Base MOS floors moved to MOS Assumptions tab — checklist keeps a mirror note.
+check(
+  "checklist mirrors MOS Assumptions note",
+  grepl("ynow_dc_mos_assump_note_bear_base", ui_txt, fixed = TRUE) ||
+    grepl("MOS Assumptions", ui_txt, fixed = TRUE)
+)
+check(
+  "checklist no longer hosts bear floor numericInput",
+  !grepl('id="cond_bear_base_bear_mos_floor"', ui_txt, fixed = TRUE)
 )
 mod_src <- paste(readLines("decision_checklist_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check(

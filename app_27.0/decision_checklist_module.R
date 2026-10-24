@@ -121,6 +121,33 @@
   label0 <- .dc_str(paste0("dc_label_", item), "en")
   hint0 <- .dc_str(paste0("dc_hint_", item), "en")
   badge0 <- .dc_str("dc_badge_default_on", "en")
+  # Bear/Base MOS enable + floors live on MOS Assumptions (same input ids).
+  # Checklist keeps a read-only mirror so gates still evaluate.
+  if (identical(item, "bear_base") || identical(item, "base_mos")) {
+    return(tags$div(
+      class = paste0(
+        "ynow-dc-item ynow-dc-item--mos-assump",
+        if (isTRUE(def$mandatory_suggest)) " ynow-dc-item--default" else ""
+      ),
+      `data-dc-item` = item,
+      tags$span(
+        class = "ynow-dc-label-wrap",
+        tags$span(class = "ynow-dc-label", id = paste0("ynow_dc_label_", item), label0),
+        if (isTRUE(def$mandatory_suggest)) {
+          tags$span(class = "ynow-dc-badge", id = paste0("ynow_dc_badge_", item), badge0)
+        } else {
+          NULL
+        }
+      ),
+      tags$p(class = "ynow-dc-hint", id = paste0("ynow_dc_hint_", item), hint0),
+      tags$p(
+        class = "ynow-dc-cond-hint ynow-dc-mos-assump-note",
+        id = paste0("ynow_dc_mos_assump_note_", item),
+        .dc_str("dc_mos_assump_note", "en")
+      ),
+      uiOutput(paste0("dc_mos_assump_mirror_", item))
+    ))
+  }
   tags$div(
     class = paste0(
       "ynow-dc-item",
@@ -872,6 +899,36 @@ decision_checklist_server <- function(
       res$on <- on
       res
     })
+  })
+
+  .dc_mos_assump_mirror_ui <- function(item) {
+    loc <- tryCatch(ui_locale(), error = function(e) "en")
+    on <- isTRUE(input[[.dc_chk_id(item)]])
+    floor_id <- if (identical(item, "bear_base")) {
+      "cond_bear_base_bear_mos_floor"
+    } else {
+      "cond_base_mos_base_mos_floor"
+    }
+    floor_v <- suppressWarnings(as.numeric(input[[floor_id]])[1])
+    if (!is.finite(floor_v)) {
+      floor_v <- if (identical(item, "bear_base")) -10 else 15
+    }
+    tags$div(
+      class = "ynow-dc-mos-assump-mirror",
+      tags$span(
+        sprintf(
+          ui_str("dc_mos_assump_mirror_fmt", loc),
+          if (on) ui_str("dc_mos_assump_on", loc) else ui_str("dc_mos_assump_off", loc),
+          floor_v
+        )
+      )
+    )
+  }
+  output$dc_mos_assump_mirror_bear_base <- renderUI({
+    .dc_mos_assump_mirror_ui("bear_base")
+  })
+  output$dc_mos_assump_mirror_base_mos <- renderUI({
+    .dc_mos_assump_mirror_ui("base_mos")
   })
 
   output$dc_live_snapshot <- renderUI({

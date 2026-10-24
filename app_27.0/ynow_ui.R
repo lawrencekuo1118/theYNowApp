@@ -2376,8 +2376,9 @@ beta_rolling_section_ui <- function() {
                   id = "ynow_hfv_scenario_thresh_note",
                   style = "font-size:11.5px;color:#666;line-height:1.45;margin:0 0 4px 0;",
                   paste0(
-                    "Scenario bands (engineering defaults): flat |Δ|/prev ≤ 2%; |MOS| ≤ 10% ≈ FV; ",
-                    "MOS ≥ 20% ≪ FV; MOS ≤ −20% ≫ FV; D also needs price momentum ≥ +5%."
+                    "Scenario bands (from MOS Assumptions; defaults shown): flat |Δ|/prev ≤ 2%; |MOS| ≤ 10% ≈ FV; ",
+                    "MOS ≥ 20% ≪ FV; MOS ≤ −20% ≫ FV; D also needs price momentum ≥ +5%. ",
+                    "Adjust thresholds on the MOS Assumptions tab."
                   )
                 ),
                 tags$p(
@@ -3065,11 +3066,14 @@ beta_rolling_section_ui <- function() {
                     fluidRow(
                       column(
                         6,
-                        sliderInput("bt_w_vg", "MOS / Value Gap weight (exposure)", 0, 1, APP_DEFAULTS$bt_w_vg, step = 0.01),
-                        tags$p(
-                          id = "ynow_bt_w_vg_hint",
-                          class = "ynow-backtest-inline-hint",
-                          "Higher = more MOS-bucket de-risking; lower ≈ fixed neutral size."
+                        tags$div(
+                          class = "ynow-backtest-callout",
+                          tags$b(id = "ynow_bt_w_vg_moved_title", "MOS / Value Gap weight"),
+                          tags$br(),
+                          tags$span(
+                            id = "ynow_bt_w_vg_moved_body",
+                            "Set on the MOS Assumptions tab (investor MOS exposure settings)."
+                          )
                         )
                       ),
                       column(
@@ -3081,6 +3085,7 @@ beta_rolling_section_ui <- function() {
                           tags$span(
                             id = "ynow_bt_mos_ladder_body",
                             paste0(
+                              "Cut-points are set on MOS Assumptions. Default map: ",
                               "MOS≥30%→near max holding; ≥10%→~72%×cap; ≥0%→~44%×cap; ≥−10%→~17%×cap; else flat. ",
                               "(Max / floor holding and \"Closer to buy-and-hold\" are under Sentiment.)"
                             )
@@ -3946,6 +3951,20 @@ ui <- dashboardPage(
                },
                tabName = "decision_checklist",
                icon = icon("clipboard-check")
+             ),
+             menuItem(
+               text = if (exists("ynow_sidebar_guest_lock_label", mode = "function")) {
+                 ynow_sidebar_guest_lock_label(
+                   "mos_assumptions", "ynow_menu_mos_assumptions", "MOS Assumptions"
+                 )
+               } else {
+                 tagList(
+                   icon("lock", class = "ynow-menu-lock"),
+                   tags$span(id = "ynow_menu_mos_assumptions", "MOS Assumptions")
+                 )
+               },
+               tabName = "mos_assumptions",
+               icon = icon("shield-alt")
              ),
              menuItem(
                text = if (exists("ynow_sidebar_guest_lock_label", mode = "function")) {
@@ -5571,6 +5590,7 @@ ui <- dashboardPage(
           .content-wrapper:has(#shiny-tab-lab_notes.active) .ynow-stock-chrome,
         body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed)
           .content-wrapper:has(#shiny-tab-decision_checklist.active) .ynow-stock-chrome,
+          .content-wrapper:has(#shiny-tab-mos_assumptions.active) .ynow-stock-chrome,
         body.ynow-auth-feature:not(.ynow-lite):not(.ynow-authed)
           .content-wrapper:has(#shiny-tab-price_alerts.active) .ynow-stock-chrome {
           display: none !important;
@@ -10178,7 +10198,7 @@ ui <- dashboardPage(
             ";"
           )
         } else {
-          "window.__YNOW_SIDEBAR_GUEST_LOCK_TABS = {lab_notes:true,decision_checklist:true,price_alerts:true,asset_transmission:true};"
+          "window.__YNOW_SIDEBAR_GUEST_LOCK_TABS = {lab_notes:true,decision_checklist:true,mos_assumptions:true,price_alerts:true,asset_transmission:true};"
         },
         if (exists("ynow_sidebar_persist_lock_js_map", mode = "function")) {
           paste0(
@@ -11431,6 +11451,7 @@ ui <- dashboardPage(
             var loginTabs = window.__YNOW_SIDEBAR_GUEST_LOCK_TABS || {
               lab_notes: true,
               decision_checklist: true,
+              mos_assumptions: true,
               price_alerts: true,
               asset_transmission: true
             };
@@ -11574,6 +11595,7 @@ ui <- dashboardPage(
               bluechip: s.menu_bluechip,
               hfv: s.menu_hfv,
               decision_checklist: s.menu_decision_checklist,
+              mos_assumptions: s.menu_mos_assumptions,
               price_alerts: s.menu_price_alert,
               about: s.menu_about,
               settings: s.menu_settings
@@ -12013,7 +12035,8 @@ ui <- dashboardPage(
             setBtText('ynow_bt_tab_fundamental', 'bt_tab_fundamental');
             setBtText('ynow_bt_tab_sentiment', 'bt_tab_sentiment');
             setBtText('ynow_bt_fund_intro', 'bt_fund_intro');
-            setBtText('ynow_bt_w_vg_hint', 'bt_w_vg_hint');
+            setBtText('ynow_bt_w_vg_moved_title', 'bt_w_vg_moved_title');
+            setBtText('ynow_bt_w_vg_moved_body', 'bt_w_vg_moved_body');
             setBtText('ynow_bt_mos_ladder_title', 'bt_mos_ladder_title');
             setBtText('ynow_bt_mos_ladder_body', 'bt_mos_ladder_body');
             setBtText('ynow_bt_sent_intro', 'bt_sent_intro');
@@ -13772,6 +13795,7 @@ ui <- dashboardPage(
               var tabs = window.__YNOW_SIDEBAR_GUEST_LOCK_TABS || {
                 lab_notes: true,
                 decision_checklist: true,
+                mos_assumptions: true,
                 price_alerts: true,
                 asset_transmission: true
               };
@@ -14669,7 +14693,7 @@ ui <- dashboardPage(
                 'get_started', 'nav_calculator', 'dcf_calculator', 'ddm_calculator',
                 'ri_calculator', 'pb_calculator', 'rel_mult_ev', 'rel_multiples_calculator',
                 'rel_mult_rev', 'sotp_calculator', 'hfv',
-                'decision_checklist', 'lab_notes', 'price_alerts', 'testing', 'company_advance',
+                'decision_checklist', 'mos_assumptions', 'lab_notes', 'price_alerts', 'testing', 'company_advance',
                 'asset_transmission', 'account_admin', 'account_points', 'settings'
               ];
             }
@@ -21738,6 +21762,7 @@ ui <- dashboardPage(
       # 決策檢核（投資決策通過檢核表）
       # ==========================================
       decision_checklist_tab_ui(),
+      mos_assumptions_tab_ui(),
       price_alert_tab_ui(),
       if (exists("ynow_admin_tab_ui", mode = "function")) ynow_admin_tab_ui() else NULL,
 

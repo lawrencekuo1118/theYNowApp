@@ -35,7 +35,7 @@ check(
   "guest locks are Lab + Checklist + Value Alerts + ATX",
   identical(
     sort(guest),
-    sort(c("lab_notes", "decision_checklist", "price_alerts", "asset_transmission"))
+    sort(c("lab_notes", "decision_checklist", "mos_assumptions", "price_alerts", "asset_transmission"))
   )
 )
 check(

@@ -2109,14 +2109,21 @@ derive_bt_params <- function(d_is, d_bs, d_cf,
 
 #' MOS -> Strategy A target exposure (hysteresis map).
 #' @param max_exp ceiling for deep-undervalued bucket (default 0.90; set 1 to fit BH)
-mos_hysteresis_target <- function(mos, w_vg = 0.7, max_exp = 0.90) {
+#' @param deep,mid,fair,mild_rich MOS cut-points (decimal); investor-tunable via MOS Assumptions
+mos_hysteresis_target <- function(mos, w_vg = 0.7, max_exp = 0.90,
+                                  deep = 0.30, mid = 0.10, fair = 0.00,
+                                  mild_rich = -0.10) {
   max_exp <- .clip01(.safe_num(max_exp, 0.90), 0.5, 1)
+  deep <- .safe_num(deep, 0.30)
+  mid <- .safe_num(mid, 0.10)
+  fair <- .safe_num(fair, 0.00)
+  mild_rich <- .safe_num(mild_rich, -0.10)
   if (!is.finite(mos)) return(min(0.40, max_exp))
   # Scale legacy map (old max 0.90) to user max_exp.
-  base <- if (mos >= 0.30) max_exp
-          else if (mos >= 0.10) max_exp * (0.65 / 0.90)
-          else if (mos >= 0.00) max_exp * (0.40 / 0.90)
-          else if (mos >= -0.10) max_exp * (0.15 / 0.90)
+  base <- if (mos >= deep) max_exp
+          else if (mos >= mid) max_exp * (0.65 / 0.90)
+          else if (mos >= fair) max_exp * (0.40 / 0.90)
+          else if (mos >= mild_rich) max_exp * (0.15 / 0.90)
           else 0.00
   w <- .clip01(w_vg, 0, 1)
   flat <- min(0.40, max_exp)
@@ -2536,6 +2543,10 @@ if (!exists(".normalize_rebal_freq", mode = "function") ||
   w_vg  <- .safe_num(params$bt_w_vg, 0.7)
   max_exp <- .clip01(.safe_num(params$bt_max_exp, 0.90), 0.5, 1)
   min_exp_pass <- .clip01(.safe_num(params$bt_min_exp_pass, 0), 0, 0.4)
+  lad_deep <- .safe_num(params$mos_ladder_deep, 0.30)
+  lad_mid <- .safe_num(params$mos_ladder_mid, 0.10)
+  lad_fair <- .safe_num(params$mos_ladder_fair, 0.00)
+  lad_mild <- .safe_num(params$mos_ladder_mild_rich, -0.10)
   rebal_freq <- .normalize_rebal_freq(params$bt_rebal_freq %||% "quarterly")
   min_rebal <- .rebal_min_points(rebal_freq)
 
@@ -2637,10 +2648,13 @@ if (!exists(".normalize_rebal_freq", mode = "function") ||
         gf <- .great_filter_pass(fund_i, thr_npm, thr_rev, thr_eps, thr_cv, fund_i$cv_fcf)
 
         # ---- Mode A exposure (Trade_A); Mode B nests on Exp_A ----
-        pos_a_target <- mos_hysteresis_target(mos_i, w_vg, max_exp = max_exp)
+        pos_a_target <- mos_hysteresis_target(
+          mos_i, w_vg, max_exp = max_exp,
+          deep = lad_deep, mid = lad_mid, fair = lad_fair, mild_rich = lad_mild
+        )
         if (!isTRUE(gf$pass)) {
           pos_a_target <- 0
-        } else if (is.finite(mos_i) && mos_i >= -0.10 && min_exp_pass > 0) {
+        } else if (is.finite(mos_i) && mos_i >= lad_mild && min_exp_pass > 0) {
           pos_a_target <- max(pos_a_target, min_exp_pass)
         }
         pos_a <- .clip01(min(pos_a_target, max_exp), 0, 1)

@@ -3936,6 +3936,11 @@ server <- function(input, output, session) {
     )
     session$userData$ynow_last_locale_push <- list(loc = loc, at_num = now_num)
     session$sendCustomMessage("ynowUiLocale", payload)
+    tryCatch({
+      if (exists("mos_assumptions_push_locale", mode = "function")) {
+        mos_assumptions_push_locale(session, loc)
+      }
+    }, error = function(e) NULL)
     # SGR 自訂輸入標籤隨 locale
     tryCatch({
       updateNumericInput(
@@ -4556,6 +4561,16 @@ server <- function(input, output, session) {
     ui_locale_rv = ui_locale,
     metric_snapshot_rv = value_alert_metric_snapshot
   )
+
+  # MOS Assumptions → Value Alert form default MOS % (rule can still override).
+  observeEvent(input$mos_alert_default_pct, {
+    v <- suppressWarnings(as.numeric(input$mos_alert_default_pct)[1])
+    if (!is.finite(v)) return()
+    tryCatch({
+      updateNumericInput(session, "pa_mos", value = v)
+      updateNumericInput(session, "pa_quick_mos", value = v)
+    }, error = function(e) NULL)
+  }, ignoreInit = TRUE)
 
   # 語言控制：只改 UI locale，不碰顯示幣別；手動選擇鎖定後不再套用裝置預設。
   # Always re-push (even if pick == current): a missed ynowUiLocale custom message
@@ -7281,12 +7296,22 @@ server <- function(input, output, session) {
     # Engine assumptions that are not editable inputs but still affect results —
     # must appear on Snapshot so nothing is a fully hidden substitute.
     hfv_thr <- tryCatch(
-      if (exists("hfv_scenario_threshold_defaults", mode = "function")) {
+      if (exists("mos_assumptions_hfv_thr", mode = "function")) {
+        mos_assumptions_hfv_thr(input)
+      } else if (exists("hfv_scenario_threshold_defaults", mode = "function")) {
         hfv_scenario_threshold_defaults()
       } else {
         list()
       },
       error = function(e) list()
+    )
+    mos_lad <- tryCatch(
+      if (exists("mos_assumptions_ladder", mode = "function")) {
+        mos_assumptions_ladder(input)
+      } else {
+        list(deep = 0.30, mid = 0.10, fair = 0.00, mild_rich = -0.10)
+      },
+      error = function(e) list(deep = 0.30, mid = 0.10, fair = 0.00, mild_rich = -0.10)
     )
     capex_prior <- tryCatch(
       as.integer(APP_DEFAULTS$capex_spike_prior_years %||% 2L)[1],
@@ -7341,29 +7366,35 @@ server <- function(input, output, session) {
         "Fixed heuristic; classifies FV/price momentum as flat (not editable)"
       ),
       c(
-        "HFV", "Scenario Price≪FV MOS floor",
+        "MOS Assumptions", "Scenario Price≪FV MOS floor",
         .snapshot_value(hfv_thr$mos_deep_cheap),
-        "Fixed heuristic; MOS ≥ this → Price ≪ FV (scenario A/B)"
+        "MOS Assumptions / HFV; MOS ≥ this → Price ≪ FV (scenario A)"
       ),
       c(
-        "HFV", "Scenario Price≫FV MOS ceiling",
+        "MOS Assumptions", "Scenario Price≫FV MOS ceiling",
         .snapshot_value(hfv_thr$mos_deep_rich),
-        "Fixed heuristic; MOS ≤ this → Price ≫ FV"
+        "MOS Assumptions / HFV; MOS ≤ this → Price ≫ FV (scenario D)"
       ),
       c(
-        "HFV", "Scenario Price≈FV |MOS| band",
+        "MOS Assumptions", "Scenario Price≈FV |MOS| band",
         .snapshot_value(hfv_thr$mos_near),
-        "Fixed heuristic; |MOS| ≤ this → Price ≈ FV"
+        "MOS Assumptions / HFV; |MOS| ≤ this → Price ≈ FV"
       ),
       c(
-        "HFV", "Scenario D price strong-up",
+        "MOS Assumptions", "Scenario D price strong-up",
         .snapshot_value(hfv_thr$price_strong_up),
-        "Fixed heuristic; price momentum ≥ this for scenario D"
+        "MOS Assumptions / HFV; price momentum ≥ this for scenario D"
       ),
       c(
-        "Backtest", "MOS hysteresis ladder (fixed)",
-        "MOS≥30%→max_exp; ≥10%→~72%×cap; ≥0%→~44%; ≥−10%→~17%; else 0; blend vs flat≤40% via w_vg",
-        "Quant Lab Mode A exposure; not editable — documented here for transparency"
+        "MOS Assumptions", "MOS hysteresis ladder cut-points",
+        sprintf(
+          "deep≥%.0f%%; mid≥%.0f%%; fair≥%.0f%%; mild-rich≥%.0f%% → max / ~72%% / ~44%% / ~17%% / 0; blend via bt_w_vg",
+          100 * as.numeric(mos_lad$deep %||% 0.3),
+          100 * as.numeric(mos_lad$mid %||% 0.1),
+          100 * as.numeric(mos_lad$fair %||% 0),
+          100 * as.numeric(mos_lad$mild_rich %||% -0.1)
+        ),
+        "Quant Lab Mode A exposure; cut-points from MOS Assumptions tab"
       ),
       c(
         "Backtest", "Mode B sentiment blend (fixed)",
@@ -7609,10 +7640,20 @@ server <- function(input, output, session) {
       capex_spike_prior_years = c("FCF", "暴衝判定前期年數", "不含最新年的前期均值窗口"),
       apply_g_ceiling = c("FCF", "啟用成長率天花板", "近端 g 25% 防呆"),
       session_ccy = c("Meta", "Session Currency", "USD / TWD 顯示幣別"),
-      chk_bear_base = c("Decision Checklist", "Gate: Bear vs Base", "啟發式；預設勾選"),
-      cond_bear_base_bear_mos_floor = c("Decision Checklist", "Bear MOS floor (%)", "Bear FV 最低 MOS"),
-      chk_base_mos = c("Decision Checklist", "Gate: Base MOS", "啟發式；自行加選"),
-      cond_base_mos_base_mos_floor = c("Decision Checklist", "Base MOS floor (%)", "Base FV 最低 MOS"),
+      chk_bear_base = c("MOS Assumptions", "Gate: Bear vs Base", "啟發式；預設勾選"),
+      cond_bear_base_bear_mos_floor = c("MOS Assumptions", "Bear MOS floor (%)", "Bear FV 最低 MOS"),
+      chk_base_mos = c("MOS Assumptions", "Gate: Base MOS", "啟發式；自行加選"),
+      cond_base_mos_base_mos_floor = c("MOS Assumptions", "Base MOS floor (%)", "Base FV 最低 MOS"),
+      mos_alert_default_pct = c("MOS Assumptions", "Default alert MOS (%)", "到值通知預設折價"),
+      mos_hfv_near_pct = c("MOS Assumptions", "HFV |MOS|≈FV (%)", "情境近公允帶"),
+      mos_hfv_deep_cheap_pct = c("MOS Assumptions", "HFV deep-cheap (%)", "情境 A 下限"),
+      mos_hfv_deep_rich_pct = c("MOS Assumptions", "HFV deep-rich (%)", "情境 D 上限"),
+      mos_hfv_flat_band_pct = c("MOS Assumptions", "HFV flat |Δ| (%)", "動能持平帶"),
+      mos_hfv_price_strong_up_pct = c("MOS Assumptions", "HFV D strong-up (%)", "情境 D 強升"),
+      mos_ladder_deep_pct = c("MOS Assumptions", "Ladder deep (%)", "Mode A 深度便宜切點"),
+      mos_ladder_mid_pct = c("MOS Assumptions", "Ladder mid (%)", "Mode A 溫和便宜切點"),
+      mos_ladder_fair_pct = c("MOS Assumptions", "Ladder fair (%)", "Mode A 近公允切點"),
+      mos_ladder_mild_rich_pct = c("MOS Assumptions", "Ladder mild-rich (%)", "Mode A 溫和偏貴切點"),
       chk_g_sgr = c("Decision Checklist", "Gate: g vs SGR", "啟發式；自行加選"),
       cond_g_sgr_g_sgr_gap_min = c("Decision Checklist", "g−SGR gap min (pp)", "成長與 SGR 最小差距"),
       cond_g_sgr_sgr_wacc_buffer = c("Decision Checklist", "SGR–WACC buffer (pp)", "SGR 須低於 WACC 的緩衝"),
@@ -15505,6 +15546,11 @@ server <- function(input, output, session) {
       if (is.null(d_income_statement()) || is.null(d_cash_flow()) || is.null(d_balance_sheet())) {
         stop("請先在 Dashboard 搜尋並載入該公司財報")
       }
+      lad <- if (exists("mos_assumptions_ladder", mode = "function")) {
+        mos_assumptions_ladder(input)
+      } else {
+        list(deep = 0.30, mid = 0.10, fair = 0.00, mild_rich = -0.10)
+      }
       params <- list(
         bt_net_margin = input$bt_net_margin,
         bt_rev_growth = input$bt_rev_growth,
@@ -15515,6 +15561,10 @@ server <- function(input, output, session) {
         bt_w_vg = input$bt_w_vg,
         bt_max_exp = input$bt_max_exp,
         bt_min_exp_pass = input$bt_min_exp_pass,
+        mos_ladder_deep = lad$deep,
+        mos_ladder_mid = lad$mid,
+        mos_ladder_fair = lad$fair,
+        mos_ladder_mild_rich = lad$mild_rich,
         bt_rebal_freq = .bt_selected_rebal_freq(),
         bt_news_on = isTRUE(input$bt_news_on),
         bt_news_score = tryCatch(ynow_news_now()$score, error = function(e) NA_real_)
@@ -16351,11 +16401,17 @@ server <- function(input, output, session) {
     b <- .bt_fv_conv_bounds()
     mode <- as.character(input$bt_fv_oos_mode %||% "realized")[1]
     if (!mode %in% c("realized", "insample", "expanding")) mode <- "realized"
+    thr <- if (exists("mos_assumptions_hfv_thr", mode = "function")) {
+      tryCatch(mos_assumptions_hfv_thr(input), error = function(e) NULL)
+    } else {
+      NULL
+    }
     tryCatch(
       summarize_fv_market_validation(
         vd, from = b$from, to = b$to,
         as_of = Sys.Date(), oos_mode = mode,
-        locale = isolate(ui_locale())
+        locale = isolate(ui_locale()),
+        thr = thr
       ),
       error = function(e) {
         tryCatch(
