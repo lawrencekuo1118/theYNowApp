@@ -1452,10 +1452,19 @@ beta_rolling_section_ui <- function() {
       tabPanel(
         "SGR",
         icon = icon("seedling"),
-        # 與 BETA Overview 同款 valueBox 列：各 50% 並排
+        # 與 BETA Overview 同款 valueBox 列：各 50% 並排（1:1）。
+        # Lock attr on column (not a bare wrapper) so Bootstrap col + flex equal-height stay intact.
         fluidRow(
-          tags$div(`data-ynow-lock` = "output:sgr_pct", valueBoxOutput("vbx_sgr_pct", width = 6)),
-          valueBoxOutput("vbx_session_g", width = 6)
+          class = "ynow-sgr-kpi-row",
+          column(
+            6,
+            `data-ynow-lock` = "output:sgr_pct",
+            valueBoxOutput("vbx_sgr_pct", width = 12)
+          ),
+          column(
+            6,
+            valueBoxOutput("vbx_session_g", width = 12)
+          )
         ),
         fluidRow(
           column(
@@ -16144,6 +16153,27 @@ ui <- dashboardPage(
           flex: 1 1 auto;
           width: 100%;
           height: 100%;
+        }
+        /* SGR KPI value boxes only: square 1:1 (override equal-height stretch).
+           Size from height so col-sm-6 does not force ~half-viewport tiles. */
+        .content-wrapper .ynow-sgr-kpi-row > [class*='col-'],
+        .tab-content .ynow-sgr-kpi-row > [class*='col-'],
+        .tab-pane .ynow-sgr-kpi-row > [class*='col-'] {
+          align-items: center;
+        }
+        .content-wrapper .ynow-sgr-kpi-row .small-box,
+        .tab-content .ynow-sgr-kpi-row .small-box,
+        .tab-pane .ynow-sgr-kpi-row .small-box {
+          aspect-ratio: 1 / 1 !important;
+          height: clamp(120px, 18vw, 168px) !important;
+          width: auto !important;
+          max-width: 100%;
+          flex: 0 0 auto !important;
+          margin-left: auto;
+          margin-right: auto;
+          display: flex !important;
+          flex-direction: column !important;
+          justify-content: center !important;
         }
         /* Global boxes: keep original alignment; numerals much larger than labels. */
         .content-wrapper .small-box .inner {
