@@ -10775,7 +10775,39 @@ ui <- dashboardPage(
                 });
               }
               mark.classList.toggle('ynow-logo-spinning', busy);
+              if (!busy) mark.classList.remove('ynow-logo-spin-fast');
               try { mark.setAttribute('aria-busy', busy ? 'true' : 'false'); } catch (eSpin) {}
+            }
+            function releaseFastRefresh(tab) {
+              var mark = document.getElementById('ynow_header_logo_home');
+              if (!mark || !mark.classList || !mark.classList.contains('ynow-logo-spin-fast')) return;
+              tab = remapTab(tab);
+              if (!tab || tabHasOtherBusy(tab)) return;
+              if (sourcesByTab[tab] && sourcesByTab[tab].refresh) {
+                setTabBusy(tab, false, 'refresh');
+              }
+            }
+            function tabHasOtherBusy(tab) {
+              var src = (tab && sourcesByTab[tab]) ? sourcesByTab[tab] : {};
+              var keys = Object.keys(src);
+              for (var i = 0; i < keys.length; i++) {
+                if (keys[i] !== 'refresh' && src[keys[i]]) return true;
+              }
+              return false;
+            }
+            function clearOtherTabBusy(keep) {
+              keep = remapTab(keep);
+              Object.keys(sourcesByTab).forEach(function (t) {
+                if (keep && t === keep) return;
+                if (!sourcesByTab[t]) return;
+                delete sourcesByTab[t];
+                applyVisual(t);
+              });
+            }
+            function focusCurrentTabBusy(keep) {
+              keep = remapTab(keep);
+              if (keep) setTabBusy(keep, true, 'refresh');
+              clearOtherTabBusy(keep);
             }
             function applyVisual(tab) {
               tab = remapTab(tab);
@@ -10801,6 +10833,7 @@ ui <- dashboardPage(
               tab = remapTab(tab);
               source = String(source || 'server');
               if (!tab) return;
+              var hadOther = tabHasOtherBusy(tab);
               if (!sourcesByTab[tab]) sourcesByTab[tab] = {};
               if (on) {
                 sourcesByTab[tab][source] = true;
@@ -10809,13 +10842,20 @@ ui <- dashboardPage(
                 if (!Object.keys(sourcesByTab[tab]).length) delete sourcesByTab[tab];
               }
               applyVisual(tab);
+              if (!on && source !== 'refresh' && hadOther && !tabHasOtherBusy(tab)) {
+                releaseFastRefresh(tab);
+              }
             }
             function clearSource(source) {
               Object.keys(sourcesByTab).forEach(function (tab) {
                 if (sourcesByTab[tab] && sourcesByTab[tab][source]) {
+                  var hadOther = tabHasOtherBusy(tab);
                   delete sourcesByTab[tab][source];
                   if (!Object.keys(sourcesByTab[tab]).length) delete sourcesByTab[tab];
                   applyVisual(tab);
+                  if (source !== 'refresh' && hadOther && !tabHasOtherBusy(tab)) {
+                    releaseFastRefresh(tab);
+                  }
                 }
               });
             }
@@ -10842,10 +10882,18 @@ ui <- dashboardPage(
                 setTabBusy(shinyTab, false, 'shiny');
                 shinyTab = null;
               }
+              var idleTab = currentTab();
+              var hadOther = tabHasOtherBusy(idleTab);
               clearSource('shiny');
               clearSource('nav');
               clearSource('progress');
-              clearSource('refresh');
+              var markIdle = document.getElementById('ynow_header_logo_home');
+              var fastIdle = !!(markIdle && markIdle.classList &&
+                markIdle.classList.contains('ynow-logo-spin-fast'));
+              /* Fast spin outlives an early shiny:idle that has not seen
+                 feature work yet. It stops once that work drops off. */
+              if (!fastIdle) clearSource('refresh');
+              else if (hadOther && !tabHasOtherBusy(idleTab)) releaseFastRefresh(idleTab);
               syncHeaderLogoSpin();
             }
             function onSidebarTabClick(ev) {
@@ -10887,6 +10935,9 @@ ui <- dashboardPage(
                 if (!payload) return;
                 var tab = payload.tab;
                 var busy = payload.busy === true || payload.busy === 'true' || payload.busy === 1;
+                var n = payload.n != null && payload.n !== '' ? Number(payload.n) : NaN;
+                var focusN = window.__ynowLogoFocusN || 0;
+                if (!busy && focusN && isFinite(n) && n < focusN) return;
                 setTabBusy(tab, busy, 'server');
               });
               Shiny.addCustomMessageHandler('ynowBtnBusy', function (payload) {
@@ -10935,7 +10986,12 @@ ui <- dashboardPage(
                 var mark = document.getElementById('ynow_header_logo_home');
                 if (!mark || !mark.classList) return;
                 var on = !!(payload && (payload.spin === true || payload.spin === 'true' || payload.spin === 1));
+                var n = payload && payload.n != null && payload.n !== '' ? Number(payload.n) : 0;
+                if (!isFinite(n)) n = 0;
+                var focusN = window.__ynowLogoFocusN || 0;
+                if (!on && focusN && n < focusN) return;
                 var tab = payload && payload.tab ? remapTab(payload.tab) : currentTab();
+                if (!on && mark.classList.contains('ynow-logo-spin-fast') && tabHasOtherBusy(tab)) return;
                 if (on && tab) {
                   setTabBusy(tab, true, 'refresh');
                 } else if (tab) {
@@ -10944,12 +11000,17 @@ ui <- dashboardPage(
                   mark.classList.toggle('ynow-logo-spinning', on);
                   try { mark.setAttribute('aria-busy', on ? 'true' : 'false'); } catch (eHs) {}
                 }
+                if (on && payload && payload.rate === 'fast') {
+                  mark.classList.add('ynow-logo-spin-fast');
+                }
               });
             }
             register();
             registerLogoSpinHandler();
             window.ynowSetSidebarTabBusy = setTabBusy;
             window.ynowSyncHeaderLogoSpin = syncHeaderLogoSpin;
+            window.ynowClearOtherTabBusy = clearOtherTabBusy;
+            window.ynowFocusCurrentTabBusy = focusCurrentTabBusy;
             /* After applyUiLocale rewrites menu HTML, restore busy-dot visuals. */
             window.ynowReapplyAllTabBusyVisuals = function () {
               Object.keys(sourcesByTab).forEach(function (tab) { applyVisual(tab); });
@@ -14770,19 +14831,32 @@ ui <- dashboardPage(
             function refreshCurrentSidebarTab() {
               var tab = currentSidebarTab();
               if (!tab) tab = 'home';
-              if (typeof window.ynowSetSidebarTabBusy === 'function') {
-                try { window.ynowSetSidebarTabBusy(tab, true, 'refresh'); } catch (eBusy) {}
-              } else {
-                var mark0 = document.getElementById('ynow_header_logo_home');
-                if (mark0 && mark0.classList) {
-                  mark0.classList.add('ynow-logo-spinning');
-                  try { mark0.setAttribute('aria-busy', 'true'); } catch (eA0) {}
+              var mark = document.getElementById('ynow_header_logo_home');
+              var focus = !!(mark && mark.classList && mark.classList.contains('ynow-logo-spinning'));
+              window.__ynowLogoNonce = (window.__ynowLogoNonce || 0) + 1;
+              var n = window.__ynowLogoNonce;
+              if (focus) {
+                window.__ynowLogoFocusN = n;
+                if (mark && mark.classList) mark.classList.add('ynow-logo-spin-fast');
+                if (typeof window.ynowFocusCurrentTabBusy === 'function') {
+                  try { window.ynowFocusCurrentTabBusy(tab); } catch (eFocus) {}
+                } else if (typeof window.ynowClearOtherTabBusy === 'function') {
+                  try { window.ynowClearOtherTabBusy(tab); } catch (eClear) {}
                 }
               }
+              if (typeof window.ynowSetSidebarTabBusy === 'function') {
+                try { window.ynowSetSidebarTabBusy(tab, true, 'refresh'); } catch (eBusy) {}
+              } else if (mark && mark.classList) {
+                mark.classList.add('ynow-logo-spinning');
+                try { mark.setAttribute('aria-busy', 'true'); } catch (eA0) {}
+              }
+              if (focus && mark && mark.classList) mark.classList.add('ynow-logo-spin-fast');
               if (window.Shiny && Shiny.setInputValue) {
                 Shiny.setInputValue('ynow_tab_refresh', {
                   tab: tab,
-                  t: Date.now()
+                  t: Date.now(),
+                  focus: focus,
+                  n: n
                 }, { priority: 'event' });
               }
             }
@@ -18793,8 +18867,12 @@ ui <- dashboardPage(
         .ynow-header-logo-mark.ynow-logo-spinning {
           animation: ynow-logo-spin-cw 2.8s linear infinite;
         }
+        .ynow-header-logo-mark.ynow-logo-spinning.ynow-logo-spin-fast {
+          animation-duration: 0.7s;
+        }
         @media (prefers-reduced-motion: reduce) {
-          .ynow-header-logo-mark.ynow-logo-spinning {
+          .ynow-header-logo-mark.ynow-logo-spinning,
+          .ynow-header-logo-mark.ynow-logo-spinning.ynow-logo-spin-fast {
             animation-duration: 6s;
           }
         }

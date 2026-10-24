@@ -2,6 +2,36 @@
 # server.R - 後端邏輯與資料運算 (專業財務修正版)
 # ==========================================
 
+# Focus cancel map. bump_search stays false on ticker tabs because
+# .ynow_fire_ticker_search is the one gen bump that restarts keep.
+ynow_logo_cancel_plan <- function(keep, ticker_tabs) {
+  keep <- if (is.null(keep) || !length(keep)) "" else as.character(keep)[1]
+  if (is.na(keep)) keep <- ""
+  ticker_tabs <- if (is.null(ticker_tabs)) character() else as.character(ticker_tabs)
+  list(
+    bump_search = !isTRUE(keep %in% ticker_tabs),
+    bump_bluechip = !identical(keep, "bluechip"),
+    bump_cluster = !identical(keep, "lab_notes")
+  )
+}
+
+ynow_logo_payload_focus <- function(x) {
+  if (is.null(x) || !length(x)) return(FALSE)
+  x <- x[[1]]
+  if (isTRUE(x)) return(TRUE)
+  if (is.character(x) && tolower(trimws(x)) %in% c("true", "1")) return(TRUE)
+  if (is.numeric(x) && length(x) == 1L && is.finite(x) && identical(as.integer(x), 1L)) return(TRUE)
+  FALSE
+}
+
+ynow_logo_inflight_stale <- function(inflight_gen, latest_gen) {
+  if (is.null(inflight_gen) || !length(inflight_gen)) return(FALSE)
+  g <- suppressWarnings(as.integer(inflight_gen[[1]])[1])
+  latest <- suppressWarnings(as.integer(if (is.null(latest_gen) || !length(latest_gen)) NA else latest_gen[[1]])[1])
+  if (length(g) != 1L || length(latest) != 1L || is.na(g) || is.na(latest)) return(FALSE)
+  !identical(g, latest)
+}
+
 server <- function(input, output, session) {
   # iOS Safari drops the websocket during a long Lab Search; reconnect in-session
   # instead of forcing the user onto the gray "Disconnected / Reload" overlay.
@@ -105,6 +135,13 @@ server <- function(input, output, session) {
   # Search must re-fetch even when the symbol is unchanged (Shiny skips
   # identical reactiveVal writes, so a second Search on TSM/NVDA was a no-op).
   ticker_search_gen <- reactiveVal(0L)
+  # Gen value that means "drop the in-flight Search, do not fetch again".
+  ticker_search_discard_gen <- reactiveVal(NA_integer_)
+  .ynow_search_gen_is_discard <- function() {
+    g <- suppressWarnings(as.integer(isolate(ticker_search_gen()) %||% 0L)[1])
+    d <- suppressWarnings(as.integer(isolate(ticker_search_discard_gen()))[1])
+    length(g) == 1L && length(d) == 1L && !is.na(g) && !is.na(d) && identical(g, d)
+  }
   # Recent Search chip: pending fetch after a cross-market mode switch
   pending_recent_fetch <- reactiveVal(NULL)
   # 首次按下 Search 前：不標示模型推薦／側邊欄「推薦」
@@ -195,6 +232,12 @@ server <- function(input, output, session) {
   lab_im_ind_mcap_pending <- reactiveVal(NULL)
   lab_cluster_gen <- reactiveVal(0L)
   lab_cluster_pending <- reactiveVal(NULL)
+  # Gen of the worker inside ExtendedTask. Finish drops a result when focus
+  # moved the latest gen and left no pending restart. Lock stays until return.
+  .ynow_inflight_gen <- new.env(parent = emptyenv())
+  .ynow_inflight_stale <- function(key, latest) {
+    ynow_logo_inflight_stale(.ynow_inflight_gen[[key]], latest)
+  }
   # ExtendedTask runners: long jobs leave the session thread so ≥2 features can overlap.
   .ynow_async_ok <- isTRUE(tryCatch(.ynow_async_available(), error = function(e) FALSE))
   lab_im_bc_task <- if (isTRUE(.ynow_async_ok)) {
@@ -455,6 +498,8 @@ server <- function(input, output, session) {
     param_audit_baseline_ticker(NULL)
     param_audit_capture_token(isolate(param_audit_capture_token()) + 1L)
     current_ticker(tk)
+    # A real Search wins over a focus discard that has not flushed yet.
+    ticker_search_discard_gen(NA_integer_)
     ticker_search_gen(isolate(ticker_search_gen()) + 1L)
     disp <- display_ticker_for_market(tk, mode)
     tryCatch(updateTextInput(session, "sc", value = disp), error = function(e) NULL)
@@ -4409,6 +4454,27 @@ server <- function(input, output, session) {
     "ri_calculator", "sotp_calculator", "rel_mult_ev", "rel_multiples_calculator",
     "rel_mult_rev", "hfv", "decision_checklist", "lab_notes", "get_started"
   )
+  .ynow_cancel_other_tab_work <- function(keep) {
+    plan <- ynow_logo_cancel_plan(keep, .ynow_ticker_refresh_tabs)
+    if (isTRUE(plan$bump_search)) {
+      # No replacement fetch. .search_done leaves ticker_search_busy set when
+      # the ticker string is unchanged, so the discard branch clears it.
+      gen <- isolate(as.integer(ticker_search_gen()) %||% 0L) + 1L
+      ticker_search_discard_gen(gen)
+      ticker_search_gen(gen)
+    }
+    if (isTRUE(plan$bump_bluechip)) {
+      lab_im_eval_gen(isolate(as.integer(lab_im_eval_gen()) %||% 0L) + 1L)
+      lab_im_eval_pending(NULL)
+      lab_im_ind_mcap_gen(isolate(as.integer(lab_im_ind_mcap_gen()) %||% 0L) + 1L)
+      lab_im_ind_mcap_pending(NULL)
+    }
+    if (isTRUE(plan$bump_cluster)) {
+      lab_cluster_gen(isolate(as.integer(lab_cluster_gen()) %||% 0L) + 1L)
+      lab_cluster_pending(NULL)
+    }
+    invisible(NULL)
+  }
   observeEvent(input$ynow_tab_refresh, {
     payload <- input$ynow_tab_refresh
     tab <- if (is.list(payload)) {
@@ -4423,12 +4489,32 @@ server <- function(input, output, session) {
     }
     if (!nzchar(tab)) return()
 
+    focus <- is.list(payload) && isTRUE(ynow_logo_payload_focus(payload$focus))
+    n <- if (is.list(payload)) {
+      suppressWarnings(as.integer(payload$n %||% NA_integer_)[1])
+    } else {
+      NA_integer_
+    }
+    if (length(n) != 1L || is.na(n)) n <- NA_integer_
+
+    if (isTRUE(focus)) {
+      tryCatch(.ynow_cancel_other_tab_work(keep = tab), error = function(e) NULL)
+    } else {
+      tryCatch(
+        session$sendCustomMessage("ynowTabBusy", list(tab = tab, busy = TRUE)),
+        error = function(e) NULL
+      )
+    }
     tryCatch(
-      session$sendCustomMessage("ynowTabBusy", list(tab = tab, busy = TRUE)),
-      error = function(e) NULL
-    )
-    tryCatch(
-      session$sendCustomMessage("ynowHeaderLogoSpin", list(spin = TRUE, tab = tab)),
+      session$sendCustomMessage(
+        "ynowHeaderLogoSpin",
+        list(
+          spin = TRUE,
+          tab = tab,
+          rate = if (isTRUE(focus)) "fast" else "slow",
+          n = n
+        )
+      ),
       error = function(e) NULL
     )
 
@@ -4458,15 +4544,28 @@ server <- function(input, output, session) {
       tryCatch(lab_im_auto_start_armed(FALSE), error = function(e) NULL)
     }
 
+    # A tab-busy false at 0.2s would clear the Search dot this click just started.
+    # Spin-off still goes out. The client ignores it while the keep tab has
+    # other busy sources, and drops the fast spin once those sources finish.
     done_tab <- tab
+    done_n <- n
+    focus_click <- isTRUE(focus)
     session$onFlushed(function() {
       finish <- function() {
+        if (!isTRUE(focus_click)) {
+          tryCatch(
+            session$sendCustomMessage(
+              "ynowTabBusy",
+              list(tab = done_tab, busy = FALSE, n = done_n)
+            ),
+            error = function(e) NULL
+          )
+        }
         tryCatch(
-          session$sendCustomMessage("ynowTabBusy", list(tab = done_tab, busy = FALSE)),
-          error = function(e) NULL
-        )
-        tryCatch(
-          session$sendCustomMessage("ynowHeaderLogoSpin", list(spin = FALSE, tab = done_tab)),
+          session$sendCustomMessage(
+            "ynowHeaderLogoSpin",
+            list(spin = FALSE, tab = done_tab, n = done_n)
+          ),
           error = function(e) NULL
         )
       }
@@ -4933,6 +5032,11 @@ server <- function(input, output, session) {
   .tw_two_fallback_tried_for <- reactiveVal(NA_character_)
 
   observeEvent(list(current_ticker(), ticker_search_gen()), {
+    if (isTRUE(.ynow_search_gen_is_discard())) {
+      # .search_done will not clear this flag when the ticker string is unchanged.
+      tryCatch(ticker_search_busy(FALSE), error = function(e) NULL)
+      return()
+    }
     req(current_ticker())
     # 換股票：回到基礎設定連動，讓新 Summary／Unlever 路徑可自動帶入 CAPM
     capm_beta_dirty(FALSE)
@@ -13241,6 +13345,9 @@ server <- function(input, output, session) {
   # Lite 智慧分析：先套用推薦參數情境（Two-Stage／SGR 法／claim／折現一致性），
   # 再對主／副模型試算——避免「參數假設錯誤無法計算」。
   observeEvent(list(current_ticker(), ticker_search_gen()), {
+    if (isTRUE(.ynow_search_gen_is_discard())) {
+      return()
+    }
     # Clear prior-ticker DCF so Composite does not keep stale run-state overlays
     stock_price_estimate_val(NULL)
     dcf_audit_snap(NULL)
@@ -18419,6 +18526,7 @@ server <- function(input, output, session) {
     }
     lab_im_eval_busy(TRUE)
     lab_im_eval_pending(NULL)
+    .ynow_inflight_gen$lab_im_eval <- as.integer(args$.gen %||% 0L)[1]
     if (!is.null(lab_im_bc_task)) {
       tryCatch(
         lab_im_bc_task$invoke(
@@ -18485,6 +18593,9 @@ server <- function(input, output, session) {
     }
     # Superseded by a newer click with no pending left: drop stale result.
     if (is.list(pending) || !isTRUE(apply) || isTRUE(had_error)) {
+      return(invisible(TRUE))
+    }
+    if (isTRUE(.ynow_inflight_stale("lab_im_eval", latest))) {
       return(invisible(TRUE))
     }
     .lab_im_apply_eval_result(out)
@@ -19098,6 +19209,7 @@ server <- function(input, output, session) {
     }
     lab_im_ind_mcap_busy(TRUE)
     lab_im_ind_mcap_pending(NULL)
+    .ynow_inflight_gen$lab_im_ind_mcap <- as.integer(args$.gen %||% 0L)[1]
     if (!is.null(lab_im_ind_mcap_task)) {
       tryCatch(
         lab_im_ind_mcap_task$invoke(
@@ -19143,6 +19255,9 @@ server <- function(input, output, session) {
       lab_im_ind_mcap_pending(NULL)
       .lab_im_invoke_ind_mcap(pending)
       return(invisible(FALSE))
+    }
+    if (isTRUE(.ynow_inflight_stale("lab_im_ind_mcap", latest))) {
+      return(invisible(TRUE))
     }
     if (isTRUE(apply)) {
       tryCatch(
@@ -20034,6 +20149,7 @@ server <- function(input, output, session) {
     }
     lab_cluster_busy(TRUE)
     lab_cluster_pending(NULL)
+    .ynow_inflight_gen$lab_cluster <- as.integer(job_args$.gen %||% 0L)[1]
     if (!is.null(lab_cluster_task)) {
       tryCatch(
         lab_cluster_task$invoke(
@@ -20104,6 +20220,9 @@ server <- function(input, output, session) {
       lab_cluster_pending(NULL)
       .lab_cluster_invoke(pending, notify = TRUE)
       return(invisible(FALSE))
+    }
+    if (isTRUE(.ynow_inflight_stale("lab_cluster", latest))) {
+      return(invisible(TRUE))
     }
     if (isTRUE(apply) && !isTRUE(had_error)) {
       loc <- tryCatch(ui_locale(), error = function(e) "en")
