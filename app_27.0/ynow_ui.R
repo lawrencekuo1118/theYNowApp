@@ -12741,6 +12741,8 @@ ui <- dashboardPage(
             if (gpContext && s.gp_context) gpContext.textContent = s.gp_context;
             var gpCaution = document.getElementById('ynow_gp_caution');
             if (gpCaution && s.gp_caution) gpCaution.textContent = s.gp_caution;
+            var gpPart = document.getElementById('ynow_gp_participation');
+            if (gpPart && s.gp_participation_note) gpPart.textContent = s.gp_participation_note;
             var atxNodesTab = document.getElementById('ynow_atx_nodes_tab');
             if (atxNodesTab && s.atx_nodes_title) atxNodesTab.textContent = s.atx_nodes_title;
             var atxEdgesTab = document.getElementById('ynow_atx_edges_tab');

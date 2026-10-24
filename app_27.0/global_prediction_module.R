@@ -14,7 +14,7 @@ if (!exists("%||%", mode = "function")) {
 .GP_POLYMARKET_COLOR <- "#2E5CFF"
 .GP_AGREE_PP <- 0.10
 .GP_DIVERGE_PP <- 0.25
-.GP_UA <- "theYNowApp/global-prediction"
+.GP_UA <- "theYNowApp"
 
 gp_brand_colors <- function() {
   list(kalshi = .GP_KALSHI_COLOR, polymarket = .GP_POLYMARKET_COLOR)
@@ -38,18 +38,25 @@ gp_theme_registry <- function() {
       "gp_theme_treasury_yields"
     ),
     kalshi_series = I(list(
-      c("KXRATECUT", "KXFEDDECISION", "KXRATECUTCOUNT", "KXDOTPLOT"),
-      c("KXCPI", "KXCPICOREYOY", "KXLCPIMAXYOY"),
-      c("KXNBERRECESSQ", "KXU3MAX"),
-      c("KXNASDAQ100M", "KXNASDAQ100MD", "KXNASDAQ100MINMON"),
-      c("KX10YR550PCT", "TNOTEW", "KX7YRRATEH")
+      c("KXRATECUT", "KXFEDDECISION"),
+      c("KXCPI", "KXCPICOREYOY"),
+      "KXNBERRECESSQ",
+      "KXNASDAQ100M",
+      "TNOTEW"
     )),
     polymarket_queries = I(list(
-      c("Fed rate cuts 2026", "Federal Reserve rate", "FOMC"),
-      c("US CPI", "core CPI inflation", "US inflation 2026"),
-      c("US recession", "recession 2026", "NBER recession"),
-      c("S&P 500", "Nasdaq-100", "stock market 2026"),
-      c("Treasury yield", "10-year Treasury", "US 10Y yield")
+      "Fed rate",
+      "CPI inflation",
+      "US recession",
+      "Nasdaq-100",
+      "Treasury yield"
+    )),
+    keywords = I(list(
+      c("fed", "fomc", "rate cut", "rate hike", "federal reserve"),
+      c("cpi", "inflation", "consumer price"),
+      c("recession", "nber"),
+      "nasdaq",
+      c("treasury", "yield", "t-note", "tnote")
     )),
     stringsAsFactors = FALSE
   )
@@ -60,10 +67,20 @@ gp_theme_registry <- function() {
   if (is.null(x) || length(x) == 0L || is.na(x) || !nzchar(x)) default else x
 }
 
+# Dollar strings are already [0, 1]. Only a whole number above 1 is a legacy cent quote.
+# Anything outside that is missing. It is not rescaled into a probability.
 .gp_num01 <- function(x) {
+  if (is.null(x) || length(x) == 0L) return(NA_real_)
+  if (is.character(x)) {
+    raw <- trimws(as.character(x)[1])
+    if (!nzchar(raw) || is.na(raw)) return(NA_real_)
+    v <- suppressWarnings(as.numeric(raw))
+    if (length(v) != 1L || is.na(v) || !is.finite(v) || v < 0 || v > 1) return(NA_real_)
+    return(v)
+  }
   v <- suppressWarnings(as.numeric(x)[1])
-  if (!is.finite(v)) return(NA_real_)
-  if (v > 1 && v <= 100) v <- v / 100
+  if (length(v) != 1L || is.na(v) || !is.finite(v)) return(NA_real_)
+  if (abs(v - round(v)) < 1e-9 && v > 1 && v <= 100) v <- v / 100
   if (v < 0 || v > 1) return(NA_real_)
   v
 }
@@ -173,23 +190,62 @@ gp_theme_registry <- function() {
   )
 }
 
+.gp_book_yes <- function(last, bid, ask) {
+  if (is.finite(last)) return(last)
+  if (is.finite(bid) && is.finite(ask)) return((bid + ask) / 2)
+  if (is.finite(bid)) return(bid)
+  if (is.finite(ask)) return(ask)
+  NA_real_
+}
+
+.gp_kalshi_yes <- function(m) {
+  has_dollars <- any(vapply(
+    c("last_price_dollars", "yes_bid_dollars", "yes_ask_dollars"),
+    function(k) nzchar(.gp_chr(m[[k]])),
+    logical(1)
+  ))
+  if (has_dollars) {
+    return(.gp_book_yes(
+      .gp_num01(m$last_price_dollars),
+      .gp_num01(m$yes_bid_dollars),
+      .gp_num01(m$yes_ask_dollars)
+    ))
+  }
+  .gp_book_yes(.gp_num01(m$last_price), .gp_num01(m$yes_bid), .gp_num01(m$yes_ask))
+}
+
+.gp_as_payload <- function(payload) {
+  if (is.character(payload)) {
+    parsed <- tryCatch(
+      jsonlite::fromJSON(payload[[1]], simplifyVector = FALSE),
+      error = function(e) NULL
+    )
+    if (!is.list(parsed)) return(NULL)
+    return(parsed)
+  }
+  if (is.list(payload)) return(payload)
+  NULL
+}
+
 #' Parse Kalshi /markets JSON list into MarketQuote rows.
 gp_parse_kalshi_markets <- function(payload, theme_id, limit = 3L) {
   theme_id <- .gp_chr(theme_id)
+  payload <- .gp_as_payload(payload)
+  if (is.null(payload)) return(.gp_empty_quote())
   markets <- payload
   if (is.list(payload) && !is.null(payload$markets)) markets <- payload$markets
   if (!is.list(markets) || length(markets) == 0L) return(.gp_empty_quote())
+  drop_status <- c("finalized", "closed", "settled", "determined", "inactive", "expired")
   rows <- list()
   n <- 0L
   for (m in markets) {
     if (!is.list(m)) next
+    status <- tolower(.gp_chr(m$status))
+    if (status %in% drop_status) next
     ticker <- .gp_chr(m$ticker %||% m$market_ticker)
     if (!nzchar(ticker)) next
     title <- .gp_chr(m$title %||% m$yes_sub_title %||% m$subtitle %||% ticker)
-    yes <- .gp_num01(
-      m$last_price_dollars %||% m$yes_bid_dollars %||% m$previous_price_dollars %||%
-        m$last_price %||% m$yes_bid
-    )
+    yes <- .gp_kalshi_yes(m)
     if (!is.finite(yes)) next
     n <- n + 1L
     rows[[n]] <- .gp_quote_row(
@@ -218,41 +274,55 @@ gp_parse_kalshi_markets <- function(payload, theme_id, limit = 3L) {
   NULL
 }
 
+# Prefer the outcome named Yes when labels exist; otherwise first price / last trade.
 .gp_poly_yes_prob <- function(market) {
   if (!is.list(market)) return(NA_real_)
   op <- .gp_poly_parse_json_vec(market$outcomePrices)
   outcomes <- .gp_poly_parse_json_vec(market$outcomes)
-  if (!is.null(op) && length(op) >= 1L) {
+  prices <- if (!is.null(op)) unlist(op, use.names = FALSE) else NULL
+  if (!is.null(prices) && length(prices) >= 1L) {
     idx <- 1L
-    if (!is.null(outcomes) && length(outcomes) == length(op)) {
+    if (!is.null(outcomes) && length(outcomes) == length(prices)) {
       labs <- tolower(trimws(as.character(unlist(outcomes, use.names = FALSE))))
       yes_i <- which(labs %in% c("yes", "y"))
       if (length(yes_i) >= 1L) idx <- as.integer(yes_i[[1]])
     }
-    return(.gp_num01(op[[idx]]))
+    yes <- .gp_num01(prices[[idx]])
+    if (is.finite(yes)) return(yes)
   }
   .gp_num01(market$lastTradePrice %||% market$bestBid %||% market$probability)
 }
 
+.gp_keyword_hit <- function(text, keywords) {
+  if (is.null(keywords) || length(keywords) == 0L) return(TRUE)
+  hay <- tolower(paste(as.character(text), collapse = " "))
+  any(vapply(keywords, function(k) {
+    k <- tolower(.gp_chr(k))
+    nzchar(k) && grepl(k, hay, fixed = TRUE)
+  }, logical(1)))
+}
+
 #' Parse Polymarket public-search / events payload into MarketQuote rows.
-gp_parse_polymarket_events <- function(payload, theme_id, limit = 3L) {
+gp_parse_polymarket_events <- function(payload, theme_id, limit = 3L, keywords = NULL) {
   theme_id <- .gp_chr(theme_id)
+  payload <- .gp_as_payload(payload)
+  if (is.null(payload)) return(.gp_empty_quote())
   events <- payload
   if (is.list(payload) && !is.null(payload$events)) events <- payload$events
   if (!is.list(events) || length(events) == 0L) return(.gp_empty_quote())
   rows <- list()
   n <- 0L
   for (ev in events) {
-    if (!is.list(ev)) next
+    if (!is.list(ev) || isTRUE(ev$closed)) next
     markets <- ev$markets %||% list()
     if (!is.list(markets)) markets <- list()
-    if (length(markets) == 0L) {
-      markets <- list(ev)
-    }
+    if (length(markets) == 0L) markets <- list(ev)
     for (m in markets) {
       if (!is.list(m)) next
+      if (isTRUE(m$closed) || identical(m$active, FALSE)) next
       mid <- .gp_chr(m$id %||% m$conditionId %||% m$slug %||% ev$id %||% ev$slug)
       title <- .gp_chr(m$question %||% m$title %||% ev$title %||% mid)
+      if (!.gp_keyword_hit(c(ev$title, title), keywords)) next
       yes <- .gp_poly_yes_prob(m)
       if (!is.finite(yes)) next
       slug <- .gp_chr(ev$slug %||% m$slug)
@@ -319,7 +389,7 @@ gp_fetch_kalshi_theme <- function(theme_id, series_tickers, limit = 3L, use_cach
   out
 }
 
-gp_fetch_polymarket_theme <- function(theme_id, queries, limit = 3L, use_cache = TRUE) {
+gp_fetch_polymarket_theme <- function(theme_id, queries, limit = 3L, use_cache = TRUE, keywords = NULL) {
   theme_id <- .gp_chr(theme_id)
   queries <- unique(as.character(unlist(queries, use.names = FALSE)))
   queries <- queries[nzchar(queries)]
@@ -343,7 +413,9 @@ gp_fetch_polymarket_theme <- function(theme_id, queries, limit = 3L, use_cache =
       last_err <- res$error %||% "fetch_failed"
       next
     }
-    parsed <- gp_parse_polymarket_events(res$data, theme_id = theme_id, limit = limit)
+    parsed <- gp_parse_polymarket_events(
+      res$data, theme_id = theme_id, limit = limit, keywords = keywords
+    )
     if (nrow(parsed) > 0L) collected[[length(collected) + 1L]] <- parsed
     if (sum(vapply(collected, nrow, 1L)) >= as.integer(limit)) break
   }
@@ -398,7 +470,10 @@ gp_crowd_agreement <- function(kalshi_probs, polymarket_probs) {
 gp_fetch_snapshot <- function(use_cache = TRUE, limit_per_venue = 3L) {
   reg <- gp_theme_registry()
   pairs <- vector("list", nrow(reg))
-  venue_errors <- list(kalshi = NULL, polymarket = NULL)
+  k_ok <- FALSE
+  p_ok <- FALSE
+  k_err <- NULL
+  p_err <- NULL
   for (i in seq_len(nrow(reg))) {
     tid <- reg$theme_id[[i]]
     k <- gp_fetch_kalshi_theme(
@@ -407,29 +482,34 @@ gp_fetch_snapshot <- function(use_cache = TRUE, limit_per_venue = 3L) {
       limit = limit_per_venue,
       use_cache = use_cache
     )
+    kw <- if ("keywords" %in% names(reg)) reg$keywords[[i]] else NULL
     p <- gp_fetch_polymarket_theme(
       tid,
       reg$polymarket_queries[[i]],
       limit = limit_per_venue,
-      use_cache = use_cache
+      use_cache = use_cache,
+      keywords = kw
     )
-    if (!isTRUE(k$ok) && is.null(venue_errors$kalshi)) {
-      venue_errors$kalshi <- k$error %||% "empty"
-    }
-    if (!isTRUE(p$ok) && is.null(venue_errors$polymarket)) {
-      venue_errors$polymarket <- p$error %||% "empty"
-    }
+    # A dry series is an honest empty. Only a transport failure is a venue error,
+    # and one later success clears it.
+    if (isTRUE(k$ok)) k_ok <- TRUE
+    else if (!identical(k$error, "empty") && is.null(k_err)) k_err <- k$error
+    if (isTRUE(p$ok)) p_ok <- TRUE
+    else if (!identical(p$error, "empty") && is.null(p_err)) p_err <- p$error
     kq <- if (is.data.frame(k$quotes)) k$quotes else .gp_empty_quote()
     pq <- if (is.data.frame(p$quotes)) p$quotes else .gp_empty_quote()
-    agree <- gp_crowd_agreement(kq$yes_prob, pq$yes_prob)
+    # Contracts inside a theme are different questions. Do not average them.
     pairs[[i]] <- list(
       theme_id = tid,
       label_key = reg$label_key[[i]],
       kalshi = kq,
-      polymarket = pq,
-      agreement = agree
+      polymarket = pq
     )
   }
+  venue_errors <- list(
+    kalshi = if (k_ok) NULL else k_err,
+    polymarket = if (p_ok) NULL else p_err
+  )
   list(
     fetched_at = format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"),
     pairs = pairs,
@@ -490,23 +570,6 @@ gp_fetch_snapshot <- function(use_cache = TRUE, limit_per_venue = 3L) {
 
 .gp_theme_row_ui <- function(pair, locale = "en") {
   colors <- gp_brand_colors()
-  agree <- pair$agreement %||% list(status = "insufficient")
-  status <- .gp_chr(agree$status, "insufficient")
-  status_key <- paste0("gp_crowd_", status)
-  gap_txt <- if (is.finite(agree$gap %||% NA_real_)) {
-    sprintf("%s %s", .gp_label("gp_crowd_gap", locale), .gp_fmt_pct(agree$gap))
-  } else {
-    ""
-  }
-  mean_txt <- if (is.finite(agree$simple_mean %||% NA_real_)) {
-    sprintf(
-      "%s %s",
-      .gp_label("gp_crowd_simple_mean", locale),
-      .gp_fmt_pct(agree$simple_mean)
-    )
-  } else {
-    ""
-  }
   htmltools::tags$div(
     class = "ynow-gp-theme",
     `data-theme` = .gp_chr(pair$theme_id),
@@ -522,6 +585,10 @@ gp_fetch_snapshot <- function(use_cache = TRUE, limit_per_venue = 3L) {
         htmltools::tags$span(.gp_label(status_key, locale)),
         if (nzchar(gap_txt)) htmltools::tags$span(class = "ynow-gp-crowd-meta", gap_txt),
         if (nzchar(mean_txt)) htmltools::tags$span(class = "ynow-gp-crowd-meta", mean_txt)
+      ),
+      htmltools::tags$p(
+        class = "ynow-gp-participation-inline",
+        .gp_label("gp_participation_note", locale)
       )
     ),
     htmltools::tags$div(
@@ -567,6 +634,8 @@ global_prediction_ui <- function(id, locale = "en") {
       .ynow-gp-context { font-size: 12px; line-height: 1.45; color: #5c5346; margin: 0 0 12px;
         padding: 8px 10px; background: #f4f0e6; border: 1px solid #e4dccb; border-radius: 6px; }
       .ynow-gp-caution { font-size: 12px; line-height: 1.45; color: #5c5346; margin: 0 0 12px; }
+      .ynow-gp-participation-inline { font-size: 11px; line-height: 1.4; color: #7a7368;
+        margin: 6px 0 0; width: 100%; flex-basis: 100%; }
       .ynow-gp-meta { font-size: 12px; color: #5c5346; margin: 0 0 14px; display: flex;
         flex-wrap: wrap; gap: 8px 16px; align-items: center; }
       .ynow-gp-swatch { display: inline-flex; align-items: center; gap: 6px; }
@@ -584,6 +653,9 @@ global_prediction_ui <- function(id, locale = "en") {
       .ynow-gp-crowd-insufficient { color: #7a7368; }
       .ynow-gp-crowd-meta { color: #5c5346; font-weight: 400; }
       .ynow-gp-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+      .ynow-gp-col { border-radius: 8px; padding: 8px 10px; }
+      .ynow-gp-col-kalshi { background: rgba(0, 214, 108, 0.12); }
+      .ynow-gp-col-polymarket { background: rgba(46, 92, 255, 0.10); }
       @media (max-width: 767px) {
         .ynow-gp-cols { grid-template-columns: 1fr; }
       }
@@ -615,6 +687,11 @@ global_prediction_ui <- function(id, locale = "en") {
         id = "ynow_gp_caution",
         class = "ynow-gp-caution",
         .gp_label("gp_caution", loc)
+      ),
+      htmltools::tags$p(
+        id = "ynow_gp_participation",
+        class = "ynow-gp-caution",
+        .gp_label("gp_participation_note", loc)
       ),
       htmltools::tags$div(
         class = "ynow-gp-meta",
@@ -704,9 +781,9 @@ global_prediction_server <- function(id,
       htmltools::tags$span(
         id = "ynow_gp_updated",
         if (nzchar(stamp)) {
-          sprintf("%s %s", .gp_label("gp_updated", locale), stamp)
+          sub("{stamp}", stamp, .gp_label("gp_updated", locale), fixed = TRUE)
         } else {
-          .gp_label("gp_updated_none", locale)
+          ""
         }
       )
     })
@@ -718,22 +795,13 @@ global_prediction_server <- function(id,
         return(htmltools::tags$p(class = "ynow-gp-empty", .gp_label("gp_loading", locale)))
       }
       if (!is.list(snap) || length(snap$pairs) == 0L) {
-        return(htmltools::tags$p(class = "ynow-gp-empty", .gp_label("gp_empty_all", locale)))
+        return(htmltools::tags$p(class = "ynow-gp-empty", .gp_label("gp_error_venue", locale)))
       }
       errs <- snap$venue_errors %||% list()
-      err_bits <- character(0)
-      if (!is.null(errs$kalshi) && nzchar(.gp_chr(errs$kalshi))) {
-        err_bits <- c(err_bits, sprintf("Kalshi: %s", .gp_chr(errs$kalshi)))
-      }
-      if (!is.null(errs$polymarket) && nzchar(.gp_chr(errs$polymarket))) {
-        err_bits <- c(err_bits, sprintf("Polymarket: %s", .gp_chr(errs$polymarket)))
-      }
+      venue_down <- !is.null(errs$kalshi) || !is.null(errs$polymarket)
       htmltools::tagList(
-        if (length(err_bits)) {
-          htmltools::tags$p(
-            class = "ynow-gp-caution",
-            paste(.gp_label("gp_partial_error", locale), paste(err_bits, collapse = " · "))
-          )
+        if (isTRUE(venue_down)) {
+          htmltools::tags$p(class = "ynow-gp-caution", .gp_label("gp_error_venue", locale))
         },
         htmltools::tags$p(
           class = "ynow-gp-caution",
