@@ -1050,6 +1050,7 @@ global_prediction_ui <- function(id, locale = "en") {
   }
   colors <- gp_brand_colors()
   htmltools::tagList(
+    # CSS percentages must be %% so sprintf does not treat "100%; flex…" as format "%; f".
     htmltools::tags$style(htmltools::HTML(sprintf("
       .ynow-gp { margin-top: 4px; }
       .ynow-gp-lead { font-size: 13px; line-height: 1.5; color: #3f3a33; margin: 0 0 10px; }
@@ -1057,7 +1058,7 @@ global_prediction_ui <- function(id, locale = "en") {
         padding: 8px 10px; background: #f4f0e6; border: 1px solid #e4dccb; border-radius: 6px; }
       .ynow-gp-caution { font-size: 12px; line-height: 1.45; color: #5c5346; margin: 0 0 12px; }
       .ynow-gp-participation-inline { font-size: 11px; line-height: 1.4; color: #7a7368;
-        margin: 6px 0 0; width: 100%; flex-basis: 100%; }
+        margin: 6px 0 0; width: 100%%; flex-basis: 100%%; }
       .ynow-gp-meta { font-size: 12px; color: #5c5346; margin: 0 0 14px; display: flex;
         flex-wrap: wrap; gap: 8px 16px; align-items: center; }
       .ynow-gp-swatch { display: inline-flex; align-items: center; gap: 6px; }
@@ -1093,7 +1094,7 @@ global_prediction_ui <- function(id, locale = "en") {
       .ynow-gp-quote-title a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
       .ynow-gp-quote-prob { font-size: 20px; font-weight: 700; margin: 4px 0; font-variant-numeric: tabular-nums; }
       .ynow-gp-bar-track { height: 6px; background: #efe9dc; border-radius: 999px; overflow: hidden; }
-      .ynow-gp-bar-fill { height: 100%; border-radius: 999px; }
+      .ynow-gp-bar-fill { height: 100%%; border-radius: 999px; }
       .ynow-gp-empty { font-size: 12px; color: #7a7368; margin: 0; }
       .ynow-gp-dot-kalshi { background: %s; }
       .ynow-gp-dot-poly { background: %s; }

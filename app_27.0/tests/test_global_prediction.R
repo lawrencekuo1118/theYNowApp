@@ -259,6 +259,36 @@ check("server wires periodic invalidateLater", grepl("invalidateLater", mod_src,
 check("server hard trigger tab_open", grepl("tab_open", mod_src, fixed = TRUE))
 check("server hard trigger mode_switch", grepl("mode_switch", mod_src, fixed = TRUE))
 check("gp_fetch_snapshot accepts trigger", grepl("trigger = \"periodic_visible\"", mod_src, fixed = TRUE))
+# CSS "100%" inside sprintf must be escaped as "100%%" or R raises:
+# invalid format '%; f'; use format %s for character objects
+check(
+  "GP CSS escapes percent for sprintf",
+  grepl("width: 100%%;", mod_src, fixed = TRUE) &&
+    grepl("flex-basis: 100%%;", mod_src, fixed = TRUE) &&
+    grepl("height: 100%%;", mod_src, fixed = TRUE)
+)
+
+# Live UI mount (ATX → Global Prediction): must not throw sprintf format error.
+ui_mount_ok <- FALSE
+ui_mount_err <- NULL
+ui_html <- ""
+tryCatch({
+  ui_tag <- global_prediction_ui("global_prediction", locale = "en")
+  ui_html <- as.character(ui_tag)
+  ui_mount_ok <- isTRUE(nzchar(ui_html)) &&
+    grepl("ynow-gp-dot-kalshi", ui_html, fixed = TRUE) &&
+    grepl(cols$kalshi, ui_html, fixed = TRUE) &&
+    grepl("width: 100%;", ui_html, fixed = TRUE)
+}, error = function(e) {
+  ui_mount_err <<- conditionMessage(e)
+})
+check(
+  "global_prediction_ui mounts without sprintf format error",
+  isTRUE(ui_mount_ok) && is.null(ui_mount_err)
+)
+if (!is.null(ui_mount_err)) {
+  cat("  mount error: ", ui_mount_err, "\n", sep = "")
+}
 
 if (fail > 0L) {
   cat("FAILED ", fail, " checks\n", sep = "")
