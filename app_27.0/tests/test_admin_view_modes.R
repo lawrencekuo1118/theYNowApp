@@ -151,9 +151,17 @@ check("Omniscient title uses warning red #DC3545", {
 
 check("Control panel stays visible in self-view; grant box hides", {
   grepl("body.ynow-sysadmin-on:not(.ynow-view-as) .ynow-sysadmin-control-panel", ui, fixed = TRUE) &&
-    grepl("body.ynow-self-view .ynow-pts-sysadmin-box", ui, fixed = TRUE) &&
     grepl("body.ynow-view-as .ynow-sysadmin-control-panel", ui, fixed = TRUE) &&
     grepl("body.ynow-self-view .ynow-sysadmin-control-panel__exit-self", ui, fixed = TRUE) &&
+    # Self-view must NOT hide the whole box (control panel is nested inside it).
+    !grepl(
+      "body.ynow-self-view .ynow-pts-sysadmin-box",
+      ui,
+      fixed = TRUE
+    ) &&
+    # Hide login chrome + grant/user-list panel only.
+    grepl("body.ynow-self-view .ynow-sysadmin-login-chrome", ui, fixed = TRUE) &&
+    grepl("body.ynow-self-view #ynow_pts_sysadmin_panel", ui, fixed = TRUE) &&
     # Must not hide the whole control panel / unlocked strip during self-view.
     !grepl(
       "body.ynow-self-view .ynow-sysadmin-control-panel,",
