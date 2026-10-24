@@ -63,13 +63,24 @@ check("top-up opens account overview slot", {
 })
 
 check("server debits access cost, not a catalog sku", {
-  grepl("observeEvent(input$ynow_gate_spend", srv, fixed = TRUE) &&
-    grepl('reason = "access_unlock"', srv, fixed = TRUE) &&
-    grepl('ref_id = paste0("acl-unlock:", id)', srv, fixed = TRUE) &&
-    grepl("ynow_access_mark_points_unlocked", srv, fixed = TRUE) &&
+  m <- regexpr(
+    "\\.ynow_gate_spend <- function[\\s\\S]*?observeEvent\\(input\\$ynow_gate_spend",
+    srv,
+    perl = TRUE
+  )
+  spend_fn <- if (m[[1]] > 0L) {
+    substr(srv, as.integer(m[[1]]), as.integer(m[[1]]) + attr(m, "match.length") - 1L)
+  } else {
+    ""
+  }
+  nzchar(spend_fn) &&
+    grepl('reason = "access_unlock"', spend_fn, fixed = TRUE) &&
+    grepl('ref_id = paste0("acl-unlock:", id)', spend_fn, fixed = TRUE) &&
+    grepl("ynow_access_mark_points_unlocked", spend_fn, fixed = TRUE) &&
     grepl("ynowGateSpendResult", srv, fixed = TRUE) &&
-    grepl("gate_mode_preview_no_spend", srv, fixed = TRUE) &&
-    !grepl("ynow_points_try_spend", srv, fixed = TRUE)
+    grepl("gate_mode_preview_no_spend", spend_fn, fixed = TRUE) &&
+    !grepl("ynow_points_try_spend", spend_fn, fixed = TRUE) &&
+    !grepl("ynow_points_gate", spend_fn, fixed = TRUE)
 })
 
 check("locale has gate_mode copy in en and zh-TW", {
