@@ -1391,6 +1391,23 @@ server <- function(input, output, session) {
     as.character(u$id %||% "")[1]
   }
 
+  .ynow_access_locks_message <- function(ids, entries, note, badges, server_now, authed) {
+    reg <- if (exists("ynow_gate_mode_registry_payload", mode = "function")) {
+      ynow_gate_mode_registry_payload()
+    } else {
+      list()
+    }
+    list(
+      ids = as.list(ids),
+      entries = entries,
+      note = note,
+      badges = badges,
+      server_now = server_now,
+      authed = isTRUE(authed),
+      gate_registry = reg
+    )
+  }
+
   .ynow_push_access_locks <- function() {
     if (!exists("ynow_access_effective_entries", mode = "function") &&
         !exists("ynow_access_entries", mode = "function")) {
@@ -1406,7 +1423,7 @@ server <- function(input, output, session) {
     if (identical(mode, "omniscient")) {
       session$sendCustomMessage(
         "ynowAccessLocks",
-        list(
+        .ynow_access_locks_message(
           ids = list(),
           entries = list(),
           note = note,
@@ -1415,7 +1432,8 @@ server <- function(input, output, session) {
             as.POSIXct(Sys.time(), tz = "UTC"),
             "%Y-%m-%dT%H:%M:%SZ",
             tz = "UTC"
-          )
+          ),
+          authed = TRUE
         )
       )
       return(invisible(character()))
@@ -1447,17 +1465,43 @@ server <- function(input, output, session) {
         data.frame(id = character(), effect = character(), stringsAsFactors = FALSE)
       }
     )
+    fyn_bal <- NA_integer_
+    if (isTRUE(authed)) {
+      bal_uid <- as.character(uid %||% "")[1]
+      if (nzchar(bal_uid) &&
+          !identical(bal_uid, "__self_member__") &&
+          !identical(bal_uid, "__omniscient__") &&
+          exists("ynow_points_balance", mode = "function")) {
+        fyn_bal <- tryCatch(
+          suppressWarnings(as.integer(ynow_points_balance(bal_uid, "fyn")[1])),
+          error = function(e) NA_integer_
+        )
+      }
+    }
     entries <- if (is.data.frame(ent) && nrow(ent) > 0L) {
       lapply(seq_len(nrow(ent)), function(i) {
-        if (exists("ynow_access_lock_client_row", mode = "function")) {
-          ynow_access_lock_client_row(
-            id = as.character(ent$id[[i]]),
-            effect = as.character(ent$effect[[i]]),
-            unlock_type = if ("unlock_type" %in% names(ent)) ent$unlock_type[[i]] else NA_character_,
-            points_cost = if ("points_cost" %in% names(ent)) ent$points_cost[[i]] else NA_integer_
+        entry <- ynow_access_normalize_entry(
+          effect = ent$effect[[i]],
+          unlock_type = if ("unlock_type" %in% names(ent)) ent$unlock_type[[i]] else NA_character_,
+          points_cost = if ("points_cost" %in% names(ent)) ent$points_cost[[i]] else NA_integer_,
+          free_count = if ("free_count" %in% names(ent)) ent$free_count[[i]] else NA_integer_,
+          time_limit_hours = if ("time_limit_hours" %in% names(ent)) ent$time_limit_hours[[i]] else NA_integer_
+        )
+        if (exists("ynow_gate_mode_client_row", mode = "function")) {
+          ynow_gate_mode_client_row(
+            id = as.character(ent$id[[i]])[1],
+            effect = entry$effect,
+            entry = entry,
+            authed = authed,
+            fyn_balance = fyn_bal
           )
         } else {
-          list(id = as.character(ent$id[[i]]), effect = as.character(ent$effect[[i]]))
+          list(
+            id = as.character(ent$id[[i]])[1],
+            effect = as.character(entry$effect),
+            unlock_type = if (is.na(entry$unlock_type)) NULL else entry$unlock_type,
+            points_cost = if (is.na(entry$points_cost)) NULL else as.integer(entry$points_cost)
+          )
         }
       })
     } else {
@@ -1475,16 +1519,156 @@ server <- function(input, output, session) {
     server_now <- format(as.POSIXct(Sys.time(), tz = "UTC"), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
     session$sendCustomMessage(
       "ynowAccessLocks",
-      list(
-        ids = as.list(ids),
+      .ynow_access_locks_message(
+        ids = ids,
         entries = entries,
         note = note,
         badges = badges,
-        server_now = server_now
+        server_now = server_now,
+        authed = authed
       )
     )
     invisible(ids)
   }
+
+  .ynow_gate_note <- function(key, args = list(), fallback = "") {
+    loc <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "en")
+    msg <- tryCatch(ui_str(key, loc), error = function(e) fallback)
+    if (!is.character(msg) || !nzchar(msg[1])) msg <- fallback
+    msg <- as.character(msg)[1]
+    if (length(args) && grepl("%s", msg, fixed = TRUE)) {
+      msg <- tryCatch(do.call(sprintf, c(list(msg), args)), error = function(e) msg)
+    }
+    msg
+  }
+
+  .ynow_gate_spend_result <- function(ok, item_id, message_key, fyn = NA_integer_,
+                                      points_cost = NA_integer_, note = NULL) {
+    fyn_i <- suppressWarnings(as.integer(fyn)[1])
+    cost_i <- suppressWarnings(as.integer(points_cost)[1])
+    session$sendCustomMessage(
+      "ynowGateSpendResult",
+      list(
+        ok = isTRUE(ok),
+        item_id = as.character(item_id %||% "")[1],
+        message_key = as.character(message_key %||% "")[1],
+        fyn = if (length(fyn_i) != 1L || is.na(fyn_i)) NULL else fyn_i,
+        points_cost = if (length(cost_i) != 1L || is.na(cost_i)) NULL else cost_i
+      )
+    )
+    if (is.character(note) && nzchar(note[1])) {
+      tryCatch(
+        showNotification(note[1], type = if (isTRUE(ok)) "message" else "warning", duration = 6),
+        error = function(e) NULL
+      )
+    }
+    invisible(isTRUE(ok))
+  }
+
+  .ynow_gate_spend_is_preview <- function() {
+    mode <- tryCatch(isolate(ynow_pts_self_view_mode()), error = function(e) NULL)
+    mode <- as.character(mode %||% "")[1]
+    if (mode %in% c("guest", "omniscient", "signed_in")) return(TRUE)
+    va <- tryCatch(isolate(ynow_pts_view_as()), error = function(e) NULL)
+    if (is.list(va) && nzchar(as.character(va$user_id %||% "")[1])) return(TRUE)
+    uid <- .ynow_access_subject_id()
+    uid <- as.character(uid %||% "")[1]
+    if (!nzchar(uid) || identical(uid, "__self_member__") || identical(uid, "__omniscient__")) {
+      return(TRUE)
+    }
+    FALSE
+  }
+
+  .ynow_gate_spend <- function(item_id) {
+    id <- as.character(item_id %||% "")[1]
+    if (!nzchar(id)) return(invisible(FALSE))
+    if (isTRUE(.ynow_gate_spend_is_preview())) {
+      note <- .ynow_gate_note(
+        "gate_mode_preview_no_spend",
+        fallback = "Points are not spent in this preview."
+      )
+      return(.ynow_gate_spend_result(FALSE, id, "gate_mode_preview_no_spend", note = note))
+    }
+    uid <- as.character(.ynow_access_subject_id() %||% "")[1]
+    entry <- if (exists("ynow_access_item_entry", mode = "function")) {
+      tryCatch(ynow_access_item_entry(uid, id), error = function(e) NULL)
+    } else {
+      NULL
+    }
+    fyn_now <- if (exists("ynow_points_balance", mode = "function")) {
+      tryCatch(suppressWarnings(as.integer(ynow_points_balance(uid, "fyn")[1])), error = function(e) NA_integer_)
+    } else {
+      NA_integer_
+    }
+    resolved <- if (is.null(entry) || !exists("ynow_gate_mode_resolve", mode = "function")) {
+      NULL
+    } else {
+      ynow_gate_mode_resolve(entry, authed = TRUE, fyn_balance = fyn_now)
+    }
+    cost <- if (is.list(resolved)) resolved$points_cost else NULL
+    if (is.null(resolved) || !identical(resolved$gate_mode, "spend_fyn") ||
+        is.null(cost) || cost < 1L) {
+      note <- .ynow_gate_note(
+        "gate_mode_spend_denied",
+        fallback = "This item cannot be unlocked with FYN."
+      )
+      tryCatch(.ynow_push_access_locks(), error = function(e) NULL)
+      return(.ynow_gate_spend_result(FALSE, id, "gate_mode_spend_denied", fyn_now, cost, note))
+    }
+    if (exists("ynow_access_unlock_satisfied_for_item", mode = "function") &&
+        isTRUE(ynow_access_unlock_satisfied_for_item(uid, id, authed = TRUE))) {
+      tryCatch(.ynow_push_access_locks(), error = function(e) NULL)
+      note <- .ynow_gate_note("gate_mode_spend_ok", fallback = "Unlocked.")
+      return(.ynow_gate_spend_result(TRUE, id, "gate_mode_spend_ok", fyn_now, cost, note))
+    }
+    if (!exists("ynow_points_credit", mode = "function") ||
+        !exists("ynow_access_mark_points_unlocked", mode = "function")) {
+      note <- .ynow_gate_note(
+        "gate_mode_spend_denied",
+        fallback = "This item cannot be unlocked with FYN."
+      )
+      return(.ynow_gate_spend_result(FALSE, id, "gate_mode_spend_denied", fyn_now, cost, note))
+    }
+    # Stable per item: a second click replays one ledger row, then still marks the unlock.
+    res <- tryCatch(
+      ynow_points_credit(
+        uid,
+        delta = -as.integer(cost),
+        reason = "access_unlock",
+        ref_id = paste0("acl-unlock:", id),
+        wallet = "fyn",
+        meta = list(item_id = id)
+      ),
+      error = function(e) list(ok = FALSE, message_key = "pts_msg_backend", fyn = fyn_now)
+    )
+    bal <- suppressWarnings(as.integer(res$fyn %||% fyn_now)[1])
+    if (isTRUE(res$ok)) {
+      tryCatch(ynow_access_mark_points_unlocked(uid, id), error = function(e) NULL)
+      tryCatch(.ynow_push_access_locks(), error = function(e) NULL)
+      note <- .ynow_gate_note("gate_mode_spend_ok", fallback = "Unlocked.")
+      return(.ynow_gate_spend_result(TRUE, id, "gate_mode_spend_ok", bal, cost, note))
+    }
+    if (identical(as.character(res$message_key %||% "")[1], "pts_msg_insufficient")) {
+      shown <- if (is.finite(bal)) bal else 0L
+      note <- .ynow_gate_note(
+        "gate_mode_spend_short",
+        args = list(as.character(cost), as.character(shown)),
+        fallback = sprintf("Not enough FYN (need %s; balance %s).", cost, shown)
+      )
+      return(.ynow_gate_spend_result(FALSE, id, "gate_mode_spend_short", shown, cost, note))
+    }
+    note <- .ynow_gate_note(
+      "gate_mode_spend_denied",
+      fallback = "This item cannot be unlocked with FYN."
+    )
+    .ynow_gate_spend_result(FALSE, id, res$message_key %||% "gate_mode_spend_denied", bal, cost, note)
+  }
+
+  observeEvent(input$ynow_gate_spend, {
+    raw <- input$ynow_gate_spend
+    item_id <- if (is.list(raw)) as.character(raw$item_id %||% "")[1] else as.character(raw %||% "")[1]
+    .ynow_gate_spend(item_id)
+  }, ignoreInit = TRUE)
 
   #' Consume Class C free use and/or start time window after a successful use.
   .ynow_access_note_conditional_use <- function(item_id, consume_free = TRUE) {
@@ -1521,146 +1705,6 @@ server <- function(input, output, session) {
     tryCatch(.ynow_push_access_locks(), error = function(e) NULL)
     invisible(TRUE)
   }
-
-
-  .ynow_lock_spend_notify <- function(key, ..., fallback = key) {
-    loc <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "en")
-    msg <- tryCatch(ui_str(key, loc), error = function(e) fallback)
-    args <- list(...)
-    if (length(args) > 0L && grepl("%s", msg, fixed = TRUE)) {
-      msg <- tryCatch(do.call(sprintf, c(list(msg), args)), error = function(e) msg)
-    }
-    tryCatch(
-      showNotification(msg, type = "message", duration = 6),
-      error = function(e) NULL
-    )
-    invisible(msg)
-  }
-
-  observeEvent(input$ynow_lock_spend, {
-    raw <- input$ynow_lock_spend
-    item_id <- if (is.list(raw)) {
-      as.character(raw$item_id %||% "")[1]
-    } else {
-      as.character(raw %||% "")[1]
-    }
-    if (!nzchar(item_id)) return()
-
-    mode <- tryCatch(isolate(ynow_pts_self_view_mode()), error = function(e) NULL)
-    mode <- as.character(mode %||% "")[1]
-    va <- tryCatch(isolate(ynow_pts_view_as()), error = function(e) NULL)
-    if (identical(mode, "omniscient") || identical(mode, "guest") ||
-        identical(mode, "signed_in") || !is.null(va) ||
-        identical(mode, "__self_member__") || identical(mode, "__omniscient__")) {
-      .ynow_lock_spend_notify(
-        "lock_gate_preview_no_spend",
-        fallback = "Points are not spent in this preview."
-      )
-      return()
-    }
-
-    uid <- .ynow_access_subject_id()
-    uid <- as.character(uid %||% "")[1]
-    if (!nzchar(uid) || identical(uid, "__omniscient__") ||
-        identical(uid, "__self_member__") || identical(uid, YNOW_ACCESS_ALL_USERS)) {
-      .ynow_lock_spend_notify(
-        "lock_gate_preview_no_spend",
-        fallback = "Points are not spent in this preview."
-      )
-      return()
-    }
-
-    if (!exists("ynow_access_item_entry", mode = "function") ||
-        !exists("ynow_lock_gate_mode", mode = "function")) {
-      return()
-    }
-    entry <- tryCatch(ynow_access_item_entry(uid, item_id), error = function(e) NULL)
-    if (is.null(entry) || !identical(as.character(entry$effect %||% "")[1], "lock")) {
-      .ynow_lock_spend_notify(
-        "lock_gate_spend_denied",
-        fallback = "This item cannot be unlocked with FYN."
-      )
-      tryCatch(.ynow_push_access_locks(), error = function(e) NULL)
-      return()
-    }
-
-    if (exists("ynow_access_unlock_satisfied_for_item", mode = "function") &&
-        isTRUE(ynow_access_unlock_satisfied_for_item(uid, item_id, authed = TRUE))) {
-      tryCatch(.ynow_push_access_locks(), error = function(e) NULL)
-      return()
-    }
-
-    gmode <- ynow_lock_gate_mode(
-      TRUE,
-      unlock_type = entry$unlock_type,
-      points_cost = entry$points_cost
-    )
-    if (!identical(gmode, "spend")) {
-      .ynow_lock_spend_notify(
-        "lock_gate_spend_denied",
-        fallback = "This item cannot be unlocked with FYN."
-      )
-      tryCatch(.ynow_push_access_locks(), error = function(e) NULL)
-      return()
-    }
-
-    cost <- suppressWarnings(as.integer(entry$points_cost)[1])
-    if (!is.finite(cost) || is.na(cost) || cost < 1L) {
-      .ynow_lock_spend_notify(
-        "lock_gate_spend_denied",
-        fallback = "This item cannot be unlocked with FYN."
-      )
-      return()
-    }
-
-    if (!exists("ynow_points_credit", mode = "function") ||
-        !exists("ynow_access_mark_points_unlocked", mode = "function")) {
-      return()
-    }
-    if (exists("ynow_points_enabled", mode = "function") &&
-        !isTRUE(ynow_points_enabled())) {
-      .ynow_lock_spend_notify(
-        "lock_gate_spend_denied",
-        fallback = "This item cannot be unlocked with FYN."
-      )
-      return()
-    }
-
-    res <- tryCatch(
-      ynow_points_credit(
-        uid,
-        delta = -as.integer(cost),
-        reason = "access_unlock",
-        ref_id = paste0("acl-unlock:", item_id),
-        wallet = "fyn",
-        meta = list(item_id = item_id, points_cost = cost)
-      ),
-      error = function(e) list(ok = FALSE, message_key = "pts_msg_backend")
-    )
-    if (isTRUE(res$ok)) {
-      tryCatch(ynow_access_mark_points_unlocked(uid, item_id), error = function(e) NULL)
-      tryCatch(.ynow_push_access_locks(), error = function(e) NULL)
-      .ynow_lock_spend_notify("lock_gate_spend_ok", fallback = "Unlocked.")
-      return()
-    }
-    if (identical(as.character(res$message_key %||% "")[1], "pts_msg_insufficient")) {
-      bal <- suppressWarnings(as.integer(res$fyn %||% res$balance %||% 0L)[1])
-      .ynow_lock_spend_notify(
-        "lock_gate_insufficient_fmt",
-        as.character(cost),
-        as.character(if (is.finite(bal)) bal else 0L),
-        fallback = sprintf(
-          "Not enough FYN (need %s; balance %s). Open Points top-up to credit FYN.",
-          cost, if (is.finite(bal)) bal else 0L
-        )
-      )
-      return()
-    }
-    .ynow_lock_spend_notify(
-      "lock_gate_spend_denied",
-      fallback = "This item cannot be unlocked with FYN."
-    )
-  }, ignoreInit = TRUE)
 
   #' Push active maintenance windows (all users). Separate from ACL / guest locks.
   .ynow_push_maintenance <- function() {

@@ -621,6 +621,27 @@ check("clear then re-apply allowed", {
   isTRUE(res$ok) && identical(ynow_access_item_effect("user-a", "tab:lab_notes"), "hide")
 })
 
+
+check("gate payload fields and chrome slots", {
+  row <- ynow_gate_mode_client_row(
+    "tab:decision_checklist", "lock",
+    list(effect = "lock", unlock_type = "points", points_cost = 5L),
+    authed = TRUE, fyn_balance = 12L
+  )
+  spend_line <- grep("ynow-gate-spend", strsplit(ui, "\n", fixed = FALSE)[[1]], value = TRUE)
+  identical(row$gate_mode, "spend_fyn") &&
+    identical(row$unlock_type, "points") &&
+    identical(row$points_cost, 5L) &&
+    grepl("gate_registry", srv, fixed = TRUE) &&
+    grepl("ynow_gate_mode_client_row", srv, fixed = TRUE) &&
+    grepl("data-ynow-gate-chrome", ui, fixed = TRUE) &&
+    grepl("spend_fyn", ui, fixed = TRUE) &&
+    grepl("topup_promo", ui, fixed = TRUE) &&
+    grepl("guest_auth", ui, fixed = TRUE) &&
+    length(spend_line) >= 1L &&
+    !any(grepl("ynow-auth-open", spend_line, fixed = TRUE))
+})
+
 message("PASS ", ok, " FAIL ", bad)
 if (bad > 0L) quit(status = 1)
 quit(status = 0)

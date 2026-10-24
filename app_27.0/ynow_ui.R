@@ -37,6 +37,49 @@
   is.finite(a) && is.finite(b) && as.integer(b) > as.integer(a)
 }
 
+#' Three chrome slots on one ACL overlay. Guest keeps Sign in / Register.
+ynow_gate_mode_chrome_ui <- function(...) {
+  tagList(
+    tags$div(
+      class = "ynow-gate-chrome",
+      `data-ynow-gate-chrome` = "guest_auth",
+      ...
+    ),
+    tags$div(
+      class = "ynow-gate-chrome",
+      `data-ynow-gate-chrome` = "spend_fyn",
+      hidden = "hidden",
+      tags$p(class = "ynow-hfv-chapter__kicker", `data-ynow-gate-slot` = "kicker"),
+      tags$h3(`data-ynow-gate-slot` = "title"),
+      tags$p(class = "ynow-gate-body", `data-ynow-gate-slot` = "body"),
+      tags$button(
+        type = "button",
+        class = "btn btn-primary ynow-gate-spend",
+        tags$span(`data-ynow-gate-slot` = "cta")
+      ),
+      tags$button(
+        type = "button",
+        class = "btn btn-default ynow-gate-topup",
+        tags$span(`data-ynow-gate-slot` = "secondary")
+      )
+    ),
+    tags$div(
+      class = "ynow-gate-chrome",
+      `data-ynow-gate-chrome` = "topup_promo",
+      hidden = "hidden",
+      tags$p(class = "ynow-hfv-chapter__kicker", `data-ynow-gate-slot` = "kicker"),
+      tags$h3(`data-ynow-gate-slot` = "title"),
+      tags$p(class = "ynow-gate-body", `data-ynow-gate-slot` = "body"),
+      tags$button(
+        type = "button",
+        class = "btn btn-primary ynow-gate-topup",
+        tags$span(`data-ynow-gate-slot` = "cta")
+      )
+    )
+  )
+}
+
+
 # Backtest Zone：欄位下方小字說明
 .bt_hint <- function(text) {
   tags$p(
@@ -5165,6 +5208,33 @@ ui <- dashboardPage(
           color: var(--ynow-gate-ink-soft, #333333);
           border-radius: 6px;
           white-space: normal;
+        }
+        /* Author !important beats the UA [hidden] rule so the active slot can show. */
+        .ynow-gate-chrome { display: none; }
+        [data-ynow-gate-mode="guest_auth"] .ynow-gate-chrome[data-ynow-gate-chrome="guest_auth"],
+        [data-ynow-gate-mode="spend_fyn"] .ynow-gate-chrome[data-ynow-gate-chrome="spend_fyn"],
+        [data-ynow-gate-mode="topup_promo"] .ynow-gate-chrome[data-ynow-gate-chrome="topup_promo"] {
+          display: block !important;
+        }
+        body.ynow-authed .ynow-gate-spend,
+        body.ynow-authed .ynow-gate-topup,
+        body.ynow-view-as .ynow-gate-spend,
+        body.ynow-view-as .ynow-gate-topup {
+          display: inline-block !important;
+          pointer-events: auto !important;
+          visibility: visible !important;
+        }
+        .ynow-gate-spend:disabled {
+          opacity: 0.55;
+          cursor: not-allowed;
+        }
+        [data-ynow-gate-mode="spend_fyn"] .ynow-hfv-chapter__head,
+        [data-ynow-gate-mode="topup_promo"] .ynow-hfv-chapter__head {
+          display: none !important;
+        }
+        .ynow-gate-chrome .ynow-gate-spend,
+        .ynow-gate-chrome .ynow-gate-topup {
+          margin: 8px 8px 0 0;
         }
         /* Sysadmin portal: after login hide all login/intro chrome */
         /* Shared sign-in / unlock gate chrome (black–white logo palette) */
@@ -12925,9 +12995,6 @@ ui <- dashboardPage(
             try {
               document.documentElement.setAttribute('data-ynow-locale-ready', '1');
             } catch (eReady) {}
-            if (typeof window.ynowRefreshLockGates === 'function') {
-              try { window.ynowRefreshLockGates(); } catch (eGateRefresh) {}
-            }
           }
           window.applyUiLocale = applyUiLocale;
           /* Preferred-locale first paint: apply slim boot map as soon as DOM exists
@@ -13126,7 +13193,7 @@ ui <- dashboardPage(
                     var nodes = root.querySelectorAll(sel);
                     for (var ni = 0; ni < nodes.length; ni++) nodes[ni].textContent = val;
                   };
-                  applySel('.ynow-gate-body', map.body);
+                  applySel('.ynow-gate-body:not([data-ynow-gate-slot])', map.body);
                   applySel('.ynow-gate-promo-kicker', map.kicker);
                   applySel('.ynow-gate-promo-lead', map.lead);
                   applySel('.ynow-gate-promo-b1', map.b1);
@@ -13193,6 +13260,9 @@ ui <- dashboardPage(
               setAll('.ynow-gate-faq-a3', payload.gate_faq_a3);
               setAll('.ynow-gate-faq-q4', payload.gate_faq_q4);
               setAll('.ynow-gate-faq-a4', payload.gate_faq_a4);
+              if (typeof window.ynowBindGateModes === 'function') {
+                try { window.ynowBindGateModes(); } catch (eGateBind) {}
+              }
             });
             window.__ynowPdfQuotaState = window.__ynowPdfQuotaState || {
               state: 'guest',
@@ -13671,175 +13741,205 @@ ui <- dashboardPage(
                 try { window.ynowSyncGuestSidebarLocked(); } catch (eGs) {}
               }
             });
-            function ynowResolveLockGateMode(authed, unlockType, pointsCost) {
-              if (!authed) return 'signin';
-              var ut = unlockType ? String(unlockType) : '';
-              var cost = parseInt(pointsCost, 10);
-              if (ut === 'points' && isFinite(cost) && cost >= 1) return 'spend';
-              return 'topup';
+            function ynowGateModeSpec(mode) {
+              var reg = window.__ynowGateRegistry || {};
+              return (mode && reg) ? (reg[mode] || null) : null;
             }
-            function ynowLockGateCtx(itemId) {
-              var id = itemId || '';
-              var row = null;
-              var entries = window.__ynowAccessEntries || [];
-              var i;
-              for (i = 0; i < entries.length; i++) {
-                if (entries[i] && String(entries[i].id) === id) { row = entries[i]; break; }
-              }
-              var unlockType = null;
-              var pointsCost = null;
-              if (row) {
-                unlockType = row.unlock_type ? String(row.unlock_type) : null;
-                if (row.points_cost != null && row.points_cost !== '') pointsCost = row.points_cost;
-              }
-              return {
-                authed: !!(document.body && document.body.classList.contains('ynow-authed')),
-                unlockType: unlockType,
-                pointsCost: pointsCost,
-                itemId: id,
-                copy: window.__ynowUiLocaleStrings || {}
-              };
-            }
-            function ynowLockGateFmt(fmt, a, b) {
-              var s = String(fmt == null ? '' : fmt);
-              s = s.replace('%s', a == null ? '' : String(a));
-              if (arguments.length > 2) s = s.replace('%s', b == null ? '' : String(b));
-              return s;
-            }
-            function ynowLockGateButton(kind, label, itemId) {
-              var btn = document.createElement('button');
-              btn.type = 'button';
-              btn.className = 'btn ' + (kind === 'spend' ? 'btn-primary ynow-lock-spend' : 'btn-default ynow-lock-topup');
-              btn.setAttribute('data-ynow-item', itemId || '');
-              btn.textContent = label || '';
-              return btn;
-            }
-            function ynowAdaptPostLoginLockGate(root, ctx) {
-              if (!root) return 'signin';
-              ctx = ctx || {};
-              var mode = ynowResolveLockGateMode(!!ctx.authed, ctx.unlockType, ctx.pointsCost);
-              var itemId = ctx.itemId || '';
-              var copy = ctx.copy || window.__ynowUiLocaleStrings || {};
-              root.setAttribute('data-ynow-gate-mode', mode);
-              root.setAttribute('data-ynow-item', itemId);
-              if (ctx.unlockType) root.setAttribute('data-ynow-unlock-type', String(ctx.unlockType));
-              else root.removeAttribute('data-ynow-unlock-type');
-              if (ctx.pointsCost != null && ctx.pointsCost !== '' && isFinite(parseInt(ctx.pointsCost, 10))) {
-                root.setAttribute('data-ynow-points-cost', String(parseInt(ctx.pointsCost, 10)));
-              } else {
-                root.removeAttribute('data-ynow-points-cost');
-              }
-              root.classList.remove('ynow-lock-gate--signin', 'ynow-lock-gate--spend', 'ynow-lock-gate--topup');
-              root.classList.add('ynow-lock-gate--' + mode);
-              if (mode === 'signin') return mode;
-              var kicker = copy.lock_gate_spend_kicker || 'Points unlock';
-              var title = copy.lock_gate_spend_title || 'Unlock with FYN';
-              var body = ynowLockGateFmt(
-                copy.lock_gate_spend_body_fmt || 'Spend %s FYN to unlock this item on this account.',
-                ctx.pointsCost
-              );
-              if (mode === 'topup') {
-                kicker = copy.lock_gate_topup_kicker || 'Points top-up';
-                title = copy.lock_gate_topup_title || 'Points top-up';
-                body = copy.lock_gate_topup_body || 'This item stays locked on this account. Credit FYN on Points top-up, then come back.';
-              }
-              var nodes;
-              var ni;
-              nodes = root.querySelectorAll('.ynow-gate-section-kicker');
-              for (ni = 0; ni < nodes.length; ni++) nodes[ni].textContent = kicker;
-              nodes = root.querySelectorAll('.ynow-auth-gate-title');
-              for (ni = 0; ni < nodes.length; ni++) nodes[ni].textContent = title;
-              if (!nodes.length) {
-                nodes = root.querySelectorAll('.ynow-hfv-chapter__title');
-                for (ni = 0; ni < nodes.length; ni++) nodes[ni].textContent = title;
-              }
-              nodes = root.querySelectorAll('.ynow-gate-body');
-              for (ni = 0; ni < nodes.length; ni++) nodes[ni].textContent = body;
-              nodes = root.querySelectorAll('.ynow-gate-faq, .ynow-gate-promo');
-              for (ni = 0; ni < nodes.length; ni++) nodes[ni].style.display = 'none';
-              var pair = root.querySelector('.ynow-lock-gate-actions') ||
-                root.querySelector('.ynow-auth-pair--gate') ||
-                root.querySelector('.ynow-auth-pair');
-              if (!pair) {
-                pair = document.createElement('div');
-                root.appendChild(pair);
-              }
-              pair.className = 'ynow-lock-gate-actions';
-              pair.style.display = '';
-              pair.style.visibility = '';
-              pair.style.pointerEvents = '';
-              while (pair.firstChild) pair.removeChild(pair.firstChild);
-              if (mode === 'spend') {
-                pair.appendChild(ynowLockGateButton(
-                  'spend',
-                  copy.lock_gate_spend_cta || 'Spend FYN',
-                  itemId
-                ));
-                pair.appendChild(ynowLockGateButton(
-                  'topup',
-                  copy.lock_gate_topup_cta || 'Open Points top-up',
-                  itemId
-                ));
-              } else {
-                pair.appendChild(ynowLockGateButton(
-                  'topup',
-                  copy.lock_gate_topup_cta || 'Open Points top-up',
-                  itemId
-                ));
-              }
+            function ynowCoerceGateMode(mode) {
+              var authed = !!(document.body && document.body.classList.contains('ynow-authed'));
+              var known = mode === 'guest_auth' || mode === 'spend_fyn' || mode === 'topup_promo';
+              if (!known) return authed ? 'topup_promo' : 'guest_auth';
+              if (authed && mode === 'guest_auth') return 'topup_promo';
               return mode;
             }
-            function ynowRefreshLockGates() {
-              var nodes = document.querySelectorAll('[data-ynow-gate-mode]');
-              var i;
-              for (i = 0; i < nodes.length; i++) {
-                var itemId = nodes[i].getAttribute('data-ynow-item') || '';
-                ynowAdaptPostLoginLockGate(nodes[i], ynowLockGateCtx(itemId));
-              }
+            function ynowResolve(row) {
+              return ynowCoerceGateMode(row && row.gate_mode);
             }
-            window.ynowResolveLockGateMode = ynowResolveLockGateMode;
-            window.ynowAdaptPostLoginLockGate = ynowAdaptPostLoginLockGate;
-            window.ynowRefreshLockGates = ynowRefreshLockGates;
-            if (!document.documentElement.getAttribute('data-ynow-lock-spend-click')) {
-              document.documentElement.setAttribute('data-ynow-lock-spend-click', '1');
-              document.addEventListener('click', function (ev) {
-                var t = ev.target;
-                if (!t || !t.closest) return;
-                var spend = t.closest('.ynow-lock-spend');
-                var topup = t.closest('.ynow-lock-topup');
-                if (!spend && !topup) return;
-                ev.preventDefault();
-                var authed = !!(document.body && document.body.classList.contains('ynow-authed'));
-                if (window.ynowIsAuthed) authed = !!window.ynowIsAuthed();
-                if (!authed) return;
-                if (topup) {
-                  var lite = document.body && document.body.classList.contains('ynow-lite');
-                  /* Redeem form is #ynow_pts_topup_slot on Account overview, not the ledger tab. */
-                  var overview = document.querySelector('.sidebar-menu a[data-value=\"account_admin\"]');
-                  if (!lite && overview && window.ynowGotoTab) {
-                    window.ynowGotoTab('account_admin');
-                    var slot = document.getElementById('ynow_pts_topup_slot');
-                    if (slot && slot.scrollIntoView) {
-                      try { slot.scrollIntoView({ block: 'nearest' }); } catch (eSlot) {}
-                    }
+            window.ynowCoerceGateMode = ynowCoerceGateMode;
+            window.ynowResolve = ynowResolve;
+            function ynowFormatGateText(key, cost, balance) {
+              var s = window.__ynowUiLocaleStrings || {};
+              var raw = key ? s[key] : '';
+              if (!raw) return '';
+              function shown(v) {
+                if (v === null || typeof v === 'undefined' || v === '') return '—';
+                return String(v);
+              }
+              var args = [shown(cost), shown(balance)];
+              var i = 0;
+              return String(raw).replace(/%s/g, function () {
+                var v = i < args.length ? args[i] : '';
+                i += 1;
+                return v == null ? '' : String(v);
+              });
+            }
+            function ynowInferLockId(host) {
+              if (!host) return '';
+              var pane = host.closest ? host.closest('.tab-pane') : null;
+              if (!pane || !pane.id || pane.id.indexOf('shiny-tab-') !== 0) {
+                return host.getAttribute('data-ynow-lock-id') || host.getAttribute('data-ynow-item') || '';
+              }
+              var tab = pane.id.slice(10);
+              if (host.classList.contains('ynow-atx-lock-host') || host.classList.contains('ynow-tab-lock-host')) {
+                return 'tab:' + tab;
+              }
+              var entries = window.__ynowAccessEntries || [];
+              var nodes = document.querySelectorAll('[data-ynow-lock]');
+              for (var i = 0; i < entries.length; i++) {
+                var row = entries[i];
+                if (!row || !row.id) continue;
+                if (String(row.effect || 'hide') === 'hide') continue;
+                var id = String(row.id);
+                if (id.indexOf('tab:') === 0) continue;
+                var el = null;
+                if (id.indexOf('report:') === 0) el = document.getElementById(id.slice(7));
+                else if (id.indexOf('input:') === 0) el = document.getElementById(id.slice(6));
+                else {
+                  for (var n = 0; n < nodes.length; n++) {
+                    if (nodes[n].getAttribute('data-ynow-lock') === id) { el = nodes[n]; break; }
                   }
                 }
-                if (spend && window.Shiny && Shiny.setInputValue) {
-                  Shiny.setInputValue('ynow_lock_spend', {
-                    item_id: spend.getAttribute('data-ynow-item') || '',
-                    nonce: Date.now()
-                  }, { priority: 'event' });
-                }
-              }, true);
+                if (el && pane.contains(el)) return id;
+              }
+              return host.getAttribute('data-ynow-lock-id') || '';
             }
-            function ynowEnsureAtxLockPromo(pane, itemId) {
+            function ynowEntryForLockId(id) {
+              var entries = window.__ynowAccessEntries || [];
+              var want = String(id || '');
+              for (var i = 0; i < entries.length; i++) {
+                if (entries[i] && String(entries[i].id) === want) return entries[i];
+              }
+              return null;
+            }
+            function ynowFillGateChrome(carrier, mode, row, spec) {
+              if (!carrier || !spec || spec.action === 'auth') return;
+              var chromes = carrier.querySelectorAll('.ynow-gate-chrome');
+              var chrome = null;
+              for (var i = 0; i < chromes.length; i++) {
+                if (chromes[i].getAttribute('data-ynow-gate-chrome') === mode) { chrome = chromes[i]; break; }
+              }
+              if (!chrome) return;
+              var cost = row ? row.points_cost : null;
+              var bal = row ? row.fyn_balance : null;
+              function setSlot(name, key) {
+                if (!key) return;
+                var slots = chrome.querySelectorAll('[data-ynow-gate-slot]');
+                for (var s = 0; s < slots.length; s++) {
+                  if (slots[s].getAttribute('data-ynow-gate-slot') !== name) continue;
+                  slots[s].textContent = ynowFormatGateText(key, cost, bal);
+                }
+              }
+              setSlot('kicker', spec.kicker_key);
+              setSlot('title', spec.title_key);
+              setSlot('body', spec.body_key);
+              setSlot('cta', spec.cta_key);
+              setSlot('secondary', spec.secondary_key);
+              var buttons = chrome.querySelectorAll('.ynow-gate-spend');
+              if (!buttons.length) return;
+              var afford = !!(row && (row.afford === true || row.afford === 'true'));
+              buttons[0].disabled = !afford;
+              if (!afford) buttons[0].setAttribute('aria-disabled', 'true');
+              else buttons[0].removeAttribute('aria-disabled');
+            }
+            function ynowBindGateMode(host, row) {
+              if (!host || !row) return;
+              var mode = ynowResolve(row);
+              var nested = host.querySelectorAll('[data-ynow-gate-mode]');
+              for (var i = 0; i < nested.length; i++) {
+                if (nested[i] !== host) nested[i].removeAttribute('data-ynow-gate-mode');
+              }
+              host.setAttribute('data-ynow-gate-mode', mode);
+              var itemId = row.id || ynowInferLockId(host) || '';
+              host.setAttribute('data-ynow-lock-id', itemId);
+              host.setAttribute('data-ynow-item', itemId);
+              if (row.unlock_type) host.setAttribute('data-ynow-unlock-type', String(row.unlock_type));
+              else host.removeAttribute('data-ynow-unlock-type');
+              if (row.points_cost !== null && typeof row.points_cost !== 'undefined' && row.points_cost !== '') {
+                host.setAttribute('data-ynow-points-cost', String(row.points_cost));
+              } else {
+                host.removeAttribute('data-ynow-points-cost');
+              }
+              if (row.fyn_balance !== null && typeof row.fyn_balance !== 'undefined' && row.fyn_balance !== '') {
+                host.setAttribute('data-ynow-fyn-balance', String(row.fyn_balance));
+              } else {
+                host.removeAttribute('data-ynow-fyn-balance');
+              }
+              if (row.afford === true || row.afford === false || row.afford === 'true' || row.afford === 'false') {
+                host.setAttribute('data-ynow-afford', (row.afford === true || row.afford === 'true') ? 'true' : 'false');
+              } else {
+                host.removeAttribute('data-ynow-afford');
+              }
+              var chromes = host.querySelectorAll('.ynow-gate-chrome');
+              for (var c = 0; c < chromes.length; c++) {
+                var on = chromes[c].getAttribute('data-ynow-gate-chrome') === mode;
+                if (on) chromes[c].removeAttribute('hidden');
+                else chromes[c].setAttribute('hidden', 'hidden');
+              }
+              ynowFillGateChrome(host, mode, row, ynowGateModeSpec(mode));
+            }
+            window.ynowBindGateMode = ynowBindGateMode;
+            function ynowBindGateModes() {
+              var hosts = document.querySelectorAll('.ynow-atx-lock-host, .ynow-tab-lock-host, .ynow-inner-tab-lock-host');
+              for (var i = 0; i < hosts.length; i++) {
+                var host = hosts[i];
+                var id = ynowInferLockId(host);
+                var row = id ? ynowEntryForLockId(id) : null;
+                if (!row) {
+                  var authed = !!(document.body && document.body.classList.contains('ynow-authed'));
+                  row = {
+                    id: id || host.getAttribute('data-ynow-item') || '',
+                    gate_mode: host.getAttribute('data-ynow-gate-mode') || (authed ? 'topup_promo' : 'guest_auth'),
+                    unlock_type: host.getAttribute('data-ynow-unlock-type'),
+                    points_cost: host.getAttribute('data-ynow-points-cost'),
+                    fyn_balance: host.getAttribute('data-ynow-fyn-balance'),
+                    afford: host.getAttribute('data-ynow-afford') === 'true'
+                  };
+                }
+                ynowBindGateMode(host, row);
+              }
+            }
+            window.ynowBindGateModes = ynowBindGateModes;
+            function ynowScrollTopupSlot(tries) {
+              var slot = document.getElementById('ynow_pts_topup_slot');
+              if (slot && slot.scrollIntoView) {
+                try { slot.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (eScroll) {}
+                return;
+              }
+              if (tries > 8) return;
+              setTimeout(function () { ynowScrollTopupSlot(tries + 1); }, 200);
+            }
+            function ynowOnGateModeAction(ev) {
+              var t = ev.target;
+              if (!t || !t.closest) return;
+              var spend = t.closest('.ynow-gate-spend');
+              var topup = t.closest('.ynow-gate-topup');
+              if (!spend && !topup) return;
+              if (spend && spend.disabled) return;
+              ev.preventDefault();
+              ev.stopPropagation();
+              var btn = spend || topup;
+              var host = btn.closest('.ynow-atx-lock-host, .ynow-tab-lock-host, .ynow-inner-tab-lock-host');
+              var itemId = '';
+              if (host) {
+                itemId = host.getAttribute('data-ynow-item') || host.getAttribute('data-ynow-lock-id') || ynowInferLockId(host);
+              }
+              if (spend) {
+                if (window.Shiny && Shiny.setInputValue) {
+                  Shiny.setInputValue('ynow_gate_spend', { item_id: itemId, t: Date.now() }, { priority: 'event' });
+                }
+                return;
+              }
+              if (document.body && document.body.classList.contains('ynow-lite')) return;
+              if (typeof window.ynowGotoTab === 'function') window.ynowGotoTab('account_admin');
+              ynowScrollTopupSlot(0);
+            }
+            document.addEventListener('click', ynowOnGateModeAction, true);
+
+            function ynowEnsureAtxLockPromo(pane) {
               if (!pane) return;
               var kids = pane.children || [];
               for (var hi = 0; hi < kids.length; hi++) {
-                if (kids[hi].classList && kids[hi].classList.contains('ynow-atx-lock-host')) {
-                  ynowAdaptPostLoginLockGate(kids[hi], ynowLockGateCtx(itemId));
-                  return;
-                }
+                if (kids[hi].classList && kids[hi].classList.contains('ynow-atx-lock-host')) return;
               }
               var tpl = document.getElementById('ynow_atx_lock_promo_tpl');
               if (!tpl) return;
@@ -13849,20 +13949,16 @@ ui <- dashboardPage(
               host.classList.remove('ynow-atx-lock-tpl');
               host.classList.add('ynow-atx-lock-host');
               pane.insertBefore(host, pane.firstChild);
-              ynowAdaptPostLoginLockGate(host, ynowLockGateCtx(itemId));
+              ynowBindGateModes();
             }
-            function ynowEnsureSidebarTabLockSurface(pane, itemId) {
+            function ynowEnsureSidebarTabLockSurface(pane) {
               if (!pane) return;
               var kids = pane.children || [];
               for (var hi = 0; hi < kids.length; hi++) {
                 if (kids[hi].classList && (
                   kids[hi].classList.contains('ynow-tab-lock-host') ||
                   kids[hi].classList.contains('ynow-atx-lock-host')
-                )) {
-                  var again = kids[hi].querySelector('.ynow-gate-box, [data-ynow-gate-feature]') || kids[hi];
-                  ynowAdaptPostLoginLockGate(again, ynowLockGateCtx(itemId));
-                  return;
-                }
+                )) return;
               }
               var tpl = document.getElementById('ynow_inner_tab_lock_promo_tpl');
               if (!tpl) return;
@@ -13882,16 +13978,13 @@ ui <- dashboardPage(
               surface.appendChild(fade);
               surface.appendChild(promo);
               pane.insertBefore(surface, pane.firstChild);
-              ynowAdaptPostLoginLockGate(promo, ynowLockGateCtx(itemId));
+              ynowBindGateModes();
             }
-            function ynowEnsureInnerLockPromo(pane, itemId) {
+            function ynowEnsureInnerLockPromo(pane) {
               if (!pane) return;
               var kids = pane.children || [];
               for (var hi = 0; hi < kids.length; hi++) {
-                if (kids[hi].classList && kids[hi].classList.contains('ynow-inner-tab-lock-host')) {
-                  ynowAdaptPostLoginLockGate(kids[hi], ynowLockGateCtx(itemId));
-                  return;
-                }
+                if (kids[hi].classList && kids[hi].classList.contains('ynow-inner-tab-lock-host')) return;
               }
               var tpl = document.getElementById('ynow_inner_tab_lock_promo_tpl');
               if (!tpl) return;
@@ -13901,10 +13994,10 @@ ui <- dashboardPage(
               host.classList.remove('ynow-inner-tab-lock-tpl');
               host.classList.add('ynow-inner-tab-lock-host');
               pane.insertBefore(host, pane.firstChild);
-              ynowAdaptPostLoginLockGate(host, ynowLockGateCtx(itemId));
+              ynowBindGateModes();
             }
             /* Lock target is a block, input, or report inside a tab — not a whole sidebar page. */
-            function ynowMarkLockedInnerTarget(el, itemId) {
+            function ynowMarkLockedInnerTarget(el) {
               if (!el || !el.closest) return;
               var pane = el.closest('.tab-pane');
               if (!pane || !pane.id) return;
@@ -13934,7 +14027,7 @@ ui <- dashboardPage(
                 }
               }
               pane.classList.add('ynow-inner-locked-pane');
-              ynowEnsureInnerLockPromo(pane, itemId);
+              ynowEnsureInnerLockPromo(pane);
             }
             window.ynowApplyAccessLocks = function () {
               var entries = window.__ynowAccessEntries || [];
@@ -14011,9 +14104,9 @@ ui <- dashboardPage(
                       pane.setAttribute('data-lock-note', note);
                       if (tab === 'asset_transmission') {
                         pane.classList.add('ynow-atx-locked-pane');
-                        ynowEnsureAtxLockPromo(pane, id);
+                        ynowEnsureAtxLockPromo(pane);
                       } else if (typeof ynowEnsureSidebarTabLockSurface === 'function') {
-                        ynowEnsureSidebarTabLockSurface(pane, id);
+                        ynowEnsureSidebarTabLockSurface(pane);
                       }
                     }
                   }
@@ -14024,7 +14117,7 @@ ui <- dashboardPage(
                   else {
                     btn.classList.add('ynow-access-locked-btn');
                     btn.setAttribute('title', note);
-                    ynowMarkLockedInnerTarget(btn, id);
+                    ynowMarkLockedInnerTarget(btn);
                   }
                 } else if (id.indexOf('section:') === 0 || id.indexOf('output:') === 0) {
                   document.querySelectorAll('[data-ynow-lock]').forEach(function (el) {
@@ -14033,7 +14126,7 @@ ui <- dashboardPage(
                     else {
                       el.classList.add('ynow-access-locked-section');
                       el.setAttribute('data-lock-note', note);
-                      ynowMarkLockedInnerTarget(el, id);
+                      ynowMarkLockedInnerTarget(el);
                     }
                   });
                 } else if (id.indexOf('input:') === 0) {
@@ -14045,7 +14138,7 @@ ui <- dashboardPage(
                   else {
                     fg.classList.add('ynow-access-locked-input');
                     fg.setAttribute('data-lock-note', note);
-                    ynowMarkLockedInnerTarget(fg, id);
+                    ynowMarkLockedInnerTarget(fg);
                   }
                 }
               });
@@ -14063,22 +14156,10 @@ ui <- dashboardPage(
               if (glyph) glyph.insertAdjacentElement('afterend', lock);
               else a.insertBefore(lock, a.firstChild);
             });
-              if (document.body &&
-                  document.body.classList.contains('ynow-authed') &&
-                  !document.body.classList.contains('ynow-lite') &&
-                  !document.body.classList.contains('ynow-omniscient')) {
-                var persistTabs = window.__YNOW_SIDEBAR_PERSIST_LOCK_TABS || {};
-                Object.keys(persistTabs).forEach(function (ptab) {
-                  if (!persistTabs[ptab]) return;
-                  var ppane = document.getElementById('shiny-tab-' + ptab);
-                  if (!ppane || ppane.classList.contains('ynow-access-locked-pane')) return;
-                  ppane.classList.add('ynow-access-locked-pane');
-                  ynowEnsureSidebarTabLockSurface(ppane, 'tab:' + ptab);
-                });
-              }
               if (typeof window.ynowSyncGuestSidebarLocked === 'function') {
                 window.ynowSyncGuestSidebarLocked();
               }
+              ynowBindGateModes();
             };
             /* Full guest locks share .ynow-sidebar-locked with ACL + persist (B) locks.
                After sign-in: unlock-after-login (A) tabs drop chrome; still-locked
@@ -14160,6 +14241,8 @@ ui <- dashboardPage(
                 });
               }
               window.__ynowAccessEntries = entries;
+              window.__ynowGateRegistry = payload.gate_registry || window.__ynowGateRegistry || {};
+              window.__ynowGateAuthed = !!payload.authed;
               window.__ynowAccessLocks = (payload.ids || entries.map(function (e) {
                 return e && e.id;
               })).filter(Boolean);
@@ -14172,6 +14255,23 @@ ui <- dashboardPage(
               if (window.ynowApplyAccessLocks) window.ynowApplyAccessLocks();
               if (window.ynowApplyMaintenance) window.ynowApplyMaintenance();
               if (window.ynowApplyQuotaBadges) window.ynowApplyQuotaBadges();
+            });
+            addHandler('ynowGateSpendResult', function (payload) {
+              if (!payload) return;
+              var entries = window.__ynowAccessEntries || [];
+              var id = String(payload.item_id || '');
+              for (var i = 0; i < entries.length; i++) {
+                if (!entries[i] || String(entries[i].id) !== id) continue;
+                if (payload.fyn !== null && typeof payload.fyn !== 'undefined') {
+                  entries[i].fyn_balance = payload.fyn;
+                }
+                if (payload.points_cost !== null && typeof payload.points_cost !== 'undefined') {
+                  entries[i].points_cost = payload.points_cost;
+                }
+                if (payload.message_key === 'gate_mode_spend_short') entries[i].afford = false;
+                if (payload.ok) entries[i].afford = true;
+              }
+              if (typeof window.ynowBindGateModes === 'function') window.ynowBindGateModes();
             });
             /* System admin maintenance: separate from ACL / guest locks.
                Menu items are non-clickable; content shows 維護中 / Under maintenance. */
@@ -14690,9 +14790,6 @@ ui <- dashboardPage(
               }
               if (typeof window.ynowSyncGuestSidebarLocked === 'function') {
                 window.ynowSyncGuestSidebarLocked();
-              }
-              if (typeof window.ynowRefreshLockGates === 'function') {
-                try { window.ynowRefreshLockGates(); } catch (eAuthGate) {}
               }
               var openLinks = document.querySelectorAll('.ynow-auth-open');
               var regLinks = document.querySelectorAll('.ynow-auth-register-open');
@@ -21002,30 +21099,33 @@ ui <- dashboardPage(
           hidden = NA,
           `data-ynow-gate-feature` = "inner_lock",
           `data-ynow-lock-scope` = "ops_acl",
-          tags$p(
-            class = "ynow-gate-body",
-            "Sign in to open this locked tab. If you are already signed in, a system admin must clear the restriction."
-          ),
-          if (exists("ynow_gate_promo_faq_ui", mode = "function")) {
-            ynow_gate_promo_faq_ui(
-              feature = "inner_lock",
-              include_faq = FALSE,
-              compact = FALSE
-            )
-          } else {
-            NULL
-          },
-          tags$div(
-            class = "ynow-auth-pair ynow-auth-pair--gate",
-            tags$button(
-              type = "button",
-              class = "btn btn-primary ynow-auth-open ynow-auth-btn",
-              tags$span(class = "ynow-member-gate-signin-label", "Sign in")
+          `data-ynow-gate-mode` = "guest_auth",
+          ynow_gate_mode_chrome_ui(
+            tags$p(
+              class = "ynow-gate-body",
+              "Sign in to open this locked tab. If you are already signed in, a system admin must clear the restriction."
             ),
-            tags$button(
-              type = "button",
-              class = "btn btn-default ynow-auth-register-open ynow-auth-btn",
-              tags$span(class = "ynow-auth-register-label", "Register")
+            if (exists("ynow_gate_promo_faq_ui", mode = "function")) {
+              ynow_gate_promo_faq_ui(
+                feature = "inner_lock",
+                include_faq = FALSE,
+                compact = FALSE
+              )
+            } else {
+              NULL
+            },
+            tags$div(
+              class = "ynow-auth-pair ynow-auth-pair--gate",
+              tags$button(
+                type = "button",
+                class = "btn btn-primary ynow-auth-open ynow-auth-btn",
+                tags$span(class = "ynow-member-gate-signin-label", "Sign in")
+              ),
+              tags$button(
+                type = "button",
+                class = "btn btn-default ynow-auth-register-open ynow-auth-btn",
+                tags$span(class = "ynow-auth-register-label", "Register")
+              )
             )
           )
         ),
@@ -21034,6 +21134,7 @@ ui <- dashboardPage(
           class = "ynow-atx-lock-tpl ynow-member-gate-surface ynow-member-gate-surface--checklist ynow-member-gate-surface--locked",
           hidden = NA,
           `data-ynow-gate-feature` = "atx",
+          `data-ynow-gate-mode` = "guest_auth",
           if (exists("ynow_member_gate_fade_backdrop_ui", mode = "function")) {
             ynow_member_gate_fade_backdrop_ui("atx")
           } else {
@@ -21053,30 +21154,32 @@ ui <- dashboardPage(
             ),
             tags$div(
               class = "ynow-hfv-chapter__body",
-              tags$p(
-                class = "ynow-gate-body",
-                "Asset Transmission Root is locked. Sign in to open this page. If you are already signed in, a system admin must clear the restriction."
-              ),
-              if (exists("ynow_gate_promo_faq_ui", mode = "function")) {
-                ynow_gate_promo_faq_ui(
-                  feature = "atx",
-                  include_faq = TRUE,
-                  compact = FALSE
-                )
-              } else {
-                NULL
-              },
-              tags$div(
-                class = "ynow-auth-pair ynow-auth-pair--gate",
-                tags$button(
-                  type = "button",
-                  class = "btn btn-primary ynow-auth-open ynow-auth-btn",
-                  tags$span(class = "ynow-member-gate-signin-label", "Sign in")
+              ynow_gate_mode_chrome_ui(
+                tags$p(
+                  class = "ynow-gate-body",
+                  "Asset Transmission Root is locked. Sign in to open this page. If you are already signed in, a system admin must clear the restriction."
                 ),
-                tags$button(
-                  type = "button",
-                  class = "btn btn-default ynow-auth-register-open ynow-auth-btn",
-                  tags$span(class = "ynow-auth-register-label", "Register")
+                if (exists("ynow_gate_promo_faq_ui", mode = "function")) {
+                  ynow_gate_promo_faq_ui(
+                    feature = "atx",
+                    include_faq = TRUE,
+                    compact = FALSE
+                  )
+                } else {
+                  NULL
+                },
+                tags$div(
+                  class = "ynow-auth-pair ynow-auth-pair--gate",
+                  tags$button(
+                    type = "button",
+                    class = "btn btn-primary ynow-auth-open ynow-auth-btn",
+                    tags$span(class = "ynow-member-gate-signin-label", "Sign in")
+                  ),
+                  tags$button(
+                    type = "button",
+                    class = "btn btn-default ynow-auth-register-open ynow-auth-btn",
+                    tags$span(class = "ynow-auth-register-label", "Register")
+                  )
                 )
               )
             )

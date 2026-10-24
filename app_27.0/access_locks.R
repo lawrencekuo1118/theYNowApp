@@ -524,44 +524,6 @@ ynow_access_purge_user <- function(user_id) {
   out
 }
 
-#' Post-login lock gate mode for ACL overlays (and spend observer).
-#' @return "signin" | "spend" | "topup"
-ynow_lock_gate_mode <- function(authed,
-                                unlock_type = NA_character_,
-                                points_cost = NA_integer_) {
-  if (!isTRUE(authed)) return("signin")
-  ut <- ynow_access_normalize_unlock_type(unlock_type, allow_empty = TRUE)
-  cost <- suppressWarnings(as.integer(points_cost)[1])
-  if (identical(ut, YNOW_UNLOCK_POINTS) &&
-      is.finite(cost) && !is.na(cost) && cost >= 1L) {
-    return("spend")
-  }
-  "topup"
-}
-
-#' Wire row for ynowAccessLocks entries (facts only; no derived gate_mode).
-ynow_access_lock_client_row <- function(id,
-                                        effect,
-                                        unlock_type = NA_character_,
-                                        points_cost = NA_integer_) {
-  id <- as.character(id %||% "")[1]
-  eff <- tolower(trimws(as.character(effect %||% "hide")[1]))
-  if (!identical(eff, "lock")) eff <- "hide"
-  out <- list(id = id, effect = eff)
-  if (!identical(eff, "lock")) return(out)
-  ut <- ynow_access_normalize_unlock_type(unlock_type, allow_empty = TRUE)
-  if (!is.na(ut) && nzchar(ut)) {
-    out$unlock_type <- ut
-  }
-  if (identical(ut, YNOW_UNLOCK_POINTS)) {
-    pc <- suppressWarnings(as.integer(points_cost)[1])
-    if (is.finite(pc) && !is.na(pc) && pc >= 1L) {
-      out$points_cost <- as.integer(pc)
-    }
-  }
-  out
-}
-
 .ynow_access_read_file <- function() {
   path <- .ynow_access_file()
   if (!file.exists(path)) return(list())
@@ -1414,4 +1376,143 @@ ynow_access_set <- function(user_id,
     time_limit_hours = if (on) entry$time_limit_hours else NA_integer_,
     scope = if (identical(uid, YNOW_ACCESS_ALL_USERS)) "all" else "user"
   )
+}
+
+# Closed gate modes for a still-locked ACL row. One registry feeds the push and the spend observer.
+YNOW_GATE_MODE_GUEST <- "guest_auth"
+YNOW_GATE_MODE_SPEND <- "spend_fyn"
+YNOW_GATE_MODE_TOPUP <- "topup_promo"
+
+.ynow_gate_chr_or_null <- function(x) {
+  if (is.null(x) || length(x) < 1L) return(NULL)
+  x <- as.character(x)[1]
+  if (is.na(x) || !nzchar(x)) NULL else x
+}
+
+.ynow_gate_int_or_null <- function(x) {
+  if (is.null(x) || length(x) < 1L) return(NULL)
+  n <- suppressWarnings(as.integer(x)[1])
+  if (is.na(n) || !is.finite(n)) NULL else as.integer(n)
+}
+
+.ynow_gate_mode_spec <- function(mode, action,
+                                 title_key = NULL, body_key = NULL, cta_key = NULL,
+                                 secondary_key = NULL, kicker_key = NULL) {
+  list(
+    mode = mode,
+    chrome = mode,
+    action = action,
+    title_key = title_key,
+    body_key = body_key,
+    cta_key = cta_key,
+    secondary_key = secondary_key,
+    kicker_key = kicker_key
+  )
+}
+
+YNOW_GATE_MODE_REGISTRY <- list(
+  guest_auth = .ynow_gate_mode_spec(
+    YNOW_GATE_MODE_GUEST, "auth"
+  ),
+  spend_fyn = .ynow_gate_mode_spec(
+    YNOW_GATE_MODE_SPEND, "spend",
+    title_key = "gate_mode_spend_title",
+    body_key = "gate_mode_spend_body",
+    cta_key = "gate_mode_spend_cta",
+    secondary_key = "gate_mode_topup_cta",
+    kicker_key = "gate_mode_spend_kicker"
+  ),
+  topup_promo = .ynow_gate_mode_spec(
+    YNOW_GATE_MODE_TOPUP, "topup",
+    title_key = "gate_mode_topup_title",
+    body_key = "gate_mode_topup_body",
+    cta_key = "gate_mode_topup_cta",
+    kicker_key = "gate_mode_topup_kicker"
+  )
+)
+
+ynow_gate_mode_registry <- function() {
+  YNOW_GATE_MODE_REGISTRY
+}
+
+#' Classify one normalized access entry. No DOM and no Shiny.
+#' `guest_auth` is illegal when `authed` is TRUE.
+ynow_gate_mode_resolve <- function(entry, authed, fyn_balance = NA_integer_) {
+  if (is.null(entry)) {
+    entry <- ynow_access_normalize_entry(effect = "hide")
+  } else {
+    entry <- ynow_access_normalize_entry(raw = entry)
+  }
+  authed <- isTRUE(authed)
+  bal <- .ynow_gate_int_or_null(fyn_balance)
+  ut <- .ynow_gate_chr_or_null(entry$unlock_type)
+  cost <- .ynow_gate_int_or_null(entry$points_cost)
+  out <- list(
+    gate_mode = NULL,
+    points_cost = NULL,
+    fyn_balance = if (authed) bal else NULL,
+    afford = NULL,
+    reason = NULL
+  )
+  if (!identical(entry$effect, "lock")) return(out)
+  if (!authed) {
+    out$gate_mode <- YNOW_GATE_MODE_GUEST
+    out$points_cost <- if (identical(ut, YNOW_UNLOCK_POINTS)) cost else NULL
+    out$fyn_balance <- NULL
+    out$reason <- "guest"
+    return(out)
+  }
+  if (identical(ut, YNOW_UNLOCK_POINTS) && !is.null(cost) && cost >= 1L) {
+    out$gate_mode <- YNOW_GATE_MODE_SPEND
+    out$points_cost <- cost
+    out$fyn_balance <- bal
+    out$afford <- !is.null(bal) && bal >= cost
+    out$reason <- "points_cost"
+    return(out)
+  }
+  out$gate_mode <- YNOW_GATE_MODE_TOPUP
+  out$fyn_balance <- bal
+  out$reason <- if (is.null(ut)) {
+    "sticky"
+  } else if (identical(ut, YNOW_UNLOCK_CONDITIONAL)) {
+    "conditional"
+  } else {
+    "other"
+  }
+  out
+}
+
+ynow_gate_mode_client_row <- function(id, effect, entry, authed, fyn_balance = NA_integer_) {
+  if (is.null(entry)) entry <- list()
+  if (!is.null(effect)) entry$effect <- effect
+  entry <- ynow_access_normalize_entry(raw = entry)
+  resolved <- ynow_gate_mode_resolve(entry, authed = authed, fyn_balance = fyn_balance)
+  list(
+    id = as.character(id %||% "")[1],
+    effect = entry$effect,
+    unlock_type = .ynow_gate_chr_or_null(entry$unlock_type),
+    gate_mode = resolved$gate_mode,
+    points_cost = resolved$points_cost,
+    fyn_balance = resolved$fyn_balance,
+    afford = resolved$afford,
+    reason = resolved$reason
+  )
+}
+
+ynow_gate_mode_registry_payload <- function() {
+  reg <- ynow_gate_mode_registry()
+  out <- lapply(reg, function(row) {
+    list(
+      mode = row$mode,
+      chrome = row$chrome,
+      action = row$action,
+      title_key = .ynow_gate_chr_or_null(row$title_key),
+      body_key = .ynow_gate_chr_or_null(row$body_key),
+      cta_key = .ynow_gate_chr_or_null(row$cta_key),
+      secondary_key = .ynow_gate_chr_or_null(row$secondary_key),
+      kicker_key = .ynow_gate_chr_or_null(row$kicker_key)
+    )
+  })
+  names(out) <- names(reg)
+  out
 }
