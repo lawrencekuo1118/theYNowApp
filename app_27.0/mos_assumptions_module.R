@@ -291,7 +291,7 @@ mos_assumptions_tab_ui <- function() {
     mos_assumptions_tab_body_ui()
   )
   surface <- if (exists("ynow_member_gate_surface_ui", mode = "function")) {
-    ynow_member_gate_surface_ui(gate, body)
+    ynow_member_gate_surface_ui(feature = "checklist", gate = gate, body = body)
   } else {
     tagList(gate, body)
   }

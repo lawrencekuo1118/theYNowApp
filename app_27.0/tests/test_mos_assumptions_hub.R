@@ -48,8 +48,13 @@ if (!exists("ynow_notes_block", mode = "function")) {
 if (!exists("ynow_member_gate_ui", mode = "function")) {
   ynow_member_gate_ui <<- function(...) NULL
 }
+# Match live auth_account.R signature. A positional (gate, body) stub
+# hid the #467 shinyapps boot crash (body missing).
 if (!exists("ynow_member_gate_surface_ui", mode = "function")) {
-  ynow_member_gate_surface_ui <<- function(gate, body) tagList(gate, body)
+  ynow_member_gate_surface_ui <<- function(feature, gate, body, ..., fade = NULL) {
+    if (missing(body)) stop('argument "body" is missing, with no default', call. = FALSE)
+    tagList(gate, body)
+  }
 }
 
 check <- function(msg, cond) {
@@ -113,6 +118,16 @@ exp_deep <- mos_hysteresis_target(
 check("custom deep cut maps to max_exp", approx_eq(exp_deep, 0.90))
 exp_old_mid <- mos_hysteresis_target(0.35, w_vg = 1, max_exp = 0.90)
 check("legacy deep 0.30 still max at 0.35", approx_eq(exp_old_mid, 0.90))
+
+mod_src <- paste(
+  readLines(file.path(.source_root, "mos_assumptions_module.R"), warn = FALSE, encoding = "UTF-8"),
+  collapse = "\n"
+)
+check("surface call passes feature and body by name", {
+  grepl('ynow_member_gate_surface_ui(feature = "checklist", gate = gate, body = body)',
+        mod_src, fixed = TRUE) &&
+    !grepl("ynow_member_gate_surface_ui(gate, body)", mod_src, fixed = TRUE)
+})
 
 ui_html <- paste(as.character(mos_assumptions_tab_ui()), collapse = "\n")
 check("tab ui has mos_assumptions tabName", grepl("mos_assumptions", ui_html, fixed = TRUE))
