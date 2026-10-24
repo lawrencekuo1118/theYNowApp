@@ -132,6 +132,20 @@ check("tab ui has mos_assumptions tabName", grepl("mos_assumptions", ui_html, fi
 check("tab ui owns bear floor id", grepl("cond_bear_base_bear_mos_floor", ui_html, fixed = TRUE))
 check("tab ui owns bt_w_vg", grepl("bt_w_vg", ui_html, fixed = TRUE))
 check("tab ui owns ladder deep", grepl("mos_ladder_deep_pct", ui_html, fixed = TRUE))
+check("investor MOS panel class is on the outer box", {
+  grepl("ynow-mos-assump-panel", mod_src, fixed = TRUE) &&
+    grepl('class="box box-solid box-primary ynow-mos-assump-panel"', ui_html, fixed = TRUE) &&
+    !grepl("box-body ynow-mos-assump-panel", ui_html, fixed = TRUE)
+})
+check("investor MOS panel CSS clears only the outer border", {
+  grepl(".box.box-solid.box-primary.ynow-mos-assump-panel", ui_html, fixed = TRUE) &&
+    grepl(".box.box-solid.box-primary.ynow-mos-assump-panel", mod_src, fixed = TRUE) &&
+    grepl("border: none !important", ui_html, fixed = TRUE)
+})
+check("inner MOS blocks keep their border", {
+  grepl(".ynow-mos-assump-block { margin: 0 0 22px 0; padding: 14px 16px;", mod_src, fixed = TRUE) &&
+    grepl("background: #fafbfc; border: 1px solid #e6eaee; border-radius: 8px;", ui_html, fixed = TRUE)
+})
 
 source(file.path(.source_root, "decision_checklist_module.R"), local = TRUE, encoding = "UTF-8")
 dc_html <- paste(as.character(decision_checklist_tab_body_ui()), collapse = "\n")
