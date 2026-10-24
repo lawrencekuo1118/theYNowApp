@@ -1,3 +1,12 @@
+## [v27.12] — 2026-10-24
+
+### Changed
+- Header right logo (#471): a second click while the logo is spinning accelerates the clockwise spin, cancels other tabs' in-flight Search/Lab work (discard gen / gen bump; no replacement scrape on non-ticker tabs), and focuses the current tab's soft refresh until that tab is idle.
+
+### Notes
+- en-US: Idle click still soft-refreshes only the current page with the slow spin. Further busy clicks reinforce accelerate + focus (latest wins). Macro/ATX keep existing inactive-tab stops.
+- zh-TW: 閒置時點選右上小 logo 仍只重新整理目前分頁並慢速旋轉；旋轉中再點會加速旋轉、取消其他分頁載入／運算並專注目前分頁（最新一次點選為準）。Macro／資產傳導仍依既有「非作用中分頁」停止。
+
 ## [v27.11] — 2026-10-24
 
 ### Fixed
