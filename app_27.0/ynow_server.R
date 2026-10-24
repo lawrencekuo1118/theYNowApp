@@ -3022,43 +3022,133 @@ server <- function(input, output, session) {
     unique(uids)
   }
 
-  output$ynow_access_locked_now <- renderUI({
-    ynow_access_display_tick()
-    ynow_pts_sysadmin_tick()
-    scope <- as.character(input$ynow_access_scope %||% "user")[1]
-    uids <- if (identical(scope, "all")) {
-      character()
-    } else {
-      as.character(input$ynow_access_users %||% character())
-    }
+  .ynow_access_admin_selected_uids <- function(scope) {
+    if (identical(scope, "all")) return(character())
+    uids <- as.character(input$ynow_access_users %||% character())
     uids <- uids[nzchar(uids)]
-    if (!identical(scope, "all") && !length(uids)) {
+    if (!length(uids)) {
       one <- as.character(input$ynow_pts_sysadmin_user %||% "")[1]
       if (nzchar(one)) uids <- one
     }
-    loc <- tryCatch(
-      normalize_ui_locale(isolate(ui_locale())),
-      error = function(e) "zh-TW"
+    unique(uids)
+  }
+
+  #' Obvious read-only list of currently restricted items under the apply target.
+  .ynow_access_restricted_panel_ui <- function(title_lab,
+                                              value_id,
+                                              panel_id,
+                                              scope,
+                                              uids,
+                                              loc,
+                                              .lab,
+                                              not_selectable = FALSE) {
+    none_lab <- .lab("access_none", "Nothing is restricted for this scope.")
+    pick_lab <- .lab(
+      "access_pick_users",
+      "Select one or more users to see currently restricted items."
     )
-    .lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
-    locked_txt <- if (exists("ynow_access_admin_status_text", mode = "function")) {
+    blocks <- if (exists("ynow_access_admin_status_blocks", mode = "function")) {
+      ynow_access_admin_status_blocks(
+        user_id = uids,
+        scope = scope,
+        locale = loc,
+        user_scope_lab = .lab("access_scope_user_short", "User"),
+        all_scope_lab = .lab("access_scope_all_short", "All")
+      )
+    } else {
+      list()
+    }
+    # Plain-text mirror for tests / screen readers (tracks target + multi-select).
+    flat_txt <- if (exists("ynow_access_admin_status_text", mode = "function")) {
       ynow_access_admin_status_text(
         user_id = uids,
         scope = scope,
         locale = loc,
         user_scope_lab = .lab("access_scope_user_short", "User"),
         all_scope_lab = .lab("access_scope_all_short", "All"),
-        none_lab = .lab("access_none", "Nothing is restricted for this scope.")
+        none_lab = none_lab,
+        pick_users_lab = pick_lab
       )
     } else {
-      .lab("access_none", "Nothing is restricted for this scope.")
+      none_lab
+    }
+    body <- if (identical(scope, "user") && !length(blocks)) {
+      tags$p(
+        class = "ynow-access-restricted-panel__empty text-muted",
+        pick_lab
+      )
+    } else if (length(blocks) == 1L && !length(blocks[[1]]$lines)) {
+      tags$p(
+        class = "ynow-access-restricted-panel__empty text-muted",
+        none_lab
+      )
+    } else {
+      show_uid <- identical(scope, "user") && length(blocks) > 1L
+      tagList(lapply(blocks, function(b) {
+        lines <- b$lines
+        item_nodes <- if (!length(lines)) {
+          list(tags$li(
+            class = "ynow-access-restricted-panel__none text-muted",
+            none_lab
+          ))
+        } else {
+          lapply(lines, function(ln) {
+            tags$li(class = "ynow-access-restricted-panel__item", ln)
+          })
+        }
+        tags$div(
+          class = "ynow-access-restricted-panel__block",
+          if (show_uid) {
+            tags$div(
+              class = "ynow-access-restricted-panel__uid",
+              as.character(b$uid %||% "")
+            )
+          },
+          tags$ul(
+            class = "ynow-access-restricted-panel__list",
+            item_nodes
+          )
+        )
+      }))
     }
     tags$div(
-      id = "ynow_access_locked_now_txt",
-      style = "margin:8px 0 10px; font-size:12.5px;",
-      tags$b(.lab("access_locked_now", "Currently restricted")),
-      ": ",
-      tags$span(id = "ynow_access_locked_now_value", locked_txt)
+      id = panel_id,
+      class = paste(
+        "ynow-access-restricted-panel",
+        if (isTRUE(not_selectable)) "ynow-access-restricted-panel--apply" else NULL
+      ),
+      tags$div(
+        class = "ynow-access-restricted-panel__title",
+        tags$b(title_lab)
+      ),
+      tags$div(
+        id = value_id,
+        class = "ynow-access-restricted-panel__body",
+        `data-ynow-restricted-flat` = flat_txt,
+        body
+      )
+    )
+  }
+
+  output$ynow_access_locked_now <- renderUI({
+    ynow_access_display_tick()
+    ynow_pts_sysadmin_tick()
+    scope <- as.character(input$ynow_access_scope %||% "user")[1]
+    uids <- .ynow_access_admin_selected_uids(scope)
+    loc <- tryCatch(
+      normalize_ui_locale(isolate(ui_locale())),
+      error = function(e) "zh-TW"
+    )
+    .lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
+    .ynow_access_restricted_panel_ui(
+      title_lab = .lab("access_locked_now", "Currently restricted"),
+      value_id = "ynow_access_locked_now_value",
+      panel_id = "ynow_access_locked_now_txt",
+      scope = scope,
+      uids = uids,
+      loc = loc,
+      .lab = .lab,
+      not_selectable = FALSE
     )
   })
 
@@ -3068,16 +3158,7 @@ server <- function(input, output, session) {
     scope <- as.character(input$ynow_access_scope %||% "user")[1]
     action <- as.character(input$ynow_access_action %||% "apply")[1]
     if (!action %in% c("apply", "remove")) action <- "apply"
-    uids <- if (identical(scope, "all")) {
-      character()
-    } else {
-      as.character(input$ynow_access_users %||% character())
-    }
-    uids <- uids[nzchar(uids)]
-    if (!identical(scope, "all") && !length(uids)) {
-      one <- as.character(input$ynow_pts_sysadmin_user %||% "")[1]
-      if (nzchar(one)) uids <- one
-    }
+    uids <- .ynow_access_admin_selected_uids(scope)
     loc <- tryCatch(
       normalize_ui_locale(isolate(ui_locale())),
       error = function(e) "zh-TW"
@@ -3155,18 +3236,6 @@ server <- function(input, output, session) {
     if (!length(apply_sel) && length(apply_flat_chr)) {
       apply_sel <- apply_flat_chr[[1]]
     }
-    restricted_txt <- if (exists("ynow_access_admin_status_text", mode = "function")) {
-      ynow_access_admin_status_text(
-        user_id = uids,
-        scope = scope,
-        locale = loc,
-        user_scope_lab = .lab("access_scope_user_short", "User"),
-        all_scope_lab = .lab("access_scope_all_short", "All"),
-        none_lab = .lab("access_none", "Nothing is restricted for this scope.")
-      )
-    } else {
-      .lab("access_none", "Nothing is restricted for this scope.")
-    }
     tagList(
       radioButtons(
         "ynow_access_effect",
@@ -3201,12 +3270,18 @@ server <- function(input, output, session) {
           )
         )
       },
-      tags$p(
-        id = "ynow_access_already_restricted_txt",
-        style = "margin-top:4px; font-size:12.5px;",
-        tags$b(.lab("access_already_restricted_label", "Currently restricted (not selectable)")),
-        ": ",
-        tags$span(id = "ynow_access_already_restricted_value", restricted_txt)
+      .ynow_access_restricted_panel_ui(
+        title_lab = .lab(
+          "access_already_restricted_label",
+          "Currently restricted (not selectable)"
+        ),
+        value_id = "ynow_access_already_restricted_value",
+        panel_id = "ynow_access_already_restricted_txt",
+        scope = scope,
+        uids = uids,
+        loc = loc,
+        .lab = .lab,
+        not_selectable = TRUE
       ),
       radioButtons(
         "ynow_access_unlock_type",

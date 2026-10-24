@@ -272,8 +272,18 @@ check("server live-updates locked-now from selected users", {
     grepl("output$ynow_access_locked_now", srv, fixed = TRUE) &&
     grepl("input$ynow_access_users", srv, fixed = TRUE) &&
     grepl("ynow_access_admin_status_text", srv, fixed = TRUE) &&
+    grepl("ynow_access_admin_status_blocks", srv, fixed = TRUE) &&
     grepl("ynow_access_display_tick", srv, fixed = TRUE) &&
-    grepl("ynow_access_locked_now_value", srv, fixed = TRUE)
+    grepl("ynow_access_locked_now_value", srv, fixed = TRUE) &&
+    grepl("ynow-access-restricted-panel", srv, fixed = TRUE) &&
+    grepl("ynow_access_already_restricted_txt", srv, fixed = TRUE) &&
+    grepl("ynow_access_already_restricted_value", srv, fixed = TRUE) &&
+    grepl("access_pick_users", srv, fixed = TRUE)
+})
+check("restricted panel CSS is present", {
+  grepl("ynow-access-restricted-panel", ui, fixed = TRUE) &&
+    grepl("ynow-access-restricted-panel__list", ui, fixed = TRUE) &&
+    grepl("ynow-access-restricted-panel--apply", ui, fixed = TRUE)
 })
 check("server preserves selected user across panel refresh", {
   grepl("isolate(input$ynow_pts_sysadmin_user)", srv, fixed = TRUE) &&
@@ -317,6 +327,28 @@ check("locale scope all en+zh", {
 })
 check("locale effect lock zh", grepl("access_effect_lock = \"鎖上", loc, fixed = TRUE))
 check("locale zh currently restricted", grepl("access_locked_now = \"目前已限制者\"", loc, fixed = TRUE))
+check("locale pick users for restricted list en+zh", {
+  grepl(
+    'access_pick_users = "Select one or more users to see currently restricted items."',
+    loc,
+    fixed = TRUE
+  ) &&
+    grepl(
+      'access_pick_users = "請先選定使用者，以檢視目前已限制項目。"',
+      loc,
+      fixed = TRUE
+    ) &&
+    grepl(
+      'access_already_restricted_label = "Currently restricted (not selectable)"',
+      loc,
+      fixed = TRUE
+    ) &&
+    grepl(
+      'access_already_restricted_label = "目前已限制者（不可再選）"',
+      loc,
+      fixed = TRUE
+    )
+})
 check("locale unlock types en+zh", {
   grepl("access_unlock_type_label = \"Unlock condition\"", loc, fixed = TRUE) &&
     grepl("access_unlock_login = \"Unlock after login\"", loc, fixed = TRUE) &&
@@ -382,6 +414,35 @@ check("status text empty for user with no personal locks", {
                                   none_lab = "此範圍沒有限制項目。"),
     "此範圍沒有限制項目。"
   )
+})
+check("status text prompts when no user selected", {
+  identical(
+    ynow_access_admin_status_text(
+      character(), scope = "user", locale = "en",
+      user_scope_lab = "User", all_scope_lab = "All",
+      none_lab = "NONE",
+      pick_users_lab = "PICK"
+    ),
+    "PICK"
+  )
+})
+check("status blocks empty when no user selected", {
+  identical(
+    ynow_access_admin_status_blocks(character(), scope = "user", locale = "en"),
+    list()
+  )
+})
+check("status blocks per selected user under multi-select", {
+  bl <- ynow_access_admin_status_blocks(
+    c("user-alice", "user-bob"), scope = "user", locale = "en",
+    user_scope_lab = "User", all_scope_lab = "All"
+  )
+  length(bl) == 2L &&
+    identical(bl[[1]]$uid, "user-alice") &&
+    identical(bl[[2]]$uid, "user-bob") &&
+    length(bl[[1]]$lines) == 1L &&
+    grepl("Quant Backtest", bl[[1]]$lines[[1]], fixed = TRUE) &&
+    grepl("SGR", bl[[2]]$lines[[1]], fixed = TRUE)
 })
 check("zh status separator uses enumeration comma", {
   ynow_access_set("user-alice", "output:sgr_pct", TRUE, effect = "hide")

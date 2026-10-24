@@ -5645,6 +5645,43 @@ ui <- dashboardPage(
           display: block !important;
         }
         /* System admin: 「套用變更」/ Apply changes → red bg + white text */
+        /* Currently restricted — clear list under apply target (not buried prose). */
+        .ynow-access-restricted-panel {
+          margin: 8px 0 12px;
+          padding: 8px 10px;
+          border: 1px solid rgba(0, 0, 0, 0.12);
+          border-radius: 4px;
+          background: rgba(0, 0, 0, 0.03);
+          font-size: 12.5px;
+        }
+        .ynow-access-restricted-panel--apply {
+          margin-top: 6px;
+          background: rgba(217, 83, 79, 0.06);
+          border-color: rgba(217, 83, 79, 0.25);
+        }
+        .ynow-access-restricted-panel__title {
+          margin-bottom: 6px;
+        }
+        .ynow-access-restricted-panel__list {
+          margin: 0;
+          padding-left: 1.2em;
+        }
+        .ynow-access-restricted-panel__item,
+        .ynow-access-restricted-panel__none {
+          margin: 2px 0;
+        }
+        .ynow-access-restricted-panel__block + .ynow-access-restricted-panel__block {
+          margin-top: 8px;
+          padding-top: 6px;
+          border-top: 1px dashed rgba(0, 0, 0, 0.1);
+        }
+        .ynow-access-restricted-panel__uid {
+          font-weight: 600;
+          margin-bottom: 2px;
+        }
+        .ynow-access-restricted-panel__empty {
+          margin: 0;
+        }
         .ynow-pts-sysadmin-box .btn.ynow-sysadmin-btn-apply,
         .ynow-pts-sysadmin-box .btn.btn-warning.ynow-sysadmin-btn-apply,
         .ynow-pts-sysadmin-box .btn.btn-danger.ynow-sysadmin-btn-apply {

@@ -1057,46 +1057,85 @@ ynow_access_admin_status_lines <- function(user_id = "",
   .fmt(ynow_access_store_entries(uid), user_scope_lab)
 }
 
-#' Collapse admin status lines into the UI paragraph text.
-ynow_access_admin_status_text <- function(user_id = "",
-                                          scope = "user",
-                                          locale = "en",
-                                          user_scope_lab = "User",
-                                          all_scope_lab = "All",
-                                          none_lab = "Nothing is restricted for this scope.") {
+#' Structured blocks for admin 「目前已限制」 list UI (one block per apply-target).
+#'
+#' scope=all → one block with uid "". scope=user → one block per selected uid.
+#' Empty list when scope=user and no uids selected (caller should prompt to pick users).
+#' @return list of lists with $uid and $lines (character; may be empty)
+ynow_access_admin_status_blocks <- function(user_id = "",
+                                            scope = "user",
+                                            locale = "en",
+                                            user_scope_lab = "User",
+                                            all_scope_lab = "All") {
   scope <- as.character(scope %||% "user")[1]
+  if (identical(scope, "all")) {
+    return(list(list(
+      uid = "",
+      lines = ynow_access_admin_status_lines(
+        user_id = "",
+        scope = "all",
+        locale = locale,
+        user_scope_lab = user_scope_lab,
+        all_scope_lab = all_scope_lab
+      )
+    )))
+  }
   uids <- unique(as.character(user_id %||% character()))
   uids <- uids[nzchar(uids)]
-  # Multi-select (scope=user): one status block per selected uid.
-  if (identical(scope, "user") && length(uids) > 1L) {
-    zh <- identical(as.character(locale)[1], "zh-TW")
-    blocks <- vapply(uids, function(u) {
-      lines <- ynow_access_admin_status_lines(
+  if (!length(uids)) return(list())
+  lapply(uids, function(u) {
+    list(
+      uid = u,
+      lines = ynow_access_admin_status_lines(
         user_id = u,
         scope = "user",
         locale = locale,
         user_scope_lab = user_scope_lab,
         all_scope_lab = all_scope_lab
       )
-      body <- if (!length(lines)) {
-        as.character(none_lab)[1]
-      } else {
-        sep <- if (zh) "、" else "; "
-        paste(lines, collapse = sep)
-      }
-      paste0(u, ": ", body)
-    }, character(1))
-    return(paste(blocks, collapse = if (zh) " ｜ " else " | "))
-  }
-  lines <- ynow_access_admin_status_lines(
-    user_id = if (length(uids)) uids[[1]] else "",
+    )
+  })
+}
+
+#' Collapse admin status lines into the UI paragraph text.
+ynow_access_admin_status_text <- function(user_id = "",
+                                          scope = "user",
+                                          locale = "en",
+                                          user_scope_lab = "User",
+                                          all_scope_lab = "All",
+                                          none_lab = "Nothing is restricted for this scope.",
+                                          pick_users_lab = NULL) {
+  scope <- as.character(scope %||% "user")[1]
+  blocks <- ynow_access_admin_status_blocks(
+    user_id = user_id,
     scope = scope,
     locale = locale,
     user_scope_lab = user_scope_lab,
     all_scope_lab = all_scope_lab
   )
+  # Selected-user(s) scope with nobody chosen → prompt, not a false "none".
+  if (identical(scope, "user") && !length(blocks)) {
+    if (!is.null(pick_users_lab) && nzchar(as.character(pick_users_lab)[1])) {
+      return(as.character(pick_users_lab)[1])
+    }
+    return(as.character(none_lab)[1])
+  }
+  zh <- identical(as.character(locale)[1], "zh-TW")
+  sep <- if (zh) "、" else "; "
+  # Multi-select: one status block per selected uid.
+  if (identical(scope, "user") && length(blocks) > 1L) {
+    parts <- vapply(blocks, function(b) {
+      body <- if (!length(b$lines)) {
+        as.character(none_lab)[1]
+      } else {
+        paste(b$lines, collapse = sep)
+      }
+      paste0(b$uid, ": ", body)
+    }, character(1))
+    return(paste(parts, collapse = if (zh) " ｜ " else " | "))
+  }
+  lines <- blocks[[1]]$lines
   if (!length(lines)) return(as.character(none_lab)[1])
-  sep <- if (identical(as.character(locale)[1], "zh-TW")) "、" else "; "
   paste(lines, collapse = sep)
 }
 
