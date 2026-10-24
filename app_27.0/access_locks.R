@@ -1,7 +1,12 @@
 # Per-user / global UI restrictions set from System admin.
-# item id = kind:target  (tab | section | input | report)
+# item id = kind:target  (tab | section | output | report)
 # effect  = "lock" (show locked placeholder / disable) | "hide" (remove from UI)
 # scope   = selected user id, or YNOW_ACCESS_ALL_USERS for every account (+ guests)
+#
+# Fine-grained Items to restrict target **computed numeric result outputs**
+# (post-calculation figures in the UI), not prose paragraphs and not form inputs.
+# Legacy store rows with id prefix `input:` are cleared on read (see
+# .ynow_access_migrate_legacy_ids); admins re-apply on the matching `output:*`.
 #
 # Unlock condition (per locked item; default scope = all users; per-user override):
 #   login       = unlock-after-login（登入即解鎖）
@@ -115,53 +120,22 @@ ynow_access_catalog <- function() {
     c("section:value_alerts_body", "section", "Value Alerts body", "到值通知內容"),
     c("section:backtest_body", "section", "Quant Backtest Lab body", "量化回測實驗室內容"),
     c("section:checklist_body", "section", checklist_body$en, checklist_body$zh),
-    # ---- Inputs (fine controls; DOM id = target after input:) ----
-    c("input:bridge_cash", "input", "Cash", "Cash"),
-    c("input:bridge_debt", "input", "Total Debt", "Total Debt"),
-    c("input:bridge_shares", "input", "Shares", "股數"),
-    c("input:bridge_revenue", "input", "Total revenue", "總營收"),
-    c("input:sgr", "input", "Terminal g (SGR)", "永續成長率 g（SGR）"),
-    c("input:years", "input", "Forecast years n", "預測年數 n"),
-    c("input:g_stage1", "input", "Near-term g1", "近端成長率 g1"),
-    c("input:yr_stage1", "input", "Stage-1 years", "第一階段年數"),
-    c("input:wacc_stage1", "input", "WACC1", "WACC1"),
-    c("input:wacc_stage2", "input", "WACC2", "WACC2"),
-    c("input:wacc_re", "input", "Cost of equity rₑ", "權益資金成本 rₑ"),
-    c("input:wacc_rd", "input", "Cost of debt rᵈ", "負債資金成本 rᵈ"),
-    c("input:wacc_tax", "input", "Tax rate T", "稅率 T"),
-    c("input:capm_rf", "input", "CAPM Rf", "CAPM Rf"),
-    c("input:capm_rm", "input", "CAPM Rm", "CAPM Rm"),
-    c("input:capm_beta", "input", "CAPM Beta", "CAPM Beta"),
-    c("input:custom_g", "input", "Custom revenue growth g", "自訂營收成長率 g"),
-    c("input:mod_fcf-proj_capex_rate", "input", "CapEx / Revenue (%)", "CapEx／營收比（%）"),
-    c("input:mod_fcf-proj_nwc_rate", "input", "ΔNWC / ΔRevenue (%)", "ΔNWC／Δ營收（%）"),
-    c("input:mod_fcf-capex_spike_mult", "input", "CapEx spike multiple", "CapEx 暴衝倍數閾值"),
-    c("input:mod_fcf-capex_spike_avg_years", "input", "CapEx spike average years", "CapEx 暴衝均值年數"),
-    c("input:mod_ddm-d0", "input", "DDM D0", "DDM D0"),
-    c("input:mod_ddm-g", "input", "DDM g", "DDM g"),
-    c("input:mod_ddm-ke", "input", "DDM Ke", "DDM Ke"),
-    c("input:mod_ddm-yr_stage1", "input", "DDM stage-1 years", "DDM 第一階段年數"),
-    c("input:mod_ddm-g_stage1", "input", "DDM near-term g1", "DDM 近端成長率 g1"),
-    c("input:mod_ri-b0", "input", "RI book equity B0", "RI 帳面權益 B0"),
-    c("input:mod_ri-ri_years", "input", "RI years", "RI 年數"),
-    c("input:mod_ri-ri_ke", "input", "RI Ke", "RI Ke"),
-    c("input:mod_ri-ri_g", "input", "RI g", "RI g"),
-    c("input:mod_ri-ri_roe", "input", "RI ROE", "RI ROE"),
-    c("input:mod_ri-ri_payout", "input", "RI payout", "RI 配息率"),
-    c("input:mod_nav-navps", "input", "NAVPS", "NAVPS"),
-    c("input:mod_nav-nav_mid", "input", "NAV mid multiple", "NAV 基準倍數"),
-    c("input:mod_pb-bvps", "input", "BVPS", "BVPS"),
-    c("input:mod_pb-pb_mid", "input", "Justified P/B mid", "合理 P/B 基準"),
-    c("input:mod_rel-pe_multiple", "input", "P/E multiple", "本益比倍數"),
-    c("input:mod_rel-ev_ebitda_multiple", "input", "EV/EBITDA multiple", "EV／EBITDA 倍數"),
-    c("input:mod_rel-ev_sales_multiple", "input", "EV/Sales multiple", "EV／營收倍數"),
-    c("input:mod_rel-ps_multiple", "input", "P/S multiple", "股價／營收倍數"),
-    c("input:mod_sotp-default_ev_sales", "input", "SOTP default EV/Sales", "SOTP 預設 EV／營收"),
-    c("input:mod_sotp-nonop", "input", "SOTP non-operating assets", "SOTP 非營業資產"),
-    c("input:bt_net_margin", "input", "Lab net margin threshold", "實驗室淨利率門檻"),
-    c("input:bt_rev_growth", "input", "Lab revenue growth threshold", "實驗室營收成長門檻"),
-    c("input:bt_eps_growth", "input", "Lab EPS growth threshold", "實驗室 EPS 成長門檻"),
-    c("input:bt_fcf_cv", "input", "Lab FCF CV ceiling", "實驗室 FCF CV 上限"),
+    # ---- Numeric result outputs (post-calc figures; data-ynow-lock = full id) ----
+    c("output:composite_fv", "output", "Composite Fair Value (Bear / Base / Bull)", "綜合 Fair Value（Bear／Base／Bull）"),
+    c("output:smart_primary_fv", "output", "Smart Analysis primary Fair Value", "智慧分析主模型 Fair Value"),
+    c("output:smart_mos", "output", "Smart Analysis MOS", "智慧分析 MOS"),
+    c("output:dcf_fair_value", "output", "DCF Fair Value", "DCF Fair Value"),
+    c("output:ddm_fair_value", "output", "DDM Fair Value", "DDM Fair Value"),
+    c("output:ri_fair_value", "output", "RI Fair Value", "RI Fair Value"),
+    c("output:pb_fair_value", "output", "Justified P/B Fair Value", "Justified P/B Fair Value"),
+    c("output:nav_fair_value", "output", "NAV Fair Value", "NAV Fair Value"),
+    c("output:sotp_implied_price", "output", "SOTP implied price", "SOTP 隱含價格"),
+    c("output:rel_pe_implied", "output", "P/E implied price", "本益比隱含價格"),
+    c("output:rel_evebitda_implied", "output", "EV/EBITDA implied price", "EV／EBITDA 隱含價格"),
+    c("output:rel_ps_implied", "output", "P/S implied price", "股價／營收隱含價格"),
+    c("output:wacc", "output", "WACC", "WACC"),
+    c("output:sgr_pct", "output", "SGR (%)", "永續成長率 g（SGR %）"),
+    c("output:fcf_est", "output", "Estimated FCF", "估計 FCF"),
     # ---- Reports / downloads ----
     # ACL report labels intentionally differ from membership download_* guest-gate copy
     c("report:download_report", "report", "Valuation report (PDF)", "估值報表（PDF）"),
@@ -199,17 +173,34 @@ ynow_access_kind_label <- function(kind, locale = "en") {
   zh <- identical(as.character(locale)[1], "zh-TW")
   k <- as.character(kind)[1]
   if (zh) {
-    switch(k, tab = "分頁", section = "區塊", input = "數值框", report = "報表", k)
+    switch(
+      k,
+      tab = "分頁",
+      section = "區塊",
+      output = "數值結果",
+      report = "報表",
+      # Retired kind retained for any stale client strings
+      input = "數值框",
+      k
+    )
   } else {
-    switch(k, tab = "Tab", section = "Section", input = "Input", report = "Report", k)
+    switch(
+      k,
+      tab = "Tab",
+      section = "Section",
+      output = "Numeric result",
+      report = "Report",
+      input = "Input",
+      k
+    )
   }
 }
 
 #' Menu layer for admin item picker: main tabs/chrome vs nested sub-options.
-#' tab + report = 主選單; section + input = 子選項.
+#' tab + report + output (value-box figures) = 主選單; section = 子選項.
 ynow_access_menu_layer <- function(kind) {
   k <- as.character(kind %||% "")[1]
-  if (k %in% c("tab", "report")) "main" else "sub"
+  if (k %in% c("tab", "report", "output")) "main" else "sub"
 }
 
 ynow_access_menu_layer_label <- function(layer, locale = "en") {
@@ -468,6 +459,19 @@ ynow_access_purge_user <- function(user_id) {
   file.path("data", "access_unlock_state.json")
 }
 
+#' Drop retired `input:*` ACL ids from a coerced store map.
+#' Product decision (2026-10-24): fine-grained restrict targets numeric *outputs*,
+#' not form inputs — clear legacy input rows rather than remap (no reliable 1:1).
+.ynow_access_migrate_legacy_ids <- function(mp) {
+  if (!length(mp)) return(list())
+  nms <- names(mp)
+  if (is.null(nms)) return(list())
+  keep <- !startsWith(as.character(nms), "input:")
+  out <- mp[keep]
+  if (!length(out)) return(list())
+  out
+}
+
 #' Normalize one user's stored map to named list of entries.
 .ynow_access_coerce_map <- function(raw) {
   if (is.null(raw)) return(list())
@@ -476,7 +480,7 @@ ynow_access_purge_user <- function(user_id) {
     out <- lapply(raw, function(v) ynow_access_normalize_entry(effect = v))
     names(out) <- names(raw)
     out <- out[nzchar(names(out))]
-    return(out)
+    return(.ynow_access_migrate_legacy_ids(out))
   }
   if (is.list(raw) || is.character(raw)) {
     # Named list of effects or full entries
@@ -491,7 +495,7 @@ ynow_access_purge_user <- function(user_id) {
         }
       })
       names(vals) <- nms[keep]
-      return(vals)
+      return(.ynow_access_migrate_legacy_ids(vals))
     }
     # Legacy: plain list/vector of item ids → hide (matches prior CSS)
     ids <- as.character(unlist(raw, use.names = FALSE))
@@ -499,7 +503,7 @@ ynow_access_purge_user <- function(user_id) {
     if (!length(ids)) return(list())
     out <- lapply(ids, function(id) ynow_access_normalize_entry(effect = "hide"))
     names(out) <- ids
-    return(out)
+    return(.ynow_access_migrate_legacy_ids(out))
   }
   list()
 }

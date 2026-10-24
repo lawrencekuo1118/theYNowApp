@@ -41,7 +41,7 @@ nav_module_ui <- function(id) {
         "NAV Overview", icon = icon("sitemap"),
         fluidRow(
           class = "ynow-model-kpi-row",
-          column(4, class = "ynow-model-kpi-result ynow-model-kpi-outline", valueBoxOutput(ns("vbx_nav_mid"), width = 12)),
+          column(4, class = "ynow-model-kpi-result ynow-model-kpi-outline", `data-ynow-lock` = "output:nav_fair_value", valueBoxOutput(ns("vbx_nav_mid"), width = 12)),
           column(4, class = "ynow-model-kpi-tone-2", valueBoxOutput(ns("vbx_navps"), width = 12)),
           column(4, class = "ynow-model-kpi-tone-3", valueBoxOutput(ns("vbx_mkt"), width = 12))
         ),

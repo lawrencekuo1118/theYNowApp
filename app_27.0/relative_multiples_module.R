@@ -537,7 +537,7 @@ relative_multiples_module_ui <- function(id) {
           icon = icon("building"),
           fluidRow(
             class = "ynow-model-kpi-row",
-            column(4, class = "ynow-model-kpi-result", valueBoxOutput(ns("vbx_evebitda"), width = 12)),
+            column(4, class = "ynow-model-kpi-result", `data-ynow-lock` = "output:rel_evebitda_implied", valueBoxOutput(ns("vbx_evebitda"), width = 12)),
             column(4, class = "ynow-model-kpi-tone-2", valueBoxOutput(ns("vbx_evebit"), width = 12)),
             column(4, class = "ynow-model-kpi-tone-3", valueBoxOutput(ns("vbx_evfcf"), width = 12))
           ),
@@ -609,7 +609,7 @@ relative_multiples_module_ui <- function(id) {
           icon = icon("chart-line"),
           fluidRow(
             class = "ynow-model-kpi-row",
-            column(4, class = "ynow-model-kpi-result", valueBoxOutput(ns("vbx_pe"), width = 12)),
+            column(4, class = "ynow-model-kpi-result", `data-ynow-lock` = "output:rel_pe_implied", valueBoxOutput(ns("vbx_pe"), width = 12)),
             column(4, class = "ynow-model-kpi-tone-2", valueBoxOutput(ns("vbx_fpe"), width = 12)),
             column(4, class = "ynow-model-kpi-tone-3", valueBoxOutput(ns("vbx_peg"), width = 12))
           ),
@@ -670,7 +670,7 @@ relative_multiples_module_ui <- function(id) {
           icon = icon("shopping-cart"),
           fluidRow(
             class = "ynow-model-kpi-row",
-            column(4, class = "ynow-model-kpi-result", valueBoxOutput(ns("vbx_ps"), width = 12)),
+            column(4, class = "ynow-model-kpi-result", `data-ynow-lock` = "output:rel_ps_implied", valueBoxOutput(ns("vbx_ps"), width = 12)),
             column(4, class = "ynow-model-kpi-tone-2", valueBoxOutput(ns("vbx_evsales"), width = 12)),
             column(4, class = "ynow-model-kpi-tone-3", valueBoxOutput(ns("vbx_evarr"), width = 12))
           ),

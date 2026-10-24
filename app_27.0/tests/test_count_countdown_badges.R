@@ -62,16 +62,16 @@ check("free-count badge decrements after use", {
 ynow_access_reset_memory()
 unlink(tmp); unlink(tmp_state)
 Sys.setenv(YNOW_ACCESS_LOCKS_PATH = tmp, YNOW_ACCESS_UNLOCK_STATE_PATH = tmp_state)
-invisible(ynow_access_set(YNOW_ACCESS_ALL_USERS, "input:sgr", TRUE,
+invisible(ynow_access_set(YNOW_ACCESS_ALL_USERS, "output:sgr_pct", TRUE,
                 effect = "lock", unlock_type = "conditional", time_limit_hours = 2L))
 bt0 <- ynow_access_quota_badges("user-ttl", authed = TRUE)
 check("time-only badge has no countdown before window starts", {
   length(bt0) >= 1L &&
-    identical(bt0[[1]]$id, "input:sgr") &&
+    identical(bt0[[1]]$id, "output:sgr_pct") &&
     is.null(bt0[[1]]$remaining) &&
     is.null(bt0[[1]]$ends_at)
 })
-invisible(ynow_access_touch_conditional("user-ttl", "input:sgr", consume_free = FALSE, now = Sys.time()))
+invisible(ynow_access_touch_conditional("user-ttl", "output:sgr_pct", consume_free = FALSE, now = Sys.time()))
 bt1 <- ynow_access_quota_badges("user-ttl", authed = TRUE)
 check("time-only badge exposes ends_at while window active", {
   length(bt1) >= 1L &&

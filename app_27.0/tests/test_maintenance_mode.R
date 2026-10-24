@@ -103,14 +103,14 @@ check("catalog covers product service tabs", {
     !"tab:testing" %in% ids
 })
 
-check("catalog covers fine valuation inputs", {
+check("catalog covers fine numeric outputs", {
   ids <- ynow_maintenance_catalog()$id
   all(c(
-    "input:years", "input:wacc_re", "input:capm_rf",
-    "input:mod_ddm-d0", "input:mod_ri-ri_ke",
-    "input:mod_fcf-capex_spike_mult", "input:bt_net_margin",
-    "input:mod_rel-pe_multiple", "input:mod_sotp-nonop"
-  ) %in% ids)
+    "output:sgr_pct", "output:wacc", "output:composite_fv",
+    "output:dcf_fair_value", "output:ddm_fair_value", "output:ri_fair_value",
+    "output:pb_fair_value", "output:nav_fair_value", "output:smart_mos"
+  ) %in% ids) &&
+    !any(grepl("^input:", ids))
 })
 
 check("catalog covers sections and extra reports", {
@@ -246,9 +246,9 @@ check("client payload empty after end", {
 check("file round-trip", {
   ynow_maintenance_reset_memory()
   ynow_maintenance_set_now_override("2026-10-22T13:00:00Z")
-  ynow_maintenance_set("input:sgr", TRUE, t_start, t_end)
+  ynow_maintenance_set("output:sgr_pct", TRUE, t_start, t_end)
   .ynow_maint_mem$by_item <- list()
-  isTRUE(ynow_maintenance_is_active("input:sgr"))
+  isTRUE(ynow_maintenance_is_active("output:sgr_pct"))
 })
 
 # UI / client enforcement (non-clickable chrome distinct from locks)

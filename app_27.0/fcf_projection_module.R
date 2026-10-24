@@ -17,7 +17,7 @@ fcf_projection_module_ui <- function(id) {
       `data-ynow-lock` = "section:fcf_projection",
            fluidRow(
              column(4, valueBoxOutput(ns("vbx_est_ocf"), width = 12)),
-             column(4, valueBoxOutput(ns("vbx_est_fcf"), width = 12)),
+             column(4, `data-ynow-lock` = "output:fcf_est", valueBoxOutput(ns("vbx_est_fcf"), width = 12)),
              column(4, valueBoxOutput(ns("vbx_est_g_fund"), width = 12)) 
            ),
            

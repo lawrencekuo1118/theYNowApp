@@ -63,7 +63,7 @@ sotp_module_ui <- function(id) {
         icon = icon("puzzle-piece"),
         fluidRow(
           class = "ynow-model-kpi-row",
-          column(4, class = "ynow-model-kpi-result ynow-model-kpi-outline", valueBoxOutput(ns("vbx_sotp"), width = 12)),
+          column(4, class = "ynow-model-kpi-result ynow-model-kpi-outline", `data-ynow-lock` = "output:sotp_implied_price", valueBoxOutput(ns("vbx_sotp"), width = 12)),
           column(4, class = "ynow-model-kpi-tone-2", valueBoxOutput(ns("vbx_sotp_ev"), width = 12)),
           column(4, class = "ynow-model-kpi-tone-3", valueBoxOutput(ns("vbx_sotp_n"), width = 12))
         ),
