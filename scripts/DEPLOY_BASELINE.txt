@@ -7,5 +7,5 @@ commit=0e014238fa30c0a7c5bb7ad4bfb47a3fa3ca1c19
 short=0e014238
 message=chore: bump display version to v27.25
 captured_at=2026-10-24T16:02:21Z
-display_version=v27.25
+display_version=v27.26
 note=Canonical live line is app_27.0. Bundle 12734088: admin login ready delay fix (#502) — sysadmin-on portal stay + chrome-first + admin_ops cache.
