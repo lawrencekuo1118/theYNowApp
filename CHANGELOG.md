@@ -1,3 +1,9 @@
+## [v27.20] — 2026-10-24
+
+### Changed
+- en-US: **Ownership Structure Analysis** moves into Company → FINANCIAL REPORT → **Board / CB**, immediately below **Convertible bonds — dilution**; standalone OWNERSHIP STRUCTURE tabBox removed. Lite + Full kept (Lite shows Board / CB only among FINANCIAL REPORT tabs).
+- zh-TW: **股權結構分析**併入 **董監／可轉債（Board / CB）**小頁籤，置於可轉債稀釋區塊正下方；移除獨立 OWNERSHIP STRUCTURE 區塊；Lite／完整版皆可用。
+
 ## [v27.19] — 2026-10-24
 
 ### Fixed
