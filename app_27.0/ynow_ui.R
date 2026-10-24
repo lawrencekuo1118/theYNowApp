@@ -8836,7 +8836,15 @@ ui <- dashboardPage(
             0 0 1px rgba(51, 51, 51, 0.55),
             0 1px 0 rgba(51, 51, 51, 0.35);
         }
-        /* LAST PRICE / MARKET CAP / EPS (TTM): icon fill follows the company-name logo pair */
+        /* LAST PRICE / MARKET CAP / EPS (TTM): icon fill follows the company-name logo pair.
+         * Must beat `.ynow-header-kpi-row … background-color: var(--ynow-logo-green)`
+         * (same !important) — include the header-row + AdminLTE bg-* classes. */
+        body.ynow-corp-logo .ynow-header-kpi-row #ibx_stockprice .info-box-icon,
+        body.ynow-corp-logo .ynow-header-kpi-row #ibx_marketcap .info-box-icon,
+        body.ynow-corp-logo .ynow-header-kpi-row #ibx_EPS .info-box-icon,
+        body.ynow-corp-logo .ynow-header-kpi-row #ibx_stockprice .info-box-icon.bg-purple,
+        body.ynow-corp-logo .ynow-header-kpi-row #ibx_marketcap .info-box-icon.bg-aqua,
+        body.ynow-corp-logo .ynow-header-kpi-row #ibx_EPS .info-box-icon.bg-green,
         body.ynow-corp-logo #ibx_stockprice .info-box-icon,
         body.ynow-corp-logo #ibx_marketcap .info-box-icon,
         body.ynow-corp-logo #ibx_EPS .info-box-icon {

@@ -210,8 +210,10 @@ check("server passes corp_name_logo_colors", {
 })
 check("crawler exports brand_chart_palette", grepl("brand_chart_palette <- function", wc, fixed = TRUE))
 check("crawler keeps slow cache for logo colors", {
-  grepl("cached_get_corp_logo_colors <- memoise::memoise", wc, fixed = TRUE) &&
-    grepl("cache = .ynow_slow_cache", wc, fixed = TRUE)
+  grepl(".cached_get_corp_logo_colors_memo <- memoise::memoise", wc, fixed = TRUE) &&
+    grepl("cache = .ynow_slow_cache", wc, fixed = TRUE) &&
+    grepl("cached_get_corp_logo_colors <- function", wc, fixed = TRUE) &&
+    grepl(".drop_corp_logo_colors_cache_key", wc, fixed = TRUE)
 })
 
 cat(sprintf("\n%d passed, %d failed\n", pass, fail))
