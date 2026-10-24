@@ -1,3 +1,12 @@
+## [v27.07] — 2026-10-24
+
+### Changed
+- System admin chrome (#460): unify Exit / Switch view / Self view / Guest / Omniscient into **one control-panel bar**. Drop the **Signed-in user mode** button (still the default on unlock). Remove the floating **Self view active** / 自身視角啟用中 toast; **Exit self view** lives on the bar. Omniscient keeps Guest-style background with warning-red text.
+
+### Notes
+- en-US: Cohesive control-panel strip; signed-in remains default self-view after unlock; no Self view active banner.
+- zh-TW: 系統管理檢視改為單一控制列；解鎖後仍預設已登入使用者模式（不顯示該按鈕）；移除「自身視角啟用中」浮層提醒；結束自身視角在控制列上。
+
 ## [v27.06] — 2026-10-23
 
 ### Changed
