@@ -777,6 +777,7 @@ ynow_auth_css <- function() {
     "}",
     "body.ynow-sidebar-reorder-edit .sidebar-menu > li > a {",
     "  cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none;",
+    "  -webkit-user-drag: none;",
     "}",
     "body.ynow-sidebar-reorder-edit .sidebar-menu > li.ynow-sidebar-reorder-dragging {",
     "  opacity: 0.55;",
