@@ -1,3 +1,12 @@
+## [v27.15] — 2026-10-24
+
+### Fixed
+- Post-login ACL (#477): push login-class access locks on the first post-chrome flush, before the points waterfall, so Asset Transmission with `unlock_type=login` unlocks with Decision Checklist timing.
+
+### Notes
+- en-US: Freemium ATX stays membership A. Points-class ACL still waits for FYN. Sticky/empty unlock_type rows stay locked until admin clears or re-saves.
+- zh-TW: 資產傳導根系 freemium 仍為登入即解鎖（A）。點數解鎖 ACL 仍需 FYN；未填 unlock_type 的舊列仍維持鎖定，需管理員清除或重存。
+
 ## [v27.14] — 2026-10-24
 
 ### Changed
