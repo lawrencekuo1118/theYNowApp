@@ -4497,6 +4497,9 @@ server <- function(input, output, session) {
         invisible(TRUE)
       },
       asset_transmission = function() {
+        atx_tab_active <- reactive(
+          identical(as.character(input$sidebar_tabs %||% ""), "asset_transmission")
+        )
         asset_transmission_server(
           "atx",
           ui_locale_rv = ui_locale,
@@ -4505,7 +4508,18 @@ server <- function(input, output, session) {
             s <- tryCatch(values$user_settings, error = function(e) NULL)
             as.character(s$gain_loss_scheme %||% "auto")[1]
           }),
-          tab_active_rv = reactive(identical(as.character(input$sidebar_tabs %||% ""), "asset_transmission"))
+          tab_active_rv = reactive({
+            isTRUE(atx_tab_active()) &&
+              identical(as.character(input$atx_subtabs %||% "atx_map"), "atx_map")
+          })
+        )
+        global_prediction_server(
+          "global_prediction",
+          ui_locale_rv = ui_locale,
+          tab_active_rv = atx_tab_active,
+          subtab_active_rv = reactive(
+            identical(as.character(input$atx_subtabs %||% ""), "global_prediction")
+          )
         )
       }
     ),

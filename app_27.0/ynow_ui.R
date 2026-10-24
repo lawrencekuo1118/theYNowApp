@@ -3249,23 +3249,32 @@ beta_rolling_section_ui <- function() {
     fluidRow(
       column(
         width = 12,
-        tags$div(
-          class = "box box-solid box-primary ynow-atx-panel",
-          tags$div(
-            class = "box-header",
-            tags$h3(
-              class = "box-title",
-              tagList(icon("project-diagram"), tags$span(id = "ynow_atx_box_title", .atx_s("atx_box_title")))
+        tabBox(
+          id = "atx_subtabs",
+          width = 12,
+          title = tags$span(id = "ynow_atx_box_title", .atx_s("atx_box_title")),
+          tabPanel(
+            title = tags$span(id = "ynow_atx_tab_map", .atx_s("atx_tab_map")),
+            value = "atx_map",
+            tags$div(
+              class = "box box-solid box-primary ynow-atx-panel",
+              style = "border:0;box-shadow:none;margin:0;",
+              tags$div(
+                class = "box-body",
+                style = "padding-top:8px;",
+                tags$p(
+                  id = "ynow_atx_box_body",
+                  style = "color:#555; line-height:1.5; margin:0 0 10px 0;",
+                  .atx_s("atx_box_body")
+                ),
+                asset_transmission_ui("atx", locale = loc)
+              )
             )
           ),
-          tags$div(
-            class = "box-body",
-            tags$p(
-              id = "ynow_atx_box_body",
-              style = "color:#555; line-height:1.5; margin:0 0 10px 0;",
-              .atx_s("atx_box_body")
-            ),
-            asset_transmission_ui("atx", locale = loc)
+          tabPanel(
+            title = tags$span(id = "ynow_atx_tab_global_prediction", .atx_s("atx_tab_global_prediction")),
+            value = "global_prediction",
+            global_prediction_ui("global_prediction", locale = loc)
           )
         )
       )
@@ -12722,6 +12731,16 @@ ui <- dashboardPage(
             if (atxBoxTitle && s.atx_box_title) atxBoxTitle.textContent = s.atx_box_title;
             var atxBoxBody = document.getElementById('ynow_atx_box_body');
             if (atxBoxBody && s.atx_box_body) atxBoxBody.textContent = s.atx_box_body;
+            var atxTabMap = document.getElementById('ynow_atx_tab_map');
+            if (atxTabMap && s.atx_tab_map) atxTabMap.textContent = s.atx_tab_map;
+            var atxTabGp = document.getElementById('ynow_atx_tab_global_prediction');
+            if (atxTabGp && s.atx_tab_global_prediction) atxTabGp.textContent = s.atx_tab_global_prediction;
+            var gpLead = document.getElementById('ynow_gp_lead');
+            if (gpLead && s.gp_lead) gpLead.textContent = s.gp_lead;
+            var gpContext = document.getElementById('ynow_gp_context');
+            if (gpContext && s.gp_context) gpContext.textContent = s.gp_context;
+            var gpCaution = document.getElementById('ynow_gp_caution');
+            if (gpCaution && s.gp_caution) gpCaution.textContent = s.gp_caution;
             var atxNodesTab = document.getElementById('ynow_atx_nodes_tab');
             if (atxNodesTab && s.atx_nodes_title) atxNodesTab.textContent = s.atx_nodes_title;
             var atxEdgesTab = document.getElementById('ynow_atx_edges_tab');
