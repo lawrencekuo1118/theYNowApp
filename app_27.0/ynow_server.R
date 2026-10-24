@@ -5033,8 +5033,13 @@ server <- function(input, output, session) {
 
   observeEvent(list(current_ticker(), ticker_search_gen()), {
     if (isTRUE(.ynow_search_gen_is_discard())) {
-      # .search_done will not clear this flag when the ticker string is unchanged.
+      # Focus cancel bumps gen without a replacement fetch. Clear busy here
+      # because .search_done would keep the flag when the ticker is unchanged.
       tryCatch(ticker_search_busy(FALSE), error = function(e) NULL)
+      tryCatch(
+        .ynow_set_tab_busy(.ynow_busy_tab_now("dashboard"), FALSE),
+        error = function(e) NULL
+      )
       return()
     }
     req(current_ticker())
@@ -5065,11 +5070,12 @@ server <- function(input, output, session) {
     .search_done <- function() {
       # Clear when this run is still current. Also clear when the ticker was
       # dropped (market switch) so no later run will take the flag. A newer
-      # symbol owns the flag itself.
+      # symbol owns the flag itself. Focus discard also clears so an aborted
+      # yield does not leave the Search button stuck.
       nxt <- tryCatch(isolate(current_ticker()), error = function(e) NULL)
       nxt_s <- as.character(nxt %||% "")[1]
       nxt_ok <- !is.null(nxt) && length(nxt_s) == 1L && !is.na(nxt_s) && nzchar(nxt_s)
-      if (isTRUE(.search_alive()) || !nxt_ok) {
+      if (isTRUE(.search_alive()) || !nxt_ok || isTRUE(.ynow_search_gen_is_discard())) {
         tryCatch(.ynow_set_tab_busy(busy_tab, FALSE), error = function(e) NULL)
         tryCatch(ticker_search_busy(FALSE), error = function(e) NULL)
       }

@@ -18865,15 +18865,16 @@ ui <- dashboardPage(
           to { transform: rotate(360deg); }
         }
         .ynow-header-logo-mark.ynow-logo-spinning {
-          animation: ynow-logo-spin-cw 2.8s linear infinite;
+          --ynow-logo-spin-dur: 2.8s;
+          animation: ynow-logo-spin-cw var(--ynow-logo-spin-dur) linear infinite;
         }
         .ynow-header-logo-mark.ynow-logo-spinning.ynow-logo-spin-fast {
-          animation-duration: 0.7s;
+          --ynow-logo-spin-dur: 0.7s;
         }
         @media (prefers-reduced-motion: reduce) {
           .ynow-header-logo-mark.ynow-logo-spinning,
           .ynow-header-logo-mark.ynow-logo-spinning.ynow-logo-spin-fast {
-            animation-duration: 6s;
+            --ynow-logo-spin-dur: 6s;
           }
         }
         body.ynow-market-tw .ynow-header-logo-mark {

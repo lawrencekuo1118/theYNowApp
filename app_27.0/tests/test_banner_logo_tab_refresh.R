@@ -66,7 +66,12 @@ testthat::test_that("lazy_tabs exposes soft refresh without remount hook", {
 
 testthat::test_that("focus click accelerates spin and cancels other tabs", {
   testthat::expect_true(grepl("ynow-logo-spin-fast", ui_txt, fixed = TRUE))
-  testthat::expect_true(grepl("animation-duration: 0.7s", ui_txt, fixed = TRUE))
+  testthat::expect_true(grepl("--ynow-logo-spin-dur: 0.7s", ui_txt, fixed = TRUE))
+  testthat::expect_true(grepl(
+    "animation: ynow-logo-spin-cw var(--ynow-logo-spin-dur)",
+    ui_txt,
+    fixed = TRUE
+  ))
   testthat::expect_true(grepl(
     "ynow-header-logo-mark.ynow-logo-spinning.ynow-logo-spin-fast",
     ui_txt,
@@ -77,7 +82,7 @@ testthat::test_that("focus click accelerates spin and cancels other tabs", {
       "@media (prefers-reduced-motion: reduce) {\n",
       "          .ynow-header-logo-mark.ynow-logo-spinning,\n",
       "          .ynow-header-logo-mark.ynow-logo-spinning.ynow-logo-spin-fast {\n",
-      "            animation-duration: 6s;"
+      "            --ynow-logo-spin-dur: 6s;"
     ),
     ui_txt,
     fixed = TRUE
@@ -138,6 +143,16 @@ testthat::test_that("focus click accelerates spin and cancels other tabs", {
   testthat::expect_match(
     srv_txt,
     "ticker_search_discard_gen(NA_integer_)",
+    fixed = TRUE
+  )
+  testthat::expect_match(
+    srv_txt,
+    ".ynow_search_gen_is_discard()",
+    fixed = TRUE
+  )
+  testthat::expect_match(
+    srv_txt,
+    "isTRUE(.ynow_search_gen_is_discard())",
     fixed = TRUE
   )
 })
