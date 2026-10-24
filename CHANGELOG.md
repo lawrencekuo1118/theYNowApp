@@ -1,3 +1,12 @@
+## [v27.13] — 2026-10-24
+
+### Changed
+- Login → ready (#473): cache `ensure_schema` once per process; flush `ynow-authed` / last-tab before points and ACL; slim resume `ynow_points_on_login` when daily gifts exist; header banner skips full ledger; ACL evaluates unlock state in one batch.
+
+### Notes
+- en-US: Interactive chrome appears before points/ACL catch up; sessions, points integrity, ACL, and last-tab restore remain correct.
+- zh-TW: 互動 chrome（`ynow-authed`）先出現，點數／ACL 隨後補上；工作階段、點數完整性、ACL、上次分頁還原仍正確。
+
 ## [v27.12] — 2026-10-24
 
 ### Changed
