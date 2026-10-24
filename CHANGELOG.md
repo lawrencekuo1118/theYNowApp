@@ -1,3 +1,15 @@
+## [v27.10] — 2026-10-24
+
+### Added
+- **MOS Assumptions / MOS假設** tab (#467): investor-tunable Margin of Safety settings in one place — Bear/Base gate enables + floors, Value Alert default MOS %, HFV scenario bands, Quant Lab Mode A ladder cut-points and `bt_w_vg`.
+
+### Changed
+- Decision Checklist Bear/Base MOS controls move to MOS Assumptions (checklist shows a live mirror). Lab Fundamental `bt_w_vg` slider points to MOS Assumptions. HFV scenario thresholds and Mode A hysteresis cuts are session-overridable; validation engines stay on HFV / Quant Lab.
+
+### Notes
+- en-US: Fundamental MOS results stay on Smart Analysis / Checklist / reports; assumptions are adjustable on MOS Assumptions (Full guest-locked; Lite omits). HFV/Lab labels remain veto/diagnostic — not buy signals.
+- zh-TW: 合理價算出的 MOS 結果仍在智慧分析／決策檢核／報告；可調假設集中在「MOS假設」（完整版訪客鎖；Lite 省略）。HFV／Lab 標籤仍為否決／診斷，非買進訊號。
+
 ## [v27.09] — 2026-10-24
 
 ### Changed
