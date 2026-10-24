@@ -119,6 +119,16 @@ check("custom deep cut maps to max_exp", approx_eq(exp_deep, 0.90))
 exp_old_mid <- mos_hysteresis_target(0.35, w_vg = 1, max_exp = 0.90)
 check("legacy deep 0.30 still max at 0.35", approx_eq(exp_old_mid, 0.90))
 
+mod_src <- paste(
+  readLines(file.path(.source_root, "mos_assumptions_module.R"), warn = FALSE, encoding = "UTF-8"),
+  collapse = "\n"
+)
+check("surface call passes feature and body by name", {
+  grepl('ynow_member_gate_surface_ui(feature = "checklist", gate = gate, body = body)',
+        mod_src, fixed = TRUE) &&
+    !grepl("ynow_member_gate_surface_ui(gate, body)", mod_src, fixed = TRUE)
+})
+
 ui_html <- paste(as.character(mos_assumptions_tab_ui()), collapse = "\n")
 check("tab ui has mos_assumptions tabName", grepl("mos_assumptions", ui_html, fixed = TRUE))
 check("tab ui owns bear floor id", grepl("cond_bear_base_bear_mos_floor", ui_html, fixed = TRUE))
