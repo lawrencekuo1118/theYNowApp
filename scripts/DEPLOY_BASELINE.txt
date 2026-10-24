@@ -7,5 +7,5 @@ commit=07a6a29a2de42a4ff92fdc0f0351dae26f9cfcb8
 short=07a6a29a
 message=chore: bump display version to v27.09
 captured_at=2026-10-24T06:46:03Z
-display_version=v27.09
+display_version=v27.10
 note=Canonical live line is app_27.0. Bundle 12732844: admin Item locks show clear Currently restricted / 目前已限制 list under apply target (per-user multi-select; pick-users prompt) (#464).
