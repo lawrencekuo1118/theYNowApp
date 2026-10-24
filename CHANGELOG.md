@@ -1,3 +1,12 @@
+## [v27.19] — 2026-10-24
+
+### Fixed
+- SGR KPI value boxes (#485): host `output:sgr_pct` on `column(6)` (not a bare lock wrapper) and scope `aspect-ratio: 1 / 1` on `.ynow-sgr-kpi-row` so terminal SGR and near-term session g stay square tiles.
+
+### Notes
+- en-US: Model Dashboard SGR row only. Other KPI grids keep their existing ratios.
+- zh-TW：僅 Model Dashboard 的 SGR 數值框列；其他 KPI 網格維持原有比例。
+
 ## [v27.18] — 2026-10-24
 
 ### Fixed
