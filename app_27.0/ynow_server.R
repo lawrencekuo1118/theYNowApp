@@ -1965,7 +1965,23 @@ server <- function(input, output, session) {
             "Title Loading is silver. Chrome, unlocks, balances, and prefs follow this user."
           ),
           exit_label = .lab("pts_sysadmin_viewas_exit", "Exit user view"),
-          label_sign_out = .lab("auth_sign_out", "Sign out")
+          label_sign_out = .lab("auth_sign_out", "Sign out"),
+          reminder_title = .lab(
+            "pts_sysadmin_mode_reminder_viewas_title",
+            "View-as selected user"
+          ),
+          reminder_body = .lab(
+            "pts_sysadmin_mode_reminder_viewas_body",
+            paste0(
+              "You are viewing the app as this de-identified user. ",
+              "Title Loading is silver. Exit from the top bar when finished."
+            )
+          ),
+          reminder_dismiss = .lab("pts_sysadmin_mode_reminder_dismiss", "Dismiss"),
+          reminder_aria = .lab(
+            "pts_sysadmin_mode_reminder_aria",
+            "Active system admin view mode"
+          )
         )
       ),
       error = function(e) NULL
@@ -1980,7 +1996,7 @@ server <- function(input, output, session) {
   })
 
   #' Push / clear self view body classes (guest / signed_in / omniscient).
-  #' No floating self-view reminder banner — exit lives on the control-panel bar.
+  #' Also sends localized copy for the top-of-screen mode reminder.
   .ynow_self_view_push_chrome <- function(mode = NULL) {
     loc <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "en")
     .lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
@@ -1995,13 +2011,51 @@ server <- function(input, output, session) {
       )
       return(invisible(FALSE))
     }
+    title_key <- switch(
+      mode,
+      guest = "pts_sysadmin_self_guest",
+      signed_in = "pts_sysadmin_self_signed_in",
+      omniscient = "pts_sysadmin_self_omniscient",
+      "pts_sysadmin_self_active"
+    )
+    title_fb <- switch(
+      mode,
+      guest = "Guest mode",
+      signed_in = "Signed-in user mode",
+      omniscient = "Omniscient mode",
+      "Self view active"
+    )
+    body_key <- switch(
+      mode,
+      guest = "pts_sysadmin_self_chrome_guest",
+      signed_in = "pts_sysadmin_self_chrome_signed_in",
+      omniscient = "pts_sysadmin_self_chrome_omniscient",
+      "pts_sysadmin_self_chrome_signed_in"
+    )
+    body_fb <- switch(
+      mode,
+      guest = "Guest mode: locks and hides match all-user guest restrictions.",
+      signed_in = paste0(
+        "Signed-in user mode: only all-user member restrictions (no per-user overrides). ",
+        "Settings and Account are openable like a signed-in member."
+      ),
+      omniscient = "Omniscient mode: all feature locks and hides lifted. Title Loading is warning red.",
+      ""
+    )
     tryCatch(
       session$sendCustomMessage(
         "ynowSelfViewMode",
         list(
           mode = mode,
           exit_label = .lab("pts_sysadmin_self_exit", "Exit self view"),
-          label_sign_out = .lab("auth_sign_out", "Sign out")
+          label_sign_out = .lab("auth_sign_out", "Sign out"),
+          reminder_title = .lab(title_key, title_fb),
+          reminder_body = .lab(body_key, body_fb),
+          reminder_dismiss = .lab("pts_sysadmin_mode_reminder_dismiss", "Dismiss"),
+          reminder_aria = .lab(
+            "pts_sysadmin_mode_reminder_aria",
+            "Active system admin view mode"
+          )
         )
       ),
       error = function(e) NULL
