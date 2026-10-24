@@ -201,7 +201,7 @@ ri_module_ui <- function(id) {
         "RI Overview", icon = icon("gem"),
         fluidRow(
           class = "ynow-model-kpi-row",
-          column(3, class = "ynow-model-kpi-result ynow-model-kpi-outline", valueBoxOutput(ns("vbx_ri_fv"), width = 12)),
+          column(3, class = "ynow-model-kpi-result ynow-model-kpi-outline", `data-ynow-lock` = "output:ri_fair_value", valueBoxOutput(ns("vbx_ri_fv"), width = 12)),
           column(3, class = "ynow-model-kpi-tone-2", valueBoxOutput(ns("vbx_ri_b0"), width = 12)),
           column(3, class = "ynow-model-kpi-tone-3", valueBoxOutput(ns("vbx_ri_pv"), width = 12)),
           column(3, class = "ynow-model-kpi-tone-4", valueBoxOutput(ns("vbx_ri_tv"), width = 12))

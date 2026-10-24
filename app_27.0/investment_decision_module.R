@@ -1169,6 +1169,7 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
 
       tags$div(
         class = "ynow-composite-valuation",
+        `data-ynow-lock` = "output:composite_fv",
         style = paste0(
           "background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); ",
           "margin-bottom: 12px; border-top: 3px solid ", status_color, ";"

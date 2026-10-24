@@ -1454,7 +1454,7 @@ beta_rolling_section_ui <- function() {
         icon = icon("seedling"),
         # 與 BETA Overview 同款 valueBox 列：各 50% 並排
         fluidRow(
-          valueBoxOutput("vbx_sgr_pct", width = 6),
+          tags$div(`data-ynow-lock` = "output:sgr_pct", valueBoxOutput("vbx_sgr_pct", width = 6)),
           valueBoxOutput("vbx_session_g", width = 6)
         ),
         fluidRow(
@@ -13097,17 +13097,19 @@ ui <- dashboardPage(
                 document.querySelectorAll('a[data-value]').forEach(function (a) {
                   if (a.getAttribute('data-value') === tab) hosts.push(a);
                 });
-              } else if (id.indexOf('input:') === 0) {
-                var inp = document.getElementById(id.slice(6));
-                var fg = inp && (inp.closest('.form-group') || inp.closest('.shiny-input-container'));
-                if (fg) hosts.push(fg);
               } else if (id.indexOf('report:') === 0) {
                 var btn = document.getElementById(id.slice(7));
                 if (btn) hosts.push(btn);
-              } else if (id.indexOf('section:') === 0) {
+              } else if (id.indexOf('section:') === 0 || id.indexOf('output:') === 0) {
                 document.querySelectorAll('[data-ynow-lock]').forEach(function (el) {
                   if (el.getAttribute('data-ynow-lock') === id) hosts.push(el);
                 });
+              } else if (id.indexOf('input:') === 0) {
+                /* Retired catalog kind; keep DOM resolve for any stale client payload. */
+                var inpLegacy = document.getElementById(id.slice(6));
+                var fgLegacy = inpLegacy && (inpLegacy.closest('.form-group') ||
+                  inpLegacy.closest('.shiny-input-container'));
+                if (fgLegacy) hosts.push(fgLegacy);
               }
               return hosts;
             };
@@ -13667,16 +13669,6 @@ ui <- dashboardPage(
                       }
                     }
                   }
-                } else if (id.indexOf('input:') === 0) {
-                  var inp = document.getElementById(id.slice(6));
-                  var fg = inp && (inp.closest('.form-group') || inp.closest('.shiny-input-container'));
-                  if (!fg) return;
-                  if (effect === 'hide') fg.classList.add('ynow-access-hidden');
-                  else {
-                    fg.classList.add('ynow-access-locked-input');
-                    fg.setAttribute('data-lock-note', note);
-                    ynowMarkLockedInnerTarget(fg);
-                  }
                 } else if (id.indexOf('report:') === 0) {
                   var btn = document.getElementById(id.slice(7));
                   if (!btn) return;
@@ -13686,7 +13678,7 @@ ui <- dashboardPage(
                     btn.setAttribute('title', note);
                     ynowMarkLockedInnerTarget(btn);
                   }
-                } else if (id.indexOf('section:') === 0) {
+                } else if (id.indexOf('section:') === 0 || id.indexOf('output:') === 0) {
                   document.querySelectorAll('[data-ynow-lock]').forEach(function (el) {
                     if (el.getAttribute('data-ynow-lock') !== id) return;
                     if (effect === 'hide') el.classList.add('ynow-access-hidden');
@@ -13696,6 +13688,17 @@ ui <- dashboardPage(
                       ynowMarkLockedInnerTarget(el);
                     }
                   });
+                } else if (id.indexOf('input:') === 0) {
+                  /* Retired; stale payloads only. */
+                  var inp = document.getElementById(id.slice(6));
+                  var fg = inp && (inp.closest('.form-group') || inp.closest('.shiny-input-container'));
+                  if (!fg) return;
+                  if (effect === 'hide') fg.classList.add('ynow-access-hidden');
+                  else {
+                    fg.classList.add('ynow-access-locked-input');
+                    fg.setAttribute('data-lock-note', note);
+                    ynowMarkLockedInnerTarget(fg);
+                  }
                 }
               });
             document.querySelectorAll('.sidebar-menu li.ynow-access-locked-nav > a').forEach(function (a) {
@@ -13847,24 +13850,24 @@ ui <- dashboardPage(
                     pane.classList.add('ynow-maintenance-pane');
                     if (note) pane.setAttribute('data-maint-note', note);
                   }
-                } else if (id.indexOf('input:') === 0) {
-                  var inp = document.getElementById(id.slice(6));
-                  var fg = inp && (inp.closest('.form-group') || inp.closest('.shiny-input-container'));
-                  if (!fg) return;
-                  fg.classList.add('ynow-maintenance-item');
-                  if (note) fg.setAttribute('data-maint-note', note);
                 } else if (id.indexOf('report:') === 0) {
                   var btn = document.getElementById(id.slice(7));
                   if (!btn) return;
                   btn.classList.add('ynow-maintenance-item');
                   if (note) btn.setAttribute('title', note.replace(/\\n/g, ' '));
                   if (note) btn.setAttribute('data-maint-note', note);
-                } else if (id.indexOf('section:') === 0) {
+                } else if (id.indexOf('section:') === 0 || id.indexOf('output:') === 0) {
                   document.querySelectorAll('[data-ynow-lock]').forEach(function (el) {
                     if (el.getAttribute('data-ynow-lock') !== id) return;
                     el.classList.add('ynow-maintenance-item');
                     if (note) el.setAttribute('data-maint-note', note);
                   });
+                } else if (id.indexOf('input:') === 0) {
+                  var inp = document.getElementById(id.slice(6));
+                  var fg = inp && (inp.closest('.form-group') || inp.closest('.shiny-input-container'));
+                  if (!fg) return;
+                  fg.classList.add('ynow-maintenance-item');
+                  if (note) fg.setAttribute('data-maint-note', note);
                 }
               });
             };
@@ -21247,6 +21250,7 @@ ui <- dashboardPage(
                            fluidRow(
                              class = "ynow-model-kpi-row",
                              column(6, class = "ynow-model-kpi-result ynow-model-kpi-outline",
+                                    `data-ynow-lock` = "output:ddm_fair_value",
                                     infoBoxOutput("mod_ddm-ibx_ddm_price", width = NULL)),
                              column(6, class = "ynow-model-kpi-tone-2",
                                     infoBoxOutput("mod_ddm-ibx_ddm_d1", width = NULL))
@@ -21504,6 +21508,7 @@ ui <- dashboardPage(
                                        fluidRow(
                                          class = "ynow-model-kpi-row",
                                          column(6, class = "ynow-model-kpi-result ynow-model-kpi-outline",
+                                                `data-ynow-lock` = "output:dcf_fair_value",
                                                 infoBoxOutput("ibx_stock_value_dcf", width = NULL)),
                                          column(6, class = "ynow-model-kpi-tone-2",
                                                 infoBoxOutput("ibx_enterprise_value_dcf", width = NULL))
@@ -21566,7 +21571,7 @@ ui <- dashboardPage(
                            valueBoxOutput("vbx_tax_rate", width = 4)    # 有效稅率 (T)
                          ),
                          fluidRow(
-                           infoBoxOutput("ibx_wacc", width = 4),
+                           tags$div(`data-ynow-lock` = "output:wacc", infoBoxOutput("ibx_wacc", width = 4)),
                            infoBoxOutput("ibx_rd", width = 4),
                            infoBoxOutput("ibx_re", width = 4)
                          ),

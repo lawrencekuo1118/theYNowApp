@@ -13778,6 +13778,7 @@ server <- function(input, output, session) {
       ynow_alertable(
         tags$div(
           class = "ynow-smart-card",
+          `data-ynow-lock` = "output:smart_primary_fv",
           tags$p(class = "ynow-smart-card-kicker", ui_str("smart_primary_kicker", loc)),
           tags$p(class = "ynow-smart-card-title", prim_title),
           tags$p(class = "ynow-smart-card-value", fmt_px(base)),
@@ -13848,6 +13849,7 @@ server <- function(input, output, session) {
       ynow_alertable(
         tags$div(
           class = "ynow-smart-card",
+          `data-ynow-lock` = "output:smart_mos",
           tags$p(class = "ynow-smart-card-kicker", ui_str("smart_mos_kicker", loc)),
           tags$p(class = "ynow-smart-card-title", " "),
           tags$p(class = "ynow-smart-card-value", fmt_pct(mos)),

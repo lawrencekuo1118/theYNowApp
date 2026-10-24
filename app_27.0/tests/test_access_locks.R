@@ -27,13 +27,13 @@ ynow_access_reset_memory()
 
 cat <- ynow_access_catalog()
 check("catalog has four kinds", {
-  all(c("tab", "section", "input", "report") %in% cat$kind)
+  all(c("tab", "section", "output", "report") %in% cat$kind)
 })
 check("catalog ids are unique", !anyDuplicated(cat$id))
 check("backtest tab is lockable", "tab:lab_notes" %in% cat$id)
 check("checklist tab is lockable", "tab:decision_checklist" %in% cat$id)
 check("alerts tab is lockable", "tab:price_alerts" %in% cat$id)
-check("sgr input is lockable", "input:sgr" %in% cat$id)
+check("sgr_pct output is lockable", "output:sgr_pct" %in% cat$id)
 check("pdf report is lockable", "report:download_report" %in% cat$id)
 check("product service tabs in catalog", {
   all(c(
@@ -42,9 +42,9 @@ check("product service tabs in catalog", {
   ) %in% cat$id) &&
     !"tab:testing" %in% cat$id
 })
-check("fine inputs and sections in catalog", {
+check("fine numeric outputs and sections in catalog", {
   all(c(
-    "input:years", "input:wacc_re", "input:mod_ddm-ke",
+    "output:sgr_pct", "output:wacc", "output:ddm_fair_value",
     "section:sgr_box", "section:wacc_box", "section:fcf_projection",
     "report:download_defaults", "report:bblab-export_data"
   ) %in% cat$id)
@@ -62,8 +62,8 @@ check("lock then listed", {
 })
 check("second user stays open", !isTRUE(ynow_access_is_locked("user-b", "tab:lab_notes")))
 check("hide effect stored", {
-  ynow_access_set("user-a", "input:sgr", TRUE, effect = "hide")
-  identical(ynow_access_item_effect("user-a", "input:sgr"), "hide")
+  ynow_access_set("user-a", "output:sgr_pct", TRUE, effect = "hide")
+  identical(ynow_access_item_effect("user-a", "output:sgr_pct"), "hide")
 })
 check("unlock clears", {
   ynow_access_set("user-a", "tab:lab_notes", FALSE)
@@ -91,24 +91,37 @@ check("clear all-users only", {
 })
 check("file round-trip effects", {
   ynow_access_reset_memory()
-  ynow_access_set("user-c", "input:sgr", TRUE, effect = "lock")
+  ynow_access_set("user-c", "output:sgr_pct", TRUE, effect = "lock")
   ynow_access_set("user-c", "report:download_report", TRUE, effect = "hide")
   .ynow_access_mem$by_user <- list()
   ids <- ynow_access_locked_ids("user-c")
-  identical(ynow_access_item_effect("user-c", "input:sgr"), "lock") &&
+  identical(ynow_access_item_effect("user-c", "output:sgr_pct"), "lock") &&
     identical(ynow_access_item_effect("user-c", "report:download_report"), "hide") &&
-    all(c("input:sgr", "report:download_report") %in% ids)
+    all(c("output:sgr_pct", "report:download_report") %in% ids)
 })
 check("legacy plain-id list becomes hide", {
-  store <- list(`user-legacy` = list("tab:lab_notes", "input:sgr"))
+  store <- list(`user-legacy` = list("tab:lab_notes", "output:sgr_pct"))
   jsonlite::write_json(store, tmp, auto_unbox = TRUE, pretty = TRUE)
   ynow_access_reset_memory()
   identical(ynow_access_item_effect("user-legacy", "tab:lab_notes"), "hide") &&
-    identical(ynow_access_item_effect("user-legacy", "input:sgr"), "hide")
+    identical(ynow_access_item_effect("user-legacy", "output:sgr_pct"), "hide")
+})
+check("legacy input:* rows cleared on read", {
+  store <- list(`user-legacy-in` = list(
+    "tab:lab_notes" = list(effect = "lock"),
+    "input:sgr" = list(effect = "hide")
+  ))
+  jsonlite::write_json(store, tmp, auto_unbox = TRUE, pretty = TRUE)
+  ynow_access_reset_memory()
+  identical(ynow_access_item_effect("user-legacy-in", "tab:lab_notes"), "lock") &&
+    is.na(ynow_access_item_effect("user-legacy-in", "input:sgr")) &&
+    !"input:sgr" %in% ynow_access_locked_ids("user-legacy-in")
 })
 check("zh label", identical(ynow_access_label("tab:decision_checklist", "zh-TW"), "決策檢核"))
 check("en kind", identical(ynow_access_kind_label("report", "en"), "Report"))
 check("zh kind", identical(ynow_access_kind_label("section", "zh-TW"), "區塊"))
+check("en output kind", identical(ynow_access_kind_label("output", "en"), "Numeric result"))
+check("zh output kind", identical(ynow_access_kind_label("output", "zh-TW"), "數值結果"))
 check("zh effect lock", grepl("鎖上", ynow_access_effect_label("lock", "zh-TW"), fixed = TRUE))
 check("en effect hide", identical(ynow_access_effect_label("hide", "en"), "Hide"))
 
@@ -331,7 +344,7 @@ ynow_access_reset_memory()
 unlink(tmp)
 Sys.setenv(YNOW_ACCESS_LOCKS_PATH = tmp)
 ynow_access_set("user-alice", "tab:lab_notes", TRUE, effect = "lock")
-ynow_access_set("user-bob", "input:sgr", TRUE, effect = "hide")
+ynow_access_set("user-bob", "output:sgr_pct", TRUE, effect = "hide")
 ynow_access_set(YNOW_ACCESS_ALL_USERS, "report:download_report", TRUE, effect = "hide")
 check("status lines for alice under user scope", {
   lines <- ynow_access_admin_status_lines("user-alice", scope = "user", locale = "en",
@@ -371,7 +384,7 @@ check("status text empty for user with no personal locks", {
   )
 })
 check("zh status separator uses enumeration comma", {
-  ynow_access_set("user-alice", "input:sgr", TRUE, effect = "hide")
+  ynow_access_set("user-alice", "output:sgr_pct", TRUE, effect = "hide")
   txt <- ynow_access_admin_status_text("user-alice", scope = "user", locale = "zh-TW",
                                        user_scope_lab = "個人", all_scope_lab = "全部",
                                        none_lab = "此範圍沒有限制項目。")
@@ -436,14 +449,14 @@ check("conditional time window unlocks while active", {
   ynow_access_reset_memory()
   unlink(tmp); unlink(tmp_state)
   Sys.setenv(YNOW_ACCESS_LOCKS_PATH = tmp, YNOW_ACCESS_UNLOCK_STATE_PATH = tmp_state)
-  ynow_access_set(YNOW_ACCESS_ALL_USERS, "input:sgr", TRUE,
+  ynow_access_set(YNOW_ACCESS_ALL_USERS, "output:sgr_pct", TRUE,
                   effect = "lock", unlock_type = "conditional", time_limit_hours = 2L)
   # Before touch: no window yet → still locked for signed-in user
-  before <- !isTRUE(ynow_access_unlock_satisfied_for_item("user-z", "input:sgr", authed = TRUE))
-  ynow_access_touch_conditional("user-z", "input:sgr", consume_free = FALSE, now = Sys.time())
-  during <- isTRUE(ynow_access_unlock_satisfied_for_item("user-z", "input:sgr", authed = TRUE))
+  before <- !isTRUE(ynow_access_unlock_satisfied_for_item("user-z", "output:sgr_pct", authed = TRUE))
+  ynow_access_touch_conditional("user-z", "output:sgr_pct", consume_free = FALSE, now = Sys.time())
+  during <- isTRUE(ynow_access_unlock_satisfied_for_item("user-z", "output:sgr_pct", authed = TRUE))
   expired <- !isTRUE(ynow_access_unlock_satisfied_for_item(
-    "user-z", "input:sgr", authed = TRUE, now = Sys.time() + 3 * 3600
+    "user-z", "output:sgr_pct", authed = TRUE, now = Sys.time() + 3 * 3600
   ))
   before && during && expired
 })
@@ -488,9 +501,9 @@ check("menu layer tab/report are main", {
   identical(ynow_access_menu_layer("tab"), "main") &&
     identical(ynow_access_menu_layer("report"), "main")
 })
-check("menu layer section/input are sub", {
+check("menu layer section is sub; output is main", {
   identical(ynow_access_menu_layer("section"), "sub") &&
-    identical(ynow_access_menu_layer("input"), "sub")
+    identical(ynow_access_menu_layer("output"), "main")
 })
 check("menu layer labels zh", {
   identical(ynow_access_menu_layer_label("main", "zh-TW"), "主選單") &&
@@ -498,7 +511,7 @@ check("menu layer labels zh", {
 })
 check("item choice list groups main/sub", {
   ch <- ynow_access_item_choice_list(
-    c("tab:lab_notes", "input:sgr", "report:download_report"),
+    c("tab:lab_notes", "output:sgr_pct", "report:download_report", "section:sgr_box"),
     locale = "en",
     group = TRUE
   )
@@ -506,7 +519,8 @@ check("item choice list groups main/sub", {
     "Main menu" %in% names(ch) &&
     "Sub-options" %in% names(ch) &&
     "tab:lab_notes" %in% unname(ch[["Main menu"]]) &&
-    "input:sgr" %in% unname(ch[["Sub-options"]])
+    "output:sgr_pct" %in% unname(ch[["Main menu"]]) &&
+    "section:sgr_box" %in% unname(ch[["Sub-options"]])
 })
 check("reject apply when already restricted", {
   ynow_access_set("user-a", "tab:lab_notes", TRUE, effect = "lock", unlock_type = "login")
@@ -524,13 +538,13 @@ check("restrictable excludes already restricted for scope", {
   !"tab:lab_notes" %in% ids && "tab:price_alerts" %in% ids
 })
 check("restricted ids for multi-user union", {
-  ynow_access_set("user-b", "input:sgr", TRUE, effect = "hide", unlock_type = "login")
+  ynow_access_set("user-b", "output:sgr_pct", TRUE, effect = "hide", unlock_type = "login")
   ids <- ynow_access_restricted_ids_for_scope(c("user-a", "user-b"), "user", multi_mode = "union")
-  all(c("tab:lab_notes", "input:sgr") %in% ids)
+  all(c("tab:lab_notes", "output:sgr_pct") %in% ids)
 })
 check("restrictable for multi-user excludes any restricted", {
   ids <- ynow_access_restrictable_ids_for_scope(c("user-a", "user-b"), "user")
-  !"tab:lab_notes" %in% ids && !"input:sgr" %in% ids
+  !"tab:lab_notes" %in% ids && !"output:sgr_pct" %in% ids
 })
 check("multi-user status text includes both uids", {
   txt <- ynow_access_admin_status_text(

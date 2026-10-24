@@ -19,7 +19,7 @@ pb_asset_module_ui <- function(id) {
                  tabPanel("P/B Overview", icon = icon("landmark"),
                           fluidRow(
                             class = "ynow-model-kpi-row",
-                            column(3, class = "ynow-model-kpi-result ynow-model-kpi-outline", valueBoxOutput(ns("vbx_fair"), width = 12)),
+                            column(3, class = "ynow-model-kpi-result ynow-model-kpi-outline", `data-ynow-lock` = "output:pb_fair_value", valueBoxOutput(ns("vbx_fair"), width = 12)),
                             column(3, class = "ynow-model-kpi-tone-2", valueBoxOutput(ns("vbx_bvps"), width = 12)),
                             column(3, class = "ynow-model-kpi-tone-3", valueBoxOutput(ns("vbx_tbvps"), width = 12)),
                             column(3, class = "ynow-model-kpi-tone-4", valueBoxOutput(ns("vbx_mkt_pb"), width = 12))
