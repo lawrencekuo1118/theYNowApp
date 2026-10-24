@@ -1,3 +1,12 @@
+## [v27.14] — 2026-10-24
+
+### Changed
+- Login → ready (#475): defer resume-token mint and durable last-ui prefs until after `ynow-authed` flush; keep `session_resume` validation on the critical path. Client `ynow_last_ui_v1` / restore_tab still drive first paint.
+
+### Notes
+- en-US: Interactive chrome appears after session validate; mint and server last-tab reconcile on the next flush. Points/ACL remain deferred.
+- zh-TW: 互動 chrome 在工作階段驗證後即出現；mint 與伺服器上次分頁在下一輪 flush 補上。點數／ACL 仍延後。
+
 ## [v27.13] — 2026-10-24
 
 ### Changed
