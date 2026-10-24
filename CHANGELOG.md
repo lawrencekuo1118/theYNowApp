@@ -1,3 +1,12 @@
+## [v27.18] — 2026-10-24
+
+### Fixed
+- Investor MOS settings (#484): remove only the outer shinydashboard box border/shadow via scoped `ynow-mos-assump-panel`; keep title, contents, and inner `.ynow-mos-assump-block` borders.
+
+### Notes
+- en-US: MOS Assumptions tab outer frame only. Sibling sections and inner MOS blocks are unchanged.
+- zh-TW：僅 MOS假設分頁「Investor MOS settings」外框；相鄰區塊與內層設定卡邊框不變。
+
 ## [v27.17] — 2026-10-24
 
 ### Changed
