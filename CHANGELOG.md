@@ -1,3 +1,12 @@
+## [v27.16] — 2026-10-24
+
+### Fixed
+- Sidebar rearrange (#480): in edit mode, top-level tab links set `draggable=false`, cancel `dragstart`, and use `-webkit-user-drag: none` so long-press drag reorders instead of pulling a native link ghost.
+
+### Notes
+- en-US: Enter Rearrange, long-press (~420ms), then drag vertically. Done still saves order. Outside edit mode, link behavior is unchanged.
+- zh-TW: 點選「重新排列」後長按約 420ms 再垂直拖曳可重排；「完成」仍會儲存順序。非編輯模式的分頁連結行為不變。
+
 ## [v27.15] — 2026-10-24
 
 ### Fixed
