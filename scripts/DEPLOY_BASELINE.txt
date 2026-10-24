@@ -7,5 +7,5 @@ commit=d3637c13f6a3068658010dd77973a29041f747f5
 short=d3637c13
 message=chore: bump display version to v27.16
 captured_at=2026-10-24T11:53:14Z
-display_version=v27.16
+display_version=v27.17
 note=Canonical live line is app_27.0. Bundle 12733512: edit-mode sidebar rearrange blocks native HTML5 link drag (#480).
