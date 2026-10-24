@@ -1,3 +1,12 @@
+## [v27.17] — 2026-10-24
+
+### Changed
+- Industry mcap-weighted upside treemap (#479): in-chart chain labels and upside % use per-cell Plotly `textfont$size` that grows with `|wavg_cagr|` (10–18px, clipped at `color_abs_max`), with `uniformtext` hide disabled so sizes are not flattened.
+
+### Notes
+- en-US: Larger absolute mcap-weighted annualized upside reads larger on the block chart; small or missing upside stays near the minimum size.
+- zh-TW：產業市值加權年化估值漲幅絕對值越大，區塊圖標籤與數字字級越大；缺值或接近 0 維持較小字級。
+
 ## [v27.16] — 2026-10-24
 
 ### Fixed
