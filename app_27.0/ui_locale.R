@@ -1589,6 +1589,16 @@ locale_for_market <- function(mode = get_market_mode()) {
     gp_theme_recession = "Recession / labor",
     gp_theme_equities_index = "Equities / index",
     gp_theme_treasury_yields = "Treasury yields",
+    gp_theme_tw_equity = "Taiwan equities / TAIEX",
+    gp_theme_tw_macro = "Taiwan macro / elections",
+    gp_theme_tw_housing = "Taiwan housing",
+    gp_venue_feex = "未來事件交易所",
+    gp_feex_unavailable = paste0(
+      "未來事件交易所 (xFuture / NCCU) has no live public market feed. ",
+      "Historical academic archives require application; probabilities are left blank — never invented."
+    ),
+    gp_mode_us = "US equity mode · Kalshi + Polymarket priority",
+    gp_mode_tw = "Taiwan equity mode · 未來事件交易所 priority (honest empty if offline) + TW-relevant overlap",
     gp_crowd_agree = "Crowds agree",
     gp_crowd_diverge = "Crowds diverge",
     gp_crowd_mixed = "Crowds mixed",
@@ -6257,6 +6267,16 @@ locale_for_market <- function(mode = get_market_mode()) {
     gp_theme_recession = "衰退／勞動",
     gp_theme_equities_index = "股市／指數",
     gp_theme_treasury_yields = "公債殖利率",
+    gp_theme_tw_equity = "台股／TAIEX",
+    gp_theme_tw_macro = "台灣總經／選舉",
+    gp_theme_tw_housing = "台灣房市",
+    gp_venue_feex = "未來事件交易所",
+    gp_feex_unavailable = paste0(
+      "未來事件交易所（xFuture／政大預測市場研究）目前沒有可用的公開即時行情。",
+      "歷史學術資料庫需申請；機率留白，絕不捏造。"
+    ),
+    gp_mode_us = "美股模式 · 優先 Kalshi + Polymarket",
+    gp_mode_tw = "台股模式 · 優先未來事件交易所（離線則誠實空白）＋台相關重疊合約",
     gp_crowd_agree = "兩市群眾一致",
     gp_crowd_diverge = "兩市群眾分歧",
     gp_crowd_mixed = "兩市群眾分歧有限",
