@@ -7,5 +7,5 @@ commit=11c7f337265123794fa5df7d5d6c33276ed0777a
 short=11c7f337
 message=chore: bump display version to v27.13
 captured_at=2026-10-24T09:34:00Z
-display_version=v27.13
+display_version=v27.14
 note=Canonical live line is app_27.0. Bundle 12733204: login→ready perf — process-once ensure_schema caches, chrome-first ynow-authed before points/ACL, slim resume points, banner without full ledger, ACL batch unlock reads (#473).
