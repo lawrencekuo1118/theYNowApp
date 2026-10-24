@@ -622,13 +622,20 @@ server <- function(input, output, session) {
   }
   session$userData$ynow_auth <- ynow_auth
 
-  # Post-chrome login/resume work (points, ACL refresh, prefs). Tick advances after
-  # the flush that delivers ynow-authed so the client is interactive first.
+  # Post-chrome login/resume work (mint / last-ui reconcile, points, ACL).
+  # Tick advances after the flush that delivers ynow-authed so chrome is first.
   ynow_auth_heavy_tick <- reactiveVal(0L)
-  session$userData$ynow_schedule_auth_heavy <- function(uid = "", notify_base = NULL) {
+  session$userData$ynow_schedule_auth_heavy <- function(uid = "",
+                                                       notify_base = NULL,
+                                                       after_chrome = NULL) {
     uid <- as.character(uid %||% "")[1]
     base_msg <- if (is.null(notify_base)) NULL else as.character(notify_base)[1]
+    after_fn <- if (is.function(after_chrome)) after_chrome else NULL
     session$onFlushed(function() {
+      # Mint / durable last-ui reconcile — never block the ynow-authed flush.
+      if (is.function(after_fn)) {
+        tryCatch(after_fn(), error = function(e) NULL)
+      }
       pts_login <- NULL
       if (nzchar(uid) && exists("ynow_points_on_login", mode = "function")) {
         pts_login <- tryCatch(ynow_points_on_login(uid), error = function(e) NULL)
