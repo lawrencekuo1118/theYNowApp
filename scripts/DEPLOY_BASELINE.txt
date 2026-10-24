@@ -7,5 +7,5 @@ commit=068f445064e5758a10edbe3c6cf7a911d5a920b6
 short=068f4450
 message=chore: bump display version to v27.24
 captured_at=2026-10-24T15:14:36Z
-display_version=v27.24
+display_version=v27.25
 note=Canonical live line is app_27.0. Bundle 12733992: active after tip-hygiene redeploy of #494/#495 (same display v27.24 as 12733971).
