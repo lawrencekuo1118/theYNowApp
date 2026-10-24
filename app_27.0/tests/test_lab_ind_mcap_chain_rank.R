@@ -130,6 +130,35 @@ check("treemap plotly builds", {
   p <- lab_ind_mcap_treemap_plotly(snap, market = "TW", locale = "zh-TW")
   inherits(p, "plotly")
 })
+check("treemap label font |upside| scale", {
+  sz <- lab_ind_mcap_treemap_label_font_sizes(
+    c(0, 10, 20, 40, NA, -10, -20),
+    abs_max = 20
+  )
+  is.numeric(sz) && is.null(names(sz)) && length(sz) == 7L &&
+    all(abs(sz - c(10, 14, 18, 18, 10, 14, 18)) < 1e-9)
+})
+check("treemap plotly textfont size follows |upside|", {
+  snap <- data.frame(
+    chain_id = c("半導體", "金融"),
+    wavg_cagr = c(2, 18),
+    total_mcap = c(5e12, 2e12),
+    n_names = c(12L, 40L),
+    stringsAsFactors = FALSE
+  )
+  df <- lab_ind_mcap_prepare_treemap_df(snap, locale = "zh-TW")
+  p <- lab_ind_mcap_treemap_plotly(snap, market = "TW", locale = "zh-TW")
+  built <- tryCatch(plotly::plotly_build(p), error = function(e) p)
+  raw <- built$x$data[[1]]$textfont$size
+  if (is.null(raw)) raw <- p$x$data[[1]]$textfont$size
+  sizes <- suppressWarnings(as.numeric(unlist(raw, use.names = FALSE)))
+  ids <- as.character(unlist(built$x$data[[1]]$ids, use.names = FALSE))
+  if (!length(ids)) ids <- as.character(unlist(p$x$data[[1]]$ids, use.names = FALSE))
+  i_lo <- match("半導體", ids)
+  i_hi <- match("金融", ids)
+  length(sizes) == nrow(df) && length(sizes) == length(ids) &&
+    !is.na(i_lo) && !is.na(i_hi) && sizes[i_hi] > sizes[i_lo]
+})
 check("Refresh ranking button forces white text vs bluechip btn-default", {
   # Theme .btn-default sets deep blue text; refresh button must win with white.
   grepl(
