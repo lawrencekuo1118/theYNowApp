@@ -1,3 +1,12 @@
+## [v27.21] — 2026-10-24
+
+### Fixed
+- Brand chrome after Search (#489): company full name and LAST PRICE / MARKET CAP / EPS (TTM) icons again use the ticker’s logo primary palette. Tint is scheduled from Search phase1b (not gated on financials), empty logo lookups are not kept in the 24h slow cache, and header KPI CSS yields to brand fills when present.
+
+### Notes
+- en-US: Same extractor as 業務拆解 chart brand colors (`cached_get_corp_logo_colors`). Fallback remains gray name + YNow logo-green icons when logo colors are unavailable.
+- zh-TW：與業務拆解圖表同一套公司 logo 主色來源；擷取失敗時公司名維持灰字、報價 KPI 圖示維持 YNow logo 綠。
+
 ## [v27.20] — 2026-10-24
 
 ### Changed
