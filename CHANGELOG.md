@@ -1,3 +1,12 @@
+## [v27.24] — 2026-10-24
+
+### Added
+- Global Prediction freshness crawl (#494): quote TTL 3m / discovery TTL 15m on fast cache; hard rescan on tab open, focus, TW↔US mode switch, manual refresh; soft periodic while visible; drop expired contracts and reclassify into `breadth_tier` (macro → single-stock). TW/US registries, FEEX honest-empty, Galton/selection-bias framing.
+
+### Notes
+- en-US: Time-bound themes (FOMC, CPI, elections) must not stick on the 24h statement cache; never invent Yes probs; fail closed / honest empty per venue.
+- zh-TW：具時效性的預測主題必須主動重掃；即時報價走快取短 TTL；結算／過期合約剔除後再依 breadth_tier（總體→個股）重分類；不捏造機率；各交易所失敗時誠實空白。
+
 ## [v27.23] — 2026-10-24
 
 ### Changed
