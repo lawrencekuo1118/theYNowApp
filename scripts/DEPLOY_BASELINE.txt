@@ -7,5 +7,5 @@ commit=1c69d482974e0f431e0a854e9e5b080f97821c34
 short=1c69d482
 message=chore: bump display version to v27.12
 captured_at=2026-10-24T08:42:00Z
-display_version=v27.12
+display_version=v27.13
 note=Canonical live line is app_27.0. Bundle 12733086: header logo second click while spinning accelerates spin and cancels other tabs' in-flight work; focus current tab only (#471).
