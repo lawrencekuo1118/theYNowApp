@@ -176,6 +176,12 @@ check(
     grepl("function gotoTab(tab)", ui_src, fixed = TRUE) &&
     grepl("function showSidebarFootTab(tab)", ui_src, fixed = TRUE)
 )
+check(
+  "self-view does not hide sysadmin box (control panel nested inside)",
+  !grepl("body.ynow-self-view .ynow-pts-sysadmin-box", ui_src, fixed = TRUE) &&
+    grepl("body.ynow-self-view #ynow_pts_sysadmin_panel", ui_src, fixed = TRUE) &&
+    grepl("body.ynow-self-view .ynow-sysadmin-login-chrome", ui_src, fixed = TRUE)
+)
 if (exists("ynow_admin_ops_schema_cache_reset", mode = "function")) {
   ynow_admin_ops_schema_cache_reset()
   .ynow_admin_ops_schema_cache$ready <- TRUE

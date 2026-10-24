@@ -5746,14 +5746,19 @@ ui <- dashboardPage(
         .ynow-sysadmin-self-view-group .btn.ynow-sysadmin-btn-omniscient span {
           color: #DC3545 !important;
         }
-        /* View-as: hide control panel + grant workspace. Self-view: hide grant only. */
+        /* View-as: hide whole portal box (leave app as that user).
+           Self-view: hide login chrome + grant/user-list panel only — keep the
+           control-panel bar (Exit / Switch view / Guest / Omniscient) visible.
+           (Control panel lives inside .ynow-pts-sysadmin-box; do not hide the box.) */
         body.ynow-view-as .ynow-sysadmin-control-panel,
         body.ynow-view-as .ynow-sysadmin-unlocked-actions,
         body.ynow-view-as .ynow-pts-sysadmin-box,
         body.ynow-view-as .ynow-sysadmin-login-chrome,
-        body.ynow-view-as #ynow_pts_sysadmin_self_help,
-        body.ynow-self-view .ynow-pts-sysadmin-box,
-        body.ynow-self-view .ynow-sysadmin-login-chrome {
+        body.ynow-view-as #ynow_pts_sysadmin_self_help {
+          display: none !important;
+        }
+        body.ynow-self-view .ynow-sysadmin-login-chrome,
+        body.ynow-self-view #ynow_pts_sysadmin_panel {
           display: none !important;
         }
         @media (max-width: 767px) {
