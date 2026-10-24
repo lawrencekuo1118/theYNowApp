@@ -1286,7 +1286,37 @@ locale_for_market <- function(mode = get_market_mode()) {
       "For conditional unlock, set free uses and/or a time limit greater than zero."
     ),
     access_denied_report = "This report is locked for the signed-in account.",
-    access_pane_note = "This page is locked for the signed-in account. Ask a system admin to unlock it.",
+    access_pane_note = "This page is locked for the signed-in account.",
+    gate_mode_spend_kicker = "Points",
+    gate_mode_spend_title = "Unlock with FYN",
+    gate_mode_spend_body = "This item stays locked. Spend %s FYN on this account to unlock it. Balance: %s FYN.",
+    gate_mode_spend_cta = "Spend %s FYN",
+    gate_mode_spend_short = "Not enough FYN (need %s; balance %s). Top up on Account, then spend to unlock.",
+    gate_mode_spend_ok = "Unlocked.",
+    gate_mode_spend_denied = "This item cannot be unlocked with FYN.",
+    gate_mode_preview_no_spend = "Points are not spent in this preview.",
+    gate_mode_topup_kicker = "Account",
+    gate_mode_topup_title = "Points top-up",
+    gate_mode_topup_body = "This item stays locked on this account. Open Account to top up FYN.",
+    gate_mode_topup_cta = "Open points top-up",
+    lock_gate_spend_kicker = "Points unlock",
+    lock_gate_spend_title = "Unlock with FYN",
+    lock_gate_spend_body_fmt = "Spend %s FYN to unlock this item on this account.",
+    lock_gate_spend_cta = "Spend FYN",
+    lock_gate_topup_kicker = "Points top-up",
+    lock_gate_topup_title = "Points top-up",
+    lock_gate_topup_body = paste0(
+      "This item stays locked on this account. ",
+      "Credit FYN on Points top-up, then come back."
+    ),
+    lock_gate_topup_cta = "Open Points top-up",
+    lock_gate_insufficient_fmt = paste0(
+      "Not enough FYN (need %s; balance %s). ",
+      "Open Points top-up to credit FYN."
+    ),
+    lock_gate_spend_ok = "Unlocked.",
+    lock_gate_preview_no_spend = "Points are not spent in this preview.",
+    lock_gate_spend_denied = "This item cannot be unlocked with FYN.",
     maint_title = "Maintenance",
     maint_help = paste0(
       "Put a page, tab, section, numeric input, or report into maintenance for all users ",
@@ -5931,7 +5961,31 @@ locale_for_market <- function(mode = get_market_mode()) {
     access_bad_points_cost = "請輸入點數解鎖所需的 FYN。",
     access_bad_conditional = "條件解鎖請設定免費次數及／或大於零的限時。",
     access_denied_report = "此報表已對目前登入帳號鎖上。",
-    access_pane_note = "此分頁已對目前登入帳號鎖上。請洽系統管理員解鎖。",
+    access_pane_note = "此分頁已對目前登入帳號鎖上。",
+    gate_mode_spend_kicker = "點數",
+    gate_mode_spend_title = "以 FYN 解鎖",
+    gate_mode_spend_body = "此項目仍鎖定。於本帳戶花費 %s FYN 即可解鎖。餘額：%s FYN。",
+    gate_mode_spend_cta = "花費 %s FYN 解鎖",
+    gate_mode_spend_short = "FYN 不足（需要 %s；餘額 %s）。請至帳號點數儲值後再解鎖。",
+    gate_mode_spend_ok = "已解鎖。",
+    gate_mode_spend_denied = "此項目無法以 FYN 解鎖。",
+    gate_mode_preview_no_spend = "此預覽不扣除點數。",
+    gate_mode_topup_kicker = "帳號",
+    gate_mode_topup_title = "點數儲值",
+    gate_mode_topup_body = "此項目在本帳戶仍鎖定。請至帳號進行點數儲值。",
+    gate_mode_topup_cta = "前往點數儲值",
+    lock_gate_spend_kicker = "點數解鎖",
+    lock_gate_spend_title = "以 FYN 解鎖",
+    lock_gate_spend_body_fmt = "以此帳戶花費 %s FYN，解鎖此項目。",
+    lock_gate_spend_cta = "以 FYN 解鎖",
+    lock_gate_topup_kicker = "點數儲值",
+    lock_gate_topup_title = "點數儲值",
+    lock_gate_topup_body = "此項目對本帳戶仍為鎖定。請至點數儲值記入 FYN 後再回來。",
+    lock_gate_topup_cta = "前往點數儲值",
+    lock_gate_insufficient_fmt = "FYN 不足（需要 %s；餘額 %s）。請至點數儲值記入 FYN。",
+    lock_gate_spend_ok = "已解鎖。",
+    lock_gate_preview_no_spend = "此預覽不扣除點數。",
+    lock_gate_spend_denied = "此項目無法以 FYN 解鎖。",
     maint_title = "維護",
     maint_help = paste0(
       "可將頁面／分頁／區塊／數值框／報表設為維護時段（開始–結束），套用至所有使用者。",
@@ -9347,7 +9401,7 @@ ui_locale_boot_bundle <- function() {
     keep <- grepl(
       paste0(
         "^(menu_|hdr_|about|home_|btn_|feedback_|test_link|smart_|market_|",
-        "lite_|pts_fyn_label|pts_pyn_label|cookie_|sidebar_copyright|sidebar_reorder_)"
+        "lite_|pts_fyn_label|pts_pyn_label|cookie_|sidebar_copyright|sidebar_reorder_|gate_mode_)"
       ),
       names(s)
     )

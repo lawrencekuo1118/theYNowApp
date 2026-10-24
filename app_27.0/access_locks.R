@@ -524,6 +524,44 @@ ynow_access_purge_user <- function(user_id) {
   out
 }
 
+#' Post-login lock gate mode for ACL overlays (and spend observer).
+#' @return "signin" | "spend" | "topup"
+ynow_lock_gate_mode <- function(authed,
+                                unlock_type = NA_character_,
+                                points_cost = NA_integer_) {
+  if (!isTRUE(authed)) return("signin")
+  ut <- ynow_access_normalize_unlock_type(unlock_type, allow_empty = TRUE)
+  cost <- suppressWarnings(as.integer(points_cost)[1])
+  if (identical(ut, YNOW_UNLOCK_POINTS) &&
+      is.finite(cost) && !is.na(cost) && cost >= 1L) {
+    return("spend")
+  }
+  "topup"
+}
+
+#' Wire row for ynowAccessLocks entries (facts only; no derived gate_mode).
+ynow_access_lock_client_row <- function(id,
+                                        effect,
+                                        unlock_type = NA_character_,
+                                        points_cost = NA_integer_) {
+  id <- as.character(id %||% "")[1]
+  eff <- tolower(trimws(as.character(effect %||% "hide")[1]))
+  if (!identical(eff, "lock")) eff <- "hide"
+  out <- list(id = id, effect = eff)
+  if (!identical(eff, "lock")) return(out)
+  ut <- ynow_access_normalize_unlock_type(unlock_type, allow_empty = TRUE)
+  if (!is.na(ut) && nzchar(ut)) {
+    out$unlock_type <- ut
+  }
+  if (identical(ut, YNOW_UNLOCK_POINTS)) {
+    pc <- suppressWarnings(as.integer(points_cost)[1])
+    if (is.finite(pc) && !is.na(pc) && pc >= 1L) {
+      out$points_cost <- as.integer(pc)
+    }
+  }
+  out
+}
+
 .ynow_access_read_file <- function() {
   path <- .ynow_access_file()
   if (!file.exists(path)) return(list())
