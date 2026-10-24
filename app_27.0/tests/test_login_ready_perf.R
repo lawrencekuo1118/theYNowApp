@@ -117,6 +117,17 @@ check(
     grepl("ynow_schedule_auth_heavy", srv, fixed = TRUE) &&
     grepl("after_chrome", srv, fixed = TRUE)
 )
+# Login-class ACL (e.g. tab:asset_transmission) must clear on the first
+# post-chrome flush, before points_on_login, so ATX unlocks like Checklist.
+sched_start <- regexpr("ynow_schedule_auth_heavy <- function", srv, fixed = TRUE)
+sched_end <- regexpr("ynow_pts_view_as <- reactiveVal", srv, fixed = TRUE)
+sched_body <- substr(srv, sched_start, sched_end)
+acl_pos <- regexpr(".ynow_push_access_locks()", sched_body, fixed = TRUE)[1]
+pts_sched_pos <- regexpr("ynow_points_on_login", sched_body, fixed = TRUE)[1]
+check(
+  "post-chrome flush pushes ACL before points",
+  acl_pos > 0 && pts_sched_pos > 0 && acl_pos < pts_sched_pos
+)
 check(
   "banner bundle defaults without ledger",
   grepl("include_ledger = FALSE", srv, fixed = TRUE) ||

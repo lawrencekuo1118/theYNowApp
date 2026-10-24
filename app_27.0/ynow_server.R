@@ -622,8 +622,11 @@ server <- function(input, output, session) {
   }
   session$userData$ynow_auth <- ynow_auth
 
-  # Post-chrome login/resume work (mint / last-ui reconcile, points, ACL).
+  # Post-chrome login/resume work (ACL unlock, mint / last-ui, points).
   # Tick advances after the flush that delivers ynow-authed so chrome is first.
+  # Login-class ACL must clear on that first post-chrome flush, before points,
+  # so Asset Transmission (often ACL-locked with unlock_type=login) unlocks like
+  # freemium Checklist instead of waiting on the points waterfall.
   ynow_auth_heavy_tick <- reactiveVal(0L)
   session$userData$ynow_schedule_auth_heavy <- function(uid = "",
                                                        notify_base = NULL,
@@ -632,6 +635,9 @@ server <- function(input, output, session) {
     base_msg <- if (is.null(notify_base)) NULL else as.character(notify_base)[1]
     after_fn <- if (is.function(after_chrome)) after_chrome else NULL
     session$onFlushed(function() {
+      # Class A ACL unlock (login) before mint/points. Chrome already flushed.
+      tryCatch(.ynow_push_access_locks(), error = function(e) NULL)
+      tryCatch(.ynow_push_maintenance(), error = function(e) NULL)
       # Mint / durable last-ui reconcile — never block the ynow-authed flush.
       if (is.function(after_fn)) {
         tryCatch(after_fn(), error = function(e) NULL)
