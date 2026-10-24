@@ -6149,7 +6149,7 @@ server <- function(input, output, session) {
     )
   })
 
-  # 股權結構分析（Company → OWNERSHIP STRUCTURE；Lite + Full）
+  # 股權結構分析（Company → Board / CB，Convertible bonds — dilution 下方；Lite + Full）
   observeEvent(input$own_holder_click, {
     click <- input$own_holder_click
     nm <- if (is.list(click)) {
@@ -6229,7 +6229,7 @@ server <- function(input, output, session) {
       )
   })
 
-  # 董監改選／可轉債稀釋（Company → FINANCIAL REPORT tab）
+  # 董監改選／可轉債稀釋（Company → FINANCIAL REPORT → Board / CB；ownership 接在下方）
   output$corp_events_ui <- renderUI({
     loc <- tryCatch(ui_locale(), error = function(e) "en")
     loc <- normalize_ui_locale(loc)

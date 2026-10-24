@@ -121,6 +121,18 @@ check("server cb fetch", grepl("fetch_tw_convertible_bonds_live", srv, fixed = T
 check("py get_company_key_dates", grepl("def get_company_key_dates", py, fixed = TRUE))
 check("locale tab map corp_events", grepl('"corp_events" = "tab_corp_events"', 
   paste(readLines(file.path(root, "ui_locale.R"), warn = FALSE), collapse = "\n"), fixed = TRUE))
+# Ownership Structure Analysis lives under Board / CB, below CB dilution host
+pos_ce <- regexpr('value = "corp_events"', ui, fixed = TRUE)[1]
+pos_sec <- regexpr('value = "sec_notes"', ui, fixed = TRUE)[1]
+ce_chunk <- if (pos_ce > 0 && pos_sec > pos_ce) substr(ui, pos_ce, pos_sec) else ""
+check(
+  "ui ownership under Board/CB tab",
+  grepl("ynow-ownership-under-cb", ce_chunk, fixed = TRUE) &&
+    grepl("ownership_structure_top_ui", ce_chunk, fixed = TRUE) &&
+    regexpr("corp_events_ui", ce_chunk, fixed = TRUE)[1] <
+      regexpr("ynow-ownership-under-cb", ce_chunk, fixed = TRUE)[1]
+)
+check("ui no duplicate ownership tabBox", !grepl('id = "dashboard_ownership"', ui, fixed = TRUE))
 
 # Optional live smoke (network) — not part of default offline path
 live <- identical(Sys.getenv("YNOW_CORP_EVENTS_LIVE"), "1")
