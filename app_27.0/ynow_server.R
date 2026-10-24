@@ -1699,7 +1699,8 @@ server <- function(input, output, session) {
     .ynow_view_as_push_chrome(va)
   })
 
-  #' Push / clear self view chrome (guest / signed_in / omniscient).
+  #' Push / clear self view body classes (guest / signed_in / omniscient).
+  #' No floating self-view reminder banner — exit lives on the control-panel bar.
   .ynow_self_view_push_chrome <- function(mode = NULL) {
     loc <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "en")
     .lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
@@ -1714,40 +1715,11 @@ server <- function(input, output, session) {
       )
       return(invisible(FALSE))
     }
-    mode_lab <- switch(
-      mode,
-      guest = .lab("pts_sysadmin_self_guest", "Guest mode"),
-      signed_in = .lab("pts_sysadmin_self_signed_in", "Signed-in user mode"),
-      omniscient = .lab("pts_sysadmin_self_omniscient", "Omniscient mode"),
-      mode
-    )
-    hint <- switch(
-      mode,
-      guest = .lab(
-        "pts_sysadmin_self_chrome_guest",
-        "Guest mode: locks and hides match all-user guest restrictions."
-      ),
-      signed_in = .lab(
-        "pts_sysadmin_self_chrome_signed_in",
-        paste0(
-          "Signed-in user mode: only all-user member restrictions (no per-user overrides). ",
-          "Settings and Account are openable like a signed-in member."
-        )
-      ),
-      omniscient = .lab(
-        "pts_sysadmin_self_chrome_omniscient",
-        "Omniscient mode: all feature locks and hides lifted. Title Loading is warning red."
-      ),
-      ""
-    )
     tryCatch(
       session$sendCustomMessage(
         "ynowSelfViewMode",
         list(
           mode = mode,
-          mode_label = mode_lab,
-          active_label = .lab("pts_sysadmin_self_active", "Self view active"),
-          hint = hint,
           exit_label = .lab("pts_sysadmin_self_exit", "Exit self view"),
           label_sign_out = .lab("auth_sign_out", "Sign out")
         )
@@ -2371,9 +2343,7 @@ server <- function(input, output, session) {
   observeEvent(input$ynow_pts_sysadmin_self_guest, {
     .ynow_self_view_apply("guest")
   }, ignoreInit = TRUE)
-  observeEvent(input$ynow_pts_sysadmin_self_signed_in, {
-    .ynow_self_view_apply("signed_in")
-  }, ignoreInit = TRUE)
+  # Signed-in user mode is the default on sysadmin enter — no bar button.
   observeEvent(input$ynow_pts_sysadmin_self_omniscient, {
     .ynow_self_view_apply("omniscient")
   }, ignoreInit = TRUE)

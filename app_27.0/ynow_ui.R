@@ -3490,72 +3490,87 @@ beta_rolling_section_ui <- function() {
                 )
               )
             ),
-            # Unlocked (not view-as / self-view): Leave + Switch view + self modes.
-            # View-as / self-view exit lives in the fixed chrome bar.
+            # Unlocked: one control-panel bar (Exit / Switch view / Self view modes).
+            # Signed-in user mode is the default on enter — no Signed-in button.
+            # Self-view exit lives on this bar (no floating reminder banner).
             tags$div(
-              class = "ynow-sysadmin-unlocked-actions",
-              style = "margin-top: 8px; display:none; flex-wrap:wrap; gap:8px; align-items:center;",
-              actionButton(
-                "ynow_pts_sysadmin_exit",
-                label = tags$span(
-                  id = "ynow_pts_sysadmin_exit_label",
-                  "Exit system admin"
+              id = "ynow_sysadmin_control_panel",
+              class = "ynow-sysadmin-control-panel ynow-sysadmin-unlocked-actions",
+              role = "toolbar",
+              `aria-label` = "System admin control panel",
+              tags$div(
+                class = "ynow-sysadmin-control-panel__inner",
+                tags$div(
+                  class = "ynow-sysadmin-control-panel__cluster ynow-sysadmin-control-panel__cluster--session",
+                  actionButton(
+                    "ynow_pts_sysadmin_exit",
+                    label = tags$span(
+                      id = "ynow_pts_sysadmin_exit_label",
+                      "Exit system admin"
+                    ),
+                    class = "btn-default btn-sm"
+                  ),
+                  actionButton(
+                    "ynow_pts_sysadmin_viewas",
+                    label = tags$span(
+                      id = "ynow_pts_sysadmin_viewas_label",
+                      "Switch view"
+                    ),
+                    class = "btn-info btn-sm"
+                  )
                 ),
-                class = "btn-default"
-              ),
-              actionButton(
-                "ynow_pts_sysadmin_viewas",
-                label = tags$span(
-                  id = "ynow_pts_sysadmin_viewas_label",
-                  "Switch view"
-                ),
-                class = "btn-info"
-              ),
-              tags$span(
-                class = "ynow-sysadmin-self-view-group",
-                style = "display:inline-flex; flex-wrap:wrap; gap:8px; align-items:center;",
                 tags$span(
-                  id = "ynow_pts_sysadmin_self_view_label",
-                  style = "font-weight:600; color:#444;",
-                  "Self view"
+                  class = "ynow-sysadmin-control-panel__rule",
+                  `aria-hidden` = "true"
                 ),
-                actionButton(
-                  "ynow_pts_sysadmin_self_guest",
-                  label = tags$span(
-                    id = "ynow_pts_sysadmin_self_guest_label",
-                    "Guest mode"
+                tags$div(
+                  class = paste(
+                    "ynow-sysadmin-control-panel__cluster",
+                    "ynow-sysadmin-control-panel__cluster--self",
+                    "ynow-sysadmin-self-view-group"
                   ),
-                  class = "btn-default btn-sm",
-                  title = "Quick apply guest restrictions"
-                ),
-                actionButton(
-                  "ynow_pts_sysadmin_self_signed_in",
-                  label = tags$span(
-                    id = "ynow_pts_sysadmin_self_signed_in_label",
-                    "Signed-in user mode"
+                  tags$span(
+                    id = "ynow_pts_sysadmin_self_view_label",
+                    class = "ynow-sysadmin-control-panel__label",
+                    "Self view"
                   ),
-                  class = "btn-default btn-sm",
-                  title = "Quick apply all-user member restrictions"
-                ),
-                actionButton(
-                  "ynow_pts_sysadmin_self_omniscient",
-                  label = tags$span(
-                    id = "ynow_pts_sysadmin_self_omniscient_label",
-                    "Omniscient mode"
+                  actionButton(
+                    "ynow_pts_sysadmin_self_guest",
+                    label = tags$span(
+                      id = "ynow_pts_sysadmin_self_guest_label",
+                      "Guest mode"
+                    ),
+                    class = "btn-default btn-sm",
+                    title = "Quick apply guest restrictions"
                   ),
-                  # Same chrome as Guest mode (btn-default); red text via shared class.
-                  class = "btn-default btn-sm ynow-sysadmin-btn-omniscient",
-                  title = "Quick apply — lift all locks and hides"
+                  actionButton(
+                    "ynow_pts_sysadmin_self_omniscient",
+                    label = tags$span(
+                      id = "ynow_pts_sysadmin_self_omniscient_label",
+                      "Omniscient mode"
+                    ),
+                    # Same chrome as Guest mode (btn-default); red text via shared class.
+                    class = "btn-default btn-sm ynow-sysadmin-btn-omniscient",
+                    title = "Quick apply — lift all locks and hides"
+                  ),
+                  actionButton(
+                    "ynow_pts_sysadmin_self_exit",
+                    label = tags$span(
+                      id = "ynow_pts_sysadmin_self_exit_label",
+                      "Exit self view"
+                    ),
+                    class = "btn-default btn-sm ynow-sysadmin-control-panel__exit-self"
+                  )
                 )
               )
             ),
             tags$p(
               id = "ynow_pts_sysadmin_self_help",
-              class = "ynow-sysadmin-unlocked-actions text-muted",
+              class = "ynow-sysadmin-control-panel-help text-muted",
               style = "margin:6px 0 0; font-size:12px; line-height:1.45; display:none;",
               paste0(
-                "Quick apply self view (guest / signed-in / omniscient). ",
-                "Separate from Switch view of a selected user."
+                "Quick apply self view (guest / omniscient). ",
+                "Signed-in user mode is the default. Separate from Switch view of a selected user."
               )
             ),
             uiOutput("ynow_pts_sysadmin_panel")
@@ -4208,36 +4223,7 @@ ui <- dashboardPage(
         )
       )
     ),
-    # Self view chrome: guest / signed-in / omniscient (admin preview of self).
-    tags$div(
-      id = "ynow_selfview_chrome",
-      class = "ynow-selfview-chrome",
-      role = "status",
-      `aria-live` = "polite",
-      tags$strong(
-        id = "ynow_selfview_chrome_active_label",
-        "Self view active"
-      ),
-      tags$span(
-        id = "ynow_selfview_chrome_mode",
-        class = "ynow-selfview-chrome-mode",
-        ""
-      ),
-      tags$span(
-        id = "ynow_selfview_chrome_hint",
-        style = "opacity:0.92;",
-        "Self view mode is active."
-      ),
-      tags$button(
-        id = "ynow_selfview_chrome_exit",
-        type = "button",
-        class = "btn btn-default btn-sm",
-        tags$span(
-          id = "ynow_selfview_chrome_exit_label",
-          "Exit self view"
-        )
-      )
-    ),
+    # Self-view reminder toast removed — exit lives on the control-panel bar.
     # C-STRUCT-02 seam 2: cookie banner / panel / reopen + prefs JS (sibling).
     .ynow_cookie_notice_ui(),
     # Account login modal/CSS — omit when disabled (do not inject NULL children)
@@ -4846,43 +4832,7 @@ ui <- dashboardPage(
         body.ynow-view-as .ynow-viewas-chrome {
           display: flex;
         }
-        /* Self view chrome (guest / signed-in / omniscient) */
-        .ynow-selfview-chrome {
-          display: none;
-          position: fixed;
-          z-index: 19000;
-          left: 50%;
-          transform: translateX(-50%);
-          top: 8px;
-          max-width: min(920px, calc(100vw - 24px));
-          padding: 8px 12px;
-          border-radius: 6px;
-          background: rgba(32, 32, 36, 0.92);
-          color: #f0f0f0;
-          border: 1px solid rgba(220, 53, 69, 0.45);
-          box-shadow: 0 4px 18px rgba(0, 0, 0, 0.28);
-          font-size: 13px;
-          line-height: 1.4;
-          align-items: center;
-          gap: 10px;
-          flex-wrap: wrap;
-        }
-        body.ynow-self-view .ynow-selfview-chrome {
-          display: flex;
-        }
-        body.ynow-omniscient .ynow-selfview-chrome {
-          border-color: rgba(220, 53, 69, 0.85);
-        }
-        .ynow-selfview-chrome-mode {
-          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-          font-size: 12px;
-          padding: 1px 6px;
-          border-radius: 3px;
-          background: rgba(255, 255, 255, 0.08);
-        }
-        body.ynow-omniscient .ynow-selfview-chrome-mode {
-          color: #ff8a95;
-        }
+        /* Self-view active toast/banner intentionally omitted (exit on control panel). */
         .ynow-viewas-chrome code {
           color: #e8e8e8;
           background: rgba(255, 255, 255, 0.08);
@@ -5633,10 +5583,65 @@ ui <- dashboardPage(
         body.ynow-sysadmin-on #ynow_pts_sysadmin_need_enter {
           display: none !important;
         }
-        body.ynow-sysadmin-on:not(.ynow-view-as):not(.ynow-self-view) .ynow-sysadmin-unlocked-actions {
+        /* One control-panel bar (cohesive strip) — stays visible in self-view */
+        .ynow-sysadmin-control-panel {
+          display: none;
+          margin-top: 8px;
+          width: 100%;
+          box-sizing: border-box;
+          padding: 8px 10px;
+          border: 1px solid #d6d6d6;
+          border-radius: 6px;
+          background: linear-gradient(180deg, #f7f7f8 0%, #efefef 100%);
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+        }
+        .ynow-sysadmin-control-panel__inner {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 8px 10px;
+          width: 100%;
+        }
+        .ynow-sysadmin-control-panel__cluster {
+          display: inline-flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 6px;
+        }
+        .ynow-sysadmin-control-panel__rule {
+          display: inline-block;
+          width: 1px;
+          align-self: stretch;
+          min-height: 28px;
+          background: #cfcfcf;
+          margin: 0 2px;
+        }
+        .ynow-sysadmin-control-panel__label {
+          font-weight: 600;
+          color: #444;
+          font-size: 13px;
+          margin-right: 2px;
+          white-space: nowrap;
+        }
+        .ynow-sysadmin-control-panel .btn {
+          margin: 0;
+        }
+        .ynow-sysadmin-control-panel__exit-self {
+          display: none !important;
+        }
+        body.ynow-self-view .ynow-sysadmin-control-panel__exit-self {
+          display: inline-block !important;
+        }
+        /* Active self-view mode cue on the bar (signed-in = default, no button) */
+        body.ynow-self-view-guest #ynow_pts_sysadmin_self_guest,
+        body.ynow-omniscient #ynow_pts_sysadmin_self_omniscient {
+          box-shadow: inset 0 0 0 1px #888;
+          background: #e8e8e8 !important;
+        }
+        body.ynow-sysadmin-on:not(.ynow-view-as) .ynow-sysadmin-control-panel {
           display: flex !important;
         }
-        body.ynow-sysadmin-on:not(.ynow-view-as):not(.ynow-self-view) #ynow_pts_sysadmin_self_help {
+        body.ynow-sysadmin-on:not(.ynow-view-as) #ynow_pts_sysadmin_self_help {
           display: block !important;
         }
         /* System admin: 「套用變更」/ Apply changes → red bg + white text */
@@ -5666,22 +5671,24 @@ ui <- dashboardPage(
         .ynow-sysadmin-self-view-group .btn.ynow-sysadmin-btn-omniscient span {
           color: #DC3545 !important;
         }
-        /* View-as / self-view: hide grant workspace; exit lives only in fixed chrome */
+        /* View-as: hide control panel + grant workspace. Self-view: hide grant only. */
+        body.ynow-view-as .ynow-sysadmin-control-panel,
         body.ynow-view-as .ynow-sysadmin-unlocked-actions,
         body.ynow-view-as .ynow-pts-sysadmin-box,
         body.ynow-view-as .ynow-sysadmin-login-chrome,
         body.ynow-view-as #ynow_pts_sysadmin_self_help,
-        body.ynow-self-view .ynow-sysadmin-unlocked-actions,
         body.ynow-self-view .ynow-pts-sysadmin-box,
-        body.ynow-self-view .ynow-sysadmin-login-chrome,
-        body.ynow-self-view #ynow_pts_sysadmin_self_help {
+        body.ynow-self-view .ynow-sysadmin-login-chrome {
           display: none !important;
         }
         @media (max-width: 767px) {
-          .ynow-sysadmin-unlocked-actions {
+          .ynow-sysadmin-control-panel__inner {
             width: 100%;
           }
-          .ynow-sysadmin-unlocked-actions .btn {
+          .ynow-sysadmin-control-panel__rule {
+            display: none;
+          }
+          .ynow-sysadmin-control-panel .btn {
             flex: 1 1 auto;
             min-width: 40%;
           }
@@ -12515,19 +12522,15 @@ ui <- dashboardPage(
             if (selfViewLab && s.pts_sysadmin_self_view_label) selfViewLab.textContent = s.pts_sysadmin_self_view_label;
             var selfGuestLab = document.getElementById('ynow_pts_sysadmin_self_guest_label');
             if (selfGuestLab && s.pts_sysadmin_self_guest) selfGuestLab.textContent = s.pts_sysadmin_self_guest;
-            var selfSignedLab = document.getElementById('ynow_pts_sysadmin_self_signed_in_label');
-            if (selfSignedLab && s.pts_sysadmin_self_signed_in) selfSignedLab.textContent = s.pts_sysadmin_self_signed_in;
             var selfOmniLab = document.getElementById('ynow_pts_sysadmin_self_omniscient_label');
             if (selfOmniLab && s.pts_sysadmin_self_omniscient) selfOmniLab.textContent = s.pts_sysadmin_self_omniscient;
+            var selfExitLab = document.getElementById('ynow_pts_sysadmin_self_exit_label');
+            if (selfExitLab && s.pts_sysadmin_self_exit) selfExitLab.textContent = s.pts_sysadmin_self_exit;
             var selfHelp = document.getElementById('ynow_pts_sysadmin_self_help');
             if (selfHelp && s.pts_sysadmin_self_help) selfHelp.textContent = s.pts_sysadmin_self_help;
-            var svChromeActive = document.getElementById('ynow_selfview_chrome_active_label');
-            if (svChromeActive && s.pts_sysadmin_self_active) svChromeActive.textContent = s.pts_sysadmin_self_active;
-            var svChromeExit = document.getElementById('ynow_selfview_chrome_exit_label');
-            if (svChromeExit && s.pts_sysadmin_self_exit) svChromeExit.textContent = s.pts_sysadmin_self_exit;
-            /* Refresh self-view chrome hint/mode labels if a mode is already active. */
-            if (typeof window.ynowRefreshSelfViewChromeLocale === 'function') {
-              try { window.ynowRefreshSelfViewChromeLocale(s); } catch (eSvLoc) {}
+            var ctrlPanel = document.getElementById('ynow_sysadmin_control_panel');
+            if (ctrlPanel && s.pts_sysadmin_control_panel_aria) {
+              ctrlPanel.setAttribute('aria-label', s.pts_sysadmin_control_panel_aria);
             }
             var adminOpsTab = document.getElementById('ynow_admin_ops_tab_label');
             if (adminOpsTab && s.admin_ops_tab) adminOpsTab.textContent = s.admin_ops_tab;
@@ -13436,26 +13439,6 @@ ui <- dashboardPage(
               }
             });
             window.__ynowSelfViewMode = window.__ynowSelfViewMode || '';
-            window.ynowRefreshSelfViewChromeLocale = function (s) {
-              if (!s) return;
-              var mode = window.__ynowSelfViewMode || '';
-              var modeEl = document.getElementById('ynow_selfview_chrome_mode');
-              var hintEl = document.getElementById('ynow_selfview_chrome_hint');
-              var modeLab = '';
-              var hint = '';
-              if (mode === 'guest') {
-                modeLab = s.pts_sysadmin_self_guest || 'Guest mode';
-                hint = s.pts_sysadmin_self_chrome_guest || '';
-              } else if (mode === 'signed_in') {
-                modeLab = s.pts_sysadmin_self_signed_in || 'Signed-in user mode';
-                hint = s.pts_sysadmin_self_chrome_signed_in || '';
-              } else if (mode === 'omniscient') {
-                modeLab = s.pts_sysadmin_self_omniscient || 'Omniscient mode';
-                hint = s.pts_sysadmin_self_chrome_omniscient || '';
-              }
-              if (modeEl && modeLab) modeEl.textContent = modeLab;
-              if (hintEl && hint) hintEl.textContent = hint;
-            };
             addHandler('ynowSelfViewMode', function (payload) {
               if (!payload) return;
               var mode = String(payload.mode || '').toLowerCase();
@@ -13501,14 +13484,10 @@ ui <- dashboardPage(
                   window.ynowApplySessionLikeAuthChrome(true, null);
                 }
               }
-              var actEl = document.getElementById('ynow_selfview_chrome_active_label');
-              if (actEl && payload.active_label) actEl.textContent = String(payload.active_label);
-              var modeEl = document.getElementById('ynow_selfview_chrome_mode');
-              if (modeEl) modeEl.textContent = on && payload.mode_label ? String(payload.mode_label) : '';
-              var hintEl = document.getElementById('ynow_selfview_chrome_hint');
-              if (hintEl && payload.hint) hintEl.textContent = String(payload.hint);
-              var exitLab = document.getElementById('ynow_selfview_chrome_exit_label');
-              if (exitLab && payload.exit_label) exitLab.textContent = String(payload.exit_label);
+              if (payload.exit_label) {
+                var exitLab = document.getElementById('ynow_pts_sysadmin_self_exit_label');
+                if (exitLab) exitLab.textContent = String(payload.exit_label);
+              }
               if (typeof window.ynowApplyAccessLocks === 'function') {
                 try { window.ynowApplyAccessLocks(); } catch (eAl) {}
               }
@@ -13963,19 +13942,7 @@ ui <- dashboardPage(
                 );
               });
             })();
-            (function bindSelfViewChromeExit() {
-              var btn = document.getElementById('ynow_selfview_chrome_exit');
-              if (!btn || btn.__ynowBound) return;
-              btn.__ynowBound = true;
-              btn.addEventListener('click', function () {
-                if (!window.Shiny || !Shiny.setInputValue) return;
-                Shiny.setInputValue(
-                  'ynow_pts_sysadmin_self_exit',
-                  (window.__ynowSelfViewExitClicks = (window.__ynowSelfViewExitClicks || 0) + 1),
-                  { priority: 'event' }
-                );
-              });
-            })();
+            /* Exit self view is a native actionButton on the control-panel bar. */
             addHandler('ynowAuthFeature', function (payload) {
               if (!payload) return;
               if (payload.on) document.body.classList.add('ynow-auth-feature');
