@@ -120,6 +120,24 @@ check("JS long-press drag reorder", {
     grepl("ynowApplySidebarTabOrder", ui, fixed = TRUE) &&
     grepl("LONG_MS = 420", ui, fixed = TRUE)
 })
+check("CSS edit-mode sidebar link sets -webkit-user-drag none", {
+  grepl(
+    "body\\.ynow-sidebar-reorder-edit \\.sidebar-menu > li > a \\{[^}]*-webkit-user-drag:\\s*none",
+    auth,
+    perl = TRUE
+  )
+})
+check("JS dragstart preventDefault gated by edit mode", {
+  grepl(
+    "on\\('dragstart', '\\.sidebar-menu > li > a', function\\(e\\) \\{[\\s\\S]{0,220}if \\(!editOn\\) return;[\\s\\S]{0,160}preventDefault\\(\\)",
+    ui,
+    perl = TRUE
+  )
+})
+check("JS sets draggable false in edit mode", {
+  grepl("setAttribute('draggable', 'false')", ui, fixed = TRUE) &&
+    grepl("removeAttribute('draggable')", ui, fixed = TRUE)
+})
 check("page-pin long-press on menu disabled", {
   !grepl(
     "pointerdown', '.sidebar-menu a\\[data-value\\], .ynow-sidebar-pin-tile'",
