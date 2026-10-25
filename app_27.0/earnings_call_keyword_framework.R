@@ -544,8 +544,55 @@ ynow_ec_keyword_analyze <- function(text, prior = NULL, meta = NULL) {
   )
 }
 
+#' Status-only sentence harvest for 訂單／主要供應商／主要客戶 (never invent amounts).
+ynow_ec_kw_extract_order_focus <- function(text, lex = NULL, max_n = 6L) {
+  lex <- lex %||% (if (exists("ynow_ec_keyword_lexicon", mode = "function")) {
+    ynow_ec_keyword_lexicon()
+  } else {
+    list()
+  })
+  empty <- list(
+    order_notes = character(0),
+    supplier_notes = character(0),
+    customer_notes = character(0)
+  )
+  parts <- .ynow_ec_kw_split_sentences(text)
+  if (!length(parts)) return(empty)
+  role_pats <- function(role) {
+    node <- lex[[role]]
+    if (is.null(node)) return(character(0))
+    c(as.character(node$zh %||% character(0)), as.character(node$en %||% character(0)))
+  }
+  list(
+    order_notes = .ynow_ec_kw_pick_sentences(parts, role_pats("orders"), max_n),
+    supplier_notes = .ynow_ec_kw_pick_sentences(parts, role_pats("suppliers"), max_n),
+    customer_notes = .ynow_ec_kw_pick_sentences(parts, role_pats("customers"), max_n)
+  )
+}
+
+#' Trap flags kept only when they matter for supplier / order / customer reading.
+.ynow_ec_kw_order_focus_traps <- function(analysis, focus) {
+  traps <- analysis$traps %||% list()
+  flags <- character(0)
+  # Trap1 always relevant: prefer primary transcript/memo for order facts.
+  if (isTRUE(traps$trap1_summary_only)) flags <- c(flags, "trap1_summary_only")
+  has_order_topic <- length(focus$order_notes) > 0L ||
+    length(focus$supplier_notes) > 0L ||
+    length(focus$customer_notes) > 0L
+  # Trap2/3 only when the text is also about orders/customers/suppliers.
+  if (isTRUE(has_order_topic) && isTRUE(traps$trap2_beat_without_guide_upper)) {
+    flags <- c(flags, "trap2_beat_without_guide_upper")
+  }
+  if (isTRUE(has_order_topic) && isTRUE(traps$trap3_number_without_tone)) {
+    flags <- c(flags, "trap3_number_without_tone")
+  }
+  unique(flags)
+}
+
 #' Attach keyword analysis onto an earnings-call facts / fetch result.
-#' Does not overwrite numeric amounts. Merges themes. Honest no-op if blank.
+#' Product surface: only 訂單／主要供應商／主要客戶 (+ order-relevant traps).
+#' Tone / CapEx / bridging / token walls stay inside keyword_analysis (internal).
+#' Does not overwrite numeric amounts. Honest no-op if blank.
 ynow_ec_attach_keyword_analysis <- function(result, text = NULL, prior = NULL) {
   if (!is.list(result)) return(result)
   txt <- .ynow_ec_kw_chr(text)
@@ -562,22 +609,53 @@ ynow_ec_attach_keyword_analysis <- function(result, text = NULL, prior = NULL) {
     date = result$published %||% result$date
   )
   analysis <- ynow_ec_keyword_analyze(txt, prior = prior, meta = meta)
+  focus <- ynow_ec_kw_extract_order_focus(txt)
+  analysis$order_focus <- focus
   result$keyword_analysis <- analysis
-  # Merge themes without inventing amounts.
-  old_th <- as.character(result$themes %||% character(0))
-  result$themes <- unique(c(old_th, as.character(analysis$themes %||% character(0))))
-  # Compact status-only notes for 業務拆解 / order-research surfaces.
-  kdb <- analysis$keyword_db %||% list()
-  result$keyword_tone_score <- kdb$tone_score %||% NA_integer_
-  result$keyword_guidance_update <- .ynow_ec_kw_chr(kdb$guidance_update)
-  result$keyword_top_positives <- as.character(kdb$top_positives %||% character(0))
-  result$keyword_top_risks <- as.character(kdb$top_risks %||% character(0))
-  result$keyword_trap_flags <- c(
-    if (isTRUE(analysis$traps$trap1_summary_only)) "trap1_summary_only",
-    if (isTRUE(analysis$traps$trap2_beat_without_guide_upper)) "trap2_beat_without_guide_upper",
-    if (isTRUE(analysis$traps$trap3_number_without_tone)) "trap3_number_without_tone"
-  )
-  result$keyword_bridging_notes <- as.character(analysis$qa$bridging_hits %||% character(0))
-  result$keyword_capex_notes <- as.character(analysis$presentation$capex_notes %||% character(0))
+
+  # Surface fields for 業務拆解 → order-research (status-only).
+  result$keyword_order_notes <- focus$order_notes
+  result$keyword_supplier_notes <- focus$supplier_notes
+  result$keyword_customer_notes <- focus$customer_notes
+  result$keyword_trap_flags <- .ynow_ec_kw_order_focus_traps(analysis, focus)
+
+  # Enrich existing note buckets without inventing amounts / overwriting parties.
+  result$order_notes <- unique(c(
+    .ynow_ec_kw_chr_vec_safe(result$order_notes),
+    focus$order_notes
+  ))
+  result$supply_chain_notes <- unique(c(
+    .ynow_ec_kw_chr_vec_safe(result$supply_chain_notes),
+    focus$supplier_notes
+  ))
+  # Customer concentration status lives beside outlook when no dedicated bucket.
+  if (length(focus$customer_notes)) {
+    result$customer_notes <- unique(c(
+      .ynow_ec_kw_chr_vec_safe(result$customer_notes),
+      focus$customer_notes
+    ))
+  }
+
+  themes <- as.character(result$themes %||% character(0))
+  if (length(focus$order_notes)) themes <- c(themes, "order_status")
+  if (length(focus$supplier_notes)) themes <- c(themes, "supply_chain_status")
+  if (length(focus$customer_notes)) themes <- c(themes, "customer_concentration_status")
+  if (length(result$keyword_trap_flags)) themes <- c(themes, "reading_trap_flag")
+  result$themes <- unique(c(themes, "order_focus"))
+
+  # Do not surface general tone / token / CapEx / bridging on the result object.
+  result$keyword_tone_score <- NULL
+  result$keyword_guidance_update <- NULL
+  result$keyword_top_positives <- NULL
+  result$keyword_top_risks <- NULL
+  result$keyword_bridging_notes <- NULL
+  result$keyword_capex_notes <- NULL
   result
+}
+
+.ynow_ec_kw_chr_vec_safe <- function(x) {
+  if (is.null(x)) return(character(0))
+  v <- as.character(unlist(x))
+  v <- trimws(v)
+  v[nzchar(v) & !is.na(v)]
 }

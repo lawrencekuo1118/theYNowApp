@@ -658,33 +658,18 @@ ynow_us_earnings_call_fetch <- function(ticker) {
 }
 
 #' Shape for payload$order_disclosures$earnings_call → 業務拆解 order research.
+#' Surface only 訂單／主要供應商／主要客戶 (+ order-relevant traps).
 .ynow_ec_kw_disclosure_fields <- function(fetched) {
+  chr_vec <- function(x) {
+    v <- as.character(unlist(x %||% character(0)))
+    trimws(v[nzchar(trimws(v))])
+  }
   list(
-    keyword_tone_score = {
-      v <- suppressWarnings(as.integer(fetched$keyword_tone_score %||% NA_integer_)[1])
-      if (is.finite(v)) v else NA_integer_
-    },
-    keyword_guidance_update = .ynow_us_ec_chr(fetched$keyword_guidance_update),
-    keyword_top_positives = {
-      v <- as.character(unlist(fetched$keyword_top_positives %||% character(0)))
-      trimws(v[nzchar(trimws(v))])
-    },
-    keyword_top_risks = {
-      v <- as.character(unlist(fetched$keyword_top_risks %||% character(0)))
-      trimws(v[nzchar(trimws(v))])
-    },
-    keyword_trap_flags = {
-      v <- as.character(unlist(fetched$keyword_trap_flags %||% character(0)))
-      trimws(v[nzchar(trimws(v))])
-    },
-    keyword_bridging_notes = {
-      v <- as.character(unlist(fetched$keyword_bridging_notes %||% character(0)))
-      trimws(v[nzchar(trimws(v))])
-    },
-    keyword_capex_notes = {
-      v <- as.character(unlist(fetched$keyword_capex_notes %||% character(0)))
-      trimws(v[nzchar(trimws(v))])
-    }
+    keyword_order_notes = chr_vec(fetched$keyword_order_notes),
+    keyword_supplier_notes = chr_vec(fetched$keyword_supplier_notes),
+    keyword_customer_notes = chr_vec(fetched$keyword_customer_notes),
+    keyword_trap_flags = chr_vec(fetched$keyword_trap_flags),
+    customer_notes = chr_vec(fetched$customer_notes)
   )
 }
 

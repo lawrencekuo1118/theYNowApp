@@ -26,18 +26,23 @@ lex <- ynow_ec_keyword_lexicon()
 check("lexicon has skipped steps 1 and 5", {
   all(c("1_full_text_map_scan", "5_equity_story_narrative") %in% (lex$skipped_steps %||% character(0)))
 })
-check("lexicon encodes steps 2–4 + traps + keyword db", {
+check("lexicon product focus is supplier/order/customer", {
+  all(c("major_suppliers", "orders_backlog_bookings", "major_customers") %in%
+        (lex$product_focus %||% character(0)))
+})
+check("lexicon encodes steps 2–4 + order focus + traps", {
   enc <- lex$encoded_steps %||% character(0)
   all(c(
     "2_presentation_deep_read",
     "3_qa_close_read",
     "4_tone_and_wording_delta",
+    "order_focus_extract",
     "keyword_db_template",
     "reading_traps"
   ) %in% enc)
 })
-check("positive/warning/capex/bridging roles present", {
-  all(c("positive", "warning", "capex", "bridging", "hedge", "qa_followup", "guidance_verbs") %in% names(lex))
+check("order/supplier/customer roles present", {
+  all(c("orders", "suppliers", "customers", "positive", "warning", "capex", "bridging") %in% names(lex))
 })
 
 empty <- ynow_ec_keyword_analyze("")
@@ -48,6 +53,9 @@ sample_zh <- paste(
   "本季毛利率為47.5%，主要受惠於先進製程出貨比例提升。",
   "我們預期下季毛利率將維持在47%至49%的區間。",
   "今年計畫資本支出上調，擴產重心在先進製程。",
+  "在手訂單能見度約兩個季度；新訂單較上季改善。",
+  "主要供應商供貨穩定，供應鏈缺料壓力緩解。",
+  "主要客戶占營收約三成；新客戶導入中。",
   "客戶庫存持續調整中。需求持續強勁。",
   "分析師問答：定價方面我們持續維持紀律。但我更想強調的是產品組合優化。",
   "能否給我們更多量化的細節？",
@@ -114,6 +122,12 @@ trap1 <- ynow_ec_kw_detect_traps(
 )
 check("trap1 summary-only", isTRUE(trap1$trap1_summary_only))
 
+# Order-focus extract (surface buckets only).
+focus <- ynow_ec_kw_extract_order_focus(sample_zh)
+check("order-focus harvests order notes", length(focus$order_notes) >= 1L)
+check("order-focus harvests supplier notes", length(focus$supplier_notes) >= 1L)
+check("order-focus harvests customer notes", length(focus$customer_notes) >= 1L)
+
 # Attach onto a fetch-shaped result without inventing amounts.
 base <- list(
   ok = TRUE,
@@ -128,9 +142,17 @@ base <- list(
 )
 attached <- ynow_ec_attach_keyword_analysis(base, text = sample_zh)
 check("attach keeps backlog NA", !is.finite(attached$backlog %||% NA_real_))
-check("attach merges themes", "tone_scored" %in% (attached$themes %||% character(0)))
-check("attach sets tone score field", is.finite(attached$keyword_tone_score %||% NA_integer_))
-check("attach CapEx notes field", length(attached$keyword_capex_notes %||% character(0)) >= 1L)
+check("attach surfaces order_focus theme", "order_focus" %in% (attached$themes %||% character(0)))
+check("attach surfaces keyword_order_notes", length(attached$keyword_order_notes %||% character(0)) >= 1L)
+check("attach surfaces keyword_supplier_notes", length(attached$keyword_supplier_notes %||% character(0)) >= 1L)
+check("attach surfaces keyword_customer_notes", length(attached$keyword_customer_notes %||% character(0)) >= 1L)
+check("attach does not surface tone score", is.null(attached$keyword_tone_score))
+check("attach does not surface CapEx notes field", is.null(attached$keyword_capex_notes))
+check("attach does not surface bridging notes field", is.null(attached$keyword_bridging_notes))
+check("attach keeps tone internally", {
+  is.list(attached$keyword_analysis) &&
+    is.finite(attached$keyword_analysis$tone$tone_score %||% NA_integer_)
+})
 
 # Pre-read prep optional fields.
 prep <- ynow_ec_preread_prep_normalize(list(
