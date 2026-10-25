@@ -7,5 +7,5 @@ commit=eda04632dad3cdef46272a0f47d58edbd0e066e8
 short=eda04632
 message=chore: bump display version to v27.45
 captured_at=2026-10-25T15:24:00Z
-display_version=v27.45
+display_version=v27.46
 note=Canonical live line is app_27.0. Bundle 12737016: AML marks on 財報警訊 detail items (#547).
