@@ -1,3 +1,12 @@
+## [v27.35] — 2026-10-25
+
+### Changed
+- Global Prediction tab: hide shared **Ticker / Stock Code** input and **industry info from Yahoo** bar (same product intent as Snapshot).
+
+### Notes
+- en-US: Bundle **12736078**. Shared `.ynow-stock-chrome` excluded when `sidebar_tabs == global_prediction`; no GP-local ticker/Yahoo widgets.
+- zh-TW：Bundle **12736078**。全球預測分頁不再顯示 Ticker／Stock Code 與 Yahoo 產業資訊列（與 Snapshot 相同產品意圖）。
+
 ## [v27.34] — 2026-10-25
 
 ### Fixed
