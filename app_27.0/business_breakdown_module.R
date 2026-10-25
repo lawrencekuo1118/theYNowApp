@@ -964,6 +964,91 @@ bblab_order_research_meta_ui <- function(pack, locale = "en", started = FALSE) {
       tags$span(class = "ynow-bblab-or__xnote", paste0(" · ", note))
     )
   })
+  # Compact keyword-framework summary (tone / guidance / traps) — not a lexicon wall.
+  .ec_keyword_ui <- function(ec) {
+    if (!is.list(ec)) return(NULL)
+    tone <- suppressWarnings(as.integer(ec$keyword_tone_score %||% NA_integer_)[1])
+    guide <- .bblab_chr(ec$keyword_guidance_update, "")
+    pos <- as.character(unlist(ec$keyword_top_positives %||% character(0)))
+    pos <- trimws(pos[nzchar(trimws(pos))])
+    risk <- as.character(unlist(ec$keyword_top_risks %||% character(0)))
+    risk <- trimws(risk[nzchar(trimws(risk))])
+    traps <- as.character(unlist(ec$keyword_trap_flags %||% character(0)))
+    traps <- trimws(traps[nzchar(trimws(traps))])
+    capex_n <- as.character(unlist(ec$keyword_capex_notes %||% character(0)))
+    capex_n <- trimws(capex_n[nzchar(trimws(capex_n))])
+    bridge <- as.character(unlist(ec$keyword_bridging_notes %||% character(0)))
+    bridge <- trimws(bridge[nzchar(trimws(bridge))])
+    has_any <- is.finite(tone) || nzchar(guide) || length(pos) || length(risk) ||
+      length(traps) || length(capex_n) || length(bridge)
+    if (!isTRUE(has_any)) return(NULL)
+    guide_label <- if (identical(guide, "raised")) {
+      msg("bblab_or_ec_kw_guide_raised")
+    } else if (identical(guide, "lowered")) {
+      msg("bblab_or_ec_kw_guide_lowered")
+    } else if (identical(guide, "maintained")) {
+      msg("bblab_or_ec_kw_guide_maintained")
+    } else if (identical(guide, "stated")) {
+      msg("bblab_or_ec_kw_guide_stated")
+    } else {
+      ""
+    }
+    trap_labels <- vapply(traps, function(t) {
+      key <- paste0("bblab_or_ec_kw_", t)
+      lab <- tryCatch(msg(key), error = function(e) "")
+      if (!nzchar(lab) || identical(lab, key)) t else lab
+    }, character(1))
+    tags$div(
+      class = "ynow-bblab-or__ec-kw",
+      tags$p(tags$b(msg("bblab_or_ec_kw_title"))),
+      tags$p(class = "help-block", msg("bblab_or_ec_kw_note")),
+      if (is.finite(tone)) {
+        tags$p(
+          tags$b(paste0(msg("bblab_or_ec_kw_tone"), ": ")),
+          paste0(tone, "/5")
+        )
+      } else NULL,
+      if (nzchar(guide_label)) {
+        tags$p(
+          tags$b(paste0(msg("bblab_or_ec_kw_guidance"), ": ")),
+          guide_label
+        )
+      } else NULL,
+      if (length(pos)) {
+        tags$p(
+          tags$b(paste0(msg("bblab_or_ec_kw_positives"), ": ")),
+          paste(utils::head(pos, 3L), collapse = " · ")
+        )
+      } else NULL,
+      if (length(risk)) {
+        tags$p(
+          tags$b(paste0(msg("bblab_or_ec_kw_risks"), ": ")),
+          paste(utils::head(risk, 3L), collapse = " · ")
+        )
+      } else NULL,
+      if (length(trap_labels)) {
+        tags$p(
+          class = "help-block ynow-bblab-or__ec-kw-traps",
+          tags$b(paste0(msg("bblab_or_ec_kw_traps"), ": ")),
+          paste(trap_labels, collapse = " · ")
+        )
+      } else NULL,
+      if (length(capex_n)) {
+        tags$div(
+          class = "ynow-bblab-or__ec-kw-capex",
+          tags$p(tags$b(msg("bblab_or_ec_kw_capex"))),
+          tags$ul(lapply(utils::head(capex_n, 3L), function(s) tags$li(s)))
+        )
+      } else NULL,
+      if (length(bridge)) {
+        tags$div(
+          class = "ynow-bblab-or__ec-kw-bridge",
+          tags$p(tags$b(msg("bblab_or_ec_kw_bridging"))),
+          tags$ul(lapply(utils::head(bridge, 2L), function(s) tags$li(s)))
+        )
+      } else NULL
+    )
+  }
   us_ec <- pack$us_earnings_call
   us_block <- NULL
   if (is.list(us_ec) && length(us_ec)) {
@@ -1031,7 +1116,8 @@ bblab_order_research_meta_ui <- function(pack, locale = "en", started = FALSE) {
           ),
           if (nzchar(excerpt)) {
             tags$p(class = "help-block ynow-bblab-or__us-ec-excerpt", excerpt)
-          } else NULL
+          } else NULL,
+          .ec_keyword_ui(us_ec)
         )
       },
       tags$p(class = "help-block", msg("bblab_or_us_ec_method_note")),
@@ -1145,7 +1231,8 @@ bblab_order_research_meta_ui <- function(pack, locale = "en", started = FALSE) {
           } else NULL,
           .tw_ec_note_list(tw_ec$order_notes, "bblab_or_tw_ec_orders_title"),
           .tw_ec_note_list(tw_ec$supply_chain_notes, "bblab_or_tw_ec_supply_title"),
-          .tw_ec_note_list(tw_ec$outlook_notes, "bblab_or_tw_ec_outlook_title")
+          .tw_ec_note_list(tw_ec$outlook_notes, "bblab_or_tw_ec_outlook_title"),
+          .ec_keyword_ui(tw_ec)
         )
       },
       tags$p(class = "help-block", msg("bblab_or_tw_ec_note")),
