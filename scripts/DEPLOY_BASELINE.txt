@@ -7,5 +7,5 @@ commit=6b73c2acda2729068dfcca09266cff8347d3d5db
 short=6b73c2ac
 message=chore: bump display version to v27.28
 captured_at=2026-10-24T17:13:27Z
-display_version=v27.28
+display_version=v27.29
 note=Canonical live line is app_27.0. Bundle 12734260: ATX Global Prediction CSS sprintf fix (#507).
