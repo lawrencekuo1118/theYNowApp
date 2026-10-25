@@ -7,5 +7,5 @@ commit=0aad30281a44d9d5b5247890a86758fab8c87023
 short=0aad3028
 message=chore: record shinyapps baseline bundle 12736267 (app_27.0)
 captured_at=2026-10-25T10:14:47Z
-display_version=v27.39
+display_version=v27.40
 note=Canonical live line is app_27.0. Bundle 12736267: Global Prediction one plotly Yes-probability line chart per prediction market under each theme (#531).
