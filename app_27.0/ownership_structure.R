@@ -1209,8 +1209,11 @@ cached_fetch_ownership_structure <- if (
 }
 
 #' Holders table + institution detail (right panel).
+#' Default: collapsible box starts collapsed; pass collapsed = FALSE to keep open
+#' across institution detail re-renders. Ticker / search resets should pass TRUE.
 .ynow_ownership_holders_ui <- function(snap, detail = NULL, loc = "en",
-                                       selected_name = "") {
+                                       selected_name = "",
+                                       collapsed = TRUE) {
   loc <- tryCatch(normalize_ui_locale(loc), error = function(e) "en")
   if (is.null(snap) || !is.list(snap) || !nzchar(snap$ticker %||% "")) {
     return(NULL)
@@ -1342,12 +1345,10 @@ cached_fetch_ownership_structure <- if (
     "own_holders_title"
   }
 
-  tagList(
-    tags$hr(),
+  body <- tagList(
     fluidRow(
       column(
         width = 7,
-        tags$h4(ui_str(holders_title_key, loc)),
         if (length(holder_rows)) {
           tags$div(
             class = "ynow-own-holders-wrap",
@@ -1377,15 +1378,55 @@ cached_fetch_ownership_structure <- if (
       paste(ui_str("own_sources_label", loc), paste(unique(snap$sources), collapse = " · "))
     )
   )
+
+  # Collapsible AdminLTE box: default collapsed on first paint / ticker change.
+  # Callers pass collapsed = FALSE after the user expands so institution clicks
+  # do not remount the box shut. Prefer shinydashboard::box — never graphics::box.
+  box_fn <- if (requireNamespace("shinydashboard", quietly = TRUE)) {
+    shinydashboard::box
+  } else {
+    NULL
+  }
+  if (is.null(box_fn)) {
+    return(tagList(
+      tags$hr(),
+      tags$h4(ui_str(holders_title_key, loc)),
+      body
+    ))
+  }
+  bx <- box_fn(
+    title = ui_str(holders_title_key, loc),
+    width = 12,
+    status = "primary",
+    solidHeader = FALSE,
+    collapsible = TRUE,
+    collapsed = isTRUE(collapsed),
+    body
+  )
+  # shinydashboard::box has no id=; tag the inner .box for collapse JS.
+  if (inherits(bx, "shiny.tag") && length(bx$children) >= 1L &&
+      inherits(bx$children[[1]], "shiny.tag")) {
+    inner <- bx$children[[1]]
+    cls <- as.character(inner$attribs$class %||% "")
+    if (!grepl("ynow-own-holders-box", cls, fixed = TRUE)) {
+      cls <- paste(trimws(cls), "ynow-own-holders-box")
+    }
+    inner$attribs$id <- "own_holders_box"
+    inner$attribs$class <- cls
+    bx$children[[1]] <- inner
+  }
+  tagList(tags$hr(), bx)
 }
 
 #' Combined panel helper (tests / one-shot render).
 .ynow_ownership_panel_ui <- function(snap, detail = NULL, loc = "en",
-                                     selected_name = "") {
+                                     selected_name = "",
+                                     collapsed = TRUE) {
   tagList(
     .ynow_ownership_top_ui(snap, loc = loc),
     .ynow_ownership_holders_ui(
-      snap, detail = detail, loc = loc, selected_name = selected_name
+      snap, detail = detail, loc = loc, selected_name = selected_name,
+      collapsed = collapsed
     )
   )
 }
