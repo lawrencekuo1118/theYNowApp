@@ -1,7 +1,9 @@
 # Per-user / global UI restrictions set from System admin.
 # item id = kind:target  (tab | section | output | report)
 # effect  = "lock" (show locked placeholder / disable) | "hide" (remove from UI)
-# scope   = selected user id, or YNOW_ACCESS_ALL_USERS for every account (+ guests)
+# scope   = selected user id,
+#           YNOW_ACCESS_ALL_USERS for every account (+ guests),
+#           or YNOW_ACCESS_GUESTS_ONLY for guests only (signed-in users unaffected)
 #
 # Fine-grained Items to restrict target **computed numeric result outputs**
 # (post-calculation figures in the UI), not prose paragraphs and not form inputs.
@@ -57,11 +59,18 @@ if (!exists("ynow_lock_shared_surface_labels", mode = "function")) {
 }
 
 YNOW_ACCESS_ALL_USERS <- "__all__"
+YNOW_ACCESS_GUESTS_ONLY <- "__guests__"
 .YNOW_ACCESS_EFFECTS <- c("lock", "hide")
 YNOW_UNLOCK_LOGIN <- "login"
 YNOW_UNLOCK_POINTS <- "points"
 YNOW_UNLOCK_CONDITIONAL <- "conditional"
 .YNOW_UNLOCK_TYPES <- c(YNOW_UNLOCK_LOGIN, YNOW_UNLOCK_POINTS, YNOW_UNLOCK_CONDITIONAL)
+
+#' True for synthetic ACL store keys (not a real account uuid).
+ynow_access_is_store_scope_uid <- function(user_id) {
+  uid <- as.character(user_id %||% "")[1]
+  identical(uid, YNOW_ACCESS_ALL_USERS) || identical(uid, YNOW_ACCESS_GUESTS_ONLY)
+}
 
 .ynow_access_mem <- new.env(parent = emptyenv())
 .ynow_access_mem$by_user <- list()
@@ -220,23 +229,26 @@ ynow_access_menu_layer_label <- function(layer, locale = "en") {
   }
 }
 
-#' Resolve store uid for an admin apply-target (all users vs selected user).
+#' Resolve store uid for an admin apply-target (all / guests / selected user).
 ynow_access_scope_store_uid <- function(scope = "user", user_id = "") {
   scope <- as.character(scope %||% "user")[1]
   if (identical(scope, "all")) {
     return(as.character(YNOW_ACCESS_ALL_USERS)[1])
   }
+  if (identical(scope, "guests")) {
+    return(as.character(YNOW_ACCESS_GUESTS_ONLY)[1])
+  }
   as.character(user_id %||% "")[1]
 }
 
 #' Item ids already restricted under the selected apply-target (raw store, not merged).
-#' @param user_id character scalar or vector (multi-select); ignored when scope=all
+#' @param user_id character scalar or vector (multi-select); ignored when scope=all|guests
 ynow_access_restricted_ids_for_scope <- function(user_id = "", scope = "user",
                                                  multi_mode = c("union", "intersect")) {
   multi_mode <- match.arg(multi_mode)
   scope <- as.character(scope %||% "user")[1]
-  if (identical(scope, "all")) {
-    uid <- ynow_access_scope_store_uid("all", "")
+  if (identical(scope, "all") || identical(scope, "guests")) {
+    uid <- ynow_access_scope_store_uid(scope, "")
     ent <- ynow_access_store_entries(uid)
     if (!is.data.frame(ent) || nrow(ent) < 1L) return(character())
     return(sort(unique(as.character(ent$id))))
@@ -261,7 +273,7 @@ ynow_access_restricted_ids_for_scope <- function(user_id = "", scope = "user",
 ynow_access_restrictable_ids_for_scope <- function(user_id = "", scope = "user") {
   cat <- ynow_access_catalog()
   restricted <- ynow_access_restricted_ids_for_scope(
-    user_id, scope, multi_mode = if (identical(scope, "all")) "union" else "union"
+    user_id, scope, multi_mode = "union"
   )
   # For apply with multi users we want ids restricted by *any* selected user excluded
   # (intersection of restrictable ≡ catalog minus union of restricted).
@@ -428,11 +440,11 @@ ynow_access_reset_memory <- function() {
   invisible(TRUE)
 }
 
-#' Remove one user's access locks from memory + file (never touches `__all__`).
+#' Remove one user's access locks from memory + file (never touches scope store keys).
 ynow_access_purge_user <- function(user_id) {
   uid <- as.character(user_id %||% "")[1]
   if (!nzchar(uid)) return(invisible(FALSE))
-  if (identical(uid, YNOW_ACCESS_ALL_USERS)) return(invisible(FALSE))
+  if (ynow_access_is_store_scope_uid(uid)) return(invisible(FALSE))
   if (!is.null(.ynow_access_mem$by_user[[uid]])) {
     .ynow_access_mem$by_user[[uid]] <- NULL
   }
@@ -773,17 +785,36 @@ ynow_access_ensure_schema <- function(force = FALSE) {
   )
 }
 
-#' Effective restrictions for a subject: global (__all__) then per-user override.
+#' Effective restrictions for a subject: global (__all__), optional guest-only
+#' (__guests__), then per-user override.
+#'
+#' Guest-only rows apply only when the subject is a guest (`authed=FALSE`, or
+#' empty uid when `authed` is omitted). Signed-in users never receive `__guests__`.
 #' Returns raw configured restrictions (does not apply unlock evaluation).
-ynow_access_entries <- function(user_id = "") {
+ynow_access_entries <- function(user_id = "", authed = NULL) {
   uid <- as.character(user_id %||% "")[1]
+  # Direct store-key reads return that map only (admin / set() result ids).
+  if (identical(uid, YNOW_ACCESS_ALL_USERS) || identical(uid, YNOW_ACCESS_GUESTS_ONLY)) {
+    return(.ynow_access_map_to_df(.ynow_access_map_for_uid(uid)))
+  }
+  is_authed <- if (is.null(authed)) {
+    nzchar(uid)
+  } else {
+    isTRUE(authed)
+  }
   global <- .ynow_access_map_for_uid(YNOW_ACCESS_ALL_USERS)
-  personal <- if (nzchar(uid) && !identical(uid, YNOW_ACCESS_ALL_USERS)) {
+  guest_only <- if (!is_authed) {
+    .ynow_access_map_for_uid(YNOW_ACCESS_GUESTS_ONLY)
+  } else {
+    list()
+  }
+  base <- .ynow_access_merge_maps(global, guest_only)
+  personal <- if (nzchar(uid)) {
     .ynow_access_map_for_uid(uid)
   } else {
     list()
   }
-  .ynow_access_map_to_df(.ynow_access_merge_maps(global, personal))
+  .ynow_access_map_to_df(.ynow_access_merge_maps(base, personal))
 }
 
 #' Raw store map for one uid key (not merged with __all__).
@@ -852,7 +883,7 @@ ynow_access_item_entry <- function(user_id, item_id) {
 ynow_access_get_unlock_state <- function(user_id, item_id) {
   uid <- as.character(user_id %||% "")[1]
   id <- as.character(item_id %||% "")[1]
-  if (!nzchar(uid) || !nzchar(id) || identical(uid, YNOW_ACCESS_ALL_USERS)) {
+  if (!nzchar(uid) || !nzchar(id) || ynow_access_is_store_scope_uid(uid)) {
     return(.ynow_access_normalize_state())
   }
   if (.ynow_access_db_on()) {
@@ -885,7 +916,7 @@ ynow_access_get_unlock_state <- function(user_id, item_id) {
 ynow_access_set_unlock_state <- function(user_id, item_id, state) {
   uid <- as.character(user_id %||% "")[1]
   id <- as.character(item_id %||% "")[1]
-  if (!nzchar(uid) || !nzchar(id) || identical(uid, YNOW_ACCESS_ALL_USERS)) {
+  if (!nzchar(uid) || !nzchar(id) || ynow_access_is_store_scope_uid(uid)) {
     return(invisible(FALSE))
   }
   st <- .ynow_access_normalize_state(state)
@@ -940,7 +971,7 @@ ynow_access_unlock_satisfied_entry <- function(user_id, item_id, entry,
   uid <- as.character(user_id %||% "")[1]
   id <- as.character(item_id %||% "")[1]
   is_authed <- if (is.null(authed)) {
-    nzchar(uid) && !identical(uid, YNOW_ACCESS_ALL_USERS)
+    nzchar(uid) && !ynow_access_is_store_scope_uid(uid)
   } else {
     isTRUE(authed)
   }
@@ -986,7 +1017,7 @@ ynow_access_unlock_satisfied_for_item <- function(user_id, item_id,
 #' Load all unlock-state rows for one user in a single query (named by item_id).
 ynow_access_get_unlock_states_for_user <- function(user_id) {
   uid <- as.character(user_id %||% "")[1]
-  if (!nzchar(uid) || identical(uid, YNOW_ACCESS_ALL_USERS)) return(list())
+  if (!nzchar(uid) || ynow_access_is_store_scope_uid(uid)) return(list())
   if (.ynow_access_db_on()) {
     ynow_access_ensure_schema()
     df <- ynow_db_with(function(con) {
@@ -1020,15 +1051,15 @@ ynow_access_get_unlock_states_for_user <- function(user_id) {
 
 #' Restrictions still in force after unlock evaluation (for client push / deny).
 ynow_access_effective_entries <- function(user_id = "", authed = NULL, now = Sys.time()) {
-  ent <- ynow_access_entries(user_id)
-  if (!is.data.frame(ent) || nrow(ent) < 1L) return(ent)
   uid <- as.character(user_id %||% "")[1]
   is_authed <- if (is.null(authed)) {
-    nzchar(uid) && !identical(uid, YNOW_ACCESS_ALL_USERS)
+    nzchar(uid) && !ynow_access_is_store_scope_uid(uid)
   } else {
     isTRUE(authed)
   }
-  states <- if (is_authed && nzchar(uid) && !identical(uid, YNOW_ACCESS_ALL_USERS)) {
+  ent <- ynow_access_entries(user_id, authed = is_authed)
+  if (!is.data.frame(ent) || nrow(ent) < 1L) return(ent)
+  states <- if (is_authed && nzchar(uid) && !ynow_access_is_store_scope_uid(uid)) {
     ynow_access_get_unlock_states_for_user(uid)
   } else {
     list()
@@ -1074,16 +1105,16 @@ ynow_access_ends_at_iso <- function(unlocked_until) {
 #'
 #' @return list of lists: id, remaining, total, ends_at (ISO or NA)
 ynow_access_quota_badges <- function(user_id = "", authed = NULL, now = Sys.time()) {
-  ent <- ynow_access_entries(user_id)
-  if (!is.data.frame(ent) || nrow(ent) < 1L) return(list())
   uid <- as.character(user_id %||% "")[1]
   is_authed <- if (is.null(authed)) {
-    nzchar(uid) && !identical(uid, YNOW_ACCESS_ALL_USERS)
+    nzchar(uid) && !ynow_access_is_store_scope_uid(uid)
   } else {
     isTRUE(authed)
   }
+  ent <- ynow_access_entries(user_id, authed = is_authed)
+  if (!is.data.frame(ent) || nrow(ent) < 1L) return(list())
   now <- as.POSIXct(now, tz = "UTC")
-  states <- if (is_authed && nzchar(uid) && !identical(uid, YNOW_ACCESS_ALL_USERS)) {
+  states <- if (is_authed && nzchar(uid) && !ynow_access_is_store_scope_uid(uid)) {
     ynow_access_get_unlock_states_for_user(uid)
   } else {
     list()
@@ -1151,18 +1182,25 @@ ynow_access_touch_conditional <- function(user_id, item_id, consume_free = FALSE
 #'
 #' When scope is "user" / selected user: personal store for that uid (not stale
 #' first-row / not global-only). When scope is "all": only the __all__ store.
+#' When scope is "guests": only the __guests__ store.
 #' @return character vector of "scope · label（effect · unlock）" lines (may be empty)
 ynow_access_admin_status_lines <- function(user_id = "",
                                            scope = "user",
                                            locale = "en",
                                            user_scope_lab = "User",
-                                           all_scope_lab = "All") {
+                                           all_scope_lab = "All",
+                                           guests_scope_lab = "Guests") {
   scope <- as.character(scope %||% "user")[1]
   if (!nzchar(scope)) scope <- "user"
   all_uid <- if (exists("YNOW_ACCESS_ALL_USERS", inherits = TRUE)) {
     as.character(get("YNOW_ACCESS_ALL_USERS", inherits = TRUE))[1]
   } else {
     "__all__"
+  }
+  guests_uid <- if (exists("YNOW_ACCESS_GUESTS_ONLY", inherits = TRUE)) {
+    as.character(get("YNOW_ACCESS_GUESTS_ONLY", inherits = TRUE))[1]
+  } else {
+    "__guests__"
   }
   .fmt <- function(ent, scope_lab) {
     if (!is.data.frame(ent) || nrow(ent) < 1L) return(character())
@@ -1182,30 +1220,35 @@ ynow_access_admin_status_lines <- function(user_id = "",
   if (identical(scope, "all")) {
     return(.fmt(ynow_access_store_entries(all_uid), all_scope_lab))
   }
+  if (identical(scope, "guests")) {
+    return(.fmt(ynow_access_store_entries(guests_uid), guests_scope_lab))
+  }
   uid <- as.character(user_id %||% "")[1]
   .fmt(ynow_access_store_entries(uid), user_scope_lab)
 }
 
 #' Structured blocks for admin 「目前已限制」 list UI (one block per apply-target).
 #'
-#' scope=all → one block with uid "". scope=user → one block per selected uid.
+#' scope=all|guests → one block with uid "". scope=user → one block per selected uid.
 #' Empty list when scope=user and no uids selected (caller should prompt to pick users).
 #' @return list of lists with $uid and $lines (character; may be empty)
 ynow_access_admin_status_blocks <- function(user_id = "",
                                             scope = "user",
                                             locale = "en",
                                             user_scope_lab = "User",
-                                            all_scope_lab = "All") {
+                                            all_scope_lab = "All",
+                                            guests_scope_lab = "Guests") {
   scope <- as.character(scope %||% "user")[1]
-  if (identical(scope, "all")) {
+  if (identical(scope, "all") || identical(scope, "guests")) {
     return(list(list(
       uid = "",
       lines = ynow_access_admin_status_lines(
         user_id = "",
-        scope = "all",
+        scope = scope,
         locale = locale,
         user_scope_lab = user_scope_lab,
-        all_scope_lab = all_scope_lab
+        all_scope_lab = all_scope_lab,
+        guests_scope_lab = guests_scope_lab
       )
     )))
   }
@@ -1220,7 +1263,8 @@ ynow_access_admin_status_blocks <- function(user_id = "",
         scope = "user",
         locale = locale,
         user_scope_lab = user_scope_lab,
-        all_scope_lab = all_scope_lab
+        all_scope_lab = all_scope_lab,
+        guests_scope_lab = guests_scope_lab
       )
     )
   })
@@ -1232,6 +1276,7 @@ ynow_access_admin_status_text <- function(user_id = "",
                                           locale = "en",
                                           user_scope_lab = "User",
                                           all_scope_lab = "All",
+                                          guests_scope_lab = "Guests",
                                           none_lab = "Nothing is restricted for this scope.",
                                           pick_users_lab = NULL) {
   scope <- as.character(scope %||% "user")[1]
@@ -1240,7 +1285,8 @@ ynow_access_admin_status_text <- function(user_id = "",
     scope = scope,
     locale = locale,
     user_scope_lab = user_scope_lab,
-    all_scope_lab = all_scope_lab
+    all_scope_lab = all_scope_lab,
+    guests_scope_lab = guests_scope_lab
   )
   # Selected-user(s) scope with nobody chosen → prompt, not a false "none".
   if (identical(scope, "user") && !length(blocks)) {
@@ -1291,7 +1337,7 @@ ynow_access_item_effect <- function(user_id, item_id) {
 }
 
 #' Set or clear a restriction (with optional unlock condition).
-#' @param user_id account uuid, or YNOW_ACCESS_ALL_USERS for everyone
+#' @param user_id account uuid, YNOW_ACCESS_ALL_USERS, or YNOW_ACCESS_GUESTS_ONLY
 #' @param effect "lock" or "hide" (ignored when locked=FALSE)
 #' @param unlock_type "login" | "points" | "conditional" (default login when locking)
 #' @param points_cost FYN required when unlock_type=points
@@ -1322,6 +1368,31 @@ ynow_access_set <- function(user_id,
   }
   if (!on && !id %in% store_ids) {
     return(list(ok = FALSE, message_key = "access_not_restricted"))
+  }
+  .ynow_access_scope_label <- function(store_uid) {
+    if (identical(store_uid, YNOW_ACCESS_ALL_USERS)) return("all")
+    if (identical(store_uid, YNOW_ACCESS_GUESTS_ONLY)) return("guests")
+    "user"
+  }
+  .ynow_access_ok_key <- function(store_uid, locking, eff) {
+    sc <- .ynow_access_scope_label(store_uid)
+    if (locking) {
+      if (identical(sc, "all")) {
+        if (identical(eff, "lock")) "access_ok_lock_all" else "access_ok_hide_all"
+      } else if (identical(sc, "guests")) {
+        if (identical(eff, "lock")) "access_ok_lock_guests" else "access_ok_hide_guests"
+      } else {
+        if (identical(eff, "lock")) "access_ok_lock" else "access_ok_hide"
+      }
+    } else {
+      if (identical(sc, "all")) {
+        "access_ok_unlock_all"
+      } else if (identical(sc, "guests")) {
+        "access_ok_unlock_guests"
+      } else {
+        "access_ok_unlock"
+      }
+    }
   }
   entry <- ynow_access_normalize_entry(
     effect = effect,
@@ -1398,21 +1469,13 @@ ynow_access_set <- function(user_id,
   }
   list(
     ok = TRUE,
-    message_key = if (on) {
-      if (identical(uid, YNOW_ACCESS_ALL_USERS)) {
-        if (identical(eff, "lock")) "access_ok_lock_all" else "access_ok_hide_all"
-      } else {
-        if (identical(eff, "lock")) "access_ok_lock" else "access_ok_hide"
-      }
-    } else {
-      if (identical(uid, YNOW_ACCESS_ALL_USERS)) "access_ok_unlock_all" else "access_ok_unlock"
-    },
+    message_key = .ynow_access_ok_key(uid, on, eff),
     ids = ynow_access_locked_ids(uid),
     effect = if (on) eff else NA_character_,
     unlock_type = if (on) entry$unlock_type else NA_character_,
     points_cost = if (on) entry$points_cost else NA_integer_,
     free_count = if (on) entry$free_count else NA_integer_,
     time_limit_hours = if (on) entry$time_limit_hours else NA_integer_,
-    scope = if (identical(uid, YNOW_ACCESS_ALL_USERS)) "all" else "user"
+    scope = .ynow_access_scope_label(uid)
   )
 }

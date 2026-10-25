@@ -1420,8 +1420,9 @@ server <- function(input, output, session) {
       )
       return(invisible(character()))
     }
-    # guest / signed_in: only global (__all__) — no per-user overrides.
-    # empty uid → ynow_access_entries merges global only.
+    # guest / signed_in: empty uid (no per-user overrides). Guests also receive
+    # __guests__ rows; signed_in preview must pass authed=TRUE so guest-only
+    # restrictions are excluded (ynow_access_entries / effective_entries).
     if (identical(mode, "guest") || identical(mode, "signed_in")) {
       uid <- ""
       authed <- identical(mode, "signed_in")
@@ -1433,8 +1434,8 @@ server <- function(input, output, session) {
       }
       authed <- nzchar(as.character(uid %||% "")[1])
     }
-    # Guests still receive global (__all__) restrictions; login/points/conditional
-    # unlock rules filter out items that are currently usable.
+    # Guests receive __all__ + __guests__; signed-in receive __all__ (+ personal).
+    # login/points/conditional unlock rules filter out items that are currently usable.
     ent <- tryCatch(
       {
         if (exists("ynow_access_effective_entries", mode = "function")) {
@@ -3022,8 +3023,8 @@ server <- function(input, output, session) {
     } else {
       as.character(choices[[1]])
     }
-    cur_scope <- as.character(isolate(input$ynow_access_scope) %||% "user")[1]
-    if (!cur_scope %in% c("user", "all")) cur_scope <- "user"
+    cur_scope <- as.character(isolate(input$ynow_access_scope) %||% "all")[1]
+    if (!cur_scope %in% c("all", "guests", "user")) cur_scope <- "all"
     cur_action <- as.character(isolate(input$ynow_access_action) %||% "apply")[1]
     if (!cur_action %in% c("apply", "remove")) cur_action <- "apply"
     cur_effect <- as.character(isolate(input$ynow_access_effect) %||% "lock")[1]
@@ -3187,7 +3188,8 @@ server <- function(input, output, session) {
             "items are shown read-only. Remove only lists items already restricted. ",
             "Selected user(s) keeps the user list with keyword search and multi-select. ",
             "Per-user rules override all-users rules for the same item. ",
-            "All-users also applies to guests."
+            "All-users also applies to guests. ",
+            "Only guests applies to guests only; signed-in users are unaffected."
           )
         )
       ),
@@ -3195,10 +3197,11 @@ server <- function(input, output, session) {
         "ynow_access_scope",
         .lab("access_scope_label", "Apply to"),
         choiceNames = list(
-          .lab("access_scope_user", "Selected user(s)"),
-          .lab("access_scope_all", "All users")
+          .lab("access_scope_all", "All users"),
+          .lab("access_scope_guests", "Only guests"),
+          .lab("access_scope_user", "Selected user(s)")
         ),
-        choiceValues = c("user", "all"),
+        choiceValues = c("all", "guests", "user"),
         selected = cur_scope,
         inline = TRUE
       ),
@@ -3388,13 +3391,19 @@ server <- function(input, output, session) {
   ynow_access_display_tick <- reactiveVal(0L)
 
   .ynow_access_admin_target_uids <- function() {
-    scope <- as.character(input$ynow_access_scope %||% "user")[1]
+    scope <- as.character(input$ynow_access_scope %||% "all")[1]
     all_uid <- if (exists("YNOW_ACCESS_ALL_USERS", inherits = TRUE)) {
       as.character(get("YNOW_ACCESS_ALL_USERS", inherits = TRUE))[1]
     } else {
       "__all__"
     }
+    guests_uid <- if (exists("YNOW_ACCESS_GUESTS_ONLY", inherits = TRUE)) {
+      as.character(get("YNOW_ACCESS_GUESTS_ONLY", inherits = TRUE))[1]
+    } else {
+      "__guests__"
+    }
     if (identical(scope, "all")) return(all_uid)
+    if (identical(scope, "guests")) return(guests_uid)
     uids <- as.character(input$ynow_access_users %||% character())
     uids <- uids[nzchar(uids)]
     if (!length(uids)) {
@@ -3406,7 +3415,7 @@ server <- function(input, output, session) {
   }
 
   .ynow_access_admin_selected_uids <- function(scope) {
-    if (identical(scope, "all")) return(character())
+    if (identical(scope, "all") || identical(scope, "guests")) return(character())
     uids <- as.character(input$ynow_access_users %||% character())
     uids <- uids[nzchar(uids)]
     if (!length(uids)) {
@@ -3436,7 +3445,8 @@ server <- function(input, output, session) {
         scope = scope,
         locale = loc,
         user_scope_lab = .lab("access_scope_user_short", "User"),
-        all_scope_lab = .lab("access_scope_all_short", "All")
+        all_scope_lab = .lab("access_scope_all_short", "All"),
+        guests_scope_lab = .lab("access_scope_guests_short", "Guests")
       )
     } else {
       list()
@@ -3449,6 +3459,7 @@ server <- function(input, output, session) {
         locale = loc,
         user_scope_lab = .lab("access_scope_user_short", "User"),
         all_scope_lab = .lab("access_scope_all_short", "All"),
+        guests_scope_lab = .lab("access_scope_guests_short", "Guests"),
         none_lab = none_lab,
         pick_users_lab = pick_lab
       )
@@ -3516,7 +3527,8 @@ server <- function(input, output, session) {
   output$ynow_access_locked_now <- renderUI({
     ynow_access_display_tick()
     ynow_pts_sysadmin_tick()
-    scope <- as.character(input$ynow_access_scope %||% "user")[1]
+    scope <- as.character(input$ynow_access_scope %||% "all")[1]
+    if (!scope %in% c("all", "guests", "user")) scope <- "all"
     uids <- .ynow_access_admin_selected_uids(scope)
     loc <- tryCatch(
       normalize_ui_locale(isolate(ui_locale())),
@@ -3535,10 +3547,22 @@ server <- function(input, output, session) {
     )
   })
 
+  # Force selectize to emit its initial selected= value to the server.
+  # Without this, renderUI recreate leaves input$ynow_access_item stale from the
+  # prior Apply-mode picker, so Remove restriction fails with access_not_restricted.
+  .ynow_access_selectize_sync_opts <- function(placeholder) {
+    list(
+      plugins = list("remove_button"),
+      placeholder = placeholder,
+      onInitialize = I("function(){ this.trigger('change'); }")
+    )
+  }
+
   output$ynow_access_action_fields <- renderUI({
     ynow_access_display_tick()
     ynow_pts_sysadmin_tick()
-    scope <- as.character(input$ynow_access_scope %||% "user")[1]
+    scope <- as.character(input$ynow_access_scope %||% "all")[1]
+    if (!scope %in% c("all", "guests", "user")) scope <- "all"
     action <- as.character(input$ynow_access_action %||% "apply")[1]
     if (!action %in% c("apply", "remove")) action <- "apply"
     uids <- .ynow_access_admin_selected_uids(scope)
@@ -3591,9 +3615,8 @@ server <- function(input, output, session) {
             choices = rem_choices,
             selected = rem_sel,
             multiple = TRUE,
-            options = list(
-              plugins = list("remove_button"),
-              placeholder = .lab(
+            options = .ynow_access_selectize_sync_opts(
+              .lab(
                 "access_remove_item_ph",
                 "Search and select one or more items…"
               )
@@ -3644,9 +3667,8 @@ server <- function(input, output, session) {
           choices = apply_choices,
           selected = apply_sel,
           multiple = TRUE,
-          options = list(
-            plugins = list("remove_button"),
-            placeholder = .lab(
+          options = .ynow_access_selectize_sync_opts(
+            .lab(
               "access_apply_item_ph",
               "Search and select one or more items…"
             )
@@ -3732,7 +3754,8 @@ server <- function(input, output, session) {
       return()
     }
     if (!exists("ynow_access_set", mode = "function")) return()
-    scope <- as.character(input$ynow_access_scope %||% "user")[1]
+    scope <- as.character(input$ynow_access_scope %||% "all")[1]
+    if (!scope %in% c("all", "guests", "user")) scope <- "all"
     action <- as.character(input$ynow_access_action %||% "apply")[1]
     if (!action %in% c("apply", "remove")) action <- "apply"
     locked <- identical(action, "apply")
@@ -3746,6 +3769,25 @@ server <- function(input, output, session) {
     }
     items <- as.character(input$ynow_access_item %||% character())
     items <- unique(items[nzchar(items)])
+    # Remove path: drop stale Apply-mode selections left in input$ after renderUI
+    # recreates the selectize. Mirror UI auto-select when overlap is empty.
+    if (!locked && exists("ynow_access_restricted_ids_for_scope", mode = "function")) {
+      query_uids <- if (identical(scope, "user")) uids else character()
+      rem_ids <- ynow_access_restricted_ids_for_scope(
+        query_uids, scope, multi_mode = "union"
+      )
+      overlap <- intersect(items, rem_ids)
+      if (!length(overlap) && length(rem_ids) > 0L) {
+        if (length(items) > 0L && !any(items %in% rem_ids)) {
+          # Stale selectize value from prior Apply picker — same as UI rem_sel fallback.
+          items <- rem_ids[[1]]
+        } else {
+          items <- character()
+        }
+      } else {
+        items <- overlap
+      }
+    }
     if (!length(items)) {
       showNotification(
         .lab(

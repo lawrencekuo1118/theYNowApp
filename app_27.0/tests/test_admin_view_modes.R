@@ -270,12 +270,13 @@ check("Self-view mutually exclusive with selected-user view-as", {
     grepl("Mutually exclusive with self view modes", srv, fixed = TRUE)
 })
 
-check("Access push: omniscient empty; guest/signed_in use __all__ only", {
+check("Access push: omniscient empty; guest/signed_in empty uid + authed flag", {
   grepl('identical(mode, "omniscient")', srv, fixed = TRUE) &&
     grepl('identical(mode, "guest") || identical(mode, "signed_in")', srv, fixed = TRUE) &&
     grepl("authed <- identical(mode, \"signed_in\")", srv, fixed = TRUE) &&
     grepl("__self_member__", srv, fixed = TRUE) &&
-    grepl("__omniscient__", srv, fixed = TRUE)
+    grepl("__omniscient__", srv, fixed = TRUE) &&
+    grepl("__guests__", srv, fixed = TRUE)
 })
 
 check("Locale en-US + zh-TW self-view keys (no 一鍵)", {
