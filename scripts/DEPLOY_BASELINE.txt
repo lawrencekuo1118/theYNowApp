@@ -7,5 +7,5 @@ commit=7556eb9b3dbc26257dfb3974ae01f884ad127a0a
 short=7556eb9b
 message=chore: record shinyapps baseline bundle 12736078 (app_27.0)
 captured_at=2026-10-25T08:43:19Z
-display_version=v27.35
+display_version=v27.36
 note=Canonical live line is app_27.0. Bundle 12736078: Global Prediction hides Ticker/Yahoo industry chrome (#525).
