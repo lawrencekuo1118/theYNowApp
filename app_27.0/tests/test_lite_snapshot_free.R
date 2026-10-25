@@ -89,6 +89,12 @@ check(
     grepl("ynow_industry_info_yahoo", ui, fixed = TRUE)
 )
 check(
+  "Global Prediction tab hides global Ticker / Yahoo industry chrome",
+  grepl("input.sidebar_tabs != 'global_prediction'", ui, fixed = TRUE) &&
+    grepl("ynow-stock-chrome", ui, fixed = TRUE) &&
+    grepl("ynow_industry_info_yahoo", ui, fixed = TRUE)
+)
+check(
   "Lite free Snapshot tabs remain (snap_audit + snap_current)",
   grepl('value = "snap_audit"', ui, fixed = TRUE) &&
     grepl('value = "snap_current"', ui, fixed = TRUE) &&

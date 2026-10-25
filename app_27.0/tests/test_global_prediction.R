@@ -228,6 +228,12 @@ check("applyUiLocale gp page title", grepl("ynow_gp_page_title", ui, fixed = TRU
 check("applyUiLocale gp participation", grepl("ynow_gp_participation", ui, fixed = TRUE))
 check("guest lock map includes GP", grepl("global_prediction:true", ui, fixed = TRUE) ||
         grepl("global_prediction: true", ui, fixed = TRUE))
+check(
+  "GP page hides global Ticker / Yahoo industry chrome",
+  grepl("input.sidebar_tabs != 'global_prediction'", ui, fixed = TRUE) &&
+    grepl("ynow-stock-chrome", ui, fixed = TRUE) &&
+    grepl("ynow_industry_info_yahoo", ui, fixed = TRUE)
+)
 
 # ---- Freshness / crawl policy ----------------------------------------------
 pol <- gp_crawl_policy()
