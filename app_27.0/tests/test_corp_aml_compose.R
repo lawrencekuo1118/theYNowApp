@@ -80,11 +80,19 @@ check("surface shim null qoe", is.null(surf$qoe))
 check("surface shim null fscore", is.null(surf$fscore))
 check("surface shim null risk_matrix", is.null(surf$risk_matrix))
 
-# Warning-item marks: overlapping 財報警訊 keys only
+# Direct-overlap allowlist: C2/C3 only — no C7 blanket BENEISH/SCHILIT
+ov <- corp_aml_warning_item_overlap()
+check("overlap has C2", !is.null(ov$AML_C2))
+check("overlap has C3", !is.null(ov$AML_C3))
+check("overlap omits C7 blanket", is.null(ov$AML_C7))
+check("overlap has no SCHILIT key", !any(unlist(ov) == "SCHILIT"))
+check("overlap has no BENEISH head key", !any(unlist(ov) == "BENEISH"))
+
+# Warning-item marks: directly related 財報警訊 keys only
 marks <- corp_aml_warning_item_marks(pack)
 check("warning marks list", is.list(marks))
-check("C7 marks BENEISH", identical(marks$BENEISH, "alert") || identical(marks$BENEISH, "watch"))
-check("C7 marks SCHILIT compose", identical(marks$SCHILIT, "alert") || identical(marks$SCHILIT, "watch"))
+check("C7 alone does not emit BENEISH", is.null(marks$BENEISH))
+check("C7 alone does not emit SCHILIT", is.null(marks$SCHILIT))
 c2 <- corp_aml_flag_severity(pack, "AML_C2")
 if (identical(c2, "alert") || identical(c2, "watch")) {
   check("C2 marks X1", identical(marks$X1, c2) || identical(marks$X1, "alert") || identical(marks$X1, "watch"))
@@ -95,6 +103,20 @@ if (identical(c3, "alert") || identical(c3, "watch")) {
   check("C3 marks X2", !is.null(marks$X2))
   check("C3 marks BENEISH:DSRI", !is.null(marks[["BENEISH:DSRI"]]))
 }
+# C7-only pack: no fine-item marks (veto chip may still apply at alert tier)
+c7_only <- list(
+  ok = TRUE,
+  tier = "alert",
+  flags = data.frame(
+    code = "AML_C7",
+    severity = "alert",
+    stringsAsFactors = FALSE
+  )
+)
+c7_marks <- corp_aml_warning_item_marks(c7_only)
+check("C7-only pack emits zero item marks", length(c7_marks) == 0L)
+check("C7-only still has veto", !is.null(corp_aml_veto_keys(c7_only)))
+
 check("clear pack no warning marks", length(corp_aml_warning_item_marks(clear_pack)) == 0L)
 check("mark ui null on clear", is.null(corp_aml_mark_ui(NULL)))
 check("mark ui alert class", {
@@ -102,21 +124,22 @@ check("mark ui alert class", {
   grepl("ynow-aml-mark--alert", as.character(m), fixed = TRUE)
 })
 check(
-  "severity for X1 inherits SCHILIT",
-  identical(
-    corp_aml_severity_for_warning_item(list(SCHILIT = "watch"), "X1"),
-    "watch"
-  )
+  "no SCHILIT inheritance onto X1",
+  is.null(corp_aml_severity_for_warning_item(list(SCHILIT = "watch"), "X1"))
 )
 check(
-  "severity null when no overlap",
-  is.null(corp_aml_severity_for_warning_item(list(BENEISH = "alert"), "X9"))
+  "direct X1 severity resolves",
+  identical(corp_aml_severity_for_warning_item(list(X1 = "alert"), "X1"), "alert")
+)
+check(
+  "unrelated X9 unmarked",
+  is.null(corp_aml_severity_for_warning_item(list(X1 = "alert", X2 = "watch"), "X9"))
 )
 
-# Schilit UI: AML badge only on elevated overlapping rows
+# Schilit UI: direct overlap (X1) marked; unrelated elevated (X9) unmarked
 ev_fake <- list(
   ok = TRUE,
-  n_alert = 1L,
+  n_alert = 2L,
   n_watch = 0L,
   n_pass = 0L,
   n_na = 0L,
@@ -136,28 +159,45 @@ ui_shen <- as.character(shenanigans_results_ui(
   aml_marks = list(X1 = "alert"),
   locale = "en"
 ))
-check("schilit X1 has AML mark", grepl("ynow-aml-mark--alert", ui_shen, fixed = TRUE))
-# X9 has no overlap key → no second alert mark for X9 specifically via code path;
-# still only one mark from X1 in this fixture
+check("schilit direct X1 has AML mark", grepl("ynow-aml-mark--alert", ui_shen, fixed = TRUE))
 check(
-  "schilit mark count matches overlap",
+  "schilit unrelated X9 stays unmarked (one badge)",
   length(gregexpr("ynow-aml-mark--alert", ui_shen, fixed = TRUE)[[1]]) == 1L
 )
+# C7-style blanket SCHILIT must not stamp every elevated card
+ui_blanket <- as.character(shenanigans_results_ui(
+  ev_fake,
+  aml_marks = list(SCHILIT = "alert"),
+  locale = "en"
+))
+check(
+  "SCHILIT blanket key stamps nothing",
+  !grepl("ynow-aml-mark", ui_blanket, fixed = TRUE)
+)
 
-# Beneish UI: head mark when elevated + BENEISH key
+# Beneish UI: direct component keys only (no BENEISH head from C7)
 eq_bad_flag <- eq
 if (is.list(eq_bad_flag)) {
-  # Force elevated flag for UI path if M already elevated; else skip soft
   ui_ben <- as.character(beneish_m_score_widget_ui(
     eq_bad_flag,
     locale = "en",
-    aml_marks = list(BENEISH = "alert", `BENEISH:TATA` = "watch", `BENEISH:DSRI` = "watch")
+    aml_marks = list(`BENEISH:TATA` = "watch", `BENEISH:DSRI` = "watch")
   ))
   if (grepl("ynow-mscore-widget--danger|ynow-mscore-widget--watch", ui_ben)) {
-    check("beneish elevated shows AML", grepl("ynow-aml-mark", ui_ben, fixed = TRUE))
+    check("beneish direct component shows AML", grepl("ynow-aml-mark", ui_ben, fixed = TRUE))
   } else {
-    check("beneish pass has no head AML", !grepl("ynow-aml-mark--alert", ui_ben, fixed = TRUE))
+    check("beneish pass has no AML", !grepl("ynow-aml-mark", ui_ben, fixed = TRUE))
   }
+  ui_head_only <- as.character(beneish_m_score_widget_ui(
+    eq_bad_flag,
+    locale = "en",
+    aml_marks = list(BENEISH = "alert")
+  ))
+  # Head key is unused by allowlist; if widget still checks BENEISH, that is OK
+  # when elevated — but C7 no longer emits it. Assert C7-style head-only from
+  # allowlist path stays empty via warning_item_marks.
+  check("allowlist never emits BENEISH head", is.null(corp_aml_warning_item_marks(c7_only)$BENEISH))
+  invisible(ui_head_only)
 }
 
 dec <- paste(readLines(file.path(app_dir, "investment_decision_module.R"), warn = FALSE), collapse = "\n")
