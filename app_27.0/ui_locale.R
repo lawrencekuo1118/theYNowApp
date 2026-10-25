@@ -1227,14 +1227,17 @@ locale_for_market <- function(mode = get_market_mode()) {
       "items are shown read-only. Remove only lists items already restricted. ",
       "Selected user(s) keeps the user list with keyword search and multi-select. ",
       "Per-user rules override all-users rules for the same item. ",
-      "All-users also applies to guests."
+      "All-users also applies to guests. ",
+      "Only guests applies to guests only; signed-in users are unaffected."
     ),
     access_lock_item = "Item",
     access_scope_label = "Apply to",
     access_scope_user = "Selected user(s)",
     access_scope_all = "All users",
+    access_scope_guests = "Only guests",
     access_scope_user_short = "User",
     access_scope_all_short = "All",
+    access_scope_guests_short = "Guests",
     access_users_multi = "Selected users (multi-select)",
     access_users_multi_ph = "Search and select one or more users…",
     access_action_label = "Action",
@@ -1275,6 +1278,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     access_ok_lock_all = "Item locked for all users.",
     access_ok_hide_all = "Item hidden for all users.",
     access_ok_unlock_all = "Restriction cleared for all users.",
+    access_ok_lock_guests = "Item locked for guests only.",
+    access_ok_hide_guests = "Item hidden for guests only.",
+    access_ok_unlock_guests = "Restriction cleared for guests only.",
     access_bad_item = "Choose an item from the catalog.",
     access_bad_user = "Select a user from the list.",
     access_already_restricted = paste0(
@@ -1283,6 +1289,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     access_not_restricted = "This item is not restricted for the selected apply target.",
     access_partial_fmt = "Updated %s user(s); %s skipped (already restricted or not restricted).",
+    access_remove_stale_fmt = paste0(
+      "Item selection was out of date after switching Apply to / Action. ",
+      "Select Items to unlock again, then Apply changes."
+    ),
     access_bad_points_cost = "Enter how many FYN are required for points unlock.",
     access_bad_conditional = paste0(
       "For conditional unlock, set free uses and/or a time limit greater than zero."
@@ -5980,14 +5990,17 @@ locale_for_market <- function(mode = get_market_mode()) {
       "解除限制僅列出該對象已有限制的項目。",
       "選定使用者會保留使用者清單，並支援關鍵字搜尋與複選。",
       "同一項目若有個人規則，會覆寫「所有使用者」規則。",
-      "「所有使用者」亦套用至訪客。"
+      "「所有使用者」亦套用至訪客。",
+      "「僅訪客」只套用至訪客；已登入使用者不受影響。"
     ),
     access_lock_item = "項目",
     access_scope_label = "套用對象",
     access_scope_user = "選定使用者（可複選）",
     access_scope_all = "所有使用者",
+    access_scope_guests = "僅訪客",
     access_scope_user_short = "個人",
     access_scope_all_short = "全部",
+    access_scope_guests_short = "訪客",
     access_users_multi = "選定使用者（複選）",
     access_users_multi_ph = "搜尋並選取一位或多位使用者…",
     access_action_label = "選擇",
@@ -6028,11 +6041,18 @@ locale_for_market <- function(mode = get_market_mode()) {
     access_ok_lock_all = "已為所有使用者鎖上此項目。",
     access_ok_hide_all = "已為所有使用者隱藏此項目。",
     access_ok_unlock_all = "已清除所有使用者的此項限制。",
+    access_ok_lock_guests = "已為僅訪客鎖上此項目。",
+    access_ok_hide_guests = "已為僅訪客隱藏此項目。",
+    access_ok_unlock_guests = "已清除僅訪客的此項限制。",
     access_bad_item = "請從清單選擇項目。",
     access_bad_user = "請從清單選擇使用者。",
     access_already_restricted = "此項目在所選套用對象下已有限制；請先解除後再改規則。",
     access_not_restricted = "此項目在所選套用對象下沒有限制。",
     access_partial_fmt = "已更新 %s 位使用者；略過 %s 位（已限制或尚無限制）。",
+    access_remove_stale_fmt = paste0(
+      "切換套用對象／選擇後，項目選取已過期。",
+      "請重新選取欲解除限制項目，再按套用變更。"
+    ),
     access_bad_points_cost = "請輸入點數解鎖所需的 FYN。",
     access_bad_conditional = "條件解鎖請設定免費次數及／或大於零的限時。",
     access_denied_report = "此報表已對目前登入帳號鎖上。",

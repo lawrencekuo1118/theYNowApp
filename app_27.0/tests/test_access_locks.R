@@ -321,9 +321,21 @@ check("Items to restrict is multi-select selectize", {
 })
 check("locale en apply changes", grepl("access_apply_changes_btn = \"Apply changes\"", loc, fixed = TRUE))
 check("locale zh action remove", grepl("access_action_remove = \"解除限制\"", loc, fixed = TRUE))
-check("locale scope all en+zh", {
+check("locale scope all/guests/user en+zh", {
   grepl("access_scope_all = \"All users\"", loc, fixed = TRUE) &&
-    grepl("access_scope_all = \"所有使用者\"", loc, fixed = TRUE)
+    grepl("access_scope_all = \"所有使用者\"", loc, fixed = TRUE) &&
+    grepl("access_scope_guests = \"Only guests\"", loc, fixed = TRUE) &&
+    grepl("access_scope_guests = \"僅訪客\"", loc, fixed = TRUE) &&
+    grepl("access_ok_unlock_guests = \"Restriction cleared for guests only.\"", loc, fixed = TRUE) &&
+    grepl("access_ok_unlock_guests = \"已清除僅訪客的此項限制。\"", loc, fixed = TRUE) &&
+    !grepl("一鍵", loc, fixed = TRUE)
+})
+check("server Apply to order All → Only guests → Selected; default all", {
+  grepl('choiceValues = c("all", "guests", "user")', srv, fixed = TRUE) &&
+    grepl('isolate(input$ynow_access_scope) %||% "all"', srv, fixed = TRUE) &&
+    grepl("access_scope_guests", srv, fixed = TRUE) &&
+    grepl("YNOW_ACCESS_GUESTS_ONLY", srv, fixed = TRUE) &&
+    grepl("onInitialize", srv, fixed = TRUE)
 })
 check("locale effect lock zh", grepl("access_effect_lock = \"鎖上", loc, fixed = TRUE))
 check("locale zh currently restricted", grepl("access_locked_now = \"目前已限制者\"", loc, fixed = TRUE))
@@ -619,6 +631,112 @@ check("clear then re-apply allowed", {
   ynow_access_set("user-a", "tab:lab_notes", FALSE)
   res <- ynow_access_set("user-a", "tab:lab_notes", TRUE, effect = "hide", unlock_type = "login")
   isTRUE(res$ok) && identical(ynow_access_item_effect("user-a", "tab:lab_notes"), "hide")
+})
+
+# --- Only guests scope + remove for non-guest scopes ---
+ynow_access_reset_memory()
+unlink(tmp); unlink(tmp_state)
+Sys.setenv(YNOW_ACCESS_LOCKS_PATH = tmp, YNOW_ACCESS_UNLOCK_STATE_PATH = tmp_state)
+
+check("guests-only store uid constant", {
+  identical(YNOW_ACCESS_GUESTS_ONLY, "__guests__") &&
+    isTRUE(ynow_access_is_store_scope_uid(YNOW_ACCESS_GUESTS_ONLY)) &&
+    identical(ynow_access_scope_store_uid("guests"), YNOW_ACCESS_GUESTS_ONLY)
+})
+check("only-guests locks guests not signed-in", {
+  res <- ynow_access_set(
+    YNOW_ACCESS_GUESTS_ONLY, "tab:asset_transmission", TRUE,
+    effect = "lock", unlock_type = "login"
+  )
+  guest_raw <- ynow_access_entries("", authed = FALSE)
+  member_raw <- ynow_access_entries("user-member", authed = TRUE)
+  signed_preview <- ynow_access_entries("", authed = TRUE)
+  isTRUE(res$ok) &&
+    identical(res$scope, "guests") &&
+    identical(res$message_key, "access_ok_lock_guests") &&
+    "tab:asset_transmission" %in% as.character(guest_raw$id) &&
+    !"tab:asset_transmission" %in% as.character(member_raw$id) &&
+    !"tab:asset_transmission" %in% as.character(signed_preview$id)
+})
+check("only-guests remove clears guest lock", {
+  res <- ynow_access_set(YNOW_ACCESS_GUESTS_ONLY, "tab:asset_transmission", FALSE)
+  guest_eff <- ynow_access_effective_entries("", authed = FALSE)
+  isTRUE(res$ok) &&
+    identical(res$message_key, "access_ok_unlock_guests") &&
+    !"tab:asset_transmission" %in% as.character(guest_eff$id)
+})
+check("all-users remove works (non-guest scope)", {
+  ynow_access_set(
+    YNOW_ACCESS_ALL_USERS, "report:download_report", TRUE,
+    effect = "hide", unlock_type = "login"
+  )
+  rem_ids <- ynow_access_restricted_ids_for_scope(character(), "all")
+  res <- ynow_access_set(YNOW_ACCESS_ALL_USERS, "report:download_report", FALSE)
+  isTRUE(res$ok) &&
+    "report:download_report" %in% rem_ids &&
+    !length(ynow_access_restricted_ids_for_scope(character(), "all")) &&
+    !isTRUE(ynow_access_is_locked("user-z", "report:download_report"))
+})
+check("selected-user remove works (non-guest scope)", {
+  ynow_access_set("user-sel", "output:sgr_pct", TRUE, effect = "lock", unlock_type = "login")
+  rem_ids <- ynow_access_restricted_ids_for_scope("user-sel", "user")
+  res <- ynow_access_set("user-sel", "output:sgr_pct", FALSE)
+  isTRUE(res$ok) &&
+    "output:sgr_pct" %in% rem_ids &&
+    !length(ynow_access_restricted_ids_for_scope("user-sel", "user"))
+})
+check("stale remove selection mirrors UI fallback to first restricted id", {
+  # Simulates renderUI selectize still holding an Apply-mode id that is not restricted.
+  ynow_access_set(
+    YNOW_ACCESS_ALL_USERS, "tab:lab_notes", TRUE,
+    effect = "lock", unlock_type = "login"
+  )
+  rem_ids <- ynow_access_restricted_ids_for_scope(character(), "all")
+  stale_items <- c("output:composite_fv") # not restricted under all
+  overlap <- intersect(stale_items, rem_ids)
+  recovered <- if (!length(overlap) && length(rem_ids) > 0L &&
+                   length(stale_items) > 0L && !any(stale_items %in% rem_ids)) {
+    rem_ids[[1]]
+  } else {
+    overlap
+  }
+  res <- ynow_access_set(YNOW_ACCESS_ALL_USERS, recovered, FALSE)
+  isTRUE(res$ok) &&
+    identical(recovered, "tab:lab_notes") &&
+    !length(ynow_access_restricted_ids_for_scope(character(), "all"))
+})
+check("guests status lines use guests store only", {
+  ynow_access_set(
+    YNOW_ACCESS_GUESTS_ONLY, "tab:price_alerts", TRUE,
+    effect = "hide", unlock_type = "login"
+  )
+  ynow_access_set(
+    YNOW_ACCESS_ALL_USERS, "report:download_snapshot", TRUE,
+    effect = "hide", unlock_type = "login"
+  )
+  g_lines <- ynow_access_admin_status_lines(
+    "", scope = "guests", locale = "en",
+    user_scope_lab = "User", all_scope_lab = "All", guests_scope_lab = "Guests"
+  )
+  a_lines <- ynow_access_admin_status_lines(
+    "", scope = "all", locale = "en",
+    user_scope_lab = "User", all_scope_lab = "All", guests_scope_lab = "Guests"
+  )
+  length(g_lines) == 1L &&
+    grepl("Guests ·", g_lines[[1]], fixed = TRUE) &&
+    grepl("Value Alerts", g_lines[[1]], fixed = TRUE) &&
+    !grepl("Snapshot CSV", g_lines[[1]], fixed = TRUE) &&
+    grepl("Snapshot CSV", a_lines[[1]], fixed = TRUE)
+})
+check("all-users still applies to guests alongside guest-only", {
+  guest_ent <- ynow_access_entries("", authed = FALSE)
+  "report:download_snapshot" %in% as.character(guest_ent$id) &&
+    "tab:price_alerts" %in% as.character(guest_ent$id)
+})
+check("signed-in gets all-users but not guest-only", {
+  mem <- ynow_access_entries("user-member", authed = TRUE)
+  "report:download_snapshot" %in% as.character(mem$id) &&
+    !"tab:price_alerts" %in% as.character(mem$id)
 })
 
 message("PASS ", ok, " FAIL ", bad)
