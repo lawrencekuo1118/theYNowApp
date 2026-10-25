@@ -1,0 +1,134 @@
+{
+  "markets": [
+    {
+      "candlesticks": [
+        {
+          "end_period_ts": 1792123200,
+          "open_interest_fp": "547441.02",
+          "price": {
+            "close_dollars": "0.0360",
+            "high_dollars": "0.0510",
+            "low_dollars": "0.0320",
+            "mean_dollars": "0.0326",
+            "open_dollars": "0.0340",
+            "previous_dollars": "0.0560"
+          },
+          "volume_fp": "225.19",
+          "yes_ask": {
+            "close_dollars": "0.0390",
+            "high_dollars": "0.0610",
+            "low_dollars": "0.0390",
+            "open_dollars": "0.0500"
+          },
+          "yes_bid": {
+            "close_dollars": "0.0360",
+            "high_dollars": "0.0440",
+            "low_dollars": "0.0320",
+            "open_dollars": "0.0410"
+          }
+        },
+        {
+          "end_period_ts": 1792209600,
+          "open_interest_fp": "546599.77",
+          "price": {
+            "close_dollars": "0.0530",
+            "high_dollars": "0.0540",
+            "low_dollars": "0.0350",
+            "mean_dollars": "0.0404",
+            "open_dollars": "0.0390",
+            "previous_dollars": "0.0360"
+          },
+          "volume_fp": "2548.21",
+          "yes_ask": {
+            "close_dollars": "0.0470",
+            "high_dollars": "0.0540",
+            "low_dollars": "0.0390",
+            "open_dollars": "0.0390"
+          },
+          "yes_bid": {
+            "close_dollars": "0.0370",
+            "high_dollars": "0.0460",
+            "low_dollars": "0.0350",
+            "open_dollars": "0.0360"
+          }
+        },
+        {
+          "end_period_ts": 1792296000,
+          "open_interest_fp": "549236.40",
+          "price": {
+            "close_dollars": "0.0500",
+            "high_dollars": "0.0590",
+            "low_dollars": "0.0350",
+            "mean_dollars": "0.0534",
+            "open_dollars": "0.0370",
+            "previous_dollars": "0.0530"
+          },
+          "volume_fp": "3309.36",
+          "yes_ask": {
+            "close_dollars": "0.0550",
+            "high_dollars": "0.0630",
+            "low_dollars": "0.0450",
+            "open_dollars": "0.0470"
+          },
+          "yes_bid": {
+            "close_dollars": "0.0520",
+            "high_dollars": "0.0540",
+            "low_dollars": "0.0350",
+            "open_dollars": "0.0370"
+          }
+        },
+        {
+          "end_period_ts": 1792382400,
+          "open_interest_fp": "549755.21",
+          "price": {
+            "close_dollars": "0.0430",
+            "high_dollars": "0.0570",
+            "low_dollars": "0.0430",
+            "mean_dollars": "0.0524",
+            "open_dollars": "0.0520",
+            "previous_dollars": "0.0500"
+          },
+          "volume_fp": "1072.82",
+          "yes_ask": {
+            "close_dollars": "0.0470",
+            "high_dollars": "0.0590",
+            "low_dollars": "0.0470",
+            "open_dollars": "0.0550"
+          },
+          "yes_bid": {
+            "close_dollars": "0.0400",
+            "high_dollars": "0.0560",
+            "low_dollars": "0.0370",
+            "open_dollars": "0.0520"
+          }
+        },
+        {
+          "end_period_ts": 1792468800,
+          "open_interest_fp": "549738.52",
+          "price": {
+            "close_dollars": "0.0410",
+            "high_dollars": "0.0490",
+            "low_dollars": "0.0410",
+            "mean_dollars": "0.0477",
+            "open_dollars": "0.0480",
+            "previous_dollars": "0.0430"
+          },
+          "volume_fp": "17.48",
+          "yes_ask": {
+            "close_dollars": "0.0470",
+            "high_dollars": "0.0520",
+            "low_dollars": "0.0460",
+            "open_dollars": "0.0470"
+          },
+          "yes_bid": {
+            "close_dollars": "0.0410",
+            "high_dollars": "0.0430",
+            "low_dollars": "0.0380",
+            "open_dollars": "0.0400"
+          }
+        }
+      ],
+      "market_ticker": "KXRATECUT-26DEC31"
+    }
+  ]
+}
