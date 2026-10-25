@@ -1,3 +1,15 @@
+## [v27.30] — 2026-10-25
+
+### Fixed
+- System admin enter clears self-view (#513): no Exit self-view / mode reminder until Guest, Signed-in, or Omniscient is applied; Signed-in control restored on the control panel.
+
+### Changed
+- System admin Controls / Audit Log tabs (#513): match Company FINANCIAL REPORT chrome (`nav-tabs` + gold top border under `.ynow-sysadmin-ops-tabs`).
+
+### Notes
+- en-US: Bundle **12735842**. Enter leaves `self_view=none`; tab pills replaced with FS-style tabs.
+- zh-TW：進入系統管理後預設已離開自我檢視；Controls／Audit Log 小頁籤對齊 Company 財報金頂條樣式。
+
 ## [v27.24] — 2026-10-24
 
 ### Added
