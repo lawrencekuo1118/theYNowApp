@@ -28,6 +28,8 @@ check <- function(label, cond) {
 }
 
 source("seeking_alpha_earnings_call.R", local = TRUE, encoding = "UTF-8")
+source("earnings_call_keyword_lexicon.R", local = TRUE, encoding = "UTF-8")
+source("earnings_call_keyword_framework.R", local = TRUE, encoding = "UTF-8")
 source("us_earnings_call.R", local = TRUE, encoding = "UTF-8")
 
 check("SA url is seekingalpha transcripts path", {

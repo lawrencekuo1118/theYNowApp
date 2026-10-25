@@ -1003,10 +1003,34 @@ bblab_order_research_meta_ui <- function(pack, locale = "en", started = FALSE) {
         tags$ul(lapply(utils::head(items, 5L), function(s) tags$li(s)))
       )
     }
+    updated <- .bblab_chr(ec$info_updated_at %||% ec$analysis_axis_published %||% ec$published, "")
+    updated_kind <- .bblab_chr(ec$info_updated_kind, "")
+    updated_row <- if (nzchar(updated)) {
+      kind_lab <- if (identical(updated_kind, "fetched_at")) {
+        msg("bblab_or_ec_kw_updated_kind_fetched")
+      } else if (nzchar(updated_kind)) {
+        msg("bblab_or_ec_kw_updated_kind_event")
+      } else {
+        ""
+      }
+      tags$p(
+        class = "help-block ynow-bblab-or__ec-kw-updated",
+        tags$b(paste0(msg("bblab_or_ec_kw_updated"), ": ")),
+        updated,
+        if (nzchar(kind_lab)) tags$span(paste0(" (", kind_lab, ")")) else NULL
+      )
+    } else {
+      tags$p(
+        class = "help-block ynow-bblab-or__ec-kw-updated",
+        tags$b(paste0(msg("bblab_or_ec_kw_updated"), ": ")),
+        msg("bblab_or_ec_kw_updated_unknown")
+      )
+    }
     tags$div(
       class = "ynow-bblab-or__ec-kw ynow-bblab-or__ec-kw--order-focus",
       tags$p(tags$b(msg("bblab_or_ec_kw_title"))),
       tags$p(class = "help-block", msg("bblab_or_ec_kw_note")),
+      updated_row,
       .note_list(orders, "bblab_or_ec_kw_orders"),
       .note_list(suppliers, "bblab_or_ec_kw_suppliers"),
       .note_list(customers, "bblab_or_ec_kw_customers"),

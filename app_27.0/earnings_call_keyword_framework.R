@@ -544,6 +544,65 @@ ynow_ec_keyword_analyze <- function(text, prior = NULL, meta = NULL) {
   )
 }
 
+#' Parse a source event / published date to Date (NA if unknown).
+#' Accepts YYYY-MM-DD, YYYY/MM/DD, YYYYMMDD, ISO datetime prefixes.
+ynow_ec_parse_event_date <- function(x) {
+  s <- trimws(as.character(x %||% "")[1])
+  if (!nzchar(s) || is.na(s)) return(as.Date(NA))
+  s <- sub("T.*$", "", s)
+  s <- sub(" .*", "", s)
+  s <- gsub("/", "-", s, fixed = TRUE)
+  if (grepl("^[0-9]{8}$", s)) {
+    s <- paste0(substr(s, 1, 4), "-", substr(s, 5, 6), "-", substr(s, 7, 8))
+  }
+  d <- suppressWarnings(as.Date(s))
+  if (length(d) != 1L || is.na(d)) as.Date(NA) else d
+}
+
+#' Rank earnings-call fetch results newest-first by published/event date.
+#' Unknown dates sort last. Optional source_rank breaks ties (lower = preferred).
+ynow_ec_rank_by_event_date <- function(results, source_rank = NULL) {
+  if (!is.list(results) || !length(results)) return(list())
+  n <- length(results)
+  dates <- vapply(results, function(r) {
+    d <- ynow_ec_parse_event_date(r$published %||% r$date %||% r$event_date %||% "")
+    if (is.na(d)) -Inf else as.numeric(d)
+  }, numeric(1))
+  ranks <- if (is.null(source_rank)) {
+    rep(99L, n)
+  } else {
+    as.integer(source_rank)[seq_len(n)]
+  }
+  ranks[!is.finite(ranks)] <- 99L
+  ord <- order(-dates, ranks, seq_len(n))
+  results[ord]
+}
+
+#' Stamp 資訊更新日期 fields: prefer source event date; else fetch/analysis time.
+ynow_ec_stamp_info_updated <- function(result, fetched_at = NULL) {
+  if (!is.list(result)) return(result)
+  event <- .ynow_ec_kw_chr(result$published %||% result$event_date %||% result$date)
+  event_d <- ynow_ec_parse_event_date(event)
+  fetched <- .ynow_ec_kw_chr(fetched_at)
+  if (!nzchar(fetched)) {
+    fetched <- format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
+  }
+  result$fetched_at <- fetched
+  if (!is.na(event_d)) {
+    result$info_updated_at <- format(event_d, "%Y-%m-%d")
+    result$info_updated_kind <- "source_event"
+  } else if (nzchar(event)) {
+    result$info_updated_at <- event
+    result$info_updated_kind <- "source_event_raw"
+  } else {
+    # Honest: show analysis/fetch day when event date unknown.
+    result$info_updated_at <- substr(fetched, 1L, 10L)
+    result$info_updated_kind <- "fetched_at"
+  }
+  result$analysis_axis <- "latest_earnings_call"
+  result
+}
+
 #' Status-only sentence harvest for 訂單／主要供應商／主要客戶 (never invent amounts).
 ynow_ec_kw_extract_order_focus <- function(text, lex = NULL, max_n = 6L) {
   lex <- lex %||% (if (exists("ynow_ec_keyword_lexicon", mode = "function")) {
@@ -650,6 +709,9 @@ ynow_ec_attach_keyword_analysis <- function(result, text = NULL, prior = NULL) {
   result$keyword_top_risks <- NULL
   result$keyword_bridging_notes <- NULL
   result$keyword_capex_notes <- NULL
+
+  # 資訊更新日期: source event date preferred; fetch time as fallback.
+  result <- ynow_ec_stamp_info_updated(result)
   result
 }
 

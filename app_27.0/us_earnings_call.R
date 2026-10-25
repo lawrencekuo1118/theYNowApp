@@ -630,18 +630,27 @@ ynow_us_earnings_call_fetch <- function(ticker) {
   } else {
     function(res) is.list(res) && isTRUE(res$ok) && identical(res$status %||% "", "ok")
   }
+  .us_ec_finalize <- function(res) {
+    if (!is.list(res)) return(res)
+    if (exists("ynow_ec_stamp_info_updated", mode = "function")) {
+      res <- ynow_ec_stamp_info_updated(res)
+    }
+    res
+  }
+  # Durable stack: licensed transcript API → SEC 8-K/6-K → SA last-resort.
+  # Company IR remains human outbound (meta_links$ir_url) — gap: no automatable IR scrape.
   # 1) Licensed API when key present (env only — never committed).
   api_key <- .ynow_us_ec_api_key()
   if (nzchar(api_key)) {
     licensed <- tryCatch(.ynow_us_ec_from_fmp(tk, api_key), error = function(e) NULL)
     if (isTRUE(usable(licensed))) {
-      return(c(licensed, meta_links))
+      return(c(.us_ec_finalize(licensed), meta_links))
     }
   }
   # 2) SEC 8-K / 6-K primary body (Item 2.02 when titled).
   sec <- tryCatch(.ynow_us_ec_from_sec_8k(tk), error = function(e) NULL)
   if (isTRUE(usable(sec))) {
-    return(c(sec, meta_links))
+    return(c(.us_ec_finalize(sec), meta_links))
   }
   # 3) Seeking Alpha HTML — last-resort only (third-party; not official IR).
   if (exists("ynow_sa_earnings_call_fetch_last_resort", mode = "function")) {
@@ -650,7 +659,7 @@ ynow_us_earnings_call_fetch <- function(ticker) {
       error = function(e) NULL
     )
     if (isTRUE(usable(sa))) {
-      return(c(sa, meta_links))
+      return(c(.us_ec_finalize(sa), meta_links))
     }
   }
   # 4) Honest empty + outbound IR / SEC / SA links for humans.
@@ -669,7 +678,13 @@ ynow_us_earnings_call_fetch <- function(ticker) {
     keyword_supplier_notes = chr_vec(fetched$keyword_supplier_notes),
     keyword_customer_notes = chr_vec(fetched$keyword_customer_notes),
     keyword_trap_flags = chr_vec(fetched$keyword_trap_flags),
-    customer_notes = chr_vec(fetched$customer_notes)
+    customer_notes = chr_vec(fetched$customer_notes),
+    info_updated_at = .ynow_us_ec_chr(fetched$info_updated_at),
+    info_updated_kind = .ynow_us_ec_chr(fetched$info_updated_kind),
+    fetched_at = .ynow_us_ec_chr(fetched$fetched_at),
+    analysis_axis = .ynow_us_ec_chr(fetched$analysis_axis, "latest_earnings_call"),
+    analysis_axis_source_id = .ynow_us_ec_chr(fetched$analysis_axis_source_id),
+    analysis_axis_published = .ynow_us_ec_chr(fetched$analysis_axis_published)
   )
 }
 

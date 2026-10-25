@@ -153,6 +153,25 @@ check("attach keeps tone internally", {
   is.list(attached$keyword_analysis) &&
     is.finite(attached$keyword_analysis$tone$tone_score %||% NA_integer_)
 })
+check("attach stamps info_updated_at", nzchar(attached$info_updated_at %||% ""))
+check("parse event date YYYY-MM-DD", {
+  identical(as.character(ynow_ec_parse_event_date("2026-10-21")), "2026-10-21")
+})
+check("rank newest first", {
+  ranked <- ynow_ec_rank_by_event_date(
+    list(
+      list(published = "2026-03-01", source_id = "a"),
+      list(published = "2026-10-21", source_id = "b")
+    ),
+    source_rank = c(1L, 2L)
+  )
+  identical(ranked[[1]]$source_id, "b")
+})
+check("stamp prefers source event date", {
+  stamped <- ynow_ec_stamp_info_updated(list(published = "2026-10-21"))
+  identical(stamped$info_updated_at, "2026-10-21") &&
+    identical(stamped$info_updated_kind, "source_event")
+})
 
 # Pre-read prep optional fields.
 prep <- ynow_ec_preread_prep_normalize(list(
