@@ -4474,6 +4474,22 @@ ui <- dashboardPage(
           --ynow-chrome-green-glow: rgba(36, 156, 96, 0.45);
           --ynow-chrome-blue-edge: rgba(12, 84, 132, 0.35);
           --ynow-chrome-blue-halo: rgba(12, 84, 132, 0.22);
+          /* Black fill opacity: sidebar bottom→top; top banner left→right.
+             Wordmark strip (.logo) stays solid #000 separately. */
+          --ynow-chrome-sidebar-fill: linear-gradient(
+            to top,
+            rgba(0, 0, 0, 0.22) 0%,
+            rgba(0, 0, 0, 0.55) 28%,
+            rgba(0, 0, 0, 0.88) 62%,
+            #000 100%
+          );
+          --ynow-chrome-banner-fill: linear-gradient(
+            to right,
+            rgba(0, 0, 0, 0.22) 0%,
+            rgba(0, 0, 0, 0.55) 32%,
+            rgba(0, 0, 0, 0.88) 68%,
+            #000 100%
+          );
           /* Shared content column — same as Macro & Market Trends (.ynow-macro-report) */
           --ynow-page-max: 1200px;
           --ynow-logo-flow-gradient: linear-gradient(
@@ -6029,7 +6045,9 @@ ui <- dashboardPage(
         }
 
         .content-wrapper, .right-side { background-color: #f7f7f7; }
-        /* 網頁／手機共用：黑色頁首橫列置頂固定，捲動不滑掉 */
+        /* 網頁／手機共用：黑色頁首橫列置頂固定，捲動不滑掉。
+           Black fill: left more transparent → right fully opaque (US / default).
+           TW desktop keeps flag via body.ynow-market-tw overrides below. */
         .main-header {
           position: fixed !important;
           top: 0 !important;
@@ -6038,7 +6056,10 @@ ui <- dashboardPage(
           width: 100% !important;
           z-index: 1030 !important;
           overflow: hidden;
-          background-color: #000 !important;
+          background-color: transparent !important;
+          background-image: var(--ynow-chrome-banner-fill) !important;
+          background-repeat: no-repeat !important;
+          background-size: 100% 100% !important;
         }
         /* Black top-banner left (A+B): line-stroke veins flush left of .main-header.
            Asset: www/ynow-chrome-veins-branches.png. Logo/title strip is solid #000
@@ -6286,8 +6307,11 @@ ui <- dashboardPage(
             padding-right: 0;
           }
         }
+        /* Navbar sits on the header gradient — keep transparent so left→right
+           fade is painted once on .main-header (full viewport width). */
         .skin-black .main-header .navbar {
-          background-color: var(--ynow-ink) !important;
+          background-color: transparent !important;
+          background-image: none !important;
           position: relative;
         }
         /* 側欄漢堡：僅三條白線，無外框／無 FA 字型邊框；整顆按鈕與線條皆垂直置中 */
@@ -6491,11 +6515,12 @@ ui <- dashboardPage(
           outline: none;
         }
 
-        /* 台股（桌面）：dashboardHeader 以中華民國國旗填滿；美股維持全黑。
-           手機改回黑底（見下方 max-width: 767px 覆寫）。 */
+        /* 台股（桌面）：dashboardHeader 以中華民國國旗填滿；美股維持橫幅漸層黑。
+           手機改回黑底漸層（見下方 max-width: 767px 覆寫）。 */
         body.ynow-market-tw .main-header {
           position: relative;
           background-color: transparent !important;
+          background-image: none !important;
         }
         body.ynow-market-tw .main-header::before {
           content: "";
@@ -6578,10 +6603,17 @@ ui <- dashboardPage(
           color: #fff !important;
           text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
         }
-        .skin-black .wrapper,
+        /* Wrapper light so sidebar bottom transparency can reveal page tone.
+           Sidebar black fill: bottom more transparent → top fully opaque. */
+        .skin-black .wrapper {
+          background-color: #f7f7f7 !important;
+        }
         .skin-black .main-sidebar,
         .skin-black .left-side {
-          background-color: var(--ynow-ink) !important;
+          background-color: transparent !important;
+          background-image: var(--ynow-chrome-sidebar-fill) !important;
+          background-repeat: no-repeat !important;
+          background-size: 100% 100% !important;
         }
         .skin-black .sidebar-menu > li:hover > a,
         .skin-black .sidebar-menu > li.active > a {
@@ -19620,13 +19652,17 @@ ui <- dashboardPage(
             max-height: 50px !important;
             height: 50px !important;
           }
-          /* US + TW mobile: solid black bar so transparent navbar does not
-             hide the centered title / progress fill. Desktop TW keeps flag. */
+          /* US + TW mobile: black bar with left→right opacity fade so transparent
+             navbar does not hide the centered title / progress fill.
+             Desktop TW keeps flag (no banner gradient). */
           body:not(.ynow-market-tw) .main-header,
           body:not(.ynow-market-tw).skin-black .main-header,
           body.ynow-market-tw .main-header,
           body.ynow-market-tw.skin-black .main-header {
-            background-color: var(--ynow-ink) !important;
+            background-color: transparent !important;
+            background-image: var(--ynow-chrome-banner-fill) !important;
+            background-repeat: no-repeat !important;
+            background-size: 100% 100% !important;
           }
           body.ynow-market-tw .main-header::before,
           body.ynow-market-tw .main-header::after {
