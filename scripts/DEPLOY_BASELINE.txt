@@ -7,5 +7,5 @@ commit=f8b19552069e86bdddf0cf8eff0388d70b4e9fa4
 short=f8b19552
 message=chore: record shipped display version v27.31
 captured_at=2026-10-25T07:26:51Z
-display_version=v27.31
+display_version=v27.32
 note=Canonical live line is app_27.0. Bundle 12735896: Model Dashboard SGR / configured-g value boxes full-width 1:1 like Summary β (#516).
