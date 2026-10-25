@@ -7,5 +7,5 @@ commit=4d60ca11166830efd1c07ad173d75be104ae412c
 short=4d60ca11
 message=chore: bump display version to v27.51
 captured_at=2026-10-25T17:01:52Z
-display_version=v27.51
+display_version=v27.52
 note=Canonical live line is app_27.0. Bundle 12737252: Recent Search long-press stock pin fix (#557).
