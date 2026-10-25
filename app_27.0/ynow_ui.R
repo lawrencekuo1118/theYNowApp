@@ -1452,19 +1452,19 @@ beta_rolling_section_ui <- function() {
       tabPanel(
         "SGR",
         icon = icon("seedling"),
-        # 與 BETA Overview 同款 valueBox 列：各 50% 並排（1:1）。
-        # Lock attr on column (not a bare wrapper) so Bootstrap col + flex equal-height stay intact.
+        # Match BETA Overview valueBox row exactly: full-width 1:1 side-by-side
+        # (Summary β | 產業預設 β). Lock on col-sm-6 host — not a bare wrapper —
+        # so Bootstrap columns + global equal-height stretch stay intact.
         fluidRow(
           class = "ynow-sgr-kpi-row",
-          column(
-            6,
+          tags$div(
+            class = "col-sm-6",
             `data-ynow-lock` = "output:sgr_pct",
-            valueBoxOutput("vbx_sgr_pct", width = 12)
+            # uiOutput (not valueBoxOutput width=N) — same host pattern as
+            # vbx_beta_summary: col-sm-6 on the lock host, bare small-box inside.
+            shiny::uiOutput("vbx_sgr_pct")
           ),
-          column(
-            6,
-            valueBoxOutput("vbx_session_g", width = 12)
-          )
+          valueBoxOutput("vbx_session_g", width = 6)
         ),
         fluidRow(
           column(
@@ -16672,23 +16672,24 @@ ui <- dashboardPage(
           width: 100%;
           height: 100%;
         }
-        /* SGR KPI value boxes only: square 1:1 (override equal-height stretch).
-           Size from height so col-sm-6 does not force ~half-viewport tiles. */
+        /* SGR KPI row: same full-width equal-height stretch as BETA Overview
+           (Summary β | 產業預設 β). Do NOT shrink to centered mini-squares —
+           boxes must fill their col-sm-6 (1:1 side-by-side, row-wide). */
         .content-wrapper .ynow-sgr-kpi-row > [class*='col-'],
         .tab-content .ynow-sgr-kpi-row > [class*='col-'],
         .tab-pane .ynow-sgr-kpi-row > [class*='col-'] {
-          align-items: center;
+          align-items: stretch;
         }
         .content-wrapper .ynow-sgr-kpi-row .small-box,
         .tab-content .ynow-sgr-kpi-row .small-box,
         .tab-pane .ynow-sgr-kpi-row .small-box {
-          aspect-ratio: 1 / 1 !important;
-          height: clamp(120px, 18vw, 168px) !important;
-          width: auto !important;
+          aspect-ratio: auto !important;
+          width: 100% !important;
           max-width: 100%;
-          flex: 0 0 auto !important;
-          margin-left: auto;
-          margin-right: auto;
+          height: 100% !important;
+          flex: 1 1 auto !important;
+          margin-left: 0;
+          margin-right: 0;
           display: flex !important;
           flex-direction: column !important;
           justify-content: center !important;
