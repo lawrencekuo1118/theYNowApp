@@ -1,3 +1,12 @@
+## [v27.31] — 2026-10-25
+
+### Fixed
+- Model Dashboard SGR KPI row (#516): **SGR** and **Current configured g (near-term)** value boxes are full-width 1:1 side-by-side, matching **Summary β** | **產業預設 β** (no centered 168px mini-squares).
+
+### Notes
+- en-US: Bundle **12735896**. Hosts match Beta Overview (`col-sm-6` + bare `small-box`); stretch CSS fills half-row columns.
+- zh-TW：SGR／近端 g 數值框改為滿版並排 1:1，與 Summary β／產業預設 β 同款；移除置中小方塊版面。
+
 ## [v27.30] — 2026-10-25
 
 ### Fixed
