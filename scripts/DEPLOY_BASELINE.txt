@@ -7,5 +7,5 @@ commit=5d0f449439632ff7bbaf7dc422c39317b779b0c6
 short=5d0f4494
 message=chore: record shinyapps baseline bundle 12736608 (app_27.0)
 captured_at=2026-10-25T12:50:58Z
-display_version=v27.42
+display_version=v27.43
 note=Canonical live line is app_27.0. Bundle 12736608: All users / Only guests Currently restricted lists freemium guest_menu_lock tabs (#538).
