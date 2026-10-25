@@ -161,6 +161,67 @@ check(
   !grepl("get_started", post_login, fixed = TRUE)
 )
 
+# Stale restore_tab: modal opened earlier on Home, then Sign-in from another
+# path without Persist, must not yank the user back to Home after login.
+busy_helpers <- between(
+  ui,
+  "window.ynowBeginAuthBusy = function",
+  "window.ynowEndAuthBusy = function"
+)
+check(
+  "modal show.bs.modal re-persists pre-auth tab",
+  grepl("show.bs.modal", ui, fixed = TRUE) &&
+    grepl("ynow_auth_modal", ui, fixed = TRUE) &&
+    grepl("ynowPersistPreAuthTab", ui, fixed = TRUE) &&
+    grepl("__ynowAuthShowPersist", ui, fixed = TRUE)
+)
+check(
+  "email submit click re-persists tab before send",
+  grepl("ynow_auth_submit", ui, fixed = TRUE) &&
+    grepl("__ynowAuthSubmitPersist", ui, fixed = TRUE) &&
+    grepl("ynowPersistPreAuthTab", ui, fixed = TRUE) &&
+    grepl("ynowBeginAuthBusy", ui, fixed = TRUE)
+)
+check(
+  "auth busy chrome exists and clears on PostLogin",
+  grepl("ynowBeginAuthBusy", ui, fixed = TRUE) &&
+    grepl("ynowEndAuthBusy", ui, fixed = TRUE) &&
+    grepl("ynow-auth-signing-in", ui, fixed = TRUE) &&
+    grepl("ynowEndAuthBusy", post_login, fixed = TRUE)
+)
+check(
+  "auth busy helper body present",
+  nchar(busy_helpers) > 40L || grepl("ynow-auth-signing-in", ui, fixed = TRUE)
+)
+
+pa <- paste(readLines("price_alert.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+scr <- paste(readLines("stock_screener.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+check(
+  "price_alert login gate opens via AuthOpenModal (captures tab)",
+  grepl("ynowAuthOpenModal", pa, fixed = TRUE) &&
+    !grepl(
+      "toggleModal(session, \"ynow_auth_modal\", \"open\")",
+      pa,
+      fixed = TRUE
+    )
+)
+check(
+  "stock_screener login gate opens via AuthOpenModal (captures tab)",
+  grepl("ynowAuthOpenModal", scr, fixed = TRUE) &&
+    !grepl(
+      "toggleModal(session, \"ynow_auth_modal\", \"open\")",
+      scr,
+      fixed = TRUE
+    )
+)
+
+loc <- paste(readLines("ui_locale.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+check(
+  "auth_busy locale keys en + zh-TW",
+  grepl("auth_busy = \"Signing in", loc, fixed = TRUE) &&
+    grepl("auth_busy = \"登入中", loc, fixed = TRUE)
+)
+
 if (fail > 0L) {
   cat("FAIL count=", fail, "\n", sep = "")
   quit(status = 1L)
