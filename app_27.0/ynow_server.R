@@ -3446,7 +3446,8 @@ server <- function(input, output, session) {
         locale = loc,
         user_scope_lab = .lab("access_scope_user_short", "User"),
         all_scope_lab = .lab("access_scope_all_short", "All"),
-        guests_scope_lab = .lab("access_scope_guests_short", "Guests")
+        guests_scope_lab = .lab("access_scope_guests_short", "Guests"),
+        freemium_scope_lab = .lab("access_scope_freemium_short", "Freemium")
       )
     } else {
       list()
@@ -3460,6 +3461,7 @@ server <- function(input, output, session) {
         user_scope_lab = .lab("access_scope_user_short", "User"),
         all_scope_lab = .lab("access_scope_all_short", "All"),
         guests_scope_lab = .lab("access_scope_guests_short", "Guests"),
+        freemium_scope_lab = .lab("access_scope_freemium_short", "Freemium"),
         none_lab = none_lab,
         pick_users_lab = pick_lab
       )
