@@ -38,6 +38,18 @@ After finishing edits:
 - From **OneDrive**: `/Users/lawrencekuo/coding/bin/push-theynow-from-onedrive.sh "your message"` (mirror → coding → push → re-sync).
 - After a shinyapps deploy: update `scripts/DEPLOY_BASELINE.txt` so the recorded commit/bundle stays the baseline.
 
+## After every new display_version release (immediate)
+
+When tip ship completes (deploy + baseline + GitHub Release for a new `display_version`), **immediately** sync local physical folders as an on-disk backup of that released tip:
+
+1. Coding clone must match pushed tip + `DEPLOY_BASELINE.txt` live tree.
+2. Run `bash scripts/post_release_local_sync.sh` (or `bash scripts/sync-workspaces.sh --force` / `~/coding/bin/sync-theynow-workspaces.sh --force`).
+3. Verify: `bash scripts/check-od-sync.sh` (sha + `app_27.0/app.R`).
+4. On Mac coding clone / self-hosted Mac: sync is **mandatory** — do not treat tip-ship as done until check passes.
+5. Cloud Agents without Mac paths: soft-skip OK, but document that the operator/Mac agent must run steps 2–3 next.
+
+`deploy_app_21.R` calls `post_release_local_sync.sh` at the end of a successful ship. Set `YNOW_SKIP_POST_RELEASE_SYNC=1` only for intentional skips (never as the default on Mac tip-ship).
+
 **Never run `git status` / `git diff` / `git push` inside the OneDrive folder.**  
 OneDrive’s tree is a lightweight sync stub (objects via `alternates` → coding clone). Cloud I/O often times out (`mmap failed: Operation timed out`), so those commands hang or fail. To verify OneDrive alignment, read:
 
