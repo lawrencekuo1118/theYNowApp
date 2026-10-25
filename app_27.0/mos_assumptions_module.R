@@ -83,10 +83,32 @@ mos_assumptions_ladder <- function(input = NULL, defaults = NULL) {
   )
 }
 
-.mos_assump_block <- function(title_id, title_en, lead_id, lead_en, ...) {
+#' Topic block with optional right-aligned tab shortcut button(s).
+#' @param shortcuts list of lists: id, tab, label_en (locale via push)
+.mos_assump_block <- function(title_id, title_en, lead_id, lead_en,
+                              shortcuts = NULL, ...) {
+  goto_btns <- NULL
+  if (length(shortcuts)) {
+    goto_btns <- tags$div(
+      class = "ynow-mos-assump-gotos",
+      lapply(shortcuts, function(sc) {
+        tags$button(
+          type = "button",
+          id = sc$id,
+          class = "btn btn-xs btn-default ynow-mos-assump-goto",
+          `data-tab` = sc$tab,
+          sc$label_en
+        )
+      })
+    )
+  }
   tags$section(
     class = "ynow-mos-assump-block",
-    tags$h4(id = title_id, title_en),
+    tags$div(
+      class = "ynow-mos-assump-title-row",
+      tags$h4(id = title_id, title_en),
+      goto_btns
+    ),
     tags$p(id = lead_id, class = "ynow-mos-assump-lead", lead_en),
     tags$div(class = "ynow-mos-assump-fields", ...)
   )
@@ -98,7 +120,12 @@ mos_assumptions_tab_body_ui <- function() {
     tags$style(HTML("
       .ynow-mos-assump-block { margin: 0 0 22px 0; padding: 14px 16px;
         background: #fafbfc; border: 1px solid #e6eaee; border-radius: 8px; }
-      .ynow-mos-assump-block h4 { margin: 0 0 6px 0; font-size: 16px; }
+      .ynow-mos-assump-title-row { display: flex; align-items: center;
+        justify-content: space-between; gap: 8px 12px; margin: 0 0 6px 0; flex-wrap: wrap; }
+      .ynow-mos-assump-title-row h4 { margin: 0; font-size: 16px; flex: 1 1 auto; min-width: 0; }
+      .ynow-mos-assump-gotos { display: flex; flex-wrap: wrap; gap: 6px;
+        justify-content: flex-end; flex: 0 0 auto; margin-left: auto; }
+      .ynow-mos-assump-goto { white-space: nowrap; }
       .ynow-mos-assump-lead { margin: 0 0 12px 0; color: #5c6b73; font-size: 13px; }
       .ynow-mos-assump-fields .form-group { margin-bottom: 10px; }
       .ynow-mos-assump-hint { margin: -4px 0 10px 0; color: #7a8690; font-size: 12px; }
@@ -111,6 +138,30 @@ mos_assumptions_tab_body_ui <- function() {
         border: none !important;
         box-shadow: none !important;
       }
+    ")),
+    tags$script(HTML("
+      (function () {
+        if (document.documentElement.getAttribute('data-ynow-mos-assump-goto') === '1') return;
+        document.documentElement.setAttribute('data-ynow-mos-assump-goto', '1');
+        document.addEventListener('click', function (ev) {
+          var btn = ev.target && ev.target.closest
+            ? ev.target.closest('.ynow-mos-assump-goto')
+            : null;
+          if (!btn) return;
+          ev.preventDefault();
+          var tab = btn.getAttribute('data-tab');
+          if (!tab) return;
+          if (typeof window.ynowGotoTab === 'function') {
+            window.ynowGotoTab(tab);
+            return;
+          }
+          if (window.Shiny && Shiny.setInputValue) {
+            Shiny.setInputValue('sidebar_tabs', tab, {priority: 'event'});
+          }
+          var a = document.querySelector('.sidebar-menu a[data-value=\"' + tab + '\"]');
+          if (a) { try { a.click(); } catch (e) {} }
+        });
+      })();
     ")),
     fluidRow(
       column(
@@ -141,6 +192,11 @@ mos_assumptions_tab_body_ui <- function() {
           .mos_assump_block(
             "ynow_mos_assump_b1_title", .mos_assump_str("mos_assump_b1_title", "en"),
             "ynow_mos_assump_b1_lead", .mos_assump_str("mos_assump_b1_lead", "en"),
+            shortcuts = list(list(
+              id = "ynow_mos_assump_goto_checklist",
+              tab = "decision_checklist",
+              label_en = .mos_assump_str("mos_assump_goto_checklist", "en")
+            )),
             checkboxInput(
               "chk_bear_base",
               tags$span(id = "ynow_mos_assump_chk_bear_base_label", .mos_assump_str("dc_label_bear_base", "en")),
@@ -176,6 +232,11 @@ mos_assumptions_tab_body_ui <- function() {
           .mos_assump_block(
             "ynow_mos_assump_b2_title", .mos_assump_str("mos_assump_b2_title", "en"),
             "ynow_mos_assump_b2_lead", .mos_assump_str("mos_assump_b2_lead", "en"),
+            shortcuts = list(list(
+              id = "ynow_mos_assump_goto_alerts",
+              tab = "price_alerts",
+              label_en = .mos_assump_str("mos_assump_goto_alerts", "en")
+            )),
             numericInput(
               "mos_alert_default_pct",
               tags$span(id = "ynow_mos_assump_alert_label", .mos_assump_str("mos_assump_alert_label", "en")),
@@ -189,6 +250,11 @@ mos_assumptions_tab_body_ui <- function() {
           .mos_assump_block(
             "ynow_mos_assump_b3_title", .mos_assump_str("mos_assump_b3_title", "en"),
             "ynow_mos_assump_b3_lead", .mos_assump_str("mos_assump_b3_lead", "en"),
+            shortcuts = list(list(
+              id = "ynow_mos_assump_goto_hfv",
+              tab = "hfv",
+              label_en = .mos_assump_str("mos_assump_goto_hfv", "en")
+            )),
             fluidRow(
               column(4, numericInput(
                 "mos_hfv_near_pct",
@@ -235,6 +301,11 @@ mos_assumptions_tab_body_ui <- function() {
           .mos_assump_block(
             "ynow_mos_assump_b4_title", .mos_assump_str("mos_assump_b4_title", "en"),
             "ynow_mos_assump_b4_lead", .mos_assump_str("mos_assump_b4_lead", "en"),
+            shortcuts = list(list(
+              id = "ynow_mos_assump_goto_lab",
+              tab = "lab_notes",
+              label_en = .mos_assump_str("mos_assump_goto_lab", "en")
+            )),
             sliderInput(
               "bt_w_vg",
               tags$span(id = "ynow_mos_assump_wvg_label", .mos_assump_str("bt_w_vg_label", "en")),
@@ -329,12 +400,16 @@ mos_assumptions_push_locale <- function(session, loc = "en") {
     ynow_mos_assump_box_title = "mos_assump_box_title",
     ynow_mos_assump_b1_title = "mos_assump_b1_title",
     ynow_mos_assump_b1_lead = "mos_assump_b1_lead",
+    ynow_mos_assump_goto_checklist = "mos_assump_goto_checklist",
     ynow_mos_assump_b2_title = "mos_assump_b2_title",
     ynow_mos_assump_b2_lead = "mos_assump_b2_lead",
+    ynow_mos_assump_goto_alerts = "mos_assump_goto_alerts",
     ynow_mos_assump_b3_title = "mos_assump_b3_title",
     ynow_mos_assump_b3_lead = "mos_assump_b3_lead",
+    ynow_mos_assump_goto_hfv = "mos_assump_goto_hfv",
     ynow_mos_assump_b4_title = "mos_assump_b4_title",
     ynow_mos_assump_b4_lead = "mos_assump_b4_lead",
+    ynow_mos_assump_goto_lab = "mos_assump_goto_lab",
     ynow_mos_assump_chk_bear_base_label = "dc_label_bear_base",
     ynow_mos_assump_chk_bear_base_hint = "dc_hint_bear_base",
     ynow_mos_assump_bear_floor_label = "dc_cond_bear_mos_floor",
