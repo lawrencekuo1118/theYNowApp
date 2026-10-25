@@ -240,6 +240,7 @@ source("user_prefs.R", local = TRUE, encoding = "UTF-8")
 source("access_locks.R", local = TRUE, encoding = "UTF-8")
 source("maintenance_mode.R", local = TRUE, encoding = "UTF-8")
 source("admin_ops_audit.R", local = TRUE, encoding = "UTF-8")
+source("inspiration_gallery.R", local = TRUE, encoding = "UTF-8")
 source("market_cache.R", local = TRUE, encoding = "UTF-8")
 source("news_sentiment.R", local = TRUE, encoding = "UTF-8")
 # Ensure Postgres schema + optional seed admin when DB env is present (best-effort).
