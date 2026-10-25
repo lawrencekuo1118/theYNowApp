@@ -9420,6 +9420,25 @@ ui <- dashboardPage(
           font-size: 12px;
           color: #666;
         }
+        /* Top-10 holders: collapsible box, collapsed by default */
+        .ynow-own-holders-box {
+          margin-top: 4px;
+          margin-bottom: 8px;
+          border-top: 0;
+          box-shadow: none;
+        }
+        .ynow-own-holders-box > .box-header {
+          padding: 8px 12px;
+          border-bottom: 1px solid #eee;
+        }
+        .ynow-own-holders-box > .box-header .box-title {
+          font-size: 14px;
+          font-weight: 700;
+          color: #222;
+        }
+        .ynow-own-holders-box.collapsed-box > .box-header {
+          border-bottom: 0;
+        }
         .ynow-corp-events {
           margin: 0;
           padding: 4px 0 8px 0;
@@ -21154,6 +21173,27 @@ ui <- dashboardPage(
             if (typingOpen.lab_cluster_focus) showSuggestWhenReady('lab_cluster_focus');
           }, 0);
         });
+      })();
+    ")),
+    # Ownership top-10 holders box: report AdminLTE collapse so server can keep
+    # expand state across institution-detail remounts (reset on ticker/search).
+    tags$script(HTML("
+      (function() {
+        if (document.documentElement.getAttribute('data-ynow-own-holders-collapse') === '1') return;
+        document.documentElement.setAttribute('data-ynow-own-holders-collapse', '1');
+        function reportOwnHoldersCollapsed() {
+          var box = document.getElementById('own_holders_box');
+          if (!box || typeof Shiny === 'undefined' || !Shiny.setInputValue) return;
+          var collapsed = box.classList.contains('collapsed-box');
+          Shiny.setInputValue('own_holders_box_collapsed', collapsed, {priority: 'event'});
+        }
+        $(document).on(
+          'click',
+          '#own_holders_box > .box-header .btn-box-tool[data-widget=\"collapse\"]',
+          function() {
+            setTimeout(reportOwnHoldersCollapsed, 0);
+          }
+        );
       })();
     ")),
     # Header KPIs: Company (dashboard) only (Last Price / Market Cap / EPS TTM).

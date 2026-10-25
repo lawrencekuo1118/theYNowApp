@@ -250,9 +250,48 @@ if (requireNamespace("htmltools", quietly = TRUE) || requireNamespace("shiny", q
     "float ui note",
     grepl("free-float", float_html, ignore.case = TRUE)
   )
+  # Default: top-10 holders box collapsed (AdminLTE collapsed-box / collapsed=TRUE)
+  check(
+    "holders box default collapsed",
+    grepl("collapsed-box", float_html, fixed = TRUE) ||
+      grepl("collapsed\\s*=\\s*TRUE", paste(deparse(ui_float), collapse = " "))
+  )
+  check(
+    "holders box id own_holders_box",
+    grepl("own_holders_box", float_html, fixed = TRUE)
+  )
+  ui_float_open <- .ynow_ownership_holders_ui(float_snap, loc = "en", collapsed = FALSE)
+  open_html <- paste(as.character(ui_float_open), collapse = " ")
+  check(
+    "holders box can expand",
+    !grepl("collapsed-box", open_html, fixed = TRUE)
+  )
+  ui_float_zh <- .ynow_ownership_holders_ui(float_snap, loc = "zh-TW", collapsed = TRUE)
+  zh_html <- paste(as.character(ui_float_zh), collapse = " ")
+  check(
+    "holders box zh float title",
+    grepl("流通股", zh_html, fixed = TRUE) ||
+      grepl(ui_str("own_holders_title_float", "zh-TW"), zh_html, fixed = TRUE)
+  )
 } else {
   message("SKIP empty ui (shiny/htmltools not installed)")
 }
+
+# Server wires collapsed reactive + reset on ticker/search
+check(
+  "server own_holders_collapsed reactive",
+  grepl("own_holders_collapsed", srv, fixed = TRUE)
+)
+check(
+  "server collapses on ownership fetch",
+  grepl("own_holders_collapsed\\(TRUE\\)", srv) &&
+    grepl("own_holders_box_collapsed", srv, fixed = TRUE)
+)
+check(
+  "ui collapse reporter script",
+  grepl("own_holders_box_collapsed", ui, fixed = TRUE) ||
+    grepl("data-ynow-own-holders-collapse", ui, fixed = TRUE)
+)
 
 # py helper present in deep_scraper
 check("py get_ownership_quote", grepl("def get_ownership_quote", py, fixed = TRUE))

@@ -129,6 +129,9 @@ server <- function(input, output, session) {
   company_ownership <- reactiveVal(NULL)
   own_selected_holder <- reactiveVal(NULL)
   own_holder_detail <- reactiveVal(NULL)
+  # Top-10 holders box: collapsed on first paint / ticker change; remember expand
+  # across institution-detail re-renders.
+  own_holders_collapsed <- reactiveVal(TRUE)
   
   # 初始值設為 NULL，避免一開啟 App 就自動執行爬蟲
   current_ticker <- reactiveVal(NULL)
@@ -5234,6 +5237,7 @@ server <- function(input, output, session) {
     company_ownership(NULL)
     own_selected_holder(NULL)
     own_holder_detail(NULL)
+    own_holders_collapsed(TRUE)
 
     # SEC 頁籤：僅美股
     if (isTRUE(prof$show_sec_lab)) {
@@ -5583,6 +5587,7 @@ server <- function(input, output, session) {
         }, error = function(e) NULL))
         own_selected_holder(NULL)
         own_holder_detail(NULL)
+        own_holders_collapsed(TRUE)
         # Always sync Dashboard「目前產業標準快覽」to the searched ticker's industry
         # (TW universe / US overlay·S&P / Yahoo heuristic). Unknown → keep prior pick.
         mapped <- tryCatch(
@@ -5989,6 +5994,7 @@ server <- function(input, output, session) {
         company_ownership(NULL)
         own_selected_holder(NULL)
         own_holder_detail(NULL)
+        own_holders_collapsed(TRUE)
         company_cb_dilution(NULL)
 
         # 興櫃：宇宙板別（ESB）；可估但 Summary β／Blue Chip 有限制
@@ -6528,6 +6534,11 @@ server <- function(input, output, session) {
     ))
   }, ignoreNULL = TRUE)
 
+  # Persist expand/collapse across holders UI remounts; reset on ticker/search.
+  observeEvent(input$own_holders_box_collapsed, {
+    own_holders_collapsed(isTRUE(input$own_holders_box_collapsed))
+  }, ignoreNULL = TRUE)
+
   output$ownership_structure_top_ui <- renderUI({
     loc <- tryCatch(ui_locale(), error = function(e) "en")
     loc <- normalize_ui_locale(loc)
@@ -6542,7 +6553,8 @@ server <- function(input, output, session) {
     detail <- tryCatch(own_holder_detail(), error = function(e) NULL)
     sel <- tryCatch(as.character(own_selected_holder() %||% "")[1], error = function(e) "")
     .ynow_ownership_holders_ui(
-      snap, detail = detail, loc = loc, selected_name = sel
+      snap, detail = detail, loc = loc, selected_name = sel,
+      collapsed = isTRUE(own_holders_collapsed())
     )
   })
 
