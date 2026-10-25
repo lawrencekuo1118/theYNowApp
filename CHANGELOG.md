@@ -1,3 +1,18 @@
+## [v27.38] — 2026-10-25
+
+### Added
+- System admin Item locks **Apply to**: **Only guests** / **僅訪客** (store `__guests__`; guests only — signed-in users unaffected).
+
+### Changed
+- Apply to order: **All users** → **Only guests** → **Selected user(s)**; default **All users**.
+
+### Fixed
+- Remove restriction for All users / Selected user(s): stale `ynow_access_item` after `renderUI` selectize recreate no longer blocks clear (`access_not_restricted`).
+
+### Notes
+- en-US: Bundle **12736243**. Guest-only rows merge for guests only; signed-in self-view preview excludes `__guests__`. YN-17 sticky ATX empty `unlock_type` unchanged.
+- zh-TW：Bundle **12736243**。套用對象新增僅訪客；解除限制在所有使用者／選定使用者亦可正常清除。YN-17 未結案。
+
 ## [v27.37] — 2026-10-25
 
 ### Changed
