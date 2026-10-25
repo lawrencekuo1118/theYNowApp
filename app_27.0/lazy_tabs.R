@@ -7,6 +7,10 @@
 # serialize the next tab switch behind that work. delay=0.05 clears the
 # current flush's short later::run_now drain (MockShinySession ~30ms) so the
 # next sidebar_tabs input can mount before a slow hook starts.
+#
+# later::later drops the Shiny reactive domain. Wrap deferred hooks in
+# withReactiveDomain(session, ...) so moduleServer / session$ns still see a
+# real ShinySession (Macro KPIs / Rf / concept cloud stayed empty otherwise).
 
 .ynow_lazy_host_id <- function(tab) {
   paste0("ynow_lazy_host_", gsub("[^A-Za-z0-9_]", "_", as.character(tab)[1]))
@@ -90,13 +94,19 @@
       if (is.function(hook)) {
         tab_hook <- tab
         hook_fn <- hook
+        sess <- session
         .ynow_lazy_defer(function() {
-          tryCatch(hook_fn(), error = function(e) {
-            warning(sprintf(
-              "lazy tab on_first_mount(%s): %s",
-              tab_hook, conditionMessage(e)
-            ))
-          })
+          tryCatch(
+            shiny::withReactiveDomain(sess, {
+              hook_fn()
+            }),
+            error = function(e) {
+              warning(sprintf(
+                "lazy tab on_first_mount(%s): %s",
+                tab_hook, conditionMessage(e)
+              ))
+            }
+          )
         }, delay = 0.05)
       }
       if (is.function(after_mount)) {
