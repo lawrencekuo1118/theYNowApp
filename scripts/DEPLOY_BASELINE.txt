@@ -7,5 +7,5 @@ commit=c7ce7fe53f9f6670b65298817067154be75277cc
 short=c7ce7fe5
 message=chore: bump display version to v27.50
 captured_at=2026-10-25T16:39:00Z
-display_version=v27.50
+display_version=v27.51
 note=Canonical live line is app_27.0. Bundle 12737201: AML marks on directly related 財報警訊 items only (#554).
