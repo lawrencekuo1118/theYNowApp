@@ -4,6 +4,10 @@
 # and Quant Lab MOS exposure ladder / VG weight. Fundamental MOS *results*
 # (Smart Analysis, report, Checklist pass/fail) stay on their own surfaces.
 #
+# Topic block top→bottom order matches default sidebar order of the surfaces
+# each block drives: hfv → lab_notes → decision_checklist → price_alerts
+# (see ynow_sidebar_default_order()).
+#
 # Full: guest-locked like Decision Checklist (Lite omits). Feature gate reuses
 # checklist so one sign-in unlocks both hygiene surfaces.
 
@@ -131,13 +135,6 @@ mos_assumptions_tab_body_ui <- function() {
       .ynow-mos-assump-hint { margin: -4px 0 10px 0; color: #7a8690; font-size: 12px; }
       .ynow-mos-assump-risk { margin: 8px 0 0 0; padding: 8px 10px; background: #fff8f0;
         border-left: 3px solid #e67e22; font-size: 12px; color: #6b4e2e; }
-      .box.box-solid.box-primary.ynow-mos-assump-panel,
-      body.ynow-theme-model .content-wrapper .box.box-solid.box-primary.ynow-mos-assump-panel,
-      body.ynow-theme-bluechip .content-wrapper .box.box-solid.box-primary.ynow-mos-assump-panel,
-      body.ynow-theme-atx .content-wrapper .box.box-solid.box-primary.ynow-mos-assump-panel {
-        border: none !important;
-        box-shadow: none !important;
-      }
     ")),
     tags$script(HTML("
       (function () {
@@ -171,186 +168,171 @@ mos_assumptions_tab_body_ui <- function() {
         tags$hr()
       )
     ),
+    # Topic order = default sidebar order of affected tabs (no outer Investor MOS box).
     fluidRow(
       column(
         width = 12,
-        tags$div(
-          class = "box box-solid box-primary ynow-mos-assump-panel",
+        # --- 1 · HFV (sidebar: hfv) ---
+        .mos_assump_block(
+          "ynow_mos_assump_b3_title", .mos_assump_str("mos_assump_b3_title", "en"),
+          "ynow_mos_assump_b3_lead", .mos_assump_str("mos_assump_b3_lead", "en"),
+          shortcuts = list(list(
+            id = "ynow_mos_assump_goto_hfv",
+            tab = "hfv",
+            label_en = .mos_assump_str("mos_assump_goto_hfv", "en")
+          )),
+          fluidRow(
+            column(4, numericInput(
+              "mos_hfv_near_pct",
+              tags$span(id = "ynow_mos_assump_hfv_near_label", .mos_assump_str("mos_assump_hfv_near", "en")),
+              value = .mos_assump_num(d$mos_hfv_near_pct, 10),
+              min = 0, max = 50, step = 1, width = "100%"
+            )),
+            column(4, numericInput(
+              "mos_hfv_deep_cheap_pct",
+              tags$span(id = "ynow_mos_assump_hfv_cheap_label", .mos_assump_str("mos_assump_hfv_cheap", "en")),
+              value = .mos_assump_num(d$mos_hfv_deep_cheap_pct, 20),
+              min = 0, max = 80, step = 1, width = "100%"
+            )),
+            column(4, numericInput(
+              "mos_hfv_deep_rich_pct",
+              tags$span(id = "ynow_mos_assump_hfv_rich_label", .mos_assump_str("mos_assump_hfv_rich", "en")),
+              value = .mos_assump_num(d$mos_hfv_deep_rich_pct, -20),
+              min = -80, max = 0, step = 1, width = "100%"
+            ))
+          ),
+          fluidRow(
+            column(6, numericInput(
+              "mos_hfv_flat_band_pct",
+              tags$span(id = "ynow_mos_assump_hfv_flat_label", .mos_assump_str("mos_assump_hfv_flat", "en")),
+              value = .mos_assump_num(d$mos_hfv_flat_band_pct, 2),
+              min = 0, max = 20, step = 0.5, width = "100%"
+            )),
+            column(6, numericInput(
+              "mos_hfv_price_strong_up_pct",
+              tags$span(id = "ynow_mos_assump_hfv_strong_label", .mos_assump_str("mos_assump_hfv_strong", "en")),
+              value = .mos_assump_num(d$mos_hfv_price_strong_up_pct, 5),
+              min = 0, max = 50, step = 0.5, width = "100%"
+            ))
+          ),
+          tags$p(id = "ynow_mos_assump_hfv_hint", class = "ynow-mos-assump-hint",
+                 .mos_assump_str("mos_assump_hfv_hint", "en")),
           tags$div(
-            class = "box-header",
-            tags$h3(
-              class = "box-title",
-              tagList(
-                icon("shield-alt"),
-                tags$span(id = "ynow_mos_assump_box_title", .mos_assump_str("mos_assump_box_title", "en"))
-              )
-            )
+            id = "ynow_mos_assump_hfv_risk",
+            class = "ynow-mos-assump-risk",
+            .mos_assump_str("mos_assump_hfv_risk", "en")
+          )
+        ),
+        # --- 2 · Quant Lab (sidebar: lab_notes) ---
+        .mos_assump_block(
+          "ynow_mos_assump_b4_title", .mos_assump_str("mos_assump_b4_title", "en"),
+          "ynow_mos_assump_b4_lead", .mos_assump_str("mos_assump_b4_lead", "en"),
+          shortcuts = list(list(
+            id = "ynow_mos_assump_goto_lab",
+            tab = "lab_notes",
+            label_en = .mos_assump_str("mos_assump_goto_lab", "en")
+          )),
+          sliderInput(
+            "bt_w_vg",
+            tags$span(id = "ynow_mos_assump_wvg_label", .mos_assump_str("bt_w_vg_label", "en")),
+            min = 0, max = 1,
+            value = .mos_assump_num(d$bt_w_vg, 0.7),
+            step = 0.01
           ),
+          tags$p(id = "ynow_mos_assump_wvg_hint", class = "ynow-mos-assump-hint",
+                 .mos_assump_str("bt_w_vg_hint", "en")),
+          tags$b(id = "ynow_mos_assump_ladder_title", .mos_assump_str("mos_assump_ladder_title", "en")),
+          fluidRow(
+            column(3, numericInput(
+              "mos_ladder_deep_pct",
+              tags$span(id = "ynow_mos_assump_lad_deep_label", .mos_assump_str("mos_assump_lad_deep", "en")),
+              value = .mos_assump_num(d$mos_ladder_deep_pct, 30),
+              min = 0, max = 100, step = 1, width = "100%"
+            )),
+            column(3, numericInput(
+              "mos_ladder_mid_pct",
+              tags$span(id = "ynow_mos_assump_lad_mid_label", .mos_assump_str("mos_assump_lad_mid", "en")),
+              value = .mos_assump_num(d$mos_ladder_mid_pct, 10),
+              min = -20, max = 80, step = 1, width = "100%"
+            )),
+            column(3, numericInput(
+              "mos_ladder_fair_pct",
+              tags$span(id = "ynow_mos_assump_lad_fair_label", .mos_assump_str("mos_assump_lad_fair", "en")),
+              value = .mos_assump_num(d$mos_ladder_fair_pct, 0),
+              min = -30, max = 50, step = 1, width = "100%"
+            )),
+            column(3, numericInput(
+              "mos_ladder_mild_rich_pct",
+              tags$span(id = "ynow_mos_assump_lad_mild_label", .mos_assump_str("mos_assump_lad_mild", "en")),
+              value = .mos_assump_num(d$mos_ladder_mild_rich_pct, -10),
+              min = -50, max = 20, step = 1, width = "100%"
+            ))
+          ),
+          tags$p(id = "ynow_mos_assump_ladder_hint", class = "ynow-mos-assump-hint",
+                 .mos_assump_str("mos_assump_ladder_hint", "en")),
           tags$div(
-            class = "box-body",
-          # --- Block 1: Decision hygiene floors (canonical Checklist ids) ---
-          .mos_assump_block(
-            "ynow_mos_assump_b1_title", .mos_assump_str("mos_assump_b1_title", "en"),
-            "ynow_mos_assump_b1_lead", .mos_assump_str("mos_assump_b1_lead", "en"),
-            shortcuts = list(list(
-              id = "ynow_mos_assump_goto_checklist",
-              tab = "decision_checklist",
-              label_en = .mos_assump_str("mos_assump_goto_checklist", "en")
-            )),
-            checkboxInput(
-              "chk_bear_base",
-              tags$span(id = "ynow_mos_assump_chk_bear_base_label", .mos_assump_str("dc_label_bear_base", "en")),
-              value = isTRUE(d$chk_bear_base %||% TRUE)
-            ),
-            tags$p(id = "ynow_mos_assump_chk_bear_base_hint", class = "ynow-mos-assump-hint",
-                   .mos_assump_str("dc_hint_bear_base", "en")),
-            numericInput(
-              "cond_bear_base_bear_mos_floor",
-              tags$span(id = "ynow_mos_assump_bear_floor_label", .mos_assump_str("dc_cond_bear_mos_floor", "en")),
-              value = .mos_assump_num(d$cond_bear_base_bear_mos_floor, -10),
-              min = -50, max = 50, step = 1, width = "100%"
-            ),
-            tags$p(id = "ynow_mos_assump_bear_floor_hint", class = "ynow-mos-assump-hint",
-                   .mos_assump_str("dc_cond_hint_bear_mos_floor", "en")),
-            checkboxInput(
-              "chk_base_mos",
-              tags$span(id = "ynow_mos_assump_chk_base_mos_label", .mos_assump_str("dc_label_base_mos", "en")),
-              value = isTRUE(d$chk_base_mos %||% FALSE)
-            ),
-            tags$p(id = "ynow_mos_assump_chk_base_mos_hint", class = "ynow-mos-assump-hint",
-                   .mos_assump_str("dc_hint_base_mos", "en")),
-            numericInput(
-              "cond_base_mos_base_mos_floor",
-              tags$span(id = "ynow_mos_assump_base_floor_label", .mos_assump_str("dc_cond_base_mos_floor", "en")),
-              value = .mos_assump_num(d$cond_base_mos_base_mos_floor, 15),
-              min = -50, max = 80, step = 1, width = "100%"
-            ),
-            tags$p(id = "ynow_mos_assump_base_floor_hint", class = "ynow-mos-assump-hint",
-                   .mos_assump_str("dc_cond_hint_base_mos_floor", "en"))
-          ),
-          # --- Block 2: Price alert discount ---
-          .mos_assump_block(
-            "ynow_mos_assump_b2_title", .mos_assump_str("mos_assump_b2_title", "en"),
-            "ynow_mos_assump_b2_lead", .mos_assump_str("mos_assump_b2_lead", "en"),
-            shortcuts = list(list(
-              id = "ynow_mos_assump_goto_alerts",
-              tab = "price_alerts",
-              label_en = .mos_assump_str("mos_assump_goto_alerts", "en")
-            )),
-            numericInput(
-              "mos_alert_default_pct",
-              tags$span(id = "ynow_mos_assump_alert_label", .mos_assump_str("mos_assump_alert_label", "en")),
-              value = .mos_assump_num(d$mos_alert_default_pct, 0),
-              min = 0, max = 90, step = 1, width = "100%"
-            ),
-            tags$p(id = "ynow_mos_assump_alert_hint", class = "ynow-mos-assump-hint",
-                   .mos_assump_str("mos_assump_alert_hint", "en"))
-          ),
-          # --- Block 3: HFV scenario bands ---
-          .mos_assump_block(
-            "ynow_mos_assump_b3_title", .mos_assump_str("mos_assump_b3_title", "en"),
-            "ynow_mos_assump_b3_lead", .mos_assump_str("mos_assump_b3_lead", "en"),
-            shortcuts = list(list(
-              id = "ynow_mos_assump_goto_hfv",
-              tab = "hfv",
-              label_en = .mos_assump_str("mos_assump_goto_hfv", "en")
-            )),
-            fluidRow(
-              column(4, numericInput(
-                "mos_hfv_near_pct",
-                tags$span(id = "ynow_mos_assump_hfv_near_label", .mos_assump_str("mos_assump_hfv_near", "en")),
-                value = .mos_assump_num(d$mos_hfv_near_pct, 10),
-                min = 0, max = 50, step = 1, width = "100%"
-              )),
-              column(4, numericInput(
-                "mos_hfv_deep_cheap_pct",
-                tags$span(id = "ynow_mos_assump_hfv_cheap_label", .mos_assump_str("mos_assump_hfv_cheap", "en")),
-                value = .mos_assump_num(d$mos_hfv_deep_cheap_pct, 20),
-                min = 0, max = 80, step = 1, width = "100%"
-              )),
-              column(4, numericInput(
-                "mos_hfv_deep_rich_pct",
-                tags$span(id = "ynow_mos_assump_hfv_rich_label", .mos_assump_str("mos_assump_hfv_rich", "en")),
-                value = .mos_assump_num(d$mos_hfv_deep_rich_pct, -20),
-                min = -80, max = 0, step = 1, width = "100%"
-              ))
-            ),
-            fluidRow(
-              column(6, numericInput(
-                "mos_hfv_flat_band_pct",
-                tags$span(id = "ynow_mos_assump_hfv_flat_label", .mos_assump_str("mos_assump_hfv_flat", "en")),
-                value = .mos_assump_num(d$mos_hfv_flat_band_pct, 2),
-                min = 0, max = 20, step = 0.5, width = "100%"
-              )),
-              column(6, numericInput(
-                "mos_hfv_price_strong_up_pct",
-                tags$span(id = "ynow_mos_assump_hfv_strong_label", .mos_assump_str("mos_assump_hfv_strong", "en")),
-                value = .mos_assump_num(d$mos_hfv_price_strong_up_pct, 5),
-                min = 0, max = 50, step = 0.5, width = "100%"
-              ))
-            ),
-            tags$p(id = "ynow_mos_assump_hfv_hint", class = "ynow-mos-assump-hint",
-                   .mos_assump_str("mos_assump_hfv_hint", "en")),
-            tags$div(
-              id = "ynow_mos_assump_hfv_risk",
-              class = "ynow-mos-assump-risk",
-              .mos_assump_str("mos_assump_hfv_risk", "en")
-            )
-          ),
-          # --- Block 4: Strategy exposure (Quant Lab Mode A) ---
-          .mos_assump_block(
-            "ynow_mos_assump_b4_title", .mos_assump_str("mos_assump_b4_title", "en"),
-            "ynow_mos_assump_b4_lead", .mos_assump_str("mos_assump_b4_lead", "en"),
-            shortcuts = list(list(
-              id = "ynow_mos_assump_goto_lab",
-              tab = "lab_notes",
-              label_en = .mos_assump_str("mos_assump_goto_lab", "en")
-            )),
-            sliderInput(
-              "bt_w_vg",
-              tags$span(id = "ynow_mos_assump_wvg_label", .mos_assump_str("bt_w_vg_label", "en")),
-              min = 0, max = 1,
-              value = .mos_assump_num(d$bt_w_vg, 0.7),
-              step = 0.01
-            ),
-            tags$p(id = "ynow_mos_assump_wvg_hint", class = "ynow-mos-assump-hint",
-                   .mos_assump_str("bt_w_vg_hint", "en")),
-            tags$b(id = "ynow_mos_assump_ladder_title", .mos_assump_str("mos_assump_ladder_title", "en")),
-            fluidRow(
-              column(3, numericInput(
-                "mos_ladder_deep_pct",
-                tags$span(id = "ynow_mos_assump_lad_deep_label", .mos_assump_str("mos_assump_lad_deep", "en")),
-                value = .mos_assump_num(d$mos_ladder_deep_pct, 30),
-                min = 0, max = 100, step = 1, width = "100%"
-              )),
-              column(3, numericInput(
-                "mos_ladder_mid_pct",
-                tags$span(id = "ynow_mos_assump_lad_mid_label", .mos_assump_str("mos_assump_lad_mid", "en")),
-                value = .mos_assump_num(d$mos_ladder_mid_pct, 10),
-                min = -20, max = 80, step = 1, width = "100%"
-              )),
-              column(3, numericInput(
-                "mos_ladder_fair_pct",
-                tags$span(id = "ynow_mos_assump_lad_fair_label", .mos_assump_str("mos_assump_lad_fair", "en")),
-                value = .mos_assump_num(d$mos_ladder_fair_pct, 0),
-                min = -30, max = 50, step = 1, width = "100%"
-              )),
-              column(3, numericInput(
-                "mos_ladder_mild_rich_pct",
-                tags$span(id = "ynow_mos_assump_lad_mild_label", .mos_assump_str("mos_assump_lad_mild", "en")),
-                value = .mos_assump_num(d$mos_ladder_mild_rich_pct, -10),
-                min = -50, max = 20, step = 1, width = "100%"
-              ))
-            ),
-            tags$p(id = "ynow_mos_assump_ladder_hint", class = "ynow-mos-assump-hint",
-                   .mos_assump_str("mos_assump_ladder_hint", "en")),
-            tags$div(
-              id = "ynow_mos_assump_strat_risk",
-              class = "ynow-mos-assump-risk",
-              .mos_assump_str("mos_assump_strat_risk", "en")
-            )
+            id = "ynow_mos_assump_strat_risk",
+            class = "ynow-mos-assump-risk",
+            .mos_assump_str("mos_assump_strat_risk", "en")
           )
-          )
+        ),
+        # --- 3 · Decision Checklist (sidebar: decision_checklist) ---
+        .mos_assump_block(
+          "ynow_mos_assump_b1_title", .mos_assump_str("mos_assump_b1_title", "en"),
+          "ynow_mos_assump_b1_lead", .mos_assump_str("mos_assump_b1_lead", "en"),
+          shortcuts = list(list(
+            id = "ynow_mos_assump_goto_checklist",
+            tab = "decision_checklist",
+            label_en = .mos_assump_str("mos_assump_goto_checklist", "en")
+          )),
+          checkboxInput(
+            "chk_bear_base",
+            tags$span(id = "ynow_mos_assump_chk_bear_base_label", .mos_assump_str("dc_label_bear_base", "en")),
+            value = isTRUE(d$chk_bear_base %||% TRUE)
+          ),
+          tags$p(id = "ynow_mos_assump_chk_bear_base_hint", class = "ynow-mos-assump-hint",
+                 .mos_assump_str("dc_hint_bear_base", "en")),
+          numericInput(
+            "cond_bear_base_bear_mos_floor",
+            tags$span(id = "ynow_mos_assump_bear_floor_label", .mos_assump_str("dc_cond_bear_mos_floor", "en")),
+            value = .mos_assump_num(d$cond_bear_base_bear_mos_floor, -10),
+            min = -50, max = 50, step = 1, width = "100%"
+          ),
+          tags$p(id = "ynow_mos_assump_bear_floor_hint", class = "ynow-mos-assump-hint",
+                 .mos_assump_str("dc_cond_hint_bear_mos_floor", "en")),
+          checkboxInput(
+            "chk_base_mos",
+            tags$span(id = "ynow_mos_assump_chk_base_mos_label", .mos_assump_str("dc_label_base_mos", "en")),
+            value = isTRUE(d$chk_base_mos %||% FALSE)
+          ),
+          tags$p(id = "ynow_mos_assump_chk_base_mos_hint", class = "ynow-mos-assump-hint",
+                 .mos_assump_str("dc_hint_base_mos", "en")),
+          numericInput(
+            "cond_base_mos_base_mos_floor",
+            tags$span(id = "ynow_mos_assump_base_floor_label", .mos_assump_str("dc_cond_base_mos_floor", "en")),
+            value = .mos_assump_num(d$cond_base_mos_base_mos_floor, 15),
+            min = -50, max = 80, step = 1, width = "100%"
+          ),
+          tags$p(id = "ynow_mos_assump_base_floor_hint", class = "ynow-mos-assump-hint",
+                 .mos_assump_str("dc_cond_hint_base_mos_floor", "en"))
+        ),
+        # --- 4 · Value Alerts (sidebar: price_alerts) ---
+        .mos_assump_block(
+          "ynow_mos_assump_b2_title", .mos_assump_str("mos_assump_b2_title", "en"),
+          "ynow_mos_assump_b2_lead", .mos_assump_str("mos_assump_b2_lead", "en"),
+          shortcuts = list(list(
+            id = "ynow_mos_assump_goto_alerts",
+            tab = "price_alerts",
+            label_en = .mos_assump_str("mos_assump_goto_alerts", "en")
+          )),
+          numericInput(
+            "mos_alert_default_pct",
+            tags$span(id = "ynow_mos_assump_alert_label", .mos_assump_str("mos_assump_alert_label", "en")),
+            value = .mos_assump_num(d$mos_alert_default_pct, 0),
+            min = 0, max = 90, step = 1, width = "100%"
+          ),
+          tags$p(id = "ynow_mos_assump_alert_hint", class = "ynow-mos-assump-hint",
+                 .mos_assump_str("mos_assump_alert_hint", "en"))
         )
       )
     )
@@ -397,19 +379,18 @@ mos_assumptions_push_locale <- function(session, loc = "en") {
   keys <- c(
     ynow_mos_assump_page_title = "mos_assump_page_title",
     ynow_mos_assump_page_sub = "mos_assump_page_sub",
-    ynow_mos_assump_box_title = "mos_assump_box_title",
-    ynow_mos_assump_b1_title = "mos_assump_b1_title",
-    ynow_mos_assump_b1_lead = "mos_assump_b1_lead",
-    ynow_mos_assump_goto_checklist = "mos_assump_goto_checklist",
-    ynow_mos_assump_b2_title = "mos_assump_b2_title",
-    ynow_mos_assump_b2_lead = "mos_assump_b2_lead",
-    ynow_mos_assump_goto_alerts = "mos_assump_goto_alerts",
     ynow_mos_assump_b3_title = "mos_assump_b3_title",
     ynow_mos_assump_b3_lead = "mos_assump_b3_lead",
     ynow_mos_assump_goto_hfv = "mos_assump_goto_hfv",
     ynow_mos_assump_b4_title = "mos_assump_b4_title",
     ynow_mos_assump_b4_lead = "mos_assump_b4_lead",
     ynow_mos_assump_goto_lab = "mos_assump_goto_lab",
+    ynow_mos_assump_b1_title = "mos_assump_b1_title",
+    ynow_mos_assump_b1_lead = "mos_assump_b1_lead",
+    ynow_mos_assump_goto_checklist = "mos_assump_goto_checklist",
+    ynow_mos_assump_b2_title = "mos_assump_b2_title",
+    ynow_mos_assump_b2_lead = "mos_assump_b2_lead",
+    ynow_mos_assump_goto_alerts = "mos_assump_goto_alerts",
     ynow_mos_assump_chk_bear_base_label = "dc_label_bear_base",
     ynow_mos_assump_chk_bear_base_hint = "dc_hint_bear_base",
     ynow_mos_assump_bear_floor_label = "dc_cond_bear_mos_floor",

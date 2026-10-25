@@ -132,17 +132,13 @@ check("tab ui has mos_assumptions tabName", grepl("mos_assumptions", ui_html, fi
 check("tab ui owns bear floor id", grepl("cond_bear_base_bear_mos_floor", ui_html, fixed = TRUE))
 check("tab ui owns bt_w_vg", grepl("bt_w_vg", ui_html, fixed = TRUE))
 check("tab ui owns ladder deep", grepl("mos_ladder_deep_pct", ui_html, fixed = TRUE))
-check("investor MOS panel class is on the outer box", {
-  grepl("ynow-mos-assump-panel", mod_src, fixed = TRUE) &&
-    grepl('class="box box-solid box-primary ynow-mos-assump-panel"', ui_html, fixed = TRUE) &&
-    !grepl("box-body ynow-mos-assump-panel", ui_html, fixed = TRUE)
+check("Investor MOS outer box/title removed", {
+  !grepl("ynow-mos-assump-panel", mod_src, fixed = TRUE) &&
+    !grepl("ynow_mos_assump_box_title", ui_html, fixed = TRUE) &&
+    !grepl("Investor MOS settings", ui_html, fixed = TRUE) &&
+    !grepl('class="box box-solid box-primary', ui_html, fixed = TRUE)
 })
-check("investor MOS panel CSS clears only the outer border", {
-  grepl(".box.box-solid.box-primary.ynow-mos-assump-panel", ui_html, fixed = TRUE) &&
-    grepl(".box.box-solid.box-primary.ynow-mos-assump-panel", mod_src, fixed = TRUE) &&
-    grepl("border: none !important", ui_html, fixed = TRUE)
-})
-check("inner MOS blocks keep their border", {
+check("inner MOS topic blocks keep their border", {
   grepl(".ynow-mos-assump-block { margin: 0 0 22px 0; padding: 14px 16px;", mod_src, fixed = TRUE) &&
     grepl("background: #fafbfc; border: 1px solid #e6eaee; border-radius: 8px;", ui_html, fixed = TRUE)
 })
@@ -161,8 +157,17 @@ check("goto buttons target the four affected surfaces", {
     grepl("ynow_mos_assump_goto_lab", ui_html, fixed = TRUE) &&
     grepl("ynowGotoTab", mod_src, fixed = TRUE)
 })
+# Visual order must match default sidebar: hfv → lab_notes → decision_checklist → price_alerts
+pos_hfv <- regexpr('data-tab="hfv"', ui_html, fixed = TRUE)[1]
+pos_lab <- regexpr('data-tab="lab_notes"', ui_html, fixed = TRUE)[1]
+pos_chk <- regexpr('data-tab="decision_checklist"', ui_html, fixed = TRUE)[1]
+pos_alert <- regexpr('data-tab="price_alerts"', ui_html, fixed = TRUE)[1]
+check("topic blocks follow default sidebar order", {
+  all(c(pos_hfv, pos_lab, pos_chk, pos_alert) > 0) &&
+    pos_hfv < pos_lab && pos_lab < pos_chk && pos_chk < pos_alert
+})
 
-# Locale keys for shortcut labels (en + zh-TW)
+# Locale keys for shortcut labels + renumbered titles (en + zh-TW)
 loc_src <- paste(
   readLines(file.path(.source_root, "ui_locale.R"), warn = FALSE, encoding = "UTF-8"),
   collapse = "\n"
@@ -179,11 +184,24 @@ check("zh-TW shortcut labels present", {
     grepl("mos_assump_goto_hfv = \"HFV\"", loc_src, fixed = TRUE) &&
     grepl("mos_assump_goto_lab = \"Quant Lab\"", loc_src, fixed = TRUE)
 })
+check("en topic titles renumbered to sidebar order", {
+  grepl("mos_assump_b3_title = \"1 · HFV scenario bands\"", loc_src, fixed = TRUE) &&
+    grepl("mos_assump_b4_title = \"2 · Quant Lab MOS exposure\"", loc_src, fixed = TRUE) &&
+    grepl("mos_assump_b1_title = \"3 · Decision hygiene floors\"", loc_src, fixed = TRUE) &&
+    grepl("mos_assump_b2_title = \"4 · Value Alert discount\"", loc_src, fixed = TRUE)
+})
+check("zh-TW topic titles renumbered to sidebar order", {
+  grepl("mos_assump_b3_title = \"1 · HFV 情境帶\"", loc_src, fixed = TRUE) &&
+    grepl("mos_assump_b4_title = \"2 · Quant Lab MOS 部位\"", loc_src, fixed = TRUE) &&
+    grepl("mos_assump_b1_title = \"3 · 決策衛生下限\"", loc_src, fixed = TRUE) &&
+    grepl("mos_assump_b2_title = \"4 · 到值通知折價\"", loc_src, fixed = TRUE)
+})
 check("locale push includes goto button ids", {
   grepl("ynow_mos_assump_goto_checklist = \"mos_assump_goto_checklist\"", mod_src, fixed = TRUE) &&
     grepl("ynow_mos_assump_goto_alerts = \"mos_assump_goto_alerts\"", mod_src, fixed = TRUE) &&
     grepl("ynow_mos_assump_goto_hfv = \"mos_assump_goto_hfv\"", mod_src, fixed = TRUE) &&
-    grepl("ynow_mos_assump_goto_lab = \"mos_assump_goto_lab\"", mod_src, fixed = TRUE)
+    grepl("ynow_mos_assump_goto_lab = \"mos_assump_goto_lab\"", mod_src, fixed = TRUE) &&
+    !grepl("ynow_mos_assump_box_title", mod_src, fixed = TRUE)
 })
 
 source(file.path(.source_root, "decision_checklist_module.R"), local = TRUE, encoding = "UTF-8")
