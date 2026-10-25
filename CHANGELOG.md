@@ -1,3 +1,12 @@
+## [v27.32] — 2026-10-25
+
+### Added
+- Global Prediction standalone sidebar (#519): Economic / Finance / Company boards (Kalshi + Polymarket; Eco/Finance monthly+; Company TW/US listed). Full guest lock; Lite omit. Gate feature id `gp`.
+
+### Notes
+- en-US: Bundle **12735936**. Crowd-implied probabilities only — not Fair Value, not a buy signal.
+- zh-TW：全球預測獨立側欄分頁；Economic／Finance／Company 三大版塊；群眾隱含機率，不是 Fair Value，也不是買進訊號。
+
 ## [v27.31] — 2026-10-25
 
 ### Fixed
@@ -22,7 +31,6 @@
 ## [v27.24] — 2026-10-24
 
 ### Added
-- Global Prediction standalone sidebar (`global_prediction`): Economic / Finance / Company boards (Kalshi + Polymarket; Eco/Finance monthly+; Company TW/US listed). Full guest lock; Lite omit. Gate feature id `gp`.
 - Global Prediction freshness crawl (#494): quote TTL 3m / discovery TTL 15m on fast cache; hard rescan on tab open, focus, TW↔US mode switch, manual refresh; soft periodic while visible; drop expired contracts and reclassify into `breadth_tier` (macro → single-stock). TW/US registries, FEEX honest-empty, Galton/selection-bias framing.
 
 ### Notes
