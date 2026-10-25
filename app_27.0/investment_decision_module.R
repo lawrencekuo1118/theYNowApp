@@ -575,38 +575,15 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
       tryCatch(toupper(trimws(as.character(current_ticker() %||% "")[1])), error = function(e) "")
     }
 
-    .aml_marks <- function() {
+    # AML marks belong on overlapping 財報警訊 detail rows (Beneish / Schilit),
+    # not on QoE / F-Score / risk-matrix KPI headers.
+    .aml_warning_marks <- function() {
       aml <- tryCatch(aml_pack(), error = function(e) NULL)
-      if (exists("corp_aml_surface_marks", mode = "function")) {
-        tryCatch(corp_aml_surface_marks(aml), error = function(e) NULL)
+      if (exists("corp_aml_warning_item_marks", mode = "function")) {
+        tryCatch(corp_aml_warning_item_marks(aml), error = function(e) NULL)
       } else {
         NULL
       }
-    }
-
-    .aml_lab <- function(label, surface) {
-      marks <- .aml_marks()
-      sev <- if (is.list(marks)) marks[[surface]] else NULL
-      if (exists("corp_aml_with_mark", mode = "function")) {
-        corp_aml_with_mark(label, sev, locale = .ui_loc())
-      } else {
-        label
-      }
-    }
-
-    .aml_wrap_panel <- function(ui, surface) {
-      marks <- .aml_marks()
-      sev <- if (is.list(marks)) marks[[surface]] else NULL
-      mark <- if (exists("corp_aml_mark_ui", mode = "function")) {
-        corp_aml_mark_ui(sev, locale = .ui_loc())
-      } else {
-        NULL
-      }
-      if (is.null(mark)) return(ui)
-      tagList(
-        tags$div(class = "ynow-aml-mark-row", mark),
-        ui
-      )
     }
 
     output$vbox_fscore <- renderUI({
@@ -614,7 +591,7 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
       score <- tryCatch(f_score_eval()$total, error = function(e) NA_real_)
       tk <- .alert_tk()
       sub_lab <- .str("funnel_vbox_fscore")
-      sub_ui <- .aml_lab(sub_lab, "fscore")
+      sub_ui <- sub_lab
       if (length(score) != 1L || is.null(score) || is.na(score) || !is.finite(score)) {
         box <- valueBox(
           "—",
@@ -664,7 +641,7 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
         NA_real_
       }
       subtitle <- .str("funnel_vbox_qoe")
-      sub_ui <- .aml_lab(subtitle, "qoe")
+      sub_ui <- subtitle
       ready <- nzchar(tk) && nzchar(grade) && grade != "—" && is.finite(score)
       if (!ready) {
         box <- valueBox(
@@ -749,7 +726,7 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
       n <- tryCatch(fraud_flag_n(), error = function(e) NA_integer_)
       tk <- .alert_tk()
       sub_lab <- .str("funnel_vbox_fraud")
-      sub_ui <- .aml_lab(sub_lab, "alerts")
+      sub_ui <- sub_lab
       if (length(n) != 1L || is.null(n) || is.na(n) || !is.finite(n)) {
         box <- valueBox(
           "—",
@@ -788,8 +765,11 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
       loc <- .ui_loc()
       pack <- tryCatch(eq_eval(), error = function(e) NULL)
       tk <- .alert_tk()
-      ui <- beneish_m_score_widget_ui(pack, locale = loc)
-      ui <- .aml_wrap_panel(ui, "beneish")
+      ui <- beneish_m_score_widget_ui(
+        pack,
+        locale = loc,
+        aml_marks = .aml_warning_marks()
+      )
       if (!exists("ynow_alertable", mode = "function")) return(ui)
       m <- if (is.list(pack) && isTRUE(pack$ok)) suppressWarnings(as.numeric(pack$m_score)[1]) else NA_real_
       ynow_alertable(
@@ -811,8 +791,7 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
       loc <- .ui_loc()
       pack <- tryCatch(eq_eval(), error = function(e) NULL)
       tk <- .alert_tk()
-      ui <- earnings_quality_dashboard_ui(pack, locale = loc, alert_ticker = tk)
-      .aml_wrap_panel(ui, "qoe")
+      earnings_quality_dashboard_ui(pack, locale = loc, alert_ticker = tk)
     })
 
     # Publish YNOW quality metrics for 到值通知 checks (session-scoped).
@@ -844,14 +823,17 @@ decision_server <- function(id, d_is, d_bs, d_cf, intrinsic_val_dcf, intrinsic_v
     output$risk_matrix_panel <- renderUI({
       loc <- .ui_loc()
       pack <- tryCatch(eq_eval(), error = function(e) NULL)
-      ui <- earnings_risk_matrix_ui(pack, locale = loc)
-      .aml_wrap_panel(ui, "risk_matrix")
+      earnings_risk_matrix_ui(pack, locale = loc)
     })
 
     output$shenanigans_panel <- renderUI({
+      loc <- .ui_loc()
       ev <- tryCatch(shen_eval(), error = function(e) NULL)
-      ui <- shenanigans_results_ui(ev)
-      .aml_wrap_panel(ui, "schilit")
+      shenanigans_results_ui(
+        ev,
+        aml_marks = .aml_warning_marks(),
+        locale = loc
+      )
     })
 
     output$vbox_momentum <- renderValueBox({

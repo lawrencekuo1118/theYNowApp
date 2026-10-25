@@ -784,7 +784,22 @@ evaluate_earnings_quality <- function(d_is, d_bs, d_cf, f_score_pack = NULL) {
 
 #' Prominent Beneish M-Score control-point widget (alert before DCF reliance).
 #' Uses shinydashboard-friendly markup (no bslib dependency).
-beneish_m_score_widget_ui <- function(pack, locale = "zh-TW") {
+.eq_beneish_aml_mark <- function(aml_marks, item_key, locale = "zh-TW") {
+  if (is.null(aml_marks)) return(NULL)
+  if (!exists("corp_aml_severity_for_warning_item", mode = "function")) return(NULL)
+  if (!exists("corp_aml_mark_ui", mode = "function")) return(NULL)
+  sev <- tryCatch(
+    corp_aml_severity_for_warning_item(aml_marks, item_key),
+    error = function(e) NULL
+  )
+  corp_aml_mark_ui(sev, locale = locale)
+}
+
+#' Beneish M-Score widget (財報警訊 Chapter II).
+#'
+#' @param aml_marks Named list from [corp_aml_warning_item_marks]; AML badge on
+#'   overlapping Beneish head / DSRI / TATA rows when elevated (veto only).
+beneish_m_score_widget_ui <- function(pack, locale = "zh-TW", aml_marks = NULL) {
   en <- identical(as.character(locale)[1], "en")
   if (is.null(pack) || !isTRUE(pack$ok) || !.eq_finite(pack$m_score)) {
     return(tags$div(
@@ -840,14 +855,14 @@ beneish_m_score_widget_ui <- function(pack, locale = "zh-TW") {
     sprintf("%.2f", x)
   }
   detail_items <- list(
-    list("DSRI", if (en) "Days Sales in Receivables" else "應收帳款指數", comp$DSRI),
-    list("GMI", if (en) "Gross Margin Index" else "毛利率指數", comp$GMI),
-    list("AQI", if (en) "Asset Quality Index" else "資產品質指數", comp$AQI),
-    list("SGI", if (en) "Sales Growth Index" else "營收成長指數", comp$SGI),
-    list("DEPI", if (en) "Depreciation Index" else "折舊率指數", comp$DEPI),
-    list("SGAI", if (en) "SG&A Index" else "銷管費用指數", comp$SGAI),
-    list("TATA", if (en) "Total Accruals / Assets" else "總應計／總資產", comp$TATA),
-    list("LVGI", if (en) "Leverage Index" else "槓桿指數", comp$LVGI)
+    list("DSRI", if (en) "Days Sales in Receivables" else "應收帳款指數", comp$DSRI, "BENEISH:DSRI"),
+    list("GMI", if (en) "Gross Margin Index" else "毛利率指數", comp$GMI, NULL),
+    list("AQI", if (en) "Asset Quality Index" else "資產品質指數", comp$AQI, NULL),
+    list("SGI", if (en) "Sales Growth Index" else "營收成長指數", comp$SGI, NULL),
+    list("DEPI", if (en) "Depreciation Index" else "折舊率指數", comp$DEPI, NULL),
+    list("SGAI", if (en) "SG&A Index" else "銷管費用指數", comp$SGAI, NULL),
+    list("TATA", if (en) "Total Accruals / Assets" else "總應計／總資產", comp$TATA, "BENEISH:TATA"),
+    list("LVGI", if (en) "Leverage Index" else "槓桿指數", comp$LVGI, NULL)
   )
 
   nuance <- pack$m_sgi_nuance
@@ -858,6 +873,13 @@ beneish_m_score_widget_ui <- function(pack, locale = "zh-TW") {
       tags$b(if (en) "Growth nuance: " else "高成長誤判提示："),
       if (en) nuance$message_en else nuance$message_zh
     )
+  }
+
+  # AML on Beneish head only when M-Score itself is elevated (警示／觀察).
+  head_aml <- if (risk || watch) {
+    .eq_beneish_aml_mark(aml_marks, "BENEISH", locale = locale)
+  } else {
+    NULL
   }
 
   tags$div(
@@ -873,7 +895,8 @@ beneish_m_score_widget_ui <- function(pack, locale = "zh-TW") {
           "Beneish M-Score (earnings-manipulation screen)"
         } else {
           "Beneish M-Score（盈餘操縱風險）"
-        }
+        },
+        if (!is.null(head_aml)) list(" ", head_aml) else NULL
       ),
       tags$span(
         class = paste("ynow-mscore-widget__badge", paste0("ynow-mscore-widget__badge--", tone)),
@@ -906,7 +929,15 @@ beneish_m_score_widget_ui <- function(pack, locale = "zh-TW") {
       tags$ul(
         class = "ynow-mscore-widget__list",
         lapply(detail_items, function(it) {
-          tags$li(sprintf("%s (%s): %s", it[[1]], it[[2]], fmt2(it[[3]])))
+          row_aml <- if (!is.null(it[[4]]) && (risk || watch)) {
+            .eq_beneish_aml_mark(aml_marks, it[[4]], locale = locale)
+          } else {
+            NULL
+          }
+          tags$li(
+            sprintf("%s (%s): %s", it[[1]], it[[2]], fmt2(it[[3]])),
+            if (!is.null(row_aml)) list(" ", row_aml) else NULL
+          )
         })
       )
     )
