@@ -7,5 +7,5 @@ commit=dc92c4c16e702ae7cf4fd225ac034fe65585c2de
 short=dc92c4c1
 message=chore: bump display version to v27.47
 captured_at=2026-10-25T15:47:44Z
-display_version=v27.47
+display_version=v27.48
 note=Canonical live line is app_27.0. Bundle 12737093: MOS Assumptions topic-row shortcuts to related tabs (#549).
