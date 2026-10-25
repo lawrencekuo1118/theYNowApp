@@ -20742,12 +20742,19 @@ ui <- dashboardPage(
 
         // Recent / pinned tickers: click → reload; long-press 2s → pin/unpin (max 12).
         // Tab long-press is NOT pin — sibling customize+drag reorder owns that.
+        // Long-press must survive pointerleave on tiny chips: capture the pointer,
+        // ignore leave, abort only on move past MOVE_PX or pointercancel.
         (function() {
           var LONG_MS = 2000;
+          var MOVE_PX = 12;
           var GUEST_KEY = 'ynow_pinned_recent_v1';
           var MAX_PINS = 12;
           var pressTimer = null;
           var pressEl = null;
+          var pressId = null;
+          var startX = 0;
+          var startY = 0;
+          var pressMoved = false;
           var longFired = false;
           var suppressClickUntil = 0;
 
@@ -20773,9 +20780,19 @@ ui <- dashboardPage(
             clear: function() { try { localStorage.removeItem(GUEST_KEY); } catch (e) {} }
           };
 
-          function clearPress() {
+          function releaseCapture(el) {
+            if (!el || pressId == null) return;
+            try {
+              if (el.releasePointerCapture) el.releasePointerCapture(pressId);
+            } catch (eRel) {}
+            pressId = null;
+          }
+
+          function clearPress(el) {
             if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+            releaseCapture(el || pressEl);
             pressEl = null;
+            pressMoved = false;
           }
 
           function fireToggle(el) {
@@ -20792,16 +20809,37 @@ ui <- dashboardPage(
 
           $(document).on('pointerdown', '.ynow-recent-chip, .ynow-pinned-chip', function(e) {
             if (e.pointerType === 'mouse' && e.button !== 0) return;
-            clearPress();
+            clearPress(this);
             longFired = false;
+            pressMoved = false;
             pressEl = this;
+            startX = e.clientX || 0;
+            startY = e.clientY || 0;
+            pressId = e.pointerId;
+            try {
+              if (this.setPointerCapture && e.pointerId != null) {
+                this.setPointerCapture(e.pointerId);
+              }
+            } catch (eCap) {}
             var el = this;
             pressTimer = setTimeout(function() {
-              if (pressEl === el) fireToggle(el);
+              if (pressEl === el && !pressMoved) fireToggle(el);
             }, LONG_MS);
           });
-          $(document).on('pointerup pointercancel pointerleave', '.ynow-recent-chip, .ynow-pinned-chip', function() {
-            clearPress();
+          $(document).on('pointermove', '.ynow-recent-chip, .ynow-pinned-chip', function(e) {
+            if (pressEl !== this || pressMoved) return;
+            var dx = Math.abs((e.clientX || 0) - startX);
+            var dy = Math.abs((e.clientY || 0) - startY);
+            if (dx > MOVE_PX || dy > MOVE_PX) {
+              pressMoved = true;
+              clearPress(this);
+            }
+          });
+          $(document).on('pointerup pointercancel', '.ynow-recent-chip, .ynow-pinned-chip', function() {
+            clearPress(this);
+          });
+          $(document).on('contextmenu', '.ynow-recent-chip, .ynow-pinned-chip', function(e) {
+            e.preventDefault();
           });
           $(document).on('click keydown', '.ynow-recent-chip, .ynow-pinned-chip', function(e) {
             if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;

@@ -25,6 +25,15 @@ check("pinned search 3-col grid", grepl("grid-template-columns: repeat\\(3,", ui
 check("JS sets recent_search_pick", grepl("recent_search_pick", ui, fixed = TRUE))
 check("JS long-press pin toggle", grepl("pinned_search_toggle", ui, fixed = TRUE))
 check("JS MAX_PINS 12", grepl("MAX_PINS = 12", ui, fixed = TRUE))
+check("JS long-press setPointerCapture", grepl("setPointerCapture", ui, fixed = TRUE))
+check(
+  "JS long-press no pointerleave clear on chips",
+  !grepl(
+    "pointerup pointercancel pointerleave', '\\.ynow-recent-chip, \\.ynow-pinned-chip'",
+    ui,
+    perl = TRUE
+  )
+)
 check("no page-pin tile CSS", !grepl("ynow-sidebar-pin-tile", ui, fixed = TRUE))
 check("server observes recent_search_pick", grepl("observeEvent\\(input\\$recent_search_pick", srv, perl = TRUE))
 check("server observes pinned_search_toggle", grepl("observeEvent\\(input\\$pinned_search_toggle", srv, perl = TRUE))
@@ -36,7 +45,7 @@ check("zh recent_search_empty", grepl("尚無最近搜尋代號", loc, fixed = T
 check("zh pin hint", grepl("長按 2 秒釘選", loc, fixed = TRUE))
 check(
   "reorder recent on search",
-  grepl("setdiff\\(values\\$recentsearch, stock_code\\)", srv, perl = TRUE)
+  grepl("setdiff\\(isolate\\(values\\$recentsearch\\), stock_code\\)", srv, perl = TRUE)
 )
 check(
   "exclude pinned from recent render",
