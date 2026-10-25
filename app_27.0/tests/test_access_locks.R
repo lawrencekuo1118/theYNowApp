@@ -380,6 +380,15 @@ check("locale menu main/sub en+zh", {
     grepl("access_menu_main = \"主選單\"", loc, fixed = TRUE) &&
     grepl("access_menu_sub = \"子選項\"", loc, fixed = TRUE)
 })
+check("locale freemium scope short en+zh", {
+  grepl("access_scope_freemium_short = \"Freemium\"", loc, fixed = TRUE) &&
+    grepl("access_scope_freemium_short = \"預設訪客\"", loc, fixed = TRUE)
+})
+check("server labels freemium guest locks on restricted panel", {
+  hits <- gregexpr("freemium_scope_lab", srv, fixed = TRUE)[[1]]
+  length(hits) >= 2L && hits[[1]] > 0L &&
+    grepl("access_scope_freemium_short", srv, fixed = TRUE)
+})
 check("ui parses", inherits(tryCatch(parse(file.path(app_dir, "ynow_ui.R")), error = function(e) e), "expression"))
 check("server parses", inherits(tryCatch(parse(file.path(app_dir, "ynow_server.R")), error = function(e) e), "expression"))
 
@@ -413,11 +422,22 @@ check("status lines switch when selected user changes", {
     !grepl("Quant Backtest", b, fixed = TRUE)
 })
 check("status lines for all-users scope ignore selected uid", {
-  lines <- ynow_access_admin_status_lines("user-alice", scope = "all", locale = "en",
-                                          user_scope_lab = "User", all_scope_lab = "All")
-  length(lines) == 1L &&
-    grepl("Valuation report", lines[[1]], fixed = TRUE) &&
-    !grepl("Quant Backtest", paste(lines, collapse = " "), fixed = TRUE)
+  lines_a <- ynow_access_admin_status_lines("user-alice", scope = "all", locale = "en",
+                                            user_scope_lab = "User", all_scope_lab = "All")
+  lines_b <- ynow_access_admin_status_lines("user-bob", scope = "all", locale = "en",
+                                            user_scope_lab = "User", all_scope_lab = "All")
+  blob <- paste(lines_a, collapse = "\n")
+  val_i <- grep("Valuation report", lines_a, fixed = TRUE)
+  lab_i <- grep("Quant Backtest", lines_a, fixed = TRUE)
+  length(lines_a) > 1L &&
+    identical(lines_a, lines_b) &&
+    length(val_i) == 1L &&
+    grepl("^All ·", lines_a[[val_i[[1]]]]) &&
+    length(lab_i) == 1L &&
+    grepl("^Freemium ·", lines_a[[lab_i[[1]]]]) &&
+    lab_i[[1]] < val_i[[1]] &&
+    !grepl("SGR", blob, fixed = TRUE) &&
+    !grepl("User ·", blob, fixed = TRUE)
 })
 check("status text empty for user with no personal locks", {
   identical(
@@ -705,7 +725,7 @@ check("stale remove selection mirrors UI fallback to first restricted id", {
     identical(recovered, "tab:lab_notes") &&
     !length(ynow_access_restricted_ids_for_scope(character(), "all"))
 })
-check("guests status lines use guests store only", {
+check("guests status lines keep guest ACL and add freemium defaults", {
   ynow_access_set(
     YNOW_ACCESS_GUESTS_ONLY, "tab:price_alerts", TRUE,
     effect = "hide", unlock_type = "login"
@@ -722,11 +742,15 @@ check("guests status lines use guests store only", {
     "", scope = "all", locale = "en",
     user_scope_lab = "User", all_scope_lab = "All", guests_scope_lab = "Guests"
   )
-  length(g_lines) == 1L &&
-    grepl("Guests ·", g_lines[[1]], fixed = TRUE) &&
-    grepl("Value Alerts", g_lines[[1]], fixed = TRUE) &&
-    !grepl("Snapshot CSV", g_lines[[1]], fixed = TRUE) &&
-    grepl("Snapshot CSV", a_lines[[1]], fixed = TRUE)
+  g_blob <- paste(g_lines, collapse = "\n")
+  alerts <- g_lines[grepl("Value Alerts", g_lines, fixed = TRUE)]
+  length(alerts) == 1L &&
+    grepl("^Guests ·", alerts[[1]]) &&
+    !grepl("Freemium", alerts[[1]], fixed = TRUE) &&
+    !grepl("Snapshot CSV", g_blob, fixed = TRUE) &&
+    any(grepl("^All ·", a_lines) & grepl("Snapshot CSV", a_lines, fixed = TRUE)) &&
+    any(grepl("^Freemium ·", g_lines) & grepl("Quant Backtest", g_lines, fixed = TRUE)) &&
+    any(grepl("^Freemium ·", a_lines) & grepl("Quant Backtest", a_lines, fixed = TRUE))
 })
 check("all-users still applies to guests alongside guest-only", {
   guest_ent <- ynow_access_entries("", authed = FALSE)
@@ -737,6 +761,76 @@ check("signed-in gets all-users but not guest-only", {
   mem <- ynow_access_entries("user-member", authed = TRUE)
   "report:download_snapshot" %in% as.character(mem$id) &&
     !"tab:price_alerts" %in% as.character(mem$id)
+})
+
+ynow_access_reset_memory()
+unlink(tmp)
+Sys.setenv(YNOW_ACCESS_LOCKS_PATH = tmp)
+check("empty ACL all-users status lists freemium guest locks", {
+  lines <- ynow_access_admin_status_lines("", scope = "all", locale = "en",
+                                          all_scope_lab = "All")
+  txt <- ynow_access_admin_status_text("", scope = "all", locale = "en",
+                                       none_lab = "NONE")
+  at_i <- grep("Asset Transmission", lines, fixed = TRUE)
+  lab_i <- grep("Quant Backtest", lines, fixed = TRUE)
+  !identical(txt, "NONE") &&
+    grepl("Freemium", txt, fixed = TRUE) &&
+    grepl("Quant Backtest", txt, fixed = TRUE) &&
+    length(at_i) == 1L && length(lab_i) == 1L &&
+    at_i[[1]] < lab_i[[1]] &&
+    grepl("^Freemium ·", lines[[lab_i[[1]]]]) &&
+    grepl("Lock (show locked)", lines[[lab_i[[1]]]], fixed = TRUE) &&
+    grepl("Unlock after login", lines[[lab_i[[1]]]], fixed = TRUE) &&
+    !length(ynow_access_restricted_ids_for_scope(character(), "all"))
+})
+check("empty ACL guests status lists freemium guest locks", {
+  lines <- ynow_access_admin_status_lines("", scope = "guests", locale = "en",
+                                          guests_scope_lab = "Guests")
+  txt <- ynow_access_admin_status_text("", scope = "guests", locale = "en",
+                                       none_lab = "NONE")
+  !identical(txt, "NONE") &&
+    grepl("Freemium", txt, fixed = TRUE) &&
+    grepl("Quant Backtest", txt, fixed = TRUE) &&
+    any(grepl("^Freemium ·", lines) & grepl("Quant Backtest", lines, fixed = TRUE)) &&
+    !length(ynow_access_restricted_ids_for_scope(character(), "guests"))
+})
+check("empty ACL all-users status uses zh freemium label", {
+  lines <- ynow_access_admin_status_lines("", scope = "all", locale = "zh-TW",
+                                          all_scope_lab = "全部")
+  txt <- ynow_access_admin_status_text("", scope = "all", locale = "zh-TW",
+                                       none_lab = "NONE")
+  hit <- lines[grepl("量化回測實驗室", lines, fixed = TRUE)]
+  !identical(txt, "NONE") &&
+    grepl("預設訪客", txt, fixed = TRUE) &&
+    length(hit) == 1L &&
+    grepl("^預設訪客 ·", hit[[1]]) &&
+    grepl("登入即解鎖", hit[[1]], fixed = TRUE)
+})
+check("empty ACL user scope stays none", {
+  identical(
+    ynow_access_admin_status_text("user-nobody", scope = "user", locale = "en",
+                                  none_lab = "NONE"),
+    "NONE"
+  )
+})
+check("ACL all-users row suppresses freemium line for the same id", {
+  ynow_access_set(
+    YNOW_ACCESS_ALL_USERS, "tab:lab_notes", TRUE,
+    effect = "lock", unlock_type = "login"
+  )
+  lines <- ynow_access_admin_status_lines("", scope = "all", locale = "en",
+                                          all_scope_lab = "All")
+  qb <- lines[grepl("Quant Backtest", lines, fixed = TRUE)]
+  gp <- lines[grepl("Global Prediction", lines, fixed = TRUE)]
+  length(qb) == 1L &&
+    grepl("^All ·", qb[[1]]) &&
+    !grepl("Freemium", qb[[1]], fixed = TRUE) &&
+    length(gp) == 1L &&
+    grepl("^Freemium ·", gp[[1]]) &&
+    identical(
+      ynow_access_restricted_ids_for_scope(character(), "all"),
+      "tab:lab_notes"
+    )
 })
 
 message("PASS ", ok, " FAIL ", bad)
