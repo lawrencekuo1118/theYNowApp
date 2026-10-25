@@ -31,7 +31,7 @@ guest <- ynow_sidebar_guest_lock_tabs()
 check("guest lock tabs are A (unlock-after-login)", {
   identical(
     sort(guest),
-    sort(c("lab_notes", "decision_checklist", "mos_assumptions", "price_alerts", "asset_transmission"))
+    sort(c("lab_notes", "decision_checklist", "mos_assumptions", "price_alerts", "asset_transmission", "global_prediction"))
   ) &&
     all(vapply(guest, function(t) identical(ynow_membership_lock_tier(t), "A"), logical(1)))
 })
@@ -81,6 +81,7 @@ check("Lite omit set unchanged (guest-locked still omitted)", {
   omit <- ynow_sidebar_lite_omit_tabs()
   all(guest %in% omit) &&
     "asset_transmission" %in% omit &&
+    "global_prediction" %in% omit &&
     all(c("account_admin", "account_points", "settings") %in% omit)
 })
 

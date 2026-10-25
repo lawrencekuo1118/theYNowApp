@@ -22,6 +22,7 @@
 ## [v27.24] — 2026-10-24
 
 ### Added
+- Global Prediction standalone sidebar (`global_prediction`): Economic / Finance / Company boards (Kalshi + Polymarket; Eco/Finance monthly+; Company TW/US listed). Full guest lock; Lite omit. Gate feature id `gp`.
 - Global Prediction freshness crawl (#494): quote TTL 3m / discovery TTL 15m on fast cache; hard rescan on tab open, focus, TW↔US mode switch, manual refresh; soft periodic while visible; drop expired contracts and reclassify into `breadth_tier` (macro → single-stock). TW/US registries, FEEX honest-empty, Galton/selection-bias framing.
 
 ### Notes

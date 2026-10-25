@@ -41,6 +41,7 @@ check("no duplicate ids", !anyDuplicated(cat$id))
 # Required product surfaces
 need_a <- c(
   "lab_notes", "decision_checklist", "mos_assumptions", "price_alerts", "asset_transmission",
+  "global_prediction",
   "account_admin", "account_points",
   "lab", "checklist", "alerts", "account",
   "download_snapshot", "download_param_restore", "download_defaults",
@@ -94,7 +95,7 @@ check("ops gates are non-membership (no A/B tier)", {
   ops <- ynow_ops_gate_features()
   length(ops) >= 3L &&
     all(is.na(vapply(ops, ynow_membership_lock_tier, character(1)))) &&
-    all(c("snap_defaults", "inner_lock", "atx") %in% ops)
+    all(c("snap_defaults", "inner_lock", "atx", "gp") %in% ops)
 })
 
 nm <- ynow_non_membership_lock_catalog()
@@ -150,8 +151,9 @@ check("global sources membership_locks before auth", {
 # Lite free PDF / omit intact
 check("Lite omit still includes guest-locked tabs", {
   omit <- ynow_sidebar_lite_omit_tabs()
-  all(c("lab_notes", "decision_checklist", "mos_assumptions", "price_alerts", "asset_transmission") %in% omit) &&
-    !"asset_transmission" %in% ynow_sidebar_full_only_tabs()
+  all(c("lab_notes", "decision_checklist", "mos_assumptions", "price_alerts", "asset_transmission", "global_prediction") %in% omit) &&
+    !"asset_transmission" %in% ynow_sidebar_full_only_tabs() &&
+    !"global_prediction" %in% ynow_sidebar_full_only_tabs()
 })
 check("download_report remains gated id (Full B; Lite free elsewhere)", {
   "download_report" %in% ynow_gated_download_ids() &&

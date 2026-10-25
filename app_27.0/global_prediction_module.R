@@ -1,5 +1,6 @@
 # ==========================================
-# global_prediction_module.R — Global Prediction under ATX
+# global_prediction_module.R — Global Prediction (standalone)
+# Boards: Economic / Finance / Company. Kalshi + Polymarket public APIs.
 #
 # Crowd-implied probabilities from Kalshi + Polymarket public APIs.
 # Theme registry joins two independent crowds for side-by-side comparison.
@@ -51,7 +52,7 @@ gp_crawl_policy <- function() {
     note = paste(
       "Hard triggers invalidate gp:* keys then rescan.",
       "Periodic uses quote TTL; discovery TTL gates series/query re-probe.",
-      "TW/US mode selects theme registry; venue overlap (Fed/CPI) is intentional."
+      "Boards Economic/Finance/Company; Eco/Finance use monthly+ Kalshi frequency."
     )
   )
 }
@@ -66,121 +67,6 @@ gp_brand_colors <- function() {
     polymarket = .GP_POLYMARKET_COLOR,
     feex = .GP_FEEX_COLOR
   )
-}
-
-# breadth_tier: 1 macro → 2 market/index → 3 sector/theme → 4 single-stock.
-# Rows are stored already sorted; gp_theme_registry() re-orders defensively.
-.gp_sort_theme_registry <- function(reg) {
-  if (!is.data.frame(reg) || nrow(reg) == 0L) return(reg)
-  if (!("breadth_tier" %in% names(reg))) {
-    reg$breadth_tier <- 1L
-  }
-  if (!("breadth_ord" %in% names(reg))) {
-    reg$breadth_ord <- seq_len(nrow(reg))
-  }
-  reg[order(as.integer(reg$breadth_tier), as.integer(reg$breadth_ord), as.character(reg$theme_id)), , drop = FALSE]
-}
-
-#' Theme registry by App equity mode (US vs TW). Overlap themes (Fed/CPI) are intentional.
-#' Order is always 總體 → 市場／指數 → 題材 → 個股 (never lead with single-stock).
-gp_theme_registry <- function(market_mode = "US") {
-  mode <- .gp_norm_market_mode(market_mode)
-  if (identical(mode, "TW")) {
-    return(.gp_sort_theme_registry(data.frame(
-      theme_id = c(
-        "fed_rates",
-        "inflation_cpi",
-        "tw_macro",
-        "tw_equity",
-        "tw_housing"
-      ),
-      label_key = c(
-        "gp_theme_fed_rates",
-        "gp_theme_inflation_cpi",
-        "gp_theme_tw_macro",
-        "gp_theme_tw_equity",
-        "gp_theme_tw_housing"
-      ),
-      breadth_tier = c(1L, 1L, 1L, 2L, 3L),
-      breadth_ord = c(1L, 2L, 3L, 1L, 1L),
-      kalshi_series = I(list(
-        c("KXRATECUT", "KXFEDDECISION"),
-        c("KXCPI", "KXCPICOREYOY"),
-        character(0),
-        character(0),
-        character(0)
-      )),
-      polymarket_queries = I(list(
-        "Fed rate",
-        "CPI inflation",
-        c("Taiwan GDP", "Taiwan economy", "Taiwan election"),
-        c("Taiwan stock", "TAIEX", "Taiwan equity"),
-        c("Taiwan housing", "Taipei housing", "Taiwan property")
-      )),
-      keywords = I(list(
-        c("fed", "fomc", "rate cut", "federal reserve"),
-        c("cpi", "inflation"),
-        c("taiwan", "gdp", "election"),
-        c("taiwan", "taiex", "twse"),
-        c("taiwan", "housing", "property", "real estate")
-      )),
-      feex_topics = I(list(
-        "fed_rates",
-        "inflation",
-        "tw_macro",
-        "tw_equity",
-        "tw_housing"
-      )),
-      stringsAsFactors = FALSE
-    )))
-  }
-  .gp_sort_theme_registry(data.frame(
-    theme_id = c(
-      "fed_rates",
-      "inflation_cpi",
-      "recession",
-      "treasury_yields",
-      "equities_index"
-    ),
-    label_key = c(
-      "gp_theme_fed_rates",
-      "gp_theme_inflation_cpi",
-      "gp_theme_recession",
-      "gp_theme_treasury_yields",
-      "gp_theme_equities_index"
-    ),
-    breadth_tier = c(1L, 1L, 1L, 2L, 2L),
-    breadth_ord = c(1L, 2L, 3L, 1L, 2L),
-    kalshi_series = I(list(
-      c("KXRATECUT", "KXFEDDECISION", "KXRATECUTCOUNT", "KXDOTPLOT"),
-      c("KXCPI", "KXCPICOREYOY", "KXLCPIMAXYOY"),
-      c("KXNBERRECESSQ", "KXU3MAX"),
-      c("KX10YR550PCT", "TNOTEW"),
-      c("KXNASDAQ100M", "KXNASDAQ100MD")
-    )),
-    polymarket_queries = I(list(
-      c("Fed rate cuts 2026", "Federal Reserve rate", "FOMC"),
-      c("US CPI", "core CPI inflation"),
-      c("US recession", "recession 2026"),
-      c("Treasury yield", "10-year Treasury"),
-      c("S&P 500", "Nasdaq-100")
-    )),
-    keywords = I(list(
-      c("fed", "fomc", "rate cut", "rate hike", "federal reserve"),
-      c("cpi", "inflation", "consumer price"),
-      c("recession", "nber"),
-      c("treasury", "yield", "t-note", "tnote"),
-      c("nasdaq", "s&p", "spx")
-    )),
-    feex_topics = I(list(
-      "fed_rates",
-      "inflation",
-      "recession",
-      "treasury",
-      "equities"
-    )),
-    stringsAsFactors = FALSE
-  ))
 }
 
 .gp_chr <- function(x, default = "") {
@@ -808,122 +694,6 @@ gp_crowd_agreement <- function(kalshi_probs, polymarket_probs) {
 
 #' Fetch Snapshot for all themes. Fail closed per venue. Mode selects theme set.
 #' @param trigger crawl trigger id (see gp_crawl_policy); hard triggers invalidate first.
-#' @param layer "quote" (short TTL) or "discovery" (theme→contract rescan TTL).
-gp_fetch_snapshot <- function(market_mode = "US", use_cache = TRUE, limit_per_venue = 3L,
-                              trigger = "periodic_visible", layer = "quote") {
-  mode <- .gp_norm_market_mode(market_mode)
-  trigger <- .gp_chr(trigger, "periodic_visible")
-  layer <- if (.gp_chr(layer) %in% c("quote", "discovery")) .gp_chr(layer) else "quote"
-  if (gp_is_hard_trigger(trigger) || identical(layer, "discovery")) {
-    # Invalidate so reads miss; still write fresh stamped entries after rescan.
-    gp_invalidate_crawl_cache(mode)
-    layer <- "discovery"
-    use_cache <- TRUE
-  }
-  reg <- gp_theme_registry(mode)
-  pairs <- vector("list", nrow(reg))
-  k_ok <- FALSE
-  p_ok <- FALSE
-  k_err <- NULL
-  p_err <- NULL
-  feex_err <- "feex_no_public_feed"
-  all_k <- list()
-  all_p <- list()
-  for (i in seq_len(nrow(reg))) {
-    tid <- reg$theme_id[[i]]
-    series <- reg$kalshi_series[[i]]
-    if (is.null(series)) series <- character(0)
-    k <- if (length(unlist(series)) == 0L) {
-      list(ok = FALSE, quotes = .gp_empty_quote(), error = "empty")
-    } else {
-      gp_fetch_kalshi_theme(
-        tid,
-        series,
-        limit = limit_per_venue,
-        use_cache = use_cache,
-        layer = layer
-      )
-    }
-    kw <- if ("keywords" %in% names(reg)) reg$keywords[[i]] else NULL
-    p <- gp_fetch_polymarket_theme(
-      tid,
-      reg$polymarket_queries[[i]],
-      limit = limit_per_venue,
-      use_cache = use_cache,
-      keywords = kw,
-      layer = layer
-    )
-    feex_topic <- if ("feex_topics" %in% names(reg)) reg$feex_topics[[i]] else tid
-    f <- gp_fetch_feex_theme(
-      tid, topic = feex_topic, use_cache = use_cache, layer = layer
-    )
-    if (isTRUE(k$ok)) k_ok <- TRUE
-    else if (!identical(k$error, "empty") && is.null(k_err)) k_err <- k$error
-    if (isTRUE(p$ok)) p_ok <- TRUE
-    else if (!identical(p$error, "empty") && is.null(p_err)) p_err <- p$error
-    kq <- if (is.data.frame(k$quotes)) k$quotes else .gp_empty_quote()
-    pq <- if (is.data.frame(p$quotes)) p$quotes else .gp_empty_quote()
-    if (nrow(kq) > 0L) all_k[[length(all_k) + 1L]] <- kq
-    if (nrow(pq) > 0L) all_p[[length(all_p) + 1L]] <- pq
-    # Placeholder; re-bucket after cross-theme reclassify below.
-    pairs[[i]] <- list(
-      theme_id = tid,
-      label_key = reg$label_key[[i]],
-      breadth_tier = as.integer(reg$breadth_tier[[i]]),
-      kalshi = .gp_empty_quote(),
-      polymarket = .gp_empty_quote(),
-      feex = if (is.data.frame(f$quotes)) f$quotes else .gp_empty_quote(),
-      feex_status = f$status %||% f$error %||% "empty",
-      agreement = gp_crowd_agreement(numeric(0), numeric(0))
-    )
-  }
-  # Rescan → update or reclassify into breadth_tier buckets.
-  k_all <- if (length(all_k)) {
-    gp_reclassify_quotes(do.call(rbind, all_k), market_mode = mode)
-  } else {
-    .gp_empty_quote()
-  }
-  p_all <- if (length(all_p)) {
-    gp_reclassify_quotes(do.call(rbind, all_p), market_mode = mode)
-  } else {
-    .gp_empty_quote()
-  }
-  for (i in seq_len(nrow(reg))) {
-    tid <- reg$theme_id[[i]]
-    kq <- if (nrow(k_all)) {
-      k_all[k_all$theme_id == tid, , drop = FALSE]
-    } else {
-      .gp_empty_quote()
-    }
-    pq <- if (nrow(p_all)) {
-      p_all[p_all$theme_id == tid, , drop = FALSE]
-    } else {
-      .gp_empty_quote()
-    }
-    if (nrow(kq) > as.integer(limit_per_venue)) {
-      kq <- kq[seq_len(as.integer(limit_per_venue)), , drop = FALSE]
-    }
-    if (nrow(pq) > as.integer(limit_per_venue)) {
-      pq <- pq[seq_len(as.integer(limit_per_venue)), , drop = FALSE]
-    }
-    pairs[[i]]$kalshi <- kq
-    pairs[[i]]$polymarket <- pq
-    pairs[[i]]$agreement <- gp_crowd_agreement(kq$yes_prob, pq$yes_prob)
-  }
-  list(
-    fetched_at = format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"),
-    market_mode = mode,
-    trigger = trigger,
-    layer = layer,
-    policy = gp_crawl_policy(),
-    pairs = pairs,
-    venue_errors = list(
-      kalshi = if (k_ok) NULL else k_err,
-      polymarket = if (p_ok) NULL else p_err,
-      feex = feex_err
-    )
-  )
-}
 
 .gp_fmt_pct <- function(p) {
   p <- .gp_num01(p)
@@ -1008,13 +778,18 @@ gp_fetch_snapshot <- function(market_mode = "US", use_cache = TRUE, limit_per_ve
         id = paste0("ynow_gp_theme_", .gp_chr(pair$theme_id)),
         .gp_label(pair$label_key %||% "gp_theme_fed_rates", locale)
       ),
-      htmltools::tags$p(
-        class = "ynow-gp-participation-inline",
-        .gp_label("gp_participation_note", locale)
+      htmltools::tags$div(
+        class = "ynow-gp-agree",
+        htmltools::tags$span(
+          class = paste0("ynow-gp-agree-badge ynow-gp-agree-", status),
+          .gp_label(status_key, locale)
+        ),
+        if (nzchar(gap_txt)) htmltools::tags$span(class = "ynow-gp-agree-meta", gap_txt),
+        if (nzchar(mean_txt)) htmltools::tags$span(class = "ynow-gp-agree-meta", mean_txt)
       )
     ),
     htmltools::tags$div(
-      class = "ynow-gp-cols ynow-gp-cols-3",
+      class = "ynow-gp-cols",
       htmltools::tags$div(
         class = "ynow-gp-col ynow-gp-col-kalshi",
         htmltools::tags$div(
@@ -1041,6 +816,442 @@ gp_fetch_snapshot <- function(market_mode = "US", use_cache = TRUE, limit_per_ve
   )
 }
 
+
+# ---- Boards: Economic / Finance / Company ---------------------------------
+# Standalone Global Prediction page. Sources map to public Kalshi series
+# categories and Polymarket tag/search feeds (monthly+ for Eco/Finance).
+
+.GP_KALSHI_API <- "https://api.elections.kalshi.com/trade-api/v2"
+.GP_FREQ_MONTHLY_PLUS <- c("monthly", "quarterly", "annual", "yearly")
+# Company events are often custom / one_off on Kalshi.
+.GP_FREQ_COMPANY <- c("monthly", "quarterly", "annual", "yearly", "custom", "one_off")
+
+gp_board_ids <- function() c("economic", "finance", "company")
+
+gp_norm_board <- function(board = "economic") {
+  b <- tolower(.gp_chr(board, "economic"))
+  if (b %in% c("econ", "economics", "macro")) return("economic")
+  if (b %in% c("fin", "financials", "financial")) return("finance")
+  if (b %in% c("co", "companies", "equity", "equities", "stock", "stocks")) return("company")
+  if (b %in% gp_board_ids()) b else "economic"
+}
+
+#' Source matrix for each board (public APIs mirroring the listed venue pages).
+gp_board_sources <- function(board = "economic") {
+  board <- gp_norm_board(board)
+  if (identical(board, "finance")) {
+    return(list(
+      board = board,
+      # Kalshi Financials monthly + annual (user: /financials/frequency/monthly|annual)
+      kalshi_categories = c("Financials"),
+      kalshi_freq = .GP_FREQ_MONTHLY_PLUS,
+      # Polymarket /finance/monthly + /finance/indicies (site slug typo kept)
+      poly_tags = c(
+        "monthly", "finance", "indices", "indicies",
+        "spx", "nasdaq", "equities", "stocks"
+      ),
+      poly_queries = c(
+        "S&P 500 monthly", "Nasdaq monthly", "Treasury yield",
+        "stock index", "finance monthly", "VIX", "credit spread",
+        "IPO", "dollar index"
+      ),
+      company_filter = FALSE,
+      theme_buckets = list(
+        list(id = "rates_credit", label_key = "gp_theme_rates_credit",
+             kw = c("treasury", "yield", "rate", "fed funds", "credit", "bond",
+                    "spread", "high yield")),
+        list(id = "equity_index", label_key = "gp_theme_equity_index",
+             kw = c("s&p", "spx", "nasdaq", "russell", "dow", "index", "indices",
+                    "indicies", "taiex", "hang seng")),
+        list(id = "vol_credit", label_key = "gp_theme_vol_credit",
+             kw = c("vix", "volatility", "vol ", "stress", "default", "cds")),
+        list(id = "fx_commod_fin", label_key = "gp_theme_fx_markets",
+             kw = c("fx", "dollar", "dxy", "euro", "yen", "currency", "forex")),
+        list(id = "ipo_ma", label_key = "gp_theme_ipo_ma",
+             kw = c("ipo", "merger", "acquire", "m&a", "spac", "takeover")),
+        list(id = "fin_other", label_key = "gp_theme_fin_other", kw = character(0))
+      )
+    ))
+  }
+  if (identical(board, "company")) {
+    return(list(
+      board = board,
+      # Kalshi company-reports + Companies category; keep Financials for equity single-names
+      kalshi_categories = c("Companies", "Financials"),
+      kalshi_freq = .GP_FREQ_COMPANY,
+      # Polymarket /tech + /finance/stocks + /finance/earnings
+      poly_tags = c("tech", "stocks", "earnings", "equities"),
+      poly_queries = c(
+        "earnings", "TSMC", "Apple", "NVIDIA", "Microsoft", "Meta",
+        "Taiwan Semiconductor", "stock price", "2330", "Hon Hai",
+        "Amazon", "Tesla", "Broadcom"
+      ),
+      company_filter = TRUE,
+      theme_buckets = list(
+        list(id = "us_mega", label_key = "gp_theme_us_mega",
+             kw = c("apple", "aapl", "microsoft", "msft", "amazon", "amzn",
+                    "google", "alphabet", "googl", "meta", "facebook",
+                    "tesla", "tsla", "netflix", "nflx", "costco", "walmart")),
+        list(id = "semis", label_key = "gp_theme_semis",
+             kw = c("nvidia", "nvda", "broadcom", "avgo", "amd", "intel", "intc",
+                    "tsmc", "taiwan semiconductor", "2330", "umc", "2303",
+                    "mediatek", "2454", "asml", "semiconductor", "chip")),
+        list(id = "tw_listed", label_key = "gp_theme_tw_listed",
+             kw = c("hon hai", "foxconn", "2317", "taiex", "taiwan", ".tw",
+                    "quanta", "2382", "pegatron", "4938", "largan", "3008",
+                    "chunghwa", "2412", "fubon", "cathay")),
+        list(id = "earnings", label_key = "gp_theme_earnings",
+             kw = c("earn", "eps", "revenue", "quarter", "beat", "miss",
+                    "guidance", "print")),
+        list(id = "co_other", label_key = "gp_theme_co_other", kw = character(0))
+      )
+    ))
+  }
+  # economic — Kalshi Economics + commodities; Polymarket /economy + /finance/commodities
+  list(
+    board = "economic",
+    kalshi_categories = c("Economics", "Commodities"),
+    kalshi_freq = .GP_FREQ_MONTHLY_PLUS,
+    poly_tags = c("economy", "commodities", "economics"),
+    poly_queries = c(
+      "US economy", "CPI inflation", "Fed rate", "recession",
+      "GDP", "unemployment", "housing", "tariff", "oil", "gold", "commodities"
+    ),
+    company_filter = FALSE,
+    theme_buckets = list(
+      list(id = "fed_rates", label_key = "gp_theme_fed_rates",
+           kw = c("fed", "fomc", "rate cut", "rate hike", "federal reserve",
+                  "central bank", "interest rate")),
+      list(id = "inflation_cpi", label_key = "gp_theme_inflation_cpi",
+           kw = c("cpi", "inflation", "ppi", "pce", "consumer price", "deflation")),
+      list(id = "growth_jobs", label_key = "gp_theme_growth_jobs",
+           kw = c("gdp", "growth", "jobs", "nfp", "payroll", "jolts", "employment")),
+      list(id = "recession_labor", label_key = "gp_theme_recession_labor",
+           kw = c("recession", "unemployment", "layoff", "soft landing", "hard landing")),
+      list(id = "housing", label_key = "gp_theme_housing",
+           kw = c("housing", "home price", "mortgage", "hpi", "rent", "case-shiller")),
+      list(id = "energy_commod", label_key = "gp_theme_energy_commod",
+           kw = c("oil", "wti", "brent", "gas", "gold", "copper", "silver",
+                  "commodity", "commodities", "crude")),
+      list(id = "trade_policy", label_key = "gp_theme_trade_policy",
+           kw = c("tariff", "trade war", "import", "export", "customs", "sanction")),
+      list(id = "econ_other", label_key = "gp_theme_econ_other", kw = character(0))
+    )
+  )
+}
+
+#' Legacy theme registry (tests / reclassify). Maps onto Economic board buckets.
+gp_theme_registry <- function(market_mode = "US") {
+  src <- gp_board_sources("economic")
+  buckets <- src$theme_buckets
+  n <- length(buckets)
+  data.frame(
+    theme_id = vapply(buckets, function(b) b$id, character(1)),
+    label_key = vapply(buckets, function(b) b$label_key, character(1)),
+    breadth_tier = as.integer(seq_len(n)),
+    breadth_ord = as.integer(seq_len(n)),
+    kalshi_series = I(replicate(n, character(0), simplify = FALSE)),
+    polymarket_queries = I(replicate(n, character(0), simplify = FALSE)),
+    keywords = I(lapply(buckets, function(b) b$kw)),
+    feex_topics = I(as.list(vapply(buckets, function(b) b$id, character(1)))),
+    stringsAsFactors = FALSE
+  )
+}
+
+.gp_freq_ok <- function(freq, allow) {
+  f <- tolower(.gp_chr(freq))
+  if (!nzchar(f)) return(FALSE)
+  f %in% tolower(as.character(allow))
+}
+
+#' TW/US listed-company heuristic for Company board (titles / tickers).
+gp_is_tw_us_listed_title <- function(title) {
+  t <- tolower(.gp_chr(title))
+  if (!nzchar(t)) return(FALSE)
+  # Explicit exchange / ADR / TWSE cues
+  if (grepl("\\.(tw|two)\\b", t) || grepl("\\btwse\\b|\\btaiex\\b|\\botc\\b", t)) return(TRUE)
+  if (grepl("\\bnyse\\b|\\bnasdaq\\b|\\bamex\\b", t)) return(TRUE)
+  # Parenthetical ticker (AAPL) / spaced ticker tokens
+  if (grepl("\\(([A-Z]{1,5})\\)", .gp_chr(title))) return(TRUE)
+  us <- c(
+    "apple", "aapl", "microsoft", "msft", "nvidia", "nvda", "amazon", "amzn",
+    "alphabet", "google", "googl", "meta", "facebook", "tesla", "tsla",
+    "broadcom", "avgo", "netflix", "nflx", "amd", "intel", "intc", "costco",
+    "jpmorgan", "jpm", "goldman", "gs ", "berkshire", "exxon", "xom",
+    "unitedhealth", "unh", "visa", "mastercard", "walmart", "wmt",
+    "asml", "adobe", "salesforce", "crm", "oracle", "orcl", "cisco", "csco",
+    "pfizer", "coca-cola", "pepsico", "disney", "nike"
+  )
+  tw <- c(
+    "tsmc", "taiwan semiconductor", "2330", "hon hai", "foxconn", "2317",
+    "mediatek", "2454", "umc", "2303", "ase", "3711", "quanta", "2382",
+    "pegatron", "4938", "largan", "3008", "realtek", "2379", "novatek",
+    "3034", "chunghwa telecom", "2412", "fubon", "cathay", "taiwan",
+    "delta electronics", "2308", "taiwan mobile", "3045", "cht "
+  )
+  if (any(vapply(us, function(k) grepl(k, t, fixed = TRUE), logical(1)))) return(TRUE)
+  if (any(vapply(tw, function(k) grepl(k, t, fixed = TRUE), logical(1)))) return(TRUE)
+  FALSE
+}
+
+.gp_bucket_theme_id <- function(title, buckets) {
+  best_id <- buckets[[length(buckets)]]$id
+  best <- 0L
+  for (b in buckets) {
+    kw <- b$kw
+    if (!length(kw)) next
+    sc <- .gp_theme_keyword_score(title, kw)
+    if (sc > best) {
+      best <- sc
+      best_id <- b$id
+    }
+  }
+  best_id
+}
+
+gp_fetch_kalshi_series_list <- function(category, use_cache = TRUE) {
+  category <- .gp_chr(category)
+  cache_key <- .gp_cache_key("kseries", category)
+  if (isTRUE(use_cache)) {
+    hit <- .gp_cache_get_fresh(cache_key, .GP_DISCOVERY_TTL_SEC)
+    if (is.list(hit) && isTRUE(hit$ok)) return(hit)
+  }
+  url <- sprintf(
+    "%s/series?limit=200&category=%s",
+    .GP_KALSHI_API,
+    utils::URLencode(category, reserved = TRUE)
+  )
+  res <- .gp_http_get_json(url, timeout_sec = 20)
+  if (!isTRUE(res$ok)) {
+    return(list(ok = FALSE, series = list(), error = res$error %||% "fetch_failed"))
+  }
+  series <- res$data$series %||% list()
+  if (!is.list(series)) series <- list()
+  out <- list(ok = TRUE, series = series, error = NULL)
+  if (isTRUE(use_cache)) .gp_cache_set_fresh(cache_key, out, layer = "discovery")
+  out
+}
+
+gp_fetch_kalshi_board <- function(board = "economic", limit_quotes = 24L, use_cache = TRUE) {
+  src <- gp_board_sources(board)
+  cache_key <- .gp_cache_key("kboard", src$board, paste(src$kalshi_categories, collapse = ""))
+  if (isTRUE(use_cache)) {
+    hit <- .gp_cache_get_fresh(cache_key, .GP_QUOTE_TTL_SEC)
+    if (is.list(hit) && isTRUE(hit$ok)) {
+      hit$quotes <- gp_filter_live_quotes(hit$quotes)
+      return(hit)
+    }
+  }
+  collected <- list()
+  last_err <- NULL
+  for (cat in src$kalshi_categories) {
+    sl <- gp_fetch_kalshi_series_list(cat, use_cache = use_cache)
+    if (!isTRUE(sl$ok)) {
+      last_err <- sl$error %||% "series_failed"
+      next
+    }
+    series <- sl$series
+    # Prefer monthly+; keep order from API
+    keep <- list()
+    for (s in series) {
+      if (!is.list(s)) next
+      if (!.gp_freq_ok(s$frequency, src$kalshi_freq)) next
+      keep[[length(keep) + 1L]] <- s
+    }
+    # Cap series probes per category to control rate
+    if (length(keep) > 36L) keep <- keep[seq_len(36L)]
+    for (s in keep) {
+      ticker <- .gp_chr(s$ticker)
+      if (!nzchar(ticker)) next
+      theme_guess <- .gp_bucket_theme_id(
+        paste(s$title %||% "", ticker),
+        src$theme_buckets
+      )
+      url <- sprintf(
+        "%s/markets?status=open&limit=5&series_ticker=%s&mve_filter=exclude",
+        .GP_KALSHI_API,
+        utils::URLencode(ticker, reserved = TRUE)
+      )
+      res <- .gp_http_get_json(url, timeout_sec = 12)
+      if (!isTRUE(res$ok)) {
+        last_err <- res$error %||% "markets_failed"
+        next
+      }
+      q <- gp_parse_kalshi_markets(res$data, theme_id = theme_guess, limit = 3L)
+      if (nrow(q) == 0L) next
+      if (isTRUE(src$company_filter)) {
+        ok_rows <- vapply(seq_len(nrow(q)), function(i) {
+          gp_is_tw_us_listed_title(q$title[[i]])
+        }, logical(1))
+        q <- q[ok_rows, , drop = FALSE]
+      }
+      if (nrow(q) > 0L) collected[[length(collected) + 1L]] <- q
+      n_have <- sum(vapply(collected, nrow, 1L))
+      if (n_have >= as.integer(limit_quotes)) break
+    }
+    if (sum(vapply(collected, nrow, 1L)) >= as.integer(limit_quotes)) break
+  }
+  if (!length(collected)) {
+    return(list(ok = FALSE, quotes = .gp_empty_quote(), error = last_err %||% "empty"))
+  }
+  quotes <- gp_filter_live_quotes(do.call(rbind, collected))
+  quotes <- quotes[!duplicated(quotes$market_id), , drop = FALSE]
+  if (nrow(quotes) > as.integer(limit_quotes)) {
+    quotes <- quotes[seq_len(as.integer(limit_quotes)), , drop = FALSE]
+  }
+  out <- list(ok = TRUE, quotes = quotes, error = NULL)
+  if (isTRUE(use_cache)) .gp_cache_set_fresh(cache_key, out, layer = "quote")
+  out
+}
+
+gp_fetch_polymarket_board <- function(board = "economic", limit_quotes = 24L, use_cache = TRUE) {
+  src <- gp_board_sources(board)
+  cache_key <- .gp_cache_key("pboard", src$board, paste(c(src$poly_tags, src$poly_queries), collapse = ""))
+  if (isTRUE(use_cache)) {
+    hit <- .gp_cache_get_fresh(cache_key, .GP_QUOTE_TTL_SEC)
+    if (is.list(hit) && isTRUE(hit$ok)) {
+      hit$quotes <- gp_filter_live_quotes(hit$quotes)
+      return(hit)
+    }
+  }
+  collected <- list()
+  last_err <- NULL
+  # Tag feeds first (mirror /economy, /finance/monthly, /tech, …)
+  for (tag in src$poly_tags) {
+    url <- sprintf(
+      "https://gamma-api.polymarket.com/events?tag_slug=%s&active=true&closed=false&limit=12",
+      utils::URLencode(tag, reserved = TRUE)
+    )
+    res <- .gp_http_get_json(url, timeout_sec = 12)
+    if (!isTRUE(res$ok)) {
+      last_err <- res$error %||% "tag_failed"
+      next
+    }
+    payload <- res$data
+    if (is.list(payload) && is.null(payload$events) && !is.null(payload[[1]])) {
+      payload <- list(events = payload)
+    }
+    theme_guess <- .gp_bucket_theme_id(tag, src$theme_buckets)
+    q <- gp_parse_polymarket_events(payload, theme_id = theme_guess, limit = 8L)
+    if (nrow(q) > 0L) collected[[length(collected) + 1L]] <- q
+    if (sum(vapply(collected, nrow, 1L)) >= as.integer(limit_quotes)) break
+  }
+  # Search fallback for sparse tags (e.g. indices)
+  if (sum(vapply(collected, nrow, 1L)) < 6L) {
+    for (qstr in src$poly_queries) {
+      url <- paste0(
+        "https://gamma-api.polymarket.com/public-search?q=",
+        utils::URLencode(qstr, reserved = TRUE)
+      )
+      res <- .gp_http_get_json(url, timeout_sec = 12)
+      if (!isTRUE(res$ok)) {
+        last_err <- res$error %||% "search_failed"
+        next
+      }
+      theme_guess <- .gp_bucket_theme_id(qstr, src$theme_buckets)
+      parsed <- gp_parse_polymarket_events(res$data, theme_id = theme_guess, limit = 6L)
+      if (nrow(parsed) > 0L) collected[[length(collected) + 1L]] <- parsed
+      if (sum(vapply(collected, nrow, 1L)) >= as.integer(limit_quotes)) break
+    }
+  }
+  if (!length(collected)) {
+    return(list(ok = FALSE, quotes = .gp_empty_quote(), error = last_err %||% "empty"))
+  }
+  quotes <- gp_filter_live_quotes(do.call(rbind, collected))
+  if (isTRUE(src$company_filter) && nrow(quotes) > 0L) {
+    ok_rows <- vapply(seq_len(nrow(quotes)), function(i) {
+      gp_is_tw_us_listed_title(quotes$title[[i]])
+    }, logical(1))
+    quotes <- quotes[ok_rows, , drop = FALSE]
+  }
+  quotes <- quotes[!duplicated(quotes$market_id), , drop = FALSE]
+  # Re-bucket titles into board themes
+  if (nrow(quotes) > 0L) {
+    for (i in seq_len(nrow(quotes))) {
+      quotes$theme_id[[i]] <- .gp_bucket_theme_id(quotes$title[[i]], src$theme_buckets)
+    }
+  }
+  if (nrow(quotes) > as.integer(limit_quotes)) {
+    quotes <- quotes[seq_len(as.integer(limit_quotes)), , drop = FALSE]
+  }
+  if (nrow(quotes) == 0L) {
+    return(list(ok = FALSE, quotes = .gp_empty_quote(), error = last_err %||% "empty"))
+  }
+  out <- list(ok = TRUE, quotes = quotes, error = NULL)
+  if (isTRUE(use_cache)) .gp_cache_set_fresh(cache_key, out, layer = "quote")
+  out
+}
+
+#' Fetch one board snapshot (Economic / Finance / Company).
+gp_fetch_snapshot <- function(market_mode = "US", use_cache = TRUE, limit_per_venue = 24L,
+                              trigger = "periodic_visible", layer = "quote",
+                              board = "economic") {
+  mode <- .gp_norm_market_mode(market_mode)
+  board <- gp_norm_board(board)
+  trigger <- .gp_chr(trigger, "periodic_visible")
+  layer <- if (.gp_chr(layer) %in% c("quote", "discovery")) .gp_chr(layer) else "quote"
+  if (gp_is_hard_trigger(trigger) || identical(layer, "discovery")) {
+    gp_invalidate_crawl_cache(NULL)
+    layer <- "discovery"
+    use_cache <- TRUE
+  }
+  src <- gp_board_sources(board)
+  k <- gp_fetch_kalshi_board(board, limit_quotes = limit_per_venue, use_cache = use_cache)
+  p <- gp_fetch_polymarket_board(board, limit_quotes = limit_per_venue, use_cache = use_cache)
+  f <- gp_fetch_feex_theme(board, topic = board, use_cache = use_cache, layer = layer)
+  kq <- if (is.data.frame(k$quotes)) k$quotes else .gp_empty_quote()
+  pq <- if (is.data.frame(p$quotes)) p$quotes else .gp_empty_quote()
+  # Bucket into theme pairs for UI
+  pairs <- lapply(src$theme_buckets, function(b) {
+    tid <- b$id
+    k_part <- if (nrow(kq)) kq[kq$theme_id == tid, , drop = FALSE] else .gp_empty_quote()
+    p_part <- if (nrow(pq)) pq[pq$theme_id == tid, , drop = FALSE] else .gp_empty_quote()
+    # Orphans with empty catch-all bucket
+    if (identical(tid, src$theme_buckets[[length(src$theme_buckets)]]$id)) {
+      known <- vapply(src$theme_buckets, function(x) x$id, character(1))
+      if (nrow(kq)) {
+        extra_k <- kq[!(kq$theme_id %in% known[known != tid]), , drop = FALSE]
+        if (nrow(extra_k)) k_part <- rbind(k_part, extra_k)
+      }
+      if (nrow(pq)) {
+        extra_p <- pq[!(pq$theme_id %in% known[known != tid]), , drop = FALSE]
+        if (nrow(extra_p)) p_part <- rbind(p_part, extra_p)
+      }
+    }
+    if (nrow(k_part) > 6L) k_part <- k_part[seq_len(6L), , drop = FALSE]
+    if (nrow(p_part) > 6L) p_part <- p_part[seq_len(6L), , drop = FALSE]
+    list(
+      theme_id = tid,
+      label_key = b$label_key,
+      breadth_tier = NA_integer_,
+      kalshi = k_part,
+      polymarket = p_part,
+      feex = .gp_empty_quote(),
+      feex_status = f$status %||% "defunct",
+      agreement = gp_crowd_agreement(k_part$yes_prob, p_part$yes_prob)
+    )
+  })
+  # Drop empty theme cards except when entire board empty (keep one honest empty)
+  nonempty <- vapply(pairs, function(pr) {
+    nrow(pr$kalshi) + nrow(pr$polymarket) > 0L
+  }, logical(1))
+  if (any(nonempty)) pairs <- pairs[nonempty]
+  list(
+    fetched_at = format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"),
+    market_mode = mode,
+    board = board,
+    trigger = trigger,
+    layer = layer,
+    policy = gp_crawl_policy(),
+    pairs = pairs,
+    venue_errors = list(
+      kalshi = if (isTRUE(k$ok)) NULL else k$error,
+      polymarket = if (isTRUE(p$ok)) NULL else p$error,
+      feex = "feex_no_public_feed"
+    )
+  )
+}
+
 global_prediction_ui <- function(id, locale = "en") {
   ns <- shiny::NS(id)
   loc <- if (exists("normalize_ui_locale", mode = "function")) {
@@ -1050,7 +1261,6 @@ global_prediction_ui <- function(id, locale = "en") {
   }
   colors <- gp_brand_colors()
   htmltools::tagList(
-    # CSS percentages must be %% so sprintf does not treat "100%; flex…" as format "%; f".
     htmltools::tags$style(htmltools::HTML(sprintf("
       .ynow-gp { margin-top: 4px; }
       .ynow-gp-lead { font-size: 13px; line-height: 1.5; color: #3f3a33; margin: 0 0 10px; }
@@ -1061,6 +1271,10 @@ global_prediction_ui <- function(id, locale = "en") {
         margin: 6px 0 0; width: 100%%; flex-basis: 100%%; }
       .ynow-gp-meta { font-size: 12px; color: #5c5346; margin: 0 0 14px; display: flex;
         flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+      .ynow-gp-boards { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
+      .ynow-gp-board-btn { border: 1px solid #cfc6b4; background: #fff; color: #3f3a33;
+        border-radius: 6px; padding: 6px 12px; font-size: 13px; font-weight: 600; }
+      .ynow-gp-board-btn.active { background: #1c1915; color: #f7f3ea; border-color: #1c1915; }
       .ynow-gp-swatch { display: inline-flex; align-items: center; gap: 6px; }
       .ynow-gp-dot { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
       .ynow-gp-theme { margin: 0 0 16px; padding: 12px; background: #fff;
@@ -1068,25 +1282,19 @@ global_prediction_ui <- function(id, locale = "en") {
       .ynow-gp-theme-head { display: flex; flex-wrap: wrap; gap: 8px 14px;
         align-items: baseline; justify-content: space-between; margin-bottom: 10px; }
       .ynow-gp-theme-title { margin: 0; font-size: 15px; color: #1c1915; }
-      .ynow-gp-crowd-badge { font-size: 12px; display: flex; flex-wrap: wrap; gap: 6px 12px;
-        align-items: center; }
-      .ynow-gp-crowd-agree { color: #1e7a46; font-weight: 600; }
-      .ynow-gp-crowd-diverge { color: #a33b2b; font-weight: 600; }
-      .ynow-gp-crowd-mixed { color: #6b5b3e; font-weight: 600; }
-      .ynow-gp-crowd-insufficient { color: #7a7368; }
-      .ynow-gp-crowd-meta { color: #5c5346; font-weight: 400; }
+      .ynow-gp-agree { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center;
+        font-size: 12px; color: #5c5346; }
+      .ynow-gp-agree-badge { font-weight: 700; padding: 2px 8px; border-radius: 4px;
+        background: #efe9dc; color: #3f3a33; }
+      .ynow-gp-agree-agree { background: rgba(0, 214, 108, 0.18); }
+      .ynow-gp-agree-diverge { background: rgba(196, 86, 52, 0.16); }
+      .ynow-gp-agree-mixed { background: rgba(193, 122, 46, 0.16); }
+      .ynow-gp-agree-meta { color: #7a7368; }
       .ynow-gp-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-      .ynow-gp-cols-3 { grid-template-columns: 1fr 1fr 1fr; }
       .ynow-gp-col { border-radius: 8px; padding: 8px 10px; }
       .ynow-gp-col-kalshi { background: rgba(0, 214, 108, 0.12); }
       .ynow-gp-col-polymarket { background: rgba(46, 92, 255, 0.10); }
-      .ynow-gp-col-feex { background: rgba(193, 122, 46, 0.12); }
-      @media (max-width: 991px) {
-        .ynow-gp-cols-3 { grid-template-columns: 1fr; }
-      }
-      @media (max-width: 767px) {
-        .ynow-gp-cols { grid-template-columns: 1fr; }
-      }
+      @media (max-width: 767px) { .ynow-gp-cols { grid-template-columns: 1fr; } }
       .ynow-gp-venue-label { font-size: 13px; font-weight: 700; letter-spacing: 0.02em;
         border-bottom: 2px solid; padding-bottom: 4px; margin-bottom: 8px; }
       .ynow-gp-quote { border-left: 3px solid; padding: 6px 0 8px 10px; margin-bottom: 8px; }
@@ -1102,39 +1310,34 @@ global_prediction_ui <- function(id, locale = "en") {
     ", colors$kalshi, colors$polymarket, colors$feex))),
     htmltools::tags$div(
       class = "ynow-gp",
-      htmltools::tags$p(
-        id = "ynow_gp_lead",
-        class = "ynow-gp-lead",
-        .gp_label("gp_lead", loc)
-      ),
-      htmltools::tags$p(
-        id = "ynow_gp_context",
-        class = "ynow-gp-context",
-        .gp_label("gp_context", loc)
-      ),
-      htmltools::tags$p(
-        id = "ynow_gp_caution",
-        class = "ynow-gp-caution",
-        .gp_label("gp_caution", loc)
-      ),
+      htmltools::tags$p(id = "ynow_gp_lead", class = "ynow-gp-lead", .gp_label("gp_lead", loc)),
+      htmltools::tags$p(id = "ynow_gp_context", class = "ynow-gp-context", .gp_label("gp_context", loc)),
+      htmltools::tags$p(id = "ynow_gp_caution", class = "ynow-gp-caution", .gp_label("gp_caution", loc)),
       htmltools::tags$p(
         id = "ynow_gp_participation",
         class = "ynow-gp-caution",
         .gp_label("gp_participation_note", loc)
       ),
       htmltools::tags$div(
+        class = "ynow-gp-boards",
+        shiny::actionButton(ns("board_economic"), label = .gp_label("gp_board_economic", loc),
+                            class = "ynow-gp-board-btn active"),
+        shiny::actionButton(ns("board_finance"), label = .gp_label("gp_board_finance", loc),
+                            class = "ynow-gp-board-btn"),
+        shiny::actionButton(ns("board_company"), label = .gp_label("gp_board_company", loc),
+                            class = "ynow-gp-board-btn")
+      ),
+      htmltools::tags$div(
         class = "ynow-gp-meta",
         htmltools::tags$span(
           class = "ynow-gp-swatch",
-          htmltools::tags$span(class = "ynow-gp-dot ynow-gp-dot-kalshi"),
-          "Kalshi"
+          htmltools::tags$span(class = "ynow-gp-dot ynow-gp-dot-kalshi"), "Kalshi"
         ),
         htmltools::tags$span(
           class = "ynow-gp-swatch",
-          htmltools::tags$span(class = "ynow-gp-dot ynow-gp-dot-poly"),
-          "Polymarket"
+          htmltools::tags$span(class = "ynow-gp-dot ynow-gp-dot-poly"), "Polymarket"
         ),
-        shiny::uiOutput(ns("mode_badge")),
+        shiny::uiOutput(ns("board_badge")),
         shiny::actionButton(
           ns("refresh"),
           label = .gp_label("gp_refresh", loc),
@@ -1144,7 +1347,6 @@ global_prediction_ui <- function(id, locale = "en") {
         shiny::uiOutput(ns("updated"))
       ),
       shiny::uiOutput(ns("body")),
-      # Page focus / visibility → hard rescan when Global Prediction is on-screen.
       htmltools::tags$script(htmltools::HTML(sprintf("
         (function () {
           var inputId = '%s';
@@ -1166,14 +1368,15 @@ global_prediction_server <- function(id,
                                      ui_locale_rv = reactive("en"),
                                      market_mode_rv = reactive("US"),
                                      tab_active_rv = reactive(FALSE),
-                                     subtab_active_rv = reactive(TRUE)) {
+                                     subtab_active_rv = reactive(TRUE),
+                                     board_rv = NULL) {
   shiny::moduleServer(id, function(input, output, session) {
     snap_rv <- shiny::reactiveVal(NULL)
     busy_rv <- shiny::reactiveVal(FALSE)
     gen_rv <- shiny::reactiveVal(0L)
     last_fetch_at <- shiny::reactiveVal(as.POSIXct(NA, tz = "UTC"))
-    last_mode_rv <- shiny::reactiveVal(NULL)
     saw_active_rv <- shiny::reactiveVal(FALSE)
+    board_state <- shiny::reactiveVal("economic")
 
     loc <- shiny::reactive({
       if (is.reactive(ui_locale_rv)) ui_locale_rv() else "en"
@@ -1185,10 +1388,42 @@ global_prediction_server <- function(id,
       isTRUE(tab_active_rv()) && isTRUE(subtab_active_rv())
     })
 
+    set_board <- function(b) {
+      b <- gp_norm_board(b)
+      board_state(b)
+      invisible(b)
+    }
+
+    
+    shiny::observe({
+      b <- board_state()
+      if (requireNamespace("shinyjs", quietly = TRUE)) {
+        shinyjs::runjs(sprintf(
+          "(function(){var map={economic:'%s',finance:'%s',company:'%s'};var want=map[%s];document.querySelectorAll('.ynow-gp-board-btn').forEach(function(el){el.classList.toggle('active', el.id===want);});})();",
+          session$ns("board_economic"),
+          session$ns("board_finance"),
+          session$ns("board_company"),
+          jsonlite::toJSON(b, auto_unbox = TRUE)
+        ))
+      }
+    })
+
+shiny::observeEvent(input$board_economic, {
+      set_board("economic")
+      do_fetch("manual_refresh", force = TRUE)
+    }, ignoreInit = TRUE)
+    shiny::observeEvent(input$board_finance, {
+      set_board("finance")
+      do_fetch("manual_refresh", force = TRUE)
+    }, ignoreInit = TRUE)
+    shiny::observeEvent(input$board_company, {
+      set_board("company")
+      do_fetch("manual_refresh", force = TRUE)
+    }, ignoreInit = TRUE)
+
     do_fetch <- function(trigger = "periodic_visible", force = FALSE) {
       trigger <- .gp_chr(trigger, "periodic_visible")
       hard <- isTRUE(force) || gp_is_hard_trigger(trigger)
-      # Rate-limit soft + focus; tab_open / mode_switch / manual always proceed.
       gated <- trigger %in% c("periodic_visible", "tab_focus")
       if (gated) {
         prev <- shiny::isolate(last_fetch_at())
@@ -1203,19 +1438,22 @@ global_prediction_server <- function(id,
       gen_rv(g)
       busy_rv(TRUE)
       mm <- shiny::isolate(mode())
+      bb <- shiny::isolate(board_state())
       layer <- if (hard) "discovery" else "quote"
       snap <- tryCatch(
         gp_fetch_snapshot(
           market_mode = mm,
           use_cache = TRUE,
-          limit_per_venue = 3L,
+          limit_per_venue = 24L,
           trigger = trigger,
-          layer = layer
+          layer = layer,
+          board = bb
         ),
         error = function(e) {
           list(
             fetched_at = format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"),
             market_mode = mm,
+            board = bb,
             trigger = trigger,
             layer = layer,
             pairs = list(),
@@ -1235,52 +1473,38 @@ global_prediction_server <- function(id,
       invisible(snap)
     }
 
-    # Tab open / subtab select / market-mode switch → hard discovery rescan.
     shiny::observeEvent(
-      list(panel_active(), mode()),
+      list(panel_active(), board_state()),
       {
         if (!isTRUE(panel_active())) {
           saw_active_rv(FALSE)
           return()
         }
-        mm <- mode()
-        prev_mode <- shiny::isolate(last_mode_rv())
         first <- !isTRUE(shiny::isolate(saw_active_rv()))
-        mode_changed <- !is.null(prev_mode) && !identical(prev_mode, mm)
         saw_active_rv(TRUE)
-        last_mode_rv(mm)
-        trig <- if (first) {
-          "tab_open"
-        } else if (mode_changed) {
-          "mode_switch"
-        } else {
-          "tab_open"
-        }
-        do_fetch(trig, force = TRUE)
+        do_fetch(if (first) "tab_open" else "manual_refresh", force = TRUE)
       },
       ignoreInit = FALSE
     )
 
-    # Browser focus / tab visibility while panel is visible → discovery rescan.
     shiny::observeEvent(input$page_focus, {
       if (!isTRUE(panel_active())) return()
       do_fetch("tab_focus", force = TRUE)
     }, ignoreInit = TRUE)
 
-    # Periodic refresh while ATX → Global Prediction is visible (quote TTL).
     shiny::observe({
       shiny::req(isTRUE(panel_active()))
       shiny::invalidateLater(as.integer(.GP_PERIODIC_RESCAN_SEC) * 1000L, session)
-      # Wait for the hard tab_open fetch before soft quote refresh.
       prev <- shiny::isolate(last_fetch_at())
       if (is.na(prev)) return()
       do_fetch("periodic_visible", force = FALSE)
     })
 
-    output$mode_badge <- shiny::renderUI({
-      key <- if (identical(mode(), "TW")) "gp_mode_tw" else "gp_mode_us"
+    output$board_badge <- shiny::renderUI({
+      b <- board_state()
+      key <- paste0("gp_board_", b)
       htmltools::tags$span(
-        id = "ynow_gp_mode_badge",
+        id = "ynow_gp_board_badge",
         class = "ynow-gp-swatch",
         .gp_label(key, loc())
       )
@@ -1294,6 +1518,9 @@ global_prediction_server <- function(id,
       shiny::req(is.reactive(ui_locale_rv))
       loc()
       shiny::updateActionButton(session, "refresh", label = .gp_label("gp_refresh", loc()))
+      shiny::updateActionButton(session, "board_economic", label = .gp_label("gp_board_economic", loc()))
+      shiny::updateActionButton(session, "board_finance", label = .gp_label("gp_board_finance", loc()))
+      shiny::updateActionButton(session, "board_company", label = .gp_label("gp_board_company", loc()))
     })
 
     output$updated <- shiny::renderUI({
@@ -1328,10 +1555,7 @@ global_prediction_server <- function(id,
         if (isTRUE(venue_down)) {
           htmltools::tags$p(class = "ynow-gp-caution", .gp_label("gp_error_venue", locale))
         },
-        htmltools::tags$p(
-          class = "ynow-gp-caution",
-          .gp_label("gp_attribution", locale)
-        ),
+        htmltools::tags$p(class = "ynow-gp-caution", .gp_label("gp_attribution", locale)),
         lapply(snap$pairs, function(pair) .gp_theme_row_ui(pair, locale))
       )
     })
