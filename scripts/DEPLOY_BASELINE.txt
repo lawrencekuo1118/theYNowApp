@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
 bundleId=12736189
 appId=10907657
-url=https://lawrencekuo1118.shinyapps.io/TheYNowApp/  # pragma: allowlist secret
-aligned_git=PLACEHOLDER
-commit=PLACEHOLDER
-short=PLACEHOLDER
+url=https://hopesmasher1118.shinyapps.io/TheYNowApp/  # pragma: allowlist secret
+aligned_git=59c9d7d8760dc869fb33b609d1f30fcff9471f62
+commit=59c9d7d8760dc869fb33b609d1f30fcff9471f62
+short=59c9d7d8
 message=chore: record shinyapps baseline bundle 12736189 (app_27.0)
-captured_at=2026-10-25T09:30:00Z
+captured_at=2026-10-25T09:29:36Z
 display_version=v27.37
 note=Canonical live line is app_27.0. Bundle 12736189: Global Prediction Economic/Finance/Company boards as native plotly Yes-probability line charts (#529).
