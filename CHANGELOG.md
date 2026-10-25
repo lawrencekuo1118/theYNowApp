@@ -1,3 +1,14 @@
+## [v27.44] — 2026-10-25
+
+### Changed
+- Earnings-call analysis **order-focus**: surface only **主要供應商 / 訂單 / 主要客戶** (status-only) into 業務拆解 → order-research; tone / CapEx / bridging stay internal.
+- Analysis axis = **newest** published transcript/memo/deck; TW stack Fugle → FinmoConf; US licensed → SEC → SA last-resort.
+- Order-focus block shows **資訊更新日期 / Information updated** (source event date preferred).
+
+### Notes
+- en-US: Bundle **12736686**. PR #542. Never invents amounts; honest empty; skips CT steps 1 & 5.
+- zh-TW：Bundle **12736686**。法說分析只摘錄主要供應商／訂單／主要客戶；以最新一期來源為軸；顯示資訊更新日期。
+
 ## [v27.43] — 2026-10-25
 
 ### Changed
