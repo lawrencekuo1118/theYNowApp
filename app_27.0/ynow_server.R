@@ -2964,44 +2964,47 @@ server <- function(input, output, session) {
         ),
         tags$p(class = "text-warning", empty_msg)
       )
-      return(tabsetPanel(
-        id = "ynow_pts_sysadmin_tabs",
-        type = "pills",
-        tabPanel(
-          title = tags$span(
-            id = "ynow_admin_ops_controls_tab_label",
-            .lab("admin_ops_controls_tab", "Controls")
-          ),
-          value = "controls",
-          empty_controls
-        ),
-        tabPanel(
-          title = tags$span(
-            id = "ynow_admin_ops_tab_label",
-            .lab("admin_ops_tab", "Audit log")
-          ),
-          value = "audit",
-          tags$div(
-            class = "ynow-admin-ops-audit-pane",
-            tags$h4(
-              tags$span(id = "ynow_admin_ops_title", .lab("admin_ops_title", "Audit log"))
+      return(tags$div(
+        class = "ynow-sysadmin-ops-tabs",
+        tabsetPanel(
+          id = "ynow_pts_sysadmin_tabs",
+          type = "tabs",
+          tabPanel(
+            title = tags$span(
+              id = "ynow_admin_ops_controls_tab_label",
+              .lab("admin_ops_controls_tab", "Controls")
             ),
-            tags$p(
-              class = "text-muted",
-              style = "font-size:12.5px;",
-              tags$span(
-                id = "ynow_admin_ops_help",
-                .lab(
-                  "admin_ops_help",
-                  paste0(
-                    "Append-only record of system-admin operations (newest first). ",
-                    "Each entry is kept for at most 24 hours (server clock) and then expires automatically. ",
-                    "There is no clear or delete control."
+            value = "controls",
+            empty_controls
+          ),
+          tabPanel(
+            title = tags$span(
+              id = "ynow_admin_ops_tab_label",
+              .lab("admin_ops_tab", "Audit log")
+            ),
+            value = "audit",
+            tags$div(
+              class = "ynow-admin-ops-audit-pane",
+              tags$h4(
+                tags$span(id = "ynow_admin_ops_title", .lab("admin_ops_title", "Audit log"))
+              ),
+              tags$p(
+                class = "text-muted",
+                style = "font-size:12.5px;",
+                tags$span(
+                  id = "ynow_admin_ops_help",
+                  .lab(
+                    "admin_ops_help",
+                    paste0(
+                      "Append-only record of system-admin operations (newest first). ",
+                      "Each entry is kept for at most 24 hours (server clock) and then expires automatically. ",
+                      "There is no clear or delete control."
+                    )
                   )
                 )
-              )
-            ),
-            uiOutput("ynow_admin_ops_audit_list")
+              ),
+              uiOutput("ynow_admin_ops_audit_list")
+            )
           )
         )
       ))
@@ -3294,24 +3297,27 @@ server <- function(input, output, session) {
       ),
       uiOutput("ynow_admin_ops_audit_list")
     )
-    tabsetPanel(
-      id = "ynow_pts_sysadmin_tabs",
-      type = "pills",
-      tabPanel(
-        title = tags$span(
-          id = "ynow_admin_ops_controls_tab_label",
-          .lab("admin_ops_controls_tab", "Controls")
+    tags$div(
+      class = "ynow-sysadmin-ops-tabs",
+      tabsetPanel(
+        id = "ynow_pts_sysadmin_tabs",
+        type = "tabs",
+        tabPanel(
+          title = tags$span(
+            id = "ynow_admin_ops_controls_tab_label",
+            .lab("admin_ops_controls_tab", "Controls")
+          ),
+          value = "controls",
+          controls_pane
         ),
-        value = "controls",
-        controls_pane
-      ),
-      tabPanel(
-        title = tags$span(
-          id = "ynow_admin_ops_tab_label",
-          .lab("admin_ops_tab", "Audit log")
-        ),
-        value = "audit",
-        audit_pane
+        tabPanel(
+          title = tags$span(
+            id = "ynow_admin_ops_tab_label",
+            .lab("admin_ops_tab", "Audit log")
+          ),
+          value = "audit",
+          audit_pane
+        )
       )
     )
   })

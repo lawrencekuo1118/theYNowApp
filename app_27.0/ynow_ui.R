@@ -5840,6 +5840,46 @@ ui <- dashboardPage(
         .ynow-pts-sysadmin-box .btn.ynow-sysadmin-btn-apply span {
           color: #fff !important;
         }
+        /* Controls / Audit Log — match Company FINANCIAL REPORT nav-tabs chrome (gold top bar) */
+        .ynow-sysadmin-ops-tabs {
+          margin-top: 4px;
+        }
+        .ynow-sysadmin-ops-tabs > .tabbable > .nav-tabs {
+          border-bottom: 1px solid #d2d6de;
+          margin-bottom: 0;
+        }
+        .ynow-sysadmin-ops-tabs > .tabbable > .nav-tabs > li {
+          border-top: 3px solid transparent;
+          margin-bottom: -1px;
+          margin-right: 5px;
+        }
+        .ynow-sysadmin-ops-tabs > .tabbable > .nav-tabs > li > a {
+          border-radius: 0;
+          color: var(--ynow-ink-soft, #333333);
+          font-weight: 600;
+          font-size: 13px;
+          padding: 8px 14px 7px;
+        }
+        .ynow-sysadmin-ops-tabs > .tabbable > .nav-tabs > li > a:hover {
+          background: #fafafa;
+          color: var(--ynow-ink, #1a1a1a);
+        }
+        .ynow-sysadmin-ops-tabs > .tabbable > .nav-tabs > li.active {
+          border-top-color: var(--ynow-gold, #F5C518) !important;
+        }
+        .ynow-sysadmin-ops-tabs > .tabbable > .nav-tabs > li.active > a,
+        .ynow-sysadmin-ops-tabs > .tabbable > .nav-tabs > li.active:hover > a,
+        .ynow-sysadmin-ops-tabs > .tabbable > .nav-tabs > li.active > a:focus {
+          border-top-color: transparent;
+          color: var(--ynow-ink, #1a1a1a) !important;
+          background: #ffffff;
+          font-weight: 700;
+        }
+        .ynow-sysadmin-ops-tabs > .tabbable > .tab-content {
+          background: #ffffff;
+          padding: 12px 2px 4px;
+          border-top: 0;
+        }
         /* Omniscient: same bg as Guest (btn-default); warning-red text */
         .ynow-sysadmin-self-view-group .btn.ynow-sysadmin-btn-omniscient,
         .ynow-sysadmin-self-view-group .btn.btn-default.ynow-sysadmin-btn-omniscient {
