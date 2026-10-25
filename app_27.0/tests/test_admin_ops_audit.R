@@ -179,6 +179,26 @@ check("server has audit tab + list UI, no clear/delete controls", {
     !grepl("admin_ops_delete_btn", srv, fixed = TRUE)
 })
 
+check("Controls / Audit Log use Company FS-style nav-tabs (not pills)", {
+  grepl("ynow-sysadmin-ops-tabs", srv, fixed = TRUE) &&
+    grepl(
+      'ynow_pts_sysadmin_tabs[\\s\\S]{0,60}type = "tabs"',
+      srv,
+      perl = TRUE
+    ) &&
+    !grepl(
+      'ynow_pts_sysadmin_tabs[\\s\\S]{0,60}type = "pills"',
+      srv,
+      perl = TRUE
+    ) &&
+    grepl("ynow-sysadmin-ops-tabs", ui, fixed = TRUE) &&
+    grepl(
+      "ynow-sysadmin-ops-tabs[\\s\\S]{0,800}border-top-color:\\s*var\\(--ynow-gold",
+      ui,
+      perl = TRUE
+    )
+})
+
 check("server logs required mutation paths", {
   grepl('"sysadmin.enter"', srv, fixed = TRUE) &&
     grepl('"sysadmin.exit"', srv, fixed = TRUE) &&

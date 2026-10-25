@@ -2675,17 +2675,12 @@ server <- function(input, output, session) {
     if (!nzchar(actor_name)) actor_name <- "ynow"
     ynow_pts_sysadmin_actor(actor_name)
     ynow_pts_sysadmin_on(TRUE)
+    # Enter = exited self-view: no guest / signed-in / omniscient overlay, no Exit chrome.
+    ynow_pts_view_as(NULL)
+    ynow_pts_self_view_mode(NULL)
     .ynow_sysadmin_push_mode()
-    # Default self-view after unlock: Signed-in user mode (not guest / not omniscient).
-    # Chrome first; ACL / single audit row / panel tick after flush (no double banner/tick).
-    .ynow_self_view_apply(
-      "signed_in",
-      notify = FALSE,
-      goto_home = FALSE,
-      log_ops = FALSE
-    )
-    # Stay on System admin portal — signed-in self-view sets ynow-authed (member chrome)
-    # which used to hide the Sys. Admin foot link and drop the active tab to Home.
+    .ynow_view_as_push_chrome(NULL)
+    .ynow_self_view_push_chrome(NULL)
     tryCatch({
       if (exists("updateTabItems", mode = "function")) {
         updateTabItems(session, "sidebar_tabs", "testing")
@@ -2694,10 +2689,13 @@ server <- function(input, output, session) {
     }, error = function(e) NULL)
     actor_for_log <- actor_name
     session$onFlushed(function() {
+      tryCatch(.ynow_push_access_locks(), error = function(e) NULL)
       .ynow_admin_ops_log(
         "sysadmin.enter",
-        paste0("actor=", actor_for_log, "; default_self_view=signed_in")
+        paste0("actor=", actor_for_log, "; self_view=none")
       )
+      ynow_pts_sysadmin_tick(isolate(ynow_pts_sysadmin_tick()) + 1L)
+      ynow_pts_panel_tick(isolate(ynow_pts_panel_tick()) + 1L)
     }, once = TRUE)
     showNotification(
       .lab("pts_sysadmin_login_ok", "System admin unlocked."),
@@ -2720,7 +2718,9 @@ server <- function(input, output, session) {
   observeEvent(input$ynow_pts_sysadmin_self_guest, {
     .ynow_self_view_apply("guest")
   }, ignoreInit = TRUE)
-  # Signed-in user mode is the default on sysadmin enter — no bar button.
+  observeEvent(input$ynow_pts_sysadmin_self_signed_in, {
+    .ynow_self_view_apply("signed_in")
+  }, ignoreInit = TRUE)
   observeEvent(input$ynow_pts_sysadmin_self_omniscient, {
     .ynow_self_view_apply("omniscient")
   }, ignoreInit = TRUE)
@@ -2964,44 +2964,47 @@ server <- function(input, output, session) {
         ),
         tags$p(class = "text-warning", empty_msg)
       )
-      return(tabsetPanel(
-        id = "ynow_pts_sysadmin_tabs",
-        type = "pills",
-        tabPanel(
-          title = tags$span(
-            id = "ynow_admin_ops_controls_tab_label",
-            .lab("admin_ops_controls_tab", "Controls")
-          ),
-          value = "controls",
-          empty_controls
-        ),
-        tabPanel(
-          title = tags$span(
-            id = "ynow_admin_ops_tab_label",
-            .lab("admin_ops_tab", "Audit log")
-          ),
-          value = "audit",
-          tags$div(
-            class = "ynow-admin-ops-audit-pane",
-            tags$h4(
-              tags$span(id = "ynow_admin_ops_title", .lab("admin_ops_title", "Audit log"))
+      return(tags$div(
+        class = "ynow-sysadmin-ops-tabs",
+        tabsetPanel(
+          id = "ynow_pts_sysadmin_tabs",
+          type = "tabs",
+          tabPanel(
+            title = tags$span(
+              id = "ynow_admin_ops_controls_tab_label",
+              .lab("admin_ops_controls_tab", "Controls")
             ),
-            tags$p(
-              class = "text-muted",
-              style = "font-size:12.5px;",
-              tags$span(
-                id = "ynow_admin_ops_help",
-                .lab(
-                  "admin_ops_help",
-                  paste0(
-                    "Append-only record of system-admin operations (newest first). ",
-                    "Each entry is kept for at most 24 hours (server clock) and then expires automatically. ",
-                    "There is no clear or delete control."
+            value = "controls",
+            empty_controls
+          ),
+          tabPanel(
+            title = tags$span(
+              id = "ynow_admin_ops_tab_label",
+              .lab("admin_ops_tab", "Audit log")
+            ),
+            value = "audit",
+            tags$div(
+              class = "ynow-admin-ops-audit-pane",
+              tags$h4(
+                tags$span(id = "ynow_admin_ops_title", .lab("admin_ops_title", "Audit log"))
+              ),
+              tags$p(
+                class = "text-muted",
+                style = "font-size:12.5px;",
+                tags$span(
+                  id = "ynow_admin_ops_help",
+                  .lab(
+                    "admin_ops_help",
+                    paste0(
+                      "Append-only record of system-admin operations (newest first). ",
+                      "Each entry is kept for at most 24 hours (server clock) and then expires automatically. ",
+                      "There is no clear or delete control."
+                    )
                   )
                 )
-              )
-            ),
-            uiOutput("ynow_admin_ops_audit_list")
+              ),
+              uiOutput("ynow_admin_ops_audit_list")
+            )
           )
         )
       ))
@@ -3294,24 +3297,27 @@ server <- function(input, output, session) {
       ),
       uiOutput("ynow_admin_ops_audit_list")
     )
-    tabsetPanel(
-      id = "ynow_pts_sysadmin_tabs",
-      type = "pills",
-      tabPanel(
-        title = tags$span(
-          id = "ynow_admin_ops_controls_tab_label",
-          .lab("admin_ops_controls_tab", "Controls")
+    tags$div(
+      class = "ynow-sysadmin-ops-tabs",
+      tabsetPanel(
+        id = "ynow_pts_sysadmin_tabs",
+        type = "tabs",
+        tabPanel(
+          title = tags$span(
+            id = "ynow_admin_ops_controls_tab_label",
+            .lab("admin_ops_controls_tab", "Controls")
+          ),
+          value = "controls",
+          controls_pane
         ),
-        value = "controls",
-        controls_pane
-      ),
-      tabPanel(
-        title = tags$span(
-          id = "ynow_admin_ops_tab_label",
-          .lab("admin_ops_tab", "Audit log")
-        ),
-        value = "audit",
-        audit_pane
+        tabPanel(
+          title = tags$span(
+            id = "ynow_admin_ops_tab_label",
+            .lab("admin_ops_tab", "Audit log")
+          ),
+          value = "audit",
+          audit_pane
+        )
       )
     )
   })

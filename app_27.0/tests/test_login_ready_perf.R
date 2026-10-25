@@ -139,7 +139,7 @@ check(
   grepl("include_ledger = TRUE", srv, fixed = TRUE)
 )
 
-# System-admin enter: chrome (sysadmin + signed-in self-view) before ACL / audit DB.
+# Self-view apply (guest / signed-in / omniscient): chrome before ACL / audit DB.
 apply_start <- regexpr(".ynow_self_view_apply <- function", srv, fixed = TRUE)
 apply_end <- regexpr(".ynow_self_view_clear <- function", srv, fixed = TRUE)
 apply_body <- substr(srv, apply_start, apply_end)
@@ -154,10 +154,13 @@ enter_start <- regexpr("observeEvent(input$ynow_pts_sysadmin_enter", srv, fixed 
 enter_end <- regexpr("observeEvent(input$ynow_pts_sysadmin_exit", srv, fixed = TRUE)
 enter_body <- substr(srv, enter_start, enter_end)
 check(
-  "sysadmin enter skips duplicate self_view audit; defers enter log",
-  grepl("log_ops = FALSE", enter_body, fixed = TRUE) &&
+  "sysadmin enter clears self-view; defers enter log + ACL",
+  grepl("self_view=none", enter_body, fixed = TRUE) &&
+    grepl("ynow_pts_self_view_mode(NULL)", enter_body, fixed = TRUE) &&
+    grepl(".ynow_self_view_push_chrome(NULL)", enter_body, fixed = TRUE) &&
     grepl("sysadmin.enter", enter_body, fixed = TRUE) &&
-    grepl("session$onFlushed", enter_body, fixed = TRUE)
+    grepl("session$onFlushed", enter_body, fixed = TRUE) &&
+    !grepl(".ynow_self_view_apply(", enter_body, fixed = TRUE)
 )
 check(
   "sysadmin enter pins testing tab after unlock",

@@ -33,10 +33,11 @@ ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = 
 srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 loc <- paste(readLines(file.path(app_dir, "ui_locale.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 
-check("UI has one control-panel bar (Exit / Switch / Guest / Omniscient)", {
+check("UI has one control-panel bar (Exit / Switch / Guest / Signed-in / Omniscient)", {
   grepl("ynow-sysadmin-control-panel", ui, fixed = TRUE) &&
     grepl("ynow_sysadmin_control_panel", ui, fixed = TRUE) &&
     grepl("ynow_pts_sysadmin_self_guest", ui, fixed = TRUE) &&
+    grepl("ynow_pts_sysadmin_self_signed_in", ui, fixed = TRUE) &&
     grepl("ynow_pts_sysadmin_self_omniscient", ui, fixed = TRUE) &&
     grepl("ynow_pts_sysadmin_viewas", ui, fixed = TRUE) &&
     grepl("ynow_pts_sysadmin_exit", ui, fixed = TRUE) &&
@@ -44,18 +45,37 @@ check("UI has one control-panel bar (Exit / Switch / Guest / Omniscient)", {
     grepl("ynow-sysadmin-control-panel__inner", ui, fixed = TRUE)
 })
 
-check("Control panel omits Signed-in user mode button (default on enter)", {
-  !grepl("ynow_pts_sysadmin_self_signed_in", ui, fixed = TRUE) &&
-    !grepl("ynow_pts_sysadmin_self_signed_in_label", ui, fixed = TRUE) &&
-    grepl(
-      '.ynow_self_view_apply(',
+check("Enter clears self-view (no Exit chrome until a mode is applied)", {
+  grepl("ynow_pts_sysadmin_enter", srv, fixed = TRUE) &&
+    grepl("self_view=none", srv, fixed = TRUE) &&
+    grepl("ynow_pts_self_view_mode(NULL)", srv, fixed = TRUE) &&
+    grepl(".ynow_self_view_push_chrome(NULL)", srv, fixed = TRUE) &&
+    # Must not auto-apply any self-view mode on enter.
+    !grepl("default_self_view=signed_in", srv, fixed = TRUE) &&
+    !grepl(
+      "Default self-view after unlock: Signed-in user mode",
       srv,
       fixed = TRUE
     ) &&
-    grepl('log_ops = FALSE', srv, fixed = TRUE) &&
-    grepl('"signed_in"', srv, fixed = TRUE) &&
-    grepl("notify = FALSE", srv, fixed = TRUE) &&
-    grepl("goto_home = FALSE", srv, fixed = TRUE)
+    !grepl(
+      'ynow_pts_sysadmin_on\\(TRUE\\)[\\s\\S]{0,500}\\.ynow_self_view_apply\\(',
+      srv,
+      perl = TRUE
+    )
+})
+
+check("Exit self-view control is hidden until body.ynow-self-view", {
+  grepl("ynow-sysadmin-control-panel__exit-self", ui, fixed = TRUE) &&
+    grepl(
+      ".ynow-sysadmin-control-panel__exit-self {\n          display: none !important;",
+      ui,
+      fixed = TRUE
+    ) &&
+    grepl(
+      "body.ynow-self-view .ynow-sysadmin-control-panel__exit-self",
+      ui,
+      fixed = TRUE
+    )
 })
 
 check("Self-view apply defers ACL / audit after chrome flush", {
@@ -64,13 +84,12 @@ check("Self-view apply defers ACL / audit after chrome flush", {
     grepl("session\\$onFlushed\\(function\\(\\)", srv) &&
     grepl("\\.ynow_push_access_locks\\(\\)", srv) &&
     grepl("self_view\\.apply", srv) &&
-    # Enter: single sysadmin.enter audit (no duplicate self_view.apply on default).
     grepl('"sysadmin.enter"', srv, fixed = TRUE) &&
-    grepl("default_self_view=signed_in", srv, fixed = TRUE)
+    grepl("self_view=none", srv, fixed = TRUE)
 })
 
 check("Sys. Admin stays visible while portal unlocked under signed-in self-view", {
-  # Default enter applies signed_in → ynow-authed; must not hide foot / block click.
+  # Signed-in self-view sets ynow-authed; must not hide foot / block click while portal on.
   grepl(
     "body.ynow-authed:not(.ynow-sysadmin-on)",
     ui,
@@ -221,41 +240,26 @@ check("Server reactive + apply/clear self view modes", {
     grepl(".ynow_self_view_clear", srv, fixed = TRUE) &&
     grepl(".ynow_self_view_push_chrome", srv, fixed = TRUE) &&
     grepl('ynow_pts_sysadmin_self_guest', srv, fixed = TRUE) &&
+    grepl('ynow_pts_sysadmin_self_signed_in', srv, fixed = TRUE) &&
     grepl('ynow_pts_sysadmin_self_omniscient', srv, fixed = TRUE) &&
     grepl('ynow_pts_sysadmin_self_exit', srv, fixed = TRUE) &&
     grepl('"guest"', srv, fixed = TRUE) &&
     grepl('"signed_in"', srv, fixed = TRUE) &&
     grepl('"omniscient"', srv, fixed = TRUE) &&
-    # Signed-in button observer removed; default apply remains on enter.
-    !grepl(
+    grepl(
       "observeEvent(input$ynow_pts_sysadmin_self_signed_in",
       srv,
       fixed = TRUE
     )
 })
 
-check("Sysadmin enter defaults to Signed-in user mode (not guest/omniscient)", {
-  # Unlock path must apply signed_in immediately after portal unlock (chrome-first).
+check("Sysadmin enter leaves self-view cleared (not guest/signed_in/omniscient)", {
   grepl("ynow_pts_sysadmin_enter", srv, fixed = TRUE) &&
-    grepl('.ynow_self_view_apply(', srv, fixed = TRUE) &&
-    grepl('"signed_in"', srv, fixed = TRUE) &&
-    grepl("notify = FALSE", srv, fixed = TRUE) &&
-    grepl("goto_home = FALSE", srv, fixed = TRUE) &&
-    grepl("log_ops = FALSE", srv, fixed = TRUE) &&
-    grepl("default_self_view=signed_in", srv, fixed = TRUE) &&
-    grepl(
-      "Default self-view after unlock: Signed-in user mode",
-      srv,
-      fixed = TRUE
-    ) &&
-    # Must not default-apply guest or omniscient on enter.
+    grepl("self_view=none", srv, fixed = TRUE) &&
+    grepl("ynow_pts_self_view_mode(NULL)", srv, fixed = TRUE) &&
+    !grepl("default_self_view=signed_in", srv, fixed = TRUE) &&
     !grepl(
-      'ynow_pts_sysadmin_on\\(TRUE\\)[\\s\\S]{0,400}\\.ynow_self_view_apply\\("guest"',
-      srv,
-      perl = TRUE
-    ) &&
-    !grepl(
-      'ynow_pts_sysadmin_on\\(TRUE\\)[\\s\\S]{0,400}\\.ynow_self_view_apply\\("omniscient"',
+      'ynow_pts_sysadmin_on\\(TRUE\\)[\\s\\S]{0,500}\\.ynow_self_view_apply\\(',
       srv,
       perl = TRUE
     )
@@ -317,11 +321,13 @@ check("Locale en-US + zh-TW self-view keys (no 一鍵)", {
 
 check("applyUiLocale wires control-panel self-view labels", {
   grepl("ynow_pts_sysadmin_self_guest_label", ui, fixed = TRUE) &&
+    grepl("ynow_pts_sysadmin_self_signed_in_label", ui, fixed = TRUE) &&
     grepl("ynow_admin_mode_reminder_exit_label", ui, fixed = TRUE) &&
     grepl("pts_sysadmin_self_exit", ui, fixed = TRUE) &&
     grepl("pts_sysadmin_self_omniscient", ui, fixed = TRUE) &&
     grepl("ynow_pts_sysadmin_self_exit_label", ui, fixed = TRUE) &&
     grepl("pts_sysadmin_control_panel_aria", ui, fixed = TRUE) &&
+    grepl("pts_sysadmin_self_signed_in", ui, fixed = TRUE) &&
     !grepl("ynowRefreshSelfViewChromeLocale", ui, fixed = TRUE)
 })
 
