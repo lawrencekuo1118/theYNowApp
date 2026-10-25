@@ -471,6 +471,19 @@ ynow_auth_modal_ui <- function() {
     size = "small",
     tags$div(
       class = "ynow-auth-card",
+      tags$div(
+        id = "ynow_auth_busy",
+        class = "ynow-auth-busy",
+        role = "status",
+        `aria-live` = "polite",
+        `aria-hidden` = "true",
+        tags$div(class = "ynow-auth-busy-spinner", `aria-hidden` = "true"),
+        tags$p(
+          id = "ynow_auth_busy_label",
+          class = "ynow-auth-busy-label",
+          "Signing in…"
+        )
+      ),
       # Hidden help kept for locale push / a11y (visually collapsed).
       tags$p(
         id = "ynow_auth_modal_help",
@@ -1027,6 +1040,31 @@ ynow_auth_css <- function() {
     "#ynow_auth_modal .modal-content {",
     "  border:1px solid var(--ynow-line, #d0d0d0); border-radius:2px;",
     "  box-shadow:0 8px 28px rgba(26,26,26,0.12); background:#fff;",
+    "  position:relative;",
+    "}",
+    "#ynow_auth_modal .ynow-auth-busy {",
+    "  display:none; position:absolute; inset:0; z-index:5;",
+    "  align-items:center; justify-content:center; flex-direction:column; gap:12px;",
+    "  background:rgba(255,255,255,0.92); border-radius:2px;",
+    "}",
+    "body.ynow-auth-signing-in #ynow_auth_modal .ynow-auth-busy,",
+    "#ynow_auth_modal.ynow-auth-signing-in .ynow-auth-busy {",
+    "  display:flex !important;",
+    "}",
+    "#ynow_auth_modal .ynow-auth-busy-spinner {",
+    "  width:28px; height:28px; border-radius:50%;",
+    "  border:2px solid var(--ynow-line, #d0d0d0);",
+    "  border-top-color:var(--ynow-logo-blue, #0b57d0);",
+    "  animation:ynow-auth-spin 0.7s linear infinite;",
+    "}",
+    "#ynow_auth_modal .ynow-auth-busy-label {",
+    "  margin:0; font-size:14px; font-weight:600; color:var(--ynow-ink, #1a1a1a);",
+    "}",
+    "@keyframes ynow-auth-spin { to { transform:rotate(360deg); } }",
+    "body.ynow-auth-signing-in #ynow_auth_submit,",
+    "body.ynow-auth-signing-in #ynow_auth_register,",
+    "body.ynow-auth-signing-in .ynow-auth-social {",
+    "  pointer-events:none; opacity:0.65;",
     "}",
     "#ynow_auth_modal .modal-header {",
     "  border-bottom:0; padding:28px 28px 8px; background:#fff;",
@@ -3194,6 +3232,11 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
       output$ynow_auth_status <- renderUI({
         tags$p(class = "text-danger", .str(mk, "Sign-in failed."))
       })
+      # Clear client signing-in chrome (modal stays open for retry).
+      session$sendCustomMessage(
+        "ynowAuthPostLogin",
+        list(ok = FALSE, restore_tab = "", message = .str(mk, "Sign-in failed."))
+      )
     }
   }, ignoreInit = TRUE)
 
@@ -3407,6 +3450,10 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
       mk <- as.character(res$message_key %||% "auth_msg_register_soon")[1]
       cls <- if (identical(mk, "auth_msg_register_soon")) "text-muted" else "text-danger"
       .show_auth_note(mk, "Registration is not open yet.", cls = cls)
+      session$sendCustomMessage(
+        "ynowAuthPostLogin",
+        list(ok = FALSE, restore_tab = "", message = .str(mk, "Registration is not open yet."))
+      )
     }
   }, ignoreInit = TRUE)
   observeEvent(input$ynow_auth_resend, {
@@ -3608,6 +3655,7 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
         email_label = tryCatch(ui_str("auth_email_label", loc), error = function(e) "Enter your Email account:"),
         password_label = tryCatch(ui_str("auth_password_label", loc), error = function(e) "Enter password:"),
         submit = tryCatch(ui_str("auth_submit", loc), error = function(e) "Email sign-in"),
+        busy = tryCatch(ui_str("auth_busy", loc), error = function(e) "Signing in…"),
         cancel = tryCatch(ui_str("auth_cancel", loc), error = function(e) "Cancel"),
         or_email = tryCatch(ui_str("auth_or_email", loc), error = function(e) "Or sign in with Email"),
         google = tryCatch(ui_str("auth_google", loc), error = function(e) "Continue with Google"),
