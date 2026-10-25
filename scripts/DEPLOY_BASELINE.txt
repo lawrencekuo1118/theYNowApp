@@ -7,5 +7,5 @@ commit=91f0a98d8138b9e682f5066244abf5ce9274a9c0
 short=91f0a98d
 message=chore: bump display version to v27.46
 captured_at=2026-10-25T15:36:00Z
-display_version=v27.46
+display_version=v27.47
 note=Canonical live line is app_27.0. Bundle 12737058: top-10 holders box collapsed by default (#548).
