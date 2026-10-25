@@ -17,6 +17,8 @@
 # Legacy rows without unlock_type stay sticky (locked until admin clears).
 #
 # Product freemium A/B gates live in membership_locks.R — do not merge domains.
+# Admin status for All users / Only guests also lists default guest_menu_lock
+# sidebar tabs (display only; store and remove-apply stay raw ACL).
 # Identical bilingual labels for overlapping surfaces come from
 # lock_catalog_shared.R (tabs lab_notes / decision_checklist / price_alerts,
 # and section:checklist_body). Download/report ACL labels stay ACL-specific.
@@ -54,6 +56,39 @@ if (!exists("ynow_lock_shared_surface_labels", mode = "function")) {
   }
   rm(list = intersect(
     c(".ynow_lcs_ofile", ".ynow_lcs_cands", ".ynow_lcs_p", ".ynow_lcs_loaded"),
+    ls(all.names = TRUE)
+  ))
+}
+
+# Status display reads the freemium catalog. Unlock evaluation stays in membership.
+if (!exists("ynow_membership_lock_catalog", mode = "function")) {
+  .ynow_ml_ofile <- tryCatch(
+    normalizePath(sys.frame(1)$ofile, mustWork = FALSE),
+    error = function(e) ""
+  )
+  .ynow_ml_cands <- unique(c(
+    if (is.character(.ynow_ml_ofile) && nzchar(.ynow_ml_ofile)) {
+      file.path(dirname(.ynow_ml_ofile), "membership_locks.R")
+    } else {
+      character()
+    },
+    "membership_locks.R",
+    file.path("app_27.0", "membership_locks.R"),
+    file.path("..", "membership_locks.R")
+  ))
+  .ynow_ml_loaded <- FALSE
+  for (.ynow_ml_p in .ynow_ml_cands) {
+    if (is.character(.ynow_ml_p) && nzchar(.ynow_ml_p) && file.exists(.ynow_ml_p)) {
+      sys.source(.ynow_ml_p, envir = environment(), keep.source = TRUE)
+      .ynow_ml_loaded <- exists("ynow_membership_lock_catalog", mode = "function")
+      if (isTRUE(.ynow_ml_loaded)) break
+    }
+  }
+  if (!isTRUE(.ynow_ml_loaded)) {
+    warning("membership_locks.R not found; freemium guest lock status unavailable", call. = FALSE)
+  }
+  rm(list = intersect(
+    c(".ynow_ml_ofile", ".ynow_ml_cands", ".ynow_ml_p", ".ynow_ml_loaded"),
     ls(all.names = TRUE)
   ))
 }
@@ -1178,20 +1213,59 @@ ynow_access_touch_conditional <- function(user_id, item_id, consume_free = FALSE
   list(ok = TRUE, state = st)
 }
 
+#' Default freemium guest locks as access-catalog rows (display only).
+#'
+#' Membership `sidebar_tab` + `guest_menu_lock` stems become `tab:<stem>` when
+#' that id is in the access catalog. effect=lock, unlock_type=login.
+#' @return data.frame with the same columns as store entries; catalog order.
+.ynow_access_freemium_guest_lock_entries <- function() {
+  empty <- .ynow_access_map_to_df(list())
+  if (!exists("ynow_membership_lock_catalog", mode = "function")) return(empty)
+  mem <- ynow_membership_lock_catalog()
+  hit <- mem$kind == "sidebar_tab" & mem$mechanism == "guest_menu_lock"
+  stems <- as.character(mem$id[hit])
+  stems <- stems[nzchar(stems)]
+  if (!length(stems)) return(empty)
+  want <- paste0("tab:", stems)
+  acc <- as.character(ynow_access_catalog()$id)
+  ids <- acc[acc %in% want]
+  if (!length(ids)) return(empty)
+  n <- length(ids)
+  data.frame(
+    id = ids,
+    effect = rep("lock", n),
+    unlock_type = rep(as.character(YNOW_UNLOCK_LOGIN)[1], n),
+    points_cost = rep(NA_integer_, n),
+    free_count = rep(NA_integer_, n),
+    time_limit_hours = rep(NA_integer_, n),
+    stringsAsFactors = FALSE
+  )
+}
+
 #' Admin 「目前限制」 lines for the current apply-scope + selected user.
 #'
-#' When scope is "user" / selected user: personal store for that uid (not stale
-#' first-row / not global-only). When scope is "all": only the __all__ store.
-#' When scope is "guests": only the __guests__ store.
+#' When scope is "user": personal store for that uid. When scope is "all" or
+#' "guests": that scope's ACL store plus default freemium guest locks. An ACL
+#' row for the same id replaces the freemium line. Catalog order. Display only.
+#' @param freemium_scope_lab scope tag for freemium lines. Empty uses Freemium / 預設訪客.
 #' @return character vector of "scope · label（effect · unlock）" lines (may be empty)
 ynow_access_admin_status_lines <- function(user_id = "",
                                            scope = "user",
                                            locale = "en",
                                            user_scope_lab = "User",
                                            all_scope_lab = "All",
-                                           guests_scope_lab = "Guests") {
+                                           guests_scope_lab = "Guests",
+                                           freemium_scope_lab = NULL) {
   scope <- as.character(scope %||% "user")[1]
   if (!nzchar(scope)) scope <- "user"
+  freemium_lab <- as.character(freemium_scope_lab %||% "")[1]
+  if (!nzchar(freemium_lab)) {
+    freemium_lab <- if (identical(as.character(locale)[1], "zh-TW")) {
+      "預設訪客"
+    } else {
+      "Freemium"
+    }
+  }
   all_uid <- if (exists("YNOW_ACCESS_ALL_USERS", inherits = TRUE)) {
     as.character(get("YNOW_ACCESS_ALL_USERS", inherits = TRUE))[1]
   } else {
@@ -1204,6 +1278,8 @@ ynow_access_admin_status_lines <- function(user_id = "",
   }
   .fmt <- function(ent, scope_lab) {
     if (!is.data.frame(ent) || nrow(ent) < 1L) return(character())
+    labs <- as.character(scope_lab)
+    if (length(labs) == 1L) labs <- rep(labs, nrow(ent))
     vapply(seq_len(nrow(ent)), function(i) {
       lab <- ynow_access_label(ent$id[[i]], locale)
       eff <- ynow_access_effect_label(ent$effect[[i]], locale)
@@ -1214,14 +1290,34 @@ ynow_access_admin_status_lines <- function(user_id = "",
         free_count = ent$free_count[[i]],
         time_limit_hours = ent$time_limit_hours[[i]]
       )
-      paste0(scope_lab, " · ", lab, "（", eff, " · ", unl, "）")
+      paste0(labs[[i]], " · ", lab, "（", eff, " · ", unl, "）")
     }, character(1))
   }
+  .with_freemium <- function(store_ent, scope_lab) {
+    free <- .ynow_access_freemium_guest_lock_entries()
+    if (!is.data.frame(store_ent) || nrow(store_ent) < 1L) {
+      store_ent <- .ynow_access_map_to_df(list())
+    }
+    if (nrow(free) > 0L && nrow(store_ent) > 0L) {
+      free <- free[!as.character(free$id) %in% as.character(store_ent$id), , drop = FALSE]
+    }
+    n_store <- nrow(store_ent)
+    n_free <- nrow(free)
+    if (n_store < 1L && n_free < 1L) return(character())
+    comb <- rbind(store_ent, free)
+    row_labs <- c(
+      if (n_store > 0L) rep(as.character(scope_lab)[1], n_store) else character(),
+      if (n_free > 0L) rep(freemium_lab, n_free) else character()
+    )
+    acc <- as.character(ynow_access_catalog()$id)
+    ord <- order(match(as.character(comb$id), acc), na.last = TRUE)
+    .fmt(comb[ord, , drop = FALSE], row_labs[ord])
+  }
   if (identical(scope, "all")) {
-    return(.fmt(ynow_access_store_entries(all_uid), all_scope_lab))
+    return(.with_freemium(ynow_access_store_entries(all_uid), all_scope_lab))
   }
   if (identical(scope, "guests")) {
-    return(.fmt(ynow_access_store_entries(guests_uid), guests_scope_lab))
+    return(.with_freemium(ynow_access_store_entries(guests_uid), guests_scope_lab))
   }
   uid <- as.character(user_id %||% "")[1]
   .fmt(ynow_access_store_entries(uid), user_scope_lab)
@@ -1237,7 +1333,8 @@ ynow_access_admin_status_blocks <- function(user_id = "",
                                             locale = "en",
                                             user_scope_lab = "User",
                                             all_scope_lab = "All",
-                                            guests_scope_lab = "Guests") {
+                                            guests_scope_lab = "Guests",
+                                            freemium_scope_lab = NULL) {
   scope <- as.character(scope %||% "user")[1]
   if (identical(scope, "all") || identical(scope, "guests")) {
     return(list(list(
@@ -1248,7 +1345,8 @@ ynow_access_admin_status_blocks <- function(user_id = "",
         locale = locale,
         user_scope_lab = user_scope_lab,
         all_scope_lab = all_scope_lab,
-        guests_scope_lab = guests_scope_lab
+        guests_scope_lab = guests_scope_lab,
+        freemium_scope_lab = freemium_scope_lab
       )
     )))
   }
@@ -1264,7 +1362,8 @@ ynow_access_admin_status_blocks <- function(user_id = "",
         locale = locale,
         user_scope_lab = user_scope_lab,
         all_scope_lab = all_scope_lab,
-        guests_scope_lab = guests_scope_lab
+        guests_scope_lab = guests_scope_lab,
+        freemium_scope_lab = freemium_scope_lab
       )
     )
   })
@@ -1277,6 +1376,7 @@ ynow_access_admin_status_text <- function(user_id = "",
                                           user_scope_lab = "User",
                                           all_scope_lab = "All",
                                           guests_scope_lab = "Guests",
+                                          freemium_scope_lab = NULL,
                                           none_lab = "Nothing is restricted for this scope.",
                                           pick_users_lab = NULL) {
   scope <- as.character(scope %||% "user")[1]
@@ -1286,7 +1386,8 @@ ynow_access_admin_status_text <- function(user_id = "",
     locale = locale,
     user_scope_lab = user_scope_lab,
     all_scope_lab = all_scope_lab,
-    guests_scope_lab = guests_scope_lab
+    guests_scope_lab = guests_scope_lab,
+    freemium_scope_lab = freemium_scope_lab
   )
   # Selected-user(s) scope with nobody chosen → prompt, not a false "none".
   if (identical(scope, "user") && !length(blocks)) {
