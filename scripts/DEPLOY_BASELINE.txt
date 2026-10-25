@@ -7,5 +7,5 @@ commit=6b1372cbcbf35cb30d7a2d72da338f1567ee3aeb
 short=6b1372cb
 message=chore: record shipped display version v27.32
 captured_at=2026-10-25T07:45:59Z
-display_version=v27.32
+display_version=v27.33
 note=Canonical live line is app_27.0. Bundle 12735936: standalone Global Prediction Economic/Finance/Company boards (#519).
