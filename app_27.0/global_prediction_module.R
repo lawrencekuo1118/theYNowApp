@@ -34,8 +34,9 @@ if (!exists("%||%", mode = "function")) {
   "tab_open", "tab_focus", "mode_switch", "manual_refresh"
 )
 # Line-chart history (Yes probability time series). Never invent points.
+# One plotly line chart per market (never overlay markets on one theme plot).
 .GP_HISTORY_LOOKBACK_DAYS <- 90L
-.GP_HISTORY_PER_VENUE <- 2L
+.GP_HISTORY_PER_VENUE <- 6L  # match theme quote cap; each market → own chart
 .GP_HISTORY_MIN_POINTS <- 2L
 .GP_HISTORY_PERIOD_MIN <- 1440L  # Kalshi daily candlesticks
 .GP_POLY_CLOB <- "https://clob.polymarket.com"
@@ -834,8 +835,30 @@ gp_attach_theme_series <- function(pair, use_cache = TRUE,
   pair
 }
 
-#' Native plotly line chart of Yes probability over time (no ggplotly).
-gp_build_line_chart <- function(series, locale = "en", height = 280) {
+.gp_series_market_keys <- function(series) {
+  if (!is.data.frame(series) || nrow(series) == 0L) return(character(0))
+  unique(paste(series$venue, series$market_id, sep = "\t"))
+}
+
+#' Split attached theme series into one data.frame per market (venue + market_id).
+gp_split_series_by_market <- function(series) {
+  keys <- .gp_series_market_keys(series)
+  if (!length(keys)) return(list())
+  out <- vector("list", length(keys))
+  names(out) <- keys
+  for (k in keys) {
+    sub <- series[paste(series$venue, series$market_id, sep = "\t") == k, , drop = FALSE]
+    sub <- sub[is.finite(sub$yes_prob) & !is.na(sub$ts), , drop = FALSE]
+    if (nrow(sub) < as.integer(.GP_HISTORY_MIN_POINTS)) next
+    out[[k]] <- sub[order(sub$ts), , drop = FALSE]
+  }
+  out[!vapply(out, is.null, logical(1))]
+}
+
+#' Native plotly line chart for **one** prediction market (no ggplotly, no overlay).
+#' If `series` contains multiple markets, only the first market is plotted — callers
+#' should prefer `gp_build_theme_market_charts()` to stack one chart per market.
+gp_build_line_chart <- function(series, locale = "en", height = 220) {
   locale <- .gp_chr(locale, "en")
   empty_node <- function() {
     htmltools::tags$p(
@@ -847,39 +870,44 @@ gp_build_line_chart <- function(series, locale = "en", height = 280) {
     return(empty_node())
   }
   if (!requireNamespace("plotly", quietly = TRUE)) return(empty_node())
+  keys <- .gp_series_market_keys(series)
+  if (!length(keys)) return(empty_node())
+  # Single-market only: never consolidate Kalshi + Polymarket (or multi-market) overlays.
+  sub <- series[paste(series$venue, series$market_id, sep = "\t") == keys[[1]], , drop = FALSE]
+  sub <- sub[is.finite(sub$yes_prob) & !is.na(sub$ts), , drop = FALSE]
+  if (nrow(sub) < as.integer(.GP_HISTORY_MIN_POINTS)) return(empty_node())
+  sub <- sub[order(sub$ts), , drop = FALSE]
+  sub <- .gp_series_downsample(sub, max_n = 400L)
   colors <- gp_brand_colors()
-  keys <- unique(paste(series$venue, series$market_id, sep = "\t"))
+  venue <- .gp_chr(sub$venue[[1]], "kalshi")
+  col <- if (identical(venue, "polymarket")) colors$polymarket else colors$kalshi
+  venue_lab <- if (identical(venue, "polymarket")) "Polymarket" else "Kalshi"
+  title <- .gp_chr(sub$title[[1]], sub$market_id[[1]])
+  lab <- title
+  if (nchar(lab) > 72L) lab <- paste0(substr(lab, 1L, 69L), "…")
+  y_pct <- 100 * as.numeric(sub$yes_prob)
   fig <- plotly::plot_ly(height = as.integer(height))
-  n_traces <- 0L
-  for (k in keys) {
-    sub <- series[paste(series$venue, series$market_id, sep = "\t") == k, , drop = FALSE]
-    sub <- sub[is.finite(sub$yes_prob) & !is.na(sub$ts), , drop = FALSE]
-    if (nrow(sub) < as.integer(.GP_HISTORY_MIN_POINTS)) next
-    sub <- sub[order(sub$ts), , drop = FALSE]
-    sub <- .gp_series_downsample(sub, max_n = 400L)
-    venue <- .gp_chr(sub$venue[[1]], "kalshi")
-    col <- if (identical(venue, "polymarket")) colors$polymarket else colors$kalshi
-    lab <- .gp_chr(sub$title[[1]], sub$market_id[[1]])
-    if (nchar(lab) > 52L) lab <- paste0(substr(lab, 1L, 49L), "…")
-    lab <- sprintf("%s · %s", if (identical(venue, "polymarket")) "Polymarket" else "Kalshi", lab)
-    y_pct <- 100 * as.numeric(sub$yes_prob)
-    fig <- plotly::add_trace(
-      fig,
-      x = sub$ts,
-      y = y_pct,
-      type = "scatter",
-      mode = "lines",
-      name = lab,
-      line = list(color = col, width = 2),
-      hovertemplate = paste0(
-        lab, "<br>%{x|%Y-%m-%d}<br>Yes: %{y:.1f}%<extra></extra>"
-      )
-    )
-    n_traces <- n_traces + 1L
-  }
-  if (n_traces < 1L) return(empty_node())
+  fig <- plotly::add_trace(
+    fig,
+    x = sub$ts,
+    y = y_pct,
+    type = "scatter",
+    mode = "lines",
+    name = lab,
+    line = list(color = col, width = 2),
+    hovertemplate = paste0(
+      lab, "<br>%{x|%Y-%m-%d}<br>Yes: %{y:.1f}%<extra></extra>"
+    ),
+    showlegend = FALSE
+  )
   fig <- plotly::layout(
     fig,
+    title = list(
+      text = sprintf("%s · %s", venue_lab, lab),
+      font = list(size = 13, color = "#1c1915"),
+      x = 0,
+      xanchor = "left"
+    ),
     xaxis = list(title = "", showgrid = TRUE, zeroline = FALSE),
     yaxis = list(
       title = .gp_label("gp_chart_yaxis", locale),
@@ -888,15 +916,39 @@ gp_build_line_chart <- function(series, locale = "en", height = 280) {
       showgrid = TRUE,
       zeroline = FALSE
     ),
-    margin = list(l = 48, r = 16, t = 16, b = 40),
+    margin = list(l = 48, r = 16, t = 40, b = 36),
     paper_bgcolor = "#FFFFFF",
     plot_bgcolor = "#FAFBFC",
     hovermode = "x unified",
-    showlegend = n_traces > 1L,
-    legend = list(orientation = "h", y = 1.12, font = list(size = 11))
+    showlegend = FALSE
   )
   fig <- plotly::config(fig, displayModeBar = FALSE, responsive = TRUE, displaylogo = FALSE)
-  htmltools::tags$div(class = "ynow-gp-chart-widget", fig)
+  htmltools::tags$div(
+    class = "ynow-gp-chart-widget ynow-gp-market-chart-widget",
+    `data-venue` = venue,
+    `data-market-id` = .gp_chr(sub$market_id[[1]]),
+    fig
+  )
+}
+
+#' One line chart per prediction market under a theme (stacked; never merged).
+gp_build_theme_market_charts <- function(series, locale = "en", height = 220) {
+  locale <- .gp_chr(locale, "en")
+  parts <- gp_split_series_by_market(series)
+  if (!length(parts)) {
+    return(htmltools::tags$p(
+      class = "ynow-gp-empty ynow-gp-chart-empty",
+      .gp_label("gp_chart_empty", locale)
+    ))
+  }
+  charts <- lapply(names(parts), function(k) {
+    htmltools::tags$div(
+      class = "ynow-gp-market-chart",
+      `data-market-key` = k,
+      gp_build_line_chart(parts[[k]], locale = locale, height = height)
+    )
+  })
+  htmltools::tags$div(class = "ynow-gp-charts", charts)
 }
 
 gp_fetch_kalshi_theme <- function(theme_id, series_tickers, limit = 3L, use_cache = TRUE,
@@ -1115,9 +1167,10 @@ gp_crowd_agreement <- function(kalshi_probs, polymarket_probs) {
         if (nzchar(mean_txt)) htmltools::tags$span(class = "ynow-gp-agree-meta", mean_txt)
       )
     ),
+    # One plotly line chart per market (stacked under theme; never a merged overlay).
     htmltools::tags$div(
       class = "ynow-gp-chart",
-      gp_build_line_chart(series, locale = locale, height = 280)
+      gp_build_theme_market_charts(series, locale = locale, height = 220)
     ),
     htmltools::tags$p(
       class = "ynow-gp-last-print-label",
@@ -1638,7 +1691,10 @@ global_prediction_ui <- function(id, locale = "en") {
       @media (max-width: 767px) { .ynow-gp-cols { grid-template-columns: 1fr; } }
       .ynow-gp-venue-label { font-size: 13px; font-weight: 700; letter-spacing: 0.02em;
         border-bottom: 2px solid; padding-bottom: 4px; margin-bottom: 8px; }
-      .ynow-gp-chart { margin: 0 0 10px; min-height: 220px; }
+      .ynow-gp-chart { margin: 0 0 10px; }
+      .ynow-gp-charts { display: flex; flex-direction: column; gap: 12px; }
+      .ynow-gp-market-chart { margin: 0; padding: 8px 10px; background: #faf8f3;
+        border: 1px solid #e4dccb; border-radius: 6px; }
       .ynow-gp-chart-widget { width: 100%%; }
       .ynow-gp-chart-empty { padding: 18px 8px; text-align: center; }
       .ynow-gp-last-print-label { font-size: 11px; color: #7a7368; margin: 0 0 6px; }

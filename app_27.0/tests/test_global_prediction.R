@@ -372,12 +372,18 @@ check(
     grepl("ynow-gp-empty", empty_html, fixed = TRUE)
 )
 
-if (file.exists(k_hist_path)) {
+if (file.exists(k_hist_path) && file.exists(p_hist_path)) {
   ks2 <- gp_parse_kalshi_candlesticks(
     jsonlite::fromJSON(k_hist_path, simplifyVector = FALSE),
     theme_id = "fed_rates",
     market_id = "KXRATECUT-26DEC31",
     title = "Fed rate cuts"
+  )
+  ps2 <- gp_parse_polymarket_history(
+    jsonlite::fromJSON(p_hist_path, simplifyVector = FALSE),
+    theme_id = "fed_rates",
+    market_id = "616902",
+    title = "Recession"
   )
   chart <- gp_build_line_chart(ks2, locale = "en")
   chart_html <- paste(as.character(chart), collapse = "\n")
@@ -385,6 +391,30 @@ if (file.exists(k_hist_path)) {
     "line chart widget for real series",
     grepl("ynow-gp-chart-widget", chart_html, fixed = TRUE) ||
       grepl("plotly", chart_html, ignore.case = TRUE)
+  )
+  check(
+    "single-market chart tags market id",
+    grepl("ynow-gp-market-chart-widget", chart_html, fixed = TRUE) &&
+      grepl("KXRATECUT-26DEC31", chart_html, fixed = TRUE)
+  )
+  # Two markets → two stacked charts; never one merged overlay plot.
+  combined <- rbind(ks2, ps2)
+  split_n <- length(gp_split_series_by_market(combined))
+  check("split series yields one frame per market", identical(split_n, 2L))
+  stacked <- gp_build_theme_market_charts(combined, locale = "en")
+  stacked_html <- paste(as.character(stacked), collapse = "\n")
+  check(
+    "theme stacks one chart per market",
+    grepl("ynow-gp-charts", stacked_html, fixed = TRUE) &&
+      length(gregexpr("ynow-gp-market-chart", stacked_html, fixed = TRUE)[[1]]) >= 2L
+  )
+  # gp_build_line_chart must not overlay both markets when given a combined frame.
+  one_only <- gp_build_line_chart(combined, locale = "en")
+  one_html <- paste(as.character(one_only), collapse = "\n")
+  check(
+    "build_line_chart keeps single market (no Kalshi+Poly overlay)",
+    grepl("KXRATECUT-26DEC31", one_html, fixed = TRUE) &&
+      !grepl('data-market-id="616902"', one_html, fixed = TRUE)
   )
 }
 
@@ -419,6 +449,16 @@ check("module uses native plot_ly", grepl("plotly::plot_ly(", mod_src, fixed = T
 check("module avoids ggplotly on GP", !grepl("ggplotly(", mod_src, fixed = TRUE))
 check("module attaches theme series", grepl("gp_attach_theme_series(", mod_src, fixed = TRUE))
 check("theme UI mounts line chart class", grepl("ynow-gp-chart", mod_src, fixed = TRUE))
+check(
+  "theme UI stacks per-market charts",
+  grepl("gp_build_theme_market_charts(", mod_src, fixed = TRUE) &&
+    grepl("ynow-gp-market-chart", mod_src, fixed = TRUE)
+)
+check(
+  "history per venue allows many markets",
+  grepl("\\.GP_HISTORY_PER_VENUE <- 6L", mod_src) ||
+    grepl(".GP_HISTORY_PER_VENUE <- 6L", mod_src, fixed = TRUE)
+)
 check(
   "GP CSS escapes percent for sprintf",
   grepl("width: 100%%;", mod_src, fixed = TRUE) &&
