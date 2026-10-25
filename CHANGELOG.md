@@ -1,3 +1,12 @@
+## [v27.42] — 2026-10-25
+
+### Fixed
+- System admin Item locks **Currently restricted** for **All users** / **Only guests**: empty ACL no longer shows “Nothing is restricted”. Default freemium `guest_menu_lock` sidebar tabs are listed (Freemium / 預設訪客). Remove-apply stays ACL-only.
+
+### Notes
+- en-US: Bundle **12736608**. Display merge only; membership unlock evaluation unchanged.
+- zh-TW：Bundle **12736608**。僅狀態顯示合併預設訪客鎖定；解除限制仍只讀 ACL 列。
+
 ## [v27.41] — 2026-10-25
 
 ### Added
