@@ -1,3 +1,13 @@
+## [v27.41] — 2026-10-25
+
+### Added
+- Internal earnings-call **keyword lexicon + extractors** (zh-TW / en-US) for 法說會逐字稿／簡報: presentation number layers, CapEx cues, Q&A bridging/follow-up, tone score 1–5, keyword-DB template fields, reading traps 1–3.
+- Compact status block under 業務拆解 → order-research (tone / guidance cue / tokens / CapEx / traps).
+
+### Notes
+- en-US: Bundle **12736588**. Skips framework steps 1 (full-text map) and 5 (Equity Story). Never invents amounts. Wired into Fugle / FinmoConf / US / SA fetch paths.
+- zh-TW：Bundle **12736588**。略過全文地圖速讀與股票故事敘事；語氣量表與關鍵語句訊號為狀態摘錄，非買進訊號。
+
 ## [v27.40] — 2026-10-25
 
 ### Changed
