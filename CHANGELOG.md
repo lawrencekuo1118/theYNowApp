@@ -1,3 +1,12 @@
+## [v27.40] — 2026-10-25
+
+### Changed
+- Global Prediction per-market plotly charts restyled to **Kalshi / Polymarket** live market-page cues (right Yes% axis, muted H-grid, brand line + soft fill, Chance header, source watermark). Still one chart per market.
+
+### Notes
+- en-US: Bundle **12736552**. Refs: Kalshi KXBRPRES-26; Polymarket Fed rate cuts 2026. No invented series.
+- zh-TW：Bundle **12736552**。線圖視覺對齊 Kalshi／Polymarket 市場頁（右側 Yes%、淡水平格線、品牌色線＋淡填色、Chance 標題）；仍是一市場一圖。
+
 ## [v27.39] — 2026-10-25
 
 ### Changed
