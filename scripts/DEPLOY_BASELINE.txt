@@ -7,5 +7,5 @@ commit=597acc7b697a1cc42a89465d610643654c14afd9
 short=597acc7b
 message=chore: record shipped display version v27.29
 captured_at=2026-10-25T04:42:19Z
-display_version=v27.29
+display_version=v27.30
 note=Canonical live line is app_27.0. Bundle 12735587: Macro lazy on_first_mount reactive domain restore (#511).
