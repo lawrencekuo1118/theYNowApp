@@ -452,7 +452,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     aml_veto_title = "Corporate AML proxy alert",
     aml_veto_text = paste0(
       "Statement proxies raised an alert tier. Treat as a veto / heightened scrutiny note only — ",
-      "not a buy cue and not a bank AML determination. Overlapping YNOW indicators show an AML mark."
+      "not a buy cue and not a bank AML determination. ",
+      "Overlapping financial-statement warning (財報警訊) detail items show an AML mark."
     ),
     menu_backtest = "Quant Backtest Lab",
     menu_bluechip = "Blue Chip Leaderboard",
@@ -5256,7 +5257,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     aml_veto_title = "法人洗錢跡象代理：警示",
     aml_veto_text = paste0(
       "財報代理指標達警示等級。僅作否決或提高檢視強度，",
-      "不是買進訊號，也不是銀行 AML 判定。YNOW 重疊指標旁會標示 AML。"
+      "不是買進訊號，也不是銀行 AML 判定。重疊的財報警訊細項旁會標示 AML。"
     ),
     menu_backtest = "量化回測實驗室",
     menu_bluechip = "績優股排行榜",

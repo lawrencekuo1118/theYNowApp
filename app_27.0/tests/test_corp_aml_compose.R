@@ -11,6 +11,7 @@ test_dir <- if (length(file_arg) == 1L && nzchar(file_arg)) {
 app_dir <- normalizePath(file.path(test_dir, ".."), mustWork = TRUE)
 source(file.path(app_dir, "setup.R"), local = FALSE)
 source(file.path(app_dir, "earnings_quality_module.R"), local = FALSE)
+source(file.path(app_dir, "shenanigans_module.R"), local = FALSE)
 source(file.path(app_dir, "corp_aml_signals.R"), local = FALSE)
 source(file.path(app_dir, "investment_decision_module.R"), local = FALSE)
 
@@ -73,23 +74,99 @@ check("veto text key", identical(v$text_key, "aml_veto_text"))
 clear_pack <- list(ok = TRUE, tier = "clear")
 check("clear has no veto", is.null(corp_aml_veto_keys(clear_pack)))
 
-marks <- corp_aml_surface_marks(pack)
-check("surface marks list", is.list(marks))
-check("C2/C7 alert marks QoE", identical(marks$qoe, "alert") || identical(marks$qoe, "watch"))
-check("C7 marks Beneish", identical(marks$beneish, "alert") || identical(marks$beneish, "watch"))
-check("C7 marks Schilit", identical(marks$schilit, "alert") || identical(marks$schilit, "watch"))
-check("risk matrix marked", identical(marks$risk_matrix, "alert") || identical(marks$risk_matrix, "watch"))
-check("clear pack no marks", is.null(corp_aml_surface_marks(clear_pack)$qoe))
+# Surface shim: no KPI/panel marks (AML lives on 財報警訊 detail rows)
+surf <- corp_aml_surface_marks(pack)
+check("surface shim null qoe", is.null(surf$qoe))
+check("surface shim null fscore", is.null(surf$fscore))
+check("surface shim null risk_matrix", is.null(surf$risk_matrix))
+
+# Warning-item marks: overlapping 財報警訊 keys only
+marks <- corp_aml_warning_item_marks(pack)
+check("warning marks list", is.list(marks))
+check("C7 marks BENEISH", identical(marks$BENEISH, "alert") || identical(marks$BENEISH, "watch"))
+check("C7 marks SCHILIT compose", identical(marks$SCHILIT, "alert") || identical(marks$SCHILIT, "watch"))
+c2 <- corp_aml_flag_severity(pack, "AML_C2")
+if (identical(c2, "alert") || identical(c2, "watch")) {
+  check("C2 marks X1", identical(marks$X1, c2) || identical(marks$X1, "alert") || identical(marks$X1, "watch"))
+  check("C2 marks BENEISH:TATA", !is.null(marks[["BENEISH:TATA"]]))
+}
+c3 <- corp_aml_flag_severity(pack, "AML_C3")
+if (identical(c3, "alert") || identical(c3, "watch")) {
+  check("C3 marks X2", !is.null(marks$X2))
+  check("C3 marks BENEISH:DSRI", !is.null(marks[["BENEISH:DSRI"]]))
+}
+check("clear pack no warning marks", length(corp_aml_warning_item_marks(clear_pack)) == 0L)
 check("mark ui null on clear", is.null(corp_aml_mark_ui(NULL)))
 check("mark ui alert class", {
   m <- corp_aml_mark_ui("alert", locale = "en")
   grepl("ynow-aml-mark--alert", as.character(m), fixed = TRUE)
 })
+check(
+  "severity for X1 inherits SCHILIT",
+  identical(
+    corp_aml_severity_for_warning_item(list(SCHILIT = "watch"), "X1"),
+    "watch"
+  )
+)
+check(
+  "severity null when no overlap",
+  is.null(corp_aml_severity_for_warning_item(list(BENEISH = "alert"), "X9"))
+)
+
+# Schilit UI: AML badge only on elevated overlapping rows
+ev_fake <- list(
+  ok = TRUE,
+  n_alert = 1L,
+  n_watch = 0L,
+  n_pass = 0L,
+  n_na = 0L,
+  items = data.frame(
+    code = c("X1", "X9"),
+    category = c("財報交叉檢查", "財報交叉檢查"),
+    name = c("NI vs OCF", "Liquidity"),
+    status = c("警示", "警示"),
+    reason = c("r1", "r2"),
+    value_txt = c("v1", "v2"),
+    threshold_txt = c("t1", "t2"),
+    stringsAsFactors = FALSE
+  )
+)
+ui_shen <- as.character(shenanigans_results_ui(
+  ev_fake,
+  aml_marks = list(X1 = "alert"),
+  locale = "en"
+))
+check("schilit X1 has AML mark", grepl("ynow-aml-mark--alert", ui_shen, fixed = TRUE))
+# X9 has no overlap key → no second alert mark for X9 specifically via code path;
+# still only one mark from X1 in this fixture
+check(
+  "schilit mark count matches overlap",
+  length(gregexpr("ynow-aml-mark--alert", ui_shen, fixed = TRUE)[[1]]) == 1L
+)
+
+# Beneish UI: head mark when elevated + BENEISH key
+eq_bad_flag <- eq
+if (is.list(eq_bad_flag)) {
+  # Force elevated flag for UI path if M already elevated; else skip soft
+  ui_ben <- as.character(beneish_m_score_widget_ui(
+    eq_bad_flag,
+    locale = "en",
+    aml_marks = list(BENEISH = "alert", `BENEISH:TATA` = "watch", `BENEISH:DSRI` = "watch")
+  ))
+  if (grepl("ynow-mscore-widget--danger|ynow-mscore-widget--watch", ui_ben)) {
+    check("beneish elevated shows AML", grepl("ynow-aml-mark", ui_ben, fixed = TRUE))
+  } else {
+    check("beneish pass has no head AML", !grepl("ynow-aml-mark--alert", ui_ben, fixed = TRUE))
+  }
+}
 
 dec <- paste(readLines(file.path(app_dir, "investment_decision_module.R"), warn = FALSE), collapse = "\n")
 check("ui_recommendation still uses ynow_statement_verdict", grepl("ynow_statement_verdict\\(", dec))
 check("veto rendered beside recommendation", grepl("corp_aml_veto_keys", dec, fixed = TRUE))
-check("AML marks wired in decision_server", grepl("corp_aml_surface_marks", dec, fixed = TRUE))
+check("AML warning marks wired in decision_server", grepl("corp_aml_warning_item_marks", dec, fixed = TRUE))
+check("no KPI aml_lab on fscore", !grepl('\\.aml_lab\\(.*fscore', dec))
+check("shenanigans panel gets aml_marks", grepl("aml_marks = \\.aml_warning_marks\\(\\)", dec))
+check("beneish widget gets aml_marks", grepl("aml_marks = \\.aml_warning_marks\\(\\)", dec))
 
 if (fail > 0L) {
   cat("FAILED ", fail, " checks\n", sep = "")

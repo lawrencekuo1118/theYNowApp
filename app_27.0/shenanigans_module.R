@@ -1320,12 +1320,32 @@ evaluate_shenanigans <- function(d_is, d_bs, d_cf, industry_key = NULL) {
          "ynow-shen-na")
 }
 
-.sh_item_card <- function(row) {
+.sh_item_elevated <- function(status) {
+  identical(as.character(status)[1], "警示") || identical(as.character(status)[1], "觀察")
+}
+
+.sh_item_aml_mark <- function(row, aml_marks = NULL, locale = "zh-TW") {
+  if (is.null(aml_marks) || !.sh_item_elevated(row$status)) return(NULL)
+  if (!exists("corp_aml_severity_for_warning_item", mode = "function")) return(NULL)
+  if (!exists("corp_aml_mark_ui", mode = "function")) return(NULL)
+  sev <- tryCatch(
+    corp_aml_severity_for_warning_item(aml_marks, row$code),
+    error = function(e) NULL
+  )
+  corp_aml_mark_ui(sev, locale = locale)
+}
+
+.sh_item_card <- function(row, aml_marks = NULL, locale = "zh-TW") {
+  aml_mark <- .sh_item_aml_mark(row, aml_marks = aml_marks, locale = locale)
   tags$div(
     class = paste("ynow-shen-card", .sh_status_class(row$status)),
     tags$div(
       class = "ynow-shen-card-h",
-      tags$span(class = "ynow-shen-code", paste0(row$code, "　", row$name)),
+      tags$span(
+        class = "ynow-shen-code",
+        paste0(row$code, "　", row$name),
+        if (!is.null(aml_mark)) list(" ", aml_mark) else NULL
+      ),
       tags$span(class = paste("ynow-shen-st", .sh_status_class(row$status)), row$status)
     ),
     tags$p(class = "ynow-shen-why", row$reason),
@@ -1338,17 +1358,22 @@ evaluate_shenanigans <- function(d_is, d_bs, d_cf, industry_key = NULL) {
   )
 }
 
-.sh_cat_block <- function(df, title) {
+.sh_cat_block <- function(df, title, aml_marks = NULL, locale = "zh-TW") {
   if (is.null(df) || nrow(df) < 1L) return(NULL)
   tags$div(
     class = "ynow-shen-cat",
     tags$h5(tags$b(title)),
-    lapply(seq_len(nrow(df)), function(i) .sh_item_card(df[i, ]))
+    lapply(seq_len(nrow(df)), function(i) {
+      .sh_item_card(df[i, ], aml_marks = aml_marks, locale = locale)
+    })
   )
 }
 
 #' YNOW 分頁：四大類 + 財報交叉檢查（警示／觀察展開；資料不足摺疊）
-shenanigans_results_ui <- function(ev) {
+#'
+#' @param aml_marks Named list from [corp_aml_warning_item_marks]; AML badge on
+#'   overlapping elevated 財報警訊 rows only (veto / risk — never a buy cue).
+shenanigans_results_ui <- function(ev, aml_marks = NULL, locale = "zh-TW") {
   if (is.null(ev) || !isTRUE(ev$ok)) {
     return(tags$div(
       class = "ynow-shen-wrap",
@@ -1385,15 +1410,21 @@ shenanigans_results_ui <- function(ev) {
       if (nrow(xflag) < 1L) {
         tags$p(class = "ynow-shen-ok", "目前沒有警示或觀察。")
       } else {
-        lapply(seq_len(nrow(xflag)), function(i) .sh_item_card(xflag[i, ]))
+        lapply(seq_len(nrow(xflag)), function(i) {
+          .sh_item_card(xflag[i, ], aml_marks = aml_marks, locale = locale)
+        })
       }
     ),
-    lapply(names(cats), function(nm) .sh_cat_block(cats[[nm]], nm)),
+    lapply(names(cats), function(nm) {
+      .sh_cat_block(cats[[nm]], nm, aml_marks = aml_marks, locale = locale)
+    }),
     if (nrow(pass) > 0L) {
       tags$details(
         class = "ynow-shen-fold",
         tags$summary(sprintf("通過 %d 項", nrow(pass))),
-        lapply(seq_len(nrow(pass)), function(i) .sh_item_card(pass[i, ]))
+        lapply(seq_len(nrow(pass)), function(i) {
+          .sh_item_card(pass[i, ], aml_marks = aml_marks, locale = locale)
+        })
       )
     } else {
       NULL
@@ -1402,7 +1433,9 @@ shenanigans_results_ui <- function(ev) {
       tags$details(
         class = "ynow-shen-fold",
         tags$summary(sprintf("資料不足 %d 項", nrow(nas))),
-        lapply(seq_len(nrow(nas)), function(i) .sh_item_card(nas[i, ]))
+        lapply(seq_len(nrow(nas)), function(i) {
+          .sh_item_card(nas[i, ], aml_marks = aml_marks, locale = locale)
+        })
       )
     } else {
       NULL

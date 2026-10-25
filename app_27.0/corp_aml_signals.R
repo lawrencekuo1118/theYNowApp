@@ -490,43 +490,78 @@ corp_aml_flag_severity <- function(pack, code) {
   sevs[[1]]
 }
 
-#' Which YNOW overlap surfaces should show an AML mark, and at what severity.
+#' Static map: AML typology code → overlapping 財報警訊 fine-grained item keys.
 #'
-#' Surfaces: `qoe`, `fscore`, `alerts`, `beneish`, `schilit`, `risk_matrix`.
-#' Driven by AML_C2 (QoE/accruals), AML_C7 (Beneish/Schilit), AML_C3 (AR–Inv theme).
-#' Alert/watch only — never a buy cue.
+#' Keys:
+#' - Schilit codes (`X1`, `X2`, … / `1`…`15`)
+#' - `BENEISH` — Beneish M-Score widget head (Chapter II)
+#' - `BENEISH:DSRI` / `BENEISH:TATA` — Beneish breakdown rows
+#' - `SCHILIT` — any elevated Schilit 警示／觀察 row (AML_C7 compose)
+#'
+#' Alert/watch only — never a buy cue. Unrelated KPIs (QoE / F-Score / risk
+#' matrix headers) are intentionally omitted.
+corp_aml_warning_item_overlap <- function() {
+  list(
+    AML_C2 = c("X1", "BENEISH:TATA"),
+    AML_C3 = c("X2", "X3", "X8", "BENEISH:DSRI"),
+    AML_C7 = c("BENEISH", "SCHILIT")
+  )
+}
+
+#' Named severities for overlapping 財報警訊 detail keys (`alert` / `watch`).
+#'
+#' Empty named list when pack is clear / unavailable — honest no-badge.
+corp_aml_warning_item_marks <- function(pack) {
+  out <- list()
+  if (!is.list(pack) || !isTRUE(pack$ok)) return(out)
+
+  active <- function(sev) identical(sev, "alert") || identical(sev, "watch")
+  overlap <- corp_aml_warning_item_overlap()
+  for (code in names(overlap)) {
+    sev <- corp_aml_flag_severity(pack, code)
+    if (!active(sev)) next
+    for (key in overlap[[code]]) {
+      prev <- out[[key]]
+      out[[key]] <- if (is.null(prev)) {
+        sev
+      } else {
+        .corp_aml_worst_sev(prev, sev)
+      }
+    }
+  }
+  out
+}
+
+#' Resolve AML mark severity for one 財報警訊 detail key.
+#'
+#' Schilit item codes also inherit the compose key `SCHILIT` when present.
+#' Returns NULL when no overlapping AML alert/watch applies.
+corp_aml_severity_for_warning_item <- function(marks, item_key) {
+  key <- as.character(item_key %||% "")[1]
+  if (!nzchar(key) || (!is.list(marks) && !is.character(marks))) return(NULL)
+  keys <- key
+  if (grepl("^(X[0-9]+|[0-9]+)$", key)) {
+    keys <- c(keys, "SCHILIT")
+  }
+  sevs <- character(0)
+  for (k in keys) {
+    v <- if (is.list(marks)) marks[[k]] else {
+      if (k %in% names(marks)) unname(marks[[k]]) else NULL
+    }
+    if (!is.null(v) && length(v)) sevs <- c(sevs, as.character(v)[1])
+  }
+  if (!length(sevs)) return(NULL)
+  sev <- .corp_aml_worst_sev(sevs)
+  if (identical(sev, "alert") || identical(sev, "watch")) sev else NULL
+}
+
+#' @deprecated Prefer [corp_aml_warning_item_marks] for 財報警訊 detail rows.
+#' Kept as an empty-surface shim so older callers do not attach AML to KPIs.
 corp_aml_surface_marks <- function(pack) {
-  empty <- list(
+  list(
     qoe = NULL, fscore = NULL, alerts = NULL,
     beneish = NULL, schilit = NULL, risk_matrix = NULL
   )
-  if (!is.list(pack) || !isTRUE(pack$ok)) return(empty)
-
-  c2 <- corp_aml_flag_severity(pack, "AML_C2")
-  c3 <- corp_aml_flag_severity(pack, "AML_C3")
-  c7 <- corp_aml_flag_severity(pack, "AML_C7")
-  active <- function(sev) identical(sev, "alert") || identical(sev, "watch")
-
-  out <- empty
-  if (active(c2)) {
-    out$qoe <- c2
-    out$fscore <- c2
-  }
-  if (active(c7)) {
-    out$alerts <- c7
-    out$beneish <- c7
-    out$schilit <- .corp_aml_worst_sev(c7, if (active(c3)) c3 else NULL)
-  } else if (active(c3)) {
-    out$schilit <- c3
-    out$alerts <- c3
-  }
-  rm_sev <- .corp_aml_worst_sev(
-    if (active(c2)) c2 else NULL,
-    if (active(c7)) c7 else NULL,
-    if (active(c3)) c3 else NULL
-  )
-  if (active(rm_sev)) out$risk_matrix <- rm_sev
-  out
 }
 
 #' Small 「AML」 mark for YNOW overlap chips (veto / risk only).
