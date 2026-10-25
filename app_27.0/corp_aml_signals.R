@@ -490,27 +490,30 @@ corp_aml_flag_severity <- function(pack, code) {
   sevs[[1]]
 }
 
-#' Static map: AML typology code → overlapping 財報警訊 fine-grained item keys.
+#' Static allowlist: AML typology code → **directly related** 財報警訊 item keys.
 #'
-#' Keys:
-#' - Schilit codes (`X1`, `X2`, … / `1`…`15`)
-#' - `BENEISH` — Beneish M-Score widget head (Chapter II)
-#' - `BENEISH:DSRI` / `BENEISH:TATA` — Beneish breakdown rows
-#' - `SCHILIT` — any elevated Schilit 警示／觀察 row (AML_C7 compose)
+#' Direct thematic overlap only (never a blanket stamp):
+#' - AML_C2 (OCF vs earnings / accruals) → Schilit `X1`, Beneish `BENEISH:TATA`
+#' - AML_C3 (AR / inventory cycle) → Schilit `X2`/`X3`/`X8`, Beneish `BENEISH:DSRI`
+#'
+#' AML_C7 (Beneish／Schilit **composition** tier) is intentionally **absent**:
+#' it is an aggregate veto / risk tier, not a fine-item identity. C7 alone must
+#' not badge every Schilit card or the Beneish widget head. C7 alert-tier veto
+#' chip via [corp_aml_veto_keys] is unchanged.
 #'
 #' Alert/watch only — never a buy cue. Unrelated KPIs (QoE / F-Score / risk
 #' matrix headers) are intentionally omitted.
 corp_aml_warning_item_overlap <- function() {
   list(
     AML_C2 = c("X1", "BENEISH:TATA"),
-    AML_C3 = c("X2", "X3", "X8", "BENEISH:DSRI"),
-    AML_C7 = c("BENEISH", "SCHILIT")
+    AML_C3 = c("X2", "X3", "X8", "BENEISH:DSRI")
   )
 }
 
-#' Named severities for overlapping 財報警訊 detail keys (`alert` / `watch`).
+#' Named severities for **directly related** 財報警訊 detail keys (`alert` / `watch`).
 #'
 #' Empty named list when pack is clear / unavailable — honest no-badge.
+#' Does not emit blanket `SCHILIT` / `BENEISH` keys from AML_C7.
 corp_aml_warning_item_marks <- function(pack) {
   out <- list()
   if (!is.list(pack) || !isTRUE(pack$ok)) return(out)
@@ -532,26 +535,22 @@ corp_aml_warning_item_marks <- function(pack) {
   out
 }
 
-#' Resolve AML mark severity for one 財報警訊 detail key.
+#' Resolve AML mark severity for one 財報警訊 detail key (exact key only).
 #'
-#' Schilit item codes also inherit the compose key `SCHILIT` when present.
-#' Returns NULL when no overlapping AML alert/watch applies.
+#' No inheritance from a compose/`SCHILIT` blanket. Returns NULL when the item
+#' key is not in the direct-overlap allowlist for an active AML code.
 corp_aml_severity_for_warning_item <- function(marks, item_key) {
   key <- as.character(item_key %||% "")[1]
   if (!nzchar(key) || (!is.list(marks) && !is.character(marks))) return(NULL)
-  keys <- key
-  if (grepl("^(X[0-9]+|[0-9]+)$", key)) {
-    keys <- c(keys, "SCHILIT")
+  v <- if (is.list(marks)) {
+    marks[[key]]
+  } else if (key %in% names(marks)) {
+    unname(marks[[key]])
+  } else {
+    NULL
   }
-  sevs <- character(0)
-  for (k in keys) {
-    v <- if (is.list(marks)) marks[[k]] else {
-      if (k %in% names(marks)) unname(marks[[k]]) else NULL
-    }
-    if (!is.null(v) && length(v)) sevs <- c(sevs, as.character(v)[1])
-  }
-  if (!length(sevs)) return(NULL)
-  sev <- .corp_aml_worst_sev(sevs)
+  if (is.null(v) || !length(v)) return(NULL)
+  sev <- as.character(v)[1]
   if (identical(sev, "alert") || identical(sev, "watch")) sev else NULL
 }
 
