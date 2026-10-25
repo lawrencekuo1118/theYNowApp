@@ -262,29 +262,30 @@ source("ynow_cookie_notice_ui.R", local = TRUE, encoding = "UTF-8")
       ),
       tags$div(
         class = "ynow-home-legal",
-        # One row under quick-pick: Sign in · Register · About; disclaimer below.
+        # Auth pair above; Inspiration Gallery; About + disclaimer below (kept separate).
         tags$div(
-          class = "ynow-home-legal-links",
-          if (exists("ynow_auth_home_ui", mode = "function")) ynow_auth_home_ui(),
-          tags$span(
-            class = "ynow-home-legal-sep ynow-auth-pair-sep",
-            "·",
-            `aria-hidden` = "true"
-          ),
+          class = "ynow-home-legal-links ynow-home-auth-row",
+          if (exists("ynow_auth_home_ui", mode = "function")) ynow_auth_home_ui()
+        ),
+        if (exists("ynow_inspiration_home_shell_ui", mode = "function")) {
+          ynow_inspiration_home_shell_ui()
+        },
+        tags$div(
+          class = "ynow-home-about-row",
           tags$button(
             type = "button",
             id = "ynow_home_legal_about",
             class = "ynow-home-legal-link",
             `data-tab` = "about",
             "About · Privacy, IP & risk"
-          )
-        ),
-        tags$p(
-          id = "ynow_home_legal",
-          class = "ynow-home-legal-text",
-          paste0(
-            "Research and education only — not investment advice. ",
-            "You alone bear all investment decisions and losses."
+          ),
+          tags$p(
+            id = "ynow_home_legal",
+            class = "ynow-home-legal-text",
+            paste0(
+              "Research and education only — not investment advice. ",
+              "You alone bear all investment decisions and losses."
+            )
           )
         )
       )
@@ -8745,7 +8746,6 @@ ui <- dashboardPage(
           border-top: 1px solid #e5e8eb;
           text-align: center;
         }
-        /* Sign in · Register · About on one horizontal row (not stacked). */
         .ynow-home-legal-links {
           display: inline-flex;
           flex-direction: row;
@@ -8761,18 +8761,70 @@ ui <- dashboardPage(
           margin: 0;
           justify-content: center;
         }
-        .ynow-home-legal-links > .ynow-home-legal-sep {
-          display: inline-block;
-          margin: 0 6px;
-          color: #0b57d0;
-          font-size: 12px;
-          line-height: 1.4;
-          user-select: none;
+        .ynow-home-about-row {
+          margin: 10px 0 0 0;
+          text-align: center;
         }
-        /* Lite / no auth mount: hide orphan · before About (signed-in keeps · between Sign out and About). */
-        body.ynow-lite .ynow-home-legal-links > .ynow-home-legal-sep,
-        .ynow-home-legal-links:not(:has(.ynow-auth-links--home)) > .ynow-home-legal-sep {
+        .ynow-insp-gallery {
+          display: block;
+          width: 100%;
+          max-width: 100%;
+          margin: 12px auto 4px;
+          box-sizing: border-box;
+        }
+        .ynow-insp-gallery.ynow-insp-gallery--hidden {
           display: none;
+        }
+        @media (min-width: 721px) and (max-width: 991px) {
+          .ynow-insp-gallery { width: 100%; }
+        }
+        @media (min-width: 992px) {
+          /* Width of two of three home cards (gap 10px). */
+          .ynow-insp-gallery {
+            width: calc((100% - 20px) * 2 / 3 + 10px);
+          }
+        }
+        .ynow-insp-btn {
+          display: block;
+          width: 100%;
+          margin: 0;
+          padding: 0;
+          border: 0;
+          background: transparent;
+          cursor: pointer;
+          text-align: center;
+        }
+        .ynow-insp-frame {
+          position: relative;
+          width: 100%;
+          aspect-ratio: 4 / 3;
+          max-height: min(52vw, 320px);
+          margin: 0 auto;
+          overflow: hidden;
+          background: transparent;
+        }
+        @media (min-width: 721px) {
+          .ynow-insp-frame { max-height: none; }
+        }
+        .ynow-insp-img {
+          display: block;
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+          object-position: center;
+        }
+        .ynow-insp-credit {
+          position: absolute;
+          right: 8px;
+          bottom: 6px;
+          padding: 2px 6px;
+          font-size: 11px;
+          line-height: 1.3;
+          color: #fff;
+          background: rgba(0, 0, 0, 0.45);
+          border-radius: 2px;
+          pointer-events: none;
+          user-select: none;
         }
         .ynow-home-legal-text {
           margin: 0;
@@ -12966,6 +13018,14 @@ ui <- dashboardPage(
             if (adminOpsHelp && s.admin_ops_help) adminOpsHelp.textContent = s.admin_ops_help;
             var adminOpsEmpty = document.getElementById('ynow_admin_ops_empty');
             if (adminOpsEmpty && s.admin_ops_empty) adminOpsEmpty.textContent = s.admin_ops_empty;
+            var adminInspTab = document.getElementById('ynow_admin_insp_tab_label');
+            if (adminInspTab && s.admin_insp_tab) adminInspTab.textContent = s.admin_insp_tab;
+            var adminInspTitle = document.getElementById('ynow_admin_insp_title');
+            if (adminInspTitle && s.admin_insp_title) adminInspTitle.textContent = s.admin_insp_title;
+            var adminInspHelp = document.getElementById('ynow_admin_insp_help');
+            if (adminInspHelp && s.admin_insp_help) adminInspHelp.textContent = s.admin_insp_help;
+            var inspCredit = document.getElementById('ynow_insp_credit');
+            if (inspCredit && s.insp_credit) inspCredit.textContent = s.insp_credit;
             var ptsColon = (payload && payload.locale === 'zh-TW') ? '：' : ':';
             var ptsHdrForLocale = document.getElementById('ynow-pts-header');
             var ptsSideForLocale = document.getElementById('ynow-pts-sidebar');

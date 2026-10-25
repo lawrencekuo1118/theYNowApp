@@ -1,0 +1,135 @@
+{
+  "version": 1,
+  "frequency": {
+    "show_probability": 1.0,
+    "rotation_interval_sec": 0
+  },
+  "images": [
+    {
+      "id": "0157cb62e0a3",
+      "src": "inspiration/0157cb62e0a3.webp",
+      "enabled": true,
+      "source": "bundled",
+      "bytes": 35468
+    },
+    {
+      "id": "03dff4f16785",
+      "src": "inspiration/03dff4f16785.webp",
+      "enabled": true,
+      "source": "bundled",
+      "bytes": 31696
+    },
+    {
+      "id": "15b8e3d9f3ed",
+      "src": "inspiration/15b8e3d9f3ed.webp",
+      "enabled": true,
+      "source": "bundled",
+      "bytes": 23334
+    },
+    {
+      "id": "1778ef42748d",
+      "src": "inspiration/1778ef42748d.webp",
+      "enabled": true,
+      "source": "bundled",
+      "bytes": 16658
+    },
+    {
+      "id": "225a41b34002",
+      "src": "inspiration/225a41b34002.webp",
+      "enabled": true,
+      "source": "bundled",
+      "bytes": 40356
+    },
+    {
+      "id": "2d6739165ddb",
+      "src": "inspiration/2d6739165ddb.webp",
+      "enabled": true,
+      "source": "bundled",
+      "bytes": 23580
+    },
+    {
+      "id": "3442cab327ae",
+      "src": "inspiration/3442cab327ae.webp",
+      "enabled": true,
+      "source": "bundled",
+      "bytes": 23310
+    },
+    {
+      "id": "48c603879a88",
+      "src": "inspiration/48c603879a88.webp",
+      "enabled": true,
+      "source": "bundled",
+      "bytes": 33018
+    },
+    {
+      "id": "4b65fc074e2a",
+      "src": "inspiration/4b65fc074e2a.webp",
+      "enabled": true,
+      "source": "bundled",
+      "bytes": 30414
+    },
+    {
+      "id": "567fae65a3a9",
+      "src": "inspiration/567fae65a3a9.webp",
+      "enabled": true,
+      "source": "bundled",
+      "bytes": 27716
+    },
+    {
+      "id": "6e4885a50934",
+      "src": "inspiration/6e4885a50934.webp",
+      "enabled": true,
+      "source": "bundled",
+      "bytes": 27934
+    },
+    {
+      "id": "71a40bb9d31b",
+      "src": "inspiration/71a40bb9d31b.webp",
+      "enabled": true,
+      "source": "bundled",
+      "bytes": 11856
+    },
+    {
+      "id": "99e9f1aed3b0",
+      "src": "inspiration/99e9f1aed3b0.webp",
+      "enabled": true,
+      "source": "bundled",
+      "bytes": 30318
+    },
+    {
+      "id": "aa30a1b1324f",
+      "src": "inspiration/aa30a1b1324f.webp",
+      "enabled": true,
+      "source": "bundled",
+      "bytes": 87924
+    },
+    {
+      "id": "ac51332dec8a",
+      "src": "inspiration/ac51332dec8a.webp",
+      "enabled": true,
+      "source": "bundled",
+      "bytes": 61760
+    },
+    {
+      "id": "c9eea742381e",
+      "src": "inspiration/c9eea742381e.webp",
+      "enabled": true,
+      "source": "bundled",
+      "bytes": 32638
+    },
+    {
+      "id": "d86415a4030b",
+      "src": "inspiration/d86415a4030b.webp",
+      "enabled": true,
+      "source": "bundled",
+      "bytes": 18092
+    },
+    {
+      "id": "f74c6ef04b08",
+      "src": "inspiration/f74c6ef04b08.webp",
+      "enabled": true,
+      "source": "bundled",
+      "bytes": 20494
+    }
+  ]
+}

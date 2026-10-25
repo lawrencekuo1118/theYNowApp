@@ -24,7 +24,10 @@ YNOW_ADMIN_OPS_ACTIONS <- c(
   "view_as.exit",
   "self_view.apply",
   "self_view.exit",
-  "points.adjust"
+  "points.adjust",
+  "insp.upload",
+  "insp.delete",
+  "insp.freq"
 )
 
 .ynow_admin_ops_mem <- new.env(parent = emptyenv())
@@ -465,6 +468,9 @@ ynow_admin_ops_action_label <- function(action, locale = "en") {
       "self_view.apply" = "套用自身視角",
       "self_view.exit" = "結束自身視角",
       "points.adjust" = "調整點數",
+      "insp.upload" = "上傳靈感藝廊圖片",
+      "insp.delete" = "移除靈感藝廊圖片",
+      "insp.freq" = "更新靈感藝廊顯示頻率",
       as.character(a %||% "")
     )
   } else {
@@ -481,6 +487,9 @@ ynow_admin_ops_action_label <- function(action, locale = "en") {
       "self_view.apply" = "Apply self view",
       "self_view.exit" = "Exit self view",
       "points.adjust" = "Adjust points",
+      "insp.upload" = "Upload inspiration image",
+      "insp.delete" = "Remove inspiration image",
+      "insp.freq" = "Update inspiration frequency",
       as.character(a %||% "")
     )
   }

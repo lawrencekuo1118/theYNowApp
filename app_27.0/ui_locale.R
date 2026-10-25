@@ -108,6 +108,25 @@ locale_for_market <- function(mode = get_market_mode()) {
       "You alone bear all investment decisions and losses."
     ),
     home_legal_about = "About · Privacy, IP & risk",
+    insp_credit = "© YNow Team",
+    admin_insp_tab = "Inspiration Gallery",
+    admin_insp_title = "Inspiration Gallery",
+    admin_insp_help = paste0(
+      "Add or remove homepage gallery images. ",
+      "Show probability is the chance the gallery mounts on a visit (0–1). ",
+      "Rotation interval auto-advances when greater than 0 seconds; 0 means click-only."
+    ),
+    admin_insp_locked = "Enter system admin to manage the Inspiration Gallery.",
+    admin_insp_upload = "Upload image",
+    admin_insp_browse = "Browse…",
+    admin_insp_nofile = "No file selected",
+    admin_insp_prob = "Show probability (0–1)",
+    admin_insp_rot = "Rotation interval (sec)",
+    admin_insp_freq_save = "Save frequency",
+    admin_insp_delete = "Remove",
+    admin_insp_col_id = "Id",
+    admin_insp_col_source = "Source",
+    admin_insp_col_preview = "Preview",
     legal_section_title = "Legal notices",
     legal_privacy_title = "Privacy",
     legal_privacy_body = paste0(
@@ -4924,6 +4943,25 @@ locale_for_market <- function(mode = get_market_mode()) {
       "投資決策與損益一律由使用者自行承擔。"
     ),
     home_legal_about = "關於 · 隱私權／智慧財產權／投資風險",
+    insp_credit = "YNow Team 版權所有",
+    admin_insp_tab = "靈感藝廊",
+    admin_insp_title = "靈感藝廊",
+    admin_insp_help = paste0(
+      "新增或移除首頁靈感藝廊圖片。",
+      "顯示機率為每次進入首頁時掛載藝廊的機率（0–1）。",
+      "輪播間隔大於 0 秒時會自動切換；0 表示僅點選切換。"
+    ),
+    admin_insp_locked = "請先進入系統管理後再管理靈感藝廊。",
+    admin_insp_upload = "上傳圖片",
+    admin_insp_browse = "瀏覽…",
+    admin_insp_nofile = "尚未選擇檔案",
+    admin_insp_prob = "顯示機率（0–1）",
+    admin_insp_rot = "輪播間隔（秒）",
+    admin_insp_freq_save = "儲存頻率設定",
+    admin_insp_delete = "移除",
+    admin_insp_col_id = "編號",
+    admin_insp_col_source = "來源",
+    admin_insp_col_preview = "預覽",
     legal_section_title = "法律與聲明",
     legal_privacy_title = "隱私權聲明",
     legal_privacy_body = paste0(

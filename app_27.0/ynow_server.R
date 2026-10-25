@@ -1353,6 +1353,17 @@ server <- function(input, output, session) {
   # Ops portal login username (actor for admin_ops_audit); never store password.
   ynow_pts_sysadmin_actor <- reactiveVal("")
   ynow_admin_ops_display_tick <- reactiveVal(0L)
+  if (exists("ynow_gallery_bind", mode = "function")) {
+    tryCatch(
+      ynow_gallery_bind(
+        session = session,
+        input = input,
+        output = output,
+        admin_on = ynow_pts_sysadmin_on
+      ),
+      error = function(e) NULL
+    )
+  }
   # Panel payload: list(kind="locked"|"loading"|"ready"|"error", ...). Built async
   # so Postgres list_users cannot block the session (exit / Switch view stay live).
   ynow_pts_sysadmin_panel_state <- reactiveVal(list(kind = "locked"))
@@ -2973,6 +2984,10 @@ server <- function(input, output, session) {
         tabsetPanel(
           id = "ynow_pts_sysadmin_tabs",
           type = "tabs",
+          selected = {
+            cur_tab <- as.character(isolate(input$ynow_pts_sysadmin_tabs) %||% "controls")[1]
+            if (!cur_tab %in% c("controls", "audit", "inspiration")) "controls" else cur_tab
+          },
           tabPanel(
             title = tags$span(
               id = "ynow_admin_ops_controls_tab_label",
@@ -3009,7 +3024,10 @@ server <- function(input, output, session) {
               ),
               uiOutput("ynow_admin_ops_audit_list")
             )
-          )
+          ),
+          if (exists("ynow_gallery_admin_tab_panel", mode = "function")) {
+            ynow_gallery_admin_tab_panel(.lab)
+          }
         )
       ))
     }
@@ -3308,6 +3326,10 @@ server <- function(input, output, session) {
       tabsetPanel(
         id = "ynow_pts_sysadmin_tabs",
         type = "tabs",
+        selected = {
+          cur_tab <- as.character(isolate(input$ynow_pts_sysadmin_tabs) %||% "controls")[1]
+          if (!cur_tab %in% c("controls", "audit", "inspiration")) "controls" else cur_tab
+        },
         tabPanel(
           title = tags$span(
             id = "ynow_admin_ops_controls_tab_label",
@@ -3323,7 +3345,10 @@ server <- function(input, output, session) {
           ),
           value = "audit",
           audit_pane
-        )
+        ),
+        if (exists("ynow_gallery_admin_tab_panel", mode = "function")) {
+          ynow_gallery_admin_tab_panel(.lab)
+        }
       )
     )
   })
