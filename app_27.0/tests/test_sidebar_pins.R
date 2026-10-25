@@ -90,6 +90,21 @@ check(
   "long-press only on recent/pinned chips",
   grepl("\\.ynow-recent-chip, \\.ynow-pinned-chip", ui, perl = TRUE)
 )
+# Long-press must not abort when the pointer leaves the tiny chip bounds.
+check("long-press uses setPointerCapture", grepl("setPointerCapture", ui, fixed = TRUE))
+check("long-press MOVE_PX abort threshold", grepl("MOVE_PX = 12", ui, fixed = TRUE))
+check(
+  "long-press does not clear on pointerleave",
+  !grepl(
+    "pointerup pointercancel pointerleave', '\\.ynow-recent-chip, \\.ynow-pinned-chip'",
+    ui,
+    perl = TRUE
+  )
+)
+check(
+  "long-press blocks chip contextmenu",
+  grepl("contextmenu', '\\.ynow-recent-chip, \\.ynow-pinned-chip'", ui, perl = TRUE)
+)
 check("server observes stock pin toggle", grepl("observeEvent\\(input\\$pinned_search_toggle", srv, perl = TRUE))
 check("server at_cap toast key", grepl("recent_search_max_toast", srv, fixed = TRUE))
 check("en max toast", grepl("recent_search_max_toast", loc, fixed = TRUE))
