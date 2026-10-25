@@ -7,5 +7,5 @@ commit=f4ba2746269368b1fdcae43bc4dca13a44de6da6
 short=f4ba2746
 message=chore: bump display version to v27.52
 captured_at=2026-10-25T17:12:32Z
-display_version=v27.52
+display_version=v27.53
 note=Canonical live line is app_27.0. Bundle 12737293: chrome black opacity gradients sidebar+banner (#560).
