@@ -638,7 +638,11 @@ screener_server <- function(input, output, session, ui_locale_rv = NULL,
       logged <- isTRUE(tryCatch(auth$is_logged_in(), error = function(e) FALSE))
       if (!logged) {
         showNotification(say_now("auth_pa_gate_title"), type = "warning")
-        tryCatch(shinyBS::toggleModal(session, "ynow_auth_modal", "open"), error = function(e) NULL)
+        # AuthOpenModal → ynowRequestAuthModal persists the current tab.
+        tryCatch(
+          session$sendCustomMessage("ynowAuthOpenModal", list(ok = TRUE)),
+          error = function(e) NULL
+        )
         return()
       }
     }

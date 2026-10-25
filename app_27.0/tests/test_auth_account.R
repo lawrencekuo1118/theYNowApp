@@ -448,7 +448,7 @@ keys <- c(
   "auth_email_label", "auth_password_label", "auth_submit", "auth_cancel",
   "auth_or_email", "auth_google", "auth_facebook", "auth_linkedin", "auth_forgot",
   "auth_register", "auth_register_btn", "auth_modal_title_register", "auth_resend",
-  "auth_msg_ok", "auth_msg_disabled", "auth_msg_missing", "auth_msg_invalid",
+  "auth_msg_ok", "auth_busy", "auth_msg_disabled", "auth_msg_missing", "auth_msg_invalid",
   "auth_msg_no_backend", "auth_msg_oauth_soon", "auth_msg_oauth_need_google",
   "auth_msg_oauth_need_facebook", "auth_msg_oauth_need_linkedin",
   "auth_msg_oauth_failed", "auth_msg_oauth_state",

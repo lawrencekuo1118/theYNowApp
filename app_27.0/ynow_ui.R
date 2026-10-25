@@ -13252,6 +13252,7 @@ ui <- dashboardPage(
               set('ynow_auth_email_label', payload.email_label);
               set('ynow_auth_password_label', payload.password_label);
               set('ynow_auth_submit_label', payload.submit);
+              set('ynow_auth_busy_label', payload.busy || payload.submit);
               set('ynow_auth_cancel_label', payload.cancel);
               set('ynow_auth_or_email', payload.or_email);
               set('ynow_auth_google_label', payload.google);
@@ -14778,6 +14779,9 @@ ui <- dashboardPage(
             } catch (eGuestLock0) {}
             addHandler('ynowAuthPostLogin', function (payload) {
               if (!payload) return;
+              try {
+                if (typeof window.ynowEndAuthBusy === 'function') window.ynowEndAuthBusy();
+              } catch (eBusyEnd) {}
               /* Success: mark authed BEFORE tab restore / sidebar work so any
                  subsequent Sign-in / BS toggleModal open is vetoed. */
               if (payload.ok && document.body) {
@@ -15234,6 +15238,73 @@ ui <- dashboardPage(
               return tab;
             } catch (eP) { return ''; }
           };
+          window.ynowBeginAuthBusy = function () {
+            try {
+              if (document.body) document.body.classList.add('ynow-auth-signing-in');
+              var modal = document.getElementById('ynow_auth_modal');
+              if (modal) {
+                modal.classList.add('ynow-auth-signing-in');
+                var busy = document.getElementById('ynow_auth_busy');
+                if (busy) busy.setAttribute('aria-hidden', 'false');
+              }
+              var copy = window.__ynowAuthCopy || {};
+              var lab = document.getElementById('ynow_auth_busy_label');
+              if (lab && copy.busy) lab.textContent = String(copy.busy);
+            } catch (eBusy) {}
+          };
+          window.ynowEndAuthBusy = function () {
+            try {
+              if (document.body) document.body.classList.remove('ynow-auth-signing-in');
+              var modal = document.getElementById('ynow_auth_modal');
+              if (modal) modal.classList.remove('ynow-auth-signing-in');
+              var busy = document.getElementById('ynow_auth_busy');
+              if (busy) busy.setAttribute('aria-hidden', 'true');
+            } catch (eBusyEnd) {}
+          };
+          /* Every modal open (including shinyBS toggleModal) refreshes the tab
+             capture so a prior Home Sign-in does not stick after navigating away. */
+          if (!window.__ynowAuthShowPersist) {
+            window.__ynowAuthShowPersist = true;
+            var persistOnShow = function () {
+              try {
+                if (typeof window.ynowPersistPreAuthTab === 'function') {
+                  window.ynowPersistPreAuthTab();
+                }
+              } catch (eShowPersist) {}
+            };
+            try {
+              if (window.jQuery) {
+                jQuery(document).on('show.bs.modal', '#ynow_auth_modal', persistOnShow);
+              }
+            } catch (eBindShow) {}
+            document.addEventListener('show.bs.modal', function (ev) {
+              var t = ev && ev.target;
+              if (!t || t.id !== 'ynow_auth_modal') return;
+              persistOnShow();
+            }, true);
+          }
+          if (!window.__ynowAuthSubmitPersist) {
+            window.__ynowAuthSubmitPersist = true;
+            document.addEventListener('click', function (ev) {
+              var t = ev.target;
+              if (!t || !t.closest) return;
+              var btn = t.closest(
+                '#ynow_auth_submit, #ynow_auth_register, ' +
+                '#ynow_auth_google, #ynow_auth_facebook, #ynow_auth_linkedin'
+              );
+              if (!btn) return;
+              try {
+                if (typeof window.ynowPersistPreAuthTab === 'function') {
+                  window.ynowPersistPreAuthTab();
+                }
+              } catch (eSubPersist) {}
+              try {
+                if (typeof window.ynowBeginAuthBusy === 'function') {
+                  window.ynowBeginAuthBusy();
+                }
+              } catch (eSubBusy) {}
+            }, true);
+          }
           function ynowParseQuery(qs) {
             var out = {};
             var raw = String(qs || '');

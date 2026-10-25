@@ -1067,7 +1067,11 @@ price_alert_server <- function(input, output, session, ui_locale_rv = NULL,
   .pa_require_login_or_notify <- function() {
     if (isTRUE(.pa_login_ok())) return(TRUE)
     showNotification(say("auth_pa_gate_title"), type = "warning")
-    tryCatch(shinyBS::toggleModal(session, "ynow_auth_modal", "open"), error = function(e) NULL)
+    # AuthOpenModal → ynowRequestAuthModal persists the current tab.
+    tryCatch(
+      session$sendCustomMessage("ynowAuthOpenModal", list(ok = TRUE)),
+      error = function(e) NULL
+    )
     FALSE
   }
 
@@ -1205,7 +1209,10 @@ price_alert_server <- function(input, output, session, ui_locale_rv = NULL,
   observeEvent(input$ynow_kpi_alert_blocked, {
     if (!isTRUE(.pa_login_ok())) {
       showNotification(say("auth_pa_gate_title"), type = "warning", duration = 5)
-      tryCatch(shinyBS::toggleModal(session, "ynow_auth_modal", "open"), error = function(e) NULL)
+      tryCatch(
+        session$sendCustomMessage("ynowAuthOpenModal", list(ok = TRUE)),
+        error = function(e) NULL
+      )
       return()
     }
     showNotification(say("pa_quick_not_ready"), type = "warning", duration = 5)
