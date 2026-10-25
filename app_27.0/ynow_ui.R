@@ -3514,8 +3514,8 @@ beta_rolling_section_ui <- function() {
               )
             ),
             # Unlocked: one control-panel bar (Exit / Switch view / Self view modes).
-            # Signed-in user mode is the default on enter — no Signed-in button.
-            # Self-view exit lives on this bar; top-of-screen mode reminder is separate.
+            # Enter leaves self-view cleared (no Exit). Exit self-view shows only when a
+            # mode is active (CSS); top-of-screen mode reminder is separate.
             tags$div(
               id = "ynow_sysadmin_control_panel",
               class = "ynow-sysadmin-control-panel ynow-sysadmin-unlocked-actions",
@@ -3565,6 +3565,15 @@ beta_rolling_section_ui <- function() {
                     ),
                     class = "btn-default btn-sm",
                     title = "Quick apply guest restrictions"
+                  ),
+                  actionButton(
+                    "ynow_pts_sysadmin_self_signed_in",
+                    label = tags$span(
+                      id = "ynow_pts_sysadmin_self_signed_in_label",
+                      "Signed-in user mode"
+                    ),
+                    class = "btn-default btn-sm",
+                    title = "Quick apply all-user member restrictions"
                   ),
                   actionButton(
                     "ynow_pts_sysadmin_self_omniscient",
@@ -5762,8 +5771,9 @@ ui <- dashboardPage(
         body.ynow-self-view .ynow-sysadmin-control-panel__exit-self {
           display: inline-block !important;
         }
-        /* Active self-view mode cue on the bar (signed-in = default, no button) */
+        /* Active self-view mode cue on the bar */
         body.ynow-self-view-guest #ynow_pts_sysadmin_self_guest,
+        body.ynow-self-view-signed-in #ynow_pts_sysadmin_self_signed_in,
         body.ynow-omniscient #ynow_pts_sysadmin_self_omniscient {
           box-shadow: inset 0 0 0 1px #888;
           background: #e8e8e8 !important;
@@ -12783,6 +12793,8 @@ ui <- dashboardPage(
             if (selfViewLab && s.pts_sysadmin_self_view_label) selfViewLab.textContent = s.pts_sysadmin_self_view_label;
             var selfGuestLab = document.getElementById('ynow_pts_sysadmin_self_guest_label');
             if (selfGuestLab && s.pts_sysadmin_self_guest) selfGuestLab.textContent = s.pts_sysadmin_self_guest;
+            var selfSignedLab = document.getElementById('ynow_pts_sysadmin_self_signed_in_label');
+            if (selfSignedLab && s.pts_sysadmin_self_signed_in) selfSignedLab.textContent = s.pts_sysadmin_self_signed_in;
             var selfOmniLab = document.getElementById('ynow_pts_sysadmin_self_omniscient_label');
             if (selfOmniLab && s.pts_sysadmin_self_omniscient) selfOmniLab.textContent = s.pts_sysadmin_self_omniscient;
             var selfExitLab = document.getElementById('ynow_pts_sysadmin_self_exit_label');

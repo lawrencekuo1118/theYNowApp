@@ -2675,17 +2675,12 @@ server <- function(input, output, session) {
     if (!nzchar(actor_name)) actor_name <- "ynow"
     ynow_pts_sysadmin_actor(actor_name)
     ynow_pts_sysadmin_on(TRUE)
+    # Enter = exited self-view: no guest / signed-in / omniscient overlay, no Exit chrome.
+    ynow_pts_view_as(NULL)
+    ynow_pts_self_view_mode(NULL)
     .ynow_sysadmin_push_mode()
-    # Default self-view after unlock: Signed-in user mode (not guest / not omniscient).
-    # Chrome first; ACL / single audit row / panel tick after flush (no double banner/tick).
-    .ynow_self_view_apply(
-      "signed_in",
-      notify = FALSE,
-      goto_home = FALSE,
-      log_ops = FALSE
-    )
-    # Stay on System admin portal — signed-in self-view sets ynow-authed (member chrome)
-    # which used to hide the Sys. Admin foot link and drop the active tab to Home.
+    .ynow_view_as_push_chrome(NULL)
+    .ynow_self_view_push_chrome(NULL)
     tryCatch({
       if (exists("updateTabItems", mode = "function")) {
         updateTabItems(session, "sidebar_tabs", "testing")
@@ -2694,10 +2689,13 @@ server <- function(input, output, session) {
     }, error = function(e) NULL)
     actor_for_log <- actor_name
     session$onFlushed(function() {
+      tryCatch(.ynow_push_access_locks(), error = function(e) NULL)
       .ynow_admin_ops_log(
         "sysadmin.enter",
-        paste0("actor=", actor_for_log, "; default_self_view=signed_in")
+        paste0("actor=", actor_for_log, "; self_view=none")
       )
+      ynow_pts_sysadmin_tick(isolate(ynow_pts_sysadmin_tick()) + 1L)
+      ynow_pts_panel_tick(isolate(ynow_pts_panel_tick()) + 1L)
     }, once = TRUE)
     showNotification(
       .lab("pts_sysadmin_login_ok", "System admin unlocked."),
@@ -2720,7 +2718,9 @@ server <- function(input, output, session) {
   observeEvent(input$ynow_pts_sysadmin_self_guest, {
     .ynow_self_view_apply("guest")
   }, ignoreInit = TRUE)
-  # Signed-in user mode is the default on sysadmin enter — no bar button.
+  observeEvent(input$ynow_pts_sysadmin_self_signed_in, {
+    .ynow_self_view_apply("signed_in")
+  }, ignoreInit = TRUE)
   observeEvent(input$ynow_pts_sysadmin_self_omniscient, {
     .ynow_self_view_apply("omniscient")
   }, ignoreInit = TRUE)
