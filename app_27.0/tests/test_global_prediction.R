@@ -393,30 +393,170 @@ if (file.exists(k_hist_path) && file.exists(p_hist_path)) {
       grepl("plotly", chart_html, ignore.case = TRUE)
   )
   check(
-    "single-market chart tags market id",
+    "single-outcome chart marks outcome count 1",
     grepl("ynow-gp-market-chart-widget", chart_html, fixed = TRUE) &&
-      grepl("KXRATECUT-26DEC31", chart_html, fixed = TRUE)
+      grepl('data-outcome-count="1"', chart_html, fixed = TRUE) &&
+      grepl("ynow-gp-single-outcome", chart_html, fixed = TRUE)
   )
-  # Two markets → two stacked charts; never one merged overlay plot.
+  # Distinct propositions → separate charts in a 3-up grid (not venue columns).
   combined <- rbind(ks2, ps2)
   split_n <- length(gp_split_series_by_market(combined))
   check("split series yields one frame per market", identical(split_n, 2L))
   stacked <- gp_build_theme_market_charts(combined, locale = "en")
   stacked_html <- paste(as.character(stacked), collapse = "\n")
+  n_prop_charts <- length(gregexpr("ynow-gp-prop-chart", stacked_html, fixed = TRUE)[[1]])
   check(
-    "theme stacks one chart per market",
-    grepl("ynow-gp-charts", stacked_html, fixed = TRUE) &&
-      length(gregexpr("ynow-gp-market-chart", stacked_html, fixed = TRUE)[[1]]) >= 2L
-  )
-  # gp_build_line_chart must not overlay both markets when given a combined frame.
-  one_only <- gp_build_line_chart(combined, locale = "en")
-  one_html <- paste(as.character(one_only), collapse = "\n")
-  check(
-    "build_line_chart keeps single market (no Kalshi+Poly overlay)",
-    grepl("KXRATECUT-26DEC31", one_html, fixed = TRUE) &&
-      !grepl('data-market-id="616902"', one_html, fixed = TRUE)
+    "distinct props → multi charts in 3-up grid",
+    grepl("ynow-gp-chart-grid", stacked_html, fixed = TRUE) &&
+      isTRUE(n_prop_charts >= 2L)
   )
 }
+
+# Same proposition / different answers → one multi-line chart.
+ts_base <- as.POSIXct("2026-01-01", tz = "UTC") + (0:4) * 86400
+mk_series <- function(venue, market_id, title, probs) {
+  data.frame(
+    venue = venue,
+    theme_id = "us_mega",
+    market_id = market_id,
+    title = title,
+    ts = ts_base,
+    yes_prob = probs,
+    stringsAsFactors = FALSE
+  )
+}
+apple_a <- mk_series(
+  "polymarket", "m_aapl_200", "Will Apple (AAPL) hit $200?",
+  c(0.40, 0.42, 0.45, 0.44, 0.48)
+)
+apple_b <- mk_series(
+  "polymarket", "m_aapl_250", "Will Apple (AAPL) hit $250?",
+  c(0.20, 0.22, 0.25, 0.24, 0.28)
+)
+apple_combo <- rbind(apple_a, apple_b)
+apple_meta <- data.frame(
+  venue = c("polymarket", "polymarket"),
+  theme_id = c("us_mega", "us_mega"),
+  market_id = c("m_aapl_200", "m_aapl_250"),
+  title = c("Will Apple (AAPL) hit $200?", "Will Apple (AAPL) hit $250?"),
+  yes_prob = c(0.48, 0.28),
+  url = c(
+    "https://polymarket.com/event/apple-price-targets",
+    "https://polymarket.com/event/apple-price-targets"
+  ),
+  series_ticker = c(NA_character_, NA_character_),
+  stringsAsFactors = FALSE
+)
+apple_meta$prop_stem <- vapply(apple_meta$title, gp_proposition_stem, character(1))
+apple_meta$prop_key <- vapply(seq_len(nrow(apple_meta)), function(i) {
+  gp_proposition_key(
+    apple_meta$title[[i]],
+    venue = apple_meta$venue[[i]],
+    market_id = apple_meta$market_id[[i]],
+    url = apple_meta$url[[i]]
+  )
+}, character(1))
+apple_meta$company_key <- vapply(apple_meta$title, gp_extract_company_key, character(1))
+apple_meta$prop_key <- gp_cluster_proposition_keys(apple_meta$prop_key, apple_meta$prop_stem)
+check(
+  "same poly event slug shares proposition key",
+  identical(apple_meta$prop_key[[1]], apple_meta$prop_key[[2]])
+)
+check("apple titles extract company key", identical(apple_meta$company_key[[1]], "apple"))
+prop_groups <- gp_group_series_by_proposition(apple_combo, apple_meta)
+check("same proposition groups into one multi-line bucket", identical(length(prop_groups), 1L))
+multi_chart <- gp_build_line_chart(
+  prop_groups[[1]]$series,
+  locale = "en",
+  prop_label = prop_groups[[1]]$prop_label
+)
+multi_html <- paste(as.character(multi_chart), collapse = "\n")
+check(
+  "multi-answer proposition → multi-line chart",
+  grepl("ynow-gp-multi-outcome", multi_html, fixed = TRUE) &&
+    grepl('data-outcome-count="2"', multi_html, fixed = TRUE) &&
+    grepl("ynow-gp-chart-legend", multi_html, fixed = TRUE)
+)
+grid_html <- paste(as.character(
+  gp_build_theme_market_charts(apple_combo, locale = "en", meta = apple_meta)
+), collapse = "\n")
+check(
+  "same prop grid has one chart cell",
+  grepl("ynow-gp-chart-grid", grid_html, fixed = TRUE) &&
+    length(gregexpr("ynow-gp-prop-chart", grid_html, fixed = TRUE)[[1]]) == 1L
+)
+# Distinct props under same company → company block with several charts.
+nvda_a <- mk_series(
+  "kalshi", "KXNVDA-EARN", "Will NVIDIA (NVDA) beat earnings?",
+  c(0.55, 0.56, 0.58, 0.57, 0.60)
+)
+nvda_b <- mk_series(
+  "polymarket", "m_nvda_price", "Will NVIDIA (NVDA) hit $200?",
+  c(0.30, 0.32, 0.31, 0.35, 0.34)
+)
+co_series <- rbind(apple_a, apple_b, nvda_a, nvda_b)
+co_pair <- list(
+  theme_id = "us_mega",
+  kalshi = data.frame(
+    venue = "kalshi", theme_id = "us_mega", market_id = "KXNVDA-EARN",
+    title = "Will NVIDIA (NVDA) beat earnings?", yes_prob = 0.60,
+    url = NA_character_, series_ticker = "KXNVDA",
+    stringsAsFactors = FALSE
+  ),
+  polymarket = data.frame(
+    venue = c("polymarket", "polymarket", "polymarket"),
+    theme_id = "us_mega",
+    market_id = c("m_aapl_200", "m_aapl_250", "m_nvda_price"),
+    title = c(
+      "Will Apple (AAPL) hit $200?",
+      "Will Apple (AAPL) hit $250?",
+      "Will NVIDIA (NVDA) hit $200?"
+    ),
+    yes_prob = c(0.48, 0.28, 0.34),
+    url = c(
+      "https://polymarket.com/event/apple-price-targets",
+      "https://polymarket.com/event/apple-price-targets",
+      "https://polymarket.com/event/nvidia-price"
+    ),
+    series_ticker = c(NA_character_, NA_character_, NA_character_),
+    stringsAsFactors = FALSE
+  )
+)
+co_meta <- gp_market_meta_from_pair(co_pair)
+co_blocks <- gp_build_company_chart_blocks(co_series, co_meta, locale = "en")
+co_html <- paste(as.character(co_blocks), collapse = "\n")
+check(
+  "company board groups by company blocks",
+  grepl("ynow-gp-company-blocks", co_html, fixed = TRUE) &&
+    grepl('data-company-key="apple"', co_html, fixed = TRUE) &&
+    grepl('data-company-key="nvidia"', co_html, fixed = TRUE)
+)
+# NVIDIA has two distinct props → ≥2 charts under that company path overall.
+check(
+  "company blocks still use 3-up prop grid",
+  grepl("ynow-gp-chart-grid", co_html, fixed = TRUE)
+)
+check(
+  "proposition key prefers poly event slug",
+  identical(
+    gp_proposition_key(
+      "Will Apple hit $200?",
+      venue = "polymarket",
+      market_id = "x",
+      url = "https://polymarket.com/event/apple-price-targets"
+    ),
+    "poly:apple-price-targets"
+  )
+)
+check(
+  "stem jaccard clusters similar wording",
+  {
+    keys <- c("stem:apple hit 200", "stem:apple hit 250")
+    stems <- c("apple hit 200", "apple hit 250")
+    clustered <- gp_cluster_proposition_keys(keys, stems, threshold = 0.4)
+    identical(clustered[[1]], clustered[[2]])
+  }
+)
 
 pair_empty <- list(
   theme_id = "fed_rates",
@@ -450,9 +590,20 @@ check("module avoids ggplotly on GP", !grepl("ggplotly(", mod_src, fixed = TRUE)
 check("module attaches theme series", grepl("gp_attach_theme_series(", mod_src, fixed = TRUE))
 check("theme UI mounts line chart class", grepl("ynow-gp-chart", mod_src, fixed = TRUE))
 check(
-  "theme UI stacks per-market charts",
+  "theme UI uses proposition / company chart builders",
   grepl("gp_build_theme_market_charts(", mod_src, fixed = TRUE) &&
-    grepl("ynow-gp-market-chart", mod_src, fixed = TRUE)
+    grepl("gp_build_company_chart_blocks(", mod_src, fixed = TRUE) &&
+    grepl("ynow-gp-chart-grid", mod_src, fixed = TRUE)
+)
+check(
+  "theme UI drops venue quote list chrome",
+  !grepl("ynow-gp-last-print-label", mod_src, fixed = TRUE) &&
+    !grepl(".gp_quote_cards(", mod_src, fixed = TRUE) &&
+    !grepl("ynow-gp-cols", mod_src, fixed = TRUE)
+)
+check(
+  "module CSS uses 3-column chart grid",
+  grepl("grid-template-columns: repeat(3,", mod_src, fixed = TRUE)
 )
 check(
   "history per venue allows many markets",

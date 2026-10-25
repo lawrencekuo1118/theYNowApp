@@ -855,6 +855,269 @@ gp_split_series_by_market <- function(series) {
   out[!vapply(out, is.null, logical(1))]
 }
 
+.GP_MULTI_LINE_COLORS <- c(
+  "#00D66C", "#2E5CFF", "#C17A2E", "#E11D48", "#7C3AED", "#0891B2", "#CA8A04", "#64748B"
+)
+
+.GP_PROP_STOP <- c(
+  "a", "an", "the", "in", "on", "of", "to", "for", "by", "be", "is", "are", "or", "and",
+  "will", "would", "happen", "happens", "happened", "yes", "no", "before", "after",
+  "than", "vs", "versus", "with", "from", "into", "over", "under"
+)
+
+.gp_poly_event_slug <- function(url) {
+  url <- .gp_chr(url)
+  if (!nzchar(url)) return("")
+  m <- regexpr("polymarket\\.com/event/([^/?#]+)", url, perl = TRUE, ignore.case = TRUE)
+  if (m[1] < 0L) return("")
+  starts <- attr(m, "capture.start")[1]
+  lens <- attr(m, "capture.length")[1]
+  if (!is.finite(starts) || starts < 1L) return("")
+  tolower(substr(url, starts, starts + lens - 1L))
+}
+
+.gp_title_tokens <- function(title) {
+  t <- tolower(.gp_chr(title))
+  t <- gsub("[^a-z0-9 ]+", " ", t)
+  t <- gsub("\\s+", " ", trimws(t))
+  if (!nzchar(t)) return(character(0))
+  toks <- unlist(strsplit(t, " ", fixed = TRUE), use.names = FALSE)
+  toks[nzchar(toks) & !(toks %in% .GP_PROP_STOP)]
+}
+
+#' Stem used to judge proposition similarity (answers stripped when possible).
+gp_proposition_stem <- function(title) {
+  toks <- .gp_title_tokens(title)
+  if (!length(toks)) return("")
+  # Drop a leading pure number (common multi-outcome "Will N …" answers).
+  if (length(toks) >= 2L && grepl("^[0-9]+$", toks[[1]])) toks <- toks[-1]
+  paste(toks, collapse = " ")
+}
+
+.gp_token_jaccard <- function(a, b) {
+  a <- unique(as.character(a))
+  b <- unique(as.character(b))
+  a <- a[nzchar(a)]
+  b <- b[nzchar(b)]
+  if (!length(a) || !length(b)) return(0)
+  length(intersect(a, b)) / length(union(a, b))
+}
+
+#' Stable proposition id: Polymarket event slug / Kalshi series, else title stem.
+gp_proposition_key <- function(title, venue = "", market_id = "",
+                               series_ticker = "", url = "") {
+  slug <- .gp_poly_event_slug(url)
+  if (nzchar(slug)) return(paste0("poly:", slug))
+  ser <- .gp_chr(series_ticker)
+  if (!nzchar(ser) && identical(.gp_chr(venue), "kalshi")) {
+    ser <- .gp_kalshi_series_ticker(market_id)
+  }
+  if (nzchar(ser)) return(paste0("kalshi:", tolower(ser)))
+  stem <- gp_proposition_stem(title)
+  if (nzchar(stem)) paste0("stem:", stem) else paste0("mkt:", .gp_chr(market_id, "x"))
+}
+
+#' Merge near-duplicate stems (same proposition, different wording / answers / venues).
+#' Concrete poly:/kalshi: ids with *identical* keys stay together; distinct event ids
+#' still merge when stems are similar enough (proposition similarity > venue brand).
+gp_cluster_proposition_keys <- function(keys, stems, threshold = 0.55) {
+  keys <- as.character(keys)
+  stems <- as.character(stems)
+  n <- length(keys)
+  if (n == 0L) return(character(0))
+  parent <- seq_len(n)
+  find <- function(i) {
+    while (!identical(parent[[i]], i)) {
+      parent[[i]] <<- parent[[parent[[i]]]]
+      i <- parent[[i]]
+    }
+    i
+  }
+  unite <- function(i, j) {
+    pi <- find(i)
+    pj <- find(j)
+    if (!identical(pi, pj)) parent[[max(pi, pj)]] <<- min(pi, pj)
+  }
+  # Exact key matches first (multi-outcome under same poly event / kalshi series).
+  for (i in seq_len(n)) {
+    for (j in seq_len(i - 1L)) {
+      if (identical(keys[[i]], keys[[j]]) && nzchar(keys[[i]])) unite(i, j)
+    }
+  }
+  # Stem Jaccard across venues / wording variants.
+  for (i in seq_len(n)) {
+    ti <- unique(.gp_title_tokens(stems[[i]]))
+    if (!length(ti)) next
+    for (j in seq_len(i - 1L)) {
+      tj <- unique(.gp_title_tokens(stems[[j]]))
+      if (.gp_token_jaccard(ti, tj) >= threshold) unite(i, j)
+    }
+  }
+  vapply(seq_len(n), function(i) {
+    p <- find(i)
+    paste0("cluster:", p, ":", keys[[p]])
+  }, character(1))
+}
+
+.GP_COMPANY_ALIASES <- list(
+  apple = c("apple", "aapl"),
+  microsoft = c("microsoft", "msft"),
+  nvidia = c("nvidia", "nvda"),
+  amazon = c("amazon", "amzn"),
+  alphabet = c("alphabet", "google", "googl"),
+  meta = c("meta", "facebook", "fb "),
+  tesla = c("tesla", "tsla"),
+  broadcom = c("broadcom", "avgo"),
+  amd = c(" amd", "amd ", "(amd)"),
+  intel = c("intel", "intc"),
+  tsmc = c("tsmc", "taiwan semiconductor", "2330"),
+  "hon hai" = c("hon hai", "foxconn", "2317"),
+  mediatek = c("mediatek", "2454"),
+  umc = c(" umc", "2303"),
+  netflix = c("netflix", "nflx"),
+  costco = c("costco", "cost")
+)
+
+#' Company / issuer key for Company-board blocks (NA if unknown).
+gp_extract_company_key <- function(title) {
+  raw <- .gp_chr(title)
+  t <- tolower(raw)
+  if (!nzchar(t)) return(NA_character_)
+  tick <- regmatches(raw, regexpr("\\(([A-Za-z]{1,5})\\)", raw))
+  if (length(tick) == 1L && nzchar(tick)) {
+    tk <- tolower(gsub("[()]", "", tick))
+    for (nm in names(.GP_COMPANY_ALIASES)) {
+      al <- .GP_COMPANY_ALIASES[[nm]]
+      if (tk %in% gsub("[^a-z0-9]", "", al) || any(grepl(tk, al, fixed = TRUE))) {
+        return(nm)
+      }
+    }
+    return(tk)
+  }
+  for (nm in names(.GP_COMPANY_ALIASES)) {
+    al <- .GP_COMPANY_ALIASES[[nm]]
+    if (any(vapply(al, function(k) grepl(k, t, fixed = TRUE), logical(1)))) {
+      return(nm)
+    }
+  }
+  NA_character_
+}
+
+gp_company_label <- function(key) {
+  key <- .gp_chr(key)
+  if (!nzchar(key)) return(.gp_label("gp_theme_co_other", "en"))
+  # Title-case simple keys
+  paste0(toupper(substr(key, 1L, 1L)), substring(key, 2L))
+}
+
+#' Build market meta rows (quotes) for proposition / company grouping.
+gp_market_meta_from_pair <- function(pair) {
+  rows <- list()
+  for (nm in c("kalshi", "polymarket")) {
+    q <- pair[[nm]]
+    if (!is.data.frame(q) || nrow(q) == 0L) next
+    for (i in seq_len(nrow(q))) {
+      rows[[length(rows) + 1L]] <- data.frame(
+        venue = .gp_chr(q$venue[[i]]),
+        theme_id = .gp_chr(pair$theme_id %||% q$theme_id[[i]]),
+        market_id = .gp_chr(q$market_id[[i]]),
+        title = .gp_chr(q$title[[i]]),
+        yes_prob = .gp_num01(q$yes_prob[[i]]),
+        url = if ("url" %in% names(q)) .gp_chr(q$url[[i]]) else NA_character_,
+        series_ticker = if ("series_ticker" %in% names(q)) .gp_chr(q$series_ticker[[i]]) else NA_character_,
+        stringsAsFactors = FALSE
+      )
+    }
+  }
+  if (!length(rows)) {
+    return(data.frame(
+      venue = character(0), theme_id = character(0), market_id = character(0),
+      title = character(0), yes_prob = numeric(0), url = character(0),
+      series_ticker = character(0), prop_key = character(0), prop_stem = character(0),
+      company_key = character(0), stringsAsFactors = FALSE
+    ))
+  }
+  meta <- do.call(rbind, rows)
+  meta$prop_stem <- vapply(meta$title, gp_proposition_stem, character(1))
+  meta$prop_key <- vapply(seq_len(nrow(meta)), function(i) {
+    gp_proposition_key(
+      meta$title[[i]],
+      venue = meta$venue[[i]],
+      market_id = meta$market_id[[i]],
+      series_ticker = meta$series_ticker[[i]],
+      url = meta$url[[i]]
+    )
+  }, character(1))
+  meta$company_key <- vapply(meta$title, gp_extract_company_key, character(1))
+  # Cluster stem-only keys for wording variants of the same proposition.
+  clustered <- gp_cluster_proposition_keys(meta$prop_key, meta$prop_stem)
+  meta$prop_key <- clustered
+  meta
+}
+
+#' Group series into proposition buckets (multi-answer → one bucket / multi-line chart).
+gp_group_series_by_proposition <- function(series, meta) {
+  parts <- gp_split_series_by_market(series)
+  if (!length(parts)) return(list())
+  if (!is.data.frame(meta) || nrow(meta) == 0L) {
+    # Fallback: each market is its own proposition.
+    out <- lapply(names(parts), function(k) {
+      list(
+        prop_key = k,
+        prop_label = .gp_chr(parts[[k]]$title[[1]], k),
+        company_key = NA_character_,
+        series = parts[[k]]
+      )
+    })
+    names(out) <- names(parts)
+    return(out)
+  }
+  key_of <- function(venue, market_id) {
+    hit <- meta[meta$venue == venue & meta$market_id == market_id, , drop = FALSE]
+    if (nrow(hit) < 1L) return(NA_character_)
+    .gp_chr(hit$prop_key[[1]])
+  }
+  label_of <- function(pk) {
+    hit <- meta[meta$prop_key == pk, , drop = FALSE]
+    if (nrow(hit) < 1L) return(pk)
+    # Prefer shortest title as proposition label when multi-outcome.
+    labs <- as.character(hit$title)
+    labs <- labs[nzchar(labs)]
+    if (!length(labs)) return(pk)
+    # Shared stem display
+    stem <- .gp_chr(hit$prop_stem[[1]])
+    if (nzchar(stem) && nrow(hit) > 1L) {
+      return(paste0(toupper(substr(stem, 1L, 1L)), substring(stem, 2L)))
+    }
+    labs[[which.min(nchar(labs))]]
+  }
+  company_of <- function(pk) {
+    hit <- meta[meta$prop_key == pk, , drop = FALSE]
+    cks <- unique(na.omit(as.character(hit$company_key)))
+    cks <- cks[nzchar(cks)]
+    if (!length(cks)) NA_character_ else cks[[1]]
+  }
+  buckets <- list()
+  for (k in names(parts)) {
+    sub <- parts[[k]]
+    venue <- .gp_chr(sub$venue[[1]])
+    mid <- .gp_chr(sub$market_id[[1]])
+    pk <- key_of(venue, mid)
+    if (!nzchar(pk) || is.na(pk)) pk <- k
+    if (is.null(buckets[[pk]])) {
+      buckets[[pk]] <- list(
+        prop_key = pk,
+        prop_label = label_of(pk),
+        company_key = company_of(pk),
+        series = sub
+      )
+    } else {
+      buckets[[pk]]$series <- rbind(buckets[[pk]]$series, sub)
+    }
+  }
+  buckets
+}
+
 #' Venue chart chrome cues (Kalshi / Polymarket live market pages).
 #' One series per chart — never invents points; style only.
 gp_venue_chart_theme <- function(venue = "kalshi") {
@@ -891,7 +1154,8 @@ gp_venue_chart_theme <- function(venue = "kalshi") {
   )
 }
 
-.gp_chart_header_ui <- function(title, last_pct, theme, locale = "en") {
+.gp_chart_header_ui <- function(title, last_pct, theme, locale = "en",
+                                legend = NULL) {
   pct_txt <- if (is.finite(last_pct)) sprintf("%.0f%%", round(last_pct)) else "—"
   htmltools::tags$div(
     class = "ynow-gp-chart-head",
@@ -902,26 +1166,33 @@ gp_venue_chart_theme <- function(venue = "kalshi") {
         style = sprintf("background:%s;", theme$line)
       ),
       htmltools::tags$span(class = "ynow-gp-chart-title", title),
-      htmltools::tags$span(
-        class = "ynow-gp-chart-chance",
-        style = sprintf("color:%s;", theme$line),
-        pct_txt
-      )
+      if (is.null(legend)) {
+        htmltools::tags$span(
+          class = "ynow-gp-chart-chance",
+          style = sprintf("color:%s;", theme$line),
+          pct_txt
+        )
+      }
     ),
     htmltools::tags$div(
       class = "ynow-gp-chart-head-meta",
       htmltools::tags$span(class = "ynow-gp-chart-chance-label", .gp_label("gp_chart_chance", locale)),
       htmltools::tags$span(class = "ynow-gp-chart-venue-mark", theme$venue_lab)
-    )
+    ),
+    if (!is.null(legend)) htmltools::tags$div(class = "ynow-gp-chart-legend", legend)
   )
 }
 
-#' Native plotly line chart for **one** prediction market (no ggplotly, no overlay).
-#' Visual chrome leans Kalshi / Polymarket live market pages (right Yes% axis,
-#' horizontal-only grid, brand line + soft fill, header Chance %).
-#' If `series` contains multiple markets, only the first market is plotted — callers
-#' should prefer `gp_build_theme_market_charts()` to stack one chart per market.
-gp_build_line_chart <- function(series, locale = "en", height = 240) {
+.gp_outcome_line_label <- function(title, max_n = 42L) {
+  lab <- .gp_chr(title)
+  if (nchar(lab) > max_n) paste0(substr(lab, 1L, max_n - 1L), "…") else lab
+}
+
+#' Native plotly chart for one proposition (one or many outcome lines).
+#' Same proposition / different answers → multiple lines on one plot.
+#' Venue chrome: right Yes% axis, muted H-grid. Soft fill only for single-line.
+gp_build_line_chart <- function(series, locale = "en", height = 240,
+                                prop_label = NULL) {
   locale <- .gp_chr(locale, "en")
   empty_node <- function() {
     htmltools::tags$p(
@@ -935,45 +1206,81 @@ gp_build_line_chart <- function(series, locale = "en", height = 240) {
   if (!requireNamespace("plotly", quietly = TRUE)) return(empty_node())
   keys <- .gp_series_market_keys(series)
   if (!length(keys)) return(empty_node())
-  # Single-market only: never consolidate Kalshi + Polymarket (or multi-market) overlays.
-  sub <- series[paste(series$venue, series$market_id, sep = "\t") == keys[[1]], , drop = FALSE]
-  sub <- sub[is.finite(sub$yes_prob) & !is.na(sub$ts), , drop = FALSE]
-  if (nrow(sub) < as.integer(.GP_HISTORY_MIN_POINTS)) return(empty_node())
-  sub <- sub[order(sub$ts), , drop = FALSE]
-  sub <- .gp_series_downsample(sub, max_n = 400L)
-  venue <- .gp_chr(sub$venue[[1]], "kalshi")
-  theme <- gp_venue_chart_theme(venue)
-  title <- .gp_chr(sub$title[[1]], sub$market_id[[1]])
-  lab <- title
-  if (nchar(lab) > 72L) lab <- paste0(substr(lab, 1L, 69L), "…")
-  y_pct <- 100 * as.numeric(sub$yes_prob)
-  last_pct <- utils::tail(y_pct[is.finite(y_pct)], 1)
-  if (!length(last_pct)) last_pct <- NA_real_
-  fig <- plotly::plot_ly(height = as.integer(height))
-  trace_args <- list(
-    p = fig,
-    x = sub$ts,
-    y = y_pct,
-    type = "scatter",
-    mode = "lines",
-    name = lab,
-    line = list(color = theme$line, width = theme$line_width, shape = "linear"),
-    hovertemplate = paste0(
-      "<b>", lab, "</b><br>",
-      "%{x|%b %d, %Y}<br>",
-      "Yes %{y:.1f}%",
-      "<extra></extra>"
-    ),
-    showlegend = FALSE
-  )
-  if (isTRUE(theme$use_fill)) {
-    trace_args$fill <- "tozeroy"
-    trace_args$fillcolor <- theme$fill
+  multi <- length(keys) > 1L
+  # Dominant venue for chrome watermark (mixed → Polymarket if present else Kalshi).
+  venues <- unique(as.character(series$venue))
+  venue <- if ("polymarket" %in% venues && "kalshi" %in% venues) {
+    "polymarket"
+  } else {
+    .gp_chr(venues[[1]], "kalshi")
   }
-  fig <- do.call(plotly::add_trace, trace_args)
+  theme <- gp_venue_chart_theme(venue)
+  # Multi-outcome refs are line-only; soft fill only when a single answer line.
+  use_fill <- isTRUE(theme$use_fill) && !multi
+  fig <- plotly::plot_ly(height = as.integer(height))
+  legend_nodes <- list()
+  n_traces <- 0L
+  last_lead <- NA_real_
+  for (i in seq_along(keys)) {
+    k <- keys[[i]]
+    sub <- series[paste(series$venue, series$market_id, sep = "\t") == k, , drop = FALSE]
+    sub <- sub[is.finite(sub$yes_prob) & !is.na(sub$ts), , drop = FALSE]
+    if (nrow(sub) < as.integer(.GP_HISTORY_MIN_POINTS)) next
+    sub <- sub[order(sub$ts), , drop = FALSE]
+    sub <- .gp_series_downsample(sub, max_n = 400L)
+    col <- if (multi) {
+      .GP_MULTI_LINE_COLORS[[((i - 1L) %% length(.GP_MULTI_LINE_COLORS)) + 1L]]
+    } else {
+      theme$line
+    }
+    lab <- .gp_outcome_line_label(sub$title[[1]])
+    y_pct <- 100 * as.numeric(sub$yes_prob)
+    last_pct <- utils::tail(y_pct[is.finite(y_pct)], 1)
+    if (!length(last_pct)) last_pct <- NA_real_
+    if (!is.finite(last_lead) && is.finite(last_pct)) last_lead <- last_pct
+    n_traces <- n_traces + 1L
+    trace_args <- list(
+      p = fig,
+      x = sub$ts,
+      y = y_pct,
+      type = "scatter",
+      mode = "lines",
+      name = lab,
+      line = list(color = col, width = if (multi) 2.0 else theme$line_width, shape = "linear"),
+      hovertemplate = paste0(
+        "<b>", lab, "</b><br>",
+        "%{x|%b %d, %Y}<br>",
+        "Yes %{y:.1f}%",
+        "<extra></extra>"
+      ),
+      showlegend = multi
+    )
+    if (isTRUE(use_fill)) {
+      trace_args$fill <- "tozeroy"
+      trace_args$fillcolor <- theme$fill
+    }
+    fig <- do.call(plotly::add_trace, trace_args)
+    legend_nodes[[length(legend_nodes) + 1L]] <- htmltools::tags$span(
+      class = "ynow-gp-chart-legend-item",
+      htmltools::tags$span(class = "ynow-gp-chart-dot", style = sprintf("background:%s;", col)),
+      htmltools::tags$span(class = "ynow-gp-chart-legend-lab", lab),
+      if (is.finite(last_pct)) {
+        htmltools::tags$span(
+          class = "ynow-gp-chart-legend-pct",
+          style = sprintf("color:%s;", col),
+          sprintf("%.0f%%", round(last_pct))
+        )
+      }
+    )
+  }
+  if (n_traces < 1L) return(empty_node())
+  title <- .gp_chr(prop_label)
+  if (!nzchar(title)) {
+    title <- .gp_chr(series$title[[1]], keys[[1]])
+  }
+  if (nchar(title) > 72L) title <- paste0(substr(title, 1L, 69L), "…")
   fig <- plotly::layout(
     fig,
-    # Title lives in HTML header (venue-page legend + Chance %), not plotly title.
     title = NULL,
     xaxis = list(
       title = "",
@@ -1026,34 +1333,120 @@ gp_build_line_chart <- function(series, locale = "en", height = 240) {
   htmltools::tags$div(
     class = paste(
       "ynow-gp-chart-widget ynow-gp-market-chart-widget",
-      paste0("ynow-gp-venue-", theme$venue)
+      paste0("ynow-gp-venue-", theme$venue),
+      if (multi) "ynow-gp-multi-outcome" else "ynow-gp-single-outcome"
     ),
     `data-venue` = theme$venue,
     `data-venue-style` = theme$venue,
-    `data-market-id` = .gp_chr(sub$market_id[[1]]),
-    .gp_chart_header_ui(lab, last_pct, theme, locale),
+    `data-outcome-count` = as.character(n_traces),
+    .gp_chart_header_ui(
+      title,
+      last_lead,
+      theme,
+      locale,
+      legend = if (multi) legend_nodes else NULL
+    ),
     fig
   )
 }
 
-#' One line chart per prediction market under a theme (stacked; never merged).
-gp_build_theme_market_charts <- function(series, locale = "en", height = 240) {
+#' Proposition charts in a 3-column (1:1:1) grid — ordered by proposition similarity.
+gp_build_proposition_chart_grid <- function(prop_groups, locale = "en", height = 220) {
   locale <- .gp_chr(locale, "en")
-  parts <- gp_split_series_by_market(series)
-  if (!length(parts)) {
+  if (!length(prop_groups)) {
     return(htmltools::tags$p(
       class = "ynow-gp-empty ynow-gp-chart-empty",
       .gp_label("gp_chart_empty", locale)
     ))
   }
-  charts <- lapply(names(parts), function(k) {
+  # Stable order: more outcomes first, then label.
+  ord <- order(
+    -vapply(prop_groups, function(g) length(.gp_series_market_keys(g$series)), integer(1)),
+    vapply(prop_groups, function(g) .gp_chr(g$prop_label), character(1)),
+    vapply(prop_groups, function(g) .gp_chr(g$prop_key), character(1))
+  )
+  prop_groups <- prop_groups[ord]
+  charts <- lapply(prop_groups, function(g) {
     htmltools::tags$div(
-      class = "ynow-gp-market-chart",
-      `data-market-key` = k,
-      gp_build_line_chart(parts[[k]], locale = locale, height = height)
+      class = "ynow-gp-market-chart ynow-gp-prop-chart",
+      `data-prop-key` = .gp_chr(g$prop_key),
+      `data-company-key` = .gp_chr(g$company_key, ""),
+      gp_build_line_chart(
+        g$series,
+        locale = locale,
+        height = height,
+        prop_label = g$prop_label
+      )
     )
   })
-  htmltools::tags$div(class = "ynow-gp-charts", charts)
+  htmltools::tags$div(class = "ynow-gp-chart-grid", charts)
+}
+
+#' Theme charts grouped by proposition (multi-answer → multi-line), 3-up grid.
+gp_build_theme_market_charts <- function(series, locale = "en", height = 220,
+                                         meta = NULL) {
+  locale <- .gp_chr(locale, "en")
+  if (is.null(meta)) {
+    # Minimal meta from series titles alone.
+    parts <- gp_split_series_by_market(series)
+    meta <- do.call(rbind, lapply(names(parts), function(k) {
+      sub <- parts[[k]]
+      data.frame(
+        venue = .gp_chr(sub$venue[[1]]),
+        theme_id = .gp_chr(sub$theme_id[[1]]),
+        market_id = .gp_chr(sub$market_id[[1]]),
+        title = .gp_chr(sub$title[[1]]),
+        yes_prob = NA_real_,
+        url = NA_character_,
+        series_ticker = NA_character_,
+        prop_stem = gp_proposition_stem(sub$title[[1]]),
+        prop_key = gp_proposition_key(sub$title[[1]], venue = sub$venue[[1]], market_id = sub$market_id[[1]]),
+        company_key = gp_extract_company_key(sub$title[[1]]),
+        stringsAsFactors = FALSE
+      )
+    }))
+    if (is.data.frame(meta) && nrow(meta) > 0L) {
+      meta$prop_key <- gp_cluster_proposition_keys(meta$prop_key, meta$prop_stem)
+    }
+  }
+  groups <- gp_group_series_by_proposition(series, meta)
+  gp_build_proposition_chart_grid(groups, locale = locale, height = height)
+}
+
+#' Company board: one block per company; charts by proposition under each.
+gp_build_company_chart_blocks <- function(series, meta, locale = "en", height = 220) {
+  locale <- .gp_chr(locale, "en")
+  groups <- gp_group_series_by_proposition(series, meta)
+  if (!length(groups)) {
+    return(htmltools::tags$p(
+      class = "ynow-gp-empty ynow-gp-chart-empty",
+      .gp_label("gp_chart_empty", locale)
+    ))
+  }
+  by_co <- list()
+  for (g in groups) {
+    ck <- .gp_chr(g$company_key)
+    if (!nzchar(ck) || is.na(ck)) ck <- "_other"
+    if (is.null(by_co[[ck]])) by_co[[ck]] <- list()
+    by_co[[ck]][[length(by_co[[ck]]) + 1L]] <- g
+  }
+  # Named companies first, then other.
+  nms <- names(by_co)
+  nms <- c(sort(setdiff(nms, "_other")), if ("_other" %in% nms) "_other" else character(0))
+  blocks <- lapply(nms, function(ck) {
+    label <- if (identical(ck, "_other")) {
+      .gp_label("gp_theme_co_other", locale)
+    } else {
+      gp_company_label(ck)
+    }
+    htmltools::tags$div(
+      class = "ynow-gp-company-block",
+      `data-company-key` = ck,
+      htmltools::tags$h4(class = "ynow-gp-company-title", label),
+      gp_build_proposition_chart_grid(by_co[[ck]], locale = locale, height = height)
+    )
+  })
+  htmltools::tags$div(class = "ynow-gp-company-blocks", blocks)
 }
 
 gp_fetch_kalshi_theme <- function(theme_id, series_tickers, limit = 3L, use_cache = TRUE,
@@ -1195,42 +1588,7 @@ gp_crowd_agreement <- function(kalshi_probs, polymarket_probs) {
   sprintf("%.0f%%", round(100 * p))
 }
 
-#' Compact last-print list (secondary). Primary board view is the line chart.
-.gp_quote_cards <- function(quotes, venue_color, locale = "en") {
-  if (!is.data.frame(quotes) || nrow(quotes) == 0L) {
-    return(htmltools::tags$p(
-      class = "ynow-gp-empty",
-      .gp_label("gp_empty_venue", locale)
-    ))
-  }
-  cards <- lapply(seq_len(nrow(quotes)), function(i) {
-    row <- quotes[i, , drop = FALSE]
-    title_node <- if (nzchar(.gp_chr(row$url[[1]]))) {
-      htmltools::tags$a(
-        href = row$url[[1]],
-        target = "_blank",
-        rel = "noopener noreferrer",
-        .gp_chr(row$title[[1]])
-      )
-    } else {
-      htmltools::tags$span(.gp_chr(row$title[[1]]))
-    }
-    htmltools::tags$div(
-      class = "ynow-gp-quote",
-      style = sprintf("border-left-color:%s;", venue_color),
-      htmltools::tags$div(class = "ynow-gp-quote-title", title_node),
-      htmltools::tags$div(
-        class = "ynow-gp-quote-prob",
-        style = sprintf("color:%s;", venue_color),
-        .gp_fmt_pct(row$yes_prob[[1]])
-      )
-    )
-  })
-  htmltools::tagList(cards)
-}
-
-.gp_theme_row_ui <- function(pair, locale = "en") {
-  colors <- gp_brand_colors()
+.gp_theme_row_ui <- function(pair, locale = "en", board = "economic") {
   agree <- pair$agreement %||% gp_crowd_agreement(
     if (is.data.frame(pair$kalshi)) pair$kalshi$yes_prob else numeric(0),
     if (is.data.frame(pair$polymarket)) pair$polymarket$yes_prob else numeric(0)
@@ -1252,9 +1610,18 @@ gp_crowd_agreement <- function(kalshi_probs, polymarket_probs) {
     ""
   }
   series <- if (is.data.frame(pair$series)) pair$series else .gp_empty_series()
+  meta <- gp_market_meta_from_pair(pair)
+  board <- gp_norm_board(board)
+  # Charts only — no redundant last-print / venue quote list under the grid.
+  chart_body <- if (identical(board, "company")) {
+    gp_build_company_chart_blocks(series, meta, locale = locale, height = 220)
+  } else {
+    gp_build_theme_market_charts(series, locale = locale, height = 220, meta = meta)
+  }
   htmltools::tags$div(
     class = "ynow-gp-theme",
     `data-theme` = .gp_chr(pair$theme_id),
+    `data-board` = board,
     htmltools::tags$div(
       class = "ynow-gp-theme-head",
       htmltools::tags$h4(
@@ -1272,40 +1639,7 @@ gp_crowd_agreement <- function(kalshi_probs, polymarket_probs) {
         if (nzchar(mean_txt)) htmltools::tags$span(class = "ynow-gp-agree-meta", mean_txt)
       )
     ),
-    # One plotly line chart per market (stacked under theme; never a merged overlay).
-    htmltools::tags$div(
-      class = "ynow-gp-chart",
-      gp_build_theme_market_charts(series, locale = locale, height = 220)
-    ),
-    htmltools::tags$p(
-      class = "ynow-gp-last-print-label",
-      .gp_label("gp_last_print", locale)
-    ),
-    htmltools::tags$div(
-      class = "ynow-gp-cols",
-      htmltools::tags$div(
-        class = "ynow-gp-col ynow-gp-col-kalshi",
-        htmltools::tags$div(
-          class = "ynow-gp-venue-label",
-          style = sprintf("color:%s;border-bottom-color:%s;", colors$kalshi, colors$kalshi),
-          "Kalshi"
-        ),
-        .gp_quote_cards(pair$kalshi, colors$kalshi, locale)
-      ),
-      htmltools::tags$div(
-        class = "ynow-gp-col ynow-gp-col-polymarket",
-        htmltools::tags$div(
-          class = "ynow-gp-venue-label",
-          style = sprintf(
-            "color:%s;border-bottom-color:%s;",
-            colors$polymarket,
-            colors$polymarket
-          ),
-          "Polymarket"
-        ),
-        .gp_quote_cards(pair$polymarket, colors$polymarket, locale)
-      )
-    )
+    htmltools::tags$div(class = "ynow-gp-chart", chart_body)
   )
 }
 
@@ -1789,17 +2123,17 @@ global_prediction_ui <- function(id, locale = "en") {
       .ynow-gp-agree-diverge { background: rgba(196, 86, 52, 0.16); }
       .ynow-gp-agree-mixed { background: rgba(193, 122, 46, 0.16); }
       .ynow-gp-agree-meta { color: #7a7368; }
-      .ynow-gp-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-      .ynow-gp-col { border-radius: 8px; padding: 8px 10px; }
-      .ynow-gp-col-kalshi { background: rgba(0, 214, 108, 0.12); }
-      .ynow-gp-col-polymarket { background: rgba(46, 92, 255, 0.10); }
-      @media (max-width: 767px) { .ynow-gp-cols { grid-template-columns: 1fr; } }
-      .ynow-gp-venue-label { font-size: 13px; font-weight: 700; letter-spacing: 0.02em;
-        border-bottom: 2px solid; padding-bottom: 4px; margin-bottom: 8px; }
       .ynow-gp-chart { margin: 0 0 10px; }
-      .ynow-gp-charts { display: flex; flex-direction: column; gap: 14px; }
-      .ynow-gp-market-chart { margin: 0; padding: 12px 12px 8px; background: #fff;
-        border: 1px solid #e5e7eb; border-radius: 8px; }
+      .ynow-gp-chart-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px; align-items: start; }
+      @media (max-width: 1100px) { .ynow-gp-chart-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+      @media (max-width: 767px) { .ynow-gp-chart-grid { grid-template-columns: 1fr; } }
+      .ynow-gp-company-blocks { display: flex; flex-direction: column; gap: 18px; }
+      .ynow-gp-company-block { margin: 0; }
+      .ynow-gp-company-title { margin: 0 0 8px; font-size: 14px; font-weight: 700;
+        color: #1c1915; letter-spacing: 0.01em; }
+      .ynow-gp-market-chart, .ynow-gp-prop-chart { margin: 0; padding: 12px 12px 8px;
+        background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; min-width: 0; }
       .ynow-gp-chart-widget { width: 100%%; }
       .ynow-gp-chart-head { display: flex; flex-wrap: wrap; align-items: baseline;
         justify-content: space-between; gap: 6px 12px; margin: 0 0 6px; }
@@ -1813,12 +2147,13 @@ global_prediction_ui <- function(id, locale = "en") {
       .ynow-gp-chart-head-meta { display: flex; gap: 10px; align-items: center;
         font-size: 11px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.04em; }
       .ynow-gp-chart-venue-mark { font-weight: 600; }
+      .ynow-gp-chart-legend { display: flex; flex-wrap: wrap; gap: 6px 12px; width: 100%%;
+        margin: 4px 0 2px; font-size: 11px; color: #4b5563; }
+      .ynow-gp-chart-legend-item { display: inline-flex; align-items: center; gap: 5px; }
+      .ynow-gp-chart-legend-lab { max-width: 14em; overflow: hidden; text-overflow: ellipsis;
+        white-space: nowrap; }
+      .ynow-gp-chart-legend-pct { font-weight: 700; font-variant-numeric: tabular-nums; }
       .ynow-gp-chart-empty { padding: 18px 8px; text-align: center; }
-      .ynow-gp-last-print-label { font-size: 11px; color: #7a7368; margin: 0 0 6px; }
-      .ynow-gp-quote { border-left: 3px solid; padding: 6px 0 8px 10px; margin-bottom: 8px; }
-      .ynow-gp-quote-title { font-size: 13px; line-height: 1.35; color: #1c1915; }
-      .ynow-gp-quote-title a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
-      .ynow-gp-quote-prob { font-size: 18px; font-weight: 700; margin: 4px 0; font-variant-numeric: tabular-nums; }
       .ynow-gp-empty { font-size: 12px; color: #7a7368; margin: 0; }
       .ynow-gp-dot-kalshi { background: %s; }
       .ynow-gp-dot-poly { background: %s; }
@@ -2072,7 +2407,9 @@ shiny::observeEvent(input$board_economic, {
           htmltools::tags$p(class = "ynow-gp-caution", .gp_label("gp_error_venue", locale))
         },
         htmltools::tags$p(class = "ynow-gp-caution", .gp_label("gp_attribution", locale)),
-        lapply(snap$pairs, function(pair) .gp_theme_row_ui(pair, locale))
+        lapply(snap$pairs, function(pair) {
+          .gp_theme_row_ui(pair, locale, board = snap$board %||% "economic")
+        })
       )
     })
   })
