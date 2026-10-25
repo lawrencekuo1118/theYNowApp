@@ -7,5 +7,5 @@ commit=7e3cfe0a7d76e15af7db6e4f5b81e6123643b86c
 short=7e3cfe0a
 message=chore: bump display version to v27.49
 captured_at=2026-10-25T16:20:00Z
-display_version=v27.49
+display_version=v27.50
 note=Canonical live line is app_27.0. Bundle 12737167: Board/CB tab no longer floats under collapsed Top 10 holders (#555).
