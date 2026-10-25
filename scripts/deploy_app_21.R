@@ -23,6 +23,10 @@
 #        bash scripts/record_github_release.sh v25.xx
 #      Soft-fail when gh / GH_TOKEN unavailable; never commit secrets.
 #      Set YNOW_SKIP_GITHUB_RELEASE=1 to skip the automatic post-deploy call.
+#   4) Immediately sync local physical backups (coding + OneDrive):
+#        bash scripts/post_release_local_sync.sh
+#      Mandatory when Mac CODING/ONEDRIVE paths exist; soft-skip + remind on Cloud.
+#      Set YNOW_SKIP_POST_RELEASE_SYNC=1 to skip (not for tip-ship on Mac).
 
 if (!requireNamespace("rsconnect", quietly = TRUE)) {
   install.packages("rsconnect", repos = "https://cloud.r-project.org")
@@ -269,5 +273,30 @@ if (nzchar(.release_ver) && !identical(Sys.getenv("YNOW_SKIP_GITHUB_RELEASE"), "
   }
 } else if (identical(Sys.getenv("YNOW_SKIP_GITHUB_RELEASE"), "1")) {
   message("YNOW_SKIP_GITHUB_RELEASE=1: skipped GitHub Release publish.")
+}
+
+# Immediate local physical backup sync (coding + OneDrive) after ship/release.
+# Soft-skips when Mac paths are absent; mandatory when they exist.
+if (!identical(Sys.getenv("YNOW_SKIP_POST_RELEASE_SYNC"), "1")) {
+  sync_script <- file.path(root, "scripts", "post_release_local_sync.sh")
+  if (file.exists(sync_script)) {
+    message("Post-release local sync (coding + OneDrive backup)…")
+    sync_status <- system2("bash", sync_script, stdout = TRUE, stderr = TRUE)
+    writeLines(sync_status)
+    sync_rc <- attr(sync_status, "status")
+    if (is.null(sync_rc)) sync_rc <- 0L
+    if (!identical(as.integer(sync_rc), 0L)) {
+      stop(
+        "post_release_local_sync.sh failed (exit ", sync_rc, "). ",
+        "On Mac tip-ship, local backup sync is required before closeout. ",
+        "Fix paths / re-run: bash scripts/post_release_local_sync.sh",
+        call. = FALSE
+      )
+    }
+  } else {
+    message("WARN: missing scripts/post_release_local_sync.sh — document local sync manually.")
+  }
+} else {
+  message("YNOW_SKIP_POST_RELEASE_SYNC=1: skipped post-release local sync.")
 }
 invisible(res)
