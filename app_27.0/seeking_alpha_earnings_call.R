@@ -246,7 +246,7 @@ ynow_sa_earnings_call_fetch_last_resort <- function(ticker, extract_fun = NULL) 
     nzchar(excerpt)
   if (!isTRUE(usable)) return(NULL)
 
-  list(
+  out <- list(
     ok = TRUE,
     status = "ok",
     source_id = "seeking_alpha_html",
@@ -264,6 +264,10 @@ ynow_sa_earnings_call_fetch_last_resort <- function(ticker, extract_fun = NULL) 
     excerpt = excerpt,
     sa_url = ynow_sa_earnings_call_index_url(tk)
   )
+  if (exists(".ynow_ec_finalize_with_keywords", mode = "function")) {
+    out <- .ynow_ec_finalize_with_keywords(out, text = parsed$text)
+  }
+  out
 }
 
 #' Whether a preferred-path result is usable enough to skip SA.

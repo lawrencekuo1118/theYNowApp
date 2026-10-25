@@ -453,7 +453,7 @@ ynow_us_earnings_call_ir_search_url <- function(ticker) {
   }
   if (is.null(body)) return(NULL)
   facts <- .ynow_us_ec_extract_facts(body$`_content`)
-  list(
+  out <- list(
     ok = TRUE,
     status = if (is.finite(facts$backlog) || is.finite(facts$bookings) ||
                  is.finite(facts$capex) || nzchar(facts$excerpt) ||
@@ -481,6 +481,10 @@ ynow_us_earnings_call_ir_search_url <- function(ticker) {
     excerpt = facts$excerpt,
     api_endpoint_host = tryCatch(httr::parse_url(used)$hostname, error = function(e) "financialmodelingprep.com")
   )
+  if (exists(".ynow_ec_finalize_with_keywords", mode = "function")) {
+    out <- .ynow_ec_finalize_with_keywords(out, text = body$`_content`)
+  }
+  out
 }
 
 .ynow_us_ec_from_sec_8k <- function(ticker) {
@@ -550,7 +554,7 @@ ynow_us_earnings_call_ir_search_url <- function(ticker) {
     text <- substr(text, 1L, 24000L)
   }
   facts <- .ynow_us_ec_extract_facts(text)
-  list(
+  out <- list(
     ok = TRUE,
     status = if (is.finite(facts$backlog) || is.finite(facts$bookings) ||
                  is.finite(facts$capex) || nzchar(facts$excerpt) ||
@@ -580,6 +584,10 @@ ynow_us_earnings_call_ir_search_url <- function(ticker) {
     order_lines = facts$order_lines %||% list(),
     excerpt = facts$excerpt
   )
+  if (exists(".ynow_ec_finalize_with_keywords", mode = "function")) {
+    out <- .ynow_ec_finalize_with_keywords(out, text = text)
+  }
+  out
 }
 
 .ynow_us_ec_empty <- function(ticker, reason = "undisclosed") {
@@ -650,6 +658,36 @@ ynow_us_earnings_call_fetch <- function(ticker) {
 }
 
 #' Shape for payload$order_disclosures$earnings_call → 業務拆解 order research.
+.ynow_ec_kw_disclosure_fields <- function(fetched) {
+  list(
+    keyword_tone_score = {
+      v <- suppressWarnings(as.integer(fetched$keyword_tone_score %||% NA_integer_)[1])
+      if (is.finite(v)) v else NA_integer_
+    },
+    keyword_guidance_update = .ynow_us_ec_chr(fetched$keyword_guidance_update),
+    keyword_top_positives = {
+      v <- as.character(unlist(fetched$keyword_top_positives %||% character(0)))
+      trimws(v[nzchar(trimws(v))])
+    },
+    keyword_top_risks = {
+      v <- as.character(unlist(fetched$keyword_top_risks %||% character(0)))
+      trimws(v[nzchar(trimws(v))])
+    },
+    keyword_trap_flags = {
+      v <- as.character(unlist(fetched$keyword_trap_flags %||% character(0)))
+      trimws(v[nzchar(trimws(v))])
+    },
+    keyword_bridging_notes = {
+      v <- as.character(unlist(fetched$keyword_bridging_notes %||% character(0)))
+      trimws(v[nzchar(trimws(v))])
+    },
+    keyword_capex_notes = {
+      v <- as.character(unlist(fetched$keyword_capex_notes %||% character(0)))
+      trimws(v[nzchar(trimws(v))])
+    }
+  )
+}
+
 ynow_us_earnings_call_to_disclosure <- function(fetched) {
   if (!is.list(fetched)) return(list())
   themes <- fetched$themes %||% character(0)
@@ -673,5 +711,5 @@ ynow_us_earnings_call_to_disclosure <- function(fetched) {
     sec_url = .ynow_us_ec_chr(fetched$sec_url),
     ir_url = .ynow_us_ec_chr(fetched$ir_url)
   )
-  out
+  c(out, .ynow_ec_kw_disclosure_fields(fetched))
 }

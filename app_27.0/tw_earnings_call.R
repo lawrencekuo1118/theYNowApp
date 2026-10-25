@@ -126,7 +126,37 @@ ynow_tw_earnings_call_alphamemo_search_url <- function(ticker) {
     pdf_bytes = {
       b1 <- suppressWarnings(as.integer(primary$pdf_bytes %||% NA_integer_)[1])
       if (is.finite(b1) && b1 > 0L) b1 else suppressWarnings(as.integer(secondary$pdf_bytes %||% NA_integer_)[1])
-    }
+    },
+    # Keyword framework: prefer primary (FinmoConf deck) when present.
+    keyword_analysis = primary$keyword_analysis %||% secondary$keyword_analysis,
+    keyword_tone_score = {
+      v1 <- suppressWarnings(as.integer(primary$keyword_tone_score %||% NA_integer_)[1])
+      if (is.finite(v1)) v1 else suppressWarnings(as.integer(secondary$keyword_tone_score %||% NA_integer_)[1])
+    },
+    keyword_guidance_update = {
+      g1 <- .ynow_tw_ec_chr(primary$keyword_guidance_update)
+      if (nzchar(g1)) g1 else .ynow_tw_ec_chr(secondary$keyword_guidance_update)
+    },
+    keyword_top_positives = unique(c(
+      .ynow_tw_ec_chr_vec(primary$keyword_top_positives),
+      .ynow_tw_ec_chr_vec(secondary$keyword_top_positives)
+    )),
+    keyword_top_risks = unique(c(
+      .ynow_tw_ec_chr_vec(primary$keyword_top_risks),
+      .ynow_tw_ec_chr_vec(secondary$keyword_top_risks)
+    )),
+    keyword_trap_flags = unique(c(
+      .ynow_tw_ec_chr_vec(primary$keyword_trap_flags),
+      .ynow_tw_ec_chr_vec(secondary$keyword_trap_flags)
+    )),
+    keyword_bridging_notes = unique(c(
+      .ynow_tw_ec_chr_vec(primary$keyword_bridging_notes),
+      .ynow_tw_ec_chr_vec(secondary$keyword_bridging_notes)
+    )),
+    keyword_capex_notes = unique(c(
+      .ynow_tw_ec_chr_vec(primary$keyword_capex_notes),
+      .ynow_tw_ec_chr_vec(secondary$keyword_capex_notes)
+    ))
   )
 }
 
@@ -220,7 +250,7 @@ ynow_tw_earnings_call_to_disclosure <- function(fetched) {
   if (!is.list(fetched)) return(list())
   themes <- fetched$themes %||% character(0)
   if (!is.character(themes)) themes <- as.character(unlist(themes))
-  list(
+  out <- list(
     backlog = .ynow_tw_ec_num(fetched$backlog),
     bookings = .ynow_tw_ec_num(fetched$bookings),
     capex = .ynow_tw_ec_num(fetched$capex),
@@ -246,6 +276,17 @@ ynow_tw_earnings_call_to_disclosure <- function(fetched) {
     finmoconf_zh_url = .ynow_tw_ec_chr(fetched$finmoconf_zh_url),
     finmoconf_en_url = .ynow_tw_ec_chr(fetched$finmoconf_en_url),
     sa_url = .ynow_tw_ec_chr(fetched$sa_url),
-    empty_reason = .ynow_tw_ec_chr(fetched$empty_reason, "human_browsable_only")
+    empty_reason = .ynow_tw_ec_chr(fetched$empty_reason, "human_browsable_only"),
+    keyword_tone_score = {
+      v <- suppressWarnings(as.integer(fetched$keyword_tone_score %||% NA_integer_)[1])
+      if (is.finite(v)) v else NA_integer_
+    },
+    keyword_guidance_update = .ynow_tw_ec_chr(fetched$keyword_guidance_update),
+    keyword_top_positives = .ynow_tw_ec_chr_vec(fetched$keyword_top_positives),
+    keyword_top_risks = .ynow_tw_ec_chr_vec(fetched$keyword_top_risks),
+    keyword_trap_flags = .ynow_tw_ec_chr_vec(fetched$keyword_trap_flags),
+    keyword_bridging_notes = .ynow_tw_ec_chr_vec(fetched$keyword_bridging_notes),
+    keyword_capex_notes = .ynow_tw_ec_chr_vec(fetched$keyword_capex_notes)
   )
+  out
 }

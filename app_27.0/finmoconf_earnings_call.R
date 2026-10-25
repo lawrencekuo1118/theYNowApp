@@ -317,6 +317,9 @@ ynow_finmoconf_earnings_call_fetch <- function(ticker, extract_fun = NULL) {
     finmoconf_en_url = .ynow_finmo_ec_chr(raw$en_url),
     pdf_bytes = suppressWarnings(as.integer(raw$pdf_bytes %||% 0L))[1]
   )
+  if (exists(".ynow_ec_finalize_with_keywords", mode = "function")) {
+    out <- .ynow_ec_finalize_with_keywords(out, text = text)
+  }
   if (isTRUE(use_cache)) .ynow_finmo_ec_cache_set(cache_key, out)
   out
 }

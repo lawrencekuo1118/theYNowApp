@@ -213,7 +213,7 @@ ynow_fugle_earnings_call_fetch <- function(ticker, extract_fun = NULL) {
     nzchar(excerpt)
   if (!isTRUE(usable)) return(NULL)
 
-  list(
+  out <- list(
     ok = TRUE,
     status = "ok",
     source_id = "fugle_earnings_memo",
@@ -231,4 +231,8 @@ ynow_fugle_earnings_call_fetch <- function(ticker, extract_fun = NULL) {
     excerpt = excerpt,
     fugle_url = topic_url
   )
+  if (exists(".ynow_ec_finalize_with_keywords", mode = "function")) {
+    out <- .ynow_ec_finalize_with_keywords(out, text = text)
+  }
+  out
 }
