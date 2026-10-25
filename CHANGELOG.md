@@ -1,3 +1,12 @@
+## [v27.34] — 2026-10-25
+
+### Fixed
+- Sidebar default order: **Global Prediction** sits immediately under **Asset Transmission Root**, above the Blue Chip dashed separator (same main section — not the About/Settings foot). Heal missing / legacy end-slot GP in saved orders.
+
+### Notes
+- en-US: Labels unchanged (`Global Prediction`). Explicit mid-menu GP placements kept.
+- zh-TW：全球預測預設緊接資產傳導根系之下、虛線區隔線以上；既有儲存順序缺項／舊版尾端插槽會癒合到 ATX 之後。
+
 ## [v27.33] — 2026-10-25
 
 ### Fixed

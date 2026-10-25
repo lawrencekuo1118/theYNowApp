@@ -8439,7 +8439,7 @@ ui <- dashboardPage(
         .ynow-bblab-split li { margin-bottom: 4px; }
         /* ---- Full mode: short white dashed separators between sidebar groups ----
            (no line under Home / above About)
-           Asset Transmission | Blue Chip
+           Global Prediction | Blue Chip  (ATX + GP share the section above this dash)
            YNOW | Model Dashboard  (Smart Analysis is hidden in Full)
            Hist. FV Validation | Quant Backtest Lab
            Inset via ::before so the dash is shorter than full sidebar width.

@@ -47,12 +47,59 @@ check(
   }
 )
 check(
+  "default order puts global_prediction right after asset_transmission",
+  {
+    d <- ynow_sidebar_default_order()
+    atx <- match("asset_transmission", d)
+    gp <- match("global_prediction", d)
+    !is.na(atx) && !is.na(gp) && identical(as.integer(gp), as.integer(atx) + 1L) &&
+      which(d == "global_prediction") < which(d == "bluechip") &&
+      which(d == "global_prediction") < which(d == "about")
+  }
+)
+check(
   "normalize drops junk + fills defaults",
   {
     got <- ynow_prefs_normalize_sidebar_order(c("about", "nope", "home", "home"))
     identical(got[1:2], c("about", "home")) &&
       all(ynow_sidebar_default_order() %in% got) &&
       !("nope" %in% got)
+  }
+)
+check(
+  "normalize heals missing GP after ATX (not foot/end)",
+  {
+    got <- ynow_prefs_normalize_sidebar_order(
+      c("home", "macro_market", "asset_transmission", "bluechip", "about")
+    )
+    atx <- match("asset_transmission", got)
+    gp <- match("global_prediction", got)
+    !is.na(atx) && !is.na(gp) && identical(as.integer(gp), as.integer(atx) + 1L) &&
+      which(got == "global_prediction") < which(got == "about") &&
+      which(got == "global_prediction") < which(got == "settings")
+  }
+)
+check(
+  "normalize heals legacy end-slot GP after ATX",
+  {
+    legacy <- c(
+      "home", "macro_market", "asset_transmission", "bluechip", "about",
+      "settings", "account_admin", "global_prediction"
+    )
+    got <- ynow_prefs_normalize_sidebar_order(legacy)
+    atx <- match("asset_transmission", got)
+    gp <- match("global_prediction", got)
+    !is.na(atx) && !is.na(gp) && identical(as.integer(gp), as.integer(atx) + 1L)
+  }
+)
+check(
+  "normalize keeps explicit mid-menu GP placement",
+  {
+    custom <- c(
+      "home", "global_prediction", "macro_market", "asset_transmission", "bluechip"
+    )
+    got <- ynow_prefs_normalize_sidebar_order(custom)
+    identical(got[1:5], custom)
   }
 )
 

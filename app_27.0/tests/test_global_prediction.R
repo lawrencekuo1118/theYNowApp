@@ -175,6 +175,16 @@ auth <- paste(readLines(file.path(app_dir, "auth_account.R"), warn = FALSE, enco
 
 check("global.R sources module", grepl("global_prediction_module.R", glob, fixed = TRUE))
 check("standalone sidebar tab", grepl('tabName = "global_prediction"', ui, fixed = TRUE))
+check(
+  "sidebar markup: ATX then GP then Blue Chip (above dashed separator)",
+  {
+    m_atx <- regexpr('tabName = "asset_transmission"', ui, fixed = TRUE)
+    m_gp <- regexpr('tabName = "global_prediction"', ui, fixed = TRUE)
+    m_bc <- regexpr('tabName = "bluechip"', ui, fixed = TRUE)
+    m_atx[1] > 0 && m_gp[1] > 0 && m_bc[1] > 0 &&
+      m_atx[1] < m_gp[1] && m_gp[1] < m_bc[1]
+  }
+)
 check("lazy host for GP page", grepl('ynow_lazy_host_global_prediction', ui, fixed = TRUE))
 check("page UI mounts global_prediction_ui", grepl("global_prediction_ui(", ui, fixed = TRUE))
 check("ATX no longer hosts GP subtab", !grepl("ynow_atx_tab_global_prediction", ui, fixed = TRUE))

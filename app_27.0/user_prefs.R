@@ -150,10 +150,12 @@ ynow_prefs_normalize_sidebar_tabs <- function(tabs, max_n = .YNOW_PINNED_SIDEBAR
 
 #' Default top-level sidebar order ids (leaves + category treeviews).
 #' Category parents without a tabName use synthetic ids (`cat_asset`, …).
+#' Global Prediction sits immediately under Asset Transmission Root (above the
+#' Blue Chip dashed separator / main section — not the About/Settings foot).
 ynow_sidebar_default_order <- function() {
   c(
-    "home", "macro_market", "asset_transmission", "bluechip", "dashboard",
-    "company_advance", "sensitivity", "smart_analysis", "get_started",
+    "home", "macro_market", "asset_transmission", "global_prediction", "bluechip",
+    "dashboard", "company_advance", "sensitivity", "smart_analysis", "get_started",
     "cat_asset", "cat_income", "cat_relative", "cat_meta",
     "hfv", "lab_notes", "decision_checklist", "mos_assumptions", "price_alerts", "about",
     "settings", "account_admin"
@@ -165,7 +167,30 @@ ynow_sidebar_orderable_ids <- function() {
   ynow_sidebar_default_order()
 }
 
+#' Place `global_prediction` immediately after `asset_transmission` (or append).
+ynow_prefs_place_gp_after_atx <- function(ids) {
+  ids <- as.character(ids %||% character(0))
+  ids <- ids[nzchar(ids) & !is.na(ids)]
+  ids <- ids[ids != "global_prediction"]
+  atx <- match("asset_transmission", ids)
+  if (is.na(atx)) {
+    return(c(ids, "global_prediction"))
+  }
+  c(ids[seq_len(atx)], "global_prediction", ids[seq_along(ids) > atx])
+}
+
+#' True when GP is present and sits immediately after ATX.
+ynow_prefs_gp_after_atx <- function(ids) {
+  ids <- as.character(ids %||% character(0))
+  atx <- match("asset_transmission", ids)
+  gp <- match("global_prediction", ids)
+  !is.na(atx) && !is.na(gp) && identical(as.integer(gp), as.integer(atx) + 1L)
+}
+
 #' Normalize a custom sidebar order: known ids only, unique, defaults fill gaps.
+#' When Global Prediction is missing from a saved order (or still sitting in the
+#' legacy fill-at-end / foot slot), heal it to right after Asset Transmission.
+#' If the user already saved an explicit GP position elsewhere, keep it.
 ynow_prefs_normalize_sidebar_order <- function(ids, fill_defaults = TRUE) {
   allow <- ynow_sidebar_orderable_ids()
   raw <- as.character(ids %||% character(0))
@@ -173,8 +198,26 @@ ynow_prefs_normalize_sidebar_order <- function(ids, fill_defaults = TRUE) {
   raw <- raw[nzchar(raw) & !is.na(raw)]
   raw <- raw[raw %in% allow]
   raw <- raw[!duplicated(raw)]
-  if (!isTRUE(fill_defaults)) return(raw)
-  c(raw, setdiff(ynow_sidebar_default_order(), raw))
+  had_gp <- "global_prediction" %in% raw
+  if (!isTRUE(fill_defaults)) {
+    if (!had_gp) return(raw)
+    # Explicit GP present but still in the legacy foot/end slot → heal once.
+    if (!ynow_prefs_gp_after_atx(raw) &&
+          identical(raw[[length(raw)]], "global_prediction")) {
+      return(ynow_prefs_place_gp_after_atx(raw))
+    }
+    return(raw)
+  }
+  out <- c(raw, setdiff(ynow_sidebar_default_order(), raw))
+  if (!had_gp) {
+    out <- ynow_prefs_place_gp_after_atx(out)
+  } else if (!ynow_prefs_gp_after_atx(out) &&
+               identical(raw[[length(raw)]], "global_prediction")) {
+    # Saved order ended with GP (old unused-append / fill-at-end) — not a
+    # deliberate mid-menu placement. Snap under ATX.
+    out <- ynow_prefs_place_gp_after_atx(out)
+  }
+  out
 }
 
 .ynow_prefs_schema_cache <- new.env(parent = emptyenv())
