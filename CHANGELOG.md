@@ -1,3 +1,12 @@
+## [v27.33] — 2026-10-25
+
+### Fixed
+- In-session sign-in stay-on-tab: after password, OAuth, or gate Sign-in success, remain on the current sidebar/foot tab — do not jump to Home / Model Dashboard. Durable last-tab restore stays for browser resume only.
+
+### Notes
+- en-US: `chrome_tab` wins over durable `last_ui_surface` on modal/OAuth login; resume path unchanged.
+- zh-TW：在任一頁登入成功後留在該分頁（含鎖定閘的 Sign-in）；跨瀏覽器再開仍還原上次畫面。
+
 ## [v27.32] — 2026-10-25
 
 ### Added
