@@ -88,7 +88,10 @@ ynow_sidebar_guest_lock_tabs <- function() {
     )
     if (length(tabs)) return(tabs)
   }
-  c("lab_notes", "decision_checklist", "mos_assumptions", "price_alerts", "asset_transmission")
+  c(
+    "lab_notes", "decision_checklist", "mos_assumptions", "price_alerts",
+    "asset_transmission", "global_prediction"
+  )
 }
 
 #' Full-only model / advance sidebar tabs (unlocked on Full, omitted in Lite).
@@ -2360,9 +2363,10 @@ ynow_gate_demo_features <- function() {
   c("lab", "checklist", "alerts", "pdf", "atx")
 }
 
-#' Product ids that may render Sign-in promo chrome (same allowlist as demos).
+#' Product ids that may render Sign-in promo chrome.
+#' Global Prediction ships promo copy before a dedicated demo clip exists.
 ynow_gate_promo_features <- function() {
-  ynow_gate_demo_features()
+  unique(c(ynow_gate_demo_features(), "gp"))
 }
 
 #' TRUE when this gate may render 推廣登入 / Sign-in promo extras.
@@ -2408,12 +2412,12 @@ ynow_gate_promo_keys <- function(feature) {
 }
 
 #' Layout for a gate feature.
-#' Page gates (Lab, Checklist, Alerts, ATX) use the Checklist shell.
+#' Page gates (Lab, Checklist, Alerts, ATX, Global Prediction) use the Checklist shell.
 #' Account, PDF, snap_defaults, and inner_lock stay stacked callouts.
 #' @return list(surface_overlay, split_promo_demo)
 ynow_gate_layout <- function(feature) {
   feature <- as.character(feature %||% "")[1]
-  page <- feature %in% c("lab", "checklist", "alerts", "atx")
+  page <- feature %in% c("lab", "checklist", "alerts", "atx", "gp")
   list(surface_overlay = page, split_promo_demo = page)
 }
 

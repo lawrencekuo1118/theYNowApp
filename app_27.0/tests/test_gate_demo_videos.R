@@ -34,12 +34,14 @@ check <- function(label, cond) {
 source(file.path(app_dir, "auth_account.R"), local = TRUE, encoding = "UTF-8")
 feats <- ynow_gate_features()
 demo_feats <- ynow_gate_demo_features()
-non_demo <- setdiff(feats, demo_feats)
+promo_feats <- ynow_gate_promo_features()
+# Hide-vs-show only (no promo page). Promo-without-demo (GP) is not in this set.
+non_promo <- setdiff(feats, promo_feats)
 check(
-  "gate features include lab..atx",
+  "gate features include lab..atx + global_prediction",
   identical(
     sort(feats),
-    sort(c("lab", "checklist", "alerts", "account", "pdf", "snap_defaults", "inner_lock", "atx"))
+    sort(c("lab", "checklist", "alerts", "account", "pdf", "snap_defaults", "inner_lock", "atx", "gp"))
   )
 )
 check(
@@ -50,8 +52,20 @@ check(
   )
 )
 check(
-  "non-product gates include account + snap_defaults + inner_lock",
-  identical(sort(non_demo), sort(c("account", "snap_defaults", "inner_lock")))
+  "promo features include demos plus gp",
+  identical(
+    sort(promo_feats),
+    sort(c("lab", "checklist", "alerts", "pdf", "atx", "gp"))
+  )
+)
+check(
+  "non-promo gates include account + snap_defaults + inner_lock",
+  identical(sort(non_promo), sort(c("account", "snap_defaults", "inner_lock")))
+)
+check(
+  "gp has promo without demo clip yet",
+  isTRUE(ynow_gate_has_promo("gp")) &&
+    isFALSE(ynow_gate_has_demo("gp"))
 )
 check(
   "account has no promo page",
@@ -91,7 +105,7 @@ for (f in demo_feats) {
   check(paste0(f, " has_demo TRUE"), isTRUE(ynow_gate_has_demo(f)))
 }
 
-for (f in non_demo) {
+for (f in non_promo) {
   mp4 <- file.path(demos_dir, paste0(f, ".mp4"))
   webm <- file.path(demos_dir, paste0(f, ".webm"))
   check(paste0(f, " mp4 absent"), !file.exists(mp4))

@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# Global Prediction (ATX child): registry, parsers, crowd agreement, brand colors, UI wiring.
+# Global Prediction (standalone): boards, parsers, crowd agreement, brand colors, UI wiring.
 # Run: cd app_27.0/tests && YNOW_DEBUG_SKIP_PY=1 Rscript test_global_prediction.R
 args <- commandArgs(trailingOnly = FALSE)
 file_arg <- sub("^--file=", "", args[grep("^--file=", args)])
@@ -32,32 +32,57 @@ sys.source(
   keep.source = FALSE
 )
 
+check(
+  "board ids Economic/Finance/Company",
+  identical(gp_board_ids(), c("economic", "finance", "company"))
+)
+check("norm board aliases", identical(gp_norm_board("econ"), "economic") &&
+        identical(gp_norm_board("Financials"), "finance") &&
+        identical(gp_norm_board("stocks"), "company"))
+
+eco <- gp_board_sources("economic")
+fin <- gp_board_sources("finance")
+co <- gp_board_sources("company")
+check("economic monthly+ freq", all(c("monthly", "annual") %in% eco$kalshi_freq))
+check("finance monthly+ freq", all(c("monthly", "annual") %in% fin$kalshi_freq))
+check("economic kalshi Economics", "Economics" %in% eco$kalshi_categories)
+check("economic poly economy+commodities", all(c("economy", "commodities") %in% eco$poly_tags))
+check("finance kalshi Financials", "Financials" %in% fin$kalshi_categories)
+check(
+  "finance poly monthly+indices",
+  any(c("monthly", "indices", "indicies") %in% fin$poly_tags)
+)
+check("company filter on", isTRUE(co$company_filter))
+check("company poly tech/stocks/earnings", all(c("tech", "stocks", "earnings") %in% co$poly_tags))
+check(
+  "economic themes cover Fed→trade",
+  all(c(
+    "fed_rates", "inflation_cpi", "growth_jobs", "recession_labor",
+    "housing", "energy_commod", "trade_policy", "econ_other"
+  ) %in% vapply(eco$theme_buckets, function(b) b$id, character(1)))
+)
+check(
+  "finance themes cover rates→ipo",
+  all(c(
+    "rates_credit", "equity_index", "vol_credit", "fx_commod_fin",
+    "ipo_ma", "fin_other"
+  ) %in% vapply(fin$theme_buckets, function(b) b$id, character(1)))
+)
+check(
+  "company themes cover mega/semis/TW/earnings",
+  all(c(
+    "us_mega", "semis", "tw_listed", "earnings", "co_other"
+  ) %in% vapply(co$theme_buckets, function(b) b$id, character(1)))
+)
+
 reg <- gp_theme_registry("US")
-check("US registry has 5 themes", nrow(reg) == 5L)
-check(
-  "US registry order macro→index",
-  identical(
-    as.character(reg$theme_id),
-    c("fed_rates", "inflation_cpi", "recession", "treasury_yields", "equities_index")
-  )
-)
-check("US breadth tiers nondecreasing", !is.unsorted(as.integer(reg$breadth_tier)))
-reg_tw <- gp_theme_registry("TW")
-check("TW registry has 5 themes", nrow(reg_tw) == 5L)
-check(
-  "TW registry order macro→index→sector",
-  identical(
-    as.character(reg_tw$theme_id),
-    c("fed_rates", "inflation_cpi", "tw_macro", "tw_equity", "tw_housing")
-  )
-)
-check("TW breadth tiers nondecreasing", !is.unsorted(as.integer(reg_tw$breadth_tier)))
-check("TW and US both keep Fed overlap", "fed_rates" %in% reg_tw$theme_id && "fed_rates" %in% reg$theme_id)
-check("no single-stock tier ahead of macro", {
-  max_macro <- max(reg$breadth_tier[reg$theme_id %in% c("fed_rates", "inflation_cpi", "recession")])
-  min_eq <- min(reg$breadth_tier[reg$theme_id == "equities_index"])
-  max_macro < min_eq || max_macro == min_eq
-})
+check("legacy registry maps Economic board", nrow(reg) >= 6L)
+check("legacy registry has fed_rates", "fed_rates" %in% reg$theme_id)
+check("breadth tiers nondecreasing", !is.unsorted(as.integer(reg$breadth_tier)))
+
+check("company TW/US filter TSMC", isTRUE(gp_is_tw_us_listed_title("Will TSMC (2330) beat EPS?")))
+check("company TW/US filter Apple", isTRUE(gp_is_tw_us_listed_title("Apple (AAPL) market cap")))
+check("company filter rejects politics", isFALSE(gp_is_tw_us_listed_title("Who wins the election?")))
 
 cols <- gp_brand_colors()
 check("Kalshi brand hex", identical(cols$kalshi, "#00D66C"))
@@ -146,35 +171,53 @@ ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = 
 srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 glob <- paste(readLines(file.path(app_dir, "global.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 loc <- paste(readLines(file.path(app_dir, "ui_locale.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+auth <- paste(readLines(file.path(app_dir, "auth_account.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 
 check("global.R sources module", grepl("global_prediction_module.R", glob, fixed = TRUE))
-check("ATX page has Global Prediction tab", grepl("ynow_atx_tab_global_prediction", ui, fixed = TRUE))
-check("ATX page mounts global_prediction_ui", grepl("global_prediction_ui(", ui, fixed = TRUE))
+check("standalone sidebar tab", grepl('tabName = "global_prediction"', ui, fixed = TRUE))
+check("lazy host for GP page", grepl('ynow_lazy_host_global_prediction', ui, fixed = TRUE))
+check("page UI mounts global_prediction_ui", grepl("global_prediction_ui(", ui, fixed = TRUE))
+check("ATX no longer hosts GP subtab", !grepl("ynow_atx_tab_global_prediction", ui, fixed = TRUE))
 check("server wires global_prediction_server", grepl("global_prediction_server(", srv, fixed = TRUE))
 check("server passes market_mode_rv", grepl("market_mode_rv = market_mode", srv, fixed = TRUE))
-check("locale en tab title", grepl('atx_tab_global_prediction = "Global Prediction"', loc, fixed = TRUE))
-check("locale zh tab title", grepl("atx_tab_global_prediction = \"全球預測\"", loc, fixed = TRUE))
+check("lazy page key global_prediction", grepl("global_prediction = function()", srv, fixed = TRUE))
+check("locale en menu", grepl('menu_global_prediction = "Global Prediction"', loc, fixed = TRUE))
+check("locale zh menu", grepl('menu_global_prediction = "全球預測"', loc, fixed = TRUE))
+check("locale en boards", grepl('gp_board_economic = "Economic"', loc, fixed = TRUE) &&
+        grepl('gp_board_finance = "Finance"', loc, fixed = TRUE) &&
+        grepl('gp_board_company = "Company"', loc, fixed = TRUE))
+check("locale zh boards", grepl("gp_board_economic", loc, fixed = TRUE) &&
+        grepl("gp_board_finance", loc, fixed = TRUE) &&
+        grepl("gp_board_company", loc, fixed = TRUE))
+check("locale auth gate en", grepl("auth_gate_gp_kicker", loc, fixed = TRUE))
+check("locale auth gate zh", grepl("解鎖全球預測", loc, fixed = TRUE))
 check("locale en wisdom framing", grepl("Wisdom of crowds", loc, fixed = TRUE))
 check("locale zh wisdom framing", grepl("群眾智慧", loc, fixed = TRUE))
 check("locale en not buy signal", grepl("not a buy signal", loc, fixed = TRUE))
 check("locale zh not buy signal", grepl("不是買進訊號", loc, fixed = TRUE))
-check("locale en desk vs crowd", grepl("crowd-priced", loc, fixed = TRUE))
-check("locale zh desk vs crowd", grepl("群眾定價", loc, fixed = TRUE))
 check("locale en participation bias", grepl("self-selected", loc, fixed = TRUE))
 check("locale zh participation bias", grepl("自我選擇", loc, fixed = TRUE))
-check("locale en risk appetite", grepl("risk appetite", loc, fixed = TRUE))
-check("locale zh risk appetite", grepl("風險偏好", loc, fixed = TRUE))
 check("locale en Galton mean label", grepl("Galton-style aggregate", loc, fixed = TRUE))
 check("locale zh Galton mean label", grepl("Galton 式加總", loc, fixed = TRUE))
 check("locale en herding caution", grepl("Herding", loc, fixed = TRUE))
 check("locale zh herding caution", grepl("羊群", loc, fixed = TRUE))
 check("locale feex venue name", grepl("gp_venue_feex = \"未來事件交易所\"", loc, fixed = TRUE))
-check("locale feex unavailable en", grepl("no live public market feed", loc, fixed = TRUE))
-check("locale feex unavailable zh", grepl("沒有可用的公開即時行情", loc, fixed = TRUE))
-check("locale mode us", grepl("gp_mode_us", loc, fixed = TRUE))
-check("locale mode tw", grepl("gp_mode_tw", loc, fixed = TRUE))
+check("gate layout includes gp", grepl(
+  'c("lab", "checklist", "alerts", "atx", "gp")',
+  auth,
+  fixed = TRUE
+))
+check(
+  "promo features include gp",
+  grepl('ynow_gate_demo_features(), "gp"', auth, fixed = TRUE) ||
+    grepl('unique(c(ynow_gate_demo_features(), "gp"))', auth, fixed = TRUE)
+)
+check("page gate uses feature gp", grepl('feature = "gp"', ui, fixed = TRUE))
 check("applyUiLocale gp lead", grepl("ynow_gp_lead", ui, fixed = TRUE))
+check("applyUiLocale gp page title", grepl("ynow_gp_page_title", ui, fixed = TRUE))
 check("applyUiLocale gp participation", grepl("ynow_gp_participation", ui, fixed = TRUE))
+check("guest lock map includes GP", grepl("global_prediction:true", ui, fixed = TRUE) ||
+        grepl("global_prediction: true", ui, fixed = TRUE))
 
 # ---- Freshness / crawl policy ----------------------------------------------
 pol <- gp_crawl_policy()
@@ -201,12 +244,12 @@ dead_time <- .gp_quote_row(
   title = "Past FOMC window", yes_prob = 0.5,
   expires_at = "2020-01-01T00:00:00Z", raw_status = "open", breadth_tier = 1L
 )
-eq_live <- .gp_quote_row(
-  venue = "polymarket", theme_id = "fed_rates", market_id = "EQ-1",
-  title = "Will the Nasdaq-100 hit a new high?", yes_prob = 0.55,
+cpi_live <- .gp_quote_row(
+  venue = "polymarket", theme_id = "fed_rates", market_id = "CPI-1",
+  title = "Will US CPI print above 3%?", yes_prob = 0.55,
   expires_at = "2099-06-01T00:00:00Z", raw_status = "open", breadth_tier = 1L
 )
-mixed <- rbind(live, dead_status, dead_time, eq_live)
+mixed <- rbind(live, dead_status, dead_time, cpi_live)
 filtered <- gp_filter_live_quotes(mixed)
 check("filter drops settled status", !any(filtered$market_id == "DEAD-S"))
 check("filter drops past expires_at", !any(filtered$market_id == "DEAD-T"))
@@ -215,11 +258,10 @@ check("filter keeps live", any(filtered$market_id == "LIVE-1"))
 reclass <- gp_reclassify_quotes(mixed, market_mode = "US")
 check("reclassify drops expired", !any(reclass$market_id %in% c("DEAD-S", "DEAD-T")))
 check(
-  "reclassify promotes equity title to equities_index",
+  "reclassify promotes CPI title to inflation_cpi",
   {
-    row <- reclass[reclass$market_id == "EQ-1", , drop = FALSE]
-    nrow(row) == 1L && identical(as.character(row$theme_id[[1]]), "equities_index") &&
-      identical(as.integer(row$breadth_tier[[1]]), 2L)
+    row <- reclass[reclass$market_id == "CPI-1", , drop = FALSE]
+    nrow(row) == 1L && identical(as.character(row$theme_id[[1]]), "inflation_cpi")
   }
 )
 check(
@@ -257,10 +299,10 @@ mod_src <- paste(readLines(file.path(app_dir, "global_prediction_module.R"), war
 check("server wires page_focus", grepl("page_focus", mod_src, fixed = TRUE))
 check("server wires periodic invalidateLater", grepl("invalidateLater", mod_src, fixed = TRUE))
 check("server hard trigger tab_open", grepl("tab_open", mod_src, fixed = TRUE))
-check("server hard trigger mode_switch", grepl("mode_switch", mod_src, fixed = TRUE))
-check("gp_fetch_snapshot accepts trigger", grepl("trigger = \"periodic_visible\"", mod_src, fixed = TRUE))
-# CSS "100%" inside sprintf must be escaped as "100%%" or R raises:
-# invalid format '%; f'; use format %s for character objects
+check("module board buttons", grepl("board_economic", mod_src, fixed = TRUE) &&
+        grepl("board_finance", mod_src, fixed = TRUE) &&
+        grepl("board_company", mod_src, fixed = TRUE))
+check("gp_fetch_snapshot accepts board", grepl("board = \"economic\"", mod_src, fixed = TRUE))
 check(
   "GP CSS escapes percent for sprintf",
   grepl("width: 100%%;", mod_src, fixed = TRUE) &&
@@ -268,7 +310,6 @@ check(
     grepl("height: 100%%;", mod_src, fixed = TRUE)
 )
 
-# Live UI mount (ATX → Global Prediction): must not throw sprintf format error.
 ui_mount_ok <- FALSE
 ui_mount_err <- NULL
 ui_html <- ""
@@ -278,6 +319,7 @@ tryCatch({
   ui_mount_ok <- isTRUE(nzchar(ui_html)) &&
     grepl("ynow-gp-dot-kalshi", ui_html, fixed = TRUE) &&
     grepl(cols$kalshi, ui_html, fixed = TRUE) &&
+    grepl("ynow-gp-board-btn", ui_html, fixed = TRUE) &&
     grepl("width: 100%;", ui_html, fixed = TRUE)
 }, error = function(e) {
   ui_mount_err <<- conditionMessage(e)

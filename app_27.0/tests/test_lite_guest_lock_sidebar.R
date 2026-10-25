@@ -38,11 +38,12 @@ check(
     sort(tabs),
     sort(c(
       "lab_notes", "decision_checklist", "mos_assumptions",
-      "price_alerts", "asset_transmission"
+      "price_alerts", "asset_transmission", "global_prediction"
     ))
   )
 )
 check("asset_transmission is guest-locked", isTRUE(ynow_sidebar_tab_guest_locked("asset_transmission")))
+check("global_prediction is guest-locked", isTRUE(ynow_sidebar_tab_guest_locked("global_prediction")))
 check("price_alerts is guest-locked", isTRUE(ynow_sidebar_tab_guest_locked("price_alerts")))
 check("home is not guest-locked", !isTRUE(ynow_sidebar_tab_guest_locked("home")))
 check("about is not guest-locked", !isTRUE(ynow_sidebar_tab_guest_locked("about")))
@@ -75,6 +76,7 @@ check("fallback loginTabs keep decision_checklist", grepl("decision_checklist: t
 check("fallback loginTabs keep mos_assumptions", grepl("mos_assumptions: true", ui, fixed = TRUE))
 check("fallback loginTabs keep price_alerts", grepl("price_alerts: true", ui, fixed = TRUE))
 check("fallback loginTabs keep asset_transmission", grepl("asset_transmission: true", ui, fixed = TRUE))
+check("fallback loginTabs keep global_prediction", grepl("global_prediction: true", ui, fixed = TRUE))
 
 check(
   "JS map keys match guest-lock tab set",

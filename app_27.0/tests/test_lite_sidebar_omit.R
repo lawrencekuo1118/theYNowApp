@@ -35,7 +35,7 @@ check(
   "guest locks are Lab + Checklist + Value Alerts + ATX",
   identical(
     sort(guest),
-    sort(c("lab_notes", "decision_checklist", "mos_assumptions", "price_alerts", "asset_transmission"))
+    sort(c("lab_notes", "decision_checklist", "mos_assumptions", "price_alerts", "asset_transmission", "global_prediction"))
   )
 )
 check(
@@ -45,7 +45,8 @@ check(
 check(
   "omit includes Full-only models + company_advance + ATX",
   all(c("get_started", "dcf_calculator", "ddm_calculator", "ri_calculator",
-        "hfv", "company_advance", "sotp_calculator", "asset_transmission") %in% omit)
+        "hfv", "company_advance", "sotp_calculator", "asset_transmission",
+        "global_prediction") %in% omit)
 )
 check(
   "omit includes Account workspace",
@@ -55,7 +56,10 @@ check(
   "omit includes Asset Transmission Root via guest lock, not full_only",
   "asset_transmission" %in% omit &&
     "asset_transmission" %in% guest &&
-    !"asset_transmission" %in% full_only
+    !"asset_transmission" %in% full_only &&
+    "global_prediction" %in% omit &&
+    "global_prediction" %in% guest &&
+    !"global_prediction" %in% full_only
 )
 check(
   "omit does not include free Lite core tabs",
@@ -68,7 +72,7 @@ check(
 )
 
 for (t in c("lab_notes", "price_alerts", "ddm_calculator", "ri_calculator",
-            "get_started", "asset_transmission")) {
+            "get_started", "asset_transmission", "global_prediction")) {
   check(
     paste0("Lite CSS hides ", t),
     grepl(sprintf('data-value="%s"', t), css, fixed = TRUE)

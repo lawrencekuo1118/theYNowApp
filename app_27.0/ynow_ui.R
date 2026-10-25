@@ -3249,34 +3249,48 @@ beta_rolling_section_ui <- function() {
     fluidRow(
       column(
         width = 12,
-        tabBox(
-          id = "atx_subtabs",
-          width = 12,
-          title = tags$span(id = "ynow_atx_box_title", .atx_s("atx_box_title")),
-          tabPanel(
-            title = tags$span(id = "ynow_atx_tab_map", .atx_s("atx_tab_map")),
-            value = "atx_map",
-            tags$div(
-              class = "box box-solid box-primary ynow-atx-panel",
-              style = "border:0;box-shadow:none;margin:0;",
-              tags$div(
-                class = "box-body",
-                style = "padding-top:8px;",
-                tags$p(
-                  id = "ynow_atx_box_body",
-                  style = "color:#555; line-height:1.5; margin:0 0 10px 0;",
-                  .atx_s("atx_box_body")
-                ),
-                asset_transmission_ui("atx", locale = loc)
-              )
-            )
-          ),
-          tabPanel(
-            title = tags$span(id = "ynow_atx_tab_global_prediction", .atx_s("atx_tab_global_prediction")),
-            value = "global_prediction",
-            global_prediction_ui("global_prediction", locale = loc)
+        tags$div(
+          class = "box box-solid box-primary ynow-atx-panel",
+          style = "border:0;box-shadow:none;margin:0;",
+          tags$div(
+            class = "box-body",
+            style = "padding-top:8px;",
+            tags$p(
+              id = "ynow_atx_box_body",
+              style = "color:#555; line-height:1.5; margin:0 0 10px 0;",
+              .atx_s("atx_box_body")
+            ),
+            asset_transmission_ui("atx", locale = loc)
           )
         )
+      )
+    )
+  )
+}
+
+#' Lazy page body for standalone Global Prediction (Economic / Finance / Company).
+.ynow_page_ui_global_prediction <- function(locale = "en") {
+  loc <- if (exists("normalize_ui_locale", mode = "function")) {
+    normalize_ui_locale(locale)
+  } else {
+    "en"
+  }
+  .gp_s <- function(key) {
+    if (exists("ui_str", mode = "function")) ui_str(key, loc) else key
+  }
+  tagList(
+    fluidRow(
+      column(
+        width = 12,
+        h2(tags$b(id = "ynow_gp_page_title", .gp_s("gp_page_title"))),
+        p(id = "ynow_gp_page_sub", .gp_s("gp_page_sub")),
+        tags$hr()
+      )
+    ),
+    fluidRow(
+      column(
+        width = 12,
+        global_prediction_ui("global_prediction", locale = loc)
       )
     )
   )
@@ -3877,6 +3891,17 @@ ui <- dashboardPage(
                },
                tabName = "asset_transmission",
                icon = icon("project-diagram")
+             ),
+             menuItem(
+               text = if (exists("ynow_sidebar_guest_lock_label", mode = "function")) {
+                 ynow_sidebar_guest_lock_label(
+                   "global_prediction", "ynow_menu_global_prediction", "Global Prediction"
+                 )
+               } else {
+                 tags$span(id = "ynow_menu_global_prediction", "Global Prediction")
+               },
+               tabName = "global_prediction",
+               icon = icon("chart-pie")
              ),
              menuItem("Blue Chip Leaderboard", tabName = "bluechip", icon = icon("star")),
              menuItem("Company", tabName = "dashboard", icon = icon("chart-line")),
@@ -10388,7 +10413,7 @@ ui <- dashboardPage(
             ";"
           )
         } else {
-          "window.__YNOW_SIDEBAR_GUEST_LOCK_TABS = {lab_notes:true,decision_checklist:true,mos_assumptions:true,price_alerts:true,asset_transmission:true};"
+          "window.__YNOW_SIDEBAR_GUEST_LOCK_TABS = {lab_notes:true,decision_checklist:true,mos_assumptions:true,price_alerts:true,asset_transmission:true,global_prediction:true};"
         },
         if (exists("ynow_sidebar_persist_lock_js_map", mode = "function")) {
           paste0(
@@ -11704,7 +11729,8 @@ ui <- dashboardPage(
               decision_checklist: true,
               mos_assumptions: true,
               price_alerts: true,
-              asset_transmission: true
+              asset_transmission: true,
+              global_prediction: true
             };
             if (loginTabs[tab]) {
               var lock = document.createElement('i');
@@ -11828,6 +11854,7 @@ ui <- dashboardPage(
               home: s.menu_home,
               macro_market: s.menu_macro_market,
               asset_transmission: s.menu_asset_transmission,
+              global_prediction: s.menu_global_prediction,
               dashboard: s.menu_dashboard,
               company_advance: s.menu_company_advance,
               smart_analysis: s.menu_smart_analysis,
@@ -11866,6 +11893,8 @@ ui <- dashboardPage(
             if (menuMacro && s.menu_macro_market) menuMacro.textContent = s.menu_macro_market;
             var menuAtx = document.getElementById('ynow_menu_asset_transmission');
             if (menuAtx && s.menu_asset_transmission) menuAtx.textContent = s.menu_asset_transmission;
+            var menuGp = document.getElementById('ynow_menu_global_prediction');
+            if (menuGp && s.menu_global_prediction) menuGp.textContent = s.menu_global_prediction;
             var menuCompanyAdvance = document.getElementById('ynow_menu_company_advance');
             if (menuCompanyAdvance && s.menu_company_advance) {
               menuCompanyAdvance.textContent = s.menu_company_advance;
@@ -12900,8 +12929,10 @@ ui <- dashboardPage(
             if (atxBoxBody && s.atx_box_body) atxBoxBody.textContent = s.atx_box_body;
             var atxTabMap = document.getElementById('ynow_atx_tab_map');
             if (atxTabMap && s.atx_tab_map) atxTabMap.textContent = s.atx_tab_map;
-            var atxTabGp = document.getElementById('ynow_atx_tab_global_prediction');
-            if (atxTabGp && s.atx_tab_global_prediction) atxTabGp.textContent = s.atx_tab_global_prediction;
+            var gpPageTitle = document.getElementById('ynow_gp_page_title');
+            if (gpPageTitle && s.gp_page_title) gpPageTitle.textContent = s.gp_page_title;
+            var gpPageSub = document.getElementById('ynow_gp_page_sub');
+            if (gpPageSub && s.gp_page_sub) gpPageSub.textContent = s.gp_page_sub;
             var gpLead = document.getElementById('ynow_gp_lead');
             if (gpLead && s.gp_lead) gpLead.textContent = s.gp_lead;
             var gpContext = document.getElementById('ynow_gp_context');
@@ -12910,6 +12941,12 @@ ui <- dashboardPage(
             if (gpCaution && s.gp_caution) gpCaution.textContent = s.gp_caution;
             var gpPart = document.getElementById('ynow_gp_participation');
             if (gpPart && s.gp_participation_note) gpPart.textContent = s.gp_participation_note;
+            var gpGateTitle = document.getElementById('ynow_gp_gate_title');
+            if (gpGateTitle && s.gp_gate_title) gpGateTitle.textContent = s.gp_gate_title;
+            var gpGateBody = document.getElementById('ynow_gp_gate_body');
+            if (gpGateBody && s.gp_gate_body) gpGateBody.textContent = s.gp_gate_body;
+            var gpGateSignin = document.getElementById('ynow_gp_gate_signin');
+            if (gpGateSignin && s.gp_gate_signin) gpGateSignin.textContent = s.gp_gate_signin;
             var atxNodesTab = document.getElementById('ynow_atx_nodes_tab');
             if (atxNodesTab && s.atx_nodes_title) atxNodesTab.textContent = s.atx_nodes_title;
             var atxEdgesTab = document.getElementById('ynow_atx_edges_tab');
@@ -14359,7 +14396,8 @@ ui <- dashboardPage(
                 decision_checklist: true,
                 mos_assumptions: true,
                 price_alerts: true,
-                asset_transmission: true
+                asset_transmission: true,
+                global_prediction: true
               };
               /* Tier B / points-gated sidebar tabs: keep locked chrome after auth. */
               var persist = window.__YNOW_SIDEBAR_PERSIST_LOCK_TABS || {};
@@ -15261,7 +15299,7 @@ ui <- dashboardPage(
                 'ri_calculator', 'pb_calculator', 'rel_mult_ev', 'rel_multiples_calculator',
                 'rel_mult_rev', 'sotp_calculator', 'hfv',
                 'decision_checklist', 'mos_assumptions', 'lab_notes', 'price_alerts', 'testing', 'company_advance',
-                'asset_transmission', 'account_admin', 'account_points', 'settings'
+                'asset_transmission', 'global_prediction', 'account_admin', 'account_points', 'settings'
               ];
             }
             function remapLegacyTab(tab) {
@@ -22454,6 +22492,36 @@ ui <- dashboardPage(
             ynow_member_gate_surface_ui(feature = "atx", gate = atx_gate, body = atx_body)
           } else {
             tagList(atx_gate, atx_body)
+          }
+        }
+      ),
+
+      # ==========================================
+      # Global Prediction（Full guest lock；Lite 側欄省略；Economic / Finance / Company）
+      # ==========================================
+      tabItem(
+        tabName = "global_prediction",
+        {
+          gp_gate <- if (exists("ynow_member_gate_ui", mode = "function")) {
+            ynow_member_gate_ui(
+              "ynow_gp_guest_gate",
+              "ynow_gp_gate_title",
+              "ynow_gp_gate_body",
+              "ynow_gp_gate_signin",
+              feature = "gp"
+            )
+          }
+          gp_body <- tags$div(
+            id = "ynow_gp_body",
+            class = "ynow-member-body",
+            uiOutput("ynow_lazy_host_global_prediction")
+          )
+          if (exists("ynow_member_gate_surface_ui", mode = "function")) {
+            ynow_member_gate_surface_ui(
+              feature = "gp", gate = gp_gate, body = gp_body
+            )
+          } else {
+            tagList(gp_gate, gp_body)
           }
         }
       ),

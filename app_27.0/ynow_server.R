@@ -4700,6 +4700,9 @@ server <- function(input, output, session) {
       asset_transmission = function() {
         .ynow_page_ui_asset_transmission(isolate(ui_locale()))
       },
+      global_prediction = function() {
+        .ynow_page_ui_global_prediction(isolate(ui_locale()))
+      },
       decision_checklist = function() decision_checklist_tab_body_ui(),
       about = function() .ynow_page_ui_about(),
       feedback = function() .ynow_page_ui_feedback(),
@@ -4741,9 +4744,6 @@ server <- function(input, output, session) {
         invisible(TRUE)
       },
       asset_transmission = function() {
-        atx_tab_active <- reactive(
-          identical(as.character(input$sidebar_tabs %||% ""), "asset_transmission")
-        )
         asset_transmission_server(
           "atx",
           ui_locale_rv = ui_locale,
@@ -4752,19 +4752,20 @@ server <- function(input, output, session) {
             s <- tryCatch(values$user_settings, error = function(e) NULL)
             as.character(s$gain_loss_scheme %||% "auto")[1]
           }),
-          tab_active_rv = reactive({
-            isTRUE(atx_tab_active()) &&
-              identical(as.character(input$atx_subtabs %||% "atx_map"), "atx_map")
-          })
+          tab_active_rv = reactive(
+            identical(as.character(input$sidebar_tabs %||% ""), "asset_transmission")
+          )
         )
+      },
+      global_prediction = function() {
         global_prediction_server(
           "global_prediction",
           ui_locale_rv = ui_locale,
           market_mode_rv = market_mode,
-          tab_active_rv = atx_tab_active,
-          subtab_active_rv = reactive(
-            identical(as.character(input$atx_subtabs %||% ""), "global_prediction")
-          )
+          tab_active_rv = reactive(
+            identical(as.character(input$sidebar_tabs %||% ""), "global_prediction")
+          ),
+          subtab_active_rv = reactive(TRUE)
         )
       }
     ),

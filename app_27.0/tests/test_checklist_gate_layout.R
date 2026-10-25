@@ -119,7 +119,7 @@ page_gate_html <- function(feature) {
 }
 
 check("layout helper marks page gates and leaves callouts stacked", {
-  page <- c("lab", "checklist", "alerts", "atx")
+  page <- c("lab", "checklist", "alerts", "atx", "gp")
   callout <- c("account", "pdf", "snap_defaults", "inner_lock")
   page_ok <- all(vapply(page, function(f) {
     lay <- ynow_gate_layout(f)
