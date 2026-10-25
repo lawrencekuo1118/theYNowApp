@@ -146,6 +146,45 @@ check("inner MOS blocks keep their border", {
   grepl(".ynow-mos-assump-block { margin: 0 0 22px 0; padding: 14px 16px;", mod_src, fixed = TRUE) &&
     grepl("background: #fafbfc; border: 1px solid #e6eaee; border-radius: 8px;", ui_html, fixed = TRUE)
 })
+check("topic title row has right-aligned goto shortcuts", {
+  grepl("ynow-mos-assump-title-row", ui_html, fixed = TRUE) &&
+    grepl("ynow-mos-assump-goto", ui_html, fixed = TRUE) &&
+    grepl('data-tab="decision_checklist"', ui_html, fixed = TRUE) &&
+    grepl('data-tab="price_alerts"', ui_html, fixed = TRUE) &&
+    grepl('data-tab="hfv"', ui_html, fixed = TRUE) &&
+    grepl('data-tab="lab_notes"', ui_html, fixed = TRUE)
+})
+check("goto buttons target the four affected surfaces", {
+  grepl("ynow_mos_assump_goto_checklist", ui_html, fixed = TRUE) &&
+    grepl("ynow_mos_assump_goto_alerts", ui_html, fixed = TRUE) &&
+    grepl("ynow_mos_assump_goto_hfv", ui_html, fixed = TRUE) &&
+    grepl("ynow_mos_assump_goto_lab", ui_html, fixed = TRUE) &&
+    grepl("ynowGotoTab", mod_src, fixed = TRUE)
+})
+
+# Locale keys for shortcut labels (en + zh-TW)
+loc_src <- paste(
+  readLines(file.path(.source_root, "ui_locale.R"), warn = FALSE, encoding = "UTF-8"),
+  collapse = "\n"
+)
+check("en shortcut labels present", {
+  grepl("mos_assump_goto_checklist = \"Decision Checklist\"", loc_src, fixed = TRUE) &&
+    grepl("mos_assump_goto_alerts = \"Value Alerts\"", loc_src, fixed = TRUE) &&
+    grepl("mos_assump_goto_hfv = \"HFV\"", loc_src, fixed = TRUE) &&
+    grepl("mos_assump_goto_lab = \"Quant Lab\"", loc_src, fixed = TRUE)
+})
+check("zh-TW shortcut labels present", {
+  grepl("mos_assump_goto_checklist = \"決策檢核\"", loc_src, fixed = TRUE) &&
+    grepl("mos_assump_goto_alerts = \"到值通知\"", loc_src, fixed = TRUE) &&
+    grepl("mos_assump_goto_hfv = \"HFV\"", loc_src, fixed = TRUE) &&
+    grepl("mos_assump_goto_lab = \"Quant Lab\"", loc_src, fixed = TRUE)
+})
+check("locale push includes goto button ids", {
+  grepl("ynow_mos_assump_goto_checklist = \"mos_assump_goto_checklist\"", mod_src, fixed = TRUE) &&
+    grepl("ynow_mos_assump_goto_alerts = \"mos_assump_goto_alerts\"", mod_src, fixed = TRUE) &&
+    grepl("ynow_mos_assump_goto_hfv = \"mos_assump_goto_hfv\"", mod_src, fixed = TRUE) &&
+    grepl("ynow_mos_assump_goto_lab = \"mos_assump_goto_lab\"", mod_src, fixed = TRUE)
+})
 
 source(file.path(.source_root, "decision_checklist_module.R"), local = TRUE, encoding = "UTF-8")
 dc_html <- paste(as.character(decision_checklist_tab_body_ui()), collapse = "\n")
