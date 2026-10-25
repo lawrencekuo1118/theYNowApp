@@ -1394,26 +1394,37 @@ cached_fetch_ownership_structure <- if (
       body
     ))
   }
+  # width = NULL — never width = 12. A col-sm-12 wrapper floats inside the
+  # Board / CB tab-pane (no parent .row) and leaks into .nav-tabs-custom, which
+  # parks the Board / CB tab chrome at the bottom when the box is collapsed.
   bx <- box_fn(
     title = ui_str(holders_title_key, loc),
-    width = 12,
+    width = NULL,
     status = "primary",
     solidHeader = FALSE,
     collapsible = TRUE,
     collapsed = isTRUE(collapsed),
     body
   )
-  # shinydashboard::box has no id=; tag the inner .box for collapse JS.
+  # shinydashboard::box(width=NULL) → outer wrapper div > .box; tag .box for JS.
+  box_node <- bx
   if (inherits(bx, "shiny.tag") && length(bx$children) >= 1L &&
-      inherits(bx$children[[1]], "shiny.tag")) {
-    inner <- bx$children[[1]]
-    cls <- as.character(inner$attribs$class %||% "")
+      inherits(bx$children[[1]], "shiny.tag") &&
+      grepl("\\bbox\\b", as.character(bx$children[[1]]$attribs$class %||% ""))) {
+    box_node <- bx$children[[1]]
+  }
+  if (inherits(box_node, "shiny.tag")) {
+    cls <- as.character(box_node$attribs$class %||% "")
     if (!grepl("ynow-own-holders-box", cls, fixed = TRUE)) {
       cls <- paste(trimws(cls), "ynow-own-holders-box")
     }
-    inner$attribs$id <- "own_holders_box"
-    inner$attribs$class <- cls
-    bx$children[[1]] <- inner
+    box_node$attribs$id <- "own_holders_box"
+    box_node$attribs$class <- cls
+    if (identical(box_node, bx)) {
+      bx <- box_node
+    } else {
+      bx$children[[1]] <- box_node
+    }
   }
   tagList(tags$hr(), bx)
 }

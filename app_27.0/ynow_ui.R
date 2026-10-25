@@ -9420,12 +9420,26 @@ ui <- dashboardPage(
           font-size: 12px;
           color: #666;
         }
-        /* Top-10 holders: collapsible box, collapsed by default */
+        /* Top-10 holders: collapsible box, collapsed by default.
+           Contain floats so a collapsed box cannot leak into FINANCIAL REPORT
+           .nav-tabs-custom and shove the Board / CB tab to the bottom. */
+        #ownership_structure_panel {
+          clear: both;
+          overflow: hidden;
+        }
+        #ownership_structure_panel > .shiny-html-output {
+          clear: both;
+          display: block;
+          width: 100%;
+        }
         .ynow-own-holders-box {
           margin-top: 4px;
           margin-bottom: 8px;
           border-top: 0;
           box-shadow: none;
+          float: none !important;
+          width: 100%;
+          clear: both;
         }
         .ynow-own-holders-box > .box-header {
           padding: 8px 12px;

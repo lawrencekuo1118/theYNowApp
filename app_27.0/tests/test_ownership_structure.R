@@ -260,11 +260,32 @@ if (requireNamespace("htmltools", quietly = TRUE) || requireNamespace("shiny", q
     "holders box id own_holders_box",
     grepl("own_holders_box", float_html, fixed = TRUE)
   )
+  # No Bootstrap column wrapper — col-sm-12 float leaked Board / CB tab to bottom
+  check(
+    "holders box no col-sm-12 wrapper",
+    !grepl("col-sm-12", float_html, fixed = TRUE)
+  )
+  check(
+    "holders box uses width NULL not 12",
+    grepl("width\\s*=\\s*NULL", paste(readLines("ownership_structure.R", warn = FALSE), collapse = "\n")) &&
+      !grepl("box_fn\\([\\s\\S]*?width\\s*=\\s*12", paste(readLines("ownership_structure.R", warn = FALSE), collapse = "\n"), perl = TRUE)
+  )
+  check(
+    "ui ownership panel contains floats",
+    grepl("#ownership_structure_panel", ui, fixed = TRUE) &&
+      grepl("overflow:\\s*hidden", ui) &&
+      grepl("ynow-own-holders-box", ui, fixed = TRUE) &&
+      grepl("float:\\s*none", ui)
+  )
   ui_float_open <- .ynow_ownership_holders_ui(float_snap, loc = "en", collapsed = FALSE)
   open_html <- paste(as.character(ui_float_open), collapse = " ")
   check(
     "holders box can expand",
     !grepl("collapsed-box", open_html, fixed = TRUE)
+  )
+  check(
+    "expanded also no col-sm-12",
+    !grepl("col-sm-12", open_html, fixed = TRUE)
   )
   ui_float_zh <- .ynow_ownership_holders_ui(float_snap, loc = "zh-TW", collapsed = TRUE)
   zh_html <- paste(as.character(ui_float_zh), collapse = " ")
