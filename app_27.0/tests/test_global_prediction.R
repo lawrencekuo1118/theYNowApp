@@ -102,6 +102,11 @@ kq <- gp_parse_kalshi_markets(kalshi_raw, theme_id = "fed_rates", limit = 3L)
 check("kalshi parse rows", is.data.frame(kq) && nrow(kq) >= 1L)
 check("kalshi venue tag", all(kq$venue == "kalshi"))
 check("kalshi yes_prob in [0,1]", all(is.finite(kq$yes_prob) & kq$yes_prob >= 0 & kq$yes_prob <= 1))
+check(
+  "kalshi series_ticker derived",
+  all(nzchar(as.character(kq$series_ticker))) &&
+    identical(as.character(kq$series_ticker[[1]]), "KXRATECUT")
+)
 check("kalshi no invented on empty", nrow(gp_parse_kalshi_markets(list(), "fed_rates")) == 0L)
 check(
   "kalshi bad json path empty",
@@ -116,6 +121,13 @@ pq <- gp_parse_polymarket_events(poly_raw, theme_id = "fed_rates", limit = 3L)
 check("polymarket parse rows", is.data.frame(pq) && nrow(pq) >= 1L)
 check("polymarket venue tag", all(pq$venue == "polymarket"))
 check("polymarket yes_prob in [0,1]", all(is.finite(pq$yes_prob) & pq$yes_prob >= 0 & pq$yes_prob <= 1))
+check(
+  "polymarket history_token from Yes clobTokenIds",
+  {
+    tok <- as.character(pq$history_token[pq$market_id == "616902"])
+    length(tok) == 1L && grepl("^1003792085596261510", tok)
+  }
+)
 check("polymarket empty fail-closed", nrow(gp_parse_polymarket_events(list(), "fed_rates")) == 0L)
 check("bad json string is empty", nrow(gp_parse_kalshi_markets("{", "fed_rates")) == 0L)
 check("null json is empty", nrow(gp_parse_kalshi_markets("null", "fed_rates")) == 0L)
@@ -311,6 +323,90 @@ if (exists(".ynow_fast_cache", inherits = FALSE) || exists(".ynow_fast_cache", i
   check("TTL cache skipped (no cachem)", TRUE)
 }
 
+# ---- Line-chart history parsers (honest empty; native plotly) -------------
+k_hist_path <- file.path(fx_dir, "kalshi_candlesticks.json")
+p_hist_path <- file.path(fx_dir, "polymarket_prices_history.json")
+check("kalshi candlestick fixture present", file.exists(k_hist_path))
+check("polymarket history fixture present", file.exists(p_hist_path))
+if (file.exists(k_hist_path)) {
+  ks <- gp_parse_kalshi_candlesticks(
+    jsonlite::fromJSON(k_hist_path, simplifyVector = FALSE),
+    theme_id = "fed_rates",
+    market_id = "KXRATECUT-26DEC31",
+    title = "Fed rate cuts"
+  )
+  check("kalshi candlesticks parse rows", is.data.frame(ks) && nrow(ks) >= 2L)
+  check(
+    "kalshi candlesticks yes_prob in [0,1]",
+    all(is.finite(ks$yes_prob) & ks$yes_prob >= 0 & ks$yes_prob <= 1)
+  )
+  check("kalshi candlesticks ordered by ts", !is.unsorted(as.numeric(ks$ts)))
+  check(
+    "kalshi candlesticks empty fail-closed",
+    nrow(gp_parse_kalshi_candlesticks(list(), "fed_rates", "X", "t")) == 0L
+  )
+}
+if (file.exists(p_hist_path)) {
+  ps <- gp_parse_polymarket_history(
+    jsonlite::fromJSON(p_hist_path, simplifyVector = FALSE),
+    theme_id = "fed_rates",
+    market_id = "616902",
+    title = "Recession"
+  )
+  check("polymarket history parse rows", is.data.frame(ps) && nrow(ps) >= 2L)
+  check(
+    "polymarket history yes_prob in [0,1]",
+    all(is.finite(ps$yes_prob) & ps$yes_prob >= 0 & ps$yes_prob <= 1)
+  )
+  check(
+    "polymarket history empty fail-closed",
+    nrow(gp_parse_polymarket_history(list(), "fed_rates", "X", "t")) == 0L
+  )
+}
+
+empty_chart <- gp_build_line_chart(.gp_empty_series(), locale = "en")
+empty_html <- paste(as.character(empty_chart), collapse = "\n")
+check(
+  "line chart honest empty when no series",
+  grepl("ynow-gp-chart-empty", empty_html, fixed = TRUE) ||
+    grepl("ynow-gp-empty", empty_html, fixed = TRUE)
+)
+
+if (file.exists(k_hist_path)) {
+  ks2 <- gp_parse_kalshi_candlesticks(
+    jsonlite::fromJSON(k_hist_path, simplifyVector = FALSE),
+    theme_id = "fed_rates",
+    market_id = "KXRATECUT-26DEC31",
+    title = "Fed rate cuts"
+  )
+  chart <- gp_build_line_chart(ks2, locale = "en")
+  chart_html <- paste(as.character(chart), collapse = "\n")
+  check(
+    "line chart widget for real series",
+    grepl("ynow-gp-chart-widget", chart_html, fixed = TRUE) ||
+      grepl("plotly", chart_html, ignore.case = TRUE)
+  )
+}
+
+pair_empty <- list(
+  theme_id = "fed_rates",
+  kalshi = .gp_empty_quote(),
+  polymarket = .gp_empty_quote()
+)
+attached <- gp_attach_theme_series(pair_empty, use_cache = FALSE)
+check(
+  "attach series stays empty without quotes",
+  is.data.frame(attached$series) && nrow(attached$series) == 0L
+)
+
+check("locale en chart empty", grepl('gp_chart_empty = "', loc, fixed = TRUE))
+check("locale zh chart empty", grepl("gp_chart_empty", loc, fixed = TRUE) &&
+        grepl("時間序列", loc, fixed = TRUE))
+check("locale en chart yaxis", grepl('gp_chart_yaxis = "Yes probability"', loc, fixed = TRUE))
+check("locale zh chart yaxis", grepl("Yes 機率", loc, fixed = TRUE))
+check("locale en last print", grepl('gp_last_print = "Latest prints', loc, fixed = TRUE))
+check("locale zh last print", grepl("最新成交", loc, fixed = TRUE))
+
 mod_src <- paste(readLines(file.path(app_dir, "global_prediction_module.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check("server wires page_focus", grepl("page_focus", mod_src, fixed = TRUE))
 check("server wires periodic invalidateLater", grepl("invalidateLater", mod_src, fixed = TRUE))
@@ -319,11 +415,14 @@ check("module board buttons", grepl("board_economic", mod_src, fixed = TRUE) &&
         grepl("board_finance", mod_src, fixed = TRUE) &&
         grepl("board_company", mod_src, fixed = TRUE))
 check("gp_fetch_snapshot accepts board", grepl("board = \"economic\"", mod_src, fixed = TRUE))
+check("module uses native plot_ly", grepl("plotly::plot_ly(", mod_src, fixed = TRUE))
+check("module avoids ggplotly on GP", !grepl("ggplotly(", mod_src, fixed = TRUE))
+check("module attaches theme series", grepl("gp_attach_theme_series(", mod_src, fixed = TRUE))
+check("theme UI mounts line chart class", grepl("ynow-gp-chart", mod_src, fixed = TRUE))
 check(
   "GP CSS escapes percent for sprintf",
   grepl("width: 100%%;", mod_src, fixed = TRUE) &&
-    grepl("flex-basis: 100%%;", mod_src, fixed = TRUE) &&
-    grepl("height: 100%%;", mod_src, fixed = TRUE)
+    grepl("flex-basis: 100%%;", mod_src, fixed = TRUE)
 )
 
 ui_mount_ok <- FALSE

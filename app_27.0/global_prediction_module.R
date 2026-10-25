@@ -33,6 +33,13 @@ if (!exists("%||%", mode = "function")) {
 .GP_HARD_TRIGGERS <- c(
   "tab_open", "tab_focus", "mode_switch", "manual_refresh"
 )
+# Line-chart history (Yes probability time series). Never invent points.
+.GP_HISTORY_LOOKBACK_DAYS <- 90L
+.GP_HISTORY_PER_VENUE <- 2L
+.GP_HISTORY_MIN_POINTS <- 2L
+.GP_HISTORY_PERIOD_MIN <- 1440L  # Kalshi daily candlesticks
+.GP_POLY_CLOB <- "https://clob.polymarket.com"
+.GP_KALSHI_API <- "https://api.elections.kalshi.com/trade-api/v2"
 
 #' Documented crawl / freshness rules for Global Prediction venues.
 #' @return named list of TTLs, triggers, venues, and fail-closed flags.
@@ -291,6 +298,8 @@ gp_invalidate_crawl_cache <- function(market_mode = NULL) {
     url = character(0),
     raw_status = character(0),
     breadth_tier = integer(0),
+    series_ticker = character(0),
+    history_token = character(0),
     stringsAsFactors = FALSE
   )
 }
@@ -298,7 +307,9 @@ gp_invalidate_crawl_cache <- function(market_mode = NULL) {
 .gp_quote_row <- function(venue, theme_id, market_id, title, yes_prob,
                           updated_at = NA_character_, expires_at = NA_character_,
                           url = NA_character_, raw_status = NA_character_,
-                          breadth_tier = NA_integer_) {
+                          breadth_tier = NA_integer_,
+                          series_ticker = NA_character_,
+                          history_token = NA_character_) {
   data.frame(
     venue = .gp_chr(venue),
     theme_id = .gp_chr(theme_id),
@@ -310,8 +321,32 @@ gp_invalidate_crawl_cache <- function(market_mode = NULL) {
     url = .gp_chr(url, NA_character_),
     raw_status = .gp_chr(raw_status, NA_character_),
     breadth_tier = as.integer(breadth_tier)[1],
+    series_ticker = .gp_chr(series_ticker, NA_character_),
+    history_token = .gp_chr(history_token, NA_character_),
     stringsAsFactors = FALSE
   )
+}
+
+.gp_empty_series <- function() {
+  data.frame(
+    venue = character(0),
+    theme_id = character(0),
+    market_id = character(0),
+    title = character(0),
+    ts = as.POSIXct(character(0), tz = "UTC"),
+    yes_prob = numeric(0),
+    stringsAsFactors = FALSE
+  )
+}
+
+#' Derive Kalshi series ticker when the board fetch already knows it.
+.gp_kalshi_series_ticker <- function(market_ticker, series_hint = NULL) {
+  hint <- .gp_chr(series_hint)
+  if (nzchar(hint)) return(hint)
+  t <- .gp_chr(market_ticker)
+  if (!nzchar(t)) return(NA_character_)
+  parts <- strsplit(t, "-", fixed = TRUE)[[1]]
+  if (length(parts) >= 2L) parts[[1]] else t
 }
 
 #' True when status or resolution/close time says the contract is dead.
@@ -345,6 +380,18 @@ gp_filter_live_quotes <- function(quotes, now = Sys.time()) {
     }
   }
   out[, need, drop = FALSE]
+}
+
+.gp_series_downsample <- function(df, max_n = 400L) {
+  if (exists(".ynow_downsample_df", mode = "function")) {
+    return(.ynow_downsample_df(df, max_n = max_n))
+  }
+  if (is.null(df) || !is.data.frame(df)) return(df)
+  n <- nrow(df)
+  max_n <- as.integer(max_n)[1]
+  if (!is.finite(n) || !is.finite(max_n) || n <= max_n || max_n < 3L) return(df)
+  idx <- unique(c(1L, as.integer(round(seq(1, n, length.out = max_n))), n))
+  df[idx, , drop = FALSE]
 }
 
 #' Score a title against theme keywords; higher = better fit.
@@ -437,8 +484,10 @@ gp_reclassify_quotes <- function(quotes, market_mode = "US", now = Sys.time()) {
 }
 
 #' Parse Kalshi /markets JSON list into MarketQuote rows.
-gp_parse_kalshi_markets <- function(payload, theme_id, limit = 3L) {
+gp_parse_kalshi_markets <- function(payload, theme_id, limit = 3L,
+                                    series_ticker = NULL) {
   theme_id <- .gp_chr(theme_id)
+  series_hint <- .gp_chr(series_ticker)
   payload <- .gp_as_payload(payload)
   if (is.null(payload)) return(.gp_empty_quote())
   markets <- payload
@@ -461,6 +510,10 @@ gp_parse_kalshi_markets <- function(payload, theme_id, limit = 3L) {
       exp_t <- .gp_parse_time(exp_at)
       if (!is.na(exp_t) && exp_t < Sys.time()) next
     }
+    ser <- .gp_kalshi_series_ticker(
+      ticker,
+      series_hint %||% .gp_chr(m$series_ticker)
+    )
     n <- n + 1L
     rows[[n]] <- .gp_quote_row(
       venue = "kalshi",
@@ -471,7 +524,8 @@ gp_parse_kalshi_markets <- function(payload, theme_id, limit = 3L) {
       updated_at = .gp_chr(m$close_time %||% m$expected_expiration_time),
       expires_at = exp_at,
       url = paste0("https://kalshi.com/markets/", ticker),
-      raw_status = .gp_chr(m$status, "open")
+      raw_status = .gp_chr(m$status, "open"),
+      series_ticker = ser
     )
     if (n >= as.integer(limit)) break
   }
@@ -490,6 +544,16 @@ gp_parse_kalshi_markets <- function(payload, theme_id, limit = 3L) {
 }
 
 # Yes is the outcome named Yes. The first price is not assumed to be Yes.
+.gp_poly_yes_index <- function(market) {
+  if (!is.list(market)) return(NA_integer_)
+  outcomes <- .gp_poly_parse_json_vec(market$outcomes)
+  if (is.null(outcomes)) return(NA_integer_)
+  labs <- tolower(trimws(as.character(unlist(outcomes, use.names = FALSE))))
+  yes_i <- which(labs %in% c("yes", "y"))
+  if (length(yes_i) != 1L) return(NA_integer_)
+  as.integer(yes_i[[1]])
+}
+
 .gp_poly_yes_prob <- function(market) {
   if (!is.list(market)) return(NA_real_)
   op <- .gp_poly_parse_json_vec(market$outcomePrices)
@@ -498,9 +562,21 @@ gp_parse_kalshi_markets <- function(payload, theme_id, limit = 3L) {
   labs <- tolower(trimws(as.character(unlist(outcomes, use.names = FALSE))))
   prices <- unlist(op, use.names = FALSE)
   if (length(labs) != length(prices)) return(NA_real_)
-  yes_i <- which(labs %in% c("yes", "y"))
-  if (length(yes_i) != 1L) return(NA_real_)
-  .gp_num01(prices[[yes_i[[1]]]])
+  yes_i <- .gp_poly_yes_index(market)
+  if (!is.finite(yes_i)) return(NA_real_)
+  .gp_num01(prices[[yes_i]])
+}
+
+#' Polymarket CLOB Yes token for prices-history (never invents a token).
+.gp_poly_yes_token <- function(market) {
+  if (!is.list(market)) return(NA_character_)
+  tokens <- .gp_poly_parse_json_vec(market$clobTokenIds %||% market$clob_token_ids)
+  if (is.null(tokens)) return(NA_character_)
+  toks <- as.character(unlist(tokens, use.names = FALSE))
+  yes_i <- .gp_poly_yes_index(market)
+  if (!is.finite(yes_i) || yes_i < 1L || yes_i > length(toks)) return(NA_character_)
+  tok <- .gp_chr(toks[[yes_i]])
+  if (!nzchar(tok)) NA_character_ else tok
 }
 
 .gp_keyword_hit <- function(text, keywords) {
@@ -552,7 +628,8 @@ gp_parse_polymarket_events <- function(payload, theme_id, limit = 3L, keywords =
         updated_at = .gp_chr(m$updatedAt %||% ev$endDate %||% ev$creationDate),
         expires_at = exp_at,
         url = url,
-        raw_status = if (isTRUE(ev$closed) || isTRUE(m$closed)) "closed" else "open"
+        raw_status = if (isTRUE(ev$closed) || isTRUE(m$closed)) "closed" else "open",
+        history_token = .gp_poly_yes_token(m)
       )
       if (n >= as.integer(limit)) break
     }
@@ -560,6 +637,266 @@ gp_parse_polymarket_events <- function(payload, theme_id, limit = 3L, keywords =
   }
   if (n == 0L) return(.gp_empty_quote())
   gp_filter_live_quotes(do.call(rbind, rows))
+}
+
+#' Parse Kalshi candlesticks payload into Yes-prob time series (close only).
+gp_parse_kalshi_candlesticks <- function(payload, theme_id, market_id, title,
+                                         venue = "kalshi") {
+  theme_id <- .gp_chr(theme_id)
+  market_id <- .gp_chr(market_id)
+  title <- .gp_chr(title, market_id)
+  venue <- .gp_chr(venue, "kalshi")
+  payload <- .gp_as_payload(payload)
+  if (is.null(payload)) return(.gp_empty_series())
+  candles <- NULL
+  if (is.list(payload) && !is.null(payload$candlesticks)) {
+    candles <- payload$candlesticks
+  } else if (is.list(payload) && !is.null(payload$markets) && length(payload$markets) > 0L) {
+    # Batch shape: { markets: [ { ticker?, candlesticks: [...] } ] }
+    m0 <- payload$markets[[1]]
+    if (is.list(m0)) candles <- m0$candlesticks
+  }
+  if (!is.list(candles) || length(candles) == 0L) return(.gp_empty_series())
+  rows <- list()
+  n <- 0L
+  for (cndl in candles) {
+    if (!is.list(cndl)) next
+    ts_raw <- cndl$end_period_ts %||% cndl$ts %||% cndl$end_ts
+    ts_num <- suppressWarnings(as.numeric(ts_raw)[1])
+    if (!is.finite(ts_num) || ts_num <= 0) next
+    price <- cndl$price %||% list()
+    close <- .gp_num01(
+      if (is.list(price)) price$close_dollars %||% price$close else cndl$close_dollars
+    )
+    if (!is.finite(close)) next
+    n <- n + 1L
+    rows[[n]] <- data.frame(
+      venue = venue,
+      theme_id = theme_id,
+      market_id = market_id,
+      title = title,
+      ts = as.POSIXct(ts_num, origin = "1970-01-01", tz = "UTC"),
+      yes_prob = close,
+      stringsAsFactors = FALSE
+    )
+  }
+  if (n == 0L) return(.gp_empty_series())
+  out <- do.call(rbind, rows)
+  out[order(out$ts), , drop = FALSE]
+}
+
+#' Parse Polymarket CLOB prices-history into Yes-prob time series.
+gp_parse_polymarket_history <- function(payload, theme_id, market_id, title,
+                                        venue = "polymarket") {
+  theme_id <- .gp_chr(theme_id)
+  market_id <- .gp_chr(market_id)
+  title <- .gp_chr(title, market_id)
+  venue <- .gp_chr(venue, "polymarket")
+  payload <- .gp_as_payload(payload)
+  if (is.null(payload)) return(.gp_empty_series())
+  hist <- payload
+  if (is.list(payload) && !is.null(payload$history)) hist <- payload$history
+  if (!is.list(hist) || length(hist) == 0L) return(.gp_empty_series())
+  rows <- list()
+  n <- 0L
+  for (pt in hist) {
+    if (!is.list(pt)) next
+    ts_num <- suppressWarnings(as.numeric(pt$t %||% pt$timestamp %||% pt$ts)[1])
+    if (!is.finite(ts_num) || ts_num <= 0) next
+    # Polymarket history can be seconds or ms.
+    if (ts_num > 1e12) ts_num <- ts_num / 1000
+    p <- .gp_num01(pt$p %||% pt$price %||% pt$yes_prob)
+    if (!is.finite(p)) next
+    n <- n + 1L
+    rows[[n]] <- data.frame(
+      venue = venue,
+      theme_id = theme_id,
+      market_id = market_id,
+      title = title,
+      ts = as.POSIXct(ts_num, origin = "1970-01-01", tz = "UTC"),
+      yes_prob = p,
+      stringsAsFactors = FALSE
+    )
+  }
+  if (n == 0L) return(.gp_empty_series())
+  out <- do.call(rbind, rows)
+  out[order(out$ts), , drop = FALSE]
+}
+
+gp_fetch_kalshi_history <- function(market_id, theme_id = "", title = "",
+                                    series_ticker = NULL, use_cache = TRUE,
+                                    lookback_days = .GP_HISTORY_LOOKBACK_DAYS) {
+  market_id <- .gp_chr(market_id)
+  if (!nzchar(market_id)) return(.gp_empty_series())
+  lookback_days <- max(7L, as.integer(lookback_days)[1])
+  end_ts <- as.integer(Sys.time())
+  start_ts <- end_ts - as.integer(lookback_days) * 86400L
+  cache_key <- .gp_cache_key("khist", market_id, lookback_days, .GP_HISTORY_PERIOD_MIN)
+  if (isTRUE(use_cache)) {
+    hit <- .gp_cache_get_fresh(cache_key, .GP_DISCOVERY_TTL_SEC)
+    if (is.data.frame(hit)) return(hit)
+  }
+  # Batch candlesticks does not require series_ticker.
+  url <- sprintf(
+    "%s/markets/candlesticks?market_tickers=%s&start_ts=%d&end_ts=%d&period_interval=%d",
+    .GP_KALSHI_API,
+    utils::URLencode(market_id, reserved = TRUE),
+    as.integer(start_ts),
+    as.integer(end_ts),
+    as.integer(.GP_HISTORY_PERIOD_MIN)
+  )
+  res <- .gp_http_get_json(url, timeout_sec = 15)
+  if (!isTRUE(res$ok)) return(.gp_empty_series())
+  out <- gp_parse_kalshi_candlesticks(
+    res$data,
+    theme_id = theme_id,
+    market_id = market_id,
+    title = title
+  )
+  if (isTRUE(use_cache) && nrow(out) > 0L) {
+    .gp_cache_set_fresh(cache_key, out, layer = "discovery")
+  }
+  out
+}
+
+gp_fetch_polymarket_history <- function(history_token, theme_id = "",
+                                        market_id = "", title = "",
+                                        use_cache = TRUE) {
+  token <- .gp_chr(history_token)
+  if (!nzchar(token)) return(.gp_empty_series())
+  cache_key <- .gp_cache_key("phist", token)
+  if (isTRUE(use_cache)) {
+    hit <- .gp_cache_get_fresh(cache_key, .GP_DISCOVERY_TTL_SEC)
+    if (is.data.frame(hit)) return(hit)
+  }
+  url <- paste0(
+    .GP_POLY_CLOB,
+    "/prices-history?market=",
+    utils::URLencode(token, reserved = TRUE),
+    "&interval=1d&fidelity=60"
+  )
+  res <- .gp_http_get_json(url, timeout_sec = 15)
+  if (!isTRUE(res$ok)) return(.gp_empty_series())
+  out <- gp_parse_polymarket_history(
+    res$data,
+    theme_id = theme_id,
+    market_id = .gp_chr(market_id, token),
+    title = title
+  )
+  if (isTRUE(use_cache) && nrow(out) > 0L) {
+    .gp_cache_set_fresh(cache_key, out, layer = "discovery")
+  }
+  out
+}
+
+#' Attach venue Yes-prob histories for a theme pair. Fail closed / honest empty.
+gp_attach_theme_series <- function(pair, use_cache = TRUE,
+                                   per_venue = .GP_HISTORY_PER_VENUE) {
+  if (!is.list(pair)) {
+    return(list(series = .gp_empty_series()))
+  }
+  per_venue <- max(1L, as.integer(per_venue)[1])
+  parts <- list()
+  kq <- if (is.data.frame(pair$kalshi)) pair$kalshi else .gp_empty_quote()
+  pq <- if (is.data.frame(pair$polymarket)) pair$polymarket else .gp_empty_quote()
+  if (nrow(kq) > 0L) {
+    n <- min(nrow(kq), per_venue)
+    for (i in seq_len(n)) {
+      row <- kq[i, , drop = FALSE]
+      ser <- gp_fetch_kalshi_history(
+        market_id = row$market_id[[1]],
+        theme_id = pair$theme_id %||% row$theme_id[[1]],
+        title = row$title[[1]],
+        series_ticker = if ("series_ticker" %in% names(row)) row$series_ticker[[1]] else NULL,
+        use_cache = use_cache
+      )
+      if (nrow(ser) >= as.integer(.GP_HISTORY_MIN_POINTS)) parts[[length(parts) + 1L]] <- ser
+    }
+  }
+  if (nrow(pq) > 0L) {
+    n <- min(nrow(pq), per_venue)
+    for (i in seq_len(n)) {
+      row <- pq[i, , drop = FALSE]
+      tok <- if ("history_token" %in% names(row)) .gp_chr(row$history_token[[1]]) else ""
+      if (!nzchar(tok)) next
+      ser <- gp_fetch_polymarket_history(
+        history_token = tok,
+        theme_id = pair$theme_id %||% row$theme_id[[1]],
+        market_id = row$market_id[[1]],
+        title = row$title[[1]],
+        use_cache = use_cache
+      )
+      if (nrow(ser) >= as.integer(.GP_HISTORY_MIN_POINTS)) parts[[length(parts) + 1L]] <- ser
+    }
+  }
+  series <- if (length(parts)) do.call(rbind, parts) else .gp_empty_series()
+  pair$series <- series
+  pair
+}
+
+#' Native plotly line chart of Yes probability over time (no ggplotly).
+gp_build_line_chart <- function(series, locale = "en", height = 280) {
+  locale <- .gp_chr(locale, "en")
+  empty_node <- function() {
+    htmltools::tags$p(
+      class = "ynow-gp-empty ynow-gp-chart-empty",
+      .gp_label("gp_chart_empty", locale)
+    )
+  }
+  if (!is.data.frame(series) || nrow(series) < as.integer(.GP_HISTORY_MIN_POINTS)) {
+    return(empty_node())
+  }
+  if (!requireNamespace("plotly", quietly = TRUE)) return(empty_node())
+  colors <- gp_brand_colors()
+  keys <- unique(paste(series$venue, series$market_id, sep = "\t"))
+  fig <- plotly::plot_ly(height = as.integer(height))
+  n_traces <- 0L
+  for (k in keys) {
+    sub <- series[paste(series$venue, series$market_id, sep = "\t") == k, , drop = FALSE]
+    sub <- sub[is.finite(sub$yes_prob) & !is.na(sub$ts), , drop = FALSE]
+    if (nrow(sub) < as.integer(.GP_HISTORY_MIN_POINTS)) next
+    sub <- sub[order(sub$ts), , drop = FALSE]
+    sub <- .gp_series_downsample(sub, max_n = 400L)
+    venue <- .gp_chr(sub$venue[[1]], "kalshi")
+    col <- if (identical(venue, "polymarket")) colors$polymarket else colors$kalshi
+    lab <- .gp_chr(sub$title[[1]], sub$market_id[[1]])
+    if (nchar(lab) > 52L) lab <- paste0(substr(lab, 1L, 49L), "…")
+    lab <- sprintf("%s · %s", if (identical(venue, "polymarket")) "Polymarket" else "Kalshi", lab)
+    y_pct <- 100 * as.numeric(sub$yes_prob)
+    fig <- plotly::add_trace(
+      fig,
+      x = sub$ts,
+      y = y_pct,
+      type = "scatter",
+      mode = "lines",
+      name = lab,
+      line = list(color = col, width = 2),
+      hovertemplate = paste0(
+        lab, "<br>%{x|%Y-%m-%d}<br>Yes: %{y:.1f}%<extra></extra>"
+      )
+    )
+    n_traces <- n_traces + 1L
+  }
+  if (n_traces < 1L) return(empty_node())
+  fig <- plotly::layout(
+    fig,
+    xaxis = list(title = "", showgrid = TRUE, zeroline = FALSE),
+    yaxis = list(
+      title = .gp_label("gp_chart_yaxis", locale),
+      range = c(0, 100),
+      ticksuffix = "%",
+      showgrid = TRUE,
+      zeroline = FALSE
+    ),
+    margin = list(l = 48, r = 16, t = 16, b = 40),
+    paper_bgcolor = "#FFFFFF",
+    plot_bgcolor = "#FAFBFC",
+    hovermode = "x unified",
+    showlegend = n_traces > 1L,
+    legend = list(orientation = "h", y = 1.12, font = list(size = 11))
+  )
+  fig <- plotly::config(fig, displayModeBar = FALSE, responsive = TRUE, displaylogo = FALSE)
+  htmltools::tags$div(class = "ynow-gp-chart-widget", fig)
 }
 
 gp_fetch_kalshi_theme <- function(theme_id, series_tickers, limit = 3L, use_cache = TRUE,
@@ -701,6 +1038,7 @@ gp_crowd_agreement <- function(kalshi_probs, polymarket_probs) {
   sprintf("%.0f%%", round(100 * p))
 }
 
+#' Compact last-print list (secondary). Primary board view is the line chart.
 .gp_quote_cards <- function(quotes, venue_color, locale = "en") {
   if (!is.data.frame(quotes) || nrow(quotes) == 0L) {
     return(htmltools::tags$p(
@@ -710,11 +1048,6 @@ gp_crowd_agreement <- function(kalshi_probs, polymarket_probs) {
   }
   cards <- lapply(seq_len(nrow(quotes)), function(i) {
     row <- quotes[i, , drop = FALSE]
-    bar_w <- if (is.finite(row$yes_prob[[1]])) {
-      sprintf("%.1f%%", 100 * row$yes_prob[[1]])
-    } else {
-      "0%"
-    }
     title_node <- if (nzchar(.gp_chr(row$url[[1]]))) {
       htmltools::tags$a(
         href = row$url[[1]],
@@ -733,13 +1066,6 @@ gp_crowd_agreement <- function(kalshi_probs, polymarket_probs) {
         class = "ynow-gp-quote-prob",
         style = sprintf("color:%s;", venue_color),
         .gp_fmt_pct(row$yes_prob[[1]])
-      ),
-      htmltools::tags$div(
-        class = "ynow-gp-bar-track",
-        htmltools::tags$div(
-          class = "ynow-gp-bar-fill",
-          style = sprintf("width:%s;background:%s;", bar_w, venue_color)
-        )
       )
     )
   })
@@ -768,6 +1094,7 @@ gp_crowd_agreement <- function(kalshi_probs, polymarket_probs) {
   } else {
     ""
   }
+  series <- if (is.data.frame(pair$series)) pair$series else .gp_empty_series()
   htmltools::tags$div(
     class = "ynow-gp-theme",
     `data-theme` = .gp_chr(pair$theme_id),
@@ -787,6 +1114,14 @@ gp_crowd_agreement <- function(kalshi_probs, polymarket_probs) {
         if (nzchar(gap_txt)) htmltools::tags$span(class = "ynow-gp-agree-meta", gap_txt),
         if (nzchar(mean_txt)) htmltools::tags$span(class = "ynow-gp-agree-meta", mean_txt)
       )
+    ),
+    htmltools::tags$div(
+      class = "ynow-gp-chart",
+      gp_build_line_chart(series, locale = locale, height = 280)
+    ),
+    htmltools::tags$p(
+      class = "ynow-gp-last-print-label",
+      .gp_label("gp_last_print", locale)
     ),
     htmltools::tags$div(
       class = "ynow-gp-cols",
@@ -821,7 +1156,6 @@ gp_crowd_agreement <- function(kalshi_probs, polymarket_probs) {
 # Standalone Global Prediction page. Sources map to public Kalshi series
 # categories and Polymarket tag/search feeds (monthly+ for Eco/Finance).
 
-.GP_KALSHI_API <- "https://api.elections.kalshi.com/trade-api/v2"
 .GP_FREQ_MONTHLY_PLUS <- c("monthly", "quarterly", "annual", "yearly")
 # Company events are often custom / one_off on Kalshi.
 .GP_FREQ_COMPANY <- c("monthly", "quarterly", "annual", "yearly", "custom", "one_off")
@@ -1077,7 +1411,9 @@ gp_fetch_kalshi_board <- function(board = "economic", limit_quotes = 24L, use_ca
         last_err <- res$error %||% "markets_failed"
         next
       }
-      q <- gp_parse_kalshi_markets(res$data, theme_id = theme_guess, limit = 3L)
+      q <- gp_parse_kalshi_markets(
+        res$data, theme_id = theme_guess, limit = 3L, series_ticker = ticker
+      )
       if (nrow(q) == 0L) next
       if (isTRUE(src$company_filter)) {
         ok_rows <- vapply(seq_len(nrow(q)), function(i) {
@@ -1228,7 +1564,8 @@ gp_fetch_snapshot <- function(market_mode = "US", use_cache = TRUE, limit_per_ve
       polymarket = p_part,
       feex = .gp_empty_quote(),
       feex_status = f$status %||% "defunct",
-      agreement = gp_crowd_agreement(k_part$yes_prob, p_part$yes_prob)
+      agreement = gp_crowd_agreement(k_part$yes_prob, p_part$yes_prob),
+      series = .gp_empty_series()
     )
   })
   # Drop empty theme cards except when entire board empty (keep one honest empty)
@@ -1236,6 +1573,10 @@ gp_fetch_snapshot <- function(market_mode = "US", use_cache = TRUE, limit_per_ve
     nrow(pr$kalshi) + nrow(pr$polymarket) > 0L
   }, logical(1))
   if (any(nonempty)) pairs <- pairs[nonempty]
+  # Primary board view: Yes-prob line charts from venue history (honest empty if none).
+  pairs <- lapply(pairs, function(pr) {
+    gp_attach_theme_series(pr, use_cache = use_cache, per_venue = .GP_HISTORY_PER_VENUE)
+  })
   list(
     fetched_at = format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"),
     market_mode = mode,
@@ -1297,12 +1638,14 @@ global_prediction_ui <- function(id, locale = "en") {
       @media (max-width: 767px) { .ynow-gp-cols { grid-template-columns: 1fr; } }
       .ynow-gp-venue-label { font-size: 13px; font-weight: 700; letter-spacing: 0.02em;
         border-bottom: 2px solid; padding-bottom: 4px; margin-bottom: 8px; }
+      .ynow-gp-chart { margin: 0 0 10px; min-height: 220px; }
+      .ynow-gp-chart-widget { width: 100%%; }
+      .ynow-gp-chart-empty { padding: 18px 8px; text-align: center; }
+      .ynow-gp-last-print-label { font-size: 11px; color: #7a7368; margin: 0 0 6px; }
       .ynow-gp-quote { border-left: 3px solid; padding: 6px 0 8px 10px; margin-bottom: 8px; }
       .ynow-gp-quote-title { font-size: 13px; line-height: 1.35; color: #1c1915; }
       .ynow-gp-quote-title a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
-      .ynow-gp-quote-prob { font-size: 20px; font-weight: 700; margin: 4px 0; font-variant-numeric: tabular-nums; }
-      .ynow-gp-bar-track { height: 6px; background: #efe9dc; border-radius: 999px; overflow: hidden; }
-      .ynow-gp-bar-fill { height: 100%%; border-radius: 999px; }
+      .ynow-gp-quote-prob { font-size: 18px; font-weight: 700; margin: 4px 0; font-variant-numeric: tabular-nums; }
       .ynow-gp-empty { font-size: 12px; color: #7a7368; margin: 0; }
       .ynow-gp-dot-kalshi { background: %s; }
       .ynow-gp-dot-poly { background: %s; }
