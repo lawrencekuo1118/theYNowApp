@@ -1,3 +1,12 @@
+## [v27.43] — 2026-10-25
+
+### Changed
+- Global Prediction charts group by **company / proposition**: same proposition with different answers → one multi-line Yes% chart; Company board uses company blocks; 3-up (1:1:1) grid; drop redundant last-print / venue quote lists. Venue chrome cues kept on the plot.
+
+### Notes
+- en-US: Bundle **12736642**. Feature [#541](https://github.com/lawrencekuo1118/theYNowApp/pull/541).
+- zh-TW：Bundle **12736642**。全球預測依公司／命題分組多線圖與三欄格線；移除圖下報價清單。
+
 ## [v27.42] — 2026-10-25
 
 ### Fixed
