@@ -7,5 +7,5 @@ commit=41f3ad5612fe301935873346848d69bfb15abf7d
 short=41f3ad56
 message=chore: record shipped display version v27.30
 captured_at=2026-10-25T07:07:10Z
-display_version=v27.30
+display_version=v27.31
 note=Canonical live line is app_27.0. Bundle 12735842: admin enter clears self-view + Controls/Audit Log FS-style tabs (#513).
