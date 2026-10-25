@@ -158,14 +158,7 @@ ynow_gallery_pick_next <- function(pool_ids, current_id = "", u = runif(1)) {
       keep[[length(keep) + 1L]] <- im
     }
   }
-  if (dir.exists(up_dir)) {
-    files <- list.files(up_dir, pattern = "\\.webp$", full.names = TRUE)
-    ids <- vapply(keep, function(x) x$id, character(1))
-    for (f in files) {
-      stem <- sub("\\.webp$", "", basename(f))
-      if (!stem %in% ids) unlink(f)
-    }
-  }
+  # A catalog read must not delete files. add_upload writes the WebP before the row is saved.
   cat$images <- keep
   cat
 }
@@ -278,28 +271,35 @@ ynow_gallery_remove_image <- function(id) {
 }
 
 .ynow_insp_process_upload <- function(datapath, original_name = "") {
+  datapath <- as.character(datapath %||% "")[1]
+  if (!nzchar(datapath) || !file.exists(datapath)) return(NULL)
+  ext <- tolower(tools::file_ext(as.character(original_name %||% "")[1]))
+  if (!nzchar(ext)) ext <- tolower(tools::file_ext(datapath))
+  if (!ext %in% c("png", "jpg", "jpeg", "gif", "webp")) return(NULL)
   ynow_inspiration_ensure_resource_paths()
   up_dir <- .ynow_insp_uploads_dir()
   dir.create(up_dir, recursive = TRUE, showWarnings = FALSE)
   id <- sprintf(
     "up%010d%04d",
-    as.integer(as.numeric(Sys.time())) %% 1e9L,
+    as.integer(as.numeric(Sys.time())) %% 1000000000L,
     sample.int(9999L, 1L)
   )
   dest <- file.path(up_dir, paste0(id, ".webp"))
   py <- Sys.which("python3")
-  script <- file.path("scripts", "process_inspiration_upload.py")
+  script <- file.path("scripts", "process_inspiration_gallery.py")
   if (!file.exists(script)) {
-    script <- file.path("app_27.0", "scripts", "process_inspiration_upload.py")
+    script <- file.path("app_27.0", "scripts", "process_inspiration_gallery.py")
   }
   if (nzchar(py) && file.exists(script)) {
-    st <- system2(py, c(script, datapath, dest), stdout = TRUE, stderr = TRUE)
-    if (!file.exists(dest)) {
-      # fallback copy
-      file.copy(datapath, dest, overwrite = TRUE)
-    }
-  } else {
-    file.copy(datapath, dest, overwrite = TRUE)
+    tryCatch(
+      system2(py, c(script, "--upload", datapath, dest), stdout = FALSE, stderr = FALSE),
+      error = function(e) NULL
+    )
+  }
+  if (!file.exists(dest) || !isTRUE(file.info(dest)$size > 0)) {
+    if (file.exists(dest)) unlink(dest)
+    if (!ext %in% c("webp", "png")) return(NULL)
+    if (!isTRUE(file.copy(datapath, dest, overwrite = TRUE))) return(NULL)
   }
   if (!file.exists(dest)) return(NULL)
   ynow_gallery_image(
@@ -387,7 +387,7 @@ ynow_inspiration_home_shell_ui <- function() {
     timer = setInterval(function () {
       var n = pick(currentId);
       if (n) show(n);
-    }, Math.max(3, sec) * 1000);
+    }, sec * 1000);
   }
   function applyCatalog(c) {
     catalog = c || null;
@@ -460,6 +460,28 @@ ynow_gallery_admin_tab_panel <- function(lab) {
 
 #' Bind admin handlers + push catalog. Call once from ynow_server.R.
 ynow_gallery_bind <- function(session, input, output, admin_on) {
+  # .ynow_admin_ops_log is local to the Shiny server frame, not this module.
+  srv <- parent.frame()
+  for (i in seq_len(sys.nframe())) {
+    e <- sys.frame(i)
+    if (exists("ynow_pts_sysadmin_actor", envir = e, inherits = FALSE)) srv <- e
+  }
+  .audit <- function(action, detail) {
+    if (exists(".ynow_admin_ops_log", envir = srv, inherits = FALSE)) {
+      fn <- get(".ynow_admin_ops_log", envir = srv, inherits = FALSE)
+      if (is.function(fn)) {
+        tryCatch(fn(action, detail), error = function(e) NULL)
+        return(invisible(TRUE))
+      }
+    }
+    if (exists("ynow_admin_ops_append", mode = "function")) {
+      tryCatch(
+        ynow_admin_ops_append(action = action, detail = detail, actor = ""),
+        error = function(e) NULL
+      )
+    }
+    invisible(FALSE)
+  }
   ynow_inspiration_ensure_resource_paths()
   tick <- shiny::reactiveVal(0L)
 
@@ -581,12 +603,7 @@ ynow_gallery_bind <- function(session, input, output, admin_on) {
     f <- input$ynow_insp_upload
     if (is.null(f) || !nzchar(f$datapath %||% "")) return()
     im <- ynow_gallery_add_upload(f$datapath, f$name %||% "")
-    if (!is.null(im) && exists(".ynow_admin_ops_log", mode = "function")) {
-      tryCatch(
-        .ynow_admin_ops_log("insp.upload", paste0("id=", im$id)),
-        error = function(e) NULL
-      )
-    }
+    if (!is.null(im)) .audit("insp.upload", paste0("id=", im$id))
     tick(isolate(tick()) + 1L)
     .push()
   }, ignoreInit = TRUE)
@@ -594,15 +611,10 @@ ynow_gallery_bind <- function(session, input, output, admin_on) {
   shiny::observeEvent(input$ynow_insp_freq_save, {
     if (!tryCatch(isTRUE(admin_on()), error = function(e) FALSE)) return()
     ynow_gallery_set_frequency(input$ynow_insp_show_prob, input$ynow_insp_rot_sec)
-    if (exists(".ynow_admin_ops_log", mode = "function")) {
-      tryCatch(
-        .ynow_admin_ops_log(
-          "insp.freq",
-          sprintf("p=%s;rot=%s", input$ynow_insp_show_prob, input$ynow_insp_rot_sec)
-        ),
-        error = function(e) NULL
-      )
-    }
+    .audit(
+      "insp.freq",
+      sprintf("p=%s;rot=%s", input$ynow_insp_show_prob, input$ynow_insp_rot_sec)
+    )
     tick(isolate(tick()) + 1L)
     .push()
   }, ignoreInit = TRUE)
@@ -612,9 +624,7 @@ ynow_gallery_bind <- function(session, input, output, admin_on) {
     id <- as.character(input$ynow_insp_delete_id %||% "")[1]
     if (!nzchar(id)) return()
     ynow_gallery_remove_image(id)
-    if (exists(".ynow_admin_ops_log", mode = "function")) {
-      tryCatch(.ynow_admin_ops_log("insp.delete", paste0("id=", id)), error = function(e) NULL)
-    }
+    .audit("insp.delete", paste0("id=", id))
     tick(isolate(tick()) + 1L)
     .push()
   }, ignoreInit = TRUE)

@@ -62,6 +62,39 @@ check("public catalog only enabled images", {
     !is.null(pub$frequency$show_probability)
 })
 
+check("upload is webp outside www and remove drops it", {
+  png <- file.path(tmpdir, "tiny.png")
+  py <- file.path(tmpdir, "mk.py")
+  writeLines(
+    sprintf(
+      "from PIL import Image\nImage.new('RGB', (48, 36), (20, 40, 80)).save(%s)\n",
+      shQuote(png)
+    ),
+    py
+  )
+  system2("python3", py, stdout = FALSE, stderr = FALSE)
+  www_before <- list.files("www/inspiration", pattern = "\\.webp$")
+  im <- if (file.exists(png)) ynow_gallery_add_upload(png, "tiny.png") else NULL
+  pub <- ynow_gallery_public_catalog()
+  ids <- if (length(pub$images)) vapply(pub$images, function(x) x$id, character(1)) else character()
+  www_after <- list.files("www/inspiration", pattern = "\\.webp$")
+  up <- if (!is.null(im)) {
+    file.path(Sys.getenv("YNOW_INSPIRATION_UPLOADS_DIR"), paste0(im$id, ".webp"))
+  } else {
+    ""
+  }
+  ok_add <- !is.null(im) &&
+    grepl("^inspiration-uploads/.+\\.webp$", im$src) &&
+    file.exists(up) &&
+    im$id %in% ids &&
+    identical(sort(www_before), sort(www_after))
+  if (!ok_add) return(FALSE)
+  ynow_gallery_remove_image(im$id)
+  pub2 <- ynow_gallery_public_catalog()
+  ids2 <- if (length(pub2$images)) vapply(pub2$images, function(x) x$id, character(1)) else character()
+  !(im$id %in% ids2) && !file.exists(up)
+})
+
 ui_src <- paste(readLines("ynow_ui.R", warn = FALSE), collapse = "\n")
 srv_src <- paste(readLines("ynow_server.R", warn = FALSE), collapse = "\n")
 loc_src <- paste(readLines("ui_locale.R", warn = FALSE), collapse = "\n")
