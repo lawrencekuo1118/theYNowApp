@@ -128,4 +128,65 @@ testthat::test_that("register mounts once and caches builder result", {
   })
 })
 
+testthat::test_that("deferred on_first_mount restores reactive domain for moduleServer", {
+  testthat::skip_if_not_installed("later")
+  domain_ok <- FALSE
+  module_err <- NULL
+  session <- shiny::MockShinySession$new()
+  shiny::withReactiveDomain(session, {
+    input <- session$input
+    output <- session$output
+    ctrl <- .ynow_register_lazy_tabs(
+      input, output, session,
+      builders = list(
+        macro_market = function() {
+          htmltools::tags$div(
+            class = "ynow-macro-report",
+            shiny::uiOutput("macro-index_kpi_row")
+          )
+        }
+      ),
+      on_first_mount = list(
+        macro_market = function() {
+          domain_ok <<- inherits(
+            shiny::getDefaultReactiveDomain(),
+            c("ShinySession", "session_proxy", "MockShinySession")
+          )
+          tryCatch(
+            shiny::moduleServer("macro", function(input, output, session) {
+              output$index_kpi_row <- shiny::renderUI({
+                htmltools::tags$div(class = "ynow-macro-kpi-row", "ok")
+              })
+            }),
+            error = function(e) {
+              module_err <<- conditionMessage(e)
+              NULL
+            }
+          )
+        }
+      )
+    )
+    session$setInputs(sidebar_tabs = "macro_market")
+    session$flushReact()
+    testthat::expect_true(ctrl$mounted("macro_market"))
+    deadline <- Sys.time() + 2
+    while ((!isTRUE(domain_ok) || !is.null(module_err)) && Sys.time() < deadline) {
+      later::run_now(timeoutSecs = 0.05)
+      if (isTRUE(domain_ok) && is.null(module_err)) break
+    }
+  })
+  testthat::expect_true(isTRUE(domain_ok))
+  testthat::expect_null(module_err)
+})
+
+testthat::test_that("lazy_tabs wraps deferred hooks in withReactiveDomain", {
+  lazy_txt <- paste(readLines("lazy_tabs.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  testthat::expect_true(grepl(
+    "withReactiveDomain\\(sess,\\s*\\{\\s*hook_fn\\(\\)",
+    lazy_txt,
+    perl = TRUE
+  ))
+  testthat::expect_true(grepl("later::later drops the Shiny reactive domain", lazy_txt, fixed = TRUE))
+})
+
 cat("PASS test_lazy_tabs\n")
