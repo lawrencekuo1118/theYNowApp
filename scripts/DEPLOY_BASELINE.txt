@@ -7,5 +7,5 @@ commit=46618448fb33688b1e73be2a2e805045c6e78da1
 short=46618448
 message=chore: record shinyapps baseline bundle 12736552 (app_27.0)
 captured_at=2026-10-25T12:16:35Z
-display_version=v27.40
+display_version=v27.41
 note=Canonical live line is app_27.0. Bundle 12736552: Global Prediction per-market charts restyled to Kalshi/Polymarket venue cues (#535).
