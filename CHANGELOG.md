@@ -1,3 +1,12 @@
+## [v27.39] — 2026-10-25
+
+### Changed
+- Global Prediction: **one plotly Yes-probability line chart per prediction market** (stacked under each theme). Do not overlay Kalshi + Polymarket or multiple markets on one theme plot.
+
+### Notes
+- en-US: Bundle **12736267**. `gp_build_theme_market_charts()` stacks per-market charts; honest empty when no series.
+- zh-TW：Bundle **12736267**。同一主題下每個預測市場各自一條 Yes 機率線圖，不再合併疊圖。
+
 ## [v27.38] — 2026-10-25
 
 ### Added
