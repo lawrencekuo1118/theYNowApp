@@ -855,10 +855,73 @@ gp_split_series_by_market <- function(series) {
   out[!vapply(out, is.null, logical(1))]
 }
 
+#' Venue chart chrome cues (Kalshi / Polymarket live market pages).
+#' One series per chart — never invents points; style only.
+gp_venue_chart_theme <- function(venue = "kalshi") {
+  colors <- gp_brand_colors()
+  v <- tolower(.gp_chr(venue, "kalshi"))
+  if (identical(v, "polymarket")) {
+    return(list(
+      venue = "polymarket",
+      venue_lab = "Polymarket",
+      line = colors$polymarket,
+      # Soft Yes-area under a single outcome line (readable; multi-outcome refs are line-only).
+      fill = "rgba(46, 92, 255, 0.10)",
+      use_fill = TRUE,
+      line_width = 2.2,
+      paper_bg = "#FFFFFF",
+      plot_bg = "#FFFFFF",
+      grid = "#E5E7EB",
+      axis_font = "#9CA3AF",
+      source_key = "gp_chart_source_poly"
+    ))
+  }
+  list(
+    venue = "kalshi",
+    venue_lab = "Kalshi",
+    line = colors$kalshi,
+    fill = "rgba(0, 214, 108, 0.08)",
+    use_fill = TRUE,
+    line_width = 2.6,
+    paper_bg = "#FFFFFF",
+    plot_bg = "#FFFFFF",
+    grid = "#E5E7EB",
+    axis_font = "#9CA3AF",
+    source_key = "gp_chart_source_kalshi"
+  )
+}
+
+.gp_chart_header_ui <- function(title, last_pct, theme, locale = "en") {
+  pct_txt <- if (is.finite(last_pct)) sprintf("%.0f%%", round(last_pct)) else "—"
+  htmltools::tags$div(
+    class = "ynow-gp-chart-head",
+    htmltools::tags$div(
+      class = "ynow-gp-chart-head-main",
+      htmltools::tags$span(
+        class = "ynow-gp-chart-dot",
+        style = sprintf("background:%s;", theme$line)
+      ),
+      htmltools::tags$span(class = "ynow-gp-chart-title", title),
+      htmltools::tags$span(
+        class = "ynow-gp-chart-chance",
+        style = sprintf("color:%s;", theme$line),
+        pct_txt
+      )
+    ),
+    htmltools::tags$div(
+      class = "ynow-gp-chart-head-meta",
+      htmltools::tags$span(class = "ynow-gp-chart-chance-label", .gp_label("gp_chart_chance", locale)),
+      htmltools::tags$span(class = "ynow-gp-chart-venue-mark", theme$venue_lab)
+    )
+  )
+}
+
 #' Native plotly line chart for **one** prediction market (no ggplotly, no overlay).
+#' Visual chrome leans Kalshi / Polymarket live market pages (right Yes% axis,
+#' horizontal-only grid, brand line + soft fill, header Chance %).
 #' If `series` contains multiple markets, only the first market is plotted — callers
 #' should prefer `gp_build_theme_market_charts()` to stack one chart per market.
-gp_build_line_chart <- function(series, locale = "en", height = 220) {
+gp_build_line_chart <- function(series, locale = "en", height = 240) {
   locale <- .gp_chr(locale, "en")
   empty_node <- function() {
     htmltools::tags$p(
@@ -878,61 +941,103 @@ gp_build_line_chart <- function(series, locale = "en", height = 220) {
   if (nrow(sub) < as.integer(.GP_HISTORY_MIN_POINTS)) return(empty_node())
   sub <- sub[order(sub$ts), , drop = FALSE]
   sub <- .gp_series_downsample(sub, max_n = 400L)
-  colors <- gp_brand_colors()
   venue <- .gp_chr(sub$venue[[1]], "kalshi")
-  col <- if (identical(venue, "polymarket")) colors$polymarket else colors$kalshi
-  venue_lab <- if (identical(venue, "polymarket")) "Polymarket" else "Kalshi"
+  theme <- gp_venue_chart_theme(venue)
   title <- .gp_chr(sub$title[[1]], sub$market_id[[1]])
   lab <- title
   if (nchar(lab) > 72L) lab <- paste0(substr(lab, 1L, 69L), "…")
   y_pct <- 100 * as.numeric(sub$yes_prob)
+  last_pct <- utils::tail(y_pct[is.finite(y_pct)], 1)
+  if (!length(last_pct)) last_pct <- NA_real_
   fig <- plotly::plot_ly(height = as.integer(height))
-  fig <- plotly::add_trace(
-    fig,
+  trace_args <- list(
+    p = fig,
     x = sub$ts,
     y = y_pct,
     type = "scatter",
     mode = "lines",
     name = lab,
-    line = list(color = col, width = 2),
+    line = list(color = theme$line, width = theme$line_width, shape = "linear"),
     hovertemplate = paste0(
-      lab, "<br>%{x|%Y-%m-%d}<br>Yes: %{y:.1f}%<extra></extra>"
+      "<b>", lab, "</b><br>",
+      "%{x|%b %d, %Y}<br>",
+      "Yes %{y:.1f}%",
+      "<extra></extra>"
     ),
     showlegend = FALSE
   )
+  if (isTRUE(theme$use_fill)) {
+    trace_args$fill <- "tozeroy"
+    trace_args$fillcolor <- theme$fill
+  }
+  fig <- do.call(plotly::add_trace, trace_args)
   fig <- plotly::layout(
     fig,
-    title = list(
-      text = sprintf("%s · %s", venue_lab, lab),
-      font = list(size = 13, color = "#1c1915"),
-      x = 0,
-      xanchor = "left"
+    # Title lives in HTML header (venue-page legend + Chance %), not plotly title.
+    title = NULL,
+    xaxis = list(
+      title = "",
+      showgrid = FALSE,
+      zeroline = FALSE,
+      showline = FALSE,
+      ticks = "",
+      tickfont = list(size = 11, color = theme$axis_font, family = "Inter, system-ui, sans-serif"),
+      automargin = TRUE
     ),
-    xaxis = list(title = "", showgrid = TRUE, zeroline = FALSE),
     yaxis = list(
-      title = .gp_label("gp_chart_yaxis", locale),
+      title = "",
+      side = "right",
       range = c(0, 100),
+      dtick = 25,
+      tick0 = 0,
       ticksuffix = "%",
+      tickfont = list(size = 11, color = theme$axis_font, family = "Inter, system-ui, sans-serif"),
       showgrid = TRUE,
-      zeroline = FALSE
+      gridcolor = theme$grid,
+      gridwidth = 1,
+      zeroline = FALSE,
+      showline = FALSE,
+      ticks = "",
+      automargin = TRUE,
+      fixedrange = TRUE
     ),
-    margin = list(l = 48, r = 16, t = 40, b = 36),
-    paper_bgcolor = "#FFFFFF",
-    plot_bgcolor = "#FAFBFC",
-    hovermode = "x unified",
-    showlegend = FALSE
+    margin = list(l = 8, r = 44, t = 8, b = 28),
+    paper_bgcolor = theme$paper_bg,
+    plot_bgcolor = theme$plot_bg,
+    hovermode = "x",
+    hoverlabel = list(
+      bgcolor = "#FFFFFF",
+      bordercolor = "#E5E7EB",
+      font = list(size = 12, color = "#111827", family = "Inter, system-ui, sans-serif")
+    ),
+    showlegend = FALSE,
+    annotations = list(
+      list(
+        text = .gp_label(theme$source_key, locale),
+        xref = "paper", yref = "paper",
+        x = 0, y = -0.12,
+        xanchor = "left", yanchor = "top",
+        showarrow = FALSE,
+        font = list(size = 10, color = "#9CA3AF", family = "Inter, system-ui, sans-serif")
+      )
+    )
   )
   fig <- plotly::config(fig, displayModeBar = FALSE, responsive = TRUE, displaylogo = FALSE)
   htmltools::tags$div(
-    class = "ynow-gp-chart-widget ynow-gp-market-chart-widget",
-    `data-venue` = venue,
+    class = paste(
+      "ynow-gp-chart-widget ynow-gp-market-chart-widget",
+      paste0("ynow-gp-venue-", theme$venue)
+    ),
+    `data-venue` = theme$venue,
+    `data-venue-style` = theme$venue,
     `data-market-id` = .gp_chr(sub$market_id[[1]]),
+    .gp_chart_header_ui(lab, last_pct, theme, locale),
     fig
   )
 }
 
 #' One line chart per prediction market under a theme (stacked; never merged).
-gp_build_theme_market_charts <- function(series, locale = "en", height = 220) {
+gp_build_theme_market_charts <- function(series, locale = "en", height = 240) {
   locale <- .gp_chr(locale, "en")
   parts <- gp_split_series_by_market(series)
   if (!length(parts)) {
@@ -1692,10 +1797,22 @@ global_prediction_ui <- function(id, locale = "en") {
       .ynow-gp-venue-label { font-size: 13px; font-weight: 700; letter-spacing: 0.02em;
         border-bottom: 2px solid; padding-bottom: 4px; margin-bottom: 8px; }
       .ynow-gp-chart { margin: 0 0 10px; }
-      .ynow-gp-charts { display: flex; flex-direction: column; gap: 12px; }
-      .ynow-gp-market-chart { margin: 0; padding: 8px 10px; background: #faf8f3;
-        border: 1px solid #e4dccb; border-radius: 6px; }
+      .ynow-gp-charts { display: flex; flex-direction: column; gap: 14px; }
+      .ynow-gp-market-chart { margin: 0; padding: 12px 12px 8px; background: #fff;
+        border: 1px solid #e5e7eb; border-radius: 8px; }
       .ynow-gp-chart-widget { width: 100%%; }
+      .ynow-gp-chart-head { display: flex; flex-wrap: wrap; align-items: baseline;
+        justify-content: space-between; gap: 6px 12px; margin: 0 0 6px; }
+      .ynow-gp-chart-head-main { display: flex; flex-wrap: wrap; align-items: center;
+        gap: 8px; min-width: 0; }
+      .ynow-gp-chart-dot { width: 8px; height: 8px; border-radius: 999px; flex: 0 0 auto; }
+      .ynow-gp-chart-title { font-size: 13px; font-weight: 600; color: #111827;
+        line-height: 1.35; }
+      .ynow-gp-chart-chance { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums;
+        letter-spacing: -0.02em; }
+      .ynow-gp-chart-head-meta { display: flex; gap: 10px; align-items: center;
+        font-size: 11px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.04em; }
+      .ynow-gp-chart-venue-mark { font-weight: 600; }
       .ynow-gp-chart-empty { padding: 18px 8px; text-align: center; }
       .ynow-gp-last-print-label { font-size: 11px; color: #7a7368; margin: 0 0 6px; }
       .ynow-gp-quote { border-left: 3px solid; padding: 6px 0 8px 10px; margin-bottom: 8px; }

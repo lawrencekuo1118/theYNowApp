@@ -459,6 +459,45 @@ check(
   grepl("\\.GP_HISTORY_PER_VENUE <- 6L", mod_src) ||
     grepl(".GP_HISTORY_PER_VENUE <- 6L", mod_src, fixed = TRUE)
 )
+
+# ---- Venue-page chart chrome (Kalshi / Polymarket style cues) --------------
+kt <- gp_venue_chart_theme("kalshi")
+pt <- gp_venue_chart_theme("polymarket")
+check("kalshi theme uses brand green line", identical(kt$line, cols$kalshi))
+check("polymarket theme uses brand blue line", identical(pt$line, cols$polymarket))
+check("venue themes enable soft fill under line", isTRUE(kt$use_fill) && isTRUE(pt$use_fill))
+check(
+  "module y-axis right + 25%% ticks (venue cue)",
+  grepl('side = "right"', mod_src, fixed = TRUE) &&
+    grepl("dtick = 25", mod_src, fixed = TRUE)
+)
+check(
+  "module horizontal-only grid (xaxis showgrid FALSE)",
+  grepl("showgrid = FALSE", mod_src, fixed = TRUE)
+)
+check("module chart head Chance chrome", grepl("ynow-gp-chart-chance", mod_src, fixed = TRUE))
+check("module venue style data attr", grepl("data-venue-style", mod_src, fixed = TRUE))
+check("locale en Chance", grepl('gp_chart_chance = "Chance"', loc, fixed = TRUE))
+check("locale zh Chance", grepl('gp_chart_chance = "機率"', loc, fixed = TRUE))
+check("locale en source marks", grepl("gp_chart_source_kalshi", loc, fixed = TRUE) &&
+        grepl("gp_chart_source_poly", loc, fixed = TRUE))
+
+if (file.exists(k_hist_path)) {
+  ks_style <- gp_parse_kalshi_candlesticks(
+    jsonlite::fromJSON(k_hist_path, simplifyVector = FALSE),
+    theme_id = "fed_rates",
+    market_id = "KXRATECUT-26DEC31",
+    title = "Fed rate cuts"
+  )
+  styled <- gp_build_line_chart(ks_style, locale = "en")
+  styled_html <- paste(as.character(styled), collapse = "\n")
+  check(
+    "styled chart exposes venue-style + Chance head",
+    grepl('data-venue-style="kalshi"', styled_html, fixed = TRUE) &&
+      grepl("ynow-gp-chart-chance", styled_html, fixed = TRUE) &&
+      grepl("ynow-gp-chart-head", styled_html, fixed = TRUE)
+  )
+}
 check(
   "GP CSS escapes percent for sprintf",
   grepl("width: 100%%;", mod_src, fixed = TRUE) &&
