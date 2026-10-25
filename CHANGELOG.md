@@ -7,6 +7,15 @@
 - en-US: Time-bound themes (FOMC, CPI, elections) must not stick on the 24h statement cache; never invent Yes probs; fail closed / honest empty per venue.
 - zh-TW：具時效性的預測主題必須主動重掃；即時報價走快取短 TTL；結算／過期合約剔除後再依 breadth_tier（總體→個股）重分類；不捏造機率；各交易所失敗時誠實空白。
 
+## [v27.29] — 2026-10-25
+
+### Fixed
+- Macro / 總體經濟 lazy mount (#511): deferred `on_first_mount` now restores Shiny reactive domain via `withReactiveDomain`, so `macro_market_server` registers and index KPIs, Rf/YNOW/HTCDI, and concept cloud paint again.
+
+### Notes
+- en-US: `later::later` had dropped `getDefaultReactiveDomain()`; nested Macro `uiOutput`s stayed empty/`recalculating`. Bundle **12735587**.
+- zh-TW：懶載入掛載時補回 Shiny session 反應域，總體經濟指數卡／Rf／YNOW／HTCDI／概念雲恢復正常繪製。
+
 ## [v27.23] — 2026-10-24
 
 ### Changed
