@@ -1,3 +1,12 @@
+## [v27.37] — 2026-10-25
+
+### Changed
+- Global Prediction Economic / Finance / Company boards: primary views are native **plotly** Yes-probability **line charts** (Kalshi candlesticks + Polymarket CLOB history). Honest empty when no series.
+
+### Notes
+- en-US: Bundle **12736189**. `plotly::plot_ly` only (no ggplotly). Compact last-print links remain secondary. Prefs kept: no Ticker/Yahoo chrome on GP; sidebar ATX → GP above dashed separator.
+- zh-TW：Bundle **12736189**。全球預測三大版塊主畫面改為 Yes 機率線圖；無序列時誠實空白，絕不捏造。保留無 Ticker／Yahoo 產業列；側欄順序 ATX→全球預測。
+
 ## [v27.35] — 2026-10-25
 
 ### Changed
