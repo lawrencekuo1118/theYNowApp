@@ -441,7 +441,7 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   ))
   testthat::expect_true(grepl('screener_panel_ui\\(embed = "bluechip"\\)', txt, perl = TRUE))
   testthat::expect_false(grepl("screener_panel_ui\\(\\)", txt, perl = TRUE))
-  testthat::expect_true(grepl("The YNow App v27.33", txt, fixed = TRUE))
+  testthat::expect_true(grepl("The YNow App v27.34", txt, fixed = TRUE))
   testthat::expect_true(grepl('title = "The YNow App"', txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-hfv-report", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-hfv-toolbar", txt, fixed = TRUE))
