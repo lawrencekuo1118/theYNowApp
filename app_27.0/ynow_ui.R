@@ -14640,9 +14640,22 @@ ui <- dashboardPage(
                 try { window.location.assign(String(url)); }
                 catch (eGo) { window.location.href = String(url); }
               };
-              var tabEl = document.querySelector('.sidebar-menu li.active > a[data-value]');
-              var tab = (payload.restore_tab && String(payload.restore_tab)) ||
-                (tabEl ? (tabEl.getAttribute('data-value') || '') : '');
+              var tab = (payload.restore_tab && String(payload.restore_tab)) || '';
+              if (!tab && typeof window.ynowPersistPreAuthTab === 'function') {
+                try { tab = String(window.ynowPersistPreAuthTab() || ''); } catch (ePre) {}
+              }
+              if (!tab) {
+                var tabEl = document.querySelector(
+                  '.sidebar-menu li.active > a[data-value], .sidebar-menu a.active[data-value]'
+                );
+                var footEl = document.querySelector(
+                  '.ynow-sidebar-snapshot-foot a.active[data-value], ' +
+                  '.ynow-sidebar-snapshot-foot a[aria-expanded=\"true\"][data-value]'
+                );
+                tab = (tabEl && tabEl.getAttribute('data-value')) ||
+                  (footEl && footEl.getAttribute('data-value')) || '';
+              }
+              if (tab === 'testing') tab = 'home';
               var baseUrl = String(payload.url);
               var finish = function (url) { go(url); };
               try {
@@ -14789,6 +14802,21 @@ ui <- dashboardPage(
                 sessionStorage.removeItem('ynow_oauth_code_verifier');
                 sessionStorage.removeItem('ynow_pre_oauth_tab');
               } catch (eClr) {}
+              /* In-session login with empty restore: keep the active tab (gate /
+                 modal / OAuth) instead of letting a later durable-prefs jump win. */
+              if (payload.ok && !tab && !payload.quiet) {
+                try {
+                  var act = document.querySelector(
+                    '.sidebar-menu li.active > a[data-value], .sidebar-menu a.active[data-value]'
+                  );
+                  var ft = document.querySelector(
+                    '.ynow-sidebar-snapshot-foot a.active[data-value], ' +
+                    '.ynow-sidebar-snapshot-foot a[aria-expanded=\"true\"][data-value]'
+                  );
+                  tab = (act && act.getAttribute('data-value')) ||
+                    (ft && ft.getAttribute('data-value')) || '';
+                } catch (eCur) {}
+              }
               /* Sys. Admin is guest/ops-only: never restore testing after sign-in. */
               if (payload.ok && tab === 'testing') tab = 'home';
               if (payload.ok) {
@@ -15185,8 +15213,20 @@ ui <- dashboardPage(
           };
           window.ynowPersistPreAuthTab = function () {
             try {
-              var a = document.querySelector('.sidebar-menu li.active > a[data-value]');
-              var tab = a ? (a.getAttribute('data-value') || '') : '';
+              var a = document.querySelector(
+                '.sidebar-menu li.active > a[data-value], .sidebar-menu a.active[data-value]'
+              );
+              var foot = document.querySelector(
+                '.ynow-sidebar-snapshot-foot a.active[data-value], ' +
+                '.ynow-sidebar-snapshot-foot a[aria-expanded=\"true\"][data-value]'
+              );
+              var tab = (a && a.getAttribute('data-value')) ||
+                (foot && foot.getAttribute('data-value')) || '';
+              if (!tab) {
+                var hash = (window.location.hash || '').replace(/^#shiny-tab-/, '');
+                if (hash && hash !== 'testing') tab = hash;
+              }
+              if (tab === 'testing') tab = 'home';
               if (tab) sessionStorage.setItem('ynow_pre_oauth_tab', tab);
               if (window.Shiny && Shiny.setInputValue) {
                 Shiny.setInputValue('ynow_auth_restore_tab', tab || '', { priority: 'event' });

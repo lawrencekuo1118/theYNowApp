@@ -99,7 +99,8 @@ upd2 <- ynow_prefs_update_last_ui_surface(uid, ticker = "NVDA")
 check("update ticker keeps tab", identical(upd2$tab, "macro_market") &&
         identical(upd2$ticker, "NVDA"))
 
-# Contracts: auth resume + finish prefer durable surface; client localStorage key.
+# Contracts: resume restores durable surface; in-session finish keeps chrome tab
+# (see test_login_redirect_current_tab.R). Client localStorage key.
 auth <- paste(readLines(file.path(root, "auth_account.R"), warn = FALSE, encoding = "UTF-8"),
               collapse = "\n")
 ui <- paste(readLines(file.path(root, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"),

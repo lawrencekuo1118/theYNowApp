@@ -3033,18 +3033,21 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
       )
     }
     uid <- as.character(user$id %||% "")[1]
+    # Tab the user signed in from (modal / gate / OAuth). In-session login must
+    # stay here — durable last-tab is for browser resume only.
     chrome_tab <- tab
     after_chrome <- function() {
       tryCatch(.persist_auth_browser(user), error = function(e) NULL)
       saved <- tryCatch(.load_last_ui_surface(user), error = function(e) list(tab = "", ticker = ""))
-      stab <- as.character(saved$tab %||% "")[1]
       stick <- as.character(saved$ticker %||% "")[1]
-      if (identical(stab, "testing")) stab <- "home"
-      # Durable prefs win when present (member last screen over guest pre-auth).
-      if (nzchar(stab) || nzchar(stick)) {
+      stay_tab <- chrome_tab
+      if (identical(stay_tab, "testing")) stay_tab <- "home"
+      # Prefer current-session tab over durable prefs tab. Still restore ticker
+      # from prefs when available so search context survives sign-in.
+      if (nzchar(stay_tab) || nzchar(stick)) {
         tryCatch(
           .ynow_auth_apply_surface(
-            tab = if (nzchar(stab)) stab else chrome_tab,
+            tab = stay_tab,
             ticker = stick,
             quiet = TRUE,
             message = ""
@@ -3055,7 +3058,11 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
       tryCatch(
         .persist_last_ui_surface(
           user,
-          tab = if (nzchar(stab)) stab else chrome_tab,
+          tab = if (nzchar(stay_tab)) {
+            stay_tab
+          } else {
+            as.character(saved$tab %||% "")[1]
+          },
           ticker = stick
         ),
         error = function(e) NULL
