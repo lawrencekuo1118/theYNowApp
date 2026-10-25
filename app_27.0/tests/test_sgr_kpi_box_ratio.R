@@ -1,5 +1,6 @@
-# SGR KPI value boxes: equal 1:1 columns + square aspect-ratio CSS.
-# Run: cd app_27.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_sgr_kpi_box_ratio.R
+# SGR KPI value boxes: full-width 1:1 side-by-side like BETA Overview
+# (Summary β | 產業預設 β). Run:
+#   cd app_27.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_sgr_kpi_box_ratio.R
 
 root <- if (file.exists("ynow_ui.R")) {
   getwd()
@@ -18,6 +19,7 @@ check <- function(label, cond) {
 }
 
 ui <- paste(readLines("ynow_ui.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+srv <- paste(readLines("ynow_server.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 
 # Isolate .dcf_core_params_box body (SGR tabBox)
 sgr_start <- regexpr("\\.dcf_core_params_box\\s*<-\\s*function", ui, perl = TRUE)[1]
@@ -30,11 +32,26 @@ check(
   grepl('class\\s*=\\s*"ynow-sgr-kpi-row"', sgr, perl = TRUE)
 )
 
-# Lock on column host (FCF-style), not a bare tags$div wrapper around width=6 output
+# BETA Overview reference pattern: col-sm-6 host + valueBoxOutput(width=6)
+beta_start <- regexpr("beta_overview_section_ui\\s*<-\\s*function", ui, perl = TRUE)[1]
+beta_end <- regexpr("beta_unlever_section_ui\\s*<-\\s*function", ui, perl = TRUE)[1]
+check("BETA overview function present", beta_start > 0 && beta_end > beta_start)
+beta <- substr(ui, beta_start, beta_end - 1L)
 check(
-  "output:sgr_pct lock on column host",
+  "BETA Overview uses col-sm-6 + valueBoxOutput width 6",
+  grepl('class\\s*=\\s*"col-sm-6"', beta, perl = TRUE) &&
+    grepl('valueBoxOutput\\("vbx_beta_industry",\\s*width\\s*=\\s*6\\)', beta, perl = TRUE)
+)
+
+# SGR matches that host pattern (lock on col-sm-6; session_g via valueBoxOutput width=6)
+check(
+  "output:sgr_pct lock on col-sm-6 host",
   grepl(
-    'column\\(\\s*6\\s*,\\s*`data-ynow-lock`\\s*=\\s*"output:sgr_pct"',
+    'class\\s*=\\s*"col-sm-6"[\\s\\S]{0,120}`data-ynow-lock`\\s*=\\s*"output:sgr_pct"',
+    sgr,
+    perl = TRUE
+  ) || grepl(
+    '`data-ynow-lock`\\s*=\\s*"output:sgr_pct"[\\s\\S]{0,120}class\\s*=\\s*"col-sm-6"',
     sgr,
     perl = TRUE
   )
@@ -48,45 +65,63 @@ check(
   )
 )
 check(
-  "vbx_sgr_pct width 12 inside column",
-  grepl('valueBoxOutput\\("vbx_sgr_pct",\\s*width\\s*=\\s*12\\)', sgr, perl = TRUE)
+  "vbx_sgr_pct is uiOutput inside col-sm-6 (BETA summary pattern)",
+  grepl('shiny::uiOutput\\("vbx_sgr_pct"\\)|uiOutput\\("vbx_sgr_pct"\\)', sgr, perl = TRUE)
 )
 check(
-  "vbx_session_g width 12 inside column",
-  grepl('valueBoxOutput\\("vbx_session_g",\\s*width\\s*=\\s*12\\)', sgr, perl = TRUE)
+  "vbx_session_g valueBoxOutput width 6 (BETA industry pattern)",
+  grepl('valueBoxOutput\\("vbx_session_g",\\s*width\\s*=\\s*6\\)', sgr, perl = TRUE)
 )
 
-# Square aspect CSS scoped to SGR KPI row only
+# Server: bare small-box (width=NULL) like Summary β
 check(
-  "CSS aspect-ratio 1/1 for ynow-sgr-kpi-row",
-  grepl(".ynow-sgr-kpi-row .small-box", ui, fixed = TRUE) &&
-    grepl("aspect-ratio:\\s*1\\s*/\\s*1\\s*!important", ui, perl = TRUE)
+  "vbx_sgr_pct renderUI with width=NULL",
+  grepl("output\\$vbx_sgr_pct\\s*<-\\s*renderUI", srv, perl = TRUE) &&
+    grepl(
+      "output\\$vbx_sgr_pct\\s*<-\\s*renderUI\\([\\s\\S]{0,600}?width\\s*=\\s*NULL",
+      srv,
+      perl = TRUE
+    )
 )
 check(
-  "SGR square CSS overrides height stretch",
+  "vbx_session_g valueBox width=NULL",
   grepl(
-    "[.]ynow-sgr-kpi-row [.]small-box[\\s\\S]{0,500}?height:\\s*clamp\\(",
-    ui,
+    "output\\$vbx_session_g\\s*<-\\s*renderValueBox\\([\\s\\S]{0,500}?width\\s*=\\s*NULL",
+    srv,
     perl = TRUE
-  ) &&
+  )
+)
+
+# Full-width CSS (no centered mini-square clamp)
+check(
+  "CSS full-width for ynow-sgr-kpi-row small-box",
+  grepl(".ynow-sgr-kpi-row .small-box", ui, fixed = TRUE) &&
     grepl(
-      "[.]ynow-sgr-kpi-row [.]small-box[\\s\\S]{0,500}?width:\\s*auto\\s*!important",
+      "[.]ynow-sgr-kpi-row [.]small-box[\\s\\S]{0,400}?width:\\s*100%\\s*!important",
       ui,
       perl = TRUE
     )
 )
-
-# KPI-grid golden ratio must not be the SGR rule
-kpi_grid_ar <- regexpr(
-  "\\.ynow-kpi-grid \\.small-box\\s*\\{[^}]*aspect-ratio:\\s*1\\.618",
-  ui,
-  perl = TRUE
-)[1]
-sgr_ar <- regexpr(
-  "\\.ynow-sgr-kpi-row \\.small-box[\\s\\S]{0,200}?aspect-ratio:\\s*1\\s*/\\s*1",
-  ui,
-  perl = TRUE
-)[1]
-check("SGR uses 1/1 not golden-ratio grid rule", sgr_ar > 0 && kpi_grid_ar > 0)
+check(
+  "SGR CSS does not shrink with width:auto + height clamp",
+  !grepl(
+    "[.]ynow-sgr-kpi-row [.]small-box[\\s\\S]{0,500}?width:\\s*auto\\s*!important",
+    ui,
+    perl = TRUE
+  ) &&
+    !grepl(
+      "[.]ynow-sgr-kpi-row [.]small-box[\\s\\S]{0,500}?height:\\s*clamp\\(",
+      ui,
+      perl = TRUE
+    )
+)
+check(
+  "SGR columns stretch (not center-align mini tiles)",
+  grepl(
+    "[.]ynow-sgr-kpi-row > \\[class\\*='col-'\\][\\s\\S]{0,200}?align-items:\\s*stretch",
+    ui,
+    perl = TRUE
+  )
+)
 
 cat("\nAll SGR KPI box ratio checks passed.\n")

@@ -9471,7 +9471,8 @@ server <- function(input, output, session) {
     suppressWarnings(as.numeric(APP_DEFAULTS$g_stage1)[1])
   }
 
-  output$vbx_sgr_pct <- renderValueBox({
+  # SGR KPI hosts match BETA Overview: bare small-box (width=NULL) inside col-sm-6.
+  output$vbx_sgr_pct <- renderUI({
     loc <- tryCatch(ui_locale(), error = function(e) "en")
     sgr_pct <- suppressWarnings(as.numeric(input$sgr)[1])
     if (!is.finite(sgr_pct)) sgr_pct <- suppressWarnings(as.numeric(APP_DEFAULTS$sgr)[1])
@@ -9479,7 +9480,8 @@ server <- function(input, output, session) {
       if (is.finite(sgr_pct)) paste0(round(sgr_pct, 2), " %") else "N/A",
       ui_str("vbx_sgr_subtitle", loc),
       icon = icon("infinity"),
-      color = "maroon"
+      color = "maroon",
+      width = NULL
     )
   })
 
@@ -9490,7 +9492,8 @@ server <- function(input, output, session) {
       if (is.finite(g_pct)) paste0(round(g_pct, 2), " %") else "N/A",
       ui_str("vbx_session_g_subtitle", loc),
       icon = icon("chart-line"),
-      color = "olive"
+      color = "olive",
+      width = NULL
     )
   })
 
