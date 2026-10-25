@@ -964,87 +964,81 @@ bblab_order_research_meta_ui <- function(pack, locale = "en", started = FALSE) {
       tags$span(class = "ynow-bblab-or__xnote", paste0(" · ", note))
     )
   })
-  # Compact keyword-framework summary (tone / guidance / traps) — not a lexicon wall.
+  # Order-focus only: 訂單／主要供應商／主要客戶 (+ traps). No tone/token/CapEx wall.
   .ec_keyword_ui <- function(ec) {
     if (!is.list(ec)) return(NULL)
-    tone <- suppressWarnings(as.integer(ec$keyword_tone_score %||% NA_integer_)[1])
-    guide <- .bblab_chr(ec$keyword_guidance_update, "")
-    pos <- as.character(unlist(ec$keyword_top_positives %||% character(0)))
-    pos <- trimws(pos[nzchar(trimws(pos))])
-    risk <- as.character(unlist(ec$keyword_top_risks %||% character(0)))
-    risk <- trimws(risk[nzchar(trimws(risk))])
-    traps <- as.character(unlist(ec$keyword_trap_flags %||% character(0)))
-    traps <- trimws(traps[nzchar(trimws(traps))])
-    capex_n <- as.character(unlist(ec$keyword_capex_notes %||% character(0)))
-    capex_n <- trimws(capex_n[nzchar(trimws(capex_n))])
-    bridge <- as.character(unlist(ec$keyword_bridging_notes %||% character(0)))
-    bridge <- trimws(bridge[nzchar(trimws(bridge))])
-    has_any <- is.finite(tone) || nzchar(guide) || length(pos) || length(risk) ||
-      length(traps) || length(capex_n) || length(bridge)
-    if (!isTRUE(has_any)) return(NULL)
-    guide_label <- if (identical(guide, "raised")) {
-      msg("bblab_or_ec_kw_guide_raised")
-    } else if (identical(guide, "lowered")) {
-      msg("bblab_or_ec_kw_guide_lowered")
-    } else if (identical(guide, "maintained")) {
-      msg("bblab_or_ec_kw_guide_maintained")
-    } else if (identical(guide, "stated")) {
-      msg("bblab_or_ec_kw_guide_stated")
-    } else {
-      ""
+    .kw_notes <- function(x) {
+      v <- as.character(unlist(x %||% character(0)))
+      trimws(v[nzchar(trimws(v))])
     }
+    orders <- .kw_notes(ec$keyword_order_notes %||% ec$order_notes)
+    suppliers <- .kw_notes(ec$keyword_supplier_notes)
+    # Prefer dedicated customer notes; fall back to supply-chain only for suppliers.
+    if (!length(suppliers)) {
+      suppliers <- .kw_notes(ec$supply_chain_notes)
+      # Keep only supplier-ish lines when falling back.
+      if (length(suppliers)) {
+        suppliers <- suppliers[grepl(
+          "供應商|供應鏈|supplier|supply[- ]chain|缺料|採購",
+          suppliers,
+          ignore.case = TRUE,
+          perl = TRUE
+        )]
+      }
+    }
+    customers <- .kw_notes(ec$keyword_customer_notes %||% ec$customer_notes)
+    traps <- .kw_notes(ec$keyword_trap_flags)
+    has_any <- length(orders) || length(suppliers) || length(customers) || length(traps)
+    if (!isTRUE(has_any)) return(NULL)
     trap_labels <- vapply(traps, function(t) {
       key <- paste0("bblab_or_ec_kw_", t)
       lab <- tryCatch(msg(key), error = function(e) "")
       if (!nzchar(lab) || identical(lab, key)) t else lab
     }, character(1))
+    .note_list <- function(items, title_key) {
+      if (!length(items)) return(NULL)
+      tags$div(
+        class = "ynow-bblab-or__ec-kw-notes",
+        tags$p(tags$b(msg(title_key))),
+        tags$ul(lapply(utils::head(items, 5L), function(s) tags$li(s)))
+      )
+    }
+    updated <- .bblab_chr(ec$info_updated_at %||% ec$analysis_axis_published %||% ec$published, "")
+    updated_kind <- .bblab_chr(ec$info_updated_kind, "")
+    updated_row <- if (nzchar(updated)) {
+      kind_lab <- if (identical(updated_kind, "fetched_at")) {
+        msg("bblab_or_ec_kw_updated_kind_fetched")
+      } else if (nzchar(updated_kind)) {
+        msg("bblab_or_ec_kw_updated_kind_event")
+      } else {
+        ""
+      }
+      tags$p(
+        class = "help-block ynow-bblab-or__ec-kw-updated",
+        tags$b(paste0(msg("bblab_or_ec_kw_updated"), ": ")),
+        updated,
+        if (nzchar(kind_lab)) tags$span(paste0(" (", kind_lab, ")")) else NULL
+      )
+    } else {
+      tags$p(
+        class = "help-block ynow-bblab-or__ec-kw-updated",
+        tags$b(paste0(msg("bblab_or_ec_kw_updated"), ": ")),
+        msg("bblab_or_ec_kw_updated_unknown")
+      )
+    }
     tags$div(
-      class = "ynow-bblab-or__ec-kw",
+      class = "ynow-bblab-or__ec-kw ynow-bblab-or__ec-kw--order-focus",
       tags$p(tags$b(msg("bblab_or_ec_kw_title"))),
       tags$p(class = "help-block", msg("bblab_or_ec_kw_note")),
-      if (is.finite(tone)) {
-        tags$p(
-          tags$b(paste0(msg("bblab_or_ec_kw_tone"), ": ")),
-          paste0(tone, "/5")
-        )
-      } else NULL,
-      if (nzchar(guide_label)) {
-        tags$p(
-          tags$b(paste0(msg("bblab_or_ec_kw_guidance"), ": ")),
-          guide_label
-        )
-      } else NULL,
-      if (length(pos)) {
-        tags$p(
-          tags$b(paste0(msg("bblab_or_ec_kw_positives"), ": ")),
-          paste(utils::head(pos, 3L), collapse = " · ")
-        )
-      } else NULL,
-      if (length(risk)) {
-        tags$p(
-          tags$b(paste0(msg("bblab_or_ec_kw_risks"), ": ")),
-          paste(utils::head(risk, 3L), collapse = " · ")
-        )
-      } else NULL,
+      updated_row,
+      .note_list(orders, "bblab_or_ec_kw_orders"),
+      .note_list(suppliers, "bblab_or_ec_kw_suppliers"),
+      .note_list(customers, "bblab_or_ec_kw_customers"),
       if (length(trap_labels)) {
         tags$p(
           class = "help-block ynow-bblab-or__ec-kw-traps",
           tags$b(paste0(msg("bblab_or_ec_kw_traps"), ": ")),
           paste(trap_labels, collapse = " · ")
-        )
-      } else NULL,
-      if (length(capex_n)) {
-        tags$div(
-          class = "ynow-bblab-or__ec-kw-capex",
-          tags$p(tags$b(msg("bblab_or_ec_kw_capex"))),
-          tags$ul(lapply(utils::head(capex_n, 3L), function(s) tags$li(s)))
-        )
-      } else NULL,
-      if (length(bridge)) {
-        tags$div(
-          class = "ynow-bblab-or__ec-kw-bridge",
-          tags$p(tags$b(msg("bblab_or_ec_kw_bridging"))),
-          tags$ul(lapply(utils::head(bridge, 2L), function(s) tags$li(s)))
         )
       } else NULL
     )
@@ -1205,7 +1199,11 @@ bblab_order_research_meta_ui <- function(pack, locale = "en", started = FALSE) {
     }
     has_status_notes <- length(tw_ec$order_notes %||% character(0)) > 0L ||
       length(tw_ec$supply_chain_notes %||% character(0)) > 0L ||
-      length(tw_ec$outlook_notes %||% character(0)) > 0L
+      length(tw_ec$outlook_notes %||% character(0)) > 0L ||
+      length(tw_ec$keyword_order_notes %||% character(0)) > 0L ||
+      length(tw_ec$keyword_supplier_notes %||% character(0)) > 0L ||
+      length(tw_ec$keyword_customer_notes %||% character(0)) > 0L ||
+      length(tw_ec$customer_notes %||% character(0)) > 0L
     tw_block <- tags$div(
       class = "ynow-bblab-or__tw-ec",
       `data-status` = status,

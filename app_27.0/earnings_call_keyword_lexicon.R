@@ -5,9 +5,10 @@
 # extractors and scorers. Not a user-facing wall of text.
 # Derived methodology notes from a public reading framework; do not republish
 # third-party article prose. Skip framework steps 1 (full-text map scan) and
-# 5 (equity-story / smile-curve narrative). Encode steps 2–4 + keyword DB
-# template + reading traps.
-# Never invent amounts. Status-only facts feed 業務拆解 / order-research.
+# 5 (equity-story / smile-curve narrative). Encode steps 2–4 + traps.
+# Product surface focus (post-v27.41): only 主要供應商 / 訂單 / 主要客戶 for
+# 業務拆解 → order-research. Tone / CapEx / bridging stay internal scorers.
+# Never invent amounts. Status-only.
 
 if (!exists("%||%", mode = "function")) {
   `%||%` <- function(a, b) if (is.null(a)) b else a
@@ -17,16 +18,48 @@ if (!exists("%||%", mode = "function")) {
 #' @return named list of character vectors (regex-friendly fragments).
 ynow_ec_keyword_lexicon <- function() {
   list(
-    version = "1",
+    version = "2",
     # Framework coverage note (machine metadata, not UI copy).
     skipped_steps = c("1_full_text_map_scan", "5_equity_story_narrative"),
+    product_focus = c("major_suppliers", "orders_backlog_bookings", "major_customers"),
     encoded_steps = c(
       "pre_read_prep",
       "2_presentation_deep_read",
       "3_qa_close_read",
       "4_tone_and_wording_delta",
+      "order_focus_extract",
       "keyword_db_template",
       "reading_traps"
+    ),
+    # Order-research surface roles (status-only sentence harvest).
+    orders = list(
+      zh = c(
+        "在手訂單", "新訂單", "接單", "訂單能見度", "訂單展望", "訂單金額",
+        "砍單", "延期出貨", "bookings", "backlog", "可見度"
+      ),
+      en = c(
+        "\\bbacklog\\b", "bookings?", "book[- ]to[- ]bill", "order visibility",
+        "order outlook", "order cut", "cancel(?:led)? orders?", "push(?:ed)? out"
+      )
+    ),
+    suppliers = list(
+      zh = c(
+        "供應商", "主要供應商", "供應鏈", "供貨", "缺料", "長約", "採購", "上游"
+      ),
+      en = c(
+        "supplier", "supply[- ]chain", "key supplier", "sourcing",
+        "material shortage", "long[- ]term agreement", "upstream"
+      )
+    ),
+    customers = list(
+      zh = c(
+        "客戶", "主要客戶", "重大客戶", "客戶集中", "占營收", "佔營收",
+        "新客戶", "終端客戶", "品牌客戶"
+      ),
+      en = c(
+        "customer", "major customer", "key customer", "concentration",
+        "% of (?:net )?revenue", "new customer", "end customer", "OEM"
+      )
     ),
     positive = list(
       zh = c(

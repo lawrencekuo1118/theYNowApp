@@ -1,17 +1,16 @@
 # ==========================================
 # TW earnings-call / 法說會結論 ingest (product path)
 # ==========================================
-# Preferred automatable:
-#   1) FinmoConf company page → latest MOPS STR presentation PDF (zh then en)
-#      (Estimate; FinmoConf robots Allow / / Disallow /api/; no /api/ calls)
-#   2) Fugle 法說會備忘錄 HTML (Estimate; robots Allow /)
-# AlphaMemo free-transcripts index:
-#   https://www.alphamemo.ai/free-transcripts
-# AlphaMemo robots.txt disallows /api/; Terms forbid bots/crawlers without
-# written permission → outbound index link only (no AlphaMemo HTML/API scrape).
-# Last-resort (user override): Seeking Alpha HTML scrape when preferred paths
-# cannot supply automatable facts. Credibility = last_resort (third-party HTML).
-# Fail closed with honest empty if FinmoConf + Fugle + SA fail. Never invent amounts.
+# Preferred automatable (durable / robots-safe):
+#   1) Fugle 法說會備忘錄 HTML (Estimate; robots Allow /)
+#   2) FinmoConf company page → latest MOPS STR presentation PDF (zh then en)
+#      (Estimate; FinmoConf robots Allow / ; Disallow /api/; never call /api/)
+# Analysis axis: among usable preferred hits, pick the **newest published/
+# event date** as primary (not an older mixed set). Tie-break: Fugle then FinmoConf.
+# AlphaMemo free-transcripts: human outbound only (robots /api/ + Terms forbid bots;
+# no AlphaMemo HTML/API scrape).
+# Last-resort: Seeking Alpha HTML only when preferred paths empty (credibility last_resort).
+# Fail closed / honest empty if Fugle + FinmoConf + SA fail. Never invent amounts.
 
 .ynow_tw_ec_chr <- function(x, default = "") {
   v <- as.character(x %||% default)[1]
@@ -127,35 +126,27 @@ ynow_tw_earnings_call_alphamemo_search_url <- function(ticker) {
       b1 <- suppressWarnings(as.integer(primary$pdf_bytes %||% NA_integer_)[1])
       if (is.finite(b1) && b1 > 0L) b1 else suppressWarnings(as.integer(secondary$pdf_bytes %||% NA_integer_)[1])
     },
-    # Keyword framework: prefer primary (FinmoConf deck) when present.
+    # Order-focus keyword fields: prefer primary (FinmoConf deck) then union notes.
     keyword_analysis = primary$keyword_analysis %||% secondary$keyword_analysis,
-    keyword_tone_score = {
-      v1 <- suppressWarnings(as.integer(primary$keyword_tone_score %||% NA_integer_)[1])
-      if (is.finite(v1)) v1 else suppressWarnings(as.integer(secondary$keyword_tone_score %||% NA_integer_)[1])
-    },
-    keyword_guidance_update = {
-      g1 <- .ynow_tw_ec_chr(primary$keyword_guidance_update)
-      if (nzchar(g1)) g1 else .ynow_tw_ec_chr(secondary$keyword_guidance_update)
-    },
-    keyword_top_positives = unique(c(
-      .ynow_tw_ec_chr_vec(primary$keyword_top_positives),
-      .ynow_tw_ec_chr_vec(secondary$keyword_top_positives)
+    keyword_order_notes = unique(c(
+      .ynow_tw_ec_chr_vec(primary$keyword_order_notes),
+      .ynow_tw_ec_chr_vec(secondary$keyword_order_notes)
     )),
-    keyword_top_risks = unique(c(
-      .ynow_tw_ec_chr_vec(primary$keyword_top_risks),
-      .ynow_tw_ec_chr_vec(secondary$keyword_top_risks)
+    keyword_supplier_notes = unique(c(
+      .ynow_tw_ec_chr_vec(primary$keyword_supplier_notes),
+      .ynow_tw_ec_chr_vec(secondary$keyword_supplier_notes)
+    )),
+    keyword_customer_notes = unique(c(
+      .ynow_tw_ec_chr_vec(primary$keyword_customer_notes),
+      .ynow_tw_ec_chr_vec(secondary$keyword_customer_notes)
+    )),
+    customer_notes = unique(c(
+      .ynow_tw_ec_chr_vec(primary$customer_notes),
+      .ynow_tw_ec_chr_vec(secondary$customer_notes)
     )),
     keyword_trap_flags = unique(c(
       .ynow_tw_ec_chr_vec(primary$keyword_trap_flags),
       .ynow_tw_ec_chr_vec(secondary$keyword_trap_flags)
-    )),
-    keyword_bridging_notes = unique(c(
-      .ynow_tw_ec_chr_vec(primary$keyword_bridging_notes),
-      .ynow_tw_ec_chr_vec(secondary$keyword_bridging_notes)
-    )),
-    keyword_capex_notes = unique(c(
-      .ynow_tw_ec_chr_vec(primary$keyword_capex_notes),
-      .ynow_tw_ec_chr_vec(secondary$keyword_capex_notes)
     ))
   )
 }
@@ -206,31 +197,53 @@ ynow_tw_earnings_call_fetch <- function(ticker) {
     NULL
   }
 
-  # Preferred paths may both contribute (PDF deck + Fugle memo). Merge when both usable.
+  # Preferred durable stack: Fugle memo, then FinmoConf latest PDF.
   preferred <- list()
-  if (exists("ynow_finmoconf_earnings_call_fetch", mode = "function")) {
-    got_f <- tryCatch(
-      ynow_finmoconf_earnings_call_fetch(bare, extract_fun = extract_fun),
-      error = function(e) NULL
-    )
-    if (isTRUE(usable(got_f))) preferred[[length(preferred) + 1L]] <- got_f
-  }
+  source_rank <- integer(0)
   if (exists("ynow_fugle_earnings_call_fetch", mode = "function")) {
     got_g <- tryCatch(
       ynow_fugle_earnings_call_fetch(bare, extract_fun = extract_fun),
       error = function(e) NULL
     )
-    if (isTRUE(usable(got_g))) preferred[[length(preferred) + 1L]] <- got_g
-  }
-  if (length(preferred) == 1L) {
-    return(c(preferred[[1]], meta_links))
-  }
-  if (length(preferred) >= 2L) {
-    # FinmoConf first in list → primary source_id when it contributed.
-    merged <- preferred[[1]]
-    for (i in seq_along(preferred)[-1]) {
-      merged <- .ynow_tw_ec_merge(merged, preferred[[i]])
+    if (isTRUE(usable(got_g))) {
+      preferred[[length(preferred) + 1L]] <- got_g
+      source_rank <- c(source_rank, 1L)
     }
+  }
+  if (exists("ynow_finmoconf_earnings_call_fetch", mode = "function")) {
+    got_f <- tryCatch(
+      ynow_finmoconf_earnings_call_fetch(bare, extract_fun = extract_fun),
+      error = function(e) NULL
+    )
+    if (isTRUE(usable(got_f))) {
+      preferred[[length(preferred) + 1L]] <- got_f
+      source_rank <- c(source_rank, 2L)
+    }
+  }
+  if (length(preferred) >= 1L) {
+    # Analysis axis = newest event/published date; tie-break Fugle then FinmoConf.
+    ranked <- if (exists("ynow_ec_rank_by_event_date", mode = "function")) {
+      ynow_ec_rank_by_event_date(preferred, source_rank = source_rank)
+    } else {
+      preferred
+    }
+    if (length(ranked) == 1L) {
+      out1 <- ranked[[1]]
+      if (exists("ynow_ec_stamp_info_updated", mode = "function")) {
+        out1 <- ynow_ec_stamp_info_updated(out1)
+      }
+      return(c(out1, meta_links))
+    }
+    merged <- ranked[[1]]
+    for (i in seq_along(ranked)[-1]) {
+      merged <- .ynow_tw_ec_merge(merged, ranked[[i]])
+    }
+    # Keep keyword/order-focus axis on the newest primary (do not re-mix older text).
+    if (exists("ynow_ec_stamp_info_updated", mode = "function")) {
+      merged <- ynow_ec_stamp_info_updated(merged)
+    }
+    merged$analysis_axis_source_id <- .ynow_tw_ec_chr(ranked[[1]]$source_id)
+    merged$analysis_axis_published <- .ynow_tw_ec_chr(ranked[[1]]$published)
     return(c(merged, meta_links))
   }
 
@@ -240,7 +253,12 @@ ynow_tw_earnings_call_fetch <- function(ticker) {
       ynow_sa_earnings_call_fetch_last_resort(bare, extract_fun = extract_fun),
       error = function(e) NULL
     )
-    if (isTRUE(usable(got_sa))) return(c(got_sa, meta_links))
+    if (isTRUE(usable(got_sa))) {
+      if (exists("ynow_ec_stamp_info_updated", mode = "function")) {
+        got_sa <- ynow_ec_stamp_info_updated(got_sa)
+      }
+      return(c(got_sa, meta_links))
+    }
   }
   c(.ynow_tw_ec_empty(bare, "finmoconf_fugle_empty_alphamemo_human_only_sa_empty"), meta_links)
 }
@@ -277,16 +295,17 @@ ynow_tw_earnings_call_to_disclosure <- function(fetched) {
     finmoconf_en_url = .ynow_tw_ec_chr(fetched$finmoconf_en_url),
     sa_url = .ynow_tw_ec_chr(fetched$sa_url),
     empty_reason = .ynow_tw_ec_chr(fetched$empty_reason, "human_browsable_only"),
-    keyword_tone_score = {
-      v <- suppressWarnings(as.integer(fetched$keyword_tone_score %||% NA_integer_)[1])
-      if (is.finite(v)) v else NA_integer_
-    },
-    keyword_guidance_update = .ynow_tw_ec_chr(fetched$keyword_guidance_update),
-    keyword_top_positives = .ynow_tw_ec_chr_vec(fetched$keyword_top_positives),
-    keyword_top_risks = .ynow_tw_ec_chr_vec(fetched$keyword_top_risks),
+    keyword_order_notes = .ynow_tw_ec_chr_vec(fetched$keyword_order_notes),
+    keyword_supplier_notes = .ynow_tw_ec_chr_vec(fetched$keyword_supplier_notes),
+    keyword_customer_notes = .ynow_tw_ec_chr_vec(fetched$keyword_customer_notes),
+    customer_notes = .ynow_tw_ec_chr_vec(fetched$customer_notes),
     keyword_trap_flags = .ynow_tw_ec_chr_vec(fetched$keyword_trap_flags),
-    keyword_bridging_notes = .ynow_tw_ec_chr_vec(fetched$keyword_bridging_notes),
-    keyword_capex_notes = .ynow_tw_ec_chr_vec(fetched$keyword_capex_notes)
+    info_updated_at = .ynow_tw_ec_chr(fetched$info_updated_at),
+    info_updated_kind = .ynow_tw_ec_chr(fetched$info_updated_kind),
+    fetched_at = .ynow_tw_ec_chr(fetched$fetched_at),
+    analysis_axis = .ynow_tw_ec_chr(fetched$analysis_axis, "latest_earnings_call"),
+    analysis_axis_source_id = .ynow_tw_ec_chr(fetched$analysis_axis_source_id),
+    analysis_axis_published = .ynow_tw_ec_chr(fetched$analysis_axis_published)
   )
   out
 }

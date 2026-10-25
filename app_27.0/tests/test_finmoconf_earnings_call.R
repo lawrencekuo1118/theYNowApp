@@ -33,6 +33,8 @@ check <- function(label, cond) {
 }
 
 source("seeking_alpha_earnings_call.R", local = TRUE, encoding = "UTF-8")
+source("earnings_call_keyword_lexicon.R", local = TRUE, encoding = "UTF-8")
+source("earnings_call_keyword_framework.R", local = TRUE, encoding = "UTF-8")
 source("us_earnings_call.R", local = TRUE, encoding = "UTF-8")
 source("fugle_earnings_call.R", local = TRUE, encoding = "UTF-8")
 source("finmoconf_earnings_call.R", local = TRUE, encoding = "UTF-8")
@@ -88,15 +90,24 @@ check("disclosure carries status note fields", {
     identical(disc$source_id %||% "", "finmoconf_presentation_pdf")
 })
 
-# Merge: FinmoConf + Fugle both on → FinmoConf remains primary source_id.
+# Merge: both on → newest published wins; equal dates tie-break Fugle then FinmoConf.
 Sys.setenv(
   YNOW_FUGLE_SCRAPE = "1",
   YNOW_FUGLE_SCRAPE_FIXTURE_HTML = file.path(app_dir, "tests/fixtures/fugle_earnings_memo_sample.html")
 )
 merged <- ynow_tw_earnings_call_fetch("8182.TW")
-check("FinmoConf primary when merged with Fugle fixture", {
-  identical(merged$source_id %||% "", "finmoconf_presentation_pdf") &&
+check("newest/tie-break Fugle primary when merged with FinmoConf fixture", {
+  # Both fixtures publish 2026-10-21 → Fugle wins tie-break; amounts still present.
+  identical(merged$source_id %||% "", "fugle_earnings_memo") &&
+    identical(merged$published %||% "", "2026-10-21") &&
+    nzchar(merged$info_updated_at %||% "") &&
     is.finite(merged$backlog %||% NA_real_)
+})
+check("rank helper puts newer date first", {
+  a <- list(list(published = "2026-01-01", source_id = "old"),
+            list(published = "2026-10-21", source_id = "new"))
+  ranked <- ynow_ec_rank_by_event_date(a, source_rank = c(1L, 2L))
+  identical(ranked[[1]]$source_id, "new")
 })
 
 Sys.unsetenv("YNOW_FINMOCONF_SCRAPE_FIXTURE_HTML")
