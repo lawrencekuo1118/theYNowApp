@@ -7,5 +7,5 @@ commit=605d7ffa3adc0980bc2877b5124e478d82701ef5
 short=605d7ffa
 message=chore: record shinyapps baseline bundle 12736588 (app_27.0)
 captured_at=2026-10-25T12:38:20Z
-display_version=v27.41
+display_version=v27.42
 note=Canonical live line is app_27.0. Bundle 12736588: earnings-call keyword lexicon + extractors for 法說會 analysis (#537).
