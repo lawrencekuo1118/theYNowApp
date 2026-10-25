@@ -7,5 +7,5 @@ commit=d030fb46eb04ff22db5926a11f961df7d07f2179
 short=d030fb46
 message=chore: record shinyapps baseline bundle 12736001 (app_27.0)
 captured_at=2026-10-25T08:08:30Z
-display_version=v27.33
+display_version=v27.34
 note=Canonical live line is app_27.0. Bundle 12736001: in-session login stays on current tab (#521).
