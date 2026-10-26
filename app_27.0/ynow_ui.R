@@ -260,17 +260,17 @@ source("ynow_cookie_notice_ui.R", local = TRUE, encoding = "UTF-8")
           )
         )
       ),
-      tags$p(
-        id = "ynow_home_legal",
-        class = "ynow-home-legal-text ynow-home-disclaimer",
-        paste0(
-          "Research and education only — not investment advice. ",
-          "You alone bear all investment decisions and losses."
-        )
-      ),
       tags$div(
         class = "ynow-home-legal",
-        # Divider sits on this box. Auth and About share one row; gallery below.
+        # Divider is the top border. Disclaimer sits under it, then the link row.
+        tags$p(
+          id = "ynow_home_legal",
+          class = "ynow-home-legal-text ynow-home-disclaimer",
+          paste0(
+            "Research and education only — not investment advice. ",
+            "You alone bear all investment decisions and losses."
+          )
+        ),
         tags$div(
           class = "ynow-home-legal-links",
           if (exists("ynow_auth_home_ui", mode = "function")) ynow_auth_home_ui(),
@@ -8706,14 +8706,14 @@ ui <- dashboardPage(
         @media (min-width: 992px) {
           .ynow-home-grid { grid-template-columns: 1fr 1fr 1fr; }
         }
-        .ynow-home-disclaimer {
-          margin: 16px 0 0 0;
-        }
         .ynow-home-legal {
-          margin: 12px 0 0 0;
+          margin: 14px 0 0 0;
           padding-top: 12px;
           border-top: 1px solid #e5e8eb;
           text-align: center;
+        }
+        .ynow-home-disclaimer {
+          margin: 0 0 10px 0;
         }
         .ynow-home-legal-links {
           display: inline-flex;
@@ -8792,6 +8792,9 @@ ui <- dashboardPage(
           line-height: 1.5;
           color: #666;
           text-align: center;
+        }
+        .ynow-home-disclaimer.ynow-home-legal-text {
+          margin: 0 0 10px 0;
         }
         .ynow-home-legal-link {
           display: inline-block;
