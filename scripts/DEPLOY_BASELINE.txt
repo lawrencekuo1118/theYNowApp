@@ -7,5 +7,5 @@ commit=9a320d6a47eaac25f1568c3c7ffd14b91be656ad
 short=9a320d6a
 message=chore: bump display version to v27.53
 captured_at=2026-10-25T17:30:21Z
-display_version=v27.53
+display_version=v27.54
 note=Canonical live line is app_27.0. Bundle 12737337: Inspiration Gallery homepage + Sys Admin (#563); responsive CSS; YNow Team credit.
