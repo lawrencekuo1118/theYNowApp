@@ -107,7 +107,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Research and education only — not investment advice. ",
       "You alone bear all investment decisions and losses."
     ),
-    home_legal_about = "About · Privacy, IP & risk",
+    home_legal_about = "About · Privacy",
     admin_insp_tab = "Inspiration Gallery",
     admin_insp_title = "Inspiration Gallery",
     admin_insp_help = paste0(
@@ -4941,7 +4941,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "僅供研究與教育參考，不構成投資建議。",
       "投資決策與損益一律由使用者自行承擔。"
     ),
-    home_legal_about = "關於 · 隱私權／智慧財產權／投資風險",
+    home_legal_about = "關於 · 隱私權",
     admin_insp_tab = "靈感藝廊",
     admin_insp_title = "靈感藝廊",
     admin_insp_help = paste0(

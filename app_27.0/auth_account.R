@@ -425,7 +425,7 @@ ynow_auth_header_ui <- function() {
   ynow_auth_links_ui("sidebar")
 }
 
-#' Home legal row companion (Sign in · Register beside About; disclaimer below).
+#' Home legal row companion (Sign in · Register on the left of About).
 ynow_auth_home_ui <- function() {
   ynow_auth_links_ui("home")
 }

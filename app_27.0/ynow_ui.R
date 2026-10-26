@@ -260,34 +260,32 @@ source("ynow_cookie_notice_ui.R", local = TRUE, encoding = "UTF-8")
           )
         )
       ),
+      tags$p(
+        id = "ynow_home_legal",
+        class = "ynow-home-legal-text ynow-home-disclaimer",
+        paste0(
+          "Research and education only — not investment advice. ",
+          "You alone bear all investment decisions and losses."
+        )
+      ),
       tags$div(
         class = "ynow-home-legal",
-        # Auth pair above; Inspiration Gallery; About + disclaimer below (kept separate).
+        # Divider sits on this box. Auth and About share one row; gallery below.
         tags$div(
-          class = "ynow-home-legal-links ynow-home-auth-row",
-          if (exists("ynow_auth_home_ui", mode = "function")) ynow_auth_home_ui()
-        ),
-        if (exists("ynow_inspiration_home_shell_ui", mode = "function")) {
-          ynow_inspiration_home_shell_ui()
-        },
-        tags$div(
-          class = "ynow-home-about-row",
+          class = "ynow-home-legal-links",
+          if (exists("ynow_auth_home_ui", mode = "function")) ynow_auth_home_ui(),
+          tags$span(class = "ynow-home-legal-dot", `aria-hidden` = "true", "·"),
           tags$button(
             type = "button",
             id = "ynow_home_legal_about",
             class = "ynow-home-legal-link",
             `data-tab` = "about",
-            "About · Privacy, IP & risk"
-          ),
-          tags$p(
-            id = "ynow_home_legal",
-            class = "ynow-home-legal-text",
-            paste0(
-              "Research and education only — not investment advice. ",
-              "You alone bear all investment decisions and losses."
-            )
+            "About · Privacy"
           )
-        )
+        ),
+        if (exists("ynow_inspiration_home_shell_ui", mode = "function")) {
+          ynow_inspiration_home_shell_ui()
+        }
       )
     ),
     tags$script(HTML("
@@ -8708,9 +8706,12 @@ ui <- dashboardPage(
         @media (min-width: 992px) {
           .ynow-home-grid { grid-template-columns: 1fr 1fr 1fr; }
         }
+        .ynow-home-disclaimer {
+          margin: 16px 0 0 0;
+        }
         .ynow-home-legal {
-          margin: 18px 0 0 0;
-          padding-top: 14px;
+          margin: 12px 0 0 0;
+          padding-top: 12px;
           border-top: 1px solid #e5e8eb;
           text-align: center;
         }
@@ -8721,7 +8722,7 @@ ui <- dashboardPage(
           align-items: center;
           justify-content: center;
           gap: 0;
-          margin: 0 0 10px 0;
+          margin: 0;
           max-width: 100%;
         }
         .ynow-home-legal-links > .ynow-auth-links--home {
@@ -8729,9 +8730,13 @@ ui <- dashboardPage(
           margin: 0;
           justify-content: center;
         }
-        .ynow-home-about-row {
-          margin: 10px 0 0 0;
-          text-align: center;
+        .ynow-home-legal-dot {
+          display: inline-block;
+          margin: 0 6px;
+          color: #0b57d0;
+          font-size: 12px;
+          line-height: 1.4;
+          user-select: none;
         }
         .ynow-insp-gallery {
           display: block;

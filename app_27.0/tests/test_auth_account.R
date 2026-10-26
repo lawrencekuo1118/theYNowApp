@@ -1167,7 +1167,9 @@ check("home Sign in · Register are plain text links not buttons", {
       perl = TRUE
     )
 })
-check("home legal: auth above; gallery; About + disclaimer below", {
+check("home legal: disclaimer above divider; auth left of About; gallery below", {
+  i_disc <- regexpr('id = "ynow_home_legal",', ui, fixed = TRUE)[1]
+  i_legal <- regexpr('class = "ynow-home-legal"', ui, fixed = TRUE)[1]
   legal <- regmatches(
     ui,
     regexpr('class = "ynow-home-legal"[\\s\\S]*?tags\\$script', ui, perl = TRUE)
@@ -1176,13 +1178,8 @@ check("home legal: auth above; gallery; About + disclaimer below", {
   block <- legal[[1]]
   i_links <- regexpr('class = "ynow-home-legal-links"', block, fixed = TRUE)[1]
   i_auth <- regexpr("ynow_auth_home_ui", block, fixed = TRUE)[1]
-  i_gal <- regexpr("ynow_inspiration_home_shell_ui", block, fixed = TRUE)[1]
   i_about <- regexpr('id = "ynow_home_legal_about"', block, fixed = TRUE)[1]
-  i_disc <- regexpr('id = "ynow_home_legal"\\s*,', block, perl = TRUE)[1]
-  if (i_disc < 1L) {
-    i_disc <- regexpr('class = "ynow-home-legal-text"', block, fixed = TRUE)[1]
-  }
-  # Auth pair alone in legal-links; gallery between; About+disclaimer after. No joining ·.
+  i_gal <- regexpr("ynow_inspiration_home_shell_ui", block, fixed = TRUE)[1]
   css_m <- regmatches(
     ui,
     regexpr("\\.ynow-home-legal-links \\{[^}]*\\}", ui, perl = TRUE)
@@ -1190,9 +1187,11 @@ check("home legal: auth above; gallery; About + disclaimer below", {
   css_ok <- length(css_m) == 1L &&
     grepl("flex-direction:\\s*row", css_m[[1]], perl = TRUE) &&
     !grepl("flex-direction:\\s*column", css_m[[1]], perl = TRUE)
-  i_links > 0 && i_auth > 0 && i_gal > 0 && i_about > 0 && i_disc > 0 &&
-    i_links < i_auth && i_auth < i_gal && i_gal < i_about && i_about < i_disc &&
-    !grepl("ynow-home-legal-sep", block, fixed = TRUE) &&
+  i_disc > 0 && i_legal > i_disc &&
+    i_links > 0 && i_auth > 0 && i_about > 0 && i_gal > 0 &&
+    i_links < i_auth && i_auth < i_about && i_about < i_gal &&
+    grepl("About · Privacy", block, fixed = TRUE) &&
+    !grepl("IP & risk", block, fixed = TRUE) &&
     isTRUE(css_ok)
 })
 check("home card titles are centered", {

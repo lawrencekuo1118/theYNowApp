@@ -4,13 +4,12 @@ Internal name only. The homepage shows **no gallery title**.
 
 ## Placement
 
-Between:
+Below the home option cards:
 
-1. **Above:** Sign in · Register (auth pair only)
-2. **Below:** About · Privacy, IP & risk **and** the disclaimer  
-   (“Research and education only — not investment advice…”)
-
-Those two groups stay separated by the gallery (not merged on one row).
+1. Disclaimer (“Research and education only — not investment advice…”)
+2. Divider
+3. One row: **Sign in · Register** on the left, then **About · Privacy**
+4. Gallery under that row
 
 ## Display rules
 
