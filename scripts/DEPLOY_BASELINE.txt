@@ -7,5 +7,5 @@ commit=0714e28a12fd04f0db7fbaef5e88a0b10a0f4de2
 short=0714e28a
 message=chore: bump display version to v27.55
 captured_at=2026-10-26T05:26:40Z
-display_version=v27.55
+display_version=v27.56
 note=Canonical live line is app_27.0. Bundle 12739165: homepage disclaimer sits under the option cards and above the divider; Sign in · Register is on the same row to the left of About · Privacy.
