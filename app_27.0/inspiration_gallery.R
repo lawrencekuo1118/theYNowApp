@@ -24,9 +24,11 @@ if (!exists("%||%", mode = "function")) {
 }
 
 .ynow_insp_bundled_manifest <- function() {
+  # gallery_catalog.json — not manifest.json. rsconnect ignores every
+  # manifest.json in the bundle, so that name never reaches shinyapps.io.
   cands <- c(
-    file.path("www", "inspiration", "manifest.json"),
-    file.path("app_27.0", "www", "inspiration", "manifest.json")
+    file.path("www", "inspiration", "gallery_catalog.json"),
+    file.path("app_27.0", "www", "inspiration", "gallery_catalog.json")
   )
   for (p in cands) {
     if (is.character(p) && nzchar(p) && file.exists(p)) return(p)
@@ -404,7 +406,7 @@ ynow_inspiration_home_shell_ui <- function() {
       return;
     }
     try {
-      fetch('inspiration/manifest.json', { credentials: 'same-origin' })
+      fetch('inspiration/gallery_catalog.json', { credentials: 'same-origin' })
         .then(function (r) { return r.ok ? r.json() : null; })
         .then(function (j) { if (j) applyCatalog(j); })
         .catch(function () {});

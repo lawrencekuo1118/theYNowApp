@@ -98,7 +98,8 @@ check("lazy boot: static img has no src attribute set", {
   mod <- paste(readLines("inspiration_gallery.R", warn = FALSE), collapse = "\n")
   grepl('id = "ynow_insp_img"', mod, fixed = TRUE) &&
     grepl("requestIdleCallback", mod, fixed = TRUE) &&
-    grepl("inspiration/manifest.json", mod, fixed = TRUE) &&
+    grepl("inspiration/gallery_catalog.json", mod, fixed = TRUE) &&
+    !grepl("inspiration/manifest.json", mod, fixed = TRUE) &&
     !grepl('id = "ynow_insp_img"[\\s\\S]{0,160}src\\s*=', mod, perl = TRUE)
 })
 
@@ -140,7 +141,21 @@ check("audit actions include insp.*", {
 
 check("bundled webp pool present", {
   length(list.files("www/inspiration", pattern = "\\.webp$")) >= 5L &&
-    file.exists("www/inspiration/manifest.json")
+    file.exists("www/inspiration/gallery_catalog.json") &&
+    !file.exists("www/inspiration/manifest.json")
+})
+
+check("deploy bundle includes gallery catalog and omits manifest.json", {
+  files <- rsconnect::listDeploymentFiles(app_dir)
+  norm <- gsub("\\\\", "/", files)
+  ok_cat <- any(grepl("inspiration/gallery_catalog\\.json$", norm))
+  ok_man <- !any(grepl("(^|/)manifest\\.json$", norm))
+  if (!ok_cat || !ok_man) {
+    cat("\n  catalog_in_bundle:", ok_cat, " manifest_absent:", ok_man, "\n", sep = "")
+    hit <- norm[grepl("inspiration/|manifest\\.json", norm)]
+    if (length(hit)) cat(paste(" ", hit, collapse = "\n"), "\n")
+  }
+  ok_cat && ok_man
 })
 
 cat("\ninspiration_gallery tests: ", .pass, " passed, ", .fail, " failed\n", sep = "")
