@@ -6,8 +6,8 @@ Internal name only. The homepage shows **no gallery title**.
 
 Below the home option cards:
 
-1. Disclaimer (“Research and education only — not investment advice…”)
-2. Divider
+1. Divider
+2. Disclaimer (“Research and education only — not investment advice…”)
 3. One row: **Sign in · Register** on the left, then **About · Privacy**
 4. Gallery under that row
 
