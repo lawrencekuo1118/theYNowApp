@@ -321,7 +321,7 @@ ynow_gallery_add_upload <- function(datapath, original_name = "") {
   invisible(im)
 }
 
-#' Homepage shell: empty aspect box + credit + deferred boot (no img src).
+#' Homepage shell: empty aspect box + deferred boot (no img src).
 ynow_inspiration_home_shell_ui <- function() {
   tagList(
     tags$div(
@@ -342,12 +342,6 @@ ynow_inspiration_home_shell_ui <- function() {
             alt = "",
             decoding = "async",
             loading = "lazy"
-          ),
-          tags$span(
-            id = "ynow_insp_credit",
-            class = "ynow-insp-credit",
-            `data-i18n` = "insp_credit",
-            "© YNow Team"
           )
         )
       )

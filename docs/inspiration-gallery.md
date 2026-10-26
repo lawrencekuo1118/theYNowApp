@@ -17,10 +17,7 @@ Those two groups stay separated by the gallery (not merged on one row).
 - One centered image at a time
 - Click → random other image (avoid immediate repeat when pool length > 1)
 - Optional admin auto-rotation when `rotation_interval_sec` > 0
-- **YNow Team** credit always visible with the image:
-  - en-US: `© YNow Team`
-  - zh-TW: `YNow Team 版權所有`
-  - CSS locale overlay on the figure; processed/uploaded WebP also bake a small `© YNow Team` corner mark
+- Each picture already contains its own copyright notice. The homepage does not add another copyright overlay, caption, or corner mark.
 
 ## Responsive
 
@@ -50,7 +47,7 @@ Persisted in `data/inspiration_gallery.json` (env: `YNOW_INSPIRATION_GALLERY_PAT
 | `show_probability` | On each homepage visit, probability the gallery mounts (`0` = never, `1` = always) | `1.0` |
 | `rotation_interval_sec` | If `> 0`, auto-advance to a random other image on that interval; `0` = click-only | `0` |
 
-Sys. Admin tab: add (upload) / remove images; edit the two frequency fields; en-US + zh-TW labels. Uploads land under `data/inspiration_uploads/` and are served via `addResourcePath`; processing applies WebP + baked credit.
+Sys. Admin tab: add (upload) / remove images; edit the two frequency fields; en-US + zh-TW labels. Uploads land under `data/inspiration_uploads/` and are served via `addResourcePath`; processing resizes to WebP and does not paint an extra copyright line.
 
 ## Hard-to-translate / excluded sources
 

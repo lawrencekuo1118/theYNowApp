@@ -101,12 +101,20 @@ check("lazy boot: static img has no src attribute set", {
     !grepl('id = "ynow_insp_img"[\\s\\S]{0,160}src\\s*=', mod, perl = TRUE)
 })
 
-check("credit overlay id present", {
+check("no extra copyright overlay on gallery images", {
   mod <- paste(readLines("inspiration_gallery.R", warn = FALSE), collapse = "\n")
-  grepl('id = "ynow_insp_credit"', mod, fixed = TRUE) &&
-    grepl("insp_credit", loc_src, fixed = TRUE) &&
-    grepl("YNow Team 版權所有", loc_src, fixed = TRUE) &&
-    grepl("© YNow Team", loc_src, fixed = TRUE)
+  py_gal <- paste(readLines("scripts/process_inspiration_gallery.py", warn = FALSE), collapse = "\n")
+  py_up <- paste(readLines("scripts/process_inspiration_upload.py", warn = FALSE), collapse = "\n")
+  !grepl("ynow_insp_credit", mod, fixed = TRUE) &&
+    !grepl("ynow-insp-credit", mod, fixed = TRUE) &&
+    !grepl("insp_credit", mod, fixed = TRUE) &&
+    !grepl("ynow_insp_credit", ui_src, fixed = TRUE) &&
+    !grepl("ynow-insp-credit", ui_src, fixed = TRUE) &&
+    !grepl("insp_credit", loc_src, fixed = TRUE) &&
+    !grepl("bake_credit", py_gal, fixed = TRUE) &&
+    !grepl("© YNow Team", py_gal, fixed = TRUE) &&
+    !grepl("© YNow Team", py_up, fixed = TRUE) &&
+    !grepl("ImageDraw", py_up, fixed = TRUE)
 })
 
 check("admin tab helper wired in both sysadmin branches", {
