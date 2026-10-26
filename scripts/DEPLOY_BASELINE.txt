@@ -7,5 +7,5 @@ commit=f2b1f3a692c027064cdce15b3dc4bf6b38bf34c7
 short=f2b1f3a6
 message=chore: bump display version to v27.54
 captured_at=2026-10-26T05:09:30Z
-display_version=v27.54
+display_version=v27.55
 note=Canonical live line is app_27.0. Bundle 12739118: solid black sidebar and top banner (no opacity gradient). Desktop TW header still uses the ROC flag. Also drops the extra inspiration-gallery copyright overlay.
