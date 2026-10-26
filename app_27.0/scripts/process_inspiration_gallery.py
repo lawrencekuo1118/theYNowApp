@@ -208,16 +208,20 @@ def main() -> None:
         if row:
             items.append(row)
             print(f"ok {path.name} -> {row['src']} ({row['bytes']} B)")
-    manifest = {
+    catalog = {
         "version": 1,
         "frequency": {"show_probability": 1.0, "rotation_interval_sec": 0},
         "images": [
             {k: v for k, v in it.items() if k != "from"} for it in items
         ],
     }
-    (OUT / "manifest.json").write_text(
-        json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    # rsconnect ignores every file named manifest.json, in any directory.
+    (OUT / "gallery_catalog.json").write_text(
+        json.dumps(catalog, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
+    legacy = OUT / "manifest.json"
+    if legacy.exists():
+        legacy.unlink()
     meta = {"bundled": items, "excluded": skipped}
     (OUT / "process_meta.json").write_text(
         json.dumps(meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"

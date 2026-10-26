@@ -33,7 +33,7 @@ Layout is CSS-only (home grid breakpoints). No resize observers on first paint.
 Critical: **must not slow first homepage paint.**
 
 - Empty aspect shell in first HTML (reserved space, no image bytes)
-- After `requestIdleCallback` / `window.load`, fetch tiny `inspiration/manifest.json` (plus optional admin override message)
+- After `requestIdleCallback` / `window.load`, fetch tiny `inspiration/gallery_catalog.json` (plus optional admin override message). The file is not named `manifest.json` because rsconnect ignores that filename in every directory, so it never reaches shinyapps.io.
 - Load **one** image with `loading="lazy"`; never preload the pool
 - Bundled slides are small WebP (max edge 960, ~15–90 KB each; ~560 KB for 18 defaults)
 
@@ -75,6 +75,6 @@ Re-process: `python3 app_27.0/scripts/process_inspiration_gallery.py`
 
 ## Paths
 
-- Bundled: `app_27.0/www/inspiration/*.webp` + `manifest.json`
+- Bundled: `app_27.0/www/inspiration/*.webp` + `gallery_catalog.json`
 - Durable admin catalog: `data/inspiration_gallery.json`
 - Uploads: `data/inspiration_uploads/<id>.webp`

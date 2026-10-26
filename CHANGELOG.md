@@ -1,3 +1,12 @@
+## [v27.56] — 2026-10-26
+
+### Fixed
+- Inspiration Gallery images load again. The bundled catalog is `gallery_catalog.json`. rsconnect ignores every `manifest.json`, so that file never reached shinyapps.io and the homepage image stayed empty.
+
+### Notes
+- en-US: Bundle **12740902**. PR [#569](https://github.com/lawrencekuo1118/theYNowApp/pull/569). Homepage legal row is unchanged.
+- zh-TW：靈感藝廊圖片恢復顯示。目錄檔改為 `gallery_catalog.json`，避免 rsconnect 略過每個 `manifest.json` 而讓首頁圖片空白。Bundle **12740902**。首頁免責聲明與登入列位置不變。
+
 ## [v27.55] — 2026-10-26
 
 ### Changed
