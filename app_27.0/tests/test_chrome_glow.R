@@ -337,61 +337,39 @@ check(
 )
 
 check(
-  "chrome black fill opacity CSS vars (sidebar bottom→top, banner left→right)",
-  grepl("--ynow-chrome-sidebar-fill:", txt, fixed = TRUE) &&
-    grepl("--ynow-chrome-banner-fill:", txt, fixed = TRUE) &&
-    grepl(
-      "--ynow-chrome-sidebar-fill:\\s*linear-gradient\\(\\s*to top",
-      txt,
-      perl = TRUE
-    ) &&
-    grepl(
-      "--ynow-chrome-banner-fill:\\s*linear-gradient\\(\\s*to right",
-      txt,
-      perl = TRUE
-    ) &&
-    grepl("rgba\\(0,\\s*0,\\s*0,\\s*0\\.22\\)", txt, perl = TRUE) &&
-    grepl("#000 100%", txt, fixed = TRUE)
+  "chrome black fill is solid (no opacity-gradient CSS vars)",
+  !grepl("--ynow-chrome-sidebar-fill:", txt, fixed = TRUE) &&
+    !grepl("--ynow-chrome-banner-fill:", txt, fixed = TRUE)
 )
 
 check(
-  "sidebar uses vertical black opacity gradient (not solid ink fill)",
+  "sidebar uses solid ink fill",
   grepl(
-    "\\.skin-black \\.main-sidebar,[\\s\\S]*?background-image:\\s*var\\(--ynow-chrome-sidebar-fill\\)",
+    "\\.skin-black \\.wrapper,\\s*\\.skin-black \\.main-sidebar,\\s*\\.skin-black \\.left-side \\{[\\s\\S]*?background-color:\\s*var\\(--ynow-ink\\)",
+    txt,
+    perl = TRUE
+  )
+)
+
+check(
+  "top banner uses solid black; logo strip stays solid #000",
+  grepl(
+    "\\.main-header \\{[\\s\\S]*?background-color:\\s*#000\\s*!important",
     txt,
     perl = TRUE
   ) &&
-    grepl(
-      "\\.skin-black \\.wrapper \\{[\\s\\S]*?background-color:\\s*#f7f7f7",
-      txt,
-      perl = TRUE
-    ) &&
     !grepl(
-      "\\.skin-black \\.wrapper,\\s*\\.skin-black \\.main-sidebar,\\s*\\.skin-black \\.left-side \\{[\\s\\S]*?background-color:\\s*var\\(--ynow-ink\\)",
+      "\\.main-header \\{[\\s\\S]*?--ynow-chrome-banner-fill",
       txt,
       perl = TRUE
-    )
-)
-
-check(
-  "top banner uses horizontal black opacity gradient; logo strip stays solid #000",
-  grepl(
-    "\\.main-header \\{[\\s\\S]*?background-image:\\s*var\\(--ynow-chrome-banner-fill\\)",
-    txt,
-    perl = TRUE
-  ) &&
+    ) &&
     grepl(
-      "\\.skin-black \\.main-header \\.navbar \\{[\\s\\S]*?background-image:\\s*none",
+      "\\.skin-black \\.main-header \\.navbar \\{[\\s\\S]*?background-color:\\s*var\\(--ynow-ink\\)",
       txt,
       perl = TRUE
     ) &&
     grepl(
       "\\.skin-black \\.main-header \\.logo,[\\s\\S]*?background-color:\\s*#000\\s*!important",
-      txt,
-      perl = TRUE
-    ) &&
-    grepl(
-      "body\\.ynow-market-tw \\.main-header \\{[\\s\\S]*?background-image:\\s*none",
       txt,
       perl = TRUE
     )
