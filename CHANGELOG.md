@@ -1,3 +1,12 @@
+## [v27.54] — 2026-10-26
+
+### Changed
+- Sidebar and top banner black backgrounds are solid again. The opacity gradient (sidebar bottom→top, banner left→right) is removed. Desktop Taiwan header still uses the ROC flag.
+
+### Notes
+- en-US: Wordmark strip stays solid black. Vein strokes on the banner are unchanged.
+- zh-TW：側邊欄與置頂橫幅回復實心黑底，不再使用透明漸層。桌面台股頁首仍為國旗。
+
 ## [v27.44] — 2026-10-25
 
 ### Changed
