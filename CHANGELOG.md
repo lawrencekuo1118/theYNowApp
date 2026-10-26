@@ -1,3 +1,13 @@
+## [v27.55] — 2026-10-26
+
+### Changed
+- Homepage disclaimer sits under the option cards and above the divider.
+- Sign in · Register is back on the same row, to the left of About · Privacy. The inspiration gallery stays under that row.
+
+### Notes
+- en-US: Bundle **12739165**. PR [#568](https://github.com/lawrencekuo1118/theYNowApp/pull/568).
+- zh-TW：免責聲明移到選項按鈕下方、分隔線正上方。登入與註冊回到「關於 · 隱私權」左側同一列。靈感藝廊仍在該列下方。Bundle **12739165**。
+
 ## [v27.54] — 2026-10-26
 
 ### Changed
