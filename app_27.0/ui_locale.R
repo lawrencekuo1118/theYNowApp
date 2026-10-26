@@ -108,7 +108,6 @@ locale_for_market <- function(mode = get_market_mode()) {
       "You alone bear all investment decisions and losses."
     ),
     home_legal_about = "About · Privacy, IP & risk",
-    insp_credit = "© YNow Team",
     admin_insp_tab = "Inspiration Gallery",
     admin_insp_title = "Inspiration Gallery",
     admin_insp_help = paste0(
@@ -4943,7 +4942,6 @@ locale_for_market <- function(mode = get_market_mode()) {
       "投資決策與損益一律由使用者自行承擔。"
     ),
     home_legal_about = "關於 · 隱私權／智慧財產權／投資風險",
-    insp_credit = "YNow Team 版權所有",
     admin_insp_tab = "靈感藝廊",
     admin_insp_title = "靈感藝廊",
     admin_insp_help = paste0(

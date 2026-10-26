@@ -1,26 +1,16 @@
 #!/usr/bin/env python3
-"""Process one admin upload → WebP with © YNow Team credit."""
+"""Process one admin upload → WebP.
+
+Each source image already carries its own copyright notice. Do not paint
+another copyright line onto the bitmap.
+"""
 import sys
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image
 
-CREDIT = "© YNow Team"
 MAX_EDGE = 960
 WEBP_Q = 75
-
-
-def font(size: int):
-    for p in (
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
-    ):
-        if Path(p).exists():
-            try:
-                return ImageFont.truetype(p, size)
-            except Exception:
-                pass
-    return ImageFont.load_default()
 
 
 def main() -> None:
@@ -36,15 +26,6 @@ def main() -> None:
     if m > MAX_EDGE:
         scale = MAX_EDGE / m
         im = im.resize((max(1, int(w * scale)), max(1, int(h * scale))), Image.Resampling.LANCZOS)
-    draw = ImageDraw.Draw(im)
-    f = font(max(11, im.size[0] // 55))
-    pad = max(6, im.size[0] // 80)
-    bbox = draw.textbbox((0, 0), CREDIT, font=f)
-    tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
-    x = im.size[0] - tw - pad
-    y = im.size[1] - th - pad
-    draw.rectangle((x - 4, y - 2, x + tw + 4, y + th + 3), fill=(0, 0, 0, 110))
-    draw.text((x, y), CREDIT, font=f, fill=(255, 255, 255, 230))
     dest.parent.mkdir(parents=True, exist_ok=True)
     im.save(dest, "WEBP", quality=WEBP_Q, method=6)
 

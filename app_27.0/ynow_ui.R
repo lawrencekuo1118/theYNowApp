@@ -8813,19 +8813,6 @@ ui <- dashboardPage(
           object-fit: contain;
           object-position: center;
         }
-        .ynow-insp-credit {
-          position: absolute;
-          right: 8px;
-          bottom: 6px;
-          padding: 2px 6px;
-          font-size: 11px;
-          line-height: 1.3;
-          color: #fff;
-          background: rgba(0, 0, 0, 0.45);
-          border-radius: 2px;
-          pointer-events: none;
-          user-select: none;
-        }
         .ynow-home-legal-text {
           margin: 0;
           font-size: 11.5px;
@@ -13024,8 +13011,6 @@ ui <- dashboardPage(
             if (adminInspTitle && s.admin_insp_title) adminInspTitle.textContent = s.admin_insp_title;
             var adminInspHelp = document.getElementById('ynow_admin_insp_help');
             if (adminInspHelp && s.admin_insp_help) adminInspHelp.textContent = s.admin_insp_help;
-            var inspCredit = document.getElementById('ynow_insp_credit');
-            if (inspCredit && s.insp_credit) inspCredit.textContent = s.insp_credit;
             var ptsColon = (payload && payload.locale === 'zh-TW') ? '：' : ':';
             var ptsHdrForLocale = document.getElementById('ynow-pts-header');
             var ptsSideForLocale = document.getElementById('ynow-pts-sidebar');

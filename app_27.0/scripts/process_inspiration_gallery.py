@@ -3,14 +3,14 @@
 
 - Resize max edge 960; quality ~75
 - Remove near-white backgrounds to transparency when mostly white
-- Bake a small © YNow Team credit in the corner
+- Do not paint an extra copyright line; each source image already carries its own notice
 - Skip phone UI screenshots and third-party product captures (listed EXCLUDE)
 - For known Chinese conceptual art, paint English replacements where mapped
 
 Re-run from repo root:
   python3 app_27.0/scripts/process_inspiration_gallery.py
 
-One admin upload (WebP + baked credit):
+One admin upload (WebP only, no extra copyright):
   python3 app_27.0/scripts/process_inspiration_gallery.py --upload SRC DEST.webp
 """
 
@@ -39,7 +39,6 @@ OUT = Path(
 )
 MAX_EDGE = 960
 WEBP_Q = 75
-CREDIT = "© YNow Team"
 
 # Phone UI / live-app / third-party product captures — not re-translatable art.
 EXCLUDE = {
@@ -126,24 +125,6 @@ def font(size: int) -> ImageFont.ImageFont:
     return ImageFont.load_default()
 
 
-def bake_credit(im: Image.Image, text: str = CREDIT) -> Image.Image:
-    out = im.copy()
-    draw = ImageDraw.Draw(out)
-    f = font(max(11, out.size[0] // 55))
-    pad = max(6, out.size[0] // 80)
-    bbox = draw.textbbox((0, 0), text, font=f)
-    tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
-    x = out.size[0] - tw - pad
-    y = out.size[1] - th - pad
-    # Soft scrim for legibility on busy art.
-    draw.rectangle(
-        (x - 4, y - 2, x + tw + 4, y + th + 3),
-        fill=(0, 0, 0, 110),
-    )
-    draw.text((x, y), text, font=f, fill=(255, 255, 255, 230))
-    return out
-
-
 def paint_english_overlays(name: str, im: Image.Image) -> Image.Image:
     """Best-effort English patches for known Chinese conceptual slides."""
     draw = ImageDraw.Draw(im)
@@ -193,7 +174,6 @@ def process_one(path: Path) -> dict | None:
     im = paint_english_overlays(name, im)
     im = maybe_clear_white_bg(im)
     im = resize_max(im)
-    im = bake_credit(im)
     gid = stable_id(name)
     out_name = f"{gid}.webp"
     out_path = OUT / out_name
@@ -246,11 +226,10 @@ def main() -> None:
 
 
 def process_upload(src: Path, dest: Path) -> int:
-    """Resize, bake © YNow Team, write WebP. Returns byte size."""
+    """Resize and write WebP. Does not paint an extra copyright line. Returns byte size."""
     im = load_rgba(src)
     im = maybe_clear_white_bg(im)
     im = resize_max(im)
-    im = bake_credit(im)
     dest.parent.mkdir(parents=True, exist_ok=True)
     im.save(dest, "WEBP", quality=WEBP_Q, method=6)
     return dest.stat().st_size
