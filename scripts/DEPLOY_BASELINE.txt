@@ -7,5 +7,5 @@ commit=f5546b1453baacf0e7eff84a1cf4c5760ef5b376
 short=f5546b14
 message=chore: bump display version to v27.56
 captured_at=2026-10-26T14:01:48Z
-display_version=v27.57
+display_version=v27.58
 note=Canonical live line is app_27.0. Bundle 12740902: inspiration gallery catalog is gallery_catalog.json so the homepage can load images. Disclaimer stays under the option cards and above the divider; Sign in · Register stays on the same row to the left of About · Privacy.
