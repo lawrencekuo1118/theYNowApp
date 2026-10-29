@@ -1167,15 +1167,14 @@ check("home Sign in · Register are plain text links not buttons", {
       perl = TRUE
     )
 })
-check("home legal: disclaimer above divider; auth left of About; gallery below", {
-  i_disc <- regexpr('id = "ynow_home_legal",', ui, fixed = TRUE)[1]
-  i_legal <- regexpr('class = "ynow-home-legal"', ui, fixed = TRUE)[1]
+check("home legal: disclaimer between divider and link row", {
   legal <- regmatches(
     ui,
     regexpr('class = "ynow-home-legal"[\\s\\S]*?tags\\$script', ui, perl = TRUE)
   )
   if (!length(legal) || !nzchar(legal[[1]])) return(FALSE)
   block <- legal[[1]]
+  i_disc <- regexpr('id = "ynow_home_legal",', block, fixed = TRUE)[1]
   i_links <- regexpr('class = "ynow-home-legal-links"', block, fixed = TRUE)[1]
   i_auth <- regexpr("ynow_auth_home_ui", block, fixed = TRUE)[1]
   i_about <- regexpr('id = "ynow_home_legal_about"', block, fixed = TRUE)[1]
@@ -1187,12 +1186,16 @@ check("home legal: disclaimer above divider; auth left of About; gallery below",
   css_ok <- length(css_m) == 1L &&
     grepl("flex-direction:\\s*row", css_m[[1]], perl = TRUE) &&
     !grepl("flex-direction:\\s*column", css_m[[1]], perl = TRUE)
-  i_disc > 0 && i_legal > i_disc &&
-    i_links > 0 && i_auth > 0 && i_about > 0 && i_gal > 0 &&
-    i_links < i_auth && i_auth < i_about && i_about < i_gal &&
+  border_ok <- grepl(
+    "\\.ynow-home-legal \\{[^}]*border-top:",
+    ui,
+    perl = TRUE
+  )
+  i_disc > 0 && i_links > i_disc && i_auth > i_links && i_about > i_auth &&
+    i_gal > i_about &&
     grepl("About · Privacy", block, fixed = TRUE) &&
     !grepl("IP & risk", block, fixed = TRUE) &&
-    isTRUE(css_ok)
+    isTRUE(css_ok) && isTRUE(border_ok)
 })
 check("home card titles are centered", {
   k <- regexpr(".ynow-home-card-k \\{", ui)
