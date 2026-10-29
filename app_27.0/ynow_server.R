@@ -18182,14 +18182,14 @@ server <- function(input, output, session) {
       if (is.null(pdf_ticket)) return()
       tryCatch({
         showNotification(.ui_msg("notif_pdf_busy"), type = "message", duration = 8)
-        tempReport <- file.path(tempdir(), "report_template.Rmd")
+        report_dir <- tempfile("ynow_report_")
+        dir.create(report_dir)
+        on.exit(unlink(report_dir, recursive = TRUE), add = TRUE)
+        tempReport <- file.path(report_dir, "report_template.Rmd")
         file.copy("report_template.Rmd", tempReport, overwrite = TRUE)
-
-        plot_path <- NA_character_
-        if (exists("fcf_results") && !is.null(fcf_results$fcf_plot_obj())) {
-          plot_path <- file.path(tempdir(), "fcf_plot_temp.png")
-          ggsave(plot_path, plot = fcf_results$fcf_plot_obj(), width = 9, height = 5.5, dpi = 200)
-        }
+        rep_loc <- tryCatch(isolate(ui_locale()), error = function(e) "zh-TW")
+        if (!identical(as.character(rep_loc)[1], "en")) rep_loc <- "zh-TW"
+        rep_lite <- isTRUE(isolate(lite_mode()))
 
         cur_price <- .report_num(tryCatch(isolate(scraped_market_cap()$price), error = function(e) NA))
         dcf_price <- .report_num(isolate(stock_price_estimate_val()))
@@ -18198,46 +18198,27 @@ server <- function(input, output, session) {
         ri_val <- .report_num(tryCatch(isolate(ri_results$ri_price()), error = function(e) NA))
         ev_val <- .report_num(isolate(dcf_value_result()))
 
-        ind_text_early <- isolate(corp_industry_text())
-        rec_full <- tryCatch(
-          recommend_valuation_models(
-            isolate(d_cash_flow()),
-            industry_text = ind_text_early,
-            d_is = isolate(d_income_statement()),
-            d_bs = isolate(d_balance_sheet()),
-            industry_choice = isolate(input$industry_choice),
-            wacc_pct = isolate(tryCatch(.current_wacc_pct(), error = function(e) NA_real_)),
-            lifecycle_result = isolate(tryCatch(central_lifecycle(), error = function(e) NULL)),
-            selected_stage = isolate(input$lifecycle_stage %||% "auto")
-          ),
-          error = function(e) NULL
+        # Includes TPEx statement-summary fallback (e.g. 7772.TWO), whose
+        # usable RI / P/B primary cannot be inferred from the empty CF table.
+        rec_full <- isolate(model_sidebar_rec())
+        val_method <- list(
+          method = if (identical(rep_loc, "en")) rec_full$summary_method_en %||% rec_full$summary_method else rec_full$summary_method,
+          rationale = if (identical(rep_loc, "en")) rec_full$reason_en %||% rec_full$reason else rec_full$reason
         )
-        val_method <- if (!is.null(rec_full)) {
-          list(method = rec_full$summary_method, rationale = rec_full$reason)
-        } else {
-          derive_valuation_method(isolate(d_cash_flow()), industry_text = ind_text_early)
-        }
+        plot_path <- .report_save_fcf_plot(
+          function() isolate(fcf_results$fcf_plot_obj()),
+          file.path(report_dir, "fcf_plot.png"),
+          enabled = !rep_lite && isTRUE(rec_full$dcf)
+        )
 
         band <- tryCatch(isolate(primary_valuation_band()), error = function(e) NULL)
         sec_pt <- .report_num(tryCatch(isolate(secondary_valuation_point()), error = function(e) NA))
         conf <- tryCatch(isolate(valuation_confidence()), error = function(e) NULL)
 
         # 目標價＝主模型 Base；缺則依 primary key 回退（僅個股模型，不含同業／Lab）
-        rating_anchor <- {
-          if (!is.null(band) && is.finite(suppressWarnings(as.numeric(band$base)[1]))) {
-            as.numeric(band$base)[1]
-          } else {
-            prim <- as.character(rec_full$primary %||% "")
-            switch(
-              prim,
-              "dcf" = dcf_price,
-              "ddm" = ddm_val,
-              "pb" = pb_val,
-              "ri" = ri_val,
-              if (is.finite(dcf_price)) dcf_price else if (is.finite(pb_val)) pb_val else if (is.finite(ddm_val)) ddm_val else ri_val
-            )
-          }
-        }
+        rating_anchor <- .report_primary_target(
+          rec_full$primary, band, function(key) isolate(.model_point(key))
+        )
 
         rating_info <- derive_investment_rating(cur_price, rating_anchor)
 
@@ -18256,9 +18237,6 @@ server <- function(input, output, session) {
           sector_str <- trimws(sub("Sector:\\s*", "", parts[1]))
           if (length(parts) > 1) industry_str <- trimws(sub("Industry:\\s*", "", parts[2]))
         }
-
-        rep_loc <- tryCatch(isolate(ui_locale()), error = function(e) "zh-TW")
-        if (!identical(as.character(rep_loc)[1], "en")) rep_loc <- "zh-TW"
 
         wacc_str <- if (identical(isolate(input$dcf_mode), "gordon")) {
           paste0(isolate(input$wacc_gordon), "%")
@@ -18324,7 +18302,6 @@ server <- function(input, output, session) {
           normalize_market_mode(isolate(market_mode())),
           error = function(e) "US"
         )
-        rep_lite <- isTRUE(isolate(lite_mode()))
         app_ver <- tryCatch({
           build_path <- file.path("www", "ynow_build.json")
           if (!file.exists(build_path)) build_path <- "ynow_build.json"
@@ -18383,12 +18360,12 @@ server <- function(input, output, session) {
           report_condensed = rep_lite
         )
 
-        tmp_html <- tempfile(fileext = ".html")
+        tmp_html <- file.path(report_dir, "report.html")
         rmarkdown::render(
           input = tempReport,
           output_file = basename(tmp_html),
           output_dir = dirname(tmp_html),
-          intermediates_dir = tempdir(),
+          intermediates_dir = report_dir,
           clean = TRUE,
           quiet = TRUE,
           params = list(

@@ -1,3 +1,12 @@
+## [Unreleased]
+
+### Fixed
+- en-US: Ticker PDF downloads tolerate unavailable FCF charts and use the screen's primary model, including TPEx partial-statement RI/P/B and NAV. Missing Fair Value no longer falls back to an unrelated DCF price. Each download uses its own temporary files.
+- zh-TW：個股 PDF 報告在缺少 FCF 圖時仍可產出，並沿用畫面主模型，涵蓋櫃買部分財報的 RI／P/B 與 NAV。缺少 Fair Value 時，不再改用無關的 DCF 價格；每次下載使用獨立暫存檔。
+
+### Tests
+- Offline report regressions cover US/TW, Full/Lite, en-US/zh-TW, and missing financial statements. Optional real PDF checks: `YNOW_REPORT_TEST_PDF=1 Rscript app_27.0/tests/test_report_download.R` (requires pagedown and Chrome/Chromium).
+
 ## [v27.56] — 2026-10-26
 
 ### Fixed
