@@ -732,6 +732,32 @@ trim_report_table <- function(df, max_rows = 18, max_cols = 7) {
   if (length(n) != 1 || !is.finite(n)) NA_real_ else n
 }
 
+# A report uses the same Fair Value primary as the screen. Never substitute an
+# unrelated DCF price when the primary is unavailable or only an implied price.
+.report_primary_target <- function(primary, band = NULL, model_point = NULL) {
+  key <- as.character(primary %||% "")[1]
+  if (!key %in% c("dcf", "ddm", "pb", "ri", "nav")) return(NA_real_)
+  base <- .report_num(if (is.list(band)) band$base else NULL)
+  if (is.finite(base)) return(base)
+  if (!is.function(model_point)) return(NA_real_)
+  .report_num(tryCatch(model_point(key), error = function(e) NA_real_))
+}
+
+# FCF is optional: thin statements and Shiny req() cancellations must not abort
+# a P/B, RI, NAV or Lite report. Evaluate the reactive once and isolate graphics.
+.report_save_fcf_plot <- function(plot_fn, path, enabled = TRUE) {
+  if (!isTRUE(enabled) || !is.function(plot_fn)) return(NA_character_)
+  tryCatch({
+    p <- plot_fn()
+    if (is.null(p)) return(NA_character_)
+    ggplot2::ggsave(path, plot = p, width = 9, height = 5.5, dpi = 200)
+    path
+  }, error = function(e) {
+    unlink(path)
+    NA_character_
+  })
+}
+
 # DCF 模式顯示名稱
 .report_dcf_mode_label <- function(mode, locale = "zh-TW") {
   m <- if (is.null(mode) || length(mode) == 0 || is.na(mode[1])) "" else as.character(mode[1])

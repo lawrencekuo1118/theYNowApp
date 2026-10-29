@@ -14,6 +14,7 @@ PRs and pushes that touch `app_27.0/**`, `scripts/**`, or `.github/workflows/**`
 | Workflow | What it runs |
 |----------|----------------|
 | **Live-line CI** (`.github/workflows/ci.yml`) | `YNOW_DEBUG_SKIP_PY=1 Rscript app_27.0/tests/test_valuation_formulas.R` and `bash scripts/run_phase1_audit.sh` |
+| **Report downloads** (Live-line CI) | Offline report copy/render checks: US/TW, Full/Lite, en-US/zh-TW, partial statements and missing Fair Value |
 | **ITGC Audit** (`.github/workflows/audit.yml`) | Phases 2–4 via `bash scripts/run_audit.sh` + RCM artifact |
 
 Do not rely on path filters that skip the live app tree. Docs/rules-only changes may skip app jobs; app behavior PRs must stay green on Live-line CI.
