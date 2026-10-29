@@ -16,11 +16,11 @@
       return(sub('^"version"\\s*:\\s*"([^"]+)".*$', "\\1", m[[1]]))
     }
   }
-  "v27.56"
+  "v27.58"
 }
 .YNOW_BUILD_VERSION <- .ynow_read_build_version()
 
-#' Major segment of a display version (`v27.56` → 25; `v26` → 26).
+#' Major segment of a display version (`v27.58` → 25; `v26` → 26).
 #' Matches deploy policy: +0.01 is patch; folder / `YNOW_VERSION_BUMP_MAJOR` cut advances major.
 .ynow_display_major <- function(label) {
   label <- as.character(label)[1]
@@ -260,17 +260,17 @@ source("ynow_cookie_notice_ui.R", local = TRUE, encoding = "UTF-8")
           )
         )
       ),
-      tags$p(
-        id = "ynow_home_legal",
-        class = "ynow-home-legal-text ynow-home-disclaimer",
-        paste0(
-          "Research and education only — not investment advice. ",
-          "You alone bear all investment decisions and losses."
-        )
-      ),
       tags$div(
         class = "ynow-home-legal",
-        # Divider sits on this box. Auth and About share one row; gallery below.
+        # Divider is the top border. Disclaimer sits under it, then the link row.
+        tags$p(
+          id = "ynow_home_legal",
+          class = "ynow-home-legal-text ynow-home-disclaimer",
+          paste0(
+            "Research and education only — not investment advice. ",
+            "You alone bear all investment decisions and losses."
+          )
+        ),
         tags$div(
           class = "ynow-home-legal-links",
           if (exists("ynow_auth_home_ui", mode = "function")) ynow_auth_home_ui(),
@@ -3660,9 +3660,9 @@ ui <- dashboardPage(
                   'data-ynow-build="', .YNOW_BUILD_VERSION, '" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v27.56</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v27.58</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v27.56</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v27.58</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -8706,14 +8706,14 @@ ui <- dashboardPage(
         @media (min-width: 992px) {
           .ynow-home-grid { grid-template-columns: 1fr 1fr 1fr; }
         }
-        .ynow-home-disclaimer {
-          margin: 16px 0 0 0;
-        }
         .ynow-home-legal {
-          margin: 12px 0 0 0;
+          margin: 14px 0 0 0;
           padding-top: 12px;
           border-top: 1px solid #e5e8eb;
           text-align: center;
+        }
+        .ynow-home-disclaimer {
+          margin: 0 0 10px 0;
         }
         .ynow-home-legal-links {
           display: inline-flex;
@@ -8792,6 +8792,9 @@ ui <- dashboardPage(
           line-height: 1.5;
           color: #666;
           text-align: center;
+        }
+        .ynow-home-disclaimer.ynow-home-legal-text {
+          margin: 0 0 10px 0;
         }
         .ynow-home-legal-link {
           display: inline-block;
@@ -11331,7 +11334,7 @@ ui <- dashboardPage(
             function isSignedIn() {
               return !!(document.body && document.body.classList.contains('ynow-authed'));
             }
-            /* Major = integer before decimal (v27.56 → 25), same as YNOW_VERSION_BUMP_MAJOR cut. */
+            /* Major = integer before decimal (v27.58 → 25), same as YNOW_VERSION_BUMP_MAJOR cut. */
             function displayMajor(version) {
               /* Use [0-9] not \\d — this block lives in an R character string. */
               var m = String(version || '').trim().match(/^[vV]?([0-9]+)/);

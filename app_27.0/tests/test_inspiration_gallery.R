@@ -72,20 +72,17 @@ check("global sources inspiration_gallery.R", {
 })
 
 check("home gallery under the auth and About row", {
-  i_disc <- regexpr('id = "ynow_home_legal",', ui_src, fixed = TRUE)[1]
-  i_legal <- regexpr('class = "ynow-home-legal"', ui_src, fixed = TRUE)[1]
   legal <- regmatches(
     ui_src,
     regexpr('class = "ynow-home-legal"[\\s\\S]*?tags\\$script', ui_src, perl = TRUE)
   )
   if (!length(legal)) return(FALSE)
   block <- legal[[1]]
+  i_disc <- regexpr('id = "ynow_home_legal",', block, fixed = TRUE)[1]
   i_auth <- regexpr("ynow_auth_home_ui", block, fixed = TRUE)[1]
   i_gal <- regexpr("ynow_inspiration_home_shell_ui", block, fixed = TRUE)[1]
   i_about <- regexpr('id = "ynow_home_legal_about"', block, fixed = TRUE)[1]
-  i_disc > 0 && i_legal > i_disc &&
-    i_auth > 0 && i_about > 0 && i_gal > 0 &&
-    i_auth < i_about && i_about < i_gal
+  i_disc > 0 && i_auth > i_disc && i_about > i_auth && i_gal > i_about
 })
 
 check("responsive CSS aspect-ratio and desktop two-card width", {
