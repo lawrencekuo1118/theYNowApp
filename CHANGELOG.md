@@ -1,4 +1,4 @@
-## [Unreleased]
+## [v27.58] — 2026-10-30
 
 ### Fixed
 - en-US: Ticker PDF downloads tolerate unavailable FCF charts and use the screen's primary model, including TPEx partial-statement RI/P/B and NAV. Missing Fair Value no longer falls back to an unrelated DCF price. Each download uses its own temporary files.
