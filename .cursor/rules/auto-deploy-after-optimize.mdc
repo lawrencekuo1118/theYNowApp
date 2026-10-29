@@ -10,6 +10,8 @@ For completed, verified live-line work, **shinyapps.io deploy** and the baseline
 
 When **development on the live line** (`app_27.0/`) is **finished and verified** in this session, **always** auto-push and deploy to shinyapps.io. Do **not** wait for the user to say「部署」or「推送」or「push to cloud」.
 
+**Deployment record PR auto-merge authorization (2026-10-30, Asia/Taipei):** Enable auto-merge by default for all future deployment record PRs. After required checks pass, automatically merge into master. Preserve branch protections; this authorization does not apply to unrelated app PRs.
+
 Immediately run the full ship sequence from the **coding clone** (`/Users/lawrencekuo/coding/theYNowApp`):
 
 1. **Commit** the app changes without a hand-edited version bump (message: why, 1–2 sentences).  
