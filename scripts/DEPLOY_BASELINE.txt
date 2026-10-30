@@ -7,5 +7,5 @@ commit=39a7e6ea03cf62781a09740382a4a76444ce336d
 short=39a7e6ea
 message=chore: bump display version to v27.59
 captured_at=2026-10-30T00:56:35Z
-display_version=v27.59
+display_version=v27.60
 note=Financial parameter-source audit and Lite assumption disclosure; PR #574. Verified running with bundle 12757178. Evidence: docs/audits/2026-10-30-parameter-sources/REPORT.md.
