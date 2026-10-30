@@ -64,7 +64,7 @@ Full 顯示建議但不自動填入。Lite 對有限數值的參考建議直接�
 
 ## PDF 與重現方式
 
-`test_report_download.R` 使用六種公司資料形態 × en/zh-TW × Full/Lite，24 種報告組合，包含缺 CF、NAV 與無可用 Fair Value；HTML 與 Chromium PDF 渲染已執行。渲染日誌仍含既有數學排版提示及測試圖片的 localhost 404，故不能將「通過」解讀為每頁視覺皆已人工驗收。
+`test_report_download.R` 使用六種公司資料形態 × en/zh-TW × Full/Lite，24 種報告組合，包含缺 CF、NAV 與無可用 Fair Value；HTML 全部通過。原測試選 6 組輸出 PDF，本次另以 `render_all_pdfs.R` 擴至全部 24 組 Chromium PDF，均成功輸出非空檔案（`evidence/pdf24.log`）。已抽查中文 Lite 首頁的中文字體及版面。渲染日誌仍含既有數學排版提示及測試圖片的 localhost 404，故不能將「通過」解讀為每頁視覺皆已人工驗收。
 
 ```bash
 export YNOW_DEBUG_SKIP_PY=1
@@ -75,6 +75,8 @@ Rscript test_valuation_formulas.R
 Rscript test_phase1_formula_independence.R
 # 需 Chromium、pandoc、rmarkdown/pagedown
 YNOW_REPORT_TEST_PDF=1 Rscript test_report_download.R
+# 在 repo root 驗證全部 24 組實際 PDF：
+# Rscript docs/audits/2026-10-30-parameter-sources/render_all_pdfs.R
 ```
 
 ## 證據邊界與仍需人工判斷
