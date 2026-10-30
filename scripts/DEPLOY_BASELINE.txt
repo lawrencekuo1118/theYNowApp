@@ -7,5 +7,5 @@ commit=14fbfa3a5a43fdacb322327a21d9e47546d9787b
 short=14fbfa3a
 message=chore: bump display version to v27.58
 captured_at=2026-10-29T16:28:41Z
-display_version=v27.58
+display_version=v27.59
 note=PDF report fix from PR #571; preserve live v27.57 homepage legal layout. Confirmed running with bundle 12755729.
