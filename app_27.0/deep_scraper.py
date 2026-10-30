@@ -646,6 +646,18 @@ def _get_summary_quote_impl(ticker="AMZN"):
     _dbg(f"✅ summary rows={len(items)} name={company_name} ccy={quote_ccy}/{fin_ccy}")
     return {
         "company_name": str(company_name),
+        "profile": {
+            "company_name": str(company_name),
+            "sector": str(info.get("sector") or "N/A"),
+            "industry": str(info.get("industry") or "N/A"),
+            "display_text": "Sector: " + str(info.get("sector") or "N/A") + " | Industry: " + str(info.get("industry") or "N/A"),
+            "summary": str(info.get("longBusinessSummary") or ""),
+            "website": str(info.get("website") or ""),
+            "country": str(info.get("country") or ""),
+            "city": str(info.get("city") or ""),
+            "exchange": str(info.get("exchange") or ""),
+            "employees": info.get("fullTimeEmployees"),
+        },
         "currency": str(quote_ccy),
         "financialCurrency": str(fin_ccy),
         "Item": items,

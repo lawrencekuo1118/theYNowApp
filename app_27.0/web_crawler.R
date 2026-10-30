@@ -751,6 +751,7 @@ get_summary_data <- function(stock_code) {
       cname <- stock_code
     }
     attr(tbl, "company_name") <- as.character(cname)[1]
+    attr(tbl, "company_profile") <- res$profile
     q_ccy <- tryCatch(as.character(res$currency %||% "")[1], error = function(e) "")
     f_ccy <- tryCatch(as.character(res$financialCurrency %||% "")[1], error = function(e) "")
     if (!nzchar(q_ccy) || identical(q_ccy, "NA")) {

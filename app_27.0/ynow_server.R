@@ -5461,6 +5461,20 @@ server <- function(input, output, session) {
   # ==========================================
   # 🌐 核心爬蟲：只要中央大腦的代碼改變，就自動執行完整抓取
   # ==========================================
+  company_extras_loader <- reactiveVal(NULL)
+  observeEvent(list(input$sidebar_tabs, input$dashboard_fin_report,
+                    ticker_search_busy(), company_extras_loader()), {
+    if (isTRUE(ticker_search_busy())) return()
+    tab <- as.character(input$sidebar_tabs %||% "")[1]
+    subtab <- as.character(input$dashboard_fin_report %||% "")[1]
+    wants_extras <- identical(tab, "company_advance") ||
+      (identical(tab, "dashboard") && identical(subtab, "corp_events"))
+    fn <- company_extras_loader()
+    if (!wants_extras || !is.function(fn)) return()
+    company_extras_loader(NULL)
+    later::later(ynow_session_callback(session, fn), delay = 0.1)
+  }, ignoreInit = TRUE)
+
   # TW：.TW 抓取失敗時一次性改試 .TWO，避免 observe 無限迴圈
   .tw_two_fallback_tried_for <- reactiveVal(NA_character_)
 
@@ -5480,6 +5494,7 @@ server <- function(input, output, session) {
     capm_beta_dirty(FALSE)
     beta_capm_driver("gs")
     stock_code <- current_ticker()
+    company_extras_loader(NULL)
     # Official TW company names are available before any Yahoo/Python request.
     if (identical(isolate(market_mode()), "TW")) {
       official_name <- tryCatch(lookup_tw_universe_company_name(stock_code), error = function(e) "")
@@ -5537,7 +5552,8 @@ server <- function(input, output, session) {
       active_prog <<- prog
       tryCatch({
         incProgress(0.05, detail = .ui_msg("progress_company_details"))
-        ind_info <- cached_get_yahoo_industry(stock_code)
+        ind_info <- attr(sum_df, "company_profile")
+        if (!is.list(ind_info)) ind_info <- cached_get_yahoo_industry(stock_code)
         if (!is.null(ind_info)) {
           disp <- as.character(ind_info$display_text %||% "")[1]
           # TW: if Yahoo Sector/Industry is empty, fall back to exchange industry label
@@ -5572,6 +5588,9 @@ server <- function(input, output, session) {
           ))
         }
 
+        # Optional network lookups must not delay statements or core valuation.
+        company_extras_loader(function() {
+          if (!isTRUE(.search_alive())) return(invisible(NULL))
         # Key dates (Yahoo) + TW board / CB open data — tied to Search ticker
         kd <- tryCatch(
           cached_fetch_company_key_dates(stock_code),
@@ -5626,6 +5645,8 @@ server <- function(input, output, session) {
         own_selected_holder(NULL)
         own_holder_detail(NULL)
         own_holders_collapsed(TRUE)
+          invisible(NULL)
+        })
         # Always sync Dashboard「目前產業標準快覽」to the searched ticker's industry
         # (TW universe / US overlay·S&P / Yahoo heuristic). Unknown → keep prior pick.
         mapped <- tryCatch(
@@ -5738,6 +5759,10 @@ server <- function(input, output, session) {
               error = function(e) ""
             )
             if (!identical(toupper(tk_now), toupper(tk))) return(invisible(NULL))
+            if (isTRUE(isolate(ticker_search_busy()))) {
+              later::later(ynow_session_callback(session, run_tint), delay = 0.2)
+              return(invisible(NULL))
+            }
             logo_cols <- tryCatch(
               cached_get_corp_logo_colors(
                 tk,
@@ -5751,7 +5776,7 @@ server <- function(input, output, session) {
           if (requireNamespace("later", quietly = TRUE)) {
             later::later(ynow_session_callback(session, function() {
               tryCatch(run_tint(), error = function(e) NULL)
-            }), delay = 0)
+            }), delay = 0.05)
           } else {
             tryCatch(run_tint(), error = function(e) NULL)
           }
@@ -5781,7 +5806,7 @@ server <- function(input, output, session) {
                 .search_done()
               }
             )
-          }), delay = 0)
+          }), delay = 0.05)
         } else {
           .run_search_phase2(prog, sum_df, q_ccy, f_ccy)
         }
@@ -5909,7 +5934,7 @@ server <- function(input, output, session) {
               tryCatch(prog$close(), error = function(e2) NULL)
               .search_done()
             })
-          }), delay = 0)
+          }), delay = 0.05)
         } else {
           nxt()
         }
@@ -5968,26 +5993,6 @@ server <- function(input, output, session) {
             updateNumericInput(session, "capm_rf", value = round(as.numeric(rf_now), 2))
           }
         }, error = function(e) NULL)
-
-        # Brand tint primary path is phase1b (independent of statements). Phase3
-        # only backfills when the async tint still empty (e.g. website arrived late).
-        have_logo <- tryCatch({
-          length(.ensure_logo_color_pair(isolate(corp_name_logo_colors()))) >= 2L
-        }, error = function(e) FALSE)
-        if (!isTRUE(have_logo)) {
-          logo_web <- tryCatch({
-            p <- isolate(company_profile())
-            as.character(p$website %||% "")[1]
-          }, error = function(e) "")
-          logo_cols <- tryCatch(
-            cached_get_corp_logo_colors(
-              stock_code,
-              website = if (nzchar(logo_web %||% "")) logo_web else NULL
-            ),
-            error = function(e) character(0)
-          )
-          corp_name_logo_colors(.ensure_logo_color_pair(logo_cols))
-        }
 
         incProgress(0.9, detail = "資料同步完成！✅")
       }, error = function(e) {
@@ -6120,7 +6125,7 @@ server <- function(input, output, session) {
                 .search_done()
               }
             )
-          }), delay = 0)
+          }), delay = 0.05)
           return(invisible(NULL))
         }
 
@@ -6147,7 +6152,7 @@ server <- function(input, output, session) {
           if (!is.null(active_prog)) tryCatch(active_prog$close(), error = function(e2) NULL)
           .search_done()
         })
-      }), delay = 0)
+      }), delay = 0.05)
     } else {
       .run_search_phase1()
     }

@@ -10,7 +10,7 @@
 2. 正式站 reticulate 1.41.0.1 出現 managed Python 暫存路徑不存在及 `object 'oldlibpath' not found`。新版 1.47.0 將 oldlibpath 初始化移到條件外；已實際驗證 Python 3.11 初始化及兩檔 Summary 擷取。
 3. Summary 使用 Yahoo 多重 info／fast_info／history 備援，沒有整體等待上限；失敗的空 Summary 又可能被 fast cache 保留，重試不能立即恢復。
 4. 共用 Postgres cache 把 serialized raw vector 直接綁為第四個 SQL 參數，正式站回報 `Parameter 4 does not have length 1`。現改為單一 bytea 參數 `list(raw)`。
-5. 搜尋只接受點號板別，`7772-TWO` 不能一致解析；公司全稱亦延後至 Yahoo 與其他公司資訊取得後才顯示。
+5. 搜尋只接受點號板別，`7772-TWO` 不能一致解析；公司全稱亦延後至 Yahoo 與其他公司資訊取得後才顯示。完整畫面驗證另顯示，股權／公司事件的額外查詢會阻塞核心財報階段。
 
 ## 修正
 
@@ -21,6 +21,7 @@
 - 台股公司中文全稱先由既有官方股票清單帶入；2330 為「台灣積體電路製造股份有限公司」，7772 為「耀穎光電股份有限公司」。板別依清單解析，不因使用者輸入連字號就更換市場。
 - 數字代號的 `-TW`／`-TWO` 轉為 `.TW`／`.TWO`，支援 Search、US→TW 自動切換判斷、typeahead 與歷史價格入口；美股 `BRK.B`→`BRK-B` 維持原行為。
 - 已知上市股票的來源失敗不再誤試上櫃後綴；公司資訊階段顯示獨立進度文字。
+- Summary 一次取得的 profile 同步用於公司簡介與產業對應，避免再次請求 Yahoo。股權、重要日期、董事改選及 CB 額外查詢延至核心搜尋完成且使用者開啟公司／Board-CB 頁面時執行；logo 配色亦等待核心搜尋完成。分階段切換預留 Shiny flush，先顯示已取得的結果。
 
 ## 驗證
 
