@@ -32,6 +32,20 @@ ynow_logo_inflight_stale <- function(inflight_gen, latest_gen) {
   !identical(g, latest)
 }
 
+# Work that is unrelated to the newly visible tab must not retain priority.
+# This pure helper keeps the policy testable without starting a Shiny session.
+ynow_tab_priority_plan <- function(tab, ticker_tabs) {
+  tab <- if (is.null(tab) || !length(tab)) "" else as.character(tab)[1]
+  if (is.na(tab)) tab <- ""
+  cancel <- ynow_logo_cancel_plan(tab, ticker_tabs)
+  list(
+    tab = tab,
+    cancel = cancel,
+    bluechip_visible = identical(tab, "bluechip"),
+    cluster_visible = identical(tab, "lab_notes")
+  )
+}
+
 server <- function(input, output, session) {
   # iOS Safari drops the websocket during a long Lab Search; reconnect in-session
   # instead of forcing the user onto the gray "Disconnected / Reload" overlay.
@@ -4907,6 +4921,15 @@ server <- function(input, output, session) {
     }
     invisible(NULL)
   }
+  # Every navigation change is a focus change. Invalidate queued / in-flight
+  # work owned only by the page being left so the visible page gets the next
+  # worker slot. Results from invalidated workers are discarded by generation.
+  observeEvent(input$sidebar_tabs, {
+    tab <- as.character(input$sidebar_tabs %||% "")[1]
+    if (!nzchar(tab) || is.na(tab)) return()
+    plan <- ynow_tab_priority_plan(tab, .ynow_ticker_refresh_tabs)
+    .ynow_cancel_other_tab_work(plan$tab)
+  }, ignoreNULL = TRUE, ignoreInit = TRUE, priority = 1000)
   observeEvent(input$ynow_tab_refresh, {
     payload <- input$ynow_tab_refresh
     tab <- if (is.list(payload)) {
@@ -5182,8 +5205,12 @@ server <- function(input, output, session) {
     set_market_mode(mode)
     prof <- market_profile(mode)
 
-    # Concept groups are market-scoped — refresh if Blue Chip is already mounted.
-    if (isTRUE(tryCatch(.ynow_lazy_tab_ctrl$mounted("bluechip"), error = function(e) FALSE))) {
+    active_tab <- as.character(isolate(input$sidebar_tabs) %||% "")[1]
+
+    # Hidden picker remounts are surprisingly expensive. Refresh now only when
+    # Blue Chip is visible; its tab-entry observer refreshes it otherwise.
+    if (identical(active_tab, "bluechip") &&
+        isTRUE(tryCatch(.ynow_lazy_tab_ctrl$mounted("bluechip"), error = function(e) FALSE))) {
       .lab_im_push_concept_choices(mode, clear_selected = TRUE)
     }
 
@@ -5223,11 +5250,27 @@ server <- function(input, output, session) {
     .clear_lab_cluster_result()
     lab_im_catalog_nonce(isolate(lab_im_catalog_nonce()) + 1L)
 
-    # Rf
-    rf_new <- tryCatch(cached_get_risk_free_rate(mode), error = function(e) prof$rf_fallback)
-    if (is.finite(rf_new) && rf_new > 0) {
-      updateNumericInput(session, "capm_rf", value = round(as.numeric(rf_new), 2))
-    }
+    # Rf may touch a cache backend. Let the new market chrome and active pane
+    # paint first, then apply only if this mode is still current.
+    rf_mode <- mode
+    session$onFlushed(function() {
+      run_rf <- function() {
+        if (!identical(isolate(market_mode()), rf_mode)) return()
+        rf_new <- tryCatch(
+          cached_get_risk_free_rate(rf_mode),
+          error = function(e) market_profile(rf_mode)$rf_fallback
+        )
+        if (is.finite(rf_new) && rf_new > 0 &&
+            identical(isolate(market_mode()), rf_mode)) {
+          updateNumericInput(session, "capm_rf", value = round(as.numeric(rf_new), 2))
+        }
+      }
+      if (requireNamespace("later", quietly = TRUE)) {
+        later::later(ynow_session_callback(session, run_rf), delay = 0.05)
+      } else {
+        run_rf()
+      }
+    }, once = TRUE)
 
     # No market-default ticker preload (TW 2330 / US TSM). Clear the input;
     # set market-specific placeholder here (updateTextInput would otherwise
@@ -19777,9 +19820,11 @@ server <- function(input, output, session) {
     )
   })
 
-  # Reload default snapshot when market switches — only if Blue Chip was opened.
+  # Reload the default snapshot only when Blue Chip is visible. A mounted but
+  # hidden tab must not compete with the page the user is looking at.
   observeEvent(market_mode(), {
     if (!isTRUE(.ynow_bluechip_mounted())) return()
+    if (!identical(as.character(isolate(input$sidebar_tabs) %||% "")[1], "bluechip")) return()
     mm <- tryCatch(normalize_market_mode(market_mode()), error = function(e) "US")
     snap <- tryCatch(
       lab_load_ind_mcap_chain_snapshot(mm, force = TRUE),
@@ -19787,6 +19832,19 @@ server <- function(input, output, session) {
     )
     lab_im_ind_mcap_snap(snap)
   }, ignoreInit = TRUE)
+
+  # Catch up deferred market-scoped Blue Chip controls on entry.
+  observeEvent(input$sidebar_tabs, {
+    if (!identical(as.character(input$sidebar_tabs %||% "")[1], "bluechip")) return()
+    if (!isTRUE(.ynow_bluechip_mounted())) return()
+    mm <- tryCatch(normalize_market_mode(isolate(market_mode())), error = function(e) "US")
+    .lab_im_push_concept_choices(mm, clear_selected = FALSE)
+    snap <- tryCatch(
+      lab_load_ind_mcap_chain_snapshot(mm, force = TRUE),
+      error = function(e) lab_ind_mcap_chain_snapshot_empty()
+    )
+    lab_im_ind_mcap_snap(snap)
+  }, ignoreInit = TRUE, priority = 900)
 
   # Opening Blue Chip tab auto-starts independent all-chains ind-mcap job (once / market).
   observeEvent(

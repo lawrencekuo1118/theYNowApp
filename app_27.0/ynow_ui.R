@@ -21283,6 +21283,56 @@ ui <- dashboardPage(
         });
       })();
     ")),
+    # Navigation timing: measure click -> visible pane paint and lazy host value.
+    # Marks stay in the browser Performance timeline for field diagnostics; the
+    # latest samples are also exposed on window without adding server traffic.
+    tags$script(HTML("
+      (function() {
+        if (window.__ynowNavTimingBound) return;
+        window.__ynowNavTimingBound = true;
+        window.__ynowNavTimings = window.__ynowNavTimings || [];
+        var pending = null;
+        function now() { return window.performance ? performance.now() : Date.now(); }
+        function keep(kind, value, phase) {
+          if (!pending || pending.kind !== kind || String(pending.value) !== String(value)) return;
+          var sample = {kind: kind, value: String(value), phase: phase,
+                        ms: Math.round((now() - pending.at) * 10) / 10,
+                        at: Date.now()};
+          window.__ynowNavTimings.push(sample);
+          if (window.__ynowNavTimings.length > 80) window.__ynowNavTimings.shift();
+        }
+        document.addEventListener('click', function(ev) {
+          var tab = ev.target && ev.target.closest ?
+            ev.target.closest('.main-sidebar a[data-value], .sidebar-menu a[data-value]') : null;
+          var market = ev.target && ev.target.closest ? ev.target.closest('.ynow-mkt-btn') : null;
+          if (tab && tab.getAttribute('data-value')) {
+            pending = {kind: 'tab', value: tab.getAttribute('data-value'), at: now()};
+          } else if (market && market.getAttribute('data-value')) {
+            pending = {kind: 'market', value: market.getAttribute('data-value'), at: now()};
+          }
+        }, true);
+        document.addEventListener('shiny:inputchanged', function(ev) {
+          if (!pending || !ev) return;
+          var matches = (pending.kind === 'tab' && ev.name === 'sidebar_tabs') ||
+                        (pending.kind === 'market' && ev.name === 'market_mode_pick');
+          if (!matches || String(ev.value) !== String(pending.value)) return;
+          requestAnimationFrame(function() {
+            requestAnimationFrame(function() { keep(pending.kind, pending.value, 'paint'); });
+          });
+        });
+        document.addEventListener('shiny:value', function(ev) {
+          if (!pending || pending.kind !== 'tab' || !ev || !ev.name) return;
+          if (ev.name === 'ynow_lazy_host_' + pending.value) {
+            keep('tab', pending.value, 'lazy-ready');
+          }
+        });
+        if (window.jQuery) {
+          jQuery(document).on('shiny:idle', function() {
+            if (pending) keep(pending.kind, pending.value, 'idle');
+          });
+        }
+      })();
+    ")),
     # Ownership top-10 holders box: report AdminLTE collapse so server can keep
     # expand state across institution-detail remounts (reset on ticker/search).
     tags$script(HTML("
