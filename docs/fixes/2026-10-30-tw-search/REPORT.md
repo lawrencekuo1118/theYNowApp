@@ -38,3 +38,17 @@
 ## 實際畫面驗證
 
 最新本機 Shiny 使用實際 Python/Yahoo/TPEx 網路來源，輸入 `7772-TWO`：30 秒時已結束搜尋，顯示「耀穎光電股份有限公司／Morrison Opto Electronics Ltd.」，櫃買 IS／BS 備援成功；JavaScript errors、Shiny output errors 均為空，連線仍在。缺少 RI payout 時如實提示人工補填，沒有捏造 Cash Flow。此為單次測得的耗時，不是對外部來源延遲的服務保證。
+
+`2330` 的實際本機驗證亦完成，正確顯示「台灣積體電路製造股份有限公司／Taiwan Semiconductor Manufacturing Company Limited」，搜尋進度已結束、連線仍在且沒有 JS／Shiny output errors。缺少其他權益請求權／完整 WACC 必要參數時維持人工補填要求。前後逐次畫面狀態與回歸結果見 `evidence/`。
+
+本次端到端案例使用訪客 Full 版、英文介面與 TW 市場；不宣稱已逐一登入所有正式帳號或逐一驗證全市場所有股票。來源可用性仍取決於 Yahoo／TPEx；公司的清單名稱與上市／上櫃／興櫃分類以官方宇宙快取資料為準。
+
+## 正式站部署與驗收
+
+v27.60（bundle `12757353`）已部署，API 狀態 `running`。主修正 PR #576、#577、#578 均已合併至 master。Release：https://github.com/lawrencekuo1118/theYNowApp/releases/tag/v27.60 。程式來源 commit：`11a192e56c27e2be0ef5d060a5411782b7abc22b`。
+
+正式站實際輸入 `2330` 與 `7772-TWO`，兩檔均顯示正確中英文公司全稱與非空 Summary，搜尋進度結束、Shiny 保持連線，JavaScript errors 與 output errors 均為空。7772 的 TPEx IS／BS 備援實際成功，沒有捏造 CF；RI payout 缺值正常提醒人工補填。
+
+本次正式站兩檔各約 75 秒完成，包含市場切換與外部來源；首檔另包含 Python 3.11 首次安裝。此時間不構成效能保證；Summary 的 20 秒與 TPEx 的 45 秒上限各自適用於該來源請求，不代表整個搜尋的總耗時。逐次畫面狀態見 `evidence/production-v27-60.jsonl`，完成結果見 `evidence/production-result.json`。
+
+Cloud 瀏覽器驗證使用測試 context 的 HTTPS 憑證例外以配合 session proxy，未修改正式站 TLS。`post_release_local_sync.sh` 已執行；本機缺少 Mac coding clone／OneDrive 路徑而 soft-skip，仍需在 Mac 執行實體備份同步。

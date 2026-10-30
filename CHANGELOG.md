@@ -1,4 +1,4 @@
-## [Unreleased] — 台股搜尋
+## [v27.60] — 2026-10-30 · 台股搜尋
 
 - zh-TW：修正台股搜尋失敗後持續停留 yfinance 的 session／進度清理問題；升級 managed Python 相依套件並限制 Summary 等待時間。公司全稱先由官方清單顯示，支援 `7772-TWO` 等連字號板別輸入，修正二進位市場快取綁定與失敗 Summary 快取。
 - en-US: Preserve the originating Shiny session in deferred searches, close failed-search progress, upgrade managed Python support, and bound Summary requests. Resolve Taiwan company names before Yahoo, accept hyphenated board suffixes, and fix binary cache bindings and failed-quote caching.
