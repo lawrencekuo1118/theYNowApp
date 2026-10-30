@@ -135,6 +135,7 @@ server <- function(input, output, session) {
   
   # 初始值設為 NULL，避免一開啟 App 就自動執行爬蟲
   current_ticker <- reactiveVal(NULL)
+  .quote_price <- function() extract_quote_price_mcap(summary_data())$price
   # Search must re-fetch even when the symbol is unchanged (Shiny skips
   # identical reactiveVal writes, so a second Search on TSM/NVDA was a no-op).
   ticker_search_gen <- reactiveVal(0L)
@@ -182,7 +183,12 @@ server <- function(input, output, session) {
   quote_currency <- reactiveVal("USD")
   statement_currency <- reactiveVal("USD")
   session_currency <- reactiveVal("USD")
-  fx_usd_twd <- reactiveVal(NA_real_)
+  .fx_usd_twd_auto <- reactiveVal(NA_real_)
+  fx_usd_twd <- function(value) {
+    if (!missing(value)) return(.fx_usd_twd_auto(value))
+    manual <- suppressWarnings(as.numeric(input$bridge_fx)[1])
+    if (is.finite(manual) && manual > 0) manual else .fx_usd_twd_auto()
+  }
   fx_fetched_at <- reactiveVal(NULL)
 
   # 市場模式：美股｜台股（與顯示幣別分開）
@@ -5045,7 +5051,7 @@ server <- function(input, output, session) {
     mets <- list()
     # Price / FV / MOS from smart path
     tryCatch({
-      px <- suppressWarnings(as.numeric(scraped_market_cap()$price)[1])
+      px <- suppressWarnings(as.numeric(.quote_price())[1])
       if (is.finite(px)) mets$last_price <- px
     }, error = function(e) NULL)
     tryCatch({
@@ -5950,7 +5956,7 @@ server <- function(input, output, session) {
 
         # 先更新即時 Rf，其餘 CAPM／WACC 在財報 reactive 就緒後自動估算
         tryCatch({
-          rf_now <- cached_get_risk_free_rate()
+          rf_now <- cached_get_risk_free_rate(market_mode())
           if (is.finite(rf_now) && rf_now > 0) {
             updateNumericInput(session, "capm_rf", value = round(as.numeric(rf_now), 2))
           }
@@ -6979,7 +6985,7 @@ server <- function(input, output, session) {
     } else {
       "N/A"
     }
-    px_num <- suppressWarnings(as.numeric(tryCatch(scraped_market_cap()$price, error = function(e) NA_real_))[1])
+    px_num <- suppressWarnings(as.numeric(tryCatch(.quote_price(), error = function(e) NA_real_))[1])
     if (!is.finite(px_num) && !is.na(pick_raw)) {
       px_num <- suppressWarnings(as.numeric(gsub("[^0-9.eE+-]", "", as.character(pick_raw)[1]))[1])
     }
@@ -7329,11 +7335,11 @@ server <- function(input, output, session) {
       is <- tryCatch(d_income_statement(), error = function(e) NULL)
       bs <- tryCatch(d_balance_sheet(), error = function(e) NULL)
       ni <- tryCatch(
-        select_current_metric_any(is, NET_INCOME_PATTERNS, "flow"),
+        common_net_income(is),
         error = function(e) NA_real_
       )
       equity <- tryCatch(
-        select_current_metric_any(bs, EQUITY_PATTERNS, "stock"),
+        common_stock_equity(bs),
         error = function(e) NA_real_
       )
       has_roe <- is.finite(ni) && is.finite(equity) && equity > 0
@@ -7819,7 +7825,7 @@ server <- function(input, output, session) {
       ),
       {
         ref_key <- as.character(rec$reference %||% "")[1]
-        cur_px <- suppressWarnings(as.numeric(tryCatch(scraped_market_cap()$price, error = function(e) NA_real_))[1])
+        cur_px <- suppressWarnings(as.numeric(tryCatch(.quote_price(), error = function(e) NA_real_))[1])
         prim_px <- if (nzchar(prim)) suppressWarnings(as.numeric(tryCatch(.model_point(prim), error = function(e) NA_real_))[1]) else NA_real_
         sec_px <- if (nzchar(sec) && !identical(sec, "multiples")) suppressWarnings(as.numeric(tryCatch(.model_point(sec), error = function(e) NA_real_))[1]) else NA_real_
         ref_px <- if (identical(ref_key, "multiples")) suppressWarnings(as.numeric(tryCatch(.model_point("multiples"), error = function(e) NA_real_))[1]) else NA_real_
@@ -8672,7 +8678,7 @@ server <- function(input, output, session) {
       error = function(e) NA_real_
     )
     equity <- tryCatch(
-      select_current_metric_any(bs, EQUITY_PATTERNS, "stock"),
+      common_stock_equity(bs),
       error = function(e) NA_real_
     )
     liabilities <- tryCatch(
@@ -9071,7 +9077,7 @@ server <- function(input, output, session) {
     }),
     current_price = reactive({
       req(scraped_market_cap())
-      scraped_market_cap()$price
+      .quote_price()
     }),
     hist_price_data = hist_stock_data,
     industry_text = corp_industry_text,
@@ -9114,7 +9120,7 @@ server <- function(input, output, session) {
     current_price = reactive({
       tryCatch({
         req(scraped_market_cap())
-        scraped_market_cap()$price
+        .quote_price()
       }, error = function(e) NA_real_)
     }),
     model_rec = reactive({ model_sidebar_rec() }),
@@ -9179,8 +9185,8 @@ server <- function(input, output, session) {
   # 🧠 建立「中央折現率大腦」(統一供應 Ke 給各模組)
   # ==========================================
   central_ke <- reactive({
-    if (isTRUE(input$use_estimated_re) && !is.null(estimated_re())) {
-      estimated_re()
+    if (isTRUE(input$use_estimated_re)) {
+      suppressWarnings(as.numeric(estimated_re())[1])
     } else if (!is.null(input$wacc_re)) {
       input$wacc_re / 100
     } else {
@@ -9199,61 +9205,8 @@ server <- function(input, output, session) {
     }), 
     ddm_ke = reactive({ central_ke() * 100 }),  # 🌟 連動！
     
-    scraped_d0 = reactive({
-      # 優先：財報推算每股股利（報價股約當股數）；其次：Summary 股利欄（報價幣 DPS）
-      cf <- d_cash_flow()
-      bs <- d_balance_sheet()
-      q_ccy <- quote_currency()
-      f_ccy <- statement_currency()
-      if (is.data.frame(cf) && nrow(cf) > 0 && is.data.frame(bs) && nrow(bs) > 0) {
-        # 報價幣≠財報幣且 CF 未成功 FX 換算 → 勿用原幣總股利÷股數冒充報價 DPS
-        money_ok <- {
-          mc <- normalize_ccy(attr(cf, "money_ccy") %||% f_ccy)
-          if (!statement_quote_units_differ(f_ccy, q_ccy)) {
-            TRUE
-          } else {
-            isTRUE(attr(cf, "money_scaled")) && !is.na(mc) &&
-              (identical(mc, normalize_ccy(q_ccy)) ||
-                 identical(mc, "USD") || identical(mc, "TWD"))
-          }
-        }
-        if (isTRUE(money_ok)) {
-          div_paid <- select_current_metric(cf, "Cash Dividends Paid", "flow")
-          sh <- tryCatch(
-            resolve_valuation_shares(
-              bs, summary_data(),
-              ticker = current_ticker() %||% "",
-              quote_currency = q_ccy,
-              financial_currency = f_ccy
-            ),
-            error = function(e) NULL
-          )
-          shares <- NA_real_
-          if (!is.null(sh) && is.finite(sh$shares) && sh$shares > 0) {
-            if (shares_auto_adjust_method(sh$method)) {
-              shares <- sh$shares
-            } else if (!statement_quote_units_differ(f_ccy, q_ccy)) {
-              shares <- sh$shares
-            }
-          } else if (!statement_quote_units_differ(f_ccy, q_ccy)) {
-            shares <- select_current_metric_any(bs, SHARE_PATTERNS, "stock")
-          }
-          if (!is.na(div_paid) && is.finite(shares) && shares > 0) {
-            return(round(abs(div_paid) / shares, 2))
-          }
-        }
-      }
-      df <- summary_data()
-      if (!is.null(df)) {
-        div_row <- df[grepl("Dividend", df$Item, ignore.case = TRUE), ]
-        if (nrow(div_row) > 0) {
-          fallback <- suppressWarnings(as.numeric(stringr::str_extract(div_row$Value[1], "^[0-9.]+")))
-          if (is.finite(fallback) && fallback >= 0) return(round(fallback, 2))
-        }
-      }
-      0
-    }),
-    
+    scraped_d0 = reactive({ valuation_trailing_dps(summary_data()) }),
+
     summary_df = summary_data,
     d_cash_flow = d_cash_flow, 
     d_balance_sheet = d_balance_sheet,
@@ -9272,9 +9225,9 @@ server <- function(input, output, session) {
   # ==========================================
   .dcf_fcfe_bridge <- reactive({
     latest_debt <- .shared_bridge()$debt
-    if (!is.finite(latest_debt) || latest_debt < 0) latest_debt <- 0
+    if (!is.finite(latest_debt) || latest_debt < 0) latest_debt <- NA_real_
     rd <- suppressWarnings(as.numeric(input$wacc_rd)[1]) / 100
-    if (!is.finite(rd) || rd < 0) rd <- 0
+    if (!is.finite(rd) || rd < 0) rd <- NA_real_
     tax <- suppressWarnings(as.numeric(input$wacc_tax)[1]) / 100
     if (!is.finite(tax)) tax <- APP_DEFAULTS$wacc_tax / 100
     iat <- after_tax_interest(latest_debt, rd, tax)
@@ -9316,7 +9269,8 @@ server <- function(input, output, session) {
       if (!is.finite(t)) t <- APP_DEFAULTS$wacc_tax
       ias12_tax_ratio(t, from_pct = TRUE)
     }),
-    shared_bridge = function() .shared_bridge()
+    shared_bridge = function() .shared_bridge(),
+    ui_locale = ui_locale
   )
   
   observeEvent({
@@ -9446,11 +9400,11 @@ server <- function(input, output, session) {
   .current_rf_detail <- function() {
     det <- tryCatch({
       if (exists("cached_get_risk_free_rate_detail", mode = "function")) {
-        cached_get_risk_free_rate_detail()
+        cached_get_risk_free_rate_detail(market_mode())
       } else if (exists("get_risk_free_rate_detail", mode = "function")) {
-        get_risk_free_rate_detail()
+        get_risk_free_rate_detail(market_mode())
       } else {
-        r <- as.numeric(cached_get_risk_free_rate())
+        r <- as.numeric(cached_get_risk_free_rate(market_mode()))
         list(
           rf_pct = r, source = "live", label = "Rf",
           symbol = "", is_fallback = FALSE
@@ -9593,9 +9547,9 @@ server <- function(input, output, session) {
     est <- tryCatch(central_perpetual_g(), error = function(e) NULL)
     adopted <- if (!is.null(est)) suppressWarnings(as.numeric(est$g_pct)[1]) else NA_real_
     if (!is.finite(adopted)) adopted <- suppressWarnings(as.numeric(input$sgr)[1])
-    ni <- tryCatch(select_current_metric_any(d_income_statement(), NET_INCOME_PATTERNS, "flow"), error = function(e) NA_real_)
-    eq <- tryCatch(select_current_metric_any(d_balance_sheet(), EQUITY_PATTERNS, "stock"), error = function(e) NA_real_)
-    div_paid <- tryCatch(select_current_metric(d_cash_flow(), "Cash Dividends Paid", "flow"), error = function(e) NA_real_)
+    ni <- tryCatch(common_net_income(d_income_statement()), error = function(e) NA_real_)
+    eq <- tryCatch(common_stock_equity(d_balance_sheet()), error = function(e) NA_real_)
+    div_paid <- tryCatch(common_cash_dividends(d_cash_flow()), error = function(e) NA_real_)
     ident <- tryCatch(fundamental_sgr_identity(ni, eq, div_paid), error = function(e) NULL)
     fmt_pct <- function(x) {
       if (!is.finite(suppressWarnings(as.numeric(x)[1]))) return("—")
@@ -9923,7 +9877,7 @@ server <- function(input, output, session) {
     }),
     industry_choice = reactive(input$industry_choice),
     current_price = reactive({
-      tryCatch(scraped_market_cap()$price, error = function(e) NA_real_)
+      tryCatch(.quote_price(), error = function(e) NA_real_)
     }),
     market_cap = reactive({
       extract_quote_price_mcap(summary_data())$market_cap
@@ -9951,7 +9905,7 @@ server <- function(input, output, session) {
     d_balance_sheet = d_balance_sheet,
     d_income_statement = d_income_statement,
     current_price = reactive({
-      tryCatch(scraped_market_cap()$price, error = function(e) NA_real_)
+      tryCatch(.quote_price(), error = function(e) NA_real_)
     }),
     market_cap = reactive({
       extract_quote_price_mcap(summary_data())$market_cap
@@ -9987,7 +9941,7 @@ server <- function(input, output, session) {
     d_balance_sheet = d_balance_sheet,
     d_cash_flow = d_cash_flow,
     current_price = reactive({
-      tryCatch(scraped_market_cap()$price, error = function(e) NA_real_)
+      tryCatch(.quote_price(), error = function(e) NA_real_)
     }),
     market_cap = reactive({
       extract_quote_price_mcap(summary_data())$market_cap
@@ -10018,7 +9972,7 @@ server <- function(input, output, session) {
     d_income_statement = d_income_statement,
     d_balance_sheet = d_balance_sheet,
     current_price = reactive({
-      tryCatch(scraped_market_cap()$price, error = function(e) NA_real_)
+      tryCatch(.quote_price(), error = function(e) NA_real_)
     }),
     market_cap = reactive({
       extract_quote_price_mcap(summary_data())$market_cap
@@ -10041,7 +9995,7 @@ server <- function(input, output, session) {
     auto_calc_pulse = reactive(auto_calc_nav_pulse()),
     d_balance_sheet = d_balance_sheet,
     current_price = reactive({
-      tryCatch(scraped_market_cap()$price, error = function(e) NA_real_)
+      tryCatch(.quote_price(), error = function(e) NA_real_)
     }),
     market_cap = reactive({
       extract_quote_price_mcap(summary_data())$market_cap
@@ -10074,17 +10028,17 @@ server <- function(input, output, session) {
 
   # One editor on Model Dashboard. Until the user edits a field, that field
   # follows the statement extract. Other pages only display the same numbers.
-  bridge_touched <- reactiveValues(cash = FALSE, debt = FALSE, shares = FALSE, revenue = FALSE)
-  bridge_prog_val <- reactiveValues(cash = NA_real_, debt = NA_real_, shares = NA_real_, revenue = NA_real_)
+  bridge_touched <- reactiveValues(cash = FALSE, debt = FALSE, shares = FALSE, revenue = FALSE, other_claims = FALSE)
+  bridge_prog_val <- reactiveValues(cash = NA_real_, debt = NA_real_, shares = NA_real_, revenue = NA_real_, other_claims = NA_real_)
 
   .bridge_same <- function(a, b) {
     a <- suppressWarnings(as.numeric(a)[1])
     b <- suppressWarnings(as.numeric(b)[1])
-    is.finite(a) && is.finite(b) && abs(a - b) <= max(1, abs(a)) * 1e-6
+    (is.na(a) && is.na(b)) || (is.finite(a) && is.finite(b) && abs(a - b) <= max(1, abs(a)) * 1e-6)
   }
   .bridge_write_canonical <- function(id, slot, value, digits) {
     value <- suppressWarnings(as.numeric(value)[1])
-    if (!is.finite(value)) return(invisible(NULL))
+    if (!is.finite(value)) value <- NA_real_
     value <- round(value, digits)
     cur <- suppressWarnings(as.numeric(isolate(input[[id]]))[1])
     if (.bridge_same(cur, value)) return(invisible(NULL))
@@ -10107,12 +10061,14 @@ server <- function(input, output, session) {
   .bridge_on_user("bridge_debt", "debt")
   .bridge_on_user("bridge_shares", "shares")
   .bridge_on_user("bridge_revenue", "revenue")
+  .bridge_on_user("bridge_other_claims", "other_claims")
 
   .bridge_clear_touch <- function() {
     bridge_touched$cash <- FALSE
     bridge_touched$debt <- FALSE
     bridge_touched$shares <- FALSE
     bridge_touched$revenue <- FALSE
+    bridge_touched$other_claims <- FALSE
   }
   observeEvent(current_ticker(), { .bridge_clear_touch() }, ignoreInit = TRUE)
   observeEvent(input$bridge_reload, { .bridge_clear_touch() })
@@ -10132,15 +10088,17 @@ server <- function(input, output, session) {
       sh_stmt
     }
     revenue <- if (isTRUE(bridge_touched$revenue)) bridge_pick_number(input$bridge_revenue, rev_stmt) else rev_stmt
-    if (!is.finite(cash) || cash < 0) cash <- 0
-    if (!is.finite(debt) || debt < 0) debt <- 0
-    list(cash = unname(cash), debt = unname(debt), shares = unname(shares), revenue = unname(revenue))
+    if (!is.finite(cash) || cash < 0) cash <- NA_real_
+    if (!is.finite(debt) || debt < 0) debt <- NA_real_
+    other <- if (isTRUE(bridge_touched$other_claims)) bridge_pick_number(input$bridge_other_claims) else statement_other_equity_claims(bs)
+    list(cash = unname(cash), debt = unname(debt), shares = unname(shares), revenue = unname(revenue), other_claims = other)
   })
 
   observe({
     bs <- tryCatch(d_balance_sheet(), error = function(e) NULL)
     if (is.null(bs) || !is.data.frame(bs) || !nrow(bs)) return()
     sb <- .shared_bridge()
+    if (!isTRUE(bridge_touched$other_claims)) .bridge_write_canonical("bridge_other_claims", "other_claims", sb$other_claims, 2)
     if (!isTRUE(bridge_touched$cash)) .bridge_write_canonical("bridge_cash", "cash", sb$cash, 2)
     if (!isTRUE(bridge_touched$debt)) .bridge_write_canonical("bridge_debt", "debt", sb$debt, 2)
     if (!isTRUE(bridge_touched$shares) && is.finite(sb$shares) && sb$shares > 0) {
@@ -10220,6 +10178,18 @@ server <- function(input, output, session) {
   # ==========================================
   # v13：Bear / Base / Bull 情境 + 主／副點 + 可信度
   # ==========================================
+  .effective_dcf_scenario <- function() {
+    lite <- isTRUE(tryCatch(lite_mode(), error = function(e) FALSE))
+    des <- if (lite) tryCatch(lite_desired_des(), error = function(e) NULL) else NULL
+    mode <- as.character(input$dcf_mode %||% "gordon")[1]
+    claim <- as.character(input$dcf_claim %||% "fcff")[1]
+    if (!is.null(des)) {
+      mode <- if (isTRUE(des$two_stage)) "two_stage" else "gordon"
+      if (as.character(des$claim %||% "")[1] %in% c("fcff", "fcfe")) claim <- des$claim
+    }
+    list(mode = mode, claim = claim)
+  }
+
   .dcf_valuation_bundle <- function(wacc_pp_delta = 0, g_pp_delta = 0,
                                     near_g_mult = 1, cash_mult = 1, debt_mult = 1,
                                     fcf_mult = 1,
@@ -10227,6 +10197,7 @@ server <- function(input, output, session) {
                                     wacc_override_pct = NULL,
                                     yr_stage1_override = NULL,
                                     years_override = NULL) {
+    scenario <- .effective_dcf_scenario()
     empty <- list(
       ok = FALSE, price = NA_real_, shares = NA_real_,
       pv_fcf = NA_real_, pv_tv = NA_real_, cash = NA_real_, debt = NA_real_,
@@ -10257,12 +10228,7 @@ server <- function(input, output, session) {
     if (length(future_fcfs) >= 1L) {
       last_raw <- suppressWarnings(as.numeric(tail(future_fcfs, 1))[1])
       if (is.finite(last_raw) && last_raw < 0) {
-        des_b <- tryCatch(lite_desired_des(), error = function(e) NULL)
-        mode_b <- if (!is.null(des_b)) {
-          if (isTRUE(des_b$two_stage)) "two_stage" else "gordon"
-        } else {
-          as.character(input$dcf_mode %||% "gordon")[1]
-        }
+        mode_b <- scenario$mode
         anchored <- .lite_fcff_from_trailing(length(future_fcfs), mode_b)
         if (!is.null(anchored)) future_fcfs <- anchored
       }
@@ -10284,9 +10250,9 @@ server <- function(input, output, session) {
     } else {
       APP_DEFAULTS$sgr / 100 + g_pp_delta / 100
     }
-    claim_bundle <- as.character(input$dcf_claim %||% "fcff")[1]
+    claim_bundle <- scenario$claim
     skip_wacc_gate <- identical(claim_bundle, "fcfe")
-    if (identical(input$dcf_mode, "gordon")) {
+    if (identical(scenario$mode, "gordon")) {
       if (!is.null(wacc_override_pct) && is.finite(wacc_override_pct)) {
         r1 <- wacc_override_pct / 100
       } else {
@@ -10330,17 +10296,23 @@ server <- function(input, output, session) {
     sb_bridge <- .shared_bridge()
     latest_cash <- sb_bridge$cash * cash_mult
     latest_debt <- sb_bridge$debt * debt_mult
-    claim <- as.character(input$dcf_claim %||% "fcff")[1]
+    other_claims <- suppressWarnings(as.numeric(sb_bridge$other_claims)[1])
+    if (!is.finite(other_claims) || other_claims < 0) return(empty)
+    if (identical(scenario$claim, "fcfe") && other_claims != 0) return(empty)
+    claim <- scenario$claim
     if (identical(claim, "fcfe")) {
       ke <- if (isTRUE(input$use_estimated_re) && !is.null(estimated_re())) {
         as.numeric(estimated_re())[1]
       } else {
         suppressWarnings(as.numeric(input$wacc_re)[1]) / 100
       }
-      if (!is.finite(ke) || ke <= 0) ke <- r2
+      if (!is.finite(ke) || ke <= 0) return(empty)
       if (!is.finite(ke) || !is.finite(g_terminal) || g_terminal >= ke) return(empty)
       rd <- suppressWarnings(as.numeric(input$wacc_rd)[1]) / 100
-      if (!is.finite(rd) || rd < 0) rd <- 0
+      if (!is.finite(rd) || rd < 0) {
+        if (latest_debt > 0) return(empty)
+        rd <- 0
+      }
       tax <- suppressWarnings(as.numeric(input$wacc_tax)[1]) / 100
       if (!is.finite(tax)) tax <- APP_DEFAULTS$wacc_tax / 100
       iat <- after_tax_interest(latest_debt, rd, tax)
@@ -10354,9 +10326,10 @@ server <- function(input, output, session) {
       dcf_value <- pv_forecast + pv_tv
       equity_value <- as.numeric(dcf_value)[1]
     } else {
-      equity_value <- as.numeric(dcf_value)[1] + latest_cash - latest_debt
+      equity_value <- as.numeric(dcf_value)[1] + latest_cash - latest_debt - other_claims
     }
     shares_info <- tryCatch(.valuation_shares(), error = function(e) NULL)
+    if (!is.null(shares_info) && is.finite(sb_bridge$shares) && sb_bridge$shares > 0) shares_info$shares <- sb_bridge$shares
     shares <- if (!is.null(shares_info)) suppressWarnings(as.numeric(shares_info$shares)[1]) else NA_real_
     if (!is.finite(equity_value) || !is.finite(shares) || shares <= 0) return(empty)
     px <- .dcf_per_share(equity_value, shares_info)
@@ -10430,7 +10403,15 @@ server <- function(input, output, session) {
       compute_ri_valuation(
         b0 = b0, ke = ke, g = g, n = max(1L, n),
         payout = payout / 100,
-        roe_path = rep(roe, max(1L, n)),
+        roe_path = build_roe_path(
+          method = input[["mod_ri-roe_method"]] %||% "constant",
+          n = max(1L, n), roe_start = roe,
+          roe_terminal = as.numeric(input[["mod_ri-roe_terminal"]] %||% roe0) / 100 + roe_pp_delta / 100,
+          roe_industry = as.numeric(input[["mod_ri-roe_industry"]] %||% 12) / 100 + roe_pp_delta / 100,
+          custom_vec = if (identical(input[["mod_ri-roe_method"]], "custom")) {
+            .parse_roe_pct_vector(input[["mod_ri-roe_custom_txt"]]) + roe_pp_delta / 100
+          } else NULL
+        ),
         validate = TRUE
       ),
       error = function(e) NULL
@@ -10668,7 +10649,7 @@ server <- function(input, output, session) {
     sec_pt <- tryCatch(secondary_valuation_point(), error = function(e) NA_real_)
     # F-Score light proxy: OCF vs 營運利潤（扣除投資證券未實現損益）
     f_score <- tryCatch({
-      ni <- select_current_metric_any(d_income_statement(), NET_INCOME_PATTERNS, "flow")
+      ni <- common_net_income(d_income_statement())
       unreal <- tryCatch(
         select_current_metric_any(d_income_statement(), UNREALIZED_INVESTMENT_GL_PATTERNS, "flow"),
         error = function(e) NA_real_
@@ -10775,25 +10756,11 @@ server <- function(input, output, session) {
     interest <- tryCatch(
       abs(as.numeric(select_current_metric_any(
         d_income_statement(), INTEREST_EXPENSE_PATTERNS, "flow"
-      ))[1]),
-      error = function(e) NA_real_
+      ))[1]), error = function(e) NA_real_
     )
-    if (!is.finite(interest) || interest <= 0) {
-      cf <- tryCatch(d_cash_flow(), error = function(e) NULL)
-      if (!is.null(cf) && is.data.frame(cf) && nrow(cf) > 0) {
-        interest <- tryCatch(
-          abs(as.numeric(select_current_metric_any(
-            cf, INTEREST_PAID_PATTERNS, "flow"
-          ))[1]),
-          error = function(e) NA_real_
-        )
-        if (is.finite(interest) && interest > 0) {
-          attr(interest, "source") <- "cash_flow_interest_paid"
-          return(interest)
-        }
-      }
-      return(NA_real_)
-    }
+    # Cash interest paid is not accrual interest expense; Net Interest Expense
+    # also subtracts interest income. Neither can silently become the Rd numerator.
+    if (!is.finite(interest)) return(NA_real_)
     attr(interest, "source") <- "income_interest_expense"
     interest
   }
@@ -10801,7 +10768,7 @@ server <- function(input, output, session) {
   scraped_rd_pct <- reactive({
     interest <- suppressWarnings(as.numeric(input$rd_interest_expense)[1])
     debt <- suppressWarnings(as.numeric(input$rd_interest_bearing_debt)[1])
-    if (!is.finite(interest) || interest <= 0 || !is.finite(debt) || debt <= 0) {
+    if (!is.finite(interest) || interest < 0 || !is.finite(debt) || debt <= 0) {
       return(NA_real_)
     }
     rd <- 100 * interest / debt
@@ -10883,7 +10850,7 @@ server <- function(input, output, session) {
     interest <- suppressWarnings(as.numeric(input$rd_interest_expense)[1])
     debt <- suppressWarnings(as.numeric(input$rd_interest_bearing_debt)[1])
     rd <- tryCatch(scraped_rd_pct(), error = function(e) NA_real_)
-    if (!is.finite(interest) || interest <= 0 || !is.finite(debt) || debt <= 0) {
+    if (!is.finite(interest) || interest < 0 || !is.finite(debt) || debt <= 0) {
       return(tags$p(style = "color:#888;font-size:13px;", .ui_msg("rd_need_inputs")))
     }
     raw <- 100 * interest / debt
@@ -12870,7 +12837,7 @@ server <- function(input, output, session) {
     wd <- NA_real_
     tryCatch({
       sh <- .valuation_shares()$shares
-      px <- tryCatch(scraped_market_cap()$price, error = function(e) NA_real_)
+      px <- tryCatch(.quote_price(), error = function(e) NA_real_)
       eq <- if (is.finite(sh) && is.finite(px) && sh > 0 && px > 0) sh * px else NA_real_
       debt <- tryCatch(select_current_metric(d_balance_sheet(), "^Total Debt$", "stock"), error = function(e) NA_real_)
       if (!is.finite(debt) || debt < 0) debt <- 0
@@ -13181,6 +13148,7 @@ server <- function(input, output, session) {
     }
     beta <- suppressWarnings(as.numeric(input$capm_beta))
     rm <- suppressWarnings(as.numeric(input$capm_rm))
+    estimated_re(NULL)
     if (is.finite(rf) && is.finite(beta) && is.finite(rm)) {
       r_e_est <- (rf / 100) + beta * ((rm / 100) - (rf / 100))
       estimated_re(r_e_est)
@@ -13197,6 +13165,10 @@ server <- function(input, output, session) {
       return(invisible(NULL))
     }
 
+    calculated_wacc(NULL)
+    for (id in c("wacc_gordon", "wacc_stage1", "wacc_stage2")) updateNumericInput(session, id, value = NA_real_)
+    other <- .shared_bridge()$other_claims
+    if (!is.finite(other) || other != 0) return(invisible(NULL))
     # WACC（需財報／股價）；股權市值用報價股數（ADR 自動約當）
     bs <- tryCatch(d_balance_sheet(), error = function(e) NULL)
     sum_df <- tryCatch(summary_data(), error = function(e) NULL)
@@ -13219,14 +13191,14 @@ server <- function(input, output, session) {
     price_val <- if (!is.null(sh)) suppressWarnings(as.numeric(sh$price)[1]) else NA_real_
     mcap_val <- if (!is.null(sh)) suppressWarnings(as.numeric(sh$market_cap)[1]) else NA_real_
     equity_mv <- if (is.finite(mcap_val) && mcap_val > 0) {
-      mcap_val
+      money_to_session(mcap_val, quote_currency(), session_currency(), fx_usd_twd())
     } else if (is.finite(price_val) && price_val > 0) {
-      shares * price_val
+      money_to_session(shares * price_val, quote_currency(), session_currency(), fx_usd_twd())
     } else {
-      select_current_metric(bs, "Common Stock Equity", "stock")
+      NA_real_
     }
     debt <- .shared_bridge()$debt
-    if (!is.finite(debt) || debt < 0) debt <- 0
+    if (!is.finite(debt) || debt < 0) return(invisible(NULL))
     if (is.na(equity_mv) || equity_mv <= 0) return(invisible(NULL))
 
     total_capital <- equity_mv + debt
@@ -13277,7 +13249,7 @@ server <- function(input, output, session) {
   # 查詢新股票／財報更新後：自動帶入相關數值並重估 WACC
   observeEvent(list(scraped_financials(), summary_data()), {
     req(scraped_financials(), summary_data())
-    rf_now <- tryCatch(as.numeric(cached_get_risk_free_rate()), error = function(e) NA_real_)
+    rf_now <- tryCatch(as.numeric(cached_get_risk_free_rate(market_mode())), error = function(e) NA_real_)
     if (is.finite(rf_now) && rf_now > 0) {
       updateNumericInput(session, "capm_rf", value = round(rf_now, 2))
     }
@@ -13331,13 +13303,14 @@ server <- function(input, output, session) {
     )
 
     hist_df <- tryCatch({
-      cf <- d_cash_flow()
-      row_idx <- grep("^Free Cash Flow$|Free Cash Flow", cf[[1]], ignore.case = TRUE)
-      if (length(row_idx) == 0) return(NULL)
-      period_cols <- colnames(cf)[-1]
-      period_cols <- period_cols[!grepl("^ttm$", period_cols, ignore.case = TRUE)]
-      if (length(period_cols) == 0) return(NULL)
-      vals <- parse_financial_number(as.character(cf[row_idx[1], period_cols, drop = FALSE]))
+      # A historical FCFE series needs historical borrowing, not today's forecast bridge.
+      if (identical(as.character(claim), "fcfe")) return(NULL)
+      aligned <- align_financial_flows(d_income_statement(), d_cash_flow(), include_ttm = FALSE)
+      cf <- aligned$cashflow
+      rec <- reconstruct_hist_fcff(cf, aligned$income, tax = .session_tax_decimal())
+      period_cols <- names(cf)[-1]
+      vals <- rec$fcff
+      if (!length(period_cols) || length(vals) != length(period_cols)) return(NULL)
       ord <- rev(seq_along(period_cols))
       data.frame(
         Period = as.character(period_cols[ord]),
@@ -13542,17 +13515,14 @@ server <- function(input, output, session) {
   }
 
   .execute_dcf_calc <- function(notify = NULL) {
+    stock_price_estimate_val(NULL)
+    dcf_audit_snap(NULL)
+    dcf_value_result(NULL)
     silent <- isTRUE(isolate(lite_dcf_silent()))
     show_toast <- if (is.null(notify)) !silent else isTRUE(notify)
-    des <- if (silent) tryCatch(isolate(lite_desired_des()), error = function(e) NULL) else NULL
-    dcf_mode_eff <- as.character(input$dcf_mode %||% "")[1]
-    if (silent && !is.null(des)) {
-      # Hidden radios lag behind the recommended scenario; don't value the stale mode.
-      dcf_mode_eff <- if (isTRUE(des$two_stage)) "two_stage" else "gordon"
-    } else if (!nzchar(dcf_mode_eff) && !is.null(des)) {
-      dcf_mode_eff <- if (isTRUE(des$two_stage)) "two_stage" else "gordon"
-    }
-    if (!nzchar(dcf_mode_eff)) dcf_mode_eff <- "gordon"
+    if (silent && !is.finite(suppressWarnings(as.numeric(calculated_wacc())[1]))) return(NULL)
+    scenario <- .effective_dcf_scenario()
+    dcf_mode_eff <- scenario$mode
     if (silent) {
       # Avoid req() abort on hidden radios that have not echoed yet
       if (is.null(current_ticker()) || !nzchar(as.character(current_ticker())[1])) return(NULL)
@@ -13604,10 +13574,7 @@ server <- function(input, output, session) {
       g_ok_pct / 100
     }
 
-    claim_pre <- as.character(input$dcf_claim %||% "fcff")[1]
-    if (silent && !is.null(des) && nzchar(as.character(des$claim %||% "")[1])) {
-      claim_pre <- as.character(des$claim)[1]
-    }
+    claim_pre <- scenario$claim
     if (identical(dcf_mode_eff, "gordon")) {
       w_g <- suppressWarnings(as.numeric(input$wacc_gordon)[1])
       if (!is.finite(w_g) || w_g <= 0) {
@@ -13682,8 +13649,14 @@ server <- function(input, output, session) {
     sb_bridge <- .shared_bridge()
     latest_cash <- sb_bridge$cash
     latest_debt <- sb_bridge$debt
-    if (!is.finite(latest_cash) || latest_cash < 0) latest_cash <- 0
-    if (!is.finite(latest_debt) || latest_debt < 0) latest_debt <- 0
+    other_claims <- suppressWarnings(as.numeric(sb_bridge$other_claims)[1])
+    if (!is.finite(other_claims) || other_claims < 0) return(NULL)
+    if (identical(scenario$claim, "fcfe") && other_claims != 0) {
+      if (show_toast) showNotification(.ui_msg("param_fcfe_other_claims"), type = "error")
+      return(NULL)
+    }
+    if (!is.finite(latest_debt) || latest_debt < 0 ||
+        (!identical(scenario$claim, "fcfe") && (!is.finite(latest_cash) || latest_cash < 0))) return(NULL)
 
     share_outstanding <- sb_bridge$shares
     if (!is.finite(share_outstanding) || share_outstanding <= 0) {
@@ -13693,17 +13666,14 @@ server <- function(input, output, session) {
       }, error = function(e) NA_real_)
     }
 
-    claim <- as.character(input$dcf_claim %||% "fcff")[1]
-    if (silent && !is.null(des) && nzchar(as.character(des$claim %||% "")[1])) {
-      claim <- as.character(des$claim)[1]
-    }
+    claim <- scenario$claim
     if (identical(claim, "fcfe")) {
       ke <- if (isTRUE(input$use_estimated_re) && !is.null(estimated_re())) {
         as.numeric(estimated_re())[1]
       } else {
         suppressWarnings(as.numeric(input$wacc_re)[1]) / 100
       }
-      if (!is.finite(ke) || ke <= 0) ke <- r2
+      if (!is.finite(ke) || ke <= 0) return(NULL)
       if (!is.finite(ke) || (is.finite(g_terminal) && g_terminal >= ke)) {
         if (silent && is.finite(ke) && ke > 0) {
           g_terminal <- .heal_g_vs_rate(g_terminal, ke)
@@ -13713,7 +13683,10 @@ server <- function(input, output, session) {
         }
       }
       rd <- suppressWarnings(as.numeric(input$wacc_rd)[1]) / 100
-      if (!is.finite(rd) || rd < 0) rd <- 0
+      if (!is.finite(rd) || rd < 0) {
+        if (latest_debt > 0) return(NULL)
+        rd <- 0
+      }
       tax <- suppressWarnings(as.numeric(input$wacc_tax)[1]) / 100
       if (!is.finite(tax)) tax <- APP_DEFAULTS$wacc_tax / 100
       iat <- after_tax_interest(latest_debt, rd, tax)
@@ -13735,14 +13708,15 @@ server <- function(input, output, session) {
     } else {
       # 企業價值 (EV) 轉 股權價值 (Equity Value)
       equity_value <- if (exists("dcf_ev_to_equity", mode = "function")) {
-        dcf_ev_to_equity(dcf_value, cash = latest_cash, debt = latest_debt)
+        dcf_ev_to_equity(dcf_value, cash = latest_cash, debt = latest_debt, other_claims = other_claims)
       } else {
-        as.numeric(dcf_value)[1] + latest_cash - latest_debt
+        as.numeric(dcf_value)[1] + latest_cash - latest_debt - other_claims
       }
     }
 
     # 計算每股目標價並防呆（報價幣；拒絕 TWD／普通股標成 USD／ADR）
     sh_info <- tryCatch(.valuation_shares(), error = function(e) NULL)
+    if (!is.null(sh_info) && is.finite(share_outstanding) && share_outstanding > 0) sh_info$shares <- share_outstanding
     px <- if (!is.null(sh_info)) .dcf_per_share(equity_value, sh_info) else NA_real_
     if (is.finite(px)) {
       lite_dcf_block("")
@@ -13890,18 +13864,6 @@ server <- function(input, output, session) {
       ),
       error = function(e) NA_real_
     )
-    if (!is.finite(suppressWarnings(as.numeric(last_fcff)[1]))) {
-      fcf_hist <- tryCatch(
-        select_clean_metric_row(d_cash_flow(), "Free Cash Flow", include_ttm = FALSE),
-        error = function(e) NULL
-      )
-      fcf_hist <- suppressWarnings(as.numeric(fcf_hist))
-      last_fcff <- NA_real_
-      if (length(fcf_hist)) {
-        hit <- which(is.finite(fcf_hist))
-        if (length(hit)) last_fcff <- fcf_hist[hit[1]]
-      }
-    }
     br <- tryCatch(.dcf_fcfe_bridge(), error = function(e) list(iat = NA_real_, debt = NA_real_))
     last_fcfe <- tryCatch(
       fcff_to_fcfe(last_fcff, interest_after_tax = br$iat, debt0 = br$debt, g_path = 0)[1],
@@ -14113,6 +14075,13 @@ server <- function(input, output, session) {
   .auto_calc_primary_ready <- function(prim) {
     prim <- as.character(prim %||% "")[1]
     if (!nzchar(prim)) return(FALSE)
+    fresh <- switch(prim,
+      dcf = tryCatch(fcf_results$source_ready(), error = function(e) FALSE),
+      ddm = tryCatch(ddm_results$source_ready(), error = function(e) FALSE),
+      ri = tryCatch(ri_results$source_ready(), error = function(e) FALSE),
+      pb = tryCatch(pb_results$source_ready(), error = function(e) FALSE),
+      nav = tryCatch(nav_results$source_ready(), error = function(e) FALSE), TRUE)
+    if (!isTRUE(fresh)) return(FALSE)
     if (identical(prim, "ri")) {
       b0 <- suppressWarnings(as.numeric(input[["mod_ri-b0"]])[1])
       ke <- suppressWarnings(as.numeric(input[["mod_ri-ri_ke"]])[1])
@@ -14143,25 +14112,8 @@ server <- function(input, output, session) {
       w_calc <- suppressWarnings(as.numeric(calculated_wacc())[1])
       lite <- isTRUE(isolate(lite_mode()))
       des <- if (lite) tryCatch(isolate(lite_desired_des()), error = function(e) NULL) else NULL
-      # Lite Smart Analysis must not hang when calculated WACC is still NA:
-      # fall back to UI / App-default WACC so auto-calc can fire.
-      if ((!is.finite(w_calc) || w_calc <= 0) && isTRUE(lite)) {
-        wg <- suppressWarnings(as.numeric(input$wacc_gordon)[1])
-        w1 <- suppressWarnings(as.numeric(input$wacc_stage1)[1])
-        w2 <- suppressWarnings(as.numeric(input$wacc_stage2)[1])
-        fallback <- if (isTRUE(des$two_stage)) {
-          if (is.finite(w2) && w2 > 0) w2 else if (is.finite(w1) && w1 > 0) w1 else NA_real_
-        } else {
-          if (is.finite(wg) && wg > 0) wg else NA_real_
-        }
-        if (!is.finite(fallback) || fallback <= 0) {
-          fallback <- suppressWarnings(as.numeric(APP_DEFAULTS$wacc_gordon)[1])
-        }
-        if (!is.finite(fallback) || fallback <= 0) return(FALSE)
-        w_calc <- fallback / 100
-      } else if (!is.finite(w_calc) || w_calc <= 0) {
-        return(FALSE)
-      }
+      # Missing market inputs are not permission to value with boot defaults.
+      if (!is.finite(w_calc) || w_calc <= 0) return(FALSE)
       mode <- as.character(input$dcf_mode %||% "gordon")[1]
       # Prefer stored Lite desired mode when hidden radios have not echoed yet
       if (isTRUE(lite) && !is.null(des)) {
@@ -14238,7 +14190,7 @@ server <- function(input, output, session) {
       bs <- tryCatch(d_balance_sheet(), error = function(e) NULL)
       if (is.null(bs) || !is.data.frame(bs) || nrow(bs) == 0L) return(FALSE)
       equity <- tryCatch(
-        select_current_metric_any(bs, EQUITY_PATTERNS, "stock"),
+        common_stock_equity(bs),
         error = function(e) NA_real_
       )
       if (!is.finite(equity) || equity <= 0) return(FALSE)
@@ -14342,7 +14294,7 @@ server <- function(input, output, session) {
     # Lite Smart Analysis must not hang on NA calculated WACC either; readiness falls
     # back to UI / App-default WACC and silent heal covers g ≥ discount.
     # Skip DCF scenario heal when there is no Fair Value primary (Reference-only path).
-    if (isTRUE(lite_mode()) && isTRUE(fv_prim)) {
+    if (isTRUE(fv_prim)) {
       des <- .lite_desired_scenario(rec)
       want_sig <- paste(
         tk,
@@ -14351,13 +14303,15 @@ server <- function(input, output, session) {
         des$claim %||% "fcff",
         sep = "|"
       )
-      if (!identical(lite_scenario_applied_sig(), want_sig)) {
+      already_seeded <- startsWith(lite_scenario_applied_sig(), paste0(tk, "|"))
+      if (!identical(lite_scenario_applied_sig(), want_sig) &&
+          (isTRUE(lite_mode()) || !already_seeded)) {
         .apply_lite_recommended_scenario(rec)
         lite_scenario_applied_sig(want_sig)
         return()
       }
       # Re-sync WACC / g after UI lag or late calculated_wacc settle
-      .lite_resync_discount_consistency(des)
+      if (isTRUE(lite_mode())) .lite_resync_discount_consistency(des)
     }
 
     if (isTRUE(fv_prim) && !isTRUE(.auto_calc_primary_ready(prim))) {
@@ -14437,7 +14391,7 @@ server <- function(input, output, session) {
     sec <- as.character(rec$secondary %||% "")[1]
     band <- tryCatch(primary_valuation_band(), error = function(e) NULL)
     sec_pt <- tryCatch(secondary_valuation_point(), error = function(e) NA_real_)
-    cur <- tryCatch(scraped_market_cap()$price, error = function(e) NA_real_)
+    cur <- tryCatch(.quote_price(), error = function(e) NA_real_)
     cur <- suppressWarnings(as.numeric(cur)[1])
     base <- if (!is.null(band)) suppressWarnings(as.numeric(band$base)[1]) else NA_real_
     bear <- if (!is.null(band)) suppressWarnings(as.numeric(band$bear)[1]) else NA_real_
@@ -14639,7 +14593,7 @@ server <- function(input, output, session) {
     rec <- tryCatch(model_sidebar_rec(), error = function(e) NULL)
     band <- tryCatch(primary_valuation_band(), error = function(e) NULL)
     sec_pt <- tryCatch(secondary_valuation_point(), error = function(e) NA_real_)
-    cur <- suppressWarnings(as.numeric(tryCatch(scraped_market_cap()$price, error = function(e) NA_real_))[1])
+    cur <- suppressWarnings(as.numeric(tryCatch(.quote_price(), error = function(e) NA_real_))[1])
     prim <- as.character(rec$primary %||% "")[1]
     sec <- as.character(rec$secondary %||% "")[1]
     base <- if (!is.null(band)) suppressWarnings(as.numeric(band$base)[1]) else NA_real_
@@ -15258,7 +15212,7 @@ server <- function(input, output, session) {
 
     center_val <- st$built$center
     curr_price <- tryCatch({
-      p <- scraped_market_cap()$price
+      p <- .quote_price()
       if (!is.null(p) && is.finite(as.numeric(p))) as.numeric(p) else NA_real_
     }, error = function(e) NA_real_)
     fair_val <- tryCatch({
@@ -15326,7 +15280,7 @@ server <- function(input, output, session) {
       format(round(x, 2), nsmall = 2)
     }
     tv <- tv_ev_share(snap$pv_explicit, snap$pv_tv)
-    mkt <- tryCatch(suppressWarnings(as.numeric(scraped_market_cap()$price)[1]), error = function(e) NA_real_)
+    mkt <- tryCatch(suppressWarnings(as.numeric(.quote_price())[1]), error = function(e) NA_real_)
     rev <- dcf_implied_terminal_g(
       snap$pv_explicit, snap$last_fcf, snap$discount, snap$df_terminal,
       price = mkt, shares = snap$shares, cash = snap$cash, debt = snap$debt,
@@ -15442,7 +15396,7 @@ server <- function(input, output, session) {
 
     center_val <- built$center
     curr_price <- tryCatch({
-      p <- scraped_market_cap()$price
+      p <- .quote_price()
       if (!is.null(p) && is.finite(as.numeric(p))) as.numeric(p) else NA_real_
     }, error = function(e) NA_real_)
 
@@ -15692,7 +15646,7 @@ server <- function(input, output, session) {
   }, ignoreInit = TRUE)
 
   bt_current_mos <- reactive({
-    cur <- tryCatch(scraped_market_cap()$price, error = function(e) NA_real_)
+    cur <- tryCatch(.quote_price(), error = function(e) NA_real_)
     tgt <- tryCatch(stock_price_estimate_val(), error = function(e) NA_real_)
     if (is.null(tgt) || length(tgt) < 1) tgt <- NA_real_
     cur <- suppressWarnings(as.numeric(cur)[1])
@@ -15786,7 +15740,7 @@ server <- function(input, output, session) {
 
     rf <- suppressWarnings(as.numeric(input$capm_rf)[1]) / 100
     if (!is.finite(rf) || rf <= 0) {
-      rf <- tryCatch(as.numeric(cached_get_risk_free_rate()) / 100, error = function(e) NA_real_)
+      rf <- tryCatch(as.numeric(cached_get_risk_free_rate(market_mode())) / 100, error = function(e) NA_real_)
     }
     if (!is.finite(rf) || rf <= 0) rf <- APP_DEFAULTS$capm_rf / 100
     rm <- suppressWarnings(as.numeric(input$capm_rm)[1]) / 100
@@ -16196,7 +16150,7 @@ server <- function(input, output, session) {
           })
         }
         rf_ann <- tryCatch({
-          r <- as.numeric(cached_get_risk_free_rate())
+          r <- as.numeric(cached_get_risk_free_rate(market_mode()))
           if (is.finite(r) && r > 0) r / 100 else 0.04
         }, error = function(e) 0.04)
 
@@ -17953,7 +17907,7 @@ server <- function(input, output, session) {
     sharpe_b_txt <- if (is.na(m$sharpe_b)) "N/A" else sprintf("%.2f", m$sharpe_b)
 
     rf_ann <- tryCatch({
-      r <- as.numeric(cached_get_risk_free_rate())
+      r <- as.numeric(cached_get_risk_free_rate(market_mode()))
       if (is.finite(r) && r > 0) r / 100 else 0.04
     }, error = function(e) 0.04)
     alpha_df <- tryCatch(compute_alpha_dashboard(eq_win, rf_annual = rf_ann),
@@ -18191,7 +18145,7 @@ server <- function(input, output, session) {
         if (!identical(as.character(rep_loc)[1], "en")) rep_loc <- "zh-TW"
         rep_lite <- isTRUE(isolate(lite_mode()))
 
-        cur_price <- .report_num(tryCatch(isolate(scraped_market_cap()$price), error = function(e) NA))
+        cur_price <- .report_num(tryCatch(isolate(.quote_price()), error = function(e) NA))
         dcf_price <- .report_num(isolate(stock_price_estimate_val()))
         ddm_val <- .report_num(tryCatch(isolate(ddm_results$ddm_price()), error = function(e) NA))
         pb_val <- .report_num(tryCatch(isolate(pb_results$pb_price()), error = function(e) NA))
@@ -18250,6 +18204,7 @@ server <- function(input, output, session) {
           isolate(d_cash_flow()), isolate(d_income_statement()), isolate(d_balance_sheet()),
           industry_key = isolate(input$industry_choice)
         )
+        warn_msgs <- c(warn_msgs, isolate(parameter_assumptions()))
         fscore_info <- compute_report_f_score(
           isolate(d_income_statement()), isolate(d_balance_sheet()), isolate(d_cash_flow())
         )
@@ -21321,4 +21276,16 @@ server <- function(input, output, session) {
       })
     }
   })
+  parameter_assumptions <- ynow_parameter_guidance_server(
+    input, session, searched = user_has_searched, ticker = current_ticker,
+    busy = ticker_search_busy, model_rec = model_sidebar_rec, locale = ui_locale,
+    defaults = APP_DEFAULTS, ke = central_ke, lite = lite_mode,
+    wacc = reactive(suppressWarnings(as.numeric(calculated_wacc())[1])),
+    sotp_ready = reactive(tryCatch(isTRUE(sotp_results$segments_available()), error = function(e) FALSE)),
+    fx_needed = reactive({
+      currencies <- unique(na.omit(c(quote_currency(), statement_currency(), session_currency())))
+      length(currencies) > 1L && all(currencies %in% c("USD", "TWD")) && !is.finite(fx_usd_twd())
+    })
+  )
+
 }

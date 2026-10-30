@@ -1,0 +1,21 @@
+OK ddm_module_server exported
+OK .ddm_formula_p0 exported
+OK .ddm_formula_spm exported
+OK .ddm_formula_two_stage exported
+OK Gordon helper matches module inline
+OK Gordon StockFeel D0=1 g=5% r=10% → 21
+OK Gordon NA when r<=g
+OK Gordon ke alias
+OK SPM closed form
+OK SPM module round(p0, 2) stable
+OK SPM NA when r<=0
+OK SPM finite when r<g
+OK two-stage n=2 closed form
+OK two-stage g1=g2 equals Gordon
+OK two-stage NA when r<=g2
+OK module wires two_stage helper
+OK module wires spm helper
+OK module has gordon/spm/two_stage modes
+OK module rejects d0<=0 for Gordon
+OK module rejects ke<=g for Gordon
+All DDM smoke checks passed.

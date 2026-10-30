@@ -3,9 +3,11 @@
 US / Taiwan stock fundamental analysis Shiny app（雲端版：yfinance，無 Chromote）。
 
 **Live:** https://hopesmasher1118.shinyapps.io/TheYNowApp/  
-**Display version:** v26.64 · **App folder:** `app_27.0/`  
+**Display version:** v27.58 · **App folder:** `app_27.0/`  
 **Deploy baseline:** `scripts/DEPLOY_BASELINE.txt`（bundleId／commit／URL；開發比對以此為準，不是單純看 Git tip）  
 **Changelog:** [`CHANGELOG.md`](CHANGELOG.md) · **Releases:** https://github.com/lawrencekuo1118/theYNowApp/releases
+
+**財務參數稽核：** [完整佐證報告](docs/audits/2026-10-30-parameter-sources/REPORT.md)（含模式矩陣、來源對應與限制）。
 
 ## CI / CD
 

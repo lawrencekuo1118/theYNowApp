@@ -1,0 +1,82 @@
+
+== A. Closed-form: WACC / CAPM / DDM / DCF / MOS / SGR ==
+PASS WACC closed form 0.08185
+PASS CAPM Ke% closed form 10
+PASS capm_cost_of_equity Ke=0.10
+PASS DDM Gordon V0=21
+PASS DDM SPM closed form
+PASS DDM two-stage n=2 closed form
+PASS Gordon TV closed form
+PASS Gordon TV PV = TV/(1+r)^n
+PASS DCF Gordon n=1 EV
+PASS EV bridge +cash −debt
+PASS MOS (100,80)=0.20
+PASS MOS (50,80)=-0.60
+PASS SGR identity g%=16
+PASS SGR identity matches_formula
+
+== B. Three scenarios: DCF per-share, RI, MOS ==
+PASS base: DCF per-share matches hand calc
+PASS base: RI intrinsic matches hand calc
+PASS base: RI PV_RI sub-step matches
+PASS base: RI PV_terminal sub-step matches
+PASS base: MOS vs DCF FV matches hand
+PASS bull: DCF per-share matches hand calc
+PASS bull: RI intrinsic matches hand calc
+PASS bull: RI PV_RI sub-step matches
+PASS bull: RI PV_terminal sub-step matches
+PASS bull: MOS vs DCF FV matches hand
+PASS bear: DCF per-share matches hand calc
+PASS bear: RI intrinsic matches hand calc
+PASS bear: RI PV_RI sub-step matches
+PASS bear: RI PV_terminal sub-step matches
+PASS bear: MOS vs DCF FV matches hand
+PASS scenario order bull > base > bear (DCF PS)
+
+== C. F-Score 9-signal decomposition (3 scenarios) ==
+PASS excellent F-Score total == 9
+PASS excellent signal 1 pass
+PASS excellent signal 2 pass
+PASS excellent signal 3 pass
+PASS excellent signal 4 pass
+PASS excellent signal 5 pass
+PASS excellent signal 6 pass
+PASS excellent signal 7 pass
+PASS excellent signal 8 pass
+PASS excellent signal 9 pass
+PASS mixed F-Score total == 6
+PASS mixed p5 leverage fail
+PASS mixed p7 dilution fail
+PASS mixed p8 GM fail
+PASS mixed p1/p2/p4 pass
+PASS poor F-Score total < mixed
+PASS poor p1 ROA fail (neg NI)
+PASS poor p2 OCF fail
+PASS excellent > mixed > poor totals
+
+== D. Beneish M-Score: 8 components + M (3 scenarios) ==
+PASS base Beneish DSRI matches hand
+PASS base Beneish GMI matches hand
+PASS base Beneish AQI matches hand
+PASS base Beneish SGI matches hand
+PASS base Beneish DEPI matches hand
+PASS base Beneish SGAI matches hand
+PASS base Beneish TATA matches hand
+PASS base Beneish LVGI matches hand
+PASS base Beneish M matches hand
+PASS base M below alert −1.78
+PASS bull Beneish M matches hand
+PASS bull M lower (better) than base
+PASS bear Beneish M matches hand
+PASS bear DSRI >> 1
+PASS bear TATA positive (NI>OCF)
+PASS bear M worse than base
+PASS scenario M order bull < base < bear
+
+== E. FCFE conversion identity ==
+PASS FCFE y1 hand
+PASS FCFE y2 hand
+
+== Formula Accuracy Audit summary ==
+PASS=68 FAIL=0
+ALL CONTROLS PASSED

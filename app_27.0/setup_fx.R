@@ -52,6 +52,20 @@ label_chart_number <- function(prefix = "") {
 .ynow_ccy_ctx$quote_currency <- "USD"
 .ynow_ccy_ctx$statement_currency <- "USD"
 
+.ynow_currency_context <- function() {
+  domain <- if ("shiny" %in% loadedNamespaces()) shiny::getDefaultReactiveDomain() else NULL
+  if (is.null(domain) || is.null(domain$userData)) return(.ynow_ccy_ctx)
+  if (is.null(domain$userData$ynow_currency_context)) {
+    ctx <- new.env(parent = emptyenv())
+    ctx$session_currency <- "USD"
+    ctx$quote_currency <- "USD"
+    ctx$statement_currency <- "USD"
+    ctx$fx_usd_twd <- NA_real_
+    domain$userData$ynow_currency_context <- ctx
+  }
+  domain$userData$ynow_currency_context
+}
+
 normalize_ccy <- function(x) {
   s <- toupper(trimws(as.character(x %||% "")[1]))
   # N/A / unknown markers are not ISO codes — treat separately from a real ccy.
@@ -75,32 +89,33 @@ default_session_currency <- function(quote_ccy, stmt_ccy, ticker = "") {
 
 set_ynow_currency_context <- function(session_ccy = NULL, fx_usd_twd = NULL,
                                       quote_ccy = NULL, statement_ccy = NULL) {
+  ctx <- .ynow_currency_context()
   if (!is.null(session_ccy)) {
     sc <- normalize_ccy(session_ccy)
-    if (!is.na(sc)) .ynow_ccy_ctx$session_currency <- sc
+    if (!is.na(sc)) ctx$session_currency <- sc
   }
   if (!is.null(fx_usd_twd)) {
     fx <- suppressWarnings(as.numeric(fx_usd_twd)[1])
-    if (is.finite(fx) && fx > 0) .ynow_ccy_ctx$fx_usd_twd <- fx
+    ctx$fx_usd_twd <- if (is.finite(fx) && fx > 0) fx else NA_real_
   }
   if (!is.null(quote_ccy)) {
     qc <- normalize_ccy(quote_ccy)
-    if (!is.na(qc)) .ynow_ccy_ctx$quote_currency <- qc
+    if (!is.na(qc)) ctx$quote_currency <- qc
   }
   if (!is.null(statement_ccy)) {
     fc <- normalize_ccy(statement_ccy)
-    if (!is.na(fc)) .ynow_ccy_ctx$statement_currency <- fc
+    if (!is.na(fc)) ctx$statement_currency <- fc
   }
   invisible(NULL)
 }
 
 money_prefix <- function(ccy = NULL) {
-  sc <- normalize_ccy(ccy %||% .ynow_ccy_ctx$session_currency)
+  sc <- normalize_ccy(ccy %||% .ynow_currency_context()$session_currency)
   if (identical(sc, "TWD")) "NT$" else "$"
 }
 
 money_label <- function(ccy = NULL) {
-  sc <- normalize_ccy(ccy %||% .ynow_ccy_ctx$session_currency)
+  sc <- normalize_ccy(ccy %||% .ynow_currency_context()$session_currency)
   if (identical(sc, "TWD")) "TWD" else "USD"
 }
 
@@ -131,7 +146,7 @@ fx_factor <- function(from_ccy, to_ccy, usd_twd = NULL) {
   if (is.na(fr) || is.na(to)) return(NA_real_)
   if (identical(fr, to)) return(1)
   # Only USD↔TWD is supported. Never silently treat CNY／EUR／… as USD (ADR FX).
-  fx <- suppressWarnings(as.numeric(usd_twd %||% .ynow_ccy_ctx$fx_usd_twd)[1])
+  fx <- suppressWarnings(as.numeric(usd_twd %||% .ynow_currency_context()$fx_usd_twd)[1])
   if (!is.finite(fx) || fx <= 0) return(NA_real_)
   if (identical(fr, "USD") && identical(to, "TWD")) return(fx)
   if (identical(fr, "TWD") && identical(to, "USD")) return(1 / fx)
@@ -238,9 +253,9 @@ after_tax_interest <- function(debt, rd, tax) {
   debt <- suppressWarnings(as.numeric(debt)[1])
   rd <- suppressWarnings(as.numeric(rd)[1])
   tax <- ias12_tax_ratio(tax)
-  if (!is.finite(debt) || debt < 0) debt <- 0
-  if (!is.finite(rd) || rd < 0) rd <- 0
-  if (!is.finite(tax)) return(NA_real_)
+  if (!is.finite(debt) || debt < 0) return(NA_real_)
+  if (debt == 0) return(0)
+  if (!is.finite(rd) || rd < 0 || !is.finite(tax)) return(NA_real_)
   max(0, debt) * rd * (1 - tax)
 }
 
@@ -288,7 +303,7 @@ effective_tax_ratio_from_is <- function(d_is, fallback = NULL) {
     error = function(e) NULL
   )
   tx <- tryCatch(
-    select_clean_metric_row(d_is, "Income Tax Expense", include_ttm = FALSE),
+    select_clean_metric_row_any(d_is, c("^Income Tax Expense$", "^Tax Provision$"), include_ttm = FALSE),
     error = function(e) NULL
   )
   pre <- suppressWarnings(as.numeric(pre))
@@ -305,7 +320,7 @@ effective_tax_ratio_from_is <- function(d_is, fallback = NULL) {
 
 money_to_session <- function(x, from_ccy, session_ccy = NULL, usd_twd = NULL) {
   nums <- suppressWarnings(as.numeric(x))
-  mult <- fx_factor(from_ccy, session_ccy %||% .ynow_ccy_ctx$session_currency, usd_twd)
+  mult <- fx_factor(from_ccy, session_ccy %||% .ynow_currency_context()$session_currency, usd_twd)
   nums * mult
 }
 
@@ -350,7 +365,7 @@ scale_financial_df_money <- function(df, from_ccy, session_ccy = NULL, usd_twd =
     attr(x, "money_ccy") <- normalize_ccy(ccy)
     x
   }
-  sess <- normalize_ccy(session_ccy %||% .ynow_ccy_ctx$session_currency)
+  sess <- normalize_ccy(session_ccy %||% .ynow_currency_context()$session_currency)
   fr <- normalize_ccy(from_ccy)
   if (is.null(df) || !is.data.frame(df) || ncol(df) < 2) {
     return(.tag_money(df, FALSE, fr))
@@ -449,5 +464,5 @@ format_money_abbr <- function(x, ccy = NULL) {
 }
 
 format_dollar_abbr <- function(x) {
-  format_money_abbr(x, .ynow_ccy_ctx$session_currency)
+  format_money_abbr(x, .ynow_currency_context()$session_currency)
 }

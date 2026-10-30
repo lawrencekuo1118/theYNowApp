@@ -43,7 +43,7 @@ cd2 <- statement_cash_debt(bs_split)
 check("debt sums short and long when Total Debt is absent", identical(cd2$debt, 10))
 
 empty <- statement_cash_debt(NULL)
-check("missing statements are zero cash and debt", identical(empty$cash, 0) && identical(empty$debt, 0))
+check("missing statements preserve unknown cash and debt", is.na(empty$cash) && is.na(empty$debt))
 
 is_df <- data.frame(
   Breakdown = c("Total Revenue", "Operating Revenue"),

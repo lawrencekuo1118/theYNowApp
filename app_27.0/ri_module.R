@@ -389,6 +389,9 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
                              auto_calc_pulse = reactive(0L),
                              ui_locale = reactive("zh-TW")) {
   moduleServer(id, function(input, output, session) {
+    .echo_guard <- ynow_input_echo_guard(input, session, current_ticker, c("b0", "ri_roe", "ri_payout"))
+    updateNumericInput <- .echo_guard$update
+
     ns <- session$ns
 
     .loc <- function() {
@@ -455,7 +458,7 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
 
       sh_ri <- .ri_resolve_shares(df_bs)
       shares <- sh_ri$shares
-      equity <- select_current_metric_any(df_bs, EQUITY_PATTERNS, "stock")
+      equity <- common_stock_equity(df_bs)
       q_ccy <- tryCatch(quote_currency(), error = function(e) NA_character_)
       f_ccy <- tryCatch(financial_currency(), error = function(e) NA_character_)
 
@@ -469,18 +472,18 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
           share_method = sh_ri$method,
           statement_ccy = f_ccy
         )
-        if (is.finite(b0)) updateNumericInput(session, "b0", value = round(b0, 2))
-      }
+        updateNumericInput(session, "b0", value = if (is.finite(b0)) round(b0, 2) else NA_real_)
+      } else updateNumericInput(session, "b0", value = NA_real_)
 
-      ni <- select_current_metric_any(d_income_statement(), NET_INCOME_PATTERNS, "flow")
+      ni <- common_net_income(d_income_statement())
       if (!is.na(ni) && !is.na(equity) && equity > 0) {
         roe <- (ni / equity) * 100
         updateNumericInput(session, "ri_roe", value = round(.ri_clip(roe, -50, 80), 2))
-      }
+      } else updateNumericInput(session, "ri_roe", value = NA_real_)
 
       cf <- tryCatch(d_cash_flow(), error = function(e) NULL)
       div_paid_total <- if (!is.null(cf) && is.data.frame(cf) && nrow(cf) > 0) {
-        abs(select_current_metric(cf, "Cash Dividends Paid", "flow"))
+        abs(common_cash_dividends(cf))
       } else {
         NA_real_
       }
@@ -488,7 +491,7 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
         payout <- .ri_clip((div_paid_total / ni) * 100, 0, 100)
         updateNumericInput(session, "ri_payout", value = round(payout, 2))
       } else {
-        updateNumericInput(session, "ri_payout", value = 0)
+        updateNumericInput(session, "ri_payout", value = NA_real_)
       }
 
       if (!is.null(global_g) && !is.null(global_g()) && is.finite(global_g())) {
@@ -537,7 +540,7 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
       df_bs <- d_balance_sheet()
       sh_ri <- .ri_resolve_shares(df_bs)
       shares <- sh_ri$shares
-      equity <- select_current_metric_any(df_bs, EQUITY_PATTERNS, "stock")
+      equity <- common_stock_equity(df_bs)
       q_ccy <- tryCatch(quote_currency(), error = function(e) NA_character_)
       f_ccy <- tryCatch(financial_currency(), error = function(e) NA_character_)
       if (!is.na(equity) && is.finite(shares) && shares > 0) {
@@ -582,7 +585,7 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
         df_bs <- d_balance_sheet()
         if (!is.null(df_bs) && is.data.frame(df_bs) && nrow(df_bs) > 0) {
           sh_ri <- .ri_resolve_shares(df_bs)
-          equity <- select_current_metric_any(df_bs, EQUITY_PATTERNS, "stock")
+          equity <- common_stock_equity(df_bs)
           q_ccy <- tryCatch(quote_currency(), error = function(e) NA_character_)
           f_ccy <- tryCatch(financial_currency(), error = function(e) NA_character_)
           if (!is.na(equity) && is.finite(sh_ri$shares) && sh_ri$shares > 0) {
@@ -793,7 +796,7 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
       raw <- if (!identical(res$status, "success") || !is.finite(res$intrinsic)) {
         "N/A"
       } else {
-        paste0(money_prefix(), sprintf("%.2f", res$intrinsic))
+        paste0(money_prefix(quote_currency()), sprintf("%.2f", res$intrinsic))
       }
       valueBox(
         ynow_model_result_num(raw),
@@ -806,7 +809,7 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
       val <- if (!identical(res$status, "success") || !is.finite(res$b0)) {
         "N/A"
       } else {
-        paste0(money_prefix(), sprintf("%.2f", res$b0))
+        paste0(money_prefix(quote_currency()), sprintf("%.2f", res$b0))
       }
       valueBox(val, ui_str("ri_vbx_b0", .loc()), icon = icon("book"), color = "aqua")
     })
@@ -815,7 +818,7 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
       val <- if (!identical(res$status, "success") || !is.finite(res$pv_ri)) {
         "N/A"
       } else {
-        paste0(money_prefix(), sprintf("%.2f", res$pv_ri))
+        paste0(money_prefix(quote_currency()), sprintf("%.2f", res$pv_ri))
       }
       valueBox(val, ui_str("ri_vbx_pv", .loc()), icon = icon("chart-line"), color = "green")
     })
@@ -824,7 +827,7 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
       val <- if (!identical(res$status, "success") || !is.finite(res$pv_terminal)) {
         "N/A"
       } else {
-        paste0(money_prefix(), sprintf("%.2f", res$pv_terminal))
+        paste0(money_prefix(quote_currency()), sprintf("%.2f", res$pv_terminal))
       }
       valueBox(val, ui_str("ri_vbx_tv", .loc()), icon = icon("flag"), color = "maroon")
     })
@@ -855,12 +858,12 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
         h4(tags$b("剩餘收益拆解"), style = "margin: 8px 0 4px 0;"),
         div(
           style = "display:flex;flex-wrap:wrap;justify-content:space-between;align-items:stretch;",
-          card("帳面淨值 B0", paste0(money_prefix(), sprintf("%.2f", res$b0))),
-          card("預測期 RI（現值）", paste0(money_prefix(), sprintf("%.2f", res$pv_ri)),
+          card("帳面淨值 B0", paste0(money_prefix(quote_currency()), sprintf("%.2f", res$b0))),
+          card("預測期 RI（現值）", paste0(money_prefix(quote_currency()), sprintf("%.2f", res$pv_ri)),
                accent = if (res$pv_ri >= 0) "#27ae60" else "#c0392b"),
-          card("終值（現值）", paste0(money_prefix(), sprintf("%.2f", res$pv_terminal)),
+          card("終值（現值）", paste0(money_prefix(quote_currency()), sprintf("%.2f", res$pv_terminal)),
                accent = "#8e44ad"),
-          card("內在價值", paste0(money_prefix(), sprintf("%.2f", res$intrinsic)),
+          card("內在價值", paste0(money_prefix(quote_currency()), sprintf("%.2f", res$intrinsic)),
                accent = "#1abc9c", bg = "#e8f8f5"),
           card("終值佔比", tv_pct, accent = tv_col,
                sub = "PV_Terminal / Intrinsic")
@@ -919,10 +922,10 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
         geom_point(aes(y = Intrinsic_Path), size = 3, color = "#2980b9") +
         geom_line(aes(y = Intrinsic_Path, group = 1), color = "#2980b9", linewidth = 1) +
         scale_fill_manual(name = "", values = c("B0 + 累計 PV(Forecast RI)" = "#aed6f1")) +
-        scale_y_continuous(labels = label_chart_number(prefix = money_prefix())) +
+        scale_y_continuous(labels = label_chart_number(prefix = money_prefix(quote_currency()))) +
         theme_minimal(base_size = 13) +
         labs(x = "預測年份", y = paste0("每股價值 (", money_label(), ")"),
-             caption = sprintf("虛線＝B0；點線＝完整內在價值（含 Terminal）%s%.2f", money_prefix(), res$intrinsic)) +
+             caption = sprintf("虛線＝B0；點線＝完整內在價值（含 Terminal）%s%.2f", money_prefix(quote_currency()), res$intrinsic)) +
         theme(legend.position = "bottom")
     })
 
@@ -1137,7 +1140,7 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
       ))
       .rel <- function(x, sign = -1) .param_rel_shock(x, sign = sign, shock = shock_pct)
       b0_show <- if (is.finite(b0)) b0 else 1
-      b0_unit <- if (is.finite(b0)) money_prefix() else "x"
+      b0_unit <- if (is.finite(b0)) money_prefix(quote_currency()) else "x"
       n_dn <- if (n0_i > 1L) n0_i - 1L else n0_i
       n_up <- n0_i + 1L
 
@@ -1265,6 +1268,7 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
 
     # Preserve external contract
     return(list(
+      source_ready = .echo_guard$ready,
       ri_price = reactive({
         res <- ri_calc()
         if (identical(res$status, "success")) res$intrinsic else NA_real_

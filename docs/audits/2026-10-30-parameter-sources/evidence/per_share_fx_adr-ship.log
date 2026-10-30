@@ -1,0 +1,35 @@
+OK fx missing → NA
+OK fx zero → NA
+OK fx live 32
+OK same ccy → 1
+OK fx CNY→USD → NA
+OK fx EUR→USD → NA
+OK fx USD→CNY → NA
+OK scale CNY refuse
+OK scale CNY keep tag
+OK refuse CNY equity as USD ADR
+OK CNY ADR → REQUIRED_FX_RATE_MISSING
+OK TSM paths equal
+OK TSM ADR+FX
+OK TSM ~151
+OK refuse common as ADR
+OK common as ADR → APPLICABLE_ADR_RATIO_MISSING
+OK refuse missing FX
+OK scaled USD + ADR
+OK wrong label ~968
+OK wrong/correct ≈ 6.4
+OK infer NA statement + common → quote
+OK infer NA statement + ADR → keep NA
+OK infer known TWD stays TWD
+OK AAPL NA statement still prices
+OK bridge ready AAPL NA statement
+OK bridge not ready TSM no FX
+OK bridge ready TSM with FX
+OK bridge not ready CNY ADR
+OK scale refuse FX
+OK scale keep TWD tag
+OK 2330 TWD/TWD prices without FX
+OK 2330 classifier OK with FX=NA
+OK AAPL N/A statement classifier OK
+
+All per_share FX/ADR checks passed.

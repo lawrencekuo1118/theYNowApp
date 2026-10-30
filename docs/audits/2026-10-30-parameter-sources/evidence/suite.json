@@ -1,0 +1,66 @@
+[
+  {
+    "test": "valuation_formulas",
+    "exit": 0
+  },
+  {
+    "test": "phase1_formula_independence",
+    "exit": 0
+  },
+  {
+    "test": "formula_accuracy",
+    "exit": 0
+  },
+  {
+    "test": "market_profile",
+    "exit": 0
+  },
+  {
+    "test": "resolve_shares",
+    "exit": 0
+  },
+  {
+    "test": "per_share_fx_adr",
+    "exit": 0
+  },
+  {
+    "test": "tsm_dcf_adr_fx",
+    "exit": 0
+  },
+  {
+    "test": "shared_bridge",
+    "exit": 0
+  },
+  {
+    "test": "fcf_capex_sync",
+    "exit": 0
+  },
+  {
+    "test": "ddm_smoke",
+    "exit": 0
+  },
+  {
+    "test": "pb_asset_smoke",
+    "exit": 0
+  },
+  {
+    "test": "relative_multiples",
+    "exit": 0
+  },
+  {
+    "test": "sotp_meta_framework",
+    "exit": 0
+  },
+  {
+    "test": "lite_mode_ui",
+    "exit": 0
+  },
+  {
+    "test": "parameter_completeness",
+    "exit": 0
+  },
+  {
+    "test": "parameter_semantics",
+    "exit": 0
+  }
+]

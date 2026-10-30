@@ -1,0 +1,17 @@
+OK skip Ordinary Shares FX
+OK skip Share Issued FX
+OK skip Tax Rate FX
+OK skip EPS FX
+OK money Total Revenue FX
+OK money Cash FX
+OK money_scaled attr
+OK revenue FX /32
+OK shares NOT FX-scaled
+OK cash FX /32
+OK method market_cap_per_price
+OK ADR shares ~ mcap/price
+OK ratio ~ 0.2
+OK ADR FV ~5× common FV
+OK common undervalues vs ADR by ~5×
+OK FX-scaled shares ratio ~ FX/5
+All TSM ADR/FX DCF share checks passed.

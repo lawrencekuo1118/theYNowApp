@@ -281,7 +281,7 @@ resolve_valuation_shares <- function(d_bs,
 #' Cash and Total Debt used by FCFF, FCFE, WACC weights, EV multiples, and SOTP.
 #' Missing lines are 0 so every model applies the same bridge, not NA in one and 0 in another.
 statement_cash_debt <- function(d_bs) {
-  empty <- list(cash = 0, debt = 0)
+  empty <- list(cash = NA_real_, debt = NA_real_)
   if (is.null(d_bs) || !is.data.frame(d_bs) || !nrow(d_bs)) return(empty)
   cash <- tryCatch(
     select_current_metric(
@@ -304,12 +304,12 @@ statement_cash_debt <- function(d_bs) {
       select_current_metric(d_bs, "Long Term Debt|^Long-Term Debt$", "stock"),
       error = function(e) NA_real_
     )
-    if (is.finite(st) || is.finite(lt)) {
+    if (is.finite(st) && is.finite(lt)) {
       debt <- sum(c(st, lt)[is.finite(c(st, lt))])
     }
   }
-  if (!is.finite(cash)) cash <- 0
-  if (!is.finite(debt) || debt < 0) debt <- 0
+  if (!is.finite(cash) || cash < 0) cash <- NA_real_
+  if (!is.finite(debt) || debt < 0) debt <- NA_real_
   list(cash = unname(as.numeric(cash)[1]), debt = unname(as.numeric(debt)[1]))
 }
 

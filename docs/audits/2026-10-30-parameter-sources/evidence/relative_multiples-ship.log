@@ -1,0 +1,211 @@
+OK PE positive 
+OK PE zero EPS N/A 
+OK PE neg EPS N/A 
+OK PE missing EPS N/A 
+OK forward EPS invert math 
+OK forward EPS invert bad 
+OK default PE from APP_DEFAULTS 
+OK default Fwd PE from APP_DEFAULTS 
+OK forward EPS from trailing×g not price 
+OK forward EPS missing growth stays NA (no 回推) 
+OK equity family picks Trailing P/E first 
+OK enterprise family picks EV/FCF first 
+OK normalize earnings→equity 
+OK normalize ps→equity 
+OK equity falls through to P/S 
+OK chart label Multiples · P/E 
+OK chart label Multiples · EV/EBITDA 
+OK chart label bare Multiples when unknown 
+OK forward EPS nonpositive trailing NA 
+OK trailing EPS uses common NI / weighted-average shares 
+OK PEG ok 
+OK PEG labels 
+OK PEG zero growth N/A 
+OK PEG neg growth N/A 
+OK EV/FCF ok 
+OK EV/FCF EV 
+OK EV/FCF equity 
+OK EV/FCF price 
+OK EV/FCF zero FCF N/A 
+OK EV/FCF neg FCF N/A 
+OK EV/FCF missing shares N/A 
+OK EV/EBIT ok 
+OK EV/EBITDA ok 
+OK EV/Sales ok 
+OK EV/EBIT zero N/A 
+OK P/S ok 
+OK P/S zero rev N/A 
+OK P/S missing shares N/A 
+OK EV/ARR missing N/A 
+OK EV/ARR manual ok 
+OK SOTP ok 
+OK SOTP EV 
+OK SOTP equity 
+OK SOTP price 
+OK SOTP n_segments 
+OK SOTP single segment N/A 
+OK SOTP empty N/A 
+OK SOTP non-op 
+OK SOTP per-segment multiples 
+OK SOTP per-segment EV 
+OK en menu_rel_multiples 
+OK zh menu_rel_multiples 
+OK en menu_rel_ev 
+OK zh menu_rel_ev 
+OK en menu_rel_earn 
+OK zh menu_rel_earn 
+OK en menu_rel_rev 
+OK zh menu_rel_rev 
+OK en menu_rel_book 
+OK zh menu_rel_book 
+OK en menu_sotp 
+OK zh menu_sotp 
+OK en rel_multiples_implied_price 
+OK zh rel_multiples_implied_price 
+OK en rel_multiples_disclaimer 
+OK zh rel_multiples_disclaimer 
+OK en rel_multiples_growth_sgr 
+OK zh rel_multiples_growth_sgr 
+OK en rel_multiples_vbx_pe 
+OK zh rel_multiples_vbx_pe 
+OK en rel_multiples_vbx_evebit 
+OK zh rel_multiples_vbx_evebit 
+OK en rel_multiples_status_arr 
+OK zh rel_multiples_status_arr 
+OK en rel_mode_label 
+OK zh rel_mode_label 
+OK en rel_mode_equity 
+OK zh rel_mode_equity 
+OK en rel_mode_enterprise 
+OK zh rel_mode_enterprise 
+OK en rel_multiples_ev_heading 
+OK zh rel_multiples_ev_heading 
+OK en rel_multiples_ps_heading 
+OK zh rel_multiples_ps_heading 
+OK en rel_multiples_tab_equity 
+OK zh rel_multiples_tab_equity 
+OK en rel_multiples_tab_enterprise 
+OK zh rel_multiples_tab_enterprise 
+OK en rel_multiples_tab_bridge 
+OK zh rel_multiples_tab_bridge 
+OK en rel_formula_equity 
+OK zh rel_formula_equity 
+OK en rel_formula_enterprise 
+OK zh rel_formula_enterprise 
+OK en rel_param_matrix_title 
+OK zh rel_param_matrix_title 
+OK en rel_param_shared_heading 
+OK zh rel_param_shared_heading 
+OK en rel_param_equity_heading 
+OK zh rel_param_equity_heading 
+OK en rel_param_enterprise_heading 
+OK zh rel_param_enterprise_heading 
+OK en rel_param_sotp_heading 
+OK zh rel_param_sotp_heading 
+OK en rel_param_shared_body 
+OK zh rel_param_shared_body 
+OK en rel_param_equity_body 
+OK zh rel_param_equity_body 
+OK en rel_param_enterprise_body 
+OK zh rel_param_enterprise_body 
+OK en rel_param_sotp_body 
+OK zh rel_param_sotp_body 
+OK en sotp_lead_title 
+OK zh sotp_lead_title 
+OK en sotp_need_segments 
+OK zh sotp_need_segments 
+OK en sotp_vbx_price 
+OK zh sotp_vbx_price 
+OK en sotp_col_multiple 
+OK zh sotp_col_multiple 
+OK en sotp_tab_bridge 
+OK zh sotp_tab_bridge 
+OK en sotp_formula_banner 
+OK zh sotp_formula_banner 
+OK en sotp_settings_seg_note 
+OK zh sotp_settings_seg_note 
+OK en sotp_status_shares_missing 
+OK zh sotp_status_shares_missing 
+OK en sotp_status_multiple_invalid 
+OK zh sotp_status_multiple_invalid 
+OK en sotp_status_equity_invalid 
+OK zh sotp_status_equity_invalid 
+OK en sotp_status_unavailable 
+OK zh sotp_status_unavailable 
+OK en ms_family_enterprise 
+OK zh ms_family_enterprise 
+OK en ms_family_earnings 
+OK zh ms_family_earnings 
+OK en ms_family_revenue 
+OK zh ms_family_revenue 
+OK en ms_family_book 
+OK zh ms_family_book 
+OK en ms_pos_market 
+OK zh ms_pos_market 
+OK en ms_pos_primary 
+OK zh ms_pos_primary 
+OK en ms_pos_secondary 
+OK zh ms_pos_secondary 
+OK en ms_pos_reference 
+OK zh ms_pos_reference 
+OK shares missing not bare N/A 
+OK zh no simplified 
+OK menu Multiples en 
+OK menu SOTP en 
+OK no sotp in multiples radio choices en 
+OK equity mode label mentions P/S 
+OK sotp lead marks Meta-Framework 
+OK sync omits Yahoo market P/E seed 
+OK sync omits Forward P/E market seed 
+OK sync never calls price÷P/E back-solve 
+OK no back-solve call in sync_from_statements 
+OK locale pe_help rejects back-solve 
+OK mode radio in module 
+OK mode equity/enterprise families 
+OK mode conditional panels 
+OK multiples radio omits sotp choice 
+OK multiples equity settings tab 
+OK multiples enterprise settings tab 
+OK multiples no standalone P/S tab 
+OK multiples bridge settings tab 
+OK multiples formula banners 
+OK multiples param matrix output 
+OK multiples equity params 
+OK multiples enterprise params 
+OK multiples bridge params 
+OK sotp module UI 
+OK sotp per-segment inputs 
+OK sotp bridge tab 
+OK sotp formula banner 
+OK sotp segment params 
+OK sotp bridge params 
+OK sotp sync uses segment notes 
+OK sotp helper wires notes into BB Lab 
+OK SOTP segments from BB Lab segment notes 
+OK SOTP without notes stays empty on consolidated-only IS 
+OK sidebar mounts rel multiples 
+OK sidebar mounts sotp 
+OK module UI call 
+OK sotp UI call 
+OK lite hides relative families via the shared catalog 
+OK lite hides SOTP via the shared catalog 
+OK applyUiLocale mode help 
+OK applyUiLocale equity tab 
+OK applyUiLocale sotp lead 
+OK global sources module 
+OK global sources sotp 
+OK server mounts module 
+OK server mounts sotp 
+OK default rel_mode in config 
+OK default PE multiple in config 
+OK default EV/FCF multiple in config 
+OK default EV/EBIT multiple in config 
+OK default EV/Sales multiple in config 
+OK default P/S multiple in config 
+OK default EV/ARR multiple in config 
+OK dcf_ev_to_equity bridge 
+OK server locale-pushes rel_mode 
+OK server wires Multiples chart_label to composite 
+OK server smart chart uses Multiples method suffix 
+OK decision module accepts model_point_labels 
+PASS relative_multiples

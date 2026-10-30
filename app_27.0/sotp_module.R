@@ -103,6 +103,9 @@ sotp_module_ui <- function(id) {
           class = "help-block",
           "Each segment needs its own EV/Sales. Sync pulls multi-segment revenue from BB Lab when available. Not segment-EBIT SOTP."
         ),
+        textAreaInput(ns("manual_segments"), ui_i18n("param_sotp_manual_label"), rows = 4,
+                      placeholder = "name,revenue,multiple"),
+        helpText(ui_i18n("param_sotp_manual_help")),
         fluidRow(
           column(4, numericInput(
             ns("default_ev_sales"),
@@ -196,6 +199,12 @@ sotp_module_server <- function(id,
       m
     }
 
+    .active_segments <- function() {
+      text <- as.character(input$manual_segments %||% "")[1]
+      if (nzchar(trimws(text))) return(parse_manual_sotp_segments(text))
+      segments_rv()
+    }
+
     .collect_segment_multiples <- function(base) {
       if (!is.data.frame(base) || !nrow(base)) return(base)
       out <- base
@@ -282,7 +291,7 @@ sotp_module_server <- function(id,
       showNotification(.str("sotp_synced"), type = "message")
     })
     observeEvent(input$btn_apply_default_mult, {
-      seg <- segments_rv()
+      seg <- .active_segments()
       if (!is.data.frame(seg) || !nrow(seg)) return()
       def <- .default_mult()
       seg$multiple <- def
@@ -300,7 +309,7 @@ sotp_module_server <- function(id,
     })
 
     run_calc <- function() {
-      seg <- .collect_segment_multiples(segments_rv())
+      seg <- .collect_segment_multiples(.active_segments())
       cash <- input$cash
       debt <- input$debt
       shares <- input$shares
@@ -310,13 +319,17 @@ sotp_module_server <- function(id,
         if (is.finite(sb$debt)) debt <- sb$debt
         if (is.finite(sb$shares) && sb$shares > 0) shares <- sb$shares
       }
+      ctx <- .ynow_currency_context()
+      to_quote <- function(x) money_to_session(x, ctx$session_currency, quote_currency(), ctx$fx_usd_twd)
+      seg$revenue <- to_quote(seg$revenue)
       calc_sotp_revenue_implied(
         seg,
         ev_sales_multiple = .default_mult(),
-        cash = cash,
-        debt = debt,
+        cash = to_quote(cash),
+        debt = to_quote(debt),
         shares = shares,
-        non_operating = input$nonop
+        non_operating = to_quote(input$nonop),
+        other_claims = if (is.list(sb)) to_quote(sb$other_claims) else NA_real_
       )
     }
     observeEvent(input$btn_calc_sotp, {
@@ -332,7 +345,10 @@ sotp_module_server <- function(id,
       last_result(run_calc())
       calc_token(as.integer(calc_token()) + 1L)
     }, ignoreInit = TRUE)
+    observeEvent(input$manual_segments, { last_result(NULL) }, ignoreInit = TRUE)
+
     observeEvent(current_ticker(), {
+      updateTextAreaInput(session, "manual_segments", value = "")
       last_result(NULL)
       calc_token(0L)
     }, ignoreInit = TRUE)
@@ -344,7 +360,7 @@ sotp_module_server <- function(id,
     })
 
     output$ui_segment_inputs <- renderUI({
-      seg <- segments_rv()
+      seg <- .active_segments()
       if (!is.data.frame(seg) || nrow(seg) < 2L) {
         return(tags$div(
           class = "ynow-macro-callout ynow-macro-callout--warn",
@@ -502,6 +518,7 @@ sotp_module_server <- function(id,
     })
 
     return(list(
+      segments_available = reactive({ nrow(.active_segments()) >= 2L }),
       sotp_price = reactive({
         res <- last_result()
         if (!is.null(res) && identical(res$status, "ok")) res$implied_price else NA_real_

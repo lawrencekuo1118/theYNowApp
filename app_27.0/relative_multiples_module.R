@@ -99,40 +99,7 @@ calc_forward_eps_from_price_pe <- function(price, forward_pe) {
 #' Trailing EPS from latest statements first; Yahoo EPS (TTM) only as reported earnings fallback.
 #' Never derives EPS from price ÷ P/E.
 .rel_trailing_eps_from_statements <- function(sum_df = NULL, d_is = NULL, d_bs = NULL) {
-  # 1) Net Income ÷ shares from IS / BS
-  if (!is.null(d_is) && is.data.frame(d_is) && nrow(d_is) > 0 &&
-      exists("select_current_metric", mode = "function")) {
-    ni <- tryCatch(
-      select_current_metric(d_is, "Net Income Common Stockholders|Net Income$", "flow"),
-      error = function(e) NA_real_
-    )
-    sh <- NA_real_
-    if (!is.null(d_bs) && is.data.frame(d_bs) && nrow(d_bs) > 0) {
-      sh <- tryCatch(
-        select_current_metric(
-          d_bs, "Ordinary Shares Number|Share Issued|Total Shares Outstanding", "stock"
-        ),
-        error = function(e) NA_real_
-      )
-    }
-    if (is.finite(ni) && is.finite(sh) && sh > 0) return(as.numeric(ni / sh)[1])
-  }
-  # 2) Shared report helper (may still read Yahoo EPS TTM as earnings figure)
-  if (exists(".report_eps_bvps", mode = "function")) {
-    eps <- tryCatch(
-      .report_eps_bvps(sum_df, d_is = d_is, d_bs = d_bs)$eps,
-      error = function(e) NA_real_
-    )
-    if (is.finite(eps)) return(as.numeric(eps)[1])
-  }
-  # 3) Yahoo EPS (TTM) label only — reported earnings, not a valuation multiple
-  if (exists("extract_summary_item", mode = "function")) {
-    teps <- .parse_summary_num(extract_summary_item(
-      sum_df, "EPS \\(TTM\\)|Trailing EPS|^EPS$", default = NA_character_
-    ))
-    if (is.finite(teps)) return(teps)
-  }
-  NA_real_
+  valuation_trailing_eps(sum_df, d_is)
 }
 
 #' Forward EPS from trailing × (1 + g/100). No price, no Yahoo Forward P/E, no 回推.
@@ -250,7 +217,7 @@ calc_peg <- function(pe, growth_pct,
 #' Enterprise multiple → Implied EV → Equity (cash−debt) → Implied Price.
 #' metric ≤ 0 or missing → unavailable (Missing ≠ 0).
 calc_ev_metric_implied_price <- function(metric, multiple, cash, debt, shares,
-                                         metric_name = "metric") {
+                                         metric_name = "metric", other_claims = 0) {
   metric <- suppressWarnings(as.numeric(metric)[1])
   mult <- suppressWarnings(as.numeric(multiple)[1])
   cash <- suppressWarnings(as.numeric(cash)[1])
@@ -268,13 +235,12 @@ calc_ev_metric_implied_price <- function(metric, multiple, cash, debt, shares,
   if (!is.finite(shares) || shares <= 0) {
     return(empty("shares_missing", ev = metric * mult))
   }
-  if (!is.finite(cash)) cash <- 0
-  if (!is.finite(debt)) debt <- 0
+  if (!is.finite(cash) || !is.finite(debt)) return(empty("equity_invalid"))
   ev <- metric * mult
   eq <- if (exists("dcf_ev_to_equity", mode = "function")) {
-    dcf_ev_to_equity(ev, cash = cash, debt = debt)
+    dcf_ev_to_equity(ev, cash = cash, debt = debt, other_claims = other_claims)
   } else {
-    ev + cash - debt
+    ev + cash - debt - other_claims
   }
   if (!is.finite(eq)) return(empty("equity_invalid", ev = ev, eq = eq))
   list(
@@ -284,9 +250,9 @@ calc_ev_metric_implied_price <- function(metric, multiple, cash, debt, shares,
   )
 }
 
-calc_ev_fcf_implied_price <- function(fcf, ev_fcf_multiple, cash, debt, shares) {
+calc_ev_fcf_implied_price <- function(fcf, ev_fcf_multiple, cash, debt, shares, other_claims = 0) {
   out <- calc_ev_metric_implied_price(
-    fcf, ev_fcf_multiple, cash, debt, shares, metric_name = "FCFF"
+    fcf, ev_fcf_multiple, cash, debt, shares, metric_name = "FCFF", other_claims = other_claims
   )
   if (identical(out$reason, "metric_nonpositive")) out$reason <- "fcf_nonpositive"
   out$fcf <- out$metric
@@ -333,13 +299,13 @@ calc_ps_implied_price <- function(revenue, ps_multiple, shares) {
 #' If `segments$multiple` is present, each row uses its own EV/Sales; otherwise
 #' `ev_sales_multiple` is applied to every segment.
 calc_sotp_revenue_implied <- function(segments, ev_sales_multiple, cash, debt, shares,
-                                      non_operating = 0) {
+                                      non_operating = 0, other_claims = 0) {
   mult_default <- suppressWarnings(as.numeric(ev_sales_multiple)[1])
   cash <- suppressWarnings(as.numeric(cash)[1])
   debt <- suppressWarnings(as.numeric(debt)[1])
   shares <- suppressWarnings(as.numeric(shares)[1])
   non_op <- suppressWarnings(as.numeric(non_operating)[1])
-  if (!is.finite(non_op)) non_op <- 0
+  if (!is.finite(non_op)) return(list(status = "unavailable", reason = "equity_invalid", implied_price = NA_real_))
   empty <- function(reason) {
     list(
       status = "unavailable", reason = reason,
@@ -369,14 +335,13 @@ calc_sotp_revenue_implied <- function(segments, ev_sales_multiple, cash, debt, s
   }
   if (any(!is.finite(seg$multiple) | seg$multiple <= 0)) return(empty("multiple_invalid"))
   if (!is.finite(shares) || shares <= 0) return(empty("shares_missing"))
-  if (!is.finite(cash)) cash <- 0
-  if (!is.finite(debt)) debt <- 0
+  if (!is.finite(cash) || !is.finite(debt)) return(empty("equity_invalid"))
   seg$value <- seg$revenue * seg$multiple
   ev <- sum(seg$value) + non_op
   eq <- if (exists("dcf_ev_to_equity", mode = "function")) {
-    dcf_ev_to_equity(ev, cash = cash, debt = debt)
+    dcf_ev_to_equity(ev, cash = cash, debt = debt, other_claims = other_claims)
   } else {
-    ev + cash - debt
+    ev + cash - debt - other_claims
   }
   if (!is.finite(eq)) return(empty("equity_invalid"))
   list(
@@ -416,8 +381,8 @@ calc_sotp_revenue_implied <- function(segments, ev_sales_multiple, cash, debt, s
     rec <- tryCatch(reconstruct_hist_fcff(d_cf, d_is = d_is), error = function(e) NULL)
     if (!is.null(rec) && length(rec$fcff)) {
       v <- suppressWarnings(as.numeric(rec$fcff))
-      hit <- which(is.finite(v))[1]
-      if (length(hit) && is.finite(v[[hit]])) return(v[[hit]])
+      hit <- which(is.finite(v))
+      if (length(hit)) return(v[[hit[1]]])
     }
   }
   NA_real_
@@ -944,9 +909,13 @@ relative_multiples_module_server <- function(id,
       ev_sales_m <- .num("ev_sales_multiple"); if (!is.finite(ev_sales_m) || ev_sales_m <= 0) ev_sales_m <- APP_DEFAULTS$rel_ev_sales_multiple %||% 3
       ps_m <- .num("ps_multiple"); if (!is.finite(ps_m) || ps_m <= 0) ps_m <- APP_DEFAULTS$rel_ps_multiple %||% 3
       ev_arr_m <- .num("ev_arr_multiple"); if (!is.finite(ev_arr_m) || ev_arr_m <= 0) ev_arr_m <- APP_DEFAULTS$rel_ev_arr_multiple %||% 10
-      evf <- calc_ev_fcf_implied_price(.num("fcff"), ev_fcf_m, cash, debt, shares)
-      eve <- calc_ev_metric_implied_price(.num("ebit"), ev_ebit_m, cash, debt, shares, "EBIT")
-      eveda <- calc_ev_metric_implied_price(.num("ebitda"), ev_ebitda_m, cash, debt, shares, "EBITDA")
+      ctx <- .ynow_currency_context()
+      to_quote <- function(x) money_to_session(x, ctx$session_currency, quote_currency(), ctx$fx_usd_twd)
+      cash <- to_quote(cash); debt <- to_quote(debt)
+      other <- if (is.list(sb_calc)) to_quote(sb_calc$other_claims) else NA_real_
+      evf <- calc_ev_fcf_implied_price(to_quote(.num("fcff")), ev_fcf_m, cash, debt, shares, other_claims = other)
+      eve <- calc_ev_metric_implied_price(to_quote(.num("ebit")), ev_ebit_m, cash, debt, shares, "EBIT", other_claims = other)
+      eveda <- calc_ev_metric_implied_price(to_quote(.num("ebitda")), ev_ebitda_m, cash, debt, shares, "EBITDA", other_claims = other)
       rev_ev <- .num("revenue")
       ps_rev <- .num("ps_revenue")
       if (!is.finite(ps_rev)) ps_rev <- rev_ev
@@ -954,9 +923,9 @@ relative_multiples_module_server <- function(id,
         rev_ev <- sb_calc$revenue
         ps_rev <- sb_calc$revenue
       }
-      evs <- calc_ev_metric_implied_price(rev_ev, ev_sales_m, cash, debt, shares, "Revenue")
-      ps <- calc_ps_implied_price(ps_rev, ps_m, shares)
-      evarr <- calc_ev_metric_implied_price(.num("arr"), ev_arr_m, cash, debt, shares, "ARR")
+      evs <- calc_ev_metric_implied_price(to_quote(rev_ev), ev_sales_m, cash, debt, shares, "Revenue", other_claims = other)
+      ps <- calc_ps_implied_price(to_quote(ps_rev), ps_m, shares)
+      evarr <- calc_ev_metric_implied_price(to_quote(.num("arr")), ev_arr_m, cash, debt, shares, "ARR", other_claims = other)
       if (identical(evarr$reason, "metric_nonpositive")) evarr$reason <- "arr_unavailable"
       list(
         pe = pe, forward_pe = fpe, peg = peg, ev_fcf = evf,
