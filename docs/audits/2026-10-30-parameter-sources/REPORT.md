@@ -64,7 +64,7 @@ Full 顯示建議但不自動填入。Lite 對有限數值的參考建議直接�
 
 ## PDF 與重現方式
 
-`test_report_download.R` 使用六種公司資料形態 × en/zh-TW × Full/Lite，24 種報告組合，包含缺 CF、NAV 與無可用 Fair Value；HTML 與 Chromium PDF 渲染已執行。渲染日誌仍含既有數學排版提示及測試圖片的 localhost 404，故不能將「通過」解讀為每頁視覺皆已人工驗收。
+`test_report_download.R` 使用六種公司資料形態 × en/zh-TW × Full/Lite，24 種報告組合，包含缺 CF、NAV 與無可用 Fair Value；HTML 全部通過。原測試選 6 組輸出 PDF，本次另以 `render_all_pdfs.R` 擴至全部 24 組 Chromium PDF，均成功輸出非空檔案（`evidence/pdf24.log`）。已抽查中文 Lite 首頁的中文字體及版面。渲染日誌仍含既有數學排版提示及測試圖片的 localhost 404，故不能將「通過」解讀為每頁視覺皆已人工驗收。
 
 ```bash
 export YNOW_DEBUG_SKIP_PY=1
@@ -75,6 +75,8 @@ Rscript test_valuation_formulas.R
 Rscript test_phase1_formula_independence.R
 # 需 Chromium、pandoc、rmarkdown/pagedown
 YNOW_REPORT_TEST_PDF=1 Rscript test_report_download.R
+# 在 repo root 驗證全部 24 組實際 PDF：
+# Rscript docs/audits/2026-10-30-parameter-sources/render_all_pdfs.R
 ```
 
 ## 證據邊界與仍需人工判斷
@@ -82,3 +84,11 @@ YNOW_REPORT_TEST_PDF=1 Rscript test_report_download.R
 測試證明列出的科目語意、錯誤反例及模式組合符合本次斷言，不是對所有發行人的上游資料品質作無條件保證。未逐一登入正式帳號驗證授權後畫面，也未逐家公司對帳 MOPS/SEC 原件。自動跨幣別主要支援 USD/TWD；其他幣別沒有有效換算時應維持不可用。CFO 重建 FCFF 仍依現有模型對利息分類的假設；IFRS 發行人的實際現金流分類、非營運資產與多類資本結構需使用者審閱。預測成長率、估值倍數、terminal g 與人工輸入均是估值假設，並非已報告財務事實。
 
 部署紀錄另見 `scripts/DEPLOY_BASELINE.txt`。Cloud 不具 Mac coding clone/OneDrive 路徑；完成部署後仍需同步該實體備份。
+
+## 正式部署驗收
+
+v27.59 已部署至 https://hopesmasher1118.shinyapps.io/TheYNowApp/ 。部署 API 回報 `running`、bundle `12757178`；公開 `ynow_build.json` 回報 `v27.59`。正式站訪客瀏覽器已連上 Shiny，JavaScript errors 與 Shiny output errors 均為空（見 `evidence/live-browser-v27-59.json`）。Cloud 瀏覽器使用 session proxy，因此此項唯讀 smoke check 使用瀏覽器測試 context 的 HTTPS 憑證例外；未修改正式站 TLS 設定。
+
+主修正 PR #574 已合併至 master。部署紀錄 PR #575 啟用 auto-merge，必要檢查通過後合併。GitHub Release：https://github.com/lawrencekuo1118/theYNowApp/releases/tag/v27.59 。實際上傳的程式 commit 為 `39a7e6ea03cf62781a09740382a4a76444ce336d`。
+
+`post_release_local_sync.sh` 已執行；因本機沒有 Mac coding clone 與 OneDrive 路徑而 soft-skip，Mac 實體備份仍須執行 `bash scripts/sync-workspaces.sh --force` 及 `bash scripts/check-od-sync.sh`。
