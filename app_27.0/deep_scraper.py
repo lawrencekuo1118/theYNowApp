@@ -591,6 +591,8 @@ def get_summary_quote(ticker="AMZN"):
         ("PE Ratio (TTM)", _fmt_num(info.get("trailingPE"))),
         ("EPS (TTM)", _fmt_num(info.get("trailingEps"))),
         ("Dividend", _fmt_num(div_rate) if div_rate is not None else "N/A"),
+        ("Forward Annual Dividend Rate", _fmt_num(info.get("dividendRate"))),
+        ("Trailing Annual Dividend Rate", _fmt_num(info.get("trailingAnnualDividendRate"))),
         ("Yield", f"{float(div_yield)*100:.2f}%" if isinstance(div_yield, (int, float)) else "N/A"),
         ("Target Est", _fmt_num(info.get("targetMeanPrice"))),
     ]

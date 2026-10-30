@@ -45,6 +45,112 @@ select_current_metric_any <- function(df, metric_names, type = c("flow", "stock"
   vals[1]
 }
 
+# Common-share models must exclude preferred and noncontrolling claims.
+# A broad total is usable only when the excluded claims are explicitly known.
+.common_claim_row <- function(df, kind = c("equity", "income"), include_ttm = FALSE) {
+  kind <- match.arg(kind)
+  direct <- if (kind == "equity") "^Common Stock Equity$" else "^Net Income Common Stockholders$"
+  value <- select_clean_metric_row(df, direct, include_ttm)
+  if (any(is.finite(value))) return(value)
+  total <- select_clean_metric_row(df, if (kind == "equity") "^Stockholders Equity$" else "^Net Income$", include_ttm)
+  excluded <- select_clean_metric_row_any(df, if (kind == "equity") {
+    c("^Preferred Stock Equity$", "^Preferred Stock$")
+  } else c("^Preferred Stock Dividends$", "^Preferred Dividends$"), include_ttm)
+  if (all(!is.finite(excluded))) {
+    preferred_n <- select_clean_metric_row(df, "^Preferred Shares Number$", include_ttm)
+    if (all(!is.finite(preferred_n)) || any(preferred_n != 0, na.rm = TRUE)) return(NA_real_)
+    excluded <- rep(0, length(total))
+  }
+  if (length(total) != length(excluded)) return(NA_real_)
+  total - excluded
+}
+common_stock_equity <- function(df) {
+  x <- .common_claim_row(df, "equity", FALSE)
+  if (!length(x)) NA_real_ else x[1]
+}
+common_net_income <- function(df) {
+  x <- .common_claim_row(df, "income", TRUE)
+  if (!length(x)) NA_real_ else x[1]
+}
+
+common_cash_dividends <- function(df) {
+  common <- select_current_metric_any(df, c("^Common Stock Dividend Paid$", "^Common Stock Dividends Paid$"), "flow")
+  if (is.finite(common)) return(abs(common))
+  total <- select_current_metric(df, "^Cash Dividends Paid$", "flow")
+  preferred <- select_current_metric_any(df, c("^Preferred Stock Dividend Paid$", "^Preferred Dividends Paid$"), "flow")
+  if (!is.finite(total) || !is.finite(preferred)) return(NA_real_)
+  max(0, abs(total) - abs(preferred))
+}
+
+# Operating invested capital excludes disclosed nonoperating assets and
+# non-interest-bearing liabilities. Missing components require manual review.
+statement_operating_invested_capital <- function(bs) {
+  assets <- select_current_metric(bs, "^Total Assets$", "stock")
+  liabilities <- select_current_metric_any(bs, c("^Total Liabilities Net Minority Interest$", "^Total Liabilities$"), "stock")
+  nonop <- select_current_metric(bs, "^Non Operating Assets$", "stock")
+  cd <- statement_cash_debt(bs)
+  if (!all(is.finite(c(assets, liabilities, nonop, cd$cash, cd$debt)))) return(NA_real_)
+  assets - cd$cash - nonop - (liabilities - cd$debt)
+}
+
+# Only a verified absence of other equity claims can be auto-filled as zero.
+# Nonzero book claims are not silently treated as market values.
+statement_other_equity_claims <- function(bs) {
+  common <- select_current_metric(bs, "^Common Stock Equity$", "stock")
+  gross <- select_current_metric(bs, "^Total Equity Gross Minority Interest$", "stock")
+  if (is.finite(common) && is.finite(gross) && abs(gross - common) <= max(1, abs(gross)) * 1e-9) return(0)
+  pref <- select_current_metric_any(bs, c("^Preferred Stock Equity$", "^Preferred Stock$"), "stock")
+  minority <- select_current_metric(bs, "^Minority Interest$", "stock")
+  if (is.finite(pref) && is.finite(minority) && pref == 0 && minority == 0) return(0)
+  NA_real_
+}
+
+# NOPAT is operating earnings after tax, never financing-affected Net Income.
+statement_nopat <- function(d_is, tax_fallback = NULL) {
+  ebit <- select_current_metric_any(d_is, c("^Operating Income$", "^EBIT$"), "flow")
+  if (!is.finite(ebit)) return(NA_real_)
+  tx <- select_current_metric_any(d_is, c("^Income Tax Expense$", "^Tax Provision$"), "flow")
+  pre <- select_current_metric(d_is, "^Pretax Income$", "flow")
+  tax <- if (is.finite(tx) && is.finite(pre) && pre > 0) {
+    max(0, min(tx / pre, .5))
+  } else .norm_tax_ratio(tax_fallback, fallback = statutory_tax_ratio())
+  ebit * (1 - tax)
+}
+
+# D0 is trailing paid DPS in quote units. A forward rate or yield is not D0.
+valuation_trailing_dps <- function(summary_df) {
+  if (!is.data.frame(summary_df) || !all(c("Item", "Value") %in% names(summary_df))) return(NA_real_)
+  hit <- grep("^Trailing Annual Dividend Rate$|^Trailing Dividend Rate$|^DPS \\(TTM\\)$", summary_df$Item, ignore.case = TRUE)
+  if (!length(hit)) return(NA_real_)
+  value <- parse_financial_number(summary_df$Value[hit[1]])[1]
+  if (is.finite(value) && value >= 0) value else NA_real_
+}
+
+# EPS is a flow per weighted-average share, unlike BVPS (a stock per ending share).
+# Reported statement EPS is in statement currency and cannot be relabeled as ADR EPS.
+valuation_trailing_eps <- function(summary_df = NULL, d_is = NULL) {
+  ctx <- .ynow_currency_context()
+  qc <- normalize_ccy(ctx$quote_currency)
+  fc <- normalize_ccy(ctx$statement_currency)
+  if (identical(qc, fc)) {
+    eps <- select_current_metric_any(d_is, c("^Diluted EPS$", "^Basic EPS$"), "flow")
+    if (is.finite(eps)) return(eps)
+    ni <- common_net_income(d_is)
+    weighted <- select_current_metric_any(d_is, c("^Diluted Average Shares$", "^Basic Average Shares$", "^Weighted Average Shares$"), "flow")
+    if (is.finite(ni) && is.finite(weighted) && weighted > 0) {
+      # IS totals may already be in session currency; EPS rows are never FX-scaled.
+      money_ccy <- normalize_ccy(attr(d_is, "money_ccy") %||% fc)
+      return(money_to_session(ni / weighted, money_ccy, qc, ctx$fx_usd_twd))
+    }
+  }
+  # Yahoo Summary EPS is explicitly in quote units (including ADR units).
+  if (is.data.frame(summary_df) && all(c("Item", "Value") %in% names(summary_df))) {
+    hit <- grep("EPS \\(TTM\\)|Trailing EPS|^EPS$", summary_df$Item, ignore.case = TRUE)
+    if (length(hit)) return(parse_financial_number(summary_df$Value[hit[1]])[1])
+  }
+  NA_real_
+}
+
 #' Mean of (num/den) over the first `n` paired observations (newest-first series).
 #' Used for DCF projection margins when CapEx/Rev spikes vs recent history.
 #' Default `n = 3` is a common smoothing window (not a regulatory standard);
@@ -643,6 +749,11 @@ reconstruct_hist_fcff <- function(d_cf, d_is = NULL, tax = NULL) {
     iat = numeric(0), yahoo_fcf = numeric(0), tax = NA_real_
   )
   if (is.null(d_cf) || !is.data.frame(d_cf) || nrow(d_cf) < 1L) return(empty)
+  if (!is.null(d_is) && is.data.frame(d_is)) {
+    aligned <- align_financial_flows(d_is, d_cf, include_ttm = FALSE)
+    d_is <- aligned$income
+    d_cf <- aligned$cashflow
+  }
   t <- if (!is.null(tax) && is.finite(suppressWarnings(as.numeric(tax)[1]))) {
     .norm_tax_ratio(tax)
   } else {
@@ -690,7 +801,7 @@ reconstruct_hist_fcff <- function(d_cf, d_is = NULL, tax = NULL) {
   yfcf <- pad(yfcf)
   inte <- pad(inte)
   cap_out <- ifelse(is.finite(cap), abs(cap), NA_real_)
-  int_abs <- ifelse(is.finite(inte), abs(inte), 0)
+  int_abs <- ifelse(is.finite(inte), abs(inte), NA_real_)
   iat <- int_abs * (1 - t)
   fcff <- cfo + iat - cap_out
   src <- "cfo_identity"
@@ -742,14 +853,14 @@ dcf_gordon_tv <- function(last_fcf, g, r) {
 }
 
 #' EV → equity bridge: Equity = EV + Cash − Debt.
-dcf_ev_to_equity <- function(ev, cash = 0, debt = 0) {
+dcf_ev_to_equity <- function(ev, cash = 0, debt = 0, other_claims = 0) {
   ev <- suppressWarnings(as.numeric(ev)[1])
   cash <- suppressWarnings(as.numeric(cash)[1])
   debt <- suppressWarnings(as.numeric(debt)[1])
   if (!is.finite(ev)) return(NA_real_)
-  if (!is.finite(cash)) cash <- 0
-  if (!is.finite(debt)) debt <- 0
-  ev + cash - debt
+  other_claims <- suppressWarnings(as.numeric(other_claims)[1])
+  if (!is.finite(cash) || !is.finite(debt) || !is.finite(other_claims) || other_claims < 0) return(NA_real_)
+  ev + cash - debt - other_claims
 }
 
 #' Convert FCFF path to FCFE with conversion components.
@@ -765,13 +876,13 @@ fcff_to_fcfe_components <- function(fcff, interest_after_tax = 0, debt0 = 0, g_p
   )
   if (n < 1L) return(empty)
   iat <- suppressWarnings(as.numeric(interest_after_tax)[1])
-  if (!is.finite(iat)) iat <- 0
+  if (!is.finite(iat)) iat <- NA_real_
   debt <- suppressWarnings(as.numeric(debt0)[1])
-  if (!is.finite(debt) || debt < 0) debt <- 0
+  if (!is.finite(debt) || debt < 0) debt <- NA_real_
   gp <- suppressWarnings(as.numeric(g_path))
   if (length(gp) == 1L) gp <- rep(gp, n)
   if (length(gp) < n) gp <- c(gp, rep(tail(gp, 1), n - length(gp)))
-  gp[!is.finite(gp)] <- 0
+  gp[!is.finite(gp)] <- NA_real_
   nb <- numeric(n)
   beg <- numeric(n)
   out <- numeric(n)
@@ -912,7 +1023,7 @@ extract_nav_components <- function(df_bs, holdco_discount = 0) {
     error = function(e) NA_real_
   )
   equity <- tryCatch(
-    select_current_metric_any(df_bs, EQUITY_PATTERNS, "stock"),
+    common_stock_equity(df_bs),
     error = function(e) NA_real_
   )
   if (!is.finite(inv) || inv < 0) inv <- 0
@@ -1042,11 +1153,11 @@ calc_fundamental_sgr_pct <- function(d_is, d_bs, d_cf) {
     return(NA_real_)
   }
   ni <- tryCatch(
-    select_current_metric_any(d_is, NET_INCOME_PATTERNS, "flow"),
+    common_net_income(d_is),
     error = function(e) NA_real_
   )
   equity <- tryCatch(
-    select_current_metric_any(d_bs, EQUITY_PATTERNS, "stock"),
+    common_stock_equity(d_bs),
     error = function(e) NA_real_
   )
   if (is.na(ni) || is.na(equity) || equity <= 0) return(NA_real_)
@@ -1054,10 +1165,11 @@ calc_fundamental_sgr_pct <- function(d_is, d_bs, d_cf) {
   roe <- ni / equity
   div_paid <- tryCatch({
     if (is.null(d_cf) || !is.data.frame(d_cf)) NA_real_ else {
-      abs(select_current_metric(d_cf, "Cash Dividends Paid", "flow"))
+      abs(common_cash_dividends(d_cf))
     }
   }, error = function(e) NA_real_)
 
+  if (!is.finite(div_paid)) return(NA_real_)
   payout_ratio <- 0
   if (!is.na(ni) && ni > 0 && !is.na(div_paid)) {
     payout_ratio <- min(max(div_paid / ni, 0), 1)
@@ -1078,7 +1190,7 @@ fundamental_sgr_identity <- function(ni, equity, dividends) {
   div_raw <- num(dividends)
   div_abs <- if (is.finite(div_raw)) abs(div_raw) else NA_real_
   roe <- if (is.finite(ni) && is.finite(equity) && equity > 0) ni / equity else NA_real_
-  payout <- 0
+  payout <- NA_real_
   if (is.finite(ni) && ni > 0 && is.finite(div_abs)) {
     payout <- min(max(div_abs / ni, 0), 1)
   } else if (!is.finite(ni) || !is.finite(equity) || equity <= 0) {
@@ -1086,9 +1198,9 @@ fundamental_sgr_identity <- function(ni, equity, dividends) {
   }
   retention <- if (is.finite(payout)) 1 - payout else NA_real_
   g_hand <- if (is.finite(roe) && is.finite(retention)) round(roe * retention * 100, 2) else NA_real_
-  d_is <- data.frame(Breakdown = "Net Income", Y2025 = ni, stringsAsFactors = FALSE)
-  d_bs <- data.frame(Breakdown = "Stockholders Equity", Y2025 = equity, stringsAsFactors = FALSE)
-  d_cf <- data.frame(Breakdown = "Cash Dividends Paid", Y2025 = div_raw, stringsAsFactors = FALSE)
+  d_is <- data.frame(Breakdown = "Net Income Common Stockholders", Y2025 = ni, stringsAsFactors = FALSE)
+  d_bs <- data.frame(Breakdown = "Common Stock Equity", Y2025 = equity, stringsAsFactors = FALSE)
+  d_cf <- data.frame(Breakdown = "Common Stock Dividend Paid", Y2025 = div_raw, stringsAsFactors = FALSE)
   g_engine <- tryCatch(
     calc_fundamental_sgr_pct(d_is, d_bs, d_cf),
     error = function(e) NA_real_

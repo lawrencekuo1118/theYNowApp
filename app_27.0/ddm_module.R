@@ -19,6 +19,9 @@ ddm_module_server <- function(id, auto_calc_pulse = reactive(0L),
                               ui_locale = reactive("zh-TW")) {
   
   moduleServer(id, function(input, output, session) {
+    .echo_guard <- ynow_input_echo_guard(input, session, current_ticker, function() if (identical(input$ddm_mode, "spm")) c("d0", "est_eps") else "d0")
+    updateNumericInput <- .echo_guard$update
+
 
     .ddm_loc <- function() {
       tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
@@ -73,29 +76,14 @@ ddm_module_server <- function(id, auto_calc_pulse = reactive(0L),
     }
 
     # ==========================================
-    # D0 = 現金股利（現金流量表）÷ 股數；若無則 0（新搜尋覆寫，可再手動改）
+    # D0 uses explicit trailing annual DPS; missing values remain unavailable.
     # ==========================================
     .resolve_auto_d0 <- function() {
-      d0 <- NA_real_
-      cf <- tryCatch(d_cash_flow(), error = function(e) NULL)
-      bs <- tryCatch(d_balance_sheet(), error = function(e) NULL)
-      if (is.data.frame(cf) && nrow(cf) > 0 && is.data.frame(bs) && nrow(bs) > 0 &&
-          isTRUE(.ddm_cf_money_ok_for_d0(cf))) {
-        div_paid_total <- abs(select_current_metric(cf, "Cash Dividends Paid", "flow"))
-        shares_issued <- .ddm_quote_shares()
-        if (is.finite(div_paid_total) && is.finite(shares_issued) && shares_issued > 0) {
-          d0 <- div_paid_total / shares_issued
-        }
+      d0 <- tryCatch(scraped_d0(), error = function(e) NA_real_)
+      if (!is.numeric(d0) || length(d0) != 1L || !is.finite(d0) || d0 < 0) {
+        d0 <- valuation_trailing_dps(summary_df())
       }
-      if (!is.finite(d0) || d0 < 0) {
-        fallback_d0 <- tryCatch(scraped_d0(), error = function(e) NA_real_)
-        if (is.numeric(fallback_d0) && length(fallback_d0) == 1 &&
-            is.finite(fallback_d0) && fallback_d0 >= 0) {
-          d0 <- fallback_d0
-        }
-      }
-      if (!is.finite(d0) || d0 < 0) d0 <- 0
-      round(as.numeric(d0)[1], 2)
+      if (is.finite(d0)) round(d0, 2) else NA_real_
     }
 
     .apply_auto_d0 <- function() {
@@ -136,7 +124,7 @@ ddm_module_server <- function(id, auto_calc_pulse = reactive(0L),
 
     # 新搜尋先清成 0，避免留下上一檔的 D0；財報載入後再覆寫
     observeEvent(current_ticker(), {
-      updateNumericInput(session, "d0", value = 0)
+      updateNumericInput(session, "d0", value = NA_real_)
     }, ignoreNULL = TRUE)
 
     observeEvent(d_cash_flow(), {
@@ -260,7 +248,7 @@ ddm_module_server <- function(id, auto_calc_pulse = reactive(0L),
       val <- if (is.null(res) || !identical(res$status, "success")) {
         "N/A"
       } else {
-        paste0(money_prefix(), res$value)
+        paste0(money_prefix(quote_currency()), res$value)
       }
       infoBox(
         "每股估值（DDM）",
@@ -281,7 +269,7 @@ ddm_module_server <- function(id, auto_calc_pulse = reactive(0L),
       val <- if (is.null(res) || !identical(res$status, "success")) {
         "N/A"
       } else {
-        paste0(money_prefix(), res$d1)
+        paste0(money_prefix(quote_currency()), res$d1)
       }
       infoBox(title, val, icon = icon("money-bill-wave"), color = "aqua", fill = TRUE)
     })
@@ -306,10 +294,10 @@ ddm_module_server <- function(id, auto_calc_pulse = reactive(0L),
       }
       if (identical(mode, "spm")) {
         eps <- suppressWarnings(as.numeric(input$est_eps)[1])
-        eps_txt <- if (is.finite(eps)) paste0(money_prefix(), round(eps, 2)) else "—"
+        eps_txt <- if (is.finite(eps)) paste0(money_prefix(quote_currency()), round(eps, 2)) else "—"
         extra <- glue::glue("<b>EPS (E)：</b> {eps_txt} <br/>")
       }
-      d0_txt <- if (is.finite(d0)) paste0(money_prefix(), round(d0, 2)) else "—"
+      d0_txt <- if (is.finite(d0)) paste0(money_prefix(quote_currency()), round(d0, 2)) else "—"
       g_txt <- if (is.finite(g)) paste0(g, "%") else "—"
       ke_txt <- if (is.finite(ke)) paste0(ke, "%") else "—"
       d_label <- if (identical(mode, "spm")) "股利 D（定額永續）" else "剛配股利 D0"
@@ -357,7 +345,7 @@ ddm_module_server <- function(id, auto_calc_pulse = reactive(0L),
       ))
       .rel <- function(x, sign = -1) .param_rel_shock(x, sign = sign, shock = shock_pct)
       d0_show <- if (is.finite(d0)) d0 else 1
-      d0_unit <- if (is.finite(d0)) money_prefix() else "x"
+      d0_unit <- if (is.finite(d0)) money_prefix(quote_currency()) else "x"
       d0_label <- if (identical(mode, "spm")) "股利 D（定額）" else "剛配股利 D0"
       rows <- list(
         .param_sensitivity_infl_row(
@@ -369,7 +357,7 @@ ddm_module_server <- function(id, auto_calc_pulse = reactive(0L),
       )
       if (identical(mode, "spm") && .param_sensitivity_rel_ok(eps0)) {
         rows[[length(rows) + 1]] <- .param_sensitivity_infl_row(
-          "EPS (E)", eps0, money_prefix(), v0,
+          "EPS (E)", eps0, money_prefix(quote_currency()), v0,
           .p(eps_u = .rel(eps0, -1)),
           .p(eps_u = .rel(eps0, +1)),
           "SPM：成長項 ∝ E × g / r²"
@@ -436,7 +424,7 @@ ddm_module_server <- function(id, auto_calc_pulse = reactive(0L),
       d0_sc <- tryCatch(scraped_d0(), error = function(e) 0)
       d0_sc <- suppressWarnings(as.numeric(d0_sc)[1])
       if (!is.finite(d0_sc) || d0_sc < 0) d0_sc <- 0
-      val <- paste0(money_prefix(), round(d0_sc, 2))
+      val <- paste0(money_prefix(quote_currency()), round(d0_sc, 2))
       infoBox("財報最新股利 (D0)", val, icon = icon("money-bill-wave"), color = "aqua", fill = TRUE)
     })
     
@@ -458,30 +446,16 @@ ddm_module_server <- function(id, auto_calc_pulse = reactive(0L),
     })
     
     observeEvent(summary_df(), {
-      df <- summary_df()
-      req(df)
-      
-      eps_row <- df[grepl("EPS", df$Item, ignore.case = TRUE), ]
-      
-      if (nrow(eps_row) > 0) {
-        eps_val <- suppressWarnings(as.numeric(stringr::str_extract(eps_row$Value[1], "^[-0-9.]+")))
-        
-        if (!is.na(eps_val)) {
-          updateNumericInput(session, "est_eps", value = eps_val)
-        } else {
-          updateNumericInput(session, "est_eps", value = 0)
-        }
-      } else {
-        updateNumericInput(session, "est_eps", value = 0)
-      }
+      eps <- valuation_trailing_eps(summary_df(), d_income_statement())
+      updateNumericInput(session, "est_eps", value = eps)
     })
-    
+
     observeEvent(input$calc_d0_payout, {
       req(input$est_eps, input$est_payout)
       new_d0 <- input$est_eps * (input$est_payout / 100)
       
       updateNumericInput(session, "d0", value = round(new_d0, 2))
-      output$txt_d0_payout_res <- renderUI({ HTML(glue::glue("<div style='color: #00a65a; font-weight: bold;'>已成功將 D0 更新為 {money_prefix()}{round(new_d0, 2)}</div>")) })
+      output$txt_d0_payout_res <- renderUI({ HTML(glue::glue("<div style='color: #00a65a; font-weight: bold;'>已成功將 D0 更新為 {money_prefix(quote_currency())}{round(new_d0, 2)}</div>")) })
       showNotification("D0 已依目標配息率更新，請回 Overview 重新試算", type = "message")
     })
     
@@ -496,7 +470,17 @@ ddm_module_server <- function(id, auto_calc_pulse = reactive(0L),
         return()
       }
 
-      div_paid_seq <- select_clean_metric_row(cf, "Cash Dividends Paid", include_ttm = FALSE)
+      div_paid_seq <- select_clean_metric_row_any(cf,
+        c("^Common Stock Dividend Paid$", "^Common Stock Dividends Paid$"), include_ttm = FALSE)
+      if (all(!is.finite(div_paid_seq))) {
+        total <- select_clean_metric_row(cf, "^Cash Dividends Paid$", include_ttm = FALSE)
+        preferred <- select_clean_metric_row_any(cf,
+          c("^Preferred Stock Dividend Paid$", "^Preferred Dividends Paid$"), include_ttm = FALSE)
+        div_paid_seq <- if (length(total) == length(preferred)) abs(total) - abs(preferred) else NA_real_
+      }
+      ctx <- .ynow_currency_context()
+      from_ccy <- attr(cf, "money_ccy") %||% financial_currency()
+      div_paid_seq <- money_to_session(div_paid_seq, from_ccy, quote_currency(), ctx$fx_usd_twd)
       shares <- .ddm_quote_shares()
       
       n_years <- min(input$cycle_years, length(div_paid_seq))
@@ -508,7 +492,7 @@ ddm_module_server <- function(id, auto_calc_pulse = reactive(0L),
         showNotification("無法計算平均 D0：股數資料不足", type = "error")
         return()
       }
-      ui_text <- paste0(money_prefix(), round(new_d0, 2))
+      ui_text <- paste0(money_prefix(quote_currency()), round(new_d0, 2))
       
       updateNumericInput(session, "d0", value = round(new_d0, 2))
       output$txt_d0_avg_res <- renderUI({ HTML(glue::glue("<div style='color: #00a65a; font-weight: bold;'>已成功將 D0 更新為 {ui_text}</div>")) })
@@ -516,6 +500,7 @@ ddm_module_server <- function(id, auto_calc_pulse = reactive(0L),
     })
     
     return(list(
+      source_ready = .echo_guard$ready,
       ddm_price = reactive({
         res <- tryCatch(ddm_calc(), error = function(e) NULL)
         if (!is.null(res) && identical(res$status, "success")) res$value else NA

@@ -102,3 +102,7 @@ See `.cursor/rules/auto-deploy-after-optimize.mdc`, `.cursor/rules/auto-cloud-pu
 **i18n before ship：** 功能收尾時先完成 en-US + zh-TW（`ui_locale.R` + locale push）。**僅規則／AGENTS／文件**變更 → commit + push，**不** shinyapps 部署、**不**版號 +0.01。
 
 **Version bump：** 每次部署完成由 `scripts/deploy_app_21.R` 將 UI／header 等顯示版號 **+0.01**（如 `v24` → `v24.01`）；目錄維持 `app_27.0/`，僅在使用者要求下一個整階 **+1** 時才改名，並以 `YNOW_VERSION_BUMP_MAJOR=1` 進到下一個 `vN.00`。詳見 `.cursor/rules/version-bump-on-merge.mdc`。
+
+## Current standing ship authorization (2026-10-30, Asia/Taipei)
+
+User explicitly authorizes the completed financial parameter-source audit fixes and subsequent fixes in this work to be deployed automatically and all related PRs merged into master after required checks pass. Enable auto-merge; retain branch protections and meaningful verification. Deployment-record PRs also remain pre-authorized for auto-merge.

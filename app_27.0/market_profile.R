@@ -12,11 +12,21 @@ normalize_market_mode <- function(mode) {
   "US"
 }
 
-get_market_mode <- function() normalize_market_mode(.ynow_market_ctx$mode)
-
+# Keep legacy standalone scripts working, but isolate every Shiny connection.
+.ynow_market_context <- function() {
+  domain <- if ("shiny" %in% loadedNamespaces()) shiny::getDefaultReactiveDomain() else NULL
+  if (is.null(domain) || is.null(domain$userData)) return(.ynow_market_ctx)
+  if (is.null(domain$userData$ynow_market_context)) {
+    domain$userData$ynow_market_context <- new.env(parent = emptyenv())
+    domain$userData$ynow_market_context$mode <- "US"
+  }
+  domain$userData$ynow_market_context
+}
+get_market_mode <- function() normalize_market_mode(.ynow_market_context()$mode)
 set_market_mode <- function(mode) {
-  .ynow_market_ctx$mode <- normalize_market_mode(mode)
-  invisible(.ynow_market_ctx$mode)
+  ctx <- .ynow_market_context()
+  ctx$mode <- normalize_market_mode(mode)
+  invisible(ctx$mode)
 }
 
 #' 依市場回傳預設／基準／文案設定

@@ -1,0 +1,20 @@
+OK pb_asset_module_server exported
+OK pb_asset_module_ui exported
+OK .pb_formula_p exported
+OK derive_pb_targets exported
+OK P/B linear BVPS×1.5
+OK P/B TBVPS path
+OK P/B NA when basis<=0
+OK P/B NA when pb<=0
+OK justified P/B closed form
+OK justified usable mid
+OK BVPS×justified fair
+OK multiples mode skips justified
+OK justified NA when Ke<=g
+OK neg equity sets pb_blocked
+OK neg equity mid is NA
+OK module uses .pb_formula_p
+OK module uses derive_pb_targets
+OK module has justified target mode
+OK module tab is pb_calculator
+All P/B asset smoke checks passed.

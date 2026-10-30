@@ -1,0 +1,18 @@
+OK NVDA-like sync ok
+OK NVDA-like latest ~2.80%
+OK NVDA-like 3y avg ~2.34%
+OK NVDA-like not a CapEx spike
+OK NVDA-like seeds latest (~2.8%), not foundry ~37%
+OK NVDA-like margin << 10%
+OK TSM-like sync ok
+OK TSM-like 3y avg ~37.07%
+OK TSM-like latest ~33.67%
+OK sticky prior is foundry-level
+OK after TSM→NVDA sync, rate is NVDA (~2.8%), not sticky 37.07
+OK spike detected
+OK spike seeds 3y avg (40%)
+OK spike off uses latest 100%
+OK spike off not flagged
+OK user TTM CapEx/Rev ~2.43%
+OK quarterly series sync stays ~2–3%
+All CapEx sync checks passed.

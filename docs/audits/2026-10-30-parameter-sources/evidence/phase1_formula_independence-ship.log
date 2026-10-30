@@ -1,0 +1,56 @@
+
+== P1-A DCF: path PV / TV / equity bridge / FCFE / two-rate ==
+PASS DCF FCFF per-share vs independent oracle
+PASS DCF FCFF enterprise vs oracle EV
+PASS DCF FCFF equity vs oracle equity
+PASS DCF FCFE ignores cash−debt bridge
+PASS FCFF→FCFE y1 vs oracle
+PASS FCFF→FCFE y2 vs oracle (debt roll)
+PASS DCF two-rate without yr_stage2 → NA (strict gate)
+PASS DCF two-rate EV vs oracle (y1=2,y2=2)
+PASS DCF unit Gordon n=1 vs oracle
+PASS DCF gate WACC==g unavailable
+
+== P1-A DDM: Gordon / SPM / two-stage (oracle vs helpers + UI algebra) ==
+PASS DDM Gordon helper vs oracle
+PASS DDM SPM vs oracle
+PASS DDM SPM allows g>Ke
+PASS DDM two-stage vs oracle (n=3 intermediates)
+
+== P1-A RI: BV roll / RI_t / TV / linear ROE fade ==
+PASS RI intrinsic vs oracle
+PASS RI year-1 Beg_BV
+PASS RI year-2 Beg_BV (roll)
+PASS RI year-3 RI
+PASS RI PV_RI sum
+PASS RI PV_terminal
+PASS RI linear ROE path vs oracle
+PASS RI with linear fade intrinsic
+PASS RI gate g==Ke error
+
+== P1-B MULT: each method oracle + boundaries + P/S vs EV/Sales ==
+PASS MULT P/E price
+PASS MULT P/E neg EPS unavailable
+PASS MULT Forward P/E end-to-end
+PASS MULT Forward EPS no price back-solve
+PASS MULT PEG ratio
+PASS MULT EV/FCF price
+PASS MULT EV/FCF EV intermediate
+PASS MULT EV/EBIT price
+PASS MULT EV/EBIT EV intermediate
+PASS MULT EV/EBITDA price
+PASS MULT EV/EBITDA EV intermediate
+PASS MULT EV/Sales price
+PASS MULT EV/Sales EV intermediate
+PASS MULT EV/ARR price
+PASS MULT EV/ARR EV intermediate
+PASS MULT P/S price (no net-debt bridge)
+PASS MULT SOTP revenue per-segment
+PASS MULT SOTP single segment unavailable
+PASS MULT thin multiple_implied_price == oracle P/E
+PASS MULT thin enterprise_implied_price == oracle EV/FCF
+
+== Phase 1 Formula Independence summary ==
+PASS=43 FAIL=0
+Wrote findings JSON → /workspace/theYNowApp-audit/docs/phase1_findings.json
+ALL CONTROLS PASSED

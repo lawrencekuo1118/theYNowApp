@@ -1428,7 +1428,9 @@ beta_rolling_section_ui <- function() {
       column(3, numericInput("bridge_cash", "Cash", value = NA, step = 1)),
       column(3, numericInput("bridge_debt", "Total Debt", value = NA, step = 1)),
       column(3, numericInput("bridge_shares", "股數", value = NA, step = 1)),
-      column(3, numericInput("bridge_revenue", "總營收", value = NA, step = 1))
+      column(3, numericInput("bridge_revenue", "總營收", value = NA, step = 1)),
+      column(12, numericInput("bridge_fx", ui_i18n("param_fx_label"), value = NA, min = 0.0001, step = 0.01)),
+      column(12, numericInput("bridge_other_claims", ui_i18n("param_other_claims_label"), value = NA, step = 1))
     ),
     tags$button(
       id = "bridge_reload",
@@ -4344,6 +4346,7 @@ ui <- dashboardPage(
     # withMathJax() inside lazy tab builders (not in the initial HTML).
 
     tags$head(
+      tags$script(src = "parameter_completeness.js"),
       # Deferred MathJax + gate-demo video arming (Home-critical-path hygiene).
       tags$script(HTML("
         (function () {

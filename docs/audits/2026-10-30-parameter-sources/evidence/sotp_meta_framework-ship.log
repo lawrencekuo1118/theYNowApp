@@ -1,0 +1,20 @@
+[PASS] sidebar has Meta-Framework category
+[PASS] SOTP parent is meta (not relative)
+[PASS] relative menu no longer nests SOTP
+[PASS] Justified P/B nests under Asset-based
+[PASS] locale en menu_cat_meta
+[PASS] locale zh-TW menu_cat_meta
+[PASS] locale lead Meta-Framework (en)
+[PASS] locale lead Meta-Framework (zh-TW)
+[PASS] ms_card_sotp Meta-Framework formula
+[PASS] lens meta_framework_sotp
+[PASS] .vg_is_meta_framework helper
+[PASS] .vg_is_relative_model is Multiples-only
+[PASS] sotp module lead Meta-Framework
+[PASS] methodology positions SOTP as Meta-Framework
+[PASS] lens runtime
+[PASS] meta helper runtime
+[PASS] multiples still relative
+[PASS] hold_note copy Meta-Framework
+
+All SOTP Meta-Framework checks passed.

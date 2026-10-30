@@ -149,6 +149,9 @@ nav_module_server <- function(id,
                               financial_currency = reactive(NA),
                               ui_locale = reactive("zh-TW")) {
   moduleServer(id, function(input, output, session) {
+    .echo_guard <- ynow_input_echo_guard(input, session, current_ticker, "navps")
+    updateNumericInput <- .echo_guard$update
+
     nav_shares <- reactiveVal(NA_real_)
     nav_components <- reactiveVal(NULL)
     shares_resolve_note <- reactiveVal(NULL)
@@ -201,6 +204,7 @@ nav_module_server <- function(id,
       if (!is.finite(disc_pct)) disc_pct <- (APP_DEFAULTS$nav_holdco_discount %||% 0) * 100
       navc <- extract_nav_components(df_bs, holdco_discount = disc_pct / 100)
       nav_components(navc)
+      updateNumericInput(session, "navps", value = NA_real_)
       if (!is.finite(navc$nav)) {
         showNotification("無法計算 NAV（缺少股東權益）。", type = "warning", duration = 6)
         return(invisible(NULL))
@@ -357,7 +361,7 @@ nav_module_server <- function(id,
         ))
       }
       mkt_txt <- if (is.finite(res$market_price)) {
-        paste0(money_prefix(), round(res$market_price, 2))
+        paste0(money_prefix(quote_currency()), round(res$market_price, 2))
       } else {
         "N/A"
       }
@@ -386,13 +390,13 @@ nav_module_server <- function(id,
           style = "text-align:center; flex:1; min-width:120px;",
           p(style = "font-size:13px; color:#7f8c8d; margin-bottom:5px; font-weight:bold;", "NAVPS"),
           p(style = "font-size:22px; color:#2c3e50; font-weight:bold; margin:0;",
-            paste0(money_prefix(), round(res$navps, 2)))
+            paste0(money_prefix(quote_currency()), round(res$navps, 2)))
         ),
         div(
           style = "text-align:center; flex:1; min-width:120px;",
           p(style = "font-size:13px; color:#7f8c8d; margin-bottom:5px; font-weight:bold;", "基準目標價"),
           p(style = "font-size:28px; color:#1a1a1a; font-weight:bold; margin:0;",
-            paste0(money_prefix(), round(res$fair_mid, 2))),
+            paste0(money_prefix(quote_currency()), round(res$fair_mid, 2))),
           p(style = "font-size:12px; color:#95a5a6;", sprintf("@ %.2f× NAV", res$nav_mid))
         ),
         div(
@@ -415,7 +419,7 @@ nav_module_server <- function(id,
     output$vbx_navps <- renderValueBox({
       val <- input$navps
       valueBox(
-        if (is.null(val) || is.na(val)) "N/A" else paste0(money_prefix(), round(val, 2)),
+        if (is.null(val) || is.na(val)) "N/A" else paste0(money_prefix(quote_currency()), round(val, 2)),
         "每股淨資產 NAVPS", icon = icon("sitemap"), color = "olive"
       )
     })
@@ -424,7 +428,7 @@ nav_module_server <- function(id,
       raw <- if (is.null(live) || !is.finite(live$mid)) {
         "N/A"
       } else {
-        paste0(money_prefix(), round(live$mid, 2))
+        paste0(money_prefix(quote_currency()), round(live$mid, 2))
       }
       valueBox(
         ynow_model_result_num(raw),
@@ -434,7 +438,7 @@ nav_module_server <- function(id,
     output$vbx_mkt <- renderValueBox({
       px <- suppressWarnings(as.numeric(current_price())[1])
       valueBox(
-        if (!is.finite(px)) "N/A" else paste0(money_prefix(), round(px, 2)),
+        if (!is.finite(px)) "N/A" else paste0(money_prefix(quote_currency()), round(px, 2)),
         "目前市價", icon = icon("chart-line"), color = "maroon"
       )
     })
@@ -474,7 +478,7 @@ nav_module_server <- function(id,
         geom_col(width = 0.55, alpha = 0.85) +
         geom_text(aes(label = format_dollar_abbr(Price)), vjust = -0.4, fontface = "bold", size = 4.2) +
         scale_fill_manual(values = c("保守" = "#7f8c8d", "基準" = "#2980b9", "樂觀" = "#27ae60")) +
-        scale_y_continuous(labels = label_chart_number(prefix = money_prefix())) +
+        scale_y_continuous(labels = label_chart_number(prefix = money_prefix(quote_currency()))) +
         theme_minimal(base_size = 14) +
         labs(title = "NAV 合理價區間", x = NULL, y = paste0("每股合理價 (", money_label(), ")")) +
         theme(legend.position = "none", plot.title = element_text(face = "bold")) +
@@ -526,6 +530,7 @@ nav_module_server <- function(id,
     return(list(
       # Calc-only exports: Composite overlays must not appear until 試算 / Run
       # (or silent primary auto-calc). Keep nav_live_band for in-module value boxes.
+      source_ready = .echo_guard$ready,
       nav_price = reactive({
         res <- tryCatch(nav_calc(), error = function(e) NULL)
         if (!is.null(res) && identical(res$status, "success")) res$fair_mid else NA_real_

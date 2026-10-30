@@ -1,0 +1,210 @@
+OK zh section1 title
+OK zh doc_kicker US default
+OK MOS formula present
+OK target formula has 120
+OK DCF bullet
+OK Bear/Base/Bull bullet
+OK no peer/lab narrative in bullets
+OK CapEx growth bullet
+OK implied P/B = 30
+OK disclaimer excludes peers
+OK zh disclaimer self-risk
+OK zh disclaimer points to About
+OK analysis paragraphs count >= 6
+OK analysis para1 has MOS
+OK analysis para title 投資立場
+OK analysis excludes buy-signal wording misuse
+OK zh F-Score quality screen section
+OK zh F-Score bullet uses 品質檢核
+OK zh analysis title 品質檢核
+OK zh no 體質檢核 label
+OK zh F-Score quality screen section
+OK zh F-Score bullet uses 品質檢核
+OK zh analysis title 品質檢核
+OK zh no 體質檢核 label
+OK en section1 title
+OK en doc_kicker US default
+OK en disclaimer mentions peer exclusion
+OK en disclaimer self-risk
+OK en disclaimer points to About
+OK en analysis paragraphs >= 6
+OK en analysis heading key
+OK en F-Score quality screen section
+OK en F-Score not health check
+OK en F-Score bullet quality screen
+OK en F-Score quality screen section
+OK en F-Score not health check
+OK en F-Score bullet quality screen
+OK sensitivity df rows
+OK template has report_copy
+OK template has sensitivity
+OK template no peer-comp section
+OK template logo blue
+OK template logo green
+OK template analysis-box
+OK template report_condensed
+OK template has market_mode
+OK template mode-badge
+OK template gold accent
+OK template black accent
+OK template TW sector labels
+OK template lite FCF gate
+OK locale keys download_report_about exist
+[WARNING] Could not convert TeX math session_currency[[1]])) "USD" else params, rendering as TeX:
+  on_currency[[1]])) "USD" else params
+                     ^
+  unexpected '"'
+  expecting "\\bangle", "\\brace", "\\brack", "\\choose", "\\displaystyle", "\\textstyle", "\\scriptstyle", "\\scriptscriptstyle", "{", "\\operatorname", letter, digit, ".", "!", "'", "''", "'''", "''''", "*", "+", ",", "-", ".", "/", ":", ":=", ";", "<", "=", ">", "?", "@", "~", "_", "^", "\\left", "\\", "\\hyperref" or end of input
+[WARNING] Could not convert TeX math " else ", rendering as TeX:
+  " else "
+  ^
+  unexpected '"'
+  expecting "%", "\\label", "\\tag", "\\nonumber", whitespace, "\\allowbreak", "\\bangle", "\\brace", "\\brack", "\\choose", "\\displaystyle", "\\textstyle", "\\scriptstyle", "\\scriptscriptstyle", "{", "\\operatorname", letter, digit, ".", "!", "'", "''", "'''", "''''", "*", "+", ",", "-", ".", "/", ":", ":=", ";", "<", "=", ">", "?", "@", "~", "_", "^", "\\left", "\\", "\\hyperref" or end of input
+[WARNING] Could not convert TeX math market_mode
+  .market <- toupper(trimws(as.character(
+    if (is.null(.mm_raw) || length(.mm_raw) < 1L || is.na(.mm_raw[[1]])) "US" else .mm_raw[[1]]
+  )))
+  if (!.market %in% c("US", "TW")) .market <- "US"
+  .condensed <- isTRUE(params, rendering as TeX:
+  .na(.mm_raw[[1]])) "US" else .mm_raw[[1]
+                     ^
+  unexpected '"'
+  expecting "\\bangle", "\\brace", "\\brack", "\\choose", "\\displaystyle", "\\textstyle", "\\scriptstyle", "\\scriptscriptstyle", "{", "\\operatorname", letter, digit, ".", "!", "'", "''", "'''", "''''", "*", "+", ",", "-", ".", "/", ":", ":=", ";", "<", "=", ">", "?", "@", "~", "_", "^", "\\left", "\\", "\\hyperref" or end of input
+[WARNING] Could not convert TeX math report_locale, "zh-TW"),
+      stock_code = params, rendering as TeX:
+  report_locale, "zh-TW"),
+                 ^
+  unexpected '"'
+  expecting "\\bangle", "\\brace", "\\brack", "\\choose", "\\displaystyle", "\\textstyle", "\\scriptstyle", "\\scriptscriptstyle", "{", "\\operatorname", letter, digit, ".", "!", "'", "''", "'''", "''''", "*", "+", ",", "-", ".", "/", ":", ":=", ";", "<", "=", ">", "?", "@", "~", "_", "^", "\\left", "\\", "\\hyperref" or end of input
+[WARNING] Could not convert TeX math report_locale), "en")) " yrs" else " 年")
+      else "N/A",
+      safe_chr(params, rendering as TeX:
+  report_locale), "en")) " yrs" else " 年")
+                  ^
+  unexpected '"'
+  expecting "\\bangle", "\\brace", "\\brack", "\\choose", "\\displaystyle", "\\textstyle", "\\scriptstyle", "\\scriptscriptstyle", "{", "\\operatorname", letter, digit, ".", "!", "'", "''", "'''", "''''", "*", "+", ",", "-", ".", "/", ":", ":=", ";", "<", "=", ">", "?", "@", "~", "_", "^", "\\left", "\\", "\\hyperref" or end of input
+[WARNING] Could not convert TeX math sensitivity_df) && is.data.frame(params, rendering as TeX:
+  sensitivity_df) && is.data.frame(params
+                  ^
+  unexpected '&'
+  expecting "\\bangle", "\\brace", "\\brack", "\\choose", "\\displaystyle", "\\textstyle", "\\scriptstyle", "\\scriptscriptstyle", "{", "\\operatorname", letter, digit, ".", "!", "'", "''", "'''", "''''", "*", "+", ",", "-", ".", "/", ":", ":=", ";", "<", "=", ">", "?", "@", "~", "_", "^", "\\left", "\\", "\\hyperref" or end of input
+[WARNING] Could not convert TeX math sensitivity_df) > 0) {
+    emit_html("<p class='section-lead'>WACC × terminal g sensitivity (primary DCF／DDM path)</p>")
+    kable_safe(params, rendering as TeX:
+    emit_html("<p class='section-lead'>WAC
+              ^
+  unexpected "\""
+  expecting "\\bangle", "\\brace", "\\brack", "\\choose", "\\displaystyle", "\\textstyle", "\\scriptstyle", "\\scriptscriptstyle", "{", "\\operatorname", letter, digit, ".", "!", "'", "''", "'''", "''''", "*", "+", ",", "-", ".", "/", ":", ":=", ";", "<", "=", ">", "?", "@", "~", "_", "^", "\\left", "\\", "\\hyperref", white space or "}"
+OK rendered has logo blue
+OK rendered has gold accent
+OK rendered has mode badge US Full
+OK rendered has analysis notes
+OK rendered has analysis-box
+OK rmarkdown HTML smoke render
+OK lite pack truncates analysis to <=4
+OK lite pack title marks Lite
+[WARNING] Could not convert TeX math session_currency[[1]])) "USD" else params, rendering as TeX:
+  on_currency[[1]])) "USD" else params
+                     ^
+  unexpected '"'
+  expecting "\\bangle", "\\brace", "\\brack", "\\choose", "\\displaystyle", "\\textstyle", "\\scriptstyle", "\\scriptscriptstyle", "{", "\\operatorname", letter, digit, ".", "!", "'", "''", "'''", "''''", "*", "+", ",", "-", ".", "/", ":", ":=", ";", "<", "=", ">", "?", "@", "~", "_", "^", "\\left", "\\", "\\hyperref" or end of input
+[WARNING] Could not convert TeX math " else ", rendering as TeX:
+  " else "
+  ^
+  unexpected '"'
+  expecting "%", "\\label", "\\tag", "\\nonumber", whitespace, "\\allowbreak", "\\bangle", "\\brace", "\\brack", "\\choose", "\\displaystyle", "\\textstyle", "\\scriptstyle", "\\scriptscriptstyle", "{", "\\operatorname", letter, digit, ".", "!", "'", "''", "'''", "''''", "*", "+", ",", "-", ".", "/", ":", ":=", ";", "<", "=", ">", "?", "@", "~", "_", "^", "\\left", "\\", "\\hyperref" or end of input
+[WARNING] Could not convert TeX math market_mode
+  .market <- toupper(trimws(as.character(
+    if (is.null(.mm_raw) || length(.mm_raw) < 1L || is.na(.mm_raw[[1]])) "US" else .mm_raw[[1]]
+  )))
+  if (!.market %in% c("US", "TW")) .market <- "US"
+  .condensed <- isTRUE(params, rendering as TeX:
+  .na(.mm_raw[[1]])) "US" else .mm_raw[[1]
+                     ^
+  unexpected '"'
+  expecting "\\bangle", "\\brace", "\\brack", "\\choose", "\\displaystyle", "\\textstyle", "\\scriptstyle", "\\scriptscriptstyle", "{", "\\operatorname", letter, digit, ".", "!", "'", "''", "'''", "''''", "*", "+", ",", "-", ".", "/", ":", ":=", ";", "<", "=", ">", "?", "@", "~", "_", "^", "\\left", "\\", "\\hyperref" or end of input
+[WARNING] Could not convert TeX math report_locale, "zh-TW"),
+      stock_code = params, rendering as TeX:
+  report_locale, "zh-TW"),
+                 ^
+  unexpected '"'
+  expecting "\\bangle", "\\brace", "\\brack", "\\choose", "\\displaystyle", "\\textstyle", "\\scriptstyle", "\\scriptscriptstyle", "{", "\\operatorname", letter, digit, ".", "!", "'", "''", "'''", "''''", "*", "+", ",", "-", ".", "/", ":", ":=", ";", "<", "=", ">", "?", "@", "~", "_", "^", "\\left", "\\", "\\hyperref" or end of input
+[WARNING] Could not convert TeX math report_locale), "en")) " yrs" else " 年")
+      else "N/A",
+      safe_chr(params, rendering as TeX:
+  report_locale), "en")) " yrs" else " 年")
+                  ^
+  unexpected '"'
+  expecting "\\bangle", "\\brace", "\\brack", "\\choose", "\\displaystyle", "\\textstyle", "\\scriptstyle", "\\scriptscriptstyle", "{", "\\operatorname", letter, digit, ".", "!", "'", "''", "'''", "''''", "*", "+", ",", "-", ".", "/", ":", ":=", ";", "<", "=", ">", "?", "@", "~", "_", "^", "\\left", "\\", "\\hyperref" or end of input
+[WARNING] Could not convert TeX math sensitivity_df) && is.data.frame(params, rendering as TeX:
+  sensitivity_df) && is.data.frame(params
+                  ^
+  unexpected '&'
+  expecting "\\bangle", "\\brace", "\\brack", "\\choose", "\\displaystyle", "\\textstyle", "\\scriptstyle", "\\scriptscriptstyle", "{", "\\operatorname", letter, digit, ".", "!", "'", "''", "'''", "''''", "*", "+", ",", "-", ".", "/", ":", ":=", ";", "<", "=", ">", "?", "@", "~", "_", "^", "\\left", "\\", "\\hyperref" or end of input
+[WARNING] Could not convert TeX math sensitivity_df) > 0) {
+    emit_html("<p class='section-lead'>WACC × terminal g sensitivity (primary DCF／DDM path)</p>")
+    kable_safe(params, rendering as TeX:
+    emit_html("<p class='section-lead'>WAC
+              ^
+  unexpected "\""
+  expecting "\\bangle", "\\brace", "\\brack", "\\choose", "\\displaystyle", "\\textstyle", "\\scriptstyle", "\\scriptscriptstyle", "{", "\\operatorname", letter, digit, ".", "!", "'", "''", "'''", "''''", "*", "+", ",", "-", ".", "/", ":", ":=", ";", "<", "=", ">", "?", "@", "~", "_", "^", "\\left", "\\", "\\hyperref", white space or "}"
+OK lite badge present
+OK lite omits income appendix table
+OK lite appendix note
+OK lite omits FCF chart lead
+OK lite omits sensitivity grid lead
+OK lite omits fscore checklist row
+OK rmarkdown Lite condensed smoke render
+OK tw pack doc_kicker
+[WARNING] Could not convert TeX math session_currency[[1]])) "USD" else params, rendering as TeX:
+  on_currency[[1]])) "USD" else params
+                     ^
+  unexpected '"'
+  expecting "\\bangle", "\\brace", "\\brack", "\\choose", "\\displaystyle", "\\textstyle", "\\scriptstyle", "\\scriptscriptstyle", "{", "\\operatorname", letter, digit, ".", "!", "'", "''", "'''", "''''", "*", "+", ",", "-", ".", "/", ":", ":=", ";", "<", "=", ">", "?", "@", "~", "_", "^", "\\left", "\\", "\\hyperref" or end of input
+[WARNING] Could not convert TeX math " else ", rendering as TeX:
+  " else "
+  ^
+  unexpected '"'
+  expecting "%", "\\label", "\\tag", "\\nonumber", whitespace, "\\allowbreak", "\\bangle", "\\brace", "\\brack", "\\choose", "\\displaystyle", "\\textstyle", "\\scriptstyle", "\\scriptscriptstyle", "{", "\\operatorname", letter, digit, ".", "!", "'", "''", "'''", "''''", "*", "+", ",", "-", ".", "/", ":", ":=", ";", "<", "=", ">", "?", "@", "~", "_", "^", "\\left", "\\", "\\hyperref" or end of input
+[WARNING] Could not convert TeX math market_mode
+  .market <- toupper(trimws(as.character(
+    if (is.null(.mm_raw) || length(.mm_raw) < 1L || is.na(.mm_raw[[1]])) "US" else .mm_raw[[1]]
+  )))
+  if (!.market %in% c("US", "TW")) .market <- "US"
+  .condensed <- isTRUE(params, rendering as TeX:
+  .na(.mm_raw[[1]])) "US" else .mm_raw[[1]
+                     ^
+  unexpected '"'
+  expecting "\\bangle", "\\brace", "\\brack", "\\choose", "\\displaystyle", "\\textstyle", "\\scriptstyle", "\\scriptscriptstyle", "{", "\\operatorname", letter, digit, ".", "!", "'", "''", "'''", "''''", "*", "+", ",", "-", ".", "/", ":", ":=", ";", "<", "=", ">", "?", "@", "~", "_", "^", "\\left", "\\", "\\hyperref" or end of input
+[WARNING] Could not convert TeX math report_locale, "zh-TW"),
+      stock_code = params, rendering as TeX:
+  report_locale, "zh-TW"),
+                 ^
+  unexpected '"'
+  expecting "\\bangle", "\\brace", "\\brack", "\\choose", "\\displaystyle", "\\textstyle", "\\scriptstyle", "\\scriptscriptstyle", "{", "\\operatorname", letter, digit, ".", "!", "'", "''", "'''", "''''", "*", "+", ",", "-", ".", "/", ":", ":=", ";", "<", "=", ">", "?", "@", "~", "_", "^", "\\left", "\\", "\\hyperref" or end of input
+[WARNING] Could not convert TeX math report_locale), "en")) " yrs" else " 年")
+      else "N/A",
+      safe_chr(params, rendering as TeX:
+  report_locale), "en")) " yrs" else " 年")
+                  ^
+  unexpected '"'
+  expecting "\\bangle", "\\brace", "\\brack", "\\choose", "\\displaystyle", "\\textstyle", "\\scriptstyle", "\\scriptscriptstyle", "{", "\\operatorname", letter, digit, ".", "!", "'", "''", "'''", "''''", "*", "+", ",", "-", ".", "/", ":", ":=", ";", "<", "=", ">", "?", "@", "~", "_", "^", "\\left", "\\", "\\hyperref" or end of input
+[WARNING] Could not convert TeX math sensitivity_df) && is.data.frame(params, rendering as TeX:
+  sensitivity_df) && is.data.frame(params
+                  ^
+  unexpected '&'
+  expecting "\\bangle", "\\brace", "\\brack", "\\choose", "\\displaystyle", "\\textstyle", "\\scriptstyle", "\\scriptscriptstyle", "{", "\\operatorname", letter, digit, ".", "!", "'", "''", "'''", "''''", "*", "+", ",", "-", ".", "/", ":", ":=", ";", "<", "=", ">", "?", "@", "~", "_", "^", "\\left", "\\", "\\hyperref" or end of input
+[WARNING] Could not convert TeX math sensitivity_df) > 0) {
+    emit_html("<p class='section-lead'>WACC × terminal g sensitivity (primary DCF／DDM path)</p>")
+    kable_safe(params, rendering as TeX:
+    emit_html("<p class='section-lead'>WAC
+              ^
+  unexpected "\""
+  expecting "\\bangle", "\\brace", "\\brack", "\\choose", "\\displaystyle", "\\textstyle", "\\scriptstyle", "\\scriptscriptstyle", "{", "\\operatorname", letter, digit, ".", "!", "'", "''", "'''", "''''", "*", "+", ",", "-", ".", "/", ":", ":=", ";", "<", "=", ">", "?", "@", "~", "_", "^", "\\left", "\\", "\\hyperref", white space or "}"
+OK tw mode badge
+OK tw industry labels
+OK rmarkdown TW Full smoke render
+OK server passes market_mode to report
+OK server filename has market+edition
+OK server reads ynow_build version
+ALL OK

@@ -1,0 +1,5 @@
+PASS: seven-engine required inputs, conditional requirements, zero vs missing, bilingual suggestions, immutable inputs, validated manual SOTP segments
+Loading required package: shiny
+PASS: Lite applies finite references with assumption disclosure; Full stays manual; missing financial facts stay missing; manual edits remove stale disclosures
+PASS: source echo gate rejects old ticker values and accepts later manual fills
+PASS: operating IC excludes cash/nonoperating assets/nondebt liabilities; unknown claims stay missing

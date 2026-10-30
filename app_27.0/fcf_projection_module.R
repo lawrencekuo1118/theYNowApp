@@ -248,10 +248,14 @@ fcf_projection_module_server <- function(
     fcfe_debt0       = reactive(0),
     fcfe_g           = reactive(0),
     tax_ratio        = reactive(NULL),
-    shared_bridge    = NULL
+    shared_bridge    = NULL,
+    ui_locale = reactive("en")
 ) {
   
   moduleServer(id, function(input, output, session) {
+    .echo_guard <- ynow_input_echo_guard(input, session, shiny::reactive(list(d_income_statement(), d_cash_flow())), c("fcf_nopat", "fcf_depreciation", "fcf_capex", "fcf_delta_nwc"))
+    updateNumericInput <- .echo_guard$update
+
     ns <- session$ns
 
     claim_val <- reactive(as.character(dcf_claim() %||% "fcff")[1])
@@ -355,15 +359,23 @@ fcf_projection_module_server <- function(
     
     # 🧮 輔助：歷史參數萃取
     extract_dcf_parameters <- function(df_is, df_cf, df_bs) {
+      aligned <- align_financial_flows(df_is, df_cf, include_ttm = FALSE)
+      df_is <- aligned$income
+      df_cf <- aligned$cashflow
+      periods <- intersect(names(df_is)[-1], names(df_bs)[-1])
+      if (!length(periods)) return(list(tax_rate = NA_real_, tax_rate_source = "unavailable_period", net_capex_margin = NA_real_, nwc_margin = NA_real_))
+      df_is <- df_is[, c(names(df_is)[1], periods), drop = FALSE]
+      df_cf <- df_cf[, c(names(df_cf)[1], periods), drop = FALSE]
+      df_bs <- df_bs[, c(names(df_bs)[1], periods), drop = FALSE]
       revenue    <- select_clean_metric_row(df_is, "Total Revenue", include_ttm = FALSE)
       op_income  <- select_clean_metric_row(df_is, "Operating Income", include_ttm = FALSE)
-      income_tax <- select_clean_metric_row(df_is, "Income Tax Expense", include_ttm = FALSE)
+      income_tax <- select_clean_metric_row_any(df_is, c("^Income Tax Expense$", "^Tax Provision$"), include_ttm = FALSE)
       pre_tax    <- select_clean_metric_row(df_is, "Pretax Income", include_ttm = FALSE)
       capex <- select_clean_metric_row(df_cf, "Capital Expenditure", include_ttm = FALSE)
       if (all(is.na(capex))) capex <- select_clean_metric_row(df_cf, "Capital Expenditures", include_ttm = FALSE)
       
       depre <- select_clean_metric_row_any(df_cf, DA_PATTERNS, include_ttm = FALSE)
-      depre_val <- if (length(depre) < 1 || is.na(depre[1])) 0 else depre[1]
+      depre_val <- depre
       
       curr_assets <- select_clean_metric_row(df_bs, "Current Assets", include_ttm = FALSE)
       cash        <- select_clean_metric_row(df_bs, "Cash And Cash Equivalents", include_ttm = FALSE)
@@ -376,7 +388,7 @@ fcf_projection_module_server <- function(
       nwc <- non_cash_ca - non_debt_cl
       
       tax_missing <- is.na(pre_tax) | pre_tax == 0 | is.na(income_tax)
-      tax_rate <- ifelse(tax_missing, 0.21, income_tax / pre_tax)
+      tax_rate <- ifelse(tax_missing, statutory_tax_ratio(), income_tax / pre_tax)
       tax_rate <- pmax(0, pmin(tax_rate, 0.5)) 
       
       net_capex <- abs(capex) - depre_val
@@ -386,7 +398,7 @@ fcf_projection_module_server <- function(
       delta_nwc <- c(nwc[-length(nwc)] - nwc[-1], NA)
       delta_rev <- c(revenue[-length(revenue)] - revenue[-1], NA)
       
-      nwc_margin <- ifelse(is.na(delta_rev) | delta_rev == 0, 0, delta_nwc / delta_rev)
+      nwc_margin <- ifelse(is.na(delta_rev) | delta_rev == 0, NA_real_, delta_nwc / delta_rev)
       
       calc_tax <- mean(tax_rate, na.rm = TRUE)
       calc_net_capex <- mean(net_capex_margin[1:2], na.rm = TRUE) 
@@ -394,10 +406,10 @@ fcf_projection_module_server <- function(
       tax_fallback <- is.nan(calc_tax) || isTRUE(any(tax_missing))
       
       return(list(
-        tax_rate         = if (is.nan(calc_tax)) 0.21 else calc_tax,
-        tax_rate_source  = if (tax_fallback) "statutory_fallback_0.21" else "effective_tax",
-        net_capex_margin = if(is.nan(calc_net_capex)) 0 else calc_net_capex, 
-        nwc_margin       = if(is.nan(calc_nwc)) 0 else calc_nwc
+        tax_rate         = if (is.nan(calc_tax)) statutory_tax_ratio() else calc_tax,
+        tax_rate_source  = if (tax_fallback) "market_statutory_fallback" else "effective_tax",
+        net_capex_margin = if(is.nan(calc_net_capex)) NA_real_ else calc_net_capex,
+        nwc_margin       = if(is.nan(calc_nwc)) NA_real_ else calc_nwc
       ))
     }
     
@@ -562,26 +574,30 @@ fcf_projection_module_server <- function(
     do_sync_financials <- function() {
       req(d_cash_flow(), d_income_statement(), d_balance_sheet())
       
-      rev  <- statement_total_revenue(d_income_statement())
+      aligned <- align_financial_flows(d_income_statement(), d_cash_flow())
+      is_df <- aligned$income
+      cf_df <- aligned$cashflow
+
+      rev  <- statement_total_revenue(is_df)
       if (!is.null(shared_bridge)) {
         sb <- tryCatch(shared_bridge(), error = function(e) NULL)
         if (is.list(sb) && is.finite(sb$revenue)) rev <- sb$revenue
       }
-      ebit <- select_current_metric(d_income_statement(), "Operating Income", "flow")
-      tax_exp <- select_current_metric(d_income_statement(), "Income Tax Expense", "flow")
+      ebit <- select_current_metric(is_df, "Operating Income", "flow")
+      tax_exp <- select_current_metric(is_df, "Income Tax Expense", "flow")
       if (is.na(tax_exp)) {
-        tax_exp <- select_current_metric(d_income_statement(), "Tax Provision", "flow")
+        tax_exp <- select_current_metric(is_df, "Tax Provision", "flow")
       }
-      pre_tax <- select_current_metric(d_income_statement(), "Pretax Income", "flow")
+      pre_tax <- select_current_metric(is_df, "Pretax Income", "flow")
       
-      tax_rate <- if (!is.na(pre_tax) && pre_tax > 0 && !is.na(tax_exp)) max(0, min(tax_exp / pre_tax, 0.5)) else 0.21
-      nopat <- if (!is.na(ebit)) ebit * (1 - tax_rate) else select_current_metric(d_income_statement(), "Net Income", "flow")
+      tax_rate <- if (!is.na(pre_tax) && pre_tax > 0 && !is.na(tax_exp)) max(0, min(tax_exp / pre_tax, 0.5)) else statutory_tax_ratio()
+      nopat <- statement_nopat(is_df, tax_fallback = tax_rate)
       
-      dep  <- select_current_metric_any(d_cash_flow(), DA_PATTERNS, "flow")
-      raw_nwc <- select_current_metric_any(d_cash_flow(), NWC_CHANGE_PATTERNS, "flow")
-      cap  <- abs(select_current_metric(d_cash_flow(), "Capital Expenditure", "flow"))
+      dep  <- select_current_metric_any(cf_df, DA_PATTERNS, "flow")
+      raw_nwc <- select_current_metric_any(cf_df, NWC_CHANGE_PATTERNS, "flow")
+      cap  <- abs(select_current_metric(cf_df, "Capital Expenditure", "flow"))
       if (is.na(cap) || !is.finite(cap)) {
-        cap <- abs(select_current_metric(d_cash_flow(), "Capital Expenditures", "flow"))
+        cap <- abs(select_current_metric(cf_df, "Capital Expenditures", "flow"))
       }
       
       asst <- select_current_metric(d_balance_sheet(), "Total Assets", "stock")
@@ -591,19 +607,19 @@ fcf_projection_module_server <- function(
       updateNumericInput(session, "fcf_revenue", value = rev)
       updateNumericInput(session, "fcf_nopat", value = nopat) # 🌟 改為更新 NOPAT
       updateNumericInput(session, "fcf_depreciation", value = dep)
-      updateNumericInput(session, "fcf_delta_nwc", value = if(!is.na(raw_nwc)) -raw_nwc else 0)
+      updateNumericInput(session, "fcf_delta_nwc", value = if(!is.na(raw_nwc)) -raw_nwc else NA_real_)
       updateNumericInput(session, "fcf_capex", value = cap)
-      updateNumericInput(session, "fcf_invested_capital", value = asst - (liab - ifelse(is.na(debt), 0, debt)))
+      updateNumericInput(session, "fcf_invested_capital", value = statement_operating_invested_capital(d_balance_sheet()))
 
       # CapEx／D&A 佔營收：依目前財報重算前瞻 CapEx/Rev（暴衝時改採 N 年均值）。
       # 必須覆寫既有 proj_capex_rate：若僅在欄位空白時寫入，前一檔（如 TSM ~37%）
       # 會黏在 fabless／IC 設計名稱上，看起來像套用晶圓代工產業平均。
-      rev_hist <- select_clean_metric_row(d_income_statement(), "Total Revenue", include_ttm = FALSE)
-      cap_hist <- select_clean_metric_row(d_cash_flow(), "Capital Expenditure", include_ttm = FALSE)
+      rev_hist <- select_clean_metric_row(is_df, "Total Revenue", include_ttm = FALSE)
+      cap_hist <- select_clean_metric_row(cf_df, "Capital Expenditure", include_ttm = FALSE)
       if (all(is.na(cap_hist))) {
-        cap_hist <- select_clean_metric_row(d_cash_flow(), "Capital Expenditures", include_ttm = FALSE)
+        cap_hist <- select_clean_metric_row(cf_df, "Capital Expenditures", include_ttm = FALSE)
       }
-      dep_hist <- select_clean_metric_row_any(d_cash_flow(), DA_PATTERNS, include_ttm = FALSE)
+      dep_hist <- select_clean_metric_row_any(cf_df, DA_PATTERNS, include_ttm = FALSE)
       spike_cfg <- .capex_spike_settings()
       avg_dep_m <- avg_ratio_newest(dep_hist, rev_hist, n = 3L)
       sync_cx <- fcf_sync_capex_revenue_margin(abs(cap_hist), rev_hist, spike_cfg)
@@ -633,7 +649,8 @@ fcf_projection_module_server <- function(
     # --- 核心估算邏輯：包含天花板開關 ---
     fcf_estimator_results <- reactive({
       # 🌟 關鍵修正：將原本錯誤殘留的 input$fcf_net_income 替換為最新的 input$fcf_nopat
-      req(input$fcf_nopat, input$fcf_invested_capital)
+      req(all(vapply(c("fcf_nopat", "fcf_depreciation", "fcf_delta_nwc", "fcf_capex", "fcf_invested_capital"),
+        function(id) is.finite(suppressWarnings(as.numeric(input[[id]])[1])), logical(1))))
       
       nopat <- safe_num(input$fcf_nopat) # 🌟 改為接 NOPAT
       depre <- safe_num(input$fcf_depreciation)
@@ -696,15 +713,17 @@ fcf_projection_module_server <- function(
       req(input_years())
       n_years <- as.numeric(input_years()) 
       
-      base_rev       <- safe_num(input$fcf_revenue)
+      base_rev       <- suppressWarnings(as.numeric(input$fcf_revenue)[1])
       if (!is.null(shared_bridge)) {
         sb_rev <- tryCatch(shared_bridge(), error = function(e) NULL)
         if (is.list(sb_rev) && is.finite(sb_rev$revenue)) base_rev <- sb_rev$revenue
       }
-      base_nopat     <- safe_num(input$fcf_nopat)
-      base_depre     <- safe_num(input$fcf_depreciation)
-      base_capex     <- safe_num(input$fcf_capex)
-      base_delta_nwc <- safe_num(input$fcf_delta_nwc)
+      base_nopat     <- suppressWarnings(as.numeric(input$fcf_nopat)[1])
+      base_depre     <- suppressWarnings(as.numeric(input$fcf_depreciation)[1])
+      base_capex     <- suppressWarnings(as.numeric(input$fcf_capex)[1])
+      base_delta_nwc <- suppressWarnings(as.numeric(input$fcf_delta_nwc)[1])
+
+      if (!all(is.finite(c(base_rev, base_nopat, base_depre, base_capex, base_delta_nwc))) || base_rev <= 0) return(NULL)
       
       nopat_margin     <- if(base_rev == 0) 0 else base_nopat / base_rev
       depre_margin     <- if(base_rev == 0) 0 else base_depre / base_rev
@@ -917,7 +936,7 @@ fcf_projection_module_server <- function(
           "營運資金變動" = input$fcf_delta_nwc,
           "總投入資本" = input$fcf_invested_capital
         ),
-        fallback_msg = "系統已自動將缺漏項目視為 0 代入計算（總投入資本預設為 1）。請確認是否需要手動補齊數值。"
+        fallback_msg = ui_str("param_missing_body", ui_locale())
       )
     })
     
@@ -931,6 +950,7 @@ fcf_projection_module_server <- function(
     # 📤 匯出資料給其他模組與主程式
     # ==========================================
     return(list(
+      source_ready  = .echo_guard$ready,
       df_fcf        = reactive({ proj_table_data() }), 
       hist_params   = reactive({ hist_params() }),
       fcf_plot_obj  = fcf_plot_obj,

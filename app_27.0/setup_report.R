@@ -264,8 +264,8 @@ recommend_valuation_models <- function(d_cf, industry_text = "", d_is = NULL, d_
     get_avg_growth(select_clean_metric_row(d_is, "Total Revenue", include_ttm = FALSE)),
     error = function(e) NA_real_
   )
-  ni <- tryCatch(select_current_metric_any(d_is, NET_INCOME_PATTERNS, "flow"), error = function(e) NA_real_)
-  equity <- tryCatch(select_current_metric_any(d_bs, EQUITY_PATTERNS, "stock"), error = function(e) NA_real_)
+  ni <- tryCatch(common_net_income(d_is), error = function(e) NA_real_)
+  equity <- tryCatch(common_stock_equity(d_bs), error = function(e) NA_real_)
   roe <- if (!is.na(ni) && !is.na(equity) && equity > 0) ni / equity * 100 else NA_real_
   last_fcff <- NA_real_
   if (length(fcf_seq)) {
@@ -774,25 +774,8 @@ trim_report_table <- function(df, max_rows = 18, max_cols = 7) {
 
 # 報告用：自財報推估每股 EPS／每股淨值（BVPS）
 .report_eps_bvps <- function(summary_df, d_is = NULL, d_bs = NULL) {
-  eps <- NA_real_
+  eps <- valuation_trailing_eps(summary_df, d_is)
   bvps <- NA_real_
-  eps_src <- extract_summary_item(summary_df, "EPS \\(TTM\\)|Trailing EPS|^EPS$", default = NA_character_)
-  if (!is.na(eps_src) && !identical(eps_src, "N/A")) {
-    eps <- suppressWarnings(as.numeric(gsub("[^0-9.-]", "", as.character(eps_src))))
-  }
-  if (!is.finite(eps) && !is.null(d_is) && is.data.frame(d_is) && nrow(d_is) > 0) {
-    ni <- tryCatch(
-      select_current_metric(d_is, "Net Income Common Stockholders|Net Income$", "flow"),
-      error = function(e) NA_real_
-    )
-    sh <- tryCatch(
-      select_current_metric(
-        d_bs, "Ordinary Shares Number|Share Issued|Total Shares Outstanding", "stock"
-      ),
-      error = function(e) NA_real_
-    )
-    if (is.finite(ni) && is.finite(sh) && sh > 0) eps <- ni / sh
-  }
   bv_src <- extract_summary_item(
     summary_df, "Book Value Per Share|Book Value/Share|每股淨值", default = NA_character_
   )
@@ -801,7 +784,7 @@ trim_report_table <- function(df, max_rows = 18, max_cols = 7) {
   }
   if (!is.finite(bvps) && !is.null(d_bs) && is.data.frame(d_bs) && nrow(d_bs) > 0) {
     eq <- tryCatch(
-      select_current_metric(d_bs, "Stockholders Equity|Total Equity Gross Minority Interest|Common Stock Equity", "stock"),
+      common_stock_equity(d_bs),
       error = function(e) NA_real_
     )
     sh <- tryCatch(

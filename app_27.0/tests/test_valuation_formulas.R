@@ -195,7 +195,7 @@ check("PIT FCFE ignores cash add-back", !approx_eq(fv_fcfe, (ev_fcfe + 999 - 50)
 
 mk_bs_de <- function(debt, equity) {
   data.frame(
-    Item = c("Total Debt", "Stockholders Equity"),
+    Item = c("Total Debt", "Common Stock Equity"),
     Y1 = c(debt[1], equity[1]),
     Y2 = c(debt[2], equity[2]),
     stringsAsFactors = FALSE,
@@ -220,7 +220,7 @@ d_cf_fcff <- data.frame(
   stringsAsFactors = FALSE
 )
 d_is_fcff <- data.frame(
-  Metric = c("Interest Expense", "Net Income", "Total Revenue", "Pretax Income", "Income Tax Expense"),
+  Metric = c("Interest Expense", "Net Income Common Stockholders", "Total Revenue", "Pretax Income", "Income Tax Expense"),
   `2024` = c(10, 50, 200, 63.29, 13.29),
   `2023` = c(8, 40, 180, 50, 10.5),
   check.names = FALSE,
@@ -275,7 +275,7 @@ d_cf_neg <- data.frame(
   stringsAsFactors = FALSE
 )
 d_is_neg <- data.frame(
-  Metric = c("Net Income", "Total Revenue", "Interest Expense", "Pretax Income", "Income Tax Expense"),
+  Metric = c("Net Income Common Stockholders", "Total Revenue", "Interest Expense", "Pretax Income", "Income Tax Expense"),
   `2024` = c(50, 130, 5, 60, 12),
   `2023` = c(40, 100, 4, 50, 10),
   check.names = FALSE,

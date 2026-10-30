@@ -11,18 +11,10 @@ root <- if (file.exists("relative_multiples_module.R")) {
   stop("Run from app_27.0/tests or repo root")
 }
 setwd(root)
+source("setup.R", local = TRUE, encoding = "UTF-8")
 
 if (!exists("%||%", mode = "function")) {
   `%||%` <- function(x, y) if (is.null(x)) y else x
-}
-
-# Minimal stubs used by helpers
-dcf_ev_to_equity <- function(ev, cash = 0, debt = 0) {
-  ev <- as.numeric(ev)[1]; cash <- as.numeric(cash)[1]; debt <- as.numeric(debt)[1]
-  if (!is.finite(ev)) return(NA_real_)
-  if (!is.finite(cash)) cash <- 0
-  if (!is.finite(debt)) debt <- 0
-  ev + cash - debt
 }
 
 source("ui_locale.R", local = TRUE, encoding = "UTF-8")
@@ -103,8 +95,8 @@ check(
 )
 # Statement-first EPS: NI / shares when IS+BS present
 d_is_eps <- data.frame(
-  Breakdown = c("Net Income Common Stockholders", "Total Revenue"),
-  `12/31/2024` = c("200", "1000"),
+  Breakdown = c("Net Income Common Stockholders", "Total Revenue", "Diluted Average Shares"),
+  `12/31/2024` = c("200", "1000", "100"),
   check.names = FALSE, stringsAsFactors = FALSE
 )
 d_bs_eps <- data.frame(
@@ -125,7 +117,7 @@ teps_stmt <- .rel_trailing_eps_from_statements(
   sum_df = data.frame(Item = "Trailing P/E", Value = "99", stringsAsFactors = FALSE),
   d_is = d_is_eps, d_bs = d_bs_eps
 )
-check("trailing EPS prefers NI/shares over summary", abs(teps_stmt - 2) < 1e-9)
+check("trailing EPS uses common NI / weighted-average shares", abs(teps_stmt - 2) < 1e-9)
 
 # --- PEG ---
 peg_ok <- calc_peg(30, 15, growth_definition = "SGR", growth_period = "terminal")
@@ -349,9 +341,9 @@ check("sidebar mounts rel multiples", grepl("rel_multiples_calculator", ui_src, 
 check("sidebar mounts sotp", grepl("sotp_calculator", ui_src, fixed = TRUE))
 check("module UI call", grepl('relative_multiples_module_ui("mod_rel")', ui_src, fixed = TRUE))
 check("sotp UI call", grepl('sotp_module_ui("mod_sotp")', ui_src, fixed = TRUE))
-check("lite hides rel multiples", grepl("rel_multiples_calculator", ui_src, fixed = TRUE) &&
-        grepl("body.ynow-lite .sidebar-menu li:has(a[data-value=\"rel_multiples_calculator\"])", ui_src, fixed = TRUE))
-check("lite hides sotp", grepl('body.ynow-lite .sidebar-menu li:has(a[data-value="sotp_calculator"])', ui_src, fixed = TRUE))
+source("auth_account.R", local = TRUE)
+check("lite hides relative families via the shared catalog", all(c("rel_multiples_calculator", "rel_mult_ev", "rel_mult_rev") %in% ynow_sidebar_lite_omit_tabs()))
+check("lite hides SOTP via the shared catalog", "sotp_calculator" %in% ynow_sidebar_lite_omit_tabs())
 check("applyUiLocale mode help", grepl("ynow_rel_mode_help", ui_src, fixed = TRUE))
 check("applyUiLocale equity tab", grepl("ynow_rel_multiples_tab_equity", ui_src, fixed = TRUE))
 check("applyUiLocale sotp lead", grepl("ynow_sotp_lead_title", ui_src, fixed = TRUE))

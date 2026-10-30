@@ -161,6 +161,9 @@ pb_asset_module_server <- function(id,
                                    use_estimated_re = reactive(FALSE),
                                    ui_locale = reactive("zh-TW")) {
   moduleServer(id, function(input, output, session) {
+    .echo_guard <- ynow_input_echo_guard(input, session, current_ticker, function() input$basis %||% "bvps")
+    updateNumericInput <- .echo_guard$update
+
 
     .loc <- function() {
       tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
@@ -217,8 +220,8 @@ pb_asset_module_server <- function(id,
     current_roe_pct <- reactive({
       d_is <- tryCatch(d_income_statement(), error = function(e) NULL)
       d_bs <- tryCatch(d_balance_sheet(), error = function(e) NULL)
-      ni <- tryCatch(select_current_metric_any(d_is, NET_INCOME_PATTERNS, "flow"), error = function(e) NA_real_)
-      eq <- tryCatch(select_current_metric_any(d_bs, EQUITY_PATTERNS, "stock"), error = function(e) NA_real_)
+      ni <- tryCatch(common_net_income(d_is), error = function(e) NA_real_)
+      eq <- tryCatch(common_stock_equity(d_bs), error = function(e) NA_real_)
       if (is.finite(ni) && is.finite(eq) && eq > 0) ni / eq * 100 else NA_real_
     })
 
@@ -238,7 +241,7 @@ pb_asset_module_server <- function(id,
       key_status <- tryCatch(validate_industry_key(industry_choice()), error = function(e) list(ok = FALSE))
       ind_band <- if (isTRUE(input$use_industry_pb) && isTRUE(key_status$ok)) industry_pb_band() else NULL
       d_bs <- tryCatch(d_balance_sheet(), error = function(e) NULL)
-      eq <- tryCatch(select_current_metric_any(d_bs, EQUITY_PATTERNS, "stock"), error = function(e) NA_real_)
+      eq <- tryCatch(common_stock_equity(d_bs), error = function(e) NA_real_)
       use_just <- identical(as.character(input$target_mode %||% "justified")[1], "justified")
       derive_pb_targets(
         roe_pct = if (isTRUE(use_just)) current_roe_pct() else NA_real_,
@@ -290,8 +293,10 @@ pb_asset_module_server <- function(id,
     sync_book_values <- function() {
       req(d_balance_sheet())
       df_bs <- d_balance_sheet()
+      updateNumericInput(session, "bvps", value = NA_real_)
+      updateNumericInput(session, "tbvps", value = NA_real_)
       
-      equity <- select_current_metric_any(df_bs, EQUITY_PATTERNS, "stock")
+      equity <- common_stock_equity(df_bs)
       
       shares_bs <- select_current_metric_any(
         df_bs,
@@ -351,7 +356,7 @@ pb_asset_module_server <- function(id,
         intang_deduct <- combined_gi
       } else {
         loose <- select_current_metric(df_bs, "^Intangible Assets$", "stock")
-        intang_deduct <- ifelse(is.na(loose), 0, loose)
+        intang_deduct <- ifelse(is.na(loose), NA_real_, loose)
       }
       
       if (!is.na(equity) && !is.na(shares) && shares > 0) {
@@ -540,7 +545,7 @@ pb_asset_module_server <- function(id,
                    icon("exclamation-triangle"), " ", res$message))
       }
       
-      mkt_txt <- if (!is.na(res$market_price)) paste0(money_prefix(), round(res$market_price, 2)) else "N/A"
+      mkt_txt <- if (!is.na(res$market_price)) paste0(money_prefix(quote_currency()), round(res$market_price, 2)) else "N/A"
       mkt_pb_txt <- if (!is.na(res$market_pb)) sprintf("%.2f×", res$market_pb) else "N/A"
       upside <- if (!is.na(res$market_price) && res$market_price > 0) {
         (res$fair_mid - res$market_price) / res$market_price * 100
@@ -551,12 +556,12 @@ pb_asset_module_server <- function(id,
       div(style = "display: flex; justify-content: space-between; align-items: stretch; gap: 10px; padding: 20px; background-color: #fcfcfc; border: 1px solid #ddd; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); flex-wrap: wrap;",
           div(style = "text-align: center; flex: 1; min-width: 120px;",
               p(style = "font-size: 13px; color: #7f8c8d; margin-bottom: 5px; font-weight: bold;", "估值基礎"),
-              p(style = "font-size: 22px; color: #2c3e50; font-weight: bold; margin: 0;", paste0(money_prefix(), round(res$basis_val, 2))),
+              p(style = "font-size: 22px; color: #2c3e50; font-weight: bold; margin: 0;", paste0(money_prefix(quote_currency()), round(res$basis_val, 2))),
               p(style = "font-size: 12px; color: #95a5a6;", .pb_basis_label(res$basis))
           ),
           div(style = "text-align: center; flex: 1; min-width: 120px;",
               p(style = "font-size: 13px; color: #7f8c8d; margin-bottom: 5px; font-weight: bold;", "基準目標價"),
-              p(style = "font-size: 28px; color: #1a1a1a; font-weight: bold; margin: 0;", paste0(money_prefix(), round(res$fair_mid, 2))),
+              p(style = "font-size: 28px; color: #1a1a1a; font-weight: bold; margin: 0;", paste0(money_prefix(quote_currency()), round(res$fair_mid, 2))),
               p(style = "font-size: 12px; color: #95a5a6;", sprintf("@ %.2f× P/B", res$pb_mid))
           ),
           div(style = "text-align: center; flex: 1; min-width: 120px;",
@@ -576,7 +581,7 @@ pb_asset_module_server <- function(id,
       raw <- if (is.null(live) || !is.finite(live$mid)) {
         "N/A"
       } else {
-        paste0(money_prefix(), round(live$mid, 2))
+        paste0(money_prefix(quote_currency()), round(live$mid, 2))
       }
       valueBox(
         ynow_model_result_num(raw),
@@ -588,7 +593,7 @@ pb_asset_module_server <- function(id,
     output$vbx_bvps <- renderValueBox({
       val <- input$bvps
       valueBox(
-        if (is.null(val) || is.na(val)) "N/A" else paste0(money_prefix(), round(val, 2)),
+        if (is.null(val) || is.na(val)) "N/A" else paste0(money_prefix(quote_currency()), round(val, 2)),
         "每股帳面淨值 BVPS", icon = icon("book"), color = "aqua"
       )
     })
@@ -596,7 +601,7 @@ pb_asset_module_server <- function(id,
     output$vbx_tbvps <- renderValueBox({
       val <- input$tbvps
       valueBox(
-        if (is.null(val) || is.na(val)) "N/A" else paste0(money_prefix(), round(val, 2)),
+        if (is.null(val) || is.na(val)) "N/A" else paste0(money_prefix(quote_currency()), round(val, 2)),
         "有形每股淨值 TBVPS", icon = icon("cube"), color = "light-blue"
       )
     })
@@ -637,7 +642,7 @@ pb_asset_module_server <- function(id,
         geom_col(width = 0.55, alpha = 0.85) +
         geom_text(aes(label = format_dollar_abbr(Price)), vjust = -0.4, fontface = "bold", size = 4.2) +
         scale_fill_manual(values = c("保守" = "#7f8c8d", "基準" = "#2980b9", "樂觀" = "#27ae60")) +
-        scale_y_continuous(labels = label_chart_number(prefix = money_prefix())) +
+        scale_y_continuous(labels = label_chart_number(prefix = money_prefix(quote_currency()))) +
         theme_minimal(base_size = 14) +
         labs(title = "P/B 合理價區間", x = NULL, y = paste0("每股合理價 (", money_label(), ")")) +
         theme(legend.position = "none", plot.title = element_text(face = "bold")) +
@@ -680,7 +685,7 @@ pb_asset_module_server <- function(id,
       ))
       .rel <- function(x, sign = -1) .param_rel_shock(x, sign = sign, shock = shock_pct)
       basis_show <- if (is.finite(basis0) && basis0 > 0) basis0 else 1
-      basis_unit <- if (is.finite(basis0) && basis0 > 0) money_prefix() else "x"
+      basis_unit <- if (is.finite(basis0) && basis0 > 0) money_prefix(quote_currency()) else "x"
       rows <- list(
         .param_sensitivity_infl_row(
           .pb_basis_label(),
@@ -818,6 +823,7 @@ pb_asset_module_server <- function(id,
     return(list(
       # Calc-only exports: Composite overlays must not appear until 試算 / Run
       # (or silent primary auto-calc). Keep pb_live_band for in-module value boxes.
+      source_ready = .echo_guard$ready,
       pb_price = reactive({
         res <- tryCatch(pb_calc(), error = function(e) NULL)
         if (!is.null(res) && identical(res$status, "success")) res$fair_mid else NA_real_

@@ -89,7 +89,8 @@ reorder_financial_columns <- function(df) {
   parse_fy_date <- function(x) {
     d <- suppressWarnings(as.Date(x, format = "%m/%d/%Y"))
     if (!is.na(d)) return(d)
-    suppressWarnings(as.Date(x))
+    if (grepl("^[Yy]?[0-9]{4}$", x)) return(as.Date(paste0(sub("^[Yy]", "", x), "-12-31")))
+    tryCatch(suppressWarnings(as.Date(x)), error = function(e) as.Date(NA))
   }
   
   if (length(fy_cols) > 0) {
@@ -206,18 +207,30 @@ select_clean_metric_row_any <- function(df, metric_names, include_ttm = TRUE) {
   NA
 }
 
+# Arithmetic across statements must join fiscal columns, never vector positions.
+align_financial_flows <- function(d_is, d_cf, include_ttm = TRUE) {
+  tables <- list(income = reorder_financial_columns(d_is), cashflow = reorder_financial_columns(d_cf))
+  periods <- Reduce(intersect, lapply(tables, function(d) if (is.data.frame(d)) names(d)[-1] else character()))
+  if (!include_ttm) periods <- periods[!grepl("^ttm$", periods, ignore.case = TRUE)]
+  lapply(tables, function(d) {
+    if (!is.data.frame(d)) return(d)
+    out <- d[, c(names(d)[1], periods), drop = FALSE]
+    if (!length(periods)) out$.unavailable_period <- NA_real_
+    for (key in c("money_ccy", "money_scaled", "financialCurrency", "currency")) attr(out, key) <- attr(d, key)
+    out
+  })
+}
+
 # 常用科目別名（Yahoo HTML 用 &；yfinance 用 And）
 NET_INCOME_PATTERNS <- c(
-  "Net Income From Continuing (And|&) Discontinued Operation",
-  "Net Income Common Stockholders",
-  "^Net Income$"
+  "^Net Income Common Stockholders$",
+  "^Net Income$",
+  "^Net Income From Continuing (And|&) Discontinued Operation$"
 )
 # 利息費用（損益／現金流別名；勿用 | 併成單一 grep）
 INTEREST_EXPENSE_PATTERNS <- c(
   "^Interest Expense$",
-  "Interest Expense Non Operating",
-  "Net Interest Expense",
-  "Interest Expense"
+  "^Interest Expense Non Operating$"
 )
 # D&A：寬科目優先（AMZN 等同時有 Depreciation 與 Depreciation And Amortization）
 DA_PATTERNS <- c(

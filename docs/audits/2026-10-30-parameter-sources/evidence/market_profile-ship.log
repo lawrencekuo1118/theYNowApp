@@ -1,0 +1,107 @@
+OK: looks_like 2330 
+OK: looks_like 0050 
+OK: looks_like 2330.TW 
+OK: looks_like rejects AAPL 
+OK: looks_like rejects 5-digit 
+OK: US normalize AAPL 
+OK: TW normalize 2330 
+OK: TW keep 2330.TW 
+OK: TW spaced bare 
+OK: TW spaced suffix 
+OK: TW lowercase suffix 
+OK: TW label strip 
+OK: TW alt helper 
+OK: TW profile tax 20 
+OK: US profile tax 21 
+OK: TW rf_label is live TPEx curve (not fallback copy) 
+OK: TW data_source_note mentions Yahoo + Rf fallback + T 
+OK: TW default ticker 
+OK: TW hides SEC 
+OK: US shows SEC 
+OK: TW bench 0050 
+OK: valuation tabs include DCF / Model Dashboard / Company 
+OK: non-valuation tabs are not valuation-model surfaces 
+OK: market switch clears sc; no default ticker preload 
+OK: sc input starts empty with placeholder 
+OK: APP_DEFAULTS stock_code empty (no preload seed) 
+OK: TW display strips .TW 
+OK: TW display strips .TWO 
+OK: TW display bare stays 
+OK: US display AAPL 
+OK: US display keeps TSM 
+OK: fetch == normalize 
+OK: Nasdaq NMS 
+OK: Nasdaq exchDisp 
+OK: NYSE NYQ 
+OK: NYSE exchDisp 
+OK: NYSEArca not NYSE equity 
+OK: primary keeps both 
+OK: normalize NMS→NASDAQ 
+OK: normalize NYQ→NYSE 
+OK: SP500 has AAPL (Nasdaq) 
+OK: SP500 has JPM (NYSE) 
+OK: AAPL exchange NASDAQ 
+OK: JPM exchange NYSE 
+OK: meta n_nasdaq>0 
+OK: meta n_nyse>0 
+OK: US universe Apple→AAPL 
+OK: US universe JPMorgan→JPM 
+OK: TW locale zh-TW 
+OK: US locale en 
+OK: ui_str zh ticker 
+OK: ui_str en ticker 
+OK: no simplified 默认 in About data sources 
+OK: About data sources title zh-TW 
+OK: About data sources title en 
+OK: tab income zh 
+OK: tab income en 
+OK: tab wacc kept EN 
+OK: box fin report zh 
+OK: tab map has Finance Summary 
+OK: tab map sec_notes 
+OK: no simplified in tab map 
+OK: box specs non-empty 
+OK: box specs rematch EN header 
+OK: query_has_cjk 
+OK: query_no_cjk digits 
+OK: split zh+en has zh 
+OK: split zh+en has en 
+OK: split zh-only no empty en line 
+OK: split en-only no empty zh 
+OK: CJK 台積 hits 2330 
+OK: CJK 鴻海 hits 2317 
+OK: TW OTC bare 3105 → .TWO 
+OK: TW listed bare 2330 stays .TW 
+OK: universe CJK 台灣積體 → 2330 
+OK: lookup 2330 Chinese name 
+OK: universe has 上櫃 (TPEX) 
+OK: TW OTC 7772 → .TWO 
+OK: search bare 7772 resolves 
+OK: CJK 耀穎 hits 7772 
+OK: 7772 universe name is full legal 公司型態 
+OK: 7772 name is 耀穎光電…全稱 
+OK: suggest label 7772 keeps full name 
+OK: 2330 listed full legal name 
+OK: 6488 OTC full legal name 
+OK: suggest 7772 does not crash 
+OK: suggest 7772 includes 7772.TWO 
+OK: suggest 耀穎 does not crash 
+OK: suggest 耀穎 includes 7772.TWO 
+OK: TW ESB bare → .TWO 
+OK: TW ESB 1260 → .TWO 
+OK: search bare 1260 resolves 
+OK: CJK 富味鄉 hits 1260 
+OK: Blue Chip candidates exclude ESB 
+OK: is_tw_esb_ticker true for sample ESB 
+OK: is_tw_esb_exchange helper 
+OK: fixture contains ESB sample 
+OK: empty IS/BS/CF detected 
+OK: non-empty CF means not all-empty 
+OK: detail keeps N=3 evaluated 
+OK: quality filters shrink leaderboard path 
+All market_profile / detail-N checks passed.
+There were 50 or more warnings (use warnings() to see the first 50)
+sh: 1: Syntax error: "(" unexpected
+Warning message:
+In utils::download.file(url, destfile = dest, quiet = TRUE, mode = "wb",  :
+  URL 'https://www.sec.gov/files/company_tickers_exchange.json': status was 'Could not connect to server'

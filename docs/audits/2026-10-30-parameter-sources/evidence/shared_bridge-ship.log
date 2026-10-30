@@ -1,0 +1,19 @@
+OK cash and debt from the same rows
+OK debt sums short and long when Total Debt is absent
+OK missing statements preserve unknown cash and debt
+OK total revenue prefers Total Revenue
+OK bridge pick uses the first finite override
+OK bridge pick falls through to the statement
+OK ADR shares are the quote-class count
+OK same-currency shares stay on the balance sheet
+OK locked bridge input is not editable
+OK one shared bridge editor
+OK models no longer copy each other's fields
+OK get_started has BETA and shared inputs
+OK BETA block sits above shared inputs
+OK en shared_bridge_title is plain
+OK zh-TW shared_bridge_title is plain
+OK no jargon UI title 共用橋接
+OK no jargon UI title Shared bridge
+OK default box title matches zh-TW plain copy
+ALL PASS

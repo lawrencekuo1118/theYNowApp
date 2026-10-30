@@ -1,0 +1,16 @@
+OK AAPL balance_sheet
+OK 2330.TW local no ADR
+OK 2330.TW mild mcap noise
+OK TSM ADR auto
+OK BABA ADR auto
+OK ASML 1:1 keep BS
+OK BRK-B implied
+OK extract price
+OK extract mcap
+OK auto_adjust helper
+OK auto_adjust neg
+OK fund ADR method
+OK fund ADR scale
+OK fund ADR shares
+
+All resolve_shares checks passed.
