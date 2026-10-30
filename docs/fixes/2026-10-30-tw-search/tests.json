@@ -1,0 +1,38 @@
+[
+  {
+    "test": "test_market_profile.R",
+    "exit": 0
+  },
+  {
+    "test": "test_recent_search_click.R",
+    "exit": 0
+  },
+  {
+    "test": "test_ticker_search_rank.R",
+    "exit": 0
+  },
+  {
+    "test": "test_ticker_typeahead_ui.R",
+    "exit": 0
+  },
+  {
+    "test": "test_cache_tiers.R",
+    "exit": 0
+  },
+  {
+    "test": "test_tpex_financial_summary.R",
+    "exit": 0
+  },
+  {
+    "test": "test_parameter_semantics.R",
+    "exit": 0
+  },
+  {
+    "test": "test_parameter_completeness.R",
+    "exit": 0
+  },
+  {
+    "test": "test_valuation_formulas.R",
+    "exit": 0
+  }
+]

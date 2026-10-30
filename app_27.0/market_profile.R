@@ -191,6 +191,12 @@ resolve_tw_bare_code <- function(code) {
   tks[[idx[[1]]]]
 }
 
+# Canonical Yahoo board suffix; only numeric Taiwan listings use this alias.
+normalize_tw_ticker_alias <- function(sym) {
+  u <- toupper(gsub("\\s+", "", trimws(as.character(sym %||% "")[1])))
+  sub("^([0-9]{4,6}[A-Z]?)-(TW|TWO)$", "\\1.\\2", u)
+}
+
 #' Detect clear Taiwan listing codes (TWSE/TPEx-style 4-digit).
 #'
 #' Matches bare `2330` / `0050` (leading zeros OK) or Yahoo-suffixed
@@ -205,7 +211,7 @@ looks_like_tw_stock_code <- function(sym) {
   # strip common labels "2330.TW — 台積電" / "2330 — 台積電"
   raw <- sub("\\s+[—\\-–].*$", "", raw)
   raw <- toupper(gsub("\\s+", "", trimws(raw)))
-  grepl("^[0-9]{4}(\\.(TW|TWO))?$", raw)
+  grepl("^[0-9]{4}([.-](TW|TWO))?$", raw)
 }
 
 #' 依市場正規化使用者輸入代號
@@ -221,7 +227,7 @@ normalize_ticker_for_market <- function(sym, mode = get_market_mode()) {
   if (identical(mode, "TW")) {
     if (grepl("^\\^", raw)) return(toupper(gsub("\\s+", "", raw)))
     # collapse spaces so "2330 .TW" / " 2330 " still work
-    u <- toupper(gsub("\\s+", "", raw))
+    u <- normalize_tw_ticker_alias(raw)
     # peel accidental suffix, then re-resolve (universe may prefer .TWO)
     bare <- sub("\\.(TW|TWO)$", "", u)
     if (grepl("^[0-9]{4,6}[A-Z]?$", bare)) {
@@ -234,6 +240,8 @@ normalize_ticker_for_market <- function(sym, mode = get_market_mode()) {
     if (grepl("\\.(TW|TWO)$", u)) return(u)
     return(u)
   }
+  explicit_tw <- normalize_tw_ticker_alias(raw)
+  if (grepl("^[0-9]{4,6}[A-Z]?\\.(TW|TWO)$", explicit_tw)) return(explicit_tw)
   # US：保留 Yahoo 慣例（BRK.B → BRK-B 由上游處理）
   gsub("\\.", "-", toupper(gsub("\\s+", "", raw)))
 }

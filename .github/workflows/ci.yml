@@ -38,7 +38,7 @@ jobs:
         env:
           YNOW_DEBUG_SKIP_PY: "1"
         run: |
-          Rscript -e 'pkgs <- c("shiny", "rmarkdown", "ggplot2"); missing <- pkgs[!vapply(pkgs, requireNamespace, logical(1), quietly = TRUE)]; if (length(missing)) install.packages(missing, quiet = TRUE)'
+          Rscript -e 'pkgs <- c("shiny", "rmarkdown", "ggplot2", "DBI"); missing <- pkgs[!vapply(pkgs, requireNamespace, logical(1), quietly = TRUE)]; if (length(missing)) install.packages(missing, quiet = TRUE)'
           Rscript app_27.0/tests/test_report_pdf_copy.R
           Rscript app_27.0/tests/test_report_download.R
       - name: Parameter sources, accounting semantics, and manual-fill guidance (offline)
@@ -47,6 +47,9 @@ jobs:
         run: |
           Rscript app_27.0/tests/test_parameter_semantics.R
           Rscript app_27.0/tests/test_parameter_completeness.R
+          Rscript app_27.0/tests/test_tw_search_session.R
+          Rscript app_27.0/tests/test_market_cache_binary.R
+          python3 app_27.0/tests/test_summary_deadline.py
       - name: Phase 1 formula independence (offline)
         env:
           YNOW_DEBUG_SKIP_PY: "1"
