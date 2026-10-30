@@ -234,7 +234,11 @@ if (length(missing_pkgs)) {
     call. = FALSE
   )
 }
-message("Deploy preflight OK: ", paste(need_pkgs, collapse = ", "))
+if (!requireNamespace("reticulate", quietly = TRUE) ||
+    utils::packageVersion("reticulate") < "1.47.0") {
+  stop("Deploy preflight failed: reticulate >= 1.47.0 is required for managed Python initialization.", call. = FALSE)
+}
+message("Deploy preflight OK: ", paste(need_pkgs, collapse = ", "), "; reticulate ", utils::packageVersion("reticulate"))
 
 message("Deploying ", app_dir, " → ", app_name, " (appId=", app_id, ")")
 res <- rsconnect::deployApp(

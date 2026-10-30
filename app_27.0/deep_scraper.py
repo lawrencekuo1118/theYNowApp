@@ -7,6 +7,8 @@ YNOW_YAHOO_GATE_DIR so concurrent shinyapps workers do not burst into HTTP 429.
 """
 import os
 import time
+import queue
+import threading
 import pandas as pd
 import yfinance as yf
 
@@ -431,7 +433,47 @@ def _fmt_num(v, digits=2):
         return str(v)
 
 
+_summary_quote_gate = threading.Lock()
+
+
+def _summary_with_deadline(callback, timeout=20.0):
+    """Bound the entire Yahoo info/fallback chain, with one in-flight job.
+
+    A timed-out HTTP call finishes in its daemon thread. Keep the gate held
+    until it exits so retries cannot accumulate background requests/threads.
+    """
+    if not _summary_quote_gate.acquire(blocking=False):
+        raise TimeoutError("A previous quote request is still finishing; retry shortly")
+    completed = queue.Queue(maxsize=1)
+
+    def run():
+        try:
+            completed.put((True, callback()))
+        except Exception as exc:
+            completed.put((False, exc))
+        finally:
+            _summary_quote_gate.release()
+
+    threading.Thread(target=run, daemon=True).start()
+    try:
+        ok, value = completed.get(timeout=timeout)
+    except queue.Empty:
+        raise TimeoutError("Yahoo Summary request exceeded its time limit") from None
+    if not ok:
+        raise value
+    return value
+
+
 def get_summary_quote(ticker="AMZN"):
+    try:
+        timeout = float(os.environ.get("YNOW_QUOTE_TIMEOUT_SEC", "20"))
+    except (TypeError, ValueError):
+        timeout = 20.0
+    timeout = max(5.0, min(60.0, timeout))
+    return _summary_with_deadline(lambda: _get_summary_quote_impl(ticker), timeout)
+
+
+def _get_summary_quote_impl(ticker="AMZN"):
     """Cloud-safe Yahoo summary metrics via yfinance (no Chromote/Chrome)."""
     _dbg(f"📊 yfinance summary quote: {ticker}")
     _yahoo_gate_acquire()

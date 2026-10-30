@@ -1592,6 +1592,7 @@ fetch_tpex_index_history_df <- function(period = "1y", timeout_sec = 20) {
 fetch_price_history_df <- function(ticker, period = "5y") {
   raw_ticker <- as.character(ticker)[1]
   ticker <- toupper(trimws(raw_ticker))
+  if (exists("normalize_tw_ticker_alias", mode = "function")) ticker <- normalize_tw_ticker_alias(ticker)
   if (!nzchar(ticker)) return(NULL)
   if (exists("ynow_price_history_through_cache", mode = "function")) {
     return(ynow_price_history_through_cache(ticker, period, function() {

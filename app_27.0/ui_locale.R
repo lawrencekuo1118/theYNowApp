@@ -3505,7 +3505,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     notif_feedback_need_title = "Please enter a title.",
     notif_feedback_need_body = "Please add a bit more detail (about 8+ characters).",
     notif_feedback_fail = "Submit failed: {err}",
-    notif_fetch_fail = "❌ Data fetch failed — check the ticker. Error: {err}",
+    notif_fetch_fail = "❌ Data retrieval failed. Error: {err}",
+    progress_company_details = "Loading company profile, ownership, and corporate events…",
+    notif_summary_unavailable = "The quote source returned no Summary data. Retry later; no financial values were filled in.",
     notif_data_gap_yahoo_tpex = paste0(
       "Yahoo annuals incomplete; filled missing IS／BS from TPEx financial summary ({board}). ",
       "YTD summary only — Cash Flow is never invented."
@@ -8246,7 +8248,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     notif_feedback_need_title = "請填寫標題。",
     notif_feedback_need_body = "請再補充說明內容（至少約 8 字）。",
     notif_feedback_fail = "送出失敗：{err}",
-    notif_fetch_fail = "❌ 取得資料失敗，請確認代號。錯誤: {err}",
+    notif_fetch_fail = "❌ 取得資料失敗。錯誤：{err}",
+    progress_company_details = "正在讀取公司簡介、股權與公司事件…",
+    notif_summary_unavailable = "報價來源未回傳 Summary 資料，請稍後重試；系統未代填財務數值。",
     notif_data_gap_yahoo_tpex = paste0(
       "Yahoo 年報缺漏，已以櫃買「財務資料簡報」補齊缺漏的 IS／BS（{board}）。",
       "此為截至當季累計摘要；現金流量表未提供、不捏造。"

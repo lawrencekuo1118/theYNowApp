@@ -128,7 +128,7 @@ ynow_market_cache_put <- function(cache_key, kind, ticker, value, ttl_sec = NULL
             "kind = EXCLUDED.kind, ticker = EXCLUDED.ticker,",
             "payload = EXCLUDED.payload, fetched_at = NOW()"
           ),
-          params = list(key, k, tk, blob)
+          params = list(key, k, tk, list(blob))
         )
       }),
       error = function(e) NULL

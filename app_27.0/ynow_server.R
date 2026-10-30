@@ -5480,6 +5480,12 @@ server <- function(input, output, session) {
     capm_beta_dirty(FALSE)
     beta_capm_driver("gs")
     stock_code <- current_ticker()
+    # Official TW company names are available before any Yahoo/Python request.
+    if (identical(isolate(market_mode()), "TW")) {
+      official_name <- tryCatch(lookup_tw_universe_company_name(stock_code), error = function(e) "")
+      corp_display_name(official_name)
+      corp_display_name_en("")
+    }
     tried_for <- .tw_two_fallback_tried_for()
     alt_of_tried <- if (!is.na(tried_for) && nzchar(tried_for)) {
       tw_yahoo_alt_ticker(tried_for)
@@ -5530,6 +5536,7 @@ server <- function(input, output, session) {
       }
       active_prog <<- prog
       tryCatch({
+        incProgress(0.05, detail = .ui_msg("progress_company_details"))
         ind_info <- cached_get_yahoo_industry(stock_code)
         if (!is.null(ind_info)) {
           disp <- as.character(ind_info$display_text %||% "")[1]
@@ -5742,9 +5749,9 @@ server <- function(input, output, session) {
             invisible(NULL)
           }
           if (requireNamespace("later", quietly = TRUE)) {
-            later::later(function() {
+            later::later(ynow_session_callback(session, function() {
               tryCatch(run_tint(), error = function(e) NULL)
-            }, delay = 0)
+            }), delay = 0)
           } else {
             tryCatch(run_tint(), error = function(e) NULL)
           }
@@ -5766,7 +5773,7 @@ server <- function(input, output, session) {
         }
         # Yield so sidebar_tabs / lazy mounts can start before financials scrape.
         if (requireNamespace("later", quietly = TRUE)) {
-          later::later(function() {
+          later::later(ynow_session_callback(session, function() {
             tryCatch(
               .run_search_phase2(prog, sum_df, q_ccy, f_ccy),
               error = function(e) {
@@ -5774,7 +5781,7 @@ server <- function(input, output, session) {
                 .search_done()
               }
             )
-          }, delay = 0)
+          }), delay = 0)
         } else {
           .run_search_phase2(prog, sum_df, q_ccy, f_ccy)
         }
@@ -5897,12 +5904,12 @@ server <- function(input, output, session) {
         # Yield before Rf and logo so sidebar_tabs can run after statements are stored.
         nxt <- function() .run_search_phase3(prog, sum_df, q_ccy, f_ccy, res)
         if (requireNamespace("later", quietly = TRUE)) {
-          later::later(function() {
+          later::later(ynow_session_callback(session, function() {
             tryCatch(nxt(), error = function(e) {
               tryCatch(prog$close(), error = function(e2) NULL)
               .search_done()
             })
-          }, delay = 0)
+          }), delay = 0)
         } else {
           nxt()
         }
@@ -6041,6 +6048,7 @@ server <- function(input, output, session) {
         if ((inherits(sum_df, "error") || !is.data.frame(sum_df) || nrow(sum_df) < 1L) &&
             identical(.mm(), "TW") &&
             grepl("\\.TW$", stock_code, ignore.case = TRUE) &&
+            !nzchar(lookup_tw_universe_exchange(stock_code)) &&
             is.na(isolate(.tw_two_fallback_tried_for()))) {
           alt <- tw_yahoo_alt_ticker(stock_code)
           if (!is.na(alt) && nzchar(alt) && !identical(toupper(alt), toupper(stock_code))) {
@@ -6062,7 +6070,7 @@ server <- function(input, output, session) {
         }
         if (inherits(sum_df, "error")) stop(sum_df$message)
         if (!is.data.frame(sum_df) || nrow(sum_df) < 1L) {
-          stop("yfinance 回傳空的 summary 表")
+          stop(.ui_msg("notif_summary_unavailable"))
         }
         summary_data(sum_df)
 
@@ -6104,7 +6112,7 @@ server <- function(input, output, session) {
         }
         # Yield so a re-clicked Search can bump ticker_search_gen and preempt.
         if (requireNamespace("later", quietly = TRUE)) {
-          later::later(function() {
+          later::later(ynow_session_callback(session, function() {
             tryCatch(
               .run_search_phase1b(prog, sum_df, q_ccy, f_ccy),
               error = function(e) {
@@ -6112,7 +6120,7 @@ server <- function(input, output, session) {
                 .search_done()
               }
             )
-          }, delay = 0)
+          }), delay = 0)
           return(invisible(NULL))
         }
 
@@ -6133,9 +6141,13 @@ server <- function(input, output, session) {
     }
 
     if (requireNamespace("later", quietly = TRUE)) {
-      later::later(function() {
-        tryCatch(.run_search_phase1(), error = function(e) .search_done())
-      }, delay = 0)
+      later::later(ynow_session_callback(session, function() {
+        tryCatch(.run_search_phase1(), error = function(e) {
+          message("Ticker search failed: ", conditionMessage(e))
+          if (!is.null(active_prog)) tryCatch(active_prog$close(), error = function(e2) NULL)
+          .search_done()
+        })
+      }), delay = 0)
     } else {
       .run_search_phase1()
     }

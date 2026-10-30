@@ -252,7 +252,7 @@ ynow_cache_tier_info <- function() {
   ok <- FALSE
   tryCatch({
     if (exists(".ynow_ensure_python", mode = "function")) {
-      .ynow_ensure_python()
+      if (!isTRUE(.ynow_ensure_python())) return(FALSE)
     }
     ok <- isTRUE(reticulate::py_available(initialize = FALSE))
     if (!ok) {
@@ -779,7 +779,15 @@ get_summary_data <- function(stock_code) {
 }
 
 # FAST: live quote / market cap / last price (≤15m) — never park on slow statement cache
-cached_get_summary_data <- memoise::memoise(get_summary_data, cache = .ynow_fast_cache)
+.cached_get_summary_data_valid <- memoise::memoise(function(stock_code) {
+  result <- get_summary_data(stock_code)
+  if (!is.data.frame(result) || nrow(result) < 1L) stop("Summary unavailable", call. = FALSE)
+  result
+}, cache = .ynow_fast_cache)
+cached_get_summary_data <- function(stock_code) {
+  tryCatch(.cached_get_summary_data_valid(stock_code),
+           error = function(e) .empty_summary(stock_code))
+}
 
 # ==========================================
 # 💱 USD/TWD 即期匯率
@@ -1034,6 +1042,9 @@ search_ticker_choices <- function(query, max_results = 12L, market = NULL) {
   presets <- ticker_presets_for_market(mode)
   query <- trimws(as.character(query %||% ""))
   if (!nzchar(query)) return(presets)
+  if (identical(mode, "TW") && grepl("^[0-9]{4,6}[A-Za-z]?-(TW|TWO)$", query, ignore.case = TRUE)) {
+    query <- normalize_tw_ticker_alias(query)
+  }
 
   max_results <- max(1L, as.integer(max_results)[1])
   py_hits <- tryCatch({

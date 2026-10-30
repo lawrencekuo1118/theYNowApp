@@ -150,11 +150,12 @@ py_pkgs <- .ynow_py_pkgs
       reticulate::use_virtualenv(env_dir, required = TRUE)
     } else {
       # shinyapps / other hosts without a local venv: install when first needed.
-      reticulate::py_require(.ynow_py_pkgs)
+      reticulate::py_require(.ynow_py_pkgs, python_version = "3.11")
     }
     suppressMessages(reticulate::py_config())
     ok <- isTRUE(reticulate::py_available(initialize = FALSE))
   }, error = function(e) {
+    message("Python initialization failed: ", conditionMessage(e))
     ok <<- FALSE
   })
   .ynow_python_ready <<- isTRUE(ok)

@@ -121,3 +121,14 @@
     )
   })
 }
+
+# later callbacks run outside the originating observer. Keep both the session
+# domain (notifications, currency context) and an isolated reactive read scope.
+ynow_session_callback <- function(session, callback) {
+  force(session); force(callback)
+  function(...) {
+    args <- list(...)
+    if (isTRUE(session$isClosed())) return(invisible(NULL))
+    shiny::withReactiveDomain(session, shiny::isolate(do.call(callback, args)))
+  }
+}
