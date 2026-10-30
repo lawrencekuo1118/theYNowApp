@@ -1,4 +1,4 @@
-## [Unreleased] — 財務參數來源稽核
+## [v27.59] — 2026-10-30 · 財務參數來源稽核
 
 - zh-TW：統一台美市場各模式的財報科目引用、財年、幣別及普通股請求權；修正 WACC 混合幣別、DCF 模式不同步及跨 session 市場／FX 污染。必要資料缺值維持 NA。Lite 直接套用可靠建議並標示假設數值，Full 保留人工補填；PDF 列出已套用假設。
 - en-US: Align accounting definitions, fiscal periods, currencies, and common-equity claims across valuation models. Fix mixed-currency WACC, DCF scenario drift, and cross-session market/FX contamination. Preserve missing financial facts; Lite applies available references with explicit assumption disclosures in fields and PDF reports.
