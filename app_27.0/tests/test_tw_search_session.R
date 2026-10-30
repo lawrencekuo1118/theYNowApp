@@ -68,3 +68,34 @@ stopifnot(nrow(cached_get_summary_data(key))==0L,
           nrow(cached_get_summary_data(key))==1L,
           nrow(cached_get_summary_data(key))==1L,calls==2L)
 cat('PASS: failed Summary is not cached; successful retry uses the fast cache\n')
+# Execute the production observer: optional requests wait until core search is
+# complete and the company/events view is actually selected.
+server_ast <- parse(file.path(app,'ynow_server.R'))
+find_extras_observer <- function(x) {
+  if (!is.call(x) && !is.expression(x) && !is.pairlist(x)) return(NULL)
+  if (is.call(x) && identical(x[[1]],as.name('observeEvent')) &&
+      grepl('wants_extras',paste(deparse(x),collapse=' '),fixed=TRUE)) return(x)
+  for (i in seq_along(x)) { hit <- tryCatch(find_extras_observer(x[[i]]),error=function(e) NULL); if(!is.null(hit)) return(hit) }
+  NULL
+}
+observer <- find_extras_observer(server_ast)
+stopifnot(!is.null(observer))
+shiny::testServer(function(input,output,session) {
+  ticker_search_busy <- reactiveVal(TRUE)
+  company_extras_loader <- reactiveVal(NULL)
+  count <- new.env();count$n<-0L
+  eval(observer)
+}, {
+  session$setInputs(sidebar_tabs='dashboard',dashboard_fin_report='Income Statement')
+  company_extras_loader(function() {count$n<-count$n+1L})
+  session$flushReact();later::run_now(.15)
+  stopifnot(count$n==0L)
+  ticker_search_busy(FALSE);session$flushReact();later::run_now(.15)
+  stopifnot(count$n==0L)
+  session$setInputs(dashboard_fin_report='corp_events')
+  session$flushReact();later::run_now(.15)
+  stopifnot(count$n==1L)
+  session$flushReact();later::run_now(.15)
+  stopifnot(count$n==1L)
+})
+cat('PASS: optional company requests are deferred until core completion and explicit company/events view\n')
