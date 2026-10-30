@@ -5,12 +5,11 @@ import queue
 import threading
 import time
 
-path = pathlib.Path(__file__).resolve().parents[1] / 'deep_scraper.py'
-source = ast.parse(path.read_text())
-node = next(n for n in source.body if isinstance(n, ast.FunctionDef) and n.name == '_summary_with_deadline')
-ns = {'queue': queue, 'threading': threading, '_summary_quote_gate': threading.Lock()}
-exec(compile(ast.Module(body=[node], type_ignores=[]), str(path), 'exec'), ns)
-run = ns['_summary_with_deadline']
+import sys
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
+from source_deadline import BoundedSourceRequest
+request = BoundedSourceRequest("test")
+run = request.run
 assert run(lambda: {'company_name': 'test'}, .1)['company_name'] == 'test'
 try:
     run(lambda: (_ for _ in ()).throw(ValueError('source failure')), .1)
@@ -38,7 +37,7 @@ else:
     raise AssertionError('retry accumulated another blocked request')
 finish.set()
 for _ in range(100):
-    if not ns['_summary_quote_gate'].locked():
+    if not request._gate.locked():
         break
     time.sleep(.001)
 assert run(lambda: 42, .1) == 42

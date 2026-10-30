@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import requests
+from source_deadline import BoundedSourceRequest
 
 try:
     import xlrd
@@ -557,7 +558,19 @@ def rows_to_yahoo_shaped_statements(payload: Dict[str, Any], par_value: float = 
     }
 
 
+_tpex_request = BoundedSourceRequest("TPEx financial summary")
+
+
 def scrape_tpex_financials_fallback(ticker: str, board: Optional[str] = None) -> Dict[str, Any]:
+    try:
+        timeout = float(os.environ.get("YNOW_TPEX_TIMEOUT_SEC", "45"))
+    except (TypeError, ValueError):
+        timeout = 45.0
+    return _tpex_request.run(lambda: _scrape_tpex_financials_fallback_impl(ticker, board),
+                             max(10.0, min(90.0, timeout)))
+
+
+def _scrape_tpex_financials_fallback_impl(ticker: str, board: Optional[str] = None) -> Dict[str, Any]:
     """Entry for R／reticulate: Yahoo-empty .TWO fallback."""
     try:
         raw = fetch_tpex_ticker_rows(ticker, board=board)
