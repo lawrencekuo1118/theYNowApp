@@ -214,8 +214,8 @@ align_financial_flows <- function(d_is, d_cf, include_ttm = TRUE) {
   if (!include_ttm) periods <- periods[!grepl("^ttm$", periods, ignore.case = TRUE)]
   lapply(tables, function(d) {
     if (!is.data.frame(d)) return(d)
-    out <- d[, c(names(d)[1], periods), drop = FALSE]
-    if (!length(periods)) out$.unavailable_period <- NA_real_
+    out <- if (ncol(d)) d[, c(names(d)[1], periods), drop = FALSE] else data.frame(Breakdown = character(nrow(d)))
+    if (!length(periods)) out$.unavailable_period <- rep(NA_real_, nrow(out))
     for (key in c("money_ccy", "money_scaled", "financialCurrency", "currency")) attr(out, key) <- attr(d, key)
     out
   })

@@ -99,3 +99,14 @@ shiny::testServer(function(input,output,session) {
   stopifnot(count$n==1L)
 })
 cat('PASS: optional company requests are deferred until core completion and explicit company/events view\n')
+# Partial TPEx statements legitimately contain an empty CF table. Neither a
+# missing fiscal intersection nor a zero-column table may crash the observer.
+is <- data.frame(Breakdown='Operating Income',`2025`=100,check.names=FALSE)
+for (empty in list(data.frame(),data.frame(Breakdown=character()),NULL,
+                   data.frame(Breakdown=character(),`2024`=numeric(),check.names=FALSE))) {
+  aligned <- align_financial_flows(is,empty)
+  stopifnot(is.data.frame(aligned$income),nrow(aligned$income)==1L,
+            all(is.na(aligned$income$.unavailable_period)))
+  if(is.data.frame(aligned$cashflow)) stopifnot(nrow(aligned$cashflow)==0L)
+}
+cat('PASS: zero-row/zero-column/NULL CF and incompatible periods stay unavailable without a crash\n')
