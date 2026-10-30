@@ -1,0 +1,5 @@
+PASS: delayed session/reactive scope, failure cleanup, closed-session cancellation, TW dot/hyphen/bare aliases and official company names
+PASS: hyphenated TW alias resolves in offline typeahead as well as Search
+PASS: failed Summary is not cached; successful retry uses the fast cache
+PASS: optional company requests are deferred until core completion and explicit company/events view
+PASS: zero-row/zero-column/NULL CF and incompatible periods stay unavailable without a crash

@@ -38,3 +38,7 @@
 ## 實際畫面驗證
 
 最新本機 Shiny 使用實際 Python/Yahoo/TPEx 網路來源，輸入 `7772-TWO`：30 秒時已結束搜尋，顯示「耀穎光電股份有限公司／Morrison Opto Electronics Ltd.」，櫃買 IS／BS 備援成功；JavaScript errors、Shiny output errors 均為空，連線仍在。缺少 RI payout 時如實提示人工補填，沒有捏造 Cash Flow。此為單次測得的耗時，不是對外部來源延遲的服務保證。
+
+`2330` 的實際本機驗證亦完成，正確顯示「台灣積體電路製造股份有限公司／Taiwan Semiconductor Manufacturing Company Limited」，搜尋進度已結束、連線仍在且沒有 JS／Shiny output errors。缺少其他權益請求權／完整 WACC 必要參數時維持人工補填要求。前後逐次畫面狀態與回歸結果見 `evidence/`。
+
+本次端到端案例使用訪客 Full 版、英文介面與 TW 市場；不宣稱已逐一登入所有正式帳號或逐一驗證全市場所有股票。來源可用性仍取決於 Yahoo／TPEx；公司的清單名稱與上市／上櫃／興櫃分類以官方宇宙快取資料為準。

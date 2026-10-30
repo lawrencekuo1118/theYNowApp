@@ -1,0 +1,7 @@
+WACC parameter-source contexts: 112  Failures: 0 
+DCF run/scenario contexts: 224  Failures: 0 
+Rf session-isolation contexts: 224  Failures: 0 
+ALL PARAMETER SOURCE MODE CHECKS PASSED
+PASS: independent reactive-domain market/currency/FX contexts
+Accounting parameter semantic checks: 3136  Failures: 0 
+ALL ACCOUNTING PARAMETER SEMANTICS CHECKS PASSED
