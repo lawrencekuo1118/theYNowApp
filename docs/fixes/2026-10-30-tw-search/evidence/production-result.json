@@ -1,0 +1,31 @@
+{
+  "verified_at": "2026-10-30T10:19:50.488164+08:00",
+  "version": "v27.60",
+  "bundleId": 12757353,
+  "status": "running",
+  "cases": {
+    "2330": {
+      "ticker": "2330",
+      "elapsed_sec": 75.3,
+      "company": "台灣積體電路製造股份有限公司\nTaiwan Semiconductor Manufacturing Company Limited",
+      "connected": true,
+      "js_errors": [],
+      "output_errors": [],
+      "has_summary": true,
+      "search_progress_open": false,
+      "notifications": "×\nModel tip: high-growth names may fit Two-Stage Growth; default remains explicit forecast + Gordon TV.\n×\nRequired model parameters are missing\n\nThis result is unavailable until the missing inputs are supplied. Review the field guidance, fill the values, and run the model again. In Lite, Go to field opens Full mode.\n\nCash Go to field\nOther equity claims Go to field\nDebt Go to field\nShares Go to field\nRevenue Go to field\nWACC Go to field"
+    },
+    "7772-TWO": {
+      "ticker": "7772-TWO",
+      "elapsed_sec": 75.4,
+      "company": "耀穎光電股份有限公司\nMorrison Opto Electronics Ltd.",
+      "connected": true,
+      "js_errors": [],
+      "output_errors": [],
+      "has_summary": true,
+      "search_progress_open": false,
+      "notifications": "×\nYahoo annuals incomplete; filled missing IS／BS from TPEx financial summary (OTC). YTD summary only — Cash Flow is never invented.\n×\nRequired model parameters are missing\n\nThis result is unavailable until the missing inputs are supplied. Review the field guidance, fill the values, and run the model again. In Lite, Go to field opens Full mode.\n\nri_payout Go to field"
+    }
+  },
+  "passed": true
+}

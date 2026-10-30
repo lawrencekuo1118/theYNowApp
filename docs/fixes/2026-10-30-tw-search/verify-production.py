@@ -1,5 +1,5 @@
 from playwright.sync_api import sync_playwright
-import json,time
+import json,time,urllib.request
 url='https://hopesmasher1118.shinyapps.io/TheYNowApp/'
 with sync_playwright() as p:
  browser=p.chromium.launch(executable_path='/usr/bin/chromium',args=['--no-sandbox'])
@@ -8,7 +8,7 @@ with sync_playwright() as p:
   page=context.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
   page.goto(url,wait_until='domcontentloaded',timeout=120000)
   page.wait_for_function('window.Shiny && Shiny.shinyapp && Shiny.shinyapp.isConnected()',timeout=120000)
-  build=page.request.get(url+'ynow_build.json?t='+str(time.time())).json()
+  build=json.load(urllib.request.urlopen(url+'ynow_build.json?t='+str(time.time()),timeout=60))
   assert build['version']=='v27.60',build
   page.evaluate("Shiny.setInputValue('market_mode_pick','TW',{priority:'event'}); if(window.ynowGotoTab)window.ynowGotoTab('dashboard'); Shiny.setInputValue('sidebar_tabs','dashboard',{priority:'event'}); Shiny.setInputValue('dashboard_fin_report','Finance Summary',{priority:'event'});")
   page.wait_for_timeout(3000)
