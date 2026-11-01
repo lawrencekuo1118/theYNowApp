@@ -1,0 +1,59 @@
+OK DDM Gordon V0 = D1/(r-g)
+OK DDM Gordon StockFeel example
+OK DDM Gordon ke alias equals r
+OK DDM SPM closed form
+OK DDM SPM equals forward Gordon when ROE=r
+OK DDM SPM equals E/r when ROE=r
+OK DDM SPM finite when r < g
+OK DDM SPM NA when r <= 0
+OK DDM two-stage g1=g2 equals Gordon
+OK DDM two-stage n=2 closed form
+OK P/B linear
+OK NAV linear
+OK multiples mode skips justified
+OK FCFE y1
+OK FCFE y2
+OK FCFE components match path
+OK dcf_cf_tag fcff
+OK dcf_cf_tag fcfe
+OK dcf_yearly_pv_label
+OK extract_dcf_claim_series fcff
+OK extract_dcf_claim_series fcfe
+OK NAV discounted
+OK NAV discount=0 equals equity
+OK NAV no investments equals equity
+OK NAV discount clamped to 50%
+OK signal cheap P<FV
+OK signal expensive P>FV
+OK signal fair
+OK DCF Gordon n=1
+OK FCFF NOPAT path y1
+OK DCF from NOPAT FCFF
+OK yearly PV y1 = CF/(1+r)
+OK yearly PV y5 = CF/(1+r)^5
+OK yearly PV sits below forecast
+OK PV(TV) separate from yearly
+OK year-5 PV is not CF5+PV(TV)
+OK two-stage yearly PV
+OK TV blocked when r<=g
+OK RI intrinsic
+OK PIT DCF geometric
+OK PIT FCFE no cash-debt bridge
+OK PIT FCFE ignores cash add-back
+OK claim suggest FCFF when FCFE negative
+OK claim suggest FCFF when high leverage
+OK claim suggest FCFF when leverage swings
+OK claim FCFE ok when leverage stable
+OK hist FCFF unlevered vs Yahoo FCF
+OK hist FCFF exceeds Yahoo FCF by IAT
+OK statutory_tax TW 20%
+OK hist FCFF TW statutory fallback
+OK statutory_tax US 21%
+OK hist FCFF US statutory fallback
+OK EV to equity bridge
+OK Gordon TV blocked when g>=WACC
+OK Gordon TV blocked when last FCFF negative
+OK Gordon TV finite when g<WACC and CF>0
+OK NI>0 FCFF<0 recommends RI
+OK NI>0 FCFF<0 keeps DCF secondary
+All valuation formula checks passed.

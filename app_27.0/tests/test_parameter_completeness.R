@@ -109,3 +109,83 @@ bs[7,2] <- 550
 stopifnot(is.na(statement_other_equity_claims(bs)))
 stopifnot(is.na(statement_operating_invested_capital(bs[-3, ])))
 cat("PASS: operating IC excludes cash/nonoperating assets/nondebt liabilities; unknown claims stay missing\n")
+
+# A late source refresh may clear a default that the browser already echoed.
+# Lite must reapply it; Full must never write it. RI g shares central SGR defaults.
+source(file.path(app, "ri_module.R"))
+for (locale in c("en", "zh-TW")) {
+  refs <- ynow_required_parameter_rows(list(), APP_DEFAULTS, locale, lite = TRUE)
+  stopifnot(refs$suggestion[refs$id == "mod_ri-ri_g"] == APP_DEFAULTS$sgr,
+    refs$suggestion[refs$id == "mod_ri-ri_payout"] == 40,
+    refs$suggestion[refs$id == "mod_ri-ri_roe"] == 15,
+    is.finite(refs$suggestion[refs$id == "wacc_gordon"]),
+    is.finite(refs$suggestion[refs$id == "mod_ri-ri_ke"]),
+    all(is.na(refs$suggestion[refs$id %in% c("bridge_cash", "bridge_shares", "mod_ri-b0")])) )
+}
+shiny::testServer(function(input, output, session) {
+  sent <- new.env(parent = emptyenv())
+  session$sendInputMessage <- function(inputId, message) sent[[inputId]] <- message$value
+  assumptions <- ynow_parameter_guidance_server(input, session,
+    searched = function() TRUE, ticker = function() "TEST", busy = function() FALSE,
+    model_rec = function() list(primary = "ri"), locale = function() "zh-TW",
+    defaults = APP_DEFAULTS, ke = function() .10, wacc = function() .08,
+    lite = function() TRUE)
+}, {
+  session$setInputs(`mod_ri-b0` = 100)
+  session$elapse(400)
+  stopifnot(sent[["mod_ri-ri_payout"]] == 40)
+  # A real source can arrive before the debounced missing list catches up.
+  rm(list = "mod_ri-ri_payout", envir = sent)
+  session$setInputs(`mod_ri-ri_payout` = 35)
+  session$flushReact()
+  stopifnot(is.null(sent[["mod_ri-ri_payout"]]))
+  session$setInputs(`mod_ri-ri_payout` = 40)
+  session$elapse(400)
+  stopifnot(any(grepl("Lite 已套用假設數值", assumptions(), fixed = TRUE)))
+  session$setInputs(`mod_ri-ri_payout` = NA_real_)
+  session$elapse(400)
+  stopifnot(sent[["mod_ri-ri_payout"]] == 40)
+  result <- compute_ri_valuation(100, .10, .02, APP_DEFAULTS$ri_years,
+    sent[["mod_ri-ri_payout"]] / 100, rep(APP_DEFAULTS$ri_roe / 100, APP_DEFAULTS$ri_years))
+  stopifnot(result$status == "success", is.finite(result$intrinsic), result$df$Dividend[1] == 6)
+  # Zero payout is a different assumption; NA must never silently mean zero.
+  stopifnot(compute_ri_valuation(100, .1, .02, 5, NA_real_, rep(.15, 5))$status == "error")
+})
+cat("PASS: Lite RI forecast defaults, late refresh reapplication, actual RI calculation and missing-payout rejection\n")
+
+# Execute the production readiness gate, including Two-Stage with an absent
+# hidden Gordon rate. No copied readiness formula is used here.
+assignments <- list()
+walk <- function(x) {
+  if (missing(x) || (!is.call(x) && !is.expression(x))) return()
+  if (is.call(x) && identical(x[[1]], as.name("<-")) && is.symbol(x[[2]]))
+    assignments[[as.character(x[[2]])]] <<- x[[3]]
+  for (j in seq_along(x)) walk(x[[j]])
+}
+walk(parse(file.path(app, "ynow_server.R")))
+for (edition in c(FALSE, TRUE)) for (mode in c("gordon", "two_stage")) {
+  e <- new.env(parent = globalenv())
+  e$isolate <- shiny::isolate
+  e$lite_mode <- function() edition
+  e$lite_desired_des <- function() list(two_stage = mode == "two_stage")
+  e$fcf_results <- list(source_ready = function() TRUE, df_fcf = function() data.frame(FCFF = 1:5))
+  e$calculated_wacc <- function() NA_real_
+  e$.auto_calc_shares_ready <- function() TRUE
+  e$.shared_bridge <- function() list(revenue = 100)
+  e$d_income_statement <- function() NULL
+  e$select_current_metric <- function(...) 100
+  e$input <- list(years = 5, dcf_mode = mode, dcf_claim = "fcff", sgr = 2,
+    wacc_gordon = if (mode == "gordon") 8 else NA_real_,
+    wacc_stage1 = 8, wacc_stage2 = 8)
+  ready <- eval(assignments[[".auto_calc_primary_ready"]], e)
+  stopifnot(identical(ready("dcf"), edition))
+  e$calculated_wacc <- function() .08
+  stopifnot(ready("dcf"))
+  e$ri_results <- list(source_ready = function() TRUE)
+  e$input <- list(`mod_ri-b0` = 100, `mod_ri-ri_ke` = 10, `mod_ri-ri_g` = 2,
+    `mod_ri-ri_roe` = 15, `mod_ri-ri_payout` = NA_real_, `mod_ri-ri_years` = 5)
+  stopifnot(!ready("ri"))
+  e$input[["mod_ri-ri_payout"]] <- 40
+  stopifnot(ready("ri"))
+}
+cat("PASS: production readiness gates use disclosed Lite Gordon/Two-Stage defaults; Full requires calculated rates; RI waits for payout\n")

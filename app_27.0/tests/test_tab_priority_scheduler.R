@@ -41,7 +41,7 @@ test_that("navigation changes run at high priority", {
 test_that("hidden Blue Chip updates are deferred until entry", {
   expect_match(server_src, "Hidden picker remounts are surprisingly expensive", fixed = TRUE)
   expect_match(server_src, "Catch up deferred market-scoped Blue Chip controls on entry", fixed = TRUE)
-  expect_match(server_src, "mounted but hidden tab must not compete", fixed = TRUE)
+  expect_match(server_src, 'if (!identical(as.character(isolate(input$sidebar_tabs) %||% "")[1], "bluechip")) return()', fixed = TRUE)
 })
 
 test_that("market Rf work yields until after visible paint", {

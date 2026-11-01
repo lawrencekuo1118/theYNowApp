@@ -1,3 +1,9 @@
+## [v27.61] — 2026-11-01 · Lite 智慧分析自動套用預設
+
+- zh-TW：Lite 智慧分析自動套用可用的預設預測假設並在參數回傳後重新試算，不再要求前往 Full 補填。修正 RI 永續成長率預設來源及延後財報更新清除預設值後不重套的問題；畫面與 PDF 標示已採用的假設數值。Full 維持人工確認，實際財報缺漏不造值。
+- en-US: Apply available forecast defaults automatically in Lite Smart Analysis and recalculate after input updates settle. Fix the RI terminal-growth default and reapply assumptions cleared by late source refreshes. Disclose applied assumptions on screen and in PDF reports; retain Full's manual workflow and preserve missing financial facts.
+- Evidence: [Lite Smart Analysis regression report](docs/fixes/2026-11-01-lite-smart-defaults/REPORT.md).
+
 ## [v27.60] — 2026-10-30 · 台股搜尋
 
 - zh-TW：修正台股搜尋失敗後持續停留 yfinance 的 session／進度清理問題；升級 managed Python 相依套件並限制 Summary 等待時間。公司全稱先由官方清單顯示，支援 `7772-TWO` 等連字號板別輸入，修正二進位市場快取綁定與失敗 Summary 快取。

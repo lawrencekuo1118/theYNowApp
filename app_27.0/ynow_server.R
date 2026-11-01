@@ -14146,7 +14146,12 @@ server <- function(input, output, session) {
       b0 <- suppressWarnings(as.numeric(input[["mod_ri-b0"]])[1])
       ke <- suppressWarnings(as.numeric(input[["mod_ri-ri_ke"]])[1])
       g <- suppressWarnings(as.numeric(input[["mod_ri-ri_g"]])[1])
-      if (!(is.finite(b0) && is.finite(ke) && ke > 0 && is.finite(g) && g < ke)) return(FALSE)
+      roe <- suppressWarnings(as.numeric(input[["mod_ri-ri_roe"]])[1])
+      payout <- suppressWarnings(as.numeric(input[["mod_ri-ri_payout"]])[1])
+      years <- suppressWarnings(as.numeric(input[["mod_ri-ri_years"]])[1])
+      if (!(is.finite(b0) && is.finite(ke) && ke > 0 && is.finite(g) && g < ke &&
+            is.finite(roe) && is.finite(payout) && payout >= 0 && payout <= 100 &&
+            is.finite(years) && years >= 1)) return(FALSE)
       return(isTRUE(.auto_calc_shares_ready()))
     }
     if (identical(prim, "dcf")) {
@@ -14172,8 +14177,14 @@ server <- function(input, output, session) {
       w_calc <- suppressWarnings(as.numeric(calculated_wacc())[1])
       lite <- isTRUE(isolate(lite_mode()))
       des <- if (lite) tryCatch(isolate(lite_desired_des()), error = function(e) NULL) else NULL
-      # Missing market inputs are not permission to value with boot defaults.
-      if (!is.finite(w_calc) || w_calc <= 0) return(FALSE)
+      # Full requires calculated WACC; Lite can use its disclosed input assumption.
+      if (!is.finite(w_calc) || w_calc <= 0) {
+        if (!lite) return(FALSE)
+        fallback_rate <- if ((!is.null(des) && isTRUE(des$two_stage)) ||
+                             identical(input$dcf_mode, "two_stage")) input$wacc_stage2 else input$wacc_gordon
+        w_calc <- suppressWarnings(as.numeric(fallback_rate)[1]) / 100
+        if (!is.finite(w_calc) || w_calc <= 0) return(FALSE)
+      }
       mode <- as.character(input$dcf_mode %||% "gordon")[1]
       # Prefer stored Lite desired mode when hidden radios have not echoed yet
       if (isTRUE(lite) && !is.null(des)) {
@@ -14384,7 +14395,7 @@ server <- function(input, output, session) {
           fail_sig <- paste(tk, "ddm_no_d0", sep = "|")
           if (!identical(auto_calc_fail_sig(), fail_sig)) {
             auto_calc_fail_sig(fail_sig)
-            showNotification(
+            if (!isTRUE(lite_mode())) showNotification(
               .ui_msg("notif_ddm_no_d0"),
               type = "warning",
               duration = 10,
@@ -14420,6 +14431,9 @@ server <- function(input, output, session) {
     sig <- paste(
       c(
         tk, keys,
+        # Retry when asynchronous default/source input echoes settle, including
+        # RI payout/ROE and all selected model assumptions.
+        vapply(ynow_parameter_input_ids(), function(id) paste(input[[id]], collapse = ","), character(1)),
         if (isTRUE(lite_mode())) "L" else "F",
         mode, claim,
         if (is.finite(w_calc)) round(w_calc * 100, 2) else "NA",
@@ -14501,7 +14515,20 @@ server <- function(input, output, session) {
     tk <- tryCatch(as.character(current_ticker() %||% "")[1], error = function(e) "")
     searched <- isTRUE(user_has_searched())
     tags$div(
-      class = "ynow-smart-card-row",
+      if (isTRUE(lite_mode())) {
+        notes <- parameter_assumptions()
+        vals <- setNames(lapply(ynow_parameter_input_ids(), function(id) input[[id]]), ynow_parameter_input_ids())
+        gaps <- ynow_required_parameter_rows(vals, APP_DEFAULTS, loc,
+          central_ke() * 100, calculated_wacc() * 100, lite = TRUE)
+        gaps <- gaps[gaps$model == prim & !is.finite(gaps$suggestion), , drop = FALSE]
+        tagList(
+          if (length(notes)) tags$div(class = "alert alert-info", tags$ul(lapply(notes, tags$li))),
+          if (!is.finite(base) && nrow(gaps) && !isTRUE(ticker_search_busy()))
+            tags$div(class = "alert alert-warning", ui_str("param_lite_source_unavailable", loc),
+              paste(unique(gaps$label), collapse = ", "))
+        )
+      },
+      tags$div(class = "ynow-smart-card-row",
       ynow_alertable(
         tags$div(
           class = "ynow-smart-card",
@@ -14590,7 +14617,7 @@ server <- function(input, output, session) {
         default_kind = "below_fair",
         fair_value = base
       )
-    )
+    ))
   })
 
   output$smart_analysis_reason <- renderUI({
