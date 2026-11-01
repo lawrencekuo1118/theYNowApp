@@ -13,7 +13,7 @@ ynow_parameter_input_ids <- function() {
     paste0("mod_sotp-", c("default_ev_sales", "nonop", "manual_segments")), "mod_ri-roe_custom_txt")
 }
 
-ynow_required_parameter_rows <- function(values, defaults = list(), locale = "en", ke_pct = NA_real_, wacc_pct = NA_real_) {
+ynow_required_parameter_rows <- function(values, defaults = list(), locale = "en", ke_pct = NA_real_, wacc_pct = NA_real_, lite = FALSE) {
   zh <- identical(locale, "zh-TW")
   rows <- list()
   add <- function(model, id, label, tab, source_en, source_zh, default = NULL, suggestion = NA_real_, present = NULL) {
@@ -21,6 +21,15 @@ ynow_required_parameter_rows <- function(values, defaults = list(), locale = "en
     value <- suppressWarnings(as.numeric(values[[id]])[1])
     if (is.null(present) && is.finite(value)) return()
     ref <- suppressWarnings(as.numeric(if (!is.null(default)) defaults[[default]] else suggestion)[1])
+    # Lite uses explicit forecast assumptions, never invented statement facts.
+    lite_defaults <- c(wacc_gordon = "wacc_gordon", wacc_stage1 = "wacc_stage1",
+      wacc_stage2 = "wacc_stage2", wacc_re = "wacc_re",
+      `mod_ddm-ke` = "ddm_ke", `mod_ri-ri_ke` = "wacc_re",
+      `mod_ri-roe_terminal` = "ri_roe", `mod_ri-roe_industry` = "ri_roe")
+    if (isTRUE(lite) && !is.finite(ref) && id %in% names(lite_defaults)) {
+      default <- lite_defaults[[id]]
+      ref <- suppressWarnings(as.numeric(defaults[[default]])[1])
+    }
     source <- if (zh) source_zh else source_en
     if (is.finite(ref)) {
       suggestion_source <- if (!is.null(default)) {
@@ -63,7 +72,7 @@ ynow_required_parameter_rows <- function(values, defaults = list(), locale = "en
   if (identical(values[["mod_ddm-ddm_mode"]], "two_stage")) for (id in c("g_stage1", "yr_stage1")) add("ddm", paste0("mod_ddm-", id), id, "ddm_calculator", "Review stage-one assumptions.", "請確認第一階段假設。", paste0("ddm_", id))
   for (id in c("b0", "ri_ke", "ri_g", "ri_years", "ri_payout", "ri_roe")) add("ri", paste0("mod_ri-", id), id, "ri_calculator",
     "B0 uses common book equity per quote-class share. Use common earnings and common dividends for ROE and payout.", "B0 為每報價股的普通股帳面權益；ROE 與配息率須使用普通股盈餘及普通股股利。",
-    default = if (id %in% c("ri_g", "ri_years", "ri_payout", "ri_roe")) id else NULL,
+    default = if (id %in% c("ri_g", "ri_years", "ri_payout", "ri_roe")) if (id == "ri_g") "sgr" else id else NULL,
     suggestion = if (id == "ri_ke") ke_pct else NA_real_)
   method <- values[["mod_ri-roe_method"]]
   if (length(method) && method %in% c("linear", "industry")) {
@@ -121,23 +130,27 @@ ynow_parameter_guidance_server <- function(input, session, searched, ticker, bus
     values <- setNames(lapply(ids, function(id) input[[id]]), ids)
     values[[".sotp_ready"]] <- sotp_ready()
     values[[".fx_needed"]] <- fx_needed()
-    ynow_required_parameter_rows(values, defaults, locale(), ke() * 100, wacc() * 100)
+    ynow_required_parameter_rows(values, defaults, locale(), ke() * 100, wacc() * 100, lite = lite())
   }), 300)
   shiny::observe({
     if (!isTRUE(searched()) || isTRUE(busy())) return()
     rows <- missing()
-    ledger <- applied()
+    ledger <- shiny::isolate(applied())
+    for (id in names(ledger)) {
+      value <- suppressWarnings(as.numeric(input[[id]])[1])
+      if (is.finite(value)) ledger[[id]]$echoed <- TRUE
+    }
     if (isTRUE(lite())) {
       refs <- rows[is.finite(rows$suggestion) & !duplicated(rows$id), , drop = FALSE]
       for (i in seq_len(nrow(refs))) {
         id <- refs$id[i]
         # Do not repeatedly send an update while the browser echoes it.
-        if (!is.null(ledger[[id]])) next
-        ledger[[id]] <- list(value = refs$suggestion[i], hint = refs$hint[i], label = refs$label[i])
+        if (!is.null(ledger[[id]]) && !isTRUE(ledger[[id]]$echoed)) next
+        ledger[[id]] <- list(value = refs$suggestion[i], hint = refs$hint[i], label = refs$label[i], echoed = FALSE)
         session$sendInputMessage(id, list(value = refs$suggestion[i]))
       }
-      applied(ledger)
     }
+    if (!identical(shiny::isolate(applied()), ledger)) applied(ledger)
     hints <- rows[!duplicated(rows$id), , drop = FALSE]
     for (id in names(ledger)) {
       value <- suppressWarnings(as.numeric(input[[id]])[1])
@@ -155,7 +168,7 @@ ynow_parameter_guidance_server <- function(input, session, searched, ticker, bus
     chosen <- requested()
     if (!nzchar(chosen)) chosen <- as.character(model_rec()$primary %||% "")[1]
     needed <- rows[rows$model == chosen, , drop = FALSE]
-    if (!nrow(needed)) {
+    if (isTRUE(lite()) || !nrow(needed)) {
       shiny::removeNotification("ynow_missing_parameters", session = session)
       return()
     }

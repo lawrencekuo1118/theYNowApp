@@ -7,6 +7,8 @@ US / Taiwan stock fundamental analysis Shiny app（雲端版：yfinance，無 Ch
 **Deploy baseline:** `scripts/DEPLOY_BASELINE.txt`（bundleId／commit／URL；開發比對以此為準，不是單純看 Git tip）  
 **Changelog:** [`CHANGELOG.md`](CHANGELOG.md) · **Releases:** https://github.com/lawrencekuo1118/theYNowApp/releases
 
+**Lite 智慧分析：** 自動套用可用的預設預測假設並計算，畫面及 PDF 標示假設數值；[修正佐證](docs/fixes/2026-11-01-lite-smart-defaults/REPORT.md)。
+
 **財務參數稽核：** [完整佐證報告](docs/audits/2026-10-30-parameter-sources/REPORT.md)（含模式矩陣、來源對應與限制）。
 
 ## CI / CD

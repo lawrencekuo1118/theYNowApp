@@ -74,13 +74,16 @@ compute_ri_valuation <- function(b0,
                                  n,
                                  payout,
                                  roe_path,
-                                 validate = TRUE) {
+                                 validate = TRUE,
+                                 locale = "en") {
   b0 <- suppressWarnings(as.numeric(b0)[1])
   ke <- suppressWarnings(as.numeric(ke)[1])
   g <- suppressWarnings(as.numeric(g)[1])
   n <- max(1L, as.integer(n)[1])
   payout <- suppressWarnings(as.numeric(payout)[1])
-  if (!is.finite(payout)) payout <- 0
+  if (!is.finite(payout)) {
+    return(list(status = "error", message = if (exists("ui_str", mode = "function")) ui_str("ri_missing_payout", locale) else "Payout is missing.", warnings = character(0)))
+  }
   payout <- max(0, min(1, payout))
 
   warnings <- character(0)
@@ -732,7 +735,7 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
         n = n,
         payout = (input$ri_payout %||% 0) / 100,
         roe_path = path_dec,
-        validate = TRUE
+        validate = TRUE, locale = .loc()
       )
     }, ignoreNULL = FALSE)
 
