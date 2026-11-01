@@ -1,6 +1,11 @@
 from playwright.sync_api import sync_playwright
-import json,time,os
+import json,time,os,urllib.request
 url=os.environ.get('VERIFY_URL','http://127.0.0.1:3848/')
+expected=os.environ.get('EXPECTED_VERSION','')
+if expected:
+ build=json.load(urllib.request.urlopen(url+'ynow_build.json?t='+str(time.time()),timeout=60))
+ assert build['version']==expected,build
+ print(json.dumps({'build':build},ensure_ascii=False),flush=True)
 with sync_playwright() as p:
  b=p.chromium.launch(executable_path='/usr/bin/chromium',args=['--no-sandbox'])
  ctx=b.new_context(ignore_https_errors=True)
@@ -10,6 +15,8 @@ with sync_playwright() as p:
  page.wait_for_function('window.Shiny && Shiny.shinyapp && Shiny.shinyapp.isConnected()',timeout=120000)
  page.evaluate("Shiny.setInputValue('market_mode_pick','TW',{priority:'event'})")
  page.wait_for_timeout(3000)
+ locale=os.environ.get('VERIFY_LOCALE','en')
+ page.evaluate('(loc)=>Shiny.setInputValue("ui_locale_pick",loc,{priority:"event"})',locale)
  page.evaluate("Shiny.setInputValue('sc','7772-TWO',{priority:'event'});Shiny.setInputValue('search',1,{priority:'event'});window.ynowGotoTab('smart_analysis')")
  done=False
  for i in range(30):
