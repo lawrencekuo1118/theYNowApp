@@ -33,6 +33,7 @@ Lite 直接套用可用的預測假設並自動計算；不再跳出「前往補
 
 - 正式版：v27.61；appId 10907657，bundle **12765906**，API 確認 running，靜態 build metadata 亦為 v27.61。
 - 修正已由 [PR #581](https://github.com/lawrencekuo1118/theYNowApp/pull/581) 合併 master（`9778eccd`），必要 CI／audit 皆通過，原始紀錄見 `evidence/pr-581.json`。
+- 部署紀錄已由 [PR #582](https://github.com/lawrencekuo1118/theYNowApp/pull/582) 合併 master（`e7ddeb78`）；基準記錄原提交 `8fc86923`。
 - 實際上傳程式版本：`b07d83e5fb9093ffb6df947d4444bbe9aec5e3d2`（版號提交）。[GitHub Release v27.61](https://github.com/lawrencekuo1118/theYNowApp/releases/tag/v27.61) 指向此版本；部署基準見 `scripts/DEPLOY_BASELINE.txt`。
 - 正式站實測：訪客、Lite、en-US、TW、7772-TWO；沒有人工補填，110 秒完成（含新版首次啟動等待）。RI **NT$71.09**、P/B **NT$122.72**、MOS **-34.0%**；B0 38.35、Ke 9.74%、g 2.03%，預期 ROE 15%／Payout 40% 有明確假設揭露。補填通知未出現，無 JavaScript／Shiny output error；原始結果 `evidence/production-en.jsonl`。
 - 正式站 zh-TW Lite 亦實測通過（75 秒），顯示「Lite 已套用假設數值」，無補填通知、JavaScript／Shiny output error；見 `evidence/production-zh-TW.jsonl`。
