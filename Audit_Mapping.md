@@ -5,6 +5,8 @@
 **Phase:** 1–4 complete · **5 complete** (Audit RCM Report)  
 **Status:** `scripts/run_audit.sh` → `Audit_RCM_Report.md`
 
+**Lite 智慧分析佐證（v27.61）：** [自動預設、公式引用與同 session 中英文估值一致性](docs/fixes/2026-11-01-lite-smart-defaults/REPORT.md)。預測假設明確標示；財報缺值不造值。
+
 ---
 
 ## 1. Data Flow（資料流進入點）
