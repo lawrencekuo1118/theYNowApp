@@ -36,5 +36,6 @@ Lite 直接套用可用的預測假設並自動計算；不再跳出「前往補
 - 實際上傳程式版本：`b07d83e5fb9093ffb6df947d4444bbe9aec5e3d2`（版號提交）。[GitHub Release v27.61](https://github.com/lawrencekuo1118/theYNowApp/releases/tag/v27.61) 指向此版本；部署基準見 `scripts/DEPLOY_BASELINE.txt`。
 - 正式站實測：訪客、Lite、en-US、TW、7772-TWO；沒有人工補填，110 秒完成（含新版首次啟動等待）。RI **NT$71.09**、P/B **NT$122.72**、MOS **-34.0%**；B0 38.35、Ke 9.74%、g 2.03%，預期 ROE 15%／Payout 40% 有明確假設揭露。補填通知未出現，無 JavaScript／Shiny output error；原始結果 `evidence/production-en.jsonl`。
 - 正式站 zh-TW Lite 亦實測通過（75 秒），顯示「Lite 已套用假設數值」，無補填通知、JavaScript／Shiny output error；見 `evidence/production-zh-TW.jsonl`。
+- 同一正式站 session 由 en-US 切換 zh-TW，四張估值卡數值逐項相同（主模型、副模型、市價、MOS），證明語言切換不改估值；見 `evidence/production-locale-stability.jsonl`。不同查詢當下可用的歷史價格／倍數資料可能不同，因此獨立 session 的副模型數字不作跨時點一致性斷言。
 - 實際財報來源缺漏仍不造值：本案例 TPEx 補入 IS／BS；Cash Flow 未提供則維持缺漏，由可用的 RI／P/B 提供結果。
 - 已執行 `post_release_local_sync.sh`；Cloud 未掛載 Mac／OneDrive，腳本 soft-skip。**本機備份尚未完成**，須在 Mac coding clone 執行同步及 `check-od-sync.sh`。

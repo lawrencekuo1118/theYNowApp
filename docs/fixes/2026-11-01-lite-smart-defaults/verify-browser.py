@@ -31,6 +31,16 @@ with sync_playwright() as p:
     assert row['lite'] and not errors and not row['output_errors'],row
     assert 'ynow_missing_parameters' not in page.locator('#shiny-notification-panel').inner_html()
     done=True;break
+ if done:
+  page.wait_for_timeout(10000)
+  before=page.locator('#smart_analysis_summary .ynow-smart-card-value').all_text_contents()
+  other='zh-TW' if locale=='en' else 'en'
+  page.evaluate('(loc)=>Shiny.setInputValue("ui_locale_pick",loc,{priority:"event"})',other)
+  page.wait_for_timeout(5000)
+  after=page.locator('#smart_analysis_summary .ynow-smart-card-value').all_text_contents()
+  parameters=page.evaluate('Object.fromEntries(Object.entries(Shiny.shinyapp.$inputValues).filter(([k])=>k.startsWith("mod_pb-") || k.startsWith("mod_ri-") || k.startsWith("sgr:")))')
+  print(json.dumps({'locale_switch':{'from':locale,'to':other,'before':before,'after':after,'parameters':parameters}},ensure_ascii=False),flush=True)
+  assert before==after, 'Locale switch changed valuation results'
  page.screenshot(path='/workspace/scratch/lite-smart.png')
  assert done,'Lite did not calculate automatically'
  b.close()
