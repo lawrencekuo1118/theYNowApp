@@ -144,6 +144,10 @@ ynow_parameter_guidance_server <- function(input, session, searched, ticker, bus
       refs <- rows[is.finite(rows$suggestion) & !duplicated(rows$id), , drop = FALSE]
       for (i in seq_len(nrow(refs))) {
         id <- refs$id[i]
+        # The debounced missing list can lag a newly arrived statement value.
+        # Never overwrite a fresh source value or a manual edit with a default.
+        current <- suppressWarnings(as.numeric(input[[id]])[1])
+        if (is.finite(current)) next
         # Do not repeatedly send an update while the browser echoes it.
         if (!is.null(ledger[[id]]) && !isTRUE(ledger[[id]]$echoed)) next
         ledger[[id]] <- list(value = refs$suggestion[i], hint = refs$hint[i], label = refs$label[i], echoed = FALSE)
