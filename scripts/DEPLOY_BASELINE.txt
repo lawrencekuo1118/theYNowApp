@@ -7,5 +7,5 @@ commit=11a192e56c27e2be0ef5d060a5411782b7abc22b
 short=11a192e5
 message=chore: bump display version to v27.60
 captured_at=2026-10-30T02:14:58Z
-display_version=v27.60
+display_version=v27.61
 note=Taiwan search session and empty-CF fixes; bounded Yahoo/TPEx requests, reticulate 1.47/Python 3.11, canonical hyphen aliases. PRs #576/#577/#578; running bundle 12757353.
