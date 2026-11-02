@@ -3429,7 +3429,9 @@ beta_rolling_section_ui <- function() {
         plotlyOutput("smart_analysis_chart", height = "360px") %>% shinycssloaders::withSpinner()
       )
     ),
-    uiOutput("smart_analysis_reason")
+    uiOutput("smart_analysis_reason"),
+    # Lite applied-assumption disclosures: page-footer footnotes (not mid-page alerts).
+    uiOutput("smart_analysis_assumption_notes")
   )
 }
 
@@ -16786,6 +16788,30 @@ ui <- dashboardPage(
         }
 
         /* Param audit highlight pulse */
+        .ynow-lite-assumption-footnotes {
+          margin: 1.5rem 0 0.75rem 0;
+          padding: 0.7rem 0 0.15rem 0;
+          border-top: 1px solid #d0d4db;
+          color: #5c6570;
+          font-size: 12px;
+          line-height: 1.45;
+        }
+        .ynow-lite-assumption-footnotes .ynow-lite-assumption-footnotes-title {
+          display: block;
+          font-weight: 600;
+          font-size: 11px;
+          letter-spacing: 0.02em;
+          text-transform: uppercase;
+          color: #6b7280;
+          margin-bottom: 0.4rem;
+        }
+        .ynow-lite-assumption-footnotes ol {
+          margin: 0;
+          padding-left: 1.15rem;
+        }
+        .ynow-lite-assumption-footnotes li {
+          margin: 0.2rem 0;
+        }
         .ynow-param-highlight {
           outline: 3px solid #f39c12 !important;
           outline-offset: 3px;

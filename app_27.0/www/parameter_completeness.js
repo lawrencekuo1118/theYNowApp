@@ -1,9 +1,56 @@
 (function () {
   'use strict';
-  var items = [], pendingFocus = null, scheduled = false;
+  var items = [], assumptions = [], assumptionTitle = '', pendingFocus = null, scheduled = false;
+
+  function clearRendered() {
+    document.querySelectorAll('.ynow-param-missing-hint').forEach(function (node) { node.remove(); });
+    document.querySelectorAll('.ynow-lite-assumption-footnotes').forEach(function (node) { node.remove(); });
+  }
+
+  function footnoteHost(field) {
+    if (!field) return null;
+    // Prefer the innermost tab pane that owns the control so notes sit at the
+    // bottom of the visible Lite valuation / model sub-tab.
+    var pane = field.closest('.tab-pane');
+    if (pane) return pane;
+    return field.closest('.content-wrapper') || field.closest('.tab-content') || null;
+  }
+
+  function renderFootnotes() {
+    if (!assumptions.length) return;
+    var byHost = {};
+    assumptions.forEach(function (item) {
+      var field = document.getElementById(item.id);
+      var host = footnoteHost(field);
+      if (!host) return;
+      var key = host.id || '__anon__';
+      if (!byHost[key]) byHost[key] = { host: host, hints: [] };
+      if (item.hint) byHost[key].hints.push(item.hint);
+    });
+    Object.keys(byHost).forEach(function (key) {
+      var pack = byHost[key];
+      if (!pack.hints.length) return;
+      var aside = document.createElement('aside');
+      aside.className = 'ynow-lite-assumption-footnotes';
+      aside.setAttribute('role', 'note');
+      var title = document.createElement('span');
+      title.className = 'ynow-lite-assumption-footnotes-title';
+      title.textContent = assumptionTitle || 'Notes — Lite applied assumptions';
+      aside.appendChild(title);
+      var list = document.createElement('ol');
+      pack.hints.forEach(function (hint) {
+        var li = document.createElement('li');
+        li.textContent = hint;
+        list.appendChild(li);
+      });
+      aside.appendChild(list);
+      pack.host.appendChild(aside);
+    });
+  }
+
   function applyHints() {
     scheduled = false;
-    document.querySelectorAll('.ynow-param-missing-hint').forEach(function (node) { node.remove(); });
+    clearRendered();
     items.forEach(function (item) {
       var field = document.getElementById(item.id);
       if (!field) return;
@@ -16,6 +63,7 @@
       hint.textContent = item.hint;
       group.appendChild(hint);
     });
+    renderFootnotes();
     focusPending();
   }
   function focusPending() {
@@ -37,17 +85,25 @@
     scheduled = true;
     window.requestAnimationFrame(applyHints);
   }
+  function isSelfManagedNode(node) {
+    return node.nodeType === 1 && (
+      node.classList.contains('ynow-param-missing-hint') ||
+      node.classList.contains('ynow-lite-assumption-footnotes')
+    );
+  }
   function start() {
     if (!window.Shiny) { window.setTimeout(start, 100); return; }
     Shiny.addCustomMessageHandler('ynowParameterGuidance', function (message) {
       items = message.items || [];
+      assumptions = message.assumptions || [];
+      assumptionTitle = message.assumptionTitle || '';
       applyHints();
     });
-    // Ignore mutations made by the hints themselves, avoiding an observer loop.
+    // Ignore mutations made by the hints/footnotes themselves, avoiding an observer loop.
     new MutationObserver(function (changes) {
       var changed = changes.some(function (change) {
         return Array.prototype.some.call(change.addedNodes, function (node) {
-          return node.nodeType === 1 && !node.classList.contains('ynow-param-missing-hint');
+          return node.nodeType === 1 && !isSelfManagedNode(node);
         });
       });
       if (changed) schedule();

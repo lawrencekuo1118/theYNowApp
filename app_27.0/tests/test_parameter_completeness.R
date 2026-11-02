@@ -38,10 +38,23 @@ for (locale in c("en", "zh-TW")) {
   stopifnot(!any(pe$model == "multiples" & pe$id %in% c("bridge_cash", "bridge_debt")))
   for (key in c("param_missing_title", "param_missing_body", "param_missing_go_fill",
                 "param_missing_reference", "param_missing_no_reference",
+                "param_assumption_applied", "param_assumption_footnotes_title",
                 "param_sotp_manual_label", "param_sotp_manual_help")) {
     stopifnot(nzchar(ui_str(key, locale)))
   }
 }
+stopifnot(identical(ui_str("param_assumption_footnotes_title", "en"),
+                    "Notes — Lite applied assumptions"),
+          identical(ui_str("param_assumption_footnotes_title", "zh-TW"),
+                    "註解 — Lite 已套用假設"))
+foot_ui <- ynow_lite_assumption_footnotes_ui(
+  "Assumed value applied by Lite: WACC = 8. Reference suggestion: 8.", "en")
+stopifnot(inherits(foot_ui, "shiny.tag"),
+          identical(foot_ui$name, "aside"),
+          identical(foot_ui$attribs$class, "ynow-lite-assumption-footnotes"),
+          is.null(ynow_lite_assumption_footnotes_ui(character(0), "en")),
+          is.null(ynow_lite_assumption_footnotes_ui(NULL, "zh-TW")))
+cat("PASS: Lite assumption footnote helper + bilingual title keys\n")
 valid <- "name,revenue,multiple\nHardware,100,2\nServices,200,3"
 stopifnot(nrow(parse_manual_sotp_segments(valid)) == 2,
           nrow(parse_manual_sotp_segments("name,revenue,multiple\nOnly,100,2")) == 0,
@@ -51,12 +64,16 @@ stopifnot(nrow(parse_manual_sotp_segments(valid)) == 2,
 cat("PASS: seven-engine required inputs, conditional requirements, zero vs missing, bilingual suggestions, immutable inputs, validated manual SOTP segments\n")
 
 # Exercise real Shiny messaging: Full must not write; Lite writes only finite
-# references, retains source-missing fields, and exports the applied assumptions.
+# references, retains source-missing fields, and exports the applied assumptions
+# as footnote payload (not mid-page field callouts).
 for (edition in c(FALSE, TRUE)) {
   shiny::testServer(function(input, output, session) {
     sent <- new.env(parent = emptyenv())
     session$sendInputMessage <- function(inputId, message) {
       sent[[inputId]] <- message$value
+    }
+    session$sendCustomMessage <- function(type, message) {
+      if (identical(type, "ynowParameterGuidance")) sent$guidance <<- message
     }
     assumptions <- ynow_parameter_guidance_server(input, session,
       searched = function() TRUE, ticker = function() "TEST", busy = function() FALSE,
@@ -72,10 +89,23 @@ for (edition in c(FALSE, TRUE)) {
       stopifnot(identical(sent$wacc_gordon, 8), is.null(sent$bridge_cash),
                 is.null(sent[["mod_fcf-fcf_nopat"]]))
       session$setInputs(wacc_gordon = 8)
+      session$flushReact()
+      session$elapse(400)
+      session$flushReact()
       stopifnot(any(grepl("Assumed value applied by Lite: WACC = 8", assumptions(), fixed = TRUE)))
+      g <- sent$guidance
+      stopifnot(is.list(g), is.list(g$assumptions), length(g$assumptions) >= 1L,
+                identical(g$assumptionTitle, "Notes — Lite applied assumptions"),
+                any(vapply(g$assumptions, function(x) {
+                  isTRUE(identical(x$id, "wacc_gordon")) &&
+                    grepl("Assumed value applied by Lite: WACC = 8", x$hint %||% "", fixed = TRUE)
+                }, logical(1))),
+                !any(vapply(g$items %||% list(), function(x) {
+                  grepl("Assumed value applied by Lite", x$hint %||% "", fixed = TRUE)
+                }, logical(1))))
       session$setInputs(wacc_gordon = 9)
       stopifnot(!any(grepl("WACC = 8", assumptions(), fixed = TRUE)))
-    } else stopifnot(length(ls(sent)) == 0, length(assumptions()) == 0)
+    } else stopifnot(length(setdiff(ls(sent), "guidance")) == 0, length(assumptions()) == 0)
   })
 }
 cat("PASS: Lite applies finite references with assumption disclosure; Full stays manual; missing financial facts stay missing; manual edits remove stale disclosures\n")
@@ -293,3 +323,24 @@ shiny::testServer(function(input, output, session) {
   stopifnot(is.list(sent$guidance), length(sent$guidance$items) >= 1L)
 })
 cat("PASS: missing-parameter toast scoped to Model Dashboard→Quant Backtest Lab; locked tabs suppress\n")
+
+# Applied Lite assumptions render as tab-footer footnotes, not field help-blocks.
+js_src <- paste(readLines(file.path(app, "www/parameter_completeness.js"),
+                           warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+ui_src <- paste(readLines(file.path(app, "ynow_ui.R"),
+                          warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+srv_src2 <- paste(readLines(file.path(app, "ynow_server.R"),
+                            warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+stopifnot(
+  grepl("message\\.assumptions", js_src),
+  grepl("ynow-lite-assumption-footnotes", js_src),
+  grepl("ynow-lite-assumption-footnotes", ui_src),
+  grepl("smart_analysis_assumption_notes", ui_src),
+  grepl("output\\$smart_analysis_assumption_notes", srv_src2),
+  grepl("ynow_lite_assumption_footnotes_ui", srv_src2),
+  # Mid-page Smart Analysis alert-info for applied assumptions must be gone.
+  !grepl("if \\(length\\(notes\\)\\) tags\\$div\\(class = \"alert alert-info\"", srv_src2),
+  grepl("assumptions = assumption_items", param_src),
+  grepl("assumptionTitle", param_src)
+)
+cat("PASS: Lite applied assumptions routed to footer footnotes (JS + Smart Analysis)\n")
