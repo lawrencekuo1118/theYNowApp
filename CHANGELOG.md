@@ -1,3 +1,9 @@
+## [v27.72] — 2026-11-02 · Lite applied assumptions as footnotes
+
+- zh-TW：Lite「已套用假設數值」說明（WACC、ri_payout、ri_roe 等）改為估值／模型分頁底部註解樣式，不再出現在控制項旁或智慧分析中段 alert。缺漏參數欄位提示維持原位。en-US + zh-TW 標題已登錄。
+- en-US: Move Lite “Assumed value applied by Lite” disclosures (WACC, ri_payout, ri_roe, and similar) to annotation-style footnotes at the bottom of the valuation/model tab. Missing-parameter field hints stay beside inputs.
+- Evidence: PR #604; `app_27.0/tests/test_parameter_completeness.R`, `test_lite_mode_ui.R`. Bundle 12769359.
+
 ## [v27.62] — 2026-11-02 · Lite DCF Base with disclosed WACC
 
 - zh-TW：Lite 智慧分析在僅有已揭露的假設 WACC（尚未算出 calculated WACC）時，silent DCF 仍會試算並顯示 Bear／Base／Bull；Full 維持等待估算 WACC。修正 AAPL 等主模型為 DCF 時 Base 空白的問題。
