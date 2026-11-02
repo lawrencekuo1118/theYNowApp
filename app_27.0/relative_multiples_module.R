@@ -544,7 +544,7 @@ relative_multiples_module_ui <- function(id) {
           ),
           tags$p(
             id = "ynow_rel_multiples_bridge_help", class = "help-block",
-            "Cash, Total Debt, Shares, and total Revenue are set once on Model Dashboard → Cash, Debt, Shares & Revenue (shared). This page shows the applied values."
+            "Cash, Total Debt, Shares, and total Revenue are set once on Model Dashboard → Shared model parameters. This page shows the applied values."
           )
         )
       )

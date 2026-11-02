@@ -103,19 +103,31 @@ check("BETA block sits above shared inputs", pos_beta > 0L && pos_bridge > pos_b
 # Plain-language locale (no jargon title 「共用橋接」/ "Shared bridge")
 loc <- paste(readLines("ui_locale.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check(
-  "en shared_bridge_title is plain",
-  grepl('shared_bridge_title = "Cash, Debt, Shares & Revenue \\(shared\\)"', loc)
+  "en shared_bridge_title is Shared model parameters",
+  grepl('shared_bridge_title = "Shared model parameters"', loc, fixed = TRUE)
 )
 check(
-  "zh-TW shared_bridge_title is plain",
-  grepl("shared_bridge_title = \"Cash、Debt、股數與營收（各模型共用）\"", loc, fixed = TRUE)
+  "zh-TW shared_bridge_title is 模型共用參數",
+  grepl('shared_bridge_title = "模型共用參數"', loc, fixed = TRUE)
 )
 check("no jargon UI title 共用橋接", !grepl('shared_bridge_title = "共用橋接"', loc, fixed = TRUE))
 check("no jargon UI title Shared bridge", !grepl('shared_bridge_title = "Shared bridge"', loc, fixed = TRUE))
 check(
-  "default box title matches zh-TW plain copy",
-  grepl("Cash、Debt、股數與營收（各模型共用）", ui, fixed = TRUE)
+  "default box title matches zh-TW Shared model parameters",
+  grepl("模型共用參數", ui, fixed = TRUE)
 )
+pc <- paste(readLines("parameter_completeness.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+check("manual bridge_fx input removed from UI", !grepl('id = "bridge_fx"', ui, fixed = TRUE) && !grepl('numericInput("bridge_fx"', ui, fixed = TRUE))
+check("manual bridge_fx dropped from parameter input ids", !grepl('"bridge_fx"', pc, fixed = TRUE))
+check("fx_usd_twd no longer reads input$bridge_fx", !grepl("input$bridge_fx", srv, fixed = TRUE))
+check(
+  "applyUiLocale pushes other equity claims label",
+  grepl("['bridge_other_claims', 'param_other_claims_label']", ui, fixed = TRUE) ||
+    grepl('["bridge_other_claims", "param_other_claims_label"]', ui, fixed = TRUE) ||
+    grepl("bridge_other_claims', 'param_other_claims_label", ui, fixed = TRUE)
+)
+check("param_fx_label removed from locale", !grepl("param_fx_label", loc, fixed = TRUE))
+check("auto FX helpers still present", grepl("cached_get_usd_twd_fx", srv, fixed = TRUE) && grepl(".fx_usd_twd_auto", srv, fixed = TRUE))
 
 if (fail > 0L) quit(status = 1)
 cat("ALL PASS\n")

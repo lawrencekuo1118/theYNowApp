@@ -285,7 +285,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     rel_param_matrix_title = "Assumption map (shared vs unique)",
     rel_param_shared_heading = "Shared:",
     rel_param_shared_body = paste0(
-      "Shares, Cash, Total Debt, and total Revenue — set once on Model Dashboard → Cash, Debt, Shares & Revenue (shared) ",
+      "Shares, Cash, Total Debt, and total Revenue — set once on Model Dashboard → Shared model parameters ",
       "(DCF, WACC weights, Enterprise Multiples, P/S, SOTP). ",
       "App default EV/Sales level; no Yahoo market P/E / price÷P/E back-solve."
     ),
@@ -337,12 +337,12 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     sotp_bridge_help = paste0(
       "Implied EV = Σ(segment revenue × segment EV/Sales) + non-operating; ",
-      "Equity = EV + Cash − Debt. Cash, Total Debt, and Shares are set once on Model Dashboard → Cash, Debt, Shares & Revenue (shared)."
+      "Equity = EV + Cash − Debt. Cash, Total Debt, and Shares are set once on Model Dashboard → Shared model parameters."
     ),
     sotp_need_segments = "SOTP requires segment-level financial data (≥2 positive segment revenues).",
     sotp_status_shares_missing = paste0(
       "Cannot compute Implied Price: shares outstanding are missing or invalid. ",
-      "On Model Dashboard, use Fill from statements under Cash, Debt, Shares & Revenue (shared), ",
+      "On Model Dashboard, use Fill from statements under Shared model parameters, ",
       "or wait until statements finish loading."
     ),
     sotp_status_multiple_invalid = paste0(
@@ -401,7 +401,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Requires ≥2 positive segment revenues. Not segment-EBIT SOTP."
     ),
     rel_multiples_arr_help = "ARR is not in core statements — enter manually or leave blank (N/A).",
-    rel_multiples_bridge_help = "Cash, Total Debt, Shares, and total Revenue are set once on Model Dashboard → Cash, Debt, Shares & Revenue (shared). This page shows the applied values.",
+    rel_multiples_bridge_help = "Cash, Total Debt, Shares, and total Revenue are set once on Model Dashboard → Shared model parameters. This page shows the applied values.",
     rel_multiples_vbx_pe = "P/E Implied Price",
     rel_multiples_vbx_fpe = "Forward P/E Implied Price",
     rel_multiples_vbx_peg = "PEG",
@@ -1997,7 +1997,6 @@ locale_for_market <- function(mode = get_market_mode()) {
     ddm_overview_hint = "D0 is in the model row above; g / two-stage are in Overview below; discount rate r = Ke is on the Ke tab. Re-run after edits.",
     param_sotp_manual_label = "Manual segment inputs (CSV)",
     param_sotp_manual_help = "Suggested source: the same fiscal year's disclosed external segment revenue. Use columns name,revenue,multiple and at least two segments. Revenue must use the analysis currency. Multiples are explicit assumptions. Manual values are not applied until you run SOTP.",
-    param_fx_label = "Manual USD/TWD FX (optional; TWD per USD)",
     param_other_claims_label = "Other equity claims (market value)",
     param_fcfe_other_claims = "This FCFE conversion does not model preferred distributions. Use FCFF with a complete WACC and other-equity-claims adjustment, or use an appropriate common-equity model.",
     ri_missing_payout = "Payout is missing; RI cannot treat a missing payout as zero.",
@@ -2821,19 +2820,20 @@ locale_for_market <- function(mode = get_market_mode()) {
     box_bt_params = "Strategy Parameters",
     # --- SGR tab (Basic Setup) ---
     sgr_method_title = "Terminal growth (SGR) method",
-    shared_bridge_title = "Cash, Debt, Shares & Revenue (shared)",
+    shared_bridge_title = "Shared model parameters",
     shared_bridge_help = paste0(
-      "Fill in Cash, Total Debt, Shares, and total Revenue here once. ",
+      "Enter Cash, Total Debt, Shares, total Revenue, and Other equity claims here once. ",
       "Models that need them — DCF, WACC weights, Enterprise Multiples, P/S, and SOTP — all read from this box. ",
       "Terminal g and Ke still come from SGR and CAPM. ",
-      "SOTP segment revenue, dividend g, and near-term revenue growth keep their own controls."
+      "SOTP segment revenue, dividend g, and near-term revenue growth keep their own controls. ",
+      "USD/TWD FX is fetched automatically."
     ),
     shared_bridge_cash = "Cash",
     shared_bridge_debt = "Total Debt",
     shared_bridge_shares = "Shares",
     shared_bridge_revenue = "Total Revenue",
     shared_bridge_reset = "Fill from statements",
-    fcf_revenue_shared_help = "Total Revenue is set once on Model Dashboard → Cash, Debt, Shares & Revenue (shared).",
+    fcf_revenue_shared_help = "Total Revenue is set once on Model Dashboard → Shared model parameters.",
     lifecycle_stage_title = "Lifecycle stage",
     lifecycle_stage_help = paste0(
       "Auto-detect uses multi-factor scoring (growth, margins, FCF, ROIC−WACC, reinvestment). ",
@@ -5133,7 +5133,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     rel_param_matrix_title = "假設參數對照（共用 vs 獨特）",
     rel_param_shared_heading = "共用：",
     rel_param_shared_body = paste0(
-      "股數、Cash、Total Debt、總營收——在 Model Dashboard → Cash、Debt、股數與營收（各模型共用）設定一次",
+      "股數、Cash、Total Debt、總營收——在 Model Dashboard → 模型共用參數設定一次",
       "（DCF、WACC 權重、Enterprise Multiples、P/S、SOTP）。",
       "App 預設 EV/Sales 層級；不採用 Yahoo 市場本益比或以股價÷P/E 回推。"
     ),
@@ -5186,12 +5186,12 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     sotp_bridge_help = paste0(
       "Implied EV = Σ(部門營收 × 部門 EV/Sales) + 非營業資產；",
-      "Equity = EV + Cash − Debt。Cash、Total Debt、股數在 Model Dashboard → Cash、Debt、股數與營收（各模型共用）設定一次。"
+      "Equity = EV + Cash − Debt。Cash、Total Debt、股數在 Model Dashboard → 模型共用參數設定一次。"
     ),
     sotp_need_segments = "SOTP 需部門層級財報資料（≥2 筆正值部門營收）。",
     sotp_status_shares_missing = paste0(
       "無法計算 Implied Price：流通股數缺漏或無效。",
-      "請在 Model Dashboard 的 Cash、Debt、股數與營收（各模型共用）按「從財報帶入」，",
+      "請在 Model Dashboard 的模型共用參數按「從財報帶入」，",
       "或等待財報載入完成。"
     ),
     sotp_status_multiple_invalid = paste0(
@@ -5250,7 +5250,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "需 ≥2 筆正值部門營收。非部門 EBIT SOTP。"
     ),
     rel_multiples_arr_help = "核心財報無 ARR——請手動輸入，或留空（N/A）。",
-    rel_multiples_bridge_help = "Cash、Total Debt、股數與總營收在 Model Dashboard → Cash、Debt、股數與營收（各模型共用）設定一次。本頁只顯示套用結果。",
+    rel_multiples_bridge_help = "Cash、Total Debt、股數與總營收在 Model Dashboard → 模型共用參數設定一次。本頁只顯示套用結果。",
     rel_multiples_vbx_pe = "P/E Implied Price",
     rel_multiples_vbx_fpe = "Forward P/E Implied Price",
     rel_multiples_vbx_peg = "PEG",
@@ -6809,7 +6809,6 @@ locale_for_market <- function(mode = get_market_mode()) {
     ddm_overview_hint = "提示：D0 在上方模式列；g／二階段在下方 Overview；折現率 r＝Ke 在 Ke 分頁。自訂參數後請再點試算。",
     param_sotp_manual_label = "人工補填部門資料（CSV）",
     param_sotp_manual_help = "建議依同一財年的部門對外營收揭露填寫；欄位為 name,revenue,multiple，至少兩個部門。營收須採分析幣別，倍數屬估算假設；補填後須重新試算 SOTP 才會套用。",
-    param_fx_label = "人工 USD/TWD 匯率（選填；每美元兌新台幣）",
     param_other_claims_label = "其他權益請求權（市值）",
     param_fcfe_other_claims = "此 FCFE 轉換未建立特別股分配預測；請改用 FCFF 並填妥完整 WACC 與其他權益請求權調整，或選用適合的普通股權益模型。",
     ri_missing_payout = "配息率缺值；RI 不得將缺值視為零配息。",
@@ -7596,19 +7595,20 @@ locale_for_market <- function(mode = get_market_mode()) {
     box_bt_params = "策略參數設定",
     # --- SGR tab (Basic Setup) ---
     sgr_method_title = "終值永續成長率 (SGR) 評價方法",
-    shared_bridge_title = "Cash、Debt、股數與營收（各模型共用）",
+    shared_bridge_title = "模型共用參數",
     shared_bridge_help = paste0(
-      "Cash、Total Debt、股數與總營收請只在這裡填一次。",
+      "Cash、Total Debt、股數、總營收與其他權益請求權請只在這裡填一次。",
       "需要這些數字的模型——DCF、WACC 權重、Enterprise Multiples、P/S、SOTP——都會讀這裡。",
       "終值 g 與 Ke 仍在 SGR 與 CAPM 調整。",
-      "SOTP 部門營收、股利 g、近端營收成長各自設定。"
+      "SOTP 部門營收、股利 g、近端營收成長各自設定。",
+      "USD/TWD 匯率由系統自動擷取。"
     ),
     shared_bridge_cash = "Cash",
     shared_bridge_debt = "Total Debt",
     shared_bridge_shares = "股數",
     shared_bridge_revenue = "總營收",
     shared_bridge_reset = "從財報帶入",
-    fcf_revenue_shared_help = "總營收在 Model Dashboard → Cash、Debt、股數與營收（各模型共用）設定一次。",
+    fcf_revenue_shared_help = "總營收在 Model Dashboard → 模型共用參數設定一次。",
     lifecycle_stage_title = "生命週期階段",
     lifecycle_stage_help = paste0(
       "自動偵測採多因子評分（成長、利潤率、FCF、ROIC−WACC、再投資）。",

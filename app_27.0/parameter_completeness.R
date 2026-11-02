@@ -1,7 +1,7 @@
 # Required model inputs, manual-fill guidance, and reference assumptions.
 # Full suggestions are display-only; Lite applies available references with an assumption ledger.
 ynow_parameter_input_ids <- function() {
-  c("bridge_cash", "bridge_debt", "bridge_shares", "bridge_revenue", "bridge_other_claims", "bridge_fx", "years", "sgr",
+  c("bridge_cash", "bridge_debt", "bridge_shares", "bridge_revenue", "bridge_other_claims", "years", "sgr",
     "dcf_mode", "dcf_claim", "wacc_gordon", "wacc_stage1", "wacc_stage2", "wacc_re",
     "wacc_rd", "wacc_tax", "yr_stage1", "g_stage1", "g_stage2",
     paste0("mod_fcf-", c("fcf_nopat", "fcf_depreciation", "fcf_capex", "fcf_delta_nwc", "fcf_invested_capital")),
@@ -106,7 +106,7 @@ ynow_required_parameter_rows <- function(values, defaults = list(), locale = "en
   add("sotp", "mod_sotp-nonop", "Non-operating assets", "sotp_calculator", "Include only separately valued non-operating assets; do not count cash twice. Enter zero only if that is the intended assumption.", "僅填獨立估值的非營運資產，勿重複計入現金；確認假設為零時才填零。")
   if (!is.null(values[[".sotp_ready"]])) add("sotp", "mod_sotp-manual_segments", "Segment data", "sotp_calculator", "Supply at least two distinct positive segment revenues and explicit EV/Sales multiples. Revenue must be in the analysis currency.", "請補填至少兩個不同部門的正值營收及各自 EV/Sales 倍數，營收須採分析幣別。", present = isTRUE(values[[".sotp_ready"]]))
   add("sotp", "mod_sotp-default_ev_sales", "Segment EV/Sales", "sotp_calculator", "Use distinct reported segments and an explicit multiple assumption.", "須有可辨識的部門資料，並明確設定倍數假設。", "rel_ev_sales_multiple")
-  if (isTRUE(values[[".fx_needed"]])) for (model in c("dcf", "ddm", "ri", "pb", "nav", "multiples", "sotp")) add(model, "bridge_fx", "USD/TWD FX", "dashboard", "Enter TWD per USD using the valuation-date exchange rate. A manual value overrides the automatic quote; clear it to restore automatic FX.", "請填估值日每一美元兌新台幣的匯率；人工值優先於自動報價，清除此欄可恢復自動匯率。", present = FALSE)
+  # Manual bridge_fx UI removed; auto USD/TWD FX + notif_fx_* cover conversion failures.
   if (!length(rows)) return(data.frame(model = character(), id = character(), label = character(), tab = character(), hint = character(), suggestion = numeric()))
   do.call(rbind, rows)
 }
