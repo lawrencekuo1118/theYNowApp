@@ -21386,6 +21386,46 @@ server <- function(input, output, session) {
       })
     }
   })
+  # Missing-parameter toast: only Model Dashboard → Quant Backtest Lab, and never
+  # on freemium/ACL-locked tabs (treat locked as hidden for this notify).
+  .ynow_missing_params_tab_locked <- function(tab) {
+    t <- as.character(tab %||% "")[1]
+    if (!nzchar(t)) return(TRUE)
+    mode <- tryCatch(isolate(ynow_pts_self_view_mode()), error = function(e) NULL)
+    mode <- as.character(mode %||% "")[1]
+    if (identical(mode, "omniscient")) return(FALSE)
+    if (exists("ynow_maintenance_is_active", mode = "function") &&
+        isTRUE(ynow_maintenance_is_active(paste0("tab:", t)))) {
+      return(TRUE)
+    }
+    # Guest freemium sidebar locks (e.g. Quant Backtest Lab for unsigned guests).
+    # Admin guest self-view also counts; signed_in / view-as / omniscient do not.
+    authed <- tryCatch(isTRUE(ynow_auth$is_logged_in()), error = function(e) FALSE)
+    va <- tryCatch(isolate(ynow_pts_view_as()), error = function(e) NULL)
+    view_as_uid <- if (is.list(va)) as.character(va$user_id %||% "")[1] else ""
+    treat_as_guest <- identical(mode, "guest") ||
+      (!isTRUE(authed) && !identical(mode, "signed_in") && !nzchar(view_as_uid))
+    if (isTRUE(treat_as_guest) &&
+        exists("ynow_sidebar_tab_guest_locked", mode = "function") &&
+        isTRUE(ynow_sidebar_tab_guest_locked(t))) {
+      return(TRUE)
+    }
+    # Admin ACL tab locks (effect=lock/hide) — honor effective unlock conditions.
+    if (exists("ynow_access_is_locked", mode = "function")) {
+      uid <- tryCatch(.ynow_access_subject_id(), error = function(e) "")
+      if (identical(uid, "__omniscient__")) return(FALSE)
+      if (identical(uid, "__self_member__")) uid <- ""
+      is_authed <- nzchar(as.character(uid %||% "")[1]) ||
+        identical(mode, "signed_in") ||
+        (isTRUE(authed) && !identical(mode, "guest"))
+      if (isTRUE(ynow_access_is_locked(
+        uid, paste0("tab:", t), effective = TRUE, authed = is_authed
+      ))) {
+        return(TRUE)
+      }
+    }
+    FALSE
+  }
   parameter_assumptions <- ynow_parameter_guidance_server(
     input, session, searched = user_has_searched, ticker = current_ticker,
     busy = ticker_search_busy, model_rec = model_sidebar_rec, locale = ui_locale,
@@ -21395,7 +21435,8 @@ server <- function(input, output, session) {
     fx_needed = reactive({
       currencies <- unique(na.omit(c(quote_currency(), statement_currency(), session_currency())))
       length(currencies) > 1L && all(currencies %in% c("USD", "TWD")) && !is.finite(fx_usd_twd())
-    })
+    }),
+    tab_locked = .ynow_missing_params_tab_locked
   )
 
 }

@@ -111,8 +111,37 @@ ynow_required_parameter_rows <- function(values, defaults = list(), locale = "en
   do.call(rbind, rows)
 }
 
+#' Sidebar tabNames where the missing-parameter toast may fire.
+#' Inclusive range: Model Dashboard (`get_started`) → Quant Backtest Lab (`lab_notes`).
+#' Locked tabs in this range are treated as hidden for this purpose (do not notify).
+ynow_missing_params_notify_tabs <- function() {
+  c(
+    "get_started",
+    "nav_calculator", "pb_calculator",
+    "dcf_calculator", "ddm_calculator", "ri_calculator",
+    "rel_mult_ev", "rel_multiples_calculator", "rel_mult_rev",
+    "sotp_calculator",
+    "hfv",
+    "lab_notes"
+  )
+}
+
+#' TRUE when the active sidebar tab may show the missing-parameter notification.
+#' @param tab shinydashboard tabName
+#' @param locked TRUE when the tab is freemium/ACL locked (treat as hidden)
+ynow_missing_params_notify_allowed <- function(tab, locked = FALSE) {
+  t <- as.character(tab %||% "")[1]
+  if (!nzchar(t) || !(t %in% ynow_missing_params_notify_tabs())) return(FALSE)
+  if (isTRUE(locked)) return(FALSE)
+  TRUE
+}
+
 ynow_parameter_guidance_server <- function(input, session, searched, ticker, busy,
-                                           model_rec, locale, defaults, ke, wacc, sotp_ready = function() TRUE, fx_needed = function() FALSE, lite = function() FALSE) {
+                                           model_rec, locale, defaults, ke, wacc,
+                                           sotp_ready = function() TRUE,
+                                           fx_needed = function() FALSE,
+                                           lite = function() FALSE,
+                                           tab_locked = function(tab) FALSE) {
   applied <- shiny::reactiveVal(list())
   requested <- shiny::reactiveVal("")
   shiny::observeEvent(ticker(), { requested(""); applied(list()) }, ignoreInit = TRUE, priority = 101)
@@ -134,6 +163,10 @@ ynow_parameter_guidance_server <- function(input, session, searched, ticker, bus
   }), 300)
   shiny::observe({
     if (!isTRUE(searched()) || isTRUE(busy())) return()
+    # Re-evaluate toast on tab switch even when the missing set is unchanged.
+    active_tab <- as.character(input$sidebar_tabs %||% "")[1]
+    is_locked <- tryCatch(isTRUE(tab_locked(active_tab)), error = function(e) FALSE)
+    allow_toast <- ynow_missing_params_notify_allowed(active_tab, locked = is_locked)
     rows <- missing()
     ledger <- shiny::isolate(applied())
     for (id in names(ledger)) {
@@ -172,7 +205,9 @@ ynow_parameter_guidance_server <- function(input, session, searched, ticker, bus
     chosen <- requested()
     if (!nzchar(chosen)) chosen <- as.character(model_rec()$primary %||% "")[1]
     needed <- rows[rows$model == chosen, , drop = FALSE]
-    if (isTRUE(lite()) || !nrow(needed)) {
+    # Toast only on Model Dashboard → Quant Backtest Lab (unlocked). Field
+    # guidance above still applies on every tab.
+    if (isTRUE(lite()) || !nrow(needed) || !isTRUE(allow_toast)) {
       shiny::removeNotification("ynow_missing_parameters", session = session)
       return()
     }
