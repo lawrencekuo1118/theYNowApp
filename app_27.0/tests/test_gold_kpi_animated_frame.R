@@ -37,6 +37,29 @@ check("UI frame spin animation", grepl("@keyframes ynow-focus-gold-frame-spin", 
 check("static 3px gold border removed", !grepl("border: 3px solid var(--ynow-gold", ui, fixed = TRUE))
 check("legacy pulse keyframes removed", !grepl("@keyframes ynow-focus-gold-pulse", ui, fixed = TRUE))
 
+# Border-only: ::after must be a hollow ring (mask-composite), never a filled overlay.
+check("SVG frame strokes are fill=none", {
+  svg <- paste(readLines(www_svg, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl('fill="none"', svg, fixed = TRUE) &&
+    !grepl("<rect[^>]*fill=\"(?!none)", svg, perl = TRUE)
+})
+check("focus ::after uses mask-composite hollow ring", {
+  grepl("mask-composite:\\s*exclude", ui) &&
+    grepl("-webkit-mask-composite:\\s*xor", ui)
+})
+check("focus ::after has no transparent padding-box fill trick", {
+  !grepl("linear-gradient\\(#fff0", ui, fixed = FALSE) &&
+    !grepl("linear-gradient\\(#ffffff00", ui, ignore.case = TRUE)
+})
+check("focus ::after has no inset gold wash", {
+  !grepl("inset 0 0 10px rgba\\(255, 201, 51", ui)
+})
+check("focus frame overlays pointer-events none", {
+  grepl("ynow-focus-metric-box::before", ui, fixed = TRUE) &&
+    grepl("ynow-focus-metric-box::after", ui, fixed = TRUE) &&
+    grepl("pointer-events: none", ui, fixed = TRUE)
+})
+
 check("legend note helper", grepl(".ynow_focus_metric_legend_note_ui <- function", ui, fixed = TRUE))
 check("legend note class above FS", grepl("ynow-focus-metric-note--above-fs", ui, fixed = TRUE))
 check("legend note right-aligned CSS", {
