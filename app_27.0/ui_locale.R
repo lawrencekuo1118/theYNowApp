@@ -3075,11 +3075,6 @@ locale_for_market <- function(mode = get_market_mode()) {
     corp_cb_soft_gap = "Diluted − basic shares",
     corp_cb_us_sec_link = "Open SEC EDGAR 10-K search",
     smart_page_title = "Smart Analysis",
-    smart_page_sub = paste0(
-      "Auto-selects primary and secondary valuation models from the ticker profile, ",
-      "detects the best parameter scenario (Two-Stage vs Gordon, SGR method, claim), ",
-      "applies those defaults, and shows fair-value charts. No manual model settings."
-    ),
     smart_chart_title = "Fair value comparison",
     smart_primary_kicker = "Primary model",
     smart_secondary_kicker = "Secondary model",
@@ -7848,10 +7843,6 @@ locale_for_market <- function(mode = get_market_mode()) {
     corp_cb_soft_gap = "稀釋股 − 基本股",
     corp_cb_us_sec_link = "開啟 SEC EDGAR 10-K 搜尋",
     smart_page_title = "智慧分析",
-    smart_page_sub = paste0(
-      "依股票性質自動判別主／副模型，辨識參數情境（Two-Stage／Gordon、SGR 法、claim），",
-      "套用最合理預設後試算並顯示合理價圖表；不開放手動模型設定。"
-    ),
     smart_chart_title = "合理價比較",
     smart_primary_kicker = "主模型",
     smart_secondary_kicker = "副模型",

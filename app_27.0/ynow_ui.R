@@ -8874,16 +8874,6 @@ ui <- dashboardPage(
           margin: 6px 8px 10px;
           border-top-color: rgba(255,255,255,0.18);
         }
-        /* Lite Smart Analysis: lead blurb above composite status (no page heading) */
-        .ynow-smart-lite-blurb-wrap {
-          margin: 0 0 10px 0;
-        }
-        .ynow-smart-lite-blurb {
-          margin: 0;
-          font-size: 14px;
-          line-height: 1.55;
-          color: #444;
-        }
         .ynow-smart-card-row {
           display: flex;
           flex-wrap: wrap;
@@ -12271,8 +12261,6 @@ ui <- dashboardPage(
             setBtText('ynow_sotp_bridge_help', 'sotp_bridge_help');
             var smartTitle = document.getElementById('ynow_smart_page_title');
             if (smartTitle && s.smart_page_title) smartTitle.textContent = s.smart_page_title;
-            var smartSub = document.getElementById('ynow_smart_page_sub');
-            if (smartSub && s.smart_page_sub) smartSub.textContent = s.smart_page_sub;
             var smartChart = document.getElementById('ynow_smart_chart_title');
             if (smartChart && s.smart_chart_title) smartChart.textContent = s.smart_chart_title;
             document.querySelectorAll('.ynow-lite-toggle').forEach(function (liteToggle) {
@@ -21521,7 +21509,6 @@ ui <- dashboardPage(
       )
     ),
     # Model pages + Smart Analysis: full composite valuation block (shared output) + forecast years
-    # Lite Smart Analysis: explanatory blurb sits immediately above composite status (no page heading).
     conditionalPanel(
       condition = paste(
         "input.sidebar_tabs == 'smart_analysis' ||",
@@ -21534,21 +21521,6 @@ ui <- dashboardPage(
         "input.sidebar_tabs == 'sotp_calculator' ||",
         "input.sidebar_tabs == 'ri_calculator' ||",
         "input.sidebar_tabs == 'nav_calculator'"
-      ),
-      conditionalPanel(
-        condition = "input.sidebar_tabs == 'smart_analysis'",
-        tags$div(
-          class = "ynow-lite-only ynow-smart-lite-blurb-wrap",
-          tags$p(
-            id = "ynow_smart_page_sub",
-            class = "ynow-smart-lite-blurb",
-            paste0(
-              "Auto-selects primary and secondary valuation models from the ticker profile, ",
-              "detects the best parameter scenario (Two-Stage vs Gordon, SGR method, claim), ",
-              "applies those defaults, and shows fair-value charts. No manual model settings."
-            )
-          )
-        )
       ),
       fluidRow(
         class = "ynow-header-composite-row",

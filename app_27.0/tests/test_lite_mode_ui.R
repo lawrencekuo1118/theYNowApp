@@ -27,7 +27,7 @@ testthat::test_that("Lite locale keys exist in en and zh-TW", {
     "home_legal", "home_legal_about",
     "legal_section_title", "legal_privacy_title", "legal_privacy_body",
     "legal_ip_title", "legal_ip_body", "legal_risk_title", "legal_risk_body",
-    "menu_smart_analysis", "smart_page_title", "smart_page_sub",
+    "menu_smart_analysis", "smart_page_title",
     "smart_chart_title", "smart_primary_kicker", "smart_secondary_kicker",
     "smart_price_kicker", "smart_mos_kicker", "smart_waiting",
     "smart_calc_pending", "smart_calc_failed", "smart_ddm_no_d0", "smart_reason_title",
@@ -100,8 +100,8 @@ testthat::test_that("Lite locale keys exist in en and zh-TW", {
   testthat::expect_true(grepl("隱私權", .UI_STRINGS$`zh-TW`$legal_privacy_title, fixed = TRUE))
   testthat::expect_true(grepl("Intellectual property", .UI_STRINGS$en$legal_ip_title, fixed = TRUE))
   testthat::expect_true(grepl("智慧財產權", .UI_STRINGS$`zh-TW`$legal_ip_title, fixed = TRUE))
-  testthat::expect_true(grepl("參數情境", .UI_STRINGS$`zh-TW`$smart_page_sub, fixed = TRUE))
-  testthat::expect_true(grepl("parameter scenario", .UI_STRINGS$en$smart_page_sub, fixed = TRUE))
+  testthat::expect_null(.UI_STRINGS$`zh-TW`$smart_page_sub)
+  testthat::expect_null(.UI_STRINGS$en$smart_page_sub)
   testthat::expect_identical(.UI_STRINGS$`zh-TW`$smart_scenario_title, "已套用參數情境：")
   testthat::expect_identical(.UI_STRINGS$`zh-TW`$lab_im_eq_label, "盈餘品質")
   testthat::expect_identical(.UI_STRINGS$en$lab_im_eq_label, "Earnings quality")
@@ -722,31 +722,22 @@ testthat::expect_true(grepl(
   testthat::expect_true(grepl("ynow-lab-im-eq-explain ynow-lite-only", txt, fixed = TRUE))
 })
 
-testthat::test_that("Lite Smart Analysis blurb sits above composite status without a page heading", {
+testthat::test_that("Lite Smart Analysis has no auto-model blurb; composite status remains", {
   ui_path <- file.path("..", "ynow_ui.R")
   txt <- paste(readLines(ui_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 
-  pos_sub <- regexpr('id = "ynow_smart_page_sub"', txt, fixed = TRUE)[1]
+  testthat::expect_false(grepl('id = "ynow_smart_page_sub"', txt, fixed = TRUE))
+  testthat::expect_false(grepl("ynow-smart-lite-blurb", txt, fixed = TRUE))
+  testthat::expect_false(grepl("ynow-smart-lite-blurb-wrap", txt, fixed = TRUE))
+  testthat::expect_false(grepl("No manual model settings", txt, fixed = TRUE))
+  testthat::expect_false(grepl("不開放手動模型設定", txt, fixed = TRUE))
+
   pos_comp <- regexpr('class = "ynow-header-composite-row"', txt, fixed = TRUE)[1]
   pos_compare <- regexpr('decision_valuation_compare_ui("main_decision")', txt, fixed = TRUE)[1]
-  testthat::expect_true(is.finite(pos_sub) && pos_sub > 0)
-  testthat::expect_true(is.finite(pos_comp) && pos_comp > pos_sub)
+  testthat::expect_true(is.finite(pos_comp) && pos_comp > 0)
   testthat::expect_true(is.finite(pos_compare) && pos_compare > pos_comp)
-  # Blurb is the last Lite-only node immediately before the composite status box
-  between <- substr(txt, pos_sub, pos_comp)
-  testthat::expect_false(grepl("smart_analysis_summary", between, fixed = TRUE))
-  testthat::expect_false(grepl("smart_analysis_chart", between, fixed = TRUE))
-  testthat::expect_false(grepl("ynow-header-years-suggest-row", between, fixed = TRUE))
-  wrap <- substr(txt, max(1L, pos_sub - 500L), pos_comp)
-  testthat::expect_true(grepl("ynow-lite-only", wrap, fixed = TRUE))
-  testthat::expect_true(grepl("ynow-smart-lite-blurb", wrap, fixed = TRUE))
-  testthat::expect_true(grepl(
-    'condition = "input.sidebar_tabs == \'smart_analysis\'"',
-    wrap,
-    fixed = TRUE
-  ))
 
-  # Heading element removed; locale key / JS lookup may remain
+  # Heading element removed; locale key / JS lookup may remain for title
   testthat::expect_false(grepl(
     'id = "ynow_smart_page_title", "Smart Analysis"',
     txt,
@@ -771,7 +762,7 @@ testthat::test_that("Lite Smart Analysis blurb sits above composite status witho
   testthat::expect_false(grepl("ynow_smart_page_sub", smart_tab, fixed = TRUE))
   testthat::expect_false(grepl("h2(", smart_tab, fixed = TRUE))
 
-  # Full model pages still share the same composite header; blurb is Lite / Smart Analysis only
+  # Full model pages still share the same composite header
   testthat::expect_true(grepl(
     "input.sidebar_tabs == 'dcf_calculator' ||",
     txt,
