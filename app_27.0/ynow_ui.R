@@ -17337,6 +17337,8 @@ ui <- dashboardPage(
             url('ynow-gold-kpi-frame.svg') center / 100% 100% no-repeat;
           opacity: 0.95;
         }
+        /* Perimeter-only ring: mask-composite hollows the interior (transparent fill).
+           Do NOT use transparent padding-box + border-box gradient — #fff0 does not mask. */
         .content-wrapper .small-box.ynow-focus-metric-box::after,
         .tab-content .small-box.ynow-focus-metric-box::after,
         .ynow-kpi-grid .small-box.ynow-focus-metric-box::after,
@@ -17347,23 +17349,29 @@ ui <- dashboardPage(
           z-index: 0;
           pointer-events: none;
           border-radius: inherit;
-          border: 2px solid transparent;
-          background:
-            linear-gradient(#fff0, #fff0) padding-box,
-            linear-gradient(
-              120deg,
-              #FFE9A0 0%,
-              #FF8C1A 28%,
-              #FFC933 52%,
-              #FF6A00 78%,
-              #FFE9A0 100%
-            ) border-box;
-          background-size: 100% 100%, 220% 220%;
+          border: 0;
+          padding: 2px;
+          box-sizing: border-box;
+          background: linear-gradient(
+            120deg,
+            #FFE9A0 0%,
+            #FF8C1A 28%,
+            #FFC933 52%,
+            #FF6A00 78%,
+            #FFE9A0 100%
+          );
+          background-size: 220% 220%;
+          -webkit-mask:
+            linear-gradient(#fff 0 0) content-box,
+            linear-gradient(#fff 0 0);
+          -webkit-mask-composite: xor;
+          mask:
+            linear-gradient(#fff 0 0) content-box,
+            linear-gradient(#fff 0 0);
+          mask-composite: exclude;
           animation: ynow-focus-gold-frame-spin 2.4s linear infinite;
-          opacity: 0.9;
-          box-shadow:
-            inset 0 0 10px rgba(255, 201, 51, 0.25),
-            0 0 14px rgba(255, 140, 26, 0.35);
+          opacity: 0.95;
+          box-shadow: 0 0 14px rgba(255, 140, 26, 0.35);
         }
         .content-wrapper .small-box.ynow-focus-metric-box > *,
         .tab-content .small-box.ynow-focus-metric-box > *,
