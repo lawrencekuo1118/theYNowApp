@@ -49,8 +49,9 @@ check("header kpi shell matches page max", {
 check("kpi-grid alertable bell inset", grepl(".ynow-kpi-grid .ynow-alertable .ynow-alert-bell", ui, fixed = TRUE) &&
         grepl("z-index: 5", ui, fixed = TRUE))
 check("kpi-grid alertable col safety", grepl(".ynow-kpi-grid .ynow-alertable > [class*='col-']", ui, fixed = TRUE))
-check("focus gold pulse animation", grepl("@keyframes ynow-focus-gold-pulse", ui, fixed = TRUE) &&
-        grepl("border: 3px solid var(--ynow-gold", ui, fixed = TRUE))
+check("focus gold animated frame", grepl("@keyframes ynow-focus-gold-ember", ui, fixed = TRUE) &&
+        grepl("ynow-gold-kpi-frame.svg", ui, fixed = TRUE) &&
+        grepl("animation: ynow-focus-gold-ember", ui, fixed = TRUE))
 # Value-alert marks: colorless translucent on light cards (no ready/hover blue tint)
 check("alert bell colorless translucent", {
   grepl("color: rgba(0, 0, 0, 0.35)", ui, fixed = TRUE) &&

@@ -318,7 +318,19 @@ source("ynow_cookie_notice_ui.R", local = TRUE, encoding = "UTF-8")
   )
 }
 
-#' KPI 色碼圖例：藍→紅→黑→白；金色屬性重視改一行文字註解（非 chip 框）
+#' Focus-KPI gold-frame legend note (above FINANCIAL REPORT; right-aligned).
+.ynow_focus_metric_legend_note_ui <- function() {
+  tags$p(
+    class = "ynow-focus-metric-note ynow-focus-metric-note--above-fs",
+    tags$span(
+      class = "ynow-focus-metric-swatch ynow-focus-metric-swatch--legend",
+      `aria-hidden` = "true"
+    ),
+    tags$span(id = "ynow_kpi_legend_focus", "金 · 本財報屬性關鍵指標")
+  )
+}
+
+#' KPI 色碼圖例：藍→紅→黑→白（金色屬性重視註解改置財務報表區上方）
 .kpi_band_color_legend_ui <- function() {
   tags$div(
     class = "ynow-kpi-legend-wrap",
@@ -345,14 +357,6 @@ source("ynow_cookie_notice_ui.R", local = TRUE, encoding = "UTF-8")
                   style = "background:#fff; border:1px solid #999;"),
         tags$span(id = "ynow_kpi_legend_white", "白 · 無法比較／N/A")
       )
-    ),
-    tags$p(
-      class = "ynow-focus-metric-note",
-      tags$span(
-        class = "ynow-focus-metric-swatch ynow-focus-metric-swatch--legend",
-        `aria-hidden` = "true"
-      ),
-      tags$span(id = "ynow_kpi_legend_focus", "金 · 本財報屬性關鍵指標")
     )
   )
 }
@@ -17261,38 +17265,111 @@ ui <- dashboardPage(
           word-break: break-word;
           overflow-wrap: anywhere;
         }
-        /* 財報屬性「重視指標」：金色外框（取代圓點）；與 APP 標題金色一致 */
+        /* 財報屬性「重視指標」：動感橘金方框（SVG＋CSS glow；靜態金框改動態） */
         .ynow-focus-metric-swatch {
           display: inline-block;
-          width: 14px;
-          height: 14px;
+          width: 16px;
+          height: 16px;
           margin: 0 6px 0 0;
-          border: 2px solid var(--ynow-gold, #F5C518);
+          border: none;
           border-radius: 3px;
-          background: transparent;
+          background:
+            url('ynow-gold-kpi-frame.svg') center / contain no-repeat,
+            radial-gradient(circle at 50% 50%, rgba(255, 200, 80, 0.18) 0%, transparent 70%);
           vertical-align: middle;
           box-sizing: border-box;
+          box-shadow:
+            0 0 6px 1px rgba(255, 140, 26, 0.55),
+            0 0 12px 2px rgba(255, 201, 51, 0.35);
+          animation: ynow-focus-gold-ember 1.6s ease-in-out infinite;
         }
         .ynow-focus-metric-swatch--legend {
           margin: 0 6px 0 0;
         }
-        /* Focus KPI gold frame: thicker + pulse (do not reuse title gold-shine) */
-        @keyframes ynow-focus-gold-pulse {
+        /* Focus KPI: animated fiery orange-gold square frame (asset www/ynow-gold-kpi-frame.svg) */
+        @keyframes ynow-focus-gold-ember {
           0%, 100% {
-            border-color: var(--ynow-gold, #F5C518);
-            box-shadow: 0 0 0 1px rgba(201, 162, 39, 0.28), 0 0 0 0 rgba(245, 197, 24, 0);
+            filter: saturate(1) brightness(1);
+            box-shadow:
+              0 0 0 1px rgba(255, 140, 26, 0.35),
+              0 0 10px 2px rgba(255, 201, 51, 0.28),
+              0 0 22px 4px rgba(255, 106, 0, 0.18);
           }
           50% {
-            border-color: var(--ynow-gold-deep, #C9A227);
-            box-shadow: 0 0 0 2px rgba(201, 162, 39, 0.55), 0 0 10px 1px rgba(245, 197, 24, 0.38);
+            filter: saturate(1.25) brightness(1.08);
+            box-shadow:
+              0 0 0 2px rgba(255, 179, 71, 0.55),
+              0 0 16px 4px rgba(255, 201, 51, 0.45),
+              0 0 28px 8px rgba(255, 106, 0, 0.28);
           }
+        }
+        @keyframes ynow-focus-gold-frame-spin {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
         }
         .content-wrapper .small-box.ynow-focus-metric-box,
         .tab-content .small-box.ynow-focus-metric-box,
+        .ynow-kpi-grid .small-box.ynow-focus-metric-box,
         .ynow-fs-card.ynow-focus-metric-box {
-          border: 3px solid var(--ynow-gold, #F5C518) !important;
-          box-shadow: 0 0 0 1px rgba(201, 162, 39, 0.28);
-          animation: ynow-focus-gold-pulse 1.6s ease-in-out infinite;
+          position: relative !important;
+          border: none !important;
+          border-radius: 6px !important;
+          isolation: isolate;
+          overflow: visible !important;
+          box-shadow:
+            0 0 0 1px rgba(255, 140, 26, 0.35),
+            0 0 10px 2px rgba(255, 201, 51, 0.28),
+            0 0 22px 4px rgba(255, 106, 0, 0.18) !important;
+          animation: ynow-focus-gold-ember 1.6s ease-in-out infinite;
+        }
+        .content-wrapper .small-box.ynow-focus-metric-box::before,
+        .tab-content .small-box.ynow-focus-metric-box::before,
+        .ynow-kpi-grid .small-box.ynow-focus-metric-box::before,
+        .ynow-fs-card.ynow-focus-metric-box::before {
+          content: '';
+          position: absolute;
+          inset: -5px;
+          z-index: 0;
+          pointer-events: none;
+          border-radius: 8px;
+          background:
+            url('ynow-gold-kpi-frame.svg') center / 100% 100% no-repeat;
+          opacity: 0.95;
+        }
+        .content-wrapper .small-box.ynow-focus-metric-box::after,
+        .tab-content .small-box.ynow-focus-metric-box::after,
+        .ynow-kpi-grid .small-box.ynow-focus-metric-box::after,
+        .ynow-fs-card.ynow-focus-metric-box::after {
+          content: '';
+          position: absolute;
+          inset: 0;
+          z-index: 0;
+          pointer-events: none;
+          border-radius: inherit;
+          border: 2px solid transparent;
+          background:
+            linear-gradient(#fff0, #fff0) padding-box,
+            linear-gradient(
+              120deg,
+              #FFE9A0 0%,
+              #FF8C1A 28%,
+              #FFC933 52%,
+              #FF6A00 78%,
+              #FFE9A0 100%
+            ) border-box;
+          background-size: 100% 100%, 220% 220%;
+          animation: ynow-focus-gold-frame-spin 2.4s linear infinite;
+          opacity: 0.9;
+          box-shadow:
+            inset 0 0 10px rgba(255, 201, 51, 0.25),
+            0 0 14px rgba(255, 140, 26, 0.35);
+        }
+        .content-wrapper .small-box.ynow-focus-metric-box > *,
+        .tab-content .small-box.ynow-focus-metric-box > *,
+        .ynow-fs-card.ynow-focus-metric-box > * {
+          position: relative;
+          z-index: 1;
         }
         .ynow-fs-card.ynow-focus-metric-box {
           border-radius: 6px;
@@ -17313,6 +17390,16 @@ ui <- dashboardPage(
           line-height: 1.35;
           color: #666666;
           font-weight: 500;
+        }
+        /* Gold focus legend: directly above FINANCIAL REPORT, right-aligned */
+        .ynow-dashboard-fin-report-wrap > .ynow-focus-metric-note--above-fs {
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+          gap: 2px;
+          width: 100%;
+          margin: 0 0 8px 0;
+          text-align: right;
         }
         /* Yahoo Sector/Industry 列：屬性標籤靠右 */
         .ynow-ind-yahoo-row {
@@ -22062,6 +22149,7 @@ ui <- dashboardPage(
               # FINANCIAL REPORT: Board / CB (+ Ownership) stays Lite+Full; other FS tabs Full-only via CSS.
               tags$div(
                 class = "ynow-dashboard-fin-report-wrap",
+              .ynow_focus_metric_legend_note_ui(),
               tabBox(title = "FINANCIAL REPORT",
                      id = "dashboard_fin_report",
                      width = "auto",
