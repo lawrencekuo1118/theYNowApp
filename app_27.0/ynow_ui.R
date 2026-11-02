@@ -1421,17 +1421,18 @@ beta_rolling_section_ui <- function() {
   box(
     title = tagList(
       icon("link"),
-      tags$span(id = "ynow_shared_bridge_title", "Cash、Debt、股數與營收（各模型共用）")
+      tags$span(id = "ynow_shared_bridge_title", "模型共用參數")
     ),
     width = 12, status = "primary", solidHeader = TRUE,
     tags$p(
       id = "ynow_shared_bridge_help",
       class = "help-block",
       paste0(
-        "Cash、Total Debt、股數與總營收請只在這裡填一次。",
+        "Cash、Total Debt、股數、總營收與其他權益請求權請只在這裡填一次。",
         "需要這些數字的模型——DCF、WACC 權重、Enterprise Multiples、P/S、SOTP——都會讀這裡。",
         "終值 g 與 Ke 仍在 SGR 與 CAPM 調整。",
-        "SOTP 部門營收、股利 g、近端營收成長各自設定。"
+        "SOTP 部門營收、股利 g、近端營收成長各自設定。",
+        "USD/TWD 匯率由系統自動擷取。"
       )
     ),
     fluidRow(
@@ -1439,7 +1440,6 @@ beta_rolling_section_ui <- function() {
       column(3, numericInput("bridge_debt", "Total Debt", value = NA, step = 1)),
       column(3, numericInput("bridge_shares", "股數", value = NA, step = 1)),
       column(3, numericInput("bridge_revenue", "總營收", value = NA, step = 1)),
-      column(12, numericInput("bridge_fx", ui_i18n("param_fx_label"), value = NA, min = 0.0001, step = 0.01)),
       column(12, numericInput("bridge_other_claims", ui_i18n("param_other_claims_label"), value = NA, step = 1))
     ),
     tags$button(
@@ -12511,7 +12511,8 @@ ui <- dashboardPage(
             var fcfRevHelp = document.getElementById('ynow_fcf_revenue_shared_help');
             if (fcfRevHelp && s.fcf_revenue_shared_help) fcfRevHelp.textContent = s.fcf_revenue_shared_help;
             [['bridge_cash', 'shared_bridge_cash'], ['bridge_debt', 'shared_bridge_debt'],
-             ['bridge_shares', 'shared_bridge_shares'], ['bridge_revenue', 'shared_bridge_revenue']].forEach(function (pair) {
+             ['bridge_shares', 'shared_bridge_shares'], ['bridge_revenue', 'shared_bridge_revenue'],
+             ['bridge_other_claims', 'param_other_claims_label']].forEach(function (pair) {
               var lab = document.querySelector('label[for=\"' + pair[0] + '\"]');
               if (lab && s[pair[1]]) lab.textContent = s[pair[1]];
             });

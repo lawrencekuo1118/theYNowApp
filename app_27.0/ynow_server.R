@@ -198,10 +198,10 @@ server <- function(input, output, session) {
   statement_currency <- reactiveVal("USD")
   session_currency <- reactiveVal("USD")
   .fx_usd_twd_auto <- reactiveVal(NA_real_)
+  # Auto FX only (manual USD/TWD override removed from Shared model parameters UI).
   fx_usd_twd <- function(value) {
     if (!missing(value)) return(.fx_usd_twd_auto(value))
-    manual <- suppressWarnings(as.numeric(input$bridge_fx)[1])
-    if (is.finite(manual) && manual > 0) manual else .fx_usd_twd_auto()
+    .fx_usd_twd_auto()
   }
   fx_fetched_at <- reactiveVal(NULL)
 
@@ -15640,7 +15640,7 @@ server <- function(input, output, session) {
           if (is.na(val_cash) || is.na(scraped_debt)) {
             tags$p(
               class = "help-block",
-              "Cash 與 Total Debt 請到 Model Dashboard → Cash、Debt、股數與營收（各模型共用）填寫，DCF、WACC、倍數與 SOTP 會一起套用。"
+              "Cash 與 Total Debt 請到 Model Dashboard → 模型共用參數填寫，DCF、WACC、倍數與 SOTP 會一起套用。"
             )
           } else {
             NULL
