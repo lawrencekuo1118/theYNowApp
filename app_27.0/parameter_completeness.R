@@ -189,19 +189,26 @@ ynow_parameter_guidance_server <- function(input, session, searched, ticker, bus
     }
     if (!identical(shiny::isolate(applied()), ledger)) applied(ledger)
     hints <- rows[!duplicated(rows$id), , drop = FALSE]
+    assumption_items <- list()
     for (id in names(ledger)) {
       value <- suppressWarnings(as.numeric(input[[id]])[1])
       ref <- ledger[[id]]
       if (is.finite(value) && abs(value - ref$value) <= max(1, abs(ref$value)) * 1e-7) {
         hints <- hints[hints$id != id, , drop = FALSE]
-        hints <- rbind(hints, data.frame(model = "assumption", id = id, label = ref$label,
-          tab = "", hint = paste0(ui_str("param_assumption_applied", locale()), ": ",
-          format(ref$value, trim = TRUE), ". ", ref$hint), suggestion = ref$value))
+        note <- paste0(ui_str("param_assumption_applied", locale()), ": ",
+          ref$label, " = ", format(ref$value, trim = TRUE), ". ", ref$hint)
+        assumption_items[[length(assumption_items) + 1L]] <- list(id = id, hint = note)
       }
     }
-    session$sendCustomMessage("ynowParameterGuidance", list(items = lapply(seq_len(nrow(hints)), function(i) {
-      as.list(hints[i, c("id", "hint"), drop = FALSE])
-    })))
+    # Missing-param guidance stays beside fields. Lite applied-assumption
+    # disclosures render as tab-footer footnotes (not mid-page field callouts).
+    session$sendCustomMessage("ynowParameterGuidance", list(
+      items = lapply(seq_len(nrow(hints)), function(i) {
+        as.list(hints[i, c("id", "hint"), drop = FALSE])
+      }),
+      assumptions = assumption_items,
+      assumptionTitle = ui_str("param_assumption_footnotes_title", locale())
+    ))
     chosen <- requested()
     if (!nzchar(chosen)) chosen <- as.character(model_rec()$primary %||% "")[1]
     needed <- rows[rows$model == chosen, , drop = FALSE]
@@ -233,6 +240,24 @@ ynow_parameter_guidance_server <- function(input, session, searched, ticker, bus
     vapply(used, function(x) paste0(ui_str("param_assumption_applied", locale()), ": ",
       x$label, " = ", format(x$value, trim = TRUE), ". ", x$hint), character(1))
   })
+}
+
+#' Annotation-style Lite applied-assumption footnotes (tab/page footer).
+#' @param notes character vector from `parameter_assumptions()` / guidance ledger
+#' @param locale `"en"` or `"zh-TW"`
+ynow_lite_assumption_footnotes_ui <- function(notes, locale = "en") {
+  notes <- as.character(notes %||% character(0))
+  notes <- notes[nzchar(trimws(notes))]
+  if (!length(notes)) return(NULL)
+  shiny::tags$aside(
+    class = "ynow-lite-assumption-footnotes",
+    role = "note",
+    shiny::tags$span(
+      class = "ynow-lite-assumption-footnotes-title",
+      ui_str("param_assumption_footnotes_title", locale)
+    ),
+    shiny::tags$ol(lapply(notes, function(n) shiny::tags$li(n)))
+  )
 }
 
 parse_manual_sotp_segments <- function(text) {

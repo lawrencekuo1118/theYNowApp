@@ -14601,17 +14601,15 @@ server <- function(input, output, session) {
     searched <- isTRUE(user_has_searched())
     tags$div(
       if (isTRUE(lite_mode())) {
-        notes <- parameter_assumptions()
         vals <- setNames(lapply(ynow_parameter_input_ids(), function(id) input[[id]]), ynow_parameter_input_ids())
         gaps <- ynow_required_parameter_rows(vals, APP_DEFAULTS, loc,
           central_ke() * 100, calculated_wacc() * 100, lite = TRUE)
         gaps <- gaps[gaps$model == prim & !is.finite(gaps$suggestion), , drop = FALSE]
-        tagList(
-          if (length(notes)) tags$div(class = "alert alert-info", tags$ul(lapply(notes, tags$li))),
-          if (!is.finite(base) && nrow(gaps) && !isTRUE(ticker_search_busy()))
-            tags$div(class = "alert alert-warning", ui_str("param_lite_source_unavailable", loc),
-              paste(unique(gaps$label), collapse = ", "))
-        )
+        # Applied-assumption notes moved to page-footer footnotes
+        # (`smart_analysis_assumption_notes`). Keep only source-gap warning here.
+        if (!is.finite(base) && nrow(gaps) && !isTRUE(ticker_search_busy()))
+          tags$div(class = "alert alert-warning", ui_str("param_lite_source_unavailable", loc),
+            paste(unique(gaps$label), collapse = ", "))
       },
       tags$div(class = "ynow-smart-card-row",
       ynow_alertable(
@@ -14750,6 +14748,14 @@ server <- function(input, output, session) {
         tags$p(style = "margin: 6px 0 0 0; color: #555; line-height: 1.45;", reason)
       )
     )
+  })
+
+  # Lite applied assumptions as annotation footnotes at the Smart Analysis page foot.
+  output$smart_analysis_assumption_notes <- renderUI({
+    if (!isTRUE(lite_mode()) || !isTRUE(user_has_searched())) return(NULL)
+    loc <- tryCatch(ui_locale(), error = function(e) "en")
+    notes <- tryCatch(parameter_assumptions(), error = function(e) character(0))
+    ynow_lite_assumption_footnotes_ui(notes, loc)
   })
 
   output$smart_analysis_chart <- plotly::renderPlotly({
