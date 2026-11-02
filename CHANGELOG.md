@@ -1,3 +1,9 @@
+## [v27.73] — 2026-11-02 · Remove Lite auto-model blurb
+
+- zh-TW：移除 Lite 智慧分析複合合理價狀態上方冗餘說明段（「依股票性質自動判別主／副模型…不開放手動模型設定」）及 en-US 對應文案；刪除未再使用的 `smart_page_sub` locale。其他 Lite UI／自動試算行為不變。
+- en-US: Remove the redundant Lite Smart Analysis explanatory paragraph above composite fair-value status (and its en-US twin); drop unused `smart_page_sub` locale keys. Other Lite UI and auto-calc behavior unchanged.
+- Evidence: PR #605; `app_27.0/tests/test_lite_mode_ui.R`. Bundle 12769382.
+
 ## [v27.72] — 2026-11-02 · Lite applied assumptions as footnotes
 
 - zh-TW：Lite「已套用假設數值」說明（WACC、ri_payout、ri_roe 等）改為估值／模型分頁底部註解樣式，不再出現在控制項旁或智慧分析中段 alert。缺漏參數欄位提示維持原位。en-US + zh-TW 標題已登錄。
