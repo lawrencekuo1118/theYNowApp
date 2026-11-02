@@ -136,6 +136,47 @@ def _yahoo_gate_acquire(timeout_sec=30.0):
     return True
 
 
+def _yf_http_session():
+    """Browser-impersonated HTTP session for yfinance.
+
+    Plain ``requests`` / default yfinance often returns empty statement frames
+    under shared-host Yahoo rate limits (HTTP 429). ``curl_cffi`` chrome
+    impersonation matches the FX chart fallback path and restores IS/BS/CF.
+    """
+    try:
+        from curl_cffi import requests as creq
+
+        return creq.Session(
+            impersonate="chrome",
+            headers={
+                "User-Agent": (
+                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/120.0.0.0 Safari/537.36"
+                ),
+                "Accept": "application/json,text/plain,*/*",
+            },
+        )
+    except Exception as e:
+        _dbg(f"⚠️ curl_cffi yfinance session unavailable: {e}")
+        return None
+
+
+def _yf_ticker(symbol):
+    """``yf.Ticker`` preferring a curl_cffi session; plain Ticker as fallback."""
+    sym = str(symbol or "").strip()
+    sess = _yf_http_session()
+    if sess is not None:
+        try:
+            return yf.Ticker(sym, session=sess)
+        except TypeError:
+            # Older yfinance without session=
+            pass
+        except Exception as e:
+            _dbg(f"⚠️ yf.Ticker(session=) failed for {sym}: {e}")
+    return yf.Ticker(sym)
+
+
 def _best_company_name(info, ticker=""):
     """Prefer full legal/display name; Yahoo shortName is often truncated."""
     if not isinstance(info, dict):
@@ -162,7 +203,7 @@ def fast_get_company_info(ticker="AMZN"):
     _dbg(f"⚡ 使用高速 API 獲取 {ticker} 公司與產業資訊...")
     _yahoo_gate_acquire()
     try:
-        stock = yf.Ticker(ticker)
+        stock = _yf_ticker(ticker)
         info = {}
         try:
             info = stock.info or {}
@@ -448,7 +489,7 @@ def _get_summary_quote_impl(ticker="AMZN"):
     """Cloud-safe Yahoo summary metrics via yfinance (no Chromote/Chrome)."""
     _dbg(f"📊 yfinance summary quote: {ticker}")
     _yahoo_gate_acquire()
-    stock = yf.Ticker(ticker)
+    stock = _yf_ticker(ticker)
     info = {}
     try:
         info = stock.info or {}
@@ -535,6 +576,35 @@ def _get_summary_quote_impl(ticker="AMZN"):
             _dbg(f"⚠️ fast_info last_price: {e}")
         return None
 
+    def _chart_last_price():
+        """Yahoo chart API when .info / history are rate-limited (same path as FX)."""
+        sym = str(ticker or "").strip().upper()
+        if not sym:
+            return None
+        url = (
+            f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}"
+            f"?range=1d&interval=1d"
+        )
+        raw = _usd_twd_chart_http_get(url, timeout=12)
+        if not isinstance(raw, dict):
+            return None
+        results = (raw.get("chart") or {}).get("result") or []
+        if not results:
+            return None
+        meta = results[0].get("meta") or {}
+        for key in ("regularMarketPrice", "chartPreviousClose", "previousClose"):
+            v = meta.get(key)
+            try:
+                if v is None:
+                    continue
+                fv = float(v)
+                if fv > 0:
+                    _dbg(f"✅ quote chart {sym} meta.{key} = {fv}")
+                    return fv
+            except (TypeError, ValueError):
+                pass
+        return None
+
     def _live_last_price():
         for v in (
             info.get("currentPrice"),
@@ -553,7 +623,10 @@ def _get_summary_quote_impl(ticker="AMZN"):
         px_1m = _hist_last_close(period="1d", interval="1m")
         if px_1m and px_1m > 0:
             return px_1m
-        return _hist_last_close(period="5d")
+        px_5d = _hist_last_close(period="5d")
+        if px_5d and px_5d > 0:
+            return px_5d
+        return _chart_last_price()
 
     last_px = _live_last_price()
 
@@ -1728,7 +1801,7 @@ def scrape_all_financials_yf(ticker="AMZN"):
     """Cloud-safe financials via Yahoo Finance API (no Chrome)."""
     _dbg(f"📊 使用 yfinance 獲取 {ticker} 財報（app_11.0）...")
     _yahoo_gate_acquire()
-    stock = yf.Ticker(ticker)
+    stock = _yf_ticker(ticker)
 
     def pick(*names):
         for name in names:

@@ -183,6 +183,19 @@ statement_other_equity_claims <- function(bs) {
   NA_real_
 }
 
+#' Book preferred + minority interest when market-value other-claims are unknown.
+#' Lite Smart Analysis uses this disclosed book proxy so silent DCF is not blocked
+#' by NA `bridge_other_claims` (e.g. TW 2330 NCI present, no market quote for NCI).
+statement_other_equity_claims_book <- function(bs) {
+  pref <- select_current_metric_any(bs, c("^Preferred Stock Equity$", "^Preferred Stock$"), "stock")
+  minority <- select_current_metric(bs, "^Minority Interest$", "stock")
+  if (!is.finite(pref)) pref <- 0
+  if (!is.finite(minority)) minority <- 0
+  if (pref < 0) pref <- 0
+  if (minority < 0) minority <- 0
+  pref + minority
+}
+
 # NOPAT is operating earnings after tax, never financing-affected Net Income.
 statement_nopat <- function(d_is, tax_fallback = NULL) {
   ebit <- select_current_metric_any(d_is, c("^Operating Income$", "^EBIT$"), "flow")

@@ -449,6 +449,7 @@ server <- function(input, output, session) {
   auto_calc_rel_pulse <- reactiveVal(0L)
   auto_calc_sotp_pulse <- reactiveVal(0L)
 
+
   # ==========================================
   # 🚀 股票代號：僅主區 Ticker / Stock Code（sc + Search）
   # ==========================================
@@ -10190,7 +10191,21 @@ server <- function(input, output, session) {
     revenue <- if (isTRUE(bridge_touched$revenue)) bridge_pick_number(input$bridge_revenue, rev_stmt) else rev_stmt
     if (!is.finite(cash) || cash < 0) cash <- NA_real_
     if (!is.finite(debt) || debt < 0) debt <- NA_real_
-    other <- if (isTRUE(bridge_touched$other_claims)) bridge_pick_number(input$bridge_other_claims) else statement_other_equity_claims(bs)
+    other <- if (isTRUE(bridge_touched$other_claims)) {
+      bridge_pick_number(input$bridge_other_claims)
+    } else {
+      statement_other_equity_claims(bs)
+    }
+    # Lite: when market-value other claims are unknown but book NCI/pref exist,
+    # use book as a disclosed proxy so silent primary DCF can finish (TW 2330).
+    if (!is.finite(other) &&
+        isTRUE(tryCatch(isolate(lite_mode()), error = function(e) FALSE)) &&
+        exists("statement_other_equity_claims_book", mode = "function")) {
+      book <- tryCatch(statement_other_equity_claims_book(bs), error = function(e) NA_real_)
+      if (is.finite(book) && book >= 0) {
+        other <- book
+      }
+    }
     list(cash = unname(cash), debt = unname(debt), shares = unname(shares), revenue = unname(revenue), other_claims = other)
   })
 
@@ -10397,7 +10412,18 @@ server <- function(input, output, session) {
     latest_cash <- sb_bridge$cash * cash_mult
     latest_debt <- sb_bridge$debt * debt_mult
     other_claims <- suppressWarnings(as.numeric(sb_bridge$other_claims)[1])
-    if (!is.finite(other_claims) || other_claims < 0) return(empty)
+    if (!is.finite(other_claims) || other_claims < 0) {
+      if (isTRUE(tryCatch(isolate(lite_mode()), error = function(e) FALSE)) &&
+          exists("statement_other_equity_claims_book", mode = "function")) {
+        book <- tryCatch(
+          statement_other_equity_claims_book(d_balance_sheet()),
+          error = function(e) NA_real_
+        )
+        other_claims <- if (is.finite(book) && book >= 0) book else 0
+      } else {
+        return(empty)
+      }
+    }
     if (identical(scenario$claim, "fcfe") && other_claims != 0) return(empty)
     claim <- scenario$claim
     if (identical(claim, "fcfe")) {
@@ -13795,7 +13821,18 @@ server <- function(input, output, session) {
     latest_cash <- sb_bridge$cash
     latest_debt <- sb_bridge$debt
     other_claims <- suppressWarnings(as.numeric(sb_bridge$other_claims)[1])
-    if (!is.finite(other_claims) || other_claims < 0) return(NULL)
+    if (!is.finite(other_claims) || other_claims < 0) {
+      # Silent / Lite last resort: book proxy or 0 so Smart Analysis is not stuck on —
+      if (isTRUE(silent) || isTRUE(tryCatch(isolate(lite_mode()), error = function(e) FALSE))) {
+        book <- tryCatch(
+          statement_other_equity_claims_book(d_balance_sheet()),
+          error = function(e) NA_real_
+        )
+        other_claims <- if (is.finite(book) && book >= 0) book else 0
+      } else {
+        return(NULL)
+      }
+    }
     if (identical(scenario$claim, "fcfe") && other_claims != 0) {
       if (show_toast) showNotification(.ui_msg("param_fcfe_other_claims"), type = "error")
       return(NULL)
