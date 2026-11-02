@@ -7,5 +7,5 @@ commit=c991515c2d360fe9a666076c7e8a8aedfd311614
 short=c991515c
 message=chore: bump display version to v27.65
 captured_at=2026-11-02T11:25:20Z
-display_version=v27.65
+display_version=v27.66
 note=Missing-parameter toast scoped to Model Dashboard→Quant Backtest Lab (locked tabs suppress). PR #589; running bundle 12769026. Deployed with extracted R 4.6.1 (host 4.6.2 unsupported on shinyapps jammy).
