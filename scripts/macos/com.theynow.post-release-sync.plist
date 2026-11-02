@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  launchd agent: poll origin DEPLOY_BASELINE / PENDING_MAC_SYNC and sync
+  coding + OneDrive after tip ships. Install via:
+    bash scripts/macos/install-post-release-sync-launchd.sh
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.theynow.post-release-sync</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/lawrencekuo/coding/theYNowApp/scripts/macos/run_auto_post_release_sync.sh</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>/Users/lawrencekuo/coding/theYNowApp</string>
+  <key>StartInterval</key>
+  <integer>300</integer>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>/Users/lawrencekuo/Library/Logs/theynow-post-release-sync.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/lawrencekuo/Library/Logs/theynow-post-release-sync.err.log</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <key>YNOW_CODING</key>
+    <string>/Users/lawrencekuo/coding/theYNowApp</string>
+    <key>YNOW_ONEDRIVE</key>
+    <string>/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp</string>
+  </dict>
+</dict>
+</plist>

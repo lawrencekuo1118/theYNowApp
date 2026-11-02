@@ -46,9 +46,13 @@ When tip ship completes (deploy + baseline + GitHub Release for a new `display_v
 2. Run `bash scripts/post_release_local_sync.sh` (or `bash scripts/sync-workspaces.sh --force` / `~/coding/bin/sync-theynow-workspaces.sh --force`).
 3. Verify: `bash scripts/check-od-sync.sh` (sha + `app_27.0/app.R`).
 4. On Mac coding clone / self-hosted Mac: sync is **mandatory** — do not treat tip-ship as done until check passes.
-5. Cloud Agents without Mac paths: soft-skip OK, but document that the operator/Mac agent must run steps 2–3 next.
+5. Cloud Agents without Mac paths: soft-skip still **must** run the Mac handoff (`scripts/mac_post_release_sync_handoff.sh` via `post_release_local_sync.sh`) so `scripts/PENDING_MAC_SYNC.env` is written and durable Mac automation can catch up — do **not** leave only a prose soft-skip note.
+6. Keep Mac automation online so soft-skip stops being a manual follow-up:
+   - Preferred always-on: `bash scripts/macos/install-post-release-sync-launchd.sh` (polls every 5 min).
+   - Cursor self-hosted: `agent login && agent worker start` on the Mac coding host.
+   - Optional GH Actions runner labels: `self-hosted`, `macOS`, `theynow` + `gh workflow run post-release-mac-sync.yml`.
 
-`deploy_app_21.R` calls `post_release_local_sync.sh` at the end of a successful ship. Set `YNOW_SKIP_POST_RELEASE_SYNC=1` only for intentional skips (never as the default on Mac tip-ship).
+`deploy_app_21.R` calls `post_release_local_sync.sh` at the end of a successful ship. Set `YNOW_SKIP_POST_RELEASE_SYNC=1` only for intentional skips (never as the default on Mac tip-ship); handoff still records pending.
 
 **Never run `git status` / `git diff` / `git push` inside the OneDrive folder.**  
 OneDrive’s tree is a lightweight sync stub (objects via `alternates` → coding clone). Cloud I/O often times out (`mmap failed: Operation timed out`), so those commands hang or fail. To verify OneDrive alignment, read:
