@@ -9072,9 +9072,12 @@ ui <- dashboardPage(
         .ynow-corpname .ynow-corpname-single {
           display: inline;
         }
-        /* Search 後：官方 logo 主色（固定兩色；缺→黑；純黑單色→白）套用到公司全稱 */
+        /* Search 後：官方 logo 主色套用到公司全稱。
+         * 單色品牌 → solid（.ynow-corpname-logo-solid）；雙色 → 水平漸層。 */
         .ynow-corpname .ynow-corpname-logo-solid {
           color: var(--ynow-corp-c1, #333333);
+          background-image: none;
+          -webkit-text-fill-color: currentColor;
         }
         .ynow-corpname .ynow-corpname-logo-grad {
           background-image: linear-gradient(
@@ -9099,7 +9102,8 @@ ui <- dashboardPage(
         }
         /* LAST PRICE / MARKET CAP / EPS (TTM): icon fill follows the company-name logo pair.
          * Must beat `.ynow-header-kpi-row … background-color: var(--ynow-logo-green)`
-         * (same !important) — include the header-row + AdminLTE bg-* classes. */
+         * (same !important) — include the header-row + AdminLTE bg-* classes.
+         * Mono brand (`body.ynow-corp-logo-mono`): solid c1 only (no fake pad gradient). */
         body.ynow-corp-logo .ynow-header-kpi-row #ibx_stockprice .info-box-icon,
         body.ynow-corp-logo .ynow-header-kpi-row #ibx_marketcap .info-box-icon,
         body.ynow-corp-logo .ynow-header-kpi-row #ibx_EPS .info-box-icon,
@@ -9115,6 +9119,18 @@ ui <- dashboardPage(
             var(--ynow-corp-c1, #333333) 0%,
             var(--ynow-corp-c2, #000000) 100%
           ) !important;
+        }
+        body.ynow-corp-logo.ynow-corp-logo-mono .ynow-header-kpi-row #ibx_stockprice .info-box-icon,
+        body.ynow-corp-logo.ynow-corp-logo-mono .ynow-header-kpi-row #ibx_marketcap .info-box-icon,
+        body.ynow-corp-logo.ynow-corp-logo-mono .ynow-header-kpi-row #ibx_EPS .info-box-icon,
+        body.ynow-corp-logo.ynow-corp-logo-mono .ynow-header-kpi-row #ibx_stockprice .info-box-icon.bg-purple,
+        body.ynow-corp-logo.ynow-corp-logo-mono .ynow-header-kpi-row #ibx_marketcap .info-box-icon.bg-aqua,
+        body.ynow-corp-logo.ynow-corp-logo-mono .ynow-header-kpi-row #ibx_EPS .info-box-icon.bg-green,
+        body.ynow-corp-logo.ynow-corp-logo-mono #ibx_stockprice .info-box-icon,
+        body.ynow-corp-logo.ynow-corp-logo-mono #ibx_marketcap .info-box-icon,
+        body.ynow-corp-logo.ynow-corp-logo-mono #ibx_EPS .info-box-icon {
+          background-color: var(--ynow-corp-c1) !important;
+          background-image: none !important;
         }
         /* Header Language toggle (in black bar); Currency floats under logo */
         /* 繁中／EN 與小 logo 在頁首列垂直置中對齊 */
@@ -15218,15 +15234,23 @@ ui <- dashboardPage(
               var root = document.documentElement;
               var c1 = payload && payload.c1 ? String(payload.c1) : '';
               var c2 = payload && payload.c2 ? String(payload.c2) : '';
-              if (!c1 || !c2) {
+              var mono = !!(payload && payload.mono);
+              if (!c1) {
                 root.style.removeProperty('--ynow-corp-c1');
                 root.style.removeProperty('--ynow-corp-c2');
                 document.body.classList.remove('ynow-corp-logo');
+                document.body.classList.remove('ynow-corp-logo-mono');
                 return;
               }
+              if (!c2) c2 = c1;
               root.style.setProperty('--ynow-corp-c1', c1);
               root.style.setProperty('--ynow-corp-c2', c2);
               document.body.classList.add('ynow-corp-logo');
+              if (mono || c1 === c2) {
+                document.body.classList.add('ynow-corp-logo-mono');
+              } else {
+                document.body.classList.remove('ynow-corp-logo-mono');
+              }
             });
             addHandler('ynowModelTheme', function (payload) {
               var tab = (payload && payload.tab) ? String(payload.tab) : '';

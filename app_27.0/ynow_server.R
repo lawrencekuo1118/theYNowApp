@@ -5813,7 +5813,11 @@ server <- function(input, output, session) {
               ),
               error = function(e) character(0)
             )
-            corp_name_logo_colors(.ensure_logo_color_pair(logo_cols))
+            # Store raw primary colors (length 0–2). Mono stays length 1 so
+            # the company full name can use a solid brand tint.
+            corp_name_logo_colors(
+              tryCatch(.normalize_logo_hex(logo_cols), error = function(e) character(0))
+            )
             invisible(NULL)
           }
           if (requireNamespace("later", quietly = TRUE)) {
@@ -6273,14 +6277,23 @@ server <- function(input, output, session) {
   # 📊 1. 基本資訊與 Summary 介面輸出
   # ==========================================
   .corpname_logo_style <- function(cols, which = 1L) {
-    cols <- tryCatch(.ensure_logo_color_pair(cols), error = function(e) character(0))
-    if (!length(cols)) return(NULL)
+    raw <- tryCatch(.normalize_logo_hex(cols), error = function(e) character(0))
+    if (!length(raw)) return(NULL)
+    # Mono brand: solid primary only (no black/white pad gradient).
+    if (isTRUE(.is_logo_mono_brand(raw))) {
+      return(sprintf(
+        "color:%s;--ynow-corp-c1:%s;--ynow-corp-c2:%s;",
+        raw[[1]], raw[[1]], raw[[1]]
+      ))
+    }
+    cols <- tryCatch(.ensure_logo_color_pair(raw), error = function(e) character(0))
+    if (length(cols) < 2L) return(NULL)
     c1 <- cols[[1]]
     c2 <- cols[[2]]
     if (identical(as.integer(which)[1], 2L)) {
       return(sprintf("color:%s;", c2))
     }
-    # 單行全稱：雙色水平漸層（單色→黑；純黑單色→白）
+    # 單行全稱：雙色水平漸層
     paste0(
       "--ynow-corp-c1:", c1, ";",
       "--ynow-corp-c2:", c2, ";"
@@ -6294,8 +6307,13 @@ server <- function(input, output, session) {
     )
     nm <- trimws(as.character(corp_display_name() %||% "")[1])
     en <- trimws(as.character(corp_display_name_en() %||% "")[1])
+    logo_raw <- tryCatch(
+      .normalize_logo_hex(corp_name_logo_colors()),
+      error = function(e) character(0)
+    )
+    logo_mono <- isTRUE(.is_logo_mono_brand(logo_raw))
     logo_cols <- tryCatch(
-      .ensure_logo_color_pair(corp_name_logo_colors()),
+      if (logo_mono) logo_raw else .ensure_logo_color_pair(logo_raw),
       error = function(e) character(0)
     )
     if (!nzchar(nm)) {
@@ -6314,18 +6332,19 @@ server <- function(input, output, session) {
     }
     if (!nzchar(nm) && !nzchar(en)) return(NULL)
 
-    # 台股：中文上、英文下；品牌色系固定兩色分給中／英
-    # （缺第二色→黑；sole black logo→白；白英文加陰影以免溶進白底）
+    # 台股：中文上、英文下。
+    # 雙色品牌：中／英各一色；單色品牌：中英皆用同一品牌主色（勿再補黑／白）。
     if (identical(mode, "TW") && nzchar(nm) && nzchar(en) &&
         isTRUE(query_has_cjk(nm)) && !isTRUE(query_has_cjk(en))) {
-      zh_style <- if (length(logo_cols) >= 2L) {
-        sprintf("color:%s;", logo_cols[[1]])
-      } else {
-        NULL
-      }
+      zh_style <- NULL
       en_cls <- "ynow-corpname-en"
       en_style <- NULL
-      if (length(logo_cols) >= 2L) {
+      if (logo_mono && length(logo_cols) >= 1L) {
+        solid <- sprintf("color:%s;", logo_cols[[1]])
+        zh_style <- solid
+        en_style <- solid
+      } else if (length(logo_cols) >= 2L) {
+        zh_style <- sprintf("color:%s;", logo_cols[[1]])
         en_style <- sprintf("color:%s;", logo_cols[[2]])
         if (identical(logo_cols[[2]], "#FFFFFF")) {
           en_cls <- paste(en_cls, "ynow-corpname-en-on-white")
@@ -6348,7 +6367,10 @@ server <- function(input, output, session) {
 
     single_cls <- "ynow-corpname-single"
     single_style <- NULL
-    if (length(logo_cols) >= 2L) {
+    if (logo_mono && length(logo_cols) >= 1L) {
+      single_cls <- paste(single_cls, "ynow-corpname-logo-solid")
+      single_style <- .corpname_logo_style(logo_cols, which = 1L)
+    } else if (length(logo_cols) >= 2L) {
       single_cls <- paste(single_cls, "ynow-corpname-logo-grad")
       single_style <- .corpname_logo_style(logo_cols, which = 1L)
     }
@@ -6361,16 +6383,28 @@ server <- function(input, output, session) {
 
   output$txt_corpname <- renderUI({ render_corpname_ui() })
 
-  # Quote KPI icon fills share the company-name logo pair (c1 → c2).
+  # Quote KPI icon fills share the company-name logo colors.
+  # Dual brand → c1→c2 gradient; mono brand → solid c1 (c2 mirrors c1).
   observe({
-    cols <- tryCatch(
-      .ensure_logo_color_pair(corp_name_logo_colors()),
+    raw <- tryCatch(
+      .normalize_logo_hex(corp_name_logo_colors()),
       error = function(e) character(0)
     )
+    mono <- isTRUE(.is_logo_mono_brand(raw))
+    if (mono && length(raw) >= 1L && nzchar(raw[[1]])) {
+      session$sendCustomMessage("ynowCorpLogoColors", list(
+        c1 = raw[[1]],
+        c2 = raw[[1]],
+        mono = TRUE
+      ))
+      return(invisible(NULL))
+    }
+    cols <- tryCatch(.ensure_logo_color_pair(raw), error = function(e) character(0))
     ok <- length(cols) >= 2L && nzchar(cols[[1]]) && nzchar(cols[[2]])
     session$sendCustomMessage("ynowCorpLogoColors", list(
       c1 = if (ok) cols[[1]] else "",
-      c2 = if (ok) cols[[2]] else ""
+      c2 = if (ok) cols[[2]] else "",
+      mono = FALSE
     ))
   })
   output$search_results <- renderText({ corp_industry_text() })

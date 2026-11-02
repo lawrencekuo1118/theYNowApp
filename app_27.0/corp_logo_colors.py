@@ -255,7 +255,7 @@ def resolve_corp_logo_colors(
       ticker: normalized input ticker
     """
     tk = str(ticker or "").strip()
-    empty = {"colors": [], "source": "", "domain": "", "ticker": tk}
+    empty = {"colors": [], "mono": False, "source": "", "domain": "", "ticker": tk}
     if not tk or Image is None:
         return empty
 
@@ -266,18 +266,11 @@ def resolve_corp_logo_colors(
         return {**empty, "domain": domain}
 
     colors = extract_logo_colors_from_bytes(data, max_colors=max_colors)
-    # Brand palette must be two slots:
-    # single brand → pad black; sole near-black brand → pad white.
-    if len(colors) == 1:
-        h = colors[0].lstrip("#")
-        try:
-            r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
-            pad = "#FFFFFF" if max(r, g, b) <= 40 else "#000000"
-        except Exception:
-            pad = "#000000"
-        colors = [colors[0], pad]
+    # Keep raw primary count (0–2). R pads for charts / KPI when needed;
+    # company full-name uses a solid tint when mono (length == 1).
     return {
         "colors": colors,
+        "mono": len(colors) == 1,
         "source": src or "",
         "domain": domain,
         "ticker": tk,
