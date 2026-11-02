@@ -10830,7 +10830,14 @@ server <- function(input, output, session) {
     # Cash interest paid is not accrual interest expense; Net Interest Expense
     # also subtracts interest income. Neither can silently become the Rd numerator.
     # Pairing skips blank leading fiscal years so AAPL-like frames still feed rᵈ.
-    pair <- .rd_statement_pair()
+    # Call rd_interest_debt_pair directly so offline extract tests need only IS/BS.
+    bs <- tryCatch(d_balance_sheet(), error = function(e) NULL)
+    pair <- tryCatch(
+      rd_interest_debt_pair(d_income_statement(), bs),
+      error = function(e) {
+        list(interest = NA_real_, source = NA_character_, period = NA_character_)
+      }
+    )
     interest <- suppressWarnings(as.numeric(pair$interest)[1])
     if (!is.finite(interest)) return(NA_real_)
     attr(interest, "source") <- pair$source %||% "income_interest_expense"
