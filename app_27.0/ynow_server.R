@@ -13580,7 +13580,13 @@ server <- function(input, output, session) {
     dcf_value_result(NULL)
     silent <- isTRUE(isolate(lite_dcf_silent()))
     show_toast <- if (is.null(notify)) !silent else isTRUE(notify)
-    if (silent && !is.finite(suppressWarnings(as.numeric(calculated_wacc())[1]))) return(NULL)
+    # Full silent auto-calc waits for estimated WACC. Lite readiness already
+    # accepts a disclosed UI / App-default WACC — do not abort silent Lite DCF
+    # when calculated_wacc is still NA (AAPL-like Lite Smart Analysis).
+    if (silent && !is.finite(suppressWarnings(as.numeric(calculated_wacc())[1])) &&
+        !isTRUE(isolate(lite_mode()))) {
+      return(NULL)
+    }
     scenario <- .effective_dcf_scenario()
     dcf_mode_eff <- scenario$mode
     if (silent) {
