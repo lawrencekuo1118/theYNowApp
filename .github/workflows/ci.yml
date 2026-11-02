@@ -50,6 +50,8 @@ jobs:
           Rscript app_27.0/tests/test_parameter_completeness.R
           Rscript app_27.0/tests/test_tw_search_session.R
           Rscript app_27.0/tests/test_ticker_auto_uppercase.R
+          Rscript app_27.0/tests/test_method_eng_locale.R
+          Rscript app_27.0/tests/test_sotp_meta_framework.R
           Rscript app_27.0/tests/test_market_cache_binary.R
           python3 app_27.0/tests/test_summary_deadline.py
       - name: Phase 1 formula independence (offline)
