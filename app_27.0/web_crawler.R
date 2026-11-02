@@ -801,22 +801,90 @@ cached_get_summary_data <- function(stock_code) {
 # ==========================================
 # 💱 USD/TWD 即期匯率
 # ==========================================
-get_usd_twd_fx <- function() {
-  tryCatch({
-    if (!isTRUE(.ensure_python_scraper()) ||
-        !exists("get_usd_twd_rate", envir = .py_scraper_env, inherits = FALSE, mode = "function")) {
-      return(NA_real_)
-    }
-    px <- suppressWarnings(as.numeric(.py_scraper_env$get_usd_twd_rate())[1])
-    if (is.finite(px) && px > 0) return(px)
-    NA_real_
-  }, error = function(e) {
-    .ynow_log("⚠️ get_usd_twd_fx: ", e$message)
-    NA_real_
-  })
+if (!exists("%||%", mode = "function")) {
+  `%||%` <- function(x, y) if (is.null(x) || (length(x) == 1 && is.na(x))) y else x
 }
 
-# FAST: FX
+#' Yahoo chart API spot (TWD per 1 USD). Used when yfinance is rate-limited.
+#' Never invents a rate — returns NA_real_ when chart / parse fails.
+.usd_twd_from_yahoo_chart <- function() {
+  if (!requireNamespace("httr", quietly = TRUE) ||
+      !requireNamespace("jsonlite", quietly = TRUE)) {
+    return(NA_real_)
+  }
+  if (exists(".ynow_yahoo_gate_acquire", mode = "function")) {
+    tryCatch(.ynow_yahoo_gate_acquire(timeout_sec = 10), error = function(e) NULL)
+  }
+  ua <- httr::user_agent(
+    "Mozilla/5.0 (compatible; YNowFX/1.0; +https://github.com/lawrencekuo1118/theYNowApp)"
+  )
+  for (host in c(
+    "https://query1.finance.yahoo.com",
+    "https://query2.finance.yahoo.com"
+  )) {
+    for (sym in c("TWD=X", "USDTWD=X")) {
+      enc <- utils::URLencode(sym, reserved = TRUE)
+      url <- sprintf("%s/v8/finance/chart/%s?range=5d&interval=1d", host, enc)
+      resp <- tryCatch(
+        httr::GET(url, ua, httr::timeout(15)),
+        error = function(e) NULL
+      )
+      if (is.null(resp) || httr::status_code(resp) != 200L) next
+      body <- tryCatch(
+        httr::content(resp, as = "text", encoding = "UTF-8"),
+        error = function(e) ""
+      )
+      if (!nzchar(body %||% "")) next
+      j <- tryCatch(
+        jsonlite::fromJSON(body, simplifyVector = FALSE),
+        error = function(e) NULL
+      )
+      res <- tryCatch(j$chart$result[[1]], error = function(e) NULL)
+      if (is.null(res)) next
+      meta <- res$meta %||% list()
+      for (key in c("regularMarketPrice", "chartPreviousClose", "previousClose")) {
+        px <- suppressWarnings(as.numeric(meta[[key]])[1])
+        if (is.finite(px) && px > 0) return(px)
+      }
+      closes <- tryCatch(
+        unlist(res$indicators$quote[[1]]$close, use.names = FALSE),
+        error = function(e) NULL
+      )
+      if (!is.null(closes) && length(closes)) {
+        nums <- suppressWarnings(as.numeric(closes))
+        nums <- nums[is.finite(nums) & nums > 0]
+        if (length(nums)) return(nums[[length(nums)]])
+      }
+    }
+  }
+  NA_real_
+}
+
+#' Live USD→TWD spot. Prefer Python yfinance (+ chart fallback); then R chart API.
+#' Raises on total failure so memoise does not cache a failed NA for the fast TTL.
+get_usd_twd_fx <- function() {
+  px <- NA_real_
+  tryCatch({
+    if (isTRUE(.ensure_python_scraper()) &&
+        exists("get_usd_twd_rate", envir = .py_scraper_env, inherits = FALSE, mode = "function")) {
+      px <- suppressWarnings(as.numeric(.py_scraper_env$get_usd_twd_rate())[1])
+    }
+  }, error = function(e) {
+    .ynow_log("⚠️ get_usd_twd_fx python: ", e$message)
+    NA_real_
+  })
+  if (is.finite(px) && px > 0) return(px)
+
+  px2 <- tryCatch(.usd_twd_from_yahoo_chart(), error = function(e) {
+    .ynow_log("⚠️ get_usd_twd_fx chart: ", e$message)
+    NA_real_
+  })
+  if (is.finite(px2) && px2 > 0) return(px2)
+
+  stop("USD/TWD FX unavailable")
+}
+
+# FAST: FX — successes only (failures raise → not memoised)
 cached_get_usd_twd_fx <- memoise::memoise(get_usd_twd_fx, cache = .ynow_fast_cache)
 
 # ==========================================

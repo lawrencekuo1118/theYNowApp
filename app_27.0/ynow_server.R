@@ -6140,9 +6140,13 @@ server <- function(input, output, session) {
         sess <- default_session_currency(q_ccy, f_ccy, stock_code)
         session_currency(sess)
         fx_now <- tryCatch(cached_get_usd_twd_fx(), error = function(e) NA_real_)
-        if (!is.finite(fx_now) || fx_now <= 0) fx_now <- NA_real_
+        if (!is.finite(fx_now) || fx_now <= 0) {
+          # Keep last good spot so a transient Yahoo 429 does not wipe session FX.
+          prev_fx <- suppressWarnings(as.numeric(isolate(fx_usd_twd()))[1])
+          fx_now <- if (is.finite(prev_fx) && prev_fx > 0) prev_fx else NA_real_
+        }
         fx_usd_twd(fx_now)
-        fx_fetched_at(Sys.time())
+        if (is.finite(fx_now) && fx_now > 0) fx_fetched_at(Sys.time())
         set_ynow_currency_context(sess, fx_now, q_ccy, f_ccy)
         if (isTRUE(fx_conversion_required(q_ccy, f_ccy)) ||
             isTRUE(fx_conversion_required(sess, q_ccy))) {
