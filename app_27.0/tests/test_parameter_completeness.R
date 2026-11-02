@@ -189,3 +189,42 @@ for (edition in c(FALSE, TRUE)) for (mode in c("gordon", "two_stage")) {
   stopifnot(ready("ri"))
 }
 cat("PASS: production readiness gates use disclosed Lite Gordon/Two-Stage defaults; Full requires calculated rates; RI waits for payout\n")
+
+# Lite silent DCF must use disclosed UI WACC when calculated_wacc is NA.
+# Full silent path still waits (no estimate written).
+cell <- function(initial = NULL) {
+  value <- initial
+  function(x) { if (!missing(x)) value <<- x; value }
+}
+for (edition in c(FALSE, TRUE)) {
+  e <- new.env(parent = globalenv())
+  e$isolate <- function(x) x
+  e$lite_mode <- function() edition
+  e$lite_dcf_silent <- function() TRUE
+  e$lite_desired_des <- function() list(two_stage = FALSE, claim = "fcff", method = "sgr")
+  e$fcf_results <- list(df_fcf = function() data.frame(FCFF = c(10, 12, 14, 16, 18)))
+  e$calculated_wacc <- function() NA_real_
+  e$current_ticker <- function() "AAPL"
+  e$input <- list(years = 5, dcf_mode = "gordon", dcf_claim = "fcff", sgr = 2,
+                  wacc_gordon = 9, use_estimated_re = FALSE)
+  e$.effective_dcf_scenario <- eval(assignments[[".effective_dcf_scenario"]], e)
+  e$.shared_bridge <- function() list(cash = 20, debt = 10, shares = 10, other_claims = 0)
+  e$.valuation_shares <- function() list(shares = 10, method = "balance_sheet")
+  e$.dcf_per_share <- function(eq, sh) eq / sh$shares
+  e$stock_price_estimate_val <- cell()
+  e$dcf_value_result <- cell()
+  e$dcf_audit_snap <- cell()
+  e$lite_dcf_block <- cell()
+  e$req <- function(...) invisible(TRUE)
+  e$updateNumericInput <- function(...) invisible(NULL)
+  e$APP_DEFAULTS <- APP_DEFAULTS
+  e$.execute_dcf_calc <- eval(assignments[[".execute_dcf_calc"]], e)
+  e$.execute_dcf_calc(notify = FALSE)
+  px <- e$stock_price_estimate_val()
+  if (isTRUE(edition)) {
+    stopifnot(is.finite(px), px > 0)
+  } else {
+    stopifnot(is.null(px) || !is.finite(suppressWarnings(as.numeric(px)[1])))
+  }
+}
+cat("PASS: Lite silent DCF uses disclosed WACC when calculated_wacc is NA; Full silent still waits\n")
