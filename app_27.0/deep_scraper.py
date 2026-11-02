@@ -807,8 +807,118 @@ def get_returns_1y_batch(tickers):
     return out
 
 
+def _usd_twd_chart_http_get(url, timeout=15):
+    """GET Yahoo chart JSON. Prefer urllib / curl_cffi — plain requests often 429s."""
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/120.0.0.0 Safari/537.36"
+        ),
+        "Accept": "application/json,text/plain,*/*",
+    }
+    # 1) urllib — same path R/httr succeeds on when requests is fingerprint-blocked
+    try:
+        import json as _json
+        import urllib.request
+
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            status = getattr(resp, "status", None) or resp.getcode()
+            if int(status) != 200:
+                raise RuntimeError(f"HTTP {status}")
+            raw = _json.loads(resp.read().decode("utf-8", errors="replace"))
+            if isinstance(raw, dict):
+                return raw
+    except Exception as e:
+        _dbg(f"⚠️ FX chart urllib: {e}")
+    # 2) curl_cffi browser impersonation (already used for SEC)
+    try:
+        from curl_cffi import requests as creq
+
+        sess = creq.Session(impersonate="chrome", headers=headers)
+        r = sess.get(url, timeout=timeout)
+        if getattr(r, "ok", False):
+            raw = r.json() if hasattr(r, "json") else None
+            if isinstance(raw, dict):
+                return raw
+    except Exception as e:
+        _dbg(f"⚠️ FX chart curl_cffi: {e}")
+    # 3) requests last — often rate-limited on shared hosts
+    try:
+        import requests
+
+        r = requests.get(url, headers=headers, timeout=timeout)
+        if getattr(r, "ok", False):
+            raw = r.json() if hasattr(r, "json") else None
+            if isinstance(raw, dict):
+                return raw
+    except Exception as e:
+        _dbg(f"⚠️ FX chart requests: {e}")
+    return None
+
+
+def _usd_twd_parse_chart_payload(raw, sym="TWD=X"):
+    """Extract TWD-per-USD spot from Yahoo chart JSON. Never invents a rate."""
+    if not isinstance(raw, dict):
+        return None
+    results = (raw.get("chart") or {}).get("result") or []
+    if not results:
+        return None
+    meta = results[0].get("meta") or {}
+    for key in ("regularMarketPrice", "chartPreviousClose", "previousClose"):
+        v = meta.get(key)
+        if v is None:
+            continue
+        try:
+            px = float(v)
+        except (TypeError, ValueError):
+            continue
+        if px > 0:
+            _dbg(f"✅ FX chart {sym} meta.{key} = {px}")
+            return px
+    quote = ((results[0].get("indicators") or {}).get("quote") or [{}])[0]
+    closes = []
+    for c in quote.get("close") or []:
+        if c is None:
+            continue
+        try:
+            fv = float(c)
+        except (TypeError, ValueError):
+            continue
+        if fv > 0:
+            closes.append(fv)
+    if closes:
+        px = closes[-1]
+        _dbg(f"✅ FX chart {sym} close = {px}")
+        return px
+    return None
+
+
+def _usd_twd_from_yahoo_chart():
+    """USD→TWD spot via Yahoo chart API (bypasses yfinance rate limits).
+
+    TWD=X / USDTWD=X quote as TWD per 1 USD. Prefer meta.regularMarketPrice,
+    then previous close, then last daily close. Never invent a rate.
+    """
+    for host in (
+        "https://query1.finance.yahoo.com",
+        "https://query2.finance.yahoo.com",
+    ):
+        for sym in ("TWD=X", "USDTWD=X"):
+            try:
+                url = f"{host}/v8/finance/chart/{sym}?range=5d&interval=1d"
+                raw = _usd_twd_chart_http_get(url, timeout=15)
+                px = _usd_twd_parse_chart_payload(raw, sym=sym)
+                if px is not None and px > 0:
+                    return px
+            except Exception as e:
+                _dbg(f"⚠️ FX chart {sym}@{host}: {e}")
+    return None
+
+
 def get_usd_twd_rate():
-    """USD→TWD spot via yfinance (TWD=X = TWD per 1 USD)."""
+    """USD→TWD spot via yfinance, with Yahoo chart API fallback (TWD=X)."""
     _dbg("💱 yfinance FX TWD=X")
     _yahoo_gate_acquire()
     for sym in ("TWD=X", "USDTWD=X"):
@@ -830,6 +940,10 @@ def get_usd_twd_rate():
                         return px
         except Exception as e:
             _dbg(f"⚠️ FX {sym}: {e}")
+    # yfinance often 429s under shared / hosted load; chart API still serves spot.
+    px = _usd_twd_from_yahoo_chart()
+    if px is not None and px > 0:
+        return px
     _dbg("⚠️ FX unavailable (refuse silent fallback)")
     return None
 
