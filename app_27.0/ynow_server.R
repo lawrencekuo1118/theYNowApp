@@ -7917,14 +7917,16 @@ server <- function(input, output, session) {
             hi <- max(vals) * 1.1
             span <- max(hi - lo, 1)
             tagList(
-              tags$div(style = "position:relative; height:46px; margin:18px 8px 28px 8px; background:#e5e7eb; border-radius:4px;",
+              tags$div(
+                class = "ynow-ms-pos-track",
+                style = "position:relative; height:72px; margin:14px 8px 10px 8px; background:#e5e7eb; border-radius:4px;",
                 lapply(marks, function(m) {
                   if (!is.finite(m$val)) return(NULL)
                   pct <- (m$val - lo) / span * 100
                   tags$div(
                     style = paste0("position:absolute; left:", sprintf("%.1f", pct), "%; top:0; transform:translateX(-50%); text-align:center;"),
-                    tags$div(style = paste0("width:10px; height:10px; border-radius:50%; background:", m$col, "; margin:18px auto 0 auto;")),
-                    tags$div(style = "font-size:10px; color:#334155; white-space:nowrap; margin-top:2px;", paste0(m$lab, " ", fmt_px(m$val)))
+                    tags$div(style = paste0("width:10px; height:10px; border-radius:50%; background:", m$col, "; margin:22px auto 0 auto;")),
+                    tags$div(style = "font-size:11px; line-height:1.25; color:#334155; white-space:nowrap; margin-top:4px;", paste0(m$lab, " ", fmt_px(m$val)))
                   )
                 })
               )
