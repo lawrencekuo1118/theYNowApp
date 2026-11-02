@@ -93,6 +93,30 @@ scraped_val <- scraped_fn()
   "Rd numerator source remains gross accrual Interest Expense"
 )
 
+interest_env$d_income_statement <- function() is_ttm_ok
+.check(
+  identical(as.numeric(scraped_fn()), 55),
+  "scraped Interest Expense prefers finite TTM"
+)
+
+rd_env <- new.env(parent = globalenv())
+rd_env$input <- list(
+  rd_interest_expense = round(as.numeric(scraped_val), 2),
+  rd_interest_bearing_debt = 1200,
+  wacc_rd_min = 0,
+  wacc_rd_max = 40
+)
+rd_env$reactive <- shiny::reactive
+rd_env$.rd_clamp_bounds <- eval(assignments[[".rd_clamp_bounds"]], rd_env)
+rd_fn <- eval(assignments[["scraped_rd_pct"]], rd_env)
+rd_session <- shiny::MockShinySession$new()
+rd_from_inputs <- shiny::withReactiveDomain(rd_session, shiny::isolate(rd_fn()))
+rd_session$close()
+.check(
+  abs(rd_from_inputs - (100 * 52 / 1200)) < 1e-9,
+  "rd pct = 100*52/1200 from fed interest and debt input"
+)
+
 # Net Interest alone must stay unavailable (parameter-source audit #574)
 interest_env$d_income_statement <- function() {
   data.frame(
