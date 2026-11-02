@@ -2026,4 +2026,23 @@ ynow_calc_btn <- function(input_id, label, block = TRUE) {
   )
 }
 
+#' Side-by-side 試算 + 回復預設 row (desktop unchanged; mobile ≤767px stays 1:1 equal height/width).
+#' Optional `sync_ui` keeps desktop 4+4+4 (SOTP / Multiples); on mobile sync is full-width below.
+ynow_calc_reset_row <- function(calc_btn, reset_btn, sync_ui = NULL) {
+  if (is.null(sync_ui)) {
+    fluidRow(
+      class = "ynow-calc-reset-row",
+      column(width = 6, class = "col-xs-6 ynow-calc-reset-col", calc_btn),
+      column(width = 6, class = "col-xs-6 ynow-calc-reset-col", reset_btn)
+    )
+  } else {
+    fluidRow(
+      class = "ynow-calc-reset-row ynow-calc-reset-row--with-sync",
+      column(width = 4, class = "col-xs-6 ynow-calc-reset-col", calc_btn),
+      column(width = 4, class = "col-xs-6 ynow-calc-reset-col", reset_btn),
+      column(width = 4, class = "col-xs-12 ynow-calc-reset-sync-col", sync_ui)
+    )
+  }
+}
+
 source(file.path(.ynow_setup_dir, "valuation_guard.R"), local = TRUE, encoding = "UTF-8")

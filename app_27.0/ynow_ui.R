@@ -357,7 +357,8 @@ source("ynow_cookie_notice_ui.R", local = TRUE, encoding = "UTF-8")
   )
 }
 
-# Shared gray「回復預設」／試算 helpers live in setup.R (ynow_reset_defaults_btn, ynow_calc_btn).
+# Shared gray「回復預設」／試算 helpers live in setup.R
+# (ynow_reset_defaults_btn, ynow_calc_btn, ynow_calc_reset_row).
 
 #' Shared CAPM / Beta settings block (canonical IDs on DCF → WACC).
 #' DDM → Ke uses the same layout with `id_prefix = "ddm_"`; server keeps mirrors in sync.
@@ -6699,6 +6700,44 @@ ui <- dashboardPage(
         .btn.ynow-btn-calc .fa,
         .btn.ynow-btn-calc .fas {
           color: #ffffff !important;
+        }
+        /* Mobile only: 試算 + 回復預設 same row, equal height/width 1:1.
+           Desktop keeps Bootstrap col-sm-6 / col-sm-4 layout. */
+        @media (max-width: 767px) {
+          .ynow-calc-reset-row {
+            display: flex !important;
+            flex-wrap: nowrap;
+            align-items: stretch;
+          }
+          .ynow-calc-reset-row > .ynow-calc-reset-col {
+            width: 50% !important;
+            float: none !important;
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+          }
+          .ynow-calc-reset-row > .ynow-calc-reset-col > .btn {
+            flex: 1 1 auto;
+            width: 100% !important;
+            height: 100%;
+            min-height: 48px;
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+            white-space: normal;
+            box-sizing: border-box;
+          }
+          .ynow-calc-reset-row.ynow-calc-reset-row--with-sync {
+            flex-wrap: wrap;
+          }
+          .ynow-calc-reset-row.ynow-calc-reset-row--with-sync > .ynow-calc-reset-sync-col {
+            width: 100% !important;
+            float: none !important;
+            margin-top: 8px;
+          }
+          .ynow-calc-reset-row.ynow-calc-reset-row--with-sync > .ynow-calc-reset-sync-col > br {
+            display: none;
+          }
         }
         .nav-tabs-custom > .nav-tabs > li.active {
           border-top-color: var(--ynow-ink) !important;
@@ -22400,15 +22439,9 @@ ui <- dashboardPage(
                            .ddm_formula_banner(),
                            uiOutput("mod_ddm-ui_ddm_result"),
                            h6(helpText(id = "ynow_ddm_overview_hint", ui_str("ddm_overview_hint", "en"))),
-                           fluidRow(
-                             column(
-                               width = 6,
-                               ynow_calc_btn("mod_ddm-btn_calc_ddm", "試算 DDM")
-                             ),
-                             column(
-                               width = 6,
-                               ynow_reset_defaults_btn("mod_ddm-reset_ddm")
-                             )
+                           ynow_calc_reset_row(
+                             ynow_calc_btn("mod_ddm-btn_calc_ddm", "試算 DDM"),
+                             ynow_reset_defaults_btn("mod_ddm-reset_ddm")
                            ),
                            tags$div(style = "margin-top: 10px;", htmlOutput("mod_ddm-vtxt_ddm_setting_details"))
                          )
@@ -22657,9 +22690,9 @@ ui <- dashboardPage(
                                 column(width = 12,
                                        plotOutput("plt_dcf_trajectory", height = "420px"),
                                        h6(uiOutput("dcf_chart_help")),
-                                       fluidRow(
-                                         column(width = 6, ynow_calc_btn("calc", "試算 DCF")),
-                                         column(width = 6, ynow_reset_defaults_btn("reset_dcf"))
+                                       ynow_calc_reset_row(
+                                         ynow_calc_btn("calc", "試算 DCF"),
+                                         ynow_reset_defaults_btn("reset_dcf")
                                        ),
                                        tags$div(style = "margin-top: 10px;", htmlOutput("vtxt_dcf_setting_details"))
                                 )
