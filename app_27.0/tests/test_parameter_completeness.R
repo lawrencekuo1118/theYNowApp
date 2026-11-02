@@ -228,3 +228,68 @@ for (edition in c(FALSE, TRUE)) {
   }
 }
 cat("PASS: Lite silent DCF uses disclosed WACC when calculated_wacc is NA; Full silent still waits\n")
+
+# Missing-parameter toast: Model Dashboard → Quant Backtest Lab only; locked = no toast.
+range_tabs <- ynow_missing_params_notify_tabs()
+stopifnot(identical(range_tabs[1], "get_started"),
+          identical(range_tabs[length(range_tabs)], "lab_notes"),
+          all(c("dcf_calculator", "hfv", "sotp_calculator", "nav_calculator",
+                "pb_calculator", "ddm_calculator", "ri_calculator",
+                "rel_mult_ev", "rel_multiples_calculator", "rel_mult_rev") %in% range_tabs),
+          !"home" %in% range_tabs,
+          !"dashboard" %in% range_tabs,
+          !"decision_checklist" %in% range_tabs,
+          !"smart_analysis" %in% range_tabs,
+          !"mos_assumptions" %in% range_tabs)
+for (ok in c("get_started", "dcf_calculator", "hfv", "lab_notes")) {
+  stopifnot(isTRUE(ynow_missing_params_notify_allowed(ok)),
+            !isTRUE(ynow_missing_params_notify_allowed(ok, locked = TRUE)))
+}
+for (off in c("home", "dashboard", "smart_analysis", "decision_checklist",
+              "price_alerts", "about", "", NA_character_)) {
+  stopifnot(!isTRUE(ynow_missing_params_notify_allowed(off)),
+            !isTRUE(ynow_missing_params_notify_allowed(off, locked = TRUE)))
+}
+param_src <- paste(readLines(file.path(app, "parameter_completeness.R"),
+                             warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+srv_src <- paste(readLines(file.path(app, "ynow_server.R"),
+                           warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+stopifnot(
+  grepl("ynow_missing_params_notify_allowed\\(active_tab, locked = is_locked\\)", param_src),
+  grepl("input\\$sidebar_tabs", param_src),
+  grepl("tab_locked = function\\(tab\\) FALSE", param_src),
+  grepl("!isTRUE\\(allow_toast\\)", param_src),
+  grepl("tab_locked = \\.ynow_missing_params_tab_locked", srv_src),
+  grepl("ynow_sidebar_tab_guest_locked", srv_src),
+  grepl("ynow_access_is_locked", srv_src)
+)
+# Guidance server still runs field hints out of range; toast path gated by allow_toast.
+shiny::testServer(function(input, output, session) {
+  sent <- new.env(parent = emptyenv())
+  session$sendCustomMessage <- function(type, message) {
+    if (identical(type, "ynowParameterGuidance")) sent$guidance <<- message
+  }
+  session$sendInputMessage <- function(...) invisible(NULL)
+  ynow_parameter_guidance_server(
+    input, session,
+    searched = function() TRUE, ticker = function() "TEST", busy = function() FALSE,
+    model_rec = function() list(primary = "dcf"), locale = function() "en",
+    defaults = APP_DEFAULTS, ke = function() .09, wacc = function() .08,
+    lite = function() FALSE,
+    tab_locked = function(tab) identical(tab, "lab_notes")
+  )
+}, {
+  session$setInputs(sidebar_tabs = "home", dcf_mode = "gordon", dcf_claim = "fcff")
+  session$elapse(400)
+  session$flushReact()
+  stopifnot(is.list(sent$guidance), length(sent$guidance$items) >= 1L)
+  session$setInputs(sidebar_tabs = "dcf_calculator")
+  session$elapse(400)
+  session$flushReact()
+  stopifnot(is.list(sent$guidance), length(sent$guidance$items) >= 1L)
+  session$setInputs(sidebar_tabs = "lab_notes")
+  session$elapse(400)
+  session$flushReact()
+  stopifnot(is.list(sent$guidance), length(sent$guidance$items) >= 1L)
+})
+cat("PASS: missing-parameter toast scoped to Model Dashboard→Quant Backtest Lab; locked tabs suppress\n")
