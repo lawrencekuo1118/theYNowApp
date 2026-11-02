@@ -83,7 +83,7 @@ Lite 免費就能用的功能，完整版**不能**鎖上（登入閘、選單�
 - Boot start (idempotent): `bash scripts/cloud-agent-start.sh` keeps the Shiny dev server in the foreground on `0.0.0.0:3838` from `app_27.0/`. If that port is already listening, the script exits without starting a second process.
 - Equivalent manual start (from `app_27.0/`): `Rscript -e 'shiny::runApp(host="0.0.0.0", port=3838, launch.browser=FALSE)'`
 - This environment does not provision shinyapps.io credentials. Do not deploy from a Cloud Agent unless those secrets are present and a deploy was requested. Environment / docs-only commits do not bump the display version and do not deploy.
-- **Post-release local sync:** Cloud Agents usually lack Mac paths (`/Users/lawrencekuo/coding/theYNowApp`, OneDrive mirror). After any tip ship that creates a new `display_version`, still run `bash scripts/post_release_local_sync.sh` (soft-skips here) and **document** that the Mac coding clone must sync immediately. When ship runs on the Mac coding clone / self-hosted Mac, that sync is mandatory before tip free.
+- **Post-release local sync:** Cloud Agents usually lack Mac paths (`/Users/lawrencekuo/coding/theYNowApp`, OneDrive mirror). After any tip ship that creates a new `display_version`, still run `bash scripts/post_release_local_sync.sh` — soft-skip **must** invoke Mac handoff (`PENDING_MAC_SYNC.env` + workflow_dispatch). Keep Mac automation online: `bash scripts/macos/install-post-release-sync-launchd.sh` and/or `agent login && agent worker start`. When ship runs on the Mac coding clone / self-hosted Mac, sync is mandatory before tip free.
 
 ## Git & deploy
 
@@ -97,7 +97,7 @@ See `.cursor/rules/auto-deploy-after-optimize.mdc`, `.cursor/rules/auto-cloud-pu
 
 **部署完成自動 +0.01：** `scripts/deploy_app_21.R` 在上傳前把顯示版號 **+0.01**（`scripts/bump_display_version.R`）、commit，再部署該版。線上 bundle 就是加過的版號。工作區若已比 `DEPLOY_BASELINE.txt` 的 `display_version` 正好多 0.01，腳本不再加一次。不要在呼叫部署腳本前手動改版號。略過僅限 `--no-bump` 或 `YNOW_SKIP_VERSION_BUMP=1`。
 
-**釋出後即刻本機備份同步：** 每次新 `display_version` tip ship（deploy + baseline + GitHub Release）結束後，**立刻**對齊本機實體資料夾作為備份：coding clone + OneDrive（`bash scripts/post_release_local_sync.sh` → `sync-workspaces.sh` → `check-od-sync.sh`）。Mac coding clone 上為強制步驟；Cloud 無 Mac 路徑可 soft-skip，但 ship 報告必須註明尚待本機同步。詳見 `.cursor/rules/dual-workspace-sync.mdc`。
+**釋出後即刻本機備份同步：** 每次新 `display_version` tip ship（deploy + baseline + GitHub Release）結束後，**立刻**對齊本機實體資料夾作為備份：coding clone + OneDrive（`bash scripts/post_release_local_sync.sh` → `sync-workspaces.sh` → `check-od-sync.sh`）。Mac coding clone 上為強制步驟；Cloud 無 Mac 路徑時 soft-skip 仍須寫入 `scripts/PENDING_MAC_SYNC.env` 並觸發 Mac handoff（launchd／self-hosted／`agent worker start`），不可只留「Mac 尚待本機同步」文字。詳見 `.cursor/rules/dual-workspace-sync.mdc` 與 Project `docs/auto-mac-post-release-sync.md`。
 
 **i18n before ship：** 功能收尾時先完成 en-US + zh-TW（`ui_locale.R` + locale push）。**僅規則／AGENTS／文件**變更 → commit + push，**不** shinyapps 部署、**不**版號 +0.01。
 
