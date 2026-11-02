@@ -507,8 +507,9 @@ cached_get_yahoo_industry <- memoise::memoise(get_yahoo_industry, cache = .ynow_
   isTRUE(max(r, g, b, na.rm = TRUE) <= 40L)
 }
 
-#' Brand palette must be 0 or 2 colors.
+#' Brand palette must be 0 or 2 colors for dual-tone surfaces (charts / KPI).
 #' Single brand → pad black; single near-black brand → pad white.
+#' Company full-name uses raw mono (see `.is_logo_mono_brand`) instead of this pad.
 .ensure_logo_color_pair <- function(cols) {
   cols <- .normalize_logo_hex(cols)
   if (length(cols) == 1L) {
@@ -518,9 +519,14 @@ cached_get_yahoo_industry <- memoise::memoise(get_yahoo_industry, cache = .ynow_
   cols
 }
 
+#' True when the brand primary palette is a single color (monochrome).
+.is_logo_mono_brand <- function(cols) {
+  identical(length(.normalize_logo_hex(cols)), 1L)
+}
+
 #' Resolve up to two primary logo colors for a ticker (Search corp-name tint).
-#' @return character vector length 0 or 2 of "#RRGGBB"
-#'   (single brand padded with black, or white when the sole brand is black)
+#' @return character vector length 0–2 of "#RRGGBB" (raw; not pad-filled).
+#'   Mono brands stay length 1 so the company full name can use a solid tint.
 get_corp_logo_colors <- function(stock_code, website = NULL) {
   tk <- trimws(as.character(stock_code %||% "")[1])
   if (!nzchar(tk)) return(character(0))
@@ -544,7 +550,7 @@ get_corp_logo_colors <- function(stock_code, website = NULL) {
   cols <- tryCatch({
     if (is.list(res) && !is.null(res$colors)) res$colors else res
   }, error = function(e) NULL)
-  .ensure_logo_color_pair(cols)
+  .normalize_logo_hex(cols)
 }
 
 # Brand colors change rarely — share the slow (disk) cache with industry labels.
@@ -567,12 +573,14 @@ get_corp_logo_colors <- function(stock_code, website = NULL) {
 }
 
 #' Public logo-color fetch: memoised when non-empty; empty results are not kept.
+#' Returns raw primary colors (length 0–2). Callers that need a dual-tone pair
+#' (charts / KPI) should run `.ensure_logo_color_pair`; corp-name mono stays solid.
 cached_get_corp_logo_colors <- function(stock_code, website = NULL) {
   cols <- tryCatch(
     .cached_get_corp_logo_colors_memo(stock_code, website = website),
     error = function(e) character(0)
   )
-  cols <- tryCatch(.ensure_logo_color_pair(cols), error = function(e) character(0))
+  cols <- tryCatch(.normalize_logo_hex(cols), error = function(e) character(0))
   if (!length(cols)) {
     .drop_corp_logo_colors_cache_key(stock_code, website = website)
   }
