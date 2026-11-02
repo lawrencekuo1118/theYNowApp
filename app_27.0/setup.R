@@ -28,21 +28,30 @@ source(file.path(.ynow_setup_dir, "setup_fs.R"), local = TRUE, encoding = "UTF-8
 source(file.path(.ynow_setup_dir, "setup_shares.R"), local = TRUE, encoding = "UTF-8")
 
 
-# 取得當期單一數值：流量科目優先 TTM，存量科目用最新財年
+# 取得當期單一數值：流量科目優先 TTM，存量科目用最新財年。
+# Prefer finite TTM when present; do not return NA merely because TTM is blank
+# while a later fiscal period is populated (common for Interest Expense on Yahoo).
+.select_first_finite_metric <- function(vals) {
+  vals <- suppressWarnings(as.numeric(vals))
+  if (!length(vals) || all(is.na(vals))) return(NA_real_)
+  if (is.finite(vals[1])) return(vals[1])
+  hit <- vals[is.finite(vals)]
+  if (!length(hit)) return(NA_real_)
+  hit[1]
+}
+
 select_current_metric <- function(df, metric_name, type = c("flow", "stock")) {
   type <- match.arg(type)
   include_ttm <- identical(type, "flow")
   vals <- select_clean_metric_row(df, metric_name, include_ttm = include_ttm)
-  if (length(vals) == 0 || all(is.na(vals))) return(NA_real_)
-  vals[1]
+  .select_first_finite_metric(vals)
 }
 
 select_current_metric_any <- function(df, metric_names, type = c("flow", "stock")) {
   type <- match.arg(type)
   include_ttm <- identical(type, "flow")
   vals <- select_clean_metric_row_any(df, metric_names, include_ttm = include_ttm)
-  if (length(vals) == 0 || all(is.na(vals))) return(NA_real_)
-  vals[1]
+  .select_first_finite_metric(vals)
 }
 
 # Common-share models must exclude preferred and noncontrolling claims.

@@ -46,6 +46,7 @@ jobs:
           YNOW_DEBUG_SKIP_PY: "1"
         run: |
           Rscript app_27.0/tests/test_parameter_semantics.R
+          Rscript app_27.0/tests/test_rd_estimate.R
           Rscript app_27.0/tests/test_parameter_completeness.R
           Rscript app_27.0/tests/test_tw_search_session.R
           Rscript app_27.0/tests/test_ticker_auto_uppercase.R

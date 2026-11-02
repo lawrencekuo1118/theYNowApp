@@ -10840,7 +10840,12 @@ server <- function(input, output, session) {
 
   .apply_estimated_rd <- function(notify = FALSE) {
     rd <- tryCatch(scraped_rd_pct(), error = function(e) NA_real_)
-    if (!is.finite(rd)) return(invisible(NA_real_))
+    if (!is.finite(rd)) {
+      if (isTRUE(notify)) {
+        showNotification(.ui_msg("rd_need_inputs"), type = "warning", duration = 6)
+      }
+      return(invisible(NA_real_))
+    }
     updateNumericInput(session, "wacc_rd", value = round(rd, 2))
     if (isTRUE(notify)) {
       showNotification(
