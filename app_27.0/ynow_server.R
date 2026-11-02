@@ -10814,16 +10814,27 @@ server <- function(input, output, session) {
     c(lo = lo, hi = hi)
   }
 
-  .scraped_interest_expense <- function() {
-    interest <- tryCatch(
-      abs(as.numeric(select_current_metric_any(
-        d_income_statement(), INTEREST_EXPENSE_PATTERNS, "flow"
-      ))[1]), error = function(e) NA_real_
+  .rd_statement_pair <- function() {
+    tryCatch(
+      rd_interest_debt_pair(d_income_statement(), d_balance_sheet()),
+      error = function(e) {
+        list(
+          interest = NA_real_, debt = NA_real_, period = NA_character_,
+          source = NA_character_, idx = NA_integer_
+        )
+      }
     )
+  }
+
+  .scraped_interest_expense <- function() {
     # Cash interest paid is not accrual interest expense; Net Interest Expense
     # also subtracts interest income. Neither can silently become the Rd numerator.
+    # Pairing skips blank leading fiscal years so AAPL-like frames still feed rᵈ.
+    pair <- .rd_statement_pair()
+    interest <- suppressWarnings(as.numeric(pair$interest)[1])
     if (!is.finite(interest)) return(NA_real_)
-    attr(interest, "source") <- "income_interest_expense"
+    attr(interest, "source") <- pair$source %||% "income_interest_expense"
+    attr(interest, "period") <- pair$period
     interest
   }
 
@@ -10839,7 +10850,24 @@ server <- function(input, output, session) {
   })
 
   .apply_estimated_rd <- function(notify = FALSE) {
-    rd <- tryCatch(scraped_rd_pct(), error = function(e) NA_real_)
+    interest_in <- suppressWarnings(as.numeric(input$rd_interest_expense)[1])
+    debt_in <- suppressWarnings(as.numeric(input$rd_interest_bearing_debt)[1])
+    if (!is.finite(interest_in) || interest_in < 0 || !is.finite(debt_in) || debt_in <= 0) {
+      pair <- .rd_statement_pair()
+      if (is.finite(pair$interest) && pair$interest > 0) {
+        updateNumericInput(session, "rd_interest_expense", value = round(pair$interest, 2))
+        interest_in <- pair$interest
+      }
+      if (is.finite(pair$debt) && pair$debt > 0) {
+        updateNumericInput(session, "rd_interest_bearing_debt", value = round(pair$debt, 2))
+        debt_in <- pair$debt
+      }
+    }
+    rd <- NA_real_
+    if (is.finite(interest_in) && interest_in >= 0 && is.finite(debt_in) && debt_in > 0) {
+      b <- .rd_clamp_bounds()
+      rd <- max(b[["lo"]], min(100 * interest_in / debt_in, b[["hi"]]))
+    }
     if (!is.finite(rd)) {
       if (isTRUE(notify)) {
         showNotification(.ui_msg("rd_need_inputs"), type = "warning", duration = 6)
@@ -10857,17 +10885,16 @@ server <- function(input, output, session) {
     invisible(rd)
   }
 
-  # 財報就緒：帶入利息費用與有息負債（Total Debt 或 ST+LT）
+  # 財報就緒：帶入同財年利息費用與有息負債（Total Debt 或 ST+LT）
   observeEvent(
-    list(d_income_statement(), d_balance_sheet(), d_cash_flow(), scraped_debt()),
+    list(d_income_statement(), d_balance_sheet(), d_cash_flow()),
     {
-      interest <- tryCatch(.scraped_interest_expense(), error = function(e) NA_real_)
-      debt <- tryCatch(as.numeric(scraped_debt())[1], error = function(e) NA_real_)
-      if (is.finite(interest) && interest > 0) {
-        updateNumericInput(session, "rd_interest_expense", value = round(interest, 2))
+      pair <- .rd_statement_pair()
+      if (is.finite(pair$interest) && pair$interest > 0) {
+        updateNumericInput(session, "rd_interest_expense", value = round(pair$interest, 2))
       }
-      if (is.finite(debt) && debt > 0) {
-        updateNumericInput(session, "rd_interest_bearing_debt", value = round(debt, 2))
+      if (is.finite(pair$debt) && pair$debt > 0) {
+        updateNumericInput(session, "rd_interest_bearing_debt", value = round(pair$debt, 2))
       }
     },
     ignoreInit = FALSE
@@ -10891,24 +10918,24 @@ server <- function(input, output, session) {
   })
 
   output$rd_interest_source_note <- renderUI({
-    interest <- tryCatch(.scraped_interest_expense(), error = function(e) NA_real_)
-    src <- attr(interest, "source")
-    lab <- if (identical(src, "cash_flow_interest_paid")) {
-      "財報來源：現金流量表 Interest Paid"
-    } else if (identical(src, "income_interest_expense")) {
-      "財報來源：損益表 Interest Expense"
+    pair <- .rd_statement_pair()
+    period <- as.character(pair$period %||% "")[1]
+    lab <- if (identical(pair$source, "income_interest_expense") &&
+                is.finite(pair$interest)) {
+      .ui_msg("rd_interest_source_is", period = if (nzchar(period)) period else "—")
     } else {
-      "財報來源：尚無利息費用；可手動輸入"
+      .ui_msg("rd_interest_source_none")
     }
     tags$p(style = "margin:-6px 0 8px 0;color:#666;font-size:11px;", lab)
   })
 
   output$rd_debt_source_note <- renderUI({
-    debt <- tryCatch(as.numeric(scraped_debt())[1], error = function(e) NA_real_)
-    lab <- if (is.finite(debt) && debt > 0) {
-      "財報來源：有息負債（優先 Total Debt；否則 Short-term + Long-term Debt）"
+    pair <- .rd_statement_pair()
+    period <- as.character(pair$period %||% "")[1]
+    lab <- if (is.finite(pair$debt) && pair$debt > 0) {
+      .ui_msg("rd_debt_source_ok", period = if (nzchar(period)) period else "—")
     } else {
-      "財報來源：尚無有息負債；可手動輸入"
+      .ui_msg("rd_debt_source_none")
     }
     tags$p(style = "margin:-6px 0 8px 0;color:#666;font-size:11px;", lab)
   })

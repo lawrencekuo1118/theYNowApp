@@ -54,6 +54,75 @@ select_current_metric_any <- function(df, metric_names, type = c("flow", "stock"
   .select_first_finite_metric(vals)
 }
 
+#' Pre-tax rᵈ inputs: newest fiscal period where gross Interest Expense is finite,
+#' with interest-bearing debt taken from that same statement column.
+#' Skips blank leading fiscal years (and TTM). Does not use Net Interest or Interest Paid.
+rd_interest_debt_pair <- function(d_is, d_bs,
+                                  interest_patterns = INTEREST_EXPENSE_PATTERNS) {
+  empty <- list(
+    interest = NA_real_, debt = NA_real_, period = NA_character_,
+    source = NA_character_, idx = NA_integer_
+  )
+  if (!is.data.frame(d_is) || !nrow(d_is)) return(empty)
+  d_is <- reorder_financial_columns(d_is)
+  period_cols <- colnames(d_is)[-1]
+  period_cols <- period_cols[!grepl("^ttm$", period_cols, ignore.case = TRUE)]
+  if (!length(period_cols)) return(empty)
+
+  interest_vals <- NULL
+  for (nm in interest_patterns) {
+    vals <- select_clean_metric_row(d_is, nm, include_ttm = FALSE)
+    if (length(vals) && !all(is.na(vals))) {
+      interest_vals <- suppressWarnings(as.numeric(vals))
+      break
+    }
+  }
+  if (is.null(interest_vals) || !length(interest_vals)) return(empty)
+  if (length(interest_vals) < length(period_cols)) {
+    interest_vals <- c(interest_vals, rep(NA_real_, length(period_cols) - length(interest_vals)))
+  }
+  interest_vals <- interest_vals[seq_along(period_cols)]
+  idx <- which(is.finite(interest_vals) & interest_vals != 0)[1]
+  if (!length(idx) || is.na(idx)) {
+    idx <- which(is.finite(interest_vals))[1]
+  }
+  if (!length(idx) || is.na(idx)) return(empty)
+
+  period <- as.character(period_cols[idx])[1]
+  interest <- abs(interest_vals[idx])
+  debt <- NA_real_
+  if (is.data.frame(d_bs) && nrow(d_bs) > 0 && nzchar(period)) {
+    d_bs <- reorder_financial_columns(d_bs)
+    bs_cols <- colnames(d_bs)[-1]
+    bs_cols <- bs_cols[!grepl("^ttm$", bs_cols, ignore.case = TRUE)]
+    if (period %in% bs_cols) {
+      j <- match(period, bs_cols)
+      td <- suppressWarnings(as.numeric(
+        select_clean_metric_row(d_bs, "^Total Debt$", include_ttm = FALSE)
+      ))
+      if (length(td) >= j && is.finite(td[j]) && td[j] != 0) {
+        debt <- abs(td[j])
+      } else {
+        st <- suppressWarnings(as.numeric(
+          select_clean_metric_row(d_bs, "Current Debt|Short Term Debt", include_ttm = FALSE)
+        ))
+        lt <- suppressWarnings(as.numeric(
+          select_clean_metric_row(d_bs, "Long Term Debt", include_ttm = FALSE)
+        ))
+        st_j <- if (length(st) >= j) st[j] else NA_real_
+        lt_j <- if (length(lt) >= j) lt[j] else NA_real_
+        parts <- c(st_j, lt_j)
+        parts <- parts[is.finite(parts)]
+        if (length(parts)) debt <- abs(sum(parts))
+      }
+    }
+  }
+  list(
+    interest = interest, debt = debt, period = period,
+    source = "income_interest_expense", idx = as.integer(idx)
+  )
+}
+
 # Common-share models must exclude preferred and noncontrolling claims.
 # A broad total is usable only when the excluded claims are explicitly known.
 .common_claim_row <- function(df, kind = c("equity", "income"), include_ttm = FALSE) {

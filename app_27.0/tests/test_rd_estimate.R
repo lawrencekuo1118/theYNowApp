@@ -83,8 +83,20 @@ walk(parsed)
 
 interest_env <- new.env(parent = globalenv())
 interest_env$d_income_statement <- function() is_ttm_na
-interest_env$select_current_metric_any <- select_current_metric_any
+interest_env$d_balance_sheet <- function() {
+  data.frame(
+    Breakdown = "Total Debt",
+    TTM = NA_real_,
+    `09/27/2025` = 1200,
+    `09/28/2024` = 1100,
+    check.names = FALSE,
+    stringsAsFactors = FALSE
+  )
+}
+interest_env$rd_interest_debt_pair <- rd_interest_debt_pair
 interest_env$INTEREST_EXPENSE_PATTERNS <- INTEREST_EXPENSE_PATTERNS
+interest_env$`%||%` <- function(x, y) if (is.null(x)) y else x
+interest_env$.rd_statement_pair <- eval(assignments[[".rd_statement_pair"]], interest_env)
 scraped_fn <- eval(assignments[[".scraped_interest_expense"]], interest_env)
 scraped_val <- scraped_fn()
 .check(identical(as.numeric(scraped_val), 52), "scraped Interest Expense feeds Rd numerator when TTM blank")
@@ -93,10 +105,11 @@ scraped_val <- scraped_fn()
   "Rd numerator source remains gross accrual Interest Expense"
 )
 
+# Finite TTM is skipped for Rd period pairing (align with annual BS columns).
 interest_env$d_income_statement <- function() is_ttm_ok
 .check(
-  identical(as.numeric(scraped_fn()), 55),
-  "scraped Interest Expense prefers finite TTM"
+  identical(as.numeric(scraped_fn()), 52),
+  "Rd pair uses newest finite FY Interest Expense (skips TTM)"
 )
 
 rd_env <- new.env(parent = globalenv())
@@ -129,5 +142,44 @@ interest_env$d_income_statement <- function() {
 }
 net_only <- scraped_fn()
 .check(length(net_only) == 1L && is.na(net_only), "Rd numerator refuses Net Interest Expense alone")
+
+# AAPL-shaped frame: Interest Expense stops before newest FY; debt must share that year.
+# Captured Yahoo annualInterestExpense ends FY2023 while revenue continues to FY2025.
+is_leading_na <- data.frame(
+  Breakdown = "Interest Expense",
+  `09/30/2025` = NA_real_,
+  `09/30/2024` = NA_real_,
+  `09/30/2023` = 3933000000,
+  `09/30/2022` = 2931000000,
+  check.names = FALSE,
+  stringsAsFactors = FALSE
+)
+bs_leading <- data.frame(
+  Breakdown = "Total Debt",
+  `09/30/2025` = 100,
+  `09/30/2024` = 110,
+  `09/30/2023` = 1200,
+  `09/30/2022` = 1300,
+  check.names = FALSE,
+  stringsAsFactors = FALSE
+)
+pair <- rd_interest_debt_pair(is_leading_na, bs_leading)
+.check(identical(as.numeric(pair$interest), 3933000000), "leading-NA FY uses newest finite Interest Expense")
+.check(identical(as.numeric(pair$debt), 1200), "Rd debt uses the same fiscal column as interest")
+.check(identical(as.character(pair$period), "09/30/2023"), "Rd pair reports the matched fiscal period")
+.check(
+  abs((100 * pair$interest / pair$debt) - (100 * 3933000000 / 1200)) < 1e-6,
+  "period-aligned pre-tax rᵈ"
+)
+# Newest-only debt (100) must not silently pair with FY2023 interest
+.check(!identical(as.numeric(pair$debt), 100), "rejects newest-debt / older-interest mismatch")
+
+interest_env$d_income_statement <- function() is_leading_na
+interest_env$d_balance_sheet <- function() bs_leading
+interest_env$rd_interest_debt_pair <- rd_interest_debt_pair
+interest_env$.rd_statement_pair <- eval(assignments[[".rd_statement_pair"]], interest_env)
+scraped_leading <- eval(assignments[[".scraped_interest_expense"]], interest_env)()
+.check(identical(as.numeric(scraped_leading), 3933000000), "scraped interest survives two blank leading FY")
+.check(identical(attr(scraped_leading, "period"), "09/30/2023"), "scraped interest carries matched period")
 
 cat("test_rd_estimate.R: OK\n")
