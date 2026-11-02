@@ -7,5 +7,5 @@ commit=4b08cf2897985dc157a65157f798220cd3a4681b
 short=4b08cf28
 message=chore: bump display version to v27.72
 captured_at=2026-11-02T13:15:00Z
-display_version=v27.72
+display_version=v27.73
 note=Lite applied-assumption footnotes at tab foot. PR #604; running bundle 12769359. Deployed with extracted R 4.6.1 (host 4.6.2 unsupported on shinyapps jammy). Live tree is #604+bump (pre-#605). Soft-skip Mac sync (Cloud).
