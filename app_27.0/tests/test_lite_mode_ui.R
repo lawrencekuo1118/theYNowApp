@@ -898,6 +898,18 @@ testthat::test_that("ynow_server wires Lite auto-calc and Smart Analysis outputs
   testthat::expect_true(grepl("output$smart_analysis_summary", txt, fixed = TRUE))
   testthat::expect_true(grepl("output$smart_analysis_chart", txt, fixed = TRUE))
   testthat::expect_true(grepl("output$smart_analysis_reason", txt, fixed = TRUE))
+  testthat::expect_true(grepl("output$smart_analysis_assumption_notes", txt, fixed = TRUE))
+  # Footnotes sit after reason (page foot); mid-page assumption alert-info removed.
+  sa_ui <- paste(readLines(file.path("..", "ynow_ui.R"), warn = FALSE,
+                           encoding = "UTF-8"), collapse = "\n")
+  testthat::expect_true(grepl("smart_analysis_assumption_notes", sa_ui, fixed = TRUE))
+  i_reason <- regexpr("smart_analysis_reason", sa_ui, fixed = TRUE)[1]
+  i_notes <- regexpr("smart_analysis_assumption_notes", sa_ui, fixed = TRUE)[1]
+  testthat::expect_true(i_reason > 0 && i_notes > i_reason)
+  testthat::expect_false(grepl(
+    'if (length(notes)) tags$div(class = "alert alert-info"',
+    txt, fixed = TRUE
+  ))
   # Smart Analysis maps active model key → recommended primary (composite ★)
   testthat::expect_true(grepl('identical(tab, "smart_analysis")', txt, fixed = TRUE))
   testthat::expect_true(grepl(
