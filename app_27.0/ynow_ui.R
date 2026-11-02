@@ -1160,9 +1160,9 @@ beta_rolling_section_ui <- function() {
   )
 }
 
-#' Valuation methodology guide (Decision Matrix + model tabs).
+#' Valuation methodology guide (model formula tabs).
 #' Mounted at the bottom of Basic Setup (Full only; Lite hides Basic Setup).
-#' Title/lead use column(12); tabBox keeps width=12 (shinydashboard always emits col-sm-N).
+#' Section title uses column(12); tabBox keeps width=12 (shinydashboard always emits col-sm-N).
 #' Locale: `.ynow-loc-en` / `.ynow-loc-zh` toggle via `html[lang]` (see CSS + applyUiLocale).
 .valuation_methodology_section_ui <- function(collapsible = TRUE, collapsed = FALSE) {
   # collapsible/collapsed kept for call-site compatibility (no outer box to collapse)
@@ -1186,22 +1186,6 @@ beta_rolling_section_ui <- function() {
           `data-ynow-mathjax` = "methodology",
           style = "display:none",
           `aria-hidden` = "true"
-        ),
-        p(
-          class = "ynow-about-section-lead ynow-loc-zh",
-          id = "ynow_method_lead_zh",
-          tags$b("先分類，再選模型；先推導，再校正；先給區間，再給單點。"),
-          " Fair Value 引擎：DCF（FCFF／WACC、FCFE／Ke）、DDM（Gordon／SPM／二階段）、RI、P/B、NAV。",
-          " Multiples 為市場定價參照（Reference）；SOTP 為綜合型估值框架（Meta-Framework），可混用絕對／相對透鏡。",
-          " 選對路徑與算對數字同等重要；以下說明流程紀律、適用場景與核心公式。"
-        ),
-        p(
-          class = "ynow-about-section-lead ynow-loc-en",
-          id = "ynow_method_lead_en",
-          tags$b("Classify before models; derive before calibrating; ranges before point targets. "),
-          "Fair Value: DCF (FCFF/WACC, FCFE/Ke), DDM (Gordon / SPM / two-stage), RI, P/B, NAV. ",
-          "Multiples is a market-pricing Reference; SOTP is a Meta-Framework that can mix absolute and relative lenses. ",
-          "Path selection matters as much as the arithmetic—process, fit, and formulas below."
         )
       )
     ),

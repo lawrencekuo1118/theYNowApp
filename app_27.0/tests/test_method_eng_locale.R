@@ -46,8 +46,19 @@ check("en method_formulas_title", nzchar(ui_str("method_formulas_title", "en")) 
         !has_cjk(ui_str("method_formulas_title", "en")))
 check("zh method_formulas_title", nzchar(ui_str("method_formulas_title", "zh-TW")) &&
         has_cjk(ui_str("method_formulas_title", "zh-TW")))
-check("lead zh has ynow-loc-zh", grepl('id = "ynow_method_lead_zh"[\\s\\S]*ynow-loc-zh|ynow-loc-zh[\\s\\S]*id = "ynow_method_lead_zh"', ui, perl = TRUE))
-check("lead en has ynow-loc-en", grepl("ynow_method_lead_en", ui, fixed = TRUE) && grepl("ynow-loc-en", ui, fixed = TRUE))
+check("methodology intro lead zh removed", !grepl("ynow_method_lead_zh", ui, fixed = TRUE))
+check("methodology intro lead en removed", !grepl("ynow_method_lead_en", ui, fixed = TRUE))
+check(
+  "redundant classify-first blurb removed",
+  !grepl("先分類，再選模型；先推導，再校正；先給區間，再給單點。", ui, fixed = TRUE) &&
+    !grepl("Classify before models; derive before calibrating; ranges before point targets.", ui, fixed = TRUE)
+)
+check("Model Selection Guide / formulas retained", {
+  grepl("Model Selection Guide", ui, fixed = TRUE) ||
+    grepl("box_model_guide", ui, fixed = TRUE) ||
+    grepl("method_formulas_title", ui, fixed = TRUE) ||
+    grepl("Model Formulas", ui, fixed = TRUE)
+})
 check("applyUiLocale wires title", grepl("method_section_title", ui, fixed = TRUE) &&
         grepl("ynow_method_section_title", ui, fixed = TRUE))
 check("default title string is EN-only", grepl(

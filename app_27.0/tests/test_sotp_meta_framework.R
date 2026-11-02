@@ -96,8 +96,8 @@ check(
 )
 check(
   "methodology positions SOTP as Meta-Framework",
-  grepl("SOTP \\(Meta-Framework\\)", ui, fixed = TRUE) ||
-    grepl("Meta-Framework that can mix", ui, fixed = TRUE)
+  grepl("SOTP (Meta-Framework)", ui, fixed = TRUE) ||
+    grepl("分部加總 SOTP（綜合型估值框架／Meta-Framework）", ui, fixed = TRUE)
 )
 
 # Runtime helpers (no statement fixtures required)
