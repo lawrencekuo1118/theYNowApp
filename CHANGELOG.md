@@ -1,3 +1,9 @@
+## [v27.62] — 2026-11-02 · Lite DCF Base with disclosed WACC
+
+- zh-TW：Lite 智慧分析在僅有已揭露的假設 WACC（尚未算出 calculated WACC）時，silent DCF 仍會試算並顯示 Bear／Base／Bull；Full 維持等待估算 WACC。修正 AAPL 等主模型為 DCF 時 Base 空白的問題。
+- en-US: Lite Smart Analysis silent DCF now proceeds with the disclosed UI/default WACC when calculated WACC is still NA, so Bear/Base/Bull populate. Full still waits for calculated WACC.
+- Evidence: PR #584; regression in `app_27.0/tests/test_parameter_completeness.R`.
+
 ## [v27.61] — 2026-11-01 · Lite 智慧分析自動套用預設
 
 - zh-TW：Lite 智慧分析自動套用可用的預設預測假設並在參數回傳後重新試算，不再要求前往 Full 補填。修正 RI 永續成長率預設來源及延後財報更新清除預設值後不重套的問題；畫面與 PDF 標示已採用的假設數值。Full 維持人工確認，實際財報缺漏不造值。
