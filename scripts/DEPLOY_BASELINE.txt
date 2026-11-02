@@ -7,5 +7,5 @@ commit=7263c1563e01fd74b634648c121bcdc210ac342b
 short=7263c156
 message=chore: bump display version to v27.68
 captured_at=2026-11-02T12:12:27Z
-display_version=v27.68
+display_version=v27.69
 note=Remove redundant Valuation Methodology intro blurb (zh-TW + en-US lead under get_started). Keep Model Selection Guide + formula tabs. PR #591; running bundle 12769150. Deployed with extracted R 4.6.1 (host 4.6.2 unsupported on shinyapps jammy). Soft-skip Mac sync (Cloud).
