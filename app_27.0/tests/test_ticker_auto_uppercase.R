@@ -1,10 +1,18 @@
 #!/usr/bin/env Rscript
 # Ticker / Stock Code auto-uppercase contracts (offline, no network).
 # Run: cd app_27.0 && Rscript tests/test_ticker_auto_uppercase.R
+# Also OK from repo root: Rscript app_27.0/tests/test_ticker_auto_uppercase.R
 Sys.setenv(YNOW_DEBUG_SKIP_PY = "1")
 
-root <- if (file.exists("ynow_ui.R")) {
+args <- commandArgs(FALSE)
+script_file <- sub("^--file=", "", grep("^--file=", args, value = TRUE)[1])
+root <- if (nzchar(script_file) && !is.na(script_file)) {
+  # tests/ → app_27.0/
+  dirname(dirname(normalizePath(script_file, mustWork = TRUE)))
+} else if (file.exists("ynow_ui.R")) {
   normalizePath(".")
+} else if (file.exists(file.path("app_27.0", "ynow_ui.R"))) {
+  normalizePath("app_27.0")
 } else if (file.exists("../ynow_ui.R")) {
   normalizePath("..")
 } else {
