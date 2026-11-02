@@ -699,8 +699,10 @@ testthat::expect_true(grepl(
     fixed = TRUE
   ))
   testthat::expect_true(grepl("ynow_sidebar_lite_omit_css", txt, fixed = TRUE))
-  testthat::expect_true(grepl("Multiples（市場倍數）", txt, fixed = TRUE))
-  testthat::expect_true(grepl("SOTP（分部加總）", txt, fixed = TRUE))
+  # Relative Decision Matrix columns (tightened labels; zh table still present)
+  testthat::expect_true(grepl("<th>Multiples</th>", txt, fixed = TRUE))
+  testthat::expect_true(grepl("<th>SOTP</th>", txt, fixed = TRUE))
+  testthat::expect_true(grepl("市場參照", txt, fixed = TRUE) || grepl("Meta-Framework", txt, fixed = TRUE))
   testthat::expect_true(grepl('id = "ynow_method_section_title"', txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-lab-im-eq-gate-row", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_lab_im_no_alert_label", txt, fixed = TRUE))

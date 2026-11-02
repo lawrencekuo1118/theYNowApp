@@ -39,9 +39,13 @@ check("en title has no pipe Chinese", !grepl("評價", ui_str("method_section_ti
 ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check("CSS hides zh when not zh*", grepl('html:not\\(\\[lang\\^="zh"\\]\\) \\.ynow-loc-zh', ui))
 check("CSS hides en on zh*", grepl('html\\[lang\\^="zh"\\] \\.ynow-loc-en', ui))
-check("EN FV table Comparison header", grepl("<th>Comparison</th>", ui, fixed = TRUE))
-check("ZH FV table 對照項目", grepl("<th>對照項目</th>", ui, fixed = TRUE))
-check("EN Multiples header", grepl("Multiples (market multiples)", ui, fixed = TRUE))
+check("EN FV table Item header", grepl("<th>Item</th>", ui, fixed = TRUE))
+check("ZH FV table 項目", grepl("<th>項目</th>", ui, fixed = TRUE))
+check("EN Multiples column", grepl("<th>Multiples</th>", ui, fixed = TRUE))
+check("en method_formulas_title", nzchar(ui_str("method_formulas_title", "en")) &&
+        !has_cjk(ui_str("method_formulas_title", "en")))
+check("zh method_formulas_title", nzchar(ui_str("method_formulas_title", "zh-TW")) &&
+        has_cjk(ui_str("method_formulas_title", "zh-TW")))
 check("lead zh has ynow-loc-zh", grepl('id = "ynow_method_lead_zh"[\\s\\S]*ynow-loc-zh|ynow-loc-zh[\\s\\S]*id = "ynow_method_lead_zh"', ui, perl = TRUE))
 check("lead en has ynow-loc-en", grepl("ynow_method_lead_en", ui, fixed = TRUE) && grepl("ynow-loc-en", ui, fixed = TRUE))
 check("applyUiLocale wires title", grepl("method_section_title", ui, fixed = TRUE) &&

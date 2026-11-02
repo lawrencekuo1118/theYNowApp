@@ -892,6 +892,248 @@ beta_rolling_section_ui <- function() {
   )
 }
 
+#' Decision Matrix tables for Model Selection Guide (tight bilingual cells).
+.model_selection_guide_matrix_body <- function() {
+  .method_table_fv_en <- HTML("<table class='table table-striped table-hover table-bordered' style='background-color: white;'>
+                                 <thead style='background-color: #2C3E50; color: white;'>
+                                   <tr>
+                                     <th>Item</th>
+                                     <th>DDM</th>
+                                     <th>DCF</th>
+                                     <th>RI</th>
+                                     <th>P/B</th>
+                                     <th>NAV</th>
+                                   </tr>
+                                 </thead>
+                                 <tbody>
+                                   <tr>
+                                     <td><b>Anchor</b></td>
+                                     <td>DPS (equity)</td>
+                                     <td>FCFF / FCFE</td>
+                                     <td>Book + RI</td>
+                                     <td>BVPS / TBVPS / NAVPS × P/B</td>
+                                     <td>NAVPS × multiple</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>Rate / multiple</b></td>
+                                     <td>Ke</td>
+                                     <td>WACC / Ke</td>
+                                     <td>Ke</td>
+                                     <td>Justified / industry / history</td>
+                                     <td>Disc. / prem. multiple</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>g / years</b></td>
+                                     <td>Perpetual g; SPM g; 2-stage g₁/n₁</td>
+                                     <td>Forecast n; terminal SGR</td>
+                                     <td>Horizon n; terminal g</td>
+                                     <td>Justified needs g</td>
+                                     <td>—</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>Formula</b></td>
+                                     <td>Gordon / SPM / 2-stage ΣPV(D)+PV(TV)</td>
+                                     <td>ΣPV(FCFF/FCFE)+PV(TV)</td>
+                                     <td>B₀+ΣPV(RI)+PV(TV_RI)</td>
+                                     <td>(BVPS / TBVPS / NAVPS)×P/B</td>
+                                     <td>NAVPS×multiple</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>Role</b></td>
+                                     <td>Fair Value</td>
+                                     <td>Fair Value (EV bridge)</td>
+                                     <td>Fair Value</td>
+                                     <td>Bear / Base / Bull</td>
+                                     <td>Fair Value (HoldCo)</td>
+                                   </tr>
+                                 </tbody>
+                               </table>")
+  .method_table_fv_zh <- HTML("<table class='table table-striped table-hover table-bordered' style='background-color: white;'>
+                                 <thead style='background-color: #2C3E50; color: white;'>
+                                   <tr>
+                                     <th>項目</th>
+                                     <th>DDM</th>
+                                     <th>DCF</th>
+                                     <th>RI</th>
+                                     <th>P/B</th>
+                                     <th>NAV</th>
+                                   </tr>
+                                 </thead>
+                                 <tbody>
+                                   <tr>
+                                     <td><b>錨定</b></td>
+                                     <td>DPS（股權）</td>
+                                     <td>FCFF／FCFE</td>
+                                     <td>帳面＋RI</td>
+                                     <td>BVPS／TBVPS／NAVPS × P/B</td>
+                                     <td>NAVPS × 倍數</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>折現／倍數</b></td>
+                                     <td>Ke</td>
+                                     <td>WACC／Ke</td>
+                                     <td>Ke</td>
+                                     <td>Justified／產業／歷史</td>
+                                     <td>折價／溢價倍數</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>g／年數</b></td>
+                                     <td>永續 g；SPM g；二階段 g₁／n₁</td>
+                                     <td>預測 n；終值 SGR</td>
+                                     <td>預測 n；終值 g</td>
+                                     <td>Justified 需 g</td>
+                                     <td>—</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>公式</b></td>
+                                     <td>Gordon／SPM／二階段 ΣPV(D)+PV(TV)</td>
+                                     <td>ΣPV(FCFF／FCFE)+PV(TV)</td>
+                                     <td>B₀+ΣPV(RI)+PV(TV_RI)</td>
+                                     <td>(BVPS／TBVPS／NAVPS)×P/B</td>
+                                     <td>NAVPS×倍數</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>角色</b></td>
+                                     <td>Fair Value</td>
+                                     <td>Fair Value（EV 橋接）</td>
+                                     <td>Fair Value</td>
+                                     <td>Bear／Base／Bull</td>
+                                     <td>Fair Value（控股）</td>
+                                   </tr>
+                                 </tbody>
+                               </table>")
+  .method_table_rel_en <- HTML("<table class='table table-striped table-hover table-bordered' style='background-color: white;'>
+                                 <thead style='background-color: #34495e; color: white;'>
+                                   <tr>
+                                     <th>Item</th>
+                                     <th>Multiples</th>
+                                     <th>SOTP</th>
+                                   </tr>
+                                 </thead>
+                                 <tbody>
+                                   <tr>
+                                     <td><b>Anchor</b></td>
+                                     <td>EPS / EBIT / EBITDA / FCFF / Rev / ARR × multiple</td>
+                                     <td>≥2 seg. rev × EV/Sales (+ non-op)</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>Bridge</b></td>
+                                     <td>EV→Equity＝EV+Cash−Debt; P/S equity-side</td>
+                                     <td>EV→Equity＝EV+Cash−Debt</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>g / years</b></td>
+                                     <td>No n; PEG uses growth %</td>
+                                     <td>—</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>Formula</b></td>
+                                     <td>Price＝EPS×P/E; or Equity＝(Metric×Mult+Cash−Debt)÷Shares</td>
+                                     <td>EV＝Σ(Seg Rev×EV/Sales)+Non-op</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>Role</b></td>
+                                     <td>Market Reference (not Fair Value)</td>
+                                     <td>Meta-Framework (often + NAV)</td>
+                                   </tr>
+                                 </tbody>
+                               </table>")
+  .method_table_rel_zh <- HTML("<table class='table table-striped table-hover table-bordered' style='background-color: white;'>
+                                 <thead style='background-color: #34495e; color: white;'>
+                                   <tr>
+                                     <th>項目</th>
+                                     <th>Multiples</th>
+                                     <th>SOTP</th>
+                                   </tr>
+                                 </thead>
+                                 <tbody>
+                                   <tr>
+                                     <td><b>錨定</b></td>
+                                     <td>EPS／EBIT／EBITDA／FCFF／營收／ARR × 倍數</td>
+                                     <td>≥2 部門營收 × EV/Sales（＋非營業）</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>橋接</b></td>
+                                     <td>EV→Equity＝EV+Cash−Debt；P/S 股權面</td>
+                                     <td>EV→Equity＝EV+Cash−Debt</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>g／年數</b></td>
+                                     <td>無 n；PEG 用成長％</td>
+                                     <td>—</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>公式</b></td>
+                                     <td>Price＝EPS×P/E；或 Equity＝(Metric×Mult+Cash−Debt)÷Shares</td>
+                                     <td>EV＝Σ(Seg Rev×EV/Sales)+Non-op</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>角色</b></td>
+                                     <td>市場參照（非 Fair Value）</td>
+                                     <td>Meta-Framework（常配 NAV）</td>
+                                   </tr>
+                                 </tbody>
+                               </table>")
+  tagList(
+    tags$p(
+      id = "ynow_method_matrix_fv_note",
+      class = "help-block",
+      style = "margin:0 0 10px 0;",
+      "Fair Value engines (Intrinsic Value / Fair Value primaries)."
+    ),
+    tags$div(
+      class = "ynow-loc-en",
+      style = "overflow-x: auto; margin-bottom: 18px;",
+      .method_table_fv_en
+    ),
+    tags$div(
+      class = "ynow-loc-zh",
+      style = "overflow-x: auto; margin-bottom: 18px;",
+      .method_table_fv_zh
+    ),
+    tags$p(
+      id = "ynow_method_matrix_rel_note",
+      class = "help-block",
+      style = "margin:0 0 10px 0;",
+      "Multiples = market Reference; SOTP = Meta-Framework — not Fair Value primaries."
+    ),
+    tags$div(
+      class = "ynow-loc-en",
+      style = "overflow-x: auto; margin-bottom: 18px;",
+      .method_table_rel_en
+    ),
+    tags$div(
+      class = "ynow-loc-zh",
+      style = "overflow-x: auto; margin-bottom: 18px;",
+      .method_table_rel_zh
+    )
+  )
+}
+
+#' Collapsible Model Selection Guide (Decision Matrix only; default closed).
+#' Mounted under the 基本面評價模型 position chart — not with formula sibling tabs.
+.model_selection_guide_panel_ui <- function() {
+  tags$details(
+    id = "ynow_ms_guide_details",
+    class = "ynow-notes ynow-ms-guide",
+    tags$summary(
+      class = "ynow-notes__summary",
+      id = "ynow_ms_guide_summary",
+      title = "Show or hide Model Selection Guide",
+      `aria-label` = "Show or hide Model Selection Guide",
+      tags$span(
+        class = "ynow-ms-guide__title",
+        id = "ynow_ms_guide_title",
+        "Model Selection Guide"
+      )
+    ),
+    tags$div(
+      class = "ynow-notes__body",
+      .model_selection_guide_matrix_body()
+    )
+  )
+}
+
 #' Collapsible Model Selector footnote: consideration dimensions (default closed).
 #' Reuses `.ynow-notes` chrome; title class is NOT `.ynow-notes__title` so
 #' applyUiLocale does not overwrite it with the generic Notes / 附註 string.
@@ -923,186 +1165,9 @@ beta_rolling_section_ui <- function() {
 #' Locale: `.ynow-loc-en` / `.ynow-loc-zh` toggle via `html[lang]` (see CSS + applyUiLocale).
 .valuation_methodology_section_ui <- function(collapsible = TRUE, collapsed = FALSE) {
   # collapsible/collapsed kept for call-site compatibility (no outer box to collapse)
-  .method_table_fv_en <- HTML("<table class='table table-striped table-hover table-bordered' style='background-color: white;'>
-                                 <thead style='background-color: #2C3E50; color: white;'>
-                                   <tr>
-                                     <th>Comparison</th>
-                                     <th>DDM</th>
-                                     <th>DCF</th>
-                                     <th>RI</th>
-                                     <th>P/B</th>
-                                     <th>NAV</th>
-                                   </tr>
-                                 </thead>
-                                 <tbody>
-                                   <tr>
-                                     <td><b>Cash flow / anchor</b></td>
-                                     <td>DPS D (equity claim)</td>
-                                     <td>FCFF (firm) or FCFE (equity)</td>
-                                     <td>Book equity + residual income</td>
-                                     <td>BVPS / TBVPS / HoldCo NAVPS × target P/B</td>
-                                     <td>Book HoldCo NAVPS × multiple</td>
-                                   </tr>
-                                   <tr>
-                                     <td><b>Discount / multiple</b></td>
-                                     <td>Ke (CAPM)</td>
-                                     <td>FCFF: WACC; FCFE: Ke</td>
-                                     <td>Ke (CAPM)</td>
-                                     <td>Target multiple (Justified / industry / history)</td>
-                                     <td>Discount / premium multiple (not Justified)</td>
-                                   </tr>
-                                   <tr>
-                                     <td><b>Growth g / years</b></td>
-                                     <td>Dividend perpetual g; SPM earnings g; two-stage g1 / n1</td>
-                                     <td>Explicit forecast years n; terminal SGR (vs WACC / Ke)</td>
-                                     <td>RI forecast horizon; terminal g (vs Ke)</td>
-                                     <td>Justified needs g; industry / history multiples do not require SGR</td>
-                                     <td>No forecast horizon n</td>
-                                   </tr>
-                                   <tr>
-                                     <td><b>Core formula</b></td>
-                                     <td>Gordon: P₀=D₁/(Ke−g); SPM; two-stage ΣPV(D)+PV(TV)</td>
-                                     <td>EV＝ΣPV(FCFF)+PV(TV) or Equity＝ΣPV(FCFE)+PV(TV)</td>
-                                     <td>V₀=B₀+ΣPV(RI)+PV(TV_RI)</td>
-                                     <td>P=(BVPS / TBVPS / NAVPS)×Target P/B</td>
-                                     <td>P=NAVPS×NAV multiple</td>
-                                   </tr>
-                                   <tr>
-                                     <td><b>Output role</b></td>
-                                     <td>Fair Value per share</td>
-                                     <td>Fair Value (FCFF via EV bridge)</td>
-                                     <td>Fair Value intrinsic per share</td>
-                                     <td>Fair Value range (Bear / Base / Bull)</td>
-                                     <td>Fair Value (HoldCo / asset anchor)</td>
-                                   </tr>
-                                 </tbody>
-                               </table>")
-  .method_table_fv_zh <- HTML("<table class='table table-striped table-hover table-bordered' style='background-color: white;'>
-                                 <thead style='background-color: #2C3E50; color: white;'>
-                                   <tr>
-                                     <th>對照項目</th>
-                                     <th>DDM</th>
-                                     <th>DCF</th>
-                                     <th>RI</th>
-                                     <th>P/B</th>
-                                     <th>NAV</th>
-                                   </tr>
-                                 </thead>
-                                 <tbody>
-                                   <tr>
-                                     <td><b>現金流／錨定</b></td>
-                                     <td>每股股利 D（股權請求權）</td>
-                                     <td>FCFF（企業）或 FCFE（股權）</td>
-                                     <td>帳面淨值 + 超額盈餘</td>
-                                     <td>BVPS／TBVPS／控股 NAVPS × 目標 P/B</td>
-                                     <td>帳面控股淨資產 NAVPS × 倍數</td>
-                                   </tr>
-                                   <tr>
-                                     <td><b>折現率／倍數</b></td>
-                                     <td>Ke（CAPM）</td>
-                                     <td>FCFF：WACC；FCFE：Ke</td>
-                                     <td>Ke（CAPM）</td>
-                                     <td>目標倍數（Justified／產業／歷史）</td>
-                                     <td>折價／溢價倍數（非 Justified）</td>
-                                   </tr>
-                                   <tr>
-                                     <td><b>成長率 g／年數</b></td>
-                                     <td>股利永續 g；SPM 盈餘 g；二階段 g1／n1</td>
-                                     <td>明確預測年數 n；終值 SGR（相對 WACC／Ke）</td>
-                                     <td>RI 預測期；終值 g（相對 Ke）</td>
-                                     <td>Justified 需 g；產業／歷史倍數不強制 SGR</td>
-                                     <td>不涉及預測年數 n</td>
-                                   </tr>
-                                   <tr>
-                                     <td><b>核心公式</b></td>
-                                     <td>Gordon：P₀=D₁/(Ke−g)；SPM；二階段 ΣPV(D)+PV(TV)</td>
-                                     <td>EV＝ΣPV(FCFF)+PV(TV) 或 Equity＝ΣPV(FCFE)+PV(TV)</td>
-                                     <td>V₀=B₀+ΣPV(RI)+PV(TV_RI)</td>
-                                     <td>P=(BVPS／TBVPS／NAVPS)×Target P/B</td>
-                                     <td>P=NAVPS×NAV multiple</td>
-                                   </tr>
-                                   <tr>
-                                     <td><b>輸出角色</b></td>
-                                     <td>Fair Value 每股合理價</td>
-                                     <td>Fair Value（FCFF 先 EV 再橋接）</td>
-                                     <td>Fair Value 每股內在價值</td>
-                                     <td>Fair Value 區間（Bear／Base／Bull）</td>
-                                     <td>Fair Value（控股／資產錨）</td>
-                                   </tr>
-                                 </tbody>
-                               </table>")
-  .method_table_rel_en <- HTML("<table class='table table-striped table-hover table-bordered' style='background-color: white;'>
-                                 <thead style='background-color: #34495e; color: white;'>
-                                   <tr>
-                                     <th>Comparison</th>
-                                     <th>Multiples (market multiples)</th>
-                                     <th>SOTP (sum of the parts)</th>
-                                   </tr>
-                                 </thead>
-                                 <tbody>
-                                   <tr>
-                                     <td><b>Anchor</b></td>
-                                     <td>EPS / EBIT / EBITDA / FCFF / Revenue / ARR × trading multiple</td>
-                                     <td>≥2 segment revenues × segment EV/Sales (+ non-operating assets)</td>
-                                   </tr>
-                                   <tr>
-                                     <td><b>Bridge</b></td>
-                                     <td>Enterprise: EV→Equity＝EV+Cash−Debt; P/S: equity side, no debt bridge</td>
-                                     <td>Implied EV→Equity＝EV+Cash−Debt (same bridge as DCF)</td>
-                                   </tr>
-                                   <tr>
-                                     <td><b>Growth / years</b></td>
-                                     <td>No forecast horizon n; PEG uses growth % as a relative metric</td>
-                                     <td>No forecast horizon n</td>
-                                   </tr>
-                                   <tr>
-                                     <td><b>Core formula</b></td>
-                                     <td>Implied Price＝EPS×P/E; or Equity＝(Metric×Multiple+Cash−Debt)÷Shares</td>
-                                     <td>Implied EV＝Σ(Seg Rev×EV/Sales)+Non-op; Price＝Equity÷Shares</td>
-                                   </tr>
-                                   <tr>
-                                     <td><b>Output role</b></td>
-                                     <td>Market-pricing Reference (not Intrinsic Value; never Fair Value secondary)</td>
-                                     <td>Meta-Framework companion (often paired with NAV for HoldCos; not equal-weight FV)</td>
-                                   </tr>
-                                 </tbody>
-                               </table>")
-  .method_table_rel_zh <- HTML("<table class='table table-striped table-hover table-bordered' style='background-color: white;'>
-                                 <thead style='background-color: #34495e; color: white;'>
-                                   <tr>
-                                     <th>對照項目</th>
-                                     <th>Multiples（市場倍數）</th>
-                                     <th>SOTP（分部加總）</th>
-                                   </tr>
-                                 </thead>
-                                 <tbody>
-                                   <tr>
-                                     <td><b>錨定</b></td>
-                                     <td>EPS／EBIT／EBITDA／FCFF／Revenue／ARR × 交易倍數</td>
-                                     <td>≥2 部門營收 × 各部門 EV/Sales（＋非營業資產）</td>
-                                   </tr>
-                                   <tr>
-                                     <td><b>橋接</b></td>
-                                     <td>Enterprise：EV→Equity＝EV+Cash−Debt；P/S：股權面、無負債橋接</td>
-                                     <td>Implied EV→Equity＝EV+Cash−Debt（同 DCF 橋接）</td>
-                                   </tr>
-                                   <tr>
-                                     <td><b>成長／年數</b></td>
-                                     <td>不涉及預測年數 n；PEG 用成長％作相對指標</td>
-                                     <td>不涉及預測年數 n</td>
-                                   </tr>
-                                   <tr>
-                                     <td><b>核心公式</b></td>
-                                     <td>Implied Price＝EPS×P/E；或 Equity＝(Metric×Multiple+Cash−Debt)÷Shares</td>
-                                     <td>Implied EV＝Σ(Seg Rev×EV/Sales)+Non-op；Price＝Equity÷Shares</td>
-                                   </tr>
-                                   <tr>
-                                     <td><b>輸出角色</b></td>
-                                     <td>市場定價參照 Reference（非 Intrinsic Value；不作 Fair Value 副模型）</td>
-                                     <td>綜合型估值框架 Meta-Framework（控股／綜合常配 NAV；不與 FV 等權）</td>
-                                   </tr>
-                                 </tbody>
-                               </table>")
+  # Decision Matrix (Model Selection Guide) lives under the Fundamental Valuation
+  # Models chart as a collapsed panel — see .model_selection_guide_panel_ui().
+  # This section keeps formula sibling tabs only.
   tagList(
     fluidRow(
       column(
@@ -1141,49 +1206,9 @@ beta_rolling_section_ui <- function() {
     ),
     fluidRow(
       tabBox(
-        title = tags$span(id = "ynow_method_tabbox_title", "Model Selection Guide"),
+        title = tags$span(id = "ynow_method_tabbox_title", "Model Formulas"),
         width = 12,
         side = "left",
-
-        # Tab: Decision Matrix (bilingual tables)
-        tabPanel(
-          title = tags$span(id = "ynow_method_tab_matrix", "Decision Matrix"),
-          icon = icon("table"),
-          tags$p(
-            id = "ynow_method_matrix_fv_note",
-            class = "help-block",
-            style = "margin:0 0 10px 0;",
-            "Fair Value engines (Intrinsic Value / Fair Value primaries)."
-          ),
-          tags$div(
-            class = "ynow-loc-en",
-            style = "overflow-x: auto; margin-bottom: 18px;",
-            .method_table_fv_en
-          ),
-          tags$div(
-            class = "ynow-loc-zh",
-            style = "overflow-x: auto; margin-bottom: 18px;",
-            .method_table_fv_zh
-          ),
-          tags$p(
-            id = "ynow_method_matrix_rel_note",
-            class = "help-block",
-            style = "margin:0 0 10px 0;",
-            "Multiples = market-pricing Reference; SOTP = Meta-Framework — neither is a Fair Value primary or HFV overlay."
-          ),
-          tags$div(
-            class = "ynow-loc-en",
-            style = "overflow-x: auto; margin-bottom: 18px;",
-            .method_table_rel_en
-          ),
-          tags$div(
-            class = "ynow-loc-zh",
-            style = "overflow-x: auto; margin-bottom: 18px;",
-            .method_table_rel_zh
-          )
-          # Consideration dimensions table lives under Model Selector as a
-          # collapsed annotation (see .model_selector_dimensions_annotation_ui).
-        ),
 
         # Tab: DDM
         tabPanel(
@@ -12673,10 +12698,20 @@ ui <- dashboardPage(
             if (s.notes_toggle_aria) {
               document.querySelectorAll('.ynow-notes__summary').forEach(function (el) {
                 if (el.id === 'ynow_ms_dims_summary') return;
+                if (el.id === 'ynow_ms_guide_summary') return;
                 el.setAttribute('title', s.notes_toggle_aria);
                 el.setAttribute('aria-label', s.notes_toggle_aria);
               });
             }
+            var msGuideTitle = document.getElementById('ynow_ms_guide_title');
+            if (msGuideTitle && s.box_model_guide) msGuideTitle.textContent = s.box_model_guide;
+            var msGuideSummary = document.getElementById('ynow_ms_guide_summary');
+            if (msGuideSummary && s.gs_ms_guide_toggle_aria) {
+              msGuideSummary.setAttribute('title', s.gs_ms_guide_toggle_aria);
+              msGuideSummary.setAttribute('aria-label', s.gs_ms_guide_toggle_aria);
+            }
+            var methodTabbox = document.getElementById('ynow_method_tabbox_title');
+            if (methodTabbox && s.method_formulas_title) methodTabbox.textContent = s.method_formulas_title;
             var msDimsTitle = document.getElementById('ynow_ms_dims_title');
             if (msDimsTitle && s.gs_ms_dims_title) msDimsTitle.textContent = s.gs_ms_dims_title;
             var msDimsSummary = document.getElementById('ynow_ms_dims_summary');
@@ -17984,9 +18019,15 @@ ui <- dashboardPage(
           border-radius: 6px;
           background: #fafafa;
         }
-        /* Model Selector footnote: consideration dimensions (default collapsed) */
-        .ynow-ms-dims {
+        /* Model Selection Guide + consideration dimensions (default collapsed) */
+        .ynow-ms-guide {
           margin: 14px 0 0 0;
+        }
+        .ynow-ms-dims {
+          margin: 10px 0 0 0;
+        }
+        .ynow-ms-pos-track {
+          min-height: 72px;
         }
         .ynow-notes > .ynow-notes__summary {
           cursor: pointer;
@@ -21510,7 +21551,7 @@ ui <- dashboardPage(
           tags$span(id = "ynow_explain_core_callout_body", paste0(
             "：每個估值結果旁應能回答「為何是這個合理價」。",
             "DCF Overview 的 KPI 下方已顯示公式路徑／現值橋接／終值驅動；",
-            "各模型「公式參數貢獻與敏感度」預設展開。完整 Decision Matrix 見本頁下方。"
+            "各模型「公式參數貢獻與敏感度」預設展開。完整 Decision Matrix 見基本面評價模型圖表下方（預設收合）。"
           ))
         ),
         # Full-mode primary workflow: same Why + gate surface as Smart Analysis
@@ -21523,6 +21564,8 @@ ui <- dashboardPage(
             ),
             width = 12, status = "primary", solidHeader = TRUE,
             uiOutput("get_started_model_selector"),
+            # Model Selection Guide (Decision Matrix only) — under chart, collapsed
+            .model_selection_guide_panel_ui(),
             .model_selector_dimensions_annotation_ui()
           )
         ),

@@ -780,7 +780,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Smart Analysis, Model Dashboard, and each Fair Value engine (DCF / DDM / RI / P/B / NAV) ",
       "surface a Why panel under the KPI; Multiples (Reference) and SOTP Meta-Framework also have Why. ",
       "Decision SOP gate status is elevated into Smart Analysis — not an appendix. ",
-      "Full Decision Matrix remains at the bottom of this page."
+      "Full Decision Matrix sits under the Fundamental Valuation Models chart (collapsed by default)."
     ),
     explain_dcf_why_title = "Why this Fair Value (DCF)",
     explain_dcf_why_empty = paste0(
@@ -2813,9 +2813,11 @@ locale_for_market <- function(mode = get_market_mode()) {
     box_beta = "BETA",
     box_sgr = "SUSTAINABLE GROWTH RATE",
     box_model_guide = "Model Selection Guide",
+    gs_ms_guide_toggle_aria = "Show or hide Model Selection Guide",
     method_section_title = "Valuation Methodology",
+    method_formulas_title = "Model Formulas",
     method_matrix_fv_note = "Fair Value engines (Intrinsic Value / Fair Value primaries).",
-    method_matrix_rel_note = "Multiples = market-pricing Reference; SOTP = Meta-Framework — neither is a Fair Value primary or HFV overlay.",
+    method_matrix_rel_note = "Multiples = market Reference; SOTP = Meta-Framework — not Fair Value primaries.",
     box_bt_params = "Strategy Parameters",
     # --- SGR tab (Basic Setup) ---
     sgr_method_title = "Terminal growth (SGR) method",
@@ -5616,7 +5618,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Smart Analysis、Model Dashboard 與各 Fair Value 引擎（DCF／DDM／RI／P/B／NAV）在 KPI 下方顯示 Why 面板；",
       "Multiples（Reference）與 SOTP Meta-Framework 亦有 Why。",
       "Decision SOP 閘門狀態已提升至 Smart Analysis——非附註。",
-      "完整 Decision Matrix 仍見本頁下方。"
+      "完整 Decision Matrix 見基本面評價模型圖表下方（預設收合）。"
     ),
     explain_dcf_why_title = "為何是這個合理價（DCF）",
     explain_dcf_why_empty = paste0(
@@ -7582,9 +7584,11 @@ locale_for_market <- function(mode = get_market_mode()) {
     box_beta = "Beta β",
     box_sgr = "SUSTAINABLE GROWTH RATE",
     box_model_guide = "模型選擇決策指南",
+    gs_ms_guide_toggle_aria = "展開或收合模型選擇決策指南",
     method_section_title = "評價方法論",
+    method_formulas_title = "模型公式",
     method_matrix_fv_note = "Fair Value 引擎（Intrinsic Value／Fair Value 主模型）。",
-    method_matrix_rel_note = "Multiples＝市場定價參照（Reference）；SOTP＝綜合型估值框架（Meta-Framework）——皆非 Fair Value 主模型，亦不作 HFV 疊加。",
+    method_matrix_rel_note = "Multiples＝市場參照；SOTP＝Meta-Framework——皆非 Fair Value 主模型。",
     box_bt_params = "策略參數設定",
     # --- SGR tab (Basic Setup) ---
     sgr_method_title = "終值永續成長率 (SGR) 評價方法",
@@ -9640,6 +9644,8 @@ locale_for_market <- function(mode = get_market_mode()) {
   "SUSTAINABLE GROWTH RATE" = "box_sgr",
   "模型選擇決策指南" = "box_model_guide",
   "Model Selection Guide" = "box_model_guide",
+  "模型公式" = "method_formulas_title",
+  "Model Formulas" = "method_formulas_title",
   "策略參數設定" = "box_bt_params",
   "Strategy Parameters" = "box_bt_params",
   "折現比較（合理價 vs 實際股價）" = "box_hfv_discount",

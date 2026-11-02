@@ -102,6 +102,11 @@ pos_ui <- if (gs_ok) {
 } else {
   -1L
 }
+pos_guide <- if (gs_ok) {
+  regexpr(".model_selection_guide_panel_ui()", gs_chunk, fixed = TRUE)[1]
+} else {
+  -1L
+}
 pos_ann <- if (gs_ok) {
   regexpr(".model_selector_dimensions_annotation_ui()", gs_chunk, fixed = TRUE)[1]
 } else {
@@ -117,21 +122,23 @@ check(
   gs_ok &&
     pos_title > 0 &&
     pos_ui > pos_title &&
-    pos_ann > pos_ui &&
+    pos_guide > pos_ui &&
+    pos_ann > pos_guide &&
     pos_method > pos_ann
 )
 
-# Decision Matrix body inside methodology ends before the DDM tab panel
-meth_matrix_slice <- if (meth_start > 0 && ddm_tab > meth_start) {
-  substr(ui, meth_start, ddm_tab - 1L)
+# Methodology formula tabs (no Decision Matrix); dims table must not reappear there
+meth_slice <- if (meth_start > 0 && ddm_tab > meth_start) {
+  m_end <- regexpr("\\.shared_bridge_box\\s*<-\\s*function", ui)[1]
+  if (m_end > meth_start) substr(ui, meth_start, m_end - 1L) else substr(ui, meth_start, ddm_tab - 1L)
 } else {
   ""
 }
 check(
-  "methodology Decision Matrix has no 考慮維度 table",
-  nchar(meth_matrix_slice) > 0 &&
-    !grepl("<th>考慮維度</th>", meth_matrix_slice, fixed = TRUE) &&
-    !grepl(".consideration_dimensions_table(", meth_matrix_slice, fixed = TRUE)
+  "methodology has no 考慮維度 table",
+  nchar(meth_slice) > 0 &&
+    !grepl("<th>考慮維度</th>", meth_slice, fixed = TRUE) &&
+    !grepl(".consideration_dimensions_table(", meth_slice, fixed = TRUE)
 )
 check("table helper still has 考慮維度 header", {
   # Header must live in the shared helper (before methodology), not only in comments
