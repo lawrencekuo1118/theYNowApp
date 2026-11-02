@@ -138,7 +138,21 @@ stopifnot(statement_operating_invested_capital(bs) == 550,
 bs[7,2] <- 550
 stopifnot(is.na(statement_other_equity_claims(bs)))
 stopifnot(is.na(statement_operating_invested_capital(bs[-3, ])))
+# Book proxy stays finite for Lite silent DCF when market-value claims are unknown.
+bs_nci <- data.frame(
+  Breakdown = c("Common Stock Equity", "Total Equity Gross Minority Interest",
+                "Minority Interest", "Preferred Stock"),
+  `2025` = c(500, 550, 50, 0), check.names = FALSE
+)
+stopifnot(is.na(statement_other_equity_claims(bs_nci)))
+stopifnot(identical(statement_other_equity_claims_book(bs_nci), 50))
+bs_missing_lines <- data.frame(
+  Breakdown = c("Common Stock Equity", "Total Equity Gross Minority Interest"),
+  `2025` = c(500, 550), check.names = FALSE
+)
+stopifnot(identical(statement_other_equity_claims_book(bs_missing_lines), 0))
 cat("PASS: operating IC excludes cash/nonoperating assets/nondebt liabilities; unknown claims stay missing\n")
+cat("PASS: Lite book proxy for other equity claims uses Minority Interest (+ preferred)\n")
 
 # A late source refresh may clear a default that the browser already echoed.
 # Lite must reapply it; Full must never write it. RI g shares central SGR defaults.
