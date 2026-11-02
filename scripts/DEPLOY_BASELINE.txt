@@ -7,5 +7,5 @@ commit=039a40547de93abe08a2d5ac9d5327203a2c7212
 short=039a4054
 message=chore: bump display version to v27.66
 captured_at=2026-11-02T11:40:07Z
-display_version=v27.66
+display_version=v27.67
 note=Estimate rᵈ Interest Expense auto-feed (#592); same-period debt pair. Running bundle 12769060. Deployed with extracted R 4.6.1 (host 4.6.2 unsupported on shinyapps jammy).
