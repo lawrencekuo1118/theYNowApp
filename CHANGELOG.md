@@ -1,3 +1,9 @@
+## [v27.76] — 2026-11-02 · Gold KPI frame border-only
+
+- zh-TW：財報屬性關鍵指標金框改為**僅外框／邊線光暈**（透明內部），不再以半透明橘金填滿整個 KPI 儲存格；內容背景可讀。`pointer-events: none` 維持。
+- en-US: Focus-KPI animated gold frame is **perimeter-only** (hollow mask-composite ring); no opaque/semi-opaque fill over the cell background. Content stays readable; overlays remain `pointer-events: none`.
+- Evidence: PR #613; `app_27.0/tests/test_gold_kpi_animated_frame.R`. Bundle 12770339.
+
 ## [v27.73] — 2026-11-02 · Remove Lite auto-model blurb
 
 - zh-TW：移除 Lite 智慧分析複合合理價狀態上方冗餘說明段（「依股票性質自動判別主／副模型…不開放手動模型設定」）及 en-US 對應文案；刪除未再使用的 `smart_page_sub` locale。其他 Lite UI／自動試算行為不變。
