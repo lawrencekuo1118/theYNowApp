@@ -10648,20 +10648,6 @@ server <- function(input, output, session) {
       .model_empty_band(.model_label(prim))
     )
     if (is.null(band)) band <- .model_empty_band(.model_label(prim))
-    # #region agent log
-    tryCatch({
-      cat(sprintf(
-        '{"hypothesisId":"E","location":"ynow_server.R:primary_valuation_band","message":"Primary band mapped","data":{"prim":"%s","bear":%s,"base":%s,"bull":%s,"dcf_run":%s,"stock_est":%s},"timestamp":%s}\n',
-        gsub('(["\\\\])', '\\\\\\1', as.character(prim %||% "")[1]),
-        { .b <- suppressWarnings(as.numeric(band$bear)[1]); if (is.finite(.b)) format(.b, scientific = FALSE) else "null" },
-        { .b <- suppressWarnings(as.numeric(band$base)[1]); if (is.finite(.b)) format(.b, scientific = FALSE) else "null" },
-        { .b <- suppressWarnings(as.numeric(band$bull)[1]); if (is.finite(.b)) format(.b, scientific = FALSE) else "null" },
-        tolower(as.character(isTRUE(.model_has_run("dcf")))),
-        { .s <- suppressWarnings(as.numeric(stock_price_estimate_val())[1]); if (is.finite(.s)) format(.s, scientific = FALSE) else "null" },
-        format(as.numeric(Sys.time()) * 1000, scientific = FALSE, trim = TRUE)
-      ), file = "/opt/cursor/logs/debug.log", append = TRUE)
-    }, error = function(e) invisible(NULL))
-    # #endregion
     band$label <- .model_label(prim)
     # ensure ordered when all present
     if (is.finite(band$bear) && is.finite(band$base) && is.finite(band$bull)) {
@@ -13594,39 +13580,12 @@ server <- function(input, output, session) {
     dcf_value_result(NULL)
     silent <- isTRUE(isolate(lite_dcf_silent()))
     show_toast <- if (is.null(notify)) !silent else isTRUE(notify)
-    # #region agent log
-    .wacc_gate <- suppressWarnings(as.numeric(calculated_wacc())[1])
-    tryCatch({
-      .payload <- sprintf(
-        '{"hypothesisId":"A","location":"ynow_server.R:execute_dcf_calc:entry","message":"DCF calc entry","data":{"silent":%s,"notify":%s,"wacc_calc":%s,"wacc_gordon":%s,"ticker":"%s","lite":%s},"timestamp":%s}\n',
-        tolower(as.character(silent)),
-        if (is.null(notify)) "null" else tolower(as.character(isTRUE(notify))),
-        if (is.finite(.wacc_gate)) format(.wacc_gate, scientific = FALSE) else "null",
-        { .wg <- suppressWarnings(as.numeric(input$wacc_gordon)[1]); if (is.finite(.wg)) format(.wg, scientific = FALSE) else "null" },
-        gsub('(["\\\\])', '\\\\\\1', as.character(current_ticker() %||% "")[1]),
-        tolower(as.character(isTRUE(isolate(lite_mode())))),
-        format(as.numeric(Sys.time()) * 1000, scientific = FALSE, trim = TRUE)
-      )
-      cat(.payload, file = "/opt/cursor/logs/debug.log", append = TRUE)
-    }, error = function(e) invisible(NULL))
-    # #endregion
     # Full silent auto-calc waits for estimated WACC. Lite readiness already
     # accepts a disclosed UI / App-default WACC — do not abort silent Lite DCF
     # when calculated_wacc is still NA (AAPL-like Lite Smart Analysis).
-    if (silent && !is.finite(suppressWarnings(as.numeric(calculated_wacc())[1]))) {
-      lite_allow <- isTRUE(isolate(lite_mode()))
-      # #region agent log
-      tryCatch({
-        cat(sprintf(
-          '{"hypothesisId":"A","location":"ynow_server.R:execute_dcf_calc:silent_wacc_gate","message":"%s","data":{"silent":true,"wacc_calc":null,"lite_allow":%s,"wacc_gordon":%s,"runId":"post-fix"},"timestamp":%s}\n',
-          if (lite_allow) "Lite silent DCF proceeds with disclosed WACC" else "Silent DCF aborted: calculated_wacc NA",
-          tolower(as.character(lite_allow)),
-          { .wg <- suppressWarnings(as.numeric(input$wacc_gordon)[1]); if (is.finite(.wg)) format(.wg, scientific = FALSE) else "null" },
-          format(as.numeric(Sys.time()) * 1000, scientific = FALSE, trim = TRUE)
-        ), file = "/opt/cursor/logs/debug.log", append = TRUE)
-      }, error = function(e) invisible(NULL))
-      # #endregion
-      if (!lite_allow) return(NULL)
+    if (silent && !is.finite(suppressWarnings(as.numeric(calculated_wacc())[1])) &&
+        !isTRUE(isolate(lite_mode()))) {
+      return(NULL)
     }
     scenario <- .effective_dcf_scenario()
     dcf_mode_eff <- scenario$mode
@@ -13825,24 +13784,6 @@ server <- function(input, output, session) {
     sh_info <- tryCatch(.valuation_shares(), error = function(e) NULL)
     if (!is.null(sh_info) && is.finite(share_outstanding) && share_outstanding > 0) sh_info$shares <- share_outstanding
     px <- if (!is.null(sh_info)) .dcf_per_share(equity_value, sh_info) else NA_real_
-    # #region agent log
-    tryCatch({
-      cat(sprintf(
-        '{"hypothesisId":"D","location":"ynow_server.R:execute_dcf_calc:result","message":"DCF calc result","data":{"px":%s,"equity":%s,"dcf_value":%s,"cash":%s,"debt":%s,"shares":%s,"silent":%s,"claim":"%s","g":%s,"last_fcf":%s},"timestamp":%s}\n',
-        if (is.finite(px)) format(px, scientific = FALSE) else "null",
-        { .eq <- suppressWarnings(as.numeric(equity_value)[1]); if (is.finite(.eq)) format(.eq, scientific = FALSE) else "null" },
-        { .dv <- suppressWarnings(as.numeric(dcf_value)[1]); if (is.finite(.dv)) format(.dv, scientific = FALSE) else "null" },
-        if (is.finite(latest_cash)) format(latest_cash, scientific = FALSE) else "null",
-        if (is.finite(latest_debt)) format(latest_debt, scientific = FALSE) else "null",
-        if (!is.null(sh_info) && is.finite(sh_info$shares)) format(sh_info$shares, scientific = FALSE) else "null",
-        tolower(as.character(silent)),
-        gsub('(["\\\\])', '\\\\\\1', as.character(claim %||% "")[1]),
-        if (is.finite(g_terminal)) format(g_terminal, scientific = FALSE) else "null",
-        if (is.finite(future_fcfs[n])) format(future_fcfs[n], scientific = FALSE) else "null",
-        format(as.numeric(Sys.time()) * 1000, scientific = FALSE, trim = TRUE)
-      ), file = "/opt/cursor/logs/debug.log", append = TRUE)
-    }, error = function(e) invisible(NULL))
-    # #endregion
     if (is.finite(px)) {
       lite_dcf_block("")
       stock_price_estimate_val(px)
@@ -14206,19 +14147,7 @@ server <- function(input, output, session) {
       ri = tryCatch(ri_results$source_ready(), error = function(e) FALSE),
       pb = tryCatch(pb_results$source_ready(), error = function(e) FALSE),
       nav = tryCatch(nav_results$source_ready(), error = function(e) FALSE), TRUE)
-    if (!isTRUE(fresh)) {
-      # #region agent log
-      if (identical(prim, "dcf") || identical(prim, "ri")) {
-        tryCatch({
-          cat(sprintf(
-            '{"hypothesisId":"B","location":"ynow_server.R:auto_calc_primary_ready:source","message":"source_ready false","data":{"prim":"%s","fresh":false},"timestamp":%s}\n',
-            prim, format(as.numeric(Sys.time()) * 1000, scientific = FALSE, trim = TRUE)
-          ), file = "/opt/cursor/logs/debug.log", append = TRUE)
-        }, error = function(e) invisible(NULL))
-      }
-      # #endregion
-      return(FALSE)
-    }
+    if (!isTRUE(fresh)) return(FALSE)
     if (identical(prim, "ri")) {
       b0 <- suppressWarnings(as.numeric(input[["mod_ri-b0"]])[1])
       ke <- suppressWarnings(as.numeric(input[["mod_ri-ri_ke"]])[1])
@@ -14234,33 +14163,8 @@ server <- function(input, output, session) {
     if (identical(prim, "dcf")) {
       proj <- tryCatch(fcf_results$df_fcf(), error = function(e) NULL)
       n <- suppressWarnings(as.numeric(input$years)[1])
-      if (is.null(proj) || !is.data.frame(proj) || nrow(proj) < 1L) {
-        # #region agent log
-        tryCatch({
-          cat(sprintf(
-            '{"hypothesisId":"B","location":"ynow_server.R:auto_calc_primary_ready:dcf","message":"DCF not ready: missing proj","data":{"proj_null":%s,"n":%s,"proj_nrow":%s},"timestamp":%s}\n',
-            tolower(as.character(is.null(proj))),
-            if (is.finite(n)) format(n, scientific = FALSE) else "null",
-            if (!is.null(proj) && is.data.frame(proj)) as.integer(nrow(proj)) else "null",
-            format(as.numeric(Sys.time()) * 1000, scientific = FALSE, trim = TRUE)
-          ), file = "/opt/cursor/logs/debug.log", append = TRUE)
-        }, error = function(e) invisible(NULL))
-        # #endregion
-        return(FALSE)
-      }
-      if (!is.finite(n) || n <= 0L || nrow(proj) != as.integer(n)) {
-        # #region agent log
-        tryCatch({
-          cat(sprintf(
-            '{"hypothesisId":"B","location":"ynow_server.R:auto_calc_primary_ready:dcf","message":"DCF not ready: years mismatch","data":{"n":%s,"proj_nrow":%s},"timestamp":%s}\n',
-            if (is.finite(n)) format(n, scientific = FALSE) else "null",
-            as.integer(nrow(proj)),
-            format(as.numeric(Sys.time()) * 1000, scientific = FALSE, trim = TRUE)
-          ), file = "/opt/cursor/logs/debug.log", append = TRUE)
-        }, error = function(e) invisible(NULL))
-        # #endregion
-        return(FALSE)
-      }
+      if (is.null(proj) || !is.data.frame(proj) || nrow(proj) < 1L) return(FALSE)
+      if (!is.finite(n) || n <= 0L || nrow(proj) != as.integer(n)) return(FALSE)
       # Don't value on the revenue=100 sandbox or a previous ticker's forecast.
       if (isTRUE(isolate(lite_mode()))) {
         rev_in <- .shared_bridge()$revenue
@@ -14270,29 +14174,8 @@ server <- function(input, output, session) {
         )
         if (is.finite(rev_stmt) && rev_stmt > 0 && is.finite(rev_in) && rev_in > 0) {
           ratio <- rev_in / rev_stmt
-          if (ratio < 0.3 || ratio > 3) {
-            # #region agent log
-            tryCatch({
-              cat(sprintf(
-                '{"hypothesisId":"B","location":"ynow_server.R:auto_calc_primary_ready:dcf","message":"DCF not ready: revenue ratio","data":{"rev_in":%s,"rev_stmt":%s,"ratio":%s},"timestamp":%s}\n',
-                format(rev_in, scientific = FALSE), format(rev_stmt, scientific = FALSE), format(ratio, scientific = FALSE),
-                format(as.numeric(Sys.time()) * 1000, scientific = FALSE, trim = TRUE)
-              ), file = "/opt/cursor/logs/debug.log", append = TRUE)
-            }, error = function(e) invisible(NULL))
-            # #endregion
-            return(FALSE)
-          }
+          if (ratio < 0.3 || ratio > 3) return(FALSE)
         } else if (is.finite(rev_stmt) && rev_stmt > 1e6) {
-          # #region agent log
-          tryCatch({
-            cat(sprintf(
-              '{"hypothesisId":"B","location":"ynow_server.R:auto_calc_primary_ready:dcf","message":"DCF not ready: rev_in missing with large stmt","data":{"rev_in":%s,"rev_stmt":%s},"timestamp":%s}\n',
-              if (is.finite(rev_in)) format(rev_in, scientific = FALSE) else "null",
-              format(rev_stmt, scientific = FALSE),
-              format(as.numeric(Sys.time()) * 1000, scientific = FALSE, trim = TRUE)
-            ), file = "/opt/cursor/logs/debug.log", append = TRUE)
-          }, error = function(e) invisible(NULL))
-          # #endregion
           return(FALSE)
         }
       }
@@ -14306,18 +14189,7 @@ server <- function(input, output, session) {
         fallback_rate <- if ((!is.null(des) && isTRUE(des$two_stage)) ||
                              identical(input$dcf_mode, "two_stage")) input$wacc_stage2 else input$wacc_gordon
         w_calc <- suppressWarnings(as.numeric(fallback_rate)[1]) / 100
-        if (!is.finite(w_calc) || w_calc <= 0) {
-          # #region agent log
-          tryCatch({
-            cat(sprintf(
-              '{"hypothesisId":"B","location":"ynow_server.R:auto_calc_primary_ready:dcf","message":"DCF not ready: no Lite WACC fallback","data":{"wacc_gordon":%s},"timestamp":%s}\n',
-              { .wg <- suppressWarnings(as.numeric(input$wacc_gordon)[1]); if (is.finite(.wg)) format(.wg, scientific = FALSE) else "null" },
-              format(as.numeric(Sys.time()) * 1000, scientific = FALSE, trim = TRUE)
-            ), file = "/opt/cursor/logs/debug.log", append = TRUE)
-          }, error = function(e) invisible(NULL))
-          # #endregion
-          return(FALSE)
-        }
+        if (!is.finite(w_calc) || w_calc <= 0) return(FALSE)
       }
       mode <- as.character(input$dcf_mode %||% "gordon")[1]
       # Prefer stored Lite desired mode when hidden radios have not echoed yet
@@ -14376,24 +14248,7 @@ server <- function(input, output, session) {
         if (!isTRUE(lite)) return(FALSE)
         # Lite: heal in .execute_dcf_calc; do not block readiness
       }
-      shares_ok <- isTRUE(.auto_calc_shares_ready())
-      # #region agent log
-      tryCatch({
-        cat(sprintf(
-          '{"hypothesisId":"B","location":"ynow_server.R:auto_calc_primary_ready:dcf","message":"DCF readiness result","data":{"ready":%s,"shares_ok":%s,"w_calc":%s,"r2":%s,"sgr":%s,"lite":%s,"mode":"%s","proj_nrow":%s},"timestamp":%s}\n',
-          tolower(as.character(shares_ok)),
-          tolower(as.character(shares_ok)),
-          if (is.finite(w_calc)) format(w_calc, scientific = FALSE) else "null",
-          if (is.finite(r2)) format(r2, scientific = FALSE) else "null",
-          if (is.finite(sgr)) format(sgr, scientific = FALSE) else "null",
-          tolower(as.character(isTRUE(lite))),
-          gsub('(["\\\\])', '\\\\\\1', as.character(mode %||% "")[1]),
-          as.integer(nrow(proj)),
-          format(as.numeric(Sys.time()) * 1000, scientific = FALSE, trim = TRUE)
-        ), file = "/opt/cursor/logs/debug.log", append = TRUE)
-      }, error = function(e) invisible(NULL))
-      # #endregion
-      return(shares_ok)
+      return(isTRUE(.auto_calc_shares_ready()))
     }
     if (identical(prim, "ddm")) {
       d0 <- suppressWarnings(as.numeric(input[["mod_ddm-d0"]])[1])
@@ -14596,21 +14451,6 @@ server <- function(input, output, session) {
     )
     if (identical(auto_calc_primary_sig(), sig)) return()
 
-    # #region agent log
-    tryCatch({
-      cat(sprintf(
-        '{"hypothesisId":"C","location":"ynow_server.R:auto_calc_observer","message":"Firing auto-calc","data":{"keys":"%s","prim":"%s","sec":"%s","w_calc":%s,"sgr":%s,"lite":%s,"sig_tail":"%s"},"timestamp":%s}\n',
-        paste(keys, collapse = ","),
-        gsub('(["\\\\])', '\\\\\\1', as.character(prim %||% "")[1]),
-        gsub('(["\\\\])', '\\\\\\1', as.character(sec %||% "")[1]),
-        if (is.finite(w_calc)) format(w_calc, scientific = FALSE) else "null",
-        if (is.finite(sgr)) format(sgr, scientific = FALSE) else "null",
-        tolower(as.character(isTRUE(lite_mode()))),
-        gsub('(["\\\\])', '\\\\\\1', substr(sig, max(1, nchar(sig) - 80), nchar(sig))),
-        format(as.numeric(Sys.time()) * 1000, scientific = FALSE, trim = TRUE)
-      ), file = "/opt/cursor/logs/debug.log", append = TRUE)
-    }, error = function(e) invisible(NULL))
-    # #endregion
     auto_calc_primary_sig(sig)
     for (k in keys) .fire_auto_calc_primary(k)
   })
