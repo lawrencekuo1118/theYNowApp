@@ -7,5 +7,5 @@ commit=6ff39a26ddee8cebfb3d94e7907ccecb4cc558f3
 short=6ff39a26
 message=chore: bump display version to v27.64
 captured_at=2026-11-02T11:13:26Z
-display_version=v27.64
+display_version=v27.65
 note=Ticker / Stock Code auto-uppercase on type (Full+Lite). Capture-phase JS + CSS; TW numeric codes unchanged; US 4-digit→TW Search-only preserved. PR #587; running bundle 12768996. Deployed with extracted R 4.6.1 (host 4.6.2 unsupported on shinyapps jammy).
