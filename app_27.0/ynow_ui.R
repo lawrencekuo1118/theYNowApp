@@ -4372,6 +4372,8 @@ ui <- dashboardPage(
 
     tags$head(
       tags$script(src = "parameter_completeness.js"),
+      # Ticker / Stock Code: case-insensitive entry → always uppercase display+value.
+      tags$script(src = "ynow_ticker_uppercase.js"),
       # Deferred MathJax + gate-demo video arming (Home-critical-path hygiene).
       tags$script(HTML("
         (function () {
@@ -16843,6 +16845,16 @@ ui <- dashboardPage(
           display: block;
           margin-bottom: 5px;
         }
+        /* Ticker / Stock Code: visual uppercase (JS also normalizes the value). */
+        #sc,
+        #lab_cluster_focus,
+        #pa_ticker,
+        #pa_quick_ticker,
+        #beta_peers-selectized,
+        #beta_bench-selectized,
+        input.ynow-ticker-input {
+          text-transform: uppercase;
+        }
         .btn.ynow-btn-is-busy,
         #search.ynow-btn-is-busy {
           opacity: 0.92;
@@ -20812,7 +20824,19 @@ ui <- dashboardPage(
 
         function bindTypeahead(inputId) {
           $(document).on('input', '#' + inputId, function() {
-            var v = $(this).val() || '';
+            var el = this;
+            var v = el.value || '';
+            var up = v.toUpperCase();
+            if (up !== v) {
+              var start = el.selectionStart, end = el.selectionEnd;
+              el.value = up;
+              try {
+                if (typeof start === 'number' && typeof end === 'number') {
+                  el.setSelectionRange(start, end);
+                }
+              } catch (eCaret) {}
+              v = up;
+            }
             Shiny.setInputValue('ticker_typeahead', v, {priority: 'event'});
             typingOpen[inputId] = v.trim().length > 0;
             showSuggest(inputId);
