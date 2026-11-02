@@ -7,5 +7,5 @@ commit=7e6dc0eaa945fdee2f7365e446368c6b96f7697c
 short=7e6dc0ea
 message=chore: bump display version to v27.67
 captured_at=2026-11-02T12:00:57Z
-display_version=v27.67
+display_version=v27.68
 note=Company full-name mono brand solid tint (#590). When logo primary is single color, corp name + KPI icons use solid c1 (no black/white pad gradient). Dual brand unchanged. PR #590; running bundle 12769091. Deployed with extracted R 4.6.1 (host 4.6.2 unsupported on shinyapps jammy).
