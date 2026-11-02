@@ -98,6 +98,7 @@ for (i in seq_len(nrow(modes))) {
     interest_env <- new.env(parent = globalenv())
     interest_env$d_income_statement <- function() mk("Net Interest Expense", 4)
     interest_env$d_cash_flow <- function() mk("Interest Paid", 9)
+    interest_env$d_balance_sheet <- function() mk("Total Debt", 100)
     interest <- eval(assignments[[".scraped_interest_expense"]], interest_env)
     record(mode, "Rd numerator cannot substitute cash or net interest", interest(), NA_real_)
     interest_env$d_income_statement <- function() mk(c("Net Interest Expense", "Interest Expense"), c(4, 7))
