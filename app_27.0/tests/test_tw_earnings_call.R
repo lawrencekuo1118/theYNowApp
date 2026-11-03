@@ -35,6 +35,7 @@ check <- function(label, cond) {
 source("seeking_alpha_earnings_call.R", local = TRUE, encoding = "UTF-8")
 source("earnings_call_keyword_lexicon.R", local = TRUE, encoding = "UTF-8")
 source("earnings_call_keyword_framework.R", local = TRUE, encoding = "UTF-8")
+source("supply_chain_order_report.R", local = TRUE, encoding = "UTF-8")
 source("us_earnings_call.R", local = TRUE, encoding = "UTF-8")
 source("fugle_earnings_call.R", local = TRUE, encoding = "UTF-8")
 source("finmoconf_earnings_call.R", local = TRUE, encoding = "UTF-8")
@@ -163,6 +164,64 @@ check("TW SA last-resort from fixture labels last_resort", {
 })
 Sys.unsetenv("YNOW_SA_SCRAPE_FIXTURE_HTML")
 Sys.setenv(YNOW_SA_SCRAPE = "0")
+
+newer <- list(
+  ok = TRUE,
+  status = "ok",
+  source_id = "fugle_earnings_memo",
+  published = "2026-10-21",
+  credibility = "estimate",
+  backlog = NA_real_,
+  keyword_order_notes = "新法說在手訂單。",
+  keyword_supplier_notes = character(0),
+  keyword_customer_notes = character(0),
+  order_notes = "新備註",
+  supply_report = ynow_supply_report_from_focus(
+    list(order_notes = "新法說在手訂單。"),
+    source = list(
+      source_id = "fugle_earnings_memo",
+      published = "2026-10-21",
+      info_updated_at = "2026-10-21",
+      info_updated_kind = "source_event"
+    )
+  )
+)
+older <- list(
+  ok = TRUE,
+  status = "ok",
+  source_id = "finmoconf_presentation_pdf",
+  published = "2026-01-01",
+  credibility = "estimate",
+  backlog = 12,
+  keyword_order_notes = "舊法說在手訂單。",
+  keyword_supplier_notes = "舊供應商交期。",
+  keyword_customer_notes = "舊客戶。",
+  order_notes = "舊備註",
+  supply_report = ynow_supply_report_from_focus(
+    list(order_notes = "舊法說在手訂單。"),
+    source = list(source_id = "finmoconf_presentation_pdf", published = "2026-01-01")
+  )
+)
+merged_ec <- .ynow_tw_ec_merge(newer, older)
+check("TW merge keeps the newest ledger and still unions older notes", {
+  identical(merged_ec$keyword_order_notes, "新法說在手訂單。") &&
+    length(merged_ec$keyword_supplier_notes) == 0L &&
+    identical(merged_ec$supply_report$buckets$orders, "新法說在手訂單。") &&
+    !any(grepl("舊法說", merged_ec$supply_report$buckets$orders, fixed = TRUE)) &&
+    all(c("新備註", "舊備註") %in% merged_ec$order_notes) &&
+    isTRUE(abs(merged_ec$backlog - 12) < 1e-6)
+})
+merged_disc <- ynow_tw_earnings_call_to_disclosure(merged_ec)
+nested_only <- ynow_tw_earnings_call_to_disclosure(list(
+  status = "ok",
+  source_id = "fugle_earnings_memo",
+  keyword_analysis = list(supply_report = older$supply_report)
+))
+check("TW disclosure carries the sealed report, not a nested copy", {
+  identical(merged_disc$supply_report$buckets$orders, "新法說在手訂單。") &&
+    length(nested_only$supply_report$buckets$orders) == 0L &&
+    identical(nested_only$supply_report$schema, 1L)
+})
 
 disc <- ynow_tw_earnings_call_to_disclosure(got)
 check("TW disclosure shape includes fugle_url + finmoconf_url", {

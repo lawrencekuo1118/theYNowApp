@@ -12114,6 +12114,7 @@ ui <- dashboardPage(
             setBtText('ynow_bblab_orders_suppliers_title', 'bblab_orders_suppliers_title');
             setBtText('ynow_bblab_orders_suppliers_help', 'bblab_orders_suppliers_help');
             setBtText('ynow_bblab_or_title', 'bblab_or_title');
+            setBtText('ynow_bblab_supply_report_title', 'bblab_or_supply_report_title');
             setBtText('ynow_bblab_or_help', 'bblab_or_help');
             setBtText('ynow_bblab_or_start', 'bblab_or_start');
             setBtText('ynow_bblab_overlap_why', 'bblab_overlap_why');

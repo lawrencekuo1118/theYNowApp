@@ -196,7 +196,12 @@ ynow_finmoconf_earnings_call_fetch <- function(ticker, extract_fun = NULL) {
   if (!nzchar(bare) || !grepl("^[0-9]{4,6}[A-Z]?$", bare)) return(NULL)
 
   company_url <- ynow_finmoconf_company_url(bare)
-  cache_key <- paste0("finmoconf_ec_v1_", bare)
+  lex_ver <- "3"
+  if (exists("ynow_ec_keyword_lexicon", mode = "function")) {
+    lex_ver <- as.character(ynow_ec_keyword_lexicon()$version %||% "3")[1]
+    if (!nzchar(lex_ver) || is.na(lex_ver)) lex_ver <- "3"
+  }
+  cache_key <- paste0("finmoconf_ec_", lex_ver, "_", bare)
   cached <- .ynow_finmo_ec_cache_get(cache_key)
   # Fixtures bypass cache so unit tests stay deterministic.
   html_fix <- Sys.getenv("YNOW_FINMOCONF_SCRAPE_FIXTURE_HTML", unset = "")

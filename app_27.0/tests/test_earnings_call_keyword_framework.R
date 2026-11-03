@@ -9,6 +9,7 @@ if (!exists("%||%", mode = "function")) {
 }
 source(file.path(app_dir, "earnings_call_keyword_lexicon.R"), local = FALSE, encoding = "UTF-8")
 source(file.path(app_dir, "earnings_call_keyword_framework.R"), local = FALSE, encoding = "UTF-8")
+source(file.path(app_dir, "supply_chain_order_report.R"), local = FALSE, encoding = "UTF-8")
 
 pass <- 0L
 fail <- 0L
@@ -43,6 +44,35 @@ check("lexicon encodes steps 2–4 + order focus + traps", {
 })
 check("order/supplier/customer roles present", {
   all(c("orders", "suppliers", "customers", "positive", "warning", "capex", "bridging") %in% names(lex))
+})
+check("lexicon version is 3", identical(lex$version, "3"))
+check("surface roles are items and scorer roles stay zh/en", {
+  surface <- c("orders", "suppliers", "customers")
+  no_lang <- all(vapply(surface, function(role) {
+    node <- lex[[role]]
+    is.list(node$items) && is.null(node$zh) && is.null(node$en)
+  }, logical(1)))
+  scorers <- c("positive", "warning", "capex", "inventory_pricing")
+  kept <- all(vapply(scorers, function(role) {
+    node <- lex[[role]]
+    is.character(node$zh) && is.character(node$en)
+  }, logical(1)))
+  no_lang && kept
+})
+check("constraint tokens are a subset of any", {
+  roles <- c("orders", "suppliers", "customers")
+  all(vapply(roles, function(role) {
+    any_p <- ynow_ec_lexicon_tokens(role, "any", lex)
+    con_p <- ynow_ec_lexicon_tokens(role, "constraint", lex)
+    all(con_p %in% any_p)
+  }, logical(1))) &&
+    length(ynow_ec_lexicon_tokens("customers", "constraint", lex)) == 0L &&
+    length(ynow_ec_lexicon_tokens("orders", "constraint", lex)) > 0L
+})
+check("pattern and hits read the same tokens", {
+  pat <- ynow_ec_lexicon_pattern("orders", lex)
+  grepl("急單", pat, fixed = TRUE) &&
+    "急單" %in% ynow_ec_lexicon_hits("本季急單增加。", "orders", lex)
 })
 
 empty <- ynow_ec_keyword_analyze("")
@@ -147,6 +177,23 @@ check("order-focus drops not bookings negation", {
 check("order-focus drops 客戶庫存 channel fluff", {
   !any(grepl("客戶庫存|通路庫存|ASP", neg_focus$customer_notes %||% character(0)))
 })
+digest <- paste(
+  "庫存消化仍在進行，在手訂單未變。",
+  "客戶正在去庫存，訂單能見度下降。",
+  "Customer destocking continued while backlog held.",
+  "The quarter reflected an inventory correction in bookings.",
+  "急單增加，交期維持。",
+  "主要客戶銷貨占比穩定。",
+  sep = ""
+)
+dig_focus <- ynow_ec_kw_extract_order_focus(digest)
+check("order-focus drops digestion and destocking sentences", {
+  blob <- paste(unlist(dig_focus), collapse = " ")
+  !grepl("庫存消化|去庫存|destocking|inventory correction", blob, ignore.case = TRUE)
+})
+check("order-focus keeps a gap-fill order cue", {
+  any(grepl("急單", dig_focus$order_notes %||% character(0), fixed = TRUE))
+})
 check("order-focus still keeps real order cue amid negation", {
   any(grepl("在手訂單", neg_focus$order_notes %||% character(0), fixed = TRUE))
 })
@@ -172,6 +219,20 @@ check("attach surfaces order_focus theme", "order_focus" %in% (attached$themes %
 check("attach surfaces keyword_order_notes", length(attached$keyword_order_notes %||% character(0)) >= 1L)
 check("attach surfaces keyword_supplier_notes", length(attached$keyword_supplier_notes %||% character(0)) >= 1L)
 check("attach surfaces keyword_customer_notes", length(attached$keyword_customer_notes %||% character(0)) >= 1L)
+check("attach keyword vectors are the sealed buckets", {
+  identical(attached$keyword_order_notes, attached$supply_report$buckets$orders) &&
+    identical(attached$keyword_supplier_notes, attached$supply_report$buckets$suppliers) &&
+    identical(attached$keyword_customer_notes, attached$supply_report$buckets$customers) &&
+    identical(attached$supply_report$schema, 1L) &&
+    !any(c("backlog", "bookings", "capex") %in% names(attached$supply_report))
+})
+replaced <- ynow_ec_attach_keyword_analysis(attached, text = "主要客戶占營收約三成。")
+check("attach replaces the ledger", {
+  length(replaced$supply_report$buckets$orders) == 0L &&
+    length(replaced$keyword_order_notes) == 0L &&
+    any(grepl("主要客戶", replaced$supply_report$buckets$customers, fixed = TRUE)) &&
+    !any(grepl("在手訂單", unlist(replaced$supply_report$buckets), fixed = TRUE))
+})
 check("attach does not surface tone score", is.null(attached$keyword_tone_score))
 check("attach does not surface CapEx notes field", is.null(attached$keyword_capex_notes))
 check("attach does not surface bridging notes field", is.null(attached$keyword_bridging_notes))

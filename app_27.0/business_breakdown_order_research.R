@@ -1040,9 +1040,14 @@ bblab_build_order_research_pack <- function(order_concentration = NULL,
     focus = focus,
     source_stack = .or_build_source_stack(focus),
     cross_check = .or_build_cross_check(inputs),
-    chart = chart,
-    us_earnings_call = disclosures$earnings_call %||% NULL
+    chart = chart
   )
+}
+
+.bblab_or_earnings_market <- function(ticker) {
+  tk <- trimws(as.character(ticker %||% "")[1])
+  if (!nzchar(tk) || is.na(tk)) return("")
+  if (grepl("\\.(TW|TWO)$", tk, ignore.case = TRUE)) "TW" else "US"
 }
 
 bblab_attach_order_research <- function(result, payload = list()) {
@@ -1064,12 +1069,21 @@ bblab_attach_order_research <- function(result, payload = list()) {
     ),
     error = function(e) bblab_order_research_empty("ORDERS_BACKLOG_UNDISCLOSED")
   )
-  # Prefer explicit US / TW earnings-call meta from the payload when present.
-  if (is.list(payload$us_earnings_call) && is.list(result$order_research)) {
-    result$order_research$us_earnings_call <- payload$us_earnings_call
+  if (!is.list(result$order_research)) return(result)
+  market <- .bblab_or_earnings_market(payload$ticker)
+  ec <- NULL
+  if (identical(market, "TW") && is.list(payload$tw_earnings_call)) {
+    ec <- payload$tw_earnings_call
+  } else if (identical(market, "US") && is.list(payload$us_earnings_call)) {
+    ec <- payload$us_earnings_call
   }
-  if (is.list(payload$tw_earnings_call) && is.list(result$order_research)) {
-    result$order_research$tw_earnings_call <- payload$tw_earnings_call
-  }
+  result$order_research$earnings_market <- if (nzchar(market)) market else NULL
+  result$order_research$earnings_call <- if (is.list(ec)) ec else NULL
+  result$order_research$us_earnings_call <- NULL
+  result$order_research$tw_earnings_call <- NULL
+  result$order_research$supply_report <- ynow_supply_report_with_filing(
+    if (is.list(ec)) ec$supply_report else NULL,
+    result$order_concentration
+  )
   result
 }
