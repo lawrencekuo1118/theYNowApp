@@ -177,8 +177,9 @@ check("BBLab wires TW earnings-call fetch + Fugle + FinmoConf link", {
   grepl("ynow_tw_earnings_call_fetch", mod, fixed = TRUE) &&
     grepl("tw_earnings_call", mod, fixed = TRUE) &&
     grepl("bblab_or_tw_ec_fugle_link", mod, fixed = TRUE) &&
-    grepl("bblab_or_tw_ec_fugle_note", mod, fixed = TRUE) &&
-    grepl("bblab_or_tw_ec_finmoconf_link", mod, fixed = TRUE)
+    grepl("bblab_or_tw_ec_finmoconf_link", mod, fixed = TRUE) &&
+    !grepl("bblab_or_tw_ec_fugle_note", mod, fixed = TRUE) &&
+    !grepl("bblab_or_tw_ec_note", mod, fixed = TRUE)
 })
 check("global sources fugle/finmoconf before tw", {
   g <- paste(readLines("global.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")

@@ -1,3 +1,9 @@
+## [v27.80] — 2026-11-03 · Cut earnings-context fluff in order research
+
+- zh-TW：業務拆解「來源、交叉驗證與法說會脈絡」只保留訂單／主要供應商／主要客戶相關線索（含資訊更新日期、可信度、有貢獻來源與有數值的交叉驗證）；移除法說開場摘錄、方法論長文、今後發展／ESG、閒置來源層、空白交叉驗證列與次層論文式說明；訂單焦點擷取略過「不是接單」／客戶庫存等雜訊句。
+- en-US: Business Breakdown Sources / cross-check / call-context keeps only order, supplier, and customer cues (updated date, credibility, contributed sources, finite cross-check values). Drops greeting excerpts, methodology walls, outlook/ESG, idle source tiers, blank cross-check rows, and secondary-layer essays. Order-focus harvest skips negation and channel-inventory fluff.
+- Evidence: order-research meta HTML regression + keyword negation checks; docs `earnings-context-fluff.md`.
+
 ## [v27.79] — 2026-11-03 · Company Overview「公司簡介」zh-TW body
 
 - zh-TW：個股 Company Overview 營運摘要不再只顯示 Yahoo 英文 `longBusinessSummary`；台股優先 Yahoo TW「主要經營業務」（台灣繁體），其餘以 en→zh-TW 翻譯並套用台灣投資界用詞過濾；失敗則保留英文。Sector／Industry 標籤維持正式英文。
