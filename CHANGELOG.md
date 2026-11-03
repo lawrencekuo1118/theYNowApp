@@ -1,3 +1,9 @@
+## [v27.78] — 2026-11-03 · Vine KPI frame wraps box edge
+
+- zh-TW：財報屬性關鍵指標藤蔓外框改以 CSS **border-image 九宮格**貼齊 KPI 儲存格矩形邊線（不再整圖拉伸）；短卡 FS 用較薄邊帶；內部維持透明。
+- en-US: Focus-KPI vine foliage uses CSS **border-image** 9-slice so the frame tracks the cell perimeter on any aspect ratio (no full-bleed stretch). Thinner band on short Finance Summary cards; interior stays transparent.
+- Evidence: PR #617; `app_27.0/tests/test_vine_kpi_frame.R`; docs `vine-frame-wrap-fix.md`. Bundle 12772042.
+
 ## [v27.77] — 2026-11-03 · Vine foliage focus-KPI frame
 
 - zh-TW：個股頁財報屬性關鍵指標外框改為使用者手繪**藤蔓／葉片矩形邊框**（白底去背、僅邊框、內部透明）；移除橘金 SVG／漸層填色光暈。圖例文案改「藤蔓 · …」／「Vine · …」。
