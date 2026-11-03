@@ -17282,8 +17282,10 @@ ui <- dashboardPage(
         .ynow-focus-metric-swatch--legend {
           margin: 0 6px 0 0;
         }
-        /* Focus KPI: vine/foliage hand-drawn rectangular border
-           (asset www/ynow-vine-kpi-frame.png — transparent center, border-only). */
+        /* Focus KPI: vine/foliage on the rectangular perimeter (9-slice border-image).
+           Asset www/ynow-vine-kpi-frame.png — cropped opaque bbox, transparent center.
+           Do NOT stretch the whole PNG as a background (aspect mismatch warps the vine
+           off the box edge). */
         @keyframes ynow-focus-vine-breathe {
           0%, 100% {
             opacity: 0.92;
@@ -17313,12 +17315,32 @@ ui <- dashboardPage(
         .ynow-fs-card.ynow-focus-metric-box::before {
           content: '';
           position: absolute;
-          inset: -10px;
+          /* Negative inset = half of border-image-width so the vine band is
+             centered ON the cell perimeter (half outside, half inside). */
+          inset: -15px;
           z-index: 0;
           pointer-events: none;
-          border-radius: 10px;
-          background: url('ynow-vine-kpi-frame.png') center / 100% 100% no-repeat;
+          box-sizing: border-box;
+          /* Transparent CSS border reserves the 9-slice band; image paints the vine. */
+          border-style: solid;
+          border-color: transparent;
+          border-width: 30px;
+          border-image-source: url('ynow-vine-kpi-frame.png');
+          /* Cropped asset ~421×257; slice covers pad+stem+modest corner leaves. */
+          border-image-slice: 48 68 52 48;
+          border-image-width: 30px;
+          border-image-outset: 4px;
+          border-image-repeat: stretch;
+          background: none !important;
+          border-radius: 0;
           animation: ynow-focus-vine-breathe 2.8s ease-in-out infinite;
+        }
+        /* Short Finance Summary cards: thinner perimeter band so content stays readable. */
+        .ynow-fs-card.ynow-focus-metric-box::before {
+          inset: -10px;
+          border-width: 20px;
+          border-image-width: 20px;
+          border-image-outset: 4px;
         }
         /* No ::after fill/ring — interior must stay transparent (border-only). */
         .content-wrapper .small-box.ynow-focus-metric-box::after,
