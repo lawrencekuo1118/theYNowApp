@@ -17354,8 +17354,11 @@ ui <- dashboardPage(
           content: none !important;
           display: none !important;
         }
-        .content-wrapper .small-box.ynow-focus-metric-box > *,
-        .tab-content .small-box.ynow-focus-metric-box > *,
+        /* Elevate content above vine ::before — only .inner on small-box so
+           AdminLTE .icon-large stays position:absolute (out of flex). Broad
+           > * made icons re-enter the column and pushed KPI values above center. */
+        .content-wrapper .small-box.ynow-focus-metric-box > .inner,
+        .tab-content .small-box.ynow-focus-metric-box > .inner,
         .ynow-fs-card.ynow-focus-metric-box > * {
           position: relative;
           z-index: 1;

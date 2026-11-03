@@ -91,6 +91,14 @@ check("focus frame overlay pointer-events none", {
   grepl("ynow-focus-metric-box::before", ui, fixed = TRUE) &&
     grepl("pointer-events: none", ui, fixed = TRUE)
 })
+# Vertical center: stacking must not force .icon-large into flex flow.
+check("focus stacking elevates small-box .inner only", {
+  grepl(".small-box.ynow-focus-metric-box > .inner", ui, fixed = TRUE) &&
+    !grepl(".small-box.ynow-focus-metric-box > *", ui, fixed = TRUE)
+})
+check("FS focus stacking still elevates children", {
+  grepl(".ynow-fs-card.ynow-focus-metric-box > *", ui, fixed = TRUE)
+})
 
 check("legend note helper", grepl(".ynow_focus_metric_legend_note_ui <- function", ui, fixed = TRUE))
 check("legend note class above FS", grepl("ynow-focus-metric-note--above-fs", ui, fixed = TRUE))
