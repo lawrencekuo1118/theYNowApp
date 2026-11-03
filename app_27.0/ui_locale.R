@@ -4434,6 +4434,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_or_secondary = "Other disclosed context",
     bblab_or_sources_title = "Sources and credibility",
     bblab_or_xcheck_title = "Cross-check",
+    bblab_or_xcheck_disclaimer = "These statement lines are a cross-check. They are not Backlog.",
     bblab_or_prov_filing = "Filing",
     bblab_or_prov_sec = "SEC filing",
     bblab_or_prov_mops = "MOPS annual report",
@@ -4446,8 +4447,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_or_us_ec_title = "US earnings call / transcript",
     bblab_or_us_ec_label = "Source",
     bblab_or_us_ec_empty = paste0(
-      "No US earnings-call transcript or Item 2.02-style 8-K excerpt with measurable ",
-      "backlog / bookings / CapEx language was found for this ticker. Links below are for human research only."
+      "No US earnings-call transcript or Item 2.02-style 8-K excerpt with order, ",
+      "supplier, or customer facts was found for this ticker. ",
+      "Links below are for human research only."
     ),
     bblab_or_us_ec_method_note = paste0(
       "Purpose: feed Business Breakdown order research (orders / suppliers / customers) with status-only facts. ",
@@ -4465,9 +4467,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_or_us_ec_sa_link = "Seeking Alpha Transcripts",
     bblab_or_tw_ec_title = "TW earnings call / conclusions",
     bblab_or_tw_ec_empty = paste0(
-      "No automatable TW earnings-call conclusion with measurable backlog / bookings, ",
-      "or status-only order / supply-chain / outlook notes, was ingested. ",
-      "FinmoConf presentation PDF, Fugle memo, and Seeking Alpha last-resort returned empty; ",
+      "No automatable TW earnings-call conclusion with order, supplier, or customer facts was ingested. ",
+      "FinmoConf presentation PDF, Fugle memo, and Seeking Alpha last-resort returned empty. ",
       "AlphaMemo free transcripts stay human-browsable only."
     ),
     bblab_or_tw_ec_note = paste0(
@@ -4495,13 +4496,6 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_or_tw_ec_search_link = "Search AlphaMemo for this ticker (human)",
     bblab_or_tw_ec_sa_link = "Seeking Alpha Transcripts (last-resort)",
     bblab_or_ec_kw_title = "Order-focus earnings cues (status-only)",
-    bblab_or_ec_kw_note = paste0(
-      "From the primary memo / transcript / presentation: only major suppliers, ",
-      "orders / backlog / bookings status, and major customers. ",
-      "Skips full-text map scan and equity-story narrative. ",
-      "No tone score or keyword wall — not a buy signal. ",
-      "Prefer the primary source over media summaries; never invent amounts."
-    ),
     bblab_or_ec_kw_orders = "Orders / backlog (status-only)",
     bblab_or_ec_kw_suppliers = "Major suppliers (status-only)",
     bblab_or_ec_kw_customers = "Major customers (status-only)",
@@ -4509,10 +4503,6 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_or_ec_kw_updated_unknown = "Unknown",
     bblab_or_ec_kw_updated_kind_event = "source event date",
     bblab_or_ec_kw_updated_kind_fetched = "fetch / analysis time",
-    bblab_or_ec_kw_traps = "Reading traps (order-relevant)",
-    bblab_or_ec_kw_trap1_summary_only = "Trap1: summary-like text — prefer primary transcript/memo",
-    bblab_or_ec_kw_trap2_beat_without_guide_upper = "Trap2: beat vs analysts without management guide upper bound",
-    bblab_or_ec_kw_trap3_number_without_tone = "Trap3: precise number with hedging language",
     bblab_or_prov_statement_proxy = "Statement proxy",
     bblab_or_prov_broker_estimate = "Broker estimate",
     bblab_or_prov_industry_proxy = "Industry proxy",
@@ -9126,6 +9116,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_or_secondary = "其他已揭露內容",
     bblab_or_sources_title = "來源與可信度",
     bblab_or_xcheck_title = "交叉驗證",
+    bblab_or_xcheck_disclaimer = "下列財報科目是交叉驗證，不可當成 Backlog。",
     bblab_or_prov_filing = "財報",
     bblab_or_prov_sec = "SEC 申報",
     bblab_or_prov_mops = "公開資訊觀測站年報",
@@ -9138,7 +9129,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_or_us_ec_title = "美股法說會／逐字稿",
     bblab_or_us_ec_label = "來源",
     bblab_or_us_ec_empty = paste0(
-      "此 ticker 未取得可量化 backlog／bookings／CapEx 用語的美股法說逐字稿或 8-K（Item 2.02 類）摘錄。",
+      "此 ticker 未取得含訂單、供應商或客戶事實的美股法說逐字稿或 8-K（Item 2.02 類）摘錄。",
       "下方連結僅供人工查閱，不會自動擷取。"
     ),
     bblab_or_us_ec_method_note = paste0(
@@ -9156,8 +9147,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_or_us_ec_sa_link = "Seeking Alpha Transcripts",
     bblab_or_tw_ec_title = "台股法說會結論",
     bblab_or_tw_ec_empty = paste0(
-      "此 ticker 未自動擷取可量化 backlog／bookings，或狀態型訂單／供應鏈／今後發展摘錄的台股法說結論。",
-      "FinmoConf 簡報 PDF、富果法說備忘錄與 Seeking Alpha 最後備援皆無可用內容；",
+      "此 ticker 未自動擷取含訂單、供應商或客戶事實的台股法說結論。",
+      "FinmoConf 簡報 PDF、富果法說備忘錄與 Seeking Alpha 最後備援皆無可用內容。",
       "AlphaMemo 公開逐字稿仍僅供人工瀏覽。"
     ),
     bblab_or_tw_ec_note = paste0(
@@ -9185,12 +9176,6 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_or_tw_ec_search_link = "以 ticker 搜尋 AlphaMemo（人工）",
     bblab_or_tw_ec_sa_link = "Seeking Alpha Transcripts（最後備援）",
     bblab_or_ec_kw_title = "訂單研究導向法說線索（狀態摘錄）",
-    bblab_or_ec_kw_note = paste0(
-      "來自原始備忘錄／逐字稿／簡報本文：只摘錄主要供應商、訂單／在手／bookings 狀態、主要客戶。",
-      "略過全文地圖速讀與股票故事（Equity Story）敘事框架。",
-      "不顯示語氣評分或關鍵詞牆——非買進訊號。",
-      "優先對照原始來源而非媒體摘要；不虛構金額。"
-    ),
     bblab_or_ec_kw_orders = "訂單／在手（狀態摘錄）",
     bblab_or_ec_kw_suppliers = "主要供應商（狀態摘錄）",
     bblab_or_ec_kw_customers = "主要客戶（狀態摘錄）",
@@ -9198,10 +9183,6 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_or_ec_kw_updated_unknown = "未知",
     bblab_or_ec_kw_updated_kind_event = "來源事件日",
     bblab_or_ec_kw_updated_kind_fetched = "擷取／分析時間",
-    bblab_or_ec_kw_traps = "閱讀陷阱（訂單相關）",
-    bblab_or_ec_kw_trap1_summary_only = "陷阱一：摘要型文字——請回原始逐字稿／備忘錄",
-    bblab_or_ec_kw_trap2_beat_without_guide_upper = "陷阱二：超越分析師預期但未對照管理層財測上緣",
-    bblab_or_ec_kw_trap3_number_without_tone = "陷阱三：精確數字伴隨對沖／保留語氣",
     bblab_or_prov_statement_proxy = "財報科目（間接）",
     bblab_or_prov_broker_estimate = "券商估計",
     bblab_or_prov_industry_proxy = "產業間接指標",

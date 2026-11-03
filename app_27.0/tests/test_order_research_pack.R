@@ -419,22 +419,21 @@ if (requireNamespace("shiny", quietly = TRUE) && requireNamespace("plotly", quie
     primary <- sub("ynow-bblab-or__secondary.*", "", html_en)
     grepl("Sources and credibility", primary, fixed = TRUE) &&
       grepl("Cross-check", primary, fixed = TRUE) &&
-      grepl("It is not Backlog", primary, fixed = TRUE) &&
+      grepl("These statement lines are a cross-check. They are not Backlog.", primary, fixed = TRUE) &&
+      grepl("data-xcheck=\"inventory\"", primary, fixed = TRUE) &&
+      !grepl("data-xcheck=\"contract_assets\"", primary, fixed = TRUE) &&
+      !grepl("Inventory is a statement cross-check. It is not Backlog.", primary, fixed = TRUE) &&
       grepl("MOPS filing", primary, fixed = TRUE) &&
       grepl("ynow-bblab-or__secondary", html_en, fixed = TRUE) &&
       !grepl("Gross margin", primary, fixed = TRUE)
   })
-  check("broker tier stays unused unless a fact used it", {
-    broker <- sub(
-      ".*data-tier=\"broker_estimate\"(.*?)data-tier=\"industry_proxy\".*",
-      "\\1",
-      html_en
-    )
-    grepl("Broker estimate", broker, fixed = TRUE) &&
-      grepl("Not used", broker, fixed = TRUE) &&
-      grepl("Cannot fill an order amount", broker, fixed = TRUE) &&
-      !grepl("Contributed", broker, fixed = TRUE) &&
-      !tier_contributed(ranged, "broker_estimate")
+  check("idle source tiers stay off the meta list", {
+    grepl("data-tier=\"mops_filing\"", html_en, fixed = TRUE) &&
+      grepl("Contributed", html_en, fixed = TRUE) &&
+      !grepl("data-tier=\"broker_estimate\"", html_en, fixed = TRUE) &&
+      !grepl("Not used", html_en, fixed = TRUE) &&
+      !tier_contributed(ranged, "broker_estimate") &&
+      tier_contributed(ranged, "mops_filing")
   })
   fluff <- ranged
   fluff$us_earnings_call <- list(

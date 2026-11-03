@@ -135,12 +135,13 @@ check("global sources finmoconf before tw", {
   ti <- regexpr('source("tw_earnings_call.R"', g, fixed = TRUE)
   fi > 0L && ti > fi
 })
-check("BBLab UI wires FinmoConf notes + links", {
+check("BBLab UI keeps FinmoConf links and drops methodology walls", {
   mod <- paste(readLines("business_breakdown_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   grepl("bblab_or_tw_ec_finmoconf_link", mod, fixed = TRUE) &&
-    grepl("bblab_or_tw_ec_finmoconf_note", mod, fixed = TRUE) &&
+    grepl("bblab_or_tw_ec_pdf_link", mod, fixed = TRUE) &&
     grepl("supply_chain_notes", mod, fixed = TRUE) &&
-    grepl("outlook_notes", mod, fixed = TRUE)
+    !grepl("bblab_or_tw_ec_finmoconf_note", mod, fixed = TRUE) &&
+    !grepl("outlook_notes", mod, fixed = TRUE)
 })
 check("no /api/ calls in FinmoConf modules", {
   r <- paste(readLines("finmoconf_earnings_call.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
