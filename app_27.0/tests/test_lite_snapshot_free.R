@@ -58,9 +58,9 @@ check(
   )
 )
 check(
-  "JS ensureLiteSnapshotFreeTab prefers snap_audit",
+  "JS ensureLiteSnapshotFreeTab prefers snap_current",
   grepl("ensureLiteSnapshotFreeTab", ui, fixed = TRUE) &&
-    grepl('data-value=\\"snap_audit\\"', ui, fixed = TRUE) &&
+    grepl('data-value=\\"snap_current\\"', ui, fixed = TRUE) &&
     grepl("Never land on locked APP_DEFAULTS", ui, fixed = TRUE)
 )
 check(
