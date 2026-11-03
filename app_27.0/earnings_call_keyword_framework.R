@@ -652,7 +652,7 @@ ynow_ec_stamp_info_updated <- function(result, fetched_at = NULL) {
 }
 
 #' Status-only sentence harvest for 訂單／主要供應商／主要客戶 (never invent amounts).
-ynow_ec_kw_extract_order_focus <- function(text, lex = NULL, max_n = 6L) {
+ynow_ec_kw_extract_order_focus <- function(text, lex = NULL, max_n = 5L) {
   lex <- lex %||% (if (exists("ynow_ec_keyword_lexicon", mode = "function")) {
     ynow_ec_keyword_lexicon()
   } else {
@@ -753,8 +753,6 @@ ynow_ec_attach_keyword_analysis <- function(result, text = NULL, prior = NULL) {
 
   # 資訊更新日期: source event date preferred; fetch time as fallback.
   result <- ynow_ec_stamp_info_updated(result)
-  # Keyword vectors are the sealed cites, so the sixth extractor sentence
-  # and a rejected line cannot outlive the ledger.
   result$supply_report <- ynow_supply_report_from_focus(focus, source = result)
   result$keyword_order_notes <- result$supply_report$buckets$orders
   result$keyword_supplier_notes <- result$supply_report$buckets$suppliers

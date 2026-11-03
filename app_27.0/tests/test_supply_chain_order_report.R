@@ -1,6 +1,4 @@
 #!/usr/bin/env Rscript
-# Offline tests: cited supply-chain and orders ledger.
-# YNOW_DEBUG_SKIP_PY=1 — no reticulate.
 
 Sys.setenv(YNOW_DEBUG_SKIP_PY = "1")
 app_dir <- normalizePath(file.path(".."), mustWork = TRUE)
