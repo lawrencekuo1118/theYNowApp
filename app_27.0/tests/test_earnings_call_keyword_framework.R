@@ -9,6 +9,7 @@ if (!exists("%||%", mode = "function")) {
 }
 source(file.path(app_dir, "earnings_call_keyword_lexicon.R"), local = FALSE, encoding = "UTF-8")
 source(file.path(app_dir, "earnings_call_keyword_framework.R"), local = FALSE, encoding = "UTF-8")
+source(file.path(app_dir, "supply_chain_order_report.R"), local = FALSE, encoding = "UTF-8")
 
 pass <- 0L
 fail <- 0L
@@ -218,6 +219,20 @@ check("attach surfaces order_focus theme", "order_focus" %in% (attached$themes %
 check("attach surfaces keyword_order_notes", length(attached$keyword_order_notes %||% character(0)) >= 1L)
 check("attach surfaces keyword_supplier_notes", length(attached$keyword_supplier_notes %||% character(0)) >= 1L)
 check("attach surfaces keyword_customer_notes", length(attached$keyword_customer_notes %||% character(0)) >= 1L)
+check("attach keyword vectors are the sealed buckets", {
+  identical(attached$keyword_order_notes, attached$supply_report$buckets$orders) &&
+    identical(attached$keyword_supplier_notes, attached$supply_report$buckets$suppliers) &&
+    identical(attached$keyword_customer_notes, attached$supply_report$buckets$customers) &&
+    identical(attached$supply_report$schema, 1L) &&
+    !any(c("backlog", "bookings", "capex") %in% names(attached$supply_report))
+})
+replaced <- ynow_ec_attach_keyword_analysis(attached, text = "主要客戶占營收約三成。")
+check("attach replaces the ledger", {
+  length(replaced$supply_report$buckets$orders) == 0L &&
+    length(replaced$keyword_order_notes) == 0L &&
+    any(grepl("主要客戶", replaced$supply_report$buckets$customers, fixed = TRUE)) &&
+    !any(grepl("在手訂單", unlist(replaced$supply_report$buckets), fixed = TRUE))
+})
 check("attach does not surface tone score", is.null(attached$keyword_tone_score))
 check("attach does not surface CapEx notes field", is.null(attached$keyword_capex_notes))
 check("attach does not surface bridging notes field", is.null(attached$keyword_bridging_notes))

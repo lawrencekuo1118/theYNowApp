@@ -30,6 +30,7 @@ check <- function(label, cond) {
 source("seeking_alpha_earnings_call.R", local = TRUE, encoding = "UTF-8")
 source("earnings_call_keyword_lexicon.R", local = TRUE, encoding = "UTF-8")
 source("earnings_call_keyword_framework.R", local = TRUE, encoding = "UTF-8")
+source("supply_chain_order_report.R", local = TRUE, encoding = "UTF-8")
 source("us_earnings_call.R", local = TRUE, encoding = "UTF-8")
 
 check("SA url is seekingalpha transcripts path", {
@@ -104,6 +105,34 @@ check("SA fixture extracts order line amount", {
   length(ol) >= 1L && is.finite(ol[[1]]$amount %||% NA_real_)
 })
 disc_sa <- ynow_us_earnings_call_to_disclosure(sa)
+check("disclosure carries the sealed report, not a nested copy", {
+  kept <- ynow_supply_report_from_focus(
+    list(order_notes = "Bookings held and backlog stayed visible."),
+    source = list(
+      source_id = "sec_8k",
+      published = "2026-01-30",
+      info_updated_at = "2026-01-30",
+      info_updated_kind = "source_event"
+    )
+  )
+  shown <- ynow_us_earnings_call_to_disclosure(list(
+    status = "ok",
+    source_id = "sec_8k",
+    credibility = "filing",
+    supply_report = kept,
+    keyword_analysis = list(supply_report = list(buckets = list(orders = "HIDDEN ONLY IN ANALYSIS")))
+  ))
+  hidden <- ynow_us_earnings_call_to_disclosure(list(
+    status = "ok",
+    source_id = "sec_8k",
+    keyword_analysis = list(supply_report = kept)
+  ))
+  identical(shown$supply_report$buckets$orders, kept$buckets$orders) &&
+    length(hidden$supply_report$buckets$orders) == 0L &&
+    !grepl("HIDDEN", paste(unlist(hidden$supply_report$buckets), collapse = " "), fixed = TRUE) &&
+    is.list(disc_sa$supply_report) &&
+    identical(disc_sa$supply_report$schema, 1L)
+})
 check("disclosure carries parties for 業務拆解", {
   length(disc_sa$customers %||% list()) >= 1L &&
     length(disc_sa$suppliers %||% list()) >= 1L

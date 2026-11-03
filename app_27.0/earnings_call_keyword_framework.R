@@ -718,11 +718,6 @@ ynow_ec_attach_keyword_analysis <- function(result, text = NULL, prior = NULL) {
   focus <- ynow_ec_kw_extract_order_focus(txt)
   analysis$order_focus <- focus
   result$keyword_analysis <- analysis
-
-  # Surface fields for 業務拆解 → order-research (status-only).
-  result$keyword_order_notes <- focus$order_notes
-  result$keyword_supplier_notes <- focus$supplier_notes
-  result$keyword_customer_notes <- focus$customer_notes
   result$keyword_trap_flags <- .ynow_ec_kw_order_focus_traps(analysis, focus)
 
   # Enrich existing note buckets without inventing amounts / overwriting parties.
@@ -759,6 +754,12 @@ ynow_ec_attach_keyword_analysis <- function(result, text = NULL, prior = NULL) {
 
   # 資訊更新日期: source event date preferred; fetch time as fallback.
   result <- ynow_ec_stamp_info_updated(result)
+  # Keyword vectors are the sealed cites, so the sixth extractor sentence
+  # and a rejected line cannot outlive the ledger.
+  result$supply_report <- ynow_supply_report_from_focus(focus, source = result)
+  result$keyword_order_notes <- result$supply_report$buckets$orders
+  result$keyword_supplier_notes <- result$supply_report$buckets$suppliers
+  result$keyword_customer_notes <- result$supply_report$buckets$customers
   result
 }
 

@@ -35,6 +35,7 @@ check <- function(label, cond) {
 source("seeking_alpha_earnings_call.R", local = TRUE, encoding = "UTF-8")
 source("earnings_call_keyword_lexicon.R", local = TRUE, encoding = "UTF-8")
 source("earnings_call_keyword_framework.R", local = TRUE, encoding = "UTF-8")
+source("supply_chain_order_report.R", local = TRUE, encoding = "UTF-8")
 source("us_earnings_call.R", local = TRUE, encoding = "UTF-8")
 source("fugle_earnings_call.R", local = TRUE, encoding = "UTF-8")
 source("finmoconf_earnings_call.R", local = TRUE, encoding = "UTF-8")
@@ -142,6 +143,12 @@ check("BBLab UI keeps FinmoConf links and drops methodology walls", {
     grepl("supply_chain_notes", mod, fixed = TRUE) &&
     !grepl("bblab_or_tw_ec_finmoconf_note", mod, fixed = TRUE) &&
     !grepl("outlook_notes", mod, fixed = TRUE)
+})
+check("FinmoConf cache key follows the lexicon version", {
+  r <- paste(readLines("finmoconf_earnings_call.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("finmoconf_ec_", r, fixed = TRUE) &&
+    grepl("ynow_ec_keyword_lexicon", r, fixed = TRUE) &&
+    !grepl("finmoconf_ec_v1_", r, fixed = TRUE)
 })
 check("no /api/ calls in FinmoConf modules", {
   r <- paste(readLines("finmoconf_earnings_call.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
