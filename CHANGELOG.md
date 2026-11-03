@@ -1,3 +1,15 @@
+## [v27.81] — 2026-11-03 · Supply chain and orders conclusion report
+
+### en-US
+- Business Breakdown harvest now seals a status-only **supply chain and orders** note from the latest TW/US earnings text plus filing concentration presence.
+- The note opens when harvest finishes (orders / suppliers / customers stance + cites). Start analysis still opens disclosed amounts, the source stack, and the cross-check.
+- TW runs mount one earnings chrome slot (no duplicate US heading). Amounts are never invented.
+
+### zh-TW
+- 業務拆解擷取最新台／美法說與財報集中表後，產出僅狀態的**供應鏈與訂單**結論。
+- 擷取完成即可見（訂單／主要供應商／主要客戶語氣＋原文摘錄）。點選開始分析後才展開已揭露金額、來源層與交叉驗證。
+- 台股路徑只掛一組法說區塊（不再重複美股標題）。金額不推估。
+
 ## [v27.80] — 2026-11-03 · Cut earnings-context fluff in order research
 
 - zh-TW：業務拆解「來源、交叉驗證與法說會脈絡」只保留訂單／主要供應商／主要客戶相關線索（含資訊更新日期、可信度、有貢獻來源與有數值的交叉驗證）；移除法說開場摘錄、方法論長文、今後發展／ESG、閒置來源層、空白交叉驗證列與次層論文式說明；訂單焦點擷取略過「不是接單」／客戶庫存等雜訊句。
