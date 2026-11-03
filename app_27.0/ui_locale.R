@@ -4428,6 +4428,35 @@ locale_for_market <- function(mode = get_market_mode()) {
       "then a statement cross-check. Broker and industry sources are estimates only and ",
       "do not fill order amounts. Groups with no disclosed data stay collapsed."
     ),
+    bblab_or_supply_report_title = "Supply chain and orders",
+    bblab_or_supply_report_status_only = "Status only. This note does not restate amounts.",
+    bblab_or_supply_report_orders_mentioned = "The latest call mentions orders, backlog, or bookings.",
+    bblab_or_supply_report_orders_constrained = paste0(
+      "The latest call mentions an order constraint, such as a cut, a cancellation, ",
+      "a push-out, or duplicate ordering."
+    ),
+    bblab_or_supply_report_orders_mixed = "The latest call mentions both order status and an order constraint.",
+    bblab_or_supply_report_suppliers_mentioned = "The latest call mentions suppliers, lead time, or capacity tied to supply.",
+    bblab_or_supply_report_suppliers_constrained = paste0(
+      "The latest call mentions a supply constraint, such as a shortage, a bottleneck, ",
+      "an extended lead time, or constrained supply."
+    ),
+    bblab_or_supply_report_suppliers_mixed = "The latest call mentions both supplier status and a supply constraint.",
+    bblab_or_supply_report_customers_mentioned = "The latest call mentions customers or customer concentration.",
+    bblab_or_supply_report_filing_customers_table = paste0(
+      "The annual report or 10-K includes a customer concentration table. ",
+      "Shares stay on that chart."
+    ),
+    bblab_or_supply_report_filing_suppliers_table = paste0(
+      "The annual report or 10-K includes a supplier concentration table. ",
+      "Shares stay on that chart."
+    ),
+    bblab_or_supply_report_filing_customers_threshold = paste0(
+      "The filing states that no customer is above its disclosed concentration threshold."
+    ),
+    bblab_or_supply_report_filing_suppliers_threshold = paste0(
+      "The filing states that no supplier is above its disclosed concentration threshold."
+    ),
     bblab_or_focus_orders = "Order quantity",
     bblab_or_focus_suppliers = "Major suppliers",
     bblab_or_focus_customers = "Major-customer revenue mix",
@@ -9111,6 +9140,19 @@ locale_for_market <- function(mode = get_market_mode()) {
       "台灣來源優先序為公開資訊觀測站、公司 IR，再以財報科目交叉驗證。",
       "券商與產業來源僅供估計，不填入訂單金額。無資料的區塊維持收合。"
     ),
+    bblab_or_supply_report_title = "供應鏈與訂單",
+    bblab_or_supply_report_status_only = "僅狀態。此處不重述金額。",
+    bblab_or_supply_report_orders_mentioned = "最新法說提到訂單、在手訂單或 bookings。",
+    bblab_or_supply_report_orders_constrained = "最新法說提到訂單受限，例如砍單、取消、延期出貨或重複下單。",
+    bblab_or_supply_report_orders_mixed = "最新法說同時提到訂單狀態，以及砍單、取消或延期。",
+    bblab_or_supply_report_suppliers_mentioned = "最新法說提到供應商、交期，或與供貨有關的產能。",
+    bblab_or_supply_report_suppliers_constrained = "最新法說提到供給受限，例如缺料、產能瓶頸或交期拉長。",
+    bblab_or_supply_report_suppliers_mixed = "最新法說同時提到供應商狀態，以及缺料、瓶頸或交期拉長。",
+    bblab_or_supply_report_customers_mentioned = "最新法說提到客戶或客戶集中。",
+    bblab_or_supply_report_filing_customers_table = "年報或 10-K 有客戶集中表。占比留在該圖，此處不重述。",
+    bblab_or_supply_report_filing_suppliers_table = "年報或 10-K 有供應商集中表。占比留在該圖，此處不重述。",
+    bblab_or_supply_report_filing_customers_threshold = "財報載明沒有客戶高於其所揭露的集中門檻。",
+    bblab_or_supply_report_filing_suppliers_threshold = "財報載明沒有供應商高於其所揭露的集中門檻。",
     bblab_or_focus_orders = "訂單數量",
     bblab_or_focus_suppliers = "主要供應商",
     bblab_or_focus_customers = "重大客戶營收貢獻",
