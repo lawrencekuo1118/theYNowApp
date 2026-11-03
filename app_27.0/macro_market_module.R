@@ -629,7 +629,8 @@ macro_yahoo_chart_df <- function(symbol, range = "5d", interval = "1d") {
 }
 
 #' Last + day-chg for Macro index KPI symbols (native Yahoo currency; no FX).
-#' Prefers short chart windows; falls back to history helper only when chart fails.
+#' Prefers short chart windows; falls back to history when last **or** day-chg is missing
+#' (Yahoo IX0043.TWO often returns a single bar → level OK, 漲跌 NA).
 macro_fetch_last_quotes <- function(symbols) {
   syms <- unique(as.character(symbols %||% character(0)))
   syms <- syms[nzchar(syms) & !is.na(syms)]
@@ -646,35 +647,7 @@ macro_fetch_last_quotes <- function(symbols) {
     list(symbol = sym, last = last, chg_pct = chg)
   }
 
-  # Optional Python batch helper when already loaded. Only keep it if at least one
-  # last is finite — empty Last lists used to skip the chart fallback and leave
-  # Macro KPI dashes forever while HTCDI still scored from history.
-  py_out <- NULL
-  if (exists("get_last_quotes", mode = "function")) {
-    raw <- tryCatch(get_last_quotes(as.list(syms)), error = function(e) NULL)
-    if (is.list(raw) && !is.null(raw$Symbol)) {
-      out <- list()
-      n <- length(raw$Symbol)
-      for (i in seq_len(n)) {
-        sym <- as.character(raw$Symbol[[i]] %||% "")[1]
-        if (!nzchar(sym)) next
-        out[[length(out) + 1L]] <- list(
-          symbol = sym,
-          last = suppressWarnings(as.numeric(raw$Last[[i]] %||% NA_real_)[1]),
-          chg_pct = suppressWarnings(as.numeric(raw$ChangePct[[i]] %||% NA_real_)[1])
-        )
-      }
-      if (length(out) && any(vapply(out, function(r) is.finite(r$last), logical(1)))) {
-        py_out <- out
-      }
-    }
-  }
-  if (!is.null(py_out)) return(py_out)
-
-  lapply(syms, function(sym) {
-    df <- tryCatch(macro_yahoo_chart_df(sym, "5d"), error = function(e) NULL)
-    row <- .from_closes_df(sym, df)
-    if (is.finite(row$last)) return(row)
+  .history_row <- function(sym) {
     df2 <- tryCatch({
       if (exists("fetch_price_history_df", mode = "function")) {
         fetch_price_history_df(sym, "5d")
@@ -683,6 +656,56 @@ macro_fetch_last_quotes <- function(symbols) {
       }
     }, error = function(e) NULL)
     .from_closes_df(sym, df2)
+  }
+
+  # Prefer a row that has both last and day-chg. Thin Yahoo tapes (e.g. 櫃買指數)
+  # often return last without ChangePct / with a single close — continue to
+  # fetch_price_history_df (TPEx official tradingIndex for IX0043.TWO).
+  .prefer_complete <- function(sym, primary) {
+    row <- primary
+    if (!is.list(row)) {
+      row <- list(symbol = sym, last = NA_real_, chg_pct = NA_real_)
+    }
+    if (is.finite(row$last) && is.finite(row$chg_pct)) return(row)
+    hist <- .history_row(sym)
+    if (is.finite(hist$chg_pct)) {
+      # Keep last/chg from the same tape so the % matches the printed level.
+      return(hist)
+    }
+    if (is.finite(row$last)) return(row)
+    hist
+  }
+
+  # Optional Python batch helper when already loaded. Only keep it if at least one
+  # last is finite — empty Last lists used to skip the chart fallback and leave
+  # Macro KPI dashes forever while HTCDI still scored from history.
+  py_map <- list()
+  if (exists("get_last_quotes", mode = "function")) {
+    raw <- tryCatch(get_last_quotes(as.list(syms)), error = function(e) NULL)
+    if (is.list(raw) && !is.null(raw$Symbol)) {
+      n <- length(raw$Symbol)
+      for (i in seq_len(n)) {
+        sym <- as.character(raw$Symbol[[i]] %||% "")[1]
+        if (!nzchar(sym)) next
+        py_map[[sym]] <- list(
+          symbol = sym,
+          last = suppressWarnings(as.numeric(raw$Last[[i]] %||% NA_real_)[1]),
+          chg_pct = suppressWarnings(as.numeric(raw$ChangePct[[i]] %||% NA_real_)[1])
+        )
+      }
+      if (!length(py_map) ||
+          !any(vapply(py_map, function(r) is.finite(r$last), logical(1)))) {
+        py_map <- list()
+      }
+    }
+  }
+
+  lapply(syms, function(sym) {
+    if (!is.null(py_map[[sym]])) {
+      return(.prefer_complete(sym, py_map[[sym]]))
+    }
+    df <- tryCatch(macro_yahoo_chart_df(sym, "5d"), error = function(e) NULL)
+    .prefer_complete(sym, .from_closes_df(sym, df))
   })
 }
 
@@ -961,6 +984,37 @@ macro_market_server <- function(id = "macro",
       if (is.null(tab_active_rv)) return(TRUE)
       isTRUE(tryCatch(tab_active_rv(), error = function(e) TRUE))
     }
+    # When Macro is left mid-quote / mid-HTCDI, ticks abort without clearing
+    # loading. Stash a resume closure and re-arm when the tab becomes active again
+    # so 計算中 does not stick forever until Refresh.
+    .fetch_resume <- new.env(parent = emptyenv())
+    .arm_resume <- function(slot, token, resume_fn) {
+      .fetch_resume[[slot]] <- list(token = token, resume = resume_fn)
+      invisible(NULL)
+    }
+    .clear_resume <- function(slot) {
+      if (exists(slot, envir = .fetch_resume, inherits = FALSE)) {
+        rm(list = slot, envir = .fetch_resume)
+      }
+      invisible(NULL)
+    }
+    .run_resume_if <- function(slot, token) {
+      hit <- .fetch_resume[[slot]]
+      if (is.null(hit)) return(invisible(NULL))
+      if (!identical(hit$token, token)) {
+        .clear_resume(slot)
+        return(invisible(NULL))
+      }
+      .clear_resume(slot)
+      fn <- hit$resume
+      if (!is.function(fn)) return(invisible(NULL))
+      if (requireNamespace("later", quietly = TRUE)) {
+        later::later(function() tryCatch(fn(), error = function(e) NULL), delay = 0)
+      } else {
+        tryCatch(fn(), error = function(e) NULL)
+      }
+      invisible(NULL)
+    }
     .ui <- function(key, ...) {
       if (exists("ui_str", mode = "function")) {
         tryCatch(ui_str(key, .loc(), ...), error = function(e) key)
@@ -1234,6 +1288,7 @@ macro_market_server <- function(id = "macro",
         gen <- isolate(as.integer(index_quotes_gen()) %||% 0L) + 1L
         index_quotes_gen(gen)
         index_quotes_rv(skeleton)
+        .clear_resume("quotes")
         # Short-window chart quotes (or get_last_quotes). Finish the whole strip
         # before HTCDI so Yahoo-gate Sys.sleep inside HTCDI cannot starve DJI/SOX.
         .fetch_one <- function(i, acc) {
@@ -1241,8 +1296,10 @@ macro_market_server <- function(id = "macro",
             return(invisible(NULL))
           }
           if (!isTRUE(.tab_active())) {
+            .arm_resume("quotes", gen, function() .fetch_one(i, acc))
             return(invisible(NULL))
           }
+          .clear_resume("quotes")
           if (i > length(syms)) {
             tryCatch(index_quotes_rv(acc), error = function(e) NULL)
             # Signal completion; HTCDI observer below starts only after this gen.
@@ -1762,12 +1819,24 @@ macro_market_server <- function(id = "macro",
     }
     .htcdi_enrich_fs <- function(job_id, cfg0, issuers0, price_map0, bench_df0) {
       if (!identical(isolate(htcdi_job()), job_id)) return()
-      if (!isTRUE(.tab_active())) return()
+      if (!isTRUE(.tab_active())) {
+        # Phase A already painted a composite; restart statements from the top on resume.
+        .arm_resume("htcdi_fs", job_id, function() {
+          .htcdi_enrich_fs(job_id, cfg0, issuers0, price_map0, bench_df0)
+        })
+        return()
+      }
+      .clear_resume("htcdi_fs")
       if (!exists("cached_scrape_financials", mode = "function")) return()
       fs_map <- list()
       for (iss in issuers0) {
         if (!identical(isolate(htcdi_job()), job_id)) return()
-        if (!isTRUE(.tab_active())) return()
+        if (!isTRUE(.tab_active())) {
+          .arm_resume("htcdi_fs", job_id, function() {
+            .htcdi_enrich_fs(job_id, cfg0, issuers0, price_map0, bench_df0)
+          })
+          return()
+        }
         tk <- as.character(iss$tickers[[1]] %||% "")[1]
         if (!nzchar(tk)) next
         itype <- tolower(as.character(iss$instrument_type %||% "")[1])
@@ -1788,6 +1857,8 @@ macro_market_server <- function(id = "macro",
       job <- isolate(htcdi_job()) + 1L
       htcdi_job(job)
       htcdi_val(list(availability = "loading"))
+      .clear_resume("htcdi")
+      .clear_resume("htcdi_fs")
       cfg <- if (exists("htcdi_load_config", mode = "function")) {
         tryCatch(htcdi_load_config(), error = function(e) NULL)
       } else {
@@ -1806,7 +1877,11 @@ macro_market_server <- function(id = "macro",
 
       .fetch_price_i <- function(i) {
         if (!identical(isolate(htcdi_job()), job)) return()
-        if (!isTRUE(.tab_active())) return()
+        if (!isTRUE(.tab_active())) {
+          .arm_resume("htcdi", job, function() .fetch_price_i(i))
+          return()
+        }
+        .clear_resume("htcdi")
         if (i > length(issuers)) {
           if (exists("fetch_price_history_df", mode = "function")) {
             state$bench_df <- tryCatch(
@@ -1867,8 +1942,23 @@ macro_market_server <- function(id = "macro",
       if (!identical(gen, isolate(as.integer(index_quotes_gen()) %||% 0L))) return()
       .queue_htcdi()
     }, ignoreInit = TRUE)
+    # Resume paused quote / HTCDI ticks when Macro becomes active again.
+    if (!is.null(tab_active_rv)) {
+      observeEvent(
+        tab_active_rv(),
+        {
+          if (!isTRUE(.tab_active())) return()
+          .run_resume_if("quotes", isolate(as.integer(index_quotes_gen()) %||% 0L))
+          .run_resume_if("htcdi", isolate(htcdi_job()))
+          .run_resume_if("htcdi_fs", isolate(htcdi_job()))
+        },
+        ignoreInit = TRUE
+      )
+    }
     observeEvent(refresh_token(), {
       htcdi_val(NULL)
+      .clear_resume("htcdi")
+      .clear_resume("htcdi_fs")
       # Quotes observer also listens to refresh_token and will re-signal ready.
     }, ignoreInit = TRUE)
     htcdi_result <- reactive(htcdi_val())

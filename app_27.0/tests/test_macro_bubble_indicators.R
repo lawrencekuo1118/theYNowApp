@@ -114,6 +114,44 @@ for (k in c(
   check(paste("en", k), nzchar(ui_str(k, "en")))
   check(paste("zh", k), nzchar(ui_str(k, "zh-TW")))
 }
+check(
+  "Buffett over wording is desk-style en",
+  identical(ui_str("macro_bubble_buffett_over", "en"), "Elevated (rich vs history)")
+)
+check(
+  "Buffett fair wording is desk-style en",
+  identical(ui_str("macro_bubble_buffett_fair", "en"), "In line with history")
+)
+check(
+  "Buffett under wording is desk-style en",
+  identical(ui_str("macro_bubble_buffett_under", "en"), "Cheap vs history")
+)
+check(
+  "Buffett over wording is TW desk zh",
+  identical(ui_str("macro_bubble_buffett_over", "zh-TW"), "偏貴（高於歷史均值區間）")
+)
+check(
+  "Buffett fair wording is TW desk zh",
+  identical(ui_str("macro_bubble_buffett_fair", "zh-TW"), "合理區間")
+)
+check(
+  "Buffett under wording is TW desk zh",
+  identical(ui_str("macro_bubble_buffett_under", "zh-TW"), "偏便宜（低於歷史均值區間）")
+)
+check(
+  "Buffett level label is TW desk zh",
+  identical(ui_str("macro_bubble_buffett_level", "zh-TW"), "評價區間")
+)
+check(
+  "Buffett zh has no bilingual English parentheticals",
+  !grepl("Significantly Overvalued|Fairly Valued|Undervalued",
+         paste(
+           ui_str("macro_bubble_buffett_over", "zh-TW"),
+           ui_str("macro_bubble_buffett_fair", "zh-TW"),
+           ui_str("macro_bubble_buffett_under", "zh-TW")
+         ),
+         perl = TRUE)
+)
 
 # UI mounts chapter on Macro (page bottom), not YNOW
 dec_src <- paste(readLines("investment_decision_module.R", warn = FALSE), collapse = "\n")
