@@ -7,5 +7,5 @@ commit=44be81011b9d2cb435ad5421945741073fcc33b3
 short=44be8101
 message=chore: record shipped display version v27.76
 captured_at=2026-11-02T17:52:35Z
-display_version=v27.76
+display_version=v27.77
 note=Gold KPI frame border-only (#613); mask-composite hollow ring, no cell fill. Running bundle 12770339. Deployed with extracted R 4.6.1 (host 4.6.2 unsupported on shinyapps jammy). Soft-skip Mac sync via PENDING_MAC_SYNC handoff (Cloud).
