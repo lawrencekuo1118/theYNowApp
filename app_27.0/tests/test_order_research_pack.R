@@ -376,12 +376,11 @@ if (requireNamespace("shiny", quietly = TRUE) && requireNamespace("plotly", quie
   source("business_breakdown_module.R", local = TRUE, encoding = "UTF-8")
   html_en <- paste(as.character(bblab_order_research_panel_ui(ranged, "en", TRUE)), collapse = " ")
   check("panel leads with the three buckets", {
-    primary <- sub("ynow-bblab-or__secondary.*", "", html_en)
-    grepl("Order quantity", primary, fixed = TRUE) &&
-      grepl("Major suppliers", primary, fixed = TRUE) &&
-      grepl("Major-customer revenue mix", primary, fixed = TRUE) &&
-      !grepl("Gross margin", primary, fixed = TRUE) &&
-      grepl("ynow-bblab-or__secondary", html_en, fixed = TRUE) &&
+    grepl("Order quantity", html_en, fixed = TRUE) &&
+      grepl("Major suppliers", html_en, fixed = TRUE) &&
+      grepl("Major-customer revenue mix", html_en, fixed = TRUE) &&
+      !grepl("Gross margin", html_en, fixed = TRUE) &&
+      !grepl("ynow-bblab-or__secondary", html_en, fixed = TRUE) &&
       !grepl("Bear", html_en, fixed = TRUE) &&
       !grepl("Bull", html_en, fixed = TRUE)
   })
@@ -399,13 +398,12 @@ if (requireNamespace("shiny", quietly = TRUE) && requireNamespace("plotly", quie
       !grepl("Sources and credibility", html_orders_only, fixed = TRUE)
   })
   check("meta helper has sources without focus buckets", {
-    meta_primary <- sub("ynow-bblab-or__secondary.*", "", html_meta_only)
-    grepl("Sources and credibility", meta_primary, fixed = TRUE) &&
-      grepl("Cross-check", meta_primary, fixed = TRUE) &&
+    grepl("Sources and credibility", html_meta_only, fixed = TRUE) &&
+      grepl("Cross-check", html_meta_only, fixed = TRUE) &&
       !grepl("data-focus=\"orders\"", html_meta_only, fixed = TRUE) &&
-      !grepl("Order quantity", meta_primary, fixed = TRUE) &&
-      !grepl("Gross margin", meta_primary, fixed = TRUE) &&
-      grepl("ynow-bblab-or__secondary", html_meta_only, fixed = TRUE)
+      !grepl("Order quantity", html_meta_only, fixed = TRUE) &&
+      !grepl("Gross margin", html_meta_only, fixed = TRUE) &&
+      !grepl("ynow-bblab-or__secondary", html_meta_only, fixed = TRUE)
   })
   html_focus <- paste(as.character(bblab_order_research_panel_ui(focused, "en", TRUE)), collapse = " ")
   check("panel labels earnings-call provenance",
@@ -415,17 +413,16 @@ if (requireNamespace("shiny", quietly = TRUE) && requireNamespace("plotly", quie
           grepl("SEC filing", html_focus, fixed = TRUE) &&
           grepl("Confirmed", html_focus, fixed = TRUE) &&
           grepl("Management", html_focus, fixed = TRUE))
-  check("panel shows sources and cross-check before secondary layers", {
-    primary <- sub("ynow-bblab-or__secondary.*", "", html_en)
-    grepl("Sources and credibility", primary, fixed = TRUE) &&
-      grepl("Cross-check", primary, fixed = TRUE) &&
-      grepl("These statement lines are a cross-check. They are not Backlog.", primary, fixed = TRUE) &&
-      grepl("data-xcheck=\"inventory\"", primary, fixed = TRUE) &&
-      !grepl("data-xcheck=\"contract_assets\"", primary, fixed = TRUE) &&
-      !grepl("Inventory is a statement cross-check. It is not Backlog.", primary, fixed = TRUE) &&
-      grepl("MOPS filing", primary, fixed = TRUE) &&
-      grepl("ynow-bblab-or__secondary", html_en, fixed = TRUE) &&
-      !grepl("Gross margin", primary, fixed = TRUE)
+  check("panel shows sources and cross-check without secondary essays", {
+    grepl("Sources and credibility", html_en, fixed = TRUE) &&
+      grepl("Cross-check", html_en, fixed = TRUE) &&
+      grepl("These statement lines are a cross-check. They are not Backlog.", html_en, fixed = TRUE) &&
+      grepl("data-xcheck=\"inventory\"", html_en, fixed = TRUE) &&
+      !grepl("data-xcheck=\"contract_assets\"", html_en, fixed = TRUE) &&
+      !grepl("Inventory is a statement cross-check. It is not Backlog.", html_en, fixed = TRUE) &&
+      grepl("MOPS filing", html_en, fixed = TRUE) &&
+      !grepl("ynow-bblab-or__secondary", html_en, fixed = TRUE) &&
+      !grepl("Gross margin", html_en, fixed = TRUE)
   })
   check("idle source tiers stay off the meta list", {
     grepl("data-tier=\"mops_filing\"", html_en, fixed = TRUE) &&
@@ -543,6 +540,8 @@ if (requireNamespace("shiny", quietly = TRUE) && requireNamespace("plotly", quie
         "略過全文地圖",
         "閱讀陷阱"
       )) &&
+      !grepl("ynow-bblab-or__secondary", html_fluff_en, fixed = TRUE) &&
+      !grepl("ynow-bblab-or__secondary", html_fluff_zh, fixed = TRUE) &&
       grepl("FALLBACK_ORDER visibility held", html_fallback_en, fixed = TRUE) &&
       grepl("主要供應商 fallback wafer", html_fallback_zh, fixed = TRUE) &&
       .absent(html_fallback_zh, c("今後發展", "OUTLOOK")) &&

@@ -886,50 +886,13 @@ bblab_order_research_focus_ui <- function(pack, locale = "en", started = FALSE,
   tags$div(class = "ynow-bblab-or__focuses", focus)
 }
 
-#' Sources, cross-check, earnings-call context, and secondary layers (no focus buckets).
+#' Sources, cross-check, and order-focus earnings cues (no focus buckets).
 bblab_order_research_meta_ui <- function(pack, locale = "en", started = FALSE) {
   msg <- function(key) .bblab_ui(key, locale)
   if (!isTRUE(started)) return(tags$p(class = "help-block", msg("bblab_or_idle")))
   if (!is.list(pack) || !length(pack$kpis)) {
     return(tags$p(class = "help-block", msg("bblab_or_waiting")))
   }
-  layers <- lapply(pack$layers %||% list(), function(layer) {
-    key <- .bblab_chr(layer$key, "")
-    bits <- lapply(layer$metrics %||% list(), function(m) {
-      mid <- .bblab_chr(m$id, "")
-      label <- msg(paste0("bblab_or_metric_", mid))
-      if (identical(label, paste0("bblab_or_metric_", mid))) label <- msg(paste0("bblab_or_kpi_", mid))
-      val <- if (nzchar(.bblab_chr(m$text, ""))) {
-        .bblab_chr(m$text, "")
-      } else if (is.finite(.bblab_num(m$value)) && !identical(m$unit, "flag")) {
-        .or_fmt_value(m$value, m$unit)
-      } else if (identical(m$status, "REPORTED") && identical(m$unit, "flag")) {
-        msg("bblab_or_disclosed_flag")
-      } else {
-        .or_gap_text(m$gap, locale)
-      }
-      tags$li(tags$b(paste0(label, ": ")), val)
-    })
-    ev_bits <- lapply(layer$evidence %||% list(), function(ev) {
-      if (!identical(ev$basis, "revenue_not_orders")) return(NULL)
-      tags$li(
-        msg("bblab_or_revenue_concentration"), " ",
-        .or_fmt_value(ev$value, "ratio"),
-        " (", .bblab_chr(ev$source, ""), ")"
-      )
-    })
-    tags$details(
-      tags$summary(
-        paste0(
-          msg(paste0("bblab_or_layer_", key)),
-          " · ",
-          msg(paste0("bblab_or_status_", .bblab_chr(layer$status, "gap")))
-        )
-      ),
-      tags$p(class = "help-block", msg(.bblab_chr(layer$note_key, ""))),
-      tags$ul(bits, ev_bits)
-    )
-  })
   stack_src <- Filter(function(t) isTRUE(t$contributed), pack$source_stack %||% list())
   stack_bits <- lapply(stack_src, function(t) {
     tid <- .bblab_chr(t$id, "")
@@ -1200,20 +1163,25 @@ bblab_order_research_meta_ui <- function(pack, locale = "en", started = FALSE) {
       link_row
     )
   }
-  tagList(
-    us_block,
-    tw_block,
+  sources_block <- if (length(stack_bits)) {
     tags$div(
       class = "ynow-bblab-or__sources",
       tags$p(tags$b(msg("bblab_or_sources_title"))),
       tags$ul(stack_bits)
-    ),
-    x_block,
-    tags$details(
-      class = "ynow-bblab-or__secondary",
-      tags$summary(msg("bblab_or_secondary")),
-      tags$div(class = "ynow-bblab-or__layers", layers)
     )
+  } else {
+    tags$div(
+      class = "ynow-bblab-or__sources ynow-bblab-or__sources--empty",
+      tags$p(tags$b(msg("bblab_or_sources_title"))),
+      tags$p(class = "help-block", msg("bblab_or_sources_empty"))
+    )
+  }
+  # Secondary six-layer essays stay off this panel; focus buckets already carry disclosed facts.
+  tagList(
+    us_block,
+    tw_block,
+    sources_block,
+    x_block
   )
 }
 

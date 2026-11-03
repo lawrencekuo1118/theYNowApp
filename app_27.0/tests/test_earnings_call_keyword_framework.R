@@ -128,6 +128,32 @@ check("order-focus harvests order notes", length(focus$order_notes) >= 1L)
 check("order-focus harvests supplier notes", length(focus$supplier_notes) >= 1L)
 check("order-focus harvests customer notes", length(focus$customer_notes) >= 1L)
 
+negation_mix <- paste(
+  "我想強調的是，另一方面毛利率改善來自產品組合，不是接單。",
+  "What I would rather emphasize is gross margin mix, not bookings.",
+  "客戶庫存去化仍在進行，通路庫存壓力使 ASP 承壓。",
+  "在手訂單能見度維持約一個季度。",
+  "主要供應商交期已回穩。",
+  "最大客戶營收占比約一成。",
+  sep = " "
+)
+neg_focus <- ynow_ec_kw_extract_order_focus(negation_mix)
+check("order-focus drops 不是接單 negation", {
+  !any(grepl("不是接單", neg_focus$order_notes %||% character(0), fixed = TRUE))
+})
+check("order-focus drops not bookings negation", {
+  !any(grepl("not bookings", neg_focus$order_notes %||% character(0), ignore.case = TRUE))
+})
+check("order-focus drops 客戶庫存 channel fluff", {
+  !any(grepl("客戶庫存|通路庫存|ASP", neg_focus$customer_notes %||% character(0)))
+})
+check("order-focus still keeps real order cue amid negation", {
+  any(grepl("在手訂單", neg_focus$order_notes %||% character(0), fixed = TRUE))
+})
+check("order-focus still keeps real supplier cue amid negation", {
+  any(grepl("主要供應商", neg_focus$supplier_notes %||% character(0), fixed = TRUE))
+})
+
 # Attach onto a fetch-shaped result without inventing amounts.
 base <- list(
   ok = TRUE,
