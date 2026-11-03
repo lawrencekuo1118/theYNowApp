@@ -51,6 +51,7 @@ check("kpi-grid alertable bell inset", grepl(".ynow-kpi-grid .ynow-alertable .yn
 check("kpi-grid alertable col safety", grepl(".ynow-kpi-grid .ynow-alertable > [class*='col-']", ui, fixed = TRUE))
 check("focus vine frame", grepl("@keyframes ynow-focus-vine-breathe", ui, fixed = TRUE) &&
         grepl("ynow-vine-kpi-frame.png", ui, fixed = TRUE) &&
+        grepl("border-image-source:", ui, fixed = TRUE) &&
         grepl("animation: ynow-focus-vine-breathe", ui, fixed = TRUE))
 # Value-alert marks: colorless translucent on light cards (no ready/hover blue tint)
 check("alert bell colorless translucent", {

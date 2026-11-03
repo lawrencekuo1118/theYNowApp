@@ -239,6 +239,8 @@ check("badge flow override not second animation", grepl(".ynow-fund-profile-badg
 check("Rf still excluded from flow", grepl(".ynow-macro-kpi--rf .ynow-htcdi-flow", ui_txt, fixed = TRUE))
 check("CSS focus frame on focus KPI", grepl(".small-box.ynow-focus-metric-box", ui_txt, fixed = TRUE))
 check("CSS focus vine frame asset", grepl("ynow-vine-kpi-frame.png", ui_txt, fixed = TRUE))
+check("CSS focus vine border-image perimeter", grepl("border-image-source:", ui_txt, fixed = TRUE) &&
+        grepl("border-image-slice:", ui_txt, fixed = TRUE))
 check("CSS focus vine breathe keyframes", grepl("@keyframes ynow-focus-vine-breathe", ui_txt, fixed = TRUE) &&
         grepl("animation: ynow-focus-vine-breathe", ui_txt, fixed = TRUE))
 check("legend uses border swatch", grepl("ynow-focus-metric-swatch", ui_txt, fixed = TRUE))

@@ -61,6 +61,19 @@ check("legacy gold SVG url removed", !grepl("ynow-gold-kpi-frame.svg", ui, fixed
 check("static 3px gold border removed", !grepl("border: 3px solid var(--ynow-gold", ui, fixed = TRUE))
 check("legacy pulse keyframes removed", !grepl("@keyframes ynow-focus-gold-pulse", ui, fixed = TRUE))
 
+# Perimeter wrap: 9-slice border-image (not stretched full-bleed background).
+check("focus frame uses border-image-source", grepl("border-image-source: url('ynow-vine-kpi-frame.png')", ui, fixed = TRUE))
+check("focus frame uses border-image-slice", grepl("border-image-slice:", ui, fixed = TRUE))
+check("focus frame uses border-image-outset", grepl("border-image-outset:", ui, fixed = TRUE))
+check("no stretch full-bleed vine background", {
+  !grepl("ynow-vine-kpi-frame.png') center / 100% 100%", ui, fixed = TRUE) &&
+    !grepl('ynow-vine-kpi-frame.png") center / 100% 100%', ui, fixed = TRUE)
+})
+check("FS focus uses thinner vine band", {
+  grepl("ynow-fs-card.ynow-focus-metric-box::before", ui, fixed = TRUE) &&
+    grepl("border-image-width: 20px", ui, fixed = TRUE)
+})
+
 # Border-only: no ::after fill ring / gold wash.
 check("focus ::after disabled (no fill wash)", {
   grepl("ynow-focus-metric-box::after", ui, fixed = TRUE) &&
