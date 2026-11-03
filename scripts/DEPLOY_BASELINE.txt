@@ -7,5 +7,5 @@ commit=0fc0632e38d3e9eee2c1b65055195436c44ddc5d
 short=0fc0632e
 message=chore: bump display version to v27.80
 captured_at=2026-11-03T05:13:50Z
-display_version=v27.80
+display_version=v27.81
 note=Cut earnings-context fluff in order research (#621). Running bundle 12772505. Deployed with extracted R 4.6.1 (host 4.6.2 unsupported on shinyapps jammy). Soft-skip Mac sync via PENDING_MAC_SYNC handoff (Cloud).
