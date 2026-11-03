@@ -58,7 +58,8 @@ if (!exists("%||%", mode = "function")) {
     paste(
       c(
         "客戶庫存", "通路庫存", "channel inventory", "customer inventory",
-        "庫存去化", "inventory digestion"
+        "庫存去化", "庫存消化", "去庫存", "inventory digestion",
+        "destocking", "inventory correction"
       ),
       collapse = "|"
     ),
@@ -665,9 +666,8 @@ ynow_ec_kw_extract_order_focus <- function(text, lex = NULL, max_n = 6L) {
   parts <- .ynow_ec_kw_split_sentences(text)
   if (!length(parts)) return(empty)
   role_pats <- function(role) {
-    node <- lex[[role]]
-    if (is.null(node)) return(character(0))
-    c(as.character(node$zh %||% character(0)), as.character(node$en %||% character(0)))
+    if (!exists("ynow_ec_lexicon_tokens", mode = "function")) return(character(0))
+    ynow_ec_lexicon_tokens(role, kind = "any", lex = lex)
   }
   list(
     order_notes = .ynow_ec_kw_pick_order_focus(parts, role_pats("orders"), max_n),

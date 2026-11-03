@@ -44,6 +44,35 @@ check("lexicon encodes steps 2–4 + order focus + traps", {
 check("order/supplier/customer roles present", {
   all(c("orders", "suppliers", "customers", "positive", "warning", "capex", "bridging") %in% names(lex))
 })
+check("lexicon version is 3", identical(lex$version, "3"))
+check("surface roles are items and scorer roles stay zh/en", {
+  surface <- c("orders", "suppliers", "customers")
+  no_lang <- all(vapply(surface, function(role) {
+    node <- lex[[role]]
+    is.list(node$items) && is.null(node$zh) && is.null(node$en)
+  }, logical(1)))
+  scorers <- c("positive", "warning", "capex", "inventory_pricing")
+  kept <- all(vapply(scorers, function(role) {
+    node <- lex[[role]]
+    is.character(node$zh) && is.character(node$en)
+  }, logical(1)))
+  no_lang && kept
+})
+check("constraint tokens are a subset of any", {
+  roles <- c("orders", "suppliers", "customers")
+  all(vapply(roles, function(role) {
+    any_p <- ynow_ec_lexicon_tokens(role, "any", lex)
+    con_p <- ynow_ec_lexicon_tokens(role, "constraint", lex)
+    all(con_p %in% any_p)
+  }, logical(1))) &&
+    length(ynow_ec_lexicon_tokens("customers", "constraint", lex)) == 0L &&
+    length(ynow_ec_lexicon_tokens("orders", "constraint", lex)) > 0L
+})
+check("pattern and hits read the same tokens", {
+  pat <- ynow_ec_lexicon_pattern("orders", lex)
+  grepl("急單", pat, fixed = TRUE) &&
+    "急單" %in% ynow_ec_lexicon_hits("本季急單增加。", "orders", lex)
+})
 
 empty <- ynow_ec_keyword_analyze("")
 check("blank text → honest empty", identical(empty$status, "empty") && !isTRUE(empty$ok))
@@ -146,6 +175,23 @@ check("order-focus drops not bookings negation", {
 })
 check("order-focus drops 客戶庫存 channel fluff", {
   !any(grepl("客戶庫存|通路庫存|ASP", neg_focus$customer_notes %||% character(0)))
+})
+digest <- paste(
+  "庫存消化仍在進行，在手訂單未變。",
+  "客戶正在去庫存，訂單能見度下降。",
+  "Customer destocking continued while backlog held.",
+  "The quarter reflected an inventory correction in bookings.",
+  "急單增加，交期維持。",
+  "主要客戶銷貨占比穩定。",
+  sep = ""
+)
+dig_focus <- ynow_ec_kw_extract_order_focus(digest)
+check("order-focus drops digestion and destocking sentences", {
+  blob <- paste(unlist(dig_focus), collapse = " ")
+  !grepl("庫存消化|去庫存|destocking|inventory correction", blob, ignore.case = TRUE)
+})
+check("order-focus keeps a gap-fill order cue", {
+  any(grepl("急單", dig_focus$order_notes %||% character(0), fixed = TRUE))
 })
 check("order-focus still keeps real order cue amid negation", {
   any(grepl("在手訂單", neg_focus$order_notes %||% character(0), fixed = TRUE))
