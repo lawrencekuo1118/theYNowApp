@@ -53,6 +53,11 @@ check("focus vine frame", grepl("@keyframes ynow-focus-vine-breathe", ui, fixed 
         grepl("ynow-vine-kpi-frame.png", ui, fixed = TRUE) &&
         grepl("border-image-source:", ui, fixed = TRUE) &&
         grepl("animation: ynow-focus-vine-breathe", ui, fixed = TRUE))
+# Vine focus stacking must keep AdminLTE icon absolute so V-center holds.
+check("focus vine stacking leaves icon out of flex", {
+  grepl(".small-box.ynow-focus-metric-box > .inner", ui, fixed = TRUE) &&
+    !grepl(".small-box.ynow-focus-metric-box > *", ui, fixed = TRUE)
+})
 # Value-alert marks: colorless translucent on light cards (no ready/hover blue tint)
 check("alert bell colorless translucent", {
   grepl("color: rgba(0, 0, 0, 0.35)", ui, fixed = TRUE) &&
