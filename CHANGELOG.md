@@ -1,3 +1,15 @@
+## [v27.82] — 2026-11-03 · TW Macro OTC day-chg, HTCDI resume, Buffett desk wording
+
+### en-US
+- Macro KPI for TPEx / 櫃買指數 (`IX0043.TWO`) now falls back to the official TPEx tape when Yahoo returns a level without day change, so 漲跌 paints with the other boards.
+- Leaving Macro mid-quote / mid-HTCDI no longer leaves HTCDI stuck on Loading — paused ticks resume when the tab becomes active again.
+- Buffett Indicator valuation zones use desk phrasing: Elevated / In line with history / Cheap vs history (en-US) and 偏貴／合理區間／偏便宜 (zh-TW).
+
+### zh-TW
+- 總體經濟 KPI 的櫃買指數（`IX0043.TWO`）在 Yahoo 只有水位、沒有漲跌時，改走櫃買官方日成交指數序列補齊漲跌幅。
+- 離開「總體經濟」中斷擷取後，HTCDI 不再一直停在「計算中」；回到該分頁會接續未完成的報價／HTCDI 工作。
+- 巴菲特指標評價區間用語改為台灣投資界常用：偏貴（高於歷史均值區間）／合理區間／偏便宜（低於歷史均值區間）。
+
 ## [v27.81] — 2026-11-03 · Supply chain and orders conclusion report
 
 ### en-US
