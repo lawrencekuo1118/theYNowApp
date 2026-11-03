@@ -696,6 +696,65 @@ check("fast quote helpers present", {
 check("KPI strip uses macro_fetch_last_quotes", {
   grepl("macro_fetch_last_quotes", txt, fixed = TRUE)
 })
+check("macro quotes fall back when day-chg missing", {
+  grepl(".prefer_complete", txt, fixed = TRUE) &&
+    grepl("is.finite(row$last) && is.finite(row$chg_pct)", txt, fixed = TRUE) &&
+    grepl(".history_row", txt, fixed = TRUE)
+})
+check("thin Yahoo last without chg uses history tape", {
+  # Stub a 1-bar Yahoo chart (level only) and a 2-bar history with day chg
+  # in the enclosing env of macro_fetch_last_quotes (source(..., local = TRUE)).
+  env <- environment(macro_fetch_last_quotes)
+  old_chart <- get("macro_yahoo_chart_df", envir = env, inherits = FALSE)
+  had_hist_local <- exists("fetch_price_history_df", envir = env, inherits = FALSE)
+  old_hist <- if (had_hist_local) {
+    get("fetch_price_history_df", envir = env, inherits = FALSE)
+  } else {
+    NULL
+  }
+  had_py_local <- exists("get_last_quotes", envir = env, inherits = FALSE)
+  old_py <- if (had_py_local) get("get_last_quotes", envir = env, inherits = FALSE) else NULL
+  assign(
+    "macro_yahoo_chart_df",
+    function(symbol, range = "5d", interval = "1d") {
+      data.frame(
+        Date = as.Date("2026-11-03"),
+        Close = 345.52,
+        stringsAsFactors = FALSE
+      )
+    },
+    envir = env
+  )
+  assign(
+    "fetch_price_history_df",
+    function(symbol, period = "5d", ...) {
+      data.frame(
+        Date = as.Date(c("2026-11-02", "2026-11-03")),
+        Close = c(369.2, 345.52),
+        stringsAsFactors = FALSE
+      )
+    },
+    envir = env
+  )
+  # Mask any inherited Python batch helper so the R chart→history path runs.
+  assign("get_last_quotes", function(...) stop("skip py in unit test"), envir = env)
+  on.exit({
+    assign("macro_yahoo_chart_df", old_chart, envir = env)
+    if (had_hist_local) {
+      assign("fetch_price_history_df", old_hist, envir = env)
+    } else if (exists("fetch_price_history_df", envir = env, inherits = FALSE)) {
+      rm("fetch_price_history_df", envir = env)
+    }
+    if (had_py_local) {
+      assign("get_last_quotes", old_py, envir = env)
+    } else if (exists("get_last_quotes", envir = env, inherits = FALSE)) {
+      rm("get_last_quotes", envir = env)
+    }
+  }, add = TRUE)
+  got <- macro_fetch_last_quotes("IX0043.TWO")[[1]]
+  is.finite(got$last) && is.finite(got$chg_pct) &&
+    abs(got$chg_pct - 100 * (345.52 / 369.2 - 1)) < 1e-6
+})
 check("HTCDI waits for index quotes ready", {
   grepl("index_quotes_ready_gen", txt, fixed = TRUE) &&
     grepl("observeEvent(index_quotes_ready_gen()", txt, fixed = TRUE) &&
@@ -704,6 +763,13 @@ check("HTCDI waits for index quotes ready", {
 check("HTCDI phases prices then statements", {
   grepl(".htcdi_enrich_fs", txt, fixed = TRUE) &&
     grepl(".htcdi_score_from_maps", txt, fixed = TRUE)
+})
+check("Macro resumes quote/HTCDI after tab leave", {
+  grepl(".fetch_resume", txt, fixed = TRUE) &&
+    grepl(".arm_resume(\"quotes\"", txt, fixed = TRUE) &&
+    grepl(".arm_resume(\"htcdi\"", txt, fixed = TRUE) &&
+    grepl(".run_resume_if(\"quotes\"", txt, fixed = TRUE) &&
+    grepl(".run_resume_if(\"htcdi\"", txt, fixed = TRUE)
 })
 check("locale dropped rf note wiring", !grepl("ynow_macro_rf_note", ui_src, fixed = TRUE))
 check("locale dropped rf note sentence", !grepl("Same live Rf path as CAPM", ui_src, fixed = TRUE))
