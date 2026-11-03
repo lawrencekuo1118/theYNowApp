@@ -1,3 +1,9 @@
+## [v27.79] — 2026-11-03 · Company Overview「公司簡介」zh-TW body
+
+- zh-TW：個股 Company Overview 營運摘要不再只顯示 Yahoo 英文 `longBusinessSummary`；台股優先 Yahoo TW「主要經營業務」（台灣繁體），其餘以 en→zh-TW 翻譯並套用台灣投資界用詞過濾；失敗則保留英文。Sector／Industry 標籤維持正式英文。
+- en-US: Under zh-TW locale, Company Overview business-summary body is Traditional Chinese (Yahoo TW「主要經營業務」for TW tickers; otherwise translated with Taiwan desk filter). English fallback on failure. Sector/Industry labels stay formal English.
+- Evidence: PR #619; `app_27.0/tests/test_company_overview_zh_tw_summary.R`; docs `company-intro-zh-tw.md`.
+
 ## [v27.78] — 2026-11-03 · Vine KPI frame wraps box edge
 
 - zh-TW：財報屬性關鍵指標藤蔓外框改以 CSS **border-image 九宮格**貼齊 KPI 儲存格矩形邊線（不再整圖拉伸）；短卡 FS 用較薄邊帶；內部維持透明。
