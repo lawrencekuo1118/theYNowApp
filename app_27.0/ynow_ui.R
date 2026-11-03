@@ -14054,8 +14054,8 @@ ui <- dashboardPage(
                     activeSnap.getAttribute('data-value') === 'snap_defaults';
                   /* Leaving sysadmin: leave APP_DEFAULTS; Lite uses free Snapshot tabs. */
                   if (onDefaults) {
-                    var fallback = document.querySelector('#snapshot_report a[data-value=\"snap_current\"]') ||
-                      document.querySelector('#snapshot_report a[data-value=\"snap_audit\"]');
+                    var fallback = document.querySelector('#snapshot_report a[data-value=\"snap_audit\"]') ||
+                      document.querySelector('#snapshot_report a[data-value=\"snap_current\"]');
                     if (fallback) {
                       if (window.jQuery) window.jQuery(fallback).tab('show');
                       else if (typeof fallback.click === 'function') fallback.click();
@@ -15818,12 +15818,12 @@ ui <- dashboardPage(
             }
             function ensureLiteSnapshotFreeTab() {
               if (!document.body.classList.contains('ynow-lite')) return;
-              /* Lite keeps Snapshot free: audit + current. Never land on locked APP_DEFAULTS. */
+              /* Lite keeps Snapshot free: prefer Manual adjustments, then current. Never land on locked APP_DEFAULTS. */
               var active = document.querySelector('#snapshot_report .nav-tabs li.active a');
               var dv = active && active.getAttribute('data-value');
               if (dv === 'snap_audit' || dv === 'snap_current') return;
-              var a = document.querySelector('#snapshot_report a[data-value=\"snap_current\"]') ||
-                document.querySelector('#snapshot_report a[data-value=\"snap_audit\"]');
+              var a = document.querySelector('#snapshot_report a[data-value=\"snap_audit\"]') ||
+                document.querySelector('#snapshot_report a[data-value=\"snap_current\"]');
               if (!a) return;
               try {
                 if (window.jQuery) window.jQuery(a).tab('show');
@@ -21895,8 +21895,10 @@ ui <- dashboardPage(
         ),
         tabBox(
           # No right-side chrome title (page h2 already says Snapshot; avoids wrong remaps)
+          # LTR order: Manual adjustments (snap_audit) before Current App Parameter Snapshot.
           id = "snapshot_report",
           width = "auto",
+          selected = "snap_audit",
 
           tabPanel(
             title = tagList(
