@@ -409,6 +409,16 @@ if (requireNamespace("htmltools", quietly = TRUE) && exists("macro_market_ui", m
       grepl(ui_str("btn_macro_refresh", "zh-TW"), ui_html_zh, fixed = TRUE)
     )
     check(
+      "zh-TW first-paint bubble refresh in title row",
+      {
+        lab <- ui_str("btn_macro_refresh", "zh-TW")
+        # Theme + bubble chapter title rows both bake the same label.
+        length(gregexpr(lab, ui_html_zh, fixed = TRUE)[[1]]) >= 2L &&
+          grepl("ynow-macro-bubble-chapter", ui_html_zh, fixed = TRUE) &&
+          grepl("macro-bubble_refresh", ui_html_zh, fixed = TRUE)
+      }
+    )
+    check(
       "zh-TW first-paint no English page title",
       !grepl(">Macro &amp; Market Trends<|>Macro & Market Trends<", ui_html_zh)
     )
@@ -495,8 +505,30 @@ check("refresh in theme title row", {
     grepl("ynow-macro-refresh-in-title", txt, fixed = TRUE) &&
     grepl('ns("refresh")', txt, fixed = TRUE)
 })
+check("bubble refresh in chapter title row", {
+  bub_sec <- sub(".*ynow-macro-bubble-chapter", "", txt)
+  grepl("ynow-macro-theme-title-row", bub_sec, fixed = TRUE) &&
+    grepl('ns("bubble_refresh")', bub_sec, fixed = TRUE) &&
+    grepl("ynow-macro-refresh-in-title", bub_sec, fixed = TRUE) &&
+    grepl('\\.s\\("btn_macro_refresh"\\)', bub_sec)
+})
+check("bubble refresh not in funnel toolbar", {
+  bub_ui <- paste(readLines("macro_bubble_indicators.R", warn = FALSE), collapse = "\n")
+  !grepl('ns("bubble_refresh")', bub_ui, fixed = TRUE) &&
+    !grepl("ynow_macro_bubble_refresh", bub_ui, fixed = TRUE) &&
+    !grepl("margin-top: 24px", bub_ui, fixed = TRUE)
+})
 check("refresh bumps token", grepl("observeEvent(input$refresh", txt, fixed = TRUE) &&
         grepl("refresh_token", txt, fixed = TRUE))
+check("bubble refresh bumps token", {
+  grepl("observeEvent(input$bubble_refresh", txt, fixed = TRUE) &&
+    grepl("refresh_token", txt, fixed = TRUE)
+})
+check("locale wires both macro refresh buttons", {
+  ui_js <- paste(readLines("ynow_ui.R", warn = FALSE), collapse = "\n")
+  grepl("macro-bubble_refresh", ui_js, fixed = TRUE) &&
+    grepl("['macro-refresh', 'macro-bubble_refresh']", ui_js, fixed = TRUE)
+})
 check("menu choices gated on lazy-bound hist_period", {
   grepl("input$hist_period", txt, fixed = TRUE) &&
     grepl("req(!is.null(hist_ready))", txt, fixed = TRUE) &&

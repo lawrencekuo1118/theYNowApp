@@ -12176,12 +12176,15 @@ ui <- dashboardPage(
             setBtText('ynow_macro_bubble_attr_title', 'macro_bubble_attr_title');
             setBtText('ynow_macro_bubble_buffett_title', 'macro_bubble_buffett_title');
             setBtText('ynow_macro_bubble_buffett_note', 'macro_bubble_buffett_note');
-            var macroRefresh = document.getElementById('macro-refresh');
-            if (macroRefresh && s.btn_macro_refresh) {
-              var ri = macroRefresh.querySelector('i');
-              var runIconHtml = ri ? ri.outerHTML + ' ' : '';
-              macroRefresh.innerHTML = runIconHtml + s.btn_macro_refresh;
-            }
+            /* Relative performance + Dynamic industry bubble share the same refresh label. */
+            ['macro-refresh', 'macro-bubble_refresh'].forEach(function (rid) {
+              var macroRefresh = document.getElementById(rid);
+              if (macroRefresh && s.btn_macro_refresh) {
+                var ri = macroRefresh.querySelector('i');
+                var runIconHtml = ri ? ri.outerHTML + ' ' : '';
+                macroRefresh.innerHTML = runIconHtml + s.btn_macro_refresh;
+              }
+            });
             /* Lazy Macro host may insert after this push (hasDom false). Re-apply
                once #ynow_macro_page_title appears so zh-TW chrome is not stuck English. */
             try {
@@ -18369,7 +18372,9 @@ ui <- dashboardPage(
           width: 100%;
           margin: 0 0 8px 0;
         }
-        .ynow-macro-theme-title-row > #ynow_macro_theme_title {
+        .ynow-macro-theme-title-row > h3,
+        .ynow-macro-theme-title-row > #ynow_macro_theme_title,
+        .ynow-macro-theme-title-row > #ynow_macro_bubble_title {
           flex: 1 1 auto;
           min-width: 0;
           margin: 0;

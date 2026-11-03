@@ -900,9 +900,19 @@ macro_market_ui <- function(id = "macro", locale = "en", market_mode = "US") {
     ")),
     tags$section(
       class = "ynow-macro-chapter ynow-macro-bubble-chapter",
-      tags$h3(
-        id = "ynow_macro_bubble_title",
-        .s("macro_bubble_title")
+      # Match Relative performance: refresh on the chapter title row (right-aligned).
+      tags$div(
+        class = "ynow-macro-theme-title-row",
+        tags$h3(
+          id = "ynow_macro_bubble_title",
+          .s("macro_bubble_title")
+        ),
+        actionButton(
+          ns("bubble_refresh"),
+          .s("btn_macro_refresh"),
+          icon = icon("sync"),
+          class = "btn-default ynow-macro-refresh-in-title"
+        )
       ),
       tags$p(
         id = "ynow_macro_bubble_sub",
