@@ -237,10 +237,10 @@ kf <- gregexpr("@keyframes ynow-logo-flow", ui_txt, fixed = TRUE)[[1]]
 check("single logo-flow keyframes", length(kf) == 1L && kf[[1]] > 0)
 check("badge flow override not second animation", grepl(".ynow-fund-profile-badge .ynow-htcdi-flow", ui_txt, fixed = TRUE))
 check("Rf still excluded from flow", grepl(".ynow-macro-kpi--rf .ynow-htcdi-flow", ui_txt, fixed = TRUE))
-check("CSS gold border on focus KPI", grepl(".small-box.ynow-focus-metric-box", ui_txt, fixed = TRUE))
-check("CSS focus gold animated frame asset", grepl("ynow-gold-kpi-frame.svg", ui_txt, fixed = TRUE))
-check("CSS focus gold ember keyframes", grepl("@keyframes ynow-focus-gold-ember", ui_txt, fixed = TRUE) &&
-        grepl("animation: ynow-focus-gold-ember", ui_txt, fixed = TRUE))
+check("CSS focus frame on focus KPI", grepl(".small-box.ynow-focus-metric-box", ui_txt, fixed = TRUE))
+check("CSS focus vine frame asset", grepl("ynow-vine-kpi-frame.png", ui_txt, fixed = TRUE))
+check("CSS focus vine breathe keyframes", grepl("@keyframes ynow-focus-vine-breathe", ui_txt, fixed = TRUE) &&
+        grepl("animation: ynow-focus-vine-breathe", ui_txt, fixed = TRUE))
 check("legend uses border swatch", grepl("ynow-focus-metric-swatch", ui_txt, fixed = TRUE))
 check("focus legend above FINANCIAL REPORT", {
   grepl("ynow_focus_metric_legend_note_ui", ui_txt, fixed = TRUE) &&

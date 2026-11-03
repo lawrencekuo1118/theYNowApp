@@ -45,13 +45,13 @@ check("header kpi shell matches page max", {
     grepl(".ynow-header-kpi-shell > .ynow-header-kpi-row", ui, fixed = TRUE) &&
     grepl("margin-left: 0", ui, fixed = TRUE)
 })
-# Focus KPI alert bell: inner top-right of gold frame + thicker pulsing border
+# Focus KPI alert bell: inner top-right of vine frame
 check("kpi-grid alertable bell inset", grepl(".ynow-kpi-grid .ynow-alertable .ynow-alert-bell", ui, fixed = TRUE) &&
         grepl("z-index: 5", ui, fixed = TRUE))
 check("kpi-grid alertable col safety", grepl(".ynow-kpi-grid .ynow-alertable > [class*='col-']", ui, fixed = TRUE))
-check("focus gold animated frame", grepl("@keyframes ynow-focus-gold-ember", ui, fixed = TRUE) &&
-        grepl("ynow-gold-kpi-frame.svg", ui, fixed = TRUE) &&
-        grepl("animation: ynow-focus-gold-ember", ui, fixed = TRUE))
+check("focus vine frame", grepl("@keyframes ynow-focus-vine-breathe", ui, fixed = TRUE) &&
+        grepl("ynow-vine-kpi-frame.png", ui, fixed = TRUE) &&
+        grepl("animation: ynow-focus-vine-breathe", ui, fixed = TRUE))
 # Value-alert marks: colorless translucent on light cards (no ready/hover blue tint)
 check("alert bell colorless translucent", {
   grepl("color: rgba(0, 0, 0, 0.35)", ui, fixed = TRUE) &&

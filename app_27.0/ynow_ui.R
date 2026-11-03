@@ -326,7 +326,7 @@ source("ynow_cookie_notice_ui.R", local = TRUE, encoding = "UTF-8")
       class = "ynow-focus-metric-swatch ynow-focus-metric-swatch--legend",
       `aria-hidden` = "true"
     ),
-    tags$span(id = "ynow_kpi_legend_focus", "金 · 本財報屬性關鍵指標")
+    tags$span(id = "ynow_kpi_legend_focus", "藤蔓 · 本財報屬性關鍵指標")
   )
 }
 
@@ -17265,7 +17265,7 @@ ui <- dashboardPage(
           word-break: break-word;
           overflow-wrap: anywhere;
         }
-        /* 財報屬性「重視指標」：動感橘金方框（SVG＋CSS glow；靜態金框改動態） */
+        /* 財報屬性「重視指標」：藤蔓手繪外框（PNG；白底已去背，僅邊框） */
         .ynow-focus-metric-swatch {
           display: inline-block;
           width: 16px;
@@ -17273,40 +17273,26 @@ ui <- dashboardPage(
           margin: 0 6px 0 0;
           border: none;
           border-radius: 3px;
-          background:
-            url('ynow-gold-kpi-frame.svg') center / contain no-repeat,
-            radial-gradient(circle at 50% 50%, rgba(255, 200, 80, 0.18) 0%, transparent 70%);
+          background: url('ynow-vine-kpi-frame.png') center / contain no-repeat;
           vertical-align: middle;
           box-sizing: border-box;
-          box-shadow:
-            0 0 6px 1px rgba(255, 140, 26, 0.55),
-            0 0 12px 2px rgba(255, 201, 51, 0.35);
-          animation: ynow-focus-gold-ember 1.6s ease-in-out infinite;
+          box-shadow: none;
+          animation: ynow-focus-vine-breathe 2.8s ease-in-out infinite;
         }
         .ynow-focus-metric-swatch--legend {
           margin: 0 6px 0 0;
         }
-        /* Focus KPI: animated fiery orange-gold square frame (asset www/ynow-gold-kpi-frame.svg) */
-        @keyframes ynow-focus-gold-ember {
+        /* Focus KPI: vine/foliage hand-drawn rectangular border
+           (asset www/ynow-vine-kpi-frame.png — transparent center, border-only). */
+        @keyframes ynow-focus-vine-breathe {
           0%, 100% {
+            opacity: 0.92;
             filter: saturate(1) brightness(1);
-            box-shadow:
-              0 0 0 1px rgba(255, 140, 26, 0.35),
-              0 0 10px 2px rgba(255, 201, 51, 0.28),
-              0 0 22px 4px rgba(255, 106, 0, 0.18);
           }
           50% {
-            filter: saturate(1.25) brightness(1.08);
-            box-shadow:
-              0 0 0 2px rgba(255, 179, 71, 0.55),
-              0 0 16px 4px rgba(255, 201, 51, 0.45),
-              0 0 28px 8px rgba(255, 106, 0, 0.28);
+            opacity: 1;
+            filter: saturate(1.1) brightness(1.05);
           }
-        }
-        @keyframes ynow-focus-gold-frame-spin {
-          0% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-          100% { background-position: 0% 50%; }
         }
         .content-wrapper .small-box.ynow-focus-metric-box,
         .tab-content .small-box.ynow-focus-metric-box,
@@ -17317,11 +17303,9 @@ ui <- dashboardPage(
           border-radius: 6px !important;
           isolation: isolate;
           overflow: visible !important;
-          box-shadow:
-            0 0 0 1px rgba(255, 140, 26, 0.35),
-            0 0 10px 2px rgba(255, 201, 51, 0.28),
-            0 0 22px 4px rgba(255, 106, 0, 0.18) !important;
-          animation: ynow-focus-gold-ember 1.6s ease-in-out infinite;
+          /* No gold/ember wash — vine PNG is the only frame chrome. */
+          box-shadow: none !important;
+          background-clip: padding-box;
         }
         .content-wrapper .small-box.ynow-focus-metric-box::before,
         .tab-content .small-box.ynow-focus-metric-box::before,
@@ -17329,49 +17313,20 @@ ui <- dashboardPage(
         .ynow-fs-card.ynow-focus-metric-box::before {
           content: '';
           position: absolute;
-          inset: -5px;
+          inset: -10px;
           z-index: 0;
           pointer-events: none;
-          border-radius: 8px;
-          background:
-            url('ynow-gold-kpi-frame.svg') center / 100% 100% no-repeat;
-          opacity: 0.95;
+          border-radius: 10px;
+          background: url('ynow-vine-kpi-frame.png') center / 100% 100% no-repeat;
+          animation: ynow-focus-vine-breathe 2.8s ease-in-out infinite;
         }
-        /* Perimeter-only ring: mask-composite hollows the interior (transparent fill).
-           Do NOT use transparent padding-box + border-box gradient — #fff0 does not mask. */
+        /* No ::after fill/ring — interior must stay transparent (border-only). */
         .content-wrapper .small-box.ynow-focus-metric-box::after,
         .tab-content .small-box.ynow-focus-metric-box::after,
         .ynow-kpi-grid .small-box.ynow-focus-metric-box::after,
         .ynow-fs-card.ynow-focus-metric-box::after {
-          content: '';
-          position: absolute;
-          inset: 0;
-          z-index: 0;
-          pointer-events: none;
-          border-radius: inherit;
-          border: 0;
-          padding: 2px;
-          box-sizing: border-box;
-          background: linear-gradient(
-            120deg,
-            #FFE9A0 0%,
-            #FF8C1A 28%,
-            #FFC933 52%,
-            #FF6A00 78%,
-            #FFE9A0 100%
-          );
-          background-size: 220% 220%;
-          -webkit-mask:
-            linear-gradient(#fff 0 0) content-box,
-            linear-gradient(#fff 0 0);
-          -webkit-mask-composite: xor;
-          mask:
-            linear-gradient(#fff 0 0) content-box,
-            linear-gradient(#fff 0 0);
-          mask-composite: exclude;
-          animation: ynow-focus-gold-frame-spin 2.4s linear infinite;
-          opacity: 0.95;
-          box-shadow: 0 0 14px rgba(255, 140, 26, 0.35);
+          content: none !important;
+          display: none !important;
         }
         .content-wrapper .small-box.ynow-focus-metric-box > *,
         .tab-content .small-box.ynow-focus-metric-box > *,
@@ -17399,7 +17354,7 @@ ui <- dashboardPage(
           color: #666666;
           font-weight: 500;
         }
-        /* Gold focus legend: directly above FINANCIAL REPORT, right-aligned */
+        /* Vine focus legend: directly above FINANCIAL REPORT, right-aligned */
         .ynow-dashboard-fin-report-wrap > .ynow-focus-metric-note--above-fs {
           display: flex;
           align-items: center;

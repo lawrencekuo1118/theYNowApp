@@ -1,3 +1,9 @@
+## [v27.77] — 2026-11-03 · Vine foliage focus-KPI frame
+
+- zh-TW：個股頁財報屬性關鍵指標外框改為使用者手繪**藤蔓／葉片矩形邊框**（白底去背、僅邊框、內部透明）；移除橘金 SVG／漸層填色光暈。圖例文案改「藤蔓 · …」／「Vine · …」。
+- en-US: Replace the Company-page animated orange-gold focus-KPI frame with the user’s vine/foliage hand-drawn rectangular border (white keyed to transparency; border-only; hollow interior). Remove gold SVG / gradient wash. Legend copy → “Vine · …” / 「藤蔓 · …」.
+- Evidence: `app_27.0/tests/test_vine_kpi_frame.R`; docs `vine-kpi-frame.md`.
+
 ## [v27.76] — 2026-11-02 · Gold KPI frame border-only
 
 - zh-TW：財報屬性關鍵指標金框改為**僅外框／邊線光暈**（透明內部），不再以半透明橘金填滿整個 KPI 儲存格；內容背景可讀。`pointer-events: none` 維持。
