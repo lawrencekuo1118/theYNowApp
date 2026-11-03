@@ -1360,7 +1360,6 @@ business_breakdown_lab_server <- function(id = "bblab",
         payload$cash_flow <- d_cf
         payload$industry_key <- industry_key
         payload$industry_text <- industry_text
-        # Payload keeps the fetched call. Attach writes the one chrome slot.
         is_tw_tk <- grepl("\\.(TW|TWO)$", tk, ignore.case = TRUE)
         if (!isTRUE(is_tw_tk) && exists("ynow_us_earnings_call_fetch", mode = "function")) {
           us_ec <- tryCatch(ynow_us_earnings_call_fetch(tk), error = function(e) NULL)

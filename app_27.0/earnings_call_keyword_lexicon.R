@@ -14,9 +14,6 @@ if (!exists("%||%", mode = "function")) {
   `%||%` <- function(a, b) if (is.null(a)) b else a
 }
 
-#' Internal lexicon. Scorer roles stay paired zh / en lists.
-#' Surface roles (orders, suppliers, customers) are item lists: pat + kind.
-#' @return named list.
 ynow_ec_keyword_lexicon <- function() {
   item <- function(pat, kind) list(pat = pat, kind = kind)
   list(
@@ -33,8 +30,6 @@ ynow_ec_keyword_lexicon <- function() {
       "keyword_db_template",
       "reading_traps"
     ),
-    # Order-research surface roles. kind is mention or constraint.
-    # Customers have mention items only, so stance cannot become constrained.
     orders = list(
       items = list(
         item("在手訂單", "mention"),
@@ -312,11 +307,8 @@ ynow_ec_keyword_lexicon <- function() {
   )
 }
 
-#' One token list for harvest and for stance.
-#' kind = "any" | "mention" | "constraint".
-#' Surface roles read item$pat. Scorer roles return zh ∪ en only when kind is "any".
 #' @param role lexicon role
-#' @param kind which items
+#' @param kind "any" | "mention" | "constraint"
 #' @param lex optional lexicon
 ynow_ec_lexicon_tokens <- function(role, kind = "any", lex = NULL) {
   lex <- lex %||% ynow_ec_keyword_lexicon()
@@ -354,7 +346,6 @@ ynow_ec_lexicon_tokens <- function(role, kind = "any", lex = NULL) {
   character(0)
 }
 
-#' Flatten a role into one regex alternation. Derived from ynow_ec_lexicon_tokens.
 #' @param role character scalar key under ynow_ec_keyword_lexicon().
 #' @param lex optional lexicon list.
 ynow_ec_lexicon_pattern <- function(role, lex = NULL) {

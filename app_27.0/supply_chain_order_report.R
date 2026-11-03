@@ -1,6 +1,3 @@
-# Cited status ledger for supply chain and orders.
-# Sentences are verbatim. Filing is an enum. The object has no amount field.
-
 if (!exists("%||%", mode = "function")) {
   `%||%` <- function(a, b) if (is.null(a)) b else a
 }
@@ -12,8 +9,6 @@ if (!exists("%||%", mode = "function")) {
 .YNOW_SUPPLY_CITE_CAP <- 5L
 .YNOW_SUPPLY_SCHEMA <- 1L
 
-# Names the seal deletes if a caller stuffed numeric pack fields into the list.
-# Digits that already sit inside a verbatim cite are kept.
 .YNOW_SUPPLY_FORBIDDEN_FIELDS <- c(
   "backlog", "bookings", "capex", "value", "amount", "share", "pct", "percent",
   "top1_share", "top3_share", "revenue", "quantity"
@@ -49,8 +44,6 @@ if (!exists("%||%", mode = "function")) {
   if (v %in% .YNOW_SUPPLY_FILING_STATES) v else "absent"
 }
 
-# Eligible rows become "table". A threshold note with no rows becomes
-# "threshold". Share fields are not read, so they cannot leak into the note.
 .ynow_supply_filing_enum <- function(pack) {
   if (!is.list(pack)) return("absent")
   rows <- pack$rows %||% pack$slices %||% list()
@@ -89,8 +82,6 @@ if (!exists("%||%", mode = "function")) {
   key
 }
 
-#' Build the ledger from extractor cites.
-#' Does not read the transcript, keyword_analysis, backlog, or filing slices.
 #' @param focus list(order_notes, supplier_notes, customer_notes)
 #' @param source fetch result after ynow_ec_stamp_info_updated
 #' @return sealed supply_report
@@ -112,13 +103,13 @@ ynow_supply_report_from_focus <- function(focus, source = list()) {
   ))
 }
 
-#' Re-validate a report for the disclosure whitelist.
-#' Unknown buckets, rejected sentences, and forbidden numeric fields die here.
 #' Missing input becomes a sealed empty report, not NULL.
 #' @param report list or NULL
 #' @return sealed supply_report
 ynow_supply_report_carry <- function(report) {
   src <- if (is.list(report)) report else list()
+  drop <- intersect(names(src), .YNOW_SUPPLY_FORBIDDEN_FIELDS)
+  if (length(drop)) src[drop] <- NULL
   buckets_in <- if (is.list(src$buckets)) src$buckets else list()
   buckets <- stats::setNames(
     lapply(.YNOW_SUPPLY_BUCKETS, function(nm) .ynow_supply_notes(buckets_in[[nm]])),
@@ -142,8 +133,6 @@ ynow_supply_report_carry <- function(report) {
   )
 }
 
-#' Set filing enums from concentration packs.
-#' Does not read shares, denominators, party names, or slice values.
 #' Idempotent. Replaces filing flags and does not touch cites.
 #' @param report sealed report or NULL
 #' @param order_concentration bblab order-concentration list
@@ -157,7 +146,6 @@ ynow_supply_report_with_filing <- function(report, order_concentration = NULL) {
 }
 
 #' TRUE when any bucket has cites or any filing state is not absent.
-#' This is the context-group predicate. It does not look at or_started.
 ynow_supply_report_has_content <- function(report) {
   sealed <- ynow_supply_report_carry(report)
   cites <- any(vapply(.YNOW_SUPPLY_BUCKETS, function(nm) {
@@ -194,7 +182,6 @@ ynow_supply_report_has_content <- function(report) {
   )
 }
 
-#' Render the note. Locale templates only. No numeric interpolation.
 #' Returns NULL when has_content is FALSE so the chrome keeps its empty line.
 #' @param report sealed report
 #' @param locale "en" or "zh-TW"

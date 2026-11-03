@@ -64,10 +64,6 @@ ynow_tw_earnings_call_alphamemo_search_url <- function(ticker) {
   v[nzchar(v) & !is.na(v)]
 }
 
-#' Merge two usable TW EC results.
-#' Amounts, parties, and the older note vectors still union.
-#' supply_report and keyword_*_notes stay on primary so two event dates
-#' do not mix inside one conclusion.
 .ynow_tw_ec_merge <- function(primary, secondary) {
   if (!is.list(primary)) return(secondary)
   if (!is.list(secondary)) return(primary)
