@@ -4423,10 +4423,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     bblab_or_title = "Sources, cross-check, and call context",
     bblab_or_help = paste0(
-      "Start analysis to surface disclosed order quantity, supplier, and customer facts ",
-      "beside the matching filing charts. Taiwan source priority is MOPS, then company IR, ",
-      "then a statement cross-check. Broker and industry sources are estimates only and ",
-      "do not fill order amounts. Groups with no disclosed data stay collapsed."
+      "The supply chain and orders note appears when the latest call and filings are in. ",
+      "Start analysis still opens disclosed order, supplier, and customer amounts, plus the cross-check. ",
+      "Amounts are never estimated. Groups with no disclosed figures stay collapsed."
     ),
     bblab_or_supply_report_title = "Supply chain and orders",
     bblab_or_supply_report_status_only = "Status only. This note does not restate amounts.",
@@ -9136,9 +9135,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     bblab_or_title = "來源、交叉驗證與法說會脈絡",
     bblab_or_help = paste0(
-      "點選開始分析後，已揭露的訂單數量、供應商與客戶事實會出現在對應的財報圖旁。",
-      "台灣來源優先序為公開資訊觀測站、公司 IR，再以財報科目交叉驗證。",
-      "券商與產業來源僅供估計，不填入訂單金額。無資料的區塊維持收合。"
+      "最新法說與財報進來後，即顯示供應鏈與訂單結論。",
+      "點選開始分析後，才展開已揭露的訂單、供應商與客戶金額，以及交叉驗證。",
+      "金額不推估。無已揭露數字的區塊維持收合。"
     ),
     bblab_or_supply_report_title = "供應鏈與訂單",
     bblab_or_supply_report_status_only = "僅狀態。此處不重述金額。",

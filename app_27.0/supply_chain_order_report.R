@@ -25,7 +25,6 @@ if (!exists("%||%", mode = "function")) {
 }
 
 .ynow_supply_lexicon_version <- function() {
-  if (!exists("ynow_ec_keyword_lexicon", mode = "function")) return("3")
   v <- .ynow_supply_chr(ynow_ec_keyword_lexicon()$version, "3")
   if (!nzchar(v)) "3" else v
 }
@@ -40,9 +39,7 @@ if (!exists("%||%", mode = "function")) {
   v <- trimws(as.character(unlist(x, use.names = FALSE)))
   v <- v[nzchar(v) & !is.na(v)]
   if (!length(v)) return(character(0))
-  if (exists(".ynow_ec_kw_order_focus_reject", mode = "function")) {
-    v <- v[!vapply(v, .ynow_ec_kw_order_focus_reject, logical(1))]
-  }
+  v <- v[!vapply(v, .ynow_ec_kw_order_focus_reject, logical(1))]
   v <- unique(v)
   utils::head(v, .YNOW_SUPPLY_CITE_CAP)
 }
@@ -66,21 +63,23 @@ if (!exists("%||%", mode = "function")) {
 .ynow_supply_stance <- function(cites, role) {
   cites <- as.character(cites %||% character(0))
   cites <- cites[nzchar(cites) & !is.na(cites)]
-  if (!length(cites)) return("silent")
-  cons <- character(0)
-  if (exists("ynow_ec_lexicon_tokens", mode = "function")) {
+  out <- if (!length(cites)) {
+    "silent"
+  } else {
     cons <- ynow_ec_lexicon_tokens(role, kind = "constraint")
+    cons <- cons[nzchar(cons)]
+    if (!length(cons)) {
+      "mentioned"
+    } else {
+      matched <- vapply(cites, function(s) {
+        any(vapply(cons, function(p) {
+          grepl(p, s, perl = TRUE, ignore.case = TRUE)
+        }, logical(1)))
+      }, logical(1))
+      if (!any(matched)) "mentioned" else if (all(matched)) "constrained" else "mixed"
+    }
   }
-  cons <- cons[nzchar(cons)]
-  if (!length(cons)) return("mentioned")
-  matched <- vapply(cites, function(s) {
-    any(vapply(cons, function(p) {
-      grepl(p, s, perl = TRUE, ignore.case = TRUE)
-    }, logical(1)))
-  }, logical(1))
-  if (!any(matched)) return("mentioned")
-  if (all(matched)) return("constrained")
-  "mixed"
+  if (out %in% .YNOW_SUPPLY_STANCES) out else "silent"
 }
 
 .ynow_supply_msg <- function(key, locale) {

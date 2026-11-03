@@ -666,7 +666,6 @@ ynow_ec_kw_extract_order_focus <- function(text, lex = NULL, max_n = 6L) {
   parts <- .ynow_ec_kw_split_sentences(text)
   if (!length(parts)) return(empty)
   role_pats <- function(role) {
-    if (!exists("ynow_ec_lexicon_tokens", mode = "function")) return(character(0))
     ynow_ec_lexicon_tokens(role, kind = "any", lex = lex)
   }
   list(

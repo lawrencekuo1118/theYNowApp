@@ -140,9 +140,10 @@ check("BBLab UI keeps FinmoConf links and drops methodology walls", {
   mod <- paste(readLines("business_breakdown_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   grepl("bblab_or_tw_ec_finmoconf_link", mod, fixed = TRUE) &&
     grepl("bblab_or_tw_ec_pdf_link", mod, fixed = TRUE) &&
-    grepl("supply_chain_notes", mod, fixed = TRUE) &&
+    grepl("ynow_supply_report_ui", mod, fixed = TRUE) &&
     !grepl("bblab_or_tw_ec_finmoconf_note", mod, fixed = TRUE) &&
-    !grepl("outlook_notes", mod, fixed = TRUE)
+    !grepl("outlook_notes", mod, fixed = TRUE) &&
+    !grepl("ynow-bblab-or__ec-kw", mod, fixed = TRUE)
 })
 check("FinmoConf cache key follows the lexicon version", {
   r <- paste(readLines("finmoconf_earnings_call.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
