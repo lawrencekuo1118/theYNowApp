@@ -86,6 +86,14 @@ check("python returns website field", grepl('"website": website', py, fixed = TR
 check("python returns employees field", grepl('"employees":', py, fixed = TRUE))
 check("R passes summary through get_yahoo_industry", grepl("summary = .py_chr(info$summary)", wc, fixed = TRUE))
 check("R passes website through get_yahoo_industry", grepl("website = .py_chr(info$website)", wc, fixed = TRUE))
+check(
+  "server localizes summary via localize_company_business_summary",
+  grepl("localize_company_business_summary\\(", srv)
+)
+check(
+  "company_overview_locale helper exists",
+  file.exists(file.path(root, "company_overview_locale.R"))
+)
 
 if (fail > 0L) {
   quit(status = 1L)

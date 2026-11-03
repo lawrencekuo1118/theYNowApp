@@ -6557,8 +6557,18 @@ server <- function(input, output, session) {
     } else {
       website_href <- website
     }
-    summary <- trimws(as.character(prof$summary %||% "")[1])
-    if (identical(summary, "None")) summary <- ""
+    summary_raw <- trimws(as.character(prof$summary %||% "")[1])
+    if (identical(summary_raw, "None")) summary_raw <- ""
+    summary <- tryCatch(
+      localize_company_business_summary(
+        summary_raw,
+        ticker = as.character(prof$ticker %||% current_ticker() %||% "")[1],
+        locale = loc,
+        market_mode = mode_ov
+      ),
+      error = function(e) summary_raw
+    )
+    summary <- trimws(as.character(summary %||% "")[1])
 
     chip <- function(k, v, href = NULL) {
       if (!nzchar(v)) return(NULL)
