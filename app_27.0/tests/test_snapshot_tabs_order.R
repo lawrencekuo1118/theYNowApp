@@ -1,4 +1,4 @@
-# Snapshot sub-tabs: Manual adjustments (snap_audit) before Current App Parameter Snapshot.
+# Snapshot sub-tabs: Current App Parameter Snapshot (snap_current) before Manual adjustments.
 # Run: Rscript app_27.0/tests/test_snapshot_tabs_order.R
 
 args <- commandArgs(trailingOnly = FALSE)
@@ -42,27 +42,27 @@ check("snap_audit panel present", pos_audit > 0)
 check("snap_current panel present", pos_current > 0)
 check("snap_defaults panel present", pos_defaults > 0)
 check(
-  "LTR order: snap_audit before snap_current",
-  pos_audit > 0 && pos_current > 0 && pos_audit < pos_current
+  "LTR order: snap_current before snap_audit",
+  pos_current > 0 && pos_audit > 0 && pos_current < pos_audit
 )
 check(
-  "LTR order: snap_current before snap_defaults",
-  pos_current > 0 && pos_defaults > 0 && pos_current < pos_defaults
+  "LTR order: snap_audit before snap_defaults",
+  pos_audit > 0 && pos_defaults > 0 && pos_audit < pos_defaults
 )
 check(
-  "tabBox selected defaults to snap_audit",
-  grepl('selected = "snap_audit"', snap_chunk, fixed = TRUE)
+  "tabBox selected defaults to snap_current",
+  grepl('selected = "snap_current"', snap_chunk, fixed = TRUE)
 )
 
-# Lite / leave-sysadmin fallbacks prefer Manual adjustments first.
+# Lite / leave-sysadmin fallbacks prefer Current snapshot first (leftmost free tab).
 lite_fn <- regexpr("function ensureLiteSnapshotFreeTab", ui, fixed = TRUE)[1]
 lite_chunk <- if (lite_fn > 0) substr(ui, lite_fn, min(nchar(ui), lite_fn + 900L)) else ""
 audit_fb <- regexpr('data-value=\\"snap_audit\\"', lite_chunk, fixed = TRUE)[1]
 current_fb <- regexpr('data-value=\\"snap_current\\"', lite_chunk, fixed = TRUE)[1]
 check(
-  "ensureLiteSnapshotFreeTab prefers snap_audit",
+  "ensureLiteSnapshotFreeTab prefers snap_current",
   grepl("ensureLiteSnapshotFreeTab", ui, fixed = TRUE) &&
-    audit_fb > 0 && current_fb > 0 && audit_fb < current_fb
+    audit_fb > 0 && current_fb > 0 && current_fb < audit_fb
 )
 
 sys_leave <- regexpr("Leaving sysadmin: leave APP_DEFAULTS", ui, fixed = TRUE)[1]
@@ -70,8 +70,8 @@ sys_chunk <- if (sys_leave > 0) substr(ui, sys_leave, min(nchar(ui), sys_leave +
 sys_audit <- regexpr('data-value=\\"snap_audit\\"', sys_chunk, fixed = TRUE)[1]
 sys_current <- regexpr('data-value=\\"snap_current\\"', sys_chunk, fixed = TRUE)[1]
 check(
-  "leave-sysadmin fallback prefers snap_audit",
-  sys_audit > 0 && sys_current > 0 && sys_audit < sys_current
+  "leave-sysadmin fallback prefers snap_current",
+  sys_audit > 0 && sys_current > 0 && sys_current < sys_audit
 )
 
 message("PASS ", ok, " FAIL ", bad)

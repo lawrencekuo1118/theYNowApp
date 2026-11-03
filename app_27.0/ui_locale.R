@@ -710,8 +710,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     snapshot_link = " Snapshot",
     snapshot_page_title = "Snapshot",
     snapshot_page_help = paste0(
-      "Three tabs: manual adjustments vs the post-Search baseline (with annotated PDF); ",
-      "current live parameters (download / upload restore CSV); and APP_DEFAULTS ",
+      "Three tabs: current live parameters (download / upload restore CSV); ",
+      "manual adjustments vs the post-Search baseline (with annotated PDF); and APP_DEFAULTS ",
       "(that tab shows a lock until System admin unlock; the defaults table appears only after unlock)."
     ),
     snapshot_page_help_lite = paste0(
@@ -5570,8 +5570,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     snapshot_link = " 快照",
     snapshot_page_title = "快照 Snapshot",
     snapshot_page_help = paste0(
-      "三個小頁籤：相對 Search 後基準的手改參數（含標記截圖 PDF）；",
-      "目前 App 執行中參數（可下載／上傳還原 CSV）；系統載入時 APP_DEFAULTS",
+      "三個小頁籤：目前 App 執行中參數（可下載／上傳還原 CSV）；",
+      "相對 Search 後基準的手改參數（含標記截圖 PDF）；系統載入時 APP_DEFAULTS",
       "（該分頁籤在系統管理解鎖前顯示上鎖圖示；預設表僅解鎖後顯示）。"
     ),
     snapshot_page_help_lite = paste0(

@@ -14054,8 +14054,8 @@ ui <- dashboardPage(
                     activeSnap.getAttribute('data-value') === 'snap_defaults';
                   /* Leaving sysadmin: leave APP_DEFAULTS; Lite uses free Snapshot tabs. */
                   if (onDefaults) {
-                    var fallback = document.querySelector('#snapshot_report a[data-value=\"snap_audit\"]') ||
-                      document.querySelector('#snapshot_report a[data-value=\"snap_current\"]');
+                    var fallback = document.querySelector('#snapshot_report a[data-value=\"snap_current\"]') ||
+                      document.querySelector('#snapshot_report a[data-value=\"snap_audit\"]');
                     if (fallback) {
                       if (window.jQuery) window.jQuery(fallback).tab('show');
                       else if (typeof fallback.click === 'function') fallback.click();
@@ -15818,12 +15818,12 @@ ui <- dashboardPage(
             }
             function ensureLiteSnapshotFreeTab() {
               if (!document.body.classList.contains('ynow-lite')) return;
-              /* Lite keeps Snapshot free: prefer Manual adjustments, then current. Never land on locked APP_DEFAULTS. */
+              /* Lite keeps Snapshot free: prefer Current snapshot, then Manual adjustments. Never land on locked APP_DEFAULTS. */
               var active = document.querySelector('#snapshot_report .nav-tabs li.active a');
               var dv = active && active.getAttribute('data-value');
               if (dv === 'snap_audit' || dv === 'snap_current') return;
-              var a = document.querySelector('#snapshot_report a[data-value=\"snap_audit\"]') ||
-                document.querySelector('#snapshot_report a[data-value=\"snap_current\"]');
+              var a = document.querySelector('#snapshot_report a[data-value=\"snap_current\"]') ||
+                document.querySelector('#snapshot_report a[data-value=\"snap_audit\"]');
               if (!a) return;
               try {
                 if (window.jQuery) window.jQuery(a).tab('show');
@@ -21793,8 +21793,8 @@ ui <- dashboardPage(
           id = "ynow_snapshot_page_help",
           class = "help-block ynow-full-only",
           paste0(
-            "Three tabs: manual adjustments vs the post-Search baseline (with annotated PDF); ",
-            "current live parameters (download / upload restore CSV); and APP_DEFAULTS ",
+            "Three tabs: current live parameters (download / upload restore CSV); ",
+            "manual adjustments vs the post-Search baseline (with annotated PDF); and APP_DEFAULTS ",
             "(that tab shows a lock until System admin unlock; the defaults table appears only after unlock)."
           )
         ),
@@ -21895,84 +21895,10 @@ ui <- dashboardPage(
         ),
         tabBox(
           # No right-side chrome title (page h2 already says Snapshot; avoids wrong remaps)
-          # LTR order: Manual adjustments (snap_audit) before Current App Parameter Snapshot.
+          # LTR order: Current App Parameter Snapshot (snap_current) before Manual adjustments.
           id = "snapshot_report",
           width = "auto",
-          selected = "snap_audit",
-
-          tabPanel(
-            title = tagList(
-              icon("user-edit"),
-              tags$span(id = "ynow_snapshot_tab_audit", "Manual adjustments (vs post-Search baseline)")
-            ),
-            value = "snap_audit",
-            tags$div(
-              `data-ynow-lock` = "section:snap_audit",
-              tags$p(
-                id = "ynow_param_audit_help",
-                style = "font-size:12.5px; color:#666; line-height:1.45; margin:0 0 10px 0;",
-                paste0(
-                  "Baseline locks after Search and statement auto-fill. ",
-                  "Later manual overrides are listed by page. ",
-                  "Use Go & highlight to jump and frame the input. ",
-                  "Below: select pages and generate an annotated screenshot PDF."
-                )
-              ),
-              uiOutput("param_audit_report"),
-              tags$hr(style = "margin:14px 0;"),
-              tags$h4(
-                id = "ynow_param_audit_pdf_title",
-                style = "margin:0 0 8px 0; font-size:15px; font-weight:700;",
-                "Annotated page screenshots (PDF)"
-              ),
-              tags$p(
-                id = "ynow_param_audit_pdf_help",
-                style = "font-size:12.5px; color:#666; line-height:1.45; margin:0 0 10px 0;",
-                paste0(
-                  "Select pages by category. The app switches to each page (and statement block when chosen), ",
-                  "captures the live layout, draws boxes on inputs you changed vs the post-Search baseline, ",
-                  "and downloads one PDF."
-                )
-              ),
-              if (exists("ynow_param_audit_pdf_pages_ui", mode = "function")) {
-                ynow_param_audit_pdf_pages_ui()
-              } else {
-                checkboxGroupInput(
-                  "param_audit_pdf_pages",
-                  label = tags$span(id = "ynow_param_audit_pdf_pages_label", "Pages to capture"),
-                  choiceNames = list(
-                    tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_basic",
-                              "Model Dashboard (SGR / CAPM / WACC / Beta)"),
-                    tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_dcf", "DCF"),
-                    tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_ddm", "DDM"),
-                    tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_ri", "RI"),
-                    tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_pb", "P/B"),
-                    tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_nav", "NAV")
-                  ),
-                  choiceValues = c(
-                    "get_started", "dcf_calculator", "ddm_calculator",
-                    "ri_calculator", "pb_calculator", "nav_calculator"
-                  ),
-                  selected = c(
-                    "get_started", "dcf_calculator", "ddm_calculator",
-                    "ri_calculator", "pb_calculator", "nav_calculator"
-                  )
-                )
-              },
-              div(
-                style = "display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:8px;",
-                actionButton(
-                  "param_audit_pdf_go",
-                  tagList(icon("file-pdf"), tags$span(id = "ynow_param_audit_pdf_btn", "Generate annotated PDF")),
-                  class = "btn-success"
-                ),
-                tags$span(
-                  id = "ynow_param_audit_pdf_status",
-                  style = "font-size:12.5px; color:#555;"
-                )
-              )
-            )
-          ),
+          selected = "snap_current",
 
           tabPanel(
             title = tagList(
@@ -22064,6 +21990,80 @@ ui <- dashboardPage(
               uiOutput("txt_scenario_audit")
             ),
             dataTableOutput("snapshot_table")
+          ),
+
+tabPanel(
+            title = tagList(
+              icon("user-edit"),
+              tags$span(id = "ynow_snapshot_tab_audit", "Manual adjustments (vs post-Search baseline)")
+            ),
+            value = "snap_audit",
+            tags$div(
+              `data-ynow-lock` = "section:snap_audit",
+              tags$p(
+                id = "ynow_param_audit_help",
+                style = "font-size:12.5px; color:#666; line-height:1.45; margin:0 0 10px 0;",
+                paste0(
+                  "Baseline locks after Search and statement auto-fill. ",
+                  "Later manual overrides are listed by page. ",
+                  "Use Go & highlight to jump and frame the input. ",
+                  "Below: select pages and generate an annotated screenshot PDF."
+                )
+              ),
+              uiOutput("param_audit_report"),
+              tags$hr(style = "margin:14px 0;"),
+              tags$h4(
+                id = "ynow_param_audit_pdf_title",
+                style = "margin:0 0 8px 0; font-size:15px; font-weight:700;",
+                "Annotated page screenshots (PDF)"
+              ),
+              tags$p(
+                id = "ynow_param_audit_pdf_help",
+                style = "font-size:12.5px; color:#666; line-height:1.45; margin:0 0 10px 0;",
+                paste0(
+                  "Select pages by category. The app switches to each page (and statement block when chosen), ",
+                  "captures the live layout, draws boxes on inputs you changed vs the post-Search baseline, ",
+                  "and downloads one PDF."
+                )
+              ),
+              if (exists("ynow_param_audit_pdf_pages_ui", mode = "function")) {
+                ynow_param_audit_pdf_pages_ui()
+              } else {
+                checkboxGroupInput(
+                  "param_audit_pdf_pages",
+                  label = tags$span(id = "ynow_param_audit_pdf_pages_label", "Pages to capture"),
+                  choiceNames = list(
+                    tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_basic",
+                              "Model Dashboard (SGR / CAPM / WACC / Beta)"),
+                    tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_dcf", "DCF"),
+                    tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_ddm", "DDM"),
+                    tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_ri", "RI"),
+                    tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_pb", "P/B"),
+                    tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_nav", "NAV")
+                  ),
+                  choiceValues = c(
+                    "get_started", "dcf_calculator", "ddm_calculator",
+                    "ri_calculator", "pb_calculator", "nav_calculator"
+                  ),
+                  selected = c(
+                    "get_started", "dcf_calculator", "ddm_calculator",
+                    "ri_calculator", "pb_calculator", "nav_calculator"
+                  )
+                )
+              },
+              div(
+                style = "display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:8px;",
+                actionButton(
+                  "param_audit_pdf_go",
+                  tagList(icon("file-pdf"), tags$span(id = "ynow_param_audit_pdf_btn", "Generate annotated PDF")),
+                  class = "btn-success"
+                ),
+                tags$span(
+                  id = "ynow_param_audit_pdf_status",
+                  style = "font-size:12.5px; color:#555;"
+                )
+              )
+            )
           ),
 
           tabPanel(
