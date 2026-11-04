@@ -2,6 +2,10 @@
 # Bundled WebP under www/inspiration/; durable overrides in data/inspiration_gallery.json
 # and uploads in data/inspiration_uploads/ (never runtime-write www/).
 # Guest-writable: never. Mutators gated by caller via ynow_pts_sysadmin_on().
+#
+# UI kill-switch: set FALSE to fully hide home gallery + Sys Admin tab (full + Lite).
+# Catalog helpers and assets remain for a later re-enable; do not leave Lite-only leftovers.
+.ynow_insp_ui_enabled <- FALSE
 
 if (!exists("%||%", mode = "function")) {
   `%||%` <- function(a, b) if (is.null(a) || length(a) == 0L) b else a
@@ -324,7 +328,9 @@ ynow_gallery_add_upload <- function(datapath, original_name = "") {
 }
 
 #' Homepage shell: empty aspect box + deferred boot (no img src).
+#' Returns NULL when `.ynow_insp_ui_enabled` is FALSE (fully hidden).
 ynow_inspiration_home_shell_ui <- function() {
+  if (!isTRUE(.ynow_insp_ui_enabled)) return(NULL)
   tagList(
     tags$div(
       id = "ynow_insp_gallery",
@@ -440,7 +446,9 @@ ynow_inspiration_home_shell_ui <- function() {
 }
 
 #' Admin tab panel (stable host — fileInput lives in separate renderUI).
+#' Returns NULL when `.ynow_insp_ui_enabled` is FALSE (no Sys Admin tab entry).
 ynow_gallery_admin_tab_panel <- function(lab) {
+  if (!isTRUE(.ynow_insp_ui_enabled)) return(NULL)
   if (!is.function(lab)) {
     lab <- function(key, fb) fb
   }
@@ -455,7 +463,9 @@ ynow_gallery_admin_tab_panel <- function(lab) {
 }
 
 #' Bind admin handlers + push catalog. Call once from ynow_server.R.
+#' No-op when `.ynow_insp_ui_enabled` is FALSE (no catalog push / admin panel).
 ynow_gallery_bind <- function(session, input, output, admin_on) {
+  if (!isTRUE(.ynow_insp_ui_enabled)) return(invisible(NULL))
   ynow_inspiration_ensure_resource_paths()
   tick <- shiny::reactiveVal(0L)
 
