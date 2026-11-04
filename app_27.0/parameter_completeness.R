@@ -43,7 +43,7 @@ ynow_required_parameter_rows <- function(values, defaults = list(), locale = "en
   }
   bridge <- function(model, cash = TRUE, revenue = FALSE) {
     if (cash) add(model, "bridge_cash", "Cash", "dashboard", "Cash and cash equivalents in the analysis currency.", "填入分析幣別的現金及約當現金。")
-    add(model, "bridge_other_claims", "Other equity claims", "dashboard", "Enter the market value of preferred and noncontrolling claims. Zero is appropriate only after confirming no such claims. With other capital classes, calculate WACC manually; the two-class automatic WACC is unavailable.", "請填特別股及非控制權益等其他權益請求權的市值；確認不存在時才填零。有其他資本類別時須人工計算 WACC，自動二類資本 WACC 不適用。")
+    add(model, "bridge_other_claims", "Other equity claims", "dashboard", "When statements disclose no preferred or noncontrolling book amount, the app fills 0. Disclosed claims need a market value (book is not used as MV). With other capital classes, enter a complete WACC manually; the two-class automatic WACC is unavailable.", "財報未揭露特別股／非控制權益帳面金額時，系統帶入 0；若有揭露則須填市值（不以帳面值充當市值）。有其他資本類別時須人工計算完整 WACC，自動二類資本 WACC 不適用。")
     add(model, "bridge_debt", "Debt", "dashboard", "Interest-bearing debt, not total liabilities.", "填入有息負債，勿填負債總額。")
     add(model, "bridge_shares", "Shares", "dashboard", "Shares in the quoted class; align ordinary shares and ADR units.", "使用報價股權級距的股數，須對齊普通股與 ADR 單位。")
     if (revenue) add(model, "bridge_revenue", "Revenue", "dashboard", "Revenue for the same period as the operating cash-flow inputs.", "營收須與營業現金流參數採相同期間。")
