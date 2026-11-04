@@ -1,5 +1,4 @@
 #!/usr/bin/env Rscript
-# YN-88: two-stage WACC auto-apply + other equity claims treatable as 0.
 args <- commandArgs(FALSE)
 script <- sub("^--file=", "", grep("^--file=", args, value = TRUE)[1])
 app <- dirname(dirname(normalizePath(script)))
@@ -15,7 +14,6 @@ check <- function(label, cond) {
   cat(sprintf("PASS: %s\n", label))
 }
 
-# --- Other equity claims: book==0 with no contradicting gap → 0 (not NA) ---
 bs_no_lines <- data.frame(
   Breakdown = c("Total Assets", "Total Liabilities", "Cash And Cash Equivalents", "Total Debt"),
   `2025` = c(1000, 400, 100, 200), check.names = FALSE
@@ -51,7 +49,6 @@ check("disclosed NCI book keeps market claims unknown",
 check("book proxy reports disclosed NCI",
       identical(statement_other_equity_claims_book(bs_nci), 50))
 
-# --- Completeness: other claims 0 + finite stage WACC → not listed ---
 vals <- list(
   dcf_mode = "two_stage", dcf_claim = "fcff",
   bridge_other_claims = 0,
@@ -82,15 +79,11 @@ check("empty stage WACC is listed as missing for two-stage",
       all(c("wacc_stage1", "wacc_stage2") %in% rows_na$id[rows_na$model == "dcf"]))
 check("empty other claims is listed when input is NA",
       "bridge_other_claims" %in% rows_na$id[rows_na$model == "dcf"])
-# Suggestions for stages come from calculated WACC percent.
 s1 <- rows_na$suggestion[rows_na$id == "wacc_stage1"][1]
 s2 <- rows_na$suggestion[rows_na$id == "wacc_stage2"][1]
 check("missing stage WACC carries calculated wacc suggestion",
       isTRUE(all.equal(s1, 8.5)) && isTRUE(all.equal(s2, 8.5)))
 
-# --- WACC apply helper: mirror intended server rule (pure) ---
-# Production should expose the same behavior via .auto_recalc_capm_wacc /
-# dcf_mode sync. This pure helper encodes the contract the server must meet.
 ynow_apply_calculated_wacc_fields <- function(wacc_percent, other_claims,
                                               current = list(
                                                 wacc_gordon = NA_real_,
@@ -101,7 +94,6 @@ ynow_apply_calculated_wacc_fields <- function(wacc_percent, other_claims,
   out <- current
   if (!is.finite(wacc_percent) || wacc_percent <= 0) return(out)
   if (!is.finite(other_claims) || other_claims != 0) {
-    # Gate fails: leave existing fields alone (do not clear to NA).
     return(out)
   }
   out$wacc_gordon <- wacc_percent
@@ -124,11 +116,8 @@ check("successful WACC writes gordon and both stage fields",
         isTRUE(all.equal(applied$wacc_stage1, 8.79)) &&
         isTRUE(all.equal(applied$wacc_stage2, 8.79)))
 
-# Server source must not clear-then-bail, and must write both stage fields.
 srv <- paste(readLines(file.path(app, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"),
              collapse = "\n")
-# After fix: clearing all three immediately before the other_claims early-return
-# must be gone; both stage updates must happen whenever WACC is written.
 check("server does not clear all WACC inputs immediately before other-claims gate",
       !grepl(
         "for \\(id in c\\(\"wacc_gordon\", \"wacc_stage1\", \"wacc_stage2\"\\)\\) updateNumericInput\\(session, id, value = NA_real_\\)\\s*\\n\\s*other <- \\.shared_bridge\\(\\)\\$other_claims\\s*\\n\\s*if \\(!is\\.finite\\(other\\) \\|\\| other != 0\\) return",
@@ -140,10 +129,8 @@ check("server writes wacc_stage1 and wacc_stage2 together on calculated WACC",
         grepl("wacc_stage1\".*value = wacc_percent[\\s\\S]*wacc_stage2\".*value = wacc_percent",
               srv))
 
-# Prefer always writing all three (not only when mode != gordon).
 auto_fn <- sub(".*(\\.auto_recalc_capm_wacc <- function[\\s\\S]*?^  \\})", "\\1",
                srv, perl = TRUE)
-# Fallback: locate by unique marker
 if (!grepl("\\.auto_recalc_capm_wacc <- function", auto_fn)) {
   auto_fn <- srv
 }

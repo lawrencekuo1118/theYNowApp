@@ -13461,7 +13461,6 @@ server <- function(input, output, session) {
       return(invisible(NULL))
     }
 
-    # Leave Gordon/stage inputs alone when other capital classes block two-class WACC.
     other <- .shared_bridge()$other_claims
     if (!is.finite(other) || other != 0) return(invisible(NULL))
     # WACC（需財報／股價）；股權市值用報價股數（ADR 自動約當）

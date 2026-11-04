@@ -171,8 +171,6 @@ statement_operating_invested_capital <- function(bs) {
   assets - cd$cash - nonop - (liabilities - cd$debt)
 }
 
-# Verified absence → 0. Nonzero book is never treated as market value.
-# Missing pref/NCI lines with book 0 count as absence unless common≠gross.
 statement_other_equity_claims <- function(bs) {
   common <- select_current_metric(bs, "^Common Stock Equity$", "stock")
   gross <- select_current_metric(bs, "^Total Equity Gross Minority Interest$", "stock")
