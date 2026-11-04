@@ -690,7 +690,7 @@ relative_multiples_module_server <- function(id,
                                             financial_currency = reactive(NA),
                                             central_sgr_pct = reactive(NA),
                                             ui_locale = reactive("zh-TW"),
-                                            shared_bridge = NULL) {
+                                            shared_bridge = NULL, integrity_method_ready = function(method) TRUE) {
   moduleServer(id, function(input, output, session) {
     shares_resolve_note <- reactiveVal(NULL)
     calc_token <- reactiveVal(0L)
@@ -926,10 +926,22 @@ relative_multiples_module_server <- function(id,
       ps <- calc_ps_implied_price(to_quote(ps_rev), ps_m, shares)
       evarr <- calc_ev_metric_implied_price(to_quote(.num("arr")), ev_arr_m, cash, debt, shares, "ARR", other_claims = other)
       if (identical(evarr$reason, "metric_nonpositive")) evarr$reason <- "arr_unavailable"
+      # Each formula is independently gated by the common fiscal snapshot. A
+      # complete P/E must not make an incomplete EV/FCF or P/S look usable.
+      gated <- list(pe=pe,forward_pe=fpe,peg=peg,ev_fcf=evf,ev_ebit=eve,
+        ev_ebitda=eveda,ev_sales=evs,ps=ps,ev_arr=evarr)
+      for (method in names(gated)) {
+        integrity_method <- if (identical(method,"peg")) "pe" else method
+        if (!isTRUE(integrity_method_ready(integrity_method))) {
+          gated[[method]] <- list(status="unavailable",reason="fiscal_inputs_incomplete",
+            implied_price=NA_real_)
+        }
+      }
       list(
-        pe = pe, forward_pe = fpe, peg = peg, ev_fcf = evf,
-        ev_ebit = eve, ev_ebitda = eveda, ev_sales = evs, ps = ps,
-        ev_arr = evarr, ran_at = Sys.time()
+        pe = gated$pe, forward_pe = gated$forward_pe, peg = gated$peg,
+        ev_fcf = gated$ev_fcf, ev_ebit = gated$ev_ebit,
+        ev_ebitda = gated$ev_ebitda, ev_sales = gated$ev_sales,
+        ps = gated$ps, ev_arr = gated$ev_arr, ran_at = Sys.time()
       )
     }
 

@@ -2004,6 +2004,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     param_missing_body = "This result is unavailable until the missing inputs are supplied. Review the field guidance, fill the values, and run the model again.",
     param_missing_go_fill = "Go to field",
     param_assumption_applied = "Assumed value applied by Lite",
+    param_forecast_default_source = "App forecast assumption",
+    param_near_growth_default = "Near-term revenue growth = %s%% (app forecast default; fundamental inputs are unavailable, not reported growth).",
     param_assumption_footnotes_title = "Notes — Lite applied assumptions",
     param_lite_source_unavailable = "Lite has applied the available default assumptions automatically. The source does not provide these required financial facts, so this model cannot produce a result yet:",
     param_missing_reference = "Reference suggestion",
@@ -3075,7 +3077,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     corp_cb_soft_gap = "Diluted − basic shares",
     corp_cb_us_sec_link = "Open SEC EDGAR 10-K search",
     smart_page_title = "Smart Analysis",
-    smart_chart_title = "Fair value comparison",
+    smart_chart_title = "Valuation comparison",
     smart_primary_kicker = "Primary model",
     smart_secondary_kicker = "Secondary model",
     smart_reference_kicker = "Reference (Multiples)",
@@ -3108,6 +3110,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     composite_status_pending = "—",
     composite_waiting_market = "Waiting for market data…",
     composite_waiting_val = "Waiting for valuation…",
+    composite_unavailable_val = "No usable valuation is available for this model with the current source data and assumptions. See the model's data-availability notes below.",
     composite_current_price = "Current price",
     composite_footer_note = "Blue band = main-model Bear–Bull; Base marker on top. Only models you have Run in this session appear as markers (same style as Current price; ★ main, ◇ sub-model).",
     vbx_sgr_subtitle = "SGR",
@@ -6831,6 +6834,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     param_missing_body = "必要參數尚未填妥，目前無法提供此項結果。請參考欄位註解補填，再重新試算。",
     param_missing_go_fill = "前往補填",
     param_assumption_applied = "Lite 已套用假設數值",
+    param_forecast_default_source = "系統預測假設",
+    param_near_growth_default = "短期營收成長率 = %s%%（基本面必要資料不足，採系統預測假設，並非實際營收成長率）。",
     param_assumption_footnotes_title = "註解 — Lite 已套用假設",
     param_lite_source_unavailable = "Lite 已自動套用可用的預設假設；資料來源尚未提供下列必要財報數據，此模型目前無法產出結果：",
     param_missing_reference = "參考建議",
@@ -7862,7 +7867,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     corp_cb_soft_gap = "稀釋股 − 基本股",
     corp_cb_us_sec_link = "開啟 SEC EDGAR 10-K 搜尋",
     smart_page_title = "智慧分析",
-    smart_chart_title = "合理價比較",
+    smart_chart_title = "估值比較",
     smart_primary_kicker = "主模型",
     smart_secondary_kicker = "副模型",
     smart_reference_kicker = "參照（Multiples）",
@@ -7895,6 +7900,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     composite_status_pending = "—",
     composite_waiting_market = "正在等待市場資料…",
     composite_waiting_val = "等待估值結果…",
+    composite_unavailable_val = "目前來源資料與假設尚不足以產出此模型的有效估值，請參閱下方模型資料可用性說明。",
     composite_current_price = "目前市價",
     composite_footer_note = "藍帶 = 主模型 Bear–Bull；上方點為 Base。僅顯示本工作階段已按過試算的模型標記（樣式與目前市價相同；★ 主模型、◇ 副模型）。",
     vbx_sgr_subtitle = "SGR",
@@ -9929,3 +9935,8 @@ ynow_notes_block <- function(..., locale = "zh-TW", open = FALSE) {
   }
 }
 
+
+.UI_STRINGS$en$integrity_fiscal_period <- "Financial model fiscal period"
+.UI_STRINGS$`zh-TW`$integrity_fiscal_period <- "模型財報基準財年"
+.UI_STRINGS$en$integrity_missing <- "Same-period source checks remain incomplete. Each formula listed below will not calculate or display a valuation until its required parameters are complete:"
+.UI_STRINGS$`zh-TW`$integrity_missing <- "補查後仍缺少同財年必要資料；下列各項公式會停止計算及顯示估值，直到必要參數齊備："

@@ -171,7 +171,7 @@ sotp_module_server <- function(id,
                                quote_currency = reactive(NA),
                                financial_currency = reactive(NA),
                                ui_locale = reactive("zh-TW"),
-                               shared_bridge = NULL) {
+                               shared_bridge = NULL, integrity_ready = reactive(TRUE)) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     shares_resolve_note <- reactiveVal(NULL)
@@ -308,6 +308,7 @@ sotp_module_server <- function(id,
     })
 
     run_calc <- function() {
+      if (!isTRUE(integrity_ready())) return(NULL)
       seg <- .collect_segment_multiples(.active_segments())
       cash <- input$cash
       debt <- input$debt
@@ -518,6 +519,7 @@ sotp_module_server <- function(id,
 
     return(list(
       segments_available = reactive({ nrow(.active_segments()) >= 2L }),
+      manual_segments_available = reactive({ nrow(.manual_segments()) >= 2L }),
       sotp_price = reactive({
         res <- last_result()
         if (!is.null(res) && identical(res$status, "ok")) res$implied_price else NA_real_

@@ -384,7 +384,7 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
                              capm_rm = reactive(NA),
                              use_estimated_re = reactive(FALSE),
                              auto_calc_pulse = reactive(0L),
-                             ui_locale = reactive("zh-TW")) {
+                             ui_locale = reactive("zh-TW"), integrity_ready = reactive(TRUE)) {
   moduleServer(id, function(input, output, session) {
     .echo_guard <- ynow_input_echo_guard(input, session, current_ticker, c("b0", "ri_roe", "ri_payout"))
     updateNumericInput <- .echo_guard$update
@@ -705,6 +705,7 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
 
     # ----- Core valuation（需「試算 RI」或自動試算 pulse）-----
     ri_calc <- eventReactive(list(input$btn_calc_ri, auto_calc_pulse()), {
+      if (!isTRUE(integrity_ready())) return(list(status = "idle"))
       if (!isTRUE(.ri_calc_requested())) {
         return(list(status = "idle"))
       }

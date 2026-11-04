@@ -159,7 +159,7 @@ pb_asset_module_server <- function(id,
                                    capm_beta = reactive(NA),
                                    capm_rm = reactive(NA),
                                    use_estimated_re = reactive(FALSE),
-                                   ui_locale = reactive("zh-TW")) {
+                                   ui_locale = reactive("zh-TW"), integrity_ready = reactive(TRUE)) {
   moduleServer(id, function(input, output, session) {
     .echo_guard <- ynow_input_echo_guard(input, session, current_ticker, function() input$basis %||% "bvps")
     updateNumericInput <- .echo_guard$update
@@ -500,6 +500,7 @@ pb_asset_module_server <- function(id,
 
     # --- 核心計算 ---
     pb_calc <- eventReactive(list(input$btn_calc_pb, auto_calc_pulse()), {
+      if (!isTRUE(integrity_ready())) return(list(status = "idle"))
       if (!isTRUE(.pb_calc_requested())) {
         return(list(status = "idle"))
       }

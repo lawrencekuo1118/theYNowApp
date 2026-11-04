@@ -1896,6 +1896,24 @@ def scrape_all_financials(ticker="AMZN"):
         _dbg(f"⚠️ yfinance 失敗: {e}")
     return empty
 
+
+def scrape_dividend_events(ticker="AMZN"):
+    """Return cash dividends with their actual ex-dates; no fiscal-year guessing."""
+    try:
+        _yahoo_gate_acquire()
+        values = yf.Ticker(ticker).dividends
+        if values is None or values.empty:
+            return pd.DataFrame(columns=["Date", "Dividend"])
+        out = values.reset_index()
+        out.columns = ["Date", "Dividend"]
+        out["Date"] = pd.to_datetime(out["Date"], errors="coerce").dt.strftime("%Y-%m-%d")
+        out["Dividend"] = pd.to_numeric(out["Dividend"], errors="coerce")
+        return out.dropna(subset=["Date", "Dividend"])
+    except Exception as exc:  # noqa: BLE001
+        _dbg(f"⚠️ dividend events failed {ticker}: {exc}")
+        return pd.DataFrame(columns=["Date", "Dividend"])
+
+
 def search_tickers(query="", max_results=12):
     """
     Typeahead ticker suggestions via yfinance.Search.

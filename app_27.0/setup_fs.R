@@ -237,9 +237,31 @@ DA_PATTERNS <- c(
   "^Depreciation And Amortization$",
   "^Depreciation & Amortization$",
   "^Depreciation Amortization Depletion$",
+  "^Depreciation Depletion And Amortization$",
   "^Depreciation, Amortization & Other$",
   "^Depreciation$"
 )
+# Total D&A: cash-flow total first, then reconciled IS total in the SAME period.
+# An incomplete preferred row must not mask another valid current-period alias.
+statement_da_series <- function(d_cf, d_is = NULL, include_ttm = TRUE) {
+  if (!is.data.frame(d_cf) || ncol(d_cf) < 2L) return(NA_real_)
+  periods <- names(d_cf)[-1]
+  if (!include_ttm) periods <- periods[!grepl("^ttm$", periods, ignore.case = TRUE)]
+  ccy <- attr(d_cf, "money_ccy") %||% attr(d_cf, "financialCurrency") %||% ""
+  sources <- list(ynow_statement_source(list("Cash Flow" = d_cf,
+    "Income Statement" = d_is), origin = "statement", currency = ccy))
+  setNames(vapply(periods, function(period) {
+    key <- ynow_fiscal_key(period)
+    if (is.na(key)) return(NA_real_)
+    ynow_integrity_facts(sources, key, list(financial_currency = ccy))$da$value
+  }, numeric(1)), periods)
+}
+
+statement_da <- function(d_cf, d_is = NULL) {
+  values <- statement_da_series(d_cf, d_is)
+  if (!length(values)) NA_real_ else unname(values[1])
+}
+
 # 營運資金變動（Yahoo HTML / yfinance 大小寫與複數差異）
 NWC_CHANGE_PATTERNS <- c(
   "^Change In Working Capital$",

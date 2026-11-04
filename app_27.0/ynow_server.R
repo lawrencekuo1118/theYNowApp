@@ -115,6 +115,9 @@ server <- function(input, output, session) {
   # ==========================================
   summary_data <- reactiveVal(NULL)
   scraped_financials <- reactiveVal(NULL)
+  model_integrity_sources <- reactiveVal(list())
+  model_integrity_recovery <- reactiveVal(NULL)
+  model_integrity_manual <- reactiveVal(list())
   # 載入後資料缺口：IS／BS／CF 全空；興櫃短註；櫃買季報摘要 fallback
   fs_all_empty <- reactiveVal(FALSE)
   tw_is_esb <- reactiveVal(FALSE)
@@ -187,8 +190,11 @@ server <- function(input, output, session) {
     tok <- isolate(param_audit_capture_token()) + 1L
     param_audit_capture_token(tok)
     shinyjs::delay(as.integer(delay_ms)[1], {
-      if (!identical(isolate(param_audit_capture_token()), tok)) return()
-      .capture_param_audit_baseline(reason = paste0("delay_", delay_ms))
+      # shinyjs evaluates this expression after the scheduling frame returns.
+      # A bare return() here disconnects the session on rapid repeated searches.
+      if (identical(isolate(param_audit_capture_token()), tok)) {
+        .capture_param_audit_baseline(reason = paste0("delay_", delay_ms))
+      }
     })
     invisible(tok)
   }
@@ -5927,6 +5933,37 @@ server <- function(input, output, session) {
             }
           }
         }
+        # Resolve every model's gaps together. A provider is called once for the
+        # complete request; period-scoped resolution never copies another year.
+        initial_source <- ynow_statement_source(res, "current_cache", stock_code,
+          attr(res, "financialCurrency") %||% f_ccy)
+        sources <- list(initial_source)
+        periods <- ynow_fiscal_periods(sources)
+        providers <- list(
+          old_cache = function(request) {
+            old <- tryCatch(ynow_market_cache_get(paste0("stmt:", stock_code),
+              ynow_market_cache_ttl("statement")), error = function(e) NULL)
+            if (is.null(old)) return(NULL)
+            ynow_statement_source(old, "old_cache", stock_code,
+              attr(old, "financialCurrency") %||% f_ccy)
+          },
+          original_source = function(request) {
+            if (isTRUE(attr(res, "integrity_original_checked"))) return(NULL)
+            fresh <- fetch_financial_statements_source(stock_code)
+            attr(fresh, "statement_cache_origin") <- "original_source"
+            attr(fresh, "integrity_original_checked") <- TRUE
+            tryCatch(ynow_market_cache_put(paste0("stmt:", stock_code), "statement",
+              stock_code, fresh), error = function(e) NULL)
+            ynow_statement_source(fresh, "original_source", stock_code,
+              attr(fresh, "financialCurrency") %||% f_ccy)
+          })
+        recovery <- ynow_recover_model_inputs(sources, periods, providers,
+          context = list(ticker = stock_code,
+            financial_currency = attr(res, "financialCurrency") %||% f_ccy,
+            quote_currency = attr(res, "currency") %||% q_ccy,
+            allow_book_claim_proxy = isTRUE(isolate(lite_mode()))))
+        model_integrity_sources(recovery$sources)
+        model_integrity_recovery(recovery)
         scraped_financials(res)
 
         # 1A：財報寫入後延遲鎖定參數基準（等 WACC／SGR／模組自動帶入）
@@ -7384,22 +7421,100 @@ server <- function(input, output, session) {
     )
   })
   
+  model_fiscal_period <- reactive({
+    periods <- ynow_fiscal_periods(model_integrity_sources())
+    if (!length(periods)) return(NA_character_)
+    periods[1]
+  })
+  model_integrity_context <- reactive({
+    list(ticker = current_ticker(), financial_currency = statement_currency(),
+      quote_currency = quote_currency(), manual = model_integrity_manual(),
+      allow_book_claim_proxy = isTRUE(lite_mode()))
+  })
+  observeEvent(current_ticker(), { model_integrity_manual(list()) }, ignoreInit = TRUE)
+  observeEvent(input$ynow_manual_financial, {
+    if (isTRUE(lite_mode()) || !isTRUE(user_has_searched())) return()
+    event <- input$ynow_manual_financial
+    id <- as.character(event$id %||% "")[1]
+    value <- suppressWarnings(as.numeric(event$value)[1])
+    map <- c(
+      "mod_fcf-fcf_revenue"="revenue", "mod_fcf-fcf_nopat"="nopat",
+      "mod_fcf-fcf_depreciation"="da", "mod_fcf-fcf_capex"="capex",
+      "mod_fcf-fcf_delta_nwc"="delta_nwc", "mod_ddm-d0"="d0",
+      "mod_ddm-est_eps"="eps", "mod_ri-b0"="b0", "mod_pb-bvps"="b0",
+      "mod_pb-tbvps"="tbvps", "mod_pb-navps"="navps", "mod_nav-navps"="navps",
+      "mod_rel-trailing_eps"="eps", "mod_rel-fcff"="fcff_cfo",
+      "mod_rel-ebit"="ebit", "mod_rel-ebitda"="ebitda",
+      "mod_rel-revenue"="revenue", "mod_rel-ps_revenue"="revenue",
+      "mod_rel-arr"="arr", "mod_rel-cash"="cash", "mod_rel-debt"="debt",
+      "mod_rel-shares"="outstanding", "mod_sotp-cash"="cash",
+      "mod_sotp-debt"="debt", "mod_sotp-shares"="outstanding",
+      "bridge_cash"="cash", "bridge_debt"="debt", "bridge_shares"="outstanding",
+      "bridge_other_claims"="other_claims")
+    fact <- unname(map[[id]])
+    period <- model_fiscal_period()
+    if (!nzchar(fact %||% "") || !is.finite(value) || is.na(period)) return()
+    share_facts <- c("outstanding")
+    per_share_facts <- c("d0","eps","b0","tbvps","navps")
+    if (!fact %in% c(share_facts, per_share_facts)) {
+      value <- money_to_session(value, session_currency(), statement_currency(), fx_usd_twd())
+    } else if (fact %in% per_share_facts &&
+               !identical(quote_currency(), statement_currency())) return()
+    if (!is.finite(value)) return()
+    manual <- model_integrity_manual()
+    manual[[fact]] <- list(value=value, period=period, source="user_manual",
+      ticker=current_ticker(), recorded_at=as.character(Sys.time()))
+    model_integrity_manual(manual)
+  }, ignoreInit = TRUE)
+  .model_integrity_config <- function(model) {
+    switch(model,
+      dcf = list(claim = input$dcf_claim %||% "fcff"),
+      ddm = list(mode = input[["mod_ddm-ddm_mode"]] %||% "gordon"),
+      pb = list(basis = input[["mod_pb-basis"]] %||% "bvps",
+        holdco_discount = suppressWarnings(as.numeric(input[["mod_pb-holdco_discount"]])[1]) / 100),
+      nav = list(holdco_discount = suppressWarnings(as.numeric(input[["mod_nav-holdco_discount"]])[1]) / 100),
+      multiples = list(method = tryCatch({
+        key <- rel_results$active_method_key()
+        if (is.null(key) || is.na(key) || !nzchar(key)) "pe" else key
+      }, error = function(e) "pe")), list())
+  }
+  model_integrity_snapshot <- function(model, config = .model_integrity_config(model)) {
+    period <- model_fiscal_period()
+    if (is.na(period)) return(NULL)
+    ynow_model_snapshot(model_integrity_sources(), period, model,
+      config, model_integrity_context())
+  }
+  .model_integrity_ready <- function(model, config = .model_integrity_config(model)) {
+    snap <- model_integrity_snapshot(model, config)
+    manual_segments <- identical(model,"sotp") && !is.null(snap) &&
+      nrow(snap$missing)==1L && identical(snap$missing$parameter,"segments") &&
+      tryCatch(isTRUE(sotp_results$manual_segments_available()), error=function(e) FALSE)
+    if (isTRUE(ticker_search_busy()) || is.null(snap) ||
+        (!isTRUE(snap$complete) && !manual_segments)) return(FALSE)
+    # A cross-currency listing requires a separately verified share-class ratio.
+    # Do not infer fiscal-year shares from today's market cap and price.
+    factor <- if (identical(quote_currency(), statement_currency())) 1 else NA_real_
+    expected <- ynow_integrity_binding(model, snap$facts, statement_currency(),
+      quote_currency(), session_currency(), fx_usd_twd(), factor)
+    ynow_binding_matches(input, expected, ynow_required_binding_ids(model, config))
+  }
+
   d_income_statement <- reactive({
     req(scraped_financials())
     session_currency(); fx_usd_twd()
-    df <- reorder_financial_columns(scraped_financials()[["Income Statement"]]$expanded)
+    df <- ynow_fiscal_frame(model_integrity_sources(), "Income Statement", model_fiscal_period(), model_integrity_context())
     scale_financial_df_money(df, statement_currency(), session_currency(), fx_usd_twd())
   })
   d_balance_sheet <- reactive({
     req(scraped_financials())
     session_currency(); fx_usd_twd()
-    df <- reorder_financial_columns(scraped_financials()[["Balance Sheet"]]$expanded)
+    df <- ynow_fiscal_frame(model_integrity_sources(), "Balance Sheet", model_fiscal_period(), model_integrity_context())
     scale_financial_df_money(df, statement_currency(), session_currency(), fx_usd_twd())
   })
   d_cash_flow <- reactive({
     req(scraped_financials())
     session_currency(); fx_usd_twd()
-    df <- reorder_financial_columns(scraped_financials()[["Cash Flow"]]$expanded)
+    df <- ynow_fiscal_frame(model_integrity_sources(), "Cash Flow", model_fiscal_period(), model_integrity_context())
     scale_financial_df_money(df, statement_currency(), session_currency(), fx_usd_twd())
   })
 
@@ -9215,6 +9330,7 @@ server <- function(input, output, session) {
     ui_locale = ui_locale,
     current_ticker = current_ticker,
     aml_pack = corp_aml_snapshot,
+    valuation_pending = reactive(isTRUE(ticker_search_busy()) || !isTRUE(user_has_searched())),
     sop_verdict_gate = reactive({
       if (isTRUE(tryCatch(isolate(lite_mode()), error = function(e) FALSE))) {
         return(list(unlocked = TRUE, reason = "lite"))
@@ -9310,13 +9426,20 @@ server <- function(input, output, session) {
   # ==========================================
   ddm_results <- ddm_module_server(
     id = "mod_ddm",
+    integrity_ready = reactive(.model_integrity_ready("ddm")),
     auto_calc_pulse = reactive(auto_calc_ddm_pulse()),
     ddm_g = reactive({
       if (!is.null(input$sgr) && is.finite(as.numeric(input$sgr))) as.numeric(input$sgr) else APP_DEFAULTS$ddm_g
     }), 
     ddm_ke = reactive({ central_ke() * 100 }),  # 🌟 連動！
     
-    scraped_d0 = reactive({ valuation_trailing_dps(summary_data()) }),
+    scraped_d0 = reactive({
+      snap <- model_integrity_snapshot("ddm")
+      if (is.null(snap)) return(NA_real_)
+      factor <- if (identical(quote_currency(), statement_currency())) 1 else NA_real_
+      ynow_integrity_binding("ddm", snap$facts, statement_currency(), quote_currency(),
+        session_currency(), fx_usd_twd(), factor)[["mod_ddm-d0"]]
+    }),
 
     summary_df = summary_data,
     d_cash_flow = d_cash_flow, 
@@ -9979,6 +10102,7 @@ server <- function(input, output, session) {
   # ==========================================
   ri_results <- ri_module_server(
     id = "mod_ri", 
+    integrity_ready = reactive(.model_integrity_ready("ri")),
     d_income_statement = d_income_statement, 
     d_balance_sheet = d_balance_sheet, 
     d_cash_flow = d_cash_flow, 
@@ -10012,6 +10136,7 @@ server <- function(input, output, session) {
   # ==========================================
   pb_results <- pb_asset_module_server(
     id = "mod_pb",
+    integrity_ready = reactive(.model_integrity_ready("pb")),
     auto_calc_pulse = reactive(auto_calc_pb_pulse()),
     d_balance_sheet = d_balance_sheet,
     d_income_statement = d_income_statement,
@@ -10046,6 +10171,7 @@ server <- function(input, output, session) {
   # ==========================================
   rel_results <- relative_multiples_module_server(
     id = "mod_rel",
+    integrity_method_ready = function(method) .model_integrity_ready("multiples", list(method = method)),
     auto_calc_pulse = reactive(auto_calc_rel_pulse()),
     summary_df = summary_data,
     d_income_statement = d_income_statement,
@@ -10079,6 +10205,7 @@ server <- function(input, output, session) {
   # ==========================================
   sotp_results <- sotp_module_server(
     id = "mod_sotp",
+    integrity_ready = reactive(.model_integrity_ready("sotp")),
     auto_calc_pulse = reactive(auto_calc_sotp_pulse()),
     d_income_statement = d_income_statement,
     d_balance_sheet = d_balance_sheet,
@@ -10103,6 +10230,7 @@ server <- function(input, output, session) {
   # ==========================================
   nav_results <- nav_module_server(
     id = "mod_nav",
+    integrity_ready = reactive(.model_integrity_ready("nav")),
     auto_calc_pulse = reactive(auto_calc_nav_pulse()),
     d_balance_sheet = d_balance_sheet,
     current_price = reactive({
@@ -10528,9 +10656,7 @@ server <- function(input, output, session) {
     n <- suppressWarnings(as.integer(input[["mod_ri-ri_years"]])[1])
     payout <- suppressWarnings(as.numeric(input[["mod_ri-ri_payout"]])[1])
     roe0 <- suppressWarnings(as.numeric(input[["mod_ri-ri_roe"]])[1])
-    if (!is.finite(b0) || !is.finite(ke0) || !is.finite(g0) || !is.finite(n)) return(NA_real_)
-    if (!is.finite(payout)) payout <- 0
-    if (!is.finite(roe0)) roe0 <- 12
+    if (!all(is.finite(c(b0, ke0, g0, n, payout, roe0)))) return(NA_real_)
     ke <- (ke0 + ke_pp_delta) / 100
     g <- (g0 + g_pp_delta) / 100
     roe <- (roe0 + roe_pp_delta) / 100
@@ -10711,7 +10837,7 @@ server <- function(input, output, session) {
     # DCF-driven while Model Selector correctly said no usable Fair Value primary.
     # Multiples / SOTP are Implied Price / Meta-Framework — never drive Bear–Base–Bull.
     fv_ok <- prim %in% c("dcf", "ddm", "pb", "nav", "ri")
-    if (!isTRUE(fv_ok)) {
+    if (!isTRUE(fv_ok) || !isTRUE(.model_integrity_ready(prim))) {
       return(.model_empty_band(""))
     }
     band <- switch(
@@ -10736,7 +10862,7 @@ server <- function(input, output, session) {
   secondary_valuation_point <- reactive({
     rec <- model_sidebar_rec()
     sec <- as.character(rec$secondary %||% "")
-    if (!nzchar(sec)) return(NA_real_)
+    if (!nzchar(sec) || !isTRUE(.model_integrity_ready(sec))) return(NA_real_)
     .model_point(sec)
   })
 
@@ -10745,7 +10871,7 @@ server <- function(input, output, session) {
   all_model_valuation_points <- reactive({
     keys <- c("dcf", "ddm", "ri", "pb", "nav", "multiples", "sotp")
     out <- lapply(keys, function(k) {
-      if (!isTRUE(.model_has_run(k))) return(NA_real_)
+      if (!isTRUE(.model_integrity_ready(k)) || !isTRUE(.model_has_run(k))) return(NA_real_)
       v <- suppressWarnings(as.numeric(tryCatch(.model_point(k), error = function(e) NA_real_))[1])
       if (length(v) != 1L || is.null(v) || is.na(v) || !is.finite(v) || v == 0) NA_real_ else v
     })
@@ -12597,7 +12723,7 @@ server <- function(input, output, session) {
     }
   })
   
-  estimated_g_meta <- reactiveValues(method = NULL, fund_res = NULL, source = NULL, raw_g = NULL)
+  estimated_g_meta <- reactiveValues(method = NULL, fund_res = NULL, source = NULL, raw_g = NULL, is_assumption = FALSE)
   .clamp_near_term_g_pct <- function(g, lo = -5, hi = 25) {
     g <- suppressWarnings(as.numeric(g)[1])
     if (!is.finite(g)) return(NA_real_)
@@ -12646,38 +12772,18 @@ server <- function(input, output, session) {
     fund_res <- NULL
     source_lab <- NULL
     if (isTRUE(method == "fundamental")) {
-      ebit <- select_current_metric(d_income_statement(), "Operating Income|EBIT", "flow")
-      tax_rate <- if (!is.null(input$wacc_tax)) input$wacc_tax / 100 else APP_DEFAULTS$wacc_tax / 100
-      if (!is.finite(tax_rate)) tax_rate <- 0.21
-      nopat <- ebit * (1 - tax_rate)
-
-      total_assets <- select_current_metric(d_balance_sheet(), "Total Assets", "stock")
-      curr_liab <- select_current_metric(d_balance_sheet(), "Total Current Liabilities|Current Liabilities", "stock")
-      st_debt <- select_current_metric(d_balance_sheet(), "Current Debt|Short Term Debt", "stock")
-      cash_eq <- select_current_metric(d_balance_sheet(), "Cash And Cash Equivalents|Cash & Cash Equivalents", "stock")
-
-      st_debt <- ifelse(is.na(st_debt), 0, st_debt)
-      curr_liab <- ifelse(is.na(curr_liab), 0, curr_liab)
-      cash_eq <- ifelse(is.na(cash_eq), 0, cash_eq)
-      total_assets <- ifelse(is.na(total_assets), 0, total_assets)
-
-      invested_capital <- (total_assets - cash_eq) - (curr_liab - st_debt)
-      roic <- if (!is.na(invested_capital) && invested_capital > 0) nopat / invested_capital else 0
-
-      capex <- abs(select_current_metric(d_cash_flow(), "Capital Expenditure", "flow"))
-      depre <- select_current_metric_any(d_cash_flow(), DA_PATTERNS, "flow")
-      cf_delta_nwc <- select_current_metric_any(d_cash_flow(), NWC_CHANGE_PATTERNS, "flow")
-
-      capex <- ifelse(is.na(capex), 0, capex)
-      depre <- ifelse(is.na(depre), 0, depre)
-      cf_delta_nwc <- ifelse(is.na(cf_delta_nwc), 0, cf_delta_nwc)
+      aligned <- align_financial_flows(d_income_statement(), d_cash_flow())
+      tax_rate <- tryCatch(.session_tax_decimal(), error = function(e) APP_DEFAULTS$wacc_tax / 100)
+      nopat <- statement_nopat(aligned$income, tax_fallback = tax_rate)
+      invested_capital <- statement_operating_invested_capital(d_balance_sheet())
+      roic <- if (is.finite(invested_capital) && invested_capital > 0) nopat / invested_capital else NA_real_
+      capex <- abs(select_current_metric_any(aligned$cashflow, CAPEX_PATTERNS, "flow"))
+      depre <- statement_da(aligned$cashflow, aligned$income)
+      cf_delta_nwc <- select_current_metric_any(aligned$cashflow, NWC_CHANGE_PATTERNS, "flow")
       nwc_investment <- -cf_delta_nwc
-
-      if (!is.na(nopat) && nopat > 0) {
-        reinvestment_rate <- (capex - depre + nwc_investment) / nopat
-      } else {
-        reinvestment_rate <- 0
-      }
+      reinvestment_rate <- if (is.finite(nopat) && nopat > 0) {
+        (capex - depre + nwc_investment) / nopat
+      } else NA_real_
       # RR outside [0,1] is usually accounting noise for a one-year snapshot
       reinvestment_rate <- max(-0.2, min(1.2, reinvestment_rate))
 
@@ -12785,6 +12891,13 @@ server <- function(input, output, session) {
       }
     }
 
+    estimated_g_meta$is_assumption <- FALSE
+    if ((is.null(val) || length(val) < 1 || !is.finite(val)) && isTRUE(lite_mode())) {
+      val <- APP_DEFAULTS$custom_g
+      raw_g_pct <- val
+      source_lab <- ui_str("param_forecast_default_source", ui_locale())
+      estimated_g_meta$is_assumption <- TRUE
+    }
     if (is.null(val) || length(val) < 1 || is.na(val) || !is.finite(val)) {
       prev_g_na <- isolate(estimated_g())
       estimated_g(NULL)
@@ -13693,15 +13806,11 @@ server <- function(input, output, session) {
     stock_price_estimate_val(NULL)
     dcf_audit_snap(NULL)
     dcf_value_result(NULL)
+    if (!isTRUE(.model_integrity_ready("dcf"))) return(NULL)
     silent <- isTRUE(isolate(lite_dcf_silent()))
     show_toast <- if (is.null(notify)) !silent else isTRUE(notify)
-    # Full silent auto-calc waits for estimated WACC. Lite readiness already
-    # accepts a disclosed UI / App-default WACC — do not abort silent Lite DCF
-    # when calculated_wacc is still NA (AAPL-like Lite Smart Analysis).
-    if (silent && !is.finite(suppressWarnings(as.numeric(calculated_wacc())[1])) &&
-        !isTRUE(isolate(lite_mode()))) {
-      return(NULL)
-    }
+    if (silent && !isTRUE(lite_mode()) &&
+        !is.finite(suppressWarnings(as.numeric(calculated_wacc())[1]))) return(NULL)
     scenario <- .effective_dcf_scenario()
     dcf_mode_eff <- scenario$mode
     if (silent) {
@@ -14267,6 +14376,7 @@ server <- function(input, output, session) {
   .auto_calc_primary_ready <- function(prim) {
     prim <- as.character(prim %||% "")[1]
     if (!nzchar(prim)) return(FALSE)
+    if (!isTRUE(.model_integrity_ready(prim))) return(FALSE)
     fresh <- switch(prim,
       dcf = tryCatch(fcf_results$source_ready(), error = function(e) FALSE),
       ddm = tryCatch(ddm_results$source_ready(), error = function(e) FALSE),
@@ -14517,7 +14627,8 @@ server <- function(input, output, session) {
       if (isTRUE(lite_mode())) .lite_resync_discount_consistency(des)
     }
 
-    if (isTRUE(fv_prim) && !isTRUE(.auto_calc_primary_ready(prim))) {
+    primary_ready <- isTRUE(fv_prim) && isTRUE(.auto_calc_primary_ready(prim))
+    if (isTRUE(fv_prim) && !primary_ready) {
       # Surface why primary cannot auto-calc (mobile Lite never opens model tabs)
       if (identical(prim, "ddm")) {
         d0 <- suppressWarnings(as.numeric(input[["mod_ddm-d0"]])[1])
@@ -14536,9 +14647,9 @@ server <- function(input, output, session) {
           }
         }
       }
-      return()
+      if (!isTRUE(lite_mode())) return()
     }
-    keys <- if (isTRUE(fv_prim)) prim else character(0)
+    keys <- if (primary_ready) prim else character(0)
     # Lite secondary auto-calc: Fair Value engines + SOTP structural cross-check.
     # Multiples is a universal Reference (not a secondary) — always companion-run when ready.
     sec_auto_allowlist <- c("dcf", "ddm", "pb", "ri", "nav", "sotp")
@@ -14546,7 +14657,7 @@ server <- function(input, output, session) {
     sec_ready <- if (isTRUE(sec_in_auto_allowlist)) isTRUE(.auto_calc_primary_ready(sec)) else FALSE
     if (isTRUE(lite_mode()) && isTRUE(fv_prim) && isTRUE(sec_in_auto_allowlist) &&
         !identical(sec, prim) && isTRUE(sec_ready)) {
-      keys <- c(prim, sec)
+      keys <- unique(c(keys, sec))
     }
     if (isTRUE(lite_mode()) && identical(ref, "multiples") &&
         isTRUE(.auto_calc_primary_ready("multiples"))) {
@@ -14637,7 +14748,8 @@ server <- function(input, output, session) {
                identical(as.character(auto_calc_fail_sig() %||% "")[1], paste(current_ticker(), "ddm_no_d0", sep = "|"))) {
       ui_str("smart_ddm_no_d0", loc)
     } else {
-      ui_str("smart_calc_pending", loc)
+      ui_str(if (isTRUE(lite_mode()) && !isTRUE(ticker_search_busy()) && !is.finite(base))
+        "composite_unavailable_val" else "smart_calc_pending", loc)
     }
     prim_title <- if (isTRUE(no_fv_primary)) {
       ui_str("smart_no_fv_primary", loc)
@@ -14647,16 +14759,34 @@ server <- function(input, output, session) {
     tk <- tryCatch(as.character(current_ticker() %||% "")[1], error = function(e) "")
     searched <- isTRUE(user_has_searched())
     tags$div(
+      if (!isTRUE(ticker_search_busy())) {
+        period <- model_fiscal_period()
+        audit <- ynow_audit_formula_years(model_integrity_sources(),
+          periods = if (is.na(period)) character() else period,
+          context = model_integrity_context())
+        gaps <- do.call(rbind, lapply(audit, function(x) x$missing))
+        tags$div(class = if (!is.null(gaps) && nrow(gaps)) "alert alert-warning" else "alert alert-info",
+          ui_str("integrity_fiscal_period", loc), ": ", if (is.na(period)) "—" else period,
+          if (!is.null(gaps) && nrow(gaps)) tagList(tags$br(), ui_str("integrity_missing", loc),
+            tags$ul(lapply(split(gaps, gaps$model), function(rows)
+              tags$li(toupper(gsub("_", " / ", rows$model[1], fixed=TRUE)), ": ",
+                paste(rows$parameter, collapse = ", "))))))
+      },
       if (isTRUE(lite_mode())) {
         vals <- setNames(lapply(ynow_parameter_input_ids(), function(id) input[[id]]), ynow_parameter_input_ids())
+        vals[[".sotp_ready"]] <- tryCatch(isTRUE(sotp_results$segments_available()), error = function(e) FALSE)
+        unavailable <- c(if (!is.finite(base)) prim, if (!is.finite(sec_pt)) sec)
+        reference <- as.character(rec$reference %||% "")[1]
+        reference_value <- tryCatch(as.numeric(rel_results$any_implied_price())[1], error = function(e) NA_real_)
+        if (identical(reference, "multiples") && !is.finite(reference_value)) unavailable <- c(unavailable, "multiples")
         gaps <- ynow_required_parameter_rows(vals, APP_DEFAULTS, loc,
           central_ke() * 100, calculated_wacc() * 100, lite = TRUE)
-        gaps <- gaps[gaps$model == prim & !is.finite(gaps$suggestion), , drop = FALSE]
+        gaps <- gaps[gaps$model %in% unavailable & !is.finite(gaps$suggestion), , drop = FALSE]
         # Applied-assumption notes moved to page-footer footnotes
         # (`smart_analysis_assumption_notes`). Keep only source-gap warning here.
-        if (!is.finite(base) && nrow(gaps) && !isTRUE(ticker_search_busy()))
+        if (nrow(gaps) && !isTRUE(ticker_search_busy()))
           tags$div(class = "alert alert-warning", ui_str("param_lite_source_unavailable", loc),
-            paste(unique(gaps$label), collapse = ", "))
+            paste(unique(paste(toupper(gaps$model), gaps$label, sep = ": ")), collapse = ", "))
       },
       tags$div(class = "ynow-smart-card-row",
       ynow_alertable(
@@ -14834,7 +14964,8 @@ server <- function(input, output, session) {
     vals <- c(cur, bear, base, bull)
     cols <- c("#333333", "#9aa0a6", "#0C5484", "#5b8def")
     if (nzchar(sec) && !identical(sec, "multiples") && is.finite(sec_pt)) {
-      labs <- c(labs, paste0(.model_label(sec), " FV"))
+      suffix <- if (identical(sec, "sotp")) ui_str("smart_multiples_bar_suffix", loc) else "FV"
+      labs <- c(labs, paste(.model_label(sec), suffix))
       vals <- c(vals, sec_pt)
       cols <- c(cols, "#888888")
     }
@@ -21556,7 +21687,7 @@ server <- function(input, output, session) {
     }
     FALSE
   }
-  parameter_assumptions <- ynow_parameter_guidance_server(
+  parameter_assumptions_base <- ynow_parameter_guidance_server(
     input, session, searched = user_has_searched, ticker = current_ticker,
     busy = ticker_search_busy, model_rec = model_sidebar_rec, locale = ui_locale,
     defaults = APP_DEFAULTS, ke = central_ke, lite = lite_mode,
@@ -21568,5 +21699,14 @@ server <- function(input, output, session) {
     }),
     tab_locked = .ynow_missing_params_tab_locked
   )
+
+  parameter_assumptions <- reactive({
+    notes <- parameter_assumptions_base()
+    if (isTRUE(estimated_g_meta$is_assumption) && is.finite(suppressWarnings(as.numeric(estimated_g())[1]))) {
+      notes <- c(notes, paste0(ui_str("param_assumption_applied", ui_locale()), ": ",
+        sprintf(ui_str("param_near_growth_default", ui_locale()), format(estimated_g(), trim = TRUE))))
+    }
+    notes
+  })
 
 }

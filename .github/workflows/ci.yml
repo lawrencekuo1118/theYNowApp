@@ -48,6 +48,8 @@ jobs:
           Rscript app_27.0/tests/test_parameter_semantics.R
           Rscript app_27.0/tests/test_rd_estimate.R
           Rscript app_27.0/tests/test_parameter_completeness.R
+          Rscript app_27.0/tests/test_model_fiscal_integrity.R
+          Rscript app_27.0/tests/test_lite_valuation_pipeline.R
           Rscript app_27.0/tests/test_tw_search_session.R
           Rscript app_27.0/tests/test_ticker_auto_uppercase.R
           Rscript app_27.0/tests/test_method_eng_locale.R

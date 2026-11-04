@@ -119,6 +119,17 @@
       if (typeof window.ynowGotoTab === 'function') window.ynowGotoTab(button.getAttribute('data-ynow-fill-tab'));
       window.setTimeout(focusPending, 150);
     });
+    // Only a real keyboard/spinner edit may become a Full-mode manual fiscal
+    // fact. Shiny's programmatic update events have isTrusted=false.
+    document.addEventListener('change', function (event) {
+      var field = event.target;
+      if (!event.isTrusted || !field || !field.id || field.type === 'hidden') return;
+      if (!/^((mod_(fcf|ddm|ri|pb|nav|rel|sotp)-)|bridge_)/.test(field.id)) return;
+      var value = Number(field.value);
+      if (!Number.isFinite(value) || !window.Shiny || !Shiny.setInputValue) return;
+      Shiny.setInputValue('ynow_manual_financial',
+        {id: field.id, value: value, nonce: Date.now()}, {priority: 'event'});
+    }, true);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
   else start();

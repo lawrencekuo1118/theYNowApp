@@ -16,7 +16,7 @@ ddm_module_server <- function(id, auto_calc_pulse = reactive(0L),
                               capm_beta = reactive(NA),
                               capm_rm = reactive(NA),
                               use_estimated_re = reactive(FALSE),
-                              ui_locale = reactive("zh-TW")) {
+                              ui_locale = reactive("zh-TW"), integrity_ready = reactive(TRUE)) {
   
   moduleServer(id, function(input, output, session) {
     .echo_guard <- ynow_input_echo_guard(input, session, current_ticker, function() if (identical(input$ddm_mode, "spm")) c("d0", "est_eps") else "d0")
@@ -148,6 +148,7 @@ ddm_module_server <- function(id, auto_calc_pulse = reactive(0L),
 
     # DDM 核心：Gordon／SPM／二階段
     ddm_calc <- eventReactive(list(input$btn_calc_ddm, auto_calc_pulse()), {
+      if (!isTRUE(integrity_ready())) return(list(status = "idle"))
       if (!isTRUE(.ddm_calc_requested())) {
         return(list(status = "idle"))
       }

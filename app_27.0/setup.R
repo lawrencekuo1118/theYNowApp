@@ -234,6 +234,7 @@ valuation_trailing_eps <- function(summary_df = NULL, d_is = NULL) {
       return(money_to_session(ni / weighted, money_ccy, qc, ctx$fx_usd_twd))
     }
   }
+  if (!is.null(attr(d_is, "valuation_fiscal_period"))) return(NA_real_)
   # Yahoo Summary EPS is explicitly in quote units (including ADR units).
   if (is.data.frame(summary_df) && all(c("Item", "Value") %in% names(summary_df))) {
     hit <- grep("EPS \\(TTM\\)|Trailing EPS|^EPS$", summary_df$Item, ignore.case = TRUE)
@@ -2059,3 +2060,5 @@ ynow_calc_reset_row <- function(calc_btn, reset_btn, sync_ui = NULL) {
 }
 
 source(file.path(.ynow_setup_dir, "valuation_guard.R"), local = TRUE, encoding = "UTF-8")
+
+source(file.path(.ynow_setup_dir, "model_integrity.R"), local = TRUE, encoding = "UTF-8")

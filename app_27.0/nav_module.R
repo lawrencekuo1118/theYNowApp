@@ -147,7 +147,7 @@ nav_module_server <- function(id,
                               current_ticker = reactive(""),
                               quote_currency = reactive(NA),
                               financial_currency = reactive(NA),
-                              ui_locale = reactive("zh-TW")) {
+                              ui_locale = reactive("zh-TW"), integrity_ready = reactive(TRUE)) {
   moduleServer(id, function(input, output, session) {
     .echo_guard <- ynow_input_echo_guard(input, session, current_ticker, "navps")
     updateNumericInput <- .echo_guard$update
@@ -303,6 +303,7 @@ nav_module_server <- function(id,
     }
 
     nav_calc <- eventReactive(list(input$btn_calc_nav, auto_calc_pulse()), {
+      if (!isTRUE(integrity_ready())) return(list(status = "idle"))
       if (!isTRUE(.nav_calc_requested())) return(list(status = "idle"))
       navps <- safe_num(input$navps)
       if (!is.finite(navps) || navps <= 0) {
