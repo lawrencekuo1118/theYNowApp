@@ -1,0 +1,4 @@
+# Run proof blobs stay local / Agent Store; do not commit PNGs or dumps.
+*/
+!.gitignore
+!README.md
