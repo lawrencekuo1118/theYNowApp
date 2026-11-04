@@ -12783,7 +12783,8 @@ server <- function(input, output, session) {
       aligned <- align_financial_flows(d_income_statement(), d_cash_flow())
       tax_rate <- tryCatch(.session_tax_decimal(), error = function(e) APP_DEFAULTS$wacc_tax / 100)
       nopat <- statement_nopat(aligned$income, tax_fallback = tax_rate)
-      invested_capital <- statement_operating_invested_capital(d_balance_sheet())
+      ic_bd <- operating_invested_capital_breakdown(d_balance_sheet())
+      invested_capital <- ic_bd$ic
       roic <- if (is.finite(invested_capital) && invested_capital > 0) nopat / invested_capital else NA_real_
       capex <- abs(select_current_metric_any(aligned$cashflow, CAPEX_PATTERNS, "flow"))
       depre <- statement_da(aligned$cashflow, aligned$income)
@@ -12813,9 +12814,10 @@ server <- function(input, output, session) {
         rr = reinvestment_rate,
         nopat = nopat,
         ic = invested_capital,
+        ic_nonop_proxy = isTRUE(ic_bd$used_nonop_proxy),
         ceiling_applied = apply_ceiling
       )
-      source_lab <- "RR×ROIC"
+      source_lab <- if (isTRUE(ic_bd$used_nonop_proxy)) "RR×ROIC（IC proxy nonop=0）" else "RR×ROIC"
     }
 
     val_raw <- switch(
@@ -12958,6 +12960,16 @@ server <- function(input, output, session) {
         glue::glue("<div style='color: #00a65a; margin-top: 5px; font-weight: bold;'>成長率處於合理範圍內 (實際輸出至模型: {fund_res$g} %)</div>")
       }
       
+      ic_proxy_msg <- if (isTRUE(fund_res$ic_nonop_proxy)) {
+        paste0(
+          "<div style='color: #b9770e; margin-top: 6px; font-size: 12px;'>",
+          htmltools::htmlEscape(ui_str("fcf_ic_nonop_proxy_help", ui_locale())),
+          "</div>"
+        )
+      } else {
+        ""
+      }
+
       HTML(glue::glue(
         "<div style='padding: 12px; background-color: #fdfaf6; border-left: 4px solid #d35400; font-size: 13px;'>
            <b>學理推估 (Fundamental) 拆解：</b><br/>
@@ -12966,6 +12978,7 @@ server <- function(input, output, session) {
              {round(fund_res$roic * 100, 2)} % × {round(fund_res$rr * 100, 2)} % = {fund_res$raw_g} %
            </span><br/>
            {ceiling_status_msg}
+           {ic_proxy_msg}
          </div>"
       ))
     } else if (method %in% c("cagr", "mean", "median", "last_year")) {

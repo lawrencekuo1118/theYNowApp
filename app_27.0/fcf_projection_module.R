@@ -111,7 +111,11 @@ fcf_projection_module_ui <- function(id) {
            fluidRow(
              column(4, numericInput(ns("fcf_delta_nwc"), "營運資金變動 (ΔNWC) [-]", value = 0)),
              column(4, numericInput(ns("fcf_capex"), "資本支出 (CapEx) [-]", value = 0)),
-             column(4, numericInput(ns("fcf_invested_capital"), "總投入資本", value = 1))
+             column(
+               4,
+               numericInput(ns("fcf_invested_capital"), "總投入資本 (Operating IC)", value = NA_real_),
+               uiOutput(ns("fcf_ic_proxy_help"))
+             )
            ),
 
            # 前瞻比率屬 FCFF 預測假設（非 Sensitivity）：空白則用當期絕對金額推算佔比
@@ -253,8 +257,12 @@ fcf_projection_module_server <- function(
 ) {
   
   moduleServer(id, function(input, output, session) {
-    .echo_guard <- ynow_input_echo_guard(input, session, shiny::reactive(list(d_income_statement(), d_cash_flow())), c("fcf_nopat", "fcf_depreciation", "fcf_capex", "fcf_delta_nwc"))
+    .echo_guard <- ynow_input_echo_guard(
+      input, session, shiny::reactive(list(d_income_statement(), d_cash_flow())),
+      c("fcf_nopat", "fcf_depreciation", "fcf_capex", "fcf_delta_nwc", "fcf_invested_capital")
+    )
     updateNumericInput <- .echo_guard$update
+    ic_sync_meta <- shiny::reactiveVal(list(used_nonop_proxy = FALSE, ok = FALSE))
 
     ns <- session$ns
 
@@ -609,7 +617,13 @@ fcf_projection_module_server <- function(
       updateNumericInput(session, "fcf_depreciation", value = dep)
       updateNumericInput(session, "fcf_delta_nwc", value = if(!is.na(raw_nwc)) -raw_nwc else NA_real_)
       updateNumericInput(session, "fcf_capex", value = cap)
-      updateNumericInput(session, "fcf_invested_capital", value = statement_operating_invested_capital(d_balance_sheet()))
+      ic_bd <- operating_invested_capital_breakdown(d_balance_sheet())
+      ic_sync_meta(list(
+        used_nonop_proxy = isTRUE(ic_bd$used_nonop_proxy),
+        ok = isTRUE(ic_bd$ok),
+        ic = ic_bd$ic
+      ))
+      updateNumericInput(session, "fcf_invested_capital", value = ic_bd$ic)
 
       # CapEx／D&A 佔營收：依目前財報重算前瞻 CapEx/Rev（暴衝時改採 N 年均值）。
       # 必須覆寫既有 proj_capex_rate：若僅在欄位空白時寫入，前一檔（如 TSM ~37%）
@@ -635,6 +649,17 @@ fcf_projection_module_server <- function(
       }
     }
     
+    output$fcf_ic_proxy_help <- renderUI({
+      meta <- ic_sync_meta()
+      if (!isTRUE(meta$used_nonop_proxy) || !isTRUE(meta$ok)) return(NULL)
+      loc <- tryCatch(ui_locale(), error = function(e) "en")
+      tags$p(
+        class = "help-block text-warning",
+        style = "margin-top: 4px; margin-bottom: 0; font-size: 12px;",
+        ui_str("fcf_ic_nonop_proxy_help", loc)
+      )
+    })
+
     # 🚀 1. 全自動連動：只要主程式抓到新財報，模擬沙盒直接自動更新！
     observeEvent(d_cash_flow(), {
       do_sync_financials()
