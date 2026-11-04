@@ -7,5 +7,5 @@ commit=0937db182bde6151f30031c91d9c0a93eab698b0
 short=0937db18
 message=chore: bump display version to v27.83
 captured_at=2026-11-04T12:51:15Z
-display_version=v27.83
+display_version=v27.84
 note=Growth-rate KPI N/A restore (#634). Running bundle 12778665. Mac coding/OneDrive sync handed off from Cloud.
