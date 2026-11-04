@@ -298,6 +298,44 @@ ynow_cache_tier_info <- function() {
   df
 }
 
+ynow_attach_fiscal_dividends <- function(res, events) {
+  # Allocate actual ex-date payments only between adjacent verified annual
+  # fiscal endpoints. Calendar-year or cross-year estimates are forbidden.
+  if (!is.null(events) && is.data.frame(events) && nrow(events) &&
+      all(c("Date", "Dividend") %in% names(events))) {
+    endpoints <- unique(unlist(lapply(c("Income Statement", "Cash Flow"), function(table) {
+      d <- tryCatch(res[[table]]$expanded, error = function(e) NULL)
+      if (!is.data.frame(d) || ncol(d) < 2L) return(as.Date(character()))
+      as.Date(names(d)[-1], tryFormats = c("%m/%d/%Y", "%Y-%m-%d"))
+    })))
+    endpoints <- sort(as.Date(endpoints, origin = "1970-01-01"), decreasing = TRUE)
+    endpoints <- endpoints[!is.na(endpoints)]
+    event_dates <- as.Date(events$Date)
+    event_values <- suppressWarnings(as.numeric(events$Dividend))
+    if (length(endpoints) >= 2L) {
+      values <- vapply(seq_len(length(endpoints) - 1L), function(i) {
+        hit <- is.finite(event_values) & event_dates > endpoints[i + 1L] &
+          event_dates <= endpoints[i]
+        if (any(hit, na.rm = TRUE)) sum(event_values[hit], na.rm = TRUE) else NA_real_
+      }, numeric(1))
+      dividends <- data.frame(Breakdown = "Cash DPS By Ex Date", check.names = FALSE)
+      for (i in seq_along(values)) dividends[[format(endpoints[i], "%m/%d/%Y")]] <- values[i]
+      attr(dividends, "money_ccy") <- attr(res, "currency")
+      attr(dividends, "financialCurrency") <- attr(res, "currency")
+      res$Dividends <- dividends
+    }
+  }
+  res
+}
+
+# One original-source operation shared by normal fetches and all-parameter recovery.
+fetch_financial_statements_source <- function(stock_code) {
+  if (!isTRUE(.ensure_python_scraper())) stop("Financial statement provider unavailable")
+  res <- normalize_all_financials(scrape_all_financials(stock_code))
+  events <- tryCatch(scrape_dividend_events(stock_code), error = function(e) NULL)
+  ynow_attach_fiscal_dividends(res, events)
+}
+
 # SLOW: quarterly/annual statements (24h disk).
 # Important: never leave EMPTY frames in the slow cache — Yahoo rate-limits and
 # transient misses would otherwise poison Multiples / DCF for 24h.
@@ -314,13 +352,14 @@ ynow_cache_tier_info <- function() {
     } else {
       function(x) FALSE
     }
-    if (!is.null(hit) && !isTRUE(empty_fn(hit))) return(hit)
+    if (!is.null(hit) && !isTRUE(empty_fn(hit))) {
+      attr(hit, "statement_cache_origin") <- "persistent_cache"
+      return(hit)
+    }
   }
-  .ynow_log(paste("🚀 正在啟動 Python 財報抓取:", stock_code))
-  if (!isTRUE(.ensure_python_scraper())) {
-    stop("scrape_all_financials 未載入（Python / reticulate 失敗）")
-  }
-  res <- normalize_all_financials(scrape_all_financials(stock_code))
+  res <- fetch_financial_statements_source(stock_code)
+  attr(res, "statement_cache_origin") <- "original_source"
+  attr(res, "integrity_original_checked") <- TRUE
   empty_fn2 <- if (exists("financials_is_bs_cf_all_empty", mode = "function")) {
     financials_is_bs_cf_all_empty
   } else {

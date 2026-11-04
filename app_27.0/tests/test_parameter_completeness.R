@@ -167,6 +167,7 @@ for (edition in c(FALSE, TRUE)) for (mode in c("gordon", "two_stage")) {
   e <- new.env(parent = globalenv())
   e$isolate <- shiny::isolate
   e$lite_mode <- function() edition
+  e$.model_integrity_ready <- function(model) TRUE
   e$lite_desired_des <- function() list(two_stage = mode == "two_stage")
   e$fcf_results <- list(source_ready = function() TRUE, df_fcf = function() data.frame(FCFF = 1:5))
   e$calculated_wacc <- function() NA_real_
@@ -189,3 +190,49 @@ for (edition in c(FALSE, TRUE)) for (mode in c("gordon", "two_stage")) {
   stopifnot(ready("ri"))
 }
 cat("PASS: production readiness gates use disclosed Lite Gordon/Two-Stage defaults; Full requires calculated rates; RI waits for payout\n")
+
+# A source update can erase a default within a single flush, so the browser
+# never echoes the intermediate value. A bounded delayed retry must recover.
+shiny::testServer(function(input,output,session) {
+ sends <- new.env(parent=emptyenv());sends$count<-0L
+ session$sendInputMessage <- function(id,message) {
+  if(id=='wacc_gordon')sends$count<-sends$count+1L
+ }
+ assumptions <- ynow_parameter_guidance_server(input,session,
+  searched=function()TRUE,ticker=function()'LOST-ECHO',busy=function()FALSE,
+  model_rec=function()list(primary='dcf'),locale=function()'en',defaults=APP_DEFAULTS,
+  ke=function()NA_real_,wacc=function()NA_real_,lite=function()TRUE)
+}, {
+ session$setInputs(dcf_mode='gordon',dcf_claim='fcff',wacc_gordon=NA_real_)
+ session$elapse(400);session$flushReact()
+ stopifnot(sends$count==1L)
+ # Deliberately never echo the first update (equivalent to an intervening NA).
+ deadline<-Sys.time()+3
+ while(sends$count<2L&&Sys.time()<deadline) {later::run_now(.85);session$flushReact()}
+ stopifnot(sends$count>=2L,sends$count<=4L)
+ session$setInputs(wacc_gordon=APP_DEFAULTS$wacc_gordon)
+ session$elapse(400);session$flushReact()
+ before<-sends$count
+ later::run_now(.85);session$flushReact()
+ stopifnot(sends$count==before)
+})
+cat('PASS: lost default echo recovers with bounded session-safe retries; finite source values are never overwritten\n')
+shiny::testServer(function(input,output,session) {
+ symbol<-shiny::reactiveVal('A');sends<-new.env(parent=emptyenv());sends$count<-0L
+ session$sendInputMessage<-function(id,message)if(id=='wacc_gordon')sends$count<-sends$count+1L
+ assumptions<-ynow_parameter_guidance_server(input,session,searched=function()TRUE,ticker=symbol,
+  busy=function()FALSE,model_rec=function()list(primary='dcf'),locale=function()'en',
+  defaults=APP_DEFAULTS,ke=function()NA_real_,wacc=function()NA_real_,lite=function()TRUE)
+},{
+ session$setInputs(dcf_mode='gordon',wacc_gordon=NA_real_)
+ session$elapse(400);session$flushReact()
+ stopifnot(sends$count==1L)
+ for(i in 1:5){later::run_now(.85);session$flushReact()}
+ stopifnot(sends$count==4L) # no unbounded retries on an absent input binding
+ session$setInputs(wacc_gordon=7)
+ symbol('B');session$flushReact();session$elapse(400)
+ before<-sends$count
+ later::run_now(.85);session$flushReact()
+ stopifnot(sends$count==before,input$wacc_gordon==7)
+})
+cat('PASS: default retry cap is four; stock changes cancel old retry generations and retain finite user/source input\n')

@@ -41,24 +41,25 @@ check("DA prefers And Amortization", approx_eq(dep[1], 65756))
 
 # mature-tech SGR fallback
 d_is <- data.frame(
-  Breakdown = c("Net Income", "Total Revenue"),
+  Breakdown = c("Net Income Common Stockholders", "Total Revenue"),
   TTM = c("77670", "716924"),
   Y2025 = c("77670", "716924"),
   stringsAsFactors = FALSE
 )
 d_bs <- data.frame(
-  Breakdown = "Stockholders Equity",
+  Breakdown = "Common Stock Equity",
   Y2025 = "411065",
   stringsAsFactors = FALSE
 )
-raw <- calc_fundamental_sgr_pct(d_is, d_bs, NULL)
+d_cf_sgr <- data.frame(Breakdown="Common Stock Dividend Paid",Y2025="0")
+raw <- calc_fundamental_sgr_pct(d_is, d_bs, d_cf_sgr)
 check("raw AMZN-like SGR high", is.finite(raw) && raw > 6)
 est <- estimate_perpetual_g(
   method = "fundamental",
   rf_pct = 4.7,
   d_is = d_is,
   d_bs = d_bs,
-  d_cf = NULL,
+  d_cf = d_cf_sgr,
   ticker = "AMZN",
   wacc_pct = 9.0
 )
@@ -72,7 +73,8 @@ check("AMZN recommends lifecycle method", identical(est$recommended_method, "lif
 check("recommend reason mentions Lifecycle", grepl("Lifecycle", est$recommend_reason, fixed = TRUE))
 
 rec_only <- recommend_perpetual_g_method(
-  rf_pct = 4.7, d_is = d_is, d_bs = d_bs, ticker = "AMZN", wacc_pct = 9.0
+  rf_pct = 4.7, d_is = d_is, d_bs = d_bs, d_cf = d_cf_sgr,
+  ticker = "AMZN", wacc_pct = 9.0
 )
 check("recommend_perpetual_g_method AMZN→lifecycle", identical(rec_only$method, "lifecycle"))
 
@@ -82,6 +84,7 @@ est2 <- estimate_perpetual_g(
   rf_pct = 4.7,
   d_is = d_is,
   d_bs = d_bs,
+  d_cf = d_cf_sgr,
   ticker = "XYZ",
   industry_text = "Packaged Foods",
   wacc_pct = 9.0

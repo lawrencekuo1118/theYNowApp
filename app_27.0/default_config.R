@@ -165,6 +165,7 @@ APP_DEFAULTS <- list(
   rel_ev_sales_multiple = 3,
   rel_ps_multiple = 3,
   rel_ev_arr_multiple = 10,
+  sotp_nonop = 0, # Lite assumption: no separately valued non-operating add-on; not a reported asset balance.
 
   # --- 8. FCF 投影：CapEx 暴衝平滑（使用者可於 FCF 分頁覆寫）---
   # 預設為工程啟發式，非學術或監管標準；見 FCF 分頁說明。

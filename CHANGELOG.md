@@ -1,3 +1,9 @@
+## [v27.62] — 2026-11-04 · 模型財年完整性與 Lite 圖表
+
+- zh-TW：以共用「公式 × 財年」登錄表驗證所有估值必要財報參數；缺值時一次補查舊快取與原始來源，只接受同公司、同財年、同幣別資料。仍有缺值的公式會列出缺項並停止計算及圖表，不再以 TTM、其他年度或其他模型欄位替代。Lite 的預測預設維持自動套用並標示假設；Full 人工補值綁定目前公司及財年。
+- en-US: Validate every valuation formula through a shared formula-by-fiscal-year registry. Recover all gaps as one request from the statement cache and original provider, accepting only the same issuer, fiscal endpoint, and currency. Formulas with unresolved facts list every gap and produce no valuation or chart. Lite keeps disclosed forecast defaults; Full manual facts are scoped to the current issuer and fiscal year.
+- Evidence: [model fiscal-integrity and Lite valuation report](docs/fixes/2026-11-02-model-fiscal-integrity/REPORT.md).
+
 ## [v27.61] — 2026-11-01 · Lite 智慧分析自動套用預設
 
 - zh-TW：Lite 智慧分析自動套用可用的預設預測假設並在參數回傳後重新試算，不再要求前往 Full 補填。修正 RI 永續成長率預設來源及延後財報更新清除預設值後不重套的問題；畫面與 PDF 標示已採用的假設數值。Full 維持人工確認，實際財報缺漏不造值。

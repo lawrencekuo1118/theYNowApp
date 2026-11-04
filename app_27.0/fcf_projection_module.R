@@ -374,7 +374,7 @@ fcf_projection_module_server <- function(
       capex <- select_clean_metric_row(df_cf, "Capital Expenditure", include_ttm = FALSE)
       if (all(is.na(capex))) capex <- select_clean_metric_row(df_cf, "Capital Expenditures", include_ttm = FALSE)
       
-      depre <- select_clean_metric_row_any(df_cf, DA_PATTERNS, include_ttm = FALSE)
+      depre <- statement_da_series(df_cf, df_is, include_ttm = FALSE)
       depre_val <- depre
       
       curr_assets <- select_clean_metric_row(df_bs, "Current Assets", include_ttm = FALSE)
@@ -593,7 +593,7 @@ fcf_projection_module_server <- function(
       tax_rate <- if (!is.na(pre_tax) && pre_tax > 0 && !is.na(tax_exp)) max(0, min(tax_exp / pre_tax, 0.5)) else statutory_tax_ratio()
       nopat <- statement_nopat(is_df, tax_fallback = tax_rate)
       
-      dep  <- select_current_metric_any(cf_df, DA_PATTERNS, "flow")
+      dep  <- statement_da(cf_df, is_df)
       raw_nwc <- select_current_metric_any(cf_df, NWC_CHANGE_PATTERNS, "flow")
       cap  <- abs(select_current_metric(cf_df, "Capital Expenditure", "flow"))
       if (is.na(cap) || !is.finite(cap)) {
@@ -619,7 +619,7 @@ fcf_projection_module_server <- function(
       if (all(is.na(cap_hist))) {
         cap_hist <- select_clean_metric_row(cf_df, "Capital Expenditures", include_ttm = FALSE)
       }
-      dep_hist <- select_clean_metric_row_any(cf_df, DA_PATTERNS, include_ttm = FALSE)
+      dep_hist <- statement_da_series(cf_df, is_df, include_ttm = FALSE)
       spike_cfg <- .capex_spike_settings()
       avg_dep_m <- avg_ratio_newest(dep_hist, rev_hist, n = 3L)
       sync_cx <- fcf_sync_capex_revenue_margin(abs(cap_hist), rev_hist, spike_cfg)
@@ -683,8 +683,9 @@ fcf_projection_module_server <- function(
     # 🌟 核心修正：廢除模組內部獨立的選單判斷，強制 100% 聽從主程式 (global_est_g)
     final_sim_g <- reactive({
       current_g <- global_est_g()
-      if (is.null(current_g)) return(0)
-      return(safe_num(current_g))
+      value <- suppressWarnings(as.numeric(current_g)[1])
+      if (!is.finite(value)) return(NA_real_)
+      value
     })
     
     # --- 渲染成長率細節 (同步顯示主程式傳來的數字) ---
@@ -739,7 +740,7 @@ fcf_projection_module_server <- function(
         if (all(is.na(cap_h))) {
           cap_h <- select_clean_metric_row(d_cash_flow(), "Capital Expenditures", include_ttm = FALSE)
         }
-        dep_h <- select_clean_metric_row_any(d_cash_flow(), DA_PATTERNS, include_ttm = FALSE)
+        dep_h <- statement_da_series(d_cash_flow(), d_income_statement(), include_ttm = FALSE)
         spike_cfg <- .capex_spike_settings()
         hist_cap_m <- avg_ratio_newest(abs(cap_h), rev_h, n = spike_cfg$avg_n)
         hist_dep_m <- avg_ratio_newest(dep_h, rev_h, n = 3L)
@@ -795,7 +796,9 @@ fcf_projection_module_server <- function(
         FCFF = numeric(n_years)
       )
       
+      if (!identical(input_mode(), "two_stage") && !is.finite(final_sim_g())) return(NULL)
       g_path <- vapply(seq_len(n_years), growth_pct_for_year, numeric(1))
+      if (any(!is.finite(g_path))) return(NULL)
       fade_on <- isTRUE(input$nopat_fade_on)
       fade_term <- suppressWarnings(as.numeric(input$nopat_fade_terminal)[1]) / 100
       margin_path <- if (isTRUE(fade_on) && is.finite(fade_term)) {

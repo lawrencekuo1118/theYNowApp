@@ -3415,7 +3415,7 @@ beta_rolling_section_ui <- function() {
     fluidRow(
       box(
         width = 12, status = "primary", solidHeader = TRUE,
-        title = tags$span(id = "ynow_smart_chart_title", "Fair value comparison"),
+        title = tags$span(id = "ynow_smart_chart_title", "Valuation comparison"),
         plotlyOutput("smart_analysis_chart", height = "360px") %>% shinycssloaders::withSpinner()
       )
     ),

@@ -1,7 +1,7 @@
 # Required model inputs, manual-fill guidance, and reference assumptions.
 # Full suggestions are display-only; Lite applies available references with an assumption ledger.
 ynow_parameter_input_ids <- function() {
-  c("bridge_cash", "bridge_debt", "bridge_shares", "bridge_revenue", "bridge_other_claims", "bridge_fx", "years", "sgr",
+  c("bridge_cash", "bridge_debt", "bridge_shares", "bridge_revenue", "bridge_other_claims", "bridge_fx", "years", "sgr", "g_growth_method", "custom_g",
     "dcf_mode", "dcf_claim", "wacc_gordon", "wacc_stage1", "wacc_stage2", "wacc_re",
     "wacc_rd", "wacc_tax", "yr_stage1", "g_stage1", "g_stage2",
     paste0("mod_fcf-", c("fcf_nopat", "fcf_depreciation", "fcf_capex", "fcf_delta_nwc", "fcf_invested_capital")),
@@ -54,7 +54,7 @@ ynow_required_parameter_rows <- function(values, defaults = list(), locale = "en
         "Use the matching fiscal-period operating input. NOPAT is EBIT × (1−T), not Net Income. Do not assume missing data is zero.",
         "請使用同一財報期間的營運資料；NOPAT 為 EBIT × (1−T)，勿填 Net Income，缺值也不代表零。")
   }
-  add("fcf_growth", "mod_fcf-fcf_invested_capital", "Operating IC", "dcf_calculator", "Operating assets less non-interest-bearing operating liabilities; exclude cash and nonoperating assets. Do not substitute total assets.", "請以營運資產扣除不付息營運負債，並排除現金及非營運資產；勿直接填總資產。")
+  add(if (!isTRUE(lite) && identical(values$g_growth_method, "fundamental")) "dcf" else "fcf_growth", "mod_fcf-fcf_invested_capital", "Operating IC", "dcf_calculator", "Operating assets less non-interest-bearing operating liabilities; exclude cash and nonoperating assets. Do not substitute total assets.", "請以營運資產扣除不付息營運負債，並排除現金及非營運資產；勿直接填總資產。")
   add("dcf", "years", "Forecast years", "dcf_calculator", "Review the forecast horizon.", "請確認預測年數。", "years")
   add("dcf", "sgr", "Terminal g", "dcf_calculator", "Use a sustainable terminal rate below the discount rate.", "請評估可持續的永續成長率，並低於折現率。", "sgr")
   if (identical(values$dcf_claim, "fcfe")) {
@@ -103,7 +103,7 @@ ynow_required_parameter_rows <- function(values, defaults = list(), locale = "en
   add("multiples", paste0("mod_rel-", chosen), chosen, "rel_multiples_calculator", "Fill the metric for the chosen multiple; never substitute a different accounting metric.", "請補填欲採用倍數所需的科目，勿以其他會計科目替代。")
   add("multiples", paste0("mod_rel-", multiple), multiple, "rel_multiples_calculator", "This is an explicit valuation multiple assumption.", "此為明確的估值倍數假設。", paste0("rel_", multiple))
   bridge("sotp")
-  add("sotp", "mod_sotp-nonop", "Non-operating assets", "sotp_calculator", "Include only separately valued non-operating assets; do not count cash twice. Enter zero only if that is the intended assumption.", "僅填獨立估值的非營運資產，勿重複計入現金；確認假設為零時才填零。")
+  add("sotp", "mod_sotp-nonop", "Non-operating assets", "sotp_calculator", "Include only separately valued non-operating assets; do not count cash twice. A zero default excludes an additional non-operating valuation adjustment; it does not assert that the reported asset balance is zero.", "僅填獨立估值的非營運資產，勿重複計入現金；預設零表示不另加計非營運資產估值，並非宣稱實際餘額為零。", "sotp_nonop")
   if (!is.null(values[[".sotp_ready"]])) add("sotp", "mod_sotp-manual_segments", "Segment data", "sotp_calculator", "Supply at least two distinct positive segment revenues and explicit EV/Sales multiples. Revenue must be in the analysis currency.", "請補填至少兩個不同部門的正值營收及各自 EV/Sales 倍數，營收須採分析幣別。", present = isTRUE(values[[".sotp_ready"]]))
   add("sotp", "mod_sotp-default_ev_sales", "Segment EV/Sales", "sotp_calculator", "Use distinct reported segments and an explicit multiple assumption.", "須有可辨識的部門資料，並明確設定倍數假設。", "rel_ev_sales_multiple")
   if (isTRUE(values[[".fx_needed"]])) for (model in c("dcf", "ddm", "ri", "pb", "nav", "multiples", "sotp")) add(model, "bridge_fx", "USD/TWD FX", "dashboard", "Enter TWD per USD using the valuation-date exchange rate. A manual value overrides the automatic quote; clear it to restore automatic FX.", "請填估值日每一美元兌新台幣的匯率；人工值優先於自動報價，清除此欄可恢復自動匯率。", present = FALSE)
@@ -114,8 +114,19 @@ ynow_required_parameter_rows <- function(values, defaults = list(), locale = "en
 ynow_parameter_guidance_server <- function(input, session, searched, ticker, busy,
                                            model_rec, locale, defaults, ke, wacc, sotp_ready = function() TRUE, fx_needed = function() FALSE, lite = function() FALSE) {
   applied <- shiny::reactiveVal(list())
+  retry_tick <- shiny::reactiveVal(0L)
+  retry_scheduled <- FALSE
+  retry_generation <- 0L
   requested <- shiny::reactiveVal("")
-  shiny::observeEvent(ticker(), { requested(""); applied(list()) }, ignoreInit = TRUE, priority = 101)
+  reset_guidance <- function() {
+    requested(""); applied(list())
+    retry_scheduled <<- FALSE
+    retry_generation <<- retry_generation + 1L
+  }
+  shiny::observeEvent(ticker(), reset_guidance(), ignoreInit = TRUE, priority = 101)
+  shiny::observeEvent(busy(), {
+    if (isTRUE(busy())) reset_guidance()
+  }, ignoreInit = TRUE, priority = 101)
   buttons <- c(calc = "dcf", `mod_ddm-btn_calc_ddm` = "ddm", `mod_ri-btn_calc_ri` = "ri",
                `mod_pb-btn_calc_pb` = "pb", `mod_nav-btn_calc_nav` = "nav",
                `mod_rel-btn_calc_rel` = "multiples", `mod_rel-btn_calc_rel_ev` = "multiples",
@@ -135,7 +146,9 @@ ynow_parameter_guidance_server <- function(input, session, searched, ticker, bus
   shiny::observe({
     if (!isTRUE(searched()) || isTRUE(busy())) return()
     rows <- missing()
+    tick <- retry_tick()
     ledger <- shiny::isolate(applied())
+    retry_needed <- FALSE
     for (id in names(ledger)) {
       value <- suppressWarnings(as.numeric(input[[id]])[1])
       if (is.finite(value)) ledger[[id]]$echoed <- TRUE
@@ -149,12 +162,37 @@ ynow_parameter_guidance_server <- function(input, session, searched, ticker, bus
         current <- suppressWarnings(as.numeric(input[[id]])[1])
         if (is.finite(current)) next
         # Do not repeatedly send an update while the browser echoes it.
-        if (!is.null(ledger[[id]]) && !isTRUE(ledger[[id]]$echoed)) next
-        ledger[[id]] <- list(value = refs$suggestion[i], hint = refs$hint[i], label = refs$label[i], echoed = FALSE)
+        previous <- ledger[[id]]
+        pending <- !is.null(previous) && !isTRUE(previous$echoed)
+        attempt <- if (pending) (previous$attempt %||% 1L) else 0L
+        if (pending && (identical(previous$tick, tick) || attempt >= 4L)) {
+          if (attempt < 4L) retry_needed <- TRUE
+          next
+        }
+        ledger[[id]] <- list(value = refs$suggestion[i], hint = refs$hint[i], label = refs$label[i],
+          echoed = FALSE, tick = tick, attempt = attempt + 1L)
+        if (attempt + 1L < 4L) retry_needed <- TRUE
         session$sendInputMessage(id, list(value = refs$suggestion[i]))
       }
     }
     if (!identical(shiny::isolate(applied()), ledger)) applied(ledger)
+    # Source updates and UI defaults can coalesce in one flush: a subsequent NA
+    # can erase the default before the browser ever echoes it. Retry only still-
+    # missing fields, at most four sends, with one timer per session.
+    if (isTRUE(retry_needed) && !retry_scheduled && requireNamespace("later", quietly = TRUE)) {
+      retry_scheduled <<- TRUE
+      symbol <- shiny::isolate(ticker())
+      generation <- retry_generation
+      later::later(function() {
+        if (!identical(generation, retry_generation)) return()
+        retry_scheduled <<- FALSE
+        if (isTRUE(session$isClosed())) return()
+        shiny::withReactiveDomain(session, shiny::isolate({
+          if (identical(ticker(), symbol) && isTRUE(lite()) &&
+              isTRUE(searched()) && !isTRUE(busy())) retry_tick(retry_tick() + 1L)
+        }))
+      }, delay = 0.75)
+    }
     hints <- rows[!duplicated(rows$id), , drop = FALSE]
     for (id in names(ledger)) {
       value <- suppressWarnings(as.numeric(input[[id]])[1])

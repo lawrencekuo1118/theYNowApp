@@ -47,6 +47,8 @@ jobs:
         run: |
           Rscript app_27.0/tests/test_parameter_semantics.R
           Rscript app_27.0/tests/test_parameter_completeness.R
+          Rscript app_27.0/tests/test_model_fiscal_integrity.R
+          Rscript app_27.0/tests/test_lite_valuation_pipeline.R
           Rscript app_27.0/tests/test_tw_search_session.R
           Rscript app_27.0/tests/test_market_cache_binary.R
           python3 app_27.0/tests/test_summary_deadline.py

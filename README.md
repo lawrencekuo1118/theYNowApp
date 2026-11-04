@@ -9,6 +9,8 @@ US / Taiwan stock fundamental analysis Shiny app（雲端版：yfinance，無 Ch
 
 **Lite 智慧分析：** 自動套用可用的預設預測假設並計算，畫面及 PDF 標示假設數值；[修正佐證](docs/fixes/2026-11-01-lite-smart-defaults/REPORT.md)。
 
+**模型財年完整性：** 所有估值公式共用同公司、同財年、同幣別的財報參數登錄表；補查後仍缺值的公式會列出缺項並停止估值及圖表。[完整佐證](docs/fixes/2026-11-02-model-fiscal-integrity/REPORT.md)。
+
 **財務參數稽核：** [完整佐證報告](docs/audits/2026-10-30-parameter-sources/REPORT.md)（含模式矩陣、來源對應與限制）。
 
 ## CI / CD

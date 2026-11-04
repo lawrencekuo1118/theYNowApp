@@ -87,10 +87,11 @@ all_failures <- failures
 # Run DCF and its scenario/sensitivity resolver must read the same effective
 # scenario, including while a hidden Lite radio is waiting to echo an update.
 dcf_records <- list()
-for (i in seq_len(nrow(modes))) for (delayed in c(FALSE, TRUE)) {
+for (i in seq_len(nrow(modes))) for (delayed in c(FALSE, TRUE)) for (no_wacc in c(FALSE, TRUE)) {
   mode <- modes[i, ]
   env <- new.env(parent = globalenv())
   lite <- mode$edition == "Lite"
+  if (no_wacc && !lite) next
   env$input <- list(years = 5, dcf_mode = if (delayed) "gordon" else "two_stage",
                     dcf_claim = "fcff", sgr = 2, wacc_gordon = 12,
                     wacc_stage1 = 8, wacc_stage2 = 10, yr_stage1 = 2,
@@ -105,7 +106,7 @@ for (i in seq_len(nrow(modes))) for (delayed in c(FALSE, TRUE)) {
   env$.shared_bridge <- function() list(cash = 20, debt = 10, shares = 10, other_claims = 0)
   env$.valuation_shares <- function() list(shares = 10, method = "balance_sheet")
   env$.dcf_per_share <- function(eq, sh) eq / sh$shares
-  env$calculated_wacc <- function() .1
+  env$calculated_wacc <- function() if (no_wacc) NA_real_ else .1
   env$estimated_re <- function() .11
   env$stock_price_estimate_val <- cell()
   env$dcf_value_result <- cell()
@@ -116,13 +117,14 @@ for (i in seq_len(nrow(modes))) for (delayed in c(FALSE, TRUE)) {
   env$updateNumericInput <- function(...) invisible(NULL)
   env$.notify_g_discount_and_guide <- function(...) stop("unexpected invalid fixture")
   env$APP_DEFAULTS <- APP_DEFAULTS
+  env$.model_integrity_ready <- function(model) TRUE
   env$.execute_dcf_calc <- eval(assignments[[".execute_dcf_calc"]], env)
   env$.dcf_valuation_bundle <- eval(assignments[[".dcf_valuation_bundle"]], env)
   env$.execute_dcf_calc(notify = FALSE)
   run <- env$stock_price_estimate_val()
   scenario <- env$.dcf_valuation_bundle()$price
   ok <- is.finite(run) && is.finite(scenario) && abs(run - scenario) < 1e-12
-  dcf_records[[length(dcf_records) + 1L]] <- cbind(mode, delayed = delayed,
+  dcf_records[[length(dcf_records) + 1L]] <- cbind(mode, delayed = delayed, assumed_discount = no_wacc,
                                                 run = run, scenario = scenario, pass = ok)
   if (!ok) all_failures <- c(all_failures, paste("DCF", paste(unlist(mode), collapse = "/"), delayed))
 }
