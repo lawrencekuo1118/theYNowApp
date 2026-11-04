@@ -7,5 +7,5 @@ commit=b3cc68e3dcb8588e72d94efd3f8d620885d5d34d
 short=b3cc68e3
 message=chore: bump display version to v27.84
 captured_at=2026-11-04T13:45:34Z
-display_version=v27.84
+display_version=v28.00
 note=Two-stage WACC apply and other-claims zero default (#636). Running bundle 12778856. Mac coding/OneDrive sync handed off from Cloud.
