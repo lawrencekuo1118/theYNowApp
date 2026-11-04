@@ -13461,8 +13461,7 @@ server <- function(input, output, session) {
       return(invisible(NULL))
     }
 
-    # Other capital classes need a full multi-class WACC. Leave existing
-    # Gordon/stage inputs alone when that gate fails (do not clear to NA).
+    # Leave Gordon/stage inputs alone when other capital classes block two-class WACC.
     other <- .shared_bridge()$other_claims
     if (!is.finite(other) || other != 0) return(invisible(NULL))
     # WACC（需財報／股價）；股權市值用報價股數（ADR 自動約當）
@@ -13523,8 +13522,7 @@ server <- function(input, output, session) {
 
     calculated_wacc(wacc)
     wacc_percent <- round(wacc * 100, 2)
-    # Keep Gordon and both Two-Stage fields aligned so a later mode switch
-    # does not see empty wacc_stage1 / wacc_stage2.
+    # Align Gordon + both stages so a later two-stage switch is not empty.
     updateNumericInput(session, "wacc_gordon", value = wacc_percent)
     updateNumericInput(session, "wacc_stage1", value = wacc_percent)
     updateNumericInput(session, "wacc_stage2", value = wacc_percent)
