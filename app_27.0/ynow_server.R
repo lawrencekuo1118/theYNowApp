@@ -13461,8 +13461,8 @@ server <- function(input, output, session) {
       return(invisible(NULL))
     }
 
-    calculated_wacc(NULL)
-    for (id in c("wacc_gordon", "wacc_stage1", "wacc_stage2")) updateNumericInput(session, id, value = NA_real_)
+    # Other capital classes need a full multi-class WACC. Leave existing
+    # Gordon/stage inputs alone when that gate fails (do not clear to NA).
     other <- .shared_bridge()$other_claims
     if (!is.finite(other) || other != 0) return(invisible(NULL))
     # WACC（需財報／股價）；股權市值用報價股數（ADR 自動約當）
@@ -13516,17 +13516,18 @@ server <- function(input, output, session) {
     tax <- if (!is.null(input$wacc_tax) && is.finite(input$wacc_tax)) input$wacc_tax / 100 else APP_DEFAULTS$wacc_tax / 100
 
     wacc <- (equity_mv / total_capital) * r_e + (debt / total_capital) * r_d * (1 - tax)
-    if (!is.finite(wacc) || wacc <= 0) return(invisible(NULL))
+    if (!is.finite(wacc) || wacc <= 0) {
+      calculated_wacc(NULL)
+      return(invisible(NULL))
+    }
 
     calculated_wacc(wacc)
     wacc_percent <- round(wacc * 100, 2)
-
-    if (identical(input$dcf_mode, "gordon") || is.null(input$dcf_mode)) {
-      updateNumericInput(session, "wacc_gordon", value = wacc_percent)
-    } else {
-      updateNumericInput(session, "wacc_stage1", value = wacc_percent)
-      updateNumericInput(session, "wacc_stage2", value = wacc_percent)
-    }
+    # Keep Gordon and both Two-Stage fields aligned so a later mode switch
+    # does not see empty wacc_stage1 / wacc_stage2.
+    updateNumericInput(session, "wacc_gordon", value = wacc_percent)
+    updateNumericInput(session, "wacc_stage1", value = wacc_percent)
+    updateNumericInput(session, "wacc_stage2", value = wacc_percent)
 
     if (isTRUE(notify)) {
       showNotification(

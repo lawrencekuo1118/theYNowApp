@@ -173,6 +173,8 @@ statement_operating_invested_capital <- function(bs) {
 
 # Only a verified absence of other equity claims can be auto-filled as zero.
 # Nonzero book claims are not silently treated as market values.
+# Missing preferred/NCI lines with book proxy 0 count as absence, unless a
+# common-vs-gross equity gap contradicts that reading.
 statement_other_equity_claims <- function(bs) {
   common <- select_current_metric(bs, "^Common Stock Equity$", "stock")
   gross <- select_current_metric(bs, "^Total Equity Gross Minority Interest$", "stock")
@@ -180,6 +182,14 @@ statement_other_equity_claims <- function(bs) {
   pref <- select_current_metric_any(bs, c("^Preferred Stock Equity$", "^Preferred Stock$"), "stock")
   minority <- select_current_metric(bs, "^Minority Interest$", "stock")
   if (is.finite(pref) && is.finite(minority) && pref == 0 && minority == 0) return(0)
+  book <- statement_other_equity_claims_book(bs)
+  if (is.finite(book) && book == 0) {
+    if (is.finite(common) && is.finite(gross) &&
+        abs(gross - common) > max(1, abs(gross)) * 1e-9) {
+      return(NA_real_)
+    }
+    return(0)
+  }
   NA_real_
 }
 
