@@ -36,8 +36,10 @@ stmt <- function(rows, start_year = 2024L) {
 
 base_is <- function(ni = c(80, 76), rev = c(400, 380), interest = c(8, 8),
                     pretax = c(100, 95), tax = c(20, 19)) {
+  # Common-claim row (not bare "Net Income"): without preferred disclosure,
+  # .common_claim_row refuses inventing common NI from total NI.
   stmt(list(
-    "Net Income" = ni,
+    "Net Income Common Stockholders" = ni,
     "Total Revenue" = rev,
     "Interest Expense" = interest,
     "Pretax Income" = pretax,
