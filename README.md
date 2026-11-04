@@ -15,15 +15,15 @@ US / Taiwan stock fundamental analysis Shiny app（雲端版：yfinance，無 Ch
 
 ## CI / CD
 
-PRs and pushes that touch `app_27.0/**`, `scripts/**`, or `.github/workflows/**` run meaningful **offline** checks (no live Yahoo):
+PRs and pushes that touch `app_27.0/**`, `scripts/**`, or `.github/workflows/**` run meaningful **offline** checks (no live Yahoo). Manual rerun: Actions → **Live-line CI** → `workflow_dispatch`.
 
-| Workflow | What it runs |
+| Workflow / job | What it runs |
 |----------|----------------|
-| **Live-line CI** (`.github/workflows/ci.yml`) | `YNOW_DEBUG_SKIP_PY=1 Rscript app_27.0/tests/test_valuation_formulas.R` and `bash scripts/run_phase1_audit.sh` |
-| **Report downloads** (Live-line CI) | Offline report copy/render checks: US/TW, Full/Lite, en-US/zh-TW, partial statements and missing Fair Value |
+| **Live-line CI** → job `offline-checks` (`.github/workflows/ci.yml`) | Path-filter guard `scripts/tests/test_ci_live_line_paths.sh`; then `YNOW_DEBUG_SKIP_PY=1` valuation formulas, report downloads, parameter／fiscal suites, Phase 1 (`bash scripts/run_phase1_audit.sh`), maintenance, and admin offline tests |
+| **Report downloads** (same `offline-checks` job) | Offline report copy/render checks: US/TW, Full/Lite, en-US/zh-TW, partial statements and missing Fair Value |
 | **ITGC Audit** (`.github/workflows/audit.yml`) | Phases 2–4 via `bash scripts/run_audit.sh` + RCM artifact |
 
-Do not rely on path filters that skip the live app tree. Docs/rules-only changes may skip app jobs; app behavior PRs must stay green on Live-line CI.
+**Branch protection:** require check **`offline-checks`** (workflow **Live-line CI**). Do not rely on path filters that skip the live app tree. Docs/rules-only changes may skip app jobs; app behavior PRs must stay green on Live-line CI.
 
 **CI/CD gate:** for `app_27.0/` behavior changes, do **not** tip-ship without green Live-line CI (or a recorded local offline preflight receipt). Docs/rules-only stay commit + push, no deploy.
 
