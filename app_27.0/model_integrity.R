@@ -285,8 +285,43 @@ ynow_recover_model_inputs <- function(sources,periods,providers,configs=list(),c
  }
  list(sources=sources,before=before,after=ynow_audit_model_years(sources,models,periods,configs,context),attempts=attempts)
 }
-# Materialize a model-only view. Financial tables on the Dashboard retain the
-# original raw payload; calculations receive only the selected fiscal period.
+# Multi-year annual series for KPI YoY growth, profile history, and charts.
+# Model bindings still use ynow_fiscal_frame for one selected fiscal period.
+ynow_fiscal_history_frame <- function(sources, table, context = list(), periods = NULL) {
+  if (is.null(periods)) periods <- ynow_fiscal_periods(sources)
+  empty <- function() {
+    out <- data.frame(Breakdown = character(), check.names = FALSE, stringsAsFactors = FALSE)
+    attr(out, "financialCurrency") <- context$financial_currency %||% ""
+    attr(out, "money_ccy") <- context$financial_currency %||% ""
+    out
+  }
+  if (!length(periods)) return(empty())
+  frames <- lapply(periods, function(p) ynow_fiscal_frame(sources, table, p, context))
+  labels <- unique(unlist(lapply(frames, function(d) {
+    if (is.data.frame(d) && ncol(d) >= 1L) as.character(d[[1]]) else character()
+  }), use.names = FALSE))
+  labels <- labels[nzchar(trimws(labels))]
+  if (!length(labels)) return(empty())
+  out <- data.frame(Breakdown = labels, check.names = FALSE, stringsAsFactors = FALSE)
+  for (i in seq_along(periods)) {
+    d <- frames[[i]]
+    vals <- rep(NA_real_, length(labels))
+    if (is.data.frame(d) && nrow(d) && ncol(d) >= 2L) {
+      m <- match(labels, as.character(d[[1]]))
+      raw <- suppressWarnings(as.numeric(d[[2]]))
+      hit <- !is.na(m)
+      vals[hit] <- raw[m[hit]]
+    }
+    out[[periods[i]]] <- vals
+  }
+  attr(out, "valuation_fiscal_period") <- periods[1]
+  attr(out, "financialCurrency") <- context$financial_currency %||% ""
+  attr(out, "money_ccy") <- context$financial_currency %||% ""
+  out
+}
+
+# Materialize a model-only view. KPI / history consumers use
+# ynow_fiscal_history_frame; model bindings receive only the selected fiscal period.
 ynow_fiscal_frame <- function(sources,table,period,context=list()) {
  periods<-ynow_fiscal_periods(sources);values<-list();lineage<-list()
  for(source in sources) {
