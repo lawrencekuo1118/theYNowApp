@@ -1,9 +1,26 @@
 #!/usr/bin/env Rscript
 # SOTP Meta-Framework positioning: taxonomy, locale, sidebar category.
+# Run: cd app_27.0/tests && Rscript test_sotp_meta_framework.R
+# Also OK from repo root: Rscript app_27.0/tests/test_sotp_meta_framework.R
 Sys.setenv(YNOW_DEBUG_SKIP_PY = "1")
 options(warn = 1)
 
-root <- normalizePath("..", winslash = "/", mustWork = TRUE)
+args <- commandArgs(FALSE)
+script_file <- sub("^--file=", "", grep("^--file=", args, value = TRUE)[1])
+root <- if (nzchar(script_file) && !is.na(script_file)) {
+  # tests/ → app_27.0/
+  dirname(dirname(normalizePath(script_file, mustWork = TRUE)))
+} else if (file.exists("ynow_ui.R")) {
+  normalizePath(".")
+} else if (file.exists(file.path("app_27.0", "ynow_ui.R"))) {
+  normalizePath("app_27.0")
+} else if (file.exists("../ynow_ui.R")) {
+  normalizePath("..")
+} else {
+  stop("Cannot locate app_27.0")
+}
+setwd(root)
+
 fail <- 0L
 check <- function(label, cond) {
   if (isTRUE(cond)) {
@@ -96,8 +113,8 @@ check(
 )
 check(
   "methodology positions SOTP as Meta-Framework",
-  grepl("SOTP \\(Meta-Framework\\)", ui, fixed = TRUE) ||
-    grepl("Meta-Framework that can mix", ui, fixed = TRUE)
+  grepl("SOTP (Meta-Framework)", ui, fixed = TRUE) ||
+    grepl("分部加總 SOTP（綜合型估值框架／Meta-Framework）", ui, fixed = TRUE)
 )
 
 # Runtime helpers (no statement fixtures required)

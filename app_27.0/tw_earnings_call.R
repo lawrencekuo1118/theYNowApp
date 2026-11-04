@@ -64,7 +64,6 @@ ynow_tw_earnings_call_alphamemo_search_url <- function(ticker) {
   v[nzchar(v) & !is.na(v)]
 }
 
-#' Merge two usable TW EC results: prefer first non-NA amounts; union notes/parties.
 .ynow_tw_ec_merge <- function(primary, secondary) {
   if (!is.list(primary)) return(secondary)
   if (!is.list(secondary)) return(primary)
@@ -126,20 +125,11 @@ ynow_tw_earnings_call_alphamemo_search_url <- function(ticker) {
       b1 <- suppressWarnings(as.integer(primary$pdf_bytes %||% NA_integer_)[1])
       if (is.finite(b1) && b1 > 0L) b1 else suppressWarnings(as.integer(secondary$pdf_bytes %||% NA_integer_)[1])
     },
-    # Order-focus keyword fields: prefer primary (FinmoConf deck) then union notes.
     keyword_analysis = primary$keyword_analysis %||% secondary$keyword_analysis,
-    keyword_order_notes = unique(c(
-      .ynow_tw_ec_chr_vec(primary$keyword_order_notes),
-      .ynow_tw_ec_chr_vec(secondary$keyword_order_notes)
-    )),
-    keyword_supplier_notes = unique(c(
-      .ynow_tw_ec_chr_vec(primary$keyword_supplier_notes),
-      .ynow_tw_ec_chr_vec(secondary$keyword_supplier_notes)
-    )),
-    keyword_customer_notes = unique(c(
-      .ynow_tw_ec_chr_vec(primary$keyword_customer_notes),
-      .ynow_tw_ec_chr_vec(secondary$keyword_customer_notes)
-    )),
+    supply_report = primary$supply_report,
+    keyword_order_notes = .ynow_tw_ec_chr_vec(primary$keyword_order_notes),
+    keyword_supplier_notes = .ynow_tw_ec_chr_vec(primary$keyword_supplier_notes),
+    keyword_customer_notes = .ynow_tw_ec_chr_vec(primary$keyword_customer_notes),
     customer_notes = unique(c(
       .ynow_tw_ec_chr_vec(primary$customer_notes),
       .ynow_tw_ec_chr_vec(secondary$customer_notes)
@@ -305,7 +295,8 @@ ynow_tw_earnings_call_to_disclosure <- function(fetched) {
     fetched_at = .ynow_tw_ec_chr(fetched$fetched_at),
     analysis_axis = .ynow_tw_ec_chr(fetched$analysis_axis, "latest_earnings_call"),
     analysis_axis_source_id = .ynow_tw_ec_chr(fetched$analysis_axis_source_id),
-    analysis_axis_published = .ynow_tw_ec_chr(fetched$analysis_axis_published)
+    analysis_axis_published = .ynow_tw_ec_chr(fetched$analysis_axis_published),
+    supply_report = ynow_supply_report_carry(fetched$supply_report)
   )
   out
 }

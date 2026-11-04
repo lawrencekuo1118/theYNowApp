@@ -204,10 +204,10 @@ server <- function(input, output, session) {
   statement_currency <- reactiveVal("USD")
   session_currency <- reactiveVal("USD")
   .fx_usd_twd_auto <- reactiveVal(NA_real_)
+  # Auto FX only (manual USD/TWD override removed from Shared model parameters UI).
   fx_usd_twd <- function(value) {
     if (!missing(value)) return(.fx_usd_twd_auto(value))
-    manual <- suppressWarnings(as.numeric(input$bridge_fx)[1])
-    if (is.finite(manual) && manual > 0) manual else .fx_usd_twd_auto()
+    .fx_usd_twd_auto()
   }
   fx_fetched_at <- reactiveVal(NULL)
 
@@ -454,6 +454,7 @@ server <- function(input, output, session) {
   auto_calc_ri_pulse <- reactiveVal(0L)
   auto_calc_rel_pulse <- reactiveVal(0L)
   auto_calc_sotp_pulse <- reactiveVal(0L)
+
 
   # ==========================================
   # 🚀 股票代號：僅主區 Ticker / Stock Code（sc + Search）
@@ -5819,7 +5820,11 @@ server <- function(input, output, session) {
               ),
               error = function(e) character(0)
             )
-            corp_name_logo_colors(.ensure_logo_color_pair(logo_cols))
+            # Store raw primary colors (length 0–2). Mono stays length 1 so
+            # the company full name can use a solid brand tint.
+            corp_name_logo_colors(
+              tryCatch(.normalize_logo_hex(logo_cols), error = function(e) character(0))
+            )
             invisible(NULL)
           }
           if (requireNamespace("later", quietly = TRUE)) {
@@ -5955,7 +5960,8 @@ server <- function(input, output, session) {
         recovery <- ynow_recover_model_inputs(sources, periods, providers,
           context = list(ticker = stock_code,
             financial_currency = attr(res, "financialCurrency") %||% f_ccy,
-            quote_currency = attr(res, "currency") %||% q_ccy))
+            quote_currency = attr(res, "currency") %||% q_ccy,
+            allow_book_claim_proxy = isTRUE(isolate(lite_mode()))))
         model_integrity_sources(recovery$sources)
         model_integrity_recovery(recovery)
         scraped_financials(res)
@@ -6172,9 +6178,13 @@ server <- function(input, output, session) {
         sess <- default_session_currency(q_ccy, f_ccy, stock_code)
         session_currency(sess)
         fx_now <- tryCatch(cached_get_usd_twd_fx(), error = function(e) NA_real_)
-        if (!is.finite(fx_now) || fx_now <= 0) fx_now <- NA_real_
+        if (!is.finite(fx_now) || fx_now <= 0) {
+          # Keep last good spot so a transient Yahoo 429 does not wipe session FX.
+          prev_fx <- suppressWarnings(as.numeric(isolate(fx_usd_twd()))[1])
+          fx_now <- if (is.finite(prev_fx) && prev_fx > 0) prev_fx else NA_real_
+        }
         fx_usd_twd(fx_now)
-        fx_fetched_at(Sys.time())
+        if (is.finite(fx_now) && fx_now > 0) fx_fetched_at(Sys.time())
         set_ynow_currency_context(sess, fx_now, q_ccy, f_ccy)
         if (isTRUE(fx_conversion_required(q_ccy, f_ccy)) ||
             isTRUE(fx_conversion_required(sess, q_ccy))) {
@@ -6309,14 +6319,23 @@ server <- function(input, output, session) {
   # 📊 1. 基本資訊與 Summary 介面輸出
   # ==========================================
   .corpname_logo_style <- function(cols, which = 1L) {
-    cols <- tryCatch(.ensure_logo_color_pair(cols), error = function(e) character(0))
-    if (!length(cols)) return(NULL)
+    raw <- tryCatch(.normalize_logo_hex(cols), error = function(e) character(0))
+    if (!length(raw)) return(NULL)
+    # Mono brand: solid primary only (no black/white pad gradient).
+    if (isTRUE(.is_logo_mono_brand(raw))) {
+      return(sprintf(
+        "color:%s;--ynow-corp-c1:%s;--ynow-corp-c2:%s;",
+        raw[[1]], raw[[1]], raw[[1]]
+      ))
+    }
+    cols <- tryCatch(.ensure_logo_color_pair(raw), error = function(e) character(0))
+    if (length(cols) < 2L) return(NULL)
     c1 <- cols[[1]]
     c2 <- cols[[2]]
     if (identical(as.integer(which)[1], 2L)) {
       return(sprintf("color:%s;", c2))
     }
-    # 單行全稱：雙色水平漸層（單色→黑；純黑單色→白）
+    # 單行全稱：雙色水平漸層
     paste0(
       "--ynow-corp-c1:", c1, ";",
       "--ynow-corp-c2:", c2, ";"
@@ -6330,8 +6349,13 @@ server <- function(input, output, session) {
     )
     nm <- trimws(as.character(corp_display_name() %||% "")[1])
     en <- trimws(as.character(corp_display_name_en() %||% "")[1])
+    logo_raw <- tryCatch(
+      .normalize_logo_hex(corp_name_logo_colors()),
+      error = function(e) character(0)
+    )
+    logo_mono <- isTRUE(.is_logo_mono_brand(logo_raw))
     logo_cols <- tryCatch(
-      .ensure_logo_color_pair(corp_name_logo_colors()),
+      if (logo_mono) logo_raw else .ensure_logo_color_pair(logo_raw),
       error = function(e) character(0)
     )
     if (!nzchar(nm)) {
@@ -6350,18 +6374,19 @@ server <- function(input, output, session) {
     }
     if (!nzchar(nm) && !nzchar(en)) return(NULL)
 
-    # 台股：中文上、英文下；品牌色系固定兩色分給中／英
-    # （缺第二色→黑；sole black logo→白；白英文加陰影以免溶進白底）
+    # 台股：中文上、英文下。
+    # 雙色品牌：中／英各一色；單色品牌：中英皆用同一品牌主色（勿再補黑／白）。
     if (identical(mode, "TW") && nzchar(nm) && nzchar(en) &&
         isTRUE(query_has_cjk(nm)) && !isTRUE(query_has_cjk(en))) {
-      zh_style <- if (length(logo_cols) >= 2L) {
-        sprintf("color:%s;", logo_cols[[1]])
-      } else {
-        NULL
-      }
+      zh_style <- NULL
       en_cls <- "ynow-corpname-en"
       en_style <- NULL
-      if (length(logo_cols) >= 2L) {
+      if (logo_mono && length(logo_cols) >= 1L) {
+        solid <- sprintf("color:%s;", logo_cols[[1]])
+        zh_style <- solid
+        en_style <- solid
+      } else if (length(logo_cols) >= 2L) {
+        zh_style <- sprintf("color:%s;", logo_cols[[1]])
         en_style <- sprintf("color:%s;", logo_cols[[2]])
         if (identical(logo_cols[[2]], "#FFFFFF")) {
           en_cls <- paste(en_cls, "ynow-corpname-en-on-white")
@@ -6384,7 +6409,10 @@ server <- function(input, output, session) {
 
     single_cls <- "ynow-corpname-single"
     single_style <- NULL
-    if (length(logo_cols) >= 2L) {
+    if (logo_mono && length(logo_cols) >= 1L) {
+      single_cls <- paste(single_cls, "ynow-corpname-logo-solid")
+      single_style <- .corpname_logo_style(logo_cols, which = 1L)
+    } else if (length(logo_cols) >= 2L) {
       single_cls <- paste(single_cls, "ynow-corpname-logo-grad")
       single_style <- .corpname_logo_style(logo_cols, which = 1L)
     }
@@ -6397,16 +6425,28 @@ server <- function(input, output, session) {
 
   output$txt_corpname <- renderUI({ render_corpname_ui() })
 
-  # Quote KPI icon fills share the company-name logo pair (c1 → c2).
+  # Quote KPI icon fills share the company-name logo colors.
+  # Dual brand → c1→c2 gradient; mono brand → solid c1 (c2 mirrors c1).
   observe({
-    cols <- tryCatch(
-      .ensure_logo_color_pair(corp_name_logo_colors()),
+    raw <- tryCatch(
+      .normalize_logo_hex(corp_name_logo_colors()),
       error = function(e) character(0)
     )
+    mono <- isTRUE(.is_logo_mono_brand(raw))
+    if (mono && length(raw) >= 1L && nzchar(raw[[1]])) {
+      session$sendCustomMessage("ynowCorpLogoColors", list(
+        c1 = raw[[1]],
+        c2 = raw[[1]],
+        mono = TRUE
+      ))
+      return(invisible(NULL))
+    }
+    cols <- tryCatch(.ensure_logo_color_pair(raw), error = function(e) character(0))
     ok <- length(cols) >= 2L && nzchar(cols[[1]]) && nzchar(cols[[2]])
     session$sendCustomMessage("ynowCorpLogoColors", list(
       c1 = if (ok) cols[[1]] else "",
-      c2 = if (ok) cols[[2]] else ""
+      c2 = if (ok) cols[[2]] else "",
+      mono = FALSE
     ))
   })
   output$search_results <- renderText({ corp_industry_text() })
@@ -6554,8 +6594,18 @@ server <- function(input, output, session) {
     } else {
       website_href <- website
     }
-    summary <- trimws(as.character(prof$summary %||% "")[1])
-    if (identical(summary, "None")) summary <- ""
+    summary_raw <- trimws(as.character(prof$summary %||% "")[1])
+    if (identical(summary_raw, "None")) summary_raw <- ""
+    summary <- tryCatch(
+      localize_company_business_summary(
+        summary_raw,
+        ticker = as.character(prof$ticker %||% current_ticker() %||% "")[1],
+        locale = loc,
+        market_mode = mode_ov
+      ),
+      error = function(e) summary_raw
+    )
+    summary <- trimws(as.character(summary %||% "")[1])
 
     chip <- function(k, v, href = NULL) {
       if (!nzchar(v)) return(NULL)
@@ -7378,7 +7428,8 @@ server <- function(input, output, session) {
   })
   model_integrity_context <- reactive({
     list(ticker = current_ticker(), financial_currency = statement_currency(),
-      quote_currency = quote_currency(), manual = model_integrity_manual())
+      quote_currency = quote_currency(), manual = model_integrity_manual(),
+      allow_book_claim_proxy = isTRUE(lite_mode()))
   })
   observeEvent(current_ticker(), { model_integrity_manual(list()) }, ignoreInit = TRUE)
   observeEvent(input$ynow_manual_financial, {
@@ -8030,14 +8081,16 @@ server <- function(input, output, session) {
             hi <- max(vals) * 1.1
             span <- max(hi - lo, 1)
             tagList(
-              tags$div(style = "position:relative; height:46px; margin:18px 8px 28px 8px; background:#e5e7eb; border-radius:4px;",
+              tags$div(
+                class = "ynow-ms-pos-track",
+                style = "position:relative; height:72px; margin:14px 8px 10px 8px; background:#e5e7eb; border-radius:4px;",
                 lapply(marks, function(m) {
                   if (!is.finite(m$val)) return(NULL)
                   pct <- (m$val - lo) / span * 100
                   tags$div(
                     style = paste0("position:absolute; left:", sprintf("%.1f", pct), "%; top:0; transform:translateX(-50%); text-align:center;"),
-                    tags$div(style = paste0("width:10px; height:10px; border-radius:50%; background:", m$col, "; margin:18px auto 0 auto;")),
-                    tags$div(style = "font-size:10px; color:#334155; white-space:nowrap; margin-top:2px;", paste0(m$lab, " ", fmt_px(m$val)))
+                    tags$div(style = paste0("width:10px; height:10px; border-radius:50%; background:", m$col, "; margin:22px auto 0 auto;")),
+                    tags$div(style = "font-size:11px; line-height:1.25; color:#334155; white-space:nowrap; margin-top:4px;", paste0(m$lab, " ", fmt_px(m$val)))
                   )
                 })
               )
@@ -10276,7 +10329,21 @@ server <- function(input, output, session) {
     revenue <- if (isTRUE(bridge_touched$revenue)) bridge_pick_number(input$bridge_revenue, rev_stmt) else rev_stmt
     if (!is.finite(cash) || cash < 0) cash <- NA_real_
     if (!is.finite(debt) || debt < 0) debt <- NA_real_
-    other <- if (isTRUE(bridge_touched$other_claims)) bridge_pick_number(input$bridge_other_claims) else statement_other_equity_claims(bs)
+    other <- if (isTRUE(bridge_touched$other_claims)) {
+      bridge_pick_number(input$bridge_other_claims)
+    } else {
+      statement_other_equity_claims(bs)
+    }
+    # Lite: when market-value other claims are unknown but book NCI/pref exist,
+    # use book as a disclosed proxy so silent primary DCF can finish (TW 2330).
+    if (!is.finite(other) &&
+        isTRUE(tryCatch(isolate(lite_mode()), error = function(e) FALSE)) &&
+        exists("statement_other_equity_claims_book", mode = "function")) {
+      book <- tryCatch(statement_other_equity_claims_book(bs), error = function(e) NA_real_)
+      if (is.finite(book) && book >= 0) {
+        other <- book
+      }
+    }
     list(cash = unname(cash), debt = unname(debt), shares = unname(shares), revenue = unname(revenue), other_claims = other)
   })
 
@@ -10483,7 +10550,18 @@ server <- function(input, output, session) {
     latest_cash <- sb_bridge$cash * cash_mult
     latest_debt <- sb_bridge$debt * debt_mult
     other_claims <- suppressWarnings(as.numeric(sb_bridge$other_claims)[1])
-    if (!is.finite(other_claims) || other_claims < 0) return(empty)
+    if (!is.finite(other_claims) || other_claims < 0) {
+      if (isTRUE(tryCatch(isolate(lite_mode()), error = function(e) FALSE)) &&
+          exists("statement_other_equity_claims_book", mode = "function")) {
+        book <- tryCatch(
+          statement_other_equity_claims_book(d_balance_sheet()),
+          error = function(e) NA_real_
+        )
+        other_claims <- if (is.finite(book) && book >= 0) book else 0
+      } else {
+        return(empty)
+      }
+    }
     if (identical(scenario$claim, "fcfe") && other_claims != 0) return(empty)
     claim <- scenario$claim
     if (identical(claim, "fcfe")) {
@@ -10936,16 +11014,34 @@ server <- function(input, output, session) {
     c(lo = lo, hi = hi)
   }
 
-  .scraped_interest_expense <- function() {
-    interest <- tryCatch(
-      abs(as.numeric(select_current_metric_any(
-        d_income_statement(), INTEREST_EXPENSE_PATTERNS, "flow"
-      ))[1]), error = function(e) NA_real_
+  .rd_statement_pair <- function() {
+    tryCatch(
+      rd_interest_debt_pair(d_income_statement(), d_balance_sheet()),
+      error = function(e) {
+        list(
+          interest = NA_real_, debt = NA_real_, period = NA_character_,
+          source = NA_character_, idx = NA_integer_
+        )
+      }
     )
+  }
+
+  .scraped_interest_expense <- function() {
     # Cash interest paid is not accrual interest expense; Net Interest Expense
     # also subtracts interest income. Neither can silently become the Rd numerator.
+    # Pairing skips blank leading fiscal years so AAPL-like frames still feed rᵈ.
+    # Call rd_interest_debt_pair directly so offline extract tests need only IS/BS.
+    bs <- tryCatch(d_balance_sheet(), error = function(e) NULL)
+    pair <- tryCatch(
+      rd_interest_debt_pair(d_income_statement(), bs),
+      error = function(e) {
+        list(interest = NA_real_, source = NA_character_, period = NA_character_)
+      }
+    )
+    interest <- suppressWarnings(as.numeric(pair$interest)[1])
     if (!is.finite(interest)) return(NA_real_)
-    attr(interest, "source") <- "income_interest_expense"
+    attr(interest, "source") <- pair$source %||% "income_interest_expense"
+    attr(interest, "period") <- pair$period
     interest
   }
 
@@ -10961,8 +11057,30 @@ server <- function(input, output, session) {
   })
 
   .apply_estimated_rd <- function(notify = FALSE) {
-    rd <- tryCatch(scraped_rd_pct(), error = function(e) NA_real_)
-    if (!is.finite(rd)) return(invisible(NA_real_))
+    interest_in <- suppressWarnings(as.numeric(input$rd_interest_expense)[1])
+    debt_in <- suppressWarnings(as.numeric(input$rd_interest_bearing_debt)[1])
+    if (!is.finite(interest_in) || interest_in < 0 || !is.finite(debt_in) || debt_in <= 0) {
+      pair <- .rd_statement_pair()
+      if (is.finite(pair$interest) && pair$interest > 0) {
+        updateNumericInput(session, "rd_interest_expense", value = round(pair$interest, 2))
+        interest_in <- pair$interest
+      }
+      if (is.finite(pair$debt) && pair$debt > 0) {
+        updateNumericInput(session, "rd_interest_bearing_debt", value = round(pair$debt, 2))
+        debt_in <- pair$debt
+      }
+    }
+    rd <- NA_real_
+    if (is.finite(interest_in) && interest_in >= 0 && is.finite(debt_in) && debt_in > 0) {
+      b <- .rd_clamp_bounds()
+      rd <- max(b[["lo"]], min(100 * interest_in / debt_in, b[["hi"]]))
+    }
+    if (!is.finite(rd)) {
+      if (isTRUE(notify)) {
+        showNotification(.ui_msg("rd_need_inputs"), type = "warning", duration = 6)
+      }
+      return(invisible(NA_real_))
+    }
     updateNumericInput(session, "wacc_rd", value = round(rd, 2))
     if (isTRUE(notify)) {
       showNotification(
@@ -10974,17 +11092,16 @@ server <- function(input, output, session) {
     invisible(rd)
   }
 
-  # 財報就緒：帶入利息費用與有息負債（Total Debt 或 ST+LT）
+  # 財報就緒：帶入同財年利息費用與有息負債（Total Debt 或 ST+LT）
   observeEvent(
-    list(d_income_statement(), d_balance_sheet(), d_cash_flow(), scraped_debt()),
+    list(d_income_statement(), d_balance_sheet(), d_cash_flow()),
     {
-      interest <- tryCatch(.scraped_interest_expense(), error = function(e) NA_real_)
-      debt <- tryCatch(as.numeric(scraped_debt())[1], error = function(e) NA_real_)
-      if (is.finite(interest) && interest > 0) {
-        updateNumericInput(session, "rd_interest_expense", value = round(interest, 2))
+      pair <- .rd_statement_pair()
+      if (is.finite(pair$interest) && pair$interest > 0) {
+        updateNumericInput(session, "rd_interest_expense", value = round(pair$interest, 2))
       }
-      if (is.finite(debt) && debt > 0) {
-        updateNumericInput(session, "rd_interest_bearing_debt", value = round(debt, 2))
+      if (is.finite(pair$debt) && pair$debt > 0) {
+        updateNumericInput(session, "rd_interest_bearing_debt", value = round(pair$debt, 2))
       }
     },
     ignoreInit = FALSE
@@ -11008,24 +11125,24 @@ server <- function(input, output, session) {
   })
 
   output$rd_interest_source_note <- renderUI({
-    interest <- tryCatch(.scraped_interest_expense(), error = function(e) NA_real_)
-    src <- attr(interest, "source")
-    lab <- if (identical(src, "cash_flow_interest_paid")) {
-      "財報來源：現金流量表 Interest Paid"
-    } else if (identical(src, "income_interest_expense")) {
-      "財報來源：損益表 Interest Expense"
+    pair <- .rd_statement_pair()
+    period <- as.character(pair$period %||% "")[1]
+    lab <- if (identical(pair$source, "income_interest_expense") &&
+                is.finite(pair$interest)) {
+      .ui_msg("rd_interest_source_is", period = if (nzchar(period)) period else "—")
     } else {
-      "財報來源：尚無利息費用；可手動輸入"
+      .ui_msg("rd_interest_source_none")
     }
     tags$p(style = "margin:-6px 0 8px 0;color:#666;font-size:11px;", lab)
   })
 
   output$rd_debt_source_note <- renderUI({
-    debt <- tryCatch(as.numeric(scraped_debt())[1], error = function(e) NA_real_)
-    lab <- if (is.finite(debt) && debt > 0) {
-      "財報來源：有息負債（優先 Total Debt；否則 Short-term + Long-term Debt）"
+    pair <- .rd_statement_pair()
+    period <- as.character(pair$period %||% "")[1]
+    lab <- if (is.finite(pair$debt) && pair$debt > 0) {
+      .ui_msg("rd_debt_source_ok", period = if (nzchar(period)) period else "—")
     } else {
-      "財報來源：尚無有息負債；可手動輸入"
+      .ui_msg("rd_debt_source_none")
     }
     tags$p(style = "margin:-6px 0 8px 0;color:#666;font-size:11px;", lab)
   })
@@ -13823,7 +13940,18 @@ server <- function(input, output, session) {
     latest_cash <- sb_bridge$cash
     latest_debt <- sb_bridge$debt
     other_claims <- suppressWarnings(as.numeric(sb_bridge$other_claims)[1])
-    if (!is.finite(other_claims) || other_claims < 0) return(NULL)
+    if (!is.finite(other_claims) || other_claims < 0) {
+      # Silent / Lite last resort: book proxy or 0 so Smart Analysis is not stuck on —
+      if (isTRUE(silent) || isTRUE(tryCatch(isolate(lite_mode()), error = function(e) FALSE))) {
+        book <- tryCatch(
+          statement_other_equity_claims_book(d_balance_sheet()),
+          error = function(e) NA_real_
+        )
+        other_claims <- if (is.finite(book) && book >= 0) book else 0
+      } else {
+        return(NULL)
+      }
+    }
     if (identical(scenario$claim, "fcfe") && other_claims != 0) {
       if (show_toast) showNotification(.ui_msg("param_fcfe_other_claims"), type = "error")
       return(NULL)
@@ -14645,7 +14773,6 @@ server <- function(input, output, session) {
                 paste(rows$parameter, collapse = ", "))))))
       },
       if (isTRUE(lite_mode())) {
-        notes <- parameter_assumptions()
         vals <- setNames(lapply(ynow_parameter_input_ids(), function(id) input[[id]]), ynow_parameter_input_ids())
         vals[[".sotp_ready"]] <- tryCatch(isTRUE(sotp_results$segments_available()), error = function(e) FALSE)
         unavailable <- c(if (!is.finite(base)) prim, if (!is.finite(sec_pt)) sec)
@@ -14655,12 +14782,11 @@ server <- function(input, output, session) {
         gaps <- ynow_required_parameter_rows(vals, APP_DEFAULTS, loc,
           central_ke() * 100, calculated_wacc() * 100, lite = TRUE)
         gaps <- gaps[gaps$model %in% unavailable & !is.finite(gaps$suggestion), , drop = FALSE]
-        tagList(
-          if (length(notes)) tags$div(class = "alert alert-info", tags$ul(lapply(notes, tags$li))),
-          if (nrow(gaps) && !isTRUE(ticker_search_busy()))
-            tags$div(class = "alert alert-warning", ui_str("param_lite_source_unavailable", loc),
-              paste(unique(paste(toupper(gaps$model), gaps$label, sep = ": ")), collapse = ", "))
-        )
+        # Applied-assumption notes moved to page-footer footnotes
+        # (`smart_analysis_assumption_notes`). Keep only source-gap warning here.
+        if (nrow(gaps) && !isTRUE(ticker_search_busy()))
+          tags$div(class = "alert alert-warning", ui_str("param_lite_source_unavailable", loc),
+            paste(unique(paste(toupper(gaps$model), gaps$label, sep = ": ")), collapse = ", "))
       },
       tags$div(class = "ynow-smart-card-row",
       ynow_alertable(
@@ -14799,6 +14925,14 @@ server <- function(input, output, session) {
         tags$p(style = "margin: 6px 0 0 0; color: #555; line-height: 1.45;", reason)
       )
     )
+  })
+
+  # Lite applied assumptions as annotation footnotes at the Smart Analysis page foot.
+  output$smart_analysis_assumption_notes <- renderUI({
+    if (!isTRUE(lite_mode()) || !isTRUE(user_has_searched())) return(NULL)
+    loc <- tryCatch(ui_locale(), error = function(e) "en")
+    notes <- tryCatch(parameter_assumptions(), error = function(e) character(0))
+    ynow_lite_assumption_footnotes_ui(notes, loc)
   })
 
   output$smart_analysis_chart <- plotly::renderPlotly({
@@ -15690,7 +15824,7 @@ server <- function(input, output, session) {
           if (is.na(val_cash) || is.na(scraped_debt)) {
             tags$p(
               class = "help-block",
-              "Cash 與 Total Debt 請到 Model Dashboard → Cash、Debt、股數與營收（各模型共用）填寫，DCF、WACC、倍數與 SOTP 會一起套用。"
+              "Cash 與 Total Debt 請到 Model Dashboard → 模型共用參數填寫，DCF、WACC、倍數與 SOTP 會一起套用。"
             )
           } else {
             NULL
@@ -21513,6 +21647,46 @@ server <- function(input, output, session) {
       })
     }
   })
+  # Missing-parameter toast: only Model Dashboard → Quant Backtest Lab, and never
+  # on freemium/ACL-locked tabs (treat locked as hidden for this notify).
+  .ynow_missing_params_tab_locked <- function(tab) {
+    t <- as.character(tab %||% "")[1]
+    if (!nzchar(t)) return(TRUE)
+    mode <- tryCatch(isolate(ynow_pts_self_view_mode()), error = function(e) NULL)
+    mode <- as.character(mode %||% "")[1]
+    if (identical(mode, "omniscient")) return(FALSE)
+    if (exists("ynow_maintenance_is_active", mode = "function") &&
+        isTRUE(ynow_maintenance_is_active(paste0("tab:", t)))) {
+      return(TRUE)
+    }
+    # Guest freemium sidebar locks (e.g. Quant Backtest Lab for unsigned guests).
+    # Admin guest self-view also counts; signed_in / view-as / omniscient do not.
+    authed <- tryCatch(isTRUE(ynow_auth$is_logged_in()), error = function(e) FALSE)
+    va <- tryCatch(isolate(ynow_pts_view_as()), error = function(e) NULL)
+    view_as_uid <- if (is.list(va)) as.character(va$user_id %||% "")[1] else ""
+    treat_as_guest <- identical(mode, "guest") ||
+      (!isTRUE(authed) && !identical(mode, "signed_in") && !nzchar(view_as_uid))
+    if (isTRUE(treat_as_guest) &&
+        exists("ynow_sidebar_tab_guest_locked", mode = "function") &&
+        isTRUE(ynow_sidebar_tab_guest_locked(t))) {
+      return(TRUE)
+    }
+    # Admin ACL tab locks (effect=lock/hide) — honor effective unlock conditions.
+    if (exists("ynow_access_is_locked", mode = "function")) {
+      uid <- tryCatch(.ynow_access_subject_id(), error = function(e) "")
+      if (identical(uid, "__omniscient__")) return(FALSE)
+      if (identical(uid, "__self_member__")) uid <- ""
+      is_authed <- nzchar(as.character(uid %||% "")[1]) ||
+        identical(mode, "signed_in") ||
+        (isTRUE(authed) && !identical(mode, "guest"))
+      if (isTRUE(ynow_access_is_locked(
+        uid, paste0("tab:", t), effective = TRUE, authed = is_authed
+      ))) {
+        return(TRUE)
+      }
+    }
+    FALSE
+  }
   parameter_assumptions_base <- ynow_parameter_guidance_server(
     input, session, searched = user_has_searched, ticker = current_ticker,
     busy = ticker_search_busy, model_rec = model_sidebar_rec, locale = ui_locale,
@@ -21522,7 +21696,8 @@ server <- function(input, output, session) {
     fx_needed = reactive({
       currencies <- unique(na.omit(c(quote_currency(), statement_currency(), session_currency())))
       length(currencies) > 1L && all(currencies %in% c("USD", "TWD")) && !is.finite(fx_usd_twd())
-    })
+    }),
+    tab_locked = .ynow_missing_params_tab_locked
   )
 
   parameter_assumptions <- reactive({

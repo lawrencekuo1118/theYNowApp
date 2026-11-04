@@ -156,7 +156,18 @@ ynow_integrity_facts <- function(sources,period,context=list()) {
    };r},
    d0={r<-get('dps_reported');if(!is.finite(r$value))r<-get('dps_events');r},
    ebitda={r<-get('ebitda_reported');if(!is.finite(r$value))r<-derived(id,c('ebit','da'),sum);r},
-   other_claims=derived(id,c('gross_equity','common_book'),function(v)if(abs(v[1]-v[2])<max(1,abs(v[2]))*1e-8)0 else NA_real_),
+   other_claims={
+    r<-derived(id,c('gross_equity','common_book'),function(v) {
+     gap<-v[1]-v[2]
+     if(abs(gap)<max(1,abs(v[2]))*1e-8)0 else if(isTRUE(context$allow_book_claim_proxy)&&gap>=0)gap else NA_real_
+    })
+    if(is.finite(r$value)&&r$value>0) {
+     r$kind<-'assumption_derived'
+     r$lineage<-c(r$lineage,list(list(source='lite_assumption',parameter='other_claims_book_proxy',
+      value=r$value,period=period)))
+    }
+    r
+   },
    fcff_cfo=derived(id,c('cfo','interest','tax','capex'),function(v)v[1]+v[2]*(1-v[3])-v[4]),
    missing(id,'unknown_parameter'))
   r$id<-id;memo[[id]]<-r;r

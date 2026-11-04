@@ -43,6 +43,9 @@ check <- function(label, cond) {
   }
   cols
 }
+.is_logo_mono_brand <- function(cols) {
+  identical(length(.normalize_logo_hex(cols)), 1L)
+}
 
 check("normalize keeps two hex", identical(
   .normalize_logo_hex(c("#e60a1e", "#00a0e6", "#aabbcc")),
@@ -73,6 +76,21 @@ check("pair empty stays empty", identical(
   .ensure_logo_color_pair(NULL),
   character(0)
 ))
+check("mono brand is length-1 primary", {
+  isTRUE(.is_logo_mono_brand("#E60A1E")) &&
+    isTRUE(.is_logo_mono_brand(c("#E60A1E"))) &&
+    !isTRUE(.is_logo_mono_brand(c("#E60A1E", "#00A0E6"))) &&
+    !isTRUE(.is_logo_mono_brand(character(0)))
+})
+check("mono name stays solid (no pad for corp-name)", {
+  raw <- .normalize_logo_hex("#e60a1e")
+  isTRUE(.is_logo_mono_brand(raw)) && identical(raw, "#E60A1E")
+})
+check("dual brand keeps gradient pair", {
+  raw <- .normalize_logo_hex(c("#fab400", "#00a0e6"))
+  !isTRUE(.is_logo_mono_brand(raw)) &&
+    identical(.ensure_logo_color_pair(raw), c("#FAB400", "#00A0E6"))
+})
 
 # Optional Python extract (env) — not required for default offline path.
 # Prefer app venv; only use a python that can import Pillow + corp_logo_colors.
@@ -122,8 +140,7 @@ if (isTRUE(.py_ok)) {
   unlink(py_script)
   line <- if (length(out)) trimws(tail(out, 1)) else ""
   cols <- if (nzchar(line)) strsplit(line, ",", fixed = TRUE)[[1]] else character(0)
-  cols <- .ensure_logo_color_pair(cols)
-  check("fixture yields exactly two colors", identical(length(cols), 2L))
+  check("fixture yields 1–2 raw colors", length(cols) %in% 1:2)
   check("fixture primary is crimson-ish", {
     if (!length(cols)) FALSE else {
       h <- cols[[1]]
@@ -133,22 +150,20 @@ if (isTRUE(.py_ok)) {
       r > 150 && g < 80 && b < 100
     }
   })
-  check("fixture secondary is blue-ish or pad", {
-    if (length(cols) < 2L) FALSE else {
+  check("fixture secondary is blue-ish when dual", {
+    if (length(cols) < 2L) TRUE else {
       h <- cols[[2]]
-      if (identical(h, "#000000") || identical(h, "#FFFFFF")) TRUE else {
-        r <- strtoi(substr(h, 2, 3), 16L)
-        g <- strtoi(substr(h, 4, 5), 16L)
-        b <- strtoi(substr(h, 6, 7), 16L)
-        b > 150 && r < 80
-      }
+      r <- strtoi(substr(h, 2, 3), 16L)
+      g <- strtoi(substr(h, 4, 5), 16L)
+      b <- strtoi(substr(h, 6, 7), 16L)
+      b > 150 && r < 80
     }
   })
 } else {
   cat("SKIP optional python fixture extract (need .ynow_venv or Pillow-ready python)\n")
 }
 
-# Optional Python pad rules (offline synthetic) — same env gate
+# Optional Python mono extract (offline synthetic) — resolve keeps raw length-1
 if (isTRUE(.py_ok)) {
   py_script <- tempfile(fileext = ".py")
   .py_str <- function(x) {
@@ -160,18 +175,12 @@ if (isTRUE(.py_ok)) {
       paste0("sys.path.insert(0, ", .py_str(app_dir), ")"),
       "from PIL import Image",
       "from corp_logo_colors import extract_logo_colors_from_bytes",
-      "def pad_one(raw):",
-      "  cols = list(raw)",
-      "  if len(cols) != 1: return cols",
-      "  h = cols[0].lstrip('#')",
-      "  r,g,b = int(h[0:2],16), int(h[2:4],16), int(h[4:6],16)",
-      "  return [cols[0], '#FFFFFF' if max(r,g,b) <= 40 else '#000000']",
       "im = Image.new('RGBA', (48, 48), (230, 10, 30, 255))",
       "buf = io.BytesIO(); im.save(buf, format='PNG')",
-      "print('RED', ','.join(pad_one(extract_logo_colors_from_bytes(buf.getvalue(), max_colors=2))))",
+      "print('RED', ','.join(extract_logo_colors_from_bytes(buf.getvalue(), max_colors=2)))",
       "im2 = Image.new('RGBA', (48, 48), (10, 10, 10, 255))",
       "buf2 = io.BytesIO(); im2.save(buf2, format='PNG')",
-      "print('BLK', ','.join(pad_one(extract_logo_colors_from_bytes(buf2.getvalue(), max_colors=2))))"
+      "print('BLK', ','.join(extract_logo_colors_from_bytes(buf2.getvalue(), max_colors=2)))"
     ),
     py_script
   )
@@ -184,19 +193,25 @@ if (isTRUE(.py_ok)) {
   blk_line <- trimws(tail(out[grepl("^BLK ", out)], 1))
   red_cols <- if (nzchar(red_line)) toupper(strsplit(sub("^RED ", "", red_line), ",", fixed = TRUE)[[1]]) else character(0)
   blk_cols <- if (nzchar(blk_line)) toupper(strsplit(sub("^BLK ", "", blk_line), ",", fixed = TRUE)[[1]]) else character(0)
-  check("single red brand pads black", {
-    length(red_cols) == 2L && identical(red_cols[[2]], "#000000")
+  check("single red brand stays mono (raw)", {
+    length(red_cols) == 1L && isTRUE(.is_logo_mono_brand(red_cols))
   })
-  check("single black brand pads white", {
-    length(blk_cols) == 2L && identical(blk_cols[[2]], "#FFFFFF")
+  check("single black brand stays mono (raw)", {
+    length(blk_cols) == 1L && isTRUE(.is_logo_mono_brand(blk_cols))
+  })
+  check("R pad still available for charts/KPI", {
+    identical(.ensure_logo_color_pair(red_cols)[[2]], "#000000") &&
+      identical(.ensure_logo_color_pair(blk_cols)[[2]], "#FFFFFF")
   })
 } else {
-  cat("SKIP optional python single-brand pad check (need .ynow_venv or Pillow-ready python)\n")
+  cat("SKIP optional python single-brand mono check (need .ynow_venv or Pillow-ready python)\n")
 }
 
 # UI CSS hooks present
 ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE), collapse = "\n")
 check("css logo-grad present", grepl("ynow-corpname-logo-grad", ui, fixed = TRUE))
+check("css logo-solid present", grepl("ynow-corpname-logo-solid", ui, fixed = TRUE))
+check("css mono KPI solid rule present", grepl("ynow-corp-logo-mono", ui, fixed = TRUE))
 check(
   "quote KPI icons reuse company-name gradient",
   grepl("body.ynow-corp-logo #ibx_stockprice .info-box-icon", ui, fixed = TRUE) &&
@@ -205,11 +220,23 @@ check(
     grepl("ynowCorpLogoColors", ui, fixed = TRUE)
 )
 check("css white-en helper present", grepl("ynow-corpname-en-on-white", ui, fixed = TRUE))
+check("client toggles mono body class", {
+  grepl("ynow-corp-logo-mono", ui, fixed = TRUE) &&
+    grepl("payload.mono", ui, fixed = TRUE)
+})
 
 srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE), collapse = "\n")
 check("server stores logo colors", grepl("corp_name_logo_colors", srv, fixed = TRUE))
 check("server pushes logo colors to quote icons", grepl("ynowCorpLogoColors", srv, fixed = TRUE))
 check("server ensures color pair", grepl("ensure_logo_color_pair", srv, fixed = TRUE))
+check("server detects mono brand for corp-name", {
+  grepl("is_logo_mono_brand", srv, fixed = TRUE) &&
+    grepl("ynow-corpname-logo-solid", srv, fixed = TRUE)
+})
+check("server stores raw logo colors (not always pad)", {
+  grepl("normalize_logo_hex(logo_cols)", srv, fixed = TRUE) &&
+    grepl("Mono stays length 1", srv, fixed = TRUE)
+})
 check("server calls cached_get_corp_logo_colors", grepl("cached_get_corp_logo_colors", srv, fixed = TRUE))
 check("logo tint scheduled from phase1b (not gated on financials)", {
   grepl(".schedule_corp_logo_tint", srv, fixed = TRUE) &&
@@ -217,7 +244,8 @@ check("logo tint scheduled from phase1b (not gated on financials)", {
 })
 check("phase3 only backfills empty logo tint", {
   grepl("only backfills when the async tint still empty", srv, fixed = TRUE) ||
-    grepl("have_logo", srv, fixed = TRUE)
+    grepl("have_logo", srv, fixed = TRUE) ||
+    grepl(".schedule_corp_logo_tint", srv, fixed = TRUE)
 })
 check(
   "quote KPI brand CSS beats header green",
@@ -229,13 +257,21 @@ check(
 )
 wc <- paste(readLines(file.path(app_dir, "web_crawler.R"), warn = FALSE), collapse = "\n")
 check("crawler near-black helper", grepl("is_near_black_hex", wc, fixed = TRUE))
+check("crawler mono helper", grepl("is_logo_mono_brand", wc, fixed = TRUE))
+check("cache returns raw colors (no forced pad)", {
+  grepl("Returns raw primary colors", wc, fixed = TRUE) &&
+    grepl("normalize_logo_hex(cols)", wc, fixed = TRUE)
+})
 check("empty logo colors not retained in slow cache", {
   grepl(".drop_corp_logo_colors_cache_key", wc, fixed = TRUE) &&
     grepl("empty results are not kept", wc, fixed = TRUE) &&
     grepl("cached_get_corp_logo_colors <- function", wc, fixed = TRUE)
 })
 py_src <- paste(readLines(file.path(app_dir, "corp_logo_colors.py"), warn = FALSE), collapse = "\n")
-check("python sole-black pads white", grepl("pad = \"#FFFFFF\" if max(r, g, b) <= 40 else \"#000000\"", py_src, fixed = TRUE))
+check("python resolve keeps mono raw (no pad)", {
+  grepl('"mono": len(colors) == 1', py_src, fixed = TRUE) &&
+    !grepl("pad = \"#FFFFFF\" if max(r, g, b) <= 40 else \"#000000\"", py_src, fixed = TRUE)
+})
 
 req <- paste(readLines(file.path(app_dir, "requirements.txt"), warn = FALSE), collapse = "\n")
 check("Pillow in requirements", grepl("Pillow", req, fixed = TRUE))

@@ -72,11 +72,10 @@ sotp_module_ui <- function(id) {
           "ynow_sotp_formula_banner",
           "Implied EV = Σ(Seg Rev × EV/Sales) + Non-op　｜　Equity = EV + Cash − Debt　｜　Price = Equity ÷ Shares"
         ),
-        fluidRow(
-          column(width = 4, ynow_calc_btn(ns("btn_calc_sotp"), label = tags$span(id = "ynow_sotp_btn_calc", "Run SOTP"))),
-          column(width = 4, ynow_reset_defaults_btn(ns("btn_reset_sotp"))),
-          column(
-            width = 4,
+        ynow_calc_reset_row(
+          ynow_calc_btn(ns("btn_calc_sotp"), label = tags$span(id = "ynow_sotp_btn_calc", "Run SOTP")),
+          ynow_reset_defaults_btn(ns("btn_reset_sotp")),
+          sync_ui = tagList(
             br(),
             actionButton(
               ns("btn_sync_sotp"),
@@ -154,7 +153,7 @@ sotp_module_ui <- function(id) {
         tags$p(
           id = "ynow_sotp_bridge_help",
           class = "help-block",
-          "Implied EV = Σ(segment revenue × segment EV/Sales) + non-operating; Equity = EV + Cash − Debt. Cash, Total Debt, and Shares are set once on Model Dashboard → Cash, Debt, Shares & Revenue (shared)."
+          "Implied EV = Σ(segment revenue × segment EV/Sales) + non-operating; Equity = EV + Cash − Debt. Cash, Total Debt, and Shares are set once on Model Dashboard → Shared model parameters."
         )
       )
     )

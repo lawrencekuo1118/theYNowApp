@@ -33,6 +33,12 @@ near <- function(a, b, tol = 1e-9) {
 }
 
 empty <- bblab_build_order_research_pack()
+check("pack builder does not mount an earnings chrome", {
+  is.null(empty$us_earnings_call) && is.null(empty$earnings_call) &&
+    is.null(bblab_build_order_research_pack(
+      disclosures = list(earnings_call = list(title = "should not mount"))
+    )$us_earnings_call)
+})
 check("empty pack has six layers", length(empty$layers) == 6L &&
         identical(vapply(empty$layers, function(l) l$key, character(1)),
                   c("scale", "quality", "conversion", "profit", "cash", "valuation")))
@@ -355,6 +361,9 @@ check("proxy and estimate tables do not fill focus order amounts", {
 })
 
 source("ui_locale.R", local = TRUE, encoding = "UTF-8")
+source("earnings_call_keyword_lexicon.R", local = TRUE, encoding = "UTF-8")
+source("earnings_call_keyword_framework.R", local = TRUE, encoding = "UTF-8")
+source("supply_chain_order_report.R", local = TRUE, encoding = "UTF-8")
 or_keys <- grep("^bblab_or_|^notif_bblab_orders_(backlog|bookings|ttm|conversion|order_|growth_source|quality_terms|gross_margin|cash_item)",
                 names(.UI_STRINGS$en), value = TRUE)
 check("order research locale keys match",
@@ -376,12 +385,11 @@ if (requireNamespace("shiny", quietly = TRUE) && requireNamespace("plotly", quie
   source("business_breakdown_module.R", local = TRUE, encoding = "UTF-8")
   html_en <- paste(as.character(bblab_order_research_panel_ui(ranged, "en", TRUE)), collapse = " ")
   check("panel leads with the three buckets", {
-    primary <- sub("ynow-bblab-or__secondary.*", "", html_en)
-    grepl("Order quantity", primary, fixed = TRUE) &&
-      grepl("Major suppliers", primary, fixed = TRUE) &&
-      grepl("Major-customer revenue mix", primary, fixed = TRUE) &&
-      !grepl("Gross margin", primary, fixed = TRUE) &&
-      grepl("ynow-bblab-or__secondary", html_en, fixed = TRUE) &&
+    grepl("Order quantity", html_en, fixed = TRUE) &&
+      grepl("Major suppliers", html_en, fixed = TRUE) &&
+      grepl("Major-customer revenue mix", html_en, fixed = TRUE) &&
+      !grepl("Gross margin", html_en, fixed = TRUE) &&
+      !grepl("ynow-bblab-or__secondary", html_en, fixed = TRUE) &&
       !grepl("Bear", html_en, fixed = TRUE) &&
       !grepl("Bull", html_en, fixed = TRUE)
   })
@@ -399,13 +407,12 @@ if (requireNamespace("shiny", quietly = TRUE) && requireNamespace("plotly", quie
       !grepl("Sources and credibility", html_orders_only, fixed = TRUE)
   })
   check("meta helper has sources without focus buckets", {
-    meta_primary <- sub("ynow-bblab-or__secondary.*", "", html_meta_only)
-    grepl("Sources and credibility", meta_primary, fixed = TRUE) &&
-      grepl("Cross-check", meta_primary, fixed = TRUE) &&
+    grepl("Sources and credibility", html_meta_only, fixed = TRUE) &&
+      grepl("Cross-check", html_meta_only, fixed = TRUE) &&
       !grepl("data-focus=\"orders\"", html_meta_only, fixed = TRUE) &&
-      !grepl("Order quantity", meta_primary, fixed = TRUE) &&
-      !grepl("Gross margin", meta_primary, fixed = TRUE) &&
-      grepl("ynow-bblab-or__secondary", html_meta_only, fixed = TRUE)
+      !grepl("Order quantity", html_meta_only, fixed = TRUE) &&
+      !grepl("Gross margin", html_meta_only, fixed = TRUE) &&
+      !grepl("ynow-bblab-or__secondary", html_meta_only, fixed = TRUE)
   })
   html_focus <- paste(as.character(bblab_order_research_panel_ui(focused, "en", TRUE)), collapse = " ")
   check("panel labels earnings-call provenance",
@@ -415,26 +422,223 @@ if (requireNamespace("shiny", quietly = TRUE) && requireNamespace("plotly", quie
           grepl("SEC filing", html_focus, fixed = TRUE) &&
           grepl("Confirmed", html_focus, fixed = TRUE) &&
           grepl("Management", html_focus, fixed = TRUE))
-  check("panel shows sources and cross-check before secondary layers", {
-    primary <- sub("ynow-bblab-or__secondary.*", "", html_en)
-    grepl("Sources and credibility", primary, fixed = TRUE) &&
-      grepl("Cross-check", primary, fixed = TRUE) &&
-      grepl("It is not Backlog", primary, fixed = TRUE) &&
-      grepl("MOPS filing", primary, fixed = TRUE) &&
-      grepl("ynow-bblab-or__secondary", html_en, fixed = TRUE) &&
-      !grepl("Gross margin", primary, fixed = TRUE)
+  check("panel shows sources and cross-check without secondary essays", {
+    grepl("Sources and credibility", html_en, fixed = TRUE) &&
+      grepl("Cross-check", html_en, fixed = TRUE) &&
+      grepl("These statement lines are a cross-check. They are not Backlog.", html_en, fixed = TRUE) &&
+      grepl("data-xcheck=\"inventory\"", html_en, fixed = TRUE) &&
+      !grepl("data-xcheck=\"contract_assets\"", html_en, fixed = TRUE) &&
+      !grepl("Inventory is a statement cross-check. It is not Backlog.", html_en, fixed = TRUE) &&
+      grepl("MOPS filing", html_en, fixed = TRUE) &&
+      !grepl("ynow-bblab-or__secondary", html_en, fixed = TRUE) &&
+      !grepl("Gross margin", html_en, fixed = TRUE)
   })
-  check("broker tier stays unused unless a fact used it", {
-    broker <- sub(
-      ".*data-tier=\"broker_estimate\"(.*?)data-tier=\"industry_proxy\".*",
-      "\\1",
-      html_en
+  check("idle source tiers stay off the meta list", {
+    grepl("data-tier=\"mops_filing\"", html_en, fixed = TRUE) &&
+      grepl("Contributed", html_en, fixed = TRUE) &&
+      !grepl("data-tier=\"broker_estimate\"", html_en, fixed = TRUE) &&
+      !grepl("Not used", html_en, fixed = TRUE) &&
+      !tier_contributed(ranged, "broker_estimate") &&
+      tier_contributed(ranged, "mops_filing")
+  })
+  us_report <- ynow_supply_report_from_focus(list(
+    order_notes = "Bookings remained healthy and backlog coverage improved.",
+    supplier_notes = "Lead supplier stayed the primary foundry.",
+    customer_notes = "Customer Acme remained the largest account."
+  ), source = list(
+    source_id = "sec_8k", published = "2026-01-15",
+    info_updated_at = "2026-01-15", info_updated_kind = "source_event"
+  ))
+  us_ec <- list(
+    status = "ok",
+    source_id = "sec_8k",
+    credibility = "filing",
+    title = "Q3 results call",
+    published = "2026-01-15",
+    url = "https://example.com/us-8k",
+    sec_url = "https://example.com/edgar",
+    excerpt = paste(
+      "Good morning everyone.",
+      "CapEx of $4.2 billion for the new fab.",
+      "Thank you for joining."
+    ),
+    keyword_trap_flags = "trap1_summary_only",
+    order_notes = "LEGACY_ORDER_DUMP 在手訂單舊清單",
+    supply_chain_notes = "LEGACY_SUPPLY_DUMP 供應鏈舊清單",
+    outlook_notes = "OUTLOOK_ESG 今後發展：永續報告書將於下季公布",
+    supply_report = us_report
+  )
+  tw_report <- ynow_supply_report_from_focus(list(
+    order_notes = "在手訂單能見度維持，未改寫金額",
+    supplier_notes = "主要供應商交期穩定",
+    customer_notes = "最大客戶營收占比未再上升"
+  ), source = list(
+    source_id = "fugle_earnings_memo", published = "2026-02-01",
+    info_updated_at = "2026-02-01", info_updated_kind = "source_event"
+  ))
+  tw_ec <- list(
+    status = "ok",
+    source_id = "finmoconf_presentation_pdf",
+    credibility = "estimate",
+    title = "法說簡報",
+    url = "https://example.com/tw-pdf",
+    finmoconf_url = "https://example.com/finmo",
+    fugle_url = "https://example.com/fugle",
+    alphamemo_url = "https://example.com/alphamemo",
+    excerpt = "各位投資人您好。今後發展聚焦 ESG 與資本支出。",
+    order_notes = "LEGACY_ORDER_DUMP 在手訂單舊清單",
+    supply_chain_notes = "LEGACY_SUPPLY_DUMP 供應鏈舊清單",
+    outlook_notes = "OUTLOOK_ESG 今後發展：永續報告書將於下季公布",
+    keyword_trap_flags = "trap3_number_without_tone",
+    supply_report = tw_report
+  )
+  fluff_us <- ranged
+  fluff_us$earnings_market <- "US"
+  fluff_us$earnings_call <- us_ec
+  fluff_us$supply_report <- us_report
+  fluff_us$us_earnings_call <- NULL
+  fluff_us$tw_earnings_call <- NULL
+  fluff_tw <- ranged
+  fluff_tw$earnings_market <- "TW"
+  fluff_tw$earnings_call <- tw_ec
+  fluff_tw$supply_report <- tw_report
+  fluff_tw$us_earnings_call <- NULL
+  fluff_tw$tw_earnings_call <- NULL
+  fluff_fallback <- ranged
+  fluff_fallback$earnings_market <- "TW"
+  fluff_fallback$earnings_call <- list(
+    status = "ok",
+    source_id = "fugle_earnings_memo",
+    credibility = "estimate",
+    title = "備忘錄",
+    fugle_url = "https://example.com/fugle-fallback",
+    order_notes = "FALLBACK_ORDER visibility held for the named program",
+    supply_chain_notes = "主要供應商 fallback wafer remained qualified",
+    outlook_notes = "今後發展 ESG only and not an order fact"
+  )
+  fluff_fallback$supply_report <- NULL
+  fluff_fallback$us_earnings_call <- NULL
+  fluff_fallback$tw_earnings_call <- NULL
+  .meta_html <- function(pack, locale, started = TRUE) {
+    paste(as.character(bblab_order_research_meta_ui(pack, locale, started)), collapse = " ")
+  }
+  .n_fixed <- function(html, needle) {
+    m <- gregexpr(needle, html, fixed = TRUE)[[1]]
+    if (identical(m[[1]], -1L)) 0L else length(m)
+  }
+  html_fluff_en <- .meta_html(fluff_us, "en", TRUE)
+  html_fluff_zh <- .meta_html(fluff_tw, "zh-TW", TRUE)
+  html_tw_en <- .meta_html(fluff_tw, "en", TRUE)
+  html_before <- .meta_html(fluff_tw, "en", FALSE)
+  html_fallback_en <- .meta_html(fluff_fallback, "en", TRUE)
+  html_fallback_zh <- .meta_html(fluff_fallback, "zh-TW", TRUE)
+  .absent <- function(html, needles) {
+    all(vapply(needles, function(s) !grepl(s, html, fixed = TRUE), logical(1)))
+  }
+  us_title_en <- .UI_STRINGS$en$bblab_or_us_ec_title
+  tw_title_en <- .UI_STRINGS$en$bblab_or_tw_ec_title
+  us_title_zh <- .UI_STRINGS$`zh-TW`$bblab_or_us_ec_title
+  tw_title_zh <- .UI_STRINGS$`zh-TW`$bblab_or_tw_ec_title
+  check("meta HTML keeps order cues and drops earnings fluff", {
+    grepl("Bookings remained healthy", html_fluff_en, fixed = TRUE) &&
+      grepl("primary foundry", html_fluff_en, fixed = TRUE) &&
+      grepl("largest account", html_fluff_en, fixed = TRUE) &&
+      grepl("在手訂單能見度維持", html_fluff_zh, fixed = TRUE) &&
+      grepl("主要供應商交期穩定", html_fluff_zh, fixed = TRUE) &&
+      grepl("最大客戶營收占比未再上升", html_fluff_zh, fixed = TRUE) &&
+      grepl("Open source document", html_fluff_en, fixed = TRUE) &&
+      grepl("FinmoConf company page", html_tw_en, fixed = TRUE) &&
+      grepl("Credibility tier", html_fluff_en, fixed = TRUE) &&
+      grepl("2026-01-15", html_fluff_en, fixed = TRUE) &&
+      grepl("data-tier=\"mops_filing\"", html_fluff_en, fixed = TRUE) &&
+      grepl("data-xcheck=\"inventory\"", html_fluff_en, fixed = TRUE) &&
+      grepl("These statement lines are a cross-check. They are not Backlog.", html_fluff_en, fixed = TRUE) &&
+      grepl("下列財報科目是交叉驗證，不可當成 Backlog。", html_fluff_zh, fixed = TRUE) &&
+      identical(.n_fixed(html_fluff_en, us_title_en), 1L) &&
+      identical(.n_fixed(html_fluff_en, tw_title_en), 0L) &&
+      identical(.n_fixed(html_fluff_zh, tw_title_zh), 1L) &&
+      identical(.n_fixed(html_fluff_zh, us_title_zh), 0L) &&
+      !grepl("data-xcheck=\"contract_assets\"", html_fluff_en, fixed = TRUE) &&
+      !grepl("data-tier=\"broker_estimate\"", html_fluff_en, fixed = TRUE) &&
+      .absent(html_fluff_en, c(
+        "Good morning everyone",
+        "CapEx of $4.2 billion",
+        "LEGACY_ORDER_DUMP",
+        "LEGACY_SUPPLY_DUMP",
+        "OUTLOOK_ESG",
+        "Statementdog",
+        "robots",
+        "AlphaMemo is not scraped",
+        "Not used",
+        "Inventory is a statement cross-check. It is not Backlog.",
+        "Skips full-text map scan",
+        "Reading traps",
+        "Trap1:",
+        "ynow-bblab-or__ec-kw"
+      )) &&
+      .absent(html_fluff_zh, c(
+        "今後發展",
+        "永續報告書",
+        "LEGACY_ORDER_DUMP",
+        "LEGACY_SUPPLY_DUMP",
+        "OUTLOOK_ESG",
+        "Statementdog",
+        "robots",
+        "不會擷取 AlphaMemo",
+        "未採用",
+        "存貨是交叉驗證的間接指標，不可當成 Backlog。",
+        "略過全文地圖",
+        "閱讀陷阱",
+        "ynow-bblab-or__ec-kw"
+      )) &&
+      !grepl("ynow-bblab-or__secondary", html_fluff_en, fixed = TRUE) &&
+      !grepl("ynow-bblab-or__secondary", html_fluff_zh, fixed = TRUE) &&
+      .absent(html_fallback_en, c(
+        "FALLBACK_ORDER", "fallback wafer", "Statementdog",
+        "AlphaMemo is not scraped", "Not used", "ynow-bblab-or__ec-kw"
+      )) &&
+      .absent(html_fallback_zh, c("今後發展", "OUTLOOK", "fallback wafer", "未採用"))
+  })
+  check("conclusion shows before start and sources stay behind the button", {
+    grepl("在手訂單能見度維持", html_before, fixed = TRUE) &&
+      identical(.n_fixed(html_before, tw_title_en), 1L) &&
+      identical(.n_fixed(html_before, us_title_en), 0L) &&
+      !grepl("Sources and credibility", html_before, fixed = TRUE) &&
+      !grepl("These statement lines are a cross-check", html_before, fixed = TRUE) &&
+      !grepl("data-tier=\"mops_filing\"", html_before, fixed = TRUE)
+  })
+  mounted <- bblab_attach_order_research(
+    list(order_concentration = list(
+      customer_concentration = list(
+        eligible = TRUE,
+        rows = list(list(name = "A", share = 0.42)),
+        top1_share = 0.42
+      ),
+      supplier_concentration = list(
+        eligible = FALSE, method = "threshold_none_above", top1_share = 0.19
+      )
+    )),
+    list(
+      ticker = "2330.TW",
+      tw_earnings_call = tw_ec,
+      us_earnings_call = tw_ec,
+      order_disclosures = list(earnings_call = tw_ec)
     )
-    grepl("Broker estimate", broker, fixed = TRUE) &&
-      grepl("Not used", broker, fixed = TRUE) &&
-      grepl("Cannot fill an order amount", broker, fixed = TRUE) &&
-      !grepl("Contributed", broker, fixed = TRUE) &&
-      !tier_contributed(ranged, "broker_estimate")
+  )$order_research
+  html_mount <- .meta_html(mounted, "en", FALSE)
+  check("attach writes one TW chrome and does not copy the call onto the US slot", {
+    is.null(mounted$us_earnings_call) &&
+      is.null(mounted$tw_earnings_call) &&
+      identical(mounted$earnings_market, "TW") &&
+      identical(mounted$earnings_call$title, "法說簡報") &&
+      identical(mounted$supply_report$filing$customers, "table") &&
+      identical(mounted$supply_report$filing$suppliers, "threshold") &&
+      identical(.n_fixed(html_mount, tw_title_en), 1L) &&
+      identical(.n_fixed(html_mount, us_title_en), 0L) &&
+      !grepl("0.42", html_mount, fixed = TRUE) &&
+      !grepl("ynow-bblab-or__ec-kw", html_mount, fixed = TRUE) &&
+      isTRUE(.bblab_orders_group_visible("context", NULL, fluff_tw, FALSE)) &&
+      isTRUE(!.bblab_orders_group_visible("orders", NULL, fluff_tw, FALSE))
   })
   html_idle <- paste(as.character(bblab_order_research_panel_ui(ranged, "en", FALSE)), collapse = " ")
   check("start gate hides figures until analysis",

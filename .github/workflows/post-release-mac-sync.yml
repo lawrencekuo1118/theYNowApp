@@ -1,0 +1,80 @@
+# Durable Mac post-release sync handoff.
+# - On every GitHub Release: ubuntu job records PENDING + operator summary.
+# - workflow_dispatch / repository_dispatch: self-hosted macOS job runs the
+#   real coding + OneDrive sync when a labeled Mac runner is online.
+#
+# Register a Mac runner with labels: self-hosted, macOS, theynow
+# (Settings → Actions → Runners). Cursor alternative: agent worker start.
+name: Post-release Mac local sync
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      display_version:
+        description: "display_version to sync (default: DEPLOY_BASELINE)"
+        required: false
+        default: ""
+      reason:
+        description: "Why this sync was requested"
+        required: false
+        default: "workflow_dispatch"
+  repository_dispatch:
+    types: [ynow-mac-post-release-sync]
+
+jobs:
+  record-pending:
+    name: Record pending / remind
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Write handoff marker + summary
+        run: |
+          set -euo pipefail
+          chmod +x scripts/mac_post_release_sync_handoff.sh \
+            scripts/clear_pending_mac_sync.sh \
+            scripts/post_release_local_sync.sh \
+            scripts/macos/run_auto_post_release_sync.sh || true
+          REASON="${{ github.event.inputs.reason || 'release_published' }}"
+          bash scripts/mac_post_release_sync_handoff.sh --from-ci --no-dispatch --reason "$REASON"
+          {
+            echo "## Mac post-release sync"
+            echo ""
+            echo "Release/dispatch recorded pending Mac coding + OneDrive sync."
+            echo ""
+            echo "- Pending file: \`scripts/PENDING_MAC_SYNC.env\`"
+            echo "- Self-hosted job needs runner labels: \`self-hosted\`, \`macOS\`, \`theynow\`"
+            echo "- Or on Mac: \`bash scripts/macos/install-post-release-sync-launchd.sh\`"
+            echo "- Or Cursor: \`agent login && agent worker start\` then catch-up"
+            echo ""
+            echo '```'
+            cat scripts/PENDING_MAC_SYNC.env
+            echo '```'
+          } >>"$GITHUB_STEP_SUMMARY"
+
+  mac-sync:
+    name: Sync on self-hosted Mac
+    # Only for explicit dispatch — avoids queuing forever on every Release
+    # when no Mac runner is registered.
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'repository_dispatch'
+    runs-on: [self-hosted, macOS, theynow]
+    timeout-minutes: 30
+    steps:
+      - name: Run Mac auto post-release sync
+        env:
+          YNOW_CODING: /Users/lawrencekuo/coding/theYNowApp
+          YNOW_ONEDRIVE: /Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp
+        run: |
+          set -euo pipefail
+          CODING="${YNOW_CODING}"
+          test -d "$CODING/.git"
+          cd "$CODING"
+          git fetch origin master
+          git checkout master
+          git merge --ff-only origin/master
+          chmod +x scripts/macos/run_auto_post_release_sync.sh \
+            scripts/post_release_local_sync.sh scripts/clear_pending_mac_sync.sh \
+            scripts/sync-workspaces.sh scripts/check-od-sync.sh || true
+          bash scripts/macos/run_auto_post_release_sync.sh --force
+          bash scripts/check-od-sync.sh

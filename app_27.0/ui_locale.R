@@ -285,7 +285,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     rel_param_matrix_title = "Assumption map (shared vs unique)",
     rel_param_shared_heading = "Shared:",
     rel_param_shared_body = paste0(
-      "Shares, Cash, Total Debt, and total Revenue — set once on Model Dashboard → Cash, Debt, Shares & Revenue (shared) ",
+      "Shares, Cash, Total Debt, and total Revenue — set once on Model Dashboard → Shared model parameters ",
       "(DCF, WACC weights, Enterprise Multiples, P/S, SOTP). ",
       "App default EV/Sales level; no Yahoo market P/E / price÷P/E back-solve."
     ),
@@ -337,12 +337,12 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     sotp_bridge_help = paste0(
       "Implied EV = Σ(segment revenue × segment EV/Sales) + non-operating; ",
-      "Equity = EV + Cash − Debt. Cash, Total Debt, and Shares are set once on Model Dashboard → Cash, Debt, Shares & Revenue (shared)."
+      "Equity = EV + Cash − Debt. Cash, Total Debt, and Shares are set once on Model Dashboard → Shared model parameters."
     ),
     sotp_need_segments = "SOTP requires segment-level financial data (≥2 positive segment revenues).",
     sotp_status_shares_missing = paste0(
       "Cannot compute Implied Price: shares outstanding are missing or invalid. ",
-      "On Model Dashboard, use Fill from statements under Cash, Debt, Shares & Revenue (shared), ",
+      "On Model Dashboard, use Fill from statements under Shared model parameters, ",
       "or wait until statements finish loading."
     ),
     sotp_status_multiple_invalid = paste0(
@@ -401,7 +401,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Requires ≥2 positive segment revenues. Not segment-EBIT SOTP."
     ),
     rel_multiples_arr_help = "ARR is not in core statements — enter manually or leave blank (N/A).",
-    rel_multiples_bridge_help = "Cash, Total Debt, Shares, and total Revenue are set once on Model Dashboard → Cash, Debt, Shares & Revenue (shared). This page shows the applied values.",
+    rel_multiples_bridge_help = "Cash, Total Debt, Shares, and total Revenue are set once on Model Dashboard → Shared model parameters. This page shows the applied values.",
     rel_multiples_vbx_pe = "P/E Implied Price",
     rel_multiples_vbx_fpe = "Forward P/E Implied Price",
     rel_multiples_vbx_peg = "PEG",
@@ -710,8 +710,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     snapshot_link = " Snapshot",
     snapshot_page_title = "Snapshot",
     snapshot_page_help = paste0(
-      "Three tabs: manual adjustments vs the post-Search baseline (with annotated PDF); ",
-      "current live parameters (download / upload restore CSV); and APP_DEFAULTS ",
+      "Three tabs: current live parameters (download / upload restore CSV); ",
+      "manual adjustments vs the post-Search baseline (with annotated PDF); and APP_DEFAULTS ",
       "(that tab shows a lock until System admin unlock; the defaults table appears only after unlock)."
     ),
     snapshot_page_help_lite = paste0(
@@ -780,7 +780,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Smart Analysis, Model Dashboard, and each Fair Value engine (DCF / DDM / RI / P/B / NAV) ",
       "surface a Why panel under the KPI; Multiples (Reference) and SOTP Meta-Framework also have Why. ",
       "Decision SOP gate status is elevated into Smart Analysis — not an appendix. ",
-      "Full Decision Matrix remains at the bottom of this page."
+      "Full Decision Matrix sits under the Fundamental Valuation Models chart (collapsed by default)."
     ),
     explain_dcf_why_title = "Why this Fair Value (DCF)",
     explain_dcf_why_empty = paste0(
@@ -1997,7 +1997,6 @@ locale_for_market <- function(mode = get_market_mode()) {
     ddm_overview_hint = "D0 is in the model row above; g / two-stage are in Overview below; discount rate r = Ke is on the Ke tab. Re-run after edits.",
     param_sotp_manual_label = "Manual segment inputs (CSV)",
     param_sotp_manual_help = "Suggested source: the same fiscal year's disclosed external segment revenue. Use columns name,revenue,multiple and at least two segments. Revenue must use the analysis currency. Multiples are explicit assumptions. Manual values are not applied until you run SOTP.",
-    param_fx_label = "Manual USD/TWD FX (optional; TWD per USD)",
     param_other_claims_label = "Other equity claims (market value)",
     param_fcfe_other_claims = "This FCFE conversion does not model preferred distributions. Use FCFF with a complete WACC and other-equity-claims adjustment, or use an appropriate common-equity model.",
     ri_missing_payout = "Payout is missing; RI cannot treat a missing payout as zero.",
@@ -2007,6 +2006,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     param_assumption_applied = "Assumed value applied by Lite",
     param_forecast_default_source = "App forecast assumption",
     param_near_growth_default = "Near-term revenue growth = %s%% (app forecast default; fundamental inputs are unavailable, not reported growth).",
+    param_assumption_footnotes_title = "Notes — Lite applied assumptions",
     param_lite_source_unavailable = "Lite has applied the available default assumptions automatically. The source does not provide these required financial facts, so this model cannot produce a result yet:",
     param_missing_reference = "Reference suggestion",
     param_missing_no_reference = "No reliable numeric suggestion is available.",
@@ -2023,7 +2023,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     ddm_err_spm_eps = "SPM needs a valid EPS: enter Estimated/Latest EPS on the D0 tab.",
     ddm_err_spm = "SPM could not be computed. Check EPS / D0 / g / r.",
     ddm_reset_msg = "DDM inputs restored to defaults",
-    kpi_legend_focus_metric = "Gold · Fundamental-profile key metric",
+    kpi_legend_focus_metric = "Vine · Financial-report attribute key metric",
     kpi_gross_margin_subtitle = "Gross Profit Margin",
     kpi_gross_profit_growth_subtitle = "Gross Profit Growth",
     kpi_bank_nii_margin_subtitle = "NII / Revenue (bank heuristic, not Gross Margin)",
@@ -2815,25 +2815,28 @@ locale_for_market <- function(mode = get_market_mode()) {
     box_beta = "BETA",
     box_sgr = "SUSTAINABLE GROWTH RATE",
     box_model_guide = "Model Selection Guide",
+    gs_ms_guide_toggle_aria = "Show or hide Model Selection Guide",
     method_section_title = "Valuation Methodology",
+    method_formulas_title = "Model Formulas",
     method_matrix_fv_note = "Fair Value engines (Intrinsic Value / Fair Value primaries).",
-    method_matrix_rel_note = "Multiples = market-pricing Reference; SOTP = Meta-Framework — neither is a Fair Value primary or HFV overlay.",
+    method_matrix_rel_note = "Multiples = market Reference; SOTP = Meta-Framework — not Fair Value primaries.",
     box_bt_params = "Strategy Parameters",
     # --- SGR tab (Basic Setup) ---
     sgr_method_title = "Terminal growth (SGR) method",
-    shared_bridge_title = "Cash, Debt, Shares & Revenue (shared)",
+    shared_bridge_title = "Shared model parameters",
     shared_bridge_help = paste0(
-      "Fill in Cash, Total Debt, Shares, and total Revenue here once. ",
+      "Enter Cash, Total Debt, Shares, total Revenue, and Other equity claims here once. ",
       "Models that need them — DCF, WACC weights, Enterprise Multiples, P/S, and SOTP — all read from this box. ",
       "Terminal g and Ke still come from SGR and CAPM. ",
-      "SOTP segment revenue, dividend g, and near-term revenue growth keep their own controls."
+      "SOTP segment revenue, dividend g, and near-term revenue growth keep their own controls. ",
+      "USD/TWD FX is fetched automatically."
     ),
     shared_bridge_cash = "Cash",
     shared_bridge_debt = "Total Debt",
     shared_bridge_shares = "Shares",
     shared_bridge_revenue = "Total Revenue",
     shared_bridge_reset = "Fill from statements",
-    fcf_revenue_shared_help = "Total Revenue is set once on Model Dashboard → Cash, Debt, Shares & Revenue (shared).",
+    fcf_revenue_shared_help = "Total Revenue is set once on Model Dashboard → Shared model parameters.",
     lifecycle_stage_title = "Lifecycle stage",
     lifecycle_stage_help = paste0(
       "Auto-detect uses multi-factor scoring (growth, margins, FCF, ROIC−WACC, reinvestment). ",
@@ -3074,11 +3077,6 @@ locale_for_market <- function(mode = get_market_mode()) {
     corp_cb_soft_gap = "Diluted − basic shares",
     corp_cb_us_sec_link = "Open SEC EDGAR 10-K search",
     smart_page_title = "Smart Analysis",
-    smart_page_sub = paste0(
-      "Auto-selects primary and secondary valuation models from the ticker profile, ",
-      "detects the best parameter scenario (Two-Stage vs Gordon, SGR method, claim), ",
-      "applies those defaults, and shows fair-value charts. No manual model settings."
-    ),
     smart_chart_title = "Valuation comparison",
     smart_primary_kicker = "Primary model",
     smart_secondary_kicker = "Secondary model",
@@ -3131,6 +3129,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     rd_box_title = "Estimate rᵈ",
     rd_interest_label = "Interest Expense",
     rd_debt_label = "Interest-bearing Debt",
+    rd_interest_source_is = "Statement source: Income Statement Interest Expense ({period})",
+    rd_interest_source_none = "Statement source: no Interest Expense; enter manually",
+    rd_debt_source_ok = "Statement source: Interest-bearing Debt for {period} (Total Debt, else ST+LT)",
+    rd_debt_source_none = "Statement source: no Interest-bearing Debt; enter manually",
     rd_min_label = "Estimated rᵈ floor (%)",
     rd_max_label = "Estimated rᵈ ceiling (%)",
     use_estimated_rd_label = "Use estimated rᵈ (Interest / Interest-bearing Debt)",
@@ -4163,9 +4165,9 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Traffic light uses each market’s own mean ± 0.75·sd."
     ),
     macro_bubble_buffett_level = "Valuation zone",
-    macro_bubble_buffett_over = "Significantly Overvalued",
-    macro_bubble_buffett_fair = "Fairly Valued",
-    macro_bubble_buffett_under = "Undervalued",
+    macro_bubble_buffett_over = "Elevated (rich vs history)",
+    macro_bubble_buffett_fair = "In line with history",
+    macro_bubble_buffett_under = "Cheap vs history",
     macro_bubble_buffett_unknown = "Waiting for Buffett series…",
     macro_bubble_buffett_kpi = "Latest %.1f%% of GDP · as of %s",
     macro_bubble_buffett_mcap_label = "Total market cap",
@@ -4424,17 +4426,47 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     bblab_or_title = "Sources, cross-check, and call context",
     bblab_or_help = paste0(
-      "Start analysis to surface disclosed order quantity, supplier, and customer facts ",
-      "beside the matching filing charts. Taiwan source priority is MOPS, then company IR, ",
-      "then a statement cross-check. Broker and industry sources are estimates only and ",
-      "do not fill order amounts. Groups with no disclosed data stay collapsed."
+      "The supply chain and orders note appears when the latest call and filings are in. ",
+      "Start analysis still opens disclosed order, supplier, and customer amounts, plus the cross-check. ",
+      "Amounts are never estimated. Groups with no disclosed figures stay collapsed."
+    ),
+    bblab_or_supply_report_title = "Supply chain and orders",
+    bblab_or_supply_report_status_only = "Status only. This note does not restate amounts.",
+    bblab_or_supply_report_orders_mentioned = "The latest call mentions orders, backlog, or bookings.",
+    bblab_or_supply_report_orders_constrained = paste0(
+      "The latest call mentions an order constraint, such as a cut, a cancellation, ",
+      "a push-out, or duplicate ordering."
+    ),
+    bblab_or_supply_report_orders_mixed = "The latest call mentions both order status and an order constraint.",
+    bblab_or_supply_report_suppliers_mentioned = "The latest call mentions suppliers, lead time, or capacity tied to supply.",
+    bblab_or_supply_report_suppliers_constrained = paste0(
+      "The latest call mentions a supply constraint, such as a shortage, a bottleneck, ",
+      "an extended lead time, or constrained supply."
+    ),
+    bblab_or_supply_report_suppliers_mixed = "The latest call mentions both supplier status and a supply constraint.",
+    bblab_or_supply_report_customers_mentioned = "The latest call mentions customers or customer concentration.",
+    bblab_or_supply_report_filing_customers_table = paste0(
+      "The annual report or 10-K includes a customer concentration table. ",
+      "Shares stay on that chart."
+    ),
+    bblab_or_supply_report_filing_suppliers_table = paste0(
+      "The annual report or 10-K includes a supplier concentration table. ",
+      "Shares stay on that chart."
+    ),
+    bblab_or_supply_report_filing_customers_threshold = paste0(
+      "The filing states that no customer is above its disclosed concentration threshold."
+    ),
+    bblab_or_supply_report_filing_suppliers_threshold = paste0(
+      "The filing states that no supplier is above its disclosed concentration threshold."
     ),
     bblab_or_focus_orders = "Order quantity",
     bblab_or_focus_suppliers = "Major suppliers",
     bblab_or_focus_customers = "Major-customer revenue mix",
     bblab_or_secondary = "Other disclosed context",
     bblab_or_sources_title = "Sources and credibility",
+    bblab_or_sources_empty = "No contributed filing or IR source for this run.",
     bblab_or_xcheck_title = "Cross-check",
+    bblab_or_xcheck_disclaimer = "These statement lines are a cross-check. They are not Backlog.",
     bblab_or_prov_filing = "Filing",
     bblab_or_prov_sec = "SEC filing",
     bblab_or_prov_mops = "MOPS annual report",
@@ -4447,8 +4479,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_or_us_ec_title = "US earnings call / transcript",
     bblab_or_us_ec_label = "Source",
     bblab_or_us_ec_empty = paste0(
-      "No US earnings-call transcript or Item 2.02-style 8-K excerpt with measurable ",
-      "backlog / bookings / CapEx language was found for this ticker. Links below are for human research only."
+      "No US earnings-call transcript or Item 2.02-style 8-K excerpt with order, ",
+      "supplier, or customer facts was found for this ticker. ",
+      "Links below are for human research only."
     ),
     bblab_or_us_ec_method_note = paste0(
       "Purpose: feed Business Breakdown order research (orders / suppliers / customers) with status-only facts. ",
@@ -4466,9 +4499,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_or_us_ec_sa_link = "Seeking Alpha Transcripts",
     bblab_or_tw_ec_title = "TW earnings call / conclusions",
     bblab_or_tw_ec_empty = paste0(
-      "No automatable TW earnings-call conclusion with measurable backlog / bookings, ",
-      "or status-only order / supply-chain / outlook notes, was ingested. ",
-      "FinmoConf presentation PDF, Fugle memo, and Seeking Alpha last-resort returned empty; ",
+      "No automatable TW earnings-call conclusion with order, supplier, or customer facts was ingested. ",
+      "FinmoConf presentation PDF, Fugle memo, and Seeking Alpha last-resort returned empty. ",
       "AlphaMemo free transcripts stay human-browsable only."
     ),
     bblab_or_tw_ec_note = paste0(
@@ -4496,13 +4528,6 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_or_tw_ec_search_link = "Search AlphaMemo for this ticker (human)",
     bblab_or_tw_ec_sa_link = "Seeking Alpha Transcripts (last-resort)",
     bblab_or_ec_kw_title = "Order-focus earnings cues (status-only)",
-    bblab_or_ec_kw_note = paste0(
-      "From the primary memo / transcript / presentation: only major suppliers, ",
-      "orders / backlog / bookings status, and major customers. ",
-      "Skips full-text map scan and equity-story narrative. ",
-      "No tone score or keyword wall — not a buy signal. ",
-      "Prefer the primary source over media summaries; never invent amounts."
-    ),
     bblab_or_ec_kw_orders = "Orders / backlog (status-only)",
     bblab_or_ec_kw_suppliers = "Major suppliers (status-only)",
     bblab_or_ec_kw_customers = "Major customers (status-only)",
@@ -4510,10 +4535,6 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_or_ec_kw_updated_unknown = "Unknown",
     bblab_or_ec_kw_updated_kind_event = "source event date",
     bblab_or_ec_kw_updated_kind_fetched = "fetch / analysis time",
-    bblab_or_ec_kw_traps = "Reading traps (order-relevant)",
-    bblab_or_ec_kw_trap1_summary_only = "Trap1: summary-like text — prefer primary transcript/memo",
-    bblab_or_ec_kw_trap2_beat_without_guide_upper = "Trap2: beat vs analysts without management guide upper bound",
-    bblab_or_ec_kw_trap3_number_without_tone = "Trap3: precise number with hedging language",
     bblab_or_prov_statement_proxy = "Statement proxy",
     bblab_or_prov_broker_estimate = "Broker estimate",
     bblab_or_prov_industry_proxy = "Industry proxy",
@@ -5130,7 +5151,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     rel_param_matrix_title = "假設參數對照（共用 vs 獨特）",
     rel_param_shared_heading = "共用：",
     rel_param_shared_body = paste0(
-      "股數、Cash、Total Debt、總營收——在 Model Dashboard → Cash、Debt、股數與營收（各模型共用）設定一次",
+      "股數、Cash、Total Debt、總營收——在 Model Dashboard → 模型共用參數設定一次",
       "（DCF、WACC 權重、Enterprise Multiples、P/S、SOTP）。",
       "App 預設 EV/Sales 層級；不採用 Yahoo 市場本益比或以股價÷P/E 回推。"
     ),
@@ -5183,12 +5204,12 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     sotp_bridge_help = paste0(
       "Implied EV = Σ(部門營收 × 部門 EV/Sales) + 非營業資產；",
-      "Equity = EV + Cash − Debt。Cash、Total Debt、股數在 Model Dashboard → Cash、Debt、股數與營收（各模型共用）設定一次。"
+      "Equity = EV + Cash − Debt。Cash、Total Debt、股數在 Model Dashboard → 模型共用參數設定一次。"
     ),
     sotp_need_segments = "SOTP 需部門層級財報資料（≥2 筆正值部門營收）。",
     sotp_status_shares_missing = paste0(
       "無法計算 Implied Price：流通股數缺漏或無效。",
-      "請在 Model Dashboard 的 Cash、Debt、股數與營收（各模型共用）按「從財報帶入」，",
+      "請在 Model Dashboard 的模型共用參數按「從財報帶入」，",
       "或等待財報載入完成。"
     ),
     sotp_status_multiple_invalid = paste0(
@@ -5247,7 +5268,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "需 ≥2 筆正值部門營收。非部門 EBIT SOTP。"
     ),
     rel_multiples_arr_help = "核心財報無 ARR——請手動輸入，或留空（N/A）。",
-    rel_multiples_bridge_help = "Cash、Total Debt、股數與總營收在 Model Dashboard → Cash、Debt、股數與營收（各模型共用）設定一次。本頁只顯示套用結果。",
+    rel_multiples_bridge_help = "Cash、Total Debt、股數與總營收在 Model Dashboard → 模型共用參數設定一次。本頁只顯示套用結果。",
     rel_multiples_vbx_pe = "P/E Implied Price",
     rel_multiples_vbx_fpe = "Forward P/E Implied Price",
     rel_multiples_vbx_peg = "PEG",
@@ -5552,8 +5573,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     snapshot_link = " 快照",
     snapshot_page_title = "快照 Snapshot",
     snapshot_page_help = paste0(
-      "三個小頁籤：相對 Search 後基準的手改參數（含標記截圖 PDF）；",
-      "目前 App 執行中參數（可下載／上傳還原 CSV）；系統載入時 APP_DEFAULTS",
+      "三個小頁籤：目前 App 執行中參數（可下載／上傳還原 CSV）；",
+      "相對 Search 後基準的手改參數（含標記截圖 PDF）；系統載入時 APP_DEFAULTS",
       "（該分頁籤在系統管理解鎖前顯示上鎖圖示；預設表僅解鎖後顯示）。"
     ),
     snapshot_page_help_lite = paste0(
@@ -5619,7 +5640,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Smart Analysis、Model Dashboard 與各 Fair Value 引擎（DCF／DDM／RI／P/B／NAV）在 KPI 下方顯示 Why 面板；",
       "Multiples（Reference）與 SOTP Meta-Framework 亦有 Why。",
       "Decision SOP 閘門狀態已提升至 Smart Analysis——非附註。",
-      "完整 Decision Matrix 仍見本頁下方。"
+      "完整 Decision Matrix 見基本面評價模型圖表下方（預設收合）。"
     ),
     explain_dcf_why_title = "為何是這個合理價（DCF）",
     explain_dcf_why_empty = paste0(
@@ -6806,7 +6827,6 @@ locale_for_market <- function(mode = get_market_mode()) {
     ddm_overview_hint = "提示：D0 在上方模式列；g／二階段在下方 Overview；折現率 r＝Ke 在 Ke 分頁。自訂參數後請再點試算。",
     param_sotp_manual_label = "人工補填部門資料（CSV）",
     param_sotp_manual_help = "建議依同一財年的部門對外營收揭露填寫；欄位為 name,revenue,multiple，至少兩個部門。營收須採分析幣別，倍數屬估算假設；補填後須重新試算 SOTP 才會套用。",
-    param_fx_label = "人工 USD/TWD 匯率（選填；每美元兌新台幣）",
     param_other_claims_label = "其他權益請求權（市值）",
     param_fcfe_other_claims = "此 FCFE 轉換未建立特別股分配預測；請改用 FCFF 並填妥完整 WACC 與其他權益請求權調整，或選用適合的普通股權益模型。",
     ri_missing_payout = "配息率缺值；RI 不得將缺值視為零配息。",
@@ -6816,6 +6836,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     param_assumption_applied = "Lite 已套用假設數值",
     param_forecast_default_source = "系統預測假設",
     param_near_growth_default = "短期營收成長率 = %s%%（基本面必要資料不足，採系統預測假設，並非實際營收成長率）。",
+    param_assumption_footnotes_title = "註解 — Lite 已套用假設",
     param_lite_source_unavailable = "Lite 已自動套用可用的預設假設；資料來源尚未提供下列必要財報數據，此模型目前無法產出結果：",
     param_missing_reference = "參考建議",
     param_missing_no_reference = "目前沒有可靠的數值建議。",
@@ -6832,7 +6853,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     ddm_err_spm_eps = "SPM 需要有效 EPS：請至 D0 分頁填入預估／最新 EPS。",
     ddm_err_spm = "SPM 無法計算，請檢查 EPS／D0／g／r。",
     ddm_reset_msg = "DDM 參數已回復預設",
-    kpi_legend_focus_metric = "金 · 本財報屬性關鍵指標",
+    kpi_legend_focus_metric = "藤蔓 · 本財報屬性關鍵指標",
     kpi_gross_margin_subtitle = "毛利率 Gross Profit Margin",
     kpi_gross_profit_growth_subtitle = "毛利成長率 Gross Profit Growth",
     kpi_bank_nii_margin_subtitle = "淨利息收入／營收（銀行啟發式，非毛利率）",
@@ -7587,25 +7608,28 @@ locale_for_market <- function(mode = get_market_mode()) {
     box_beta = "Beta β",
     box_sgr = "SUSTAINABLE GROWTH RATE",
     box_model_guide = "模型選擇決策指南",
+    gs_ms_guide_toggle_aria = "展開或收合模型選擇決策指南",
     method_section_title = "評價方法論",
+    method_formulas_title = "模型公式",
     method_matrix_fv_note = "Fair Value 引擎（Intrinsic Value／Fair Value 主模型）。",
-    method_matrix_rel_note = "Multiples＝市場定價參照（Reference）；SOTP＝綜合型估值框架（Meta-Framework）——皆非 Fair Value 主模型，亦不作 HFV 疊加。",
+    method_matrix_rel_note = "Multiples＝市場參照；SOTP＝Meta-Framework——皆非 Fair Value 主模型。",
     box_bt_params = "策略參數設定",
     # --- SGR tab (Basic Setup) ---
     sgr_method_title = "終值永續成長率 (SGR) 評價方法",
-    shared_bridge_title = "Cash、Debt、股數與營收（各模型共用）",
+    shared_bridge_title = "模型共用參數",
     shared_bridge_help = paste0(
-      "Cash、Total Debt、股數與總營收請只在這裡填一次。",
+      "Cash、Total Debt、股數、總營收與其他權益請求權請只在這裡填一次。",
       "需要這些數字的模型——DCF、WACC 權重、Enterprise Multiples、P/S、SOTP——都會讀這裡。",
       "終值 g 與 Ke 仍在 SGR 與 CAPM 調整。",
-      "SOTP 部門營收、股利 g、近端營收成長各自設定。"
+      "SOTP 部門營收、股利 g、近端營收成長各自設定。",
+      "USD/TWD 匯率由系統自動擷取。"
     ),
     shared_bridge_cash = "Cash",
     shared_bridge_debt = "Total Debt",
     shared_bridge_shares = "股數",
     shared_bridge_revenue = "總營收",
     shared_bridge_reset = "從財報帶入",
-    fcf_revenue_shared_help = "總營收在 Model Dashboard → Cash、Debt、股數與營收（各模型共用）設定一次。",
+    fcf_revenue_shared_help = "總營收在 Model Dashboard → 模型共用參數設定一次。",
     lifecycle_stage_title = "生命週期階段",
     lifecycle_stage_help = paste0(
       "自動偵測採多因子評分（成長、利潤率、FCF、ROIC−WACC、再投資）。",
@@ -7843,10 +7867,6 @@ locale_for_market <- function(mode = get_market_mode()) {
     corp_cb_soft_gap = "稀釋股 − 基本股",
     corp_cb_us_sec_link = "開啟 SEC EDGAR 10-K 搜尋",
     smart_page_title = "智慧分析",
-    smart_page_sub = paste0(
-      "依股票性質自動判別主／副模型，辨識參數情境（Two-Stage／Gordon、SGR 法、claim），",
-      "套用最合理預設後試算並顯示合理價圖表；不開放手動模型設定。"
-    ),
     smart_chart_title = "估值比較",
     smart_primary_kicker = "主模型",
     smart_secondary_kicker = "副模型",
@@ -7898,6 +7918,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     rd_box_title = "估算 rᵈ",
     rd_interest_label = "利息費用",
     rd_debt_label = "有息負債",
+    rd_interest_source_is = "財報來源：損益表 Interest Expense（{period}）",
+    rd_interest_source_none = "財報來源：尚無利息費用；可手動輸入",
+    rd_debt_source_ok = "財報來源：有息負債（{period}；優先 Total Debt，否則 Short-term + Long-term Debt）",
+    rd_debt_source_none = "財報來源：尚無有息負債；可手動輸入",
     rd_min_label = "估算 rᵈ 下限 (%)",
     rd_max_label = "估算 rᵈ 上限 (%)",
     use_estimated_rd_label = "採用估算 rᵈ（利息／有息負債）",
@@ -8898,10 +8922,10 @@ locale_for_market <- function(mode = get_market_mode()) {
       "僅在連線失敗時改用內建 seed CSV。",
       "紅綠燈依該市場自身序列 mean ± 0.75·sd 判定。"
     ),
-    macro_bubble_buffett_level = "估值水位",
-    macro_bubble_buffett_over = "嚴重高估（Significantly Overvalued）",
-    macro_bubble_buffett_fair = "合理（Fairly Valued）",
-    macro_bubble_buffett_under = "低估（Undervalued）",
+    macro_bubble_buffett_level = "評價區間",
+    macro_bubble_buffett_over = "偏貴（高於歷史均值區間）",
+    macro_bubble_buffett_fair = "合理區間",
+    macro_bubble_buffett_under = "偏便宜（低於歷史均值區間）",
     macro_bubble_buffett_unknown = "等待巴菲特指標序列…",
     macro_bubble_buffett_kpi = "最新 %.1f%% of GDP · 截至 %s",
     macro_bubble_buffett_mcap_label = "總市值",
@@ -9117,16 +9141,31 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     bblab_or_title = "來源、交叉驗證與法說會脈絡",
     bblab_or_help = paste0(
-      "點選開始分析後，已揭露的訂單數量、供應商與客戶事實會出現在對應的財報圖旁。",
-      "台灣來源優先序為公開資訊觀測站、公司 IR，再以財報科目交叉驗證。",
-      "券商與產業來源僅供估計，不填入訂單金額。無資料的區塊維持收合。"
+      "最新法說與財報進來後，即顯示供應鏈與訂單結論。",
+      "點選開始分析後，才展開已揭露的訂單、供應商與客戶金額，以及交叉驗證。",
+      "金額不推估。無已揭露數字的區塊維持收合。"
     ),
+    bblab_or_supply_report_title = "供應鏈與訂單",
+    bblab_or_supply_report_status_only = "僅狀態。此處不重述金額。",
+    bblab_or_supply_report_orders_mentioned = "最新法說提到訂單、在手訂單或 bookings。",
+    bblab_or_supply_report_orders_constrained = "最新法說提到訂單受限，例如砍單、取消、延期出貨或重複下單。",
+    bblab_or_supply_report_orders_mixed = "最新法說同時提到訂單狀態，以及砍單、取消或延期。",
+    bblab_or_supply_report_suppliers_mentioned = "最新法說提到供應商、交期，或與供貨有關的產能。",
+    bblab_or_supply_report_suppliers_constrained = "最新法說提到供給受限，例如缺料、產能瓶頸或交期拉長。",
+    bblab_or_supply_report_suppliers_mixed = "最新法說同時提到供應商狀態，以及缺料、瓶頸或交期拉長。",
+    bblab_or_supply_report_customers_mentioned = "最新法說提到客戶或客戶集中。",
+    bblab_or_supply_report_filing_customers_table = "年報或 10-K 有客戶集中表。占比留在該圖，此處不重述。",
+    bblab_or_supply_report_filing_suppliers_table = "年報或 10-K 有供應商集中表。占比留在該圖，此處不重述。",
+    bblab_or_supply_report_filing_customers_threshold = "財報載明沒有客戶高於其所揭露的集中門檻。",
+    bblab_or_supply_report_filing_suppliers_threshold = "財報載明沒有供應商高於其所揭露的集中門檻。",
     bblab_or_focus_orders = "訂單數量",
     bblab_or_focus_suppliers = "主要供應商",
     bblab_or_focus_customers = "重大客戶營收貢獻",
     bblab_or_secondary = "其他已揭露內容",
     bblab_or_sources_title = "來源與可信度",
+    bblab_or_sources_empty = "此分析未採用任何申報或 IR 來源。",
     bblab_or_xcheck_title = "交叉驗證",
+    bblab_or_xcheck_disclaimer = "下列財報科目是交叉驗證，不可當成 Backlog。",
     bblab_or_prov_filing = "財報",
     bblab_or_prov_sec = "SEC 申報",
     bblab_or_prov_mops = "公開資訊觀測站年報",
@@ -9139,7 +9178,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_or_us_ec_title = "美股法說會／逐字稿",
     bblab_or_us_ec_label = "來源",
     bblab_or_us_ec_empty = paste0(
-      "此 ticker 未取得可量化 backlog／bookings／CapEx 用語的美股法說逐字稿或 8-K（Item 2.02 類）摘錄。",
+      "此 ticker 未取得含訂單、供應商或客戶事實的美股法說逐字稿或 8-K（Item 2.02 類）摘錄。",
       "下方連結僅供人工查閱，不會自動擷取。"
     ),
     bblab_or_us_ec_method_note = paste0(
@@ -9157,8 +9196,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_or_us_ec_sa_link = "Seeking Alpha Transcripts",
     bblab_or_tw_ec_title = "台股法說會結論",
     bblab_or_tw_ec_empty = paste0(
-      "此 ticker 未自動擷取可量化 backlog／bookings，或狀態型訂單／供應鏈／今後發展摘錄的台股法說結論。",
-      "FinmoConf 簡報 PDF、富果法說備忘錄與 Seeking Alpha 最後備援皆無可用內容；",
+      "此 ticker 未自動擷取含訂單、供應商或客戶事實的台股法說結論。",
+      "FinmoConf 簡報 PDF、富果法說備忘錄與 Seeking Alpha 最後備援皆無可用內容。",
       "AlphaMemo 公開逐字稿仍僅供人工瀏覽。"
     ),
     bblab_or_tw_ec_note = paste0(
@@ -9186,12 +9225,6 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_or_tw_ec_search_link = "以 ticker 搜尋 AlphaMemo（人工）",
     bblab_or_tw_ec_sa_link = "Seeking Alpha Transcripts（最後備援）",
     bblab_or_ec_kw_title = "訂單研究導向法說線索（狀態摘錄）",
-    bblab_or_ec_kw_note = paste0(
-      "來自原始備忘錄／逐字稿／簡報本文：只摘錄主要供應商、訂單／在手／bookings 狀態、主要客戶。",
-      "略過全文地圖速讀與股票故事（Equity Story）敘事框架。",
-      "不顯示語氣評分或關鍵詞牆——非買進訊號。",
-      "優先對照原始來源而非媒體摘要；不虛構金額。"
-    ),
     bblab_or_ec_kw_orders = "訂單／在手（狀態摘錄）",
     bblab_or_ec_kw_suppliers = "主要供應商（狀態摘錄）",
     bblab_or_ec_kw_customers = "主要客戶（狀態摘錄）",
@@ -9199,10 +9232,6 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_or_ec_kw_updated_unknown = "未知",
     bblab_or_ec_kw_updated_kind_event = "來源事件日",
     bblab_or_ec_kw_updated_kind_fetched = "擷取／分析時間",
-    bblab_or_ec_kw_traps = "閱讀陷阱（訂單相關）",
-    bblab_or_ec_kw_trap1_summary_only = "陷阱一：摘要型文字——請回原始逐字稿／備忘錄",
-    bblab_or_ec_kw_trap2_beat_without_guide_upper = "陷阱二：超越分析師預期但未對照管理層財測上緣",
-    bblab_or_ec_kw_trap3_number_without_tone = "陷阱三：精確數字伴隨對沖／保留語氣",
     bblab_or_prov_statement_proxy = "財報科目（間接）",
     bblab_or_prov_broker_estimate = "券商估計",
     bblab_or_prov_industry_proxy = "產業間接指標",
@@ -9646,6 +9675,8 @@ locale_for_market <- function(mode = get_market_mode()) {
   "SUSTAINABLE GROWTH RATE" = "box_sgr",
   "模型選擇決策指南" = "box_model_guide",
   "Model Selection Guide" = "box_model_guide",
+  "模型公式" = "method_formulas_title",
+  "Model Formulas" = "method_formulas_title",
   "策略參數設定" = "box_bt_params",
   "Strategy Parameters" = "box_bt_params",
   "折現比較（合理價 vs 實際股價）" = "box_hfv_discount",

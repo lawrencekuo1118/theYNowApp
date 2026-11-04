@@ -31,6 +31,54 @@ if (!exists("%||%", mode = "function")) {
   unique(utils::head(hit, max_n))
 }
 
+#' Drop negation / inventory-channel fluff from order-focus harvest.
+.ynow_ec_kw_order_focus_reject <- function(s) {
+  s <- as.character(s %||% "")[1]
+  if (!nzchar(trimws(s))) return(TRUE)
+  # Explicit denials: "不是接單" / "not bookings" (not real order facts).
+  if (grepl(
+    paste(
+      c(
+        "不是接單", "並非接單", "非接單", "不是.{0,12}訂單", "並非.{0,12}訂單",
+        "不是.{0,12}bookings?", "並非.{0,12}backlog",
+        "\\bnot\\s+(?:an?\\s+)?(?:order|booking|backlog)\\b",
+        "\\bnot\\s+bookings?\\b",
+        "\\bnot\\s+a\\s+backlog\\b"
+      ),
+      collapse = "|"
+    ),
+    s,
+    perl = TRUE,
+    ignore.case = TRUE
+  )) {
+    return(TRUE)
+  }
+  # Bare 「客戶」hits inventory/ASP channel talk — not major-customer mix.
+  if (grepl(
+    paste(
+      c(
+        "客戶庫存", "通路庫存", "channel inventory", "customer inventory",
+        "庫存去化", "庫存消化", "去庫存", "inventory digestion",
+        "destocking", "inventory correction"
+      ),
+      collapse = "|"
+    ),
+    s,
+    perl = TRUE,
+    ignore.case = TRUE
+  )) {
+    return(TRUE)
+  }
+  FALSE
+}
+
+.ynow_ec_kw_pick_order_focus <- function(parts, patterns, max_n = 5L) {
+  hit <- .ynow_ec_kw_pick_sentences(parts, patterns, max_n = max(max_n * 3L, 12L))
+  if (!length(hit)) return(character(0))
+  hit <- hit[!vapply(hit, .ynow_ec_kw_order_focus_reject, logical(1))]
+  unique(utils::head(hit, max_n))
+}
+
 #' Optional pre-read prep fields (priors / 必答題 / prior commitments).
 #' Empty strings/lists are honest empty — never invent.
 ynow_ec_preread_prep_empty <- function() {
@@ -604,7 +652,7 @@ ynow_ec_stamp_info_updated <- function(result, fetched_at = NULL) {
 }
 
 #' Status-only sentence harvest for 訂單／主要供應商／主要客戶 (never invent amounts).
-ynow_ec_kw_extract_order_focus <- function(text, lex = NULL, max_n = 6L) {
+ynow_ec_kw_extract_order_focus <- function(text, lex = NULL, max_n = 5L) {
   lex <- lex %||% (if (exists("ynow_ec_keyword_lexicon", mode = "function")) {
     ynow_ec_keyword_lexicon()
   } else {
@@ -618,14 +666,12 @@ ynow_ec_kw_extract_order_focus <- function(text, lex = NULL, max_n = 6L) {
   parts <- .ynow_ec_kw_split_sentences(text)
   if (!length(parts)) return(empty)
   role_pats <- function(role) {
-    node <- lex[[role]]
-    if (is.null(node)) return(character(0))
-    c(as.character(node$zh %||% character(0)), as.character(node$en %||% character(0)))
+    ynow_ec_lexicon_tokens(role, kind = "any", lex = lex)
   }
   list(
-    order_notes = .ynow_ec_kw_pick_sentences(parts, role_pats("orders"), max_n),
-    supplier_notes = .ynow_ec_kw_pick_sentences(parts, role_pats("suppliers"), max_n),
-    customer_notes = .ynow_ec_kw_pick_sentences(parts, role_pats("customers"), max_n)
+    order_notes = .ynow_ec_kw_pick_order_focus(parts, role_pats("orders"), max_n),
+    supplier_notes = .ynow_ec_kw_pick_order_focus(parts, role_pats("suppliers"), max_n),
+    customer_notes = .ynow_ec_kw_pick_order_focus(parts, role_pats("customers"), max_n)
   )
 }
 
@@ -671,11 +717,6 @@ ynow_ec_attach_keyword_analysis <- function(result, text = NULL, prior = NULL) {
   focus <- ynow_ec_kw_extract_order_focus(txt)
   analysis$order_focus <- focus
   result$keyword_analysis <- analysis
-
-  # Surface fields for 業務拆解 → order-research (status-only).
-  result$keyword_order_notes <- focus$order_notes
-  result$keyword_supplier_notes <- focus$supplier_notes
-  result$keyword_customer_notes <- focus$customer_notes
   result$keyword_trap_flags <- .ynow_ec_kw_order_focus_traps(analysis, focus)
 
   # Enrich existing note buckets without inventing amounts / overwriting parties.
@@ -712,6 +753,10 @@ ynow_ec_attach_keyword_analysis <- function(result, text = NULL, prior = NULL) {
 
   # 資訊更新日期: source event date preferred; fetch time as fallback.
   result <- ynow_ec_stamp_info_updated(result)
+  result$supply_report <- ynow_supply_report_from_focus(focus, source = result)
+  result$keyword_order_notes <- result$supply_report$buckets$orders
+  result$keyword_supplier_notes <- result$supply_report$buckets$suppliers
+  result$keyword_customer_notes <- result$supply_report$buckets$customers
   result
 }
 

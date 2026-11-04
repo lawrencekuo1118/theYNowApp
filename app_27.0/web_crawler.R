@@ -546,8 +546,9 @@ cached_get_yahoo_industry <- memoise::memoise(get_yahoo_industry, cache = .ynow_
   isTRUE(max(r, g, b, na.rm = TRUE) <= 40L)
 }
 
-#' Brand palette must be 0 or 2 colors.
+#' Brand palette must be 0 or 2 colors for dual-tone surfaces (charts / KPI).
 #' Single brand → pad black; single near-black brand → pad white.
+#' Company full-name uses raw mono (see `.is_logo_mono_brand`) instead of this pad.
 .ensure_logo_color_pair <- function(cols) {
   cols <- .normalize_logo_hex(cols)
   if (length(cols) == 1L) {
@@ -557,9 +558,14 @@ cached_get_yahoo_industry <- memoise::memoise(get_yahoo_industry, cache = .ynow_
   cols
 }
 
+#' True when the brand primary palette is a single color (monochrome).
+.is_logo_mono_brand <- function(cols) {
+  identical(length(.normalize_logo_hex(cols)), 1L)
+}
+
 #' Resolve up to two primary logo colors for a ticker (Search corp-name tint).
-#' @return character vector length 0 or 2 of "#RRGGBB"
-#'   (single brand padded with black, or white when the sole brand is black)
+#' @return character vector length 0–2 of "#RRGGBB" (raw; not pad-filled).
+#'   Mono brands stay length 1 so the company full name can use a solid tint.
 get_corp_logo_colors <- function(stock_code, website = NULL) {
   tk <- trimws(as.character(stock_code %||% "")[1])
   if (!nzchar(tk)) return(character(0))
@@ -583,7 +589,7 @@ get_corp_logo_colors <- function(stock_code, website = NULL) {
   cols <- tryCatch({
     if (is.list(res) && !is.null(res$colors)) res$colors else res
   }, error = function(e) NULL)
-  .ensure_logo_color_pair(cols)
+  .normalize_logo_hex(cols)
 }
 
 # Brand colors change rarely — share the slow (disk) cache with industry labels.
@@ -606,12 +612,14 @@ get_corp_logo_colors <- function(stock_code, website = NULL) {
 }
 
 #' Public logo-color fetch: memoised when non-empty; empty results are not kept.
+#' Returns raw primary colors (length 0–2). Callers that need a dual-tone pair
+#' (charts / KPI) should run `.ensure_logo_color_pair`; corp-name mono stays solid.
 cached_get_corp_logo_colors <- function(stock_code, website = NULL) {
   cols <- tryCatch(
     .cached_get_corp_logo_colors_memo(stock_code, website = website),
     error = function(e) character(0)
   )
-  cols <- tryCatch(.ensure_logo_color_pair(cols), error = function(e) character(0))
+  cols <- tryCatch(.normalize_logo_hex(cols), error = function(e) character(0))
   if (!length(cols)) {
     .drop_corp_logo_colors_cache_key(stock_code, website = website)
   }
@@ -832,22 +840,90 @@ cached_get_summary_data <- function(stock_code) {
 # ==========================================
 # 💱 USD/TWD 即期匯率
 # ==========================================
-get_usd_twd_fx <- function() {
-  tryCatch({
-    if (!isTRUE(.ensure_python_scraper()) ||
-        !exists("get_usd_twd_rate", envir = .py_scraper_env, inherits = FALSE, mode = "function")) {
-      return(NA_real_)
-    }
-    px <- suppressWarnings(as.numeric(.py_scraper_env$get_usd_twd_rate())[1])
-    if (is.finite(px) && px > 0) return(px)
-    NA_real_
-  }, error = function(e) {
-    .ynow_log("⚠️ get_usd_twd_fx: ", e$message)
-    NA_real_
-  })
+if (!exists("%||%", mode = "function")) {
+  `%||%` <- function(x, y) if (is.null(x) || (length(x) == 1 && is.na(x))) y else x
 }
 
-# FAST: FX
+#' Yahoo chart API spot (TWD per 1 USD). Used when yfinance is rate-limited.
+#' Never invents a rate — returns NA_real_ when chart / parse fails.
+.usd_twd_from_yahoo_chart <- function() {
+  if (!requireNamespace("httr", quietly = TRUE) ||
+      !requireNamespace("jsonlite", quietly = TRUE)) {
+    return(NA_real_)
+  }
+  if (exists(".ynow_yahoo_gate_acquire", mode = "function")) {
+    tryCatch(.ynow_yahoo_gate_acquire(timeout_sec = 10), error = function(e) NULL)
+  }
+  ua <- httr::user_agent(
+    "Mozilla/5.0 (compatible; YNowFX/1.0; +https://github.com/lawrencekuo1118/theYNowApp)"
+  )
+  for (host in c(
+    "https://query1.finance.yahoo.com",
+    "https://query2.finance.yahoo.com"
+  )) {
+    for (sym in c("TWD=X", "USDTWD=X")) {
+      enc <- utils::URLencode(sym, reserved = TRUE)
+      url <- sprintf("%s/v8/finance/chart/%s?range=5d&interval=1d", host, enc)
+      resp <- tryCatch(
+        httr::GET(url, ua, httr::timeout(15)),
+        error = function(e) NULL
+      )
+      if (is.null(resp) || httr::status_code(resp) != 200L) next
+      body <- tryCatch(
+        httr::content(resp, as = "text", encoding = "UTF-8"),
+        error = function(e) ""
+      )
+      if (!nzchar(body %||% "")) next
+      j <- tryCatch(
+        jsonlite::fromJSON(body, simplifyVector = FALSE),
+        error = function(e) NULL
+      )
+      res <- tryCatch(j$chart$result[[1]], error = function(e) NULL)
+      if (is.null(res)) next
+      meta <- res$meta %||% list()
+      for (key in c("regularMarketPrice", "chartPreviousClose", "previousClose")) {
+        px <- suppressWarnings(as.numeric(meta[[key]])[1])
+        if (is.finite(px) && px > 0) return(px)
+      }
+      closes <- tryCatch(
+        unlist(res$indicators$quote[[1]]$close, use.names = FALSE),
+        error = function(e) NULL
+      )
+      if (!is.null(closes) && length(closes)) {
+        nums <- suppressWarnings(as.numeric(closes))
+        nums <- nums[is.finite(nums) & nums > 0]
+        if (length(nums)) return(nums[[length(nums)]])
+      }
+    }
+  }
+  NA_real_
+}
+
+#' Live USD→TWD spot. Prefer Python yfinance (+ chart fallback); then R chart API.
+#' Raises on total failure so memoise does not cache a failed NA for the fast TTL.
+get_usd_twd_fx <- function() {
+  px <- NA_real_
+  tryCatch({
+    if (isTRUE(.ensure_python_scraper()) &&
+        exists("get_usd_twd_rate", envir = .py_scraper_env, inherits = FALSE, mode = "function")) {
+      px <- suppressWarnings(as.numeric(.py_scraper_env$get_usd_twd_rate())[1])
+    }
+  }, error = function(e) {
+    .ynow_log("⚠️ get_usd_twd_fx python: ", e$message)
+    NA_real_
+  })
+  if (is.finite(px) && px > 0) return(px)
+
+  px2 <- tryCatch(.usd_twd_from_yahoo_chart(), error = function(e) {
+    .ynow_log("⚠️ get_usd_twd_fx chart: ", e$message)
+    NA_real_
+  })
+  if (is.finite(px2) && px2 > 0) return(px2)
+
+  stop("USD/TWD FX unavailable")
+}
+
+# FAST: FX — successes only (failures raise → not memoised)
 cached_get_usd_twd_fx <- memoise::memoise(get_usd_twd_fx, cache = .ynow_fast_cache)
 
 # ==========================================

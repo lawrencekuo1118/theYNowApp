@@ -1,9 +1,68 @@
-## [v27.62] — 2026-11-04 · 模型財年完整性與 Lite 圖表
+## [v27.82] — 2026-11-04 · 模型財年完整性與 Lite 圖表
 
 - zh-TW：以共用「公式 × 財年」登錄表驗證所有估值必要財報參數；缺值時一次補查舊快取與原始來源，只接受同公司、同財年、同幣別資料。仍有缺值的公式會列出缺項並停止計算及圖表，不再以 TTM、其他年度或其他模型欄位替代。Lite 的預測預設維持自動套用並標示假設；Full 人工補值綁定目前公司及財年。
 - en-US: Validate every valuation formula through a shared formula-by-fiscal-year registry. Recover all gaps as one request from the statement cache and original provider, accepting only the same issuer, fiscal endpoint, and currency. Formulas with unresolved facts list every gap and produce no valuation or chart. Lite keeps disclosed forecast defaults; Full manual facts are scoped to the current issuer and fiscal year.
 - Evidence: [model fiscal-integrity and Lite valuation report](docs/fixes/2026-11-02-model-fiscal-integrity/REPORT.md).
 
+## [v27.81] — 2026-11-03 · Supply chain and orders conclusion report
+
+### en-US
+- Business Breakdown harvest now seals a status-only **supply chain and orders** note from the latest TW/US earnings text plus filing concentration presence.
+- The note opens when harvest finishes (orders / suppliers / customers stance + cites). Start analysis still opens disclosed amounts, the source stack, and the cross-check.
+- TW runs mount one earnings chrome slot (no duplicate US heading). Amounts are never invented.
+
+### zh-TW
+- 業務拆解擷取最新台／美法說與財報集中表後，產出僅狀態的**供應鏈與訂單**結論。
+- 擷取完成即可見（訂單／主要供應商／主要客戶語氣＋原文摘錄）。點選開始分析後才展開已揭露金額、來源層與交叉驗證。
+- 台股路徑只掛一組法說區塊（不再重複美股標題）。金額不推估。
+
+## [v27.80] — 2026-11-03 · Cut earnings-context fluff in order research
+
+- zh-TW：業務拆解「來源、交叉驗證與法說會脈絡」只保留訂單／主要供應商／主要客戶相關線索（含資訊更新日期、可信度、有貢獻來源與有數值的交叉驗證）；移除法說開場摘錄、方法論長文、今後發展／ESG、閒置來源層、空白交叉驗證列與次層論文式說明；訂單焦點擷取略過「不是接單」／客戶庫存等雜訊句。
+- en-US: Business Breakdown Sources / cross-check / call-context keeps only order, supplier, and customer cues (updated date, credibility, contributed sources, finite cross-check values). Drops greeting excerpts, methodology walls, outlook/ESG, idle source tiers, blank cross-check rows, and secondary-layer essays. Order-focus harvest skips negation and channel-inventory fluff.
+- Evidence: order-research meta HTML regression + keyword negation checks; docs `earnings-context-fluff.md`.
+
+## [v27.79] — 2026-11-03 · Company Overview「公司簡介」zh-TW body
+
+- zh-TW：個股 Company Overview 營運摘要不再只顯示 Yahoo 英文 `longBusinessSummary`；台股優先 Yahoo TW「主要經營業務」（台灣繁體），其餘以 en→zh-TW 翻譯並套用台灣投資界用詞過濾；失敗則保留英文。Sector／Industry 標籤維持正式英文。
+- en-US: Under zh-TW locale, Company Overview business-summary body is Traditional Chinese (Yahoo TW「主要經營業務」for TW tickers; otherwise translated with Taiwan desk filter). English fallback on failure. Sector/Industry labels stay formal English.
+- Evidence: PR #619; `app_27.0/tests/test_company_overview_zh_tw_summary.R`; docs `company-intro-zh-tw.md`.
+
+## [v27.78] — 2026-11-03 · Vine KPI frame wraps box edge
+
+- zh-TW：財報屬性關鍵指標藤蔓外框改以 CSS **border-image 九宮格**貼齊 KPI 儲存格矩形邊線（不再整圖拉伸）；短卡 FS 用較薄邊帶；內部維持透明。
+- en-US: Focus-KPI vine foliage uses CSS **border-image** 9-slice so the frame tracks the cell perimeter on any aspect ratio (no full-bleed stretch). Thinner band on short Finance Summary cards; interior stays transparent.
+- Evidence: PR #617; `app_27.0/tests/test_vine_kpi_frame.R`; docs `vine-frame-wrap-fix.md`. Bundle 12772042.
+
+## [v27.77] — 2026-11-03 · Vine foliage focus-KPI frame
+
+- zh-TW：個股頁財報屬性關鍵指標外框改為使用者手繪**藤蔓／葉片矩形邊框**（白底去背、僅邊框、內部透明）；移除橘金 SVG／漸層填色光暈。圖例文案改「藤蔓 · …」／「Vine · …」。
+- en-US: Replace the Company-page animated orange-gold focus-KPI frame with the user’s vine/foliage hand-drawn rectangular border (white keyed to transparency; border-only; hollow interior). Remove gold SVG / gradient wash. Legend copy → “Vine · …” / 「藤蔓 · …」.
+- Evidence: `app_27.0/tests/test_vine_kpi_frame.R`; docs `vine-kpi-frame.md`.
+
+## [v27.76] — 2026-11-02 · Gold KPI frame border-only
+
+- zh-TW：財報屬性關鍵指標金框改為**僅外框／邊線光暈**（透明內部），不再以半透明橘金填滿整個 KPI 儲存格；內容背景可讀。`pointer-events: none` 維持。
+- en-US: Focus-KPI animated gold frame is **perimeter-only** (hollow mask-composite ring); no opaque/semi-opaque fill over the cell background. Content stays readable; overlays remain `pointer-events: none`.
+- Evidence: PR #613; `app_27.0/tests/test_gold_kpi_animated_frame.R`. Bundle 12770339.
+
+## [v27.73] — 2026-11-02 · Remove Lite auto-model blurb
+
+- zh-TW：移除 Lite 智慧分析複合合理價狀態上方冗餘說明段（「依股票性質自動判別主／副模型…不開放手動模型設定」）及 en-US 對應文案；刪除未再使用的 `smart_page_sub` locale。其他 Lite UI／自動試算行為不變。
+- en-US: Remove the redundant Lite Smart Analysis explanatory paragraph above composite fair-value status (and its en-US twin); drop unused `smart_page_sub` locale keys. Other Lite UI and auto-calc behavior unchanged.
+- Evidence: PR #605; `app_27.0/tests/test_lite_mode_ui.R`. Bundle 12769382.
+
+## [v27.72] — 2026-11-02 · Lite applied assumptions as footnotes
+
+- zh-TW：Lite「已套用假設數值」說明（WACC、ri_payout、ri_roe 等）改為估值／模型分頁底部註解樣式，不再出現在控制項旁或智慧分析中段 alert。缺漏參數欄位提示維持原位。en-US + zh-TW 標題已登錄。
+- en-US: Move Lite “Assumed value applied by Lite” disclosures (WACC, ri_payout, ri_roe, and similar) to annotation-style footnotes at the bottom of the valuation/model tab. Missing-parameter field hints stay beside inputs.
+- Evidence: PR #604; `app_27.0/tests/test_parameter_completeness.R`, `test_lite_mode_ui.R`. Bundle 12769359.
+
+## [v27.62] — 2026-11-02 · Lite DCF Base with disclosed WACC
+
+- zh-TW：Lite 智慧分析在僅有已揭露的假設 WACC（尚未算出 calculated WACC）時，silent DCF 仍會試算並顯示 Bear／Base／Bull；Full 維持等待估算 WACC。修正 AAPL 等主模型為 DCF 時 Base 空白的問題。
+- en-US: Lite Smart Analysis silent DCF now proceeds with the disclosed UI/default WACC when calculated WACC is still NA, so Bear/Base/Bull populate. Full still waits for calculated WACC.
+- Evidence: PR #584; regression in `app_27.0/tests/test_parameter_completeness.R`.
 ## [v27.61] — 2026-11-01 · Lite 智慧分析自動套用預設
 
 - zh-TW：Lite 智慧分析自動套用可用的預設預測假設並在參數回傳後重新試算，不再要求前往 Full 補填。修正 RI 永續成長率預設來源及延後財報更新清除預設值後不重套的問題；畫面與 PDF 標示已採用的假設數值。Full 維持人工確認，實際財報缺漏不造值。

@@ -901,10 +901,11 @@ macro_bubble_chapter_ui <- function(ns) {
       class = "ynow-funnel-toolbar",
       role = "group",
       `aria-label` = "Bubble and concentration controls",
+      # Refresh lives on the chapter title row (same chrome as Relative performance).
       fluidRow(
         column(
-          width = 4,
-          class = "col-xs-12 col-sm-4 col-md-4",
+          width = 6,
+          class = "col-xs-12 col-sm-6 col-md-6",
           selectInput(
             ns("bubble_top_n"),
             label = tags$span(id = "ynow_macro_bubble_topn_label", "Top N by market cap"),
@@ -913,26 +914,13 @@ macro_bubble_chapter_ui <- function(ns) {
           )
         ),
         column(
-          width = 4,
-          class = "col-xs-12 col-sm-4 col-md-4",
+          width = 6,
+          class = "col-xs-12 col-sm-6 col-md-6",
           selectInput(
             ns("bubble_attr_period"),
             label = tags$span(id = "ynow_macro_bubble_attr_label", "Analysis window"),
             choices = c("1M" = "1mo", "3M" = "3mo", "1Y" = "1y", "2Y" = "2y"),
             selected = "1y"
-          )
-        ),
-        column(
-          width = 4,
-          class = "col-xs-12 col-sm-4 col-md-4",
-          tags$div(
-            style = "margin-top: 24px;",
-            actionButton(
-              ns("bubble_refresh"),
-              label = tags$span(id = "ynow_macro_bubble_refresh", "Refresh"),
-              icon = icon("sync"),
-              class = "btn-default"
-            )
           )
         )
       )

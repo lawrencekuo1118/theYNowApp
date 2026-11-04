@@ -14,11 +14,10 @@ if (!exists("%||%", mode = "function")) {
   `%||%` <- function(a, b) if (is.null(a)) b else a
 }
 
-#' Internal lexicon: paired zh / en tokens by role.
-#' @return named list of character vectors (regex-friendly fragments).
 ynow_ec_keyword_lexicon <- function() {
+  item <- function(pat, kind) list(pat = pat, kind = kind)
   list(
-    version = "2",
+    version = "3",
     # Framework coverage note (machine metadata, not UI copy).
     skipped_steps = c("1_full_text_map_scan", "5_equity_story_narrative"),
     product_focus = c("major_suppliers", "orders_backlog_bookings", "major_customers"),
@@ -31,34 +30,124 @@ ynow_ec_keyword_lexicon <- function() {
       "keyword_db_template",
       "reading_traps"
     ),
-    # Order-research surface roles (status-only sentence harvest).
     orders = list(
-      zh = c(
-        "在手訂單", "新訂單", "接單", "訂單能見度", "訂單展望", "訂單金額",
-        "砍單", "延期出貨", "bookings", "backlog", "可見度"
-      ),
-      en = c(
-        "\\bbacklog\\b", "bookings?", "book[- ]to[- ]bill", "order visibility",
-        "order outlook", "order cut", "cancel(?:led)? orders?", "push(?:ed)? out"
+      items = list(
+        item("在手訂單", "mention"),
+        item("新訂單", "mention"),
+        item("接單", "mention"),
+        item("訂單能見度", "mention"),
+        item("訂單展望", "mention"),
+        item("訂單金額", "mention"),
+        item("bookings", "mention"),
+        item("backlog", "mention"),
+        item("可見度", "mention"),
+        item("\\bbacklog\\b", "mention"),
+        item("bookings?", "mention"),
+        item("book[- ]to[- ]bill", "mention"),
+        item("order visibility", "mention"),
+        item("order outlook", "mention"),
+        item("急單", "mention"),
+        item("提前拉貨", "mention"),
+        item("長約訂單", "mention"),
+        item("框架合約", "mention"),
+        item("得標", "mention"),
+        item("決標", "mention"),
+        item("pull[- ]in", "mention"),
+        item("pull[- ]forward", "mention"),
+        item("framework agreement", "mention"),
+        item("blanket PO", "mention"),
+        item("annual PO", "mention"),
+        item("contract win", "mention"),
+        item("砍單", "constraint"),
+        item("延期出貨", "constraint"),
+        item("order cut", "constraint"),
+        item("cancel(?:led)? orders?", "constraint"),
+        item("push(?:ed)? out", "constraint"),
+        item("遞延出貨", "constraint"),
+        item("延後認列", "constraint"),
+        item("訂單取消", "constraint"),
+        item("客戶取消", "constraint"),
+        item("雙重下單", "constraint"),
+        item("重複下單", "constraint"),
+        item("能見度受限", "constraint"),
+        item("能見度降低", "constraint"),
+        item("deferred shipment", "constraint"),
+        item("delayed recognition", "constraint"),
+        item("order cancellation", "constraint"),
+        item("customer cancellation", "constraint"),
+        item("double ordering", "constraint"),
+        item("duplicate orders", "constraint"),
+        item("limited visibility", "constraint")
       )
     ),
     suppliers = list(
-      zh = c(
-        "供應商", "主要供應商", "供應鏈", "供貨", "缺料", "長約", "採購", "上游"
-      ),
-      en = c(
-        "supplier", "supply[- ]chain", "key supplier", "sourcing",
-        "material shortage", "long[- ]term agreement", "upstream"
+      items = list(
+        item("供應商", "mention"),
+        item("主要供應商", "mention"),
+        item("供應鏈", "mention"),
+        item("供貨", "mention"),
+        item("長約", "mention"),
+        item("採購", "mention"),
+        item("上游", "mention"),
+        item("supplier", "mention"),
+        item("supply[- ]chain", "mention"),
+        item("key supplier", "mention"),
+        item("sourcing", "mention"),
+        item("long[- ]term agreement", "mention"),
+        item("upstream", "mention"),
+        item("交期", "mention"),
+        item("交貨週期", "mention"),
+        item("交貨時間", "mention"),
+        item("交期改善", "mention"),
+        item("產能利用率", "mention"),
+        item("第二來源", "mention"),
+        item("進貨占比", "mention"),
+        item("配額", "mention"),
+        item("供給分配", "mention"),
+        item("lead time", "mention"),
+        item("delivery cycle", "mention"),
+        item("capacity utilization", "mention"),
+        item("second source", "mention"),
+        item("dual source", "mention"),
+        item("dual-sourcing", "mention"),
+        item("supply allocation", "mention"),
+        item("缺料", "constraint"),
+        item("material shortage", "constraint"),
+        item("拉長交期", "constraint"),
+        item("產能瓶頸", "constraint"),
+        item("產能吃緊", "constraint"),
+        item("供給受限", "constraint"),
+        item("單一供應商", "constraint"),
+        item("lead-time extension", "constraint"),
+        item("capacity bottleneck", "constraint"),
+        item("tight capacity", "constraint"),
+        item("constrained supply", "constraint"),
+        item("single-source", "constraint")
       )
     ),
     customers = list(
-      zh = c(
-        "客戶", "主要客戶", "重大客戶", "客戶集中", "占營收", "佔營收",
-        "新客戶", "終端客戶", "品牌客戶"
-      ),
-      en = c(
-        "customer", "major customer", "key customer", "concentration",
-        "% of (?:net )?revenue", "new customer", "end customer", "OEM"
+      items = list(
+        item("客戶", "mention"),
+        item("主要客戶", "mention"),
+        item("重大客戶", "mention"),
+        item("客戶集中", "mention"),
+        item("占營收", "mention"),
+        item("佔營收", "mention"),
+        item("新客戶", "mention"),
+        item("終端客戶", "mention"),
+        item("品牌客戶", "mention"),
+        item("終端品牌", "mention"),
+        item("銷貨占比", "mention"),
+        item("customer", "mention"),
+        item("major customer", "mention"),
+        item("key customer", "mention"),
+        item("concentration", "mention"),
+        item("% of (?:net )?revenue", "mention"),
+        item("new customer", "mention"),
+        item("end customer", "mention"),
+        item("OEM", "mention"),
+        item("\\bODM\\b", "mention"),
+        item("\\bEMS\\b", "mention")
       )
     ),
     positive = list(
@@ -218,26 +307,49 @@ ynow_ec_keyword_lexicon <- function() {
   )
 }
 
-#' Flatten lexicon role into a single regex alternation (zh ∪ en).
+#' @param role lexicon role
+#' @param kind "any" | "mention" | "constraint"
+#' @param lex optional lexicon
+ynow_ec_lexicon_tokens <- function(role, kind = "any", lex = NULL) {
+  lex <- lex %||% ynow_ec_keyword_lexicon()
+  node <- lex[[role]]
+  if (is.null(node)) return(character(0))
+  kind <- as.character(kind %||% "any")[1]
+  if (!kind %in% c("any", "mention", "constraint")) return(character(0))
+  if (is.list(node) && !is.null(node$items)) {
+    pats <- character(0)
+    for (it in node$items) {
+      pat <- as.character(it$pat %||% "")[1]
+      ik <- as.character(it$kind %||% "")[1]
+      if (!nzchar(pat)) next
+      if (identical(kind, "any") || identical(kind, ik)) pats <- c(pats, pat)
+    }
+    return(unique(pats))
+  }
+  if (!identical(kind, "any")) return(character(0))
+  if (is.list(node) && !is.null(node$zh)) {
+    toks <- c(as.character(node$zh %||% character(0)), as.character(node$en %||% character(0)))
+    return(unique(toks[nzchar(toks)]))
+  }
+  if (is.list(node) && !is.null(node[["5"]])) {
+    toks <- character(0)
+    for (k in names(node)) {
+      toks <- c(
+        toks,
+        as.character(node[[k]]$zh %||% character(0)),
+        as.character(node[[k]]$en %||% character(0))
+      )
+    }
+    return(unique(toks[nzchar(toks)]))
+  }
+  if (is.character(node)) return(unique(node[nzchar(node)]))
+  character(0)
+}
+
 #' @param role character scalar key under ynow_ec_keyword_lexicon().
 #' @param lex optional lexicon list.
 ynow_ec_lexicon_pattern <- function(role, lex = NULL) {
-  lex <- lex %||% ynow_ec_keyword_lexicon()
-  node <- lex[[role]]
-  if (is.null(node)) return("")
-  toks <- character(0)
-  if (is.list(node) && !is.null(node$zh)) {
-    toks <- c(as.character(node$zh %||% character(0)), as.character(node$en %||% character(0)))
-  } else if (is.list(node) && !is.null(node$`5`)) {
-    # tone_anchors: flatten all levels
-    for (k in names(node)) {
-      toks <- c(toks, as.character(node[[k]]$zh %||% character(0)),
-                as.character(node[[k]]$en %||% character(0)))
-    }
-  } else if (is.character(node)) {
-    toks <- node
-  }
-  toks <- unique(toks[nzchar(toks)])
+  toks <- ynow_ec_lexicon_tokens(role, kind = "any", lex = lex)
   if (!length(toks)) return("")
   paste(toks, collapse = "|")
 }
@@ -258,16 +370,10 @@ ynow_ec_lexicon_hits <- function(text, role, lex = NULL, max_n = 12L) {
   txt <- as.character(text %||% "")[1]
   empty <- character(0)
   if (!nzchar(txt)) return(empty)
-  lex <- lex %||% ynow_ec_keyword_lexicon()
-  node <- lex[[role]]
-  if (is.null(node)) return(empty)
-  pairs <- list()
-  if (is.list(node) && !is.null(node$zh)) {
-    for (t in c(as.character(node$zh), as.character(node$en))) {
-      if (nzchar(t) && grepl(t, txt, perl = TRUE, ignore.case = TRUE)) {
-        pairs[[length(pairs) + 1L]] <- t
-      }
-    }
-  }
-  unique(utils::head(unlist(pairs, use.names = FALSE), max_n))
+  toks <- ynow_ec_lexicon_tokens(role, kind = "any", lex = lex)
+  if (!length(toks)) return(empty)
+  hit <- toks[vapply(toks, function(t) {
+    grepl(t, txt, perl = TRUE, ignore.case = TRUE)
+  }, logical(1))]
+  unique(utils::head(hit, max_n))
 }

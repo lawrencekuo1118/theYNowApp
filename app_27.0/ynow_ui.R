@@ -16,11 +16,11 @@
       return(sub('^"version"\\s*:\\s*"([^"]+)".*$', "\\1", m[[1]]))
     }
   }
-  "v27.61"
+  "v27.81"
 }
 .YNOW_BUILD_VERSION <- .ynow_read_build_version()
 
-#' Major segment of a display version (`v27.61` → 25; `v26` → 26).
+#' Major segment of a display version (`v27.81` → 25; `v26` → 26).
 #' Matches deploy policy: +0.01 is patch; folder / `YNOW_VERSION_BUMP_MAJOR` cut advances major.
 .ynow_display_major <- function(label) {
   label <- as.character(label)[1]
@@ -318,7 +318,19 @@ source("ynow_cookie_notice_ui.R", local = TRUE, encoding = "UTF-8")
   )
 }
 
-#' KPI 色碼圖例：藍→紅→黑→白；金色屬性重視改一行文字註解（非 chip 框）
+#' Focus-KPI gold-frame legend note (above FINANCIAL REPORT; right-aligned).
+.ynow_focus_metric_legend_note_ui <- function() {
+  tags$p(
+    class = "ynow-focus-metric-note ynow-focus-metric-note--above-fs",
+    tags$span(
+      class = "ynow-focus-metric-swatch ynow-focus-metric-swatch--legend",
+      `aria-hidden` = "true"
+    ),
+    tags$span(id = "ynow_kpi_legend_focus", "藤蔓 · 本財報屬性關鍵指標")
+  )
+}
+
+#' KPI 色碼圖例：藍→紅→黑→白（金色屬性重視註解改置財務報表區上方）
 .kpi_band_color_legend_ui <- function() {
   tags$div(
     class = "ynow-kpi-legend-wrap",
@@ -345,19 +357,12 @@ source("ynow_cookie_notice_ui.R", local = TRUE, encoding = "UTF-8")
                   style = "background:#fff; border:1px solid #999;"),
         tags$span(id = "ynow_kpi_legend_white", "白 · 無法比較／N/A")
       )
-    ),
-    tags$p(
-      class = "ynow-focus-metric-note",
-      tags$span(
-        class = "ynow-focus-metric-swatch ynow-focus-metric-swatch--legend",
-        `aria-hidden` = "true"
-      ),
-      tags$span(id = "ynow_kpi_legend_focus", "金 · 本財報屬性關鍵指標")
     )
   )
 }
 
-# Shared gray「回復預設」／試算 helpers live in setup.R (ynow_reset_defaults_btn, ynow_calc_btn).
+# Shared gray「回復預設」／試算 helpers live in setup.R
+# (ynow_reset_defaults_btn, ynow_calc_btn, ynow_calc_reset_row).
 
 #' Shared CAPM / Beta settings block (canonical IDs on DCF → WACC).
 #' DDM → Ke uses the same layout with `id_prefix = "ddm_"`; server keeps mirrors in sync.
@@ -892,6 +897,248 @@ beta_rolling_section_ui <- function() {
   )
 }
 
+#' Decision Matrix tables for Model Selection Guide (tight bilingual cells).
+.model_selection_guide_matrix_body <- function() {
+  .method_table_fv_en <- HTML("<table class='table table-striped table-hover table-bordered' style='background-color: white;'>
+                                 <thead style='background-color: #2C3E50; color: white;'>
+                                   <tr>
+                                     <th>Item</th>
+                                     <th>DDM</th>
+                                     <th>DCF</th>
+                                     <th>RI</th>
+                                     <th>P/B</th>
+                                     <th>NAV</th>
+                                   </tr>
+                                 </thead>
+                                 <tbody>
+                                   <tr>
+                                     <td><b>Anchor</b></td>
+                                     <td>DPS (equity)</td>
+                                     <td>FCFF / FCFE</td>
+                                     <td>Book + RI</td>
+                                     <td>BVPS / TBVPS / NAVPS × P/B</td>
+                                     <td>NAVPS × multiple</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>Rate / multiple</b></td>
+                                     <td>Ke</td>
+                                     <td>WACC / Ke</td>
+                                     <td>Ke</td>
+                                     <td>Justified / industry / history</td>
+                                     <td>Disc. / prem. multiple</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>g / years</b></td>
+                                     <td>Perpetual g; SPM g; 2-stage g₁/n₁</td>
+                                     <td>Forecast n; terminal SGR</td>
+                                     <td>Horizon n; terminal g</td>
+                                     <td>Justified needs g</td>
+                                     <td>—</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>Formula</b></td>
+                                     <td>Gordon / SPM / 2-stage ΣPV(D)+PV(TV)</td>
+                                     <td>ΣPV(FCFF/FCFE)+PV(TV)</td>
+                                     <td>B₀+ΣPV(RI)+PV(TV_RI)</td>
+                                     <td>(BVPS / TBVPS / NAVPS)×P/B</td>
+                                     <td>NAVPS×multiple</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>Role</b></td>
+                                     <td>Fair Value</td>
+                                     <td>Fair Value (EV bridge)</td>
+                                     <td>Fair Value</td>
+                                     <td>Bear / Base / Bull</td>
+                                     <td>Fair Value (HoldCo)</td>
+                                   </tr>
+                                 </tbody>
+                               </table>")
+  .method_table_fv_zh <- HTML("<table class='table table-striped table-hover table-bordered' style='background-color: white;'>
+                                 <thead style='background-color: #2C3E50; color: white;'>
+                                   <tr>
+                                     <th>項目</th>
+                                     <th>DDM</th>
+                                     <th>DCF</th>
+                                     <th>RI</th>
+                                     <th>P/B</th>
+                                     <th>NAV</th>
+                                   </tr>
+                                 </thead>
+                                 <tbody>
+                                   <tr>
+                                     <td><b>錨定</b></td>
+                                     <td>DPS（股權）</td>
+                                     <td>FCFF／FCFE</td>
+                                     <td>帳面＋RI</td>
+                                     <td>BVPS／TBVPS／NAVPS × P/B</td>
+                                     <td>NAVPS × 倍數</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>折現／倍數</b></td>
+                                     <td>Ke</td>
+                                     <td>WACC／Ke</td>
+                                     <td>Ke</td>
+                                     <td>Justified／產業／歷史</td>
+                                     <td>折價／溢價倍數</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>g／年數</b></td>
+                                     <td>永續 g；SPM g；二階段 g₁／n₁</td>
+                                     <td>預測 n；終值 SGR</td>
+                                     <td>預測 n；終值 g</td>
+                                     <td>Justified 需 g</td>
+                                     <td>—</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>公式</b></td>
+                                     <td>Gordon／SPM／二階段 ΣPV(D)+PV(TV)</td>
+                                     <td>ΣPV(FCFF／FCFE)+PV(TV)</td>
+                                     <td>B₀+ΣPV(RI)+PV(TV_RI)</td>
+                                     <td>(BVPS／TBVPS／NAVPS)×P/B</td>
+                                     <td>NAVPS×倍數</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>角色</b></td>
+                                     <td>Fair Value</td>
+                                     <td>Fair Value（EV 橋接）</td>
+                                     <td>Fair Value</td>
+                                     <td>Bear／Base／Bull</td>
+                                     <td>Fair Value（控股）</td>
+                                   </tr>
+                                 </tbody>
+                               </table>")
+  .method_table_rel_en <- HTML("<table class='table table-striped table-hover table-bordered' style='background-color: white;'>
+                                 <thead style='background-color: #34495e; color: white;'>
+                                   <tr>
+                                     <th>Item</th>
+                                     <th>Multiples</th>
+                                     <th>SOTP</th>
+                                   </tr>
+                                 </thead>
+                                 <tbody>
+                                   <tr>
+                                     <td><b>Anchor</b></td>
+                                     <td>EPS / EBIT / EBITDA / FCFF / Rev / ARR × multiple</td>
+                                     <td>≥2 seg. rev × EV/Sales (+ non-op)</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>Bridge</b></td>
+                                     <td>EV→Equity＝EV+Cash−Debt; P/S equity-side</td>
+                                     <td>EV→Equity＝EV+Cash−Debt</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>g / years</b></td>
+                                     <td>No n; PEG uses growth %</td>
+                                     <td>—</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>Formula</b></td>
+                                     <td>Price＝EPS×P/E; or Equity＝(Metric×Mult+Cash−Debt)÷Shares</td>
+                                     <td>EV＝Σ(Seg Rev×EV/Sales)+Non-op</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>Role</b></td>
+                                     <td>Market Reference (not Fair Value)</td>
+                                     <td>Meta-Framework (often + NAV)</td>
+                                   </tr>
+                                 </tbody>
+                               </table>")
+  .method_table_rel_zh <- HTML("<table class='table table-striped table-hover table-bordered' style='background-color: white;'>
+                                 <thead style='background-color: #34495e; color: white;'>
+                                   <tr>
+                                     <th>項目</th>
+                                     <th>Multiples</th>
+                                     <th>SOTP</th>
+                                   </tr>
+                                 </thead>
+                                 <tbody>
+                                   <tr>
+                                     <td><b>錨定</b></td>
+                                     <td>EPS／EBIT／EBITDA／FCFF／營收／ARR × 倍數</td>
+                                     <td>≥2 部門營收 × EV/Sales（＋非營業）</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>橋接</b></td>
+                                     <td>EV→Equity＝EV+Cash−Debt；P/S 股權面</td>
+                                     <td>EV→Equity＝EV+Cash−Debt</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>g／年數</b></td>
+                                     <td>無 n；PEG 用成長％</td>
+                                     <td>—</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>公式</b></td>
+                                     <td>Price＝EPS×P/E；或 Equity＝(Metric×Mult+Cash−Debt)÷Shares</td>
+                                     <td>EV＝Σ(Seg Rev×EV/Sales)+Non-op</td>
+                                   </tr>
+                                   <tr>
+                                     <td><b>角色</b></td>
+                                     <td>市場參照（非 Fair Value）</td>
+                                     <td>Meta-Framework（常配 NAV）</td>
+                                   </tr>
+                                 </tbody>
+                               </table>")
+  tagList(
+    tags$p(
+      id = "ynow_method_matrix_fv_note",
+      class = "help-block",
+      style = "margin:0 0 10px 0;",
+      "Fair Value engines (Intrinsic Value / Fair Value primaries)."
+    ),
+    tags$div(
+      class = "ynow-loc-en",
+      style = "overflow-x: auto; margin-bottom: 18px;",
+      .method_table_fv_en
+    ),
+    tags$div(
+      class = "ynow-loc-zh",
+      style = "overflow-x: auto; margin-bottom: 18px;",
+      .method_table_fv_zh
+    ),
+    tags$p(
+      id = "ynow_method_matrix_rel_note",
+      class = "help-block",
+      style = "margin:0 0 10px 0;",
+      "Multiples = market Reference; SOTP = Meta-Framework — not Fair Value primaries."
+    ),
+    tags$div(
+      class = "ynow-loc-en",
+      style = "overflow-x: auto; margin-bottom: 18px;",
+      .method_table_rel_en
+    ),
+    tags$div(
+      class = "ynow-loc-zh",
+      style = "overflow-x: auto; margin-bottom: 18px;",
+      .method_table_rel_zh
+    )
+  )
+}
+
+#' Collapsible Model Selection Guide (Decision Matrix only; default closed).
+#' Mounted under the 基本面評價模型 position chart — not with formula sibling tabs.
+.model_selection_guide_panel_ui <- function() {
+  tags$details(
+    id = "ynow_ms_guide_details",
+    class = "ynow-notes ynow-ms-guide",
+    tags$summary(
+      class = "ynow-notes__summary",
+      id = "ynow_ms_guide_summary",
+      title = "Show or hide Model Selection Guide",
+      `aria-label` = "Show or hide Model Selection Guide",
+      tags$span(
+        class = "ynow-ms-guide__title",
+        id = "ynow_ms_guide_title",
+        "Model Selection Guide"
+      )
+    ),
+    tags$div(
+      class = "ynow-notes__body",
+      .model_selection_guide_matrix_body()
+    )
+  )
+}
+
 #' Collapsible Model Selector footnote: consideration dimensions (default closed).
 #' Reuses `.ynow-notes` chrome; title class is NOT `.ynow-notes__title` so
 #' applyUiLocale does not overwrite it with the generic Notes / 附註 string.
@@ -917,192 +1164,15 @@ beta_rolling_section_ui <- function() {
   )
 }
 
-#' Valuation methodology guide (Decision Matrix + model tabs).
+#' Valuation methodology guide (model formula tabs).
 #' Mounted at the bottom of Basic Setup (Full only; Lite hides Basic Setup).
-#' Title/lead use column(12); tabBox keeps width=12 (shinydashboard always emits col-sm-N).
+#' Section title uses column(12); tabBox keeps width=12 (shinydashboard always emits col-sm-N).
 #' Locale: `.ynow-loc-en` / `.ynow-loc-zh` toggle via `html[lang]` (see CSS + applyUiLocale).
 .valuation_methodology_section_ui <- function(collapsible = TRUE, collapsed = FALSE) {
   # collapsible/collapsed kept for call-site compatibility (no outer box to collapse)
-  .method_table_fv_en <- HTML("<table class='table table-striped table-hover table-bordered' style='background-color: white;'>
-                                 <thead style='background-color: #2C3E50; color: white;'>
-                                   <tr>
-                                     <th>Comparison</th>
-                                     <th>DDM</th>
-                                     <th>DCF</th>
-                                     <th>RI</th>
-                                     <th>P/B</th>
-                                     <th>NAV</th>
-                                   </tr>
-                                 </thead>
-                                 <tbody>
-                                   <tr>
-                                     <td><b>Cash flow / anchor</b></td>
-                                     <td>DPS D (equity claim)</td>
-                                     <td>FCFF (firm) or FCFE (equity)</td>
-                                     <td>Book equity + residual income</td>
-                                     <td>BVPS / TBVPS / HoldCo NAVPS × target P/B</td>
-                                     <td>Book HoldCo NAVPS × multiple</td>
-                                   </tr>
-                                   <tr>
-                                     <td><b>Discount / multiple</b></td>
-                                     <td>Ke (CAPM)</td>
-                                     <td>FCFF: WACC; FCFE: Ke</td>
-                                     <td>Ke (CAPM)</td>
-                                     <td>Target multiple (Justified / industry / history)</td>
-                                     <td>Discount / premium multiple (not Justified)</td>
-                                   </tr>
-                                   <tr>
-                                     <td><b>Growth g / years</b></td>
-                                     <td>Dividend perpetual g; SPM earnings g; two-stage g1 / n1</td>
-                                     <td>Explicit forecast years n; terminal SGR (vs WACC / Ke)</td>
-                                     <td>RI forecast horizon; terminal g (vs Ke)</td>
-                                     <td>Justified needs g; industry / history multiples do not require SGR</td>
-                                     <td>No forecast horizon n</td>
-                                   </tr>
-                                   <tr>
-                                     <td><b>Core formula</b></td>
-                                     <td>Gordon: P₀=D₁/(Ke−g); SPM; two-stage ΣPV(D)+PV(TV)</td>
-                                     <td>EV＝ΣPV(FCFF)+PV(TV) or Equity＝ΣPV(FCFE)+PV(TV)</td>
-                                     <td>V₀=B₀+ΣPV(RI)+PV(TV_RI)</td>
-                                     <td>P=(BVPS / TBVPS / NAVPS)×Target P/B</td>
-                                     <td>P=NAVPS×NAV multiple</td>
-                                   </tr>
-                                   <tr>
-                                     <td><b>Output role</b></td>
-                                     <td>Fair Value per share</td>
-                                     <td>Fair Value (FCFF via EV bridge)</td>
-                                     <td>Fair Value intrinsic per share</td>
-                                     <td>Fair Value range (Bear / Base / Bull)</td>
-                                     <td>Fair Value (HoldCo / asset anchor)</td>
-                                   </tr>
-                                 </tbody>
-                               </table>")
-  .method_table_fv_zh <- HTML("<table class='table table-striped table-hover table-bordered' style='background-color: white;'>
-                                 <thead style='background-color: #2C3E50; color: white;'>
-                                   <tr>
-                                     <th>對照項目</th>
-                                     <th>DDM</th>
-                                     <th>DCF</th>
-                                     <th>RI</th>
-                                     <th>P/B</th>
-                                     <th>NAV</th>
-                                   </tr>
-                                 </thead>
-                                 <tbody>
-                                   <tr>
-                                     <td><b>現金流／錨定</b></td>
-                                     <td>每股股利 D（股權請求權）</td>
-                                     <td>FCFF（企業）或 FCFE（股權）</td>
-                                     <td>帳面淨值 + 超額盈餘</td>
-                                     <td>BVPS／TBVPS／控股 NAVPS × 目標 P/B</td>
-                                     <td>帳面控股淨資產 NAVPS × 倍數</td>
-                                   </tr>
-                                   <tr>
-                                     <td><b>折現率／倍數</b></td>
-                                     <td>Ke（CAPM）</td>
-                                     <td>FCFF：WACC；FCFE：Ke</td>
-                                     <td>Ke（CAPM）</td>
-                                     <td>目標倍數（Justified／產業／歷史）</td>
-                                     <td>折價／溢價倍數（非 Justified）</td>
-                                   </tr>
-                                   <tr>
-                                     <td><b>成長率 g／年數</b></td>
-                                     <td>股利永續 g；SPM 盈餘 g；二階段 g1／n1</td>
-                                     <td>明確預測年數 n；終值 SGR（相對 WACC／Ke）</td>
-                                     <td>RI 預測期；終值 g（相對 Ke）</td>
-                                     <td>Justified 需 g；產業／歷史倍數不強制 SGR</td>
-                                     <td>不涉及預測年數 n</td>
-                                   </tr>
-                                   <tr>
-                                     <td><b>核心公式</b></td>
-                                     <td>Gordon：P₀=D₁/(Ke−g)；SPM；二階段 ΣPV(D)+PV(TV)</td>
-                                     <td>EV＝ΣPV(FCFF)+PV(TV) 或 Equity＝ΣPV(FCFE)+PV(TV)</td>
-                                     <td>V₀=B₀+ΣPV(RI)+PV(TV_RI)</td>
-                                     <td>P=(BVPS／TBVPS／NAVPS)×Target P/B</td>
-                                     <td>P=NAVPS×NAV multiple</td>
-                                   </tr>
-                                   <tr>
-                                     <td><b>輸出角色</b></td>
-                                     <td>Fair Value 每股合理價</td>
-                                     <td>Fair Value（FCFF 先 EV 再橋接）</td>
-                                     <td>Fair Value 每股內在價值</td>
-                                     <td>Fair Value 區間（Bear／Base／Bull）</td>
-                                     <td>Fair Value（控股／資產錨）</td>
-                                   </tr>
-                                 </tbody>
-                               </table>")
-  .method_table_rel_en <- HTML("<table class='table table-striped table-hover table-bordered' style='background-color: white;'>
-                                 <thead style='background-color: #34495e; color: white;'>
-                                   <tr>
-                                     <th>Comparison</th>
-                                     <th>Multiples (market multiples)</th>
-                                     <th>SOTP (sum of the parts)</th>
-                                   </tr>
-                                 </thead>
-                                 <tbody>
-                                   <tr>
-                                     <td><b>Anchor</b></td>
-                                     <td>EPS / EBIT / EBITDA / FCFF / Revenue / ARR × trading multiple</td>
-                                     <td>≥2 segment revenues × segment EV/Sales (+ non-operating assets)</td>
-                                   </tr>
-                                   <tr>
-                                     <td><b>Bridge</b></td>
-                                     <td>Enterprise: EV→Equity＝EV+Cash−Debt; P/S: equity side, no debt bridge</td>
-                                     <td>Implied EV→Equity＝EV+Cash−Debt (same bridge as DCF)</td>
-                                   </tr>
-                                   <tr>
-                                     <td><b>Growth / years</b></td>
-                                     <td>No forecast horizon n; PEG uses growth % as a relative metric</td>
-                                     <td>No forecast horizon n</td>
-                                   </tr>
-                                   <tr>
-                                     <td><b>Core formula</b></td>
-                                     <td>Implied Price＝EPS×P/E; or Equity＝(Metric×Multiple+Cash−Debt)÷Shares</td>
-                                     <td>Implied EV＝Σ(Seg Rev×EV/Sales)+Non-op; Price＝Equity÷Shares</td>
-                                   </tr>
-                                   <tr>
-                                     <td><b>Output role</b></td>
-                                     <td>Market-pricing Reference (not Intrinsic Value; never Fair Value secondary)</td>
-                                     <td>Meta-Framework companion (often paired with NAV for HoldCos; not equal-weight FV)</td>
-                                   </tr>
-                                 </tbody>
-                               </table>")
-  .method_table_rel_zh <- HTML("<table class='table table-striped table-hover table-bordered' style='background-color: white;'>
-                                 <thead style='background-color: #34495e; color: white;'>
-                                   <tr>
-                                     <th>對照項目</th>
-                                     <th>Multiples（市場倍數）</th>
-                                     <th>SOTP（分部加總）</th>
-                                   </tr>
-                                 </thead>
-                                 <tbody>
-                                   <tr>
-                                     <td><b>錨定</b></td>
-                                     <td>EPS／EBIT／EBITDA／FCFF／Revenue／ARR × 交易倍數</td>
-                                     <td>≥2 部門營收 × 各部門 EV/Sales（＋非營業資產）</td>
-                                   </tr>
-                                   <tr>
-                                     <td><b>橋接</b></td>
-                                     <td>Enterprise：EV→Equity＝EV+Cash−Debt；P/S：股權面、無負債橋接</td>
-                                     <td>Implied EV→Equity＝EV+Cash−Debt（同 DCF 橋接）</td>
-                                   </tr>
-                                   <tr>
-                                     <td><b>成長／年數</b></td>
-                                     <td>不涉及預測年數 n；PEG 用成長％作相對指標</td>
-                                     <td>不涉及預測年數 n</td>
-                                   </tr>
-                                   <tr>
-                                     <td><b>核心公式</b></td>
-                                     <td>Implied Price＝EPS×P/E；或 Equity＝(Metric×Multiple+Cash−Debt)÷Shares</td>
-                                     <td>Implied EV＝Σ(Seg Rev×EV/Sales)+Non-op；Price＝Equity÷Shares</td>
-                                   </tr>
-                                   <tr>
-                                     <td><b>輸出角色</b></td>
-                                     <td>市場定價參照 Reference（非 Intrinsic Value；不作 Fair Value 副模型）</td>
-                                     <td>綜合型估值框架 Meta-Framework（控股／綜合常配 NAV；不與 FV 等權）</td>
-                                   </tr>
-                                 </tbody>
-                               </table>")
+  # Decision Matrix (Model Selection Guide) lives under the Fundamental Valuation
+  # Models chart as a collapsed panel — see .model_selection_guide_panel_ui().
+  # This section keeps formula sibling tabs only.
   tagList(
     fluidRow(
       column(
@@ -1120,70 +1190,14 @@ beta_rolling_section_ui <- function() {
           `data-ynow-mathjax` = "methodology",
           style = "display:none",
           `aria-hidden` = "true"
-        ),
-        p(
-          class = "ynow-about-section-lead ynow-loc-zh",
-          id = "ynow_method_lead_zh",
-          tags$b("先分類，再選模型；先推導，再校正；先給區間，再給單點。"),
-          " Fair Value 引擎：DCF（FCFF／WACC、FCFE／Ke）、DDM（Gordon／SPM／二階段）、RI、P/B、NAV。",
-          " Multiples 為市場定價參照（Reference）；SOTP 為綜合型估值框架（Meta-Framework），可混用絕對／相對透鏡。",
-          " 選對路徑與算對數字同等重要；以下說明流程紀律、適用場景與核心公式。"
-        ),
-        p(
-          class = "ynow-about-section-lead ynow-loc-en",
-          id = "ynow_method_lead_en",
-          tags$b("Classify before models; derive before calibrating; ranges before point targets. "),
-          "Fair Value: DCF (FCFF/WACC, FCFE/Ke), DDM (Gordon / SPM / two-stage), RI, P/B, NAV. ",
-          "Multiples is a market-pricing Reference; SOTP is a Meta-Framework that can mix absolute and relative lenses. ",
-          "Path selection matters as much as the arithmetic—process, fit, and formulas below."
         )
       )
     ),
     fluidRow(
       tabBox(
-        title = tags$span(id = "ynow_method_tabbox_title", "Model Selection Guide"),
+        title = tags$span(id = "ynow_method_tabbox_title", "Model Formulas"),
         width = 12,
         side = "left",
-
-        # Tab: Decision Matrix (bilingual tables)
-        tabPanel(
-          title = tags$span(id = "ynow_method_tab_matrix", "Decision Matrix"),
-          icon = icon("table"),
-          tags$p(
-            id = "ynow_method_matrix_fv_note",
-            class = "help-block",
-            style = "margin:0 0 10px 0;",
-            "Fair Value engines (Intrinsic Value / Fair Value primaries)."
-          ),
-          tags$div(
-            class = "ynow-loc-en",
-            style = "overflow-x: auto; margin-bottom: 18px;",
-            .method_table_fv_en
-          ),
-          tags$div(
-            class = "ynow-loc-zh",
-            style = "overflow-x: auto; margin-bottom: 18px;",
-            .method_table_fv_zh
-          ),
-          tags$p(
-            id = "ynow_method_matrix_rel_note",
-            class = "help-block",
-            style = "margin:0 0 10px 0;",
-            "Multiples = market-pricing Reference; SOTP = Meta-Framework — neither is a Fair Value primary or HFV overlay."
-          ),
-          tags$div(
-            class = "ynow-loc-en",
-            style = "overflow-x: auto; margin-bottom: 18px;",
-            .method_table_rel_en
-          ),
-          tags$div(
-            class = "ynow-loc-zh",
-            style = "overflow-x: auto; margin-bottom: 18px;",
-            .method_table_rel_zh
-          )
-          # Consideration dimensions table lives under Model Selector as a
-          # collapsed annotation (see .model_selector_dimensions_annotation_ui).
-        ),
 
         # Tab: DDM
         tabPanel(
@@ -1411,17 +1425,18 @@ beta_rolling_section_ui <- function() {
   box(
     title = tagList(
       icon("link"),
-      tags$span(id = "ynow_shared_bridge_title", "Cash、Debt、股數與營收（各模型共用）")
+      tags$span(id = "ynow_shared_bridge_title", "模型共用參數")
     ),
     width = 12, status = "primary", solidHeader = TRUE,
     tags$p(
       id = "ynow_shared_bridge_help",
       class = "help-block",
       paste0(
-        "Cash、Total Debt、股數與總營收請只在這裡填一次。",
+        "Cash、Total Debt、股數、總營收與其他權益請求權請只在這裡填一次。",
         "需要這些數字的模型——DCF、WACC 權重、Enterprise Multiples、P/S、SOTP——都會讀這裡。",
         "終值 g 與 Ke 仍在 SGR 與 CAPM 調整。",
-        "SOTP 部門營收、股利 g、近端營收成長各自設定。"
+        "SOTP 部門營收、股利 g、近端營收成長各自設定。",
+        "USD/TWD 匯率由系統自動擷取。"
       )
     ),
     fluidRow(
@@ -1429,7 +1444,6 @@ beta_rolling_section_ui <- function() {
       column(3, numericInput("bridge_debt", "Total Debt", value = NA, step = 1)),
       column(3, numericInput("bridge_shares", "股數", value = NA, step = 1)),
       column(3, numericInput("bridge_revenue", "總營收", value = NA, step = 1)),
-      column(12, numericInput("bridge_fx", ui_i18n("param_fx_label"), value = NA, min = 0.0001, step = 0.01)),
       column(12, numericInput("bridge_other_claims", ui_i18n("param_other_claims_label"), value = NA, step = 1))
     ),
     tags$button(
@@ -3419,7 +3433,9 @@ beta_rolling_section_ui <- function() {
         plotlyOutput("smart_analysis_chart", height = "360px") %>% shinycssloaders::withSpinner()
       )
     ),
-    uiOutput("smart_analysis_reason")
+    uiOutput("smart_analysis_reason"),
+    # Lite applied-assumption disclosures: page-footer footnotes (not mid-page alerts).
+    uiOutput("smart_analysis_assumption_notes")
   )
 }
 
@@ -3662,9 +3678,9 @@ ui <- dashboardPage(
                   'data-ynow-build="', .YNOW_BUILD_VERSION, '" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v27.61</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v27.81</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v27.61</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v27.81</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -4347,6 +4363,8 @@ ui <- dashboardPage(
 
     tags$head(
       tags$script(src = "parameter_completeness.js"),
+      # Ticker / Stock Code: case-insensitive entry → always uppercase display+value.
+      tags$script(src = "ynow_ticker_uppercase.js"),
       # Deferred MathJax + gate-demo video arming (Home-critical-path hygiene).
       tags$script(HTML("
         (function () {
@@ -6673,6 +6691,44 @@ ui <- dashboardPage(
         .btn.ynow-btn-calc .fas {
           color: #ffffff !important;
         }
+        /* Mobile only: 試算 + 回復預設 same row, equal height/width 1:1.
+           Desktop keeps Bootstrap col-sm-6 / col-sm-4 layout. */
+        @media (max-width: 767px) {
+          .ynow-calc-reset-row {
+            display: flex !important;
+            flex-wrap: nowrap;
+            align-items: stretch;
+          }
+          .ynow-calc-reset-row > .ynow-calc-reset-col {
+            width: 50% !important;
+            float: none !important;
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+          }
+          .ynow-calc-reset-row > .ynow-calc-reset-col > .btn {
+            flex: 1 1 auto;
+            width: 100% !important;
+            height: 100%;
+            min-height: 48px;
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+            white-space: normal;
+            box-sizing: border-box;
+          }
+          .ynow-calc-reset-row.ynow-calc-reset-row--with-sync {
+            flex-wrap: wrap;
+          }
+          .ynow-calc-reset-row.ynow-calc-reset-row--with-sync > .ynow-calc-reset-sync-col {
+            width: 100% !important;
+            float: none !important;
+            margin-top: 8px;
+          }
+          .ynow-calc-reset-row.ynow-calc-reset-row--with-sync > .ynow-calc-reset-sync-col > br {
+            display: none;
+          }
+        }
         .nav-tabs-custom > .nav-tabs > li.active {
           border-top-color: var(--ynow-ink) !important;
         }
@@ -8822,16 +8878,6 @@ ui <- dashboardPage(
           margin: 6px 8px 10px;
           border-top-color: rgba(255,255,255,0.18);
         }
-        /* Lite Smart Analysis: lead blurb above composite status (no page heading) */
-        .ynow-smart-lite-blurb-wrap {
-          margin: 0 0 10px 0;
-        }
-        .ynow-smart-lite-blurb {
-          margin: 0;
-          font-size: 14px;
-          line-height: 1.55;
-          color: #444;
-        }
         .ynow-smart-card-row {
           display: flex;
           flex-wrap: wrap;
@@ -9045,9 +9091,12 @@ ui <- dashboardPage(
         .ynow-corpname .ynow-corpname-single {
           display: inline;
         }
-        /* Search 後：官方 logo 主色（固定兩色；缺→黑；純黑單色→白）套用到公司全稱 */
+        /* Search 後：官方 logo 主色套用到公司全稱。
+         * 單色品牌 → solid（.ynow-corpname-logo-solid）；雙色 → 水平漸層。 */
         .ynow-corpname .ynow-corpname-logo-solid {
           color: var(--ynow-corp-c1, #333333);
+          background-image: none;
+          -webkit-text-fill-color: currentColor;
         }
         .ynow-corpname .ynow-corpname-logo-grad {
           background-image: linear-gradient(
@@ -9072,7 +9121,8 @@ ui <- dashboardPage(
         }
         /* LAST PRICE / MARKET CAP / EPS (TTM): icon fill follows the company-name logo pair.
          * Must beat `.ynow-header-kpi-row … background-color: var(--ynow-logo-green)`
-         * (same !important) — include the header-row + AdminLTE bg-* classes. */
+         * (same !important) — include the header-row + AdminLTE bg-* classes.
+         * Mono brand (`body.ynow-corp-logo-mono`): solid c1 only (no fake pad gradient). */
         body.ynow-corp-logo .ynow-header-kpi-row #ibx_stockprice .info-box-icon,
         body.ynow-corp-logo .ynow-header-kpi-row #ibx_marketcap .info-box-icon,
         body.ynow-corp-logo .ynow-header-kpi-row #ibx_EPS .info-box-icon,
@@ -9088,6 +9138,18 @@ ui <- dashboardPage(
             var(--ynow-corp-c1, #333333) 0%,
             var(--ynow-corp-c2, #000000) 100%
           ) !important;
+        }
+        body.ynow-corp-logo.ynow-corp-logo-mono .ynow-header-kpi-row #ibx_stockprice .info-box-icon,
+        body.ynow-corp-logo.ynow-corp-logo-mono .ynow-header-kpi-row #ibx_marketcap .info-box-icon,
+        body.ynow-corp-logo.ynow-corp-logo-mono .ynow-header-kpi-row #ibx_EPS .info-box-icon,
+        body.ynow-corp-logo.ynow-corp-logo-mono .ynow-header-kpi-row #ibx_stockprice .info-box-icon.bg-purple,
+        body.ynow-corp-logo.ynow-corp-logo-mono .ynow-header-kpi-row #ibx_marketcap .info-box-icon.bg-aqua,
+        body.ynow-corp-logo.ynow-corp-logo-mono .ynow-header-kpi-row #ibx_EPS .info-box-icon.bg-green,
+        body.ynow-corp-logo.ynow-corp-logo-mono #ibx_stockprice .info-box-icon,
+        body.ynow-corp-logo.ynow-corp-logo-mono #ibx_marketcap .info-box-icon,
+        body.ynow-corp-logo.ynow-corp-logo-mono #ibx_EPS .info-box-icon {
+          background-color: var(--ynow-corp-c1) !important;
+          background-image: none !important;
         }
         /* Header Language toggle (in black bar); Currency floats under logo */
         /* 繁中／EN 與小 logo 在頁首列垂直置中對齊 */
@@ -11337,7 +11399,7 @@ ui <- dashboardPage(
             function isSignedIn() {
               return !!(document.body && document.body.classList.contains('ynow-authed'));
             }
-            /* Major = integer before decimal (v27.61 → 25), same as YNOW_VERSION_BUMP_MAJOR cut. */
+            /* Major = integer before decimal (v27.81 → 25), same as YNOW_VERSION_BUMP_MAJOR cut. */
             function displayMajor(version) {
               /* Use [0-9] not \\d — this block lives in an R character string. */
               var m = String(version || '').trim().match(/^[vV]?([0-9]+)/);
@@ -12052,6 +12114,7 @@ ui <- dashboardPage(
             setBtText('ynow_bblab_orders_suppliers_title', 'bblab_orders_suppliers_title');
             setBtText('ynow_bblab_orders_suppliers_help', 'bblab_orders_suppliers_help');
             setBtText('ynow_bblab_or_title', 'bblab_or_title');
+            setBtText('ynow_bblab_supply_report_title', 'bblab_or_supply_report_title');
             setBtText('ynow_bblab_or_help', 'bblab_or_help');
             setBtText('ynow_bblab_or_start', 'bblab_or_start');
             setBtText('ynow_bblab_overlap_why', 'bblab_overlap_why');
@@ -12113,12 +12176,15 @@ ui <- dashboardPage(
             setBtText('ynow_macro_bubble_attr_title', 'macro_bubble_attr_title');
             setBtText('ynow_macro_bubble_buffett_title', 'macro_bubble_buffett_title');
             setBtText('ynow_macro_bubble_buffett_note', 'macro_bubble_buffett_note');
-            var macroRefresh = document.getElementById('macro-refresh');
-            if (macroRefresh && s.btn_macro_refresh) {
-              var ri = macroRefresh.querySelector('i');
-              var runIconHtml = ri ? ri.outerHTML + ' ' : '';
-              macroRefresh.innerHTML = runIconHtml + s.btn_macro_refresh;
-            }
+            /* Relative performance + Dynamic industry bubble share the same refresh label. */
+            ['macro-refresh', 'macro-bubble_refresh'].forEach(function (rid) {
+              var macroRefresh = document.getElementById(rid);
+              if (macroRefresh && s.btn_macro_refresh) {
+                var ri = macroRefresh.querySelector('i');
+                var runIconHtml = ri ? ri.outerHTML + ' ' : '';
+                macroRefresh.innerHTML = runIconHtml + s.btn_macro_refresh;
+              }
+            });
             /* Lazy Macro host may insert after this push (hasDom false). Re-apply
                once #ynow_macro_page_title appears so zh-TW chrome is not stuck English. */
             try {
@@ -12203,8 +12269,6 @@ ui <- dashboardPage(
             setBtText('ynow_sotp_bridge_help', 'sotp_bridge_help');
             var smartTitle = document.getElementById('ynow_smart_page_title');
             if (smartTitle && s.smart_page_title) smartTitle.textContent = s.smart_page_title;
-            var smartSub = document.getElementById('ynow_smart_page_sub');
-            if (smartSub && s.smart_page_sub) smartSub.textContent = s.smart_page_sub;
             var smartChart = document.getElementById('ynow_smart_chart_title');
             if (smartChart && s.smart_chart_title) smartChart.textContent = s.smart_chart_title;
             document.querySelectorAll('.ynow-lite-toggle').forEach(function (liteToggle) {
@@ -12445,7 +12509,8 @@ ui <- dashboardPage(
             var fcfRevHelp = document.getElementById('ynow_fcf_revenue_shared_help');
             if (fcfRevHelp && s.fcf_revenue_shared_help) fcfRevHelp.textContent = s.fcf_revenue_shared_help;
             [['bridge_cash', 'shared_bridge_cash'], ['bridge_debt', 'shared_bridge_debt'],
-             ['bridge_shares', 'shared_bridge_shares'], ['bridge_revenue', 'shared_bridge_revenue']].forEach(function (pair) {
+             ['bridge_shares', 'shared_bridge_shares'], ['bridge_revenue', 'shared_bridge_revenue'],
+             ['bridge_other_claims', 'param_other_claims_label']].forEach(function (pair) {
               var lab = document.querySelector('label[for=\"' + pair[0] + '\"]');
               if (lab && s[pair[1]]) lab.textContent = s[pair[1]];
             });
@@ -12673,10 +12738,20 @@ ui <- dashboardPage(
             if (s.notes_toggle_aria) {
               document.querySelectorAll('.ynow-notes__summary').forEach(function (el) {
                 if (el.id === 'ynow_ms_dims_summary') return;
+                if (el.id === 'ynow_ms_guide_summary') return;
                 el.setAttribute('title', s.notes_toggle_aria);
                 el.setAttribute('aria-label', s.notes_toggle_aria);
               });
             }
+            var msGuideTitle = document.getElementById('ynow_ms_guide_title');
+            if (msGuideTitle && s.box_model_guide) msGuideTitle.textContent = s.box_model_guide;
+            var msGuideSummary = document.getElementById('ynow_ms_guide_summary');
+            if (msGuideSummary && s.gs_ms_guide_toggle_aria) {
+              msGuideSummary.setAttribute('title', s.gs_ms_guide_toggle_aria);
+              msGuideSummary.setAttribute('aria-label', s.gs_ms_guide_toggle_aria);
+            }
+            var methodTabbox = document.getElementById('ynow_method_tabbox_title');
+            if (methodTabbox && s.method_formulas_title) methodTabbox.textContent = s.method_formulas_title;
             var msDimsTitle = document.getElementById('ynow_ms_dims_title');
             if (msDimsTitle && s.gs_ms_dims_title) msDimsTitle.textContent = s.gs_ms_dims_title;
             var msDimsSummary = document.getElementById('ynow_ms_dims_summary');
@@ -15181,15 +15256,23 @@ ui <- dashboardPage(
               var root = document.documentElement;
               var c1 = payload && payload.c1 ? String(payload.c1) : '';
               var c2 = payload && payload.c2 ? String(payload.c2) : '';
-              if (!c1 || !c2) {
+              var mono = !!(payload && payload.mono);
+              if (!c1) {
                 root.style.removeProperty('--ynow-corp-c1');
                 root.style.removeProperty('--ynow-corp-c2');
                 document.body.classList.remove('ynow-corp-logo');
+                document.body.classList.remove('ynow-corp-logo-mono');
                 return;
               }
+              if (!c2) c2 = c1;
               root.style.setProperty('--ynow-corp-c1', c1);
               root.style.setProperty('--ynow-corp-c2', c2);
               document.body.classList.add('ynow-corp-logo');
+              if (mono || c1 === c2) {
+                document.body.classList.add('ynow-corp-logo-mono');
+              } else {
+                document.body.classList.remove('ynow-corp-logo-mono');
+              }
             });
             addHandler('ynowModelTheme', function (payload) {
               var tab = (payload && payload.tab) ? String(payload.tab) : '';
@@ -15735,7 +15818,7 @@ ui <- dashboardPage(
             }
             function ensureLiteSnapshotFreeTab() {
               if (!document.body.classList.contains('ynow-lite')) return;
-              /* Lite keeps Snapshot free: audit + current. Never land on locked APP_DEFAULTS. */
+              /* Lite keeps Snapshot free: prefer Current snapshot, then Manual adjustments. Never land on locked APP_DEFAULTS. */
               var active = document.querySelector('#snapshot_report .nav-tabs li.active a');
               var dv = active && active.getAttribute('data-value');
               if (dv === 'snap_audit' || dv === 'snap_current') return;
@@ -16701,6 +16784,30 @@ ui <- dashboardPage(
         }
 
         /* Param audit highlight pulse */
+        .ynow-lite-assumption-footnotes {
+          margin: 1.5rem 0 0.75rem 0;
+          padding: 0.7rem 0 0.15rem 0;
+          border-top: 1px solid #d0d4db;
+          color: #5c6570;
+          font-size: 12px;
+          line-height: 1.45;
+        }
+        .ynow-lite-assumption-footnotes .ynow-lite-assumption-footnotes-title {
+          display: block;
+          font-weight: 600;
+          font-size: 11px;
+          letter-spacing: 0.02em;
+          text-transform: uppercase;
+          color: #6b7280;
+          margin-bottom: 0.4rem;
+        }
+        .ynow-lite-assumption-footnotes ol {
+          margin: 0;
+          padding-left: 1.15rem;
+        }
+        .ynow-lite-assumption-footnotes li {
+          margin: 0.2rem 0;
+        }
         .ynow-param-highlight {
           outline: 3px solid #f39c12 !important;
           outline-offset: 3px;
@@ -16807,6 +16914,16 @@ ui <- dashboardPage(
         .ynow-sc-wrap .control-label {
           display: block;
           margin-bottom: 5px;
+        }
+        /* Ticker / Stock Code: visual uppercase (JS also normalizes the value). */
+        #sc,
+        #lab_cluster_focus,
+        #pa_ticker,
+        #pa_quick_ticker,
+        #beta_peers-selectized,
+        #beta_bench-selectized,
+        input.ynow-ticker-input {
+          text-transform: uppercase;
         }
         .btn.ynow-btn-is-busy,
         #search.ynow-btn-is-busy {
@@ -17152,38 +17269,99 @@ ui <- dashboardPage(
           word-break: break-word;
           overflow-wrap: anywhere;
         }
-        /* 財報屬性「重視指標」：金色外框（取代圓點）；與 APP 標題金色一致 */
+        /* 財報屬性「重視指標」：藤蔓手繪外框（PNG；白底已去背，僅邊框） */
         .ynow-focus-metric-swatch {
           display: inline-block;
-          width: 14px;
-          height: 14px;
+          width: 16px;
+          height: 16px;
           margin: 0 6px 0 0;
-          border: 2px solid var(--ynow-gold, #F5C518);
+          border: none;
           border-radius: 3px;
-          background: transparent;
+          background: url('ynow-vine-kpi-frame.png') center / contain no-repeat;
           vertical-align: middle;
           box-sizing: border-box;
+          box-shadow: none;
+          animation: ynow-focus-vine-breathe 2.8s ease-in-out infinite;
         }
         .ynow-focus-metric-swatch--legend {
           margin: 0 6px 0 0;
         }
-        /* Focus KPI gold frame: thicker + pulse (do not reuse title gold-shine) */
-        @keyframes ynow-focus-gold-pulse {
+        /* Focus KPI: vine/foliage on the rectangular perimeter (9-slice border-image).
+           Asset www/ynow-vine-kpi-frame.png — cropped opaque bbox, transparent center.
+           Do NOT stretch the whole PNG as a background (aspect mismatch warps the vine
+           off the box edge). */
+        @keyframes ynow-focus-vine-breathe {
           0%, 100% {
-            border-color: var(--ynow-gold, #F5C518);
-            box-shadow: 0 0 0 1px rgba(201, 162, 39, 0.28), 0 0 0 0 rgba(245, 197, 24, 0);
+            opacity: 0.92;
+            filter: saturate(1) brightness(1);
           }
           50% {
-            border-color: var(--ynow-gold-deep, #C9A227);
-            box-shadow: 0 0 0 2px rgba(201, 162, 39, 0.55), 0 0 10px 1px rgba(245, 197, 24, 0.38);
+            opacity: 1;
+            filter: saturate(1.1) brightness(1.05);
           }
         }
         .content-wrapper .small-box.ynow-focus-metric-box,
         .tab-content .small-box.ynow-focus-metric-box,
+        .ynow-kpi-grid .small-box.ynow-focus-metric-box,
         .ynow-fs-card.ynow-focus-metric-box {
-          border: 3px solid var(--ynow-gold, #F5C518) !important;
-          box-shadow: 0 0 0 1px rgba(201, 162, 39, 0.28);
-          animation: ynow-focus-gold-pulse 1.6s ease-in-out infinite;
+          position: relative !important;
+          border: none !important;
+          border-radius: 6px !important;
+          isolation: isolate;
+          overflow: visible !important;
+          /* No gold/ember wash — vine PNG is the only frame chrome. */
+          box-shadow: none !important;
+          background-clip: padding-box;
+        }
+        .content-wrapper .small-box.ynow-focus-metric-box::before,
+        .tab-content .small-box.ynow-focus-metric-box::before,
+        .ynow-kpi-grid .small-box.ynow-focus-metric-box::before,
+        .ynow-fs-card.ynow-focus-metric-box::before {
+          content: '';
+          position: absolute;
+          /* Negative inset = half of border-image-width so the vine band is
+             centered ON the cell perimeter (half outside, half inside). */
+          inset: -15px;
+          z-index: 0;
+          pointer-events: none;
+          box-sizing: border-box;
+          /* Transparent CSS border reserves the 9-slice band; image paints the vine. */
+          border-style: solid;
+          border-color: transparent;
+          border-width: 30px;
+          border-image-source: url('ynow-vine-kpi-frame.png');
+          /* Cropped asset ~421×257; slice covers pad+stem+modest corner leaves. */
+          border-image-slice: 48 68 52 48;
+          border-image-width: 30px;
+          border-image-outset: 4px;
+          border-image-repeat: stretch;
+          background: none !important;
+          border-radius: 0;
+          animation: ynow-focus-vine-breathe 2.8s ease-in-out infinite;
+        }
+        /* Short Finance Summary cards: thinner perimeter band so content stays readable. */
+        .ynow-fs-card.ynow-focus-metric-box::before {
+          inset: -10px;
+          border-width: 20px;
+          border-image-width: 20px;
+          border-image-outset: 4px;
+        }
+        /* No ::after fill/ring — interior must stay transparent (border-only). */
+        .content-wrapper .small-box.ynow-focus-metric-box::after,
+        .tab-content .small-box.ynow-focus-metric-box::after,
+        .ynow-kpi-grid .small-box.ynow-focus-metric-box::after,
+        .ynow-fs-card.ynow-focus-metric-box::after {
+          content: none !important;
+          display: none !important;
+        }
+        /* Elevate content above vine ::before — only .inner on small-box so
+           AdminLTE .icon-large stays position:absolute (out of flex). Broad
+           > * made icons re-enter the column and pushed KPI values above center. */
+        .content-wrapper .small-box.ynow-focus-metric-box > .inner,
+        .tab-content .small-box.ynow-focus-metric-box > .inner,
+        .ynow-fs-card.ynow-focus-metric-box > * {
+          position: relative;
+          z-index: 1;
         }
         .ynow-fs-card.ynow-focus-metric-box {
           border-radius: 6px;
@@ -17204,6 +17382,16 @@ ui <- dashboardPage(
           line-height: 1.35;
           color: #666666;
           font-weight: 500;
+        }
+        /* Vine focus legend: directly above FINANCIAL REPORT, right-aligned */
+        .ynow-dashboard-fin-report-wrap > .ynow-focus-metric-note--above-fs {
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+          gap: 2px;
+          width: 100%;
+          margin: 0 0 8px 0;
+          text-align: right;
         }
         /* Yahoo Sector/Industry 列：屬性標籤靠右 */
         .ynow-ind-yahoo-row {
@@ -17984,9 +18172,15 @@ ui <- dashboardPage(
           border-radius: 6px;
           background: #fafafa;
         }
-        /* Model Selector footnote: consideration dimensions (default collapsed) */
-        .ynow-ms-dims {
+        /* Model Selection Guide + consideration dimensions (default collapsed) */
+        .ynow-ms-guide {
           margin: 14px 0 0 0;
+        }
+        .ynow-ms-dims {
+          margin: 10px 0 0 0;
+        }
+        .ynow-ms-pos-track {
+          min-height: 72px;
         }
         .ynow-notes > .ynow-notes__summary {
           cursor: pointer;
@@ -18181,7 +18375,9 @@ ui <- dashboardPage(
           width: 100%;
           margin: 0 0 8px 0;
         }
-        .ynow-macro-theme-title-row > #ynow_macro_theme_title {
+        .ynow-macro-theme-title-row > h3,
+        .ynow-macro-theme-title-row > #ynow_macro_theme_title,
+        .ynow-macro-theme-title-row > #ynow_macro_bubble_title {
           flex: 1 1 auto;
           min-width: 0;
           margin: 0;
@@ -20771,7 +20967,19 @@ ui <- dashboardPage(
 
         function bindTypeahead(inputId) {
           $(document).on('input', '#' + inputId, function() {
-            var v = $(this).val() || '';
+            var el = this;
+            var v = el.value || '';
+            var up = v.toUpperCase();
+            if (up !== v) {
+              var start = el.selectionStart, end = el.selectionEnd;
+              el.value = up;
+              try {
+                if (typeof start === 'number' && typeof end === 'number') {
+                  el.setSelectionRange(start, end);
+                }
+              } catch (eCaret) {}
+              v = up;
+            }
             Shiny.setInputValue('ticker_typeahead', v, {priority: 'event'});
             typingOpen[inputId] = v.trim().length > 0;
             showSuggest(inputId);
@@ -21382,7 +21590,6 @@ ui <- dashboardPage(
       )
     ),
     # Model pages + Smart Analysis: full composite valuation block (shared output) + forecast years
-    # Lite Smart Analysis: explanatory blurb sits immediately above composite status (no page heading).
     conditionalPanel(
       condition = paste(
         "input.sidebar_tabs == 'smart_analysis' ||",
@@ -21395,21 +21602,6 @@ ui <- dashboardPage(
         "input.sidebar_tabs == 'sotp_calculator' ||",
         "input.sidebar_tabs == 'ri_calculator' ||",
         "input.sidebar_tabs == 'nav_calculator'"
-      ),
-      conditionalPanel(
-        condition = "input.sidebar_tabs == 'smart_analysis'",
-        tags$div(
-          class = "ynow-lite-only ynow-smart-lite-blurb-wrap",
-          tags$p(
-            id = "ynow_smart_page_sub",
-            class = "ynow-smart-lite-blurb",
-            paste0(
-              "Auto-selects primary and secondary valuation models from the ticker profile, ",
-              "detects the best parameter scenario (Two-Stage vs Gordon, SGR method, claim), ",
-              "applies those defaults, and shows fair-value charts. No manual model settings."
-            )
-          )
-        )
       ),
       fluidRow(
         class = "ynow-header-composite-row",
@@ -21510,7 +21702,7 @@ ui <- dashboardPage(
           tags$span(id = "ynow_explain_core_callout_body", paste0(
             "：每個估值結果旁應能回答「為何是這個合理價」。",
             "DCF Overview 的 KPI 下方已顯示公式路徑／現值橋接／終值驅動；",
-            "各模型「公式參數貢獻與敏感度」預設展開。完整 Decision Matrix 見本頁下方。"
+            "各模型「公式參數貢獻與敏感度」預設展開。完整 Decision Matrix 見基本面評價模型圖表下方（預設收合）。"
           ))
         ),
         # Full-mode primary workflow: same Why + gate surface as Smart Analysis
@@ -21523,6 +21715,8 @@ ui <- dashboardPage(
             ),
             width = 12, status = "primary", solidHeader = TRUE,
             uiOutput("get_started_model_selector"),
+            # Model Selection Guide (Decision Matrix only) — under chart, collapsed
+            .model_selection_guide_panel_ui(),
             .model_selector_dimensions_annotation_ui()
           )
         ),
@@ -21599,8 +21793,8 @@ ui <- dashboardPage(
           id = "ynow_snapshot_page_help",
           class = "help-block ynow-full-only",
           paste0(
-            "Three tabs: manual adjustments vs the post-Search baseline (with annotated PDF); ",
-            "current live parameters (download / upload restore CSV); and APP_DEFAULTS ",
+            "Three tabs: current live parameters (download / upload restore CSV); ",
+            "manual adjustments vs the post-Search baseline (with annotated PDF); and APP_DEFAULTS ",
             "(that tab shows a lock until System admin unlock; the defaults table appears only after unlock)."
           )
         ),
@@ -21701,82 +21895,10 @@ ui <- dashboardPage(
         ),
         tabBox(
           # No right-side chrome title (page h2 already says Snapshot; avoids wrong remaps)
+          # LTR order: Current App Parameter Snapshot (snap_current) before Manual adjustments.
           id = "snapshot_report",
           width = "auto",
-
-          tabPanel(
-            title = tagList(
-              icon("user-edit"),
-              tags$span(id = "ynow_snapshot_tab_audit", "Manual adjustments (vs post-Search baseline)")
-            ),
-            value = "snap_audit",
-            tags$div(
-              `data-ynow-lock` = "section:snap_audit",
-              tags$p(
-                id = "ynow_param_audit_help",
-                style = "font-size:12.5px; color:#666; line-height:1.45; margin:0 0 10px 0;",
-                paste0(
-                  "Baseline locks after Search and statement auto-fill. ",
-                  "Later manual overrides are listed by page. ",
-                  "Use Go & highlight to jump and frame the input. ",
-                  "Below: select pages and generate an annotated screenshot PDF."
-                )
-              ),
-              uiOutput("param_audit_report"),
-              tags$hr(style = "margin:14px 0;"),
-              tags$h4(
-                id = "ynow_param_audit_pdf_title",
-                style = "margin:0 0 8px 0; font-size:15px; font-weight:700;",
-                "Annotated page screenshots (PDF)"
-              ),
-              tags$p(
-                id = "ynow_param_audit_pdf_help",
-                style = "font-size:12.5px; color:#666; line-height:1.45; margin:0 0 10px 0;",
-                paste0(
-                  "Select pages by category. The app switches to each page (and statement block when chosen), ",
-                  "captures the live layout, draws boxes on inputs you changed vs the post-Search baseline, ",
-                  "and downloads one PDF."
-                )
-              ),
-              if (exists("ynow_param_audit_pdf_pages_ui", mode = "function")) {
-                ynow_param_audit_pdf_pages_ui()
-              } else {
-                checkboxGroupInput(
-                  "param_audit_pdf_pages",
-                  label = tags$span(id = "ynow_param_audit_pdf_pages_label", "Pages to capture"),
-                  choiceNames = list(
-                    tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_basic",
-                              "Model Dashboard (SGR / CAPM / WACC / Beta)"),
-                    tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_dcf", "DCF"),
-                    tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_ddm", "DDM"),
-                    tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_ri", "RI"),
-                    tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_pb", "P/B"),
-                    tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_nav", "NAV")
-                  ),
-                  choiceValues = c(
-                    "get_started", "dcf_calculator", "ddm_calculator",
-                    "ri_calculator", "pb_calculator", "nav_calculator"
-                  ),
-                  selected = c(
-                    "get_started", "dcf_calculator", "ddm_calculator",
-                    "ri_calculator", "pb_calculator", "nav_calculator"
-                  )
-                )
-              },
-              div(
-                style = "display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:8px;",
-                actionButton(
-                  "param_audit_pdf_go",
-                  tagList(icon("file-pdf"), tags$span(id = "ynow_param_audit_pdf_btn", "Generate annotated PDF")),
-                  class = "btn-success"
-                ),
-                tags$span(
-                  id = "ynow_param_audit_pdf_status",
-                  style = "font-size:12.5px; color:#555;"
-                )
-              )
-            )
-          ),
+          selected = "snap_current",
 
           tabPanel(
             title = tagList(
@@ -21870,6 +21992,80 @@ ui <- dashboardPage(
             dataTableOutput("snapshot_table")
           ),
 
+tabPanel(
+            title = tagList(
+              icon("user-edit"),
+              tags$span(id = "ynow_snapshot_tab_audit", "Manual adjustments (vs post-Search baseline)")
+            ),
+            value = "snap_audit",
+            tags$div(
+              `data-ynow-lock` = "section:snap_audit",
+              tags$p(
+                id = "ynow_param_audit_help",
+                style = "font-size:12.5px; color:#666; line-height:1.45; margin:0 0 10px 0;",
+                paste0(
+                  "Baseline locks after Search and statement auto-fill. ",
+                  "Later manual overrides are listed by page. ",
+                  "Use Go & highlight to jump and frame the input. ",
+                  "Below: select pages and generate an annotated screenshot PDF."
+                )
+              ),
+              uiOutput("param_audit_report"),
+              tags$hr(style = "margin:14px 0;"),
+              tags$h4(
+                id = "ynow_param_audit_pdf_title",
+                style = "margin:0 0 8px 0; font-size:15px; font-weight:700;",
+                "Annotated page screenshots (PDF)"
+              ),
+              tags$p(
+                id = "ynow_param_audit_pdf_help",
+                style = "font-size:12.5px; color:#666; line-height:1.45; margin:0 0 10px 0;",
+                paste0(
+                  "Select pages by category. The app switches to each page (and statement block when chosen), ",
+                  "captures the live layout, draws boxes on inputs you changed vs the post-Search baseline, ",
+                  "and downloads one PDF."
+                )
+              ),
+              if (exists("ynow_param_audit_pdf_pages_ui", mode = "function")) {
+                ynow_param_audit_pdf_pages_ui()
+              } else {
+                checkboxGroupInput(
+                  "param_audit_pdf_pages",
+                  label = tags$span(id = "ynow_param_audit_pdf_pages_label", "Pages to capture"),
+                  choiceNames = list(
+                    tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_basic",
+                              "Model Dashboard (SGR / CAPM / WACC / Beta)"),
+                    tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_dcf", "DCF"),
+                    tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_ddm", "DDM"),
+                    tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_ri", "RI"),
+                    tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_pb", "P/B"),
+                    tags$span(class = "ynow-pdf-page-lab", `data-key` = "param_audit_pdf_page_nav", "NAV")
+                  ),
+                  choiceValues = c(
+                    "get_started", "dcf_calculator", "ddm_calculator",
+                    "ri_calculator", "pb_calculator", "nav_calculator"
+                  ),
+                  selected = c(
+                    "get_started", "dcf_calculator", "ddm_calculator",
+                    "ri_calculator", "pb_calculator", "nav_calculator"
+                  )
+                )
+              },
+              div(
+                style = "display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:8px;",
+                actionButton(
+                  "param_audit_pdf_go",
+                  tagList(icon("file-pdf"), tags$span(id = "ynow_param_audit_pdf_btn", "Generate annotated PDF")),
+                  class = "btn-success"
+                ),
+                tags$span(
+                  id = "ynow_param_audit_pdf_status",
+                  style = "font-size:12.5px; color:#555;"
+                )
+              )
+            )
+          ),
+
           tabPanel(
             title = tagList(
               icon("lock", class = "ynow-snap-tab-lock"),
@@ -21949,6 +22145,7 @@ ui <- dashboardPage(
               # FINANCIAL REPORT: Board / CB (+ Ownership) stays Lite+Full; other FS tabs Full-only via CSS.
               tags$div(
                 class = "ynow-dashboard-fin-report-wrap",
+              .ynow_focus_metric_legend_note_ui(),
               tabBox(title = "FINANCIAL REPORT",
                      id = "dashboard_fin_report",
                      width = "auto",
@@ -22309,15 +22506,9 @@ ui <- dashboardPage(
                            .ddm_formula_banner(),
                            uiOutput("mod_ddm-ui_ddm_result"),
                            h6(helpText(id = "ynow_ddm_overview_hint", ui_str("ddm_overview_hint", "en"))),
-                           fluidRow(
-                             column(
-                               width = 6,
-                               ynow_calc_btn("mod_ddm-btn_calc_ddm", "試算 DDM")
-                             ),
-                             column(
-                               width = 6,
-                               ynow_reset_defaults_btn("mod_ddm-reset_ddm")
-                             )
+                           ynow_calc_reset_row(
+                             ynow_calc_btn("mod_ddm-btn_calc_ddm", "試算 DDM"),
+                             ynow_reset_defaults_btn("mod_ddm-reset_ddm")
                            ),
                            tags$div(style = "margin-top: 10px;", htmlOutput("mod_ddm-vtxt_ddm_setting_details"))
                          )
@@ -22566,9 +22757,9 @@ ui <- dashboardPage(
                                 column(width = 12,
                                        plotOutput("plt_dcf_trajectory", height = "420px"),
                                        h6(uiOutput("dcf_chart_help")),
-                                       fluidRow(
-                                         column(width = 6, ynow_calc_btn("calc", "試算 DCF")),
-                                         column(width = 6, ynow_reset_defaults_btn("reset_dcf"))
+                                       ynow_calc_reset_row(
+                                         ynow_calc_btn("calc", "試算 DCF"),
+                                         ynow_reset_defaults_btn("reset_dcf")
                                        ),
                                        tags$div(style = "margin-top: 10px;", htmlOutput("vtxt_dcf_setting_details"))
                                 )

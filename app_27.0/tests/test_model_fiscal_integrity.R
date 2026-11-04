@@ -85,6 +85,14 @@ stopifnot(!ynow_model_snapshot(list(source_of(missing_revenue)),periods[1],'dcf'
  context=list(financial_currency='USD',ticker='OTHER',manual=manual))$complete)
 stopifnot(!identical(ynow_model_snapshot(list(source_of(missing_revenue)),periods[2],'dcf',
  context=c(context,list(manual=manual)))$facts$revenue$kind,'manual'))
+# A positive gross-equity/common-equity gap is a disclosed Lite book proxy, not
+# a reported market value. Full therefore remains incomplete until manual input.
+claims_data<-data;claims_data[['Balance Sheet']][claims_data[['Balance Sheet']][[1]]=='Total Equity Gross Minority Interest',2]<-1250
+full_claims<-ynow_integrity_facts(list(source_of(claims_data)),periods[1],context)$other_claims
+lite_claims<-ynow_integrity_facts(list(source_of(claims_data)),periods[1],
+ c(context,list(allow_book_claim_proxy=TRUE)))$other_claims
+stopifnot(is.na(full_claims$value),lite_claims$value==50,
+ identical(lite_claims$kind,'assumption_derived'))
 # Exact financial fact semantics: no aggregate Other, no standalone Depreciation.
 for(label in c('Depreciation, Amortization & Other','Depreciation')) {
  invalid<-data;invalid[['Cash Flow']][[1]][1]<-label

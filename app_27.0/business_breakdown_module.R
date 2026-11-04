@@ -104,7 +104,12 @@ if (!exists("%||%", mode = "function")) {
     ))
   }
   if (identical(group, "context")) {
-    return(started && is.list(or) && length(or$kpis) > 0L)
+    show_note <- is.list(or) && (
+      is.list(or$earnings_call) ||
+        isTRUE(ynow_supply_report_has_content(or$supply_report))
+    )
+    show_detail <- started && is.list(or) && length(or$kpis) > 0L
+    return(isTRUE(show_note) || isTRUE(show_detail))
   }
   FALSE
 }
@@ -716,12 +721,7 @@ business_breakdown_lab_ui <- function(id = "bblab") {
             tags$p(
               id = "ynow_bblab_or_help",
               class = "help-block",
-              paste0(
-                "Start analysis to surface disclosed order quantity, supplier, and customer facts ",
-                "beside the matching filing charts. Taiwan source priority is MOPS, then company IR, ",
-                "then a statement cross-check. Broker and industry sources are estimates only and ",
-                "do not fill order amounts. Groups with no disclosed data stay collapsed."
-              )
+              "The supply chain and orders note appears when the latest call and filings are in. Start analysis still opens disclosed order, supplier, and customer amounts, plus the cross-check. Amounts are never estimated. Groups with no disclosed figures stay collapsed."
             ),
             actionButton(
               ns("order_research_run"),
@@ -886,55 +886,19 @@ bblab_order_research_focus_ui <- function(pack, locale = "en", started = FALSE,
   tags$div(class = "ynow-bblab-or__focuses", focus)
 }
 
-#' Sources, cross-check, earnings-call context, and secondary layers (no focus buckets).
+#' Sources, cross-check, and order-focus earnings cues (no focus buckets).
 bblab_order_research_meta_ui <- function(pack, locale = "en", started = FALSE) {
   msg <- function(key) .bblab_ui(key, locale)
-  if (!isTRUE(started)) return(tags$p(class = "help-block", msg("bblab_or_idle")))
-  if (!is.list(pack) || !length(pack$kpis)) {
+  if (!is.list(pack)) return(NULL)
+  if (isTRUE(started) && !length(pack$kpis)) {
     return(tags$p(class = "help-block", msg("bblab_or_waiting")))
   }
-  layers <- lapply(pack$layers %||% list(), function(layer) {
-    key <- .bblab_chr(layer$key, "")
-    bits <- lapply(layer$metrics %||% list(), function(m) {
-      mid <- .bblab_chr(m$id, "")
-      label <- msg(paste0("bblab_or_metric_", mid))
-      if (identical(label, paste0("bblab_or_metric_", mid))) label <- msg(paste0("bblab_or_kpi_", mid))
-      val <- if (nzchar(.bblab_chr(m$text, ""))) {
-        .bblab_chr(m$text, "")
-      } else if (is.finite(.bblab_num(m$value)) && !identical(m$unit, "flag")) {
-        .or_fmt_value(m$value, m$unit)
-      } else if (identical(m$status, "REPORTED") && identical(m$unit, "flag")) {
-        msg("bblab_or_disclosed_flag")
-      } else {
-        .or_gap_text(m$gap, locale)
-      }
-      tags$li(tags$b(paste0(label, ": ")), val)
-    })
-    ev_bits <- lapply(layer$evidence %||% list(), function(ev) {
-      if (!identical(ev$basis, "revenue_not_orders")) return(NULL)
-      tags$li(
-        msg("bblab_or_revenue_concentration"), " ",
-        .or_fmt_value(ev$value, "ratio"),
-        " (", .bblab_chr(ev$source, ""), ")"
-      )
-    })
-    tags$details(
-      tags$summary(
-        paste0(
-          msg(paste0("bblab_or_layer_", key)),
-          " · ",
-          msg(paste0("bblab_or_status_", .bblab_chr(layer$status, "gap")))
-        )
-      ),
-      tags$p(class = "help-block", msg(.bblab_chr(layer$note_key, ""))),
-      tags$ul(bits, ev_bits)
-    )
-  })
-  stack_bits <- lapply(pack$source_stack %||% list(), function(t) {
+  stack_src <- Filter(function(t) isTRUE(t$contributed), pack$source_stack %||% list())
+  stack_bits <- lapply(stack_src, function(t) {
     tid <- .bblab_chr(t$id, "")
     label <- msg(paste0("bblab_or_prov_", tid))
     cred <- msg(paste0("bblab_or_cred_", .bblab_chr(t$credibility, "")))
-    state <- msg(if (isTRUE(t$contributed)) "bblab_or_stack_contributed" else "bblab_or_stack_idle")
+    state <- msg("bblab_or_stack_contributed")
     amt <- msg(if (isTRUE(t$can_fill_amount)) "bblab_or_stack_amount_ok" else "bblab_or_stack_amount_no")
     tags$li(
       class = "ynow-bblab-or__tier",
@@ -947,317 +911,141 @@ bblab_order_research_meta_ui <- function(pack, locale = "en", started = FALSE) {
       tags$span(class = "ynow-bblab-or__stack-amt", paste0(" · ", amt))
     )
   })
-  x_bits <- lapply(pack$cross_check %||% list(), function(item) {
+  x_src <- Filter(
+    function(item) is.finite(.bblab_num(item$value)),
+    pack$cross_check %||% list()
+  )
+  x_bits <- lapply(x_src, function(item) {
     iid <- .bblab_chr(item$id, "")
     label <- msg(paste0("bblab_or_xcheck_", iid))
-    val <- if (is.finite(.bblab_num(item$value))) {
-      .or_fmt_value(item$value, item$unit)
-    } else {
-      .or_gap_text(item$gap, locale)
-    }
-    note <- msg(.bblab_chr(item$note_key, paste0("bblab_or_xcheck_note_", iid)))
     tags$li(
       class = "ynow-bblab-or__xrow",
       `data-xcheck` = iid,
       tags$b(paste0(label, ": ")),
-      val,
-      tags$span(class = "ynow-bblab-or__xnote", paste0(" · ", note))
+      .or_fmt_value(item$value, item$unit)
     )
   })
-  # Order-focus only: 訂單／主要供應商／主要客戶 (+ traps). No tone/token/CapEx wall.
-  .ec_keyword_ui <- function(ec) {
-    if (!is.list(ec)) return(NULL)
-    .kw_notes <- function(x) {
-      v <- as.character(unlist(x %||% character(0)))
-      trimws(v[nzchar(trimws(v))])
-    }
-    orders <- .kw_notes(ec$keyword_order_notes %||% ec$order_notes)
-    suppliers <- .kw_notes(ec$keyword_supplier_notes)
-    # Prefer dedicated customer notes; fall back to supply-chain only for suppliers.
-    if (!length(suppliers)) {
-      suppliers <- .kw_notes(ec$supply_chain_notes)
-      # Keep only supplier-ish lines when falling back.
-      if (length(suppliers)) {
-        suppliers <- suppliers[grepl(
-          "供應商|供應鏈|supplier|supply[- ]chain|缺料|採購",
-          suppliers,
-          ignore.case = TRUE,
-          perl = TRUE
-        )]
-      }
-    }
-    customers <- .kw_notes(ec$keyword_customer_notes %||% ec$customer_notes)
-    traps <- .kw_notes(ec$keyword_trap_flags)
-    has_any <- length(orders) || length(suppliers) || length(customers) || length(traps)
-    if (!isTRUE(has_any)) return(NULL)
-    trap_labels <- vapply(traps, function(t) {
-      key <- paste0("bblab_or_ec_kw_", t)
-      lab <- tryCatch(msg(key), error = function(e) "")
-      if (!nzchar(lab) || identical(lab, key)) t else lab
-    }, character(1))
-    .note_list <- function(items, title_key) {
-      if (!length(items)) return(NULL)
-      tags$div(
-        class = "ynow-bblab-or__ec-kw-notes",
-        tags$p(tags$b(msg(title_key))),
-        tags$ul(lapply(utils::head(items, 5L), function(s) tags$li(s)))
-      )
-    }
-    updated <- .bblab_chr(ec$info_updated_at %||% ec$analysis_axis_published %||% ec$published, "")
-    updated_kind <- .bblab_chr(ec$info_updated_kind, "")
-    updated_row <- if (nzchar(updated)) {
-      kind_lab <- if (identical(updated_kind, "fetched_at")) {
-        msg("bblab_or_ec_kw_updated_kind_fetched")
-      } else if (nzchar(updated_kind)) {
-        msg("bblab_or_ec_kw_updated_kind_event")
-      } else {
-        ""
-      }
-      tags$p(
-        class = "help-block ynow-bblab-or__ec-kw-updated",
-        tags$b(paste0(msg("bblab_or_ec_kw_updated"), ": ")),
-        updated,
-        if (nzchar(kind_lab)) tags$span(paste0(" (", kind_lab, ")")) else NULL
-      )
-    } else {
-      tags$p(
-        class = "help-block ynow-bblab-or__ec-kw-updated",
-        tags$b(paste0(msg("bblab_or_ec_kw_updated"), ": ")),
-        msg("bblab_or_ec_kw_updated_unknown")
-      )
-    }
+  x_block <- if (length(x_bits)) {
     tags$div(
-      class = "ynow-bblab-or__ec-kw ynow-bblab-or__ec-kw--order-focus",
-      tags$p(tags$b(msg("bblab_or_ec_kw_title"))),
-      tags$p(class = "help-block", msg("bblab_or_ec_kw_note")),
-      updated_row,
-      .note_list(orders, "bblab_or_ec_kw_orders"),
-      .note_list(suppliers, "bblab_or_ec_kw_suppliers"),
-      .note_list(customers, "bblab_or_ec_kw_customers"),
-      if (length(trap_labels)) {
-        tags$p(
-          class = "help-block ynow-bblab-or__ec-kw-traps",
-          tags$b(paste0(msg("bblab_or_ec_kw_traps"), ": ")),
-          paste(trap_labels, collapse = " · ")
-        )
-      } else NULL
+      class = "ynow-bblab-or__xcheck",
+      tags$p(tags$b(msg("bblab_or_xcheck_title"))),
+      tags$p(class = "help-block", msg("bblab_or_xcheck_disclaimer")),
+      tags$ul(x_bits)
+    )
+  } else {
+    NULL
+  }
+  .ext_link <- function(href, key) {
+    href <- .bblab_chr(href, "")
+    if (!nzchar(href)) return(NULL)
+    tags$a(href = href, target = "_blank", rel = "noopener noreferrer", msg(key))
+  }
+  .link_row <- function(links, class_name) {
+    links <- Filter(Negate(is.null), links)
+    if (!length(links)) return(NULL)
+    tags$p(
+      class = class_name,
+      lapply(seq_along(links), function(i) {
+        tagList(if (i > 1L) tags$span(" · "), links[[i]])
+      })
     )
   }
-  us_ec <- pack$us_earnings_call
-  us_block <- NULL
-  if (is.list(us_ec) && length(us_ec)) {
-    status <- .bblab_chr(us_ec$status, "empty")
-    src_id <- .bblab_chr(us_ec$source_id, "empty")
-    title <- .bblab_chr(us_ec$title, "")
-    excerpt <- .bblab_chr(us_ec$excerpt, "")
-    cred <- .bblab_chr(us_ec$credibility, "management")
-    links <- list()
-    if (nzchar(.bblab_chr(us_ec$url, ""))) {
-      links[[length(links) + 1L]] <- tags$a(
-        href = us_ec$url, target = "_blank", rel = "noopener noreferrer",
-        msg("bblab_or_us_ec_source_link")
+  .market_links <- function(ec, market) {
+    if (identical(market, "TW")) {
+      pdf_url <- .bblab_chr(ec$url, "")
+      if (!nzchar(pdf_url)) pdf_url <- .bblab_chr(ec$finmoconf_zh_url, "")
+      if (!nzchar(pdf_url)) pdf_url <- .bblab_chr(ec$finmoconf_en_url, "")
+      src_id <- .bblab_chr(ec$source_id, "")
+      links <- list(
+        .ext_link(ec$finmoconf_url, "bblab_or_tw_ec_finmoconf_link"),
+        if (nzchar(pdf_url) && src_id %in% c(
+          "finmoconf_presentation_pdf", "seeking_alpha_html", "fugle_earnings_memo"
+        )) {
+          .ext_link(pdf_url, "bblab_or_tw_ec_pdf_link")
+        } else NULL,
+        .ext_link(ec$fugle_url, "bblab_or_tw_ec_fugle_link"),
+        .ext_link(ec$alphamemo_url, "bblab_or_tw_ec_alphamemo_link"),
+        .ext_link(ec$alphamemo_search_url, "bblab_or_tw_ec_search_link"),
+        .ext_link(ec$sa_url, "bblab_or_tw_ec_sa_link"),
+        if (nzchar(.bblab_chr(ec$url, "")) &&
+              src_id %in% c("seeking_alpha_html", "fugle_earnings_memo") &&
+              !identical(.bblab_chr(ec$url, ""), pdf_url)) {
+          .ext_link(ec$url, "bblab_or_us_ec_source_link")
+        } else NULL
       )
+      return(.link_row(links, "ynow-bblab-or__tw-ec-links"))
     }
-    if (nzchar(.bblab_chr(us_ec$sec_url, ""))) {
-      links[[length(links) + 1L]] <- tags$a(
-        href = us_ec$sec_url, target = "_blank", rel = "noopener noreferrer",
-        msg("bblab_or_us_ec_sec_link")
-      )
-    }
-    if (nzchar(.bblab_chr(us_ec$ir_url, ""))) {
-      links[[length(links) + 1L]] <- tags$a(
-        href = us_ec$ir_url, target = "_blank", rel = "noopener noreferrer",
-        msg("bblab_or_us_ec_ir_link")
-      )
-    }
-    # Seeking Alpha = human outbound only (never scraped).
-    if (nzchar(.bblab_chr(us_ec$sa_url, ""))) {
-      links[[length(links) + 1L]] <- tags$a(
-        href = us_ec$sa_url, target = "_blank", rel = "noopener noreferrer",
-        msg("bblab_or_us_ec_sa_link")
-      )
-    }
-    link_row <- if (length(links)) {
-      tags$p(
-        class = "ynow-bblab-or__us-ec-links",
-        lapply(seq_along(links), function(i) {
-          tagList(if (i > 1L) tags$span(" · "), links[[i]])
-        })
-      )
-    } else {
-      NULL
-    }
-    us_block <- tags$div(
-      class = "ynow-bblab-or__us-ec",
+    .link_row(
+      list(
+        .ext_link(ec$url, "bblab_or_us_ec_source_link"),
+        .ext_link(ec$sec_url, "bblab_or_us_ec_sec_link"),
+        .ext_link(ec$ir_url, "bblab_or_us_ec_ir_link"),
+        .ext_link(ec$sa_url, "bblab_or_us_ec_sa_link")
+      ),
+      "ynow-bblab-or__us-ec-links"
+    )
+  }
+  report_ui <- ynow_supply_report_ui(pack$supply_report, locale)
+  ec <- pack$earnings_call
+  market <- .bblab_chr(pack$earnings_market, "")
+  ec_block <- NULL
+  if (is.list(ec) && length(ec)) {
+    is_tw <- identical(market, "TW")
+    status <- .bblab_chr(ec$status, "empty")
+    src_id <- .bblab_chr(ec$source_id, if (is_tw) "alphamemo_index" else "empty")
+    cred <- .bblab_chr(ec$credibility, if (is_tw) "estimate" else "management")
+    title <- .bblab_chr(ec$title, "")
+    title_key <- if (is_tw) "bblab_or_tw_ec_title" else "bblab_or_us_ec_title"
+    empty_key <- if (is_tw) "bblab_or_tw_ec_empty" else "bblab_or_us_ec_empty"
+    show_empty <- (identical(status, "empty") || !nzchar(title)) && is.null(report_ui)
+    ec_block <- tags$div(
+      class = if (is_tw) "ynow-bblab-or__tw-ec" else "ynow-bblab-or__us-ec",
       `data-status` = status,
       `data-source` = src_id,
       `data-credibility` = cred,
-      tags$p(tags$b(msg("bblab_or_us_ec_title"))),
+      if (market %in% c("TW", "US")) tags$p(tags$b(msg(title_key))) else NULL,
       tags$p(
         class = "help-block ynow-bblab-or__cred-tier",
         paste0(msg("bblab_or_ec_cred_label"), ": ", msg(paste0("bblab_or_cred_", cred)))
       ),
-      if (identical(status, "empty") || !nzchar(title)) {
-        tags$p(class = "help-block", msg("bblab_or_us_ec_empty"))
-      } else {
-        tagList(
-          tags$p(
-            tags$b(paste0(msg("bblab_or_us_ec_label"), ": ")),
-            title,
-            if (nzchar(.bblab_chr(us_ec$published, ""))) {
-              tags$span(class = "ynow-bblab-or__prov", paste0(" · ", us_ec$published))
-            } else NULL
-          ),
-          if (nzchar(excerpt)) {
-            tags$p(class = "help-block ynow-bblab-or__us-ec-excerpt", excerpt)
-          } else NULL,
-          .ec_keyword_ui(us_ec)
-        )
-      },
-      tags$p(class = "help-block", msg("bblab_or_us_ec_method_note")),
-      tags$p(class = "help-block", msg("bblab_or_us_ec_sa_note")),
-      link_row
-    )
-  }
-  tw_ec <- pack$tw_earnings_call
-  tw_block <- NULL
-  if (is.list(tw_ec) && length(tw_ec)) {
-    status <- .bblab_chr(tw_ec$status, "empty")
-    src_id <- .bblab_chr(tw_ec$source_id, "alphamemo_index")
-    cred <- .bblab_chr(tw_ec$credibility, "estimate")
-    .tw_ec_note_list <- function(items, title_key) {
-      items <- as.character(unlist(items %||% character(0)))
-      items <- trimws(items)
-      items <- items[nzchar(items)]
-      if (!length(items)) return(NULL)
-      tags$div(
-        class = "ynow-bblab-or__tw-ec-notes",
-        tags$p(tags$b(msg(title_key))),
-        tags$ul(lapply(utils::head(items, 6L), function(s) tags$li(s)))
-      )
-    }
-    links <- list()
-    if (nzchar(.bblab_chr(tw_ec$finmoconf_url, ""))) {
-      links[[length(links) + 1L]] <- tags$a(
-        href = tw_ec$finmoconf_url, target = "_blank", rel = "noopener noreferrer",
-        msg("bblab_or_tw_ec_finmoconf_link")
-      )
-    }
-    pdf_url <- .bblab_chr(tw_ec$url, "")
-    if (!nzchar(pdf_url)) pdf_url <- .bblab_chr(tw_ec$finmoconf_zh_url, "")
-    if (!nzchar(pdf_url)) pdf_url <- .bblab_chr(tw_ec$finmoconf_en_url, "")
-    if (nzchar(pdf_url) &&
-          .bblab_chr(tw_ec$source_id, "") %in% c("finmoconf_presentation_pdf", "seeking_alpha_html", "fugle_earnings_memo")) {
-      links[[length(links) + 1L]] <- tags$a(
-        href = pdf_url, target = "_blank", rel = "noopener noreferrer",
-        msg("bblab_or_tw_ec_pdf_link")
-      )
-    }
-    if (nzchar(.bblab_chr(tw_ec$fugle_url, ""))) {
-      links[[length(links) + 1L]] <- tags$a(
-        href = tw_ec$fugle_url, target = "_blank", rel = "noopener noreferrer",
-        msg("bblab_or_tw_ec_fugle_link")
-      )
-    }
-    if (nzchar(.bblab_chr(tw_ec$alphamemo_url, ""))) {
-      links[[length(links) + 1L]] <- tags$a(
-        href = tw_ec$alphamemo_url, target = "_blank", rel = "noopener noreferrer",
-        msg("bblab_or_tw_ec_alphamemo_link")
-      )
-    }
-    if (nzchar(.bblab_chr(tw_ec$alphamemo_search_url, ""))) {
-      links[[length(links) + 1L]] <- tags$a(
-        href = tw_ec$alphamemo_search_url, target = "_blank", rel = "noopener noreferrer",
-        msg("bblab_or_tw_ec_search_link")
-      )
-    }
-    if (nzchar(.bblab_chr(tw_ec$sa_url, ""))) {
-      links[[length(links) + 1L]] <- tags$a(
-        href = tw_ec$sa_url, target = "_blank", rel = "noopener noreferrer",
-        msg("bblab_or_tw_ec_sa_link")
-      )
-    }
-    if (nzchar(.bblab_chr(tw_ec$url, "")) &&
-          .bblab_chr(tw_ec$source_id, "") %in% c("seeking_alpha_html", "fugle_earnings_memo") &&
-          !identical(.bblab_chr(tw_ec$url, ""), pdf_url)) {
-      links[[length(links) + 1L]] <- tags$a(
-        href = tw_ec$url, target = "_blank", rel = "noopener noreferrer",
-        msg("bblab_or_us_ec_source_link")
-      )
-    }
-    title <- .bblab_chr(tw_ec$title, "")
-    excerpt <- .bblab_chr(tw_ec$excerpt, "")
-    link_row <- if (length(links)) {
-      tags$p(
-        class = "ynow-bblab-or__tw-ec-links",
-        lapply(seq_along(links), function(i) {
-          tagList(if (i > 1L) tags$span(" · "), links[[i]])
-        })
-      )
-    } else {
-      NULL
-    }
-    has_status_notes <- length(tw_ec$order_notes %||% character(0)) > 0L ||
-      length(tw_ec$supply_chain_notes %||% character(0)) > 0L ||
-      length(tw_ec$outlook_notes %||% character(0)) > 0L ||
-      length(tw_ec$keyword_order_notes %||% character(0)) > 0L ||
-      length(tw_ec$keyword_supplier_notes %||% character(0)) > 0L ||
-      length(tw_ec$keyword_customer_notes %||% character(0)) > 0L ||
-      length(tw_ec$customer_notes %||% character(0)) > 0L
-    tw_block <- tags$div(
-      class = "ynow-bblab-or__tw-ec",
-      `data-status` = status,
-      `data-source` = src_id,
-      `data-credibility` = cred,
-      tags$p(tags$b(msg("bblab_or_tw_ec_title"))),
-      tags$p(
-        class = "help-block ynow-bblab-or__cred-tier",
-        paste0(msg("bblab_or_ec_cred_label"), ": ", msg(paste0("bblab_or_cred_", cred)))
-      ),
-      if (identical(status, "empty") || (!nzchar(title) && !isTRUE(has_status_notes))) {
-        tags$p(class = "help-block", msg("bblab_or_tw_ec_empty"))
+      if (isTRUE(show_empty)) {
+        tags$p(class = "help-block", msg(empty_key))
       } else {
         tagList(
           if (nzchar(title)) {
             tags$p(
               tags$b(paste0(msg("bblab_or_us_ec_label"), ": ")),
-              title
+              title,
+              if (!is_tw && nzchar(.bblab_chr(ec$published, ""))) {
+                tags$span(class = "ynow-bblab-or__prov", paste0(" · ", ec$published))
+              } else NULL
             )
           } else NULL,
-          if (nzchar(excerpt)) {
-            tags$p(class = "help-block ynow-bblab-or__tw-ec-excerpt", excerpt)
-          } else NULL,
-          .tw_ec_note_list(tw_ec$order_notes, "bblab_or_tw_ec_orders_title"),
-          .tw_ec_note_list(tw_ec$supply_chain_notes, "bblab_or_tw_ec_supply_title"),
-          .tw_ec_note_list(tw_ec$outlook_notes, "bblab_or_tw_ec_outlook_title"),
-          .ec_keyword_ui(tw_ec)
+          report_ui
         )
       },
-      tags$p(class = "help-block", msg("bblab_or_tw_ec_note")),
-      tags$p(class = "help-block", msg("bblab_or_tw_ec_finmoconf_note")),
-      tags$p(class = "help-block", msg("bblab_or_tw_ec_fugle_note")),
-      link_row
+      .market_links(ec, if (is_tw) "TW" else "US")
     )
+  } else if (!is.null(report_ui)) {
+    ec_block <- report_ui
   }
-  tagList(
-    us_block,
-    tw_block,
+
+  sources_block <- if (length(stack_bits)) {
     tags$div(
       class = "ynow-bblab-or__sources",
       tags$p(tags$b(msg("bblab_or_sources_title"))),
       tags$ul(stack_bits)
-    ),
-    tags$div(
-      class = "ynow-bblab-or__xcheck",
-      tags$p(tags$b(msg("bblab_or_xcheck_title"))),
-      tags$ul(x_bits)
-    ),
-    tags$details(
-      class = "ynow-bblab-or__secondary",
-      tags$summary(msg("bblab_or_secondary")),
-      tags$div(class = "ynow-bblab-or__layers", layers)
     )
-  )
+  } else {
+    tags$div(
+      class = "ynow-bblab-or__sources ynow-bblab-or__sources--empty",
+      tags$p(tags$b(msg("bblab_or_sources_title"))),
+      tags$p(class = "help-block", msg("bblab_or_sources_empty"))
+    )
+  }
+  # Secondary six-layer essays stay off this panel; focus buckets already carry disclosed facts.
+  detail <- if (isTRUE(started)) tagList(sources_block, x_block) else NULL
+  tagList(ec_block, detail)
 }
 
 #' Order-research panel. Composite of focus buckets + meta (tests / legacy callers).
@@ -1572,7 +1360,6 @@ business_breakdown_lab_server <- function(id = "bblab",
         payload$cash_flow <- d_cf
         payload$industry_key <- industry_key
         payload$industry_text <- industry_text
-        # US: licensed API / SEC 8-K / IR outbound. TW: AlphaMemo index outbound only.
         is_tw_tk <- grepl("\\.(TW|TWO)$", tk, ignore.case = TRUE)
         if (!isTRUE(is_tw_tk) && exists("ynow_us_earnings_call_fetch", mode = "function")) {
           us_ec <- tryCatch(ynow_us_earnings_call_fetch(tk), error = function(e) NULL)
@@ -2374,15 +2161,16 @@ business_breakdown_lab_server <- function(id = "bblab",
 
     output$orders_group_context <- renderUI({
       if (!isTRUE(.orders_group_gate("context"))) return(NULL)
+      started <- isTRUE(or_started())
       tags$div(
         class = "ynow-bblab-orders__group ynow-bblab-orders__context",
         `data-orders-group` = "context",
         tags$h4(
-          id = "ynow_bblab_or_title",
+          id = if (started) "ynow_bblab_or_title" else "ynow_bblab_supply_report_title",
           class = "ynow-bblab-subhead",
-          ui_msg("bblab_or_title")
+          ui_msg(if (started) "bblab_or_title" else "bblab_or_supply_report_title")
         ),
-        bblab_order_research_meta_ui(.or_pack(), loc(), TRUE)
+        bblab_order_research_meta_ui(.or_pack(), loc(), started)
       )
     })
 

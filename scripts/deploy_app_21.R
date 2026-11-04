@@ -25,8 +25,10 @@
 #      Set YNOW_SKIP_GITHUB_RELEASE=1 to skip the automatic post-deploy call.
 #   4) Immediately sync local physical backups (coding + OneDrive):
 #        bash scripts/post_release_local_sync.sh
-#      Mandatory when Mac CODING/ONEDRIVE paths exist; soft-skip + remind on Cloud.
-#      Set YNOW_SKIP_POST_RELEASE_SYNC=1 to skip (not for tip-ship on Mac).
+#      Mandatory when Mac CODING/ONEDRIVE paths exist.
+#      Cloud soft-skip writes scripts/PENDING_MAC_SYNC.env and runs Mac handoff
+#      (launchd / GH self-hosted / Cursor agent worker catch-up).
+#      Set YNOW_SKIP_POST_RELEASE_SYNC=1 to skip sync (still records handoff).
 
 if (!requireNamespace("rsconnect", quietly = TRUE)) {
   install.packages("rsconnect", repos = "https://cloud.r-project.org")

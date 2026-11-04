@@ -711,5 +711,7 @@ ynow_us_earnings_call_to_disclosure <- function(fetched) {
     sec_url = .ynow_us_ec_chr(fetched$sec_url),
     ir_url = .ynow_us_ec_chr(fetched$ir_url)
   )
-  c(out, .ynow_ec_kw_disclosure_fields(fetched))
+  out <- c(out, .ynow_ec_kw_disclosure_fields(fetched))
+  out$supply_report <- ynow_supply_report_carry(fetched$supply_report)
+  out
 }

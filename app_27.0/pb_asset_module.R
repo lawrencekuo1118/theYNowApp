@@ -29,9 +29,9 @@ pb_asset_module_ui <- function(id) {
                             div("Fair Price = (BVPS / TBVPS / NAVPS) × Target P/B",
                                 style = "font-size: 16px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;")
                           ),
-                          fluidRow(
-                            column(width = 6, ynow_calc_btn(ns("btn_calc_pb"), "試算 Jst. P/B")),
-                            column(width = 6, ynow_reset_defaults_btn(ns("btn_reset_pb")))
+                          ynow_calc_reset_row(
+                            ynow_calc_btn(ns("btn_calc_pb"), "試算 Jst. P/B"),
+                            ynow_reset_defaults_btn(ns("btn_reset_pb"))
                           ),
                           fluidRow(
                             column(width = 12,

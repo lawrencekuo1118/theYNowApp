@@ -22,11 +22,12 @@ Immediately run the full ship sequence from the **coding clone** (`/Users/lawren
    - Confirm live bundle via rsconnect (`status=running`, new `bundleId`).  
    - If local client dies (disk) but upload succeeded, poll until the new bundle is active before recording baseline.
 4. **Baseline:** update `scripts/DEPLOY_BASELINE.txt` (bundleId, aligned_git/commit/short, message, `captured_at`, `display_version` = the version just shipped), commit as `chore: record shinyapps baseline bundle <id> (app_27.0)`, push. Publish GitHub Release for the new `display_version` when `gh` is available (`scripts/record_github_release.sh`).
-5. **Post-release local backup sync (required immediately after every new display_version):**  
-   - `bash scripts/post_release_local_sync.sh` (also invoked at the end of `deploy_app_21.R`).  
-   - When `/Users/lawrencekuo/coding/theYNowApp` and the OneDrive mirror exist: sync is **mandatory and immediate** via `scripts/sync-workspaces.sh` (or `~/coding/bin/sync-theynow-workspaces.sh`), then verify with `scripts/check-od-sync.sh`. Do **not** mark tip free / ship report complete on Mac until check passes.  
-   - Cloud Agents without those Mac paths: soft-skip is OK, but the ship report **must** state that local physical sync is still required on the Mac coding clone.  
-   - Deploy/upload may finish before sync; that does **not** waive the post-release backup step when paths exist.
+5. **Post-release local backup sync (required immediately after every new display_version):** 
+ - `bash scripts/post_release_local_sync.sh` (also invoked at the end of `deploy_app_21.R`). 
+ - When `/Users/lawrencekuo/coding/theYNowApp` and the OneDrive mirror exist: sync is **mandatory and immediate** via `scripts/sync-workspaces.sh` (or `~/coding/bin/sync-theynow-workspaces.sh`), then verify with `scripts/check-od-sync.sh`. Do **not** mark tip free / ship report complete on Mac until check passes. 
+ - Cloud Agents without those Mac paths: soft-skip still runs `scripts/mac_post_release_sync_handoff.sh` (writes `scripts/PENDING_MAC_SYNC.env`, tries workflow_dispatch). Ship report must cite the pending marker + Mac automation path — not only a prose soft-skip. 
+ - Keep Mac automation online (launchd install and/or `agent worker start`) so catch-up is automatic; see Project doc `docs/auto-mac-post-release-sync.md`. 
+ - Deploy/upload may finish before sync; that does **not** waive the post-release backup step when paths exist.
 6. Briefly report: app commit, version-bump commit, baseline commit, display version, bundleId, live URL, and sync result (OK / soft-skip reason).
 
 ## Applies when (default = ship)

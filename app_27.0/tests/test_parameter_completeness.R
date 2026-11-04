@@ -38,10 +38,23 @@ for (locale in c("en", "zh-TW")) {
   stopifnot(!any(pe$model == "multiples" & pe$id %in% c("bridge_cash", "bridge_debt")))
   for (key in c("param_missing_title", "param_missing_body", "param_missing_go_fill",
                 "param_missing_reference", "param_missing_no_reference",
+                "param_assumption_applied", "param_assumption_footnotes_title",
                 "param_sotp_manual_label", "param_sotp_manual_help")) {
     stopifnot(nzchar(ui_str(key, locale)))
   }
 }
+stopifnot(identical(ui_str("param_assumption_footnotes_title", "en"),
+                    "Notes — Lite applied assumptions"),
+          identical(ui_str("param_assumption_footnotes_title", "zh-TW"),
+                    "註解 — Lite 已套用假設"))
+foot_ui <- ynow_lite_assumption_footnotes_ui(
+  "Assumed value applied by Lite: WACC = 8. Reference suggestion: 8.", "en")
+stopifnot(inherits(foot_ui, "shiny.tag"),
+          identical(foot_ui$name, "aside"),
+          identical(foot_ui$attribs$class, "ynow-lite-assumption-footnotes"),
+          is.null(ynow_lite_assumption_footnotes_ui(character(0), "en")),
+          is.null(ynow_lite_assumption_footnotes_ui(NULL, "zh-TW")))
+cat("PASS: Lite assumption footnote helper + bilingual title keys\n")
 valid <- "name,revenue,multiple\nHardware,100,2\nServices,200,3"
 stopifnot(nrow(parse_manual_sotp_segments(valid)) == 2,
           nrow(parse_manual_sotp_segments("name,revenue,multiple\nOnly,100,2")) == 0,
@@ -51,12 +64,16 @@ stopifnot(nrow(parse_manual_sotp_segments(valid)) == 2,
 cat("PASS: seven-engine required inputs, conditional requirements, zero vs missing, bilingual suggestions, immutable inputs, validated manual SOTP segments\n")
 
 # Exercise real Shiny messaging: Full must not write; Lite writes only finite
-# references, retains source-missing fields, and exports the applied assumptions.
+# references, retains source-missing fields, and exports the applied assumptions
+# as footnote payload (not mid-page field callouts).
 for (edition in c(FALSE, TRUE)) {
   shiny::testServer(function(input, output, session) {
     sent <- new.env(parent = emptyenv())
     session$sendInputMessage <- function(inputId, message) {
       sent[[inputId]] <- message$value
+    }
+    session$sendCustomMessage <- function(type, message) {
+      if (identical(type, "ynowParameterGuidance")) sent$guidance <<- message
     }
     assumptions <- ynow_parameter_guidance_server(input, session,
       searched = function() TRUE, ticker = function() "TEST", busy = function() FALSE,
@@ -72,10 +89,23 @@ for (edition in c(FALSE, TRUE)) {
       stopifnot(identical(sent$wacc_gordon, 8), is.null(sent$bridge_cash),
                 is.null(sent[["mod_fcf-fcf_nopat"]]))
       session$setInputs(wacc_gordon = 8)
+      session$flushReact()
+      session$elapse(400)
+      session$flushReact()
       stopifnot(any(grepl("Assumed value applied by Lite: WACC = 8", assumptions(), fixed = TRUE)))
+      g <- sent$guidance
+      stopifnot(is.list(g), is.list(g$assumptions), length(g$assumptions) >= 1L,
+                identical(g$assumptionTitle, "Notes — Lite applied assumptions"),
+                any(vapply(g$assumptions, function(x) {
+                  isTRUE(identical(x$id, "wacc_gordon")) &&
+                    grepl("Assumed value applied by Lite: WACC = 8", x$hint %||% "", fixed = TRUE)
+                }, logical(1))),
+                !any(vapply(g$items %||% list(), function(x) {
+                  grepl("Assumed value applied by Lite", x$hint %||% "", fixed = TRUE)
+                }, logical(1))))
       session$setInputs(wacc_gordon = 9)
       stopifnot(!any(grepl("WACC = 8", assumptions(), fixed = TRUE)))
-    } else stopifnot(length(ls(sent)) == 0, length(assumptions()) == 0)
+    } else stopifnot(length(setdiff(ls(sent), "guidance")) == 0, length(assumptions()) == 0)
   })
 }
 cat("PASS: Lite applies finite references with assumption disclosure; Full stays manual; missing financial facts stay missing; manual edits remove stale disclosures\n")
@@ -108,7 +138,21 @@ stopifnot(statement_operating_invested_capital(bs) == 550,
 bs[7,2] <- 550
 stopifnot(is.na(statement_other_equity_claims(bs)))
 stopifnot(is.na(statement_operating_invested_capital(bs[-3, ])))
+# Book proxy stays finite for Lite silent DCF when market-value claims are unknown.
+bs_nci <- data.frame(
+  Breakdown = c("Common Stock Equity", "Total Equity Gross Minority Interest",
+                "Minority Interest", "Preferred Stock"),
+  `2025` = c(500, 550, 50, 0), check.names = FALSE
+)
+stopifnot(is.na(statement_other_equity_claims(bs_nci)))
+stopifnot(identical(statement_other_equity_claims_book(bs_nci), 50))
+bs_missing_lines <- data.frame(
+  Breakdown = c("Common Stock Equity", "Total Equity Gross Minority Interest"),
+  `2025` = c(500, 550), check.names = FALSE
+)
+stopifnot(identical(statement_other_equity_claims_book(bs_missing_lines), 0))
 cat("PASS: operating IC excludes cash/nonoperating assets/nondebt liabilities; unknown claims stay missing\n")
+cat("PASS: Lite book proxy for other equity claims uses Minority Interest (+ preferred)\n")
 
 # A late source refresh may clear a default that the browser already echoed.
 # Lite must reapply it; Full must never write it. RI g shares central SGR defaults.
@@ -236,3 +280,129 @@ shiny::testServer(function(input,output,session) {
  stopifnot(sends$count==before,input$wacc_gordon==7)
 })
 cat('PASS: default retry cap is four; stock changes cancel old retry generations and retain finite user/source input\n')
+
+# Lite silent DCF must use disclosed UI WACC when calculated_wacc is NA.
+# Full silent path still waits (no estimate written).
+cell <- function(initial = NULL) {
+  value <- initial
+  function(x) { if (!missing(x)) value <<- x; value }
+}
+for (edition in c(FALSE, TRUE)) {
+  e <- new.env(parent = globalenv())
+  e$isolate <- function(x) x
+  e$lite_mode <- function() edition
+  e$.model_integrity_ready <- function(model) TRUE
+  e$lite_dcf_silent <- function() TRUE
+  e$lite_desired_des <- function() list(two_stage = FALSE, claim = "fcff", method = "sgr")
+  e$fcf_results <- list(df_fcf = function() data.frame(FCFF = c(10, 12, 14, 16, 18)))
+  e$calculated_wacc <- function() NA_real_
+  e$current_ticker <- function() "AAPL"
+  e$input <- list(years = 5, dcf_mode = "gordon", dcf_claim = "fcff", sgr = 2,
+                  wacc_gordon = 9, use_estimated_re = FALSE)
+  e$.effective_dcf_scenario <- eval(assignments[[".effective_dcf_scenario"]], e)
+  e$.shared_bridge <- function() list(cash = 20, debt = 10, shares = 10, other_claims = 0)
+  e$.valuation_shares <- function() list(shares = 10, method = "balance_sheet")
+  e$.dcf_per_share <- function(eq, sh) eq / sh$shares
+  e$stock_price_estimate_val <- cell()
+  e$dcf_value_result <- cell()
+  e$dcf_audit_snap <- cell()
+  e$lite_dcf_block <- cell()
+  e$req <- function(...) invisible(TRUE)
+  e$updateNumericInput <- function(...) invisible(NULL)
+  e$APP_DEFAULTS <- APP_DEFAULTS
+  e$.execute_dcf_calc <- eval(assignments[[".execute_dcf_calc"]], e)
+  e$.execute_dcf_calc(notify = FALSE)
+  px <- e$stock_price_estimate_val()
+  if (isTRUE(edition)) {
+    stopifnot(is.finite(px), px > 0)
+  } else {
+    stopifnot(is.null(px) || !is.finite(suppressWarnings(as.numeric(px)[1])))
+  }
+}
+cat("PASS: Lite silent DCF uses disclosed WACC when calculated_wacc is NA; Full silent still waits\n")
+
+# Missing-parameter toast: Model Dashboard → Quant Backtest Lab only; locked = no toast.
+range_tabs <- ynow_missing_params_notify_tabs()
+stopifnot(identical(range_tabs[1], "get_started"),
+          identical(range_tabs[length(range_tabs)], "lab_notes"),
+          all(c("dcf_calculator", "hfv", "sotp_calculator", "nav_calculator",
+                "pb_calculator", "ddm_calculator", "ri_calculator",
+                "rel_mult_ev", "rel_multiples_calculator", "rel_mult_rev") %in% range_tabs),
+          !"home" %in% range_tabs,
+          !"dashboard" %in% range_tabs,
+          !"decision_checklist" %in% range_tabs,
+          !"smart_analysis" %in% range_tabs,
+          !"mos_assumptions" %in% range_tabs)
+for (ok in c("get_started", "dcf_calculator", "hfv", "lab_notes")) {
+  stopifnot(isTRUE(ynow_missing_params_notify_allowed(ok)),
+            !isTRUE(ynow_missing_params_notify_allowed(ok, locked = TRUE)))
+}
+for (off in c("home", "dashboard", "smart_analysis", "decision_checklist",
+              "price_alerts", "about", "", NA_character_)) {
+  stopifnot(!isTRUE(ynow_missing_params_notify_allowed(off)),
+            !isTRUE(ynow_missing_params_notify_allowed(off, locked = TRUE)))
+}
+param_src <- paste(readLines(file.path(app, "parameter_completeness.R"),
+                             warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+srv_src <- paste(readLines(file.path(app, "ynow_server.R"),
+                           warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+stopifnot(
+  grepl("ynow_missing_params_notify_allowed\\(active_tab, locked = is_locked\\)", param_src),
+  grepl("input\\$sidebar_tabs", param_src),
+  grepl("tab_locked = function\\(tab\\) FALSE", param_src),
+  grepl("!isTRUE\\(allow_toast\\)", param_src),
+  grepl("tab_locked = \\.ynow_missing_params_tab_locked", srv_src),
+  grepl("ynow_sidebar_tab_guest_locked", srv_src),
+  grepl("ynow_access_is_locked", srv_src)
+)
+# Guidance server still runs field hints out of range; toast path gated by allow_toast.
+shiny::testServer(function(input, output, session) {
+  sent <- new.env(parent = emptyenv())
+  session$sendCustomMessage <- function(type, message) {
+    if (identical(type, "ynowParameterGuidance")) sent$guidance <<- message
+  }
+  session$sendInputMessage <- function(...) invisible(NULL)
+  ynow_parameter_guidance_server(
+    input, session,
+    searched = function() TRUE, ticker = function() "TEST", busy = function() FALSE,
+    model_rec = function() list(primary = "dcf"), locale = function() "en",
+    defaults = APP_DEFAULTS, ke = function() .09, wacc = function() .08,
+    lite = function() FALSE,
+    tab_locked = function(tab) identical(tab, "lab_notes")
+  )
+}, {
+  session$setInputs(sidebar_tabs = "home", dcf_mode = "gordon", dcf_claim = "fcff")
+  session$elapse(400)
+  session$flushReact()
+  stopifnot(is.list(sent$guidance), length(sent$guidance$items) >= 1L)
+  session$setInputs(sidebar_tabs = "dcf_calculator")
+  session$elapse(400)
+  session$flushReact()
+  stopifnot(is.list(sent$guidance), length(sent$guidance$items) >= 1L)
+  session$setInputs(sidebar_tabs = "lab_notes")
+  session$elapse(400)
+  session$flushReact()
+  stopifnot(is.list(sent$guidance), length(sent$guidance$items) >= 1L)
+})
+cat("PASS: missing-parameter toast scoped to Model Dashboard→Quant Backtest Lab; locked tabs suppress\n")
+
+# Applied Lite assumptions render as tab-footer footnotes, not field help-blocks.
+js_src <- paste(readLines(file.path(app, "www/parameter_completeness.js"),
+                           warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+ui_src <- paste(readLines(file.path(app, "ynow_ui.R"),
+                          warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+srv_src2 <- paste(readLines(file.path(app, "ynow_server.R"),
+                            warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+stopifnot(
+  grepl("message\\.assumptions", js_src),
+  grepl("ynow-lite-assumption-footnotes", js_src),
+  grepl("ynow-lite-assumption-footnotes", ui_src),
+  grepl("smart_analysis_assumption_notes", ui_src),
+  grepl("output\\$smart_analysis_assumption_notes", srv_src2),
+  grepl("ynow_lite_assumption_footnotes_ui", srv_src2),
+  # Mid-page Smart Analysis alert-info for applied assumptions must be gone.
+  !grepl("if \\(length\\(notes\\)\\) tags\\$div\\(class = \"alert alert-info\"", srv_src2),
+  grepl("assumptions = assumption_items", param_src),
+  grepl("assumptionTitle", param_src)
+)
+cat("PASS: Lite applied assumptions routed to footer footnotes (JS + Smart Analysis)\n")

@@ -187,7 +187,7 @@ fs_item_to_focus_metric <- function(item) {
   NA_character_
 }
 
-#' Legacy no-op: focus metrics use a gold box border (`.ynow-focus-metric-box`), not a gold dot.
+#' Legacy no-op: focus metrics use an animated orange-gold frame (`.ynow-focus-metric-box`), not a gold dot.
 .ynow_focus_metric_mark <- function(title = NULL) {
   NULL
 }

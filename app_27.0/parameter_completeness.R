@@ -106,13 +106,42 @@ ynow_required_parameter_rows <- function(values, defaults = list(), locale = "en
   add("sotp", "mod_sotp-nonop", "Non-operating assets", "sotp_calculator", "Include only separately valued non-operating assets; do not count cash twice. A zero default excludes an additional non-operating valuation adjustment; it does not assert that the reported asset balance is zero.", "僅填獨立估值的非營運資產，勿重複計入現金；預設零表示不另加計非營運資產估值，並非宣稱實際餘額為零。", "sotp_nonop")
   if (!is.null(values[[".sotp_ready"]])) add("sotp", "mod_sotp-manual_segments", "Segment data", "sotp_calculator", "Supply at least two distinct positive segment revenues and explicit EV/Sales multiples. Revenue must be in the analysis currency.", "請補填至少兩個不同部門的正值營收及各自 EV/Sales 倍數，營收須採分析幣別。", present = isTRUE(values[[".sotp_ready"]]))
   add("sotp", "mod_sotp-default_ev_sales", "Segment EV/Sales", "sotp_calculator", "Use distinct reported segments and an explicit multiple assumption.", "須有可辨識的部門資料，並明確設定倍數假設。", "rel_ev_sales_multiple")
-  if (isTRUE(values[[".fx_needed"]])) for (model in c("dcf", "ddm", "ri", "pb", "nav", "multiples", "sotp")) add(model, "bridge_fx", "USD/TWD FX", "dashboard", "Enter TWD per USD using the valuation-date exchange rate. A manual value overrides the automatic quote; clear it to restore automatic FX.", "請填估值日每一美元兌新台幣的匯率；人工值優先於自動報價，清除此欄可恢復自動匯率。", present = FALSE)
+  # Manual bridge_fx UI removed; auto USD/TWD FX + notif_fx_* cover conversion failures.
   if (!length(rows)) return(data.frame(model = character(), id = character(), label = character(), tab = character(), hint = character(), suggestion = numeric()))
   do.call(rbind, rows)
 }
 
+#' Sidebar tabNames where the missing-parameter toast may fire.
+#' Inclusive range: Model Dashboard (`get_started`) → Quant Backtest Lab (`lab_notes`).
+#' Locked tabs in this range are treated as hidden for this purpose (do not notify).
+ynow_missing_params_notify_tabs <- function() {
+  c(
+    "get_started",
+    "nav_calculator", "pb_calculator",
+    "dcf_calculator", "ddm_calculator", "ri_calculator",
+    "rel_mult_ev", "rel_multiples_calculator", "rel_mult_rev",
+    "sotp_calculator",
+    "hfv",
+    "lab_notes"
+  )
+}
+
+#' TRUE when the active sidebar tab may show the missing-parameter notification.
+#' @param tab shinydashboard tabName
+#' @param locked TRUE when the tab is freemium/ACL locked (treat as hidden)
+ynow_missing_params_notify_allowed <- function(tab, locked = FALSE) {
+  t <- as.character(tab %||% "")[1]
+  if (!nzchar(t) || !(t %in% ynow_missing_params_notify_tabs())) return(FALSE)
+  if (isTRUE(locked)) return(FALSE)
+  TRUE
+}
+
 ynow_parameter_guidance_server <- function(input, session, searched, ticker, busy,
-                                           model_rec, locale, defaults, ke, wacc, sotp_ready = function() TRUE, fx_needed = function() FALSE, lite = function() FALSE) {
+                                           model_rec, locale, defaults, ke, wacc,
+                                           sotp_ready = function() TRUE,
+                                           fx_needed = function() FALSE,
+                                           lite = function() FALSE,
+                                           tab_locked = function(tab) FALSE) {
   applied <- shiny::reactiveVal(list())
   retry_tick <- shiny::reactiveVal(0L)
   retry_scheduled <- FALSE
@@ -145,6 +174,10 @@ ynow_parameter_guidance_server <- function(input, session, searched, ticker, bus
   }), 300)
   shiny::observe({
     if (!isTRUE(searched()) || isTRUE(busy())) return()
+    # Re-evaluate toast on tab switch even when the missing set is unchanged.
+    active_tab <- as.character(input$sidebar_tabs %||% "")[1]
+    is_locked <- tryCatch(isTRUE(tab_locked(active_tab)), error = function(e) FALSE)
+    allow_toast <- ynow_missing_params_notify_allowed(active_tab, locked = is_locked)
     rows <- missing()
     tick <- retry_tick()
     ledger <- shiny::isolate(applied())
@@ -194,23 +227,32 @@ ynow_parameter_guidance_server <- function(input, session, searched, ticker, bus
       }, delay = 0.75)
     }
     hints <- rows[!duplicated(rows$id), , drop = FALSE]
+    assumption_items <- list()
     for (id in names(ledger)) {
       value <- suppressWarnings(as.numeric(input[[id]])[1])
       ref <- ledger[[id]]
       if (is.finite(value) && abs(value - ref$value) <= max(1, abs(ref$value)) * 1e-7) {
         hints <- hints[hints$id != id, , drop = FALSE]
-        hints <- rbind(hints, data.frame(model = "assumption", id = id, label = ref$label,
-          tab = "", hint = paste0(ui_str("param_assumption_applied", locale()), ": ",
-          format(ref$value, trim = TRUE), ". ", ref$hint), suggestion = ref$value))
+        note <- paste0(ui_str("param_assumption_applied", locale()), ": ",
+          ref$label, " = ", format(ref$value, trim = TRUE), ". ", ref$hint)
+        assumption_items[[length(assumption_items) + 1L]] <- list(id = id, hint = note)
       }
     }
-    session$sendCustomMessage("ynowParameterGuidance", list(items = lapply(seq_len(nrow(hints)), function(i) {
-      as.list(hints[i, c("id", "hint"), drop = FALSE])
-    })))
+    # Missing-param guidance stays beside fields. Lite applied-assumption
+    # disclosures render as tab-footer footnotes (not mid-page field callouts).
+    session$sendCustomMessage("ynowParameterGuidance", list(
+      items = lapply(seq_len(nrow(hints)), function(i) {
+        as.list(hints[i, c("id", "hint"), drop = FALSE])
+      }),
+      assumptions = assumption_items,
+      assumptionTitle = ui_str("param_assumption_footnotes_title", locale())
+    ))
     chosen <- requested()
     if (!nzchar(chosen)) chosen <- as.character(model_rec()$primary %||% "")[1]
     needed <- rows[rows$model == chosen, , drop = FALSE]
-    if (isTRUE(lite()) || !nrow(needed)) {
+    # Toast only on Model Dashboard → Quant Backtest Lab (unlocked). Field
+    # guidance above still applies on every tab.
+    if (isTRUE(lite()) || !nrow(needed) || !isTRUE(allow_toast)) {
       shiny::removeNotification("ynow_missing_parameters", session = session)
       return()
     }
@@ -236,6 +278,24 @@ ynow_parameter_guidance_server <- function(input, session, searched, ticker, bus
     vapply(used, function(x) paste0(ui_str("param_assumption_applied", locale()), ": ",
       x$label, " = ", format(x$value, trim = TRUE), ". ", x$hint), character(1))
   })
+}
+
+#' Annotation-style Lite applied-assumption footnotes (tab/page footer).
+#' @param notes character vector from `parameter_assumptions()` / guidance ledger
+#' @param locale `"en"` or `"zh-TW"`
+ynow_lite_assumption_footnotes_ui <- function(notes, locale = "en") {
+  notes <- as.character(notes %||% character(0))
+  notes <- notes[nzchar(trimws(notes))]
+  if (!length(notes)) return(NULL)
+  shiny::tags$aside(
+    class = "ynow-lite-assumption-footnotes",
+    role = "note",
+    shiny::tags$span(
+      class = "ynow-lite-assumption-footnotes-title",
+      ui_str("param_assumption_footnotes_title", locale)
+    ),
+    shiny::tags$ol(lapply(notes, function(n) shiny::tags$li(n)))
+  )
 }
 
 parse_manual_sotp_segments <- function(text) {

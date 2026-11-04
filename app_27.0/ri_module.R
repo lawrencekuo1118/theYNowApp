@@ -223,15 +223,9 @@ ri_module_ui <- function(id) {
         fluidRow(
           column(
             12,
-            fluidRow(
-              column(
-                width = 6,
-                ynow_calc_btn(ns("btn_calc_ri"), "試算 RI")
-              ),
-              column(
-                width = 6,
-                ynow_reset_defaults_btn(ns("btn_reset_ri_params"))
-              )
+            ynow_calc_reset_row(
+              ynow_calc_btn(ns("btn_calc_ri"), "試算 RI"),
+              ynow_reset_defaults_btn(ns("btn_reset_ri_params"))
             ),
             tags$p(
               id = ns("ynow_ri_calc_hint"),

@@ -81,6 +81,13 @@ check(
       perl = TRUE
     )
 )
+check(
+  "Macro resumes paused quote/HTCDI ticks on tab re-entry",
+  grepl(".arm_resume", macro, fixed = TRUE) &&
+    grepl(".run_resume_if", macro, fixed = TRUE) &&
+    grepl(".fetch_resume", macro, fixed = TRUE) &&
+    grepl("arm_resume(\"htcdi\"", macro, fixed = TRUE)
+)
 
 hook_a_started <- NA_real_
 hook_a_finished <- NA_real_

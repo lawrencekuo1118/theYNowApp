@@ -472,11 +472,10 @@ calc_sotp_revenue_implied <- function(segments, ev_sales_multiple, cash, debt, s
 }
 
 .rel_run_row <- function(ns, calc_id, reset_id, sync_id) {
-  fluidRow(
-    column(width = 4, ynow_calc_btn(ns(calc_id), label = tags$span(class = "ynow-rel-calc-lbl", "Run multiples"))),
-    column(width = 4, ynow_reset_defaults_btn(ns(reset_id))),
-    column(
-      width = 4,
+  ynow_calc_reset_row(
+    ynow_calc_btn(ns(calc_id), label = tags$span(class = "ynow-rel-calc-lbl", "Run multiples")),
+    ynow_reset_defaults_btn(ns(reset_id)),
+    sync_ui = tagList(
       br(),
       actionButton(
         ns(sync_id),
@@ -545,7 +544,7 @@ relative_multiples_module_ui <- function(id) {
           ),
           tags$p(
             id = "ynow_rel_multiples_bridge_help", class = "help-block",
-            "Cash, Total Debt, Shares, and total Revenue are set once on Model Dashboard → Cash, Debt, Shares & Revenue (shared). This page shows the applied values."
+            "Cash, Total Debt, Shares, and total Revenue are set once on Model Dashboard → Shared model parameters. This page shows the applied values."
           )
         )
       )

@@ -237,11 +237,29 @@ kf <- gregexpr("@keyframes ynow-logo-flow", ui_txt, fixed = TRUE)[[1]]
 check("single logo-flow keyframes", length(kf) == 1L && kf[[1]] > 0)
 check("badge flow override not second animation", grepl(".ynow-fund-profile-badge .ynow-htcdi-flow", ui_txt, fixed = TRUE))
 check("Rf still excluded from flow", grepl(".ynow-macro-kpi--rf .ynow-htcdi-flow", ui_txt, fixed = TRUE))
-check("CSS gold border on focus KPI", grepl(".small-box.ynow-focus-metric-box", ui_txt, fixed = TRUE))
-check("CSS focus gold thicker border", grepl("border: 3px solid var(--ynow-gold", ui_txt, fixed = TRUE))
-check("CSS focus gold pulse keyframes", grepl("@keyframes ynow-focus-gold-pulse", ui_txt, fixed = TRUE) &&
-        grepl("animation: ynow-focus-gold-pulse", ui_txt, fixed = TRUE))
+check("CSS focus frame on focus KPI", grepl(".small-box.ynow-focus-metric-box", ui_txt, fixed = TRUE))
+check("CSS focus vine frame asset", grepl("ynow-vine-kpi-frame.png", ui_txt, fixed = TRUE))
+check("CSS focus vine border-image perimeter", grepl("border-image-source:", ui_txt, fixed = TRUE) &&
+        grepl("border-image-slice:", ui_txt, fixed = TRUE))
+check("CSS focus vine breathe keyframes", grepl("@keyframes ynow-focus-vine-breathe", ui_txt, fixed = TRUE) &&
+        grepl("animation: ynow-focus-vine-breathe", ui_txt, fixed = TRUE))
 check("legend uses border swatch", grepl("ynow-focus-metric-swatch", ui_txt, fixed = TRUE))
+check("focus legend above FINANCIAL REPORT", {
+  grepl("ynow_focus_metric_legend_note_ui", ui_txt, fixed = TRUE) &&
+    grepl("ynow-focus-metric-note--above-fs", ui_txt, fixed = TRUE) &&
+    grepl("ynow-dashboard-fin-report-wrap > .ynow-focus-metric-note--above-fs", ui_txt, fixed = TRUE)
+})
+check("focus legend not inside KPI color legend wrap", {
+  m <- regexpr(
+    "(?s)\\.kpi_band_color_legend_ui <- function\\(\\) \\{.*?\\n\\}",
+    ui_txt,
+    perl = TRUE
+  )
+  block <- if (m[[1]] > 0) regmatches(ui_txt, m)[[1]] else ""
+  nzchar(block) &&
+    grepl("ynow_kpi_legend_blue", block, fixed = TRUE) &&
+    !grepl("ynow_kpi_legend_focus", block, fixed = TRUE)
+})
 # width=NULL returns bare .small-box (no Bootstrap col wrapper)
 box_null <- kpi_band_value_box("12%", "毛利率", "none", width = NULL, mark_focus = TRUE)
 box_null_html <- as.character(box_null)
