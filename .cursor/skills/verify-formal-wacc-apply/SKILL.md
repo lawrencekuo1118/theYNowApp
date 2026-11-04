@@ -86,7 +86,7 @@ Then the helper was restored and the check returned to all OK. If a future chang
 | Server apply site | `app_27.0/ynow_server.R` → `.auto_recalc_capm_wacc` (calls helper; writes three IDs) |
 | Property runner | `app_27.0/tests/test_formal_wacc_apply.R` |
 | Contract / fixtures | `app_27.0/tests/test_two_stage_wacc_other_equity.R` |
-| **Sync commit** | `SYNC_COMMIT_PLACEHOLDER` — last commit at which this verification was confirmed to describe the code above |
+| **Sync commit** | `2d69f9d4a9b9923c3338d8a2b6abd6d26fafd56c` — last commit at which this verification was confirmed to describe the code above |
 
 After an intentional change to covered code: re-run the commands in **How to run**, then replace **Sync commit** with the new confirming commit SHA (full or short). Do not advance the sync commit on a failing run.
 
