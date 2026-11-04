@@ -63,6 +63,17 @@ ttm<-data;ttm[['Cash Flow']]<-data[['Cash Flow']][,1:2];names(ttm[['Cash Flow']]
 stopifnot(is.na(ynow_integrity_facts(list(source_of(ttm)),periods[1],context)$da$value))
 view<-ynow_fiscal_frame(recovered$sources,'Cash Flow',periods[1],context)
 stopifnot(ncol(view)==2L,identical(names(view)[2],periods[1]),identical(attr(view,'valuation_fiscal_period'),periods[1]))
+# Single-period model views cannot feed YoY KPI growth; history frames must.
+single_is<-ynow_fiscal_frame(sources,'Income Statement',periods[1],context)
+stopifnot(is.na(get_avg_growth(select_clean_metric_row(single_is,'Total Revenue',include_ttm=FALSE))))
+hist_is<-ynow_fiscal_history_frame(sources,'Income Statement',context)
+hist_cf<-ynow_fiscal_history_frame(sources,'Cash Flow',context)
+rev_g<-get_avg_growth(select_clean_metric_row(hist_is,'Total Revenue',include_ttm=FALSE))
+ocf_g<-get_avg_growth(select_clean_metric_row(hist_cf,'Operating Cash Flow',include_ttm=FALSE))
+stopifnot(ncol(hist_is)>=3L,identical(names(hist_is)[-1],periods),
+ is.finite(rev_g),abs(rev_g-((1000-900)/900*100))<1e-9,
+ is.finite(ocf_g),abs(ocf_g-((250-225)/225*100))<1e-9)
+cat('PASS: fiscal history frame restores YoY growth for KPI consumers\n')
 # Current Summary EPS cannot silently replace a missing selected-year EPS.
 set_ynow_currency_context('USD',32.6,'USD','USD')
 empty<-view;empty[[1]]<-'unrelated'

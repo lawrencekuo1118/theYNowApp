@@ -7499,22 +7499,30 @@ server <- function(input, output, session) {
     ynow_binding_matches(input, expected, ynow_required_binding_ids(model, config))
   }
 
+  # KPI YoY growth / multi-year averages need every annual column.
+  # Single-period ynow_fiscal_frame stays for model integrity bindings only.
   d_income_statement <- reactive({
     req(scraped_financials())
     session_currency(); fx_usd_twd()
-    df <- ynow_fiscal_frame(model_integrity_sources(), "Income Statement", model_fiscal_period(), model_integrity_context())
+    df <- ynow_fiscal_history_frame(
+      model_integrity_sources(), "Income Statement", model_integrity_context()
+    )
     scale_financial_df_money(df, statement_currency(), session_currency(), fx_usd_twd())
   })
   d_balance_sheet <- reactive({
     req(scraped_financials())
     session_currency(); fx_usd_twd()
-    df <- ynow_fiscal_frame(model_integrity_sources(), "Balance Sheet", model_fiscal_period(), model_integrity_context())
+    df <- ynow_fiscal_history_frame(
+      model_integrity_sources(), "Balance Sheet", model_integrity_context()
+    )
     scale_financial_df_money(df, statement_currency(), session_currency(), fx_usd_twd())
   })
   d_cash_flow <- reactive({
     req(scraped_financials())
     session_currency(); fx_usd_twd()
-    df <- ynow_fiscal_frame(model_integrity_sources(), "Cash Flow", model_fiscal_period(), model_integrity_context())
+    df <- ynow_fiscal_history_frame(
+      model_integrity_sources(), "Cash Flow", model_integrity_context()
+    )
     scale_financial_df_money(df, statement_currency(), session_currency(), fx_usd_twd())
   })
 
