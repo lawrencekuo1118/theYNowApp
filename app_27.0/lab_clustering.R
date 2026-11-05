@@ -15,6 +15,10 @@ LAB_CLUSTER_FEATURES <- c(
   "PB_Ratio"
 )
 
+# Levered equity β (Yahoo Summary "Beta (5Y Monthly)") — CAPM default source.
+# Not part of K-Means feature vector (size-free ratio rule); used by Beta mode.
+LAB_CLUSTER_BETA_COL <- "Beta"
+
 LAB_CLUSTER_AXIS_CHOICES <- c(
   "ROE" = "ROE",
   "Operating Margin" = "Operating_Margin",
@@ -22,8 +26,124 @@ LAB_CLUSTER_AXIS_CHOICES <- c(
   "OpInc YoY" = "OpInc_YoY",
   "Debt Ratio" = "Debt_Ratio",
   "Trailing P/E" = "PE_Ratio",
-  "P/B" = "PB_Ratio"
+  "P/B" = "PB_Ratio",
+  "Beta (levered β_L)" = "Beta"
 )
+
+#' Clustering method choices: K-Means ratios vs Beta bins
+lab_cluster_mode_choices <- function(locale = "zh-TW") {
+  loc <- if (exists("normalize_ui_locale", mode = "function")) {
+    normalize_ui_locale(locale)
+  } else {
+    as.character(locale %||% "zh-TW")[1]
+  }
+  is_zh <- grepl("^zh", tolower(loc), perl = TRUE)
+  if (is_zh) {
+    c(
+      "K-Means（比率／成長率）" = "kmeans",
+      "依 Beta（槓桿股權 β_L）" = "beta"
+    )
+  } else {
+    c(
+      "K-Means (ratios / growth)" = "kmeans",
+      "By Beta (levered equity β_L)" = "beta"
+    )
+  }
+}
+
+lab_normalize_cluster_mode <- function(x, default = "kmeans") {
+  s <- tolower(trimws(as.character(x %||% default)[1]))
+  if (!nzchar(s)) s <- default
+  if (s %in% c("kmeans", "k-means", "km", "ratio", "ratios", "比率")) return("kmeans")
+  if (s %in% c("beta", "β", "b", "levered", "equity_beta", "依beta", "依 beta")) {
+    return("beta")
+  }
+  default
+}
+
+#' Fixed interpretive Beta bins (levered equity β_L / CAPM Summary convention).
+#' Breaks: (−Inf, 0), [0, 0.8), [0.8, 1.0), [1.0, 1.3), [1.3, +Inf); NA → missing bin.
+LAB_CLUSTER_BETA_BIN_BREAKS <- c(-Inf, 0, 0.8, 1.0, 1.3, Inf)
+
+lab_cluster_beta_bin_labels <- function(locale = "en") {
+  loc_raw <- as.character(if (is.null(locale) || !length(locale)) "en" else locale)[1]
+  loc <- if (exists("normalize_ui_locale", mode = "function")) {
+    normalize_ui_locale(loc_raw)
+  } else {
+    loc_raw
+  }
+  is_zh <- grepl("^zh", tolower(as.character(loc)), perl = TRUE)
+  if (is_zh) {
+    c(
+      "負向 Beta（β_L < 0）",
+      "低 Beta／防禦（0 ≤ β_L < 0.8）",
+      "低於市場（0.8 ≤ β_L < 1.0）",
+      "貼近市場（1.0 ≤ β_L < 1.3）",
+      "高 Beta／積極（β_L ≥ 1.3）",
+      "β_L 缺值（資料受限）"
+    )
+  } else {
+    c(
+      "Negative β (β_L < 0)",
+      "Low / defensive (0 ≤ β_L < 0.8)",
+      "Sub-market (0.8 ≤ β_L < 1.0)",
+      "Market-like (1.0 ≤ β_L < 1.3)",
+      "High / aggressive (β_L ≥ 1.3)",
+      "Missing β_L (data-limited)"
+    )
+  }
+}
+
+#' Assign Cluster_ID / Cluster_Label from levered Beta bins (research grouping)
+lab_cluster_assign_beta_bins <- function(beta, locale = "en") {
+  b <- suppressWarnings(as.numeric(beta))
+  labs <- lab_cluster_beta_bin_labels(locale)
+  # cut intervals: (-Inf,0] wait — use right=FALSE so [0,0.8) etc.; negative uses (-Inf,0)
+  # breaks (-Inf,0,0.8,1.0,1.3,Inf) with right=FALSE →
+  #   [-Inf,0), [0,0.8), [0.8,1.0), [1.0,1.3), [1.3,Inf)
+  # Note: β==0 lands in Low/defensive; β exactly on right edge goes to next bin.
+  idx <- rep(6L, length(b)) # missing
+  ok <- is.finite(b)
+  if (any(ok)) {
+    cut_id <- as.integer(cut(
+      b[ok],
+      breaks = LAB_CLUSTER_BETA_BIN_BREAKS,
+      include.lowest = TRUE,
+      right = FALSE,
+      labels = FALSE
+    ))
+    # cut with right=FALSE on last Inf bin: values == Inf rare; β≥1.3 → bin 5
+    cut_id[!is.finite(cut_id)] <- 5L
+    idx[ok] <- cut_id
+  }
+  list(
+    Cluster_ID = as.integer(idx),
+    Cluster_Label = labs[idx]
+  )
+}
+
+lab_cluster_axis_choices <- function(locale = "en") {
+  loc <- if (exists("normalize_ui_locale", mode = "function")) {
+    normalize_ui_locale(locale)
+  } else {
+    as.character(locale %||% "en")[1]
+  }
+  is_zh <- grepl("^zh", tolower(loc), perl = TRUE)
+  if (is_zh) {
+    c(
+      "ROE" = "ROE",
+      "營業利益率" = "Operating_Margin",
+      "營收 YoY" = "Rev_YoY",
+      "營業利益 YoY" = "OpInc_YoY",
+      "負債比率" = "Debt_Ratio",
+      "Trailing P/E" = "PE_Ratio",
+      "P/B" = "PB_Ratio",
+      "Beta（槓桿 β_L）" = "Beta"
+    )
+  } else {
+    LAB_CLUSTER_AXIS_CHOICES
+  }
+}
 
 #' Winsorize numeric vector to [lo, hi] empirical quantiles
 lab_cluster_winsorize <- function(x, lo = 0.01, hi = 0.99) {
@@ -49,6 +169,7 @@ lab_cluster_features_to_df <- function(rows) {
     Debt_Ratio = numeric(0),
     PE_Ratio = numeric(0),
     PB_Ratio = numeric(0),
+    Beta = numeric(0),
     stringsAsFactors = FALSE
   )
   if (is.null(rows)) return(empty)
@@ -80,7 +201,8 @@ lab_cluster_features_to_df <- function(rows) {
     OpIncYoY = "OpInc_YoY",
     DebtRatio = "Debt_Ratio", debtToEquity = "Debt_Ratio",
     PE = "PE_Ratio", trailingPE = "PE_Ratio",
-    PB = "PB_Ratio", priceToBook = "PB_Ratio"
+    PB = "PB_Ratio", priceToBook = "PB_Ratio",
+    beta = "Beta", Beta_L = "Beta", equity_beta = "Beta", levered_beta = "Beta"
   )
   for (nm in names(rename_map)) {
     if (nm %in% names(df) && !rename_map[[nm]] %in% names(df)) {
@@ -104,6 +226,7 @@ lab_cluster_features_to_df <- function(rows) {
     df[[f]] <- suppressWarnings(as.numeric(df[[f]]))
   }
   df$market_cap <- suppressWarnings(as.numeric(df$market_cap))
+  df$Beta <- suppressWarnings(as.numeric(df$Beta))
   df <- df[!is.na(df$ticker) & nzchar(df$ticker), need, drop = FALSE]
   rownames(df) <- NULL
   df
@@ -184,7 +307,7 @@ lab_cluster_merge_feature_dfs <- function(primary, secondary) {
   if (nrow(b) == 0L) return(a)
   all_tks <- unique(c(as.character(a$ticker), as.character(b$ticker)))
   all_tks <- all_tks[nzchar(all_tks) & !is.na(all_tks)]
-  feats <- LAB_CLUSTER_FEATURES
+  feats <- c(LAB_CLUSTER_FEATURES, LAB_CLUSTER_BETA_COL)
   rows <- lapply(all_tks, function(sym) {
     ra <- a[match(sym, a$ticker), , drop = FALSE]
     rb <- b[match(sym, b$ticker), , drop = FALSE]
@@ -340,7 +463,8 @@ lab_fetch_cluster_features_r <- function(tickers, timeout_sec = 12) {
       OpInc_YoY = NA_real_,
       Debt_Ratio = NA_real_,
       PE_Ratio = NA_real_,
-      PB_Ratio = NA_real_
+      PB_Ratio = NA_real_,
+      Beta = NA_real_
     )
   }
 
@@ -445,6 +569,9 @@ lab_fetch_cluster_features_r <- function(tickers, timeout_sec = 12) {
         pb <- .lab_cluster_yahoo_raw(sd$priceToBook %||% ks$priceToBook)
         if (is.finite(pe) && pe > 0) row$PE_Ratio <- pe
         if (is.finite(pb) && pb > 0) row$PB_Ratio <- pb
+        # Levered equity β — Yahoo Summary "Beta (5Y Monthly)" (CAPM default)
+        beta_v <- .lab_cluster_yahoo_raw(ks$beta)
+        if (is.finite(beta_v)) row$Beta <- beta_v
         return(row)
       }
       if (!isTRUE(auth_retry)) break
@@ -807,12 +934,20 @@ lab_cluster_ensure_ticker_in_features <- function(feats, ensure_ticker) {
     row <- list(
       ticker = ensure_raw,
       name = ensure_raw,
-      market_cap = NA_real_
+      market_cap = NA_real_,
+      Beta = NA_real_
     )
     for (f in LAB_CLUSTER_FEATURES) row[[f]] <- NA_real_
     feats <- lab_cluster_merge_feature_dfs(feats, lab_cluster_features_to_df(list(row)))
   }
   feats
+}
+
+#' Count rows with finite levered Beta (Beta grouping mode keep rule)
+lab_cluster_usable_beta_rows <- function(df) {
+  if (is.null(df) || !is.data.frame(df) || nrow(df) == 0L) return(0L)
+  if (!LAB_CLUSTER_BETA_COL %in% names(df)) return(0L)
+  as.integer(sum(is.finite(suppressWarnings(as.numeric(df[[LAB_CLUSTER_BETA_COL]]))), na.rm = TRUE))
 }
 
 #' Solo re-fetch for Search / radar-focus when still <2 finite ratios.
@@ -1088,7 +1223,97 @@ lab_run_stock_clustering <- function(df_financials, k_clusters = 3L,
     n = nrow(df),
     tot_withinss = km$tot.withinss,
     betweenss = km$betweenss,
-    labels = lab_map
+    labels = lab_map,
+    cluster_mode = "kmeans"
+  )
+}
+
+#' Group by levered equity Beta bins (Yahoo Summary β_L / CAPM default source).
+#' Ratio features are retained for scatter/radar; Cluster_ID comes from Beta bins.
+#' @param ensure_ticker optional Search / radar-focus ticker(s) kept even if Beta NA
+lab_run_beta_clustering <- function(df_financials, locale = "en",
+                                    ensure_ticker = NULL) {
+  df <- as.data.frame(df_financials, stringsAsFactors = FALSE)
+  if (nrow(df) < 1L) stop("Need at least 1 stock with features for Beta grouping.")
+  if (!LAB_CLUSTER_BETA_COL %in% names(df)) {
+    df[[LAB_CLUSTER_BETA_COL]] <- NA_real_
+  }
+  df[[LAB_CLUSTER_BETA_COL]] <- suppressWarnings(as.numeric(df[[LAB_CLUSTER_BETA_COL]]))
+
+  n_finite_beta <- as.integer(is.finite(df[[LAB_CLUSTER_BETA_COL]]))
+  keep <- n_finite_beta > 0L
+  for (ens in lab_cluster_normalize_ensure_tickers(ensure_ticker)) {
+    ensure_hit <- lab_cluster_match_ticker(df$ticker, ens)
+    if (!is.na(ensure_hit) && nzchar(ensure_hit)) {
+      keep[toupper(trimws(as.character(df$ticker))) == ensure_hit] <- TRUE
+    }
+  }
+  # Keep names that still have ≥2 ratio features even without Beta (radar shell)
+  # so Search/focus shells survive; pure empty rows without ensure drop out.
+  if (sum(keep) < 1L) {
+    stop(paste0(
+      "After Beta missing-data filter, no stocks remain. ",
+      "Each name needs a finite Yahoo Summary levered Beta (β_L), ",
+      "or must be the Search / radar-focus ticker."
+    ))
+  }
+  df <- df[keep, , drop = FALSE]
+  rownames(df) <- NULL
+
+  assigned <- lab_cluster_assign_beta_bins(df[[LAB_CLUSTER_BETA_COL]], locale = locale)
+  df$Cluster_ID <- assigned$Cluster_ID
+  df$Cluster_Label <- assigned$Cluster_Label
+  # Coverage helper: finite β_L counts as usable (≥2) so Data-limited badge stays off
+  ratio_feats <- intersect(LAB_CLUSTER_FEATURES, names(df))
+  n_ratio <- if (length(ratio_feats)) {
+    as.integer(rowSums(do.call(
+      cbind,
+      lapply(ratio_feats, function(f) {
+        is.finite(suppressWarnings(as.numeric(df[[f]])))
+      })
+    ), na.rm = TRUE))
+  } else {
+    integer(nrow(df))
+  }
+  has_beta <- is.finite(df[[LAB_CLUSTER_BETA_COL]])
+  df$n_finite <- as.integer(ifelse(has_beta, pmax(2L, n_ratio), n_ratio))
+
+  used_ids <- sort(unique(df$Cluster_ID))
+  lab_map <- stats::setNames(
+    lab_cluster_beta_bin_labels(locale)[used_ids],
+    as.character(used_ids)
+  )
+  # Radar / distance peers stay on ratio features (β_L is the group key, not a spoke)
+  radar_feats <- intersect(LAB_CLUSTER_FEATURES, names(df))
+  center_feats <- unique(c(radar_feats, LAB_CLUSTER_BETA_COL))
+  center_feats <- intersect(center_feats, names(df))
+  centers <- NULL
+  if (length(center_feats)) {
+    centers <- tryCatch(
+      as.data.frame(stats::aggregate(
+        df[, center_feats, drop = FALSE],
+        by = list(Cluster_ID = df$Cluster_ID),
+        FUN = function(x) mean(suppressWarnings(as.numeric(x)), na.rm = TRUE)
+      )),
+      error = function(e) NULL
+    )
+  }
+
+  list(
+    data = df,
+    centers = centers,
+    features = if (length(radar_feats)) radar_feats else center_feats,
+    k = length(used_ids),
+    n = nrow(df),
+    tot_withinss = NA_real_,
+    betweenss = NA_real_,
+    labels = lab_map,
+    cluster_mode = "beta",
+    beta_source = "summary_levered",
+    beta_note = paste0(
+      "Levered equity Beta (β_L) from Yahoo Summary \"Beta (5Y Monthly)\" ",
+      "(same CAPM default as beta_u_apply_source = summary)."
+    )
   )
 }
 
@@ -1106,13 +1331,15 @@ lab_cluster_run_job <- function(catlg,
                                 market_mode = "US",
                                 include_adr = TRUE,
                                 k = 3L,
-                                locale = "en") {
+                                locale = "en",
+                                cluster_mode = "kmeans") {
   loc <- tryCatch(normalize_ui_locale(locale), error = function(e) "en")
   mm <- tryCatch(normalize_market_mode(market_mode), error = function(e) "US")
   tryCatch(set_market_mode(mm), error = function(e) NULL)
   notes <- character(0)
   warnings <- character(0)
   errors <- character(0)
+  mode_cluster <- lab_normalize_cluster_mode(cluster_mode %||% "kmeans")
   k <- suppressWarnings(as.integer(k)[1])
   if (!is.finite(k)) k <- 3L
   k <- max(2L, min(8L, k))
@@ -1144,10 +1371,11 @@ lab_cluster_run_job <- function(catlg,
       NULL
     }
   )
-  if (is.null(pool) || nrow(pool) < k) {
+  min_pool <- if (identical(mode_cluster, "beta")) 1L else k
+  if (is.null(pool) || nrow(pool) < min_pool) {
     warnings <- c(warnings, sprintf(
       "Need at least %d tickers in the pool (got %d).",
-      k, if (is.null(pool)) 0L else nrow(pool)
+      min_pool, if (is.null(pool)) 0L else nrow(pool)
     ))
     return(list(ok = FALSE, result = NULL, notes = notes, warnings = warnings,
                 errors = errors))
@@ -1215,18 +1443,31 @@ lab_cluster_run_job <- function(catlg,
       feats$ret_1y <- suppressWarnings(as.numeric(pool$ret_1y[hit]))
     }
   }
-  n_usable <- lab_cluster_usable_feature_rows(feats)
-  if (is.null(feats) || n_usable < 2L) {
+  n_usable_ratio <- lab_cluster_usable_feature_rows(feats)
+  n_usable_beta <- lab_cluster_usable_beta_rows(feats)
+  if (identical(mode_cluster, "beta")) {
+    n_usable <- n_usable_beta
+    min_usable <- 1L
+  } else {
+    n_usable <- n_usable_ratio
+    min_usable <- 2L
+  }
+  if (is.null(feats) || n_usable < min_usable) {
     if (!is.null(feats)) {
       warnings <- c(warnings, sprintf(
-        "Too few usable feature rows (got %d; need ≥ 2).", n_usable
+        if (identical(mode_cluster, "beta")) {
+          "Too few usable Beta rows (got %d; need ≥ %d finite levered β_L)."
+        } else {
+          "Too few usable feature rows (got %d; need ≥ %d)."
+        },
+        n_usable, min_usable
       ))
     }
     return(list(ok = FALSE, result = NULL, notes = notes, warnings = warnings,
                 errors = errors))
   }
   k_eff <- k
-  if (n_usable < k_eff) {
+  if (!identical(mode_cluster, "beta") && n_usable < k_eff) {
     k_eff <- max(2L, as.integer(n_usable))
     warnings <- c(warnings, sprintf(
       "%s (k=%d → %d; usable=%d)",
@@ -1242,14 +1483,31 @@ lab_cluster_run_job <- function(catlg,
       }
     ))
   }
+  if (identical(mode_cluster, "beta")) {
+    notes <- c(notes, tryCatch(
+      ui_str("lab_cluster_beta_mode_note", loc),
+      error = function(e) {
+        paste0(
+          "Beta mode: groups by levered equity Beta (β_L) from Yahoo Summary ",
+          "\"Beta (5Y Monthly)\" — same CAPM default source (not unlevered βᵤ)."
+        )
+      }
+    ))
+  }
   if ("industry_key" %in% names(pool)) {
     feats$industry_key <- pool$industry_key[match(feats$ticker, pool$ticker)]
   }
   clustered <- tryCatch(
-    lab_run_stock_clustering(
-      feats, k_clusters = k_eff, locale = loc,
-      ensure_ticker = ensure_tks
-    ),
+    if (identical(mode_cluster, "beta")) {
+      lab_run_beta_clustering(
+        feats, locale = loc, ensure_ticker = ensure_tks
+      )
+    } else {
+      lab_run_stock_clustering(
+        feats, k_clusters = k_eff, locale = loc,
+        ensure_ticker = ensure_tks
+      )
+    },
     error = function(e) {
       errors <<- c(errors, paste("Clustering failed:", conditionMessage(e)))
       NULL
@@ -1296,6 +1554,7 @@ lab_cluster_run_job <- function(catlg,
     pool_ticker_order = pool_ord
   )
   clustered$pool_rank_mode <- mode_used
+  clustered$cluster_mode <- mode_cluster
   clustered$n <- nrow(clustered$data)
   list(
     ok = TRUE,
@@ -1340,20 +1599,30 @@ lab_cluster_scatter_plotly <- function(result, x_feat = "ROE", y_feat = "PE_Rati
   if (!y_feat %in% names(df)) y_feat <- result$features[[min(2L, length(result$features))]]
   loc <- if (exists("normalize_ui_locale", mode = "function")) normalize_ui_locale(locale) else as.character(locale)[1]
   is_zh <- grepl("^zh", tolower(as.character(loc)), perl = TRUE)
-  xlab <- names(LAB_CLUSTER_AXIS_CHOICES)[match(x_feat, LAB_CLUSTER_AXIS_CHOICES)]
-  ylab <- names(LAB_CLUSTER_AXIS_CHOICES)[match(y_feat, LAB_CLUSTER_AXIS_CHOICES)]
-  if (is.na(xlab)) xlab <- x_feat
-  if (is.na(ylab)) ylab <- y_feat
-  title <- if (is_zh) {
+  axis_choices <- lab_cluster_axis_choices(loc)
+  xlab <- names(axis_choices)[match(x_feat, unname(axis_choices))]
+  ylab <- names(axis_choices)[match(y_feat, unname(axis_choices))]
+  if (is.na(xlab) || !length(xlab)) xlab <- x_feat
+  if (is.na(ylab) || !length(ylab)) ylab <- y_feat
+  mode_cl <- as.character(result$cluster_mode %||% "kmeans")[1]
+  title <- if (identical(mode_cl, "beta")) {
+    if (is_zh) "依 Beta（槓桿 β_L）分群星團圖（研究用）" else "Beta (levered β_L) Cluster Map (research)"
+  } else if (is_zh) {
     "基本面分群星團圖（研究用）"
   } else {
     "Fundamental Cluster Map (research)"
+  }
+  beta_hover <- if ("Beta" %in% names(df) && !identical(x_feat, "Beta") && !identical(y_feat, "Beta")) {
+    paste0("<br>β_L: ", ifelse(is.finite(df$Beta), signif(df$Beta, 4), "n/a"))
+  } else {
+    ""
   }
   df$hover <- paste0(
     df$ticker, " · ", df$name, "<br>",
     df$Cluster_Label, "<br>",
     xlab, ": ", signif(df[[x_feat]], 4), "<br>",
-    ylab, ": ", signif(df[[y_feat]], 4)
+    ylab, ": ", signif(df[[y_feat]], 4),
+    beta_hover
   )
   df$._x <- df[[x_feat]]
   df$._y <- df[[y_feat]]
@@ -1451,10 +1720,11 @@ lab_cluster_radar_plotly <- function(result, focus_ticker, peer_tickers = NULL,
   } else {
     paste0("Same-cluster radar: ", focus, " (research, not a buy signal)")
   }
+  axis_choices <- lab_cluster_axis_choices(loc)
   axis_labs <- feats
   for (i in seq_along(feats)) {
-    nm <- names(LAB_CLUSTER_AXIS_CHOICES)[match(feats[i], LAB_CLUSTER_AXIS_CHOICES)]
-    if (!is.na(nm)) axis_labs[i] <- nm
+    nm <- names(axis_choices)[match(feats[i], unname(axis_choices))]
+    if (!is.na(nm) && length(nm)) axis_labs[i] <- nm
   }
   p <- NULL
   for (i in seq_len(nrow(sub))) {
@@ -1634,6 +1904,9 @@ lab_cluster_synthetic_features <- function(n = 24L, seed = 1L) {
   set.seed(as.integer(seed)[1])
   n <- as.integer(n)[1]
   groups <- rep(1:4, length.out = n)
+  # Spread levered β_L across interpretive bins for Beta-mode tests
+  beta_centers <- c(-0.2, 0.4, 0.9, 1.15, 1.6)
+  beta_g <- rep(seq_along(beta_centers), length.out = n)
   data.frame(
     ticker = paste0("T", seq_len(n)),
     name = paste0("Synthetic ", seq_len(n)),
@@ -1645,6 +1918,7 @@ lab_cluster_synthetic_features <- function(n = 24L, seed = 1L) {
     Debt_Ratio = c(35, 45, 95, 55)[groups] + stats::rnorm(n, 0, 5),
     PE_Ratio = c(32, 11, 8, 18)[groups] + stats::rnorm(n, 0, 2),
     PB_Ratio = c(8, 1.4, 0.8, 2.5)[groups] + stats::rnorm(n, 0, 0.3),
+    Beta = beta_centers[beta_g] + stats::rnorm(n, 0, 0.03),
     stringsAsFactors = FALSE
   )
 }

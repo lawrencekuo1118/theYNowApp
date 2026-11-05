@@ -3744,9 +3744,21 @@ locale_for_market <- function(mode = get_market_mode()) {
     tab_bt_fundamental = "Fundamental Strategy",
     tab_bt_sentiment = "Sentiment Strategy",
     lab_cluster_blurb = paste0(
-      "Research Clustering Lab: K-Means on ratio/growth features only (no dollar amounts), ",
-      "so firm size does not dominate distance. Winsorize (1%/99%) → standardize → cluster. ",
-      "Semantic labels are descriptive heuristics, not buy/sell signals."
+      "Research Clustering Lab: choose K-Means on ratio/growth features only (no dollar amounts), ",
+      "so firm size does not dominate distance, or group by levered equity Beta (β_L). ",
+      "K-Means: Winsorize (1%/99%) → standardize → cluster. ",
+      "Beta mode: fixed β_L bins from Yahoo Summary \"Beta (5Y Monthly)\" (CAPM default; not unlevered βᵤ). ",
+      "Labels are descriptive heuristics, not buy/sell signals."
+    ),
+    lab_cluster_mode_label = "Grouping mode",
+    lab_cluster_beta_bins_help = paste0(
+      "Beta mode: bins levered equity β_L from Yahoo Summary \"Beta (5Y Monthly)\" ",
+      "(same CAPM default source): β_L < 0; [0, 0.8); [0.8, 1.0); [1.0, 1.3); ≥ 1.3; missing. ",
+      "Not unlevered βᵤ."
+    ),
+    lab_cluster_beta_mode_note = paste0(
+      "Beta mode: groups by levered equity Beta (β_L) from Yahoo Summary ",
+      "\"Beta (5Y Monthly)\" — same CAPM default source (not unlevered βᵤ)."
     ),
     lab_cluster_k_label = "Clusters (k)",
     lab_cluster_max_n_label = "Universe size (N)",
@@ -3763,7 +3775,8 @@ locale_for_market <- function(mode = get_market_mode()) {
       "then analyze the selected Universe size (N) names — not a fixed default count. ",
       "The Search ticker and the Radar focus ticker (when entered) are always force-included ",
       "in Universe (N); radar focus has no default symbol. ",
-      "Fetches Yahoo ratios with a bundled offline snapshot fallback when Yahoo is blocked ",
+      "Fetches Yahoo ratios (and Summary β_L for Beta mode) with a bundled offline snapshot ",
+      "fallback when Yahoo is blocked ",
       "(snapshot covers S&P 500 + TW listings; other US primary names use live Yahoo when available)."
     ),
     lab_cluster_map_title = "Cluster map",
@@ -8562,9 +8575,20 @@ locale_for_market <- function(mode = get_market_mode()) {
     tab_bt_fundamental = "基本面策略",
     tab_bt_sentiment = "情緒策略",
     lab_cluster_blurb = paste0(
-      "研究用分群 Lab：僅以比率／成長率做 K-Means（不把金額放入模型），",
-      "降低公司規模對距離的干擾。流程為 Winsorize（1%／99%）→ 標準化 → 分群。",
+      "研究用分群 Lab：可選 K-Means（僅比率／成長率，不把金額放入模型，降低規模干擾），",
+      "或依槓桿股權 Beta（β_L）固定分箱。",
+      "K-Means：Winsorize（1%／99%）→ 標準化 → 分群。",
+      "Beta 模式：Yahoo Summary「Beta（五年月資料）」槓桿 β_L（CAPM 預設來源；非去槓桿 βᵤ）。",
       "語意標籤為描述性啟發式，非買進／賣出訊號。"
+    ),
+    lab_cluster_mode_label = "分群模式",
+    lab_cluster_beta_bins_help = paste0(
+      "Beta 模式：依 Yahoo Summary「Beta（五年月資料）」槓桿股權 β_L（CAPM 預設來源）固定分箱：",
+      "β_L < 0；[0, 0.8)；[0.8, 1.0)；[1.0, 1.3)；≥ 1.3；缺值。非去槓桿 βᵤ。"
+    ),
+    lab_cluster_beta_mode_note = paste0(
+      "Beta 模式：依 Yahoo Summary「Beta（五年月資料）」槓桿股權 β_L 分群",
+      "（與 CAPM 預設來源相同；非去槓桿 βᵤ）。"
     ),
     lab_cluster_k_label = "群數（k）",
     lab_cluster_max_n_label = "宇宙檔數（N）",
@@ -8580,7 +8604,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "（市值／概念股／近一年漲幅／隨機；市值缺值則改依代號排序），",
       "再依所選「宇宙檔數（N）」作分群分析（非固定預設檔數）。",
       "Search 代號與雷達焦點代號（若有填寫）一律強制納入宇宙（N）；雷達焦點無預設代號。",
-      "擷取 Yahoo 比率特徵；若 Yahoo 受限則改用內建離線快照",
+      "擷取 Yahoo 比率特徵（Beta 模式另取 Summary 槓桿 β_L）；若 Yahoo 受限則改用內建離線快照",
       "（快照涵蓋 S&P 500＋台股上市／上櫃；其他美股主要上市檔以即時 Yahoo 為主）。"
     ),
     lab_cluster_map_title = "分群星團圖",

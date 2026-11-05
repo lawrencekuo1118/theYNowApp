@@ -2225,11 +2225,34 @@ beta_rolling_section_ui <- function() {
               tags$hr(),
               fluidRow(
                 column(
+                  width = 3,
+                  selectInput(
+                    "lab_cluster_mode",
+                    tags$span(id = "ynow_lab_cluster_mode_label", "分群模式"),
+                    choices = if (exists("lab_cluster_mode_choices", mode = "function")) {
+                      lab_cluster_mode_choices("zh-TW")
+                    } else {
+                      c(
+                        "K-Means（比率／成長率）" = "kmeans",
+                        "依 Beta（槓桿股權 β_L）" = "beta"
+                      )
+                    },
+                    selected = {
+                      m0 <- as.character(APP_DEFAULTS$lab_cluster_mode %||% "kmeans")[1]
+                      if (m0 %in% c("kmeans", "beta")) m0 else "kmeans"
+                    },
+                    width = "100%"
+                  )
+                ),
+                column(
                   width = 2,
-                  numericInput(
-                    "lab_cluster_k",
-                    tags$span(id = "ynow_lab_cluster_k_label", "群數（k）"),
-                    value = APP_DEFAULTS$lab_cluster_k, min = 2, max = 8, step = 1, width = "100%"
+                  conditionalPanel(
+                    condition = "input.lab_cluster_mode != 'beta'",
+                    numericInput(
+                      "lab_cluster_k",
+                      tags$span(id = "ynow_lab_cluster_k_label", "群數（k）"),
+                      value = APP_DEFAULTS$lab_cluster_k, min = 2, max = 8, step = 1, width = "100%"
+                    )
                   )
                 ),
                 column(
@@ -2237,15 +2260,20 @@ beta_rolling_section_ui <- function() {
                   selectInput(
                     "lab_cluster_x",
                     tags$span(id = "ynow_lab_cluster_x_label", "散點 X"),
-                    choices = c(
-                      "ROE" = "ROE",
-                      "Operating Margin" = "Operating_Margin",
-                      "Rev YoY" = "Rev_YoY",
-                      "OpInc YoY" = "OpInc_YoY",
-                      "Debt Ratio" = "Debt_Ratio",
-                      "Trailing P/E" = "PE_Ratio",
-                      "P/B" = "PB_Ratio"
-                    ),
+                    choices = if (exists("lab_cluster_axis_choices", mode = "function")) {
+                      lab_cluster_axis_choices("zh-TW")
+                    } else {
+                      c(
+                        "ROE" = "ROE",
+                        "Operating Margin" = "Operating_Margin",
+                        "Rev YoY" = "Rev_YoY",
+                        "OpInc YoY" = "OpInc_YoY",
+                        "Debt Ratio" = "Debt_Ratio",
+                        "Trailing P/E" = "PE_Ratio",
+                        "P/B" = "PB_Ratio",
+                        "Beta（槓桿 β_L）" = "Beta"
+                      )
+                    },
                     selected = APP_DEFAULTS$lab_cluster_x,
                     width = "100%"
                   )
@@ -2255,15 +2283,20 @@ beta_rolling_section_ui <- function() {
                   selectInput(
                     "lab_cluster_y",
                     tags$span(id = "ynow_lab_cluster_y_label", "散點 Y"),
-                    choices = c(
-                      "ROE" = "ROE",
-                      "Operating Margin" = "Operating_Margin",
-                      "Rev YoY" = "Rev_YoY",
-                      "OpInc YoY" = "OpInc_YoY",
-                      "Debt Ratio" = "Debt_Ratio",
-                      "Trailing P/E" = "PE_Ratio",
-                      "P/B" = "PB_Ratio"
-                    ),
+                    choices = if (exists("lab_cluster_axis_choices", mode = "function")) {
+                      lab_cluster_axis_choices("zh-TW")
+                    } else {
+                      c(
+                        "ROE" = "ROE",
+                        "Operating Margin" = "Operating_Margin",
+                        "Rev YoY" = "Rev_YoY",
+                        "OpInc YoY" = "OpInc_YoY",
+                        "Debt Ratio" = "Debt_Ratio",
+                        "Trailing P/E" = "PE_Ratio",
+                        "P/B" = "PB_Ratio",
+                        "Beta（槓桿 β_L）" = "Beta"
+                      )
+                    },
                     selected = APP_DEFAULTS$lab_cluster_y,
                     width = "100%"
                   )
@@ -2282,11 +2315,29 @@ beta_rolling_section_ui <- function() {
                     ),
                     uiOutput("lab_cluster_focus_suggest_ui")
                   )
-                ),
+                )
+              ),
+              fluidRow(
+                column(
+                  width = 12,
+                  conditionalPanel(
+                    condition = "input.lab_cluster_mode == 'beta'",
+                    tags$p(
+                      id = "ynow_lab_cluster_beta_bins_help",
+                      style = "color:#666; font-size:12px; margin-top:-4px;",
+                      paste0(
+                        "Beta 模式：依 Yahoo Summary「Beta（五年月資料）」槓桿股權 β_L（CAPM 預設來源）固定分箱：",
+                        "β_L < 0；[0, 0.8)；[0.8, 1.0)；[1.0, 1.3)；≥ 1.3；缺值。非去槓桿 βᵤ。"
+                      )
+                    )
+                  )
+                )
+              ),
+              fluidRow(
                 column(
                   width = 3,
                   tags$div(
-                    style = "margin-top: 24px;",
+                    style = "margin-top: 4px;",
                     actionButton(
                       "lab_cluster_run",
                       tags$span(id = "ynow_lab_cluster_run_label", "執行分群"),
@@ -13281,6 +13332,10 @@ ui <- dashboardPage(
             if (clusterDisc && s.lab_cluster_disclaimer) clusterDisc.textContent = s.lab_cluster_disclaimer;
             var clusterHint = document.getElementById('ynow_lab_cluster_hint');
             if (clusterHint && s.lab_cluster_hint) clusterHint.textContent = s.lab_cluster_hint;
+            var clusterMode = document.getElementById('ynow_lab_cluster_mode_label');
+            if (clusterMode && s.lab_cluster_mode_label) clusterMode.textContent = s.lab_cluster_mode_label;
+            var clusterBetaHelp = document.getElementById('ynow_lab_cluster_beta_bins_help');
+            if (clusterBetaHelp && s.lab_cluster_beta_bins_help) clusterBetaHelp.textContent = s.lab_cluster_beta_bins_help;
             var clusterK = document.getElementById('ynow_lab_cluster_k_label');
             if (clusterK && s.lab_cluster_k_label) clusterK.textContent = s.lab_cluster_k_label;
             var clusterX = document.getElementById('ynow_lab_cluster_x_label');

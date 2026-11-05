@@ -67,6 +67,8 @@ def _row(sym, info):
         "Debt_Ratio": _debt(info.get("debtToEquity")),
         "PE_Ratio": pe if pe is not None and pe > 0 else None,
         "PB_Ratio": pb if pb is not None and pb > 0 else None,
+        # Levered equity β_L (Yahoo Summary "Beta (5Y Monthly)")
+        "Beta": _sf(info.get("beta")),
     }
 
 
@@ -122,6 +124,7 @@ def fetch_one(sym):
             "Debt_Ratio": None,
             "PE_Ratio": None,
             "PB_Ratio": None,
+            "Beta": None,
             "_err": str(e)[:120],
         }
 
