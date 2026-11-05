@@ -134,6 +134,67 @@ stopifnot(isTRUE(abs(merged$ROE[[1]] - 40) < 1e-9))
 stopifnot(isTRUE(abs(merged$Operating_Margin[[1]] - 55) < 1e-9))
 stopifnot(lab_cluster_usable_feature_rows(merged) >= 1L)
 
+# Ratio-dense but Beta-blank rows: default sparse stays empty; need_beta=TRUE gap-fills
+dense_no_beta <- lab_cluster_features_to_df(list(
+  list(
+    ticker = "AAPL", name = "Apple", market_cap = 3e12,
+    ROE = 150, Operating_Margin = 30, Rev_YoY = 8,
+    OpInc_YoY = 10, Debt_Ratio = 150, PE_Ratio = 30, PB_Ratio = 40,
+    Beta = NA_real_
+  ),
+  list(
+    ticker = "MSFT", name = "Microsoft", market_cap = 3e12,
+    ROE = 40, Operating_Margin = 42, Rev_YoY = 12,
+    OpInc_YoY = 14, Debt_Ratio = 50, PE_Ratio = 35, PB_Ratio = 12,
+    Beta = NA_real_
+  )
+))
+stopifnot(identical(lab_cluster_sparse_tickers(dense_no_beta, c("AAPL", "MSFT")), character(0)))
+stopifnot(identical(
+  sort(lab_cluster_sparse_tickers(dense_no_beta, c("AAPL", "MSFT"), need_beta = TRUE)),
+  c("AAPL", "MSFT")
+))
+stopifnot(identical(
+  sort(lab_cluster_missing_beta_tickers(dense_no_beta, c("AAPL", "MSFT", "ZZZ"))),
+  c("AAPL", "MSFT", "ZZZ")
+))
+
+# CAPM Summary / batch Beta gap-fill (existing crawlers — no new source)
+assign("fetch_beta_unlever_inputs_batch", function(tickers) {
+  lapply(as.character(tickers), function(tk) {
+    list(ticker = toupper(tk), name = toupper(tk), beta = 1.05, market_cap = 1e9)
+  })
+}, envir = .GlobalEnv)
+on.exit({
+  if (exists("fetch_beta_unlever_inputs_batch", envir = .GlobalEnv, inherits = FALSE)) {
+    rm("fetch_beta_unlever_inputs_batch", envir = .GlobalEnv)
+  }
+}, add = TRUE)
+filled_beta <- lab_cluster_fill_beta_from_capm(dense_no_beta, c("AAPL", "MSFT"))
+stopifnot(identical(lab_cluster_usable_beta_rows(filled_beta), 2L))
+stopifnot(all(abs(filled_beta$Beta - 1.05) < 1e-9))
+stopifnot(identical(lab_cluster_missing_beta_tickers(filled_beta, c("AAPL", "MSFT")), character(0)))
+# Ratios preserved while Beta is filled from CAPM path
+stopifnot(isTRUE(abs(filled_beta$ROE[filled_beta$ticker == "AAPL"][[1]] - 150) < 1e-9))
+
+# Summary-metrics fallback when batch is unavailable
+rm("fetch_beta_unlever_inputs_batch", envir = .GlobalEnv)
+assign("lab_fetch_summary_metrics", function(ticker) {
+  list(
+    market_cap = 2e9, price = 100, beta = 0.88,
+    company_name = paste0(toupper(ticker), " Co")
+  )
+}, envir = .GlobalEnv)
+on.exit({
+  if (exists("lab_fetch_summary_metrics", envir = .GlobalEnv, inherits = FALSE)) {
+    rm("lab_fetch_summary_metrics", envir = .GlobalEnv)
+  }
+}, add = TRUE)
+filled_sum <- lab_cluster_fill_beta_from_capm(dense_no_beta, "AAPL")
+stopifnot(identical(lab_cluster_usable_beta_rows(filled_sum), 1L))
+stopifnot(isTRUE(abs(filled_sum$Beta[filled_sum$ticker == "AAPL"][[1]] - 0.88) < 1e-9))
+rm("lab_fetch_summary_metrics", envir = .GlobalEnv)
+
 # Offline snapshot must load and support US + TW without live Yahoo
 snap_all <- lab_load_cluster_features_snapshot(NULL)
 stopifnot(is.data.frame(snap_all), nrow(snap_all) >= 100L)
@@ -170,6 +231,37 @@ stopifnot(lab_cluster_usable_feature_rows(feats_tw) >= 2L)
 stopifnot(isTRUE(attr(feats_us, "used_snapshot")) || lab_cluster_usable_feature_rows(feats_us) >= 2L)
 res_off <- lab_run_stock_clustering(feats_us, k_clusters = 4L, locale = "en", seed = 3L)
 stopifnot(identical(as.integer(res_off$k), 4L), nrow(res_off$data) >= 4L)
+
+# β_L mode: snapshot ratios dense but Beta blank → CAPM batch gap-fill
+assign("fetch_beta_unlever_inputs_batch", function(tickers) {
+  lapply(as.character(tickers), function(tk) {
+    list(
+      ticker = toupper(as.character(tk)[1]),
+      name = toupper(as.character(tk)[1]),
+      beta = 1.12,
+      market_cap = 1e9
+    )
+  })
+}, envir = .GlobalEnv)
+on.exit({
+  if (exists("fetch_beta_unlever_inputs_batch", envir = .GlobalEnv, inherits = FALSE)) {
+    rm("fetch_beta_unlever_inputs_batch", envir = .GlobalEnv)
+  }
+}, add = TRUE)
+# K-Means path (need_beta=FALSE) still works offline without requiring Beta
+feats_km <- lab_fetch_cluster_features(us_sample[seq_len(min(12L, length(us_sample)))], need_beta = FALSE)
+stopifnot(lab_cluster_usable_feature_rows(feats_km) >= 2L)
+res_km_off <- lab_run_stock_clustering(feats_km, k_clusters = 3L, locale = "en", seed = 5L)
+stopifnot(identical(as.character(res_km_off$cluster_mode), "kmeans"))
+# β_L path fills Beta via existing CAPM crawler even when R crumb is rate-limited
+beta_sample <- us_sample[seq_len(min(12L, length(us_sample)))]
+feats_beta_live <- lab_fetch_cluster_features(beta_sample, need_beta = TRUE)
+stopifnot(lab_cluster_usable_beta_rows(feats_beta_live) >= 2L)
+stopifnot(lab_cluster_usable_feature_rows(feats_beta_live) >= 2L)
+res_beta_off <- lab_run_beta_clustering(feats_beta_live, locale = "en")
+stopifnot(identical(as.character(res_beta_off$cluster_mode), "beta"))
+stopifnot(nrow(res_beta_off$data) >= 2L)
+rm("fetch_beta_unlever_inputs_batch", envir = .GlobalEnv)
 
 # Session ticker matching (TW suffix / BRK.B↔BRK-B)
 stopifnot(identical(lab_cluster_match_ticker(c("AAPL", "MSFT"), "aapl"), "AAPL"))
@@ -412,6 +504,26 @@ stopifnot(inherits(p_beta_radar, "plotly"))
 # Snapshot schema accepts Beta column (may be empty offline)
 snap_beta <- lab_load_cluster_features_snapshot(NULL)
 stopifnot("Beta" %in% names(snap_beta))
+
+# Priority refill with need_beta uses CAPM Beta when ratios already dense
+dense_focus <- lab_cluster_features_to_df(list(list(
+  ticker = "FOCUSB", name = "Focus B", market_cap = 1e9,
+  ROE = 20, Operating_Margin = 15, Rev_YoY = 5,
+  OpInc_YoY = 6, Debt_Ratio = 40, PE_Ratio = 18, PB_Ratio = 3,
+  Beta = NA_real_
+)))
+assign("fetch_beta_unlever_inputs_batch", function(tickers) {
+  list(list(ticker = "FOCUSB", name = "Focus B", beta = 0.77, market_cap = 1e9))
+}, envir = .GlobalEnv)
+assign(".ensure_python_scraper", function() FALSE, envir = .GlobalEnv)
+refill_b <- lab_cluster_priority_refill_features(dense_focus, "FOCUSB", need_beta = TRUE)
+stopifnot(isTRUE(abs(refill_b$Beta[[1]] - 0.77) < 1e-9))
+# Without need_beta, ratio-dense row is left alone (no CAPM call required)
+refill_km <- lab_cluster_priority_refill_features(dense_focus, "FOCUSB", need_beta = FALSE)
+stopifnot(!is.finite(refill_km$Beta[[1]]))
+if (exists("fetch_beta_unlever_inputs_batch", envir = .GlobalEnv, inherits = FALSE)) {
+  rm("fetch_beta_unlever_inputs_batch", envir = .GlobalEnv)
+}
 
 parsed_cluster <- tryCatch({
   parse("lab_clustering.R", keep.source = FALSE)

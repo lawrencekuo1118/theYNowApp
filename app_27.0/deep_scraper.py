@@ -3003,7 +3003,13 @@ def get_cluster_features_batch(tickers):
 
     def _one(sym, allow_quote_summary=True):
         cached = _cache_get(sym)
-        if isinstance(cached, dict) and _row_usable(cached):
+        # Ratio-dense cache without Beta must refresh — β_L clustering needs
+        # Yahoo Summary levered Beta (same CAPM default source).
+        if (
+            isinstance(cached, dict)
+            and _row_usable(cached)
+            and cached.get("Beta") is not None
+        ):
             cached["ticker"] = sym
             return cached
         row = _empty(sym)
