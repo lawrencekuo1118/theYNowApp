@@ -1467,19 +1467,22 @@ beta_rolling_section_ui <- function() {
       tabPanel(
         "SGR",
         icon = icon("seedling"),
-        # Match BETA Overview valueBox row exactly: full-width 1:1 side-by-side
-        # (Summary β | 產業預設 β). Lock on col-sm-6 host — not a bare wrapper —
-        # so Bootstrap columns + global equal-height stretch stay intact.
+        # SGR | near-term g: always 1:1 side-by-side (desktop + mobile).
+        # col-xs-6 so BS3 does not stack below 768px; lock on the column host;
+        # bare uiOutput + width=NULL small-box (same as Summary β host pattern).
+        # CSS .ynow-sgr-kpi-row enforces flex 1:1 equal height and is excluded
+        # from the mobile “KPI → full-width stack” rule.
         fluidRow(
           class = "ynow-sgr-kpi-row",
           tags$div(
-            class = "col-sm-6",
+            class = "col-xs-6",
             `data-ynow-lock` = "output:sgr_pct",
-            # uiOutput (not valueBoxOutput width=N) — same host pattern as
-            # vbx_beta_summary: col-sm-6 on the lock host, bare small-box inside.
             shiny::uiOutput("vbx_sgr_pct")
           ),
-          valueBoxOutput("vbx_session_g", width = 6)
+          tags$div(
+            class = "col-xs-6",
+            shiny::uiOutput("vbx_session_g")
+          )
         ),
         fluidRow(
           column(
@@ -17056,6 +17059,7 @@ ui <- dashboardPage(
         
         /* 大數字框（valueBox / infoBox）統一響應式：換行、縮字、避免溢出
            （還原 v16.42：手機勿再壓成 33% 三欄；不用 [class*=…] 屬性選擇器） */
+        .content-wrapper .row > .col-xs-6,
         .content-wrapper .row > .col-xs-12,
         .content-wrapper .row > .col-sm-2,
         .content-wrapper .row > .col-sm-3,
@@ -17113,13 +17117,55 @@ ui <- dashboardPage(
           width: 100%;
           height: 100%;
         }
-        /* SGR KPI row: same full-width equal-height stretch as BETA Overview
-           (Summary β | 產業預設 β). Do NOT shrink to centered mini-squares —
-           boxes must fill their col-sm-6 (1:1 side-by-side, row-wide). */
+        /* SGR KPI row: always 1:1 side-by-side equal-height (desktop + mobile).
+           col-xs-6 hosts + flex nowrap; do NOT shrink to mini-squares or stack. */
+        .content-wrapper .row.ynow-sgr-kpi-row,
+        .tab-content .row.ynow-sgr-kpi-row,
+        .tab-pane .row.ynow-sgr-kpi-row {
+          display: flex !important;
+          flex-wrap: nowrap !important;
+          align-items: stretch;
+          margin-left: -5px;
+          margin-right: -5px;
+        }
+        .content-wrapper .row.ynow-sgr-kpi-row::before,
+        .content-wrapper .row.ynow-sgr-kpi-row::after,
+        .tab-content .row.ynow-sgr-kpi-row::before,
+        .tab-content .row.ynow-sgr-kpi-row::after,
+        .tab-pane .row.ynow-sgr-kpi-row::before,
+        .tab-pane .row.ynow-sgr-kpi-row::after {
+          display: none !important;
+          content: none !important;
+        }
         .content-wrapper .ynow-sgr-kpi-row > [class*='col-'],
         .tab-content .ynow-sgr-kpi-row > [class*='col-'],
         .tab-pane .ynow-sgr-kpi-row > [class*='col-'] {
+          flex: 1 1 0 !important;
+          width: 50% !important;
+          max-width: 50% !important;
+          float: none !important;
+          clear: none !important;
+          display: flex !important;
+          flex-direction: column !important;
           align-items: stretch;
+          min-width: 0;
+          box-sizing: border-box;
+          padding-left: 5px;
+          padding-right: 5px;
+        }
+        .content-wrapper .ynow-sgr-kpi-row > [class*='col-'] > .shiny-html-output,
+        .tab-content .ynow-sgr-kpi-row > [class*='col-'] > .shiny-html-output,
+        .tab-pane .ynow-sgr-kpi-row > [class*='col-'] > .shiny-html-output {
+          flex: 1 1 auto;
+          width: 100% !important;
+          max-width: 100% !important;
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+          float: none !important;
+          padding-left: 0 !important;
+          padding-right: 0 !important;
+          min-width: 0;
         }
         .content-wrapper .ynow-sgr-kpi-row .small-box,
         .tab-content .ynow-sgr-kpi-row .small-box,
@@ -17128,12 +17174,28 @@ ui <- dashboardPage(
           width: 100% !important;
           max-width: 100%;
           height: 100% !important;
+          min-height: min-content;
           flex: 1 1 auto !important;
           margin-left: 0;
           margin-right: 0;
+          margin-bottom: 10px;
           display: flex !important;
           flex-direction: column !important;
           justify-content: center !important;
+          overflow: visible !important;
+          box-sizing: border-box;
+        }
+        .content-wrapper .ynow-sgr-kpi-row .small-box .inner {
+          min-width: 0;
+          overflow: visible !important;
+          padding-right: 44px;
+        }
+        .content-wrapper .ynow-sgr-kpi-row .small-box .inner p {
+          white-space: normal !important;
+          overflow: visible !important;
+          text-overflow: unset !important;
+          overflow-wrap: break-word;
+          word-break: normal;
         }
         /* Global boxes: keep original alignment; numerals much larger than labels. */
         .content-wrapper .small-box .inner {
@@ -17204,44 +17266,45 @@ ui <- dashboardPage(
           }
         }
         /* 手機：頁籤／內容區彩色 BOX 直向全寬（勿再壓成 33% 三欄）
-           例外：.ynow-header-kpi-row 維持 LAST PRICE／MARKET CAP／EPS 1:1:1 */
+           例外：.ynow-header-kpi-row 維持 LAST PRICE／MARKET CAP／EPS 1:1:1；
+           .ynow-sgr-kpi-row 維持 SGR｜near-term g 1:1 並排同高 */
         @media (max-width: 767px) {
-          .content-wrapper .row:not(.ynow-header-kpi-row) > .col-xs-12:has(.small-box),
-          .content-wrapper .row:not(.ynow-header-kpi-row) > .col-sm-2:has(.small-box),
-          .content-wrapper .row:not(.ynow-header-kpi-row) > .col-sm-3:has(.small-box),
-          .content-wrapper .row:not(.ynow-header-kpi-row) > .col-sm-4:has(.small-box),
-          .content-wrapper .row:not(.ynow-header-kpi-row) > .col-sm-6:has(.small-box),
-          .content-wrapper .row:not(.ynow-header-kpi-row) > .col-sm-12:has(.small-box),
-          .content-wrapper .row:not(.ynow-header-kpi-row) > .col-xs-12:has(.info-box),
-          .content-wrapper .row:not(.ynow-header-kpi-row) > .col-sm-2:has(.info-box),
-          .content-wrapper .row:not(.ynow-header-kpi-row) > .col-sm-3:has(.info-box),
-          .content-wrapper .row:not(.ynow-header-kpi-row) > .col-sm-4:has(.info-box),
-          .content-wrapper .row:not(.ynow-header-kpi-row) > .col-sm-6:has(.info-box),
-          .content-wrapper .row:not(.ynow-header-kpi-row) > .col-sm-12:has(.info-box),
-          .tab-content .row:not(.ynow-header-kpi-row) > .col-xs-12:has(.small-box),
-          .tab-content .row:not(.ynow-header-kpi-row) > .col-sm-2:has(.small-box),
-          .tab-content .row:not(.ynow-header-kpi-row) > .col-sm-3:has(.small-box),
-          .tab-content .row:not(.ynow-header-kpi-row) > .col-sm-4:has(.small-box),
-          .tab-content .row:not(.ynow-header-kpi-row) > .col-sm-6:has(.small-box),
-          .tab-content .row:not(.ynow-header-kpi-row) > .col-sm-12:has(.small-box),
-          .tab-content .row:not(.ynow-header-kpi-row) > .col-xs-12:has(.info-box),
-          .tab-content .row:not(.ynow-header-kpi-row) > .col-sm-2:has(.info-box),
-          .tab-content .row:not(.ynow-header-kpi-row) > .col-sm-3:has(.info-box),
-          .tab-content .row:not(.ynow-header-kpi-row) > .col-sm-4:has(.info-box),
-          .tab-content .row:not(.ynow-header-kpi-row) > .col-sm-6:has(.info-box),
-          .tab-content .row:not(.ynow-header-kpi-row) > .col-sm-12:has(.info-box),
-          .tab-pane .row:not(.ynow-header-kpi-row) > .col-xs-12:has(.small-box),
-          .tab-pane .row:not(.ynow-header-kpi-row) > .col-sm-2:has(.small-box),
-          .tab-pane .row:not(.ynow-header-kpi-row) > .col-sm-3:has(.small-box),
-          .tab-pane .row:not(.ynow-header-kpi-row) > .col-sm-4:has(.small-box),
-          .tab-pane .row:not(.ynow-header-kpi-row) > .col-sm-6:has(.small-box),
-          .tab-pane .row:not(.ynow-header-kpi-row) > .col-sm-12:has(.small-box),
-          .tab-pane .row:not(.ynow-header-kpi-row) > .col-xs-12:has(.info-box),
-          .tab-pane .row:not(.ynow-header-kpi-row) > .col-sm-2:has(.info-box),
-          .tab-pane .row:not(.ynow-header-kpi-row) > .col-sm-3:has(.info-box),
-          .tab-pane .row:not(.ynow-header-kpi-row) > .col-sm-4:has(.info-box),
-          .tab-pane .row:not(.ynow-header-kpi-row) > .col-sm-6:has(.info-box),
-          .tab-pane .row:not(.ynow-header-kpi-row) > .col-sm-12:has(.info-box) {
+          .content-wrapper .row:not(.ynow-header-kpi-row):not(.ynow-sgr-kpi-row) > .col-xs-12:has(.small-box),
+          .content-wrapper .row:not(.ynow-header-kpi-row):not(.ynow-sgr-kpi-row) > .col-sm-2:has(.small-box),
+          .content-wrapper .row:not(.ynow-header-kpi-row):not(.ynow-sgr-kpi-row) > .col-sm-3:has(.small-box),
+          .content-wrapper .row:not(.ynow-header-kpi-row):not(.ynow-sgr-kpi-row) > .col-sm-4:has(.small-box),
+          .content-wrapper .row:not(.ynow-header-kpi-row):not(.ynow-sgr-kpi-row) > .col-sm-6:has(.small-box),
+          .content-wrapper .row:not(.ynow-header-kpi-row):not(.ynow-sgr-kpi-row) > .col-sm-12:has(.small-box),
+          .content-wrapper .row:not(.ynow-header-kpi-row):not(.ynow-sgr-kpi-row) > .col-xs-12:has(.info-box),
+          .content-wrapper .row:not(.ynow-header-kpi-row):not(.ynow-sgr-kpi-row) > .col-sm-2:has(.info-box),
+          .content-wrapper .row:not(.ynow-header-kpi-row):not(.ynow-sgr-kpi-row) > .col-sm-3:has(.info-box),
+          .content-wrapper .row:not(.ynow-header-kpi-row):not(.ynow-sgr-kpi-row) > .col-sm-4:has(.info-box),
+          .content-wrapper .row:not(.ynow-header-kpi-row):not(.ynow-sgr-kpi-row) > .col-sm-6:has(.info-box),
+          .content-wrapper .row:not(.ynow-header-kpi-row):not(.ynow-sgr-kpi-row) > .col-sm-12:has(.info-box),
+          .tab-content .row:not(.ynow-header-kpi-row):not(.ynow-sgr-kpi-row) > .col-xs-12:has(.small-box),
+          .tab-content .row:not(.ynow-header-kpi-row):not(.ynow-sgr-kpi-row) > .col-sm-2:has(.small-box),
+          .tab-content .row:not(.ynow-header-kpi-row):not(.ynow-sgr-kpi-row) > .col-sm-3:has(.small-box),
+          .tab-content .row:not(.ynow-header-kpi-row):not(.ynow-sgr-kpi-row) > .col-sm-4:has(.small-box),
+          .tab-content .row:not(.ynow-header-kpi-row):not(.ynow-sgr-kpi-row) > .col-sm-6:has(.small-box),
+          .tab-content .row:not(.ynow-header-kpi-row):not(.ynow-sgr-kpi-row) > .col-sm-12:has(.small-box),
+          .tab-content .row:not(.ynow-header-kpi-row):not(.ynow-sgr-kpi-row) > .col-xs-12:has(.info-box),
+          .tab-content .row:not(.ynow-header-kpi-row):not(.ynow-sgr-kpi-row) > .col-sm-2:has(.info-box),
+          .tab-content .row:not(.ynow-header-kpi-row):not(.ynow-sgr-kpi-row) > .col-sm-3:has(.info-box),
+          .tab-content .row:not(.ynow-header-kpi-row):not(.ynow-sgr-kpi-row) > .col-sm-4:has(.info-box),
+          .tab-content .row:not(.ynow-header-kpi-row):not(.ynow-sgr-kpi-row) > .col-sm-6:has(.info-box),
+          .tab-content .row:not(.ynow-header-kpi-row):not(.ynow-sgr-kpi-row) > .col-sm-12:has(.info-box),
+          .tab-pane .row:not(.ynow-header-kpi-row):not(.ynow-sgr-kpi-row) > .col-xs-12:has(.small-box),
+          .tab-pane .row:not(.ynow-header-kpi-row):not(.ynow-sgr-kpi-row) > .col-sm-2:has(.small-box),
+          .tab-pane .row:not(.ynow-header-kpi-row):not(.ynow-sgr-kpi-row) > .col-sm-3:has(.small-box),
+          .tab-pane .row:not(.ynow-header-kpi-row):not(.ynow-sgr-kpi-row) > .col-sm-4:has(.small-box),
+          .tab-pane .row:not(.ynow-header-kpi-row):not(.ynow-sgr-kpi-row) > .col-sm-6:has(.small-box),
+          .tab-pane .row:not(.ynow-header-kpi-row):not(.ynow-sgr-kpi-row) > .col-sm-12:has(.small-box),
+          .tab-pane .row:not(.ynow-header-kpi-row):not(.ynow-sgr-kpi-row) > .col-xs-12:has(.info-box),
+          .tab-pane .row:not(.ynow-header-kpi-row):not(.ynow-sgr-kpi-row) > .col-sm-2:has(.info-box),
+          .tab-pane .row:not(.ynow-header-kpi-row):not(.ynow-sgr-kpi-row) > .col-sm-3:has(.info-box),
+          .tab-pane .row:not(.ynow-header-kpi-row):not(.ynow-sgr-kpi-row) > .col-sm-4:has(.info-box),
+          .tab-pane .row:not(.ynow-header-kpi-row):not(.ynow-sgr-kpi-row) > .col-sm-6:has(.info-box),
+          .tab-pane .row:not(.ynow-header-kpi-row):not(.ynow-sgr-kpi-row) > .col-sm-12:has(.info-box) {
             width: 100% !important;
             max-width: 100% !important;
             float: none !important;
@@ -17269,6 +17332,44 @@ ui <- dashboardPage(
           }
           .content-wrapper .small-box .inner p {
             font-size: clamp(10px, 2.6vw, 12px) !important;
+          }
+          /* SGR | near-term g: keep 1:1 equal height; wrap long labels; hide icons. */
+          .content-wrapper .ynow-sgr-kpi-row > [class*='col-'],
+          .tab-content .ynow-sgr-kpi-row > [class*='col-'],
+          .tab-pane .ynow-sgr-kpi-row > [class*='col-'] {
+            width: 50% !important;
+            max-width: 50% !important;
+            flex: 1 1 0 !important;
+            display: flex !important;
+            float: none !important;
+            clear: none !important;
+          }
+          .content-wrapper .ynow-sgr-kpi-row .small-box,
+          .tab-content .ynow-sgr-kpi-row .small-box,
+          .tab-pane .ynow-sgr-kpi-row .small-box {
+            margin-bottom: 10px !important;
+            overflow: visible !important;
+          }
+          .content-wrapper .ynow-sgr-kpi-row .small-box .icon {
+            display: none !important;
+          }
+          .content-wrapper .ynow-sgr-kpi-row .small-box .inner {
+            padding-right: 10px !important;
+            padding-left: 10px !important;
+            overflow: visible !important;
+          }
+          .content-wrapper .ynow-sgr-kpi-row .small-box .inner h3,
+          .content-wrapper .ynow-sgr-kpi-row .small-box .inner h3 * {
+            font-size: clamp(16px, 4.5vw, 22px) !important;
+          }
+          .content-wrapper .ynow-sgr-kpi-row .small-box .inner p {
+            font-size: clamp(9px, 2.3vw, 11px) !important;
+            line-height: 1.25 !important;
+            white-space: normal !important;
+            overflow: visible !important;
+            text-overflow: unset !important;
+            overflow-wrap: break-word;
+            word-break: normal;
           }
           .content-wrapper .info-box {
             min-height: 0;

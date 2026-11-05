@@ -1,5 +1,5 @@
-# SGR KPI value boxes: full-width 1:1 side-by-side like BETA Overview
-# (Summary β | 產業預設 β). Run:
+# SGR KPI value boxes: always 1:1 side-by-side equal height (desktop + mobile).
+# SGR | Current configured g (near-term). Run:
 #   cd app_27.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_sgr_kpi_box_ratio.R
 
 root <- if (file.exists("ynow_ui.R")) {
@@ -32,29 +32,31 @@ check(
   grepl('class\\s*=\\s*"ynow-sgr-kpi-row"', sgr, perl = TRUE)
 )
 
-# BETA Overview reference pattern: col-sm-6 host + valueBoxOutput(width=6)
-beta_start <- regexpr("beta_overview_section_ui\\s*<-\\s*function", ui, perl = TRUE)[1]
-beta_end <- regexpr("beta_unlever_section_ui\\s*<-\\s*function", ui, perl = TRUE)[1]
-check("BETA overview function present", beta_start > 0 && beta_end > beta_start)
-beta <- substr(ui, beta_start, beta_end - 1L)
+# Both hosts are col-xs-6 so BS3 never stacks below 768px
 check(
-  "BETA Overview uses col-sm-6 + valueBoxOutput width 6",
-  grepl('class\\s*=\\s*"col-sm-6"', beta, perl = TRUE) &&
-    grepl('valueBoxOutput\\("vbx_beta_industry",\\s*width\\s*=\\s*6\\)', beta, perl = TRUE)
-)
-
-# SGR matches that host pattern (lock on col-sm-6; session_g via valueBoxOutput width=6)
-check(
-  "output:sgr_pct lock on col-sm-6 host",
+  "output:sgr_pct lock on col-xs-6 host",
   grepl(
-    'class\\s*=\\s*"col-sm-6"[\\s\\S]{0,120}`data-ynow-lock`\\s*=\\s*"output:sgr_pct"',
+    'class\\s*=\\s*"col-xs-6"[\\s\\S]{0,120}`data-ynow-lock`\\s*=\\s*"output:sgr_pct"',
     sgr,
     perl = TRUE
   ) || grepl(
-    '`data-ynow-lock`\\s*=\\s*"output:sgr_pct"[\\s\\S]{0,120}class\\s*=\\s*"col-sm-6"',
+    '`data-ynow-lock`\\s*=\\s*"output:sgr_pct"[\\s\\S]{0,120}class\\s*=\\s*"col-xs-6"',
     sgr,
     perl = TRUE
   )
+)
+check(
+  "vbx_session_g host is col-xs-6 + uiOutput (not valueBoxOutput width=6)",
+  grepl(
+    'class\\s*=\\s*"col-xs-6"[\\s\\S]{0,160}uiOutput\\("vbx_session_g"\\)',
+    sgr,
+    perl = TRUE
+  ) &&
+    !grepl('valueBoxOutput\\("vbx_session_g"', sgr, perl = TRUE)
+)
+check(
+  "vbx_sgr_pct is uiOutput inside col-xs-6",
+  grepl('shiny::uiOutput\\("vbx_sgr_pct"\\)|uiOutput\\("vbx_sgr_pct"\\)', sgr, perl = TRUE)
 )
 check(
   "no bare tags$div lock wrapping vbx_sgr_pct width=6",
@@ -64,16 +66,8 @@ check(
     perl = TRUE
   )
 )
-check(
-  "vbx_sgr_pct is uiOutput inside col-sm-6 (BETA summary pattern)",
-  grepl('shiny::uiOutput\\("vbx_sgr_pct"\\)|uiOutput\\("vbx_sgr_pct"\\)', sgr, perl = TRUE)
-)
-check(
-  "vbx_session_g valueBoxOutput width 6 (BETA industry pattern)",
-  grepl('valueBoxOutput\\("vbx_session_g",\\s*width\\s*=\\s*6\\)', sgr, perl = TRUE)
-)
 
-# Server: bare small-box (width=NULL) like Summary β
+# Server: bare small-box (width=NULL) via renderUI for both
 check(
   "vbx_sgr_pct renderUI with width=NULL",
   grepl("output\\$vbx_sgr_pct\\s*<-\\s*renderUI", srv, perl = TRUE) &&
@@ -84,15 +78,32 @@ check(
     )
 )
 check(
-  "vbx_session_g valueBox width=NULL",
+  "vbx_session_g renderUI with width=NULL",
+  grepl("output\\$vbx_session_g\\s*<-\\s*renderUI", srv, perl = TRUE) &&
+    grepl(
+      "output\\$vbx_session_g\\s*<-\\s*renderUI\\([\\s\\S]{0,500}?width\\s*=\\s*NULL",
+      srv,
+      perl = TRUE
+    )
+)
+
+# CSS: flex 1:1 nowrap + equal height at all breakpoints
+check(
+  "CSS row flex nowrap for ynow-sgr-kpi-row",
   grepl(
-    "output\\$vbx_session_g\\s*<-\\s*renderValueBox\\([\\s\\S]{0,500}?width\\s*=\\s*NULL",
-    srv,
+    "[.]row[.]ynow-sgr-kpi-row[\\s\\S]{0,200}?flex-wrap:\\s*nowrap\\s*!important",
+    ui,
     perl = TRUE
   )
 )
-
-# Full-width CSS (no centered mini-square clamp)
+check(
+  "CSS columns flex 1:1 width 50%",
+  grepl(
+    "[.]ynow-sgr-kpi-row > \\[class\\*='col-'\\][\\s\\S]{0,250}?flex:\\s*1 1 0\\s*!important[\\s\\S]{0,120}?width:\\s*50%\\s*!important",
+    ui,
+    perl = TRUE
+  )
+)
 check(
   "CSS full-width for ynow-sgr-kpi-row small-box",
   grepl(".ynow-sgr-kpi-row .small-box", ui, fixed = TRUE) &&
@@ -118,7 +129,31 @@ check(
 check(
   "SGR columns stretch (not center-align mini tiles)",
   grepl(
-    "[.]ynow-sgr-kpi-row > \\[class\\*='col-'\\][\\s\\S]{0,200}?align-items:\\s*stretch",
+    "[.]ynow-sgr-kpi-row > \\[class\\*='col-'\\][\\s\\S]{0,400}?align-items:\\s*stretch",
+    ui,
+    perl = TRUE
+  )
+)
+check(
+  "mobile stack rule excludes ynow-sgr-kpi-row",
+  grepl(
+    "row:not\\(\\.ynow-header-kpi-row\\):not\\(\\.ynow-sgr-kpi-row\\)\\s*>\\s*\\.col-sm-6:has\\(\\.small-box\\)",
+    ui,
+    perl = TRUE
+  )
+)
+check(
+  "mobile CSS keeps SGR cols at 50%",
+  grepl(
+    "@media\\s*\\(max-width:\\s*767px\\)\\s*\\{[\\s\\S]*?\\.ynow-sgr-kpi-row > \\[class\\*='col-'\\][\\s\\S]{0,200}?width:\\s*50%\\s*!important",
+    ui,
+    perl = TRUE
+  )
+)
+check(
+  "mobile CSS labels wrap without ellipsis on SGR row",
+  grepl(
+    "[.]ynow-sgr-kpi-row [.]small-box [.]inner p[\\s\\S]{0,250}?white-space:\\s*normal\\s*!important[\\s\\S]{0,120}?text-overflow:\\s*unset",
     ui,
     perl = TRUE
   )
