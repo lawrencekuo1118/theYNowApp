@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12783500
+bundleId=12783566
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/  # pragma: allowlist secret
-aligned_git=292f79f9d7a8afbd34a1aacf31312942ff28201a
-commit=292f79f9d7a8afbd34a1aacf31312942ff28201a
-short=292f79f9
-message=chore: bump display version to v28.07
-captured_at=2026-11-05T13:53:58Z
-display_version=v28.07
-note=Shipped v28.07 (+0.01) via deploy_app_21.R. Live status=running; rsconnect deployments bundleId=12783500. App wave #664 SGR + near-term g 1:1 mobile (shipped without #663; still open). Includes prior v28.06 baseline hygiene (bundle 12783449 / #665 content).
+aligned_git=b122d57a8fb9264c7c5d9077b4129a114ff20f6c
+commit=b122d57a8fb9264c7c5d9077b4129a114ff20f6c
+short=b122d57a
+message=chore: bump display version to v28.08
+captured_at=2026-11-05T14:11:42Z
+display_version=v28.08
+note=Shipped v28.08 (+0.01) via deploy_app_21.R after #663 mcap-upside treemap font scales by |value|. Live status=running; rsconnect deployments bundleId=12783566. App wave #663 (lab_im_ind_mcap label font size ∝ |wavg|).
