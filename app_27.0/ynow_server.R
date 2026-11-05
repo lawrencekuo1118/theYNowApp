@@ -13022,7 +13022,8 @@ server <- function(input, output, session) {
   
   output$ibx_wacc <- renderInfoBox({ 
     val_wacc <- if (!is.null(calculated_wacc())) round(calculated_wacc() * 100, 2) else APP_DEFAULTS$wacc_gordon
-    infoBox("WACC", h3(paste0(val_wacc, " %")), icon = icon("percent"), color = "aqua", fill = TRUE) 
+    # width=NULL: bare .info-box inside col-sm-4 lock host (mobile 2×3 grid + desktop).
+    infoBox("WACC", h3(paste0(val_wacc, " %")), icon = icon("percent"), color = "aqua", fill = TRUE, width = NULL) 
   })
   
   output$plt_fcf_trend <- renderPlot({
