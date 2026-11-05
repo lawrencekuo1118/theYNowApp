@@ -160,15 +160,44 @@ common_cash_dividends <- function(df) {
   max(0, abs(total) - abs(preferred))
 }
 
-# Operating invested capital excludes disclosed nonoperating assets and
-# non-interest-bearing liabilities. Missing components require manual review.
-statement_operating_invested_capital <- function(bs) {
+# Operating invested capital: Assets − cash − nonop − (Liabilities − interest-bearing debt).
+# Formula identity is fixed. Missing Non Operating Assets → optional labeled proxy nonop=0
+# (Project decision); other missing components stay NA (honest gap). Lifecycle uses a
+# separate simplified IC — do not mix citations with this DCF / fundamental IC.
+operating_invested_capital_breakdown <- function(bs, allow_nonop_proxy = TRUE) {
   assets <- select_current_metric(bs, "^Total Assets$", "stock")
-  liabilities <- select_current_metric_any(bs, c("^Total Liabilities Net Minority Interest$", "^Total Liabilities$"), "stock")
-  nonop <- select_current_metric(bs, "^Non Operating Assets$", "stock")
+  liabilities <- select_current_metric_any(
+    bs, c("^Total Liabilities Net Minority Interest$", "^Total Liabilities$"), "stock"
+  )
+  nonop_raw <- select_current_metric(bs, "^Non Operating Assets$", "stock")
   cd <- statement_cash_debt(bs)
-  if (!all(is.finite(c(assets, liabilities, nonop, cd$cash, cd$debt)))) return(NA_real_)
-  assets - cd$cash - nonop - (liabilities - cd$debt)
+  nonop_status <- if (is.finite(nonop_raw)) {
+    "resolved"
+  } else if (isTRUE(allow_nonop_proxy)) {
+    "proxy_zero"
+  } else {
+    "missing"
+  }
+  nonop <- if (identical(nonop_status, "proxy_zero")) 0 else nonop_raw
+  used_nonop_proxy <- identical(nonop_status, "proxy_zero")
+  ok <- all(is.finite(c(assets, liabilities, nonop, cd$cash, cd$debt)))
+  ic <- if (isTRUE(ok)) assets - cd$cash - nonop - (liabilities - cd$debt) else NA_real_
+  list(
+    ic = ic,
+    assets = assets,
+    liabilities = liabilities,
+    cash = cd$cash,
+    debt = cd$debt,
+    nonop = nonop,
+    nonop_raw = nonop_raw,
+    nonop_status = nonop_status,
+    used_nonop_proxy = used_nonop_proxy,
+    ok = isTRUE(ok) && is.finite(ic)
+  )
+}
+
+statement_operating_invested_capital <- function(bs, allow_nonop_proxy = TRUE) {
+  operating_invested_capital_breakdown(bs, allow_nonop_proxy = allow_nonop_proxy)$ic
 }
 
 # Verified absence → 0. Nonzero book is never treated as market value.
@@ -202,6 +231,45 @@ statement_other_equity_claims_book <- function(bs) {
   if (pref < 0) pref <- 0
   if (minority < 0) minority <- 0
   pref + minority
+}
+
+#' Decide Gordon + stage WACC field writes after a calculated two-class WACC.
+#'
+#' Contract used by `.auto_recalc_capm_wacc` in `ynow_server.R`:
+#' - When `other_claims` is not a verified 0, leave existing fields alone
+#'   (do **not** clear them to NA — that wiped usable rates before #636).
+#' - When `other_claims == 0` and `wacc_percent` is a finite positive rate,
+#'   write the same percent into `wacc_gordon`, `wacc_stage1`, and `wacc_stage2`
+#'   so a later Gordon → two-stage switch is not empty.
+#'
+#' Rates are percent units (e.g. 8.79), matching `updateNumericInput` on those IDs.
+ynow_apply_calculated_wacc_fields <- function(wacc_percent, other_claims,
+                                              current = list(
+                                                wacc_gordon = NA_real_,
+                                                wacc_stage1 = NA_real_,
+                                                wacc_stage2 = NA_real_)) {
+  wacc_percent <- suppressWarnings(as.numeric(wacc_percent)[1])
+  other_claims <- suppressWarnings(as.numeric(other_claims)[1])
+  out <- current
+  if (!is.list(out)) {
+    out <- list(
+      wacc_gordon = NA_real_,
+      wacc_stage1 = NA_real_,
+      wacc_stage2 = NA_real_
+    )
+  }
+  for (id in c("wacc_gordon", "wacc_stage1", "wacc_stage2")) {
+    if (is.null(out[[id]])) out[[id]] <- NA_real_
+  }
+  if (!is.finite(wacc_percent) || wacc_percent <= 0) return(out)
+  if (!is.finite(other_claims) || other_claims != 0) {
+    # Gate fails: leave existing fields alone (do not clear to NA).
+    return(out)
+  }
+  out$wacc_gordon <- wacc_percent
+  out$wacc_stage1 <- wacc_percent
+  out$wacc_stage2 <- wacc_percent
+  out
 }
 
 # NOPAT is operating earnings after tax, never financing-affected Net Income.

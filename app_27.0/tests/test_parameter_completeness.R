@@ -137,7 +137,29 @@ stopifnot(statement_operating_invested_capital(bs) == 550,
           statement_other_equity_claims(bs) == 0)
 bs[7,2] <- 550
 stopifnot(is.na(statement_other_equity_claims(bs)))
-stopifnot(is.na(statement_operating_invested_capital(bs[-3, ])))
+# Missing Non Operating Assets → labeled proxy nonop=0 (IC still finite); strict mode stays NA.
+bs_no_nonop <- bs[-3, ]
+bd_proxy <- operating_invested_capital_breakdown(bs_no_nonop)
+stopifnot(isTRUE(bd_proxy$used_nonop_proxy),
+          identical(bd_proxy$nonop_status, "proxy_zero"),
+          identical(bd_proxy$nonop, 0),
+          statement_operating_invested_capital(bs_no_nonop) == 600,
+          is.na(statement_operating_invested_capital(bs_no_nonop, allow_nonop_proxy = FALSE)))
+bd_ok <- operating_invested_capital_breakdown(bs)
+stopifnot(!isTRUE(bd_ok$used_nonop_proxy), identical(bd_ok$nonop_status, "resolved"), bd_ok$ic == 550)
+# IC is required for fundamental g only — not a universal DCF FCFF field.
+fund_rows <- ynow_required_parameter_rows(
+  list(g_growth_method = "fundamental", dcf_mode = "gordon", dcf_claim = "fcff"),
+  APP_DEFAULTS, "en", lite = FALSE
+)
+cagr_rows <- ynow_required_parameter_rows(
+  list(g_growth_method = "cagr", dcf_mode = "gordon", dcf_claim = "fcff"),
+  APP_DEFAULTS, "en", lite = FALSE
+)
+stopifnot(any(fund_rows$model == "dcf" & fund_rows$id == "mod_fcf-fcf_invested_capital"),
+          !any(cagr_rows$id == "mod_fcf-fcf_invested_capital"))
+stopifnot(nzchar(ui_str("fcf_ic_nonop_proxy_help", "en")),
+          nzchar(ui_str("fcf_ic_nonop_proxy_help", "zh-TW")))
 # Book proxy stays finite for Lite silent DCF when market-value claims are unknown.
 bs_nci <- data.frame(
   Breakdown = c("Common Stock Equity", "Total Equity Gross Minority Interest",

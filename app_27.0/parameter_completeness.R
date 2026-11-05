@@ -54,7 +54,17 @@ ynow_required_parameter_rows <- function(values, defaults = list(), locale = "en
         "Use the matching fiscal-period operating input. NOPAT is EBIT × (1−T), not Net Income. Do not assume missing data is zero.",
         "請使用同一財報期間的營運資料；NOPAT 為 EBIT × (1−T)，勿填 Net Income，缺值也不代表零。")
   }
-  add(if (!isTRUE(lite) && identical(values$g_growth_method, "fundamental")) "dcf" else "fcf_growth", "mod_fcf-fcf_invested_capital", "Operating IC", "dcf_calculator", "Operating assets less non-interest-bearing operating liabilities; exclude cash and nonoperating assets. Do not substitute total assets.", "請以營運資產扣除不付息營運負債，並排除現金及非營運資產；勿直接填總資產。")
+  # Operating IC feeds fundamental RR×ROIC near-term g only — not the FCFF projection identity.
+  # Do not treat IC as a universal DCF required when growth is revenue/custom/path-based.
+  g_method <- values$g_growth_method %||% defaults$g_growth_method %||% "fundamental"
+  if (identical(g_method, "fundamental")) {
+    add(
+      if (!isTRUE(lite)) "dcf" else "fcf_growth",
+      "mod_fcf-fcf_invested_capital", "Operating IC", "dcf_calculator",
+      "Operating assets less non-interest-bearing operating liabilities; exclude cash and nonoperating assets. When Non Operating Assets is undisclosed, sync may apply a labeled proxy nonop=0 into IC — not a reported zero. Do not substitute total assets.",
+      "請以營運資產扣除不付息營運負債，並排除現金及非營運資產。財報未揭露 Non Operating Assets 時，同步可帶入標示過的 proxy nonop=0 推導 IC（非財報證實為零）；勿直接填總資產。"
+    )
+  }
   add("dcf", "years", "Forecast years", "dcf_calculator", "Review the forecast horizon.", "請確認預測年數。", "years")
   add("dcf", "sgr", "Terminal g", "dcf_calculator", "Use a sustainable terminal rate below the discount rate.", "請評估可持續的永續成長率，並低於折現率。", "sgr")
   if (identical(values$dcf_claim, "fcfe")) {

@@ -529,7 +529,9 @@ extract_lifecycle_metrics <- function(d_is = NULL,
     ppe_to_assets = ppe_share,
     revenue_latest = .lc_current(rev),
     nopat = nopat,
-    invested_capital = ic
+    # Lifecycle-only simplified IC: (Assets − cash) − (CL − ST debt). Not DCF operating IC.
+    invested_capital = ic,
+    lifecycle_ic_proxy = ic
   )
 }
 

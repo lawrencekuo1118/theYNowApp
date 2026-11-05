@@ -345,17 +345,18 @@ ri_module_ui <- function(id) {
         "Sensitivity Analysis", icon = icon("th"),
         fluidRow(
           box(
-            title = "Ke × g 估值矩陣（每股內在價值）",
-            width = 12, status = "primary", solidHeader = TRUE,
-            helpText("列＝永續成長率 g；欄＝股權成本 Ke。藍框＝目前設定。"),
-            DT::dataTableOutput(ns("tbl_ri_sensitivity"))
+            title = ui_i18n("sens_heatmap_title_ri"),
+            width = 12, status = "info", solidHeader = TRUE,
+            helpText(ui_i18n("ri_sens_heatmap_help")),
+            plotlyOutput(ns("plt_ri_heatmap"), height = "420px") %>% withSpinner()
           )
         ),
         fluidRow(
           box(
-            title = "互動熱力圖",
-            width = 12, status = "info", solidHeader = TRUE,
-            plotlyOutput(ns("plt_ri_heatmap"), height = "420px") %>% withSpinner()
+            title = ui_i18n("sens_numeric_table_summary"),
+            width = 12, status = "primary", solidHeader = TRUE,
+            helpText(ui_i18n("ri_sens_table_help")),
+            DT::dataTableOutput(ns("tbl_ri_sensitivity"))
           )
         )
       )
@@ -1053,45 +1054,43 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
     })
 
     output$plt_ri_heatmap <- renderPlotly({
+      loc <- .loc()
       grid <- .ri_sens_grid()
-      validate(need(any(is.finite(grid$value)), "無法產生熱力圖（檢查 g < Ke）"))
+      validate(need(
+        any(is.finite(grid$value)),
+        ui_str("sens_heatmap_ri_empty", loc)
+      ))
 
-      # Long format for hover (Ke, g, V, TV ratio)
-      g_lab <- grid$g_grid * 100
-      ke_lab <- grid$ke_grid * 100
-      z <- grid$value
-      tv <- grid$tv
-      hover <- matrix("", nrow = nrow(z), ncol = ncol(z))
+      # Shared helper expects rows = discount (Ke), cols = terminal g.
+      # .ri_sens_grid stores value as rows = g, cols = Ke → transpose.
+      z <- t(grid$value)
+      tv <- t(grid$tv)
+      disc_vals <- grid$ke_grid * 100
+      g_vals <- grid$g_grid * 100
+      hover_extra <- matrix("", nrow = nrow(z), ncol = ncol(z))
       for (i in seq_len(nrow(z))) {
         for (j in seq_len(ncol(z))) {
-          hover[i, j] <- sprintf(
-            "Ke: %.0f%%<br>g: %.0f%%<br>Intrinsic: $%.2f<br>TV Ratio: %s",
-            ke_lab[j], g_lab[i], z[i, j],
-            if (is.finite(tv[i, j])) sprintf("%.1f%%", 100 * tv[i, j]) else "N/A"
-          )
+          if (is.finite(tv[i, j])) {
+            hover_extra[i, j] <- sprintf("TV ratio: %.1f%%", 100 * tv[i, j])
+          }
         }
       }
+      cur_ke_i <- which.min(abs(grid$ke_grid - grid$cur_ke))
+      cur_g_j <- which.min(abs(grid$g_grid - grid$cur_g))
 
-      plot_ly(
-        x = ke_lab,
-        y = g_lab,
+      ynow_sensitivity_heatmap(
         z = z,
-        type = "heatmap",
-        colorscale = list(
-          list(0, "#e74c3c"),
-          list(0.5, "#f7dc6f"),
-          list(1, "#27ae60")
-        ),
-        hoverinfo = "text",
-        text = hover,
-        colorbar = list(title = "Intrinsic")
-      ) %>%
-        layout(
-          title = list(text = "RI 內在價值熱力圖", font = list(size = 14)),
-          xaxis = list(title = "Cost of Equity Ke (%)", dtick = 1),
-          yaxis = list(title = "Perpetual Growth g (%)", dtick = 1),
-          margin = list(t = 50)
-        )
+        disc_vals = disc_vals,
+        g_vals = g_vals,
+        disc_label = "Ke",
+        title = ui_str("sens_heatmap_title_ri", loc),
+        colorbar_title = ui_str("sens_heatmap_colorbar", loc),
+        x_title = ui_str("sens_heatmap_x_g", loc),
+        y_title = ui_str("sens_heatmap_y_ke", loc),
+        na_label = ui_str("sens_heatmap_na", loc),
+        hover_extra = hover_extra,
+        center_ij = c(cur_ke_i, cur_g_j)
+      )
     })
 
     # 頁底：單位 B0 公式參數相對 ±1% 邊際彈性（與 DCF 相同 |ε| 定義）

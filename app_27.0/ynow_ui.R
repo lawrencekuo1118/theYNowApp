@@ -16,11 +16,11 @@
       return(sub('^"version"\\s*:\\s*"([^"]+)".*$', "\\1", m[[1]]))
     }
   }
-  "v28.00"
+  "v28.01"
 }
 .YNOW_BUILD_VERSION <- .ynow_read_build_version()
 
-#' Major segment of a display version (`v28.00` → 25; `v26` → 26).
+#' Major segment of a display version (`v28.01` → 25; `v26` → 26).
 #' Matches deploy policy: +0.01 is patch; folder / `YNOW_VERSION_BUMP_MAJOR` cut advances major.
 .ynow_display_major <- function(label) {
   label <- as.character(label)[1]
@@ -3678,9 +3678,9 @@ ui <- dashboardPage(
                   'data-ynow-build="', .YNOW_BUILD_VERSION, '" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v28.00</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v28.01</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v28.00</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v28.01</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -11399,7 +11399,7 @@ ui <- dashboardPage(
             function isSignedIn() {
               return !!(document.body && document.body.classList.contains('ynow-authed'));
             }
-            /* Major = integer before decimal (v28.00 → 25), same as YNOW_VERSION_BUMP_MAJOR cut. */
+            /* Major = integer before decimal (v28.01 → 25), same as YNOW_VERSION_BUMP_MAJOR cut. */
             function displayMajor(version) {
               /* Use [0-9] not \\d — this block lives in an R character string. */
               var m = String(version || '').trim().match(/^[vV]?([0-9]+)/);
@@ -19008,6 +19008,70 @@ ui <- dashboardPage(
         .ynow-htcdi-table--inputs tr.ynow-htcdi-term-metrics th {
           font-weight: 600; white-space: nowrap;
         }
+        /* FCF projection: six shared inputs stacked IS → reinvestment → IC */
+        .ynow-fcf-param-stack {
+          max-width: 560px;
+          margin: 0 0 18px 0;
+          padding: 12px 14px 10px 14px;
+          background: #fbfcfd;
+          border: 1px solid #dce3ea;
+          border-radius: 6px;
+        }
+        .ynow-fcf-param-step {
+          margin: 0 0 10px 0;
+          padding: 0 0 8px 0;
+          border-bottom: 1px dashed #d5dde5;
+        }
+        .ynow-fcf-param-step:last-child,
+        .ynow-fcf-param-step--ic {
+          border-bottom: 0;
+          margin-bottom: 0;
+          padding-bottom: 0;
+        }
+        .ynow-fcf-param-step-label {
+          font-size: 12px;
+          font-weight: 700;
+          letter-spacing: 0.02em;
+          color: #34495e;
+          margin: 0 0 8px 0;
+        }
+        .ynow-fcf-param-row {
+          display: flex;
+          align-items: flex-start;
+          gap: 10px;
+          margin: 0 0 6px 0;
+        }
+        .ynow-fcf-param-op {
+          flex: 0 0 28px;
+          width: 28px;
+          text-align: center;
+          font-size: 18px;
+          font-weight: 700;
+          line-height: 34px;
+          color: #7f8c8d;
+          font-variant-numeric: tabular-nums;
+        }
+        .ynow-fcf-param-op--plus { color: #1e7a45; }
+        .ynow-fcf-param-op--minus { color: #c0392b; }
+        .ynow-fcf-param-field {
+          flex: 1 1 auto;
+          min-width: 0;
+        }
+        .ynow-fcf-param-field .form-group { margin-bottom: 4px; }
+        .ynow-fcf-param-identity {
+          margin: 4px 0 12px 0;
+          padding: 8px 10px;
+          font-size: 13px;
+          font-weight: 700;
+          color: #2c3e50;
+          background: #eef3f7;
+          border-left: 3px solid #0C5484;
+          border-radius: 0 4px 4px 0;
+        }
+        .ynow-fcf-param-ic-note {
+          margin: 2px 0 0 38px !important;
+          font-size: 12px !important;
+        }
         .ynow-htcdi-term-bridge {
           margin: 12px 0 10px 0;
           padding: 10px 12px;
@@ -22703,10 +22767,19 @@ tabPanel(
                      fluidRow(
                        column(
                          width = 12,
-                         div(
-                           style = "width: 100%; overflow-x: auto;",
-                           tags$style(HTML("#ddm_sensitivity_table table { width: 100% !important; table-layout: fixed; }")),
-                           tableOutput("ddm_sensitivity_table")
+                         plotlyOutput("ddm_sensitivity_heatmap", height = "420px") %>% withSpinner()
+                       )
+                     ),
+                     fluidRow(
+                       column(
+                         width = 12,
+                         tags$details(
+                           tags$summary(ui_i18n("sens_numeric_table_summary")),
+                           div(
+                             style = "width: 100%; overflow-x: auto; margin-top: 8px;",
+                             tags$style(HTML("#ddm_sensitivity_table table { width: 100% !important; table-layout: fixed; }")),
+                             tableOutput("ddm_sensitivity_table")
+                           )
                          )
                        )
                      ),
@@ -22878,10 +22951,19 @@ tabPanel(
                      fluidRow(
                        column(
                          width = 12,
-                         div(
-                           style = "width: 100%; overflow-x: auto;",
-                           tags$style(HTML("#dcf_sensitivity_table table { width: 100% !important; table-layout: fixed; }")),
-                           tableOutput("dcf_sensitivity_table")
+                         plotlyOutput("dcf_sensitivity_heatmap", height = "420px") %>% withSpinner()
+                       )
+                     ),
+                     fluidRow(
+                       column(
+                         width = 12,
+                         tags$details(
+                           tags$summary(ui_i18n("sens_numeric_table_summary")),
+                           div(
+                             style = "width: 100%; overflow-x: auto; margin-top: 8px;",
+                             tags$style(HTML("#dcf_sensitivity_table table { width: 100% !important; table-layout: fixed; }")),
+                             tableOutput("dcf_sensitivity_table")
+                           )
                          )
                        )
                      ),

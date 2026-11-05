@@ -37,6 +37,12 @@ jobs:
         env:
           YNOW_DEBUG_SKIP_PY: "1"
         run: Rscript app_27.0/tests/test_valuation_formulas.R
+      - name: Formal WACC apply properties (offline)
+        env:
+          YNOW_DEBUG_SKIP_PY: "1"
+        run: |
+          Rscript app_27.0/tests/test_formal_wacc_apply.R
+          Rscript app_27.0/tests/test_two_stage_wacc_other_equity.R
       - uses: r-lib/actions/setup-pandoc@v2
       - name: Report downloads (offline)
         env:
