@@ -246,7 +246,7 @@ server <- function(input, output, session) {
   lab_im_catalog_nonce <- reactiveVal(0L)
   lab_im_scores <- reactiveVal(NULL)
   lab_quality_snap_nonce <- reactiveVal(0L)
-  # Pulse + busy flag: Search Blue Chips button and Blue Chip Leaderboard tab share one runner.
+  # Pulse + busy flag: Search Blue Chips button and Stock Prospecting tab share one runner.
   lab_im_run_pulse <- reactiveVal(0L)
   lab_im_eval_busy <- reactiveVal(FALSE)
   lab_im_universe_busy <- reactiveVal(FALSE)
@@ -305,7 +305,7 @@ server <- function(input, output, session) {
   } else {
     NULL
   }
-  # Mirror Blue Chip eval / ind-mcap busy onto sidebar 「績優股排行榜」label dots
+  # Mirror Blue Chip eval / ind-mcap busy onto sidebar 「股海淘金」label dots
   observe({
     .ynow_set_tab_busy(
       "bluechip",
@@ -19268,7 +19268,7 @@ server <- function(input, output, session) {
     lab_im_run_pulse(isolate(as.integer(lab_im_run_pulse()) %||% 0L) + 1L)
   }, ignoreInit = TRUE)
 
-  # Opening sidebar「Blue Chip Leaderboard」auto-starts evaluation when none yet
+  # Opening sidebar「Stock Prospecting」auto-starts evaluation when none yet
   # (same runner as Search Blue Chips). Wait for lazy mount so filter inputs exist.
   # Defer pulse via onFlushed + later::later so lazy bluechip UI can paint first.
   # Eval itself runs via ExtendedTask so Clustering / HFV can start concurrently.
@@ -20358,7 +20358,7 @@ server <- function(input, output, session) {
     tags$p(
       style = "color:#888; font-size:12.5px; margin:0 0 8px 0;",
       tryCatch(ui_str("lab_im_ind_mcap_waiting", loc),
-               error = function(e) "尚無預設排名。開啟績優股排行榜會自動計算，或按「更新排名」。")
+               error = function(e) "尚無預設排名。開啟股海淘金會自動計算，或按「更新排名」。")
     )
   })
 
@@ -20390,7 +20390,7 @@ server <- function(input, output, session) {
     msg_col <- if (identical(loc, "en")) "Message" else "訊息"
     if (isTRUE(board$waiting)) {
       msg <- tryCatch(ui_str("lab_im_ind_mcap_waiting", loc),
-                      error = function(e) "尚無預設排名。開啟績優股排行榜會自動計算，或按「更新排名」。")
+                      error = function(e) "尚無預設排名。開啟股海淘金會自動計算，或按「更新排名」。")
       return(ynow_sortable_datatable(
         stats::setNames(data.frame(msg, stringsAsFactors = FALSE), msg_col),
         locale = loc

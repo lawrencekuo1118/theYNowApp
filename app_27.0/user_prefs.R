@@ -106,7 +106,7 @@ ynow_sidebar_pin_meta <- function(tab) {
     home = list(locale = "menu_home", icon = "home", short_en = "Home", short_zh = "首頁"),
     macro_market = list(locale = "menu_macro_market", icon = "globe-asia", short_en = "Macro", short_zh = "總體"),
     asset_transmission = list(locale = "menu_asset_transmission", icon = "project-diagram", short_en = "ATX", short_zh = "傳導"),
-    bluechip = list(locale = "menu_bluechip", icon = "star", short_en = "Blue Chip", short_zh = "績優"),
+    bluechip = list(locale = "menu_bluechip", icon = "star", short_en = "Prospecting", short_zh = "淘金"),
     dashboard = list(locale = "menu_dashboard", icon = "chart-line", short_en = "Company", short_zh = "個股"),
     company_advance = list(locale = "menu_company_advance", icon = "layer-group", short_en = "BB", short_zh = "拆解"),
     sensitivity = list(locale = "menu_ynow", icon = "clock", short_en = "YNOW", short_zh = "YNOW"),

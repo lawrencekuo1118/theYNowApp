@@ -41,7 +41,7 @@ html <- sprintf(
     "<li><a data-value='home' href='#'><i class='fas fa-home'></i><span> Home</span></a></li>",
     "<li><a data-value='macro_market' href='#'><i class='fas fa-globe-asia'></i><span> Macro & Market Trends</span></a></li>",
     "<li><a data-value='asset_transmission' href='#'><i class='fas fa-project-diagram'></i><span> Asset Transmission Root</span></a></li>",
-    "<li><a data-value='bluechip' href='#'><i class='fas fa-star'></i><span> Blue Chip Leaderboard</span></a></li>",
+    "<li><a data-value='bluechip' href='#'><i class='fas fa-star'></i><span> Stock Prospecting</span></a></li>",
     "<li><a data-value='dashboard' href='#'><i class='fas fa-chart-line'></i><span> Company</span></a></li>",
     "<li><a data-value='sensitivity' href='#'><i class='fas fa-clock'></i><span> YNOW</span></a></li>",
     "<li><a data-value='smart_analysis' href='#'><i class='fas fa-magic'></i><span> Smart Analysis</span></a></li>",

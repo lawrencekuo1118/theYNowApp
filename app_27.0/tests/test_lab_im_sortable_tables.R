@@ -1,4 +1,4 @@
-# Blue Chip Leaderboard tables: clickable column headers (client-side DT sort).
+# Stock Prospecting tables: clickable column headers (client-side DT sort).
 # Default: offline static asserts (UI dataTableOutput, server renderDT, helper wiring).
 # Optional env: DT widget runtime check when package DT is installed.
 # Run: cd app_27.0/tests && YNOW_DEBUG_SKIP_PY=1 Rscript test_lab_im_sortable_tables.R
