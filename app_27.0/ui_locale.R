@@ -2201,7 +2201,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     lab_im_ind_mcap_treemap_legend = paste0(
       "Area = industry-chain total market cap; color = mcap-weighted annualized valuation upside ",
-      "(US: green up / red down; TW: red up / green down). Includes every industry chain."
+      "(US: green up / red down; TW: red up / green down). ",
+      "Label size scales with |upside| (independent of block area; text may overflow). ",
+      "Includes every industry chain."
     ),
     lab_im_ind_mcap_treemap_empty = "No industry-chain blocks yet.",
     lab_im_ind_mcap_treemap_hover_chain = "Industry chain",
@@ -7067,7 +7069,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_ind_mcap_refresh_kept_prior = "產業鏈刷新未取得估值漲幅樣本，仍保留先前排名／熱圖。",
     lab_im_ind_mcap_treemap_legend = paste0(
       "面積＝產業鏈總市值；顏色＝市值加權年化估值漲幅",
-      "（美股漲綠／台股漲紅）。納入全部產業鏈。"
+      "（美股漲綠／台股漲紅）。",
+      "字級依｜漲幅｜絕對值放大（與區塊面積無關，文字可溢出顯示）。",
+      "納入全部產業鏈。"
     ),
     lab_im_ind_mcap_treemap_empty = "尚無產業鏈區塊可顯示。",
     lab_im_ind_mcap_treemap_hover_chain = "產業鏈",
