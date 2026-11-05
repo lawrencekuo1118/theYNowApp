@@ -325,6 +325,94 @@ flow_zh <- lab_cluster_coverage_flow_html("資料受限")
 stopifnot(grepl("ynow-htcdi-flow", flow_zh[[1]], fixed = TRUE))
 stopifnot(grepl("資料受限", flow_zh[[1]], fixed = TRUE))
 
+# --- Beta grouping mode (levered equity β_L bins) ---
+stopifnot(identical(lab_normalize_cluster_mode("kmeans"), "kmeans"))
+stopifnot(identical(lab_normalize_cluster_mode("beta"), "beta"))
+stopifnot(identical(lab_normalize_cluster_mode("比率"), "kmeans"))
+stopifnot(identical(lab_normalize_cluster_mode("依 Beta"), "beta"))
+stopifnot(identical(lab_normalize_cluster_mode("nope"), "kmeans"))
+
+mode_en <- lab_cluster_mode_choices("en")
+mode_zh <- lab_cluster_mode_choices("zh-TW")
+stopifnot(identical(sort(unname(mode_en)), c("beta", "kmeans")))
+stopifnot(identical(sort(unname(mode_zh)), c("beta", "kmeans")))
+stopifnot(!any(grepl("K-Means|比率|分群|依", names(mode_en)) & grepl("[\u4e00-\u9fff]", names(mode_en))))
+# en labels stay ASCII-ish English (allow β via "Beta" word only)
+stopifnot(all(grepl("K-Means|Beta", names(mode_en))))
+stopifnot(any(grepl("Beta|β", names(mode_zh))))
+
+# Bin edges: negative / low / sub-market / market-like / high / missing
+bin_probe <- c(-0.15, 0, 0.79, 0.8, 0.99, 1.0, 1.29, 1.3, 2.1, NA_real_)
+asg <- lab_cluster_assign_beta_bins(bin_probe, locale = "en")
+stopifnot(identical(
+  as.integer(asg$Cluster_ID),
+  as.integer(c(1, 2, 2, 3, 3, 4, 4, 5, 5, 6))
+))
+stopifnot(grepl("Negative", asg$Cluster_Label[[1]], fixed = TRUE))
+stopifnot(grepl("Low", asg$Cluster_Label[[2]], fixed = TRUE))
+stopifnot(grepl("Sub-market", asg$Cluster_Label[[4]], fixed = TRUE))
+stopifnot(grepl("Market-like", asg$Cluster_Label[[6]], fixed = TRUE))
+stopifnot(grepl("High", asg$Cluster_Label[[8]], fixed = TRUE))
+stopifnot(grepl("Missing", asg$Cluster_Label[[10]], fixed = TRUE))
+asg_zh <- lab_cluster_assign_beta_bins(c(-0.1, 1.5, NA_real_), locale = "zh-TW")
+stopifnot(any(grepl("負向|防禦|積極|缺值", asg_zh$Cluster_Label)))
+
+# Axis choices expose Beta (levered) for scatter
+ax_en <- lab_cluster_axis_choices("en")
+ax_zh <- lab_cluster_axis_choices("zh-TW")
+stopifnot("Beta" %in% unname(ax_en), "Beta" %in% unname(ax_zh))
+stopifnot(any(grepl("levered|β_L", names(ax_en), ignore.case = TRUE)))
+
+# Beta clustering on synthetic frame; K-Means path still intact
+df_beta <- lab_cluster_synthetic_features(n = 24L, seed = 11L)
+stopifnot("Beta" %in% names(df_beta))
+stopifnot(lab_cluster_usable_beta_rows(df_beta) >= 10L)
+res_beta <- lab_run_beta_clustering(df_beta, locale = "en")
+stopifnot(identical(as.character(res_beta$cluster_mode), "beta"))
+stopifnot(identical(as.character(res_beta$beta_source), "summary_levered"))
+stopifnot(nrow(res_beta$data) == 24L)
+stopifnot(all(c("Cluster_ID", "Cluster_Label", "Beta") %in% names(res_beta$data)))
+stopifnot(all(res_beta$data$Cluster_ID %in% 1:6))
+# Deterministic bin for known Beta values
+df_fixed <- df_beta[1:5, , drop = FALSE]
+df_fixed$Beta <- c(-0.2, 0.5, 0.9, 1.1, 1.8)
+res_fixed <- lab_run_beta_clustering(df_fixed, locale = "en")
+stopifnot(identical(
+  as.integer(res_fixed$data$Cluster_ID[order(res_fixed$data$ticker)]),
+  as.integer(c(1, 2, 3, 4, 5))
+))
+
+# Ensure ticker kept when Beta missing
+df_miss <- df_beta[1:8, , drop = FALSE]
+df_miss$Beta[[1]] <- NA_real_
+df_miss$ticker[[1]] <- "FOCUS1"
+res_miss <- lab_run_beta_clustering(df_miss, locale = "en", ensure_ticker = "FOCUS1")
+stopifnot(!is.na(lab_cluster_match_ticker(res_miss$data$ticker, "FOCUS1")))
+focus_row <- res_miss$data[toupper(res_miss$data$ticker) == "FOCUS1", , drop = FALSE]
+stopifnot(identical(as.integer(focus_row$Cluster_ID[[1]]), 6L))
+
+# K-Means regression: still ignores Beta as a distance feature
+res_km2 <- lab_run_stock_clustering(df_beta, k_clusters = 4L, locale = "en", seed = 7L)
+stopifnot(identical(as.character(res_km2$cluster_mode), "kmeans"))
+stopifnot(!("Beta" %in% res_km2$features))
+stopifnot(identical(as.integer(res_km2$k), 4L))
+stopifnot(setequal(res_km2$features, LAB_CLUSTER_FEATURES))
+
+# Scatter / radar still build for Beta mode
+p_beta <- lab_cluster_scatter_plotly(
+  res_beta, x_feat = "Beta", y_feat = "PE_Ratio", locale = "en",
+  focus_ticker = res_beta$data$ticker[[1]]
+)
+stopifnot(inherits(p_beta, "plotly"))
+p_beta_radar <- lab_cluster_radar_plotly(
+  res_beta, focus_ticker = res_beta$data$ticker[[1]], locale = "en"
+)
+stopifnot(inherits(p_beta_radar, "plotly"))
+
+# Snapshot schema accepts Beta column (may be empty offline)
+snap_beta <- lab_load_cluster_features_snapshot(NULL)
+stopifnot("Beta" %in% names(snap_beta))
+
 parsed_cluster <- tryCatch({
   parse("lab_clustering.R", keep.source = FALSE)
   TRUE
