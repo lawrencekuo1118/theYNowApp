@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12781426
+bundleId=12781810
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/  # pragma: allowlist secret
-aligned_git=994ec42cfbd8c1b565fe9b55f3e30d6e80dc59b9
-commit=994ec42cfbd8c1b565fe9b55f3e30d6e80dc59b9
-short=994ec42c
-message=chore: bump display version to v28.01
-captured_at=2026-11-05T02:24:55Z
-display_version=v28.01
-note=Shipped v28.01 (+0.01) via deploy_app_21.R. Live status=running; rsconnect deployments bundleId=12781426. App wave #644/#646/#647/#651 (+ #641 WACC / #642 skill on tip).
+aligned_git=612463f14fc33c2f16b9116a9bce2365b689cf50
+commit=612463f14fc33c2f16b9116a9bce2365b689cf50
+short=612463f1
+message=chore: bump display version to v28.02
+captured_at=2026-11-05T04:01:01Z
+display_version=v28.02
+note=Shipped v28.02 (+0.01) via deploy_app_21.R. Live status=running; rsconnect deployments bundleId=12781810. App wave #653/#654 WACC mobile 2x3 grid + tax KPI label.
