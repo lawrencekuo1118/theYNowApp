@@ -17205,6 +17205,143 @@ ui <- dashboardPage(
           .content-wrapper .info-box .info-box-text {
             font-size: clamp(10px, 2.6vw, 12px) !important;
           }
+          /* WACC summary cards: phone-only 2 rows × 3 equal cells.
+             Scoped to .ynow-wacc-kpi-grid (the .row itself) so other KPI boxes
+             stay full-width stacked. Kill Bootstrap clearfix so CSS grid sees
+             exactly the six col hosts. Labels wrap (no ellipsis). */
+          .content-wrapper .row.ynow-wacc-kpi-grid,
+          .tab-content .row.ynow-wacc-kpi-grid,
+          .tab-pane .row.ynow-wacc-kpi-grid {
+            display: grid !important;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            grid-auto-rows: 1fr;
+            gap: 6px;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+            margin-bottom: 10px;
+            align-items: stretch;
+          }
+          .content-wrapper .row.ynow-wacc-kpi-grid::before,
+          .content-wrapper .row.ynow-wacc-kpi-grid::after,
+          .tab-content .row.ynow-wacc-kpi-grid::before,
+          .tab-content .row.ynow-wacc-kpi-grid::after,
+          .tab-pane .row.ynow-wacc-kpi-grid::before,
+          .tab-pane .row.ynow-wacc-kpi-grid::after {
+            display: none !important;
+            content: none !important;
+          }
+          .content-wrapper .row.ynow-wacc-kpi-grid > [class*='col-'],
+          .tab-content .row.ynow-wacc-kpi-grid > [class*='col-'],
+          .tab-pane .row.ynow-wacc-kpi-grid > [class*='col-'] {
+            width: auto !important;
+            max-width: none !important;
+            float: none !important;
+            clear: none !important;
+            display: flex !important;
+            flex-direction: column !important;
+            margin: 0 !important;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+            min-width: 0;
+            min-height: 0;
+            height: 100%;
+          }
+          .content-wrapper .row.ynow-wacc-kpi-grid > [class*='col-'] > .shiny-html-output,
+          .tab-content .row.ynow-wacc-kpi-grid > [class*='col-'] > .shiny-html-output,
+          .tab-pane .row.ynow-wacc-kpi-grid > [class*='col-'] > .shiny-html-output,
+          .content-wrapper .row.ynow-wacc-kpi-grid > [class*='col-'] > [class*='col-'],
+          .tab-content .row.ynow-wacc-kpi-grid > [class*='col-'] > [class*='col-'],
+          .tab-pane .row.ynow-wacc-kpi-grid > [class*='col-'] > [class*='col-'] {
+            flex: 1 1 auto;
+            width: 100% !important;
+            max-width: 100% !important;
+            float: none !important;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+          }
+          .content-wrapper .ynow-wacc-kpi-grid .small-box,
+          .content-wrapper .ynow-wacc-kpi-grid .info-box,
+          .tab-content .ynow-wacc-kpi-grid .small-box,
+          .tab-content .ynow-wacc-kpi-grid .info-box,
+          .tab-pane .ynow-wacc-kpi-grid .small-box,
+          .tab-pane .ynow-wacc-kpi-grid .info-box {
+            flex: 1 1 auto;
+            width: 100% !important;
+            height: 100% !important;
+            min-height: 0;
+            margin-bottom: 0 !important;
+            overflow: visible;
+            display: flex !important;
+            flex-direction: column !important;
+            box-sizing: border-box;
+          }
+          .content-wrapper .ynow-wacc-kpi-grid .small-box .inner {
+            padding: 6px 5px 7px !important;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            flex: 1 1 auto;
+            min-width: 0;
+          }
+          .content-wrapper .ynow-wacc-kpi-grid .small-box .icon {
+            display: none !important;
+          }
+          .content-wrapper .ynow-wacc-kpi-grid .small-box .inner h3,
+          .content-wrapper .ynow-wacc-kpi-grid .small-box .inner h3 * {
+            font-size: clamp(11px, 3.1vw, 16px) !important;
+            line-height: 1.15 !important;
+            white-space: nowrap !important;
+            overflow: visible !important;
+            text-overflow: clip !important;
+            max-width: 100%;
+          }
+          .content-wrapper .ynow-wacc-kpi-grid .small-box .inner p {
+            font-size: clamp(8px, 2vw, 10px) !important;
+            line-height: 1.2 !important;
+            white-space: normal !important;
+            overflow: visible !important;
+            text-overflow: unset !important;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            margin-bottom: 0 !important;
+          }
+          .content-wrapper .ynow-wacc-kpi-grid .info-box .info-box-icon {
+            display: none !important;
+          }
+          .content-wrapper .ynow-wacc-kpi-grid .info-box .info-box-content {
+            margin-left: 0 !important;
+            padding: 6px 5px 7px !important;
+            overflow: visible !important;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            flex: 1 1 auto;
+            min-width: 0;
+            width: 100%;
+            box-sizing: border-box;
+          }
+          .content-wrapper .ynow-wacc-kpi-grid .info-box .info-box-text {
+            font-size: clamp(8px, 2vw, 10px) !important;
+            line-height: 1.2 !important;
+            white-space: normal !important;
+            overflow: visible !important;
+            text-overflow: unset !important;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+          }
+          .content-wrapper .ynow-wacc-kpi-grid .info-box .info-box-number,
+          .content-wrapper .ynow-wacc-kpi-grid .info-box .info-box-number h3 {
+            font-size: clamp(11px, 3.1vw, 16px) !important;
+            line-height: 1.15 !important;
+            white-space: nowrap !important;
+            overflow: visible !important;
+            text-overflow: clip !important;
+            max-width: 100%;
+          }
         }
 
         /* Finance Summary 卡片網格 */
@@ -22874,13 +23011,21 @@ tabPanel(
                        tags$div(
                          `data-ynow-lock` = "section:wacc_box",
                          uiOutput("dcf_wacc_fcfe_note"),
+                         # Single Bootstrap row: desktop wraps 4+4+4 / 4+4+4.
+                         # Phone ≤767px: .ynow-wacc-kpi-grid → CSS 2×3 equal cells.
+                         # One .row avoids Bootstrap clearfix + display:contents bugs.
                          fluidRow(
+                           class = "ynow-wacc-kpi-grid",
                            valueBoxOutput("vbx_equity_val", width = 4), # 股權市值 (E)
                            valueBoxOutput("vbx_debt_val", width = 4),   # 總負債 (D)
-                           valueBoxOutput("vbx_tax_rate", width = 4)    # 有效稅率 (T)
-                         ),
-                         fluidRow(
-                           tags$div(`data-ynow-lock` = "output:wacc", infoBoxOutput("ibx_wacc", width = 4)),
+                           valueBoxOutput("vbx_tax_rate", width = 4),   # 有效稅率 (T)
+                           # Lock on col-sm-4 host (SGR pattern) so grid cells stay equal.
+                           tags$div(
+                             class = "col-sm-4",
+                             `data-ynow-lock` = "output:wacc",
+                             # bare uiOutput (SGR pattern); server infoBox width=NULL
+                             shiny::uiOutput("ibx_wacc")
+                           ),
                            infoBoxOutput("ibx_rd", width = 4),
                            infoBoxOutput("ibx_re", width = 4)
                          ),
