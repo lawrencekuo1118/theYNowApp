@@ -125,7 +125,7 @@ ynow_access_catalog <- function() {
     c("tab:macro_market", "tab", "Macro & Market Trends", "總體與市場趨勢"),
     c("tab:asset_transmission", "tab", "Asset Transmission Root", "資產傳導根"),
     c("tab:global_prediction", "tab", "Global Prediction", "全球預測"),
-    c("tab:bluechip", "tab", "Blue Chip Leaderboard", "Blue Chip 排行"),
+    c("tab:bluechip", "tab", "Stock Prospecting", "股海淘金"),
     c("tab:dashboard", "tab", "Company", "公司"),
     c("tab:company_advance", "tab", "Business Breakdown", "業務拆解"),
     c("tab:sensitivity", "tab", "YNOW", "YNOW"),

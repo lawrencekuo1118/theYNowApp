@@ -201,7 +201,7 @@ source("ynow_cookie_notice_ui.R", local = TRUE, encoding = "UTF-8")
           type = "button",
           class = "ynow-home-card",
           `data-tab` = "bluechip",
-          tags$p(id = "ynow_home_bluechip_k", class = "ynow-home-card-k", "Blue Chip"),
+          tags$p(id = "ynow_home_bluechip_k", class = "ynow-home-card-k", "Stock Prospecting"),
           tags$p(
             id = "ynow_home_bluechip_d",
             class = "ynow-home-card-d",
@@ -1780,7 +1780,7 @@ beta_rolling_section_ui <- function() {
                     "顯示全部產業鏈（半導體／科技／金融…），排序用獨立抽樣評估樣本的 ",
                     "Σ(市值×年化估值漲幅)/Σ(市值)；總市值／檔數＝該產業鏈全宇宙個股（非搜尋 Top-N）。",
                     "排除未對應。與候選截斷、概念股、宇宙檔數 N、產業／模型篩選、品質門檻無關。",
-                    "開啟績優股排行榜會在背景自動重算；按「更新排名」可手動重算並寫入預設快照。"
+                    "開啟股海淘金會在背景自動重算；按「更新排名」可手動重算並寫入預設快照。"
                   )
                 ),
                 uiOutput("lab_im_ind_mcap_status"),
@@ -1868,7 +1868,7 @@ beta_rolling_section_ui <- function() {
             )
           ),
           tabBox(
-            title = "BLUE CHIP",
+            title = "STOCK PROSPECTING",
             id = "bluechip_im_report",
             width = "auto",
 
@@ -3977,7 +3977,7 @@ ui <- dashboardPage(
                tabName = "global_prediction",
                icon = icon("chart-pie")
              ),
-             menuItem("Blue Chip Leaderboard", tabName = "bluechip", icon = icon("star")),
+             menuItem("Stock Prospecting", tabName = "bluechip", icon = icon("star")),
              menuItem("Company", tabName = "dashboard", icon = icon("chart-line")),
              menuItem(
                text = tags$span(id = "ynow_menu_company_advance", "Business Breakdown"),

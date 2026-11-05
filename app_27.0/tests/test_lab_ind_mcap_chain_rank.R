@@ -458,10 +458,10 @@ check("help mentions full universe total mcap (en)",
 check("help mentions 全宇宙 (zh-TW)",
       grepl("全宇宙", ui_str("lab_im_ind_mcap_help", "zh-TW"), fixed = TRUE))
 check("help mentions Refresh ranking", grepl("Refresh ranking", ui_str("lab_im_ind_mcap_help", "en"), fixed = TRUE))
-check("help mentions Blue Chip auto-start (en)",
-      grepl("Opening Blue Chip Lab", ui_str("lab_im_ind_mcap_help", "en"), fixed = TRUE))
+check("help mentions Stock Prospecting auto-start (en)",
+      grepl("Opening Stock Prospecting", ui_str("lab_im_ind_mcap_help", "en"), fixed = TRUE))
 check("help mentions tab auto-start (zh-TW)",
-      grepl("開啟績優股排行榜會在背景自動重算全部產業鏈",
+      grepl("開啟股海淘金會在背景自動重算全部產業鏈",
             ui_str("lab_im_ind_mcap_help", "zh-TW"), fixed = TRUE))
 
 cat("\nPASS ", pass, "  FAIL ", fail, "\n", sep = "")
