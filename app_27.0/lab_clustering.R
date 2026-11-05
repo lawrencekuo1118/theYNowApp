@@ -278,8 +278,35 @@ lab_cluster_n_finite_for_ticker <- function(df, ticker) {
   )))
 }
 
-#' Tickers that still need ≥2 finite ratios (for R gap-fill)
-lab_cluster_sparse_tickers <- function(df, tickers) {
+#' Tickers still missing a finite levered β_L (Yahoo Summary / CAPM default)
+lab_cluster_missing_beta_tickers <- function(df, tickers) {
+  tks <- unique(toupper(trimws(as.character(tickers))))
+  tks <- tks[nzchar(tks) & !is.na(tks)]
+  if (!length(tks)) return(character(0))
+  if (is.null(df) || !is.data.frame(df) || nrow(df) == 0L) return(tks)
+  if (!LAB_CLUSTER_BETA_COL %in% names(df)) return(tks)
+  missing <- logical(length(tks))
+  for (i in seq_along(tks)) {
+    matched <- lab_cluster_match_ticker(df$ticker, tks[[i]])
+    if (is.na(matched) || !nzchar(matched)) {
+      missing[[i]] <- TRUE
+      next
+    }
+    row <- df[toupper(trimws(as.character(df$ticker))) == matched, , drop = FALSE]
+    if (nrow(row) < 1L) {
+      missing[[i]] <- TRUE
+      next
+    }
+    b <- suppressWarnings(as.numeric(row[[LAB_CLUSTER_BETA_COL]][[1]]))
+    missing[[i]] <- !is.finite(b)
+  }
+  tks[missing]
+}
+
+#' Tickers that still need ≥2 finite ratios (for R gap-fill).
+#' When need_beta=TRUE, missing levered β_L also counts as sparse so β_L mode
+#' gap-fills even when the offline snapshot already has dense ratios.
+lab_cluster_sparse_tickers <- function(df, tickers, need_beta = FALSE) {
   tks <- unique(toupper(trimws(as.character(tickers))))
   tks <- tks[nzchar(tks) & !is.na(tks)]
   if (!length(tks)) return(character(0))
@@ -294,8 +321,104 @@ lab_cluster_sparse_tickers <- function(df, tickers) {
       next
     }
     sparse[[i]] <- lab_cluster_n_finite_for_ticker(df, matched) < 2L
+    if (!isTRUE(sparse[[i]]) && isTRUE(need_beta)) {
+      row <- df[toupper(trimws(as.character(df$ticker))) == matched, , drop = FALSE]
+      b <- if (nrow(row) >= 1L && LAB_CLUSTER_BETA_COL %in% names(row)) {
+        suppressWarnings(as.numeric(row[[LAB_CLUSTER_BETA_COL]][[1]]))
+      } else {
+        NA_real_
+      }
+      if (!is.finite(b)) sparse[[i]] <- TRUE
+    }
   }
   tks[sparse]
+}
+
+#' Gap-fill levered β_L from existing CAPM / Summary Beta crawlers (no new source).
+#' Prefers fetch_beta_unlever_inputs_batch (Yahoo quote fields=beta), then
+#' lab_fetch_summary_metrics → "Beta (5Y Monthly)" — same CAPM default as
+#' beta_u_apply_source = summary.
+lab_cluster_fill_beta_from_capm <- function(df, tickers) {
+  `%||%` <- function(a, b) if (is.null(a)) b else a
+  need <- lab_cluster_missing_beta_tickers(df, tickers)
+  if (!length(need)) {
+    return(if (is.null(df)) lab_cluster_features_to_df(NULL) else df)
+  }
+  if (is.null(df) || !is.data.frame(df)) {
+    df <- lab_cluster_features_to_df(NULL)
+  }
+
+  .beta_shell_row <- function(sym, beta, name = NA_character_, market_cap = NA_real_) {
+    list(
+      ticker = sym,
+      name = if (is.null(name) || is.na(name) || !nzchar(as.character(name)[1])) {
+        sym
+      } else {
+        as.character(name)[1]
+      },
+      market_cap = suppressWarnings(as.numeric(market_cap)[1]),
+      ROE = NA_real_,
+      Operating_Margin = NA_real_,
+      Rev_YoY = NA_real_,
+      OpInc_YoY = NA_real_,
+      Debt_Ratio = NA_real_,
+      PE_Ratio = NA_real_,
+      PB_Ratio = NA_real_,
+      Beta = suppressWarnings(as.numeric(beta)[1])
+    )
+  }
+
+  # 1) Batch CAPM peer-Beta path (chunked Yahoo quote fields=beta)
+  batch <- NULL
+  if (exists("fetch_beta_unlever_inputs_batch", mode = "function")) {
+    batch <- tryCatch(fetch_beta_unlever_inputs_batch(need), error = function(e) NULL)
+  } else if (exists("get_beta_unlever_inputs_batch", mode = "function")) {
+    batch <- tryCatch(get_beta_unlever_inputs_batch(as.list(need)), error = function(e) NULL)
+  }
+  rows <- list()
+  if (is.list(batch) && length(batch)) {
+    for (item in batch) {
+      if (is.null(item)) next
+      if (is.data.frame(item) && nrow(item) >= 1L) {
+        item <- as.list(item[1, , drop = FALSE])
+      }
+      if (!is.list(item)) next
+      sym <- toupper(trimws(as.character(
+        item[["ticker"]] %||% item[["symbol"]] %||% ""
+      )[1]))
+      b <- suppressWarnings(as.numeric(item[["beta"]])[1])
+      if (!nzchar(sym) || !is.finite(b)) next
+      rows[[length(rows) + 1L]] <- .beta_shell_row(
+        sym, b,
+        name = item[["name"]] %||% NA_character_,
+        market_cap = item[["market_cap"]] %||% NA_real_
+      )
+    }
+  }
+  if (length(rows)) {
+    df <- lab_cluster_merge_feature_dfs(lab_cluster_features_to_df(rows), df)
+  }
+
+  # 2) Per-name Summary metrics (cached_get_summary_data → Beta (5Y Monthly))
+  still <- lab_cluster_missing_beta_tickers(df, need)
+  if (length(still) && exists("lab_fetch_summary_metrics", mode = "function")) {
+    rows2 <- list()
+    for (sym in still) {
+      m <- tryCatch(lab_fetch_summary_metrics(sym), error = function(e) NULL)
+      if (is.null(m) || !is.list(m)) next
+      b <- suppressWarnings(as.numeric(m$beta)[1])
+      if (!is.finite(b)) next
+      rows2[[length(rows2) + 1L]] <- .beta_shell_row(
+        sym, b,
+        name = m$company_name %||% NA_character_,
+        market_cap = m$market_cap %||% NA_real_
+      )
+    }
+    if (length(rows2)) {
+      df <- lab_cluster_merge_feature_dfs(lab_cluster_features_to_df(rows2), df)
+    }
+  }
+  df
 }
 
 #' Merge feature frames by ticker (prefer finite values from primary, then secondary)
@@ -651,11 +774,14 @@ lab_load_cluster_features_snapshot <- function(tickers = NULL) {
 
 #' Fetch Clustering features: live Yahoo overlay + durable offline snapshot fallback
 #' Chunks large universes to reduce Yahoo 429s (N=100 is especially fragile).
-lab_fetch_cluster_features <- function(tickers, chunk_size = 20L) {
+#' @param need_beta when TRUE (β_L mode), treat missing Beta as sparse and
+#'   gap-fill via existing CAPM Summary / unlever-batch Beta crawlers.
+lab_fetch_cluster_features <- function(tickers, chunk_size = 20L, need_beta = FALSE) {
   tks <- unique(toupper(trimws(as.character(tickers))))
   tks <- tks[nzchar(tks) & !is.na(tks)]
   # Keep TW/TWO suffixes intact (do not strip dots)
   if (!length(tks)) return(lab_cluster_features_to_df(NULL))
+  need_beta <- isTRUE(need_beta)
 
   `%||%` <- function(a, b) if (is.null(a)) b else a
   py_err <- NULL
@@ -723,8 +849,9 @@ lab_fetch_cluster_features <- function(tickers, chunk_size = 20L) {
   }
 
   n_ok <- lab_cluster_usable_feature_rows(df)
-  # Gap-fill sparse / missing tickers via R crumb path (also covers cold Python)
-  need_r <- lab_cluster_sparse_tickers(df, tks)
+  # Gap-fill sparse / missing tickers via R crumb path (also covers cold Python).
+  # In β_L mode, missing Beta alone also triggers refill even when ratios are dense.
+  need_r <- lab_cluster_sparse_tickers(df, tks, need_beta = need_beta)
   # Prefer filling a usable core first when universe is huge (N=100 rate-limit)
   if (length(need_r) > 40L && n_ok < 8L) {
     need_r <- need_r[seq_len(40L)]
@@ -746,15 +873,25 @@ lab_fetch_cluster_features <- function(tickers, chunk_size = 20L) {
           r_err <- as.character(r_attr)[1]
         }
         n_ok_r <- lab_cluster_usable_feature_rows(df_r)
-        if (n_ok_r > 0L) {
+        n_beta_r <- lab_cluster_usable_beta_rows(df_r)
+        if (n_ok_r > 0L || (need_beta && n_beta_r > 0L)) {
           df <- lab_cluster_merge_feature_dfs(df_r, df)
           n_ok <- lab_cluster_usable_feature_rows(df)
         }
       }
       # Do not abandon remaining sparse names while any requested ticker is still empty
-      still_sparse <- lab_cluster_sparse_tickers(df, tks)
+      still_sparse <- lab_cluster_sparse_tickers(df, tks, need_beta = need_beta)
       if (!length(still_sparse)) break
     }
+  }
+
+  # β_L mode: wire existing CAPM Summary / batch Beta crawlers when snapshot
+  # ratios are dense but the Beta column is blank (prior failure mode).
+  if (need_beta) {
+    df <- tryCatch(
+      lab_cluster_fill_beta_from_capm(df, tks),
+      error = function(e) df
+    )
   }
 
   # If live Yahoo failed, re-merge full snapshot for requested tickers
@@ -767,6 +904,12 @@ lab_fetch_cluster_features <- function(tickers, chunk_size = 20L) {
       df <- lab_cluster_merge_feature_dfs(df, snap2)
       n_ok <- lab_cluster_usable_feature_rows(df)
       used_snapshot <- TRUE
+    }
+    if (need_beta) {
+      df <- tryCatch(
+        lab_cluster_fill_beta_from_capm(df, tks),
+        error = function(e) df
+      )
     }
   }
 
@@ -950,18 +1093,24 @@ lab_cluster_usable_beta_rows <- function(df) {
   as.integer(sum(is.finite(suppressWarnings(as.numeric(df[[LAB_CLUSTER_BETA_COL]]))), na.rm = TRUE))
 }
 
-#' Solo re-fetch for Search / radar-focus when still <2 finite ratios.
-#' Tries Python batch → R crumb → offline snapshot (fuzzy match).
-lab_cluster_priority_refill_features <- function(feats, ticker) {
+#' Solo re-fetch for Search / radar-focus when still <2 finite ratios
+#' (or missing β_L when need_beta=TRUE).
+#' Tries Python batch → R crumb → offline snapshot → CAPM Summary/batch Beta.
+lab_cluster_priority_refill_features <- function(feats, ticker, need_beta = FALSE) {
   ensure_raw <- toupper(trimws(as.character(ticker %||% "")[1]))
+  need_beta <- isTRUE(need_beta)
   if (!nzchar(ensure_raw)) {
     return(if (is.null(feats)) lab_cluster_features_to_df(NULL) else feats)
   }
   if (is.null(feats) || !is.data.frame(feats)) {
     feats <- lab_cluster_features_to_df(NULL)
   }
+  .beta_ok <- function(df, tk) {
+    if (!need_beta) return(TRUE)
+    length(lab_cluster_missing_beta_tickers(df, tk)) == 0L
+  }
   n0 <- lab_cluster_n_finite_for_ticker(feats, ensure_raw)
-  if (n0 >= 2L) return(feats)
+  if (n0 >= 2L && .beta_ok(feats, ensure_raw)) return(feats)
 
   # 1) Python solo
   py_part <- NULL
@@ -990,7 +1139,7 @@ lab_cluster_priority_refill_features <- function(feats, ticker) {
     feats <- lab_cluster_merge_feature_dfs(py_part, feats)
   }
   n1 <- lab_cluster_n_finite_for_ticker(feats, ensure_raw)
-  if (n1 >= 2L) {
+  if (n1 >= 2L && .beta_ok(feats, ensure_raw)) {
     return(feats)
   }
 
@@ -1000,11 +1149,12 @@ lab_cluster_priority_refill_features <- function(feats, ticker) {
     error = function(e) NULL
   )
   if (!is.null(r_part) && nrow(r_part) > 0L &&
-      lab_cluster_usable_feature_rows(r_part) > 0L) {
+      (lab_cluster_usable_feature_rows(r_part) > 0L ||
+         (need_beta && lab_cluster_usable_beta_rows(r_part) > 0L))) {
     feats <- lab_cluster_merge_feature_dfs(r_part, feats)
   }
   n2 <- lab_cluster_n_finite_for_ticker(feats, ensure_raw)
-  if (n2 >= 2L) {
+  if (n2 >= 2L && .beta_ok(feats, ensure_raw)) {
     return(feats)
   }
 
@@ -1021,6 +1171,14 @@ lab_cluster_priority_refill_features <- function(feats, ticker) {
         feats
       )
     }
+  }
+
+  # 4) Existing CAPM Summary / batch Beta when β_L still missing
+  if (need_beta && !.beta_ok(feats, ensure_raw)) {
+    feats <- tryCatch(
+      lab_cluster_fill_beta_from_capm(feats, ensure_raw),
+      error = function(e) feats
+    )
   }
   feats
 }
@@ -1408,8 +1566,9 @@ lab_cluster_run_job <- function(catlg,
       )
     })
   }
+  need_beta <- identical(mode_cluster, "beta")
   feats <- tryCatch(
-    lab_fetch_cluster_features(pool$ticker),
+    lab_fetch_cluster_features(pool$ticker, need_beta = need_beta),
     error = function(e) {
       errors <<- c(errors, paste("Feature fetch failed:", conditionMessage(e)))
       NULL
@@ -1419,10 +1578,17 @@ lab_cluster_run_job <- function(catlg,
   if (length(ensure_tks) && exists("lab_cluster_priority_refill_features", mode = "function")) {
     for (ens_tk in ensure_tks) {
       feats <- tryCatch(
-        lab_cluster_priority_refill_features(feats, ens_tk),
+        lab_cluster_priority_refill_features(feats, ens_tk, need_beta = need_beta),
         error = function(e) feats
       )
     }
+  }
+  # β_L mode belt-and-suspenders: CAPM Summary/batch Beta if still blank
+  if (need_beta && !is.null(feats) && is.data.frame(feats) && nrow(feats) > 0L) {
+    feats <- tryCatch(
+      lab_cluster_fill_beta_from_capm(feats, pool$ticker),
+      error = function(e) feats
+    )
   }
   if (!is.null(feats) && is.data.frame(feats) && nrow(feats) > 0L) {
     hit <- match(
