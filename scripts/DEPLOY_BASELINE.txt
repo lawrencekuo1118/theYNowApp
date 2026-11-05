@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12784241
+bundleId=12784287
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/  # pragma: allowlist secret
-aligned_git=e158da307e8ef2131f334d89193ebff0b0cc90d2
-commit=e158da307e8ef2131f334d89193ebff0b0cc90d2
-short=e158da30
-message=chore: bump display version to v28.11
-captured_at=2026-11-05T17:05:28Z
+aligned_git=4d704ab7f0fc15fb0d322ab68f8a7381113788fb
+commit=4d704ab7f0fc15fb0d322ab68f8a7381113788fb
+short=4d704ab7
+message=chore: bump display version to v28.12
+captured_at=2026-11-05T17:16:19Z
 display_version=v28.12
-note=Shipped v28.11 (+0.01) via deploy_app_21.R after #671 DataTables Ajax tn/7 stable column keys (Table_2/3). Live status=running; rsconnect deployments bundleId=12784241. App wave #671 alone — 股海淘金 rename PR not merged before deploy.
+note=Shipped v28.12 (+0.01) via deploy_app_21.R after #673 Stock Prospecting / 股海淘金 rename. Live status=running; rsconnect deployments bundleId=12784287. App wave #673 alone — #674 β_L level clustering still open, not waited. Also lands prior v28.11 baseline (bundle 12784241 / #671) that was pending as #675.
