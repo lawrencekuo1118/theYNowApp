@@ -451,10 +451,12 @@ lab_ind_mcap_prepare_treemap_df <- function(snap_df, locale = "zh-TW") {
 #' Scaling rule (magnitude only — independent of cell / block area / mcap):
 #'   font_px = size_min + (size_max - size_min) * min(1, abs(wavg) / abs_max)
 #' Larger |wavg| → larger type. Sign does not change size. Non-finite → size_min.
-#' Cell area must never shrink or hide these sizes (see uniformtext mode "show"
-#' + CSS/JS overflow-visible unclip in lab_ind_mcap_treemap_plotly).
+#' Do **not** use layout.uniformtext — Plotly's mode "show"/"hide" forces one
+#' identical size across all sectors and wipes per-cell textfont.size.
+#' Cell area must never shrink or hide these sizes (see CSS/JS overflow-visible
+#' + force font-size in lab_ind_mcap_treemap_plotly onRender).
 lab_ind_mcap_treemap_label_font_sizes <- function(
-  wavg, abs_max = 20, size_min = 11, size_max = 22
+  wavg, abs_max = 20, size_min = 10, size_max = 26
 ) {
   w <- suppressWarnings(as.numeric(wavg))
   am <- suppressWarnings(as.numeric(abs_max)[1])
@@ -462,8 +464,8 @@ lab_ind_mcap_treemap_label_font_sizes <- function(
   smin <- suppressWarnings(as.numeric(size_min)[1])
   smax <- suppressWarnings(as.numeric(size_max)[1])
   if (!is.finite(smin) || !is.finite(smax)) {
-    smin <- 11
-    smax <- 22
+    smin <- 10
+    smax <- 26
   } else if (smax < smin) {
     tmp <- smin
     smin <- smax
@@ -474,40 +476,113 @@ lab_ind_mcap_treemap_label_font_sizes <- function(
   unname(as.numeric(sizes))
 }
 
-#' JS that keeps treemap slice labels visible past sector bounds.
+#' JS that forces |upside| font sizes and keeps labels past sector bounds.
 #'
-#' Plotly SVG clip-paths otherwise truncate large-|upside| type in small blocks.
-#' Called via htmlwidgets::onRender so every afterplot pass re-applies unclip.
+#' Plotly treemap otherwise (1) shrinks type to fit each cell and/or (2) if
+#' layout.uniformtext is set, forces one identical size — both kill |value|
+#' scaling. This hook re-applies textfont.size from the trace and strips SVG
+#' clip-paths on every plotly_afterplot.
 lab_ind_mcap_treemap_unclip_js <- function() {
   paste(
     "function(el, x) {",
-    "  function unclipIndMcapTreemap() {",
+    "  function normalizeLabelKey(s) {",
+    "    // Plotly stores multiline labels as '<br />' in trace.labels.",
+    "    return String(s == null ? '' : s)",
+    "      .replace(/<br\\s*\\/?>/gi, '')",
+    "      .replace(/\\s+/g, '')",
+    "      .replace(/\\n/g, '');",
+    "  }",
+    "  function stripScaleTransform(nd) {",
+    "    if (!nd || !nd.getAttribute) return;",
+    "    var tr = nd.getAttribute('transform');",
+    "    if (tr && /scale\\s*\\(/i.test(tr)) {",
+    "      nd.setAttribute(",
+    "        'transform',",
+    "        tr.replace(/scale\\s*\\([^)]*\\)/gi, '').replace(/\\s{2,}/g, ' ').trim()",
+    "      );",
+    "    }",
+    "  }",
+    "  function applyIndMcapTreemapFonts() {",
     "    if (!el) return;",
-    "    var sel = el.querySelectorAll(",
-    "      'g.slicetext, g.slice text, .slicetext, text.slicetext'",
-    "    );",
-    "    for (var i = 0; i < sel.length; i++) {",
-    "      var n = sel[i];",
-    "      n.removeAttribute('clip-path');",
-    "      n.style.overflow = 'visible';",
-    "      n.style.textOverflow = 'clip';",
-    "      n.style.whiteSpace = 'pre';",
-    "      if (n.parentNode && n.parentNode.removeAttribute) {",
-    "        n.parentNode.removeAttribute('clip-path');",
-    "        n.parentNode.style.overflow = 'visible';",
+    "    var trace = (el.data && el.data[0]) ? el.data[0] : null;",
+    "    var sizes = [];",
+    "    if (trace && trace.textfont && trace.textfont.size != null) {",
+    "      sizes = [].concat(trace.textfont.size);",
+    "    } else if (trace && trace.insidetextfont &&",
+    "               trace.insidetextfont.size != null) {",
+    "      sizes = [].concat(trace.insidetextfont.size);",
+    "    }",
+    "    var labels = (trace && trace.labels) ? [].concat(trace.labels) : [];",
+    "    var ids = (trace && trace.ids) ? [].concat(trace.ids) : [];",
+    "    var groups = el.querySelectorAll('g.slicetext');",
+    "    for (var i = 0; i < groups.length; i++) {",
+    "      var g = groups[i];",
+    "      var raw = (g.textContent || '').replace(/\\s+/g, '');",
+    "      var sizePx = null;",
+    "      for (var j = 0; j < labels.length; j++) {",
+    "        var key = normalizeLabelKey(labels[j]);",
+    "        if (key && raw.indexOf(key) !== -1) {",
+    "          sizePx = Number(sizes[j]);",
+    "          break;",
+    "        }",
     "      }",
+    "      if (!(isFinite(sizePx)) && ids.length && sizes.length) {",
+    "        for (var k = 0; k < ids.length; k++) {",
+    "          var idk = normalizeLabelKey(ids[k]);",
+    "          if (idk && raw.indexOf(idk) !== -1) {",
+    "            sizePx = Number(sizes[k]);",
+    "            break;",
+    "          }",
+    "        }",
+    "      }",
+    "      var nodes = g.querySelectorAll('text, tspan');",
+    "      for (var t = 0; t < nodes.length; t++) {",
+    "        var nd = nodes[t];",
+    "        if (isFinite(sizePx) && sizePx > 0) {",
+    "          nd.setAttribute('font-size', String(sizePx));",
+    "          nd.style.fontSize = sizePx + 'px';",
+    "        }",
+    "        // Always strip fit-to-cell scale — it visually undoes |upside| px.",
+    "        stripScaleTransform(nd);",
+    "      }",
+    "      stripScaleTransform(g);",
+    "      g.removeAttribute('clip-path');",
+    "      g.style.overflow = 'visible';",
+    "      g.style.textOverflow = 'clip';",
+    "      g.style.whiteSpace = 'pre';",
+    "      if (g.parentNode && g.parentNode.removeAttribute) {",
+    "        g.parentNode.removeAttribute('clip-path');",
+    "        g.parentNode.style.overflow = 'visible';",
+    "      }",
+    "    }",
+    "    var extra = el.querySelectorAll(",
+    "      'g.slice text, .slicetext, text.slicetext'",
+    "    );",
+    "    for (var e = 0; e < extra.length; e++) {",
+    "      extra[e].removeAttribute('clip-path');",
+    "      extra[e].style.overflow = 'visible';",
+    "      stripScaleTransform(extra[e]);",
     "    }",
     "    var boxes = el.querySelectorAll(",
     "      'svg, .main-svg, .svg-container, .plot-container, .js-plotly-plot'",
     "    );",
-    "    for (var j = 0; j < boxes.length; j++) {",
-    "      boxes[j].style.overflow = 'visible';",
-    "      boxes[j].setAttribute('overflow', 'visible');",
+    "    for (var b = 0; b < boxes.length; b++) {",
+    "      boxes[b].style.overflow = 'visible';",
+    "      boxes[b].setAttribute('overflow', 'visible');",
     "    }",
     "  }",
-    "  unclipIndMcapTreemap();",
+    "  applyIndMcapTreemapFonts();",
+    "  // Plotly may re-fit (re-add scale) after the first afterplot — re-apply.",
+    "  setTimeout(applyIndMcapTreemapFonts, 0);",
+    "  setTimeout(applyIndMcapTreemapFonts, 50);",
+    "  setTimeout(applyIndMcapTreemapFonts, 250);",
+    "  if (typeof requestAnimationFrame === 'function') {",
+    "    requestAnimationFrame(function() {",
+    "      requestAnimationFrame(applyIndMcapTreemapFonts);",
+    "    });",
+    "  }",
     "  if (typeof el.on === 'function') {",
-    "    el.on('plotly_afterplot', unclipIndMcapTreemap);",
+    "    el.on('plotly_afterplot', applyIndMcapTreemapFonts);",
     "  }",
     "}",
     sep = "\n"
@@ -625,6 +700,13 @@ lab_ind_mcap_treemap_plotly <- function(snap_df,
     hover_n, ": ", n_txt
   )
 
+  # Both textfont + insidetextfont: treemap draws inside the sector; textfont
+  # alone can be ignored / treated as a max before fit-to-cell shrink.
+  font_spec <- list(
+    size = sizes,
+    color = "#222",
+    family = "Helvetica Neue, Arial, sans-serif"
+  )
   p <- plotly::plot_ly(
     type = "treemap",
     labels = labels,
@@ -633,7 +715,8 @@ lab_ind_mcap_treemap_plotly <- function(snap_df,
     ids = as.character(df$chain_id),
     text = labels,
     textinfo = "label",
-    textfont = list(size = sizes, color = "#222"),
+    textfont = font_spec,
+    insidetextfont = font_spec,
     hovertext = custom,
     hoverinfo = "text",
     marker = list(
@@ -662,12 +745,12 @@ lab_ind_mcap_treemap_plotly <- function(snap_df,
     margin = list(l = 4, r = 4, t = 4, b = 4),
     paper_bgcolor = "rgba(0,0,0,0)",
     plot_bgcolor = "rgba(0,0,0,0)",
-    # "show": never hide / shrink labels to fit the sector — size stays on |upside|.
-    uniformtext = list(minsize = 8, mode = "show"),
+    # Never set layout.uniformtext — mode "show"/"hide" forces one identical
+    # size across all sectors and cancels |upside| textfont.size arrays.
     font = list(family = "Helvetica Neue, Arial, sans-serif", size = 12, color = "#222")
   )
   p <- plotly::config(p, displayModeBar = FALSE, responsive = TRUE)
-  # Strip SVG clip-paths so large-|upside| type can overflow small cells.
+  # Force |upside| px sizes + strip clip-paths so type can overflow small cells.
   if (requireNamespace("htmlwidgets", quietly = TRUE)) {
     p <- htmlwidgets::onRender(p, lab_ind_mcap_treemap_unclip_js())
   }

@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12783671
+bundleId=12784199
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/  # pragma: allowlist secret
-aligned_git=850db7fb016a70fd1b9e10bb0c60b2bb4e22217f
-commit=850db7fb016a70fd1b9e10bb0c60b2bb4e22217f
-short=850db7fb
-message=chore: bump display version to v28.09
-captured_at=2026-11-05T14:38:08Z
-display_version=v28.09
-note=Shipped v28.09 (+0.01) via deploy_app_21.R after #668 β_L clustering wired to existing CAPM Beta path. Live status=running; rsconnect deployments bundleId=12783671. App wave #668 (lab clustering uses CAPM Beta β_L path).
+aligned_git=8367cd5d39c7e43567b759e678d8f8739597c244
+commit=8367cd5d39c7e43567b759e678d8f8739597c244
+short=8367cd5d
+message=chore: bump display version to v28.10
+captured_at=2026-11-05T16:48:54Z
+display_version=v28.10
+note=Shipped v28.10 (+0.01) via deploy_app_21.R after #670 mcap-upside |value| treemap type actually visible. Live status=running; rsconnect deployments bundleId=12784199. App wave #670 (mcap-upside |value| font visibility). No DataTables Ajax PR was merged; shipped #670 alone.
