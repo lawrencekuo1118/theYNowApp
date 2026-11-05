@@ -7,5 +7,5 @@ commit=e158da307e8ef2131f334d89193ebff0b0cc90d2
 short=e158da30
 message=chore: bump display version to v28.11
 captured_at=2026-11-05T17:05:28Z
-display_version=v28.11
+display_version=v28.12
 note=Shipped v28.11 (+0.01) via deploy_app_21.R after #671 DataTables Ajax tn/7 stable column keys (Table_2/3). Live status=running; rsconnect deployments bundleId=12784241. App wave #671 alone — 股海淘金 rename PR not merged before deploy.
