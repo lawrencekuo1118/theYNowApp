@@ -522,8 +522,8 @@ lab_industry_mcap_upside_leaderboard <- function(merged_df, top_n = 10L,
   empty <- data.frame(
     排名 = integer(0),
     產業 = character(0),
-    市值加權年化估值漲幅 = character(0),
-    總市值 = character(0),
+    市值加權年化估值漲幅 = numeric(0),
+    總市值 = numeric(0),
     stringsAsFactors = FALSE, check.names = FALSE
   )
   df <- lab_leaderboard_pool(
@@ -594,14 +594,6 @@ lab_industry_mcap_upside_leaderboard <- function(merged_df, top_n = 10L,
   agg <- head(agg, top_n)
   if (nrow(agg) == 0) return(empty)
 
-  .fmt_mcap <- function(x) {
-    x <- suppressWarnings(as.numeric(x)[1])
-    if (!is.finite(x) || x <= 0) return("—")
-    if (x >= 1e12) sprintf("%.2fT", x / 1e12)
-    else if (x >= 1e9) sprintf("%.2fB", x / 1e9)
-    else if (x >= 1e6) sprintf("%.2fM", x / 1e6)
-    else sprintf("%.0f", x)
-  }
   loc <- if (exists("normalize_ui_locale", mode = "function")) {
     normalize_ui_locale(locale)
   } else {
@@ -617,12 +609,17 @@ lab_industry_mcap_upside_leaderboard <- function(merged_df, top_n = 10L,
     }
     as.character(agg$industry_label[[i]] %||% k)[1]
   }, character(1))
+  # Numeric columns: server-side DT sorts by magnitude; JS render formats display.
+  mcap_num <- suppressWarnings(as.numeric(agg$total_mcap))
+  mcap_num[!is.finite(mcap_num) | mcap_num <= 0] <- NA_real_
+  wavg_num <- suppressWarnings(as.numeric(agg$wavg_cagr))
+  wavg_num[!is.finite(wavg_num)] <- NA_real_
   lab_localize_im_colnames(
     data.frame(
       排名 = seq_len(nrow(agg)),
       產業 = ind_disp,
-      市值加權年化估值漲幅 = sprintf("%+.1f%%", agg$wavg_cagr),
-      總市值 = vapply(agg$total_mcap, .fmt_mcap, character(1)),
+      市值加權年化估值漲幅 = wavg_num,
+      總市值 = mcap_num,
       stringsAsFactors = FALSE,
       check.names = FALSE
     ),

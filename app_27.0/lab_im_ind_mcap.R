@@ -261,12 +261,15 @@ lab_chain_mcap_universe_totals <- function(universe_df) {
 }
 
 #' Format raw chain snapshot / aggregate rows into the DT display table.
+#'
+#' Upside % and Total market cap stay **numeric** so `renderDT(..., server = TRUE)`
+#' sorts by magnitude. `ynow_sortable_datatable` formats them for display (e.g. `5.10T`).
 lab_format_ind_mcap_chain_table <- function(agg_df, locale = "zh-TW") {
   empty <- data.frame(
     排名 = integer(0),
     產業鏈 = character(0),
-    市值加權年化估值漲幅 = character(0),
-    總市值 = character(0),
+    市值加權年化估值漲幅 = numeric(0),
+    總市值 = numeric(0),
     檔數 = integer(0),
     stringsAsFactors = FALSE,
     check.names = FALSE
@@ -274,14 +277,6 @@ lab_format_ind_mcap_chain_table <- function(agg_df, locale = "zh-TW") {
   agg_df <- lab_ind_mcap_drop_unmapped_chains(agg_df)
   if (is.null(agg_df) || !is.data.frame(agg_df) || nrow(agg_df) == 0L) {
     return(lab_localize_im_colnames(empty, locale))
-  }
-  .fmt_mcap <- function(x) {
-    x <- suppressWarnings(as.numeric(x)[1])
-    if (!is.finite(x) || x <= 0) return("—")
-    if (x >= 1e12) sprintf("%.2fT", x / 1e12)
-    else if (x >= 1e9) sprintf("%.2fB", x / 1e9)
-    else if (x >= 1e6) sprintf("%.2fM", x / 1e6)
-    else sprintf("%.0f", x)
   }
   loc <- if (exists("normalize_ui_locale", mode = "function")) {
     normalize_ui_locale(locale)
@@ -305,12 +300,9 @@ lab_format_ind_mcap_chain_table <- function(agg_df, locale = "zh-TW") {
     if (nzchar(cid)) cid else "—"
   }, character(1))
   wavg <- suppressWarnings(as.numeric(agg_df$wavg_cagr))
-  wavg_txt <- ifelse(
-    is.finite(wavg),
-    sprintf("%+.1f%%", wavg),
-    "—"
-  )
-  mcap_txt <- vapply(agg_df$total_mcap, .fmt_mcap, character(1))
+  wavg[!is.finite(wavg)] <- NA_real_
+  mcap <- suppressWarnings(as.numeric(agg_df$total_mcap))
+  mcap[!is.finite(mcap) | mcap <= 0] <- NA_real_
   n_names <- if ("n_names" %in% names(agg_df)) {
     as.integer(suppressWarnings(as.numeric(agg_df$n_names)))
   } else {
@@ -320,8 +312,8 @@ lab_format_ind_mcap_chain_table <- function(agg_df, locale = "zh-TW") {
     data.frame(
       排名 = seq_len(n),
       產業鏈 = labs,
-      市值加權年化估值漲幅 = wavg_txt,
-      總市值 = mcap_txt,
+      市值加權年化估值漲幅 = wavg,
+      總市值 = mcap,
       檔數 = n_names,
       stringsAsFactors = FALSE,
       check.names = FALSE

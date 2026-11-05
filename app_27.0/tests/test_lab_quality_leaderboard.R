@@ -116,9 +116,11 @@ testthat::test_that("industry_avg ranks by mcap-weighted average upside", {
   testthat::expect_identical(as.character(lb$產業), c("Banks", "Software", "Semiconductors"))
   testthat::expect_true("市值加權年化估值漲幅" %in% names(lb))
   testthat::expect_identical(as.integer(lb$排名), c(1L, 2L, 3L))
-  # Banks = +60.0%, Software = +42.0%
-  testthat::expect_true(grepl("\\+60\\.0%", lb[["市值加權年化估值漲幅"]][[1]]))
-  testthat::expect_true(grepl("\\+42\\.0%", lb[["市值加權年化估值漲幅"]][[2]]))
+  # Banks = 60, Software = 42 (numeric for server-side DT sort; JS formats display)
+  testthat::expect_true(is.numeric(lb[["市值加權年化估值漲幅"]]))
+  testthat::expect_true(is.numeric(lb[["總市值"]]))
+  testthat::expect_equal(as.numeric(lb[["市值加權年化估值漲幅"]][[1]]), 60, tolerance = 1e-8)
+  testthat::expect_equal(as.numeric(lb[["市值加權年化估值漲幅"]][[2]]), 42, tolerance = 1e-8)
 })
 
 testthat::test_that("dedicated industry board helper lists all industries (top_n large)", {
