@@ -131,12 +131,12 @@ check("treemap plotly builds", {
   inherits(p, "plotly")
 })
 check("treemap label font |upside| scale", {
-  # Default range 11–22 over abs_max=20: 0→11, 10→16.5, ≥20→22; sign ignored.
+  # Default range 10–26 over abs_max=20: 0→10, 10→18, ≥20→26; sign ignored.
   sz <- lab_ind_mcap_treemap_label_font_sizes(
     c(0, 10, 20, 40, NA, -10, -20),
     abs_max = 20
   )
-  expect <- c(11, 16.5, 22, 22, 11, 16.5, 22)
+  expect <- c(10, 18, 26, 26, 10, 18, 26)
   is.numeric(sz) && is.null(names(sz)) && length(sz) == 7L &&
     all(abs(sz - expect) < 1e-9)
 })
@@ -145,7 +145,7 @@ check("treemap font scale ignores cell/mcap size", {
   w <- c(12, -12, 12)
   sz <- lab_ind_mcap_treemap_label_font_sizes(w, abs_max = 20)
   length(unique(round(sz, 9))) == 1L &&
-    abs(sz[1] - (11 + (22 - 11) * (12 / 20))) < 1e-9
+    abs(sz[1] - (10 + (26 - 10) * (12 / 20))) < 1e-9
 })
 check("treemap plotly textfont size follows |upside|", {
   snap <- data.frame(
@@ -169,7 +169,27 @@ check("treemap plotly textfont size follows |upside|", {
   length(sizes) == nrow(df) && length(sizes) == length(ids) &&
     !is.na(i_lo) && !is.na(i_hi) && sizes[i_hi] > sizes[i_lo]
 })
-check("treemap uniformtext mode show (no hide/clip-to-fit)", {
+check("treemap insidetextfont size mirrors |upside| array", {
+  snap <- data.frame(
+    chain_id = c("半導體", "金融"),
+    wavg_cagr = c(2, 18),
+    total_mcap = c(5e12, 1e9),
+    n_names = c(12L, 40L),
+    stringsAsFactors = FALSE
+  )
+  p <- lab_ind_mcap_treemap_plotly(snap, market = "TW", locale = "zh-TW")
+  built <- tryCatch(plotly::plotly_build(p), error = function(e) p)
+  tf <- built$x$data[[1]]$textfont$size
+  if (is.null(tf)) tf <- p$x$data[[1]]$textfont$size
+  itf <- built$x$data[[1]]$insidetextfont$size
+  if (is.null(itf)) itf <- p$x$data[[1]]$insidetextfont$size
+  a <- suppressWarnings(as.numeric(unlist(tf, use.names = FALSE)))
+  b <- suppressWarnings(as.numeric(unlist(itf, use.names = FALSE)))
+  length(a) >= 2L && length(a) == length(b) && all(abs(a - b) < 1e-9)
+})
+check("treemap omits uniformtext (would force identical size)", {
+  # Plotly layout.uniformtext mode "show"/"hide" makes every label the same
+  # size — that cancelled |upside| textfont.size on live v28.08+.
   snap <- data.frame(
     chain_id = c("半導體", "金融"),
     wavg_cagr = c(8, -3),
@@ -181,16 +201,23 @@ check("treemap uniformtext mode show (no hide/clip-to-fit)", {
   built <- tryCatch(plotly::plotly_build(p), error = function(e) p)
   ut <- built$x$layout$uniformtext
   if (is.null(ut)) ut <- p$x$layout$uniformtext
-  identical(as.character(ut$mode), "show")
+  is.null(ut) || is.null(ut$mode) || identical(ut$mode, FALSE) ||
+    identical(as.character(ut$mode), "FALSE") ||
+    identical(tolower(as.character(ut$mode)[1]), "false")
 })
-check("treemap onRender unclip hook present", {
+check("treemap onRender forces font-size + strips scale + unclip", {
   js <- lab_ind_mcap_treemap_unclip_js()
-  grepl("unclipIndMcapTreemap", js, fixed = TRUE) &&
+  grepl("applyIndMcapTreemapFonts", js, fixed = TRUE) &&
+    grepl("fontSize", js, fixed = TRUE) &&
+    grepl("setAttribute('font-size'", js, fixed = TRUE) &&
+    grepl("stripScaleTransform", js, fixed = TRUE) &&
+    grepl("<br", js, fixed = TRUE) &&
+    grepl("setTimeout", js, fixed = TRUE) &&
     grepl("removeAttribute('clip-path')", js, fixed = TRUE) &&
     grepl("plotly_afterplot", js, fixed = TRUE) &&
     grepl("overflow = 'visible'", js, fixed = TRUE)
 })
-check("treemap plotly widget wires unclip onRender", {
+check("treemap plotly widget wires font-force onRender", {
   snap <- data.frame(
     chain_id = "半導體",
     wavg_cagr = 25,
@@ -200,7 +227,9 @@ check("treemap plotly widget wires unclip onRender", {
   )
   p <- lab_ind_mcap_treemap_plotly(snap, market = "US", locale = "en")
   js_blob <- paste(unlist(p$jsHooks$render), collapse = "\n")
-  grepl("unclipIndMcapTreemap", js_blob, fixed = TRUE) &&
+  grepl("applyIndMcapTreemapFonts", js_blob, fixed = TRUE) &&
+    grepl("font-size", js_blob, fixed = TRUE) &&
+    grepl("scale", js_blob, fixed = TRUE) &&
     grepl("clip-path", js_blob, fixed = TRUE)
 })
 check("UI treemap CSS overflow-visible (no clip)", {
