@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12779888
+bundleId=12781426
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/  # pragma: allowlist secret
-aligned_git=8ff5b0e3bc0b68b04235420d13555d06350a4876
-commit=8ff5b0e3bc0b68b04235420d13555d06350a4876
-short=8ff5b0e3
-message=chore: record v28.00 shinyapps baseline bundle 12779858 (#648)
-captured_at=2026-11-05T00:36:05Z
+aligned_git=994ec42cfbd8c1b565fe9b55f3e30d6e80dc59b9
+commit=994ec42cfbd8c1b565fe9b55f3e30d6e80dc59b9
+short=994ec42c
+message=chore: bump display version to v28.01
+captured_at=2026-11-05T02:24:55Z
 display_version=v28.01
-note=Realign recorded baseline to live active bundle 12779888 (duplicate v28.00 upload race; prior #648 recorded 12779858). display_version unchanged. app_27.0 tree matches tip.
+note=Shipped v28.01 (+0.01) via deploy_app_21.R. Live status=running; rsconnect deployments bundleId=12781426. App wave #644/#646/#647/#651 (+ #641 WACC / #642 skill on tip).
