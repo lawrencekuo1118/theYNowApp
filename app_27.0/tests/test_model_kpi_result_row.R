@@ -77,32 +77,46 @@ check("SOTP price leftmost + flow", grepl("ynow-model-kpi-result", sotp_src, fix
         grepl("ynow_model_result_num(val)", sotp_src, fixed = TRUE))
 check("Multiples PE/EVFCF/PS marked result", grepl("is_result = TRUE", rel_src, fixed = TRUE))
 
-# White-outline class on listed primary KPIs (Multiples family stays filled)
-check(
-  "NAV mid has outline class",
-  grepl('ynow-model-kpi-result ynow-model-kpi-outline", valueBoxOutput(ns("vbx_nav_mid")', nav_src, fixed = TRUE) ||
-    grepl("ynow-model-kpi-result ynow-model-kpi-outline\", valueBoxOutput(ns(\"vbx_nav_mid\")", nav_src, fixed = TRUE) ||
-    grepl('class = "ynow-model-kpi-result ynow-model-kpi-outline", valueBoxOutput(ns("vbx_nav_mid")', nav_src, fixed = TRUE)
-)
-check(
-  "RI FV has outline class",
-  grepl('ynow-model-kpi-result ynow-model-kpi-outline", valueBoxOutput(ns("vbx_ri_fv")', ri_src, fixed = TRUE)
-)
-check(
-  "SOTP has outline class",
-  grepl('ynow-model-kpi-result ynow-model-kpi-outline", valueBoxOutput(ns("vbx_sotp")', sotp_src, fixed = TRUE)
-)
+# White-outline class on listed primary KPIs (Multiples family stays filled).
+# Allow optional attrs (e.g. data-ynow-lock) between class= and valueBoxOutput.
+.has_outline_kpi <- function(src, box_id) {
+  grepl(
+    paste0(
+      'class = "ynow-model-kpi-result ynow-model-kpi-outline"[^\\n]*',
+      'valueBoxOutput\\(ns\\("', box_id, '"\\)'
+    ),
+    src,
+    perl = TRUE
+  )
+}
+check("NAV mid has outline class", .has_outline_kpi(nav_src, "vbx_nav_mid"))
+check("RI FV has outline class", .has_outline_kpi(ri_src, "vbx_ri_fv"))
+check("SOTP has outline class", .has_outline_kpi(sotp_src, "vbx_sotp"))
+.has_filled_kpi <- function(src, box_id) {
+  grepl(
+    paste0(
+      'class = "ynow-model-kpi-result"[^\\n]*',
+      'valueBoxOutput\\(ns\\("', box_id, '"\\)'
+    ),
+    src,
+    perl = TRUE
+  ) && !grepl(
+    paste0(
+      'class = "ynow-model-kpi-result ynow-model-kpi-outline"[^\\n]*',
+      'valueBoxOutput\\(ns\\("', box_id, '"\\)'
+    ),
+    src,
+    perl = TRUE
+  )
+}
 check(
   "Multiples family result columns stay filled, not white outline",
-  grepl('class = "ynow-model-kpi-result", valueBoxOutput(ns("vbx_pe")', rel_src, fixed = TRUE) &&
-    grepl('class = "ynow-model-kpi-result", valueBoxOutput(ns("vbx_evebitda")', rel_src, fixed = TRUE) &&
-    grepl('class = "ynow-model-kpi-result", valueBoxOutput(ns("vbx_ps")', rel_src, fixed = TRUE) &&
+  .has_filled_kpi(rel_src, "vbx_pe") &&
+    .has_filled_kpi(rel_src, "vbx_evebitda") &&
+    .has_filled_kpi(rel_src, "vbx_ps") &&
     !grepl("ynow-model-kpi-outline", rel_src, fixed = TRUE)
 )
-check(
-  "P/B fair has outline class",
-  grepl('ynow-model-kpi-result ynow-model-kpi-outline", valueBoxOutput(ns("vbx_fair")', pb_src, fixed = TRUE)
-)
+check("P/B fair has outline class", .has_outline_kpi(pb_src, "vbx_fair"))
 check(
   "DCF/DDM result columns have outline",
   grepl("ynow-model-kpi-result ynow-model-kpi-outline", ui_src, fixed = TRUE) &&
