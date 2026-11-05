@@ -7,5 +7,5 @@ commit=8ff5b0e3bc0b68b04235420d13555d06350a4876
 short=8ff5b0e3
 message=chore: record v28.00 shinyapps baseline bundle 12779858 (#648)
 captured_at=2026-11-05T00:36:05Z
-display_version=v28.00
+display_version=v28.01
 note=Realign recorded baseline to live active bundle 12779888 (duplicate v28.00 upload race; prior #648 recorded 12779858). display_version unchanged. app_27.0 tree matches tip.
