@@ -7,5 +7,5 @@ commit=b122d57a8fb9264c7c5d9077b4129a114ff20f6c
 short=b122d57a
 message=chore: bump display version to v28.08
 captured_at=2026-11-05T14:11:42Z
-display_version=v28.08
+display_version=v28.09
 note=Shipped v28.08 (+0.01) via deploy_app_21.R after #663 mcap-upside treemap font scales by |value|. Live status=running; rsconnect deployments bundleId=12783566. App wave #663 (lab_im_ind_mcap label font size ∝ |wavg|).
