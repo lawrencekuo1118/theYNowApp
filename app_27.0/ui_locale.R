@@ -3115,6 +3115,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     composite_footer_note = "Blue band = main-model Bear–Bull; Base marker on top. Only models you have Run in this session appear as markers (same style as Current price; ★ main, ◇ sub-model).",
     vbx_sgr_subtitle = "SGR",
     vbx_session_g_subtitle = "Current configured g (near-term)",
+    # WACC summary KPI cards (mobile 2×3 needs short labels)
+    vbx_wacc_equity_subtitle = "Market Equity (E)",
+    vbx_wacc_debt_subtitle = "Total Debt (D)",
+    vbx_wacc_tax_subtitle = "Effective Tax Rate (T)",
     g_stage1_help = paste0(
       "Defaults to Estimated Revenue Growth; you can override. ",
       "Terminal growth still uses SGR from Basic Setup."
@@ -7948,6 +7952,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     composite_footer_note = "藍帶 = 主模型 Bear–Bull；上方點為 Base。僅顯示本工作階段已按過試算的模型標記（樣式與目前市價相同；★ 主模型、◇ 副模型）。",
     vbx_sgr_subtitle = "SGR",
     vbx_session_g_subtitle = "當前設定 g（近期末）",
+    # WACC 摘要 KPI（手機 2×3 格需短標籤；enacted／使用者 T 細節見下方說明）
+    vbx_wacc_equity_subtitle = "股權市值 (E)",
+    vbx_wacc_debt_subtitle = "總負債 (D)",
+    vbx_wacc_tax_subtitle = "有效稅率 (T)",
     g_stage1_help = paste0(
       "預設帶入「預估營收成長率」；可手動覆寫。",
       "終值成長率仍用基礎設定的 SGR。"

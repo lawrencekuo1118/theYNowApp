@@ -17214,7 +17214,8 @@ ui <- dashboardPage(
           .tab-pane .row.ynow-wacc-kpi-grid {
             display: grid !important;
             grid-template-columns: repeat(3, minmax(0, 1fr));
-            grid-auto-rows: 1fr;
+            /* Equal rows sized to the tallest cell content (no mid-label clip). */
+            grid-auto-rows: minmax(min-content, 1fr);
             gap: 6px;
             margin-left: 0 !important;
             margin-right: 0 !important;
@@ -17272,27 +17273,28 @@ ui <- dashboardPage(
             flex: 1 1 auto;
             width: 100% !important;
             height: 100% !important;
-            min-height: 0;
+            min-height: min-content;
             margin-bottom: 0 !important;
-            overflow: visible;
+            overflow: visible !important;
             display: flex !important;
             flex-direction: column !important;
             box-sizing: border-box;
           }
           .content-wrapper .ynow-wacc-kpi-grid .small-box .inner {
-            padding: 6px 5px 7px !important;
+            padding: 8px 6px 8px !important;
             display: flex;
             flex-direction: column;
             justify-content: center;
             flex: 1 1 auto;
             min-width: 0;
+            overflow: visible !important;
           }
           .content-wrapper .ynow-wacc-kpi-grid .small-box .icon {
             display: none !important;
           }
           .content-wrapper .ynow-wacc-kpi-grid .small-box .inner h3,
           .content-wrapper .ynow-wacc-kpi-grid .small-box .inner h3 * {
-            font-size: clamp(11px, 3.1vw, 16px) !important;
+            font-size: clamp(12px, 3.2vw, 16px) !important;
             line-height: 1.15 !important;
             white-space: nowrap !important;
             overflow: visible !important;
@@ -17300,13 +17302,14 @@ ui <- dashboardPage(
             max-width: 100%;
           }
           .content-wrapper .ynow-wacc-kpi-grid .small-box .inner p {
-            font-size: clamp(8px, 2vw, 10px) !important;
-            line-height: 1.2 !important;
+            font-size: clamp(9px, 2.2vw, 11px) !important;
+            line-height: 1.25 !important;
             white-space: normal !important;
             overflow: visible !important;
             text-overflow: unset !important;
-            overflow-wrap: anywhere;
-            word-break: break-word;
+            /* Prefer whole-word wrap; avoid mid-glyph cuts from overflow-wrap:anywhere. */
+            overflow-wrap: break-word;
+            word-break: normal;
             margin-bottom: 0 !important;
           }
           .content-wrapper .ynow-wacc-kpi-grid .info-box .info-box-icon {
@@ -17314,7 +17317,7 @@ ui <- dashboardPage(
           }
           .content-wrapper .ynow-wacc-kpi-grid .info-box .info-box-content {
             margin-left: 0 !important;
-            padding: 6px 5px 7px !important;
+            padding: 8px 6px 8px !important;
             overflow: visible !important;
             display: flex;
             flex-direction: column;
@@ -17325,17 +17328,17 @@ ui <- dashboardPage(
             box-sizing: border-box;
           }
           .content-wrapper .ynow-wacc-kpi-grid .info-box .info-box-text {
-            font-size: clamp(8px, 2vw, 10px) !important;
-            line-height: 1.2 !important;
+            font-size: clamp(9px, 2.2vw, 11px) !important;
+            line-height: 1.25 !important;
             white-space: normal !important;
             overflow: visible !important;
             text-overflow: unset !important;
-            overflow-wrap: anywhere;
-            word-break: break-word;
+            overflow-wrap: break-word;
+            word-break: normal;
           }
           .content-wrapper .ynow-wacc-kpi-grid .info-box .info-box-number,
           .content-wrapper .ynow-wacc-kpi-grid .info-box .info-box-number h3 {
-            font-size: clamp(11px, 3.1vw, 16px) !important;
+            font-size: clamp(12px, 3.2vw, 16px) !important;
             line-height: 1.15 !important;
             white-space: nowrap !important;
             overflow: visible !important;
