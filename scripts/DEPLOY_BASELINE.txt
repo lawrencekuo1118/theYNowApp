@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12783566
+bundleId=12783671
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/  # pragma: allowlist secret
-aligned_git=b122d57a8fb9264c7c5d9077b4129a114ff20f6c
-commit=b122d57a8fb9264c7c5d9077b4129a114ff20f6c
-short=b122d57a
-message=chore: bump display version to v28.08
-captured_at=2026-11-05T14:11:42Z
+aligned_git=850db7fb016a70fd1b9e10bb0c60b2bb4e22217f
+commit=850db7fb016a70fd1b9e10bb0c60b2bb4e22217f
+short=850db7fb
+message=chore: bump display version to v28.09
+captured_at=2026-11-05T14:38:08Z
 display_version=v28.09
-note=Shipped v28.08 (+0.01) via deploy_app_21.R after #663 mcap-upside treemap font scales by |value|. Live status=running; rsconnect deployments bundleId=12783566. App wave #663 (lab_im_ind_mcap label font size ∝ |wavg|).
+note=Shipped v28.09 (+0.01) via deploy_app_21.R after #668 β_L clustering wired to existing CAPM Beta path. Live status=running; rsconnect deployments bundleId=12783671. App wave #668 (lab clustering uses CAPM Beta β_L path).
