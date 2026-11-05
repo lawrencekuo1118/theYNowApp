@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12784199
+bundleId=12784241
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/  # pragma: allowlist secret
-aligned_git=8367cd5d39c7e43567b759e678d8f8739597c244
-commit=8367cd5d39c7e43567b759e678d8f8739597c244
-short=8367cd5d
-message=chore: bump display version to v28.10
-captured_at=2026-11-05T16:48:54Z
+aligned_git=e158da307e8ef2131f334d89193ebff0b0cc90d2
+commit=e158da307e8ef2131f334d89193ebff0b0cc90d2
+short=e158da30
+message=chore: bump display version to v28.11
+captured_at=2026-11-05T17:05:28Z
 display_version=v28.11
-note=Shipped v28.10 (+0.01) via deploy_app_21.R after #670 mcap-upside |value| treemap type actually visible. Live status=running; rsconnect deployments bundleId=12784199. App wave #670 (mcap-upside |value| font visibility). No DataTables Ajax PR was merged; shipped #670 alone.
+note=Shipped v28.11 (+0.01) via deploy_app_21.R after #671 DataTables Ajax tn/7 stable column keys (Table_2/3). Live status=running; rsconnect deployments bundleId=12784241. App wave #671 alone — 股海淘金 rename PR not merged before deploy.
