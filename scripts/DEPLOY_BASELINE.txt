@@ -7,5 +7,5 @@ commit=612463f14fc33c2f16b9116a9bce2365b689cf50
 short=612463f1
 message=chore: bump display version to v28.02
 captured_at=2026-11-05T04:01:01Z
-display_version=v28.02
+display_version=v28.03
 note=Shipped v28.02 (+0.01) via deploy_app_21.R. Live status=running; rsconnect deployments bundleId=12781810. App wave #653/#654 WACC mobile 2x3 grid + tax KPI label.
