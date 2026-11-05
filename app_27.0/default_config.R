@@ -243,6 +243,8 @@ APP_DEFAULTS <- list(
   lab_im_methods = c("nav", "pb", "dcf", "ddm", "ri"),
   lab_cluster_k = 3L,
   lab_cluster_mode = "kmeans",
+  lab_cluster_beta_membership = "fixed",
+  lab_cluster_beta_show_iqr = FALSE,
   lab_cluster_x = "ROE",
   lab_cluster_y = "PE_Ratio",
   lab_sec_important_only = TRUE

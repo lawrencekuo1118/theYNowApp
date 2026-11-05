@@ -8525,6 +8525,8 @@ server <- function(input, output, session) {
       lab_im_methods = c("Lab", "Valuation models", "Lab 計分模型"),
       lab_cluster_k = c("Lab", "Cluster k", "群數"),
       lab_cluster_mode = c("Lab", "Cluster grouping mode", "分群模式"),
+      lab_cluster_beta_membership = c("Lab", "Beta membership", "Beta 群組成員"),
+      lab_cluster_beta_show_iqr = c("Lab", "Beta IQR band", "Beta Q25–Q75 帶狀"),
       lab_cluster_x = c("Lab", "Cluster scatter X", "散點 X"),
       lab_cluster_y = c("Lab", "Cluster scatter Y", "散點 Y"),
       lab_sec_important_only = c("Lab", "Important notes only", "SEC 附註過濾")
@@ -8538,7 +8540,8 @@ server <- function(input, output, session) {
       "lab_im_pool_rank", "lab_im_concepts",
       "lab_im_lb_mode", "lab_im_boards", "lab_im_max_n", "lab_im_max_n_custom",
       "lab_im_eq_only", "lab_im_no_alert", "lab_im_include_adr",
-      "lab_cluster_mode", "lab_cluster_k", "lab_cluster_x", "lab_cluster_y"
+      "lab_cluster_mode", "lab_cluster_k", "lab_cluster_beta_membership",
+      "lab_cluster_beta_show_iqr", "lab_cluster_x", "lab_cluster_y"
     )
     # Lite has no module extras outside APP_DEFAULTS (RI industry ROE is Full-only).
     lite_extra_keys <- character(0)
@@ -19999,6 +20002,16 @@ server <- function(input, output, session) {
       updateSelectInput(session, "lab_cluster_x", choices = axis_choices, selected = x_cur)
       updateSelectInput(session, "lab_cluster_y", choices = axis_choices, selected = y_cur)
 
+      mem_cur <- lab_normalize_beta_membership(
+        isolate(input$lab_cluster_beta_membership) %||% "fixed"
+      )
+      mem_choices <- lab_cluster_beta_membership_choices(loc2)
+      if (!mem_cur %in% unname(mem_choices)) mem_cur <- "fixed"
+      updateSelectInput(
+        session, "lab_cluster_beta_membership",
+        choices = mem_choices, selected = mem_cur
+      )
+
       .lab_im_push_concept_choices(mm2, locale = loc2, clear_selected = FALSE)
     })
   })
@@ -21062,9 +21075,9 @@ server <- function(input, output, session) {
       mode_cl <- lab_normalize_cluster_mode(job_args$cluster_mode %||% "kmeans")
       prog_msg <- if (identical(mode_cl, "beta")) {
         if (identical(normalize_ui_locale(loc), "zh-TW")) {
-          "分群中（擷取槓桿 β_L → Beta 分箱）…"
+          "分群中（擷取槓桿 β_L → K=3 分位）…"
         } else {
-          "Clustering (fetch levered β_L → Beta bins)…"
+          "Clustering (fetch levered β_L → K=3 quantiles)…"
         }
       } else if (identical(normalize_ui_locale(loc), "zh-TW")) {
         "分群中（擷取比率特徵 → K-Means）…"
@@ -21092,7 +21105,9 @@ server <- function(input, output, session) {
           include_adr = job_args$include_adr,
           k = job_args$k,
           locale = job_args$locale,
-          cluster_mode = job_args$cluster_mode %||% "kmeans"
+          cluster_mode = job_args$cluster_mode %||% "kmeans",
+          beta_membership = job_args$beta_membership %||% "fixed",
+          beta_show_iqr = isTRUE(job_args$beta_show_iqr)
         ),
         error = function(e) {
           lab_cluster_busy(FALSE)
@@ -21124,7 +21139,9 @@ server <- function(input, output, session) {
         include_adr = job_args$include_adr,
         k = job_args$k,
         locale = job_args$locale,
-        cluster_mode = job_args$cluster_mode %||% "kmeans"
+        cluster_mode = job_args$cluster_mode %||% "kmeans",
+        beta_membership = job_args$beta_membership %||% "fixed",
+        beta_show_iqr = isTRUE(job_args$beta_show_iqr)
       ),
       error = function(e) {
         showNotification(paste("Clustering failed:", conditionMessage(e)),
@@ -21199,6 +21216,10 @@ server <- function(input, output, session) {
     cluster_mode_run <- lab_normalize_cluster_mode(
       isolate(input$lab_cluster_mode %||% "kmeans")
     )
+    beta_membership_run <- lab_normalize_beta_membership(
+      isolate(input$lab_cluster_beta_membership %||% "fixed")
+    )
+    beta_show_iqr_run <- isTRUE(isolate(input$lab_cluster_beta_show_iqr %||% FALSE))
     mm <- tryCatch(isolate(market_mode()), error = function(e) "US")
     include_adr <- {
       mm_cl <- tryCatch(normalize_market_mode(mm), error = function(e) "US")
@@ -21221,7 +21242,9 @@ server <- function(input, output, session) {
       include_adr = include_adr,
       k = k,
       locale = loc,
-      cluster_mode = cluster_mode_run
+      cluster_mode = cluster_mode_run,
+      beta_membership = beta_membership_run,
+      beta_show_iqr = beta_show_iqr_run
     )
     running <- isTRUE(isolate(lab_cluster_busy()))
     if (!is.null(lab_cluster_task)) {

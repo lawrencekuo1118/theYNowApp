@@ -25,6 +25,7 @@ if (!exists("normalize_market_mode", mode = "function")) {
 }
 
 source("lab_industry_method.R", encoding = "UTF-8")
+source("beta_grouping_module.R", encoding = "UTF-8")
 source("lab_clustering.R", encoding = "UTF-8")
 
 df <- lab_cluster_synthetic_features(n = 24L, seed = 7L)
@@ -433,23 +434,35 @@ stopifnot(!any(grepl("K-Means|比率|分群|依", names(mode_en)) & grepl("[\u4e
 stopifnot(all(grepl("K-Means|Beta", names(mode_en))))
 stopifnot(any(grepl("Beta|β", names(mode_zh))))
 
-# Bin edges: negative / low / sub-market / market-like / high / missing
-bin_probe <- c(-0.15, 0, 0.79, 0.8, 0.99, 1.0, 1.29, 1.3, 2.1, NA_real_)
-asg <- lab_cluster_assign_beta_bins(bin_probe, locale = "en")
+# K=3 equal-count terciles (retired absolute −Inf/0/0.8/1.0/1.3/Inf bins)
+bin_probe <- c(0.1, 0.3, 0.5, 0.9, 1.1, 1.5, NA_real_)
+asg <- lab_cluster_assign_beta_bins(
+  bin_probe, locale = "en",
+  symbol = c("A", "B", "C", "D", "E", "F", "G")
+)
 stopifnot(identical(
   as.integer(asg$Cluster_ID),
-  as.integer(c(1, 2, 2, 3, 3, 4, 4, 5, 5, 6))
+  as.integer(c(1, 1, 2, 2, 3, 3, 4))
 ))
-stopifnot(grepl("Negative", asg$Cluster_Label[[1]], fixed = TRUE))
-stopifnot(grepl("Low", asg$Cluster_Label[[2]], fixed = TRUE))
-stopifnot(grepl("Sub-market", asg$Cluster_Label[[4]], fixed = TRUE))
-stopifnot(grepl("Market-like", asg$Cluster_Label[[6]], fixed = TRUE))
-stopifnot(grepl("High", asg$Cluster_Label[[8]], fixed = TRUE))
-stopifnot(grepl("Missing", asg$Cluster_Label[[10]], fixed = TRUE))
-asg_zh <- lab_cluster_assign_beta_bins(c(-0.1, 1.5, NA_real_), locale = "zh-TW")
-stopifnot(any(grepl("負向|防禦|積極|缺值", asg_zh$Cluster_Label)))
+stopifnot(grepl("Low", asg$Cluster_Label[[1]], fixed = TRUE))
+stopifnot(grepl("Mid", asg$Cluster_Label[[3]], fixed = TRUE))
+stopifnot(grepl("High", asg$Cluster_Label[[5]], fixed = TRUE))
+stopifnot(grepl("Missing|not grouped", asg$Cluster_Label[[7]], ignore.case = TRUE))
+asg_zh <- lab_cluster_assign_beta_bins(
+  c(0.2, 0.5, 0.9, 1.1, 1.4, 1.8, NA_real_),
+  locale = "zh-TW",
+  symbol = sprintf("T%d", 1:7)
+)
+stopifnot(any(grepl("低|中|高|缺值", asg_zh$Cluster_Label)))
 
-# Axis choices expose Beta (levered) for scatter
+# Membership choices (fixed / dynamic)
+mem_en <- lab_cluster_beta_membership_choices("en")
+mem_zh <- lab_cluster_beta_membership_choices("zh-TW")
+stopifnot(identical(sort(unname(mem_en)), c("dynamic", "fixed")))
+stopifnot(identical(sort(unname(mem_zh)), c("dynamic", "fixed")))
+stopifnot(identical(lab_normalize_beta_membership("逐期"), "dynamic"))
+
+# Axis choices expose Beta (levered) for scatter (K-Means / fallback)
 ax_en <- lab_cluster_axis_choices("en")
 ax_zh <- lab_cluster_axis_choices("zh-TW")
 stopifnot("Beta" %in% unname(ax_en), "Beta" %in% unname(ax_zh))
@@ -459,29 +472,56 @@ stopifnot(any(grepl("levered|β_L", names(ax_en), ignore.case = TRUE)))
 df_beta <- lab_cluster_synthetic_features(n = 24L, seed = 11L)
 stopifnot("Beta" %in% names(df_beta))
 stopifnot(lab_cluster_usable_beta_rows(df_beta) >= 10L)
-res_beta <- lab_run_beta_clustering(df_beta, locale = "en")
+res_beta <- lab_run_beta_clustering(df_beta, locale = "en", membership = "fixed")
 stopifnot(identical(as.character(res_beta$cluster_mode), "beta"))
 stopifnot(identical(as.character(res_beta$beta_source), "summary_levered"))
+stopifnot(identical(as.character(res_beta$beta_membership), "fixed"))
 stopifnot(nrow(res_beta$data) == 24L)
 stopifnot(all(c("Cluster_ID", "Cluster_Label", "Beta") %in% names(res_beta$data)))
-stopifnot(all(res_beta$data$Cluster_ID %in% 1:6))
-# Deterministic bin for known Beta values
-df_fixed <- df_beta[1:5, , drop = FALSE]
-df_fixed$Beta <- c(-0.2, 0.5, 0.9, 1.1, 1.8)
+stopifnot(all(res_beta$data$Cluster_ID %in% 1:4))
+# Equal-count on 6 known Betas → 2 per tercile
+df_fixed <- df_beta[1:6, , drop = FALSE]
+df_fixed$ticker <- sprintf("B%d", 1:6)
+df_fixed$Beta <- c(0.2, 0.4, 0.8, 1.0, 1.4, 1.9)
 res_fixed <- lab_run_beta_clustering(df_fixed, locale = "en")
 stopifnot(identical(
   as.integer(res_fixed$data$Cluster_ID[order(res_fixed$data$ticker)]),
-  as.integer(c(1, 2, 3, 4, 5))
+  as.integer(c(1, 1, 2, 2, 3, 3))
 ))
+# With monthly OLS panel attached (fixed membership)
+syn <- bg_synthetic_returns(n_symbols = 24L, n_months = 90L, seed = 21L)
+bg_fixed <- bg_calculate(
+  syn$stock_returns, syn$market_returns,
+  membership = "fixed", as_of = syn$as_of, years = 5L, locale = "en"
+)
+df_ols <- df_beta[seq_len(24L), , drop = FALSE]
+df_ols$ticker <- syn$symbols
+res_ols <- lab_run_beta_clustering(
+  df_ols, locale = "en", membership = "fixed", beta_grouping = bg_fixed
+)
+stopifnot(identical(as.character(res_ols$beta_source), "rolling_ols_monthly"))
+stopifnot(identical(as.character(res_ols$beta_membership), "fixed"))
+stopifnot(!is.null(res_ols$beta_grouping))
+# Dynamic membership path on same panel
+bg_dyn <- bg_calculate(
+  syn$stock_returns, syn$market_returns,
+  membership = "dynamic", as_of = syn$as_of, years = 5L, locale = "en"
+)
+res_dyn <- lab_run_beta_clustering(
+  df_ols, locale = "en", membership = "dynamic", beta_grouping = bg_dyn
+)
+stopifnot(identical(as.character(res_dyn$beta_membership), "dynamic"))
+p_hist <- lab_cluster_scatter_plotly(res_dyn, locale = "en")
+stopifnot(inherits(p_hist, "plotly"))
 
-# Ensure ticker kept when Beta missing
+# Ensure ticker kept when Beta missing → missing bin = k+1 = 4
 df_miss <- df_beta[1:8, , drop = FALSE]
 df_miss$Beta[[1]] <- NA_real_
 df_miss$ticker[[1]] <- "FOCUS1"
 res_miss <- lab_run_beta_clustering(df_miss, locale = "en", ensure_ticker = "FOCUS1")
 stopifnot(!is.na(lab_cluster_match_ticker(res_miss$data$ticker, "FOCUS1")))
 focus_row <- res_miss$data[toupper(res_miss$data$ticker) == "FOCUS1", , drop = FALSE]
-stopifnot(identical(as.integer(focus_row$Cluster_ID[[1]]), 6L))
+stopifnot(identical(as.integer(focus_row$Cluster_ID[[1]]), 4L))
 
 # K-Means regression: still ignores Beta as a distance feature
 res_km2 <- lab_run_stock_clustering(df_beta, k_clusters = 4L, locale = "en", seed = 7L)
