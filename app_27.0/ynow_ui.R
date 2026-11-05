@@ -4365,6 +4365,34 @@ ui <- dashboardPage(
       tags$script(src = "parameter_completeness.js"),
       # Ticker / Stock Code: case-insensitive entry → always uppercase display+value.
       tags$script(src = "ynow_ticker_uppercase.js"),
+      # First-load: hide shinyapps ReconnectUI (#ss-connect-dialog "Disconnected
+      # from the server.") while SockJS is still negotiating after HTML paint on
+      # a cold worker. Cleared on shiny:connected / sessioninitialized /
+      # reconnected, or after 20s so real mid-session drops still surface.
+      tags$style(HTML(paste(
+        "html.ynow-boot-connecting #ss-connect-dialog,",
+        "html.ynow-boot-connecting #ss-overlay.ss-gray-out,",
+        "html.ynow-boot-connecting #ss-overlay {",
+        "  display: none !important;",
+        "}"
+      ))),
+      tags$script(HTML("
+        (function () {
+          var root = document.documentElement;
+          if (!root) return;
+          root.classList.add('ynow-boot-connecting');
+          var cleared = false;
+          function clearBootCloak() {
+            if (cleared) return;
+            cleared = true;
+            try { root.classList.remove('ynow-boot-connecting'); } catch (e0) {}
+          }
+          document.addEventListener('shiny:connected', clearBootCloak);
+          document.addEventListener('shiny:sessioninitialized', clearBootCloak);
+          document.addEventListener('shiny:reconnected', clearBootCloak);
+          setTimeout(clearBootCloak, 20000);
+        })();
+      ")),
       # Deferred MathJax + gate-demo video arming (Home-critical-path hygiene).
       tags$script(HTML("
         (function () {

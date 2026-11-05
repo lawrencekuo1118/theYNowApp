@@ -64,5 +64,10 @@ shiny::shinyApp(
     if (exists(".ynow_arm_python_install", mode = "function")) {
       .ynow_arm_python_install()
     }
+    # Same window: schema DDL / seed must not race ahead of first SockJS accept
+    # (first-load shinyapps reconnect dialog — see docs/first-load-disconnect).
+    if (exists(".ynow_arm_postgres_boot", mode = "function")) {
+      .ynow_arm_postgres_boot()
+    }
   }
 )

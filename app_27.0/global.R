@@ -247,9 +247,18 @@ source("admin_ops_audit.R", local = TRUE, encoding = "UTF-8")
 source("inspiration_gallery.R", local = TRUE, encoding = "UTF-8")
 source("market_cache.R", local = TRUE, encoding = "UTF-8")
 source("news_sentiment.R", local = TRUE, encoding = "UTF-8")
-# Ensure Postgres schema + optional seed admin when DB env is present (best-effort).
-if (exists("ynow_db_ready", mode = "function") && isTRUE(ynow_db_ready())) {
-  tryCatch({
+# Postgres schema / seed used to run synchronously here and blocked Listen on
+# shinyapps cold start (network round-trips before the worker could accept
+# SockJS). Defer via shinyApp(onStart=...) → .ynow_arm_postgres_boot(), same
+# pattern as deferred Python. Per-request ensure_schema() paths still self-heal.
+.ynow_postgres_boot_armed <- FALSE
+.ynow_postgres_boot_done <- FALSE
+.ynow_boot_postgres_schema <- function() {
+  if (isTRUE(.ynow_postgres_boot_done)) return(invisible(TRUE))
+  if (!(exists("ynow_db_ready", mode = "function") && isTRUE(ynow_db_ready()))) {
+    return(invisible(FALSE))
+  }
+  ok <- tryCatch({
     ynow_db_ensure_schema()
     if (exists("ynow_points_ensure_schema", mode = "function")) {
       ynow_points_ensure_schema()
@@ -269,9 +278,27 @@ if (exists("ynow_db_ready", mode = "function") && isTRUE(ynow_db_ready())) {
     if (exists("ynow_db_seed_admin_from_env", mode = "function")) {
       ynow_db_seed_admin_from_env()
     }
+    TRUE
   }, error = function(e) {
     warning("Postgres auth bootstrap: ", conditionMessage(e), call. = FALSE)
+    FALSE
   })
+  .ynow_postgres_boot_done <<- isTRUE(ok)
+  invisible(isTRUE(ok))
+}
+.ynow_arm_postgres_boot <- function() {
+  .ynow_postgres_boot_armed <<- TRUE
+  # Yield so httpuv can accept the first SockJS connect before schema DDL.
+  run <- function() {
+    if (!isTRUE(.ynow_postgres_boot_armed)) return(invisible(FALSE))
+    .ynow_boot_postgres_schema()
+  }
+  if (requireNamespace("later", quietly = TRUE)) {
+    later::later(run, delay = 0)
+  } else {
+    run()
+  }
+  invisible(TRUE)
 }
 source("corp_events.R", local = TRUE, encoding = "UTF-8")
 source("ownership_structure.R", local = TRUE, encoding = "UTF-8")

@@ -122,7 +122,10 @@ ynow_capacity_recommend <- function(
         instance_load_factor = 0.5,
         timeout_conn = 600L,
         timeout_idle = 60L,
-        timeout_init = 300L
+        timeout_init = 300L,
+        # Instance Idle Timeout (seconds). Default ~900 (15 min). Longer =
+        # fewer sleeps → fewer cold-start reconnect flashes; costs active hours.
+        timeout_instance_idle = 3600L
       ),
       capacity = cap,
       mb_per_conn = mb,
@@ -144,7 +147,8 @@ ynow_capacity_recommend <- function(
       instance_load_factor = 0.5,
       timeout_conn = 600L,
       timeout_idle = 60L,
-      timeout_init = 300L
+      timeout_init = 300L,
+      timeout_instance_idle = 3600L
     ),
     capacity = best$capacity,
     mb_per_conn = best$mb_per_conn,
@@ -226,7 +230,10 @@ ynow_capacity_stable_for_plan <- function(entitlements) {
       instance_load_factor = 0.5,
       timeout_conn = 600L,
       timeout_idle = 60L,
-      timeout_init = 300L
+      timeout_init = 300L,
+      # Starter 1×1: keep the single instance warm longer after last session so
+      # the next visitor does not pay full cold-start reconnect UX.
+      timeout_instance_idle = 3600L
     ),
     capacity = ynow_capacity_connections(max(1L, max_inst), w, c_max),
     mb_per_conn = ynow_capacity_mb_per_conn(size, w, c_max),
