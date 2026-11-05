@@ -271,7 +271,7 @@
       "與完整版相同的盈餘品質、F-Score 品質檢核、風險矩陣與財報警訊；動態產業泡沫與權重集中度在「總體經濟與大盤趨勢」分頁最下方。"
     ),
     tags$li(
-      tags$b("績優股排行榜（Blue Chip）："),
+      tags$b("股海淘金（Stock Prospecting）："),
       "保留候選截斷邏輯與宇宙檔數（N）、盈餘品質與 ADR 篩選、排行頁底部明細表、分群研究，以及自訂選股；隱藏其餘進階查詢條件。"
     )
   )
@@ -296,7 +296,7 @@
       "Same Quality of Earnings, F-Score screen, risk matrix, and statement alerts as Full. Dynamic industry bubble & weight concentration sit at the bottom of Macro & Market Trends."
     ),
     tags$li(
-      tags$b("Blue Chip Leaderboard: "),
+      tags$b("Stock Prospecting: "),
       "Keeps Candidate truncate rules and Universe size (N), Earnings Quality and ADR filters, the detail table at the bottom of Rankings, Clustering, and Custom Screen. Hides other advanced Ranking filters."
     )
   )

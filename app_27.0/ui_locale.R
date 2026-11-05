@@ -91,7 +91,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     home_method_lite = "Classify the business, then read fair value and YNOW.",
     home_market_k = "Market",
     home_market_d = "YNOW / TYNOW, major boards, Rf, and industry performance versus the benchmark.",
-    home_bluechip_k = "Blue Chip",
+    home_bluechip_k = "Stock Prospecting",
     home_bluechip_d = "Peer ranking pools, truncate rules, clustering, and custom screen.",
     home_company_k = "Company",
     home_company_d = "Industry-standard snapshot, KPIs, and financial statements.",
@@ -474,7 +474,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Overlapping financial-statement warning (財報警訊) detail items show an AML mark."
     ),
     menu_backtest = "Quant Backtest Lab",
-    menu_bluechip = "Blue Chip Leaderboard",
+    menu_bluechip = "Stock Prospecting",
     menu_hfv = "Hist. FV Validation",
     menu_decision_checklist = "Decision Checklist",
 
@@ -716,7 +716,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     snapshot_page_help_lite = paste0(
       "Lite can show System defaults (APP_DEFAULTS) for parameters you can set in Lite ",
-      "(Dashboard industry / currency / default ticker, Blue Chip ranking and Clustering) ",
+      "(Dashboard industry / currency / default ticker, Stock Prospecting ranking and Clustering) ",
       "after System admin unlock. Manual audit and live snapshot restore stay in Full mode."
     ),
     snapshot_tab_audit = "Manual adjustments (vs post-Search baseline)",
@@ -728,7 +728,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     snapshot_defaults_help_lite = paste0(
       "Only parameters Lite can set (Dashboard industry / currency / default ticker, ",
-      "plus Blue Chip ranking and Clustering). Smart Analysis engine seeds and Full-only ",
+      "plus Stock Prospecting ranking and Clustering). Smart Analysis engine seeds and Full-only ",
       "model parameters are hidden here."
     ),
     snapshot_defaults_locked = paste0(
@@ -914,7 +914,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     param_audit_pdf_cat_backtest = "Backtest",
     param_audit_pdf_cat_checklist = "Decision Checklist",
     param_audit_pdf_cat_alerts = "Value Alerts",
-    param_audit_pdf_cat_bluechip = "Blue Chip",
+    param_audit_pdf_cat_bluechip = "Stock Prospecting",
     param_audit_pdf_page_basic = "Model Dashboard (SGR / CAPM / WACC / Beta)",
     param_audit_pdf_page_smart = "Smart Analysis",
     param_audit_pdf_page_ynow = "YNOW",
@@ -942,7 +942,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     param_audit_pdf_page_lab = "Quant Backtest Lab",
     param_audit_pdf_page_checklist = "Decision Checklist",
     param_audit_pdf_page_alerts = "Value Alerts",
-    param_audit_pdf_page_bluechip = "Blue Chip Leaderboard",
+    param_audit_pdf_page_bluechip = "Stock Prospecting",
     param_audit_pdf_btn = "Generate annotated PDF",
     param_audit_pdf_busy = "Capturing pages… please wait (do not navigate).",
     param_audit_pdf_done = "PDF downloaded.",
@@ -2082,7 +2082,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_cluster_busy = "Clustering already running…",
     lab_im_async_started = "Blue Chip evaluation started in the background…",
     capacity_heavy_job_busy = paste0(
-      "Another heavy job (Blue Chip / Clustering / HFV) is already running on this server. ",
+      "Another heavy job (Stock Prospecting / Clustering / HFV) is already running on this server. ",
       "Please retry in a moment so memory stays stable for all concurrent users."
     ),
     bluechip_blurb_tw = paste0(
@@ -2166,11 +2166,11 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Σ(market cap × annualized upside) / Σ(market cap) among independently sampled names. ",
       "Total market cap / Names = all tickers in that chain (full universe, not Search Top-N). ",
       "Unmapped is excluded. Independent of Candidate truncate, concepts, universe N, ",
-      "industry filters, models, and quality gates. Opening Blue Chip Lab starts a background ",
+      "industry filters, models, and quality gates. Opening Stock Prospecting starts a background ",
       "all-chains refresh; Refresh ranking rebuilds and saves the default snapshot."
     ),
     lab_im_ind_mcap_waiting = paste0(
-      "No default ranking yet. Opening Blue Chip Lab starts a background all-chains compute, ",
+      "No default ranking yet. Opening Stock Prospecting starts a background all-chains compute, ",
       "or press Refresh ranking to rebuild the full industry-chain table."
     ),
     lab_im_ind_mcap_empty = paste0(
@@ -2184,7 +2184,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_ind_mcap_status_snap = paste0(
       "Default ranking: %d industry chains",
       "%s",
-      ". Opening Blue Chip Lab refreshes all chains in the background; ",
+      ". Opening Stock Prospecting refreshes all chains in the background; ",
       "press Refresh ranking to recompute now."
     ),
     lab_im_ind_mcap_snap_at = " (as of %s)",
@@ -2216,7 +2216,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Top 10 in selected industries: one Top 10 within chosen industries; Industry rank starts at 1 within each industry (not a cross-industry serial). ",
       "Most undervalued Top 10: across industries, by total valuation gap (primary-model FV vs price, not annualized); only names still undervalued (gap > 0). ",
       "Industry mcap-weighted upside (all industry chains) lives in the dedicated board above Candidate truncate ",
-      "(default snapshot; opening Blue Chip Lab auto-refreshes all chains; press Refresh ranking for a manual rebuild). ",
+      "(default snapshot; opening Stock Prospecting auto-refreshes all chains; press Refresh ranking for a manual rebuild). ",
       "Top 10 takes at most 10 qualified names; shortfalls are not padded."
     ),
     lab_im_lb_status_ind_avg = paste0(
@@ -2405,7 +2405,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_universe_updated = " · Updated {fetched}",
     lab_im_universe_unmapped = " · Unmapped industry {n} names",
     lab_im_universe_source = " · Source {src}",
-    lab_im_lb_none = "(No Blue Chip ranking yet — open Blue Chip Leaderboard or press Search Blue Chips)",
+    lab_im_lb_none = "(No Stock Prospecting ranking yet — open Stock Prospecting or press Search Blue Chips)",
     lab_im_lb_filter_empty = paste0(
       "Evaluated {n} names (F-Score≥7 pass {pass}), but Detail is empty under current filters. ",
       "Common cause: industry / model filters too narrow. Widen filters, then re-check the leaderboard."
@@ -2814,7 +2814,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     box_residual_income = "RESIDUAL INCOME",
     box_pb_asset = "P/B & ASSET VALUE",
     box_nav = "NET ASSET VALUE",
-    box_blue_chip = "BLUE CHIP LEADERBOARD",
+    box_blue_chip = "STOCK PROSPECTING",
     box_beta = "BETA",
     box_sgr = "SUSTAINABLE GROWTH RATE",
     box_model_guide = "Model Selection Guide",
@@ -3588,7 +3588,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     dc_label_fscore = "F-Score quality-screen floor",
     dc_hint_fscore = "Piotroski F-Score must clear your minimum — weak fundamentals fail even if MOS looks cheap.",
     dc_label_no_rank_chase = "Do not order solely on ranking annualized upside",
-    dc_hint_no_rank_chase = "Discipline reminder: Blue Chip ranking upside alone should not drive the decision.",
+    dc_hint_no_rank_chase = "Discipline reminder: Stock Prospecting ranking upside alone should not drive the decision.",
     dc_cond_bear_mos_floor = "Bear-case MOS floor (%)",
     dc_cond_base_mos_floor = "Base-case MOS floor (%)",
     dc_cond_g_sgr_gap_min = "Near-term growth vs SGR gap (pp)",
@@ -5040,7 +5040,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     home_method_lite = "先分類，再看合理價與 YNOW。",
     home_market_k = "大盤",
     home_market_d = "YNOW／TYNOW、大盤指數、Rf，以及產業相對大盤。",
-    home_bluechip_k = "績優股",
+    home_bluechip_k = "股海淘金",
     home_bluechip_d = "同業候選池、截斷規則、分群與自訂選股。",
     home_company_k = "個股",
     home_company_d = "產業標準快覽、KPI 與財報。",
@@ -5416,7 +5416,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "不是買進訊號，也不是銀行 AML 判定。重疊的財報警訊細項旁會標示 AML。"
     ),
     menu_backtest = "量化回測實驗室",
-    menu_bluechip = "績優股排行榜",
+    menu_bluechip = "股海淘金",
     menu_hfv = "歷史基本面驗證",
     menu_decision_checklist = "決策檢核",
 
@@ -5655,7 +5655,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     snapshot_page_help_lite = paste0(
       "簡化版可在系統管理解鎖後，顯示目前介面可設定的系統預設參數（APP_DEFAULTS）",
-      "（Dashboard 產業／幣別／預設代號，以及績優股排行與分群）。",
+      "（Dashboard 產業／幣別／預設代號，以及股海淘金與分群）。",
       "手改稽核與即時參數還原等完整版工具請切回完整版。"
     ),
     snapshot_tab_audit = "手改參數（相對 Search 後基準）",
@@ -5666,7 +5666,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "與「目前參數」可能不同；欄位仍可在各分頁覆寫。"
     ),
     snapshot_defaults_help_lite = paste0(
-      "僅列出簡化版介面可設定的參數（Dashboard 產業／幣別／預設代號，以及績優股排行與分群）。",
+      "僅列出簡化版介面可設定的參數（Dashboard 產業／幣別／預設代號，以及股海淘金與分群）。",
       "智慧分析引擎種子與完整版模型參數於此隱藏。"
     ),
     snapshot_defaults_locked = paste0(
@@ -5845,7 +5845,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     param_audit_pdf_cat_backtest = "回測",
     param_audit_pdf_cat_checklist = "決策檢核",
     param_audit_pdf_cat_alerts = "到值通知",
-    param_audit_pdf_cat_bluechip = "Blue Chip",
+    param_audit_pdf_cat_bluechip = "股海淘金",
     param_audit_pdf_page_basic = "模型儀表板（SGR／CAPM／WACC／Beta）",
     param_audit_pdf_page_smart = "智慧分析",
     param_audit_pdf_page_ynow = "YNOW",
@@ -5873,7 +5873,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     param_audit_pdf_page_lab = "量化回測實驗室",
     param_audit_pdf_page_checklist = "決策檢核",
     param_audit_pdf_page_alerts = "到值通知",
-    param_audit_pdf_page_bluechip = "Blue Chip 排行榜",
+    param_audit_pdf_page_bluechip = "股海淘金",
     param_audit_pdf_btn = "產生標記 PDF",
     param_audit_pdf_busy = "正在擷取頁面…請稍候（勿切換分頁）。",
     param_audit_pdf_done = "PDF 已下載。",
@@ -6988,7 +6988,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_cluster_busy = "分群分析進行中…",
     lab_im_async_started = "績優評估已在背景開始…",
     capacity_heavy_job_busy = paste0(
-      "本伺服器正在執行另一項重型任務（績優股排行榜／分群分析／HFV）。",
+      "本伺服器正在執行另一項重型任務（股海淘金／分群分析／HFV）。",
       "請稍後再試，以維持多位使用者同時連線時的記憶體穩定。"
     ),
     bluechip_blurb_tw = paste0(
@@ -7063,10 +7063,10 @@ locale_for_market <- function(mode = get_market_mode()) {
       "顯示全部產業鏈（半導體／科技／金融…），排序用獨立抽樣評估樣本的 ",
       "Σ(市值×年化估值漲幅)/Σ(市值)；總市值／檔數＝該產業鏈全宇宙個股（非搜尋 Top-N）。",
       "排除未對應。與候選截斷、概念股、宇宙檔數 N、產業／模型篩選、品質門檻無關。",
-      "開啟績優股排行榜會在背景自動重算全部產業鏈；按「更新排名」可手動重算並寫入預設快照。"
+      "開啟股海淘金會在背景自動重算全部產業鏈；按「更新排名」可手動重算並寫入預設快照。"
     ),
     lab_im_ind_mcap_waiting = paste0(
-      "尚無預設排名。開啟績優股排行榜會在背景自動計算全部產業鏈，",
+      "尚無預設排名。開啟股海淘金會在背景自動計算全部產業鏈，",
       "或按「更新排名」手動重建清單。"
     ),
     lab_im_ind_mcap_empty = paste0(
@@ -7080,7 +7080,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_ind_mcap_status_snap = paste0(
       "預設排名：%d 條產業鏈",
       "%s",
-      "。開啟績優股排行榜會在背景自動重算全部產業鏈；",
+      "。開啟股海淘金會在背景自動重算全部產業鏈；",
       "按「更新排名」可立即手動重算。"
     ),
     lab_im_ind_mcap_snap_at = "（資料時間 %s）",
@@ -7109,7 +7109,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "整體前十名：跨本次已評估產業依年化估值漲幅取 Top 10，並顯示產業欄。",
       "選定產業前十名：所選產業內單一 Top 10；產業內排名自該產業第 1 名起算（非跨產業流水號）。",
       "價值低估前十名：跨產業依推薦主模型合理價相對市價的總潛在漲幅（非年化）由大到小；只列仍被低估者。",
-      "產業市值加權漲幅（全部產業鏈）在上方獨立區塊（預設快照；開啟績優股排行榜會自動重算全部產業鏈；按「更新排名」可手動重建）。",
+      "產業市值加權漲幅（全部產業鏈）在上方獨立區塊（預設快照；開啟股海淘金會自動重算全部產業鏈；按「更新排名」可手動重建）。",
       "前十名只從合格者取最多 10 檔；合格不足 10 時不會湊滿。"
     ),
     lab_im_lb_status_ind_avg = paste0(
@@ -7230,7 +7230,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_methods_label = "模型",
     lab_im_methods_abs_label = "絕對",
     lab_im_methods_rel_label = "相對",
-    # 績優股排行榜 Absolute／Relative 複選標籤（不含「模型」後綴；側欄選單仍用 menu_*）。
+    # 股海淘金 Absolute／Relative 複選標籤（不含「模型」後綴；側欄選單仍用 menu_*）。
     lab_im_method_nav = "NAV",
     lab_im_method_pb = "Justified P/B",
     lab_im_method_dcf = "DCF",
@@ -7683,7 +7683,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     box_residual_income = "剩餘收益 RI",
     box_pb_asset = "P/B 與資產價值",
     box_nav = "NET ASSET VALUE",
-    box_blue_chip = "績優股排行榜",
+    box_blue_chip = "股海淘金",
     box_beta = "Beta β",
     box_sgr = "SUSTAINABLE GROWTH RATE",
     box_model_guide = "模型選擇決策指南",
@@ -8432,7 +8432,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     dc_label_fscore = "F-Score 品質檢核下限",
     dc_hint_fscore = "Piotroski F-Score 須達下限——財報體質偏弱即使 MOS 看似便宜也不通過。",
     dc_label_no_rank_chase = "不得僅因排行年化漲幅而下單",
-    dc_hint_no_rank_chase = "紀律提醒：勿僅因績優股排行榜的年化上漲空間就下決定。",
+    dc_hint_no_rank_chase = "紀律提醒：勿僅因股海淘金的年化上漲空間就下決定。",
     dc_cond_bear_mos_floor = "Bear 情境安全邊際下限（%）",
     dc_cond_base_mos_floor = "Base 情境安全邊際下限（%）",
     dc_cond_g_sgr_gap_min = "近端成長與 SGR 最小差距（百分點）",
@@ -9815,9 +9815,12 @@ locale_for_market <- function(mode = get_market_mode()) {
   "BLUE CHIP" = "box_blue_chip",
   "BLUE CHIP RANKING" = "box_blue_chip",
   "BLUE CHIP LEADERBOARD" = "box_blue_chip",
+  "STOCK PROSPECTING" = "box_blue_chip",
+  "Stock Prospecting" = "box_blue_chip",
   "Blue Chip 績優" = "box_blue_chip",
   "績優股排行" = "box_blue_chip",
   "績優股排行榜" = "box_blue_chip",
+  "股海淘金" = "box_blue_chip",
   "BETA" = "box_beta",
   "SUSTAINABLE GROWTH RATE" = "box_sgr",
   "模型選擇決策指南" = "box_model_guide",
