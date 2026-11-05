@@ -80,8 +80,9 @@ fcf_projection_module_ui <- function(id) {
              h4(tags$b(ui_i18n("fcf_decomp_title"))),
              p(ui_i18n("fcf_decomp_body")),
              p(
+               class = "ynow-fcf-param-symbols help-block",
                style = "font-size: 13px; color: #7f8c8d; margin-top: 5px; margin-bottom: 0px;",
-               "※ 符號說明：NOPAT (稅後營業利益), D&A (折舊與攤銷), ΔNWC (營運資金變動), CapEx (資本支出)"
+               ui_i18n("fcf_param_symbols")
              )
            ),
            
@@ -89,8 +90,8 @@ fcf_projection_module_ui <- function(id) {
              column(
                12,
                actionButton(
-                 ns("btn_sync_fcf_params"), "從財報帶入",
-                 icon = icon("sync"),
+                 ns("btn_sync_fcf_params"),
+                 tagList(icon("sync"), tags$span(ui_i18n("fcf_sync_from_statements"))),
                  class = "btn-sm",
                  style = "background-color: #222222; color: #ffffff; border: 1px solid #555555; font-size: 12px; padding: 4px 12px; border-radius: 4px;"
                )
@@ -101,20 +102,96 @@ fcf_projection_module_ui <- function(id) {
            tags$p(
              id = "ynow_fcf_revenue_shared_help",
              class = "help-block",
-             "總營收在 Model Dashboard → 模型共用參數設定一次。"
+             ui_i18n("fcf_revenue_shared_help")
            ),
-           fluidRow(
-             column(4, lock_numeric_input(numericInput(ns("fcf_revenue"), "當期營收 (Revenue)", value = 100))),
-             column(4, numericInput(ns("fcf_nopat"), "稅後營業利益 (NOPAT)", value = 0)),
-             column(4, numericInput(ns("fcf_depreciation"), "折舊與攤銷 (D&A) [+]", value = 0))
-           ),
-           fluidRow(
-             column(4, numericInput(ns("fcf_delta_nwc"), "營運資金變動 (ΔNWC) [-]", value = 0)),
-             column(4, numericInput(ns("fcf_capex"), "資本支出 (CapEx) [-]", value = 0)),
-             column(
-               4,
-               numericInput(ns("fcf_invested_capital"), "總投入資本 (Operating IC)", value = NA_real_),
-               uiOutput(ns("fcf_ic_proxy_help"))
+           # Six FCF inputs in IS → reinvestment → BS (IC) order, stacked like the
+           # FCFF identity. Input IDs and valuation math are unchanged.
+           tags$div(
+             class = "ynow-fcf-param-stack",
+             `data-ynow-fcf-param-order` = "revenue,nopat,da,capex,delta_nwc,ic",
+             tags$div(
+               class = "ynow-fcf-param-step",
+               tags$div(
+                 class = "ynow-fcf-param-step-label",
+                 ui_i18n("fcf_param_step_is")
+               ),
+               tags$div(
+                 class = "ynow-fcf-param-row ynow-fcf-param-row--anchor",
+                 tags$span(class = "ynow-fcf-param-op", " "),
+                 tags$div(
+                   class = "ynow-fcf-param-field",
+                   lock_numeric_input(
+                     numericInput(ns("fcf_revenue"), ui_i18n("fcf_param_revenue"), value = 100)
+                   )
+                 )
+               ),
+               tags$div(
+                 class = "ynow-fcf-param-row",
+                 tags$span(class = "ynow-fcf-param-op", " "),
+                 tags$div(
+                   class = "ynow-fcf-param-field",
+                   numericInput(ns("fcf_nopat"), ui_i18n("fcf_param_nopat"), value = 0)
+                 )
+               ),
+               tags$div(
+                 class = "ynow-fcf-param-row",
+                 tags$span(class = "ynow-fcf-param-op ynow-fcf-param-op--plus", "+"),
+                 tags$div(
+                   class = "ynow-fcf-param-field",
+                   numericInput(ns("fcf_depreciation"), ui_i18n("fcf_param_da"), value = 0)
+                 )
+               )
+             ),
+             tags$div(
+               class = "ynow-fcf-param-step",
+               tags$div(
+                 class = "ynow-fcf-param-step-label",
+                 ui_i18n("fcf_param_step_reinvest")
+               ),
+               tags$div(
+                 class = "ynow-fcf-param-row",
+                 tags$span(class = "ynow-fcf-param-op ynow-fcf-param-op--minus", "−"),
+                 tags$div(
+                   class = "ynow-fcf-param-field",
+                   numericInput(ns("fcf_capex"), ui_i18n("fcf_param_capex"), value = 0)
+                 )
+               ),
+               tags$div(
+                 class = "ynow-fcf-param-row",
+                 tags$span(class = "ynow-fcf-param-op ynow-fcf-param-op--minus", "−"),
+                 tags$div(
+                   class = "ynow-fcf-param-field",
+                   numericInput(ns("fcf_delta_nwc"), ui_i18n("fcf_param_delta_nwc"), value = 0)
+                 )
+               )
+             ),
+             tags$p(
+               class = "ynow-fcf-param-identity",
+               ui_i18n("fcf_param_identity")
+             ),
+             tags$div(
+               class = "ynow-fcf-param-step ynow-fcf-param-step--ic",
+               tags$div(
+                 class = "ynow-fcf-param-step-label",
+                 ui_i18n("fcf_param_step_ic")
+               ),
+               tags$div(
+                 class = "ynow-fcf-param-row",
+                 tags$span(class = "ynow-fcf-param-op", " "),
+                 tags$div(
+                   class = "ynow-fcf-param-field",
+                   numericInput(
+                     ns("fcf_invested_capital"),
+                     ui_i18n("fcf_param_ic"),
+                     value = NA_real_
+                   )
+                 )
+               ),
+               uiOutput(ns("fcf_ic_proxy_help")),
+               tags$p(
+                 class = "ynow-fcf-param-ic-note help-block",
+                 ui_i18n("fcf_param_ic_note")
+               )
              )
            ),
 
