@@ -242,6 +242,7 @@ APP_DEFAULTS <- list(
   # Absolute (Fair Value + SOTP) all on; Relative (Multiples) all off by default.
   lab_im_methods = c("nav", "pb", "dcf", "ddm", "ri"),
   lab_cluster_k = 3L,
+  lab_cluster_mode = "kmeans",
   lab_cluster_x = "ROE",
   lab_cluster_y = "PE_Ratio",
   lab_sec_important_only = TRUE

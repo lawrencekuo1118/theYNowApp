@@ -2888,7 +2888,8 @@ def get_cluster_features_batch(tickers):
 
     Returns a pandas DataFrame (reticulate-friendly) with columns:
       ticker, name, market_cap,
-      ROE, Operating_Margin, Rev_YoY, OpInc_YoY, Debt_Ratio, PE_Ratio, PB_Ratio
+      ROE, Operating_Margin, Rev_YoY, OpInc_YoY, Debt_Ratio, PE_Ratio, PB_Ratio,
+      Beta  (levered equity β_L; Yahoo Summary "Beta (5Y Monthly)")
     Percent-style fields are percent points (15.0 = 15%).
     Uses a small thread pool + 24h disk cache so shinyapps can finish N≈25.
     """
@@ -2951,6 +2952,7 @@ def get_cluster_features_batch(tickers):
             "Debt_Ratio": None,
             "PE_Ratio": None,
             "PB_Ratio": None,
+            "Beta": None,
         }
 
     # Persist under YNOW_CACHE_ROOT (same root as Yahoo gate / statement cache)
@@ -3032,10 +3034,15 @@ def get_cluster_features_batch(tickers):
                 row["PE_Ratio"] = pe
             if pb is not None and pb > 0:
                 row["PB_Ratio"] = pb
+            # Levered equity β (Yahoo Summary "Beta (5Y Monthly)") — CAPM default
+            beta_v = _sf(info.get("beta"))
+            if beta_v is not None:
+                row["Beta"] = beta_v
             return _row_usable(row) or (
                 row.get("ROE") is not None
                 or row.get("PE_Ratio") is not None
                 or row.get("Operating_Margin") is not None
+                or row.get("Beta") is not None
             )
 
         def _fill_from_quote_summary():
@@ -3098,6 +3105,7 @@ def get_cluster_features_batch(tickers):
                             "priceToBook": _yahoo_raw(
                                 sd.get("priceToBook") or ks.get("priceToBook")
                             ),
+                            "beta": _yahoo_raw(ks.get("beta")),
                         }
                         return _fill_from_info(info)
                     except Exception as e:  # noqa: BLE001
