@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12784287
+bundleId=12784408
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/  # pragma: allowlist secret
-aligned_git=4d704ab7f0fc15fb0d322ab68f8a7381113788fb
-commit=4d704ab7f0fc15fb0d322ab68f8a7381113788fb
-short=4d704ab7
-message=chore: bump display version to v28.12
-captured_at=2026-11-05T17:16:19Z
+aligned_git=d4e789cb537a58492d91113d712cef0ecdc943dc
+commit=d4e789cb537a58492d91113d712cef0ecdc943dc
+short=d4e789cb
+message=chore: bump display version to v28.13
+captured_at=2026-11-05T17:57:27Z
 display_version=v28.13
-note=Shipped v28.12 (+0.01) via deploy_app_21.R after #673 Stock Prospecting / 股海淘金 rename. Live status=running; rsconnect deployments bundleId=12784287. App wave #673 alone — #674 β_L level clustering still open, not waited. Also lands prior v28.11 baseline (bundle 12784241 / #671) that was pending as #675.
+note=Shipped v28.13 (+0.01) via deploy_app_21.R after #674 β_L clustering level mode (K=3 quantiles, fixed/dynamic). Live status=running; rsconnect deployments bundleId=12784408. App wave #674.
