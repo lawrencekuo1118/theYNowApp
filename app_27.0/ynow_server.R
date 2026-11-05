@@ -9590,12 +9590,10 @@ server <- function(input, output, session) {
   })
 
   output$dcf_sens_help <- renderUI({
+    loc <- tryCatch(ui_locale(), error = function(e) "en")
     claim <- input$dcf_claim %||% "fcff"
     disc <- dcf_disc_tag(claim)
-    p(helpText(sprintf(
-      "軸心採用基礎設定／Dashboard 目前的 SGR 與 %s；觀察鄰近組合下的每股內在價值變化。",
-      disc
-    )))
+    p(helpText(sprintf(ui_str("dcf_sens_help", loc), disc)))
   })
 
   output$dcf_wacc_fcfe_note <- renderUI({
@@ -15441,7 +15439,14 @@ server <- function(input, output, session) {
         }
       }
     }
-    list(matrix = sens_matrix, center = sens_matrix[3, 3], axes = list(wacc = base_wacc, g = base_g))
+    list(
+      matrix = sens_matrix,
+      center = sens_matrix[3, 3],
+      axes = list(wacc = base_wacc, g = base_g, disc = base_wacc),
+      disc_range = wacc_range,
+      g_range = g_range,
+      center_ij = c(3L, 3L)
+    )
   }
 
   .build_ddm_sensitivity_matrix <- function(base_ke, base_g) {
@@ -15496,7 +15501,45 @@ server <- function(input, output, session) {
         }
       }
     }
-    list(matrix = sens_matrix, center = sens_matrix[3, 3], axes = list(ke = base_ke, g = base_g))
+    list(
+      matrix = sens_matrix,
+      center = sens_matrix[3, 3],
+      axes = list(ke = base_ke, g = base_g, disc = base_ke),
+      disc_range = ke_range,
+      g_range = g_range,
+      center_ij = c(3L, 3L)
+    )
+  }
+
+  .ynow_sens_heatmap_from_built <- function(built, disc_label = "WACC", loc = "en") {
+    if (is.null(built) || is.null(built$matrix)) {
+      return(plotly::plotly_empty())
+    }
+    z <- built$matrix
+    disc_vals <- built$disc_range
+    g_vals <- built$g_range
+    if (is.null(disc_vals) || length(disc_vals) != nrow(z)) {
+      disc_vals <- ynow_sensitivity_axis_vals(z, built$axes, "disc")
+    }
+    if (is.null(g_vals) || length(g_vals) != ncol(z)) {
+      g_vals <- ynow_sensitivity_axis_vals(z, built$axes, "g")
+    }
+    ynow_sensitivity_heatmap(
+      z = z,
+      disc_vals = disc_vals,
+      g_vals = g_vals,
+      disc_label = disc_label,
+      title = ui_str("sens_heatmap_title", loc),
+      colorbar_title = ui_str("sens_heatmap_colorbar", loc),
+      x_title = ui_str("sens_heatmap_x_g", loc),
+      y_title = if (identical(disc_label, "Ke")) {
+        ui_str("sens_heatmap_y_ke", loc)
+      } else {
+        ui_str("sens_heatmap_y_wacc", loc)
+      },
+      na_label = ui_str("sens_heatmap_na", loc),
+      center_ij = built$center_ij %||% c(3L, 3L)
+    )
   }
 
   sensitivity_state <- reactive({
@@ -15564,6 +15607,7 @@ server <- function(input, output, session) {
     )
   })
 
+  # Numeric table kept for PDF / copy; UI primary is the heatmap below.
   output$dcf_sensitivity_table <- renderTable({
     st <- sensitivity_state()
     req(!is.null(st$built), !is.null(st$built$matrix))
@@ -15572,14 +15616,22 @@ server <- function(input, output, session) {
     names(out_df)[1] <- if (identical(st$disc_label, "Ke")) "Ke (%)" else "Rate (%)"
     out_df
   }, digits = 2, striped = TRUE, hover = TRUE, bordered = TRUE, align = "c",
-     width = "100%", na = "無效 (折現率≤g)")
+     width = "100%", na = "N/A")
+
+  output$dcf_sensitivity_heatmap <- plotly::renderPlotly({
+    loc <- tryCatch(ui_locale(), error = function(e) "en")
+    st <- sensitivity_state()
+    req(!is.null(st$built), !is.null(st$built$matrix))
+    .ynow_sens_heatmap_from_built(st$built, disc_label = st$disc_label %||% "WACC", loc = loc)
+  })
 
   output$sensitivity_analysis_panel <- renderUI({
+    loc <- tryCatch(ui_locale(), error = function(e) "en")
     st <- tryCatch(sensitivity_state(), error = function(e) NULL)
     if (is.null(st) || is.null(st$built)) {
       return(tags$div(
         style = "background:#fff8f0; border:1px solid #f0ad4e; border-radius:6px; padding:12px; font-size:13px; color:#666;",
-        "請先完成基礎設定參數並執行估值計算後，即可顯示敏感度解讀。"
+        ui_str("sens_brief_need_calc", loc)
       ))
     }
 
@@ -15603,35 +15655,42 @@ server <- function(input, output, session) {
 
     vs_price <- if (is.finite(center_val) && is.finite(curr_price) && curr_price > 0) {
       pct <- (center_val - curr_price) / curr_price * 100
-      sprintf("中心格內在價值 %s，相對現價 %s 約 %+.1f%%。", fmt(center_val), fmt(curr_price), pct)
+      sprintf(ui_str("sens_brief_vs_price", loc), fmt(center_val), fmt(curr_price), pct)
     } else if (is.finite(center_val)) {
-      sprintf("中心格內在價值約 %s；現價資料不足，暫無法比較。", fmt(center_val))
+      sprintf(ui_str("sens_brief_vs_price_na", loc), fmt(center_val))
     } else {
-      "中心格組合無效（折現率需大於 g），請調降 SGR 或提高折現率後重算。"
+      ui_str("sens_brief_center_invalid", loc)
     }
 
     vs_fair <- if (is.finite(center_val) && is.finite(as.numeric(fair_val)[1])) {
-      sprintf("與目前 %s 合理價 %s 對照：差異約 %s。",
-              st$model, fmt(fair_val),
-              sprintf("%+.2f", center_val - as.numeric(fair_val)[1]))
+      sprintf(
+        ui_str("sens_brief_vs_fair", loc),
+        st$model, fmt(fair_val),
+        sprintf("%+.2f", center_val - as.numeric(fair_val)[1])
+      )
     } else {
-      paste0("合理價尚未就緒；矩陣以目前 ", st$disc_label, "／SGR 為軸心展開。")
+      sprintf(ui_str("sens_brief_fair_pending", loc), st$disc_label)
     }
 
     tags$div(
       style = "background:#f5f5f5; border-left:4px solid #222222; border-radius:6px; padding:14px; font-size:13px; line-height:1.55; color:#333; margin-top:12px;",
-      tags$h5(style = "margin-top:0; color:#222222; font-weight:700;", icon("lightbulb"), " 簡要分析"),
-      tags$p(
-        tags$b("目前軸心："),
-        sprintf("%s = %s%%，SGR (g) = %s%%（與基礎設定／Dashboard 同步）",
-                st$disc_label, fmt(st$base_disc), fmt(st$base_g))
+      tags$h5(
+        style = "margin-top:0; color:#222222; font-weight:700;",
+        icon("lightbulb"), " ", ui_str("sens_brief_title", loc)
       ),
-      tags$p(tags$b("矩陣解讀："), vs_price),
+      tags$p(
+        tags$b(ui_str("sens_brief_axis", loc)),
+        sprintf(
+          ui_str("sens_brief_axis_body", loc),
+          st$disc_label, fmt(st$base_disc), fmt(st$base_g)
+        )
+      ),
+      tags$p(tags$b(ui_str("sens_brief_read", loc)), vs_price),
       tags$p(vs_fair),
       tags$p(
         style = "margin-bottom:0; color:#555;",
-        tags$b("適用提醒："),
-        "本矩陣適用絕對估值情境（DCF／DDM）；觀察 WACC（或 Ke）與 g 鄰近組合對每股內在價值的敏感度。"
+        tags$b(ui_str("sens_brief_note", loc)),
+        ui_str("sens_brief_note_body", loc)
       )
     )
   })
@@ -15752,9 +15811,21 @@ server <- function(input, output, session) {
     names(out_df)[1] <- "Ke_Rate"
     out_df
   }, digits = 2, striped = TRUE, hover = TRUE, bordered = TRUE, align = "c",
-     width = "100%", na = "無效 (折現率≤g)")
+     width = "100%", na = "N/A")
+
+  output$ddm_sensitivity_heatmap <- plotly::renderPlotly({
+    loc <- tryCatch(ui_locale(), error = function(e) "en")
+    ke <- suppressWarnings(as.numeric(input[["mod_ddm-ke"]])[1])
+    g <- suppressWarnings(as.numeric(input[["mod_ddm-g"]])[1])
+    if (!is.finite(ke)) ke <- APP_DEFAULTS$ddm_ke
+    if (!is.finite(g)) g <- APP_DEFAULTS$ddm_g
+    built <- .build_ddm_sensitivity_matrix(ke, g)
+    req(!is.null(built), !is.null(built$matrix))
+    .ynow_sens_heatmap_from_built(built, disc_label = "Ke", loc = loc)
+  })
 
   output$ddm_sensitivity_analysis_panel <- renderUI({
+    loc <- tryCatch(ui_locale(), error = function(e) "en")
     ke <- suppressWarnings(as.numeric(input[["mod_ddm-ke"]])[1])
     g <- suppressWarnings(as.numeric(input[["mod_ddm-g"]])[1])
     if (!is.finite(ke)) ke <- APP_DEFAULTS$ddm_ke
@@ -15763,7 +15834,7 @@ server <- function(input, output, session) {
     if (is.null(built) || is.null(built$matrix)) {
       return(tags$div(
         style = "background:#fff8f0; border:1px solid #f0ad4e; border-radius:6px; padding:12px; font-size:13px; color:#666;",
-        "請先確認 D0 > 0 且 Ke > g 後，即可顯示敏感度解讀。"
+        ui_str("sens_brief_need_ddm", loc)
       ))
     }
 
@@ -15780,28 +15851,29 @@ server <- function(input, output, session) {
 
     vs_price <- if (is.finite(center_val) && is.finite(curr_price) && curr_price > 0) {
       pct <- (center_val - curr_price) / curr_price * 100
-      sprintf("中心格內在價值 %s，相對現價 %s 約 %+.1f%%。", fmt(center_val), fmt(curr_price), pct)
+      sprintf(ui_str("sens_brief_vs_price", loc), fmt(center_val), fmt(curr_price), pct)
     } else if (is.finite(center_val)) {
-      sprintf("中心格內在價值約 %s；現價資料不足，暫無法比較。", fmt(center_val))
+      sprintf(ui_str("sens_brief_vs_price_na", loc), fmt(center_val))
     } else {
-      "中心格組合無效（Ke 需大於 g），請調降股利成長率或提高 Ke。"
+      ui_str("sens_brief_center_invalid_ddm", loc)
     }
-
-    vs_fair <- "矩陣中心格即目前 Ke／股利 g 下的公式價值（不必先按試算）。"
 
     tags$div(
       style = "background:#f5f5f5; border-left:4px solid #222222; border-radius:6px; padding:14px; font-size:13px; line-height:1.55; color:#333; margin-top:12px;",
-      tags$h5(style = "margin-top:0; color:#222222; font-weight:700;", icon("lightbulb"), " 簡要分析"),
-      tags$p(
-        tags$b("目前軸心："),
-        sprintf("Ke = %s%%，股利 g = %s%%", fmt(ke), fmt(g))
+      tags$h5(
+        style = "margin-top:0; color:#222222; font-weight:700;",
+        icon("lightbulb"), " ", ui_str("sens_brief_title", loc)
       ),
-      tags$p(tags$b("矩陣解讀："), vs_price),
-      tags$p(vs_fair),
+      tags$p(
+        tags$b(ui_str("sens_brief_axis", loc)),
+        sprintf(ui_str("sens_brief_axis_ddm", loc), fmt(ke), fmt(g))
+      ),
+      tags$p(tags$b(ui_str("sens_brief_read", loc)), vs_price),
+      tags$p(ui_str("sens_brief_ddm_center", loc)),
       tags$p(
         style = "margin-bottom:0; color:#555;",
-        tags$b("適用提醒："),
-        "本矩陣適用 DDM 絕對估值；觀察 Ke 與股利永續 g 鄰近組合對每股內在價值的敏感度。"
+        tags$b(ui_str("sens_brief_note", loc)),
+        ui_str("sens_brief_note_body_ddm", loc)
       )
     )
   })

@@ -22767,10 +22767,19 @@ tabPanel(
                      fluidRow(
                        column(
                          width = 12,
-                         div(
-                           style = "width: 100%; overflow-x: auto;",
-                           tags$style(HTML("#ddm_sensitivity_table table { width: 100% !important; table-layout: fixed; }")),
-                           tableOutput("ddm_sensitivity_table")
+                         plotlyOutput("ddm_sensitivity_heatmap", height = "420px") %>% withSpinner()
+                       )
+                     ),
+                     fluidRow(
+                       column(
+                         width = 12,
+                         tags$details(
+                           tags$summary(ui_i18n("sens_numeric_table_summary")),
+                           div(
+                             style = "width: 100%; overflow-x: auto; margin-top: 8px;",
+                             tags$style(HTML("#ddm_sensitivity_table table { width: 100% !important; table-layout: fixed; }")),
+                             tableOutput("ddm_sensitivity_table")
+                           )
                          )
                        )
                      ),
@@ -22942,10 +22951,19 @@ tabPanel(
                      fluidRow(
                        column(
                          width = 12,
-                         div(
-                           style = "width: 100%; overflow-x: auto;",
-                           tags$style(HTML("#dcf_sensitivity_table table { width: 100% !important; table-layout: fixed; }")),
-                           tableOutput("dcf_sensitivity_table")
+                         plotlyOutput("dcf_sensitivity_heatmap", height = "420px") %>% withSpinner()
+                       )
+                     ),
+                     fluidRow(
+                       column(
+                         width = 12,
+                         tags$details(
+                           tags$summary(ui_i18n("sens_numeric_table_summary")),
+                           div(
+                             style = "width: 100%; overflow-x: auto; margin-top: 8px;",
+                             tags$style(HTML("#dcf_sensitivity_table table { width: 100% !important; table-layout: fixed; }")),
+                             tableOutput("dcf_sensitivity_table")
+                           )
                          )
                        )
                      ),
