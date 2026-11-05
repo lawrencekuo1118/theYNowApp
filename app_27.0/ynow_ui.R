@@ -1631,12 +1631,12 @@ beta_rolling_section_ui <- function() {
 
 #' Shared bottom block: formula-param contribution / relative ±1% elasticity.
 .model_param_sensitivity_box <- function(title, table_id) {
-  # Core explainability: keep open by default (not an appendix drawer).
+  # Collapsed by default; user expands when reviewing |ε| / contribution.
   fluidRow(
     box(
       title = tagList(icon("percentage"), title),
       width = 12, status = "info", solidHeader = TRUE,
-      collapsible = TRUE, collapsed = FALSE,
+      collapsible = TRUE, collapsed = TRUE,
       tags$div(
         style = "overflow-x:auto;",
         tableOutput(table_id)
@@ -21934,7 +21934,7 @@ ui <- dashboardPage(
           tags$span(id = "ynow_explain_core_callout_body", paste0(
             "：每個估值結果旁應能回答「為何是這個合理價」。",
             "DCF Overview 的 KPI 下方已顯示公式路徑／現值橋接／終值驅動；",
-            "各模型「公式參數貢獻與敏感度」預設展開。完整 Decision Matrix 見基本面評價模型圖表下方（預設收合）。"
+            "各模型「公式參數貢獻與敏感度」預設收合。完整 Decision Matrix 見基本面評價模型圖表下方（預設收合）。"
           ))
         ),
         # Full-mode primary workflow: same Why + gate surface as Smart Analysis
