@@ -7,5 +7,5 @@ commit=4d704ab7f0fc15fb0d322ab68f8a7381113788fb
 short=4d704ab7
 message=chore: bump display version to v28.12
 captured_at=2026-11-05T17:16:19Z
-display_version=v28.12
+display_version=v28.13
 note=Shipped v28.12 (+0.01) via deploy_app_21.R after #673 Stock Prospecting / 股海淘金 rename. Live status=running; rsconnect deployments bundleId=12784287. App wave #673 alone — #674 β_L level clustering still open, not waited. Also lands prior v28.11 baseline (bundle 12784241 / #671) that was pending as #675.
