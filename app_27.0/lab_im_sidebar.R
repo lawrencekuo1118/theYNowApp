@@ -76,18 +76,124 @@ lab_method_labels <- function(locale = "zh-TW") {
   if (identical(loc, "en")) LAB_METHOD_LABELS_EN else LAB_METHOD_LABELS
 }
 
-#' DataTables column render: header clicks sort percents, market-cap suffixes,
-#' and plain numbers numerically; em dashes sort as missing.
-ynow_dt_sort_column_def <- function() {
+# Column titles (zh-TW + en-US) that must sort as market cap / percent even when
+# renderDT(..., server = TRUE) sorts in R — so the data frame column must be numeric.
+YNOW_DT_MCAP_COL_NAMES <- c("總市值", "Total market cap")
+YNOW_DT_PCT_COL_NAMES <- c(
+  "市值加權年化估值漲幅", "Mcap-weighted annualized upside",
+  "年化估值漲幅", "Annualized upside",
+  "總潛在漲幅", "Total upside"
+)
+
+#' Parse display market-cap text (`1.20T`, `$800.00B`, em dash) to numeric USD.
+ynow_coerce_mcap_sort_value <- function(x) {
+  if (is.numeric(x)) {
+    v <- suppressWarnings(as.numeric(x)[1])
+    if (!is.finite(v) || v <= 0) return(NA_real_)
+    return(v)
+  }
+  s <- trimws(as.character(x %||% "")[1])
+  if (!nzchar(s) || s %in% c("\u2014", "\u2013", "-", "NA", "NaN")) return(NA_real_)
+  s <- gsub(",", "", s, fixed = TRUE)
+  s <- sub("^\\$", "", s)
+  m <- regexec("^([+-]?[0-9]+(?:\\.[0-9]+)?)([TBMK])$", s, ignore.case = TRUE, perl = TRUE)
+  g <- regmatches(s, m)[[1]]
+  if (length(g) >= 3L) {
+    mul <- c(K = 1e3, M = 1e6, B = 1e9, T = 1e12)[[toupper(g[[3]])]]
+    v <- suppressWarnings(as.numeric(g[[2]])) * mul
+    if (is.finite(v) && v > 0) return(v)
+    return(NA_real_)
+  }
+  v <- suppressWarnings(as.numeric(s))
+  if (is.finite(v) && v > 0) v else NA_real_
+}
+
+#' Parse display percent text (`+12.5%`, em dash) to numeric percentage points.
+ynow_coerce_pct_sort_value <- function(x) {
+  if (is.numeric(x)) {
+    v <- suppressWarnings(as.numeric(x)[1])
+    if (!is.finite(v)) return(NA_real_)
+    return(v)
+  }
+  s <- trimws(as.character(x %||% "")[1])
+  if (!nzchar(s) || s %in% c("\u2014", "\u2013", "-", "NA", "NaN")) return(NA_real_)
+  s <- gsub(",", "", s, fixed = TRUE)
+  s <- sub("%$", "", s)
+  v <- suppressWarnings(as.numeric(s))
+  if (is.finite(v)) v else NA_real_
+}
+
+#' Coerce known mcap / percent display columns to numeric for server-side DT sort.
+ynow_dt_numericize_sort_columns <- function(data) {
+  if (is.null(data) || !is.data.frame(data) || !ncol(data)) {
+    return(list(data = data, mcap_idx = integer(0), pct_idx = integer(0)))
+  }
+  nm <- names(data)
+  mcap_i <- which(nm %in% YNOW_DT_MCAP_COL_NAMES)
+  pct_i <- which(nm %in% YNOW_DT_PCT_COL_NAMES)
+  for (i in mcap_i) {
+    data[[i]] <- vapply(data[[i]], ynow_coerce_mcap_sort_value, numeric(1))
+  }
+  for (i in pct_i) {
+    data[[i]] <- vapply(data[[i]], ynow_coerce_pct_sort_value, numeric(1))
+  }
+  list(
+    data = data,
+    mcap_idx = as.integer(mcap_i - 1L),
+    pct_idx = as.integer(pct_i - 1L)
+  )
+}
+
+#' DataTables column render: display formats mcap/percent; sort uses numeric
+#' (R numeric columns under server=TRUE, or parsed strings under client-side).
+ynow_dt_sort_column_def <- function(mcap_idx = integer(0), pct_idx = integer(0)) {
+  mcap_js <- paste0("[", paste(as.integer(mcap_idx), collapse = ","), "]")
+  pct_js <- paste0("[", paste(as.integer(pct_idx), collapse = ","), "]")
   list(
     targets = "_all",
     render = DT::JS(
-      "function(data, type) {",
-      "  if (type !== 'sort' && type !== 'type' && type !== 'filter') return data;",
+      paste0("function(data, type, row, meta) {"),
+      paste0("  var mcapCols = ", mcap_js, ";"),
+      paste0("  var pctCols = ", pct_js, ";"),
+      "  var col = meta && meta.col != null ? meta.col : -1;",
+      "  var isMcap = mcapCols.indexOf(col) >= 0;",
+      "  var isPct = pctCols.indexOf(col) >= 0;",
+      "  var formatMcap = function(v) {",
+      "    if (v == null || v === '') return '\\u2014';",
+      "    var x = typeof v === 'number' ? v : parseFloat(v);",
+      "    if (!isFinite(x) || x <= 0) return '\\u2014';",
+      "    if (x >= 1e12) return (x / 1e12).toFixed(2) + 'T';",
+      "    if (x >= 1e9) return (x / 1e9).toFixed(2) + 'B';",
+      "    if (x >= 1e6) return (x / 1e6).toFixed(2) + 'M';",
+      "    return String(Math.round(x));",
+      "  };",
+      "  var formatPct = function(v) {",
+      "    if (v == null || v === '') return '\\u2014';",
+      "    var x = typeof v === 'number' ? v : parseFloat(v);",
+      "    if (!isFinite(x)) return '\\u2014';",
+      "    return (x > 0 ? '+' : '') + x.toFixed(1) + '%';",
+      "  };",
+      "  if (type === 'display') {",
+      "    if (isMcap) return formatMcap(data);",
+      "    if (isPct) return formatPct(data);",
+      "    return data;",
+      "  }",
+      "  if (typeof data === 'number' && isFinite(data)) {",
+      "    if (type === 'filter') {",
+      "      if (isMcap) return formatMcap(data);",
+      "      if (isPct) return formatPct(data);",
+      "    }",
+      "    return data;",
+      "  }",
       "  var s = data == null ? '' : String(data);",
       "  s = s.replace(/<[^>]*>/g, '').replace(/&nbsp;/gi, ' ').replace(/\\s+/g, ' ').trim();",
-      "  if (type === 'filter') return s;",
+      "  if (type === 'filter') {",
+      "    if (isMcap) return formatMcap(s);",
+      "    if (isPct) return formatPct(s);",
+      "    return s;",
+      "  }",
       "  if (!s || s === '\\u2014' || s === '\\u2013' || s === '-') return null;",
+      "  s = s.replace(/,/g, '').replace(/^\\$/, '');",
       "  var pct = s.match(/^([+-]?\\d+(?:\\.\\d+)?)%$/);",
       "  if (pct) return parseFloat(pct[1]);",
       "  var mag = s.match(/^([+-]?\\d+(?:\\.\\d+)?)([TBMK])$/i);",
@@ -95,8 +201,7 @@ ynow_dt_sort_column_def <- function() {
       "    var mul = {K:1e3, M:1e6, B:1e9, T:1e12}[mag[2].toUpperCase()];",
       "    return parseFloat(mag[1]) * mul;",
       "  }",
-      "  var sci = s.replace(/,/g, '');",
-      "  if (/^[+-]?\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$/.test(sci)) return parseFloat(sci);",
+      "  if (/^[+-]?\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$/.test(s)) return parseFloat(s);",
       "  return s.toLowerCase();",
       "}"
     )
@@ -105,11 +210,17 @@ ynow_dt_sort_column_def <- function() {
 
 #' Blue Chip table with clickable headers. Initial row order is unchanged
 #' until the user sorts a column.
+#'
+#' Market-cap and percent columns are coerced to numeric so
+#' `DT::renderDT(..., server = TRUE)` sorts by true magnitude (not `"5.10T"` text).
+#' Display still shows human-formatted suffixes via the column render.
 ynow_sortable_datatable <- function(data, escape = TRUE, page_length = NULL,
                                     filter = "none", extra_options = list()) {
   if (is.null(data) || !is.data.frame(data)) {
     data <- data.frame(Message = character(0), stringsAsFactors = FALSE)
   }
+  prep <- ynow_dt_numericize_sort_columns(data)
+  data <- prep$data
   n <- nrow(data)
   plen <- if (is.null(page_length)) max(as.integer(n), 1L) else as.integer(page_length)[1]
   if (!is.finite(plen) || plen < 1L) plen <- 1L
@@ -126,7 +237,10 @@ ynow_sortable_datatable <- function(data, escape = TRUE, page_length = NULL,
   opts <- if (length(extra_options)) utils::modifyList(base, extra_options) else base
   opts$ordering <- TRUE
   prev_defs <- opts$columnDefs
-  opts$columnDefs <- c(list(ynow_dt_sort_column_def()), prev_defs)
+  opts$columnDefs <- c(
+    list(ynow_dt_sort_column_def(prep$mcap_idx, prep$pct_idx)),
+    prev_defs
+  )
   DT::datatable(
     data,
     rownames = FALSE,
