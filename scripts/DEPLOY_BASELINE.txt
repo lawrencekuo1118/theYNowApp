@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12782312
+bundleId=12782525
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/  # pragma: allowlist secret
-aligned_git=49cc5ba869409e77de5b4d990c1d1aa09e92dbbe
-commit=49cc5ba869409e77de5b4d990c1d1aa09e92dbbe
-short=49cc5ba8
-message=chore: bump display version to v28.03
-captured_at=2026-11-05T07:38:24Z
+aligned_git=6370878dc7c1d7e25f69bab7b12dad9dfe61d654
+commit=6370878dc7c1d7e25f69bab7b12dad9dfe61d654
+short=6370878d
+message=chore: bump display version to v28.04
+captured_at=2026-11-05T08:41:14Z
 display_version=v28.04
-note=Shipped v28.03 (+0.01) via deploy_app_21.R. Live status=running; rsconnect deployments bundleId=12782312. App wave #656 first-load disconnect mitigations.
+note=Shipped v28.04 (+0.01) via deploy_app_21.R. Live status=running; rsconnect deployments bundleId=12782525. App wave #658 formula-param sensitivity boxes default collapsed.
