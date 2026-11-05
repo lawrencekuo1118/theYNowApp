@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12783449
+bundleId=12783500
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/  # pragma: allowlist secret
-aligned_git=6d10019147107245c0ade18c22152ff33153d639
-commit=6d10019147107245c0ade18c22152ff33153d639
-short=6d100191
-message=chore: bump display version to v28.06
-captured_at=2026-11-05T13:38:47Z
+aligned_git=292f79f9d7a8afbd34a1aacf31312942ff28201a
+commit=292f79f9d7a8afbd34a1aacf31312942ff28201a
+short=292f79f9
+message=chore: bump display version to v28.07
+captured_at=2026-11-05T13:53:58Z
 display_version=v28.07
-note=Shipped v28.06 (+0.01) via deploy_app_21.R. Live status=running; rsconnect deployments bundleId=12783449. App wave #662 Clustering grouping mode by levered Beta (β_L).
+note=Shipped v28.07 (+0.01) via deploy_app_21.R. Live status=running; rsconnect deployments bundleId=12783500. App wave #664 SGR + near-term g 1:1 mobile (shipped without #663; still open). Includes prior v28.06 baseline hygiene (bundle 12783449 / #665 content).
