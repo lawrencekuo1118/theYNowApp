@@ -174,12 +174,67 @@ set_prop("application.instances.template", s$size)
 set_prop("application.instances.start", s$instances_start)
 set_prop("application.instances.load.factor", s$instance_load_factor)
 set_prop("application.shiny.scheduler.max.processes", s$workers)
+# Keep min.processes=0: min=1 would pin a worker forever and burn active hours
+# 24/7 on Starter. Prefer a longer Instance Idle Timeout instead (below).
 set_prop("application.shiny.scheduler.min.processes", 0L)
 set_prop("application.shiny.scheduler.max.requests", s$max_connections)
 set_prop("application.shiny.scheduler.load.factor", s$worker_load_factor)
 set_prop("application.shiny.timeout.conn", s$timeout_conn)
 set_prop("application.shiny.timeout.idle", s$timeout_idle)
 set_prop("application.shiny.timeout.init", s$timeout_init)
+# Instance Idle Timeout — reduces sleep → cold-start 「Disconnected」 flashes.
+# API property name has varied across shinyapps revisions; try known keys and
+# fall back to a dashboard manual step when both reject.
+inst_idle <- suppressWarnings(as.integer(s$timeout_instance_idle %||% 3600L)[1])
+if (!is.finite(inst_idle) || inst_idle < 300L) inst_idle <- 3600L
+idle_keys <- c("application.idle.timeout", "application.instances.idle.timeout")
+idle_ok <- FALSE
+for (k in idle_keys) {
+  cur <- as.character(props[[k]] %||% "")[1]
+  if (identical(cur, as.character(inst_idle))) {
+    cat(sprintf("  keep %s=%s\n", k, cur))
+    idle_ok <- TRUE
+    break
+  }
+}
+if (!isTRUE(idle_ok)) {
+  for (k in idle_keys) {
+    if (isTRUE(dry_run)) {
+      cat(sprintf(
+        "  DRY-RUN would set %s: %s -> %s\n",
+        k, as.character(props[[k]] %||% "")[1], as.character(inst_idle)
+      ))
+      idle_ok <- TRUE
+      break
+    }
+    ok <- tryCatch(
+      {
+        client$setApplicationProperty(app_id, k, as.integer(inst_idle), force = TRUE)
+        TRUE
+      },
+      error = function(e) {
+        cat(sprintf("  WARN failed %s: %s\n", k, conditionMessage(e)))
+        FALSE
+      }
+    )
+    if (isTRUE(ok)) {
+      cat(sprintf("  set %s: -> %s\n", k, as.character(inst_idle)))
+      idle_ok <- TRUE
+      break
+    }
+  }
+}
+if (!isTRUE(idle_ok) && !isTRUE(dry_run)) {
+  cat(sprintf(
+    paste0(
+      "MANUAL STEP: shinyapps dashboard → TheYNowApp → Settings → General → ",
+      "Instance Idle Timeout → set to %d minutes (API property not accepted).\n",
+      "  https://www.shinyapps.io/admin/#/application/%s\n"
+    ),
+    as.integer(round(inst_idle / 60)),
+    app_id
+  ))
+}
 
 plan_max_inst <- tryCatch(as.integer(ents$MaxInstancesLimit$limit), error = function(e) 1L)
 if (!isTRUE(dry_run) && isTRUE(ideal$ok) && plan_max_inst > 1L) {

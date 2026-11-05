@@ -59,7 +59,7 @@ Design target while still on Starter: **maximize safe concurrent browse/search s
 | Price-alert timer gate | `price_alert.R` | `invalidateLater` only while alerts are armed |
 | Hosted sequential futures | `async_jobs.R` | No multisession RSS multiplier |
 | Neon pool cap | `auth_db.R` | `maxSize ≤ 2` on hosted |
-| shinyapps props | `configure_shinyapps_capacity.R` | `max_connections` matched to RAM floor; `timeout_conn=600` |
+| shinyapps props | `configure_shinyapps_capacity.R` | `max_connections` matched to RAM floor; `timeout_conn=600`; **Instance Idle Timeout 3600s** (fewer cold-start reconnect flashes; costs active hours) |
 
 ## What we already hardened in app code
 
