@@ -100,6 +100,45 @@ check("module exposes CapEx spike controls", grepl("apply_capex_spike_smooth", s
   grepl("capex_spike_mult", src, fixed = TRUE))
 check("module calls fcf_sync_capex_revenue_margin", grepl("fcf_sync_capex_revenue_margin(", src, fixed = TRUE))
 
+# Six FCF inputs: IS → reinvestment → IC stack (display order only; IDs unchanged)
+check(
+  "fcf param stack marks IS→reinvestment→IC order",
+  grepl('data-ynow-fcf-param-order' , src, fixed = TRUE) &&
+    grepl("revenue,nopat,da,capex,delta_nwc,ic", src, fixed = TRUE)
+)
+pos_rev <- regexpr('fcf_revenue"', src, fixed = TRUE)[1]
+pos_nopat <- regexpr('fcf_nopat"', src, fixed = TRUE)[1]
+pos_da <- regexpr('fcf_depreciation"', src, fixed = TRUE)[1]
+pos_capex <- regexpr('fcf_capex"', src, fixed = TRUE)[1]
+pos_nwc <- regexpr('fcf_delta_nwc"', src, fixed = TRUE)[1]
+pos_ic <- regexpr('fcf_invested_capital"', src, fixed = TRUE)[1]
+check(
+  "UI source order is Revenue → NOPAT → D&A → CapEx → ΔNWC → IC",
+  all(c(pos_rev, pos_nopat, pos_da, pos_capex, pos_nwc, pos_ic) > 0L) &&
+    pos_rev < pos_nopat && pos_nopat < pos_da && pos_da < pos_capex &&
+    pos_capex < pos_nwc && pos_nwc < pos_ic
+)
+check("CapEx appears before ΔNWC (statement / table flow)", pos_capex > 0L && pos_nwc > pos_capex)
+check("formula-feel operators present", grepl("ynow-fcf-param-op--plus", src, fixed = TRUE) &&
+  grepl("ynow-fcf-param-op--minus", src, fixed = TRUE))
+check("FCFF identity label is display-only (no engine change)", grepl("fcf_param_identity", src, fixed = TRUE))
+
+loc <- paste(readLines("ui_locale.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+for (k in c(
+  "fcf_param_step_is", "fcf_param_step_reinvest", "fcf_param_step_ic",
+  "fcf_param_revenue", "fcf_param_nopat", "fcf_param_da",
+  "fcf_param_capex", "fcf_param_delta_nwc", "fcf_param_ic",
+  "fcf_param_identity", "fcf_param_ic_note", "fcf_param_symbols",
+  "fcf_sync_from_statements"
+)) {
+  check(
+    paste0("locale key ", k, " in en + zh-TW"),
+    length(gregexpr(paste0(k, " ="), loc, fixed = TRUE)[[1]]) >= 2L
+  )
+}
+ui_css <- paste(readLines("ynow_ui.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+check("ynow_ui ships FCF param-stack CSS", grepl(".ynow-fcf-param-stack", ui_css, fixed = TRUE))
+
 if (fail > 0L) {
   cat("FAILED ", fail, " checks\n", sep = "")
   quit(status = 1L)
