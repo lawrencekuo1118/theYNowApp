@@ -233,6 +233,45 @@ statement_other_equity_claims_book <- function(bs) {
   pref + minority
 }
 
+#' Decide Gordon + stage WACC field writes after a calculated two-class WACC.
+#'
+#' Contract used by `.auto_recalc_capm_wacc` in `ynow_server.R`:
+#' - When `other_claims` is not a verified 0, leave existing fields alone
+#'   (do **not** clear them to NA — that wiped usable rates before #636).
+#' - When `other_claims == 0` and `wacc_percent` is a finite positive rate,
+#'   write the same percent into `wacc_gordon`, `wacc_stage1`, and `wacc_stage2`
+#'   so a later Gordon → two-stage switch is not empty.
+#'
+#' Rates are percent units (e.g. 8.79), matching `updateNumericInput` on those IDs.
+ynow_apply_calculated_wacc_fields <- function(wacc_percent, other_claims,
+                                              current = list(
+                                                wacc_gordon = NA_real_,
+                                                wacc_stage1 = NA_real_,
+                                                wacc_stage2 = NA_real_)) {
+  wacc_percent <- suppressWarnings(as.numeric(wacc_percent)[1])
+  other_claims <- suppressWarnings(as.numeric(other_claims)[1])
+  out <- current
+  if (!is.list(out)) {
+    out <- list(
+      wacc_gordon = NA_real_,
+      wacc_stage1 = NA_real_,
+      wacc_stage2 = NA_real_
+    )
+  }
+  for (id in c("wacc_gordon", "wacc_stage1", "wacc_stage2")) {
+    if (is.null(out[[id]])) out[[id]] <- NA_real_
+  }
+  if (!is.finite(wacc_percent) || wacc_percent <= 0) return(out)
+  if (!is.finite(other_claims) || other_claims != 0) {
+    # Gate fails: leave existing fields alone (do not clear to NA).
+    return(out)
+  }
+  out$wacc_gordon <- wacc_percent
+  out$wacc_stage1 <- wacc_percent
+  out$wacc_stage2 <- wacc_percent
+  out
+}
+
 # NOPAT is operating earnings after tax, never financing-affected Net Income.
 statement_nopat <- function(d_is, tax_fallback = NULL) {
   ebit <- select_current_metric_any(d_is, c("^Operating Income$", "^EBIT$"), "flow")
