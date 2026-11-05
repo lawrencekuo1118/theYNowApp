@@ -9748,7 +9748,7 @@ server <- function(input, output, session) {
     suppressWarnings(as.numeric(APP_DEFAULTS$g_stage1)[1])
   }
 
-  # SGR KPI hosts match BETA Overview: bare small-box (width=NULL) inside col-sm-6.
+  # SGR KPI hosts: bare small-box (width=NULL) inside col-xs-6 (always 1:1).
   output$vbx_sgr_pct <- renderUI({
     loc <- tryCatch(ui_locale(), error = function(e) "en")
     sgr_pct <- suppressWarnings(as.numeric(input$sgr)[1])
@@ -9762,7 +9762,7 @@ server <- function(input, output, session) {
     )
   })
 
-  output$vbx_session_g <- renderValueBox({
+  output$vbx_session_g <- renderUI({
     loc <- tryCatch(ui_locale(), error = function(e) "en")
     g_pct <- .session_near_term_g_pct()
     valueBox(
