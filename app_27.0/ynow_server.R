@@ -13523,9 +13523,19 @@ server <- function(input, output, session) {
     calculated_wacc(wacc)
     wacc_percent <- round(wacc * 100, 2)
     # Align Gordon + both stages so a later two-stage switch is not empty.
-    updateNumericInput(session, "wacc_gordon", value = wacc_percent)
-    updateNumericInput(session, "wacc_stage1", value = wacc_percent)
-    updateNumericInput(session, "wacc_stage2", value = wacc_percent)
+    # Pure apply contract: ynow_apply_calculated_wacc_fields (setup.R).
+    # other already gated to verified 0 above; helper still encodes no-clear-on-fail.
+    applied_wacc <- ynow_apply_calculated_wacc_fields(
+      wacc_percent, other,
+      list(
+        wacc_gordon = suppressWarnings(as.numeric(input$wacc_gordon)[1]),
+        wacc_stage1 = suppressWarnings(as.numeric(input$wacc_stage1)[1]),
+        wacc_stage2 = suppressWarnings(as.numeric(input$wacc_stage2)[1])
+      )
+    )
+    updateNumericInput(session, "wacc_gordon", value = applied_wacc$wacc_gordon)
+    updateNumericInput(session, "wacc_stage1", value = applied_wacc$wacc_stage1)
+    updateNumericInput(session, "wacc_stage2", value = applied_wacc$wacc_stage2)
 
     if (isTRUE(notify)) {
       showNotification(

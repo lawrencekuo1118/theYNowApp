@@ -88,27 +88,9 @@ s2 <- rows_na$suggestion[rows_na$id == "wacc_stage2"][1]
 check("missing stage WACC carries calculated wacc suggestion",
       isTRUE(all.equal(s1, 8.5)) && isTRUE(all.equal(s2, 8.5)))
 
-# --- WACC apply helper: mirror intended server rule (pure) ---
-# Production should expose the same behavior via .auto_recalc_capm_wacc /
-# dcf_mode sync. This pure helper encodes the contract the server must meet.
-ynow_apply_calculated_wacc_fields <- function(wacc_percent, other_claims,
-                                              current = list(
-                                                wacc_gordon = NA_real_,
-                                                wacc_stage1 = NA_real_,
-                                                wacc_stage2 = NA_real_)) {
-  wacc_percent <- suppressWarnings(as.numeric(wacc_percent)[1])
-  other_claims <- suppressWarnings(as.numeric(other_claims)[1])
-  out <- current
-  if (!is.finite(wacc_percent) || wacc_percent <= 0) return(out)
-  if (!is.finite(other_claims) || other_claims != 0) {
-    # Gate fails: leave existing fields alone (do not clear to NA).
-    return(out)
-  }
-  out$wacc_gordon <- wacc_percent
-  out$wacc_stage1 <- wacc_percent
-  out$wacc_stage2 <- wacc_percent
-  out
-}
+# --- WACC apply helper: production pure function (setup.R) ---
+check("ynow_apply_calculated_wacc_fields exported from setup.R",
+      exists("ynow_apply_calculated_wacc_fields", mode = "function"))
 
 seeded <- list(wacc_gordon = 7, wacc_stage1 = 7, wacc_stage2 = 7)
 blocked <- ynow_apply_calculated_wacc_fields(9, NA_real_, seeded)
@@ -134,11 +116,17 @@ check("server does not clear all WACC inputs immediately before other-claims gat
         "for \\(id in c\\(\"wacc_gordon\", \"wacc_stage1\", \"wacc_stage2\"\\)\\) updateNumericInput\\(session, id, value = NA_real_\\)\\s*\\n\\s*other <- \\.shared_bridge\\(\\)\\$other_claims\\s*\\n\\s*if \\(!is\\.finite\\(other\\) \\|\\| other != 0\\) return",
         srv
       ))
+check("server routes calculated WACC through ynow_apply_calculated_wacc_fields",
+      grepl("ynow_apply_calculated_wacc_fields\\(", srv))
 check("server writes wacc_stage1 and wacc_stage2 together on calculated WACC",
-      grepl("updateNumericInput\\(session, \"wacc_stage1\".*updateNumericInput\\(session, \"wacc_stage2\"",
-            srv) ||
-        grepl("wacc_stage1\".*value = wacc_percent[\\s\\S]*wacc_stage2\".*value = wacc_percent",
-              srv))
+      grepl(
+        "updateNumericInput\\(session, \"wacc_stage1\", value = applied_wacc\\$wacc_stage1\\)[\\s\\S]*updateNumericInput\\(session, \"wacc_stage2\", value = applied_wacc\\$wacc_stage2\\)",
+        srv
+      ) ||
+        grepl(
+          "updateNumericInput\\(session, \"wacc_stage1\".*updateNumericInput\\(session, \"wacc_stage2\"",
+          srv
+        ))
 
 # Prefer always writing all three (not only when mode != gordon).
 auto_fn <- sub(".*(\\.auto_recalc_capm_wacc <- function[\\s\\S]*?^  \\})", "\\1",
@@ -148,9 +136,10 @@ if (!grepl("\\.auto_recalc_capm_wacc <- function", auto_fn)) {
   auto_fn <- srv
 }
 check("calculated WACC path writes stage fields even when mode is gordon",
-      grepl("updateNumericInput\\(session, \"wacc_gordon\", value = wacc_percent\\)", auto_fn) &&
-        grepl("updateNumericInput\\(session, \"wacc_stage1\", value = wacc_percent\\)", auto_fn) &&
-        grepl("updateNumericInput\\(session, \"wacc_stage2\", value = wacc_percent\\)", auto_fn) &&
+      grepl("ynow_apply_calculated_wacc_fields\\(", auto_fn) &&
+        grepl("updateNumericInput\\(session, \"wacc_gordon\", value = applied_wacc\\$wacc_gordon\\)", auto_fn) &&
+        grepl("updateNumericInput\\(session, \"wacc_stage1\", value = applied_wacc\\$wacc_stage1\\)", auto_fn) &&
+        grepl("updateNumericInput\\(session, \"wacc_stage2\", value = applied_wacc\\$wacc_stage2\\)", auto_fn) &&
         !grepl("if \\(identical\\(input\\$dcf_mode, \"gordon\"\\) \\|\\| is\\.null\\(input\\$dcf_mode\\)\\) \\{[\\s\\S]*updateNumericInput\\(session, \"wacc_gordon\"[\\s\\S]*\\} else \\{[\\s\\S]*wacc_stage1",
                auto_fn))
 
