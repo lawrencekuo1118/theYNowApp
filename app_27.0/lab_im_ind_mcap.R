@@ -448,10 +448,13 @@ lab_ind_mcap_prepare_treemap_df <- function(snap_df, locale = "zh-TW") {
 
 #' Per-cell treemap label sizes from |mcap-weighted upside|.
 #'
-#' Linear map of abs(wavg) onto [size_min, size_max], clipped at abs_max.
-#' Non-finite upside stays at size_min. Sign does not change size.
+#' Scaling rule (magnitude only — independent of cell / block area / mcap):
+#'   font_px = size_min + (size_max - size_min) * min(1, abs(wavg) / abs_max)
+#' Larger |wavg| → larger type. Sign does not change size. Non-finite → size_min.
+#' Cell area must never shrink or hide these sizes (see uniformtext mode "show"
+#' + CSS/JS overflow-visible unclip in lab_ind_mcap_treemap_plotly).
 lab_ind_mcap_treemap_label_font_sizes <- function(
-  wavg, abs_max = 20, size_min = 10, size_max = 18
+  wavg, abs_max = 20, size_min = 11, size_max = 22
 ) {
   w <- suppressWarnings(as.numeric(wavg))
   am <- suppressWarnings(as.numeric(abs_max)[1])
@@ -459,8 +462,8 @@ lab_ind_mcap_treemap_label_font_sizes <- function(
   smin <- suppressWarnings(as.numeric(size_min)[1])
   smax <- suppressWarnings(as.numeric(size_max)[1])
   if (!is.finite(smin) || !is.finite(smax)) {
-    smin <- 10
-    smax <- 18
+    smin <- 11
+    smax <- 22
   } else if (smax < smin) {
     tmp <- smin
     smin <- smax
@@ -469,6 +472,46 @@ lab_ind_mcap_treemap_label_font_sizes <- function(
   t <- pmin(1, abs(w) / am)
   sizes <- ifelse(is.finite(w), smin + t * (smax - smin), smin)
   unname(as.numeric(sizes))
+}
+
+#' JS that keeps treemap slice labels visible past sector bounds.
+#'
+#' Plotly SVG clip-paths otherwise truncate large-|upside| type in small blocks.
+#' Called via htmlwidgets::onRender so every afterplot pass re-applies unclip.
+lab_ind_mcap_treemap_unclip_js <- function() {
+  paste(
+    "function(el, x) {",
+    "  function unclipIndMcapTreemap() {",
+    "    if (!el) return;",
+    "    var sel = el.querySelectorAll(",
+    "      'g.slicetext, g.slice text, .slicetext, text.slicetext'",
+    "    );",
+    "    for (var i = 0; i < sel.length; i++) {",
+    "      var n = sel[i];",
+    "      n.removeAttribute('clip-path');",
+    "      n.style.overflow = 'visible';",
+    "      n.style.textOverflow = 'clip';",
+    "      n.style.whiteSpace = 'pre';",
+    "      if (n.parentNode && n.parentNode.removeAttribute) {",
+    "        n.parentNode.removeAttribute('clip-path');",
+    "        n.parentNode.style.overflow = 'visible';",
+    "      }",
+    "    }",
+    "    var boxes = el.querySelectorAll(",
+    "      'svg, .main-svg, .svg-container, .plot-container, .js-plotly-plot'",
+    "    );",
+    "    for (var j = 0; j < boxes.length; j++) {",
+    "      boxes[j].style.overflow = 'visible';",
+    "      boxes[j].setAttribute('overflow', 'visible');",
+    "    }",
+    "  }",
+    "  unclipIndMcapTreemap();",
+    "  if (typeof el.on === 'function') {",
+    "    el.on('plotly_afterplot', unclipIndMcapTreemap);",
+    "  }",
+    "}",
+    sep = "\n"
+  )
 }
 
 #' Plotly block treemap for industry mcap-weighted upside (all chains).
@@ -532,11 +575,13 @@ lab_ind_mcap_treemap_plotly <- function(snap_df,
   wavg <- suppressWarnings(as.numeric(df$wavg_cagr))
   cabsm <- suppressWarnings(as.numeric(color_abs_max)[1])
   if (!is.finite(cabsm) || cabsm <= 0) cabsm <- 20
+  # Magnitude-only type: |wavg| → font px; never keyed off values/area.
   sizes <- lab_ind_mcap_treemap_label_font_sizes(wavg, abs_max = cabsm)
-  # Midpoint grey for missing upside; clip extremes for a readable scale.
+  # Midpoint grey for missing upside; clip extremes for a readable color scale.
   z <- ifelse(is.finite(wavg), pmax(-cabsm, pmin(cabsm, wavg)), 0)
 
   wavg_txt <- ifelse(is.finite(wavg), sprintf("%+.1f%%", wavg), "—")
+  # Explicit wrap between name and % so small blocks still show both lines.
   labels <- paste0(df$label, "\n", wavg_txt)
   n_names <- suppressWarnings(as.integer(df$n_names))
   hover_chain <- tryCatch(
@@ -617,10 +662,16 @@ lab_ind_mcap_treemap_plotly <- function(snap_df,
     margin = list(l = 4, r = 4, t = 4, b = 4),
     paper_bgcolor = "rgba(0,0,0,0)",
     plot_bgcolor = "rgba(0,0,0,0)",
-    uniformtext = list(minsize = 8, mode = FALSE),
+    # "show": never hide / shrink labels to fit the sector — size stays on |upside|.
+    uniformtext = list(minsize = 8, mode = "show"),
     font = list(family = "Helvetica Neue, Arial, sans-serif", size = 12, color = "#222")
   )
-  plotly::config(p, displayModeBar = FALSE, responsive = TRUE)
+  p <- plotly::config(p, displayModeBar = FALSE, responsive = TRUE)
+  # Strip SVG clip-paths so large-|upside| type can overflow small cells.
+  if (requireNamespace("htmlwidgets", quietly = TRUE)) {
+    p <- htmlwidgets::onRender(p, lab_ind_mcap_treemap_unclip_js())
+  }
+  p
 }
 
 #' All industry chains ranked by mcap-weighted annualized valuation upside.

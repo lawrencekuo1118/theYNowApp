@@ -1791,7 +1791,10 @@ beta_rolling_section_ui <- function() {
                     id = "ynow_lab_im_ind_mcap_treemap_legend",
                     class = "ynow-lab-im-ind-mcap-treemap-legend",
                     style = "color:#888; font-size:11.5px; line-height:1.4; margin:0 0 6px 0;",
-                    "面積＝產業鏈總市值；顏色＝市值加權年化估值漲幅（美股漲綠／台股漲紅）。納入全部產業鏈。"
+                    paste0(
+                      "面積＝產業鏈總市值；顏色＝市值加權年化估值漲幅（美股漲綠／台股漲紅）。",
+                      "字級依｜漲幅｜絕對值放大（與區塊面積無關，文字可溢出顯示）。納入全部產業鏈。"
+                    )
                   ),
                   plotlyOutput("lab_im_ind_mcap_treemap", height = "320px")
                 ),
@@ -18112,16 +18115,31 @@ ui <- dashboardPage(
           color: #fff !important;
         }
 
-        /* Blue Chip：產業市值加權漲幅區塊熱圖（表格上方） */
+        /* Blue Chip：產業市值加權漲幅區塊熱圖（表格上方）
+           Type size follows |upside|; allow overflow so small cells do not clip. */
         .ynow-lab-im-ind-mcap-treemap-wrap {
           border: 1px solid #e8e8e8;
           border-radius: 3px;
           background: #fff;
           padding: 8px 8px 4px 8px;
+          overflow: visible !important;
         }
         .ynow-lab-im-ind-mcap-treemap-wrap .js-plotly-plot,
-        .ynow-lab-im-ind-mcap-treemap-wrap .plotly {
+        .ynow-lab-im-ind-mcap-treemap-wrap .plotly,
+        .ynow-lab-im-ind-mcap-treemap-wrap .plot-container,
+        .ynow-lab-im-ind-mcap-treemap-wrap .svg-container {
           width: 100% !important;
+          overflow: visible !important;
+        }
+        .ynow-lab-im-ind-mcap-treemap-wrap svg,
+        .ynow-lab-im-ind-mcap-treemap-wrap .main-svg {
+          overflow: visible !important;
+        }
+        .ynow-lab-im-ind-mcap-treemap-wrap g.slicetext,
+        .ynow-lab-im-ind-mcap-treemap-wrap g.slice text,
+        .ynow-lab-im-ind-mcap-treemap-wrap text.slicetext {
+          overflow: visible !important;
+          text-overflow: clip !important;
         }
         /* Blue Chip：產業市值加權漲幅標題列右側 — 更新排名 */
         .ynow-lab-im-ind-mcap-title-row {

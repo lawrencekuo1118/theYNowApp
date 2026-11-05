@@ -131,18 +131,28 @@ check("treemap plotly builds", {
   inherits(p, "plotly")
 })
 check("treemap label font |upside| scale", {
+  # Default range 11–22 over abs_max=20: 0→11, 10→16.5, ≥20→22; sign ignored.
   sz <- lab_ind_mcap_treemap_label_font_sizes(
     c(0, 10, 20, 40, NA, -10, -20),
     abs_max = 20
   )
+  expect <- c(11, 16.5, 22, 22, 11, 16.5, 22)
   is.numeric(sz) && is.null(names(sz)) && length(sz) == 7L &&
-    all(abs(sz - c(10, 14, 18, 18, 10, 14, 18)) < 1e-9)
+    all(abs(sz - expect) < 1e-9)
+})
+check("treemap font scale ignores cell/mcap size", {
+  # Same |wavg|, wildly different total_mcap → identical type size.
+  w <- c(12, -12, 12)
+  sz <- lab_ind_mcap_treemap_label_font_sizes(w, abs_max = 20)
+  length(unique(round(sz, 9))) == 1L &&
+    abs(sz[1] - (11 + (22 - 11) * (12 / 20))) < 1e-9
 })
 check("treemap plotly textfont size follows |upside|", {
   snap <- data.frame(
     chain_id = c("半導體", "金融"),
     wavg_cagr = c(2, 18),
-    total_mcap = c(5e12, 2e12),
+    # Tiny mcap on the high-|upside| chain — size must still be larger.
+    total_mcap = c(5e12, 1e9),
     n_names = c(12L, 40L),
     stringsAsFactors = FALSE
   )
@@ -158,6 +168,59 @@ check("treemap plotly textfont size follows |upside|", {
   i_hi <- match("金融", ids)
   length(sizes) == nrow(df) && length(sizes) == length(ids) &&
     !is.na(i_lo) && !is.na(i_hi) && sizes[i_hi] > sizes[i_lo]
+})
+check("treemap uniformtext mode show (no hide/clip-to-fit)", {
+  snap <- data.frame(
+    chain_id = c("半導體", "金融"),
+    wavg_cagr = c(8, -3),
+    total_mcap = c(5e12, 2e12),
+    n_names = c(12L, 40L),
+    stringsAsFactors = FALSE
+  )
+  p <- lab_ind_mcap_treemap_plotly(snap, market = "TW", locale = "zh-TW")
+  built <- tryCatch(plotly::plotly_build(p), error = function(e) p)
+  ut <- built$x$layout$uniformtext
+  if (is.null(ut)) ut <- p$x$layout$uniformtext
+  identical(as.character(ut$mode), "show")
+})
+check("treemap onRender unclip hook present", {
+  js <- lab_ind_mcap_treemap_unclip_js()
+  grepl("unclipIndMcapTreemap", js, fixed = TRUE) &&
+    grepl("removeAttribute('clip-path')", js, fixed = TRUE) &&
+    grepl("plotly_afterplot", js, fixed = TRUE) &&
+    grepl("overflow = 'visible'", js, fixed = TRUE)
+})
+check("treemap plotly widget wires unclip onRender", {
+  snap <- data.frame(
+    chain_id = "半導體",
+    wavg_cagr = 25,
+    total_mcap = 1e9,
+    n_names = 2L,
+    stringsAsFactors = FALSE
+  )
+  p <- lab_ind_mcap_treemap_plotly(snap, market = "US", locale = "en")
+  js_blob <- paste(unlist(p$jsHooks$render), collapse = "\n")
+  grepl("unclipIndMcapTreemap", js_blob, fixed = TRUE) &&
+    grepl("clip-path", js_blob, fixed = TRUE)
+})
+check("UI treemap CSS overflow-visible (no clip)", {
+  # Prefer fixed substring matches — wrap block sets overflow:visible !important.
+  grepl(".ynow-lab-im-ind-mcap-treemap-wrap {", ui, fixed = TRUE) &&
+    grepl("overflow: visible !important;", ui, fixed = TRUE) &&
+    grepl("g.slicetext,", ui, fixed = TRUE) &&
+    grepl("text-overflow: clip !important;", ui, fixed = TRUE)
+})
+check("treemap legend mentions |upside| type scale (en)", {
+  en <- ui_str("lab_im_ind_mcap_treemap_legend", "en")
+  grepl("|upside|", en, fixed = TRUE) &&
+    grepl("independent of block area", en, fixed = TRUE)
+})
+check("treemap legend mentions 字級／絕對值 (zh-TW)", {
+  zh <- ui_str("lab_im_ind_mcap_treemap_legend", "zh-TW")
+  grepl("字級", zh, fixed = TRUE) &&
+    grepl("絕對值", zh, fixed = TRUE) &&
+    grepl("區塊面積無關", zh, fixed = TRUE) &&
+    !grepl("请", zh, fixed = TRUE)
 })
 check("Refresh ranking button forces white text vs bluechip btn-default", {
   # Theme .btn-default sets deep blue text; refresh button must win with white.
@@ -191,7 +254,17 @@ check("server start helper ignores page filters", grepl("\\.lab_im_start_ind_mca
         grepl("per_chain = 2L", srv, fixed = TRUE))
 check("server board is snapshot-only", {
   board_fn <- sub("(?s).*\\.lab_im_ind_mcap_board <- reactive\\(\\{", "", srv, perl = TRUE)
-  board_fn <- sub("(?s)\\}\\)\\s*\n\\s*# Reload default snapshot.*", "", board_fn, perl = TRUE)
+  # Trim at the market_mode reload observer that follows the board reactive.
+  board_fn <- sub(
+    "(?s)\\}\\)\\s*\n\\s*# Reload the default snapshot.*",
+    "",
+    board_fn,
+    perl = TRUE
+  )
+  # Fallback if comment wording drifts: cut at next observeEvent(market_mode.
+  if (nchar(board_fn) > 4000L) {
+    board_fn <- sub("(?s)\\}\\)\\s*\n\\s*observeEvent\\(market_mode\\(\\).*", "", board_fn, perl = TRUE)
+  }
   grepl("Snapshot-only board", board_fn, fixed = TRUE) &&
     grepl("lab_im_ind_mcap_snap()", board_fn, fixed = TRUE) &&
     !grepl("lab_im_scores()", board_fn, fixed = TRUE) &&
