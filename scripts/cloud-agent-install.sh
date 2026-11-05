@@ -1,11 +1,46 @@
 #!/usr/bin/env bash
 # Idempotent Cloud Agent bootstrap for theYNowApp (live line app_27.0).
 # Installs CRAN R, r2u binary packages, and the app Python virtualenv.
+#
+# Cloud Agent may run install as `bash -lc '<body>'` (BASH_SOURCE unset). Prefer
+# locating app_27.0/requirements.txt from $PWD / walk-up; never collapse to
+# ROOT=/ (that yields //app_*.0/.ynow_venv and Permission denied).
 set -euo pipefail
 
-# Resolve the repo root from this script so the command is safe from any cwd.
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ynow_resolve_repo_root() {
+  local d marker="app_27.0/requirements.txt"
+  if [[ -f "${marker}" ]]; then
+    pwd -P
+    return 0
+  fi
+  d="$(pwd -P)"
+  while [[ "${d}" != "/" ]]; do
+    if [[ -f "${d}/${marker}" ]]; then
+      printf '%s\n' "${d}"
+      return 0
+    fi
+    d="$(dirname "${d}")"
+  done
+  # File execution: bash scripts/cloud-agent-install.sh sets BASH_SOURCE.
+  if [[ -n "${BASH_SOURCE[0]:-}" && -f "${BASH_SOURCE[0]}" ]]; then
+    d="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+    if [[ -f "${d}/${marker}" ]]; then
+      printf '%s\n' "${d}"
+      return 0
+    fi
+  fi
+  return 1
+}
+
+ROOT="$(ynow_resolve_repo_root)" || {
+  echo "cloud-agent-install: cannot find repo root (need app_27.0/requirements.txt under \$PWD or via this script path)" >&2
+  exit 1
+}
 cd "${ROOT}"
+if [[ "${YNOW_CLOUD_INSTALL_RESOLVE_ONLY:-}" == "1" ]]; then
+  echo "ROOT=${ROOT}"
+  exit 0
+fi
 export DEBIAN_FRONTEND=noninteractive
 
 if [[ "$(id -u)" -eq 0 ]]; then
