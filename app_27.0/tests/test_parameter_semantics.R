@@ -88,10 +88,15 @@ for (i in seq_len(nrow(modes))) {
     env$req <- function(...) invisible(TRUE)
     updates <- new.env(parent = emptyenv())
     env$updateNumericInput <- function(session, id, value) updates[[id]] <- value
+    # Module-local reactiveVal written by do_sync_financials after IC breakdown.
+    env$ic_sync_meta <- shiny::reactiveVal(list(used_nonop_proxy = FALSE, ok = FALSE))
     env$.capex_spike_settings <- function() list(enabled = FALSE, mult = 1.35, avg_n = 3, prior_n = 2)
     sync <- eval(assignments[["do_sync_financials"]], env)
     sync()
     record(mode, "production FCF sync refuses Net Income as NOPAT", updates$fcf_nopat, NA_real_)
+    # Fixture BS omits liabilities/debt → IC stays NA (honest gap); sync must not invent IC.
+    record(mode, "production FCF sync leaves IC missing when BS components are incomplete",
+           updates$fcf_invested_capital, NA_real_)
     hist <- eval(assignments[["extract_dcf_parameters"]], env)(is, cf, bs)
     record(mode, "historical tax accepts Tax Provision alias", hist$tax_rate, .2)
     record(mode, "each year's CapEx uses that year's D&A", hist$net_capex_margin, .2)
