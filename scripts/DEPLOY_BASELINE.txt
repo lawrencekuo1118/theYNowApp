@@ -7,5 +7,5 @@ commit=6370878dc7c1d7e25f69bab7b12dad9dfe61d654
 short=6370878d
 message=chore: bump display version to v28.04
 captured_at=2026-11-05T08:41:14Z
-display_version=v28.04
+display_version=v28.05
 note=Shipped v28.04 (+0.01) via deploy_app_21.R. Live status=running; rsconnect deployments bundleId=12782525. App wave #658 formula-param sensitivity boxes default collapsed.
