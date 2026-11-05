@@ -23,6 +23,9 @@ Thumbs.db
 *.pdf
 .positai
 .cursor/
+# Project-local agent skills must be versioned (formal verify, etc.).
+!.cursor/skills/
+!.cursor/skills/**/
 audit_logs/
 
 # Local secrets — never commit
