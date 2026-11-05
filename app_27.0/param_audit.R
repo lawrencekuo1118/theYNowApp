@@ -195,7 +195,7 @@ ynow_tracked_param_registry <- function() {
     c("mod_fcf-fcf_depreciation", "FCF", "D&A", "dcf_calculator", "numeric", "TRUE", "Depreciation & amortization"),
     c("mod_fcf-fcf_delta_nwc", "FCF", "ΔNWC", "dcf_calculator", "numeric", "TRUE", "Change in net working capital"),
     c("mod_fcf-fcf_capex", "FCF", "CapEx", "dcf_calculator", "numeric", "TRUE", "Capital expenditure (absolute)"),
-    c("mod_fcf-fcf_invested_capital", "FCF", "Invested capital", "dcf_calculator", "numeric", "TRUE", "Total invested capital"),
+    c("mod_fcf-fcf_invested_capital", "FCF", "Invested capital", "dcf_calculator", "numeric", "fundamental only", "Operating IC for RR×ROIC g; not a universal FCFF input. Missing Non Operating Assets may sync as labeled proxy nonop=0."),
     c("mod_fcf-proj_capex_rate", "FCF", "CapEx / Revenue (%)", "dcf_calculator", "numeric", "TRUE", "Forward CapEx ratio assumption"),
     c("mod_fcf-proj_nwc_rate", "FCF", "ΔNWC / Revenue (%)", "dcf_calculator", "numeric", "TRUE", "Forward ΔNWC ratio assumption"),
     c("mod_fcf-apply_capex_spike_smooth", "FCF", "CapEx spike smooth", "dcf_calculator", "checkbox", "TRUE", "Spike → N-year average"),

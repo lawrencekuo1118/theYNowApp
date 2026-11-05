@@ -160,15 +160,44 @@ common_cash_dividends <- function(df) {
   max(0, abs(total) - abs(preferred))
 }
 
-# Operating invested capital excludes disclosed nonoperating assets and
-# non-interest-bearing liabilities. Missing components require manual review.
-statement_operating_invested_capital <- function(bs) {
+# Operating invested capital: Assets − cash − nonop − (Liabilities − interest-bearing debt).
+# Formula identity is fixed. Missing Non Operating Assets → optional labeled proxy nonop=0
+# (Project decision); other missing components stay NA (honest gap). Lifecycle uses a
+# separate simplified IC — do not mix citations with this DCF / fundamental IC.
+operating_invested_capital_breakdown <- function(bs, allow_nonop_proxy = TRUE) {
   assets <- select_current_metric(bs, "^Total Assets$", "stock")
-  liabilities <- select_current_metric_any(bs, c("^Total Liabilities Net Minority Interest$", "^Total Liabilities$"), "stock")
-  nonop <- select_current_metric(bs, "^Non Operating Assets$", "stock")
+  liabilities <- select_current_metric_any(
+    bs, c("^Total Liabilities Net Minority Interest$", "^Total Liabilities$"), "stock"
+  )
+  nonop_raw <- select_current_metric(bs, "^Non Operating Assets$", "stock")
   cd <- statement_cash_debt(bs)
-  if (!all(is.finite(c(assets, liabilities, nonop, cd$cash, cd$debt)))) return(NA_real_)
-  assets - cd$cash - nonop - (liabilities - cd$debt)
+  nonop_status <- if (is.finite(nonop_raw)) {
+    "resolved"
+  } else if (isTRUE(allow_nonop_proxy)) {
+    "proxy_zero"
+  } else {
+    "missing"
+  }
+  nonop <- if (identical(nonop_status, "proxy_zero")) 0 else nonop_raw
+  used_nonop_proxy <- identical(nonop_status, "proxy_zero")
+  ok <- all(is.finite(c(assets, liabilities, nonop, cd$cash, cd$debt)))
+  ic <- if (isTRUE(ok)) assets - cd$cash - nonop - (liabilities - cd$debt) else NA_real_
+  list(
+    ic = ic,
+    assets = assets,
+    liabilities = liabilities,
+    cash = cd$cash,
+    debt = cd$debt,
+    nonop = nonop,
+    nonop_raw = nonop_raw,
+    nonop_status = nonop_status,
+    used_nonop_proxy = used_nonop_proxy,
+    ok = isTRUE(ok) && is.finite(ic)
+  )
+}
+
+statement_operating_invested_capital <- function(bs, allow_nonop_proxy = TRUE) {
+  operating_invested_capital_breakdown(bs, allow_nonop_proxy = allow_nonop_proxy)$ic
 }
 
 # Verified absence → 0. Nonzero book is never treated as market value.

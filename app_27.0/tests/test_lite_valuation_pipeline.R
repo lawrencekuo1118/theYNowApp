@@ -71,12 +71,20 @@ for(edition in c(FALSE,TRUE))for(missing_ic in c(FALSE,TRUE)) {
   observer<-eval(growth,e)
  },{
   session$flushReact()
-  if(!missing_ic)stopifnot(e$estimated_g()==3.2,!e$estimated_g_meta$is_assumption,e$estimated_g_meta$fund_res$ic==1250)
-  else if(edition)stopifnot(e$estimated_g()==APP_DEFAULTS$custom_g,e$estimated_g_meta$is_assumption,is.na(statement_operating_invested_capital(e$d_balance_sheet())))
-  else stopifnot(is.null(e$estimated_g()))
+  if(!missing_ic) {
+    stopifnot(e$estimated_g()==3.2,!e$estimated_g_meta$is_assumption,e$estimated_g_meta$fund_res$ic==1250,
+              !isTRUE(e$estimated_g_meta$fund_res$ic_nonop_proxy))
+  } else {
+    # Missing Non Operating Assets → labeled proxy nonop=0 → IC=1300, g=3.08 (not Lite custom_g).
+    stopifnot(statement_operating_invested_capital(e$d_balance_sheet())==1300,
+              isTRUE(operating_invested_capital_breakdown(e$d_balance_sheet())$used_nonop_proxy),
+              e$estimated_g()==3.08, !e$estimated_g_meta$is_assumption,
+              e$estimated_g_meta$fund_res$ic==1300,
+              isTRUE(e$estimated_g_meta$fund_res$ic_nonop_proxy))
+  }
  })
 }
-cat('PASS: production growth uses operating IC and matching-period NOPAT/D&A; missing fundamentals use a disclosed Lite forecast assumption, not invented accounting values\n')
+cat('PASS: production growth uses operating IC and matching-period NOPAT/D&A; missing Non Operating Assets uses labeled proxy nonop=0\n')
 source(file.path(app,'ri_module.R'))
 e<-new.env(parent=globalenv())
 e$input<-list(`mod_ri-b0`=20,`mod_ri-ri_ke`=10,`mod_ri-ri_g`=2,`mod_ri-ri_years`=5,
