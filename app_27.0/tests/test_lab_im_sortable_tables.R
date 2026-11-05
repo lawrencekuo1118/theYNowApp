@@ -184,6 +184,43 @@ if (file.exists(file.path(app_dir, "lab_im_ind_mcap.R"))) {
   )
 }
 
+# Ajax-stable keys: zh headers canonicalize to English (DT server filter uses names)
+zh_df <- data.frame(
+  訊息 = "ok",
+  總市值 = "1.20T",
+  年化估值漲幅 = "+1.0%",
+  stringsAsFactors = FALSE,
+  check.names = FALSE
+)
+can <- lab_canonicalize_im_colnames(zh_df)
+check(
+  "canonicalize maps zh headers to English Ajax keys",
+  identical(
+    names(can),
+    c("Message", "Total market cap", "Annualized upside")
+  )
+)
+check(
+  "display names round-trip zh under zh-TW",
+  identical(
+    lab_im_col_display_names(names(can), "zh-TW"),
+    c("訊息", "總市值", "年化估值漲幅")
+  )
+)
+check(
+  "display names stay English under en",
+  identical(lab_im_col_display_names(names(can), "en"), names(can))
+)
+# Simulate DT::dataTablesFilter name lookup across a locale flip: keys must match.
+ajax_keys_zh_session <- names(lab_canonicalize_im_colnames(zh_df))
+ajax_keys_en_session <- names(lab_canonicalize_im_colnames(
+  lab_localize_im_colnames(zh_df, "en")
+))
+check(
+  "locale flip keeps identical Ajax column keys (tn/7 guard)",
+  identical(ajax_keys_zh_session, ajax_keys_en_session)
+)
+
 # Optional DT widget smoke — not required for default offline static path
 if (requireNamespace("DT", quietly = TRUE)) {
   owd <- getwd()
@@ -197,19 +234,42 @@ if (requireNamespace("DT", quietly = TRUE)) {
     stringsAsFactors = FALSE,
     check.names = FALSE
   )
-  widget <- ynow_sortable_datatable(df)
+  widget <- ynow_sortable_datatable(df, locale = "zh-TW")
   opts <- widget$x$options
   check("widget ordering on", isTRUE(opts$ordering))
   check("widget keeps incoming row order", identical(opts$order, list()))
   check("widget has sort render", !is.null(opts$columnDefs[[1]]$render))
-  check("widget data mcap numeric", is.numeric(widget$x$data[["總市值"]]))
+  check(
+    "widget data uses stable English Ajax keys",
+    identical(names(widget$x$data), c("Rank", "Annualized upside", "Total market cap"))
+  )
+  check("widget data mcap numeric", is.numeric(widget$x$data[["Total market cap"]]))
   check(
     "widget data mcap values",
-    isTRUE(all.equal(as.numeric(widget$x$data[["總市值"]]), c(1.2e12, 8e11)))
+    isTRUE(all.equal(as.numeric(widget$x$data[["Total market cap"]]), c(1.2e12, 8e11)))
+  )
+  check(
+    "widget thead display stays zh-TW",
+    grepl("<th>排名</th>", widget$x$container, fixed = TRUE) &&
+      grepl("<th>年化估值漲幅</th>", widget$x$container, fixed = TRUE) &&
+      grepl("<th>總市值</th>", widget$x$container, fixed = TRUE)
+  )
+  # columnDefs name fields must be the stable English keys (Ajax contract)
+  name_defs <- Filter(function(d) !is.null(d$name), opts$columnDefs)
+  ajax_names <- vapply(name_defs, function(d) as.character(d$name), character(1))
+  check(
+    "widget columnDefs Ajax names are English keys",
+    identical(ajax_names, c("Rank", "Annualized upside", "Total market cap"))
   )
   render_js <- paste(as.character(opts$columnDefs[[1]]$render), collapse = "\n")
   check("widget render has formatMcap", grepl("formatMcap", render_js, fixed = TRUE))
   check("widget render lists mcap col", grepl("mcapCols", render_js, fixed = TRUE))
+
+  w_en <- ynow_sortable_datatable(df, locale = "en")
+  check(
+    "en locale keeps same Ajax data names as zh",
+    identical(names(w_en$x$data), names(widget$x$data))
+  )
 } else {
   cat("SKIP optional DT widget check (package DT not installed)\n")
 }

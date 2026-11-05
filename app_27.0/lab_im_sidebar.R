@@ -208,19 +208,81 @@ ynow_dt_sort_column_def <- function(mcap_idx = integer(0), pct_idx = integer(0))
   )
 }
 
+# zh-TW header → stable English Ajax / filter key (DT server=TRUE uses names(data)).
+# Locale must NOT rename these keys in the data frame or in-flight Ajax can
+# stop() inside DT::dataTablesFilter ("column name not found") → tn/7.
+LAB_IM_COL_ZH_TO_EN <- c(
+  "訊息" = "Message",
+  "建議評價方法" = "Suggested valuation method",
+  "產業數" = "Industries",
+  "候選檔數" = "Candidates",
+  "排名" = "Rank",
+  "產業內排名" = "Industry rank",
+  "產業" = "Industry",
+  "產業鏈" = "Industry chain",
+  "市值加權年化估值漲幅" = "Mcap-weighted annualized upside",
+  "總市值" = "Total market cap",
+  "檔數" = "Names",
+  "代號" = "Ticker",
+  "公司名稱" = "Company",
+  "年化估值漲幅" = "Annualized upside",
+  "總潛在漲幅" = "Total upside",
+  "實際估值方法" = "Model used",
+  "估值方法" = "Model",
+  "現價" = "Price",
+  "合理價" = "Fair value",
+  "資料覆蓋" = "Coverage"
+)
+
+#' Canonical English keys for Blue Chip / Lab DT columns (Ajax-stable).
+lab_canonicalize_im_colnames <- function(df) {
+  if (is.null(df) || !is.data.frame(df)) return(df)
+  nm <- names(df)
+  hit <- nm %in% names(LAB_IM_COL_ZH_TO_EN)
+  if (any(hit)) nm[hit] <- unname(LAB_IM_COL_ZH_TO_EN[nm[hit]])
+  names(df) <- nm
+  df
+}
+
+#' Display labels for canonical Lab DT column keys under the active locale.
+lab_im_col_display_names <- function(keys, locale = "zh-TW") {
+  keys <- as.character(keys %||% character(0))
+  loc <- if (exists("normalize_ui_locale", mode = "function")) {
+    normalize_ui_locale(locale)
+  } else {
+    as.character(locale %||% "zh-TW")[1]
+  }
+  if (identical(loc, "en") || !length(keys)) return(keys)
+  en_to_zh <- setNames(names(LAB_IM_COL_ZH_TO_EN), unname(LAB_IM_COL_ZH_TO_EN))
+  hit <- keys %in% names(en_to_zh)
+  if (any(hit)) keys[hit] <- unname(en_to_zh[keys[hit]])
+  keys
+}
+
 #' Blue Chip table with clickable headers. Initial row order is unchanged
 #' until the user sorts a column.
 #'
 #' Market-cap and percent columns are coerced to numeric so
 #' `DT::renderDT(..., server = TRUE)` sorts by true magnitude (not `"5.10T"` text).
 #' Display still shows human-formatted suffixes via the column render.
+#'
+#' Internal `names(data)` stay on stable English keys so server-side Ajax
+#' filter/sort requests survive locale flips (zh-TW ↔ en). Visible headers use
+#' `colnames=` only.
 ynow_sortable_datatable <- function(data, escape = TRUE, page_length = NULL,
-                                    filter = "none", extra_options = list()) {
+                                    filter = "none", extra_options = list(),
+                                    locale = NULL) {
   if (is.null(data) || !is.data.frame(data)) {
     data <- data.frame(Message = character(0), stringsAsFactors = FALSE)
   }
+  data <- lab_canonicalize_im_colnames(data)
   prep <- ynow_dt_numericize_sort_columns(data)
   data <- prep$data
+  display_names <- if (!is.null(locale)) {
+    lab_im_col_display_names(names(data), locale)
+  } else {
+    names(data)
+  }
   n <- nrow(data)
   plen <- if (is.null(page_length)) max(as.integer(n), 1L) else as.integer(page_length)[1]
   if (!is.finite(plen) || plen < 1L) plen <- 1L
@@ -244,6 +306,7 @@ ynow_sortable_datatable <- function(data, escape = TRUE, page_length = NULL,
   DT::datatable(
     data,
     rownames = FALSE,
+    colnames = display_names,
     escape = escape,
     filter = filter,
     class = "stripe hover cell-border ynow-sortable-dt",
@@ -252,6 +315,10 @@ ynow_sortable_datatable <- function(data, escape = TRUE, page_length = NULL,
 }
 
 #' Rename Blue Chip table column headers for the active UI locale.
+#'
+#' Prefer `ynow_sortable_datatable(..., locale=)` for DT outputs (Ajax-stable
+#' English keys + visible `colnames=`). This helper still renames the data.frame
+#' itself for non-DT callers / exports: zh-TW leaves zh headers; en maps to English.
 lab_localize_im_colnames <- function(df, locale = "zh-TW") {
   if (is.null(df) || !is.data.frame(df)) return(df)
   loc <- if (exists("normalize_ui_locale", mode = "function")) {
@@ -260,32 +327,7 @@ lab_localize_im_colnames <- function(df, locale = "zh-TW") {
     as.character(locale %||% "zh-TW")[1]
   }
   if (!identical(loc, "en")) return(df)
-  map <- c(
-    "訊息" = "Message",
-    "建議評價方法" = "Suggested valuation method",
-    "產業數" = "Industries",
-    "候選檔數" = "Candidates",
-    "排名" = "Rank",
-    "產業內排名" = "Industry rank",
-    "產業" = "Industry",
-    "產業鏈" = "Industry chain",
-    "市值加權年化估值漲幅" = "Mcap-weighted annualized upside",
-    "總市值" = "Total market cap",
-    "檔數" = "Names",
-    "代號" = "Ticker",
-    "公司名稱" = "Company",
-    "年化估值漲幅" = "Annualized upside",
-    "總潛在漲幅" = "Total upside",
-    "實際估值方法" = "Model used",
-    "估值方法" = "Model",
-    "現價" = "Price",
-    "合理價" = "Fair value"
-  )
-  nm <- names(df)
-  hit <- nm %in% names(map)
-  if (any(hit)) nm[hit] <- unname(map[nm[hit]])
-  names(df) <- nm
-  df
+  lab_canonicalize_im_colnames(df)
 }
 
 #' Sort method keys to sidebar top→bottom order; unknown keys last (stable by name).
