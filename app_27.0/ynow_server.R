@@ -11232,10 +11232,11 @@ server <- function(input, output, session) {
   
   # --- 1. 渲染股權市值 (E) ---
   output$vbx_equity_val <- renderValueBox({
+    loc <- tryCatch(ui_locale(), error = function(e) "en")
     mkt_data <- scraped_market_cap()
     valueBox(
       value = format_dollar_abbr(mkt_data$e_val),
-      subtitle = "股權市值 (Market Equity - E)",
+      subtitle = ui_str("vbx_wacc_equity_subtitle", loc),
       icon = icon("coins"),
       color = "aqua"
     )
@@ -11243,21 +11244,24 @@ server <- function(input, output, session) {
   
   # --- 2. 渲染總負債 (D) ---
   output$vbx_debt_val <- renderValueBox({
+    loc <- tryCatch(ui_locale(), error = function(e) "en")
     d_val <- scraped_debt()
     valueBox(
       value = format_dollar_abbr(d_val),
-      subtitle = "總負債 (Total Debt - D)",
+      subtitle = ui_str("vbx_wacc_debt_subtitle", loc),
       icon = icon("file-invoice-dollar"),
       color = "red"
     )
   })
   
   # --- 3. 渲染有效稅率 (T) ---
+  # Short KPI label for mobile 2×3; enacted / user-T detail stays in wacc_tax_source_note.
   output$vbx_tax_rate <- renderValueBox({
+    loc <- tryCatch(ui_locale(), error = function(e) "en")
     t_rate <- scraped_tax_rate()
     valueBox(
       value = if (is.finite(t_rate)) paste0(round(t_rate, 2), "%") else "N/A",
-      subtitle = "有效稅率 (Effective Tax Rate - T；WACC 用使用者／enacted T)",
+      subtitle = ui_str("vbx_wacc_tax_subtitle", loc),
       icon = icon("percent"),
       color = "purple"
     )

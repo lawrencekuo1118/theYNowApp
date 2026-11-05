@@ -21,6 +21,7 @@ check <- function(label, cond) {
 
 ui_src <- paste(readLines("ynow_ui.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 srv_src <- paste(readLines("ynow_server.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+loc_src <- paste(readLines("ui_locale.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 
 check(
   "WACC KPI grid is a single fluidRow class",
@@ -78,9 +79,9 @@ check(
   )
 )
 check(
-  "mobile CSS equal row tracks",
+  "mobile CSS equal row tracks sized to content",
   grepl(
-    "\\.ynow-wacc-kpi-grid[\\s\\S]{0,400}?grid-auto-rows:\\s*1fr",
+    "\\.ynow-wacc-kpi-grid[\\s\\S]{0,500}?grid-auto-rows:\\s*minmax\\(min-content,\\s*1fr\\)",
     ui_src,
     perl = TRUE
   )
@@ -105,6 +106,41 @@ check(
       ui_src,
       perl = TRUE
     )
+)
+check(
+  "mobile CSS prefers overflow-wrap:break-word in WACC grid labels",
+  grepl(
+    "ynow-wacc-kpi-grid .small-box .inner p",
+    ui_src,
+    fixed = TRUE
+  ) &&
+    grepl(
+      "Prefer whole-word wrap; avoid mid-glyph cuts from overflow-wrap:anywhere",
+      ui_src,
+      fixed = TRUE
+    ) &&
+    grepl("overflow-wrap: break-word", ui_src, fixed = TRUE)
+)
+
+check(
+  "tax KPI uses short locale subtitle key",
+  grepl('ui_str\\("vbx_wacc_tax_subtitle"', srv_src, perl = TRUE) &&
+    !grepl("WACC 用使用者／enacted T", srv_src, fixed = TRUE)
+)
+check(
+  "en-US short tax subtitle",
+  grepl('vbx_wacc_tax_subtitle = "Effective Tax Rate \\(T\\)"', loc_src, perl = TRUE)
+)
+check(
+  "zh-TW short tax subtitle",
+  grepl('vbx_wacc_tax_subtitle = "有效稅率 \\(T\\)"', loc_src, perl = TRUE)
+)
+check(
+  "en + zh-TW equity/debt subtitle keys present",
+  grepl('vbx_wacc_equity_subtitle = "Market Equity \\(E\\)"', loc_src, perl = TRUE) &&
+    grepl('vbx_wacc_debt_subtitle = "Total Debt \\(D\\)"', loc_src, perl = TRUE) &&
+    grepl('vbx_wacc_equity_subtitle = "股權市值 \\(E\\)"', loc_src, perl = TRUE) &&
+    grepl('vbx_wacc_debt_subtitle = "總負債 \\(D\\)"', loc_src, perl = TRUE)
 )
 
 cat("\nAll WACC mobile KPI grid checks passed.\n")
