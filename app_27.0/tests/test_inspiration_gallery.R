@@ -1,4 +1,4 @@
-# Inspiration Gallery: catalog, home shell, admin tab, locale, lazy boot.
+# Inspiration Gallery: catalog helpers + UI fully hidden (kill-switch).
 Sys.setenv(YNOW_DEBUG_SKIP_PY = "1")
 Sys.setenv(YNOW_INSPIRATION_GALLERY_FORCE_FILE = "1")
 
@@ -28,6 +28,27 @@ setwd(app_dir)
 on.exit(setwd(old_wd), add = TRUE)
 
 source("inspiration_gallery.R", local = FALSE)
+
+check("UI kill-switch is OFF by default (full + Lite hide)", {
+  identical(.ynow_insp_ui_enabled, FALSE)
+})
+
+check("home shell returns NULL when UI disabled", {
+  is.null(ynow_inspiration_home_shell_ui())
+})
+
+check("admin tab returns NULL when UI disabled", {
+  is.null(ynow_gallery_admin_tab_panel(function(k, fb) fb))
+})
+
+check("gallery bind is no-op when UI disabled", {
+  is.null(ynow_gallery_bind(
+    session = list(sendCustomMessage = function(...) NULL),
+    input = list(),
+    output = list(),
+    admin_on = function() FALSE
+  ))
+})
 
 check("pick_next avoids immediate repeat when pool > 1", {
   ids <- c("a", "b", "c")
@@ -66,12 +87,17 @@ ui_src <- paste(readLines("ynow_ui.R", warn = FALSE), collapse = "\n")
 srv_src <- paste(readLines("ynow_server.R", warn = FALSE), collapse = "\n")
 loc_src <- paste(readLines("ui_locale.R", warn = FALSE), collapse = "\n")
 glb <- paste(readLines("global.R", warn = FALSE), collapse = "\n")
+mod <- paste(readLines("inspiration_gallery.R", warn = FALSE), collapse = "\n")
 
 check("global sources inspiration_gallery.R", {
   grepl('source\\("inspiration_gallery\\.R"', glb)
 })
 
-check("home gallery under the auth and About row", {
+check("kill-switch declared in module", {
+  grepl("\\.ynow_insp_ui_enabled\\s*<-\\s*FALSE", mod)
+})
+
+check("home call site still under auth and About row (dormant wiring)", {
   legal <- regmatches(
     ui_src,
     regexpr('class = "ynow-home-legal"[\\s\\S]*?tags\\$script', ui_src, perl = TRUE)
@@ -85,14 +111,13 @@ check("home gallery under the auth and About row", {
   i_disc > 0 && i_auth > i_disc && i_about > i_auth && i_gal > i_about
 })
 
-check("responsive CSS aspect-ratio and desktop two-card width", {
-  grepl("aspect-ratio:\\s*4\\s*/\\s*3", ui_src) &&
-    grepl("ynow-insp-gallery", ui_src, fixed = TRUE) &&
-    grepl("calc\\(\\(100% - 20px\\) \\* 2 / 3 \\+ 10px\\)", ui_src)
+check("home/admin/bind gate on .ynow_insp_ui_enabled", {
+  grepl("ynow_inspiration_home_shell_ui[\\s\\S]{0,200}!isTRUE\\(\\.ynow_insp_ui_enabled\\)", mod, perl = TRUE) &&
+    grepl("ynow_gallery_admin_tab_panel[\\s\\S]{0,200}!isTRUE\\(\\.ynow_insp_ui_enabled\\)", mod, perl = TRUE) &&
+    grepl("ynow_gallery_bind[\\s\\S]{0,200}!isTRUE\\(\\.ynow_insp_ui_enabled\\)", mod, perl = TRUE)
 })
 
-check("lazy boot: static img has no src attribute set", {
-  mod <- paste(readLines("inspiration_gallery.R", warn = FALSE), collapse = "\n")
+check("lazy boot helpers retained for re-enable (no img src)", {
   grepl('id = "ynow_insp_img"', mod, fixed = TRUE) &&
     grepl("requestIdleCallback", mod, fixed = TRUE) &&
     grepl("inspiration/gallery_catalog.json", mod, fixed = TRUE) &&
@@ -101,7 +126,6 @@ check("lazy boot: static img has no src attribute set", {
 })
 
 check("no extra copyright overlay on gallery images", {
-  mod <- paste(readLines("inspiration_gallery.R", warn = FALSE), collapse = "\n")
   py_gal <- paste(readLines("scripts/process_inspiration_gallery.py", warn = FALSE), collapse = "\n")
   py_up <- paste(readLines("scripts/process_inspiration_upload.py", warn = FALSE), collapse = "\n")
   !grepl("ynow_insp_credit", mod, fixed = TRUE) &&
@@ -116,15 +140,14 @@ check("no extra copyright overlay on gallery images", {
     !grepl("ImageDraw", py_up, fixed = TRUE)
 })
 
-check("admin tab helper wired in both sysadmin branches", {
-  mod <- paste(readLines("inspiration_gallery.R", warn = FALSE), collapse = "\n")
+check("admin tab helper still wired in both sysadmin branches (dormant)", {
   grepl("ynow_gallery_admin_tab_panel", srv_src, fixed = TRUE) &&
     grepl("ynow_gallery_bind", srv_src, fixed = TRUE) &&
     grepl("ynow_admin_insp_panel", mod, fixed = TRUE) &&
     length(gregexpr("ynow_gallery_admin_tab_panel", srv_src, fixed = TRUE)[[1]]) >= 2L
 })
 
-check("locale admin_insp_tab en + zh-TW", {
+check("locale admin_insp_tab en + zh-TW retained", {
   grepl("admin_insp_tab = \"Inspiration Gallery\"", loc_src, fixed = TRUE) &&
     grepl("admin_insp_tab = \"靈感藝廊\"", loc_src, fixed = TRUE)
 })
