@@ -19641,13 +19641,15 @@ server <- function(input, output, session) {
     scope <- .lab_im_method_scope_catalog()
     if (!is.data.frame(scope) || nrow(scope) == 0L) {
       return(ynow_sortable_datatable(
-        stats::setNames(data.frame(empty_msg, stringsAsFactors = FALSE), msg_col)
+        stats::setNames(data.frame(empty_msg, stringsAsFactors = FALSE), msg_col),
+        locale = loc
       ))
     }
     sm <- lab_method_group_summary(scope, include_all = TRUE, locale = loc)
     if (is.null(sm) || nrow(sm) == 0) {
       return(ynow_sortable_datatable(
-        stats::setNames(data.frame(empty_msg, stringsAsFactors = FALSE), msg_col)
+        stats::setNames(data.frame(empty_msg, stringsAsFactors = FALSE), msg_col),
+        locale = loc
       ))
     }
     want <- if (identical(loc, "en")) {
@@ -19655,7 +19657,7 @@ server <- function(input, output, session) {
     } else {
       c("建議評價方法", "產業數", "候選檔數")
     }
-    ynow_sortable_datatable(sm[, want, drop = FALSE])
+    ynow_sortable_datatable(sm[, want, drop = FALSE], locale = loc)
   }, server = TRUE)
 
   # Live pool size under current query filters (industry × model × board × ADR).
@@ -20390,7 +20392,8 @@ server <- function(input, output, session) {
       msg <- tryCatch(ui_str("lab_im_ind_mcap_waiting", loc),
                       error = function(e) "尚無預設排名。開啟績優股排行榜會自動計算，或按「更新排名」。")
       return(ynow_sortable_datatable(
-        stats::setNames(data.frame(msg, stringsAsFactors = FALSE), msg_col)
+        stats::setNames(data.frame(msg, stringsAsFactors = FALSE), msg_col),
+        locale = loc
       ))
     }
     tbl <- board$table
@@ -20403,10 +20406,11 @@ server <- function(input, output, session) {
         error = function(e) "尚無產業鏈列可顯示。"
       )
       return(ynow_sortable_datatable(
-        stats::setNames(data.frame(msg, stringsAsFactors = FALSE), msg_col)
+        stats::setNames(data.frame(msg, stringsAsFactors = FALSE), msg_col),
+        locale = loc
       ))
     }
-    ynow_sortable_datatable(lab_localize_im_colnames(tbl, loc))
+    ynow_sortable_datatable(tbl, locale = loc)
   }, server = TRUE)
 
   output$lab_im_leaderboard <- DT::renderDT({
@@ -20420,7 +20424,8 @@ server <- function(input, output, session) {
       msg <- tryCatch(ui_str("lab_im_lb_none", loc),
                       error = function(e) "（尚無績優排行 — 請先按「搜尋績優股」）")
       return(ynow_sortable_datatable(
-        stats::setNames(data.frame(msg, stringsAsFactors = FALSE), msg_col)
+        stats::setNames(data.frame(msg, stringsAsFactors = FALSE), msg_col),
+        locale = loc
       ))
     }
     merged <- tryCatch(lab_im_merged(), error = function(e) NULL)
@@ -20439,7 +20444,8 @@ server <- function(input, output, session) {
         )
       )
       return(ynow_sortable_datatable(
-        stats::setNames(data.frame(msg, stringsAsFactors = FALSE), msg_col)
+        stats::setNames(data.frame(msg, stringsAsFactors = FALSE), msg_col),
+        locale = loc
       ))
     }
     scope <- as.character(input$lab_im_lb_mode %||% "overall")[1]
@@ -20508,7 +20514,8 @@ server <- function(input, output, session) {
         )
       )
       return(ynow_sortable_datatable(
-        stats::setNames(data.frame(msg, stringsAsFactors = FALSE), msg_col)
+        stats::setNames(data.frame(msg, stringsAsFactors = FALSE), msg_col),
+        locale = loc
       ))
     }
     if ("產業" %in% names(lb) && "industry_key" %in% names(lb_src) &&
@@ -20534,7 +20541,7 @@ server <- function(input, output, session) {
         )
       }
     }
-    ynow_sortable_datatable(lab_localize_im_colnames(lb, loc))
+    ynow_sortable_datatable(lb, locale = loc)
   }, server = TRUE)
 
   output$lab_im_leaderboard_status <- renderUI({
@@ -20629,8 +20636,15 @@ server <- function(input, output, session) {
     req(identical(.ynow_sidebar_tab(), "bluechip"))
     loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
     msg_col <- if (identical(loc, "en")) "Message" else "訊息"
-    catlg <- lab_im_catalog()
-    req(is.data.frame(catlg), nrow(catlg) > 0)
+    catlg <- tryCatch(lab_im_catalog(), error = function(e) NULL)
+    if (!is.data.frame(catlg) || nrow(catlg) == 0) {
+      msg <- tryCatch(ui_str("lab_im_detail_waiting", loc),
+                      error = function(e) "尚未評估。請按「搜尋績優股」；明細最多顯示宇宙檔數 N 檔合格列（條件不足時不湊滿）。")
+      return(ynow_sortable_datatable(
+        stats::setNames(data.frame(msg, stringsAsFactors = FALSE), msg_col),
+        locale = loc
+      ))
+    }
     # 明細＝合格池取前 display_n（不足不湊滿）；品質勾選與排行榜同一合格定義
     merged <- lab_merge_catalog_scores(
       catlg,
@@ -20664,7 +20678,8 @@ server <- function(input, output, session) {
                  error = function(e) "沒有符合篩選的已評估列。可放寬產業／模型，或重新評估。")
       }
       return(ynow_sortable_datatable(
-        stats::setNames(data.frame(msg, stringsAsFactors = FALSE), msg_col)
+        stats::setNames(data.frame(msg, stringsAsFactors = FALSE), msg_col),
+        locale = loc
       ))
     }
     merged <- lab_cap_detail_display(
@@ -20683,7 +20698,8 @@ server <- function(input, output, session) {
             stringsAsFactors = FALSE
           ),
           msg_col
-        )
+        ),
+        locale = loc
       ))
     }
     yahoo_nm <- if ("company_name" %in% names(merged)) merged$company_name else NA_character_
@@ -20696,40 +20712,38 @@ server <- function(input, output, session) {
     } else {
       merged$industry_label
     }
-    show_df <- lab_localize_im_colnames(
-      data.frame(
-        代號 = display_tickers_for_market(merged$ticker, market_mode()),
-        公司名稱 = vapply(
-          seq_len(nrow(merged)),
-          function(i) lab_company_display_name(merged$ticker[[i]], yahoo_nm[[i]]),
-          character(1)
-        ),
-        年化估值漲幅 = ifelse(
-          is.na(merged$upside_cagr_pct), "—",
-          sprintf("%+.1f%%", merged$upside_cagr_pct)
-        ),
-        總潛在漲幅 = ifelse(
-          is.na(merged$upside_total_pct), "",
-          sprintf("%+.1f%%", merged$upside_total_pct)
-        ),
-        實際估值方法 = ifelse(
-          is.na(merged$method_used) | !nzchar(as.character(merged$method_used)),
-          "", toupper(as.character(merged$method_used))
-        ),
-        產業 = ind_disp,
-        現價 = ifelse(is.na(merged$price), "", signif(merged$price, 4)),
-        合理價 = ifelse(is.na(merged$fv), "", signif(merged$fv, 4)),
-        `F-Score` = lab_html_fscore_pill(merged$f_score),
-        stringsAsFactors = FALSE,
-        check.names = FALSE
+    show_df <- data.frame(
+      代號 = display_tickers_for_market(merged$ticker, market_mode()),
+      公司名稱 = vapply(
+        seq_len(nrow(merged)),
+        function(i) lab_company_display_name(merged$ticker[[i]], yahoo_nm[[i]]),
+        character(1)
       ),
-      loc
+      年化估值漲幅 = ifelse(
+        is.na(merged$upside_cagr_pct), "—",
+        sprintf("%+.1f%%", merged$upside_cagr_pct)
+      ),
+      總潛在漲幅 = ifelse(
+        is.na(merged$upside_total_pct), "",
+        sprintf("%+.1f%%", merged$upside_total_pct)
+      ),
+      實際估值方法 = ifelse(
+        is.na(merged$method_used) | !nzchar(as.character(merged$method_used)),
+        "", toupper(as.character(merged$method_used))
+      ),
+      產業 = ind_disp,
+      現價 = ifelse(is.na(merged$price), "", signif(merged$price, 4)),
+      合理價 = ifelse(is.na(merged$fv), "", signif(merged$fv, 4)),
+      `F-Score` = lab_html_fscore_pill(merged$f_score),
+      stringsAsFactors = FALSE,
+      check.names = FALSE
     )
     ynow_sortable_datatable(
       show_df,
       escape = FALSE,
       page_length = page_len,
-      filter = "top"
+      filter = "top",
+      locale = loc
     ) %>%
       DT::formatStyle(
         "F-Score",
@@ -21446,7 +21460,8 @@ server <- function(input, output, session) {
     dt <- ynow_sortable_datatable(
       out,
       escape = if (is.finite(cov_idx)) -as.integer(cov_idx) else TRUE,
-      page_length = 25L
+      page_length = 25L,
+      locale = loc
     )
     if (length(num_cols)) {
       dt <- DT::formatRound(dt, columns = num_cols, digits = 2)
