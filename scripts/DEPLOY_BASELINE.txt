@@ -7,5 +7,5 @@ commit=8367cd5d39c7e43567b759e678d8f8739597c244
 short=8367cd5d
 message=chore: bump display version to v28.10
 captured_at=2026-11-05T16:48:54Z
-display_version=v28.10
+display_version=v28.11
 note=Shipped v28.10 (+0.01) via deploy_app_21.R after #670 mcap-upside |value| treemap type actually visible. Live status=running; rsconnect deployments bundleId=12784199. App wave #670 (mcap-upside |value| font visibility). No DataTables Ajax PR was merged; shipped #670 alone.
