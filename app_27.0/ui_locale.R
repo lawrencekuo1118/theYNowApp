@@ -780,6 +780,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Smart Analysis, Model Dashboard, and each Fair Value engine (DCF / DDM / RI / P/B / NAV) ",
       "surface a Why panel under the KPI; Multiples (Reference) and SOTP Meta-Framework also have Why. ",
       "Decision SOP gate status is elevated into Smart Analysis — not an appendix. ",
+      "Each model's formula-input contribution / sensitivity box is collapsed by default. ",
       "Full Decision Matrix sits under the Fundamental Valuation Models chart (collapsed by default)."
     ),
     explain_dcf_why_title = "Why this Fair Value (DCF)",
@@ -5687,6 +5688,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Smart Analysis、Model Dashboard 與各 Fair Value 引擎（DCF／DDM／RI／P/B／NAV）在 KPI 下方顯示 Why 面板；",
       "Multiples（Reference）與 SOTP Meta-Framework 亦有 Why。",
       "Decision SOP 閘門狀態已提升至 Smart Analysis——非附註。",
+      "各模型「公式參數貢獻與敏感度」預設收合。",
       "完整 Decision Matrix 見基本面評價模型圖表下方（預設收合）。"
     ),
     explain_dcf_why_title = "為何是這個合理價（DCF）",

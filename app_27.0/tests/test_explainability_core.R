@@ -231,9 +231,21 @@ check("Dashboard why near explain callout", {
   i_dash <- regexpr("dashboard_value_why", ui, fixed = TRUE)[1]
   i_call > 0 && i_dash > 0 && i_dash > i_call && (i_dash - i_call) < 2500
 })
-check("param sensitivity default expanded", {
-  grepl("collapsed = FALSE", ui, fixed = TRUE) &&
-    grepl("Core explainability: keep open by default", ui, fixed = TRUE)
+check("param sensitivity default collapsed", {
+  m <- regexpr(
+    "\\.model_param_sensitivity_box\\s*<-\\s*function\\s*\\([^)]*\\)\\s*\\{[\\s\\S]*?\\n\\}",
+    ui,
+    perl = TRUE
+  )
+  chunk <- if (m[1] > 0) {
+    substr(ui, m[1], m[1] + attr(m, "match.length") - 1L)
+  } else {
+    ""
+  }
+  nzchar(chunk) &&
+    grepl("collapsed = TRUE", chunk, fixed = TRUE) &&
+    !grepl("collapsed = FALSE", chunk, fixed = TRUE) &&
+    grepl("Collapsed by default", chunk, fixed = TRUE)
 })
 check("About zh 可解釋性是核心", {
   grepl("可解釋性是核心功能，不是附註", about_ui, fixed = TRUE) ||
