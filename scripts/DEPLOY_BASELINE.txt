@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12782525
+bundleId=12783331
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/  # pragma: allowlist secret
-aligned_git=6370878dc7c1d7e25f69bab7b12dad9dfe61d654
-commit=6370878dc7c1d7e25f69bab7b12dad9dfe61d654
-short=6370878d
-message=chore: bump display version to v28.04
-captured_at=2026-11-05T08:41:14Z
+aligned_git=d3137516e0313d0efc2efc1fd400052a35e96af0
+commit=d3137516e0313d0efc2efc1fd400052a35e96af0
+short=d3137516
+message=chore: bump display version to v28.05
+captured_at=2026-11-05T13:05:51Z
 display_version=v28.05
-note=Shipped v28.04 (+0.01) via deploy_app_21.R. Live status=running; rsconnect deployments bundleId=12782525. App wave #658 formula-param sensitivity boxes default collapsed.
+note=Shipped v28.05 (+0.01) via deploy_app_21.R. Live status=running; rsconnect deployments bundleId=12783331. App wave #660 numeric Total market cap sort on industry mcap board.
