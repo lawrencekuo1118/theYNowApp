@@ -66,6 +66,13 @@ jobs:
           Rscript app_27.0/tests/test_sotp_meta_framework.R
           Rscript app_27.0/tests/test_market_cache_binary.R
           python3 app_27.0/tests/test_summary_deadline.py
+      - name: Lab clustering + Beta grouping (offline)
+        env:
+          YNOW_DEBUG_SKIP_PY: "1"
+        run: |
+          Rscript -e 'pkgs <- c("plotly", "magrittr"); missing <- pkgs[!vapply(pkgs, requireNamespace, logical(1), quietly = TRUE)]; if (length(missing)) install.packages(missing, quiet = TRUE)'
+          Rscript app_27.0/tests/test_beta_grouping.R
+          Rscript app_27.0/tests/test_lab_clustering.R
       - name: Phase 1 formula independence (offline)
         env:
           YNOW_DEBUG_SKIP_PY: "1"

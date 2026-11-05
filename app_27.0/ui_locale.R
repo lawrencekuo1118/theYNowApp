@@ -3747,18 +3747,31 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Research Clustering Lab: choose K-Means on ratio/growth features only (no dollar amounts), ",
       "so firm size does not dominate distance, or group by levered equity Beta (β_L). ",
       "K-Means: Winsorize (1%/99%) → standardize → cluster. ",
-      "Beta mode: fixed β_L bins from Yahoo Summary \"Beta (5Y Monthly)\" (CAPM default; not unlevered βᵤ). ",
+      "Beta mode (level): K=3 equal-count quantiles on β_L (rolling 24-mo OLS when monthly ",
+      "returns are available; else Yahoo Summary \"Beta (5Y Monthly)\"). ",
+      "Fixed = as-of members looking back; dynamic = re-rank each month. Not unlevered βᵤ; not a tradable backtest. ",
       "Labels are descriptive heuristics, not buy/sell signals."
     ),
     lab_cluster_mode_label = "Grouping mode",
     lab_cluster_beta_bins_help = paste0(
-      "Beta mode: bins levered equity β_L from Yahoo Summary \"Beta (5Y Monthly)\" ",
-      "(same CAPM default source): β_L < 0; [0, 0.8); [0.8, 1.0); [1.0, 1.3); ≥ 1.3; missing. ",
-      "Not unlevered βᵤ."
+      "Beta mode (level): K=3 equal-count quantiles (low / mid / high) — not absolute cutpoints. ",
+      "Prefers 24-month monthly OLS levered β_L; falls back to Yahoo Summary \"Beta (5Y Monthly)\" ",
+      "when monthly returns are thin. Fixed membership = as-of cohort looking back; ",
+      "dynamic = re-rank each month. Not unlevered βᵤ; not a tradable backtest."
     ),
     lab_cluster_beta_mode_note = paste0(
-      "Beta mode: groups by levered equity Beta (β_L) from Yahoo Summary ",
-      "\"Beta (5Y Monthly)\" — same CAPM default source (not unlevered βᵤ)."
+      "Beta mode: level grouping by levered equity Beta (β_L) into K=3 equal-count quantiles ",
+      "(not absolute cutpoints; not unlevered βᵤ). Prefer rolling monthly OLS; else CAPM Summary β_L."
+    ),
+    lab_cluster_beta_membership_label = "Membership",
+    lab_cluster_beta_show_iqr_label = "Show Q25–Q75 band",
+    lab_cluster_beta_dynamic_fallback = paste0(
+      "Dynamic membership needs a usable monthly-return panel; ",
+      "fell back to fixed as-of Summary β_L terciles."
+    ),
+    lab_cluster_beta_tie_warn = paste0(
+      "Equal Beta values fell on a quantile boundary; ",
+      "membership used ticker sort as tie-break."
     ),
     lab_cluster_k_label = "Clusters (k)",
     lab_cluster_max_n_label = "Universe size (N)",
@@ -8576,19 +8589,29 @@ locale_for_market <- function(mode = get_market_mode()) {
     tab_bt_sentiment = "情緒策略",
     lab_cluster_blurb = paste0(
       "研究用分群 Lab：可選 K-Means（僅比率／成長率，不把金額放入模型，降低規模干擾），",
-      "或依槓桿股權 Beta（β_L）固定分箱。",
+      "或依槓桿股權 Beta（β_L）做 level 分位分群。",
       "K-Means：Winsorize（1%／99%）→ 標準化 → 分群。",
-      "Beta 模式：Yahoo Summary「Beta（五年月資料）」槓桿 β_L（CAPM 預設來源；非去槓桿 βᵤ）。",
+      "Beta 模式（level）：K=3 等人數分位；有月報酬時用 24 個月 OLS，否則退回 Yahoo Summary「Beta（五年月資料）」。",
+      "固定群組＝截止月成員回溯；逐期重分＝每月重排。非去槓桿 βᵤ，亦非可交易回測。",
       "語意標籤為描述性啟發式，非買進／賣出訊號。"
     ),
     lab_cluster_mode_label = "分群模式",
     lab_cluster_beta_bins_help = paste0(
-      "Beta 模式：依 Yahoo Summary「Beta（五年月資料）」槓桿股權 β_L（CAPM 預設來源）固定分箱：",
-      "β_L < 0；[0, 0.8)；[0.8, 1.0)；[1.0, 1.3)；≥ 1.3；缺值。非去槓桿 βᵤ。"
+      "Beta 模式（level）：K=3 等人數分位（低／中／高），非絕對切點。",
+      "優先以 24 個月月報酬 OLS 估計槓桿 β_L；若月報酬不足則退回 Yahoo Summary「Beta（五年月資料）」。",
+      "固定群組＝截止月成員回溯；逐期重分＝每月重排分位。非去槓桿 βᵤ，亦非可交易回測。"
     ),
     lab_cluster_beta_mode_note = paste0(
-      "Beta 模式：依 Yahoo Summary「Beta（五年月資料）」槓桿股權 β_L 分群",
-      "（與 CAPM 預設來源相同；非去槓桿 βᵤ）。"
+      "Beta 模式：依槓桿股權 Beta（β_L）做 K=3 等人數分位（非絕對切點；非去槓桿 βᵤ）。",
+      "優先月報酬 OLS；否則使用 CAPM Summary β_L。"
+    ),
+    lab_cluster_beta_membership_label = "群組成員",
+    lab_cluster_beta_show_iqr_label = "顯示 Q25–Q75 帶狀",
+    lab_cluster_beta_dynamic_fallback = paste0(
+      "逐期重分需要可用的月報酬面板；已退回截止月 Summary β_L 三分位（固定群組）。"
+    ),
+    lab_cluster_beta_tie_warn = paste0(
+      "分位界線切開相同 Beta；已依股票代碼排序決定歸屬。"
     ),
     lab_cluster_k_label = "群數（k）",
     lab_cluster_max_n_label = "宇宙檔數（N）",

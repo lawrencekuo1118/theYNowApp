@@ -2260,48 +2260,82 @@ beta_rolling_section_ui <- function() {
                 ),
                 column(
                   width = 2,
-                  selectInput(
-                    "lab_cluster_x",
-                    tags$span(id = "ynow_lab_cluster_x_label", "散點 X"),
-                    choices = if (exists("lab_cluster_axis_choices", mode = "function")) {
-                      lab_cluster_axis_choices("zh-TW")
-                    } else {
-                      c(
-                        "ROE" = "ROE",
-                        "Operating Margin" = "Operating_Margin",
-                        "Rev YoY" = "Rev_YoY",
-                        "OpInc YoY" = "OpInc_YoY",
-                        "Debt Ratio" = "Debt_Ratio",
-                        "Trailing P/E" = "PE_Ratio",
-                        "P/B" = "PB_Ratio",
-                        "Beta（槓桿 β_L）" = "Beta"
-                      )
-                    },
-                    selected = APP_DEFAULTS$lab_cluster_x,
-                    width = "100%"
+                  conditionalPanel(
+                    condition = "input.lab_cluster_mode != 'beta'",
+                    selectInput(
+                      "lab_cluster_x",
+                      tags$span(id = "ynow_lab_cluster_x_label", "散點 X"),
+                      choices = if (exists("lab_cluster_axis_choices", mode = "function")) {
+                        lab_cluster_axis_choices("zh-TW")
+                      } else {
+                        c(
+                          "ROE" = "ROE",
+                          "Operating Margin" = "Operating_Margin",
+                          "Rev YoY" = "Rev_YoY",
+                          "OpInc YoY" = "OpInc_YoY",
+                          "Debt Ratio" = "Debt_Ratio",
+                          "Trailing P/E" = "PE_Ratio",
+                          "P/B" = "PB_Ratio",
+                          "Beta（槓桿 β_L）" = "Beta"
+                        )
+                      },
+                      selected = APP_DEFAULTS$lab_cluster_x,
+                      width = "100%"
+                    )
+                  ),
+                  conditionalPanel(
+                    condition = "input.lab_cluster_mode == 'beta'",
+                    selectInput(
+                      "lab_cluster_beta_membership",
+                      tags$span(id = "ynow_lab_cluster_beta_membership_label", "群組成員"),
+                      choices = if (exists("lab_cluster_beta_membership_choices", mode = "function")) {
+                        lab_cluster_beta_membership_choices("zh-TW")
+                      } else {
+                        c(
+                          "固定群組（截止月）" = "fixed",
+                          "逐期重分（當期分位）" = "dynamic"
+                        )
+                      },
+                      selected = {
+                        m0 <- as.character(APP_DEFAULTS$lab_cluster_beta_membership %||% "fixed")[1]
+                        if (m0 %in% c("fixed", "dynamic")) m0 else "fixed"
+                      },
+                      width = "100%"
+                    )
                   )
                 ),
                 column(
                   width = 2,
-                  selectInput(
-                    "lab_cluster_y",
-                    tags$span(id = "ynow_lab_cluster_y_label", "散點 Y"),
-                    choices = if (exists("lab_cluster_axis_choices", mode = "function")) {
-                      lab_cluster_axis_choices("zh-TW")
-                    } else {
-                      c(
-                        "ROE" = "ROE",
-                        "Operating Margin" = "Operating_Margin",
-                        "Rev YoY" = "Rev_YoY",
-                        "OpInc YoY" = "OpInc_YoY",
-                        "Debt Ratio" = "Debt_Ratio",
-                        "Trailing P/E" = "PE_Ratio",
-                        "P/B" = "PB_Ratio",
-                        "Beta（槓桿 β_L）" = "Beta"
-                      )
-                    },
-                    selected = APP_DEFAULTS$lab_cluster_y,
-                    width = "100%"
+                  conditionalPanel(
+                    condition = "input.lab_cluster_mode != 'beta'",
+                    selectInput(
+                      "lab_cluster_y",
+                      tags$span(id = "ynow_lab_cluster_y_label", "散點 Y"),
+                      choices = if (exists("lab_cluster_axis_choices", mode = "function")) {
+                        lab_cluster_axis_choices("zh-TW")
+                      } else {
+                        c(
+                          "ROE" = "ROE",
+                          "Operating Margin" = "Operating_Margin",
+                          "Rev YoY" = "Rev_YoY",
+                          "OpInc YoY" = "OpInc_YoY",
+                          "Debt Ratio" = "Debt_Ratio",
+                          "Trailing P/E" = "PE_Ratio",
+                          "P/B" = "PB_Ratio",
+                          "Beta（槓桿 β_L）" = "Beta"
+                        )
+                      },
+                      selected = APP_DEFAULTS$lab_cluster_y,
+                      width = "100%"
+                    )
+                  ),
+                  conditionalPanel(
+                    condition = "input.lab_cluster_mode == 'beta'",
+                    checkboxInput(
+                      "lab_cluster_beta_show_iqr",
+                      tags$span(id = "ynow_lab_cluster_beta_show_iqr_label", "顯示 Q25–Q75 帶狀"),
+                      value = isTRUE(APP_DEFAULTS$lab_cluster_beta_show_iqr)
+                    )
                   )
                 ),
                 column(
@@ -2329,8 +2363,9 @@ beta_rolling_section_ui <- function() {
                       id = "ynow_lab_cluster_beta_bins_help",
                       style = "color:#666; font-size:12px; margin-top:-4px;",
                       paste0(
-                        "Beta 模式：依 Yahoo Summary「Beta（五年月資料）」槓桿股權 β_L（CAPM 預設來源）固定分箱：",
-                        "β_L < 0；[0, 0.8)；[0.8, 1.0)；[1.0, 1.3)；≥ 1.3；缺值。非去槓桿 βᵤ。"
+                        "Beta 模式（level）：K=3 等人數分位（低／中／高），非絕對切點。",
+                        "優先以 24 個月月報酬 OLS 估計槓桿 β_L；若月報酬不足則退回 Yahoo Summary「Beta（五年月資料）」。",
+                        "固定群組＝截止月成員回溯；逐期重分＝每月重排分位。非去槓桿 βᵤ，亦非可交易回測。"
                       )
                     )
                   )
@@ -13339,6 +13374,10 @@ ui <- dashboardPage(
             if (clusterMode && s.lab_cluster_mode_label) clusterMode.textContent = s.lab_cluster_mode_label;
             var clusterBetaHelp = document.getElementById('ynow_lab_cluster_beta_bins_help');
             if (clusterBetaHelp && s.lab_cluster_beta_bins_help) clusterBetaHelp.textContent = s.lab_cluster_beta_bins_help;
+            var clusterBetaMem = document.getElementById('ynow_lab_cluster_beta_membership_label');
+            if (clusterBetaMem && s.lab_cluster_beta_membership_label) clusterBetaMem.textContent = s.lab_cluster_beta_membership_label;
+            var clusterBetaIqr = document.getElementById('ynow_lab_cluster_beta_show_iqr_label');
+            if (clusterBetaIqr && s.lab_cluster_beta_show_iqr_label) clusterBetaIqr.textContent = s.lab_cluster_beta_show_iqr_label;
             var clusterK = document.getElementById('ynow_lab_cluster_k_label');
             if (clusterK && s.lab_cluster_k_label) clusterK.textContent = s.lab_cluster_k_label;
             var clusterX = document.getElementById('ynow_lab_cluster_x_label');

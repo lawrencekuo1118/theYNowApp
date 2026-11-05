@@ -61,64 +61,106 @@ lab_normalize_cluster_mode <- function(x, default = "kmeans") {
   default
 }
 
-#' Fixed interpretive Beta bins (levered equity β_L / CAPM Summary convention).
-#' Breaks: (−Inf, 0), [0, 0.8), [0.8, 1.0), [1.0, 1.3), [1.3, +Inf); NA → missing bin.
-LAB_CLUSTER_BETA_BIN_BREAKS <- c(-Inf, 0, 0.8, 1.0, 1.3, Inf)
+#' Level Beta grouping uses K equal-count quantiles (default K=3 terciles).
+#' Absolute fixed cutpoints (−Inf/0/0.8/1.0/1.3/Inf) were retired — see beta_grouping_module.R.
+LAB_CLUSTER_BETA_K <- 3L
 
-lab_cluster_beta_bin_labels <- function(locale = "en") {
+lab_cluster_beta_membership_choices <- function(locale = "zh-TW") {
+  loc <- if (exists("normalize_ui_locale", mode = "function")) {
+    normalize_ui_locale(locale)
+  } else {
+    as.character(locale %||% "zh-TW")[1]
+  }
+  is_zh <- grepl("^zh", tolower(loc), perl = TRUE)
+  if (is_zh) {
+    c(
+      "固定群組（截止月）" = "fixed",
+      "逐期重分（當期分位）" = "dynamic"
+    )
+  } else {
+    c(
+      "Fixed membership (as-of)" = "fixed",
+      "Dynamic membership (re-rank)" = "dynamic"
+    )
+  }
+}
+
+lab_normalize_beta_membership <- function(x, default = "fixed") {
+  if (exists("bg_normalize_membership", mode = "function")) {
+    return(bg_normalize_membership(x, default = default))
+  }
+  s <- tolower(trimws(as.character(x %||% default)[1]))
+  if (s %in% c("dynamic", "dyn", "rolling", "逐期")) return("dynamic")
+  "fixed"
+}
+
+lab_cluster_beta_bin_labels <- function(locale = "en", k = LAB_CLUSTER_BETA_K) {
   loc_raw <- as.character(if (is.null(locale) || !length(locale)) "en" else locale)[1]
   loc <- if (exists("normalize_ui_locale", mode = "function")) {
     normalize_ui_locale(loc_raw)
   } else {
     loc_raw
   }
+  if (exists("bg_group_labels", mode = "function")) {
+    return(bg_group_labels(k = k, locale = loc, include_missing = TRUE))
+  }
   is_zh <- grepl("^zh", tolower(as.character(loc)), perl = TRUE)
   if (is_zh) {
-    c(
-      "負向 Beta（β_L < 0）",
-      "低 Beta／防禦（0 ≤ β_L < 0.8）",
-      "低於市場（0.8 ≤ β_L < 1.0）",
-      "貼近市場（1.0 ≤ β_L < 1.3）",
-      "高 Beta／積極（β_L ≥ 1.3）",
-      "β_L 缺值（資料受限）"
-    )
+    c("低 Beta（分位）", "中 Beta（分位）", "高 Beta（分位）", "β_L 缺值／未入群（資料受限）")
   } else {
     c(
-      "Negative β (β_L < 0)",
-      "Low / defensive (0 ≤ β_L < 0.8)",
-      "Sub-market (0.8 ≤ β_L < 1.0)",
-      "Market-like (1.0 ≤ β_L < 1.3)",
-      "High / aggressive (β_L ≥ 1.3)",
-      "Missing β_L (data-limited)"
+      "Low Beta (tercile)", "Mid Beta (tercile)", "High Beta (tercile)",
+      "Missing / not grouped (data-limited)"
     )
   }
 }
 
-#' Assign Cluster_ID / Cluster_Label from levered Beta bins (research grouping)
-lab_cluster_assign_beta_bins <- function(beta, locale = "en") {
+#' Assign Cluster_ID / Cluster_Label from levered Beta level quantiles (K=3 default)
+#' @param symbol optional tickers for deterministic tie-breaks (sorted with beta)
+lab_cluster_assign_beta_bins <- function(beta, locale = "en",
+                                         symbol = NULL,
+                                         k = LAB_CLUSTER_BETA_K) {
   b <- suppressWarnings(as.numeric(beta))
-  labs <- lab_cluster_beta_bin_labels(locale)
-  # cut intervals: (-Inf,0] wait — use right=FALSE so [0,0.8) etc.; negative uses (-Inf,0)
-  # breaks (-Inf,0,0.8,1.0,1.3,Inf) with right=FALSE →
-  #   [-Inf,0), [0,0.8), [0.8,1.0), [1.0,1.3), [1.3,Inf)
-  # Note: β==0 lands in Low/defensive; β exactly on right edge goes to next bin.
-  idx <- rep(6L, length(b)) # missing
-  ok <- is.finite(b)
-  if (any(ok)) {
-    cut_id <- as.integer(cut(
-      b[ok],
-      breaks = LAB_CLUSTER_BETA_BIN_BREAKS,
-      include.lowest = TRUE,
-      right = FALSE,
-      labels = FALSE
+  n <- length(b)
+  sym <- if (is.null(symbol) || length(symbol) != n) {
+    sprintf("T%05d", seq_len(n))
+  } else {
+    as.character(symbol)
+  }
+  k <- as.integer(k)[1]
+  if (!is.finite(k) || k < 2L) k <- LAB_CLUSTER_BETA_K
+  if (exists("bg_assign_level_from_betas", mode = "function")) {
+    asg <- bg_assign_level_from_betas(sym, b, k = k, locale = locale)
+    return(list(
+      Cluster_ID = as.integer(asg$group_id),
+      Cluster_Label = as.character(asg$group_label),
+      tie_warn = isTRUE(asg$tie_warn),
+      n_valid = asg$n_valid,
+      k = as.integer(asg$k)
     ))
-    # cut with right=FALSE on last Inf bin: values == Inf rare; β≥1.3 → bin 5
-    cut_id[!is.finite(cut_id)] <- 5L
-    idx[ok] <- cut_id
+  }
+  # Minimal fallback without beta_grouping_module.R
+  labs <- lab_cluster_beta_bin_labels(locale, k = k)
+  miss_id <- as.integer(k + 1L)
+  idx <- rep(miss_id, n)
+  ok <- is.finite(b)
+  if (sum(ok) >= 2L * k) {
+    ord <- order(b[ok], sym[ok], method = "radix")
+    which_ok <- which(ok)[ord]
+    nv <- length(which_ok)
+    breaks <- floor(seq(0, nv, length.out = k + 1L))
+    for (g in seq_len(k)) {
+      lo <- breaks[[g]] + 1L
+      hi <- breaks[[g + 1L]]
+      if (lo <= hi) idx[which_ok[lo:hi]] <- g
+    }
   }
   list(
     Cluster_ID = as.integer(idx),
-    Cluster_Label = labs[idx]
+    Cluster_Label = labs[idx],
+    tie_warn = FALSE,
+    n_valid = as.integer(sum(ok)),
+    k = as.integer(k)
   )
 }
 
@@ -1386,17 +1428,57 @@ lab_run_stock_clustering <- function(df_financials, k_clusters = 3L,
   )
 }
 
-#' Group by levered equity Beta bins (Yahoo Summary β_L / CAPM default source).
-#' Ratio features are retained for scatter/radar; Cluster_ID comes from Beta bins.
+#' Group by levered equity Beta level quantiles (K=3 terciles by default).
+#' Prefers as-of OLS rolling β from bg_calculate when a grouping object is supplied;
+#' otherwise uses Yahoo Summary β_L / CAPM default as the cross-section level.
+#' Ratio features are retained for radar; Cluster_ID comes from Beta quantiles.
 #' @param ensure_ticker optional Search / radar-focus ticker(s) kept even if Beta NA
+#' @param membership "fixed" (default) or "dynamic" — recorded in result; dynamic
+#'   history requires beta_grouping from monthly returns
+#' @param beta_grouping optional bg_calculate() result (summary/members/meta)
+#' @param k equal-count groups (default 3)
 lab_run_beta_clustering <- function(df_financials, locale = "en",
-                                    ensure_ticker = NULL) {
+                                    ensure_ticker = NULL,
+                                    membership = "fixed",
+                                    beta_grouping = NULL,
+                                    k = LAB_CLUSTER_BETA_K) {
   df <- as.data.frame(df_financials, stringsAsFactors = FALSE)
   if (nrow(df) < 1L) stop("Need at least 1 stock with features for Beta grouping.")
   if (!LAB_CLUSTER_BETA_COL %in% names(df)) {
     df[[LAB_CLUSTER_BETA_COL]] <- NA_real_
   }
   df[[LAB_CLUSTER_BETA_COL]] <- suppressWarnings(as.numeric(df[[LAB_CLUSTER_BETA_COL]]))
+  membership <- lab_normalize_beta_membership(membership)
+  k <- suppressWarnings(as.integer(k)[1])
+  if (!is.finite(k) || k < 2L) k <- LAB_CLUSTER_BETA_K
+
+  beta_source <- "summary_levered"
+  # If rolling OLS panel available, overwrite Beta with as-of OLS β_L for grouping
+  if (is.list(beta_grouping) && is.data.frame(beta_grouping$members) &&
+      nrow(beta_grouping$members) > 0L) {
+    meta <- beta_grouping$meta %||% list()
+    as_of <- tryCatch(as.Date(meta$as_of)[1], error = function(e) as.Date(NA))
+    mem <- beta_grouping$members
+    if (is.finite(as_of)) {
+      mem_asof <- mem[mem$date == as_of & mem$valid %in% TRUE, , drop = FALSE]
+    } else {
+      mem_asof <- mem[mem$valid %in% TRUE, , drop = FALSE]
+      if (nrow(mem_asof)) {
+        as_of <- max(mem_asof$date)
+        mem_asof <- mem[mem$date == as_of & mem$valid %in% TRUE, , drop = FALSE]
+      }
+    }
+    if (nrow(mem_asof)) {
+      hit <- match(
+        toupper(trimws(as.character(df$ticker))),
+        toupper(trimws(as.character(mem_asof$symbol)))
+      )
+      from_ols <- is.finite(hit)
+      df[[LAB_CLUSTER_BETA_COL]][from_ols] <- mem_asof$beta[hit[from_ols]]
+      beta_source <- "rolling_ols_monthly"
+      membership <- lab_normalize_beta_membership(meta$membership %||% membership)
+    }
+  }
 
   n_finite_beta <- as.integer(is.finite(df[[LAB_CLUSTER_BETA_COL]]))
   keep <- n_finite_beta > 0L
@@ -1406,19 +1488,22 @@ lab_run_beta_clustering <- function(df_financials, locale = "en",
       keep[toupper(trimws(as.character(df$ticker))) == ensure_hit] <- TRUE
     }
   }
-  # Keep names that still have ≥2 ratio features even without Beta (radar shell)
-  # so Search/focus shells survive; pure empty rows without ensure drop out.
   if (sum(keep) < 1L) {
     stop(paste0(
       "After Beta missing-data filter, no stocks remain. ",
-      "Each name needs a finite Yahoo Summary levered Beta (β_L), ",
+      "Each name needs a finite levered Beta (β_L), ",
       "or must be the Search / radar-focus ticker."
     ))
   }
   df <- df[keep, , drop = FALSE]
   rownames(df) <- NULL
 
-  assigned <- lab_cluster_assign_beta_bins(df[[LAB_CLUSTER_BETA_COL]], locale = locale)
+  assigned <- lab_cluster_assign_beta_bins(
+    df[[LAB_CLUSTER_BETA_COL]],
+    locale = locale,
+    symbol = df$ticker,
+    k = k
+  )
   df$Cluster_ID <- assigned$Cluster_ID
   df$Cluster_Label <- assigned$Cluster_Label
   # Coverage helper: finite β_L counts as usable (≥2) so Data-limited badge stays off
@@ -1437,10 +1522,8 @@ lab_run_beta_clustering <- function(df_financials, locale = "en",
   df$n_finite <- as.integer(ifelse(has_beta, pmax(2L, n_ratio), n_ratio))
 
   used_ids <- sort(unique(df$Cluster_ID))
-  lab_map <- stats::setNames(
-    lab_cluster_beta_bin_labels(locale)[used_ids],
-    as.character(used_ids)
-  )
+  all_labs <- lab_cluster_beta_bin_labels(locale, k = k)
+  lab_map <- stats::setNames(all_labs[used_ids], as.character(used_ids))
   # Radar / distance peers stay on ratio features (β_L is the group key, not a spoke)
   radar_feats <- intersect(LAB_CLUSTER_FEATURES, names(df))
   center_feats <- unique(c(radar_feats, LAB_CLUSTER_BETA_COL))
@@ -1457,21 +1540,112 @@ lab_run_beta_clustering <- function(df_financials, locale = "en",
     )
   }
 
+  # Effective k for UI = number of quantile groups with members (exclude missing bin)
+  k_eff <- sum(used_ids <= k)
+
   list(
     data = df,
     centers = centers,
     features = if (length(radar_feats)) radar_feats else center_feats,
-    k = length(used_ids),
+    k = max(1L, as.integer(k_eff)),
     n = nrow(df),
     tot_withinss = NA_real_,
     betweenss = NA_real_,
     labels = lab_map,
     cluster_mode = "beta",
-    beta_source = "summary_levered",
-    beta_note = paste0(
-      "Levered equity Beta (β_L) from Yahoo Summary \"Beta (5Y Monthly)\" ",
-      "(same CAPM default as beta_u_apply_source = summary)."
-    )
+    beta_source = beta_source,
+    beta_membership = membership,
+    beta_k = as.integer(k),
+    beta_grouping = beta_grouping,
+    beta_tie_warn = isTRUE(assigned$tie_warn),
+    beta_note = if (identical(beta_source, "rolling_ols_monthly")) {
+      paste0(
+        "Levered equity Beta (β_L) from rolling 24-month OLS on monthly returns ",
+        "(level mode, K=", k, " equal-count; membership=", membership, "). ",
+        "Not a tradable backtest; fixed membership is ex-post as-of labeling."
+      )
+    } else {
+      paste0(
+        "Levered equity Beta (β_L) from Yahoo Summary \"Beta (5Y Monthly)\" ",
+        "(same CAPM default). Level mode: K=", k, " equal-count quantiles ",
+        "(not absolute cutpoints). Membership=", membership, " ",
+        "(history chart needs monthly returns)."
+      )
+    }
+  )
+}
+
+#' Month-end simple returns from a Close series (Date, Close)
+lab_cluster_prices_to_monthly_returns <- function(px, symbol) {
+  if (is.null(px) || !is.data.frame(px) || nrow(px) < 3L) return(NULL)
+  if (!all(c("Date", "Close") %in% names(px))) return(NULL)
+  d <- data.frame(
+    Date = as.Date(px$Date),
+    Close = suppressWarnings(as.numeric(px$Close)),
+    stringsAsFactors = FALSE
+  )
+  d <- d[is.finite(d$Close) & !is.na(d$Date), , drop = FALSE]
+  if (nrow(d) < 3L) return(NULL)
+  d <- d[order(d$Date), , drop = FALSE]
+  ym <- format(d$Date, "%Y-%m")
+  me <- d[!duplicated(ym, fromLast = TRUE), , drop = FALSE]
+  if (nrow(me) < 3L) return(NULL)
+  ret <- diff(me$Close) / head(me$Close, -1)
+  data.frame(
+    date = bg_month_floor(me$Date[-1]),
+    symbol = toupper(trimws(as.character(symbol)[1])),
+    ret = as.numeric(ret),
+    stringsAsFactors = FALSE
+  )
+}
+
+#' Best-effort monthly stock + market returns for Lab Beta grouping.
+#' Returns NULL when history is too thin for a 24-month window + display.
+lab_cluster_fetch_monthly_returns <- function(tickers,
+                                              market_mode = "US",
+                                              period = "10y",
+                                              max_tickers = 40L) {
+  tks <- unique(toupper(trimws(as.character(tickers))))
+  tks <- tks[nzchar(tks)]
+  if (!length(tks)) return(NULL)
+  max_tickers <- as.integer(max_tickers)[1]
+  if (is.finite(max_tickers) && length(tks) > max_tickers) {
+    tks <- tks[seq_len(max_tickers)]
+  }
+  if (!exists("fetch_price_history_df", mode = "function")) return(NULL)
+  mm <- tryCatch(normalize_market_mode(market_mode), error = function(e) "US")
+  bench <- if (identical(mm, "TW")) "0050.TW" else "SPY"
+  mk_px <- tryCatch(fetch_price_history_df(bench, period), error = function(e) NULL)
+  mk_ret <- lab_cluster_prices_to_monthly_returns(mk_px, bench)
+  if (is.null(mk_ret) || nrow(mk_ret) < (BG_DEFAULT_WINDOW %||% 24L)) return(NULL)
+  market_returns <- data.frame(
+    date = mk_ret$date,
+    ret_m = mk_ret$ret,
+    stringsAsFactors = FALSE
+  )
+  stock_list <- lapply(tks, function(tk) {
+    px <- tryCatch(fetch_price_history_df(tk, period), error = function(e) NULL)
+    lab_cluster_prices_to_monthly_returns(px, tk)
+  })
+  stock_list <- Filter(Negate(is.null), stock_list)
+  if (!length(stock_list)) return(NULL)
+  stock_returns <- if (exists(".bg_bind_rows", mode = "function")) {
+    .bg_bind_rows(stock_list)
+  } else if (requireNamespace("dplyr", quietly = TRUE)) {
+    dplyr::bind_rows(stock_list)
+  } else {
+    do.call(rbind, stock_list)
+  }
+  if (is.null(stock_returns) || nrow(stock_returns) < 1L) return(NULL)
+  # Need enough calendar months for window + some display history
+  n_m <- length(unique(market_returns$date))
+  if (n_m < as.integer(BG_DEFAULT_WINDOW %||% 24L) + 12L) return(NULL)
+  list(
+    stock_returns = stock_returns,
+    market_returns = market_returns,
+    bench = bench,
+    n_symbols = length(unique(stock_returns$symbol)),
+    n_months = n_m
   )
 }
 
@@ -1490,7 +1664,9 @@ lab_cluster_run_job <- function(catlg,
                                 include_adr = TRUE,
                                 k = 3L,
                                 locale = "en",
-                                cluster_mode = "kmeans") {
+                                cluster_mode = "kmeans",
+                                beta_membership = "fixed",
+                                beta_show_iqr = FALSE) {
   loc <- tryCatch(normalize_ui_locale(locale), error = function(e) "en")
   mm <- tryCatch(normalize_market_mode(market_mode), error = function(e) "US")
   tryCatch(set_market_mode(mm), error = function(e) NULL)
@@ -1498,9 +1674,13 @@ lab_cluster_run_job <- function(catlg,
   warnings <- character(0)
   errors <- character(0)
   mode_cluster <- lab_normalize_cluster_mode(cluster_mode %||% "kmeans")
+  beta_membership <- lab_normalize_beta_membership(beta_membership %||% "fixed")
+  beta_show_iqr <- isTRUE(beta_show_iqr)
   k <- suppressWarnings(as.integer(k)[1])
   if (!is.finite(k)) k <- 3L
   k <- max(2L, min(8L, k))
+  # Beta level mode always uses equal-count K (default 3); ignore UI k from K-Means
+  beta_k <- LAB_CLUSTER_BETA_K
   if (!is.data.frame(catlg) || nrow(catlg) < 1L) {
     return(list(ok = FALSE, result = NULL, notes = notes, warnings = warnings,
                 errors = "empty_catalog"))
@@ -1649,16 +1829,77 @@ lab_cluster_run_job <- function(catlg,
       }
     ))
   }
+  beta_grouping <- NULL
   if (identical(mode_cluster, "beta")) {
     notes <- c(notes, tryCatch(
       ui_str("lab_cluster_beta_mode_note", loc),
       error = function(e) {
         paste0(
-          "Beta mode: groups by levered equity Beta (β_L) from Yahoo Summary ",
-          "\"Beta (5Y Monthly)\" — same CAPM default source (not unlevered βᵤ)."
+          "Beta mode: level grouping by levered equity Beta (β_L) into K=",
+          beta_k, " equal-count quantiles (not absolute cutpoints; not unlevered βᵤ)."
         )
       }
     ))
+    # Prefer rolling OLS panel when monthly returns are available
+    if (exists("bg_calculate", mode = "function")) {
+      ret_pack <- tryCatch(
+        lab_cluster_fetch_monthly_returns(
+          feats$ticker, market_mode = mm, period = "10y"
+        ),
+        error = function(e) NULL
+      )
+      if (!is.null(ret_pack)) {
+        beta_grouping <- tryCatch(
+          bg_calculate(
+            ret_pack$stock_returns,
+            ret_pack$market_returns,
+            mode = "level",
+            k = beta_k,
+            window = BG_DEFAULT_WINDOW %||% 24L,
+            min_obs = BG_DEFAULT_MIN_OBS %||% 20L,
+            years = BG_DEFAULT_YEARS %||% 5L,
+            membership = beta_membership,
+            locale = loc
+          ),
+          error = function(e) {
+            warnings <<- c(warnings, paste(
+              "Rolling Beta panel failed:", conditionMessage(e)
+            ))
+            NULL
+          }
+        )
+        if (!is.null(beta_grouping) &&
+            identical(as.character(beta_grouping$meta$note %||% ""), "ok")) {
+          notes <- c(notes, sprintf(
+            if (identical(loc, "zh-TW")) {
+              "已用月報酬 OLS（視窗 %d 月，基準 %s）估計 β_L；成員模式＝%s。"
+            } else {
+              "Estimated β_L via monthly OLS (window %d mo, bench %s); membership=%s."
+            },
+            as.integer(BG_DEFAULT_WINDOW %||% 24L),
+            as.character(ret_pack$bench %||% "SPY")[1],
+            beta_membership
+          ))
+        } else if (identical(beta_membership, "dynamic")) {
+          warnings <- c(warnings, tryCatch(
+            ui_str("lab_cluster_beta_dynamic_fallback", loc),
+            error = function(e) {
+              "Dynamic membership needs a usable monthly-return panel; fell back to as-of Summary β_L terciles."
+            }
+          ))
+          beta_membership <- "fixed"
+          beta_grouping <- NULL
+        }
+      } else if (identical(beta_membership, "dynamic")) {
+        warnings <- c(warnings, tryCatch(
+          ui_str("lab_cluster_beta_dynamic_fallback", loc),
+          error = function(e) {
+            "Dynamic membership needs monthly returns; fell back to fixed as-of Summary β_L terciles."
+          }
+        ))
+        beta_membership <- "fixed"
+      }
+    }
   }
   if ("industry_key" %in% names(pool)) {
     feats$industry_key <- pool$industry_key[match(feats$ticker, pool$ticker)]
@@ -1666,7 +1907,10 @@ lab_cluster_run_job <- function(catlg,
   clustered <- tryCatch(
     if (identical(mode_cluster, "beta")) {
       lab_run_beta_clustering(
-        feats, locale = loc, ensure_ticker = ensure_tks
+        feats, locale = loc, ensure_ticker = ensure_tks,
+        membership = beta_membership,
+        beta_grouping = beta_grouping,
+        k = beta_k
       )
     } else {
       lab_run_stock_clustering(
@@ -1722,6 +1966,17 @@ lab_cluster_run_job <- function(catlg,
   clustered$pool_rank_mode <- mode_used
   clustered$cluster_mode <- mode_cluster
   clustered$n <- nrow(clustered$data)
+  if (identical(mode_cluster, "beta")) {
+    clustered$beta_show_iqr <- beta_show_iqr
+    if (isTRUE(clustered$beta_tie_warn)) {
+      warnings <- c(warnings, tryCatch(
+        ui_str("lab_cluster_beta_tie_warn", loc),
+        error = function(e) {
+          "Equal Beta values fell on a quantile boundary; membership used ticker sort as tie-break."
+        }
+      ))
+    }
+  }
   list(
     ok = TRUE,
     result = clustered,
@@ -1751,7 +2006,7 @@ lab_cluster_radar_peers <- function(result, focus_ticker, n_peers = 3L) {
   utils::head(peers$ticker[o], as.integer(n_peers)[1])
 }
 
-#' Plotly 2D cluster scatter
+#' Plotly 2D cluster scatter (K-Means) or Beta group-median history (Beta mode)
 #' @param focus_ticker optional Radar focus; drawn as a red marker on top
 lab_cluster_scatter_plotly <- function(result, x_feat = "ROE", y_feat = "PE_Ratio",
                                        locale = "en", focus_ticker = NULL) {
@@ -1761,18 +2016,40 @@ lab_cluster_scatter_plotly <- function(result, x_feat = "ROE", y_feat = "PE_Rati
       plotly::layout(annotations = list(list(text = msg, showarrow = FALSE, font = list(size = 14))))
   }
   if (is.null(df) || nrow(df) == 0L) return(empty_msg("No cluster data"))
-  if (!x_feat %in% names(df)) x_feat <- result$features[[1]]
-  if (!y_feat %in% names(df)) y_feat <- result$features[[min(2L, length(result$features))]]
   loc <- if (exists("normalize_ui_locale", mode = "function")) normalize_ui_locale(locale) else as.character(locale)[1]
   is_zh <- grepl("^zh", tolower(as.character(loc)), perl = TRUE)
+  mode_cl <- as.character(result$cluster_mode %||% "kmeans")[1]
+  # Beta mode: prefer median time series (no free Scatter X/Y per README)
+  if (identical(mode_cl, "beta")) {
+    bg <- result$beta_grouping
+    if (is.list(bg) && is.data.frame(bg$summary) && nrow(bg$summary) > 0L &&
+        exists("bg_summary_plotly", mode = "function")) {
+      return(bg_summary_plotly(
+        bg,
+        show_iqr = isTRUE(result$beta_show_iqr),
+        locale = loc
+      ))
+    }
+    # Fallback: as-of β_L vs group (no user X/Y)
+    x_feat <- "Beta"
+    y_feat <- if ("PE_Ratio" %in% names(df)) "PE_Ratio" else {
+      feats0 <- intersect(LAB_CLUSTER_FEATURES, names(df))
+      if (length(feats0)) feats0[[1]] else names(df)[1]
+    }
+  }
+  if (!x_feat %in% names(df)) x_feat <- result$features[[1]]
+  if (!y_feat %in% names(df)) y_feat <- result$features[[min(2L, length(result$features))]]
   axis_choices <- lab_cluster_axis_choices(loc)
   xlab <- names(axis_choices)[match(x_feat, unname(axis_choices))]
   ylab <- names(axis_choices)[match(y_feat, unname(axis_choices))]
   if (is.na(xlab) || !length(xlab)) xlab <- x_feat
   if (is.na(ylab) || !length(ylab)) ylab <- y_feat
-  mode_cl <- as.character(result$cluster_mode %||% "kmeans")[1]
   title <- if (identical(mode_cl, "beta")) {
-    if (is_zh) "依 Beta（槓桿 β_L）分群星團圖（研究用）" else "Beta (levered β_L) Cluster Map (research)"
+    if (is_zh) {
+      "依 Beta 分位（槓桿 β_L）分群圖（研究用；無月報酬時為截止截面）"
+    } else {
+      "Beta quantile map (levered β_L; as-of cross-section when monthly returns unavailable)"
+    }
   } else if (is_zh) {
     "基本面分群星團圖（研究用）"
   } else {
