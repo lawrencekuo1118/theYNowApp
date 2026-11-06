@@ -7,5 +7,5 @@ commit=0a2710ea7d9e7f0cf17f1ee492162fd8cf5a937f
 short=0a2710ea
 message=chore: bump display version to v28.14
 captured_at=2026-11-06T02:46:46Z
-display_version=v28.14
+display_version=v28.15
 note=Shipped v28.14 (+0.01) via deploy_app_21.R after #678 Global Prediction proposition title wrap (no 72-char chop). Live status=running; rsconnect deployments bundleId=12785908. App wave #678.
