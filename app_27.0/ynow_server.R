@@ -21450,7 +21450,8 @@ server <- function(input, output, session) {
   })
 
   output$lab_cluster_scatter <- plotly::renderPlotly({
-    req(identical(.ynow_sidebar_tab(), "lab_notes"))
+    # Clustering Lab lives under Stock Prospecting (`bluechip`), not Quant Backtest (`lab_notes`).
+    req(identical(.ynow_sidebar_tab(), "bluechip"))
     res <- lab_cluster_result()
     req(lab_cluster_has_result(res))
     lab_cluster_scatter_plotly(
@@ -21463,7 +21464,7 @@ server <- function(input, output, session) {
   })
 
   output$lab_cluster_radar <- plotly::renderPlotly({
-    req(identical(.ynow_sidebar_tab(), "lab_notes"))
+    req(identical(.ynow_sidebar_tab(), "bluechip"))
     res <- lab_cluster_result()
     req(lab_cluster_has_result(res))
     focus <- as.character(input$lab_cluster_focus %||% "")[1]
@@ -21493,7 +21494,7 @@ server <- function(input, output, session) {
   })
 
   output$lab_cluster_table <- DT::renderDT({
-    req(identical(.ynow_sidebar_tab(), "lab_notes"))
+    req(identical(.ynow_sidebar_tab(), "bluechip"))
     res <- lab_cluster_result()
     req(lab_cluster_has_result(res))
     loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
