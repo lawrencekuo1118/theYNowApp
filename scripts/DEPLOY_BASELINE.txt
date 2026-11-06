@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12784408
+bundleId=12785908
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/  # pragma: allowlist secret
-aligned_git=d4e789cb537a58492d91113d712cef0ecdc943dc
-commit=d4e789cb537a58492d91113d712cef0ecdc943dc
-short=d4e789cb
-message=chore: bump display version to v28.13
-captured_at=2026-11-05T17:57:27Z
+aligned_git=0a2710ea7d9e7f0cf17f1ee492162fd8cf5a937f
+commit=0a2710ea7d9e7f0cf17f1ee492162fd8cf5a937f
+short=0a2710ea
+message=chore: bump display version to v28.14
+captured_at=2026-11-06T02:46:46Z
 display_version=v28.14
-note=Shipped v28.13 (+0.01) via deploy_app_21.R after #674 β_L clustering level mode (K=3 quantiles, fixed/dynamic). Live status=running; rsconnect deployments bundleId=12784408. App wave #674.
+note=Shipped v28.14 (+0.01) via deploy_app_21.R after #678 Global Prediction proposition title wrap (no 72-char chop). Live status=running; rsconnect deployments bundleId=12785908. App wave #678.
