@@ -565,6 +565,22 @@ if (exists("fetch_beta_unlever_inputs_batch", envir = .GlobalEnv, inherits = FAL
   rm("fetch_beta_unlever_inputs_batch", envir = .GlobalEnv)
 }
 
+# Regression: Clustering Lab is under Stock Prospecting (`bluechip`).
+# Gating plotly/DT on `lab_notes` mounts empty hosts after 執行分群 (blank map/radar/table).
+srv_lines <- readLines("ynow_server.R", warn = FALSE, encoding = "UTF-8")
+scatter_i <- grep("^\\s*output\\$lab_cluster_scatter <- plotly::renderPlotly", srv_lines)[1]
+radar_i <- grep("^\\s*output\\$lab_cluster_radar <- plotly::renderPlotly", srv_lines)[1]
+table_i <- grep("^\\s*output\\$lab_cluster_table <- DT::renderDT", srv_lines)[1]
+stopifnot(is.finite(scatter_i), is.finite(radar_i), is.finite(table_i))
+gate_near <- function(start_i) {
+  chunk <- srv_lines[start_i:min(length(srv_lines), start_i + 12L)]
+  any(grepl('req\\(identical\\(\\.ynow_sidebar_tab\\(\\), "bluechip"\\)\\)', chunk)) &&
+    !any(grepl('req\\(identical\\(\\.ynow_sidebar_tab\\(\\), "lab_notes"\\)\\)', chunk))
+}
+stopifnot(isTRUE(gate_near(scatter_i)))
+stopifnot(isTRUE(gate_near(radar_i)))
+stopifnot(isTRUE(gate_near(table_i)))
+
 parsed_cluster <- tryCatch({
   parse("lab_clustering.R", keep.source = FALSE)
   TRUE
