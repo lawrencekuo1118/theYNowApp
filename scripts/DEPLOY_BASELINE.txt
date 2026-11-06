@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12786461
+bundleId=12787390
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/  # pragma: allowlist secret
-aligned_git=e4775bebb1bfde871e80341e9f3ae4b50cb6f27e
-commit=e4775bebb1bfde871e80341e9f3ae4b50cb6f27e
-short=e4775beb
-message=chore: bump display version to v28.17
-captured_at=2026-11-06T05:53:53Z
-display_version=v28.17
-note=Shipped v28.17 (+0.01) via deploy_app_21.R after #684 Clustering plot gate → bluechip (blank map/radar/table). Live status=running; rsconnect deployments bundleId=12786461. App wave #684.
+aligned_git=ab2dbe1238d7aa1114d1c4b71d78e14149513971
+commit=ab2dbe1238d7aa1114d1c4b71d78e14149513971
+short=ab2dbe12
+message=chore: bump display version to v28.18
+captured_at=2026-11-06T11:49:37Z
+display_version=v28.18
+note=Shipped v28.18 (+0.01) via deploy_app_21.R after #686 QueryConditions → Stock Prospecting Lab 查詢條件. Live status=running; rsconnect deployments bundleId=12787390. App wave #686. (#687 mobile whitespace landed on master during upload; not in this live bundle — next tip-ship.)
