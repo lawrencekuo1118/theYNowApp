@@ -192,21 +192,42 @@ check("model checkbox labels stretch to equal height", {
       perl = TRUE
     )
 })
-# Bootstrap absolute checkbox + cleared padding-left caused left-border bleed (#690);
-# inputs must sit in normal flex flow so NAV / Justified P/B stay inside the card.
-check("model checkboxes stay inside card (no absolute -20px bleed)", {
+# Match Include ADRs / Earnings quality: box on the label's left edge (not the
+# -20px bleed from #690, and not vertically centered in the stretched row).
+# Text gutter stays Bootstrap's 20px. Equal-height stretch stays on the label.
+check("model checkboxes share ADR left edge and first-line gutter", {
   grepl(
-    "\\.ynq-optgroup \\.checkbox input\\[type='checkbox'\\]\\{[\\s\\S]*?position:static",
+    "\\.ynq-optgroup \\.checkbox input\\[type='checkbox'\\]\\{[\\s\\S]*?position:absolute",
     mod,
     perl = TRUE
   ) &&
+    grepl(
+      "\\.ynq-optgroup \\.checkbox input\\[type='checkbox'\\]\\{[\\s\\S]*?left:0",
+      mod,
+      perl = TRUE
+    ) &&
+    grepl(
+      "\\.ynq-optgroup \\.checkbox input\\[type='checkbox'\\]\\{[\\s\\S]*?top:4px",
+      mod,
+      perl = TRUE
+    ) &&
     grepl(
       "\\.ynq-optgroup \\.checkbox input\\[type='checkbox'\\]\\{[\\s\\S]*?margin:0",
       mod,
       perl = TRUE
     ) &&
     grepl(
-      "\\.ynq-optgroup \\.checkbox label\\{[\\s\\S]*?padding-left:0",
+      "\\.ynq-optgroup \\.checkbox label\\{[\\s\\S]*?align-items:flex-start",
+      mod,
+      perl = TRUE
+    ) &&
+    grepl(
+      "\\.ynq-optgroup \\.checkbox label\\{[\\s\\S]*?padding:4px 0 4px 20px",
+      mod,
+      perl = TRUE
+    ) &&
+    !grepl(
+      "\\.ynq-optgroup \\.checkbox input\\[type='checkbox'\\]\\{[\\s\\S]*?margin-left:-20px",
       mod,
       perl = TRUE
     )
