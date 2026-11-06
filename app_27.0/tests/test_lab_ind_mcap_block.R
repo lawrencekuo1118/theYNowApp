@@ -81,6 +81,8 @@ check("ind-mcap has independent job + auto arm",
       grepl("lab_im_run_ind_mcap_job", srv, fixed = TRUE) &&
         grepl("lab_im_ind_mcap_auto_armed", srv, fixed = TRUE) &&
         grepl(".lab_im_start_ind_mcap_job", srv, fixed = TRUE))
+check("ind-mcap auto-start includes market_mode (TW re-arm)",
+      grepl("list(input$sidebar_tabs, lazy_mount_nonce(), market_mode())", srv, fixed = TRUE))
 check("ind-mcap refresh does not pulse shared Search",
       grepl("reason = \"refresh_button\"", srv, fixed = TRUE) ||
         grepl('reason = "refresh_button"', srv, fixed = TRUE))

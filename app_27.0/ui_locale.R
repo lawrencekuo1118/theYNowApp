@@ -2187,6 +2187,13 @@ locale_for_market <- function(mode = get_market_mode()) {
       ". Opening Stock Prospecting refreshes all chains in the background; ",
       "press Refresh ranking to recompute now."
     ),
+    lab_im_ind_mcap_status_no_upside = paste0(
+      "Default ranking: %d industry chains",
+      "%s",
+      ", but mcap-weighted annualized upside is not ready yet ",
+      "(table may show market cap / names only). ",
+      "Waiting for the background refresh, or press Refresh ranking."
+    ),
     lab_im_ind_mcap_snap_at = " (as of %s)",
     btn_lab_im_refresh_ind_mcap = "Refresh ranking",
     btn_lab_im_refresh_ind_mcap_busy = "Updating ranking…",
@@ -2199,6 +2206,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_ind_mcap_refresh_kept_prior = paste0(
       "Industry-chain refresh finished without upside samples; kept prior ranking / heatmap."
     ),
+    lab_im_ind_mcap_refresh_no_upside = paste0(
+      "Industry-chain refresh finished without valuation upside samples; ",
+      "heatmap stays empty until FV/price samples succeed."
+    ),
     lab_im_ind_mcap_treemap_legend = paste0(
       "Area = industry-chain total market cap; color = mcap-weighted annualized valuation upside ",
       "(US: green up / red down; TW: red up / green down). ",
@@ -2206,6 +2217,10 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Includes every industry chain."
     ),
     lab_im_ind_mcap_treemap_empty = "No industry-chain blocks yet.",
+    lab_im_ind_mcap_treemap_no_upside = paste0(
+      "No mcap-weighted annualized upside yet. ",
+      "Waiting for valuation samples, or press Refresh ranking."
+    ),
     lab_im_ind_mcap_treemap_hover_chain = "Industry chain",
     lab_im_ind_mcap_treemap_hover_upside = "Mcap-weighted annualized upside",
     lab_im_ind_mcap_treemap_hover_mcap = "Total market cap",
@@ -7083,6 +7098,12 @@ locale_for_market <- function(mode = get_market_mode()) {
       "。開啟股海淘金會在背景自動重算全部產業鏈；",
       "按「更新排名」可立即手動重算。"
     ),
+    lab_im_ind_mcap_status_no_upside = paste0(
+      "預設排名：%d 條產業鏈",
+      "%s",
+      "，尚無市值加權年化估值漲幅（表格可能僅有總市值／檔數）。",
+      "等待背景重算，或按「更新排名」。"
+    ),
     lab_im_ind_mcap_snap_at = "（資料時間 %s）",
     btn_lab_im_refresh_ind_mcap = "更新排名",
     btn_lab_im_refresh_ind_mcap_busy = "更新排名中…",
@@ -7093,6 +7114,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_ind_mcap_refresh_done = "已更新產業鏈排名（%d 條）。",
     lab_im_ind_mcap_refresh_busy = "產業鏈排名更新進行中…",
     lab_im_ind_mcap_refresh_kept_prior = "產業鏈刷新未取得估值漲幅樣本，仍保留先前排名／熱圖。",
+    lab_im_ind_mcap_refresh_no_upside = paste0(
+      "產業鏈刷新未取得估值漲幅樣本；熱圖暫不著色，待 FV／市價樣本成功後再更新。"
+    ),
     lab_im_ind_mcap_treemap_legend = paste0(
       "面積＝產業鏈總市值；顏色＝市值加權年化估值漲幅",
       "（美股漲綠／台股漲紅）。",
@@ -7100,6 +7124,10 @@ locale_for_market <- function(mode = get_market_mode()) {
       "納入全部產業鏈。"
     ),
     lab_im_ind_mcap_treemap_empty = "尚無產業鏈區塊可顯示。",
+    lab_im_ind_mcap_treemap_no_upside = paste0(
+      "尚無市值加權年化估值漲幅。",
+      "等待估值樣本，或按「更新排名」。"
+    ),
     lab_im_ind_mcap_treemap_hover_chain = "產業鏈",
     lab_im_ind_mcap_treemap_hover_upside = "市值加權年化估值漲幅",
     lab_im_ind_mcap_treemap_hover_mcap = "總市值",

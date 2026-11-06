@@ -57,10 +57,13 @@ if (!exists("lab_leaderboard_pool", mode = "function")) {
 keys <- c(
   "lab_im_ind_mcap_title", "lab_im_ind_mcap_badge", "lab_im_ind_mcap_help",
   "lab_im_ind_mcap_waiting", "lab_im_ind_mcap_empty", "lab_im_ind_mcap_status",
-  "lab_im_ind_mcap_status_snap", "lab_im_ind_mcap_snap_at",
+  "lab_im_ind_mcap_status_snap", "lab_im_ind_mcap_status_no_upside",
+  "lab_im_ind_mcap_snap_at",
   "btn_lab_im_refresh_ind_mcap", "lab_im_refresh_ind_mcap_title",
   "lab_im_ind_mcap_refresh_done", "lab_im_ind_mcap_refresh_busy",
+  "lab_im_ind_mcap_refresh_kept_prior", "lab_im_ind_mcap_refresh_no_upside",
   "lab_im_ind_mcap_treemap_legend", "lab_im_ind_mcap_treemap_empty",
+  "lab_im_ind_mcap_treemap_no_upside",
   "lab_im_ind_mcap_treemap_hover_chain", "lab_im_ind_mcap_treemap_hover_upside",
   "lab_im_ind_mcap_treemap_hover_mcap", "lab_im_ind_mcap_treemap_hover_n",
   "lab_im_ind_mcap_treemap_colorbar"
@@ -281,6 +284,11 @@ check("server start helper ignores page filters", grepl("\\.lab_im_start_ind_mca
         grepl("ignore page boards / industry / methods filters", srv, fixed = TRUE) &&
         grepl("boards = c(\"TWSE\", \"TPEX\")", srv, fixed = TRUE) &&
         grepl("per_chain = 2L", srv, fixed = TRUE))
+check("server auto-start re-arms on market_mode switch", {
+  grepl("list(input$sidebar_tabs, lazy_mount_nonce(), market_mode())", srv, fixed = TRUE) &&
+    grepl("lab_im_ind_mcap_auto_armed(FALSE)", srv, fixed = TRUE) &&
+    grepl("reason = \"tab_or_market\"", srv, fixed = TRUE)
+})
 check("server board is snapshot-only", {
   board_fn <- sub("(?s).*\\.lab_im_ind_mcap_board <- reactive\\(\\{", "", srv, perl = TRUE)
   # Trim at the market_mode reload observer that follows the board reactive.
@@ -447,9 +455,70 @@ if (file.exists(bundled)) {
   b <- lab_load_ind_mcap_chain_snapshot("US", force = TRUE)
   check("bundled snapshot non-empty", is.data.frame(b) && nrow(b) >= 14L)
   check("bundled snapshot excludes Unmapped", !"未對應" %in% b$chain_id)
+  check("bundled US snapshot has upside", lab_ind_mcap_snap_has_upside(b))
 } else {
   cat("INFO bundled ind_mcap_chain_rank_snapshot_US.csv not yet present\n")
 }
+
+# Bundled TW snapshot may be mcap/names-only placeholder (all-NA wavg) until a
+# live refresh / offline rebuild with valuation samples.
+bundled_tw <- file.path(app_dir, "data", "ind_mcap_chain_rank_snapshot_TW.csv")
+if (file.exists(bundled_tw)) {
+  options(ynow.ind_mcap_chain_snapshot = NULL)
+  if (exists(".lab_ind_mcap_chain_cache", inherits = TRUE)) {
+    rm(list = ls(envir = .lab_ind_mcap_chain_cache), envir = .lab_ind_mcap_chain_cache)
+  }
+  btw <- lab_load_ind_mcap_chain_snapshot("TW", force = TRUE)
+  check("bundled TW snapshot non-empty", is.data.frame(btw) && nrow(btw) >= 14L)
+  check("bundled TW snapshot excludes Unmapped", !"未對應" %in% btw$chain_id)
+  check("bundled TW all-NA upside uses treemap empty-state", {
+    # Soft: if a later rebuild ships finite upside, skip the empty-state assert.
+    if (lab_ind_mcap_snap_has_upside(btw)) {
+      TRUE
+    } else {
+      p <- lab_ind_mcap_treemap_plotly(btw, market = "TW", locale = "zh-TW")
+      built_p <- tryCatch(plotly::plotly_build(p), error = function(e) p)
+      ann <- built_p$x$layout$annotations
+      if (is.null(ann)) ann <- p$x$layout$annotations
+      txt <- paste(
+        vapply(ann, function(a) as.character(a$text %||% ""), character(1)),
+        collapse = " "
+      )
+      grepl("尚無市值加權|估值漲幅|更新排名", txt)
+    }
+  })
+} else {
+  cat("INFO bundled ind_mcap_chain_rank_snapshot_TW.csv not yet present\n")
+}
+
+check("has_upside helper true/false", {
+  ok_true <- lab_ind_mcap_snap_has_upside(data.frame(
+    chain_id = "半導體", wavg_cagr = 5, total_mcap = 1e12, n_names = 2L
+  ))
+  ok_false <- !lab_ind_mcap_snap_has_upside(data.frame(
+    chain_id = "半導體", wavg_cagr = NA_real_, total_mcap = 1e12, n_names = 2L
+  ))
+  ok_empty <- !lab_ind_mcap_snap_has_upside(lab_ind_mcap_chain_snapshot_empty())
+  isTRUE(ok_true) && isTRUE(ok_false) && isTRUE(ok_empty)
+})
+check("treemap empty-state when all upside NA", {
+  snap <- data.frame(
+    chain_id = c("半導體", "金融"),
+    wavg_cagr = c(NA_real_, NA_real_),
+    total_mcap = c(5e12, 2e12),
+    n_names = c(12L, 40L),
+    stringsAsFactors = FALSE
+  )
+  p <- lab_ind_mcap_treemap_plotly(snap, market = "TW", locale = "en")
+  built <- tryCatch(plotly::plotly_build(p), error = function(e) p)
+  ann <- built$x$layout$annotations
+  if (is.null(ann)) ann <- p$x$layout$annotations
+  txt <- paste(vapply(ann, function(a) as.character(a$text %||% ""), character(1)), collapse = " ")
+  # Must not be a colored treemap trace with "-" cells.
+  no_treemap_trace <- is.null(built$x$data) || length(built$x$data) < 1L ||
+    !identical(as.character(built$x$data[[1]]$type %||% ""), "treemap")
+  grepl("No mcap-weighted annualized upside", txt, fixed = TRUE) && isTRUE(no_treemap_trace)
+})
 
 # Legacy block test expectations still roughly hold
 check("help mentions 全部產業鏈", grepl("全部產業鏈", ui_str("lab_im_ind_mcap_help", "zh-TW"), fixed = TRUE))

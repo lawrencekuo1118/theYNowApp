@@ -20048,14 +20048,10 @@ server <- function(input, output, session) {
       return(invisible(FALSE))
     }
     new_snap <- out$snapshot
-    new_has_upside <- any(
-      is.finite(suppressWarnings(as.numeric(new_snap$wavg_cagr))),
-      na.rm = TRUE
-    )
+    new_has_upside <- lab_ind_mcap_snap_has_upside(new_snap)
     if (!isTRUE(new_has_upside)) {
       old <- tryCatch(isolate(lab_im_ind_mcap_snap()), error = function(e) NULL)
-      old_has_upside <- is.data.frame(old) && nrow(old) > 0L &&
-        any(is.finite(suppressWarnings(as.numeric(old$wavg_cagr))), na.rm = TRUE)
+      old_has_upside <- lab_ind_mcap_snap_has_upside(old)
       if (isTRUE(old_has_upside)) {
         # Keep prior heatmap when refresh cannot compute upside (e.g. offline Yahoo).
         if (isTRUE(notify)) {
@@ -20074,6 +20070,23 @@ server <- function(input, output, session) {
         }
         return(invisible(TRUE))
       }
+      # Apply mcap/names shell, but do not claim a successful upside ranking.
+      lab_im_ind_mcap_snap(new_snap)
+      if (isTRUE(notify)) {
+        showNotification(
+          tryCatch(
+            ui_str("lab_im_ind_mcap_refresh_no_upside", loc),
+            error = function(e) if (identical(loc, "en")) {
+              "Industry-chain refresh finished without valuation upside samples; heatmap stays empty."
+            } else {
+              "產業鏈刷新未取得估值漲幅樣本，熱圖暫不著色。"
+            }
+          ),
+          type = "warning",
+          duration = 8
+        )
+      }
+      return(invisible(TRUE))
     }
     lab_im_ind_mcap_snap(new_snap)
     if (isTRUE(notify)) {
@@ -20218,6 +20231,7 @@ server <- function(input, output, session) {
     n_chains_all <- tryCatch({
       length(unname(lab_industry_chain_picker_choices(loc)))
     }, error = function(e) 0L)
+    has_upside <- lab_ind_mcap_snap_has_upside(snap)
 
     # Snapshot-only board (independent of Search scores / page gates / methods).
     if (is.data.frame(snap) && nrow(snap) > 0L) {
@@ -20237,6 +20251,7 @@ server <- function(input, output, session) {
         n_eval = NA_integer_,
         waiting = FALSE,
         from_snapshot = TRUE,
+        has_upside = has_upside,
         busy = busy,
         snapshot_at = snap_at,
         loc = loc
@@ -20251,6 +20266,7 @@ server <- function(input, output, session) {
       n_eval = 0L,
       waiting = TRUE,
       from_snapshot = FALSE,
+      has_upside = FALSE,
       busy = busy,
       snapshot_at = NA_character_,
       loc = loc
@@ -20283,9 +20299,12 @@ server <- function(input, output, session) {
     lab_im_ind_mcap_snap(snap)
   }, ignoreInit = TRUE, priority = 900)
 
-  # Opening Blue Chip tab auto-starts independent all-chains ind-mcap job (once / market).
+  # Opening Blue Chip — or switching US⇄TW while already on Blue Chip —
+  # auto-starts the independent all-chains ind-mcap job (once per market arm).
+  # market_mode_pick clears lab_im_ind_mcap_auto_armed; without market_mode()
+  # here, TW would reload the mcap-only placeholder and never recompute upside.
   observeEvent(
-    list(input$sidebar_tabs, lazy_mount_nonce()),
+    list(input$sidebar_tabs, lazy_mount_nonce(), market_mode()),
     {
       tab <- as.character(input$sidebar_tabs %||% "")[1]
       if (!identical(tab, "bluechip")) return()
@@ -20297,13 +20316,26 @@ server <- function(input, output, session) {
       if (isTRUE(isolate(lab_im_ind_mcap_auto_armed()))) return()
       if (isTRUE(isolate(lab_im_ind_mcap_busy()))) return()
       lab_im_ind_mcap_auto_armed(TRUE)
+      mm_armed <- tryCatch(
+        normalize_market_mode(isolate(market_mode())),
+        error = function(e) "US"
+      )
       session$onFlushed(function() {
         start_job <- function() {
           if (!identical(as.character(isolate(input$sidebar_tabs) %||% "")[1], "bluechip")) {
             tryCatch(lab_im_ind_mcap_auto_armed(FALSE), error = function(e) NULL)
             return()
           }
-          .lab_im_start_ind_mcap_job(reason = "tab_enter", notify_busy = FALSE)
+          mm_now <- tryCatch(
+            normalize_market_mode(isolate(market_mode())),
+            error = function(e) "US"
+          )
+          if (!identical(mm_now, mm_armed)) {
+            # Market flipped again before flush — allow the later arm to run.
+            tryCatch(lab_im_ind_mcap_auto_armed(FALSE), error = function(e) NULL)
+            return()
+          }
+          .lab_im_start_ind_mcap_job(reason = "tab_or_market", notify_busy = FALSE)
         }
         if (requireNamespace("later", quietly = TRUE)) {
           later::later(start_job, delay = 0.05)
@@ -20339,6 +20371,27 @@ server <- function(input, output, session) {
         )
       } else {
         ""
+      }
+      # TW ships a mcap/names placeholder with all-NA upside until refresh.
+      if (!isTRUE(board$has_upside)) {
+        txt <- tryCatch(
+          sprintf(
+            ui_str("lab_im_ind_mcap_status_no_upside", loc),
+            as.integer(board$n_show), at_bit
+          ),
+          error = function(e) sprintf(
+            "預設排名：%d 條產業鏈%s，尚無市值加權估值漲幅。等待背景重算，或按「更新排名」。",
+            as.integer(board$n_show), at_bit
+          )
+        )
+        if (busy) {
+          busy_txt <- tryCatch(
+            ui_str("lab_im_ind_mcap_refresh_busy", loc),
+            error = function(e) "產業鏈排名更新進行中…"
+          )
+          txt <- paste0(txt, " ", busy_txt)
+        }
+        return(tags$p(style = "color:#888; font-size:12.5px; margin:0 0 8px 0;", txt))
       }
       txt <- tryCatch(
         sprintf(

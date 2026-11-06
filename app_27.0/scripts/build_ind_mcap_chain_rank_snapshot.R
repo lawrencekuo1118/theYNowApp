@@ -1,10 +1,13 @@
 #!/usr/bin/env Rscript
-# Build default industry-chain mcap-weighted upside snapshot (US).
+# Build default industry-chain mcap-weighted upside snapshot (US or TW).
 # Samples top market-cap names per chain, evaluates FV upside, aggregates all chains.
 #
 # Usage (from app_27.0/):
 #   RETICULATE_PYTHON=./.ynow_venv/bin/python \
 #     YNOW_IND_MCAP_PER_CHAIN=2 Rscript scripts/build_ind_mcap_chain_rank_snapshot.R
+#   YNOW_IND_MCAP_MARKET=TW YNOW_IND_MCAP_PER_CHAIN=2 \
+#     RETICULATE_PYTHON=./.ynow_venv/bin/python \
+#     Rscript scripts/build_ind_mcap_chain_rank_snapshot.R
 
 args <- commandArgs(trailingOnly = FALSE)
 file_arg <- sub("^--file=", "", args[grep("^--file=", args)])
@@ -19,6 +22,8 @@ cat("app_dir=", app_dir, "\n", sep = "")
 
 per_chain <- suppressWarnings(as.integer(Sys.getenv("YNOW_IND_MCAP_PER_CHAIN", "2")))
 if (!is.finite(per_chain) || per_chain < 1L) per_chain <- 2L
+# Resolved after sourcing market_profile.R (normalize_market_mode).
+market_env <- Sys.getenv("YNOW_IND_MCAP_MARKET", "US")
 
 py <- Sys.getenv("RETICULATE_PYTHON", unset = "")
 if (!nzchar(py) && file.exists(".ynow_venv/bin/python")) {
@@ -67,12 +72,27 @@ src("default_config.R")
 src("lab_industry_method.R")
 src("lab_us_universe.R")
 src("lab_sp500_universe.R")
+src("lab_tw_universe.R")
 src("lab_concept_groups.R")
+
+market_mode <- tryCatch(
+  normalize_market_mode(market_env),
+  error = function(e) {
+    m <- toupper(trimws(as.character(market_env %||% "US")[1]))
+    if (m %in% c("TW", "TWN", "TAIWAN")) "TW" else "US"
+  }
+)
+if (!market_mode %in% c("US", "TW")) market_mode <- "US"
+cat("market=", market_mode, "\n", sep = "")
 
 stopifnot(exists("cached_scrape_financials", mode = "function"))
 stopifnot(exists("lab_build_industry_method_catalog", mode = "function"))
 
-catlg <- lab_build_industry_method_catalog(market_mode = "US")
+tryCatch(set_market_mode(market_mode), error = function(e) NULL)
+catlg <- lab_build_industry_method_catalog(
+  market_mode = market_mode,
+  boards = c("TWSE", "TPEX")
+)
 stopifnot(is.data.frame(catlg), nrow(catlg) > 0L)
 catlg$chain_id <- vapply(as.character(catlg$industry_key), industry_chain_id, character(1))
 catlg <- tryCatch(lab_attach_market_caps(catlg), error = function(e) catlg)
@@ -138,17 +158,25 @@ if ("market_cap" %in% names(scores)) {
 options(ynow.ind_mcap_chain_snapshot = NULL)
 built <- lab_build_ind_mcap_chain_snapshot(
   merged,
-  market = "US",
+  market = market_mode,
   eq_only = FALSE,
   gate_only = FALSE,
   no_alert = FALSE,
-  locale = "zh-TW"
+  locale = "zh-TW",
+  universe_df = catlg
 )
-dest <- file.path("data", "ind_mcap_chain_rank_snapshot_US.csv")
+dest <- file.path("data", sprintf("ind_mcap_chain_rank_snapshot_%s.csv", market_mode))
+n_finite <- sum(is.finite(suppressWarnings(as.numeric(built$snapshot$wavg_cagr))), na.rm = TRUE)
+if (n_finite < 1L) {
+  stop(
+    "Refusing to overwrite ", dest,
+    " — snapshot has no finite wavg_cagr (valuation upside samples missing)."
+  )
+}
 utils::write.csv(built$snapshot, dest, row.names = FALSE, fileEncoding = "UTF-8")
 cat(
   "Wrote ", dest, " rows=", nrow(built$snapshot),
-  " finite=", sum(is.finite(built$snapshot$wavg_cagr)), "\n",
+  " finite=", n_finite, "\n",
   sep = ""
 )
 print(built$table)
