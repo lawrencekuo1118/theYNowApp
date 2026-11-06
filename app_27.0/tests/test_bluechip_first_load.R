@@ -50,7 +50,14 @@ plan_upside <- env$ynow_bluechip_first_load_plan(
   eval_busy = FALSE
 )
 check("upside snapshot delays ind-mcap ≥ 2s", isTRUE(plan_upside$ind_mcap_auto_delay_s >= 2))
-check("ranking eval stays near flush", isTRUE(abs(plan_upside$ranking_eval_delay_s - 0.05) < 1e-9))
+check(
+  "catalog ensure before ranking eval",
+  isTRUE(plan_upside$catalog_ensure_delay_s < plan_upside$ranking_eval_delay_s)
+)
+check(
+  "ranking eval waits for catalog window",
+  isTRUE(plan_upside$ranking_eval_delay_s >= 0.2)
+)
 check("nest cluster until subtab", isTRUE(plan_upside$nest_cluster_until_subtab))
 check("nest screener until subtab", isTRUE(plan_upside$nest_screener_until_subtab))
 check("defer ind-mcap while eval", isTRUE(plan_upside$defer_ind_mcap_while_eval))
