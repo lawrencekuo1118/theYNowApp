@@ -7,5 +7,5 @@ commit=9bc686c8338b15556ba3d7443c5f9894fee74674
 short=9bc686c8
 message=chore: bump display version to v28.19
 captured_at=2026-11-06T11:59:44Z
-display_version=v28.19
+display_version=v28.20
 note=Shipped v28.19 (+0.01) via deploy_app_21.R after #687 Clustering mobile whitespace ≤767px. Live status=running; rsconnect deployments bundleId=12787424. App wave #687.
