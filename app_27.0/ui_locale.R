@@ -2081,6 +2081,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     lab_cluster_busy = "Clustering already running…",
     lab_im_async_started = "Blue Chip evaluation started in the background…",
+    lab_im_catalog_preparing = "Preparing universe catalog… Search will start when ready.",
+    lab_im_catalog_empty = paste0(
+      "Universe catalog is empty. Use Refresh list, then Search Blue Chips again."
+    ),
     capacity_heavy_job_busy = paste0(
       "Another heavy job (Stock Prospecting / Clustering / HFV) is already running on this server. ",
       "Please retry in a moment so memory stays stable for all concurrent users."
@@ -7048,6 +7052,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     lab_cluster_busy = "分群分析進行中…",
     lab_im_async_started = "績優評估已在背景開始…",
+    lab_im_catalog_preparing = "正在準備候選宇宙…就緒後會自動開始搜尋。",
+    lab_im_catalog_empty = paste0(
+      "候選宇宙為空。請先按「更新名單」，再按「搜尋績優股」。"
+    ),
     capacity_heavy_job_busy = paste0(
       "本伺服器正在執行另一項重型任務（股海淘金／分群分析／HFV）。",
       "請稍後再試，以維持多位使用者同時連線時的記憶體穩定。"

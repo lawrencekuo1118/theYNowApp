@@ -54,7 +54,10 @@ ynow_bluechip_first_load_plan <- function(has_ind_mcap_upside = FALSE,
   has_upside <- isTRUE(has_ind_mcap_upside)
   has_snap <- isTRUE(snapshot_present)
   list(
-    ranking_eval_delay_s = 0.05,
+    # Catalog ensure first (US cold build is multi-second). Ranking eval waits
+    # so Search / auto-start usually hit a warm session catalog.
+    catalog_ensure_delay_s = 0.08,
+    ranking_eval_delay_s = 0.25,
     # Prefer Ranking first paint. Snapshot paints immediately without a crawl.
     ind_mcap_auto_delay_s = if (has_upside) {
       2.5
@@ -268,6 +271,13 @@ server <- function(input, output, session) {
   # 搜尋建議／Blue Chip 狀態（市場切換會提早寫入）
   sc_datalist_choices <- reactiveVal(ticker_presets_for_market("US"))
   lab_im_catalog_nonce <- reactiveVal(0L)
+  # Session catalog ownership: reactiveVal filled by deferred ensure (not a
+  # live rebuild on every Search / ynq stats read — US build is multi-second).
+  lab_im_catalog_df <- reactiveVal(NULL)
+  lab_im_catalog_busy <- reactiveVal(FALSE)
+  lab_im_catalog_key <- reactiveVal("")
+  lab_im_catalog_auto_armed <- reactiveVal(FALSE)
+  lab_im_run_after_catalog <- reactiveVal(FALSE)
   lab_im_scores <- reactiveVal(NULL)
   lab_quality_snap_nonce <- reactiveVal(0L)
   # Pulse + busy flag: Search Blue Chips button and Stock Prospecting tab share one runner.
@@ -329,6 +339,19 @@ server <- function(input, output, session) {
   } else {
     NULL
   }
+  lab_im_catalog_task <- if (isTRUE(.ynow_async_ok)) {
+    tryCatch(
+      {
+        fn <- lab_im_run_catalog_job
+        attr(fn, "ynow_job_name") <- "lab_im_run_catalog_job"
+        .ynow_make_extended_task(fn)
+      },
+      error = function(e) NULL
+    )
+  } else {
+    NULL
+  }
+  lab_im_catalog_notify_fail <- reactiveVal(FALSE)
   # Mirror Blue Chip eval / ind-mcap busy onto sidebar 「股海淘金」label dots
   observe({
     .ynow_set_tab_busy(
@@ -349,12 +372,18 @@ server <- function(input, output, session) {
     )
   })
   observe({
-    busy <- isTRUE(lab_im_eval_busy())
+    cat_busy <- isTRUE(lab_im_catalog_busy())
+    eval_busy <- isTRUE(lab_im_eval_busy())
+    busy <- isTRUE(cat_busy) || isTRUE(eval_busy)
     .ynow_set_btn_busy(
       "lab_im_run_fscore",
       busy = busy,
       idle_key = "btn_lab_im_run",
-      busy_key = "btn_lab_im_run_busy"
+      busy_key = if (isTRUE(cat_busy) && !isTRUE(eval_busy)) {
+        "lab_im_catalog_preparing"
+      } else {
+        "btn_lab_im_run_busy"
+      }
     )
   })
   observe({
@@ -5337,6 +5366,10 @@ server <- function(input, output, session) {
     lab_im_scores(NULL)
     lab_im_auto_start_armed(FALSE)
     lab_im_ind_mcap_auto_armed(FALSE)
+    lab_im_catalog_auto_armed(FALSE)
+    lab_im_run_after_catalog(FALSE)
+    lab_im_catalog_df(NULL)
+    lab_im_catalog_key("")
     .clear_lab_cluster_result()
     lab_im_catalog_nonce(isolate(lab_im_catalog_nonce()) + 1L)
 
@@ -19045,19 +19078,156 @@ server <- function(input, output, session) {
     boards
   })
 
+  .lab_im_catalog_scope_key <- function() {
+    mode <- tryCatch(
+      normalize_market_mode(isolate(market_mode())),
+      error = function(e) "US"
+    )
+    boards <- tryCatch(isolate(.lab_im_boards()), error = function(e) c("TWSE", "TPEX"))
+    if (exists("lab_im_catalog_memo_key", mode = "function")) {
+      lab_im_catalog_memo_key(mode, boards)
+    } else {
+      paste(mode, paste(sort(as.character(boards %||% character(0))), collapse = ","), sep = "|")
+    }
+  }
+
+  .lab_im_finish_catalog <- function(out = NULL, notify_fail = FALSE) {
+    tryCatch(lab_im_catalog_busy(FALSE), error = function(e) NULL)
+    key <- tryCatch(
+      as.character((out$key %||% isolate(lab_im_catalog_key())) %||% "")[1],
+      error = function(e) ""
+    )
+    catlg <- tryCatch(out$catlg, error = function(e) NULL)
+    if (!is.data.frame(catlg)) catlg <- data.frame()
+    if (!isTRUE(out$ok) && isTRUE(notify_fail)) {
+      reason <- as.character(out$reason %||% "")[1]
+      if (nzchar(reason) && !identical(reason, "empty_catalog")) {
+        showNotification(
+          .ui_msg("notif_industry_catalog_fail", err = reason),
+          type = "error"
+        )
+      } else if (identical(reason, "empty_catalog") || nrow(catlg) < 1L) {
+        showNotification(
+          tryCatch(.ui_msg("lab_im_catalog_empty"), error = function(e) "Universe catalog is empty."),
+          type = "warning",
+          duration = 6
+        )
+      }
+    }
+    lab_im_catalog_df(catlg)
+    if (nzchar(key)) lab_im_catalog_key(key)
+    lab_im_catalog_nonce(isolate(lab_im_catalog_nonce()) + 1L)
+    if (isTRUE(isolate(lab_im_run_after_catalog()))) {
+      if (nrow(catlg) > 0L) {
+        lab_im_run_after_catalog(FALSE)
+        tryCatch(
+          lab_im_run_pulse(isolate(as.integer(lab_im_run_pulse()) %||% 0L) + 1L),
+          error = function(e) NULL
+        )
+      } else {
+        lab_im_run_after_catalog(FALSE)
+        tryCatch(lab_im_auto_start_armed(FALSE), error = function(e) NULL)
+      }
+    }
+    invisible(catlg)
+  }
+
+  .lab_im_ensure_catalog <- function(force = FALSE, notify_fail = TRUE) {
+    if (!isTRUE(.ynow_bluechip_mounted())) return(invisible(NULL))
+    key <- .lab_im_catalog_scope_key()
+    cur <- isolate(lab_im_catalog_df())
+    cur_key <- as.character(isolate(lab_im_catalog_key()) %||% "")[1]
+    if (!isTRUE(force) && is.data.frame(cur) && nrow(cur) > 0L && identical(cur_key, key)) {
+      return(invisible(cur))
+    }
+    # Warm process memo: apply on the session thread without a busy lock.
+    if (!isTRUE(force) && exists("lab_im_catalog_memo_get", mode = "function")) {
+      hit <- tryCatch(lab_im_catalog_memo_get(key), error = function(e) NULL)
+      if (is.data.frame(hit) && nrow(hit) > 0L) {
+        lab_im_catalog_df(hit)
+        lab_im_catalog_key(key)
+        lab_im_catalog_nonce(isolate(lab_im_catalog_nonce()) + 1L)
+        if (isTRUE(isolate(lab_im_run_after_catalog()))) {
+          lab_im_run_after_catalog(FALSE)
+          tryCatch(
+            lab_im_run_pulse(isolate(as.integer(lab_im_run_pulse()) %||% 0L) + 1L),
+            error = function(e) NULL
+          )
+        }
+        return(invisible(hit))
+      }
+    }
+    if (isTRUE(isolate(lab_im_catalog_busy()))) return(invisible(NULL))
+    mode <- tryCatch(
+      normalize_market_mode(isolate(market_mode())),
+      error = function(e) "US"
+    )
+    boards <- tryCatch(isolate(.lab_im_boards()), error = function(e) c("TWSE", "TPEX"))
+    lab_im_catalog_busy(TRUE)
+    lab_im_catalog_notify_fail(isTRUE(notify_fail))
+    if (!is.null(lab_im_catalog_task)) {
+      tryCatch(
+        lab_im_catalog_task$invoke(
+          market_mode = mode,
+          boards = boards,
+          force = isTRUE(force),
+          key = key
+        ),
+        error = function(e) {
+          lab_im_catalog_busy(FALSE)
+          if (isTRUE(notify_fail)) {
+            showNotification(
+              .ui_msg("notif_industry_catalog_fail", err = conditionMessage(e)),
+              type = "error"
+            )
+          }
+        }
+      )
+      return(invisible(NULL))
+    }
+    on.exit({
+      # Sync fallback clears busy inside finish.
+      invisible(NULL)
+    }, add = TRUE)
+    out <- tryCatch(
+      lab_im_run_catalog_job(
+        market_mode = mode,
+        boards = boards,
+        force = isTRUE(force),
+        key = key
+      ),
+      error = function(e) list(ok = FALSE, reason = conditionMessage(e), catlg = data.frame(), key = key)
+    )
+    .lab_im_finish_catalog(out, notify_fail = isTRUE(notify_fail))
+  }
+
+  if (!is.null(lab_im_catalog_task)) {
+    observeEvent(lab_im_catalog_task$status(), {
+      st <- tryCatch(lab_im_catalog_task$status(), error = function(e) "initial")
+      if (identical(st, "error")) {
+        err <- tryCatch(lab_im_catalog_task$result(), error = function(e) conditionMessage(e))
+        .lab_im_finish_catalog(
+          list(ok = FALSE, reason = as.character(err %||% "catalog_task_error")[1], catlg = data.frame()),
+          notify_fail = isTRUE(isolate(lab_im_catalog_notify_fail()))
+        )
+        return()
+      }
+      if (!identical(st, "success")) return()
+      out <- tryCatch(lab_im_catalog_task$result(), error = function(e) NULL)
+      .lab_im_finish_catalog(
+        out,
+        notify_fail = isTRUE(isolate(lab_im_catalog_notify_fail()))
+      )
+    }, ignoreInit = TRUE)
+  }
+
+  # Read-only view of the session catalog. Never rebuilds — callers that need
+  # a fresh frame must call .lab_im_ensure_catalog (mount / refresh / Search gate).
   lab_im_catalog <- reactive({
     lab_im_catalog_nonce()
-    # Defer catalog build until Blue Chip has been opened at least once this session.
     req(isTRUE(.ynow_bluechip_mounted()))
-    mode <- market_mode()
-    boards <- tryCatch(.lab_im_boards(), error = function(e) c("TWSE", "TPEX"))
-    tryCatch(
-      lab_build_industry_method_catalog(market_mode = mode, boards = boards),
-      error = function(e) {
-        showNotification(.ui_msg("notif_industry_catalog_fail", err = e$message), type = "error")
-        data.frame()
-      }
-    )
+    df <- lab_im_catalog_df()
+    if (is.data.frame(df)) df else data.frame()
   })
 
   # Industry chain × sub-industry → industry_key filter for Blue Chip Lab
@@ -19082,18 +19252,23 @@ server <- function(input, output, session) {
         }
       }),
       stats = reactive({
-        # Counts come from the existing Lab pool / last-search path when available.
+        # Read session catalog cache only — never trigger a multi-second rebuild.
         list(
           universe_n = tryCatch({
-            cat <- lab_im_catalog()
-            if (is.data.frame(cat) && nrow(cat)) length(unique(cat$ticker)) else NA_real_
+            cat <- lab_im_catalog_df()
+            if (is.data.frame(cat) && nrow(cat)) {
+              length(unique(stats::na.omit(as.character(cat$ticker))))
+            } else {
+              NA_real_
+            }
           }, error = function(e) NA_real_),
           market_n = tryCatch({
             keys <- lab_im_industry_filter()
-            cat <- lab_im_catalog()
+            cat <- lab_im_catalog_df()
             if (!is.data.frame(cat) || !nrow(cat)) return(NA_real_)
-            if (!length(keys)) return(length(unique(cat$ticker)))
-            length(unique(cat$ticker[as.character(cat$industry_key) %in% keys]))
+            tks <- as.character(cat$ticker)
+            if (!length(keys)) return(length(unique(stats::na.omit(tks))))
+            length(unique(stats::na.omit(tks[as.character(cat$industry_key) %in% keys])))
           }, error = function(e) NA_real_),
           model_n = NA_real_,
           quality_n = NA_real_,
@@ -19369,7 +19544,6 @@ server <- function(input, output, session) {
       showNotification(.ui_msg("notif_update_cache_fallback"), type = "warning", duration = 8)
       return()
     }
-    lab_im_catalog_nonce(isolate(lab_im_catalog_nonce()) + 1L)
     showNotification(
       sprintf("已更新名單：%d 檔。", length(unique(fetched$ticker))),
       type = "message", duration = 6
@@ -19377,9 +19551,15 @@ server <- function(input, output, session) {
     mm <- tryCatch(normalize_market_mode(mode), error = function(e) "US")
     boards <- tryCatch(isolate(.lab_im_boards()), error = function(e) c("TWSE", "TPEX"))
     catlg <- tryCatch(
-      lab_build_industry_method_catalog(market_mode = mode, boards = boards),
+      .lab_im_ensure_catalog(force = TRUE, notify_fail = TRUE),
       error = function(e) NULL
     )
+    if (!is.data.frame(catlg) || nrow(catlg) < 1L) {
+      catlg <- tryCatch(
+        lab_get_industry_method_catalog(market_mode = mode, boards = boards, force = TRUE),
+        error = function(e) NULL
+      )
+    }
     include_adr <- if (identical(mm, "TW")) TRUE else isTRUE(isolate(input$lab_im_include_adr) %||% TRUE)
     pool <- if (is.data.frame(catlg) && nrow(catlg) > 0L) {
       tryCatch(
@@ -19463,6 +19643,53 @@ server <- function(input, output, session) {
     lab_im_run_pulse(isolate(as.integer(lab_im_run_pulse()) %||% 0L) + 1L)
   }, ignoreInit = TRUE)
 
+  # Deferred catalog ensure after Ranking shell paints (owns lab_im_catalog_df).
+  observeEvent(
+    list(input$sidebar_tabs, lazy_mount_nonce(), market_mode(), input$lab_im_boards),
+    {
+      tab <- as.character(input$sidebar_tabs %||% "")[1]
+      if (!identical(tab, "bluechip")) return()
+      mounted <- tryCatch(
+        isTRUE(.ynow_lazy_tab_ctrl$mounted("bluechip")),
+        error = function(e) FALSE
+      )
+      if (!isTRUE(mounted)) return()
+      key <- tryCatch(.lab_im_catalog_scope_key(), error = function(e) "")
+      cur <- isolate(lab_im_catalog_df())
+      cur_key <- as.character(isolate(lab_im_catalog_key()) %||% "")[1]
+      if (is.data.frame(cur) && nrow(cur) > 0L && identical(cur_key, key)) return()
+      if (isTRUE(isolate(lab_im_catalog_busy()))) return()
+      if (isTRUE(isolate(lab_im_catalog_auto_armed())) && identical(cur_key, key)) return()
+      lab_im_catalog_auto_armed(TRUE)
+      plan <- ynow_bluechip_first_load_plan(
+        has_ind_mcap_upside = FALSE,
+        snapshot_present = FALSE,
+        eval_busy = isTRUE(isolate(lab_im_eval_busy()))
+      )
+      delay_s <- suppressWarnings(as.numeric(plan$catalog_ensure_delay_s %||% 0.08)[1])
+      if (!is.finite(delay_s) || delay_s < 0) delay_s <- 0.08
+      session$onFlushed(function() {
+        run_ensure <- function() {
+          if (!identical(as.character(isolate(input$sidebar_tabs) %||% "")[1], "bluechip")) {
+            tryCatch(lab_im_catalog_auto_armed(FALSE), error = function(e) NULL)
+            return()
+          }
+          tryCatch(
+            .lab_im_ensure_catalog(force = FALSE, notify_fail = FALSE),
+            error = function(e) NULL
+          )
+          tryCatch(lab_im_catalog_auto_armed(FALSE), error = function(e) NULL)
+        }
+        if (requireNamespace("later", quietly = TRUE)) {
+          later::later(run_ensure, delay = delay_s)
+        } else {
+          run_ensure()
+        }
+      }, once = TRUE)
+    },
+    ignoreInit = TRUE
+  )
+
   # Opening sidebar「Stock Prospecting」auto-starts evaluation when none yet
   # (same runner as Search Blue Chips). Wait for lazy mount so filter inputs exist.
   # Defer pulse via onFlushed + later::later so lazy bluechip UI can paint first.
@@ -19482,6 +19709,13 @@ server <- function(input, output, session) {
       if (isTRUE(isolate(lab_im_eval_busy())) || isTRUE(isolate(lab_im_universe_busy()))) return()
       if (isTRUE(isolate(lab_im_auto_start_armed()))) return()
       lab_im_auto_start_armed(TRUE)
+      plan <- ynow_bluechip_first_load_plan(
+        has_ind_mcap_upside = FALSE,
+        snapshot_present = FALSE,
+        eval_busy = FALSE
+      )
+      delay_s <- suppressWarnings(as.numeric(plan$ranking_eval_delay_s %||% 0.25)[1])
+      if (!is.finite(delay_s) || delay_s < 0) delay_s <- 0.25
       session$onFlushed(function() {
         start_eval <- function() {
           if (!identical(as.character(isolate(input$sidebar_tabs) %||% "")[1], "bluechip")) {
@@ -19500,7 +19734,7 @@ server <- function(input, output, session) {
           lab_im_run_pulse(isolate(as.integer(lab_im_run_pulse()) %||% 0L) + 1L)
         }
         if (requireNamespace("later", quietly = TRUE)) {
-          later::later(start_eval, delay = 0.05)
+          later::later(start_eval, delay = delay_s)
         } else {
           start_eval()
         }
@@ -19684,12 +19918,52 @@ server <- function(input, output, session) {
   }
 
   observeEvent(lab_im_run_pulse(), {
-    # Universe refresh still exclusive (shared quality snapshot IO).
-    if (isTRUE(isolate(lab_im_universe_busy()))) {
+    catlg <- tryCatch(isolate(lab_im_catalog_df()), error = function(e) NULL)
+    gate <- ynow_lab_im_search_gate(
+      catlg = catlg,
+      universe_busy = isTRUE(isolate(lab_im_universe_busy())),
+      catalog_busy = isTRUE(isolate(lab_im_catalog_busy()))
+    )
+    if (identical(gate, "wait_universe")) {
+      showNotification(
+        tryCatch(.ui_msg("lab_im_quality_busy"), error = function(e) "Universe refresh in progress…"),
+        type = "warning",
+        duration = 5
+      )
+      tryCatch(lab_im_auto_start_armed(FALSE), error = function(e) NULL)
       return()
     }
-    catlg <- tryCatch(lab_im_catalog(), error = function(e) NULL)
-    if (!is.data.frame(catlg) || nrow(catlg) == 0L) return()
+    if (identical(gate, "wait_catalog")) {
+      lab_im_run_after_catalog(TRUE)
+      showNotification(
+        tryCatch(.ui_msg("lab_im_catalog_preparing"), error = function(e) "Preparing universe catalog…"),
+        type = "message",
+        duration = 4
+      )
+      return()
+    }
+    if (identical(gate, "empty_catalog")) {
+      # Never rebuild on the click stack. Queue Search, paint honest busy, ensure
+      # via ExtendedTask (or deferred sync fallback) so the Ranking shell stays live.
+      lab_im_run_after_catalog(TRUE)
+      showNotification(
+        tryCatch(.ui_msg("lab_im_catalog_preparing"), error = function(e) "Preparing universe catalog…"),
+        type = "message",
+        duration = 4
+      )
+      start_ensure <- function() {
+        tryCatch(
+          .lab_im_ensure_catalog(force = FALSE, notify_fail = TRUE),
+          error = function(e) NULL
+        )
+      }
+      if (requireNamespace("later", quietly = TRUE)) {
+        later::later(start_ensure, delay = 0)
+      } else {
+        start_ensure()
+      }
+      return()
+    }
     mm0 <- tryCatch(normalize_market_mode(market_mode()), error = function(e) "US")
     include_adr <- if (identical(mm0, "TW")) {
       TRUE

@@ -501,6 +501,110 @@ lab_filter_df_by_tw_boards <- function(df, boards = c("TWSE", "TPEX")) {
   df[keep, , drop = FALSE]
 }
 
+# Process-level catalog memo (Starter: one worker; US build is multi-second).
+# Avoid rebuilding the same market×boards frame on every Search / stats read.
+.lab_im_catalog_memo <- new.env(parent = emptyenv())
+
+lab_im_catalog_memo_key <- function(market_mode = "US", boards = character(0)) {
+  mode <- tryCatch(
+    normalize_market_mode(market_mode),
+    error = function(e) {
+      m <- toupper(trimws(as.character(market_mode %||% "US")[1]))
+      if (identical(m, "TW") || identical(m, "TWN") || identical(m, "TAIWAN")) "TW" else "US"
+    }
+  )
+  b <- unique(as.character(boards %||% character(0)))
+  b <- b[nzchar(b)]
+  if (identical(mode, "TW") && !length(b)) b <- c("TWSE", "TPEX")
+  paste(mode, paste(sort(b), collapse = ","), sep = "|")
+}
+
+lab_im_catalog_memo_clear <- function(key = NULL) {
+  if (is.null(key) || !nzchar(as.character(key)[1])) {
+    rm(list = ls(envir = .lab_im_catalog_memo), envir = .lab_im_catalog_memo)
+  } else {
+    k <- as.character(key)[1]
+    if (exists(k, envir = .lab_im_catalog_memo, inherits = FALSE)) {
+      rm(list = k, envir = .lab_im_catalog_memo)
+    }
+  }
+  invisible(TRUE)
+}
+
+lab_im_catalog_memo_set <- function(key, df) {
+  k <- as.character(key %||% "")[1]
+  if (!nzchar(k) || !is.data.frame(df)) return(invisible(FALSE))
+  assign(k, df, envir = .lab_im_catalog_memo)
+  invisible(TRUE)
+}
+
+lab_im_catalog_memo_get <- function(key) {
+  k <- as.character(key %||% "")[1]
+  if (!nzchar(k) || !exists(k, envir = .lab_im_catalog_memo, inherits = FALSE)) {
+    return(NULL)
+  }
+  get(k, envir = .lab_im_catalog_memo, inherits = FALSE)
+}
+
+#' Memoised catalog getter — prefer this over raw `lab_build_industry_method_catalog`.
+lab_get_industry_method_catalog <- function(market_mode = NULL,
+                                            boards = c("TWSE", "TPEX"),
+                                            force = FALSE) {
+  key <- lab_im_catalog_memo_key(market_mode, boards)
+  if (!isTRUE(force)) {
+    hit <- lab_im_catalog_memo_get(key)
+    if (is.data.frame(hit) && nrow(hit) > 0L) return(hit)
+  }
+  out <- lab_build_industry_method_catalog(
+    market_mode = market_mode,
+    boards = boards
+  )
+  if (is.data.frame(out) && nrow(out) > 0L) {
+    lab_im_catalog_memo_set(key, out)
+  }
+  out
+}
+
+#' Classify Search Blue Chips readiness (honest empty / busy vs start).
+#' @return one of "start", "empty_catalog", "wait_universe", "wait_catalog"
+ynow_lab_im_search_gate <- function(catlg = NULL,
+                                    universe_busy = FALSE,
+                                    catalog_busy = FALSE) {
+  if (isTRUE(universe_busy)) return("wait_universe")
+  if (isTRUE(catalog_busy)) return("wait_catalog")
+  if (!is.data.frame(catlg) || nrow(catlg) < 1L) return("empty_catalog")
+  "start"
+}
+
+#' Pure worker job: build / memo-fill industry×method catalog off the session thread.
+lab_im_run_catalog_job <- function(market_mode = "US",
+                                   boards = c("TWSE", "TPEX"),
+                                   force = FALSE,
+                                   key = "") {
+  mm <- tryCatch(normalize_market_mode(market_mode), error = function(e) "US")
+  b <- as.character(boards %||% character(0))
+  k <- as.character(key %||% "")[1]
+  if (!nzchar(k)) k <- lab_im_catalog_memo_key(mm, b)
+  if (isTRUE(force)) {
+    tryCatch(lab_im_catalog_memo_clear(k), error = function(e) NULL)
+  }
+  out <- tryCatch(
+    lab_get_industry_method_catalog(market_mode = mm, boards = b, force = isTRUE(force)),
+    error = function(e) list(.error = conditionMessage(e))
+  )
+  if (is.list(out) && !is.data.frame(out) && !is.null(out$.error)) {
+    return(list(ok = FALSE, reason = out$.error, catlg = data.frame(), key = k, market_mode = mm))
+  }
+  if (!is.data.frame(out)) out <- data.frame()
+  list(
+    ok = nrow(out) > 0L,
+    reason = if (nrow(out) > 0L) "" else "empty_catalog",
+    catlg = out,
+    key = k,
+    market_mode = mm
+  )
+}
+
 #' 展開為一列一檔的產業×方法×候選表
 #' @param market_mode "US" | "TW"（預設讀取 get_market_mode）
 #' @param boards TW only：TWSE／TPEX／ESB（預設上市＋上櫃）

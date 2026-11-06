@@ -202,6 +202,16 @@ ynq_filters_to_lab_bridge <- function(p, locale = "zh-TW") {
     industries <- sub
   }
   methods <- as.character(p$selected_models %||% character(0))
+  methods <- methods[nzchar(methods)]
+  # Lazy mount can emit filters before model checkboxes bind. Never wipe the
+  # hidden lab_im_methods bridge to empty — fall back to App defaults.
+  if (!length(methods)) {
+    methods <- if (exists("APP_DEFAULTS") && !is.null(APP_DEFAULTS$lab_im_methods)) {
+      as.character(APP_DEFAULTS$lab_im_methods)
+    } else {
+      c("nav", "pb", "dcf", "ddm", "ri")
+    }
+  }
   list(
     lab_im_chains = chains,
     lab_im_industries = industries,
