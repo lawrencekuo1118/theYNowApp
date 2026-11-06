@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12787424
+bundleId=12787501
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/  # pragma: allowlist secret
-aligned_git=9bc686c8338b15556ba3d7443c5f9894fee74674
-commit=9bc686c8338b15556ba3d7443c5f9894fee74674
-short=9bc686c8
-message=chore: bump display version to v28.19
-captured_at=2026-11-06T11:59:44Z
-display_version=v28.19
-note=Shipped v28.19 (+0.01) via deploy_app_21.R after #687 Clustering mobile whitespace ≤767px. Live status=running; rsconnect deployments bundleId=12787424. App wave #687.
+aligned_git=8a74c9a142a8ed84d51c1fbb2c420ed93ec3ef30
+commit=8a74c9a142a8ed84d51c1fbb2c420ed93ec3ef30
+short=8a74c9a1
+message=chore: bump display version to v28.20
+captured_at=2026-11-06T12:39:04Z
+display_version=v28.20
+note=Shipped v28.20 (+0.01) via deploy_app_21.R after #691 Run clustering beside Radar focus ticker. Live status=running; rsconnect deployments bundleId=12787501. App wave #691 only. Restacked onto master after #694; #694 Industry chain tip-ship is a separate later version.
