@@ -192,6 +192,25 @@ check("model checkbox labels stretch to equal height", {
       perl = TRUE
     )
 })
+# Bootstrap absolute checkbox + cleared padding-left caused left-border bleed (#690);
+# inputs must sit in normal flex flow so NAV / Justified P/B stay inside the card.
+check("model checkboxes stay inside card (no absolute -20px bleed)", {
+  grepl(
+    "\\.ynq-optgroup \\.checkbox input\\[type='checkbox'\\]\\{[\\s\\S]*?position:static",
+    mod,
+    perl = TRUE
+  ) &&
+    grepl(
+      "\\.ynq-optgroup \\.checkbox input\\[type='checkbox'\\]\\{[\\s\\S]*?margin:0",
+      mod,
+      perl = TRUE
+    ) &&
+    grepl(
+      "\\.ynq-optgroup \\.checkbox label\\{[\\s\\S]*?padding-left:0",
+      mod,
+      perl = TRUE
+    )
+})
 check("narrow viewport still wraps model checkboxes", {
   grepl(
     "@media\\(max-width:640px\\)\\{[\\s\\S]*?\\.ynq-optgroup \\.shiny-options-group\\{[\\s\\S]*?auto-fit,minmax\\(min\\(100%,6\\.5rem\\)",

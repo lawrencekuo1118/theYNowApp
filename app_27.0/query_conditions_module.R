@@ -242,7 +242,11 @@ ynq_query_ui <- function(id, catalog = ynq_lab_catalog(), embed = FALSE,
     .ynq-index{border-radius:8px;padding:4px 9px;background:#e6f2fb;color:#1269a3;font-size:.78rem;font-weight:800}
     .ynq-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
     /* Valuation models: each topic's checkboxes share one equal-height row;
-       auto-fit wraps on narrow without clipping (min(100%, …) floor). */
+       auto-fit wraps on narrow without clipping (min(100%, …) floor).
+       Bootstrap 3 checkboxes use position:absolute + margin-left:-20px with
+       label padding-left:20px. #690 set label to display:flex and padding:4px 0,
+       which cleared that gutter so NAV / Justified P/B bled past the card border.
+       Keep equal-height stretch; park the input in normal flex flow instead. */
     .ynq-optgroup .shiny-options-group{
       display:grid;
       grid-template-columns:repeat(auto-fit,minmax(min(100%,7.5rem),1fr));
@@ -260,6 +264,12 @@ ynq_query_ui <- function(id, catalog = ynq_lab_catalog(), embed = FALSE,
       display:flex;
       align-items:stretch;
     }
+    .ynq-optgroup .checkbox input[type='checkbox']{
+      position:static;
+      margin:0;
+      flex-shrink:0;
+      align-self:center;
+    }
     .ynq-optgroup .checkbox label{
       white-space:normal;
       overflow-wrap:anywhere;
@@ -268,10 +278,12 @@ ynq_query_ui <- function(id, catalog = ynq_lab_catalog(), embed = FALSE,
       align-items:center;
       gap:6px;
       width:100%;
+      min-width:0;
       min-height:36px;
       height:100%;
       margin-bottom:0;
       padding:4px 0;
+      padding-left:0;
       box-sizing:border-box;
     }
     .ynq-optgroup .form-group{margin-bottom:0}
