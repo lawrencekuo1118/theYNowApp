@@ -648,11 +648,51 @@ if (file.exists(k_hist_path)) {
       grepl("ynow-gp-chart-chance", styled_html, fixed = TRUE) &&
       grepl("ynow-gp-chart-head", styled_html, fixed = TRUE)
   )
+  long_prop <- paste(
+    "Will the Federal Reserve cut interest rates more than twice before",
+    "December 31 2026 according to the CME FedWatch midpoint path?"
+  )
+  check("long prop_label length exceeds old 72 chop", nchar(long_prop) > 72L)
+  long_chart <- gp_build_line_chart(ks_style, locale = "en", prop_label = long_prop)
+  long_html <- paste(as.character(long_chart), collapse = "\n")
+  check(
+    "proposition title keeps full text (no 72-char ellipsis chop)",
+    grepl(long_prop, long_html, fixed = TRUE) &&
+      grepl("ynow-gp-chart-title", long_html, fixed = TRUE) &&
+      !grepl(
+        "Will the Federal Reserve cut interest rates more than twice before De…",
+        long_html,
+        fixed = TRUE
+      )
+  )
+  zh_prop <- paste0(
+    "聯準會是否會在二〇二六年十二月三十一日前",
+    "依 CME FedWatch 中位路徑降息超過兩次？",
+    "此命題僅反映群眾隱含機率，不是 Fair Value，也不是買進訊號。"
+  )
+  check("zh prop_label length exceeds old 72 chop", nchar(zh_prop) > 72L)
+  zh_chart <- gp_build_line_chart(ks_style, locale = "zh-TW", prop_label = zh_prop)
+  zh_html <- paste(as.character(zh_chart), collapse = "\n")
+  check(
+    "zh-TW proposition title keeps full text",
+    grepl(zh_prop, zh_html, fixed = TRUE)
+  )
 }
 check(
   "GP CSS escapes percent for sprintf",
   grepl("width: 100%%;", mod_src, fixed = TRUE) &&
     grepl("flex-basis: 100%%;", mod_src, fixed = TRUE)
+)
+check(
+  "GP chart title CSS allows wrap (no clip)",
+  grepl("ynow-gp-chart-title", mod_src, fixed = TRUE) &&
+    grepl("overflow-wrap: break-word", mod_src, fixed = TRUE) &&
+    grepl("white-space: normal", mod_src, fixed = TRUE) &&
+    !grepl(
+      "nchar(title) > 72L",
+      mod_src,
+      fixed = TRUE
+    )
 )
 
 ui_mount_ok <- FALSE

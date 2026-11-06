@@ -1278,7 +1278,7 @@ gp_build_line_chart <- function(series, locale = "en", height = 240,
   if (!nzchar(title)) {
     title <- .gp_chr(series$title[[1]], keys[[1]])
   }
-  if (nchar(title) > 72L) title <- paste0(substr(title, 1L, 69L), "…")
+  # Keep full proposition text; CSS wraps in the 3-up / mobile grid (no mid-title chop).
   fig <- plotly::layout(
     fig,
     title = NULL,
@@ -2141,7 +2141,9 @@ global_prediction_ui <- function(id, locale = "en") {
         gap: 8px; min-width: 0; }
       .ynow-gp-chart-dot { width: 8px; height: 8px; border-radius: 999px; flex: 0 0 auto; }
       .ynow-gp-chart-title { font-size: 13px; font-weight: 600; color: #111827;
-        line-height: 1.35; }
+        line-height: 1.35; flex: 1 1 10rem; min-width: 0; max-width: 100%%;
+        white-space: normal; overflow: visible; overflow-wrap: break-word;
+        word-break: break-word; }
       .ynow-gp-chart-chance { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums;
         letter-spacing: -0.02em; }
       .ynow-gp-chart-head-meta { display: flex; gap: 10px; align-items: center;
