@@ -7,5 +7,5 @@ commit=ab2dbe1238d7aa1114d1c4b71d78e14149513971
 short=ab2dbe12
 message=chore: bump display version to v28.18
 captured_at=2026-11-06T11:49:37Z
-display_version=v28.18
+display_version=v28.19
 note=Shipped v28.18 (+0.01) via deploy_app_21.R after #686 QueryConditions → Stock Prospecting Lab 查詢條件. Live status=running; rsconnect deployments bundleId=12787390. App wave #686. (#687 mobile whitespace landed on master during upload; not in this live bundle — next tip-ship.)
