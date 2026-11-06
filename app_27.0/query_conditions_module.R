@@ -16,16 +16,22 @@ ynq_all <- "__ALL__"
 
 ynq_or <- function(x, y) if (is.null(x)) y else x
 
-ynq_bi <- function(key, fallback = key) {
+ynq_bi <- function(key, fallback = key, locale = NULL) {
   if (exists("ui_str", mode = "function")) {
-    hit <- tryCatch(ui_str(key), error = function(e) NULL)
+    hit <- tryCatch({
+      if (!is.null(locale) && nzchar(as.character(locale)[1])) {
+        ui_str(key, locale)
+      } else {
+        ui_str(key)
+      }
+    }, error = function(e) NULL)
     if (!is.null(hit) && nzchar(as.character(hit)[1])) return(as.character(hit)[1])
   }
   as.character(fallback)[1]
 }
 
 #' Production catalog for Blue Chip Lab (ids = existing method keys).
-ynq_lab_catalog <- function(selected = NULL) {
+ynq_lab_catalog <- function(selected = NULL, locale = NULL) {
   if (is.null(selected)) {
     selected <- if (exists("APP_DEFAULTS") && !is.null(APP_DEFAULTS$lab_im_methods)) {
       as.character(APP_DEFAULTS$lab_im_methods)
@@ -39,15 +45,15 @@ ynq_lab_catalog <- function(selected = NULL) {
     "enterprise", "earnings", "revenue", "book"
   )
   labels <- c(
-    ynq_bi("lab_im_method_nav", "NAV"),
-    ynq_bi("lab_im_method_dcf", "DCF"),
-    ynq_bi("lab_im_method_ddm", "DDM"),
-    ynq_bi("lab_im_method_ri", "RI"),
-    ynq_bi("lab_im_method_pb", "Justified P/B"),
-    ynq_bi("lab_im_method_enterprise", "Enterprise value"),
-    ynq_bi("lab_im_method_earnings", "Earnings"),
-    ynq_bi("lab_im_method_revenue", "Revenue"),
-    ynq_bi("lab_im_method_book", "Book multiples")
+    ynq_bi("lab_im_method_nav", "NAV", locale = locale),
+    ynq_bi("lab_im_method_dcf", "DCF", locale = locale),
+    ynq_bi("lab_im_method_ddm", "DDM", locale = locale),
+    ynq_bi("lab_im_method_ri", "RI", locale = locale),
+    ynq_bi("lab_im_method_pb", "Justified P/B", locale = locale),
+    ynq_bi("lab_im_method_enterprise", "Enterprise value", locale = locale),
+    ynq_bi("lab_im_method_earnings", "Earnings", locale = locale),
+    ynq_bi("lab_im_method_revenue", "Revenue", locale = locale),
+    ynq_bi("lab_im_method_book", "Book multiples", locale = locale)
   )
   data.frame(
     id = ids,
@@ -96,6 +102,45 @@ ynq_model_choices <- function(catalog, group) {
 ynq_model_defaults <- function(catalog, group) {
   rows <- catalog[catalog$ui_group == group, , drop = FALSE]
   rows$id[rows$selected]
+}
+
+#' Named choices for the Industry chain select (label → chain_id), plus __ALL__.
+ynq_chain_select_choices <- function(locale = "zh-TW") {
+  loc <- if (exists("normalize_ui_locale", mode = "function")) {
+    tryCatch(normalize_ui_locale(locale), error = function(e) "zh-TW")
+  } else {
+    as.character(locale %||% "zh-TW")[1]
+  }
+  all_lab <- ynq_bi("lab_im_chains_none", "全部產業鏈", locale = loc)
+  out <- stats::setNames(ynq_all, all_lab)
+  if (!exists("lab_industry_chain_picker_choices", mode = "function")) return(out)
+  ch <- tryCatch(
+    lab_industry_chain_picker_choices(loc),
+    error = function(e) stats::setNames(character(0), character(0))
+  )
+  if (!length(ch)) return(out)
+  c(out, ch)
+}
+
+#' Named choices for the Sub-industry select (label → industry_key), plus __ALL__.
+ynq_sub_select_choices <- function(chain_ids = character(0), locale = "zh-TW") {
+  loc <- if (exists("normalize_ui_locale", mode = "function")) {
+    tryCatch(normalize_ui_locale(locale), error = function(e) "zh-TW")
+  } else {
+    as.character(locale %||% "zh-TW")[1]
+  }
+  all_lab <- ynq_bi("lab_im_industries_none", "全部子產業", locale = loc)
+  out <- stats::setNames(ynq_all, all_lab)
+  if (!exists("lab_industry_sub_picker_choices", mode = "function")) return(out)
+  chain_ids <- unique(as.character(chain_ids %||% character(0)))
+  chain_ids <- chain_ids[nzchar(chain_ids) & !is.na(chain_ids) &
+                           !identical(chain_ids, ynq_all)]
+  subs <- tryCatch(
+    lab_industry_sub_picker_choices(chain_ids, loc),
+    error = function(e) stats::setNames(character(0), character(0))
+  )
+  if (!length(subs)) return(out)
+  c(out, subs)
 }
 
 #' Build chain×subindustry tree for the module from Lab picker helpers.
@@ -168,9 +213,22 @@ ynq_filters_to_lab_bridge <- function(p, locale = "zh-TW") {
   )
 }
 
-ynq_query_ui <- function(id, catalog = ynq_lab_catalog(), embed = FALSE) {
+ynq_query_ui <- function(id, catalog = ynq_lab_catalog(), embed = FALSE,
+                         locale = "zh-TW") {
   ynq_validate_catalog(catalog)
   ns <- NS(id)
+  loc <- if (exists("normalize_ui_locale", mode = "function")) {
+    tryCatch(normalize_ui_locale(locale), error = function(e) "zh-TW")
+  } else {
+    as.character(locale %||% "zh-TW")[1]
+  }
+  # Bind locale so ui_str does not fall back to its default "en" during bake.
+  .t <- function(key, fallback = key) ynq_bi(key, fallback, locale = loc)
+  # Bake chain/sub choices at UI render (lazy Blue Chip mount). Server
+  # updateSelectInput often runs before the host exists and would otherwise
+  # leave only the __ALL__ stub — looks like Industry chain "disappeared".
+  chain_choices <- ynq_chain_select_choices(loc)
+  sub_choices <- ynq_sub_select_choices(character(0), loc)
 
   css <- "
     .ynq-wrap{max-width:1080px;margin:0 auto;min-width:0;padding:4px 0 8px;color:#263444}
@@ -232,17 +290,17 @@ ynq_query_ui <- function(id, catalog = ynq_lab_catalog(), embed = FALSE) {
     tags$div(
       class = "ynq-header",
       tags$div(
-        tags$h2(id = ns("title"), ynq_bi("lab_im_query_title", "查詢條件")),
+        tags$h2(id = ns("title"), .t("lab_im_query_title", "查詢條件")),
         tags$div(
           id = ns("subtitle"),
           class = "ynq-muted",
-          ynq_bi("ynq_subtitle", "美股估值與基本面篩選")
+          .t("ynq_subtitle", "美股估值與基本面篩選")
         )
       ),
       tags$div(
         id = ns("pool_flag"),
         class = "ynq-flag",
-        ynq_bi("ynq_pool_flag", "主要上市股票池")
+        .t("ynq_pool_flag", "主要上市股票池")
       )
     )
   }
@@ -256,18 +314,20 @@ ynq_query_ui <- function(id, catalog = ynq_lab_catalog(), embed = FALSE) {
 
       tags$section(
         class = "ynq-card ynow-full-only",
-        ynq_section_title(1, ynq_bi("ynq_sec_pool", "股票池設定"), ns("sec_pool")),
+        ynq_section_title(1, .t("ynq_sec_pool", "股票池設定"), ns("sec_pool")),
         tags$div(
           class = "ynq-grid",
           selectInput(
             ns("chain"),
-            tags$span(id = ns("chain_label"), ynq_bi("lab_im_chains_label", "產業鏈")),
-            choices = c(stats::setNames(ynq_all, ynq_bi("lab_im_chains_none", "全部產業鏈")))
+            tags$span(id = ns("chain_label"), .t("lab_im_chains_label", "產業鏈")),
+            choices = chain_choices,
+            selected = ynq_all
           ),
           selectInput(
             ns("subindustry"),
-            tags$span(id = ns("sub_label"), ynq_bi("lab_im_industries_label", "子產業")),
-            choices = c(stats::setNames(ynq_all, ynq_bi("lab_im_industries_none", "全部子產業")))
+            tags$span(id = ns("sub_label"), .t("lab_im_industries_label", "子產業")),
+            choices = sub_choices,
+            selected = ynq_all
           )
         ),
         tags$div(
@@ -276,15 +336,15 @@ ynq_query_ui <- function(id, catalog = ynq_lab_catalog(), embed = FALSE) {
             ns("include_adr"),
             tags$span(
               id = ns("adr_label"),
-              ynq_bi("lab_im_include_adr_label", "含 ADR")
+              .t("lab_im_include_adr_label", "含 ADR")
             ),
             value = TRUE
           )
         ),
         tags$details(
           class = "ynq-help ynow-full-only",
-          tags$summary(id = ns("help_pool_sum"), ynq_bi("ynq_help_pool_sum", "市場與產業篩選說明")),
-          tags$p(id = ns("help_pool_body"), ynq_bi(
+          tags$summary(id = ns("help_pool_sum"), .t("ynq_help_pool_sum", "市場與產業篩選說明")),
+          tags$p(id = ns("help_pool_body"), .t(
             "ynq_help_pool_body",
             "主要上市的限制由既有資料來源及 Server 規則維持。子產業依產業鏈提供選項；未選表示不額外限制。"
           ))
@@ -293,13 +353,13 @@ ynq_query_ui <- function(id, catalog = ynq_lab_catalog(), embed = FALSE) {
 
       tags$section(
         class = "ynq-card ynow-full-only",
-        ynq_section_title(2, ynq_bi("ynq_sec_models", "估值模型"), ns("sec_models")),
+        ynq_section_title(2, .t("ynq_sec_models", "估值模型"), ns("sec_models")),
         tags$div(
           class = "ynq-subgroup",
           tags$div(
             id = ns("grp_intrinsic"),
             class = "ynq-label",
-            ynq_bi("ynq_grp_intrinsic", "內在價值")
+            .t("ynq_grp_intrinsic", "內在價值")
           ),
           group_input("intrinsic")
         ),
@@ -308,7 +368,7 @@ ynq_query_ui <- function(id, catalog = ynq_lab_catalog(), embed = FALSE) {
           tags$div(
             id = ns("grp_justified"),
             class = "ynq-label",
-            ynq_bi("ynq_grp_justified", "理論倍數")
+            .t("ynq_grp_justified", "理論倍數")
           ),
           group_input("justified")
         ),
@@ -317,7 +377,7 @@ ynq_query_ui <- function(id, catalog = ynq_lab_catalog(), embed = FALSE) {
           tags$div(
             id = ns("grp_multiples"),
             class = "ynq-label",
-            ynq_bi("ynq_grp_multiples", "市場相對估值")
+            .t("ynq_grp_multiples", "市場相對估值")
           ),
           group_input("multiples")
         ),
@@ -325,7 +385,7 @@ ynq_query_ui <- function(id, catalog = ynq_lab_catalog(), embed = FALSE) {
           id = "ynow_lab_im_methods_locked_hint",
           class = "ynow-lab-im-quality-hint ynow-full-only",
           style = "display:block; color:#888; font-size:12px; margin-top:8px;",
-          ynq_bi(
+          .t(
             "lab_im_methods_locked_hint",
             paste0(
               "若某評價模型未被任何個股列為主模型，則維持不勾選並鎖定。",
@@ -335,8 +395,8 @@ ynq_query_ui <- function(id, catalog = ynq_lab_catalog(), embed = FALSE) {
         ),
         tags$details(
           class = "ynq-help",
-          tags$summary(id = ns("help_models_sum"), ynq_bi("ynq_help_models_sum", "模型適用條件與篩選規則")),
-          tags$p(id = ns("help_models_body"), ynq_bi(
+          tags$summary(id = ns("help_models_sum"), .t("ynq_help_models_sum", "模型適用條件與篩選規則")),
+          tags$p(id = ns("help_models_body"), .t(
             "ynq_help_models_body",
             "本介面只改變顯示分類，不改變任何模型的舊有篩選群組、主／副模型判斷、資料需求或 OR／AND 規則。"
           ))
@@ -345,26 +405,26 @@ ynq_query_ui <- function(id, catalog = ynq_lab_catalog(), embed = FALSE) {
 
       tags$section(
         class = "ynq-card",
-        ynq_section_title(3, ynq_bi("ynq_sec_quality", "基本面品質門檻"), ns("sec_quality")),
+        ynq_section_title(3, .t("ynq_sec_quality", "基本面品質門檻"), ns("sec_quality")),
         checkboxInput(
           ns("earnings_quality"),
-          tags$span(id = "ynow_lab_im_eq_label", ynq_bi("lab_im_eq_label", "盈餘品質")),
+          tags$span(id = "ynow_lab_im_eq_label", .t("lab_im_eq_label", "盈餘品質")),
           value = FALSE
         ),
         checkboxInput(
           ns("piotroski"),
-          tags$span(id = "ynow_lab_im_gate_label", ynq_bi("lab_im_gate_label", "Piotroski 高門檻")),
+          tags$span(id = "ynow_lab_im_gate_label", .t("lab_im_gate_label", "Piotroski 高門檻")),
           value = FALSE
         ),
         checkboxInput(
           ns("no_warning"),
-          tags$span(id = "ynow_lab_im_no_alert_label", ynq_bi("lab_im_no_alert_label", "無財報警訊")),
+          tags$span(id = "ynow_lab_im_no_alert_label", .t("lab_im_no_alert_label", "無財報警訊")),
           value = FALSE
         ),
         tags$details(
           class = "ynq-help ynow-full-only",
-          tags$summary(id = ns("help_quality_sum"), ynq_bi("ynq_help_quality_sum", "門檻定義與快照限制")),
-          tags$p(id = ns("help_quality_body"), ynq_bi(
+          tags$summary(id = ns("help_quality_sum"), .t("ynq_help_quality_sum", "門檻定義與快照限制")),
+          tags$p(id = ns("help_quality_body"), .t(
             "ynq_help_quality_body",
             "例如既有 Piotroski F-Score ≥ 7、盈餘品質、Schilit／財報警訊及樣本數不足時不湊滿等規則，全部仍由原 Server 執行。未更新的品質快照不可視為通過。"
           ))
@@ -373,13 +433,13 @@ ynq_query_ui <- function(id, catalog = ynq_lab_catalog(), embed = FALSE) {
 
       tags$section(
         class = "ynq-card ynow-full-only",
-        ynq_section_title(4, ynq_bi("ynq_sec_results", "篩選結果"), ns("sec_results")),
+        ynq_section_title(4, .t("ynq_sec_results", "篩選結果"), ns("sec_results")),
         uiOutput(ns("counts")),
         textOutput(ns("snapshot_note")),
         tags$details(
           class = "ynq-help",
-          tags$summary(id = ns("help_stats_sum"), ynq_bi("ynq_help_stats_sum", "統計範圍說明")),
-          tags$p(id = ns("help_stats_body"), ynq_bi(
+          tags$summary(id = ns("help_stats_sum"), .t("ynq_help_stats_sum", "統計範圍說明")),
+          tags$p(id = ns("help_stats_body"), .t(
             "ynq_help_stats_body",
             "本模組不以 UI 選項自行估算檔數。請由既有股票池、模型適用性與品質快照流程傳入同一基準的統計值。"
           ))
@@ -390,7 +450,9 @@ ynq_query_ui <- function(id, catalog = ynq_lab_catalog(), embed = FALSE) {
 }
 
 ynq_query_server <- function(id, industry_tree, stats = NULL,
-                             catalog = ynq_lab_catalog()) {
+                             catalog = ynq_lab_catalog(),
+                             refresh_token = NULL,
+                             locale = NULL) {
   ynq_validate_catalog(catalog)
   stopifnot(is.function(industry_tree))
 
@@ -398,7 +460,19 @@ ynq_query_server <- function(id, industry_tree, stats = NULL,
     if (is.null(stats)) stats <- reactive(list())
     stopifnot(is.function(stats))
 
+    .ynq_locale <- function() {
+      if (is.function(locale)) {
+        tryCatch(normalize_ui_locale(locale()), error = function(e) "zh-TW")
+      } else if (!is.null(locale)) {
+        tryCatch(normalize_ui_locale(locale), error = function(e) "zh-TW")
+      } else {
+        "zh-TW"
+      }
+    }
+
     safe_tree <- reactive({
+      # Re-run after lazy Blue Chip mount so updateSelectInput hits a live input.
+      if (is.function(refresh_token)) refresh_token()
       tree <- industry_tree()
       req(is.data.frame(tree), all(c("chain", "subindustry") %in% names(tree)))
       tree <- tree[, c("chain", "subindustry"), drop = FALSE]
@@ -411,34 +485,38 @@ ynq_query_server <- function(id, industry_tree, stats = NULL,
 
     observe({
       tree <- safe_tree()
-      chains <- sort(unique(tree$chain))
+      loc <- .ynq_locale()
+      chains <- unique(tree$chain)
       chosen <- ynq_or(isolate(input$chain), ynq_all)
       if (!(chosen %in% chains)) chosen <- ynq_all
+      choices <- ynq_chain_select_choices(loc)
+      # Keep only chains present in the tree (+ __ALL__).
+      keep <- unname(choices) == ynq_all | unname(choices) %in% chains
+      choices <- choices[keep]
       updateSelectInput(
         session, "chain",
-        choices = c(
-          stats::setNames(ynq_all, ynq_bi("lab_im_chains_none", "全部產業鏈")),
-          stats::setNames(chains, chains)
-        ),
+        choices = choices,
         selected = chosen
       )
     })
 
     observe({
       tree <- safe_tree()
+      loc <- .ynq_locale()
       chain <- ynq_or(input$chain, ynq_all)
+      chain_ids <- if (identical(chain, ynq_all)) character(0) else chain
       if (!identical(chain, ynq_all)) {
         tree <- tree[tree$chain == chain, , drop = FALSE]
       }
-      subs <- sort(unique(tree$subindustry))
+      subs <- unique(tree$subindustry)
       current <- ynq_or(isolate(input$subindustry), ynq_all)
       if (!(current %in% subs)) current <- ynq_all
+      choices <- ynq_sub_select_choices(chain_ids, loc)
+      keep <- unname(choices) == ynq_all | unname(choices) %in% subs
+      choices <- choices[keep]
       updateSelectInput(
         session, "subindustry",
-        choices = c(
-          stats::setNames(ynq_all, ynq_bi("lab_im_industries_none", "全部子產業")),
-          stats::setNames(subs, subs)
-        ),
+        choices = choices,
         selected = current
       )
     })
