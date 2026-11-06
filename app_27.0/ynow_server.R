@@ -18985,6 +18985,107 @@ server <- function(input, output, session) {
     )
   })
 
+  # ---- QueryConditions module (lab_ynq) → bridge to lab_im_* engine inputs ----
+  .lab_ynq_filters <- if (exists("ynq_query_server", mode = "function")) {
+    ynq_query_server(
+      "lab_ynq",
+      industry_tree = reactive({
+        loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+        if (exists("ynq_lab_industry_tree", mode = "function")) {
+          ynq_lab_industry_tree(loc)
+        } else {
+          data.frame(chain = character(0), subindustry = character(0),
+                     stringsAsFactors = FALSE)
+        }
+      }),
+      stats = reactive({
+        # Counts come from the existing Lab pool / last-search path when available.
+        list(
+          universe_n = tryCatch({
+            cat <- lab_im_catalog()
+            if (is.data.frame(cat) && nrow(cat)) length(unique(cat$ticker)) else NA_real_
+          }, error = function(e) NA_real_),
+          market_n = tryCatch({
+            keys <- lab_im_industry_filter()
+            cat <- lab_im_catalog()
+            if (!is.data.frame(cat) || !nrow(cat)) return(NA_real_)
+            if (!length(keys)) return(length(unique(cat$ticker)))
+            length(unique(cat$ticker[as.character(cat$industry_key) %in% keys]))
+          }, error = function(e) NA_real_),
+          model_n = NA_real_,
+          quality_n = NA_real_,
+          snapshot_ready = FALSE
+        )
+      }),
+      catalog = if (exists("ynq_lab_catalog", mode = "function")) {
+        ynq_lab_catalog(APP_DEFAULTS$lab_im_methods)
+      } else {
+        ynq_default_catalog()
+      }
+    )
+  } else {
+    NULL
+  }
+
+  .lab_ynq_bridge_busy <- reactiveVal(FALSE)
+  if (!is.null(.lab_ynq_filters)) {
+    observeEvent(
+      .lab_ynq_filters(),
+      {
+        if (!isTRUE(.ynow_bluechip_mounted())) return()
+        if (isTRUE(isolate(.lab_ynq_bridge_busy()))) return()
+        p <- tryCatch(.lab_ynq_filters(), error = function(e) NULL)
+        if (!is.list(p)) return()
+        loc <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "zh-TW")
+        bridge <- tryCatch(
+          ynq_filters_to_lab_bridge(p, locale = loc),
+          error = function(e) NULL
+        )
+        if (!is.list(bridge)) return()
+        .lab_ynq_bridge_busy(TRUE)
+        on.exit(try(.lab_ynq_bridge_busy(FALSE), silent = TRUE), add = TRUE)
+        tryCatch(
+          shinyWidgets::updatePickerInput(
+            session, "lab_im_chains",
+            selected = as.character(bridge$lab_im_chains %||% character(0))
+          ),
+          error = function(e) NULL
+        )
+        tryCatch(
+          shinyWidgets::updatePickerInput(
+            session, "lab_im_industries",
+            selected = as.character(bridge$lab_im_industries %||% character(0))
+          ),
+          error = function(e) NULL
+        )
+        tryCatch(
+          updateCheckboxGroupInput(
+            session, "lab_im_methods",
+            selected = as.character(bridge$lab_im_methods %||% character(0))
+          ),
+          error = function(e) NULL
+        )
+        tryCatch(
+          updateCheckboxInput(session, "lab_im_eq_only", value = isTRUE(bridge$lab_im_eq_only)),
+          error = function(e) NULL
+        )
+        tryCatch(
+          updateCheckboxInput(session, "lab_im_gate_only", value = isTRUE(bridge$lab_im_gate_only)),
+          error = function(e) NULL
+        )
+        tryCatch(
+          updateCheckboxInput(session, "lab_im_no_alert", value = isTRUE(bridge$lab_im_no_alert)),
+          error = function(e) NULL
+        )
+        tryCatch(
+          updateCheckboxInput(session, "lab_im_include_adr", value = isTRUE(bridge$lab_im_include_adr)),
+          error = function(e) NULL
+        )
+      },
+      ignoreInit = TRUE
+    )
+  }
+
   # Coalesce Blue Chip picker locale refreshes so ZH/EN stays snappy during eval.
   .lab_im_locale_picker_gen <- reactiveVal(0L)
   .lab_im_schedule_picker_locale <- function(fn) {
@@ -19622,6 +19723,23 @@ server <- function(input, output, session) {
         updateCheckboxGroupInput(session, "lab_im_methods", selected = new_sel),
         error = function(e) NULL
       )
+      # Keep QueryConditions module groups aligned with lock / availability.
+      if (exists("ynq_lab_catalog", mode = "function")) {
+        cat0 <- tryCatch(ynq_lab_catalog(new_sel), error = function(e) NULL)
+        if (is.data.frame(cat0) && nrow(cat0)) {
+          for (grp in c("intrinsic", "justified", "multiples")) {
+            ids <- cat0$id[cat0$ui_group == grp]
+            tryCatch(
+              updateCheckboxGroupInput(
+                session,
+                paste0("lab_ynq-models_", grp),
+                selected = intersect(new_sel, ids)
+              ),
+              error = function(e) NULL
+            )
+          }
+        }
+      }
       session$sendCustomMessage(
         "ynowLabImMethodsLock",
         list(

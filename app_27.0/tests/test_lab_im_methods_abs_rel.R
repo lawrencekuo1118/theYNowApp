@@ -52,6 +52,10 @@ check("locale applyUiLocale abs/rel",
         grepl("lab_im_methods_abs_label", ui, fixed = TRUE) &&
         grepl("ynow_lab_im_methods_rel_label", ui, fixed = TRUE) &&
         grepl("lab_im_methods_rel_label", ui, fixed = TRUE))
+# QueryConditions module: visual Intrinsic/Justified/Multiples; bridge keeps Absolute/Relative.
+check("QueryConditions module embedded for Lab query UI",
+      grepl('ynq_query_ui\\(\\s*"lab_ynq"', ui) &&
+        grepl("ynow_lab_im_ynq_bridge", ui, fixed = TRUE))
 
 check("en Absolute / Relative",
       identical(ui_str("lab_im_methods_abs_label", "en"), "Absolute") &&
