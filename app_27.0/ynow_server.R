@@ -46,6 +46,30 @@ ynow_tab_priority_plan <- function(tab, ticker_tabs) {
   )
 }
 
+# Stock Prospecting first-open schedule: shell + snapshot first; stagger crawls.
+# Pure helper so Ranking paint is not serialized behind Industry mcap refresh.
+ynow_bluechip_first_load_plan <- function(has_ind_mcap_upside = FALSE,
+                                          snapshot_present = FALSE,
+                                          eval_busy = FALSE) {
+  has_upside <- isTRUE(has_ind_mcap_upside)
+  has_snap <- isTRUE(snapshot_present)
+  list(
+    ranking_eval_delay_s = 0.05,
+    # Prefer Ranking first paint. Snapshot paints immediately without a crawl.
+    ind_mcap_auto_delay_s = if (has_upside) {
+      2.5
+    } else if (has_snap) {
+      1.2
+    } else {
+      0.8
+    },
+    defer_ind_mcap_while_eval = TRUE,
+    eval_busy = isTRUE(eval_busy),
+    nest_cluster_until_subtab = TRUE,
+    nest_screener_until_subtab = TRUE
+  )
+}
+
 server <- function(input, output, session) {
   # iOS Safari drops the websocket during a long Lab Search; reconnect in-session
   # instead of forcing the user onto the gray "Disconnected / Reload" overlay.
@@ -4899,6 +4923,65 @@ server <- function(input, output, session) {
   .ynow_bluechip_mounted <- function() {
     tryCatch(isTRUE(.ynow_lazy_tab_ctrl$mounted("bluechip")), error = function(e) FALSE)
   }
+
+  # Nested Stock Prospecting subtabs: Clustering / Custom Screen mount once on select.
+  .ynow_bc_subtab_flags <- shiny::reactiveValues(cluster = FALSE, screener = FALSE)
+  .ynow_bc_subtab_cache <- new.env(parent = emptyenv())
+  output$ynow_lazy_host_bc_cluster <- shiny::renderUI({
+    shiny::req(isTRUE(.ynow_bc_subtab_flags$cluster))
+    if (is.null(.ynow_bc_subtab_cache$cluster)) {
+      .ynow_bc_subtab_cache$cluster <- tryCatch(
+        .ynow_page_ui_bluechip_cluster(),
+        error = function(e) {
+          htmltools::tags$div(
+            class = "alert alert-warning",
+            paste("Failed to load Clustering:", conditionMessage(e))
+          )
+        }
+      )
+    }
+    .ynow_bc_subtab_cache$cluster
+  })
+  output$ynow_lazy_host_bc_screener <- shiny::renderUI({
+    shiny::req(isTRUE(.ynow_bc_subtab_flags$screener))
+    if (is.null(.ynow_bc_subtab_cache$screener)) {
+      .ynow_bc_subtab_cache$screener <- tryCatch(
+        .ynow_page_ui_bluechip_screener(),
+        error = function(e) {
+          htmltools::tags$div(
+            class = "alert alert-warning",
+            paste("Failed to load Custom Screen:", conditionMessage(e))
+          )
+        }
+      )
+    }
+    .ynow_bc_subtab_cache$screener
+  })
+  observeEvent(
+    list(input$bluechip_im_report, input$sidebar_tabs, lazy_mount_nonce()),
+    {
+      if (!identical(as.character(input$sidebar_tabs %||% "")[1], "bluechip")) return()
+      if (!isTRUE(.ynow_bluechip_mounted())) return()
+      sub <- as.character(input$bluechip_im_report %||% "")[1]
+      if (identical(sub, "im_cluster") && !isTRUE(isolate(.ynow_bc_subtab_flags$cluster))) {
+        .ynow_bc_subtab_flags$cluster <- TRUE
+        lazy_mount_nonce(isolate(as.integer(lazy_mount_nonce()) %||% 0L) + 1L)
+        tryCatch(
+          .push_ui_locale(isolate(ui_locale()), sync_picker = FALSE),
+          error = function(e) NULL
+        )
+      }
+      if (identical(sub, "im_screener") && !isTRUE(isolate(.ynow_bc_subtab_flags$screener))) {
+        .ynow_bc_subtab_flags$screener <- TRUE
+        lazy_mount_nonce(isolate(as.integer(lazy_mount_nonce()) %||% 0L) + 1L)
+        tryCatch(
+          .push_ui_locale(isolate(ui_locale()), sync_picker = FALSE),
+          error = function(e) NULL
+        )
+      }
+    },
+    ignoreInit = TRUE
+  )
 
   # Banner right logo: soft-refresh the active sidebar tab only (no session$reload).
   .ynow_ticker_refresh_tabs <- c(
@@ -20426,7 +20509,8 @@ server <- function(input, output, session) {
   }, ignoreInit = TRUE, priority = 900)
 
   # Opening Blue Chip — or switching US⇄TW while already on Blue Chip —
-  # auto-starts the independent all-chains ind-mcap job (once per market arm).
+  # auto-starts the independent all-chains ind-mcap job (once per market arm),
+  # staggered after Ranking shell paint (see ynow_bluechip_first_load_plan).
   # market_mode_pick clears lab_im_ind_mcap_auto_armed; without market_mode()
   # here, TW would reload the mcap-only placeholder and never recompute upside.
   observeEvent(
@@ -20446,6 +20530,19 @@ server <- function(input, output, session) {
         normalize_market_mode(isolate(market_mode())),
         error = function(e) "US"
       )
+      snap0 <- tryCatch(isolate(lab_im_ind_mcap_snap()), error = function(e) NULL)
+      has_upside <- tryCatch(
+        lab_ind_mcap_snap_has_upside(snap0),
+        error = function(e) FALSE
+      )
+      has_snap <- is.data.frame(snap0) && nrow(snap0) > 0L
+      plan0 <- ynow_bluechip_first_load_plan(
+        has_ind_mcap_upside = has_upside,
+        snapshot_present = has_snap,
+        eval_busy = isTRUE(isolate(lab_im_eval_busy()))
+      )
+      delay_s <- as.numeric(plan0$ind_mcap_auto_delay_s %||% 0.8)[1]
+      if (!is.finite(delay_s) || delay_s < 0) delay_s <- 0.8
       session$onFlushed(function() {
         start_job <- function() {
           if (!identical(as.character(isolate(input$sidebar_tabs) %||% "")[1], "bluechip")) {
@@ -20461,10 +20558,17 @@ server <- function(input, output, session) {
             tryCatch(lab_im_ind_mcap_auto_armed(FALSE), error = function(e) NULL)
             return()
           }
+          # Prefer Ranking crawl first when both would contend the Starter worker.
+          if (isTRUE(isolate(lab_im_eval_busy())) &&
+              isTRUE(plan0$defer_ind_mcap_while_eval) &&
+              requireNamespace("later", quietly = TRUE)) {
+            later::later(start_job, delay = 0.75)
+            return()
+          }
           .lab_im_start_ind_mcap_job(reason = "tab_or_market", notify_busy = FALSE)
         }
         if (requireNamespace("later", quietly = TRUE)) {
-          later::later(start_job, delay = 0.05)
+          later::later(start_job, delay = delay_s)
         } else {
           start_job()
         }
@@ -20608,13 +20712,22 @@ server <- function(input, output, session) {
   output$lab_im_leaderboard <- DT::renderDT({
     req(identical(.ynow_sidebar_tab(), "bluechip"))
     loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+    # msg_col / Ajax keys: leave for sibling tn/7 DT fix — only swap cell copy here.
     msg_col <- if (identical(loc, "en")) "Message" else "訊息"
     scores <- lab_im_scores()
     rank_mode_lb <- lab_normalize_pool_rank_mode(input$lab_im_pool_rank %||% "mcap")
     concept_keys_lb <- as.character(input$lab_im_concepts %||% character(0))
     if (is.null(scores) || !is.data.frame(scores) || nrow(scores) == 0) {
-      msg <- tryCatch(ui_str("lab_im_lb_none", loc),
-                      error = function(e) "（尚無績優排行 — 請先按「搜尋績優股」）")
+      busy <- isTRUE(lab_im_eval_busy()) || isTRUE(lab_im_auto_start_armed())
+      msg <- if (isTRUE(busy)) {
+        tryCatch(
+          ui_str("lab_im_lb_busy", loc),
+          error = function(e) "(Stock Prospecting ranking in progress…)"
+        )
+      } else {
+        tryCatch(ui_str("lab_im_lb_none", loc),
+                 error = function(e) "（尚無績優排行 — 請先按「搜尋績優股」）")
+      }
       return(ynow_sortable_datatable(
         stats::setNames(data.frame(msg, stringsAsFactors = FALSE), msg_col),
         locale = loc

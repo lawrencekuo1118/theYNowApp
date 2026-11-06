@@ -1780,7 +1780,7 @@ beta_rolling_section_ui <- function() {
                     "顯示全部產業鏈（半導體／科技／金融…），排序用獨立抽樣評估樣本的 ",
                     "Σ(市值×年化估值漲幅)/Σ(市值)；總市值／檔數＝該產業鏈全宇宙個股（非搜尋 Top-N）。",
                     "排除未對應。與候選截斷、概念股、宇宙檔數 N、產業／模型篩選、品質門檻無關。",
-                    "開啟股海淘金會在背景自動重算；按「更新排名」可手動重算並寫入預設快照。"
+                    "開啟時先顯示預設快照；閒置後才背景重算。按「更新排名」可立即手動重算並寫入預設快照。"
                   )
                 ),
                 uiOutput("lab_im_ind_mcap_status"),
@@ -1906,7 +1906,7 @@ beta_rolling_section_ui <- function() {
                         "整體前十名：跨本次已評估產業依年化估值漲幅取 Top 10，並顯示產業欄。",
                         "選定產業前十名：所選產業內單一 Top 10；產業內排名自該產業第 1 名起算（非跨產業流水號）。",
                         "價值低估前十名：跨產業依推薦主模型合理價相對市價的總潛在漲幅（非年化）由大到小；只列仍被低估者。",
-                        "產業市值加權漲幅（全部產業鏈）在上方獨立區塊（預設快照；按「更新排名」可重算）。",
+                        "產業市值加權漲幅（全部產業鏈）在上方獨立區塊（預設快照優先；閒置後背景重算，或按「更新排名」）。",
                         "前十名只從合格者取最多 10 檔；合格不足 10 時不會湊滿。"
                       )
                     )
@@ -2123,213 +2123,20 @@ beta_rolling_section_ui <- function() {
               )
             ),
 
+            # Clustering + Custom Screen: nested lazy hosts (mount on subtab select).
             tabPanel(
               title = "分群",
               value = "im_cluster",
               icon = icon("project-diagram"),
-              # Light-blue Research Clustering Lab intro: blurb + disclaimer | Radar focus
               tags$div(
-                class = "ynow-lab-cluster-intro",
+                class = "ynow-bc-subtab-shell ynow-bc-cluster-shell",
                 tags$p(
-                  id = "ynow_lab_cluster_blurb",
-                  paste0(
-                    "研究用分群 Lab：僅以比率／成長率做 K-Means（不把金額放入模型），",
-                    "降低公司規模對距離的干擾。語意標籤為描述性啟發式，非買進／賣出訊號。"
-                  )
+                  id = "ynow_bc_cluster_shell_hint",
+                  class = "ynow-bc-subtab-shell-hint text-muted",
+                  style = "color:#888; font-size:12.5px; margin:8px 0;",
+                  "Loading Clustering…"
                 ),
-                tags$div(
-                  class = "ynow-lab-cluster-intro-footer",
-                  tags$p(
-                    id = "ynow_lab_cluster_disclaimer",
-                    "僅供研究／教育，非投資建議，亦非買進訊號。"
-                  ),
-                  tags$div(
-                    class = "ynow-lab-cluster-focus-run",
-                    tags$div(
-                      class = "ynow-sc-wrap ynow-ticker-typeahead ynow-lab-cluster-focus-wrap",
-                      textInput(
-                        "lab_cluster_focus",
-                        tags$span(id = "ynow_lab_cluster_focus_label", "Radar focus ticker"),
-                        value = "",
-                        width = "100%",
-                        placeholder = "e.g. AAPL / 2330"
-                      ),
-                      uiOutput("lab_cluster_focus_suggest_ui")
-                    ),
-                    tags$div(
-                      class = "ynow-lab-cluster-run-wrap",
-                      actionButton(
-                        "lab_cluster_run",
-                        tags$span(id = "ynow_lab_cluster_run_label", "執行分群"),
-                        icon = icon("object-ungroup"),
-                        class = "btn-success"
-                      )
-                    )
-                  )
-                )
-              ),
-              tags$hr(class = "ynow-lab-cluster-controls-hr"),
-              fluidRow(
-                class = "ynow-lab-cluster-controls",
-                column(
-                  width = 3,
-                  selectInput(
-                    "lab_cluster_mode",
-                    tags$span(id = "ynow_lab_cluster_mode_label", "分群模式"),
-                    choices = if (exists("lab_cluster_mode_choices", mode = "function")) {
-                      lab_cluster_mode_choices("zh-TW")
-                    } else {
-                      c(
-                        "K-Means（比率／成長率）" = "kmeans",
-                        "依 Beta（槓桿股權 β_L）" = "beta"
-                      )
-                    },
-                    selected = {
-                      m0 <- as.character(APP_DEFAULTS$lab_cluster_mode %||% "kmeans")[1]
-                      if (m0 %in% c("kmeans", "beta")) m0 else "kmeans"
-                    },
-                    width = "100%"
-                  )
-                ),
-                column(
-                  width = 2,
-                  conditionalPanel(
-                    condition = "input.lab_cluster_mode != 'beta'",
-                    numericInput(
-                      "lab_cluster_k",
-                      tags$span(id = "ynow_lab_cluster_k_label", "群數（k）"),
-                      value = APP_DEFAULTS$lab_cluster_k, min = 2, max = 8, step = 1, width = "100%"
-                    )
-                  )
-                ),
-                column(
-                  width = 3,
-                  conditionalPanel(
-                    condition = "input.lab_cluster_mode != 'beta'",
-                    selectInput(
-                      "lab_cluster_x",
-                      tags$span(id = "ynow_lab_cluster_x_label", "散點 X"),
-                      choices = if (exists("lab_cluster_axis_choices", mode = "function")) {
-                        lab_cluster_axis_choices("zh-TW")
-                      } else {
-                        c(
-                          "ROE" = "ROE",
-                          "Operating Margin" = "Operating_Margin",
-                          "Rev YoY" = "Rev_YoY",
-                          "OpInc YoY" = "OpInc_YoY",
-                          "Debt Ratio" = "Debt_Ratio",
-                          "Trailing P/E" = "PE_Ratio",
-                          "P/B" = "PB_Ratio",
-                          "Beta（槓桿 β_L）" = "Beta"
-                        )
-                      },
-                      selected = APP_DEFAULTS$lab_cluster_x,
-                      width = "100%"
-                    )
-                  ),
-                  conditionalPanel(
-                    condition = "input.lab_cluster_mode == 'beta'",
-                    selectInput(
-                      "lab_cluster_beta_membership",
-                      tags$span(id = "ynow_lab_cluster_beta_membership_label", "群組成員"),
-                      choices = if (exists("lab_cluster_beta_membership_choices", mode = "function")) {
-                        lab_cluster_beta_membership_choices("zh-TW")
-                      } else {
-                        c(
-                          "固定群組（截止月）" = "fixed",
-                          "逐期重分（當期分位）" = "dynamic"
-                        )
-                      },
-                      selected = {
-                        m0 <- as.character(APP_DEFAULTS$lab_cluster_beta_membership %||% "fixed")[1]
-                        if (m0 %in% c("fixed", "dynamic")) m0 else "fixed"
-                      },
-                      width = "100%"
-                    )
-                  )
-                ),
-                column(
-                  width = 3,
-                  conditionalPanel(
-                    condition = "input.lab_cluster_mode != 'beta'",
-                    selectInput(
-                      "lab_cluster_y",
-                      tags$span(id = "ynow_lab_cluster_y_label", "散點 Y"),
-                      choices = if (exists("lab_cluster_axis_choices", mode = "function")) {
-                        lab_cluster_axis_choices("zh-TW")
-                      } else {
-                        c(
-                          "ROE" = "ROE",
-                          "Operating Margin" = "Operating_Margin",
-                          "Rev YoY" = "Rev_YoY",
-                          "OpInc YoY" = "OpInc_YoY",
-                          "Debt Ratio" = "Debt_Ratio",
-                          "Trailing P/E" = "PE_Ratio",
-                          "P/B" = "PB_Ratio",
-                          "Beta（槓桿 β_L）" = "Beta"
-                        )
-                      },
-                      selected = APP_DEFAULTS$lab_cluster_y,
-                      width = "100%"
-                    )
-                  ),
-                  conditionalPanel(
-                    condition = "input.lab_cluster_mode == 'beta'",
-                    checkboxInput(
-                      "lab_cluster_beta_show_iqr",
-                      tags$span(id = "ynow_lab_cluster_beta_show_iqr_label", "顯示 Q25–Q75 帶狀"),
-                      value = isTRUE(APP_DEFAULTS$lab_cluster_beta_show_iqr)
-                    )
-                  )
-                )
-              ),
-              fluidRow(
-                column(
-                  width = 12,
-                  conditionalPanel(
-                    condition = "input.lab_cluster_mode == 'beta'",
-                    tags$p(
-                      id = "ynow_lab_cluster_beta_bins_help",
-                      style = "color:#666; font-size:12px; margin-top:-4px;",
-                      paste0(
-                        "Beta 模式（level）：K=3 等人數分位（低／中／高），非絕對切點。",
-                        "優先以 24 個月月報酬 OLS 估計槓桿 β_L；若月報酬不足則退回 Yahoo Summary「Beta（五年月資料）」。",
-                        "固定群組＝截止月成員回溯；逐期重分＝每月重排分位。非去槓桿 βᵤ，亦非可交易回測。"
-                      )
-                    )
-                  )
-                )
-              ),
-              tags$p(
-                id = "ynow_lab_cluster_hint",
-                style = "color:#888; font-size:12px;",
-                paste0(
-                  "沿用「排行」頁目前的產業／模型篩選（若有）。",
-                  "流程：宇宙池先依「候選截斷邏輯」全市排序／篩選（市值／概念股／近一年漲幅／隨機），",
-                  "再依所選「宇宙檔數（N）」作分群分析（非固定預設檔數）。",
-                  "Search 代號與雷達焦點代號（若有填寫）一律強制納入宇宙（N）；雷達焦點無預設代號。",
-                  "擷取 Yahoo 比率特徵；若 Yahoo 受限則改用內建離線快照。"
-                )
-              ),
-              fluidRow(
-                box(
-                  width = 7, status = "primary", solidHeader = TRUE,
-                  title = tags$span(id = "ynow_lab_cluster_map_title", "分群星團圖"),
-                  # renderUI destroys plotlyOutput when idle (empty plotly leaves stale widgets)
-                  uiOutput("lab_cluster_scatter_ui")
-                ),
-                box(
-                  width = 5, status = "info", solidHeader = TRUE,
-                  title = tags$span(id = "ynow_lab_cluster_radar_title", "同群雷達圖"),
-                  uiOutput("lab_cluster_radar_ui")
-                )
-              ),
-              fluidRow(
-                box(
-                  width = 12, status = "primary", solidHeader = TRUE,
-                  title = tags$span(id = "ynow_lab_cluster_table_title", "分群結果"),
-                  uiOutput("lab_cluster_table_ui")
-                )
+                uiOutput("ynow_lazy_host_bc_cluster")
               )
             ),
 
@@ -2337,14 +2144,238 @@ beta_rolling_section_ui <- function() {
               title = "自訂選股",
               value = "im_screener",
               icon = icon("filter"),
-              if (exists("screener_panel_ui", mode = "function")) {
-                screener_panel_ui(embed = "bluechip")
-              } else {
-                tags$p(id = "ynow_scr_missing", "Custom Screen unavailable.")
-              }
+              tags$div(
+                class = "ynow-bc-subtab-shell ynow-bc-screener-shell",
+                tags$p(
+                  id = "ynow_bc_screener_shell_hint",
+                  class = "ynow-bc-subtab-shell-hint text-muted",
+                  style = "color:#888; font-size:12.5px; margin:8px 0;",
+                  "Loading Custom Screen…"
+                ),
+                uiOutput("ynow_lazy_host_bc_screener")
+              )
             )
           )
   )
+}
+
+#' Nested lazy body for Stock Prospecting → Clustering (once per session).
+.ynow_page_ui_bluechip_cluster <- function() {
+  tagList(
+    # Light-blue Research Clustering Lab intro: blurb + disclaimer | Radar focus
+    tags$div(
+      class = "ynow-lab-cluster-intro",
+      tags$p(
+        id = "ynow_lab_cluster_blurb",
+        paste0(
+          "研究用分群 Lab：僅以比率／成長率做 K-Means（不把金額放入模型），",
+          "降低公司規模對距離的干擾。語意標籤為描述性啟發式，非買進／賣出訊號。"
+        )
+      ),
+      tags$div(
+        class = "ynow-lab-cluster-intro-footer",
+        tags$p(
+          id = "ynow_lab_cluster_disclaimer",
+          "僅供研究／教育，非投資建議，亦非買進訊號。"
+        ),
+        tags$div(
+          class = "ynow-lab-cluster-focus-run",
+          tags$div(
+            class = "ynow-sc-wrap ynow-ticker-typeahead ynow-lab-cluster-focus-wrap",
+            textInput(
+              "lab_cluster_focus",
+              tags$span(id = "ynow_lab_cluster_focus_label", "Radar focus ticker"),
+              value = "",
+              width = "100%",
+              placeholder = "e.g. AAPL / 2330"
+            ),
+            uiOutput("lab_cluster_focus_suggest_ui")
+          ),
+          tags$div(
+            class = "ynow-lab-cluster-run-wrap",
+            actionButton(
+              "lab_cluster_run",
+              tags$span(id = "ynow_lab_cluster_run_label", "執行分群"),
+              icon = icon("object-ungroup"),
+              class = "btn-success"
+            )
+          )
+        )
+      )
+    ),
+    tags$hr(class = "ynow-lab-cluster-controls-hr"),
+    fluidRow(
+      class = "ynow-lab-cluster-controls",
+      column(
+        width = 3,
+        selectInput(
+          "lab_cluster_mode",
+          tags$span(id = "ynow_lab_cluster_mode_label", "分群模式"),
+          choices = if (exists("lab_cluster_mode_choices", mode = "function")) {
+            lab_cluster_mode_choices("zh-TW")
+          } else {
+            c(
+              "K-Means（比率／成長率）" = "kmeans",
+              "依 Beta（槓桿股權 β_L）" = "beta"
+            )
+          },
+          selected = {
+            m0 <- as.character(APP_DEFAULTS$lab_cluster_mode %||% "kmeans")[1]
+            if (m0 %in% c("kmeans", "beta")) m0 else "kmeans"
+          },
+          width = "100%"
+        )
+      ),
+      column(
+        width = 2,
+        conditionalPanel(
+          condition = "input.lab_cluster_mode != 'beta'",
+          numericInput(
+            "lab_cluster_k",
+            tags$span(id = "ynow_lab_cluster_k_label", "群數（k）"),
+            value = APP_DEFAULTS$lab_cluster_k, min = 2, max = 8, step = 1, width = "100%"
+          )
+        )
+      ),
+      column(
+        width = 3,
+        conditionalPanel(
+          condition = "input.lab_cluster_mode != 'beta'",
+          selectInput(
+            "lab_cluster_x",
+            tags$span(id = "ynow_lab_cluster_x_label", "散點 X"),
+            choices = if (exists("lab_cluster_axis_choices", mode = "function")) {
+              lab_cluster_axis_choices("zh-TW")
+            } else {
+              c(
+                "ROE" = "ROE",
+                "Operating Margin" = "Operating_Margin",
+                "Rev YoY" = "Rev_YoY",
+                "OpInc YoY" = "OpInc_YoY",
+                "Debt Ratio" = "Debt_Ratio",
+                "Trailing P/E" = "PE_Ratio",
+                "P/B" = "PB_Ratio",
+                "Beta（槓桿 β_L）" = "Beta"
+              )
+            },
+            selected = APP_DEFAULTS$lab_cluster_x,
+            width = "100%"
+          )
+        ),
+        conditionalPanel(
+          condition = "input.lab_cluster_mode == 'beta'",
+          selectInput(
+            "lab_cluster_beta_membership",
+            tags$span(id = "ynow_lab_cluster_beta_membership_label", "群組成員"),
+            choices = if (exists("lab_cluster_beta_membership_choices", mode = "function")) {
+              lab_cluster_beta_membership_choices("zh-TW")
+            } else {
+              c(
+                "固定群組（截止月）" = "fixed",
+                "逐期重分（當期分位）" = "dynamic"
+              )
+            },
+            selected = {
+              m0 <- as.character(APP_DEFAULTS$lab_cluster_beta_membership %||% "fixed")[1]
+              if (m0 %in% c("fixed", "dynamic")) m0 else "fixed"
+            },
+            width = "100%"
+          )
+        )
+      ),
+      column(
+        width = 3,
+        conditionalPanel(
+          condition = "input.lab_cluster_mode != 'beta'",
+          selectInput(
+            "lab_cluster_y",
+            tags$span(id = "ynow_lab_cluster_y_label", "散點 Y"),
+            choices = if (exists("lab_cluster_axis_choices", mode = "function")) {
+              lab_cluster_axis_choices("zh-TW")
+            } else {
+              c(
+                "ROE" = "ROE",
+                "Operating Margin" = "Operating_Margin",
+                "Rev YoY" = "Rev_YoY",
+                "OpInc YoY" = "OpInc_YoY",
+                "Debt Ratio" = "Debt_Ratio",
+                "Trailing P/E" = "PE_Ratio",
+                "P/B" = "PB_Ratio",
+                "Beta（槓桿 β_L）" = "Beta"
+              )
+            },
+            selected = APP_DEFAULTS$lab_cluster_y,
+            width = "100%"
+          )
+        ),
+        conditionalPanel(
+          condition = "input.lab_cluster_mode == 'beta'",
+          checkboxInput(
+            "lab_cluster_beta_show_iqr",
+            tags$span(id = "ynow_lab_cluster_beta_show_iqr_label", "顯示 Q25–Q75 帶狀"),
+            value = isTRUE(APP_DEFAULTS$lab_cluster_beta_show_iqr)
+          )
+        )
+      )
+    ),
+    fluidRow(
+      column(
+        width = 12,
+        conditionalPanel(
+          condition = "input.lab_cluster_mode == 'beta'",
+          tags$p(
+            id = "ynow_lab_cluster_beta_bins_help",
+            style = "color:#666; font-size:12px; margin-top:-4px;",
+            paste0(
+              "Beta 模式（level）：K=3 等人數分位（低／中／高），非絕對切點。",
+              "優先以 24 個月月報酬 OLS 估計槓桿 β_L；若月報酬不足則退回 Yahoo Summary「Beta（五年月資料）」。",
+              "固定群組＝截止月成員回溯；逐期重分＝每月重排分位。非去槓桿 βᵤ，亦非可交易回測。"
+            )
+          )
+        )
+      )
+    ),
+    tags$p(
+      id = "ynow_lab_cluster_hint",
+      style = "color:#888; font-size:12px;",
+      paste0(
+        "沿用「排行」頁目前的產業／模型篩選（若有）。",
+        "流程：宇宙池先依「候選截斷邏輯」全市排序／篩選（市值／概念股／近一年漲幅／隨機），",
+        "再依所選「宇宙檔數（N）」作分群分析（非固定預設檔數）。",
+        "Search 代號與雷達焦點代號（若有填寫）一律強制納入宇宙（N）；雷達焦點無預設代號。",
+        "擷取 Yahoo 比率特徵；若 Yahoo 受限則改用內建離線快照。"
+      )
+    ),
+    fluidRow(
+      box(
+        width = 7, status = "primary", solidHeader = TRUE,
+        title = tags$span(id = "ynow_lab_cluster_map_title", "分群星團圖"),
+        # renderUI destroys plotlyOutput when idle (empty plotly leaves stale widgets)
+        uiOutput("lab_cluster_scatter_ui")
+      ),
+      box(
+        width = 5, status = "info", solidHeader = TRUE,
+        title = tags$span(id = "ynow_lab_cluster_radar_title", "同群雷達圖"),
+        uiOutput("lab_cluster_radar_ui")
+      )
+    ),
+    fluidRow(
+      box(
+        width = 12, status = "primary", solidHeader = TRUE,
+        title = tags$span(id = "ynow_lab_cluster_table_title", "分群結果"),
+        uiOutput("lab_cluster_table_ui")
+      )
+    )
+  )
+}
+
+#' Nested lazy body for Stock Prospecting → Custom Screen (once per session).
+.ynow_page_ui_bluechip_screener <- function() {
+  if (exists("screener_panel_ui", mode = "function")) {
+    screener_panel_ui(embed = "bluechip")
+  } else {
+    tags$p(id = "ynow_scr_missing", "Custom Screen unavailable.")
+  }
 }
 
 #' Lazy page body for tab `hfv` (mounted once per session).
@@ -13204,6 +13235,14 @@ ui <- dashboardPage(
             if (labIndMcapBadge && s.lab_im_ind_mcap_badge) labIndMcapBadge.textContent = s.lab_im_ind_mcap_badge;
             var labIndMcapHelp = document.getElementById('ynow_lab_im_ind_mcap_help');
             if (labIndMcapHelp && s.lab_im_ind_mcap_help) labIndMcapHelp.textContent = s.lab_im_ind_mcap_help;
+            var bcClusterShellHint = document.getElementById('ynow_bc_cluster_shell_hint');
+            if (bcClusterShellHint && s.bc_cluster_shell_hint) {
+              bcClusterShellHint.textContent = s.bc_cluster_shell_hint;
+            }
+            var bcScreenerShellHint = document.getElementById('ynow_bc_screener_shell_hint');
+            if (bcScreenerShellHint && s.bc_screener_shell_hint) {
+              bcScreenerShellHint.textContent = s.bc_screener_shell_hint;
+            }
             var labIndMcapTreemapLegend = document.getElementById('ynow_lab_im_ind_mcap_treemap_legend');
             if (labIndMcapTreemapLegend && s.lab_im_ind_mcap_treemap_legend) {
               labIndMcapTreemapLegend.textContent = s.lab_im_ind_mcap_treemap_legend;
@@ -16867,6 +16906,11 @@ ui <- dashboardPage(
           box-shadow: 0 0 0 4px rgba(243, 156, 18, 0.35) !important;
           border-radius: 4px;
           transition: box-shadow 0.2s ease;
+        }
+
+        /* Stock Prospecting nested subtab shells: hide hint once host mounts */
+        .ynow-bc-subtab-shell:has([id^="ynow_lazy_host_bc_"] > *) > .ynow-bc-subtab-shell-hint {
+          display: none;
         }
 
         /* g ≥ WACC／Ke: pulse Model Dashboard in the sidebar */

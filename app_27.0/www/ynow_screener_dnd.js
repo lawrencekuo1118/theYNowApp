@@ -368,7 +368,9 @@
     });
   }
   document.addEventListener('shiny:value', function (ev) {
-    if (ev && ev.target && ev.target.id && String(ev.target.id).indexOf('ynow_lazy_host_bluechip') === 0) {
+    var id = ev && ev.target && ev.target.id ? String(ev.target.id) : '';
+    if (id.indexOf('ynow_lazy_host_bluechip') === 0 ||
+        id.indexOf('ynow_lazy_host_bc_screener') === 0) {
       setTimeout(tryBoot, 0);
     }
   });
