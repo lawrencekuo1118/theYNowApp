@@ -245,7 +245,25 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   )
   testthat::expect_false(grepl("lab_cluster_focus", after_mode, fixed = TRUE))
   testthat::expect_true(grepl(
-    "@media \\(max-width: 767px\\)\\s*\\{\\s*\\.ynow-lab-cluster-intro-footer",
+    "@media \\(max-width: 767px\\)[\\s\\S]*?\\.ynow-lab-cluster-intro-footer",
+    txt,
+    perl = TRUE
+  ))
+  # Mobile Clustering: no decorative vertical gaps (space-between / flex-grow / fat hr)
+  testthat::expect_true(grepl("ynow-lab-cluster-controls-hr", txt, fixed = TRUE))
+  testthat::expect_true(grepl('class = "ynow-lab-cluster-controls"', txt, fixed = TRUE))
+  testthat::expect_true(grepl(
+    "\\.ynow-lab-cluster-intro-footer[\\s\\S]*?justify-content:\\s*flex-start",
+    txt,
+    perl = TRUE
+  ))
+  testthat::expect_true(grepl(
+    "\\.ynow-lab-cluster-intro-footer #ynow_lab_cluster_disclaimer[\\s\\S]*?flex:\\s*0 0 auto",
+    txt,
+    perl = TRUE
+  ))
+  testthat::expect_true(grepl(
+    "\\.ynow-lab-cluster-controls-hr[\\s\\S]*?margin:\\s*4px 0 6px",
     txt,
     perl = TRUE
   ))

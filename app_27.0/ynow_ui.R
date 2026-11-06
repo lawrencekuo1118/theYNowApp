@@ -2155,8 +2155,9 @@ beta_rolling_section_ui <- function() {
                   )
                 )
               ),
-              tags$hr(),
+              tags$hr(class = "ynow-lab-cluster-controls-hr"),
               fluidRow(
+                class = "ynow-lab-cluster-controls",
                 column(
                   width = 3,
                   selectInput(
@@ -16923,14 +16924,61 @@ ui <- dashboardPage(
           max-width: 280px;
           min-width: 0;
         }
+        .ynow-lab-cluster-controls-hr {
+          margin: 10px 0 12px;
+        }
+        /* Narrow: collapse decorative gaps between intro / Radar focus / controls */
         @media (max-width: 767px) {
+          .ynow-lab-cluster-intro {
+            padding: 10px 12px 8px;
+            margin: 0 0 4px 0;
+          }
+          .ynow-lab-cluster-intro > #ynow_lab_cluster_blurb {
+            margin: 0 0 4px 0;
+          }
           .ynow-lab-cluster-intro-footer {
             flex-direction: column;
             align-items: stretch;
+            justify-content: flex-start;
+            gap: 4px;
           }
-          .ynow-lab-cluster-intro-footer .ynow-lab-cluster-focus-wrap {
+          .ynow-lab-cluster-intro-footer #ynow_lab_cluster_disclaimer {
+            flex: 0 0 auto;
+            padding-bottom: 0;
+          }
+          .ynow-lab-cluster-intro-footer .ynow-lab-cluster-focus-wrap,
+          .ynow-lab-cluster-intro-footer .ynow-lab-cluster-focus-wrap.ynow-sc-wrap {
             max-width: none;
+            width: 100%;
+            flex: 0 0 auto;
             flex-basis: auto;
+          }
+          .ynow-lab-cluster-intro-footer .ynow-lab-cluster-focus-wrap .form-group {
+            margin-bottom: 0 !important;
+          }
+          .ynow-lab-cluster-intro-footer .ynow-lab-cluster-focus-wrap .shiny-html-output {
+            margin: 0;
+            padding: 0;
+            min-height: 0;
+            height: 0;
+            overflow: visible;
+          }
+          .ynow-lab-cluster-controls-hr {
+            margin: 4px 0 6px;
+          }
+          .ynow-lab-cluster-controls {
+            margin-left: 0;
+            margin-right: 0;
+          }
+          .ynow-lab-cluster-controls > .col-sm-2,
+          .ynow-lab-cluster-controls > .col-sm-3,
+          .ynow-lab-cluster-controls > .col-sm-12 {
+            padding-top: 0;
+            padding-bottom: 0;
+            margin-bottom: 0;
+          }
+          .ynow-lab-cluster-controls .form-group {
+            margin-bottom: 8px;
           }
         }
 
