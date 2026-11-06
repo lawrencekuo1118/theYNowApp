@@ -7,5 +7,5 @@ commit=d4e789cb537a58492d91113d712cef0ecdc943dc
 short=d4e789cb
 message=chore: bump display version to v28.13
 captured_at=2026-11-05T17:57:27Z
-display_version=v28.13
+display_version=v28.14
 note=Shipped v28.13 (+0.01) via deploy_app_21.R after #674 β_L clustering level mode (K=3 quantiles, fixed/dynamic). Live status=running; rsconnect deployments bundleId=12784408. App wave #674.
