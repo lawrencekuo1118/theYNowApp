@@ -217,10 +217,12 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
     txt,
     perl = TRUE
   ))
-  # Radar focus lives in the light-blue Clustering intro footer (not the controls row)
+  # Radar focus + Run clustering live in the light-blue Clustering intro footer
   testthat::expect_true(grepl("ynow-lab-cluster-intro", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-lab-cluster-intro-footer", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-lab-cluster-focus-wrap", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-lab-cluster-focus-run", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-lab-cluster-run-wrap", txt, fixed = TRUE))
   cluster_tab <- regmatches(
     txt,
     regexpr('value = "im_cluster"[\\s\\S]*?value = "im_screener"', txt, perl = TRUE)
@@ -230,13 +232,27 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(grepl("ynow-lab-cluster-intro", ct, fixed = TRUE))
   testthat::expect_true(grepl("ynow_lab_cluster_disclaimer", ct, fixed = TRUE))
   testthat::expect_true(grepl('textInput\\(\\s*"lab_cluster_focus"', ct, perl = TRUE))
-  # Focus input must appear before the mode/controls row (removed from Q25–Q75 / Membership side)
+  testthat::expect_true(grepl('actionButton\\(\\s*"lab_cluster_run"', ct, perl = TRUE))
+  # Focus + Run must appear before the mode/controls row (same intro focus-run row)
   focus_pos <- regexpr('textInput\\(\\s*"lab_cluster_focus"', ct, perl = TRUE)[1]
+  run_pos <- regexpr('actionButton\\(\\s*"lab_cluster_run"', ct, perl = TRUE)[1]
   mode_pos <- regexpr('selectInput\\(\\s*"lab_cluster_mode"', ct, perl = TRUE)[1]
   testthat::expect_true(is.finite(focus_pos) && focus_pos > 0)
+  testthat::expect_true(is.finite(run_pos) && run_pos > 0)
   testthat::expect_true(is.finite(mode_pos) && mode_pos > 0)
-  testthat::expect_true(focus_pos < mode_pos)
-  # Controls row after mode must not reintroduce focus
+  testthat::expect_true(focus_pos < run_pos)
+  testthat::expect_true(run_pos < mode_pos)
+  # Intro focus-run row: Run sits immediately after focus wrap (same parent)
+  focus_run_blk <- regmatches(
+    ct,
+    regexpr(
+      'class = "ynow-lab-cluster-focus-run"[\\s\\S]*?ynow-lab-cluster-run-wrap[\\s\\S]*?actionButton\\(\\s*"lab_cluster_run"',
+      ct,
+      perl = TRUE
+    )
+  )
+  testthat::expect_true(length(focus_run_blk) == 1L && nzchar(focus_run_blk[[1]]))
+  # Controls row after mode must not reintroduce focus or a second Run button
   after_mode <- sub(
     '^[\\s\\S]*?selectInput\\(\\s*"lab_cluster_mode"',
     "",
@@ -244,8 +260,20 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
     perl = TRUE
   )
   testthat::expect_false(grepl("lab_cluster_focus", after_mode, fixed = TRUE))
+  testthat::expect_false(grepl('actionButton\\(\\s*"lab_cluster_run"', after_mode, perl = TRUE))
   testthat::expect_true(grepl(
     "@media \\(max-width: 767px\\)[\\s\\S]*?\\.ynow-lab-cluster-intro-footer",
+    txt,
+    perl = TRUE
+  ))
+  testthat::expect_true(grepl(
+    "@media \\(max-width: 767px\\)[\\s\\S]*?\\.ynow-lab-cluster-focus-run",
+    txt,
+    perl = TRUE
+  ))
+  # Equal-height Run button beside Radar focus .form-control
+  testthat::expect_true(grepl(
+    "\\.ynow-lab-cluster-run-wrap[\\s\\S]*?height:\\s*34px",
     txt,
     perl = TRUE
   ))

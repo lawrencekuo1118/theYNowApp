@@ -2143,15 +2143,27 @@ beta_rolling_section_ui <- function() {
                     "僅供研究／教育，非投資建議，亦非買進訊號。"
                   ),
                   tags$div(
-                    class = "ynow-sc-wrap ynow-ticker-typeahead ynow-lab-cluster-focus-wrap",
-                    textInput(
-                      "lab_cluster_focus",
-                      tags$span(id = "ynow_lab_cluster_focus_label", "Radar focus ticker"),
-                      value = "",
-                      width = "100%",
-                      placeholder = "e.g. AAPL / 2330"
+                    class = "ynow-lab-cluster-focus-run",
+                    tags$div(
+                      class = "ynow-sc-wrap ynow-ticker-typeahead ynow-lab-cluster-focus-wrap",
+                      textInput(
+                        "lab_cluster_focus",
+                        tags$span(id = "ynow_lab_cluster_focus_label", "Radar focus ticker"),
+                        value = "",
+                        width = "100%",
+                        placeholder = "e.g. AAPL / 2330"
+                      ),
+                      uiOutput("lab_cluster_focus_suggest_ui")
                     ),
-                    uiOutput("lab_cluster_focus_suggest_ui")
+                    tags$div(
+                      class = "ynow-lab-cluster-run-wrap",
+                      actionButton(
+                        "lab_cluster_run",
+                        tags$span(id = "ynow_lab_cluster_run_label", "執行分群"),
+                        icon = icon("object-ungroup"),
+                        class = "btn-success"
+                      )
+                    )
                   )
                 )
               ),
@@ -2283,20 +2295,6 @@ beta_rolling_section_ui <- function() {
                         "優先以 24 個月月報酬 OLS 估計槓桿 β_L；若月報酬不足則退回 Yahoo Summary「Beta（五年月資料）」。",
                         "固定群組＝截止月成員回溯；逐期重分＝每月重排分位。非去槓桿 βᵤ，亦非可交易回測。"
                       )
-                    )
-                  )
-                )
-              ),
-              fluidRow(
-                column(
-                  width = 3,
-                  tags$div(
-                    style = "margin-top: 4px;",
-                    actionButton(
-                      "lab_cluster_run",
-                      tags$span(id = "ynow_lab_cluster_run_label", "執行分群"),
-                      icon = icon("object-ungroup"),
-                      class = "btn-success"
                     )
                   )
                 )
@@ -16891,7 +16889,7 @@ ui <- dashboardPage(
           50% { box-shadow: inset 0 0 0 9999px rgba(243, 156, 18, 0.32); }
         }
 
-        /* Research Clustering Lab intro: blurb + disclaimer | Radar focus ticker */
+        /* Research Clustering Lab intro: blurb + disclaimer | Radar focus + Run */
         .ynow-lab-cluster-intro {
           background: #d9edf7;
           border: 1px solid #bce8f1;
@@ -16918,16 +16916,42 @@ ui <- dashboardPage(
           min-width: 0;
           padding-bottom: 6px;
         }
+        .ynow-lab-cluster-focus-run {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: flex-end;
+          gap: 8px;
+          flex: 0 1 auto;
+          min-width: 0;
+          max-width: 100%;
+        }
         .ynow-lab-cluster-intro-footer .ynow-lab-cluster-focus-wrap {
-          flex: 0 1 280px;
+          flex: 1 1 180px;
           width: 100%;
           max-width: 280px;
           min-width: 0;
         }
+        .ynow-lab-cluster-intro-footer .ynow-lab-cluster-focus-wrap .form-group {
+          margin-bottom: 0;
+        }
+        .ynow-lab-cluster-run-wrap {
+          flex: 0 0 auto;
+          display: flex;
+          align-items: stretch;
+        }
+        /* Match Bootstrap 3 .form-control height beside Radar focus input */
+        .ynow-lab-cluster-run-wrap > .btn,
+        .ynow-lab-cluster-run-wrap > #lab_cluster_run {
+          height: 34px;
+          padding-top: 6px;
+          padding-bottom: 6px;
+          box-sizing: border-box;
+          white-space: nowrap;
+        }
         .ynow-lab-cluster-controls-hr {
           margin: 10px 0 12px;
         }
-        /* Narrow: collapse decorative gaps between intro / Radar focus / controls */
+        /* Narrow: collapse decorative gaps; focus+run stay row if they fit, else wrap */
         @media (max-width: 767px) {
           .ynow-lab-cluster-intro {
             padding: 10px 12px 8px;
@@ -16946,12 +16970,17 @@ ui <- dashboardPage(
             flex: 0 0 auto;
             padding-bottom: 0;
           }
+          .ynow-lab-cluster-focus-run {
+            width: 100%;
+            flex: 0 0 auto;
+            gap: 6px;
+          }
           .ynow-lab-cluster-intro-footer .ynow-lab-cluster-focus-wrap,
           .ynow-lab-cluster-intro-footer .ynow-lab-cluster-focus-wrap.ynow-sc-wrap {
             max-width: none;
-            width: 100%;
-            flex: 0 0 auto;
-            flex-basis: auto;
+            width: auto;
+            flex: 1 1 140px;
+            flex-basis: 140px;
           }
           .ynow-lab-cluster-intro-footer .ynow-lab-cluster-focus-wrap .form-group {
             margin-bottom: 0 !important;
@@ -16962,6 +16991,9 @@ ui <- dashboardPage(
             min-height: 0;
             height: 0;
             overflow: visible;
+          }
+          .ynow-lab-cluster-run-wrap {
+            flex: 0 0 auto;
           }
           .ynow-lab-cluster-controls-hr {
             margin: 4px 0 6px;
