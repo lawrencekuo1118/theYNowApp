@@ -2166,13 +2166,17 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Σ(market cap × annualized upside) / Σ(market cap) among independently sampled names. ",
       "Total market cap / Names = all tickers in that chain (full universe, not Search Top-N). ",
       "Unmapped is excluded. Independent of Candidate truncate, concepts, universe N, ",
-      "industry filters, models, and quality gates. Opening Stock Prospecting starts a background ",
-      "all-chains refresh; Refresh ranking rebuilds and saves the default snapshot."
+      "industry filters, models, and quality gates. Opening Stock Prospecting shows the default ",
+      "snapshot first; a background all-chains refresh runs after Ranking paint. ",
+      "Refresh ranking rebuilds and saves the default snapshot now."
     ),
     lab_im_ind_mcap_waiting = paste0(
-      "No default ranking yet. Opening Stock Prospecting starts a background all-chains compute, ",
-      "or press Refresh ranking to rebuild the full industry-chain table."
+      "No default ranking yet. A background all-chains compute starts after Ranking paint, ",
+      "or press Refresh ranking to rebuild the full industry-chain table now."
     ),
+    lab_im_lb_busy = "(Stock Prospecting ranking in progress…)",
+    bc_cluster_shell_hint = "Loading Clustering…",
+    bc_screener_shell_hint = "Loading Custom Screen…",
     lab_im_ind_mcap_empty = paste0(
       "No industry-chain row yet (qualified names %d / evaluated %d). ",
       "Press Refresh ranking to recompute all chains."
@@ -2184,8 +2188,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_ind_mcap_status_snap = paste0(
       "Default ranking: %d industry chains",
       "%s",
-      ". Opening Stock Prospecting refreshes all chains in the background; ",
-      "press Refresh ranking to recompute now."
+      ". Snapshot shows first; a background refresh follows Ranking paint. ",
+      "Press Refresh ranking to recompute now."
     ),
     lab_im_ind_mcap_status_no_upside = paste0(
       "Default ranking: %d industry chains",
@@ -2231,7 +2235,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Top 10 in selected industries: one Top 10 within chosen industries; Industry rank starts at 1 within each industry (not a cross-industry serial). ",
       "Most undervalued Top 10: across industries, by total valuation gap (primary-model FV vs price, not annualized); only names still undervalued (gap > 0). ",
       "Industry mcap-weighted upside (all industry chains) lives in the dedicated board above Candidate truncate ",
-      "(default snapshot; opening Stock Prospecting auto-refreshes all chains; press Refresh ranking for a manual rebuild). ",
+      "(default snapshot first; background refresh after Ranking paint; press Refresh ranking for a manual rebuild). ",
       "Top 10 takes at most 10 qualified names; shortfalls are not padded."
     ),
     lab_im_lb_status_ind_avg = paste0(
@@ -7120,12 +7124,16 @@ locale_for_market <- function(mode = get_market_mode()) {
       "顯示全部產業鏈（半導體／科技／金融…），排序用獨立抽樣評估樣本的 ",
       "Σ(市值×年化估值漲幅)/Σ(市值)；總市值／檔數＝該產業鏈全宇宙個股（非搜尋 Top-N）。",
       "排除未對應。與候選截斷、概念股、宇宙檔數 N、產業／模型篩選、品質門檻無關。",
-      "開啟股海淘金會在背景自動重算全部產業鏈；按「更新排名」可手動重算並寫入預設快照。"
+      "開啟時先顯示預設快照；排行頁面繪製後才背景重算全部產業鏈。",
+      "按「更新排名」可立即手動重算並寫入預設快照。"
     ),
     lab_im_ind_mcap_waiting = paste0(
-      "尚無預設排名。開啟股海淘金會在背景自動計算全部產業鏈，",
-      "或按「更新排名」手動重建清單。"
+      "尚無預設排名。排行頁面繪製後會在背景自動計算全部產業鏈，",
+      "或按「更新排名」立即手動重建清單。"
     ),
+    lab_im_lb_busy = "（績優排行計算中…）",
+    bc_cluster_shell_hint = "載入分群中…",
+    bc_screener_shell_hint = "載入自訂選股中…",
     lab_im_ind_mcap_empty = paste0(
       "尚無產業鏈列可顯示（合格檔 %d／已評估 %d）。",
       "請按「更新排名」重算全部產業鏈。"
@@ -7137,7 +7145,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_im_ind_mcap_status_snap = paste0(
       "預設排名：%d 條產業鏈",
       "%s",
-      "。開啟股海淘金會在背景自動重算全部產業鏈；",
+      "。先顯示快照；排行頁面繪製後才背景重算。",
       "按「更新排名」可立即手動重算。"
     ),
     lab_im_ind_mcap_status_no_upside = paste0(
@@ -7179,7 +7187,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "整體前十名：跨本次已評估產業依年化估值漲幅取 Top 10，並顯示產業欄。",
       "選定產業前十名：所選產業內單一 Top 10；產業內排名自該產業第 1 名起算（非跨產業流水號）。",
       "價值低估前十名：跨產業依推薦主模型合理價相對市價的總潛在漲幅（非年化）由大到小；只列仍被低估者。",
-      "產業市值加權漲幅（全部產業鏈）在上方獨立區塊（預設快照；開啟股海淘金會自動重算全部產業鏈；按「更新排名」可手動重建）。",
+      "產業市值加權漲幅（全部產業鏈）在上方獨立區塊（預設快照優先；排行繪製後背景重算；按「更新排名」可手動重建）。",
       "前十名只從合格者取最多 10 檔；合格不足 10 時不會湊滿。"
     ),
     lab_im_lb_status_ind_avg = paste0(
