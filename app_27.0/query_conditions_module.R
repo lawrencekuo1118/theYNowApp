@@ -243,10 +243,14 @@ ynq_query_ui <- function(id, catalog = ynq_lab_catalog(), embed = FALSE,
     .ynq-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
     /* Valuation models: each topic's checkboxes share one equal-height row;
        auto-fit wraps on narrow without clipping (min(100%, …) floor).
-       Bootstrap 3 checkboxes use position:absolute + margin-left:-20px with
-       label padding-left:20px. #690 set label to display:flex and padding:4px 0,
-       which cleared that gutter so NAV / Justified P/B bled past the card border.
-       Keep equal-height stretch; park the input in normal flex flow instead. */
+       Include ADRs / Earnings quality use Bootstrap 3: label padding-left 20px,
+       input position absolute, margin-left -20px, so the box sits on the label's
+       left edge and the text starts 20px in. #690 set display:flex and
+       padding:4px 0, which cleared that gutter and the -20px margin bled past
+       the card. padding-left:0 plus vertical centering then parked the box in
+       the middle of a stretched row, so wrapped labels (and the first line of
+       text) no longer matched those controls. Keep the stretch; put the box on
+       the label's left edge and on the first line, with the same 20px text gutter. */
     .ynq-optgroup .shiny-options-group{
       display:grid;
       grid-template-columns:repeat(auto-fit,minmax(min(100%,7.5rem),1fr));
@@ -256,6 +260,7 @@ ynq_query_ui <- function(id, catalog = ynq_lab_catalog(), embed = FALSE,
       min-width:0;
     }
     .ynq-optgroup .checkbox{
+      position:relative;
       margin-top:0;
       margin-bottom:0;
       min-width:0;
@@ -265,25 +270,26 @@ ynq_query_ui <- function(id, catalog = ynq_lab_catalog(), embed = FALSE,
       align-items:stretch;
     }
     .ynq-optgroup .checkbox input[type='checkbox']{
-      position:static;
+      position:absolute;
+      left:0;
+      top:4px;
       margin:0;
       flex-shrink:0;
-      align-self:center;
     }
     .ynq-optgroup .checkbox label{
+      position:relative;
       white-space:normal;
       overflow-wrap:anywhere;
       word-break:break-word;
       display:flex;
-      align-items:center;
-      gap:6px;
+      align-items:flex-start;
+      gap:0;
       width:100%;
       min-width:0;
       min-height:36px;
       height:100%;
       margin-bottom:0;
-      padding:4px 0;
-      padding-left:0;
+      padding:4px 0 4px 20px;
       box-sizing:border-box;
     }
     .ynq-optgroup .form-group{margin-bottom:0}
