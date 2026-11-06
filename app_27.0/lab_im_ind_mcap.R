@@ -53,6 +53,15 @@ lab_ind_mcap_chain_snapshot_empty <- function() {
   )
 }
 
+#' TRUE when a chain-rank snapshot has at least one finite mcap-weighted upside.
+lab_ind_mcap_snap_has_upside <- function(snap_df) {
+  if (is.null(snap_df) || !is.data.frame(snap_df) || nrow(snap_df) < 1L) {
+    return(FALSE)
+  }
+  if (!"wavg_cagr" %in% names(snap_df)) return(FALSE)
+  any(is.finite(suppressWarnings(as.numeric(snap_df$wavg_cagr))), na.rm = TRUE)
+}
+
 #' Load industry-chain rank snapshot (bundled default or prior 更新排名 result)
 lab_load_ind_mcap_chain_snapshot <- function(market = "US", force = FALSE) {
   mm <- tryCatch(
@@ -137,10 +146,7 @@ lab_save_ind_mcap_chain_snapshot <- function(snapshot, market = "US") {
   # so a failed / no-Yahoo refresh cannot wipe the shipped snapshot (all-NA wavg).
   opt <- getOption("ynow.ind_mcap_chain_snapshot", default = NULL)
   bundled <- file.path("data", sprintf("ind_mcap_chain_rank_snapshot_%s.csv", mm))
-  has_upside <- any(
-    is.finite(suppressWarnings(as.numeric(snap$wavg_cagr))),
-    na.rm = TRUE
-  )
+  has_upside <- lab_ind_mcap_snap_has_upside(snap)
   path <- if (!is.null(opt) && length(opt) >= 1L && nzchar(as.character(opt)[1])) {
     as.character(opt)[1]
   } else if (isTRUE(has_upside) && dir.exists("data") && file.access("data", 2) == 0L) {
@@ -641,13 +647,27 @@ lab_ind_mcap_treemap_plotly <- function(snap_df,
     return(empty_plot(msg))
   }
 
+  wavg <- suppressWarnings(as.numeric(df$wavg_cagr))
+  # Snapshot may ship mcap/names with all-NA upside (TW placeholder). Do not
+  # paint a grey "-" treemap — that looks like a draw bug; show empty-state.
+  if (!any(is.finite(wavg), na.rm = TRUE)) {
+    msg <- tryCatch(
+      ui_str("lab_im_ind_mcap_treemap_no_upside", loc),
+      error = function(e) if (identical(loc, "en")) {
+        "No mcap-weighted upside yet. Waiting for valuation samples, or press Refresh ranking."
+      } else {
+        "尚無市值加權估值漲幅。等待估值樣本，或按「更新排名」。"
+      }
+    )
+    return(empty_plot(msg))
+  }
+
   mcap <- suppressWarnings(as.numeric(df$total_mcap))
   # Tiny floor so zero/NA mcap chains still appear (全部產業).
   pos <- is.finite(mcap) & mcap > 0
   floor_v <- if (any(pos)) max(min(mcap[pos]) * 0.02, 1) else 1
   values <- ifelse(pos, mcap, floor_v)
 
-  wavg <- suppressWarnings(as.numeric(df$wavg_cagr))
   cabsm <- suppressWarnings(as.numeric(color_abs_max)[1])
   if (!is.finite(cabsm) || cabsm <= 0) cabsm <- 20
   # Magnitude-only type: |wavg| → font px; never keyed off values/area.
