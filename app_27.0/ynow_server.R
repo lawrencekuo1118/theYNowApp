@@ -19021,7 +19021,15 @@ server <- function(input, output, session) {
         ynq_lab_catalog(APP_DEFAULTS$lab_im_methods)
       } else {
         ynq_default_catalog()
-      }
+      },
+      # Blue Chip is lazy-mounted; re-push chain/sub choices after the host exists.
+      refresh_token = reactive({
+        lazy_mount_nonce()
+        isTRUE(.ynow_bluechip_mounted())
+      }),
+      locale = reactive({
+        tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+      })
     )
   } else {
     NULL

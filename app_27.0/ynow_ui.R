@@ -1944,8 +1944,9 @@ beta_rolling_section_ui <- function() {
                       exists("ynq_lab_catalog", mode = "function")) {
                     ynq_query_ui(
                       "lab_ynq",
-                      catalog = ynq_lab_catalog(APP_DEFAULTS$lab_im_methods),
-                      embed = TRUE
+                      catalog = ynq_lab_catalog(APP_DEFAULTS$lab_im_methods, locale = .bc_loc),
+                      embed = TRUE,
+                      locale = .bc_loc
                     )
                   } else {
                     tags$p(id = "ynow_ynq_missing", "Query conditions module unavailable.")

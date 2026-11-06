@@ -79,6 +79,25 @@ check("bridge maps __ALL__ chain to all picker chains", {
     !isTRUE(b$lab_im_include_adr)
 })
 
+check("ynq_chain_select_choices bakes picker chains (not only __ALL__)", {
+  ch <- ynq_chain_select_choices("en")
+  all_ch <- unname(as.character(lab_industry_chain_picker_choices("en")))
+  vals <- unname(as.character(ch))
+  labs <- names(ch)
+  mapped_labs <- labs[vals != ynq_all & vals != "未對應"]
+  length(ch) >= 2L &&
+    identical(vals[[1]], ynq_all) &&
+    all(all_ch %in% vals) &&
+    !any(grepl("[\u4e00-\u9fff]", mapped_labs))
+})
+
+check("ynq_lab_industry_tree non-empty", {
+  tree <- ynq_lab_industry_tree("en")
+  is.data.frame(tree) &&
+    nrow(tree) > 0L &&
+    all(c("chain", "subindustry") %in% names(tree))
+})
+
 check("ynq_assert_same_candidates passes on equal tickers", {
   a <- data.frame(ticker = c("A", "B"), stringsAsFactors = FALSE)
   b <- data.frame(ticker = c("B", "A"), stringsAsFactors = FALSE)
@@ -103,7 +122,8 @@ check("global sources query_conditions_module.R",
       grepl('source\\("query_conditions_module\\.R"', glb))
 check("UI embeds ynq_query_ui lab_ynq",
       grepl('ynq_query_ui\\(\\s*"lab_ynq"', ui) &&
-        grepl("embed\\s*=\\s*TRUE", ui))
+        grepl("embed\\s*=\\s*TRUE", ui) &&
+        grepl("locale\\s*=\\s*\\.bc_loc", ui))
 check("UI keeps bridge lab_im_methods helper",
       grepl("\\.lab_im_methods_filter_ui\\(APP_DEFAULTS\\$lab_im_methods\\)", ui))
 check("UI keeps TW boards outside module",
@@ -111,6 +131,11 @@ check("UI keeps TW boards outside module",
 check("server mounts ynq_query_server",
       grepl('ynq_query_server\\(\\s*"lab_ynq"', srv) &&
         grepl("ynq_filters_to_lab_bridge", srv, fixed = TRUE))
+check("server refresh_token wired for lazy Blue Chip remount", {
+  grepl("refresh_token\\s*=\\s*reactive", srv) &&
+    grepl("lazy_mount_nonce\\(\\)", srv) &&
+    grepl("\\.ynow_bluechip_mounted\\(\\)", srv)
+})
 check("lock JS also targets ynq wrap",
       grepl("lab_ynq-wrap", ui, fixed = TRUE) &&
         grepl("ynowLabImMethodsLock", ui, fixed = TRUE))
