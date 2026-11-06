@@ -1938,215 +1938,128 @@ beta_rolling_section_ui <- function() {
                     class = "ynow-lab-im-universe-row",
                     uiOutput("lab_im_universe_meta")
                   ),
-                  fluidRow(
-                    column(
-                      width = 6,
-                      class = "ynow-full-only",
-                      tags$div(
-                        class = "ynow-lab-im-industry-filters",
-                        shinyWidgets::pickerInput(
-                          "lab_im_chains",
-                          tags$span(id = "ynow_lab_im_chains_label", "產業鏈"),
-                          choices = lab_industry_chain_picker_choices(),
-                          selected = unname(lab_industry_chain_picker_choices()),
-                          multiple = TRUE,
-                          width = "100%",
-                          options = shinyWidgets::pickerOptions(
-                            actionsBox = TRUE,
-                            liveSearch = TRUE,
-                            selectedTextFormat = "count > 2",
-                            noneSelectedText = "全部產業鏈",
-                            size = 10,
-                            container = "body",
-                            dropupAuto = TRUE
-                          )
-                        ),
-                        tags$span(
-                          id = "ynow_lab_im_chains_hint",
-                          class = "ynow-lab-im-quality-hint",
-                          style = "display:block; color:#888; font-size:12px; margin:-2px 0 8px 0;",
-                          "上層：半導體／科技／金融…；未選＝全部產業鏈。"
-                        ),
-                        shinyWidgets::pickerInput(
-                          "lab_im_industries",
-                          tags$span(id = "ynow_lab_im_industries_label", "子產業"),
-                          choices = lab_industry_sub_picker_choices(),
-                          selected = unname(lab_industry_sub_picker_choices()),
-                          multiple = TRUE,
-                          width = "100%",
-                          options = shinyWidgets::pickerOptions(
-                            actionsBox = TRUE,
-                            liveSearch = TRUE,
-                            selectedTextFormat = "count > 2",
-                            noneSelectedText = "全部子產業",
-                            size = 10,
-                            container = "body",
-                            dropupAuto = TRUE
-                          )
-                        ),
-                        tags$span(
-                          id = "ynow_lab_im_industries_hint",
-                          class = "ynow-lab-im-quality-hint",
-                          style = "display:block; color:#888; font-size:12px; margin:-2px 0 8px 0;",
-                          "下層：依所選產業鏈列出子產業（如 IC 設計、晶圓代工）；未選＝該產業鏈下全部子產業。"
-                        )
+                  # Responsive QueryConditions module (visual). Hidden bridge inputs
+                  # keep the existing lab_im_* engine / lock / picker observers intact.
+                  if (exists("ynq_query_ui", mode = "function") &&
+                      exists("ynq_lab_catalog", mode = "function")) {
+                    ynq_query_ui(
+                      "lab_ynq",
+                      catalog = ynq_lab_catalog(APP_DEFAULTS$lab_im_methods),
+                      embed = TRUE
+                    )
+                  } else {
+                    tags$p(id = "ynow_ynq_missing", "Query conditions module unavailable.")
+                  },
+                  tags$div(
+                    class = "ynow-lab-im-boards ynow-tw-only",
+                    style = "margin:4px 0 10px 0;",
+                    checkboxGroupInput(
+                      "lab_im_boards",
+                      tags$span(id = "ynow_lab_im_boards_label", "板別"),
+                      choiceNames = list(
+                        tags$span(id = "ynow_lab_im_board_twse", "上市"),
+                        tags$span(id = "ynow_lab_im_board_tpex", "上櫃"),
+                        tags$span(id = "ynow_lab_im_board_esb", "興櫃")
                       ),
-                      tags$div(
-                        class = "ynow-lab-im-boards ynow-tw-only",
-                        style = "margin:8px 0 4px 0;",
-                        checkboxGroupInput(
-                          "lab_im_boards",
-                          tags$span(id = "ynow_lab_im_boards_label", "板別"),
-                          choiceNames = list(
-                            tags$span(id = "ynow_lab_im_board_twse", "上市"),
-                            tags$span(id = "ynow_lab_im_board_tpex", "上櫃"),
-                            tags$span(id = "ynow_lab_im_board_esb", "興櫃")
-                          ),
-                          choiceValues = list("TWSE", "TPEX", "ESB"),
-                          selected = APP_DEFAULTS$lab_im_boards,
-                          inline = TRUE
+                      choiceValues = list("TWSE", "TPEX", "ESB"),
+                      selected = APP_DEFAULTS$lab_im_boards,
+                      inline = TRUE
+                    ),
+                    tags$span(
+                      id = "ynow_lab_im_boards_hint",
+                      class = "ynow-lab-im-quality-hint ynow-full-only",
+                      style = "display:block; color:#888; font-size:12px; margin-top:-4px;",
+                      "複選上市／上櫃／興櫃；預設上市＋上櫃。興櫃資料覆蓋較不穩，勾選後才納入績優評估池。"
+                    )
+                  ),
+                  tags$div(
+                    class = "ynow-us-only",
+                    style = "margin:0 0 10px 0;",
+                    tags$div(
+                      class = "checkbox",
+                      tags$label(
+                        tags$input(
+                          id = "lab_im_us_listed_display",
+                          type = "checkbox",
+                          checked = "checked",
+                          disabled = "disabled"
                         ),
-                        tags$span(
-                          id = "ynow_lab_im_boards_hint",
-                          class = "ynow-lab-im-quality-hint ynow-full-only",
-                          style = "display:block; color:#888; font-size:12px; margin-top:-4px;",
-                          "複選上市／上櫃／興櫃；預設上市＋上櫃。興櫃資料覆蓋較不穩，勾選後才納入績優評估池。"
-                        )
-                      ),
-                      tags$div(
-                        class = "ynow-lab-im-methods",
-                        # Absolute (Fair Value + SOTP) vs Relative (Multiples families).
-                        # Same input id `lab_im_methods` — filter logic unchanged.
-                        .lab_im_methods_filter_ui(APP_DEFAULTS$lab_im_methods),
-                        tags$span(
-                          id = "ynow_lab_im_methods_locked_hint",
-                          class = "ynow-lab-im-quality-hint ynow-full-only",
-                          style = "display:block; color:#888; font-size:12px; margin-top:2px;",
-                          paste0(
-                            "若某評價模型未被任何個股列為主模型，則維持不勾選並鎖定。",
-                            "相對估值的企業價值、盈餘、營收、淨值，在該類被當成 Multiples 參照時才可勾選",
-                            "（樣式同美股 Listed）。「建議評價方法」表格列與此篩選列一致。"
-                          )
-                        )
+                        tags$span(id = "ynow_lab_im_us_listed_label", "上市")
                       )
                     ),
-                    column(
-                      width = 6,
-                      class = "ynow-lab-im-filter-col",
-                      # 盈餘品質｜Piotroski 高門檻｜無財報警訊：美／台股皆同列（Lite／Full 皆同）
-                      tags$div(
-                        class = "row ynow-lab-im-eq-gate-row",
-                        column(
-                          width = 4,
-                          class = "ynow-lab-im-eq-col",
-                          tags$div(
-                            class = "ynow-lab-im-quality",
-                            checkboxInput(
-                              "lab_im_eq_only",
-                              tags$span(id = "ynow_lab_im_eq_label", "盈餘品質"),
-                              value = isTRUE(APP_DEFAULTS$lab_im_eq_only)
-                            ),
-                            tags$span(
-                              id = "ynow_lab_im_eq_hint",
-                              class = "ynow-lab-im-quality-hint ynow-full-only",
-                              paste0(
-                                "預設不勾選：勾選後排行榜／明細只列盈餘品質通過者；",
-                                "維持不勾選則不過濾。合格不足 N 時不湊滿。"
-                              )
-                            )
-                          )
-                        ),
-                        column(
-                          width = 4,
-                          class = "ynow-lab-im-gate-col",
-                          tags$div(
-                            class = "ynow-lab-im-quality",
-                            checkboxInput(
-                              "lab_im_gate_only",
-                              tags$span(id = "ynow_lab_im_gate_label", "Piotroski 高門檻"),
-                              value = isTRUE(APP_DEFAULTS$lab_im_gate_only)
-                            ),
-                            tags$span(
-                              id = "ynow_lab_im_gate_hint",
-                              class = "ynow-lab-im-quality-hint ynow-full-only",
-                              paste0(
-                                "預設不勾選：勾選後前十名與明細只列 Piotroski F-Score≥7（品質檢核）者；",
-                                "維持不勾選則不設 F-Score 門檻。合格不足 N 或不足 10 時不會湊滿。"
-                              )
-                            )
-                          )
-                        ),
-                        column(
-                          width = 4,
-                          class = "ynow-lab-im-no-alert-col",
-                          tags$div(
-                            class = "ynow-lab-im-quality",
-                            checkboxInput(
-                              "lab_im_no_alert",
-                              tags$span(id = "ynow_lab_im_no_alert_label", "無財報警訊"),
-                              value = isTRUE(APP_DEFAULTS$lab_im_no_alert)
-                            ),
-                            tags$span(
-                              id = "ynow_lab_im_no_alert_hint",
-                              class = "ynow-lab-im-quality-hint ynow-full-only",
-                              paste0(
-                                "預設不勾選：勾選後排行榜／明細只列財報警訊為 0 者（Schilit 警示＋盈餘品質紅旗，",
-                                "與 YNOW「財報警訊」同一套定義）；維持不勾選則不過濾。合格不足 N 時不湊滿。"
-                              )
-                            )
-                          )
-                        )
-                      ),
-                      # 美股：僅「上市」＋含 ADR 同列並排（台股板別在左欄）
-                      tags$div(
-                        class = "row ynow-lab-im-us-listed-adr-row ynow-us-only",
-                        style = "margin-top:12px;",
-                        column(
-                          width = 6,
-                          class = "ynow-lab-im-us-listed-col",
-                          tags$div(
-                            class = "ynow-lab-im-quality ynow-lab-im-us-listed",
-                            # Fixed listed-only scope for US (primary listings); not user-togglable
-                            tags$div(
-                              class = "checkbox",
-                              tags$label(
-                                tags$input(
-                                  id = "lab_im_us_listed_display",
-                                  type = "checkbox",
-                                  checked = "checked",
-                                  disabled = "disabled"
-                                ),
-                                tags$span(id = "ynow_lab_im_us_listed_label", "上市")
-                              )
-                            ),
-                            tags$span(
-                              id = "ynow_lab_im_us_listed_hint",
-                              class = "ynow-lab-im-quality-hint ynow-full-only",
-                              "美股績優池僅含主要上市（Nasdaq／NYSE／NYSE American）。"
-                            )
-                          )
-                        ),
-                        column(
-                          width = 6,
-                          class = "ynow-lab-im-include-adr",
-                          tags$div(
-                            class = "ynow-lab-im-quality",
-                            checkboxInput(
-                              "lab_im_include_adr",
-                              tags$span(id = "ynow_lab_im_include_adr_label", "含 ADR"),
-                              value = isTRUE(APP_DEFAULTS$lab_im_include_adr)
-                            ),
-                            tags$span(
-                              id = "ynow_lab_im_include_adr_hint",
-                              class = "ynow-lab-im-quality-hint ynow-full-only",
-                              paste0(
-                                "預設勾選：評估池含美股上市 ADR／外國發行人；",
-                                "取消勾選則排除 ADR 後再套用候選截斷與宇宙檔數 N。"
-                              )
-                            )
-                          )
-                        )
+                    tags$span(
+                      id = "ynow_lab_im_us_listed_hint",
+                      class = "ynow-lab-im-quality-hint ynow-full-only",
+                      style = "display:block; color:#888; font-size:12px;",
+                      "美股績優池僅含主要上市（Nasdaq／NYSE／NYSE American）。"
+                    )
+                  ),
+                  # Bridge inputs (engine source of truth). Visually hidden; synced from lab_ynq.
+                  tags$div(
+                    id = "ynow_lab_im_ynq_bridge",
+                    class = "ynow-lab-im-ynq-bridge",
+                    style = "position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);",
+                    `aria-hidden` = "true",
+                    shinyWidgets::pickerInput(
+                      "lab_im_chains",
+                      tags$span(id = "ynow_lab_im_chains_label", "產業鏈"),
+                      choices = lab_industry_chain_picker_choices(),
+                      selected = unname(lab_industry_chain_picker_choices()),
+                      multiple = TRUE,
+                      width = "100%",
+                      options = shinyWidgets::pickerOptions(
+                        actionsBox = TRUE,
+                        liveSearch = TRUE,
+                        selectedTextFormat = "count > 2",
+                        noneSelectedText = "全部產業鏈",
+                        size = 10,
+                        container = "body",
+                        dropupAuto = TRUE
                       )
+                    ),
+                    tags$span(id = "ynow_lab_im_chains_hint", class = "ynow-lab-im-quality-hint", " "),
+                    shinyWidgets::pickerInput(
+                      "lab_im_industries",
+                      tags$span(id = "ynow_lab_im_industries_label", "子產業"),
+                      choices = lab_industry_sub_picker_choices(),
+                      selected = unname(lab_industry_sub_picker_choices()),
+                      multiple = TRUE,
+                      width = "100%",
+                      options = shinyWidgets::pickerOptions(
+                        actionsBox = TRUE,
+                        liveSearch = TRUE,
+                        selectedTextFormat = "count > 2",
+                        noneSelectedText = "全部子產業",
+                        size = 10,
+                        container = "body",
+                        dropupAuto = TRUE
+                      )
+                    ),
+                    tags$span(id = "ynow_lab_im_industries_hint", class = "ynow-lab-im-quality-hint", " "),
+                    tags$div(
+                      class = "ynow-lab-im-methods",
+                      # Absolute vs Relative taxonomy retained for lock JS / tests.
+                      .lab_im_methods_filter_ui(APP_DEFAULTS$lab_im_methods)
+                    ),
+                    checkboxInput(
+                      "lab_im_eq_only",
+                      tags$span("盈餘品質"),
+                      value = isTRUE(APP_DEFAULTS$lab_im_eq_only)
+                    ),
+                    checkboxInput(
+                      "lab_im_gate_only",
+                      tags$span("Piotroski 高門檻"),
+                      value = isTRUE(APP_DEFAULTS$lab_im_gate_only)
+                    ),
+                    checkboxInput(
+                      "lab_im_no_alert",
+                      tags$span("無財報警訊"),
+                      value = isTRUE(APP_DEFAULTS$lab_im_no_alert)
+                    ),
+                    checkboxInput(
+                      "lab_im_include_adr",
+                      tags$span("含 ADR"),
+                      value = isTRUE(APP_DEFAULTS$lab_im_include_adr)
                     )
                   ),
                   tags$div(
@@ -15429,29 +15342,39 @@ ui <- dashboardPage(
             /* Models filter: lock methods with no primary names (Listed-style disabled, unchecked). */
             addHandler('ynowLabImMethodsLock', function (payload) {
               var avail = (payload && payload.available) ? payload.available.map(String) : [];
-              var root = document.getElementById('lab_im_methods');
-              if (!root) return;
-              var inputs = root.querySelectorAll('input[type=checkbox]');
-              var changed = false;
-              inputs.forEach(function (el) {
-                var ok = avail.indexOf(String(el.value)) >= 0;
-                var label = el.closest('label');
-                if (label) label.classList.toggle('ynow-lab-im-method--locked', !ok);
-                if (!ok) {
-                  if (el.checked) {
-                    el.checked = false;
-                    changed = true;
+              var roots = [];
+              var bridge = document.getElementById('lab_im_methods');
+              if (bridge) roots.push(bridge);
+              var ynq = document.getElementById('lab_ynq-wrap') || document.querySelector('.ynq-wrap');
+              if (ynq) roots.push(ynq);
+              if (!roots.length) return;
+              roots.forEach(function (root) {
+                var inputs = root.querySelectorAll('input[type=checkbox]');
+                var changed = false;
+                inputs.forEach(function (el) {
+                  var val = String(el.value || '');
+                  /* Only lock model keys; skip quality / ADR checkboxes in ynq. */
+                  var known = (payload && payload.all) ? payload.all.map(String) : avail;
+                  if (known.length && known.indexOf(val) < 0) return;
+                  var ok = avail.indexOf(val) >= 0;
+                  var label = el.closest('label');
+                  if (label) label.classList.toggle('ynow-lab-im-method--locked', !ok);
+                  if (!ok) {
+                    if (el.checked) {
+                      el.checked = false;
+                      changed = true;
+                    }
+                    el.disabled = true;
+                    el.setAttribute('aria-disabled', 'true');
+                  } else {
+                    el.disabled = false;
+                    el.removeAttribute('aria-disabled');
                   }
-                  el.disabled = true;
-                  el.setAttribute('aria-disabled', 'true');
-                } else {
-                  el.disabled = false;
-                  el.removeAttribute('aria-disabled');
+                });
+                if (changed && window.Shiny && window.jQuery) {
+                  window.jQuery(root).trigger('change');
                 }
               });
-              if (changed && window.Shiny && Shiny.inputBindings) {
-                $(root).trigger('change');
-              }
             });
           }
           registerLocaleHandler();

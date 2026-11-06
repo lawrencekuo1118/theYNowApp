@@ -2375,6 +2375,48 @@ locale_for_market <- function(mode = get_market_mode()) {
       "(same disabled style as Listed). Rows in Suggested valuation methods match this filter."
     ),
     lab_im_query_title = "Query filters",
+    # QueryConditions module (responsive Lab query UI)
+    ynq_subtitle = "US valuation and fundamental filters",
+    ynq_pool_flag = "Primary listed universe",
+    ynq_sec_pool = "Universe settings",
+    ynq_sec_models = "Valuation models",
+    ynq_sec_quality = "Fundamental quality gates",
+    ynq_sec_results = "Filter results",
+    ynq_grp_intrinsic = "Intrinsic value",
+    ynq_grp_justified = "Justified multiples",
+    ynq_grp_multiples = "Market relative valuation",
+    ynq_help_pool_sum = "Market and industry filter notes",
+    ynq_help_pool_body = paste0(
+      "Primary-listing limits stay with the existing data sources and server rules. ",
+      "Sub-industries follow the selected industry chain; choosing none adds no extra restriction."
+    ),
+    ynq_help_models_sum = "Model applicability and filter rules",
+    ynq_help_models_body = paste0(
+      "This UI only changes display grouping. It does not change legacy absolute/relative paths, ",
+      "primary/secondary model logic, data requirements, or OR/AND rules."
+    ),
+    ynq_help_quality_sum = "Gate definitions and snapshot limits",
+    ynq_help_quality_body = paste0(
+      "Existing rules such as Piotroski F-Score ≥ 7, earnings quality, Schilit / FS alerts, ",
+      "and not padding shortfalls still run on the original server. ",
+      "A stale quality snapshot must not be treated as a pass."
+    ),
+    ynq_help_stats_sum = "Statistic scope notes",
+    ynq_help_stats_body = paste0(
+      "This module does not estimate name counts from UI choices alone. ",
+      "Pass counts from the existing universe, model-applicability, and quality-snapshot flow ",
+      "using the same definition."
+    ),
+    ynq_metric_universe = "Raw universe",
+    ynq_metric_market = "After industry / market",
+    ynq_metric_model = "After model fit",
+    ynq_metric_quality = "After quality gates",
+    ynq_snapshot_pending = paste0(
+      "Quality snapshot: pending update / coverage not confirmed. ",
+      "Post-quality counts are hidden for now."
+    ),
+    ynq_snapshot_ready = "Quality snapshot: updated",
+    ynq_snapshot_coverage = "coverage",
     btn_lab_im_download = "Download page report",
     lab_im_download_title = "Download current filters, summary, and detail (no re-evaluation)",
     btn_lab_im_refresh = "Refresh list",
@@ -7275,6 +7317,43 @@ locale_for_market <- function(mode = get_market_mode()) {
       "（樣式同美股 Listed）。「建議評價方法」表格列與此篩選列一致。"
     ),
     lab_im_query_title = "查詢條件",
+    # QueryConditions 模組（股海淘金查詢條件響應式 UI）
+    ynq_subtitle = "美股估值與基本面篩選",
+    ynq_pool_flag = "主要上市股票池",
+    ynq_sec_pool = "股票池設定",
+    ynq_sec_models = "估值模型",
+    ynq_sec_quality = "基本面品質門檻",
+    ynq_sec_results = "篩選結果",
+    ynq_grp_intrinsic = "內在價值",
+    ynq_grp_justified = "理論倍數",
+    ynq_grp_multiples = "市場相對估值",
+    ynq_help_pool_sum = "市場與產業篩選說明",
+    ynq_help_pool_body = paste0(
+      "主要上市的限制由既有資料來源及 Server 規則維持。",
+      "子產業依產業鏈提供選項；未選表示不額外限制。"
+    ),
+    ynq_help_models_sum = "模型適用條件與篩選規則",
+    ynq_help_models_body = paste0(
+      "本介面只改變顯示分類，不改變任何模型的舊有篩選群組、",
+      "主／副模型判斷、資料需求或 OR／AND 規則。"
+    ),
+    ynq_help_quality_sum = "門檻定義與快照限制",
+    ynq_help_quality_body = paste0(
+      "例如既有 Piotroski F-Score ≥ 7、盈餘品質、Schilit／財報警訊及樣本數不足時不湊滿等規則，",
+      "全部仍由原 Server 執行。未更新的品質快照不可視為通過。"
+    ),
+    ynq_help_stats_sum = "統計範圍說明",
+    ynq_help_stats_body = paste0(
+      "本模組不以 UI 選項自行估算檔數。",
+      "請由既有股票池、模型適用性與品質快照流程傳入同一基準的統計值。"
+    ),
+    ynq_metric_universe = "原始股票池",
+    ynq_metric_market = "產業與市場後",
+    ynq_metric_model = "模型適用後",
+    ynq_metric_quality = "品質門檻後",
+    ynq_snapshot_pending = "品質快照：待更新／未確認涵蓋率。品質門檻後的檔數暫不顯示。",
+    ynq_snapshot_ready = "品質快照：已更新",
+    ynq_snapshot_coverage = "涵蓋率",
     btn_lab_im_download = "下載本頁報告",
     lab_im_download_title = "下載目前篩選、摘要與明細（不必重新評估）",
     btn_lab_im_refresh = "更新名單",
