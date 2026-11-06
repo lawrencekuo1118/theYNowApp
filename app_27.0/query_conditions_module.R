@@ -241,9 +241,39 @@ ynq_query_ui <- function(id, catalog = ynq_lab_catalog(), embed = FALSE,
     .ynq-section-heading h3{margin:0;font-size:1.13rem;font-weight:700}
     .ynq-index{border-radius:8px;padding:4px 9px;background:#e6f2fb;color:#1269a3;font-size:.78rem;font-weight:800}
     .ynq-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
-    .ynq-optgroup .shiny-options-group{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 12px}
-    .ynq-optgroup .checkbox{margin-top:0;margin-bottom:0;min-width:0}
-    .ynq-optgroup .checkbox label{white-space:normal;overflow-wrap:anywhere;min-height:30px}
+    /* Valuation models: each topic's checkboxes share one equal-height row;
+       auto-fit wraps on narrow without clipping (min(100%, …) floor). */
+    .ynq-optgroup .shiny-options-group{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(min(100%,7.5rem),1fr));
+      gap:6px 12px;
+      align-items:stretch;
+      width:100%;
+      min-width:0;
+    }
+    .ynq-optgroup .checkbox{
+      margin-top:0;
+      margin-bottom:0;
+      min-width:0;
+      max-width:100%;
+      height:100%;
+      display:flex;
+      align-items:stretch;
+    }
+    .ynq-optgroup .checkbox label{
+      white-space:normal;
+      overflow-wrap:anywhere;
+      word-break:break-word;
+      display:flex;
+      align-items:center;
+      gap:6px;
+      width:100%;
+      min-height:36px;
+      height:100%;
+      margin-bottom:0;
+      padding:4px 0;
+      box-sizing:border-box;
+    }
     .ynq-optgroup .form-group{margin-bottom:0}
     .ynq-label{font-size:.9rem;font-weight:700;margin:6px 0 10px}
     .ynq-subgroup+.ynq-subgroup{border-top:1px solid #edf1f5;margin-top:12px;padding-top:12px}
@@ -264,12 +294,19 @@ ynq_query_ui <- function(id, catalog = ynq_lab_catalog(), embed = FALSE,
       .ynq-card{padding:14px 12px;border-radius:12px;margin-bottom:10px}
       .ynq-grid{grid-template-columns:minmax(0,1fr);gap:3px}
       .ynq-metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-      .ynq-optgroup .shiny-options-group{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+      .ynq-optgroup .shiny-options-group{
+        grid-template-columns:repeat(auto-fit,minmax(min(100%,6.5rem),1fr));
+        gap:8px;
+      }
       .ynq-header h2{font-size:1.32rem}
       .ynq-metric .ynq-num{font-size:1.14rem}
       .ynq-card select,.ynq-card input{max-width:100%}
     }
-    @media(max-width:360px){.ynq-optgroup .shiny-options-group{grid-template-columns:minmax(0,1fr)}}
+    @media(max-width:360px){
+      .ynq-optgroup .shiny-options-group{
+        grid-template-columns:minmax(0,1fr);
+      }
+    }
   "
 
   group_input <- function(group) {

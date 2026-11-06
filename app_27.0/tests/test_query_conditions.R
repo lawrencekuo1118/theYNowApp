@@ -162,6 +162,55 @@ check("Lite: pool/models/results marked full-only; quality stays open", {
     grepl('class = "ynq-card"', mod) # quality section without full-only on same card opener path
 })
 
+# Valuation models checkboxes: one equal-height row per topic; wrap without clip.
+check("model optgroup uses auto-fit equal-height row grid", {
+  grepl(
+    "\\.ynq-optgroup \\.shiny-options-group\\{[\\s\\S]*?grid-template-columns:repeat\\(auto-fit,minmax\\(min\\(100%,7\\.5rem\\),1fr\\)\\)",
+    mod,
+    perl = TRUE
+  ) &&
+    grepl(
+      "\\.ynq-optgroup \\.shiny-options-group\\{[\\s\\S]*?align-items:stretch",
+      mod,
+      perl = TRUE
+    ) &&
+    !grepl(
+      "\\.ynq-optgroup \\.shiny-options-group\\{display:grid;grid-template-columns:repeat\\(2,",
+      mod,
+      fixed = FALSE
+    )
+})
+check("model checkbox labels stretch to equal height", {
+  grepl(
+    "\\.ynq-optgroup \\.checkbox label\\{[\\s\\S]*?height:100%",
+    mod,
+    perl = TRUE
+  ) &&
+    grepl(
+      "\\.ynq-optgroup \\.checkbox label\\{[\\s\\S]*?overflow-wrap:anywhere",
+      mod,
+      perl = TRUE
+    )
+})
+check("narrow viewport still wraps model checkboxes", {
+  grepl(
+    "@media\\(max-width:640px\\)\\{[\\s\\S]*?\\.ynq-optgroup \\.shiny-options-group\\{[\\s\\S]*?auto-fit,minmax\\(min\\(100%,6\\.5rem\\)",
+    mod,
+    perl = TRUE
+  ) &&
+    grepl(
+      "@media\\(max-width:360px\\)\\{[\\s\\S]*?grid-template-columns:minmax\\(0,1fr\\)",
+      mod,
+      perl = TRUE
+    )
+})
+check("Valuation models still has Intrinsic/Justified/Multiples topics", {
+  grepl('group_input\\("intrinsic"\\)', mod) &&
+    grepl('group_input\\("justified"\\)', mod) &&
+    grepl('group_input\\("multiples"\\)', mod) &&
+    grepl("ynq_sec_models", mod, fixed = TRUE)
+})
+
 if (fail > 0L) {
   cat("FAILED ", fail, " check(s)\n", sep = "")
   quit(status = 1L)
