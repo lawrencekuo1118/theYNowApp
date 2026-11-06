@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12786356
+bundleId=12786461
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/  # pragma: allowlist secret
-aligned_git=c9a9d2e4f49a6c703aa12ae8e7721c21b328efff
-commit=c9a9d2e4f49a6c703aa12ae8e7721c21b328efff
-short=c9a9d2e4
-message=chore: bump display version to v28.16
-captured_at=2026-11-06T04:53:20Z
-display_version=v28.16
-note=Shipped v28.16 (+0.01) via deploy_app_21.R after #681 TW mcap upside treemap re-arm job + empty-state. Live status=running; rsconnect deployments bundleId=12786356. App wave #681. Prior tip v28.15=#680 bundle 12786341.
+aligned_git=e4775bebb1bfde871e80341e9f3ae4b50cb6f27e
+commit=e4775bebb1bfde871e80341e9f3ae4b50cb6f27e
+short=e4775beb
+message=chore: bump display version to v28.17
+captured_at=2026-11-06T05:53:53Z
+display_version=v28.17
+note=Shipped v28.17 (+0.01) via deploy_app_21.R after #684 Clustering plot gate → bluechip (blank map/radar/table). Live status=running; rsconnect deployments bundleId=12786461. App wave #684.
