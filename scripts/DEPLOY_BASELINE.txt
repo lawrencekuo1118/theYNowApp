@@ -7,5 +7,5 @@ commit=af0d871bbe14a33900e4721f7d7665a6369336e1
 short=af0d871b
 message=chore: bump display version to v28.15
 captured_at=2026-11-06T04:46:34Z
-display_version=v28.15
+display_version=v28.16
 note=Shipped v28.15 (+0.01) via deploy_app_21.R after #680 Radar focus ticker into Clustering Lab intro box. Live status=running; rsconnect deployments bundleId=12786341. App wave #680.
