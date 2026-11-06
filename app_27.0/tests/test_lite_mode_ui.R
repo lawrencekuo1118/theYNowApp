@@ -766,8 +766,11 @@ testthat::expect_true(grepl(
   testthat::expect_true(grepl('"lab_im_chains"', txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_lab_im_chains_label", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_lab_im_industries_label", txt, fixed = TRUE))
-  testthat::expect_true(grepl("ynow-lab-im-industry-filters", txt, fixed = TRUE))
-  testthat::expect_true(grepl("ynow-lab-im-us-listed-adr-row ynow-us-only", txt, fixed = TRUE))
+  # Post-#686: industry pickers live in QueryConditions (lab_ynq) + hidden bridge
+  testthat::expect_true(grepl('ynq_query_ui\\(\\s*"lab_ynq"', txt, perl = TRUE))
+  testthat::expect_true(grepl("ynow_lab_im_ynq_bridge", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-us-only", txt, fixed = TRUE))
+  testthat::expect_true(grepl("lab_im_us_listed_display", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_lab_im_us_listed_label", txt, fixed = TRUE))
   testthat::expect_true(grepl("body.ynow-market-tw .ynow-us-only", txt, fixed = TRUE))
   testthat::expect_true(grepl("body:not(.ynow-market-tw) .ynow-tw-only", txt, fixed = TRUE))
