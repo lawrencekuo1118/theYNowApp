@@ -22,10 +22,11 @@ Thumbs.db
 *.tar.gz
 *.pdf
 .positai
-.cursor/
-# Project-local agent skills must be versioned (formal verify, etc.).
+# Ignore .cursor contents; keep skills + Cloud Agent environment.json versioned.
+.cursor/*
 !.cursor/skills/
 !.cursor/skills/**/
+!.cursor/environment.json
 audit_logs/
 
 # Local secrets — never commit

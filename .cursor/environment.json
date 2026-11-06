@@ -1,0 +1,4 @@
+{
+  "install": "[ ! -d /agent/repos/theYNowApp ] || cd /agent/repos/theYNowApp || exit $?\nbash scripts/cloud-agent-install.sh",
+  "start": "[ ! -d /agent/repos/theYNowApp ] || cd /agent/repos/theYNowApp || exit $?\nbash scripts/cloud-agent-start.sh"
+}
