@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12787599
+bundleId=12787812
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/  # pragma: allowlist secret
-aligned_git=836c209958720c6e0dde7753453d4ca68b1b21bd
-commit=836c209958720c6e0dde7753453d4ca68b1b21bd
-short=836c2099
-message=chore: bump display version to v28.22
-captured_at=2026-11-06T12:51:48Z
-display_version=v28.22
-note=Shipped v28.22 (+0.01) via deploy_app_21.R after #690 Valuation models checkboxes same-row equal height. Live status=running; rsconnect deployments bundleId=12787599. App wave #690 (includes prior #694 Industry chain on master).
+aligned_git=420301717d6c2dd70be8675d7e3223c076bed007
+commit=420301717d6c2dd70be8675d7e3223c076bed007
+short=42030171
+message=chore: bump display version to v28.23
+captured_at=2026-11-06T14:22:45Z
+display_version=v28.23
+note=Shipped v28.23 (+0.01) via deploy_app_21.R after #697 Valuation checkbox overflow + #698 Run clustering horizontal beside Radar. Live status=running; rsconnect deployments bundleId=12787812. #699 left-align was still open at ship time (coordinator tips next).
