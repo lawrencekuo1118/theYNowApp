@@ -245,7 +245,25 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   )
   testthat::expect_false(grepl("lab_cluster_focus", after_mode, fixed = TRUE))
   testthat::expect_true(grepl(
-    "@media \\(max-width: 767px\\)\\s*\\{\\s*\\.ynow-lab-cluster-intro-footer",
+    "@media \\(max-width: 767px\\)[\\s\\S]*?\\.ynow-lab-cluster-intro-footer",
+    txt,
+    perl = TRUE
+  ))
+  # Mobile Clustering: no decorative vertical gaps (space-between / flex-grow / fat hr)
+  testthat::expect_true(grepl("ynow-lab-cluster-controls-hr", txt, fixed = TRUE))
+  testthat::expect_true(grepl('class = "ynow-lab-cluster-controls"', txt, fixed = TRUE))
+  testthat::expect_true(grepl(
+    "\\.ynow-lab-cluster-intro-footer[\\s\\S]*?justify-content:\\s*flex-start",
+    txt,
+    perl = TRUE
+  ))
+  testthat::expect_true(grepl(
+    "\\.ynow-lab-cluster-intro-footer #ynow_lab_cluster_disclaimer[\\s\\S]*?flex:\\s*0 0 auto",
+    txt,
+    perl = TRUE
+  ))
+  testthat::expect_true(grepl(
+    "\\.ynow-lab-cluster-controls-hr[\\s\\S]*?margin:\\s*4px 0 6px",
     txt,
     perl = TRUE
   ))
@@ -748,8 +766,11 @@ testthat::expect_true(grepl(
   testthat::expect_true(grepl('"lab_im_chains"', txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_lab_im_chains_label", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_lab_im_industries_label", txt, fixed = TRUE))
-  testthat::expect_true(grepl("ynow-lab-im-industry-filters", txt, fixed = TRUE))
-  testthat::expect_true(grepl("ynow-lab-im-us-listed-adr-row ynow-us-only", txt, fixed = TRUE))
+  # Post-#686: industry pickers live in QueryConditions (lab_ynq) + hidden bridge
+  testthat::expect_true(grepl('ynq_query_ui\\(\\s*"lab_ynq"', txt, perl = TRUE))
+  testthat::expect_true(grepl("ynow_lab_im_ynq_bridge", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-us-only", txt, fixed = TRUE))
+  testthat::expect_true(grepl("lab_im_us_listed_display", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_lab_im_us_listed_label", txt, fixed = TRUE))
   testthat::expect_true(grepl("body.ynow-market-tw .ynow-us-only", txt, fixed = TRUE))
   testthat::expect_true(grepl("body:not(.ynow-market-tw) .ynow-tw-only", txt, fixed = TRUE))
