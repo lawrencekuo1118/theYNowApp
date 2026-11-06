@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12787599
+bundleId=12787927
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/  # pragma: allowlist secret
-aligned_git=836c209958720c6e0dde7753453d4ca68b1b21bd
-commit=836c209958720c6e0dde7753453d4ca68b1b21bd
-short=836c2099
-message=chore: bump display version to v28.22
-captured_at=2026-11-06T12:51:48Z
-display_version=v28.22
-note=Shipped v28.22 (+0.01) via deploy_app_21.R after #690 Valuation models checkboxes same-row equal height. Live status=running; rsconnect deployments bundleId=12787599. App wave #690 (includes prior #694 Industry chain on master).
+aligned_git=6d25f0d058d9de5de03cdb20cb352a7960f77482
+commit=6d25f0d058d9de5de03cdb20cb352a7960f77482
+short=6d25f0d0
+message=chore: bump display version to v28.24
+captured_at=2026-11-06T14:31:16Z
+display_version=v28.24
+note=Shipped v28.24 (+0.01) via deploy_app_21.R after #699 Valuation checkbox left-align to Include ADRs. Live status=running; rsconnect deployments bundleId=12787927. Prior tip v28.23 was #697+#698 (bundle 12787812). #700 shell-first Prospecting tip-shipped next.
