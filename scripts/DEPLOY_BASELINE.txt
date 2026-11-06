@@ -7,5 +7,5 @@ commit=c9a9d2e4f49a6c703aa12ae8e7721c21b328efff
 short=c9a9d2e4
 message=chore: bump display version to v28.16
 captured_at=2026-11-06T04:53:20Z
-display_version=v28.16
+display_version=v28.17
 note=Shipped v28.16 (+0.01) via deploy_app_21.R after #681 TW mcap upside treemap re-arm job + empty-state. Live status=running; rsconnect deployments bundleId=12786356. App wave #681. Prior tip v28.15=#680 bundle 12786341.
