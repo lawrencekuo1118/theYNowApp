@@ -282,8 +282,18 @@ check("server refresh observeEvent", grepl("observeEvent\\(input\\$lab_im_refres
 check("server has independent ind-mcap job", grepl("lab_im_run_ind_mcap_job", srv, fixed = TRUE))
 check("server start helper ignores page filters", grepl("\\.lab_im_start_ind_mcap_job", srv) &&
         grepl("ignore page boards / industry / methods filters", srv, fixed = TRUE) &&
-        grepl("boards = c(\"TWSE\", \"TPEX\")", srv, fixed = TRUE) &&
+        grepl("catlg = NULL", srv, fixed = TRUE) &&
         grepl("per_chain = 2L", srv, fixed = TRUE))
+# Full-market boards live in the job when catlg is NULL (off session thread).
+check("ind-mcap job builds catalog for NULL catlg", {
+  lab_src <- paste(
+    readLines(file.path(app_dir, "lab_im_ind_mcap.R"), warn = FALSE, encoding = "UTF-8"),
+    collapse = "\n"
+  )
+  grepl("is.null\\(catlg\\)", lab_src) &&
+    grepl("boards = c(\"TWSE\", \"TPEX\")", lab_src, fixed = TRUE) &&
+    grepl("lab_build_industry_method_catalog", lab_src, fixed = TRUE)
+})
 check("server auto-start re-arms on market_mode switch", {
   grepl("list(input$sidebar_tabs, lazy_mount_nonce(), market_mode())", srv, fixed = TRUE) &&
     grepl("lab_im_ind_mcap_auto_armed(FALSE)", srv, fixed = TRUE) &&
@@ -530,8 +540,8 @@ check("help mentions Refresh ranking", grepl("Refresh ranking", ui_str("lab_im_i
 check("help mentions Stock Prospecting auto-start (en)",
       grepl("Opening Stock Prospecting", ui_str("lab_im_ind_mcap_help", "en"), fixed = TRUE))
 check("help mentions tab auto-start (zh-TW)",
-      grepl("開啟股海淘金會在背景自動重算全部產業鏈",
-            ui_str("lab_im_ind_mcap_help", "zh-TW"), fixed = TRUE))
+      grepl("開啟時先顯示預設快照", ui_str("lab_im_ind_mcap_help", "zh-TW"), fixed = TRUE) &&
+        grepl("背景重算全部產業鏈", ui_str("lab_im_ind_mcap_help", "zh-TW"), fixed = TRUE))
 
 cat("\nPASS ", pass, "  FAIL ", fail, "\n", sep = "")
 if (fail > 0L) quit(status = 1L)

@@ -221,6 +221,24 @@ check(
   identical(ajax_keys_zh_session, ajax_keys_en_session)
 )
 
+# First-load race guards (tn/7 on Table_3 / Table_4): do not rebuild the
+# industry DT on busy flips or duplicate snapshot assigns; catalog off session.
+check(
+  "ind-mcap board isolates busy (no DT rebuild on job arm)",
+  grepl("isolate(lab_im_ind_mcap_busy())", srv, fixed = TRUE) &&
+    grepl("Isolate busy:", srv, fixed = TRUE)
+)
+check(
+  "ind-mcap snap assign skips unchanged fingerprint",
+  grepl(".lab_im_ind_mcap_set_snap_if_changed", srv, fixed = TRUE) &&
+    grepl(".lab_im_ind_mcap_snap_fp", srv, fixed = TRUE)
+)
+check(
+  "ind-mcap start passes catlg=NULL (build in worker)",
+  grepl("catlg = NULL", srv, fixed = TRUE) &&
+    grepl("can keep answering DT server=TRUE dataobj", srv, fixed = TRUE)
+)
+
 # Optional DT widget smoke — not required for default offline static path
 if (requireNamespace("DT", quietly = TRUE)) {
   owd <- getwd()

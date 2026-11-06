@@ -1008,6 +1008,10 @@ lab_build_ind_mcap_chain_snapshot <- function(merged_df,
 #' evaluates FV upside, builds + saves the default snapshot.
 #'
 #' Pure inputs only (safe for ExtendedTask / future workers).
+#'
+#' Pass `catlg = NULL` to build the full-market catalog **inside** the worker
+#' (keeps the Shiny session thread free to answer DT `dataobj` Ajax). An empty
+#' data.frame still means fail-fast `empty_catalog` (offline tests / callers).
 lab_im_run_ind_mcap_job <- function(catlg,
                                     market_mode = "US",
                                     locale = "zh-TW",
@@ -1032,6 +1036,19 @@ lab_im_run_ind_mcap_job <- function(catlg,
     )
   }
 
+  # NULL = build off the session thread (ExtendedTask). Empty df = explicit miss.
+  if (is.null(catlg)) {
+    if (!exists("lab_build_industry_method_catalog", mode = "function")) {
+      return(empty_out("empty_catalog"))
+    }
+    catlg <- tryCatch(
+      lab_build_industry_method_catalog(
+        market_mode = mm,
+        boards = c("TWSE", "TPEX")
+      ),
+      error = function(e) NULL
+    )
+  }
   if (!is.data.frame(catlg) || nrow(catlg) < 1L) {
     return(empty_out("empty_catalog"))
   }
