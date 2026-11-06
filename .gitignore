@@ -26,6 +26,8 @@ Thumbs.db
 # Project-local agent skills must be versioned (formal verify, etc.).
 !.cursor/skills/
 !.cursor/skills/**/
+# Cloud Agent bootstrap (file-based install/start → app_27.0).
+!.cursor/environment.json
 audit_logs/
 
 # Local secrets — never commit
