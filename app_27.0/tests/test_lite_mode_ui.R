@@ -217,6 +217,38 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
     txt,
     perl = TRUE
   ))
+  # Radar focus lives in the light-blue Clustering intro footer (not the controls row)
+  testthat::expect_true(grepl("ynow-lab-cluster-intro", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-lab-cluster-intro-footer", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow-lab-cluster-focus-wrap", txt, fixed = TRUE))
+  cluster_tab <- regmatches(
+    txt,
+    regexpr('value = "im_cluster"[\\s\\S]*?value = "im_screener"', txt, perl = TRUE)
+  )
+  testthat::expect_true(length(cluster_tab) == 1L && nzchar(cluster_tab[[1]]))
+  ct <- cluster_tab[[1]]
+  testthat::expect_true(grepl("ynow-lab-cluster-intro", ct, fixed = TRUE))
+  testthat::expect_true(grepl("ynow_lab_cluster_disclaimer", ct, fixed = TRUE))
+  testthat::expect_true(grepl('textInput\\(\\s*"lab_cluster_focus"', ct, perl = TRUE))
+  # Focus input must appear before the mode/controls row (removed from Q25–Q75 / Membership side)
+  focus_pos <- regexpr('textInput\\(\\s*"lab_cluster_focus"', ct, perl = TRUE)[1]
+  mode_pos <- regexpr('selectInput\\(\\s*"lab_cluster_mode"', ct, perl = TRUE)[1]
+  testthat::expect_true(is.finite(focus_pos) && focus_pos > 0)
+  testthat::expect_true(is.finite(mode_pos) && mode_pos > 0)
+  testthat::expect_true(focus_pos < mode_pos)
+  # Controls row after mode must not reintroduce focus
+  after_mode <- sub(
+    '^[\\s\\S]*?selectInput\\(\\s*"lab_cluster_mode"',
+    "",
+    ct,
+    perl = TRUE
+  )
+  testthat::expect_false(grepl("lab_cluster_focus", after_mode, fixed = TRUE))
+  testthat::expect_true(grepl(
+    "@media \\(max-width: 767px\\)\\s*\\{\\s*\\.ynow-lab-cluster-intro-footer",
+    txt,
+    perl = TRUE
+  ))
   # Radar plotly host must not remount on every focus edit; suggest prefers cluster set
   srv_path <- file.path("..", "ynow_server.R")
   srv_lines <- readLines(srv_path, warn = FALSE, encoding = "UTF-8")

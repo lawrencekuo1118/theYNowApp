@@ -2213,17 +2213,34 @@ beta_rolling_section_ui <- function() {
               title = "分群",
               value = "im_cluster",
               icon = icon("project-diagram"),
-              tags$p(
-                id = "ynow_lab_cluster_blurb",
-                paste0(
-                  "研究用分群 Lab：僅以比率／成長率做 K-Means（不把金額放入模型），",
-                  "降低公司規模對距離的干擾。語意標籤為描述性啟發式，非買進／賣出訊號。"
+              # Light-blue Research Clustering Lab intro: blurb + disclaimer | Radar focus
+              tags$div(
+                class = "ynow-lab-cluster-intro",
+                tags$p(
+                  id = "ynow_lab_cluster_blurb",
+                  paste0(
+                    "研究用分群 Lab：僅以比率／成長率做 K-Means（不把金額放入模型），",
+                    "降低公司規模對距離的干擾。語意標籤為描述性啟發式，非買進／賣出訊號。"
+                  )
+                ),
+                tags$div(
+                  class = "ynow-lab-cluster-intro-footer",
+                  tags$p(
+                    id = "ynow_lab_cluster_disclaimer",
+                    "僅供研究／教育，非投資建議，亦非買進訊號。"
+                  ),
+                  tags$div(
+                    class = "ynow-sc-wrap ynow-ticker-typeahead ynow-lab-cluster-focus-wrap",
+                    textInput(
+                      "lab_cluster_focus",
+                      tags$span(id = "ynow_lab_cluster_focus_label", "Radar focus ticker"),
+                      value = "",
+                      width = "100%",
+                      placeholder = "e.g. AAPL / 2330"
+                    ),
+                    uiOutput("lab_cluster_focus_suggest_ui")
+                  )
                 )
-              ),
-              tags$p(
-                id = "ynow_lab_cluster_disclaimer",
-                style = "color:#a94442; font-size:12px; margin-top:-6px;",
-                "僅供研究／教育，非投資建議，亦非買進訊號。"
               ),
               tags$hr(),
               fluidRow(
@@ -2259,7 +2276,7 @@ beta_rolling_section_ui <- function() {
                   )
                 ),
                 column(
-                  width = 2,
+                  width = 3,
                   conditionalPanel(
                     condition = "input.lab_cluster_mode != 'beta'",
                     selectInput(
@@ -2305,7 +2322,7 @@ beta_rolling_section_ui <- function() {
                   )
                 ),
                 column(
-                  width = 2,
+                  width = 3,
                   conditionalPanel(
                     condition = "input.lab_cluster_mode != 'beta'",
                     selectInput(
@@ -2336,21 +2353,6 @@ beta_rolling_section_ui <- function() {
                       tags$span(id = "ynow_lab_cluster_beta_show_iqr_label", "顯示 Q25–Q75 帶狀"),
                       value = isTRUE(APP_DEFAULTS$lab_cluster_beta_show_iqr)
                     )
-                  )
-                ),
-                column(
-                  width = 3,
-                  tags$div(
-                    class = "ynow-sc-wrap ynow-ticker-typeahead",
-                    style = "width: 100%; max-width: none;",
-                    textInput(
-                      "lab_cluster_focus",
-                      tags$span(id = "ynow_lab_cluster_focus_label", "Radar focus ticker"),
-                      value = "",
-                      width = "100%",
-                      placeholder = "e.g. AAPL / 2330"
-                    ),
-                    uiOutput("lab_cluster_focus_suggest_ui")
                   )
                 )
               ),
@@ -16963,6 +16965,50 @@ ui <- dashboardPage(
         @keyframes ynow-sidebar-guide-pulse {
           0%, 100% { box-shadow: inset 0 0 0 9999px rgba(243, 156, 18, 0.12); }
           50% { box-shadow: inset 0 0 0 9999px rgba(243, 156, 18, 0.32); }
+        }
+
+        /* Research Clustering Lab intro: blurb + disclaimer | Radar focus ticker */
+        .ynow-lab-cluster-intro {
+          background: #d9edf7;
+          border: 1px solid #bce8f1;
+          border-radius: 4px;
+          padding: 12px 14px 10px;
+          margin: 0 0 12px 0;
+          overflow: visible;
+        }
+        .ynow-lab-cluster-intro > #ynow_lab_cluster_blurb {
+          margin: 0 0 8px 0;
+        }
+        .ynow-lab-cluster-intro-footer {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: flex-end;
+          justify-content: space-between;
+          gap: 10px 16px;
+        }
+        .ynow-lab-cluster-intro-footer #ynow_lab_cluster_disclaimer {
+          flex: 1 1 220px;
+          color: #a94442;
+          font-size: 12px;
+          margin: 0;
+          min-width: 0;
+          padding-bottom: 6px;
+        }
+        .ynow-lab-cluster-intro-footer .ynow-lab-cluster-focus-wrap {
+          flex: 0 1 280px;
+          width: 100%;
+          max-width: 280px;
+          min-width: 0;
+        }
+        @media (max-width: 767px) {
+          .ynow-lab-cluster-intro-footer {
+            flex-direction: column;
+            align-items: stretch;
+          }
+          .ynow-lab-cluster-intro-footer .ynow-lab-cluster-focus-wrap {
+            max-width: none;
+            flex-basis: auto;
+          }
         }
 
         /* Ticker typeahead suggest (Ticker/Stock Code + Radar focus): 黑字白底 */
