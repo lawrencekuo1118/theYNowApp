@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12787424
+bundleId=12787578
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/  # pragma: allowlist secret
-aligned_git=9bc686c8338b15556ba3d7443c5f9894fee74674
-commit=9bc686c8338b15556ba3d7443c5f9894fee74674
-short=9bc686c8
-message=chore: bump display version to v28.19
-captured_at=2026-11-06T11:59:44Z
-display_version=v28.19
-note=Shipped v28.19 (+0.01) via deploy_app_21.R after #687 Clustering mobile whitespace ≤767px. Live status=running; rsconnect deployments bundleId=12787424. App wave #687.
+aligned_git=92d935c9dea162f33255be1f5f35a9cbf55e735e
+commit=92d935c9dea162f33255be1f5f35a9cbf55e735e
+short=92d935c9
+message=chore: bump display version to v28.21
+captured_at=2026-11-06T12:45:24Z
+display_version=v28.21
+note=Shipped v28.21 (+0.01) via deploy_app_21.R after #694 restore Industry chain menu (QueryConditions lazy mount). Live status=running; rsconnect deployments bundleId=12787578. App wave #694 only (#690 Valuation checkbox rows merged after this upload — follow-up tip-ship v28.22).
