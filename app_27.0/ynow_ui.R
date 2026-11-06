@@ -16917,28 +16917,41 @@ ui <- dashboardPage(
           min-width: 0;
           padding-bottom: 6px;
         }
+        /* Same pattern as .ynow-sc-row: keep Radar + Run on one desktop row.
+           width:100% + flex-wrap:wrap (#691) forced Run under the input. */
         .ynow-lab-cluster-focus-run {
           display: flex;
-          flex-wrap: wrap;
+          flex-direction: row;
+          flex-wrap: nowrap;
           align-items: flex-end;
           gap: 8px;
           flex: 0 1 auto;
           min-width: 0;
           max-width: 100%;
         }
-        .ynow-lab-cluster-intro-footer .ynow-lab-cluster-focus-wrap {
-          flex: 1 1 180px;
-          width: 100%;
+        .ynow-lab-cluster-intro-footer .ynow-lab-cluster-focus-wrap,
+        .ynow-lab-cluster-intro-footer .ynow-lab-cluster-focus-wrap.ynow-sc-wrap {
+          flex: 1 1 auto;
+          width: 260px;
           max-width: 280px;
           min-width: 0;
         }
         .ynow-lab-cluster-intro-footer .ynow-lab-cluster-focus-wrap .form-group {
           margin-bottom: 0;
         }
+        /* Absolute typeahead host must not reserve vertical flow space */
+        .ynow-lab-cluster-intro-footer .ynow-lab-cluster-focus-wrap .shiny-html-output {
+          margin: 0;
+          padding: 0;
+          min-height: 0;
+          height: 0;
+          overflow: visible;
+        }
         .ynow-lab-cluster-run-wrap {
           flex: 0 0 auto;
           display: flex;
           align-items: stretch;
+          align-self: flex-end;
         }
         /* Match Bootstrap 3 .form-control height beside Radar focus input */
         .ynow-lab-cluster-run-wrap > .btn,
@@ -16974,6 +16987,7 @@ ui <- dashboardPage(
           .ynow-lab-cluster-focus-run {
             width: 100%;
             flex: 0 0 auto;
+            flex-wrap: wrap; /* narrow: Run may drop under Radar if needed */
             gap: 6px;
           }
           .ynow-lab-cluster-intro-footer .ynow-lab-cluster-focus-wrap,

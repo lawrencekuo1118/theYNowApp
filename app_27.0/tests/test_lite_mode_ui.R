@@ -277,6 +277,34 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
     txt,
     perl = TRUE
   ))
+  # Desktop/wide: Radar + Run stay one horizontal row (not stacked by width:100% wrap)
+  testthat::expect_true(grepl(
+    "\\.ynow-lab-cluster-focus-run\\s*\\{[\\s\\S]*?flex-wrap:\\s*nowrap",
+    txt,
+    perl = TRUE
+  ))
+  testthat::expect_true(grepl(
+    "\\.ynow-lab-cluster-intro-footer \\.ynow-lab-cluster-focus-wrap[\\s\\S]*?width:\\s*260px",
+    txt,
+    perl = TRUE
+  ))
+  # Avoid the #691 regression: focus wrap must not force width:100% on the desktop rule
+  focus_wrap_css <- regmatches(
+    txt,
+    regexpr(
+      "\\.ynow-lab-cluster-intro-footer \\.ynow-lab-cluster-focus-wrap(?:,\\s*\\.ynow-lab-cluster-intro-footer \\.ynow-lab-cluster-focus-wrap\\.ynow-sc-wrap)?\\s*\\{[^}]+\\}",
+      txt,
+      perl = TRUE
+    )
+  )
+  testthat::expect_true(length(focus_wrap_css) == 1L && nzchar(focus_wrap_css[[1]]))
+  testthat::expect_false(grepl("width:\\s*100%", focus_wrap_css[[1]], perl = TRUE))
+  # Mobile may wrap Run under Radar when the row is too narrow
+  testthat::expect_true(grepl(
+    "@media \\(max-width: 767px\\)[\\s\\S]*?\\.ynow-lab-cluster-focus-run[\\s\\S]*?flex-wrap:\\s*wrap",
+    txt,
+    perl = TRUE
+  ))
   # Mobile Clustering: no decorative vertical gaps (space-between / flex-grow / fat hr)
   testthat::expect_true(grepl("ynow-lab-cluster-controls-hr", txt, fixed = TRUE))
   testthat::expect_true(grepl('class = "ynow-lab-cluster-controls"', txt, fixed = TRUE))
