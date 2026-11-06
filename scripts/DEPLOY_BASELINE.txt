@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12786341
+bundleId=12786356
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/  # pragma: allowlist secret
-aligned_git=af0d871bbe14a33900e4721f7d7665a6369336e1
-commit=af0d871bbe14a33900e4721f7d7665a6369336e1
-short=af0d871b
-message=chore: bump display version to v28.15
-captured_at=2026-11-06T04:46:34Z
-display_version=v28.15
-note=Shipped v28.15 (+0.01) via deploy_app_21.R after #680 Radar focus ticker into Clustering Lab intro box. Live status=running; rsconnect deployments bundleId=12786341. App wave #680.
+aligned_git=c9a9d2e4f49a6c703aa12ae8e7721c21b328efff
+commit=c9a9d2e4f49a6c703aa12ae8e7721c21b328efff
+short=c9a9d2e4
+message=chore: bump display version to v28.16
+captured_at=2026-11-06T04:53:20Z
+display_version=v28.16
+note=Shipped v28.16 (+0.01) via deploy_app_21.R after #681 TW mcap upside treemap re-arm job + empty-state. Live status=running; rsconnect deployments bundleId=12786356. App wave #681. Prior tip v28.15=#680 bundle 12786341.
