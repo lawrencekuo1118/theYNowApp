@@ -90,6 +90,13 @@ check(
   "industry DT host stays dataTableOutput",
   grepl('DT::dataTableOutput("lab_im_ind_mcap_table")', ui_src, fixed = TRUE)
 )
+# Nested-shell CSS lives inside tags$style(HTML("…")); double-quoted attr
+# selectors break R parse of ynow_ui.R (boot failure).
+check(
+  "nested-shell CSS attr selector uses single quotes",
+  grepl("[id^='ynow_lazy_host_bc_']", ui_src, fixed = TRUE) &&
+    !grepl('[id^="ynow_lazy_host_bc_"]', ui_src, fixed = TRUE)
+)
 check(
   "no industry DT remount wrapper",
   !grepl('uiOutput("lab_im_ind_mcap_table_ui")', ui_src, fixed = TRUE)
