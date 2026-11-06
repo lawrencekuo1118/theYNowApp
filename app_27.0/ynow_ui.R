@@ -16908,8 +16908,9 @@ ui <- dashboardPage(
           transition: box-shadow 0.2s ease;
         }
 
-        /* Stock Prospecting nested subtab shells: hide hint once host mounts */
-        .ynow-bc-subtab-shell:has([id^="ynow_lazy_host_bc_"] > *) > .ynow-bc-subtab-shell-hint {
+        /* Stock Prospecting nested subtab shells: hide hint once host mounts.
+           Attr selectors must use single quotes inside this HTML double-quoted style. */
+        .ynow-bc-subtab-shell:has([id^='ynow_lazy_host_bc_'] > *) > .ynow-bc-subtab-shell-hint {
           display: none;
         }
 

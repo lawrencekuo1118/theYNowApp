@@ -20316,22 +20316,18 @@ server <- function(input, output, session) {
     loc <- tryCatch(normalize_ui_locale(isolate(ui_locale())), error = function(e) "zh-TW")
     mm <- tryCatch(normalize_market_mode(isolate(market_mode())), error = function(e) "US")
     # Full market catalog — ignore page boards / industry / methods filters.
-    catlg <- tryCatch(
-      lab_build_industry_method_catalog(
-        market_mode = mm,
-        boards = c("TWSE", "TPEX")
-      ),
-      error = function(e) NULL
-    )
-    if (!is.data.frame(catlg) || nrow(catlg) < 1L) {
-      catlg <- tryCatch(isolate(lab_im_catalog()), error = function(e) NULL)
-    }
-    if (!is.data.frame(catlg) || nrow(catlg) < 1L) {
-      return(invisible(FALSE))
-    }
+    # Build inside lab_im_run_ind_mcap_job (catlg = NULL) so the session thread
+    # can keep answering DT server=TRUE dataobj Ajax (tn/7) during start.
+    # boards = c("TWSE", "TPEX") is applied in the job when catlg is NULL.
     gen <- isolate(as.integer(lab_im_ind_mcap_gen()) %||% 0L) + 1L
     lab_im_ind_mcap_gen(gen)
-    args <- list(.gen = gen, catlg = catlg, market_mode = mm, locale = loc, per_chain = 2L)
+    args <- list(
+      .gen = gen,
+      catlg = NULL,
+      market_mode = mm,
+      locale = loc,
+      per_chain = 2L
+    )
     running <- isTRUE(isolate(lab_im_ind_mcap_busy()))
     if (!is.null(lab_im_ind_mcap_task)) {
       st <- tryCatch(lab_im_ind_mcap_task$status(), error = function(e) "error")
@@ -20345,7 +20341,14 @@ server <- function(input, output, session) {
   }
 
   .lab_im_invoke_ind_mcap <- function(args) {
-    if (!is.list(args) || !is.data.frame(args$catlg) || nrow(args$catlg) < 1L) {
+    # catlg may be NULL (build inside worker) or a non-empty data.frame.
+    if (!is.list(args)) return(invisible(FALSE))
+    has_catlg <- is.data.frame(args$catlg) && nrow(args$catlg) > 0L
+    build_in_job <- is.null(args$catlg)
+    if (!isTRUE(has_catlg) && !isTRUE(build_in_job)) {
+      return(invisible(FALSE))
+    }
+    if (!nzchar(as.character(args$market_mode %||% "")[1])) {
       return(invisible(FALSE))
     }
     lab_im_ind_mcap_busy(TRUE)
@@ -20433,10 +20436,39 @@ server <- function(input, output, session) {
     }, ignoreInit = TRUE)
   }
 
+  # Fingerprint so reactiveVal assign is skipped when the snapshot is unchanged
+  # (duplicate force-reload on sidebar entry was rebuilding server=TRUE DT →
+  # extra dataobj in flight during first-load stall → tn/7 on Table_3/_4).
+  .lab_im_ind_mcap_snap_fp <- function(snap) {
+    if (!is.data.frame(snap) || nrow(snap) < 1L) return("empty")
+    at <- tryCatch(
+      as.character(attr(snap, "snapshot_at") %||% snap$snapshot_at[[1]] %||% "")[1],
+      error = function(e) ""
+    )
+    ids <- if ("chain_id" %in% names(snap)) {
+      paste(as.character(snap$chain_id), collapse = ",")
+    } else {
+      as.character(nrow(snap))
+    }
+    paste(nrow(snap), at, ids, sep = "|")
+  }
+
+  .lab_im_ind_mcap_set_snap_if_changed <- function(snap) {
+    cur <- tryCatch(isolate(lab_im_ind_mcap_snap()), error = function(e) NULL)
+    if (identical(.lab_im_ind_mcap_snap_fp(cur), .lab_im_ind_mcap_snap_fp(snap))) {
+      return(invisible(FALSE))
+    }
+    lab_im_ind_mcap_snap(snap)
+    invisible(TRUE)
+  }
+
   .lab_im_ind_mcap_board <- reactive({
     loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
     snap <- lab_im_ind_mcap_snap()
-    busy <- isTRUE(lab_im_ind_mcap_busy())
+    # Isolate busy: status UI reads lab_im_ind_mcap_busy() on its own. Binding
+    # busy here rebuilt the industry DT (and treemap) on every job arm/finish
+    # even when the snapshot rows were unchanged — extra dataobj during stall.
+    busy <- isTRUE(isolate(lab_im_ind_mcap_busy()))
     n_chains_all <- tryCatch({
       length(unname(lab_industry_chain_picker_choices(loc)))
     }, error = function(e) 0L)
@@ -20492,7 +20524,7 @@ server <- function(input, output, session) {
       lab_load_ind_mcap_chain_snapshot(mm, force = TRUE),
       error = function(e) lab_ind_mcap_chain_snapshot_empty()
     )
-    lab_im_ind_mcap_snap(snap)
+    .lab_im_ind_mcap_set_snap_if_changed(snap)
   }, ignoreInit = TRUE)
 
   # Catch up deferred market-scoped Blue Chip controls on entry.
@@ -20505,7 +20537,9 @@ server <- function(input, output, session) {
       lab_load_ind_mcap_chain_snapshot(mm, force = TRUE),
       error = function(e) lab_ind_mcap_chain_snapshot_empty()
     )
-    lab_im_ind_mcap_snap(snap)
+    # Skip assign when on_first_mount already painted the same snapshot —
+    # avoids replacing DataTables_Table_N mid first-load (tn/7 race).
+    .lab_im_ind_mcap_set_snap_if_changed(snap)
   }, ignoreInit = TRUE, priority = 900)
 
   # Opening Blue Chip — or switching US⇄TW while already on Blue Chip —
