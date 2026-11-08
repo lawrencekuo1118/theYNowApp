@@ -1956,7 +1956,7 @@ gp_fetch_polymarket_board <- function(board = "economic", limit_quotes = 24L, us
       next
     }
     payload <- res$data
-    if (is.list(payload) && is.null(payload$events) && !is.null(payload[[1]])) {
+    if (is.list(payload) && is.null(payload$events) && length(payload) > 0L) {
       payload <- list(events = payload)
     }
     theme_guess <- .gp_bucket_theme_id(tag, src$theme_buckets)
@@ -2261,17 +2261,14 @@ global_prediction_server <- function(id,
       }
     })
 
-shiny::observeEvent(input$board_economic, {
+    shiny::observeEvent(input$board_economic, {
       set_board("economic")
-      do_fetch("manual_refresh", force = TRUE)
     }, ignoreInit = TRUE)
     shiny::observeEvent(input$board_finance, {
       set_board("finance")
-      do_fetch("manual_refresh", force = TRUE)
     }, ignoreInit = TRUE)
     shiny::observeEvent(input$board_company, {
       set_board("company")
-      do_fetch("manual_refresh", force = TRUE)
     }, ignoreInit = TRUE)
 
     do_fetch <- function(trigger = "periodic_visible", force = FALSE) {

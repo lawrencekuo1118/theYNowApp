@@ -132,6 +132,53 @@ check("polymarket empty fail-closed", nrow(gp_parse_polymarket_events(list(), "f
 check("bad json string is empty", nrow(gp_parse_kalshi_markets("{", "fed_rates")) == 0L)
 check("null json is empty", nrow(gp_parse_kalshi_markets("null", "fed_rates")) == 0L)
 
+mod_src_early <- paste(
+  readLines(file.path(app_dir, "global_prediction_module.R"), warn = FALSE, encoding = "UTF-8"),
+  collapse = "\n"
+)
+check(
+  "poly board empty-array guard uses length (not payload[[1]])",
+  !grepl("!is.null(payload[[1]])", mod_src_early, fixed = TRUE) &&
+    grepl(
+      "is.null(payload$events) && length(payload) > 0L",
+      mod_src_early,
+      fixed = TRUE
+    )
+)
+check(
+  "board button handlers only set_board (no inline do_fetch)",
+  {
+    m <- gregexpr(
+      "shiny::observeEvent\\(input\\$board_(economic|finance|company),\\s*\\{([^}]*)\\}",
+      mod_src_early,
+      perl = TRUE
+    )
+    starts <- as.integer(m[[1]])
+    lens <- attr(m[[1]], "match.length")
+    if (length(starts) < 3L || any(starts < 0L)) return(FALSE)
+    bodies <- substring(mod_src_early, starts, starts + lens - 1L)
+    length(bodies) >= 3L && !any(grepl("do_fetch\\(", bodies))
+  }
+)
+finance_switch <- tryCatch(
+  {
+    gp_invalidate_crawl_cache(NULL)
+    gp_fetch_snapshot(
+      board = "finance",
+      use_cache = TRUE,
+      limit_per_venue = 8L,
+      trigger = "manual_refresh",
+      layer = "discovery"
+    )
+  },
+  error = function(e) e
+)
+check(
+  "finance manual_refresh after invalidate does not throw",
+  is.list(finance_switch) && !inherits(finance_switch, "error") &&
+    identical(finance_switch$board, "finance")
+)
+
 cents_path <- file.path(fx_dir, "kalshi_cents.json")
 if (file.exists(cents_path)) {
   cents <- gp_parse_kalshi_markets(
