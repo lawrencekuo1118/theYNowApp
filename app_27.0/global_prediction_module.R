@@ -37,10 +37,22 @@ if (!exists("%||%", mode = "function")) {
 # One plotly line chart per market (never overlay markets on one theme plot).
 .GP_HISTORY_LOOKBACK_DAYS <- 90L
 .GP_HISTORY_PER_VENUE <- 6L  # match theme quote cap; each market → own chart
+# Company board charts every Kalshi contract (batched). Polymarket history is
+# capped so the first paint stays inside a polite request budget; the rest of
+# the union still renders as honest-empty cards.
+.GP_POLY_HISTORY_MAX <- 24L
 .GP_HISTORY_MIN_POINTS <- 2L
 .GP_HISTORY_PERIOD_MIN <- 1440L  # Kalshi daily candlesticks
 .GP_POLY_CLOB <- "https://clob.polymarket.com"
+.GP_POLY_GAMMA <- "https://gamma-api.polymarket.com"
 .GP_KALSHI_API <- "https://api.elections.kalshi.com/trade-api/v2"
+.GP_KALSHI_SEARCH <- "https://api.elections.kalshi.com/v1/search/series"
+.GP_KALSHI_COMPANY_CATEGORY <- "Science and Technology"
+.GP_KALSHI_COMPANY_TAG <- "Big Tech & Business"
+.GP_POLY_COMPANY_TAG <- "big-tech"
+.GP_PAGE_PAUSE_SEC <- 0.15
+.GP_KALSHI_SEARCH_MAX_PAGES <- 25L
+.GP_POLY_SORT_MAX_PAGES <- 20L
 
 #' Documented crawl / freshness rules for Global Prediction venues.
 #' @return named list of TTLs, triggers, venues, and fail-closed flags.
@@ -60,7 +72,8 @@ gp_crawl_policy <- function() {
     note = paste(
       "Hard triggers invalidate gp:* keys then rescan.",
       "Periodic uses quote TTL; discovery TTL gates series/query re-probe.",
-      "Boards Economic/Finance/Company; Eco/Finance use monthly+ Kalshi frequency."
+      "Boards Economic/Finance/Company; Eco/Finance use monthly+ Kalshi frequency.",
+      "Company unions Kalshi Big Tech & Business with Polymarket Big Tech (all sorts) and drops Daily/Hourly."
     )
   )
 }
@@ -301,6 +314,8 @@ gp_invalidate_crawl_cache <- function(market_mode = NULL) {
     breadth_tier = integer(0),
     series_ticker = character(0),
     history_token = character(0),
+    event_title = character(0),
+    company_key = character(0),
     stringsAsFactors = FALSE
   )
 }
@@ -310,7 +325,9 @@ gp_invalidate_crawl_cache <- function(market_mode = NULL) {
                           url = NA_character_, raw_status = NA_character_,
                           breadth_tier = NA_integer_,
                           series_ticker = NA_character_,
-                          history_token = NA_character_) {
+                          history_token = NA_character_,
+                          event_title = NA_character_,
+                          company_key = NA_character_) {
   data.frame(
     venue = .gp_chr(venue),
     theme_id = .gp_chr(theme_id),
@@ -324,6 +341,8 @@ gp_invalidate_crawl_cache <- function(market_mode = NULL) {
     breadth_tier = as.integer(breadth_tier)[1],
     series_ticker = .gp_chr(series_ticker, NA_character_),
     history_token = .gp_chr(history_token, NA_character_),
+    event_title = .gp_chr(event_title, NA_character_),
+    company_key = .gp_chr(company_key, NA_character_),
     stringsAsFactors = FALSE
   )
 }
@@ -760,6 +779,76 @@ gp_fetch_kalshi_history <- function(market_id, theme_id = "", title = "",
   out
 }
 
+#' Batched Kalshi candlesticks for many tickers. Cached per ticker. Fail closed per chunk.
+gp_fetch_kalshi_histories <- function(quotes, use_cache = TRUE,
+                                      lookback_days = .GP_HISTORY_LOOKBACK_DAYS) {
+  if (!is.data.frame(quotes) || nrow(quotes) == 0L) return(.gp_empty_series())
+  lookback_days <- max(7L, as.integer(lookback_days)[1])
+  end_ts <- as.integer(Sys.time())
+  start_ts <- end_ts - as.integer(lookback_days) * 86400L
+  parts <- list()
+  need <- list()
+  for (i in seq_len(nrow(quotes))) {
+    mid <- .gp_chr(quotes$market_id[[i]])
+    if (!nzchar(mid)) next
+    cache_key <- .gp_cache_key("khist", mid, lookback_days, .GP_HISTORY_PERIOD_MIN)
+    if (isTRUE(use_cache)) {
+      hit <- .gp_cache_get_fresh(cache_key, .GP_DISCOVERY_TTL_SEC)
+      if (is.data.frame(hit) && nrow(hit) >= as.integer(.GP_HISTORY_MIN_POINTS)) {
+        parts[[length(parts) + 1L]] <- hit
+        next
+      }
+    }
+    need[[length(need) + 1L]] <- quotes[i, , drop = FALSE]
+  }
+  if (length(need)) {
+    pending <- do.call(rbind, need)
+    tickers <- unique(as.character(pending$market_id))
+    chunk_n <- 20L
+    for (start_i in seq(1L, length(tickers), by = chunk_n)) {
+      chunk <- tickers[start_i:min(length(tickers), start_i + chunk_n - 1L)]
+      url <- sprintf(
+        "%s/markets/candlesticks?market_tickers=%s&start_ts=%d&end_ts=%d&period_interval=%d",
+        .GP_KALSHI_API,
+        utils::URLencode(paste(chunk, collapse = ","), reserved = TRUE),
+        as.integer(start_ts),
+        as.integer(end_ts),
+        as.integer(.GP_HISTORY_PERIOD_MIN)
+      )
+      res <- .gp_http_get_json(url, timeout_sec = 25)
+      .gp_polite_pause()
+      if (!isTRUE(res$ok)) next
+      markets <- res$data$markets %||% list()
+      if (!is.list(markets)) next
+      for (m in markets) {
+        if (!is.list(m)) next
+        mid <- .gp_chr(m$market_ticker %||% m$ticker)
+        if (!nzchar(mid)) next
+        hit_row <- pending[pending$market_id == mid, , drop = FALSE]
+        title <- if (nrow(hit_row)) .gp_chr(hit_row$title[[1]], mid) else mid
+        theme_id <- if (nrow(hit_row)) .gp_chr(hit_row$theme_id[[1]]) else ""
+        ser <- gp_parse_kalshi_candlesticks(
+          list(candlesticks = m$candlesticks %||% list()),
+          theme_id = theme_id,
+          market_id = mid,
+          title = title
+        )
+        if (nrow(ser) < as.integer(.GP_HISTORY_MIN_POINTS)) next
+        parts[[length(parts) + 1L]] <- ser
+        if (isTRUE(use_cache)) {
+          .gp_cache_set_fresh(
+            .gp_cache_key("khist", mid, lookback_days, .GP_HISTORY_PERIOD_MIN),
+            ser,
+            layer = "discovery"
+          )
+        }
+      }
+    }
+  }
+  if (!length(parts)) return(.gp_empty_series())
+  do.call(rbind, parts)
+}
+
 gp_fetch_polymarket_history <- function(history_token, theme_id = "",
                                         market_id = "", title = "",
                                         use_cache = TRUE) {
@@ -802,20 +891,11 @@ gp_attach_theme_series <- function(pair, use_cache = TRUE,
   pq <- if (is.data.frame(pair$polymarket)) pair$polymarket else .gp_empty_quote()
   if (nrow(kq) > 0L) {
     n <- min(nrow(kq), per_venue)
-    for (i in seq_len(n)) {
-      row <- kq[i, , drop = FALSE]
-      ser <- gp_fetch_kalshi_history(
-        market_id = row$market_id[[1]],
-        theme_id = pair$theme_id %||% row$theme_id[[1]],
-        title = row$title[[1]],
-        series_ticker = if ("series_ticker" %in% names(row)) row$series_ticker[[1]] else NULL,
-        use_cache = use_cache
-      )
-      if (nrow(ser) >= as.integer(.GP_HISTORY_MIN_POINTS)) parts[[length(parts) + 1L]] <- ser
-    }
+    parts_k <- gp_fetch_kalshi_histories(kq[seq_len(n), , drop = FALSE], use_cache = use_cache)
+    if (nrow(parts_k) > 0L) parts[[length(parts) + 1L]] <- parts_k
   }
   if (nrow(pq) > 0L) {
-    n <- min(nrow(pq), per_venue)
+    n <- min(nrow(pq), per_venue, .GP_POLY_HISTORY_MAX)
     for (i in seq_len(n)) {
       row <- pq[i, , drop = FALSE]
       tok <- if ("history_token" %in% names(row)) .gp_chr(row$history_token[[1]]) else ""
@@ -959,7 +1039,55 @@ gp_cluster_proposition_keys <- function(keys, stems, threshold = 0.55) {
   }, character(1))
 }
 
+# Kalshi series ticker → company block. Title aliases cover series we have not mapped yet.
+.GP_SERIES_COMPANY <- c(
+  KXWAYMOCITY = "waymo",
+  KXOAIHARDWARE = "openai",
+  KXOAIAGI = "openai",
+  KXGPTCOST = "openai",
+  KXOAISCREEN = "openai",
+  KXOAIDAMAGE = "openai",
+  KXNYTOAI = "new york times",
+  KXSTARSHIPDOCK = "spacex",
+  KXSPACEXMARS = "spacex",
+  KXHLS = "spacex",
+  KXBLUESPACEX = "blue origin",
+  KXTESLAOPTIMUS = "tesla",
+  KXOPTIMUSDATE = "tesla",
+  KXROBOTAXIAREA = "tesla",
+  KXROBOTAXICA = "tesla",
+  KXNEURALINKCOUNT = "neuralink"
+)
+
+# Polymarket tag slug → company block (Big Tech page tags).
+.GP_COMPANY_TAG_SLUGS <- c(
+  openai = "openai",
+  chatgpt = "openai",
+  anthropic = "anthropic",
+  claude = "anthropic",
+  spacex = "spacex",
+  tesla = "tesla",
+  amazon = "amazon",
+  apple = "apple",
+  nvidia = "nvidia",
+  microsoft = "microsoft",
+  google = "alphabet",
+  alphabet = "alphabet",
+  meta = "meta",
+  cisco = "cisco",
+  waymo = "waymo",
+  neuralink = "neuralink"
+)
+
 .GP_COMPANY_ALIASES <- list(
+  waymo = c("waymo"),
+  openai = c("openai", "chatgpt", "jony ive"),
+  anthropic = c("anthropic", "claude"),
+  "blue origin" = c("blue origin"),
+  spacex = c("spacex", "starship"),
+  neuralink = c("neuralink"),
+  "new york times" = c("new york times"),
+  cisco = c("cisco"),
   apple = c("apple", "aapl"),
   microsoft = c("microsoft", "msft"),
   nvidia = c("nvidia", "nvda"),
@@ -1003,10 +1131,45 @@ gp_extract_company_key <- function(title) {
   NA_character_
 }
 
+#' Company block key: mapped Kalshi series, then a Polymarket company tag, then title aliases.
+gp_company_key_for_market <- function(title, series_ticker = "", tag_slug = "") {
+  ser <- toupper(.gp_chr(series_ticker))
+  if (nzchar(ser) && ser %in% names(.GP_SERIES_COMPANY)) {
+    return(unname(.GP_SERIES_COMPANY[[ser]]))
+  }
+  tag <- tolower(.gp_chr(tag_slug))
+  if (nzchar(tag) && tag %in% names(.GP_COMPANY_TAG_SLUGS)) {
+    return(unname(.GP_COMPANY_TAG_SLUGS[[tag]]))
+  }
+  gp_extract_company_key(title)
+}
+
+#' First company tag on a Polymarket event, preferring a tag that appears in the title.
+gp_poly_company_tag <- function(tags, title = "") {
+  if (!is.list(tags) || !length(tags)) return("")
+  slugs <- vapply(tags, function(t) {
+    if (!is.list(t)) return("")
+    tolower(.gp_chr(t$slug))
+  }, character(1))
+  slugs <- slugs[nzchar(slugs) & slugs %in% names(.GP_COMPANY_TAG_SLUGS)]
+  if (!length(slugs)) return("")
+  hay <- tolower(.gp_chr(title))
+  if (nzchar(hay)) {
+    for (s in slugs) {
+      key <- .GP_COMPANY_TAG_SLUGS[[s]]
+      if (nzchar(key) && grepl(key, hay, fixed = TRUE)) return(s)
+    }
+  }
+  slugs[[1]]
+}
+
 gp_company_label <- function(key) {
   key <- .gp_chr(key)
   if (!nzchar(key)) return(.gp_label("gp_theme_co_other", "en"))
-  # Title-case simple keys
+  # Bare tickers extracted from "(AFRM)" stay uppercase. Known names title-case.
+  if (grepl("^[a-z0-9]{1,5}$", key) && !(key %in% names(.GP_COMPANY_ALIASES))) {
+    return(toupper(key))
+  }
   paste0(toupper(substr(key, 1L, 1L)), substring(key, 2L))
 }
 
@@ -1025,6 +1188,8 @@ gp_market_meta_from_pair <- function(pair) {
         yes_prob = .gp_num01(q$yes_prob[[i]]),
         url = if ("url" %in% names(q)) .gp_chr(q$url[[i]]) else NA_character_,
         series_ticker = if ("series_ticker" %in% names(q)) .gp_chr(q$series_ticker[[i]]) else NA_character_,
+        event_title = if ("event_title" %in% names(q)) .gp_chr(q$event_title[[i]]) else NA_character_,
+        company_key = if ("company_key" %in% names(q)) .gp_chr(q$company_key[[i]]) else NA_character_,
         stringsAsFactors = FALSE
       )
     }
@@ -1033,7 +1198,8 @@ gp_market_meta_from_pair <- function(pair) {
     return(data.frame(
       venue = character(0), theme_id = character(0), market_id = character(0),
       title = character(0), yes_prob = numeric(0), url = character(0),
-      series_ticker = character(0), prop_key = character(0), prop_stem = character(0),
+      series_ticker = character(0), event_title = character(0),
+      prop_key = character(0), prop_stem = character(0),
       company_key = character(0), stringsAsFactors = FALSE
     ))
   }
@@ -1048,7 +1214,14 @@ gp_market_meta_from_pair <- function(pair) {
       url = meta$url[[i]]
     )
   }, character(1))
-  meta$company_key <- vapply(meta$title, gp_extract_company_key, character(1))
+  meta$company_key <- vapply(seq_len(nrow(meta)), function(i) {
+    preset <- .gp_chr(meta$company_key[[i]])
+    if (nzchar(preset) && !is.na(preset)) return(preset)
+    gp_company_key_for_market(
+      paste(meta$event_title[[i]], meta$title[[i]]),
+      series_ticker = meta$series_ticker[[i]]
+    )
+  }, character(1))
   # Cluster stem-only keys for wording variants of the same proposition.
   clustered <- gp_cluster_proposition_keys(meta$prop_key, meta$prop_stem)
   meta$prop_key <- clustered
@@ -1080,6 +1253,11 @@ gp_group_series_by_proposition <- function(series, meta) {
   label_of <- function(pk) {
     hit <- meta[meta$prop_key == pk, , drop = FALSE]
     if (nrow(hit) < 1L) return(pk)
+    if ("event_title" %in% names(hit)) {
+      evs <- unique(as.character(hit$event_title))
+      evs <- evs[!is.na(evs) & nzchar(evs)]
+      if (length(evs) == 1L) return(evs[[1]])
+    }
     # Prefer shortest title as proposition label when multi-outcome.
     labs <- as.character(hit$title)
     labs <- labs[nzchar(labs)]
@@ -1449,6 +1627,137 @@ gp_build_company_chart_blocks <- function(series, meta, locale = "en", height = 
   htmltools::tags$div(class = "ynow-gp-company-blocks", blocks)
 }
 
+.gp_quote_only_card <- function(prop_label, rows, venue, locale = "en") {
+  theme <- gp_venue_chart_theme(venue)
+  rows <- rows[is.finite(rows$yes_prob), , drop = FALSE]
+  lead <- if (nrow(rows)) rows$yes_prob[[1]] else NA_real_
+  legend <- lapply(seq_len(nrow(rows)), function(i) {
+    htmltools::tags$span(
+      class = "ynow-gp-chart-legend-item",
+      htmltools::tags$span(class = "ynow-gp-chart-legend-lab", .gp_chr(rows$title[[i]])),
+      htmltools::tags$span(
+        class = "ynow-gp-chart-legend-pct",
+        .gp_fmt_pct(rows$yes_prob[[i]])
+      )
+    )
+  })
+  htmltools::tags$div(
+    class = "ynow-gp-chart-widget ynow-gp-market-chart-widget ynow-gp-quote-only",
+    `data-venue` = theme$venue,
+    .gp_chart_header_ui(
+      .gp_chr(prop_label),
+      if (is.finite(lead)) 100 * lead else NA_real_,
+      theme,
+      locale,
+      legend = if (nrow(rows) > 1L) legend else NULL
+    ),
+    htmltools::tags$p(
+      class = "ynow-gp-empty ynow-gp-chart-empty",
+      .gp_label("gp_chart_empty", locale)
+    )
+  )
+}
+
+.gp_company_venue_column <- function(venue, meta_rows, series, locale, height) {
+  theme <- gp_venue_chart_theme(venue)
+  empty_key <- if (identical(venue, "kalshi")) {
+    "gp_company_venue_empty_kalshi"
+  } else {
+    "gp_company_venue_empty_poly"
+  }
+  head <- htmltools::tags$div(
+    class = "ynow-gp-venue-col-head",
+    htmltools::tags$span(
+      class = "ynow-gp-chart-dot",
+      style = sprintf("background:%s;", theme$line)
+    ),
+    theme$venue_lab
+  )
+  if (!is.data.frame(meta_rows) || nrow(meta_rows) == 0L) {
+    return(htmltools::tags$div(
+      class = paste("ynow-gp-venue-col", paste0("ynow-gp-venue-", venue)),
+      `data-venue` = venue,
+      head,
+      htmltools::tags$p(class = "ynow-gp-empty", .gp_label(empty_key, locale))
+    ))
+  }
+  pks <- unique(as.character(meta_rows$prop_key))
+  cards <- lapply(pks, function(pk) {
+    rows <- meta_rows[meta_rows$prop_key == pk, , drop = FALSE]
+    label <- .gp_chr(rows$event_title[[1]])
+    if (!nzchar(label)) label <- .gp_chr(rows$title[[1]], pk)
+    sub <- if (is.data.frame(series) && nrow(series)) {
+      series[series$venue == venue & series$market_id %in% rows$market_id, , drop = FALSE]
+    } else {
+      .gp_empty_series()
+    }
+    body <- if (nrow(sub) >= as.integer(.GP_HISTORY_MIN_POINTS)) {
+      gp_build_line_chart(sub, locale = locale, height = height, prop_label = label)
+    } else {
+      .gp_quote_only_card(label, rows, venue, locale)
+    }
+    htmltools::tags$div(
+      class = "ynow-gp-market-chart ynow-gp-prop-chart",
+      `data-prop-key` = pk,
+      `data-venue` = venue,
+      body
+    )
+  })
+  htmltools::tags$div(
+    class = paste("ynow-gp-venue-col", paste0("ynow-gp-venue-", venue)),
+    `data-venue` = venue,
+    head,
+    cards
+  )
+}
+
+#' Company board: one block per company; Kalshi left, Polymarket right.
+#' A company on only one venue still renders; the other side stays empty.
+gp_build_company_venue_board <- function(series, meta, locale = "en", height = 220) {
+  locale <- .gp_chr(locale, "en")
+  if (!is.data.frame(meta) || nrow(meta) == 0L) {
+    return(htmltools::tags$p(
+      class = "ynow-gp-empty ynow-gp-chart-empty",
+      .gp_label("gp_chart_empty", locale)
+    ))
+  }
+  if (!"company_key" %in% names(meta)) meta$company_key <- NA_character_
+  if (!"event_title" %in% names(meta)) meta$event_title <- NA_character_
+  keys <- vapply(meta$company_key, function(k) {
+    ck <- .gp_chr(k)
+    if (!nzchar(ck) || is.na(ck)) "_other" else ck
+  }, character(1))
+  meta$company_block <- keys
+  order_keys <- c(sort(setdiff(unique(keys), "_other")), if ("_other" %in% keys) "_other" else character(0))
+  blocks <- lapply(order_keys, function(ck) {
+    sub <- meta[meta$company_block == ck, , drop = FALSE]
+    label <- if (identical(ck, "_other")) {
+      .gp_label("gp_theme_co_other", locale)
+    } else {
+      gp_company_label(ck)
+    }
+    htmltools::tags$div(
+      class = "ynow-gp-company-block",
+      `data-company-key` = ck,
+      htmltools::tags$h4(class = "ynow-gp-company-title", label),
+      htmltools::tags$div(
+        class = "ynow-gp-venue-split",
+        .gp_company_venue_column(
+          "kalshi",
+          sub[sub$venue == "kalshi", , drop = FALSE],
+          series, locale, height
+        ),
+        .gp_company_venue_column(
+          "polymarket",
+          sub[sub$venue == "polymarket", , drop = FALSE],
+          series, locale, height
+        )
+      )
+    )
+  })
+  htmltools::tags$div(class = "ynow-gp-company-blocks", blocks)
+}
+
 gp_fetch_kalshi_theme <- function(theme_id, series_tickers, limit = 3L, use_cache = TRUE,
                                   layer = "quote") {
   theme_id <- .gp_chr(theme_id)
@@ -1614,7 +1923,7 @@ gp_crowd_agreement <- function(kalshi_probs, polymarket_probs) {
   board <- gp_norm_board(board)
   # Charts only — no redundant last-print / venue quote list under the grid.
   chart_body <- if (identical(board, "company")) {
-    gp_build_company_chart_blocks(series, meta, locale = locale, height = 220)
+    gp_build_company_venue_board(series, meta, locale = locale, height = 220)
   } else {
     gp_build_theme_market_charts(series, locale = locale, height = 220, meta = meta)
   }
@@ -1702,34 +2011,18 @@ gp_board_sources <- function(board = "economic") {
   if (identical(board, "company")) {
     return(list(
       board = board,
-      # Kalshi company-reports + Companies category; keep Financials for equity single-names
-      kalshi_categories = c("Companies", "Financials"),
+      # Kalshi category page /category/science/big-tech-business
+      kalshi_categories = .GP_KALSHI_COMPANY_CATEGORY,
+      kalshi_tags = .GP_KALSHI_COMPANY_TAG,
       kalshi_freq = .GP_FREQ_COMPANY,
-      # Polymarket /tech + /finance/stocks + /finance/earnings
-      poly_tags = c("tech", "stocks", "earnings", "equities"),
-      poly_queries = c(
-        "earnings", "TSMC", "Apple", "NVIDIA", "Microsoft", "Meta",
-        "Taiwan Semiconductor", "stock price", "2330", "Hon Hai",
-        "Amazon", "Tesla", "Broadcom"
-      ),
-      company_filter = TRUE,
+      kalshi_big_tech = TRUE,
+      # Polymarket /tech/big-tech — all sort orders, Active, union
+      poly_tags = .GP_POLY_COMPANY_TAG,
+      poly_queries = character(0),
+      poly_big_tech = TRUE,
+      company_filter = FALSE,
       theme_buckets = list(
-        list(id = "us_mega", label_key = "gp_theme_us_mega",
-             kw = c("apple", "aapl", "microsoft", "msft", "amazon", "amzn",
-                    "google", "alphabet", "googl", "meta", "facebook",
-                    "tesla", "tsla", "netflix", "nflx", "costco", "walmart")),
-        list(id = "semis", label_key = "gp_theme_semis",
-             kw = c("nvidia", "nvda", "broadcom", "avgo", "amd", "intel", "intc",
-                    "tsmc", "taiwan semiconductor", "2330", "umc", "2303",
-                    "mediatek", "2454", "asml", "semiconductor", "chip")),
-        list(id = "tw_listed", label_key = "gp_theme_tw_listed",
-             kw = c("hon hai", "foxconn", "2317", "taiex", "taiwan", ".tw",
-                    "quanta", "2382", "pegatron", "4938", "largan", "3008",
-                    "chunghwa", "2412", "fubon", "cathay")),
-        list(id = "earnings", label_key = "gp_theme_earnings",
-             kw = c("earn", "eps", "revenue", "quarter", "beat", "miss",
-                    "guidance", "print")),
-        list(id = "co_other", label_key = "gp_theme_co_other", kw = character(0))
+        list(id = "big_tech", label_key = "gp_theme_big_tech", kw = character(0))
       )
     ))
   }
@@ -1790,6 +2083,36 @@ gp_theme_registry <- function(market_mode = "US") {
   f %in% tolower(as.character(allow))
 }
 
+#' Normalize a venue frequency / recurrence label.
+.gp_norm_freq <- function(freq) {
+  f <- tolower(trimws(.gp_chr(freq)))
+  f <- gsub("[_-]+", " ", f)
+  gsub("\\s+", " ", f)
+}
+
+#' TRUE when the label is Daily or Hourly (or an intraday alias).
+gp_frequency_is_daily_or_hourly <- function(freq) {
+  f <- .gp_norm_freq(freq)
+  if (!nzchar(f)) return(FALSE)
+  if (f %in% c("day", "days", "hour", "hours", "intra day")) return(TRUE)
+  grepl("\\b(daily|hourly|intraday)\\b", f)
+}
+
+#' Kalshi keep-rule: stated frequencies other than Daily/Hourly stay.
+#' Missing / unknown stays out — we cannot show it is clearly not Daily/Hourly.
+gp_kalshi_frequency_allowed <- function(freq) {
+  f <- .gp_norm_freq(freq)
+  if (!nzchar(f)) return(FALSE)
+  if (f %in% c("unknown", "na", "n/a", "null", "none", "unspecified")) return(FALSE)
+  !gp_frequency_is_daily_or_hourly(f)
+}
+
+#' Polymarket keep-rule: drop an explicit Daily/Hourly badge.
+#' A blank recurrence means the event has no Daily/Hourly badge.
+gp_poly_recurrence_allowed <- function(recurrence) {
+  !gp_frequency_is_daily_or_hourly(recurrence)
+}
+
 #' TW/US listed-company heuristic for Company board (titles / tickers).
 gp_is_tw_us_listed_title <- function(title) {
   t <- tolower(.gp_chr(title))
@@ -1835,17 +2158,25 @@ gp_is_tw_us_listed_title <- function(title) {
   best_id
 }
 
-gp_fetch_kalshi_series_list <- function(category, use_cache = TRUE) {
+gp_fetch_kalshi_series_list <- function(category, tags = NULL, use_cache = TRUE) {
   category <- .gp_chr(category)
-  cache_key <- .gp_cache_key("kseries", category)
+  tags <- as.character(unlist(tags, use.names = FALSE))
+  tags <- tags[nzchar(tags)]
+  cache_key <- .gp_cache_key("kseries", category, paste(tags, collapse = ""))
   if (isTRUE(use_cache)) {
     hit <- .gp_cache_get_fresh(cache_key, .GP_DISCOVERY_TTL_SEC)
     if (is.list(hit) && isTRUE(hit$ok)) return(hit)
   }
+  tag_q <- if (length(tags)) {
+    paste0("&tags=", utils::URLencode(paste(tags, collapse = ","), reserved = TRUE))
+  } else {
+    ""
+  }
   url <- sprintf(
-    "%s/series?limit=200&category=%s",
+    "%s/series?category=%s%s",
     .GP_KALSHI_API,
-    utils::URLencode(category, reserved = TRUE)
+    utils::URLencode(category, reserved = TRUE),
+    tag_q
   )
   res <- .gp_http_get_json(url, timeout_sec = 20)
   if (!isTRUE(res$ok)) {
@@ -1858,8 +2189,374 @@ gp_fetch_kalshi_series_list <- function(category, use_cache = TRUE) {
   out
 }
 
+.gp_query_url <- function(base, params) {
+  params <- params[!vapply(params, function(v) !nzchar(.gp_chr(v)), logical(1))]
+  if (!length(params)) return(base)
+  parts <- vapply(names(params), function(k) {
+    paste0(
+      utils::URLencode(k, reserved = TRUE),
+      "=",
+      utils::URLencode(.gp_chr(params[[k]]), reserved = TRUE)
+    )
+  }, character(1))
+  paste0(base, "?", paste(parts, collapse = "&"))
+}
+
+.gp_polite_pause <- function(sec = .GP_PAGE_PAUSE_SEC) {
+  sec <- suppressWarnings(as.numeric(sec)[1])
+  if (is.finite(sec) && sec > 0) Sys.sleep(sec)
+}
+
+.gp_unix_or_chr <- function(x) {
+  if (is.null(x) || length(x) == 0L) return(NA_character_)
+  if (is.numeric(x) && length(x) >= 1L && is.finite(x[[1]])) {
+    ts <- x[[1]]
+    if (ts > 1e12) ts <- ts / 1000
+    if (ts > 1e9) {
+      return(format(
+        as.POSIXct(ts, origin = "1970-01-01", tz = "UTC"),
+        "%Y-%m-%dT%H:%M:%SZ"
+      ))
+    }
+  }
+  .gp_chr(x)
+}
+
+# Polymarket Big Tech sorts. Gamma accepts these `order` values on /events.
+# "Earn 3.25%" is the rewards-APY label in the page dropdown; gamma rejects a
+# rewards order on /events (HTTP 422). That sort is a reordering of this same
+# Active catalog (reward-eligible rows are already in the union), so it is not
+# a second universe. Status filter is Active (`active=true&closed=false`),
+# which matches the page default rather than All (closed included).
+.GP_POLY_COMPANY_SORTS <- list(
+  list(id = "volume_24hr", order = "volume24hr", ascending = "false"),
+  list(id = "total_volume", order = "volume", ascending = "false"),
+  list(id = "liquidity", order = "liquidity", ascending = "false"),
+  list(id = "newest", order = "startDate", ascending = "false"),
+  list(id = "ending_soon", order = "endDate", ascending = "true"),
+  list(id = "competitive", order = "competitive", ascending = "false"),
+  list(id = "created", order = "createdAt", ascending = "false")
+)
+
+.gp_kalshi_outcome_title <- function(market, event_title) {
+  sub <- .gp_chr(market$yes_subtitle %||% market$yes_sub_title)
+  title <- .gp_chr(market$title %||% event_title)
+  if (!nzchar(sub)) return(title)
+  if (tolower(sub) %in% c("yes", "no", "y", "n")) return(title)
+  sub
+}
+
+#' Parse one Kalshi search page (nested markets) into quotes. Drops Daily/Hourly.
+gp_parse_kalshi_search_events <- function(events, theme_id, freq_by_series) {
+  theme_id <- .gp_chr(theme_id, "big_tech")
+  if (!is.list(events) || !length(events)) return(.gp_empty_quote())
+  rows <- list()
+  for (ev in events) {
+    if (!is.list(ev)) next
+    ser <- .gp_chr(ev$series_ticker)
+    if (!nzchar(ser)) next
+    freq <- .gp_chr(if (is.list(freq_by_series)) freq_by_series[[ser]] else NA_character_)
+    if (!gp_kalshi_frequency_allowed(freq)) next
+    event_title <- .gp_chr(ev$event_title %||% ev$series_title %||% ser)
+    markets <- ev$markets %||% list()
+    if (!is.list(markets)) next
+    ck <- gp_company_key_for_market(event_title, series_ticker = ser)
+    for (m in markets) {
+      if (!is.list(m)) next
+      status <- tolower(.gp_chr(m$status %||% m$result))
+      if (nzchar(status) && status %in% .GP_DROP_STATUS) next
+      ticker <- .gp_chr(m$ticker)
+      if (!nzchar(ticker)) next
+      yes <- .gp_kalshi_yes(m)
+      if (!is.finite(yes)) next
+      exp_at <- .gp_unix_or_chr(m$expected_expiration_ts %||% m$close_ts %||% m$close_time)
+      if (nzchar(exp_at)) {
+        exp_t <- .gp_parse_time(exp_at)
+        if (!is.na(exp_t) && exp_t < Sys.time()) next
+      }
+      rows[[length(rows) + 1L]] <- .gp_quote_row(
+        venue = "kalshi",
+        theme_id = theme_id,
+        market_id = ticker,
+        title = .gp_kalshi_outcome_title(m, event_title),
+        yes_prob = yes,
+        updated_at = exp_at,
+        expires_at = exp_at,
+        url = paste0("https://kalshi.com/markets/", ticker),
+        raw_status = .gp_chr(m$status, "open"),
+        series_ticker = ser,
+        event_title = event_title,
+        company_key = ck
+      )
+    }
+  }
+  if (!length(rows)) return(.gp_empty_quote())
+  gp_filter_live_quotes(do.call(rbind, rows))
+}
+
+#' All open Kalshi Big Tech & Business markets except Daily/Hourly. No top-N.
+gp_fetch_kalshi_big_tech <- function(use_cache = TRUE) {
+  cache_key <- .gp_cache_key("kbigtech", .GP_KALSHI_COMPANY_CATEGORY, .GP_KALSHI_COMPANY_TAG)
+  if (isTRUE(use_cache)) {
+    hit <- .gp_cache_get_fresh(cache_key, .GP_QUOTE_TTL_SEC)
+    if (is.list(hit) && isTRUE(hit$ok)) {
+      hit$quotes <- gp_filter_live_quotes(hit$quotes)
+      return(hit)
+    }
+  }
+  sl <- gp_fetch_kalshi_series_list(
+    .GP_KALSHI_COMPANY_CATEGORY,
+    tags = .GP_KALSHI_COMPANY_TAG,
+    use_cache = use_cache
+  )
+  if (!isTRUE(sl$ok)) {
+    return(list(ok = FALSE, quotes = .gp_empty_quote(), error = sl$error %||% "series_failed"))
+  }
+  freq_by_series <- list()
+  for (s in sl$series) {
+    if (!is.list(s)) next
+    tk <- .gp_chr(s$ticker)
+    if (nzchar(tk)) freq_by_series[[tk]] <- .gp_chr(s$frequency)
+  }
+  events <- list()
+  cursor <- ""
+  last_err <- NULL
+  for (page_i in seq_len(.GP_KALSHI_SEARCH_MAX_PAGES)) {
+    params <- list(
+      order_by = "trending",
+      status = "open",
+      page_size = "100",
+      category = .GP_KALSHI_COMPANY_CATEGORY,
+      tag = .GP_KALSHI_COMPANY_TAG
+    )
+    if (nzchar(cursor)) params$cursor <- cursor
+    url <- .gp_query_url(.GP_KALSHI_SEARCH, params)
+    res <- .gp_http_get_json(url, timeout_sec = 25)
+    if (!isTRUE(res$ok)) {
+      last_err <- res$error %||% "search_failed"
+      events <- list()
+      break
+    }
+    batch <- res$data$current_page %||% list()
+    if (!is.list(batch) || !length(batch)) break
+    events <- c(events, batch)
+    cursor <- .gp_chr(res$data$next_cursor)
+    if (!nzchar(cursor)) break
+    .gp_polite_pause()
+  }
+  if (!length(events)) {
+    return(list(ok = FALSE, quotes = .gp_empty_quote(), error = last_err %||% "empty"))
+  }
+  quotes <- gp_parse_kalshi_search_events(events, theme_id = "big_tech", freq_by_series)
+  quotes <- quotes[!duplicated(quotes$market_id), , drop = FALSE]
+  if (nrow(quotes) == 0L) {
+    return(list(ok = FALSE, quotes = .gp_empty_quote(), error = last_err %||% "empty"))
+  }
+  out <- list(ok = TRUE, quotes = quotes, error = NULL, n_events = length(events))
+  if (isTRUE(use_cache)) .gp_cache_set_fresh(cache_key, out, layer = "quote")
+  out
+}
+
+.gp_poly_series_slug <- function(ev) {
+  slug <- .gp_chr(ev$seriesSlug)
+  if (nzchar(slug)) return(slug)
+  series <- ev$series
+  if (is.list(series) && length(series) && is.list(series[[1]])) {
+    return(.gp_chr(series[[1]]$slug))
+  }
+  ""
+}
+
+#' series slug → recurrence. Missing slug is not a lookup. Failed HTTP is not ok.
+gp_fetch_poly_series_recurrence <- function(slugs, use_cache = TRUE) {
+  slugs <- unique(as.character(slugs))
+  slugs <- slugs[nzchar(slugs)]
+  rec <- list()
+  ok <- list()
+  if (!length(slugs)) return(list(rec = rec, ok = ok))
+  for (slug in slugs) {
+    cache_key <- .gp_cache_key("pseries", slug)
+    if (isTRUE(use_cache)) {
+      hit <- .gp_cache_get_fresh(cache_key, .GP_DISCOVERY_TTL_SEC)
+      if (is.list(hit) && !is.null(hit$ok)) {
+        rec[[slug]] <- .gp_chr(hit$recurrence)
+        ok[[slug]] <- isTRUE(hit$ok)
+        next
+      }
+    }
+    url <- .gp_query_url(
+      paste0(.GP_POLY_GAMMA, "/series"),
+      list(slug = slug)
+    )
+    res <- .gp_http_get_json(url, timeout_sec = 15)
+    .gp_polite_pause(0.08)
+    if (!isTRUE(res$ok) || !is.list(res$data) || !length(res$data)) {
+      rec[[slug]] <- ""
+      ok[[slug]] <- FALSE
+      if (isTRUE(use_cache)) {
+        .gp_cache_set_fresh(cache_key, list(ok = FALSE, recurrence = ""), layer = "discovery")
+      }
+      next
+    }
+    item <- res$data[[1]]
+    recurrence <- if (is.list(item)) .gp_chr(item$recurrence) else ""
+    rec[[slug]] <- recurrence
+    ok[[slug]] <- TRUE
+    if (isTRUE(use_cache)) {
+      .gp_cache_set_fresh(
+        cache_key,
+        list(ok = TRUE, recurrence = recurrence),
+        layer = "discovery"
+      )
+    }
+  }
+  list(rec = rec, ok = ok)
+}
+
+gp_poly_event_frequency_ok <- function(ev, rec_map) {
+  slug <- .gp_poly_series_slug(ev)
+  if (!nzchar(slug)) return(TRUE)
+  looked <- rec_map$ok[[slug]]
+  if (!isTRUE(looked)) return(FALSE)
+  gp_poly_recurrence_allowed(rec_map$rec[[slug]])
+}
+
+#' Active Polymarket events → quotes. One row per outcome market.
+gp_parse_polymarket_company_events <- function(events, theme_id = "big_tech") {
+  theme_id <- .gp_chr(theme_id, "big_tech")
+  if (!is.list(events) || !length(events)) return(.gp_empty_quote())
+  rows <- list()
+  for (ev in events) {
+    if (!is.list(ev) || isTRUE(ev$closed)) next
+    event_title <- .gp_chr(ev$title %||% ev$slug)
+    slug <- .gp_chr(ev$slug)
+    url <- if (nzchar(slug)) paste0("https://polymarket.com/event/", slug) else NA_character_
+    tag <- gp_poly_company_tag(ev$tags, paste(event_title, slug))
+    ck <- gp_company_key_for_market(event_title, tag_slug = tag)
+    markets <- ev$markets %||% list()
+    if (!is.list(markets) || !length(markets)) next
+    for (m in markets) {
+      if (!is.list(m)) next
+      if (isTRUE(m$closed) || identical(m$active, FALSE)) next
+      mid <- .gp_chr(m$id %||% m$conditionId %||% m$slug)
+      if (!nzchar(mid)) next
+      yes <- .gp_poly_yes_prob(m)
+      if (!is.finite(yes)) next
+      outcome <- .gp_chr(m$groupItemTitle)
+      question <- .gp_chr(m$question %||% event_title)
+      line <- if (nzchar(outcome) && !tolower(outcome) %in% c("yes", "no")) outcome else question
+      exp_at <- .gp_chr(m$endDate %||% ev$endDate)
+      if (nzchar(exp_at)) {
+        exp_t <- .gp_parse_time(exp_at)
+        if (!is.na(exp_t) && exp_t < Sys.time()) next
+      }
+      rows[[length(rows) + 1L]] <- .gp_quote_row(
+        venue = "polymarket",
+        theme_id = theme_id,
+        market_id = mid,
+        title = line,
+        yes_prob = yes,
+        updated_at = .gp_chr(m$updatedAt %||% ev$updatedAt),
+        expires_at = exp_at,
+        url = url,
+        raw_status = "open",
+        series_ticker = slug,
+        history_token = .gp_poly_yes_token(m),
+        event_title = event_title,
+        company_key = ck
+      )
+    }
+  }
+  if (!length(rows)) return(.gp_empty_quote())
+  quotes <- gp_filter_live_quotes(do.call(rbind, rows))
+  quotes[!duplicated(paste(quotes$venue, quotes$market_id, sep = "\t")), , drop = FALSE]
+}
+
+#' All Active Polymarket Big Tech events across sort orders, Daily/Hourly removed.
+gp_fetch_polymarket_big_tech <- function(use_cache = TRUE) {
+  cache_key <- .gp_cache_key("pbigtech", .GP_POLY_COMPANY_TAG, "active")
+  if (isTRUE(use_cache)) {
+    hit <- .gp_cache_get_fresh(cache_key, .GP_QUOTE_TTL_SEC)
+    if (is.list(hit) && isTRUE(hit$ok)) {
+      hit$quotes <- gp_filter_live_quotes(hit$quotes)
+      return(hit)
+    }
+  }
+  events <- list()
+  seen <- new.env(parent = emptyenv())
+  last_err <- NULL
+  any_ok <- FALSE
+  for (sort in .GP_POLY_COMPANY_SORTS) {
+    offset <- 0L
+    for (page_i in seq_len(.GP_POLY_SORT_MAX_PAGES)) {
+      url <- .gp_query_url(
+        paste0(.GP_POLY_GAMMA, "/events"),
+        list(
+          tag_slug = .GP_POLY_COMPANY_TAG,
+          active = "true",
+          closed = "false",
+          limit = "100",
+          offset = as.character(offset),
+          order = sort$order,
+          ascending = sort$ascending
+        )
+      )
+      res <- .gp_http_get_json(url, timeout_sec = 25)
+      if (!isTRUE(res$ok)) {
+        last_err <- res$error %||% paste0("sort_", sort$id)
+        break
+      }
+      any_ok <- TRUE
+      batch <- res$data
+      if (!is.list(batch) || !length(batch) || !is.null(batch$events)) {
+        if (is.list(batch) && !is.null(batch$events)) batch <- batch$events
+      }
+      if (!is.list(batch) || !length(batch) || is.null(batch[[1]]$id %||% batch[[1]]$slug)) {
+        break
+      }
+      for (ev in batch) {
+        if (!is.list(ev)) next
+        eid <- .gp_chr(ev$id %||% ev$slug)
+        if (!nzchar(eid) || exists(eid, envir = seen, inherits = FALSE)) next
+        assign(eid, TRUE, envir = seen)
+        events[[length(events) + 1L]] <- ev
+      }
+      if (length(batch) < 100L) break
+      offset <- offset + 100L
+      .gp_polite_pause(0.08)
+    }
+    .gp_polite_pause(0.08)
+  }
+  if (!length(events)) {
+    return(list(
+      ok = FALSE,
+      quotes = .gp_empty_quote(),
+      error = if (any_ok) (last_err %||% "empty") else (last_err %||% "fetch_failed")
+    ))
+  }
+  slugs <- unique(vapply(events, .gp_poly_series_slug, character(1)))
+  rec_map <- gp_fetch_poly_series_recurrence(slugs, use_cache = use_cache)
+  keep <- vapply(events, function(ev) gp_poly_event_frequency_ok(ev, rec_map), logical(1))
+  events <- events[keep]
+  quotes <- gp_parse_polymarket_company_events(events, theme_id = "big_tech")
+  if (nrow(quotes) == 0L) {
+    return(list(ok = FALSE, quotes = .gp_empty_quote(), error = last_err %||% "empty"))
+  }
+  out <- list(
+    ok = TRUE,
+    quotes = quotes,
+    error = NULL,
+    n_events = length(events)
+  )
+  if (isTRUE(use_cache)) .gp_cache_set_fresh(cache_key, out, layer = "quote")
+  out
+}
+
 gp_fetch_kalshi_board <- function(board = "economic", limit_quotes = 24L, use_cache = TRUE) {
   src <- gp_board_sources(board)
+  if (isTRUE(src$kalshi_big_tech)) {
+    return(gp_fetch_kalshi_big_tech(use_cache = use_cache))
+  }
   cache_key <- .gp_cache_key("kboard", src$board, paste(src$kalshi_categories, collapse = ""))
   if (isTRUE(use_cache)) {
     hit <- .gp_cache_get_fresh(cache_key, .GP_QUOTE_TTL_SEC)
@@ -1934,6 +2631,9 @@ gp_fetch_kalshi_board <- function(board = "economic", limit_quotes = 24L, use_ca
 
 gp_fetch_polymarket_board <- function(board = "economic", limit_quotes = 24L, use_cache = TRUE) {
   src <- gp_board_sources(board)
+  if (isTRUE(src$poly_big_tech)) {
+    return(gp_fetch_polymarket_big_tech(use_cache = use_cache))
+  }
   cache_key <- .gp_cache_key("pboard", src$board, paste(c(src$poly_tags, src$poly_queries), collapse = ""))
   if (isTRUE(use_cache)) {
     hit <- .gp_cache_get_fresh(cache_key, .GP_QUOTE_TTL_SEC)
@@ -2037,17 +2737,23 @@ gp_fetch_snapshot <- function(market_mode = "US", use_cache = TRUE, limit_per_ve
     # Orphans with empty catch-all bucket
     if (identical(tid, src$theme_buckets[[length(src$theme_buckets)]]$id)) {
       known <- vapply(src$theme_buckets, function(x) x$id, character(1))
-      if (nrow(kq)) {
-        extra_k <- kq[!(kq$theme_id %in% known[known != tid]), , drop = FALSE]
+      known_other <- known[known != tid]
+      # A single catch-all bucket already holds every row. Re-adding "orphans"
+      # would duplicate the whole board (known_other is empty).
+      if (length(known_other) && nrow(kq)) {
+        extra_k <- kq[!(kq$theme_id %in% known), , drop = FALSE]
         if (nrow(extra_k)) k_part <- rbind(k_part, extra_k)
       }
-      if (nrow(pq)) {
-        extra_p <- pq[!(pq$theme_id %in% known[known != tid]), , drop = FALSE]
+      if (length(known_other) && nrow(pq)) {
+        extra_p <- pq[!(pq$theme_id %in% known), , drop = FALSE]
         if (nrow(extra_p)) p_part <- rbind(p_part, extra_p)
       }
     }
-    if (nrow(k_part) > 6L) k_part <- k_part[seq_len(6L), , drop = FALSE]
-    if (nrow(p_part) > 6L) p_part <- p_part[seq_len(6L), , drop = FALSE]
+    # Company keeps the full Kalshi ∪ Polymarket union. Other boards stay capped.
+    if (!identical(board, "company")) {
+      if (nrow(k_part) > 6L) k_part <- k_part[seq_len(6L), , drop = FALSE]
+      if (nrow(p_part) > 6L) p_part <- p_part[seq_len(6L), , drop = FALSE]
+    }
     list(
       theme_id = tid,
       label_key = b$label_key,
@@ -2066,8 +2772,9 @@ gp_fetch_snapshot <- function(market_mode = "US", use_cache = TRUE, limit_per_ve
   }, logical(1))
   if (any(nonempty)) pairs <- pairs[nonempty]
   # Primary board view: Yes-prob line charts from venue history (honest empty if none).
+  hist_n <- if (identical(board, "company")) 500L else .GP_HISTORY_PER_VENUE
   pairs <- lapply(pairs, function(pr) {
-    gp_attach_theme_series(pr, use_cache = use_cache, per_venue = .GP_HISTORY_PER_VENUE)
+    gp_attach_theme_series(pr, use_cache = use_cache, per_venue = hist_n)
   })
   list(
     fetched_at = format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z", tz = "UTC"),
@@ -2130,6 +2837,11 @@ global_prediction_ui <- function(id, locale = "en") {
       @media (max-width: 767px) { .ynow-gp-chart-grid { grid-template-columns: 1fr; } }
       .ynow-gp-company-blocks { display: flex; flex-direction: column; gap: 18px; }
       .ynow-gp-company-block { margin: 0; }
+      .ynow-gp-venue-split { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; }
+      @media (max-width: 767px) { .ynow-gp-venue-split { grid-template-columns: 1fr; } }
+      .ynow-gp-venue-col { min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+      .ynow-gp-venue-col-head { display: flex; align-items: center; gap: 6px; font-size: 12px;
+        font-weight: 700; color: #3f3a33; }
       .ynow-gp-company-title { margin: 0 0 8px; font-size: 14px; font-weight: 700;
         color: #1c1915; letter-spacing: 0.01em; }
       .ynow-gp-market-chart, .ynow-gp-prop-chart { margin: 0; padding: 12px 12px 8px;
@@ -2229,7 +2941,14 @@ global_prediction_server <- function(id,
     gen_rv <- shiny::reactiveVal(0L)
     last_fetch_at <- shiny::reactiveVal(as.POSIXct(NA, tz = "UTC"))
     saw_active_rv <- shiny::reactiveVal(FALSE)
-    board_state <- shiny::reactiveVal("economic")
+    initial_board <- "economic"
+    if (!is.null(board_rv)) {
+      initial_board <- tryCatch(
+        gp_norm_board(if (shiny::is.reactive(board_rv)) shiny::isolate(board_rv()) else board_rv),
+        error = function(e) "economic"
+      )
+    }
+    board_state <- shiny::reactiveVal(initial_board)
 
     loc <- shiny::reactive({
       if (is.reactive(ui_locale_rv)) ui_locale_rv() else "en"

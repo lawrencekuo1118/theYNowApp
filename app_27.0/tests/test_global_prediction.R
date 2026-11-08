@@ -52,8 +52,24 @@ check(
   "finance poly monthly+indices",
   any(c("monthly", "indices", "indicies") %in% fin$poly_tags)
 )
-check("company filter on", isTRUE(co$company_filter))
-check("company poly tech/stocks/earnings", all(c("tech", "stocks", "earnings") %in% co$poly_tags))
+check("company filter off for category union", isFALSE(co$company_filter))
+check("company kalshi big tech tag", identical(co$kalshi_tags, "Big Tech & Business") &&
+        identical(co$kalshi_categories, "Science and Technology"))
+check("company polymarket big-tech tag", identical(co$poly_tags, "big-tech"))
+check(
+  "daily and hourly are excluded",
+  !gp_kalshi_frequency_allowed("daily") &&
+    !gp_kalshi_frequency_allowed("Hourly") &&
+    !gp_kalshi_frequency_allowed("") &&
+    !gp_kalshi_frequency_allowed("unknown") &&
+    gp_kalshi_frequency_allowed("custom") &&
+    gp_kalshi_frequency_allowed("one_off") &&
+    gp_kalshi_frequency_allowed("monthly") &&
+    gp_kalshi_frequency_allowed("weekly") &&
+    !gp_poly_recurrence_allowed("daily") &&
+    gp_poly_recurrence_allowed("monthly") &&
+    gp_poly_recurrence_allowed("")
+)
 check(
   "economic themes cover Fed→trade",
   all(c(
@@ -69,10 +85,66 @@ check(
   ) %in% vapply(fin$theme_buckets, function(b) b$id, character(1)))
 )
 check(
-  "company themes cover mega/semis/TW/earnings",
-  all(c(
-    "us_mega", "semis", "tw_listed", "earnings", "co_other"
-  ) %in% vapply(co$theme_buckets, function(b) b$id, character(1)))
+  "company theme is Big Tech bucket",
+  identical(
+    vapply(co$theme_buckets, function(b) b$id, character(1)),
+    "big_tech"
+  )
+)
+check(
+  "waymo series maps to waymo",
+  identical(gp_company_key_for_market("Where will Waymo operate?", "KXWAYMOCITY"), "waymo")
+)
+check(
+  "openai tag maps to openai",
+  identical(gp_company_key_for_market("hardware", tag_slug = "openai"), "openai")
+)
+waymo_parsed <- gp_parse_kalshi_search_events(
+  list(
+    list(
+      series_ticker = "KXDAILY",
+      event_title = "Daily thing",
+      markets = list(list(
+        ticker = "KXDAILY-1", title = "Daily thing",
+        last_price_dollars = "0.5000", status = "open"
+      ))
+    ),
+    list(
+      series_ticker = "KXWAYMOCITY",
+      event_title = "Where will Waymo operate this year?",
+      markets = list(list(
+        ticker = "KXWAYMOCITY-26DEC-LAS",
+        title = "Will Waymo operate in Las Vegas?",
+        yes_subtitle = "Las Vegas, NV",
+        last_price_dollars = "0.6300",
+        status = "open"
+      ))
+    )
+  ),
+  theme_id = "big_tech",
+  freq_by_series = list(KXDAILY = "daily", KXWAYMOCITY = "custom")
+)
+check(
+  "kalshi search drops daily and keeps Waymo",
+  nrow(waymo_parsed) == 1L &&
+    identical(waymo_parsed$market_id[[1]], "KXWAYMOCITY-26DEC-LAS") &&
+    identical(waymo_parsed$title[[1]], "Las Vegas, NV")
+)
+check(
+  "polymarket recurrence gate",
+  isFALSE(gp_poly_event_frequency_ok(
+    list(seriesSlug = "max-chatbot-arena"),
+    list(rec = list("max-chatbot-arena" = "daily"), ok = list("max-chatbot-arena" = TRUE))
+  )) &&
+    isTRUE(gp_poly_event_frequency_ok(
+      list(seriesSlug = "largest-company"),
+      list(rec = list("largest-company" = "monthly"), ok = list("largest-company" = TRUE))
+    )) &&
+    isTRUE(gp_poly_event_frequency_ok(list(title = "one off"), list(rec = list(), ok = list()))) &&
+    isFALSE(gp_poly_event_frequency_ok(
+      list(seriesSlug = "missing"),
+      list(rec = list(missing = ""), ok = list(missing = FALSE))
+    ))
 )
 
 reg <- gp_theme_registry("US")
@@ -570,7 +642,7 @@ co_pair <- list(
   )
 )
 co_meta <- gp_market_meta_from_pair(co_pair)
-co_blocks <- gp_build_company_chart_blocks(co_series, co_meta, locale = "en")
+co_blocks <- gp_build_company_venue_board(co_series, co_meta, locale = "en")
 co_html <- paste(as.character(co_blocks), collapse = "\n")
 check(
   "company board groups by company blocks",
@@ -578,10 +650,15 @@ check(
     grepl('data-company-key="apple"', co_html, fixed = TRUE) &&
     grepl('data-company-key="nvidia"', co_html, fixed = TRUE)
 )
-# NVIDIA has two distinct props → ≥2 charts under that company path overall.
 check(
-  "company blocks still use 3-up prop grid",
-  grepl("ynow-gp-chart-grid", co_html, fixed = TRUE)
+  "same company is side by side Kalshi | Polymarket",
+  grepl("ynow-gp-venue-split", co_html, fixed = TRUE) &&
+    grepl('data-venue="kalshi"', co_html, fixed = TRUE) &&
+    grepl('data-venue="polymarket"', co_html, fixed = TRUE)
+)
+check(
+  "company only on one venue leaves the other side empty",
+  grepl("gp_company_venue_empty_kalshi", co_html, fixed = TRUE)
 )
 check(
   "proposition key prefers poly event slug",
@@ -639,8 +716,8 @@ check("theme UI mounts line chart class", grepl("ynow-gp-chart", mod_src, fixed 
 check(
   "theme UI uses proposition / company chart builders",
   grepl("gp_build_theme_market_charts(", mod_src, fixed = TRUE) &&
-    grepl("gp_build_company_chart_blocks(", mod_src, fixed = TRUE) &&
-    grepl("ynow-gp-chart-grid", mod_src, fixed = TRUE)
+    grepl("gp_build_company_venue_board(", mod_src, fixed = TRUE) &&
+    grepl("ynow-gp-venue-split", mod_src, fixed = TRUE)
 )
 check(
   "theme UI drops venue quote list chrome",
