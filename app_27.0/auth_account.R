@@ -3660,6 +3660,10 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
         password_label = tryCatch(ui_str("auth_password_label", loc), error = function(e) "Enter password:"),
         submit = tryCatch(ui_str("auth_submit", loc), error = function(e) "Email sign-in"),
         busy = tryCatch(ui_str("auth_busy", loc), error = function(e) "Signing in…"),
+        redirecting = tryCatch(
+          ui_str("auth_redirecting", loc),
+          error = function(e) "Redirecting…"
+        ),
         cancel = tryCatch(ui_str("auth_cancel", loc), error = function(e) "Cancel"),
         or_email = tryCatch(ui_str("auth_or_email", loc), error = function(e) "Or sign in with Email"),
         google = tryCatch(ui_str("auth_google", loc), error = function(e) "Continue with Google"),

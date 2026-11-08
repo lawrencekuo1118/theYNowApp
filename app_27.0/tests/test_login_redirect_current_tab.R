@@ -299,6 +299,25 @@ check(
   "auth busy helper body present",
   nchar(busy_helpers) > 40L || grepl("ynow-auth-signing-in", ui, fixed = TRUE)
 )
+check(
+  "post-login redirect title helpers wired",
+  grepl("ynowBeginRedirectTitle", ui, fixed = TRUE) &&
+    grepl("ynowEndRedirectTitle", ui, fixed = TRUE) &&
+    grepl("ynowScheduleEndRedirectTitle", ui, fixed = TRUE) &&
+    grepl("ynow-auth-redirecting", ui, fixed = TRUE)
+)
+check(
+  "PostLogin shows Redirecting only when !quiet",
+  grepl("ynowBeginRedirectTitle", post_login, fixed = TRUE) &&
+    grepl("ynowScheduleEndRedirectTitle", post_login, fixed = TRUE) &&
+    grepl("!payload.quiet", post_login, fixed = TRUE) &&
+    grepl("showRedirect", post_login, fixed = TRUE)
+)
+check(
+  "redirect title fail-safe timeout present",
+  grepl("setTimeout(finish, 2000)", ui, fixed = TRUE) ||
+    grepl("setTimeout(finish,2000)", ui, fixed = TRUE)
+)
 
 pa <- paste(readLines("price_alert.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 scr <- paste(readLines("stock_screener.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
@@ -326,6 +345,16 @@ check(
   "auth_busy locale keys en + zh-TW",
   grepl("auth_busy = \"Signing in", loc, fixed = TRUE) &&
     grepl("auth_busy = \"登入中", loc, fixed = TRUE)
+)
+check(
+  "auth_redirecting locale keys en + zh-TW",
+  grepl("auth_redirecting = \"Redirecting", loc, fixed = TRUE) &&
+    grepl("auth_redirecting = \"重新導向中", loc, fixed = TRUE)
+)
+check(
+  "AuthLocale pushes redirecting string",
+  grepl("redirecting = tryCatch", auth, fixed = TRUE) &&
+    grepl("auth_redirecting", auth, fixed = TRUE)
 )
 
 if (fail > 0L) {

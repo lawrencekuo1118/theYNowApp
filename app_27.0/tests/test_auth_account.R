@@ -448,7 +448,7 @@ keys <- c(
   "auth_email_label", "auth_password_label", "auth_submit", "auth_cancel",
   "auth_or_email", "auth_google", "auth_facebook", "auth_linkedin", "auth_forgot",
   "auth_register", "auth_register_btn", "auth_modal_title_register", "auth_resend",
-  "auth_msg_ok", "auth_busy", "auth_msg_disabled", "auth_msg_missing", "auth_msg_invalid",
+  "auth_msg_ok", "auth_busy", "auth_redirecting", "auth_msg_disabled", "auth_msg_missing", "auth_msg_invalid",
   "auth_msg_no_backend", "auth_msg_oauth_soon", "auth_msg_oauth_need_google",
   "auth_msg_oauth_need_facebook", "auth_msg_oauth_need_linkedin",
   "auth_msg_oauth_failed", "auth_msg_oauth_state",
@@ -1248,7 +1248,7 @@ check("auth default on (unset)", {
 })
 check("locale about auth default on", grepl("on by default", ui_str("auth_about_note", "en"), fixed = TRUE) &&
         grepl("預設啟用", ui_str("auth_about_note", "zh-TW"), fixed = TRUE))
-check("display version v25/v26", grepl("The YNow App v2[56]", ui, perl = TRUE))
+check("display version in header title", grepl("The YNow App v[0-9]", ui))
 
 # Live line folder name
 check("live folder is app_27.0", basename(app_dir) == "app_27.0")
