@@ -132,10 +132,6 @@ check("polymarket empty fail-closed", nrow(gp_parse_polymarket_events(list(), "f
 check("bad json string is empty", nrow(gp_parse_kalshi_markets("{", "fed_rates")) == 0L)
 check("null json is empty", nrow(gp_parse_kalshi_markets("null", "fed_rates")) == 0L)
 
-# Board switch (Economic→Finance→Company) hard-invalidates then re-fetches.
-# Gamma tag feeds sometimes return [] → R list(). The old wrap used
-# !is.null(payload[[1]]), which throws on list() and aborts the snapshot so
-# the active board paints empty / looks stuck.
 mod_src_early <- paste(
   readLines(file.path(app_dir, "global_prediction_module.R"), warn = FALSE, encoding = "UTF-8"),
   collapse = "\n"
@@ -152,8 +148,6 @@ check(
 check(
   "board button handlers only set_board (no inline do_fetch)",
   {
-    # Three observeEvent(input$board_*) blocks must not call do_fetch; the
-    # panel/board_state observer owns the single hard refresh.
     m <- gregexpr(
       "shiny::observeEvent\\(input\\$board_(economic|finance|company),\\s*\\{([^}]*)\\}",
       mod_src_early,
