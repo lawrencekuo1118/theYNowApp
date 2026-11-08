@@ -3044,11 +3044,10 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
     # Auth chrome immediately — no mint / prefs DB before this flush ends.
     .push_auth_state(TRUE, user$email %||% "")
     tryCatch(shinyBS::toggleModal(session, "ynow_auth_modal", "close"), error = function(e) NULL)
-    # Client / same-session tab only (localStorage early path + modal restore_tab).
+    # Client / same-session tab only (modal restore_tab). Empty means the
+    # non-quiet PostLogin DOM fallback owns the tab — do not adopt a possibly
+    # stale input$sidebar_tabs (often still home while the menu shows Macro).
     tab <- as.character(restore_tab %||% "")[1]
-    if (!nzchar(tab)) {
-      tab <- as.character(isolate(input$sidebar_tabs) %||% "")[1]
-    }
     if (identical(tab, "testing")) tab <- "home"
     session$sendCustomMessage(
       "ynowAuthPostLogin",
@@ -3080,12 +3079,27 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
       stick <- as.character(saved$ticker %||% "")[1]
       stay_tab <- chrome_tab
       if (identical(stay_tab, "testing")) stay_tab <- "home"
-      # Prefer current-session tab over durable prefs tab. Still restore ticker
-      # from prefs when available so search context survives sign-in.
-      if (nzchar(stay_tab) || nzchar(stick)) {
+      live_tab <- as.character(isolate(input$sidebar_tabs) %||% "")[1]
+      if (identical(live_tab, "testing")) live_tab <- "home"
+      # Stale home/get_started (or empty) capture: prefer a real live sidebar the
+      # client already synced after the first PostLogin.
+      stale_default <- !nzchar(stay_tab) ||
+        identical(stay_tab, "home") ||
+        identical(stay_tab, "get_started")
+      live_real <- nzchar(live_tab) &&
+        !identical(live_tab, "home") &&
+        !identical(live_tab, "get_started")
+      if (isTRUE(stale_default) && isTRUE(live_real)) {
+        stay_tab <- live_tab
+      } else if (!nzchar(stay_tab) && nzchar(live_tab)) {
+        stay_tab <- live_tab
+      }
+      # First PostLogin already chose the tab. Quiet pass reconciles ticker only
+      # so a frozen Home chrome_tab cannot yank the user off Macro.
+      if (nzchar(stick)) {
         tryCatch(
           .ynow_auth_apply_surface(
-            tab = stay_tab,
+            tab = "",
             ticker = stick,
             quiet = TRUE,
             message = ""
@@ -3257,10 +3271,11 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
       .show_auth_note(mk, fallback, cls = "text-danger")
       return()
     }
-    tab_now <- as.character(isolate(input$sidebar_tabs) %||% "")[1]
+    # Client captures the visible tab (ynowPersistPreAuthTab). Server sidebar
+    # can still be home while the menu shows another page — never prefer it.
     session$sendCustomMessage(
       "ynowAuthOAuthRedirect",
-      list(url = as.character(res$url)[1], restore_tab = tab_now)
+      list(url = as.character(res$url)[1], restore_tab = "")
     )
   }
 

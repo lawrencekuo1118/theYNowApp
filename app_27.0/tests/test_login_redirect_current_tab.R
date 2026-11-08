@@ -89,7 +89,7 @@ check(
   "in-session login prefers chrome_tab over durable stab",
   grepl("chrome_tab", finish_body, fixed = TRUE) &&
     grepl("stay_tab", finish_body, fixed = TRUE) &&
-    grepl("tab = stay_tab", finish_body, fixed = TRUE) &&
+    grepl("stay_tab <- chrome_tab", finish_body, fixed = TRUE) &&
     !grepl("if (nzchar(stab)) stab else chrome_tab", finish_body, fixed = TRUE) &&
     !grepl("Durable prefs win when present", finish_body, fixed = TRUE)
 )
@@ -101,9 +101,14 @@ check(
       ".ynow_auth_apply_surface(",
       ".persist_last_ui_surface("
     )
-    grepl("tab = stay_tab", apply_chunk, fixed = TRUE) &&
-      !grepl("saved$tab", apply_chunk, fixed = TRUE) &&
-      !grepl("\\bstab\\b", apply_chunk)
+    # Quiet apply is ticker-only (empty tab); durable saved$tab is never the nav target.
+    !grepl("saved$tab", apply_chunk, fixed = TRUE) &&
+      !grepl("\\bstab\\b", apply_chunk) &&
+      !grepl("tab = stay_tab", apply_chunk, fixed = TRUE) &&
+      (
+        grepl("tab = \"\"", apply_chunk, fixed = TRUE) ||
+          grepl("tab = ''", apply_chunk, fixed = TRUE)
+      )
   }
 )
 check(
