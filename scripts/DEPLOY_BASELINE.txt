@@ -7,5 +7,5 @@ commit=16ebbbe71dca4b362cf854e79387ffdd5bfe404e
 short=16ebbbe7
 message=chore: bump display version to v28.33
 captured_at=2026-11-08T09:07:07Z
-display_version=v28.33
+display_version=v28.34
 note=Shipped v28.33 (+0.01) via deploy_app_21.R after #719 Global Prediction Economic/Finance/Company board switch (YN-104/YN-105). Live status=running; rsconnect bundleId=12793973. Prior: v28.32=#717/#718 (12793804), v28.31=#714/#715 (12793763).
