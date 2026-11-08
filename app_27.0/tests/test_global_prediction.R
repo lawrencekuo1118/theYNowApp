@@ -641,24 +641,31 @@ co_pair <- list(
     stringsAsFactors = FALSE
   )
 )
-co_meta <- gp_market_meta_from_pair(co_pair)
-co_blocks <- gp_build_company_venue_board(co_series, co_meta, locale = "en")
-co_html <- paste(as.character(co_blocks), collapse = "\n")
-check(
-  "company board groups by company blocks",
-  grepl("ynow-gp-company-blocks", co_html, fixed = TRUE) &&
-    grepl('data-company-key="apple"', co_html, fixed = TRUE) &&
-    grepl('data-company-key="nvidia"', co_html, fixed = TRUE)
+co_pairs <- gp_company_theme_pairs(
+  co_pair$kalshi,
+  co_pair$polymarket
 )
 check(
-  "same company is side by side Kalshi | Polymarket",
-  grepl("ynow-gp-venue-split", co_html, fixed = TRUE) &&
-    grepl('data-venue="kalshi"', co_html, fixed = TRUE) &&
-    grepl('data-venue="polymarket"', co_html, fixed = TRUE)
+  "company board builds one Economic-style theme pair per company",
+  length(co_pairs) >= 2L &&
+    any(vapply(co_pairs, function(pr) identical(pr$theme_id, "apple"), logical(1))) &&
+    any(vapply(co_pairs, function(pr) identical(pr$theme_id, "nvidia"), logical(1)))
+)
+apple_pr <- Filter(function(pr) identical(pr$theme_id, "apple"), co_pairs)[[1]]
+apple_ids <- unique(c(apple_pr$kalshi$market_id, apple_pr$polymarket$market_id))
+apple_pr$series <- co_series[co_series$market_id %in% apple_ids, , drop = FALSE]
+co_html <- paste(as.character(.gp_theme_row_ui(apple_pr, locale = "en", board = "company")), collapse = "\n")
+check(
+  "company theme row uses Economic chart grid, not venue columns",
+  grepl("ynow-gp-theme", co_html, fixed = TRUE) &&
+    grepl("ynow-gp-chart-grid", co_html, fixed = TRUE) &&
+    !grepl("ynow-gp-venue-split", co_html, fixed = TRUE) &&
+    !grepl("ynow-gp-company-blocks", co_html, fixed = TRUE)
 )
 check(
-  "company only on one venue leaves the other side empty",
-  grepl("gp_company_venue_empty_kalshi", co_html, fixed = TRUE)
+  "company theme title is the company name",
+  identical(.gp_chr(apple_pr$label), "Apple") &&
+    grepl(">Apple<", co_html, fixed = TRUE)
 )
 check(
   "proposition key prefers poly event slug",
@@ -714,10 +721,10 @@ check("module avoids ggplotly on GP", !grepl("ggplotly(", mod_src, fixed = TRUE)
 check("module attaches theme series", grepl("gp_attach_theme_series(", mod_src, fixed = TRUE))
 check("theme UI mounts line chart class", grepl("ynow-gp-chart", mod_src, fixed = TRUE))
 check(
-  "theme UI uses proposition / company chart builders",
+  "theme UI uses Economic chart builder for every board including company",
   grepl("gp_build_theme_market_charts(", mod_src, fixed = TRUE) &&
-    grepl("gp_build_company_venue_board(", mod_src, fixed = TRUE) &&
-    grepl("ynow-gp-venue-split", mod_src, fixed = TRUE)
+    grepl("gp_company_theme_pairs(", mod_src, fixed = TRUE) &&
+    !grepl("gp_build_company_venue_board(", mod_src, fixed = TRUE)
 )
 check(
   "theme UI drops venue quote list chrome",

@@ -1438,7 +1438,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     auth_gate_gp_b1 = "Economic: Kalshi Economics + commodities; Polymarket economy / commodities",
     auth_gate_gp_b2 = "Finance: Kalshi Financials monthly/annual; Polymarket finance monthly / indices",
-    auth_gate_gp_b3 = "Company: Kalshi Big Tech & Business and Polymarket Big Tech, side by side, excluding Daily and Hourly",
+    auth_gate_gp_b3 = "Company: one Economic-style theme card per company from Kalshi Big Tech & Business and Polymarket Big Tech, excluding Daily and Hourly",
     auth_gate_gp_demo_caption = "Global Prediction demo — Economic / Finance / Company after unlock",
     pts_sysadmin_ok = "Balances updated.",
     pts_sysadmin_ok_verify_fmt = "Balances updated and verified (FYN %s, PYN %s).",
@@ -1634,8 +1634,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     gp_context = paste0(
       "Economic mirrors Kalshi Economics + commodities and Polymarket economy / commodities (monthly+). ",
       "Finance mirrors Kalshi Financials monthly/annual and Polymarket finance monthly / indices. ",
-      "Company places Kalshi Big Tech & Business and Polymarket Big Tech side by side by company, excluding Daily and Hourly. ",
-      "Read venues side by side; do not merge them into one population-wide signal."
+      "Company uses the same theme-card layout as Economic, one card per company from Kalshi Big Tech & Business and Polymarket Big Tech, excluding Daily and Hourly. ",
+      "Read venue charts within each company theme; do not merge them into one population-wide signal."
     ),
     gp_caution = paste0(
       "Caution: these books are a self-selected, often more risk-tolerant slice — not all investors. ",
@@ -1683,8 +1683,6 @@ locale_for_market <- function(mode = get_market_mode()) {
     gp_theme_earnings = "Earnings",
     gp_theme_co_other = "Other companies",
     gp_theme_big_tech = "Big Tech & Business",
-    gp_company_venue_empty_kalshi = "No open Kalshi market for this company.",
-    gp_company_venue_empty_poly = "No open Polymarket market for this company.",
     gp_theme_equities_index = "Equities / index",
     gp_theme_treasury_yields = "Treasury yields",
     gp_theme_tw_equity = "Taiwan equities / TAIEX",
@@ -6420,7 +6418,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     ),
     auth_gate_gp_b1 = "Economic：Kalshi Economics＋原物料；Polymarket economy／commodities",
     auth_gate_gp_b2 = "Finance：Kalshi Financials 月／年；Polymarket finance monthly／indices",
-    auth_gate_gp_b3 = "Company：Kalshi Big Tech & Business 與 Polymarket Big Tech 左右對照，排除 Daily／Hourly",
+    auth_gate_gp_b3 = "Company：與 Economic 相同的主題卡排版，每家公司一張卡，資料來自 Kalshi Big Tech & Business 與 Polymarket Big Tech，排除 Daily／Hourly",
     auth_gate_gp_demo_caption = "全球預測示範——解鎖後的 Economic／Finance／Company",
     pts_sysadmin_ok = "餘額已更新。",
     pts_sysadmin_ok_verify_fmt = "餘額已更新並核對（FYN %s、PYN %s）。",
@@ -6611,8 +6609,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     gp_context = paste0(
       "Economic 對應 Kalshi Economics／原物料與 Polymarket economy／commodities（月頻以上）。",
       "Finance 對應 Kalshi Financials 月／年與 Polymarket finance monthly／indices。",
-      "Company 以公司為一列，左側 Kalshi Big Tech & Business、右側 Polymarket Big Tech，並排除 Daily／Hourly。",
-      "請並排對照兩市，勿合成全體投資人的單一訊號。"
+      "Company 與 Economic 相同主題卡排版，每家公司一張卡，資料來自 Kalshi Big Tech & Business 與 Polymarket Big Tech，並排除 Daily／Hourly。",
+      "請在各公司主題內對照兩市圖表，勿合成全體投資人的單一訊號。"
     ),
     gp_caution = paste0(
       "風險警語：這些簿冊是自我選擇、往往風險偏好較高的參與者，並非全體投資人。",
@@ -6660,8 +6658,6 @@ locale_for_market <- function(mode = get_market_mode()) {
     gp_theme_earnings = "法說／財報",
     gp_theme_co_other = "其他公司",
     gp_theme_big_tech = "大型科技與企業",
-    gp_company_venue_empty_kalshi = "這家公司目前沒有未結的 Kalshi 市場。",
-    gp_company_venue_empty_poly = "這家公司目前沒有未結的 Polymarket 市場。",
     gp_theme_equities_index = "股市／指數",
     gp_theme_treasury_yields = "公債殖利率",
     gp_theme_tw_equity = "台股／TAIEX",
