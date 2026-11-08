@@ -77,11 +77,31 @@ check("UI refresh label id", grepl("ynow_lab_im_refresh_label", ui, fixed = TRUE
 check("refresh button in query title row", {
   # Scope to the box title= block so CSS class names later in the file do not confuse order checks.
   m <- regexpr(
-    "title\\s*=\\s*tags\\$div\\(\\s*class\\s*=\\s*\"ynow-lab-im-query-title-row\"[\\s\\S]{0,1200}?lab_im_refresh_universe",
+    "title\\s*=\\s*tags\\$div\\(\\s*class\\s*=\\s*\"ynow-lab-im-query-title-row\"[\\s\\S]{0,4500}?lab_im_refresh_universe",
     ui,
     perl = TRUE
   )
   isTRUE(m > 0L) && grepl("ynow-lab-im-refresh-in-title", ui, fixed = TRUE)
+})
+check("listing controls sit left of refresh in the title cluster", {
+  m <- regexpr(
+    "class\\s*=\\s*\"ynow-lab-im-query-title-row\"[\\s\\S]{0,4500}?lab_im_refresh_universe",
+    ui,
+    perl = TRUE
+  )
+  chunk <- if (isTRUE(m > 0L)) {
+    substr(ui, m, m + attr(m, "match.length") - 1L)
+  } else {
+    ""
+  }
+  grepl("ynow-lab-im-query-title-right", chunk, fixed = TRUE) &&
+    grepl("ynow-lab-im-boards ynow-tw-only", chunk, fixed = TRUE) &&
+    grepl("ynow-lab-im-us-listed ynow-us-only", chunk, fixed = TRUE) &&
+    grepl('"lab_im_boards"', chunk) &&
+    grepl("lab_im_us_listed_display", chunk, fixed = TRUE) &&
+    grepl("ynow_lab_im_boards_hint", chunk, fixed = TRUE) &&
+    grepl("ynow_lab_im_us_listed_hint", chunk, fixed = TRUE) &&
+    !grepl("ynow-full-only", chunk, fixed = TRUE)
 })
 check("applyUiLocale download", grepl("btn_lab_im_download", ui, fixed = TRUE))
 check("applyUiLocale query title", grepl("lab_im_query_title", ui, fixed = TRUE))
