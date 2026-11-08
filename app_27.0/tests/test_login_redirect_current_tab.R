@@ -313,11 +313,39 @@ check(
     grepl("!payload.quiet", post_login, fixed = TRUE) &&
     grepl("showRedirect", post_login, fixed = TRUE)
 )
+sched <- between(
+  ui,
+  "window.ynowScheduleEndRedirectTitle = function",
+  "if (!window.__ynowAuthShowPersist)"
+)
+resume_offer <- between(
+  ui,
+  "var ynowAuthResumeOffer = function",
+  "addHandler('ynowAuthPersist'"
+)
+oauth_push <- between(
+  ui,
+  "function ynowPushOAuthCallback()",
+  "function ynowScrollFunnelAnchor"
+)
+submit_persist <- between(
+  ui,
+  "if (!window.__ynowAuthSubmitPersist)",
+  "if (!window.__ynowAuthEnterPersist)"
+)
+check(
+  "redirect title stays up while shiny-busy",
+  grepl("shiny-busy", sched, fixed = TRUE) &&
+    grepl("ynowBeginRedirectTitle", resume_offer, fixed = TRUE) &&
+    grepl("ynowBeginRedirectTitle", oauth_push, fixed = TRUE) &&
+    grepl("ynowBeginRedirectTitle", submit_persist, fixed = TRUE) &&
+    grepl("ynowEndRedirectTitle", post_login, fixed = TRUE)
+)
 check(
   "redirect title fail-safe timeout present",
-  grepl("setTimeout(finish, Math.max(2000, minHold + 200))", ui, fixed = TRUE) ||
-    grepl("setTimeout(finish, 2000)", ui, fixed = TRUE) ||
-    grepl("setTimeout(finish,2000)", ui, fixed = TRUE)
+  grepl("shiny-busy", sched, fixed = TRUE) &&
+    (grepl("12000", sched, fixed = TRUE) ||
+      grepl("setTimeout(finish, Math.max(2000, minHold + 200))", ui, fixed = TRUE))
 )
 check(
   "redirect title minimum hold so stay-on-tab is visible",
