@@ -15055,8 +15055,6 @@ ui <- dashboardPage(
               if (payload.ok && !tab && !payload.quiet) {
                 tab = liveTab || '';
               }
-              /* Stale home / get_started claim must lose to a different visible
-                 tab (including Home vs get_started). Quiet resume keeps durable. */
               if (payload.ok && !payload.quiet && liveTab &&
                   (tab === 'home' || tab === 'get_started') &&
                   liveTab !== tab) {
@@ -15474,8 +15472,6 @@ ui <- dashboardPage(
               return btoa(s).replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=+$/g, '');
             });
           };
-          /* Visible in-session tab: active pane first (foot tabs leave Home
-             li.active), then foot link, then sidebar menu, then hash. */
           window.ynowVisibleAuthTab = function () {
             try {
               var pane = document.querySelector('.tab-content > .tab-pane.active');
@@ -15581,8 +15577,6 @@ ui <- dashboardPage(
               } catch (eSubBusy) {}
             }, true);
           }
-          /* Enter in email/password skips the click capture above — refresh
-             the pre-auth tab and busy chrome the same way. */
           if (!window.__ynowAuthEnterPersist) {
             window.__ynowAuthEnterPersist = true;
             document.addEventListener('keydown', function (ev) {

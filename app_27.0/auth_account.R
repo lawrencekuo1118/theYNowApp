@@ -3044,9 +3044,6 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
     # Auth chrome immediately — no mint / prefs DB before this flush ends.
     .push_auth_state(TRUE, user$email %||% "")
     tryCatch(shinyBS::toggleModal(session, "ynow_auth_modal", "close"), error = function(e) NULL)
-    # Client / same-session tab only (modal restore_tab). Empty means the
-    # non-quiet PostLogin DOM fallback owns the tab — do not adopt a possibly
-    # stale input$sidebar_tabs (often still home while the menu shows Macro).
     tab <- as.character(restore_tab %||% "")[1]
     if (identical(tab, "testing")) tab <- "home"
     session$sendCustomMessage(
@@ -3081,9 +3078,6 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
       if (identical(stay_tab, "testing")) stay_tab <- "home"
       live_tab <- as.character(isolate(input$sidebar_tabs) %||% "")[1]
       if (identical(live_tab, "testing")) live_tab <- "home"
-      # Stale home/get_started (or empty) capture: prefer a non-default live
-      # sidebar the client already synced. Never copy home/get_started from
-      # sidebar into durable prefs when chrome_tab is empty.
       stale_default <- !nzchar(stay_tab) ||
         identical(stay_tab, "home") ||
         identical(stay_tab, "get_started")
@@ -3093,8 +3087,6 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
       if (isTRUE(stale_default) && isTRUE(live_real)) {
         stay_tab <- live_tab
       }
-      # First PostLogin already chose the tab. Quiet pass reconciles ticker only
-      # so a frozen Home chrome_tab cannot yank the user off Macro.
       if (nzchar(stick)) {
         tryCatch(
           .ynow_auth_apply_surface(
@@ -3270,8 +3262,6 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
       .show_auth_note(mk, fallback, cls = "text-danger")
       return()
     }
-    # Client captures the visible tab (ynowPersistPreAuthTab). Server sidebar
-    # can still be home while the menu shows another page — never prefer it.
     session$sendCustomMessage(
       "ynowAuthOAuthRedirect",
       list(url = as.character(res$url)[1], restore_tab = "")

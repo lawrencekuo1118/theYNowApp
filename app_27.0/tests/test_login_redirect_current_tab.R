@@ -101,7 +101,6 @@ check(
       ".ynow_auth_apply_surface(",
       ".persist_last_ui_surface("
     )
-    # Quiet apply is ticker-only (empty tab); durable saved$tab is never the nav target.
     !grepl("saved$tab", apply_chunk, fixed = TRUE) &&
       !grepl("\\bstab\\b", apply_chunk) &&
       !grepl("tab = stay_tab", apply_chunk, fixed = TRUE) &&
@@ -173,8 +172,6 @@ check(
 check(
   "PostLogin does not default-navigate to get_started",
   {
-    # Mentioning get_started as a stale-default to distrust is OK; assigning it
-    # as the restore target is not.
     !grepl("tab = 'get_started'", post_login, fixed = TRUE) &&
       !grepl('tab = "get_started"', post_login, fixed = TRUE) &&
       !grepl("restore_tab: 'get_started'", post_login, fixed = TRUE) &&
@@ -182,14 +179,9 @@ check(
   }
 )
 
-# Residual Home yank (YN-90): empty restore must not adopt server sidebar_tabs
-# (often still home while the visible menu is Macro), and a stale home /
-# get_started restore must lose to the live active tab on non-quiet PostLogin.
 check(
   "finish_auth empty restore does not fall back to sidebar_tabs",
   {
-    # Between restore_tab read and first ynowAuthPostLogin in finish body:
-    # no sidebar_tabs substitution when restore is empty.
     chunk <- between(
       finish_body,
       "tab <- as.character(restore_tab",
@@ -249,7 +241,6 @@ check(
       ".ynow_auth_apply_surface(",
       ".persist_last_ui_surface("
     )
-    # Must call apply_surface with an empty tab (ticker-only quiet reconcile).
     grepl("quiet = TRUE", apply_chunk, fixed = TRUE) &&
       !grepl("tab = stay_tab", apply_chunk, fixed = TRUE) &&
       (
