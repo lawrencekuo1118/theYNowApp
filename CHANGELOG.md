@@ -1,3 +1,8 @@
+## [v28.37] — 2026-11-08 · Company board matches Economic theme layout
+
+- zh-TW：全球預測 Company 改與 Economic 相同主題卡＋圖表格線排版，每家公司一張卡（標題為公司名），不再用單一 Big Tech 卡內 Kalshi｜Polymarket 左右分欄。
+- en-US: Global Prediction Company now uses the same theme-card + chart-grid layout as Economic, with one card per company (company name as title), instead of a single Big Tech card with Kalshi|Polymarket columns.
+
 ## [v28.36] — 2026-11-08 · Header shows Redirecting through sign-in restore
 
 - zh-TW：登入後、以及工作階段還原先前分頁的載入期間，黑色頁首標題維持 **重新導向中…**。不再在 shiny 忙碌時回到金色的 The YNow App 版號。版號在忙碌結束後恢復。
