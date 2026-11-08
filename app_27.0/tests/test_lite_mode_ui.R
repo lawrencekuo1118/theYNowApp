@@ -544,6 +544,20 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_false(grepl('value = "im_detail"', txt, fixed = TRUE))
   testthat::expect_false(grepl("ynow_lab_im_detail_tab", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_lab_im_detail_box_title", txt, fixed = TRUE))
+  # Detail box starts collapsed (AdminLTE collapsible + collapsed = TRUE)
+  detail_box <- regmatches(
+    txt,
+    regexpr(
+      'Detail table at bottom of Rankings[\\s\\S]*?ynow_lab_im_detail_box_title[\\s\\S]*?lab_im_table',
+      txt,
+      perl = TRUE
+    )
+  )
+  testthat::expect_true(
+    length(detail_box) == 1L &&
+      grepl("collapsible = TRUE", detail_box, fixed = TRUE) &&
+      grepl("collapsed = TRUE", detail_box, fixed = TRUE)
+  )
   testthat::expect_true(grepl(
     'value = "im_filters"[\\s\\S]*lab_im_table[\\s\\S]*value = "im_cluster"[\\s\\S]*value = "im_screener"',
     txt,

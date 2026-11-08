@@ -2114,6 +2114,8 @@ beta_rolling_section_ui <- function() {
               fluidRow(
                 box(
                   width = 12, status = "info", solidHeader = TRUE,
+                  collapsible = TRUE,
+                  collapsed = TRUE,
                   title = tags$span(
                     id = "ynow_lab_im_detail_box_title",
                     "明細（按年化估值漲幅排序）"
