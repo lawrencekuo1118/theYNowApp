@@ -7,5 +7,5 @@ commit=79b8cc8b6fd2869da16646543906b93e25419b8e
 short=79b8cc8b
 message=chore: bump display version to v28.36
 captured_at=2026-11-08T16:16:42Z
-display_version=v28.36
+display_version=v28.37
 note=Shipped v28.36 (+0.01) via deploy_app_21.R. Header stays Redirecting while shiny-busy during sign-in restore (PR #725). Live status=running; rsconnect bundleId=12794881. Prior: v28.35=#724 (12794795), v28.34=#721/#723 (12794108).
