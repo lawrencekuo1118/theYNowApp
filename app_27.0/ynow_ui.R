@@ -1922,15 +1922,63 @@ beta_rolling_section_ui <- function() {
                   title = tags$div(
                     class = "ynow-lab-im-query-title-row",
                     tags$span(id = "ynow_lab_im_query_title", "查詢條件"),
-                    actionButton(
-                      "lab_im_refresh_universe",
-                      tags$span(id = "ynow_lab_im_refresh_label", "更新名單"),
-                      icon = icon("sync"),
-                      class = "btn-default btn-sm ynow-lab-im-refresh-in-title",
-                      title = paste0(
-                        "重新擷取目前市場的成分／上市／上櫃／興櫃名單，",
-                        "並為目前篩選池寫入盈餘品質、Piotroski F-Score 與財報警訊數。",
-                        "24 小時內已更新的代號沿用既有快照。"
+                    tags$div(
+                      class = "ynow-lab-im-query-title-right",
+                      tags$div(
+                        class = "ynow-lab-im-boards ynow-tw-only",
+                        title = paste0(
+                          "複選上市／上櫃／興櫃；預設上市＋上櫃。",
+                          "興櫃資料覆蓋較不穩，勾選後才納入績優評估池。"
+                        ),
+                        checkboxGroupInput(
+                          "lab_im_boards",
+                          tags$span(id = "ynow_lab_im_boards_label", "板別"),
+                          choiceNames = list(
+                            tags$span(id = "ynow_lab_im_board_twse", "上市"),
+                            tags$span(id = "ynow_lab_im_board_tpex", "上櫃"),
+                            tags$span(id = "ynow_lab_im_board_esb", "興櫃")
+                          ),
+                          choiceValues = list("TWSE", "TPEX", "ESB"),
+                          selected = APP_DEFAULTS$lab_im_boards,
+                          inline = TRUE
+                        ),
+                        tags$span(
+                          id = "ynow_lab_im_boards_hint",
+                          class = "ynow-lab-im-quality-hint ynow-lab-im-header-hint",
+                          "複選上市／上櫃／興櫃；預設上市＋上櫃。興櫃資料覆蓋較不穩，勾選後才納入績優評估池。"
+                        )
+                      ),
+                      tags$div(
+                        class = "ynow-lab-im-us-listed ynow-us-only",
+                        title = "美股績優池僅含主要上市（Nasdaq／NYSE／NYSE American）。",
+                        tags$div(
+                          class = "checkbox",
+                          tags$label(
+                            tags$input(
+                              id = "lab_im_us_listed_display",
+                              type = "checkbox",
+                              checked = "checked",
+                              disabled = "disabled"
+                            ),
+                            tags$span(id = "ynow_lab_im_us_listed_label", "上市")
+                          )
+                        ),
+                        tags$span(
+                          id = "ynow_lab_im_us_listed_hint",
+                          class = "ynow-lab-im-quality-hint ynow-lab-im-header-hint",
+                          "美股績優池僅含主要上市（Nasdaq／NYSE／NYSE American）。"
+                        )
+                      ),
+                      actionButton(
+                        "lab_im_refresh_universe",
+                        tags$span(id = "ynow_lab_im_refresh_label", "更新名單"),
+                        icon = icon("sync"),
+                        class = "btn-default btn-sm ynow-lab-im-refresh-in-title",
+                        title = paste0(
+                          "重新擷取目前市場的成分／上市／上櫃／興櫃名單，",
+                          "並為目前篩選池寫入盈餘品質、Piotroski F-Score 與財報警訊數。",
+                          "24 小時內已更新的代號沿用既有快照。"
+                        )
                       )
                     )
                   ),
@@ -1951,50 +1999,6 @@ beta_rolling_section_ui <- function() {
                   } else {
                     tags$p(id = "ynow_ynq_missing", "Query conditions module unavailable.")
                   },
-                  tags$div(
-                    class = "ynow-lab-im-boards ynow-tw-only",
-                    style = "margin:4px 0 10px 0;",
-                    checkboxGroupInput(
-                      "lab_im_boards",
-                      tags$span(id = "ynow_lab_im_boards_label", "板別"),
-                      choiceNames = list(
-                        tags$span(id = "ynow_lab_im_board_twse", "上市"),
-                        tags$span(id = "ynow_lab_im_board_tpex", "上櫃"),
-                        tags$span(id = "ynow_lab_im_board_esb", "興櫃")
-                      ),
-                      choiceValues = list("TWSE", "TPEX", "ESB"),
-                      selected = APP_DEFAULTS$lab_im_boards,
-                      inline = TRUE
-                    ),
-                    tags$span(
-                      id = "ynow_lab_im_boards_hint",
-                      class = "ynow-lab-im-quality-hint ynow-full-only",
-                      style = "display:block; color:#888; font-size:12px; margin-top:-4px;",
-                      "複選上市／上櫃／興櫃；預設上市＋上櫃。興櫃資料覆蓋較不穩，勾選後才納入績優評估池。"
-                    )
-                  ),
-                  tags$div(
-                    class = "ynow-us-only",
-                    style = "margin:0 0 10px 0;",
-                    tags$div(
-                      class = "checkbox",
-                      tags$label(
-                        tags$input(
-                          id = "lab_im_us_listed_display",
-                          type = "checkbox",
-                          checked = "checked",
-                          disabled = "disabled"
-                        ),
-                        tags$span(id = "ynow_lab_im_us_listed_label", "上市")
-                      )
-                    ),
-                    tags$span(
-                      id = "ynow_lab_im_us_listed_hint",
-                      class = "ynow-lab-im-quality-hint ynow-full-only",
-                      style = "display:block; color:#888; font-size:12px;",
-                      "美股績優池僅含主要上市（Nasdaq／NYSE／NYSE American）。"
-                    )
-                  ),
                   # Bridge inputs (engine source of truth). Visually hidden; synced from lab_ynq.
                   tags$div(
                     id = "ynow_lab_im_ynq_bridge",
@@ -13269,7 +13273,17 @@ ui <- dashboardPage(
             var labBoardEsb = document.getElementById('ynow_lab_im_board_esb');
             if (labBoardEsb && s.lab_im_board_esb) labBoardEsb.textContent = s.lab_im_board_esb;
             var labBoardsHint = document.getElementById('ynow_lab_im_boards_hint');
-            if (labBoardsHint && s.lab_im_boards_hint) labBoardsHint.textContent = s.lab_im_boards_hint;
+            if (labBoardsHint && s.lab_im_boards_hint) {
+              labBoardsHint.textContent = s.lab_im_boards_hint;
+              var labBoardsWrap = labBoardsHint.parentElement;
+              if (labBoardsWrap) {
+                labBoardsWrap.setAttribute('title', s.lab_im_boards_hint);
+                var labBoardsLabels = labBoardsWrap.querySelectorAll('label');
+                for (var bi = 0; bi < labBoardsLabels.length; bi++) {
+                  labBoardsLabels[bi].setAttribute('title', s.lab_im_boards_hint);
+                }
+              }
+            }
             var labLbHelp = document.getElementById('ynow_lab_im_lb_scope_help');
             if (labLbHelp && s.lab_im_lb_scope_help) labLbHelp.textContent = s.lab_im_lb_scope_help;
             var labGateLabel = document.getElementById('ynow_lab_im_gate_label');
@@ -13287,7 +13301,17 @@ ui <- dashboardPage(
             var labUsListedLabel = document.getElementById('ynow_lab_im_us_listed_label');
             if (labUsListedLabel && s.lab_im_us_listed_label) labUsListedLabel.textContent = s.lab_im_us_listed_label;
             var labUsListedHint = document.getElementById('ynow_lab_im_us_listed_hint');
-            if (labUsListedHint && s.lab_im_us_listed_hint) labUsListedHint.textContent = s.lab_im_us_listed_hint;
+            if (labUsListedHint && s.lab_im_us_listed_hint) {
+              labUsListedHint.textContent = s.lab_im_us_listed_hint;
+              var labUsListedWrap = labUsListedHint.parentElement;
+              if (labUsListedWrap) {
+                labUsListedWrap.setAttribute('title', s.lab_im_us_listed_hint);
+                var labUsListedLabels = labUsListedWrap.querySelectorAll('label');
+                for (var uli = 0; uli < labUsListedLabels.length; uli++) {
+                  labUsListedLabels[uli].setAttribute('title', s.lab_im_us_listed_hint);
+                }
+              }
+            }
             var labAdrLabel = document.getElementById('ynow_lab_im_include_adr_label');
             if (labAdrLabel && s.lab_im_include_adr_label) labAdrLabel.textContent = s.lab_im_include_adr_label;
             var labAdrHint = document.getElementById('ynow_lab_im_include_adr_hint');
@@ -18427,7 +18451,62 @@ ui <- dashboardPage(
           flex: 1 1 auto;
           min-width: 0;
         }
-        .ynow-lab-im-query-title-row > .btn.ynow-lab-im-refresh-in-title,
+        .ynow-lab-im-query-title-right {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex: 0 0 auto;
+          flex-wrap: wrap;
+          justify-content: flex-end;
+        }
+        .ynow-lab-im-query-title-right .ynow-lab-im-boards,
+        .ynow-lab-im-query-title-right .ynow-lab-im-us-listed {
+          margin: 0;
+          position: relative;
+        }
+        .ynow-lab-im-query-title-right .form-group,
+        .ynow-lab-im-query-title-right .checkbox {
+          margin: 0;
+          min-height: 0;
+        }
+        .ynow-lab-im-query-title-right .ynow-lab-im-boards .control-label {
+          position: absolute;
+          width: 1px;
+          height: 1px;
+          padding: 0;
+          margin: -1px;
+          overflow: hidden;
+          clip: rect(0, 0, 0, 0);
+          white-space: nowrap;
+          border: 0;
+        }
+        .ynow-lab-im-query-title-right .ynow-lab-im-boards .shiny-options-group {
+          column-gap: 8px;
+          row-gap: 0;
+          margin: 0;
+        }
+        .ynow-lab-im-query-title-right .checkbox-inline,
+        .ynow-lab-im-query-title-right .checkbox label {
+          margin-bottom: 0;
+          padding-top: 0;
+          min-height: 0;
+          font-size: 12px;
+          line-height: 1.35;
+          font-weight: 400;
+          color: #fff !important;
+        }
+        .ynow-lab-im-query-title-right .ynow-lab-im-header-hint {
+          position: absolute;
+          width: 1px;
+          height: 1px;
+          padding: 0;
+          margin: -1px;
+          overflow: hidden;
+          clip: rect(0, 0, 0, 0);
+          white-space: nowrap;
+          border: 0;
+        }
+        .ynow-lab-im-query-title-right > .btn.ynow-lab-im-refresh-in-title,
         .ynow-lab-im-refresh-in-title {
           flex: 0 0 auto;
           white-space: nowrap;
@@ -18439,7 +18518,7 @@ ui <- dashboardPage(
           border: 1px solid rgba(255, 255, 255, 0.55) !important;
           color: #fff !important;
         }
-        .ynow-lab-im-query-title-row > .btn.ynow-lab-im-refresh-in-title:hover,
+        .ynow-lab-im-query-title-right > .btn.ynow-lab-im-refresh-in-title:hover,
         .ynow-lab-im-refresh-in-title:hover {
           background: rgba(255, 255, 255, 0.26) !important;
           border-color: rgba(255, 255, 255, 0.75) !important;

@@ -128,6 +128,14 @@ check("UI keeps bridge lab_im_methods helper",
       grepl("\\.lab_im_methods_filter_ui\\(APP_DEFAULTS\\$lab_im_methods\\)", ui))
 check("UI keeps TW boards outside module",
       grepl('"lab_im_boards"', ui) && grepl("ynow-lab-im-boards", ui, fixed = TRUE))
+check("TW boards live in the query title cluster", {
+  m <- regexpr(
+    "ynow-lab-im-query-title-right[\\s\\S]{0,2500}?ynow-lab-im-boards ynow-tw-only[\\s\\S]{0,1800}?\"lab_im_boards\"",
+    ui,
+    perl = TRUE
+  )
+  isTRUE(m > 0L)
+})
 check("server mounts ynq_query_server",
       grepl('ynq_query_server\\(\\s*"lab_ynq"', srv) &&
         grepl("ynq_filters_to_lab_bridge", srv, fixed = TRUE))
