@@ -251,58 +251,122 @@ ynq_query_ui <- function(id, catalog = ynq_lab_catalog(), embed = FALSE,
     .ynq-section-heading h3{margin:0;font-size:1.13rem;font-weight:700}
     .ynq-index{border-radius:8px;padding:4px 9px;background:#e6f2fb;color:#1269a3;font-size:.78rem;font-weight:800}
     .ynq-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
-    /* Valuation models: each topic's checkboxes share one equal-height row;
-       auto-fit wraps on narrow without clipping (min(100%, …) floor).
-       Include ADRs / Earnings quality use Bootstrap 3: label padding-left 20px,
-       input position absolute, margin-left -20px, so the box sits on the label's
-       left edge and the text starts 20px in. #690 set display:flex and
-       padding:4px 0, which cleared that gutter and the -20px margin bled past
-       the card. padding-left:0 plus vertical centering then parked the box in
-       the middle of a stretched row, so wrapped labels (and the first line of
-       text) no longer matched those controls. Keep the stretch; put the box on
-       the label's left edge and on the first line, with the same 20px text gutter. */
+    /* Valuation models + Fundamental quality gates: multi-select chip buttons
+       matching HFV Chart Overlay Models (.ynow-hfv-toolbar). Native boxes are
+       visually hidden; selection = filled dark pill. Topics keep one equal-height
+       auto-fit row that wraps on narrow without clipping. */
     .ynq-optgroup .shiny-options-group{
       display:grid;
       grid-template-columns:repeat(auto-fit,minmax(min(100%,7.5rem),1fr));
-      gap:6px 12px;
+      gap:6px 8px;
       align-items:stretch;
       width:100%;
       min-width:0;
     }
-    .ynq-optgroup .checkbox{
+    .ynq-chip-toggles{
+      display:flex;
+      flex-wrap:wrap;
+      align-items:stretch;
+      gap:6px 8px;
+      width:100%;
+      min-width:0;
+    }
+    .ynq-optgroup .form-group,
+    .ynq-chip-toggles .form-group{margin:0}
+    .ynq-optgroup .checkbox,
+    .ynq-optgroup .checkbox-inline,
+    .ynq-chip-toggles .checkbox,
+    .ynq-chip-toggles .checkbox-inline{
+      float:none !important;
       position:relative;
-      margin-top:0;
-      margin-bottom:0;
+      margin:0 !important;
+      padding:0 !important;
       min-width:0;
       max-width:100%;
       height:100%;
-      display:flex;
+      min-height:0;
+      display:flex !important;
       align-items:stretch;
+      width:100%;
     }
-    .ynq-optgroup .checkbox input[type='checkbox']{
-      position:absolute;
-      left:0;
-      top:4px;
-      margin:0;
-      flex-shrink:0;
+    .ynq-chip-toggles .checkbox,
+    .ynq-chip-toggles .checkbox-inline{
+      width:auto;
+      flex:0 1 auto;
     }
-    .ynq-optgroup .checkbox label{
+    .ynq-optgroup .checkbox > label,
+    .ynq-optgroup .checkbox-inline,
+    .ynq-optgroup .checkbox-inline > label,
+    .ynq-chip-toggles .checkbox > label,
+    .ynq-chip-toggles .checkbox-inline,
+    .ynq-chip-toggles .checkbox-inline > label{
       position:relative;
+      margin:0 !important;
+      padding:8px 12px !important;
+      border:1px solid #d0d0d0;
+      border-radius:999px;
+      background:#fff;
+      font-size:12.5px;
+      font-weight:500;
+      line-height:1.25;
+      color:#222;
       white-space:normal;
       overflow-wrap:anywhere;
       word-break:break-word;
-      display:flex;
-      align-items:flex-start;
+      display:flex !important;
+      align-items:center;
+      justify-content:center;
+      text-align:center;
       gap:0;
       width:100%;
       min-width:0;
       min-height:36px;
       height:100%;
-      margin-bottom:0;
-      padding:4px 0 4px 20px;
       box-sizing:border-box;
+      cursor:pointer;
+      transition:border-color .12s ease,background .12s ease,box-shadow .12s ease;
     }
-    .ynq-optgroup .form-group{margin-bottom:0}
+    .ynq-chip-toggles .checkbox > label,
+    .ynq-chip-toggles .checkbox-inline,
+    .ynq-chip-toggles .checkbox-inline > label{
+      width:auto;
+      white-space:nowrap;
+      overflow-wrap:normal;
+      word-break:normal;
+    }
+    /* Hide native checkbox; selection shown by filled chip. */
+    .ynq-optgroup .checkbox input[type='checkbox'],
+    .ynq-optgroup .checkbox-inline input[type='checkbox'],
+    .ynq-chip-toggles .checkbox input[type='checkbox'],
+    .ynq-chip-toggles .checkbox-inline input[type='checkbox']{
+      position:absolute !important;
+      left:0 !important;
+      top:0 !important;
+      width:1px !important;
+      height:1px !important;
+      margin:0 !important;
+      padding:0 !important;
+      opacity:0 !important;
+      clip:rect(0,0,0,0);
+      pointer-events:none;
+      flex-shrink:0;
+    }
+    .ynq-optgroup .checkbox > label:hover,
+    .ynq-optgroup .checkbox-inline:hover,
+    .ynq-chip-toggles .checkbox > label:hover,
+    .ynq-chip-toggles .checkbox-inline:hover{
+      border-color:#999;
+      background:#fff;
+    }
+    .ynq-optgroup .checkbox:has(input:checked) > label,
+    .ynq-optgroup .checkbox-inline:has(input:checked),
+    .ynq-chip-toggles .checkbox:has(input:checked) > label,
+    .ynq-chip-toggles .checkbox-inline:has(input:checked){
+      border-color:#1a1a1a;
+      background:#1a1a1a;
+      color:#fff;
+      box-shadow:0 1px 2px rgba(0,0,0,.12);
+    }
     .ynq-label{font-size:.9rem;font-weight:700;margin:6px 0 10px}
     .ynq-subgroup+.ynq-subgroup{border-top:1px solid #edf1f5;margin-top:12px;padding-top:12px}
     .ynq-flag{display:inline-flex;align-items:center;padding:5px 10px;border-radius:999px;background:#e9f5ef;color:#26744f;font-size:.83rem}
@@ -316,7 +380,11 @@ ynq_query_ui <- function(id, catalog = ynq_lab_catalog(), embed = FALSE,
     .ynq-help summary{cursor:pointer;color:#375c79;font-weight:600}
     .ynq-help p{margin:8px 0 0;line-height:1.6}
     .ynq-card .selectize-control{width:100%}
-    .ynq-optgroup label.ynow-lab-im-method--locked{opacity:.45;cursor:not-allowed}
+    .ynq-optgroup label.ynow-lab-im-method--locked{
+      opacity:.45;
+      cursor:not-allowed;
+      pointer-events:none;
+    }
     @media(max-width:640px){
       .ynq-wrap{padding:8px 2px 12px}
       .ynq-card{padding:14px 12px;border-radius:12px;margin-bottom:10px}
@@ -325,6 +393,11 @@ ynq_query_ui <- function(id, catalog = ynq_lab_catalog(), embed = FALSE,
       .ynq-optgroup .shiny-options-group{
         grid-template-columns:repeat(auto-fit,minmax(min(100%,6.5rem),1fr));
         gap:8px;
+      }
+      .ynq-chip-toggles .checkbox > label,
+      .ynq-chip-toggles .checkbox-inline,
+      .ynq-chip-toggles .checkbox-inline > label{
+        white-space:normal;
       }
       .ynq-header h2{font-size:1.32rem}
       .ynq-metric .ynq-num{font-size:1.14rem}
@@ -343,6 +416,7 @@ ynq_query_ui <- function(id, catalog = ynq_lab_catalog(), embed = FALSE,
       checkboxGroupInput(
         ns(paste0("models_", group)),
         label = NULL,
+        inline = TRUE,
         choices = ynq_model_choices(catalog, group),
         selected = ynq_model_defaults(catalog, group)
       )
@@ -471,20 +545,25 @@ ynq_query_ui <- function(id, catalog = ynq_lab_catalog(), embed = FALSE,
       tags$section(
         class = "ynq-card",
         ynq_section_title(3, .t("ynq_sec_quality", "基本面品質門檻"), ns("sec_quality")),
-        checkboxInput(
-          ns("earnings_quality"),
-          tags$span(id = "ynow_lab_im_eq_label", .t("lab_im_eq_label", "盈餘品質")),
-          value = FALSE
-        ),
-        checkboxInput(
-          ns("piotroski"),
-          tags$span(id = "ynow_lab_im_gate_label", .t("lab_im_gate_label", "Piotroski 高門檻")),
-          value = FALSE
-        ),
-        checkboxInput(
-          ns("no_warning"),
-          tags$span(id = "ynow_lab_im_no_alert_label", .t("lab_im_no_alert_label", "無財報警訊")),
-          value = FALSE
+        tags$div(
+          class = "ynq-chip-toggles ynq-chip-toggles--quality",
+          role = "group",
+          `aria-label` = .t("ynq_sec_quality", "基本面品質門檻"),
+          checkboxInput(
+            ns("earnings_quality"),
+            tags$span(id = "ynow_lab_im_eq_label", .t("lab_im_eq_label", "盈餘品質")),
+            value = FALSE
+          ),
+          checkboxInput(
+            ns("piotroski"),
+            tags$span(id = "ynow_lab_im_gate_label", .t("lab_im_gate_label", "Piotroski 高門檻")),
+            value = FALSE
+          ),
+          checkboxInput(
+            ns("no_warning"),
+            tags$span(id = "ynow_lab_im_no_alert_label", .t("lab_im_no_alert_label", "無財報警訊")),
+            value = FALSE
+          )
         ),
         tags$details(
           class = "ynq-help ynow-full-only",
