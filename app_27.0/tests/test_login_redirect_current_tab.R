@@ -315,8 +315,20 @@ check(
 )
 check(
   "redirect title fail-safe timeout present",
-  grepl("setTimeout(finish, 2000)", ui, fixed = TRUE) ||
+  grepl("setTimeout(finish, Math.max(2000, minHold + 200))", ui, fixed = TRUE) ||
+    grepl("setTimeout(finish, 2000)", ui, fixed = TRUE) ||
     grepl("setTimeout(finish,2000)", ui, fixed = TRUE)
+)
+check(
+  "redirect title minimum hold so stay-on-tab is visible",
+  grepl("__ynowRedirectTitleMinHoldMs", ui, fixed = TRUE) &&
+    grepl("__ynowTitleRedirectStartedAt", ui, fixed = TRUE) &&
+    grepl("__ynowTitleRedirectHoldTimer", ui, fixed = TRUE)
+)
+check(
+  "redirecting CSS forces full title fill during busy",
+  grepl("body.ynow-auth-redirecting .main-header .logo .ynow-app-title-fill", ui, fixed = TRUE) &&
+    grepl("width: 100% !important", ui, fixed = TRUE)
 )
 
 pa <- paste(readLines("price_alert.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")

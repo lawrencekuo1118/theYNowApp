@@ -6254,6 +6254,16 @@ ui <- dashboardPage(
         .main-header .logo .ynow-app-title.is-complete .ynow-app-title-base {
           visibility: hidden;
         }
+        /* Post-login Redirecting… must stay fully visible even if shiny:busy
+           shrinks the gold fill bar back to a load-percent clip. */
+        body.ynow-auth-redirecting .main-header .logo .ynow-app-title-fill {
+          width: 100% !important;
+          max-width: none;
+          overflow: visible;
+        }
+        body.ynow-auth-redirecting .main-header .logo .ynow-app-title-fill-inner {
+          animation: none;
+        }
         .main-header > .logo,
         .main-header > .logo:hover {
           position: relative;
@@ -15580,7 +15590,10 @@ ui <- dashboardPage(
             } catch (eBusyEnd) {}
           };
           /* Post-login header: show Redirecting… instead of The YNow App v… while
-             the pre-login tab is restored; restore version title when settled. */
+             the pre-login tab is restored; restore version title when settled.
+             Stay-on-page restore often matches the live tab immediately — without a
+             minimum hold, Redirecting… clears in ~80ms and is invisible to users. */
+          window.__ynowRedirectTitleMinHoldMs = 750;
           window.ynowBeginRedirectTitle = function () {
             try {
               var el = document.getElementById('ynow_app_title') ||
@@ -15603,6 +15616,9 @@ ui <- dashboardPage(
               if (base) base.textContent = msg;
               if (fill) fill.textContent = msg;
               el.setAttribute('aria-label', msg);
+              /* Force full gold fill so busy load-bar clip cannot hide Redirecting… */
+              try { el.style.setProperty('--ynow-load-pct', '100%'); } catch (ePct) {}
+              window.__ynowTitleRedirectStartedAt = Date.now();
               if (document.body) document.body.classList.add('ynow-auth-redirecting');
               try {
                 if (typeof window.placeMobileAppTitle === 'function') {
@@ -15621,8 +15637,13 @@ ui <- dashboardPage(
                 clearTimeout(window.__ynowTitleRedirectTimer);
                 window.__ynowTitleRedirectTimer = null;
               }
+              if (window.__ynowTitleRedirectHoldTimer) {
+                clearTimeout(window.__ynowTitleRedirectHoldTimer);
+                window.__ynowTitleRedirectHoldTimer = null;
+              }
               var saved = window.__ynowTitleRedirectSaved;
               window.__ynowTitleRedirectSaved = null;
+              window.__ynowTitleRedirectStartedAt = null;
               if (document.body) document.body.classList.remove('ynow-auth-redirecting');
               if (!saved) return;
               var el = document.getElementById('ynow_app_title') ||
@@ -15650,10 +15671,24 @@ ui <- dashboardPage(
           window.ynowScheduleEndRedirectTitle = function (tab) {
             try {
               var done = false;
+              var minHold = Number(window.__ynowRedirectTitleMinHoldMs) || 750;
               var finish = function () {
                 if (done) return;
                 done = true;
-                try { window.ynowEndRedirectTitle(); } catch (eFin) {}
+                var runEnd = function () {
+                  try { window.ynowEndRedirectTitle(); } catch (eFin) {}
+                };
+                var started = Number(window.__ynowTitleRedirectStartedAt) || Date.now();
+                var wait = Math.max(0, minHold - (Date.now() - started));
+                if (window.__ynowTitleRedirectHoldTimer) {
+                  clearTimeout(window.__ynowTitleRedirectHoldTimer);
+                  window.__ynowTitleRedirectHoldTimer = null;
+                }
+                if (wait > 0) {
+                  window.__ynowTitleRedirectHoldTimer = setTimeout(runEnd, wait);
+                } else {
+                  runEnd();
+                }
               };
               if (window.__ynowTitleRedirectTimer) {
                 clearTimeout(window.__ynowTitleRedirectTimer);
@@ -15663,8 +15698,9 @@ ui <- dashboardPage(
                 clearInterval(window.__ynowTitleRedirectPoll);
                 window.__ynowTitleRedirectPoll = null;
               }
-              /* Fail-safe: never leave Redirecting… stuck in the header. */
-              window.__ynowTitleRedirectTimer = setTimeout(finish, 2000);
+              /* Fail-safe: never leave Redirecting… stuck in the header.
+                 Keep above min-hold so settle-on-match can still honor visibility. */
+              window.__ynowTitleRedirectTimer = setTimeout(finish, Math.max(2000, minHold + 200));
               var target = String(tab || '');
               var settleThenFinish = function () {
                 try {
