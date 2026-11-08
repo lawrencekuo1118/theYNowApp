@@ -1,3 +1,8 @@
+## [v28.35] — 2026-11-08 · Company board: Kalshi and Polymarket Big Tech
+
+- zh-TW：全球預測 Company 改為 Kalshi「Big Tech & Business」全部未結市場，加上 Polymarket Big Tech（Active、各排序聯集）。兩邊都排除 Daily／Hourly。同一公司左右並排（左 Kalshi、右 Polymarket）；只有一邊有資料時，另一邊留白。
+- en-US: Global Prediction Company now lists every open Kalshi Big Tech & Business market and the Polymarket Big Tech Active catalog (union of sorts). Daily and Hourly are excluded on both. The same company is shown side by side (Kalshi left, Polymarket right); a one-venue company keeps an honest empty column.
+
 ## [v27.82] — 2026-11-04 · 模型財年完整性與 Lite 圖表
 
 - zh-TW：以共用「公式 × 財年」登錄表驗證所有估值必要財報參數；缺值時一次補查舊快取與原始來源，只接受同公司、同財年、同幣別資料。仍有缺值的公式會列出缺項並停止計算及圖表，不再以 TTM、其他年度或其他模型欄位替代。Lite 的預測預設維持自動套用並標示假設；Full 人工補值綁定目前公司及財年。
