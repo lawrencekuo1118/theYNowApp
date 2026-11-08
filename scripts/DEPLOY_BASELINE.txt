@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12793763
+bundleId=12793804
 appId=10907657
 url=https://[REDACTED].shinyapps.io/TheYNowApp/  # pragma: allowlist secret
-aligned_git=afbae6cfc30158c8fa8146ba089c2e0b8e56617b
-commit=afbae6cfc30158c8fa8146ba089c2e0b8e56617b
-short=afbae6cf
-message=chore: record shipped display version v28.31
-captured_at=2026-11-08T07:41:03Z
+aligned_git=7c521dba7cc6f77695c89b65724d5c25c5f9e48d
+commit=7c521dba7cc6f77695c89b65724d5c25c5f9e48d
+short=7c521dba
+message=chore: record shipped display version v28.32
+captured_at=2026-11-08T08:02:00Z
 display_version=v28.32
-note=Shipped v28.31 (+0.01) via deploy_app_21.R after #714 Stock Prospecting Detail collapsed by default (YN-96/YN-97). Live status=running; rsconnect bundleId=12793763. Prior: v28.30=#711/#713 (12793735), v28.29=#709/#712 (12793712).
+note=Shipped v28.32 (+0.01) via deploy_app_21.R after #717 listing filters beside Refresh (YN-98/YN-103) and #716 Redirecting header (YN-101). Live status=running; rsconnect bundleId=12793804. Prior: v28.31=#714/#715 (12793763), v28.30=#711/#713 (12793735).
