@@ -15022,6 +15022,17 @@ ui <- dashboardPage(
               try {
                 if (typeof window.ynowEndAuthBusy === 'function') window.ynowEndAuthBusy();
               } catch (eBusyEnd) {}
+              /* In-session sign-in only (!quiet): swap header version title for
+                 Redirecting… while pre-login tab restore settles. Quiet resume /
+                 after_chrome must not flash Redirecting. */
+              var showRedirect = !!(payload.ok && !payload.quiet);
+              if (showRedirect) {
+                try {
+                  if (typeof window.ynowBeginRedirectTitle === 'function') {
+                    window.ynowBeginRedirectTitle();
+                  }
+                } catch (eRedirBeg) {}
+              }
               /* Success: mark authed BEFORE tab restore / sidebar work so any
                  subsequent Sign-in / BS toggleModal open is vetoed. */
               if (payload.ok && document.body) {
@@ -15068,6 +15079,15 @@ ui <- dashboardPage(
                 try { ynowLastUiWrite(tab || null, ticker || null); } catch (eUiW) {}
                 if (tab) ynowApplyRestoredTab(tab);
                 if (ticker) ynowApplyRestoredTicker(ticker);
+              }
+              if (showRedirect) {
+                try {
+                  if (typeof window.ynowScheduleEndRedirectTitle === 'function') {
+                    window.ynowScheduleEndRedirectTitle(tab || liveTab || '');
+                  } else if (typeof window.ynowEndRedirectTitle === 'function') {
+                    window.ynowEndRedirectTitle();
+                  }
+                } catch (eRedirEnd) {}
               }
             });
             /* Collapse sidebar, then show login modal (Sign in / PA gate).
@@ -15534,6 +15554,140 @@ ui <- dashboardPage(
               var busy = document.getElementById('ynow_auth_busy');
               if (busy) busy.setAttribute('aria-hidden', 'true');
             } catch (eBusyEnd) {}
+          };
+          /* Post-login header: show Redirecting… instead of The YNow App v… while
+             the pre-login tab is restored; restore version title when settled. */
+          window.ynowBeginRedirectTitle = function () {
+            try {
+              var el = document.getElementById('ynow_app_title') ||
+                document.querySelector('.main-header .logo .ynow-app-title');
+              if (!el) return;
+              var base = el.querySelector('.ynow-app-title-base');
+              var fill = el.querySelector('.ynow-app-title-fill-inner');
+              if (!window.__ynowTitleRedirectSaved) {
+                var build = el.getAttribute('data-ynow-build') || '';
+                var fallback = build ? ('The YNow App ' + build) : 'The YNow App';
+                window.__ynowTitleRedirectSaved = {
+                  base: (base && base.textContent) ? String(base.textContent) : fallback,
+                  fill: (fill && fill.textContent) ? String(fill.textContent) : fallback,
+                  aria: el.getAttribute('aria-label') || fallback
+                };
+              }
+              var copy = window.__ynowAuthCopy || {};
+              var s = window.__ynowUiLocaleStrings || {};
+              var msg = copy.redirecting || s.auth_redirecting || 'Redirecting…';
+              if (base) base.textContent = msg;
+              if (fill) fill.textContent = msg;
+              el.setAttribute('aria-label', msg);
+              if (document.body) document.body.classList.add('ynow-auth-redirecting');
+              try {
+                if (typeof window.placeMobileAppTitle === 'function') {
+                  window.placeMobileAppTitle();
+                }
+              } catch (ePlaceBeg) {}
+            } catch (eBeg) {}
+          };
+          window.ynowEndRedirectTitle = function () {
+            try {
+              if (window.__ynowTitleRedirectPoll) {
+                clearInterval(window.__ynowTitleRedirectPoll);
+                window.__ynowTitleRedirectPoll = null;
+              }
+              if (window.__ynowTitleRedirectTimer) {
+                clearTimeout(window.__ynowTitleRedirectTimer);
+                window.__ynowTitleRedirectTimer = null;
+              }
+              var saved = window.__ynowTitleRedirectSaved;
+              window.__ynowTitleRedirectSaved = null;
+              if (document.body) document.body.classList.remove('ynow-auth-redirecting');
+              if (!saved) return;
+              var el = document.getElementById('ynow_app_title') ||
+                document.querySelector('.main-header .logo .ynow-app-title');
+              if (!el) return;
+              var base = el.querySelector('.ynow-app-title-base');
+              var fill = el.querySelector('.ynow-app-title-fill-inner');
+              var build = el.getAttribute('data-ynow-build') || '';
+              var normal = saved.base || '';
+              if (build && (!normal || /Redirecting|重新導向/.test(normal))) {
+                normal = 'The YNow App ' + build;
+              }
+              if (!normal && build) normal = 'The YNow App ' + build;
+              if (!normal) normal = 'The YNow App';
+              if (base) base.textContent = normal;
+              if (fill) fill.textContent = saved.fill || normal;
+              el.setAttribute('aria-label', saved.aria || normal);
+              try {
+                if (typeof window.placeMobileAppTitle === 'function') {
+                  window.placeMobileAppTitle();
+                }
+              } catch (ePlaceEnd) {}
+            } catch (eEnd) {}
+          };
+          window.ynowScheduleEndRedirectTitle = function (tab) {
+            try {
+              var done = false;
+              var finish = function () {
+                if (done) return;
+                done = true;
+                try { window.ynowEndRedirectTitle(); } catch (eFin) {}
+              };
+              if (window.__ynowTitleRedirectTimer) {
+                clearTimeout(window.__ynowTitleRedirectTimer);
+                window.__ynowTitleRedirectTimer = null;
+              }
+              if (window.__ynowTitleRedirectPoll) {
+                clearInterval(window.__ynowTitleRedirectPoll);
+                window.__ynowTitleRedirectPoll = null;
+              }
+              /* Fail-safe: never leave Redirecting… stuck in the header. */
+              window.__ynowTitleRedirectTimer = setTimeout(finish, 2000);
+              var target = String(tab || '');
+              var settleThenFinish = function () {
+                try {
+                  if (window.requestAnimationFrame) {
+                    window.requestAnimationFrame(function () {
+                      setTimeout(finish, 80);
+                    });
+                  } else {
+                    setTimeout(finish, 120);
+                  }
+                } catch (eSettle) {
+                  setTimeout(finish, 120);
+                }
+              };
+              if (!target) {
+                settleThenFinish();
+                return;
+              }
+              var n = 0;
+              var tryMatch = function () {
+                if (done) return true;
+                try {
+                  var live = '';
+                  if (typeof window.ynowVisibleAuthTab === 'function') {
+                    live = String(window.ynowVisibleAuthTab() || '');
+                  }
+                  if (live === target) {
+                    settleThenFinish();
+                    return true;
+                  }
+                } catch (eMatch) {}
+                return false;
+              };
+              if (tryMatch()) return;
+              window.__ynowTitleRedirectPoll = setInterval(function () {
+                n += 1;
+                if (tryMatch() || n > 28) {
+                  if (window.__ynowTitleRedirectPoll) {
+                    clearInterval(window.__ynowTitleRedirectPoll);
+                    window.__ynowTitleRedirectPoll = null;
+                  }
+                  if (!done && n > 28) settleThenFinish();
+                }
+              }, 70);
+            } catch (eSched) {
+              try { window.ynowEndRedirectTitle(); } catch (eSchedEnd) {}
+            }
           };
           /* Every modal open (including shinyBS toggleModal) refreshes the tab
              capture so a prior Home Sign-in does not stick after navigating away. */
