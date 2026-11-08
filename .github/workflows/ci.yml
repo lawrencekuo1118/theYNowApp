@@ -43,7 +43,35 @@ jobs:
         run: |
           Rscript app_27.0/tests/test_formal_wacc_apply.R
           Rscript app_27.0/tests/test_two_stage_wacc_other_equity.R
-      - uses: r-lib/actions/setup-pandoc@v2
+      # setup-pandoc occasionally fails with HTTP 504 from the Pandoc release CDN.
+      # Retry the action, then fall back to apt pandoc so tip-ship CI is not blocked.
+      - id: pandoc1
+        continue-on-error: true
+        uses: r-lib/actions/setup-pandoc@v2
+        with:
+          pandoc-version: "3.8.3"
+      - id: pandoc2
+        if: steps.pandoc1.outcome == 'failure'
+        continue-on-error: true
+        uses: r-lib/actions/setup-pandoc@v2
+        with:
+          pandoc-version: "3.8.3"
+      - id: pandoc3
+        if: steps.pandoc1.outcome == 'failure' && steps.pandoc2.outcome == 'failure'
+        continue-on-error: true
+        uses: r-lib/actions/setup-pandoc@v2
+        with:
+          pandoc-version: "3.8.3"
+      - name: Pandoc apt fallback
+        if: >-
+          steps.pandoc1.outcome == 'failure' &&
+          steps.pandoc2.outcome == 'failure' &&
+          steps.pandoc3.outcome == 'failure'
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y pandoc
+          pandoc --version
       - name: Report downloads (offline)
         env:
           YNOW_DEBUG_SKIP_PY: "1"
