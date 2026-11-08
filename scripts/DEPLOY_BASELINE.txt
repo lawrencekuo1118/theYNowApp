@@ -7,5 +7,5 @@ commit=7c521dba7cc6f77695c89b65724d5c25c5f9e48d
 short=7c521dba
 message=chore: record shipped display version v28.32
 captured_at=2026-11-08T08:02:00Z
-display_version=v28.32
+display_version=v28.33
 note=Shipped v28.32 (+0.01) via deploy_app_21.R after #717 listing filters beside Refresh (YN-98/YN-103) and #716 Redirecting header (YN-101). Live status=running; rsconnect bundleId=12793804. Prior: v28.31=#714/#715 (12793763), v28.30=#711/#713 (12793735).
