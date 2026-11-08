@@ -7,5 +7,5 @@ commit=d1c33947113210d071da998a48fd0199380b6c6f
 short=d1c33947
 message=chore: bump display version to v28.27
 captured_at=2026-11-06T16:50:36Z
-display_version=v28.27
+display_version=v28.28
 note=Shipped v28.27 (+0.01) via deploy_app_21.R after #706 US Stock Prospecting Search hang / catalog ownership re-arch. Live status=running; rsconnect deployments bundleId=12788519. Prior: v28.26=#704 (12788128), v28.25=#700 (12787962), v28.24=#699 (12787927).
