@@ -101,7 +101,6 @@ check(
       ".ynow_auth_apply_surface(",
       ".persist_last_ui_surface("
     )
-    # Quiet apply is ticker-only (empty tab); durable saved$tab is never the nav target.
     !grepl("saved$tab", apply_chunk, fixed = TRUE) &&
       !grepl("\\bstab\\b", apply_chunk) &&
       !grepl("tab = stay_tab", apply_chunk, fixed = TRUE) &&
@@ -133,10 +132,19 @@ check(
 )
 check(
   "PersistPreAuthTab captures sidebar + foot + hash",
-  grepl("ynow_auth_restore_tab", persist_fn, fixed = TRUE) &&
-    grepl("ynow-sidebar-snapshot-foot", persist_fn, fixed = TRUE) &&
-    grepl("location.hash", persist_fn, fixed = TRUE) &&
-    grepl("ynow_pre_oauth_tab", persist_fn, fixed = TRUE)
+  {
+    vis <- between(
+      ui,
+      "window.ynowVisibleAuthTab = function",
+      "window.ynowPersistPreAuthTab = function"
+    )
+    grepl("ynow_auth_restore_tab", persist_fn, fixed = TRUE) &&
+      grepl("ynowVisibleAuthTab", persist_fn, fixed = TRUE) &&
+      grepl("ynow_pre_oauth_tab", persist_fn, fixed = TRUE) &&
+      grepl("tab-pane.active", vis, fixed = TRUE) &&
+      grepl("ynow-sidebar-snapshot-foot", vis, fixed = TRUE) &&
+      grepl("location.hash", vis, fixed = TRUE)
+  }
 )
 check(
   "RequestAuthModal persists pre-auth tab (gates + header)",
@@ -153,7 +161,7 @@ check(
   "PostLogin falls back to active tab when restore empty (non-quiet)",
   grepl("!payload.quiet", post_login, fixed = TRUE) &&
     grepl("ynowApplyRestoredTab", post_login, fixed = TRUE) &&
-    grepl("sidebar-menu li.active", post_login, fixed = TRUE)
+    grepl("ynowVisibleAuthTab", post_login, fixed = TRUE)
 )
 check(
   "OAuth redirect persists current tab before leave",
@@ -164,8 +172,6 @@ check(
 check(
   "PostLogin does not default-navigate to get_started",
   {
-    # Mentioning get_started as a stale-default to distrust is OK; assigning it
-    # as the restore target is not.
     !grepl("tab = 'get_started'", post_login, fixed = TRUE) &&
       !grepl('tab = "get_started"', post_login, fixed = TRUE) &&
       !grepl("restore_tab: 'get_started'", post_login, fixed = TRUE) &&
@@ -173,14 +179,9 @@ check(
   }
 )
 
-# Residual Home yank (YN-90): empty restore must not adopt server sidebar_tabs
-# (often still home while the visible menu is Macro), and a stale home /
-# get_started restore must lose to the live active tab on non-quiet PostLogin.
 check(
   "finish_auth empty restore does not fall back to sidebar_tabs",
   {
-    # Between restore_tab read and first ynowAuthPostLogin in finish body:
-    # no sidebar_tabs substitution when restore is empty.
     chunk <- between(
       finish_body,
       "tab <- as.character(restore_tab",
@@ -202,20 +203,35 @@ check(
   "PostLogin prefers live tab over stale home/get_started (!quiet)",
   grepl("!payload.quiet", post_login, fixed = TRUE) &&
     grepl("get_started", post_login, fixed = TRUE) &&
-    (
-      grepl("stale", post_login, ignore.case = TRUE) ||
-        grepl("prefer", post_login, ignore.case = TRUE) ||
-        grepl("live", post_login, ignore.case = TRUE) ||
-        grepl("active", post_login, ignore.case = TRUE)
-    ) &&
-    grepl("home", post_login, fixed = TRUE)
+    grepl("ynowVisibleAuthTab", post_login, fixed = TRUE) &&
+    grepl("home", post_login, fixed = TRUE) &&
+    !grepl("liveTab !== 'home'", post_login, fixed = TRUE)
 )
 check(
   "Enter/keydown on auth fields re-persists pre-auth tab",
-  grepl("keydown", ui, fixed = TRUE) &&
-    grepl("ynow_auth_password", ui, fixed = TRUE) &&
-    grepl("__ynowAuthEnterPersist", ui, fixed = TRUE) &&
-    grepl("ynowPersistPreAuthTab", ui, fixed = TRUE)
+  {
+    enter_chunk <- between(
+      ui,
+      "window.__ynowAuthEnterPersist = true",
+      "function ynowParseQuery"
+    )
+    grepl("keydown", enter_chunk, fixed = TRUE) &&
+      grepl("ynow_auth_password", enter_chunk, fixed = TRUE) &&
+      grepl("ynowPersistPreAuthTab", enter_chunk, fixed = TRUE) &&
+      !grepl("ynow_auth_modal form", enter_chunk, fixed = TRUE) &&
+      !grepl("addEventListener('submit'", enter_chunk, fixed = TRUE)
+  }
+)
+check(
+  "after_chrome does not copy empty chrome from any sidebar default",
+  {
+    ac <- between(
+      finish_body,
+      "after_chrome <- function",
+      ".persist_last_ui_surface("
+    )
+    !grepl("else if (!nzchar(stay_tab) && nzchar(live_tab))", ac, fixed = TRUE)
+  }
 )
 check(
   "in-session after_chrome quiet apply does not re-navigate tab",
@@ -225,7 +241,6 @@ check(
       ".ynow_auth_apply_surface(",
       ".persist_last_ui_surface("
     )
-    # Must call apply_surface with an empty tab (ticker-only quiet reconcile).
     grepl("quiet = TRUE", apply_chunk, fixed = TRUE) &&
       !grepl("tab = stay_tab", apply_chunk, fixed = TRUE) &&
       (

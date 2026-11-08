@@ -14891,16 +14891,8 @@ ui <- dashboardPage(
               if (!tab && typeof window.ynowPersistPreAuthTab === 'function') {
                 try { tab = String(window.ynowPersistPreAuthTab() || ''); } catch (ePre) {}
               }
-              if (!tab) {
-                var tabEl = document.querySelector(
-                  '.sidebar-menu li.active > a[data-value], .sidebar-menu a.active[data-value]'
-                );
-                var footEl = document.querySelector(
-                  '.ynow-sidebar-snapshot-foot a.active[data-value], ' +
-                  '.ynow-sidebar-snapshot-foot a[aria-expanded=\"true\"][data-value]'
-                );
-                tab = (tabEl && tabEl.getAttribute('data-value')) ||
-                  (footEl && footEl.getAttribute('data-value')) || '';
+              if (!tab && typeof window.ynowVisibleAuthTab === 'function') {
+                try { tab = String(window.ynowVisibleAuthTab() || ''); } catch (eVis) {}
               }
               if (tab === 'testing') tab = 'home';
               var baseUrl = String(payload.url);
@@ -15054,29 +15046,18 @@ ui <- dashboardPage(
               } catch (eClr) {}
               var liveTab = '';
               try {
-                var actLive = document.querySelector(
-                  '.sidebar-menu li.active > a[data-value], .sidebar-menu a.active[data-value]'
-                );
-                var ftLive = document.querySelector(
-                  '.ynow-sidebar-snapshot-foot a.active[data-value], ' +
-                  '.ynow-sidebar-snapshot-foot a[aria-expanded=\"true\"][data-value]'
-                );
-                liveTab = (actLive && actLive.getAttribute('data-value')) ||
-                  (ftLive && ftLive.getAttribute('data-value')) || '';
-                if (liveTab === 'testing') liveTab = 'home';
+                if (typeof window.ynowVisibleAuthTab === 'function') {
+                  liveTab = String(window.ynowVisibleAuthTab() || '');
+                }
               } catch (eLive) {}
               /* In-session login with empty restore: keep the active tab (gate /
                  modal / OAuth) instead of letting a later durable-prefs jump win. */
               if (payload.ok && !tab && !payload.quiet) {
                 tab = liveTab || '';
               }
-              /* Stale home / get_started restore (poisoned input or lagged
-                 sidebar_tabs) must not yank away from the live pre-login tab.
-                 Quiet resume still applies durable prefs as sent. */
               if (payload.ok && !payload.quiet && liveTab &&
                   (tab === 'home' || tab === 'get_started') &&
-                  liveTab !== tab &&
-                  liveTab !== 'home' && liveTab !== 'get_started') {
+                  liveTab !== tab) {
                 tab = liveTab;
               }
               /* Sys. Admin is guest/ops-only: never restore testing after sign-in. */
@@ -15491,22 +15472,37 @@ ui <- dashboardPage(
               return btoa(s).replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=+$/g, '');
             });
           };
-          window.ynowPersistPreAuthTab = function () {
+          window.ynowVisibleAuthTab = function () {
             try {
-              var a = document.querySelector(
-                '.sidebar-menu li.active > a[data-value], .sidebar-menu a.active[data-value]'
-              );
+              var pane = document.querySelector('.tab-content > .tab-pane.active');
+              var paneTab = '';
+              if (pane && pane.id && pane.id.indexOf('shiny-tab-') === 0) {
+                paneTab = pane.id.slice('shiny-tab-'.length);
+              }
               var foot = document.querySelector(
                 '.ynow-sidebar-snapshot-foot a.active[data-value], ' +
                 '.ynow-sidebar-snapshot-foot a[aria-expanded=\"true\"][data-value]'
               );
-              var tab = (a && a.getAttribute('data-value')) ||
-                (foot && foot.getAttribute('data-value')) || '';
+              var a = document.querySelector(
+                '.sidebar-menu li.active > a[data-value], .sidebar-menu a.active[data-value]'
+              );
+              var tab = paneTab ||
+                (foot && foot.getAttribute('data-value')) ||
+                (a && a.getAttribute('data-value')) || '';
               if (!tab) {
                 var hash = (window.location.hash || '').replace(/^#shiny-tab-/, '');
                 if (hash && hash !== 'testing') tab = hash;
               }
               if (tab === 'testing') tab = 'home';
+              return tab || '';
+            } catch (eVis) { return ''; }
+          };
+          window.ynowPersistPreAuthTab = function () {
+            try {
+              var tab = '';
+              if (typeof window.ynowVisibleAuthTab === 'function') {
+                tab = String(window.ynowVisibleAuthTab() || '');
+              }
               if (tab) sessionStorage.setItem('ynow_pre_oauth_tab', tab);
               if (window.Shiny && Shiny.setInputValue) {
                 Shiny.setInputValue('ynow_auth_restore_tab', tab || '', { priority: 'event' });
@@ -15581,11 +15577,13 @@ ui <- dashboardPage(
               } catch (eSubBusy) {}
             }, true);
           }
-          /* Enter in email/password (or form submit) skips the click capture
-             above — refresh the pre-auth tab and busy chrome the same way. */
           if (!window.__ynowAuthEnterPersist) {
             window.__ynowAuthEnterPersist = true;
-            var persistAuthEnter = function () {
+            document.addEventListener('keydown', function (ev) {
+              if (!ev || (ev.key !== 'Enter' && ev.keyCode !== 13)) return;
+              var t = ev.target;
+              if (!t || !t.closest) return;
+              if (!t.closest('#ynow_auth_email, #ynow_auth_password')) return;
               try {
                 if (typeof window.ynowPersistPreAuthTab === 'function') {
                   window.ynowPersistPreAuthTab();
@@ -15596,22 +15594,6 @@ ui <- dashboardPage(
                   window.ynowBeginAuthBusy();
                 }
               } catch (eEntBusy) {}
-            };
-            document.addEventListener('keydown', function (ev) {
-              if (!ev || (ev.key !== 'Enter' && ev.keyCode !== 13)) return;
-              var t = ev.target;
-              if (!t || !t.closest) return;
-              if (!t.closest('#ynow_auth_modal')) return;
-              if (!t.closest(
-                '#ynow_auth_email, #ynow_auth_password, #ynow_auth_modal form'
-              )) return;
-              persistAuthEnter();
-            }, true);
-            document.addEventListener('submit', function (ev) {
-              var t = ev.target;
-              if (!t || !t.closest) return;
-              if (!t.closest('#ynow_auth_modal')) return;
-              persistAuthEnter();
             }, true);
           }
           function ynowParseQuery(qs) {
