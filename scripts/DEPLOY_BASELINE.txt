@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12793712
+bundleId=12793735
 appId=10907657
 url=https://[REDACTED].shinyapps.io/TheYNowApp/  # pragma: allowlist secret
-aligned_git=a6c21ab8d5868f86017838e2c4dff6e17309f1dc
-commit=a6c21ab8d5868f86017838e2c4dff6e17309f1dc
-short=a6c21ab8
-message=chore: bump display version to v28.29
-captured_at=2026-11-08T07:15:56Z
+aligned_git=4394616206c81d8475997709d9a9dd0d7b141afa
+commit=4394616206c81d8475997709d9a9dd0d7b141afa
+short=43946162
+message=chore: bump display version to v28.30
+captured_at=2026-11-08T07:26:55Z
 display_version=v28.30
-note=Shipped v28.29 (+0.01) via deploy_app_21.R after #709 overlay-style multi-select chips (YN-91/YN-93). Live status=running; rsconnect bundleId=12793712. Prior: v28.28=#708/#710 (12793681), v28.27=#706 (12788519).
+note=Shipped v28.30 (+0.01) via deploy_app_21.R after #711 pane-first login stay follow-up (YN-95). Live status=running; rsconnect bundleId=12793735. Prior: v28.29=#709/#712 (12793712), v28.28=#708/#710 (12793681).
