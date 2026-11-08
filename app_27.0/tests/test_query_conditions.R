@@ -162,7 +162,7 @@ check("Lite: pool/models/results marked full-only; quality stays open", {
     grepl('class = "ynq-card"', mod) # quality section without full-only on same card opener path
 })
 
-# Valuation models checkboxes: one equal-height row per topic; wrap without clip.
+# Valuation models + quality gates: HFV Chart Overlay–style chip buttons.
 check("model optgroup uses auto-fit equal-height row grid", {
   grepl(
     "\\.ynq-optgroup \\.shiny-options-group\\{[\\s\\S]*?grid-template-columns:repeat\\(auto-fit,minmax\\(min\\(100%,7\\.5rem\\),1fr\\)\\)",
@@ -180,57 +180,35 @@ check("model optgroup uses auto-fit equal-height row grid", {
       fixed = FALSE
     )
 })
-check("model checkbox labels stretch to equal height", {
-  grepl(
-    "\\.ynq-optgroup \\.checkbox label\\{[\\s\\S]*?height:100%",
-    mod,
-    perl = TRUE
-  ) &&
+check("model/quality chips hide native checkbox and use pill labels", {
+  grepl("border-radius:999px", mod, fixed = TRUE) &&
+    grepl("ynq-chip-toggles", mod, fixed = TRUE) &&
+    grepl("\\.ynq-optgroup \\.checkbox input\\[type='checkbox'\\]", mod, perl = TRUE) &&
+    grepl("\\.ynq-chip-toggles \\.checkbox input\\[type='checkbox'\\]", mod, perl = TRUE) &&
+    grepl("opacity:0 !important", mod, fixed = TRUE) &&
+    grepl("clip:rect(0,0,0,0)", mod, fixed = TRUE) &&
+    grepl("padding:8px 12px !important", mod, fixed = TRUE) &&
     grepl(
-      "\\.ynq-optgroup \\.checkbox label\\{[\\s\\S]*?overflow-wrap:anywhere",
+      "\\.ynq-optgroup \\.checkbox:has\\(input:checked\\) > label",
       mod,
       perl = TRUE
-    )
+    ) &&
+    grepl(
+      "\\.ynq-chip-toggles \\.checkbox:has\\(input:checked\\) > label",
+      mod,
+      perl = TRUE
+    ) &&
+    grepl("background:#1a1a1a", mod, fixed = TRUE)
 })
-# Match Include ADRs / Earnings quality: box on the label's left edge (not the
-# -20px bleed from #690, and not vertically centered in the stretched row).
-# Text gutter stays Bootstrap's 20px. Equal-height stretch stays on the label.
-check("model checkboxes share ADR left edge and first-line gutter", {
-  grepl(
-    "\\.ynq-optgroup \\.checkbox input\\[type='checkbox'\\]\\{[\\s\\S]*?position:absolute",
-    mod,
-    perl = TRUE
-  ) &&
-    grepl(
-      "\\.ynq-optgroup \\.checkbox input\\[type='checkbox'\\]\\{[\\s\\S]*?left:0",
-      mod,
-      perl = TRUE
-    ) &&
-    grepl(
-      "\\.ynq-optgroup \\.checkbox input\\[type='checkbox'\\]\\{[\\s\\S]*?top:4px",
-      mod,
-      perl = TRUE
-    ) &&
-    grepl(
-      "\\.ynq-optgroup \\.checkbox input\\[type='checkbox'\\]\\{[\\s\\S]*?margin:0",
-      mod,
-      perl = TRUE
-    ) &&
-    grepl(
-      "\\.ynq-optgroup \\.checkbox label\\{[\\s\\S]*?align-items:flex-start",
-      mod,
-      perl = TRUE
-    ) &&
-    grepl(
-      "\\.ynq-optgroup \\.checkbox label\\{[\\s\\S]*?padding:4px 0 4px 20px",
-      mod,
-      perl = TRUE
-    ) &&
-    !grepl(
-      "\\.ynq-optgroup \\.checkbox input\\[type='checkbox'\\]\\{[\\s\\S]*?margin-left:-20px",
-      mod,
-      perl = TRUE
-    )
+check("quality gates wrap in chip-toggles container", {
+  grepl("ynq-chip-toggles--quality", mod, fixed = TRUE) &&
+    grepl('ns\\("earnings_quality"\\)', mod) &&
+    grepl('ns\\("piotroski"\\)', mod) &&
+    grepl('ns\\("no_warning"\\)', mod)
+})
+check("model checkboxGroupInput uses inline chip layout", {
+  grepl("inline\\s*=\\s*TRUE", mod) &&
+    grepl('paste0\\("models_", group\\)', mod)
 })
 check("narrow viewport still wraps model checkboxes", {
   grepl(
