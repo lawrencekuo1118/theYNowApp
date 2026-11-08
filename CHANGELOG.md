@@ -1,3 +1,8 @@
+## [v28.36] — 2026-11-08 · Header shows Redirecting through sign-in restore
+
+- zh-TW：登入後、以及工作階段還原先前分頁的載入期間，黑色頁首標題維持 **重新導向中…**。不再在 shiny 忙碌時回到金色的 The YNow App 版號。版號在忙碌結束後恢復。
+- en-US: After sign-in, and while a session restores the prior tab, the black header title stays **Redirecting…** for the whole Shiny busy stretch. It no longer falls back to the gold The YNow App version string while the app is still loading. The version title returns after busy clears.
+
 ## [v28.35] — 2026-11-08 · Company board: Kalshi and Polymarket Big Tech
 
 - zh-TW：全球預測 Company 改為 Kalshi「Big Tech & Business」全部未結市場，加上 Polymarket Big Tech（Active、各排序聯集）。兩邊都排除 Daily／Hourly。同一公司左右並排（左 Kalshi、右 Polymarket）；只有一邊有資料時，另一邊留白。
