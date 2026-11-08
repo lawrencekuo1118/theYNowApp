@@ -1173,6 +1173,71 @@ gp_company_label <- function(key) {
   paste0(toupper(substr(key, 1L, 1L)), substring(key, 2L))
 }
 
+#' Fill missing company_key on quote rows from series / title aliases.
+.gp_ensure_company_keys <- function(q) {
+  if (!is.data.frame(q) || nrow(q) == 0L) return(q)
+  if (!"company_key" %in% names(q)) q$company_key <- NA_character_
+  if (!"series_ticker" %in% names(q)) q$series_ticker <- NA_character_
+  if (!"title" %in% names(q)) q$title <- NA_character_
+  for (i in seq_len(nrow(q))) {
+    preset <- .gp_chr(q$company_key[[i]])
+    if (nzchar(preset)) next
+    q$company_key[[i]] <- gp_company_key_for_market(
+      .gp_chr(q$title[[i]]),
+      series_ticker = .gp_chr(q$series_ticker[[i]])
+    )
+  }
+  q
+}
+
+.gp_company_key_blank <- function(keys) {
+  vapply(keys, function(k) {
+    ck <- .gp_chr(k)
+    !nzchar(ck) || is.na(ck)
+  }, logical(1))
+}
+
+#' Company board pairs: one Economic-style theme pair per company_key.
+#' theme_id = company_key; plain label = gp_company_label; charts use the shared grid.
+gp_company_theme_pairs <- function(kq, pq) {
+  kq <- .gp_ensure_company_keys(if (is.data.frame(kq)) kq else .gp_empty_quote())
+  pq <- .gp_ensure_company_keys(if (is.data.frame(pq)) pq else .gp_empty_quote())
+  named <- unique(c(
+    if (nrow(kq)) as.character(kq$company_key)[!.gp_company_key_blank(kq$company_key)] else character(0),
+    if (nrow(pq)) as.character(pq$company_key)[!.gp_company_key_blank(pq$company_key)] else character(0)
+  ))
+  has_other <- (nrow(kq) && any(.gp_company_key_blank(kq$company_key))) ||
+    (nrow(pq) && any(.gp_company_key_blank(pq$company_key)))
+  order_keys <- c(sort(named), if (has_other) "_other" else character(0))
+  lapply(order_keys, function(ck) {
+    if (identical(ck, "_other")) {
+      k_part <- if (nrow(kq)) kq[.gp_company_key_blank(kq$company_key), , drop = FALSE] else .gp_empty_quote()
+      p_part <- if (nrow(pq)) pq[.gp_company_key_blank(pq$company_key), , drop = FALSE] else .gp_empty_quote()
+      label <- ""
+      label_key <- "gp_theme_co_other"
+    } else {
+      k_part <- if (nrow(kq)) kq[!.gp_company_key_blank(kq$company_key) & kq$company_key == ck, , drop = FALSE] else .gp_empty_quote()
+      p_part <- if (nrow(pq)) pq[!.gp_company_key_blank(pq$company_key) & pq$company_key == ck, , drop = FALSE] else .gp_empty_quote()
+      label <- gp_company_label(ck)
+      label_key <- ""
+    }
+    if (nrow(k_part)) k_part$theme_id <- ck
+    if (nrow(p_part)) p_part$theme_id <- ck
+    list(
+      theme_id = ck,
+      label_key = label_key,
+      label = label,
+      breadth_tier = NA_integer_,
+      kalshi = k_part,
+      polymarket = p_part,
+      feex = .gp_empty_quote(),
+      feex_status = "defunct",
+      agreement = gp_crowd_agreement(k_part$yes_prob, p_part$yes_prob),
+      series = .gp_empty_series()
+    )
+  })
+}
+
 #' Build market meta rows (quotes) for proposition / company grouping.
 gp_market_meta_from_pair <- function(pair) {
   rows <- list()
@@ -1591,173 +1656,6 @@ gp_build_theme_market_charts <- function(series, locale = "en", height = 220,
   gp_build_proposition_chart_grid(groups, locale = locale, height = height)
 }
 
-#' Company board: one block per company; charts by proposition under each.
-gp_build_company_chart_blocks <- function(series, meta, locale = "en", height = 220) {
-  locale <- .gp_chr(locale, "en")
-  groups <- gp_group_series_by_proposition(series, meta)
-  if (!length(groups)) {
-    return(htmltools::tags$p(
-      class = "ynow-gp-empty ynow-gp-chart-empty",
-      .gp_label("gp_chart_empty", locale)
-    ))
-  }
-  by_co <- list()
-  for (g in groups) {
-    ck <- .gp_chr(g$company_key)
-    if (!nzchar(ck) || is.na(ck)) ck <- "_other"
-    if (is.null(by_co[[ck]])) by_co[[ck]] <- list()
-    by_co[[ck]][[length(by_co[[ck]]) + 1L]] <- g
-  }
-  # Named companies first, then other.
-  nms <- names(by_co)
-  nms <- c(sort(setdiff(nms, "_other")), if ("_other" %in% nms) "_other" else character(0))
-  blocks <- lapply(nms, function(ck) {
-    label <- if (identical(ck, "_other")) {
-      .gp_label("gp_theme_co_other", locale)
-    } else {
-      gp_company_label(ck)
-    }
-    htmltools::tags$div(
-      class = "ynow-gp-company-block",
-      `data-company-key` = ck,
-      htmltools::tags$h4(class = "ynow-gp-company-title", label),
-      gp_build_proposition_chart_grid(by_co[[ck]], locale = locale, height = height)
-    )
-  })
-  htmltools::tags$div(class = "ynow-gp-company-blocks", blocks)
-}
-
-.gp_quote_only_card <- function(prop_label, rows, venue, locale = "en") {
-  theme <- gp_venue_chart_theme(venue)
-  rows <- rows[is.finite(rows$yes_prob), , drop = FALSE]
-  lead <- if (nrow(rows)) rows$yes_prob[[1]] else NA_real_
-  legend <- lapply(seq_len(nrow(rows)), function(i) {
-    htmltools::tags$span(
-      class = "ynow-gp-chart-legend-item",
-      htmltools::tags$span(class = "ynow-gp-chart-legend-lab", .gp_chr(rows$title[[i]])),
-      htmltools::tags$span(
-        class = "ynow-gp-chart-legend-pct",
-        .gp_fmt_pct(rows$yes_prob[[i]])
-      )
-    )
-  })
-  htmltools::tags$div(
-    class = "ynow-gp-chart-widget ynow-gp-market-chart-widget ynow-gp-quote-only",
-    `data-venue` = theme$venue,
-    .gp_chart_header_ui(
-      .gp_chr(prop_label),
-      if (is.finite(lead)) 100 * lead else NA_real_,
-      theme,
-      locale,
-      legend = if (nrow(rows) > 1L) legend else NULL
-    ),
-    htmltools::tags$p(
-      class = "ynow-gp-empty ynow-gp-chart-empty",
-      .gp_label("gp_chart_empty", locale)
-    )
-  )
-}
-
-.gp_company_venue_column <- function(venue, meta_rows, series, locale, height) {
-  theme <- gp_venue_chart_theme(venue)
-  empty_key <- if (identical(venue, "kalshi")) {
-    "gp_company_venue_empty_kalshi"
-  } else {
-    "gp_company_venue_empty_poly"
-  }
-  head <- htmltools::tags$div(
-    class = "ynow-gp-venue-col-head",
-    htmltools::tags$span(
-      class = "ynow-gp-chart-dot",
-      style = sprintf("background:%s;", theme$line)
-    ),
-    theme$venue_lab
-  )
-  if (!is.data.frame(meta_rows) || nrow(meta_rows) == 0L) {
-    return(htmltools::tags$div(
-      class = paste("ynow-gp-venue-col", paste0("ynow-gp-venue-", venue)),
-      `data-venue` = venue,
-      head,
-      htmltools::tags$p(class = "ynow-gp-empty", .gp_label(empty_key, locale))
-    ))
-  }
-  pks <- unique(as.character(meta_rows$prop_key))
-  cards <- lapply(pks, function(pk) {
-    rows <- meta_rows[meta_rows$prop_key == pk, , drop = FALSE]
-    label <- .gp_chr(rows$event_title[[1]])
-    if (!nzchar(label)) label <- .gp_chr(rows$title[[1]], pk)
-    sub <- if (is.data.frame(series) && nrow(series)) {
-      series[series$venue == venue & series$market_id %in% rows$market_id, , drop = FALSE]
-    } else {
-      .gp_empty_series()
-    }
-    body <- if (nrow(sub) >= as.integer(.GP_HISTORY_MIN_POINTS)) {
-      gp_build_line_chart(sub, locale = locale, height = height, prop_label = label)
-    } else {
-      .gp_quote_only_card(label, rows, venue, locale)
-    }
-    htmltools::tags$div(
-      class = "ynow-gp-market-chart ynow-gp-prop-chart",
-      `data-prop-key` = pk,
-      `data-venue` = venue,
-      body
-    )
-  })
-  htmltools::tags$div(
-    class = paste("ynow-gp-venue-col", paste0("ynow-gp-venue-", venue)),
-    `data-venue` = venue,
-    head,
-    cards
-  )
-}
-
-#' Company board: one block per company; Kalshi left, Polymarket right.
-#' A company on only one venue still renders; the other side stays empty.
-gp_build_company_venue_board <- function(series, meta, locale = "en", height = 220) {
-  locale <- .gp_chr(locale, "en")
-  if (!is.data.frame(meta) || nrow(meta) == 0L) {
-    return(htmltools::tags$p(
-      class = "ynow-gp-empty ynow-gp-chart-empty",
-      .gp_label("gp_chart_empty", locale)
-    ))
-  }
-  if (!"company_key" %in% names(meta)) meta$company_key <- NA_character_
-  if (!"event_title" %in% names(meta)) meta$event_title <- NA_character_
-  keys <- vapply(meta$company_key, function(k) {
-    ck <- .gp_chr(k)
-    if (!nzchar(ck) || is.na(ck)) "_other" else ck
-  }, character(1))
-  meta$company_block <- keys
-  order_keys <- c(sort(setdiff(unique(keys), "_other")), if ("_other" %in% keys) "_other" else character(0))
-  blocks <- lapply(order_keys, function(ck) {
-    sub <- meta[meta$company_block == ck, , drop = FALSE]
-    label <- if (identical(ck, "_other")) {
-      .gp_label("gp_theme_co_other", locale)
-    } else {
-      gp_company_label(ck)
-    }
-    htmltools::tags$div(
-      class = "ynow-gp-company-block",
-      `data-company-key` = ck,
-      htmltools::tags$h4(class = "ynow-gp-company-title", label),
-      htmltools::tags$div(
-        class = "ynow-gp-venue-split",
-        .gp_company_venue_column(
-          "kalshi",
-          sub[sub$venue == "kalshi", , drop = FALSE],
-          series, locale, height
-        ),
-        .gp_company_venue_column(
-          "polymarket",
-          sub[sub$venue == "polymarket", , drop = FALSE],
-          series, locale, height
-        )
-      )
-    )
-  })
-  htmltools::tags$div(class = "ynow-gp-company-blocks", blocks)
-}
-
 gp_fetch_kalshi_theme <- function(theme_id, series_tickers, limit = 3L, use_cache = TRUE,
                                   layer = "quote") {
   theme_id <- .gp_chr(theme_id)
@@ -1921,11 +1819,13 @@ gp_crowd_agreement <- function(kalshi_probs, polymarket_probs) {
   series <- if (is.data.frame(pair$series)) pair$series else .gp_empty_series()
   meta <- gp_market_meta_from_pair(pair)
   board <- gp_norm_board(board)
-  # Charts only — no redundant last-print / venue quote list under the grid.
-  chart_body <- if (identical(board, "company")) {
-    gp_build_company_venue_board(series, meta, locale = locale, height = 220)
+  # Same Economic chart grid on every board; Company themes are companies.
+  chart_body <- gp_build_theme_market_charts(series, locale = locale, height = 220, meta = meta)
+  title_plain <- .gp_chr(pair$label)
+  title_txt <- if (nzchar(title_plain)) {
+    title_plain
   } else {
-    gp_build_theme_market_charts(series, locale = locale, height = 220, meta = meta)
+    .gp_label(pair$label_key %||% "gp_theme_fed_rates", locale)
   }
   htmltools::tags$div(
     class = "ynow-gp-theme",
@@ -1936,7 +1836,7 @@ gp_crowd_agreement <- function(kalshi_probs, polymarket_probs) {
       htmltools::tags$h4(
         class = "ynow-gp-theme-title",
         id = paste0("ynow_gp_theme_", .gp_chr(pair$theme_id)),
-        .gp_label(pair$label_key %||% "gp_theme_fed_rates", locale)
+        title_txt
       ),
       htmltools::tags$div(
         class = "ynow-gp-agree",
@@ -2729,43 +2629,48 @@ gp_fetch_snapshot <- function(market_mode = "US", use_cache = TRUE, limit_per_ve
   f <- gp_fetch_feex_theme(board, topic = board, use_cache = use_cache, layer = layer)
   kq <- if (is.data.frame(k$quotes)) k$quotes else .gp_empty_quote()
   pq <- if (is.data.frame(p$quotes)) p$quotes else .gp_empty_quote()
-  # Bucket into theme pairs for UI
-  pairs <- lapply(src$theme_buckets, function(b) {
-    tid <- b$id
-    k_part <- if (nrow(kq)) kq[kq$theme_id == tid, , drop = FALSE] else .gp_empty_quote()
-    p_part <- if (nrow(pq)) pq[pq$theme_id == tid, , drop = FALSE] else .gp_empty_quote()
-    # Orphans with empty catch-all bucket
-    if (identical(tid, src$theme_buckets[[length(src$theme_buckets)]]$id)) {
-      known <- vapply(src$theme_buckets, function(x) x$id, character(1))
-      known_other <- known[known != tid]
-      # A single catch-all bucket already holds every row. Re-adding "orphans"
-      # would duplicate the whole board (known_other is empty).
-      if (length(known_other) && nrow(kq)) {
-        extra_k <- kq[!(kq$theme_id %in% known), , drop = FALSE]
-        if (nrow(extra_k)) k_part <- rbind(k_part, extra_k)
+  # Company: one theme card per company. Other boards: fixed theme_buckets.
+  pairs <- if (identical(board, "company")) {
+    prs <- gp_company_theme_pairs(kq, pq)
+    lapply(prs, function(pr) {
+      pr$feex_status <- f$status %||% "defunct"
+      pr
+    })
+  } else {
+    lapply(src$theme_buckets, function(b) {
+      tid <- b$id
+      k_part <- if (nrow(kq)) kq[kq$theme_id == tid, , drop = FALSE] else .gp_empty_quote()
+      p_part <- if (nrow(pq)) pq[pq$theme_id == tid, , drop = FALSE] else .gp_empty_quote()
+      # Orphans with empty catch-all bucket
+      if (identical(tid, src$theme_buckets[[length(src$theme_buckets)]]$id)) {
+        known <- vapply(src$theme_buckets, function(x) x$id, character(1))
+        known_other <- known[known != tid]
+        # A single catch-all bucket already holds every row. Re-adding "orphans"
+        # would duplicate the whole board (known_other is empty).
+        if (length(known_other) && nrow(kq)) {
+          extra_k <- kq[!(kq$theme_id %in% known), , drop = FALSE]
+          if (nrow(extra_k)) k_part <- rbind(k_part, extra_k)
+        }
+        if (length(known_other) && nrow(pq)) {
+          extra_p <- pq[!(pq$theme_id %in% known), , drop = FALSE]
+          if (nrow(extra_p)) p_part <- rbind(p_part, extra_p)
+        }
       }
-      if (length(known_other) && nrow(pq)) {
-        extra_p <- pq[!(pq$theme_id %in% known), , drop = FALSE]
-        if (nrow(extra_p)) p_part <- rbind(p_part, extra_p)
-      }
-    }
-    # Company keeps the full Kalshi ∪ Polymarket union. Other boards stay capped.
-    if (!identical(board, "company")) {
       if (nrow(k_part) > 6L) k_part <- k_part[seq_len(6L), , drop = FALSE]
       if (nrow(p_part) > 6L) p_part <- p_part[seq_len(6L), , drop = FALSE]
-    }
-    list(
-      theme_id = tid,
-      label_key = b$label_key,
-      breadth_tier = NA_integer_,
-      kalshi = k_part,
-      polymarket = p_part,
-      feex = .gp_empty_quote(),
-      feex_status = f$status %||% "defunct",
-      agreement = gp_crowd_agreement(k_part$yes_prob, p_part$yes_prob),
-      series = .gp_empty_series()
-    )
-  })
+      list(
+        theme_id = tid,
+        label_key = b$label_key,
+        breadth_tier = NA_integer_,
+        kalshi = k_part,
+        polymarket = p_part,
+        feex = .gp_empty_quote(),
+        feex_status = f$status %||% "defunct",
+        agreement = gp_crowd_agreement(k_part$yes_prob, p_part$yes_prob),
+        series = .gp_empty_series()
+      )
+    })
+  }
   # Drop empty theme cards except when entire board empty (keep one honest empty)
   nonempty <- vapply(pairs, function(pr) {
     nrow(pr$kalshi) + nrow(pr$polymarket) > 0L
@@ -2835,10 +2740,6 @@ global_prediction_ui <- function(id, locale = "en") {
         gap: 12px; align-items: start; }
       @media (max-width: 1100px) { .ynow-gp-chart-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
       @media (max-width: 767px) { .ynow-gp-chart-grid { grid-template-columns: 1fr; } }
-      .ynow-gp-company-blocks { display: flex; flex-direction: column; gap: 18px; }
-      .ynow-gp-company-block { margin: 0; }
-      .ynow-gp-venue-split { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; }
-      @media (max-width: 767px) { .ynow-gp-venue-split { grid-template-columns: 1fr; } }
       .ynow-gp-venue-col { min-width: 0; display: flex; flex-direction: column; gap: 10px; }
       .ynow-gp-venue-col-head { display: flex; align-items: center; gap: 6px; font-size: 12px;
         font-weight: 700; color: #3f3a33; }

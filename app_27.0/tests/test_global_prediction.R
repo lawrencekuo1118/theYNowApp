@@ -641,7 +641,6 @@ co_pair <- list(
     stringsAsFactors = FALSE
   )
 )
-co_meta <- gp_market_meta_from_pair(co_pair)
 co_pairs <- gp_company_theme_pairs(
   co_pair$kalshi,
   co_pair$polymarket
@@ -652,8 +651,10 @@ check(
     any(vapply(co_pairs, function(pr) identical(pr$theme_id, "apple"), logical(1))) &&
     any(vapply(co_pairs, function(pr) identical(pr$theme_id, "nvidia"), logical(1)))
 )
-co_row <- .gp_theme_row_ui(co_pairs[[1]], locale = "en", board = "company")
-co_html <- paste(as.character(co_row), collapse = "\n")
+apple_pr <- Filter(function(pr) identical(pr$theme_id, "apple"), co_pairs)[[1]]
+apple_ids <- unique(c(apple_pr$kalshi$market_id, apple_pr$polymarket$market_id))
+apple_pr$series <- co_series[co_series$market_id %in% apple_ids, , drop = FALSE]
+co_html <- paste(as.character(.gp_theme_row_ui(apple_pr, locale = "en", board = "company")), collapse = "\n")
 check(
   "company theme row uses Economic chart grid, not venue columns",
   grepl("ynow-gp-theme", co_html, fixed = TRUE) &&
@@ -661,11 +662,10 @@ check(
     !grepl("ynow-gp-venue-split", co_html, fixed = TRUE) &&
     !grepl("ynow-gp-company-blocks", co_html, fixed = TRUE)
 )
-apple_pr <- Filter(function(pr) identical(pr$theme_id, "apple"), co_pairs)[[1]]
 check(
   "company theme title is the company name",
-  identical(.gp_chr(apple_pr$label), "Apple") ||
-    grepl("Apple", paste(as.character(.gp_theme_row_ui(apple_pr, "en", "company")), collapse = "\n"), fixed = TRUE)
+  identical(.gp_chr(apple_pr$label), "Apple") &&
+    grepl(">Apple<", co_html, fixed = TRUE)
 )
 check(
   "proposition key prefers poly event slug",
