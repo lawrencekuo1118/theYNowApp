@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12794108
+bundleId=12794795
 appId=10907657
 url=https://[REDACTED].shinyapps.io/TheYNowApp/  # pragma: allowlist secret
-aligned_git=ecbdb17513f04d226208e335ba26a4dbc07e5ac1
-commit=ecbdb17513f04d226208e335ba26a4dbc07e5ac1
-short=ecbdb175
-message=chore: bump display version to v28.34
-captured_at=2026-11-08T10:10:00Z
+aligned_git=bdaf55bb4152fefb4949960c048a67cb216421f5
+commit=bdaf55bb4152fefb4949960c048a67cb216421f5
+short=bdaf55bb
+message=chore: bump display version to v28.35
+captured_at=2026-11-08T15:43:47Z
 display_version=v28.35
-note=Shipped v28.34 (+0.01) via deploy_app_21.R after #721 Redirecting… min-hold fix (YN-106). Live status=running; rsconnect bundleId=12794108. Prior: v28.33=#719/#720 (12793973), v28.32=#717/#718 (12793804).
+note=Shipped v28.35 (+0.01) via deploy_app_21.R. Company board unions Kalshi Big Tech & Business and Polymarket Big Tech (PR #724). Live status=running; rsconnect bundleId=12794795. Prior: v28.34=#721/#723 (12794108), v28.33=#719/#720 (12793973).
