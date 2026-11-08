@@ -7,5 +7,5 @@ commit=a6c21ab8d5868f86017838e2c4dff6e17309f1dc
 short=a6c21ab8
 message=chore: bump display version to v28.29
 captured_at=2026-11-08T07:15:56Z
-display_version=v28.29
+display_version=v28.30
 note=Shipped v28.29 (+0.01) via deploy_app_21.R after #709 overlay-style multi-select chips (YN-91/YN-93). Live status=running; rsconnect bundleId=12793712. Prior: v28.28=#708/#710 (12793681), v28.27=#706 (12788519).
