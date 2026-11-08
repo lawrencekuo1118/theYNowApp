@@ -15056,10 +15056,16 @@ ui <- dashboardPage(
               try {
                 if (typeof window.ynowEndAuthBusy === 'function') window.ynowEndAuthBusy();
               } catch (eBusyEnd) {}
-              /* In-session sign-in only (!quiet): swap header version title for
-                 Redirecting… while pre-login tab restore settles. Quiet resume /
-                 after_chrome must not flash Redirecting. */
+              if (!payload.ok) {
+                try {
+                  if (typeof window.ynowEndRedirectTitle === 'function') {
+                    window.ynowEndRedirectTitle();
+                  }
+                } catch (eRedirFail) {}
+              }
               var showRedirect = !!(payload.ok && !payload.quiet);
+              var continueRedirect = !!(payload.ok && payload.quiet &&
+                document.body && document.body.classList.contains('ynow-auth-redirecting'));
               if (showRedirect) {
                 try {
                   if (typeof window.ynowBeginRedirectTitle === 'function') {
@@ -15114,7 +15120,7 @@ ui <- dashboardPage(
                 if (tab) ynowApplyRestoredTab(tab);
                 if (ticker) ynowApplyRestoredTicker(ticker);
               }
-              if (showRedirect) {
+              if (showRedirect || continueRedirect) {
                 try {
                   if (typeof window.ynowScheduleEndRedirectTitle === 'function') {
                     window.ynowScheduleEndRedirectTitle(tab || liveTab || '');
@@ -15240,6 +15246,11 @@ ui <- dashboardPage(
                 var ui = ynowLastUiRead();
                 if (ui.tab) ynowApplyRestoredTab(ui.tab);
               } catch (eEarly) {}
+              try {
+                if (typeof window.ynowBeginRedirectTitle === 'function') {
+                  window.ynowBeginRedirectTitle();
+                }
+              } catch (eRedirResume) {}
               Shiny.setInputValue('ynow_auth_resume_token', String(tok), { priority: 'event' });
             };
             addHandler('ynowAuthPersist', function (payload) {
@@ -15589,10 +15600,9 @@ ui <- dashboardPage(
               if (busy) busy.setAttribute('aria-hidden', 'true');
             } catch (eBusyEnd) {}
           };
-          /* Post-login header: show Redirecting… instead of The YNow App v… while
-             the pre-login tab is restored; restore version title when settled.
-             Stay-on-page restore often matches the live tab immediately — without a
-             minimum hold, Redirecting… clears in ~80ms and is invisible to users. */
+          /* Header reads Redirecting… for the whole sign-in restore, including the
+             shiny:busy stretch that otherwise paints the gold version title.
+             A minimum hold still covers a restore that goes idle immediately. */
           window.__ynowRedirectTitleMinHoldMs = 750;
           window.ynowBeginRedirectTitle = function () {
             try {
@@ -15620,6 +15630,12 @@ ui <- dashboardPage(
               try { el.style.setProperty('--ynow-load-pct', '100%'); } catch (ePct) {}
               window.__ynowTitleRedirectStartedAt = Date.now();
               if (document.body) document.body.classList.add('ynow-auth-redirecting');
+              if (window.__ynowTitleRedirectTimer) {
+                clearTimeout(window.__ynowTitleRedirectTimer);
+              }
+              window.__ynowTitleRedirectTimer = setTimeout(function () {
+                try { window.ynowEndRedirectTitle(); } catch (eAbandon) {}
+              }, Math.max(12000, (Number(window.__ynowRedirectTitleMinHoldMs) || 750) + 200));
               try {
                 if (typeof window.placeMobileAppTitle === 'function') {
                   window.placeMobileAppTitle();
@@ -15640,6 +15656,10 @@ ui <- dashboardPage(
               if (window.__ynowTitleRedirectHoldTimer) {
                 clearTimeout(window.__ynowTitleRedirectHoldTimer);
                 window.__ynowTitleRedirectHoldTimer = null;
+              }
+              if (window.__ynowTitleRedirectBusyTimer) {
+                clearTimeout(window.__ynowTitleRedirectBusyTimer);
+                window.__ynowTitleRedirectBusyTimer = null;
               }
               var saved = window.__ynowTitleRedirectSaved;
               window.__ynowTitleRedirectSaved = null;
@@ -15672,9 +15692,28 @@ ui <- dashboardPage(
             try {
               var done = false;
               var minHold = Number(window.__ynowRedirectTitleMinHoldMs) || 750;
-              var finish = function () {
+              var busyNow = function () {
+                try {
+                  return !!(document.documentElement &&
+                    document.documentElement.classList.contains('shiny-busy'));
+                } catch (eBusyNow) { return false; }
+              };
+              var finish = function (forceEnd) {
                 if (done) return;
+                if (!forceEnd && busyNow()) {
+                  if (window.__ynowTitleRedirectBusyTimer) {
+                    clearTimeout(window.__ynowTitleRedirectBusyTimer);
+                  }
+                  window.__ynowTitleRedirectBusyTimer = setTimeout(function () {
+                    finish(false);
+                  }, 200);
+                  return;
+                }
                 done = true;
+                if (window.__ynowTitleRedirectBusyTimer) {
+                  clearTimeout(window.__ynowTitleRedirectBusyTimer);
+                  window.__ynowTitleRedirectBusyTimer = null;
+                }
                 var runEnd = function () {
                   try { window.ynowEndRedirectTitle(); } catch (eFin) {}
                 };
@@ -15698,30 +15737,35 @@ ui <- dashboardPage(
                 clearInterval(window.__ynowTitleRedirectPoll);
                 window.__ynowTitleRedirectPoll = null;
               }
-              /* Fail-safe: never leave Redirecting… stuck in the header.
-                 Keep above min-hold so settle-on-match can still honor visibility. */
-              window.__ynowTitleRedirectTimer = setTimeout(finish, Math.max(2000, minHold + 200));
+              if (window.__ynowTitleRedirectBusyTimer) {
+                clearTimeout(window.__ynowTitleRedirectBusyTimer);
+                window.__ynowTitleRedirectBusyTimer = null;
+              }
+              window.__ynowTitleRedirectTimer = setTimeout(function () {
+                finish(true);
+              }, Math.max(12000, minHold + 200));
               var target = String(tab || '');
               var settleThenFinish = function () {
                 try {
                   if (window.requestAnimationFrame) {
                     window.requestAnimationFrame(function () {
-                      setTimeout(finish, 80);
+                      setTimeout(function () { finish(false); }, 80);
                     });
                   } else {
-                    setTimeout(finish, 120);
+                    setTimeout(function () { finish(false); }, 120);
                   }
                 } catch (eSettle) {
-                  setTimeout(finish, 120);
+                  setTimeout(function () { finish(false); }, 120);
                 }
               };
-              if (!target) {
-                settleThenFinish();
-                return;
-              }
               var n = 0;
               var tryMatch = function () {
                 if (done) return true;
+                if (busyNow()) return false;
+                if (!target) {
+                  settleThenFinish();
+                  return true;
+                }
                 try {
                   var live = '';
                   if (typeof window.ynowVisibleAuthTab === 'function') {
@@ -15736,6 +15780,7 @@ ui <- dashboardPage(
               };
               if (tryMatch()) return;
               window.__ynowTitleRedirectPoll = setInterval(function () {
+                if (busyNow()) return;
                 n += 1;
                 if (tryMatch() || n > 28) {
                   if (window.__ynowTitleRedirectPoll) {
@@ -15791,6 +15836,11 @@ ui <- dashboardPage(
                   window.ynowBeginAuthBusy();
                 }
               } catch (eSubBusy) {}
+              try {
+                if (typeof window.ynowBeginRedirectTitle === 'function') {
+                  window.ynowBeginRedirectTitle();
+                }
+              } catch (eSubRedir) {}
             }, true);
           }
           if (!window.__ynowAuthEnterPersist) {
@@ -15810,6 +15860,11 @@ ui <- dashboardPage(
                   window.ynowBeginAuthBusy();
                 }
               } catch (eEntBusy) {}
+              try {
+                if (typeof window.ynowBeginRedirectTitle === 'function') {
+                  window.ynowBeginRedirectTitle();
+                }
+              } catch (eEntRedir) {}
             }, true);
           }
           function ynowParseQuery(qs) {
@@ -15845,6 +15900,13 @@ ui <- dashboardPage(
             var authType = h.type || q.type || '';
             if (!access && !code && !err) return;
             window.__ynowOAuthCallbackPushed = true;
+            if (access || code) {
+              try {
+                if (typeof window.ynowBeginRedirectTitle === 'function') {
+                  window.ynowBeginRedirectTitle();
+                }
+              } catch (eOauthRedir) {}
+            }
             var storedTab = '';
             var codeVerifier = '';
             try {
