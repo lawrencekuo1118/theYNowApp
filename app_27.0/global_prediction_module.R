@@ -2332,17 +2332,7 @@ global_prediction_server <- function(id,
         }
         first <- !isTRUE(shiny::isolate(saw_active_rv()))
         saw_active_rv(TRUE)
-        trigger <- if (first) "tab_open" else "manual_refresh"
-        sess <- session
-        if (requireNamespace("later", quietly = TRUE)) {
-          later::later(function() {
-            shiny::withReactiveDomain(sess, {
-              tryCatch(do_fetch(trigger, force = TRUE), error = function(e) NULL)
-            })
-          }, delay = 0)
-        } else {
-          do_fetch(trigger, force = TRUE)
-        }
+        do_fetch(if (first) "tab_open" else "manual_refresh", force = TRUE)
       },
       ignoreInit = FALSE
     )
