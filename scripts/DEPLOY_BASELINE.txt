@@ -7,5 +7,5 @@ commit=4394616206c81d8475997709d9a9dd0d7b141afa
 short=43946162
 message=chore: bump display version to v28.30
 captured_at=2026-11-08T07:26:55Z
-display_version=v28.30
+display_version=v28.31
 note=Shipped v28.30 (+0.01) via deploy_app_21.R after #711 pane-first login stay follow-up (YN-95). Live status=running; rsconnect bundleId=12793735. Prior: v28.29=#709/#712 (12793712), v28.28=#708/#710 (12793681).
