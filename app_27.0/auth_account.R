@@ -3081,8 +3081,9 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
       if (identical(stay_tab, "testing")) stay_tab <- "home"
       live_tab <- as.character(isolate(input$sidebar_tabs) %||% "")[1]
       if (identical(live_tab, "testing")) live_tab <- "home"
-      # Stale home/get_started (or empty) capture: prefer a real live sidebar the
-      # client already synced after the first PostLogin.
+      # Stale home/get_started (or empty) capture: prefer a non-default live
+      # sidebar the client already synced. Never copy home/get_started from
+      # sidebar into durable prefs when chrome_tab is empty.
       stale_default <- !nzchar(stay_tab) ||
         identical(stay_tab, "home") ||
         identical(stay_tab, "get_started")
@@ -3090,8 +3091,6 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
         !identical(live_tab, "home") &&
         !identical(live_tab, "get_started")
       if (isTRUE(stale_default) && isTRUE(live_real)) {
-        stay_tab <- live_tab
-      } else if (!nzchar(stay_tab) && nzchar(live_tab)) {
         stay_tab <- live_tab
       }
       # First PostLogin already chose the tab. Quiet pass reconciles ticker only
