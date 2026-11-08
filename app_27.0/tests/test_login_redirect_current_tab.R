@@ -89,7 +89,7 @@ check(
   "in-session login prefers chrome_tab over durable stab",
   grepl("chrome_tab", finish_body, fixed = TRUE) &&
     grepl("stay_tab", finish_body, fixed = TRUE) &&
-    grepl("tab = stay_tab", finish_body, fixed = TRUE) &&
+    grepl("stay_tab <- chrome_tab", finish_body, fixed = TRUE) &&
     !grepl("if (nzchar(stab)) stab else chrome_tab", finish_body, fixed = TRUE) &&
     !grepl("Durable prefs win when present", finish_body, fixed = TRUE)
 )
@@ -101,9 +101,14 @@ check(
       ".ynow_auth_apply_surface(",
       ".persist_last_ui_surface("
     )
-    grepl("tab = stay_tab", apply_chunk, fixed = TRUE) &&
-      !grepl("saved$tab", apply_chunk, fixed = TRUE) &&
-      !grepl("\\bstab\\b", apply_chunk)
+    # Quiet apply is ticker-only (empty tab); durable saved$tab is never the nav target.
+    !grepl("saved$tab", apply_chunk, fixed = TRUE) &&
+      !grepl("\\bstab\\b", apply_chunk) &&
+      !grepl("tab = stay_tab", apply_chunk, fixed = TRUE) &&
+      (
+        grepl("tab = \"\"", apply_chunk, fixed = TRUE) ||
+          grepl("tab = ''", apply_chunk, fixed = TRUE)
+      )
   }
 )
 check(
@@ -157,8 +162,94 @@ check(
        grepl("sidebar-menu li.active", oauth_start, fixed = TRUE))
 )
 check(
-  "never force get_started on PostLogin success path",
-  !grepl("get_started", post_login, fixed = TRUE)
+  "PostLogin does not default-navigate to get_started",
+  {
+    # Mentioning get_started as a stale-default to distrust is OK; assigning it
+    # as the restore target is not.
+    !grepl("tab = 'get_started'", post_login, fixed = TRUE) &&
+      !grepl('tab = "get_started"', post_login, fixed = TRUE) &&
+      !grepl("restore_tab: 'get_started'", post_login, fixed = TRUE) &&
+      !grepl('restore_tab: "get_started"', post_login, fixed = TRUE)
+  }
+)
+
+# Residual Home yank (YN-90): empty restore must not adopt server sidebar_tabs
+# (often still home while the visible menu is Macro), and a stale home /
+# get_started restore must lose to the live active tab on non-quiet PostLogin.
+check(
+  "finish_auth empty restore does not fall back to sidebar_tabs",
+  {
+    # Between restore_tab read and first ynowAuthPostLogin in finish body:
+    # no sidebar_tabs substitution when restore is empty.
+    chunk <- between(
+      finish_body,
+      "tab <- as.character(restore_tab",
+      "session$sendCustomMessage(\n      \"ynowAuthPostLogin\""
+    )
+    if (!nzchar(chunk)) {
+      chunk <- between(
+        finish_body,
+        "tab <- as.character(restore_tab",
+        "ynowAuthPostLogin"
+      )
+    }
+    grepl("restore_tab", finish_body, fixed = TRUE) &&
+      !grepl("input\\$sidebar_tabs", chunk) &&
+      !grepl("isolate(input$sidebar_tabs)", chunk, fixed = TRUE)
+  }
+)
+check(
+  "PostLogin prefers live tab over stale home/get_started (!quiet)",
+  grepl("!payload.quiet", post_login, fixed = TRUE) &&
+    grepl("get_started", post_login, fixed = TRUE) &&
+    (
+      grepl("stale", post_login, ignore.case = TRUE) ||
+        grepl("prefer", post_login, ignore.case = TRUE) ||
+        grepl("live", post_login, ignore.case = TRUE) ||
+        grepl("active", post_login, ignore.case = TRUE)
+    ) &&
+    grepl("home", post_login, fixed = TRUE)
+)
+check(
+  "Enter/keydown on auth fields re-persists pre-auth tab",
+  grepl("keydown", ui, fixed = TRUE) &&
+    grepl("ynow_auth_password", ui, fixed = TRUE) &&
+    grepl("__ynowAuthEnterPersist", ui, fixed = TRUE) &&
+    grepl("ynowPersistPreAuthTab", ui, fixed = TRUE)
+)
+check(
+  "in-session after_chrome quiet apply does not re-navigate tab",
+  {
+    apply_chunk <- between(
+      finish_body,
+      ".ynow_auth_apply_surface(",
+      ".persist_last_ui_surface("
+    )
+    # Must call apply_surface with an empty tab (ticker-only quiet reconcile).
+    grepl("quiet = TRUE", apply_chunk, fixed = TRUE) &&
+      !grepl("tab = stay_tab", apply_chunk, fixed = TRUE) &&
+      (
+        grepl("tab = \"\"", apply_chunk, fixed = TRUE) ||
+          grepl("tab = ''", apply_chunk, fixed = TRUE)
+      )
+  }
+)
+check(
+  "OAuth start sends empty restore_tab for client capture",
+  {
+    start_chunk <- between(
+      auth,
+      ".start_oauth <- function",
+      "observeEvent(input$ynow_auth_google"
+    )
+    grepl("ynowAuthOAuthRedirect", start_chunk, fixed = TRUE) &&
+      (
+        grepl("restore_tab = \"\"", start_chunk, fixed = TRUE) ||
+          grepl("restore_tab = ''", start_chunk, fixed = TRUE) ||
+          grepl("restore_tab = character\\(0", start_chunk)
+      ) &&
+      !grepl("restore_tab = tab_now", start_chunk, fixed = TRUE)
+  }
 )
 
 # Stale restore_tab: modal opened earlier on Home, then Sign-in from another

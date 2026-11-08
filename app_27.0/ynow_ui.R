@@ -15052,20 +15052,32 @@ ui <- dashboardPage(
                 sessionStorage.removeItem('ynow_oauth_code_verifier');
                 sessionStorage.removeItem('ynow_pre_oauth_tab');
               } catch (eClr) {}
+              var liveTab = '';
+              try {
+                var actLive = document.querySelector(
+                  '.sidebar-menu li.active > a[data-value], .sidebar-menu a.active[data-value]'
+                );
+                var ftLive = document.querySelector(
+                  '.ynow-sidebar-snapshot-foot a.active[data-value], ' +
+                  '.ynow-sidebar-snapshot-foot a[aria-expanded=\"true\"][data-value]'
+                );
+                liveTab = (actLive && actLive.getAttribute('data-value')) ||
+                  (ftLive && ftLive.getAttribute('data-value')) || '';
+                if (liveTab === 'testing') liveTab = 'home';
+              } catch (eLive) {}
               /* In-session login with empty restore: keep the active tab (gate /
                  modal / OAuth) instead of letting a later durable-prefs jump win. */
               if (payload.ok && !tab && !payload.quiet) {
-                try {
-                  var act = document.querySelector(
-                    '.sidebar-menu li.active > a[data-value], .sidebar-menu a.active[data-value]'
-                  );
-                  var ft = document.querySelector(
-                    '.ynow-sidebar-snapshot-foot a.active[data-value], ' +
-                    '.ynow-sidebar-snapshot-foot a[aria-expanded=\"true\"][data-value]'
-                  );
-                  tab = (act && act.getAttribute('data-value')) ||
-                    (ft && ft.getAttribute('data-value')) || '';
-                } catch (eCur) {}
+                tab = liveTab || '';
+              }
+              /* Stale home / get_started restore (poisoned input or lagged
+                 sidebar_tabs) must not yank away from the live pre-login tab.
+                 Quiet resume still applies durable prefs as sent. */
+              if (payload.ok && !payload.quiet && liveTab &&
+                  (tab === 'home' || tab === 'get_started') &&
+                  liveTab !== tab &&
+                  liveTab !== 'home' && liveTab !== 'get_started') {
+                tab = liveTab;
               }
               /* Sys. Admin is guest/ops-only: never restore testing after sign-in. */
               if (payload.ok && tab === 'testing') tab = 'home';
@@ -15567,6 +15579,39 @@ ui <- dashboardPage(
                   window.ynowBeginAuthBusy();
                 }
               } catch (eSubBusy) {}
+            }, true);
+          }
+          /* Enter in email/password (or form submit) skips the click capture
+             above — refresh the pre-auth tab and busy chrome the same way. */
+          if (!window.__ynowAuthEnterPersist) {
+            window.__ynowAuthEnterPersist = true;
+            var persistAuthEnter = function () {
+              try {
+                if (typeof window.ynowPersistPreAuthTab === 'function') {
+                  window.ynowPersistPreAuthTab();
+                }
+              } catch (eEntPersist) {}
+              try {
+                if (typeof window.ynowBeginAuthBusy === 'function') {
+                  window.ynowBeginAuthBusy();
+                }
+              } catch (eEntBusy) {}
+            };
+            document.addEventListener('keydown', function (ev) {
+              if (!ev || (ev.key !== 'Enter' && ev.keyCode !== 13)) return;
+              var t = ev.target;
+              if (!t || !t.closest) return;
+              if (!t.closest('#ynow_auth_modal')) return;
+              if (!t.closest(
+                '#ynow_auth_email, #ynow_auth_password, #ynow_auth_modal form'
+              )) return;
+              persistAuthEnter();
+            }, true);
+            document.addEventListener('submit', function (ev) {
+              var t = ev.target;
+              if (!t || !t.closest) return;
+              if (!t.closest('#ynow_auth_modal')) return;
+              persistAuthEnter();
             }, true);
           }
           function ynowParseQuery(qs) {
