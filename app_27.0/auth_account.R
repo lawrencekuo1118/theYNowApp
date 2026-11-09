@@ -3046,6 +3046,14 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
     tryCatch(shinyBS::toggleModal(session, "ynow_auth_modal", "close"), error = function(e) NULL)
     tab <- as.character(restore_tab %||% "")[1]
     if (identical(tab, "testing")) tab <- "home"
+    # In-session / OAuth success: never server-navigate to Home / Get Started.
+    # Those defaults are often a poisoned capture while the live pane is Macro
+    # (or another real tab). Client PostLogin prefers the live pane; an
+    # updateTabItems("home") here would race that restore and yank the user.
+    nav_tab <- tab
+    if (identical(nav_tab, "home") || identical(nav_tab, "get_started")) {
+      nav_tab <- ""
+    }
     session$sendCustomMessage(
       "ynowAuthPostLogin",
       list(
@@ -3055,12 +3063,13 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
         message = msg
       )
     )
-    if (nzchar(tab) && !identical(tab, as.character(isolate(input$sidebar_tabs) %||% "")[1])) {
+    if (nzchar(nav_tab) &&
+          !identical(nav_tab, as.character(isolate(input$sidebar_tabs) %||% "")[1])) {
       tryCatch(
-        updateTabItems(session, "sidebar_tabs", tab),
+        updateTabItems(session, "sidebar_tabs", nav_tab),
         error = function(e) {
           tryCatch(
-            session$sendInputMessage("sidebar_tabs", list(value = tab)),
+            session$sendInputMessage("sidebar_tabs", list(value = nav_tab)),
             error = function(e2) NULL
           )
         }

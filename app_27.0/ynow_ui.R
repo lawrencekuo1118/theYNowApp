@@ -14923,7 +14923,10 @@ ui <- dashboardPage(
               var baseUrl = String(payload.url);
               var finish = function (url) { go(url); };
               try {
-                if (tab) sessionStorage.setItem('ynow_pre_oauth_tab', tab);
+                if (tab) {
+                  sessionStorage.setItem('ynow_pre_oauth_tab', tab);
+                  try { localStorage.setItem('ynow_pre_oauth_tab_v1', tab); } catch (eLsO) {}
+                }
                 var verifier = (typeof window.ynowPkceVerifier === 'function')
                   ? window.ynowPkceVerifier() : '';
                 if (!verifier || typeof window.ynowPkceChallenge !== 'function') {
@@ -15081,10 +15084,16 @@ ui <- dashboardPage(
               var tab = '';
               var ticker = '';
               try {
-                tab = String(payload.restore_tab || sessionStorage.getItem('ynow_pre_oauth_tab') || '');
+                tab = String(
+                  payload.restore_tab ||
+                  sessionStorage.getItem('ynow_pre_oauth_tab') ||
+                  localStorage.getItem('ynow_pre_oauth_tab_v1') ||
+                  ''
+                );
                 ticker = String(payload.restore_ticker || '');
                 sessionStorage.removeItem('ynow_oauth_code_verifier');
                 sessionStorage.removeItem('ynow_pre_oauth_tab');
+                localStorage.removeItem('ynow_pre_oauth_tab_v1');
               } catch (eClr) {}
               var liveTab = '';
               try {
@@ -15092,6 +15101,11 @@ ui <- dashboardPage(
                   liveTab = String(window.ynowVisibleAuthTab() || '');
                 }
               } catch (eLive) {}
+              /* Quiet resume after_chrome must not yank off a tab already chosen
+                 by non-quiet in-session / OAuth PostLogin on this page. */
+              if (payload.ok && payload.quiet && window.__ynowAuthInSessionTab) {
+                tab = '';
+              }
               /* In-session login with empty restore: keep the active tab (gate /
                  modal / OAuth) instead of letting a later durable-prefs jump win. */
               if (payload.ok && !tab && !payload.quiet) {
@@ -15102,9 +15116,20 @@ ui <- dashboardPage(
                   liveTab !== tab) {
                 tab = liveTab;
               }
+              /* Do not actively click Home / Get Started on in-session success —
+                 those defaults are often a stale capture; leaving the live pane
+                 is safer than yanking Macro → Home. Resume (quiet) may still
+                 restore durable Home when no in-session tab was chosen. */
+              if (payload.ok && !payload.quiet &&
+                  (tab === 'home' || tab === 'get_started')) {
+                tab = '';
+              }
               /* Sys. Admin is guest/ops-only: never restore testing after sign-in. */
               if (payload.ok && tab === 'testing') tab = 'home';
               if (payload.ok) {
+                if (!payload.quiet) {
+                  window.__ynowAuthInSessionTab = tab || liveTab || '1';
+                }
                 try { ynowLastUiWrite(tab || null, ticker || null); } catch (eUiW) {}
                 if (tab) ynowApplyRestoredTab(tab);
                 if (ticker) ynowApplyRestoredTicker(ticker);
@@ -15227,6 +15252,17 @@ ui <- dashboardPage(
             var ynowAuthResumeOffer = function () {
               if (ynowAuthResumeSent) return;
               if (!window.Shiny || !Shiny.setInputValue) return;
+              /* OAuth return owns this boot. Resume's delayed durable last-tab
+                 (often Home) must not race / overwrite ynow_pre_oauth_tab. */
+              try {
+                if (window.__ynowOAuthCallbackPushed) return;
+                var href = String(window.location.href || '');
+                if (/[?#&](code|access_token|error)=/.test(href)) return;
+                if (sessionStorage.getItem('ynow_pre_oauth_tab') ||
+                    localStorage.getItem('ynow_pre_oauth_tab_v1')) {
+                  return;
+                }
+              } catch (eOauthSkip) {}
               var tok = ynowAuthPersistRead();
               if (!tok) return;
               ynowAuthResumeSent = true;
@@ -15559,7 +15595,11 @@ ui <- dashboardPage(
               if (typeof window.ynowVisibleAuthTab === 'function') {
                 tab = String(window.ynowVisibleAuthTab() || '');
               }
-              if (tab) sessionStorage.setItem('ynow_pre_oauth_tab', tab);
+              if (tab) {
+                sessionStorage.setItem('ynow_pre_oauth_tab', tab);
+                /* localStorage backup: some IdP round-trips drop sessionStorage. */
+                try { localStorage.setItem('ynow_pre_oauth_tab_v1', tab); } catch (eLs) {}
+              }
               if (window.Shiny && Shiny.setInputValue) {
                 Shiny.setInputValue('ynow_auth_restore_tab', tab || '', { priority: 'event' });
               }
