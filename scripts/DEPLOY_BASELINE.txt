@@ -7,5 +7,5 @@ commit=91850daeb7f9a3cad910b319c987f8bba1f7e88f
 short=91850dae
 message=chore: bump display version to v28.41
 captured_at=2026-11-09T10:11:40Z
-display_version=v28.41
+display_version=v28.42
 note=Shipped v28.41 (+0.01) via deploy_app_21.R. Company word cloud lists company-card names only (PR #731). Live status=running; rsconnect bundleId=12797800. Prior: v28.40=#730 (12797548), v28.39=#729 (12796407), v28.38=#728 (12796192).
