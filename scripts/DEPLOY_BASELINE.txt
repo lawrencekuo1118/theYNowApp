@@ -7,5 +7,5 @@ commit=a74f7b8e3bc1c061cb6374c114eb20741eb7546f
 short=a74f7b8e
 message=chore: bump display version to v28.39
 captured_at=2026-11-09T03:18:36Z
-display_version=v28.39
+display_version=v28.40
 note=Shipped v28.39 (+0.01) via deploy_app_21.R. Global Prediction drops crowd-wisdom, methodology, and risk paragraphs; charts, refresh, keyword cloud, and theme cards stay (PR #729). Live status=running; rsconnect bundleId=12796407. Prior: v28.38=#728 (12796192), v28.37=#726/#727 (12795058), v28.36=#725 (12794881).
