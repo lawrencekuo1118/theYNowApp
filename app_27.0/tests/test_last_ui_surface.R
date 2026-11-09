@@ -192,6 +192,24 @@ check(
   save_at > 0L && clear_at > save_at
 )
 
+restore_obs <- between(
+  srv,
+  "observeEvent(input$ynow_auth_restore_ticker",
+  ".ynow_pinned_sync_guest_client <- function"
+)
+check(
+  "signed-in restore does not start Yahoo/OTC crawl",
+  nzchar(restore_obs) &&
+    !grepl(".ynow_fire_ticker_search", restore_obs, fixed = TRUE) &&
+    !grepl("ticker_search_gen(", restore_obs, fixed = TRUE) &&
+    !grepl("statement_crawl_deferred(TRUE)", restore_obs, fixed = TRUE)
+)
+check(
+  "signed-in restore only fills the search box",
+  grepl("updateTextInput", restore_obs, fixed = TRUE) &&
+    grepl("\"sc\"", restore_obs, fixed = TRUE)
+)
+
 ticker_fn <- between(ui, "var ynowApplyRestoredTicker", "var ynowAuthResumeOffer")
 check(
   "client sets sc on restore",

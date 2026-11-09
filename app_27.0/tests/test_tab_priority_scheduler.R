@@ -33,6 +33,49 @@ test_that("tab priority cancels work owned by hidden pages", {
   expect_true(plan$cancel$bump_cluster)
 })
 
+test_that("statement crawl runs only on company and valuation tabs", {
+  ticker_tabs <- c(
+    "dashboard", "smart_analysis", "company_advance",
+    "dcf_calculator", "get_started"
+  )
+  expect_false(env$ynow_statement_crawl_wanted("global_prediction", ticker_tabs))
+  expect_false(env$ynow_statement_crawl_wanted("macro_market", ticker_tabs))
+  expect_false(env$ynow_statement_crawl_wanted("bluechip", ticker_tabs))
+  expect_false(env$ynow_statement_crawl_wanted("home", ticker_tabs))
+  expect_false(env$ynow_statement_crawl_wanted("", ticker_tabs))
+  expect_true(env$ynow_statement_crawl_wanted("dashboard", ticker_tabs))
+  expect_true(env$ynow_statement_crawl_wanted("dcf_calculator", ticker_tabs))
+  expect_true(env$ynow_statement_crawl_wanted("business_breakdown_lab", ticker_tabs))
+})
+
+test_that("a non-company tab never opens the statement progress toast", {
+  obs <- regexpr(
+    "observeEvent(list(current_ticker(), ticker_search_gen())",
+    server_src, fixed = TRUE
+  )
+  prog <- regexpr("shiny::Progress$new", server_src, fixed = TRUE)
+  gate <- regexpr("statement_crawl_deferred(TRUE)", server_src, fixed = TRUE)
+  expect_true(obs[[1]] > 0)
+  expect_true(gate[[1]] > obs[[1]] && gate[[1]] < prog[[1]])
+  expect_match(server_src, "ynow_statement_crawl_wanted", fixed = TRUE)
+  expect_match(
+    server_src,
+    "hist_stock_data <- reactive\\(\\{[\\s\\S]{0,240}ynow_statement_crawl_wanted",
+    perl = TRUE
+  )
+  expect_match(
+    server_src,
+    "later::later[\\s\\S]{0,500}phase2_after_yahoo",
+    perl = TRUE
+  )
+})
+
+test_that("leaving a company tab hides the statement toast immediately", {
+  expect_match(ui_src, "ynowDropCompanyFetchChrome", fixed = TRUE)
+  expect_match(ui_src, "YNOW_STATEMENT_TABS", fixed = TRUE)
+  expect_match(ui_src, "global_prediction", fixed = TRUE)
+})
+
 test_that("navigation changes run at high priority", {
   expect_match(server_src, "ynow_tab_priority_plan\\(tab, \\.ynow_ticker_refresh_tabs\\)")
   expect_match(server_src, "ignoreInit = TRUE, priority = 1000", fixed = TRUE)

@@ -16,11 +16,11 @@
       return(sub('^"version"\\s*:\\s*"([^"]+)".*$', "\\1", m[[1]]))
     }
   }
-  "v28.41"
+  "v28.42"
 }
 .YNOW_BUILD_VERSION <- .ynow_read_build_version()
 
-#' Major segment of a display version (`v28.41` → 25; `v26` → 26).
+#' Major segment of a display version (`v28.42` → 25; `v26` → 26).
 #' Matches deploy policy: +0.01 is patch; folder / `YNOW_VERSION_BUMP_MAJOR` cut advances major.
 .ynow_display_major <- function(label) {
   label <- as.character(label)[1]
@@ -3721,9 +3721,9 @@ ui <- dashboardPage(
                   'data-ynow-build="', .YNOW_BUILD_VERSION, '" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v28.41</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v28.42</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v28.41</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v28.42</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -11480,7 +11480,7 @@ ui <- dashboardPage(
             function isSignedIn() {
               return !!(document.body && document.body.classList.contains('ynow-authed'));
             }
-            /* Major = integer before decimal (v28.41 → 25), same as YNOW_VERSION_BUMP_MAJOR cut. */
+            /* Major = integer before decimal (v28.42 → 25), same as YNOW_VERSION_BUMP_MAJOR cut. */
             function displayMajor(version) {
               /* Use [0-9] not \\d — this block lives in an R character string. */
               var m = String(version || '').trim().match(/^[vV]?([0-9]+)/);
@@ -15995,9 +15995,46 @@ ui <- dashboardPage(
               }
               return '';
             }
+            var YNOW_STATEMENT_TABS = {
+              dashboard: 1, smart_analysis: 1, company_advance: 1,
+              dcf_calculator: 1, ddm_calculator: 1, pb_calculator: 1,
+              nav_calculator: 1, ri_calculator: 1, sotp_calculator: 1,
+              rel_mult_ev: 1, rel_multiples_calculator: 1, rel_mult_rev: 1,
+              hfv: 1, decision_checklist: 1, lab_notes: 1, get_started: 1
+            };
+            function ynowStatementTab(tab) {
+              return !!YNOW_STATEMENT_TABS[remapLegacyTab(tab)];
+            }
+            function ynowDropCompanyFetchChrome() {
+              var panel = document.getElementById('shiny-notification-panel');
+              if (panel) {
+                var nodes = panel.querySelectorAll('.shiny-notification');
+                for (var i = nodes.length - 1; i >= 0; i--) {
+                  var t = nodes[i].textContent || '';
+                  if (t.indexOf('正在取得') >= 0 || t.indexOf('Yahoo') >= 0 ||
+                      t.indexOf('yfinance') >= 0 || t.indexOf('櫃買') >= 0) {
+                    nodes[i].parentNode.removeChild(nodes[i]);
+                  }
+                }
+              }
+              var bars = document.querySelectorAll('.shiny-progress-container');
+              for (var j = bars.length - 1; j >= 0; j--) {
+                if (bars[j].parentNode) bars[j].parentNode.removeChild(bars[j]);
+              }
+            }
+            window.ynowDropCompanyFetchChrome = ynowDropCompanyFetchChrome;
+            document.addEventListener('click', function (ev) {
+              var a = ev.target && ev.target.closest
+                ? ev.target.closest('a[data-value]')
+                : null;
+              if (!a || !a.closest('.sidebar-menu, .main-sidebar')) return;
+              var tab = remapLegacyTab(a.getAttribute('data-value') || '');
+              if (tab && !ynowStatementTab(tab)) ynowDropCompanyFetchChrome();
+            }, true);
             function gotoTab(tab) {
               tab = remapLegacyTab(tab);
               if (!tab) return;
+              if (!ynowStatementTab(tab)) ynowDropCompanyFetchChrome();
               /* Signed-in members: Sys. Admin portal is guest/ops only.
                  Unlocked system-admin session (self-view sets ynow-authed) may stay. */
               if (tab === 'testing' && document.body &&

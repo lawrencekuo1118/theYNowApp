@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12797800
+bundleId=12797922
 appId=10907657
 url=https://[REDACTED].shinyapps.io/TheYNowApp/  # pragma: allowlist secret
-aligned_git=91850daeb7f9a3cad910b319c987f8bba1f7e88f
-commit=91850daeb7f9a3cad910b319c987f8bba1f7e88f
-short=91850dae
-message=chore: bump display version to v28.41
-captured_at=2026-11-09T10:11:40Z
-display_version=v28.41
-note=Shipped v28.41 (+0.01) via deploy_app_21.R. Company word cloud lists company-card names only (PR #731). Live status=running; rsconnect bundleId=12797800. Prior: v28.40=#730 (12797548), v28.39=#729 (12796407), v28.38=#728 (12796192).
+aligned_git=128d8620b75652f29b6aaf18ff57395119ec0cd0
+commit=128d8620b75652f29b6aaf18ff57395119ec0cd0
+short=128d8620
+message=chore: bump display version to v28.42
+captured_at=2026-11-09T11:05:00Z
+display_version=v28.42
+note=Shipped v28.42 (+0.01) via deploy_app_21.R. Global Prediction no longer starts the Yahoo annual or TPEx quarterly crawl for the last ticker (PR #732). Live status=running; rsconnect bundleId=12797922. Prior: v28.41=#731 (12797800), v28.40=#730 (12797548), v28.39=#729 (12796407).
