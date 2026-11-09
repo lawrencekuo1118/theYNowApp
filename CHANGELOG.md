@@ -1,3 +1,8 @@
+## [v28.38] — 2026-11-09 · Company board keyword cloud
+
+- zh-TW：全球預測 Company 在「更新報價」列之下、資料來源與第一張預測圖之上，顯示由已載入公司市場抽出的關鍵字雲（公司名、代碼、短結果與重複主題詞）。點選關鍵字會捲到第一張對應的公司主題圖；沒有對應圖就不動。沒有公司市場時如實留白。Economic／Finance 不顯示。
+- en-US: Global Prediction Company shows a keyword cloud under the Refresh quotes row and above the data-source line and the first prediction chart. Words come from the company markets already loaded (names, tickers, short outcomes, and repeated topic words). Clicking a keyword scrolls to the first matching company chart; no match does nothing. An empty company set stays blank. Economic and Finance do not show the cloud.
+
 ## [v28.37] — 2026-11-08 · Company board matches Economic theme layout
 
 - zh-TW：全球預測 Company 改與 Economic 相同主題卡＋圖表格線排版，每家公司一張卡（標題為公司名），不再用單一 Big Tech 卡內 Kalshi｜Polymarket 左右分欄。

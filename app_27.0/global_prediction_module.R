@@ -1789,6 +1789,15 @@ gp_crowd_agreement <- function(kalshi_probs, polymarket_probs) {
 #' Fetch Snapshot for all themes. Fail closed per venue. Mode selects theme set.
 #' @param trigger crawl trigger id (see gp_crawl_policy); hard triggers invalidate first.
 
+#' DOM id for a theme card. Shared by the card and Company-cloud keyword jumps.
+.gp_theme_dom_id <- function(theme_id) {
+  id <- tolower(.gp_chr(theme_id))
+  id <- gsub("[^a-z0-9]+", "-", id)
+  id <- gsub("^-+|-+$", "", id)
+  if (!nzchar(id)) return("")
+  paste0("ynow_gp_theme_", id)
+}
+
 .gp_fmt_pct <- function(p) {
   p <- .gp_num01(p)
   if (!is.finite(p)) return("—")
@@ -1827,15 +1836,16 @@ gp_crowd_agreement <- function(kalshi_probs, polymarket_probs) {
   } else {
     .gp_label(pair$label_key %||% "gp_theme_fed_rates", locale)
   }
+  theme_dom_id <- .gp_theme_dom_id(pair$theme_id)
   htmltools::tags$div(
     class = "ynow-gp-theme",
+    id = if (nzchar(theme_dom_id)) theme_dom_id else NULL,
     `data-theme` = .gp_chr(pair$theme_id),
     `data-board` = board,
     htmltools::tags$div(
       class = "ynow-gp-theme-head",
       htmltools::tags$h4(
         class = "ynow-gp-theme-title",
-        id = paste0("ynow_gp_theme_", .gp_chr(pair$theme_id)),
         title_txt
       ),
       htmltools::tags$div(
@@ -2697,6 +2707,326 @@ gp_fetch_snapshot <- function(market_mode = "US", use_cache = TRUE, limit_per_ve
   )
 }
 
+# Question boilerplate and calendar crumbs. Company names, tickers, and
+# short outcome phrases stay; full sentences do not.
+.GP_CLOUD_STOP <- unique(c(
+  .GP_PROP_STOP,
+  "market", "markets", "price", "prices", "hit", "reach", "above", "below",
+  "end", "year", "years", "month", "months", "this", "that", "what", "when",
+  "where", "who", "which", "how", "there", "here", "about", "into", "onto",
+  "company", "companies", "stock", "stocks", "share", "shares",
+  "close", "closing", "closed", "during", "between", "more", "less",
+  "its", "their", "them", "have", "has", "had", "not", "any", "all", "new",
+  "one", "two", "per", "usd", "dollar", "dollars", "cents",
+  "january", "february", "march", "april", "may", "june", "july",
+  "august", "september", "october", "november", "december",
+  "jan", "feb", "mar", "apr", "jun", "jul", "aug", "sep", "sept", "oct", "nov", "dec",
+  "q1", "q2", "q3", "q4",
+  "probability", "chance", "outcome", "outcomes", "contract", "contracts",
+  "kalshi", "polymarket", "before", "after", "does", "did", "can", "could",
+  "should", "might", "just", "only", "also", "then", "across", "within",
+  "without", "through", "each", "both", "other", "another", "some", "most",
+  "many", "much", "very", "still", "already", "open", "active", "true", "false",
+  "raise", "raises", "raised", "raising", "lead", "leads", "leading",
+  "product", "products", "bank", "banks", "operate", "operates", "operating",
+  "operation", "largest", "larger", "large", "model", "models", "kind", "kinds",
+  "launch", "launches", "launched", "public", "publicly", "person", "people",
+  "personal", "store", "stores", "richest", "rich", "app", "apps",
+  "announce", "announced", "announcement", "announces", "out", "next",
+  "become", "becomes", "became", "make", "made", "making", "top", "best",
+  "first", "second", "third", "cap", "caps", "billion", "million", "trillion",
+  "high", "higher", "highest", "low", "lower", "lowest", "date", "time", "times",
+  "cities", "city", "added", "adding", "following",
+  "free", "call", "calls", "data", "center", "centre", "released", "release",
+  "releases", "acquired", "acquire", "military", "stake", "stakes", "list",
+  "lists", "take", "takes", "taken", "ticker", "tickers", "arena", "bracket",
+  "brackets", "indian"
+))
+
+.GP_CLOUD_ACRONYMS <- c(
+  "ai", "agi", "api", "ceo", "cfo", "cpu", "doj", "eps", "etf", "ev",
+  "fda", "ftc", "gpt", "gpu", "ipo", "ipos", "llm", "nasa", "nyt", "sec"
+)
+
+.gp_cloud_noise_token <- function(tok) {
+  tok <- tolower(.gp_chr(tok))
+  if (!nzchar(tok)) return(TRUE)
+  if (tok %in% .GP_CLOUD_ACRONYMS) return(FALSE)
+  if (tok %in% .GP_CLOUD_STOP) return(TRUE)
+  if (grepl("[0-9]", tok)) return(TRUE)
+  nchar(tok) < 4L
+}
+
+.gp_cloud_word_label <- function(tok) {
+  tok <- tolower(gsub("[^a-z0-9]", "", .gp_chr(tok)))
+  if (!nzchar(tok)) return("")
+  if (tok %in% c("ipo", "ipos")) return("IPO")
+  if (tok %in% .GP_CLOUD_ACRONYMS) return(toupper(tok))
+  paste0(toupper(substr(tok, 1L, 1L)), substring(tok, 2L))
+}
+
+.gp_cloud_pretty_name <- function(label) {
+  label <- trimws(.gp_chr(label))
+  if (!nzchar(label)) return("")
+  special <- c(
+    openai = "OpenAI",
+    spacex = "SpaceX",
+    deepmind = "DeepMind",
+    bytedance = "ByteDance",
+    "blue origin" = "Blue Origin",
+    "new york times" = "New York Times"
+  )
+  key <- tolower(gsub("\\s+", " ", label))
+  if (key %in% names(special)) return(unname(special[[key]]))
+  parts <- strsplit(label, " ", fixed = TRUE)[[1]]
+  paste(vapply(parts, function(p) {
+    pl <- tolower(p)
+    if (pl %in% .GP_CLOUD_ACRONYMS) toupper(pl) else {
+      paste0(toupper(substr(pl, 1L, 1L)), substring(pl, 2L))
+    }
+  }, character(1)), collapse = " ")
+}
+
+.gp_cloud_tickers <- function(text) {
+  raw <- .gp_chr(text)
+  if (!nzchar(raw)) return(character(0))
+  m <- gregexpr("\\(([A-Za-z]{1,5})\\)", raw, perl = TRUE)
+  if (m[[1]][1] < 0L) return(character(0))
+  hits <- regmatches(raw, m)[[1]]
+  tok <- toupper(gsub("[()]", "", hits, perl = TRUE))
+  unique(tok[nchar(tok) >= 2L])
+}
+
+#' Short non-question title (a Kalshi/Polymarket outcome), else "".
+.gp_cloud_outcome_phrase <- function(title) {
+  raw <- trimws(.gp_chr(title))
+  if (!nzchar(raw) || nchar(raw) > 48L) return("")
+  low <- tolower(raw)
+  if (grepl("^(will|what|when|where|who|which|how|does|do|is|are|can|could|did)\\b", low)) {
+    return("")
+  }
+  raw <- gsub("[?.!]+$", "", raw)
+  raw <- gsub("\\s+", " ", trimws(raw))
+  low <- tolower(raw)
+  # Dates are contract timing, not keywords.
+  if (grepl("\\b(19|20)[0-9]{2}\\b", low)) return("")
+  if (grepl("\\b(january|february|march|april|may|june|july|august|september|october|november|december)\\b", low)) {
+    return("")
+  }
+  parts <- strsplit(raw, " ", fixed = TRUE)[[1]]
+  parts <- parts[nzchar(parts)]
+  if (!length(parts) || length(parts) > 4L) return("")
+  bare <- gsub("[^a-z0-9]", "", tolower(parts))
+  if (!length(bare) || all(vapply(bare, .gp_cloud_noise_token, logical(1)))) return("")
+  raw
+}
+
+.gp_cloud_add_words <- function(add, text) {
+  toks <- unique(.gp_title_tokens(text))
+  if (!length(toks)) return(invisible(NULL))
+  for (tok in toks) {
+    if (.gp_cloud_noise_token(tok)) next
+    if (nchar(tok) < 4L && !(tok %in% .GP_CLOUD_ACRONYMS)) next
+    lab <- .gp_cloud_word_label(tok)
+    if (nzchar(lab)) add(lab, "word", 1L)
+  }
+  invisible(NULL)
+}
+
+#' Keyword rows for the Company board cloud. Names, parenthetical tickers,
+#' short outcome phrases, and repeated content words — not full sentences.
+#' @return data.frame(term, n, kind, theme_id) ordered by weight.
+#' theme_id is the DOM id of the first matching company/theme chart.
+gp_company_cloud_terms <- function(pairs, max_terms = 40L) {
+  max_terms <- max(1L, as.integer(max_terms)[1])
+  empty <- data.frame(
+    term = character(0), n = integer(0), kind = character(0),
+    theme_id = character(0),
+    stringsAsFactors = FALSE
+  )
+  if (!is.list(pairs) || !length(pairs)) return(empty)
+  bag <- new.env(parent = emptyenv())
+  rank <- c(name = 1L, ticker = 2L, outcome = 3L, word = 4L)
+  theme_anchor <- ""
+  add <- function(term, kind, w = 1L) {
+    term <- trimws(.gp_chr(term))
+    kind <- .gp_chr(kind, "word")
+    if (!nzchar(term) || !(kind %in% names(rank))) return(invisible(NULL))
+    key <- tolower(gsub("\\s+", " ", term))
+    if (!nzchar(key)) return(invisible(NULL))
+    w <- suppressWarnings(as.integer(w)[1])
+    if (!is.finite(w) || w < 1L) w <- 1L
+    if (exists(key, envir = bag, inherits = FALSE)) {
+      cur <- bag[[key]]
+      cur$n <- cur$n + w
+      if (rank[[kind]] < rank[[cur$kind]]) {
+        cur$kind <- kind
+        cur$term <- term
+        # A company name owns its theme card, even if an earlier title mentioned it.
+        if (nzchar(theme_anchor)) cur$theme_id <- theme_anchor
+      }
+      bag[[key]] <- cur
+    } else {
+      bag[[key]] <- list(term = term, n = w, kind = kind, theme_id = theme_anchor)
+    }
+    invisible(NULL)
+  }
+  for (pr in pairs) {
+    if (!is.list(pr)) next
+    theme_anchor <- .gp_theme_dom_id(pr$theme_id)
+    frames <- list()
+    n_mkt <- 0L
+    for (vn in c("kalshi", "polymarket")) {
+      q <- pr[[vn]]
+      if (is.data.frame(q) && nrow(q) > 0L) {
+        n_mkt <- n_mkt + nrow(q)
+        frames[[length(frames) + 1L]] <- q
+      }
+    }
+    if (n_mkt < 1L) next
+    if (!identical(.gp_chr(pr$theme_id), "_other")) {
+      label <- .gp_cloud_pretty_name(pr$label)
+      if (nzchar(label)) add(label, "name", n_mkt)
+    }
+    for (q in frames) {
+      titles <- if ("title" %in% names(q)) as.character(q$title) else rep("", nrow(q))
+      events <- if ("event_title" %in% names(q)) as.character(q$event_title) else rep("", nrow(q))
+      for (i in seq_len(nrow(q))) {
+        title <- .gp_chr(titles[[i]])
+        ev <- .gp_chr(events[[i]])
+        for (tk in .gp_cloud_tickers(paste(title, ev))) add(tk, "ticker", 1L)
+        phrase <- .gp_cloud_outcome_phrase(title)
+        if (nzchar(phrase)) {
+          add(phrase, "outcome", 1L)
+        } else {
+          .gp_cloud_add_words(add, title)
+        }
+        .gp_cloud_add_words(add, ev)
+      }
+    }
+  }
+  keys <- ls(bag, all.names = TRUE)
+  if (!length(keys)) return(empty)
+  rows <- lapply(keys, function(k) bag[[k]])
+  term <- vapply(rows, function(x) .gp_chr(x$term), character(1))
+  n <- vapply(rows, function(x) as.integer(x$n)[1], integer(1))
+  kind <- vapply(rows, function(x) .gp_chr(x$kind, "word"), character(1))
+  theme_id <- vapply(rows, function(x) .gp_chr(x$theme_id), character(1))
+  keep <- kind %in% c("name", "ticker", "outcome") |
+    (kind == "word" & (n >= 2L | nchar(gsub("\\s+", "", term)) >= 5L))
+  if (!any(keep)) return(empty)
+  term <- term[keep]
+  n <- n[keep]
+  kind <- kind[keep]
+  theme_id <- theme_id[keep]
+  kind_rank <- unname(rank[kind])
+  kind_rank[!is.finite(kind_rank)] <- 9L
+  ord <- order(-n, kind_rank, tolower(term))
+  if (length(ord) > max_terms) ord <- ord[seq_len(max_terms)]
+  data.frame(
+    term = term[ord], n = n[ord], kind = kind[ord], theme_id = theme_id[ord],
+    stringsAsFactors = FALSE
+  )
+}
+
+#' Company keyword cloud. Honest empty when the loaded market set has no terms.
+gp_company_word_cloud_ui <- function(pairs, locale = "en") {
+  locale <- .gp_chr(locale, "en")
+  label <- htmltools::tags$p(
+    id = "ynow_gp_company_cloud_label",
+    class = "ynow-gp-cloud-label",
+    .gp_label("gp_company_cloud_label", locale)
+  )
+  df <- gp_company_cloud_terms(pairs)
+  if (!is.data.frame(df) || nrow(df) == 0L) {
+    return(htmltools::tags$div(
+      id = "ynow_gp_company_cloud",
+      class = "ynow-gp-cloud",
+      `data-gp-cloud` = "company",
+      label,
+      htmltools::tags$p(
+        class = "ynow-gp-cloud-empty",
+        .gp_label("gp_company_cloud_empty", locale)
+      )
+    ))
+  }
+  n <- df$n
+  lo <- min(n)
+  span <- max(max(n) - lo, 1L)
+  # High weight, then low, so size variation reads as a cloud.
+  mixed <- integer(0)
+  i <- 1L
+  j <- nrow(df)
+  while (i <= j) {
+    mixed <- c(mixed, i)
+    if (j != i) mixed <- c(mixed, j)
+    i <- i + 1L
+    j <- j - 1L
+  }
+  colors <- c("#1c1915", "#1f4d3a", "#243e66", "#3f3a33", "#6b3a2a")
+  jump_title <- .gp_label("gp_company_cloud_jump", locale)
+  words <- lapply(seq_along(mixed), function(k) {
+    idx <- mixed[[k]]
+    px <- 13L + as.integer(round(17 * (n[[idx]] - lo) / span))
+    target <- if ("theme_id" %in% names(df)) .gp_chr(df$theme_id[[idx]]) else ""
+    htmltools::tags$span(
+      class = "ynow-gp-cloud-word",
+      style = sprintf("font-size:%dpx;color:%s;", px, colors[[((k - 1L) %% length(colors)) + 1L]]),
+      `data-term` = df$term[[idx]],
+      `data-n` = n[[idx]],
+      `data-target` = if (nzchar(target)) target else NULL,
+      role = if (nzchar(target)) "button" else NULL,
+      tabindex = if (nzchar(target)) "0" else NULL,
+      title = if (nzchar(target)) jump_title else NULL,
+      df$term[[idx]]
+    )
+  })
+  htmltools::tags$div(
+    id = "ynow_gp_company_cloud",
+    class = "ynow-gp-cloud",
+    `data-gp-cloud` = "company",
+    label,
+    htmltools::tags$div(class = "ynow-gp-cloud-words", words)
+  )
+}
+
+#' Board body: Company cloud, then source line, then theme charts.
+gp_prediction_body_ui <- function(snap, locale = "en", busy = FALSE, board = NULL) {
+  locale <- .gp_chr(locale, "en")
+  loading <- isTRUE(busy) && (is.null(snap) || !is.list(snap))
+  if (loading) {
+    return(htmltools::tags$p(class = "ynow-gp-empty", .gp_label("gp_loading", locale)))
+  }
+  if (is.list(snap) && nzchar(.gp_chr(snap$board))) {
+    board <- snap$board
+  }
+  board <- gp_norm_board(board %||% "economic")
+  pairs <- if (is.list(snap)) snap$pairs else NULL
+  cloud <- if (identical(board, "company")) {
+    gp_company_word_cloud_ui(pairs, locale)
+  } else {
+    NULL
+  }
+  if (!is.list(snap) || length(pairs %||% list()) == 0L) {
+    return(htmltools::tagList(
+      cloud,
+      htmltools::tags$p(class = "ynow-gp-empty", .gp_label("gp_error_venue", locale))
+    ))
+  }
+  errs <- snap$venue_errors %||% list()
+  venue_down <- !is.null(errs$kalshi) || !is.null(errs$polymarket)
+  htmltools::tagList(
+    cloud,
+    if (isTRUE(venue_down)) {
+      htmltools::tags$p(class = "ynow-gp-caution", .gp_label("gp_error_venue", locale))
+    },
+    htmltools::tags$p(class = "ynow-gp-caution", .gp_label("gp_attribution", locale)),
+    lapply(pairs, function(pair) {
+      .gp_theme_row_ui(pair, locale, board = board)
+    })
+  )
+}
+
 global_prediction_ui <- function(id, locale = "en") {
   ns <- shiny::NS(id)
   loc <- if (exists("normalize_ui_locale", mode = "function")) {
@@ -2716,6 +3046,17 @@ global_prediction_ui <- function(id, locale = "en") {
         margin: 6px 0 0; width: 100%%; flex-basis: 100%%; }
       .ynow-gp-meta { font-size: 12px; color: #5c5346; margin: 0 0 14px; display: flex;
         flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+      .ynow-gp-cloud { margin: 0 0 14px; padding: 12px 14px 10px; background: #f7f3ea;
+        border: 1px solid #e4dccb; border-radius: 8px; }
+      .ynow-gp-cloud-label { margin: 0 0 8px; font-size: 11px; font-weight: 700;
+        letter-spacing: 0.06em; text-transform: uppercase; color: #7a7368; }
+      .ynow-gp-cloud-words { display: flex; flex-wrap: wrap; align-items: baseline;
+        justify-content: center; gap: 6px 12px; line-height: 1.15; }
+      .ynow-gp-cloud-word { font-weight: 700; line-height: 1.1; letter-spacing: -0.01em; }
+      .ynow-gp-cloud-word[data-target] { cursor: pointer; }
+      .ynow-gp-cloud-word[data-target]:hover,
+      .ynow-gp-cloud-word[data-target]:focus { text-decoration: underline; text-underline-offset: 2px; }
+      .ynow-gp-cloud-empty { margin: 0; font-size: 12px; color: #7a7368; }
       .ynow-gp-boards { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
       .ynow-gp-board-btn { border: 1px solid #cfc6b4; background: #fff; color: #3f3a33;
         border-radius: 6px; padding: 6px 12px; font-size: 13px; font-weight: 600; }
@@ -2723,7 +3064,7 @@ global_prediction_ui <- function(id, locale = "en") {
       .ynow-gp-swatch { display: inline-flex; align-items: center; gap: 6px; }
       .ynow-gp-dot { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
       .ynow-gp-theme { margin: 0 0 16px; padding: 12px; background: #fff;
-        border: 1px solid #e4dccb; border-radius: 8px; }
+        border: 1px solid #e4dccb; border-radius: 8px; scroll-margin-top: 72px; }
       .ynow-gp-theme-head { display: flex; flex-wrap: wrap; gap: 8px 14px;
         align-items: baseline; justify-content: space-between; margin-bottom: 10px; }
       .ynow-gp-theme-title { margin: 0; font-size: 15px; color: #1c1915; }
@@ -2824,6 +3165,26 @@ global_prediction_ui <- function(id, locale = "en") {
           };
           document.addEventListener('visibilitychange', ping);
           window.addEventListener('focus', ping);
+          var jumpTo = function (el) {
+            if (!el) return;
+            var id = el.getAttribute('data-target') || '';
+            if (!id) return;
+            var dest = document.getElementById(id);
+            if (!dest || !dest.scrollIntoView) return;
+            dest.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          };
+          document.addEventListener('click', function (ev) {
+            var el = ev.target && ev.target.closest ? ev.target.closest('.ynow-gp-cloud-word') : null;
+            jumpTo(el);
+          });
+          document.addEventListener('keydown', function (ev) {
+            if (ev.key !== 'Enter' && ev.key !== ' ') return;
+            var el = ev.target;
+            if (!el || !el.classList || !el.classList.contains('ynow-gp-cloud-word')) return;
+            if (!(el.getAttribute('data-target') || '')) return;
+            ev.preventDefault();
+            jumpTo(el);
+          });
         })();
       ", ns("page_focus"))))
     )
@@ -3011,24 +3372,11 @@ global_prediction_server <- function(id,
     })
 
     output$body <- shiny::renderUI({
-      snap <- snap_rv()
-      locale <- loc()
-      if (isTRUE(busy_rv()) && is.null(snap)) {
-        return(htmltools::tags$p(class = "ynow-gp-empty", .gp_label("gp_loading", locale)))
-      }
-      if (!is.list(snap) || length(snap$pairs) == 0L) {
-        return(htmltools::tags$p(class = "ynow-gp-empty", .gp_label("gp_error_venue", locale)))
-      }
-      errs <- snap$venue_errors %||% list()
-      venue_down <- !is.null(errs$kalshi) || !is.null(errs$polymarket)
-      htmltools::tagList(
-        if (isTRUE(venue_down)) {
-          htmltools::tags$p(class = "ynow-gp-caution", .gp_label("gp_error_venue", locale))
-        },
-        htmltools::tags$p(class = "ynow-gp-caution", .gp_label("gp_attribution", locale)),
-        lapply(snap$pairs, function(pair) {
-          .gp_theme_row_ui(pair, locale, board = snap$board %||% "economic")
-        })
+      gp_prediction_body_ui(
+        snap_rv(),
+        loc(),
+        busy = isTRUE(busy_rv()),
+        board = board_state()
       )
     })
   })
