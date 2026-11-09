@@ -71,25 +71,8 @@ check(
     gp_poly_recurrence_allowed("")
 )
 check(
-  "economic themes cover Fed→trade",
-  all(c(
-    "fed_rates", "inflation_cpi", "growth_jobs", "recession_labor",
-    "housing", "energy_commod", "trade_policy", "econ_other"
-  ) %in% vapply(eco$theme_buckets, function(b) b$id, character(1)))
-)
-check(
-  "finance themes cover rates→ipo",
-  all(c(
-    "rates_credit", "equity_index", "vol_credit", "fx_commod_fin",
-    "ipo_ma", "fin_other"
-  ) %in% vapply(fin$theme_buckets, function(b) b$id, character(1)))
-)
-check(
-  "company theme is Big Tech bucket",
-  identical(
-    vapply(co$theme_buckets, function(b) b$id, character(1)),
-    "big_tech"
-  )
+  "board sources do not ship a static theme catalog",
+  is.null(eco$theme_buckets) && is.null(fin$theme_buckets) && is.null(co$theme_buckets)
 )
 check(
   "waymo series maps to waymo",
@@ -148,9 +131,7 @@ check(
 )
 
 reg <- gp_theme_registry("US")
-check("legacy registry maps Economic board", nrow(reg) >= 6L)
-check("legacy registry has fed_rates", "fed_rates" %in% reg$theme_id)
-check("breadth tiers nondecreasing", !is.unsorted(as.integer(reg$breadth_tier)))
+check("theme registry is empty", nrow(reg) == 0L && !"fed_rates" %in% reg$theme_id)
 
 check("company TW/US filter TSMC", isTRUE(gp_is_tw_us_listed_title("Will TSMC (2330) beat EPS?")))
 check("company TW/US filter Apple", isTRUE(gp_is_tw_us_listed_title("Apple (AAPL) market cap")))
@@ -193,6 +174,10 @@ pq <- gp_parse_polymarket_events(poly_raw, theme_id = "fed_rates", limit = 3L)
 check("polymarket parse rows", is.data.frame(pq) && nrow(pq) >= 1L)
 check("polymarket venue tag", all(pq$venue == "polymarket"))
 check("polymarket yes_prob in [0,1]", all(is.finite(pq$yes_prob) & pq$yes_prob >= 0 & pq$yes_prob <= 1))
+check(
+  "polymarket stores the event title from the crawl",
+  identical(as.character(pq$event_title[[1]]), "How many Fed rate cuts in 2026?")
+)
 check(
   "polymarket history_token from Yes clobTokenIds",
   {
@@ -410,21 +395,62 @@ check("filter drops settled status", !any(filtered$market_id == "DEAD-S"))
 check("filter drops past expires_at", !any(filtered$market_id == "DEAD-T"))
 check("filter keeps live", any(filtered$market_id == "LIVE-1"))
 
-reclass <- gp_reclassify_quotes(mixed, market_mode = "US")
+reclass <- gp_reclassify_quotes(mixed)
 check("reclassify drops expired", !any(reclass$market_id %in% c("DEAD-S", "DEAD-T")))
 check(
-  "reclassify promotes CPI title to inflation_cpi",
+  "reclassify names themes from the proposition text",
   {
-    row <- reclass[reclass$market_id == "CPI-1", , drop = FALSE]
-    nrow(row) == 1L && identical(as.character(row$theme_id[[1]]), "inflation_cpi")
+    fed <- reclass[reclass$market_id == "LIVE-1", , drop = FALSE]
+    cpi <- reclass[reclass$market_id == "CPI-1", , drop = FALSE]
+    nrow(fed) == 1L && nrow(cpi) == 1L &&
+      identical(as.character(fed$theme_id[[1]]), "will-the-fed-cut-rates") &&
+      identical(as.character(cpi$theme_id[[1]]), "will-us-cpi-print-above-3") &&
+      !identical(fed$theme_id[[1]], cpi$theme_id[[1]])
   }
 )
+fomc_k <- .gp_quote_row(
+  venue = "kalshi", theme_id = "fed_rates", market_id = "FOMC-K",
+  title = "25 bps cut", yes_prob = 0.42,
+  expires_at = "2099-01-01T00:00:00Z", raw_status = "active",
+  event_title = "FOMC December"
+)
+fomc_p <- .gp_quote_row(
+  venue = "polymarket", theme_id = "inflation_cpi", market_id = "FOMC-P",
+  title = "No change", yes_prob = 0.40,
+  expires_at = "2099-01-01T00:00:00Z", raw_status = "open",
+  event_title = "FOMC December"
+)
+oil_p <- .gp_quote_row(
+  venue = "polymarket", theme_id = "energy_commod", market_id = "OIL-1",
+  title = "WTI above 80", yes_prob = 0.33,
+  expires_at = "2099-01-01T00:00:00Z", raw_status = "open",
+  event_title = "WTI crude monthly"
+)
+dyn_pairs <- gp_crawl_theme_pairs(fomc_k, rbind(fomc_p, oil_p))
+dyn_labels <- vapply(dyn_pairs, function(pr) .gp_chr(pr$label), character(1))
 check(
-  "reclassify keeps Fed title on fed_rates",
-  {
-    row <- reclass[reclass$market_id == "LIVE-1", , drop = FALSE]
-    nrow(row) == 1L && identical(as.character(row$theme_id[[1]]), "fed_rates")
-  }
+  "crawl themes appear only for fetched events and use those titles",
+  length(dyn_pairs) == 2L &&
+    all(c("FOMC December", "WTI crude monthly") %in% dyn_labels) &&
+    !any(grepl("Fed / policy", dyn_labels, fixed = TRUE)) &&
+    !any(vapply(dyn_pairs, function(pr) "label_key" %in% names(pr), logical(1)))
+)
+fomc_pr <- Filter(function(pr) identical(pr$label, "FOMC December"), dyn_pairs)[[1]]
+check(
+  "same crawl title merges Kalshi and Polymarket onto one card",
+  nrow(fomc_pr$kalshi) == 1L && nrow(fomc_pr$polymarket) == 1L &&
+    identical(fomc_pr$theme_id, "fomc-december")
+)
+check(
+  "no crawl quotes means no theme cards",
+  length(gp_crawl_theme_pairs(.gp_empty_quote(), .gp_empty_quote())) == 0L
+)
+dyn_html <- paste(as.character(.gp_theme_row_ui(fomc_pr, locale = "zh-TW", board = "economic")), collapse = "\n")
+check(
+  "theme heading is the crawl title in both locales",
+  grepl(">FOMC December<", dyn_html, fixed = TRUE) &&
+    !grepl("Fed／政策利率", dyn_html, fixed = TRUE) &&
+    !grepl("gp_theme_fed_rates", dyn_html, fixed = TRUE)
 )
 
 # Stamped TTL cache: fresh hit, then expire, then invalidate.
@@ -674,6 +700,25 @@ check(
   "company theme title is the company name",
   identical(.gp_chr(apple_pr$label), "Apple") &&
     grepl(">Apple<", co_html, fixed = TRUE)
+)
+check(
+  "company title prefers the company token over a longer alias",
+  identical(
+    gp_company_label_from_quotes("openai", data.frame(
+      title = "Will OpenAI hire Jony Ive?",
+      event_title = "OpenAI and Jony Ive",
+      stringsAsFactors = FALSE
+    )),
+    "OpenAI"
+  ) &&
+    identical(
+      gp_company_label_from_quotes("spacex", data.frame(
+        title = "Will SpaceX launch Starship in March?",
+        event_title = "SpaceX Starship",
+        stringsAsFactors = FALSE
+      )),
+      "SpaceX"
+    )
 )
 cloud_terms <- gp_company_cloud_terms(co_pairs)
 cloud_labs <- tolower(cloud_terms$term)
