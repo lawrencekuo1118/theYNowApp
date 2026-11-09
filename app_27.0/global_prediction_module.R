@@ -3,7 +3,6 @@
 # Boards: Economic / Finance / Company. Kalshi + Polymarket public APIs.
 #
 # Crowd-implied probabilities from Kalshi + Polymarket public APIs.
-# Theme registry joins two independent crowds for side-by-side comparison.
 # Not Fair Value, not a buy signal, not blended "truth" unless labeled.
 # ==========================================
 
@@ -414,56 +413,10 @@ gp_filter_live_quotes <- function(quotes, now = Sys.time()) {
   df[idx, , drop = FALSE]
 }
 
-#' Score a title against theme keywords; higher = better fit.
-.gp_theme_keyword_score <- function(title, keywords) {
-  if (is.null(keywords) || length(keywords) == 0L) return(0L)
-  hay <- tolower(.gp_chr(title))
-  if (!nzchar(hay)) return(0L)
-  sum(vapply(keywords, function(k) {
-    k <- tolower(.gp_chr(k))
-    as.integer(nzchar(k) && grepl(k, hay, fixed = TRUE))
-  }, integer(1)))
-}
-
-#' Re-home live quotes onto the best-matching theme in the mode registry.
-#' Promotes newly relevant markets into the correct breadth_tier; orphans with
-#' zero keyword hits stay on their fetch theme_id (registry order still applies).
-gp_reclassify_quotes <- function(quotes, market_mode = "US", now = Sys.time()) {
+gp_reclassify_quotes <- function(quotes, now = Sys.time()) {
   quotes <- gp_filter_live_quotes(quotes, now = now)
   if (nrow(quotes) == 0L) return(quotes)
-  mode <- .gp_norm_market_mode(market_mode)
-  reg <- gp_theme_registry(mode)
-  tier_map <- setNames(as.integer(reg$breadth_tier), as.character(reg$theme_id))
-  out_rows <- vector("list", nrow(quotes))
-  for (i in seq_len(nrow(quotes))) {
-    row <- quotes[i, , drop = FALSE]
-    title <- .gp_chr(row$title[[1]])
-    best_id <- .gp_chr(row$theme_id[[1]])
-    best_score <- -1L
-    for (j in seq_len(nrow(reg))) {
-      kw <- if ("keywords" %in% names(reg)) reg$keywords[[j]] else NULL
-      sc <- .gp_theme_keyword_score(title, kw)
-      if (sc > best_score) {
-        best_score <- sc
-        best_id <- as.character(reg$theme_id[[j]])
-      }
-    }
-    if (best_score <= 0L) {
-      # Keep fetch theme; still stamp breadth from registry when known.
-      best_id <- .gp_chr(row$theme_id[[1]])
-    }
-    row$theme_id[[1]] <- best_id
-    row$breadth_tier[[1]] <- unname(tier_map[[best_id]] %||% NA_integer_)
-    out_rows[[i]] <- row
-  }
-  out <- do.call(rbind, out_rows)
-  # Stable: breadth_tier then original order.
-  ord <- order(
-    as.integer(out$breadth_tier %||% NA_integer_),
-    seq_len(nrow(out)),
-    na.last = TRUE
-  )
-  out[ord, , drop = FALSE]
+  .gp_stamp_crawl_themes(quotes)
 }
 
 .gp_book_yes <- function(last, bid, ask) {
@@ -505,9 +458,11 @@ gp_reclassify_quotes <- function(quotes, market_mode = "US", now = Sys.time()) {
 
 #' Parse Kalshi /markets JSON list into MarketQuote rows.
 gp_parse_kalshi_markets <- function(payload, theme_id, limit = 3L,
-                                    series_ticker = NULL) {
+                                    series_ticker = NULL,
+                                    event_title = NA_character_) {
   theme_id <- .gp_chr(theme_id)
   series_hint <- .gp_chr(series_ticker)
+  event_title <- .gp_chr(event_title, NA_character_)
   payload <- .gp_as_payload(payload)
   if (is.null(payload)) return(.gp_empty_quote())
   markets <- payload
@@ -545,7 +500,11 @@ gp_parse_kalshi_markets <- function(payload, theme_id, limit = 3L,
       expires_at = exp_at,
       url = paste0("https://kalshi.com/markets/", ticker),
       raw_status = .gp_chr(m$status, "open"),
-      series_ticker = ser
+      series_ticker = ser,
+      event_title = {
+        row_ev <- .gp_chr(m$event_title %||% m$series_title)
+        if (nzchar(row_ev)) row_ev else event_title
+      }
     )
     if (n >= as.integer(limit)) break
   }
@@ -649,7 +608,8 @@ gp_parse_polymarket_events <- function(payload, theme_id, limit = 3L, keywords =
         expires_at = exp_at,
         url = url,
         raw_status = if (isTRUE(ev$closed) || isTRUE(m$closed)) "closed" else "open",
-        history_token = .gp_poly_yes_token(m)
+        history_token = .gp_poly_yes_token(m),
+        event_title = .gp_chr(ev$title %||% ev$question)
       )
       if (n >= as.integer(limit)) break
     }
@@ -1197,8 +1157,141 @@ gp_company_label <- function(key) {
   }, logical(1))
 }
 
-#' Company board pairs: one Economic-style theme pair per company_key.
-#' theme_id = company_key; plain label = gp_company_label; charts use the shared grid.
+.gp_theme_slug <- function(text) {
+  s <- tolower(.gp_chr(text))
+  s <- gsub("[^a-z0-9]+", "-", s)
+  s <- gsub("^-+|-+$", "", s)
+  if (!nzchar(s)) return("")
+  if (nchar(s) > 72L) s <- gsub("-+$", "", substr(s, 1L, 72L))
+  s
+}
+
+gp_crawl_theme_key <- function(event_title = "", title = "", series_ticker = "") {
+  ev <- .gp_theme_slug(event_title)
+  if (nzchar(ev)) return(ev)
+  ti <- .gp_theme_slug(title)
+  if (nzchar(ti)) return(ti)
+  .gp_theme_slug(series_ticker)
+}
+
+.gp_stamp_crawl_themes <- function(q) {
+  if (!is.data.frame(q) || nrow(q) == 0L) {
+    return(if (is.data.frame(q)) q else .gp_empty_quote())
+  }
+  if (!"event_title" %in% names(q)) q$event_title <- NA_character_
+  if (!"title" %in% names(q)) q$title <- NA_character_
+  if (!"series_ticker" %in% names(q)) q$series_ticker <- NA_character_
+  if (!"theme_id" %in% names(q)) q$theme_id <- NA_character_
+  q$theme_id <- vapply(seq_len(nrow(q)), function(i) {
+    gp_crawl_theme_key(q$event_title[[i]], q$title[[i]], q$series_ticker[[i]])
+  }, character(1))
+  q
+}
+
+.gp_quote_text_frame <- function(parts) {
+  titles <- character(0)
+  events <- character(0)
+  for (q in parts) {
+    if (!is.data.frame(q) || nrow(q) == 0L) next
+    n <- nrow(q)
+    titles <- c(titles, if ("title" %in% names(q)) as.character(q$title) else rep("", n))
+    events <- c(events, if ("event_title" %in% names(q)) as.character(q$event_title) else rep("", n))
+  }
+  data.frame(title = titles, event_title = events, stringsAsFactors = FALSE)
+}
+
+gp_crawl_theme_label <- function(rows) {
+  if (!is.data.frame(rows) || nrow(rows) == 0L) return("")
+  labs <- character(0)
+  if ("event_title" %in% names(rows)) labs <- c(labs, as.character(rows$event_title))
+  labs <- trimws(labs)
+  labs <- labs[!is.na(labs) & nzchar(labs)]
+  if (!length(labs) && "title" %in% names(rows)) {
+    labs <- trimws(as.character(rows$title))
+    labs <- labs[!is.na(labs) & nzchar(labs)]
+  }
+  if (!length(labs)) return("")
+  tab <- table(labs, useNA = "no")
+  names(tab)[[which.max(tab)]]
+}
+
+.gp_original_case_hit <- function(needle, texts) {
+  needle <- .gp_chr(needle)
+  if (!nzchar(needle)) return("")
+  esc <- gsub("([][{}()+*^$|\\\\?.])", "\\\\\\1", needle, perl = TRUE)
+  pat <- paste0("(?i)\\b(", esc, ")\\b")
+  for (tx in texts) {
+    tx <- .gp_chr(tx)
+    if (!nzchar(tx)) next
+    m <- regmatches(tx, regexec(pat, tx, perl = TRUE))[[1]]
+    if (length(m) >= 2L && nzchar(m[[2]])) return(m[[2]])
+  }
+  ""
+}
+
+gp_company_label_from_quotes <- function(key, rows) {
+  key <- .gp_chr(key)
+  texts <- character(0)
+  if (is.data.frame(rows) && nrow(rows) > 0L) {
+    if ("event_title" %in% names(rows)) texts <- c(texts, as.character(rows$event_title))
+    if ("title" %in% names(rows)) texts <- c(texts, as.character(rows$title))
+  }
+  texts <- texts[!is.na(texts) & nzchar(texts)]
+  aliases <- if (key %in% names(.GP_COMPANY_ALIASES)) .GP_COMPANY_ALIASES[[key]] else key
+  rest <- aliases[tolower(aliases) != tolower(key)]
+  needles <- c(key, rest[order(-nchar(rest))])
+  for (n in needles) {
+    hit <- .gp_original_case_hit(n, texts)
+    if (!nzchar(hit)) next
+    if (grepl("^[A-Za-z0-9]{1,5}$", hit) && !(tolower(hit) %in% names(.GP_COMPANY_ALIASES))) {
+      return(toupper(hit))
+    }
+    return(hit)
+  }
+  if (nzchar(key)) return(gp_company_label(key))
+  gp_crawl_theme_label(rows)
+}
+
+.gp_theme_pair <- function(theme_id, label, k_part, p_part, cap = 6L) {
+  if (is.data.frame(k_part) && nrow(k_part) > cap) k_part <- k_part[seq_len(cap), , drop = FALSE]
+  if (is.data.frame(p_part) && nrow(p_part) > cap) p_part <- p_part[seq_len(cap), , drop = FALSE]
+  if (!is.data.frame(k_part) || nrow(k_part) == 0L) k_part <- .gp_empty_quote()
+  if (!is.data.frame(p_part) || nrow(p_part) == 0L) p_part <- .gp_empty_quote()
+  if (nrow(k_part)) k_part$theme_id <- theme_id
+  if (nrow(p_part)) p_part$theme_id <- theme_id
+  list(
+    theme_id = theme_id,
+    label = label,
+    breadth_tier = NA_integer_,
+    kalshi = k_part,
+    polymarket = p_part,
+    feex = .gp_empty_quote(),
+    feex_status = "defunct",
+    agreement = gp_crowd_agreement(k_part$yes_prob, p_part$yes_prob),
+    series = .gp_empty_series()
+  )
+}
+
+gp_crawl_theme_pairs <- function(kq, pq) {
+  kq <- .gp_stamp_crawl_themes(if (is.data.frame(kq)) kq else .gp_empty_quote())
+  pq <- .gp_stamp_crawl_themes(if (is.data.frame(pq)) pq else .gp_empty_quote())
+  keys <- unique(c(
+    if (nrow(kq)) as.character(kq$theme_id) else character(0),
+    if (nrow(pq)) as.character(pq$theme_id) else character(0)
+  ))
+  keys <- sort(keys[nzchar(keys) & !is.na(keys)])
+  lapply(keys, function(tid) {
+    k_part <- if (nrow(kq)) kq[kq$theme_id == tid, , drop = FALSE] else .gp_empty_quote()
+    p_part <- if (nrow(pq)) pq[pq$theme_id == tid, , drop = FALSE] else .gp_empty_quote()
+    .gp_theme_pair(
+      tid,
+      gp_crawl_theme_label(.gp_quote_text_frame(list(k_part, p_part))),
+      k_part,
+      p_part
+    )
+  })
+}
+
 gp_company_theme_pairs <- function(kq, pq) {
   kq <- .gp_ensure_company_keys(if (is.data.frame(kq)) kq else .gp_empty_quote())
   pq <- .gp_ensure_company_keys(if (is.data.frame(pq)) pq else .gp_empty_quote())
@@ -1206,36 +1299,21 @@ gp_company_theme_pairs <- function(kq, pq) {
     if (nrow(kq)) as.character(kq$company_key)[!.gp_company_key_blank(kq$company_key)] else character(0),
     if (nrow(pq)) as.character(pq$company_key)[!.gp_company_key_blank(pq$company_key)] else character(0)
   ))
-  has_other <- (nrow(kq) && any(.gp_company_key_blank(kq$company_key))) ||
-    (nrow(pq) && any(.gp_company_key_blank(pq$company_key)))
-  order_keys <- c(sort(named), if (has_other) "_other" else character(0))
-  lapply(order_keys, function(ck) {
-    if (identical(ck, "_other")) {
-      k_part <- if (nrow(kq)) kq[.gp_company_key_blank(kq$company_key), , drop = FALSE] else .gp_empty_quote()
-      p_part <- if (nrow(pq)) pq[.gp_company_key_blank(pq$company_key), , drop = FALSE] else .gp_empty_quote()
-      label <- ""
-      label_key <- "gp_theme_co_other"
-    } else {
-      k_part <- if (nrow(kq)) kq[!.gp_company_key_blank(kq$company_key) & kq$company_key == ck, , drop = FALSE] else .gp_empty_quote()
-      p_part <- if (nrow(pq)) pq[!.gp_company_key_blank(pq$company_key) & pq$company_key == ck, , drop = FALSE] else .gp_empty_quote()
-      label <- gp_company_label(ck)
-      label_key <- ""
-    }
-    if (nrow(k_part)) k_part$theme_id <- ck
-    if (nrow(p_part)) p_part$theme_id <- ck
-    list(
-      theme_id = ck,
-      label_key = label_key,
-      label = label,
-      breadth_tier = NA_integer_,
-      kalshi = k_part,
-      polymarket = p_part,
-      feex = .gp_empty_quote(),
-      feex_status = "defunct",
-      agreement = gp_crowd_agreement(k_part$yes_prob, p_part$yes_prob),
-      series = .gp_empty_series()
+  named <- sort(named[!is.na(named) & nzchar(named)])
+  named_pairs <- lapply(named, function(ck) {
+    k_part <- if (nrow(kq)) kq[!.gp_company_key_blank(kq$company_key) & kq$company_key == ck, , drop = FALSE] else .gp_empty_quote()
+    p_part <- if (nrow(pq)) pq[!.gp_company_key_blank(pq$company_key) & pq$company_key == ck, , drop = FALSE] else .gp_empty_quote()
+    .gp_theme_pair(
+      ck,
+      gp_company_label_from_quotes(ck, .gp_quote_text_frame(list(k_part, p_part))),
+      k_part,
+      p_part
     )
   })
+  blank_k <- if (nrow(kq)) kq[.gp_company_key_blank(kq$company_key), , drop = FALSE] else .gp_empty_quote()
+  blank_p <- if (nrow(pq)) pq[.gp_company_key_blank(pq$company_key), , drop = FALSE] else .gp_empty_quote()
+  blank_pairs <- gp_crawl_theme_pairs(blank_k, blank_p)
+  c(named_pairs, blank_pairs)
 }
 
 #' Build market meta rows (quotes) for proposition / company grouping.
@@ -1826,12 +1904,8 @@ gp_crowd_agreement <- function(kalshi_probs, polymarket_probs) {
   board <- gp_norm_board(board)
   # Same Economic chart grid on every board; Company themes are companies.
   chart_body <- gp_build_theme_market_charts(series, locale = locale, height = 220, meta = meta)
-  title_plain <- .gp_chr(pair$label)
-  title_txt <- if (nzchar(title_plain)) {
-    title_plain
-  } else {
-    .gp_label(pair$label_key %||% "gp_theme_fed_rates", locale)
-  }
+  title_txt <- .gp_chr(pair$label)
+  if (!nzchar(title_txt)) title_txt <- .gp_chr(pair$theme_id)
   theme_dom_id <- .gp_theme_dom_id(pair$theme_id)
   htmltools::tags$div(
     class = "ynow-gp-theme",
@@ -1896,22 +1970,7 @@ gp_board_sources <- function(board = "economic") {
         "stock index", "finance monthly", "VIX", "credit spread",
         "IPO", "dollar index"
       ),
-      company_filter = FALSE,
-      theme_buckets = list(
-        list(id = "rates_credit", label_key = "gp_theme_rates_credit",
-             kw = c("treasury", "yield", "rate", "fed funds", "credit", "bond",
-                    "spread", "high yield")),
-        list(id = "equity_index", label_key = "gp_theme_equity_index",
-             kw = c("s&p", "spx", "nasdaq", "russell", "dow", "index", "indices",
-                    "indicies", "taiex", "hang seng")),
-        list(id = "vol_credit", label_key = "gp_theme_vol_credit",
-             kw = c("vix", "volatility", "vol ", "stress", "default", "cds")),
-        list(id = "fx_commod_fin", label_key = "gp_theme_fx_markets",
-             kw = c("fx", "dollar", "dxy", "euro", "yen", "currency", "forex")),
-        list(id = "ipo_ma", label_key = "gp_theme_ipo_ma",
-             kw = c("ipo", "merger", "acquire", "m&a", "spac", "takeover")),
-        list(id = "fin_other", label_key = "gp_theme_fin_other", kw = character(0))
-      )
+      company_filter = FALSE
     ))
   }
   if (identical(board, "company")) {
@@ -1926,10 +1985,7 @@ gp_board_sources <- function(board = "economic") {
       poly_tags = .GP_POLY_COMPANY_TAG,
       poly_queries = character(0),
       poly_big_tech = TRUE,
-      company_filter = FALSE,
-      theme_buckets = list(
-        list(id = "big_tech", label_key = "gp_theme_big_tech", kw = character(0))
-      )
+      company_filter = FALSE
     ))
   }
   # economic — Kalshi Economics + commodities; Polymarket /economy + /finance/commodities
@@ -1942,43 +1998,16 @@ gp_board_sources <- function(board = "economic") {
       "US economy", "CPI inflation", "Fed rate", "recession",
       "GDP", "unemployment", "housing", "tariff", "oil", "gold", "commodities"
     ),
-    company_filter = FALSE,
-    theme_buckets = list(
-      list(id = "fed_rates", label_key = "gp_theme_fed_rates",
-           kw = c("fed", "fomc", "rate cut", "rate hike", "federal reserve",
-                  "central bank", "interest rate")),
-      list(id = "inflation_cpi", label_key = "gp_theme_inflation_cpi",
-           kw = c("cpi", "inflation", "ppi", "pce", "consumer price", "deflation")),
-      list(id = "growth_jobs", label_key = "gp_theme_growth_jobs",
-           kw = c("gdp", "growth", "jobs", "nfp", "payroll", "jolts", "employment")),
-      list(id = "recession_labor", label_key = "gp_theme_recession_labor",
-           kw = c("recession", "unemployment", "layoff", "soft landing", "hard landing")),
-      list(id = "housing", label_key = "gp_theme_housing",
-           kw = c("housing", "home price", "mortgage", "hpi", "rent", "case-shiller")),
-      list(id = "energy_commod", label_key = "gp_theme_energy_commod",
-           kw = c("oil", "wti", "brent", "gas", "gold", "copper", "silver",
-                  "commodity", "commodities", "crude")),
-      list(id = "trade_policy", label_key = "gp_theme_trade_policy",
-           kw = c("tariff", "trade war", "import", "export", "customs", "sanction")),
-      list(id = "econ_other", label_key = "gp_theme_econ_other", kw = character(0))
-    )
+    company_filter = FALSE
   )
 }
 
-#' Legacy theme registry (tests / reclassify). Maps onto Economic board buckets.
 gp_theme_registry <- function(market_mode = "US") {
-  src <- gp_board_sources("economic")
-  buckets <- src$theme_buckets
-  n <- length(buckets)
   data.frame(
-    theme_id = vapply(buckets, function(b) b$id, character(1)),
-    label_key = vapply(buckets, function(b) b$label_key, character(1)),
-    breadth_tier = as.integer(seq_len(n)),
-    breadth_ord = as.integer(seq_len(n)),
-    kalshi_series = I(replicate(n, character(0), simplify = FALSE)),
-    polymarket_queries = I(replicate(n, character(0), simplify = FALSE)),
-    keywords = I(lapply(buckets, function(b) b$kw)),
-    feex_topics = I(as.list(vapply(buckets, function(b) b$id, character(1)))),
+    theme_id = character(0),
+    label_key = character(0),
+    breadth_tier = integer(0),
+    breadth_ord = integer(0),
     stringsAsFactors = FALSE
   )
 }
@@ -2047,21 +2076,6 @@ gp_is_tw_us_listed_title <- function(title) {
   if (any(vapply(us, function(k) grepl(k, t, fixed = TRUE), logical(1)))) return(TRUE)
   if (any(vapply(tw, function(k) grepl(k, t, fixed = TRUE), logical(1)))) return(TRUE)
   FALSE
-}
-
-.gp_bucket_theme_id <- function(title, buckets) {
-  best_id <- buckets[[length(buckets)]]$id
-  best <- 0L
-  for (b in buckets) {
-    kw <- b$kw
-    if (!length(kw)) next
-    sc <- .gp_theme_keyword_score(title, kw)
-    if (sc > best) {
-      best <- sc
-      best_id <- b$id
-    }
-  }
-  best_id
 }
 
 gp_fetch_kalshi_series_list <- function(category, tags = NULL, use_cache = TRUE) {
@@ -2492,10 +2506,7 @@ gp_fetch_kalshi_board <- function(board = "economic", limit_quotes = 24L, use_ca
     for (s in keep) {
       ticker <- .gp_chr(s$ticker)
       if (!nzchar(ticker)) next
-      theme_guess <- .gp_bucket_theme_id(
-        paste(s$title %||% "", ticker),
-        src$theme_buckets
-      )
+      series_title <- .gp_chr(s$title %||% s$name)
       url <- sprintf(
         "%s/markets?status=open&limit=5&series_ticker=%s&mve_filter=exclude",
         .GP_KALSHI_API,
@@ -2507,7 +2518,8 @@ gp_fetch_kalshi_board <- function(board = "economic", limit_quotes = 24L, use_ca
         next
       }
       q <- gp_parse_kalshi_markets(
-        res$data, theme_id = theme_guess, limit = 3L, series_ticker = ticker
+        res$data, theme_id = "", limit = 3L,
+        series_ticker = ticker, event_title = series_title
       )
       if (nrow(q) == 0L) next
       if (isTRUE(src$company_filter)) {
@@ -2565,8 +2577,7 @@ gp_fetch_polymarket_board <- function(board = "economic", limit_quotes = 24L, us
     if (is.list(payload) && is.null(payload$events) && length(payload) > 0L) {
       payload <- list(events = payload)
     }
-    theme_guess <- .gp_bucket_theme_id(tag, src$theme_buckets)
-    q <- gp_parse_polymarket_events(payload, theme_id = theme_guess, limit = 8L)
+    q <- gp_parse_polymarket_events(payload, theme_id = "", limit = 8L)
     if (nrow(q) > 0L) collected[[length(collected) + 1L]] <- q
     if (sum(vapply(collected, nrow, 1L)) >= as.integer(limit_quotes)) break
   }
@@ -2582,8 +2593,7 @@ gp_fetch_polymarket_board <- function(board = "economic", limit_quotes = 24L, us
         last_err <- res$error %||% "search_failed"
         next
       }
-      theme_guess <- .gp_bucket_theme_id(qstr, src$theme_buckets)
-      parsed <- gp_parse_polymarket_events(res$data, theme_id = theme_guess, limit = 6L)
+      parsed <- gp_parse_polymarket_events(res$data, theme_id = "", limit = 6L)
       if (nrow(parsed) > 0L) collected[[length(collected) + 1L]] <- parsed
       if (sum(vapply(collected, nrow, 1L)) >= as.integer(limit_quotes)) break
     }
@@ -2599,12 +2609,6 @@ gp_fetch_polymarket_board <- function(board = "economic", limit_quotes = 24L, us
     quotes <- quotes[ok_rows, , drop = FALSE]
   }
   quotes <- quotes[!duplicated(quotes$market_id), , drop = FALSE]
-  # Re-bucket titles into board themes
-  if (nrow(quotes) > 0L) {
-    for (i in seq_len(nrow(quotes))) {
-      quotes$theme_id[[i]] <- .gp_bucket_theme_id(quotes$title[[i]], src$theme_buckets)
-    }
-  }
   if (nrow(quotes) > as.integer(limit_quotes)) {
     quotes <- quotes[seq_len(as.integer(limit_quotes)), , drop = FALSE]
   }
@@ -2629,54 +2633,20 @@ gp_fetch_snapshot <- function(market_mode = "US", use_cache = TRUE, limit_per_ve
     layer <- "discovery"
     use_cache <- TRUE
   }
-  src <- gp_board_sources(board)
   k <- gp_fetch_kalshi_board(board, limit_quotes = limit_per_venue, use_cache = use_cache)
   p <- gp_fetch_polymarket_board(board, limit_quotes = limit_per_venue, use_cache = use_cache)
   f <- gp_fetch_feex_theme(board, topic = board, use_cache = use_cache, layer = layer)
   kq <- if (is.data.frame(k$quotes)) k$quotes else .gp_empty_quote()
   pq <- if (is.data.frame(p$quotes)) p$quotes else .gp_empty_quote()
-  # Company: one theme card per company. Other boards: fixed theme_buckets.
   pairs <- if (identical(board, "company")) {
-    prs <- gp_company_theme_pairs(kq, pq)
-    lapply(prs, function(pr) {
-      pr$feex_status <- f$status %||% "defunct"
-      pr
-    })
+    gp_company_theme_pairs(kq, pq)
   } else {
-    lapply(src$theme_buckets, function(b) {
-      tid <- b$id
-      k_part <- if (nrow(kq)) kq[kq$theme_id == tid, , drop = FALSE] else .gp_empty_quote()
-      p_part <- if (nrow(pq)) pq[pq$theme_id == tid, , drop = FALSE] else .gp_empty_quote()
-      # Orphans with empty catch-all bucket
-      if (identical(tid, src$theme_buckets[[length(src$theme_buckets)]]$id)) {
-        known <- vapply(src$theme_buckets, function(x) x$id, character(1))
-        known_other <- known[known != tid]
-        # A single catch-all bucket already holds every row. Re-adding "orphans"
-        # would duplicate the whole board (known_other is empty).
-        if (length(known_other) && nrow(kq)) {
-          extra_k <- kq[!(kq$theme_id %in% known), , drop = FALSE]
-          if (nrow(extra_k)) k_part <- rbind(k_part, extra_k)
-        }
-        if (length(known_other) && nrow(pq)) {
-          extra_p <- pq[!(pq$theme_id %in% known), , drop = FALSE]
-          if (nrow(extra_p)) p_part <- rbind(p_part, extra_p)
-        }
-      }
-      if (nrow(k_part) > 6L) k_part <- k_part[seq_len(6L), , drop = FALSE]
-      if (nrow(p_part) > 6L) p_part <- p_part[seq_len(6L), , drop = FALSE]
-      list(
-        theme_id = tid,
-        label_key = b$label_key,
-        breadth_tier = NA_integer_,
-        kalshi = k_part,
-        polymarket = p_part,
-        feex = .gp_empty_quote(),
-        feex_status = f$status %||% "defunct",
-        agreement = gp_crowd_agreement(k_part$yes_prob, p_part$yes_prob),
-        series = .gp_empty_series()
-      )
-    })
+    gp_crawl_theme_pairs(kq, pq)
   }
+  pairs <- lapply(pairs, function(pr) {
+    pr$feex_status <- f$status %||% "defunct"
+    pr
+  })
   # Drop empty theme cards except when entire board empty (keep one honest empty)
   nonempty <- vapply(pairs, function(pr) {
     nrow(pr$kalshi) + nrow(pr$polymarket) > 0L
