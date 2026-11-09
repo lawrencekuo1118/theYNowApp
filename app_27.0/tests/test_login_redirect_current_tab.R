@@ -200,12 +200,54 @@ check(
   }
 )
 check(
+  "finish_auth does not server-navigate to home/get_started",
+  {
+    grepl("nav_tab", finish_body, fixed = TRUE) &&
+      grepl("identical(nav_tab, \"home\")", finish_body, fixed = TRUE) &&
+      grepl("identical(nav_tab, \"get_started\")", finish_body, fixed = TRUE) &&
+      grepl("nav_tab <- \"\"", finish_body, fixed = TRUE) &&
+      grepl("updateTabItems(session, \"sidebar_tabs\", nav_tab)", finish_body, fixed = TRUE) &&
+      !grepl("updateTabItems(session, \"sidebar_tabs\", tab)", finish_body, fixed = TRUE)
+  }
+)
+check(
   "PostLogin prefers live tab over stale home/get_started (!quiet)",
   grepl("!payload.quiet", post_login, fixed = TRUE) &&
     grepl("get_started", post_login, fixed = TRUE) &&
     grepl("ynowVisibleAuthTab", post_login, fixed = TRUE) &&
     grepl("home", post_login, fixed = TRUE) &&
     !grepl("liveTab !== 'home'", post_login, fixed = TRUE)
+)
+check(
+  "PostLogin non-quiet does not actively apply home/get_started",
+  grepl("tab === 'home' || tab === 'get_started'", post_login, fixed = TRUE) &&
+    grepl("tab = ''", post_login, fixed = TRUE) &&
+    grepl("__ynowAuthInSessionTab", post_login, fixed = TRUE)
+)
+check(
+  "quiet PostLogin skips tab when in-session restore already chose one",
+  grepl("payload.quiet && window.__ynowAuthInSessionTab", post_login, fixed = TRUE)
+)
+resume_offer <- between(
+  ui,
+  "var ynowAuthResumeOffer = function",
+  "addHandler('ynowAuthPersist'"
+)
+check(
+  "resume offer yields to OAuth callback / pre-oauth tab",
+  grepl("__ynowOAuthCallbackPushed", resume_offer, fixed = TRUE) &&
+    grepl("ynow_pre_oauth_tab", resume_offer, fixed = TRUE) &&
+    (
+      grepl("access_token", resume_offer, fixed = TRUE) ||
+        grepl("[?#&](code|access_token|error)=", resume_offer, fixed = TRUE) ||
+        grepl("access_token|error", resume_offer)
+    )
+)
+check(
+  "pre-oauth tab has localStorage backup",
+  grepl("ynow_pre_oauth_tab_v1", persist_fn, fixed = TRUE) &&
+    grepl("ynow_pre_oauth_tab_v1", post_login, fixed = TRUE) &&
+    grepl("ynow_pre_oauth_tab_v1", oauth_start, fixed = TRUE)
 )
 check(
   "Enter/keydown on auth fields re-persists pre-auth tab",
