@@ -16,7 +16,7 @@ Theme cards within each board (examples):
 - **Finance:** Rates / credit · Equity indices · Volatility / credit stress · FX · IPO / M&A · Other
 - **Company:** one block per company. Kalshi on the left, Polymarket on the right. A company on only one venue still shows; the other side stays empty. Same proposition is one multi-line chart.
 
-Crowd-implied probabilities from public APIs only. Not Fair Value, not a buy signal. Empty panels stay blank — never invent Yes probs.
+The tab shows boards, refresh, theme cards, and charts. Empty panels stay blank — never invent Yes probs. Explanatory crowd-wisdom and disclaimer paragraphs are not on the page.
 
 ## Venues
 

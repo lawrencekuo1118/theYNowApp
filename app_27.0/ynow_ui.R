@@ -3342,7 +3342,6 @@ beta_rolling_section_ui <- function() {
       column(
         width = 12,
         h2(tags$b(id = "ynow_gp_page_title", .gp_s("gp_page_title"))),
-        p(id = "ynow_gp_page_sub", .gp_s("gp_page_sub")),
         tags$hr()
       )
     ),
@@ -13177,16 +13176,6 @@ ui <- dashboardPage(
             if (atxTabMap && s.atx_tab_map) atxTabMap.textContent = s.atx_tab_map;
             var gpPageTitle = document.getElementById('ynow_gp_page_title');
             if (gpPageTitle && s.gp_page_title) gpPageTitle.textContent = s.gp_page_title;
-            var gpPageSub = document.getElementById('ynow_gp_page_sub');
-            if (gpPageSub && s.gp_page_sub) gpPageSub.textContent = s.gp_page_sub;
-            var gpLead = document.getElementById('ynow_gp_lead');
-            if (gpLead && s.gp_lead) gpLead.textContent = s.gp_lead;
-            var gpContext = document.getElementById('ynow_gp_context');
-            if (gpContext && s.gp_context) gpContext.textContent = s.gp_context;
-            var gpCaution = document.getElementById('ynow_gp_caution');
-            if (gpCaution && s.gp_caution) gpCaution.textContent = s.gp_caution;
-            var gpPart = document.getElementById('ynow_gp_participation');
-            if (gpPart && s.gp_participation_note) gpPart.textContent = s.gp_participation_note;
             var gpGateTitle = document.getElementById('ynow_gp_gate_title');
             if (gpGateTitle && s.gp_gate_title) gpGateTitle.textContent = s.gp_gate_title;
             var gpGateBody = document.getElementById('ynow_gp_gate_body');

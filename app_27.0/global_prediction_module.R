@@ -1817,11 +1817,7 @@ gp_crowd_agreement <- function(kalshi_probs, polymarket_probs) {
     ""
   }
   mean_txt <- if (is.finite(agree$simple_mean %||% NA_real_)) {
-    sprintf(
-      "%s %s",
-      .gp_label("gp_crowd_simple_mean", locale),
-      .gp_fmt_pct(agree$simple_mean)
-    )
+    sprintf("%s %s", .gp_label("gp_crowd_simple_mean", locale), .gp_fmt_pct(agree$simple_mean))
   } else {
     ""
   }
@@ -2990,7 +2986,7 @@ gp_company_word_cloud_ui <- function(pairs, locale = "en") {
   )
 }
 
-#' Board body: Company cloud, then source line, then theme charts.
+#' Board body: Company cloud, then theme charts.
 gp_prediction_body_ui <- function(snap, locale = "en", busy = FALSE, board = NULL) {
   locale <- .gp_chr(locale, "en")
   loading <- isTRUE(busy) && (is.null(snap) || !is.list(snap))
@@ -3020,7 +3016,6 @@ gp_prediction_body_ui <- function(snap, locale = "en", busy = FALSE, board = NUL
     if (isTRUE(venue_down)) {
       htmltools::tags$p(class = "ynow-gp-caution", .gp_label("gp_error_venue", locale))
     },
-    htmltools::tags$p(class = "ynow-gp-caution", .gp_label("gp_attribution", locale)),
     lapply(pairs, function(pair) {
       .gp_theme_row_ui(pair, locale, board = board)
     })
@@ -3038,12 +3033,7 @@ global_prediction_ui <- function(id, locale = "en") {
   htmltools::tagList(
     htmltools::tags$style(htmltools::HTML(sprintf("
       .ynow-gp { margin-top: 4px; }
-      .ynow-gp-lead { font-size: 13px; line-height: 1.5; color: #3f3a33; margin: 0 0 10px; }
-      .ynow-gp-context { font-size: 12px; line-height: 1.45; color: #5c5346; margin: 0 0 12px;
-        padding: 8px 10px; background: #f4f0e6; border: 1px solid #e4dccb; border-radius: 6px; }
       .ynow-gp-caution { font-size: 12px; line-height: 1.45; color: #5c5346; margin: 0 0 12px; }
-      .ynow-gp-participation-inline { font-size: 11px; line-height: 1.4; color: #7a7368;
-        margin: 6px 0 0; width: 100%%; flex-basis: 100%%; }
       .ynow-gp-meta { font-size: 12px; color: #5c5346; margin: 0 0 14px; display: flex;
         flex-wrap: wrap; gap: 8px 16px; align-items: center; }
       .ynow-gp-cloud { margin: 0 0 14px; padding: 12px 14px 10px; background: #f7f3ea;
@@ -3117,14 +3107,6 @@ global_prediction_ui <- function(id, locale = "en") {
     ", colors$kalshi, colors$polymarket, colors$feex))),
     htmltools::tags$div(
       class = "ynow-gp",
-      htmltools::tags$p(id = "ynow_gp_lead", class = "ynow-gp-lead", .gp_label("gp_lead", loc)),
-      htmltools::tags$p(id = "ynow_gp_context", class = "ynow-gp-context", .gp_label("gp_context", loc)),
-      htmltools::tags$p(id = "ynow_gp_caution", class = "ynow-gp-caution", .gp_label("gp_caution", loc)),
-      htmltools::tags$p(
-        id = "ynow_gp_participation",
-        class = "ynow-gp-caution",
-        .gp_label("gp_participation_note", loc)
-      ),
       htmltools::tags$div(
         class = "ynow-gp-boards",
         shiny::actionButton(ns("board_economic"), label = .gp_label("gp_board_economic", loc),

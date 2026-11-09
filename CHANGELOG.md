@@ -1,3 +1,8 @@
+## [v28.39] — 2026-11-09 · Global Prediction drops disclaimer paragraphs
+
+- zh-TW：全球預測拿掉與使用或評估投資無關的說明段（版塊介紹、群眾智慧、對照方式、風險警語、「兩市群眾一致」的參與者說明，以及資料來源說明段）。圖表、更新報價、關鍵字雲與主題卡保留。兩市簡單平均只留短標籤。
+- en-US: Global Prediction no longer shows the board intro, wisdom-of-crowds note, venue-mapping note, caution, participation disclaimer, or source-line paragraph. Charts, Refresh quotes, the keyword cloud, and theme cards stay. The two-venue simple mean keeps a short label.
+
 ## [v28.38] — 2026-11-09 · Company board keyword cloud
 
 - zh-TW：全球預測 Company 在「更新報價」列之下、資料來源與第一張預測圖之上，顯示由已載入公司市場抽出的關鍵字雲（公司名、代碼、短結果與重複主題詞）。點選關鍵字會捲到第一張對應的公司主題圖；沒有對應圖就不動。沒有公司市場時如實留白。Economic／Finance 不顯示。
