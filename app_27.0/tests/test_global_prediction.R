@@ -723,17 +723,16 @@ check(
 cloud_terms <- gp_company_cloud_terms(co_pairs)
 cloud_labs <- tolower(cloud_terms$term)
 check(
-  "company cloud uses loaded company names and tickers",
-  all(c("apple", "nvidia", "aapl", "nvda") %in% cloud_labs)
+  "company cloud uses loaded company names only",
+  identical(sort(cloud_labs), c("apple", "nvidia")) &&
+    all(cloud_terms$kind == "name")
 )
 apple_target <- cloud_terms$theme_id[tolower(cloud_terms$term) == "apple"][[1]]
-aapl_target <- cloud_terms$theme_id[tolower(cloud_terms$term) == "aapl"][[1]]
-earn_target <- cloud_terms$theme_id[tolower(cloud_terms$term) == "earnings"][[1]]
+nvda_target <- cloud_terms$theme_id[tolower(cloud_terms$term) == "nvidia"][[1]]
 check(
-  "company cloud keyword points at the first matching theme chart",
+  "company cloud name points at that company's chart",
   identical(apple_target, "ynow_gp_theme_apple") &&
-    identical(aapl_target, "ynow_gp_theme_apple") &&
-    identical(earn_target, "ynow_gp_theme_nvidia")
+    identical(nvda_target, "ynow_gp_theme_nvidia")
 )
 shared_a <- gp_company_theme_pairs(
   data.frame(
@@ -754,10 +753,10 @@ shared_b <- gp_company_theme_pairs(
   .gp_empty_quote()
 )
 shared_terms <- gp_company_cloud_terms(c(shared_a, shared_b))
-shared_hit <- shared_terms$theme_id[tolower(shared_terms$term) == "robotaxi"]
 check(
-  "shared keyword jumps to the first chart only",
-  length(shared_hit) == 1L && identical(shared_hit[[1]], "ynow_gp_theme_apple")
+  "shared non-company words stay out of the cloud",
+  identical(sort(tolower(shared_terms$term)), c("apple", "nvidia")) &&
+    !any(tolower(shared_terms$term) == "robotaxi")
 )
 name_first <- gp_company_theme_pairs(
   data.frame(
@@ -800,17 +799,26 @@ outcome_k <- data.frame(
 oc_terms <- gp_company_cloud_terms(gp_company_theme_pairs(outcome_k, .gp_empty_quote()))
 oc_labs <- tolower(oc_terms$term)
 check(
-  "company cloud keeps a short outcome phrase and the company name",
-  any(oc_terms$term == "San Francisco") && any(oc_labs == "waymo")
+  "company cloud keeps the company name and drops the outcome",
+  identical(oc_labs, "waymo") && !any(oc_terms$term == "San Francisco")
 )
+date_k <- data.frame(
+  venue = "kalshi", theme_id = "x", market_id = "KXAPPLE-DATE",
+  title = "Will Apple close on December 31, 2026?",
+  yes_prob = 0.4,
+  series_ticker = NA_character_,
+  event_title = "Apple close date",
+  stringsAsFactors = FALSE
+)
+date_terms <- gp_company_cloud_terms(gp_company_theme_pairs(date_k, .gp_empty_quote()))
 check(
-  "company cloud drops calendar dates",
-  identical(.gp_cloud_outcome_phrase("December 31, 2026"), "") &&
-    identical(.gp_cloud_outcome_phrase("By December 31, 2026"), "")
+  "company cloud drops calendar dates and verbs",
+  identical(tolower(date_terms$term), "apple") &&
+    !any(grepl("december|2026|close|will", tolower(date_terms$term)))
 )
 check(
   "company cloud does not dump the event question",
-  !any(oc_labs %in% c("will", "where"))
+  !any(oc_labs %in% c("will", "where", "operate", "francisco"))
 )
 raise_k <- data.frame(
   venue = "polymarket", theme_id = "x", market_id = "m_oai_val",
@@ -823,10 +831,25 @@ raise_k <- data.frame(
 raise_terms <- gp_company_cloud_terms(gp_company_theme_pairs(raise_k, .gp_empty_quote()))
 raise_labs <- raise_terms$term
 check(
-  "company cloud pretty-prints names and drops template words",
-  any(raise_labs == "OpenAI") && any(raise_labs == "IPO") &&
-    any(tolower(raise_labs) == "valuation") &&
-    !any(tolower(raise_labs) %in% c("raise", "will", "500b", "before"))
+  "company cloud keeps the canonical name and drops template words",
+  identical(raise_labs, "OpenAI") &&
+    !any(tolower(raise_labs) %in% c("ipo", "valuation", "raise", "will", "500b", "before"))
+)
+other_k <- data.frame(
+  venue = "kalshi", theme_id = "x", market_id = "KXOTHER-1",
+  title = "Largest model",
+  yes_prob = 0.3,
+  series_ticker = NA_character_,
+  event_title = "What will the largest model be?",
+  stringsAsFactors = FALSE
+)
+mixed_terms <- gp_company_cloud_terms(c(
+  gp_company_theme_pairs(raise_k, .gp_empty_quote()),
+  gp_company_theme_pairs(other_k, .gp_empty_quote())
+))
+check(
+  "event-title cards without a company key stay out of the cloud",
+  identical(mixed_terms$term, "OpenAI")
 )
 empty_cloud <- paste(as.character(gp_company_word_cloud_ui(list(), "en")), collapse = "\n")
 check(
@@ -852,9 +875,9 @@ check(
     grepl("id=\"ynow_gp_theme_apple\"", co_body, fixed = TRUE)
 )
 check(
-  "outcome keyword targets that company's chart",
+  "company name targets that company's chart",
   identical(
-    oc_terms$theme_id[oc_terms$term == "San Francisco"][[1]],
+    oc_terms$theme_id[tolower(oc_terms$term) == "waymo"][[1]],
     "ynow_gp_theme_waymo"
   )
 )
@@ -884,13 +907,13 @@ check(
 )
 check(
   "locale en company cloud",
-  grepl('gp_company_cloud_label = "Keywords"', loc, fixed = TRUE) &&
-    grepl("gp_company_cloud_empty", loc, fixed = TRUE)
+  grepl('gp_company_cloud_label = "Companies"', loc, fixed = TRUE) &&
+    grepl("No company names in the loaded company markets.", loc, fixed = TRUE)
 )
 check(
   "locale zh company cloud",
-  grepl('gp_company_cloud_label = "關鍵字"', loc, fixed = TRUE) &&
-    grepl("目前沒有已載入公司市場的關鍵字", loc, fixed = TRUE) &&
+  grepl('gp_company_cloud_label = "公司"', loc, fixed = TRUE) &&
+    grepl("目前載入的公司市場沒有公司名稱", loc, fixed = TRUE) &&
     grepl('gp_company_cloud_jump = "顯示對應圖表"', loc, fixed = TRUE)
 )
 check(
