@@ -7,5 +7,5 @@ commit=7d23e2b8fd0125cbd4d861cdbd3aa99208030020
 short=7d23e2b8
 message=chore: bump display version to v28.40
 captured_at=2026-11-09T08:58:42Z
-display_version=v28.40
+display_version=v28.41
 note=Shipped v28.40 (+0.01) via deploy_app_21.R. Global Prediction theme cards are named from the Kalshi/Polymarket crawl (PR #730). Live status=running; rsconnect bundleId=12797548. Prior: v28.39=#729 (12796407), v28.38=#728 (12796192), v28.37=#726/#727 (12795058).
