@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12796192
+bundleId=12796407
 appId=10907657
 url=https://[REDACTED].shinyapps.io/TheYNowApp/  # pragma: allowlist secret
-aligned_git=620660c1d58f1843e8fa66fa2b7d1cfb2e382453
-commit=620660c1d58f1843e8fa66fa2b7d1cfb2e382453
-short=620660c1
-message=chore: bump display version to v28.38
-captured_at=2026-11-09T01:49:36Z
-display_version=v28.38
-note=Shipped v28.38 (+0.01) via deploy_app_21.R. Global Prediction Company keyword cloud under Refresh quotes, above the source line and first chart; a click scrolls to the matching company theme (PR #728). Live status=running; rsconnect bundleId=12796192. Prior: v28.37=#726/#727 (12795058), v28.36=#725 (12794881), v28.35=#724 (12794795).
+aligned_git=a74f7b8e3bc1c061cb6374c114eb20741eb7546f
+commit=a74f7b8e3bc1c061cb6374c114eb20741eb7546f
+short=a74f7b8e
+message=chore: bump display version to v28.39
+captured_at=2026-11-09T03:18:36Z
+display_version=v28.39
+note=Shipped v28.39 (+0.01) via deploy_app_21.R. Global Prediction drops crowd-wisdom, methodology, and risk paragraphs; charts, refresh, keyword cloud, and theme cards stay (PR #729). Live status=running; rsconnect bundleId=12796407. Prior: v28.38=#728 (12796192), v28.37=#726/#727 (12795058), v28.36=#725 (12794881).

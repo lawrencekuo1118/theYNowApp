@@ -1617,36 +1617,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     atx_tab_map = "Transmission Map",
     atx_tab_global_prediction = "Global Prediction",
     gp_page_title = "Global Prediction",
-    gp_page_sub = paste0(
-      "Three boards — Economic, Finance, and Company — crawl Kalshi and Polymarket public feeds. ",
-      "Economic and Finance keep monthly-or-coarser contracts. ",
-      "Company lists Kalshi Big Tech & Business and Polymarket Big Tech, excluding Daily and Hourly. ",
-      "Crowd-implied probabilities, not App Fair Value and not a buy signal."
-    ),
     gp_board_economic = "Economic",
     gp_board_finance = "Finance",
     gp_board_company = "Company",
-    gp_lead = paste0(
-      "Wisdom of crowds: diverse, independent, decentralized guesses can aggregate into a sharper estimate ",
-      "(classic Galton-style mean of many imperfect views). Kalshi and Polymarket below are two incentivized crowds ",
-      "with skin in the game — crowd-implied probabilities, not App Fair Value and not a buy signal."
-    ),
-    gp_context = paste0(
-      "Economic mirrors Kalshi Economics + commodities and Polymarket economy / commodities (monthly+). ",
-      "Finance mirrors Kalshi Financials monthly/annual and Polymarket finance monthly / indices. ",
-      "Company uses the same theme-card layout as Economic, one card per company from Kalshi Big Tech & Business and Polymarket Big Tech, excluding Daily and Hourly. ",
-      "Read venue charts within each company theme; do not merge them into one population-wide signal."
-    ),
-    gp_caution = paste0(
-      "Caution: these books are a self-selected, often more risk-tolerant slice — not all investors. ",
-      "Referenceability depends on who participates, their risk appetite, and liquidity; thin books weaken the signal. ",
-      "Herding on one headline or mismatched contract wording can also distort prices. ",
-      "Empty panels mean the public feed was blocked or had no matching open market. Not investment advice."
-    ),
-    gp_participation_note = paste0(
-      "Even “crowds agree” is conditional on who showed up to trade (access, liquidity, risk appetite) — ",
-      "not a survey of the whole investing public."
-    ),
     gp_refresh = "Refresh quotes",
     gp_company_cloud_label = "Keywords",
     gp_company_cloud_empty = "No keywords from the loaded company markets.",
@@ -1664,7 +1637,6 @@ locale_for_market <- function(mode = get_market_mode()) {
     gp_last_print = "Latest prints (links)",
     gp_partial_error = "Partial feed issue —",
     gp_error_venue = "A venue feed failed or returned no matching open markets. Empty panels stay blank — never invented.",
-    gp_attribution = "Sources: Kalshi and Polymarket public market data. Probabilities are as reported; never invented. Line charts use venue history when available.",
     gp_theme_fed_rates = "Fed / policy rates",
     gp_theme_inflation_cpi = "Inflation / CPI",
     gp_theme_recession = "Recession / labor",
@@ -1706,7 +1678,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     gp_crowd_mixed = "Crowds mixed",
     gp_crowd_insufficient = "One-sided / insufficient",
     gp_crowd_gap = "Implied gap:",
-    gp_crowd_simple_mean = "Simple mean of both venues’ implied probs (Galton-style aggregate; not fused truth):",
+    gp_crowd_simple_mean = "Simple mean:",
     atx_window = "Correlation window",
     atx_win_20 = "20 sessions",
     atx_win_60 = "60 sessions",
@@ -6596,35 +6568,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     atx_tab_map = "傳導圖",
     atx_tab_global_prediction = "全球預測",
     gp_page_title = "全球預測",
-    gp_page_sub = paste0(
-      "Economic、Finance、Company 三大版塊擷取 Kalshi 與 Polymarket 公開行情。",
-      "Economic／Finance 僅保留月頻（含）以上合約。",
-      "Company 列出 Kalshi Big Tech & Business 與 Polymarket Big Tech，並排除 Daily 與 Hourly。",
-      "顯示群眾隱含機率，不是 App Fair Value，也不是買進訊號。"
-    ),
     gp_board_economic = "Economic",
     gp_board_finance = "Finance",
     gp_board_company = "Company",
-    gp_lead = paste0(
-      "群眾智慧：在意見多樣、獨立且分散時，把眾多不完美估計加總（經典如 Galton 式平均），往往比「非專家無用」的直覺更準。",
-      "下方 Kalshi 與 Polymarket 是兩群有真實資金曝險的誘因群眾——顯示的是群眾隱含機率，不是 App Fair Value，也不是買進訊號。"
-    ),
-    gp_context = paste0(
-      "Economic 對應 Kalshi Economics／原物料與 Polymarket economy／commodities（月頻以上）。",
-      "Finance 對應 Kalshi Financials 月／年與 Polymarket finance monthly／indices。",
-      "Company 與 Economic 相同主題卡排版，每家公司一張卡，資料來自 Kalshi Big Tech & Business 與 Polymarket Big Tech，並排除 Daily／Hourly。",
-      "請在各公司主題內對照兩市圖表，勿合成全體投資人的單一訊號。"
-    ),
-    gp_caution = paste0(
-      "風險警語：這些簿冊是自我選擇、往往風險偏好較高的參與者，並非全體投資人。",
-      "可參考性取決於誰進場、其風險偏好與流動性；簿冊越薄，訊號越弱。",
-      "跟隨單一新聞敘事（羊群）或合約定義與主題不一致，也可能扭曲價格。",
-      "空白表示公開資料被擋或沒有對應未結市場。本頁非投資建議。"
-    ),
-    gp_participation_note = paste0(
-      "即使「兩市群眾一致」，仍取決於當時進場交易的人（門檻、流動性、風險偏好），",
-      "不是全體投資人的民意調查。"
-    ),
     gp_refresh = "更新報價",
     gp_company_cloud_label = "關鍵字",
     gp_company_cloud_empty = "目前沒有已載入公司市場的關鍵字。",
@@ -6642,7 +6588,6 @@ locale_for_market <- function(mode = get_market_mode()) {
     gp_last_print = "最新成交（連結）",
     gp_partial_error = "部分資料來源異常 —",
     gp_error_venue = "某個平台來源失敗或沒有符合條件的未結市場。空白區塊維持空白——絕不捏造。",
-    gp_attribution = "資料來源：Kalshi、Polymarket 公開市場資料。機率依來源回傳顯示，絕不捏造。線圖在有平台歷史時繪製。",
     gp_theme_fed_rates = "Fed／政策利率",
     gp_theme_inflation_cpi = "通膨／CPI",
     gp_theme_recession = "衰退／勞動",
@@ -6684,7 +6629,7 @@ locale_for_market <- function(mode = get_market_mode()) {
     gp_crowd_mixed = "兩市群眾分歧有限",
     gp_crowd_insufficient = "單邊／資料不足",
     gp_crowd_gap = "隱含機率差距：",
-    gp_crowd_simple_mean = "兩市隱含機率簡單平均（Galton 式加總；非融合正解）：",
+    gp_crowd_simple_mean = "兩市簡單平均：",
     atx_window = "滾動相關視窗",
     atx_win_20 = "20 個交易日",
     atx_win_60 = "60 個交易日",

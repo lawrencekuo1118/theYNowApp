@@ -332,16 +332,21 @@ check("locale zh boards", grepl("gp_board_economic", loc, fixed = TRUE) &&
         grepl("gp_board_company", loc, fixed = TRUE))
 check("locale auth gate en", grepl("auth_gate_gp_kicker", loc, fixed = TRUE))
 check("locale auth gate zh", grepl("解鎖全球預測", loc, fixed = TRUE))
-check("locale en wisdom framing", grepl("Wisdom of crowds", loc, fixed = TRUE))
-check("locale zh wisdom framing", grepl("群眾智慧", loc, fixed = TRUE))
-check("locale en not buy signal", grepl("not a buy signal", loc, fixed = TRUE))
-check("locale zh not buy signal", grepl("不是買進訊號", loc, fixed = TRUE))
-check("locale en participation bias", grepl("self-selected", loc, fixed = TRUE))
-check("locale zh participation bias", grepl("自我選擇", loc, fixed = TRUE))
-check("locale en Galton mean label", grepl("Galton-style aggregate", loc, fixed = TRUE))
-check("locale zh Galton mean label", grepl("Galton 式加總", loc, fixed = TRUE))
-check("locale en herding caution", grepl("Herding", loc, fixed = TRUE))
-check("locale zh herding caution", grepl("羊群", loc, fixed = TRUE))
+check("locale drops GP wisdom blurb", !grepl("Wisdom of crowds", loc, fixed = TRUE) &&
+        !grepl("群眾智慧", loc, fixed = TRUE))
+check("locale drops GP buy-signal blurb", !grepl("gp_page_sub", loc, fixed = TRUE) &&
+        !grepl("三大版塊擷取 Kalshi", loc, fixed = TRUE) &&
+        !grepl("本頁非投資建議", loc, fixed = TRUE) &&
+        !grepl("not App Fair Value and not a buy signal", loc, fixed = TRUE))
+check("locale drops GP participation blurb", !grepl("self-selected", loc, fixed = TRUE) &&
+        !grepl("自我選擇", loc, fixed = TRUE) &&
+        !grepl("不是全體投資人的民意調查", loc, fixed = TRUE))
+check("locale drops GP Galton gloss", !grepl("Galton-style", loc, fixed = TRUE) &&
+        !grepl("Galton 式", loc, fixed = TRUE))
+check("locale drops GP herding caution", !grepl("Herding", loc, fixed = TRUE) &&
+        !grepl("羊群", loc, fixed = TRUE))
+check("locale keeps GP mean label", grepl('gp_crowd_simple_mean = "Simple mean:"', loc, fixed = TRUE) &&
+        grepl('gp_crowd_simple_mean = "兩市簡單平均："', loc, fixed = TRUE))
 check("locale feex venue name", grepl("gp_venue_feex = \"未來事件交易所\"", loc, fixed = TRUE))
 check("gate layout includes gp", grepl(
   'c("lab", "checklist", "alerts", "atx", "gp")',
@@ -354,9 +359,12 @@ check(
     grepl('unique(c(ynow_gate_demo_features(), "gp"))', auth, fixed = TRUE)
 )
 check("page gate uses feature gp", grepl('feature = "gp"', ui, fixed = TRUE))
-check("applyUiLocale gp lead", grepl("ynow_gp_lead", ui, fixed = TRUE))
+check("GP page has no disclaimer paragraphs", !grepl("ynow_gp_page_sub", ui, fixed = TRUE) &&
+        !grepl("ynow_gp_lead", ui, fixed = TRUE) &&
+        !grepl("ynow_gp_context", ui, fixed = TRUE) &&
+        !grepl("ynow_gp_caution", ui, fixed = TRUE) &&
+        !grepl("ynow_gp_participation", ui, fixed = TRUE))
 check("applyUiLocale gp page title", grepl("ynow_gp_page_title", ui, fixed = TRUE))
-check("applyUiLocale gp participation", grepl("ynow_gp_participation", ui, fixed = TRUE))
 check("guest lock map includes GP", grepl("global_prediction:true", ui, fixed = TRUE) ||
         grepl("global_prediction: true", ui, fixed = TRUE))
 check(
@@ -788,11 +796,12 @@ co_snap <- list(
 )
 co_body <- paste(as.character(gp_prediction_body_ui(co_snap, "en")), collapse = "\n")
 pos_cloud <- regexpr("ynow-gp-cloud", co_body, fixed = TRUE)[1]
-pos_source <- regexpr("ynow-gp-caution", co_body, fixed = TRUE)[1]
 pos_theme <- regexpr("ynow-gp-theme", co_body, fixed = TRUE)[1]
 check(
-  "company cloud sits above the source line and the first theme chart",
-  pos_cloud > 0L && pos_source > pos_cloud && pos_theme > pos_source &&
+  "company cloud sits above the first theme chart",
+  pos_cloud > 0L && pos_theme > pos_cloud &&
+    !grepl("gp_attribution", co_body, fixed = TRUE) &&
+    !grepl("Wisdom of crowds", co_body, fixed = TRUE) &&
     grepl("data-term=\"Apple\"", co_body, fixed = TRUE) &&
     grepl("data-target=\"ynow_gp_theme_apple\"", co_body, fixed = TRUE) &&
     grepl("id=\"ynow_gp_theme_apple\"", co_body, fixed = TRUE)
@@ -994,8 +1003,9 @@ if (file.exists(k_hist_path)) {
 }
 check(
   "GP CSS escapes percent for sprintf",
-  grepl("width: 100%%;", mod_src, fixed = TRUE) &&
-    grepl("flex-basis: 100%%;", mod_src, fixed = TRUE)
+  grepl(".ynow-gp-chart-widget { width: 100%%; }", mod_src, fixed = TRUE) &&
+    grepl("max-width: 100%%;", mod_src, fixed = TRUE) &&
+    !grepl("flex-basis: 100%%;", mod_src, fixed = TRUE)
 )
 check(
   "GP chart title CSS allows wrap (no clip)",

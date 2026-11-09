@@ -16,11 +16,11 @@
       return(sub('^"version"\\s*:\\s*"([^"]+)".*$', "\\1", m[[1]]))
     }
   }
-  "v28.38"
+  "v28.39"
 }
 .YNOW_BUILD_VERSION <- .ynow_read_build_version()
 
-#' Major segment of a display version (`v28.38` → 25; `v26` → 26).
+#' Major segment of a display version (`v28.39` → 25; `v26` → 26).
 #' Matches deploy policy: +0.01 is patch; folder / `YNOW_VERSION_BUMP_MAJOR` cut advances major.
 .ynow_display_major <- function(label) {
   label <- as.character(label)[1]
@@ -3342,7 +3342,6 @@ beta_rolling_section_ui <- function() {
       column(
         width = 12,
         h2(tags$b(id = "ynow_gp_page_title", .gp_s("gp_page_title"))),
-        p(id = "ynow_gp_page_sub", .gp_s("gp_page_sub")),
         tags$hr()
       )
     ),
@@ -3722,9 +3721,9 @@ ui <- dashboardPage(
                   'data-ynow-build="', .YNOW_BUILD_VERSION, '" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v28.38</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v28.39</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v28.38</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v28.39</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,
@@ -11481,7 +11480,7 @@ ui <- dashboardPage(
             function isSignedIn() {
               return !!(document.body && document.body.classList.contains('ynow-authed'));
             }
-            /* Major = integer before decimal (v28.38 → 25), same as YNOW_VERSION_BUMP_MAJOR cut. */
+            /* Major = integer before decimal (v28.39 → 25), same as YNOW_VERSION_BUMP_MAJOR cut. */
             function displayMajor(version) {
               /* Use [0-9] not \\d — this block lives in an R character string. */
               var m = String(version || '').trim().match(/^[vV]?([0-9]+)/);
@@ -13177,16 +13176,6 @@ ui <- dashboardPage(
             if (atxTabMap && s.atx_tab_map) atxTabMap.textContent = s.atx_tab_map;
             var gpPageTitle = document.getElementById('ynow_gp_page_title');
             if (gpPageTitle && s.gp_page_title) gpPageTitle.textContent = s.gp_page_title;
-            var gpPageSub = document.getElementById('ynow_gp_page_sub');
-            if (gpPageSub && s.gp_page_sub) gpPageSub.textContent = s.gp_page_sub;
-            var gpLead = document.getElementById('ynow_gp_lead');
-            if (gpLead && s.gp_lead) gpLead.textContent = s.gp_lead;
-            var gpContext = document.getElementById('ynow_gp_context');
-            if (gpContext && s.gp_context) gpContext.textContent = s.gp_context;
-            var gpCaution = document.getElementById('ynow_gp_caution');
-            if (gpCaution && s.gp_caution) gpCaution.textContent = s.gp_caution;
-            var gpPart = document.getElementById('ynow_gp_participation');
-            if (gpPart && s.gp_participation_note) gpPart.textContent = s.gp_participation_note;
             var gpGateTitle = document.getElementById('ynow_gp_gate_title');
             if (gpGateTitle && s.gp_gate_title) gpGateTitle.textContent = s.gp_gate_title;
             var gpGateBody = document.getElementById('ynow_gp_gate_body');
