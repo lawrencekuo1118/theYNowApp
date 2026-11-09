@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12797548
+bundleId=12797800
 appId=10907657
 url=https://[REDACTED].shinyapps.io/TheYNowApp/  # pragma: allowlist secret
-aligned_git=7d23e2b8fd0125cbd4d861cdbd3aa99208030020
-commit=7d23e2b8fd0125cbd4d861cdbd3aa99208030020
-short=7d23e2b8
-message=chore: bump display version to v28.40
-captured_at=2026-11-09T08:58:42Z
+aligned_git=91850daeb7f9a3cad910b319c987f8bba1f7e88f
+commit=91850daeb7f9a3cad910b319c987f8bba1f7e88f
+short=91850dae
+message=chore: bump display version to v28.41
+captured_at=2026-11-09T10:11:40Z
 display_version=v28.41
-note=Shipped v28.40 (+0.01) via deploy_app_21.R. Global Prediction theme cards are named from the Kalshi/Polymarket crawl (PR #730). Live status=running; rsconnect bundleId=12797548. Prior: v28.39=#729 (12796407), v28.38=#728 (12796192), v28.37=#726/#727 (12795058).
+note=Shipped v28.41 (+0.01) via deploy_app_21.R. Company word cloud lists company-card names only (PR #731). Live status=running; rsconnect bundleId=12797800. Prior: v28.40=#730 (12797548), v28.39=#729 (12796407), v28.38=#728 (12796192).
