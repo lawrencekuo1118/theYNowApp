@@ -1252,7 +1252,7 @@ gp_company_label_from_quotes <- function(key, rows) {
   gp_crawl_theme_label(rows)
 }
 
-.gp_theme_pair <- function(theme_id, label, k_part, p_part, cap = 6L) {
+.gp_theme_pair <- function(theme_id, label, k_part, p_part, cap = 6L, company_named = FALSE) {
   if (is.data.frame(k_part) && nrow(k_part) > cap) k_part <- k_part[seq_len(cap), , drop = FALSE]
   if (is.data.frame(p_part) && nrow(p_part) > cap) p_part <- p_part[seq_len(cap), , drop = FALSE]
   if (!is.data.frame(k_part) || nrow(k_part) == 0L) k_part <- .gp_empty_quote()
@@ -1268,7 +1268,8 @@ gp_company_label_from_quotes <- function(key, rows) {
     feex = .gp_empty_quote(),
     feex_status = "defunct",
     agreement = gp_crowd_agreement(k_part$yes_prob, p_part$yes_prob),
-    series = .gp_empty_series()
+    series = .gp_empty_series(),
+    company_named = isTRUE(company_named)
   )
 }
 
@@ -1307,7 +1308,8 @@ gp_company_theme_pairs <- function(kq, pq) {
       ck,
       gp_company_label_from_quotes(ck, .gp_quote_text_frame(list(k_part, p_part))),
       k_part,
-      p_part
+      p_part,
+      company_named = TRUE
     )
   })
   blank_k <- if (nrow(kq)) kq[.gp_company_key_blank(kq$company_key), , drop = FALSE] else .gp_empty_quote()
@@ -2673,136 +2675,11 @@ gp_fetch_snapshot <- function(market_mode = "US", use_cache = TRUE, limit_per_ve
   )
 }
 
-# Question boilerplate and calendar crumbs. Company names, tickers, and
-# short outcome phrases stay; full sentences do not.
-.GP_CLOUD_STOP <- unique(c(
-  .GP_PROP_STOP,
-  "market", "markets", "price", "prices", "hit", "reach", "above", "below",
-  "end", "year", "years", "month", "months", "this", "that", "what", "when",
-  "where", "who", "which", "how", "there", "here", "about", "into", "onto",
-  "company", "companies", "stock", "stocks", "share", "shares",
-  "close", "closing", "closed", "during", "between", "more", "less",
-  "its", "their", "them", "have", "has", "had", "not", "any", "all", "new",
-  "one", "two", "per", "usd", "dollar", "dollars", "cents",
-  "january", "february", "march", "april", "may", "june", "july",
-  "august", "september", "october", "november", "december",
-  "jan", "feb", "mar", "apr", "jun", "jul", "aug", "sep", "sept", "oct", "nov", "dec",
-  "q1", "q2", "q3", "q4",
-  "probability", "chance", "outcome", "outcomes", "contract", "contracts",
-  "kalshi", "polymarket", "before", "after", "does", "did", "can", "could",
-  "should", "might", "just", "only", "also", "then", "across", "within",
-  "without", "through", "each", "both", "other", "another", "some", "most",
-  "many", "much", "very", "still", "already", "open", "active", "true", "false",
-  "raise", "raises", "raised", "raising", "lead", "leads", "leading",
-  "product", "products", "bank", "banks", "operate", "operates", "operating",
-  "operation", "largest", "larger", "large", "model", "models", "kind", "kinds",
-  "launch", "launches", "launched", "public", "publicly", "person", "people",
-  "personal", "store", "stores", "richest", "rich", "app", "apps",
-  "announce", "announced", "announcement", "announces", "out", "next",
-  "become", "becomes", "became", "make", "made", "making", "top", "best",
-  "first", "second", "third", "cap", "caps", "billion", "million", "trillion",
-  "high", "higher", "highest", "low", "lower", "lowest", "date", "time", "times",
-  "cities", "city", "added", "adding", "following",
-  "free", "call", "calls", "data", "center", "centre", "released", "release",
-  "releases", "acquired", "acquire", "military", "stake", "stakes", "list",
-  "lists", "take", "takes", "taken", "ticker", "tickers", "arena", "bracket",
-  "brackets", "indian"
-))
-
-.GP_CLOUD_ACRONYMS <- c(
-  "ai", "agi", "api", "ceo", "cfo", "cpu", "doj", "eps", "etf", "ev",
-  "fda", "ftc", "gpt", "gpu", "ipo", "ipos", "llm", "nasa", "nyt", "sec"
-)
-
-.gp_cloud_noise_token <- function(tok) {
-  tok <- tolower(.gp_chr(tok))
-  if (!nzchar(tok)) return(TRUE)
-  if (tok %in% .GP_CLOUD_ACRONYMS) return(FALSE)
-  if (tok %in% .GP_CLOUD_STOP) return(TRUE)
-  if (grepl("[0-9]", tok)) return(TRUE)
-  nchar(tok) < 4L
-}
-
-.gp_cloud_word_label <- function(tok) {
-  tok <- tolower(gsub("[^a-z0-9]", "", .gp_chr(tok)))
-  if (!nzchar(tok)) return("")
-  if (tok %in% c("ipo", "ipos")) return("IPO")
-  if (tok %in% .GP_CLOUD_ACRONYMS) return(toupper(tok))
-  paste0(toupper(substr(tok, 1L, 1L)), substring(tok, 2L))
-}
-
-.gp_cloud_pretty_name <- function(label) {
-  label <- trimws(.gp_chr(label))
-  if (!nzchar(label)) return("")
-  special <- c(
-    openai = "OpenAI",
-    spacex = "SpaceX",
-    deepmind = "DeepMind",
-    bytedance = "ByteDance",
-    "blue origin" = "Blue Origin",
-    "new york times" = "New York Times"
-  )
-  key <- tolower(gsub("\\s+", " ", label))
-  if (key %in% names(special)) return(unname(special[[key]]))
-  parts <- strsplit(label, " ", fixed = TRUE)[[1]]
-  paste(vapply(parts, function(p) {
-    pl <- tolower(p)
-    if (pl %in% .GP_CLOUD_ACRONYMS) toupper(pl) else {
-      paste0(toupper(substr(pl, 1L, 1L)), substring(pl, 2L))
-    }
-  }, character(1)), collapse = " ")
-}
-
-.gp_cloud_tickers <- function(text) {
-  raw <- .gp_chr(text)
-  if (!nzchar(raw)) return(character(0))
-  m <- gregexpr("\\(([A-Za-z]{1,5})\\)", raw, perl = TRUE)
-  if (m[[1]][1] < 0L) return(character(0))
-  hits <- regmatches(raw, m)[[1]]
-  tok <- toupper(gsub("[()]", "", hits, perl = TRUE))
-  unique(tok[nchar(tok) >= 2L])
-}
-
-#' Short non-question title (a Kalshi/Polymarket outcome), else "".
-.gp_cloud_outcome_phrase <- function(title) {
-  raw <- trimws(.gp_chr(title))
-  if (!nzchar(raw) || nchar(raw) > 48L) return("")
-  low <- tolower(raw)
-  if (grepl("^(will|what|when|where|who|which|how|does|do|is|are|can|could|did)\\b", low)) {
-    return("")
-  }
-  raw <- gsub("[?.!]+$", "", raw)
-  raw <- gsub("\\s+", " ", trimws(raw))
-  low <- tolower(raw)
-  # Dates are contract timing, not keywords.
-  if (grepl("\\b(19|20)[0-9]{2}\\b", low)) return("")
-  if (grepl("\\b(january|february|march|april|may|june|july|august|september|october|november|december)\\b", low)) {
-    return("")
-  }
-  parts <- strsplit(raw, " ", fixed = TRUE)[[1]]
-  parts <- parts[nzchar(parts)]
-  if (!length(parts) || length(parts) > 4L) return("")
-  bare <- gsub("[^a-z0-9]", "", tolower(parts))
-  if (!length(bare) || all(vapply(bare, .gp_cloud_noise_token, logical(1)))) return("")
-  raw
-}
-
-.gp_cloud_add_words <- function(add, text) {
-  toks <- unique(.gp_title_tokens(text))
-  if (!length(toks)) return(invisible(NULL))
-  for (tok in toks) {
-    if (.gp_cloud_noise_token(tok)) next
-    if (nchar(tok) < 4L && !(tok %in% .GP_CLOUD_ACRONYMS)) next
-    lab <- .gp_cloud_word_label(tok)
-    if (nzchar(lab)) add(lab, "word", 1L)
-  }
-  invisible(NULL)
-}
-
-#' Keyword rows for the Company board cloud. Names, parenthetical tickers,
-#' short outcome phrases, and repeated content words — not full sentences.
-#' @return data.frame(term, n, kind, theme_id) ordered by weight.
-#' theme_id is the DOM id of the first matching company/theme chart.
+#' Company-name rows for the Company board cloud.
+#' One term per company-key theme card: the same label that card already shows.
+#' Tickers, outcome phrases, dates, verbs, and event-title cards stay out.
+#' @return data.frame(term, n, kind, theme_id) ordered by market count.
+#' theme_id is the DOM id of that company's chart.
 gp_company_cloud_terms <- function(pairs, max_terms = 40L) {
   max_terms <- max(1L, as.integer(max_terms)[1])
   empty <- data.frame(
@@ -2811,91 +2688,54 @@ gp_company_cloud_terms <- function(pairs, max_terms = 40L) {
     stringsAsFactors = FALSE
   )
   if (!is.list(pairs) || !length(pairs)) return(empty)
-  bag <- new.env(parent = emptyenv())
-  rank <- c(name = 1L, ticker = 2L, outcome = 3L, word = 4L)
-  theme_anchor <- ""
-  add <- function(term, kind, w = 1L) {
-    term <- trimws(.gp_chr(term))
-    kind <- .gp_chr(kind, "word")
-    if (!nzchar(term) || !(kind %in% names(rank))) return(invisible(NULL))
-    key <- tolower(gsub("\\s+", " ", term))
-    if (!nzchar(key)) return(invisible(NULL))
-    w <- suppressWarnings(as.integer(w)[1])
-    if (!is.finite(w) || w < 1L) w <- 1L
-    if (exists(key, envir = bag, inherits = FALSE)) {
-      cur <- bag[[key]]
-      cur$n <- cur$n + w
-      if (rank[[kind]] < rank[[cur$kind]]) {
-        cur$kind <- kind
-        cur$term <- term
-        # A company name owns its theme card, even if an earlier title mentioned it.
-        if (nzchar(theme_anchor)) cur$theme_id <- theme_anchor
-      }
-      bag[[key]] <- cur
-    } else {
-      bag[[key]] <- list(term = term, n = w, kind = kind, theme_id = theme_anchor)
-    }
-    invisible(NULL)
-  }
+  rows <- list()
   for (pr in pairs) {
-    if (!is.list(pr)) next
-    theme_anchor <- .gp_theme_dom_id(pr$theme_id)
-    frames <- list()
+    if (!is.list(pr) || !isTRUE(pr$company_named)) next
+    if (identical(.gp_chr(pr$theme_id), "_other")) next
+    label <- trimws(.gp_chr(pr$label))
+    if (!nzchar(label)) next
     n_mkt <- 0L
     for (vn in c("kalshi", "polymarket")) {
       q <- pr[[vn]]
-      if (is.data.frame(q) && nrow(q) > 0L) {
-        n_mkt <- n_mkt + nrow(q)
-        frames[[length(frames) + 1L]] <- q
-      }
+      if (is.data.frame(q) && nrow(q) > 0L) n_mkt <- n_mkt + nrow(q)
     }
     if (n_mkt < 1L) next
-    if (!identical(.gp_chr(pr$theme_id), "_other")) {
-      label <- .gp_cloud_pretty_name(pr$label)
-      if (nzchar(label)) add(label, "name", n_mkt)
-    }
-    for (q in frames) {
-      titles <- if ("title" %in% names(q)) as.character(q$title) else rep("", nrow(q))
-      events <- if ("event_title" %in% names(q)) as.character(q$event_title) else rep("", nrow(q))
-      for (i in seq_len(nrow(q))) {
-        title <- .gp_chr(titles[[i]])
-        ev <- .gp_chr(events[[i]])
-        for (tk in .gp_cloud_tickers(paste(title, ev))) add(tk, "ticker", 1L)
-        phrase <- .gp_cloud_outcome_phrase(title)
-        if (nzchar(phrase)) {
-          add(phrase, "outcome", 1L)
-        } else {
-          .gp_cloud_add_words(add, title)
-        }
-        .gp_cloud_add_words(add, ev)
-      }
-    }
+    rows[[length(rows) + 1L]] <- list(
+      term = label,
+      n = n_mkt,
+      kind = "name",
+      theme_id = .gp_theme_dom_id(pr$theme_id)
+    )
   }
-  keys <- ls(bag, all.names = TRUE)
-  if (!length(keys)) return(empty)
-  rows <- lapply(keys, function(k) bag[[k]])
+  if (!length(rows)) return(empty)
   term <- vapply(rows, function(x) .gp_chr(x$term), character(1))
   n <- vapply(rows, function(x) as.integer(x$n)[1], integer(1))
-  kind <- vapply(rows, function(x) .gp_chr(x$kind, "word"), character(1))
+  kind <- vapply(rows, function(x) .gp_chr(x$kind, "name"), character(1))
   theme_id <- vapply(rows, function(x) .gp_chr(x$theme_id), character(1))
-  keep <- kind %in% c("name", "ticker", "outcome") |
-    (kind == "word" & (n >= 2L | nchar(gsub("\\s+", "", term)) >= 5L))
-  if (!any(keep)) return(empty)
+  ord <- order(-n, tolower(term))
+  term <- term[ord]
+  n <- n[ord]
+  kind <- kind[ord]
+  theme_id <- theme_id[ord]
+  key <- tolower(gsub("\\s+", " ", term))
+  keep <- !duplicated(key) & nzchar(key)
   term <- term[keep]
   n <- n[keep]
   kind <- kind[keep]
   theme_id <- theme_id[keep]
-  kind_rank <- unname(rank[kind])
-  kind_rank[!is.finite(kind_rank)] <- 9L
-  ord <- order(-n, kind_rank, tolower(term))
-  if (length(ord) > max_terms) ord <- ord[seq_len(max_terms)]
+  if (length(term) > max_terms) {
+    term <- term[seq_len(max_terms)]
+    n <- n[seq_len(max_terms)]
+    kind <- kind[seq_len(max_terms)]
+    theme_id <- theme_id[seq_len(max_terms)]
+  }
   data.frame(
-    term = term[ord], n = n[ord], kind = kind[ord], theme_id = theme_id[ord],
+    term = term, n = n, kind = kind, theme_id = theme_id,
     stringsAsFactors = FALSE
   )
 }
 
-#' Company keyword cloud. Honest empty when the loaded market set has no terms.
+#' Company-name cloud. Honest empty when no company-key card is loaded.
 gp_company_word_cloud_ui <- function(pairs, locale = "en") {
   locale <- .gp_chr(locale, "en")
   label <- htmltools::tags$p(

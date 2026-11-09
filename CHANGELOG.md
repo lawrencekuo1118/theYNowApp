@@ -1,3 +1,8 @@
+## [v28.41] — 2026-11-09 · Company cloud keeps company names
+
+- zh-TW：全球預測 Company 的文字雲只留公司主題卡的名稱（與卡片相同的公司名；卡片本身以代碼為標題時才顯示該代碼）。結果詞、日期、動詞、問句，以及沒有公司鍵的事件標題卡都不進雲。點選公司名仍捲到該公司的圖。
+- en-US: The Global Prediction Company cloud lists only company-card names — the same label as that company's theme card, or the ticker when the card itself is titled with the ticker. Outcomes, dates, verbs, question text, and event-title cards with no company key stay out. Clicking a name still scrolls to that company's chart.
+
 ## [v28.40] — 2026-11-09 · Global Prediction themes follow the crawl
 
 - zh-TW：全球預測的主題卡只在 Kalshi／Polymarket 擷取結果有對應市場時出現。Economic／Finance 的標題用該次擷取的事件名稱。Company 仍是一家公司一張卡，標題用市場文字裡的公司名；對不到公司的市場改以事件名稱自成一張卡。沒有市場就留白。圖表排版、關鍵字雲、Daily／Hourly 篩選不變。介面固定文字維持 en-US／zh-TW；市場標題沿用來源文字。
