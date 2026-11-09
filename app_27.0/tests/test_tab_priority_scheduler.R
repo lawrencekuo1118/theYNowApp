@@ -60,6 +60,11 @@ test_that("a non-company tab never opens the statement progress toast", {
   expect_match(server_src, "ynow_statement_crawl_wanted", fixed = TRUE)
   expect_match(
     server_src,
+    "hist_stock_data <- reactive\\(\\{[\\s\\S]{0,240}ynow_statement_crawl_wanted",
+    perl = TRUE
+  )
+  expect_match(
+    server_src,
     "later::later[\\s\\S]{0,500}phase2_after_yahoo",
     perl = TRUE
   )

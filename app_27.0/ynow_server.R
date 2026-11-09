@@ -46,6 +46,16 @@ ynow_tab_priority_plan <- function(tab, ticker_tabs) {
   )
 }
 
+# Yahoo annual / TPEx quarterly crawl belongs to company and valuation tabs.
+# A remembered ticker on Global Prediction must not start it.
+ynow_statement_crawl_wanted <- function(tab, statement_tabs) {
+  tab <- if (is.null(tab) || !length(tab)) "" else as.character(tab)[1]
+  if (is.na(tab) || !nzchar(tab)) return(FALSE)
+  if (identical(tab, "business_breakdown_lab")) tab <- "company_advance"
+  statement_tabs <- if (is.null(statement_tabs)) character() else as.character(statement_tabs)
+  isTRUE(tab %in% statement_tabs)
+}
+
 # Stock Prospecting first-open schedule: shell + snapshot first; stagger crawls.
 # Pure helper so Ranking paint is not serialized behind Industry mcap refresh.
 ynow_bluechip_first_load_plan <- function(has_ind_mcap_upside = FALSE,
@@ -185,6 +195,9 @@ server <- function(input, output, session) {
   ticker_search_gen <- reactiveVal(0L)
   # Gen value that means "drop the in-flight Search, do not fetch again".
   ticker_search_discard_gen <- reactiveVal(NA_integer_)
+  # Search was requested while a non-company tab was visible. Run it once
+  # the user opens a company or valuation tab.
+  statement_crawl_deferred <- reactiveVal(FALSE)
   .ynow_search_gen_is_discard <- function() {
     g <- suppressWarnings(as.integer(isolate(ticker_search_gen()) %||% 0L)[1])
     d <- suppressWarnings(as.integer(isolate(ticker_search_discard_gen()))[1])
@@ -5048,6 +5061,16 @@ server <- function(input, output, session) {
     if (!nzchar(tab) || is.na(tab)) return()
     plan <- ynow_tab_priority_plan(tab, .ynow_ticker_refresh_tabs)
     .ynow_cancel_other_tab_work(plan$tab)
+    if (!isTRUE(ynow_statement_crawl_wanted(plan$tab, .ynow_ticker_refresh_tabs))) {
+      return()
+    }
+    if (!isTRUE(isolate(statement_crawl_deferred()))) return()
+    tk <- tryCatch(as.character(isolate(current_ticker()) %||% "")[1], error = function(e) "")
+    if (!nzchar(tk) || is.na(tk)) return()
+    .ynow_log("statement crawl resume on ", plan$tab, " ticker=", tk)
+    statement_crawl_deferred(FALSE)
+    ticker_search_discard_gen(NA_integer_)
+    ticker_search_gen(isolate(as.integer(ticker_search_gen()) %||% 0L) + 1L)
   }, ignoreNULL = TRUE, ignoreInit = TRUE, priority = 1000)
   observeEvent(input$ynow_tab_refresh, {
     payload <- input$ynow_tab_refresh
@@ -5645,6 +5668,10 @@ server <- function(input, output, session) {
   .tw_two_fallback_tried_for <- reactiveVal(NA_character_)
 
   observeEvent(list(current_ticker(), ticker_search_gen()), {
+    .ynow_statement_crawl_on_tab <- function() {
+      tab <- as.character(isolate(input$sidebar_tabs) %||% "")[1]
+      isTRUE(ynow_statement_crawl_wanted(tab, .ynow_ticker_refresh_tabs))
+    }
     if (isTRUE(.ynow_search_gen_is_discard())) {
       # Focus cancel bumps gen without a replacement fetch. Clear busy here
       # because .search_done would keep the flag when the ticker is unchanged.
@@ -5656,6 +5683,17 @@ server <- function(input, output, session) {
       return()
     }
     req(current_ticker())
+    if (!isTRUE(.ynow_statement_crawl_on_tab())) {
+      .ynow_log("statement crawl deferred; tab=", isolate(input$sidebar_tabs), " ticker=", current_ticker())
+      statement_crawl_deferred(TRUE)
+      tryCatch(ticker_search_busy(FALSE), error = function(e) NULL)
+      tryCatch(
+        .ynow_set_tab_busy(.ynow_busy_tab_now("dashboard"), FALSE),
+        error = function(e) NULL
+      )
+      return()
+    }
+    statement_crawl_deferred(FALSE)
     # 換股票：回到基礎設定連動，讓新 Summary／Unlever 路徑可自動帶入 CAPM
     capm_beta_dirty(FALSE)
     beta_capm_driver("gs")
@@ -5995,7 +6033,7 @@ server <- function(input, output, session) {
     }
 
     .run_search_phase2 <- function(prog, sum_df, q_ccy, f_ccy) {
-      if (!isTRUE(.search_alive())) {
+      if (!isTRUE(.search_alive()) || !isTRUE(.ynow_statement_crawl_on_tab())) {
         tryCatch(prog$close(), error = function(e) NULL)
         .search_done()
         return(invisible(NULL))
@@ -6005,6 +6043,13 @@ server <- function(input, output, session) {
         incProgress(0.5, detail = "正在擷取財報明細（yfinance）...")
         # cached_scrape_financials already runs normalize_all_financials — do not re-normalize
         res <- cached_scrape_financials(stock_code)
+
+        .phase2_after_yahoo <- function(res) {
+        if (!isTRUE(.search_alive()) || !isTRUE(.ynow_statement_crawl_on_tab())) {
+          tryCatch(prog$close(), error = function(e) NULL)
+          .search_done()
+          return(invisible(NULL))
+        }
 
         # Notify when ADR quoted ticker had empty Yahoo statements and we used
         # the HTCDI local ordinary listing (config-driven, not ticker-hardcoded).
@@ -6139,6 +6184,25 @@ server <- function(input, output, session) {
         } else {
           nxt()
         }
+        return(invisible(NULL))
+        }
+
+        if (requireNamespace("later", quietly = TRUE)) {
+          later::later(ynow_session_callback(session, function() {
+            tryCatch(.phase2_after_yahoo(res), error = function(e) {
+              fs_all_empty(FALSE)
+              showNotification(
+                .ui_msg("notif_fetch_fail", err = e$message),
+                type = "error",
+                duration = 12
+              )
+              tryCatch(prog$close(), error = function(e2) NULL)
+              .search_done()
+            })
+          }), delay = 0)
+          return(invisible(NULL))
+        }
+        .phase2_after_yahoo(res)
         return(invisible(NULL))
 
       }, error = function(e) {
@@ -9318,6 +9382,8 @@ server <- function(input, output, session) {
   # --- 歷史股價：process-global TTL cache（多 session 共用，Starter 省 RAM／Yahoo）
   hist_stock_data <- reactive({
     req(current_ticker())
+    tab <- as.character(input$sidebar_tabs %||% "")[1]
+    req(isTRUE(ynow_statement_crawl_wanted(tab, .ynow_ticker_refresh_tabs)))
     tk <- toupper(trimws(current_ticker()))
     df_final <- tryCatch(
       ynow_cached_hist_stock_trim(tk),
