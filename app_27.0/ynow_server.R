@@ -809,13 +809,24 @@ server <- function(input, output, session) {
     )
   }, ignoreInit = TRUE)
 
-  # Client/post-login asks server to re-run the last ticker search.
+  # Signed-in resume / post-login may restore the last ticker into the search
+  # box only. Yahoo annual and TPEx quarterly start on Search or a saved-ticker
+  # tap — never from restore alone, even when a company tab is already visible.
   observeEvent(input$ynow_auth_restore_ticker, {
     tk <- as.character(input$ynow_auth_restore_ticker %||% "")[1]
     if (!nzchar(tk)) return()
     logged <- tryCatch(isTRUE(ynow_auth$is_logged_in()), error = function(e) FALSE)
     if (!isTRUE(logged)) return()
-    tryCatch(.ynow_fire_ticker_search(tk, goto_tab = NULL), error = function(e) NULL)
+    mode <- tryCatch(
+      normalize_market_mode(isolate(market_mode())),
+      error = function(e) "US"
+    )
+    disp <- tryCatch(
+      display_ticker_for_market(tk, mode),
+      error = function(e) tk
+    )
+    tryCatch(updateTextInput(session, "sc", value = disp), error = function(e) NULL)
+    .ynow_log("signed-in restore fills sc only; no statement crawl for ", tk)
   }, ignoreInit = TRUE)
   .ynow_pinned_sync_guest_client <- function(pins) {
     tryCatch(
