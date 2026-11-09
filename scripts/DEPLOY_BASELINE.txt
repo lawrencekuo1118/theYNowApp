@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12797922
+bundleId=12797972
 appId=10907657
 url=https://[REDACTED].shinyapps.io/TheYNowApp/  # pragma: allowlist secret
-aligned_git=128d8620b75652f29b6aaf18ff57395119ec0cd0
-commit=128d8620b75652f29b6aaf18ff57395119ec0cd0
-short=128d8620
-message=chore: bump display version to v28.42
-captured_at=2026-11-09T11:05:00Z
-display_version=v28.42
-note=Shipped v28.42 (+0.01) via deploy_app_21.R. Global Prediction no longer starts the Yahoo annual or TPEx quarterly crawl for the last ticker (PR #732). Live status=running; rsconnect bundleId=12797922. Prior: v28.41=#731 (12797800), v28.40=#730 (12797548), v28.39=#729 (12796407).
+aligned_git=55e1805de004a16ad9e29745dbd5a053b52cd1bc
+commit=55e1805de004a16ad9e29745dbd5a053b52cd1bc
+short=55e1805d
+message=chore: bump display version to v28.43
+captured_at=2026-11-09T11:10:00Z
+display_version=v28.43
+note=Shipped v28.43 (+0.01) via deploy_app_21.R. Signed-in restore fills the search box only; Yahoo/OTC wait for Search or a saved-ticker tap. GP deferral kept (PR #732). Live status=running; rsconnect bundleId=12797972. Prior: v28.42=#732 (12797922), v28.41=#731 (12797800), v28.40=#730 (12797548).
