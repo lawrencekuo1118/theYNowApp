@@ -1648,6 +1648,9 @@ locale_for_market <- function(mode = get_market_mode()) {
       "not a survey of the whole investing public."
     ),
     gp_refresh = "Refresh quotes",
+    gp_company_cloud_label = "Keywords",
+    gp_company_cloud_empty = "No keywords from the loaded company markets.",
+    gp_company_cloud_jump = "Show the matching chart",
     gp_loading = "Loading crowd quotes…",
     gp_updated = "Last updated (UTC): {stamp}",
     gp_updated_none = "Not updated yet",
@@ -6623,6 +6626,9 @@ locale_for_market <- function(mode = get_market_mode()) {
       "不是全體投資人的民意調查。"
     ),
     gp_refresh = "更新報價",
+    gp_company_cloud_label = "關鍵字",
+    gp_company_cloud_empty = "目前沒有已載入公司市場的關鍵字。",
+    gp_company_cloud_jump = "顯示對應圖表",
     gp_loading = "正在載入群眾報價…",
     gp_updated = "上次更新（UTC）：{stamp}",
     gp_updated_none = "尚未更新",

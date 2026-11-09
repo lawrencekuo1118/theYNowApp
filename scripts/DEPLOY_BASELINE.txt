@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12795058
+bundleId=12796192
 appId=10907657
 url=https://[REDACTED].shinyapps.io/TheYNowApp/  # pragma: allowlist secret
-aligned_git=42fe8d17f93395ce4809a6eac035590d98e79be7
-commit=42fe8d17f93395ce4809a6eac035590d98e79be7
-short=42fe8d17
-message=chore: bump display version to v28.37
-captured_at=2026-11-08T17:29:49Z
-display_version=v28.37
-note=Shipped v28.37 (+0.01) via deploy_app_21.R. Global Prediction Company uses Economic theme cards (one card per company) with the shared chart grid (PR #726). Live status=running; rsconnect bundleId=12795058. Prior: v28.36=#725 (12794881), v28.35=#724 (12794795), v28.34=#721/#723 (12794108).
+aligned_git=620660c1d58f1843e8fa66fa2b7d1cfb2e382453
+commit=620660c1d58f1843e8fa66fa2b7d1cfb2e382453
+short=620660c1
+message=chore: bump display version to v28.38
+captured_at=2026-11-09T01:49:36Z
+display_version=v28.38
+note=Shipped v28.38 (+0.01) via deploy_app_21.R. Global Prediction Company keyword cloud under Refresh quotes, above the source line and first chart; a click scrolls to the matching company theme (PR #728). Live status=running; rsconnect bundleId=12796192. Prior: v28.37=#726/#727 (12795058), v28.36=#725 (12794881), v28.35=#724 (12794795).
