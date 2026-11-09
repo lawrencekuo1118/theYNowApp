@@ -1,3 +1,8 @@
+## [v28.40] — 2026-11-09 · Global Prediction themes follow the crawl
+
+- zh-TW：全球預測的主題卡只在 Kalshi／Polymarket 擷取結果有對應市場時出現。Economic／Finance 的標題用該次擷取的事件名稱。Company 仍是一家公司一張卡，標題用市場文字裡的公司名；對不到公司的市場改以事件名稱自成一張卡。沒有市場就留白。圖表排版、關鍵字雲、Daily／Hourly 篩選不變。介面固定文字維持 en-US／zh-TW；市場標題沿用來源文字。
+- en-US: Global Prediction shows a theme card only when the Kalshi or Polymarket fetch returned markets for it. Economic and Finance titles are the fetched event names. Company stays one card per company, titled with the company name as written in those markets. A market with no company is its own card, named from the event. No markets means the existing empty line. Chart layout, the keyword cloud, and the Daily/Hourly filters stay. Chrome stays en-US and zh-TW. Market titles stay in the crawl language.
+
 ## [v28.39] — 2026-11-09 · Global Prediction drops disclaimer paragraphs
 
 - zh-TW：全球預測拿掉與使用或評估投資無關的說明段（版塊介紹、群眾智慧、對照方式、風險警語、「兩市群眾一致」的參與者說明，以及資料來源說明段）。圖表、更新報價、關鍵字雲與主題卡保留。兩市簡單平均只留短標籤。
