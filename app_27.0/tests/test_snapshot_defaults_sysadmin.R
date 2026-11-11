@@ -19,7 +19,10 @@ if (!grepl("app_27.0$", app_dir)) {
   app_dir <- normalizePath(".", mustWork = TRUE)
 }
 
-ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+source(file.path(app_dir, "tests", "ynow_test_sources.R"))
+src <- ynow_test_ui_sources(app_dir)
+ui <- src$ui
+shipped <- src$shipped
 srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 
 source(file.path(app_dir, "ui_locale.R"), local = FALSE)
@@ -46,20 +49,21 @@ check("locale page help mentions unlock zh-TW", {
 
 check("Lite omits snap_defaults; Full guest lock chrome", {
   # Prefs: Lite hides snap_defaults entirely; Full non-sysadmin keeps tab + lock glyph.
+  # Selectors are unescaped in ynow_chrome.css.
   grepl(
     'body.ynow-lite #snapshot_report > li:has(> a[data-value="snap_defaults"])',
-    ui,
+    shipped,
     fixed = TRUE
   ) &&
-    grepl("ynow-snap-tab-lock", ui, fixed = TRUE) &&
+    grepl("ynow-snap-tab-lock", shipped, fixed = TRUE) &&
     grepl(
       'body:not(.ynow-lite):not(.ynow-sysadmin-on) #snapshot_report a[data-value="snap_defaults"] > i:not(.ynow-snap-tab-lock)',
-      ui,
+      shipped,
       fixed = TRUE
     ) &&
     grepl(
       'body:not(.ynow-sysadmin-on) #shiny-tab-snap_defaults .ynow-snap-defaults-locked',
-      ui,
+      shipped,
       fixed = TRUE
     )
 })
@@ -75,18 +79,18 @@ check("ui has locked placeholder", {
     grepl("ynow-snap-defaults-body", ui, fixed = TRUE)
 })
 check("locked placeholder uses mono gate palette", {
-  grepl("--ynow-gate-accent", ui, fixed = TRUE) &&
-    grepl("ynow-gate-callout", ui, fixed = TRUE) &&
-    grepl("ynow-snap-defaults-locked", ui, fixed = TRUE) &&
-    !grepl("\\.ynow-snap-defaults-locked[^}]*#fff8e6", ui) &&
-    !grepl("\\.ynow-snap-defaults-locked[^}]*#e0a800", ui) &&
-    !grepl("\\.ynow-snap-defaults-locked[^}]*#f0d78c", ui)
+  grepl("--ynow-gate-accent", shipped, fixed = TRUE) &&
+    grepl("ynow-gate-callout", shipped, fixed = TRUE) &&
+    grepl("ynow-snap-defaults-locked", shipped, fixed = TRUE) &&
+    !grepl("\\.ynow-snap-defaults-locked[^}]*#fff8e6", shipped) &&
+    !grepl("\\.ynow-snap-defaults-locked[^}]*#e0a800", shipped) &&
+    !grepl("\\.ynow-snap-defaults-locked[^}]*#f0d78c", shipped)
 })
 check("access-locked pane callout is mono", {
-  grepl("ynow-access-locked-pane::before", ui, fixed = TRUE) &&
-    grepl("--ynow-gate-bg", ui, fixed = TRUE) &&
-    !grepl("ynow-access-locked-pane::before[^}]*#fff8e6", ui) &&
-    !grepl("ynow-access-locked-pane::before[^}]*#e0c36a", ui)
+  grepl("ynow-access-locked-pane::before", shipped, fixed = TRUE) &&
+    grepl("--ynow-gate-bg", shipped, fixed = TRUE) &&
+    !grepl("ynow-access-locked-pane::before[^}]*#fff8e6", shipped) &&
+    !grepl("ynow-access-locked-pane::before[^}]*#e0c36a", shipped)
 })
 check("ui applyUiLocale wired for locked msg", {
   grepl("ynow_snapshot_defaults_locked_msg", ui, fixed = TRUE) &&
@@ -94,22 +98,23 @@ check("ui applyUiLocale wired for locked msg", {
 })
 check("js ensureLite prefers free Snapshot tabs", {
   # Lite omits snap_defaults; helper aliases keep old name for callers.
-  grepl("ensureLiteSnapshotFreeTab", ui, fixed = TRUE) &&
-    grepl("ensureLiteSnapshotDefaultsTab = ensureLiteSnapshotFreeTab", ui, fixed = TRUE) &&
-    grepl("Lite omits snap_defaults entirely", ui, fixed = TRUE) &&
+  grepl("ensureLiteSnapshotFreeTab", shipped, fixed = TRUE) &&
+    grepl("ensureLiteSnapshotDefaultsTab = ensureLiteSnapshotFreeTab", shipped, fixed = TRUE) &&
+    grepl("Lite omits snap_defaults entirely", shipped, fixed = TRUE) &&
     !grepl(
       "if (!document.body.classList.contains('ynow-sysadmin-on')) return;",
-      ui,
+      shipped,
       fixed = TRUE
     )
 })
 check("js exit sysadmin leaves snap_defaults", {
-  grepl("ynowSysadminMode", ui, fixed = TRUE) &&
-    grepl("Leaving sysadmin: leave APP_DEFAULTS", ui, fixed = TRUE) &&
-    grepl("snap_defaults", ui, fixed = TRUE) &&
-    (grepl('a[data-value=\\"snap_current\\"]', ui, fixed = TRUE) ||
-      grepl("data-value=\\\"snap_current\\\"", ui, fixed = TRUE) ||
-      grepl("snap_current", ui, fixed = TRUE))
+  leave <- regexpr("Leaving sysadmin: leave APP_DEFAULTS", shipped, fixed = TRUE)[1]
+  start <- if (leave > 0) max(1L, leave - 240L) else 0L
+  chunk <- if (leave > 0) substr(shipped, start, min(nchar(shipped), leave + 700L)) else ""
+  grepl("ynowSysadminMode", shipped, fixed = TRUE) &&
+    grepl("snap_defaults", chunk, fixed = TRUE) &&
+    grepl('data-value="snap_current"', chunk, fixed = TRUE) &&
+    grepl('data-value="snap_audit"', chunk, fixed = TRUE)
 })
 check("server gates defaults_table on sysadmin", {
   grepl("output$defaults_table", srv, fixed = TRUE) &&

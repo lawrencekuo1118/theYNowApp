@@ -4885,6 +4885,7 @@ server <- function(input, output, session) {
       sensitivity = function() .ynow_page_ui_sensitivity(),
       smart_analysis = function() .ynow_page_ui_smart_analysis(),
       company_advance = function() .ynow_page_ui_company_advance(),
+      snapshot = function() .ynow_page_ui_snapshot(),
       price_alerts = function() price_alert_tab_body_ui()
     ),
     on_first_mount = list(

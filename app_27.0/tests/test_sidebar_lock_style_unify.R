@@ -22,7 +22,9 @@ check <- function(label, cond) {
   }
 }
 
-ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+source(file.path(app_dir, "tests", "ynow_test_sources.R"))
+# Lock CSS and ynowEnsureAtxLockPromo live in the extracted www assets.
+ui <- ynow_test_ui_sources(app_dir)$shipped
 auth <- paste(readLines(file.path(app_dir, "auth_account.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 
 source(file.path(app_dir, "auth_account.R"), local = TRUE)

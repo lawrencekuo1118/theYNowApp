@@ -25,6 +25,26 @@ check <- function(label, cond) {
 ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 auth <- paste(readLines(file.path(app_dir, "auth_account.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 
+asset_files <- c("ynow_chrome.css", "ynow_app.js", "ynow_widgets.css")
+for (name in asset_files) {
+  path <- file.path(app_dir, "www", name)
+  sz <- if (file.exists(path)) file.info(path)$size else NA_real_
+  check(paste0(name, " exists and is non-trivial"), isTRUE(sz >= 1024))
+}
+check("ynow_ui links chrome CSS, app JS, and widget CSS with a cache-bust query", {
+  grepl("ynow_chrome.css?v=", ui, fixed = TRUE) &&
+    grepl("ynow_app.js?v=", ui, fixed = TRUE) &&
+    grepl("ynow_widgets.css?v=", ui, fixed = TRUE)
+})
+check("first-paint monochrome chrome is the stylesheet, not an inline block", {
+  !grepl("YNOW monochrome chrome", ui, fixed = TRUE) &&
+    grepl(
+      "YNOW monochrome chrome",
+      paste(readLines(file.path(app_dir, "www", "ynow_chrome.css"), warn = FALSE, encoding = "UTF-8"), collapse = "\n"),
+      fixed = TRUE
+    )
+})
+
 # Extract .valuation_methodology_section_ui body (until next top-level assign at col 1)
 meth_start <- regexpr("\\.valuation_methodology_section_ui\\s*<-\\s*function", ui, perl = TRUE)[1]
 check("methodology section exists", meth_start > 0L)

@@ -144,8 +144,15 @@ testthat::test_that("Lite locale keys exist in en and zh-TW", {
 })
 
 testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hooks", {
-  ui_path <- file.path("..", "ynow_ui.R")
-  txt <- paste(readLines(ui_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  app_dir <- if (file.exists("ynow_ui.R")) {
+    normalizePath(".", winslash = "/", mustWork = TRUE)
+  } else {
+    normalizePath("..", winslash = "/", mustWork = TRUE)
+  }
+  source(file.path(app_dir, "tests", "ynow_test_sources.R"))
+  src <- ynow_test_ui_sources(app_dir)
+  ui_builder <- src$ui
+  txt <- src$shipped
   testthat::expect_true(grepl("ynow_lite_toggle", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow_home_lite_toggle", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-lite-toggle", txt, fixed = TRUE))
@@ -224,8 +231,12 @@ testthat::test_that("ynow_ui wires Lite toggle, Smart Analysis tab, and CSS hook
   testthat::expect_true(grepl("ynow-lab-cluster-focus-run", txt, fixed = TRUE))
   testthat::expect_true(grepl("ynow-lab-cluster-run-wrap", txt, fixed = TRUE))
   cluster_tab <- regmatches(
-    txt,
-    regexpr('value = "im_cluster"[\\s\\S]*?value = "im_screener"', txt, perl = TRUE)
+    ui_builder,
+    regexpr(
+      "\\.ynow_page_ui_bluechip_cluster\\s*<-\\s*function[\\s\\S]*?\\n\\}",
+      ui_builder,
+      perl = TRUE
+    )
   )
   testthat::expect_true(length(cluster_tab) == 1L && nzchar(cluster_tab[[1]]))
   ct <- cluster_tab[[1]]
@@ -999,16 +1010,26 @@ testthat::test_that("Lite auto-calc runs Multiples as Reference (not secondary)"
 })
 
 testthat::test_that("mobile notification panel CSS stays visible", {
-  ui_path <- file.path("..", "ynow_ui.R")
-  txt <- paste(readLines(ui_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  app_dir <- if (file.exists("ynow_ui.R")) {
+    normalizePath(".", winslash = "/", mustWork = TRUE)
+  } else {
+    normalizePath("..", winslash = "/", mustWork = TRUE)
+  }
+  source(file.path(app_dir, "tests", "ynow_test_sources.R"))
+  txt <- ynow_test_ui_sources(app_dir)$shipped
   testthat::expect_true(grepl("#shiny-notification-panel", txt, fixed = TRUE))
   testthat::expect_true(grepl("z-index: 20000", txt, fixed = TRUE))
   testthat::expect_true(grepl("bottom: 12px", txt, fixed = TRUE))
 })
 
 testthat::test_that("mobile TW header uses black bar not flag", {
-  ui_path <- file.path("..", "ynow_ui.R")
-  txt <- paste(readLines(ui_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  app_dir <- if (file.exists("ynow_ui.R")) {
+    normalizePath(".", winslash = "/", mustWork = TRUE)
+  } else {
+    normalizePath("..", winslash = "/", mustWork = TRUE)
+  }
+  source(file.path(app_dir, "tests", "ynow_test_sources.R"))
+  txt <- ynow_test_ui_sources(app_dir)$shipped
   # Desktop still references the ROC flag asset
   testthat::expect_true(grepl("roc_flag.svg", txt, fixed = TRUE))
   # Mobile block disables TW flag layers and keeps ink black header

@@ -33,7 +33,10 @@ check <- function(label, cond) {
 
 src <- function(...) paste(readLines(file.path(root, ...), warn = FALSE), collapse = "\n")
 
-ui <- src("ynow_ui.R")
+source(file.path(root, "tests", "ynow_test_sources.R"), local = TRUE)
+ui_bundle <- ynow_test_ui_sources(root)
+ui <- ui_bundle$ui
+shipped <- ui_bundle$shipped
 loc <- src("ui_locale.R")
 vg <- src("valuation_guard.R")
 sotp <- src("sotp_module.R")
@@ -43,10 +46,11 @@ check(
   grepl('ynow_menu_cat_meta', ui, fixed = TRUE) &&
     grepl("Appr. Meta-Framework", ui, fixed = TRUE)
 )
+# TAB_PARENT map lives in www/ynow_app.js after first-paint extract (YN-120).
 check(
   "SOTP parent is meta (not relative)",
-  grepl("sotp_calculator: 'ynow_menu_cat_meta'", ui, fixed = TRUE) &&
-    !grepl("sotp_calculator: 'ynow_menu_cat_relative'", ui, fixed = TRUE)
+  grepl("sotp_calculator: 'ynow_menu_cat_meta'", shipped, fixed = TRUE) &&
+    !grepl("sotp_calculator: 'ynow_menu_cat_relative'", shipped, fixed = TRUE)
 )
 check(
   "relative menu no longer nests SOTP",

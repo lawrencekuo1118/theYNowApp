@@ -413,12 +413,15 @@ js_src <- paste(readLines(file.path(app, "www/parameter_completeness.js"),
                            warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 ui_src <- paste(readLines(file.path(app, "ynow_ui.R"),
                           warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+# Footnote chrome CSS lives in www/ynow_widgets.css after first-paint extract (YN-120).
+source(file.path(app, "tests", "ynow_test_sources.R"), local = TRUE)
+shipped_ui <- ynow_test_ui_sources(app)$shipped
 srv_src2 <- paste(readLines(file.path(app, "ynow_server.R"),
                             warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 stopifnot(
   grepl("message\\.assumptions", js_src),
   grepl("ynow-lite-assumption-footnotes", js_src),
-  grepl("ynow-lite-assumption-footnotes", ui_src),
+  grepl("ynow-lite-assumption-footnotes", shipped_ui),
   grepl("smart_analysis_assumption_notes", ui_src),
   grepl("output\\$smart_analysis_assumption_notes", srv_src2),
   grepl("ynow_lite_assumption_footnotes_ui", srv_src2),

@@ -29,7 +29,9 @@ check <- function(label, expr) {
   invisible(ok)
 }
 
-ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+source(file.path(app_dir, "tests", "ynow_test_sources.R"), local = TRUE)
+# Control-panel CSS/JS live in www after first-paint extract; markup stays in ynow_ui.R.
+ui <- ynow_test_ui_sources(app_dir)$shipped
 srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 loc <- paste(readLines(file.path(app_dir, "ui_locale.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 

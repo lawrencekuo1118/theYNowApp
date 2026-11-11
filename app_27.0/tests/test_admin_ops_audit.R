@@ -128,7 +128,9 @@ check("action labels exist for en and zh-TW", {
 })
 
 # --- UI / i18n static checks ---
-ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+# Ops-tab CSS + applyUiLocale wiring live in www after first-paint extract (YN-120).
+source(file.path(app_dir, "tests", "ynow_test_sources.R"), local = TRUE)
+ui <- ynow_test_ui_sources(app_dir)$shipped
 srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 loc <- paste(readLines(file.path(app_dir, "ui_locale.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 glb <- paste(readLines(file.path(app_dir, "global.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
@@ -214,14 +216,16 @@ check("server logs required mutation paths", {
 })
 
 check("locale applyUiLocale wires audit tab labels", {
-  grepl("ynow_admin_ops_tab_label", ui, fixed = TRUE) &&
+  # Label element ids are server-rendered; applyUiLocale key writes are in ynow_app.js.
+  grepl("ynow_admin_ops_tab_label", srv, fixed = TRUE) &&
+    grepl("ynow_admin_ops_controls_tab_label", srv, fixed = TRUE) &&
     grepl("admin_ops_tab", ui, fixed = TRUE) &&
-    grepl("ynow_admin_ops_controls_tab_label", ui, fixed = TRUE)
+    grepl("admin_ops_controls_tab", ui, fixed = TRUE)
 })
 
 check("no delete/clear buttons in audit pane markup ids", {
-  !grepl("ynow_admin_ops_clear", ui, fixed = TRUE) &&
-    !grepl("ynow_admin_ops_delete", ui, fixed = TRUE) &&
+  !grepl("ynow_admin_ops_clear", srv, fixed = TRUE) &&
+    !grepl("ynow_admin_ops_delete", srv, fixed = TRUE) &&
     !grepl("admin_ops_clear_btn", loc, fixed = TRUE) &&
     !grepl("admin_ops_delete_btn", loc, fixed = TRUE)
 })
