@@ -145,7 +145,9 @@ check("Lab body ACL label stays ACL-specific", {
   identical(ynow_access_label("section:backtest_body", "en"), "Quant Backtest Lab body")
 })
 
-ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+source(file.path(app_dir, "tests", "ynow_test_sources.R"))
+# Lock JS (ynowEnsureAtxLockPromo) and lock CSS live in the extracted www assets.
+ui <- ynow_test_ui_sources(app_dir)$shipped
 srv <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 loc <- paste(readLines(file.path(app_dir, "ui_locale.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check("ui marks shared bridge", grepl("section:shared_bridge", ui, fixed = TRUE))

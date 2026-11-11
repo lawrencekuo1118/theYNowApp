@@ -25,7 +25,10 @@ check <- function(label, cond) {
 }
 
 source(file.path(app_dir, "auth_account.R"), local = TRUE, encoding = "UTF-8")
-ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+source(file.path(app_dir, "tests", "ynow_test_sources.R"))
+src <- ynow_test_ui_sources(app_dir)
+ui <- src$ui
+shipped <- src$shipped
 css <- ynow_sidebar_lite_omit_css()
 omit <- ynow_sidebar_lite_omit_tabs()
 guest <- ynow_sidebar_guest_lock_tabs()
@@ -94,28 +97,28 @@ check(
   "hardcoded Lite model-hide block removed (get_started list)",
   !grepl(
     'body.ynow-lite .sidebar-menu a\\[data-value="get_started"\\],\\s*\n\\s*body.ynow-lite .sidebar-menu li:has\\(> a\\[data-value="get_started"\\]\\),\\s*\n\\s*body.ynow-lite .sidebar-menu li:has\\(a\\[data-value="nav_calculator"\\]\\)',
-    ui
+    shipped
   )
 )
 check(
   "Lite still shows Smart Analysis",
   grepl(
     'body.ynow-lite .sidebar-menu a[data-value="smart_analysis"]',
-    ui,
+    shipped,
     fixed = TRUE
-  ) && grepl("display: block !important", ui, fixed = TRUE)
+  ) && grepl("display: block !important", shipped, fixed = TRUE)
 )
 check(
   "Lite Snapshot only hides snap_defaults (not audit/current)",
-  grepl('data-value="snap_defaults"', ui, fixed = TRUE) &&
+  grepl('data-value="snap_defaults"', shipped, fixed = TRUE) &&
     !grepl(
       'body.ynow-lite #snapshot_report > li:has(> a[data-value="snap_audit"])',
-      ui,
+      shipped,
       fixed = TRUE
     ) &&
     !grepl(
       'body.ynow-lite #snapshot_report > li:has(> a[data-value="snap_current"])',
-      ui,
+      shipped,
       fixed = TRUE
     )
 )

@@ -36,10 +36,12 @@ testthat::test_that("UI shells use lazy hosts for heavy tabs", {
     "ynow_lazy_host_feedback",
     "ynow_lazy_host_sensitivity",
     "ynow_lazy_host_smart_analysis",
-    "ynow_lazy_host_company_advance"
+    "ynow_lazy_host_company_advance",
+    "ynow_lazy_host_snapshot"
   )) {
     testthat::expect_true(grepl(sprintf('uiOutput("%s")', host), ui_txt, fixed = TRUE), info = host)
   }
+  testthat::expect_true(grepl("\\.ynow_page_ui_snapshot\\s*<-\\s*function", ui_txt, perl = TRUE))
   testthat::expect_true(grepl("\\.ynow_page_ui_bluechip\\s*<-\\s*function", ui_txt, perl = TRUE))
   testthat::expect_true(grepl("\\.ynow_page_ui_lab_notes\\s*<-\\s*function", ui_txt, perl = TRUE))
   testthat::expect_true(grepl("\\.ynow_page_ui_about\\s*<-\\s*function", ui_txt, perl = TRUE))
@@ -56,6 +58,28 @@ testthat::test_that("decision checklist body is lazy-hosted", {
   dc_txt <- paste(readLines("decision_checklist_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   testthat::expect_true(grepl("decision_checklist_tab_body_ui", dc_txt, fixed = TRUE))
   testthat::expect_true(grepl('uiOutput("ynow_lazy_host_decision_checklist")', dc_txt, fixed = TRUE))
+})
+
+testthat::test_that("snapshot body is lazy; lock promo templates stay in eager chrome", {
+  ui_txt <- paste(readLines("ynow_ui.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  fn <- regexpr("\\.ynow_page_ui_snapshot\\s*<-\\s*function", ui_txt, perl = TRUE)[1]
+  nxt <- regexpr(
+    "\\.ynow_page_ui_testing\\s*<-\\s*function",
+    substr(ui_txt, fn, nchar(ui_txt)),
+    perl = TRUE
+  )[1]
+  testthat::expect_true(fn > 0 && nxt > 1)
+  body <- substr(ui_txt, fn, fn + nxt - 2L)
+  testthat::expect_false(grepl("ynow_inner_tab_lock_promo_tpl", body, fixed = TRUE))
+  testthat::expect_false(grepl("ynow_atx_lock_promo_tpl", body, fixed = TRUE))
+  testthat::expect_true(grepl('id = "snapshot_report"', body, fixed = TRUE))
+  chrome <- regexpr("dashboardBody(", ui_txt, fixed = TRUE)[1]
+  tabs <- regexpr(".ynow_tab_items(", ui_txt, fixed = TRUE)[1]
+  inner <- regexpr("ynow_inner_tab_lock_promo_tpl", ui_txt, fixed = TRUE)[1]
+  atx <- regexpr("ynow_atx_lock_promo_tpl", ui_txt, fixed = TRUE)[1]
+  testthat::expect_true(chrome > 0 && tabs > chrome)
+  testthat::expect_true(inner > chrome && inner < tabs)
+  testthat::expect_true(atx > inner && atx < tabs)
 })
 
 testthat::test_that("price alerts gate stays eager; body is lazy-hosted", {
@@ -82,6 +106,7 @@ testthat::test_that("shared-input panes stay eager in UI source", {
     "sensitivity = function",
     "smart_analysis = function",
     "company_advance = function",
+    "snapshot = function",
     "price_alerts = function"
   )) {
     testthat::expect_true(grepl(nm, srv_txt, fixed = TRUE), info = nm)

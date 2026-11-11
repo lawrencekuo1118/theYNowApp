@@ -23,7 +23,10 @@ check <- function(label, cond) {
   invisible(isTRUE(cond))
 }
 
-ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+source(file.path(app_dir, "tests", "ynow_test_sources.R"))
+src <- ynow_test_ui_sources(app_dir)
+ui <- src$ui
+shipped <- src$shipped
 
 snap_start <- regexpr('id = "snapshot_report"', ui, fixed = TRUE)[1]
 check("snapshot_report tabBox found", snap_start > 0)
@@ -55,20 +58,21 @@ check(
 )
 
 # Lite / leave-sysadmin fallbacks prefer Current snapshot first (leftmost free tab).
-lite_fn <- regexpr("function ensureLiteSnapshotFreeTab", ui, fixed = TRUE)[1]
-lite_chunk <- if (lite_fn > 0) substr(ui, lite_fn, min(nchar(ui), lite_fn + 900L)) else ""
-audit_fb <- regexpr('data-value=\\"snap_audit\\"', lite_chunk, fixed = TRUE)[1]
-current_fb <- regexpr('data-value=\\"snap_current\\"', lite_chunk, fixed = TRUE)[1]
+# Selectors are unescaped in ynow_app.js.
+lite_fn <- regexpr("function ensureLiteSnapshotFreeTab", shipped, fixed = TRUE)[1]
+lite_chunk <- if (lite_fn > 0) substr(shipped, lite_fn, min(nchar(shipped), lite_fn + 900L)) else ""
+audit_fb <- regexpr('data-value="snap_audit"', lite_chunk, fixed = TRUE)[1]
+current_fb <- regexpr('data-value="snap_current"', lite_chunk, fixed = TRUE)[1]
 check(
   "ensureLiteSnapshotFreeTab prefers snap_current",
-  grepl("ensureLiteSnapshotFreeTab", ui, fixed = TRUE) &&
+  grepl("ensureLiteSnapshotFreeTab", shipped, fixed = TRUE) &&
     audit_fb > 0 && current_fb > 0 && current_fb < audit_fb
 )
 
-sys_leave <- regexpr("Leaving sysadmin: leave APP_DEFAULTS", ui, fixed = TRUE)[1]
-sys_chunk <- if (sys_leave > 0) substr(ui, sys_leave, min(nchar(ui), sys_leave + 700L)) else ""
-sys_audit <- regexpr('data-value=\\"snap_audit\\"', sys_chunk, fixed = TRUE)[1]
-sys_current <- regexpr('data-value=\\"snap_current\\"', sys_chunk, fixed = TRUE)[1]
+sys_leave <- regexpr("Leaving sysadmin: leave APP_DEFAULTS", shipped, fixed = TRUE)[1]
+sys_chunk <- if (sys_leave > 0) substr(shipped, sys_leave, min(nchar(shipped), sys_leave + 700L)) else ""
+sys_audit <- regexpr('data-value="snap_audit"', sys_chunk, fixed = TRUE)[1]
+sys_current <- regexpr('data-value="snap_current"', sys_chunk, fixed = TRUE)[1]
 check(
   "leave-sysadmin fallback prefers snap_current",
   sys_audit > 0 && sys_current > 0 && sys_current < sys_audit
