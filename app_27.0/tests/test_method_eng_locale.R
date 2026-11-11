@@ -36,9 +36,13 @@ for (k in c("method_section_title", "method_matrix_fv_note", "method_matrix_rel_
 }
 check("en title has no pipe Chinese", !grepl("評價", ui_str("method_section_title", "en"), fixed = TRUE))
 
-ui <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-check("CSS hides zh when not zh*", grepl('html:not\\(\\[lang\\^="zh"\\]\\) \\.ynow-loc-zh', ui))
-check("CSS hides en on zh*", grepl('html\\[lang\\^="zh"\\] \\.ynow-loc-en', ui))
+source(file.path(app_dir, "tests", "ynow_test_sources.R"), local = TRUE)
+ui_bundle <- ynow_test_ui_sources(app_dir)
+ui <- ui_bundle$ui
+shipped <- ui_bundle$shipped
+# Locale visibility rules live in www/ynow_chrome.css after first-paint extract (YN-120).
+check("CSS hides zh when not zh*", grepl('html:not\\(\\[lang\\^="zh"\\]\\) \\.ynow-loc-zh', shipped))
+check("CSS hides en on zh*", grepl('html\\[lang\\^="zh"\\] \\.ynow-loc-en', shipped))
 check("EN FV table Item header", grepl("<th>Item</th>", ui, fixed = TRUE))
 check("ZH FV table 項目", grepl("<th>項目</th>", ui, fixed = TRUE))
 check("EN Multiples column", grepl("<th>Multiples</th>", ui, fixed = TRUE))
@@ -59,8 +63,8 @@ check("Model Selection Guide / formulas retained", {
     grepl("method_formulas_title", ui, fixed = TRUE) ||
     grepl("Model Formulas", ui, fixed = TRUE)
 })
-check("applyUiLocale wires title", grepl("method_section_title", ui, fixed = TRUE) &&
-        grepl("ynow_method_section_title", ui, fixed = TRUE))
+check("applyUiLocale wires title", grepl("method_section_title", shipped, fixed = TRUE) &&
+        grepl("ynow_method_section_title", shipped, fixed = TRUE))
 check("default title string is EN-only", grepl(
   'id = "ynow_method_section_title", "Valuation Methodology"',
   ui,

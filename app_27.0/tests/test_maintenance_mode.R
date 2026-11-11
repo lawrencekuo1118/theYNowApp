@@ -252,8 +252,9 @@ check("file round-trip", {
 })
 
 # UI / client enforcement (non-clickable chrome distinct from locks)
-ui_path <- file.path(app_dir, "ynow_ui.R")
-ui <- paste(readLines(ui_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+# Maintenance CSS/JS live in www after first-paint extract (YN-120).
+source(file.path(app_dir, "tests", "ynow_test_sources.R"), local = TRUE)
+ui <- ynow_test_ui_sources(app_dir)$shipped
 check("CSS pointer-events none on maintenance nav", {
   grepl("ynow-maintenance-nav", ui, fixed = TRUE) &&
     grepl("pointer-events: none !important", ui, fixed = TRUE)
@@ -268,7 +269,8 @@ check("maintenance distinct from access lock chrome", {
   grepl("ynow-access-locked-nav", ui, fixed = TRUE) &&
     grepl("ynow-maintenance-nav", ui, fixed = TRUE) &&
     (grepl("unlike ACL", ui, fixed = TRUE) ||
-       grepl("NON-clickable", ui, fixed = TRUE))
+       grepl("NON-clickable", ui, fixed = TRUE) ||
+       grepl("separate from ACL", ui, fixed = TRUE))
 })
 
 srv_path <- file.path(app_dir, "ynow_server.R")

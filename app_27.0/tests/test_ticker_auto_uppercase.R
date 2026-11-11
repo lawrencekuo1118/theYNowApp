@@ -28,7 +28,10 @@ check <- function(label, cond) {
   invisible(ok)
 }
 
-ui <- paste(readLines("ynow_ui.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+source(file.path("tests", "ynow_test_sources.R"), local = TRUE)
+ui_bundle <- ynow_test_ui_sources(root)
+ui <- ui_bundle$ui
+shipped <- ui_bundle$shipped
 pa <- paste(readLines("price_alert.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 js_path <- file.path("www", "ynow_ticker_uppercase.js")
 check("uppercase JS file exists", file.exists(js_path))
@@ -39,12 +42,13 @@ js <- if (file.exists(js_path)) {
 }
 
 check("UI loads ynow_ticker_uppercase.js", grepl('ynow_ticker_uppercase.js', ui, fixed = TRUE))
-check("CSS uppercase for #sc", grepl("#sc,", ui, fixed = TRUE) &&
-        grepl("text-transform: uppercase", ui, fixed = TRUE))
-check("CSS covers lab_cluster_focus", grepl("#lab_cluster_focus,", ui, fixed = TRUE))
-check("CSS covers pa_ticker", grepl("#pa_ticker,", ui, fixed = TRUE))
-check("CSS covers beta selectized", grepl("#beta_peers-selectized,", ui, fixed = TRUE) &&
-        grepl("#beta_bench-selectized,", ui, fixed = TRUE))
+# Uppercase chrome selectors live in www/ynow_widgets.css after first-paint extract (YN-120).
+check("CSS uppercase for #sc", grepl("#sc,", shipped, fixed = TRUE) &&
+        grepl("text-transform: uppercase", shipped, fixed = TRUE))
+check("CSS covers lab_cluster_focus", grepl("#lab_cluster_focus,", shipped, fixed = TRUE))
+check("CSS covers pa_ticker", grepl("#pa_ticker,", shipped, fixed = TRUE))
+check("CSS covers beta selectized", grepl("#beta_peers-selectized,", shipped, fixed = TRUE) &&
+        grepl("#beta_bench-selectized,", shipped, fixed = TRUE))
 
 check("JS capture-phase input listener", grepl("addEventListener(", js, fixed = TRUE) &&
         grepl("'input'", js, fixed = TRUE) &&
@@ -65,9 +69,9 @@ check(
 
 check(
   "typeahead also uppercases before suggest",
-  grepl("toUpperCase()", ui, fixed = TRUE) &&
-    grepl("bindTypeahead('sc')", ui, fixed = TRUE) &&
-    grepl("bindTypeahead('lab_cluster_focus')", ui, fixed = TRUE)
+  grepl("toUpperCase()", shipped, fixed = TRUE) &&
+    grepl("bindTypeahead('sc')", shipped, fixed = TRUE) &&
+    grepl("bindTypeahead('lab_cluster_focus')", shipped, fixed = TRUE)
 )
 
 # Server helpers: TW numeric + US letter casing stay correct
