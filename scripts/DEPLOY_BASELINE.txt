@@ -7,5 +7,5 @@ commit=55e1805de004a16ad9e29745dbd5a053b52cd1bc
 short=55e1805d
 message=chore: bump display version to v28.43
 captured_at=2026-11-09T11:10:00Z
-display_version=v28.43
+display_version=v28.44
 note=Shipped v28.43 (+0.01) via deploy_app_21.R. Signed-in restore fills the search box only; Yahoo/OTC wait for Search or a saved-ticker tap. GP deferral kept (PR #732). Live status=running; rsconnect bundleId=12797972. Prior: v28.42=#732 (12797922), v28.41=#731 (12797800), v28.40=#730 (12797548).
