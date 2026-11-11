@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12797972
+bundleId=12806570
 appId=10907657
 url=https://[REDACTED].shinyapps.io/TheYNowApp/  # pragma: allowlist secret
-aligned_git=55e1805de004a16ad9e29745dbd5a053b52cd1bc
-commit=55e1805de004a16ad9e29745dbd5a053b52cd1bc
-short=55e1805d
-message=chore: bump display version to v28.43
-captured_at=2026-11-09T11:10:00Z
+aligned_git=9c64d01b8bdb1559c48928673a458e495e4a5884
+commit=9c64d01b8bdb1559c48928673a458e495e4a5884
+short=9c64d01b
+message=chore: bump display version to v28.44
+captured_at=2026-11-11T05:50:05Z
 display_version=v28.44
-note=Shipped v28.43 (+0.01) via deploy_app_21.R. Signed-in restore fills the search box only; Yahoo/OTC wait for Search or a saved-ticker tap. GP deferral kept (PR #732). Live status=running; rsconnect bundleId=12797972. Prior: v28.42=#732 (12797922), v28.41=#731 (12797800), v28.40=#730 (12797548).
+note=Shipped v28.44 (+0.01) via deploy_app_21.R. YN-120 web render perf: externalized first-paint CSS/JS (ynow_chrome.css / ynow_widgets.css / ynow_app.js) + lazy Snapshot. Feature #735. Live status=running; rsconnect bundleId=12806570. Prior: v28.43=#733 (12797972).
