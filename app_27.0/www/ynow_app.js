@@ -4445,15 +4445,49 @@
                 if (tab) ynowApplyRestoredTab(tab);
                 if (ticker) ynowApplyRestoredTicker(ticker);
               }
+              /* Defer ScheduleEnd until ynowAuthRedirectReady (Signed-in toast /
+                 after-chrome flush). Ending at PostLogin clears Redirecting…
+                 before the toast and destination tab switch finish. */
               if (showRedirect || continueRedirect) {
-                try {
-                  if (typeof window.ynowScheduleEndRedirectTitle === 'function') {
-                    window.ynowScheduleEndRedirectTitle(tab || liveTab || '');
-                  } else if (typeof window.ynowEndRedirectTitle === 'function') {
-                    window.ynowEndRedirectTitle();
-                  }
-                } catch (eRedirEnd) {}
+                window.__ynowRedirectAwaitReady = true;
+                window.__ynowRedirectPendingTab = tab || liveTab || '';
               }
+            });
+            addHandler('ynowAuthRedirectReady', function (payload) {
+              if (!payload) payload = {};
+              var awaiting = !!window.__ynowRedirectAwaitReady;
+              var redirecting = !!(document.body &&
+                document.body.classList.contains('ynow-auth-redirecting'));
+              window.__ynowRedirectAwaitReady = false;
+              if (!awaiting && !redirecting) return;
+              var tab = '';
+              try {
+                tab = String(
+                  (payload && payload.tab) ||
+                  window.__ynowRedirectPendingTab ||
+                  ''
+                );
+              } catch (eTab) { tab = ''; }
+              window.__ynowRedirectPendingTab = null;
+              if (!tab) {
+                try {
+                  if (typeof window.ynowVisibleAuthTab === 'function') {
+                    tab = String(window.ynowVisibleAuthTab() || '');
+                  }
+                } catch (eLive) {}
+              }
+              try {
+                if (typeof window.ynowBeginRedirectTitle === 'function') {
+                  window.ynowBeginRedirectTitle();
+                }
+              } catch (eBeg) {}
+              try {
+                if (typeof window.ynowScheduleEndRedirectTitle === 'function') {
+                  window.ynowScheduleEndRedirectTitle(tab || '');
+                } else if (typeof window.ynowEndRedirectTitle === 'function') {
+                  window.ynowEndRedirectTitle();
+                }
+              } catch (eEnd) {}
             });
             /* Collapse sidebar, then show login modal (Sign in / PA gate).
                Uses window.ynowRequestAuthModal (defined later). Shiny 1.14+
@@ -5017,6 +5051,8 @@
                 clearTimeout(window.__ynowTitleRedirectQuietTimer);
                 window.__ynowTitleRedirectQuietTimer = null;
               }
+              window.__ynowRedirectAwaitReady = false;
+              window.__ynowRedirectPendingTab = null;
               var saved = window.__ynowTitleRedirectSaved;
               window.__ynowTitleRedirectSaved = null;
               window.__ynowTitleRedirectStartedAt = null;

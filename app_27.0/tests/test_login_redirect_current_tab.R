@@ -59,6 +59,11 @@ persist_fn <- between(
 post_login <- between(
   ui,
   "addHandler('ynowAuthPostLogin'",
+  "addHandler('ynowAuthRedirectReady'"
+)
+redirect_ready <- between(
+  ui,
+  "addHandler('ynowAuthRedirectReady'",
   "addHandler('ynowAuthOpenModal'"
 )
 oauth_start <- between(
@@ -352,9 +357,20 @@ check(
 check(
   "PostLogin shows Redirecting only when !quiet",
   grepl("ynowBeginRedirectTitle", post_login, fixed = TRUE) &&
-    grepl("ynowScheduleEndRedirectTitle", post_login, fixed = TRUE) &&
     grepl("!payload.quiet", post_login, fixed = TRUE) &&
-    grepl("showRedirect", post_login, fixed = TRUE)
+    grepl("showRedirect", post_login, fixed = TRUE) &&
+    grepl("__ynowRedirectAwaitReady", post_login, fixed = TRUE) &&
+    !grepl("ynowScheduleEndRedirectTitle", post_login, fixed = TRUE)
+)
+check(
+  "Redirecting end waits for Signed-in / auth-ready message",
+  grepl("ynowScheduleEndRedirectTitle", redirect_ready, fixed = TRUE) &&
+    grepl("ynowBeginRedirectTitle", redirect_ready, fixed = TRUE) &&
+    grepl(
+      "ynowAuthRedirectReady",
+      paste(readLines("ynow_server.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n"),
+      fixed = TRUE
+    )
 )
 sched <- between(
   ui,

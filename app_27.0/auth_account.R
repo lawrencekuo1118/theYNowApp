@@ -3151,6 +3151,14 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
         } else {
           tryCatch(showNotification(msg, type = "message", duration = 5), error = function(e) NULL)
         }
+        tryCatch({
+          ready_tab <- as.character(isolate(input$sidebar_tabs) %||% "")[1]
+          if (identical(ready_tab, "testing")) ready_tab <- "home"
+          session$sendCustomMessage(
+            "ynowAuthRedirectReady",
+            list(tab = ready_tab)
+          )
+        }, error = function(e) NULL)
       }, once = TRUE)
     }
   }
@@ -3225,6 +3233,14 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
           if (nzchar(uid) && exists("ynow_points_on_login", mode = "function")) {
             tryCatch(ynow_points_on_login(uid), error = function(e) NULL)
           }
+          tryCatch({
+            ready_tab <- as.character(isolate(input$sidebar_tabs) %||% "")[1]
+            if (identical(ready_tab, "testing")) ready_tab <- "home"
+            session$sendCustomMessage(
+              "ynowAuthRedirectReady",
+              list(tab = ready_tab)
+            )
+          }, error = function(e) NULL)
         }, once = TRUE)
       }
     } else {
