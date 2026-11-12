@@ -16,11 +16,11 @@
       return(sub('^"version"\\s*:\\s*"([^"]+)".*$', "\\1", m[[1]]))
     }
   }
-  "v28.46"
+  "v28.47"
 }
 .YNOW_BUILD_VERSION <- .ynow_read_build_version()
 
-#' Major segment of a display version (`v28.46` → 25; `v26` → 26).
+#' Major segment of a display version (`v28.47` → 25; `v26` → 26).
 #' Matches deploy policy: +0.01 is patch; folder / `YNOW_VERSION_BUMP_MAJOR` cut advances major.
 .ynow_display_major <- function(label) {
   label <- as.character(label)[1]
@@ -4230,9 +4230,9 @@ ui <- dashboardPage(
                   'data-ynow-build="', .YNOW_BUILD_VERSION, '" ',
                   'role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" ',
                   'aria-label="The YNow App loading">',
-                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v28.46</span>',
+                  '<span class="ynow-app-title-base" aria-hidden="true">The YNow App v28.47</span>',
                   '<span class="ynow-app-title-fill" aria-hidden="true">',
-                  '<span class="ynow-app-title-fill-inner">The YNow App v28.46</span>',
+                  '<span class="ynow-app-title-fill-inner">The YNow App v28.47</span>',
                   '</span></span>'
                 )),
     titleWidth = 250,

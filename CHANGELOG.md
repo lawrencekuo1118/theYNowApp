@@ -1,3 +1,7 @@
+## [v28.47] — 2026-11-12 · Redirecting holds through post-login busy gaps
+
+After sign-in, the header stays on **Redirecting…** / **重新導向中…** across shiny idle gaps until a quiet idle after the destination tab matches (YN-125 / #742). Prior busy-only end cleared too early mid-restore.
+
 ## [v28.46] — 2026-11-12 · Lazy-tab session crash / MOS reconnect loop
 
 - zh-TW：修正 YN-123 懶載入 `builders = list(...)` 在 `rel_mult_rev` 後多一個逗號，R 會以「argument 20 is empty」中止每次工作階段；瀏覽器不斷重連 WebSocket，登入後 MOS Assumptions 看起來像資源一直載入。亦含 #738 MOS Assumptions 繁中套用。
