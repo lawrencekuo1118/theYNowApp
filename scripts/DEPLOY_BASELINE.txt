@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12811208
+bundleId=12811427
 appId=10907657
 url=https://[REDACTED].shinyapps.io/TheYNowApp/  # pragma: allowlist secret
-aligned_git=b483751fdfa181669a957226fe5d6f67e2ba0a58
-commit=b483751fdfa181669a957226fe5d6f67e2ba0a58
-short=b483751f
-message=chore: record shipped display version v28.45
-captured_at=2026-11-12T03:36:26Z
+aligned_git=910ee515ac0359501534896ca2b9018b18bc0df9
+commit=910ee515ac0359501534896ca2b9018b18bc0df9
+short=910ee515
+message=chore: bump display version to v28.46
+captured_at=2026-11-12T04:10:45Z
 display_version=v28.46
-note=Shipped v28.45 (+0.01) via deploy_app_21.R. YN-123 Wave-2: idle-gated ynowUiLocale + Company industry shell/lazy body + relative-multiples lazy hosts (DDM/RI/P/B/NAV/SOTP stay eager). Feature #737. Live status=running; rsconnect bundleId=12811208. Prior: v28.44=#736 (12806570).
+note=Shipped v28.46 (+0.01) via deploy_app_21.R. Fix #740: remove lazy-tab builders trailing comma that killed every Shiny session (R list empty arg → reconnect loop). Also includes #738 MOS Assumptions applyUiLocale zh-TW. Live status=running; rsconnect bundleId=12811427. Prior: v28.45=#737 (12811208).

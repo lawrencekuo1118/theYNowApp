@@ -1,3 +1,8 @@
+## [v28.46] — 2026-11-12 · Lazy-tab session crash / MOS reconnect loop
+
+- zh-TW：修正 YN-123 懶載入 `builders = list(...)` 在 `rel_mult_rev` 後多一個逗號，R 會以「argument 20 is empty」中止每次工作階段；瀏覽器不斷重連 WebSocket，登入後 MOS Assumptions 看起來像資源一直載入。亦含 #738 MOS Assumptions 繁中套用。
+- en-US: Remove the trailing comma after `rel_mult_rev` in the lazy-tab `builders = list(...)` from YN-123. R aborted every session with `argument 20 is empty`, so the browser looped on websocket reconnect and MOS Assumptions looked like it never finished loading after sign-in. Also ships #738 MOS Assumptions zh-TW applyUiLocale.
+
 ## [v28.41] — 2026-11-09 · Company cloud keeps company names
 
 - zh-TW：全球預測 Company 的文字雲只留公司主題卡的名稱（與卡片相同的公司名；卡片本身以代碼為標題時才顯示該代碼）。結果詞、日期、動詞、問句，以及沒有公司鍵的事件標題卡都不進雲。點選公司名仍捲到該公司的圖。
