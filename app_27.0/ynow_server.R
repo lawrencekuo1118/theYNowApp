@@ -4962,6 +4962,16 @@ server <- function(input, output, session) {
     ),
     after_mount = function(tab) {
       lazy_mount_nonce(isolate(as.integer(lazy_mount_nonce()) %||% 0L) + 1L)
+      # Company body owns is_type; market switch can miss until first mount.
+      if (identical(as.character(tab %||% "")[1], "dashboard")) {
+        tryCatch({
+          mode <- normalize_market_mode(isolate(market_mode()))
+          ch <- is_metric_choices_for_locale(mode)
+          sel <- isolate(input$is_type)
+          if (is.null(sel) || !sel %in% unname(ch)) sel <- unname(ch)[1]
+          updateSelectInput(session, "is_type", choices = ch, selected = sel)
+        }, error = function(e) NULL)
+      }
       # One immediate push + one delayed after paint (selectize may not bind yet).
       # Avoid the old triple push (0 / 0.05 / 0.25) which re-invalidated locale
       # reactives three times on every first visit to a lazy tab.
