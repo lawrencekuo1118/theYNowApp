@@ -2901,7 +2901,15 @@
                   var applySel = function (sel, val) {
                     if (!val) return;
                     var nodes = root.querySelectorAll(sel);
-                    for (var ni = 0; ni < nodes.length; ni++) nodes[ni].textContent = val;
+                    for (var ni = 0; ni < nodes.length; ni++) {
+                      /* MOS Assumptions reuses feature=checklist for unlock, but keeps
+                         its own body copy (#ynow_mos_assump_gate_body). */
+                      if (sel === '.ynow-gate-body' &&
+                          nodes[ni].id === 'ynow_mos_assump_gate_body') {
+                        continue;
+                      }
+                      nodes[ni].textContent = val;
+                    }
                   };
                   applySel('.ynow-gate-body', map.body);
                   applySel('.ynow-gate-promo-kicker', map.kicker);
@@ -2931,6 +2939,10 @@
                 b2: payload.gate_checklist_b2, b3: payload.gate_checklist_b3,
                 demo_caption: payload.gate_checklist_demo_caption
               });
+              /* Restore MOS Assumptions body after checklist feature stamp. */
+              if (payload.mos_assump_gate_body) {
+                set('ynow_mos_assump_gate_body', payload.mos_assump_gate_body);
+              }
               setFeature('alerts', {
                 body: payload.gate_alerts_body, kicker: payload.gate_alerts_kicker,
                 lead: payload.gate_alerts_lead, b1: payload.gate_alerts_b1,

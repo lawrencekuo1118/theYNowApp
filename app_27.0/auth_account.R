@@ -3768,6 +3768,8 @@ ynow_auth_server <- function(input, output, session, ui_locale = NULL) {
         gate_checklist_b2 = tryCatch(ui_str("auth_gate_checklist_b2", loc), error = function(e) ""),
         gate_checklist_b3 = tryCatch(ui_str("auth_gate_checklist_b3", loc), error = function(e) ""),
         gate_checklist_demo_caption = tryCatch(ui_str("auth_gate_checklist_demo_caption", loc), error = function(e) ""),
+        # MOS Assumptions reuses feature=checklist for unlock; keep its own gate body.
+        mos_assump_gate_body = tryCatch(ui_str("mos_assump_gate_body", loc), error = function(e) ""),
         gate_alerts_body = tryCatch(ui_str("auth_gate_alerts_body", loc), error = function(e) ""),
         gate_alerts_kicker = tryCatch(ui_str("auth_gate_alerts_kicker", loc), error = function(e) ""),
         gate_alerts_lead = tryCatch(ui_str("auth_gate_alerts_lead", loc), error = function(e) ""),

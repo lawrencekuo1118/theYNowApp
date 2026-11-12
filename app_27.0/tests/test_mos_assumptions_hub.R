@@ -225,6 +225,17 @@ check("MOS locale no longer sends dead ynowSetText", {
   !grepl("sendCustomMessage(\"ynowSetText\"", mod_src, fixed = TRUE) &&
     !grepl("sendCustomMessage('ynowSetText'", mod_src, fixed = TRUE)
 })
+check("ynowAuthLocale skips / restores MOS gate body (no checklist race)", {
+  grepl("nodes[ni].id === 'ynow_mos_assump_gate_body'", ui_js, fixed = TRUE) &&
+    grepl("set('ynow_mos_assump_gate_body', payload.mos_assump_gate_body)", ui_js, fixed = TRUE)
+})
+auth_src <- paste(
+  readLines(file.path(.source_root, "auth_account.R"), warn = FALSE, encoding = "UTF-8"),
+  collapse = "\n"
+)
+check("ynowAuthLocale payload includes mos_assump_gate_body", {
+  grepl('mos_assump_gate_body = tryCatch(ui_str("mos_assump_gate_body"', auth_src, fixed = TRUE)
+})
 
 source(file.path(.source_root, "decision_checklist_module.R"), local = TRUE, encoding = "UTF-8")
 dc_html <- paste(as.character(decision_checklist_tab_body_ui()), collapse = "\n")
