@@ -7,5 +7,5 @@ commit=b483751fdfa181669a957226fe5d6f67e2ba0a58
 short=b483751f
 message=chore: record shipped display version v28.45
 captured_at=2026-11-12T03:36:26Z
-display_version=v28.45
+display_version=v28.46
 note=Shipped v28.45 (+0.01) via deploy_app_21.R. YN-123 Wave-2: idle-gated ynowUiLocale + Company industry shell/lazy body + relative-multiples lazy hosts (DDM/RI/P/B/NAV/SOTP stay eager). Feature #737. Live status=running; rsconnect bundleId=12811208. Prior: v28.44=#736 (12806570).
