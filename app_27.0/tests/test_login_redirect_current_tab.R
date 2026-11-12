@@ -38,7 +38,8 @@ between <- function(src, a, b) {
 }
 
 auth <- paste(readLines("auth_account.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-ui <- paste(readLines("ynow_ui.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+source(file.path(test_dir, "ynow_test_sources.R"))
+ui <- ynow_test_ui_sources(root)$shipped
 
 finish_body <- between(
   auth,
@@ -394,6 +395,22 @@ check(
   grepl("__ynowRedirectTitleMinHoldMs", ui, fixed = TRUE) &&
     grepl("__ynowTitleRedirectStartedAt", ui, fixed = TRUE) &&
     grepl("__ynowTitleRedirectHoldTimer", ui, fixed = TRUE)
+)
+end_redirect <- between(
+  ui,
+  "window.ynowEndRedirectTitle = function",
+  "window.ynowScheduleEndRedirectTitle = function"
+)
+check(
+  "redirect title waits out busy gaps for a quiet idle",
+  grepl("__ynowRedirectTitleQuietMs", ui, fixed = TRUE) &&
+    grepl("__ynowTitleRedirectQuietTimer", end_redirect, fixed = TRUE) &&
+    grepl("__ynowTitleRedirectQuietTimer", sched, fixed = TRUE) &&
+    grepl(
+      "if (busyNow()) { finish(false); return; }[[:space:]]*done = true;",
+      sched,
+      perl = TRUE
+    )
 )
 check(
   "redirecting CSS forces full title fill during busy",
