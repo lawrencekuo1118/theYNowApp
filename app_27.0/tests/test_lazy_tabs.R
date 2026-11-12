@@ -255,4 +255,80 @@ testthat::test_that("lazy_tabs wraps deferred hooks in withReactiveDomain", {
   testthat::expect_true(grepl("later::later drops the Shiny reactive domain", lazy_txt, fixed = TRUE))
 })
 
+.ynow_slice_lines <- function(lines, line1, col1, line2, col2) {
+  if (line1 == line2) {
+    return(substr(lines[[line1]], col1, col2))
+  }
+  mid <- if (line2 > line1 + 1L) lines[(line1 + 1L):(line2 - 1L)] else character()
+  paste(c(
+    substr(lines[[line1]], col1, nchar(lines[[line1]])),
+    mid,
+    substr(lines[[line2]], 1L, col2)
+  ), collapse = "\n")
+}
+
+.ynow_lazy_builders_src <- function(path = "ynow_server.R") {
+  lines <- readLines(path, warn = FALSE, encoding = "UTF-8")
+  pd <- getParseData(parse(text = paste(lines, collapse = "\n"), keep.source = TRUE))
+  symbol_row <- which(pd$token == "SYMBOL_FUNCTION_CALL" & pd$text == ".ynow_register_lazy_tabs")
+  if (length(symbol_row) != 1L) {
+    stop(sprintf(
+      "expected one .ynow_register_lazy_tabs call in %s, found %d",
+      path, length(symbol_row)
+    ))
+  }
+  name_expr_id <- pd$parent[[symbol_row]]
+  call_id <- pd$parent[pd$id == name_expr_id]
+  if (length(call_id) != 1L) stop("could not locate the .ynow_register_lazy_tabs call expression")
+  kids <- pd[pd$parent == call_id, , drop = FALSE]
+  named <- kids[kids$token == "SYMBOL_SUB" & kids$text == "builders", , drop = FALSE]
+  if (nrow(named) != 1L) stop("builders argument not found on .ynow_register_lazy_tabs")
+  exprs <- kids[kids$token == "expr", , drop = FALSE]
+  after <- exprs$line1 > named$line1 | (exprs$line1 == named$line1 & exprs$col1 > named$col2)
+  exprs <- exprs[after, , drop = FALSE]
+  exprs <- exprs[order(exprs$line1, exprs$col1), , drop = FALSE]
+  if (nrow(exprs) < 1L) stop("builders value expression not found")
+  val <- exprs[1L, ]
+  .ynow_slice_lines(lines, val$line1, val$col1, val$line2, val$col2)
+}
+
+testthat::test_that("lazy builders list evaluates and MOS Assumptions stays eager", {
+  src <- .ynow_lazy_builders_src("ynow_server.R")
+  err <- NULL
+  built <- tryCatch(
+    eval(parse(text = src), envir = new.env(parent = baseenv())),
+    error = function(e) {
+      err <<- conditionMessage(e)
+      NULL
+    }
+  )
+  testthat::expect_identical(if (is.null(err)) "ok" else err, "ok")
+  if (is.null(err)) {
+    testthat::expect_type(built, "list")
+    testthat::expect_gt(length(built), 0L)
+    testthat::expect_false(is.null(names(built)))
+    testthat::expect_true(all(nzchar(names(built))))
+    testthat::expect_true(all(vapply(built, is.function, logical(1L))))
+    testthat::expect_true("rel_mult_rev" %in% names(built))
+    testthat::expect_false("mos_assumptions" %in% names(built))
+
+    broken <- sub("\\)\\s*$", ",)", src)
+    broken_err <- tryCatch(
+      eval(parse(text = broken), envir = new.env(parent = baseenv())),
+      error = function(e) conditionMessage(e)
+    )
+    testthat::expect_match(broken_err, "^argument [0-9]+ is empty$")
+  }
+
+  ui_txt <- paste(readLines("ynow_ui.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  testthat::expect_true(
+    grepl("mos_assumptions_tab_ui()", ui_txt, fixed = TRUE),
+    info = "ynow_ui.R must call mos_assumptions_tab_ui()"
+  )
+  testthat::expect_false(
+    grepl("ynow_lazy_host_mos_assumptions", ui_txt, fixed = TRUE),
+    info = "MOS Assumptions must not use ynow_lazy_host_mos_assumptions"
+  )
+})
+
 cat("PASS test_lazy_tabs\n")
