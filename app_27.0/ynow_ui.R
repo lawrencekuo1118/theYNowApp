@@ -3491,6 +3491,253 @@ beta_rolling_section_ui <- function() {
   )
 }
 
+#' Lazy Company body. industry_choice stays in the tabItem shell.
+.ynow_page_ui_dashboard <- function() {
+  tagList(
+
+              uiOutput("company_overview_ui"),
+              uiOutput("ynow_news_thermometer"),
+
+              # FINANCIAL REPORT: Board / CB (+ Ownership) stays Lite+Full; other FS tabs Full-only via CSS.
+              tags$div(
+                class = "ynow-dashboard-fin-report-wrap",
+              .ynow_focus_metric_legend_note_ui(),
+              tabBox(title = "FINANCIAL REPORT",
+                     id = "dashboard_fin_report",
+                     width = "auto",
+                     
+                     tabPanel("Finance Summary",
+                              p("This section imports Finance Summaries from Yahoo Finance",
+                                style = "margin-bottom: 12px; color: #666; font-size: 13px;"),
+                              uiOutput("fs_summary_ui"),
+                              downloadButton('FS_download', "Download Finance Summary")
+                     ),
+                     
+                     tabPanel(
+                       "Income Statement",
+                       icon = icon("chart-line"),
+                       p("This section imports Income Statements from Yahoo Finance"),
+                       
+                       # 🌟 新增：Income Statement 下拉選單與互動圖表
+                       selectInput("is_type", "Select Income Statement Metric",
+                                   choices = c("Total Revenue", "Gross Profit", "EBITDA")),
+                       tags$div(
+                         class = "ynow-fs-chart ynow-fs-chart-is",
+                         tags$div(
+                           class = "ynow-fs-chart-heading",
+                           icon("chart-line"),
+                           tags$span(id = "ynow_fs_is_chart_heading", "Income Statement")
+                         ),
+                         plotlyOutput("is_plot")
+                       ),
+                       tags$hr(),
+                       
+                       DT::dataTableOutput("tbIncomeStatement"), 
+                       downloadButton('IS_download', "Download Income Statement")
+                     ),
+                     
+                     tabPanel("Balance Sheet",
+                              p("This section imports Balance Sheets from Yahoo Finance"),
+                              uiOutput("bs_equity_charts_ui"),
+                              tags$hr(),
+                              DT::dataTableOutput("tbBalanceSheet"),
+                              downloadButton('BS_download', "Download Balance Sheet")
+                     ),
+                     
+                     tabPanel(
+                       "Cash Flow",
+                       icon = icon("money-bill-wave"),
+                       p("This section imports Cash Flow data from Yahoo Finance"),
+                       tags$div(
+                         class = "ynow-fs-chart ynow-fs-chart-cf",
+                         tags$div(
+                           class = "ynow-fs-chart-heading",
+                           icon("money-bill-wave"),
+                           tags$span(id = "ynow_fs_cf_chart_heading", "Cash Flow")
+                         ),
+                         plotlyOutput("cf_plot", height = "460px") %>% withSpinner()
+                       ),
+                       tags$hr(),
+                       DT::dataTableOutput("tbCashFlow"),
+                       downloadButton('CF_download', "Download Cash Flow Data")
+                     ),
+
+                     # Board / CB + Ownership Structure Analysis（Lite + Full；見下方 ynow-full-only / Lite CSS）
+                     tabPanel(
+                       title = "Board / CB",
+                       value = "corp_events",
+                       icon = icon("landmark"),
+                       id = "corp_events_panel",
+                       uiOutput("corp_events_ui"),
+                       # Ownership Structure Analysis — immediately below Convertible bonds — dilution
+                       tags$hr(class = "ynow-own-under-cb-hr"),
+                       tags$div(
+                         id = "ownership_structure_panel",
+                         class = "ynow-ownership-under-cb",
+                         tags$h4(
+                           class = "ynow-corp-events-h",
+                           ui_i18n("tab_ownership_structure")
+                         ),
+                         uiOutput("ownership_structure_top_ui"),
+                         plotly::plotlyOutput("own_volume_plot", height = "320px"),
+                         uiOutput("ownership_structure_holders_ui")
+                       )
+                     ),
+
+                     # 財報附註擷取 (SEC EDGAR) — 僅美股模式顯示（server 以 shinyjs 控制）
+                     tabPanel(
+                       title = ui_i18n("tab_sec_notes"),
+                       value = "sec_notes",
+                       icon = icon("file-alt"),
+                       id = "sec_notes_panel",
+                       p(
+                         ui_i18n("sec_notes_lead"),
+                         " ",
+                         tags$b(ui_i18n("sec_notes_forms")),
+                         tags$br(),
+                         tags$span(
+                           style = "color:#888;",
+                           ui_i18n("sec_notes_source")
+                         )
+                       ),
+                       tags$hr(),
+                       fluidRow(
+                         column(
+                           width = 4,
+                           box(
+                             width = 12, status = "primary", solidHeader = TRUE,
+                             title = ui_i18n("sec_query_title"),
+                             tags$div(
+                               style = "margin-bottom:10px;",
+                               tags$label(ui_i18n("sec_ticker_label"), class = "control-label"),
+                               uiOutput("lab_sec_ticker_display"),
+                               tags$span(
+                                 style = "color:#888; font-size:12px;",
+                                 ui_i18n("sec_ticker_hint")
+                               )
+                             ),
+                             radioButtons(
+                               "lab_sec_form", ui_i18n("sec_form_label"),
+                               choiceNames = list(
+                                 ui_i18n("sec_form_10k"),
+                                 ui_i18n("sec_form_10q"),
+                                 ui_i18n("sec_form_8k")
+                               ),
+                               choiceValues = list("10-K", "10-Q", "8-K"),
+                               selected = "10-K", inline = TRUE
+                             ),
+                             checkboxInput(
+                               "lab_sec_important_only", ui_i18n("sec_important_only"), value = isTRUE(APP_DEFAULTS$lab_sec_important_only)
+                             ),
+                             textInput(
+                               "lab_sec_keyword", ui_i18n("sec_keyword_label"),
+                               value = "",
+                               placeholder = ui_str("sec_keyword_ph", "en")
+                             ) %>% tagAppendAttributes(`data-i18n-ph` = "sec_keyword_ph"),
+                             tags$span(
+                               style = "color:#888; font-size:12px; display:block; margin:-6px 0 10px 0;",
+                               ui_i18n("sec_keyword_hint")
+                             ),
+                             actionButton(
+                               "lab_sec_fetch", ui_i18n("sec_fetch_btn"),
+                               class = "btn-success btn-block",
+                               icon = icon("download"),
+                               style = "font-weight:bold;"
+                             ),
+                             tags$p(
+                               style = "margin-top:10px; color:#888; font-size:12px;",
+                               ui_i18n("sec_fetch_hint")
+                             )
+                           ),
+                           uiOutput("lab_sec_meta")
+                         ),
+                         column(
+                           width = 8,
+                           box(
+                             width = 12, status = "info", solidHeader = TRUE,
+                             title = ui_i18n("sec_index_title"),
+                             uiOutput("lab_sec_index")
+                           ),
+                           box(
+                             width = 12, status = "info", solidHeader = TRUE,
+                             title = ui_i18n("sec_body_title"),
+                             uiOutput("lab_sec_notes")
+                           )
+                         )
+                       )
+                     )
+              )
+              ),
+
+              .kpi_band_color_legend_ui(),
+              
+              tabBox(title = "PERFORMANCE",
+                     width = "auto",
+                     
+                     tabPanel("KPI by Sheet", fluidRow(
+                       column(width = 12,
+                              tags$h4("Balance Sheet KPI", class = "ynow-kpi-section-title"),
+                              div(class = "ynow-kpi-grid",
+                                  uiOutput(NS("kpi", "vbx_eqt_multiplier"))
+                              ),
+                              tags$h4("Income Statement KPI", class = "ynow-kpi-section-title"),
+                              div(class = "ynow-kpi-grid",
+                                  uiOutput(NS("kpi", "vbx_net_profit_margin")),
+                                  uiOutput(NS("kpi", "vbx_gross_profit_margin")),
+                                  uiOutput(NS("kpi", "vbx_opex_ratio")),
+                                  uiOutput(NS("kpi", "vbx_rev_growth")),
+                                  uiOutput(NS("kpi", "vbx_gross_profit_growth"))
+                              ),
+                              tags$h4("Cash Flow KPI", class = "ynow-kpi-section-title"),
+                              div(class = "ynow-kpi-grid",
+                                  uiOutput(NS("kpi", "vbx_op_cash_flow_growth")),
+                                  uiOutput(NS("kpi", "vbx_inv_cash_flow_growth")),
+                                  uiOutput(NS("kpi", "vbx_fin_cash_flow_growth"))
+                              )
+                       )
+                     )),
+                     
+                     tabPanel("Crossover KPIs", fluidRow(
+                       column(width = 12,
+                              div(class = "ynow-kpi-grid",
+                                  uiOutput(NS("kpi", "vbx_ROA")),
+                                  uiOutput(NS("kpi", "vbx_ROE")),
+                                  uiOutput(NS("kpi", "vbx_asset_turnover")),
+                                  uiOutput(NS("kpi", "vbx_ocf_net_income"))
+                              )
+                       )
+                     )),
+                     
+                     tabPanel(
+                       title = tags$span(id = "ynow_dash_annotation_tab", "Annotation"),
+                       fluidRow(
+                         column(
+                           width = 12,
+                           tags$p(
+                             class = "ynow-ann-note",
+                             ui_i18n("ann_kpi_purpose")
+                           ),
+                           tags$p(
+                             style = "margin:-4px 0 12px 0; font-size:12px; color:#777; line-height:1.45;",
+                             ui_i18n("ann_kpi_rules")
+                           ),
+                           tags$h4(ui_i18n("ann_kpi_calc_title"), class = "ynow-ann-h"),
+                           DT::dataTableOutput("annotation_kpi_guide"),
+                           tags$h4(ui_i18n("ann_kpi_stability_title"), class = "ynow-ann-h"),
+                           tableOutput("annotation_stability_table"),
+                           tags$p(
+                             id = "ynow_ann_fscore_crossref",
+                             style = "margin-top:10px; font-size:12px; color:#888;",
+                             "提示：資產週轉率、OCF／淨利無同業區間時固定為白；",
+                             "現金品質另可對照 YNOW／F-Score 品質檢核中的盈餘品質項。"
+                           )
+                         )
+                       )
+                     )
+              ),
+  )
+}
+
 #' Lazy page body for tab `snapshot` (live parameters, manual audit, APP_DEFAULTS).
 .ynow_page_ui_snapshot <- function() {
   tagList(
@@ -6253,182 +6500,10 @@ ui <- dashboardPage(
         uiOutput("ynow_lazy_host_macro_market")
       ),
 
-      tabItem(tabName = "dashboard",
-
-              uiOutput("company_overview_ui"),
-              uiOutput("ynow_news_thermometer"),
-
-              # FINANCIAL REPORT: Board / CB (+ Ownership) stays Lite+Full; other FS tabs Full-only via CSS.
-              tags$div(
-                class = "ynow-dashboard-fin-report-wrap",
-              .ynow_focus_metric_legend_note_ui(),
-              tabBox(title = "FINANCIAL REPORT",
-                     id = "dashboard_fin_report",
-                     width = "auto",
-                     
-                     tabPanel("Finance Summary",
-                              p("This section imports Finance Summaries from Yahoo Finance",
-                                style = "margin-bottom: 12px; color: #666; font-size: 13px;"),
-                              uiOutput("fs_summary_ui"),
-                              downloadButton('FS_download', "Download Finance Summary")
-                     ),
-                     
-                     tabPanel(
-                       "Income Statement",
-                       icon = icon("chart-line"),
-                       p("This section imports Income Statements from Yahoo Finance"),
-                       
-                       # 🌟 新增：Income Statement 下拉選單與互動圖表
-                       selectInput("is_type", "Select Income Statement Metric",
-                                   choices = c("Total Revenue", "Gross Profit", "EBITDA")),
-                       tags$div(
-                         class = "ynow-fs-chart ynow-fs-chart-is",
-                         tags$div(
-                           class = "ynow-fs-chart-heading",
-                           icon("chart-line"),
-                           tags$span(id = "ynow_fs_is_chart_heading", "Income Statement")
-                         ),
-                         plotlyOutput("is_plot")
-                       ),
-                       tags$hr(),
-                       
-                       DT::dataTableOutput("tbIncomeStatement"), 
-                       downloadButton('IS_download', "Download Income Statement")
-                     ),
-                     
-                     tabPanel("Balance Sheet",
-                              p("This section imports Balance Sheets from Yahoo Finance"),
-                              uiOutput("bs_equity_charts_ui"),
-                              tags$hr(),
-                              DT::dataTableOutput("tbBalanceSheet"),
-                              downloadButton('BS_download', "Download Balance Sheet")
-                     ),
-                     
-                     tabPanel(
-                       "Cash Flow",
-                       icon = icon("money-bill-wave"),
-                       p("This section imports Cash Flow data from Yahoo Finance"),
-                       tags$div(
-                         class = "ynow-fs-chart ynow-fs-chart-cf",
-                         tags$div(
-                           class = "ynow-fs-chart-heading",
-                           icon("money-bill-wave"),
-                           tags$span(id = "ynow_fs_cf_chart_heading", "Cash Flow")
-                         ),
-                         plotlyOutput("cf_plot", height = "460px") %>% withSpinner()
-                       ),
-                       tags$hr(),
-                       DT::dataTableOutput("tbCashFlow"),
-                       downloadButton('CF_download', "Download Cash Flow Data")
-                     ),
-
-                     # Board / CB + Ownership Structure Analysis（Lite + Full；見下方 ynow-full-only / Lite CSS）
-                     tabPanel(
-                       title = "Board / CB",
-                       value = "corp_events",
-                       icon = icon("landmark"),
-                       id = "corp_events_panel",
-                       uiOutput("corp_events_ui"),
-                       # Ownership Structure Analysis — immediately below Convertible bonds — dilution
-                       tags$hr(class = "ynow-own-under-cb-hr"),
-                       tags$div(
-                         id = "ownership_structure_panel",
-                         class = "ynow-ownership-under-cb",
-                         tags$h4(
-                           class = "ynow-corp-events-h",
-                           ui_i18n("tab_ownership_structure")
-                         ),
-                         uiOutput("ownership_structure_top_ui"),
-                         plotly::plotlyOutput("own_volume_plot", height = "320px"),
-                         uiOutput("ownership_structure_holders_ui")
-                       )
-                     ),
-
-                     # 財報附註擷取 (SEC EDGAR) — 僅美股模式顯示（server 以 shinyjs 控制）
-                     tabPanel(
-                       title = ui_i18n("tab_sec_notes"),
-                       value = "sec_notes",
-                       icon = icon("file-alt"),
-                       id = "sec_notes_panel",
-                       p(
-                         ui_i18n("sec_notes_lead"),
-                         " ",
-                         tags$b(ui_i18n("sec_notes_forms")),
-                         tags$br(),
-                         tags$span(
-                           style = "color:#888;",
-                           ui_i18n("sec_notes_source")
-                         )
-                       ),
-                       tags$hr(),
-                       fluidRow(
-                         column(
-                           width = 4,
-                           box(
-                             width = 12, status = "primary", solidHeader = TRUE,
-                             title = ui_i18n("sec_query_title"),
-                             tags$div(
-                               style = "margin-bottom:10px;",
-                               tags$label(ui_i18n("sec_ticker_label"), class = "control-label"),
-                               uiOutput("lab_sec_ticker_display"),
-                               tags$span(
-                                 style = "color:#888; font-size:12px;",
-                                 ui_i18n("sec_ticker_hint")
-                               )
-                             ),
-                             radioButtons(
-                               "lab_sec_form", ui_i18n("sec_form_label"),
-                               choiceNames = list(
-                                 ui_i18n("sec_form_10k"),
-                                 ui_i18n("sec_form_10q"),
-                                 ui_i18n("sec_form_8k")
-                               ),
-                               choiceValues = list("10-K", "10-Q", "8-K"),
-                               selected = "10-K", inline = TRUE
-                             ),
-                             checkboxInput(
-                               "lab_sec_important_only", ui_i18n("sec_important_only"), value = isTRUE(APP_DEFAULTS$lab_sec_important_only)
-                             ),
-                             textInput(
-                               "lab_sec_keyword", ui_i18n("sec_keyword_label"),
-                               value = "",
-                               placeholder = ui_str("sec_keyword_ph", "en")
-                             ) %>% tagAppendAttributes(`data-i18n-ph` = "sec_keyword_ph"),
-                             tags$span(
-                               style = "color:#888; font-size:12px; display:block; margin:-6px 0 10px 0;",
-                               ui_i18n("sec_keyword_hint")
-                             ),
-                             actionButton(
-                               "lab_sec_fetch", ui_i18n("sec_fetch_btn"),
-                               class = "btn-success btn-block",
-                               icon = icon("download"),
-                               style = "font-weight:bold;"
-                             ),
-                             tags$p(
-                               style = "margin-top:10px; color:#888; font-size:12px;",
-                               ui_i18n("sec_fetch_hint")
-                             )
-                           ),
-                           uiOutput("lab_sec_meta")
-                         ),
-                         column(
-                           width = 8,
-                           box(
-                             width = 12, status = "info", solidHeader = TRUE,
-                             title = ui_i18n("sec_index_title"),
-                             uiOutput("lab_sec_index")
-                           ),
-                           box(
-                             width = 12, status = "info", solidHeader = TRUE,
-                             title = ui_i18n("sec_body_title"),
-                             uiOutput("lab_sec_notes")
-                           )
-                         )
-                       )
-                     )
-              )
-              ),
-
+      tabItem(
+        tabName = "dashboard",
+        # Search calls updatePickerInput("industry_choice") at connect. The id has to
+        # be in the first HTML or Shiny drops the message.
               tags$div(
                 class = "ynow-ind-overview-block",
                 tags$div(
@@ -6464,73 +6539,9 @@ ui <- dashboardPage(
                   uiOutput("dashboard_industry_metric_chips")
                 )
               ),
-              .kpi_band_color_legend_ui(),
-              
-              tabBox(title = "PERFORMANCE",
-                     width = "auto",
-                     
-                     tabPanel("KPI by Sheet", fluidRow(
-                       column(width = 12,
-                              tags$h4("Balance Sheet KPI", class = "ynow-kpi-section-title"),
-                              div(class = "ynow-kpi-grid",
-                                  uiOutput(NS("kpi", "vbx_eqt_multiplier"))
-                              ),
-                              tags$h4("Income Statement KPI", class = "ynow-kpi-section-title"),
-                              div(class = "ynow-kpi-grid",
-                                  uiOutput(NS("kpi", "vbx_net_profit_margin")),
-                                  uiOutput(NS("kpi", "vbx_gross_profit_margin")),
-                                  uiOutput(NS("kpi", "vbx_opex_ratio")),
-                                  uiOutput(NS("kpi", "vbx_rev_growth")),
-                                  uiOutput(NS("kpi", "vbx_gross_profit_growth"))
-                              ),
-                              tags$h4("Cash Flow KPI", class = "ynow-kpi-section-title"),
-                              div(class = "ynow-kpi-grid",
-                                  uiOutput(NS("kpi", "vbx_op_cash_flow_growth")),
-                                  uiOutput(NS("kpi", "vbx_inv_cash_flow_growth")),
-                                  uiOutput(NS("kpi", "vbx_fin_cash_flow_growth"))
-                              )
-                       )
-                     )),
-                     
-                     tabPanel("Crossover KPIs", fluidRow(
-                       column(width = 12,
-                              div(class = "ynow-kpi-grid",
-                                  uiOutput(NS("kpi", "vbx_ROA")),
-                                  uiOutput(NS("kpi", "vbx_ROE")),
-                                  uiOutput(NS("kpi", "vbx_asset_turnover")),
-                                  uiOutput(NS("kpi", "vbx_ocf_net_income"))
-                              )
-                       )
-                     )),
-                     
-                     tabPanel(
-                       title = tags$span(id = "ynow_dash_annotation_tab", "Annotation"),
-                       fluidRow(
-                         column(
-                           width = 12,
-                           tags$p(
-                             class = "ynow-ann-note",
-                             ui_i18n("ann_kpi_purpose")
-                           ),
-                           tags$p(
-                             style = "margin:-4px 0 12px 0; font-size:12px; color:#777; line-height:1.45;",
-                             ui_i18n("ann_kpi_rules")
-                           ),
-                           tags$h4(ui_i18n("ann_kpi_calc_title"), class = "ynow-ann-h"),
-                           DT::dataTableOutput("annotation_kpi_guide"),
-                           tags$h4(ui_i18n("ann_kpi_stability_title"), class = "ynow-ann-h"),
-                           tableOutput("annotation_stability_table"),
-                           tags$p(
-                             id = "ynow_ann_fscore_crossref",
-                             style = "margin-top:10px; font-size:12px; color:#888;",
-                             "提示：資產週轉率、OCF／淨利無同業區間時固定為白；",
-                             "現金品質另可對照 YNOW／F-Score 品質檢核中的盈餘品質項。"
-                           )
-                         )
-                       )
-                     )
-              ),
+        uiOutput("ynow_lazy_host_dashboard")
       ),
+
 
       # ==========================================
       # Business Breakdown（Full-only；tab id 仍為 company_advance）

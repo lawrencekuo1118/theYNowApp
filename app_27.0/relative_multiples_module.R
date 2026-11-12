@@ -488,12 +488,23 @@ calc_sotp_revenue_implied <- function(segments, ev_sales_multiple, cash, debt, s
 }
 
 relative_multiples_module_ui <- function(id) {
+  list(
+    tabItem(tabName = "rel_mult_ev", uiOutput("ynow_lazy_host_rel_mult_ev")),
+    tabItem(
+      tabName = "rel_multiples_calculator",
+      uiOutput("ynow_lazy_host_rel_multiples_calculator")
+    ),
+    tabItem(tabName = "rel_mult_rev", uiOutput("ynow_lazy_host_rel_mult_rev"))
+  )
+}
+
+#' Bodies for Wave-2 lazy hosts (same `mod_rel` namespace as before).
+relative_multiples_bodies_ui <- function(id) {
   ns <- NS(id)
   .mode <- function(val) sprintf("input['mod_rel-rel_mode'] == '%s'", val)
   list(
-    tabItem(
-      tabName = "rel_mult_ev",
-      tabBox(
+    rel_mult_ev = tagList(
+tabBox(
         title = tags$span(id = "ynow_rel_ev_box", "Enterprise value multiples"),
         width = "auto",
         tabPanel(
@@ -549,9 +560,8 @@ relative_multiples_module_ui <- function(id) {
         )
       )
     ),
-    tabItem(
-      tabName = "rel_multiples_calculator",
-      div(
+    rel_multiples_calculator = tagList(
+div(
         style = "display:none;",
         radioButtons(
           ns("rel_mode"),
@@ -624,9 +634,8 @@ relative_multiples_module_ui <- function(id) {
         )
       )
     ),
-    tabItem(
-      tabName = "rel_mult_rev",
-      tabBox(
+    rel_mult_rev = tagList(
+tabBox(
         title = tags$span(id = "ynow_rel_rev_box", "Revenue multiples"),
         width = "auto",
         tabPanel(
@@ -826,6 +835,22 @@ relative_multiples_module_server <- function(id,
       { sync_from_statements() },
       ignoreInit = FALSE
     )
+    # One sync per family after that family's Settings inputs exist.
+    # ignoreNULL=FALSE would consume the once-flag on the initial NULL.
+    # ebitda's HTML default is NA, which Shiny leaves NULL, so the EV page
+    # uses ev_ebitda_multiple (numeric default) as the bind proof.
+    .rel_bound <- new.env(parent = emptyenv())
+    .sync_once_on_bind <- function(sentinel, proof = sentinel) {
+      observe({
+        if (isTRUE(.rel_bound[[sentinel]])) return()
+        if (is.null(input[[sentinel]]) && is.null(input[[proof]])) return()
+        .rel_bound[[sentinel]] <- TRUE
+        sync_from_statements()
+      })
+    }
+    .sync_once_on_bind("ebitda", "ev_ebitda_multiple")
+    .sync_once_on_bind("pe_multiple")
+    .sync_once_on_bind("ps_multiple")
     observeEvent(input$btn_sync_rel, {
       sync_from_statements()
       showNotification(.str("rel_multiples_synced"), type = "message")

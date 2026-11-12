@@ -4890,7 +4890,17 @@ server <- function(input, output, session) {
       smart_analysis = function() .ynow_page_ui_smart_analysis(),
       company_advance = function() .ynow_page_ui_company_advance(),
       snapshot = function() .ynow_page_ui_snapshot(),
-      price_alerts = function() price_alert_tab_body_ui()
+      price_alerts = function() price_alert_tab_body_ui(),
+      dashboard = function() .ynow_page_ui_dashboard(),
+      rel_mult_ev = function() {
+        relative_multiples_bodies_ui("mod_rel")$rel_mult_ev
+      },
+      rel_multiples_calculator = function() {
+        relative_multiples_bodies_ui("mod_rel")$rel_multiples_calculator
+      },
+      rel_mult_rev = function() {
+        relative_multiples_bodies_ui("mod_rel")$rel_mult_rev
+      },
     ),
     on_first_mount = list(
       macro_market = function() {
@@ -4964,10 +4974,13 @@ server <- function(input, output, session) {
       push_loc()
       if (requireNamespace("later", quietly = TRUE)) {
         later::later(function() {
-          tryCatch({
-            lazy_mount_nonce(isolate(as.integer(lazy_mount_nonce()) %||% 0L) + 1L)
-            push_loc()
-          }, error = function(e) NULL)
+          tryCatch(
+            shiny::withReactiveDomain(session, {
+              lazy_mount_nonce(isolate(as.integer(lazy_mount_nonce()) %||% 0L) + 1L)
+              push_loc()
+                    }),
+            error = function(e) NULL
+          )
         }, delay = 0.12)
       }
       invisible(tab)
