@@ -105,13 +105,17 @@ testthat::test_that("shared-input panes stay eager in UI source", {
   testthat::expect_false(grepl('uiOutput("ynow_lazy_host_get_started")', ui_txt, fixed = TRUE))
   testthat::expect_false(grepl('uiOutput("ynow_lazy_host_dcf_calculator")', ui_txt, fixed = TRUE))
   testthat::expect_false(grepl('uiOutput("ynow_lazy_host_mos_assumptions")', ui_txt, fixed = TRUE))
-  testthat::expect_true(grepl('uiOutput("ynow_lazy_host_ddm_calculator")', ui_txt, fixed = TRUE))
-  testthat::expect_true(grepl('uiOutput("ynow_lazy_host_ri_calculator")', ui_txt, fixed = TRUE))
-  testthat::expect_true(grepl('uiOutput("ynow_lazy_host_pb_calculator")', ui_txt, fixed = TRUE))
-  testthat::expect_true(grepl('uiOutput("ynow_lazy_host_nav_calculator")', ui_txt, fixed = TRUE))
-  testthat::expect_true(grepl('uiOutput("ynow_lazy_host_sotp_calculator")', ui_txt, fixed = TRUE))
+  testthat::expect_false(grepl('uiOutput("ynow_lazy_host_ddm_calculator")', ui_txt, fixed = TRUE))
+  testthat::expect_false(grepl('uiOutput("ynow_lazy_host_ri_calculator")', ui_txt, fixed = TRUE))
+  testthat::expect_false(grepl('uiOutput("ynow_lazy_host_pb_calculator")', ui_txt, fixed = TRUE))
+  testthat::expect_false(grepl('uiOutput("ynow_lazy_host_nav_calculator")', ui_txt, fixed = TRUE))
+  testthat::expect_false(grepl('uiOutput("ynow_lazy_host_sotp_calculator")', ui_txt, fixed = TRUE))
   testthat::expect_true(grepl('tabName = "get_started"', ui_txt, fixed = TRUE))
   testthat::expect_true(grepl("wacc_gordon", ui_txt, fixed = TRUE))
+  testthat::expect_true(grepl('ri_module_ui("mod_ri")', ui_txt, fixed = TRUE))
+  testthat::expect_true(grepl('pb_asset_module_ui("mod_pb")', ui_txt, fixed = TRUE))
+  testthat::expect_true(grepl('sotp_module_ui("mod_sotp")', ui_txt, fixed = TRUE))
+  testthat::expect_true(grepl('nav_module_ui("mod_nav")', ui_txt, fixed = TRUE))
   # Company: industry_choice eager shell; body lazy
   testthat::expect_true(grepl('uiOutput("ynow_lazy_host_dashboard")', ui_txt, fixed = TRUE))
   testthat::expect_true(grepl("\\.ynow_page_ui_dashboard\\s*<-\\s*function", ui_txt, perl = TRUE))
@@ -143,6 +147,11 @@ testthat::test_that("shared-input panes stay eager in UI source", {
   )) {
     testthat::expect_true(grepl(nm, srv_txt, fixed = TRUE), info = nm)
   }
+  testthat::expect_false(grepl("ddm_calculator = function", srv_txt, fixed = TRUE))
+  testthat::expect_false(grepl("ri_calculator = function", srv_txt, fixed = TRUE))
+  testthat::expect_false(grepl("pb_calculator = function", srv_txt, fixed = TRUE))
+  testthat::expect_false(grepl("nav_calculator = function", srv_txt, fixed = TRUE))
+  testthat::expect_false(grepl("sotp_calculator = function", srv_txt, fixed = TRUE))
 })
 
 testthat::test_that("register mounts once and caches builder result", {
