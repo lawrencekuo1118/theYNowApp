@@ -4954,10 +4954,11 @@
               if (busy) busy.setAttribute('aria-hidden', 'true');
             } catch (eBusyEnd) {}
           };
-          /* Header reads Redirecting… for the whole sign-in restore, including the
-             shiny:busy stretch that otherwise paints the gold version title.
+          /* Redirecting lasts through shiny:busy gaps until a quiet idle
+             after destination match, not merely the first idle.
              A minimum hold still covers a restore that goes idle immediately. */
           window.__ynowRedirectTitleMinHoldMs = 750;
+          window.__ynowRedirectTitleQuietMs = 400;
           window.ynowBeginRedirectTitle = function () {
             try {
               var el = document.getElementById('ynow_app_title') ||
@@ -5015,6 +5016,10 @@
                 clearTimeout(window.__ynowTitleRedirectBusyTimer);
                 window.__ynowTitleRedirectBusyTimer = null;
               }
+              if (window.__ynowTitleRedirectQuietTimer) {
+                clearTimeout(window.__ynowTitleRedirectQuietTimer);
+                window.__ynowTitleRedirectQuietTimer = null;
+              }
               var saved = window.__ynowTitleRedirectSaved;
               window.__ynowTitleRedirectSaved = null;
               window.__ynowTitleRedirectStartedAt = null;
@@ -5046,15 +5051,38 @@
             try {
               var done = false;
               var minHold = Number(window.__ynowRedirectTitleMinHoldMs) || 750;
+              var quietMs = Number(window.__ynowRedirectTitleQuietMs) || 400;
               var busyNow = function () {
                 try {
                   return !!(document.documentElement &&
                     document.documentElement.classList.contains('shiny-busy'));
                 } catch (eBusyNow) { return false; }
               };
+              var clearQuiet = function () {
+                if (window.__ynowTitleRedirectQuietTimer) {
+                  clearTimeout(window.__ynowTitleRedirectQuietTimer);
+                  window.__ynowTitleRedirectQuietTimer = null;
+                }
+              };
+              var clearHold = function () {
+                if (window.__ynowTitleRedirectHoldTimer) {
+                  clearTimeout(window.__ynowTitleRedirectHoldTimer);
+                  window.__ynowTitleRedirectHoldTimer = null;
+                }
+              };
+              var quietArmed = false;
               var finish = function (forceEnd) {
                 if (done) return;
-                if (!forceEnd && busyNow()) {
+                if (forceEnd) {
+                  done = true;
+                  quietArmed = false;
+                  try { window.ynowEndRedirectTitle(); } catch (eForce) {}
+                  return;
+                }
+                if (busyNow()) {
+                  quietArmed = false;
+                  clearQuiet();
+                  clearHold();
                   if (window.__ynowTitleRedirectBusyTimer) {
                     clearTimeout(window.__ynowTitleRedirectBusyTimer);
                   }
@@ -5063,25 +5091,47 @@
                   }, 200);
                   return;
                 }
-                done = true;
+                if (quietArmed) return;
+                quietArmed = true;
+                clearHold();
                 if (window.__ynowTitleRedirectBusyTimer) {
                   clearTimeout(window.__ynowTitleRedirectBusyTimer);
                   window.__ynowTitleRedirectBusyTimer = null;
                 }
-                var runEnd = function () {
-                  try { window.ynowEndRedirectTitle(); } catch (eFin) {}
-                };
-                var started = Number(window.__ynowTitleRedirectStartedAt) || Date.now();
-                var wait = Math.max(0, minHold - (Date.now() - started));
-                if (window.__ynowTitleRedirectHoldTimer) {
-                  clearTimeout(window.__ynowTitleRedirectHoldTimer);
-                  window.__ynowTitleRedirectHoldTimer = null;
-                }
-                if (wait > 0) {
-                  window.__ynowTitleRedirectHoldTimer = setTimeout(runEnd, wait);
-                } else {
-                  runEnd();
-                }
+                window.__ynowTitleRedirectQuietTimer = setTimeout(function () {
+                  window.__ynowTitleRedirectQuietTimer = null;
+                  quietArmed = false;
+                  if (window.__ynowTitleRedirectBusyTimer) {
+                    clearTimeout(window.__ynowTitleRedirectBusyTimer);
+                    window.__ynowTitleRedirectBusyTimer = null;
+                  }
+                  if (done) return;
+                  if (busyNow()) {
+                    finish(false);
+                    return;
+                  }
+                  var runEnd = function () {
+                    if (busyNow()) { finish(false); return; }
+                    done = true;
+                    try { window.ynowEndRedirectTitle(); } catch (eFin) {}
+                  };
+                  var started = Number(window.__ynowTitleRedirectStartedAt) || Date.now();
+                  var wait = Math.max(0, minHold - (Date.now() - started));
+                  clearHold();
+                  if (wait > 0) {
+                    window.__ynowTitleRedirectHoldTimer = setTimeout(runEnd, wait);
+                  } else {
+                    runEnd();
+                  }
+                }, quietMs);
+                window.__ynowTitleRedirectBusyTimer = setTimeout(function watchQuiet() {
+                  if (done || !window.__ynowTitleRedirectQuietTimer) return;
+                  if (busyNow()) {
+                    finish(false);
+                    return;
+                  }
+                  window.__ynowTitleRedirectBusyTimer = setTimeout(watchQuiet, 200);
+                }, 200);
               };
               if (window.__ynowTitleRedirectTimer) {
                 clearTimeout(window.__ynowTitleRedirectTimer);
@@ -5094,6 +5144,14 @@
               if (window.__ynowTitleRedirectBusyTimer) {
                 clearTimeout(window.__ynowTitleRedirectBusyTimer);
                 window.__ynowTitleRedirectBusyTimer = null;
+              }
+              if (window.__ynowTitleRedirectQuietTimer) {
+                clearTimeout(window.__ynowTitleRedirectQuietTimer);
+                window.__ynowTitleRedirectQuietTimer = null;
+              }
+              if (window.__ynowTitleRedirectHoldTimer) {
+                clearTimeout(window.__ynowTitleRedirectHoldTimer);
+                window.__ynowTitleRedirectHoldTimer = null;
               }
               window.__ynowTitleRedirectTimer = setTimeout(function () {
                 finish(true);

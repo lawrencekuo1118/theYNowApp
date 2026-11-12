@@ -407,9 +407,9 @@ check(
     grepl("__ynowTitleRedirectQuietTimer", end_redirect, fixed = TRUE) &&
     grepl("__ynowTitleRedirectQuietTimer", sched, fixed = TRUE) &&
     grepl(
-      "if (busyNow()) { finish(false); return; }[[:space:]]*done = true;",
+      "if (busyNow()) { finish(false); return; }\n                    done = true;",
       sched,
-      perl = TRUE
+      fixed = TRUE
     )
 )
 check(
