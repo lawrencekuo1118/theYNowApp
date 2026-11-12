@@ -4900,7 +4900,7 @@ server <- function(input, output, session) {
       },
       rel_mult_rev = function() {
         relative_multiples_bodies_ui("mod_rel")$rel_mult_rev
-      },
+      }
     ),
     on_first_mount = list(
       macro_market = function() {
