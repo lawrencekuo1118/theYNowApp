@@ -4468,6 +4468,39 @@ server <- function(input, output, session) {
     invisible(TRUE)
   }
 
+  # Full ynowUiLocale (~270KB strings) must not ride the first onFlushed / connect
+  # resync critical path. Boot slim (__YNOW_UI_LOCALE_BOOT) paints chrome; manual
+  # ui_locale_pick and lazy after_mount still call .push_ui_locale immediately.
+  .ynow_defer_full_locale_push <- function(sync_picker = TRUE, delay = 1.25) {
+    if (isTRUE(session$userData$ynow_full_locale_pushed)) {
+      tryCatch(
+        .push_ui_locale(isolate(ui_locale()), sync_picker = sync_picker),
+        error = function(e) NULL
+      )
+      return(invisible(FALSE))
+    }
+    if (isTRUE(session$userData$ynow_full_locale_deferred)) {
+      return(invisible(FALSE))
+    }
+    session$userData$ynow_full_locale_deferred <- TRUE
+    run <- function() {
+      if (isTRUE(session$userData$ynow_full_locale_pushed)) return()
+      tryCatch(
+        .push_ui_locale(isolate(ui_locale()), sync_picker = sync_picker),
+        error = function(e) NULL
+      )
+    }
+    if (requireNamespace("later", quietly = TRUE) &&
+        exists("ynow_session_callback", mode = "function")) {
+      later::later(ynow_session_callback(session, run), delay = delay)
+    } else if (requireNamespace("later", quietly = TRUE)) {
+      later::later(run, delay = delay)
+    } else {
+      run()
+    }
+    invisible(TRUE)
+  }
+
   .push_ui_locale <- function(locale, sync_picker = TRUE, force = FALSE) {
     loc <- normalize_ui_locale(locale)
     ui_locale(loc)
@@ -4494,6 +4527,7 @@ server <- function(input, output, session) {
       boxes = ui_box_header_specs(loc)
     )
     session$userData$ynow_last_locale_push <- list(loc = loc, at_num = now_num)
+    session$userData$ynow_full_locale_pushed <- TRUE
     session$sendCustomMessage("ynowUiLocale", payload)
     tryCatch({
       if (exists("mos_assumptions_push_locale", mode = "function")) {
@@ -5291,7 +5325,13 @@ server <- function(input, output, session) {
   }, ignoreInit = TRUE)
 
   # Client asks for a locale re-broadcast after connect / missed custom messages.
+  # Before the first full map has been sent, join the deferred schedule instead of
+  # putting ~270KB on the connect/idle critical path (boot slim already applied).
   observeEvent(input$ynow_locale_resync, {
+    if (!isTRUE(session$userData$ynow_full_locale_pushed)) {
+      .ynow_defer_full_locale_push(sync_picker = FALSE)
+      return()
+    }
     .push_ui_locale(isolate(ui_locale()), sync_picker = FALSE)
   }, ignoreInit = TRUE)
 
@@ -5304,6 +5344,12 @@ server <- function(input, output, session) {
     loc <- locale_from_device_language(input$device_ui_locale, default = "en")
     device_ui_locale_applied(TRUE)
     if (identical(loc, isolate(ui_locale()))) return()
+    # Prefer deferred full map when boot has not flushed yet; park locale target.
+    if (!isTRUE(session$userData$ynow_full_locale_pushed)) {
+      ui_locale(loc)
+      .ynow_defer_full_locale_push(sync_picker = TRUE)
+      return()
+    }
     .push_ui_locale(loc, sync_picker = TRUE)
   }, ignoreInit = TRUE)
 
@@ -5605,9 +5651,9 @@ server <- function(input, output, session) {
 
   session$onFlushed(function() {
     sc_datalist_choices(TICKER_PRESETS)
-    # Refresh chrome with current locale only — do NOT reset from market mode
-    # (device_ui_locale may refine language shortly after; market never owns language).
-    .push_ui_locale(isolate(ui_locale()), sync_picker = TRUE)
+    # Defer full ynowUiLocale off first flush. Boot slim paints chrome; market
+    # never owns language (device_ui_locale / ui_locale_pick refine separately).
+    .ynow_defer_full_locale_push(sync_picker = TRUE)
   }, once = TRUE)
 
   ticker_typeahead_q <- shiny::debounce(

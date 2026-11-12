@@ -61,7 +61,9 @@ check(
     identical(normalize_ui_locale("en-US"), "en")
 )
 
-ui_src <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+source(file.path(app_dir, "tests", "ynow_test_sources.R"), local = TRUE)
+.src <- ynow_test_ui_sources(app_dir)
+ui_src <- .src$shipped
 srv_src <- paste(readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check("header uses stable lang buttons", {
   grepl('id = "ynow_lang_stack"', ui_src, fixed = TRUE) &&
@@ -71,7 +73,7 @@ check("header uses stable lang buttons", {
     grepl("ynow-lang-btn", ui_src, fixed = TRUE)
 })
 check("header lang not shinyWidgets radioGroupButtons", {
-  !grepl('inputId = "ui_locale_pick"', ui_src, fixed = TRUE)
+  !grepl('inputId = "ui_locale_pick"', .src$ui, fixed = TRUE)
 })
 check("server does not re-render lang picker", {
   !grepl('updateRadioGroupButtons(\n|.)*?"ui_locale_pick"', srv_src, perl = TRUE) &&
@@ -108,6 +110,21 @@ check("user pick stays sticky (late en cannot overwrite after confirm)", {
 check("push coalesce skips identical non-force bursts", {
   grepl("ynow_last_locale_push", srv_src, fixed = TRUE) &&
     grepl("!isTRUE(force)", srv_src, fixed = TRUE)
+})
+check("full ynowUiLocale deferred off first onFlushed / connect resync", {
+  grepl(".ynow_defer_full_locale_push", srv_src, fixed = TRUE) &&
+    grepl("ynow_full_locale_pushed", srv_src, fixed = TRUE) &&
+    grepl(
+      "Defer full ynowUiLocale off first flush",
+      srv_src,
+      fixed = TRUE
+    ) &&
+    grepl(
+      "Before the first full map has been sent, join the deferred schedule",
+      srv_src,
+      fixed = TRUE
+    ) &&
+    grepl("force = TRUE", srv_src, fixed = TRUE)
 })
 check("ynowUiLocale registered with unary wrapper (Shiny 1.14 arity)", {
   grepl("addHandler('ynowUiLocale', function (payload)", ui_src, fixed = TRUE) &&
