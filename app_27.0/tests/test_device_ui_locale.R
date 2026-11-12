@@ -89,10 +89,12 @@ check("locale pick always re-pushes (no noop early-return)", {
     grepl("ynow_locale_resync", srv_src, fixed = TRUE) &&
     grepl("force = TRUE", srv_src, fixed = TRUE)
 })
-check("client resyncs locale after shiny connect / missed apply", {
+check("client resyncs locale after shiny reconnect only", {
   grepl("ynowRequestLocaleResync", ui_src, fixed = TRUE) &&
     grepl("ynow_locale_resync", ui_src, fixed = TRUE) &&
-    grepl("shiny:connected shiny:sessioninitialized shiny:reconnected", ui_src, fixed = TRUE)
+    grepl("requestLocaleResync('shiny-reconnected')", ui_src, fixed = TRUE) &&
+    !grepl("requestLocaleResync('shiny-lifecycle')", ui_src, fixed = TRUE) &&
+    grepl("ynow_locale_after_idle", ui_src, fixed = TRUE)
 })
 check("client drops stale locale push after manual pick", {
   grepl("__ynowLocaleUserPick", ui_src, fixed = TRUE) &&
@@ -111,16 +113,13 @@ check("push coalesce skips identical non-force bursts", {
   grepl("ynow_last_locale_push", srv_src, fixed = TRUE) &&
     grepl("!isTRUE(force)", srv_src, fixed = TRUE)
 })
-check("full ynowUiLocale deferred off first onFlushed / connect resync", {
-  grepl(".ynow_defer_full_locale_push", srv_src, fixed = TRUE) &&
+check("full ynowUiLocale waits for first shiny:idle", {
+  grepl("ynow_locale_after_idle", srv_src, fixed = TRUE) &&
     grepl("ynow_full_locale_pushed", srv_src, fixed = TRUE) &&
+    grepl("ynow_locale_after_idle", ui_src, fixed = TRUE) &&
+    grepl("shiny:idle", ui_src, fixed = TRUE) &&
     grepl(
-      "Defer full ynowUiLocale off first flush",
-      srv_src,
-      fixed = TRUE
-    ) &&
-    grepl(
-      "Before the first full map has been sent, join the deferred schedule",
+      "Full ynowUiLocale waits for client ynow_locale_after_idle",
       srv_src,
       fixed = TRUE
     ) &&
