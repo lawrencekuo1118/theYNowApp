@@ -4813,19 +4813,33 @@
             });
           }
           registerLocaleHandler();
-          /* Re-broadcast locale after connect so a dropped ynowUiLocale cannot stick. */
+          /* Connect/sessioninit: register only. Full ~270KB map waits for first
+             shiny:idle (ynow_locale_after_idle). Resync on reconnect recovers a
+             dropped websocket message after the first map was already sent. */
           if (window.jQuery) {
             jQuery(document).on(
-              'shiny:connected shiny:sessioninitialized shiny:reconnected',
+              'shiny:connected shiny:sessioninitialized',
               function () {
                 registerLocaleHandler();
-                requestLocaleResync('shiny-lifecycle');
               }
             );
+            jQuery(document).on('shiny:reconnected', function () {
+              registerLocaleHandler();
+              requestLocaleResync('shiny-reconnected');
+            });
+            jQuery(document).one('shiny:idle', function () {
+              if (!(window.Shiny && Shiny.setInputValue)) return;
+              if (window.__ynowLocaleAfterIdleSent) return;
+              window.__ynowLocaleAfterIdleSent = true;
+              Shiny.setInputValue('ynow_locale_after_idle', Date.now(), {priority: 'event'});
+            });
           } else {
             document.addEventListener('shiny:connected', function () {
               registerLocaleHandler();
-              requestLocaleResync('shiny-lifecycle');
+            });
+            document.addEventListener('shiny:reconnected', function () {
+              registerLocaleHandler();
+              requestLocaleResync('shiny-reconnected');
             });
           }
 

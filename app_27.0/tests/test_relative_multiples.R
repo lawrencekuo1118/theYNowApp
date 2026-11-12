@@ -337,16 +337,30 @@ check(
 )
 
 ui_src <- paste(readLines("ynow_ui.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+srv_ui <- paste(readLines("ynow_server.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+js_src <- paste(readLines("www/ynow_app.js", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check("sidebar mounts rel multiples", grepl("rel_multiples_calculator", ui_src, fixed = TRUE))
 check("sidebar mounts sotp", grepl("sotp_calculator", ui_src, fixed = TRUE))
-check("module UI call", grepl('relative_multiples_module_ui("mod_rel")', ui_src, fixed = TRUE))
+check("rel lazy hosts", grepl('uiOutput("ynow_lazy_host_rel_mult_ev")', mod_src, fixed = TRUE) &&
+        grepl('uiOutput("ynow_lazy_host_rel_multiples_calculator")', mod_src, fixed = TRUE) &&
+        grepl('uiOutput("ynow_lazy_host_rel_mult_rev")', mod_src, fixed = TRUE) &&
+        grepl('relative_multiples_module_ui("mod_rel")', ui_src, fixed = TRUE))
 check("sotp UI call", grepl('sotp_module_ui("mod_sotp")', ui_src, fixed = TRUE))
+check("sotp stays eager", !grepl('uiOutput("ynow_lazy_host_sotp_calculator")', ui_src, fixed = TRUE))
+check("module UI built on first visit", grepl('relative_multiples_bodies_ui("mod_rel")', srv_ui, fixed = TRUE) &&
+        grepl('relative_multiples_module_ui("mod_rel")', ui_src, fixed = TRUE))
+check(
+  "first bind syncs each multiples family once",
+  grepl('.sync_once_on_bind("ebitda", "ev_ebitda_multiple")', mod_src, fixed = TRUE) &&
+    grepl('.sync_once_on_bind("pe_multiple")', mod_src, fixed = TRUE) &&
+    grepl('.sync_once_on_bind("ps_multiple")', mod_src, fixed = TRUE)
+)
 source("auth_account.R", local = TRUE)
 check("lite hides relative families via the shared catalog", all(c("rel_multiples_calculator", "rel_mult_ev", "rel_mult_rev") %in% ynow_sidebar_lite_omit_tabs()))
 check("lite hides SOTP via the shared catalog", "sotp_calculator" %in% ynow_sidebar_lite_omit_tabs())
-check("applyUiLocale mode help", grepl("ynow_rel_mode_help", ui_src, fixed = TRUE))
-check("applyUiLocale equity tab", grepl("ynow_rel_multiples_tab_equity", ui_src, fixed = TRUE))
-check("applyUiLocale sotp lead", grepl("ynow_sotp_lead_title", ui_src, fixed = TRUE))
+check("applyUiLocale mode help", grepl("ynow_rel_mode_help", js_src, fixed = TRUE))
+check("applyUiLocale equity tab", grepl("ynow_rel_multiples_tab_equity", js_src, fixed = TRUE))
+check("applyUiLocale sotp lead", grepl("ynow_sotp_lead_title", js_src, fixed = TRUE))
 
 g_src <- paste(readLines("global.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check("global sources module", grepl("relative_multiples_module.R", g_src, fixed = TRUE))
@@ -354,6 +368,12 @@ check("global sources sotp", grepl("sotp_module.R", g_src, fixed = TRUE))
 
 srv <- paste(readLines("ynow_server.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check("server mounts module", grepl("relative_multiples_module_server", srv, fixed = TRUE))
+check(
+  "server registers multiples builders and leaves the module server at session start",
+  grepl("rel_mult_ev = function", srv, fixed = TRUE) &&
+    grepl("rel_multiples_calculator = function", srv, fixed = TRUE) &&
+    grepl("rel_mult_rev = function", srv, fixed = TRUE)
+)
 check("server mounts sotp", grepl("sotp_module_server", srv, fixed = TRUE))
 
 # --- Defaults in config source ---

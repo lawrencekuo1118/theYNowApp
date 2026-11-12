@@ -25,7 +25,10 @@ testthat::test_that("host id is stable and filesystem-safe", {
 })
 
 testthat::test_that("UI shells use lazy hosts for heavy tabs", {
-  ui_txt <- paste(readLines("ynow_ui.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  ui_txt <- paste(c(
+    readLines("ynow_ui.R", warn = FALSE, encoding = "UTF-8"),
+    readLines("relative_multiples_module.R", warn = FALSE, encoding = "UTF-8")
+  ), collapse = "\n")
   for (host in c(
     "ynow_lazy_host_macro_market",
     "ynow_lazy_host_bluechip",
@@ -37,7 +40,11 @@ testthat::test_that("UI shells use lazy hosts for heavy tabs", {
     "ynow_lazy_host_sensitivity",
     "ynow_lazy_host_smart_analysis",
     "ynow_lazy_host_company_advance",
-    "ynow_lazy_host_snapshot"
+    "ynow_lazy_host_snapshot",
+    "ynow_lazy_host_dashboard",
+    "ynow_lazy_host_rel_mult_ev",
+    "ynow_lazy_host_rel_multiples_calculator",
+    "ynow_lazy_host_rel_mult_rev"
   )) {
     testthat::expect_true(grepl(sprintf('uiOutput("%s")', host), ui_txt, fixed = TRUE), info = host)
   }
@@ -92,14 +99,39 @@ testthat::test_that("price alerts gate stays eager; body is lazy-hosted", {
 testthat::test_that("shared-input panes stay eager in UI source", {
   ui_txt <- paste(readLines("ynow_ui.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   srv_txt <- paste(readLines("ynow_server.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-  # get_started / dcf keep real markup (not only lazy hosts)
+  rel_txt <- paste(readLines("relative_multiples_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  # get_started / DCF / DDM stay eager. Lite auto-calc reads DDM, RI, P/B, NAV, and SOTP
+  # inputs without opening those tabs, so their panes stay in the first HTML.
   testthat::expect_false(grepl('uiOutput("ynow_lazy_host_get_started")', ui_txt, fixed = TRUE))
   testthat::expect_false(grepl('uiOutput("ynow_lazy_host_dcf_calculator")', ui_txt, fixed = TRUE))
+  testthat::expect_false(grepl('uiOutput("ynow_lazy_host_mos_assumptions")', ui_txt, fixed = TRUE))
   testthat::expect_false(grepl('uiOutput("ynow_lazy_host_ddm_calculator")', ui_txt, fixed = TRUE))
-  testthat::expect_false(grepl('uiOutput("ynow_lazy_host_dashboard")', ui_txt, fixed = TRUE))
+  testthat::expect_false(grepl('uiOutput("ynow_lazy_host_ri_calculator")', ui_txt, fixed = TRUE))
+  testthat::expect_false(grepl('uiOutput("ynow_lazy_host_pb_calculator")', ui_txt, fixed = TRUE))
+  testthat::expect_false(grepl('uiOutput("ynow_lazy_host_nav_calculator")', ui_txt, fixed = TRUE))
+  testthat::expect_false(grepl('uiOutput("ynow_lazy_host_sotp_calculator")', ui_txt, fixed = TRUE))
   testthat::expect_true(grepl('tabName = "get_started"', ui_txt, fixed = TRUE))
   testthat::expect_true(grepl("wacc_gordon", ui_txt, fixed = TRUE))
-  # Wave-1 builders registered on the server
+  testthat::expect_true(grepl('ri_module_ui("mod_ri")', ui_txt, fixed = TRUE))
+  testthat::expect_true(grepl('pb_asset_module_ui("mod_pb")', ui_txt, fixed = TRUE))
+  testthat::expect_true(grepl('sotp_module_ui("mod_sotp")', ui_txt, fixed = TRUE))
+  testthat::expect_true(grepl('nav_module_ui("mod_nav")', ui_txt, fixed = TRUE))
+  # Company: industry_choice eager shell; body lazy
+  testthat::expect_true(grepl('uiOutput("ynow_lazy_host_dashboard")', ui_txt, fixed = TRUE))
+  testthat::expect_true(grepl("\\.ynow_page_ui_dashboard\\s*<-\\s*function", ui_txt, perl = TRUE))
+  fn <- regexpr("\\.ynow_page_ui_dashboard\\s*<-\\s*function", ui_txt, perl = TRUE)[1]
+  nxt <- regexpr(
+    "\\.ynow_page_ui_snapshot\\s*<-\\s*function",
+    substr(ui_txt, fn, nchar(ui_txt)),
+    perl = TRUE
+  )[1]
+  testthat::expect_true(fn > 0 && nxt > 1)
+  dash_body <- substr(ui_txt, fn, fn + nxt - 2L)
+  testthat::expect_false(grepl("industry_choice", dash_body, fixed = TRUE))
+  testthat::expect_true(grepl('inputId = "industry_choice"', ui_txt, fixed = TRUE))
+  # Relative multiples: host shells + body builders
+  testthat::expect_true(grepl("relative_multiples_bodies_ui", rel_txt, fixed = TRUE))
+  testthat::expect_true(grepl('uiOutput("ynow_lazy_host_rel_mult_ev")', rel_txt, fixed = TRUE))
   for (nm in c(
     "about = function",
     "feedback = function",
@@ -107,10 +139,19 @@ testthat::test_that("shared-input panes stay eager in UI source", {
     "smart_analysis = function",
     "company_advance = function",
     "snapshot = function",
-    "price_alerts = function"
+    "price_alerts = function",
+    "dashboard = function",
+    "rel_mult_ev = function",
+    "rel_multiples_calculator = function",
+    "rel_mult_rev = function"
   )) {
     testthat::expect_true(grepl(nm, srv_txt, fixed = TRUE), info = nm)
   }
+  testthat::expect_false(grepl("ddm_calculator = function", srv_txt, fixed = TRUE))
+  testthat::expect_false(grepl("ri_calculator = function", srv_txt, fixed = TRUE))
+  testthat::expect_false(grepl("pb_calculator = function", srv_txt, fixed = TRUE))
+  testthat::expect_false(grepl("nav_calculator = function", srv_txt, fixed = TRUE))
+  testthat::expect_false(grepl("sotp_calculator = function", srv_txt, fixed = TRUE))
 })
 
 testthat::test_that("register mounts once and caches builder result", {
