@@ -1724,6 +1724,57 @@
               var el = document.getElementById(id);
               if (el && s[key]) el.textContent = s[key];
             }
+            /* MOS Assumptions body. ynowUiLocale strings; no ynowSetText. */
+            var mosAssumpLocale = {
+              ynow_mos_assump_page_title: 'mos_assump_page_title',
+              ynow_mos_assump_page_sub: 'mos_assump_page_sub',
+              ynow_mos_assump_b3_title: 'mos_assump_b3_title',
+              ynow_mos_assump_b3_lead: 'mos_assump_b3_lead',
+              ynow_mos_assump_goto_hfv: 'mos_assump_goto_hfv',
+              ynow_mos_assump_b4_title: 'mos_assump_b4_title',
+              ynow_mos_assump_b4_lead: 'mos_assump_b4_lead',
+              ynow_mos_assump_goto_lab: 'mos_assump_goto_lab',
+              ynow_mos_assump_b1_title: 'mos_assump_b1_title',
+              ynow_mos_assump_b1_lead: 'mos_assump_b1_lead',
+              ynow_mos_assump_goto_checklist: 'mos_assump_goto_checklist',
+              ynow_mos_assump_b2_title: 'mos_assump_b2_title',
+              ynow_mos_assump_b2_lead: 'mos_assump_b2_lead',
+              ynow_mos_assump_goto_alerts: 'mos_assump_goto_alerts',
+              ynow_mos_assump_chk_bear_base_label: 'dc_label_bear_base',
+              ynow_mos_assump_chk_bear_base_hint: 'dc_hint_bear_base',
+              ynow_mos_assump_bear_floor_label: 'dc_cond_bear_mos_floor',
+              ynow_mos_assump_bear_floor_hint: 'dc_cond_hint_bear_mos_floor',
+              ynow_mos_assump_chk_base_mos_label: 'dc_label_base_mos',
+              ynow_mos_assump_chk_base_mos_hint: 'dc_hint_base_mos',
+              ynow_mos_assump_base_floor_label: 'dc_cond_base_mos_floor',
+              ynow_mos_assump_base_floor_hint: 'dc_cond_hint_base_mos_floor',
+              ynow_mos_assump_alert_label: 'mos_assump_alert_label',
+              ynow_mos_assump_alert_hint: 'mos_assump_alert_hint',
+              ynow_mos_assump_hfv_near_label: 'mos_assump_hfv_near',
+              ynow_mos_assump_hfv_cheap_label: 'mos_assump_hfv_cheap',
+              ynow_mos_assump_hfv_rich_label: 'mos_assump_hfv_rich',
+              ynow_mos_assump_hfv_flat_label: 'mos_assump_hfv_flat',
+              ynow_mos_assump_hfv_strong_label: 'mos_assump_hfv_strong',
+              ynow_mos_assump_hfv_hint: 'mos_assump_hfv_hint',
+              ynow_mos_assump_hfv_risk: 'mos_assump_hfv_risk',
+              ynow_mos_assump_wvg_label: 'bt_w_vg_label',
+              ynow_mos_assump_wvg_hint: 'bt_w_vg_hint',
+              ynow_mos_assump_ladder_title: 'mos_assump_ladder_title',
+              ynow_mos_assump_lad_deep_label: 'mos_assump_lad_deep',
+              ynow_mos_assump_lad_mid_label: 'mos_assump_lad_mid',
+              ynow_mos_assump_lad_fair_label: 'mos_assump_lad_fair',
+              ynow_mos_assump_lad_mild_label: 'mos_assump_lad_mild',
+              ynow_mos_assump_ladder_hint: 'mos_assump_ladder_hint',
+              ynow_mos_assump_strat_risk: 'mos_assump_strat_risk',
+              /* Same generic gate title as Lab / Checklist / Alerts (not checklist kicker). */
+              ynow_mos_assump_gate_title: 'auth_pa_gate_title',
+              ynow_mos_assump_gate_body: 'mos_assump_gate_body',
+              ynow_mos_assump_gate_signin_label: 'auth_sign_in',
+              ynow_mos_assump_gate_signin_register_label: 'auth_register_btn'
+            };
+            Object.keys(mosAssumpLocale).forEach(function (id) {
+              setBtText(id, mosAssumpLocale[id]);
+            });
             setBtText('ynow_cookie_banner_body', 'cookie_banner_body');
             setBtText('ynow_cookie_settings_btn', 'cookie_settings_btn');
             setBtText('ynow_cookie_accept_all', 'cookie_accept_all');

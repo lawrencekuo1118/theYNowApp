@@ -203,6 +203,28 @@ check("locale push includes goto button ids", {
     grepl("ynow_mos_assump_goto_lab = \"mos_assump_goto_lab\"", mod_src, fixed = TRUE) &&
     !grepl("ynow_mos_assump_box_title", mod_src, fixed = TRUE)
 })
+ui_js <- paste(
+  readLines(file.path(.source_root, "www", "ynow_app.js"), warn = FALSE, encoding = "UTF-8"),
+  collapse = "\n"
+)
+check("applyUiLocale setBtText wires MOS page title and HFV band", {
+  grepl("ynow_mos_assump_page_title: 'mos_assump_page_title'", ui_js, fixed = TRUE) &&
+    grepl("ynow_mos_assump_b3_title: 'mos_assump_b3_title'", ui_js, fixed = TRUE) &&
+    grepl("setBtText(id, mosAssumpLocale[id])", ui_js, fixed = TRUE)
+})
+check("applyUiLocale setBtText wires MOS gate sign-in label", {
+  grepl("ynow_mos_assump_gate_signin_label: 'auth_sign_in'", ui_js, fixed = TRUE) &&
+    grepl("ynow_mos_assump_gate_signin_register_label: 'auth_register_btn'", ui_js, fixed = TRUE)
+})
+check("MOS gate title uses shared sign-in title (not checklist kicker)", {
+  grepl("ynow_mos_assump_gate_title: 'auth_pa_gate_title'", ui_js, fixed = TRUE) &&
+    grepl('ynow_mos_assump_gate_title = "auth_pa_gate_title"', mod_src, fixed = TRUE) &&
+    !grepl("ynow_mos_assump_gate_title: 'auth_gate_checklist_kicker'", ui_js, fixed = TRUE)
+})
+check("MOS locale no longer sends dead ynowSetText", {
+  !grepl("sendCustomMessage(\"ynowSetText\"", mod_src, fixed = TRUE) &&
+    !grepl("sendCustomMessage('ynowSetText'", mod_src, fixed = TRUE)
+})
 
 source(file.path(.source_root, "decision_checklist_module.R"), local = TRUE, encoding = "UTF-8")
 dc_html <- paste(as.character(decision_checklist_tab_body_ui()), collapse = "\n")
