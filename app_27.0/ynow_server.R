@@ -762,6 +762,16 @@ server <- function(input, output, session) {
         }
         tryCatch(showNotification(note, type = "message", duration = 5), error = function(e) NULL)
       }
+      # End Redirecting… only after Signed-in toast (when any) and after-chrome
+      # tab restore — not at the earlier ynowAuthPostLogin flush.
+      tryCatch({
+        ready_tab <- as.character(isolate(input$sidebar_tabs) %||% "")[1]
+        if (identical(ready_tab, "testing")) ready_tab <- "home"
+        session$sendCustomMessage(
+          "ynowAuthRedirectReady",
+          list(tab = ready_tab)
+        )
+      }, error = function(e) NULL)
       ynow_auth_heavy_tick(isolate(ynow_auth_heavy_tick()) + 1L)
     }, once = TRUE)
     invisible(TRUE)

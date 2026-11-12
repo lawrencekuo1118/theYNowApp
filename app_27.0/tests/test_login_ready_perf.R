@@ -126,6 +126,16 @@ sched_body <- substr(srv, sched_start, sched_end)
 acl_pos <- regexpr(".ynow_push_access_locks()", sched_body, fixed = TRUE)[1]
 pts_sched_pos <- regexpr("ynow_points_on_login", sched_body, fixed = TRUE)[1]
 check(
+  "post-chrome flush sends redirect-ready after Signed-in notify",
+  grepl("ynowAuthRedirectReady", sched_body, fixed = TRUE) &&
+    grepl("showNotification", sched_body, fixed = TRUE) &&
+    {
+      npos <- regexpr("showNotification", sched_body, fixed = TRUE)[1]
+      rpos <- regexpr("ynowAuthRedirectReady", sched_body, fixed = TRUE)[1]
+      npos > 0 && rpos > npos
+    }
+)
+check(
   "post-chrome flush pushes ACL before points",
   acl_pos > 0 && pts_sched_pos > 0 && acl_pos < pts_sched_pos
 )
