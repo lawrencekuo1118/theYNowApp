@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12806570
+bundleId=12811208
 appId=10907657
 url=https://[REDACTED].shinyapps.io/TheYNowApp/  # pragma: allowlist secret
-aligned_git=9c64d01b8bdb1559c48928673a458e495e4a5884
-commit=9c64d01b8bdb1559c48928673a458e495e4a5884
-short=9c64d01b
-message=chore: bump display version to v28.44
-captured_at=2026-11-11T05:50:05Z
-display_version=v28.44
-note=Shipped v28.44 (+0.01) via deploy_app_21.R. YN-120 web render perf: externalized first-paint CSS/JS (ynow_chrome.css / ynow_widgets.css / ynow_app.js) + lazy Snapshot. Feature #735. Live status=running; rsconnect bundleId=12806570. Prior: v28.43=#733 (12797972).
+aligned_git=b483751fdfa181669a957226fe5d6f67e2ba0a58
+commit=b483751fdfa181669a957226fe5d6f67e2ba0a58
+short=b483751f
+message=chore: record shipped display version v28.45
+captured_at=2026-11-12T03:36:26Z
+display_version=v28.45
+note=Shipped v28.45 (+0.01) via deploy_app_21.R. YN-123 Wave-2: idle-gated ynowUiLocale + Company industry shell/lazy body + relative-multiples lazy hosts (DDM/RI/P/B/NAV/SOTP stay eager). Feature #737. Live status=running; rsconnect bundleId=12811208. Prior: v28.44=#736 (12806570).
