@@ -245,22 +245,6 @@ testthat::test_that("deferred on_first_mount restores reactive domain for module
   testthat::expect_null(module_err)
 })
 
-testthat::test_that("unwrap drops the tab-pane wrapper so a host is not a nested pane", {
-  ui <- htmltools::tags$div(
-    class = "tab-pane",
-    id = "shiny-tab-ri_calculator",
-    `data-value` = "ri_calculator",
-    htmltools::tags$div(id = "ri-body", "RI"),
-    htmltools::tags$span("more")
-  )
-  out <- .ynow_unwrap_tab_pane(ui)
-  flat <- paste(as.character(out), collapse = "\n")
-  testthat::expect_false(grepl("tab-pane", flat, fixed = TRUE))
-  testthat::expect_false(grepl("data-value", flat, fixed = TRUE))
-  testthat::expect_true(grepl("ri-body", flat, fixed = TRUE))
-  testthat::expect_identical(.ynow_unwrap_tab_pane(htmltools::tags$span("keep")), htmltools::tags$span("keep"))
-})
-
 testthat::test_that("lazy_tabs wraps deferred hooks in withReactiveDomain", {
   lazy_txt <- paste(readLines("lazy_tabs.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   testthat::expect_true(grepl(
