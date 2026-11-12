@@ -4468,6 +4468,9 @@ server <- function(input, output, session) {
     invisible(TRUE)
   }
 
+  # Full ynowUiLocale (~270KB strings) must not ride the first onFlushed / connect
+  # critical path. Boot slim paints chrome; first shiny:idle (client) triggers one
+  # full push. Manual ui_locale_pick / after_mount / device locale-change stay immediate.
   .push_ui_locale <- function(locale, sync_picker = TRUE, force = FALSE) {
     loc <- normalize_ui_locale(locale)
     ui_locale(loc)
@@ -4494,6 +4497,7 @@ server <- function(input, output, session) {
       boxes = ui_box_header_specs(loc)
     )
     session$userData$ynow_last_locale_push <- list(loc = loc, at_num = now_num)
+    session$userData$ynow_full_locale_pushed <- TRUE
     session$sendCustomMessage("ynowUiLocale", payload)
     tryCatch({
       if (exists("mos_assumptions_push_locale", mode = "function")) {
@@ -4886,7 +4890,17 @@ server <- function(input, output, session) {
       smart_analysis = function() .ynow_page_ui_smart_analysis(),
       company_advance = function() .ynow_page_ui_company_advance(),
       snapshot = function() .ynow_page_ui_snapshot(),
-      price_alerts = function() price_alert_tab_body_ui()
+      price_alerts = function() price_alert_tab_body_ui(),
+      dashboard = function() .ynow_page_ui_dashboard(),
+      rel_mult_ev = function() {
+        relative_multiples_bodies_ui("mod_rel")$rel_mult_ev
+      },
+      rel_multiples_calculator = function() {
+        relative_multiples_bodies_ui("mod_rel")$rel_multiples_calculator
+      },
+      rel_mult_rev = function() {
+        relative_multiples_bodies_ui("mod_rel")$rel_mult_rev
+      },
     ),
     on_first_mount = list(
       macro_market = function() {
@@ -4948,6 +4962,16 @@ server <- function(input, output, session) {
     ),
     after_mount = function(tab) {
       lazy_mount_nonce(isolate(as.integer(lazy_mount_nonce()) %||% 0L) + 1L)
+      # Company body owns is_type; market switch can miss until first mount.
+      if (identical(as.character(tab %||% "")[1], "dashboard")) {
+        tryCatch({
+          mode <- normalize_market_mode(isolate(market_mode()))
+          ch <- is_metric_choices_for_locale(mode)
+          sel <- isolate(input$is_type)
+          if (is.null(sel) || !sel %in% unname(ch)) sel <- unname(ch)[1]
+          updateSelectInput(session, "is_type", choices = ch, selected = sel)
+        }, error = function(e) NULL)
+      }
       # One immediate push + one delayed after paint (selectize may not bind yet).
       # Avoid the old triple push (0 / 0.05 / 0.25) which re-invalidated locale
       # reactives three times on every first visit to a lazy tab.
@@ -4960,10 +4984,13 @@ server <- function(input, output, session) {
       push_loc()
       if (requireNamespace("later", quietly = TRUE)) {
         later::later(function() {
-          tryCatch({
-            lazy_mount_nonce(isolate(as.integer(lazy_mount_nonce()) %||% 0L) + 1L)
-            push_loc()
-          }, error = function(e) NULL)
+          tryCatch(
+            shiny::withReactiveDomain(session, {
+              lazy_mount_nonce(isolate(as.integer(lazy_mount_nonce()) %||% 0L) + 1L)
+              push_loc()
+                    }),
+            error = function(e) NULL
+          )
         }, delay = 0.12)
       }
       invisible(tab)
@@ -5290,12 +5317,20 @@ server <- function(input, output, session) {
     .push_ui_locale(pick, sync_picker = FALSE, force = TRUE)
   }, ignoreInit = TRUE)
 
-  # Client asks for a locale re-broadcast after connect / missed custom messages.
+  # Client asks for a locale re-broadcast after reconnect / missed custom messages.
+  # Connect-time resync is suppressed on the client; first full map comes from idle.
   observeEvent(input$ynow_locale_resync, {
     .push_ui_locale(isolate(ui_locale()), sync_picker = FALSE)
   }, ignoreInit = TRUE)
 
+  # First sustained shiny:idle → one full map (boot slim already painted chrome).
+  observeEvent(input$ynow_locale_after_idle, {
+    if (isTRUE(session$userData$ynow_full_locale_pushed)) return()
+    .push_ui_locale(isolate(ui_locale()), sync_picker = FALSE)
+  }, ignoreInit = TRUE)
+
   # 裝置／瀏覽器語言 → 初次 UI locale（僅一次；不覆寫手動選擇）
+  # Immediate when locale differs: this non-boot push clears __ynowLocaleBootGuard.
   observeEvent(input$device_ui_locale, {
     if (isTRUE(isolate(ui_locale_user_picked())) ||
         isTRUE(isolate(device_ui_locale_applied()))) {
@@ -5605,9 +5640,8 @@ server <- function(input, output, session) {
 
   session$onFlushed(function() {
     sc_datalist_choices(TICKER_PRESETS)
-    # Refresh chrome with current locale only — do NOT reset from market mode
-    # (device_ui_locale may refine language shortly after; market never owns language).
-    .push_ui_locale(isolate(ui_locale()), sync_picker = TRUE)
+    # Full ynowUiLocale waits for client ynow_locale_after_idle (first shiny:idle).
+    # Boot slim paints chrome; market never owns language.
   }, once = TRUE)
 
   ticker_typeahead_q <- shiny::debounce(
