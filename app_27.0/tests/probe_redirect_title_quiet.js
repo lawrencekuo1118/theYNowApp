@@ -153,12 +153,12 @@ function runGap() {
 
 function runMinHold() {
   const h = harness();
-  h.setNow(0);
-  h.window.__ynowTitleRedirectStartedAt = 0;
+  h.setNow(1000);
+  h.window.__ynowTitleRedirectStartedAt = 1000;
   h.window.ynowScheduleEndRedirectTitle('lab');
-  h.flushUntil(480);
+  h.flushUntil(1480);
   const atQuietEnd = snap(h);
-  h.flushUntil(800);
+  h.flushUntil(1800);
   return {
     atQuietEnd: atQuietEnd,
     endedAt: h.endedAt(),
@@ -196,7 +196,7 @@ const ok = gap.atFinishCandidate.redirecting === true &&
   force.redirecting === false &&
   force.endedAt != null &&
   minHold.atQuietEnd.redirecting === true &&
-  minHold.endedAt === 750 &&
+  minHold.endedAt === 1750 &&
   minHold.redirectingAfter === false;
 
 const result = { ok: ok, gap: gap, minHold: minHold, forceEnd: force };
