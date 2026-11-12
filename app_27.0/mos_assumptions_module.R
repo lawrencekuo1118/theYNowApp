@@ -367,15 +367,11 @@ mos_assumptions_tab_ui <- function() {
   tabItem(tabName = "mos_assumptions", surface)
 }
 
-#' Locale push for MOS Assumptions labels (call from ui_locale observer).
+#' Locale bookkeeping for MOS Assumptions.
+#' Visible strings are applied in applyUiLocale via setBtText (ynowUiLocale).
+#' Do not send ynowSetText — the client has no production handler for it.
 mos_assumptions_push_locale <- function(session, loc = "en") {
   if (is.null(session) || !exists("ui_str", mode = "function")) return(invisible(NULL))
-  set_txt <- function(id, key) {
-    tryCatch(
-      session$sendCustomMessage("ynowSetText", list(id = id, text = ui_str(key, loc))),
-      error = function(e) invisible(NULL)
-    )
-  }
   keys <- c(
     ynow_mos_assump_page_title = "mos_assump_page_title",
     ynow_mos_assump_page_sub = "mos_assump_page_sub",
@@ -417,9 +413,10 @@ mos_assumptions_push_locale <- function(session, loc = "en") {
     ynow_mos_assump_lad_mild_label = "mos_assump_lad_mild",
     ynow_mos_assump_ladder_hint = "mos_assump_ladder_hint",
     ynow_mos_assump_strat_risk = "mos_assump_strat_risk",
-    ynow_mos_assump_gate_title = "auth_gate_checklist_kicker",
-    ynow_mos_assump_gate_body = "mos_assump_gate_body"
+    ynow_mos_assump_gate_title = "auth_pa_gate_title",
+    ynow_mos_assump_gate_body = "mos_assump_gate_body",
+    ynow_mos_assump_gate_signin_label = "auth_sign_in",
+    ynow_mos_assump_gate_signin_register_label = "auth_register_btn"
   )
-  for (id in names(keys)) set_txt(id, keys[[id]])
-  invisible(NULL)
+  invisible(list(locale = loc, keys = keys))
 }
