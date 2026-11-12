@@ -4954,9 +4954,6 @@
               if (busy) busy.setAttribute('aria-hidden', 'true');
             } catch (eBusyEnd) {}
           };
-          /* Redirecting lasts through shiny:busy gaps until a quiet idle
-             after destination match, not merely the first idle.
-             A minimum hold still covers a restore that goes idle immediately. */
           window.__ynowRedirectTitleMinHoldMs = 750;
           window.__ynowRedirectTitleQuietMs = 400;
           window.ynowBeginRedirectTitle = function () {
