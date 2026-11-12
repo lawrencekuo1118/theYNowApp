@@ -7,5 +7,5 @@ commit=9c64d01b8bdb1559c48928673a458e495e4a5884
 short=9c64d01b
 message=chore: bump display version to v28.44
 captured_at=2026-11-11T05:50:05Z
-display_version=v28.44
+display_version=v28.45
 note=Shipped v28.44 (+0.01) via deploy_app_21.R. YN-120 web render perf: externalized first-paint CSS/JS (ynow_chrome.css / ynow_widgets.css / ynow_app.js) + lazy Snapshot. Feature #735. Live status=running; rsconnect bundleId=12806570. Prior: v28.43=#733 (12797972).
