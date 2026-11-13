@@ -506,6 +506,17 @@ check("macro_panel_loading i18n en + zh-TW", {
   identical(ui_str("macro_panel_loading", "en"), "Loading…") &&
     identical(ui_str("macro_panel_loading", "zh-TW"), "載入中…")
 })
+check("offline-first last-good banner + seed wiring", {
+  grepl("ynow_macro_stale_banner", txt, fixed = TRUE) &&
+    grepl(".macro_lg_seed_quotes", txt, fixed = TRUE) &&
+    grepl("ynowMacroLastGood", txt, fixed = TRUE) &&
+    grepl("ynowMacroStale", txt, fixed = TRUE) &&
+    grepl("qstate$live_hits", txt, fixed = TRUE)
+})
+check("macro_offline_stale i18n en + zh-TW", {
+  grepl("Offline / weak network", ui_str("macro_offline_stale", "en"), fixed = TRUE) &&
+    grepl("離線／訊號不佳", ui_str("macro_offline_stale", "zh-TW"), fixed = TRUE)
+})
 check("client re-applies Macro locale when lazy DOM appears", {
   ui_src2 <- paste(readLines("ynow_ui.R", warn = FALSE), collapse = "\n")
   app_js <- paste(readLines("www/ynow_app.js", warn = FALSE), collapse = "\n")

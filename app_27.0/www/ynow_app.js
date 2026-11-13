@@ -1450,6 +1450,19 @@
             setBtText('ynow_macro_page_title', 'macro_page_title');
             setBtText('ynow_macro_page_sub', 'macro_page_sub');
             setBtText('ynow_macro_rf_title', 'macro_rf_title');
+            /* Stale/offline banner: refresh label when locale changes if visible. */
+            try {
+              var staleBan = document.getElementById('ynow_macro_stale_banner');
+              if (staleBan && !staleBan.hasAttribute('hidden') &&
+                  staleBan.classList.contains('is-visible')) {
+                var whenAttr = staleBan.getAttribute('data-captured-at') || '';
+                if (whenAttr && s.macro_offline_stale_at) {
+                  staleBan.textContent = String(s.macro_offline_stale_at).replace('{when}', whenAttr);
+                } else if (s.macro_offline_stale) {
+                  staleBan.textContent = s.macro_offline_stale;
+                }
+              }
+            } catch (eStaleLoc) {}
             setBtText('ynow_macro_htcdi_title', 'htcdi_title');
             var htcdiBox = document.getElementById('ynow_macro_htcdi_box');
             var htcdiAlert = htcdiBox ? String(htcdiBox.getAttribute('data-htcdi-alert') || '') : '';
@@ -5639,6 +5652,193 @@
               });
             }
             registerGotoTabHandler();
+            /* Offline-first Macro last-good: localStorage mirror + skeleton hydrate +
+               honest stale/offline banner. Maps AsyncStorage intent onto the browser. */
+            (function ynowMacroLastGoodClient() {
+              var KEY = 'ynow_macro_last_good_v1';
+              var MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+              function readSnap() {
+                try {
+                  var raw = localStorage.getItem(KEY);
+                  if (!raw) return null;
+                  var snap = JSON.parse(raw);
+                  if (!snap || typeof snap !== 'object') return null;
+                  var at = Date.parse(String(snap.captured_at || ''));
+                  if (!isFinite(at) || (Date.now() - at) > MAX_AGE_MS) return null;
+                  return snap;
+                } catch (eR) {
+                  return null;
+                }
+              }
+              function writeSnap(snap) {
+                if (!snap || typeof snap !== 'object') return;
+                try {
+                  localStorage.setItem(KEY, JSON.stringify(snap));
+                } catch (eW) {}
+              }
+              function fmtWhen(iso) {
+                try {
+                  var d = new Date(String(iso || ''));
+                  if (isNaN(d.getTime())) return String(iso || '');
+                  return d.toISOString().replace('T', ' ').replace(/\.\d+Z$/, ' UTC');
+                } catch (eF) {
+                  return String(iso || '');
+                }
+              }
+              function bannerText(whenIso) {
+                var s = window.__ynowUiLocaleStrings || {};
+                var when = fmtWhen(whenIso);
+                if (when && s.macro_offline_stale_at) {
+                  return String(s.macro_offline_stale_at).replace('{when}', when);
+                }
+                return s.macro_offline_stale ||
+                  'Offline / weak network — showing last saved Market data (may be stale).';
+              }
+              function setBanner(visible, capturedAt) {
+                var el = document.getElementById('ynow_macro_stale_banner');
+                if (!el) return;
+                if (visible) {
+                  el.removeAttribute('hidden');
+                  el.classList.add('is-visible');
+                  if (capturedAt) el.setAttribute('data-captured-at', fmtWhen(capturedAt));
+                  el.textContent = bannerText(capturedAt || el.getAttribute('data-captured-at') || '');
+                } else {
+                  el.setAttribute('hidden', 'hidden');
+                  el.classList.remove('is-visible');
+                  el.removeAttribute('data-captured-at');
+                }
+              }
+              function fmtChg(x) {
+                var n = Number(x);
+                if (!isFinite(n)) return '—';
+                var sign = n >= 0 ? '+' : '';
+                return sign + n.toFixed(2) + '%';
+              }
+              function fmtLast(x) {
+                var n = Number(x);
+                if (!isFinite(n)) return '—';
+                try {
+                  return n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+                } catch (eL) {
+                  return String(Math.round(n * 100) / 100);
+                }
+              }
+              function hydrateSkeletons(snap) {
+                if (!snap) return false;
+                var painted = false;
+                var quotes = snap.quotes || [];
+                quotes.forEach(function (row) {
+                  if (!row || !row.symbol) return;
+                  var last = Number(row.last);
+                  if (!isFinite(last)) return;
+                  var card = document.querySelector(
+                    '.ynow-macro-kpi-skeleton .ynow-macro-kpi[data-macro-index="' +
+                      String(row.symbol).replace(/"/g, '') + '"]'
+                  );
+                  if (!card) return;
+                  var val = card.querySelector('.ynow-macro-kpi__value');
+                  var chg = card.querySelector('.ynow-macro-kpi__chg');
+                  if (val) val.textContent = fmtLast(last);
+                  if (chg) chg.textContent = fmtChg(row.chg_pct);
+                  painted = true;
+                });
+                if (snap.rf && isFinite(Number(snap.rf.rf_pct))) {
+                  var rfVal = document.querySelector(
+                    '.ynow-macro-rf-skeleton .ynow-macro-rf__value, ' +
+                      '.ynow-macro-rf-skeleton .ynow-macro-kpi__value'
+                  );
+                  if (rfVal) {
+                    rfVal.textContent = Number(snap.rf.rf_pct).toFixed(2) + '%';
+                    painted = true;
+                  }
+                }
+                if (snap.htcdi && isFinite(Number(snap.htcdi.composite))) {
+                  var hVal = document.querySelector(
+                    '.ynow-macro-rf-skeleton .ynow-macro-kpi--htcdi .ynow-macro-kpi__value'
+                  );
+                  if (hVal) {
+                    hVal.textContent = Number(snap.htcdi.composite).toFixed(1);
+                    painted = true;
+                  }
+                }
+                return painted;
+              }
+              function pushClientSeed() {
+                var snap = readSnap();
+                if (!snap || !window.Shiny || !Shiny.setInputValue) return;
+                try {
+                  Shiny.setInputValue('macro-last_good_client', snap, { priority: 'event' });
+                } catch (eP) {}
+              }
+              function onMacroMounted() {
+                var snap = readSnap();
+                if (!snap) return;
+                if (hydrateSkeletons(snap)) {
+                  var offline = (typeof navigator !== 'undefined' && navigator.onLine === false);
+                  setBanner(true, snap.captured_at);
+                  if (offline) document.body.classList.add('ynow-macro-offline');
+                }
+              }
+              function registerLastGoodHandlers() {
+                if (!window.Shiny || !Shiny.addCustomMessageHandler) {
+                  setTimeout(registerLastGoodHandlers, 50);
+                  return;
+                }
+                try {
+                  Shiny.addCustomMessageHandler('ynowMacroLastGood', function (payload) {
+                    if (!payload) return;
+                    writeSnap(payload);
+                  });
+                } catch (e1) {}
+                try {
+                  Shiny.addCustomMessageHandler('ynowMacroStale', function (payload) {
+                    var stale = !!(payload && payload.stale);
+                    var at = payload && payload.captured_at ? String(payload.captured_at) : '';
+                    setBanner(stale, at);
+                    if (!stale) document.body.classList.remove('ynow-macro-offline');
+                  });
+                } catch (e2) {}
+              }
+              registerLastGoodHandlers();
+              document.addEventListener('shiny:connected', function () {
+                pushClientSeed();
+                onMacroMounted();
+              });
+              document.addEventListener('shiny:sessioninitialized', function () {
+                pushClientSeed();
+                onMacroMounted();
+              });
+              window.addEventListener('offline', function () {
+                document.body.classList.add('ynow-macro-offline');
+                var snap = readSnap();
+                if (snap) {
+                  hydrateSkeletons(snap);
+                  setBanner(true, snap.captured_at);
+                } else {
+                  setBanner(true, '');
+                }
+              });
+              window.addEventListener('online', function () {
+                document.body.classList.remove('ynow-macro-offline');
+              });
+              /* Lazy Macro host may appear after connect — hydrate when banner node lands. */
+              try {
+                if (typeof MutationObserver !== 'undefined' && !window.__ynowMacroLgWatch) {
+                  window.__ynowMacroLgWatch = true;
+                  var host = document.getElementById('ynow_lazy_host_macro_market') ||
+                    document.body;
+                  var mo = new MutationObserver(function () {
+                    if (!document.getElementById('ynow_macro_stale_banner') &&
+                        !document.querySelector('.ynow-macro-kpi-skeleton')) {
+                      return;
+                    }
+                    onMacroMounted();
+                  });
+                  if (host) mo.observe(host, { childList: true, subtree: true });
+                }
+              } catch (eMo) {}
+              onMacroMounted();
+            })();
             window.addEventListener('hashchange', remapLegacyHash);
             function applyLiteMode(on, opts) {
               opts = opts || {};
