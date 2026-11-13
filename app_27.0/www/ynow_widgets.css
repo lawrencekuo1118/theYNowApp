@@ -2180,10 +2180,15 @@
           margin-bottom: 12px;
         }
         /* Static skeleton until nested index_kpi_row uiOutput flushes */
-        .ynow-macro-kpi-host .ynow-macro-kpi--skeleton {
+        .ynow-macro-kpi-host .ynow-macro-kpi--skeleton,
+        .ynow-macro-rf-host .ynow-macro-kpi--skeleton {
           opacity: 0.85;
         }
         .ynow-macro-kpi-host:has(#macro-index_kpi_row > *) > .ynow-macro-kpi-skeleton {
+          display: none !important;
+        }
+        /* Static Rf / YNOW / HTCDI skeleton until live rf_signal_row flushes */
+        .ynow-macro-rf-host:has(#macro-rf_signal_row > *) > .ynow-macro-rf-skeleton {
           display: none !important;
         }
         .ynow-macro-kpi,

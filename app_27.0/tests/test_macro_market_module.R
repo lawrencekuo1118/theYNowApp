@@ -276,9 +276,10 @@ check(
 )
 check("locale wiring dropped beta title", !grepl("ynow_macro_beta_title", ui_src, fixed = TRUE))
 check("locale wiring dropped beta warn", !grepl("macro_beta_warn_title", ui_src, fixed = TRUE))
-check("locale wires industry label", grepl("ynow_macro_industry_label", ui_src, fixed = TRUE))
-check("locale wires concept label", grepl("ynow_macro_concept_label", ui_src, fixed = TRUE))
-check("locale dropped combined theme label", !grepl("ynow_macro_theme_label", ui_src, fixed = TRUE))
+# Industry / concept labels live in macro_market_module.R (lazy page body), not ynow_ui.R.
+check("locale wires industry label", grepl("ynow_macro_industry_label", txt, fixed = TRUE))
+check("locale wires concept label", grepl("ynow_macro_concept_label", txt, fixed = TRUE))
+check("locale dropped combined theme label", !grepl("ynow_macro_theme_label", txt, fixed = TRUE))
 
 .notes_calls <- function(src) {
   calls <- character(0)
@@ -427,6 +428,12 @@ if (requireNamespace("htmltools", quietly = TRUE) && exists("macro_market_ui", m
       grepl("ynow-macro-kpi--skeleton", ui_html_zh, fixed = TRUE) &&
         grepl("ynow-macro-kpi-row--skeleton", ui_html_zh, fixed = TRUE)
     )
+    check(
+      "zh-TW first-paint Rf / HTCDI skeleton host",
+      grepl("ynow-macro-rf-skeleton", ui_html_zh, fixed = TRUE) &&
+        grepl("ynow-macro-rf-host", ui_html_zh, fixed = TRUE) &&
+        grepl(ui_str("macro_panel_loading", "zh-TW"), ui_html_zh, fixed = TRUE)
+    )
   } else {
     check("macro_market_ui zh render skipped", TRUE)
   }
@@ -435,9 +442,10 @@ check("overlay industry input", grepl('ns("industry_key")', txt, fixed = TRUE))
 check("overlay concept multi input", grepl("concept_keys", txt, fixed = TRUE))
 check("overlay concept select gone", !grepl('ns("concept_key")', txt, fixed = TRUE))
 check("relative performance plot width 100%", {
+  widgets_css <- paste(readLines("www/ynow_widgets.css", warn = FALSE), collapse = "\n")
   grepl("ynow-macro-overlay-plot-wrap", txt, fixed = TRUE) &&
     grepl('plotlyOutput(ns("overlay_plot"), height = "380px", width = "100%")', txt, fixed = TRUE) &&
-    grepl("ynow-macro-overlay-plot-wrap", ui_css <- paste(readLines("ynow_ui.R", warn = FALSE), collapse = "\n"), fixed = TRUE)
+    grepl("ynow-macro-overlay-plot-wrap", widgets_css, fixed = TRUE)
 })
 check("combined overlay theme_key gone", !grepl('ns("theme_key")', txt, fixed = TRUE))
 check("combined title gone", !grepl("Industry / concept vs benchmark", txt, fixed = TRUE))
@@ -462,25 +470,49 @@ check("progressive non-blocking index quotes", {
     grepl("later::later", txt, fixed = TRUE) &&
     grepl("delay = 0.15", txt, fixed = TRUE)
 })
-check("HTCDI deferred past first-paint KPIs", {
-  # Starts only after index_quotes_ready_gen (quote strip finished), not onFlushed/1.25s race.
-  grepl("index_quotes_ready_gen", txt, fixed = TRUE) &&
-    grepl("observeEvent(index_quotes_ready_gen()", txt, fixed = TRUE) &&
-    !grepl("session$onFlushed(function() .queue_htcdi()", txt, fixed = TRUE)
+check("homepage three APIs arm in parallel (quotes + Rf + HTCDI)", {
+  # Quotes + Rf + HTCDI share refresh_token / .mode triggers; HTCDI no longer
+  # waits for index_quotes_ready_gen. Rf is async (rf_detail_rv), not sync in renderUI.
+  rf_out_start <- regexpr("output$rf_signal_row", txt, fixed = TRUE)[1]
+  rf_chunk <- if (rf_out_start > 0L) {
+    substr(txt, rf_out_start, min(nchar(txt), rf_out_start + 3500L))
+  } else {
+    ""
+  }
+  grepl(".queue_rf_detail", txt, fixed = TRUE) &&
+    grepl("rf_detail_rv", txt, fixed = TRUE) &&
+    grepl(".queue_htcdi()", txt, fixed = TRUE) &&
+    grepl("list(refresh_token(), .mode())", txt, fixed = TRUE) &&
+    !grepl("observeEvent(index_quotes_ready_gen()", txt, fixed = TRUE) &&
+    grepl("rf_detail_rv()", rf_chunk, fixed = TRUE) &&
+    !grepl("cached_get_risk_free_rate_detail(mode)", rf_chunk, fixed = TRUE)
 })
 check("static index KPI skeleton in first HTML", {
   grepl("macro_index_kpi_skeleton_ui", txt, fixed = TRUE) &&
     grepl("ynow-macro-kpi-skeleton", txt, fixed = TRUE) &&
     grepl("ynow-macro-kpi-host", txt, fixed = TRUE)
 })
-check("CSS hides skeleton when live KPIs arrive", {
-  grepl("ynow-macro-kpi-host:has(#macro-index_kpi_row", ui_js <- paste(readLines("ynow_ui.R", warn = FALSE), collapse = "\n"), fixed = TRUE)
+check("static Rf / YNOW / HTCDI skeleton in first HTML", {
+  grepl("macro_rf_signal_skeleton_ui", txt, fixed = TRUE) &&
+    grepl("ynow-macro-rf-skeleton", txt, fixed = TRUE) &&
+    grepl("ynow-macro-rf-host", txt, fixed = TRUE)
+})
+check("CSS hides skeletons when live Macro panels arrive", {
+  css <- paste(readLines("www/ynow_widgets.css", warn = FALSE), collapse = "\n")
+  grepl("ynow-macro-kpi-host:has(#macro-index_kpi_row", css, fixed = TRUE) &&
+    grepl("ynow-macro-rf-host:has(#macro-rf_signal_row", css, fixed = TRUE)
+})
+check("macro_panel_loading i18n en + zh-TW", {
+  identical(ui_str("macro_panel_loading", "en"), "Loading…") &&
+    identical(ui_str("macro_panel_loading", "zh-TW"), "載入中…")
 })
 check("client re-applies Macro locale when lazy DOM appears", {
-  ui_js <- paste(readLines("ynow_ui.R", warn = FALSE), collapse = "\n")
-  grepl("__ynowMacroLocaleWatch", ui_js, fixed = TRUE) &&
-    grepl("ynow_lazy_host_macro_market", ui_js, fixed = TRUE) &&
-    grepl("ynow_macro_page_title", ui_js, fixed = TRUE)
+  ui_src2 <- paste(readLines("ynow_ui.R", warn = FALSE), collapse = "\n")
+  app_js <- paste(readLines("www/ynow_app.js", warn = FALSE), collapse = "\n")
+  grepl("__ynowMacroLocaleWatch", app_js, fixed = TRUE) &&
+    grepl("ynow_lazy_host_macro_market", ui_src2, fixed = TRUE) &&
+    grepl("ynow_macro_page_title", app_js, fixed = TRUE) &&
+    grepl("ynow_macro_page_title", txt, fixed = TRUE)
 })
 check("industry defaults blank", {
   grepl(
@@ -525,9 +557,12 @@ check("bubble refresh bumps token", {
     grepl("refresh_token", txt, fixed = TRUE)
 })
 check("locale wires both macro refresh buttons", {
-  ui_js <- paste(readLines("ynow_ui.R", warn = FALSE), collapse = "\n")
-  grepl("macro-bubble_refresh", ui_js, fixed = TRUE) &&
-    grepl("['macro-refresh', 'macro-bubble_refresh']", ui_js, fixed = TRUE)
+  app_js2 <- paste(readLines("www/ynow_app.js", warn = FALSE), collapse = "\n")
+  grepl('ns("bubble_refresh")', txt, fixed = TRUE) &&
+    grepl('ns("refresh")', txt, fixed = TRUE) &&
+    grepl("macro-bubble_refresh", app_js2, fixed = TRUE) &&
+    grepl("macro-refresh", app_js2, fixed = TRUE) &&
+    grepl("btn_macro_refresh", app_js2, fixed = TRUE)
 })
 check("menu choices gated on lazy-bound hist_period", {
   grepl("input$hist_period", txt, fixed = TRUE) &&
@@ -602,15 +637,14 @@ check("YNOW/TYNOW overlay control exists", {
 })
 check("overlay default is empty", grepl("reactiveVal(character(0))", txt, fixed = TRUE))
 check("overlay checkboxes spaced without overlap", {
-  ui_css <- paste(readLines("ynow_ui.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-  grepl("ynow-own-index-overlay .shiny-options-group", ui_css, fixed = TRUE) &&
-    grepl("gap: 10px 28px", ui_css, fixed = TRUE) &&
-    grepl("flex-wrap: wrap", ui_css, fixed = TRUE) &&
-    grepl("position: static !important", ui_css, fixed = TRUE) &&
-    grepl("input[type='checkbox']", ui_css, fixed = TRUE) &&
+  widgets_css2 <- paste(readLines("www/ynow_widgets.css", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl("ynow-own-index-overlay .shiny-options-group", widgets_css2, fixed = TRUE) &&
+    grepl("gap: 10px 28px", widgets_css2, fixed = TRUE) &&
+    grepl("flex-wrap: wrap", widgets_css2, fixed = TRUE) &&
+    grepl("position: static !important", widgets_css2, fixed = TRUE) &&
+    grepl("input[type='checkbox']", widgets_css2, fixed = TRUE) &&
     grepl("inline = TRUE", txt, fixed = TRUE) &&
-    grepl("updateCheckboxGroupInput", txt, fixed = TRUE) &&
-    grepl("inline = TRUE", paste(readLines("macro_market_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n"), fixed = TRUE)
+    grepl("updateCheckboxGroupInput", txt, fixed = TRUE)
 })
 check("en overlay label", identical(ui_str("macro_own_index_overlay_label", "en"), "Overlay market indices"))
 check("zh overlay label", identical(ui_str("macro_own_index_overlay_label", "zh-TW"), "疊加大盤指數"))
@@ -644,9 +678,10 @@ check("US overlay choices", all(c("^GSPC", "^IXIC", "^DJI", "^SOX") %in% unname(
 check("TW overlay choices", all(c("^TWII", "IX0043.TWO", "0050.TW") %in% unname(tw_ov)))
 check("US overlay labels localized", identical(names(us_ov)[unname(us_ov) == "^GSPC"], "S&P 500"))
 check("hint above Rf", {
-  pos_hint <- regexpr("ynow_macro_index_hint", txt, fixed = TRUE)[1]
-  pos_rf <- regexpr("rf_signal_row", txt, fixed = TRUE)[1]
-  is.finite(pos_hint) && pos_hint > 0 && pos_hint < pos_rf
+  pos_hint <- regexpr('id = "ynow_macro_index_hint"', txt, fixed = TRUE)[1]
+  # Prefer the live uiOutput host (skeleton helper comments also mention rf_signal_row).
+  pos_rf <- regexpr('uiOutput(ns("rf_signal_row"))', txt, fixed = TRUE)[1]
+  is.finite(pos_hint) && pos_hint > 0 && is.finite(pos_rf) && pos_hint < pos_rf
 })
 check("chart slot shared with Lite YNOW expand", {
   pos <- regexpr('id = "ynow_macro_index_hist"', txt, fixed = TRUE)[1]
@@ -755,30 +790,41 @@ check("thin Yahoo last without chg uses history tape", {
   is.finite(got$last) && is.finite(got$chg_pct) &&
     abs(got$chg_pct - 100 * (345.52 / 369.2 - 1)) < 1e-6
 })
-check("HTCDI waits for index quotes ready", {
+check("HTCDI no longer serializes behind quote strip", {
+  # Ready-gen may still mark quote completion; HTCDI must not wait on it.
   grepl("index_quotes_ready_gen", txt, fixed = TRUE) &&
-    grepl("observeEvent(index_quotes_ready_gen()", txt, fixed = TRUE) &&
-    !grepl("session$onFlushed(function() .queue_htcdi()", txt, fixed = TRUE)
+    !grepl("observeEvent(index_quotes_ready_gen()", txt, fixed = TRUE) &&
+    grepl(".queue_htcdi()", txt, fixed = TRUE)
 })
 check("HTCDI phases prices then statements", {
   grepl(".htcdi_enrich_fs", txt, fixed = TRUE) &&
     grepl(".htcdi_score_from_maps", txt, fixed = TRUE)
 })
-check("Macro resumes quote/HTCDI after tab leave", {
+check("Macro resumes quote/Rf/HTCDI after tab leave", {
   grepl(".fetch_resume", txt, fixed = TRUE) &&
     grepl(".arm_resume(\"quotes\"", txt, fixed = TRUE) &&
+    grepl(".arm_resume(\"rf\"", txt, fixed = TRUE) &&
     grepl(".arm_resume(\"htcdi\"", txt, fixed = TRUE) &&
     grepl(".run_resume_if(\"quotes\"", txt, fixed = TRUE) &&
+    grepl(".run_resume_if(\"rf\"", txt, fixed = TRUE) &&
     grepl(".run_resume_if(\"htcdi\"", txt, fixed = TRUE)
 })
 check("locale dropped rf note wiring", !grepl("ynow_macro_rf_note", ui_src, fixed = TRUE))
 check("locale dropped rf note sentence", !grepl("Same live Rf path as CAPM", ui_src, fixed = TRUE))
 
-ui_css <- ui_src
+ui_css <- paste(
+  readLines("www/ynow_widgets.css", warn = FALSE),
+  readLines("www/ynow_chrome.css", warn = FALSE),
+  collapse = "\n"
+)
 check("lite CSS keeps chart slot for YNOW expand", !grepl("body.ynow-lite #ynow_macro_index_hist", ui_css, fixed = TRUE))
 check(
   "lite CSS disables board clickables only",
-  grepl("body.ynow-lite .ynow-macro-kpi--clickable:not(.ynow-macro-kpi--ynow)", ui_css, fixed = TRUE)
+  grepl(
+    "body.ynow-lite .ynow-macro-kpi--clickable:not(.ynow-macro-kpi--ynow):not(.ynow-macro-kpi--htcdi)",
+    ui_css,
+    fixed = TRUE
+  )
 )
 check("hist panel not Full-only", {
   pos <- regexpr('id = "ynow_macro_index_hist"', txt, fixed = TRUE)[1]
@@ -795,14 +841,14 @@ check("TW market red-up green-down CSS", {
     grepl("body.ynow-market-tw .ynow-macro-down", ui_css, fixed = TRUE) &&
     grepl("body.ynow-market-tw .ynow-macro-kpi .ynow-macro-up", ui_css, fixed = TRUE)
 })
-check("locale wires index hint", grepl("ynow_macro_index_hint", ui_css, fixed = TRUE))
+check("locale wires index hint", grepl("ynow_macro_index_hint", txt, fixed = TRUE))
 check("HTCDI box on Rf row", grepl("ynow-macro-kpi--htcdi", txt, fixed = TRUE))
 check("YNOW KPI on Rf row", grepl("ynow-macro-kpi--ynow", txt, fixed = TRUE) &&
   grepl(".own_index_kpi_card", txt, fixed = TRUE))
 check("HTCDI expand available in Lite", grepl("ynow-macro-htcdi-expand", txt, fixed = TRUE) &&
   !grepl("ynow-macro-htcdi-expand ynow-full-only", txt, fixed = TRUE))
 check("HTCDI expand below Rf row", {
-  pos_rf <- regexpr("rf_signal_row", txt, fixed = TRUE)[1]
+  pos_rf <- regexpr('uiOutput(ns("rf_signal_row"))', txt, fixed = TRUE)[1]
   pos_ex <- regexpr("ynow_macro_htcdi_expand", txt, fixed = TRUE)[1]
   is.finite(pos_rf) && is.finite(pos_ex) && pos_ex > pos_rf
 })

@@ -765,6 +765,84 @@ macro_index_kpi_skeleton_ui <- function(mode = "US", locale = "en") {
   do.call(fluidRow, c(list(class = "ynow-macro-kpi-row ynow-macro-kpi-row--skeleton"), cols))
 }
 
+#' Static first-paint Rf / YNOW / HTCDI skeleton (no server round-trip).
+#' The three Macro homepage APIs (index quotes, Rf, HTCDI) run concurrently;
+#' this row paints immediately so the Rf strip is never a blank void while
+#' `uiOutput("rf_signal_row")` waits for the first async flush.
+macro_rf_signal_skeleton_ui <- function(mode = "US", locale = "en") {
+  loc <- if (exists("normalize_ui_locale", mode = "function")) {
+    normalize_ui_locale(locale)
+  } else {
+    as.character(locale %||% "en")[1]
+  }
+  mm <- tryCatch({
+    if (exists("normalize_market_mode", mode = "function")) {
+      normalize_market_mode(mode)
+    } else {
+      toupper(as.character(mode %||% "US")[1])
+    }
+  }, error = function(e) "US")
+  if (!mm %in% c("US", "TW")) mm <- "US"
+  .s <- function(key, fb = key) {
+    if (exists("ui_str", mode = "function")) {
+      tryCatch({
+        v <- ui_str(key, loc)
+        if (nzchar(v) && !identical(v, key)) v else fb
+      }, error = function(e) fb)
+    } else {
+      fb
+    }
+  }
+  rf_lab <- .s("macro_rf_title", "Risk-free rate Rf (10Y)")
+  loading <- .s("macro_panel_loading", "Loading…")
+  own_key <- if (identical(mm, "TW")) "tynow_index_title" else "ynow_index_title"
+  own_lab <- .s(own_key, if (identical(mm, "TW")) "TYNOW" else "YNOW")
+  own_sym <- if (exists("ynow_index_symbol", mode = "function")) {
+    tryCatch(ynow_index_symbol(mm), error = function(e) if (identical(mm, "TW")) "TYNOW" else "YNOW")
+  } else {
+    if (identical(mm, "TW")) "TYNOW" else "YNOW"
+  }
+  htcdi_lab <- .s("htcdi_title", "HTCDI")
+  rf_col <- column(
+    width = 6, class = "col-xs-12 col-sm-6 col-md-6",
+    tags$div(
+      class = "ynow-macro-kpi ynow-macro-kpi--rf ynow-macro-kpi--skeleton",
+      `aria-hidden` = "true",
+      tags$div(class = "ynow-macro-kpi__label", rf_lab),
+      tags$div(class = "ynow-macro-kpi__value ynow-macro-rf__value", "—"),
+      tags$div(class = "ynow-macro-hint", loading)
+    )
+  )
+  ynow_col <- column(
+    width = 3, class = "col-xs-12 col-sm-3 col-md-3",
+    tags$div(
+      class = "ynow-macro-kpi ynow-macro-kpi--ynow ynow-macro-kpi--skeleton",
+      `aria-hidden` = "true",
+      tags$div(class = "ynow-macro-kpi__label", own_lab),
+      tags$div(class = "ynow-macro-kpi__value", "—"),
+      tags$div(class = "ynow-macro-kpi__chg", "—"),
+      tags$div(class = "ynow-macro-kpi__sym", own_sym)
+    )
+  )
+  htcdi_col <- column(
+    width = 3, class = "col-xs-12 col-sm-3 col-md-3",
+    tags$div(
+      class = "ynow-macro-kpi ynow-macro-kpi--htcdi ynow-macro-kpi--skeleton",
+      `aria-hidden` = "true",
+      tags$div(class = "ynow-macro-kpi__label", htcdi_lab),
+      tags$div(class = "ynow-macro-kpi__value", "—"),
+      tags$div(class = "ynow-macro-kpi__chg", loading)
+    )
+  )
+  do.call(
+    fluidRow,
+    list(
+      class = "ynow-macro-rf-row ynow-macro-kpi-row ynow-macro-kpi-row--skeleton",
+      rf_col, ynow_col, htcdi_col
+    )
+  )
+}
+
 #' Macro & Market Trends page body.
 #' @param locale first-paint locale (`en` / `zh-TW`); language switches still
 #'   update via `applyUiLocale`. Baking locale avoids English flash while lazy
@@ -824,7 +902,17 @@ macro_market_ui <- function(id = "macro", locale = "en", market_mode = "US") {
       class = "ynow-macro-hint ynow-lite-only",
       .s("macro_ynow_index_chart_hint")
     ),
-    uiOutput(ns("rf_signal_row")),
+    tags$div(
+      class = "ynow-macro-rf-host",
+      # Static skeleton paints with lazy HTML; hidden once live rf_signal_row
+      # has children (see ynow_widgets.css :has() rule). Partial paint: index
+      # KPIs / Rf / HTCDI each replace independently as their API returns.
+      tags$div(
+        class = "ynow-macro-rf-skeleton",
+        macro_rf_signal_skeleton_ui(mm, loc)
+      ),
+      uiOutput(ns("rf_signal_row"))
+    ),
     # Shared expand slot for ^GSPC / boards and YNOW／TYNOW (same card style).
     # Visible in Lite when YNOW／TYNOW is selected (board KPIs stay Full-only).
     tags$div(
@@ -1259,6 +1347,8 @@ macro_market_server <- function(id = "macro",
 
     # Progressive / non-blocking quotes: paint skeleton KPIs immediately so lazy
     # Macro mount does not hold the R event loop (which also delayed locale push).
+    # Homepage Macro APIs run concurrently (quotes + Rf + HTCDI); each panel
+    # partial-paints as its fetch returns — do not wait for all three.
     .index_quote_skeleton <- function(mode) {
       specs <- tryCatch(macro_click_index_specs(mode), error = function(e) character(0))
       if (!length(specs)) return(list())
@@ -1275,12 +1365,75 @@ macro_market_server <- function(id = "macro",
     index_quotes_rv <- reactiveVal(.index_quote_skeleton("US"))
     index_quotes_gen <- reactiveVal(0L)
     index_quotes_ready_gen <- reactiveVal(0L)
+    # Async Rf detail (API #2). Loading marker until live / last_known / fallback.
+    .rf_detail_loading <- function(mode) {
+      list(
+        rf_pct = NA_real_,
+        source = "loading",
+        label = "",
+        symbol = "",
+        is_fallback = FALSE,
+        availability = "loading",
+        mode = as.character(mode %||% "US")[1]
+      )
+    }
+    rf_detail_rv <- reactiveVal(.rf_detail_loading("US"))
+    rf_detail_gen <- reactiveVal(0L)
+    .queue_rf_detail <- function(mode) {
+      mode <- tryCatch({
+        if (exists("normalize_market_mode", mode = "function")) {
+          normalize_market_mode(mode)
+        } else {
+          toupper(as.character(mode %||% "US")[1])
+        }
+      }, error = function(e) "US")
+      if (!mode %in% c("US", "TW")) mode <- "US"
+      gen <- isolate(as.integer(rf_detail_gen()) %||% 0L) + 1L
+      rf_detail_gen(gen)
+      rf_detail_rv(.rf_detail_loading(mode))
+      .clear_resume("rf")
+      .fetch_rf <- function() {
+        if (!identical(isolate(as.integer(rf_detail_gen()) %||% 0L), gen)) {
+          return(invisible(NULL))
+        }
+        if (!isTRUE(.tab_active())) {
+          .arm_resume("rf", gen, .fetch_rf)
+          return(invisible(NULL))
+        }
+        .clear_resume("rf")
+        det <- tryCatch({
+          if (exists("cached_get_risk_free_rate_detail", mode = "function")) {
+            cached_get_risk_free_rate_detail(mode)
+          } else if (exists("cached_get_risk_free_rate", mode = "function")) {
+            list(rf_pct = cached_get_risk_free_rate(mode), source = "")
+          } else {
+            list(rf_pct = NA_real_, source = "fallback")
+          }
+        }, error = function(e) list(rf_pct = NA_real_, source = "fallback", label = e$message))
+        if (!identical(isolate(as.integer(rf_detail_gen()) %||% 0L), gen)) {
+          return(invisible(NULL))
+        }
+        if (!is.list(det)) det <- list(rf_pct = NA_real_, source = "fallback")
+        det$availability <- "ready"
+        det$mode <- mode
+        tryCatch(rf_detail_rv(det), error = function(e) NULL)
+        invisible(NULL)
+      }
+      if (requireNamespace("later", quietly = TRUE)) {
+        later::later(function() tryCatch(.fetch_rf(), error = function(e) NULL), delay = 0.15)
+      } else {
+        .fetch_rf()
+      }
+      invisible(NULL)
+    }
     observeEvent(
       list(refresh_token(), .mode()),
       {
         mode <- .mode()
         skeleton <- .index_quote_skeleton(mode)
         syms <- vapply(skeleton, function(r) as.character(r$symbol)[1], character(1))
+        # Arm Rf in parallel with index quotes (HTCDI arms on the same triggers below).
+        .queue_rf_detail(mode)
         if (!length(syms)) {
           index_quotes_rv(list())
           return(invisible(NULL))
@@ -1289,8 +1442,8 @@ macro_market_server <- function(id = "macro",
         index_quotes_gen(gen)
         index_quotes_rv(skeleton)
         .clear_resume("quotes")
-        # Short-window chart quotes (or get_last_quotes). Finish the whole strip
-        # before HTCDI so Yahoo-gate Sys.sleep inside HTCDI cannot starve DJI/SOX.
+        # Short-window chart quotes (or get_last_quotes). Yield between symbols
+        # so Rf / HTCDI later ticks can interleave on the session thread.
         .fetch_one <- function(i, acc) {
           if (!identical(isolate(as.integer(index_quotes_gen()) %||% 0L), gen)) {
             return(invisible(NULL))
@@ -1302,7 +1455,6 @@ macro_market_server <- function(id = "macro",
           .clear_resume("quotes")
           if (i > length(syms)) {
             tryCatch(index_quotes_rv(acc), error = function(e) NULL)
-            # Signal completion; HTCDI observer below starts only after this gen.
             index_quotes_ready_gen(gen)
             return(invisible(NULL))
           }
@@ -1800,8 +1952,10 @@ macro_market_server <- function(id = "macro",
 
     # rf_box is inlined inside rf_signal_row (stable id for locale / tests).
 
-    # HTCDI: 5y prices (+ optional statements). Must not start until index KPI
-    # quotes finish — Yahoo-gate Sys.sleep inside a sync HTCDI loop starved DJI/SOX.
+    # HTCDI: 5y prices (+ optional statements). Runs concurrently with index
+    # quotes + Rf (homepage three-API parallel path). Each later::later tick
+    # yields so Yahoo-gate sleeps cannot permanently starve sibling panels;
+    # partial KPI / Rf / HTCDI paint is OK as each API returns.
     # Phase A = prices only (publish score). Phase B = statement scrape enrich.
     htcdi_val <- reactiveVal(NULL)
     htcdi_job <- reactiveVal(0L)
@@ -1935,20 +2089,22 @@ macro_market_server <- function(id = "macro",
         .fetch_price_i(1L)
       }
     }
-    # Start HTCDI only after index KPI quotes complete (same gen).
-    observeEvent(index_quotes_ready_gen(), {
-      gen <- as.integer(index_quotes_ready_gen() %||% 0L)[1]
-      if (!is.finite(gen) || gen < 1L) return()
-      if (!identical(gen, isolate(as.integer(index_quotes_gen()) %||% 0L))) return()
-      .queue_htcdi()
-    }, ignoreInit = TRUE)
-    # Resume paused quote / HTCDI ticks when Macro becomes active again.
+    # Start HTCDI in parallel with quotes + Rf (same refresh / market triggers).
+    observeEvent(
+      list(refresh_token(), .mode()),
+      {
+        .queue_htcdi()
+      },
+      ignoreNULL = FALSE
+    )
+    # Resume paused quote / Rf / HTCDI ticks when Macro becomes active again.
     if (!is.null(tab_active_rv)) {
       observeEvent(
         tab_active_rv(),
         {
           if (!isTRUE(.tab_active())) return()
           .run_resume_if("quotes", isolate(as.integer(index_quotes_gen()) %||% 0L))
+          .run_resume_if("rf", isolate(as.integer(rf_detail_gen()) %||% 0L))
           .run_resume_if("htcdi", isolate(htcdi_job()))
           .run_resume_if("htcdi_fs", isolate(htcdi_job()))
         },
@@ -1956,10 +2112,9 @@ macro_market_server <- function(id = "macro",
       )
     }
     observeEvent(refresh_token(), {
-      htcdi_val(NULL)
       .clear_resume("htcdi")
       .clear_resume("htcdi_fs")
-      # Quotes observer also listens to refresh_token and will re-signal ready.
+      # Quotes + Rf + HTCDI observers also listen to refresh_token / .mode().
     }, ignoreInit = TRUE)
     htcdi_result <- reactive(htcdi_val())
 
@@ -1979,29 +2134,42 @@ macro_market_server <- function(id = "macro",
       res <- tryCatch(htcdi_result(), error = function(e) NULL)
       if (is.null(res)) res <- list(availability = "loading")
       ynow_card <- .own_index_kpi_card()
-      det <- tryCatch({
-        if (exists("cached_get_risk_free_rate_detail", mode = "function")) {
-          cached_get_risk_free_rate_detail(mode)
-        } else {
-          list(rf_pct = cached_get_risk_free_rate(mode), source = "")
-        }
-      }, error = function(e) list(rf_pct = NA_real_, source = e$message))
+      # Async Rf (API #2) — never block this render on a live network fetch.
+      det <- tryCatch(rf_detail_rv(), error = function(e) .rf_detail_loading(mode))
+      if (!is.list(det)) det <- .rf_detail_loading(mode)
+      rf_loading <- identical(as.character(det$availability %||% "")[1], "loading") ||
+        identical(as.character(det$source %||% "")[1], "loading")
       rf <- suppressWarnings(as.numeric(det$rf_pct %||% NA_real_)[1])
       rf_src <- as.character(det$source %||% "")[1]
-      rf_src_lab <- switch(
-        rf_src,
-        live = .ui("macro_rf_src_live"),
-        last_known = .ui("macro_rf_src_last"),
-        fallback = .ui("macro_rf_src_fallback"),
-        .ui("macro_rf_source_fallback")
-      )
+      rf_src_lab <- if (isTRUE(rf_loading)) {
+        .ui("macro_panel_loading")
+      } else {
+        switch(
+          rf_src,
+          live = .ui("macro_rf_src_live"),
+          last_known = .ui("macro_rf_src_last"),
+          fallback = .ui("macro_rf_src_fallback"),
+          loading = .ui("macro_panel_loading"),
+          .ui("macro_rf_source_fallback")
+        )
+      }
       rf_det_lab <- as.character(det$label %||% "")[1]
+      rf_hint <- if (isTRUE(rf_loading)) {
+        .ui("macro_panel_loading")
+      } else if (nzchar(rf_det_lab)) {
+        paste(rf_det_lab, "·", rf_src_lab)
+      } else {
+        rf_src_lab
+      }
       rf_tk <- if (is_tw) "RF_TW" else "RF_US"
       rf_lab <- .ui("macro_rf_title")
       # Inline Rf value (no nested uiOutput). HTCDI updates used to rebuild this
       # row and orphan nested rf_box, leaving a blank black card.
       rf_kpi <- tags$div(
-        class = "ynow-macro-kpi ynow-macro-kpi--rf",
+        class = paste(
+          "ynow-macro-kpi ynow-macro-kpi--rf",
+          if (isTRUE(rf_loading)) "ynow-macro-kpi--skeleton" else NULL
+        ),
         tags$div(class = "ynow-macro-kpi__label", id = "ynow_macro_rf_title", rf_lab),
         tags$div(
           id = ns("rf_box"),
@@ -2011,7 +2179,7 @@ macro_market_server <- function(id = "macro",
           ),
           tags$div(
             class = "ynow-macro-hint",
-            paste(rf_det_lab, "·", rf_src_lab)
+            rf_hint
           )
         )
       )
