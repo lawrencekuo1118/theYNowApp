@@ -1146,7 +1146,16 @@ ticker_presets_for_market <- function(mode = NULL) {
   if (nzchar(lab)) lab else sym
 }
 
+# Shared settle window for search boxes → network / heavy re-render.
+# Client typeahead uses this; server observers coalesce with a short follow-up.
+YNOW_SEARCH_DEBOUNCE_MS <- 300L
+YNOW_SEARCH_DEBOUNCE_COALESCE_MS <- 50L
+
 #' Yahoo／yfinance typeahead → named character vector (label = display, value = fetch symbol)
+#'
+#' On remote failure, still returns local/universe hits when possible and sets
+#' `attr(result, "typeahead_network_error") <- TRUE` so the UI can show a soft
+#' error without wiping suggestions (no flicker).
 search_ticker_choices <- function(query, max_results = 12L, market = NULL) {
   mode <- if (!is.null(market)) {
     if (exists("normalize_market_mode", mode = "function")) normalize_market_mode(market) else "US"
@@ -1163,6 +1172,7 @@ search_ticker_choices <- function(query, max_results = 12L, market = NULL) {
   }
 
   max_results <- max(1L, as.integer(max_results)[1])
+  typeahead_network_error <- FALSE
   py_hits <- tryCatch({
     if (!exists("search_tickers", mode = "function")) {
       NULL
@@ -1170,6 +1180,7 @@ search_ticker_choices <- function(query, max_results = 12L, market = NULL) {
       search_tickers(query, as.integer(max_results))
     }
   }, error = function(e) {
+    typeahead_network_error <<- TRUE
     .ynow_log("⚠️ search_tickers: ", e$message)
     NULL
   })
@@ -1322,19 +1333,28 @@ search_ticker_choices <- function(query, max_results = 12L, market = NULL) {
     }
   }
 
+  .with_typeahead_err <- function(x) {
+    if (isTRUE(typeahead_network_error)) {
+      attr(x, "typeahead_network_error") <- TRUE
+    }
+    x
+  }
+
   if (!length(merged)) {
     q_norm <- if (exists("normalize_ticker_for_market", mode = "function")) {
       normalize_ticker_for_market(query, mode)
     } else {
       toupper(query)
     }
-    if (is.na(q_norm) || !nzchar(q_norm)) return(character(0))
+    if (is.na(q_norm) || !nzchar(q_norm)) {
+      return(.with_typeahead_err(character(0)))
+    }
     lab <- if (exists("display_ticker_for_market", mode = "function")) {
       display_ticker_for_market(q_norm, mode)
     } else {
       q_norm
     }
-    return(stats::setNames(q_norm, lab))
+    return(.with_typeahead_err(stats::setNames(q_norm, lab)))
   }
 
   # 再整理 TW 標籤為乾淨代號
@@ -1344,7 +1364,7 @@ search_ticker_choices <- function(query, max_results = 12L, market = NULL) {
     }, character(1))
     merged <- stats::setNames(unname(merged), labs2)
   }
-  merged
+  .with_typeahead_err(merged)
 }
 
 #' Yahoo β / D/E inputs for unlevered & bottom-up industry beta

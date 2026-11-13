@@ -261,6 +261,16 @@
           color: #222222;
           font-weight: 400;
         }
+        .ynow-ticker-suggest .ynow-suggest-error,
+        #sc_ticker_suggest .ynow-suggest-error,
+        #lab_cluster_focus_suggest .ynow-suggest-error {
+          padding: 8px 12px;
+          font-size: 12px;
+          line-height: 1.35;
+          color: #6b4f00;
+          background: #fff8e6;
+          border-bottom: 1px solid #f0e0b2;
+        }
         .ynow-sc-row {
           display: flex;
           flex-direction: row;

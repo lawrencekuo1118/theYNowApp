@@ -5567,17 +5567,30 @@ server <- function(input, output, session) {
   # 🔎 代號預選清單（Ticker／Stock Code + Radar focus ticker）
   # ==========================================
 
-  .ynow_ticker_suggest_div <- function(div_id, choices, mode) {
+  # Soft network error for typeahead (locale key or ""); keep last good choices.
+  ticker_typeahead_err <- reactiveVal("")
+  ticker_typeahead_gen <- reactiveVal(0L)
+
+  .ynow_ticker_suggest_div <- function(div_id, choices, mode, err_msg = NULL) {
     ch <- choices
     if (is.null(ch) || length(ch) == 0) ch <- ticker_presets_for_market(mode)
     labs <- names(ch)
     if (is.null(labs)) labs <- unname(ch)
     labs[!nzchar(labs)] <- unname(ch)[!nzchar(labs)]
     n <- min(length(ch), 12L)
+    err_txt <- trimws(as.character(err_msg %||% "")[1])
     tags$div(
       id = div_id,
       class = "ynow-ticker-suggest",
       role = "listbox",
+      if (nzchar(err_txt)) {
+        tags$div(
+          class = "ynow-suggest-error",
+          role = "status",
+          `aria-live` = "polite",
+          err_txt
+        )
+      },
       lapply(seq_len(n), function(i) {
         fetch_sym <- as.character(unname(ch)[[i]])
         disp_sym <- display_ticker_for_market(fetch_sym, mode)
@@ -5607,7 +5620,18 @@ server <- function(input, output, session) {
   }
 
   output$sc_ticker_suggest_ui <- renderUI({
-    .ynow_ticker_suggest_div("sc_ticker_suggest", sc_datalist_choices(), market_mode())
+    err_key <- ticker_typeahead_err()
+    err_msg <- if (nzchar(err_key)) {
+      tryCatch(ui_str(err_key), error = function(e) err_key)
+    } else {
+      NULL
+    }
+    .ynow_ticker_suggest_div(
+      "sc_ticker_suggest",
+      sc_datalist_choices(),
+      market_mode(),
+      err_msg = err_msg
+    )
   })
   # Keep suggest HTML warm while stock chrome is hidden (Home / Macro / Blue Chip).
   # Otherwise Shiny suspends the output and the first keystrokes after return to
@@ -5636,7 +5660,8 @@ server <- function(input, output, session) {
       }
       labs <- paste0(disp, " — ", nm)
       ch <- stats::setNames(as.character(tks), labs)
-      q <- trimws(as.character(input$ticker_typeahead %||% "")[1])
+      # Debounced query only — raw input$ticker_typeahead re-rendered every keystroke.
+      q <- trimws(as.character(ticker_typeahead_q() %||% "")[1])
       if (nzchar(q)) {
         keep <- grepl(q, disp, ignore.case = TRUE) |
           grepl(q, tks, ignore.case = TRUE) |
@@ -5645,7 +5670,13 @@ server <- function(input, output, session) {
       }
     }
     if (is.null(ch) || !length(ch)) ch <- sc_datalist_choices()
-    .ynow_ticker_suggest_div("lab_cluster_focus_suggest", ch, mode)
+    err_key <- ticker_typeahead_err()
+    err_msg <- if (nzchar(err_key)) {
+      tryCatch(ui_str(err_key), error = function(e) err_key)
+    } else {
+      NULL
+    }
+    .ynow_ticker_suggest_div("lab_cluster_focus_suggest", ch, mode, err_msg = err_msg)
   })
 
   session$onFlushed(function() {
@@ -5654,31 +5685,71 @@ server <- function(input, output, session) {
     # Boot slim paints chrome; market never owns language.
   }, once = TRUE)
 
+  # Client already settles ~300ms before setInputValue; short server coalesce
+  # covers restore / multi-source bursts without stacking another full 300ms.
+  .ynow_typeahead_coalesce_ms <- tryCatch({
+    if (exists("YNOW_SEARCH_DEBOUNCE_COALESCE_MS", inherits = TRUE)) {
+      as.integer(YNOW_SEARCH_DEBOUNCE_COALESCE_MS)[1]
+    } else {
+      50L
+    }
+  }, error = function(e) 50L)
+  if (!is.finite(.ynow_typeahead_coalesce_ms) || .ynow_typeahead_coalesce_ms < 1L) {
+    .ynow_typeahead_coalesce_ms <- 50L
+  }
+
   ticker_typeahead_q <- shiny::debounce(
     reactive({ input$ticker_typeahead }),
-    millis = 280
+    millis = .ynow_typeahead_coalesce_ms
   )
 
   observeEvent(ticker_typeahead_q(), {
     q <- trimws(as.character(ticker_typeahead_q() %||% ""))
-    mode <- market_mode()
+    mode <- tryCatch(
+      normalize_market_mode(market_mode()),
+      error = function(e) "US"
+    )
+    my_gen <- isolate(as.integer(ticker_typeahead_gen()) %||% 0L) + 1L
+    ticker_typeahead_gen(my_gen)
     if (!nzchar(q)) {
-      base <- ticker_presets_for_market(mode)
-      recent <- values$recentsearch
-      if (length(recent)) {
-        recent <- unique(toupper(trimws(recent)))
-        recent_labs <- display_tickers_for_market(recent, mode)
-        recent_named <- stats::setNames(recent, recent_labs)
-        base <- c(recent_named, base[!(unname(base) %in% recent)])
-      }
-      sc_datalist_choices(base)
+      tryCatch({
+        base <- ticker_presets_for_market(mode)
+        recent <- values$recentsearch
+        if (length(recent)) {
+          recent <- unique(toupper(trimws(recent)))
+          recent_labs <- display_tickers_for_market(recent, mode)
+          recent_named <- stats::setNames(recent, recent_labs)
+          base <- c(recent_named, base[!(unname(base) %in% recent)])
+        }
+        if (!identical(isolate(as.integer(ticker_typeahead_gen()) %||% 0L), my_gen)) {
+          return()
+        }
+        ticker_typeahead_err("")
+        sc_datalist_choices(base)
+      }, error = function(e) {
+        tryCatch(ticker_typeahead_err("typeahead_network_error"), error = function(e2) NULL)
+      })
       return()
     }
-    hits <- tryCatch(
-      search_ticker_choices(q, market = mode),
-      error = function(e) ticker_presets_for_market(mode)
-    )
-    sc_datalist_choices(hits)
+    tryCatch({
+      hits <- search_ticker_choices(q, market = mode)
+      if (!identical(isolate(as.integer(ticker_typeahead_gen()) %||% 0L), my_gen)) {
+        return()
+      }
+      net_err <- isTRUE(attr(hits, "typeahead_network_error"))
+      ticker_typeahead_err(if (net_err) "typeahead_network_error" else "")
+      # Keep prior choices on empty remote+local wipe to avoid suggest flicker.
+      if (is.null(hits) || !length(hits)) {
+        return()
+      }
+      sc_datalist_choices(hits)
+    }, error = function(e) {
+      if (!identical(isolate(as.integer(ticker_typeahead_gen()) %||% 0L), my_gen)) {
+        return()
+      }
+      tryCatch(ticker_typeahead_err("typeahead_network_error"), error = function(e2) NULL)
+      # Do not clear sc_datalist_choices — last good list stays visible.
+    })
   }, ignoreInit = TRUE)
 
   observeEvent(current_ticker(), {
@@ -22268,9 +22339,26 @@ server <- function(input, output, session) {
     }
   })
 
+  # SEC keyword filter is local (no Yahoo), but still re-renders heavy note UI —
+  # debounce ~300ms so typing does not flicker the index / notes panes.
+  .ynow_sec_kw_debounce_ms <- tryCatch({
+    if (exists("YNOW_SEARCH_DEBOUNCE_MS", inherits = TRUE)) {
+      as.integer(YNOW_SEARCH_DEBOUNCE_MS)[1]
+    } else {
+      300L
+    }
+  }, error = function(e) 300L)
+  if (!is.finite(.ynow_sec_kw_debounce_ms) || .ynow_sec_kw_debounce_ms < 1L) {
+    .ynow_sec_kw_debounce_ms <- 300L
+  }
+  lab_sec_keyword_q <- shiny::debounce(
+    reactive({ input$lab_sec_keyword }),
+    millis = .ynow_sec_kw_debounce_ms
+  )
+
   # Filter note indices by important-only + keyword (title / summary / full text).
   lab_sec_filtered_idx <- reactive({
-    res <- lab_sec_result()
+    res <- tryCatch(lab_sec_result(), error = function(e) NULL)
     if (is.null(res) || !isTRUE(res$ok) || length(res$short_names) == 0) {
       return(integer(0))
     }
@@ -22281,21 +22369,23 @@ server <- function(input, output, session) {
     if (isTRUE(input$lab_sec_important_only)) {
       idx <- idx[imp]
     }
-    kw <- tolower(trimws(as.character(input$lab_sec_keyword %||% "")[1]))
+    kw <- tolower(trimws(as.character(lab_sec_keyword_q() %||% "")[1]))
     if (!nzchar(kw) || length(idx) == 0) return(idx)
 
     summaries <- res$summaries
-    keep <- vapply(idx, function(i) {
-      title <- tolower(as.character(res$short_names[i] %||% ""))
-      body <- tolower(as.character(res$full_texts[i] %||% ""))
-      excerpt <- tolower(as.character(res$excerpts[i] %||% ""))
-      bullets <- tryCatch(
-        tolower(paste(as.character(unlist(summaries[[i]])), collapse = " ")),
-        error = function(e) ""
-      )
-      hay <- paste(title, excerpt, body, bullets, sep = "\n")
-      grepl(kw, hay, fixed = TRUE)
-    }, logical(1))
+    keep <- tryCatch({
+      vapply(idx, function(i) {
+        title <- tolower(as.character(res$short_names[i] %||% ""))
+        body <- tolower(as.character(res$full_texts[i] %||% ""))
+        excerpt <- tolower(as.character(res$excerpts[i] %||% ""))
+        bullets <- tryCatch(
+          tolower(paste(as.character(unlist(summaries[[i]])), collapse = " ")),
+          error = function(e) ""
+        )
+        hay <- paste(title, excerpt, body, bullets, sep = "\n")
+        grepl(kw, hay, fixed = TRUE)
+      }, logical(1))
+    }, error = function(e) rep(TRUE, length(idx)))
     idx[keep]
   })
 
@@ -22313,7 +22403,7 @@ server <- function(input, output, session) {
     n_total <- length(res$short_names)
     n_imp <- sum(as.logical(res$important))
     n_shown <- length(lab_sec_filtered_idx())
-    kw <- trimws(as.character(input$lab_sec_keyword %||% "")[1])
+    kw <- trimws(as.character(lab_sec_keyword_q() %||% "")[1])
     shown_label <- if (nzchar(kw) || isTRUE(input$lab_sec_important_only)) {
       paste0(n_total, "（重要 ", n_imp, "；目前顯示 ", n_shown, "）")
     } else {
@@ -22368,14 +22458,14 @@ server <- function(input, output, session) {
     imp <- as.logical(res$important)
     idx <- lab_sec_filtered_idx()
     if (length(idx) == 0) {
-      kw <- trimws(as.character(input$lab_sec_keyword %||% "")[1])
+      kw <- trimws(as.character(lab_sec_keyword_q() %||% "")[1])
       if (nzchar(kw)) {
         return(div(style = "color:#888;", "沒有符合關鍵字的附註；試試其他字詞或清空搜尋。"))
       }
       return(div(style = "color:#888;", "此財報未偵測到「重要」附註；取消勾選可顯示全部。"))
     }
     summaries <- res$summaries
-    kw <- tolower(trimws(as.character(input$lab_sec_keyword %||% "")[1]))
+    kw <- tolower(trimws(as.character(lab_sec_keyword_q() %||% "")[1]))
     tagList(
       if (nzchar(kw)) {
         tags$div(

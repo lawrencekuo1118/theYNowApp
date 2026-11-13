@@ -2031,6 +2031,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     btn_lab_im_run_busy = "Evaluating…",
     btn_ticker_search = "Search",
     btn_ticker_search_busy = "Loading…",
+    typeahead_network_error = paste0(
+      "Ticker search is temporarily unavailable. Showing local suggestions."
+    ),
     btn_lab_im_update_quality = "Update quality snapshot",
     lab_im_update_quality_title = paste0(
       "Write earnings quality, Piotroski F-Score, and FS alert counts ",
@@ -6994,6 +6997,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     btn_lab_im_run_busy = "評估中…",
     btn_ticker_search = "搜尋",
     btn_ticker_search_busy = "載入中…",
+    typeahead_network_error = paste0(
+      "代號搜尋暫時無法連線。改顯示本機建議。"
+    ),
     btn_lab_im_update_quality = "更新品質快照",
     lab_im_update_quality_title = paste0(
       "為目前篩選池內每一檔寫入盈餘品質、Piotroski F-Score 與財報警訊數。",
