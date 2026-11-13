@@ -882,6 +882,17 @@ macro_market_ui <- function(id = "macro", locale = "en", market_mode = "US") {
         .s("macro_page_sub")
       )
     ),
+    # Offline / stale last-good banner (Lite-free). Hidden until server or
+    # client hydration marks Market data as cached / offline.
+    tags$div(
+      id = "ynow_macro_stale_banner",
+      class = "ynow-macro-stale-banner",
+      role = "status",
+      `aria-live` = "polite",
+      hidden = "hidden",
+      `data-i18n` = "macro_offline_stale",
+      .s("macro_offline_stale")
+    ),
     tags$div(
       class = "ynow-macro-kpi-host",
       # Static skeleton paints with the lazy page HTML; hidden once live uiOutput
@@ -1349,6 +1360,8 @@ macro_market_server <- function(id = "macro",
     # Macro mount does not hold the R event loop (which also delayed locale push).
     # Homepage Macro APIs run concurrently (quotes + Rf + HTCDI); each panel
     # partial-paints as its fetch returns — do not wait for all three.
+    # Offline-first: seed from durable last-good (disk / client localStorage) so
+    # weak-network opens show stale-but-useful Market data instead of a blank strip.
     .index_quote_skeleton <- function(mode) {
       specs <- tryCatch(macro_click_index_specs(mode), error = function(e) character(0))
       if (!length(specs)) return(list())
@@ -1360,6 +1373,98 @@ macro_market_server <- function(id = "macro",
           chg_pct = NA_real_
         )
       })
+    }
+    macro_stale_flags <- reactiveVal(list(quotes = FALSE, rf = FALSE, htcdi = FALSE))
+    macro_stale_at_rv <- reactiveVal("")
+    .macro_lg_resolve <- function(mode) {
+      mm <- as.character(mode %||% "US")[1]
+      if (!exists("macro_last_good_read", mode = "function")) return(NULL)
+      snap <- tryCatch(macro_last_good_read(mm), error = function(e) NULL)
+      if (!is.null(snap)) return(snap)
+      client_raw <- tryCatch(input$last_good_client, error = function(e) NULL)
+      if (is.null(client_raw) || identical(client_raw, "")) return(NULL)
+      if (!exists("macro_last_good_from_client", mode = "function")) return(NULL)
+      tryCatch(macro_last_good_from_client(client_raw), error = function(e) NULL)
+    }
+    .macro_lg_seed_quotes <- function(mode, skeleton) {
+      snap <- .macro_lg_resolve(mode)
+      if (is.null(snap) || !is.list(snap$quotes) || !length(snap$quotes)) {
+        return(list(rows = skeleton, stale = FALSE, at = ""))
+      }
+      if (!exists("macro_last_good_quotes_usable", mode = "function") ||
+          !isTRUE(macro_last_good_quotes_usable(snap$quotes))) {
+        return(list(rows = skeleton, stale = FALSE, at = ""))
+      }
+      by_sym <- list()
+      for (r in snap$quotes) {
+        if (!is.list(r)) next
+        sym <- as.character(r$symbol %||% "")[1]
+        if (nzchar(sym)) by_sym[[sym]] <- r
+      }
+      rows <- lapply(skeleton, function(sk) {
+        hit <- by_sym[[as.character(sk$symbol)[1]]]
+        if (is.null(hit)) return(sk)
+        list(
+          symbol = sk$symbol,
+          label = sk$label %||% hit$label %||% sk$symbol,
+          last = suppressWarnings(as.numeric(hit$last %||% NA_real_)[1]),
+          chg_pct = suppressWarnings(as.numeric(hit$chg_pct %||% NA_real_)[1])
+        )
+      })
+      list(
+        rows = rows,
+        stale = TRUE,
+        at = as.character(snap$captured_at %||% "")[1]
+      )
+    }
+    .macro_push_last_good <- function(snap) {
+      if (!is.list(snap)) return(invisible(NULL))
+      tryCatch(
+        session$sendCustomMessage("ynowMacroLastGood", snap),
+        error = function(e) NULL
+      )
+      invisible(NULL)
+    }
+    .macro_publish_stale <- function(stale, captured_at = "", panel = NULL) {
+      fl <- isolate(macro_stale_flags())
+      if (!is.list(fl)) fl <- list(quotes = FALSE, rf = FALSE, htcdi = FALSE)
+      if (!is.null(panel) && panel %in% c("quotes", "rf", "htcdi")) {
+        fl[[panel]] <- isTRUE(stale)
+      } else if (isTRUE(stale)) {
+        # No panel: mark quotes as the generic Market stale bit.
+        fl$quotes <- TRUE
+      } else {
+        fl <- list(quotes = FALSE, rf = FALSE, htcdi = FALSE)
+      }
+      macro_stale_flags(fl)
+      any_stale <- isTRUE(fl$quotes) || isTRUE(fl$rf) || isTRUE(fl$htcdi)
+      if (isTRUE(stale) && nzchar(as.character(captured_at %||% "")[1])) {
+        macro_stale_at_rv(as.character(captured_at)[1])
+      } else if (!isTRUE(any_stale)) {
+        macro_stale_at_rv("")
+      }
+      tryCatch(
+        session$sendCustomMessage(
+          "ynowMacroStale",
+          list(
+            stale = isTRUE(any_stale),
+            captured_at = as.character(macro_stale_at_rv() %||% "")[1],
+            locale = .loc(),
+            panels = fl
+          )
+        ),
+        error = function(e) NULL
+      )
+      invisible(NULL)
+    }
+    .macro_persist_success <- function(mode, quotes = NULL, rf = NULL, htcdi = NULL) {
+      if (!exists("macro_last_good_merge", mode = "function")) return(invisible(NULL))
+      snap <- tryCatch(
+        macro_last_good_merge(mode, quotes = quotes, rf = rf, htcdi = htcdi),
+        error = function(e) NULL
+      )
+      if (!is.null(snap)) .macro_push_last_good(snap)
+      invisible(snap)
     }
     # Seed US skeleton at register time so the first index_kpi_row paint is never 0 cards.
     index_quotes_rv <- reactiveVal(.index_quote_skeleton("US"))
@@ -1390,7 +1495,21 @@ macro_market_server <- function(id = "macro",
       if (!mode %in% c("US", "TW")) mode <- "US"
       gen <- isolate(as.integer(rf_detail_gen()) %||% 0L) + 1L
       rf_detail_gen(gen)
-      rf_detail_rv(.rf_detail_loading(mode))
+      # Prefer last-good Rf while live fetch runs (avoid blank Rf card on weak signal).
+      seed_rf <- NULL
+      snap0 <- .macro_lg_resolve(mode)
+      if (is.list(snap0) && exists("macro_last_good_rf_usable", mode = "function") &&
+          isTRUE(macro_last_good_rf_usable(snap0$rf))) {
+        seed_rf <- snap0$rf
+        seed_rf$source <- "last_known"
+        seed_rf$availability <- "ready"
+        seed_rf$mode <- mode
+        seed_rf$from_cache <- TRUE
+        tryCatch(rf_detail_rv(seed_rf), error = function(e) NULL)
+        .macro_publish_stale(TRUE, snap0$captured_at %||% "", panel = "rf")
+      } else {
+        rf_detail_rv(.rf_detail_loading(mode))
+      }
       .clear_resume("rf")
       .fetch_rf <- function() {
         if (!identical(isolate(as.integer(rf_detail_gen()) %||% 0L), gen)) {
@@ -1414,9 +1533,47 @@ macro_market_server <- function(id = "macro",
           return(invisible(NULL))
         }
         if (!is.list(det)) det <- list(rf_pct = NA_real_, source = "fallback")
-        det$availability <- "ready"
-        det$mode <- mode
-        tryCatch(rf_detail_rv(det), error = function(e) NULL)
+        rf_live <- suppressWarnings(as.numeric(det$rf_pct %||% NA_real_)[1])
+        src <- as.character(det$source %||% "")[1]
+        if (is.finite(rf_live) && identical(src, "live")) {
+          det$availability <- "ready"
+          det$mode <- mode
+          tryCatch(rf_detail_rv(det), error = function(e) NULL)
+          .macro_persist_success(mode, rf = det)
+          .macro_publish_stale(FALSE, panel = "rf")
+        } else if (is.finite(rf_live)) {
+          # last_known / fallback from process memory still usable; mirror to durable.
+          det$availability <- "ready"
+          det$mode <- mode
+          tryCatch(rf_detail_rv(det), error = function(e) NULL)
+          .macro_persist_success(mode, rf = det)
+          if (identical(src, "last_known")) {
+            .macro_publish_stale(
+              TRUE,
+              format(Sys.time(), "%Y-%m-%dT%H:%M:%OSZ", tz = "UTC"),
+              panel = "rf"
+            )
+          } else {
+            .macro_publish_stale(FALSE, panel = "rf")
+          }
+        } else {
+          # Live path blank — restore durable last-good when present.
+          snap <- .macro_lg_resolve(mode)
+          if (is.list(snap) && exists("macro_last_good_rf_usable", mode = "function") &&
+              isTRUE(macro_last_good_rf_usable(snap$rf))) {
+            cached <- snap$rf
+            cached$source <- "last_known"
+            cached$availability <- "ready"
+            cached$mode <- mode
+            cached$from_cache <- TRUE
+            tryCatch(rf_detail_rv(cached), error = function(e) NULL)
+            .macro_publish_stale(TRUE, snap$captured_at %||% "", panel = "rf")
+          } else {
+            det$availability <- "ready"
+            det$mode <- mode
+            tryCatch(rf_detail_rv(det), error = function(e) NULL)
+          }
+        }
         invisible(NULL)
       }
       if (requireNamespace("later", quietly = TRUE)) {
@@ -1426,6 +1583,22 @@ macro_market_server <- function(id = "macro",
       }
       invisible(NULL)
     }
+    # Browser localStorage seed (cold worker / empty disk).
+    observeEvent(input$last_good_client, {
+      raw <- input$last_good_client
+      if (is.null(raw) || identical(raw, "")) return()
+      if (!exists("macro_last_good_from_client", mode = "function")) return()
+      snap <- tryCatch(macro_last_good_from_client(raw), error = function(e) NULL)
+      if (is.null(snap)) return()
+      disk <- if (exists("macro_last_good_read", mode = "function")) {
+        tryCatch(macro_last_good_read(snap$mode), error = function(e) NULL)
+      } else {
+        NULL
+      }
+      if (is.null(disk) && exists("macro_last_good_write", mode = "function")) {
+        tryCatch(macro_last_good_write(snap), error = function(e) NULL)
+      }
+    }, ignoreNULL = TRUE, ignoreInit = TRUE)
     observeEvent(
       list(refresh_token(), .mode()),
       {
@@ -1440,10 +1613,17 @@ macro_market_server <- function(id = "macro",
         }
         gen <- isolate(as.integer(index_quotes_gen()) %||% 0L) + 1L
         index_quotes_gen(gen)
-        index_quotes_rv(skeleton)
+        seeded <- .macro_lg_seed_quotes(mode, skeleton)
+        index_quotes_rv(seeded$rows)
+        if (isTRUE(seeded$stale)) {
+          .macro_publish_stale(TRUE, seeded$at, panel = "quotes")
+        }
         .clear_resume("quotes")
         # Short-window chart quotes (or get_last_quotes). Yield between symbols
         # so Rf / HTCDI later ticks can interleave on the session thread.
+        # live_hits counts network-finite lasts this pass (not seeded cache values).
+        qstate <- new.env(parent = emptyenv())
+        qstate$live_hits <- 0L
         .fetch_one <- function(i, acc) {
           if (!identical(isolate(as.integer(index_quotes_gen()) %||% 0L), gen)) {
             return(invisible(NULL))
@@ -1454,17 +1634,38 @@ macro_market_server <- function(id = "macro",
           }
           .clear_resume("quotes")
           if (i > length(syms)) {
-            tryCatch(index_quotes_rv(acc), error = function(e) NULL)
+            if (isTRUE(qstate$live_hits > 0L)) {
+              tryCatch(index_quotes_rv(acc), error = function(e) NULL)
+              .macro_persist_success(mode, quotes = acc)
+              .macro_publish_stale(FALSE, panel = "quotes")
+            } else {
+              snap <- .macro_lg_resolve(mode)
+              if (is.list(snap) && exists("macro_last_good_quotes_usable", mode = "function") &&
+                  isTRUE(macro_last_good_quotes_usable(snap$quotes))) {
+                restored <- .macro_lg_seed_quotes(mode, skeleton)$rows
+                tryCatch(index_quotes_rv(restored), error = function(e) NULL)
+                .macro_publish_stale(TRUE, snap$captured_at %||% "", panel = "quotes")
+              } else {
+                tryCatch(index_quotes_rv(acc), error = function(e) NULL)
+              }
+            }
             index_quotes_ready_gen(gen)
             return(invisible(NULL))
           }
           sym <- syms[[i]]
           qrow <- tryCatch(macro_fetch_last_quotes(sym)[[1]], error = function(e) NULL)
+          live_last <- suppressWarnings(as.numeric(qrow$last %||% NA_real_)[1])
+          live_chg <- suppressWarnings(as.numeric(qrow$chg_pct %||% NA_real_)[1])
+          prev_last <- suppressWarnings(as.numeric(acc[[i]]$last %||% NA_real_)[1])
+          prev_chg <- suppressWarnings(as.numeric(acc[[i]]$chg_pct %||% NA_real_)[1])
+          if (is.finite(live_last)) {
+            qstate$live_hits <- as.integer(qstate$live_hits %||% 0L) + 1L
+          }
           acc[[i]] <- list(
             symbol = sym,
             label = acc[[i]]$label %||% sym,
-            last = suppressWarnings(as.numeric(qrow$last %||% NA_real_)[1]),
-            chg_pct = suppressWarnings(as.numeric(qrow$chg_pct %||% NA_real_)[1])
+            last = if (is.finite(live_last)) live_last else prev_last,
+            chg_pct = if (is.finite(live_chg)) live_chg else prev_chg
           )
           tryCatch(index_quotes_rv(acc), error = function(e) NULL)
           if (requireNamespace("later", quietly = TRUE)) {
@@ -1479,10 +1680,10 @@ macro_market_server <- function(id = "macro",
         if (requireNamespace("later", quietly = TRUE)) {
           # Yield past after_mount locale push (0.12s).
           later::later(function() {
-            tryCatch(.fetch_one(1L, skeleton), error = function(e) NULL)
+            tryCatch(.fetch_one(1L, seeded$rows), error = function(e) NULL)
           }, delay = 0.15)
         } else {
-          .fetch_one(1L, skeleton)
+          .fetch_one(1L, seeded$rows)
         }
         invisible(NULL)
       },
@@ -2004,13 +2205,30 @@ macro_market_server <- function(id = "macro",
         error = function(e) NULL
       )
       if (!identical(isolate(htcdi_job()), job_id)) return()
-      if (!is.null(res2)) htcdi_val(res2)
+      if (!is.null(res2)) {
+        htcdi_val(res2)
+        score2 <- suppressWarnings(as.numeric(res2$composite %||% NA_real_)[1])
+        if (is.finite(score2)) {
+          .macro_persist_success(isolate(.mode()), htcdi = res2)
+        }
+      }
     }
     .queue_htcdi <- function() {
       mode <- isolate(.mode())
       job <- isolate(htcdi_job()) + 1L
       htcdi_job(job)
-      htcdi_val(list(availability = "loading"))
+      # Seed last-good HTCDI composite while live Yahoo histories load.
+      snap0 <- .macro_lg_resolve(mode)
+      if (is.list(snap0) && exists("macro_last_good_htcdi_usable", mode = "function") &&
+          isTRUE(macro_last_good_htcdi_usable(snap0$htcdi))) {
+        seeded_h <- snap0$htcdi
+        seeded_h$availability <- "ready"
+        seeded_h$from_cache <- TRUE
+        htcdi_val(seeded_h)
+        .macro_publish_stale(TRUE, snap0$captured_at %||% "", panel = "htcdi")
+      } else {
+        htcdi_val(list(availability = "loading"))
+      }
       .clear_resume("htcdi")
       .clear_resume("htcdi_fs")
       cfg <- if (exists("htcdi_load_config", mode = "function")) {
@@ -2048,7 +2266,28 @@ macro_market_server <- function(id = "macro",
             error = function(e) NULL
           )
           if (!identical(isolate(htcdi_job()), job)) return()
-          htcdi_val(res %||% list(availability = "unavailable"))
+          score <- if (is.list(res)) {
+            suppressWarnings(as.numeric(res$composite %||% NA_real_)[1])
+          } else {
+            NA_real_
+          }
+          if (is.finite(score)) {
+            htcdi_val(res)
+            .macro_persist_success(mode, htcdi = res)
+            .macro_publish_stale(FALSE, panel = "htcdi")
+          } else {
+            snap <- .macro_lg_resolve(mode)
+            if (is.list(snap) && exists("macro_last_good_htcdi_usable", mode = "function") &&
+                isTRUE(macro_last_good_htcdi_usable(snap$htcdi))) {
+              cached <- snap$htcdi
+              cached$availability <- "ready"
+              cached$from_cache <- TRUE
+              htcdi_val(cached)
+              .macro_publish_stale(TRUE, snap$captured_at %||% "", panel = "htcdi")
+            } else {
+              htcdi_val(res %||% list(availability = "unavailable"))
+            }
+          }
           # Phase B: slow-tier statements; re-score when done (honest empty if fail).
           if (requireNamespace("later", quietly = TRUE)) {
             later::later(function() {
@@ -2077,16 +2316,26 @@ macro_market_server <- function(id = "macro",
         }
       }
 
+      .htcdi_fail_or_cache <- function() {
+        if (!identical(isolate(htcdi_job()), job)) return()
+        snap <- .macro_lg_resolve(mode)
+        if (is.list(snap) && exists("macro_last_good_htcdi_usable", mode = "function") &&
+            isTRUE(macro_last_good_htcdi_usable(snap$htcdi))) {
+          cached <- snap$htcdi
+          cached$availability <- "ready"
+          cached$from_cache <- TRUE
+          htcdi_val(cached)
+          .macro_publish_stale(TRUE, snap$captured_at %||% "", panel = "htcdi")
+        } else {
+          htcdi_val(list(availability = "unavailable"))
+        }
+      }
       if (requireNamespace("later", quietly = TRUE)) {
         later::later(function() {
-          tryCatch(.fetch_price_i(1L), error = function(e) {
-            if (identical(isolate(htcdi_job()), job)) {
-              htcdi_val(list(availability = "unavailable"))
-            }
-          })
+          tryCatch(.fetch_price_i(1L), error = function(e) .htcdi_fail_or_cache())
         }, delay = 0)
       } else {
-        .fetch_price_i(1L)
+        tryCatch(.fetch_price_i(1L), error = function(e) .htcdi_fail_or_cache())
       }
     }
     # Start HTCDI in parallel with quotes + Rf (same refresh / market triggers).

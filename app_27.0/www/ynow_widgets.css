@@ -2201,6 +2201,25 @@
         .ynow-macro-rf-host:has(#macro-rf_signal_row > *) > .ynow-macro-rf-skeleton {
           display: none !important;
         }
+        /* Offline-first last-good banner (Home/Market). Lite-free. */
+        .ynow-macro-stale-banner {
+          display: none;
+          margin: 0 0 12px 0;
+          padding: 10px 14px;
+          border-radius: 6px;
+          border: 1px solid rgba(180, 120, 20, 0.55);
+          background: rgba(255, 236, 179, 0.92);
+          color: #5c3b00;
+          font-size: 13px;
+          line-height: 1.4;
+        }
+        .ynow-macro-stale-banner.is-visible,
+        .ynow-macro-stale-banner:not([hidden]) {
+          display: block;
+        }
+        .ynow-macro-stale-banner[hidden] {
+          display: none !important;
+        }
         .ynow-macro-kpi,
         .ynow-macro-rf {
           background: var(--ynow-macro-ink);
