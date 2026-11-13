@@ -125,6 +125,13 @@ check("lazy boot helpers retained for re-enable (no img src)", {
     !grepl('id = "ynow_insp_img"[\\s\\S]{0,160}src\\s*=', mod, perl = TRUE)
 })
 
+check("inspiration catalog prefers force-cache + WebP compress path", {
+  grepl("cache: 'force-cache'", mod, fixed = TRUE) &&
+    grepl("img.decoding = 'async'", mod, fixed = TRUE) &&
+    grepl("img.loading = 'lazy'", mod, fixed = TRUE) &&
+    grepl("WEBP_Q = 75", paste(readLines("scripts/process_inspiration_upload.py", warn = FALSE), collapse = "\n"), fixed = TRUE)
+})
+
 check("no extra copyright overlay on gallery images", {
   py_gal <- paste(readLines("scripts/process_inspiration_gallery.py", warn = FALSE), collapse = "\n")
   py_up <- paste(readLines("scripts/process_inspiration_upload.py", warn = FALSE), collapse = "\n")

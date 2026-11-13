@@ -2524,6 +2524,8 @@
             if (labConcepts && s.lab_im_concepts_label) labConcepts.textContent = s.lab_im_concepts_label;
             var labDetailIntro = document.getElementById('ynow_lab_im_detail_intro');
             if (labDetailIntro && s.lab_im_detail_intro) labDetailIntro.textContent = s.lab_im_detail_intro;
+            var labDetailVirt = document.getElementById('ynow_lab_im_detail_virt_hint');
+            if (labDetailVirt && s.lab_im_detail_virt_hint) labDetailVirt.textContent = s.lab_im_detail_virt_hint;
             setBtText('ynow_lab_im_detail_box_title', 'lab_im_detail_box_title');
             var labLbMode = document.getElementById('ynow_lab_im_lb_mode_label');
             if (labLbMode && s.lab_im_lb_mode_label) labLbMode.textContent = s.lab_im_lb_mode_label;

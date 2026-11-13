@@ -132,6 +132,14 @@ check(
     grepl("lab_im_table <- DT::renderDT[\\s\\S]{0,5000}?server = TRUE", srv, perl = TRUE) &&
     grepl("lab_cluster_table <- DT::renderDT[\\s\\S]{0,2500}?server = TRUE", srv, perl = TRUE)
 )
+sidebar <- paste(readLines(file.path(root, "lab_im_sidebar.R"), warn = FALSE), collapse = "\n")
+check(
+  "Detail / sortable DT virtualize large pages (not mount-all)",
+  grepl("ynow_dt_resolve_page_length", sidebar, fixed = TRUE) &&
+    grepl("YNOW_DT_VIRTUAL_PAGE_DEFAULT", sidebar, fixed = TRUE) &&
+    grepl("Viewport virtualization", srv, fixed = TRUE) &&
+    !grepl("Unlimited / large N: show all rows", srv, fixed = TRUE)
+)
 check(
   "snapshot table is server-side DT with deferRender",
   grepl("snapshot_table <- DT::renderDT", srv, fixed = TRUE) &&
