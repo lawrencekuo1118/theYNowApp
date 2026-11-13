@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12811562
+bundleId=12816509
 appId=10907657
-url=https://[REDACTED].shinyapps.io/TheYNowApp/  # pragma: allowlist secret
-aligned_git=c2101da73a6e16b0bd5b1fdc165365d12005b6d5
-commit=c2101da73a6e16b0bd5b1fdc165365d12005b6d5
-short=c2101da7
-message=chore: bump display version to v28.47
-captured_at=2026-11-12T04:49:16Z
-display_version=v28.47
-note=Shipped v28.47 (+0.01) via deploy_app_21.R. Fix #742 / YN-125: keep Redirecting… through post-login busy gaps until quiet idle after destination tab match. Live status=running; rsconnect bundleId=12811562. Prior: v28.46=#740/#741 (12811427).
+url=https://hopesmasher1118.shinyapps.io/TheYNowApp/  # pragma: allowlist secret
+aligned_git=32ec83eb1cdd34dafe268dbff15e5a9e6251225b
+commit=32ec83eb1cdd34dafe268dbff15e5a9e6251225b
+short=32ec83eb
+message=chore: bump display version to v28.48
+captured_at=2026-11-13T05:34:01Z
+display_version=v28.48
+note=Shipped v28.48 (+0.01) via deploy_app_21.R. Tip-ship #745–#748: homepage async skeletons, Prospecting DT virtualization, search debounce, offline-first Market cache. Live status=running; rsconnect bundleId=12816509. Prior: v28.47=#742/#743 (12811562).
