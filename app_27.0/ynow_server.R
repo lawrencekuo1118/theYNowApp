@@ -21398,8 +21398,14 @@ server <- function(input, output, session) {
       merged <- lab_filter_df_by_concept_keys(merged, concept_keys_dt, market_mode = mm_dt)
     }
     display_n <- lab_resolve_im_max_n(input$lab_im_max_n, input$lab_im_max_n_custom)
-    # Unlimited / large N: show all rows (page_length=NULL → nrow); else page 20.
-    page_len <- if (!is.finite(display_n) || display_n > 100) NULL else 20L
+    # Viewport virtualization (FlatList equiv): always page large Detail lists.
+    # Never pass page_length=NULL for N=500 / All — that used to mount every <tr>
+    # (paging off, pageLength=nrow) and janked mobile scroll / heated devices.
+    page_len <- if (exists("YNOW_DT_VIRTUAL_PAGE_DEFAULT", inherits = TRUE)) {
+      as.integer(YNOW_DT_VIRTUAL_PAGE_DEFAULT)[1]
+    } else {
+      25L
+    }
     eq_on <- isTRUE(input$lab_im_eq_only)
     gate_on <- isTRUE(input$lab_im_gate_only)
     no_alert_on <- isTRUE(input$lab_im_no_alert)

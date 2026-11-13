@@ -51,7 +51,37 @@ check("helper numericizes mcap for server sort",
 check("helper coerces mcap display text",
       grepl("ynow_coerce_mcap_sort_value", src, fixed = TRUE))
 check("helper formats mcap on display", grepl("formatMcap", src, fixed = TRUE))
-check("header cursor", grepl("ynow-sortable-dt thead th", ui, fixed = TRUE))
+check(
+  "header cursor",
+  {
+    chrome <- paste(
+      readLines(file.path(app_dir, "www", "ynow_chrome.css"), warn = FALSE, encoding = "UTF-8"),
+      collapse = "\n"
+    )
+    grepl("ynow-sortable-dt thead th", chrome, fixed = TRUE) ||
+      grepl("ynow-sortable-dt thead th", ui, fixed = TRUE)
+  }
+)
+check(
+  "virtual page helper present",
+  grepl("ynow_dt_resolve_page_length", src, fixed = TRUE) &&
+    grepl("YNOW_DT_VIRTUAL_PAGE_DEFAULT", src, fixed = TRUE)
+)
+check(
+  "Detail no longer mounts all rows for large N",
+  grepl("Viewport virtualization", srv, fixed = TRUE) &&
+    !grepl("Unlimited / large N: show all rows", srv, fixed = TRUE) &&
+    grepl("ynow_lab_im_detail_virt_hint", ui, fixed = TRUE)
+)
+check(
+  "virtualization i18n keys in locale",
+  {
+    loc <- paste(readLines(file.path(app_dir, "ui_locale.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+    grepl("lab_im_detail_virt_hint", loc, fixed = TRUE) &&
+      grepl("dt_paginate_prev", loc, fixed = TRUE) &&
+      grepl("dt_paginate_next", loc, fixed = TRUE)
+  }
+)
 
 for (id in c(
   "lab_im_summary", "lab_im_ind_mcap_table", "lab_im_leaderboard",
@@ -68,6 +98,24 @@ if (!exists("%||%", mode = "function")) {
   `%||%` <- function(a, b) if (is.null(a)) b else a
 }
 source(file.path(app_dir, "lab_im_sidebar.R"), local = FALSE)
+
+# --- Viewport virtualization (500+ mobile DOM) ---
+check(
+  "resolve: small table keeps all rows",
+  identical(ynow_dt_resolve_page_length(10L, NULL), 10L)
+)
+check(
+  "resolve: NULL page_length on 500 rows caps to virtual page",
+  identical(ynow_dt_resolve_page_length(500L, NULL), as.integer(YNOW_DT_VIRTUAL_PAGE_DEFAULT))
+)
+check(
+  "resolve: explicit pageLength=nrow on large table still caps",
+  identical(ynow_dt_resolve_page_length(500L, 500L), as.integer(YNOW_DT_VIRTUAL_PAGE_DEFAULT))
+)
+check(
+  "resolve: explicit 20 on mid-size table kept",
+  identical(ynow_dt_resolve_page_length(80L, 20L), 20L)
+)
 
 # --- Total market cap: text sort is wrong; numeric sort is correct ---
 mcap_txt <- c("1.20T", "800.00B", "98.70B", "5.10T", "$12.3M", "—")
@@ -257,6 +305,23 @@ if (requireNamespace("DT", quietly = TRUE)) {
   check("widget ordering on", isTRUE(opts$ordering))
   check("widget keeps incoming row order", identical(opts$order, list()))
   check("widget has sort render", !is.null(opts$columnDefs[[1]]$render))
+  check("small widget does not force paging chrome", isFALSE(isTRUE(opts$paging)))
+  big <- data.frame(
+    排名 = seq_len(120L),
+    年化估值漲幅 = sprintf("%+.1f%%", seq_len(120L) / 10),
+    總市值 = rep("1.00B", 120L),
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+  w_big <- ynow_sortable_datatable(big, locale = "en", page_length = NULL)
+  ob <- w_big$x$options
+  check("large widget pages", isTRUE(ob$paging))
+  check(
+    "large widget pageLength capped",
+    identical(as.integer(ob$pageLength)[1], as.integer(YNOW_DT_VIRTUAL_PAGE_DEFAULT))
+  )
+  check("large widget shows tip chrome", identical(as.character(ob$dom)[1], "tip"))
+  check("large widget deferRender", isTRUE(ob$deferRender))
   check(
     "widget data uses stable English Ajax keys",
     identical(names(widget$x$data), c("Rank", "Annualized upside", "Total market cap"))

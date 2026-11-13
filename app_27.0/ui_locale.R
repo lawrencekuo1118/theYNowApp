@@ -2136,6 +2136,18 @@ locale_for_market <- function(mode = get_market_mode()) {
       "at most N qualified names are shown; shortfalls are not padded."
     ),
     lab_im_detail_box_title = "Detail (sorted by annualized valuation appreciation)",
+    lab_im_detail_virt_hint = paste0(
+      "Large Detail lists (e.g. N = 500 / All) page 25 rows at a time so off-screen ",
+      "rows are not kept in the mobile DOM."
+    ),
+    dt_paginate_prev = "Prev",
+    dt_paginate_next = "Next",
+    dt_info = "Showing _START_–_END_ of _TOTAL_",
+    dt_info_empty = "Showing 0–0 of 0",
+    dt_info_filtered = "(filtered from _MAX_ total)",
+    dt_empty = "No data",
+    dt_zero = "No matching rows",
+    dt_processing = "…",
     lab_im_lb_mode_label = "Ranking view",
     lab_im_lb_mode_overall = "Overall Top 10",
     lab_im_lb_mode_by_industry = "Top 10 in selected industries",
@@ -7079,6 +7091,18 @@ locale_for_market <- function(mode = get_market_mode()) {
       "條件不足時不湊滿。"
     ),
     lab_im_detail_box_title = "明細（按年化估值漲幅排序）",
+    lab_im_detail_virt_hint = paste0(
+      "明細列數較多時（例如 N＝500／全部）每次只顯示 25 筆，",
+      "畫面外的列不會留在行動裝置 DOM 中。"
+    ),
+    dt_paginate_prev = "上一頁",
+    dt_paginate_next = "下一頁",
+    dt_info = "顯示第 _START_–_END_ 筆，共 _TOTAL_ 筆",
+    dt_info_empty = "顯示第 0–0 筆，共 0 筆",
+    dt_info_filtered = "（自 _MAX_ 筆中篩選）",
+    dt_empty = "尚無資料",
+    dt_zero = "沒有符合的列",
+    dt_processing = "…",
     lab_im_lb_mode_label = "排行視角",
     lab_im_lb_mode_overall = "整體前十名",
     lab_im_lb_mode_by_industry = "選定產業前十名",

@@ -2115,6 +2115,12 @@ beta_rolling_section_ui <- function() {
                 id = "ynow_lab_im_detail_intro",
                 "本次已評估檔的明細（按年化估值漲幅排序）。宇宙檔數（N）＝分析後最終顯示上限：候選截斷與評分後，最多顯示 N 檔合格列；條件不足時不湊滿。"
               ),
+              tags$p(
+                id = "ynow_lab_im_detail_virt_hint",
+                class = "ynow-lab-im-detail-virt-hint",
+                style = "margin:0 0 10px 0; color:#888; font-size:12px;",
+                "明細列數較多時（例如 N＝500／全部）每次只顯示 25 筆，畫面外的列不會留在行動裝置 DOM 中。"
+              ),
               fluidRow(
                 box(
                   width = 12, status = "info", solidHeader = TRUE,

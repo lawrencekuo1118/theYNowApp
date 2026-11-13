@@ -259,6 +259,77 @@ lab_im_col_display_names <- function(keys, locale = "zh-TW") {
   keys
 }
 
+# FlatList / RecyclerView equivalent for DT: server-side paging + deferRender
+# + capped pageLength so only the visible page stays in the DOM (mobile).
+YNOW_DT_VIRTUAL_PAGE_DEFAULT <- 25L
+
+#' Resolve DT pageLength for viewport virtualization.
+#'
+#' - Small tables (n ≤ virtual_page): show all rows (no paging chrome).
+#' - Large tables / "show all" requests: cap to `virtual_page` so 500+ row
+#'   Stock Prospecting Detail / Custom Screen results do not mount every `<tr>`.
+ynow_dt_resolve_page_length <- function(n, page_length = NULL,
+                                        virtual_page = YNOW_DT_VIRTUAL_PAGE_DEFAULT) {
+  n_i <- suppressWarnings(as.integer(n)[1])
+  if (!is.finite(n_i) || n_i < 0L) n_i <- 0L
+  vp <- suppressWarnings(as.integer(virtual_page)[1])
+  if (!is.finite(vp) || vp < 1L) vp <- YNOW_DT_VIRTUAL_PAGE_DEFAULT
+  if (is.null(page_length)) {
+    return(if (n_i <= vp) max(n_i, 1L) else vp)
+  }
+  plen <- suppressWarnings(as.integer(page_length)[1])
+  if (!is.finite(plen) || plen < 1L) plen <- vp
+  # Explicit "pageLength = nrow" / huge page on a large table → still virtualize.
+  if (n_i > vp && plen >= n_i) return(vp)
+  plen
+}
+
+#' DT language pack (en-US / zh-TW) for pagination chrome on virtualized tables.
+ynow_dt_language <- function(locale = "zh-TW") {
+  loc <- if (exists("normalize_ui_locale", mode = "function")) {
+    normalize_ui_locale(locale)
+  } else {
+    as.character(locale %||% "zh-TW")[1]
+  }
+  s <- function(key, fallback) {
+    if (exists("ui_str", mode = "function")) {
+      tryCatch({
+        out <- ui_str(key, loc)
+        if (is.null(out) || !nzchar(as.character(out)[1])) fallback else as.character(out)[1]
+      }, error = function(e) fallback)
+    } else {
+      fallback
+    }
+  }
+  if (identical(loc, "en")) {
+    list(
+      paginate = list(
+        previous = s("dt_paginate_prev", "Prev"),
+        `next` = s("dt_paginate_next", "Next")
+      ),
+      info = s("dt_info", "Showing _START_–_END_ of _TOTAL_"),
+      infoEmpty = s("dt_info_empty", "Showing 0–0 of 0"),
+      infoFiltered = s("dt_info_filtered", "(filtered from _MAX_ total)"),
+      emptyTable = s("dt_empty", "No data"),
+      zeroRecords = s("dt_zero", "No matching rows"),
+      processing = s("dt_processing", "…")
+    )
+  } else {
+    list(
+      paginate = list(
+        previous = s("dt_paginate_prev", "上一頁"),
+        `next` = s("dt_paginate_next", "下一頁")
+      ),
+      info = s("dt_info", "顯示第 _START_–_END_ 筆，共 _TOTAL_ 筆"),
+      infoEmpty = s("dt_info_empty", "顯示第 0–0 筆，共 0 筆"),
+      infoFiltered = s("dt_info_filtered", "（自 _MAX_ 筆中篩選）"),
+      emptyTable = s("dt_empty", "尚無資料"),
+      zeroRecords = s("dt_zero", "沒有符合的列"),
+      processing = s("dt_processing", "…")
+    )
+  }
+}
+
 #' Blue Chip table with clickable headers. Initial row order is unchanged
 #' until the user sorts a column.
 #'
@@ -269,9 +340,14 @@ lab_im_col_display_names <- function(keys, locale = "zh-TW") {
 #' Internal `names(data)` stay on stable English keys so server-side Ajax
 #' filter/sort requests survive locale flips (zh-TW ↔ en). Visible headers use
 #' `colnames=` only.
+#'
+#' Large lists (N ≥ ~25, especially 500 / All) use viewport virtualization:
+#' capped `pageLength`, `deferRender`, and pagination chrome (`dom = "tip"`)
+#' so off-screen rows are not kept in the mobile DOM.
 ynow_sortable_datatable <- function(data, escape = TRUE, page_length = NULL,
                                     filter = "none", extra_options = list(),
-                                    locale = NULL) {
+                                    locale = NULL,
+                                    virtual_page = YNOW_DT_VIRTUAL_PAGE_DEFAULT) {
   if (is.null(data) || !is.data.frame(data)) {
     data <- data.frame(Message = character(0), stringsAsFactors = FALSE)
   }
@@ -284,20 +360,34 @@ ynow_sortable_datatable <- function(data, escape = TRUE, page_length = NULL,
     names(data)
   }
   n <- nrow(data)
-  plen <- if (is.null(page_length)) max(as.integer(n), 1L) else as.integer(page_length)[1]
+  plen <- ynow_dt_resolve_page_length(n, page_length = page_length, virtual_page = virtual_page)
   if (!is.finite(plen) || plen < 1L) plen <- 1L
+  paging <- isTRUE(n > plen)
+  # "t" alone hides Prev/Next — fine for Top-10 / empty messages; large lists need "tip".
+  base_dom <- if (isTRUE(paging)) "tip" else "t"
   base <- list(
-    paging = isTRUE(n > plen),
+    paging = paging,
     pageLength = plen,
     scrollX = TRUE,
     ordering = TRUE,
     order = list(),
     orderClasses = TRUE,
     deferRender = TRUE,
-    dom = "t"
+    processing = isTRUE(paging),
+    dom = base_dom,
+    language = ynow_dt_language(locale %||% "zh-TW")
   )
   opts <- if (length(extra_options)) utils::modifyList(base, extra_options) else base
   opts$ordering <- TRUE
+  # Re-assert paging contract if extra_options tried to remount the whole table.
+  if (isTRUE(paging)) {
+    opts$paging <- TRUE
+    if (is.null(opts$pageLength) || !is.finite(opts$pageLength) ||
+        as.integer(opts$pageLength)[1] >= n) {
+      opts$pageLength <- plen
+    }
+    if (identical(as.character(opts$dom %||% "")[1], "t")) opts$dom <- "tip"
+  }
   prev_defs <- opts$columnDefs
   opts$columnDefs <- c(
     list(ynow_dt_sort_column_def(prep$mcap_idx, prep$pct_idx)),

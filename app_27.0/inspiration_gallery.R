@@ -379,6 +379,10 @@ ynow_inspiration_home_shell_ui <- function() {
     if (!img || !item) return;
     currentId = item.id;
     img.alt = '';
+    img.decoding = 'async';
+    img.loading = 'lazy';
+    // Hashed WebP paths are immutable; prefer disk cache over re-fetch.
+    try { img.setAttribute('fetchpriority', 'low'); } catch (e) {}
     img.src = item.src;
     if (wrap) wrap.classList.remove('ynow-insp-gallery--hidden');
   }
@@ -412,10 +416,19 @@ ynow_inspiration_home_shell_ui <- function() {
       return;
     }
     try {
-      fetch('inspiration/gallery_catalog.json', { credentials: 'same-origin' })
+      fetch('inspiration/gallery_catalog.json', {
+        credentials: 'same-origin',
+        cache: 'force-cache'
+      })
         .then(function (r) { return r.ok ? r.json() : null; })
         .then(function (j) { if (j) applyCatalog(j); })
-        .catch(function () {});
+        .catch(function () {
+          // Cache miss / blocked → one network retry without force-cache.
+          fetch('inspiration/gallery_catalog.json', { credentials: 'same-origin' })
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (j) { if (j) applyCatalog(j); })
+            .catch(function () {});
+        });
     } catch (e) {}
   }
   function schedule() {

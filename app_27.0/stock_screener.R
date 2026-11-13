@@ -617,6 +617,8 @@ screener_server <- function(input, output, session, ui_locale_rv = NULL,
       selection = "multiple",
       options = list(
         pageLength = 12,
+        deferRender = TRUE,
+        processing = TRUE,
         dom = "tp",
         scrollX = TRUE,
         columnDefs = list(list(visible = FALSE, targets = which(names(show) == "alert_flag") - 1L))
