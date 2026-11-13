@@ -28,6 +28,11 @@ check("sc_ticker_suggest_ui host", grepl('uiOutput("sc_ticker_suggest_ui")', ui,
 check("shiny:value re-shows sc suggest", grepl("sc_ticker_suggest_ui", ui, fixed = TRUE) &&
         grepl("showSuggest('sc')", ui, fixed = TRUE))
 check(
+  "client debounces ticker_typeahead ~300ms",
+  grepl("YNOW_SEARCH_DEBOUNCE_MS = 300", ui, fixed = TRUE) &&
+    grepl("scheduleTypeahead", ui, fixed = TRUE)
+)
+check(
   "suggest stays warm when chrome hidden",
   grepl('outputOptions(output, "sc_ticker_suggest_ui", suspendWhenHidden = FALSE)', srv, fixed = TRUE)
 )

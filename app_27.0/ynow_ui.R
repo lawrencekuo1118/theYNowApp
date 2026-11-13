@@ -5542,6 +5542,10 @@ ui <- dashboardPage(
         if (document.documentElement.getAttribute('data-ynow-ticker-typeahead') === '1') return;
         document.documentElement.setAttribute('data-ynow-ticker-typeahead', '1');
         var typingOpen = {};
+        /* Match YNOW_SEARCH_DEBOUNCE_MS in web_crawler.R — settle before Shiny/API. */
+        var YNOW_SEARCH_DEBOUNCE_MS = 300;
+        var typeaheadTimers = {};
+        var typeaheadPending = {};
 
         function suggestIdForInput(inputId) {
           if (inputId === 'lab_cluster_focus') return 'lab_cluster_focus_suggest';
@@ -5557,7 +5561,10 @@ ui <- dashboardPage(
           var el = document.getElementById(suggestIdForInput(inputId));
           if (!el) return;
           var q = inputValue(inputId).trim();
-          if (typingOpen[inputId] && q.length > 0 && el.children.length) {
+          /* Error note alone still counts as children; prefer real suggest items. */
+          var hasItems = el.querySelectorAll('.ynow-suggest-item').length > 0 ||
+            el.querySelectorAll('.ynow-suggest-error').length > 0;
+          if (typingOpen[inputId] && q.length > 0 && hasItems) {
             el.style.display = 'block';
           } else {
             el.style.display = 'none';
@@ -5568,7 +5575,8 @@ ui <- dashboardPage(
         function showSuggestWhenReady(inputId, tries) {
           tries = (typeof tries === 'number') ? tries : 8;
           var el = document.getElementById(suggestIdForInput(inputId));
-          if (el && el.children.length) {
+          if (el && (el.querySelectorAll('.ynow-suggest-item').length ||
+                     el.querySelectorAll('.ynow-suggest-error').length)) {
             showSuggest(inputId);
             return;
           }
@@ -5586,6 +5594,38 @@ ui <- dashboardPage(
           ['sc', 'lab_cluster_focus'].forEach(hideSuggest);
         }
 
+        function pushTypeahead(v) {
+          try {
+            if (!(window.Shiny && Shiny.setInputValue)) return;
+            Shiny.setInputValue('ticker_typeahead', v, {priority: 'event'});
+          } catch (eSet) {}
+        }
+
+        function scheduleTypeahead(inputId, v) {
+          typeaheadPending[inputId] = v;
+          if (typeaheadTimers[inputId]) {
+            clearTimeout(typeaheadTimers[inputId]);
+          }
+          typeaheadTimers[inputId] = setTimeout(function() {
+            typeaheadTimers[inputId] = null;
+            var pending = typeaheadPending[inputId];
+            typeaheadPending[inputId] = null;
+            pushTypeahead(pending == null ? '' : String(pending));
+          }, YNOW_SEARCH_DEBOUNCE_MS);
+        }
+
+        function flushTypeahead(inputId) {
+          if (typeaheadTimers[inputId]) {
+            clearTimeout(typeaheadTimers[inputId]);
+            typeaheadTimers[inputId] = null;
+          }
+          if (typeaheadPending[inputId] != null) {
+            var pending = typeaheadPending[inputId];
+            typeaheadPending[inputId] = null;
+            pushTypeahead(String(pending));
+          }
+        }
+
         function bindTypeahead(inputId) {
           $(document).on('input', '#' + inputId, function() {
             var el = this;
@@ -5601,20 +5641,24 @@ ui <- dashboardPage(
               } catch (eCaret) {}
               v = up;
             }
-            Shiny.setInputValue('ticker_typeahead', v, {priority: 'event'});
             typingOpen[inputId] = v.trim().length > 0;
             showSuggest(inputId);
+            scheduleTypeahead(inputId, v);
           });
 
           $(document).on('blur', '#' + inputId, function(e) {
             var rt = e.relatedTarget;
             var el = document.getElementById(suggestIdForInput(inputId));
             if (el && rt && el.contains(rt)) return;
+            flushTypeahead(inputId);
             hideSuggest(inputId);
           });
 
           $(document).on('keydown', '#' + inputId, function(e) {
-            if (e.key === 'Enter' || e.keyCode === 13) hideSuggest(inputId);
+            if (e.key === 'Enter' || e.keyCode === 13) {
+              flushTypeahead(inputId);
+              hideSuggest(inputId);
+            }
           });
         }
 
@@ -6085,11 +6129,21 @@ ui <- dashboardPage(
           var sym = $(this).data('symbol');
           var list = this.closest ? this.closest('.ynow-ticker-suggest, #sc_ticker_suggest, #lab_cluster_focus_suggest') : null;
           var inputId = (list && list.id === 'lab_cluster_focus_suggest') ? 'lab_cluster_focus' : 'sc';
-          hideSuggest(inputId);
-          if (sym) {
-            $('#' + inputId).val(sym).trigger('change');
-            Shiny.setInputValue(inputId, sym, {priority: 'event'});
-          }
+          try {
+            if (typeaheadTimers[inputId]) {
+              clearTimeout(typeaheadTimers[inputId]);
+              typeaheadTimers[inputId] = null;
+            }
+            typeaheadPending[inputId] = null;
+            hideSuggest(inputId);
+            if (sym) {
+              $('#' + inputId).val(sym).trigger('change');
+              if (window.Shiny && Shiny.setInputValue) {
+                Shiny.setInputValue(inputId, sym, {priority: 'event'});
+                Shiny.setInputValue('ticker_typeahead', sym, {priority: 'event'});
+              }
+            }
+          } catch (ePick) {}
         });
 
         $(document).on('shiny:value', function(e) {
