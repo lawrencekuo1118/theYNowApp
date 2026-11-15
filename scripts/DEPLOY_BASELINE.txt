@@ -7,5 +7,5 @@ commit=8771a4003c599b226669c8912307cb7876dc89ed
 short=8771a400
 message=chore: bump display version to v28.50
 captured_at=2026-11-15T12:36:00Z
-display_version=v28.50
+display_version=v28.51
 note=Shipped v28.50 (+0.01) via deploy_app_21.R. Tip-ship #757: Prospecting Filters stats coerce, sequential catalog job registry, industry mcap Names/Total from offline universe. Live status=running; rsconnect bundleId=12825339. Prior: v28.49=#753–#755 (12824935).
