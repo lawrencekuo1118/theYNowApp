@@ -136,6 +136,13 @@ def _yahoo_gate_acquire(timeout_sec=30.0):
     return True
 
 
+# Reuse one curl_cffi session across statement/summary tickers in this process.
+# Building a Session per ticker was pure overhead on the Ranking 100-name pass.
+_YF_HTTP_SESSION = None
+# Currency hints from get_ranking_summary_batch so statement misses skip stock.info.
+_RANKING_CCY_HINTS = {}
+
+
 def _yf_http_session():
     """Browser-impersonated HTTP session for yfinance.
 
@@ -143,10 +150,13 @@ def _yf_http_session():
     under shared-host Yahoo rate limits (HTTP 429). ``curl_cffi`` chrome
     impersonation matches the FX chart fallback path and restores IS/BS/CF.
     """
+    global _YF_HTTP_SESSION
+    if _YF_HTTP_SESSION is not None:
+        return _YF_HTTP_SESSION
     try:
         from curl_cffi import requests as creq
 
-        return creq.Session(
+        _YF_HTTP_SESSION = creq.Session(
             impersonate="chrome",
             headers={
                 "User-Agent": (
@@ -157,6 +167,7 @@ def _yf_http_session():
                 "Accept": "application/json,text/plain,*/*",
             },
         )
+        return _YF_HTTP_SESSION
     except Exception as e:
         _dbg(f"⚠️ curl_cffi yfinance session unavailable: {e}")
         return None
@@ -802,6 +813,142 @@ def get_market_caps_batch(tickers):
         _dbg(f"✅ market caps {n_ok}/{len(cleaned)}")
     else:
         _dbg("⚠️ market cap batch empty; Lab uses offline snapshot / keep universe order")
+    return out
+
+
+def get_ranking_summary_batch(tickers):
+    """Yahoo v7 quote fields Ranking needs — one gated chunk instead of N stock.info.
+
+    Returns ``{SYMBOL: dict|None}`` with keys:
+    ``market_cap``, ``price``, ``beta``, ``company_name``,
+    ``currency``, ``financial_currency``.
+
+    Ranking only reads cap / price / beta / name. Currency is carried so the
+    statement path can skip a per-ticker ``stock.info`` when the batch hit.
+    """
+    cleaned = []
+    seen = set()
+    for raw in tickers or []:
+        t = str(raw or "").strip().upper().replace("/", "-")
+        if not t or t in seen:
+            continue
+        seen.add(t)
+        cleaned.append(t)
+    out = {t: None for t in cleaned}
+    if not cleaned:
+        return out
+
+    def _safe_f(v):
+        try:
+            if v is None:
+                return None
+            f = float(v)
+            return f if f == f else None  # NaN check
+        except (TypeError, ValueError):
+            return None
+
+    def _apply_quotes(quotes):
+        n_ok = 0
+        for q in quotes or []:
+            if not isinstance(q, dict):
+                continue
+            sym = str(q.get("symbol") or "").strip().upper()
+            if not sym:
+                continue
+            price = _safe_f(q.get("regularMarketPrice"))
+            if price is None or price <= 0:
+                price = _safe_f(q.get("regularMarketPreviousClose"))
+            row = {
+                "market_cap": _safe_f(q.get("marketCap")),
+                "price": price,
+                "beta": _safe_f(q.get("beta")),
+                "company_name": str(
+                    q.get("shortName") or q.get("longName") or q.get("displayName") or ""
+                ).strip()
+                or None,
+                "currency": str(q.get("currency") or "").strip().upper() or None,
+                "financial_currency": str(q.get("financialCurrency") or "").strip().upper()
+                or None,
+            }
+            if row["market_cap"] is not None and row["market_cap"] <= 0:
+                row["market_cap"] = None
+            if row["price"] is not None and row["price"] <= 0:
+                row["price"] = None
+            # Keep name-only rows for currency hints, but only count a hit when
+            # price is present — R treats price as the completeness gate before
+            # skipping the per-ticker Summary fallback.
+            useful = any(
+                row[k] is not None
+                for k in ("market_cap", "price", "beta", "company_name", "currency")
+            )
+            if not useful:
+                continue
+            for key in (sym, sym.replace(".", "-"), sym.replace("-", ".")):
+                if key in out and out[key] is None:
+                    out[key] = dict(row)
+                if row.get("currency") or row.get("financial_currency"):
+                    _RANKING_CCY_HINTS[key] = (
+                        row.get("currency"),
+                        row.get("financial_currency"),
+                    )
+            if sym not in out:
+                out[sym] = dict(row)
+            if row.get("price") is not None:
+                n_ok += 1
+        return n_ok
+
+    try:
+        chunk_size = int((os.environ.get("YNOW_MCAP_QUOTE_CHUNK") or "120").strip())
+    except (TypeError, ValueError):
+        chunk_size = 120
+    chunk_size = max(20, min(200, chunk_size))
+    got_any = False
+    failures = 0
+    fields = (
+        "symbol,shortName,longName,displayName,marketCap,beta,"
+        "regularMarketPrice,regularMarketPreviousClose,currency,financialCurrency"
+    )
+    try:
+        from yfinance.data import YfData
+
+        yd = YfData()
+        url = "https://query2.finance.yahoo.com/v7/finance/quote"
+        for i in range(0, len(cleaned), chunk_size):
+            chunk = cleaned[i : i + chunk_size]
+            _yahoo_gate_acquire()
+            try:
+                raw = yd.get(
+                    url,
+                    params={"symbols": ",".join(chunk), "fields": fields},
+                )
+                if hasattr(raw, "json") and not isinstance(raw, dict):
+                    raw = raw.json()
+                quotes = []
+                if isinstance(raw, dict):
+                    quotes = (raw.get("quoteResponse") or {}).get("result") or []
+                added = _apply_quotes(quotes)
+                if added:
+                    got_any = True
+                    failures = 0
+                else:
+                    failures += 1
+                    if failures >= 2:
+                        _dbg("⚠️ ranking summary batch stopped; quote chunks empty")
+                        break
+            except Exception as e:  # noqa: BLE001
+                failures += 1
+                _dbg(f"⚠️ ranking summary quote chunk failed: {e}")
+                if failures >= 2:
+                    _dbg("⚠️ ranking summary batch stopped after consecutive failures")
+                    break
+    except Exception as e:  # noqa: BLE001
+        _dbg(f"⚠️ ranking summary YfData quote batch unavailable: {e}")
+
+    n_ok = sum(1 for v in out.values() if v is not None)
+    if got_any and n_ok:
+        _dbg(f"✅ ranking summary batch {n_ok}/{len(cleaned)}")
+    else:
+        _dbg("⚠️ ranking summary batch empty; per-ticker summary fallback")
     return out
 
 
@@ -1820,8 +1967,13 @@ def _stmt_to_payload(df):
     return {"columns": [str(c) for c in out.columns.tolist()], "data": data}
 
 
-def scrape_all_financials_yf(ticker="AMZN"):
-    """Cloud-safe financials via Yahoo Finance API (no Chrome)."""
+def scrape_all_financials_yf(ticker="AMZN", quote_currency=None, financial_currency=None):
+    """Cloud-safe financials via Yahoo Finance API (no Chrome).
+
+    ``quote_currency`` / ``financial_currency`` skip the expensive ``stock.info``
+    lookup when Ranking already has them from ``get_ranking_summary_batch``.
+    Suffix heuristics cover TW when both are omitted.
+    """
     _dbg(f"📊 使用 yfinance 獲取 {ticker} 財報（app_11.0）...")
     _yahoo_gate_acquire()
     stock = _yf_ticker(ticker)
@@ -1846,23 +1998,41 @@ def scrape_all_financials_yf(ticker="AMZN"):
     balance_p = _stmt_to_payload(balance)
     cash_p = _stmt_to_payload(cash)
 
-    # Quote vs reporting currency (ADR often differs) — prefer live info, never invent USD.
-    info = {}
-    try:
-        info = stock.info or {}
-    except Exception:
-        info = {}
-
-    def _ccy_info(key):
-        v = info.get(key) if isinstance(info, dict) else None
-        if v is None:
-            return ""
-        s = str(v).strip().upper()
-        return s if s else ""
-
-    quote_ccy = _ccy_info("currency")
-    fin_ccy = _ccy_info("financialCurrency")
     tk_u = str(ticker or "").strip().upper()
+    quote_ccy = str(quote_currency or "").strip().upper()
+    fin_ccy = str(financial_currency or "").strip().upper()
+    if (not quote_ccy or not fin_ccy) and tk_u in _RANKING_CCY_HINTS:
+        hint_q, hint_f = _RANKING_CCY_HINTS.get(tk_u) or (None, None)
+        if not quote_ccy and hint_q:
+            quote_ccy = str(hint_q).strip().upper()
+        if not fin_ccy and hint_f:
+            fin_ccy = str(hint_f).strip().upper()
+
+    # Avoid stock.info (full quoteSummary) only when both quote and reporting
+    # currencies are known, or TW suffix implies TWD. Quote-only is not enough:
+    # ADRs often list in USD while books use another financialCurrency, and the
+    # 24h statement cache would otherwise lose that distinction for Search/FX.
+    is_tw = tk_u.endswith((".TW", ".TWO"))
+    need_info = (not is_tw) and (not quote_ccy or not fin_ccy)
+    if need_info:
+        info = {}
+        try:
+            info = stock.info or {}
+        except Exception:
+            info = {}
+
+        def _ccy_info(key):
+            v = info.get(key) if isinstance(info, dict) else None
+            if v is None:
+                return ""
+            s = str(v).strip().upper()
+            return s if s else ""
+
+        if not quote_ccy:
+            quote_ccy = _ccy_info("currency")
+        if not fin_ccy:
+            fin_ccy = _ccy_info("financialCurrency")
+
     if not quote_ccy and tk_u.endswith((".TW", ".TWO")):
         quote_ccy = "TWD"
     if not fin_ccy and tk_u.endswith((".TW", ".TWO")):

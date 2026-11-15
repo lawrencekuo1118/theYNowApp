@@ -901,6 +901,26 @@ lab_screen_tickers_fscore <- function(tickers, progress_cb = NULL, max_n = Inf,
   tick_elapsed <- if (isTRUE(trace_on)) numeric(n) else NULL
   phase_sum <- if (isTRUE(trace_on)) c(summary = 0, fin = 0, rest = 0) else NULL
   screen_t0 <- if (isTRUE(trace_on)) unname(proc.time()[["elapsed"]]) else NA_real_
+  # One v7 quote batch for the eval pool — replaces N× get_summary_quote.
+  # Also flags Ranking so empty statement misses do not immediately re-hit Yahoo.
+  if (exists(".lab_ranking_summary_clear", mode = "function")) {
+    tryCatch(.lab_ranking_summary_clear(), error = function(e) NULL)
+  }
+  prev_ranking <- getOption("ynow.ranking_screen", NULL)
+  options(ynow.ranking_screen = TRUE)
+  on.exit({
+    options(ynow.ranking_screen = prev_ranking)
+    # Drop batch snapshot so post-Ranking callers use the 15m Summary cache.
+    if (exists(".lab_ranking_summary_clear", mode = "function")) {
+      tryCatch(.lab_ranking_summary_clear(), error = function(e) NULL)
+    }
+  }, add = TRUE)
+  if (n > 0L && exists("lab_prefetch_ranking_summaries", mode = "function")) {
+    tryCatch(lab_prefetch_ranking_summaries(tks), error = function(e) NULL)
+  }
+  if (exists("ynow_pload", mode = "function") && isTRUE(trace_on)) {
+    ynow_pload("fscore_batch", "start", list(n = n))
+  }
   for (i in seq_along(tks)) {
     if (is.function(progress_cb)) {
       tryCatch(progress_cb(i, n, tks[[i]]), error = function(e) NULL)
