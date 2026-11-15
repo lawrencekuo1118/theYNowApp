@@ -328,10 +328,33 @@ ynow_attach_fiscal_dividends <- function(res, events) {
   res
 }
 
+.ynow_dividends_attached <- function(res) {
+  div <- tryCatch(res[["Dividends"]], error = function(e) NULL)
+  is.data.frame(div) && nrow(div) > 0L && ncol(div) > 1L
+}
+
+#' Search / single-ticker: if Ranking cached statements without the dividend
+#' series, attach it once without re-scraping IS/BS/CF.
+.ynow_ensure_statement_dividends <- function(res, stock_code) {
+  if (is.null(res) || !is.list(res)) return(res)
+  if (isTRUE(.ynow_dividends_attached(res))) return(res)
+  if (!isTRUE(.ensure_python_scraper())) return(res)
+  if (!exists("scrape_dividend_events", mode = "function")) return(res)
+  events <- tryCatch(scrape_dividend_events(stock_code), error = function(e) NULL)
+  ynow_attach_fiscal_dividends(res, events)
+}
+
 # One original-source operation shared by normal fetches and all-parameter recovery.
 fetch_financial_statements_source <- function(stock_code) {
   if (!isTRUE(.ensure_python_scraper())) stop("Financial statement provider unavailable")
   res <- normalize_all_financials(scrape_all_financials(stock_code))
+  # Ranking F-Score/FV reads Cash Dividends Paid from the cash-flow statement.
+  # Skip the extra Yahoo gate for dividend events during the 100-name screen;
+  # Search attaches dividends lazily via .ynow_ensure_statement_dividends.
+  if (isTRUE(getOption("ynow.ranking_screen", FALSE))) {
+    attr(res, "dividends_deferred") <- TRUE
+    return(res)
+  }
   events <- tryCatch(scrape_dividend_events(stock_code), error = function(e) NULL)
   ynow_attach_fiscal_dividends(res, events)
 }
@@ -417,9 +440,16 @@ lookup_statement_fallback_ticker <- function(stock_code) {
 #' Public financials fetch: memoised when non-empty; empty results are not kept.
 #' When the quoted ticker yields empty IS/BS/CF, retry via ADR local ordinary
 #' ticker from HTCDI config (e.g. TSM → 2330.TW) — generic, not ticker-hardcoded.
-cached_scrape_financials <- function(stock_code) {
+#'
+#' `retry_empty`: when NULL, follows `options(ynow.ranking_screen)`. Ranking
+#' sets that option so a 429/empty body does not immediately re-hit Yahoo for
+#' each of the 100 names. Search / single-ticker paths keep the retry.
+cached_scrape_financials <- function(stock_code, retry_empty = NULL) {
   stock_code <- as.character(stock_code %||% "")[1]
   if (!nzchar(stock_code)) stop("stock_code is empty")
+  if (is.null(retry_empty)) {
+    retry_empty <- !isTRUE(getOption("ynow.ranking_screen", FALSE))
+  }
 
   res <- tryCatch(
     .cached_scrape_financials_memo(stock_code),
@@ -434,11 +464,21 @@ cached_scrape_financials <- function(stock_code) {
   }
 
   if (!isTRUE(empty_fn(res))) {
+    if (!isTRUE(getOption("ynow.ranking_screen", FALSE))) {
+      res <- .ynow_ensure_statement_dividends(res, stock_code)
+    }
     return(res)
   }
 
   # Drop poisoned empty entry (rate-limit / transient miss).
   .drop_financials_cache_key(stock_code)
+
+  .finish_nonempty <- function(x, src_tk = stock_code) {
+    if (!isTRUE(getOption("ynow.ranking_screen", FALSE))) {
+      x <- .ynow_ensure_statement_dividends(x, src_tk)
+    }
+    x
+  }
 
   alt <- lookup_statement_fallback_ticker(stock_code)
   if (nzchar(alt)) {
@@ -448,22 +488,32 @@ cached_scrape_financials <- function(stock_code) {
       error = function(e) NULL
     )
     if (!is.null(res_alt) && !isTRUE(empty_fn(res_alt))) {
-      return(.stamp_financials_fallback(res_alt, alt, "local_ordinary"))
+      return(.stamp_financials_fallback(
+        .finish_nonempty(res_alt, alt), alt, "local_ordinary"
+      ))
     }
     if (!is.null(res_alt) && isTRUE(empty_fn(res_alt))) {
       .drop_financials_cache_key(alt)
     }
-    # One uncached retry on ordinary (avoids serving a just-dropped empty memo).
-    res_alt2 <- tryCatch(.scrape_financials_uncached(alt), error = function(e) NULL)
-    if (!is.null(res_alt2) && !isTRUE(empty_fn(res_alt2))) {
-      return(.stamp_financials_fallback(res_alt2, alt, "local_ordinary_uncached"))
+    if (isTRUE(retry_empty)) {
+      # One uncached retry on ordinary (avoids serving a just-dropped empty memo).
+      res_alt2 <- tryCatch(.scrape_financials_uncached(alt), error = function(e) NULL)
+      if (!is.null(res_alt2) && !isTRUE(empty_fn(res_alt2))) {
+        return(.stamp_financials_fallback(
+          .finish_nonempty(res_alt2, alt), alt, "local_ordinary_uncached"
+        ))
+      }
     }
+  }
+
+  if (!isTRUE(retry_empty)) {
+    return(res)
   }
 
   # Uncached retry on the quoted ticker itself (after dropping empty memo).
   res2 <- tryCatch(.scrape_financials_uncached(stock_code), error = function(e) res)
   if (!isTRUE(empty_fn(res2))) {
-    return(res2)
+    return(.finish_nonempty(res2, stock_code))
   }
   res2
 }

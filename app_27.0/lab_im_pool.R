@@ -22,14 +22,130 @@ lab_annualized_upside_pct <- function(fv, price, n_years = NULL) {
   ((fv / px)^(1 / n) - 1) * 100
 }
 
+# Ranking screen: one v7 quote batch fills these before the per-ticker loop.
+.lab_ranking_summary_cache <- new.env(parent = emptyenv())
+
+.lab_ranking_summary_empty <- function() {
+  list(
+    market_cap = NA_real_, price = NA_real_, beta = NA_real_,
+    company_name = NA_character_,
+    currency = NA_character_, financial_currency = NA_character_
+  )
+}
+
+.lab_ranking_summary_clear <- function() {
+  rm(list = ls(envir = .lab_ranking_summary_cache, all.names = TRUE),
+     envir = .lab_ranking_summary_cache)
+  invisible(TRUE)
+}
+
+.lab_ranking_summary_put <- function(ticker, metrics) {
+  tk <- toupper(trimws(as.character(ticker)[1]))
+  if (!nzchar(tk) || !is.list(metrics)) return(invisible(FALSE))
+  assign(tk, metrics, envir = .lab_ranking_summary_cache)
+  invisible(TRUE)
+}
+
+.lab_ranking_summary_get <- function(ticker) {
+  tk <- toupper(trimws(as.character(ticker)[1]))
+  if (!nzchar(tk)) return(NULL)
+  if (!exists(tk, envir = .lab_ranking_summary_cache, inherits = FALSE)) return(NULL)
+  get(tk, envir = .lab_ranking_summary_cache, inherits = FALSE)
+}
+
+.lab_ranking_summary_from_row <- function(row) {
+  out <- .lab_ranking_summary_empty()
+  if (is.null(row)) return(out)
+  if (is.list(row)) {
+    out$market_cap <- suppressWarnings(as.numeric(row$market_cap %||% row[["market_cap"]])[1])
+    out$price <- suppressWarnings(as.numeric(row$price %||% row[["price"]])[1])
+    out$beta <- suppressWarnings(as.numeric(row$beta %||% row[["beta"]])[1])
+    cn <- trimws(as.character(row$company_name %||% row[["company_name"]] %||% "")[1])
+    if (nzchar(cn) && !identical(cn, "None")) out$company_name <- cn
+    ccy <- toupper(trimws(as.character(row$currency %||% row[["currency"]] %||% "")[1]))
+    if (nzchar(ccy) && !identical(ccy, "NONE")) out$currency <- ccy
+    fcy <- toupper(trimws(as.character(
+      row$financial_currency %||% row[["financial_currency"]] %||% ""
+    )[1]))
+    if (nzchar(fcy) && !identical(fcy, "NONE")) out$financial_currency <- fcy
+  }
+  out
+}
+
+#' Prefetch Ranking summary fields via one Yahoo v7 quote batch (no stock.info).
+lab_prefetch_ranking_summaries <- function(tickers) {
+  tks <- unique(toupper(trimws(as.character(tickers))))
+  tks <- tks[nzchar(tks) & !is.na(tks)]
+  if (!length(tks)) return(invisible(0L))
+  t0 <- unname(proc.time()[["elapsed"]])
+  fetched <- NULL
+  fn <- NULL
+  if (exists(".py_scraper_env") &&
+      exists("get_ranking_summary_batch", envir = .py_scraper_env,
+             inherits = FALSE, mode = "function")) {
+    fn <- get("get_ranking_summary_batch", envir = .py_scraper_env, inherits = FALSE)
+  } else if (exists("get_ranking_summary_batch", mode = "function")) {
+    fn <- get_ranking_summary_batch
+  }
+  if (is.function(fn) &&
+      exists(".ensure_python_scraper", mode = "function") &&
+      isTRUE(.ensure_python_scraper())) {
+    fetched <- tryCatch(fn(as.list(tks)), error = function(e) NULL)
+    if (!is.null(fetched) && !is.list(fetched) &&
+        requireNamespace("reticulate", quietly = TRUE)) {
+      fetched <- tryCatch(reticulate::py_to_r(fetched), error = function(e) fetched)
+    }
+  }
+  n_hit <- 0L
+  if (!is.null(fetched) && is.list(fetched) && length(names(fetched))) {
+    nms <- toupper(trimws(as.character(names(fetched))))
+    for (i in seq_along(nms)) {
+      key <- gsub("/", "-", nms[[i]])
+      if (!nzchar(key)) next
+      el <- fetched[[i]]
+      if (is.null(el) || !(is.list(el) || is.numeric(el))) next
+      sm <- .lab_ranking_summary_from_row(el)
+      useful <- is.finite(sm$market_cap) || is.finite(sm$price) ||
+        is.finite(sm$beta) || (is.character(sm$company_name) && nzchar(sm$company_name))
+      if (!useful) next
+      .lab_ranking_summary_put(key, sm)
+      n_hit <- n_hit + 1L
+      alt <- gsub("\\.", "-", key)
+      if (!identical(alt, key)) .lab_ranking_summary_put(alt, sm)
+    }
+  }
+  if (exists("ynow_pload", mode = "function")) {
+    ynow_pload("fscore_summary_batch", "end", list(
+      n_req = length(tks),
+      n_hit = n_hit,
+      elapsed_s = unname(proc.time()[["elapsed"]]) - t0
+    ))
+  }
+  invisible(n_hit)
+}
+
 #' 自 Yahoo Summary 取市值、現價、β 與公司全稱
 lab_fetch_summary_metrics <- function(ticker) {
   tk <- toupper(trimws(as.character(ticker)[1]))
-  out <- list(
-    market_cap = NA_real_, price = NA_real_, beta = NA_real_,
-    company_name = NA_character_
-  )
+  out <- .lab_ranking_summary_empty()
   if (!nzchar(tk)) return(out)
+  # Ranking screen: prefer the v7 quote batch (no per-ticker stock.info).
+  batch <- .lab_ranking_summary_get(tk)
+  if (is.null(batch)) batch <- .lab_ranking_summary_get(gsub("\\.", "-", tk))
+  if (is.list(batch)) {
+    useful <- is.finite(batch$market_cap) || is.finite(batch$price) ||
+      is.finite(batch$beta) ||
+      (is.character(batch$company_name) && nzchar(batch$company_name))
+    if (useful) {
+      out$market_cap <- batch$market_cap
+      out$price <- batch$price
+      out$beta <- batch$beta
+      out$company_name <- batch$company_name
+      out$currency <- batch$currency
+      out$financial_currency <- batch$financial_currency
+      return(out)
+    }
+  }
   # Prefer fast-tier memoised summary (15m); fall back to uncached only if missing.
   sum_df <- tryCatch({
     if (exists("cached_get_summary_data", mode = "function")) {
