@@ -60,7 +60,7 @@ code="$(curl -s -o "$body" -w '%{http_code}' "${BASE_URL}/" || true)"
 [[ "$code" == "200" ]] || fail "HTTP ${code} from ${BASE_URL}/"
 grep -q 'The YNow App' "$body" || fail "body missing 'The YNow App'"
 
-build_file="${ROOT}/app_27.0/www/ynow_build.json"
+build_file="${ROOT}/app_28.0/www/ynow_build.json"
 if [[ -f "$build_file" ]]; then
   expect="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "$build_file")"
   if grep -q "data-ynow-build=\"${expect}\"" "$body" || grep -q "${expect}" "$body"; then

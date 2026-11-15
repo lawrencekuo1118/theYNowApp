@@ -5,7 +5,7 @@ set -euo pipefail
 CODING="${YNOW_CODING:-/Users/lawrencekuo/coding/theYNowApp}"
 ONEDRIVE="${YNOW_ONEDRIVE:-/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp}"
 SHA_FILE="$ONEDRIVE/.ynow-synced-sha"
-LIVE_APP="${YNOW_LIVE_APP:-app_27.0}"
+LIVE_APP="${YNOW_LIVE_APP:-app_28.0}"
 STATUS_FILE="$ONEDRIVE/.ynow-sync-status.txt"
 SYNC_BIN="${YNOW_SYNC_BIN:-/Users/lawrencekuo/coding/bin/sync-theynow-workspaces.sh}"
 SYNC_REPO="$CODING/scripts/sync-workspaces.sh"

@@ -5,7 +5,7 @@ name: Live-line CI
 on:
   push:
     paths:
-      - "app_27.0/**"
+      - "app_28.0/**"
       - "scripts/**"
       - ".github/workflows/**"
       - "CHANGELOG.md"
@@ -13,7 +13,7 @@ on:
       - "Audit_Mapping.md"
   pull_request:
     paths:
-      - "app_27.0/**"
+      - "app_28.0/**"
       - "scripts/**"
       - ".github/workflows/**"
       - "CHANGELOG.md"
@@ -36,13 +36,13 @@ jobs:
       - name: Valuation formulas (offline)
         env:
           YNOW_DEBUG_SKIP_PY: "1"
-        run: Rscript app_27.0/tests/test_valuation_formulas.R
+        run: Rscript app_28.0/tests/test_valuation_formulas.R
       - name: Formal WACC apply properties (offline)
         env:
           YNOW_DEBUG_SKIP_PY: "1"
         run: |
-          Rscript app_27.0/tests/test_formal_wacc_apply.R
-          Rscript app_27.0/tests/test_two_stage_wacc_other_equity.R
+          Rscript app_28.0/tests/test_formal_wacc_apply.R
+          Rscript app_28.0/tests/test_two_stage_wacc_other_equity.R
       # setup-pandoc occasionally fails with HTTP 504 from the Pandoc release CDN.
       # Retry the action, then fall back to apt pandoc so tip-ship CI is not blocked.
       - id: pandoc1
@@ -77,30 +77,30 @@ jobs:
           YNOW_DEBUG_SKIP_PY: "1"
         run: |
           Rscript -e 'pkgs <- c("shiny", "rmarkdown", "ggplot2", "DBI"); missing <- pkgs[!vapply(pkgs, requireNamespace, logical(1), quietly = TRUE)]; if (length(missing)) install.packages(missing, quiet = TRUE)'
-          Rscript app_27.0/tests/test_report_pdf_copy.R
-          Rscript app_27.0/tests/test_report_download.R
+          Rscript app_28.0/tests/test_report_pdf_copy.R
+          Rscript app_28.0/tests/test_report_download.R
       - name: Parameter sources, accounting semantics, and manual-fill guidance (offline)
         env:
           YNOW_DEBUG_SKIP_PY: "1"
         run: |
-          Rscript app_27.0/tests/test_parameter_semantics.R
-          Rscript app_27.0/tests/test_rd_estimate.R
-          Rscript app_27.0/tests/test_parameter_completeness.R
-          Rscript app_27.0/tests/test_model_fiscal_integrity.R
-          Rscript app_27.0/tests/test_lite_valuation_pipeline.R
-          Rscript app_27.0/tests/test_tw_search_session.R
-          Rscript app_27.0/tests/test_ticker_auto_uppercase.R
-          Rscript app_27.0/tests/test_method_eng_locale.R
-          Rscript app_27.0/tests/test_sotp_meta_framework.R
-          Rscript app_27.0/tests/test_market_cache_binary.R
-          python3 app_27.0/tests/test_summary_deadline.py
+          Rscript app_28.0/tests/test_parameter_semantics.R
+          Rscript app_28.0/tests/test_rd_estimate.R
+          Rscript app_28.0/tests/test_parameter_completeness.R
+          Rscript app_28.0/tests/test_model_fiscal_integrity.R
+          Rscript app_28.0/tests/test_lite_valuation_pipeline.R
+          Rscript app_28.0/tests/test_tw_search_session.R
+          Rscript app_28.0/tests/test_ticker_auto_uppercase.R
+          Rscript app_28.0/tests/test_method_eng_locale.R
+          Rscript app_28.0/tests/test_sotp_meta_framework.R
+          Rscript app_28.0/tests/test_market_cache_binary.R
+          python3 app_28.0/tests/test_summary_deadline.py
       - name: Lab clustering + Beta grouping (offline)
         env:
           YNOW_DEBUG_SKIP_PY: "1"
         run: |
           Rscript -e 'pkgs <- c("plotly", "magrittr"); missing <- pkgs[!vapply(pkgs, requireNamespace, logical(1), quietly = TRUE)]; if (length(missing)) install.packages(missing, quiet = TRUE)'
-          Rscript app_27.0/tests/test_beta_grouping.R
-          Rscript app_27.0/tests/test_lab_clustering.R
+          Rscript app_28.0/tests/test_beta_grouping.R
+          Rscript app_28.0/tests/test_lab_clustering.R
       - name: Phase 1 formula independence (offline)
         env:
           YNOW_DEBUG_SKIP_PY: "1"
@@ -110,14 +110,14 @@ jobs:
           YNOW_DEBUG_SKIP_PY: "1"
         run: |
           Rscript -e 'if (!requireNamespace("jsonlite", quietly = TRUE)) install.packages("jsonlite", quiet = TRUE)'
-          Rscript app_27.0/tests/test_maintenance_mode.R
+          Rscript app_28.0/tests/test_maintenance_mode.R
       - name: Admin self view modes (offline)
         env:
           YNOW_DEBUG_SKIP_PY: "1"
-        run: Rscript app_27.0/tests/test_admin_view_modes.R
+        run: Rscript app_28.0/tests/test_admin_view_modes.R
       - name: Admin ops audit log (offline)
         env:
           YNOW_DEBUG_SKIP_PY: "1"
         run: |
           Rscript -e 'if (!requireNamespace("jsonlite", quietly = TRUE)) install.packages("jsonlite", quiet = TRUE)'
-          Rscript app_27.0/tests/test_admin_ops_audit.R
+          Rscript app_28.0/tests/test_admin_ops_audit.R

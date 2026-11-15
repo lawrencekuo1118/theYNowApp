@@ -1,7 +1,7 @@
-# Audit Mapping — theYNowApp (`app_27.0`)
+# Audit Mapping — theYNowApp (`app_28.0`)
 
 **Role:** ITGC / QA automation inventory  
-**Scope:** Live line `app_27.0/` (display baseline per `scripts/DEPLOY_BASELINE.txt`)  
+**Scope:** Live line `app_28.0/` (display baseline per `scripts/DEPLOY_BASELINE.txt`)  
 **Phase:** 1–4 complete · **5 complete** (Audit RCM Report)  
 **Status:** `scripts/run_audit.sh` → `Audit_RCM_Report.md`
 
@@ -28,7 +28,7 @@
 
 **No relational DB.** Persistence = `cachem`/`memoise` disk cache, CSV/JSON snapshots, `data/price_alerts.json`.
 
-### 1.2 Offline snapshots / fixtures (`app_27.0/data`, `tests/data`)
+### 1.2 Offline snapshots / fixtures (`app_28.0/data`, `tests/data`)
 
 | Artifact | Typical readers | Role |
 |---|---|---|
@@ -51,7 +51,7 @@
 | `tpex_financial_summary.py` | `tpex_financial.R` | TW fallback |
 | `corp_logo_colors.py` | `web_crawler.R` | UI branding |
 | `valuation_pipeline/*.py` | **Not R-wired** | Standalone Phase-1 Python + tests |
-| `app_27.0/scripts/*.py` | Offline builders | Snapshot generation |
+| `app_28.0/scripts/*.py` | Offline builders | Snapshot generation |
 
 ---
 
@@ -152,7 +152,7 @@ Derived boot seeds: `default_beta`, `default_rm`, `default_debt`, `default_g`, `
 
 ## 4. Existing automated coverage (inventory only)
 
-Already under `app_27.0/tests/` (reuse in Phase 2–5; do not duplicate blindly):
+Already under `app_28.0/tests/` (reuse in Phase 2–5; do not duplicate blindly):
 
 | Area | Representative tests |
 |---|---|
@@ -183,9 +183,9 @@ Framework in-repo: standalone Rscript suites + Phase 5 aggregator `scripts/run_a
 
 | Artifact | Role |
 |---|---|
-| `app_27.0/tests/test_data_integrity.R` | Completeness + Accuracy on data-flow entry points (offline / mock) |
-| `app_27.0/tests/test_parameters_boundaries.R` | Default lock + boundary fail-soft |
-| `app_27.0/tests/test_formula_accuracy.R` | Closed-form + 3 scenarios; F-Score 9; Beneish 8 |
+| `app_28.0/tests/test_data_integrity.R` | Completeness + Accuracy on data-flow entry points (offline / mock) |
+| `app_28.0/tests/test_parameters_boundaries.R` | Default lock + boundary fail-soft |
+| `app_28.0/tests/test_formula_accuracy.R` | Closed-form + 3 scenarios; F-Score 9; Beneish 8 |
 | `scripts/run_audit.sh` | Runs Phase 2–4 suites; writes logs under `audit_logs/` |
 | `scripts/generate_audit_rcm.R` | Parses logs → Risk and Control Matrix markdown |
 | `Audit_RCM_Report.md` | Regenerated RCM (Audit Item / Target / Objective / Result / Findings) |
@@ -194,7 +194,7 @@ Framework in-repo: standalone Rscript suites + Phase 5 aggregator `scripts/run_a
 ```bash
 bash scripts/run_audit.sh
 # or individual suites:
-cd app_27.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_data_integrity.R
-cd app_27.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_parameters_boundaries.R
-cd app_27.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_formula_accuracy.R
+cd app_28.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_data_integrity.R
+cd app_28.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_parameters_boundaries.R
+cd app_28.0 && YNOW_DEBUG_SKIP_PY=1 Rscript tests/test_formula_accuracy.R
 ```

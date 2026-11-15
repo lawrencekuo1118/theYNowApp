@@ -1,3 +1,8 @@
+## [v28.52] — 2026-11-16 · BBLab Start analysis feedback + live-folder align
+
+- zh-TW：業務拆解「Start analysis」不再靜默無反應（狀態列／情境組）；GitHub 活動線資料夾改為 **`app_28.0/`** 對齊顯示整階 v28；root README 同步至 v28.52。
+- en-US: Business Breakdown Start analysis shows status/context (no silent no-op). Live GitHub folder renamed **`app_27.0/` → `app_28.0/`** to match display major v28; root README synced to v28.52 / bundle 12825827.
+
 ## [v28.47] — 2026-11-12 · Redirecting holds through post-login busy gaps
 
 After sign-in, the header stays on **Redirecting…** / **重新導向中…** across shiny idle gaps until a quiet idle after the destination tab matches (YN-125 / #742). Prior busy-only end cleared too early mid-restore.
@@ -741,7 +746,7 @@ After sign-in, the header stays on **Redirecting…** / **重新導向中…** a
 
 # Changelog
 
-All notable **display-version** ships of the live line (`app_27.0/`) are recorded here.
+All notable **display-version** ships of the live line (`app_28.0/`; formerly `app_27.0/` through v28.51) are recorded here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Section headers are en-US; prose uses **American English** and **Taiwan Traditional Chinese** (台灣投資界用語) where helpful. Formal finance terms stay in English (WACC, FCFF, MOS, …).

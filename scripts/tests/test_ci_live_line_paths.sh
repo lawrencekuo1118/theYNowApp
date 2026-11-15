@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Guard: Live-line CI must keep meaningful path filters and core offline jobs.
-# Fails closed if app_27.0/** or scripts/** drop out of on.push / on.pull_request,
+# Fails closed if app_28.0/** or scripts/** drop out of on.push / on.pull_request,
 # or if valuation / Phase 1 steps disappear (vacuous green risk).
 set -euo pipefail
 
@@ -20,10 +20,10 @@ for event in push pull_request; do
     grab {print}
   ' "$CI_YML")"
   [[ -n "$block" ]] || fail "no '$event' block in ci.yml"
-  echo "$block" | grep -Fq 'app_27.0/**' || fail "$event paths missing app_27.0/**"
+  echo "$block" | grep -Fq 'app_28.0/**' || fail "$event paths missing app_28.0/**"
   echo "$block" | grep -Fq 'scripts/**' || fail "$event paths missing scripts/**"
   echo "$block" | grep -Fq '.github/workflows/**' || fail "$event paths missing .github/workflows/**"
-  ok "$event paths include app_27.0/**, scripts/**, .github/workflows/**"
+  ok "$event paths include app_28.0/**, scripts/**, .github/workflows/**"
 done
 
 grep -Fq 'workflow_dispatch:' "$CI_YML" || fail "workflow_dispatch missing"

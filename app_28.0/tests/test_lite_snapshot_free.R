@@ -1,0 +1,106 @@
+# Lite Snapshot stays free: keep snap_audit + snap_current; only hide snap_defaults.
+# Run: Rscript app_28.0/tests/test_lite_snapshot_free.R
+
+args <- commandArgs(trailingOnly = FALSE)
+file_arg <- grep("^--file=", args, value = TRUE)
+script_path <- if (length(file_arg)) {
+  normalizePath(sub("^--file=", "", file_arg[[1]]), mustWork = TRUE)
+} else {
+  normalizePath("test_lite_snapshot_free.R", mustWork = FALSE)
+}
+app_dir <- normalizePath(file.path(dirname(script_path), ".."), mustWork = TRUE)
+
+ok <- 0L
+bad <- 0L
+check <- function(label, cond) {
+  if (isTRUE(cond)) {
+    ok <<- ok + 1L
+    cat("OK ", label, "\n", sep = "")
+  } else {
+    bad <<- bad + 1L
+    cat("FAIL ", label, "\n", sep = "")
+  }
+  invisible(isTRUE(cond))
+}
+
+source(file.path(app_dir, "tests", "ynow_test_sources.R"))
+src <- ynow_test_ui_sources(app_dir)
+ui <- src$ui
+shipped <- src$shipped
+
+check(
+  "Lite CSS hides snap_defaults",
+  grepl(
+    'body.ynow-lite #snapshot_report > li:has(> a[data-value="snap_defaults"])',
+    shipped,
+    fixed = TRUE
+  )
+)
+check(
+  "Lite CSS does not hide snap_audit",
+  !grepl(
+    'body.ynow-lite #snapshot_report > li:has(> a[data-value="snap_audit"])',
+    shipped,
+    fixed = TRUE
+  ) && !grepl(
+    "body.ynow-lite[\\s\\S]{0,120}data-value=\"snap_audit\"[\\s\\S]{0,80}display:\\s*none",
+    shipped,
+    perl = TRUE
+  )
+)
+check(
+  "Lite CSS does not hide snap_current",
+  !grepl(
+    'body.ynow-lite #snapshot_report > li:has(> a[data-value="snap_current"])',
+    shipped,
+    fixed = TRUE
+  )
+)
+check(
+  "JS ensureLiteSnapshotFreeTab prefers snap_current",
+  grepl("ensureLiteSnapshotFreeTab", shipped, fixed = TRUE) &&
+    grepl('data-value="snap_current"', shipped, fixed = TRUE) &&
+    grepl("Never land on locked APP_DEFAULTS", shipped, fixed = TRUE)
+)
+check(
+  "Foot Snapshot entry uses free-tab helper",
+  grepl("ensureLiteSnapshotFreeTab", shipped, fixed = TRUE) &&
+    grepl("ynowShowSidebarFootTab", shipped, fixed = TRUE)
+)
+check(
+  "Lite click gate still skips proprietary download gate",
+  grepl("if (document.body.classList.contains('ynow-lite')) return;", shipped, fixed = TRUE) &&
+    grepl("'download_snapshot'", shipped, fixed = TRUE) &&
+    grepl("ids.map(function (id) { return '#' + id; })", shipped, fixed = TRUE)
+)
+check(
+  "Full still shows snap_defaults lock until sysadmin",
+  grepl(
+    'body:not(.ynow-lite):not(.ynow-sysadmin-on) #snapshot_report a[data-value="snap_defaults"]',
+    shipped,
+    fixed = TRUE
+  ) && grepl("ynow-snap-tab-lock", shipped, fixed = TRUE)
+)
+check(
+  "Snapshot tab hides global Ticker / Yahoo industry chrome",
+  grepl("input.sidebar_tabs != 'snapshot'", ui, fixed = TRUE) &&
+    grepl("ynow-stock-chrome", ui, fixed = TRUE) &&
+    grepl("ynow_industry_info_yahoo", ui, fixed = TRUE)
+)
+check(
+  "Global Prediction tab hides global Ticker / Yahoo industry chrome",
+  grepl("input.sidebar_tabs != 'global_prediction'", ui, fixed = TRUE) &&
+    grepl("ynow-stock-chrome", ui, fixed = TRUE) &&
+    grepl("ynow_industry_info_yahoo", ui, fixed = TRUE)
+)
+check(
+  "Lite free Snapshot tabs remain (snap_audit + snap_current)",
+  grepl('value = "snap_audit"', ui, fixed = TRUE) &&
+    grepl('value = "snap_current"', ui, fixed = TRUE) &&
+    grepl("Manual adjustments", ui, fixed = TRUE) &&
+    grepl("Current App Parameter Snapshot", ui, fixed = TRUE)
+)
+
+message("PASS ", ok, " FAIL ", bad)
+if (bad > 0L) quit(status = 1)
+invisible(NULL)

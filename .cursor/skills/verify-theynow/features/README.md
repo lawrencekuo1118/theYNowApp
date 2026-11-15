@@ -1,6 +1,6 @@
 # theYNowApp verification map
 
-This directory is the maintained source for verifying user-facing behavior of theYNowApp (`app_27.0/` Shiny UI). Read this index before driving the app, then use the matching feature file as the recipe.
+This directory is the maintained source for verifying user-facing behavior of theYNowApp (`app_28.0/` Shiny UI). Read this index before driving the app, then use the matching feature file as the recipe.
 
 ## Baseline preconditions
 
@@ -8,7 +8,7 @@ This directory is the maintained source for verifying user-facing behavior of th
 - Export `YNOW_VERIFY_RUN_DIR` from launch output (or keep the env the script printed).
 - Run `bash .cursor/skills/verify-theynow/scripts/verify-doctor.sh` and require pass (process, port ownership, HTTP 200, “The YNow App” identity).
 - Never drive an instance that was not started by this verification run (refuse shared Cloud `3838` unless exclusively owned and `YNOW_VERIFY_ALLOW_SHARED=1`).
-- Offline `app_27.0/tests/*.R` may already be green; still drive the UI for map proof.
+- Offline `app_28.0/tests/*.R` may already be green; still drive the UI for map proof.
 - Prefer Guest / signed-out Full surface unless a feature Gotcha requires auth.
 
 ## Driving conventions

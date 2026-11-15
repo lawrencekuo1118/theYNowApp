@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# Boot-time Shiny dev server for Cloud Agents (live line app_27.0).
+# Boot-time Shiny dev server for Cloud Agents (live line app_28.0).
 # Idempotent: exits 0 when port 3838 is already listening.
 #
-# Same root rules as scripts/cloud-agent-install.sh: prefer app_27.0 under
+# Same root rules as scripts/cloud-agent-install.sh: prefer app_28.0 under
 # $PWD / walk-up; use BASH_SOURCE only when this file is executed; never
 # silently take ROOT=/.
 set -euo pipefail
 
 ynow_resolve_repo_root() {
-  local d marker="app_27.0/app.R"
+  local d marker="app_28.0/app.R"
   if [[ -f "${marker}" ]]; then
     pwd -P
     return 0
@@ -32,7 +32,7 @@ ynow_resolve_repo_root() {
 }
 
 ROOT="$(ynow_resolve_repo_root)" || {
-  echo "cloud-agent-start: cannot find repo root (need app_27.0/app.R under \$PWD or via this script path)" >&2
+  echo "cloud-agent-start: cannot find repo root (need app_28.0/app.R under \$PWD or via this script path)" >&2
   exit 1
 }
 if [[ "${YNOW_CLOUD_START_RESOLVE_ONLY:-}" == "1" ]]; then
@@ -63,5 +63,5 @@ if port_open; then
   exit 0
 fi
 
-cd "${ROOT}/app_27.0"
+cd "${ROOT}/app_28.0"
 exec Rscript -e "shiny::runApp(host='0.0.0.0', port=${PORT}, launch.browser=FALSE)"

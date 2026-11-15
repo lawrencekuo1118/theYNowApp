@@ -5,12 +5,12 @@ alwaysApply: true
 
 # Dual-workspace sync (deployed shinyapps is source of truth)
 
-Latest app version: **app_27.0**
+Latest app version: **app_28.0**
 
 **App / development baseline = currently deployed line on shinyapps.io**, not whatever happens to be at Git tip.  
 Authoritative record: `scripts/DEPLOY_BASELINE.txt` (bundleId, deploy commit, URL).
 
-- Treat that deploy commit’s `app_27.0/` tree as the canonical app.
+- Treat that deploy commit’s `app_28.0/` tree as the canonical app.
 - GitHub `origin/master` may be one or more commits ahead for chore/docs (e.g. updating `DEPLOY_BASELINE.txt`); that does **not** change the app baseline unless a new shinyapps deploy is recorded.
 - Do not treat Cursor Cloud workspace tip, unreleased local edits, or OneDrive drift as newer “truth” for the live app.
 
@@ -19,10 +19,10 @@ Edited from either:
 - `/Users/lawrencekuo/coding/theYNowApp` (fast local clone — **prefer all git operations here**)
 - `/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp` (OneDrive mirror)
 
-Before any edit session, ensure both paths match the **deploy baseline** (prefer the commit in `DEPLOY_BASELINE.txt`; Git tip is OK only when its `app_27.0/` tree matches that baseline):
+Before any edit session, ensure both paths match the **deploy baseline** (prefer the commit in `DEPLOY_BASELINE.txt`; Git tip is OK only when its `app_28.0/` tree matches that baseline):
 
 ```bash
-# Canonical (in-repo; live line app_27.0):
+# Canonical (in-repo; live line app_28.0):
 bash scripts/sync-workspaces.sh
 # Mac convenience wrapper (same script):
 /Users/lawrencekuo/coding/bin/sync-theynow-workspaces.sh
@@ -30,7 +30,7 @@ bash scripts/sync-workspaces.sh
 YNOW_SYNC_MIRROR_ONLY=1 bash scripts/sync-workspaces.sh --force
 ```
 
-Use `--force` only if you intentionally want to overwrite dirty local changes. Verify with `bash scripts/check-od-sync.sh` (sha + `app_27.0/app.R`), never `git status` inside OneDrive.
+Use `--force` only if you intentionally want to overwrite dirty local changes. Verify with `bash scripts/check-od-sync.sh` (sha + `app_28.0/app.R`), never `git status` inside OneDrive.
 
 After finishing edits:
 
@@ -44,7 +44,7 @@ When tip ship completes (deploy + baseline + GitHub Release for a new `display_v
 
 1. Coding clone must match pushed tip + `DEPLOY_BASELINE.txt` live tree.
 2. Run `bash scripts/post_release_local_sync.sh` (or `bash scripts/sync-workspaces.sh --force` / `~/coding/bin/sync-theynow-workspaces.sh --force`).
-3. Verify: `bash scripts/check-od-sync.sh` (sha + `app_27.0/app.R`).
+3. Verify: `bash scripts/check-od-sync.sh` (sha + `app_28.0/app.R`).
 4. On Mac coding clone / self-hosted Mac: sync is **mandatory** — do not treat tip-ship as done until check passes.
 5. Cloud Agents without Mac paths: soft-skip still **must** run the Mac handoff (`scripts/mac_post_release_sync_handoff.sh` via `post_release_local_sync.sh`) so `scripts/PENDING_MAC_SYNC.env` is written and durable Mac automation can catch up — do **not** leave only a prose soft-skip note.
 6. Keep Mac automation online so soft-skip stops being a manual follow-up:
