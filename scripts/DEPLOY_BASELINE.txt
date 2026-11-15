@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12825460
+bundleId=12825827
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/  # pragma: allowlist secret
-aligned_git=5fe06d7f2f3c83707bb7913b270c137ae5d5d27b
-commit=5fe06d7f2f3c83707bb7913b270c137ae5d5d27b
-short=5fe06d7f
-message=chore: bump display version to v28.51
-captured_at=2026-11-15T13:50:22Z
-display_version=v28.51
-note=Shipped v28.51 (+0.01) via deploy_app_21.R. Tip-ship #759: Beta Cluster map truncate+N points, hide Same-cluster radar, map 100% width. Live status=running; rsconnect bundleId=12825460. Prior: v28.50=#757 (12825339). No valuation changes.
+aligned_git=fd5f7db51efc42e41323b83a3383c2c86e3276b9
+commit=fd5f7db51efc42e41323b83a3383c2c86e3276b9
+short=fd5f7db5
+message=chore: bump display version to v28.52
+captured_at=2026-11-15T16:15:55Z
+display_version=v28.52
+note=Shipped v28.52 (+0.01) via deploy_app_21.R. Tip-ship #761: BBLab Start analysis silent no-op fix. Live status=running; rsconnect bundleId=12825827. Prior: v28.51=#760 (12825460). No valuation changes.
