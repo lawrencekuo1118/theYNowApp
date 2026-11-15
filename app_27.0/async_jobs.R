@@ -22,12 +22,53 @@
     grepl("/srv/connect/apps", tryCatch(getwd(), error = function(e) ""), fixed = TRUE)
 }
 
+#' App directory that contains global.R, or "" when this process is not the app.
+.ynow_async_app_dir <- function() {
+  env <- Sys.getenv("YNOW_APP_DIR", "")
+  if (nzchar(env) && file.exists(file.path(env, "global.R"))) {
+    return(normalizePath(env, winslash = "/", mustWork = FALSE))
+  }
+  wd <- tryCatch(normalizePath(getwd(), winslash = "/", mustWork = FALSE), error = function(e) getwd())
+  parent <- tryCatch(normalizePath(file.path(wd, ".."), winslash = "/", mustWork = FALSE), error = function(e) "")
+  cands <- c(wd, file.path(wd, "app_27.0"), parent)
+  for (cand in cands) {
+    if (nzchar(cand) &&
+        file.exists(file.path(cand, "global.R")) &&
+        file.exists(file.path(cand, "async_jobs.R"))) {
+      return(normalizePath(cand, winslash = "/", mustWork = FALSE))
+    }
+  }
+  ""
+}
+
+#' rscript_startup script: load the app onto the worker search path once.
+#' future() wipes .GlobalEnv before each task, so an attached env is what survives.
+#' Parent of that env is .GlobalEnv so lexical lookup still reaches library() packages.
+.ynow_async_worker_startup <- function(app_dir) {
+  app_dir <- gsub("'", "", normalizePath(app_dir, winslash = "/", mustWork = FALSE), fixed = TRUE)
+  paste(c(
+    "Sys.setenv(YNOW_FUTURE_WORKER='1')",
+    sprintf("Sys.setenv(YNOW_APP_DIR='%s')", app_dir),
+    sprintf("setwd('%s')", app_dir),
+    "env <- new.env(parent = .GlobalEnv)",
+    "sys.source('global.R', envir = env)",
+    "if (!('ynow:worker' %in% search())) attach(env, name = 'ynow:worker', warn.conflicts = FALSE)"
+  ), collapse = "\n")
+}
+
 #' Initialise a future plan (local: up to 2 workers; hosted: sequential).
 .ynow_async_init <- function() {
+  if (identical(Sys.getenv("YNOW_FUTURE_WORKER"), "1")) return(invisible(FALSE))
   if (isTRUE(.ynow_async_plan_ready)) return(invisible(TRUE))
   if (!requireNamespace("future", quietly = TRUE) ||
       !requireNamespace("promises", quietly = TRUE)) {
     return(invisible(FALSE))
+  }
+  # Pin one shared trace file before workers are spawned so they inherit it.
+  if (exists("ynow_pload_enabled", mode = "function") &&
+      exists("ynow_pload_path", mode = "function") &&
+      isTRUE(ynow_pload_enabled())) {
+    tryCatch(ynow_pload_path(), error = function(e) NULL)
   }
   # shinyapps / Connect: sequential only — ExtendedTask still yields the session
   # loop, but we do not fork extra R processes that starve co-tenants.
@@ -54,16 +95,40 @@
   # reticulate/Python has started (common in Blue Chip / Yahoo scrape paths).
   # Set YNOW_ASYNC_MULTICORE=1 to force fork when you know Python is unused.
   force_mc <- identical(Sys.getenv("YNOW_ASYNC_MULTICORE"), "1")
+  app_dir <- .ynow_async_app_dir()
+  # Unit tests that source only this file have no job functions yet. Skip the
+  # full app preload so those futures stay cheap. The running app has already
+  # sourced lab_im_run_eval_job before this init.
+  preload <- nzchar(app_dir) &&
+    exists("lab_im_run_eval_job", mode = "function", inherits = TRUE) &&
+    !identical(Sys.getenv("YNOW_ASYNC_SKIP_WORKER_PRELOAD"), "1")
   ok <- tryCatch(
     {
       if (isTRUE(force_mc) && isTRUE(future::supportsMulticore())) {
         future::plan(future::multicore, workers = workers)
+      } else if (isTRUE(preload)) {
+        future::plan(
+          future::multisession,
+          workers = workers,
+          rscript_startup = .ynow_async_worker_startup(app_dir)
+        )
+        ready <- tryCatch(
+          future::value(future::future({
+            exists("lab_im_run_eval_job", mode = "function", inherits = TRUE) &&
+              exists("lab_im_catalog_memo_key", mode = "function", inherits = TRUE)
+          }, globals = FALSE, seed = TRUE)),
+          error = function(e) FALSE
+        )
+        if (!isTRUE(ready)) {
+          stop("worker preload did not expose job functions", call. = FALSE)
+        }
       } else {
         future::plan(future::multisession, workers = workers)
       }
       TRUE
     },
     error = function(e) {
+      message("ynow async multisession failed: ", conditionMessage(e))
       tryCatch(
         {
           future::plan(future::sequential)
@@ -98,25 +163,54 @@
 
 #' Build an ExtendedTask that runs `job_fn(...)` off the session thread.
 #' `job_fn` must be a named function (not a closure over reactives).
+#' The future expression must not capture `job_fn`: future()'s automatic globals
+#' walk freezes the Shiny session for many seconds.
+#' Workers resolve the name from the preloaded search path (or this process,
+#' when the plan is sequential).
 .ynow_make_extended_task <- function(job_fn) {
   if (!is.function(job_fn)) stop("job_fn must be a function")
-  # Capture by name so multisession workers re-resolve from global env when possible.
   job_name <- NULL
   if (is.character(attr(job_fn, "ynow_job_name"))) {
     job_name <- attr(job_fn, "ynow_job_name")[1]
   }
+  if (is.null(job_name) || !nzchar(job_name)) {
+    stop("job_fn must set attr ynow_job_name", call. = FALSE)
+  }
   shiny::ExtendedTask$new(function(...) {
     args <- list(...)
     jn <- job_name
-    jf <- job_fn
+    trace_on <- exists("ynow_pload_enabled", mode = "function", inherits = TRUE) &&
+      isTRUE(ynow_pload_enabled())
+    trace_path <- if (isTRUE(trace_on) &&
+                      exists("ynow_pload_path", mode = "function", inherits = TRUE)) {
+      ynow_pload_path()
+    } else {
+      ""
+    }
+    trace_run <- if (isTRUE(trace_on)) {
+      Sys.getenv("YNOW_PROSPECTING_LOAD_TRACE_RUN", "")
+    } else {
+      ""
+    }
     promises::future_promise(
       {
-        fn <- jf
-        if (!is.null(jn) && nzchar(jn) && exists(jn, mode = "function", inherits = TRUE)) {
-          fn <- get(jn, mode = "function", inherits = TRUE)
+        if (isTRUE(trace_on) &&
+            exists("ynow_pload_bind", mode = "function", inherits = TRUE)) {
+          ynow_pload_bind(trace_path, trace_run, TRUE)
         }
+        if (!nzchar(jn) || !exists(jn, mode = "function", inherits = TRUE)) {
+          stop("async job is not loaded in this process: ", jn, call. = FALSE)
+        }
+        fn <- get(jn, mode = "function", inherits = TRUE)
         do.call(fn, args)
       },
+      globals = list(
+        jn = jn,
+        args = args,
+        trace_on = trace_on,
+        trace_path = trace_path,
+        trace_run = trace_run
+      ),
       seed = TRUE
     )
   })

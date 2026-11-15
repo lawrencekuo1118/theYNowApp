@@ -514,12 +514,56 @@ lab_load_universe_metrics_snapshot <- function(force = FALSE) {
   out
 }
 
+# Shared with other processes when YNOW_CACHE_ROOT is set (local multisession
+# workers do not inherit this process's .lab_mcap_cache).
+.lab_mcap_disk_path <- function() {
+  root <- Sys.getenv("YNOW_CACHE_ROOT", "")
+  if (!nzchar(root)) return(NA_character_)
+  dir.create(root, recursive = TRUE, showWarnings = FALSE)
+  file.path(root, "lab_mcap_cache.rds")
+}
+
+.lab_mcap_disk_load <- function() {
+  if (isTRUE(get0(".disk_loaded", envir = .lab_mcap_cache, inherits = FALSE))) {
+    return(invisible(FALSE))
+  }
+  assign(".disk_loaded", TRUE, envir = .lab_mcap_cache)
+  path <- .lab_mcap_disk_path()
+  if (is.na(path) || !file.exists(path)) return(invisible(FALSE))
+  saved <- tryCatch(readRDS(path), error = function(e) NULL)
+  if (!is.numeric(saved) || !length(names(saved))) return(invisible(FALSE))
+  nms <- names(saved)
+  for (i in seq_along(saved)) {
+    key <- nms[[i]]
+    if (!nzchar(key) || grepl("^\\.", key)) next
+    if (!exists(key, envir = .lab_mcap_cache, inherits = FALSE)) {
+      assign(key, saved[[i]], envir = .lab_mcap_cache)
+    }
+  }
+  invisible(TRUE)
+}
+
+.lab_mcap_disk_save <- function() {
+  path <- .lab_mcap_disk_path()
+  if (is.na(path)) return(invisible(FALSE))
+  nms <- ls(envir = .lab_mcap_cache, all.names = FALSE)
+  nms <- nms[nzchar(nms) & !grepl("^\\.", nms)]
+  if (!length(nms)) return(invisible(FALSE))
+  vals <- unlist(mget(nms, envir = .lab_mcap_cache), use.names = TRUE)
+  vals <- vals[is.finite(vals) & vals > 0]
+  if (!length(vals)) return(invisible(FALSE))
+  tryCatch(saveRDS(vals, path), error = function(e) NULL)
+  invisible(TRUE)
+}
+
 #' 批次市值：離線快照優先，缺口再打 Yahoo；仍缺則 NA（呼叫端維持原宇宙順序）
 lab_fetch_market_caps_usd <- function(tickers) {
   tks <- unique(toupper(trimws(as.character(tickers))))
   tks <- tks[nzchar(tks) & !is.na(tks)]
   out <- stats::setNames(rep(NA_real_, length(tks)), tks)
   if (!length(tks)) return(out)
+
+  .lab_mcap_disk_load()
 
   # 1) session cache
   need <- character(0)
@@ -573,6 +617,7 @@ lab_fetch_market_caps_usd <- function(tickers) {
       }
     }
   }
+  .lab_mcap_disk_save()
   out
 }
 
