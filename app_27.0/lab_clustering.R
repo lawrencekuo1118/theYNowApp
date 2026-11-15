@@ -1568,8 +1568,8 @@ lab_run_beta_clustering <- function(df_financials, locale = "en",
       paste0(
         "Levered equity Beta (β_L) from Yahoo Summary \"Beta (5Y Monthly)\" ",
         "(same CAPM default). Level mode: K=", k, " equal-count quantiles ",
-        "(not absolute cutpoints). Membership=", membership, " ",
-        "(history chart needs monthly returns)."
+        "(not absolute cutpoints). Membership=", membership, ". ",
+        "Cluster map is the truncated-universe β_L point distribution (low / mid / high)."
       )
     }
   )
@@ -2006,7 +2006,191 @@ lab_cluster_radar_peers <- function(result, focus_ticker, n_peers = 3L) {
   utils::head(peers$ticker[o], as.integer(n_peers)[1])
 }
 
-#' Plotly 2D cluster scatter (K-Means) or Beta group-median history (Beta mode)
+#' Beta Cluster map: one point per truncated-universe name, colored low / mid / high.
+#' X is the Beta class (spread so markers do not stack); Y is levered β_L.
+#' Ignores free Scatter X/Y. Optional Q25–Q75 segment when beta_show_iqr is set.
+#' @param focus_ticker optional Radar focus; drawn as a red marker on top
+lab_cluster_beta_point_plotly <- function(result, locale = "en", focus_ticker = NULL) {
+  df0 <- if (is.list(result)) result$data else NULL
+  empty_msg <- function(msg) {
+    plotly::plotly_empty() %>%
+      plotly::layout(annotations = list(list(
+        text = msg, showarrow = FALSE, font = list(size = 14)
+      )))
+  }
+  if (is.null(df0) || !is.data.frame(df0) || nrow(df0) < 1L) {
+    return(empty_msg("No cluster data"))
+  }
+  loc <- if (exists("normalize_ui_locale", mode = "function")) {
+    normalize_ui_locale(locale)
+  } else {
+    as.character(locale %||% "en")[1]
+  }
+  is_zh <- grepl("^zh", tolower(as.character(loc)), perl = TRUE)
+  df <- df0
+  if (!"Beta" %in% names(df)) df$Beta <- NA_real_
+  df$Beta <- suppressWarnings(as.numeric(df$Beta))
+  if (!"Cluster_ID" %in% names(df)) df$Cluster_ID <- NA_integer_
+  df$Cluster_ID <- suppressWarnings(as.integer(df$Cluster_ID))
+  if (!"Cluster_Label" %in% names(df)) df$Cluster_Label <- ""
+  df$Cluster_Label <- as.character(df$Cluster_Label)
+  if (!"ticker" %in% names(df)) df$ticker <- sprintf("T%04d", seq_len(nrow(df)))
+  if (!"name" %in% names(df)) df$name <- df$ticker
+  df$ticker <- as.character(df$ticker)
+  df$name <- as.character(df$name)
+
+  ids <- sort(unique(df$Cluster_ID[is.finite(df$Cluster_ID) & is.finite(df$Beta)]))
+  if (!length(ids)) {
+    return(empty_msg(if (is_zh) "沒有可繪製的有限 β_L" else "No finite β_L to plot"))
+  }
+  lab_for <- function(id) {
+    hit <- df$Cluster_Label[df$Cluster_ID == id & nzchar(df$Cluster_Label)]
+    if (length(hit)) hit[[1]] else as.character(id)
+  }
+  tick_labs <- vapply(ids, lab_for, character(1))
+  slot_of <- stats::setNames(seq_along(ids), as.character(ids))
+  df$._slot <- unname(slot_of[as.character(df$Cluster_ID)])
+  df$._x <- NA_real_
+  for (s in seq_along(ids)) {
+    ix <- which(df$._slot == s & is.finite(df$Beta))
+    if (!length(ix)) next
+    ord <- ix[order(df$ticker[ix], method = "radix")]
+    m <- length(ord)
+    df$._x[ord] <- if (m == 1L) s else s + seq(-0.32, 0.32, length.out = m)
+  }
+  df$._y <- df$Beta
+  beta_txt <- ifelse(is.finite(df$Beta), sprintf("%.3f", df$Beta), "n/a")
+  df$hover <- paste0(
+    df$ticker, " · ", df$name, "<br>",
+    df$Cluster_Label, "<br>β_L: ", beta_txt
+  )
+  focus <- lab_cluster_match_ticker(df$ticker, focus_ticker)
+  is_focus_row <- !is.na(focus) & nzchar(focus) &
+    toupper(trimws(df$ticker)) == focus &
+    is.finite(df$._x)
+  df_rest <- df[!is_focus_row & is.finite(df$._x), , drop = FALSE]
+  df_focus <- df[is_focus_row, , drop = FALSE]
+
+  # One trace per class. plotly's shared color scale dropped mid/high to transparent.
+  pal <- c("#2c7bb6", "#fdae61", "#d7191c", "#7f7f7f", "#1a9641")
+  p <- NULL
+  if (nrow(df_rest) > 0L) {
+    group_ids <- sort(unique(df_rest$Cluster_ID))
+    for (gid in group_ids) {
+      sub <- df_rest[df_rest$Cluster_ID == gid, , drop = FALSE]
+      if (!nrow(sub)) next
+      slot <- match(gid, ids)
+      col <- if (is.finite(slot)) pal[((slot - 1L) %% length(pal)) + 1L] else "#7f7f7f"
+      args <- list(
+        data = sub,
+        x = ~._x,
+        y = ~._y,
+        text = ~hover,
+        name = as.character(sub$Cluster_Label[[1]]),
+        type = "scatter",
+        mode = "markers",
+        hoverinfo = "text",
+        marker = list(size = 11, opacity = 0.88, color = col),
+        showlegend = TRUE
+      )
+      if (is.null(p)) {
+        p <- do.call(plotly::plot_ly, args)
+      } else {
+        p <- do.call(plotly::add_trace, c(list(p), args))
+      }
+    }
+  }
+  if (nrow(df_focus) > 0L) {
+    focus_name <- paste0(df_focus$ticker[[1]], " ★")
+    focus_args <- list(
+      data = df_focus,
+      x = ~._x,
+      y = ~._y,
+      text = ~hover,
+      name = focus_name,
+      type = "scatter",
+      mode = "markers",
+      hoverinfo = "text",
+      marker = list(
+        size = 16,
+        color = "#E53935",
+        opacity = 1,
+        line = list(color = "#B71C1C", width = 1.5)
+      ),
+      showlegend = TRUE
+    )
+    if (is.null(p)) {
+      p <- do.call(plotly::plot_ly, focus_args)
+    } else {
+      p <- do.call(plotly::add_trace, c(list(p), focus_args))
+    }
+  }
+  if (is.null(p)) return(empty_msg("No cluster data"))
+
+  if (isTRUE(result$beta_show_iqr)) {
+    iqr_named <- FALSE
+    for (s in seq_along(ids)) {
+      b <- df$Beta[df$Cluster_ID == ids[[s]] & is.finite(df$Beta)]
+      if (length(b) < 2L) next
+      qs <- stats::quantile(b, probs = c(0.25, 0.75), na.rm = TRUE, names = FALSE, type = 7)
+      if (!all(is.finite(qs))) next
+      seg_name <- if (!iqr_named) "Q25–Q75" else ""
+      iqr_named <- TRUE
+      p <- plotly::add_segments(
+        p,
+        x = s, xend = s, y = qs[[1]], yend = qs[[2]],
+        name = seg_name,
+        line = list(color = "rgba(80,80,80,0.45)", width = 10),
+        hoverinfo = "text",
+        text = sprintf("Q25 %.3f – Q75 %.3f", qs[[1]], qs[[2]]),
+        showlegend = nzchar(seg_name),
+        inherit = FALSE
+      )
+    }
+  }
+
+  n_omit <- sum(!is.finite(df$Beta))
+  title <- if (is_zh) {
+    "Beta 三群點分布（截斷後宇宙；研究用，非買進訊號）"
+  } else {
+    "Beta class point map (truncated universe; research, not a buy signal)"
+  }
+  anns <- list()
+  if (n_omit > 0L) {
+    anns <- list(list(
+      text = if (is_zh) {
+        sprintf("β_L 缺值 %d 檔未繪點", as.integer(n_omit))
+      } else {
+        sprintf("%d names omitted (β_L missing)", as.integer(n_omit))
+      },
+      xref = "paper", yref = "paper", x = 0, y = 1.12,
+      xanchor = "left", showarrow = FALSE,
+      font = list(size = 11, color = "#666666")
+    ))
+  }
+  p %>%
+    plotly::layout(
+      title = list(text = title, font = list(size = 14)),
+      xaxis = list(
+        title = if (is_zh) "Beta 分群" else "Beta class",
+        tickmode = "array",
+        tickvals = seq_along(ids),
+        ticktext = tick_labs,
+        zeroline = FALSE,
+        range = c(0.45, length(ids) + 0.55)
+      ),
+      yaxis = list(
+        title = if (is_zh) "Beta（槓桿 β_L）" else "Beta (levered β_L)",
+        zeroline = TRUE
+      ),
+      legend = list(orientation = "h", y = -0.22),
+      margin = list(t = if (n_omit > 0L) 64 else 48, b = 80),
+      annotations = anns
+    ) %>%
+    plotly::config(displayModeBar = TRUE, responsive = TRUE)
+}
+
+#' Plotly 2D cluster scatter (K-Means) or Beta class point map (Beta mode)
 #' @param focus_ticker optional Radar focus; drawn as a red marker on top
 lab_cluster_scatter_plotly <- function(result, x_feat = "ROE", y_feat = "PE_Ratio",
                                        locale = "en", focus_ticker = NULL) {
@@ -2019,23 +2203,11 @@ lab_cluster_scatter_plotly <- function(result, x_feat = "ROE", y_feat = "PE_Rati
   loc <- if (exists("normalize_ui_locale", mode = "function")) normalize_ui_locale(locale) else as.character(locale)[1]
   is_zh <- grepl("^zh", tolower(as.character(loc)), perl = TRUE)
   mode_cl <- as.character(result$cluster_mode %||% "kmeans")[1]
-  # Beta mode: prefer median time series (no free Scatter X/Y per README)
+  # Beta mode: truncated-universe point distribution (low / mid / high). No free X/Y.
   if (identical(mode_cl, "beta")) {
-    bg <- result$beta_grouping
-    if (is.list(bg) && is.data.frame(bg$summary) && nrow(bg$summary) > 0L &&
-        exists("bg_summary_plotly", mode = "function")) {
-      return(bg_summary_plotly(
-        bg,
-        show_iqr = isTRUE(result$beta_show_iqr),
-        locale = loc
-      ))
-    }
-    # Fallback: as-of β_L vs group (no user X/Y)
-    x_feat <- "Beta"
-    y_feat <- if ("PE_Ratio" %in% names(df)) "PE_Ratio" else {
-      feats0 <- intersect(LAB_CLUSTER_FEATURES, names(df))
-      if (length(feats0)) feats0[[1]] else names(df)[1]
-    }
+    return(lab_cluster_beta_point_plotly(
+      result, locale = loc, focus_ticker = focus_ticker
+    ))
   }
   if (!x_feat %in% names(df)) x_feat <- result$features[[1]]
   if (!y_feat %in% names(df)) y_feat <- result$features[[min(2L, length(result$features))]]
@@ -2044,13 +2216,7 @@ lab_cluster_scatter_plotly <- function(result, x_feat = "ROE", y_feat = "PE_Rati
   ylab <- names(axis_choices)[match(y_feat, unname(axis_choices))]
   if (is.na(xlab) || !length(xlab)) xlab <- x_feat
   if (is.na(ylab) || !length(ylab)) ylab <- y_feat
-  title <- if (identical(mode_cl, "beta")) {
-    if (is_zh) {
-      "依 Beta 分位（槓桿 β_L）分群圖（研究用；無月報酬時為截止截面）"
-    } else {
-      "Beta quantile map (levered β_L; as-of cross-section when monthly returns unavailable)"
-    }
-  } else if (is_zh) {
+  title <- if (is_zh) {
     "基本面分群星團圖（研究用）"
   } else {
     "Fundamental Cluster Map (research)"

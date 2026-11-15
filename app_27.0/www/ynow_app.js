@@ -6602,3 +6602,35 @@
           }
           registerParamAuditPdfHandler();
         })();
+
+        /* Clustering: Beta grouping hides Same-cluster radar and widens Cluster map. */
+        (function ynowLabClusterChartLayout() {
+          function sync(mode) {
+            var row = document.getElementById('ynow_lab_cluster_charts');
+            if (!row) return;
+            var beta = String(mode || '') === 'beta';
+            if (!beta) {
+              var sel = document.getElementById('lab_cluster_mode');
+              beta = !!(sel && String(sel.value || '') === 'beta');
+            }
+            var was = row.classList.contains('ynow-lab-cluster-beta');
+            row.classList.toggle('ynow-lab-cluster-beta', beta);
+            var radar = row.querySelector(':scope > .col-sm-5');
+            if (radar) radar.setAttribute('aria-hidden', beta ? 'true' : 'false');
+            if (was !== beta && window.Plotly && window.Plotly.Plots) {
+              var gd = document.getElementById('lab_cluster_scatter');
+              if (gd) {
+                try { window.Plotly.Plots.resize(gd); } catch (eResize) {}
+              }
+            }
+          }
+          window.ynowSyncLabClusterChartLayout = function (mode) { sync(mode); };
+          if (!document.documentElement.getAttribute('data-ynow-cluster-layout')) {
+            document.documentElement.setAttribute('data-ynow-cluster-layout', '1');
+            document.addEventListener('shiny:inputchanged', function (ev) {
+              if (ev && ev.name === 'lab_cluster_mode') sync(ev.value);
+            });
+            document.addEventListener('shiny:connected', function () { sync(); });
+            document.addEventListener('shiny:idle', function () { sync(); });
+          }
+        })();

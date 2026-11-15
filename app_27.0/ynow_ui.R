@@ -2340,8 +2340,10 @@ beta_rolling_section_ui <- function() {
             style = "color:#666; font-size:12px; margin-top:-4px;",
             paste0(
               "Beta 模式（level）：K=3 等人數分位（低／中／高），非絕對切點。",
+              "分群星團圖把通過「候選截斷邏輯」與「宇宙檔數（N）」的標的畫成點，並以低／中／高 β_L 著色。",
+              "此模式隱藏同群雷達圖，星團圖改為整列寬度。",
               "優先以 24 個月月報酬 OLS 估計槓桿 β_L；若月報酬不足則退回 Yahoo Summary「Beta（五年月資料）」。",
-              "固定群組＝截止月成員回溯；逐期重分＝每月重排分位。非去槓桿 βᵤ，亦非可交易回測。"
+              "固定群組＝截止月成員；逐期重分＝每月重排後再取截止標籤。非去槓桿 βᵤ，亦非可交易回測。"
             )
           )
         )
@@ -2358,7 +2360,9 @@ beta_rolling_section_ui <- function() {
         "擷取 Yahoo 比率特徵；若 Yahoo 受限則改用內建離線快照。"
       )
     ),
-    fluidRow(
+    tags$div(
+      id = "ynow_lab_cluster_charts",
+      class = "row ynow-lab-cluster-charts",
       box(
         width = 7, status = "primary", solidHeader = TRUE,
         title = tags$span(id = "ynow_lab_cluster_map_title", "分群星團圖"),

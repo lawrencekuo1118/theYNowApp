@@ -3813,9 +3813,11 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_cluster_mode_label = "Grouping mode",
     lab_cluster_beta_bins_help = paste0(
       "Beta mode (level): K=3 equal-count quantiles (low / mid / high) — not absolute cutpoints. ",
+      "Cluster map plots each name that passed the Candidate truncate rule and Universe size (N) ",
+      "as a point colored by those three β_L classes. Same-cluster radar is hidden and the map uses the full row. ",
       "Prefers 24-month monthly OLS levered β_L; falls back to Yahoo Summary \"Beta (5Y Monthly)\" ",
-      "when monthly returns are thin. Fixed membership = as-of cohort looking back; ",
-      "dynamic = re-rank each month. Not unlevered βᵤ; not a tradable backtest."
+      "when monthly returns are thin. Fixed membership labels the as-of cohort; ",
+      "dynamic re-ranks each month before that as-of label. Not unlevered βᵤ; not a tradable backtest."
     ),
     lab_cluster_beta_mode_note = paste0(
       "Beta mode: level grouping by levered equity Beta (β_L) into K=3 equal-count quantiles ",
@@ -8711,8 +8713,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     lab_cluster_mode_label = "分群模式",
     lab_cluster_beta_bins_help = paste0(
       "Beta 模式（level）：K=3 等人數分位（低／中／高），非絕對切點。",
+      "分群星團圖把通過「候選截斷邏輯」與「宇宙檔數（N）」的標的畫成點，並以低／中／高 β_L 著色。",
+      "此模式隱藏同群雷達圖，星團圖改為整列寬度。",
       "優先以 24 個月月報酬 OLS 估計槓桿 β_L；若月報酬不足則退回 Yahoo Summary「Beta（五年月資料）」。",
-      "固定群組＝截止月成員回溯；逐期重分＝每月重排分位。非去槓桿 βᵤ，亦非可交易回測。"
+      "固定群組＝截止月成員；逐期重分＝每月重排後再取截止標籤。非去槓桿 βᵤ，亦非可交易回測。"
     ),
     lab_cluster_beta_mode_note = paste0(
       "Beta 模式：依槓桿股權 Beta（β_L）做 K=3 等人數分位（非絕對切點；非去槓桿 βᵤ）。",
