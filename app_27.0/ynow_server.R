@@ -19512,27 +19512,21 @@ server <- function(input, output, session) {
       }),
       stats = reactive({
         # Read session catalog cache only — never trigger a multi-second rebuild.
-        list(
-          universe_n = tryCatch({
-            cat <- lab_im_catalog_df()
-            if (is.data.frame(cat) && nrow(cat)) {
-              length(unique(stats::na.omit(as.character(cat$ticker))))
-            } else {
-              NA_real_
-            }
-          }, error = function(e) NA_real_),
-          market_n = tryCatch({
-            keys <- lab_im_industry_filter()
-            cat <- lab_im_catalog_df()
-            if (!is.data.frame(cat) || !nrow(cat)) return(NA_real_)
-            tks <- as.character(cat$ticker)
-            if (!length(keys)) return(length(unique(stats::na.omit(tks))))
-            length(unique(stats::na.omit(tks[as.character(cat$industry_key) %in% keys])))
-          }, error = function(e) NA_real_),
-          model_n = NA_real_,
-          quality_n = NA_real_,
-          snapshot_ready = FALSE
-        )
+        # Do not return() from this reactive: that exits the whole list and
+        # Filter results renders "$ operator is invalid for atomic vectors".
+        cat <- tryCatch(lab_im_catalog_df(), error = function(e) NULL)
+        keys <- tryCatch(lab_im_industry_filter(), error = function(e) character(0))
+        if (exists("ynq_pool_counts", mode = "function")) {
+          ynq_pool_counts(cat, keys)
+        } else {
+          list(
+            universe_n = NA_real_,
+            market_n = NA_real_,
+            model_n = NA_real_,
+            quality_n = NA_real_,
+            snapshot_ready = FALSE
+          )
+        }
       }),
       catalog = if (exists("ynq_lab_catalog", mode = "function")) {
         ynq_lab_catalog(APP_DEFAULTS$lab_im_methods)

@@ -237,6 +237,67 @@ check("Valuation models still has Intrinsic/Justified/Multiples topics", {
     grepl("ynq_sec_models", mod, fixed = TRUE)
 })
 
+check("ynq_pool_counts stays a list on empty catalog", {
+  s <- ynq_pool_counts(NULL)
+  is.list(s) && !is.data.frame(s) &&
+    is.na(s$universe_n) && is.na(s$market_n) &&
+    identical(s$snapshot_ready, FALSE)
+})
+check("ynq_pool_counts counts unique tickers under industry keys", {
+  cat <- data.frame(
+    ticker = c("AAA", "AAA", "BBB"),
+    industry_key = c("k1", "k1", "k2"),
+    stringsAsFactors = FALSE
+  )
+  s <- ynq_pool_counts(cat, "k1")
+  is.list(s) && identical(s$universe_n, 2L) && identical(s$market_n, 1L)
+})
+check("ynq_coerce_stats turns atomic NA into an empty list", {
+  s <- ynq_coerce_stats(NA_real_)
+  is.list(s) && length(s) == 0L && is.null(s$universe_n)
+})
+check("server Filter results uses ynq_pool_counts (no return inside stats)", {
+  block <- regmatches(srv, regexpr(
+    "stats = reactive\\(\\{[\\s\\S]*?refresh_token",
+    srv,
+    perl = TRUE
+  ))
+  length(block) == 1L &&
+    grepl("ynq_pool_counts", block, fixed = TRUE) &&
+    !grepl("return(NA_real_)", block, fixed = TRUE) &&
+    !grepl("return(length", block, fixed = TRUE)
+})
+if (requireNamespace("shiny", quietly = TRUE)) {
+  err_out <- tryCatch({
+    shiny::testServer(function(input, output, session) {
+      bad <- shiny::reactive({
+        # Old bug: return() inside tryCatch exits the reactive with an atomic NA.
+        list(universe_n = tryCatch({
+          return(NA_real_)
+          1
+        }, error = function(e) 1))
+      })
+      output$counts <- shiny::renderUI({
+        s <- ynq_coerce_stats(ynq_or(bad(), list()))
+        shiny::tags$span(id = "n", "ok")
+      })
+      output$note <- shiny::renderText({
+        s <- ynq_coerce_stats(ynq_or(bad(), list()))
+        if (!isTRUE(s$snapshot_ready)) "pending" else "ready"
+      })
+    }, {
+      out_ui <- output$counts
+      out_txt <- output$note
+      list(ui = out_ui, txt = out_txt)
+    })
+  }, error = function(e) e)
+  check("Filter results outputs survive an atomic stats() value", {
+    !inherits(err_out, "error")
+  })
+} else {
+  cat("INFO shiny not installed; skipped Filter results testServer\n")
+}
+
 if (fail > 0L) {
   cat("FAILED ", fail, " check(s)\n", sep = "")
   quit(status = 1L)

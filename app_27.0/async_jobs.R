@@ -115,6 +115,9 @@
         ready <- tryCatch(
           future::value(future::future({
             exists("lab_im_run_eval_job", mode = "function", inherits = TRUE) &&
+              exists("lab_im_run_catalog_job", mode = "function", inherits = TRUE) &&
+              exists("lab_cluster_run_job", mode = "function", inherits = TRUE) &&
+              exists("lab_im_run_ind_mcap_job", mode = "function", inherits = TRUE) &&
               exists("lab_im_catalog_memo_key", mode = "function", inherits = TRUE)
           }, globals = FALSE, seed = TRUE)),
           error = function(e) FALSE
@@ -142,6 +145,46 @@
   invisible(isTRUE(ok))
 }
 
+#' TRUE when futures run in this process (hosted sequential, or future>=1.82
+#' collapsing multisession workers=1 onto SequentialFutureBackend).
+#' Job functions then live in the Shiny app env, not .GlobalEnv, so a
+#' name lookup inside future() cannot see them unless they were registered.
+.ynow_async_backend_sequential <- function() {
+  if (isTRUE(.ynow_async_hosted_memory_safe())) return(TRUE)
+  if (!requireNamespace("future", quietly = TRUE)) return(TRUE)
+  backend <- tryCatch(future::plan("backend"), error = function(e) NULL)
+  if (is.null(backend)) return(TRUE)
+  inherits(backend, "SequentialFutureBackend")
+}
+
+#' Remember a job function in this process. Sequential futures eval in
+#' .GlobalEnv and cannot see the Shiny app environment. The registry is a
+#' binding only — it is not placed in future globals (that would serialize
+#' the app environment and freeze the session).
+.ynow_async_register_job <- function(job_name, job_fn) {
+  if (!exists(".ynow_async_jobs", envir = globalenv(), inherits = FALSE)) {
+    assign(".ynow_async_jobs", new.env(parent = emptyenv()), envir = globalenv())
+  }
+  box <- get(".ynow_async_jobs", envir = globalenv(), inherits = FALSE)
+  assign(as.character(job_name)[1], job_fn, envir = box)
+  invisible(TRUE)
+}
+
+#' Resolve a job by name: worker search path first, then this process's registry.
+.ynow_async_resolve_job <- function(job_name) {
+  jn <- as.character(job_name %||% "")[1]
+  if (nzchar(jn) && exists(jn, mode = "function", inherits = TRUE)) {
+    return(get(jn, mode = "function", inherits = TRUE))
+  }
+  if (nzchar(jn) && exists(".ynow_async_jobs", envir = globalenv(), inherits = FALSE)) {
+    box <- get(".ynow_async_jobs", envir = globalenv(), inherits = FALSE)
+    if (exists(jn, envir = box, inherits = FALSE, mode = "function")) {
+      return(get(jn, envir = box, inherits = FALSE, mode = "function"))
+    }
+  }
+  stop("async job is not loaded in this process: ", jn, call. = FALSE)
+}
+
 #' Whether async runners are available this process.
 .ynow_async_available <- function() {
   requireNamespace("future", quietly = TRUE) &&
@@ -165,8 +208,9 @@
 #' `job_fn` must be a named function (not a closure over reactives).
 #' The future expression must not capture `job_fn`: future()'s automatic globals
 #' walk freezes the Shiny session for many seconds.
-#' Workers resolve the name from the preloaded search path (or this process,
-#' when the plan is sequential).
+#' Multisession workers resolve the name from the preloaded search path.
+#' Sequential / hosted futures eval in .GlobalEnv, so the job is also
+#' registered there (see `.ynow_async_register_job`).
 .ynow_make_extended_task <- function(job_fn) {
   if (!is.function(job_fn)) stop("job_fn must be a function")
   job_name <- NULL
@@ -176,9 +220,12 @@
   if (is.null(job_name) || !nzchar(job_name)) {
     stop("job_fn must set attr ynow_job_name", call. = FALSE)
   }
+  .ynow_async_register_job(job_name, job_fn)
   shiny::ExtendedTask$new(function(...) {
     args <- list(...)
     jn <- job_name
+    # Re-register in case this process forked or the registry was cleared.
+    if (is.function(job_fn)) .ynow_async_register_job(jn, job_fn)
     trace_on <- exists("ynow_pload_enabled", mode = "function", inherits = TRUE) &&
       isTRUE(ynow_pload_enabled())
     trace_path <- if (isTRUE(trace_on) &&
@@ -198,10 +245,20 @@
             exists("ynow_pload_bind", mode = "function", inherits = TRUE)) {
           ynow_pload_bind(trace_path, trace_run, TRUE)
         }
-        if (!nzchar(jn) || !exists(jn, mode = "function", inherits = TRUE)) {
+        fn <- NULL
+        if (nzchar(jn) && exists(jn, mode = "function", inherits = TRUE)) {
+          fn <- get(jn, mode = "function", inherits = TRUE)
+        }
+        if (!is.function(fn) &&
+            exists(".ynow_async_jobs", envir = globalenv(), inherits = FALSE)) {
+          box <- get(".ynow_async_jobs", envir = globalenv(), inherits = FALSE)
+          if (exists(jn, envir = box, inherits = FALSE, mode = "function")) {
+            fn <- get(jn, envir = box, inherits = FALSE, mode = "function")
+          }
+        }
+        if (!is.function(fn)) {
           stop("async job is not loaded in this process: ", jn, call. = FALSE)
         }
-        fn <- get(jn, mode = "function", inherits = TRUE)
         do.call(fn, args)
       },
       globals = list(

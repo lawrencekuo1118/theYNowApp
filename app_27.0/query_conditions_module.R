@@ -16,6 +16,39 @@ ynq_all <- "__ALL__"
 
 ynq_or <- function(x, y) if (is.null(x)) y else x
 
+#' Stats must be a list. A reactive that `return()`s inside `tryCatch` yields
+#' an atomic NA, and `$` on that value is the Filter results Shiny error.
+ynq_coerce_stats <- function(s) {
+  if (is.null(s) || !is.list(s) || is.data.frame(s)) return(list())
+  s
+}
+
+#' Pool counts for Filter results. Never `return()` — callers embed this in a
+#' Shiny reactive, and `return()` inside `tryCatch` would exit that reactive.
+ynq_pool_counts <- function(cat = NULL, industry_keys = character(0)) {
+  universe_n <- NA_real_
+  market_n <- NA_real_
+  if (is.data.frame(cat) && nrow(cat) > 0L && "ticker" %in% names(cat)) {
+    tks <- as.character(cat$ticker)
+    universe_n <- length(unique(stats::na.omit(tks)))
+    keys <- unique(as.character(industry_keys %||% character(0)))
+    keys <- keys[nzchar(keys) & !is.na(keys)]
+    if (!length(keys) || !"industry_key" %in% names(cat)) {
+      market_n <- universe_n
+    } else {
+      hit <- as.character(cat$industry_key) %in% keys
+      market_n <- length(unique(stats::na.omit(tks[hit])))
+    }
+  }
+  list(
+    universe_n = universe_n,
+    market_n = market_n,
+    model_n = NA_real_,
+    quality_n = NA_real_,
+    snapshot_ready = FALSE
+  )
+}
+
 ynq_bi <- function(key, fallback = key, locale = NULL) {
   if (exists("ui_str", mode = "function")) {
     hit <- tryCatch({
@@ -713,7 +746,7 @@ ynq_query_server <- function(id, industry_tree, stats = NULL,
     }
 
     output$counts <- renderUI({
-      s <- ynq_or(stats(), list())
+      s <- ynq_coerce_stats(ynq_or(stats(), list()))
       tags$div(
         class = "ynq-metric-grid",
         count_tile(ynq_bi("ynq_metric_universe", "原始股票池"), s$universe_n),
@@ -727,7 +760,7 @@ ynq_query_server <- function(id, industry_tree, stats = NULL,
     })
 
     output$snapshot_note <- renderText({
-      s <- ynq_or(stats(), list())
+      s <- ynq_coerce_stats(ynq_or(stats(), list()))
       if (!isTRUE(s$snapshot_ready)) {
         ynq_bi(
           "ynq_snapshot_pending",
