@@ -466,6 +466,11 @@ if (file.exists(bundled)) {
   check("bundled snapshot non-empty", is.data.frame(b) && nrow(b) >= 14L)
   check("bundled snapshot excludes Unmapped", !"未對應" %in% b$chain_id)
   check("bundled US snapshot has upside", lab_ind_mcap_snap_has_upside(b))
+  check("bundled US Names exceed the 2-name valuation sample", {
+    # Upside (wavg) stays the sample; 總市值／檔數 come from the offline universe.
+    isTRUE(max(as.integer(b$n_names), na.rm = TRUE) > 2L) &&
+      any(is.finite(b$wavg_cagr))
+  })
 } else {
   cat("INFO bundled ind_mcap_chain_rank_snapshot_US.csv not yet present\n")
 }
@@ -501,6 +506,26 @@ if (file.exists(bundled_tw)) {
   cat("INFO bundled ind_mcap_chain_rank_snapshot_TW.csv not yet present\n")
 }
 
+check("overlay replaces mcap and names and keeps upside", {
+  snap <- data.frame(
+    chain_id = "半導體",
+    wavg_cagr = 8.3,
+    total_mcap = 1,
+    n_names = 2L,
+    stringsAsFactors = FALSE
+  )
+  tot <- data.frame(
+    chain_id = "半導體",
+    total_mcap = 9e12,
+    n_names = 400L,
+    stringsAsFactors = FALSE
+  )
+  out <- lab_ind_mcap_overlay_chain_totals(snap, tot)
+  identical(as.integer(out$n_names[[1]]), 400L) &&
+    identical(out$wavg_cagr[[1]], 8.3) &&
+    identical(out$total_mcap[[1]], 9e12) &&
+    identical(attr(out, "universe_totals"), "overlay")
+})
 check("has_upside helper true/false", {
   ok_true <- lab_ind_mcap_snap_has_upside(data.frame(
     chain_id = "半導體", wavg_cagr = 5, total_mcap = 1e12, n_names = 2L

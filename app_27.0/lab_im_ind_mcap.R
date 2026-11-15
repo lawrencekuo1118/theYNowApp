@@ -122,6 +122,13 @@ lab_load_ind_mcap_chain_snapshot <- function(market = "US", force = FALSE) {
   df <- df[nzchar(df$chain_id) & !is.na(df$chain_id), , drop = FALSE]
   df <- lab_ind_mcap_drop_unmapped_chains(df)
   rownames(df) <- NULL
+  # Shipped US snapshot stored the 2-name valuation sample as 總市值／檔數.
+  # Help text defines those columns as the full chain universe. Overlay from
+  # the offline metrics file; keep wavg_cagr (sample upside) for color/rank.
+  df <- tryCatch(
+    lab_ind_mcap_overlay_chain_totals(df, lab_ind_mcap_offline_chain_totals(mm)),
+    error = function(e) df
+  )
   attr(df, "snapshot_source") <- path
   if (nrow(df) && any(nzchar(df$snapshot_at), na.rm = TRUE)) {
     attr(df, "snapshot_at") <- as.character(df$snapshot_at[nzchar(df$snapshot_at)][[1]])
@@ -264,6 +271,84 @@ lab_chain_mcap_universe_totals <- function(universe_df) {
   })
   out <- do.call(rbind, rows)
   lab_ind_mcap_drop_unmapped_chains(out)
+}
+
+#' Replace snapshot 總市值／檔數 with another chain aggregate. Keeps wavg_cagr.
+#' Unmatched snapshot rows stay as shipped (sample-sized US rows until overlay).
+lab_ind_mcap_overlay_chain_totals <- function(snap, totals) {
+  if (is.null(snap) || !is.data.frame(snap) || nrow(snap) < 1L) return(snap)
+  if (!"chain_id" %in% names(snap)) return(snap)
+  if (is.null(totals) || !is.data.frame(totals) || nrow(totals) < 1L) return(snap)
+  if (!"chain_id" %in% names(totals)) return(snap)
+  idx <- match(as.character(snap$chain_id), as.character(totals$chain_id))
+  hit <- which(!is.na(idx))
+  if (!length(hit)) return(snap)
+  if (!"total_mcap" %in% names(snap)) snap$total_mcap <- NA_real_
+  if (!"n_names" %in% names(snap)) snap$n_names <- NA_integer_
+  if ("total_mcap" %in% names(totals)) {
+    snap$total_mcap[hit] <- suppressWarnings(as.numeric(totals$total_mcap[idx[hit]]))
+  }
+  if ("n_names" %in% names(totals)) {
+    snap$n_names[hit] <- as.integer(suppressWarnings(as.numeric(totals$n_names[idx[hit]])))
+  }
+  attr(snap, "universe_totals") <- "overlay"
+  snap
+}
+
+#' Chain totals from the offline universe (candidates × metrics snapshot).
+#' No Yahoo. Cached on `.lab_ind_mcap_chain_cache`.
+lab_ind_mcap_offline_chain_totals <- function(market = "US") {
+  mm <- tryCatch(
+    normalize_market_mode(market),
+    error = function(e) toupper(trimws(as.character(market %||% "US")[1]))
+  )
+  if (!mm %in% c("US", "TW")) mm <- "US"
+  cache_key <- paste0("uni_", mm)
+  if (exists(cache_key, envir = .lab_ind_mcap_chain_cache, inherits = FALSE)) {
+    return(get(cache_key, envir = .lab_ind_mcap_chain_cache, inherits = FALSE))
+  }
+  empty <- data.frame(
+    chain_id = character(0),
+    total_mcap = numeric(0),
+    n_names = integer(0),
+    stringsAsFactors = FALSE
+  )
+  store <- function(df) {
+    assign(cache_key, df, envir = .lab_ind_mcap_chain_cache)
+    df
+  }
+  if (!exists("lab_quality_candidates_for_market", mode = "function") ||
+      !exists("industry_chain_id", mode = "function") ||
+      !exists("lab_load_universe_metrics_snapshot", mode = "function")) {
+    return(store(empty))
+  }
+  boards <- if (identical(mm, "TW")) c("TWSE", "TPEX") else character(0)
+  cands <- tryCatch(
+    lab_quality_candidates_for_market(mm, boards = boards),
+    error = function(e) NULL
+  )
+  if (!is.list(cands) || !length(cands)) return(store(empty))
+  rows <- lapply(names(cands), function(k) {
+    tks <- unique(as.character(cands[[k]] %||% character(0)))
+    tks <- tks[nzchar(tks) & !is.na(tks)]
+    if (!length(tks)) return(NULL)
+    cid <- tryCatch(as.character(industry_chain_id(k))[1], error = function(e) "")
+    if (!nzchar(cid) || is.na(cid)) return(NULL)
+    data.frame(chain_id = cid, ticker = tks, stringsAsFactors = FALSE)
+  })
+  df <- do.call(rbind, rows)
+  if (is.null(df) || !nrow(df)) return(store(empty))
+  df <- df[!duplicated(paste(df$chain_id, toupper(df$ticker), sep = "|")), , drop = FALSE]
+  metrics <- tryCatch(lab_load_universe_metrics_snapshot(), error = function(e) NULL)
+  if (!is.data.frame(metrics) || !nrow(metrics) || !"ticker" %in% names(metrics)) {
+    return(store(empty))
+  }
+  df$market_cap <- suppressWarnings(as.numeric(
+    metrics$market_cap[match(toupper(df$ticker), toupper(metrics$ticker))]
+  ))
+  out <- tryCatch(lab_chain_mcap_universe_totals(df), error = function(e) empty)
+  if (!is.data.frame(out) || !nrow(out)) out <- empty
+  store(out)
 }
 
 #' Format raw chain snapshot / aggregate rows into the DT display table.
