@@ -651,17 +651,84 @@ lab_load_universe_metrics_snapshot <- function(force = FALSE) {
   invisible(TRUE)
 }
 
+.lab_mcap_disk_read_payload <- function(market) {
+  market <- if (identical(market, "TW")) "TW" else "US"
+  path <- .lab_mcap_disk_path(market)
+  if (is.na(path) || !file.exists(path)) {
+    return(list(caps = numeric(0), at = numeric(0)))
+  }
+  saved <- tryCatch(readRDS(path), error = function(e) NULL)
+  if (is.null(saved)) return(list(caps = numeric(0), at = numeric(0)))
+  caps <- NULL
+  ats <- NULL
+  if (is.list(saved) && !is.null(saved$caps) && is.numeric(saved$caps)) {
+    file_m <- as.character(saved$market %||% "")[1]
+    if (nzchar(file_m) && !identical(file_m, market)) {
+      return(list(caps = numeric(0), at = numeric(0)))
+    }
+    caps <- saved$caps
+    ats <- saved$at
+  } else if (is.numeric(saved) && length(names(saved))) {
+    caps <- saved
+    stamp <- suppressWarnings(as.numeric(file.info(path)$mtime)[1])
+    if (!is.finite(stamp)) stamp <- as.numeric(Sys.time())
+    ats <- stats::setNames(rep(stamp, length(caps)), names(caps))
+  } else {
+    return(list(caps = numeric(0), at = numeric(0)))
+  }
+  nms <- names(caps)
+  if (!length(nms)) return(list(caps = numeric(0), at = numeric(0)))
+  keep_tk <- character(0)
+  keep_v <- numeric(0)
+  keep_at <- numeric(0)
+  now <- as.numeric(Sys.time())
+  ttl <- .lab_mcap_ttl_sec()
+  for (i in seq_along(caps)) {
+    key <- toupper(trimws(nms[[i]]))
+    if (!nzchar(key) || grepl("^\\.", key)) next
+    if (!identical(.lab_mcap_market_of(key), market)) next
+    v <- suppressWarnings(as.numeric(caps[[i]])[1])
+    at <- NA_real_
+    if (is.numeric(ats) && length(ats)) {
+      if (key %in% names(ats)) at <- suppressWarnings(as.numeric(ats[[key]])[1])
+      if (!is.finite(at) && nms[[i]] %in% names(ats)) {
+        at <- suppressWarnings(as.numeric(ats[[nms[[i]]]])[1])
+      }
+    }
+    if (!is.finite(at)) next
+    if (!is.finite(v) || v <= 0) next
+    if ((now - at) > ttl) next
+    keep_tk <- c(keep_tk, key)
+    keep_v <- c(keep_v, v)
+    keep_at <- c(keep_at, at)
+  }
+  list(
+    caps = stats::setNames(keep_v, keep_tk),
+    at = stats::setNames(keep_at, keep_tk)
+  )
+}
+
 .lab_mcap_disk_save <- function(market) {
   market <- if (identical(market, "TW")) "TW" else "US"
   path <- .lab_mcap_disk_path(market)
   if (is.na(path)) return(invisible(FALSE))
+  # Always re-read disk before replace. A Ranking worker may have
+  # .disk_loaded_* set from an earlier empty load while ind-mcap (or another
+  # worker) wrote a larger shared file; memory-only save would wipe those hits.
+  disk <- .lab_mcap_disk_read_payload(market)
+  by_tk <- new.env(parent = emptyenv())
+  if (length(disk$caps)) {
+    for (tk in names(disk$caps)) {
+      assign(
+        tk,
+        list(v = as.numeric(disk$caps[[tk]])[1], at = as.numeric(disk$at[[tk]])[1]),
+        envir = by_tk
+      )
+    }
+  }
   prefix <- paste0(market, "|")
   nms <- ls(envir = .lab_mcap_cache, all.names = FALSE)
   nms <- nms[startsWith(nms, prefix)]
-  if (!length(nms)) return(invisible(FALSE))
-  tickers <- character(0)
-  vals <- numeric(0)
-  ats <- numeric(0)
   now <- as.numeric(Sys.time())
   ttl <- .lab_mcap_ttl_sec()
   for (memk in nms) {
@@ -672,16 +739,37 @@ lab_load_universe_metrics_snapshot <- function(force = FALSE) {
     if (!is.finite(v) || v <= 0 || !is.finite(at)) next
     if ((now - at) > ttl) next
     tk <- substring(memk, nchar(prefix) + 1L)
-    tickers <- c(tickers, tk)
-    vals <- c(vals, v)
-    ats <- c(ats, at)
+    if (!nzchar(tk) || !identical(.lab_mcap_market_of(tk), market)) next
+    if (exists(tk, envir = by_tk, inherits = FALSE)) {
+      prev <- get(tk, envir = by_tk, inherits = FALSE)
+      prev_at <- suppressWarnings(as.numeric(prev$at)[1])
+      if (is.finite(prev_at) && prev_at > at) next
+    }
+    assign(tk, list(v = v, at = at), envir = by_tk)
   }
-  if (!length(tickers)) return(invisible(FALSE))
+  keys <- ls(envir = by_tk, all.names = FALSE)
+  if (!length(keys)) return(invisible(FALSE))
+  keys <- sort(keys)
+  vals <- numeric(length(keys))
+  ats <- numeric(length(keys))
+  for (i in seq_along(keys)) {
+    e <- get(keys[[i]], envir = by_tk, inherits = FALSE)
+    vals[[i]] <- e$v
+    ats[[i]] <- e$at
+    memk <- .lab_mcap_mem_key(market, keys[[i]])
+    if (!exists(memk, envir = .lab_mcap_cache, inherits = FALSE)) {
+      assign(
+        memk,
+        list(v = e$v, at = e$at, src = "yahoo"),
+        envir = .lab_mcap_cache
+      )
+    }
+  }
   payload <- list(
     version = 2L,
     market = market,
-    caps = stats::setNames(vals, tickers),
-    at = stats::setNames(ats, tickers)
+    caps = stats::setNames(vals, keys),
+    at = stats::setNames(ats, keys)
   )
   tmp <- paste0(path, ".tmp.", Sys.getpid())
   ok <- tryCatch(
@@ -775,13 +863,18 @@ lab_load_universe_metrics_snapshot <- function(force = FALSE) {
   if (is.null(fetched) || !(is.list(fetched) || is.numeric(fetched))) {
     return(list(out = out, n_hit = n_hit))
   }
-  nms <- toupper(trimws(as.character(names(fetched))))
-  vals <- suppressWarnings(as.numeric(unlist(fetched, use.names = FALSE)))
-  if (length(nms) != length(vals) || !length(nms)) return(list(out = out, n_hit = n_hit))
+  nms <- names(fetched)
+  if (is.null(nms) || !length(nms)) return(list(out = out, n_hit = n_hit))
+  nms <- toupper(trimws(as.character(nms)))
+  # Element-wise parse. unlist() drops Python None / R NULL and then
+  # length(nms) != length(vals) discards a partial-success Yahoo dict.
   for (i in seq_along(nms)) {
     key <- gsub("/", "-", nms[[i]])
-    v <- vals[[i]]
-    if (!nzchar(key) || !is.finite(v) || v <= 0) next
+    if (!nzchar(key)) next
+    el <- fetched[[i]]
+    if (is.null(el) || length(el) == 0L) next
+    v <- suppressWarnings(as.numeric(el)[1])
+    if (!is.finite(v) || v <= 0) next
     if (!identical(.lab_mcap_market_of(key), market)) next
     if (key %in% names(out)) out[[key]] <- v
     .lab_mcap_mem_put(market, key, v, src = "yahoo")

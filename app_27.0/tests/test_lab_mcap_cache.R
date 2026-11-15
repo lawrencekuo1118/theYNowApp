@@ -56,16 +56,27 @@ assign(".ensure_python_scraper", function() TRUE, envir = .GlobalEnv)
 assign("get_market_caps_batch", function(tickers) {
   yahoo_n$calls <- yahoo_n$calls + 1L
   tks <- toupper(trimws(as.character(tickers)))
-  vals <- rep(NA_real_, length(tks))
-  if (identical(yahoo_n$mode, "first")) {
-    vals[tks == "ZZZUS"] <- 100
-    vals[tks == "ZZZB"] <- 300
-    vals[tks == "ZZZC"] <- 50
-    vals[tks == "9999.TW"] <- 222
-  } else if (identical(yahoo_n$mode, "refresh")) {
-    vals[tks == "ZZZUS"] <- 333
+  # Mirror Python get_market_caps_batch: float hits and NULL misses in one dict.
+  # NA_real_ alone does not reproduce the unlist() length-mismatch bug.
+  # Assign by name with [[ — logical out[cond] <- list(x) can scramble names.
+  out <- stats::setNames(vector("list", length(tks)), tks)
+  put <- function(sym, val) {
+    if (sym %in% names(out)) out[[sym]] <<- val
   }
-  stats::setNames(as.list(vals), tks)
+  if (identical(yahoo_n$mode, "first")) {
+    put("ZZZUS", 100)
+    put("ZZZB", 300)
+    put("ZZZC", 50)
+    put("9999.TW", 222)
+  } else if (identical(yahoo_n$mode, "refresh")) {
+    put("ZZZUS", 333)
+  } else if (identical(yahoo_n$mode, "partial")) {
+    put("PARTA", 111)
+    put("PARTC", 333)
+  } else if (identical(yahoo_n$mode, "empty")) {
+    # all NULL — genuine empty pass
+  }
+  out
 }, envir = .GlobalEnv)
 
 caps <- lab_fetch_market_caps_usd(c("ZZZUS", "9999.TW", "SNAP1"), market = "US")
@@ -177,7 +188,61 @@ check(
     !grepl("lab_im_prefetch_mcap_job", srv, fixed = TRUE)
 )
 
+# Partial Yahoo success: mixed float/NULL must keep hits and must not cool.
+cool_us <- file.path(root, "lab_mcap_yahoo_cool_US.rds")
+if (file.exists(cool_us)) unlink(cool_us)
+rm(list = ls(envir = .lab_mcap_cache, all.names = TRUE), envir = .lab_mcap_cache)
+yahoo_n$mode <- "partial"
+yahoo_n$calls <- 0L
+partial_tks <- c("PARTA", "PARTB", "PARTC", sprintf("NOCAP%02d", 1:40))
+partial_out <- lab_fetch_market_caps_usd(partial_tks, market = "US")
+check("partial Yahoo keeps float caps", isTRUE(abs(partial_out[["PARTA"]] - 111) < 1e-6))
+check("partial Yahoo keeps second float", isTRUE(abs(partial_out[["PARTC"]] - 333) < 1e-6))
+check("partial Yahoo leaves NULL as NA", !is.finite(partial_out[["PARTB"]]))
+check("partial Yahoo does not cool the market", !file.exists(cool_us))
+check("partial Yahoo wrote PARTA to US disk", {
+  us_partial <- readRDS(us_path)
+  "PARTA" %in% names(us_partial$caps) && "PARTC" %in% names(us_partial$caps)
+})
+
+# Worker save must merge with a larger shared disk cache, not replace it.
+rm(list = ls(envir = .lab_mcap_cache, all.names = TRUE), envir = .lab_mcap_cache)
+shared_at <- as.numeric(Sys.time())
+saveRDS(
+  list(
+    version = 2L,
+    market = "US",
+    caps = c(SHAREDA = 1e9, SHAREDB = 2e9, SHAREDC = 3e9),
+    at = c(SHAREDA = shared_at, SHAREDB = shared_at, SHAREDC = shared_at)
+  ),
+  us_path
+)
+.lab_mcap_disk_load("US", force = TRUE)
+# Simulate TTL-cleared local Yahoo entries while .disk_loaded_US stays set.
+us_mem <- ls(envir = .lab_mcap_cache, all.names = FALSE)
+us_mem <- us_mem[startsWith(us_mem, "US|")]
+if (length(us_mem)) rm(list = us_mem, envir = .lab_mcap_cache)
+check(
+  "disk_loaded stays set after mem clear",
+  isTRUE(get0(".disk_loaded_US", envir = .lab_mcap_cache, inherits = FALSE))
+)
+.lab_mcap_mem_put("US", "WORKER1", 9e9, src = "yahoo")
+ok_save <- .lab_mcap_disk_save("US")
+merged <- readRDS(us_path)
+check("worker save succeeds", isTRUE(ok_save))
+check(
+  "worker save keeps shared disk hits",
+  all(c("SHAREDA", "SHAREDB", "SHAREDC") %in% names(merged$caps))
+)
+check("worker save adds its own hit", "WORKER1" %in% names(merged$caps))
+check(
+  "worker save does not shrink shared cache",
+  length(merged$caps) >= 4L
+)
+
 yahoo_n$mode <- "empty"
+if (file.exists(cool_us)) unlink(cool_us)
+rm(list = ls(envir = .lab_mcap_cache, all.names = TRUE), envir = .lab_mcap_cache)
 calls_before_empty <- yahoo_n$calls
 empty_tks <- sprintf("NOCAP%02d", 1:50)
 invisible(lab_fetch_market_caps_usd(empty_tks, market = "US"))
@@ -187,10 +252,22 @@ check("empty Yahoo pass calls the stub once", calls_after_empty > calls_before_e
 check(
   "empty Yahoo pass cools the US file",
   identical(yahoo_n$calls, calls_after_empty) &&
-    file.exists(file.path(root, "lab_mcap_yahoo_cool_US.rds"))
+    file.exists(cool_us)
 )
 invisible(lab_fetch_market_caps_usd("8888.TW", market = "TW"))
 check("TW is not cooled by a US miss", yahoo_n$calls > calls_after_empty)
+
+# Direct apply helper: unlist-shaped mixed NULL must not discard hits.
+rm(list = ls(envir = .lab_mcap_cache, all.names = TRUE), envir = .lab_mcap_cache)
+apply_out <- stats::setNames(rep(NA_real_, 3L), c("MIXA", "MIXB", "MIXC"))
+applied <- .lab_fetch_mcap_apply_yahoo(
+  apply_out,
+  "US",
+  list(MIXA = 10, MIXB = NULL, MIXC = 30)
+)
+check("apply keeps MIXA with NULL neighbor", isTRUE(abs(applied$out[["MIXA"]] - 10) < 1e-6))
+check("apply keeps MIXC with NULL neighbor", isTRUE(abs(applied$out[["MIXC"]] - 30) < 1e-6))
+check("apply reports two hits for mixed NULL", identical(applied$n_hit, 2L))
 
 unlink(root, recursive = TRUE)
 cat("\nPASS ", pass, "  FAIL ", fail, "\n", sep = "")
