@@ -4661,6 +4661,12 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_or_start = "Start analysis",
     bblab_or_idle = "Press Start analysis to load disclosed order facts for the current ticker.",
     bblab_or_waiting = "Statements for this ticker are not ready yet.",
+    bblab_or_need_ticker = "Enter a ticker in the header Ticker / Stock Code field, then press Start analysis.",
+    bblab_or_empty = paste0(
+      "No disclosed order, supplier, or customer amounts were found for this ticker. ",
+      "Amounts are never estimated."
+    ),
+    bblab_or_ready = "Disclosed order facts and cross-checks are open below.",
     bblab_or_primary = "Primary for this industry lens",
     bblab_or_disclosed_flag = "Disclosed",
     bblab_or_revenue_concentration = "Revenue concentration, not order dollars",
@@ -9486,6 +9492,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_or_start = "開始分析",
     bblab_or_idle = "點選「開始分析」，載入目前代號的已揭露訂單事實。",
     bblab_or_waiting = "此代號的財報尚未就緒。",
+    bblab_or_need_ticker = "請先在表頭「Ticker／股票代號」輸入代號，再點選「開始分析」。",
+    bblab_or_empty = "此代號沒有已揭露的訂單、供應商或客戶金額。金額一律不估計。",
+    bblab_or_ready = "已開啟下方的已揭露訂單事實與交叉驗證。",
     bblab_or_primary = "此產業透鏡的主要指標",
     bblab_or_disclosed_flag = "已揭露",
     bblab_or_revenue_concentration = "營收集中度，不是訂單金額",

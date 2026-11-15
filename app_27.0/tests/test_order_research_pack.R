@@ -375,7 +375,13 @@ check("en order research has no Han", {
 })
 check("start analysis copy",
       identical(.UI_STRINGS$en$bblab_or_start, "Start analysis") &&
-        identical(.UI_STRINGS$`zh-TW`$bblab_or_start, "開始分析"))
+        identical(.UI_STRINGS$`zh-TW`$bblab_or_start, "開始分析") &&
+        identical(
+          .UI_STRINGS$en$bblab_or_need_ticker,
+          "Enter a ticker in the header Ticker / Stock Code field, then press Start analysis."
+        ) &&
+        grepl("金額一律不估計", .UI_STRINGS$`zh-TW`$bblab_or_empty, fixed = TRUE) &&
+        grepl("cross-checks are open below", .UI_STRINGS$en$bblab_or_ready, fixed = TRUE))
 
 if (requireNamespace("shiny", quietly = TRUE) && requireNamespace("plotly", quietly = TRUE)) {
   suppressPackageStartupMessages({
