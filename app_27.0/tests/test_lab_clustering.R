@@ -530,16 +530,103 @@ stopifnot(!("Beta" %in% res_km2$features))
 stopifnot(identical(as.integer(res_km2$k), 4L))
 stopifnot(setequal(res_km2$features, LAB_CLUSTER_FEATURES))
 
-# Scatter / radar still build for Beta mode
+# Scatter / radar still build for Beta mode.
+# Cluster map is a point distribution of the truncated universe (not the median history).
+.plotly_title <- function(built) {
+  tit <- built$x$layout$title
+  if (is.list(tit)) as.character(tit$text %||% "")[1] else as.character(tit %||% "")[1]
+}
+.plotly_marker_text <- function(built) {
+  unlist(lapply(built$x$data, function(tr) {
+    mode <- as.character(tr$mode %||% "")
+    typ <- as.character(tr$type %||% "")
+    if (!grepl("scatter", typ) || !grepl("markers", mode)) return(character(0))
+    as.character(tr$text %||% "")
+  }), use.names = FALSE)
+}
 p_beta <- lab_cluster_scatter_plotly(
-  res_beta, x_feat = "Beta", y_feat = "PE_Ratio", locale = "en",
+  res_beta, x_feat = "ROE", y_feat = "PE_Ratio", locale = "en",
   focus_ticker = res_beta$data$ticker[[1]]
 )
 stopifnot(inherits(p_beta, "plotly"))
+b_beta <- plotly::plotly_build(p_beta)
+stopifnot(grepl("truncated universe", .plotly_title(b_beta), fixed = TRUE))
+stopifnot(!grepl("ROE", .plotly_title(b_beta), fixed = TRUE))
+marker_txt <- .plotly_marker_text(b_beta)
+finite_tk <- res_beta$data$ticker[is.finite(res_beta$data$Beta)]
+stopifnot(length(finite_tk) >= 6L)
+stopifnot(all(vapply(finite_tk, function(tk) any(grepl(tk, marker_txt, fixed = TRUE)), logical(1))))
+leg <- unlist(lapply(b_beta$x$data, function(tr) as.character(tr$name %||% "")), use.names = FALSE)
+stopifnot(any(grepl("Low", leg)), any(grepl("Mid", leg)), any(grepl("High", leg)))
+class_cols <- vapply(b_beta$x$data, function(tr) {
+  nm <- as.character(tr$name %||% "")
+  if (!grepl("Low|Mid|High", nm)) return("")
+  tolower(as.character(tr$marker$color %||% "")[1])
+}, character(1))
+class_cols <- class_cols[nzchar(class_cols)]
+stopifnot(length(class_cols) >= 3L)
+stopifnot(!any(class_cols %in% c("transparent", "rgba(0,0,0,0)", "na")))
+stopifnot(length(unique(class_cols)) >= 3L)
+# Monthly OLS path is the same point map (not the group-median time series)
+b_hist <- plotly::plotly_build(p_hist)
+stopifnot(grepl("truncated universe", .plotly_title(b_hist), fixed = TRUE))
+hist_modes <- vapply(b_hist$x$data, function(tr) {
+  paste(as.character(tr$type %||% ""), as.character(tr$mode %||% ""))
+}, character(1))
+stopifnot(any(grepl("scatter markers", hist_modes, fixed = TRUE)))
+stopifnot(!any(grepl("scatter lines$", hist_modes)))
+hist_txt <- .plotly_marker_text(b_hist)
+hist_tk <- res_dyn$data$ticker[is.finite(res_dyn$data$Beta)]
+stopifnot(length(hist_tk) == nrow(res_dyn$data))
+stopifnot(all(vapply(hist_tk, function(tk) any(grepl(tk, hist_txt, fixed = TRUE)), logical(1))))
+# zh title + optional Q25–Q75 band
+p_beta_zh <- lab_cluster_scatter_plotly(res_beta, locale = "zh-TW")
+stopifnot(grepl("截斷後宇宙", .plotly_title(plotly::plotly_build(p_beta_zh)), fixed = TRUE))
+res_iqr <- res_beta
+res_iqr$beta_show_iqr <- TRUE
+b_iqr <- plotly::plotly_build(lab_cluster_scatter_plotly(res_iqr, locale = "en"))
+iqr_names <- unlist(lapply(b_iqr$x$data, function(tr) as.character(tr$name %||% "")), use.names = FALSE)
+stopifnot(any(grepl("Q25", iqr_names, fixed = TRUE)))
+# K-Means map stays a free-axis scatter
+b_km <- plotly::plotly_build(p1)
+stopifnot(grepl("Fundamental Cluster Map", .plotly_title(b_km), fixed = TRUE))
 p_beta_radar <- lab_cluster_radar_plotly(
   res_beta, focus_ticker = res_beta$data$ticker[[1]], locale = "en"
 )
 stopifnot(inherits(p_beta_radar, "plotly"))
+
+# Beta layout: radar column stays in the markup; CSS/JS hide it and widen the map
+ui_src <- paste(readLines("ynow_ui.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+stopifnot(grepl('id = "ynow_lab_cluster_charts"', ui_src, fixed = TRUE))
+stopifnot(grepl("ynow-lab-cluster-charts", ui_src, fixed = TRUE))
+stopifnot(grepl("width = 7", ui_src, fixed = TRUE))
+stopifnot(grepl("width = 5", ui_src, fixed = TRUE))
+stopifnot(grepl("lab_cluster_radar_ui", ui_src, fixed = TRUE))
+css_src <- paste(readLines("www/ynow_widgets.css", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+stopifnot(grepl(
+  "#ynow_lab_cluster_charts.ynow-lab-cluster-beta > .col-sm-7[\\s\\S]*?width:\\s*100%",
+  css_src, perl = TRUE
+))
+stopifnot(grepl(
+  "#ynow_lab_cluster_charts.ynow-lab-cluster-beta > .col-sm-5[\\s\\S]*?display:\\s*none",
+  css_src, perl = TRUE
+))
+js_src <- paste(readLines("www/ynow_app.js", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+stopifnot(grepl("ynowSyncLabClusterChartLayout", js_src, fixed = TRUE))
+stopifnot(grepl("lab_cluster_mode", js_src, fixed = TRUE))
+stopifnot(grepl("ynow-lab-cluster-beta", js_src, fixed = TRUE))
+# Leaving Beta must resize the radar after unhide (hidden Plotly inits at ~0 width).
+stopifnot(grepl("resizeAfterLayout", js_src, fixed = TRUE))
+stopifnot(grepl(
+  "['lab_cluster_scatter', 'lab_cluster_radar']",
+  js_src,
+  fixed = TRUE
+))
+loc_src <- paste(readLines("ui_locale.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+stopifnot(grepl("Candidate truncate rule and Universe size", loc_src, fixed = TRUE))
+stopifnot(grepl("Same-cluster radar is hidden", loc_src, fixed = TRUE))
+stopifnot(grepl("候選截斷邏輯", loc_src, fixed = TRUE))
+stopifnot(grepl("此模式隱藏同群雷達圖", loc_src, fixed = TRUE))
 
 # Snapshot schema accepts Beta column (may be empty offline)
 snap_beta <- lab_load_cluster_features_snapshot(NULL)

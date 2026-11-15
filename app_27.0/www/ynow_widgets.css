@@ -206,6 +206,15 @@
           }
         }
 
+        /* Beta grouping: hide Same-cluster radar; Cluster map takes the full row.
+           Other grouping modes keep the 7/5 split (no .ynow-lab-cluster-beta). */
+        #ynow_lab_cluster_charts.ynow-lab-cluster-beta > .col-sm-7 {
+          width: 100%;
+        }
+        #ynow_lab_cluster_charts.ynow-lab-cluster-beta > .col-sm-5 {
+          display: none;
+        }
+
         /* Ticker typeahead suggest (Ticker/Stock Code + Radar focus): 黑字白底 */
         .ynow-ticker-suggest,
         #sc_ticker_suggest,
