@@ -56,6 +56,53 @@
   ), collapse = "\n")
 }
 
+#' Attach the app env that holds ExtendedTask jobs so sequential futures can
+#' resolve them by name.
+#'
+#' Shiny sources global.R into an app environment that is not always
+#' `.GlobalEnv`. Hosted shinyapps uses `future::sequential`, and those futures
+#' only see `.GlobalEnv` + packages unless that app env is on `search()`.
+#' Without this attach, `.ynow_make_extended_task` fails with
+#' "async job is not loaded in this process: lab_im_run_catalog_job".
+#'
+#' Important: attach the *binding* environment (where the job name lives), not
+#' `environment(fn)`. Assignments like `app_env$fn <- function(){}` create a
+#' closure whose enclosing env is often `.GlobalEnv` even when the name is only
+#' bound on `app_env`.
+.ynow_async_attach_job_env <- function() {
+  if ("ynow:worker" %in% search()) return(invisible(TRUE))
+  job_names <- c(
+    "lab_im_run_eval_job",
+    "lab_im_run_catalog_job",
+    "lab_im_run_ind_mcap_job",
+    "lab_cluster_run_job"
+  )
+  # This helper is sourced into the same app env as the lab_im_* jobs.
+  app_env <- environment(.ynow_async_attach_job_env)
+  has_on_app <- any(vapply(
+    job_names,
+    function(nm) exists(nm, envir = app_env, inherits = FALSE),
+    logical(1)
+  ))
+  if (isTRUE(has_on_app)) {
+    if (identical(app_env, .GlobalEnv)) return(invisible(TRUE))
+    return(tryCatch(
+      {
+        attach(app_env, name = "ynow:worker", warn.conflicts = FALSE)
+        invisible(TRUE)
+      },
+      error = function(e) invisible(FALSE)
+    ))
+  }
+  # Rare / unit-test path: jobs already bound on .GlobalEnv.
+  has_on_global <- any(vapply(
+    job_names,
+    function(nm) exists(nm, envir = .GlobalEnv, inherits = FALSE),
+    logical(1)
+  ))
+  invisible(isTRUE(has_on_global))
+}
+
 #' Initialise a future plan (local: up to 2 workers; hosted: sequential).
 .ynow_async_init <- function() {
   if (identical(Sys.getenv("YNOW_FUTURE_WORKER"), "1")) return(invisible(FALSE))
@@ -80,6 +127,9 @@
       },
       error = function(e) FALSE
     )
+    if (isTRUE(ok)) {
+      .ynow_async_attach_job_env()
+    }
     .ynow_async_plan_ready <<- isTRUE(ok)
     return(invisible(isTRUE(ok)))
   }
@@ -132,12 +182,18 @@
       tryCatch(
         {
           future::plan(future::sequential)
+          .ynow_async_attach_job_env()
           TRUE
         },
         error = function(e2) FALSE
       )
     }
   )
+  if (isTRUE(ok)) {
+    # Local sequential fallback (or rare GlobalEnv-only plans) still need the
+    # app env on search() when Shiny did not source into .GlobalEnv.
+    tryCatch(.ynow_async_attach_job_env(), error = function(e) NULL)
+  }
   .ynow_async_plan_ready <<- isTRUE(ok)
   invisible(isTRUE(ok))
 }
@@ -198,10 +254,18 @@
             exists("ynow_pload_bind", mode = "function", inherits = TRUE)) {
           ynow_pload_bind(trace_path, trace_run, TRUE)
         }
-        if (!nzchar(jn) || !exists(jn, mode = "function", inherits = TRUE)) {
+        fn <- NULL
+        if (nzchar(jn) && exists(jn, mode = "function", inherits = TRUE)) {
+          fn <- get(jn, mode = "function", inherits = TRUE)
+        } else if (nzchar(jn) && "ynow:worker" %in% search()) {
+          fn <- tryCatch(
+            get(jn, pos = "ynow:worker", mode = "function"),
+            error = function(e) NULL
+          )
+        }
+        if (!is.function(fn)) {
           stop("async job is not loaded in this process: ", jn, call. = FALSE)
         }
-        fn <- get(jn, mode = "function", inherits = TRUE)
         do.call(fn, args)
       },
       globals = list(

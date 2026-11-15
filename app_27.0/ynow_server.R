@@ -19512,27 +19512,44 @@ server <- function(input, output, session) {
       }),
       stats = reactive({
         # Read session catalog cache only — never trigger a multi-second rebuild.
-        list(
-          universe_n = tryCatch({
-            cat <- lab_im_catalog_df()
-            if (is.data.frame(cat) && nrow(cat)) {
-              length(unique(stats::na.omit(as.character(cat$ticker))))
-            } else {
-              NA_real_
-            }
-          }, error = function(e) NA_real_),
-          market_n = tryCatch({
-            keys <- lab_im_industry_filter()
-            cat <- lab_im_catalog_df()
-            if (!is.data.frame(cat) || !nrow(cat)) return(NA_real_)
-            tks <- as.character(cat$ticker)
-            if (!length(keys)) return(length(unique(stats::na.omit(tks))))
-            length(unique(stats::na.omit(tks[as.character(cat$industry_key) %in% keys])))
-          }, error = function(e) NA_real_),
-          model_n = NA_real_,
-          quality_n = NA_real_,
-          snapshot_ready = FALSE
-        )
+        # Outer tryCatch keeps Filter results tiles from red-screening when the
+        # catalog/filter bridge is mid-mount or a worker job just failed.
+        tryCatch({
+          list(
+            universe_n = tryCatch({
+              cat <- lab_im_catalog_df()
+              if (is.data.frame(cat) && nrow(cat)) {
+                length(unique(stats::na.omit(as.character(cat$ticker))))
+              } else {
+                NA_real_
+              }
+            }, error = function(e) NA_real_),
+            market_n = tryCatch({
+              keys <- tryCatch(lab_im_industry_filter(), error = function(e) character(0))
+              cat <- lab_im_catalog_df()
+              if (!is.data.frame(cat) || !nrow(cat)) return(NA_real_)
+              tks <- as.character(cat$ticker)
+              if (!length(keys)) return(length(unique(stats::na.omit(tks))))
+              ik <- if ("industry_key" %in% names(cat)) {
+                as.character(cat$industry_key)
+              } else {
+                rep(NA_character_, length(tks))
+              }
+              length(unique(stats::na.omit(tks[ik %in% keys])))
+            }, error = function(e) NA_real_),
+            model_n = NA_real_,
+            quality_n = NA_real_,
+            snapshot_ready = FALSE
+          )
+        }, error = function(e) {
+          list(
+            universe_n = NA_real_,
+            market_n = NA_real_,
+            model_n = NA_real_,
+            quality_n = NA_real_,
+            snapshot_ready = FALSE
+          )
+        })
       }),
       catalog = if (exists("ynq_lab_catalog", mode = "function")) {
         ynq_lab_catalog(APP_DEFAULTS$lab_im_methods)
