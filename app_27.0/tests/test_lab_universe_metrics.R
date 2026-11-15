@@ -42,6 +42,8 @@ utils::write.csv(
   fileEncoding = "UTF-8"
 )
 options(ynow.universe_metrics_snapshot = normalizePath(fixture_csv, winslash = "/"))
+Sys.setenv(YNOW_CACHE_ROOT = fixture_dir)
+Sys.setenv(YNOW_MCAP_CACHE_TTL_H = "24")
 
 rm(list = ls(envir = .lab_universe_metrics_cache), envir = .lab_universe_metrics_cache)
 rm(list = ls(envir = .lab_mcap_cache), envir = .lab_mcap_cache)

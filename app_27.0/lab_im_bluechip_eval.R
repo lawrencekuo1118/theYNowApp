@@ -758,15 +758,19 @@ lab_evaluate_ticker_fscore <- function(ticker, industry_key = NULL, method = NUL
     return(out)
   }
 
+  trace_on <- exists("ynow_pload_enabled", mode = "function") && isTRUE(ynow_pload_enabled())
+  t_phase <- if (isTRUE(trace_on)) unname(proc.time()[["elapsed"]]) else NA_real_
   sm <- tryCatch(lab_fetch_summary_metrics(tk), error = function(e) {
     list(market_cap = NA_real_, price = NA_real_, beta = NA_real_, company_name = NA_character_)
   })
+  t_summary <- if (isTRUE(trace_on)) unname(proc.time()[["elapsed"]]) else NA_real_
   out$market_cap <- suppressWarnings(as.numeric(sm$market_cap)[1])
   out$price <- suppressWarnings(as.numeric(sm$price)[1])
   out$beta <- suppressWarnings(as.numeric(sm$beta)[1])
   out$company_name <- lab_company_display_name(tk, sm$company_name)
 
   res <- tryCatch(cached_scrape_financials(tk), error = function(e) e)
+  t_fin <- if (isTRUE(trace_on)) unname(proc.time()[["elapsed"]]) else NA_real_
   if (inherits(res, "error")) {
     out$error <- conditionMessage(res)
     return(out)
@@ -844,6 +848,14 @@ lab_evaluate_ticker_fscore <- function(ticker, industry_key = NULL, method = NUL
 
   out$ok <- isTRUE(is.finite(out$f_score))
   if (!out$ok && is.null(out$error)) out$error <- "F-Score 無法計算"
+  if (isTRUE(trace_on)) {
+    t_end <- unname(proc.time()[["elapsed"]])
+    attr(out, "ynow_phase") <- c(
+      summary = t_summary - t_phase,
+      fin = t_fin - t_summary,
+      rest = t_end - t_fin
+    )
+  }
   out
 }
 
@@ -887,6 +899,7 @@ lab_screen_tickers_fscore <- function(tickers, progress_cb = NULL, max_n = Inf,
   rows <- vector("list", n)
   trace_on <- exists("ynow_pload_enabled", mode = "function") && isTRUE(ynow_pload_enabled())
   tick_elapsed <- if (isTRUE(trace_on)) numeric(n) else NULL
+  phase_sum <- if (isTRUE(trace_on)) c(summary = 0, fin = 0, rest = 0) else NULL
   screen_t0 <- if (isTRUE(trace_on)) unname(proc.time()[["elapsed"]]) else NA_real_
   for (i in seq_along(tks)) {
     if (is.function(progress_cb)) {
@@ -894,7 +907,13 @@ lab_screen_tickers_fscore <- function(tickers, progress_cb = NULL, max_n = Inf,
     }
     tk_t0 <- if (isTRUE(trace_on)) unname(proc.time()[["elapsed"]]) else NA_real_
     ev <- lab_evaluate_ticker_fscore(tks[[i]], industry_key = ind_keys[[i]], method = meths[[i]])
-    if (isTRUE(trace_on)) tick_elapsed[[i]] <- unname(proc.time()[["elapsed"]]) - tk_t0
+    if (isTRUE(trace_on)) {
+      tick_elapsed[[i]] <- unname(proc.time()[["elapsed"]]) - tk_t0
+      ph <- attr(ev, "ynow_phase")
+      if (is.numeric(ph) && length(ph) >= 3L) {
+        phase_sum <- phase_sum + ph[c("summary", "fin", "rest")]
+      }
+    }
     rows[[i]] <- data.frame(
       ticker = ev$ticker,
       ok = isTRUE(ev$ok),
@@ -942,6 +961,9 @@ lab_screen_tickers_fscore <- function(tickers, progress_cb = NULL, max_n = Inf,
       p50_s = stats::median(tick_elapsed),
       p90_s = as.numeric(stats::quantile(tick_elapsed, 0.9, names = FALSE)),
       max_s = max(tick_elapsed),
+      summary_s = unname(phase_sum[["summary"]]),
+      fin_s = unname(phase_sum[["fin"]]),
+      rest_s = unname(phase_sum[["rest"]]),
       slowest = slow
     ))
   }

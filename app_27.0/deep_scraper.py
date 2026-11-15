@@ -750,8 +750,18 @@ def get_market_caps_batch(tickers):
             n_ok += 1
         return n_ok
 
-    chunk_size = 40
+    # One quote request per chunk, still behind the shared Yahoo gate.
+    # Default 120 symbols (was 40): a US gap of ~1,850 names is ~16 gated
+    # round trips instead of ~47. Do not split a failed chunk — a 429 then
+    # multiplies requests and blocks Ranking. Two consecutive failures stop
+    # the pass; symbols already parsed stay, and the rest are retried later.
+    try:
+        chunk_size = int((os.environ.get("YNOW_MCAP_QUOTE_CHUNK") or "120").strip())
+    except (TypeError, ValueError):
+        chunk_size = 120
+    chunk_size = max(20, min(200, chunk_size))
     got_any = False
+    failures = 0
     try:
         from yfinance.data import YfData
 
@@ -767,10 +777,23 @@ def get_market_caps_batch(tickers):
                 quotes = []
                 if isinstance(raw, dict):
                     quotes = (raw.get("quoteResponse") or {}).get("result") or []
-                if _apply_quotes(quotes):
+                added = _apply_quotes(quotes)
+                if added:
                     got_any = True
+                    failures = 0
+                else:
+                    # 200 with no marketCap is the same dead-end as a 429 for
+                    # this pass. Stop instead of walking every remaining chunk.
+                    failures += 1
+                    if failures >= 2:
+                        _dbg("⚠️ market cap fill stopped; quote chunks returned no caps")
+                        break
             except Exception as e:  # noqa: BLE001
+                failures += 1
                 _dbg(f"⚠️ market cap quote chunk failed: {e}")
+                if failures >= 2:
+                    _dbg("⚠️ market cap fill stopped after consecutive quote failures")
+                    break
     except Exception as e:  # noqa: BLE001
         _dbg(f"⚠️ YfData quote batch unavailable: {e}")
 

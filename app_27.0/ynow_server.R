@@ -401,11 +401,13 @@ server <- function(input, output, session) {
     NULL
   }
   lab_im_catalog_notify_fail <- reactiveVal(FALSE)
-  # Mirror Blue Chip eval / ind-mcap busy onto sidebar 「股海淘金」label dots
+  # Ranking tab busy: catalog prepare + eval only. Ind-mcap keeps its own
+  # refresh button and status line so the Prospecting tab is usable once
+  # Ranking has a result. Market-cap gap fill stays inside the eval worker.
   observe({
     .ynow_set_tab_busy(
       "bluechip",
-      isTRUE(lab_im_eval_busy()) || isTRUE(lab_im_ind_mcap_busy())
+      isTRUE(lab_im_catalog_busy()) || isTRUE(lab_im_eval_busy())
     )
   })
   observe({
