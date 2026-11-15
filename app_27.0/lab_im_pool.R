@@ -516,108 +516,502 @@ lab_load_universe_metrics_snapshot <- function(force = FALSE) {
 
 # Shared with other processes when YNOW_CACHE_ROOT is set (local multisession
 # workers do not inherit this process's .lab_mcap_cache).
-.lab_mcap_disk_path <- function() {
+# US and TW are separate files. Entries are Yahoo gap-fills only (the bundled
+# snapshot is re-read each call) and expire after YNOW_MCAP_CACHE_TTL_H (default
+# 24h, slow tier — not the 15m quote cache). A lock dir serializes one fill per
+# market so a prefetch worker and the Ranking worker do not both hit Yahoo.
+.lab_mcap_ttl_sec <- function() {
+  h <- suppressWarnings(as.numeric(Sys.getenv("YNOW_MCAP_CACHE_TTL_H", "24"))[1])
+  if (!is.finite(h) || h < 0) h <- 24
+  h * 3600
+}
+
+.lab_mcap_market_of <- function(ticker) {
+  tk <- toupper(trimws(as.character(ticker)[1]))
+  if (is.na(tk) || !nzchar(tk)) return("US")
+  if (grepl("\\.(TW|TWO)$", tk)) "TW" else "US"
+}
+
+.lab_mcap_mem_key <- function(market, ticker) {
+  paste0(if (identical(market, "TW")) "TW" else "US", "|", toupper(trimws(as.character(ticker)[1])))
+}
+
+.lab_mcap_root <- function() {
   root <- Sys.getenv("YNOW_CACHE_ROOT", "")
   if (!nzchar(root)) return(NA_character_)
   dir.create(root, recursive = TRUE, showWarnings = FALSE)
-  file.path(root, "lab_mcap_cache.rds")
+  root
 }
 
-.lab_mcap_disk_load <- function() {
-  if (isTRUE(get0(".disk_loaded", envir = .lab_mcap_cache, inherits = FALSE))) {
+.lab_mcap_disk_path <- function(market = "US") {
+  root <- .lab_mcap_root()
+  if (is.na(root)) return(NA_character_)
+  m <- if (identical(market, "TW")) "TW" else "US"
+  file.path(root, sprintf("lab_mcap_cache_%s.rds", m))
+}
+
+.lab_mcap_mem_get <- function(market, ticker, now = NULL) {
+  key <- .lab_mcap_mem_key(market, ticker)
+  if (!exists(key, envir = .lab_mcap_cache, inherits = FALSE)) return(NA_real_)
+  entry <- get(key, envir = .lab_mcap_cache, inherits = FALSE)
+  if (!is.list(entry)) return(NA_real_)
+  v <- suppressWarnings(as.numeric(entry$v)[1])
+  at <- suppressWarnings(as.numeric(entry$at)[1])
+  if (!is.finite(v) || v <= 0 || !is.finite(at)) {
+    rm(list = key, envir = .lab_mcap_cache)
+    return(NA_real_)
+  }
+  if (is.null(now)) now <- as.numeric(Sys.time())
+  if ((as.numeric(now) - at) > .lab_mcap_ttl_sec()) {
+    rm(list = key, envir = .lab_mcap_cache)
+    return(NA_real_)
+  }
+  v
+}
+
+.lab_mcap_mem_put <- function(market, ticker, value, src = "yahoo", at = NULL) {
+  v <- suppressWarnings(as.numeric(value)[1])
+  if (!is.finite(v) || v <= 0) return(invisible(FALSE))
+  if (is.null(at) || !is.finite(suppressWarnings(as.numeric(at)[1]))) {
+    at <- as.numeric(Sys.time())
+  }
+  assign(
+    .lab_mcap_mem_key(market, ticker),
+    list(v = v, at = as.numeric(at)[1], src = as.character(src)[1]),
+    envir = .lab_mcap_cache
+  )
+  invisible(TRUE)
+}
+
+.lab_mcap_disk_load <- function(market, force = FALSE) {
+  market <- if (identical(market, "TW")) "TW" else "US"
+  flag <- paste0(".disk_loaded_", market)
+  if (!isTRUE(force) && isTRUE(get0(flag, envir = .lab_mcap_cache, inherits = FALSE))) {
     return(invisible(FALSE))
   }
-  assign(".disk_loaded", TRUE, envir = .lab_mcap_cache)
-  path <- .lab_mcap_disk_path()
-  if (is.na(path) || !file.exists(path)) return(invisible(FALSE))
-  saved <- tryCatch(readRDS(path), error = function(e) NULL)
-  if (!is.numeric(saved) || !length(names(saved))) return(invisible(FALSE))
-  nms <- names(saved)
-  for (i in seq_along(saved)) {
-    key <- nms[[i]]
+  assign(flag, TRUE, envir = .lab_mcap_cache)
+  path <- .lab_mcap_disk_path(market)
+  saved <- NULL
+  stamp_path <- NA_character_
+  from_legacy <- FALSE
+  if (!is.na(path) && file.exists(path)) {
+    saved <- tryCatch(readRDS(path), error = function(e) NULL)
+    stamp_path <- path
+  } else {
+    root <- .lab_mcap_root()
+    legacy <- if (!is.na(root)) file.path(root, "lab_mcap_cache.rds") else NA_character_
+    if (!is.na(legacy) && file.exists(legacy)) {
+      saved <- tryCatch(readRDS(legacy), error = function(e) NULL)
+      stamp_path <- legacy
+      from_legacy <- TRUE
+    }
+  }
+  if (is.null(saved)) return(invisible(FALSE))
+  caps <- NULL
+  ats <- NULL
+  if (is.list(saved) && !is.null(saved$caps) && is.numeric(saved$caps)) {
+    file_m <- as.character(saved$market %||% "")[1]
+    if (nzchar(file_m) && !identical(file_m, market)) return(invisible(FALSE))
+    caps <- saved$caps
+    ats <- saved$at
+  } else if (is.numeric(saved) && length(names(saved))) {
+    caps <- saved
+  } else {
+    return(invisible(FALSE))
+  }
+  nms <- names(caps)
+  if (!length(nms)) return(invisible(FALSE))
+  file_stamp <- NA_real_
+  if (!is.na(stamp_path) && file.exists(stamp_path)) {
+    file_stamp <- suppressWarnings(as.numeric(file.info(stamp_path)$mtime)[1])
+  }
+  if (!is.finite(file_stamp)) file_stamp <- as.numeric(Sys.time())
+  now <- as.numeric(Sys.time())
+  ttl <- .lab_mcap_ttl_sec()
+  for (i in seq_along(caps)) {
+    key <- toupper(trimws(nms[[i]]))
     if (!nzchar(key) || grepl("^\\.", key)) next
-    if (!exists(key, envir = .lab_mcap_cache, inherits = FALSE)) {
-      assign(key, saved[[i]], envir = .lab_mcap_cache)
+    if (!identical(.lab_mcap_market_of(key), market)) next
+    v <- suppressWarnings(as.numeric(caps[[i]])[1])
+    at <- NA_real_
+    if (is.numeric(ats) && length(ats)) {
+      if (key %in% names(ats)) at <- suppressWarnings(as.numeric(ats[[key]])[1])
+      if (!is.finite(at) && nms[[i]] %in% names(ats)) {
+        at <- suppressWarnings(as.numeric(ats[[nms[[i]]]])[1])
+      }
+    }
+    if (!is.finite(at)) at <- if (isTRUE(from_legacy) || is.numeric(saved)) file_stamp else NA_real_
+    if (!is.finite(v) || v <= 0 || !is.finite(at)) next
+    if ((now - at) > ttl) next
+    memk <- .lab_mcap_mem_key(market, key)
+    if (!exists(memk, envir = .lab_mcap_cache, inherits = FALSE)) {
+      assign(memk, list(v = v, at = at, src = "yahoo"), envir = .lab_mcap_cache)
     }
   }
   invisible(TRUE)
 }
 
-.lab_mcap_disk_save <- function() {
-  path <- .lab_mcap_disk_path()
+.lab_mcap_disk_read_payload <- function(market) {
+  market <- if (identical(market, "TW")) "TW" else "US"
+  path <- .lab_mcap_disk_path(market)
+  if (is.na(path) || !file.exists(path)) {
+    return(list(caps = numeric(0), at = numeric(0)))
+  }
+  saved <- tryCatch(readRDS(path), error = function(e) NULL)
+  if (is.null(saved)) return(list(caps = numeric(0), at = numeric(0)))
+  caps <- NULL
+  ats <- NULL
+  if (is.list(saved) && !is.null(saved$caps) && is.numeric(saved$caps)) {
+    file_m <- as.character(saved$market %||% "")[1]
+    if (nzchar(file_m) && !identical(file_m, market)) {
+      return(list(caps = numeric(0), at = numeric(0)))
+    }
+    caps <- saved$caps
+    ats <- saved$at
+  } else if (is.numeric(saved) && length(names(saved))) {
+    caps <- saved
+    stamp <- suppressWarnings(as.numeric(file.info(path)$mtime)[1])
+    if (!is.finite(stamp)) stamp <- as.numeric(Sys.time())
+    ats <- stats::setNames(rep(stamp, length(caps)), names(caps))
+  } else {
+    return(list(caps = numeric(0), at = numeric(0)))
+  }
+  nms <- names(caps)
+  if (!length(nms)) return(list(caps = numeric(0), at = numeric(0)))
+  keep_tk <- character(0)
+  keep_v <- numeric(0)
+  keep_at <- numeric(0)
+  now <- as.numeric(Sys.time())
+  ttl <- .lab_mcap_ttl_sec()
+  for (i in seq_along(caps)) {
+    key <- toupper(trimws(nms[[i]]))
+    if (!nzchar(key) || grepl("^\\.", key)) next
+    if (!identical(.lab_mcap_market_of(key), market)) next
+    v <- suppressWarnings(as.numeric(caps[[i]])[1])
+    at <- NA_real_
+    if (is.numeric(ats) && length(ats)) {
+      if (key %in% names(ats)) at <- suppressWarnings(as.numeric(ats[[key]])[1])
+      if (!is.finite(at) && nms[[i]] %in% names(ats)) {
+        at <- suppressWarnings(as.numeric(ats[[nms[[i]]]])[1])
+      }
+    }
+    if (!is.finite(at)) next
+    if (!is.finite(v) || v <= 0) next
+    if ((now - at) > ttl) next
+    keep_tk <- c(keep_tk, key)
+    keep_v <- c(keep_v, v)
+    keep_at <- c(keep_at, at)
+  }
+  list(
+    caps = stats::setNames(keep_v, keep_tk),
+    at = stats::setNames(keep_at, keep_tk)
+  )
+}
+
+.lab_mcap_disk_save <- function(market) {
+  market <- if (identical(market, "TW")) "TW" else "US"
+  path <- .lab_mcap_disk_path(market)
   if (is.na(path)) return(invisible(FALSE))
+  # Always re-read disk before replace. A Ranking worker may have
+  # .disk_loaded_* set from an earlier empty load while ind-mcap (or another
+  # worker) wrote a larger shared file; memory-only save would wipe those hits.
+  disk <- .lab_mcap_disk_read_payload(market)
+  by_tk <- new.env(parent = emptyenv())
+  if (length(disk$caps)) {
+    for (tk in names(disk$caps)) {
+      assign(
+        tk,
+        list(v = as.numeric(disk$caps[[tk]])[1], at = as.numeric(disk$at[[tk]])[1]),
+        envir = by_tk
+      )
+    }
+  }
+  prefix <- paste0(market, "|")
   nms <- ls(envir = .lab_mcap_cache, all.names = FALSE)
-  nms <- nms[nzchar(nms) & !grepl("^\\.", nms)]
-  if (!length(nms)) return(invisible(FALSE))
-  vals <- unlist(mget(nms, envir = .lab_mcap_cache), use.names = TRUE)
-  vals <- vals[is.finite(vals) & vals > 0]
-  if (!length(vals)) return(invisible(FALSE))
-  tryCatch(saveRDS(vals, path), error = function(e) NULL)
+  nms <- nms[startsWith(nms, prefix)]
+  now <- as.numeric(Sys.time())
+  ttl <- .lab_mcap_ttl_sec()
+  for (memk in nms) {
+    entry <- get(memk, envir = .lab_mcap_cache, inherits = FALSE)
+    if (!is.list(entry) || !identical(as.character(entry$src %||% "")[1], "yahoo")) next
+    v <- suppressWarnings(as.numeric(entry$v)[1])
+    at <- suppressWarnings(as.numeric(entry$at)[1])
+    if (!is.finite(v) || v <= 0 || !is.finite(at)) next
+    if ((now - at) > ttl) next
+    tk <- substring(memk, nchar(prefix) + 1L)
+    if (!nzchar(tk) || !identical(.lab_mcap_market_of(tk), market)) next
+    if (exists(tk, envir = by_tk, inherits = FALSE)) {
+      prev <- get(tk, envir = by_tk, inherits = FALSE)
+      prev_at <- suppressWarnings(as.numeric(prev$at)[1])
+      if (is.finite(prev_at) && prev_at > at) next
+    }
+    assign(tk, list(v = v, at = at), envir = by_tk)
+  }
+  keys <- ls(envir = by_tk, all.names = FALSE)
+  if (!length(keys)) return(invisible(FALSE))
+  keys <- sort(keys)
+  vals <- numeric(length(keys))
+  ats <- numeric(length(keys))
+  for (i in seq_along(keys)) {
+    e <- get(keys[[i]], envir = by_tk, inherits = FALSE)
+    vals[[i]] <- e$v
+    ats[[i]] <- e$at
+    memk <- .lab_mcap_mem_key(market, keys[[i]])
+    if (!exists(memk, envir = .lab_mcap_cache, inherits = FALSE)) {
+      assign(
+        memk,
+        list(v = e$v, at = e$at, src = "yahoo"),
+        envir = .lab_mcap_cache
+      )
+    }
+  }
+  payload <- list(
+    version = 2L,
+    market = market,
+    caps = stats::setNames(vals, keys),
+    at = stats::setNames(ats, keys)
+  )
+  tmp <- paste0(path, ".tmp.", Sys.getpid())
+  ok <- tryCatch(
+    {
+      saveRDS(payload, tmp)
+      isTRUE(file.rename(tmp, path))
+    },
+    error = function(e) FALSE
+  )
+  if (file.exists(tmp)) unlink(tmp)
+  invisible(isTRUE(ok))
+}
+
+.lab_mcap_lock_dir <- function(market) {
+  root <- .lab_mcap_root()
+  if (is.na(root)) return(NA_character_)
+  m <- if (identical(market, "TW")) "TW" else "US"
+  file.path(root, sprintf("lab_mcap_fill_%s.lock.d", m))
+}
+
+.lab_mcap_lock_acquire <- function(market) {
+  d <- .lab_mcap_lock_dir(market)
+  if (is.na(d)) return(FALSE)
+  if (dir.exists(d)) {
+    age <- suppressWarnings(as.numeric(difftime(Sys.time(), file.info(d)$mtime, units = "secs"))[1])
+    if (is.finite(age) && age > 180) unlink(d, recursive = TRUE)
+  }
+  ok <- isTRUE(dir.create(d, recursive = FALSE, showWarnings = FALSE))
+  if (!ok) return(FALSE)
+  tryCatch(writeLines(as.character(Sys.getpid()), file.path(d, "pid")), error = function(e) NULL)
+  TRUE
+}
+
+.lab_mcap_lock_release <- function(market) {
+  d <- .lab_mcap_lock_dir(market)
+  if (!is.na(d) && dir.exists(d)) unlink(d, recursive = TRUE)
   invisible(TRUE)
 }
 
-#' 批次市值：離線快照優先，缺口再打 Yahoo；仍缺則 NA（呼叫端維持原宇宙順序）
-lab_fetch_market_caps_usd <- function(tickers) {
-  tks <- unique(toupper(trimws(as.character(tickers))))
-  tks <- tks[nzchar(tks) & !is.na(tks)]
+.lab_mcap_cool_path <- function(market) {
+  root <- .lab_mcap_root()
+  if (is.na(root)) return(NA_character_)
+  m <- if (identical(market, "TW")) "TW" else "US"
+  file.path(root, sprintf("lab_mcap_yahoo_cool_%s.rds", m))
+}
+
+.lab_mcap_yahoo_cooled <- function(market) {
+  path <- .lab_mcap_cool_path(market)
+  if (is.na(path) || !file.exists(path)) return(FALSE)
+  until <- tryCatch(readRDS(path), error = function(e) NA_real_)
+  until <- suppressWarnings(as.numeric(until)[1])
+  is.finite(until) && until > as.numeric(Sys.time())
+}
+
+.lab_mcap_yahoo_cool_set <- function(market, sec = 900) {
+  path <- .lab_mcap_cool_path(market)
+  if (is.na(path)) return(invisible(FALSE))
+  sec <- suppressWarnings(as.numeric(sec)[1])
+  if (!is.finite(sec) || sec < 30) sec <- 900
+  tmp <- paste0(path, ".tmp.", Sys.getpid())
+  ok <- tryCatch(
+    {
+      saveRDS(as.numeric(Sys.time()) + sec, tmp)
+      isTRUE(file.rename(tmp, path))
+    },
+    error = function(e) FALSE
+  )
+  if (file.exists(tmp)) unlink(tmp)
+  invisible(isTRUE(ok))
+}
+
+.lab_mcap_lock_wait <- function(market, timeout = 90) {
+  d <- .lab_mcap_lock_dir(market)
+  if (is.na(d)) return(invisible(FALSE))
+  t0 <- Sys.time()
+  while (dir.exists(d)) {
+    age <- suppressWarnings(as.numeric(difftime(Sys.time(), file.info(d)$mtime, units = "secs"))[1])
+    if (!is.finite(age) || age > 180) {
+      unlink(d, recursive = TRUE)
+      break
+    }
+    waited <- suppressWarnings(as.numeric(difftime(Sys.time(), t0, units = "secs"))[1])
+    if (!is.finite(waited) || waited > timeout) break
+    Sys.sleep(0.25)
+  }
+  invisible(TRUE)
+}
+
+.lab_fetch_mcap_apply_yahoo <- function(out, market, fetched) {
+  n_hit <- 0L
+  if (is.null(fetched) || !(is.list(fetched) || is.numeric(fetched))) {
+    return(list(out = out, n_hit = n_hit))
+  }
+  nms <- names(fetched)
+  if (is.null(nms) || !length(nms)) return(list(out = out, n_hit = n_hit))
+  nms <- toupper(trimws(as.character(nms)))
+  # Element-wise parse. unlist() drops Python None / R NULL and then
+  # length(nms) != length(vals) discards a partial-success Yahoo dict.
+  for (i in seq_along(nms)) {
+    key <- gsub("/", "-", nms[[i]])
+    if (!nzchar(key)) next
+    el <- fetched[[i]]
+    if (is.null(el) || length(el) == 0L) next
+    v <- suppressWarnings(as.numeric(el)[1])
+    if (!is.finite(v) || v <= 0) next
+    if (!identical(.lab_mcap_market_of(key), market)) next
+    if (key %in% names(out)) out[[key]] <- v
+    .lab_mcap_mem_put(market, key, v, src = "yahoo")
+    n_hit <- n_hit + 1L
+    alt <- gsub("\\.", "-", key)
+    if (!identical(alt, key) && alt %in% names(out) && !is.finite(out[[alt]])) {
+      out[[alt]] <- v
+      .lab_mcap_mem_put(market, alt, v, src = "yahoo")
+    }
+  }
+  list(out = out, n_hit = n_hit)
+}
+
+.lab_fetch_mcap_market <- function(tks, market) {
+  market <- if (identical(market, "TW")) "TW" else "US"
+  t0 <- unname(proc.time()[["elapsed"]])
   out <- stats::setNames(rep(NA_real_, length(tks)), tks)
   if (!length(tks)) return(out)
-
-  .lab_mcap_disk_load()
-
-  # 1) session cache
+  .lab_mcap_disk_load(market, force = FALSE)
   need <- character(0)
+  n_mem <- 0L
   for (tk in tks) {
-    if (exists(tk, envir = .lab_mcap_cache, inherits = FALSE)) {
-      out[[tk]] <- suppressWarnings(as.numeric(get(tk, envir = .lab_mcap_cache, inherits = FALSE))[1])
+    v <- .lab_mcap_mem_get(market, tk)
+    if (is.finite(v) && v > 0) {
+      out[[tk]] <- v
+      n_mem <- n_mem + 1L
     } else {
       need <- c(need, tk)
     }
   }
-
-  # 2) bundled offline snapshot (full US/TW universe when shipped)
+  n_snap <- 0L
   if (length(need)) {
     snap_caps <- .lab_lookup_metric_vec(need, "market_cap")
+    still <- character(0)
     for (tk in need) {
       v <- suppressWarnings(as.numeric(snap_caps[[tk]])[1])
       if (is.finite(v) && v > 0) {
         out[[tk]] <- v
-        assign(tk, v, envir = .lab_mcap_cache)
+        .lab_mcap_mem_put(market, tk, v, src = "snap")
+        n_snap <- n_snap + 1L
+      } else {
+        still <- c(still, tk)
       }
     }
-    need <- need[!(is.finite(out[need]) & out[need] > 0)]
+    need <- still
   }
-
-  if (!length(need)) return(out)
-
-  # 3) live Yahoo batch for remaining gaps
-  fetched <- NULL
-  if (exists(".ensure_python_scraper", mode = "function") &&
+  waited <- FALSE
+  lock_dir <- .lab_mcap_lock_dir(market)
+  if (length(need) && !is.na(lock_dir) && dir.exists(lock_dir)) {
+    .lab_mcap_lock_wait(market)
+    waited <- TRUE
+    .lab_mcap_disk_load(market, force = TRUE)
+    still <- character(0)
+    for (tk in need) {
+      v <- .lab_mcap_mem_get(market, tk)
+      if (is.finite(v) && v > 0) out[[tk]] <- v else still <- c(still, tk)
+    }
+    need <- still
+  }
+  held <- FALSE
+  if (length(need)) {
+    held <- .lab_mcap_lock_acquire(market)
+    if (!held && !is.na(lock_dir)) {
+      .lab_mcap_lock_wait(market)
+      waited <- TRUE
+      .lab_mcap_disk_load(market, force = TRUE)
+      still <- character(0)
+      for (tk in need) {
+        v <- .lab_mcap_mem_get(market, tk)
+        if (is.finite(v) && v > 0) out[[tk]] <- v else still <- c(still, tk)
+      }
+      need <- still
+      if (length(need)) held <- .lab_mcap_lock_acquire(market)
+    }
+  }
+  if (isTRUE(held)) on.exit(.lab_mcap_lock_release(market), add = TRUE)
+  n_yahoo <- 0L
+  n_yahoo_hit <- 0L
+  cooled <- FALSE
+  if (length(need) && .lab_mcap_yahoo_cooled(market)) {
+    cooled <- TRUE
+    need <- character(0)
+  }
+  if (length(need) &&
+      exists(".ensure_python_scraper", mode = "function") &&
       isTRUE(.ensure_python_scraper()) &&
       exists("get_market_caps_batch", mode = "function")) {
+    n_yahoo <- length(need)
     fetched <- tryCatch(get_market_caps_batch(need), error = function(e) NULL)
-  }
-  if (!is.null(fetched) && (is.list(fetched) || is.numeric(fetched))) {
-    nms <- toupper(trimws(as.character(names(fetched))))
-    vals <- suppressWarnings(as.numeric(unlist(fetched, use.names = FALSE)))
-    if (length(nms) == length(vals) && length(nms) > 0) {
-      for (i in seq_along(nms)) {
-        key <- gsub("/", "-", nms[[i]])
-        v <- vals[[i]]
-        if (!nzchar(key)) next
-        if (is.finite(v) && v > 0) {
-          out[[key]] <- v
-          assign(key, v, envir = .lab_mcap_cache)
-          alt <- gsub("\\.", "-", key)
-          if (!identical(alt, key) && alt %in% names(out) && !is.finite(out[[alt]])) {
-            out[[alt]] <- v
-            assign(alt, v, envir = .lab_mcap_cache)
-          }
-        }
-      }
+    applied <- .lab_fetch_mcap_apply_yahoo(out, market, fetched)
+    out <- applied$out
+    n_yahoo_hit <- applied$n_hit
+    if (n_yahoo_hit > 0L) {
+      .lab_mcap_disk_save(market)
+    } else if (n_yahoo >= 40L) {
+      # Empty pass (rate limit or quotes with no marketCap). Don't repeat it
+      # from ind-mcap in this host for 15 minutes. Snapshot caps still apply.
+      .lab_mcap_yahoo_cool_set(market, 900)
     }
   }
-  .lab_mcap_disk_save()
+  if (exists("ynow_pload", mode = "function")) {
+    ynow_pload("n7_mcap_gap", "end", list(
+      market = market,
+      n_req = length(tks),
+      n_mem = n_mem,
+      n_snap = n_snap,
+      n_yahoo = n_yahoo,
+      n_yahoo_hit = n_yahoo_hit,
+      cooled = isTRUE(cooled),
+      waited = isTRUE(waited),
+      elapsed_s = unname(proc.time()[["elapsed"]]) - t0
+    ))
+  }
+  out
+}
+
+#' 批次市值：記憶體與磁碟快取、離線快照，缺口再打 Yahoo。仍缺則 NA。
+#' `market` 只決定預設分組；`.TW` / `.TWO` 一律進 TW 檔，不會寫進 US 快取。
+lab_fetch_market_caps_usd <- function(tickers, market = NULL) {
+  tks <- unique(toupper(trimws(as.character(tickers))))
+  tks <- tks[nzchar(tks) & !is.na(tks)]
+  out <- stats::setNames(rep(NA_real_, length(tks)), tks)
+  if (!length(tks)) return(out)
+  # Suffix chooses the file. `market` is accepted so callers can state the
+  # session market; it must not pull the other market's cache into this one.
+  markets <- vapply(tks, .lab_mcap_market_of, character(1))
+  if (!is.null(market)) {
+    hint <- toupper(trimws(as.character(market)[1]))
+    if (identical(hint, "TW") || identical(hint, "US")) {
+      markets <- ifelse(grepl("\\.(TW|TWO)$", tks), "TW", hint)
+    }
+  }
+  for (m in unique(markets)) {
+    sub <- tks[markets == m]
+    got <- .lab_fetch_mcap_market(sub, m)
+    if (length(got)) out[names(got)] <- got
+  }
   out
 }
 
@@ -625,7 +1019,11 @@ lab_fetch_market_caps_usd <- function(tickers) {
 lab_attach_market_caps <- function(pool) {
   pool <- lab_dedupe_eval_pool(pool)
   if (is.null(pool) || nrow(pool) == 0L) return(pool)
-  caps <- lab_fetch_market_caps_usd(pool$ticker)
+  mm <- NULL
+  if (exists("get_market_mode", mode = "function")) {
+    mm <- tryCatch(get_market_mode(), error = function(e) NULL)
+  }
+  caps <- lab_fetch_market_caps_usd(pool$ticker, market = mm)
   pool$market_cap <- unname(caps[pool$ticker])
   # TW 實收資本額（資本額）；不作為市值排序代理
   paid <- .lab_lookup_metric_vec(pool$ticker, "paid_in_capital")
