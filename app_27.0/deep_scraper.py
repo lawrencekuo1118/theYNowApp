@@ -874,9 +874,12 @@ def get_ranking_summary_batch(tickers):
                 row["market_cap"] = None
             if row["price"] is not None and row["price"] <= 0:
                 row["price"] = None
+            # Keep name-only rows for currency hints, but only count a hit when
+            # price is present — R treats price as the completeness gate before
+            # skipping the per-ticker Summary fallback.
             useful = any(
                 row[k] is not None
-                for k in ("market_cap", "price", "beta", "company_name")
+                for k in ("market_cap", "price", "beta", "company_name", "currency")
             )
             if not useful:
                 continue
@@ -890,7 +893,8 @@ def get_ranking_summary_batch(tickers):
                     )
             if sym not in out:
                 out[sym] = dict(row)
-            n_ok += 1
+            if row.get("price") is not None:
+                n_ok += 1
         return n_ok
 
     try:
@@ -2004,10 +2008,12 @@ def scrape_all_financials_yf(ticker="AMZN", quote_currency=None, financial_curre
         if not fin_ccy and hint_f:
             fin_ccy = str(hint_f).strip().upper()
 
-    # Avoid stock.info (full quoteSummary) when currency is already known or
-    # can be inferred from the ticker suffix. Ranking's 100-name cold pass
-    # paid this once per miss on top of the three statement GETs.
-    need_info = not quote_ccy and not tk_u.endswith((".TW", ".TWO"))
+    # Avoid stock.info (full quoteSummary) only when both quote and reporting
+    # currencies are known, or TW suffix implies TWD. Quote-only is not enough:
+    # ADRs often list in USD while books use another financialCurrency, and the
+    # 24h statement cache would otherwise lose that distinction for Search/FX.
+    is_tw = tk_u.endswith((".TW", ".TWO"))
+    need_info = (not is_tw) and (not quote_ccy or not fin_ccy)
     if need_info:
         info = {}
         try:

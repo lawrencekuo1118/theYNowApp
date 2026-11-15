@@ -908,7 +908,13 @@ lab_screen_tickers_fscore <- function(tickers, progress_cb = NULL, max_n = Inf,
   }
   prev_ranking <- getOption("ynow.ranking_screen", NULL)
   options(ynow.ranking_screen = TRUE)
-  on.exit(options(ynow.ranking_screen = prev_ranking), add = TRUE)
+  on.exit({
+    options(ynow.ranking_screen = prev_ranking)
+    # Drop batch snapshot so post-Ranking callers use the 15m Summary cache.
+    if (exists(".lab_ranking_summary_clear", mode = "function")) {
+      tryCatch(.lab_ranking_summary_clear(), error = function(e) NULL)
+    }
+  }, add = TRUE)
   if (n > 0L && exists("lab_prefetch_ranking_summaries", mode = "function")) {
     tryCatch(lab_prefetch_ranking_summaries(tks), error = function(e) NULL)
   }

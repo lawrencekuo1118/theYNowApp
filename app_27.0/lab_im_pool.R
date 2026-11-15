@@ -72,6 +72,14 @@ lab_annualized_upside_pct <- function(fv, price, n_years = NULL) {
   out
 }
 
+# Batch is only "complete" when Ranking has a usable price. Name/beta alone
+# must not skip the per-ticker Summary fallback (Yahoo often returns a name
+# with no marketCap / thin quote fields).
+.lab_ranking_summary_complete <- function(sm) {
+  is.list(sm) && is.finite(suppressWarnings(as.numeric(sm$price)[1])) &&
+    suppressWarnings(as.numeric(sm$price)[1]) > 0
+}
+
 #' Prefetch Ranking summary fields via one Yahoo v7 quote batch (no stock.info).
 lab_prefetch_ranking_summaries <- function(tickers) {
   tks <- unique(toupper(trimws(as.character(tickers))))
@@ -105,11 +113,13 @@ lab_prefetch_ranking_summaries <- function(tickers) {
       el <- fetched[[i]]
       if (is.null(el) || !(is.list(el) || is.numeric(el))) next
       sm <- .lab_ranking_summary_from_row(el)
-      useful <- is.finite(sm$market_cap) || is.finite(sm$price) ||
-        is.finite(sm$beta) || (is.character(sm$company_name) && nzchar(sm$company_name))
-      if (!useful) next
+      # Store partial rows (name/ccy hints) but only count complete price hits.
+      has_any <- is.finite(sm$market_cap) || is.finite(sm$price) ||
+        is.finite(sm$beta) || (is.character(sm$company_name) && nzchar(sm$company_name)) ||
+        (is.character(sm$currency) && nzchar(sm$currency))
+      if (!has_any) next
       .lab_ranking_summary_put(key, sm)
-      n_hit <- n_hit + 1L
+      if (.lab_ranking_summary_complete(sm)) n_hit <- n_hit + 1L
       alt <- gsub("\\.", "-", key)
       if (!identical(alt, key)) .lab_ranking_summary_put(alt, sm)
     }
@@ -129,14 +139,14 @@ lab_fetch_summary_metrics <- function(ticker) {
   tk <- toupper(trimws(as.character(ticker)[1]))
   out <- .lab_ranking_summary_empty()
   if (!nzchar(tk)) return(out)
-  # Ranking screen: prefer the v7 quote batch (no per-ticker stock.info).
-  batch <- .lab_ranking_summary_get(tk)
-  if (is.null(batch)) batch <- .lab_ranking_summary_get(gsub("\\.", "-", tk))
-  if (is.list(batch)) {
-    useful <- is.finite(batch$market_cap) || is.finite(batch$price) ||
-      is.finite(batch$beta) ||
-      (is.character(batch$company_name) && nzchar(batch$company_name))
-    if (useful) {
+  batch <- NULL
+  # Only during Ranking screen: prefer a complete v7 batch hit (requires price).
+  # Outside the screen the batch cache must not outlive Ranking / shadow the
+  # 15-minute Summary memo (clustering beta fill, Search helpers, etc.).
+  if (isTRUE(getOption("ynow.ranking_screen", FALSE))) {
+    batch <- .lab_ranking_summary_get(tk)
+    if (is.null(batch)) batch <- .lab_ranking_summary_get(gsub("\\.", "-", tk))
+    if (is.list(batch) && .lab_ranking_summary_complete(batch)) {
       out$market_cap <- batch$market_cap
       out$price <- batch$price
       out$beta <- batch$beta
@@ -155,6 +165,20 @@ lab_fetch_summary_metrics <- function(ticker) {
     }
   }, error = function(e) NULL)
   if (is.null(sum_df) || !is.data.frame(sum_df) || nrow(sum_df) == 0) {
+    # Partial batch (name/ccy only) may still help when Summary is empty.
+    if (is.list(batch)) {
+      if (is.character(batch$company_name) && nzchar(batch$company_name)) {
+        out$company_name <- batch$company_name
+      }
+      if (is.character(batch$currency) && nzchar(batch$currency)) {
+        out$currency <- batch$currency
+      }
+      if (is.character(batch$financial_currency) && nzchar(batch$financial_currency)) {
+        out$financial_currency <- batch$financial_currency
+      }
+      if (is.finite(batch$beta)) out$beta <- batch$beta
+      if (is.finite(batch$market_cap)) out$market_cap <- batch$market_cap
+    }
     return(out)
   }
   idx_m <- grep("^Market Cap \\(intraday\\)$|^Market Cap$", sum_df$Item, ignore.case = TRUE)
@@ -172,6 +196,17 @@ lab_fetch_summary_metrics <- function(ticker) {
   cname <- tryCatch(attr(sum_df, "company_name"), error = function(e) NULL)
   cname <- trimws(as.character(cname %||% "")[1])
   if (nzchar(cname)) out$company_name <- cname
+  # Merge batch currency hints when Summary has no ccy attrs.
+  if (is.list(batch)) {
+    if ((!is.character(out$currency) || !nzchar(out$currency)) &&
+        is.character(batch$currency) && nzchar(batch$currency)) {
+      out$currency <- batch$currency
+    }
+    if ((!is.character(out$financial_currency) || !nzchar(out$financial_currency)) &&
+        is.character(batch$financial_currency) && nzchar(batch$financial_currency)) {
+      out$financial_currency <- batch$financial_currency
+    }
+  }
   out
 }
 
