@@ -61,6 +61,7 @@ check(
 check("nest cluster until subtab", isTRUE(plan_upside$nest_cluster_until_subtab))
 check("nest screener until subtab", isTRUE(plan_upside$nest_screener_until_subtab))
 check("defer ind-mcap while eval", isTRUE(plan_upside$defer_ind_mcap_while_eval))
+check("defer ind-mcap while catalog", isTRUE(plan_upside$defer_ind_mcap_while_catalog))
 
 plan_empty <- env$ynow_bluechip_first_load_plan(
   has_ind_mcap_upside = FALSE,
@@ -69,6 +70,45 @@ plan_empty <- env$ynow_bluechip_first_load_plan(
 )
 check("empty snapshot uses shorter delay", isTRUE(plan_empty$ind_mcap_auto_delay_s < plan_upside$ind_mcap_auto_delay_s))
 check("empty delay still after Ranking flush", isTRUE(plan_empty$ind_mcap_auto_delay_s >= 0.5))
+
+plan_snap_only <- env$ynow_bluechip_first_load_plan(
+  has_ind_mcap_upside = FALSE,
+  snapshot_present = TRUE,
+  eval_busy = FALSE
+)
+check(
+  "snapshot without upside uses mid delay",
+  isTRUE(plan_snap_only$ind_mcap_auto_delay_s > plan_empty$ind_mcap_auto_delay_s) &&
+    isTRUE(plan_snap_only$ind_mcap_auto_delay_s < plan_upside$ind_mcap_auto_delay_s)
+)
+
+check(
+  "ind-mcap defer helper exists",
+  exists("ynow_bluechip_ind_mcap_should_defer", envir = env, inherits = FALSE)
+)
+check(
+  "defer while Ranking eval busy",
+  isTRUE(env$ynow_bluechip_ind_mcap_should_defer(eval_busy = TRUE))
+)
+check(
+  "defer while catalog busy",
+  isTRUE(env$ynow_bluechip_ind_mcap_should_defer(catalog_busy = TRUE))
+)
+check(
+  "defer while Ranking queued after catalog",
+  isTRUE(env$ynow_bluechip_ind_mcap_should_defer(eval_queued_after_catalog = TRUE))
+)
+check(
+  "no defer when idle",
+  !isTRUE(env$ynow_bluechip_ind_mcap_should_defer())
+)
+check(
+  "catalog defer flag can disable queue wait",
+  !isTRUE(env$ynow_bluechip_ind_mcap_should_defer(
+    catalog_busy = TRUE,
+    defer_while_catalog = FALSE
+  ))
+)
 
 # UI: Ranking still eager; Clustering / Custom Screen are nested lazy hosts.
 check("bluechip has nested cluster host", grepl('uiOutput("ynow_lazy_host_bc_cluster")', ui_src, fixed = TRUE))
@@ -120,6 +160,16 @@ check("ind-mcap auto uses first-load plan",
 check("ind-mcap requeues while Ranking eval busy",
       grepl("defer_ind_mcap_while_eval", server_src, fixed = TRUE) &&
         grepl("lab_im_eval_busy()", server_src, fixed = TRUE))
+check(
+  "ind-mcap stagger peeks disk snapshot not empty reactiveVal",
+  grepl("lab_load_ind_mcap_chain_snapshot(mm_armed)", server_src, fixed = TRUE)
+)
+check(
+  "ind-mcap requeues while catalog busy or Ranking queued",
+  grepl("ynow_bluechip_ind_mcap_should_defer", server_src, fixed = TRUE) &&
+    grepl("lab_im_catalog_busy()", server_src, fixed = TRUE) &&
+    grepl("lab_im_run_after_catalog()", server_src, fixed = TRUE)
+)
 check("leaderboard busy copy key",
       grepl("lab_im_lb_busy", server_src, fixed = TRUE))
 
