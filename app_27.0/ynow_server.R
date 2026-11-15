@@ -20916,11 +20916,29 @@ server <- function(input, output, session) {
     # Build inside lab_im_run_ind_mcap_job (catlg = NULL) so the session thread
     # can keep answering DT server=TRUE dataobj Ajax (tn/7) during start.
     # boards = c("TWSE", "TPEX") is applied in the job when catlg is NULL.
+    # When the session already holds that full-market frame, pass it through
+    # so the worker does not rebuild. A narrowed TW board scope stays NULL.
+    catlg <- NULL
+    full_boards <- if (identical(mm, "TW")) c("TWSE", "TPEX") else character(0)
+    full_key <- tryCatch(
+      if (exists("lab_im_catalog_memo_key", mode = "function")) {
+        lab_im_catalog_memo_key(mm, full_boards)
+      } else {
+        paste(mm, paste(sort(full_boards), collapse = ","), sep = "|")
+      },
+      error = function(e) ""
+    )
+    cur <- tryCatch(isolate(lab_im_catalog_df()), error = function(e) NULL)
+    cur_key <- tryCatch(as.character(isolate(lab_im_catalog_key()) %||% "")[1], error = function(e) "")
+    if (nzchar(full_key) && identical(cur_key, full_key) &&
+        is.data.frame(cur) && nrow(cur) > 0L) {
+      catlg <- cur
+    }
     gen <- isolate(as.integer(lab_im_ind_mcap_gen()) %||% 0L) + 1L
     lab_im_ind_mcap_gen(gen)
     args <- list(
       .gen = gen,
-      catlg = NULL,
+      catlg = catlg,
       market_mode = mm,
       locale = loc,
       per_chain = 2L
@@ -20953,7 +20971,8 @@ server <- function(input, output, session) {
     if (exists("ynow_pload", mode = "function")) {
       ynow_pload("n8_ind_mcap_invoke", "exec", list(
         market = as.character(args$market_mode %||% "")[1],
-        per_chain = as.integer(args$per_chain %||% 2L)[1]
+        per_chain = as.integer(args$per_chain %||% 2L)[1],
+        passed_catalog = is.data.frame(args$catlg) && nrow(args$catlg) > 0L
       ))
     }
     .ynow_inflight_gen$lab_im_ind_mcap <- as.integer(args$.gen %||% 0L)[1]
@@ -21181,21 +21200,10 @@ server <- function(input, output, session) {
         normalize_market_mode(isolate(market_mode())),
         error = function(e) "US"
       )
-      snap0 <- tryCatch(isolate(lab_im_ind_mcap_snap()), error = function(e) NULL)
-      has_upside <- tryCatch(
-        lab_ind_mcap_snap_has_upside(snap0),
-        error = function(e) FALSE
-      )
-      has_snap <- is.data.frame(snap0) && nrow(snap0) > 0L
-      plan0 <- ynow_bluechip_first_load_plan(
-        has_ind_mcap_upside = has_upside,
-        snapshot_present = has_snap,
-        eval_busy = isTRUE(isolate(lab_im_eval_busy()))
-      )
-      delay_s <- as.numeric(plan0$ind_mcap_auto_delay_s %||% 0.8)[1]
-      if (!is.finite(delay_s) || delay_s < 0) delay_s <- 0.8
       session$onFlushed(function() {
-        start_job <- function() {
+        # N5 snapshot is later(~0.05). Read the plan after that so an upside
+        # file selects 2.5s instead of the empty-snap 0.8s.
+        arm <- function() {
           if (!identical(as.character(isolate(input$sidebar_tabs) %||% "")[1], "bluechip")) {
             tryCatch(lab_im_ind_mcap_auto_armed(FALSE), error = function(e) NULL)
             return()
@@ -21205,43 +21213,90 @@ server <- function(input, output, session) {
             error = function(e) "US"
           )
           if (!identical(mm_now, mm_armed)) {
-            # Market flipped again before flush — allow the later arm to run.
             tryCatch(lab_im_ind_mcap_auto_armed(FALSE), error = function(e) NULL)
             return()
           }
-          # Prefer Ranking crawl first when both would contend the Starter worker.
-          if (isTRUE(isolate(lab_im_eval_busy())) &&
-              isTRUE(plan0$defer_ind_mcap_while_eval) &&
-              requireNamespace("later", quietly = TRUE)) {
+          snap0 <- tryCatch(isolate(lab_im_ind_mcap_snap()), error = function(e) NULL)
+          has_upside <- tryCatch(
+            lab_ind_mcap_snap_has_upside(snap0),
+            error = function(e) FALSE
+          )
+          has_snap <- is.data.frame(snap0) && nrow(snap0) > 0L
+          plan0 <- ynow_bluechip_first_load_plan(
+            has_ind_mcap_upside = has_upside,
+            snapshot_present = has_snap,
+            eval_busy = isTRUE(isolate(lab_im_eval_busy()))
+          )
+          delay_s <- as.numeric(plan0$ind_mcap_auto_delay_s %||% 0.8)[1]
+          if (!is.finite(delay_s) || delay_s < 0) delay_s <- 0.8
+          start_job <- function() {
+            if (!identical(as.character(isolate(input$sidebar_tabs) %||% "")[1], "bluechip")) {
+              tryCatch(lab_im_ind_mcap_auto_armed(FALSE), error = function(e) NULL)
+              return()
+            }
+            mm_job <- tryCatch(
+              normalize_market_mode(isolate(market_mode())),
+              error = function(e) "US"
+            )
+            if (!identical(mm_job, mm_armed)) {
+              # Market flipped again before flush — allow the later arm to run.
+              tryCatch(lab_im_ind_mcap_auto_armed(FALSE), error = function(e) NULL)
+              return()
+            }
+            # Catalog apply must land before this invoke. Otherwise the session
+            # is busy inside future() while the catalog result is waiting.
+            if (isTRUE(isolate(lab_im_catalog_busy())) &&
+                requireNamespace("later", quietly = TRUE)) {
+              if (exists("ynow_pload", mode = "function")) {
+                ynow_pload("n8_ind_mcap", "defer", list(
+                  reason = "catalog_busy",
+                  requeue_s = 0.45,
+                  scheduled_delay_s = delay_s
+                ))
+              }
+              later::later(start_job, delay = 0.45)
+              return()
+            }
+            # Prefer Ranking crawl first when both would contend the Starter worker.
+            if (isTRUE(isolate(lab_im_eval_busy())) &&
+                isTRUE(plan0$defer_ind_mcap_while_eval) &&
+                requireNamespace("later", quietly = TRUE)) {
+              if (exists("ynow_pload", mode = "function")) {
+                ynow_pload("n8_ind_mcap", "defer", list(
+                  reason = "eval_busy",
+                  requeue_s = 0.75,
+                  scheduled_delay_s = delay_s
+                ))
+              }
+              later::later(start_job, delay = 0.75)
+              return()
+            }
             if (exists("ynow_pload", mode = "function")) {
-              ynow_pload("n8_ind_mcap", "defer", list(
-                reason = "eval_busy",
-                requeue_s = 0.75,
-                scheduled_delay_s = delay_s
+              ynow_pload("n8_ind_mcap", "exec", list(
+                scheduled_delay_s = delay_s,
+                eval_busy = isTRUE(isolate(lab_im_eval_busy())),
+                catalog_busy = isTRUE(isolate(lab_im_catalog_busy()))
               ))
             }
-            later::later(start_job, delay = 0.75)
-            return()
+            .lab_im_start_ind_mcap_job(reason = "tab_or_market", notify_busy = FALSE)
           }
-          if (exists("ynow_pload", mode = "function")) {
-            ynow_pload("n8_ind_mcap", "exec", list(
-              scheduled_delay_s = delay_s,
-              eval_busy = isTRUE(isolate(lab_im_eval_busy()))
-            ))
+          if (requireNamespace("later", quietly = TRUE)) {
+            if (exists("ynow_pload", mode = "function")) {
+              ynow_pload("n8_ind_mcap", "schedule", list(
+                delay_s = delay_s,
+                has_upside = isTRUE(has_upside),
+                has_snap = isTRUE(has_snap)
+              ))
+            }
+            later::later(start_job, delay = delay_s)
+          } else {
+            start_job()
           }
-          .lab_im_start_ind_mcap_job(reason = "tab_or_market", notify_busy = FALSE)
         }
         if (requireNamespace("later", quietly = TRUE)) {
-          if (exists("ynow_pload", mode = "function")) {
-            ynow_pload("n8_ind_mcap", "schedule", list(
-              delay_s = delay_s,
-              has_upside = isTRUE(has_upside),
-              has_snap = isTRUE(has_snap)
-            ))
-          }
-          later::later(start_job, delay = delay_s)
+          later::later(arm, delay = 0.15)
         } else {
-          start_job()
+          arm()
         }
       }, once = TRUE)
     },

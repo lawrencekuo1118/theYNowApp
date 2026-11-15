@@ -1037,25 +1037,53 @@ lab_im_run_ind_mcap_job <- function(catlg,
   }
 
   # NULL = build off the session thread (ExtendedTask). Empty df = explicit miss.
+  # Prefer this worker's catalog memo (same key as the session full-market scope).
+  # Fall back to lab_build_industry_method_catalog when the memo is empty.
   if (is.null(catlg)) {
-    if (!exists("lab_build_industry_method_catalog", mode = "function")) {
-      return(empty_out("empty_catalog"))
-    }
+    boards_full <- if (identical(mm, "TW")) c("TWSE", "TPEX") else character(0)
+    via <- "build"
     t_cat <- unname(proc.time()[["elapsed"]])
     if (exists("ynow_pload", mode = "function")) {
       ynow_pload("n8_ind_mcap_catalog", "start", list(market = mm))
     }
-    catlg <- tryCatch(
-      lab_build_industry_method_catalog(
-        market_mode = mm,
-        boards = c("TWSE", "TPEX")
-      ),
-      error = function(e) NULL
-    )
+    if (exists("lab_im_catalog_memo_key", mode = "function") &&
+        exists("lab_im_catalog_memo_get", mode = "function")) {
+      hit <- tryCatch(
+        lab_im_catalog_memo_get(lab_im_catalog_memo_key(mm, boards_full)),
+        error = function(e) NULL
+      )
+      if (is.data.frame(hit) && nrow(hit) > 0L) {
+        catlg <- hit
+        via <- "memo"
+      }
+    }
+    if (!is.data.frame(catlg) || nrow(catlg) < 1L) {
+      if (exists("lab_get_industry_method_catalog", mode = "function")) {
+        catlg <- tryCatch(
+          lab_get_industry_method_catalog(market_mode = mm, boards = boards_full),
+          error = function(e) NULL
+        )
+        if (is.data.frame(catlg) && nrow(catlg) > 0L) via <- "build"
+      }
+    }
+    if (!is.data.frame(catlg) || nrow(catlg) < 1L) {
+      if (!exists("lab_build_industry_method_catalog", mode = "function")) {
+        return(empty_out("empty_catalog"))
+      }
+      via <- "build"
+      catlg <- tryCatch(
+        lab_build_industry_method_catalog(
+          market_mode = mm,
+          boards = c("TWSE", "TPEX")
+        ),
+        error = function(e) NULL
+      )
+    }
     if (exists("ynow_pload", mode = "function")) {
       ynow_pload("n8_ind_mcap_catalog", "end", list(
         elapsed_s = unname(proc.time()[["elapsed"]]) - t_cat,
-        nrow = if (is.data.frame(catlg)) nrow(catlg) else 0L
+        nrow = if (is.data.frame(catlg)) nrow(catlg) else 0L,
+        source = via
       ))
     }
   }

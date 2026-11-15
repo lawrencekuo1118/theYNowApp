@@ -1,9 +1,9 @@
 # Prospecting first-load trace (diagnostic only).
 # Default OFF. Set YNOW_PROSPECTING_LOAD_TRACE=1 before the R process starts.
 # Path: YNOW_PROSPECTING_LOAD_TRACE_PATH. If unset, the loading process publishes
-# one absolute /tmp file into the environment before future workers spawn.
-# Do not use tempdir(): each multisession worker has its own temp dir, so
-# catalog / F-Score lines would miss the session JSONL.
+# one absolute file (not tempdir(): each multisession worker has its own).
+# Futures also call ynow_pload_bind() so a worker writes that file even when
+# it was spawned before the env was set.
 # Opt-in experiment gates (also default OFF, no effect unless set):
 #   YNOW_PROSPECTING_SKIP_AUTO_EVAL=1
 #   YNOW_PROSPECTING_SKIP_IND_MCAP=1
@@ -19,21 +19,43 @@ ynow_pload_enabled <- function() {
   isTRUE(.ynow_pload_enabled_cache)
 }
 
+#' Absolute JSONL path shared by the session and its future workers.
+#' Pins YNOW_PROSPECTING_LOAD_TRACE_PATH in this process when it was empty.
+ynow_pload_path <- function() {
+  path <- Sys.getenv("YNOW_PROSPECTING_LOAD_TRACE_PATH", "")
+  if (!nzchar(path)) {
+    base <- if (dir.exists("/tmp")) {
+      "/tmp"
+    } else {
+      ad <- Sys.getenv("YNOW_APP_DIR", "")
+      if (nzchar(ad)) ad else getwd()
+    }
+    path <- file.path(base, sprintf("ynow-prospecting-load-%s.jsonl", Sys.getpid()))
+  }
+  if (!grepl("^(/|[A-Za-z]:[/\\\\])", path)) {
+    path <- normalizePath(path, winslash = "/", mustWork = FALSE)
+  }
+  Sys.setenv(YNOW_PROSPECTING_LOAD_TRACE_PATH = path)
+  path
+}
+
+#' Point this process at the session JSONL and drop the enabled-flag cache.
+#' Call from a future before ynow_pload(); workers do not see a later setenv.
+ynow_pload_bind <- function(path = "", run = "", on = FALSE) {
+  if (isTRUE(on)) Sys.setenv(YNOW_PROSPECTING_LOAD_TRACE = "1")
+  path <- if (is.null(path) || !length(path)) "" else as.character(path)[1]
+  run <- if (is.null(run) || !length(run)) "" else as.character(run)[1]
+  if (is.na(path)) path <- ""
+  if (is.na(run)) run <- ""
+  if (nzchar(path)) Sys.setenv(YNOW_PROSPECTING_LOAD_TRACE_PATH = path)
+  if (nzchar(run)) Sys.setenv(YNOW_PROSPECTING_LOAD_TRACE_RUN = run)
+  .ynow_pload_enabled_cache <<- NULL
+  invisible(TRUE)
+}
+
 ynow_prospecting_diag <- function(name) {
   v <- tolower(trimws(Sys.getenv(as.character(name)[1], "")))
   v %in% c("1", "true", "yes")
-}
-
-# One shared JSONL for the session and its future workers. Resolved once at
-# load (see the call below, which runs before .ynow_async_init) and stored in
-# the process environment so workers inherit the path instead of tempdir().
-ynow_pload_path <- function() {
-  path <- trimws(Sys.getenv("YNOW_PROSPECTING_LOAD_TRACE_PATH", ""))
-  if (!nzchar(path)) {
-    path <- sprintf("/tmp/ynow-prospecting-load-%s.jsonl", Sys.getpid())
-    Sys.setenv(YNOW_PROSPECTING_LOAD_TRACE_PATH = path)
-  }
-  path
 }
 
 ynow_pload <- function(node, phase = "mark", extra = NULL) {

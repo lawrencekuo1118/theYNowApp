@@ -187,6 +187,17 @@ source("price_alert.R", local = TRUE, encoding = "UTF-8")
 source("stock_screener.R", local = TRUE, encoding = "UTF-8")
 source("fs_locale_zh_tw.R", local = TRUE, encoding = "UTF-8")
 source("company_overview_locale.R", local = TRUE, encoding = "UTF-8")
+# Local multisession workers each get their own tempdir(), so a session-only
+# cache_disk is invisible to ExtendedTask jobs. Pin one host-local root before
+# the caches are created. Hosted Connect already shares /tmp/ynow_cache.
+# YNOW_CACHE_ROOT or YNOW_FORCE_SHARED_CACHE=0 still wins.
+if (!nzchar(Sys.getenv("YNOW_CACHE_ROOT", "")) &&
+    !identical(Sys.getenv("YNOW_FORCE_SHARED_CACHE"), "0") &&
+    !nzchar(Sys.getenv("SHINY_SERVER_VERSION", "")) &&
+    !grepl("shinyapps", Sys.getenv("HOSTNAME", ""), ignore.case = TRUE) &&
+    !grepl("/srv/connect/apps", tryCatch(getwd(), error = function(e) ""), fixed = TRUE)) {
+  Sys.setenv(YNOW_CACHE_ROOT = file.path("/tmp", "ynow_cache"))
+}
 source("web_crawler.R", local = TRUE, encoding = "UTF-8")
 source("tpex_financial.R", local = TRUE, encoding = "UTF-8")
 source("industry_standards.R", local = TRUE, encoding = "UTF-8")
