@@ -177,6 +177,8 @@ if (file.exists(python_path) && !on_shinyapps) {
 # ==========================================
 # local=TRUE：物件寫入「正在評估 global.R 的環境」（即 app.R 的評估環境）
 source("debug_helpers.R", local = TRUE, encoding = "UTF-8")
+# First-load JSONL tracer. No-op unless YNOW_PROSPECTING_LOAD_TRACE=1.
+source("prospecting_load_trace.R", local = TRUE, encoding = "UTF-8")
 source("setup.R", local = TRUE, encoding = "UTF-8")
 source("market_profile.R", local = TRUE, encoding = "UTF-8")
 source("ui_locale.R", local = TRUE, encoding = "UTF-8")

@@ -88,6 +88,42 @@ server <- function(input, output, session) {
   # instead of forcing the user onto the gray "Disconnected / Reload" overlay.
   tryCatch(session$allowReconnect("force"), error = function(e) NULL)
 
+  if (exists("ynow_pload_enabled", mode = "function") && isTRUE(ynow_pload_enabled())) {
+    .ynow_flush_i <- 0L
+    ynow_pload("session", "start", list(
+      plan = tryCatch({
+        p <- future::plan()
+        paste(class(p), collapse = "/")
+      }, error = function(e) "unknown")
+    ))
+    session$onFlush(function() {
+      .ynow_flush_i <<- .ynow_flush_i + 1L
+      tab <- tryCatch(as.character(isolate(input$sidebar_tabs) %||% "")[1], error = function(e) "")
+      ynow_pload("flush", "start", list(i = .ynow_flush_i, tab = tab))
+    }, once = FALSE)
+    session$onFlushed(function() {
+      ynow_pload("flush", "end", list(i = .ynow_flush_i))
+    }, once = FALSE)
+  }
+  if (exists("ynow_prospecting_diag", mode = "function") &&
+      isTRUE(ynow_prospecting_diag("YNOW_PROSPECTING_PREWARM_CATALOG")) &&
+      requireNamespace("later", quietly = TRUE)) {
+    later::later(function() {
+      if (exists("ynow_pload", mode = "function")) ynow_pload("catalog_prewarm", "start", list(market = "US"))
+      t0 <- unname(proc.time()[["elapsed"]])
+      out <- tryCatch(
+        lab_get_industry_method_catalog(market_mode = "US", boards = character(0), force = FALSE),
+        error = function(e) NULL
+      )
+      if (exists("ynow_pload", mode = "function")) {
+        ynow_pload("catalog_prewarm", "end", list(
+          elapsed_s = unname(proc.time()[["elapsed"]]) - t0,
+          nrow = if (is.data.frame(out)) nrow(out) else 0L
+        ))
+      }
+    }, delay = 0.2)
+  }
+
   # Sidebar tab label busy dots (JS `ynowTabBusy` → animated 「…」 on menu item)
   .ynow_set_tab_busy <- function(tab, busy = TRUE) {
     tab <- as.character(tab %||% "")[1]
@@ -4933,6 +4969,8 @@ server <- function(input, output, session) {
       },
       bluechip = function() {
         # Load chain-rank snapshot once when user opens Blue Chip (not every connect).
+        t0 <- unname(proc.time()[["elapsed"]])
+        if (exists("ynow_pload", mode = "function")) ynow_pload("n5_snapshot", "start")
         mm <- tryCatch(
           normalize_market_mode(isolate(market_mode())),
           error = function(e) "US"
@@ -4942,6 +4980,13 @@ server <- function(input, output, session) {
           error = function(e) lab_ind_mcap_chain_snapshot_empty()
         )
         lab_im_ind_mcap_snap(snap)
+        if (exists("ynow_pload", mode = "function")) {
+          ynow_pload("n5_snapshot", "end", list(
+            elapsed_s = unname(proc.time()[["elapsed"]]) - t0,
+            nrow = if (is.data.frame(snap)) nrow(snap) else 0L,
+            market = mm
+          ))
+        }
         invisible(TRUE)
       },
       asset_transmission = function() {
@@ -4992,6 +5037,9 @@ server <- function(input, output, session) {
         )
       }
       push_loc()
+      if (exists("ynow_pload", mode = "function")) {
+        ynow_pload("n3_after_mount", "exec", list(tab = as.character(tab %||% "")[1]))
+      }
       if (requireNamespace("later", quietly = TRUE)) {
         later::later(function() {
           tryCatch(
@@ -5107,6 +5155,9 @@ server <- function(input, output, session) {
   # worker slot. Results from invalidated workers are discarded by generation.
   observeEvent(input$sidebar_tabs, {
     tab <- as.character(input$sidebar_tabs %||% "")[1]
+    if (exists("ynow_pload", mode = "function")) {
+      ynow_pload("n0_sidebar_input", "exec", list(tab = tab))
+    }
     if (!nzchar(tab) || is.na(tab)) return()
     plan <- ynow_tab_priority_plan(tab, .ynow_ticker_refresh_tabs)
     .ynow_cancel_other_tab_work(plan$tab)
@@ -19310,6 +19361,13 @@ server <- function(input, output, session) {
     lab_im_catalog_df(catlg)
     if (nzchar(key)) lab_im_catalog_key(key)
     lab_im_catalog_nonce(isolate(lab_im_catalog_nonce()) + 1L)
+    if (exists("ynow_pload", mode = "function")) {
+      ynow_pload("n6_catalog_finish", "exec", list(
+        ok = isTRUE(out$ok),
+        nrow = nrow(catlg),
+        reason = as.character(out$reason %||% "")[1]
+      ))
+    }
     if (isTRUE(isolate(lab_im_run_after_catalog()))) {
       if (nrow(catlg) > 0L) {
         lab_im_run_after_catalog(FALSE)
@@ -19337,6 +19395,9 @@ server <- function(input, output, session) {
     if (!isTRUE(force) && exists("lab_im_catalog_memo_get", mode = "function")) {
       hit <- tryCatch(lab_im_catalog_memo_get(key), error = function(e) NULL)
       if (is.data.frame(hit) && nrow(hit) > 0L) {
+        if (exists("ynow_pload", mode = "function")) {
+          ynow_pload("n6_catalog_memo", "hit", list(nrow = nrow(hit), key = key))
+        }
         lab_im_catalog_df(hit)
         lab_im_catalog_key(key)
         lab_im_catalog_nonce(isolate(lab_im_catalog_nonce()) + 1L)
@@ -19359,6 +19420,9 @@ server <- function(input, output, session) {
     lab_im_catalog_busy(TRUE)
     lab_im_catalog_notify_fail(isTRUE(notify_fail))
     if (!is.null(lab_im_catalog_task)) {
+      if (exists("ynow_pload", mode = "function")) {
+        ynow_pload("n6_catalog_invoke", "exec", list(key = key, market = mode))
+      }
       tryCatch(
         lab_im_catalog_task$invoke(
           market_mode = mode,
@@ -19656,7 +19720,14 @@ server <- function(input, output, session) {
         )
       )
     } else {
+      t_uni <- unname(proc.time()[["elapsed"]])
       meta <- tryCatch(lab_us_universe_meta(), error = function(e) NULL)
+      if (exists("ynow_pload", mode = "function") && isTRUE(ynow_pload_enabled())) {
+        ynow_pload("n4b_universe_meta", "end", list(
+          elapsed_s = unname(proc.time()[["elapsed"]]) - t_uni,
+          n = if (is.null(meta)) 0L else as.integer(meta$n %||% 0L)
+        ))
+      }
       if (is.null(meta) || as.integer(meta$n %||% 0L) < 1L) {
         meta <- tryCatch(lab_sp500_universe_meta(), error = function(e) NULL)
       }
@@ -19847,6 +19918,13 @@ server <- function(input, output, session) {
         error = function(e) FALSE
       )
       if (!isTRUE(mounted)) return()
+      if (exists("ynow_prospecting_diag", mode = "function") &&
+          isTRUE(ynow_prospecting_diag("YNOW_PROSPECTING_DEFER_CATALOG"))) {
+        if (exists("ynow_pload", mode = "function")) {
+          ynow_pload("n6_catalog_ensure", "skip", list(reason = "diag_defer"))
+        }
+        return()
+      }
       key <- tryCatch(.lab_im_catalog_scope_key(), error = function(e) "")
       cur <- isolate(lab_im_catalog_df())
       cur_key <- as.character(isolate(lab_im_catalog_key()) %||% "")[1]
@@ -19874,7 +19952,15 @@ server <- function(input, output, session) {
           tryCatch(lab_im_catalog_auto_armed(FALSE), error = function(e) NULL)
         }
         if (requireNamespace("later", quietly = TRUE)) {
-          later::later(run_ensure, delay = delay_s)
+          if (exists("ynow_pload", mode = "function")) {
+            ynow_pload("n6_catalog_ensure", "schedule", list(delay_s = delay_s))
+          }
+          later::later(function() {
+            if (exists("ynow_pload", mode = "function")) {
+              ynow_pload("n6_catalog_ensure", "exec", list(delay_s = delay_s))
+            }
+            run_ensure()
+          }, delay = delay_s)
         } else {
           run_ensure()
         }
@@ -19897,6 +19983,13 @@ server <- function(input, output, session) {
         error = function(e) FALSE
       )
       if (!isTRUE(mounted)) return()
+      if (exists("ynow_prospecting_diag", mode = "function") &&
+          isTRUE(ynow_prospecting_diag("YNOW_PROSPECTING_SKIP_AUTO_EVAL"))) {
+        if (exists("ynow_pload", mode = "function")) {
+          ynow_pload("n7_auto_eval", "skip", list(reason = "diag_skip"))
+        }
+        return()
+      }
       scores <- isolate(lab_im_scores())
       if (is.data.frame(scores) && nrow(scores) > 0L) return()
       if (isTRUE(isolate(lab_im_eval_busy())) || isTRUE(isolate(lab_im_universe_busy()))) return()
@@ -19927,7 +20020,15 @@ server <- function(input, output, session) {
           lab_im_run_pulse(isolate(as.integer(lab_im_run_pulse()) %||% 0L) + 1L)
         }
         if (requireNamespace("later", quietly = TRUE)) {
-          later::later(start_eval, delay = delay_s)
+          if (exists("ynow_pload", mode = "function")) {
+            ynow_pload("n7_auto_eval", "schedule", list(delay_s = delay_s))
+          }
+          later::later(function() {
+            if (exists("ynow_pload", mode = "function")) {
+              ynow_pload("n7_auto_eval", "exec", list(delay_s = delay_s))
+            }
+            start_eval()
+          }, delay = delay_s)
         } else {
           start_eval()
         }
@@ -20034,6 +20135,13 @@ server <- function(input, output, session) {
     }
     lab_im_eval_busy(TRUE)
     lab_im_eval_pending(NULL)
+    if (exists("ynow_pload", mode = "function")) {
+      ynow_pload("n7_eval_invoke", "exec", list(
+        eval_n = suppressWarnings(as.numeric(args$eval_n)[1]),
+        display_n = suppressWarnings(as.numeric(args$display_n)[1]),
+        nrow = if (is.data.frame(args$catlg)) nrow(args$catlg) else 0L
+      ))
+    }
     .ynow_inflight_gen$lab_im_eval <- as.integer(args$.gen %||% 0L)[1]
     if (!is.null(lab_im_bc_task)) {
       tryCatch(
@@ -20107,6 +20215,13 @@ server <- function(input, output, session) {
       return(invisible(TRUE))
     }
     .lab_im_apply_eval_result(out)
+    if (exists("ynow_pload", mode = "function")) {
+      ynow_pload("n7_eval_finish", "exec", list(
+        ok = isTRUE(out$ok),
+        nrow = if (is.data.frame(out$scores)) nrow(out$scores) else 0L,
+        reason = as.character(out$reason %||% "")[1]
+      ))
+    }
     invisible(TRUE)
   }
 
@@ -20117,6 +20232,14 @@ server <- function(input, output, session) {
       universe_busy = isTRUE(isolate(lab_im_universe_busy())),
       catalog_busy = isTRUE(isolate(lab_im_catalog_busy()))
     )
+    if (exists("ynow_pload", mode = "function")) {
+      ynow_pload("n7_eval_gate", "exec", list(
+        gate = as.character(gate)[1],
+        nrow = if (is.data.frame(catlg)) nrow(catlg) else 0L,
+        catalog_busy = isTRUE(isolate(lab_im_catalog_busy())),
+        eval_busy = isTRUE(isolate(lab_im_eval_busy()))
+      ))
+    }
     if (identical(gate, "wait_universe")) {
       showNotification(
         tryCatch(.ui_msg("lab_im_quality_busy"), error = function(e) "Universe refresh in progress…"),
@@ -20377,7 +20500,14 @@ server <- function(input, output, session) {
     } else {
       NULL
     }
+    t_qs <- unname(proc.time()[["elapsed"]])
     snap <- tryCatch(lab_load_quality_snapshot(mm), error = function(e) NULL)
+    if (exists("ynow_pload", mode = "function") && isTRUE(ynow_pload_enabled())) {
+      ynow_pload("n4_quality_snapshot", "end", list(
+        elapsed_s = unname(proc.time()[["elapsed"]]) - t_qs,
+        market = mm
+      ))
+    }
     gated <- tryCatch(
       lab_apply_quality_snapshot(
         if (is.data.frame(struct)) struct$ticker else character(0),
@@ -20820,6 +20950,12 @@ server <- function(input, output, session) {
     }
     lab_im_ind_mcap_busy(TRUE)
     lab_im_ind_mcap_pending(NULL)
+    if (exists("ynow_pload", mode = "function")) {
+      ynow_pload("n8_ind_mcap_invoke", "exec", list(
+        market = as.character(args$market_mode %||% "")[1],
+        per_chain = as.integer(args$per_chain %||% 2L)[1]
+      ))
+    }
     .ynow_inflight_gen$lab_im_ind_mcap <- as.integer(args$.gen %||% 0L)[1]
     if (!is.null(lab_im_ind_mcap_task)) {
       tryCatch(
@@ -20875,6 +21011,13 @@ server <- function(input, output, session) {
         .lab_im_apply_ind_mcap_result(out, notify = TRUE),
         error = function(e) NULL
       )
+    }
+    if (exists("ynow_pload", mode = "function")) {
+      ynow_pload("n8_ind_mcap_finish", "exec", list(
+        ok = isTRUE(out$ok),
+        reason = as.character(out$reason %||% "")[1],
+        n_eval = suppressWarnings(as.integer(out$n_eval %||% 0L)[1])
+      ))
     }
     invisible(TRUE)
   }
@@ -21024,6 +21167,13 @@ server <- function(input, output, session) {
         error = function(e) FALSE
       )
       if (!isTRUE(mounted)) return()
+      if (exists("ynow_prospecting_diag", mode = "function") &&
+          isTRUE(ynow_prospecting_diag("YNOW_PROSPECTING_SKIP_IND_MCAP"))) {
+        if (exists("ynow_pload", mode = "function")) {
+          ynow_pload("n8_ind_mcap", "skip", list(reason = "diag_skip"))
+        }
+        return()
+      }
       if (isTRUE(isolate(lab_im_ind_mcap_auto_armed()))) return()
       if (isTRUE(isolate(lab_im_ind_mcap_busy()))) return()
       lab_im_ind_mcap_auto_armed(TRUE)
@@ -21063,12 +21213,32 @@ server <- function(input, output, session) {
           if (isTRUE(isolate(lab_im_eval_busy())) &&
               isTRUE(plan0$defer_ind_mcap_while_eval) &&
               requireNamespace("later", quietly = TRUE)) {
+            if (exists("ynow_pload", mode = "function")) {
+              ynow_pload("n8_ind_mcap", "defer", list(
+                reason = "eval_busy",
+                requeue_s = 0.75,
+                scheduled_delay_s = delay_s
+              ))
+            }
             later::later(start_job, delay = 0.75)
             return()
+          }
+          if (exists("ynow_pload", mode = "function")) {
+            ynow_pload("n8_ind_mcap", "exec", list(
+              scheduled_delay_s = delay_s,
+              eval_busy = isTRUE(isolate(lab_im_eval_busy()))
+            ))
           }
           .lab_im_start_ind_mcap_job(reason = "tab_or_market", notify_busy = FALSE)
         }
         if (requireNamespace("later", quietly = TRUE)) {
+          if (exists("ynow_pload", mode = "function")) {
+            ynow_pload("n8_ind_mcap", "schedule", list(
+              delay_s = delay_s,
+              has_upside = isTRUE(has_upside),
+              has_snap = isTRUE(has_snap)
+            ))
+          }
           later::later(start_job, delay = delay_s)
         } else {
           start_job()
@@ -21161,6 +21331,17 @@ server <- function(input, output, session) {
 
   output$lab_im_ind_mcap_treemap <- plotly::renderPlotly({
     req(identical(.ynow_sidebar_tab(), "bluechip"))
+    t0 <- unname(proc.time()[["elapsed"]])
+    if (exists("ynow_pload", mode = "function") && isTRUE(ynow_pload_enabled())) {
+      ynow_pload("n4_treemap_render", "start")
+    }
+    on.exit({
+      if (exists("ynow_pload", mode = "function") && isTRUE(ynow_pload_enabled())) {
+        ynow_pload("n4_treemap_render", "end", list(
+          elapsed_s = unname(proc.time()[["elapsed"]]) - t0
+        ))
+      }
+    }, add = TRUE)
     board <- .lab_im_ind_mcap_board()
     loc <- board$loc %||% "zh-TW"
     mm <- tryCatch(normalize_market_mode(market_mode()), error = function(e) "US")

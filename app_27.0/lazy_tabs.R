@@ -66,7 +66,22 @@
         invisible(refresh_tokens[[tab]])
         if (is.null(cache[[tab]])) {
           cache[[tab]] <- tryCatch(
-            build(),
+            {
+              if (identical(tab, "bluechip") &&
+                  exists("ynow_pload_enabled", mode = "function") &&
+                  isTRUE(ynow_pload_enabled())) {
+                t0 <- unname(proc.time()[["elapsed"]])
+                ynow_pload("n2_shell_build", "start")
+                ui <- build()
+                ynow_pload(
+                  "n2_shell_build", "end",
+                  list(elapsed_s = unname(proc.time()[["elapsed"]]) - t0)
+                )
+                ui
+              } else {
+                build()
+              }
+            },
             error = function(e) {
               htmltools::tags$div(
                 class = "alert alert-warning",
@@ -87,6 +102,10 @@
       if (!nzchar(tab) || !tab %in% names(builders)) return()
       if (isTRUE(mounted[[tab]])) return()
       mounted[[tab]] <- TRUE
+      if (identical(tab, "bluechip") &&
+          exists("ynow_pload", mode = "function")) {
+        ynow_pload("n1_lazy_flag", "exec", list(tab = tab))
+      }
       # Show the host before the mount hook so this observer returns quickly.
       # Deferred hooks must not block the next sidebar_tabs event.
       flags[[tab]] <- TRUE

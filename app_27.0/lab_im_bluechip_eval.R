@@ -585,6 +585,10 @@ lab_im_run_catalog_job <- function(market_mode = "US",
   b <- as.character(boards %||% character(0))
   k <- as.character(key %||% "")[1]
   if (!nzchar(k)) k <- lab_im_catalog_memo_key(mm, b)
+  t0 <- unname(proc.time()[["elapsed"]])
+  if (exists("ynow_pload", mode = "function")) {
+    ynow_pload("n6_catalog_job", "start", list(key = k, market = mm, force = isTRUE(force)))
+  }
   if (isTRUE(force)) {
     tryCatch(lab_im_catalog_memo_clear(k), error = function(e) NULL)
   }
@@ -592,6 +596,13 @@ lab_im_run_catalog_job <- function(market_mode = "US",
     lab_get_industry_method_catalog(market_mode = mm, boards = b, force = isTRUE(force)),
     error = function(e) list(.error = conditionMessage(e))
   )
+  if (exists("ynow_pload", mode = "function")) {
+    ynow_pload("n6_catalog_job", "end", list(
+      key = k,
+      elapsed_s = unname(proc.time()[["elapsed"]]) - t0,
+      nrow = if (is.data.frame(out)) nrow(out) else 0L
+    ))
+  }
   if (is.list(out) && !is.data.frame(out) && !is.null(out$.error)) {
     return(list(ok = FALSE, reason = out$.error, catlg = data.frame(), key = k, market_mode = mm))
   }
@@ -874,11 +885,16 @@ lab_screen_tickers_fscore <- function(tickers, progress_cb = NULL, max_n = Inf,
   }
   n <- length(tks)
   rows <- vector("list", n)
+  trace_on <- exists("ynow_pload_enabled", mode = "function") && isTRUE(ynow_pload_enabled())
+  tick_elapsed <- if (isTRUE(trace_on)) numeric(n) else NULL
+  screen_t0 <- if (isTRUE(trace_on)) unname(proc.time()[["elapsed"]]) else NA_real_
   for (i in seq_along(tks)) {
     if (is.function(progress_cb)) {
       tryCatch(progress_cb(i, n, tks[[i]]), error = function(e) NULL)
     }
+    tk_t0 <- if (isTRUE(trace_on)) unname(proc.time()[["elapsed"]]) else NA_real_
     ev <- lab_evaluate_ticker_fscore(tks[[i]], industry_key = ind_keys[[i]], method = meths[[i]])
+    if (isTRUE(trace_on)) tick_elapsed[[i]] <- unname(proc.time()[["elapsed"]]) - tk_t0
     rows[[i]] <- data.frame(
       ticker = ev$ticker,
       ok = isTRUE(ev$ok),
@@ -916,6 +932,19 @@ lab_screen_tickers_fscore <- function(tickers, progress_cb = NULL, max_n = Inf,
     error = character(0),
     stringsAsFactors = FALSE
   )
+  if (isTRUE(trace_on) && n > 0L && exists("ynow_pload", mode = "function")) {
+    ord <- order(-tick_elapsed)
+    top <- head(ord, 5L)
+    slow <- paste(sprintf("%s:%.3f", tks[top], tick_elapsed[top]), collapse = ",")
+    ynow_pload("fscore_batch", "end", list(
+      n = n,
+      elapsed_s = unname(proc.time()[["elapsed"]]) - screen_t0,
+      p50_s = stats::median(tick_elapsed),
+      p90_s = as.numeric(stats::quantile(tick_elapsed, 0.9, names = FALSE)),
+      max_s = max(tick_elapsed),
+      slowest = slow
+    ))
+  }
   if (n == 0L) return(empty)
   do.call(rbind, rows)
 }
@@ -1021,6 +1050,13 @@ lab_im_run_eval_job <- function(catlg,
     )
   }
   cols <- intersect(c("ticker", "industry_key", "primary"), names(pool))
+  if (exists("ynow_pload", mode = "function")) {
+    ynow_pload("n7_eval_job", "screen_start", list(
+      n_pool = nrow(pool),
+      eval_n = suppressWarnings(as.numeric(eval_n)[1]),
+      n_filtered = n_filtered
+    ))
+  }
   scores <- lab_screen_tickers_fscore(
     pool[, cols, drop = FALSE],
     max_n = eval_n,
