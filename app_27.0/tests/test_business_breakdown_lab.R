@@ -1471,19 +1471,40 @@ check("empty Section IV groups collapse when packs are ineligible", {
     isTRUE(!.bblab_orders_group_visible("orders", empty_oc, empty_or, FALSE)) &&
     isTRUE(!.bblab_orders_group_visible("orders", empty_oc, empty_or, TRUE)) &&
     isTRUE(!.bblab_orders_group_visible("context", empty_oc, empty_or, FALSE)) &&
-    isTRUE(!.bblab_orders_group_visible("context", empty_oc, empty_or, TRUE)) &&
+    # Start analysis must always mount context (waiting / empty) — never silent.
+    isTRUE(.bblab_orders_group_visible("context", empty_oc, empty_or, TRUE)) &&
     isTRUE(.bblab_orders_group_visible("markets", filled_oc, filled_or, FALSE)) &&
     isTRUE(.bblab_orders_group_visible("customers", filled_oc, filled_or, FALSE)) &&
     isTRUE(!.bblab_orders_group_visible("suppliers", filled_oc, filled_or, FALSE)) &&
     isTRUE(.bblab_orders_group_visible("orders", filled_oc, filled_or, TRUE)) &&
     isTRUE(!.bblab_orders_group_visible("orders", filled_oc, filled_or, FALSE)) &&
     isTRUE(.bblab_orders_group_visible("context", filled_oc, filled_or, TRUE)) &&
+    identical(.bblab_or_run_status_key(FALSE, TRUE, TRUE, empty_or), "bblab_or_idle") &&
+    identical(.bblab_or_run_status_key(TRUE, FALSE, FALSE, NULL), "bblab_or_need_ticker") &&
+    identical(.bblab_or_run_status_key(TRUE, TRUE, FALSE, NULL), "bblab_or_waiting") &&
+    identical(.bblab_or_run_status_key(TRUE, TRUE, TRUE, NULL), "bblab_or_waiting") &&
+    identical(.bblab_or_run_status_key(TRUE, TRUE, TRUE, empty_or), "bblab_or_empty") &&
+    identical(.bblab_or_run_status_key(TRUE, TRUE, TRUE, filled_or), "bblab_or_ready") &&
+    identical(
+      .UI_STRINGS$en$bblab_or_need_ticker,
+      "Enter a ticker in the header Ticker / Stock Code field, then press Start analysis."
+    ) &&
+    grepl("已揭露", .UI_STRINGS$`zh-TW`$bblab_or_empty, fixed = TRUE) &&
+    !grepl("[\u4e00-\u9fff]", .UI_STRINGS$en$bblab_or_empty, perl = TRUE) &&
+    {
+      html_wait <- paste(as.character(bblab_order_research_meta_ui(NULL, "en", TRUE)), collapse = " ")
+      grepl("Statements for this ticker are not ready yet", html_wait, fixed = TRUE) &&
+        grepl("ynow_bblab_or_meta_status", html_wait, fixed = TRUE) &&
+        is.null(bblab_order_research_meta_ui(NULL, "en", FALSE))
+    } &&
     isTRUE(.bblab_revenue_mix_visible(list(chart = list(eligible = TRUE, slices = list(list(id = "a")))))) &&
     isTRUE(!.bblab_revenue_mix_visible(list(chart = list(eligible = FALSE, slices = list())))) &&
     isTRUE(.bblab_cards_visible(list(businesses = list(list(id = "x"))))) &&
     isTRUE(!.bblab_cards_visible(list(businesses = list()))) &&
     isTRUE(!.bblab_shared_visible(list(shared_corporate = list()))) &&
     grepl("donut_shell", mod_src, fixed = TRUE) &&
+    grepl("order_research_status", mod_src, fixed = TRUE) &&
+    grepl(".bblab_or_run_status_key", mod_src, fixed = TRUE) &&
     grepl("Groups with no disclosed data collapse", .UI_STRINGS$en$bblab_orders_help, fixed = TRUE) &&
     grepl("收合", .UI_STRINGS$`zh-TW`$bblab_orders_help, fixed = TRUE)
 })

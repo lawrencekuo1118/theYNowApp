@@ -72,7 +72,43 @@ if (!exists("%||%", mode = "function")) {
   any(vapply(points, function(p) is.finite(.bblab_num(p$value)), logical(1)))
 }
 
+#' Locale key for the Section IV Start-analysis status line (never silent).
+#'
+#' @param started whether Start analysis has been pressed
+#' @param has_ticker whether a ticker/stock code is present
+#' @param has_result whether lab_result is available
+#' @param order_research order-research pack (or NULL)
+#' @return character locale key
+.bblab_or_run_status_key <- function(started = FALSE,
+                                     has_ticker = FALSE,
+                                     has_result = FALSE,
+                                     order_research = NULL) {
+  if (!isTRUE(started)) return("bblab_or_idle")
+  if (!isTRUE(has_ticker)) return("bblab_or_need_ticker")
+  if (!isTRUE(has_result)) return("bblab_or_waiting")
+  or <- order_research
+  if (!is.list(or)) return("bblab_or_waiting")
+  has_facts <- .bblab_or_focus_has_finite_facts(or, "orders") ||
+    .bblab_or_focus_has_finite_facts(or, "customers") ||
+    .bblab_or_focus_has_finite_facts(or, "suppliers") ||
+    .bblab_or_chart_has_points(or, "orders") ||
+    .bblab_or_chart_has_points(or, "customers")
+  stack <- or$source_stack %||% list()
+  has_stack <- any(vapply(stack, function(t) isTRUE(t$contributed), logical(1)))
+  xchk <- or$cross_check %||% list()
+  has_xchk <- any(vapply(xchk, function(item) is.finite(.bblab_num(item$value)), logical(1)))
+  has_note <- is.list(or$earnings_call) ||
+    (exists("ynow_supply_report_has_content", mode = "function") &&
+       isTRUE(ynow_supply_report_has_content(or$supply_report)))
+  if (isTRUE(has_facts) || isTRUE(has_stack) || isTRUE(has_xchk) || isTRUE(has_note)) {
+    return("bblab_or_ready")
+  }
+  "bblab_or_empty"
+}
+
 #' Gate Section IV analysis groups — hide bordered chrome when there is nothing to show.
+#' After Start analysis, the context group always mounts so waiting/empty copy is visible
+#' (never a silent no-op when the button is pressed).
 .bblab_orders_group_visible <- function(group,
                                         order_concentration = NULL,
                                         order_research = NULL,
@@ -104,12 +140,14 @@ if (!exists("%||%", mode = "function")) {
     ))
   }
   if (identical(group, "context")) {
+    # Start analysis must always surface context (waiting / empty / sources).
+    if (started) return(TRUE)
     show_note <- is.list(or) && (
       is.list(or$earnings_call) ||
-        isTRUE(ynow_supply_report_has_content(or$supply_report))
+        (exists("ynow_supply_report_has_content", mode = "function") &&
+           isTRUE(ynow_supply_report_has_content(or$supply_report)))
     )
-    show_detail <- started && is.list(or) && length(or$kpis) > 0L
-    return(isTRUE(show_note) || isTRUE(show_detail))
+    return(isTRUE(show_note))
   }
   FALSE
 }
@@ -727,7 +765,8 @@ business_breakdown_lab_ui <- function(id = "bblab") {
               ns("order_research_run"),
               label = tags$span(id = "ynow_bblab_or_start", "Start analysis"),
               class = "btn-primary btn-sm"
-            )
+            ),
+            uiOutput(ns("order_research_status"))
           ),
           tags$div(
             class = "ynow-bblab-orders__groups",
@@ -889,9 +928,20 @@ bblab_order_research_focus_ui <- function(pack, locale = "en", started = FALSE,
 #' Sources, cross-check, and order-focus earnings cues (no focus buckets).
 bblab_order_research_meta_ui <- function(pack, locale = "en", started = FALSE) {
   msg <- function(key) .bblab_ui(key, locale)
-  if (!is.list(pack)) return(NULL)
+  if (!is.list(pack)) {
+    if (!isTRUE(started)) return(NULL)
+    return(tags$p(
+      class = "help-block",
+      id = "ynow_bblab_or_meta_status",
+      msg("bblab_or_waiting")
+    ))
+  }
   if (isTRUE(started) && !length(pack$kpis)) {
-    return(tags$p(class = "help-block", msg("bblab_or_waiting")))
+    return(tags$p(
+      class = "help-block",
+      id = "ynow_bblab_or_meta_status",
+      msg("bblab_or_waiting")
+    ))
   }
   stack_src <- Filter(function(t) isTRUE(t$contributed), pack$source_stack %||% list())
   stack_bits <- lapply(stack_src, function(t) {
@@ -1220,10 +1270,16 @@ business_breakdown_lab_server <- function(id = "bblab",
         isTRUE(bblab_clearly_not_listed_tw_us(raw)) ||
           isTRUE(bblab_clearly_not_listed_tw_us(tk))
       )
+      prev_tk <- tryCatch(as.character(isolate(lab_ticker()) %||% "")[1], error = function(e) "")
+      if (length(prev_tk) != 1L || is.na(prev_tk)) prev_tk <- ""
+      # Reset Start only when the ticker identity changes — same-ticker reloads
+      # (frequency / tab revisit) must not silently undo a Start click.
+      if (!identical(prev_tk, tk)) {
+        or_started(FALSE)
+      }
       lab_ticker(tk)
       lab_result(NULL)
       lab_codes(character(0))
-      or_started(FALSE)
       source_status("running")
       focus_id(NULL)
 
@@ -2010,7 +2066,71 @@ business_breakdown_lab_server <- function(id = "bblab",
 
     observeEvent(input$order_research_run, {
       or_started(TRUE)
+      tk_now <- tryCatch(as.character(lab_ticker() %||% "")[1], error = function(e) "")
+      if (length(tk_now) != 1L || is.na(tk_now)) tk_now <- ""
+      if (!nzchar(tk_now)) {
+        # Shared header ticker may exist before lab_ticker is set — read parent too.
+        parent_tk <- tryCatch({
+          v <- if (is.reactive(current_ticker_rv)) current_ticker_rv() else NULL
+          if (is.null(v) || length(v) < 1L || (length(v) == 1L && is.na(v))) {
+            ""
+          } else {
+            trimws(as.character(v[[1]]))
+          }
+        }, error = function(e) "")
+        if (!nzchar(parent_tk)) {
+          showNotification(
+            ui_msg("bblab_or_need_ticker"),
+            type = "message",
+            duration = 6
+          )
+          return(invisible(NULL))
+        }
+      }
+      if (is.null(lab_result())) {
+        showNotification(
+          ui_msg("bblab_or_waiting"),
+          type = "message",
+          duration = 6
+        )
+      }
     }, ignoreInit = TRUE)
+
+    output$order_research_status <- renderUI({
+      started <- isTRUE(or_started())
+      tk_now <- tryCatch(as.character(lab_ticker() %||% "")[1], error = function(e) "")
+      if (length(tk_now) != 1L || is.na(tk_now)) tk_now <- ""
+      if (!nzchar(tk_now)) {
+        parent_tk <- tryCatch({
+          v <- if (is.reactive(current_ticker_rv)) current_ticker_rv() else NULL
+          if (is.null(v) || length(v) < 1L || (length(v) == 1L && is.na(v))) {
+            ""
+          } else {
+            trimws(as.character(v[[1]]))
+          }
+        }, error = function(e) "")
+        tk_now <- parent_tk
+      }
+      res <- lab_result()
+      key <- .bblab_or_run_status_key(
+        started = started,
+        has_ticker = nzchar(tk_now),
+        has_result = is.list(res),
+        order_research = .or_pack()
+      )
+      # Idle copy already lives in the toolbar help; keep the status line for
+      # post-Start feedback so a click is never a silent no-op.
+      if (identical(key, "bblab_or_idle")) return(NULL)
+      tags$p(
+        class = paste(
+          "help-block",
+          "ynow-bblab-orders__status",
+          paste0("ynow-bblab-orders__status--", gsub("^bblab_or_", "", key, perl = TRUE))
+        ),
+        id = "ynow_bblab_or_status",
+        ui_msg(key)
+      )
+    })
 
     output$orders_group_orders <- renderUI({
       if (!isTRUE(.orders_group_gate("orders"))) return(NULL)
@@ -2162,6 +2282,15 @@ business_breakdown_lab_server <- function(id = "bblab",
     output$orders_group_context <- renderUI({
       if (!isTRUE(.orders_group_gate("context"))) return(NULL)
       started <- isTRUE(or_started())
+      pack <- .or_pack()
+      meta <- bblab_order_research_meta_ui(pack, loc(), started)
+      if (is.null(meta) && isTRUE(started)) {
+        meta <- tags$p(
+          class = "help-block",
+          id = "ynow_bblab_or_meta_status",
+          ui_msg("bblab_or_empty")
+        )
+      }
       tags$div(
         class = "ynow-bblab-orders__group ynow-bblab-orders__context",
         `data-orders-group` = "context",
@@ -2170,7 +2299,7 @@ business_breakdown_lab_server <- function(id = "bblab",
           class = "ynow-bblab-subhead",
           ui_msg(if (started) "bblab_or_title" else "bblab_or_supply_report_title")
         ),
-        bblab_order_research_meta_ui(.or_pack(), loc(), started)
+        meta
       )
     })
 
