@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12824935
+bundleId=12825339
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/  # pragma: allowlist secret
-aligned_git=e2bc2216544ff643935976bd0bf8f88e944f01a9
-commit=e2bc2216544ff643935976bd0bf8f88e944f01a9
-short=e2bc2216
-message=chore: bump display version to v28.49
-captured_at=2026-11-15T09:24:14Z
-display_version=v28.49
-note=Shipped v28.49 (+0.01) via deploy_app_21.R. Tip-ship #753–#755: ExtendedTask unfreeze + shared trace JSONL, mcap cache/Ranking busy split, Ranking F-Score data-path. Live status=running; rsconnect bundleId=12824935. Prior: v28.48=#745–#748 (12816509). User approved deploy despite Ranking≤20s gates not live-proven.
+aligned_git=8771a4003c599b226669c8912307cb7876dc89ed
+commit=8771a4003c599b226669c8912307cb7876dc89ed
+short=8771a400
+message=chore: bump display version to v28.50
+captured_at=2026-11-15T12:36:00Z
+display_version=v28.50
+note=Shipped v28.50 (+0.01) via deploy_app_21.R. Tip-ship #757: Prospecting Filters stats coerce, sequential catalog job registry, industry mcap Names/Total from offline universe. Live status=running; rsconnect bundleId=12825339. Prior: v28.49=#753–#755 (12824935).
