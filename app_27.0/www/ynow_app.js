@@ -6617,11 +6617,39 @@
             row.classList.toggle('ynow-lab-cluster-beta', beta);
             var radar = row.querySelector(':scope > .col-sm-5');
             if (radar) radar.setAttribute('aria-hidden', beta ? 'true' : 'false');
-            if (was !== beta && window.Plotly && window.Plotly.Plots) {
-              var gd = document.getElementById('lab_cluster_scatter');
-              if (gd) {
-                try { window.Plotly.Plots.resize(gd); } catch (eResize) {}
-              }
+            if (was !== beta) {
+              /* Resize after layout. A radar drawn under display:none inits at ~0 width;
+                 unhide must resize lab_cluster_radar, not only the scatter. */
+              resizeAfterLayout(beta
+                ? ['lab_cluster_scatter']
+                : ['lab_cluster_scatter', 'lab_cluster_radar']);
+            }
+          }
+          function resizePlot(id) {
+            if (!window.Plotly || !window.Plotly.Plots || !window.Plotly.Plots.resize) return;
+            var host = document.getElementById(id);
+            if (!host) return;
+            var nodes = [host];
+            if (host.querySelectorAll) {
+              var nested = host.querySelectorAll('.js-plotly-plot');
+              for (var i = 0; i < nested.length; i++) nodes.push(nested[i]);
+            }
+            var seen = [];
+            for (var j = 0; j < nodes.length; j++) {
+              var gd = nodes[j];
+              if (!gd || !gd.data || seen.indexOf(gd) !== -1) continue;
+              seen.push(gd);
+              try { window.Plotly.Plots.resize(gd); } catch (eResize) {}
+            }
+          }
+          function resizeAfterLayout(ids) {
+            var kick = function () {
+              for (var i = 0; i < ids.length; i++) resizePlot(ids[i]);
+            };
+            if (window.requestAnimationFrame) {
+              window.requestAnimationFrame(function () { window.requestAnimationFrame(kick); });
+            } else {
+              setTimeout(kick, 30);
             }
           }
           window.ynowSyncLabClusterChartLayout = function (mode) { sync(mode); };

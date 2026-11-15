@@ -615,6 +615,13 @@ js_src <- paste(readLines("www/ynow_app.js", warn = FALSE, encoding = "UTF-8"), 
 stopifnot(grepl("ynowSyncLabClusterChartLayout", js_src, fixed = TRUE))
 stopifnot(grepl("lab_cluster_mode", js_src, fixed = TRUE))
 stopifnot(grepl("ynow-lab-cluster-beta", js_src, fixed = TRUE))
+# Leaving Beta must resize the radar after unhide (hidden Plotly inits at ~0 width).
+stopifnot(grepl("resizeAfterLayout", js_src, fixed = TRUE))
+stopifnot(grepl(
+  "['lab_cluster_scatter', 'lab_cluster_radar']",
+  js_src,
+  fixed = TRUE
+))
 loc_src <- paste(readLines("ui_locale.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 stopifnot(grepl("Candidate truncate rule and Universe size", loc_src, fixed = TRUE))
 stopifnot(grepl("Same-cluster radar is hidden", loc_src, fixed = TRUE))
