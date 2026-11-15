@@ -3,7 +3,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)"
-APP_DIR="${ROOT}/app_27.0"
+APP_DIR="${ROOT}/app_28.0"
 PORT="${YNOW_VERIFY_PORT:-13838}"
 RUN_ID="${RUN_ID:-$(date -u +%Y%m%dT%H%M%SZ)-$$}"
 RUN_DIR="${YNOW_VERIFY_RUN_DIR:-/tmp/ynow-verify-${RUN_ID}}"

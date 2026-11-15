@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# Idempotent Cloud Agent bootstrap for theYNowApp (live line app_27.0).
+# Idempotent Cloud Agent bootstrap for theYNowApp (live line app_28.0).
 # Installs CRAN R, r2u binary packages, and the app Python virtualenv.
 #
 # Cloud Agent may run install as `bash -lc '<body>'` (BASH_SOURCE unset). Prefer
-# locating app_27.0/requirements.txt from $PWD / walk-up; never collapse to
+# locating app_28.0/requirements.txt from $PWD / walk-up; never collapse to
 # ROOT=/ (that yields //app_*.0/.ynow_venv and Permission denied).
 set -euo pipefail
 
 ynow_resolve_repo_root() {
-  local d marker="app_27.0/requirements.txt"
+  local d marker="app_28.0/requirements.txt"
   if [[ -f "${marker}" ]]; then
     pwd -P
     return 0
@@ -33,7 +33,7 @@ ynow_resolve_repo_root() {
 }
 
 ROOT="$(ynow_resolve_repo_root)" || {
-  echo "cloud-agent-install: cannot find repo root (need app_27.0/requirements.txt under \$PWD or via this script path)" >&2
+  echo "cloud-agent-install: cannot find repo root (need app_28.0/requirements.txt under \$PWD or via this script path)" >&2
   exit 1
 }
 cd "${ROOT}"
@@ -147,8 +147,8 @@ $SUDO apt-get install -y --no-install-recommends \
   r-cran-later \
   r-cran-callr
 
-VENV="${ROOT}/app_27.0/.ynow_venv"
-REQ="${ROOT}/app_27.0/requirements.txt"
+VENV="${ROOT}/app_28.0/.ynow_venv"
+REQ="${ROOT}/app_28.0/requirements.txt"
 if [[ ! -f "${REQ}" ]]; then
   echo "cloud-agent-install: missing ${REQ}" >&2
   exit 1

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Sync coding clone + OneDrive mirror to GitHub tip of BRANCH.
-# Source of truth: origin (GitHub). Live app line: app_27.0/
+# Source of truth: origin (GitHub). Live app line: app_28.0/
 # Fast path: CODING clone. OneDrive gets key trees via ditto (no git fetch in OD).
 # Never run git status / git diff / git push inside OneDrive.
 set -euo pipefail
@@ -14,7 +14,7 @@ STAMP_FILE="$STAMP_DIR/last-sync"
 LOCK_FILE="$STAMP_DIR/sync.lock"
 SHA_FILE_OD="$ONEDRIVE/.ynow-synced-sha"
 MIN_SECONDS="${YNOW_SYNC_MIN_SECONDS:-90}"
-LIVE_APP="${YNOW_LIVE_APP:-app_27.0}"
+LIVE_APP="${YNOW_LIVE_APP:-app_28.0}"
 
 # Paths that matter for editing / running the live line (plus thin prior for OD convenience).
 SYNC_PATHS=(

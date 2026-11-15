@@ -71,10 +71,10 @@ Conceptual slides with Chinese that were **patched to English** (best-effort ove
 | 原物料供應商、生產製造、品牌、顧客市場、通路加值商 | suppliers · manufacturing · brand · market | Title strip; dense diagram labels remain partially bilingual |
 | 群眾智慧、內部研發人才 | Crowd wisdom; Internal R&D talent | Overlay |
 
-Re-process: `python3 app_27.0/scripts/process_inspiration_gallery.py`
+Re-process: `python3 app_28.0/scripts/process_inspiration_gallery.py`
 
 ## Paths
 
-- Bundled: `app_27.0/www/inspiration/*.webp` + `gallery_catalog.json`
+- Bundled: `app_28.0/www/inspiration/*.webp` + `gallery_catalog.json`
 - Durable admin catalog: `data/inspiration_gallery.json`
 - Uploads: `data/inspiration_uploads/<id>.webp`

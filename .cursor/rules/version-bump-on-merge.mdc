@@ -21,6 +21,7 @@ Update these when bumping (keep them consistent):
 |---------|----------|
 | UI / header | `dashboardHeader` title (`The YNow App v21…`), About 文案, 意見區 / report strings that show app version |
 | Docs in app tree | README / comments that state the current display version |
+| Docs at repo root | Root `README.md` display version + live folder pointers (required on every ship) |
 | Deploy notes | `scripts/DEPLOY_BASELINE.txt` note (and similar) may mention the display version |
 | Deploy scripts | Keep targeting the live folder; rename scripts only on a full +1 cut if needed |
 
@@ -28,9 +29,10 @@ Do **not** invent a second version number; one display version for the live line
 
 ## Folder vs display version
 
-- **Live directory** is `app_27.0/` while display shows `v27.00`, `v27.01`, …
-- **Directory rename** (e.g. `app_27.0/` → `app_28.0/`) only when the user requests the next full **+1** version cut. Set `YNOW_VERSION_BUMP_MAJOR=1` on that deploy so the display version becomes `vN.00`.
-- If header/UI and folder naming disagree: **UI/header/version strings bump +0.01 each merge**; **folder stays** until that +1 cut.
+- **Live directory major tracks display major.** Example: display `v28.52` → folder `app_28.0/`.
+- When the display major advances (or when GitHub folder lags the live major), **rename/create** `app_N.0/` and continue development there. Do **not** keep shipping from a lagging `app_M.0/` while live shows `vN.xx`.
+- On a deliberate whole-step cut, set `YNOW_VERSION_BUMP_MAJOR=1` so display becomes `vN.00`, and ensure the folder is `app_N.0/` in the same change set.
+- Patch ships stay on the current `app_N.0/` and only bump display **+0.01**.
 
 ## When to bump
 
@@ -42,4 +44,4 @@ Do **not** invent a second version number; one display version for the live line
 
 ## Automatic step
 
-Agents do not hand-edit `v27.xx` strings before deploy. The deploy script owns the +0.01 step (`scripts/bump_display_version.R`). Surfaces it rewrites: header / About / Lite copy in `ynow_ui.R`, `report_template.Rmd` `app_version`, the README title line, `www/ynow_build.json`, and a hardcoded header expectation in `tests/test_lite_mode_ui.R` when present. README history sections stay on their original version numbers. The app directory stays `app_27.0/` until the user asks for the next full +1 cut.
+Agents do not hand-edit `vN.xx` strings before deploy. The deploy script owns the +0.01 step (`scripts/bump_display_version.R`). Surfaces it rewrites: header / About / Lite copy in `ynow_ui.R`, `report_template.Rmd` `app_version`, the README title line, `www/ynow_build.json`, and a hardcoded header expectation in `tests/test_lite_mode_ui.R` when present. README history sections stay on their original version numbers. After every ship, **review and sync root `README.md`** (display version, `app_N.0/` folder, CI paths, run/deploy snippets) to the live baseline.

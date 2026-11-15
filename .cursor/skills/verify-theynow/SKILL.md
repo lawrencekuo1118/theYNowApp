@@ -1,19 +1,19 @@
 ---
 name: verify-theynow
-description: "Drive theYNowApp (Shiny R, app_27.0/) in a real browser the way a user would — Home, ticker Search, About, US/TW + locale, Macro. Use when proving UI behavior, debugging regressions, or after live-line UI changes. Prefer this over offline app_27.0/tests/*.R alone."
+description: "Drive theYNowApp (Shiny R, app_28.0/) in a real browser the way a user would — Home, ticker Search, About, US/TW + locale, Macro. Use when proving UI behavior, debugging regressions, or after live-line UI changes. Prefer this over offline app_28.0/tests/*.R alone."
 ---
 
 # Verify theYNowApp
 
-Project-local verification skill for **theYNowApp** (live line `app_27.0/`). An agent reading this cold must launch an isolated Shiny instance, doctor it, drive one mapped feature through the real web UI, capture evidence, then clean up **without** deleting proof artifacts.
+Project-local verification skill for **theYNowApp** (live line `app_28.0/`). An agent reading this cold must launch an isolated Shiny instance, doctor it, drive one mapped feature through the real web UI, capture evidence, then clean up **without** deleting proof artifacts.
 
-Offline unit checks under `app_27.0/tests/*.R` are useful gates; they are **not** a substitute for UI drive.
+Offline unit checks under `app_28.0/tests/*.R` are useful gates; they are **not** a substitute for UI drive.
 
 Production reference (do not treat as the verification target unless explicitly asked): https://hopesmasher1118.shinyapps.io/TheYNowApp/
 
 ## Surface
 
-- **Primary:** Shiny web UI (AdminLTE / shinydashboard) served from `app_27.0/`.
+- **Primary:** Shiny web UI (AdminLTE / shinydashboard) served from `app_28.0/`.
 - **Also present (not this skill’s default drive):** R unit tests, PDF report render, shinyapps deploy scripts. Note them; do not claim UI proof from them.
 
 ## Launch
@@ -31,7 +31,7 @@ bash .cursor/skills/verify-theynow/scripts/verify-launch.sh
 What launch does:
 
 1. Refuses if `$YNOW_VERIFY_PORT` is already listening (no steal / no share).
-2. Starts `Rscript -e 'shiny::runApp(host="127.0.0.1", port=<port>, launch.browser=FALSE)'` from `app_27.0/` in the background.
+2. Starts `Rscript -e 'shiny::runApp(host="127.0.0.1", port=<port>, launch.browser=FALSE)'` from `app_28.0/` in the background.
 3. Writes `$YNOW_VERIFY_RUN_DIR/meta.env` (`PID`, `PORT`, `URL`, `RUN_ID`, `STARTED_AT`) and a log at `$YNOW_VERIFY_RUN_DIR/shiny.log`.
 4. Polls `http://127.0.0.1:$YNOW_VERIFY_PORT/` until HTTP 200 **and** the HTML contains `The YNow App` (usable UI, not just a socket).
 
@@ -60,7 +60,7 @@ Doctor answers:
 | process | `kill -0 $PID` succeeds |
 | port ownership | listener on `$PORT` is that same PID (via `ss`/`lsof`) |
 | HTTP | `GET $URL/` → 200 |
-| identity | body contains `The YNow App` and `data-ynow-build` matching `app_27.0/www/ynow_build.json` `version` when present |
+| identity | body contains `The YNow App` and `data-ynow-build` matching `app_28.0/www/ynow_build.json` `version` when present |
 | isolation | `$PORT` is **not** the shared Cloud boot port `3838` unless `YNOW_VERIFY_ALLOW_SHARED=1` was set at launch (default: refuse 3838) |
 
 Exit non-zero on any failure. Do not drive a failing instance.

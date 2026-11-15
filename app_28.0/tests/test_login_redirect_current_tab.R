@@ -1,0 +1,479 @@
+#!/usr/bin/env Rscript
+# In-session login must stay on the current tab (not Home / get_started).
+# Durable last-tab prefs apply on browser resume only.
+# Run: cd app_28.0 && Rscript tests/test_login_redirect_current_tab.R
+
+Sys.setenv(YNOW_DEBUG_SKIP_PY = "1")
+args <- commandArgs(trailingOnly = FALSE)
+file_arg <- sub("^--file=", "", args[grep("^--file=", args)])
+test_dir <- if (length(file_arg) == 1L && nzchar(file_arg)) {
+  dirname(normalizePath(file_arg))
+} else {
+  getwd()
+}
+root <- if (file.exists(file.path(test_dir, "..", "auth_account.R"))) {
+  normalizePath(file.path(test_dir, ".."))
+} else if (file.exists("auth_account.R")) {
+  normalizePath(".")
+} else {
+  stop("Cannot locate auth_account.R")
+}
+setwd(root)
+
+fail <- 0L
+check <- function(label, cond) {
+  if (isTRUE(cond)) {
+    cat("OK ", label, "\n", sep = "")
+  } else {
+    cat("FAIL ", label, "\n", sep = "")
+    fail <<- fail + 1L
+  }
+}
+
+between <- function(src, a, b) {
+  ia <- regexpr(a, src, fixed = TRUE)
+  ib <- regexpr(b, src, fixed = TRUE)
+  if (ia < 1L || ib < 1L || ib <= ia) return("")
+  substr(src, as.integer(ia), as.integer(ib) - 1L)
+}
+
+auth <- paste(readLines("auth_account.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+source(file.path(test_dir, "ynow_test_sources.R"))
+ui <- ynow_test_ui_sources(root)$shipped
+
+finish_body <- between(
+  auth,
+  ".finish_auth_success <- function",
+  ".finish_auth_oauth_failure <- function"
+)
+resume_body <- between(
+  auth,
+  "observeEvent(input$ynow_auth_resume_token",
+  "observeEvent(input$ynow_auth_submit"
+)
+persist_fn <- between(
+  ui,
+  "window.ynowPersistPreAuthTab = function",
+  "function ynowParseQuery"
+)
+post_login <- between(
+  ui,
+  "addHandler('ynowAuthPostLogin'",
+  "addHandler('ynowAuthRedirectReady'"
+)
+redirect_ready <- between(
+  ui,
+  "addHandler('ynowAuthRedirectReady'",
+  "addHandler('ynowAuthOpenModal'"
+)
+oauth_start <- between(
+  ui,
+  "window.ynowStartOAuthRedirect = function",
+  "addHandler('ynowAuthOAuthRedirect'"
+)
+request_modal <- between(
+  ui,
+  "function ynowRequestAuthModal()",
+  "window.ynowRequestAuthModal = ynowRequestAuthModal"
+)
+gate_capture <- between(
+  ui,
+  "window.__ynowAuthOpenCapture = true",
+  "function ynowClearSidebarGuide"
+)
+
+check("finish_auth body present", nchar(finish_body) > 200L)
+check(
+  "finish chrome uses restore_tab / sidebar_tabs before durable load",
+  {
+    post_at <- regexpr("ynowAuthPostLogin", finish_body, fixed = TRUE)[1]
+    load_at <- regexpr(".load_last_ui_surface", finish_body, fixed = TRUE)[1]
+    post_at > 0L && load_at > post_at
+  }
+)
+check(
+  "in-session login prefers chrome_tab over durable stab",
+  grepl("chrome_tab", finish_body, fixed = TRUE) &&
+    grepl("stay_tab", finish_body, fixed = TRUE) &&
+    grepl("stay_tab <- chrome_tab", finish_body, fixed = TRUE) &&
+    !grepl("if (nzchar(stab)) stab else chrome_tab", finish_body, fixed = TRUE) &&
+    !grepl("Durable prefs win when present", finish_body, fixed = TRUE)
+)
+check(
+  "in-session after_chrome does not apply saved$tab as navigation target",
+  {
+    apply_chunk <- between(
+      finish_body,
+      ".ynow_auth_apply_surface(",
+      ".persist_last_ui_surface("
+    )
+    !grepl("saved$tab", apply_chunk, fixed = TRUE) &&
+      !grepl("\\bstab\\b", apply_chunk) &&
+      !grepl("tab = stay_tab", apply_chunk, fixed = TRUE) &&
+      (
+        grepl("tab = \"\"", apply_chunk, fixed = TRUE) ||
+          grepl("tab = ''", apply_chunk, fixed = TRUE)
+      )
+  }
+)
+check(
+  "resume path still restores durable last-tab",
+  grepl(".load_last_ui_surface", resume_body, fixed = TRUE) &&
+    grepl("tab = stab", resume_body, fixed = TRUE) &&
+    grepl("ynowAuthPostLogin", resume_body, fixed = TRUE)
+)
+check(
+  "password login passes ynow_auth_restore_tab",
+  grepl(
+    "restore_tab = as.character(input$ynow_auth_restore_tab",
+    auth,
+    fixed = TRUE
+  )
+)
+check(
+  "OAuth callback restore_tab wired",
+  grepl("restore_tab = restore_tab", auth, fixed = TRUE) ||
+    grepl("restore_tab = as.character(payload$restore_tab", auth, fixed = TRUE) ||
+    grepl("restore_tab <- as.character(payload$restore_tab", auth, fixed = TRUE)
+)
+check(
+  "PersistPreAuthTab captures sidebar + foot + hash",
+  {
+    vis <- between(
+      ui,
+      "window.ynowVisibleAuthTab = function",
+      "window.ynowPersistPreAuthTab = function"
+    )
+    grepl("ynow_auth_restore_tab", persist_fn, fixed = TRUE) &&
+      grepl("ynowVisibleAuthTab", persist_fn, fixed = TRUE) &&
+      grepl("ynow_pre_oauth_tab", persist_fn, fixed = TRUE) &&
+      grepl("tab-pane.active", vis, fixed = TRUE) &&
+      grepl("ynow-sidebar-snapshot-foot", vis, fixed = TRUE) &&
+      grepl("location.hash", vis, fixed = TRUE)
+  }
+)
+check(
+  "RequestAuthModal persists pre-auth tab (gates + header)",
+  grepl("ynowPersistPreAuthTab", request_modal, fixed = TRUE)
+)
+check(
+  "gate Sign-in CTAs open auth modal via capture",
+  grepl("ynow_pa_gate_signin", gate_capture, fixed = TRUE) &&
+    grepl("ynow_lab_gate_signin", gate_capture, fixed = TRUE) &&
+    grepl("ynow_chk_gate_signin", gate_capture, fixed = TRUE) &&
+    grepl("ynowRequestAuthModal", gate_capture, fixed = TRUE)
+)
+check(
+  "PostLogin falls back to active tab when restore empty (non-quiet)",
+  grepl("!payload.quiet", post_login, fixed = TRUE) &&
+    grepl("ynowApplyRestoredTab", post_login, fixed = TRUE) &&
+    grepl("ynowVisibleAuthTab", post_login, fixed = TRUE)
+)
+check(
+  "OAuth redirect persists current tab before leave",
+  grepl("ynow_pre_oauth_tab", oauth_start, fixed = TRUE) &&
+    (grepl("ynowPersistPreAuthTab", oauth_start, fixed = TRUE) ||
+       grepl("sidebar-menu li.active", oauth_start, fixed = TRUE))
+)
+check(
+  "PostLogin does not default-navigate to get_started",
+  {
+    !grepl("tab = 'get_started'", post_login, fixed = TRUE) &&
+      !grepl('tab = "get_started"', post_login, fixed = TRUE) &&
+      !grepl("restore_tab: 'get_started'", post_login, fixed = TRUE) &&
+      !grepl('restore_tab: "get_started"', post_login, fixed = TRUE)
+  }
+)
+
+check(
+  "finish_auth empty restore does not fall back to sidebar_tabs",
+  {
+    chunk <- between(
+      finish_body,
+      "tab <- as.character(restore_tab",
+      "session$sendCustomMessage(\n      \"ynowAuthPostLogin\""
+    )
+    if (!nzchar(chunk)) {
+      chunk <- between(
+        finish_body,
+        "tab <- as.character(restore_tab",
+        "ynowAuthPostLogin"
+      )
+    }
+    grepl("restore_tab", finish_body, fixed = TRUE) &&
+      !grepl("input\\$sidebar_tabs", chunk) &&
+      !grepl("isolate(input$sidebar_tabs)", chunk, fixed = TRUE)
+  }
+)
+check(
+  "finish_auth does not server-navigate to home/get_started",
+  {
+    grepl("nav_tab", finish_body, fixed = TRUE) &&
+      grepl("identical(nav_tab, \"home\")", finish_body, fixed = TRUE) &&
+      grepl("identical(nav_tab, \"get_started\")", finish_body, fixed = TRUE) &&
+      grepl("nav_tab <- \"\"", finish_body, fixed = TRUE) &&
+      grepl("updateTabItems(session, \"sidebar_tabs\", nav_tab)", finish_body, fixed = TRUE) &&
+      !grepl("updateTabItems(session, \"sidebar_tabs\", tab)", finish_body, fixed = TRUE)
+  }
+)
+check(
+  "PostLogin prefers live tab over stale home/get_started (!quiet)",
+  grepl("!payload.quiet", post_login, fixed = TRUE) &&
+    grepl("get_started", post_login, fixed = TRUE) &&
+    grepl("ynowVisibleAuthTab", post_login, fixed = TRUE) &&
+    grepl("home", post_login, fixed = TRUE) &&
+    !grepl("liveTab !== 'home'", post_login, fixed = TRUE)
+)
+check(
+  "PostLogin non-quiet does not actively apply home/get_started",
+  grepl("tab === 'home' || tab === 'get_started'", post_login, fixed = TRUE) &&
+    grepl("tab = ''", post_login, fixed = TRUE) &&
+    grepl("__ynowAuthInSessionTab", post_login, fixed = TRUE)
+)
+check(
+  "quiet PostLogin skips tab when in-session restore already chose one",
+  grepl("payload.quiet && window.__ynowAuthInSessionTab", post_login, fixed = TRUE)
+)
+resume_offer <- between(
+  ui,
+  "var ynowAuthResumeOffer = function",
+  "addHandler('ynowAuthPersist'"
+)
+check(
+  "resume offer yields to OAuth callback / pre-oauth tab",
+  grepl("__ynowOAuthCallbackPushed", resume_offer, fixed = TRUE) &&
+    grepl("ynow_pre_oauth_tab", resume_offer, fixed = TRUE) &&
+    (
+      grepl("access_token", resume_offer, fixed = TRUE) ||
+        grepl("[?#&](code|access_token|error)=", resume_offer, fixed = TRUE) ||
+        grepl("access_token|error", resume_offer)
+    )
+)
+check(
+  "pre-oauth tab has localStorage backup",
+  grepl("ynow_pre_oauth_tab_v1", persist_fn, fixed = TRUE) &&
+    grepl("ynow_pre_oauth_tab_v1", post_login, fixed = TRUE) &&
+    grepl("ynow_pre_oauth_tab_v1", oauth_start, fixed = TRUE)
+)
+check(
+  "Enter/keydown on auth fields re-persists pre-auth tab",
+  {
+    enter_chunk <- between(
+      ui,
+      "window.__ynowAuthEnterPersist = true",
+      "function ynowParseQuery"
+    )
+    grepl("keydown", enter_chunk, fixed = TRUE) &&
+      grepl("ynow_auth_password", enter_chunk, fixed = TRUE) &&
+      grepl("ynowPersistPreAuthTab", enter_chunk, fixed = TRUE) &&
+      !grepl("ynow_auth_modal form", enter_chunk, fixed = TRUE) &&
+      !grepl("addEventListener('submit'", enter_chunk, fixed = TRUE)
+  }
+)
+check(
+  "after_chrome does not copy empty chrome from any sidebar default",
+  {
+    ac <- between(
+      finish_body,
+      "after_chrome <- function",
+      ".persist_last_ui_surface("
+    )
+    !grepl("else if (!nzchar(stay_tab) && nzchar(live_tab))", ac, fixed = TRUE)
+  }
+)
+check(
+  "in-session after_chrome quiet apply does not re-navigate tab",
+  {
+    apply_chunk <- between(
+      finish_body,
+      ".ynow_auth_apply_surface(",
+      ".persist_last_ui_surface("
+    )
+    grepl("quiet = TRUE", apply_chunk, fixed = TRUE) &&
+      !grepl("tab = stay_tab", apply_chunk, fixed = TRUE) &&
+      (
+        grepl("tab = \"\"", apply_chunk, fixed = TRUE) ||
+          grepl("tab = ''", apply_chunk, fixed = TRUE)
+      )
+  }
+)
+check(
+  "OAuth start sends empty restore_tab for client capture",
+  {
+    start_chunk <- between(
+      auth,
+      ".start_oauth <- function",
+      "observeEvent(input$ynow_auth_google"
+    )
+    grepl("ynowAuthOAuthRedirect", start_chunk, fixed = TRUE) &&
+      (
+        grepl("restore_tab = \"\"", start_chunk, fixed = TRUE) ||
+          grepl("restore_tab = ''", start_chunk, fixed = TRUE) ||
+          grepl("restore_tab = character\\(0", start_chunk)
+      ) &&
+      !grepl("restore_tab = tab_now", start_chunk, fixed = TRUE)
+  }
+)
+
+# Stale restore_tab: modal opened earlier on Home, then Sign-in from another
+# path without Persist, must not yank the user back to Home after login.
+busy_helpers <- between(
+  ui,
+  "window.ynowBeginAuthBusy = function",
+  "window.ynowEndAuthBusy = function"
+)
+check(
+  "modal show.bs.modal re-persists pre-auth tab",
+  grepl("show.bs.modal", ui, fixed = TRUE) &&
+    grepl("ynow_auth_modal", ui, fixed = TRUE) &&
+    grepl("ynowPersistPreAuthTab", ui, fixed = TRUE) &&
+    grepl("__ynowAuthShowPersist", ui, fixed = TRUE)
+)
+check(
+  "email submit click re-persists tab before send",
+  grepl("ynow_auth_submit", ui, fixed = TRUE) &&
+    grepl("__ynowAuthSubmitPersist", ui, fixed = TRUE) &&
+    grepl("ynowPersistPreAuthTab", ui, fixed = TRUE) &&
+    grepl("ynowBeginAuthBusy", ui, fixed = TRUE)
+)
+check(
+  "auth busy chrome exists and clears on PostLogin",
+  grepl("ynowBeginAuthBusy", ui, fixed = TRUE) &&
+    grepl("ynowEndAuthBusy", ui, fixed = TRUE) &&
+    grepl("ynow-auth-signing-in", ui, fixed = TRUE) &&
+    grepl("ynowEndAuthBusy", post_login, fixed = TRUE)
+)
+check(
+  "auth busy helper body present",
+  nchar(busy_helpers) > 40L || grepl("ynow-auth-signing-in", ui, fixed = TRUE)
+)
+check(
+  "post-login redirect title helpers wired",
+  grepl("ynowBeginRedirectTitle", ui, fixed = TRUE) &&
+    grepl("ynowEndRedirectTitle", ui, fixed = TRUE) &&
+    grepl("ynowScheduleEndRedirectTitle", ui, fixed = TRUE) &&
+    grepl("ynow-auth-redirecting", ui, fixed = TRUE)
+)
+check(
+  "PostLogin shows Redirecting only when !quiet",
+  grepl("ynowBeginRedirectTitle", post_login, fixed = TRUE) &&
+    grepl("!payload.quiet", post_login, fixed = TRUE) &&
+    grepl("showRedirect", post_login, fixed = TRUE) &&
+    grepl("__ynowRedirectAwaitReady", post_login, fixed = TRUE) &&
+    !grepl("ynowScheduleEndRedirectTitle", post_login, fixed = TRUE)
+)
+check(
+  "Redirecting end waits for Signed-in / auth-ready message",
+  grepl("ynowScheduleEndRedirectTitle", redirect_ready, fixed = TRUE) &&
+    grepl("ynowBeginRedirectTitle", redirect_ready, fixed = TRUE) &&
+    grepl(
+      "ynowAuthRedirectReady",
+      paste(readLines("ynow_server.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n"),
+      fixed = TRUE
+    )
+)
+sched <- between(
+  ui,
+  "window.ynowScheduleEndRedirectTitle = function",
+  "if (!window.__ynowAuthShowPersist)"
+)
+resume_offer <- between(
+  ui,
+  "var ynowAuthResumeOffer = function",
+  "addHandler('ynowAuthPersist'"
+)
+oauth_push <- between(
+  ui,
+  "function ynowPushOAuthCallback()",
+  "function ynowScrollFunnelAnchor"
+)
+submit_persist <- between(
+  ui,
+  "if (!window.__ynowAuthSubmitPersist)",
+  "if (!window.__ynowAuthEnterPersist)"
+)
+check(
+  "redirect title stays up while shiny-busy",
+  grepl("shiny-busy", sched, fixed = TRUE) &&
+    grepl("ynowBeginRedirectTitle", resume_offer, fixed = TRUE) &&
+    grepl("ynowBeginRedirectTitle", oauth_push, fixed = TRUE) &&
+    grepl("ynowBeginRedirectTitle", submit_persist, fixed = TRUE) &&
+    grepl("ynowEndRedirectTitle", post_login, fixed = TRUE)
+)
+check(
+  "redirect title fail-safe timeout present",
+  grepl("shiny-busy", sched, fixed = TRUE) &&
+    (grepl("12000", sched, fixed = TRUE) ||
+      grepl("setTimeout(finish, Math.max(2000, minHold + 200))", ui, fixed = TRUE))
+)
+check(
+  "redirect title minimum hold so stay-on-tab is visible",
+  grepl("__ynowRedirectTitleMinHoldMs", ui, fixed = TRUE) &&
+    grepl("__ynowTitleRedirectStartedAt", ui, fixed = TRUE) &&
+    grepl("__ynowTitleRedirectHoldTimer", ui, fixed = TRUE)
+)
+end_redirect <- between(
+  ui,
+  "window.ynowEndRedirectTitle = function",
+  "window.ynowScheduleEndRedirectTitle = function"
+)
+check(
+  "redirect title waits out busy gaps for a quiet idle",
+  grepl("__ynowRedirectTitleQuietMs", ui, fixed = TRUE) &&
+    grepl("__ynowTitleRedirectQuietTimer", end_redirect, fixed = TRUE) &&
+    grepl("__ynowTitleRedirectQuietTimer", sched, fixed = TRUE) &&
+    grepl(
+      "if (busyNow()) { finish(false); return; }\n                    done = true;",
+      sched,
+      fixed = TRUE
+    )
+)
+check(
+  "redirecting CSS forces full title fill during busy",
+  grepl("body.ynow-auth-redirecting .main-header .logo .ynow-app-title-fill", ui, fixed = TRUE) &&
+    grepl("width: 100% !important", ui, fixed = TRUE)
+)
+
+pa <- paste(readLines("price_alert.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+scr <- paste(readLines("stock_screener.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+check(
+  "price_alert login gate opens via AuthOpenModal (captures tab)",
+  grepl("ynowAuthOpenModal", pa, fixed = TRUE) &&
+    !grepl(
+      "toggleModal(session, \"ynow_auth_modal\", \"open\")",
+      pa,
+      fixed = TRUE
+    )
+)
+check(
+  "stock_screener login gate opens via AuthOpenModal (captures tab)",
+  grepl("ynowAuthOpenModal", scr, fixed = TRUE) &&
+    !grepl(
+      "toggleModal(session, \"ynow_auth_modal\", \"open\")",
+      scr,
+      fixed = TRUE
+    )
+)
+
+loc <- paste(readLines("ui_locale.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+check(
+  "auth_busy locale keys en + zh-TW",
+  grepl("auth_busy = \"Signing in", loc, fixed = TRUE) &&
+    grepl("auth_busy = \"登入中", loc, fixed = TRUE)
+)
+check(
+  "auth_redirecting locale keys en + zh-TW",
+  grepl("auth_redirecting = \"Redirecting", loc, fixed = TRUE) &&
+    grepl("auth_redirecting = \"重新導向中", loc, fixed = TRUE)
+)
+check(
+  "AuthLocale pushes redirecting string",
+  grepl("redirecting = tryCatch", auth, fixed = TRUE) &&
+    grepl("auth_redirecting", auth, fixed = TRUE)
+)
+
+if (fail > 0L) {
+  cat("FAIL count=", fail, "\n", sep = "")
+  quit(status = 1L)
+}
+cat("ALL PASS\n")

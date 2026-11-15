@@ -1,6 +1,6 @@
 # 財務參數來源與模型引用稽核
 
-日期：2026-10-30。活動線：`app_27.0/`。本報告的判斷對象為程式實際引用與可重現測試資料；不代表已逐家公司核對所有最新原始申報文件。
+日期：2026-10-30。活動線：`app_28.0/`。本報告的判斷對象為程式實際引用與可重現測試資料；不代表已逐家公司核對所有最新原始申報文件。
 
 ## 結果與驗證範圍
 
@@ -68,9 +68,9 @@ Full 顯示建議但不自動填入。Lite 對有限數值的參考建議直接�
 
 ```bash
 export YNOW_DEBUG_SKIP_PY=1
-Rscript app_27.0/tests/test_parameter_semantics.R
-Rscript app_27.0/tests/test_parameter_completeness.R
-cd app_27.0/tests
+Rscript app_28.0/tests/test_parameter_semantics.R
+Rscript app_28.0/tests/test_parameter_completeness.R
+cd app_28.0/tests
 Rscript test_valuation_formulas.R
 Rscript test_phase1_formula_independence.R
 # 需 Chromium、pandoc、rmarkdown/pagedown

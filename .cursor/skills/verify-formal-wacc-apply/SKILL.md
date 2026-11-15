@@ -13,9 +13,9 @@ description: "Bounded property verification of two-class WACC apply: other-claim
 
 ## Tool and why
 
-**No TLA+ / SMT / proof assistant fits this R Shiny surface well** (apply lives in a server closure; rates are numeric UI fields). The check is **bounded property testing of the real production R function** `ynow_apply_calculated_wacc_fields` in `app_27.0/setup.R`, plus source wiring asserts that `.auto_recalc_capm_wacc` in `app_27.0/ynow_server.R` calls it and writes all three IDs.
+**No TLA+ / SMT / proof assistant fits this R Shiny surface well** (apply lives in a server closure; rates are numeric UI fields). The check is **bounded property testing of the real production R function** `ynow_apply_calculated_wacc_fields` in `app_28.0/setup.R`, plus source wiring asserts that `.auto_recalc_capm_wacc` in `app_28.0/ynow_server.R` calls it and writes all three IDs.
 
-- Runner: stock `Rscript` (already required for `app_27.0/tests/`).
+- Runner: stock `Rscript` (already required for `app_28.0/tests/`).
 - No extra CRAN package (`hedgehog` / QuickCheck not required).
 - Generated inputs: fixed seed `636`, default **1000** trials (`YNOW_FORMAL_WACC_N` to raise).
 
@@ -33,7 +33,7 @@ If the covered files changed after **Coverage record → sync commit** below, re
 ## How to run
 
 ```bash
-cd app_27.0/tests
+cd app_28.0/tests
 YNOW_DEBUG_SKIP_PY=1 Rscript test_formal_wacc_apply.R
 # optional denser search:
 YNOW_DEBUG_SKIP_PY=1 YNOW_FORMAL_WACC_N=5000 Rscript test_formal_wacc_apply.R
@@ -81,11 +81,11 @@ Then the helper was restored and the check returned to all OK. If a future chang
 
 | Item | Path / symbol |
 |------|----------------|
-| Apply helper | `app_27.0/setup.R` → `ynow_apply_calculated_wacc_fields` |
-| Other-claims gate inputs | `app_27.0/setup.R` → `statement_other_equity_claims`, `statement_other_equity_claims_book` |
-| Server apply site | `app_27.0/ynow_server.R` → `.auto_recalc_capm_wacc` (calls helper; writes three IDs) |
-| Property runner | `app_27.0/tests/test_formal_wacc_apply.R` |
-| Contract / fixtures | `app_27.0/tests/test_two_stage_wacc_other_equity.R` |
+| Apply helper | `app_28.0/setup.R` → `ynow_apply_calculated_wacc_fields` |
+| Other-claims gate inputs | `app_28.0/setup.R` → `statement_other_equity_claims`, `statement_other_equity_claims_book` |
+| Server apply site | `app_28.0/ynow_server.R` → `.auto_recalc_capm_wacc` (calls helper; writes three IDs) |
+| Property runner | `app_28.0/tests/test_formal_wacc_apply.R` |
+| Contract / fixtures | `app_28.0/tests/test_two_stage_wacc_other_equity.R` |
 | **Sync commit** | `2d69f9d4a9b9923c3338d8a2b6abd6d26fafd56c` — last commit at which this verification was confirmed to describe the code above |
 
 After an intentional change to covered code: re-run the commands in **How to run**, then replace **Sync commit** with the new confirming commit SHA (full or short). Do not advance the sync commit on a failing run.

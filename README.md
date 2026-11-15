@@ -3,7 +3,7 @@
 US / Taiwan stock fundamental analysis Shiny app（雲端版：yfinance，無 Chromote）。
 
 **Live:** https://hopesmasher1118.shinyapps.io/TheYNowApp/  
-**Display version:** v28.01 · **App folder:** `app_27.0/`<br>
+**Display version:** v28.52 · **App folder:** `app_28.0/`<br>
 **Deploy baseline:** `scripts/DEPLOY_BASELINE.txt`（bundleId／commit／URL；開發比對以此為準，不是單純看 Git tip）  
 **Changelog:** [`CHANGELOG.md`](CHANGELOG.md) · **Releases:** https://github.com/lawrencekuo1118/theYNowApp/releases
 
@@ -15,7 +15,7 @@ US / Taiwan stock fundamental analysis Shiny app（雲端版：yfinance，無 Ch
 
 ## CI / CD
 
-PRs and pushes that touch `app_27.0/**`, `scripts/**`, or `.github/workflows/**` run meaningful **offline** checks (no live Yahoo). Manual rerun: Actions → **Live-line CI** → `workflow_dispatch`.
+PRs and pushes that touch `app_28.0/**`, `scripts/**`, or `.github/workflows/**` run meaningful **offline** checks (no live Yahoo). Manual rerun: Actions → **Live-line CI** → `workflow_dispatch`.
 
 | Workflow / job | What it runs |
 |----------|----------------|
@@ -25,7 +25,7 @@ PRs and pushes that touch `app_27.0/**`, `scripts/**`, or `.github/workflows/**`
 
 **Branch protection:** require check **`offline-checks`** (workflow **Live-line CI**). Do not rely on path filters that skip the live app tree. Docs/rules-only changes may skip app jobs; app behavior PRs must stay green on Live-line CI.
 
-**CI/CD gate:** for `app_27.0/` behavior changes, do **not** tip-ship without green Live-line CI (or a recorded local offline preflight receipt). Docs/rules-only stay commit + push, no deploy.
+**CI/CD gate:** for `app_28.0/` behavior changes, do **not** tip-ship without green Live-line CI (or a recorded local offline preflight receipt). Docs/rules-only stay commit + push, no deploy.
 
 **Ship flow（活動線）:**
 
@@ -34,8 +34,9 @@ PRs and pushes that touch `app_27.0/**`, `scripts/**`, or `.github/workflows/**`
 3. `Rscript scripts/deploy_app_21.R` → display version **+0.01** → shinyapps upload
 4. Update `scripts/DEPLOY_BASELINE.txt` and push
 5. Add／update [`CHANGELOG.md`](CHANGELOG.md) entry for that `display_version`（en-US + zh-TW 台灣用語；勿只留版號）
-6. `bash scripts/record_github_release.sh v27.xx`（needs `gh` + token; **soft-fail** if unavailable — secrets never in git）
+6. `bash scripts/record_github_release.sh v28.xx`（needs `gh` + token; **soft-fail** if unavailable — secrets never in git）
 7. `bash scripts/post_release_local_sync.sh`（Mac mandatory; Cloud writes `PENDING_MAC_SYNC.env`）
+8. **每次釋出後檢視並同步更新 root `README.md`**（display version、`app_N.0/`、CI paths、本機 run／deploy 片段）
 
 ## 維護方式
 
@@ -46,9 +47,9 @@ PRs and pushes that touch `app_27.0/**`, `scripts/**`, or `.github/workflows/**`
 | Coding（建議 git） | `/Users/lawrencekuo/coding/theYNowApp` | commit／push／deploy |
 | OneDrive mirror | `/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp` | 同步鏡像（勿在此跑 `git status`／`git push`） |
 
-- **每個整階版本一個資料夾**（目前活動線：`app_27.0/`；顯示版號於 major cut 後為 `v27.00`，其後 deploy 以 +0.01 補丁）
-- 歷史版本：空間命名封存 `app 3.0` … `app 7.0` 與較新的 `app_8.0`…`app_24.0` 皆已自 git 移除（見 Git history／[GitHub Releases](https://github.com/lawrencekuo1118/theYNowApp/releases)）
-- 顯示版號摘要：[`CHANGELOG.md`](CHANGELOG.md)；方法論／歷史細節：[`app_27.0/README.md`](app_27.0/README.md)
+- **活動線資料夾對齊顯示版號的整階**：目前 live **v28.52** → 資料夾 **`app_28.0/`**。整階前進時另建／改名 `app_N.0/` 再繼續開發，勿繼續用落後的 `app_M.0/` 當活動線。
+- 歷史版本：空間命名封存 `app 3.0` … `app 7.0` 與較新的 `app_8.0`…`app_27.0` 皆已自 git 移除或封存（見 Git history／[GitHub Releases](https://github.com/lawrencekuo1118/theYNowApp/releases)）
+- 顯示版號摘要：[`CHANGELOG.md`](CHANGELOG.md)；方法論／歷史細節：[`app_28.0/README.md`](app_28.0/README.md)
 
 ## 本機開發（建議）
 
@@ -58,12 +59,12 @@ git pull origin master
 ```
 
 ```r
-shiny::runApp("app_27.0")
+shiny::runApp("app_28.0")
 ```
 
-Cursor Cloud：`bash scripts/cloud-agent-start.sh`（`app_27.0/` → `0.0.0.0:3838`）。
+Cursor Cloud：`bash scripts/cloud-agent-start.sh`（`app_28.0/` → `0.0.0.0:3838`）。
 
-Requires R packages used by `app_27.0/setup.R` / `app_27.0/global.R`, and Python deps from `app_27.0/requirements.txt`（可選本機 `app_27.0/.ynow_venv`）。
+Requires R packages used by `app_28.0/setup.R` / `app_28.0/global.R`, and Python deps from `app_28.0/requirements.txt`（可選本機 `app_28.0/.ynow_venv`）。
 
 ## 本機部署到 shinyapps.io
 
@@ -85,7 +86,7 @@ Rscript scripts/deploy_app_21.R
 
 ```r
 rsconnect::deployApp(
-  appDir = "app_27.0",
+  appDir = "app_28.0",
   appName = "TheYNowApp",
   appId = 10907657,
   forceUpdate = TRUE
@@ -109,10 +110,10 @@ Deploy 後請更新 `scripts/DEPLOY_BASELINE.txt`（bundleId、commit、`display
 ## Cloud notes
 
 - Financials via **yfinance** (no Chromote / Chrome on shinyapps.io)
-- `app_27.0/requirements.txt` / `py_require` for cloud Python
-- UI copy：en-US + zh-TW（台灣投資界用語）；見 `app_27.0/ui_locale.R`
+- `app_28.0/requirements.txt` / `py_require` for cloud Python
+- UI copy：en-US + zh-TW（台灣投資界用語）；見 `app_28.0/ui_locale.R`
 
-## Layout (`app_27.0/`)
+## Layout (`app_28.0/`)
 
 | File / area | Role |
 |-------------|------|

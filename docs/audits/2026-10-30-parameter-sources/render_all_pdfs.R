@@ -2,7 +2,7 @@
 args <- commandArgs(FALSE)
 script <- sub("^--file=", "", grep("^--file=", args, value = TRUE)[1])
 root <- normalizePath(file.path(dirname(script), "../../.."))
-app <- file.path(root, "app_27.0")
+app <- file.path(root, "app_28.0")
 code <- readLines(file.path(app, "tests/test_report_download.R"))
 code <- sub("app_dir <- dirname(dirname(normalizePath(script)))",
             paste0("app_dir <- ", deparse(app)), code, fixed = TRUE)
