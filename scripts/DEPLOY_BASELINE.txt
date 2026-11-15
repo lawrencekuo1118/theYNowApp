@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12816509
+bundleId=12824935
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/  # pragma: allowlist secret
-aligned_git=32ec83eb1cdd34dafe268dbff15e5a9e6251225b
-commit=32ec83eb1cdd34dafe268dbff15e5a9e6251225b
-short=32ec83eb
-message=chore: bump display version to v28.48
-captured_at=2026-11-13T05:34:01Z
+aligned_git=e2bc2216544ff643935976bd0bf8f88e944f01a9
+commit=e2bc2216544ff643935976bd0bf8f88e944f01a9
+short=e2bc2216
+message=chore: bump display version to v28.49
+captured_at=2026-11-15T09:24:14Z
 display_version=v28.49
-note=Shipped v28.48 (+0.01) via deploy_app_21.R. Tip-ship #745–#748: homepage async skeletons, Prospecting DT virtualization, search debounce, offline-first Market cache. Live status=running; rsconnect bundleId=12816509. Prior: v28.47=#742/#743 (12811562).
+note=Shipped v28.49 (+0.01) via deploy_app_21.R. Tip-ship #753–#755: ExtendedTask unfreeze + shared trace JSONL, mcap cache/Ranking busy split, Ranking F-Score data-path. Live status=running; rsconnect bundleId=12824935. Prior: v28.48=#745–#748 (12816509). User approved deploy despite Ranking≤20s gates not live-proven.
