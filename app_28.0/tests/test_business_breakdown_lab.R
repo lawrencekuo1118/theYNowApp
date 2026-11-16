@@ -2153,6 +2153,47 @@ check("recon opens from section III header button modal", {
     !grepl('uiOutput(ns("recon_section"))', mod_src, fixed = TRUE) &&
     !grepl('chapter = "6"', mod_src, fixed = TRUE)
 })
+# TYA-126: header_extra must be named-only (after ...) so section V cards stay in body.
+check("report section header_extra is named-only after dots", {
+  fmls <- names(formals(.bblab_report_section))
+  i_dots <- match("...", fmls)
+  i_extra <- match("header_extra", fmls)
+  is.finite(i_dots) && is.finite(i_extra) && i_extra > i_dots
+})
+check("section V-style unnamed body lands in section-body not actions", {
+  card <- tags$div(class = "ynow-bblab-card", "card-body-probe")
+  html_v <- paste(as.character(.bblab_report_section(
+    "V", "ynow_bblab_ch5_title", "Business cards",
+    "ynow_bblab_ch5_help", "help",
+    chapter = "5",
+    tagList(shiny::fluidRow(shiny::column(width = 4, card)))
+  )), collapse = " ")
+  body_pos <- regexpr("ynow-bblab-report__section-body", html_v, fixed = TRUE)[1]
+  card_pos <- regexpr("ynow-bblab-card", html_v, fixed = TRUE)[1]
+  grepl("ynow-bblab-card", html_v, fixed = TRUE) &&
+    grepl("ynow-bblab-report__section-body", html_v, fixed = TRUE) &&
+    !grepl("ynow-bblab-report__section-actions", html_v, fixed = TRUE) &&
+    is.finite(body_pos) && is.finite(card_pos) && card_pos > body_pos
+})
+check("named header_extra still mounts in section-actions", {
+  html_iii <- paste(as.character(.bblab_report_section(
+    "III", "ynow_bblab_struct_title", "Structure",
+    "ynow_bblab_struct_help", "help",
+    chapter = "3",
+    header_extra = tags$button(class = "ynow-bblab-recon-btn", "Reconciliation"),
+    tags$div(class = "ynow-bblab-struct-probe", "structure-body")
+  )), collapse = " ")
+  actions_pos <- regexpr("ynow-bblab-report__section-actions", html_iii, fixed = TRUE)[1]
+  btn_pos <- regexpr("ynow-bblab-recon-btn", html_iii, fixed = TRUE)[1]
+  body_pos <- regexpr("ynow-bblab-report__section-body", html_iii, fixed = TRUE)[1]
+  probe_pos <- regexpr("ynow-bblab-struct-probe", html_iii, fixed = TRUE)[1]
+  grepl("ynow-bblab-report__section-actions", html_iii, fixed = TRUE) &&
+    grepl("ynow-bblab-recon-btn", html_iii, fixed = TRUE) &&
+    grepl("ynow-bblab-struct-probe", html_iii, fixed = TRUE) &&
+    is.finite(actions_pos) && is.finite(btn_pos) && btn_pos > actions_pos &&
+    is.finite(body_pos) && is.finite(probe_pos) && probe_pos > body_pos &&
+    btn_pos < body_pos
+})
 check("recon commercial HTML renders match + glossary", {
   rec_ok <- list(
     pass = TRUE,

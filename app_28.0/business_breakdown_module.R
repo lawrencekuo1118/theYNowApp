@@ -628,9 +628,11 @@ bblab_clearly_not_listed_tw_us <- function(ticker) {
   FALSE
 }
 
+# header_extra is named-only (after ...) so unnamed section bodies never bind
+# into the actions slot — that regression squeezed section V cards (#769 / TYA-126).
 .bblab_report_section <- function(num, title_id, title_default, help_id = NULL,
-                                  help_default = NULL, chapter = NULL,
-                                  header_extra = NULL, ...) {
+                                  help_default = NULL, chapter = NULL, ...,
+                                  header_extra = NULL) {
   tags$section(
     class = "ynow-bblab-report__section",
     `data-bblab-chapter` = chapter %||% num,
