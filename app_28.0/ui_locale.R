@@ -4770,8 +4770,6 @@ locale_for_market <- function(mode = get_market_mode()) {
       "revenue disaggregation → MD&A → earnings → IR decks → official descriptions. ",
       "Filed / audited sources are preferred. This page is experimental and does not write into valuation."
     ),
-    bblab_shared_title = "Shared and Corporate Items",
-    bblab_shared_empty = "No shared Selling & Marketing, G&A, central R&D, or corporate items were assigned to business Gross Profit cards.",
     bblab_other_businesses = "Other Businesses",
     bblab_unallocated = "Unallocated",
     bblab_eliminations = "Eliminations",
@@ -9659,8 +9657,6 @@ locale_for_market <- function(mode = get_market_mode()) {
       "揭露優先序：營運部門 → 部門附註 → 產品／勞務收入 → 收入拆解 → MD&A → 法說 → IR 簡報 → 官方說明。",
       "優先採用已申報／經查核來源。本頁為實驗功能，不會寫入估值。"
     ),
-    bblab_shared_title = "共用與總部項目",
-    bblab_shared_empty = "未將共用 Selling & Marketing、G&A、中央 R&D 或總部項目分攤進事業 Gross Profit 卡片。",
     bblab_other_businesses = "其他事業",
     bblab_unallocated = "未分攤",
     bblab_eliminations = "銷除",

@@ -725,7 +725,9 @@ check("mix chapters are one report section with history panel", {
     grepl("showModal", mod_src, fixed = TRUE) &&
     grepl('input$recon_open', mod_src, fixed = TRUE) &&
     !grepl('uiOutput(ns("recon_section"))', mod_src, fixed = TRUE) &&
-    grepl('uiOutput(ns("shared_section"))', mod_src, fixed = TRUE) &&
+    !grepl('uiOutput(ns("shared_section"))', mod_src, fixed = TRUE) &&
+    !grepl(".bblab_shared_visible", mod_src, fixed = TRUE) &&
+    !grepl("ynow_bblab_shared_title", mod_src, fixed = TRUE) &&
     grepl(".bblab_orders_group_visible", mod_src, fixed = TRUE) &&
     grepl("orders_markets_chart", mod_src, fixed = TRUE) &&
     grepl("orders_suppliers_chart", mod_src, fixed = TRUE) &&
@@ -909,7 +911,8 @@ if (requireNamespace("shiny", quietly = TRUE) &&
           grepl("recon_header_btn", lab_ui_html, fixed = TRUE) &&
           grepl("ynow-bblab-report__section-actions", lab_ui_html, fixed = TRUE) &&
           !grepl("recon_section", lab_ui_html, fixed = TRUE) &&
-          grepl("shared_section", lab_ui_html, fixed = TRUE) &&
+          !grepl("shared_section", lab_ui_html, fixed = TRUE) &&
+          !grepl("ynow_bblab_shared_title", lab_ui_html, fixed = TRUE) &&
           # Empty groups are server-mounted; static shell must not leave blank bordered boxes.
           !grepl("data-orders-group=\"orders\"", lab_ui_html, fixed = TRUE) &&
           !grepl("data-orders-group=\"markets\"", lab_ui_html, fixed = TRUE) &&
@@ -985,6 +988,20 @@ check("report kicker locale wiring",
       grepl("ynow_bblab_report_kicker", mod_src, fixed = TRUE) &&
         grepl("setBtText('ynow_bblab_report_kicker', 'bblab_report_kicker')", js_src, fixed = TRUE) &&
         grepl("setBtText('ynow_bblab_shared_ticker_hint', 'bblab_shared_ticker_hint')", js_src, fixed = TRUE))
+check("HQ shared block removed (YN-133)", {
+  !grepl("shared_section", mod_src, fixed = TRUE) &&
+    !grepl("ynow_bblab_shared_title", mod_src, fixed = TRUE) &&
+    !grepl(".bblab_shared_visible", mod_src, fixed = TRUE) &&
+    !grepl("setBtText('ynow_bblab_shared_title'", js_src, fixed = TRUE) &&
+    is.null(.UI_STRINGS$en$bblab_shared_title) &&
+    is.null(.UI_STRINGS$`zh-TW`$bblab_shared_title) &&
+    is.null(.UI_STRINGS$en$bblab_shared_empty) &&
+    is.null(.UI_STRINGS$`zh-TW`$bblab_shared_empty) &&
+    # Orders / markets / suppliers surfaces stay.
+    grepl("orders_group_suppliers", mod_src, fixed = TRUE) &&
+    grepl("orders_group_markets", mod_src, fixed = TRUE) &&
+    grepl("orders_group_customers", mod_src, fixed = TRUE)
+})
 
 # Engine analyzes TSM fixture without any issuer-specific code path:
 check("TSM fixture is data-only", {
@@ -1548,7 +1565,7 @@ check("empty Section IV groups collapse when packs are ineligible", {
     isTRUE(!.bblab_revenue_mix_visible(list(chart = list(eligible = FALSE, slices = list())))) &&
     isTRUE(.bblab_cards_visible(list(businesses = list(list(id = "x"))))) &&
     isTRUE(!.bblab_cards_visible(list(businesses = list()))) &&
-    isTRUE(!.bblab_shared_visible(list(shared_corporate = list()))) &&
+    !exists(".bblab_shared_visible", mode = "function") &&
     grepl("donut_shell", mod_src, fixed = TRUE) &&
     grepl("order_research_status", mod_src, fixed = TRUE) &&
     grepl(".bblab_or_run_status_key", mod_src, fixed = TRUE) &&

@@ -1429,7 +1429,6 @@
             setBtText('ynow_bblab_recon_title', 'bblab_ch6_title');
             setBtText('ynow_bblab_sources_title', 'bblab_ch7_title');
             setBtText('ynow_bblab_sources_chrome', 'bblab_sources_chrome');
-            setBtText('ynow_bblab_shared_title', 'bblab_shared_title');
             setBtText('ynow_bblab_expand_other', 'bblab_expand_other');
             setBtText('ynow_bblab_fallback_gm_label', 'bblab_fallback_gm_label');
             setBtText('ynow_bblab_geo_veto_why', 'bblab_geo_veto_why');

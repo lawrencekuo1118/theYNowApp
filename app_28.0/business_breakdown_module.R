@@ -162,11 +162,6 @@ if (!exists("%||%", mode = "function")) {
   length(res$businesses %||% list()) > 0L || !is.null(res$other)
 }
 
-.bblab_shared_visible <- function(res) {
-  if (is.null(res) || !is.list(res)) return(FALSE)
-  length(res$shared_corporate %||% list()) > 0L
-}
-
 .bblab_fmt_amt <- function(x, digits = 0) {
   num <- suppressWarnings(as.numeric(x)[1])
   if (!is.finite(num)) return("—")
@@ -935,7 +930,6 @@ business_breakdown_lab_ui <- function(id = "bblab") {
       ),
 
       uiOutput(ns("cards_section")),
-      uiOutput(ns("shared_section")),
 
       .bblab_report_section(
         "VII", "ynow_bblab_ch7_title", "Sources",
@@ -2793,29 +2787,6 @@ business_breakdown_lab_server <- function(id = "bblab",
         )
       ))
     }, ignoreInit = TRUE)
-
-    output$shared_section <- renderUI({
-      res <- lab_result()
-      if (!isTRUE(.bblab_shared_visible(res))) return(NULL)
-      items <- res$shared_corporate %||% list()
-      tags$section(
-        class = "ynow-bblab-report__section ynow-bblab-report__section--muted",
-        tags$header(
-          class = "ynow-bblab-report__section-head",
-          tags$h3(
-            id = "ynow_bblab_shared_title",
-            class = "ynow-bblab-report__section-title",
-            ui_msg("bblab_shared_title")
-          )
-        ),
-        tags$div(
-          class = "ynow-bblab-report__section-body",
-          tags$ul(lapply(names(items), function(nm) {
-            tags$li(tags$b(nm), ": ", .bblab_fmt_amt(items[[nm]]))
-          }))
-        )
-      )
-    })
 
     output$notes <- renderUI({
       res <- lab_result()
