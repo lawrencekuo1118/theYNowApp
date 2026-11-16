@@ -1,0 +1,8 @@
+Example Corp Q2 earnings call excerpt (fixture)
+
+CEO: Demand was stable; we did not highlight AI servers as a primary growth driver this quarter.
+CFO: Near-term outlook is cautious; we reiterated cost discipline.
+Gross margin held flat sequentially with limited pricing pressure commentary.
+CapEx plans were unchanged; dividends stay stable.
+Key risks include supply-chain lead times; customer concentration was not emphasized.
+No formal numeric guidance range was stated for the full year.

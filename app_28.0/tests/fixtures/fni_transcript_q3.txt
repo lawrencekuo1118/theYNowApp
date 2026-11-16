@@ -1,0 +1,8 @@
+Example Corp Q3 earnings call excerpt (fixture)
+
+CEO: We continue to see revenue growth from AI servers in North America and Europe.
+CFO guidance: mid-single-digit growth; no change to long-term WACC assumptions.
+Gross margin outlook remains under pricing pressure in the consumer segment.
+CapEx will focus on capacity expansion; dividends stay stable this year.
+Key risks include customer concentration and FX volatility versus the US dollar.
+Management does not provide a specific share-repurchase dollar amount in this call.
