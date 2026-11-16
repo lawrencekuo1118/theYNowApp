@@ -3877,6 +3877,16 @@
           font-weight: 700;
           color: #12263a;
         }
+        .ynow-bblab-report__section-actions {
+          margin-left: auto;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex-shrink: 0;
+        }
+        .ynow-bblab-report__section-actions .ynow-bblab-recon-btn {
+          margin: 0;
+        }
         .ynow-bblab-report__section-help {
           margin: 0 0 12px 0;
           font-size: 13px;
