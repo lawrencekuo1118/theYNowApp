@@ -90,7 +90,7 @@ ynow_prefs_normalize_tickers <- function(tickers, max_n = .YNOW_PINNED_RECENT_MA
 ynow_sidebar_pinnable_tabs <- function() {
   c(
     "home", "macro_market", "asset_transmission", "bluechip", "dashboard",
-    "company_advance", "sensitivity", "smart_analysis", "get_started",
+    "company_advance", "financial_narrative", "sensitivity", "smart_analysis", "get_started",
     "nav_calculator", "pb_calculator", "dcf_calculator", "ddm_calculator",
     "ri_calculator", "rel_mult_ev", "rel_multiples_calculator", "rel_mult_rev",
     "sotp_calculator", "hfv", "lab_notes", "decision_checklist", "mos_assumptions",
@@ -109,6 +109,7 @@ ynow_sidebar_pin_meta <- function(tab) {
     bluechip = list(locale = "menu_bluechip", icon = "star", short_en = "Prospecting", short_zh = "淘金"),
     dashboard = list(locale = "menu_dashboard", icon = "chart-line", short_en = "Company", short_zh = "個股"),
     company_advance = list(locale = "menu_company_advance", icon = "layer-group", short_en = "BB", short_zh = "拆解"),
+    financial_narrative = list(locale = "menu_financial_narrative", icon = "align-left", short_en = "FNI", short_zh = "質性"),
     sensitivity = list(locale = "menu_ynow", icon = "clock", short_en = "YNOW", short_zh = "YNOW"),
     smart_analysis = list(locale = "menu_smart_analysis", icon = "magic", short_en = "Smart", short_zh = "智慧"),
     get_started = list(locale = "menu_get_started", icon = "play-circle", short_en = "Models", short_zh = "儀表板"),
@@ -155,7 +156,7 @@ ynow_prefs_normalize_sidebar_tabs <- function(tabs, max_n = .YNOW_PINNED_SIDEBAR
 ynow_sidebar_default_order <- function() {
   c(
     "home", "macro_market", "asset_transmission", "global_prediction", "bluechip",
-    "dashboard", "company_advance", "sensitivity", "smart_analysis", "get_started",
+    "dashboard", "company_advance", "financial_narrative", "sensitivity", "smart_analysis", "get_started",
     "cat_asset", "cat_income", "cat_relative", "cat_meta",
     "hfv", "lab_notes", "decision_checklist", "mos_assumptions", "price_alerts", "about",
     "settings", "account_admin"

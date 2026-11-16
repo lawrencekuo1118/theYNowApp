@@ -128,6 +128,7 @@ ynow_access_catalog <- function() {
     c("tab:bluechip", "tab", "Stock Prospecting", "股海淘金"),
     c("tab:dashboard", "tab", "Company", "公司"),
     c("tab:company_advance", "tab", "Business Breakdown", "業務拆解"),
+    c("tab:financial_narrative", "tab", "Financial Narrative Analysis", "財務質性分析"),
     c("tab:sensitivity", "tab", "YNOW", "YNOW"),
     c("tab:smart_analysis", "tab", "Smart Analysis", "智慧分析"),
     c("tab:get_started", "tab", "Model Dashboard", "模型儀表板"),

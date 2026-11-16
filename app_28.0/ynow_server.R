@@ -4954,6 +4954,7 @@ server <- function(input, output, session) {
       sensitivity = function() .ynow_page_ui_sensitivity(),
       smart_analysis = function() .ynow_page_ui_smart_analysis(),
       company_advance = function() .ynow_page_ui_company_advance(),
+      financial_narrative = function() .ynow_page_ui_financial_narrative(),
       snapshot = function() .ynow_page_ui_snapshot(),
       price_alerts = function() price_alert_tab_body_ui(),
       dashboard = function() .ynow_page_ui_dashboard(),
@@ -5152,7 +5153,7 @@ server <- function(input, output, session) {
 
   # Banner right logo: soft-refresh the active sidebar tab only (no session$reload).
   .ynow_ticker_refresh_tabs <- c(
-    "dashboard", "smart_analysis", "company_advance",
+    "dashboard", "smart_analysis", "company_advance", "financial_narrative",
     "dcf_calculator", "ddm_calculator", "pb_calculator", "nav_calculator",
     "ri_calculator", "sotp_calculator", "rel_mult_ev", "rel_multiples_calculator",
     "rel_mult_rev", "hfv", "decision_checklist", "lab_notes", "get_started"
@@ -5336,6 +5337,14 @@ server <- function(input, output, session) {
     ui_locale_rv = ui_locale,
     current_ticker_rv = current_ticker,
     logo_colors_rv = corp_name_logo_colors
+  )
+
+  # Financial Narrative Analysis — Lite+Full free (shares global ticker)
+  financial_narrative_server(
+    "fni",
+    market_mode_rv = market_mode,
+    ui_locale_rv = ui_locale,
+    current_ticker_rv = current_ticker
   )
 
   value_alert_metric_snapshot <- reactive({
