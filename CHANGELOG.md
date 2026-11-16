@@ -1,3 +1,8 @@
+## [v28.58] — 2026-11-16 · Search bare 1723 TW results
+
+- zh-TW：直接輸入 1723（中鋼碳素）可搜尋命中；US 四碼 typeahead 優先台股宇宙、Home 搜尋改開個股並先畫官方名稱；yfinance 釘 0.2.66（#777 / TYA-131）。顯示版號 v28.58、bundle 12827887。
+- en-US: Bare 1723 (China Steel Chemical) Search restored — US 4-digit typeahead prefers TW universe, Home Search opens Company and paints official name first; pin yfinance 0.2.66 (#777 / TYA-131). Display v28.58; shinyapps bundle 12827887.
+
 ## [v28.57] — 2026-11-16 · BBLab IV orders overflow + transcript chips
 
 - zh-TW：業務拆解第 IV 節訂單溢位收斂、逐字稿 chip 換行（#775 / TYA-130）；顯示版號 v28.57、bundle 12827804。
