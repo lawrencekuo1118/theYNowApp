@@ -191,10 +191,14 @@ check("en topic titles renumbered to sidebar order", {
     grepl("mos_assump_b2_title = \"4 · Value Alert discount\"", loc_src, fixed = TRUE)
 })
 check("zh-TW topic titles renumbered to sidebar order", {
-  grepl("mos_assump_b3_title = \"1 · HFV 情境帶\"", loc_src, fixed = TRUE) &&
+  grepl("mos_assump_b3_title = \"1 · HFV 情境區間\"", loc_src, fixed = TRUE) &&
     grepl("mos_assump_b4_title = \"2 · Quant Lab MOS 部位\"", loc_src, fixed = TRUE) &&
-    grepl("mos_assump_b1_title = \"3 · 決策衛生下限\"", loc_src, fixed = TRUE) &&
-    grepl("mos_assump_b2_title = \"4 · 到值通知折價\"", loc_src, fixed = TRUE)
+    grepl("mos_assump_b1_title = \"3 · 決策檢核門檻\"", loc_src, fixed = TRUE) &&
+    grepl("mos_assump_b2_title = \"4 · 到值通知折價\"", loc_src, fixed = TRUE) &&
+    grepl("mos_assump_ladder_title = \"MOS 部位分級切點（%）\"", loc_src, fixed = TRUE) &&
+    !grepl("mos_assump_[^\n]*決策衛生", loc_src, perl = TRUE) &&
+    !grepl("mos_assump_[^\n]*情境帶", loc_src, perl = TRUE) &&
+    !grepl("mos_assump_[^\n]*部位對映", loc_src, perl = TRUE)
 })
 check("locale push includes goto button ids", {
   grepl("ynow_mos_assump_goto_checklist = \"mos_assump_goto_checklist\"", mod_src, fixed = TRUE) &&
