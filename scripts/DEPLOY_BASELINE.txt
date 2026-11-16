@@ -7,5 +7,5 @@ commit=aaa1436f626d9bf8f112d160da9f9ba79183667b
 short=aaa1436f
 message=chore: bump display version to v28.52
 captured_at=2026-11-15T16:14:26Z
-display_version=v28.52
+display_version=v28.53
 note=Shipped v28.52 (+0.01) via deploy_app_21.R. Tip-ship #761: BBLab Start analysis status/context (no silent no-op). Live status=running; rsconnect bundleId=12825827. Prior: v28.51=#759 (12825460). No valuation changes.
