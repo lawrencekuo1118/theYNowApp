@@ -528,7 +528,21 @@ testing_fn_src <- {
     substr(ui_src, start, start + len - 1L)
   }
 }
-advance_block <- {
+advance_page_fn_src <- {
+  m <- regexpr(
+    "\\.ynow_page_ui_company_advance\\s*<-\\s*function\\s*\\([^)]*\\)\\s*\\{[\\s\\S]*?\\n\\}",
+    ui_src,
+    perl = TRUE
+  )
+  if (m < 1L) {
+    ""
+  } else {
+    start <- as.integer(m)
+    len <- as.integer(attr(m, "match.length"))
+    substr(ui_src, start, start + len - 1L)
+  }
+}
+advance_tab_block <- {
   m <- regexpr(
     "tabItem\\(\\s*tabName\\s*=\\s*\"company_advance\"[\\s\\S]*?\\n\\s*\\),",
     ui_src,
@@ -542,6 +556,7 @@ advance_block <- {
     substr(ui_src, start, start + len - 1L)
   }
 }
+css_src <- paste(readLines("www/ynow_chrome.css", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check("26 Business Breakdown sidebar hosts BBL",
       grepl('tabName = "company_advance"', ui_src, fixed = TRUE) &&
         grepl("ynow_menu_company_advance", ui_src, fixed = TRUE) &&
@@ -551,23 +566,25 @@ check("26 Business Breakdown sidebar hosts BBL",
         grepl("Business Breakdown", mod_src, fixed = TRUE) &&
         grepl("business_breakdown_lab_ui", ui_src, fixed = TRUE))
 check("26 Lab markup lives under Company - Advance tab",
-      nzchar(advance_block) &&
-        grepl("ynow-company-advance-bblab", advance_block, fixed = TRUE) &&
-        grepl("business_breakdown_lab_ui", advance_block, fixed = TRUE) &&
-        grepl('id = "ynow_company_advance_bblab"', advance_block, fixed = TRUE) &&
+      nzchar(advance_page_fn_src) &&
+        grepl("ynow-company-advance-bblab", advance_page_fn_src, fixed = TRUE) &&
+        grepl("business_breakdown_lab_ui", advance_page_fn_src, fixed = TRUE) &&
+        grepl('id = "ynow_company_advance_bblab"', advance_page_fn_src, fixed = TRUE) &&
+        nzchar(advance_tab_block) &&
+        grepl('uiOutput("ynow_lazy_host_company_advance")', advance_tab_block, fixed = TRUE) &&
         !grepl("business_breakdown_lab_ui", dashboard_block, fixed = TRUE) &&
         !grepl("business_breakdown_lab_ui", testing_fn_src, fixed = TRUE) &&
         !grepl("ynow-testing-bblab", ui_src, fixed = TRUE) &&
         grepl("ynow_testing_page_title", testing_fn_src, fixed = TRUE))
 check("26 Lite CSS hide + remap to Company - Advance",
       grepl('tabName = "company_advance"', ui_src, fixed = TRUE) &&
-        grepl("body.ynow-lite .ynow-company-advance-bblab", ui_src, fixed = TRUE) &&
-        grepl("body.ynow-lite .ynow-bblab", ui_src, fixed = TRUE) &&
+        grepl("body.ynow-lite .ynow-company-advance-bblab", css_src, fixed = TRUE) &&
+        grepl("body.ynow-lite .ynow-bblab", css_src, fixed = TRUE) &&
         grepl("ynow-sidebar-test-link", ui_src, fixed = TRUE) &&
         grepl("ynow-full-only", mod_src, fixed = TRUE) &&
-        grepl("remapLegacyTab", ui_src, fixed = TRUE) &&
-        grepl("business_breakdown_lab", ui_src, fixed = TRUE) &&
-        grepl("return 'company_advance'", ui_src, fixed = TRUE))
+        grepl("remapLegacyTab", js_src, fixed = TRUE) &&
+        grepl("business_breakdown_lab", js_src, fixed = TRUE) &&
+        grepl("return 'company_advance'", js_src, fixed = TRUE))
 
 # ---- extras: i18n, parse, valuation isolation, toast specificity ----
 for (k in c("menu_business_breakdown_lab", "bblab_page_sub", "bblab_report_kicker",
@@ -733,7 +750,7 @@ check("i18n fallback GM label has no default-off parenthetical", {
 })
 check("applyUiLocale wires fallback GM label",
       grepl("setBtText('ynow_bblab_fallback_gm_label', 'bblab_fallback_gm_label')",
-            ui_src, fixed = TRUE) &&
+            js_src, fixed = TRUE) &&
         grepl('id = "ynow_bblab_fallback_gm_label"', mod_src, fixed = TRUE))
 check("GM fallback checkbox remains unchecked by default", {
   m <- regexpr("checkboxInput\\([\\s\\S]*?use_gm_fallback[\\s\\S]*?value\\s*=\\s*FALSE",
@@ -948,9 +965,9 @@ if (requireNamespace("shiny", quietly = TRUE) &&
           grepl("ynow-bblab-report__toolbar", lab_ui_html, fixed = TRUE))
 }
 check("report kicker locale wiring",
-      grepl("ynow_bblab_report_kicker", ui_src, fixed = TRUE) &&
-        grepl("bblab_report_kicker", ui_src, fixed = TRUE) &&
-        grepl("bblab_shared_ticker_hint", ui_src, fixed = TRUE))
+      grepl("ynow_bblab_report_kicker", mod_src, fixed = TRUE) &&
+        grepl("setBtText('ynow_bblab_report_kicker', 'bblab_report_kicker')", js_src, fixed = TRUE) &&
+        grepl("setBtText('ynow_bblab_shared_ticker_hint', 'bblab_shared_ticker_hint')", js_src, fixed = TRUE))
 
 # Engine analyzes TSM fixture without any issuer-specific code path:
 check("TSM fixture is data-only", {
