@@ -1,3 +1,8 @@
+## [v28.53] — 2026-11-16 · MOS假設台灣投資用語
+
+- zh-TW：MOS假設分頁改用台灣投資界說法（情境區間、決策檢核門檻、部位分級、大幅低估／高估、合理價）；MOS／FV／HFV／Bear／Base 維持英文專有名詞。
+- en-US: MOS Assumptions Traditional Chinese copy now uses Taiwan investment-desk wording (scenario bands as 情境區間, checklist floors as 決策檢核門檻, exposure ladder as 部位分級). Formal English finance terms stay English.
+
 ## [v28.52] — 2026-11-16 · BBLab Start analysis feedback + live-folder align
 
 - zh-TW：業務拆解「Start analysis」不再靜默無反應（狀態列／情境組）；GitHub 活動線資料夾改為 **`app_28.0/`** 對齊顯示整階 v28；root README 同步至 v28.52。
