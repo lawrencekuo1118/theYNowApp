@@ -102,7 +102,7 @@ need <- shiny::need
 # before Shiny could Listen, so Safari / curl saw "server stopped responding".
 # Install and bind Python on first real use via .ynow_ensure_python().
 .ynow_py_pkgs <- c(
-  "pandas", "numpy", "yfinance", "requests", "beautifulsoup4", "lxml",
+  "pandas", "numpy", "yfinance==0.2.66", "requests", "beautifulsoup4", "lxml",
   "peewee", "platformdirs", "frozendict", "multitasking", "html5lib", "curl_cffi",
   "xlrd", "Pillow", "pypdf"
 )

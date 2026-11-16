@@ -81,6 +81,15 @@ check(
   grepl("pending_recent_fetch\\(list\\(", search_chunk, perl = TRUE)
 )
 check(
+  "US→TW 4-digit pending opens Company (dashboard)",
+  grepl("goto_tab\\s*=\\s*[\"']dashboard[\"']", search_chunk, perl = TRUE)
+)
+check(
+  "Search from non-crawl tab opens Company",
+  grepl("search_goto", search_chunk, fixed = TRUE) &&
+    grepl("ynow_statement_crawl_wanted", search_chunk, fixed = TRUE)
+)
+check(
   "Search observer comment: not on typing",
   grepl("never switch market on ticker typing", search_chunk, fixed = TRUE) ||
     grepl("Search button / submit only", search_chunk, fixed = TRUE)

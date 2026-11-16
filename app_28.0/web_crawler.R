@@ -1339,6 +1339,19 @@ search_ticker_choices <- function(query, max_results = 12L, market = NULL) {
       error = function(e) character(0)
     )
   }
+  # US + clear 4-digit TW code (e.g. 1723): Yahoo often returns Tokyo/HK/mutual-fund
+  # noise and the US filter drops .TW — surface the official TW listing first so
+  # typeahead is not empty / wrong before Search auto-switches market.
+  tw_digit_hits <- character(0)
+  if (identical(mode, "US") &&
+      exists("looks_like_tw_stock_code", mode = "function") &&
+      isTRUE(looks_like_tw_stock_code(query)) &&
+      exists("search_tw_universe_by_name", mode = "function")) {
+    tw_digit_hits <- tryCatch(
+      search_tw_universe_by_name(query, max_results = max_results),
+      error = function(e) character(0)
+    )
+  }
 
   merge_named <- function(...) {
     parts <- list(...)
@@ -1360,7 +1373,11 @@ search_ticker_choices <- function(query, max_results = 12L, market = NULL) {
   if (isTRUE(tw_prefer_universe)) {
     merged <- merge_named(cjk_hits, out, local_hits)
   } else if (identical(mode, "US")) {
-    merged <- merge_named(out, us_uni_hits, local_hits)
+    if (length(tw_digit_hits)) {
+      merged <- merge_named(tw_digit_hits, out, us_uni_hits, local_hits)
+    } else {
+      merged <- merge_named(out, us_uni_hits, local_hits)
+    }
   } else {
     merged <- merge_named(out, cjk_hits, local_hits)
   }

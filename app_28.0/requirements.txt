@@ -1,5 +1,6 @@
 # app_28.0 — Python deps for shinyapps.io (reticulate)
-yfinance==0.2.54
+# 0.2.54 breaks Yahoo cookie/crumb (search/info/statements empty; "'str' has no attribute 'name'").
+yfinance==0.2.66
 pandas==2.2.3
 numpy==2.1.3
 requests==2.32.3
