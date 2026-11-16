@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12827804
+bundleId=12827887
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/  # pragma: allowlist secret
-aligned_git=d4448faf53e7c882549f38cb66bbb173790a7d8b
-commit=d4448faf53e7c882549f38cb66bbb173790a7d8b
-short=d4448faf
-message=chore: bump display version to v28.57
-captured_at=2026-11-16T04:51:50Z
-display_version=v28.57
-note=Shipped v28.57 (+0.01) via deploy_app_21.R. Tip-ship #775: BBLab IV orders overflow containment + transcript chip wrap (TYA-130). Live status=running; rsconnect bundleId=12827804. Prior: v28.56=#774 (12827664).
+aligned_git=a55a1c2e4a8daec7bf21ca5e487fb4871dbc49e1
+commit=a55a1c2e4a8daec7bf21ca5e487fb4871dbc49e1
+short=a55a1c2e
+message=chore: bump display version to v28.58
+captured_at=2026-11-16T05:37:29Z
+display_version=v28.58
+note=Shipped v28.58 (+0.01) via deploy_app_21.R. Tip-ship #777: bare 1723 TW Search restore (TYA-131). Live status=running; rsconnect bundleId=12827887. Prior: v28.57=#775 (12827804).
