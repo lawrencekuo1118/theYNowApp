@@ -761,6 +761,7 @@ business_breakdown_lab_ui <- function(id = "bblab") {
               class = "help-block",
               "The supply chain and orders note appears when the latest call and filings are in. Start analysis still opens disclosed order, supplier, and customer amounts, plus the cross-check. Amounts are never estimated. Groups with no disclosed figures stay collapsed."
             ),
+            uiOutput(ns("order_research_transcripts_ui")),
             actionButton(
               ns("order_research_run"),
               label = tags$span(id = "ynow_bblab_or_start", "Start analysis"),
@@ -1179,6 +1180,8 @@ business_breakdown_lab_server <- function(id = "bblab",
     lab_codes <- reactiveVal(character(0))
     focus_id <- reactiveVal(NULL)
     or_started <- reactiveVal(FALSE)
+    or_transcript_catalog <- reactiveVal(NULL)
+    or_transcript_selected <- reactiveVal(character(0))
     source_status <- reactiveVal("idle")
     listed_scope_on <- reactiveVal(FALSE)
 
@@ -1251,6 +1254,8 @@ business_breakdown_lab_server <- function(id = "bblab",
         lab_result(NULL)
         lab_codes(character(0))
         or_started(FALSE)
+        or_transcript_catalog(NULL)
+        or_transcript_selected(character(0))
         source_status("idle")
         listed_scope_on(FALSE)
         return(invisible(NULL))
@@ -1276,6 +1281,8 @@ business_breakdown_lab_server <- function(id = "bblab",
       # (frequency / tab revisit) must not silently undo a Start click.
       if (!identical(prev_tk, tk)) {
         or_started(FALSE)
+        or_transcript_catalog(NULL)
+        or_transcript_selected(character(0))
       }
       lab_ticker(tk)
       lab_result(NULL)
@@ -1451,6 +1458,19 @@ business_breakdown_lab_server <- function(id = "bblab",
             payload$tw_earnings_call <- disc
           }
         }
+        # Past-call catalog (metadata) for the transcript button row above Start.
+        cat <- if (exists("ynow_earnings_call_catalog", mode = "function")) {
+          tryCatch(ynow_earnings_call_catalog(tk, max_rows = 12L), error = function(e) NULL)
+        } else {
+          NULL
+        }
+        payload$earnings_call_catalog <- cat
+        or_transcript_catalog(cat)
+        def_id <- if (is.list(cat)) as.character(cat$default_id %||% "")[1] else ""
+        if (!nzchar(def_id) && is.list(cat) && length(cat$rows)) {
+          def_id <- as.character(cat$rows[[1]]$id %||% "")[1]
+        }
+        or_transcript_selected(if (nzchar(def_id)) def_id else character(0))
         lab_payload(payload)
         extracted <- length(payload$dimensions %||% list()) >= 1L &&
           !all(vapply(payload$dimensions, function(d) {
@@ -2064,6 +2084,139 @@ business_breakdown_lab_server <- function(id = "bblab",
       tags$p(class = "ynow-bblab-orders__meta help-block", paste(meta, collapse = " · "))
     }
 
+    output$order_research_transcripts_ui <- renderUI({
+      cat <- or_transcript_catalog()
+      rows <- if (is.list(cat)) cat$rows %||% list() else list()
+      title <- ui_msg("bblab_or_transcripts_title")
+      help <- ui_msg("bblab_or_transcripts_help")
+      if (!length(rows)) {
+        return(tags$div(
+          class = "ynow-bblab-or-transcripts ynow-bblab-or-transcripts--empty",
+          tags$p(
+            id = "ynow_bblab_or_transcripts_title",
+            class = "ynow-bblab-or-transcripts__title",
+            title
+          ),
+          tags$p(
+            id = "ynow_bblab_or_transcripts_empty",
+            class = "help-block",
+            ui_msg("bblab_or_transcripts_empty")
+          )
+        ))
+      }
+      choices <- if (exists("ynow_ec_catalog_choice_labels", mode = "function")) {
+        ynow_ec_catalog_choice_labels(cat, locale = loc())
+      } else {
+        ids <- vapply(rows, function(r) as.character(r$id %||% ""), character(1))
+        labs <- vapply(rows, function(r) {
+          pub <- as.character(r$published %||% "")[1]
+          if (nzchar(pub)) pub else as.character(r$label %||% r$title %||% r$id)[1]
+        }, character(1))
+        stats::setNames(ids, labs)
+      }
+      selected <- or_transcript_selected()
+      if (!length(selected) || !any(selected %in% as.character(choices))) {
+        selected <- as.character(cat$default_id %||% choices[[1]])[1]
+      }
+      link_row <- lapply(rows, function(r) {
+        u <- as.character(r$url %||% "")[1]
+        if (!nzchar(u) || grepl("^fixture://", u)) return(NULL)
+        tags$a(
+          href = u,
+          target = "_blank",
+          rel = "noopener noreferrer",
+          class = "ynow-bblab-or-transcripts__link btn btn-link btn-xs",
+          title = ui_msg("bblab_or_transcripts_open"),
+          as.character(r$label %||% r$published %||% "link")[1]
+        )
+      })
+      link_row <- Filter(Negate(is.null), link_row)
+      tags$div(
+        class = "ynow-bblab-or-transcripts",
+        tags$p(
+          id = "ynow_bblab_or_transcripts_title",
+          class = "ynow-bblab-or-transcripts__title",
+          title
+        ),
+        tags$p(
+          id = "ynow_bblab_or_transcripts_help",
+          class = "help-block",
+          help
+        ),
+        checkboxGroupInput(
+          ns("order_research_transcript_ids"),
+          label = NULL,
+          choices = choices,
+          selected = selected,
+          inline = TRUE
+        ),
+        if (length(link_row)) {
+          tags$div(
+            class = "ynow-bblab-or-transcripts__links",
+            link_row
+          )
+        }
+      )
+    })
+
+    observeEvent(input$order_research_transcript_ids, {
+      sel <- as.character(input$order_research_transcript_ids %||% character(0))
+      sel <- sel[nzchar(sel)]
+      or_transcript_selected(sel)
+    }, ignoreNULL = FALSE, ignoreInit = TRUE)
+
+    .or_apply_selected_transcripts <- function() {
+      tk <- tryCatch(as.character(lab_ticker() %||% "")[1], error = function(e) "")
+      if (!nzchar(tk)) return(invisible(FALSE))
+      cat <- or_transcript_catalog()
+      if (!is.list(cat) || !length(cat$rows %||% list())) return(invisible(FALSE))
+      sel <- or_transcript_selected()
+      if (!length(sel)) {
+        sel <- as.character(input$order_research_transcript_ids %||% character(0))
+      }
+      if (!exists("ynow_ec_fetch_selected", mode = "function")) return(invisible(FALSE))
+      fetched <- tryCatch(
+        ynow_ec_fetch_selected(tk, cat, selected_ids = sel),
+        error = function(e) NULL
+      )
+      if (!is.list(fetched)) return(invisible(FALSE))
+      disc <- if (exists("ynow_ec_to_disclosure", mode = "function")) {
+        ynow_ec_to_disclosure(fetched, market = cat$market %||% "")
+      } else {
+        fetched
+      }
+      if (!is.list(disc) || !length(disc)) return(invisible(FALSE))
+      pl <- lab_payload()
+      if (!is.list(pl)) pl <- list(ticker = tk)
+      pl$order_disclosures <- pl$order_disclosures %||% list()
+      pl$order_disclosures$earnings_call <- disc
+      market <- toupper(as.character(cat$market %||% "")[1])
+      if (identical(market, "TW")) {
+        pl$tw_earnings_call <- disc
+      } else {
+        pl$us_earnings_call <- disc
+      }
+      pl$earnings_call_catalog <- cat
+      pl$earnings_call_selected <- sel
+      lab_payload(pl)
+      res <- lab_result()
+      if (is.list(res) && exists("bblab_attach_order_research", mode = "function")) {
+        res2 <- tryCatch(bblab_attach_order_research(res, pl), error = function(e) NULL)
+        if (is.list(res2)) {
+          if (is.list(res2$order_research)) {
+            res2$order_research$earnings_call_catalog <- cat
+            res2$order_research$earnings_call_selected <- sel
+            if (length(sel) > 1L) {
+              res2$order_research$earnings_call_combined <- TRUE
+            }
+          }
+          lab_result(res2)
+          return(invisible(TRUE))
+        }
+      }
+      invisible(FALSE)
+    }
+
     observeEvent(input$order_research_run, {
       or_started(TRUE)
       tk_now <- tryCatch(as.character(lab_ticker() %||% "")[1], error = function(e) "")
@@ -2092,6 +2245,17 @@ business_breakdown_lab_server <- function(id = "bblab",
           ui_msg("bblab_or_waiting"),
           type = "message",
           duration = 6
+        )
+        return(invisible(NULL))
+      }
+      # Rebuild order-research pack from the selected past call(s).
+      tryCatch(.or_apply_selected_transcripts(), error = function(e) NULL)
+      sel_n <- length(or_transcript_selected())
+      if (sel_n > 1L) {
+        showNotification(
+          ui_msg("bblab_or_transcripts_combined"),
+          type = "message",
+          duration = 5
         )
       }
     }, ignoreInit = TRUE)

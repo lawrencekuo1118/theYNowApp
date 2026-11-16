@@ -1081,6 +1081,13 @@ bblab_attach_order_research <- function(result, payload = list()) {
   result$order_research$earnings_call <- if (is.list(ec)) ec else NULL
   result$order_research$us_earnings_call <- NULL
   result$order_research$tw_earnings_call <- NULL
+  result$order_research$earnings_call_catalog <- payload$earnings_call_catalog %||% NULL
+  result$order_research$earnings_call_selected <- as.character(
+    payload$earnings_call_selected %||% character(0)
+  )
+  result$order_research$earnings_call_combined <- isTRUE(
+    length(result$order_research$earnings_call_selected) > 1L
+  )
   result$order_research$supply_report <- ynow_supply_report_with_filing(
     if (is.list(ec)) ec$supply_report else NULL,
     result$order_concentration

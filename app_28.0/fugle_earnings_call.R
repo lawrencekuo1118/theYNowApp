@@ -147,8 +147,41 @@ ynow_fugle_earnings_call_topic_url <- function() {
   ""
 }
 
+#' Past Fugle memo rows for a bare TW ticker (newest first; metadata only).
+ynow_fugle_earnings_call_catalog_rows <- function(ticker, max_rows = 12L) {
+  if (!isTRUE(.ynow_fugle_ec_enabled())) return(list())
+  bare <- gsub("[^0-9A-Za-z]", "", sub("\\.(TW|TWO)$", "", toupper(trimws(.ynow_fugle_ec_chr(ticker))), ignore.case = TRUE))
+  if (!nzchar(bare) || !grepl("^[0-9]{4,6}[A-Z]?$", bare)) return(list())
+  max_n <- max(1L, as.integer(max_rows)[1])
+  html <- ""
+  fixture <- Sys.getenv("YNOW_FUGLE_SCRAPE_FIXTURE_HTML", unset = "")
+  if (nzchar(fixture) && file.exists(fixture)) {
+    html <- paste(readLines(fixture, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  } else {
+    idx <- .ynow_fugle_ec_http_get(ynow_fugle_earnings_call_topic_url())
+    if (!is.list(idx) || !isTRUE(idx$ok) || isTRUE(.ynow_fugle_ec_blocked(idx$body))) return(list())
+    html <- idx$body %||% ""
+  }
+  links <- .ynow_fugle_ec_parse_topic_links(html, bare)
+  if (!length(links)) return(list())
+  links <- utils::head(links, max_n)
+  lapply(links, function(path) {
+    url <- if (grepl("^https?://", path)) path else paste0("https://blog.fugle.tw", path)
+    pub <- .ynow_fugle_ec_published(url)
+    ynow_ec_catalog_row(
+      source_id = "fugle_earnings_memo",
+      published = pub,
+      title = paste(bare, "Fugle 法說會備忘錄", pub),
+      url = url,
+      label = if (nzchar(pub)) pub else path,
+      credibility = "estimate"
+    )
+  })
+}
+
 #' Fetch Fugle 法說會備忘錄 for a TW ticker → facts via extract_fun.
-ynow_fugle_earnings_call_fetch <- function(ticker, extract_fun = NULL) {
+#' @param article_url optional absolute post URL (or /post/... path) for a past call.
+ynow_fugle_earnings_call_fetch <- function(ticker, extract_fun = NULL, article_url = NULL) {
   if (!isTRUE(.ynow_fugle_ec_enabled())) return(NULL)
   tk <- toupper(trimws(.ynow_fugle_ec_chr(ticker)))
   bare <- sub("\\.(TW|TWO)$", "", tk, ignore.case = TRUE)
@@ -156,6 +189,10 @@ ynow_fugle_earnings_call_fetch <- function(ticker, extract_fun = NULL) {
 
   topic_url <- ynow_fugle_earnings_call_topic_url()
   article_html <- ""
+  wanted <- .ynow_fugle_ec_chr(article_url)
+  if (nzchar(wanted) && !grepl("^https?://", wanted) && !grepl("^fixture://", wanted)) {
+    wanted <- paste0("https://blog.fugle.tw", if (startsWith(wanted, "/")) wanted else paste0("/", wanted))
+  }
   article_url <- ""
   fixture <- Sys.getenv("YNOW_FUGLE_SCRAPE_FIXTURE_HTML", unset = "")
   if (nzchar(fixture) && file.exists(fixture)) {
@@ -163,11 +200,19 @@ ynow_fugle_earnings_call_fetch <- function(ticker, extract_fun = NULL) {
     links <- .ynow_fugle_ec_parse_topic_links(article_html, bare)
     has_posts <- grepl("/post/earnings-call-[0-9]+-[0-9]{4}-", article_html, perl = TRUE)
     if (isTRUE(has_posts) && !length(links)) return(NULL)
-    article_url <- if (length(links)) {
-      paste0("https://blog.fugle.tw", links[[1]])
+    if (nzchar(wanted)) {
+      # Fixture HTML is a single-article page; accept any matching ticker post id.
+      article_url <- wanted
+    } else if (length(links)) {
+      article_url <- paste0("https://blog.fugle.tw", links[[1]])
     } else {
-      paste0("fixture://", basename(fixture))
+      article_url <- paste0("fixture://", basename(fixture))
     }
+  } else if (nzchar(wanted)) {
+    article_url <- wanted
+    art <- .ynow_fugle_ec_http_get(article_url)
+    if (!is.list(art) || !isTRUE(art$ok) || isTRUE(.ynow_fugle_ec_blocked(art$body))) return(NULL)
+    article_html <- art$body %||% ""
   } else {
     idx <- .ynow_fugle_ec_http_get(topic_url)
     if (!is.list(idx) || !isTRUE(idx$ok) || isTRUE(.ynow_fugle_ec_blocked(idx$body))) return(NULL)
