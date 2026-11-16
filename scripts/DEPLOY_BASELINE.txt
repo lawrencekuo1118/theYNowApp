@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12827358
+bundleId=12827534
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/  # pragma: allowlist secret
-aligned_git=94e174c847308c542d03c1d892048cc72557af6a
-commit=94e174c847308c542d03c1d892048cc72557af6a
-short=94e174c8
-message=chore: bump display version to v28.54
-captured_at=2026-11-16T02:44:14Z
+aligned_git=30019619adf5ca578dd361cbdbd9b351aeeca4b5
+commit=30019619adf5ca578dd361cbdbd9b351aeeca4b5
+short=30019619
+message=chore: bump display version to v28.55
+captured_at=2026-11-16T03:42:27Z
 display_version=v28.55
-note=Shipped v28.54 (+0.01) via deploy_app_21.R. Tip-ship #769: BBLab Reconciliation as section III header button (TYA-123/TYA-125). Also includes #767 past earnings-call transcript catalog already on master. Live status=running; rsconnect bundleId=12827358. Prior: v28.53=#770 (12827324; interim #768=12827300).
+note=Shipped v28.55 (+0.01) via deploy_app_21.R. Tip-ship #772: BBLab group cost attribution and segment profitability (TYA-129). Live status=running; rsconnect bundleId=12827534. Prior: v28.54=#771 (12827358).
