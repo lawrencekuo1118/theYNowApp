@@ -37,7 +37,7 @@ check(
   "lazy_tabs defers on_first_mount via later",
   grepl(".ynow_lazy_defer", lazy, fixed = TRUE) &&
     grepl("flags[[tab]] <- TRUE", lazy, fixed = TRUE) &&
-    grepl("delay = 0.05", lazy, fixed = TRUE)
+    grepl("delay = 0.12", lazy, fixed = TRUE)
 )
 
 check(
@@ -60,7 +60,7 @@ check(
 )
 
 ui_loc <- paste(readLines("ui_locale.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-ui_js <- paste(readLines("ynow_ui.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+ui_js <- paste(readLines("www/ynow_app.js", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check(
   "busy button labels wired (en + zh-TW + JS)",
   grepl("btn_ticker_search_busy", ui_loc, fixed = TRUE) &&

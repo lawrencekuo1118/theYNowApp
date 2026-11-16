@@ -6,9 +6,9 @@
 #
 # on_first_mount runs via later after the UI flag flips so a sync hook
 # (moduleServer, snapshot load) cannot hold the sidebar_tabs observer and
-# serialize the next tab switch behind that work. delay=0.05 clears the
-# current flush's short later::run_now drain (MockShinySession ~30ms) so the
-# next sidebar_tabs input can mount before a slow hook starts.
+# serialize the next tab switch behind that work. delay=0.12 clears the
+# current flush's later::run_now drain (MockShinySession can exceed ~30–50ms)
+# so the next sidebar_tabs input can mount before a slow hook starts.
 #
 # later::later drops the Shiny reactive domain. Wrap deferred hooks in
 # withReactiveDomain(session, ...) so moduleServer / session$ns still see a
@@ -143,7 +143,7 @@
               ))
             }
           )
-        }, delay = 0.05)
+        }, delay = 0.12)
       }
       if (is.function(after_mount)) {
         session$onFlushed(function() {

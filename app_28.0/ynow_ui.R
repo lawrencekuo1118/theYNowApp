@@ -4565,26 +4565,7 @@ tabPanel(
                        tags$div(
                          `data-ynow-lock` = "section:wacc_box",
                          uiOutput("dcf_wacc_fcfe_note"),
-                         # Single Bootstrap row: desktop wraps 4+4+4 / 4+4+4.
-                         # Phone ≤767px: .ynow-wacc-kpi-grid → CSS 2×3 equal cells.
-                         # One .row avoids Bootstrap clearfix + display:contents bugs.
-                         fluidRow(
-                           class = "ynow-wacc-kpi-grid",
-                           valueBoxOutput("vbx_equity_val", width = 4), # 股權市值 (E)
-                           valueBoxOutput("vbx_debt_val", width = 4),   # 總負債 (D)
-                           valueBoxOutput("vbx_tax_rate", width = 4),   # 有效稅率 (T)
-                           # Lock on col-sm-4 host (SGR pattern) so grid cells stay equal.
-                           tags$div(
-                             class = "col-sm-4",
-                             `data-ynow-lock` = "output:wacc",
-                             # bare uiOutput (SGR pattern); server infoBox width=NULL
-                             shiny::uiOutput("ibx_wacc")
-                           ),
-                           infoBoxOutput("ibx_rd", width = 4),
-                           infoBoxOutput("ibx_re", width = 4)
-                         ),
                          uiOutput("dcf_disc_formula_banner"),
-                         # 上列 100%：WACC 估算；下列左 50% rᵈ、右 50% CAPM
                          fluidRow(
                            box(
                              width = 12,
@@ -4658,7 +4639,6 @@ tabPanel(
                                        )
                                 )
                               ),
-                              # Core explainability: Why this Fair Value (not appendix)
                               uiOutput("dcf_value_why"),
                               fluidRow(
                                 column(width = 12,
@@ -4687,6 +4667,20 @@ tabPanel(
                 column(width = 12,
                        plotOutput("plt_fcf_trend", height = "350px")
                 )
+              ),
+              # WACC KPI displays (inputs stay in the eager shell for Search autofill).
+              fluidRow(
+                class = "ynow-wacc-kpi-grid",
+                valueBoxOutput("vbx_equity_val", width = 4),
+                valueBoxOutput("vbx_debt_val", width = 4),
+                valueBoxOutput("vbx_tax_rate", width = 4),
+                tags$div(
+                  class = "col-sm-4",
+                  `data-ynow-lock` = "output:wacc",
+                  shiny::uiOutput("ibx_wacc")
+                ),
+                infoBoxOutput("ibx_rd", width = 4),
+                infoBoxOutput("ibx_re", width = 4)
               ),
               tabBox(title = "SENSITIVITY", width = "auto",
                      fluidRow(
