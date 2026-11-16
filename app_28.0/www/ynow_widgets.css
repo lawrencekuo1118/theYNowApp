@@ -4607,6 +4607,38 @@
           color: inherit !important;
         }
 
+/* BBLab IV — orders / concentration: keep charts + chips inside the viewport.
+   Intrinsic-width flex parents previously let plotly + transcript chips grow
+   past the pane; force max-width and wrap chips onto the next row. */
+.ynow-bblab-orders,
+.ynow-bblab-orders__toolbar,
+.ynow-bblab-orders__groups,
+.ynow-bblab-orders__group,
+.ynow-bblab-or,
+.ynow-bblab-or-transcripts {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.ynow-bblab-report__section:has(.ynow-bblab-orders) .ynow-bblab-report__section-body,
+.ynow-bblab-orders__group {
+  overflow-x: auto;
+}
+.ynow-bblab-orders__group .plotly,
+.ynow-bblab-orders__group .js-plotly-plot,
+.ynow-bblab-orders__group .plot-container,
+.ynow-bblab-orders__group .svg-container,
+.ynow-bblab-orders__group .main-svg,
+.ynow-bblab-orders .html-widget {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+}
+
 /* BBLab orders — past earnings-call transcript selector above Start analysis */
 .ynow-bblab-or-transcripts {
   margin: 0 0 10px 0;
@@ -4614,6 +4646,7 @@
   border: 1px solid rgba(12, 84, 132, 0.18);
   border-radius: 6px;
   background: rgba(12, 84, 132, 0.04);
+  overflow-x: hidden;
 }
 .ynow-bblab-or-transcripts__title {
   margin: 0 0 4px 0;
@@ -4624,21 +4657,46 @@
   margin: 0 0 8px 0;
   font-size: 12px;
 }
+/* Shiny defaults .shiny-input-container to 300px; widen to the pane so chips
+   fill a row then wrap, instead of a narrow column or an unbounded strip. */
+.ynow-bblab-or-transcripts .shiny-input-container {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0;
+  margin-bottom: 6px;
+}
 .ynow-bblab-or-transcripts .shiny-options-group {
-  display: flex;
-  flex-wrap: wrap;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  flex-direction: row;
+  align-items: center;
+  align-content: flex-start;
+  justify-content: flex-start;
   gap: 6px 10px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   margin: 0;
+  clear: none;
 }
 .ynow-bblab-or-transcripts .checkbox-inline,
-.ynow-bblab-or-transcripts .checkbox {
-  margin: 0;
+.ynow-bblab-or-transcripts .checkbox,
+.ynow-bblab-or-transcripts label.checkbox-inline {
+  float: none !important;
+  flex: 0 1 auto;
+  display: inline-block;
+  max-width: 100%;
+  margin: 0 !important;
+  margin-left: 0 !important;
   padding: 4px 10px 4px 28px;
   border: 1px solid rgba(12, 84, 132, 0.28);
   border-radius: 4px;
   background: #fff;
   font-size: 12px;
   line-height: 1.3;
+  white-space: normal;
+  overflow-wrap: break-word;
+  vertical-align: middle;
 }
 .ynow-bblab-or-transcripts .checkbox-inline:has(input:checked),
 .ynow-bblab-or-transcripts .checkbox:has(input:checked) {
@@ -4651,6 +4709,8 @@
   flex-wrap: wrap;
   gap: 4px 8px;
   margin-top: 6px;
+  max-width: 100%;
+  min-width: 0;
 }
 .ynow-bblab-or-transcripts__link {
   padding: 0 2px !important;

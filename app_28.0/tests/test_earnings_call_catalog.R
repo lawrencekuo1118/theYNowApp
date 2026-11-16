@@ -188,6 +188,49 @@ check("toolbar mounts transcript uiOutput above Start", {
       regexpr('ns("order_research_run")', m, fixed = TRUE)[1]
 })
 
+# IV layout: transcript chips wrap; orders charts stay inside the pane (TYA-127).
+css_widgets <- paste(
+  readLines("www/ynow_widgets.css", warn = FALSE, encoding = "UTF-8"),
+  collapse = "\n"
+)
+mod_src <- paste(
+  readLines("business_breakdown_module.R", warn = FALSE, encoding = "UTF-8"),
+  collapse = "\n"
+)
+check("IV transcript chips flex-wrap onto next row", {
+  grepl("\\.ynow-bblab-or-transcripts \\.shiny-options-group", css_widgets) &&
+    grepl("flex-wrap:\\s*wrap\\s*!important", css_widgets) &&
+    grepl("\\.ynow-bblab-or-transcripts \\.shiny-input-container", css_widgets) &&
+    grepl("width:\\s*100%\\s*!important", css_widgets) &&
+    grepl("margin-left:\\s*0\\s*!important", css_widgets) &&
+    grepl("white-space:\\s*normal", css_widgets) &&
+    grepl("float:\\s*none\\s*!important", css_widgets)
+})
+check("IV orders charts constrained (no overflow:visible)", {
+  # Scope to the orders CSS block only — structure-mix charts may still use
+  # overflow:visible elsewhere in the same tags$style string.
+  orders_css <- regmatches(
+    mod_src,
+    regexpr(
+      "\\.ynow-bblab-orders\\{[^`]{0,2500}?\\.ynow-bblab-or__card\\{",
+      mod_src,
+      perl = TRUE
+    )
+  )
+  length(orders_css) == 1L &&
+    grepl("max-width:100%", orders_css, fixed = TRUE) &&
+    grepl("overflow-x:auto", orders_css, fixed = TRUE) &&
+    grepl("min-width:0", orders_css, fixed = TRUE) &&
+    !grepl("overflow:visible", orders_css, fixed = TRUE) &&
+    grepl(
+      "\\.ynow-bblab-orders__group \\.plotly[\\s\\S]{0,400}?max-width:\\s*100%",
+      css_widgets,
+      perl = TRUE
+    ) &&
+    grepl("overflow-x:\\s*auto\\s*!important", css_widgets) &&
+    grepl("min-width:\\s*0", css_widgets)
+})
+
 message("")
 message("PASS ", ok, "  FAIL ", bad)
 if (bad > 0L) quit(status = 1L)

@@ -2175,6 +2175,23 @@ check("section V-style unnamed body lands in section-body not actions", {
     !grepl("ynow-bblab-report__section-actions", html_v, fixed = TRUE) &&
     is.finite(body_pos) && is.finite(card_pos) && card_pos > body_pos
 })
+# TYA-127: same formal trap put IV orders into section-actions (overflow + chip row).
+check("section IV orders body lands in section-body not actions", {
+  html_iv <- paste(as.character(.bblab_report_section(
+    "IV", "ynow_bblab_orders_title", "Company orders & market concentration",
+    "ynow_bblab_orders_help", "help",
+    chapter = "4",
+    tags$div(class = "ynow-bblab-orders",
+             tags$div(class = "ynow-bblab-or-transcripts", "transcript-row-probe"))
+  )), collapse = " ")
+  body_pos <- regexpr("ynow-bblab-report__section-body", html_iv, fixed = TRUE)[1]
+  orders_pos <- regexpr("ynow-bblab-orders", html_iv, fixed = TRUE)[1]
+  grepl("ynow-bblab-orders", html_iv, fixed = TRUE) &&
+    grepl("ynow-bblab-or-transcripts", html_iv, fixed = TRUE) &&
+    grepl("ynow-bblab-report__section-body", html_iv, fixed = TRUE) &&
+    !grepl("ynow-bblab-report__section-actions", html_iv, fixed = TRUE) &&
+    is.finite(body_pos) && is.finite(orders_pos) && orders_pos > body_pos
+})
 check("named header_extra still mounts in section-actions", {
   html_iii <- paste(as.character(.bblab_report_section(
     "III", "ynow_bblab_struct_title", "Structure",
