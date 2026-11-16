@@ -29,10 +29,37 @@
   )
 }
 
-sotp_module_ui <- function(id) {
+sotp_module_shell_ui <- function(id) {
   ns <- NS(id)
-  tabItem(
-    tabName = "sotp_calculator",
+  tabBox(
+    title = "SOTP",
+    width = "auto",
+    tabPanel(
+      title = tags$span(id = "ynow_sotp_tab_bridge", "Bridge"),
+      icon = icon("link"),
+      h4(tags$b(id = "ynow_sotp_bridge_heading", "Capital bridge & shares")),
+      .sotp_settings_note(
+        "ynow_sotp_settings_bridge_note",
+        "Equity = Implied EV + Cash − Debt (same bridge as DCF); Implied Price = Equity ÷ Shares."
+      ),
+      uiOutput(ns("txt_shares_note")),
+      fluidRow(
+        column(4, lock_numeric_input(numericInput(ns("cash"), tags$span(id = "ynow_sotp_lbl_cash", "Cash"), value = NA, step = 1))),
+        column(4, lock_numeric_input(numericInput(ns("debt"), tags$span(id = "ynow_sotp_lbl_debt", "Total Debt"), value = NA, step = 1))),
+        column(4, lock_numeric_input(numericInput(ns("shares"), tags$span(id = "ynow_sotp_lbl_shares", "Shares (quote)"), value = NA, step = 1)))
+      ),
+      tags$p(
+        id = "ynow_sotp_bridge_help",
+        class = "help-block",
+        "Implied EV = Σ(segment revenue × segment EV/Sales) + non-operating; Equity = EV + Cash − Debt. Cash, Total Debt, and Shares are set once on Model Dashboard → Shared model parameters."
+      )
+    )
+  )
+}
+
+sotp_module_body_ui <- function(id) {
+  ns <- NS(id)
+  tagList(
     fluidRow(
       column(
         12,
@@ -56,8 +83,6 @@ sotp_module_ui <- function(id) {
     tabBox(
       title = tags$span(id = "ynow_sotp_box_title", "SOTP"),
       width = "auto",
-
-      # --- Overview ---
       tabPanel(
         title = tags$span(id = "ynow_sotp_tab_overview", "Overview"),
         icon = icon("puzzle-piece"),
@@ -87,8 +112,6 @@ sotp_module_ui <- function(id) {
         ),
         fluidRow(column(12, uiOutput(ns("ui_sotp_result"))))
       ),
-
-      # --- Segments ---
       tabPanel(
         title = tags$span(id = "ynow_sotp_tab_segments", "Segments"),
         icon = icon("table"),
@@ -133,31 +156,13 @@ sotp_module_ui <- function(id) {
           "Non-operating assets are added to Σ(segment EV) before the Cash − Debt bridge."
         ),
         uiOutput(ns("ui_segment_inputs"))
-      ),
-
-      # --- Bridge ---
-      tabPanel(
-        title = tags$span(id = "ynow_sotp_tab_bridge", "Bridge"),
-        icon = icon("link"),
-        h4(tags$b(id = "ynow_sotp_bridge_heading", "Capital bridge & shares")),
-        .sotp_settings_note(
-          "ynow_sotp_settings_bridge_note",
-          "Equity = Implied EV + Cash − Debt (same bridge as DCF); Implied Price = Equity ÷ Shares."
-        ),
-        uiOutput(ns("txt_shares_note")),
-        fluidRow(
-          column(4, lock_numeric_input(numericInput(ns("cash"), tags$span(id = "ynow_sotp_lbl_cash", "Cash"), value = NA, step = 1))),
-          column(4, lock_numeric_input(numericInput(ns("debt"), tags$span(id = "ynow_sotp_lbl_debt", "Total Debt"), value = NA, step = 1))),
-          column(4, lock_numeric_input(numericInput(ns("shares"), tags$span(id = "ynow_sotp_lbl_shares", "Shares (quote)"), value = NA, step = 1)))
-        ),
-        tags$p(
-          id = "ynow_sotp_bridge_help",
-          class = "help-block",
-          "Implied EV = Σ(segment revenue × segment EV/Sales) + non-operating; Equity = EV + Cash − Debt. Cash, Total Debt, and Shares are set once on Model Dashboard → Shared model parameters."
-        )
       )
     )
   )
+}
+
+sotp_module_ui <- function(id) {
+  .ynow_wave2_tab_item("sotp_calculator")
 }
 
 sotp_module_server <- function(id,
@@ -523,7 +528,8 @@ sotp_module_server <- function(id,
       sotp_price = reactive({
         res <- last_result()
         if (!is.null(res) && identical(res$status, "ok")) res$implied_price else NA_real_
-      })
+      }),
+      sync_from_statements = sync_from_statements
     ))
   })
 }

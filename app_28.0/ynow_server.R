@@ -4889,7 +4889,8 @@ server <- function(input, output, session) {
   # Once-per-session lazy page mounts (heavy tabs). Revisit keeps mounted UI.
   .ynow_lazy_tab_ctrl <- .ynow_register_lazy_tabs(
     input, output, session,
-    builders = list(
+    builders = c(
+      list(
       macro_market = function() {
         .ynow_page_ui_macro_market(
           locale = isolate(ui_locale()),
@@ -4949,6 +4950,8 @@ server <- function(input, output, session) {
       rel_mult_rev = function() {
         relative_multiples_bodies_ui("mod_rel")$rel_mult_rev
       }
+      ),
+      .ynow_wave2_builders()
     ),
     on_first_mount = list(
       macro_market = function() {
@@ -5015,6 +5018,13 @@ server <- function(input, output, session) {
           ),
           subtab_active_rv = reactive(TRUE)
         )
+      },
+      # Body inputs (default_ev_sales, nonop, manual_segments) are not in the
+      # first HTML. Re-sync once when the pane mounts. The session observer
+      # already wrote the shell bridge. A second call writes the same values.
+      sotp_calculator = function() {
+        fn <- sotp_results$sync_from_statements
+        if (is.function(fn)) fn()
       }
     ),
     after_mount = function(tab) {

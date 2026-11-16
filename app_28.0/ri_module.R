@@ -191,15 +191,127 @@ compute_ri_valuation <- function(b0,
 # ==========================================
 # UI
 # ==========================================
-ri_module_ui <- function(id) {
+ri_module_shell_ui <- function(id) {
   ns <- NS(id)
+  roe0 <- APP_DEFAULTS$ri_roe %||% 15
+  n0 <- APP_DEFAULTS$ri_years %||% 5
+  tabBox(
+    title = "RESIDUAL INCOME", width = "auto",
+    tabPanel(
+      "RI Settings", icon = icon("cogs"),
+      h4(tags$b("每股帳面淨值 (B0) 估算區")),
+      fluidRow(
+        div(
+          "B0 = 普通股股東權益 (Common Equity) ÷ 流通在外股數 (Shares Outstanding)",
+          style = paste(
+            "font-size: 15px; font-weight: bold; color: #2C3E50; text-align: center;",
+            "margin-bottom: 12px; padding: 10px; background-color: #F8F9F9;",
+            "border-left: 4px solid #1a1a1a; border-radius: 4px;"
+          )
+        )
+      ),
+      fluidRow(
+        column(4, numericInput(ns("b0"), "期初每股帳面淨值 B0", value = NA, step = 0.5)),
+        column(
+          8, br(),
+          actionButton(
+            ns("btn_sync_b0"), "從財報帶入",
+            icon = icon("sync"), class = "btn-sm",
+            style = "background-color: #1a1a1a; color: white; border: none; padding: 8px 15px; font-weight: bold; border-radius: 5px; margin-top: 5px;"
+          )
+        )
+      ),
+      hr(style = "border-top: 1px solid #BDC3C7;"),
+      h4(tags$b("模型參數假設")),
+      fluidRow(
+        column(4, numericInput(ns("ri_years"), "預測期 (Years)", value = n0, min = 1, max = 15, step = 1)),
+        column(4, numericInput(ns("ri_ke"), "股東權益成本 Ke (%)", value = APP_DEFAULTS$ddm_ke %||% 8.0, step = 0.1)),
+        column(4, numericInput(ns("ri_g"), "終值永續成長率 g (%)", value = APP_DEFAULTS$sgr %||% 2.0, step = 0.1))
+      ),
+      fluidRow(
+        column(6, numericInput(ns("ri_roe"), "起始／預期 ROE (%)", value = roe0, step = 0.1)),
+        column(6, numericInput(ns("ri_payout"), "預期現金配息率 Payout (%)", value = APP_DEFAULTS$ri_payout %||% 40.0, step = 1))
+      ),
+      uiOutput(ns("ui_ri_param_sources")),
+      hr(style = "border-top: 1px solid #BDC3C7;"),
+      h4(tags$b("ROE 預測方法")),
+      fluidRow(
+        column(
+          6,
+          selectInput(
+            ns("roe_method"), "ROE 預測方法",
+            choices = c(
+              "固定 ROE（Constant）" = "constant",
+              "線性淡化（Linear Fade）" = "linear",
+              "產業收斂（Industry Fade）" = "industry",
+              "自訂向量（Custom）" = "custom"
+            ),
+            selected = APP_DEFAULTS$roe_method %||% "constant"
+          )
+        ),
+        column(6, uiOutput(ns("ui_roe_path_preview")))
+      ),
+      # Always in the document so Lite can read them before this tab opens.
+      # conditionalPanel hides the unused method. It does not remove the node.
+      conditionalPanel(
+        condition = sprintf("input['%s'] == 'linear'", ns("roe_method")),
+        fluidRow(
+          column(4, numericInput(
+            ns("roe_terminal"), "終值 ROE (%)",
+            value = max(5, roe0 - 8), step = 0.1
+          )),
+          column(8, helpText("由起始 ROE 線性淡化至終值 ROE，年數＝預測期。"))
+        )
+      ),
+      conditionalPanel(
+        condition = sprintf("input['%s'] == 'industry'", ns("roe_method")),
+        fluidRow(
+          column(4, numericInput(ns("roe_industry"), "產業平均 ROE (%)", value = 12, step = 0.1)),
+          column(8, helpText("由起始 ROE 線性收斂至產業平均。產業切換時會覆寫此值。"))
+        )
+      ),
+      conditionalPanel(
+        condition = sprintf("input['%s'] == 'custom'", ns("roe_method")),
+        fluidRow(
+          column(
+            12,
+            textInput(
+              ns("roe_custom_txt"),
+              "自訂 ROE 向量（%，逗號分隔）",
+              value = paste(round(rep(roe0, n0), 1), collapse = ", ")
+            ),
+            helpText("例：31, 29, 27, 25, 23 — 長度不足會沿用最後一值；過長會截斷。")
+          )
+        )
+      ),
+      uiOutput(ns("ui_roe_method_params")),
+      fluidRow(
+        column(
+          12,
+          tags$p(
+            id = ns("ynow_ri_settings_recalc_hint"),
+            style = "margin-top: 10px; color: #7f8c8d; font-size: 12px;",
+            "參數變更後請回 Overview 按「試算 RI」（或「回復預設」重設後再試算）。"
+          )
+        )
+      )
+    ),
+    tabPanel(
+      "Beta (β)",
+      icon = icon("chart-line"),
+      .beta_model_source_section_ui(
+        "ri_beta_u_apply_source",
+        "ri_apply_beta_u_selected"
+      )
+    )
+  )
+}
 
-  tabItem(
-    tabName = "ri_calculator",
+ri_module_body_ui <- function(id) {
+  ns <- NS(id)
+  tagList(
     tabBox(
       title = "RESIDUAL INCOME", width = "auto",
-
-      # ----- Overview -----
       tabPanel(
         "RI Overview", icon = icon("gem"),
         fluidRow(
@@ -261,86 +373,6 @@ ri_module_ui <- function(id) {
           )
         )
       ),
-
-      # ----- Settings -----
-      tabPanel(
-        "RI Settings", icon = icon("cogs"),
-        h4(tags$b("每股帳面淨值 (B0) 估算區")),
-        fluidRow(
-          div(
-            "B0 = 普通股股東權益 (Common Equity) ÷ 流通在外股數 (Shares Outstanding)",
-            style = paste(
-              "font-size: 15px; font-weight: bold; color: #2C3E50; text-align: center;",
-              "margin-bottom: 12px; padding: 10px; background-color: #F8F9F9;",
-              "border-left: 4px solid #1a1a1a; border-radius: 4px;"
-            )
-          )
-        ),
-        fluidRow(
-          column(4, numericInput(ns("b0"), "期初每股帳面淨值 B0", value = NA, step = 0.5)),
-          column(
-            8, br(),
-            actionButton(
-              ns("btn_sync_b0"), "從財報帶入",
-              icon = icon("sync"), class = "btn-sm",
-              style = "background-color: #1a1a1a; color: white; border: none; padding: 8px 15px; font-weight: bold; border-radius: 5px; margin-top: 5px;"
-            )
-          )
-        ),
-        hr(style = "border-top: 1px solid #BDC3C7;"),
-        h4(tags$b("模型參數假設")),
-        fluidRow(
-          column(4, numericInput(ns("ri_years"), "預測期 (Years)", value = APP_DEFAULTS$ri_years %||% 5, min = 1, max = 15, step = 1)),
-          column(4, numericInput(ns("ri_ke"), "股東權益成本 Ke (%)", value = APP_DEFAULTS$ddm_ke %||% 8.0, step = 0.1)),
-          column(4, numericInput(ns("ri_g"), "終值永續成長率 g (%)", value = APP_DEFAULTS$sgr %||% 2.0, step = 0.1))
-        ),
-        fluidRow(
-          column(6, numericInput(ns("ri_roe"), "起始／預期 ROE (%)", value = APP_DEFAULTS$ri_roe %||% 15.0, step = 0.1)),
-          column(6, numericInput(ns("ri_payout"), "預期現金配息率 Payout (%)", value = APP_DEFAULTS$ri_payout %||% 40.0, step = 1))
-        ),
-        uiOutput(ns("ui_ri_param_sources")),
-        hr(style = "border-top: 1px solid #BDC3C7;"),
-        h4(tags$b("ROE 預測方法")),
-        fluidRow(
-          column(
-            6,
-            selectInput(
-              ns("roe_method"), "ROE 預測方法",
-              choices = c(
-                "固定 ROE（Constant）" = "constant",
-                "線性淡化（Linear Fade）" = "linear",
-                "產業收斂（Industry Fade）" = "industry",
-                "自訂向量（Custom）" = "custom"
-              ),
-              selected = APP_DEFAULTS$roe_method %||% "constant"
-            )
-          ),
-          column(6, uiOutput(ns("ui_roe_path_preview")))
-        ),
-        uiOutput(ns("ui_roe_method_params")),
-        fluidRow(
-          column(
-            12,
-            tags$p(
-              id = ns("ynow_ri_settings_recalc_hint"),
-              style = "margin-top: 10px; color: #7f8c8d; font-size: 12px;",
-              "參數變更後請回 Overview 按「試算 RI」（或「回復預設」重設後再試算）。"
-            )
-          )
-        )
-      ),
-
-      # ----- Beta (β)：與 Basic Setup／DCF／DDM 同源 picker，雙向同步 -----
-      tabPanel(
-        "Beta (β)",
-        icon = icon("chart-line"),
-        .beta_model_source_section_ui(
-          "ri_beta_u_apply_source",
-          "ri_apply_beta_u_selected"
-        )
-      ),
-
-      # ----- Sensitivity -----
       tabPanel(
         "Sensitivity Analysis", icon = icon("th"),
         fluidRow(
@@ -366,6 +398,10 @@ ri_module_ui <- function(id) {
       ns("param_sensitivity_table")
     )
   )
+}
+
+ri_module_ui <- function(id) {
+  .ynow_wave2_tab_item("ri_calculator")
 }
 
 # ==========================================
@@ -627,50 +663,15 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
 
     output$ui_roe_method_params <- renderUI({
       method <- input$roe_method %||% "constant"
-      n <- max(1L, as.integer(input$ri_years %||% 5))
-      start_roe <- input$ri_roe %||% 15
-
-      if (identical(method, "linear")) {
-        fluidRow(
-          column(4, numericInput(ns("roe_terminal"), "終值 ROE (%)", value = max(5, start_roe - 8), step = 0.1)),
-          column(8, helpText("由起始 ROE 線性淡化至終值 ROE，年數＝預測期。"))
-        )
-      } else if (identical(method, "industry")) {
-        ind_val <- {
-          cur <- suppressWarnings(as.numeric(isolate(input$roe_industry))[1])
-          if (is.finite(cur)) cur else industry_roe_pct()
-        }
-        fluidRow(
-          column(
-            4,
-            numericInput(
-              ns("roe_industry"), "產業平均 ROE (%)",
-              value = ind_val, step = 0.1
-            )
-          ),
-          column(
-            8,
-            helpText(sprintf(
-              "預設＝目前所選產業 ROE 估計（中位 %.1f%%）；可手動覆寫。由起始 ROE 線性收斂至產業平均。",
-              industry_roe_pct()
-            ))
-          )
-        )
-      } else if (identical(method, "custom")) {
-        default_vec <- paste(round(rep(start_roe, n), 1), collapse = ", ")
-        fluidRow(
-          column(
-            12,
-            textInput(
-              ns("roe_custom_txt"),
-              sprintf("自訂 ROE 向量（%%，%d 年，逗號分隔）", n),
-              value = default_vec
-            ),
-            helpText("例：31, 29, 27, 25, 23 — 長度不足會沿用最後一值；過長會截斷。")
-          )
-        )
-      } else {
+      if (identical(method, "industry")) {
+        helpText(sprintf(
+          "預設＝目前所選產業 ROE 估計（中位 %.1f%%）；可手動覆寫。由起始 ROE 線性收斂至產業平均。",
+          industry_roe_pct()
+        ))
+      } else if (identical(method, "constant")) {
         helpText("固定：各年 ROE 皆等於「起始／預期 ROE」。")
+      } else {
+        NULL
       }
     })
 

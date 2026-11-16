@@ -345,8 +345,9 @@ check("rel lazy hosts", grepl('uiOutput("ynow_lazy_host_rel_mult_ev")', mod_src,
         grepl('uiOutput("ynow_lazy_host_rel_multiples_calculator")', mod_src, fixed = TRUE) &&
         grepl('uiOutput("ynow_lazy_host_rel_mult_rev")', mod_src, fixed = TRUE) &&
         grepl('relative_multiples_module_ui("mod_rel")', ui_src, fixed = TRUE))
-check("sotp UI call", grepl('sotp_module_ui("mod_sotp")', ui_src, fixed = TRUE))
-check("sotp stays eager", !grepl('uiOutput("ynow_lazy_host_sotp_calculator")', ui_src, fixed = TRUE))
+check("sotp UI call", grepl('.ynow_wave2_tab_item("sotp_calculator")', ui_src, fixed = TRUE))
+check("sotp body is lazy", grepl("sotp_calculator = function", srv_ui, fixed = TRUE) &&
+        grepl(".ynow_wave2_builders()", srv_ui, fixed = TRUE))
 check("module UI built on first visit", grepl('relative_multiples_bodies_ui("mod_rel")', srv_ui, fixed = TRUE) &&
         grepl('relative_multiples_module_ui("mod_rel")', ui_src, fixed = TRUE))
 check(
