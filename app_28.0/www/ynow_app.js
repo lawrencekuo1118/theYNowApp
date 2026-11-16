@@ -1416,6 +1416,7 @@
             setBtText('ynow_bblab_ch5_help', 'bblab_ch5_help');
             setBtText('ynow_bblab_ch6_title', 'bblab_ch6_title');
             setBtText('ynow_bblab_ch6_help', 'bblab_ch6_help');
+            setBtText('ynow_bblab_recon_btn', 'bblab_recon_btn');
             setBtText('ynow_bblab_recon_notes_title', 'bblab_recon_notes_title');
             setBtText('ynow_bblab_ch7_title', 'bblab_ch7_title');
             setBtText('ynow_bblab_summary_title', 'bblab_ch2_title');

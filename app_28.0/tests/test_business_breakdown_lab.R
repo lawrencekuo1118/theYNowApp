@@ -38,6 +38,7 @@ check <- function(label, cond) {
 engine_src <- paste(readLines("business_breakdown_engine.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 schema_src <- paste(readLines("business_breakdown_schema.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 ui_src <- paste(readLines("ynow_ui.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+js_src <- paste(readLines("www/ynow_app.js", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 mod_src <- paste(readLines("business_breakdown_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 server_src <- paste(readLines("ynow_server.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 
@@ -527,7 +528,21 @@ testing_fn_src <- {
     substr(ui_src, start, start + len - 1L)
   }
 }
-advance_block <- {
+advance_page_fn_src <- {
+  m <- regexpr(
+    "\\.ynow_page_ui_company_advance\\s*<-\\s*function\\s*\\([^)]*\\)\\s*\\{[\\s\\S]*?\\n\\}",
+    ui_src,
+    perl = TRUE
+  )
+  if (m < 1L) {
+    ""
+  } else {
+    start <- as.integer(m)
+    len <- as.integer(attr(m, "match.length"))
+    substr(ui_src, start, start + len - 1L)
+  }
+}
+advance_tab_block <- {
   m <- regexpr(
     "tabItem\\(\\s*tabName\\s*=\\s*\"company_advance\"[\\s\\S]*?\\n\\s*\\),",
     ui_src,
@@ -541,6 +556,7 @@ advance_block <- {
     substr(ui_src, start, start + len - 1L)
   }
 }
+css_src <- paste(readLines("www/ynow_chrome.css", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check("26 Business Breakdown sidebar hosts BBL",
       grepl('tabName = "company_advance"', ui_src, fixed = TRUE) &&
         grepl("ynow_menu_company_advance", ui_src, fixed = TRUE) &&
@@ -550,23 +566,25 @@ check("26 Business Breakdown sidebar hosts BBL",
         grepl("Business Breakdown", mod_src, fixed = TRUE) &&
         grepl("business_breakdown_lab_ui", ui_src, fixed = TRUE))
 check("26 Lab markup lives under Company - Advance tab",
-      nzchar(advance_block) &&
-        grepl("ynow-company-advance-bblab", advance_block, fixed = TRUE) &&
-        grepl("business_breakdown_lab_ui", advance_block, fixed = TRUE) &&
-        grepl('id = "ynow_company_advance_bblab"', advance_block, fixed = TRUE) &&
+      nzchar(advance_page_fn_src) &&
+        grepl("ynow-company-advance-bblab", advance_page_fn_src, fixed = TRUE) &&
+        grepl("business_breakdown_lab_ui", advance_page_fn_src, fixed = TRUE) &&
+        grepl('id = "ynow_company_advance_bblab"', advance_page_fn_src, fixed = TRUE) &&
+        nzchar(advance_tab_block) &&
+        grepl('uiOutput("ynow_lazy_host_company_advance")', advance_tab_block, fixed = TRUE) &&
         !grepl("business_breakdown_lab_ui", dashboard_block, fixed = TRUE) &&
         !grepl("business_breakdown_lab_ui", testing_fn_src, fixed = TRUE) &&
         !grepl("ynow-testing-bblab", ui_src, fixed = TRUE) &&
         grepl("ynow_testing_page_title", testing_fn_src, fixed = TRUE))
 check("26 Lite CSS hide + remap to Company - Advance",
       grepl('tabName = "company_advance"', ui_src, fixed = TRUE) &&
-        grepl("body.ynow-lite .ynow-company-advance-bblab", ui_src, fixed = TRUE) &&
-        grepl("body.ynow-lite .ynow-bblab", ui_src, fixed = TRUE) &&
+        grepl("body.ynow-lite .ynow-company-advance-bblab", css_src, fixed = TRUE) &&
+        grepl("body.ynow-lite .ynow-bblab", css_src, fixed = TRUE) &&
         grepl("ynow-sidebar-test-link", ui_src, fixed = TRUE) &&
         grepl("ynow-full-only", mod_src, fixed = TRUE) &&
-        grepl("remapLegacyTab", ui_src, fixed = TRUE) &&
-        grepl("business_breakdown_lab", ui_src, fixed = TRUE) &&
-        grepl("return 'company_advance'", ui_src, fixed = TRUE))
+        grepl("remapLegacyTab", js_src, fixed = TRUE) &&
+        grepl("business_breakdown_lab", js_src, fixed = TRUE) &&
+        grepl("return 'company_advance'", js_src, fixed = TRUE))
 
 # ---- extras: i18n, parse, valuation isolation, toast specificity ----
 for (k in c("menu_business_breakdown_lab", "bblab_page_sub", "bblab_report_kicker",
@@ -577,6 +595,7 @@ for (k in c("menu_business_breakdown_lab", "bblab_page_sub", "bblab_report_kicke
             "bblab_ch1_title", "bblab_ch2_title", "bblab_ch3_title", "bblab_ch4_title",
             "bblab_ch5_title", "bblab_ch5_help", "bblab_cards_empty",
             "bblab_ch6_title", "bblab_ch6_help",
+            "bblab_recon_btn", "bblab_recon_close",
             "bblab_recon_verdict_pass", "bblab_recon_verdict_fail",
             "bblab_recon_col_reported", "bblab_recon_col_recast",
             "bblab_recon_col_leftover", "bblab_recon_commercial_foot",
@@ -625,6 +644,10 @@ check("i18n chapter titles en + zh-TW", {
     identical(.UI_STRINGS$`zh-TW`$bblab_ch5_title, "各事業簡化財報") &&
     identical(.UI_STRINGS$en$bblab_ch6_title, "Reconciliation") &&
     identical(.UI_STRINGS$`zh-TW`$bblab_ch6_title, "對帳") &&
+    identical(.UI_STRINGS$en$bblab_recon_btn, "Reconciliation") &&
+    identical(.UI_STRINGS$`zh-TW`$bblab_recon_btn, "對帳") &&
+    identical(.UI_STRINGS$en$bblab_recon_close, "Close") &&
+    identical(.UI_STRINGS$`zh-TW`$bblab_recon_close, "關閉") &&
     grepl("Filed consolidated", .UI_STRINGS$en$bblab_recon_col_reported, fixed = TRUE) &&
     grepl("合併財報已申報", .UI_STRINGS$`zh-TW`$bblab_recon_col_reported, fixed = TRUE) &&
     grepl("Sum of businesses", .UI_STRINGS$en$bblab_recon_col_recast, fixed = TRUE) &&
@@ -647,17 +670,18 @@ check("i18n chapter titles en + zh-TW", {
     ))
 })
 check("applyUiLocale wires chapter titles", {
-  grepl("setBtText('ynow_bblab_ch1_title', 'bblab_ch1_title')", ui_src, fixed = TRUE) &&
-    grepl("setBtText('ynow_bblab_ch3_current_label', 'bblab_ch3_current_label')", ui_src, fixed = TRUE) &&
-    grepl("setBtText('ynow_bblab_ch4_title', 'bblab_ch4_title')", ui_src, fixed = TRUE) &&
-    grepl("setBtText('ynow_bblab_ch4_limited', 'bblab_ch4_limited')", ui_src, fixed = TRUE) &&
-    grepl("setBtText('ynow_bblab_ch5_help', 'bblab_ch5_help')", ui_src, fixed = TRUE) &&
-    grepl("setBtText('ynow_bblab_ch7_title', 'bblab_ch7_title')", ui_src, fixed = TRUE) &&
-    grepl("setBtText('ynow_bblab_orders_title', 'bblab_orders_title')", ui_src, fixed = TRUE) &&
-    grepl("setBtText('ynow_bblab_orders_qty_title', 'bblab_orders_qty_title')", ui_src, fixed = TRUE) &&
-    grepl("setBtText('ynow_bblab_orders_markets_title', 'bblab_orders_markets_title')", ui_src, fixed = TRUE) &&
-    grepl("setBtText('ynow_bblab_orders_suppliers_title', 'bblab_orders_suppliers_title')", ui_src, fixed = TRUE) &&
-    grepl("setBtText('ynow_bblab_orders_from_filings_customers', 'bblab_orders_from_filings')", ui_src, fixed = TRUE)
+  grepl("setBtText('ynow_bblab_ch1_title', 'bblab_ch1_title')", js_src, fixed = TRUE) &&
+    grepl("setBtText('ynow_bblab_ch3_current_label', 'bblab_ch3_current_label')", js_src, fixed = TRUE) &&
+    grepl("setBtText('ynow_bblab_ch4_title', 'bblab_ch4_title')", js_src, fixed = TRUE) &&
+    grepl("setBtText('ynow_bblab_ch4_limited', 'bblab_ch4_limited')", js_src, fixed = TRUE) &&
+    grepl("setBtText('ynow_bblab_ch5_help', 'bblab_ch5_help')", js_src, fixed = TRUE) &&
+    grepl("setBtText('ynow_bblab_ch7_title', 'bblab_ch7_title')", js_src, fixed = TRUE) &&
+    grepl("setBtText('ynow_bblab_orders_title', 'bblab_orders_title')", js_src, fixed = TRUE) &&
+    grepl("setBtText('ynow_bblab_orders_qty_title', 'bblab_orders_qty_title')", js_src, fixed = TRUE) &&
+    grepl("setBtText('ynow_bblab_orders_markets_title', 'bblab_orders_markets_title')", js_src, fixed = TRUE) &&
+    grepl("setBtText('ynow_bblab_orders_suppliers_title', 'bblab_orders_suppliers_title')", js_src, fixed = TRUE) &&
+    grepl("setBtText('ynow_bblab_orders_from_filings_customers', 'bblab_orders_from_filings')", js_src, fixed = TRUE) &&
+    grepl("setBtText('ynow_bblab_recon_btn', 'bblab_recon_btn')", js_src, fixed = TRUE)
 })
 check("mix chapters are one report section with history panel", {
   grepl("Revenue mix", mod_src, fixed = TRUE) &&
@@ -670,7 +694,6 @@ check("mix chapters are one report section with history panel", {
     grepl("ynow-bblab-struct-mix__conc", mod_src, fixed = TRUE) &&
     grepl("ynow-bblab-struct-mix__chart", mod_src, fixed = TRUE) &&
     grepl("ynow-bblab-struct--tables", mod_src, fixed = TRUE) &&
-    grepl('chapter = "6"', mod_src, fixed = TRUE) &&
     grepl('chapter = "7"', mod_src, fixed = TRUE) &&
     grepl("ynow_bblab_orders_title", mod_src, fixed = TRUE) &&
     grepl("ynow-bblab-orders__groups", mod_src, fixed = TRUE) &&
@@ -681,7 +704,11 @@ check("mix chapters are one report section with history panel", {
     grepl('uiOutput(ns("orders_group_context"))', mod_src, fixed = TRUE) &&
     grepl('uiOutput(ns("donut_shell"))', mod_src, fixed = TRUE) &&
     grepl('uiOutput(ns("cards_section"))', mod_src, fixed = TRUE) &&
-    grepl('uiOutput(ns("recon_section"))', mod_src, fixed = TRUE) &&
+    grepl('uiOutput(ns("recon_header_btn"))', mod_src, fixed = TRUE) &&
+    grepl("header_extra", mod_src, fixed = TRUE) &&
+    grepl("showModal", mod_src, fixed = TRUE) &&
+    grepl('input$recon_open', mod_src, fixed = TRUE) &&
+    !grepl('uiOutput(ns("recon_section"))', mod_src, fixed = TRUE) &&
     grepl('uiOutput(ns("shared_section"))', mod_src, fixed = TRUE) &&
     grepl(".bblab_orders_group_visible", mod_src, fixed = TRUE) &&
     grepl("orders_markets_chart", mod_src, fixed = TRUE) &&
@@ -723,7 +750,7 @@ check("i18n fallback GM label has no default-off parenthetical", {
 })
 check("applyUiLocale wires fallback GM label",
       grepl("setBtText('ynow_bblab_fallback_gm_label', 'bblab_fallback_gm_label')",
-            ui_src, fixed = TRUE) &&
+            js_src, fixed = TRUE) &&
         grepl('id = "ynow_bblab_fallback_gm_label"', mod_src, fixed = TRUE))
 check("GM fallback checkbox remains unchecked by default", {
   m <- regexpr("checkboxInput\\([\\s\\S]*?use_gm_fallback[\\s\\S]*?value\\s*=\\s*FALSE",
@@ -862,7 +889,9 @@ if (requireNamespace("shiny", quietly = TRUE) &&
           grepl("orders_group_context", lab_ui_html, fixed = TRUE) &&
           grepl("donut_shell", lab_ui_html, fixed = TRUE) &&
           grepl("cards_section", lab_ui_html, fixed = TRUE) &&
-          grepl("recon_section", lab_ui_html, fixed = TRUE) &&
+          grepl("recon_header_btn", lab_ui_html, fixed = TRUE) &&
+          grepl("ynow-bblab-report__section-actions", lab_ui_html, fixed = TRUE) &&
+          !grepl("recon_section", lab_ui_html, fixed = TRUE) &&
           grepl("shared_section", lab_ui_html, fixed = TRUE) &&
           # Empty groups are server-mounted; static shell must not leave blank bordered boxes.
           !grepl("data-orders-group=\"orders\"", lab_ui_html, fixed = TRUE) &&
@@ -879,9 +908,9 @@ if (requireNamespace("shiny", quietly = TRUE) &&
       grepl("ynow-bblab-subhead", lab_ui_html, fixed = TRUE) &&
       grepl(">Revenue mix<", lab_ui_html, fixed = TRUE) &&
       grepl(">Current period<", lab_ui_html, fixed = TRUE) &&
-      # Ch V/VI mount only when packs have data (collapse empty chrome).
+      # Ch V + recon header button mount only when packs have data.
       grepl("cards_section", lab_ui_html, fixed = TRUE) &&
-      grepl("recon_section", lab_ui_html, fixed = TRUE) &&
+      grepl("recon_header_btn", lab_ui_html, fixed = TRUE) &&
       grepl("history_panel", lab_ui_html, fixed = TRUE) &&
       !grepl(">Five-year mix evolution<", lab_ui_html, fixed = TRUE) &&
       grepl("data-bblab-chapter=\"3\"", lab_ui_html, fixed = TRUE) &&
@@ -893,7 +922,7 @@ if (requireNamespace("shiny", quietly = TRUE) &&
       !grepl("ynow-bblab-struct-mix__main", lab_ui_html, fixed = TRUE)
   })
   check("chapter order in report markup", {
-    # Ch V/VI/shared mount only when packs have data (server uiOutput).
+    # Ch V/shared + recon header button mount only when packs have data (server uiOutput).
     ids <- c("ynow_bblab_page_title",
              "ynow_bblab_ch1_title", "ynow_bblab_ch2_title",
              "ynow_bblab_struct_title", "ynow_bblab_ch3_title",
@@ -905,7 +934,8 @@ if (requireNamespace("shiny", quietly = TRUE) &&
     }, integer(1))
     all(pos > 0L) && all(diff(pos) > 0L) &&
       grepl("cards_section", lab_ui_html, fixed = TRUE) &&
-      grepl("recon_section", lab_ui_html, fixed = TRUE)
+      grepl("recon_header_btn", lab_ui_html, fixed = TRUE) &&
+      grepl("ynow-bblab-report__section-actions", lab_ui_html, fixed = TRUE)
   })
   check("lab titles use report section numbers without repeating them in the heading",
         grepl("ynow-bblab-report__section-num", lab_ui_html, fixed = TRUE) &&
@@ -935,9 +965,9 @@ if (requireNamespace("shiny", quietly = TRUE) &&
           grepl("ynow-bblab-report__toolbar", lab_ui_html, fixed = TRUE))
 }
 check("report kicker locale wiring",
-      grepl("ynow_bblab_report_kicker", ui_src, fixed = TRUE) &&
-        grepl("bblab_report_kicker", ui_src, fixed = TRUE) &&
-        grepl("bblab_shared_ticker_hint", ui_src, fixed = TRUE))
+      grepl("ynow_bblab_report_kicker", mod_src, fixed = TRUE) &&
+        grepl("setBtText('ynow_bblab_report_kicker', 'bblab_report_kicker')", js_src, fixed = TRUE) &&
+        grepl("setBtText('ynow_bblab_shared_ticker_hint', 'bblab_shared_ticker_hint')", js_src, fixed = TRUE))
 
 # Engine analyzes TSM fixture without any issuer-specific code path:
 check("TSM fixture is data-only", {
@@ -1582,7 +1612,7 @@ check("BCG UI wired under structure chapter", {
     grepl("bblab_build_bcg_analysis", mod_src, fixed = TRUE) &&
     grepl("bblab_bcg_plotly", mod_src, fixed = TRUE) &&
     grepl("ynow_bblab_bcg_title", mod_src, fixed = TRUE) &&
-    grepl("ynow_bblab_bcg_title", paste(readLines("ynow_ui.R", warn = FALSE), collapse = "\n"), fixed = TRUE)
+    grepl("setBtText('ynow_bblab_bcg_title', 'bblab_bcg_title')", js_src, fixed = TRUE)
 })
 check("BCG i18n keeps Stars/Cash cows English finance terms in zh-TW", {
   identical(.UI_STRINGS$`zh-TW`$bblab_bcg_q_star, "Stars") &&
@@ -1901,9 +1931,9 @@ check("listed-only notice is not a shinydashboard default box",
         !grepl("box\\([^)]*ynow_bblab_listed_only_notice", ui_fn_src, perl = TRUE))
 check("applyUiLocale wires listed-only notice",
       grepl("setBtText('ynow_bblab_listed_only_notice', 'bblab_listed_only_notice')",
-            ui_src, fixed = TRUE) &&
+            js_src, fixed = TRUE) &&
         grepl("setBtText('ynow_bblab_listed_only_scope', 'bblab_listed_only_scope')",
-              ui_src, fixed = TRUE))
+              js_src, fixed = TRUE))
 check("i18n listed-only copy en + zh-TW",
       identical(.UI_STRINGS$en$bblab_listed_only_notice,
                 "Listed stocks only (Taiwan and U.S. exchanges).") &&
@@ -2091,7 +2121,18 @@ check("recon UI uses commercial helper and locale columns",
         grepl("bblab_recon_col_reported", mod_src, fixed = TRUE) &&
         !grepl('tags$th("Reported")', mod_src, fixed = TRUE) &&
         !grepl('tags$th("Recast")', mod_src, fixed = TRUE) &&
-        grepl("setBtText('ynow_bblab_ch6_help', 'bblab_ch6_help')", ui_src, fixed = TRUE))
+        grepl("setBtText('ynow_bblab_ch6_help', 'bblab_ch6_help')", js_src, fixed = TRUE) &&
+        grepl("setBtText('ynow_bblab_recon_btn', 'bblab_recon_btn')", js_src, fixed = TRUE))
+check("recon opens from section III header button modal", {
+  grepl('uiOutput(ns("recon_header_btn"))', mod_src, fixed = TRUE) &&
+    grepl("ynow-bblab-report__section-actions", paste(readLines("www/ynow_chrome.css", warn = FALSE), collapse = "\n"), fixed = TRUE) &&
+    grepl("showModal", mod_src, fixed = TRUE) &&
+    grepl("ynow-bblab-recon-modal", mod_src, fixed = TRUE) &&
+    grepl("bblab_recon_btn", mod_src, fixed = TRUE) &&
+    grepl("bblab_recon_close", mod_src, fixed = TRUE) &&
+    !grepl('uiOutput(ns("recon_section"))', mod_src, fixed = TRUE) &&
+    !grepl('chapter = "6"', mod_src, fixed = TRUE)
+})
 check("recon commercial HTML renders match + glossary", {
   rec_ok <- list(
     pass = TRUE,
