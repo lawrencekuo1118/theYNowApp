@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12827300
+bundleId=12827324
 appId=10907657
-url=https://hopesmasher1118.shinyapps.io/GGplaystore2021/  # pragma: allowlist secret
-aligned_git=b87acfbdb2bea92e6814b904c671f7fe1f34c662
-commit=b87acfbdb2bea92e6814b904c671f7fe1f34c662
-short=b87acfbd
-message=chore: bump display version to v28.53
-captured_at=2026-11-16T02:21:05Z
+url=https://[REDACTED].shinyapps.io/TheYNowApp/  # pragma: allowlist secret
+aligned_git=aa1b4be3b9408d2568320c1b394344e2c02172bb
+commit=aa1b4be3b9408d2568320c1b394344e2c02172bb
+short=aa1b4be3
+message=chore: record shinyapps baseline bundle 12827324 (app_28.0)
+captured_at=2026-11-16T02:37:44Z
 display_version=v28.53
-note=Shipped v28.53 (+0.01) via deploy_app_21.R. Fix #765: MOS Assumptions zh-TW Taiwan investment-desk terms (情境區間／決策檢核門檻／部位分級). Live status=running; rsconnect bundleId=12827300. Prior: v28.52=#761 (12825827).
+note=Shipped v28.53 (+0.01) via deploy_app_21.R. Tip-ship #766 YN-127 Wave-2 readiness shells (DDM/RI/P/B/NAV/SOTP); live tree also includes #765 MOS Assumptions zh-TW Taiwan terms and later master at ship. Live status=running; rsconnect bundleId=12827324. Supersedes interim baseline #768 bundle 12827300. Prior: v28.52=#761 (12825827).
