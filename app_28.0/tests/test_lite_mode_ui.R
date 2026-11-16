@@ -897,7 +897,7 @@ testthat::test_that("Lite Smart Analysis has no auto-model blurb; composite stat
   smart_tab <- regmatches(
     txt,
     regexpr(
-      'tabItem\\(\\s*tabName = "smart_analysis",[\\s\\S]*?tabItem\\(tabName = "ddm_calculator"',
+      'tabItem\\(\\s*tabName = "smart_analysis",[\\s\\S]*?\\.ynow_wave2_tab_item\\("ddm_calculator"\\)',
       txt,
       perl = TRUE
     )
