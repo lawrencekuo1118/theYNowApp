@@ -1,3 +1,8 @@
+## [v28.57] — 2026-11-16 · BBLab IV orders overflow + transcript chips
+
+- zh-TW：業務拆解第 IV 節訂單溢位收斂、逐字稿 chip 換行（#775 / TYA-130）；顯示版號 v28.57、bundle 12827804。
+- en-US: Business Breakdown section IV orders overflow containment and transcript chip wrap (#775 / TYA-130). Display v28.57; shinyapps bundle 12827804.
+
 ## [v28.56] — 2026-11-16 · BBLab section V cards layout
 
 - zh-TW：業務拆解第 V 節「各事業簡化財報」卡片回到 section-body（TYA-126 / #774）；修正 #769 `header_extra` 誤吃 unnamed body。顯示版號 v28.56、bundle 12827664。
