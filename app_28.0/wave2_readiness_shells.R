@@ -1,4 +1,4 @@
-# Eager readiness shells for DDM / RI / P/B / NAV / SOTP.
+# Eager readiness shells for DCF / DDM / RI / P/B / NAV / SOTP.
 # The shell inside each tabItem owns the input nodes. The lazy body omits those ids.
 # Module servers stay registered at session start.
 
@@ -13,6 +13,11 @@ ynow_wave2_row <- function(tab, shell, body) {
 
 .ynow_wave2_registry <- function() {
   list(
+    dcf_calculator = ynow_wave2_row(
+      "dcf_calculator",
+      shell = function() .ynow_dcf_shell_ui(),
+      body = function() .ynow_dcf_body_ui()
+    ),
     ddm_calculator = ynow_wave2_row(
       "ddm_calculator",
       shell = function() .ynow_ddm_shell_ui(),
@@ -65,6 +70,14 @@ ynow_wave2_row <- function(tab, shell, body) {
 ynow_wave2_shell_ids <- function(tab) {
   tab <- as.character(tab)[1]
   ids <- list(
+    dcf_calculator = c(
+      "wacc_gordon", "wacc_stage1", "wacc_stage2", "yr_stage1", "g_stage1",
+      "wacc_re", "wacc_rd", "wacc_tax", "use_estimated_re",
+      "capm_rf", "capm_rm", "capm_beta", "sync_gs_beta",
+      "rd_interest_expense", "rd_interest_bearing_debt",
+      "g_growth_method", "custom_g",
+      "dcf_beta_u_apply_source"
+    ),
     ddm_calculator = c(
       "mod_ddm-d0", "mod_ddm-g", "mod_ddm-ke", "mod_ddm-ddm_mode",
       "mod_ddm-sync_g", "mod_ddm-est_eps", "mod_ddm-g_stage1", "mod_ddm-yr_stage1",

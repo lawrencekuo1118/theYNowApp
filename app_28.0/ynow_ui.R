@@ -4534,6 +4534,203 @@ tabPanel(
   )
 }
 
+.ynow_dcf_shell_ui <- function() {
+  tagList(
+              # dcf_mode／dcf_claim 已上移至 shared header（預測年數 n 正上方）
+              # WACC 改由 DCF → WACC 分頁／CAPM 同步；此處隱藏保留 input$id 供計算鏈使用
+              tags$div(
+                style = "display:none;",
+                numericInput(
+                  "wacc_gordon", ui_i18n("wacc_rate_label"),
+                  value = APP_DEFAULTS$wacc_gordon, step = 0.01
+                )
+              ),
+              
+              tabBox(title = "DISCOUNTED CASH FLOW", width = "auto",
+                     tabPanel("DCF Overview",
+                              fluidRow(
+                                column(width = 12,
+                                       fluidRow(
+                                         class = "ynow-model-kpi-row",
+                                         column(6, class = "ynow-model-kpi-result ynow-model-kpi-outline",
+                                                `data-ynow-lock` = "output:dcf_fair_value",
+                                                infoBoxOutput("ibx_stock_value_dcf", width = NULL)),
+                                         column(6, class = "ynow-model-kpi-tone-2",
+                                                infoBoxOutput("ibx_enterprise_value_dcf", width = NULL))
+                                       )
+                                )
+                              ),
+                              # Core explainability: Why this Fair Value (not appendix)
+                              uiOutput("dcf_value_why"),
+                              fluidRow(
+                                column(width = 12,
+                                       plotOutput("plt_dcf_trajectory", height = "420px"),
+                                       h6(uiOutput("dcf_chart_help")),
+                                       ynow_calc_reset_row(
+                                         ynow_calc_btn("calc", "試算 DCF"),
+                                         ynow_reset_defaults_btn("reset_dcf")
+                                       ),
+                                       tags$div(style = "margin-top: 10px;", htmlOutput("vtxt_dcf_setting_details"))
+                                )
+                              )
+                     ),
+                     
+                     tabPanel("DCF Calculation Details",
+                              fluidRow(
+                                column(width = 12,
+                                       plotOutput("mod_fcf-fcf_plot", height = "350px")
+                                ),
+                                uiOutput("ui_data_validation") 
+                              )
+                     )
+              ),
+              
+              tabBox(width = "auto",
+                     tabPanel("Overview",
+                              fluidRow(
+                                infoBoxOutput("ibx_estimated_g", width = 6),
+                                infoBoxOutput("ibx_sgr", width = 6),
+                                
+                                column(width = 12,
+                                       plotOutput("plt_fcf_trend", height = "350px")
+                                ),
+                                column(
+                                  width = 12,
+                                  tags$div(style = "margin-top: 12px;", .dcf_two_stage_params_box())
+                                )
+                              )
+                     ),
+                     
+                     # 在 ui.R 的某個 tabBox 或 navbarMenu 中：
+                     fcf_projection_module_ui(id = "mod_fcf"),
+                     
+                     tabPanel(
+                       "WACC",
+                       icon = icon("balance-scale"),
+                       tags$div(
+                         `data-ynow-lock` = "section:wacc_box",
+                         uiOutput("dcf_wacc_fcfe_note"),
+                         # Single Bootstrap row: desktop wraps 4+4+4 / 4+4+4.
+                         # Phone ≤767px: .ynow-wacc-kpi-grid → CSS 2×3 equal cells.
+                         # One .row avoids Bootstrap clearfix + display:contents bugs.
+                         fluidRow(
+                           class = "ynow-wacc-kpi-grid",
+                           valueBoxOutput("vbx_equity_val", width = 4), # 股權市值 (E)
+                           valueBoxOutput("vbx_debt_val", width = 4),   # 總負債 (D)
+                           valueBoxOutput("vbx_tax_rate", width = 4),   # 有效稅率 (T)
+                           # Lock on col-sm-4 host (SGR pattern) so grid cells stay equal.
+                           tags$div(
+                             class = "col-sm-4",
+                             `data-ynow-lock` = "output:wacc",
+                             # bare uiOutput (SGR pattern); server infoBox width=NULL
+                             shiny::uiOutput("ibx_wacc")
+                           ),
+                           infoBoxOutput("ibx_rd", width = 4),
+                           infoBoxOutput("ibx_re", width = 4)
+                         ),
+                         uiOutput("dcf_disc_formula_banner"),
+                         # 上列 100%：WACC 估算；下列左 50% rᵈ、右 50% CAPM
+                         fluidRow(
+                           box(
+                             width = 12,
+                             h4("WACC 估算", id = "ynow_wacc_box_title"),
+                             fluidRow(
+                               column(4, numericInput(
+                                 "wacc_re", ui_i18n("wacc_re_label"),
+                                 value = APP_DEFAULTS$wacc_re, min = 0, step = 0.01
+                               )),
+                               column(4, numericInput(
+                                 "wacc_rd", ui_i18n("wacc_rd_label"),
+                                 value = APP_DEFAULTS$wacc_rd, min = 0, step = 0.01
+                               )),
+                               column(4, numericInput(
+                                 "wacc_tax", ui_i18n("wacc_tax_label"),
+                                 value = APP_DEFAULTS$wacc_tax, min = 0, max = 100, step = 0.01
+                               ))
+                             ),
+                             checkboxInput(
+                               "use_estimated_re",
+                               tags$span(id = "ynow_use_estimated_re_label", "Use estimated rₑ (from CAPM)"),
+                               value = APP_DEFAULTS$use_est_re
+                             ),
+                             uiOutput("wacc_tax_source_note"),
+                             tags$p(
+                               id = "ynow_wacc_help",
+                               style = "margin:0 0 8px 0;color:#666;font-size:12px;",
+                               "WACC = We×rₑ + Wd×rᵈ×(1−T)。rᵈ 可由下方「估算 rᵈ」以利息費用／有息負債推估（稅前），再於此套用稅盾。"
+                             ),
+                             actionButton("calc_wacc", "計算 WACC", class = "btn-primary"),
+                             tags$br(), htmlOutput("wacc_result")
+                           )
+                         ),
+                         fluidRow(
+                           rd_estimate_settings_ui(width = 6),
+                           capm_beta_settings_ui(
+                             title = "CAPM Estimate rₑ",
+                             calc_id = "calc_capm",
+                             result_id = "capm_result",
+                             width = 6
+                           )
+                         )
+                       )
+                     ),
+
+                     tabPanel(
+                       "Beta (β)",
+                       icon = icon("chart-line"),
+                       .beta_model_source_section_ui(
+                         "dcf_beta_u_apply_source",
+                         "dcf_apply_beta_u_selected"
+                       )
+                     )
+              ),
+  )
+}
+
+.ynow_dcf_body_ui <- function() {
+  tagList(
+              tabBox(title = "SENSITIVITY", width = "auto",
+                     fluidRow(
+                       column(
+                         width = 12,
+                         h4(ui_i18n("sens_matrix_title")),
+                         uiOutput("dcf_sens_help")
+                       )
+                     ),
+                     fluidRow(
+                       column(
+                         width = 12,
+                         plotlyOutput("dcf_sensitivity_heatmap", height = "420px") %>% withSpinner()
+                       )
+                     ),
+                     fluidRow(
+                       column(
+                         width = 12,
+                         tags$details(
+                           tags$summary(ui_i18n("sens_numeric_table_summary")),
+                           div(
+                             style = "width: 100%; overflow-x: auto; margin-top: 8px;",
+                             tags$style(HTML("#dcf_sensitivity_table table { width: 100% !important; table-layout: fixed; }")),
+                             tableOutput("dcf_sensitivity_table")
+                           )
+                         )
+                       )
+                     ),
+                     fluidRow(
+                       column(
+                         width = 12,
+                         uiOutput("sensitivity_analysis_panel")
+                       )
+                     )
+              ),
+              .model_param_sensitivity_box(
+                ui_i18n("dcf_formula_contrib_title"),
+                "dcf_param_sensitivity_table"
+              ),
+              uiOutput("txt_dcf_investment_checks")
+  )
+}
+
 ui <- dashboardPage(
   skin = "black",
   # Browser tab. Header logo stays the HTML progress title; do not let that markup become <title>.
@@ -6936,196 +7133,7 @@ ui <- dashboardPage(
       # ==========================================
       # DCF Calculator 分頁
       # ==========================================
-      tabItem(tabName = "dcf_calculator",
-              # dcf_mode／dcf_claim 已上移至 shared header（預測年數 n 正上方）
-              # WACC 改由 DCF → WACC 分頁／CAPM 同步；此處隱藏保留 input$id 供計算鏈使用
-              tags$div(
-                style = "display:none;",
-                numericInput(
-                  "wacc_gordon", ui_i18n("wacc_rate_label"),
-                  value = APP_DEFAULTS$wacc_gordon, step = 0.01
-                )
-              ),
-              
-              tabBox(title = "DISCOUNTED CASH FLOW", width = "auto",
-                     tabPanel("DCF Overview",
-                              fluidRow(
-                                column(width = 12,
-                                       fluidRow(
-                                         class = "ynow-model-kpi-row",
-                                         column(6, class = "ynow-model-kpi-result ynow-model-kpi-outline",
-                                                `data-ynow-lock` = "output:dcf_fair_value",
-                                                infoBoxOutput("ibx_stock_value_dcf", width = NULL)),
-                                         column(6, class = "ynow-model-kpi-tone-2",
-                                                infoBoxOutput("ibx_enterprise_value_dcf", width = NULL))
-                                       )
-                                )
-                              ),
-                              # Core explainability: Why this Fair Value (not appendix)
-                              uiOutput("dcf_value_why"),
-                              fluidRow(
-                                column(width = 12,
-                                       plotOutput("plt_dcf_trajectory", height = "420px"),
-                                       h6(uiOutput("dcf_chart_help")),
-                                       ynow_calc_reset_row(
-                                         ynow_calc_btn("calc", "試算 DCF"),
-                                         ynow_reset_defaults_btn("reset_dcf")
-                                       ),
-                                       tags$div(style = "margin-top: 10px;", htmlOutput("vtxt_dcf_setting_details"))
-                                )
-                              )
-                     ),
-                     
-                     tabPanel("DCF Calculation Details",
-                              fluidRow(
-                                column(width = 12,
-                                       plotOutput("mod_fcf-fcf_plot", height = "350px")
-                                ),
-                                uiOutput("ui_data_validation") 
-                              )
-                     )
-              ),
-              
-              tabBox(width = "auto",
-                     tabPanel("Overview",
-                              fluidRow(
-                                infoBoxOutput("ibx_estimated_g", width = 6),
-                                infoBoxOutput("ibx_sgr", width = 6),
-                                
-                                column(width = 12,
-                                       plotOutput("plt_fcf_trend", height = "350px")
-                                ),
-                                column(
-                                  width = 12,
-                                  tags$div(style = "margin-top: 12px;", .dcf_two_stage_params_box())
-                                )
-                              )
-                     ),
-                     
-                     # 在 ui.R 的某個 tabBox 或 navbarMenu 中：
-                     fcf_projection_module_ui(id = "mod_fcf"),
-                     
-                     tabPanel(
-                       "WACC",
-                       icon = icon("balance-scale"),
-                       tags$div(
-                         `data-ynow-lock` = "section:wacc_box",
-                         uiOutput("dcf_wacc_fcfe_note"),
-                         # Single Bootstrap row: desktop wraps 4+4+4 / 4+4+4.
-                         # Phone ≤767px: .ynow-wacc-kpi-grid → CSS 2×3 equal cells.
-                         # One .row avoids Bootstrap clearfix + display:contents bugs.
-                         fluidRow(
-                           class = "ynow-wacc-kpi-grid",
-                           valueBoxOutput("vbx_equity_val", width = 4), # 股權市值 (E)
-                           valueBoxOutput("vbx_debt_val", width = 4),   # 總負債 (D)
-                           valueBoxOutput("vbx_tax_rate", width = 4),   # 有效稅率 (T)
-                           # Lock on col-sm-4 host (SGR pattern) so grid cells stay equal.
-                           tags$div(
-                             class = "col-sm-4",
-                             `data-ynow-lock` = "output:wacc",
-                             # bare uiOutput (SGR pattern); server infoBox width=NULL
-                             shiny::uiOutput("ibx_wacc")
-                           ),
-                           infoBoxOutput("ibx_rd", width = 4),
-                           infoBoxOutput("ibx_re", width = 4)
-                         ),
-                         uiOutput("dcf_disc_formula_banner"),
-                         # 上列 100%：WACC 估算；下列左 50% rᵈ、右 50% CAPM
-                         fluidRow(
-                           box(
-                             width = 12,
-                             h4("WACC 估算", id = "ynow_wacc_box_title"),
-                             fluidRow(
-                               column(4, numericInput(
-                                 "wacc_re", ui_i18n("wacc_re_label"),
-                                 value = APP_DEFAULTS$wacc_re, min = 0, step = 0.01
-                               )),
-                               column(4, numericInput(
-                                 "wacc_rd", ui_i18n("wacc_rd_label"),
-                                 value = APP_DEFAULTS$wacc_rd, min = 0, step = 0.01
-                               )),
-                               column(4, numericInput(
-                                 "wacc_tax", ui_i18n("wacc_tax_label"),
-                                 value = APP_DEFAULTS$wacc_tax, min = 0, max = 100, step = 0.01
-                               ))
-                             ),
-                             checkboxInput(
-                               "use_estimated_re",
-                               tags$span(id = "ynow_use_estimated_re_label", "Use estimated rₑ (from CAPM)"),
-                               value = APP_DEFAULTS$use_est_re
-                             ),
-                             uiOutput("wacc_tax_source_note"),
-                             tags$p(
-                               id = "ynow_wacc_help",
-                               style = "margin:0 0 8px 0;color:#666;font-size:12px;",
-                               "WACC = We×rₑ + Wd×rᵈ×(1−T)。rᵈ 可由下方「估算 rᵈ」以利息費用／有息負債推估（稅前），再於此套用稅盾。"
-                             ),
-                             actionButton("calc_wacc", "計算 WACC", class = "btn-primary"),
-                             tags$br(), htmlOutput("wacc_result")
-                           )
-                         ),
-                         fluidRow(
-                           rd_estimate_settings_ui(width = 6),
-                           capm_beta_settings_ui(
-                             title = "CAPM Estimate rₑ",
-                             calc_id = "calc_capm",
-                             result_id = "capm_result",
-                             width = 6
-                           )
-                         )
-                       )
-                     ),
-
-                     tabPanel(
-                       "Beta (β)",
-                       icon = icon("chart-line"),
-                       .beta_model_source_section_ui(
-                         "dcf_beta_u_apply_source",
-                         "dcf_apply_beta_u_selected"
-                       )
-                     )
-              ),
-              tabBox(title = "SENSITIVITY", width = "auto",
-                     fluidRow(
-                       column(
-                         width = 12,
-                         h4(ui_i18n("sens_matrix_title")),
-                         uiOutput("dcf_sens_help")
-                       )
-                     ),
-                     fluidRow(
-                       column(
-                         width = 12,
-                         plotlyOutput("dcf_sensitivity_heatmap", height = "420px") %>% withSpinner()
-                       )
-                     ),
-                     fluidRow(
-                       column(
-                         width = 12,
-                         tags$details(
-                           tags$summary(ui_i18n("sens_numeric_table_summary")),
-                           div(
-                             style = "width: 100%; overflow-x: auto; margin-top: 8px;",
-                             tags$style(HTML("#dcf_sensitivity_table table { width: 100% !important; table-layout: fixed; }")),
-                             tableOutput("dcf_sensitivity_table")
-                           )
-                         )
-                       )
-                     ),
-                     fluidRow(
-                       column(
-                         width = 12,
-                         uiOutput("sensitivity_analysis_panel")
-                       )
-                     )
-              ),
-              .model_param_sensitivity_box(
-                ui_i18n("dcf_formula_contrib_title"),
-                "dcf_param_sensitivity_table"
-              ),
-              uiOutput("txt_dcf_investment_checks")
-      ),
-      
+      .ynow_wave2_tab_item("dcf_calculator"),
       .ynow_wave2_tab_item("ri_calculator"),
 
       .ynow_wave2_tab_item("pb_calculator"),
