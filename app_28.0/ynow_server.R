@@ -655,8 +655,24 @@ server <- function(input, output, session) {
       normalize_market_mode(isolate(market_mode())),
       error = function(e) "US"
     )
-    # US mode + clear 4-digit TW code (e.g. 2330) → same path as toggling TW,
+    # Home / Macro / empty first-paint tabs defer statement crawl. Open Company
+    # so Search always has a surface that paints name + statements (e.g. 1723).
+    tab_now <- tryCatch(
+      as.character(isolate(input$sidebar_tabs) %||% "")[1],
+      error = function(e) ""
+    )
+    search_goto <- if (
+      exists("ynow_statement_crawl_wanted", mode = "function") &&
+      isTRUE(ynow_statement_crawl_wanted(tab_now, .ynow_ticker_refresh_tabs))
+    ) {
+      NULL
+    } else {
+      "dashboard"
+    }
+    # US mode + clear 4-digit TW code (e.g. 2330 / 1723) → same path as toggling TW,
     # then search via pending_recent_fetch so the user is not stuck in US mode.
+    # Always land on Company: cross-market clear would otherwise leave Home with
+    # deferred crawl and an empty chrome (no corp name / no statements).
     if (identical(mode, "US") &&
         exists("looks_like_tw_stock_code", mode = "function") &&
         isTRUE(looks_like_tw_stock_code(raw))) {
@@ -666,7 +682,7 @@ server <- function(input, output, session) {
       ))
       pending_recent_fetch(list(
         symbol = pend_sym,
-        goto_tab = NULL
+        goto_tab = "dashboard"
       ))
       tryCatch(
         shinyjs::runjs(
@@ -676,7 +692,7 @@ server <- function(input, output, session) {
       )
       return(invisible(TRUE))
     }
-    .ynow_fire_ticker_search(input$sc, goto_tab = NULL)
+    .ynow_fire_ticker_search(input$sc, goto_tab = search_goto)
   })
 
   # Recent Search chip: restore prior ticker scrape and jump to 個股 / Smart Analysis.
@@ -5873,8 +5889,28 @@ server <- function(input, output, session) {
       return()
     }
     req(current_ticker())
+    stock_code <- current_ticker()
+    # Official TW names are local (tw_universe) — paint them even when crawl is
+    # deferred (Home / Macro), so Search never looks empty for codes like 1723.
+    if (identical(isolate(market_mode()), "TW")) {
+      official_name <- tryCatch(
+        lookup_tw_universe_company_name(stock_code),
+        error = function(e) ""
+      )
+      corp_display_name(official_name)
+      corp_display_name_en("")
+      if (exists("lookup_tw_universe_industry_raw", mode = "function")) {
+        tw_raw <- tryCatch(
+          lookup_tw_universe_industry_raw(stock_code),
+          error = function(e) ""
+        )
+        if (nzchar(as.character(tw_raw %||% "")[1])) {
+          corp_industry_text(paste0("TW industry: ", tw_raw))
+        }
+      }
+    }
     if (!isTRUE(.ynow_statement_crawl_on_tab())) {
-      .ynow_log("statement crawl deferred; tab=", isolate(input$sidebar_tabs), " ticker=", current_ticker())
+      .ynow_log("statement crawl deferred; tab=", isolate(input$sidebar_tabs), " ticker=", stock_code)
       statement_crawl_deferred(TRUE)
       tryCatch(ticker_search_busy(FALSE), error = function(e) NULL)
       tryCatch(
@@ -5887,14 +5923,7 @@ server <- function(input, output, session) {
     # 換股票：回到基礎設定連動，讓新 Summary／Unlever 路徑可自動帶入 CAPM
     capm_beta_dirty(FALSE)
     beta_capm_driver("gs")
-    stock_code <- current_ticker()
     company_extras_loader(NULL)
-    # Official TW company names are available before any Yahoo/Python request.
-    if (identical(isolate(market_mode()), "TW")) {
-      official_name <- tryCatch(lookup_tw_universe_company_name(stock_code), error = function(e) "")
-      corp_display_name(official_name)
-      corp_display_name_en("")
-    }
     tried_for <- .tw_two_fallback_tried_for()
     alt_of_tried <- if (!is.na(tried_for) && nzchar(tried_for)) {
       tw_yahoo_alt_ticker(tried_for)

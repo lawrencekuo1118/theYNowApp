@@ -70,9 +70,19 @@ if (!exists("ticker_presets_for_market", mode = "function")) {
 if (!exists("search_us_universe_by_name", mode = "function")) {
   search_us_universe_by_name <<- function(query, max_results = 12L) character(0)
 }
-if (!exists("search_tw_universe_by_name", mode = "function")) {
-  search_tw_universe_by_name <<- function(query, max_results = 12L) {
-    if (grepl("2330", query)) stats::setNames("2330.TW", "2330 — 台積電") else character(0)
+# Offline stubs — overwrite market_profile helpers so this test stays network-free.
+search_tw_universe_by_name <<- function(query, max_results = 12L) {
+  q <- trimws(as.character(query %||% "")[1])
+  if (grepl("2330", q)) return(stats::setNames("2330.TW", "2330 — 台積電"))
+  if (identical(q, "1723") || grepl("^1723(\\.TW)?$", q, ignore.case = TRUE)) {
+    return(stats::setNames("1723.TW", "1723 — 中鋼碳素化學股份有限公司"))
+  }
+  character(0)
+}
+if (!exists("looks_like_tw_stock_code", mode = "function")) {
+  looks_like_tw_stock_code <<- function(sym) {
+    raw <- toupper(gsub("\\s+", "", trimws(as.character(sym %||% "")[1])))
+    grepl("^[0-9]{4}([.-](TW|TWO))?$", raw)
   }
 }
 if (!exists(".format_suggest_label", mode = "function")) {
@@ -100,6 +110,42 @@ check("AAPL appears before AAPU", {
 tw_hits <- search_ticker_choices("2330", market = "TW")
 check("TW 2330 returns hits", length(tw_hits) >= 1L)
 check("TW 2330 first is 2330.TW", identical(toupper(unname(tw_hits)[[1]]), "2330.TW"))
+
+# US mode + bare 1723: Yahoo foreign/mutual-fund noise must not hide TW listing.
+search_tickers <<- function(query, max_results = 12L) {
+  list(
+    list(
+      symbol = "1723.T", name = "Nihon Dengi", type = "EQUITY",
+      exchange = "Tokyo Stock Exchange",
+      label = "1723.T — Nihon Dengi (EQUITY · Tokyo)"
+    ),
+    list(
+      symbol = "1723.HK", name = "Moon Inc.", type = "EQUITY",
+      exchange = "Hong Kong",
+      label = "1723.HK — Moon Inc. (EQUITY · Hong Kong)"
+    ),
+    list(
+      symbol = "1723.TW", name = "China Steel Chemical", type = "EQUITY",
+      exchange = "Taiwan",
+      label = "1723.TW — China Steel Chemical (EQUITY · Taiwan)"
+    ),
+    list(
+      symbol = "TIGACX", name = "ADT 1723 Tax Exempt", type = "MUTUALFUND",
+      exchange = "NASDAQ",
+      label = "TIGACX — ADT 1723 Tax Exempt (MUTUALFUND · NASDAQ)"
+    )
+  )
+}
+us_1723 <- search_ticker_choices("1723", market = "US")
+check("US 1723 returns hits", length(us_1723) >= 1L)
+check("US 1723 prefers 1723.TW over mutual fund", {
+  vals <- toupper(unname(us_1723))
+  i_tw <- match("1723.TW", vals)
+  i_mf <- match("TIGACX", vals)
+  is.finite(i_tw) && (is.na(i_mf) || i_tw < i_mf)
+})
+tw_1723 <- search_ticker_choices("1723", market = "TW")
+check("TW 1723 first is 1723.TW", identical(toupper(unname(tw_1723)[[1]]), "1723.TW"))
 
 # Python ranking helper (offline mock of Yahoo quote order)
 py <- file.path(app_dir, ".ynow_venv", "bin", "python")
