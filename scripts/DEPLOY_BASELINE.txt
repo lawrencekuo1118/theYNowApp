@@ -1,7 +1,7 @@
 source=shinyapps.io TheYNowApp
 bundleId=12828033
 appId=10907657
-url=https://[REDACTED].shinyapps.io/TheYNowApp/  # pragma: allowlist secret
+url=https://hopesmasher1118.shinyapps.io/TheYNowApp/  # pragma: allowlist secret
 aligned_git=be0cf68d303de7e6a08dde6c71f9c246f591b964
 commit=be0cf68d303de7e6a08dde6c71f9c246f591b964
 short=be0cf68d
