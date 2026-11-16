@@ -7,5 +7,5 @@ commit=30019619adf5ca578dd361cbdbd9b351aeeca4b5
 short=30019619
 message=chore: bump display version to v28.55
 captured_at=2026-11-16T03:42:27Z
-display_version=v28.55
+display_version=v28.56
 note=Shipped v28.55 (+0.01) via deploy_app_21.R. Tip-ship #772: BBLab group cost attribution and segment profitability (TYA-129). Live status=running; rsconnect bundleId=12827534. Prior: v28.54=#771 (12827358).
