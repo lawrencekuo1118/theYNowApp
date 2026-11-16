@@ -134,6 +134,10 @@ bblab_classify_economic_role <- function(name,
       role = role,
       classification = .bblab_chr(comp$classification, default_cls),
       revenue = .bblab_num(comp$revenue),
+      cor = .bblab_num(comp$cor),
+      gp = .bblab_num(comp$gp),
+      gp_reported = isTRUE(comp$gp_reported),
+      cost_class = .bblab_chr(comp$cost_class, NA_character_),
       operating_income = .bblab_num(comp$operating_income),
       is_reported_segment = isTRUE(comp$is_reported_segment),
       oi_disclosed = .bblab_finite(comp$operating_income)
@@ -224,15 +228,31 @@ bblab_build_structure_analysis <- function(res, locale = "en") {
     profit_pct <- if (.bblab_finite(oi) && .bblab_finite(cons_oi) && cons_oi != 0) {
       oi / cons_oi
     } else NA_real_
+    # Gross Margin only when Segment COGS / reported GP exists — never invent.
+    has_cogs <- .bblab_finite(x$cor) || (isTRUE(x$gp_reported) && .bblab_finite(x$gp))
+    gp <- if (isTRUE(has_cogs)) .bblab_num(x$gp) else NA_real_
+    gm <- if (isTRUE(has_cogs) && .bblab_finite(gp) && .bblab_finite(rev) && rev != 0) {
+      gp / rev
+    } else NA_real_
+    profit_status <- if (isTRUE(x$oi_disclosed)) {
+      "REPORTED"
+    } else {
+      "UNAVAILABLE"
+    }
     list(
       business = x$name,
       revenue = rev,
       revenue_pct = rev_pct,
+      cor = if (isTRUE(has_cogs)) .bblab_num(x$cor) else NA_real_,
+      gp = gp,
+      gm = gm,
+      gm_status = if (is.finite(gm)) "DERIVED" else "UNAVAILABLE",
+      cost_class = .bblab_chr(x$cost_class, NA_character_),
       operating_income = oi,
       operating_income_disclosed = isTRUE(x$oi_disclosed),
       margin = margin,
       profit_contribution = profit_pct,
-      profit_status = if (isTRUE(x$oi_disclosed)) "REPORTED" else "NOT_DISCLOSED"
+      profit_status = profit_status
     )
   })
 

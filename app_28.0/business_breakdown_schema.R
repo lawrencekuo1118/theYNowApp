@@ -97,7 +97,8 @@ BBLAB_DEFAULT_CONFIG <- list(
   flags = list(
     geography_customer_location_only_veto = TRUE,
     never_combine_overlapping_dimensions = TRUE,
-    revenue_share_cost_is_final_fallback = TRUE,
+    # Bare revenue-share invent without a disclosed allocation basis is forbidden.
+    revenue_share_cost_is_final_fallback = FALSE,
     consolidated_gm_fallback_default = FALSE,
     default_view = "reported"
   )
@@ -293,6 +294,14 @@ bblab_empty_result <- function(codes = character(0), limitations = character(0))
       ok = FALSE, businesses = list(), adjustments = list(),
       conclusions = list(), summary_sentence = "", missing = character(0)
     ),
+    segment_profitability = list(
+      ok = FALSE, industry_profile = "other", segments = list(),
+      corporate_unallocated = list(), consolidated = list(), gaps = character(0)
+    ),
+    revenue_bridge = list(ok = FALSE, steps = list(), pass = FALSE),
+    operating_profit_bridge = list(ok = FALSE, steps = list(), pass = FALSE),
+    cost_attribution_summary = list(forbid_bare_revenue_share = TRUE),
+    industry_cost_profile = "other",
     reconciliation = list(pass = FALSE, revenue = NULL, cor = NULL, gp = NULL),
     revaluation = list(),
     chart = list(eligible = FALSE, codes = character(0), slices = list()),

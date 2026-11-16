@@ -41,6 +41,8 @@ dimension_score_weights:
 flags:
   geography_customer_location_only_veto: true
   never_combine_overlapping_dimensions: true
-  revenue_share_cost_is_final_fallback: true
+  # Bare revenue-share invent without a disclosed allocation basis is forbidden.
+  # Company-disclosed bases still flow through company_allocation / SHARED.
+  revenue_share_cost_is_final_fallback: false
   consolidated_gm_fallback_default: false
   default_view: reported

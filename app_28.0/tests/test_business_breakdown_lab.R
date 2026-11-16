@@ -19,6 +19,7 @@ source("setup.R", local = TRUE, encoding = "UTF-8")
 source("ui_locale.R", local = TRUE, encoding = "UTF-8")
 source("business_breakdown_schema.R", local = TRUE, encoding = "UTF-8")
 source("business_breakdown_engine.R", local = TRUE, encoding = "UTF-8")
+source("business_breakdown_cost_profit.R", local = TRUE, encoding = "UTF-8")
 source("business_breakdown_orders.R", local = TRUE, encoding = "UTF-8")
 source("business_breakdown_order_research.R", local = TRUE, encoding = "UTF-8")
 source("earnings_call_keyword_lexicon.R", local = TRUE, encoding = "UTF-8")
@@ -330,9 +331,9 @@ check("14 rounding line explicit",
         abs(rr$businesses[[1]]$revenue_pct - 0.601) < 1e-12)
 
 # =====================================================================
-# 15 Revenue-share cost is final fallback, ALLOCATED_LOW_CONFIDENCE
+# 15 Bare revenue-share without disclosed basis is forbidden
 # =====================================================================
-# No GP so GM fallback cannot fire; user opt-in enables revenue-share last.
+# No GP so GM fallback cannot fire; inventing CoR by revenue share is blocked.
 rs <- two_seg_level_a()
 rs$consolidated$gp <- NA_real_
 rs$dimensions[[1]]$components <- list(
@@ -340,11 +341,26 @@ rs$dimensions[[1]]$components <- list(
   bblab_component("b", "B", revenue = 80, is_reported_segment = TRUE, period = "2024", currency = "USD")
 )
 rrs <- bblab_analyze(rs, options = list(use_consolidated_gm_fallback = TRUE))
-check("15 revenue-share ALLOCATED_LOW_CONFIDENCE",
-      all(vapply(rrs$businesses, function(c) identical(c$cor_method, "revenue_share"), logical(1))) &&
-        all(vapply(rrs$businesses, function(c) identical(c$cor_label, "ALLOCATED_LOW_CONFIDENCE"), logical(1))) &&
-        "BUSINESS_COST_ALLOCATED_LOW_CONFIDENCE" %in% rrs$codes &&
-        "rev_share_cost" %in% rrs$cost_notices)
+check("15 bare revenue-share forbidden without basis",
+      all(vapply(rrs$businesses, function(c) !identical(c$cor_method, "revenue_share"), logical(1))) &&
+        all(vapply(rrs$businesses, function(c) !is.finite(.bblab_num(c$cor)), logical(1))) &&
+        "BUSINESS_COST_NOT_RELIABLY_ESTIMABLE" %in% rrs$codes &&
+        !"rev_share_cost" %in% (rrs$cost_notices %||% character(0)))
+# Disclosed allocation basis may label SHARED / ALLOCATED — never silent invent.
+rs2 <- rs
+rs2$dimensions[[1]]$components <- list(
+  bblab_component("a", "A", revenue = 120, company_allocated_cor = 48,
+                  allocation_basis = "revenue", is_reported_segment = TRUE,
+                  period = "2024", currency = "USD"),
+  bblab_component("b", "B", revenue = 80, company_allocated_cor = 32,
+                  allocation_basis = "revenue", is_reported_segment = TRUE,
+                  period = "2024", currency = "USD")
+)
+rrs2 <- bblab_analyze(rs2)
+check("15 disclosed-basis company allocation is SHARED/ALLOCATED",
+      identical(rrs2$level, "B") &&
+        all(vapply(rrs2$businesses, function(c) identical(c$cor_method, "company_allocation"), logical(1))) &&
+        all(vapply(rrs2$businesses, function(c) identical(c$cost_class, "SHARED"), logical(1))))
 
 # =====================================================================
 # 16 Shared S&M / G&A / R&D not on GP cards
@@ -783,6 +799,7 @@ check("server remaps legacy BBL tab to Company - Advance",
         grepl('tab = "company_advance"', server_src, fixed = TRUE))
 
 parse_files <- c("business_breakdown_schema.R", "business_breakdown_engine.R",
+                 "business_breakdown_cost_profit.R",
                  "business_breakdown_orders.R",
                  "business_breakdown_structure.R", "business_breakdown_module.R",
                  "global.R", "ui_locale.R",
@@ -2090,7 +2107,7 @@ check("structure uses disclosed OI and never invents missing OI", {
     consolidated = bblab_consolidated(100, NA, NA, "USD", "2024")
   )
   sa2 <- bblab_build_structure_analysis(rev_only)
-  identical(sa2$businesses[[1]]$profit_status, "NOT_DISCLOSED") &&
+  identical(sa2$businesses[[1]]$profit_status, "UNAVAILABLE") &&
     grepl("Segment profitability not disclosed", sa2$conclusions$primary_profit, fixed = TRUE) &&
     grepl("not disclosed", paste(sa2$missing, collapse = " "), ignore.case = TRUE)
 })
@@ -2109,6 +2126,9 @@ check("structure UI chapter wired in module",
         grepl("ynow_bblab_ch5_help", mod_src, fixed = TRUE))
 check("structure sourced from global.R",
       grepl("business_breakdown_structure.R",
+            paste(readLines("global.R", warn = FALSE), collapse = "\n"), fixed = TRUE))
+check("cost-profit module sourced from global.R",
+      grepl("business_breakdown_cost_profit.R",
             paste(readLines("global.R", warn = FALSE), collapse = "\n"), fixed = TRUE))
 check("orders module sourced from global.R",
       grepl("business_breakdown_orders.R",

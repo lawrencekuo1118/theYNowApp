@@ -1404,6 +1404,10 @@
             setBtText('ynow_bblab_struct_biz_h', 'bblab_struct_biz_h');
             setBtText('ynow_bblab_struct_adj_h', 'bblab_struct_adj_h');
             setBtText('ynow_bblab_struct_conc_h', 'bblab_struct_conc_h');
+            setBtText('ynow_bblab_seg_profit_title', 'bblab_seg_profit_title');
+            setBtText('ynow_bblab_seg_profit_help', 'bblab_seg_profit_help');
+            setBtText('ynow_bblab_bridges_title', 'bblab_bridges_title');
+            setBtText('ynow_bblab_bridges_help', 'bblab_bridges_help');
             setBtText('ynow_bblab_bcg_title', 'bblab_bcg_title');
             setBtText('ynow_bblab_bcg_help', 'bblab_bcg_help');
             setBtText('ynow_bblab_ch3_title', 'bblab_ch3_title');

@@ -440,6 +440,147 @@ if (!exists("%||%", mode = "function")) {
   )
 }
 
+.bblab_fmt_status <- function(st, locale = "en") {
+  st <- toupper(.bblab_chr(st, "UNAVAILABLE"))
+  key <- switch(
+    st,
+    REPORTED = "bblab_status_reported",
+    DERIVED = "bblab_status_derived",
+    ESTIMATED = "bblab_status_estimated",
+    ALLOCATED = "bblab_status_allocated",
+    UNAVAILABLE = "bblab_status_unavailable",
+    "bblab_status_unavailable"
+  )
+  .bblab_ui(key, locale)
+}
+
+.bblab_bridge_panel_html <- function(bridge, title_key, locale = "en") {
+  msg <- function(k) .bblab_ui(k, locale)
+  if (is.null(bridge) || !is.list(bridge) || !isTRUE(bridge$ok) || !length(bridge$steps)) {
+    return(tags$p(class = "help-block", bridge$note %||% msg("bblab_bridge_unavailable")))
+  }
+  sign_lbl <- function(s) {
+    switch(as.character(s %||% ""),
+           start = "",
+           plus = "+",
+           minus = "−",
+           equals = "=",
+           "")
+  }
+  tags$div(
+    class = "ynow-bblab-bridge",
+    tags$table(
+      class = "table table-condensed table-striped ynow-bblab-struct-table",
+      tags$thead(tags$tr(
+        tags$th(""),
+        tags$th(msg("bblab_bridge_col_item")),
+        tags$th(msg("bblab_bridge_col_amount")),
+        tags$th(msg("bblab_bridge_col_role")),
+        tags$th(msg("bblab_bridge_col_status"))
+      )),
+      tags$tbody(lapply(bridge$steps, function(s) {
+        role_lab <- if (isTRUE(s$is_operating_segment)) {
+          msg("bblab_bridge_role_segment")
+        } else if (identical(s$role, "CORPORATE")) {
+          msg("bblab_bridge_role_corporate")
+        } else if (identical(s$role, "ELIMINATION")) {
+          msg("bblab_bridge_role_elim")
+        } else if (identical(s$role, "RECONCILIATION")) {
+          msg("bblab_bridge_role_recon")
+        } else if (identical(s$role, "CONSOLIDATED")) {
+          msg("bblab_bridge_role_consol")
+        } else {
+          s$role
+        }
+        tags$tr(
+          tags$td(sign_lbl(s$sign)),
+          tags$td(s$label),
+          tags$td(.bblab_fmt_amt(s$amount)),
+          tags$td(role_lab),
+          tags$td(.bblab_fmt_status(s$status, locale))
+        )
+      }))
+    ),
+    tags$p(class = "help-block", bridge$note %||% "")
+  )
+}
+
+.bblab_segment_profit_panel_html <- function(sp, locale = "en") {
+  msg <- function(k) .bblab_ui(k, locale)
+  if (is.null(sp) || !is.list(sp) || !isTRUE(sp$ok) || !length(sp$segments)) {
+    return(tags$p(class = "help-block", msg("bblab_seg_profit_empty")))
+  }
+  nd <- msg("bblab_struct_not_disclosed")
+  fmt_st_amt <- function(amt, st) {
+    if (!.bblab_finite(amt) || identical(toupper(.bblab_chr(st)), "UNAVAILABLE")) return(nd)
+    .bblab_fmt_amt(amt)
+  }
+  fmt_st_pct <- function(pct, st) {
+    if (!.bblab_finite(pct) || identical(toupper(.bblab_chr(st)), "UNAVAILABLE")) return(nd)
+    .bblab_fmt_pct(pct)
+  }
+  tags$div(
+    class = "ynow-bblab-seg-profit",
+    tags$p(
+      class = "help-block",
+      paste0(msg("bblab_seg_profit_industry"), ": ",
+             msg(paste0("bblab_industry_", sp$industry_profile %||% "other")))
+    ),
+    tags$table(
+      class = "table table-condensed table-striped ynow-bblab-struct-table",
+      tags$thead(tags$tr(
+        tags$th(msg("bblab_struct_col_business")),
+        tags$th(msg("bblab_struct_col_revenue")),
+        tags$th(msg("bblab_seg_col_cogs")),
+        tags$th(msg("bblab_seg_col_gp")),
+        tags$th(msg("bblab_seg_col_gm")),
+        tags$th(msg("bblab_struct_col_oi")),
+        tags$th(msg("bblab_seg_col_oi_margin")),
+        tags$th(msg("bblab_seg_col_cost_class")),
+        tags$th(msg("bblab_seg_col_status"))
+      )),
+      tags$tbody(lapply(sp$segments, function(r) {
+        tags$tr(
+          tags$td(r$name),
+          tags$td(fmt_st_amt(r$revenue, r$revenue_status)),
+          tags$td(fmt_st_amt(r$cor, r$cor_status)),
+          tags$td(fmt_st_amt(r$gp, r$gp_status)),
+          tags$td(fmt_st_pct(r$gm, r$gm_status)),
+          tags$td(fmt_st_amt(r$operating_income, r$oi_status)),
+          tags$td(fmt_st_pct(r$oi_margin, r$oi_status)),
+          tags$td(.bblab_chr(r$cost_class, "—")),
+          tags$td(.bblab_fmt_status(r$oi_status %||% r$gp_status %||% r$revenue_status, locale))
+        )
+      }))
+    ),
+    if (length(sp$corporate_unallocated)) {
+      tags$div(
+        tags$h5(class = "ynow-bblab-subhead", msg("bblab_seg_corp_h")),
+        tags$ul(lapply(sp$corporate_unallocated, function(c) {
+          tags$li(
+            tags$b(c$name), ": ",
+            if (.bblab_finite(c$operating_income)) {
+              paste0("OI ", .bblab_fmt_amt(c$operating_income))
+            } else if (.bblab_finite(c$revenue)) {
+              paste0("Rev ", .bblab_fmt_amt(c$revenue))
+            } else nd,
+            " · ", .bblab_chr(c$cost_class, "CORPORATE_UNALLOCATED")
+          )
+        }))
+      )
+    } else NULL,
+    if (.bblab_finite(sp$consolidated$operating_income)) {
+      tags$p(
+        class = "help-block",
+        paste0(
+          msg("bblab_seg_consol_oi"), ": ",
+          .bblab_fmt_amt(sp$consolidated$operating_income)
+        )
+      )
+    } else NULL
+  )
+}
+
 .bblab_structure_conclusions_html <- function(sa, locale = "en") {
   if (is.null(sa)) return(NULL)
   msg <- function(key) ui_str(key, locale)
@@ -743,6 +884,8 @@ business_breakdown_lab_ui <- function(id = "bblab") {
             uiOutput(ns("donut_shell"))
           )
         ),
+        uiOutput(ns("segment_profit_panel")),
+        uiOutput(ns("cost_bridge_panel")),
         uiOutput(ns("bcg_panel")),
         uiOutput(ns("history_panel"))
       ),
@@ -1685,6 +1828,73 @@ business_breakdown_lab_server <- function(id = "bblab",
       res <- lab_result()
       if (is.null(res)) return(NULL)
       .bblab_structure_conclusions_html(.structure_analysis_sa(), loc())
+    })
+
+    output$segment_profit_panel <- renderUI({
+      res <- lab_result()
+      if (is.null(res)) return(NULL)
+      sp <- res$segment_profitability
+      if (is.null(sp) && exists("bblab_build_segment_profitability", mode = "function")) {
+        sp <- bblab_build_segment_profitability(
+          res, industry_profile = res$industry_cost_profile %||% "other"
+        )
+      }
+      if (is.null(sp) || !isTRUE(sp$ok)) return(NULL)
+      tags$div(
+        class = "ynow-bblab-report__subsection",
+        tags$h4(
+          id = "ynow_bblab_seg_profit_title",
+          class = "ynow-bblab-subhead",
+          ui_msg("bblab_seg_profit_title")
+        ),
+        tags$p(
+          id = "ynow_bblab_seg_profit_help",
+          class = "help-block",
+          ui_msg("bblab_seg_profit_help")
+        ),
+        .bblab_segment_profit_panel_html(sp, loc())
+      )
+    })
+
+    output$cost_bridge_panel <- renderUI({
+      res <- lab_result()
+      if (is.null(res)) return(NULL)
+      rb <- res$revenue_bridge
+      ob <- res$operating_profit_bridge
+      if (is.null(rb) && exists("bblab_build_revenue_bridge", mode = "function")) {
+        rb <- bblab_build_revenue_bridge(res)
+      }
+      if (is.null(ob) && exists("bblab_build_operating_profit_bridge", mode = "function")) {
+        ob <- bblab_build_operating_profit_bridge(res)
+      }
+      if ((is.null(rb) || !isTRUE(rb$ok)) && (is.null(ob) || !isTRUE(ob$ok))) return(NULL)
+      tags$div(
+        class = "ynow-bblab-report__subsection ynow-bblab-bridges",
+        tags$h4(
+          id = "ynow_bblab_bridges_title",
+          class = "ynow-bblab-subhead",
+          ui_msg("bblab_bridges_title")
+        ),
+        tags$p(
+          id = "ynow_bblab_bridges_help",
+          class = "help-block",
+          ui_msg("bblab_bridges_help")
+        ),
+        if (!is.null(rb) && isTRUE(rb$ok)) {
+          tags$div(
+            tags$h5(class = "ynow-bblab-subhead", ui_msg("bblab_rev_bridge_title")),
+            .bblab_bridge_panel_html(rb, "bblab_rev_bridge_title", loc())
+          )
+        } else NULL,
+        if (!is.null(ob) && isTRUE(ob$ok)) {
+          tags$div(
+            tags$h5(class = "ynow-bblab-subhead", ui_msg("bblab_op_bridge_title")),
+            .bblab_bridge_panel_html(ob, "bblab_op_bridge_title", loc())
+          )
+        } else if (!is.null(ob) && nzchar(.bblab_chr(ob$note, ""))) {
+          tags$p(class = "help-block", ob$note)
+        } else NULL
+      )
     })
 
     .bcg_analysis <- function() {
