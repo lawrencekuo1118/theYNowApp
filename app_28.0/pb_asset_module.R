@@ -10,131 +10,139 @@
 # ==========================================
 # 🖥️ 前端 UI
 # ==========================================
-pb_asset_module_ui <- function(id) {
+pb_asset_module_shell_ui <- function(id) {
   ns <- NS(id)
-  
-  tabItem(tabName = "pb_calculator",
-          tabBox(title = "P/B & ASSET VALUE", width = "auto",
-                 
-                 tabPanel("P/B Overview", icon = icon("landmark"),
-                          fluidRow(
-                            class = "ynow-model-kpi-row",
-                            column(3, class = "ynow-model-kpi-result ynow-model-kpi-outline", `data-ynow-lock` = "output:pb_fair_value", valueBoxOutput(ns("vbx_fair"), width = 12)),
-                            column(3, class = "ynow-model-kpi-tone-2", valueBoxOutput(ns("vbx_bvps"), width = 12)),
-                            column(3, class = "ynow-model-kpi-tone-3", valueBoxOutput(ns("vbx_tbvps"), width = 12)),
-                            column(3, class = "ynow-model-kpi-tone-4", valueBoxOutput(ns("vbx_mkt_pb"), width = 12))
-                          ),
-                          uiOutput(ns("value_why")),
-                          fluidRow(
-                            div("Fair Price = (BVPS / TBVPS / NAVPS) × Target P/B",
-                                style = "font-size: 16px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;")
-                          ),
-                          ynow_calc_reset_row(
-                            ynow_calc_btn(ns("btn_calc_pb"), "試算 Jst. P/B"),
-                            ynow_reset_defaults_btn(ns("btn_reset_pb"))
-                          ),
-                          fluidRow(
-                            column(width = 12,
-                                   uiOutput(ns("ui_pb_result")),
-                                   br(),
-                                   box(title = ui_i18n("pb_band_title"), width = 12, status = "primary", solidHeader = TRUE,
-                                       tableOutput(ns("tbl_pb_band")),
-                                       plotOutput(ns("plt_pb_band"), height = "280px")
-                                   )
-                            )
-                          )
-                 ),
-                 
-                 tabPanel("P/B Settings", icon = icon("cogs"),
-                          h4(tags$b(ui_i18n("pb_bv_title"))),
-                          fluidRow(
-                            div(ui_i18n("pb_bv_formula"),
-                                style = "font-size: 14px; font-weight: bold; color: #2C3E50; text-align: left; margin-bottom: 10px; padding: 10px; background-color: #F8F9F9; border-left: 4px solid #1a1a1a; border-radius: 4px;")
-                          ),
-                          uiOutput(ns("txt_shares_resolve_note")),
-                          fluidRow(
-                            column(4, numericInput(ns("bvps"), ui_i18n("pb_bvps_label"), value = APP_DEFAULTS$pb_bvps, step = 0.1, min = 0)),
-                            column(4, numericInput(ns("tbvps"), ui_i18n("pb_tbvps_label"), value = APP_DEFAULTS$pb_tbvps, step = 0.1, min = 0)),
-                            column(4,
-                                   br(),
-                                   actionButton(ns("btn_sync_bv"), ui_i18n("pb_sync_bv"),
-                                                icon = icon("sync"), class = "btn-sm",
-                                                style = "background-color: #1a1a1a; color: white; border: none; padding: 8px 15px; font-weight: bold; border-radius: 5px; margin-top: 5px;")
-                            )
-                          ),
-                          fluidRow(
-                            column(12, uiOutput(ns("alert_missing_bv")))
-                          ),
-                          fluidRow(
-                            column(4, numericInput(ns("navps"), ui_i18n("pb_navps_label"), value = NA, step = 0.1, min = 0)),
-                            column(4, numericInput(
-                              ns("holdco_discount"), ui_i18n("pb_holdco_label"),
-                              value = APP_DEFAULTS$pb_holdco_discount * 100,
-                              min = 0, max = 50, step = 1
-                            )),
-                            column(4, helpText(ui_i18n("pb_holdco_help")))
-                          ),
-                          fluidRow(
-                            column(12, tableOutput(ns("tbl_nav_breakdown")))
-                          ),
-                          hr(style = "border-top: 1px solid #BDC3C7;"),
-                          fluidRow(
-                            column(6,
-                                   selectInput(ns("basis"), ui_i18n("pb_basis_label"),
-                                               choices = c("Book value BVPS" = "bvps",
-                                                           "Tangible book TBVPS" = "tbvps",
-                                                           "Holding-company NAVPS" = "navps"),
-                                               selected = APP_DEFAULTS$pb_basis)
-                            ),
-                            column(6, helpText(ui_i18n("pb_basis_help")))
-                          )
-                 ),
-
-                 tabPanel("目標本淨比", value = "target_pb", icon = icon("bullseye"),
-                          h4(tags$b("目標本淨比假設")),
-                          radioButtons(
-                            ns("target_mode"),
-                            label = tags$span(style = "font-weight:bold;", "目標倍數來源"),
-                            choices = c(
-                              "產業／歷史倍數（無需 SGR）" = "multiples",
-                              "Justified P/B（需 ROE、Ke、SGR／g）" = "justified"
-                            ),
-                            selected = APP_DEFAULTS$pb_target_mode %||% "justified",
-                            inline = TRUE
-                          ),
-                          uiOutput(ns("ui_target_mode_help")),
-                          fluidRow(
-                            column(4, numericInput(ns("pb_low"),  "保守 P/B (×)", value = APP_DEFAULTS$pb_low,  step = 0.05, min = 0.1)),
-                            column(4, numericInput(ns("pb_mid"),  "基準 P/B (×)", value = APP_DEFAULTS$pb_mid,  step = 0.05, min = 0.1)),
-                            column(4, numericInput(ns("pb_high"), "樂觀 P/B (×)", value = APP_DEFAULTS$pb_high, step = 0.05, min = 0.1))
-                          ),
-                          uiOutput(ns("ui_pb_source_note")),
-                          fluidRow(
-                            column(12,
-                                   checkboxInput(ns("use_industry_pb"),
-                                                 tags$span(style = "font-weight: bold;", "納入產業本淨比"),
-                                                 value = APP_DEFAULTS$pb_use_industry)
-                            )
-                          ),
-                          fluidRow(
-                            column(12,
-                                   tags$p(
-                                     id = ns("ynow_pb_settings_reset_hint"),
-                                     style = "margin-top: 10px; color: #7f8c8d; font-size: 12px;",
-                                     "「回復預設」在 Overview，與「試算 Jst. P/B」並排。"
-                                   )
-                            )
-                          )
-                 ),
-
-                 # Beta tab removed: P/B fair value uses target multiples or Justified Ke
-                 # (central CAPM Ke from DCF / Basic Setup — not a local β parameter).
-          ),
-          .model_param_sensitivity_box(
-            "P/B 公式參數：每股估值貢獻與敏感度",
-            ns("param_sensitivity_table")
-          )
+  tabBox(
+    title = "P/B & ASSET VALUE", width = "auto",
+    tabPanel(
+      "P/B Settings", icon = icon("cogs"),
+      h4(tags$b(ui_i18n("pb_bv_title"))),
+      fluidRow(
+        div(ui_i18n("pb_bv_formula"),
+            style = "font-size: 14px; font-weight: bold; color: #2C3E50; text-align: left; margin-bottom: 10px; padding: 10px; background-color: #F8F9F9; border-left: 4px solid #1a1a1a; border-radius: 4px;")
+      ),
+      uiOutput(ns("txt_shares_resolve_note")),
+      fluidRow(
+        column(4, numericInput(ns("bvps"), ui_i18n("pb_bvps_label"), value = APP_DEFAULTS$pb_bvps, step = 0.1, min = 0)),
+        column(4, numericInput(ns("tbvps"), ui_i18n("pb_tbvps_label"), value = APP_DEFAULTS$pb_tbvps, step = 0.1, min = 0)),
+        column(4,
+               br(),
+               actionButton(ns("btn_sync_bv"), ui_i18n("pb_sync_bv"),
+                            icon = icon("sync"), class = "btn-sm",
+                            style = "background-color: #1a1a1a; color: white; border: none; padding: 8px 15px; font-weight: bold; border-radius: 5px; margin-top: 5px;")
+        )
+      ),
+      fluidRow(
+        column(12, uiOutput(ns("alert_missing_bv")))
+      ),
+      fluidRow(
+        column(4, numericInput(ns("navps"), ui_i18n("pb_navps_label"), value = NA, step = 0.1, min = 0)),
+        column(4, numericInput(
+          ns("holdco_discount"), ui_i18n("pb_holdco_label"),
+          value = APP_DEFAULTS$pb_holdco_discount * 100,
+          min = 0, max = 50, step = 1
+        )),
+        column(4, helpText(ui_i18n("pb_holdco_help")))
+      ),
+      fluidRow(
+        column(12, tableOutput(ns("tbl_nav_breakdown")))
+      ),
+      hr(style = "border-top: 1px solid #BDC3C7;"),
+      fluidRow(
+        column(6,
+               selectInput(ns("basis"), ui_i18n("pb_basis_label"),
+                           choices = c("Book value BVPS" = "bvps",
+                                       "Tangible book TBVPS" = "tbvps",
+                                       "Holding-company NAVPS" = "navps"),
+                           selected = APP_DEFAULTS$pb_basis)
+        ),
+        column(6, helpText(ui_i18n("pb_basis_help")))
+      )
+    ),
+    tabPanel(
+      "目標本淨比", value = "target_pb", icon = icon("bullseye"),
+      h4(tags$b("目標本淨比假設")),
+      radioButtons(
+        ns("target_mode"),
+        label = tags$span(style = "font-weight:bold;", "目標倍數來源"),
+        choices = c(
+          "產業／歷史倍數（無需 SGR）" = "multiples",
+          "Justified P/B（需 ROE、Ke、SGR／g）" = "justified"
+        ),
+        selected = APP_DEFAULTS$pb_target_mode %||% "justified",
+        inline = TRUE
+      ),
+      uiOutput(ns("ui_target_mode_help")),
+      fluidRow(
+        column(4, numericInput(ns("pb_low"),  "保守 P/B (×)", value = APP_DEFAULTS$pb_low,  step = 0.05, min = 0.1)),
+        column(4, numericInput(ns("pb_mid"),  "基準 P/B (×)", value = APP_DEFAULTS$pb_mid,  step = 0.05, min = 0.1)),
+        column(4, numericInput(ns("pb_high"), "樂觀 P/B (×)", value = APP_DEFAULTS$pb_high, step = 0.05, min = 0.1))
+      ),
+      uiOutput(ns("ui_pb_source_note")),
+      fluidRow(
+        column(12,
+               checkboxInput(ns("use_industry_pb"),
+                             tags$span(style = "font-weight: bold;", "納入產業本淨比"),
+                             value = APP_DEFAULTS$pb_use_industry)
+        )
+      ),
+      fluidRow(
+        column(12,
+               tags$p(
+                 id = ns("ynow_pb_settings_reset_hint"),
+                 style = "margin-top: 10px; color: #7f8c8d; font-size: 12px;",
+                 "「回復預設」在 Overview，與「試算 Jst. P/B」並排。"
+               )
+        )
+      )
+    )
   )
+}
+
+pb_asset_module_body_ui <- function(id) {
+  ns <- NS(id)
+  tagList(
+    tabBox(
+      title = "P/B & ASSET VALUE", width = "auto",
+      tabPanel(
+        "P/B Overview", icon = icon("landmark"),
+        fluidRow(
+          class = "ynow-model-kpi-row",
+          column(3, class = "ynow-model-kpi-result ynow-model-kpi-outline", `data-ynow-lock` = "output:pb_fair_value", valueBoxOutput(ns("vbx_fair"), width = 12)),
+          column(3, class = "ynow-model-kpi-tone-2", valueBoxOutput(ns("vbx_bvps"), width = 12)),
+          column(3, class = "ynow-model-kpi-tone-3", valueBoxOutput(ns("vbx_tbvps"), width = 12)),
+          column(3, class = "ynow-model-kpi-tone-4", valueBoxOutput(ns("vbx_mkt_pb"), width = 12))
+        ),
+        uiOutput(ns("value_why")),
+        fluidRow(
+          div("Fair Price = (BVPS / TBVPS / NAVPS) × Target P/B",
+              style = "font-size: 16px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;")
+        ),
+        ynow_calc_reset_row(
+          ynow_calc_btn(ns("btn_calc_pb"), "試算 Jst. P/B"),
+          ynow_reset_defaults_btn(ns("btn_reset_pb"))
+        ),
+        fluidRow(
+          column(width = 12,
+                 uiOutput(ns("ui_pb_result")),
+                 br(),
+                 box(title = ui_i18n("pb_band_title"), width = 12, status = "primary", solidHeader = TRUE,
+                     tableOutput(ns("tbl_pb_band")),
+                     plotOutput(ns("plt_pb_band"), height = "280px")
+                 )
+          )
+        )
+      )
+    ),
+    .model_param_sensitivity_box(
+      "P/B 公式參數：每股估值貢獻與敏感度",
+      ns("param_sensitivity_table")
+    )
+  )
+}
+
+pb_asset_module_ui <- function(id) {
+  .ynow_wave2_tab_item("pb_calculator")
 }
 
 # ==========================================

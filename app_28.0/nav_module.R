@@ -17,11 +17,73 @@
 # ==========================================
 # UI
 # ==========================================
-nav_module_ui <- function(id) {
+nav_module_shell_ui <- function(id) {
   ns <- NS(id)
+  tabBox(
+    title = "NET ASSET VALUE", width = "auto",
+    tabPanel(
+      "NAV Settings", icon = icon("cogs"),
+      h4(tags$b(ui_i18n("nav_settings_title"))),
+      fluidRow(
+        div(
+          ui_i18n("nav_settings_body"),
+          style = paste(
+            "font-size:14px; font-weight:bold; color:#2C3E50; text-align:left;",
+            "margin-bottom:10px; padding:10px; background-color:#F8F9F9;",
+            "border-left:4px solid #1a1a1a; border-radius:4px;"
+          )
+        )
+      ),
+      uiOutput(ns("txt_shares_resolve_note")),
+      fluidRow(
+        column(4, numericInput(ns("navps"), ui_i18n("nav_navps_label"), value = NA, step = 0.1, min = 0)),
+        column(4, numericInput(
+          ns("holdco_discount"), ui_i18n("nav_holdco_label"),
+          value = (APP_DEFAULTS$nav_holdco_discount %||% 0) * 100,
+          min = 0, max = 50, step = 1
+        )),
+        column(4, br(), actionButton(
+          ns("btn_sync_nav"), "從財報帶入",
+          icon = icon("sync"), class = "btn-sm",
+          style = paste(
+            "background-color:#1a1a1a; color:white; border:none;",
+            "padding:8px 15px; font-weight:bold; border-radius:5px; margin-top:5px;"
+          )
+        ))
+      ),
+      fluidRow(column(12, uiOutput(ns("alert_missing_nav")))),
+      fluidRow(column(12, tableOutput(ns("tbl_nav_breakdown")))),
+      hr(style = "border-top:1px solid #BDC3C7;"),
+      h4(tags$b("NAV 折價／溢價倍數（Bear／Base／Bull）")),
+      helpText("合理價 = NAVPS × 倍數。×1.00＝平價帳面 NAV；不使用產業／歷史 P/B 或 Justified／SGR。"),
+      fluidRow(
+        column(4, numericInput(
+          ns("nav_low"), "保守 NAV 倍數 (×)",
+          value = APP_DEFAULTS$nav_low %||% 0.90, step = 0.05, min = 0.1
+        )),
+        column(4, numericInput(
+          ns("nav_mid"), "基準 NAV 倍數 (×)",
+          value = APP_DEFAULTS$nav_mid %||% 1.00, step = 0.05, min = 0.1
+        )),
+        column(4, numericInput(
+          ns("nav_high"), "樂觀 NAV 倍數 (×)",
+          value = APP_DEFAULTS$nav_high %||% 1.05, step = 0.05, min = 0.1
+        ))
+      ),
+      fluidRow(
+        column(12, tags$p(
+          id = ns("ynow_nav_settings_reset_hint"),
+          style = "margin-top: 10px; color: #7f8c8d; font-size: 12px;",
+          "「回復預設」在 Overview，與「試算 NAV」並排。"
+        ))
+      )
+    )
+  )
+}
 
-  tabItem(
-    tabName = "nav_calculator",
+nav_module_body_ui <- function(id) {
+  ns <- NS(id)
+  tagList(
     fluidRow(
       column(
         12,
@@ -36,7 +98,6 @@ nav_module_ui <- function(id) {
     ),
     tabBox(
       title = "NET ASSET VALUE", width = "auto",
-
       tabPanel(
         "NAV Overview", icon = icon("sitemap"),
         fluidRow(
@@ -72,67 +133,13 @@ nav_module_ui <- function(id) {
             )
           )
         )
-      ),
-
-      tabPanel(
-        "NAV Settings", icon = icon("cogs"),
-        h4(tags$b(ui_i18n("nav_settings_title"))),
-        fluidRow(
-          div(
-            ui_i18n("nav_settings_body"),
-            style = paste(
-              "font-size:14px; font-weight:bold; color:#2C3E50; text-align:left;",
-              "margin-bottom:10px; padding:10px; background-color:#F8F9F9;",
-              "border-left:4px solid #1a1a1a; border-radius:4px;"
-            )
-          )
-        ),
-        uiOutput(ns("txt_shares_resolve_note")),
-        fluidRow(
-          column(4, numericInput(ns("navps"), ui_i18n("nav_navps_label"), value = NA, step = 0.1, min = 0)),
-          column(4, numericInput(
-            ns("holdco_discount"), ui_i18n("nav_holdco_label"),
-            value = (APP_DEFAULTS$nav_holdco_discount %||% 0) * 100,
-            min = 0, max = 50, step = 1
-          )),
-          column(4, br(), actionButton(
-            ns("btn_sync_nav"), "從財報帶入",
-            icon = icon("sync"), class = "btn-sm",
-            style = paste(
-              "background-color:#1a1a1a; color:white; border:none;",
-              "padding:8px 15px; font-weight:bold; border-radius:5px; margin-top:5px;"
-            )
-          ))
-        ),
-        fluidRow(column(12, uiOutput(ns("alert_missing_nav")))),
-        fluidRow(column(12, tableOutput(ns("tbl_nav_breakdown")))),
-        hr(style = "border-top:1px solid #BDC3C7;"),
-        h4(tags$b("NAV 折價／溢價倍數（Bear／Base／Bull）")),
-        helpText("合理價 = NAVPS × 倍數。×1.00＝平價帳面 NAV；不使用產業／歷史 P/B 或 Justified／SGR。"),
-        fluidRow(
-          column(4, numericInput(
-            ns("nav_low"), "保守 NAV 倍數 (×)",
-            value = APP_DEFAULTS$nav_low %||% 0.90, step = 0.05, min = 0.1
-          )),
-          column(4, numericInput(
-            ns("nav_mid"), "基準 NAV 倍數 (×)",
-            value = APP_DEFAULTS$nav_mid %||% 1.00, step = 0.05, min = 0.1
-          )),
-          column(4, numericInput(
-            ns("nav_high"), "樂觀 NAV 倍數 (×)",
-            value = APP_DEFAULTS$nav_high %||% 1.05, step = 0.05, min = 0.1
-          ))
-        ),
-        fluidRow(
-          column(12, tags$p(
-            id = ns("ynow_nav_settings_reset_hint"),
-            style = "margin-top: 10px; color: #7f8c8d; font-size: 12px;",
-            "「回復預設」在 Overview，與「試算 NAV」並排。"
-          ))
-        )
       )
     )
   )
+}
+
+nav_module_ui <- function(id) {
+  .ynow_wave2_tab_item("nav_calculator")
 }
 
 # ==========================================

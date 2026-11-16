@@ -4229,6 +4229,311 @@ tabPanel(
   do.call(shinydashboard::tabItems, flat)
 }
 
+#' Eager DDM inputs. Lite auto-calc and Search write these before the tab opens.
+.ynow_ddm_shell_ui <- function() {
+  tagList(
+    tabBox(width = "auto",
+           tabPanel("",
+                    fluidRow(
+                      column(
+                        width = 6,
+                        radioButtons(
+                          "mod_ddm-ddm_mode",
+                          "選擇 DDM 估值模型：",
+                          choices = list(
+                            "Gordon 永續成長 (GGM)" = "gordon",
+                            "SPM 永續和 (Sum of Perpetuities)" = "spm",
+                            "二階段成長法 (Two-Stage Model)" = "two_stage"
+                          ),
+                          selected = APP_DEFAULTS$ddm_mode
+                        ),
+                        tags$p(
+                          id = "ynow_ddm_mode_help",
+                          class = "help-block",
+                          "Gordon (GGM)：V0 = D1/(r−g)。SPM：定額股利永續 + 保留盈餘成長（V0 = E·g/r² + D/r）。二階段：g1 後接 Gordon 終值 Pn。折現率 r = Ke（CAPM）。"
+                        )
+                      ),
+                      column(
+                        width = 6,
+                        numericInput(
+                          "mod_ddm-d0",
+                          "剛配股利 D0",
+                          value = APP_DEFAULTS$ddm_d0
+                        ),
+                        tags$p(
+                          id = "ynow_ddm_d0_help",
+                          class = "help-block",
+                          "由財報自動帶入：現金股利（現金流量表）÷ 股數；若無則顯示 0。可手動覆寫，或至 D0 以配息率／歷史平均覆寫。SPM 模式下此值為定額永續股利 D。"
+                        ),
+                        conditionalPanel(
+                          condition = "input['mod_ddm-ddm_mode'] == 'spm'",
+                          tags$div(
+                            id = "ynow_ddm_spm_tip",
+                            style = "margin-top: 8px; padding: 8px 10px; background: #FFF8E7; border-left: 3px solid #E0A800; border-radius: 4px; font-size: 13px;",
+                            tags$b("SPM："), " 請至下方 D0 分頁確認「預估／最新 EPS」；公式使用 E（EPS）與 D（上方股利）。"
+                          )
+                        )
+                      )
+                    )
+           )
+    ),
+
+    tabBox(width = "auto",
+           tabPanel(
+             "Overview",
+             fluidRow(
+               column(
+                 width = 12,
+                 numericInput(
+                   "mod_ddm-g",
+                   ui_i18n("ddm_g_label"),
+                   value = APP_DEFAULTS$ddm_g
+                 ),
+                 checkboxInput(
+                   "mod_ddm-sync_g",
+                   ui_i18n("ddm_sync_g_label"),
+                   value = isTRUE(APP_DEFAULTS$ddm_sync_central_g)
+                 ),
+                 tags$p(
+                   id = "ynow_ddm_g_sync_help",
+                   class = "help-block",
+                   "勾選時跟隨中央 SGR；取消勾選後可單獨覆寫股利成長率（不必等於 FCFF 終值 g）。二階段時此值即 g₂；SPM 時為公式中的盈餘成長 g。"
+                 ),
+                 tags$div(style = "margin-top: 12px;", .ddm_two_stage_params_box()),
+                 conditionalPanel(
+                   condition = "input['mod_ddm-ddm_mode'] == 'spm'",
+                   tags$div(
+                     style = "margin-top: 12px;",
+                     tags$p(
+                       id = "ynow_ddm_spm_g_note",
+                       class = "help-block",
+                       "SPM 另需 EPS（E）：請至 D0 分頁確認「預估／最新 EPS」。成長 g 常用 ROE×保留率或 ROA×保留率。"
+                     )
+                   )
+                 )
+               )
+             )
+           ),
+           tabPanel(
+             "D0",
+             icon = icon("cogs"),
+             fluidRow(
+               column(
+                 width = 12,
+                 div(
+                   id = "ynow_ddm_d0_banner",
+                   "D0 = 現金股利（現金流量表）÷ 股數（或 EPS × 配息率）　｜　D1 = D0 × (1 + g)",
+                   style = "font-size: 18px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;"
+                 )
+               ),
+               box(
+                 h4(tags$b(ui_i18n("ddm_d0_m1_title"))),
+                 p(helpText(ui_i18n("ddm_d0_m1_help"))),
+                 div(
+                   ui_i18n("ddm_d0_formula"),
+                   style = "font-size: 18px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;"
+                 ),
+                 numericInput("mod_ddm-est_eps", ui_i18n("ddm_est_eps_label"), value = NA, step = 0.01),
+                 numericInput("mod_ddm-est_payout", ui_i18n("ddm_est_payout_label"), value = NA, min = 0, max = 100, step = 0.01),
+                 actionButton("mod_ddm-calc_d0_payout", ui_i18n("btn_calc_d0_payout"), class = "btn-primary"),
+                 tags$br(),
+                 htmlOutput("mod_ddm-txt_d0_payout_res")
+               ),
+               box(
+                 h4(tags$b(ui_i18n("ddm_d0_m2_title"))),
+                 p(helpText(ui_i18n("ddm_d0_m2_help"))),
+                 numericInput("mod_ddm-cycle_years", ui_i18n("ddm_cycle_years_label"), value = 5, min = 1, max = 10, step = 0.01),
+                 actionButton("mod_ddm-calc_d0_average", ui_i18n("btn_calc_d0_avg"), class = "btn-primary"),
+                 tags$br(),
+                 htmlOutput("mod_ddm-txt_d0_avg_res")
+               )
+             )
+           ),
+           # Ke ↔ Beta 左右對調：Ke 在前（對齊 DCF 的 WACC → Beta 節奏）
+           tabPanel(
+             "Ke",
+             icon = icon("balance-scale"),
+             uiOutput("ddm_ke_tab_note"),
+             fluidRow(
+               infoBoxOutput("ibx_ddm_ke", width = 4),
+               infoBoxOutput("ibx_ddm_beta", width = 4),
+               infoBoxOutput("ibx_ddm_erp", width = 4)
+             ),
+             div(
+               id = "ynow_ddm_ke_formula_banner",
+               "Ke = Rf + β × (Rm − Rf)",
+               style = "font-size: 18px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;"
+             ),
+             # 上列 100%：Ke 估算（對齊 WACC 估算盒）；下列左說明、右 CAPM
+             fluidRow(
+               box(
+                 width = 12,
+                 h4("Ke 估算", id = "ynow_ddm_ke_box_title"),
+                 fluidRow(
+                   column(
+                     4,
+                     numericInput(
+                       "mod_ddm-ke", ui_i18n("ddm_r_ke_label"),
+                       value = APP_DEFAULTS$ddm_ke, min = 0, step = 0.01
+                     )
+                   ),
+                   column(
+                     4,
+                     tags$div(
+                       style = "margin-top: 25px;",
+                       htmlOutput("ddm_ke_erp_summary")
+                     )
+                   ),
+                   column(
+                     4,
+                     tags$div(
+                       style = "margin-top: 25px;",
+                       htmlOutput("ddm_ke_source_chip")
+                     )
+                   )
+                 ),
+                 checkboxInput(
+                   "ddm_use_estimated_re",
+                   tags$span(
+                     id = "ynow_ddm_use_estimated_ke_label",
+                     "Use estimated Ke (from CAPM)"
+                   ),
+                   value = isTRUE(APP_DEFAULTS$use_est_re)
+                 ),
+                 tags$p(
+                   id = "ynow_ddm_ke_help",
+                   style = "margin:0 0 8px 0;color:#666;font-size:12px;",
+                   paste0(
+                     "Ke = Rf + β × (Rm − Rf). Bidirectionally synced with DCF→WACC \"Use estimated rₑ\" and the rₑ value; ",
+                     "when checked, Ke follows CAPM; uncheck to override manually."
+                   )
+                 ),
+                 actionButton("calc_ddm_ke", "計算 Ke（CAPM）", class = "btn-primary"),
+                 tags$br(), htmlOutput("ddm_beta_ke_status")
+               )
+             ),
+             fluidRow(
+               ddm_ke_bridge_settings_ui(width = 6),
+               capm_beta_settings_ui(
+                 title = "CAPM Estimate Ke",
+                 calc_id = "calc_ddm_capm",
+                 result_id = "ddm_capm_result",
+                 width = 6,
+                 id_prefix = "ddm_",
+                 box_title_id = "ynow_ddm_capm_box_title",
+                 sync_label_id = "ynow_ddm_sync_gs_beta_label",
+                 rf_note_id = "ddm_capm_rf_source_note",
+                 btn_label = "Estimate Ke (CAPM)"
+               )
+             )
+           ),
+           tabPanel(
+             "Beta (β)",
+             icon = icon("chart-line"),
+             .beta_model_source_section_ui(
+               "ddm_beta_u_apply_source",
+               "ddm_apply_beta_u_selected"
+             )
+           )
+    )
+  )
+}
+
+#' DDM charts, KPIs, and sensitivity. Omits readiness input ids.
+.ynow_page_ui_ddm <- function() {
+  tagList(
+    tabBox(title = "DIVIDEND DISCOUNT", width = "auto",
+           tabPanel(
+             "DDM Overview",
+             icon = icon("calculator"),
+             fluidRow(
+               column(
+                 width = 12,
+                 fluidRow(
+                   class = "ynow-model-kpi-row",
+                   column(6, class = "ynow-model-kpi-result ynow-model-kpi-outline",
+                          `data-ynow-lock` = "output:ddm_fair_value",
+                          infoBoxOutput("mod_ddm-ibx_ddm_price", width = NULL)),
+                   column(6, class = "ynow-model-kpi-tone-2",
+                          infoBoxOutput("mod_ddm-ibx_ddm_d1", width = NULL))
+                 )
+               )
+             ),
+             uiOutput("ddm_value_why"),
+             fluidRow(
+               column(
+                 width = 12,
+                 .ddm_formula_banner(),
+                 uiOutput("mod_ddm-ui_ddm_result"),
+                 h6(helpText(id = "ynow_ddm_overview_hint", ui_str("ddm_overview_hint", "en"))),
+                 ynow_calc_reset_row(
+                   ynow_calc_btn("mod_ddm-btn_calc_ddm", "試算 DDM"),
+                   ynow_reset_defaults_btn("mod_ddm-reset_ddm")
+                 ),
+                 tags$div(style = "margin-top: 10px;", htmlOutput("mod_ddm-vtxt_ddm_setting_details"))
+               )
+             )
+           ),
+           tabPanel(
+             "DDM Calculation Details",
+             fluidRow(
+               infoBoxOutput("mod_ddm-ibx_d0_scraped", width = 4),
+               infoBoxOutput("mod_ddm-ibx_d0_eps", width = 4),
+               infoBoxOutput("mod_ddm-ibx_d0_payout", width = 4)
+             ),
+             fluidRow(
+               column(
+                 width = 12,
+                 div(
+                   ui_i18n("ddm_details_smooth_note"),
+                   style = "font-size: 15px; font-weight: bold; color: #2C3E50; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;"
+                 )
+               )
+             )
+           )
+    ),
+
+    tabBox(title = "SENSITIVITY", width = "auto",
+           fluidRow(
+             column(
+               width = 12,
+               h4(ui_i18n("sens_matrix_title")),
+               p(helpText(ui_i18n("ddm_sens_help")))
+             )
+           ),
+           fluidRow(
+             column(
+               width = 12,
+               plotlyOutput("ddm_sensitivity_heatmap", height = "420px") %>% withSpinner()
+             )
+           ),
+           fluidRow(
+             column(
+               width = 12,
+               tags$details(
+                 tags$summary(ui_i18n("sens_numeric_table_summary")),
+                 div(
+                   style = "width: 100%; overflow-x: auto; margin-top: 8px;",
+                   tags$style(HTML("#ddm_sensitivity_table table { width: 100% !important; table-layout: fixed; }")),
+                   tableOutput("ddm_sensitivity_table")
+                 )
+               )
+             )
+           ),
+           fluidRow(
+             column(
+               width = 12,
+               uiOutput("ddm_sensitivity_analysis_panel")
+             )
+           )
+    ),
+    .model_param_sensitivity_box(
+      ui_i18n("ddm_formula_contrib_title"),
+      "mod_ddm-param_sensitivity_table"
+    )
+  )
+}
+
 ui <- dashboardPage(
   skin = "black",
   # Browser tab. Header logo stays the HTML progress title; do not let that markup become <title>.
@@ -6626,303 +6931,8 @@ ui <- dashboardPage(
       # ==========================================
       # DDM：版面節奏對齊 DCF（模式列 → Overview → 參數 → 敏感度）
       # ==========================================
-      tabItem(tabName = "ddm_calculator",
-              tabBox(width = "auto",
-                     tabPanel("",
-                              fluidRow(
-                                column(
-                                  width = 6,
-                                  radioButtons(
-                                    "mod_ddm-ddm_mode",
-                                    "選擇 DDM 估值模型：",
-                                    choices = list(
-                                      "Gordon 永續成長 (GGM)" = "gordon",
-                                      "SPM 永續和 (Sum of Perpetuities)" = "spm",
-                                      "二階段成長法 (Two-Stage Model)" = "two_stage"
-                                    ),
-                                    selected = APP_DEFAULTS$ddm_mode
-                                  ),
-                                  tags$p(
-                                    id = "ynow_ddm_mode_help",
-                                    class = "help-block",
-                                    "Gordon (GGM)：V0 = D1/(r−g)。SPM：定額股利永續 + 保留盈餘成長（V0 = E·g/r² + D/r）。二階段：g1 後接 Gordon 終值 Pn。折現率 r = Ke（CAPM）。"
-                                  )
-                                ),
-                                column(
-                                  width = 6,
-                                  numericInput(
-                                    "mod_ddm-d0",
-                                    "剛配股利 D0",
-                                    value = APP_DEFAULTS$ddm_d0
-                                  ),
-                                  tags$p(
-                                    id = "ynow_ddm_d0_help",
-                                    class = "help-block",
-                                    "由財報自動帶入：現金股利（現金流量表）÷ 股數；若無則顯示 0。可手動覆寫，或至 D0 以配息率／歷史平均覆寫。SPM 模式下此值為定額永續股利 D。"
-                                  ),
-                                  conditionalPanel(
-                                    condition = "input['mod_ddm-ddm_mode'] == 'spm'",
-                                    tags$div(
-                                      id = "ynow_ddm_spm_tip",
-                                      style = "margin-top: 8px; padding: 8px 10px; background: #FFF8E7; border-left: 3px solid #E0A800; border-radius: 4px; font-size: 13px;",
-                                      tags$b("SPM："), " 請至下方 D0 分頁確認「預估／最新 EPS」；公式使用 E（EPS）與 D（上方股利）。"
-                                    )
-                                  )
-                                )
-                              )
-                     )
-              ),
+      .ynow_wave2_tab_item("ddm_calculator"),
 
-              tabBox(title = "DIVIDEND DISCOUNT", width = "auto",
-                     tabPanel(
-                       "DDM Overview",
-                       icon = icon("calculator"),
-                       fluidRow(
-                         column(
-                           width = 12,
-                           fluidRow(
-                             class = "ynow-model-kpi-row",
-                             column(6, class = "ynow-model-kpi-result ynow-model-kpi-outline",
-                                    `data-ynow-lock` = "output:ddm_fair_value",
-                                    infoBoxOutput("mod_ddm-ibx_ddm_price", width = NULL)),
-                             column(6, class = "ynow-model-kpi-tone-2",
-                                    infoBoxOutput("mod_ddm-ibx_ddm_d1", width = NULL))
-                           )
-                         )
-                       ),
-                       uiOutput("ddm_value_why"),
-                       fluidRow(
-                         column(
-                           width = 12,
-                           .ddm_formula_banner(),
-                           uiOutput("mod_ddm-ui_ddm_result"),
-                           h6(helpText(id = "ynow_ddm_overview_hint", ui_str("ddm_overview_hint", "en"))),
-                           ynow_calc_reset_row(
-                             ynow_calc_btn("mod_ddm-btn_calc_ddm", "試算 DDM"),
-                             ynow_reset_defaults_btn("mod_ddm-reset_ddm")
-                           ),
-                           tags$div(style = "margin-top: 10px;", htmlOutput("mod_ddm-vtxt_ddm_setting_details"))
-                         )
-                       )
-                     ),
-                     tabPanel(
-                       "DDM Calculation Details",
-                       fluidRow(
-                         infoBoxOutput("mod_ddm-ibx_d0_scraped", width = 4),
-                         infoBoxOutput("mod_ddm-ibx_d0_eps", width = 4),
-                         infoBoxOutput("mod_ddm-ibx_d0_payout", width = 4)
-                       ),
-                       fluidRow(
-                         column(
-                           width = 12,
-                           div(
-                             ui_i18n("ddm_details_smooth_note"),
-                             style = "font-size: 15px; font-weight: bold; color: #2C3E50; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;"
-                           )
-                         )
-                       )
-                     )
-              ),
-
-              tabBox(width = "auto",
-                     tabPanel(
-                       "Overview",
-                       fluidRow(
-                         column(
-                           width = 12,
-                           numericInput(
-                             "mod_ddm-g",
-                             ui_i18n("ddm_g_label"),
-                             value = APP_DEFAULTS$ddm_g
-                           ),
-                           checkboxInput(
-                             "mod_ddm-sync_g",
-                             ui_i18n("ddm_sync_g_label"),
-                             value = isTRUE(APP_DEFAULTS$ddm_sync_central_g)
-                           ),
-                           tags$p(
-                             id = "ynow_ddm_g_sync_help",
-                             class = "help-block",
-                             "勾選時跟隨中央 SGR；取消勾選後可單獨覆寫股利成長率（不必等於 FCFF 終值 g）。二階段時此值即 g₂；SPM 時為公式中的盈餘成長 g。"
-                           ),
-                           tags$div(style = "margin-top: 12px;", .ddm_two_stage_params_box()),
-                           conditionalPanel(
-                             condition = "input['mod_ddm-ddm_mode'] == 'spm'",
-                             tags$div(
-                               style = "margin-top: 12px;",
-                               tags$p(
-                                 id = "ynow_ddm_spm_g_note",
-                                 class = "help-block",
-                                 "SPM 另需 EPS（E）：請至 D0 分頁確認「預估／最新 EPS」。成長 g 常用 ROE×保留率或 ROA×保留率。"
-                               )
-                             )
-                           )
-                         )
-                       )
-                     ),
-                     tabPanel(
-                       "D0",
-                       icon = icon("cogs"),
-                       fluidRow(
-                         column(
-                           width = 12,
-                           div(
-                             id = "ynow_ddm_d0_banner",
-                             "D0 = 現金股利（現金流量表）÷ 股數（或 EPS × 配息率）　｜　D1 = D0 × (1 + g)",
-                             style = "font-size: 18px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;"
-                           )
-                         ),
-                         box(
-                           h4(tags$b(ui_i18n("ddm_d0_m1_title"))),
-                           p(helpText(ui_i18n("ddm_d0_m1_help"))),
-                           div(
-                             ui_i18n("ddm_d0_formula"),
-                             style = "font-size: 18px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;"
-                           ),
-                           numericInput("mod_ddm-est_eps", ui_i18n("ddm_est_eps_label"), value = NA, step = 0.01),
-                           numericInput("mod_ddm-est_payout", ui_i18n("ddm_est_payout_label"), value = NA, min = 0, max = 100, step = 0.01),
-                           actionButton("mod_ddm-calc_d0_payout", ui_i18n("btn_calc_d0_payout"), class = "btn-primary"),
-                           tags$br(),
-                           htmlOutput("mod_ddm-txt_d0_payout_res")
-                         ),
-                         box(
-                           h4(tags$b(ui_i18n("ddm_d0_m2_title"))),
-                           p(helpText(ui_i18n("ddm_d0_m2_help"))),
-                           numericInput("mod_ddm-cycle_years", ui_i18n("ddm_cycle_years_label"), value = 5, min = 1, max = 10, step = 0.01),
-                           actionButton("mod_ddm-calc_d0_average", ui_i18n("btn_calc_d0_avg"), class = "btn-primary"),
-                           tags$br(),
-                           htmlOutput("mod_ddm-txt_d0_avg_res")
-                         )
-                       )
-                     ),
-                     # Ke ↔ Beta 左右對調：Ke 在前（對齊 DCF 的 WACC → Beta 節奏）
-                     tabPanel(
-                       "Ke",
-                       icon = icon("balance-scale"),
-                       uiOutput("ddm_ke_tab_note"),
-                       fluidRow(
-                         infoBoxOutput("ibx_ddm_ke", width = 4),
-                         infoBoxOutput("ibx_ddm_beta", width = 4),
-                         infoBoxOutput("ibx_ddm_erp", width = 4)
-                       ),
-                       div(
-                         id = "ynow_ddm_ke_formula_banner",
-                         "Ke = Rf + β × (Rm − Rf)",
-                         style = "font-size: 18px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;"
-                       ),
-                       # 上列 100%：Ke 估算（對齊 WACC 估算盒）；下列左說明、右 CAPM
-                       fluidRow(
-                         box(
-                           width = 12,
-                           h4("Ke 估算", id = "ynow_ddm_ke_box_title"),
-                           fluidRow(
-                             column(
-                               4,
-                               numericInput(
-                                 "mod_ddm-ke", ui_i18n("ddm_r_ke_label"),
-                                 value = APP_DEFAULTS$ddm_ke, min = 0, step = 0.01
-                               )
-                             ),
-                             column(
-                               4,
-                               tags$div(
-                                 style = "margin-top: 25px;",
-                                 htmlOutput("ddm_ke_erp_summary")
-                               )
-                             ),
-                             column(
-                               4,
-                               tags$div(
-                                 style = "margin-top: 25px;",
-                                 htmlOutput("ddm_ke_source_chip")
-                               )
-                             )
-                           ),
-                           checkboxInput(
-                             "ddm_use_estimated_re",
-                             tags$span(
-                               id = "ynow_ddm_use_estimated_ke_label",
-                               "Use estimated Ke (from CAPM)"
-                             ),
-                             value = isTRUE(APP_DEFAULTS$use_est_re)
-                           ),
-                           tags$p(
-                             id = "ynow_ddm_ke_help",
-                             style = "margin:0 0 8px 0;color:#666;font-size:12px;",
-                             paste0(
-                               "Ke = Rf + β × (Rm − Rf). Bidirectionally synced with DCF→WACC \"Use estimated rₑ\" and the rₑ value; ",
-                               "when checked, Ke follows CAPM; uncheck to override manually."
-                             )
-                           ),
-                           actionButton("calc_ddm_ke", "計算 Ke（CAPM）", class = "btn-primary"),
-                           tags$br(), htmlOutput("ddm_beta_ke_status")
-                         )
-                       ),
-                       fluidRow(
-                         ddm_ke_bridge_settings_ui(width = 6),
-                         capm_beta_settings_ui(
-                           title = "CAPM Estimate Ke",
-                           calc_id = "calc_ddm_capm",
-                           result_id = "ddm_capm_result",
-                           width = 6,
-                           id_prefix = "ddm_",
-                           box_title_id = "ynow_ddm_capm_box_title",
-                           sync_label_id = "ynow_ddm_sync_gs_beta_label",
-                           rf_note_id = "ddm_capm_rf_source_note",
-                           btn_label = "Estimate Ke (CAPM)"
-                         )
-                       )
-                     ),
-                     tabPanel(
-                       "Beta (β)",
-                       icon = icon("chart-line"),
-                       .beta_model_source_section_ui(
-                         "ddm_beta_u_apply_source",
-                         "ddm_apply_beta_u_selected"
-                       )
-                     )
-              ),
-
-              tabBox(title = "SENSITIVITY", width = "auto",
-                     fluidRow(
-                       column(
-                         width = 12,
-                         h4(ui_i18n("sens_matrix_title")),
-                         p(helpText(ui_i18n("ddm_sens_help")))
-                       )
-                     ),
-                     fluidRow(
-                       column(
-                         width = 12,
-                         plotlyOutput("ddm_sensitivity_heatmap", height = "420px") %>% withSpinner()
-                       )
-                     ),
-                     fluidRow(
-                       column(
-                         width = 12,
-                         tags$details(
-                           tags$summary(ui_i18n("sens_numeric_table_summary")),
-                           div(
-                             style = "width: 100%; overflow-x: auto; margin-top: 8px;",
-                             tags$style(HTML("#ddm_sensitivity_table table { width: 100% !important; table-layout: fixed; }")),
-                             tableOutput("ddm_sensitivity_table")
-                           )
-                         )
-                       )
-                     ),
-                     fluidRow(
-                       column(
-                         width = 12,
-                         uiOutput("ddm_sensitivity_analysis_panel")
-                       )
-                     )
-              ),
-              .model_param_sensitivity_box(
-                ui_i18n("ddm_formula_contrib_title"),
-                "mod_ddm-param_sensitivity_table"
-              )
-      ),
-      
       # ==========================================
       # DCF Calculator 分頁
       # ==========================================
@@ -7116,20 +7126,16 @@ ui <- dashboardPage(
               uiOutput("txt_dcf_investment_checks")
       ),
       
-      # 🌟 呼叫 RI 模型分頁介面
-      ri_module_ui("mod_ri"),
-      
-      # 🌟 呼叫 P/B 相對估值分頁介面
-      pb_asset_module_ui("mod_pb"),
+      .ynow_wave2_tab_item("ri_calculator"),
+
+      .ynow_wave2_tab_item("pb_calculator"),
 
       # Relative multiples: enterprise value, earnings, revenue (book value is P/B above)
       relative_multiples_module_ui("mod_rel"),
 
-      # SOTP — structural Sum-of-the-Parts (separate sidebar)
-      sotp_module_ui("mod_sotp"),
+      .ynow_wave2_tab_item("sotp_calculator"),
 
-      # 🌟 呼叫純 NAV 分頁介面
-      nav_module_ui("mod_nav"),
+      .ynow_wave2_tab_item("nav_calculator"),
       
       tabItem(
         tabName = "sensitivity",

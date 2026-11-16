@@ -96,26 +96,36 @@ testthat::test_that("price alerts gate stays eager; body is lazy-hosted", {
   testthat::expect_true(grepl("ynow_pa_guest_gate", pa_txt, fixed = TRUE))
 })
 
+.slice_between <- function(txt, start_pat, end_pat) {
+  fn <- regexpr(start_pat, txt, perl = TRUE)[1]
+  rest <- substr(txt, fn + 1L, nchar(txt))
+  nxt <- regexpr(end_pat, rest, perl = TRUE)[1]
+  testthat::expect_true(fn > 0 && nxt > 1)
+  substr(txt, fn, fn + nxt - 1L)
+}
+
 testthat::test_that("shared-input panes stay eager in UI source", {
   ui_txt <- paste(readLines("ynow_ui.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   srv_txt <- paste(readLines("ynow_server.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   rel_txt <- paste(readLines("relative_multiples_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-  # get_started / DCF / DDM stay eager. Lite auto-calc reads DDM, RI, P/B, NAV, and SOTP
-  # inputs without opening those tabs, so their panes stay in the first HTML.
+  wave_txt <- paste(readLines("wave2_readiness_shells.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  # get_started / DCF / MOS stay eager. DDM, RI, P/B, NAV, and SOTP keep readiness
+  # inputs in an eager shell and lazy-mount the heavy body.
   testthat::expect_false(grepl('uiOutput("ynow_lazy_host_get_started")', ui_txt, fixed = TRUE))
   testthat::expect_false(grepl('uiOutput("ynow_lazy_host_dcf_calculator")', ui_txt, fixed = TRUE))
   testthat::expect_false(grepl('uiOutput("ynow_lazy_host_mos_assumptions")', ui_txt, fixed = TRUE))
-  testthat::expect_false(grepl('uiOutput("ynow_lazy_host_ddm_calculator")', ui_txt, fixed = TRUE))
-  testthat::expect_false(grepl('uiOutput("ynow_lazy_host_ri_calculator")', ui_txt, fixed = TRUE))
-  testthat::expect_false(grepl('uiOutput("ynow_lazy_host_pb_calculator")', ui_txt, fixed = TRUE))
-  testthat::expect_false(grepl('uiOutput("ynow_lazy_host_nav_calculator")', ui_txt, fixed = TRUE))
-  testthat::expect_false(grepl('uiOutput("ynow_lazy_host_sotp_calculator")', ui_txt, fixed = TRUE))
   testthat::expect_true(grepl('tabName = "get_started"', ui_txt, fixed = TRUE))
   testthat::expect_true(grepl("wacc_gordon", ui_txt, fixed = TRUE))
-  testthat::expect_true(grepl('ri_module_ui("mod_ri")', ui_txt, fixed = TRUE))
-  testthat::expect_true(grepl('pb_asset_module_ui("mod_pb")', ui_txt, fixed = TRUE))
-  testthat::expect_true(grepl('sotp_module_ui("mod_sotp")', ui_txt, fixed = TRUE))
-  testthat::expect_true(grepl('nav_module_ui("mod_nav")', ui_txt, fixed = TRUE))
+  for (tab in c(
+    "ddm_calculator", "ri_calculator", "pb_calculator", "nav_calculator", "sotp_calculator"
+  )) {
+    testthat::expect_true(
+      grepl(sprintf('.ynow_wave2_tab_item("%s")', tab), ui_txt, fixed = TRUE),
+      info = tab
+    )
+    testthat::expect_identical(.ynow_lazy_host_id(tab), paste0("ynow_lazy_host_", tab))
+  }
+  testthat::expect_true(grepl("uiOutput(.ynow_lazy_host_id(tab))", wave_txt, fixed = TRUE))
   # Company: industry_choice eager shell; body lazy
   testthat::expect_true(grepl('uiOutput("ynow_lazy_host_dashboard")', ui_txt, fixed = TRUE))
   testthat::expect_true(grepl("\\.ynow_page_ui_dashboard\\s*<-\\s*function", ui_txt, perl = TRUE))
@@ -147,11 +157,90 @@ testthat::test_that("shared-input panes stay eager in UI source", {
   )) {
     testthat::expect_true(grepl(nm, srv_txt, fixed = TRUE), info = nm)
   }
-  testthat::expect_false(grepl("ddm_calculator = function", srv_txt, fixed = TRUE))
-  testthat::expect_false(grepl("ri_calculator = function", srv_txt, fixed = TRUE))
-  testthat::expect_false(grepl("pb_calculator = function", srv_txt, fixed = TRUE))
-  testthat::expect_false(grepl("nav_calculator = function", srv_txt, fixed = TRUE))
-  testthat::expect_false(grepl("sotp_calculator = function", srv_txt, fixed = TRUE))
+  testthat::expect_true(grepl(".ynow_wave2_builders()", srv_txt, fixed = TRUE))
+  testthat::expect_true(grepl("sotp_calculator = function", srv_txt, fixed = TRUE))
+})
+
+testthat::test_that("wave2 shell ids stay out of lazy bodies", {
+  source("wave2_readiness_shells.R", local = TRUE)
+  ui_txt <- paste(readLines("ynow_ui.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  ddm_shell <- .slice_between(
+    ui_txt,
+    "\\.ynow_ddm_shell_ui\\s*<-\\s*function",
+    "\\.ynow_page_ui_ddm\\s*<-\\s*function"
+  )
+  ddm_body <- .slice_between(
+    ui_txt,
+    "\\.ynow_page_ui_ddm\\s*<-\\s*function",
+    "\\nui <- dashboardPage"
+  )
+  testthat::expect_true(grepl('id_prefix = "ddm_"', ddm_shell, fixed = TRUE))
+  testthat::expect_false(grepl('id_prefix = "ddm_"', ddm_body, fixed = TRUE))
+  testthat::expect_false(grepl("capm_beta_settings_ui", ddm_body, fixed = TRUE))
+  testthat::expect_true(grepl(".ddm_two_stage_params_box()", ddm_shell, fixed = TRUE))
+  testthat::expect_false(grepl(".ddm_two_stage_params_box()", ddm_body, fixed = TRUE))
+  stage_box <- .slice_between(
+    ui_txt,
+    "\\.ddm_two_stage_params_box\\s*<-\\s*function",
+    "\\.ddm_formula_banner\\s*<-\\s*function"
+  )
+  for (id in ynow_wave2_shell_ids("ddm_calculator")) {
+    if (grepl("^ddm_capm_|^ddm_sync_gs_beta$", id)) next
+    home <- if (id %in% c("mod_ddm-g_stage1", "mod_ddm-yr_stage1")) stage_box else ddm_shell
+    testthat::expect_true(grepl(id, home, fixed = TRUE), info = id)
+    testthat::expect_false(grepl(id, ddm_body, fixed = TRUE), info = id)
+  }
+
+  pairs <- list(
+    ri = list(
+      file = "ri_module.R", prefix = "mod_ri-",
+      shell = "ri_module_shell_ui\\s*<-\\s*function",
+      body = "ri_module_body_ui\\s*<-\\s*function",
+      stop = "ri_module_ui\\s*<-\\s*function"
+    ),
+    pb = list(
+      file = "pb_asset_module.R", prefix = "mod_pb-",
+      shell = "pb_asset_module_shell_ui\\s*<-\\s*function",
+      body = "pb_asset_module_body_ui\\s*<-\\s*function",
+      stop = "pb_asset_module_ui\\s*<-\\s*function"
+    ),
+    nav = list(
+      file = "nav_module.R", prefix = "mod_nav-",
+      shell = "nav_module_shell_ui\\s*<-\\s*function",
+      body = "nav_module_body_ui\\s*<-\\s*function",
+      stop = "nav_module_ui\\s*<-\\s*function"
+    ),
+    sotp = list(
+      file = "sotp_module.R", prefix = "mod_sotp-",
+      shell = "sotp_module_shell_ui\\s*<-\\s*function",
+      body = "sotp_module_body_ui\\s*<-\\s*function",
+      stop = "sotp_module_ui\\s*<-\\s*function"
+    )
+  )
+  tabs <- c(ri = "ri_calculator", pb = "pb_calculator", nav = "nav_calculator", sotp = "sotp_calculator")
+  for (key in names(pairs)) {
+    spec <- pairs[[key]]
+    src <- paste(readLines(spec$file, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+    shell <- .slice_between(src, spec$shell, spec$body)
+    body <- .slice_between(src, spec$body, spec$stop)
+    for (id in ynow_wave2_shell_ids(tabs[[key]])) {
+      token <- if (startsWith(id, spec$prefix)) {
+        sprintf('ns("%s")', substring(id, nchar(spec$prefix) + 1L))
+      } else {
+        id
+      }
+      testthat::expect_true(grepl(token, shell, fixed = TRUE), info = paste(key, token))
+      testthat::expect_false(grepl(token, body, fixed = TRUE), info = paste(key, token))
+    }
+  }
+  sotp_body <- .slice_between(
+    paste(readLines("sotp_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n"),
+    "sotp_module_body_ui\\s*<-\\s*function",
+    "sotp_module_ui\\s*<-\\s*function"
+  )
+  for (id in c("default_ev_sales", "nonop", "manual_segments")) {
+    testthat::expect_true(grepl(sprintf('ns("%s")', id), sotp_body, fixed = TRUE), info = id)
+  }
 })
 
 testthat::test_that("register mounts once and caches builder result", {
@@ -295,8 +384,11 @@ testthat::test_that("lazy_tabs wraps deferred hooks in withReactiveDomain", {
 testthat::test_that("lazy builders list evaluates and MOS Assumptions stays eager", {
   src <- .ynow_lazy_builders_src("ynow_server.R")
   err <- NULL
+  eval_env <- new.env(parent = baseenv())
+  sys.source("lazy_tabs.R", eval_env)
+  sys.source("wave2_readiness_shells.R", eval_env)
   built <- tryCatch(
-    eval(parse(text = src), envir = new.env(parent = baseenv())),
+    eval(parse(text = src), envir = eval_env),
     error = function(e) {
       err <<- conditionMessage(e)
       NULL
@@ -311,10 +403,17 @@ testthat::test_that("lazy builders list evaluates and MOS Assumptions stays eage
     testthat::expect_true(all(vapply(built, is.function, logical(1L))))
     testthat::expect_true("rel_mult_rev" %in% names(built))
     testthat::expect_false("mos_assumptions" %in% names(built))
+    testthat::expect_false("get_started" %in% names(built))
+    testthat::expect_false("dcf_calculator" %in% names(built))
+    for (tab in c(
+      "ddm_calculator", "ri_calculator", "pb_calculator", "nav_calculator", "sotp_calculator"
+    )) {
+      testthat::expect_true(tab %in% names(built), info = tab)
+    }
 
     broken <- sub("\\)\\s*$", ",)", src)
     broken_err <- tryCatch(
-      eval(parse(text = broken), envir = new.env(parent = baseenv())),
+      eval(parse(text = broken), envir = eval_env),
       error = function(e) conditionMessage(e)
     )
     testthat::expect_match(broken_err, "^argument [0-9]+ is empty$")
