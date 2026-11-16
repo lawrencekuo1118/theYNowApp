@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12827300
+bundleId=12827358
 appId=10907657
-url=https://hopesmasher1118.shinyapps.io/GGplaystore2021/  # pragma: allowlist secret
-aligned_git=b87acfbdb2bea92e6814b904c671f7fe1f34c662
-commit=b87acfbdb2bea92e6814b904c671f7fe1f34c662
-short=b87acfbd
-message=chore: bump display version to v28.53
-captured_at=2026-11-16T02:21:05Z
+url=https://hopesmasher1118.shinyapps.io/TheYNowApp/  # pragma: allowlist secret
+aligned_git=94e174c847308c542d03c1d892048cc72557af6a
+commit=94e174c847308c542d03c1d892048cc72557af6a
+short=94e174c8
+message=chore: bump display version to v28.54
+captured_at=2026-11-16T02:44:14Z
 display_version=v28.54
-note=Shipped v28.53 (+0.01) via deploy_app_21.R. Fix #765: MOS Assumptions zh-TW Taiwan investment-desk terms (情境區間／決策檢核門檻／部位分級). Live status=running; rsconnect bundleId=12827300. Prior: v28.52=#761 (12825827).
+note=Shipped v28.54 (+0.01) via deploy_app_21.R. Tip-ship #769: BBLab Reconciliation as section III header button (TYA-123/TYA-125). Also includes #767 past earnings-call transcript catalog already on master. Live status=running; rsconnect bundleId=12827358. Prior: v28.53=#768 (12827300; live later 12827324). Fixed baseline URL to TheYNowApp.

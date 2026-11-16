@@ -1,3 +1,8 @@
+## [v28.54] — 2026-11-16 · BBLab Reconciliation header button
+
+- zh-TW：業務拆解第 III 節標題列改為「對帳」按鈕開啟對帳（TYA-123 / #769）；並含 master 上 #767 歷次法說會逐字稿目錄與多選。
+- en-US: Business Breakdown section III header opens Reconciliation from a header button (TYA-123 / #769). Also ships master #767 past earnings-call transcript catalog + multi-select.
+
 ## [v28.53] — 2026-11-16 · MOS假設台灣投資用語
 
 - zh-TW：MOS假設分頁改用台灣投資界說法（情境區間、決策檢核門檻、部位分級、大幅低估／高估、合理價）；MOS／FV／HFV／Bear／Base 維持英文專有名詞。
