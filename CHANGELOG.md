@@ -1,3 +1,8 @@
+## [v28.60] — 2026-11-16 · Business Breakdown HQ/shared block removed
+
+- zh-TW：業務拆解移除「共用與總部項目」區塊與相關 locale／JS 接線；訂單／主要供應商／主要市場維持（#781 / YN-133）。顯示版號 v28.60、bundle 12828033。
+- en-US: Business Breakdown drops the Shared and Corporate Items block and its locale/JS wiring; orders / major suppliers / major markets stay (#781 / YN-133). Display v28.60; shinyapps bundle 12828033.
+
 ## [v28.59] — 2026-11-16 · DCF sensitivity and FCF table wait until the tab opens
 
 - zh-TW：DCF 敏感度區塊改為 eager shell 之後的懶載入；FCF 預測表在開啟 DCF 後才掛上。WACC、CAPM、Beta 與 FCF 輸入仍在首份 HTML，Search 寫入不必先開分頁（#779）。顯示版號 v28.59、bundle 12827967。
