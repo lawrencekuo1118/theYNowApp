@@ -1,3 +1,8 @@
+## [v28.59] — 2026-11-16 · DCF sensitivity and FCF table wait until the tab opens
+
+- zh-TW：DCF 敏感度區塊改為 eager shell 之後的懶載入；FCF 預測表在開啟 DCF 後才掛上。WACC、CAPM、Beta 與 FCF 輸入仍在首份 HTML，Search 寫入不必先開分頁（#779）。顯示版號 v28.59、bundle 12827967。
+- en-US: DCF sensitivity mounts after the eager shell. The FCF projection table mounts once DCF has been opened. WACC, CAPM, beta, and FCF inputs stay in the first HTML so Search can write them before the tab opens (#779). Display v28.59; shinyapps bundle 12827967.
+
 ## [v28.58] — 2026-11-16 · Search bare 1723 TW results
 
 - zh-TW：直接輸入 1723（中鋼碳素）可搜尋命中；US 四碼 typeahead 優先台股宇宙、Home 搜尋改開個股並先畫官方名稱；yfinance 釘 0.2.66（#777 / TYA-131）。顯示版號 v28.58、bundle 12827887。
