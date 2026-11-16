@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12827887
+bundleId=12827967
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/  # pragma: allowlist secret
-aligned_git=a55a1c2e4a8daec7bf21ca5e487fb4871dbc49e1
-commit=a55a1c2e4a8daec7bf21ca5e487fb4871dbc49e1
-short=a55a1c2e
-message=chore: bump display version to v28.58
-captured_at=2026-11-16T05:37:29Z
-display_version=v28.58
-note=Shipped v28.58 (+0.01) via deploy_app_21.R. Tip-ship #777: bare 1723 TW Search restore (TYA-131). Live status=running; rsconnect bundleId=12827887. Prior: v28.57=#775 (12827804).
+aligned_git=cb3526af1b2b38e5d471bf13f012e1543f4cb4a9
+commit=cb3526af1b2b38e5d471bf13f012e1543f4cb4a9
+short=cb3526af
+message=chore: bump display version to v28.59
+captured_at=2026-11-16T06:12:20Z
+display_version=v28.59
+note=Shipped v28.59 (+0.01) via deploy_app_21.R. Tip-ship #779: DCF readiness shell. Live status=running; rsconnect bundleId=12827967. Prior: v28.58 (12827887).
