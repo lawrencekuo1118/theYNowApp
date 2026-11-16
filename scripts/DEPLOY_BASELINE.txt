@@ -7,5 +7,5 @@ commit=cb3526af1b2b38e5d471bf13f012e1543f4cb4a9
 short=cb3526af
 message=chore: bump display version to v28.59
 captured_at=2026-11-16T06:12:20Z
-display_version=v28.59
+display_version=v28.60
 note=Shipped v28.59 (+0.01) via deploy_app_21.R. Tip-ship #779: DCF readiness shell. Live status=running; rsconnect bundleId=12827967. Prior: v28.58 (12827887).
