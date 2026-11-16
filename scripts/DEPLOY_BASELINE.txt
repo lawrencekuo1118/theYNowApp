@@ -7,5 +7,5 @@ commit=b87acfbdb2bea92e6814b904c671f7fe1f34c662
 short=b87acfbd
 message=chore: bump display version to v28.53
 captured_at=2026-11-16T02:21:05Z
-display_version=v28.53
+display_version=v28.54
 note=Shipped v28.53 (+0.01) via deploy_app_21.R. Fix #765: MOS Assumptions zh-TW Taiwan investment-desk terms (情境區間／決策檢核門檻／部位分級). Live status=running; rsconnect bundleId=12827300. Prior: v28.52=#761 (12825827).
