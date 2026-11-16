@@ -4667,6 +4667,17 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Amounts are never estimated."
     ),
     bblab_or_ready = "Disclosed order facts and cross-checks are open below.",
+    bblab_or_transcripts_title = "Past earnings-call transcripts",
+    bblab_or_transcripts_help = paste0(
+      "Latest call is selected by default. Select one or more past transcripts, ",
+      "then press Start analysis for a combined view. Amounts are never estimated."
+    ),
+    bblab_or_transcripts_empty = paste0(
+      "No past earnings-call transcript links were found yet. ",
+      "Start analysis still uses the latest available call or filing notes when present."
+    ),
+    bblab_or_transcripts_open = "Open transcript",
+    bblab_or_transcripts_combined = "Combined analysis across selected calls",
     bblab_or_primary = "Primary for this industry lens",
     bblab_or_disclosed_flag = "Disclosed",
     bblab_or_revenue_concentration = "Revenue concentration, not order dollars",
@@ -9498,6 +9509,17 @@ locale_for_market <- function(mode = get_market_mode()) {
     bblab_or_need_ticker = "請先在表頭「Ticker／股票代號」輸入代號，再點選「開始分析」。",
     bblab_or_empty = "此代號沒有已揭露的訂單、供應商或客戶金額。金額一律不估計。",
     bblab_or_ready = "已開啟下方的已揭露訂單事實與交叉驗證。",
+    bblab_or_transcripts_title = "歷次法說會逐字稿",
+    bblab_or_transcripts_help = paste0(
+      "預設勾選最近一次。可多選歷次法說會／簡報連結，再點選「開始分析」做綜合分析。",
+      "金額一律不估計。"
+    ),
+    bblab_or_transcripts_empty = paste0(
+      "尚無法列出歷次法說會逐字稿連結。",
+      "若有最近一次法說會或申報附註，「開始分析」仍會使用該來源。"
+    ),
+    bblab_or_transcripts_open = "開啟逐字稿",
+    bblab_or_transcripts_combined = "已選場次綜合分析",
     bblab_or_primary = "此產業透鏡的主要指標",
     bblab_or_disclosed_flag = "已揭露",
     bblab_or_revenue_concentration = "營收集中度，不是訂單金額",

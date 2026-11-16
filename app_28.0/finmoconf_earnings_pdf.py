@@ -168,6 +168,65 @@ def _download_pdf(url: str) -> Tuple[Optional[bytes], str]:
     return data, url
 
 
+def fetch_finmoconf_presentation_by_url(
+    ticker: str,
+    pdf_url: str,
+    published: str = "",
+    lang: str = "zh",
+) -> Dict[str, Any]:
+    """Download one known STR PDF URL and extract text (past-call path)."""
+    co = _issuer_code(ticker)
+    empty: Dict[str, Any] = {
+        "ok": False,
+        "ticker": co,
+        "status": "empty",
+        "source_id": "finmoconf_presentation_pdf",
+        "credibility": "estimate",
+        "company_url": f"{FINMOCONF_ORIGIN}/company/{co}" if co else FINMOCONF_ORIGIN,
+        "title": "",
+        "url": "",
+        "published": published or "",
+        "lang": lang or "",
+        "zh_url": "",
+        "en_url": "",
+        "text": "",
+        "pdf_bytes": 0,
+        "error": "empty",
+        "meta": {},
+    }
+    url = _rewrite_pdf_url(pdf_url or "")
+    if not co or not url:
+        empty["error"] = "bad_ticker_or_url"
+        return empty
+    empty["url"] = url
+    if not empty["published"]:
+        m = _STR_PDF_RE.search(url)
+        if m:
+            ymd = m.group("ymd")
+            empty["published"] = f"{ymd[0:4]}-{ymd[4:6]}-{ymd[6:8]}"
+            empty["lang"] = "zh" if m.group("lang").upper() == "M" else "en"
+    empty["title"] = f"{co} 法說會簡報 ({empty['published'] or 'pdf'}, {empty['lang'] or lang})"
+    pdf, final_url = _download_pdf(url)
+    if not pdf:
+        empty["error"] = final_url if str(final_url).startswith("pdf_") else "pdf_download_failed"
+        return empty
+    empty["url"] = final_url
+    empty["pdf_bytes"] = len(pdf)
+    try:
+        text = _extract_pdf_text(pdf)
+    except Exception as e:
+        empty["error"] = f"pdf_extract_failed:{e}"
+        return empty
+    if not (text or "").strip():
+        empty["error"] = "pdf_text_empty"
+        return empty
+    empty["ok"] = True
+    empty["status"] = "ok"
+    empty["text"] = text
+    empty["error"] = ""
+    return empty
+
+
 def fetch_finmoconf_latest_presentation(
     ticker: str,
     prefer_lang: str = "zh",

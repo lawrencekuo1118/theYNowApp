@@ -139,7 +139,7 @@ ynow_finmoconf_index_url <- function() {
 }
 
 #' Offline HTML STR-link parse (fixtures / no Python). Newest ymd; zh (M) preferred.
-.ynow_finmo_ec_parse_html_offline <- function(html, bare) {
+.ynow_finmo_ec_parse_html_offline <- function(html, bare, target_ymd = NULL) {
   html <- gsub("\\\\/", "/", as.character(html %||% "")[1])
   bare <- toupper(.ynow_finmo_ec_chr(bare))
   if (!nzchar(html) || !nzchar(bare)) return(NULL)
@@ -165,7 +165,17 @@ ynow_finmoconf_index_url <- function() {
   parsed <- Filter(Negate(is.null), parsed)
   if (!length(parsed)) return(NULL)
   ymds <- vapply(parsed, function(x) x$ymd, character(1))
-  latest <- max(ymds)
+  want <- gsub("[^0-9]", "", .ynow_finmo_ec_chr(target_ymd))
+  if (nzchar(want) && nchar(want) >= 8L) {
+    want <- substr(want, 1L, 8L)
+    if (want %in% ymds) {
+      latest <- want
+    } else {
+      latest <- max(ymds)
+    }
+  } else {
+    latest <- max(ymds)
+  }
   bucket <- parsed[ymds == latest]
   langs <- vapply(bucket, function(x) x$lang, character(1))
   pick <- bucket[[match("zh", langs, nomatch = match("en", langs))]]
@@ -187,8 +197,98 @@ ynow_finmoconf_index_url <- function() {
   )
 }
 
-#' Fetch latest FinmoConf-indexed 法說會 presentation → facts via extract_fun.
-ynow_finmoconf_earnings_call_fetch <- function(ticker, extract_fun = NULL) {
+#' All FinmoConf presentation dates from company HTML (newest first; zh preferred).
+.ynow_finmo_ec_parse_html_catalog <- function(html, bare, max_rows = 12L) {
+  html <- gsub("\\\\/", "/", as.character(html %||% "")[1])
+  bare <- toupper(.ynow_finmo_ec_chr(bare))
+  if (!nzchar(html) || !nzchar(bare)) return(list())
+  pat <- paste0(
+    "https?://(?:mopsov\\.twse\\.com\\.tw|doc\\.twse\\.com\\.tw)/nas/STR/",
+    bare,
+    "(20[0-9]{6})([ME])([0-9]{3})\\.pdf"
+  )
+  m <- gregexpr(pat, html, perl = TRUE, ignore.case = TRUE)
+  if (m[[1]][1] < 0) return(list())
+  hits <- unique(regmatches(html, m)[[1]])
+  if (!length(hits)) return(list())
+  parsed <- lapply(hits, function(u) {
+    mm <- regexec(pat, u, perl = TRUE, ignore.case = TRUE)
+    parts <- regmatches(u, mm)[[1]]
+    if (length(parts) < 4L) return(NULL)
+    list(
+      ymd = parts[[2]],
+      lang = if (toupper(parts[[3]]) == "M") "zh" else "en",
+      url = sub("https?://mopsov\\.twse\\.com\\.tw", "https://doc.twse.com.tw", u, ignore.case = TRUE)
+    )
+  })
+  parsed <- Filter(Negate(is.null), parsed)
+  if (!length(parsed)) return(list())
+  by_ymd <- split(parsed, vapply(parsed, function(x) x$ymd, character(1)))
+  ymds <- sort(names(by_ymd), decreasing = TRUE)
+  max_n <- max(1L, as.integer(max_rows)[1])
+  ymds <- utils::head(ymds, max_n)
+  lapply(ymds, function(ymd) {
+    bucket <- by_ymd[[ymd]]
+    langs <- vapply(bucket, function(x) x$lang, character(1))
+    pick <- bucket[[match("zh", langs, nomatch = match("en", langs))]]
+    pub <- paste0(substr(ymd, 1, 4), "-", substr(ymd, 5, 6), "-", substr(ymd, 7, 8))
+    ynow_ec_catalog_row(
+      source_id = "finmoconf_presentation_pdf",
+      published = pub,
+      title = paste(bare, "法說會簡報", pub),
+      url = pick$url,
+      label = pub,
+      lang = pick$lang,
+      credibility = "estimate"
+    )
+  })
+}
+
+#' Past FinmoConf presentation catalog rows for a TW ticker.
+ynow_finmoconf_earnings_call_catalog_rows <- function(ticker, max_rows = 12L) {
+  if (!isTRUE(.ynow_finmo_ec_enabled())) return(list())
+  bare <- gsub("[^0-9A-Za-z]", "", sub("\\.(TW|TWO)$", "", toupper(trimws(.ynow_finmo_ec_chr(ticker))), ignore.case = TRUE))
+  if (!nzchar(bare) || !grepl("^[0-9]{4,6}[A-Z]?$", bare)) return(list())
+  html_body <- ""
+  html_fix <- Sys.getenv("YNOW_FINMOCONF_SCRAPE_FIXTURE_HTML", unset = "")
+  if (nzchar(html_fix) && file.exists(html_fix)) {
+    html_body <- paste(readLines(html_fix, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  } else if (isTRUE(.ynow_finmo_ec_ensure_py()) &&
+               exists("parse_finmoconf_company_pdfs", envir = .ynow_finmo_ec_env, inherits = FALSE)) {
+    .ynow_finmo_ec_rate_limit()
+    raw_html <- tryCatch({
+      company_url <- ynow_finmoconf_company_url(bare)
+      if (requireNamespace("httr", quietly = TRUE)) {
+        resp <- httr::GET(company_url, httr::timeout(12), httr::user_agent("TheYNowApp/finmoconf-catalog"))
+        if (httr::status_code(resp) >= 400L) return("")
+        httr::content(resp, as = "text", encoding = "UTF-8")
+      } else {
+        ""
+      }
+    }, error = function(e) "")
+    html_body <- raw_html %||% ""
+    if (nzchar(html_body)) {
+      rows_py <- tryCatch(
+        .ynow_finmo_ec_env$parse_finmoconf_company_pdfs(html_body, bare),
+        error = function(e) NULL
+      )
+      if (is.list(rows_py) && length(rows_py)) {
+        # Collapse to one row per date (zh preferred) via offline catalog helper.
+        return(.ynow_finmo_ec_parse_html_catalog(html_body, bare, max_rows = max_rows))
+      }
+    }
+  }
+  if (!nzchar(html_body)) return(list())
+  .ynow_finmo_ec_parse_html_catalog(html_body, bare, max_rows = max_rows)
+}
+
+#' Fetch FinmoConf-indexed 法說會 presentation → facts via extract_fun.
+#' @param pdf_url optional specific STR PDF URL (past call).
+#' @param published optional ISO date for that PDF.
+#' @param lang optional zh|en preference when resolving from HTML.
+ynow_finmoconf_earnings_call_fetch <- function(ticker, extract_fun = NULL,
+                                               pdf_url = NULL, published = NULL,
+                                               lang = NULL) {
   if (!isTRUE(.ynow_finmo_ec_enabled())) return(NULL)
   tk <- toupper(trimws(.ynow_finmo_ec_chr(ticker)))
   bare <- sub("\\.(TW|TWO)$", "", tk, ignore.case = TRUE)
@@ -196,17 +296,24 @@ ynow_finmoconf_earnings_call_fetch <- function(ticker, extract_fun = NULL) {
   if (!nzchar(bare) || !grepl("^[0-9]{4,6}[A-Z]?$", bare)) return(NULL)
 
   company_url <- ynow_finmoconf_company_url(bare)
+  want_url <- .ynow_finmo_ec_chr(pdf_url)
+  want_pub <- .ynow_finmo_ec_chr(published)
+  want_lang <- .ynow_finmo_ec_chr(lang, "zh")
   lex_ver <- "3"
   if (exists("ynow_ec_keyword_lexicon", mode = "function")) {
     lex_ver <- as.character(ynow_ec_keyword_lexicon()$version %||% "3")[1]
     if (!nzchar(lex_ver) || is.na(lex_ver)) lex_ver <- "3"
   }
-  cache_key <- paste0("finmoconf_ec_", lex_ver, "_", bare)
+  cache_key <- paste0(
+    "finmoconf_ec_", lex_ver, "_", bare,
+    if (nzchar(want_url)) paste0("_", substr(gsub("[^A-Za-z0-9]", "", want_url), 1L, 24L)) else "",
+    if (nzchar(want_pub)) paste0("_", gsub("[^0-9]", "", want_pub)) else ""
+  )
   cached <- .ynow_finmo_ec_cache_get(cache_key)
   # Fixtures bypass cache so unit tests stay deterministic.
   html_fix <- Sys.getenv("YNOW_FINMOCONF_SCRAPE_FIXTURE_HTML", unset = "")
   text_fix <- Sys.getenv("YNOW_FINMOCONF_PDF_FIXTURE_TEXT", unset = "")
-  use_cache <- !nzchar(html_fix) && !nzchar(text_fix)
+  use_cache <- !nzchar(html_fix) && !nzchar(text_fix) && !nzchar(want_url)
   if (isTRUE(use_cache) && is.list(cached) && isTRUE(cached$ok)) {
     return(cached)
   }
@@ -223,12 +330,26 @@ ynow_finmoconf_earnings_call_fetch <- function(ticker, extract_fun = NULL) {
   raw <- NULL
   # Fully offline fixture path (no reticulate / no network).
   if (nzchar(html_body) && nzchar(text_body)) {
-    raw <- .ynow_finmo_ec_parse_html_offline(html_body, bare)
+    target_ymd <- if (nzchar(want_pub)) gsub("[^0-9]", "", want_pub) else NULL
+    raw <- .ynow_finmo_ec_parse_html_offline(html_body, bare, target_ymd = target_ymd)
     if (is.list(raw)) {
+      if (nzchar(want_url)) raw$url <- want_url
       raw$text <- text_body
       raw$ok <- TRUE
       raw$status <- "ok"
     }
+  } else if (nzchar(want_url) && isTRUE(.ynow_finmo_ec_ensure_py()) &&
+               exists("fetch_finmoconf_presentation_by_url", envir = .ynow_finmo_ec_env, inherits = FALSE)) {
+    .ynow_finmo_ec_rate_limit()
+    raw <- tryCatch(
+      .ynow_finmo_ec_env$fetch_finmoconf_presentation_by_url(
+        bare,
+        want_url,
+        published = want_pub,
+        lang = want_lang
+      ),
+      error = function(e) NULL
+    )
   } else {
     if (!isTRUE(.ynow_finmo_ec_ensure_py())) return(NULL)
     if (!nzchar(html_body) && !nzchar(text_body)) {
@@ -238,7 +359,7 @@ ynow_finmoconf_earnings_call_fetch <- function(ticker, extract_fun = NULL) {
     raw <- tryCatch(
       .ynow_finmo_ec_env$fetch_finmoconf_latest_presentation(
         bare,
-        prefer_lang = "zh",
+        prefer_lang = if (nzchar(want_lang)) want_lang else "zh",
         html_fixture = html_body,
         text_fixture = text_body,
         skip_pdf = isTRUE(skip_pdf)

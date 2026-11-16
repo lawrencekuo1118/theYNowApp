@@ -187,6 +187,103 @@ ynow_sa_earnings_call_index_url <- function(ticker) {
   out
 }
 
+#' Past Seeking Alpha transcript index rows (metadata; last-resort crawl).
+ynow_sa_earnings_call_catalog_rows <- function(ticker, max_rows = 12L) {
+  if (!isTRUE(.ynow_sa_ec_enabled())) return(list())
+  tk <- ynow_sa_earnings_call_symbol(ticker)
+  if (!nzchar(tk)) return(list())
+  max_n <- max(1L, as.integer(max_rows)[1])
+  fixture <- Sys.getenv("YNOW_SA_SCRAPE_FIXTURE_HTML", unset = "")
+  if (nzchar(fixture) && file.exists(fixture)) {
+    return(list(ynow_ec_catalog_row(
+      source_id = "seeking_alpha_html",
+      published = "",
+      title = paste(tk, "Seeking Alpha transcript"),
+      url = paste0("fixture://", basename(fixture)),
+      label = "Seeking Alpha",
+      credibility = "last_resort"
+    )))
+  }
+  idx <- .ynow_sa_ec_http_get(ynow_sa_earnings_call_index_url(tk))
+  if (!is.list(idx) || !isTRUE(idx$ok)) return(list())
+  links <- .ynow_sa_ec_parse_index_links(idx$body %||% "")
+  if (!length(links)) return(list())
+  prefer <- links[grepl("transcript", links, ignore.case = TRUE)]
+  if (!length(prefer)) prefer <- links
+  prefer <- utils::head(unique(prefer), max_n)
+  lapply(prefer, function(u) {
+    pub <- ""
+    m <- regexpr("20[0-9]{2}-[0-9]{2}-[0-9]{2}", u, perl = TRUE)
+    if (m[1] > 0) pub <- regmatches(u, m)[1]
+    ynow_ec_catalog_row(
+      source_id = "seeking_alpha_html",
+      published = pub,
+      title = paste(tk, "Seeking Alpha transcript", pub),
+      url = u,
+      label = if (nzchar(pub)) pub else basename(u),
+      credibility = "last_resort"
+    )
+  })
+}
+
+#' Fetch one Seeking Alpha article URL → facts (last-resort).
+ynow_sa_earnings_call_fetch_url <- function(ticker, article_url, extract_fun = NULL,
+                                            published = "", title = "") {
+  if (!isTRUE(.ynow_sa_ec_enabled())) return(NULL)
+  tk <- ynow_sa_earnings_call_symbol(ticker)
+  url <- .ynow_sa_ec_chr(article_url)
+  if (!nzchar(tk) || !nzchar(url)) return(NULL)
+  fixture <- Sys.getenv("YNOW_SA_SCRAPE_FIXTURE_HTML", unset = "")
+  article_html <- ""
+  if (nzchar(fixture) && file.exists(fixture)) {
+    article_html <- paste(readLines(fixture, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+    if (!grepl("^fixture://", url)) url <- paste0("fixture://", basename(fixture))
+  } else {
+    art <- .ynow_sa_ec_http_get(url)
+    if (!is.list(art) || !isTRUE(art$ok)) return(NULL)
+    article_html <- art$body %||% ""
+  }
+  parsed <- .ynow_sa_ec_parse_article(article_html)
+  if (isTRUE(parsed$blocked) || !nzchar(parsed$text)) return(NULL)
+  if (!is.function(extract_fun) && exists(".ynow_us_ec_extract_facts", mode = "function")) {
+    extract_fun <- .ynow_us_ec_extract_facts
+  }
+  facts <- if (is.function(extract_fun)) {
+    tryCatch(extract_fun(parsed$text), error = function(e) NULL)
+  } else {
+    list(
+      backlog = NA_real_, bookings = NA_real_, capex = NA_real_,
+      excerpt = substr(gsub("\\s+", " ", parsed$text), 1L, 420L),
+      themes = character(0)
+    )
+  }
+  if (!is.list(facts)) return(NULL)
+  excerpt <- .ynow_sa_ec_chr(facts$excerpt)
+  if (!nzchar(excerpt)) excerpt <- substr(gsub("\\s+", " ", parsed$text), 1L, 420L)
+  out <- list(
+    ok = TRUE,
+    status = "ok",
+    source_id = "seeking_alpha_html",
+    credibility = "last_resort",
+    title = .ynow_sa_ec_chr(title, .ynow_sa_ec_chr(parsed$title, paste(tk, "Seeking Alpha transcript"))),
+    url = url,
+    published = .ynow_sa_ec_chr(published),
+    backlog = facts$backlog %||% NA_real_,
+    bookings = facts$bookings %||% NA_real_,
+    capex = facts$capex %||% NA_real_,
+    themes = facts$themes %||% character(0),
+    suppliers = facts$suppliers %||% list(),
+    customers = facts$customers %||% list(),
+    order_lines = facts$order_lines %||% list(),
+    excerpt = excerpt,
+    sa_url = ynow_sa_earnings_call_index_url(tk)
+  )
+  if (exists(".ynow_ec_finalize_with_keywords", mode = "function")) {
+    out <- .ynow_ec_finalize_with_keywords(out, text = parsed$text)
+  }
+  out
+}
+
 #' Last-resort SA HTML fetch → facts via shared extractors when available.
 #' @param extract_fun optional function(text) → list(backlog, bookings, capex, excerpt, themes)
 ynow_sa_earnings_call_fetch_last_resort <- function(ticker, extract_fun = NULL) {
