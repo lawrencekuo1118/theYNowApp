@@ -1446,6 +1446,9 @@
             setBtText('ynow_bblab_supply_report_title', 'bblab_or_supply_report_title');
             setBtText('ynow_bblab_or_help', 'bblab_or_help');
             setBtText('ynow_bblab_or_start', 'bblab_or_start');
+            setBtText('ynow_bblab_or_transcripts_title', 'bblab_or_transcripts_title');
+            setBtText('ynow_bblab_or_transcripts_help', 'bblab_or_transcripts_help');
+            setBtText('ynow_bblab_or_transcripts_empty', 'bblab_or_transcripts_empty');
             setBtText('ynow_bblab_overlap_why', 'bblab_overlap_why');
             setBtText('ynow_macro_page_title', 'macro_page_title');
             setBtText('ynow_macro_page_sub', 'macro_page_sub');

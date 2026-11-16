@@ -395,6 +395,190 @@ ynow_us_earnings_call_ir_search_url <- function(ticker) {
   list(suppliers = suppliers, customers = customers, order_lines = order_lines)
 }
 
+.ynow_us_ec_http_get_text <- function(url, timeout_sec = 12) {
+  u <- .ynow_us_ec_chr(url)
+  if (!nzchar(u)) return(NULL)
+  tryCatch(
+    {
+      if (requireNamespace("httr", quietly = TRUE)) {
+        resp <- httr::GET(u, httr::timeout(timeout_sec))
+        if (httr::status_code(resp) >= 400L) return(NULL)
+        httr::content(resp, as = "text", encoding = "UTF-8")
+      } else if (requireNamespace("httr2", quietly = TRUE)) {
+        req <- httr2::request(u) |> httr2::req_timeout(timeout_sec)
+        resp <- httr2::req_perform(req)
+        httr2::resp_body_string(resp)
+      } else {
+        NULL
+      }
+    },
+    error = function(e) NULL
+  )
+}
+
+#' FMP transcript date list → catalog rows (newest first).
+ynow_us_ec_fmp_catalog_rows <- function(ticker, max_rows = 12L) {
+  api_key <- .ynow_us_ec_api_key()
+  tk <- toupper(trimws(.ynow_us_ec_chr(ticker)))
+  tk <- sub("\\.(US)$", "", tk, ignore.case = TRUE)
+  if (!nzchar(tk) || !nzchar(api_key)) return(list())
+  max_n <- max(1L, as.integer(max_rows)[1])
+  urls <- c(
+    sprintf(
+      "https://financialmodelingprep.com/stable/earning-call-transcript-dates?symbol=%s&apikey=%s",
+      utils::URLencode(tk, reserved = TRUE),
+      utils::URLencode(api_key, reserved = TRUE)
+    ),
+    sprintf(
+      "https://financialmodelingprep.com/api/v4/earning_call_transcript?symbol=%s&apikey=%s",
+      utils::URLencode(tk, reserved = TRUE),
+      utils::URLencode(api_key, reserved = TRUE)
+    )
+  )
+  rows <- list()
+  for (u in urls) {
+    raw <- .ynow_us_ec_http_get_text(u)
+    if (!nzchar(raw %||% "")) next
+    parsed <- tryCatch(jsonlite::fromJSON(raw, simplifyVector = FALSE), error = function(e) NULL)
+    if (is.null(parsed)) next
+    items <- if (is.list(parsed) && !is.null(parsed$content)) {
+      list(parsed)
+    } else if (is.list(parsed)) {
+      parsed
+    } else {
+      list()
+    }
+    for (it in items) {
+      if (!is.list(it)) next
+      pub <- .ynow_us_ec_chr(it$date %||% it$publishedDate %||% it$filingDate %||% "")
+      year <- suppressWarnings(as.integer(it$year %||% NA_integer_)[1])
+      quarter <- suppressWarnings(as.integer(it$quarter %||% it$period %||% NA_integer_)[1])
+      if (!is.finite(year) && nzchar(pub)) {
+        year <- suppressWarnings(as.integer(substr(pub, 1L, 4L))[1])
+      }
+      title <- .ynow_us_ec_chr(
+        it$title,
+        paste(tk, if (is.finite(year) && is.finite(quarter)) paste0("Q", quarter, " ", year) else pub, "transcript")
+      )
+      link <- .ynow_us_ec_chr(it$url %||% it$link %||% "")
+      rows[[length(rows) + 1L]] <- ynow_ec_catalog_row(
+        source_id = "licensed_api",
+        published = pub,
+        title = title,
+        url = link,
+        label = if (nzchar(pub)) pub else title,
+        year = if (is.finite(year)) year else NULL,
+        quarter = if (is.finite(quarter)) quarter else NULL,
+        credibility = "management"
+      )
+      if (length(rows) >= max_n) break
+    }
+    if (length(rows)) break
+  }
+  if (length(rows) > max_n) rows <- rows[seq_len(max_n)]
+  rows
+}
+
+#' Fetch one FMP catalog row (year/quarter when present).
+ynow_us_ec_from_fmp_row <- function(ticker, row) {
+  api_key <- .ynow_us_ec_api_key()
+  tk <- toupper(trimws(.ynow_us_ec_chr(ticker)))
+  tk <- sub("\\.(US)$", "", tk, ignore.case = TRUE)
+  if (!nzchar(tk) || !nzchar(api_key) || !is.list(row)) return(NULL)
+  year <- suppressWarnings(as.integer(row$year %||% NA_integer_)[1])
+  quarter <- suppressWarnings(as.integer(row$quarter %||% NA_integer_)[1])
+  if (is.finite(year) && is.finite(quarter)) {
+    urls <- c(
+      sprintf(
+        "https://financialmodelingprep.com/stable/earning-call-transcript?symbol=%s&year=%s&quarter=%s&apikey=%s",
+        utils::URLencode(tk, reserved = TRUE), year, quarter,
+        utils::URLencode(api_key, reserved = TRUE)
+      ),
+      sprintf(
+        "https://financialmodelingprep.com/api/v3/earning_call_transcript/%s?year=%s&quarter=%s&apikey=%s",
+        utils::URLencode(tk, reserved = TRUE), year, quarter,
+        utils::URLencode(api_key, reserved = TRUE)
+      )
+    )
+    for (u in urls) {
+      got <- .ynow_us_ec_from_fmp_url(tk, api_key, u)
+      if (is.list(got)) return(got)
+    }
+  }
+  .ynow_us_ec_from_fmp(tk, api_key)
+}
+
+.ynow_us_ec_from_fmp_url <- function(ticker, api_key, url) {
+  raw <- .ynow_us_ec_http_get_text(url)
+  if (!nzchar(raw %||% "")) return(NULL)
+  parsed <- tryCatch(jsonlite::fromJSON(raw, simplifyVector = FALSE), error = function(e) NULL)
+  if (is.null(parsed)) return(NULL)
+  row <- if (is.list(parsed) && !is.null(parsed$content)) {
+    parsed
+  } else if (is.list(parsed) && length(parsed) >= 1L && is.list(parsed[[1]])) {
+    parsed[[1]]
+  } else {
+    NULL
+  }
+  if (is.null(row)) return(NULL)
+  content <- .ynow_us_ec_chr(row$content %||% row$transcript %||% row$text %||% "")
+  if (!nzchar(content)) return(NULL)
+  body <- row
+  body$`_content` <- content
+  .ynow_us_ec_facts_from_fmp_body(ticker, body, url)
+}
+
+.ynow_us_ec_facts_from_fmp_body <- function(ticker, body, used) {
+  facts <- .ynow_us_ec_extract_facts(body$`_content`)
+  out <- list(
+    ok = TRUE,
+    status = if (is.finite(facts$backlog) || is.finite(facts$bookings) ||
+                 is.finite(facts$capex) || nzchar(facts$excerpt) ||
+                 length(facts$suppliers) || length(facts$customers) ||
+                 length(facts$order_lines)) {
+      "ok"
+    } else {
+      "empty"
+    },
+    source_id = "licensed_api",
+    credibility = "management",
+    title = .ynow_us_ec_chr(
+      body$title %||% body$symbol %||% paste(ticker, "earnings call transcript"),
+      paste(ticker, "earnings call transcript")
+    ),
+    url = .ynow_us_ec_chr(body$url %||% body$link %||% ""),
+    published = .ynow_us_ec_chr(body$date %||% body$publishedDate %||% ""),
+    backlog = facts$backlog,
+    bookings = facts$bookings,
+    capex = facts$capex,
+    themes = facts$themes,
+    suppliers = facts$suppliers %||% list(),
+    customers = facts$customers %||% list(),
+    order_lines = facts$order_lines %||% list(),
+    excerpt = facts$excerpt,
+    api_endpoint_host = tryCatch(httr::parse_url(used)$hostname, error = function(e) "financialmodelingprep.com")
+  )
+  if (exists(".ynow_ec_finalize_with_keywords", mode = "function")) {
+    out <- .ynow_ec_finalize_with_keywords(out, text = body$`_content`)
+  }
+  out
+}
+
+#' Lightweight SEC catalog placeholder (latest 8-K/6-K only).
+ynow_us_ec_sec_catalog_row <- function(ticker) {
+  tk <- toupper(trimws(.ynow_us_ec_chr(ticker)))
+  tk <- sub("\\.(US)$", "", tk, ignore.case = TRUE)
+  if (!nzchar(tk)) return(NULL)
+  ynow_ec_catalog_row(
+    source_id = "sec_8k",
+    published = "",
+    title = paste(tk, "SEC 8-K / 6-K"),
+    url = ynow_us_earnings_call_sec_search_url(tk),
+    label = "SEC 8-K",
+    credibility = "filing"
+  )
+}
+
 .ynow_us_ec_from_fmp <- function(ticker, api_key) {
   tk <- toupper(trimws(.ynow_us_ec_chr(ticker)))
   tk <- sub("\\.(US)$", "", tk, ignore.case = TRUE)
@@ -418,20 +602,7 @@ ynow_us_earnings_call_ir_search_url <- function(ticker) {
   body <- NULL
   used <- ""
   for (u in urls) {
-    raw <- tryCatch(
-      {
-        if (requireNamespace("httr", quietly = TRUE)) {
-          resp <- httr::GET(u, httr::timeout(12))
-          if (httr::status_code(resp) >= 400L) return(NULL)
-          httr::content(resp, as = "text", encoding = "UTF-8")
-        } else {
-          req <- httr2::request(u) |> httr2::req_timeout(12)
-          resp <- httr2::req_perform(req)
-          httr2::resp_body_string(resp)
-        }
-      },
-      error = function(e) NULL
-    )
+    raw <- .ynow_us_ec_http_get_text(u)
     if (!nzchar(raw %||% "")) next
     parsed <- tryCatch(jsonlite::fromJSON(raw, simplifyVector = FALSE), error = function(e) NULL)
     if (is.null(parsed)) next
@@ -452,39 +623,7 @@ ynow_us_earnings_call_ir_search_url <- function(ticker) {
     break
   }
   if (is.null(body)) return(NULL)
-  facts <- .ynow_us_ec_extract_facts(body$`_content`)
-  out <- list(
-    ok = TRUE,
-    status = if (is.finite(facts$backlog) || is.finite(facts$bookings) ||
-                 is.finite(facts$capex) || nzchar(facts$excerpt) ||
-                 length(facts$suppliers) || length(facts$customers) ||
-                 length(facts$order_lines)) {
-      "ok"
-    } else {
-      "empty"
-    },
-    source_id = "licensed_api",
-    credibility = "management",
-    title = .ynow_us_ec_chr(
-      body$title %||% body$symbol %||% paste(tk, "earnings call transcript"),
-      paste(tk, "earnings call transcript")
-    ),
-    url = .ynow_us_ec_chr(body$url %||% body$link %||% ""),
-    published = .ynow_us_ec_chr(body$date %||% body$publishedDate %||% ""),
-    backlog = facts$backlog,
-    bookings = facts$bookings,
-    capex = facts$capex,
-    themes = facts$themes,
-    suppliers = facts$suppliers %||% list(),
-    customers = facts$customers %||% list(),
-    order_lines = facts$order_lines %||% list(),
-    excerpt = facts$excerpt,
-    api_endpoint_host = tryCatch(httr::parse_url(used)$hostname, error = function(e) "financialmodelingprep.com")
-  )
-  if (exists(".ynow_ec_finalize_with_keywords", mode = "function")) {
-    out <- .ynow_ec_finalize_with_keywords(out, text = body$`_content`)
-  }
-  out
+  .ynow_us_ec_facts_from_fmp_body(tk, body, used)
 }
 
 .ynow_us_ec_from_sec_8k <- function(ticker) {
