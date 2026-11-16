@@ -343,7 +343,9 @@ bblab_assign_revenue <- function(businesses, other_items, leftover, consolidated
   )
 }
 
-#' Assign Cost of Revenue. Revenue-share is the final fallback only.
+#' Assign Cost of Revenue.
+#' Prefer Direct (reported) → Shared only with company-disclosed allocation basis.
+#' Bare revenue-share invent without a disclosed basis is forbidden by default.
 bblab_assign_cost <- function(rev_pack, consolidated, cfg = NULL,
                               use_consolidated_gm_fallback = FALSE,
                               period = NA_character_, currency = NA_character_) {
@@ -362,6 +364,11 @@ bblab_assign_cost <- function(rev_pack, consolidated, cfg = NULL,
     cor <- NA_real_
     gp <- NA_real_
     note <- NA_character_
+    basis <- .bblab_chr(
+      comp$allocation_basis %||% comp$allocationBasis %||%
+        comp$disclosed_allocation_basis %||% "",
+      ""
+    )
     if (.bblab_finite(comp$cor)) {
       cor <- as.numeric(comp$cor)[1]
       method <- "reported_cor"
@@ -379,11 +386,16 @@ bblab_assign_cost <- function(rev_pack, consolidated, cfg = NULL,
       conf <- "HIGH"
       note <- "Cost of Revenue derived from reported Gross Profit."
     } else if (.bblab_finite(comp$company_allocated_cor)) {
+      # Company already disclosed an allocated CoR amount — Shared, not invent.
       cor <- as.numeric(comp$company_allocated_cor)[1]
       method <- "company_allocation"
       status <- "ALLOCATED"
       conf <- "MEDIUM"
-      note <- "Cost of Revenue is a company allocation / estimate."
+      note <- if (nzchar(basis)) {
+        paste0("Cost of Revenue uses company-disclosed allocation (basis: ", basis, ").")
+      } else {
+        "Cost of Revenue is a company-disclosed allocation (basis not separately labeled)."
+      }
       codes <<- unique(c(codes, "BUSINESS_COST_ALLOCATED_LOW_CONFIDENCE"))
     } else if (.bblab_finite(comp$observable_driver_cor)) {
       cor <- as.numeric(comp$observable_driver_cor)[1]
@@ -404,25 +416,45 @@ bblab_assign_cost <- function(rev_pack, consolidated, cfg = NULL,
       conf <- "LOW"
       note <- "Low-confidence fallback: consolidated Gross Margin applied by user opt-in."
       codes <<- unique(c(codes, "BUSINESS_COST_NOT_RELIABLY_ESTIMABLE"))
-    } else if (isTRUE(use_consolidated_gm_fallback) &&
-               isTRUE(cfg$flags$revenue_share_cost_is_final_fallback) &&
-               .bblab_finite(comp$revenue) && is.finite(cons_rev) && cons_rev != 0 &&
-               is.finite(cons_cor)) {
+    } else if (
+      # Bare revenue-share invent is forbidden unless BOTH the flag is on AND
+      # the filer disclosed an allocation basis (prefer company_allocation path).
+      isTRUE(cfg$flags$revenue_share_cost_is_final_fallback) &&
+      nzchar(basis) &&
+      .bblab_finite(comp$revenue) && is.finite(cons_rev) && cons_rev != 0 &&
+      is.finite(cons_cor)
+    ) {
       cor <- as.numeric(comp$revenue)[1] / cons_rev * cons_cor
       method <- "revenue_share"
       status <- "ALLOCATED"
       conf <- "LOW"
-      note <- "ALLOCATED_LOW_CONFIDENCE: Cost of Revenue uses revenue-share as a final fallback. This is not a reported business cost."
+      note <- paste0(
+        "ALLOCATED_LOW_CONFIDENCE: Cost of Revenue uses disclosed allocation basis (",
+        basis, "). This is not a reported Direct business cost."
+      )
       codes <<- unique(c(codes, "BUSINESS_COST_ALLOCATED_LOW_CONFIDENCE"))
       notices <<- unique(c(notices, "rev_share_cost"))
     } else {
+      if (isTRUE(cfg$flags$revenue_share_cost_is_final_fallback) && !nzchar(basis) &&
+          .bblab_finite(comp$revenue) && is.finite(cons_cor)) {
+        notices <<- unique(c(notices, "rev_share_forbidden_no_basis"))
+        note <- paste(
+          "Bare revenue-share Cost of Revenue allocation forbidden:",
+          "no company-disclosed allocation basis."
+        )
+      }
       codes <<- unique(c(codes, "BUSINESS_COST_NOT_RELIABLY_ESTIMABLE"))
     }
     comp$cor <- cor
     comp$cor_method <- method
+    if (nzchar(basis) && !nzchar(.bblab_chr(comp$allocation_basis, ""))) {
+      comp$allocation_basis <- basis
+    }
     comp$cor_evidence <- bblab_evidence(
       comp$id, "cor", cor, currency, period, status, conf,
-      allocation_method = method, notes = note, recon_role = comp$classification
+      allocation_method = method,
+      allocation_basis = if (nzchar(basis)) basis else NA_character_,
+      notes = note, recon_role = comp$classification
     )
     if (identical(status, "ALLOCATED") && identical(conf, "LOW")) {
       comp$cor_label <- "ALLOCATED_LOW_CONFIDENCE"
@@ -430,6 +462,9 @@ bblab_assign_cost <- function(rev_pack, consolidated, cfg = NULL,
       comp$cor_label <- "allocated/estimated"
     } else {
       comp$cor_label <- status
+    }
+    if (exists("bblab_classify_cost_attribution", mode = "function")) {
+      comp$cost_class <- bblab_classify_cost_attribution(comp)
     }
     comp
   }
@@ -2653,6 +2688,12 @@ bblab_analyze <- function(payload, options = list(), cfg = NULL) {
     period = payload$period %||% cons$period,
     frequency = payload$frequency %||% "annual"
   )
+  if (exists("bblab_attach_cost_profit_analysis", mode = "function")) {
+    out <- tryCatch(
+      bblab_attach_cost_profit_analysis(out, payload = payload),
+      error = function(e) out
+    )
+  }
   if (exists("bblab_attach_order_research", mode = "function")) {
     out <- bblab_attach_order_research(out, payload)
   }
