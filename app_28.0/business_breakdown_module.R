@@ -180,7 +180,7 @@ if (!exists("%||%", mode = "function")) {
   sprintf("%.1f%%", num)
 }
 
-#' Commercial (investment-desk) HTML for the Reconciliation chapter.
+#' Commercial (investment-desk) HTML for the Reconciliation modal / panel.
 #' Explains filed vs sum-of-businesses vs unassigned gap in plain language.
 .bblab_recon_commercial_html <- function(rec, locale = "en", ui_msg = NULL) {
   msg <- if (is.function(ui_msg)) {
@@ -488,14 +488,18 @@ bblab_clearly_not_listed_tw_us <- function(ticker) {
 }
 
 .bblab_report_section <- function(num, title_id, title_default, help_id = NULL,
-                                  help_default = NULL, chapter = NULL, ...) {
+                                  help_default = NULL, chapter = NULL,
+                                  header_extra = NULL, ...) {
   tags$section(
     class = "ynow-bblab-report__section",
     `data-bblab-chapter` = chapter %||% num,
     tags$header(
       class = "ynow-bblab-report__section-head",
       tags$span(class = "ynow-bblab-report__section-num", num),
-      tags$h3(id = title_id, class = "ynow-bblab-report__section-title", title_default)
+      tags$h3(id = title_id, class = "ynow-bblab-report__section-title", title_default),
+      if (!is.null(header_extra)) {
+        tags$div(class = "ynow-bblab-report__section-actions", header_extra)
+      } else NULL
     ),
     if (!is.null(help_id)) {
       tags$p(id = help_id, class = "ynow-bblab-report__section-help", help_default %||% "")
@@ -692,6 +696,7 @@ business_breakdown_lab_ui <- function(id = "bblab") {
           "Revenue-mix slices are shares of reported consolidated revenue."
         ),
         chapter = "3",
+        header_extra = uiOutput(ns("recon_header_btn")),
         uiOutput(ns("structure_panel")),
         tags$div(
           class = "ynow-bblab-struct-mix",
@@ -781,7 +786,6 @@ business_breakdown_lab_ui <- function(id = "bblab") {
       ),
 
       uiOutput(ns("cards_section")),
-      uiOutput(ns("recon_section")),
       uiOutput(ns("shared_section")),
 
       .bblab_report_section(
@@ -2538,16 +2542,41 @@ business_breakdown_lab_server <- function(id = "bblab",
       )
     })
 
-    output$recon_section <- renderUI({
+    output$recon_header_btn <- renderUI({
       res <- lab_result()
       if (is.null(res) || is.null(res$reconciliation)) return(NULL)
-      .bblab_report_section(
-        "VI", "ynow_bblab_ch6_title", ui_msg("bblab_ch6_title"),
-        "ynow_bblab_ch6_help", ui_msg("bblab_ch6_help"),
-        chapter = "6",
-        .bblab_recon_commercial_html(res$reconciliation, locale = loc(), ui_msg = ui_msg)
+      actionButton(
+        ns("recon_open"),
+        label = tags$span(id = "ynow_bblab_recon_btn", ui_msg("bblab_recon_btn")),
+        class = "btn-default btn-sm ynow-bblab-recon-btn",
+        title = ui_msg("bblab_ch6_help")
       )
     })
+
+    observeEvent(input$recon_open, {
+      res <- lab_result()
+      if (is.null(res) || is.null(res$reconciliation)) return()
+      showModal(modalDialog(
+        title = tags$span(id = "ynow_bblab_ch6_title", ui_msg("bblab_ch6_title")),
+        size = "l",
+        easyClose = TRUE,
+        fade = TRUE,
+        footer = modalButton(ui_msg("bblab_recon_close")),
+        tags$div(
+          class = "ynow-bblab-recon-modal",
+          tags$p(
+            id = "ynow_bblab_ch6_help",
+            class = "ynow-bblab-report__section-help",
+            ui_msg("bblab_ch6_help")
+          ),
+          .bblab_recon_commercial_html(
+            res$reconciliation,
+            locale = loc(),
+            ui_msg = ui_msg
+          )
+        )
+      ))
+    }, ignoreInit = TRUE)
 
     output$shared_section <- renderUI({
       res <- lab_result()

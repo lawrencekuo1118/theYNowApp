@@ -4406,6 +4406,8 @@ locale_for_market <- function(mode = get_market_mode()) {
       "to operating businesses; Unassigned gap = the leftover not yet attributed. ",
       "This is a disclosure cross-check — not a valuation engine."
     ),
+    bblab_recon_btn = "Reconciliation",
+    bblab_recon_close = "Close",
     bblab_recon_verdict_pass = "Match — the business split adds up",
     bblab_recon_verdict_pass_body = paste0(
       "Revenue, Cost of Revenue, and Gross Profit assigned to businesses sum to the ",
@@ -9304,6 +9306,8 @@ locale_for_market <- function(mode = get_market_mode()) {
       "「尚未歸屬差額」＝仍未歸入事業的剩餘。",
       "這是揭露交叉檢核，不是估值引擎。"
     ),
+    bblab_recon_btn = "對帳",
+    bblab_recon_close = "關閉",
     bblab_recon_verdict_pass = "對得上 — 事業拆解加總與合併財報一致",
     bblab_recon_verdict_pass_body = paste0(
       "已歸入各事業的營收、營業成本與毛利，加總後與合併財報總數相符（在容許誤差內）。",
