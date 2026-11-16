@@ -1,3 +1,8 @@
+## [v28.55] — 2026-11-16 · BBLab group cost & segment profitability
+
+- zh-TW：業務拆解群組成本歸因與分部獲利能力（#772 / TYA-129）；顯示版號 v28.55、bundle 12827534。
+- en-US: Business Breakdown group cost attribution and segment profitability (#772 / TYA-129). Display v28.55; shinyapps bundle 12827534.
+
 ## [v28.54] — 2026-11-16 · BBLab Reconciliation header button
 
 - zh-TW：業務拆解第 III 節標題列改為「對帳」按鈕開啟對帳（TYA-123 / #769）；並含 master 上 #767 歷次法說會逐字稿目錄與多選。
