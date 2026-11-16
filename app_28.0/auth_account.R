@@ -124,6 +124,28 @@ ynow_sidebar_tab_guest_locked <- function(tab) {
   as.character(tab %||% "")[1] %in% ynow_sidebar_guest_lock_tabs()
 }
 
+#' TRUE when this session should use guest freemium locks.
+#'
+#' Guest self-view counts. An unsigned session counts unless mode is
+#' signed_in or omniscient, or a view-as user id is set. Shared by the lazy
+#' mount gate and missing-parameter tab lock (app-wide: no peek = no work).
+ynow_session_treat_as_guest <- function(authed, mode, view_as_uid) {
+  mode <- as.character(mode %||% "")[1]
+  if (identical(mode, "omniscient")) return(FALSE)
+  view_as_uid <- as.character(view_as_uid %||% "")[1]
+  identical(mode, "guest") ||
+    (!isTRUE(authed) && !identical(mode, "signed_in") && !nzchar(view_as_uid))
+}
+
+#' TRUE when a lazy host for `tab` may build its member body.
+#'
+#' Unlocked tabs always may mount when selected. Guest-lock tabs mount only when
+#' the session is not treated as guest. Peeking a lock tab must not count as a mount.
+ynow_session_may_mount_lazy_tab <- function(tab, authed, mode, view_as_uid) {
+  if (!isTRUE(ynow_sidebar_tab_guest_locked(tab))) return(TRUE)
+  !isTRUE(ynow_session_treat_as_guest(authed, mode, view_as_uid))
+}
+
 #' Menu label with optional guest lock glyph (Full shows lock; Lite CSS hides the tab).
 ynow_sidebar_guest_lock_label <- function(tab, span_id, label) {
   lab <- tags$span(id = span_id, label)

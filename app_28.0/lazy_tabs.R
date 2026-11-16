@@ -1,5 +1,7 @@
 # Once-per-session lazy tab mounts.
-# First visit to a sidebar tab builds that page's UI (and optional server);
+# App-wide: if the user is not looking (or cannot see the member body), do not
+# mount / do not schedule on_first_mount. Guest peeks leave mounted unset.
+# First eligible visit builds that page's UI (and optional server);
 # revisits reuse the mounted host — no remount / no duplicate moduleServer.
 #
 # on_first_mount runs via later after the UI flag flips so a sync hook
@@ -41,10 +43,17 @@
 #'   with respect to double registration (called only once here).
 #' @param after_mount optional function(tab) called after any new mount
 #'   (e.g. re-push locale labels for newly created inputs)
+#' @param may_mount optional function(tab). Mount only when it returns TRUE.
+#'   NULL allows every tab. A throw counts as not allowed so a failed gate
+#'   cannot build the page.
+#' @param gate_deps optional zero-arg function or reactive. Its value is read
+#'   with sidebar_tabs so an unlock can mount the tab already on screen.
 .ynow_register_lazy_tabs <- function(input, output, session,
                                      builders,
                                      on_first_mount = list(),
-                                     after_mount = NULL) {
+                                     after_mount = NULL,
+                                     may_mount = NULL,
+                                     gate_deps = NULL) {
   stopifnot(is.list(builders), length(builders) > 0L)
   cache <- new.env(parent = emptyenv())
   mounted <- new.env(parent = emptyenv())
@@ -96,11 +105,19 @@
   }
 
   shiny::observeEvent(
-    input$sidebar_tabs,
+    {
+      tab <- input$sidebar_tabs
+      gate <- if (is.function(gate_deps)) gate_deps() else NULL
+      list(tab = tab, gate = gate)
+    },
     {
       tab <- as.character(.ynow_lazy_or(input$sidebar_tabs, ""))[1]
       if (!nzchar(tab) || !tab %in% names(builders)) return()
       if (isTRUE(mounted[[tab]])) return()
+      if (is.function(may_mount)) {
+        allow <- tryCatch(may_mount(tab), error = function(e) FALSE)
+        if (!isTRUE(allow)) return()
+      }
       mounted[[tab]] <- TRUE
       if (identical(tab, "bluechip") &&
           exists("ynow_pload", mode = "function")) {

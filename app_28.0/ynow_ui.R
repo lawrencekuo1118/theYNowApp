@@ -4545,55 +4545,10 @@ tabPanel(
                   value = APP_DEFAULTS$wacc_gordon, step = 0.01
                 )
               ),
-              
-              tabBox(title = "DISCOUNTED CASH FLOW", width = "auto",
-                     tabPanel("DCF Overview",
-                              fluidRow(
-                                column(width = 12,
-                                       fluidRow(
-                                         class = "ynow-model-kpi-row",
-                                         column(6, class = "ynow-model-kpi-result ynow-model-kpi-outline",
-                                                `data-ynow-lock` = "output:dcf_fair_value",
-                                                infoBoxOutput("ibx_stock_value_dcf", width = NULL)),
-                                         column(6, class = "ynow-model-kpi-tone-2",
-                                                infoBoxOutput("ibx_enterprise_value_dcf", width = NULL))
-                                       )
-                                )
-                              ),
-                              # Core explainability: Why this Fair Value (not appendix)
-                              uiOutput("dcf_value_why"),
-                              fluidRow(
-                                column(width = 12,
-                                       plotOutput("plt_dcf_trajectory", height = "420px"),
-                                       h6(uiOutput("dcf_chart_help")),
-                                       ynow_calc_reset_row(
-                                         ynow_calc_btn("calc", "試算 DCF"),
-                                         ynow_reset_defaults_btn("reset_dcf")
-                                       ),
-                                       tags$div(style = "margin-top: 10px;", htmlOutput("vtxt_dcf_setting_details"))
-                                )
-                              )
-                     ),
-                     
-                     tabPanel("DCF Calculation Details",
-                              fluidRow(
-                                column(width = 12,
-                                       plotOutput("mod_fcf-fcf_plot", height = "350px")
-                                ),
-                                uiOutput("ui_data_validation") 
-                              )
-                     )
-              ),
-              
+
               tabBox(width = "auto",
                      tabPanel("Overview",
                               fluidRow(
-                                infoBoxOutput("ibx_estimated_g", width = 6),
-                                infoBoxOutput("ibx_sgr", width = 6),
-                                
-                                column(width = 12,
-                                       plotOutput("plt_fcf_trend", height = "350px")
-                                ),
                                 column(
                                   width = 12,
                                   tags$div(style = "margin-top: 12px;", .dcf_two_stage_params_box())
@@ -4689,6 +4644,50 @@ tabPanel(
 
 .ynow_dcf_body_ui <- function() {
   tagList(
+              tabBox(title = "DISCOUNTED CASH FLOW", width = "auto",
+                     tabPanel("DCF Overview",
+                              fluidRow(
+                                column(width = 12,
+                                       fluidRow(
+                                         class = "ynow-model-kpi-row",
+                                         column(6, class = "ynow-model-kpi-result ynow-model-kpi-outline",
+                                                `data-ynow-lock` = "output:dcf_fair_value",
+                                                infoBoxOutput("ibx_stock_value_dcf", width = NULL)),
+                                         column(6, class = "ynow-model-kpi-tone-2",
+                                                infoBoxOutput("ibx_enterprise_value_dcf", width = NULL))
+                                       )
+                                )
+                              ),
+                              # Core explainability: Why this Fair Value (not appendix)
+                              uiOutput("dcf_value_why"),
+                              fluidRow(
+                                column(width = 12,
+                                       plotOutput("plt_dcf_trajectory", height = "420px"),
+                                       h6(uiOutput("dcf_chart_help")),
+                                       ynow_calc_reset_row(
+                                         ynow_calc_btn("calc", "試算 DCF"),
+                                         ynow_reset_defaults_btn("reset_dcf")
+                                       ),
+                                       tags$div(style = "margin-top: 10px;", htmlOutput("vtxt_dcf_setting_details"))
+                                )
+                              )
+                     ),
+                     tabPanel("DCF Calculation Details",
+                              fluidRow(
+                                column(width = 12,
+                                       plotOutput("mod_fcf-fcf_plot", height = "350px")
+                                ),
+                                uiOutput("ui_data_validation")
+                              )
+                     )
+              ),
+              fluidRow(
+                infoBoxOutput("ibx_estimated_g", width = 6),
+                infoBoxOutput("ibx_sgr", width = 6),
+                column(width = 12,
+                       plotOutput("plt_fcf_trend", height = "350px")
+                )
+              ),
               tabBox(title = "SENSITIVITY", width = "auto",
                      fluidRow(
                        column(
