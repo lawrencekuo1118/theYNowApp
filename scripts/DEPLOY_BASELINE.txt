@@ -8,4 +8,4 @@ short=94e174c8
 message=chore: bump display version to v28.54
 captured_at=2026-11-16T02:44:14Z
 display_version=v28.54
-note=Shipped v28.54 (+0.01) via deploy_app_21.R. Tip-ship #769: BBLab Reconciliation as section III header button (TYA-123/TYA-125). Also includes #767 past earnings-call transcript catalog already on master. Live status=running; rsconnect bundleId=12827358. Prior: v28.53=#768 (12827300; live later 12827324). Fixed baseline URL to TheYNowApp.
+note=Shipped v28.54 (+0.01) via deploy_app_21.R. Tip-ship #769: BBLab Reconciliation as section III header button (TYA-123/TYA-125). Also includes #767 past earnings-call transcript catalog already on master. Live status=running; rsconnect bundleId=12827358. Prior: v28.53=#770 (12827324; interim #768=12827300).

@@ -3,10 +3,10 @@
 - zh-TW：業務拆解第 III 節標題列改為「對帳」按鈕開啟對帳（TYA-123 / #769）；並含 master 上 #767 歷次法說會逐字稿目錄與多選。
 - en-US: Business Breakdown section III header opens Reconciliation from a header button (TYA-123 / #769). Also ships master #767 past earnings-call transcript catalog + multi-select.
 
-## [v28.53] — 2026-11-16 · MOS假設台灣投資用語
+## [v28.53] — 2026-11-16 · Wave-2 readiness shells + MOS假設台灣用語
 
-- zh-TW：MOS假設分頁改用台灣投資界說法（情境區間、決策檢核門檻、部位分級、大幅低估／高估、合理價）；MOS／FV／HFV／Bear／Base 維持英文專有名詞。
-- en-US: MOS Assumptions Traditional Chinese copy now uses Taiwan investment-desk wording (scenario bands as 情境區間, checklist floors as 決策檢核門檻, exposure ladder as 部位分級). Formal English finance terms stay English.
+- zh-TW：DDM／RI／P/B／NAV／SOTP 試算就緒輸入改為各頁簽 eager shell（首份 HTML 即綁定），圖表／Overview 懶載入；Lite Smart Analysis／Home 自動試算不必先開 Full-only 分頁。另：MOS假設分頁改用台灣投資界說法（情境區間、決策檢核門檻、部位分級）；MOS／FV／HFV／Bear／Base 維持英文專有名詞。
+- en-US: DDM / RI / P/B / NAV / SOTP readiness inputs stay in an eager per-tab shell; overview and charts lazy-mount so Lite auto-calc works without opening Full-only tabs. Also ships MOS Assumptions zh-TW Taiwan investment-desk wording (情境區間／決策檢核門檻／部位分級). Formal English finance terms stay English.
 
 ## [v28.52] — 2026-11-16 · BBLab Start analysis feedback + live-folder align
 
