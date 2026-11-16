@@ -295,7 +295,7 @@ fcf_projection_module_ui <- function(id) {
                12,
                div(
                  style = "overflow-x: auto; background-color: white; padding: 15px; border-radius: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);",
-                 DT::dataTableOutput(ns("tbl_fcf_projection"))
+                 uiOutput(ns("fcf_table_slot"))
                )
              )
            )
@@ -330,7 +330,8 @@ fcf_projection_module_server <- function(
     fcfe_g           = reactive(0),
     tax_ratio        = reactive(NULL),
     shared_bridge    = NULL,
-    ui_locale = reactive("en")
+    ui_locale = reactive("en"),
+    pane_open = NULL
 ) {
   
   moduleServer(id, function(input, output, session) {
@@ -342,6 +343,11 @@ fcf_projection_module_server <- function(
     ic_sync_meta <- shiny::reactiveVal(list(used_nonop_proxy = FALSE, ok = FALSE))
 
     ns <- session$ns
+
+    output$fcf_table_slot <- renderUI({
+      if (is.function(pane_open)) shiny::req(isTRUE(pane_open()))
+      DT::dataTableOutput(ns("tbl_fcf_projection"))
+    })
 
     claim_val <- reactive(as.character(dcf_claim() %||% "fcff")[1])
     claim_fcfe <- reactive(dcf_claim_is_fcfe(claim_val()))

@@ -109,15 +109,15 @@ testthat::test_that("shared-input panes stay eager in UI source", {
   srv_txt <- paste(readLines("ynow_server.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   rel_txt <- paste(readLines("relative_multiples_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   wave_txt <- paste(readLines("wave2_readiness_shells.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-  # get_started / DCF / MOS stay eager. DDM, RI, P/B, NAV, and SOTP keep readiness
-  # inputs in an eager shell and lazy-mount the heavy body.
+  # get_started and MOS stay eager. DCF, DDM, RI, P/B, NAV, and SOTP keep
+  # readiness inputs in an eager shell and lazy-mount the heavy body.
   testthat::expect_false(grepl('uiOutput("ynow_lazy_host_get_started")', ui_txt, fixed = TRUE))
-  testthat::expect_false(grepl('uiOutput("ynow_lazy_host_dcf_calculator")', ui_txt, fixed = TRUE))
   testthat::expect_false(grepl('uiOutput("ynow_lazy_host_mos_assumptions")', ui_txt, fixed = TRUE))
   testthat::expect_true(grepl('tabName = "get_started"', ui_txt, fixed = TRUE))
   testthat::expect_true(grepl("wacc_gordon", ui_txt, fixed = TRUE))
   for (tab in c(
-    "ddm_calculator", "ri_calculator", "pb_calculator", "nav_calculator", "sotp_calculator"
+    "dcf_calculator", "ddm_calculator", "ri_calculator", "pb_calculator",
+    "nav_calculator", "sotp_calculator"
   )) {
     testthat::expect_true(
       grepl(sprintf('.ynow_wave2_tab_item("%s")', tab), ui_txt, fixed = TRUE),
@@ -172,13 +172,66 @@ testthat::test_that("wave2 shell ids stay out of lazy bodies", {
   ddm_body <- .slice_between(
     ui_txt,
     "\\.ynow_page_ui_ddm\\s*<-\\s*function",
-    "\\nui <- dashboardPage"
+    "\\.ynow_dcf_shell_ui\\s*<-\\s*function"
   )
   testthat::expect_true(grepl('id_prefix = "ddm_"', ddm_shell, fixed = TRUE))
   testthat::expect_false(grepl('id_prefix = "ddm_"', ddm_body, fixed = TRUE))
   testthat::expect_false(grepl("capm_beta_settings_ui", ddm_body, fixed = TRUE))
   testthat::expect_true(grepl(".ddm_two_stage_params_box()", ddm_shell, fixed = TRUE))
   testthat::expect_false(grepl(".ddm_two_stage_params_box()", ddm_body, fixed = TRUE))
+  dcf_shell <- .slice_between(
+    ui_txt,
+    "\\.ynow_dcf_shell_ui\\s*<-\\s*function",
+    "\\.ynow_dcf_body_ui\\s*<-\\s*function"
+  )
+  dcf_body <- .slice_between(
+    ui_txt,
+    "\\.ynow_dcf_body_ui\\s*<-\\s*function",
+    "\\nui <- dashboardPage"
+  )
+  testthat::expect_true(grepl("wacc_gordon", dcf_shell, fixed = TRUE))
+  testthat::expect_false(grepl("wacc_gordon", dcf_body, fixed = TRUE))
+  testthat::expect_true(grepl("fcf_projection_module_ui", dcf_shell, fixed = TRUE))
+  testthat::expect_false(grepl("fcf_projection_module_ui", dcf_body, fixed = TRUE))
+  testthat::expect_true(grepl(".dcf_two_stage_params_box()", dcf_shell, fixed = TRUE))
+  testthat::expect_false(grepl("plotlyOutput", dcf_shell, fixed = TRUE))
+  testthat::expect_true(grepl('plotlyOutput("dcf_sensitivity_heatmap"', dcf_body, fixed = TRUE))
+  fcf_txt <- paste(readLines("fcf_projection_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  fcf_ui <- .slice_between(
+    fcf_txt,
+    "fcf_projection_module_ui\\s*<-\\s*function",
+    "fcf_projection_module_server\\s*<-\\s*function"
+  )
+  testthat::expect_true(grepl('ns("fcf_revenue")', fcf_ui, fixed = TRUE))
+  testthat::expect_true(grepl('uiOutput(ns("fcf_table_slot"))', fcf_ui, fixed = TRUE))
+  testthat::expect_false(grepl("dataTableOutput", fcf_ui, fixed = TRUE))
+  for (id in ynow_wave2_shell_ids("dcf_calculator")) {
+    home <- if (id %in% c("yr_stage1", "g_stage1", "wacc_stage1", "wacc_stage2")) {
+      .slice_between(
+        ui_txt,
+        "\\.dcf_two_stage_params_box\\s*<-\\s*function",
+        "\\.ddm_two_stage_params_box\\s*<-\\s*function"
+      )
+    } else if (id %in% c("g_growth_method", "custom_g")) {
+      fcf_ui
+    } else if (id %in% c("capm_rf", "capm_rm", "capm_beta", "sync_gs_beta")) {
+      .slice_between(
+        ui_txt,
+        "capm_beta_settings_ui\\s*<-\\s*function",
+        "ddm_ke_bridge_settings_ui\\s*<-\\s*function"
+      )
+    } else if (id %in% c("rd_interest_expense", "rd_interest_bearing_debt")) {
+      .slice_between(
+        ui_txt,
+        "rd_estimate_settings_ui\\s*<-\\s*function",
+        "\\.BETA_U_APPLY_SOURCE_IDS"
+      )
+    } else {
+      dcf_shell
+    }
+    testthat::expect_true(grepl(id, home, fixed = TRUE), info = id)
+    testthat::expect_false(grepl(id, dcf_body, fixed = TRUE), info = id)
+  }
   stage_box <- .slice_between(
     ui_txt,
     "\\.ddm_two_stage_params_box\\s*<-\\s*function",
@@ -404,9 +457,9 @@ testthat::test_that("lazy builders list evaluates and MOS Assumptions stays eage
     testthat::expect_true("rel_mult_rev" %in% names(built))
     testthat::expect_false("mos_assumptions" %in% names(built))
     testthat::expect_false("get_started" %in% names(built))
-    testthat::expect_false("dcf_calculator" %in% names(built))
     for (tab in c(
-      "ddm_calculator", "ri_calculator", "pb_calculator", "nav_calculator", "sotp_calculator"
+      "dcf_calculator", "ddm_calculator", "ri_calculator", "pb_calculator",
+      "nav_calculator", "sotp_calculator"
     )) {
       testthat::expect_true(tab %in% names(built), info = tab)
     }

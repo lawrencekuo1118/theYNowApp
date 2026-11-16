@@ -9890,6 +9890,12 @@ server <- function(input, output, session) {
   # ==========================================
   # 呼叫 FCFF／FCFE 預測模組
   # ==========================================
+    .dcf_table_ready <- reactiveVal(FALSE)
+    observeEvent(input$sidebar_tabs, {
+      if (identical(as.character(input$sidebar_tabs %||% "")[1], "dcf_calculator")) {
+        .dcf_table_ready(TRUE)
+      }
+    }, ignoreInit = FALSE)
     fcf_results <- fcf_projection_module_server(
     id = "mod_fcf", 
     d_balance_sheet = d_balance_sheet,
@@ -9917,7 +9923,8 @@ server <- function(input, output, session) {
       ias12_tax_ratio(t, from_pct = TRUE)
     }),
     shared_bridge = function() .shared_bridge(),
-    ui_locale = ui_locale
+    ui_locale = ui_locale,
+    pane_open = reactive(isTRUE(.dcf_table_ready()))
   )
   
   observeEvent({
