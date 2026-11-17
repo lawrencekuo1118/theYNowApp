@@ -16,6 +16,20 @@ ynow_fni_docling_api_key <- function() {
   trimws(Sys.getenv("YNOW_DOCLING_API_KEY", unset = ""))
 }
 
+#' httr config objects for Docling calls (timeout + optional Bearer).
+#' Always return a list of config objects — never c() add_headers into a plain list
+#' (that strips the request class and drops auth).
+.ynow_fni_docling_httr_config <- function(timeout) {
+  cfgs <- list(httr::timeout(timeout))
+  key <- ynow_fni_docling_api_key()
+  if (nzchar(key)) {
+    cfgs[[length(cfgs) + 1L]] <- httr::add_headers(
+      Authorization = paste("Bearer", key)
+    )
+  }
+  cfgs
+}
+
 ynow_fni_request_timeout <- function() {
   v <- suppressWarnings(as.numeric(Sys.getenv("YNOW_AI_REQUEST_TIMEOUT", unset = "120")))
   if (!is.finite(v) || v <= 0) v <- 120
@@ -65,10 +79,7 @@ ynow_fni_docling_status <- function(timeout = 3) {
     url <- paste0(base, p)
     res <- tryCatch(
       {
-        hdrs <- list()
-        key <- ynow_fni_docling_api_key()
-        if (nzchar(key)) hdrs <- c(hdrs, httr::add_headers(Authorization = paste("Bearer", key)))
-        httr::GET(url, httr::timeout(timeout), hdrs)
+        do.call(httr::GET, c(list(url), .ynow_fni_docling_httr_config(timeout)))
       },
       error = function(e) e
     )
@@ -136,16 +147,18 @@ ynow_fni_docling_convert_file <- function(path,
   base <- ynow_fni_docling_url()
   # Docling Serve v1-style convert endpoint (file upload).
   url <- paste0(base, "/v1/convert/file")
-  key <- ynow_fni_docling_api_key()
-  hdrs <- list()
-  if (nzchar(key)) hdrs <- c(hdrs, httr::add_headers(Authorization = paste("Bearer", key)))
+  cfgs <- .ynow_fni_docling_httr_config(to)
   res <- tryCatch(
-    httr::POST(
-      url,
-      body = list(files = httr::upload_file(path)),
-      encode = "multipart",
-      httr::timeout(to),
-      hdrs
+    do.call(
+      httr::POST,
+      c(
+        list(
+          url,
+          body = list(files = httr::upload_file(path)),
+          encode = "multipart"
+        ),
+        cfgs
+      )
     ),
     error = function(e) e
   )
@@ -153,12 +166,16 @@ ynow_fni_docling_convert_file <- function(path,
     # Fallback path name used by some Docling Serve builds
     url2 <- paste0(base, "/convert")
     res <- tryCatch(
-      httr::POST(
-        url2,
-        body = list(file = httr::upload_file(path)),
-        encode = "multipart",
-        httr::timeout(to),
-        hdrs
+      do.call(
+        httr::POST,
+        c(
+          list(
+            url2,
+            body = list(file = httr::upload_file(path)),
+            encode = "multipart"
+          ),
+          cfgs
+        )
       ),
       error = function(e) e
     )
