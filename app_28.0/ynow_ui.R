@@ -4545,55 +4545,10 @@ tabPanel(
                   value = APP_DEFAULTS$wacc_gordon, step = 0.01
                 )
               ),
-              
-              tabBox(title = "DISCOUNTED CASH FLOW", width = "auto",
-                     tabPanel("DCF Overview",
-                              fluidRow(
-                                column(width = 12,
-                                       fluidRow(
-                                         class = "ynow-model-kpi-row",
-                                         column(6, class = "ynow-model-kpi-result ynow-model-kpi-outline",
-                                                `data-ynow-lock` = "output:dcf_fair_value",
-                                                infoBoxOutput("ibx_stock_value_dcf", width = NULL)),
-                                         column(6, class = "ynow-model-kpi-tone-2",
-                                                infoBoxOutput("ibx_enterprise_value_dcf", width = NULL))
-                                       )
-                                )
-                              ),
-                              # Core explainability: Why this Fair Value (not appendix)
-                              uiOutput("dcf_value_why"),
-                              fluidRow(
-                                column(width = 12,
-                                       plotOutput("plt_dcf_trajectory", height = "420px"),
-                                       h6(uiOutput("dcf_chart_help")),
-                                       ynow_calc_reset_row(
-                                         ynow_calc_btn("calc", "試算 DCF"),
-                                         ynow_reset_defaults_btn("reset_dcf")
-                                       ),
-                                       tags$div(style = "margin-top: 10px;", htmlOutput("vtxt_dcf_setting_details"))
-                                )
-                              )
-                     ),
-                     
-                     tabPanel("DCF Calculation Details",
-                              fluidRow(
-                                column(width = 12,
-                                       plotOutput("mod_fcf-fcf_plot", height = "350px")
-                                ),
-                                uiOutput("ui_data_validation") 
-                              )
-                     )
-              ),
-              
+
               tabBox(width = "auto",
                      tabPanel("Overview",
                               fluidRow(
-                                infoBoxOutput("ibx_estimated_g", width = 6),
-                                infoBoxOutput("ibx_sgr", width = 6),
-                                
-                                column(width = 12,
-                                       plotOutput("plt_fcf_trend", height = "350px")
-                                ),
                                 column(
                                   width = 12,
                                   tags$div(style = "margin-top: 12px;", .dcf_two_stage_params_box())
@@ -4610,26 +4565,7 @@ tabPanel(
                        tags$div(
                          `data-ynow-lock` = "section:wacc_box",
                          uiOutput("dcf_wacc_fcfe_note"),
-                         # Single Bootstrap row: desktop wraps 4+4+4 / 4+4+4.
-                         # Phone ≤767px: .ynow-wacc-kpi-grid → CSS 2×3 equal cells.
-                         # One .row avoids Bootstrap clearfix + display:contents bugs.
-                         fluidRow(
-                           class = "ynow-wacc-kpi-grid",
-                           valueBoxOutput("vbx_equity_val", width = 4), # 股權市值 (E)
-                           valueBoxOutput("vbx_debt_val", width = 4),   # 總負債 (D)
-                           valueBoxOutput("vbx_tax_rate", width = 4),   # 有效稅率 (T)
-                           # Lock on col-sm-4 host (SGR pattern) so grid cells stay equal.
-                           tags$div(
-                             class = "col-sm-4",
-                             `data-ynow-lock` = "output:wacc",
-                             # bare uiOutput (SGR pattern); server infoBox width=NULL
-                             shiny::uiOutput("ibx_wacc")
-                           ),
-                           infoBoxOutput("ibx_rd", width = 4),
-                           infoBoxOutput("ibx_re", width = 4)
-                         ),
                          uiOutput("dcf_disc_formula_banner"),
-                         # 上列 100%：WACC 估算；下列左 50% rᵈ、右 50% CAPM
                          fluidRow(
                            box(
                              width = 12,
@@ -4689,6 +4625,63 @@ tabPanel(
 
 .ynow_dcf_body_ui <- function() {
   tagList(
+              tabBox(title = "DISCOUNTED CASH FLOW", width = "auto",
+                     tabPanel("DCF Overview",
+                              fluidRow(
+                                column(width = 12,
+                                       fluidRow(
+                                         class = "ynow-model-kpi-row",
+                                         column(6, class = "ynow-model-kpi-result ynow-model-kpi-outline",
+                                                `data-ynow-lock` = "output:dcf_fair_value",
+                                                infoBoxOutput("ibx_stock_value_dcf", width = NULL)),
+                                         column(6, class = "ynow-model-kpi-tone-2",
+                                                infoBoxOutput("ibx_enterprise_value_dcf", width = NULL))
+                                       )
+                                )
+                              ),
+                              uiOutput("dcf_value_why"),
+                              fluidRow(
+                                column(width = 12,
+                                       plotOutput("plt_dcf_trajectory", height = "420px"),
+                                       h6(uiOutput("dcf_chart_help")),
+                                       ynow_calc_reset_row(
+                                         ynow_calc_btn("calc", "試算 DCF"),
+                                         ynow_reset_defaults_btn("reset_dcf")
+                                       ),
+                                       tags$div(style = "margin-top: 10px;", htmlOutput("vtxt_dcf_setting_details"))
+                                )
+                              )
+                     ),
+                     tabPanel("DCF Calculation Details",
+                              fluidRow(
+                                column(width = 12,
+                                       plotOutput("mod_fcf-fcf_plot", height = "350px")
+                                ),
+                                uiOutput("ui_data_validation")
+                              )
+                     )
+              ),
+              fluidRow(
+                infoBoxOutput("ibx_estimated_g", width = 6),
+                infoBoxOutput("ibx_sgr", width = 6),
+                column(width = 12,
+                       plotOutput("plt_fcf_trend", height = "350px")
+                )
+              ),
+              # WACC KPI displays (inputs stay in the eager shell for Search autofill).
+              fluidRow(
+                class = "ynow-wacc-kpi-grid",
+                valueBoxOutput("vbx_equity_val", width = 4),
+                valueBoxOutput("vbx_debt_val", width = 4),
+                valueBoxOutput("vbx_tax_rate", width = 4),
+                tags$div(
+                  class = "col-sm-4",
+                  `data-ynow-lock` = "output:wacc",
+                  shiny::uiOutput("ibx_wacc")
+                ),
+                infoBoxOutput("ibx_rd", width = 4),
+                infoBoxOutput("ibx_re", width = 4)
+              ),
               tabBox(title = "SENSITIVITY", width = "auto",
                      fluidRow(
                        column(

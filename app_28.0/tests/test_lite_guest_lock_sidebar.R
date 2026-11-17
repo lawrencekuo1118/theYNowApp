@@ -47,6 +47,11 @@ check("global_prediction is guest-locked", isTRUE(ynow_sidebar_tab_guest_locked(
 check("price_alerts is guest-locked", isTRUE(ynow_sidebar_tab_guest_locked("price_alerts")))
 check("home is not guest-locked", !isTRUE(ynow_sidebar_tab_guest_locked("home")))
 check("about is not guest-locked", !isTRUE(ynow_sidebar_tab_guest_locked("about")))
+check("guest self-view is a guest session", isTRUE(ynow_session_treat_as_guest(TRUE, "guest", "")))
+check("signed-in is not a guest session", !isTRUE(ynow_session_treat_as_guest(TRUE, "signed_in", "")))
+check("unsigned with no view-as is a guest session", isTRUE(ynow_session_treat_as_guest(FALSE, "", "")))
+check("view-as is not a guest session", !isTRUE(ynow_session_treat_as_guest(FALSE, "", "user-1")))
+check("omniscient is not a guest session", !isTRUE(ynow_session_treat_as_guest(FALSE, "omniscient", "")))
 
 css <- ynow_sidebar_lite_omit_css()
 check("Lite CSS hides lab_notes", grepl('data-value="lab_notes"', css, fixed = TRUE))

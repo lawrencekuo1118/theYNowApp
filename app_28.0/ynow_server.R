@@ -5080,6 +5080,25 @@ server <- function(input, output, session) {
         }, delay = 0.12)
       }
       invisible(tab)
+    },
+    may_mount = function(tab) {
+      mode <- tryCatch(isolate(ynow_pts_self_view_mode()), error = function(e) NULL)
+      authed <- tryCatch(isTRUE(ynow_auth$is_logged_in()), error = function(e) FALSE)
+      va <- tryCatch(isolate(ynow_pts_view_as()), error = function(e) NULL)
+      view_as_uid <- if (is.list(va)) as.character(va$user_id %||% "")[1] else ""
+      if (exists("ynow_session_may_mount_lazy_tab", mode = "function")) {
+        return(isTRUE(ynow_session_may_mount_lazy_tab(
+          tab, authed, mode, view_as_uid
+        )))
+      }
+      TRUE
+    },
+    gate_deps = function() {
+      list(
+        logged = tryCatch(isTRUE(ynow_auth$is_logged_in()), error = function(e) FALSE),
+        mode = tryCatch(ynow_pts_self_view_mode(), error = function(e) NULL),
+        view_as = tryCatch(ynow_pts_view_as(), error = function(e) NULL)
+      )
     }
   )
 
@@ -22938,8 +22957,7 @@ server <- function(input, output, session) {
     authed <- tryCatch(isTRUE(ynow_auth$is_logged_in()), error = function(e) FALSE)
     va <- tryCatch(isolate(ynow_pts_view_as()), error = function(e) NULL)
     view_as_uid <- if (is.list(va)) as.character(va$user_id %||% "")[1] else ""
-    treat_as_guest <- identical(mode, "guest") ||
-      (!isTRUE(authed) && !identical(mode, "signed_in") && !nzchar(view_as_uid))
+    treat_as_guest <- isTRUE(ynow_session_treat_as_guest(authed, mode, view_as_uid))
     if (isTRUE(treat_as_guest) &&
         exists("ynow_sidebar_tab_guest_locked", mode = "function") &&
         isTRUE(ynow_sidebar_tab_guest_locked(t))) {

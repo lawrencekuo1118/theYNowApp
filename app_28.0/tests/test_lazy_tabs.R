@@ -158,6 +158,10 @@ testthat::test_that("shared-input panes stay eager in UI source", {
     testthat::expect_true(grepl(nm, srv_txt, fixed = TRUE), info = nm)
   }
   testthat::expect_true(grepl(".ynow_wave2_builders()", srv_txt, fixed = TRUE))
+  testthat::expect_true(grepl("may_mount = function(tab)", srv_txt, fixed = TRUE))
+  testthat::expect_true(grepl("gate_deps = function()", srv_txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow_session_may_mount_lazy_tab", srv_txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow_session_treat_as_guest", srv_txt, fixed = TRUE))
   testthat::expect_true(grepl("sotp_calculator = function", srv_txt, fixed = TRUE))
 })
 
@@ -195,6 +199,22 @@ testthat::test_that("wave2 shell ids stay out of lazy bodies", {
   testthat::expect_false(grepl("fcf_projection_module_ui", dcf_body, fixed = TRUE))
   testthat::expect_true(grepl(".dcf_two_stage_params_box()", dcf_shell, fixed = TRUE))
   testthat::expect_false(grepl("plotlyOutput", dcf_shell, fixed = TRUE))
+  testthat::expect_false(grepl("plotOutput", dcf_shell, fixed = TRUE))
+  testthat::expect_false(grepl("plt_dcf_trajectory", dcf_shell, fixed = TRUE))
+  testthat::expect_false(grepl("plt_fcf_trend", dcf_shell, fixed = TRUE))
+  testthat::expect_false(grepl("mod_fcf-fcf_plot", dcf_shell, fixed = TRUE))
+  testthat::expect_false(grepl("ibx_estimated_g", dcf_shell, fixed = TRUE))
+  testthat::expect_false(grepl("ibx_sgr", dcf_shell, fixed = TRUE))
+  testthat::expect_false(grepl("vbx_equity_val", dcf_shell, fixed = TRUE))
+  testthat::expect_false(grepl("vbx_debt_val", dcf_shell, fixed = TRUE))
+  testthat::expect_false(grepl("ibx_wacc", dcf_shell, fixed = TRUE))
+  testthat::expect_true(grepl("plt_dcf_trajectory", dcf_body, fixed = TRUE))
+  testthat::expect_true(grepl("plt_fcf_trend", dcf_body, fixed = TRUE))
+  testthat::expect_true(grepl("mod_fcf-fcf_plot", dcf_body, fixed = TRUE))
+  testthat::expect_true(grepl("ibx_estimated_g", dcf_body, fixed = TRUE))
+  testthat::expect_true(grepl("ibx_sgr", dcf_body, fixed = TRUE))
+  testthat::expect_true(grepl("vbx_equity_val", dcf_body, fixed = TRUE))
+  testthat::expect_true(grepl("ibx_wacc", dcf_body, fixed = TRUE))
   testthat::expect_true(grepl('plotlyOutput("dcf_sensitivity_heatmap"', dcf_body, fixed = TRUE))
   fcf_txt <- paste(readLines("fcf_projection_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   fcf_ui <- .slice_between(
@@ -294,6 +314,72 @@ testthat::test_that("wave2 shell ids stay out of lazy bodies", {
   for (id in c("default_ev_sales", "nonop", "manual_segments")) {
     testthat::expect_true(grepl(sprintf('ns("%s")', id), sotp_body, fixed = TRUE), info = id)
   }
+})
+
+testthat::test_that("may_mount FALSE leaves the tab unmounted until the gate opens", {
+  builds <- 0L
+  hooks <- 0L
+  state <- new.env(parent = emptyenv())
+  state$allow <- FALSE
+  gate <- shiny::reactiveVal(0L)
+  session <- shiny::MockShinySession$new()
+  shiny::withReactiveDomain(session, {
+    input <- session$input
+    output <- session$output
+    ctrl <- .ynow_register_lazy_tabs(
+      input, output, session,
+      builders = list(
+        lab_notes = function() {
+          builds <<- builds + 1L
+          htmltools::tags$div(id = "lab", "Lab")
+        },
+        about = function() htmltools::tags$div(id = "about", "About")
+      ),
+      on_first_mount = list(
+        lab_notes = function() {
+          hooks <<- hooks + 1L
+        }
+      ),
+      may_mount = function(tab) {
+        if (identical(tab, "lab_notes")) return(isTRUE(state$allow))
+        TRUE
+      },
+      gate_deps = function() gate()
+    )
+    session$setInputs(sidebar_tabs = "lab_notes")
+    session$flushReact()
+    testthat::expect_false(ctrl$mounted("lab_notes"))
+    testthat::expect_identical(builds, 0L)
+    if (requireNamespace("later", quietly = TRUE)) later::run_now(timeoutSecs = 0.1)
+    testthat::expect_identical(hooks, 0L)
+
+    session$setInputs(sidebar_tabs = "about")
+    session$flushReact()
+    testthat::expect_true(ctrl$mounted("about"))
+    testthat::expect_false(ctrl$mounted("lab_notes"))
+
+    session$setInputs(sidebar_tabs = "lab_notes")
+    session$flushReact()
+    testthat::expect_false(ctrl$mounted("lab_notes"))
+    testthat::expect_identical(builds, 0L)
+
+    state$allow <- TRUE
+    gate(1L)
+    session$flushReact()
+    testthat::expect_true(ctrl$mounted("lab_notes"))
+    testthat::expect_identical(builds, 1L)
+    if (requireNamespace("later", quietly = TRUE)) {
+      deadline <- Sys.time() + 2
+      while (hooks < 1L && Sys.time() < deadline) later::run_now(timeoutSecs = 0.05)
+    }
+    testthat::expect_identical(hooks, 1L)
+
+    gate(2L)
+    session$flushReact()
+    if (requireNamespace("later", quietly = TRUE)) later::run_now(timeoutSecs = 0.2)
+    testthat::expect_identical(builds, 1L)
+    testthat::expect_identical(hooks, 1L)
+  })
 })
 
 testthat::test_that("register mounts once and caches builder result", {
