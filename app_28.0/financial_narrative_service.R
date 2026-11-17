@@ -10,18 +10,22 @@ ynow_fni_max_concurrent <- function() {
 
 #' Combined service readiness (Docling + Ollama) for UI banner.
 ynow_fni_service_status <- function() {
-  enabled <- isTRUE(ynow_fni_ai_enabled()) || .ynow_fni_env_flag("YNOW_AI_QUAL_MOCK", "0")
+  mock_on <- .ynow_fni_env_flag("YNOW_AI_QUAL_MOCK", "0")
+  enabled <- isTRUE(ynow_fni_ai_enabled()) || isTRUE(mock_on)
   doc <- ynow_fni_docling_status()
   llm <- ynow_fni_ollama_status()
-  ready <- isTRUE(enabled) && isTRUE(doc$ok) && isTRUE(llm$ok)
-  msg <- if (!isTRUE(enabled) && !.ynow_fni_env_flag("YNOW_AI_QUAL_MOCK", "0")) {
+  model_missing <- identical(llm$status, "reachable_model_missing")
+  # ready requires a present model (unless mock). Do not green-banner on model-missing.
+  ready <- isTRUE(enabled) &&
+    isTRUE(doc$ok) &&
+    isTRUE(llm$ok) &&
+    !isTRUE(model_missing)
+  msg <- if (!isTRUE(enabled) && !isTRUE(mock_on)) {
     "AI service not configured. Set YNOW_AI_QUAL_ENABLED=1 and run Docling Serve + Ollama locally."
   } else if (!isTRUE(doc$ok)) {
     doc$message %||% "AI service not configured (Docling)."
-  } else if (!isTRUE(llm$ok)) {
+  } else if (isTRUE(model_missing) || !isTRUE(llm$ok)) {
     llm$message %||% "AI service not configured (Ollama)."
-  } else if (identical(llm$status, "reachable_model_missing")) {
-    llm$message
   } else {
     "Ready"
   }
@@ -213,8 +217,66 @@ ynow_fni_analyze_document <- function(source = list(),
   out
 }
 
+#' Merge two per-document analysis outputs that share a period (findings + text).
+ynow_fni_merge_period_results <- function(existing, incoming) {
+  if (!is.list(existing) || !isTRUE(existing$ok)) return(incoming)
+  if (!is.list(incoming) || !isTRUE(incoming$ok)) return(existing)
+  text_a <- as.character(existing$extracted_text %||% existing$result$extracted_text %||% "")[1]
+  text_b <- as.character(incoming$extracted_text %||% incoming$result$extracted_text %||% "")[1]
+  full_text <- paste(c(text_a, text_b)[nzchar(c(text_a, text_b))], collapse = "\n\n")
+  payloads <- list(
+    list(
+      summary = existing$result$summary %||% "",
+      findings = existing$result$findings %||% list()
+    ),
+    list(
+      summary = incoming$result$summary %||% "",
+      findings = incoming$result$findings %||% list()
+    )
+  )
+  merged_payload <- ynow_fni_merge_chunk_payloads(payloads, full_text = full_text)
+  meta_a <- existing$result$meta %||% list()
+  meta_b <- incoming$result$meta %||% list()
+  provs <- list(existing$provenance, incoming$provenance)
+  provs <- Filter(function(p) is.list(p), provs)
+  merged_result <- ynow_fni_normalize_result(
+    merged_payload,
+    extracted_text = full_text,
+    meta = list(
+      provenance = provs,
+      model = meta_a$model %||% meta_b$model %||% "",
+      chunk_count = sum(
+        as.integer(meta_a$chunk_count %||% 0L)[1],
+        as.integer(meta_b$chunk_count %||% 0L)[1],
+        na.rm = TRUE
+      ),
+      used_chunks = sum(
+        as.integer(meta_a$used_chunks %||% 0L)[1],
+        as.integer(meta_b$used_chunks %||% 0L)[1],
+        na.rm = TRUE
+      ),
+      merged_sources = length(provs)
+    )
+  )
+  list(
+    ok = TRUE,
+    error = "",
+    message = "",
+    provenance = provs,
+    result = merged_result,
+    cache_hit = isTRUE(existing$cache_hit) && isTRUE(incoming$cache_hit),
+    cache_key = paste(
+      existing$cache_key %||% "",
+      incoming$cache_key %||% "",
+      sep = "+"
+    ),
+    extracted_text = full_text
+  )
+}
+
 #' Analyze multiple period packs and return cross-quarter compare.
 #' sources: list of source lists (each with period).
+#' Same-period sources merge findings instead of silently overwriting.
 ynow_fni_analyze_and_compare <- function(sources,
                                          locale = "en",
                                          force = FALSE) {
@@ -230,6 +292,9 @@ ynow_fni_analyze_and_compare <- function(sources,
     period <- as.character(src$period %||% paste0("P", i))[1]
     if (!nzchar(period)) period <- paste0("P", i)
     one <- ynow_fni_analyze_document(src, locale = locale, force = force)
+    if (!is.null(results[[period]])) {
+      one <- ynow_fni_merge_period_results(results[[period]], one)
+    }
     results[[period]] <- one
     if (isTRUE(one$ok) && is.list(one$result)) {
       packs[[period]] <- list(
@@ -240,7 +305,7 @@ ynow_fni_analyze_and_compare <- function(sources,
   }
   compare <- NULL
   if (length(packs) >= 2L) {
-    compare = ynow_fni_cross_quarter_compare(packs)
+    compare <- ynow_fni_cross_quarter_compare(packs)
   } else {
     compare <- list(
       ok = FALSE,

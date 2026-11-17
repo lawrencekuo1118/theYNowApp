@@ -190,6 +190,10 @@ financial_narrative_server <- function(id = "fni",
     catalog_rv <- reactiveVal(NULL)
     result_rv <- reactiveVal(NULL)
     busy_rv <- reactiveVal(FALSE)
+    # Latest-press-wins: bump on each Run; ignore stale ExtendedTask completions.
+    fni_run_gen <- reactiveVal(0L)
+    fni_inflight_gen <- reactiveVal(0L)
+    fni_pending <- reactiveVal(NULL)
     fni_task <- NULL
     if (exists(".ynow_make_extended_task", mode = "function") &&
         exists("ynow_fni_run_analysis_job", mode = "function") &&
@@ -347,6 +351,83 @@ financial_narrative_server <- function(id = "fni",
       )
     }
 
+    .fni_task_running <- function() {
+      if (is.null(fni_task)) return(FALSE)
+      st <- tryCatch(fni_task$status(), error = function(e) "")
+      identical(as.character(st)[1], "running")
+    }
+
+    .fni_try_start_async <- function() {
+      if (is.null(fni_task)) return(invisible(FALSE))
+      pending <- isolate(fni_pending())
+      if (!is.list(pending)) return(invisible(FALSE))
+      if (isTRUE(.fni_task_running())) {
+        # Prior job still in flight — keep pending; restart when it finishes.
+        return(invisible(FALSE))
+      }
+      gen <- as.integer(pending$.gen %||% 0L)[1]
+      tryCatch(
+        {
+          fni_task$invoke(
+            sources_json = as.character(pending$sources_json %||% "[]")[1],
+            locale = as.character(pending$locale %||% "en")[1],
+            force = isTRUE(pending$force),
+            key = paste0("fni-", gen)
+          )
+          fni_inflight_gen(gen)
+          fni_pending(NULL)
+          invisible(TRUE)
+        },
+        error = function(e) {
+          # Never fall through to sync analyze while async is available.
+          # If still running (re-click race), keep pending + busy for restart.
+          if (isTRUE(.fni_task_running())) {
+            return(invisible(FALSE))
+          }
+          # Idle invoke failure: surface error; do not block session with sync work.
+          result_rv(list(
+            ok = FALSE,
+            error = "task_invoke_failed",
+            message = as.character(conditionMessage(e))[1],
+            results = list(),
+            compare = NULL
+          ))
+          fni_pending(NULL)
+          .fni_set_busy_label(FALSE)
+          invisible(FALSE)
+        }
+      )
+    }
+
+    .fni_finish_async <- function(had_error = FALSE, out = NULL, err_msg = "") {
+      latest <- isolate(as.integer(fni_run_gen()) %||% 0L)[1]
+      inflight <- isolate(as.integer(fni_inflight_gen()) %||% 0L)[1]
+      pending <- isolate(fni_pending())
+      # Newer press waiting: discard this completion and start the latest payload.
+      if (is.list(pending)) {
+        .fni_try_start_async()
+        return(invisible(FALSE))
+      }
+      # Stale completion from a superseded generation (no newer pending left).
+      if (!identical(inflight, latest)) {
+        .fni_set_busy_label(FALSE)
+        return(invisible(FALSE))
+      }
+      if (isTRUE(had_error)) {
+        result_rv(list(
+          ok = FALSE,
+          error = "task_error",
+          message = as.character(err_msg)[1],
+          results = list(),
+          compare = NULL
+        ))
+      } else if (is.list(out)) {
+        result_rv(out)
+      }
+      .fni_set_busy_label(FALSE)
+      invisible(TRUE)
+    }
+
     observeEvent(input$run, {
       sources <- .fni_build_sources()
       if (!length(sources)) {
@@ -359,27 +440,39 @@ financial_narrative_server <- function(id = "fni",
         ))
         return()
       }
-      .fni_set_busy_label(TRUE)
+      # Block until services (and model) are ready, unless mock mode.
+      st <- tryCatch(ynow_fni_service_status(), error = function(e) {
+        list(ready = FALSE, message = "AI service not configured")
+      })
+      mock_on <- exists(".ynow_fni_env_flag", mode = "function") &&
+        isTRUE(.ynow_fni_env_flag("YNOW_AI_QUAL_MOCK", "0"))
+      if (!isTRUE(st$ready) && !isTRUE(mock_on)) {
+        result_rv(list(
+          ok = FALSE,
+          error = "ai_service_not_configured",
+          message = st$message %||% .fni_ui("fni_service_not_configured", loc()),
+          results = list(),
+          compare = NULL
+        ))
+        return()
+      }
       force <- isTRUE(input$force)
       locale_now <- loc()
       if (!is.null(fni_task)) {
-        # Latest press wins: invoke again even if prior task still running.
+        # Latest press wins: queue newest args; never sync-fallback on re-click.
+        gen <- as.integer(isolate(fni_run_gen()) %||% 0L)[1] + 1L
+        fni_run_gen(gen)
         payload <- jsonlite::toJSON(sources, auto_unbox = TRUE, null = "null")
-        tryCatch(
-          fni_task$invoke(
-            sources_json = as.character(payload)[1],
-            locale = locale_now,
-            force = force,
-            key = paste0("fni-", as.integer(Sys.time()))
-          ),
-          error = function(e) {
-            # Fallback sync path
-            out <- ynow_fni_analyze_and_compare(sources, locale = locale_now, force = force)
-            result_rv(out)
-            .fni_set_busy_label(FALSE)
-          }
-        )
+        fni_pending(list(
+          sources_json = as.character(payload)[1],
+          locale = locale_now,
+          force = force,
+          .gen = gen
+        ))
+        .fni_set_busy_label(TRUE)
+        .fni_try_start_async()
       } else {
+        .fni_set_busy_label(TRUE)
         out <- ynow_fni_analyze_and_compare(sources, locale = locale_now, force = force)
         result_rv(out)
         .fni_set_busy_label(FALSE)
@@ -391,18 +484,10 @@ financial_narrative_server <- function(id = "fni",
         st <- fni_task$status()
         if (identical(st, "error")) {
           err <- tryCatch(fni_task$result(), error = function(e) conditionMessage(e))
-          result_rv(list(
-            ok = FALSE,
-            error = "task_error",
-            message = as.character(err)[1],
-            results = list(),
-            compare = NULL
-          ))
-          .fni_set_busy_label(FALSE)
+          .fni_finish_async(had_error = TRUE, err_msg = as.character(err)[1])
         } else if (identical(st, "success")) {
           out <- tryCatch(fni_task$result(), error = function(e) NULL)
-          if (is.list(out)) result_rv(out)
-          .fni_set_busy_label(FALSE)
+          .fni_finish_async(had_error = FALSE, out = out)
         }
       }, ignoreInit = TRUE)
     }

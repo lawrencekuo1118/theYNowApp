@@ -64,8 +64,9 @@ ynow_fni_ollama_status <- function(timeout = 3) {
   }
   want <- ynow_fni_ollama_model()
   has <- any(models == want) || any(startsWith(models, paste0(sub(":.*$", "", want), ":")))
+  # Reachable-but-missing-model is NOT ready: UI must stay warn, analysis blocked.
   list(
-    ok = TRUE,
+    ok = isTRUE(has),
     status = if (has) "model_present" else "reachable_model_missing",
     message = if (has) {
       paste0("Ollama reachable; model ", want, " listed.")
@@ -146,10 +147,14 @@ ynow_fni_ollama_chat_json <- function(chunk_text,
     ))
   }
   st <- ynow_fni_ollama_status(timeout = min(3, ynow_fni_request_timeout()))
-  if (!isTRUE(st$ok)) {
+  if (!isTRUE(st$ok) || identical(st$status, "reachable_model_missing")) {
     return(list(
       ok = FALSE, payload = NULL, raw = "",
-      error = "ai_service_not_configured",
+      error = if (identical(st$status, "reachable_model_missing")) {
+        "reachable_model_missing"
+      } else {
+        "ai_service_not_configured"
+      },
       message = st$message %||% "AI service not configured",
       model = ynow_fni_ollama_model()
     ))

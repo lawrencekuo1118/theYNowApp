@@ -136,8 +136,90 @@ check("offline message mentions not configured", {
   grepl("not configured", st_off$message %||% "", ignore.case = TRUE) ||
     grepl("unreachable", st_off$message %||% "", ignore.case = TRUE)
 })
-# Restore mock for any later checks
-Sys.setenv(YNOW_AI_QUAL_MOCK = "1")
+
+# reachable_model_missing must not green-banner / ready=TRUE
+ynow_fni_ollama_status <- function(...) {
+  list(
+    ok = FALSE,
+    status = "reachable_model_missing",
+    message = "Ollama reachable but model qwen3.5:9b is not listed.",
+    url = "http://127.0.0.1:11434",
+    model = "qwen3.5:9b",
+    models = character()
+  )
+}
+ynow_fni_docling_status <- function(...) {
+  list(ok = TRUE, status = "reachable", message = "Docling reachable", url = "http://127.0.0.1:5001")
+}
+Sys.setenv(YNOW_AI_QUAL_MOCK = "0", YNOW_AI_QUAL_ENABLED = "1")
+st_miss <- ynow_fni_service_status()
+check("reachable_model_missing not ready", !isTRUE(st_miss$ready))
+check("reachable_model_missing message retained", {
+  grepl("not listed", st_miss$message %||% "", fixed = TRUE) ||
+    grepl("model", st_miss$message %||% "", ignore.case = TRUE)
+})
+# Restore mock clients + env for remaining checks
+source("financial_document_client.R", local = TRUE, encoding = "UTF-8")
+source("financial_llm_client.R", local = TRUE, encoding = "UTF-8")
+source("financial_narrative_service.R", local = TRUE, encoding = "UTF-8")
+Sys.setenv(YNOW_AI_QUAL_MOCK = "1", YNOW_AI_QUAL_ENABLED = "0")
+
+# Same-period sources must merge findings (not overwrite)
+same_period <- ynow_fni_analyze_and_compare(
+  list(
+    list(
+      kind = "paste",
+      text = paste(readLines(fix_q3, warn = FALSE, encoding = "UTF-8"), collapse = "\n"),
+      ticker = "EXAM",
+      period = "2024Q3",
+      filename = "paste_a"
+    ),
+    list(
+      kind = "paste",
+      text = paste(readLines(fix_q2, warn = FALSE, encoding = "UTF-8"), collapse = "\n"),
+      ticker = "EXAM",
+      period = "2024Q3",
+      filename = "paste_b"
+    )
+  ),
+  locale = "en",
+  force = TRUE
+)
+check("same-period sources keep one period key", {
+  identical(sort(names(same_period$results)), "2024Q3")
+})
+check("same-period sources merge findings", {
+  isTRUE(same_period$ok) &&
+    is.list(same_period$results[["2024Q3"]]) &&
+    isTRUE(same_period$results[["2024Q3"]]$ok) &&
+    length(same_period$results[["2024Q3"]]$result$findings) >= 1L &&
+    grepl("paste_a|paste_b|Q2|Q3|AI servers|guidance",
+          same_period$results[["2024Q3"]]$extracted_text %||% "",
+          ignore.case = TRUE)
+})
+check("module avoids sync fallback on async invoke error", {
+  mod <- paste(readLines(file.path(app_dir, "financial_narrative_module.R"),
+                          warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  # Async path queues latest press; sync analyze only when ExtendedTask is unavailable.
+  n_analyze <- length(gregexpr("ynow_fni_analyze_and_compare", mod, fixed = TRUE)[[1]])
+  grepl("fni_pending", mod, fixed = TRUE) &&
+    grepl("fni_run_gen", mod, fixed = TRUE) &&
+    grepl("fni_inflight_gen", mod, fixed = TRUE) &&
+    grepl(".fni_finish_async", mod, fixed = TRUE) &&
+    grepl(".fni_try_start_async", mod, fixed = TRUE) &&
+    grepl("task_invoke_failed", mod, fixed = TRUE) &&
+    !grepl("Fallback sync path", mod, fixed = TRUE) &&
+    identical(n_analyze, 1L)
+})
+check("docling httr config preserves add_headers", {
+  doc <- paste(readLines(file.path(app_dir, "financial_document_client.R"),
+                         warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  grepl(".ynow_fni_docling_httr_config", doc, fixed = TRUE) &&
+    !grepl(
+      "hdrs\\s*<-\\s*c\\(hdrs,\\s*httr::add_headers",
+      doc
+    )
+})
 
 # --- UI / wiring greps (Lite-free) ---
 ui_src <- paste(readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
