@@ -298,6 +298,7 @@ ynow_valuation_model_tabs <- function() {
     "snapshot",
     "dashboard",
     "company_advance",
+    "financial_narrative",
     "sensitivity",
     "dcf_calculator",
     "ddm_calculator",
