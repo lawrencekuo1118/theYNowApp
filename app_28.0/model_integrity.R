@@ -292,9 +292,13 @@ ynow_recover_model_inputs <- function(sources,periods,providers,configs=list(),c
  }
  list(sources=sources,before=before,after=ynow_audit_model_years(sources,models,periods,configs,context),attempts=attempts)
 }
-# Multi-year annual series for KPI YoY growth, profile history, and charts.
-# Model bindings still use ynow_fiscal_frame for one selected fiscal period.
-ynow_fiscal_history_frame <- function(sources, table, context = list(), periods = NULL) {
+# Multi-year series for KPI YoY growth, profile history, and charts.
+# Model bindings still use ynow_fiscal_frame(..., allow_interim=FALSE).
+# KPI / sheet display may pass allow_interim=TRUE so TPEx YTD summary IS
+# (marked non-annual via tpex_filled) still surfaces numeric KPIs without
+# treating those rows as annual valuation facts.
+ynow_fiscal_history_frame <- function(sources, table, context = list(), periods = NULL,
+                                      allow_interim = FALSE) {
   if (is.null(periods)) periods <- ynow_fiscal_periods(sources)
   empty <- function() {
     out <- data.frame(Breakdown = character(), check.names = FALSE, stringsAsFactors = FALSE)
@@ -303,7 +307,9 @@ ynow_fiscal_history_frame <- function(sources, table, context = list(), periods 
     out
   }
   if (!length(periods)) return(empty())
-  frames <- lapply(periods, function(p) ynow_fiscal_frame(sources, table, p, context))
+  frames <- lapply(periods, function(p) {
+    ynow_fiscal_frame(sources, table, p, context, allow_interim = allow_interim)
+  })
   labels <- unique(unlist(lapply(frames, function(d) {
     if (is.data.frame(d) && ncol(d) >= 1L) as.character(d[[1]]) else character()
   }), use.names = FALSE))
@@ -324,18 +330,22 @@ ynow_fiscal_history_frame <- function(sources, table, context = list(), periods 
   attr(out, "valuation_fiscal_period") <- periods[1]
   attr(out, "financialCurrency") <- context$financial_currency %||% ""
   attr(out, "money_ccy") <- context$financial_currency %||% ""
+  attr(out, "allow_interim") <- isTRUE(allow_interim)
   out
 }
 
-# Materialize a model-only view. KPI / history consumers use
-# ynow_fiscal_history_frame; model bindings receive only the selected fiscal period.
-ynow_fiscal_frame <- function(sources,table,period,context=list()) {
+# Materialize a fiscal view. Default allow_interim=FALSE keeps YTD／interim
+# Income Statement and Cash Flow out of annual valuation facts. KPI display
+# for TPEx summary fallback sets allow_interim=TRUE so sheet KPIs are not blank.
+ynow_fiscal_frame <- function(sources, table, period, context = list(),
+                              allow_interim = FALSE) {
  periods<-ynow_fiscal_periods(sources);values<-list();lineage<-list()
  for(source in sources) {
   d<-ynow_source_frame(source,table);cols<-ynow_period_columns(source,table,period,periods)
   if(!is.data.frame(d)||!length(cols))next
-  # Interim cumulative flows are not annual financial facts.
-  if(table %in% c('Income Statement','Cash Flow')&&!ynow_source_is_annual(source,table))next
+  # Interim cumulative flows are not annual financial facts (valuation default).
+  if(table %in% c('Income Statement','Cash Flow')&&!ynow_source_is_annual(source,table)&&
+     !isTRUE(allow_interim))next
   ccy<-as.character(attr(d,'money_ccy') %||% attr(d,'financialCurrency') %||% source$currency %||% '')[1]
   target<-context$financial_currency %||% ccy
   if(is.na(ccy))ccy<-''
@@ -354,13 +364,22 @@ ynow_fiscal_frame <- function(sources,table,period,context=list()) {
   'Income Statement'=c(revenue='Total Revenue',ebit='Operating Income',pretax='Pretax Income',tax_expense='Tax Provision',interest='Interest Expense',common_income='Net Income Common Stockholders',diluted_eps='Diluted EPS',basic_eps='Basic EPS',weighted_diluted='Diluted Average Shares',weighted_basic='Basic Average Shares',ebitda='EBITDA',dps_reported='Annual Dividends Per Share'),
   'Cash Flow'=c(da='Depreciation And Amortization',capital_expenditure='Capital Expenditure',nwc_cash_change='Change In Working Capital',cfo='Operating Cash Flow',common_dividends='Common Stock Dividend Paid'),
   'Balance Sheet'=c(common_book='Common Stock Equity',outstanding='Ordinary Shares Number',cash='Cash And Cash Equivalents',debt='Total Debt',assets='Total Assets',liabilities='Total Liabilities Net Minority Interest',nonoperating_book='Non Operating Assets'),character())
- for(id in names(canonical)){label<-canonical[[id]];values[[label]]<-facts[[id]]$value;lineage[[label]]<-facts[[id]]$lineage}
+ for(id in names(canonical)) {
+  label<-canonical[[id]]
+  fv<-facts[[id]]$value
+  # Do not clobber finite display／interim values with NA annual-fact shells.
+  if(is.finite(fv)||is.null(values[[label]])||!is.finite(values[[label]])) {
+   values[[label]]<-fv
+   lineage[[label]]<-facts[[id]]$lineage
+  }
+ }
  d<-data.frame(Breakdown=names(values),check.names=FALSE,stringsAsFactors=FALSE)
  d[[period]]<-if(length(values))unname(unlist(values)) else numeric()
  attr(d,'valuation_fiscal_period')<-period
  attr(d,'financialCurrency')<-context$financial_currency %||% ''
  attr(d,'money_ccy')<-context$financial_currency %||% ''
  attr(d,'parameter_lineage')<-lineage
+ attr(d,'allow_interim')<-isTRUE(allow_interim)
  d
 }
 ynow_integrity_binding <- function(model,facts,financial_currency,quote_currency,analysis_currency,fx,quote_share_factor=1) {

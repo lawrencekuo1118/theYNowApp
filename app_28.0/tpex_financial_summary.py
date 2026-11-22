@@ -562,12 +562,14 @@ _tpex_request = BoundedSourceRequest("TPEx financial summary")
 
 
 def scrape_tpex_financials_fallback(ticker: str, board: Optional[str] = None) -> Dict[str, Any]:
+    # Cold discovery (index + multi-quarter XLS probe) often needs >45s on first
+    # hit; after disk cache warms, subsequent calls are sub-second. Cap 120s.
     try:
-        timeout = float(os.environ.get("YNOW_TPEX_TIMEOUT_SEC", "45"))
+        timeout = float(os.environ.get("YNOW_TPEX_TIMEOUT_SEC", "75"))
     except (TypeError, ValueError):
-        timeout = 45.0
+        timeout = 75.0
     return _tpex_request.run(lambda: _scrape_tpex_financials_fallback_impl(ticker, board),
-                             max(10.0, min(90.0, timeout)))
+                             max(10.0, min(120.0, timeout)))
 
 
 def _scrape_tpex_financials_fallback_impl(ticker: str, board: Optional[str] = None) -> Dict[str, Any]:
