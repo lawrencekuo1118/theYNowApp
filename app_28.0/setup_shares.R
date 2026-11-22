@@ -19,12 +19,20 @@ extract_quote_price_mcap <- function(summary_df) {
   if (!("Item" %in% names(summary_df)) || !("Value" %in% names(summary_df))) {
     return(list(price = price, market_cap = market_cap))
   }
-  px_row <- summary_df[grepl("^Market Price$", summary_df$Item, ignore.case = TRUE), , drop = FALSE]
-  if (nrow(px_row) < 1) {
-    px_row <- summary_df[grep("Previous Close|Market Price", summary_df$Item, ignore.case = TRUE), , drop = FALSE]
-  }
-  if (nrow(px_row) >= 1) {
-    price <- parse_financial_number(px_row$Value[1])[1]
+  # Prefer live last → Previous Close (same order as Company KPI strip).
+  # Skip present-but-N/A rows so a finite Previous Close is not masked.
+  items <- as.character(summary_df$Item)
+  vals <- as.character(summary_df$Value)
+  for (nm in c("Market Price", "Last Price", "Previous Close")) {
+    hit <- which(tolower(items) == tolower(nm))
+    if (!length(hit)) next
+    raw <- vals[[hit[[1]]]]
+    if (!nzchar(raw) || identical(raw, "N/A")) next
+    cand <- parse_financial_number(raw)[1]
+    if (is.finite(cand) && cand > 0) {
+      price <- cand
+      break
+    }
   }
   mc_row <- summary_df[summary_df$Item == "Market Cap (intraday)", , drop = FALSE]
   if (nrow(mc_row) < 1) {
@@ -34,6 +42,40 @@ extract_quote_price_mcap <- function(summary_df) {
     market_cap <- parse_financial_number(mc_row$Value[1])[1]
   }
   list(price = price, market_cap = market_cap)
+}
+
+#' Summary usable for Company header KPIs (Last Price / quote path).
+#' Yahoo often returns a full Item/Value table of "N/A" for a wrong TW board
+#' suffix (e.g. OTC `6488.TW`); nrow>0 must not count as success.
+summary_quote_usable <- function(summary_df) {
+  if (inherits(summary_df, "error") || inherits(summary_df, "try-error")) {
+    return(FALSE)
+  }
+  if (is.null(summary_df) || !is.data.frame(summary_df) || nrow(summary_df) < 1L) {
+    return(FALSE)
+  }
+  px <- tryCatch(
+    extract_quote_price_mcap(summary_df)$price,
+    error = function(e) NA_real_
+  )
+  is.finite(px) && px > 0
+}
+
+#' Whether a failed .TW Summary should one-shot retry .TWO (上櫃／興櫃 Yahoo).
+#' Skip only when the *exact* ticker is already a TWSE listing in the universe
+#' (bare-code lookup would map OTC `6488.TW` → TPEX and wrongly block retry).
+tw_should_try_two_fallback <- function(stock_code, summary_df = NULL) {
+  tk <- toupper(trimws(as.character(stock_code %||% "")[1]))
+  if (!grepl("\\.TW$", tk)) return(FALSE)
+  if (isTRUE(summary_quote_usable(summary_df))) return(FALSE)
+  exact_ex <- if (exists("lookup_tw_universe_exchange_exact", mode = "function")) {
+    tryCatch(lookup_tw_universe_exchange_exact(tk), error = function(e) "")
+  } else {
+    ""
+  }
+  exact_ex <- toupper(trimws(as.character(exact_ex %||% "")[1]))
+  if (exact_ex %in% c("TWSE", "TSE", "LISTED")) return(FALSE)
+  TRUE
 }
 
 #' Parse a numeric Summary Item (Shares Outstanding, etc.).

@@ -771,10 +771,29 @@ lookup_tw_universe_company_name <- function(ticker) {
 }
 
 #' 宇宙板別（TWSE／TPEX／ESB…）；未命中回傳 ""
+#' Bare-code match allowed (6488.TW → TPEX row for 6488.TWO). For .TW→.TWO
+#' Yahoo fallback gating use [lookup_tw_universe_exchange_exact] instead.
 lookup_tw_universe_exchange <- function(ticker) {
   hit <- .lookup_tw_universe_row(ticker)
   if (is.null(hit$u) || !length(hit$idx) || !"exchange" %in% names(hit$u)) return("")
   ex <- toupper(trimws(as.character(hit$u$exchange[[hit$idx[[1]]]])[1]))
+  if (!nzchar(ex) || identical(ex, "NA")) return("")
+  ex
+}
+
+#' Exact Yahoo ticker → board only (no bare-code peel).
+#' Wrong-suffix OTC (`6488.TW`) returns "" even when `6488.TWO` is TPEX.
+lookup_tw_universe_exchange_exact <- function(ticker) {
+  tk <- toupper(trimws(as.character(ticker %||% "")[1]))
+  if (!nzchar(tk)) return("")
+  u <- tryCatch(lab_get_tw_universe(FALSE), error = function(e) NULL)
+  if (is.null(u) || !is.data.frame(u) || nrow(u) < 1L ||
+      !"ticker" %in% names(u) || !"exchange" %in% names(u)) {
+    return("")
+  }
+  hit <- which(toupper(as.character(u$ticker)) == tk)
+  if (!length(hit)) return("")
+  ex <- toupper(trimws(as.character(u$exchange[[hit[[1]]]])[1]))
   if (!nzchar(ex) || identical(ex, "NA")) return("")
   ex
 }
