@@ -53,6 +53,7 @@ check(
 check("nest cluster until subtab", isTRUE(plan_upside$nest_cluster_until_subtab))
 check("nest screener until subtab", isTRUE(plan_upside$nest_screener_until_subtab))
 check("defer ind-mcap while eval", isTRUE(plan_upside$defer_ind_mcap_while_eval))
+check("defer ind-mcap while catalog", isTRUE(plan_upside$defer_ind_mcap_while_catalog))
 
 plan_empty <- env$ynow_bluechip_first_load_plan(
   has_ind_mcap_upside = FALSE,
@@ -61,6 +62,45 @@ plan_empty <- env$ynow_bluechip_first_load_plan(
 )
 check("empty snapshot uses shorter delay", isTRUE(plan_empty$ind_mcap_auto_delay_s < plan_upside$ind_mcap_auto_delay_s))
 check("empty delay still after Ranking flush", isTRUE(plan_empty$ind_mcap_auto_delay_s >= 0.5))
+
+plan_snap_only <- env$ynow_bluechip_first_load_plan(
+  has_ind_mcap_upside = FALSE,
+  snapshot_present = TRUE,
+  eval_busy = FALSE
+)
+check(
+  "snapshot without upside uses mid delay",
+  isTRUE(plan_snap_only$ind_mcap_auto_delay_s > plan_empty$ind_mcap_auto_delay_s) &&
+    isTRUE(plan_snap_only$ind_mcap_auto_delay_s < plan_upside$ind_mcap_auto_delay_s)
+)
+
+check(
+  "ind-mcap defer helper exists",
+  exists("ynow_bluechip_ind_mcap_should_defer", envir = env, inherits = FALSE)
+)
+check(
+  "defer while Ranking eval busy",
+  isTRUE(env$ynow_bluechip_ind_mcap_should_defer(eval_busy = TRUE))
+)
+check(
+  "defer while catalog busy",
+  isTRUE(env$ynow_bluechip_ind_mcap_should_defer(catalog_busy = TRUE))
+)
+check(
+  "defer while Ranking queued after catalog",
+  isTRUE(env$ynow_bluechip_ind_mcap_should_defer(eval_queued_after_catalog = TRUE))
+)
+check(
+  "no defer when idle",
+  !isTRUE(env$ynow_bluechip_ind_mcap_should_defer())
+)
+check(
+  "catalog defer flag can disable queue wait",
+  !isTRUE(env$ynow_bluechip_ind_mcap_should_defer(
+    catalog_busy = TRUE,
+    defer_while_catalog = FALSE
+  ))
+)
 
 source(file.path(app_dir, "ui_locale.R"), local = FALSE)
 for (k in c("lab_im_lb_busy", "bc_cluster_shell_hint", "bc_screener_shell_hint")) {

@@ -77,10 +77,27 @@ ynow_bluechip_first_load_plan <- function(has_ind_mcap_upside = FALSE,
       0.8
     },
     defer_ind_mcap_while_eval = TRUE,
+    # Cold catalog + queued Ranking eval share the sequential shinyapps worker
+    # with Industry mcap; keep ind-mcap off the process until catalog clears.
+    defer_ind_mcap_while_catalog = TRUE,
     eval_busy = isTRUE(eval_busy),
     nest_cluster_until_subtab = TRUE,
     nest_screener_until_subtab = TRUE
   )
+}
+
+# TRUE when Industry mcap should wait so Ranking/catalog keep the Starter worker.
+ynow_bluechip_ind_mcap_should_defer <- function(eval_busy = FALSE,
+                                                catalog_busy = FALSE,
+                                                eval_queued_after_catalog = FALSE,
+                                                defer_while_eval = TRUE,
+                                                defer_while_catalog = TRUE) {
+  if (isTRUE(defer_while_eval) && isTRUE(eval_busy)) return(TRUE)
+  if (isTRUE(defer_while_catalog) &&
+      (isTRUE(catalog_busy) || isTRUE(eval_queued_after_catalog))) {
+    return(TRUE)
+  }
+  FALSE
 }
 
 server <- function(input, output, session) {
@@ -21302,8 +21319,9 @@ server <- function(input, output, session) {
         error = function(e) "US"
       )
       session$onFlushed(function() {
-        # N5 snapshot is later(~0.05). Read the plan after that so an upside
-        # file selects 2.5s instead of the empty-snap 0.8s.
+        # N5 snapshot is later(~0.05). Peek disk / process-cache for stagger
+        # policy — reactiveVal is still empty until on_first_mount assigns it,
+        # so reading lab_im_ind_mcap_snap() here falsely picks the empty 0.8s.
         arm <- function() {
           if (!identical(as.character(isolate(input$sidebar_tabs) %||% "")[1], "bluechip")) {
             tryCatch(lab_im_ind_mcap_auto_armed(FALSE), error = function(e) NULL)
@@ -21317,7 +21335,12 @@ server <- function(input, output, session) {
             tryCatch(lab_im_ind_mcap_auto_armed(FALSE), error = function(e) NULL)
             return()
           }
-          snap0 <- tryCatch(isolate(lab_im_ind_mcap_snap()), error = function(e) NULL)
+          snap0 <- tryCatch(
+            lab_load_ind_mcap_chain_snapshot(mm_armed),
+            error = function(e) {
+              tryCatch(isolate(lab_im_ind_mcap_snap()), error = function(e2) NULL)
+            }
+          )
           has_upside <- tryCatch(
             lab_ind_mcap_snap_has_upside(snap0),
             error = function(e) FALSE
@@ -21344,32 +21367,34 @@ server <- function(input, output, session) {
               tryCatch(lab_im_ind_mcap_auto_armed(FALSE), error = function(e) NULL)
               return()
             }
-            # Catalog apply must land before this invoke. Otherwise the session
-            # is busy inside future() while the catalog result is waiting.
-            if (isTRUE(isolate(lab_im_catalog_busy())) &&
+            # Prefer Ranking / catalog on the sequential Starter worker first.
+            eval_busy_now <- isTRUE(isolate(lab_im_eval_busy()))
+            catalog_busy_now <- isTRUE(isolate(lab_im_catalog_busy()))
+            queued_after_catalog <- isTRUE(isolate(lab_im_run_after_catalog()))
+            if (ynow_bluechip_ind_mcap_should_defer(
+                  eval_busy = eval_busy_now,
+                  catalog_busy = catalog_busy_now,
+                  eval_queued_after_catalog = queued_after_catalog,
+                  defer_while_eval = isTRUE(plan0$defer_ind_mcap_while_eval),
+                  defer_while_catalog = isTRUE(plan0$defer_ind_mcap_while_catalog)
+                ) &&
                 requireNamespace("later", quietly = TRUE)) {
+              reason <- if (eval_busy_now) {
+                "eval_busy"
+              } else if (catalog_busy_now) {
+                "catalog_busy"
+              } else {
+                "eval_queued_after_catalog"
+              }
+              requeue_s <- if (eval_busy_now) 0.75 else 0.45
               if (exists("ynow_pload", mode = "function")) {
                 ynow_pload("n8_ind_mcap", "defer", list(
-                  reason = "catalog_busy",
-                  requeue_s = 0.45,
+                  reason = reason,
+                  requeue_s = requeue_s,
                   scheduled_delay_s = delay_s
                 ))
               }
-              later::later(start_job, delay = 0.45)
-              return()
-            }
-            # Prefer Ranking crawl first when both would contend the Starter worker.
-            if (isTRUE(isolate(lab_im_eval_busy())) &&
-                isTRUE(plan0$defer_ind_mcap_while_eval) &&
-                requireNamespace("later", quietly = TRUE)) {
-              if (exists("ynow_pload", mode = "function")) {
-                ynow_pload("n8_ind_mcap", "defer", list(
-                  reason = "eval_busy",
-                  requeue_s = 0.75,
-                  scheduled_delay_s = delay_s
-                ))
-              }
-              later::later(start_job, delay = 0.75)
+              later::later(start_job, delay = requeue_s)
               return()
             }
             if (exists("ynow_pload", mode = "function")) {
