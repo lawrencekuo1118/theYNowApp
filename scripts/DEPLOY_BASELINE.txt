@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12854098
+bundleId=12854452
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/  # pragma: allowlist secret
-aligned_git=b64f59b4cd0ff9c99eb562dece0d388d68633d1a
-commit=b64f59b4cd0ff9c99eb562dece0d388d68633d1a
-short=b64f59b4
-message=chore: bump display version to v28.67
-captured_at=2026-11-22T14:01:27Z
-display_version=v28.67
-note=Shipped v28.67 (+0.01 from v28.66) via deploy_app_21.R. Tip-ship #794 / 25c1325c: remove TW ROC flag overlay from dashboardHeader. Live status=running; rsconnect bundleId=12854098. Prior: v28.66 (12854038). (#752 / 30ddfee2 landed on origin during ship; not included in this live bundle — separate tip-ship next.)
+aligned_git=db4c87378dc60b841b10dd2d6738123acd8be81f
+commit=db4c87378dc60b841b10dd2d6738123acd8be81f
+short=db4c8737
+message=chore: bump display version to v28.68
+captured_at=2026-11-22T16:21:06Z
+display_version=v28.68
+note=Shipped v28.68 (+0.01 from v28.67) via deploy_app_21.R. Tip-ship #752 / 30ddfee2: Prospecting Industry mcap first-load stagger after catalog and disk snapshot. Live status=running; rsconnect bundleId=12854452. Prior: v28.67 (12854098).
