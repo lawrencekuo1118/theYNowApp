@@ -27,6 +27,8 @@
 
 ## 驗證
 
+（一次性 `verify-production.py` 已於 one-shot verify purge 移除；以下為可重跑的離線／CI 回歸。）
+
 - `test_tw_search_session.R`：實際 later callback 的 domain、reactive read、錯誤通知／清理、已關閉 session、代號別名、官方全稱、typeahead、失敗後重試與成功快取。
 - `test_market_cache_binary.R`：模擬 RPostgres 單列參數約束，驗證 bytea 綁定及序列化還原。
 - `test_summary_deadline.py`：成功、來源錯誤、逾時、限制未完成工作數、請求完成後恢復。

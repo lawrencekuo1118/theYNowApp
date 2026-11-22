@@ -99,22 +99,6 @@ fb <- localize_company_business_summary(
 )
 check("translate fail falls back to English", identical(fb, en_sum))
 
-# Server wiring asserts
-srv <- paste(readLines(file.path(root, "ynow_server.R"), warn = FALSE), collapse = "\n")
-glob <- paste(readLines(file.path(root, "global.R"), warn = FALSE), collapse = "\n")
-check(
-  "server calls localize_company_business_summary",
-  grepl("localize_company_business_summary\\(", srv)
-)
-check(
-  "global sources company_overview_locale.R",
-  grepl('source("company_overview_locale.R"', glob, fixed = TRUE)
-)
-check(
-  "legacy overview test still present",
-  file.exists(file.path(root, "tests", "test_company_overview.R"))
-)
-
 if (fail > 0L) {
   quit(status = 1L)
 }

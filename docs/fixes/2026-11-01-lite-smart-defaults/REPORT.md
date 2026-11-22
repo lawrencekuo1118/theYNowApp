@@ -27,7 +27,7 @@ Lite 直接套用可用的預測假設並自動計算；不再跳出「前往補
 - Lite UI 與分頁排程測試通過。
 - 實際本機瀏覽器：訪客、Lite、en-US、TW、`7772-TWO`，無人工填值，60 秒完成。RI NT$71.09、P/B NT$125.40、MOS -34.0%；揭露 ROE 15%／Payout 40% 等已套用假設，未顯示補填通知，無 JavaScript／Shiny output error。數字是當次來源與假設下的驗證結果，不保證後續報價相同。
 
-原始結果見 `evidence/`，瀏覽器步驟見 `verify-browser.py`。本機 R 的 Debian plotly 套件曾帶入不適用瀏覽器的 typedarray，已還原為上游 plotly.R 的 polyfill 後驗證；此為驗證環境修復，沒有更改產品 JavaScript。另一輪遇到 Yahoo 未提供 Summary，App 如實顯示來源失敗，沒有捏造價格或估值。
+原始結果見 `evidence/`（一次性瀏覽器驗證腳本已於 one-shot verify purge 移除）。本機 R 的 Debian plotly 套件曾帶入不適用瀏覽器的 typedarray，已還原為上游 plotly.R 的 polyfill 後驗證；此為驗證環境修復，沒有更改產品 JavaScript。另一輪遇到 Yahoo 未提供 Summary，App 如實顯示來源失敗，沒有捏造價格或估值。
 
 ## 部署
 
