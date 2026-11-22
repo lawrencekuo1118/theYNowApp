@@ -160,6 +160,22 @@ common_cash_dividends <- function(df) {
   max(0, abs(total) - abs(preferred))
 }
 
+# RI Settings payout driver: keep common_cash_dividends() honest for DDM preferred
+# integrity, but RI still needs a runnable payout when Yahoo CF has only
+# "Cash Dividends Paid" (no Preferred row). Missing dividend disclosure on a
+# present CF sheet → 0 (desk: no cash dividend, not "unknown preferred").
+ri_cash_dividends_for_payout <- function(df) {
+  if (is.null(df) || !is.data.frame(df) || nrow(df) < 1L) return(NA_real_)
+  common <- abs(common_cash_dividends(df))
+  if (is.finite(common)) return(common)
+  total <- tryCatch(
+    select_current_metric(df, "^Cash Dividends Paid$", "flow"),
+    error = function(e) NA_real_
+  )
+  if (is.finite(total)) return(abs(total))
+  0
+}
+
 # Operating invested capital: Assets − cash − nonop − (Liabilities − interest-bearing debt).
 # Formula identity is fixed. Missing Non Operating Assets → optional labeled proxy nonop=0
 # (Project decision); other missing components stay NA (honest gap). Lifecycle uses a
