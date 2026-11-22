@@ -7,5 +7,5 @@ commit=3aae702650746c2faaf26702b32dcf3b73fb5885
 short=3aae7026
 message=chore: bump display version to v28.62
 captured_at=2026-11-22T08:04:28Z
-display_version=v28.62
+display_version=v28.63
 note=Shipped v28.62 (+0.01 from live v28.61) via deploy_app_21.R. Git baseline had still said v28.60/12828033; shinyapps was already v28.61 bundle 12833956 (2026-11-17, no Financial Narrative files). This bundle includes #784 lazy-first/DCF guest gate and #783 FNI as an offline banner only (no Docling/Ollama production endpoints). Live status=running; rsconnect bundleId=12853360. Prior live: v28.61 (12833956).
