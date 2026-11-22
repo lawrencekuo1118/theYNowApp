@@ -73,3 +73,33 @@ YNOW_OAUTH_REDIRECT_URI=https://hopesmasher1118.shinyapps.io/TheYNowApp  # pragm
 # Legacy Email demo fallback when account DB (YNOW_DB_*) is NOT configured (single demo account only):
 # YNOW_AUTH_DEMO_EMAIL=you@example.com
 # YNOW_AUTH_DEMO_PASSWORD=change-me
+
+# =============================================================================
+# Financial Narrative Intelligence (Docling Serve + Ollama) — local free/open
+# =============================================================================
+# Free software ≠ free cloud GPU. Defaults assume localhost on the analyst machine.
+# Do NOT enable on shinyapps unless you deliberately wire private endpoints.
+# The app never auto-starts Docling/Ollama and never auto-pulls models on boot.
+# Analysis runs only when the user opens 財務質性分析 / Financial Narrative Analysis
+# and presses Run.
+#
+# Master switch (required for live Docling/Ollama calls):
+# YNOW_AI_QUAL_ENABLED=1
+#
+# Offline unit tests / demos without local services:
+# YNOW_AI_QUAL_MOCK=1
+#
+# Docling Serve (document → markdown/text). Default: http://127.0.0.1:5001
+# YNOW_DOCLING_URL=http://127.0.0.1:5001
+# YNOW_DOCLING_API_KEY=
+#
+# Ollama chat (non-stream JSON Schema). Default model qwen3.5:9b — pull manually:
+#   ollama pull qwen3.5:9b
+# YNOW_OLLAMA_URL=http://127.0.0.1:11434
+# YNOW_OLLAMA_MODEL=qwen3.5:9b
+#
+# Limits / cache:
+# YNOW_AI_REQUEST_TIMEOUT=120
+# YNOW_AI_MAX_FILE_MB=25
+# YNOW_AI_MAX_CONCURRENT=1
+# YNOW_AI_CACHE_DIR=

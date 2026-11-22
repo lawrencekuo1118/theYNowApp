@@ -1331,6 +1331,7 @@
               global_prediction: s.menu_global_prediction,
               dashboard: s.menu_dashboard,
               company_advance: s.menu_company_advance,
+              financial_narrative: s.menu_financial_narrative,
               smart_analysis: s.menu_smart_analysis,
               get_started: s.menu_get_started,
               dcf_calculator: s.menu_dcf,
@@ -1373,6 +1374,31 @@
             if (menuCompanyAdvance && s.menu_company_advance) {
               menuCompanyAdvance.textContent = s.menu_company_advance;
             }
+            var menuFinancialNarrative = document.getElementById('ynow_menu_financial_narrative');
+            if (menuFinancialNarrative && s.menu_financial_narrative) {
+              menuFinancialNarrative.textContent = s.menu_financial_narrative;
+            }
+            setBtText('ynow_fni_kicker', 'fni_kicker');
+            setBtText('ynow_fni_page_title', 'fni_page_title');
+            setBtText('ynow_fni_page_sub', 'fni_page_sub');
+            setBtText('ynow_fni_sources_title', 'fni_sources_title');
+            setBtText('ynow_fni_sources_help', 'fni_sources_help');
+            setBtText('ynow_fni_period_label', 'fni_period_label');
+            setBtText('ynow_fni_period_b_label', 'fni_period_b_label');
+            setBtText('ynow_fni_lang_label', 'fni_lang_label');
+            setBtText('ynow_fni_paste_label', 'fni_paste_label');
+            setBtText('ynow_fni_paste_b_label', 'fni_paste_b_label');
+            setBtText('ynow_fni_upload_label', 'fni_upload_label');
+            setBtText('ynow_fni_catalog_btn', 'fni_catalog_btn');
+            setBtText('ynow_fni_run_btn', 'fni_run_btn');
+            setBtText('ynow_fni_force_label', 'fni_force_label');
+            setBtText('ynow_fni_summary_title', 'fni_summary_title');
+            setBtText('ynow_fni_guidance_title', 'fni_guidance_title');
+            setBtText('ynow_fni_findings_title', 'fni_findings_title');
+            setBtText('ynow_fni_compare_title', 'fni_compare_title');
+            setBtText('ynow_fni_evidence_title', 'fni_evidence_title');
+            setBtText('ynow_fni_dl_csv_label', 'fni_dl_csv_label');
+            setBtText('ynow_fni_dl_json_label', 'fni_dl_json_label');
             var headerLogoHome = document.getElementById('ynow_header_logo_home');
             var headerLogoTitle = (s.header_logo_refresh_title || s.header_logo_home_title || '');
             if (headerLogoHome && headerLogoTitle) {
@@ -5474,7 +5500,7 @@
               return '';
             }
             var YNOW_STATEMENT_TABS = {
-              dashboard: 1, smart_analysis: 1, company_advance: 1,
+              dashboard: 1, smart_analysis: 1, company_advance: 1, financial_narrative: 1,
               dcf_calculator: 1, ddm_calculator: 1, pb_calculator: 1,
               nav_calculator: 1, ri_calculator: 1, sotp_calculator: 1,
               rel_mult_ev: 1, rel_multiples_calculator: 1, rel_mult_rev: 1,
@@ -6547,6 +6573,7 @@
                 });
               }
               var lazyTabs = { bluechip: 1, hfv: 1, lab_notes: 1, company_advance: 1,
+                               financial_narrative: 1,
                                macro_market: 1, asset_transmission: 1, testing: 1 };
               for (var i = 0; i < pageSpecs.length; i++) {
                 var spec = pageSpecs[i] || {};

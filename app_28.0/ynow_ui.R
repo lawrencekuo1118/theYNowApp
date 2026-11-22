@@ -3501,6 +3501,15 @@ beta_rolling_section_ui <- function() {
   )
 }
 
+#' Lazy page body for tab `financial_narrative` (FNI; Lite+Full free; server eager).
+.ynow_page_ui_financial_narrative <- function() {
+  tags$div(
+    class = "ynow-financial-narrative",
+    id = "ynow_financial_narrative_host",
+    financial_narrative_ui("fni")
+  )
+}
+
 #' Lazy Company body. industry_choice stays in the tabItem shell.
 .ynow_page_ui_dashboard <- function() {
   tagList(
@@ -4983,6 +4992,11 @@ ui <- dashboardPage(
                text = tags$span(id = "ynow_menu_company_advance", "Business Breakdown"),
                tabName = "company_advance",
                icon = icon("layer-group")
+             ),
+             menuItem(
+               text = tags$span(id = "ynow_menu_financial_narrative", "Financial Narrative Analysis"),
+               tabName = "financial_narrative",
+               icon = icon("align-left")
              ),
              menuItem("YNOW", tabName = "sensitivity", icon = icon("clock")),
              menuItem(
@@ -7108,6 +7122,14 @@ ui <- dashboardPage(
       tabItem(
         tabName = "company_advance",
         uiOutput("ynow_lazy_host_company_advance")
+      ),
+
+      # ==========================================
+      # Financial Narrative Analysis（Lite+Full free）
+      # ==========================================
+      tabItem(
+        tabName = "financial_narrative",
+        uiOutput("ynow_lazy_host_financial_narrative")
       ),
 
       # ==========================================
