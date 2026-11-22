@@ -4289,7 +4289,38 @@ tabPanel(
 
     tabBox(width = "auto",
            tabPanel(
-             "Overview",
+             "DDM Overview", value = "ddm_overview",
+             icon = icon("calculator"),
+             fluidRow(
+               column(
+                 width = 12,
+                 fluidRow(
+                   class = "ynow-model-kpi-row",
+                   column(6, class = "ynow-model-kpi-result ynow-model-kpi-outline",
+                          `data-ynow-lock` = "output:ddm_fair_value",
+                          infoBoxOutput("mod_ddm-ibx_ddm_price", width = NULL)),
+                   column(6, class = "ynow-model-kpi-tone-2",
+                          infoBoxOutput("mod_ddm-ibx_ddm_d1", width = NULL))
+                 )
+               )
+             ),
+             uiOutput("ddm_value_why"),
+             fluidRow(
+               column(
+                 width = 12,
+                 .ddm_formula_banner(),
+                 uiOutput("mod_ddm-ui_ddm_result"),
+                 h6(helpText(id = "ynow_ddm_overview_hint", ui_str("ddm_overview_hint", "en"))),
+                 ynow_calc_reset_row(
+                   ynow_calc_btn("mod_ddm-btn_calc_ddm", "試算 DDM"),
+                   ynow_reset_defaults_btn("mod_ddm-reset_ddm")
+                 ),
+                 tags$div(style = "margin-top: 10px;", htmlOutput("mod_ddm-vtxt_ddm_setting_details"))
+               )
+             )
+           ),
+           tabPanel(
+             "Growth", value = "ddm_growth",
              fluidRow(
                column(
                  width = 12,
@@ -4453,37 +4484,6 @@ tabPanel(
   tagList(
     tabBox(title = "DIVIDEND DISCOUNT", width = "auto",
            tabPanel(
-             "DDM Overview",
-             icon = icon("calculator"),
-             fluidRow(
-               column(
-                 width = 12,
-                 fluidRow(
-                   class = "ynow-model-kpi-row",
-                   column(6, class = "ynow-model-kpi-result ynow-model-kpi-outline",
-                          `data-ynow-lock` = "output:ddm_fair_value",
-                          infoBoxOutput("mod_ddm-ibx_ddm_price", width = NULL)),
-                   column(6, class = "ynow-model-kpi-tone-2",
-                          infoBoxOutput("mod_ddm-ibx_ddm_d1", width = NULL))
-                 )
-               )
-             ),
-             uiOutput("ddm_value_why"),
-             fluidRow(
-               column(
-                 width = 12,
-                 .ddm_formula_banner(),
-                 uiOutput("mod_ddm-ui_ddm_result"),
-                 h6(helpText(id = "ynow_ddm_overview_hint", ui_str("ddm_overview_hint", "en"))),
-                 ynow_calc_reset_row(
-                   ynow_calc_btn("mod_ddm-btn_calc_ddm", "試算 DDM"),
-                   ynow_reset_defaults_btn("mod_ddm-reset_ddm")
-                 ),
-                 tags$div(style = "margin-top: 10px;", htmlOutput("mod_ddm-vtxt_ddm_setting_details"))
-               )
-             )
-           ),
-           tabPanel(
              "DDM Calculation Details",
              fluidRow(
                infoBoxOutput("mod_ddm-ibx_d0_scraped", width = 4),
@@ -4556,13 +4556,41 @@ tabPanel(
               ),
 
               tabBox(width = "auto",
-                     tabPanel("Overview",
-                              fluidRow(
-                                column(
-                                  width = 12,
-                                  tags$div(style = "margin-top: 12px;", .dcf_two_stage_params_box())
+                     tabPanel(
+                       "DCF Overview", value = "dcf_overview",
+                       fluidRow(
+                         column(width = 12,
+                                fluidRow(
+                                  class = "ynow-model-kpi-row",
+                                  column(6, class = "ynow-model-kpi-result ynow-model-kpi-outline",
+                                         `data-ynow-lock` = "output:dcf_fair_value",
+                                         infoBoxOutput("ibx_stock_value_dcf", width = NULL)),
+                                  column(6, class = "ynow-model-kpi-tone-2",
+                                         infoBoxOutput("ibx_enterprise_value_dcf", width = NULL))
                                 )
-                              )
+                         )
+                       ),
+                       uiOutput("dcf_value_why"),
+                       fluidRow(
+                         column(width = 12,
+                                plotOutput("plt_dcf_trajectory", height = "420px"),
+                                h6(uiOutput("dcf_chart_help")),
+                                ynow_calc_reset_row(
+                                  ynow_calc_btn("calc", "試算 DCF"),
+                                  ynow_reset_defaults_btn("reset_dcf")
+                                ),
+                                tags$div(style = "margin-top: 10px;", htmlOutput("vtxt_dcf_setting_details"))
+                         )
+                       )
+                     ),
+                     tabPanel(
+                       "Two-Stage", value = "dcf_two_stage",
+                       fluidRow(
+                         column(
+                           width = 12,
+                           tags$div(style = "margin-top: 12px;", .dcf_two_stage_params_box())
+                         )
+                       )
                      ),
                      
                      # 在 ui.R 的某個 tabBox 或 navbarMenu 中：
@@ -4635,32 +4663,6 @@ tabPanel(
 .ynow_dcf_body_ui <- function() {
   tagList(
               tabBox(title = "DISCOUNTED CASH FLOW", width = "auto",
-                     tabPanel("DCF Overview",
-                              fluidRow(
-                                column(width = 12,
-                                       fluidRow(
-                                         class = "ynow-model-kpi-row",
-                                         column(6, class = "ynow-model-kpi-result ynow-model-kpi-outline",
-                                                `data-ynow-lock` = "output:dcf_fair_value",
-                                                infoBoxOutput("ibx_stock_value_dcf", width = NULL)),
-                                         column(6, class = "ynow-model-kpi-tone-2",
-                                                infoBoxOutput("ibx_enterprise_value_dcf", width = NULL))
-                                       )
-                                )
-                              ),
-                              uiOutput("dcf_value_why"),
-                              fluidRow(
-                                column(width = 12,
-                                       plotOutput("plt_dcf_trajectory", height = "420px"),
-                                       h6(uiOutput("dcf_chart_help")),
-                                       ynow_calc_reset_row(
-                                         ynow_calc_btn("calc", "試算 DCF"),
-                                         ynow_reset_defaults_btn("reset_dcf")
-                                       ),
-                                       tags$div(style = "margin-top: 10px;", htmlOutput("vtxt_dcf_setting_details"))
-                                )
-                              )
-                     ),
                      tabPanel("DCF Calculation Details",
                               fluidRow(
                                 column(width = 12,
