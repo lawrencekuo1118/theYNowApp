@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12853813
+bundleId=12853952
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/  # pragma: allowlist secret
-aligned_git=c8a2bbc1d9a7a09271f0a3555e817f5dc4825a4a
-commit=c8a2bbc1d9a7a09271f0a3555e817f5dc4825a4a
-short=c8a2bbc1
-message=chore: bump display version to v28.64
-captured_at=2026-11-22T11:58:56Z
-display_version=v28.64
-note=Shipped v28.64 (+0.01 from v28.63) via deploy_app_21.R. Tip-ship #789 / e6720a6a: TW 7772 empty Yahoo statement shells no longer crash Search (ynow_source_frame prefer expanded/collapsed without %||% NA-in-if). Live status=running; rsconnect bundleId=12853813. Prior: v28.63 (12853571).
+aligned_git=180864a7784310213628bc8b9a542a95ffd14711
+commit=180864a7784310213628bc8b9a542a95ffd14711
+short=180864a7
+message=chore: bump display version to v28.65
+captured_at=2026-11-22T12:57:11Z
+display_version=v28.65
+note=Shipped v28.65 (+0.01 from v28.64) via deploy_app_21.R. Tip-ship #791 / 5fae8538: P/B Overview merged into Settings left sub-tabs. Live status=running; rsconnect bundleId=12853952. Prior: v28.64 (12853813).
