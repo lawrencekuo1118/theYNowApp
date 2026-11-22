@@ -90,6 +90,7 @@ jobs:
           Rscript app_28.0/tests/test_lite_valuation_pipeline.R
           Rscript app_28.0/tests/test_tw_search_session.R
           Rscript app_28.0/tests/test_tw_otc_kpi_summary.R
+          Rscript app_28.0/tests/test_tw_7772_empty_statements.R
           Rscript app_28.0/tests/test_ticker_auto_uppercase.R
           Rscript app_28.0/tests/test_method_eng_locale.R
           Rscript app_28.0/tests/test_sotp_meta_framework.R
