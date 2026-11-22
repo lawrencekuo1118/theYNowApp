@@ -84,6 +84,7 @@ jobs:
           YNOW_DEBUG_SKIP_PY: "1"
         run: |
           Rscript app_28.0/tests/test_parameter_semantics.R
+          Rscript app_28.0/tests/test_ri_payout_sync.R
           Rscript app_28.0/tests/test_rd_estimate.R
           Rscript app_28.0/tests/test_parameter_completeness.R
           Rscript app_28.0/tests/test_model_fiscal_integrity.R

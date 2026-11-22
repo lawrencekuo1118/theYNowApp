@@ -516,12 +516,15 @@ ri_module_server <- function(id, d_income_statement, d_balance_sheet, d_cash_flo
       } else updateNumericInput(session, "ri_roe", value = NA_real_)
 
       cf <- tryCatch(d_cash_flow(), error = function(e) NULL)
-      div_paid_total <- if (!is.null(cf) && is.data.frame(cf) && nrow(cf) > 0) {
+      # See ri_cash_dividends_for_payout(): Yahoo CF without Preferred must not wipe payout to NA.
+      div_paid_total <- if (exists("ri_cash_dividends_for_payout", mode = "function")) {
+        ri_cash_dividends_for_payout(cf)
+      } else if (!is.null(cf) && is.data.frame(cf) && nrow(cf) > 0L) {
         abs(common_cash_dividends(cf))
       } else {
         NA_real_
       }
-      if (!is.na(div_paid_total) && !is.na(ni) && ni > 0) {
+      if (is.finite(div_paid_total) && is.finite(ni) && ni > 0) {
         payout <- .ri_clip((div_paid_total / ni) * 100, 0, 100)
         updateNumericInput(session, "ri_payout", value = round(payout, 2))
       } else {
