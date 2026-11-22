@@ -1,3 +1,8 @@
+## [v28.63] — 2026-11-22 · TW OTC／興櫃 Company KPI restore
+
+- zh-TW：台股 OTC／興櫃在 Yahoo 看板後綴錯誤時，公司頁 KPI 條恢復可用；Market Price 為 N/A 時改用 Previous Close（#786）。顯示版號 v28.63、bundle 12853571。
+- en-US: Restore the Company KPI strip for Taiwan OTC／興櫃 when the Yahoo board suffix is wrong; fall back to Previous Close when Market Price is N/A (#786). Display v28.63; bundle 12853571.
+
 ## [v28.62] — 2026-11-22 · Lazy-first guest gate, thin DCF shell, Financial Narrative offline banner
 
 - zh-TW：訪客鎖定的懶載入分頁在工作階段尚不能開啟前不掛載、也不跑首次掛載（#784）。DCF 首份 HTML 仍保留 Search 自動填入（WACC、CAPM、FCF、兩階段）；Overview 圖、KPI 與 WACC 數值盒改到開啟分頁後才掛上。另含財務質性分析（#783）：shinyapps 只顯示「AI 服務未設定」離線橫幅，未設定 Docling／Ollama 正式環境。顯示版號 v28.62、bundle 12853360。Git 基準先前仍寫 v28.60；線上已是 v28.61（bundle 12833956，2026-11-17，尚無財務質性分析），故本次從線上版號 +0.01。
