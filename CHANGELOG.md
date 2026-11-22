@@ -1,3 +1,8 @@
+## [v28.68] — 2026-11-22 · Prospecting Industry mcap first-load stagger
+
+- zh-TW：股票 Prospecting 首次開啟時，Industry mcap 在 catalog 與磁碟快照之後再排程／延後（#752）。顯示版號 v28.68、bundle 12854452。
+- en-US: Stock Prospecting first-open staggers Industry mcap until after catalog and the disk snapshot (#752). Display v28.68; bundle 12854452.
+
 ## [v28.63] — 2026-11-22 · TW OTC／興櫃 Company KPI restore
 
 - zh-TW：台股 OTC／興櫃在 Yahoo 看板後綴錯誤時，公司頁 KPI 條恢復可用；Market Price 為 N/A 時改用 Previous Close（#786）。顯示版號 v28.63、bundle 12853571。
