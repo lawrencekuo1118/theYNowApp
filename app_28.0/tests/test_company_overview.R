@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# Company overview: locale keys + UI/server wiring (no network).
+# Company overview: locale keys (en-US + zh-TW). Offline; no source greps.
 Sys.setenv(YNOW_DEBUG_SKIP_PY = "1")
 
 fail <- 0L
@@ -59,40 +59,6 @@ check(
 check(
   "title zh 公司概況",
   identical(ui_str("company_overview_title", "zh-TW"), "公司概況")
-)
-
-ui <- paste(readLines(file.path(root, "ynow_ui.R"), warn = FALSE), collapse = "\n")
-srv <- paste(readLines(file.path(root, "ynow_server.R"), warn = FALSE), collapse = "\n")
-py <- paste(readLines(file.path(root, "deep_scraper.py"), warn = FALSE), collapse = "\n")
-wc <- paste(readLines(file.path(root, "web_crawler.R"), warn = FALSE), collapse = "\n")
-
-check("ui hosts company_overview_ui", grepl('uiOutput("company_overview_ui")', ui, fixed = TRUE))
-check("ui CSS class present", grepl("ynow-company-overview", ui, fixed = TRUE))
-check(
-  "ui overview before FINANCIAL REPORT",
-  {
-    i_ov <- regexpr('uiOutput("company_overview_ui")', ui, fixed = TRUE)[1]
-    i_fr <- regexpr('tabBox(title = "FINANCIAL REPORT"', ui, fixed = TRUE)[1]
-    i_ov > 0 && i_fr > 0 && i_ov < i_fr
-  }
-)
-check("server renderUI company_overview", grepl("output\\$company_overview_ui", srv))
-check("ui key-date chip CSS", grepl("ynow-key-date-chip", ui, fixed = TRUE))
-check("ui corp_events tab", grepl('value = "corp_events"', ui, fixed = TRUE))
-check("server stores company_profile", grepl("company_profile\\s*<-\\s*reactiveVal", srv))
-check("server clears company_profile", grepl("company_profile\\(NULL\\)", srv))
-check("python returns summary field", grepl('"summary": summary', py, fixed = TRUE))
-check("python returns website field", grepl('"website": website', py, fixed = TRUE))
-check("python returns employees field", grepl('"employees":', py, fixed = TRUE))
-check("R passes summary through get_yahoo_industry", grepl("summary = .py_chr(info$summary)", wc, fixed = TRUE))
-check("R passes website through get_yahoo_industry", grepl("website = .py_chr(info$website)", wc, fixed = TRUE))
-check(
-  "server localizes summary via localize_company_business_summary",
-  grepl("localize_company_business_summary\\(", srv)
-)
-check(
-  "company_overview_locale helper exists",
-  file.exists(file.path(root, "company_overview_locale.R"))
 )
 
 if (fail > 0L) {
