@@ -3,7 +3,7 @@
 US / Taiwan stock fundamental analysis Shiny app（雲端版：yfinance，無 Chromote）。
 
 **Live:** https://hopesmasher1118.shinyapps.io/TheYNowApp/  
-**Display version:** v28.60 · **App folder:** `app_28.0/`<br>
+**Display version:** v28.62 · **App folder:** `app_28.0/`<br>
 **Deploy baseline:** `scripts/DEPLOY_BASELINE.txt`（bundleId／commit／URL；開發比對以此為準，不是單純看 Git tip）  
 **Changelog:** [`CHANGELOG.md`](CHANGELOG.md) · **Releases:** https://github.com/lawrencekuo1118/theYNowApp/releases
 
@@ -47,7 +47,7 @@ PRs and pushes that touch `app_28.0/**`, `scripts/**`, or `.github/workflows/**`
 | Coding（建議 git） | `/Users/lawrencekuo/coding/theYNowApp` | commit／push／deploy |
 | OneDrive mirror | `/Users/lawrencekuo/Library/CloudStorage/OneDrive-Personal/coding/R/Just4Fun/theYNowApp` | 同步鏡像（勿在此跑 `git status`／`git push`） |
 
-- **活動線資料夾對齊顯示版號的整階**：目前 live **v28.60** → 資料夾 **`app_28.0/`**。整階前進時另建／改名 `app_N.0/` 再繼續開發，勿繼續用落後的 `app_M.0/` 當活動線。
+- **活動線資料夾對齊顯示版號的整階**：目前 live **v28.62** → 資料夾 **`app_28.0/`**。整階前進時另建／改名 `app_N.0/` 再繼續開發，勿繼續用落後的 `app_M.0/` 當活動線。
 - 歷史版本：空間命名封存 `app 3.0` … `app 7.0` 與較新的 `app_8.0`…`app_27.0` 皆已自 git 移除或封存（見 Git history／[GitHub Releases](https://github.com/lawrencekuo1118/theYNowApp/releases)）
 - 顯示版號摘要：[`CHANGELOG.md`](CHANGELOG.md)；方法論／歷史細節：[`app_28.0/README.md`](app_28.0/README.md)
 
