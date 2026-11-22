@@ -1,3 +1,8 @@
+## [v28.62] — 2026-11-22 · Lazy-first guest gate, thin DCF shell, Financial Narrative offline banner
+
+- zh-TW：訪客鎖定的懶載入分頁在工作階段尚不能開啟前不掛載、也不跑首次掛載（#784）。DCF 首份 HTML 仍保留 Search 自動填入（WACC、CAPM、FCF、兩階段）；Overview 圖、KPI 與 WACC 數值盒改到開啟分頁後才掛上。另含財務質性分析（#783）：shinyapps 只顯示「AI 服務未設定」離線橫幅，未設定 Docling／Ollama 正式環境。顯示版號 v28.62、bundle 12853360。Git 基準先前仍寫 v28.60；線上已是 v28.61（bundle 12833956，2026-11-17，尚無財務質性分析），故本次從線上版號 +0.01。
+- en-US: Guest-locked lazy tabs stay idle until the session can open them, including the first-mount hook (#784). The DCF first HTML still keeps Search autofill (WACC, CAPM, FCF, two-stage); Overview plots, KPIs, and WACC value boxes mount after the tab opens. Also ships Financial Narrative Analysis (#783) as an offline banner only on shinyapps (AI service not configured). No Docling or Ollama production endpoints. Display v28.62; bundle 12853360. Git baseline still said v28.60 while live was already v28.61 (bundle 12833956, 2026-11-17, no narrative module), so this ship is +0.01 from that live label.
+
 ## [v28.60] — 2026-11-16 · Business Breakdown HQ/shared block removed
 
 - zh-TW：業務拆解移除「共用與總部項目」區塊與相關 locale／JS 接線；訂單／主要供應商／主要市場維持（#781 / YN-133）。顯示版號 v28.60、bundle 12828033。
