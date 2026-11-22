@@ -199,8 +199,9 @@ testthat::test_that("wave2 shell ids stay out of lazy bodies", {
   testthat::expect_false(grepl("fcf_projection_module_ui", dcf_body, fixed = TRUE))
   testthat::expect_true(grepl(".dcf_two_stage_params_box()", dcf_shell, fixed = TRUE))
   testthat::expect_false(grepl("plotlyOutput", dcf_shell, fixed = TRUE))
-  testthat::expect_false(grepl("plotOutput", dcf_shell, fixed = TRUE))
-  testthat::expect_false(grepl("plt_dcf_trajectory", dcf_shell, fixed = TRUE))
+  # DCF Overview (trajectory chart) is the leftmost shell sub-tab.
+  # Other charts stay in the lazy body.
+  testthat::expect_true(grepl("plt_dcf_trajectory", dcf_shell, fixed = TRUE))
   testthat::expect_false(grepl("plt_fcf_trend", dcf_shell, fixed = TRUE))
   testthat::expect_false(grepl("mod_fcf-fcf_plot", dcf_shell, fixed = TRUE))
   testthat::expect_false(grepl("ibx_estimated_g", dcf_shell, fixed = TRUE))
@@ -208,7 +209,7 @@ testthat::test_that("wave2 shell ids stay out of lazy bodies", {
   testthat::expect_false(grepl("vbx_equity_val", dcf_shell, fixed = TRUE))
   testthat::expect_false(grepl("vbx_debt_val", dcf_shell, fixed = TRUE))
   testthat::expect_false(grepl("ibx_wacc", dcf_shell, fixed = TRUE))
-  testthat::expect_true(grepl("plt_dcf_trajectory", dcf_body, fixed = TRUE))
+  testthat::expect_false(grepl("plt_dcf_trajectory", dcf_body, fixed = TRUE))
   testthat::expect_true(grepl("plt_fcf_trend", dcf_body, fixed = TRUE))
   testthat::expect_true(grepl("mod_fcf-fcf_plot", dcf_body, fixed = TRUE))
   testthat::expect_true(grepl("ibx_estimated_g", dcf_body, fixed = TRUE))

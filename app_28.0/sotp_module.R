@@ -35,6 +35,36 @@ sotp_module_shell_ui <- function(id) {
     title = "SOTP",
     width = "auto",
     tabPanel(
+      title = tags$span(id = "ynow_sotp_tab_overview", "Overview"),
+      value = "sotp_overview",
+      icon = icon("puzzle-piece"),
+      fluidRow(
+        class = "ynow-model-kpi-row",
+        column(4, class = "ynow-model-kpi-result ynow-model-kpi-outline", `data-ynow-lock` = "output:sotp_implied_price", valueBoxOutput(ns("vbx_sotp"), width = 12)),
+        column(4, class = "ynow-model-kpi-tone-2", valueBoxOutput(ns("vbx_sotp_ev"), width = 12)),
+        column(4, class = "ynow-model-kpi-tone-3", valueBoxOutput(ns("vbx_sotp_n"), width = 12))
+      ),
+      uiOutput(ns("value_why")),
+      .sotp_formula_banner(
+        "ynow_sotp_formula_banner",
+        "Implied EV = Σ(Seg Rev × EV/Sales) + Non-op　｜　Equity = EV + Cash − Debt　｜　Price = Equity ÷ Shares"
+      ),
+      ynow_calc_reset_row(
+        ynow_calc_btn(ns("btn_calc_sotp"), label = tags$span(id = "ynow_sotp_btn_calc", "Run SOTP")),
+        ynow_reset_defaults_btn(ns("btn_reset_sotp")),
+        sync_ui = tagList(
+          br(),
+          actionButton(
+            ns("btn_sync_sotp"),
+            label = tags$span(id = "ynow_sotp_btn_sync", "Fill from statements"),
+            icon = icon("sync"), class = "btn-sm",
+            style = "background-color:#1a1a1a;color:white;border:none;padding:8px 15px;font-weight:bold;border-radius:5px;margin-top:5px;width:100%;"
+          )
+        )
+      ),
+      fluidRow(column(12, uiOutput(ns("ui_sotp_result"))))
+    ),
+    tabPanel(
       title = tags$span(id = "ynow_sotp_tab_bridge", "Bridge"),
       icon = icon("link"),
       h4(tags$b(id = "ynow_sotp_bridge_heading", "Capital bridge & shares")),
@@ -83,35 +113,6 @@ sotp_module_body_ui <- function(id) {
     tabBox(
       title = tags$span(id = "ynow_sotp_box_title", "SOTP"),
       width = "auto",
-      tabPanel(
-        title = tags$span(id = "ynow_sotp_tab_overview", "Overview"),
-        icon = icon("puzzle-piece"),
-        fluidRow(
-          class = "ynow-model-kpi-row",
-          column(4, class = "ynow-model-kpi-result ynow-model-kpi-outline", `data-ynow-lock` = "output:sotp_implied_price", valueBoxOutput(ns("vbx_sotp"), width = 12)),
-          column(4, class = "ynow-model-kpi-tone-2", valueBoxOutput(ns("vbx_sotp_ev"), width = 12)),
-          column(4, class = "ynow-model-kpi-tone-3", valueBoxOutput(ns("vbx_sotp_n"), width = 12))
-        ),
-        uiOutput(ns("value_why")),
-        .sotp_formula_banner(
-          "ynow_sotp_formula_banner",
-          "Implied EV = Σ(Seg Rev × EV/Sales) + Non-op　｜　Equity = EV + Cash − Debt　｜　Price = Equity ÷ Shares"
-        ),
-        ynow_calc_reset_row(
-          ynow_calc_btn(ns("btn_calc_sotp"), label = tags$span(id = "ynow_sotp_btn_calc", "Run SOTP")),
-          ynow_reset_defaults_btn(ns("btn_reset_sotp")),
-          sync_ui = tagList(
-            br(),
-            actionButton(
-              ns("btn_sync_sotp"),
-              label = tags$span(id = "ynow_sotp_btn_sync", "Fill from statements"),
-              icon = icon("sync"), class = "btn-sm",
-              style = "background-color:#1a1a1a;color:white;border:none;padding:8px 15px;font-weight:bold;border-radius:5px;margin-top:5px;width:100%;"
-            )
-          )
-        ),
-        fluidRow(column(12, uiOutput(ns("ui_sotp_result"))))
-      ),
       tabPanel(
         title = tags$span(id = "ynow_sotp_tab_segments", "Segments"),
         icon = icon("table"),

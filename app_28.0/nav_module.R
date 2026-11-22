@@ -22,6 +22,42 @@ nav_module_shell_ui <- function(id) {
   tabBox(
     title = "NET ASSET VALUE", width = "auto",
     tabPanel(
+      "NAV Overview", value = "nav_overview", icon = icon("sitemap"),
+      fluidRow(
+        class = "ynow-model-kpi-row",
+        column(4, class = "ynow-model-kpi-result ynow-model-kpi-outline", `data-ynow-lock` = "output:nav_fair_value", valueBoxOutput(ns("vbx_nav_mid"), width = 12)),
+        column(4, class = "ynow-model-kpi-tone-2", valueBoxOutput(ns("vbx_navps"), width = 12)),
+        column(4, class = "ynow-model-kpi-tone-3", valueBoxOutput(ns("vbx_mkt"), width = 12))
+      ),
+      uiOutput(ns("value_why")),
+      fluidRow(
+        div(
+          ui_i18n("nav_formula"),
+          style = paste(
+            "font-size:16px; font-weight:bold; color:#2C3E50; text-align:center;",
+            "margin-bottom:15px; padding:10px; background-color:#F2F4F4; border-radius:8px;"
+          )
+        )
+      ),
+      ynow_calc_reset_row(
+        ynow_calc_btn(ns("btn_calc_nav"), "試算 NAV"),
+        ynow_reset_defaults_btn(ns("btn_reset_nav"))
+      ),
+      fluidRow(
+        column(
+          12,
+          uiOutput(ns("ui_nav_result")),
+          br(),
+          box(
+            title = ui_i18n("nav_band_title"), width = 12,
+            status = "primary", solidHeader = TRUE,
+            tableOutput(ns("tbl_nav_band")),
+            plotOutput(ns("plt_nav_band"), height = "280px")
+          )
+        )
+      )
+    ),
+    tabPanel(
       "NAV Settings", icon = icon("cogs"),
       h4(tags$b(ui_i18n("nav_settings_title"))),
       fluidRow(
@@ -74,7 +110,7 @@ nav_module_shell_ui <- function(id) {
         column(12, tags$p(
           id = ns("ynow_nav_settings_reset_hint"),
           style = "margin-top: 10px; color: #7f8c8d; font-size: 12px;",
-          "「回復預設」在 Overview，與「試算 NAV」並排。"
+          ui_i18n("nav_settings_reset_hint")
         ))
       )
     )
@@ -96,45 +132,6 @@ nav_module_body_ui <- function(id) {
         )
       )
     ),
-    tabBox(
-      title = "NET ASSET VALUE", width = "auto",
-      tabPanel(
-        "NAV Overview", icon = icon("sitemap"),
-        fluidRow(
-          class = "ynow-model-kpi-row",
-          column(4, class = "ynow-model-kpi-result ynow-model-kpi-outline", `data-ynow-lock` = "output:nav_fair_value", valueBoxOutput(ns("vbx_nav_mid"), width = 12)),
-          column(4, class = "ynow-model-kpi-tone-2", valueBoxOutput(ns("vbx_navps"), width = 12)),
-          column(4, class = "ynow-model-kpi-tone-3", valueBoxOutput(ns("vbx_mkt"), width = 12))
-        ),
-        uiOutput(ns("value_why")),
-        fluidRow(
-          div(
-            ui_i18n("nav_formula"),
-            style = paste(
-              "font-size:16px; font-weight:bold; color:#2C3E50; text-align:center;",
-              "margin-bottom:15px; padding:10px; background-color:#F2F4F4; border-radius:8px;"
-            )
-          )
-        ),
-        ynow_calc_reset_row(
-          ynow_calc_btn(ns("btn_calc_nav"), "試算 NAV"),
-          ynow_reset_defaults_btn(ns("btn_reset_nav"))
-        ),
-        fluidRow(
-          column(
-            12,
-            uiOutput(ns("ui_nav_result")),
-            br(),
-            box(
-              title = ui_i18n("nav_band_title"), width = 12,
-              status = "primary", solidHeader = TRUE,
-              tableOutput(ns("tbl_nav_band")),
-              plotOutput(ns("plt_nav_band"), height = "280px")
-            )
-          )
-        )
-      )
-    )
   )
 }
 

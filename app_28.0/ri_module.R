@@ -198,6 +198,67 @@ ri_module_shell_ui <- function(id) {
   tabBox(
     title = "RESIDUAL INCOME", width = "auto",
     tabPanel(
+      "RI Overview", value = "ri_overview", icon = icon("gem"),
+      fluidRow(
+        class = "ynow-model-kpi-row",
+        column(3, class = "ynow-model-kpi-result ynow-model-kpi-outline", `data-ynow-lock` = "output:ri_fair_value", valueBoxOutput(ns("vbx_ri_fv"), width = 12)),
+        column(3, class = "ynow-model-kpi-tone-2", valueBoxOutput(ns("vbx_ri_b0"), width = 12)),
+        column(3, class = "ynow-model-kpi-tone-3", valueBoxOutput(ns("vbx_ri_pv"), width = 12)),
+        column(3, class = "ynow-model-kpi-tone-4", valueBoxOutput(ns("vbx_ri_tv"), width = 12))
+      ),
+      uiOutput(ns("value_why")),
+      fluidRow(
+        div(
+          id = ns("ynow_ri_formula_banner"),
+          ui_i18n("ri_formula_banner"),
+          style = paste(
+            "font-size: 16px; font-weight: bold; color: #2C3E50; text-align: center;",
+            "margin-bottom: 12px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;"
+          )
+        )
+      ),
+      fluidRow(
+        column(
+          12,
+          ynow_calc_reset_row(
+            ynow_calc_btn(ns("btn_calc_ri"), "試算 RI"),
+            ynow_reset_defaults_btn(ns("btn_reset_ri_params"))
+          ),
+          tags$p(
+            id = ns("ynow_ri_calc_hint"),
+            style = "margin: 8px 0 12px 0; color: #666; font-size: 12px;",
+            ui_i18n("ri_calc_hint")
+          ),
+          uiOutput(ns("ui_ri_source_notes")),
+          uiOutput(ns("ui_ri_warnings")),
+          uiOutput(ns("ui_ri_breakdown"))
+        )
+      ),
+      fluidRow(
+        box(
+          title = ui_i18n("ri_waterfall_title"), width = 12, status = "success", solidHeader = TRUE,
+          plotlyOutput(ns("plt_ri_waterfall"), height = "360px") %>% withSpinner()
+        )
+      ),
+      fluidRow(
+        box(
+          title = ui_i18n("ri_trajectory_title"), width = 12, status = "info", solidHeader = TRUE,
+          plotOutput(ns("plt_ri_trajectory"), height = "320px")
+        )
+      ),
+      fluidRow(
+        box(
+          title = tagList(icon("table"), ui_i18n("ri_forecast_title")),
+          width = 12, status = "primary", solidHeader = TRUE,
+          collapsible = TRUE, collapsed = FALSE,
+          div(
+            style = "width: 100%; overflow-x: auto;",
+            DT::dataTableOutput(ns("tbl_ri_details"))
+          )
+        )
+      )
+    ),
+    tabPanel(
       "RI Settings", icon = icon("cogs"),
       h4(tags$b("每股帳面淨值 (B0) 估算區")),
       fluidRow(
@@ -291,7 +352,7 @@ ri_module_shell_ui <- function(id) {
           tags$p(
             id = ns("ynow_ri_settings_recalc_hint"),
             style = "margin-top: 10px; color: #7f8c8d; font-size: 12px;",
-            "參數變更後請回 Overview 按「試算 RI」（或「回復預設」重設後再試算）。"
+            ui_i18n("ri_settings_recalc_hint")
           )
         )
       )
@@ -312,67 +373,6 @@ ri_module_body_ui <- function(id) {
   tagList(
     tabBox(
       title = "RESIDUAL INCOME", width = "auto",
-      tabPanel(
-        "RI Overview", icon = icon("gem"),
-        fluidRow(
-          class = "ynow-model-kpi-row",
-          column(3, class = "ynow-model-kpi-result ynow-model-kpi-outline", `data-ynow-lock` = "output:ri_fair_value", valueBoxOutput(ns("vbx_ri_fv"), width = 12)),
-          column(3, class = "ynow-model-kpi-tone-2", valueBoxOutput(ns("vbx_ri_b0"), width = 12)),
-          column(3, class = "ynow-model-kpi-tone-3", valueBoxOutput(ns("vbx_ri_pv"), width = 12)),
-          column(3, class = "ynow-model-kpi-tone-4", valueBoxOutput(ns("vbx_ri_tv"), width = 12))
-        ),
-        uiOutput(ns("value_why")),
-        fluidRow(
-          div(
-            id = ns("ynow_ri_formula_banner"),
-            ui_i18n("ri_formula_banner"),
-            style = paste(
-              "font-size: 16px; font-weight: bold; color: #2C3E50; text-align: center;",
-              "margin-bottom: 12px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;"
-            )
-          )
-        ),
-        fluidRow(
-          column(
-            12,
-            ynow_calc_reset_row(
-              ynow_calc_btn(ns("btn_calc_ri"), "試算 RI"),
-              ynow_reset_defaults_btn(ns("btn_reset_ri_params"))
-            ),
-            tags$p(
-              id = ns("ynow_ri_calc_hint"),
-              style = "margin: 8px 0 12px 0; color: #666; font-size: 12px;",
-              ui_i18n("ri_calc_hint")
-            ),
-            uiOutput(ns("ui_ri_source_notes")),
-            uiOutput(ns("ui_ri_warnings")),
-            uiOutput(ns("ui_ri_breakdown"))
-          )
-        ),
-        fluidRow(
-          box(
-            title = ui_i18n("ri_waterfall_title"), width = 12, status = "success", solidHeader = TRUE,
-            plotlyOutput(ns("plt_ri_waterfall"), height = "360px") %>% withSpinner()
-          )
-        ),
-        fluidRow(
-          box(
-            title = ui_i18n("ri_trajectory_title"), width = 12, status = "info", solidHeader = TRUE,
-            plotOutput(ns("plt_ri_trajectory"), height = "320px")
-          )
-        ),
-        fluidRow(
-          box(
-            title = tagList(icon("table"), ui_i18n("ri_forecast_title")),
-            width = 12, status = "primary", solidHeader = TRUE,
-            collapsible = TRUE, collapsed = FALSE,
-            div(
-              style = "width: 100%; overflow-x: auto;",
-              DT::dataTableOutput(ns("tbl_ri_details"))
-            )
-          )
-        )
-      ),
       tabPanel(
         "Sensitivity Analysis", icon = icon("th"),
         fluidRow(
