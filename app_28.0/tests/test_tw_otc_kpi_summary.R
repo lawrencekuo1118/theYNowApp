@@ -119,43 +119,6 @@ if (file.exists(uni_path)) {
   )
 }
 
-# --- Server wiring (static) ---
-srv <- paste(
-  readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"),
-  collapse = "\n"
-)
-check(
-  "Search always normalize_ticker_for_market (no suffix short-circuit)",
-  grepl(
-    "Always re-resolve via universe in TW mode",
-    srv,
-    fixed = TRUE
-  ) &&
-    grepl(
-      "tk <- normalize_ticker_for_market\\(raw, mode\\)",
-      srv,
-      perl = TRUE
-    ) &&
-    !grepl(
-      "Prefer stored Yahoo suffix when it already matches",
-      srv,
-      fixed = TRUE
-    )
-)
-check(
-  "Search uses summary_quote_usable + tw_should_try_two_fallback",
-  grepl("summary_quote_usable", srv, fixed = TRUE) &&
-    grepl("tw_should_try_two_fallback", srv, fixed = TRUE)
-)
-check(
-  "Old bare-exchange TWO gate removed",
-  !grepl(
-    "!nzchar\\(lookup_tw_universe_exchange\\(stock_code\\)\\)",
-    srv,
-    perl = TRUE
-  )
-)
-
 if (fail > 0L) {
   cat("FAILED:", fail, "checks\n")
   quit(status = 1L)

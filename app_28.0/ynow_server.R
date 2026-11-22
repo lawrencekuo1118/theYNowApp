@@ -618,8 +618,6 @@ server <- function(input, output, session) {
       }, error = function(e) NULL)
       return(invisible(TRUE))
     }
-    # Always re-resolve via universe in TW mode so a stale / wrong board suffix
-    # (e.g. OTC typed as 6488.TW) becomes 6488.TWO before Yahoo Summary.
     tk <- normalize_ticker_for_market(raw, mode)
     if (is.na(tk) || !nzchar(tk)) return(invisible(FALSE))
     user_has_searched(TRUE)
@@ -6557,15 +6555,11 @@ server <- function(input, output, session) {
 
         incProgress(0.2, detail = "正在讀取 Summary（yfinance）...")
         sum_df <- tryCatch(cached_get_summary_data(stock_code), error = function(e) e)
-        # Wrong board suffix often yields a full table of N/A (nrow>0) — treat as
-        # unusable quote. Bare-code exchange lookup would see OTC as TPEX and
-        # wrongly block .TWO; use exact-ticker / tw_should_try_two_fallback.
-        sum_usable <- exists("summary_quote_usable", mode = "function") &&
-          isTRUE(summary_quote_usable(sum_df))
+        # All-N/A Yahoo tables (wrong .TW for OTC) are not usable quotes.
+        sum_usable <- isTRUE(summary_quote_usable(sum_df))
         if (!sum_usable &&
             identical(.mm(), "TW") &&
             is.na(isolate(.tw_two_fallback_tried_for())) &&
-            exists("tw_should_try_two_fallback", mode = "function") &&
             isTRUE(tw_should_try_two_fallback(stock_code, sum_df))) {
           alt <- tw_yahoo_alt_ticker(stock_code)
           if (!is.na(alt) && nzchar(alt) && !identical(toupper(alt), toupper(stock_code))) {
