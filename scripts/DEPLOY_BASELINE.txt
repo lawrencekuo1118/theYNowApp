@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12853360
+bundleId=12853571
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/  # pragma: allowlist secret
-aligned_git=3aae702650746c2faaf26702b32dcf3b73fb5885
-commit=3aae702650746c2faaf26702b32dcf3b73fb5885
-short=3aae7026
-message=chore: bump display version to v28.62
-captured_at=2026-11-22T08:04:28Z
+aligned_git=815d649cbbed7cb737d391e7616d5764ed2dfa27
+commit=815d649cbbed7cb737d391e7616d5764ed2dfa27
+short=815d649c
+message=chore: bump display version to v28.63
+captured_at=2026-11-22T09:39:43Z
 display_version=v28.63
-note=Shipped v28.62 (+0.01 from live v28.61) via deploy_app_21.R. Git baseline had still said v28.60/12828033; shinyapps was already v28.61 bundle 12833956 (2026-11-17, no Financial Narrative files). This bundle includes #784 lazy-first/DCF guest gate and #783 FNI as an offline banner only (no Docling/Ollama production endpoints). Live status=running; rsconnect bundleId=12853360. Prior live: v28.61 (12833956).
+note=Shipped v28.63 (+0.01 from v28.62) via deploy_app_21.R. Tip-ship #786: TW OTC／興櫃 Company KPI strip when Yahoo board suffix is wrong (Previous Close fallback when Market Price is N/A). Live status=running; rsconnect bundleId=12853571. Prior: v28.62 (12853360).
