@@ -7922,6 +7922,7 @@ server <- function(input, output, session) {
 
   # KPI YoY growth / multi-year averages need every annual column.
   # Single-period ynow_fiscal_frame stays for model integrity bindings only.
+  # Valuation reactives keep allow_interim=FALSE (YTD ≠ annual fact).
   d_income_statement <- reactive({
     req(scraped_financials())
     session_currency(); fx_usd_twd()
@@ -7943,6 +7944,40 @@ server <- function(input, output, session) {
     session_currency(); fx_usd_twd()
     df <- ynow_fiscal_history_frame(
       model_integrity_sources(), "Cash Flow", model_integrity_context()
+    )
+    scale_financial_df_money(df, statement_currency(), session_currency(), fx_usd_twd())
+  })
+  # Sheet KPI / Crossover display: when Yahoo annuals are empty and TPEx
+  # summary filled IS／BS (tpex_filled → non-annual), allow interim so Net
+  # Margin／ROA／ROE／Asset Turnover are not blank N/A shells. CF stays empty
+  # when TPEx has no cash-flow lines (honest N/A). Valuation paths above stay strict.
+  .kpi_allow_interim <- function() {
+    isTRUE(tryCatch(tw_tpex_fs_fallback(), error = function(e) FALSE))
+  }
+  d_income_statement_kpi <- reactive({
+    req(scraped_financials())
+    session_currency(); fx_usd_twd(); tw_tpex_fs_fallback()
+    df <- ynow_fiscal_history_frame(
+      model_integrity_sources(), "Income Statement", model_integrity_context(),
+      allow_interim = .kpi_allow_interim()
+    )
+    scale_financial_df_money(df, statement_currency(), session_currency(), fx_usd_twd())
+  })
+  d_balance_sheet_kpi <- reactive({
+    req(scraped_financials())
+    session_currency(); fx_usd_twd(); tw_tpex_fs_fallback()
+    df <- ynow_fiscal_history_frame(
+      model_integrity_sources(), "Balance Sheet", model_integrity_context(),
+      allow_interim = .kpi_allow_interim()
+    )
+    scale_financial_df_money(df, statement_currency(), session_currency(), fx_usd_twd())
+  })
+  d_cash_flow_kpi <- reactive({
+    req(scraped_financials())
+    session_currency(); fx_usd_twd(); tw_tpex_fs_fallback()
+    df <- ynow_fiscal_history_frame(
+      model_integrity_sources(), "Cash Flow", model_integrity_context(),
+      allow_interim = .kpi_allow_interim()
     )
     scale_financial_df_money(df, statement_currency(), session_currency(), fx_usd_twd())
   })
@@ -7984,9 +8019,11 @@ server <- function(input, output, session) {
       ))
     }
     if (isTRUE(tw_tpex_fs_fallback())) {
-      # CF 必空；以 IS／BS 摘要決定 P/B／RI（不開 DCF）
-      is <- tryCatch(d_income_statement(), error = function(e) NULL)
-      bs <- tryCatch(d_balance_sheet(), error = function(e) NULL)
+      # CF 必空；以 IS／BS 摘要決定 P/B／RI（不開 DCF）。
+      # Use KPI interim frames so YTD Net Income／Equity are visible for the gate
+      # (valuation model bindings still refuse non-annual annual facts).
+      is <- tryCatch(d_income_statement_kpi(), error = function(e) NULL)
+      bs <- tryCatch(d_balance_sheet_kpi(), error = function(e) NULL)
       ni <- tryCatch(
         common_net_income(is),
         error = function(e) NA_real_
@@ -9825,7 +9862,7 @@ server <- function(input, output, session) {
   )
 
   kpi_module_server(
-    "kpi", d_income_statement, d_balance_sheet, d_cash_flow,
+    "kpi", d_income_statement_kpi, d_balance_sheet_kpi, d_cash_flow_kpi,
     reactive(input$industry_choice),
     fundamental_profile = fundamental_profile_rec,
     current_ticker = current_ticker,
