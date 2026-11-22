@@ -36,6 +36,40 @@ extract_quote_price_mcap <- function(summary_df) {
   list(price = price, market_cap = market_cap)
 }
 
+#' Summary usable for Company header KPIs (Last Price / quote path).
+#' Yahoo often returns a full Item/Value table of "N/A" for a wrong TW board
+#' suffix (e.g. OTC `6488.TW`); nrow>0 must not count as success.
+summary_quote_usable <- function(summary_df) {
+  if (inherits(summary_df, "error") || inherits(summary_df, "try-error")) {
+    return(FALSE)
+  }
+  if (is.null(summary_df) || !is.data.frame(summary_df) || nrow(summary_df) < 1L) {
+    return(FALSE)
+  }
+  px <- tryCatch(
+    extract_quote_price_mcap(summary_df)$price,
+    error = function(e) NA_real_
+  )
+  is.finite(px) && px > 0
+}
+
+#' Whether a failed .TW Summary should one-shot retry .TWO (上櫃／興櫃 Yahoo).
+#' Skip only when the *exact* ticker is already a TWSE listing in the universe
+#' (bare-code lookup would map OTC `6488.TW` → TPEX and wrongly block retry).
+tw_should_try_two_fallback <- function(stock_code, summary_df = NULL) {
+  tk <- toupper(trimws(as.character(stock_code %||% "")[1]))
+  if (!grepl("\\.TW$", tk)) return(FALSE)
+  if (isTRUE(summary_quote_usable(summary_df))) return(FALSE)
+  exact_ex <- if (exists("lookup_tw_universe_exchange_exact", mode = "function")) {
+    tryCatch(lookup_tw_universe_exchange_exact(tk), error = function(e) "")
+  } else {
+    ""
+  }
+  exact_ex <- toupper(trimws(as.character(exact_ex %||% "")[1]))
+  if (exact_ex %in% c("TWSE", "TSE", "LISTED")) return(FALSE)
+  TRUE
+}
+
 #' Parse a numeric Summary Item (Shares Outstanding, etc.).
 extract_summary_number <- function(summary_df, item_pattern) {
   if (is.null(summary_df) || !is.data.frame(summary_df) || nrow(summary_df) < 1) {

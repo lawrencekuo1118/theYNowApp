@@ -220,6 +220,14 @@ if (file.exists(cache_path)) {
     identical(normalize_ticker_for_market("3105", "TW"), "3105.TWO")
   )
   check(
+    "TW OTC wrong .TW suffix 6488.TW → .TWO",
+    identical(normalize_ticker_for_market("6488.TW", "TW"), "6488.TWO")
+  )
+  check(
+    "TW ESB bare 1269 → .TWO",
+    identical(normalize_ticker_for_market("1269", "TW"), "1269.TWO")
+  )
+  check(
     "TW listed bare 2330 stays .TW",
     identical(normalize_ticker_for_market("2330", "TW"), "2330.TW")
   )

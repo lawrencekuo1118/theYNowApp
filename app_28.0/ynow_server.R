@@ -618,13 +618,9 @@ server <- function(input, output, session) {
       }, error = function(e) NULL)
       return(invisible(TRUE))
     }
-    # Prefer stored Yahoo suffix when it already matches the active market.
-    tk <- if (identical(mode, "TW") &&
-              grepl("\\.(TW|TWO)$", raw, ignore.case = TRUE)) {
-      toupper(gsub("\\s+", "", raw))
-    } else {
-      normalize_ticker_for_market(raw, mode)
-    }
+    # Always re-resolve via universe in TW mode so a stale / wrong board suffix
+    # (e.g. OTC typed as 6488.TW) becomes 6488.TWO before Yahoo Summary.
+    tk <- normalize_ticker_for_market(raw, mode)
     if (is.na(tk) || !nzchar(tk)) return(invisible(FALSE))
     user_has_searched(TRUE)
     param_audit_baseline(NULL)
@@ -6561,12 +6557,16 @@ server <- function(input, output, session) {
 
         incProgress(0.2, detail = "正在讀取 Summary（yfinance）...")
         sum_df <- tryCatch(cached_get_summary_data(stock_code), error = function(e) e)
-        # TWSE 後綴無資料／失敗 → 試上櫃 .TWO（僅一次）
-        if ((inherits(sum_df, "error") || !is.data.frame(sum_df) || nrow(sum_df) < 1L) &&
+        # Wrong board suffix often yields a full table of N/A (nrow>0) — treat as
+        # unusable quote. Bare-code exchange lookup would see OTC as TPEX and
+        # wrongly block .TWO; use exact-ticker / tw_should_try_two_fallback.
+        sum_usable <- exists("summary_quote_usable", mode = "function") &&
+          isTRUE(summary_quote_usable(sum_df))
+        if (!sum_usable &&
             identical(.mm(), "TW") &&
-            grepl("\\.TW$", stock_code, ignore.case = TRUE) &&
-            !nzchar(lookup_tw_universe_exchange(stock_code)) &&
-            is.na(isolate(.tw_two_fallback_tried_for()))) {
+            is.na(isolate(.tw_two_fallback_tried_for())) &&
+            exists("tw_should_try_two_fallback", mode = "function") &&
+            isTRUE(tw_should_try_two_fallback(stock_code, sum_df))) {
           alt <- tw_yahoo_alt_ticker(stock_code)
           if (!is.na(alt) && nzchar(alt) && !identical(toupper(alt), toupper(stock_code))) {
             .tw_two_fallback_tried_for(toupper(stock_code))
@@ -6586,7 +6586,7 @@ server <- function(input, output, session) {
           }
         }
         if (inherits(sum_df, "error")) stop(sum_df$message)
-        if (!is.data.frame(sum_df) || nrow(sum_df) < 1L) {
+        if (!isTRUE(sum_usable)) {
           stop(.ui_msg("notif_summary_unavailable"))
         }
         summary_data(sum_df)
