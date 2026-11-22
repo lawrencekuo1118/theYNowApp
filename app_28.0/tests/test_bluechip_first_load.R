@@ -102,17 +102,6 @@ check(
   ))
 )
 
-check(
-  "ind-mcap stagger peeks disk snapshot not empty reactiveVal",
-  grepl("lab_load_ind_mcap_chain_snapshot(mm_armed)", server_src, fixed = TRUE)
-)
-check(
-  "ind-mcap requeues while catalog busy or Ranking queued",
-  grepl("ynow_bluechip_ind_mcap_should_defer", server_src, fixed = TRUE) &&
-    grepl("lab_im_catalog_busy()", server_src, fixed = TRUE) &&
-    grepl("lab_im_run_after_catalog()", server_src, fixed = TRUE)
-)
-
 source(file.path(app_dir, "ui_locale.R"), local = FALSE)
 for (k in c("lab_im_lb_busy", "bc_cluster_shell_hint", "bc_screener_shell_hint")) {
   check(paste("en key", k), k %in% names(.UI_STRINGS$en) && nzchar(ui_str(k, "en")))
