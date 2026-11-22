@@ -12,10 +12,40 @@
 # ==========================================
 pb_asset_module_shell_ui <- function(id) {
   ns <- NS(id)
+  # Overview is a left sub-tab of this Settings tabBox (not a separate body sibling).
   tabBox(
     title = "P/B & ASSET VALUE", width = "auto",
     tabPanel(
-      "P/B Settings", icon = icon("cogs"),
+      "P/B Overview", value = "pb_overview", icon = icon("landmark"),
+      fluidRow(
+        class = "ynow-model-kpi-row",
+        column(3, class = "ynow-model-kpi-result ynow-model-kpi-outline", `data-ynow-lock` = "output:pb_fair_value", valueBoxOutput(ns("vbx_fair"), width = 12)),
+        column(3, class = "ynow-model-kpi-tone-2", valueBoxOutput(ns("vbx_bvps"), width = 12)),
+        column(3, class = "ynow-model-kpi-tone-3", valueBoxOutput(ns("vbx_tbvps"), width = 12)),
+        column(3, class = "ynow-model-kpi-tone-4", valueBoxOutput(ns("vbx_mkt_pb"), width = 12))
+      ),
+      uiOutput(ns("value_why")),
+      fluidRow(
+        div("Fair Price = (BVPS / TBVPS / NAVPS) × Target P/B",
+            style = "font-size: 16px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;")
+      ),
+      ynow_calc_reset_row(
+        ynow_calc_btn(ns("btn_calc_pb"), "試算 Jst. P/B"),
+        ynow_reset_defaults_btn(ns("btn_reset_pb"))
+      ),
+      fluidRow(
+        column(width = 12,
+               uiOutput(ns("ui_pb_result")),
+               br(),
+               box(title = ui_i18n("pb_band_title"), width = 12, status = "primary", solidHeader = TRUE,
+                   tableOutput(ns("tbl_pb_band")),
+                   plotOutput(ns("plt_pb_band"), height = "280px")
+               )
+        )
+      )
+    ),
+    tabPanel(
+      "P/B Settings", value = "pb_settings", icon = icon("cogs"),
       h4(tags$b(ui_i18n("pb_bv_title"))),
       fluidRow(
         div(ui_i18n("pb_bv_formula"),
@@ -91,7 +121,7 @@ pb_asset_module_shell_ui <- function(id) {
                tags$p(
                  id = ns("ynow_pb_settings_reset_hint"),
                  style = "margin-top: 10px; color: #7f8c8d; font-size: 12px;",
-                 "「回復預設」在 Overview，與「試算 Jst. P/B」並排。"
+                 ui_i18n("pb_settings_reset_hint")
                )
         )
       )
@@ -101,39 +131,8 @@ pb_asset_module_shell_ui <- function(id) {
 
 pb_asset_module_body_ui <- function(id) {
   ns <- NS(id)
+  # Overview lives in the shell Settings tabBox; body keeps formula sensitivity only.
   tagList(
-    tabBox(
-      title = "P/B & ASSET VALUE", width = "auto",
-      tabPanel(
-        "P/B Overview", icon = icon("landmark"),
-        fluidRow(
-          class = "ynow-model-kpi-row",
-          column(3, class = "ynow-model-kpi-result ynow-model-kpi-outline", `data-ynow-lock` = "output:pb_fair_value", valueBoxOutput(ns("vbx_fair"), width = 12)),
-          column(3, class = "ynow-model-kpi-tone-2", valueBoxOutput(ns("vbx_bvps"), width = 12)),
-          column(3, class = "ynow-model-kpi-tone-3", valueBoxOutput(ns("vbx_tbvps"), width = 12)),
-          column(3, class = "ynow-model-kpi-tone-4", valueBoxOutput(ns("vbx_mkt_pb"), width = 12))
-        ),
-        uiOutput(ns("value_why")),
-        fluidRow(
-          div("Fair Price = (BVPS / TBVPS / NAVPS) × Target P/B",
-              style = "font-size: 16px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;")
-        ),
-        ynow_calc_reset_row(
-          ynow_calc_btn(ns("btn_calc_pb"), "試算 Jst. P/B"),
-          ynow_reset_defaults_btn(ns("btn_reset_pb"))
-        ),
-        fluidRow(
-          column(width = 12,
-                 uiOutput(ns("ui_pb_result")),
-                 br(),
-                 box(title = ui_i18n("pb_band_title"), width = 12, status = "primary", solidHeader = TRUE,
-                     tableOutput(ns("tbl_pb_band")),
-                     plotOutput(ns("plt_pb_band"), height = "280px")
-                 )
-          )
-        )
-      )
-    ),
     .model_param_sensitivity_box(
       "P/B 公式參數：每股估值貢獻與敏感度",
       ns("param_sensitivity_table")

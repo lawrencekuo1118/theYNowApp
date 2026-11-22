@@ -96,6 +96,41 @@ check("module uses derive_pb_targets", grepl("derive_pb_targets(", src, fixed = 
 check("module has justified target mode", grepl('"justified"', src, fixed = TRUE))
 check("module tab is pb_calculator", grepl('"pb_calculator"', src, fixed = TRUE))
 
+# Overview is a left sub-tab under the Settings shell tabBox (not a body sibling).
+shell <- sub(
+  "(?s)^.*pb_asset_module_shell_ui\\s*<-\\s*function.*?\\{(.*)\\}\\s*pb_asset_module_body_ui\\s*<-\\s*function.*$",
+  "\\1",
+  src,
+  perl = TRUE
+)
+body <- sub(
+  "(?s)^.*pb_asset_module_body_ui\\s*<-\\s*function.*?\\{(.*)\\}\\s*pb_asset_module_ui\\s*<-\\s*function.*$",
+  "\\1",
+  src,
+  perl = TRUE
+)
+check(
+  "Overview tab lives in shell",
+  grepl('"P/B Overview"', shell, fixed = TRUE) &&
+    grepl('value = "pb_overview"', shell, fixed = TRUE)
+)
+check(
+  "Settings + Target tabs stay in shell",
+  grepl('"P/B Settings"', shell, fixed = TRUE) &&
+    grepl('value = "pb_settings"', shell, fixed = TRUE) &&
+    grepl('value = "target_pb"', shell, fixed = TRUE)
+)
+check(
+  "Overview not a separate body tabBox",
+  !grepl('"P/B Overview"', body, fixed = TRUE) &&
+    !grepl('valueBoxOutput(ns("vbx_fair")', body, fixed = TRUE)
+)
+check(
+  "Overview precedes Settings in shell",
+  regexpr('"P/B Overview"', shell, fixed = TRUE)[1] <
+    regexpr('"P/B Settings"', shell, fixed = TRUE)[1]
+)
+
 if (fail > 0L) {
   cat("FAILED ", fail, " checks\n", sep = "")
   quit(status = 1L)
