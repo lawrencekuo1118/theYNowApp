@@ -22,7 +22,14 @@ ynow_source_is_annual <- function(source,table) {
 ynow_source_frame <- function(source,table) {
  x<-source$data[[table]]
  if(is.data.frame(x))return(x)
- if(is.list(x))return(x$expanded %||% x$collapsed)
+ if(is.list(x)) {
+  # Prefer expanded, then collapsed. Do NOT use `%||%`: an empty 0×1 Yahoo
+  # statement df has length 1 (columns), so `is.na(df)` is length-0 and
+  # `length==1 && is.na(df)` becomes NA → "missing value where TRUE/FALSE needed"
+  # (TW OTC e.g. 7772.TWO when Yahoo IS/BS/CF are shell-empty).
+  if(!is.null(x$expanded))return(x$expanded)
+  if(!is.null(x$collapsed))return(x$collapsed)
+ }
  NULL
 }
 ynow_fiscal_periods <- function(sources) {
