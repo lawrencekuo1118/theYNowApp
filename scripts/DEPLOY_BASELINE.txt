@@ -7,5 +7,5 @@ commit=c8a2bbc1d9a7a09271f0a3555e817f5dc4825a4a
 short=c8a2bbc1
 message=chore: bump display version to v28.64
 captured_at=2026-11-22T11:58:56Z
-display_version=v28.64
+display_version=v28.65
 note=Shipped v28.64 (+0.01 from v28.63) via deploy_app_21.R. Tip-ship #789 / e6720a6a: TW 7772 empty Yahoo statement shells no longer crash Search (ynow_source_frame prefer expanded/collapsed without %||% NA-in-if). Live status=running; rsconnect bundleId=12853813. Prior: v28.63 (12853571).
