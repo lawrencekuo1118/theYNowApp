@@ -19,12 +19,20 @@ extract_quote_price_mcap <- function(summary_df) {
   if (!("Item" %in% names(summary_df)) || !("Value" %in% names(summary_df))) {
     return(list(price = price, market_cap = market_cap))
   }
-  px_row <- summary_df[grepl("^Market Price$", summary_df$Item, ignore.case = TRUE), , drop = FALSE]
-  if (nrow(px_row) < 1) {
-    px_row <- summary_df[grep("Previous Close|Market Price", summary_df$Item, ignore.case = TRUE), , drop = FALSE]
-  }
-  if (nrow(px_row) >= 1) {
-    price <- parse_financial_number(px_row$Value[1])[1]
+  # Prefer live last → Previous Close (same order as Company KPI strip).
+  # Skip present-but-N/A rows so a finite Previous Close is not masked.
+  items <- as.character(summary_df$Item)
+  vals <- as.character(summary_df$Value)
+  for (nm in c("Market Price", "Last Price", "Previous Close")) {
+    hit <- which(tolower(items) == tolower(nm))
+    if (!length(hit)) next
+    raw <- vals[[hit[[1]]]]
+    if (!nzchar(raw) || identical(raw, "N/A")) next
+    cand <- parse_financial_number(raw)[1]
+    if (is.finite(cand) && cand > 0) {
+      price <- cand
+      break
+    }
   }
   mc_row <- summary_df[summary_df$Item == "Market Cap (intraday)", , drop = FALSE]
   if (nrow(mc_row) < 1) {

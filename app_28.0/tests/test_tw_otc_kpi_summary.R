@@ -50,6 +50,20 @@ check("empty summary not usable", isFALSE(summary_quote_usable(data.frame(
   Item = character(0), Value = character(0), stringsAsFactors = FALSE
 ))))
 check("NULL summary not usable", isFALSE(summary_quote_usable(NULL)))
+# Bugbot: Market Price N/A must not abort Search when Previous Close is finite.
+prev_only <- data.frame(
+  Item = c("Market Price", "Previous Close", "Market Cap (intraday)", "EPS (TTM)"),
+  Value = c("N/A", "490.00", "233160000000", "19.58"),
+  stringsAsFactors = FALSE
+)
+check(
+  "Previous Close alone makes summary usable",
+  isTRUE(summary_quote_usable(prev_only))
+)
+check(
+  "extract_quote_price_mcap skips N/A Market Price",
+  isTRUE(abs(extract_quote_price_mcap(prev_only)$price - 490) < 1e-9)
+)
 
 # --- Universe: bare vs exact exchange (the old fallback pitfall) ---
 uni_path <- file.path(app_dir, "data", "tw_universe.csv")
