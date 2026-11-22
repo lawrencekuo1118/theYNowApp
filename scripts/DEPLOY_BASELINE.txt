@@ -7,5 +7,5 @@ commit=815d649cbbed7cb737d391e7616d5764ed2dfa27
 short=815d649c
 message=chore: bump display version to v28.63
 captured_at=2026-11-22T09:39:43Z
-display_version=v28.63
+display_version=v28.64
 note=Shipped v28.63 (+0.01 from v28.62) via deploy_app_21.R. Tip-ship #786: TW OTC／興櫃 Company KPI strip when Yahoo board suffix is wrong (Previous Close fallback when Market Price is N/A). Live status=running; rsconnect bundleId=12853571. Prior: v28.62 (12853360).
