@@ -1022,7 +1022,7 @@ testthat::test_that("mobile notification panel CSS stays visible", {
   testthat::expect_true(grepl("bottom: 12px", txt, fixed = TRUE))
 })
 
-testthat::test_that("mobile TW header uses black bar not flag", {
+testthat::test_that("TW + US header uses black bar without ROC flag overlay", {
   app_dir <- if (file.exists("ynow_ui.R")) {
     normalizePath(".", winslash = "/", mustWork = TRUE)
   } else {
@@ -1030,18 +1030,21 @@ testthat::test_that("mobile TW header uses black bar not flag", {
   }
   source(file.path(app_dir, "tests", "ynow_test_sources.R"))
   txt <- ynow_test_ui_sources(app_dir)$shipped
-  # Desktop still references the ROC flag asset
-  testthat::expect_true(grepl("roc_flag.svg", txt, fixed = TRUE))
-  # Mobile block disables TW flag layers and keeps ink black header
-  testthat::expect_true(grepl(
-    "body\\.ynow-market-tw \\.main-header::before[\\s\\S]*?display:\\s*none\\s*!important",
+  # No dashboardHeader ROC flag overlay asset / ::before fill
+  testthat::expect_false(grepl("roc_flag.svg", txt, fixed = TRUE))
+  testthat::expect_false(grepl(
+    "body\\.ynow-market-tw \\.main-header::before[\\s\\S]*?roc_flag",
     txt,
     perl = TRUE
   ))
+  # Mobile keeps solid ink black header for both markets
   testthat::expect_true(grepl(
-    "TW mobile: solid black bar|US \\+ TW mobile: solid black bar",
+    "US \\+ TW mobile: solid black bar",
     txt
   ))
+  # Market switcher flag buttons remain (not the header overlay)
+  testthat::expect_true(grepl("ynow-mkt-flag", txt, fixed = TRUE))
+  testthat::expect_true(grepl("ynow_mkt_btn_tw", txt, fixed = TRUE))
 })
 
 testthat::test_that("ynow_server wires Lite auto-calc and Smart Analysis outputs", {
