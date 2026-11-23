@@ -21,6 +21,13 @@ ynow_fni_max_runs_host <- function() {
   max(1L, min(5000L, v))
 }
 
+#' Seconds a session must wait between live Cloudflare runs. 0 disables.
+ynow_fni_min_interval_sec <- function() {
+  v <- suppressWarnings(as.numeric(Sys.getenv("YNOW_AI_MIN_INTERVAL_SEC", unset = "15"))[1])
+  if (!is.finite(v) || v < 0) v <- 15
+  min(3600, v)
+}
+
 # In-process nest count so chunk calls under one analysis do not each take a run.
 .ynow_fni_budget_rt <- new.env(parent = emptyenv())
 .ynow_fni_budget_rt$depth <- 0L
@@ -40,6 +47,7 @@ ynow_fni_max_runs_host <- function() {
     reason,
     host = "fni_budget_host",
     concurrent = "fni_budget_concurrent",
+    cooldown = "fni_budget_cooldown",
     "fni_budget_session"
   )
   if (exists("ui_str", mode = "function")) {
@@ -51,6 +59,7 @@ ynow_fni_max_runs_host <- function() {
       reason,
       host = "此主機今日的 AI 分析次數已達上限（YNOW_AI_MAX_RUNS_HOST）。請明日再試。Lite 與完整版共用此上限，用來保護 Cloudflare 帳戶。",
       concurrent = "已有分析進行中（YNOW_AI_MAX_CONCURRENT）。請稍後再按「執行分析」。",
+      cooldown = "此工作階段距上次分析太近（YNOW_AI_MIN_INTERVAL_SEC）。請稍候再按「執行分析」。Lite 與完整版共用此間隔。",
       "此工作階段已達 AI 分析次數上限（YNOW_AI_MAX_RUNS）。請稍後再試。Lite 與完整版共用此上限，用來保護 Cloudflare 帳戶。"
     )
   } else {
@@ -58,6 +67,7 @@ ynow_fni_max_runs_host <- function() {
       reason,
       host = "This host reached today's AI analysis limit (YNOW_AI_MAX_RUNS_HOST). Try again tomorrow. Lite and Full share this limit so a public host cannot spend the Cloudflare account without a bound.",
       concurrent = "Another analysis is already running (YNOW_AI_MAX_CONCURRENT). Press Run analysis again in a moment.",
+      cooldown = "This session must wait before another analysis (YNOW_AI_MIN_INTERVAL_SEC). Press Run analysis again after the interval. Lite and Full share this cooldown.",
       "This session reached the AI analysis limit (YNOW_AI_MAX_RUNS). Try again later. Lite and Full share this limit so a public host cannot spend the Cloudflare account without a bound."
     )
   }
@@ -73,18 +83,24 @@ ynow_fni_max_runs_host <- function() {
 }
 
 .ynow_fni_budget_read <- function(path) {
-  empty <- list(day = "", host_runs = 0L, inflight = 0L, inflight_at = 0, sessions = list())
+  empty <- list(
+    day = "", host_runs = 0L, inflight = 0L, inflight_at = 0,
+    sessions = list(), last_run = list()
+  )
   if (!file.exists(path)) return(empty)
   parsed <- tryCatch(jsonlite::fromJSON(path, simplifyVector = FALSE), error = function(e) NULL)
   if (!is.list(parsed)) return(empty)
   sessions <- parsed$sessions
   if (!is.list(sessions)) sessions <- list()
+  last_run <- parsed$last_run
+  if (!is.list(last_run)) last_run <- list()
   list(
     day = as.character(parsed$day %||% "")[1],
     host_runs = as.integer(parsed$host_runs %||% 0L)[1],
     inflight = as.integer(parsed$inflight %||% 0L)[1],
     inflight_at = suppressWarnings(as.numeric(parsed$inflight_at %||% 0)[1]),
-    sessions = sessions
+    sessions = sessions,
+    last_run = last_run
   )
 }
 
@@ -120,6 +136,7 @@ ynow_fni_max_runs_host <- function() {
     state$day <- today
     state$host_runs <- 0L
     state$sessions <- list()
+    state$last_run <- list()
   }
   if (!is.finite(state$inflight)) state$inflight <- 0L
   if (state$inflight < 0L) state$inflight <- 0L
@@ -142,12 +159,19 @@ ynow_fni_cf_budget_begin <- function(session_key = "", locale = "en") {
     conc_cap <- ynow_fni_max_concurrent()
     used_s <- as.integer(state$sessions[[sid]] %||% 0L)[1]
     if (!is.finite(used_s) || used_s < 0L) used_s <- 0L
+    if (!is.list(state$last_run)) state$last_run <- list()
+    interval <- ynow_fni_min_interval_sec()
+    last_at <- suppressWarnings(as.numeric(state$last_run[[sid]] %||% 0)[1])
+    if (!is.finite(last_at)) last_at <- 0
+    cooling <- interval > 0 && last_at > 0 && (as.numeric(Sys.time()) - last_at) < interval
     reason <- if (state$host_runs >= host_cap) {
       "host"
     } else if (used_s >= session_cap) {
       "session"
     } else if (state$inflight >= conc_cap) {
       "concurrent"
+    } else if (isTRUE(cooling)) {
+      "cooldown"
     } else {
       ""
     }
@@ -164,6 +188,7 @@ ynow_fni_cf_budget_begin <- function(session_key = "", locale = "en") {
     }
     state$host_runs <- state$host_runs + 1L
     state$sessions[[sid]] <- used_s + 1L
+    state$last_run[[sid]] <- as.numeric(Sys.time())
     state$inflight <- state$inflight + 1L
     if (!is.finite(state$inflight_at) || state$inflight_at <= 0) {
       state$inflight_at <- as.numeric(Sys.time())

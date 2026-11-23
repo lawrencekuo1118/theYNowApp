@@ -98,6 +98,9 @@ YNOW_OAUTH_REDIRECT_URI=https://hopesmasher1118.shinyapps.io/TheYNowApp  # pragm
 # Documented JSON-mode text model (override if needed):
 # https://developers.cloudflare.com/workers-ai/features/json-mode/
 # YNOW_CF_AI_MODEL=@cf/meta/llama-3.3-70b-instruct-fp8-fast
+# Workers AI defaults max_tokens to 256 for that model, which truncates
+# the six-dimension JSON. The app sends at least 2048 unless you raise this.
+# YNOW_CF_AI_MAX_TOKENS=2048
 #
 # Optional later — NOT implemented: Google Cloud Run Docling, only if complex
 # finance-table parse quality is insufficient. Default backend is local_cf.
@@ -111,4 +114,8 @@ YNOW_OAUTH_REDIRECT_URI=https://hopesmasher1118.shinyapps.io/TheYNowApp  # pragm
 # YNOW_AI_MAX_CONCURRENT=1
 # YNOW_AI_MAX_RUNS=8
 # YNOW_AI_MAX_RUNS_HOST=32
+# YNOW_AI_MIN_INTERVAL_SEC=15
 # YNOW_AI_CACHE_DIR=
+# Enabling these credentials on a public shinyapps host spends YOUR Cloudflare
+# account for every visitor who presses Run. The caps above are the bound.
+# The Financial Narrative tab stays open on Lite and Full (no login wall).

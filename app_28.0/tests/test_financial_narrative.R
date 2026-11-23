@@ -230,6 +230,19 @@ check("Workers AI body keeps JSON schema", {
     is.list(body$response_format$json_schema$properties$findings) &&
     length(body$messages) == 2L
 })
+check("Workers AI body sets max_tokens at or above 2048", {
+  is.finite(body$max_tokens) && body$max_tokens >= 2048
+})
+Sys.setenv(YNOW_CF_AI_MAX_TOKENS = "100")
+check("max_tokens below the floor is raised to 2048", {
+  identical(ynow_fni_cf_ai_max_tokens(), 2048L)
+})
+Sys.setenv(YNOW_CF_AI_MAX_TOKENS = "3000")
+check("YNOW_CF_AI_MAX_TOKENS override is honored", {
+  identical(ynow_fni_cf_ai_max_tokens(), 3000L) &&
+    identical(ynow_fni_llm_request_body("x", list(), "en")$max_tokens, 3000L)
+})
+Sys.unsetenv("YNOW_CF_AI_MAX_TOKENS")
 coerced <- ynow_fni_coerce_llm_payload(list(
   result = list(response = list(summary = "from-run", findings = list()))
 ))
@@ -245,7 +258,8 @@ Sys.setenv(
   YNOW_AI_CACHE_DIR = budget_dir,
   YNOW_AI_MAX_CONCURRENT = "1",
   YNOW_AI_MAX_RUNS = "1",
-  YNOW_AI_MAX_RUNS_HOST = "2"
+  YNOW_AI_MAX_RUNS_HOST = "2",
+  YNOW_AI_MIN_INTERVAL_SEC = "0"
 )
 b1 <- ynow_fni_cf_budget_begin("session-a", "en")
 b2 <- ynow_fni_cf_budget_begin("session-b", "en")
@@ -272,10 +286,25 @@ check("open lease does not spend another run", {
   isTRUE(guard_nested$ok) && !isTRUE(guard_nested$counted)
 })
 .ynow_fni_budget_rt$depth <- 0L
+cool_dir <- file.path(tempdir(), paste0("fni_cool_", as.integer(Sys.time())))
+Sys.setenv(
+  YNOW_AI_CACHE_DIR = cool_dir,
+  YNOW_AI_MAX_CONCURRENT = "2",
+  YNOW_AI_MAX_RUNS = "5",
+  YNOW_AI_MAX_RUNS_HOST = "10",
+  YNOW_AI_MIN_INTERVAL_SEC = "3600"
+)
+c1 <- ynow_fni_cf_budget_begin("cool-session", "en")
+ynow_fni_cf_budget_end(c1)
+c2 <- ynow_fni_cf_budget_begin("cool-session", "en")
+check("session cooldown blocks a second live run", {
+  isTRUE(c1$ok) && !isTRUE(c2$ok) && identical(c2$reason, "cooldown")
+})
 Sys.setenv(
   YNOW_AI_MAX_CONCURRENT = "1",
   YNOW_AI_MAX_RUNS = "8",
-  YNOW_AI_MAX_RUNS_HOST = "32"
+  YNOW_AI_MAX_RUNS_HOST = "32",
+  YNOW_AI_MIN_INTERVAL_SEC = "15"
 )
 if (nzchar(budget_prev_cache)) {
   Sys.setenv(YNOW_AI_CACHE_DIR = budget_prev_cache)

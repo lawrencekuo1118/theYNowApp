@@ -121,6 +121,17 @@ ynow_fni_ollama_status <- function(...) ynow_fni_llm_status(...)
   )
 }
 
+#' Completion budget for Workers AI JSON mode.
+#' Cloudflare's documented default for `@cf/meta/llama-3.3-70b-instruct-fp8-fast`
+#' is max_tokens = 256. Omitting the field truncates a six-dimension findings
+#' payload (verbatim evidence quotes) into invalid JSON. Floor is 2048.
+#' Override with YNOW_CF_AI_MAX_TOKENS (values below 2048 are raised to the floor).
+ynow_fni_cf_ai_max_tokens <- function() {
+  v <- suppressWarnings(as.integer(Sys.getenv("YNOW_CF_AI_MAX_TOKENS", unset = "2048"))[1])
+  if (!is.finite(v) || v < 2048L) v <- 2048L
+  as.integer(max(2048L, min(8192L, v)))
+}
+
 #' Request body for Workers AI JSON mode (no HTTP).
 ynow_fni_llm_request_body <- function(chunk_text, meta = list(), locale = "en") {
   list(
@@ -132,7 +143,9 @@ ynow_fni_llm_request_body <- function(chunk_text, meta = list(), locale = "en") 
       type = "json_schema",
       json_schema = ynow_fni_json_schema()
     ),
-    temperature = 0.2
+    temperature = 0.2,
+    # Do not rely on the Workers AI default of 256. See ynow_fni_cf_ai_max_tokens().
+    max_tokens = ynow_fni_cf_ai_max_tokens()
   )
 }
 

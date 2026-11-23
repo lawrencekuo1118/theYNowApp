@@ -4343,6 +4343,10 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Another analysis is already running (YNOW_AI_MAX_CONCURRENT). ",
       "Press Run analysis again in a moment."
     ),
+    fni_budget_cooldown = paste0(
+      "This session must wait before another analysis (YNOW_AI_MIN_INTERVAL_SEC). ",
+      "Press Run analysis again after the interval. Lite and Full share this cooldown."
+    ),
     fni_no_sources = "Add paste text, an upload, or a catalog selection before running.",
     fni_empty_results = "No results yet. Configure sources and press Run analysis.",
     fni_empty_findings = "No grounded findings (evidence quotes must appear in the extracted text).",
@@ -9349,6 +9353,7 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Lite 與完整版共用此上限，用來保護 Cloudflare 帳戶。"
     ),
     fni_budget_concurrent = "已有分析進行中（YNOW_AI_MAX_CONCURRENT）。請稍後再按「執行分析」。",
+    fni_budget_cooldown = "此工作階段距上次分析太近（YNOW_AI_MIN_INTERVAL_SEC）。請稍候再按「執行分析」。Lite 與完整版共用此間隔。",
     fni_no_sources = "執行前請先貼上文字、上傳檔案，或選取目錄列。",
     fni_empty_results = "尚無結果。請設定來源後按下「執行分析」。",
     fni_empty_findings = "沒有可驗證的發現（證據句必須出現在擷取文字中）。",
