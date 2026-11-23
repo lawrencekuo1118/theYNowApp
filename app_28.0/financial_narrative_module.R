@@ -1,6 +1,6 @@
 # financial_narrative_module.R — Shiny UI/server for Financial Narrative Analysis
 # Tab id: financial_narrative — Lite + Full free (no lock / no ynow-full-only).
-# Analysis runs only when the user presses Run (no LLM/Docling on page load).
+# Analysis runs only when the user presses Run (no Workers AI / conversion on page load).
 
 .fni_ui <- function(key, locale = "en") {
   if (exists("ui_str", mode = "function")) {
@@ -48,8 +48,9 @@ financial_narrative_ui <- function(id = "fni") {
         class = "ynow-fni__deck",
         paste0(
           "Upload or select filings, transcripts, or decks; run grounded qualitative analysis ",
-          "across six dimensions with evidence quotes. Free on Lite and Full when Docling + Ollama ",
-          "are configured on this machine. Does not auto-overwrite WACC, Ke, g, or price."
+          "across six dimensions with evidence quotes. Open on Lite and Full (no membership lock) ",
+          "when Cloudflare Workers AI is configured. If credentials are missing, this page shows ",
+          "an offline banner and does not call the model. Does not auto-overwrite WACC, Ke, g, or price."
         )
       )
     ),
@@ -214,20 +215,24 @@ financial_narrative_server <- function(id = "fni",
       } else {
         .fni_ui("fni_service_not_configured", loc())
       }
+      detail <- st$message %||% ""
+      if (!isTRUE(st$ready) && grepl("not configured", detail, ignore.case = TRUE)) {
+        detail <- .fni_ui("fni_service_offline_detail", loc())
+      }
       tags$div(
         class = cls,
         role = "status",
         tags$strong(title),
-        tags$p(class = "ynow-fni__meta", style = "margin:4px 0 0 0;", st$message %||% ""),
+        tags$p(class = "ynow-fni__meta", style = "margin:4px 0 0 0;", detail),
         tags$p(
           class = "ynow-fni__meta",
           style = "margin:4px 0 0 0;",
           sprintf(
-            "model=%s · prompt=%s · docling=%s · ollama=%s",
+            "model=%s · prompt=%s · parse=%s · llm=%s",
             st$model %||% "",
             st$prompt_version %||% "",
-            st$docling$status %||% "",
-            st$ollama$status %||% ""
+            (st$document %||% st$docling)$status %||% "",
+            (st$llm %||% st$ollama)$status %||% ""
           )
         )
       )

@@ -1,87 +1,79 @@
-# financial_llm_client.R — Ollama chat client (qwen3.5:9b default)
-# Non-stream /api/chat with JSON Schema. Never auto-downloads models on boot.
+# financial_llm_client.R — Cloudflare Workers AI chat (JSON schema)
+# POST /accounts/{account_id}/ai/run/{model} with response_format json_schema.
+# Default model is a documented JSON-mode text model (override with YNOW_CF_AI_MODEL).
+# Does not download weights and does not call the model until the user runs analysis.
+# Offline mock: YNOW_AI_QUAL_MOCK=1 (no network).
 
-ynow_fni_ollama_url <- function() {
-  u <- trimws(Sys.getenv("YNOW_OLLAMA_URL", unset = "http://127.0.0.1:11434"))
-  if (!nzchar(u)) u <- "http://127.0.0.1:11434"
-  sub("/+$", "", u)
-}
+.YNOW_FNI_CF_AI_MODEL_DEFAULT <- "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
 
-ynow_fni_ollama_model <- function() {
-  m <- trimws(Sys.getenv("YNOW_OLLAMA_MODEL", unset = "qwen3.5:9b"))
-  if (!nzchar(m)) m <- "qwen3.5:9b"
+ynow_fni_llm_model <- function() {
+  m <- trimws(Sys.getenv("YNOW_CF_AI_MODEL", unset = .YNOW_FNI_CF_AI_MODEL_DEFAULT))
+  if (!nzchar(m)) m <- .YNOW_FNI_CF_AI_MODEL_DEFAULT
   m
 }
 
-#' Probe Ollama without loading/pulling a model.
-ynow_fni_ollama_status <- function(timeout = 3) {
+ynow_fni_cf_ai_run_url <- function(model = NULL) {
+  model <- as.character(model %||% ynow_fni_llm_model())[1]
+  # Model ids are path segments (@cf/meta/...). Do not encode the slashes.
+  model <- gsub("^/+", "", model)
+  paste0(ynow_fni_cf_api_root(), "/ai/run/", model)
+}
+
+# Compatibility aliases (older call sites). Prefer ynow_fni_llm_*.
+ynow_fni_ollama_model <- function() ynow_fni_llm_model()
+ynow_fni_ollama_url <- function() ynow_fni_cf_ai_run_url()
+
+#' Probe Workers AI credentials without running a completion.
+ynow_fni_llm_status <- function(timeout = 3) {
+  model <- ynow_fni_llm_model()
   if (.ynow_fni_env_flag("YNOW_AI_QUAL_MOCK", "0")) {
     return(list(
       ok = TRUE,
       status = "mock",
-      message = "Mock Ollama enabled (YNOW_AI_QUAL_MOCK=1).",
-      url = "mock://ollama",
-      model = ynow_fni_ollama_model()
+      message = "Mock Workers AI enabled (YNOW_AI_QUAL_MOCK=1).",
+      url = "mock://workers-ai",
+      model = model
     ))
   }
-  base <- ynow_fni_ollama_url()
-  if (!requireNamespace("httr", quietly = TRUE)) {
-    return(list(
-      ok = FALSE, status = "unavailable",
-      message = "httr package is required for Ollama HTTP calls.",
-      url = base, model = ynow_fni_ollama_model()
-    ))
-  }
-  res <- tryCatch(
-    httr::GET(paste0(base, "/api/tags"), httr::timeout(timeout)),
-    error = function(e) e
-  )
-  if (inherits(res, "error")) {
+  if (!isTRUE(.ynow_fni_env_flag("YNOW_AI_QUAL_ENABLED", "0")) ||
+      !isTRUE(ynow_fni_cf_credentials_present())) {
     return(list(
       ok = FALSE,
-      status = "offline",
-      message = paste0(
-        "AI service not configured / Ollama unreachable at ", base, ": ",
-        conditionMessage(res)
-      ),
-      url = base,
-      model = ynow_fni_ollama_model()
+      status = "not_configured",
+      message = .ynow_fni_cf_not_configured_message(),
+      url = "",
+      model = model
     ))
   }
-  code <- httr::status_code(res)
-  if (!(code >= 200 && code < 300)) {
+  if (!nzchar(model)) {
     return(list(
-      ok = FALSE, status = "error",
-      message = paste0("Ollama HTTP ", code, " at ", base),
-      url = base, model = ynow_fni_ollama_model()
+      ok = FALSE,
+      status = "reachable_model_missing",
+      message = "Cloudflare Workers AI model id is empty. Set YNOW_CF_AI_MODEL.",
+      url = "",
+      model = model
     ))
   }
-  body <- httr::content(res, as = "text", encoding = "UTF-8")
-  parsed <- tryCatch(jsonlite::fromJSON(body, simplifyVector = FALSE), error = function(e) NULL)
-  models <- character()
-  if (is.list(parsed) && length(parsed$models)) {
-    models <- vapply(parsed$models, function(m) as.character(m$name %||% "")[1], character(1))
+  probe <- .ynow_fni_cf_probe(timeout)
+  if (!isTRUE(probe$ok)) {
+    return(list(
+      ok = FALSE,
+      status = probe$status %||% "offline",
+      message = probe$message %||% "AI service not configured",
+      url = ynow_fni_cf_ai_run_url(model),
+      model = model
+    ))
   }
-  want <- ynow_fni_ollama_model()
-  has <- any(models == want) || any(startsWith(models, paste0(sub(":.*$", "", want), ":")))
-  # Reachable-but-missing-model is NOT ready: UI must stay warn, analysis blocked.
   list(
-    ok = isTRUE(has),
-    status = if (has) "model_present" else "reachable_model_missing",
-    message = if (has) {
-      paste0("Ollama reachable; model ", want, " listed.")
-    } else {
-      paste0(
-        "Ollama reachable at ", base,
-        " but model ", want,
-        " is not listed. Pull it manually (do not auto-download from the app)."
-      )
-    },
-    url = base,
-    model = want,
-    models = models
+    ok = TRUE,
+    status = "configured",
+    message = paste0("Cloudflare Workers AI ready; model ", model, "."),
+    url = ynow_fni_cf_ai_run_url(model),
+    model = model
   )
 }
+
+ynow_fni_ollama_status <- function(...) ynow_fni_llm_status(...)
 
 .ynow_fni_system_prompt <- function(locale = "en") {
   loc <- if (identical(as.character(locale)[1], "zh-TW")) "zh-TW" else "en"
@@ -129,94 +121,138 @@ ynow_fni_ollama_status <- function(timeout = 3) {
   )
 }
 
-#' Call Ollama /api/chat (non-stream) with JSON Schema format.
-#' Returns list(ok=, payload=, raw=, error=, message=, model=).
-ynow_fni_ollama_chat_json <- function(chunk_text,
-                                      meta = list(),
-                                      locale = "en",
-                                      timeout = NULL) {
-  if (.ynow_fni_env_flag("YNOW_AI_QUAL_MOCK", "0")) {
-    return(.ynow_fni_ollama_mock_chat(chunk_text, meta = meta, locale = locale))
+#' Request body for Workers AI JSON mode (no HTTP).
+ynow_fni_llm_request_body <- function(chunk_text, meta = list(), locale = "en") {
+  list(
+    messages = list(
+      list(role = "system", content = .ynow_fni_system_prompt(locale)),
+      list(role = "user", content = .ynow_fni_user_prompt(chunk_text, meta, locale))
+    ),
+    response_format = list(
+      type = "json_schema",
+      json_schema = ynow_fni_json_schema()
+    ),
+    temperature = 0.2
+  )
+}
+
+#' Pull a six-dimension payload from Workers AI run() or Chat Completions shapes.
+ynow_fni_coerce_llm_payload <- function(parsed) {
+  if (!is.list(parsed)) return(NULL)
+  take <- function(x) {
+    if (is.list(x) && (!is.null(x$summary) || !is.null(x$findings))) return(x)
+    if (is.character(x) && length(x) == 1L && nzchar(x)) {
+      p <- tryCatch(jsonlite::fromJSON(x, simplifyVector = FALSE), error = function(e) NULL)
+      if (is.list(p) && (!is.null(p$summary) || !is.null(p$findings))) return(p)
+    }
+    NULL
   }
-  if (!isTRUE(ynow_fni_ai_enabled())) {
+  hit <- take(if (is.list(parsed$result)) parsed$result$response else NULL)
+  if (!is.null(hit)) return(hit)
+  hit <- take(parsed$response)
+  if (!is.null(hit)) return(hit)
+  if (is.list(parsed$choices) && length(parsed$choices)) {
+    ch <- parsed$choices[[1]]
+    msg <- if (is.list(ch$message)) ch$message$content else NULL
+    hit <- take(msg)
+    if (!is.null(hit)) return(hit)
+    if (is.list(msg)) {
+      parts <- vapply(msg, function(p) {
+        if (is.character(p)) return(paste(p, collapse = ""))
+        if (is.list(p)) return(as.character(p$text %||% "")[1])
+        ""
+      }, character(1))
+      hit <- take(paste(parts, collapse = ""))
+      if (!is.null(hit)) return(hit)
+    }
+  }
+  take(parsed$result)
+}
+
+#' Call Workers AI (non-stream) with JSON Schema response_format.
+#' Returns list(ok=, payload=, raw=, error=, message=, model=).
+ynow_fni_llm_chat_json <- function(chunk_text,
+                                   meta = list(),
+                                   locale = "en",
+                                   timeout = NULL) {
+  if (.ynow_fni_env_flag("YNOW_AI_QUAL_MOCK", "0")) {
+    return(.ynow_fni_llm_mock_chat(chunk_text, meta = meta, locale = locale))
+  }
+  model <- ynow_fni_llm_model()
+  if (!isTRUE(.ynow_fni_env_flag("YNOW_AI_QUAL_ENABLED", "0")) ||
+      !isTRUE(ynow_fni_cf_credentials_present())) {
     return(list(
       ok = FALSE, payload = NULL, raw = "",
       error = "ai_service_not_configured",
-      message = "AI service not configured. Set YNOW_AI_QUAL_ENABLED=1 and start Ollama.",
-      model = ynow_fni_ollama_model()
+      message = .ynow_fni_cf_not_configured_message(),
+      model = model
     ))
   }
-  st <- ynow_fni_ollama_status(timeout = min(3, ynow_fni_request_timeout()))
+  st <- ynow_fni_llm_status(timeout = min(3, ynow_fni_request_timeout()))
   if (!isTRUE(st$ok) || identical(st$status, "reachable_model_missing")) {
     return(list(
       ok = FALSE, payload = NULL, raw = "",
       error = if (identical(st$status, "reachable_model_missing")) {
         "reachable_model_missing"
+      } else if (identical(st$status, "auth_error")) {
+        "cf_workers_ai_auth_error"
       } else {
         "ai_service_not_configured"
       },
       message = st$message %||% "AI service not configured",
-      model = ynow_fni_ollama_model()
+      model = model
     ))
   }
   if (!requireNamespace("httr", quietly = TRUE)) {
-    return(list(ok = FALSE, payload = NULL, raw = "", error = "httr_missing",
-                message = "httr missing", model = ynow_fni_ollama_model()))
+    return(list(
+      ok = FALSE, payload = NULL, raw = "", error = "httr_missing",
+      message = "httr missing", model = model
+    ))
   }
   to <- timeout %||% ynow_fni_request_timeout()
-  model <- ynow_fni_ollama_model()
-  body <- list(
-    model = model,
-    stream = FALSE,
-    format = ynow_fni_json_schema(),
-    messages = list(
-      list(role = "system", content = .ynow_fni_system_prompt(locale)),
-      list(role = "user", content = .ynow_fni_user_prompt(chunk_text, meta, locale))
-    ),
-    options = list(temperature = 0.2)
-  )
-  url <- paste0(ynow_fni_ollama_url(), "/api/chat")
+  body <- ynow_fni_llm_request_body(chunk_text, meta = meta, locale = locale)
+  url <- ynow_fni_cf_ai_run_url(model)
   res <- tryCatch(
-    httr::POST(
-      url,
-      body = body,
-      encode = "json",
-      httr::timeout(to),
-      httr::add_headers(`Content-Type` = "application/json")
+    do.call(
+      httr::POST,
+      c(
+        list(url, body = body, encode = "json"),
+        .ynow_fni_cf_httr_config(to)
+      )
     ),
     error = function(e) e
   )
   if (inherits(res, "error")) {
     return(list(
       ok = FALSE, payload = NULL, raw = "",
-      error = "ollama_request_failed",
+      error = "cf_workers_ai_request_failed",
       message = conditionMessage(res),
       model = model
     ))
   }
   code <- httr::status_code(res)
   raw <- httr::content(res, as = "text", encoding = "UTF-8")
-  if (!(code >= 200 && code < 300)) {
+  parsed <- tryCatch(jsonlite::fromJSON(raw, simplifyVector = FALSE), error = function(e) NULL)
+  if (!(code >= 200 && code < 300) || (is.list(parsed) && isTRUE(parsed$success == FALSE))) {
+    err <- ""
+    if (is.list(parsed) && length(parsed$errors)) {
+      err <- as.character(parsed$errors[[1]]$message %||% "")[1]
+    }
     return(list(
       ok = FALSE, payload = NULL, raw = raw,
-      error = "ollama_http_error",
-      message = paste0("Ollama HTTP ", code),
+      error = "cf_workers_ai_http_error",
+      message = paste0(
+        "Cloudflare Workers AI HTTP ", code,
+        if (nzchar(err)) paste0(": ", err) else ""
+      ),
       model = model
     ))
   }
-  parsed <- tryCatch(jsonlite::fromJSON(raw, simplifyVector = FALSE), error = function(e) NULL)
-  content <- ""
-  if (is.list(parsed)) {
-    content <- as.character(parsed$message$content %||% parsed$response %||% "")[1]
-  }
-  payload <- tryCatch(jsonlite::fromJSON(content, simplifyVector = FALSE), error = function(e) NULL)
-  if (is.null(payload) && is.list(parsed$message) && is.list(parsed$message$content)) {
-    payload <- parsed$message$content
-  }
+  payload <- ynow_fni_coerce_llm_payload(parsed)
   if (is.null(payload)) {
     return(list(
       ok = FALSE, payload = NULL, raw = raw,
-      error = "ollama_bad_json",
+      error = "cf_workers_ai_bad_json",
       message = "Model response was not valid JSON for the FNI schema.",
       model = model
     ))
@@ -224,7 +260,9 @@ ynow_fni_ollama_chat_json <- function(chunk_text,
   list(ok = TRUE, payload = payload, raw = raw, error = "", message = "", model = model)
 }
 
-.ynow_fni_ollama_mock_chat <- function(chunk_text, meta = list(), locale = "en") {
+ynow_fni_ollama_chat_json <- function(...) ynow_fni_llm_chat_json(...)
+
+.ynow_fni_llm_mock_chat <- function(chunk_text, meta = list(), locale = "en") {
   text <- as.character(chunk_text %||% "")[1]
   # Pull short grounded quotes from the text itself when possible.
   pick_quote <- function(patterns, fallback) {

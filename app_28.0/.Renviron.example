@@ -75,28 +75,34 @@ YNOW_OAUTH_REDIRECT_URI=https://hopesmasher1118.shinyapps.io/TheYNowApp  # pragm
 # YNOW_AUTH_DEMO_PASSWORD=change-me
 
 # =============================================================================
-# Financial Narrative Intelligence (Docling Serve + Ollama) — local free/open
+# Financial Narrative Intelligence — Cloudflare Workers AI
 # =============================================================================
-# Free software ≠ free cloud GPU. Defaults assume localhost on the analyst machine.
-# Do NOT enable on shinyapps unless you deliberately wire private endpoints.
-# The app never auto-starts Docling/Ollama and never auto-pulls models on boot.
-# Analysis runs only when the user opens 財務質性分析 / Financial Narrative Analysis
-# and presses Run.
+# LLM: Workers AI REST (JSON schema). Document parse: R local text/PDF extract,
+# then Cloudflare Markdown Conversion (POST /ai/tomarkdown) for other binaries.
+# The app does not call the model or conversion until the user opens
+# 財務質性分析 / Financial Narrative Analysis and presses Run.
+# Workers AI usage is billed on the Cloudflare account that owns the token.
+# Do NOT enable on shinyapps until those secrets are set in the host env.
 #
-# Master switch (required for live Docling/Ollama calls):
+# Master switch (required for live Workers AI / Markdown Conversion calls):
 # YNOW_AI_QUAL_ENABLED=1
 #
-# Offline unit tests / demos without local services:
+# Offline unit tests / demos without network:
 # YNOW_AI_QUAL_MOCK=1
 #
-# Docling Serve (document → markdown/text). Default: http://127.0.0.1:5001
-# YNOW_DOCLING_URL=http://127.0.0.1:5001
-# YNOW_DOCLING_API_KEY=
+# Cloudflare account + Workers AI API token (Workers AI Read and Edit).
+# CLOUDFLARE_ACCOUNT_ID / CLOUDFLARE_API_TOKEN are accepted as fallbacks.
+# YNOW_CF_ACCOUNT_ID=
+# YNOW_CF_API_TOKEN=
 #
-# Ollama chat (non-stream JSON Schema). Default model qwen3.5:9b — pull manually:
-#   ollama pull qwen3.5:9b
-# YNOW_OLLAMA_URL=http://127.0.0.1:11434
-# YNOW_OLLAMA_MODEL=qwen3.5:9b
+# Documented JSON-mode text model (override if needed):
+# https://developers.cloudflare.com/workers-ai/features/json-mode/
+# YNOW_CF_AI_MODEL=@cf/meta/llama-3.3-70b-instruct-fp8-fast
+#
+# Optional later — NOT implemented: Google Cloud Run Docling, only if complex
+# finance-table parse quality is insufficient. Default backend is local_cf.
+# YNOW_FNI_PARSE_BACKEND=local_cf
+# YNOW_DOCLING_URL=
 #
 # Limits / cache:
 # YNOW_AI_REQUEST_TIMEOUT=120

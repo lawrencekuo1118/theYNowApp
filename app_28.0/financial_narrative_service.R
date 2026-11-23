@@ -1,6 +1,7 @@
 # financial_narrative_service.R — FNI pipeline orchestration
-# Import → Docling/plain → chunk → Ollama → evidence recheck → cache → compare.
-# User must trigger analysis; no background LLM/Docling on page load.
+# Import → local extract / Cloudflare Markdown → chunk → Workers AI → evidence recheck → cache → compare.
+# User must trigger analysis; no background LLM or conversion on page load.
+# Cloud Run Docling is not on this path (see ynow_fni_docling_cloudrun_convert).
 
 ynow_fni_max_concurrent <- function() {
   v <- suppressWarnings(as.integer(Sys.getenv("YNOW_AI_MAX_CONCURRENT", unset = "1"))[1])
@@ -8,24 +9,25 @@ ynow_fni_max_concurrent <- function() {
   max(1L, min(4L, v))
 }
 
-#' Combined service readiness (Docling + Ollama) for UI banner.
+#' Combined service readiness (local parse + Cloudflare Workers AI) for UI banner.
 ynow_fni_service_status <- function() {
   mock_on <- .ynow_fni_env_flag("YNOW_AI_QUAL_MOCK", "0")
   enabled <- isTRUE(ynow_fni_ai_enabled()) || isTRUE(mock_on)
-  doc <- ynow_fni_docling_status()
-  llm <- ynow_fni_ollama_status()
+  doc <- ynow_fni_document_status()
+  llm <- ynow_fni_llm_status()
   model_missing <- identical(llm$status, "reachable_model_missing")
-  # ready requires a present model (unless mock). Do not green-banner on model-missing.
+  # ready requires Workers AI (unless mock). Do not green-banner on model-missing.
+  # Local extract can be ok while the LLM is still unconfigured.
   ready <- isTRUE(enabled) &&
     isTRUE(doc$ok) &&
     isTRUE(llm$ok) &&
     !isTRUE(model_missing)
   msg <- if (!isTRUE(enabled) && !isTRUE(mock_on)) {
-    "AI service not configured. Set YNOW_AI_QUAL_ENABLED=1 and run Docling Serve + Ollama locally."
+    .ynow_fni_cf_not_configured_message()
   } else if (!isTRUE(doc$ok)) {
-    doc$message %||% "AI service not configured (Docling)."
+    doc$message %||% "AI service not configured (document parse)."
   } else if (isTRUE(model_missing) || !isTRUE(llm$ok)) {
-    llm$message %||% "AI service not configured (Ollama)."
+    llm$message %||% "AI service not configured (Cloudflare Workers AI)."
   } else {
     "Ready"
   }
@@ -33,10 +35,14 @@ ynow_fni_service_status <- function() {
     enabled = enabled,
     ready = ready,
     message = msg,
+    document = doc,
+    llm = llm,
+    # Compatibility fields for older banner readers.
     docling = doc,
     ollama = llm,
-    model = ynow_fni_ollama_model(),
-    prompt_version = .YNOW_FNI_PROMPT_VERSION
+    model = if (isTRUE(mock_on)) "mock" else ynow_fni_llm_model(),
+    prompt_version = .YNOW_FNI_PROMPT_VERSION,
+    parse_backend = ynow_fni_parse_backend()
   )
 }
 
@@ -68,7 +74,8 @@ ynow_fni_ingest <- function(source = list()) {
   if (identical(kind, "upload") || identical(kind, "file")) {
     path <- as.character(source$path %||% "")[1]
     fname <- as.character(source$filename %||% basename(path))[1]
-    # Text-like uploads skip Docling when already plain.
+    # Text-like uploads stay on the local reader. PDF / other binaries go through
+    # ynow_fni_convert_file (local PDF text, else Cloudflare Markdown Conversion).
     ext <- tolower(tools::file_ext(fname))
     if (ext %in% c("txt", "md", "csv", "json")) {
       raw <- tryCatch(
@@ -77,7 +84,7 @@ ynow_fni_ingest <- function(source = list()) {
       )
       doc <- ynow_fni_ingest_plain_text(raw, source_label = fname)
     } else {
-      doc <- ynow_fni_docling_convert_file(path, filename = fname)
+      doc <- ynow_fni_convert_file(path, filename = fname)
     }
     h <- ynow_fni_content_hash(path = path, text = doc$text)
   } else if (identical(kind, "catalog")) {
@@ -121,7 +128,7 @@ ynow_fni_analyze_document <- function(source = list(),
       cache_hit = FALSE
     ))
   }
-  model <- ynow_fni_ollama_model()
+  model <- ynow_fni_llm_model()
   if (.ynow_fni_env_flag("YNOW_AI_QUAL_MOCK", "0")) model <- "mock"
   key <- ynow_fni_cache_key(
     content_hash = ingested$content_hash,
@@ -175,7 +182,7 @@ ynow_fni_analyze_document <- function(source = list(),
   payloads <- list()
   errors <- character()
   for (ch in chunks) {
-    resp <- ynow_fni_ollama_chat_json(ch$text, meta = meta, locale = locale)
+    resp <- ynow_fni_llm_chat_json(ch$text, meta = meta, locale = locale)
     if (!isTRUE(resp$ok)) {
       errors <- c(errors, resp$message %||% resp$error %||% "chunk_failed")
       next
