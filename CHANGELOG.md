@@ -1,3 +1,8 @@
+## [v28.70] — 2026-11-23 · shinyapps boot without headless Chrome
+
+- zh-TW：shinyapps Listen 路徑不再載入 pagedown／尋找 headless Chrome，避免「Cannot find headless Chrome after 20 attempts」（#802）。顯示版號 v28.70、bundle 12856577。
+- en-US: Keep pagedown/Chrome off the shinyapps Listen path so boot no longer fails with “Cannot find headless Chrome after 20 attempts” (#802). Display v28.70; bundle 12856577.
+
 ## [v28.69] — 2026-11-23 · RI CF payout sync + Overviews in Settings tabs
 
 - zh-TW：RI 主估值時 Yahoo 風格現金流股利同步不再把 `ri_payout` 清成 NA（#798）；各估值 Overview 併入 Settings 左側分頁（#799）。顯示版號 v28.69、bundle 12855589。
