@@ -1,3 +1,8 @@
+## [v28.69] — 2026-11-23 · RI CF payout sync + Overviews in Settings tabs
+
+- zh-TW：RI 主估值時 Yahoo 風格現金流股利同步不再把 `ri_payout` 清成 NA（#798）；各估值 Overview 併入 Settings 左側分頁（#799）。顯示版號 v28.69、bundle 12855589。
+- en-US: Keep Yahoo-style CF payout runnable when RI is primary so `ri_payout` is not wiped to NA (#798); move valuation Overviews into the Settings left tab strip (#799). Display v28.69; bundle 12855589.
+
 ## [v28.68] — 2026-11-22 · Prospecting Industry mcap first-load stagger
 
 - zh-TW：股票 Prospecting 首次開啟時，Industry mcap 在 catalog 與磁碟快照之後再排程／延後（#752）。顯示版號 v28.68、bundle 12854452。

@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12854452
+bundleId=12855589
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/  # pragma: allowlist secret
-aligned_git=db4c87378dc60b841b10dd2d6738123acd8be81f
-commit=db4c87378dc60b841b10dd2d6738123acd8be81f
-short=db4c8737
-message=chore: bump display version to v28.68
-captured_at=2026-11-22T16:21:06Z
+aligned_git=ee631f3147c2a384d0ceacbb67419bf6861dee3b
+commit=ee631f3147c2a384d0ceacbb67419bf6861dee3b
+short=ee631f31
+message=chore: bump display version to v28.69
+captured_at=2026-11-23T00:57:38Z
 display_version=v28.69
-note=Shipped v28.68 (+0.01 from v28.67) via deploy_app_21.R. Tip-ship #752 / 30ddfee2: Prospecting Industry mcap first-load stagger after catalog and disk snapshot. Live status=running; rsconnect bundleId=12854452. Prior: v28.67 (12854098).
+note=Shipped v28.69 (+0.01 from v28.68) via deploy_app_21.R. Tip-ship #798 / a251f241 (RI Yahoo CF payout sync) + #799 / 064caf81 (valuation Overviews into Settings left tabs). Live status=running; rsconnect bundleId=12855589. Prior: v28.68 (12854452).
