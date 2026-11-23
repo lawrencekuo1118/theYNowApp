@@ -7,5 +7,5 @@ commit=ee631f3147c2a384d0ceacbb67419bf6861dee3b
 short=ee631f31
 message=chore: bump display version to v28.69
 captured_at=2026-11-23T00:57:38Z
-display_version=v28.69
+display_version=v28.70
 note=Shipped v28.69 (+0.01 from v28.68) via deploy_app_21.R. Tip-ship #798 / a251f241 (RI Yahoo CF payout sync) + #799 / 064caf81 (valuation Overviews into Settings left tabs). Live status=running; rsconnect bundleId=12855589. Prior: v28.68 (12854452).
