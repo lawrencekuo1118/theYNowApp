@@ -72,7 +72,11 @@ pacman::p_load(
   tidyverse, dplyr, stringr, purrr, magrittr, glue, jsonlite,
 
   # 2. 視覺化與報表 (Visualization & Reporting)
-  ggplot2, ggrepel, plotly, DT, rmarkdown, knitr, scales, pagedown,
+  # pagedown stays out of boot p_load: chrome_print / find_chrome are PDF-only
+  # and must never run while the worker is sourcing (shinyapps has no usable
+  # headless Chrome on the Listen path). Snapshot via ynow_forced_deps.R;
+  # runtime load is lazy inside render_report_pdf().
+  ggplot2, ggrepel, plotly, DT, rmarkdown, knitr, scales,
 
   # 3. 網頁與 Python 整合（雲端版不依賴 chromote / Chrome）
   rvest, xml2, reticulate,
