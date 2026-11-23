@@ -1363,17 +1363,88 @@ build_ticker_report_copy <- function(
   )
 }
 
-# HTML → PDF（shinyapps／本機容器常用 --no-sandbox）
+#' Resolve a Chrome/Chromium binary for pagedown without starting headless CDP.
+#' Returns "" when none is usable (missing / not executable).
+.ynow_resolve_pagedown_chrome <- function() {
+  env_path <- Sys.getenv("PAGEDOWN_CHROME", unset = "")
+  if (nzchar(env_path)) {
+    # Explicit override: never fall through to find_chrome() on a bad path.
+    if (utils::file_test("-x", env_path) || file.exists(env_path)) {
+      return(normalizePath(env_path, winslash = "/", mustWork = FALSE))
+    }
+    which_env <- unname(Sys.which(env_path))
+    if (nzchar(which_env) && utils::file_test("-x", which_env)) {
+      return(which_env)
+    }
+    return("")
+  }
+  if (!requireNamespace("pagedown", quietly = TRUE)) {
+    return("")
+  }
+  found <- tryCatch(
+    pagedown::find_chrome(),
+    error = function(e) ""
+  )
+  found <- as.character(found)[1]
+  if (!nzchar(found) || is.na(found)) return("")
+  if (utils::file_test("-x", found) || file.exists(found)) {
+    return(found)
+  }
+  ""
+}
+
+#' Hosted Connect / shinyapps detection for PDF CDP retry bounds.
+.ynow_hosted_connect_for_pdf <- function() {
+  if (exists(".ynow_is_hosted_connect", mode = "function")) {
+    return(isTRUE(.ynow_is_hosted_connect()))
+  }
+  wd <- tryCatch(normalizePath(getwd(), mustWork = FALSE), error = function(e) getwd())
+  nzchar(Sys.getenv("SHINY_SERVER_VERSION")) ||
+    grepl("shinyapps", Sys.getenv("HOSTNAME"), ignore.case = TRUE) ||
+    grepl("shinyapps", Sys.getenv("R_CONFIG_ACTIVE"), ignore.case = TRUE) ||
+    identical(Sys.getenv("FORCE_SHINYAPPS_PYTHON"), "1") ||
+    grepl("/srv/connect/apps", wd, fixed = TRUE) ||
+    (identical(Sys.getenv("USER"), "shiny") && dir.exists("/srv/connect"))
+}
+
+# HTML → PDF（本機／有可用 Chrome 的容器常用 --no-sandbox）
+# Never call this from global/app boot. shinyapps often has a Chrome binary that
+# cannot open CDP; pagedown's default 20×0.5s probe then surfaces as
+# "Cannot find headless Chrome after 20 attempts" and blocks the session.
+# Resolve the binary first, fail fast when missing, and bound CDP retries.
 render_report_pdf <- function(html_path, pdf_path) {
 
   if (!requireNamespace("pagedown", quietly = TRUE)) {
     stop("需要 pagedown 套件以產出 PDF")
   }
+  browser <- .ynow_resolve_pagedown_chrome()
+  if (!nzchar(browser)) {
+    stop(
+      "PDF export needs Chrome/Chromium. No usable browser was found on this host ",
+      "(set PAGEDOWN_CHROME to an executable path when available)."
+    )
+  }
+  hosted <- isTRUE(.ynow_hosted_connect_for_pdf())
+  old_attempts <- getOption("pagedown.remote.maxattempts")
+  old_sleep <- getOption("pagedown.remote.sleeptime")
+  on.exit({
+    options(
+      pagedown.remote.maxattempts = old_attempts,
+      pagedown.remote.sleeptime = old_sleep
+    )
+  }, add = TRUE)
+  # Hosted: 3×0.35s ≈ 1s ceiling before a clear fail (was 20×0.5s ≈ 10s).
+  # Local: still tighter than pagedown defaults so a hung Chrome cannot stall UI.
+  options(
+    pagedown.remote.maxattempts = if (hosted) 3L else 5L,
+    pagedown.remote.sleeptime = if (hosted) 0.35 else 0.4
+  )
   pagedown::chrome_print(
     input = html_path,
     output = pdf_path,
+    browser = browser,
     wait = 2,
-    timeout = 120,
+    timeout = if (hosted) 45 else 120,
     verbose = 0,
     extra_args = c("--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage")
   )
