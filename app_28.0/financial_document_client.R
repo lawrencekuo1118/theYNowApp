@@ -312,6 +312,19 @@ ynow_fni_cf_markdown_convert <- function(path, filename = NULL, timeout = NULL) 
       message = "httr package is required for Cloudflare HTTP calls."
     ))
   }
+  guard <- NULL
+  if (exists("ynow_fni_cf_budget_guard", mode = "function")) {
+    guard <- ynow_fni_cf_budget_guard()
+    if (!isTRUE(guard$ok)) {
+      return(list(
+        ok = FALSE, text = "", markdown = "", pages = list(),
+        meta = list(filename = fname, source = "cf_markdown"),
+        error = guard$error %||% "ai_budget_exhausted",
+        message = guard$message %||% "AI run limit reached."
+      ))
+    }
+    if (isTRUE(guard$owned)) on.exit(ynow_fni_cf_budget_end(guard), add = TRUE)
+  }
   to <- timeout %||% ynow_fni_request_timeout()
   url <- ynow_fni_cf_markdown_url()
   res <- tryCatch(

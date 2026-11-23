@@ -57,7 +57,9 @@ Documented in `app_28.0/.Renviron.example`:
 | `YNOW_DOCLING_URL` | empty | Reserved for a future Cloud Run Docling origin. Unused today |
 | `YNOW_AI_REQUEST_TIMEOUT` | `120` | HTTP timeout seconds |
 | `YNOW_AI_MAX_FILE_MB` | `25` | Upload size cap |
-| `YNOW_AI_MAX_CONCURRENT` | `1` | Soft concurrency hint |
+| `YNOW_AI_MAX_CONCURRENT` | `1` | Live analyses in flight on this host (enforced) |
+| `YNOW_AI_MAX_RUNS` | `8` | Live analyses per browser session per UTC day |
+| `YNOW_AI_MAX_RUNS_HOST` | `32` | Live analyses for the whole host per UTC day |
 | `YNOW_AI_CACHE_DIR` | `<cache>/fni` | Result cache directory |
 
 **Honest offline copy:** when the master switch is off or the account ID / API token is missing, the UI banner shows **AI service not configured** / **尚未設定 AI 服務**, with setup text that names Cloudflare Workers AI. No model call runs on page load.
@@ -131,6 +133,7 @@ Covered offline: schema validation, evidence filter, chunking, mock pipeline, ca
 - Model hallucinations are mitigated by evidence recheck, not eliminated.
 - Catalog fetch reuses existing earnings-call helpers; empty catalog → honest empty.
 - Text sent to Workers AI and non-local files sent to Markdown Conversion leave the machine. Do not enable the master switch on shinyapps until the host env holds the token.
+- When the master switch and credentials are set, every visitor (Lite and Full, no membership check) can press Run. The host then spends its own Cloudflare account. `YNOW_AI_MAX_CONCURRENT`, `YNOW_AI_MAX_RUNS` (per session token, per UTC day), and `YNOW_AI_MAX_RUNS_HOST` (per host, per UTC day) stop unbounded spend. Cache hits do not consume a run. This is not a login wall; both surfaces share the same caps.
 - Scanned PDFs and complex tables depend on Cloudflare Markdown Conversion. If that quality is not enough for finance tables, the Cloud Run Docling hook above is the planned next step — it is not built in this change.
 
 ## Files

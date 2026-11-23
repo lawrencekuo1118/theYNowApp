@@ -188,6 +188,19 @@ ynow_fni_llm_chat_json <- function(chunk_text,
       model = model
     ))
   }
+  guard <- NULL
+  if (exists("ynow_fni_cf_budget_guard", mode = "function")) {
+    guard <- ynow_fni_cf_budget_guard(locale = locale)
+    if (!isTRUE(guard$ok)) {
+      return(list(
+        ok = FALSE, payload = NULL, raw = "",
+        error = guard$error %||% "ai_budget_exhausted",
+        message = guard$message %||% "AI run limit reached.",
+        model = model
+      ))
+    }
+    if (isTRUE(guard$owned)) on.exit(ynow_fni_cf_budget_end(guard), add = TRUE)
+  }
   st <- ynow_fni_llm_status(timeout = min(3, ynow_fni_request_timeout()))
   if (!isTRUE(st$ok) || identical(st$status, "reachable_model_missing")) {
     return(list(

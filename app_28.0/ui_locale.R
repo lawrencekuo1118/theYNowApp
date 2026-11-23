@@ -4331,6 +4331,18 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Cloudflare Markdown Conversion. Nothing runs until you press Run analysis. ",
       "Workers AI usage is billed on your Cloudflare account."
     ),
+    fni_budget_session = paste0(
+      "This session reached the AI analysis limit (YNOW_AI_MAX_RUNS). Try again later. ",
+      "Lite and Full share this limit so a public host cannot spend the Cloudflare account without a bound."
+    ),
+    fni_budget_host = paste0(
+      "This host reached today's AI analysis limit (YNOW_AI_MAX_RUNS_HOST). Try again tomorrow. ",
+      "Lite and Full share this limit so a public host cannot spend the Cloudflare account without a bound."
+    ),
+    fni_budget_concurrent = paste0(
+      "Another analysis is already running (YNOW_AI_MAX_CONCURRENT). ",
+      "Press Run analysis again in a moment."
+    ),
     fni_no_sources = "Add paste text, an upload, or a catalog selection before running.",
     fni_empty_results = "No results yet. Configure sources and press Run analysis.",
     fni_empty_findings = "No grounded findings (evidence quotes must appear in the extracted text).",
@@ -9328,6 +9340,15 @@ locale_for_market <- function(mode = get_market_mode()) {
       "Cloudflare Markdown Conversion。按下「執行分析」前不會呼叫模型。",
       "Workers AI 用量計入您的 Cloudflare 帳戶。"
     ),
+    fni_budget_session = paste0(
+      "此工作階段已達 AI 分析次數上限（YNOW_AI_MAX_RUNS）。請稍後再試。",
+      "Lite 與完整版共用此上限，用來保護 Cloudflare 帳戶。"
+    ),
+    fni_budget_host = paste0(
+      "此主機今日的 AI 分析次數已達上限（YNOW_AI_MAX_RUNS_HOST）。請明日再試。",
+      "Lite 與完整版共用此上限，用來保護 Cloudflare 帳戶。"
+    ),
+    fni_budget_concurrent = "已有分析進行中（YNOW_AI_MAX_CONCURRENT）。請稍後再按「執行分析」。",
     fni_no_sources = "執行前請先貼上文字、上傳檔案，或選取目錄列。",
     fni_empty_results = "尚無結果。請設定來源後按下「執行分析」。",
     fni_empty_findings = "沒有可驗證的發現（證據句必須出現在擷取文字中）。",

@@ -239,6 +239,49 @@ coerced_chat <- ynow_fni_coerce_llm_payload(list(
 check("payload coerce accepts run and chat shapes", {
   identical(coerced$summary, "from-run") && identical(coerced_chat$summary, "from-chat")
 })
+budget_prev_cache <- Sys.getenv("YNOW_AI_CACHE_DIR", unset = "")
+budget_dir <- file.path(tempdir(), paste0("fni_budget_", as.integer(Sys.time())))
+Sys.setenv(
+  YNOW_AI_CACHE_DIR = budget_dir,
+  YNOW_AI_MAX_CONCURRENT = "1",
+  YNOW_AI_MAX_RUNS = "1",
+  YNOW_AI_MAX_RUNS_HOST = "2"
+)
+b1 <- ynow_fni_cf_budget_begin("session-a", "en")
+b2 <- ynow_fni_cf_budget_begin("session-b", "en")
+check("live runs honor the concurrency cap", {
+  isTRUE(b1$ok) && !isTRUE(b2$ok) && identical(b2$reason, "concurrent")
+})
+ynow_fni_cf_budget_end(b1)
+b3 <- ynow_fni_cf_budget_begin("session-a", "zh-TW")
+check("session cap blocks another counted run", {
+  !isTRUE(b3$ok) &&
+    identical(b3$reason, "session") &&
+    grepl("工作階段", b3$message %||% "", fixed = TRUE)
+})
+b4 <- ynow_fni_cf_budget_begin("session-b", "en")
+check("a different session can run until the host cap", isTRUE(b4$ok))
+ynow_fni_cf_budget_end(b4)
+b5 <- ynow_fni_cf_budget_begin("session-c", "en")
+check("host cap blocks further live runs", {
+  !isTRUE(b5$ok) && identical(b5$reason, "host")
+})
+.ynow_fni_budget_rt$depth <- 1L
+guard_nested <- ynow_fni_cf_budget_guard("session-c", "en")
+check("open lease does not spend another run", {
+  isTRUE(guard_nested$ok) && !isTRUE(guard_nested$counted)
+})
+.ynow_fni_budget_rt$depth <- 0L
+Sys.setenv(
+  YNOW_AI_MAX_CONCURRENT = "1",
+  YNOW_AI_MAX_RUNS = "8",
+  YNOW_AI_MAX_RUNS_HOST = "32"
+)
+if (nzchar(budget_prev_cache)) {
+  Sys.setenv(YNOW_AI_CACHE_DIR = budget_prev_cache)
+} else {
+  Sys.unsetenv("YNOW_AI_CACHE_DIR")
+}
 restore_env <- function(name, value) {
   if (nzchar(value)) {
     args <- stats::setNames(list(value), name)

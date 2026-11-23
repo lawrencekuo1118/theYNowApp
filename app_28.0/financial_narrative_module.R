@@ -377,7 +377,8 @@ financial_narrative_server <- function(id = "fni",
             sources_json = as.character(pending$sources_json %||% "[]")[1],
             locale = as.character(pending$locale %||% "en")[1],
             force = isTRUE(pending$force),
-            key = paste0("fni-", gen)
+            key = paste0("fni-", gen),
+            session_key = as.character(pending$session_key %||% session$token %||% "")[1]
           )
           fni_inflight_gen(gen)
           fni_pending(NULL)
@@ -472,13 +473,19 @@ financial_narrative_server <- function(id = "fni",
           sources_json = as.character(payload)[1],
           locale = locale_now,
           force = force,
+          session_key = as.character(session$token %||% "")[1],
           .gen = gen
         ))
         .fni_set_busy_label(TRUE)
         .fni_try_start_async()
       } else {
         .fni_set_busy_label(TRUE)
-        out <- ynow_fni_analyze_and_compare(sources, locale = locale_now, force = force)
+        out <- ynow_fni_analyze_and_compare(
+          sources,
+          locale = locale_now,
+          force = force,
+          session_key = session$token
+        )
         result_rv(out)
         .fni_set_busy_label(FALSE)
       }

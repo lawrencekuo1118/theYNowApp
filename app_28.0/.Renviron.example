@@ -104,8 +104,11 @@ YNOW_OAUTH_REDIRECT_URI=https://hopesmasher1118.shinyapps.io/TheYNowApp  # pragm
 # YNOW_FNI_PARSE_BACKEND=local_cf
 # YNOW_DOCLING_URL=
 #
-# Limits / cache:
+# Limits / cache. Enforced before any live Workers AI or Markdown Conversion call.
+# Lite and Full share the same caps (not a membership lock).
 # YNOW_AI_REQUEST_TIMEOUT=120
 # YNOW_AI_MAX_FILE_MB=25
 # YNOW_AI_MAX_CONCURRENT=1
+# YNOW_AI_MAX_RUNS=8
+# YNOW_AI_MAX_RUNS_HOST=32
 # YNOW_AI_CACHE_DIR=
