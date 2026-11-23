@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12855589
+bundleId=12856577
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/  # pragma: allowlist secret
-aligned_git=ee631f3147c2a384d0ceacbb67419bf6861dee3b
-commit=ee631f3147c2a384d0ceacbb67419bf6861dee3b
-short=ee631f31
-message=chore: bump display version to v28.69
-captured_at=2026-11-23T00:57:38Z
-display_version=v28.69
-note=Shipped v28.69 (+0.01 from v28.68) via deploy_app_21.R. Tip-ship #798 / a251f241 (RI Yahoo CF payout sync) + #799 / 064caf81 (valuation Overviews into Settings left tabs). Live status=running; rsconnect bundleId=12855589. Prior: v28.68 (12854452).
+aligned_git=e44f7c7d4c12be8038ad4896b1de20f272d9c1a8
+commit=e44f7c7d4c12be8038ad4896b1de20f272d9c1a8
+short=e44f7c7d
+message=chore: bump display version to v28.70
+captured_at=2026-11-23T07:19:08Z
+display_version=v28.70
+note=Shipped v28.70 (+0.01 from v28.69) via deploy_app_21.R. Tip-ship #802 / 04ca9a28: keep pagedown/Chrome off shinyapps Listen path. Live status=running; rsconnect bundleId=12856577. Prior: v28.69 (12855589).
