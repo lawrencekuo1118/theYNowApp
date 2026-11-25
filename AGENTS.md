@@ -83,7 +83,7 @@ Lite 免費就能用的功能，完整版**不能**鎖上（登入閘、選單�
 - Boot start (idempotent): `bash scripts/cloud-agent-start.sh` keeps the Shiny dev server in the foreground on `0.0.0.0:3838` from `app_28.0/`. If that port is already listening, the script exits without starting a second process.
 - Equivalent manual start (from `app_28.0/`): `Rscript -e 'shiny::runApp(host="0.0.0.0", port=3838, launch.browser=FALSE)'`
 - This environment does not provision shinyapps.io credentials. Do not deploy from a Cloud Agent unless those secrets are present and a deploy was requested. Environment / docs-only commits do not bump the display version and do not deploy.
-- **Cloud tip-ship (GitHub Actions):** when repo Actions secrets `SHINYAPPS_ACCOUNT` / `SHINYAPPS_TOKEN` / `SHINYAPPS_SECRET` exist, tip-ship may run from Actions → **Tip-ship (shinyapps)** (`.github/workflows/tip-ship.yml`, `workflow_dispatch`) without the Mac coding clone. Prefer Actions tip-ship when those secrets are configured. See `docs/cloud-tip-ship.md`. Mac still owns OneDrive + coding-clone post-release sync catch-up.
+- **Cloud tip-ship (GitHub Actions):** when repo Actions secrets `SHINYAPPS_ACCOUNT` / `SHINYAPPS_TOKEN` / `SHINYAPPS_SECRET` exist, tip-ship runs **automatically** after green Live-line CI on `master` pushes to app/scripts/tip-ship paths (`.github/workflows/tip-ship.yml` `workflow_run`); manual `workflow_dispatch` remains as fallback. Cloud agents get 403 on dispatch — merge to master is enough. See `docs/cloud-tip-ship.md`. Mac still owns OneDrive + coding-clone post-release sync catch-up.
 - **Post-release local sync:** Cloud Agents / Actions runners usually lack Mac paths (`/Users/lawrencekuo/coding/theYNowApp`, OneDrive mirror). After any tip ship that creates a new `display_version`, still run `bash scripts/post_release_local_sync.sh` — soft-skip **must** invoke Mac handoff (`PENDING_MAC_SYNC.env` + workflow_dispatch). Keep Mac automation online: `bash scripts/macos/install-post-release-sync-launchd.sh` and/or `agent login && agent worker start`. When ship runs on the Mac coding clone / self-hosted Mac, sync is mandatory before tip free.
 
 ## Git & deploy
@@ -94,7 +94,7 @@ See `.cursor/rules/auto-deploy-after-optimize.mdc`, `.cursor/rules/auto-cloud-pu
 
 **Commit / push 一律預先授權：** 本 repo 任何已完成的變更（含文件與規則）都直接 commit → `git push origin HEAD`，不必再問。此授權覆寫一般「未經要求勿 commit／push」習慣。略過僅限未完成、機密、`.tmp_dgbas/`，或使用者明確說不要 commit／push。
 
-**Auto deploy：** 活動線 `app_28.0/` **完成開發並驗證後**，在上述 commit → push 之後接 tip-ship：優先用 Actions **Tip-ship (shinyapps)**（secrets 齊時），或本機／Mac `Rscript scripts/deploy_app_21.R` → 更新 `DEPLOY_BASELINE.txt`。文件／規則／未完成 WIP，或使用者明確要求不部署時，只 commit + push，不部署。
+**Auto deploy：** 活動線 `app_28.0/` **完成開發並驗證後**，在上述 commit → push 之後接 tip-ship：合併進 `master` 且 Live-line CI 綠燈後，Actions **Tip-ship (shinyapps)** 會自動跑（`workflow_run`；secrets 齊時）。手動 Run workflow 或本機／Mac `Rscript scripts/deploy_app_21.R` 仍可用。文件／規則／未完成 WIP，或使用者明確要求不部署時，只 commit + push，不部署。
 
 **部署完成自動 +0.01：** `scripts/deploy_app_21.R` 在上傳前把顯示版號 **+0.01**（`scripts/bump_display_version.R`）、commit，再部署該版。線上 bundle 就是加過的版號。工作區若已比 `DEPLOY_BASELINE.txt` 的 `display_version` 正好多 0.01，腳本不再加一次。不要在呼叫部署腳本前手動改版號。略過僅限 `--no-bump` 或 `YNOW_SKIP_VERSION_BUMP=1`。
 

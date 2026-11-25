@@ -5,7 +5,7 @@ Standing preference: development uses CI/CD end-to-end; keep README current; rec
 ## Do
 
 - **CI:** Live-line PRs/pushes touching `app_28.0/**`, `scripts/**`, or `.github/workflows/**` must run meaningful offline checks (`.github/workflows/ci.yml`: valuation formulas + Phase 1). Do not reintroduce path filters that skip the live app tree (vacuous green).
-- **Ship:** Prefer Actions **Tip-ship (shinyapps)** when `SHINYAPPS_ACCOUNT` / `SHINYAPPS_TOKEN` / `SHINYAPPS_SECRET` are set (`docs/cloud-tip-ship.md`); else `Rscript scripts/deploy_app_21.R` → baseline update → push. Prefer a `CHANGELOG.md` entry for the new `display_version`, then `bash scripts/record_github_release.sh v…` (soft-fail without `gh`/token; never commit secrets). Mac still owns OneDrive post-release sync.
+- **Ship:** Prefer Actions **Tip-ship (shinyapps)** when `SHINYAPPS_ACCOUNT` / `SHINYAPPS_TOKEN` / `SHINYAPPS_SECRET` are set (`docs/cloud-tip-ship.md`) — auto after green Live-line CI on `master` (`workflow_run`); else `Rscript scripts/deploy_app_21.R` → baseline update → push. Prefer a `CHANGELOG.md` entry for the new `display_version`, then `bash scripts/record_github_release.sh v…` (soft-fail without `gh`/token; never commit secrets). Mac still owns OneDrive post-release sync.
 - **README (every ship):** Review and sync root `README.md` to the live baseline — display version, `app_N.0/` folder (must match display major), CI path globs, and local run/deploy snippets. Update `app_N.0/README` history only when needed.
 
 ## Do not

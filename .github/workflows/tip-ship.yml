@@ -1,7 +1,13 @@
 # Cloud tip-ship: run scripts/deploy_app_21.R from GitHub Actions (no Mac coding clone).
 #
-# Manual first: Actions → Tip-ship (shinyapps) → Run workflow.
-# Does NOT tip-ship on every push; optional auto-on-master can be added later.
+# Triggers:
+#   1) workflow_dispatch — manual Actions → Tip-ship (shinyapps) → Run workflow
+#   2) workflow_run — after Live-line CI succeeds on a push to master (auto ship)
+#
+# Auto path (no PAT / no UI click): merge app/scripts tip-ship paths to master →
+# Live-line CI green → this workflow ships. Skips github-actions[bot] pushes
+# (bump/baseline land) and non-ship paths (README/CHANGELOG-only, etc.).
+# Cloud agents still get 403 on workflow_dispatch; merge-to-master is enough.
 #
 # Required repo Actions secrets (Settings → Secrets and variables → Actions):
 #   SHINYAPPS_ACCOUNT  — shinyapps.io account name
@@ -46,6 +52,11 @@ on:
         description: "Branch to ship (must be a branch name, not a SHA/tag; default master)"
         required: false
         default: "master"
+  # Auto tip-ship after green Live-line CI on master pushes (no manual Run workflow).
+  # Uses the workflow file from the default branch once this lands on master.
+  workflow_run:
+    workflows: ["Live-line CI"]
+    types: [completed]
 
 concurrency:
   group: tip-ship-shinyapps
@@ -56,8 +67,88 @@ permissions:
   actions: write
 
 jobs:
+  auto-gate:
+    name: Auto-ship gate
+    runs-on: ubuntu-latest
+    # Manual dispatch always continues. Auto: only green Live-line CI on a
+    # master push that was not authored by github-actions[bot] (avoids ship loop
+    # when tip-ship lands bump/baseline commits).
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event_name == 'workflow_run' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.head_branch == 'master' &&
+        github.event.workflow_run.actor.login != 'github-actions[bot]'
+      )
+    outputs:
+      ship: ${{ steps.gate.outputs.ship }}
+      branch: ${{ steps.gate.outputs.branch }}
+    steps:
+      - name: Checkout CI SHA (path filter)
+        if: github.event_name == 'workflow_run'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 2
+
+      - name: Decide ship + branch
+        id: gate
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            BRANCH="${{ inputs.branch }}"
+            BRANCH="${BRANCH:-master}"
+            echo "branch=${BRANCH}" >>"$GITHUB_OUTPUT"
+            echo "ship=true" >>"$GITHUB_OUTPUT"
+            echo "Manual workflow_dispatch → ship branch=${BRANCH}"
+            exit 0
+          fi
+
+          BRANCH="${{ github.event.workflow_run.head_branch }}"
+          SHA="${{ github.event.workflow_run.head_sha }}"
+          echo "branch=${BRANCH}" >>"$GITHUB_OUTPUT"
+          echo "Auto tip-ship candidate: branch=${BRANCH} sha=${SHA}"
+
+          MSG="$(git log -1 --pretty=%s "${SHA}" 2>/dev/null || true)"
+          # Belt-and-suspenders: never re-ship tip-ship land commits.
+          case "${MSG}" in
+            "chore: bump display version"*|"chore: record shinyapps baseline"*)
+              echo "ship=false" >>"$GITHUB_OUTPUT"
+              echo "Skip auto tip-ship: chore land message (${MSG})"
+              exit 0
+              ;;
+          esac
+
+          if git rev-parse --verify "${SHA}^1" >/dev/null 2>&1; then
+            mapfile -t files < <(git diff --name-only "${SHA}^1" "${SHA}")
+          else
+            mapfile -t files < <(git ls-tree -r --name-only "${SHA}")
+          fi
+
+          ship=false
+          for f in "${files[@]}"; do
+            case "${f}" in
+              app_28.0/*|scripts/*|.github/workflows/tip-ship.yml)
+                ship=true
+                echo "Ship path hit: ${f}"
+                break
+                ;;
+            esac
+          done
+
+          if [[ "${ship}" != "true" ]]; then
+            echo "Skip auto tip-ship: no app_28.0/** / scripts/** / tip-ship.yml in push tip."
+            printf 'Changed files:\n'
+            printf '  %s\n' "${files[@]:-}"
+          fi
+          echo "ship=${ship}" >>"$GITHUB_OUTPUT"
+
   tip-ship:
     name: Deploy + baseline + release
+    needs: auto-gate
+    if: needs.auto-gate.outputs.ship == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -72,38 +163,15 @@ jobs:
       YNOW_MAC_SYNC_REQUESTED_BY: github-actions-tip-ship
 
     steps:
-      - name: Guard required shinyapps secrets
-        run: |
-          set -euo pipefail
-          missing=()
-          [[ -n "${SHINYAPPS_ACCOUNT:-}" ]] || missing+=("SHINYAPPS_ACCOUNT")
-          [[ -n "${SHINYAPPS_TOKEN:-}" ]] || missing+=("SHINYAPPS_TOKEN")
-          [[ -n "${SHINYAPPS_SECRET:-}" ]] || missing+=("SHINYAPPS_SECRET")
-          if ((${#missing[@]} > 0)); then
-            {
-              echo "## Tip-ship blocked — missing Actions secrets"
-              echo ""
-              echo "Add these **repository** secrets (Settings → Secrets and variables → Actions):"
-              echo ""
-              for s in "${missing[@]}"; do
-                echo "- \`$s\`"
-              done
-              echo ""
-              echo "Source: https://www.shinyapps.io/admin/#/tokens"
-              echo ""
-              echo "Do **not** paste values into the PR or workflow YAML."
-              echo "Land: GITHUB_TOKEN git push (original #806). Ruleset: allow github-actions[bot] bypass on master."
-            } >>"$GITHUB_STEP_SUMMARY"
-            echo "Missing required secrets: ${missing[*]}" >&2
-            exit 1
-          fi
-          echo "Required SHINYAPPS_* secrets are present (values not logged)."
-
       - name: Resolve ship branch
         id: ship_branch
         run: |
           set -euo pipefail
-          BRANCH="${{ inputs.branch }}"
+          # Prefer auto-gate branch (workflow_run / dispatch); fall back to input.
+          BRANCH="${{ needs.auto-gate.outputs.branch }}"
+          if [[ -z "${BRANCH}" ]]; then
+            BRANCH="${{ inputs.branch }}"
+          fi
           BRANCH="${BRANCH:-master}"
           # Refuse SHA / tag / remote-tracking forms that yield detached HEAD.
           if [[ ! "$BRANCH" =~ ^[A-Za-z0-9._/-]+$ ]] || [[ "$BRANCH" =~ ^[0-9a-fA-F]{7,40}$ ]]; then
@@ -140,7 +208,62 @@ jobs:
           fi
           echo "Attached to branch ${BRANCH} @ $(git rev-parse --short HEAD)"
 
+      - name: Align to CI SHA (auto) or accept tip
+        id: align
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" != "workflow_run" ]]; then
+            echo "proceed=true" >>"$GITHUB_OUTPUT"
+            echo "workflow_dispatch: shipping current branch tip $(git rev-parse --short HEAD)"
+            exit 0
+          fi
+          EXPECTED="${{ github.event.workflow_run.head_sha }}"
+          CURRENT="$(git rev-parse HEAD)"
+          if [[ "${CURRENT}" == "${EXPECTED}" ]]; then
+            echo "proceed=true" >>"$GITHUB_OUTPUT"
+            echo "Branch tip matches green Live-line CI SHA ${EXPECTED}"
+            exit 0
+          fi
+          if git merge-base --is-ancestor "${EXPECTED}" "${CURRENT}"; then
+            # Do not ship a newer untested tip from an older CI success.
+            echo "proceed=false" >>"$GITHUB_OUTPUT"
+            echo "Skip tip-ship: master advanced past CI SHA ${EXPECTED} (now ${CURRENT})."
+            echo "A newer Live-line CI / tip-ship run owns the tip."
+            exit 0
+          fi
+          echo "Refuse tip-ship: branch HEAD ${CURRENT} is not CI SHA ${EXPECTED} and not a descendant." >&2
+          exit 1
+
+      - name: Guard required shinyapps secrets
+        if: steps.align.outputs.proceed == 'true'
+        run: |
+          set -euo pipefail
+          missing=()
+          [[ -n "${SHINYAPPS_ACCOUNT:-}" ]] || missing+=("SHINYAPPS_ACCOUNT")
+          [[ -n "${SHINYAPPS_TOKEN:-}" ]] || missing+=("SHINYAPPS_TOKEN")
+          [[ -n "${SHINYAPPS_SECRET:-}" ]] || missing+=("SHINYAPPS_SECRET")
+          if ((${#missing[@]} > 0)); then
+            {
+              echo "## Tip-ship blocked — missing Actions secrets"
+              echo ""
+              echo "Add these **repository** secrets (Settings → Secrets and variables → Actions):"
+              echo ""
+              for s in "${missing[@]}"; do
+                echo "- \`$s\`"
+              done
+              echo ""
+              echo "Source: https://www.shinyapps.io/admin/#/tokens"
+              echo ""
+              echo "Do **not** paste values into the PR or workflow YAML."
+              echo "Land: GITHUB_TOKEN git push (original #806). Ruleset: allow github-actions[bot] bypass on master."
+            } >>"$GITHUB_STEP_SUMMARY"
+            echo "Missing required secrets: ${missing[*]}" >&2
+            exit 1
+          fi
+          echo "Required SHINYAPPS_* secrets are present (values not logged)."
+
       - name: Configure git identity + push remote
+        if: steps.align.outputs.proceed == 'true'
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
@@ -148,11 +271,13 @@ jobs:
           # Ensure push uses the job token (contents:write).
           git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
 
-      - uses: r-lib/actions/setup-r@v2
+      - if: steps.align.outputs.proceed == 'true'
+        uses: r-lib/actions/setup-r@v2
         with:
           use-public-rspm: true
 
       - name: Install system libraries for deploy packages
+        if: steps.align.outputs.proceed == 'true'
         run: |
           set -euo pipefail
           sudo apt-get update -qq
@@ -164,6 +289,7 @@ jobs:
             libharfbuzz-dev libfribidi-dev libpng-dev libtiff5-dev libjpeg-dev
 
       - name: Install deploy R packages
+        if: steps.align.outputs.proceed == 'true'
         run: |
           set -euo pipefail
           # Full boot + snapshot set (not just rsconnect/Neon). Tip-ship #3 omitted
@@ -171,6 +297,7 @@ jobs:
           Rscript scripts/install_deploy_app_packages.R
 
       - name: Configure rsconnect account (for live .Renviron restore)
+        if: steps.align.outputs.proceed == 'true'
         run: |
           set -euo pipefail
           # Persist SHINYAPPS_* into rsconnect::accounts() so child Rscript
@@ -187,6 +314,7 @@ jobs:
           '
 
       - name: Tip-ship (deploy_app_21.R)
+        if: steps.align.outputs.proceed == 'true'
         env:
           # Boolean workflow_dispatch inputs are strings "true"/"false".
           YNOW_SKIP_VERSION_BUMP: ${{ inputs.skip_bump == true && '1' || '' }}
@@ -219,6 +347,7 @@ jobs:
           Rscript scripts/deploy_app_21.R
 
       - name: Record full DEPLOY_BASELINE (bundleId / commit)
+        if: steps.align.outputs.proceed == 'true'
         run: |
           set -euo pipefail
           if [[ -f scripts/record_deploy_baseline.R ]]; then
@@ -233,6 +362,7 @@ jobs:
 
       - name: Push bump + baseline commits
         id: push
+        if: steps.align.outputs.proceed == 'true'
         run: |
           set -euo pipefail
           BRANCH="$(git rev-parse --abbrev-ref HEAD)"
@@ -265,6 +395,7 @@ jobs:
           echo "short=$(git rev-parse --short HEAD)" >>"$GITHUB_OUTPUT"
 
       - name: Publish GitHub Release (after push)
+        if: steps.align.outputs.proceed == 'true'
         run: |
           set -euo pipefail
           VERSION="$(sed -n 's/^display_version=//p' scripts/DEPLOY_BASELINE.txt | head -1 | tr -d '[:space:]')"
@@ -277,6 +408,7 @@ jobs:
           YNOW_RELEASE_TARGET="${TARGET}" bash scripts/record_github_release.sh "${VERSION}"
 
       - name: Mac post-release sync handoff (soft-skip)
+        if: steps.align.outputs.proceed == 'true'
         run: |
           set -euo pipefail
           # No Mac paths on ubuntu-latest → soft-skip + PENDING_MAC_SYNC.env
@@ -297,11 +429,20 @@ jobs:
           {
             echo "## Tip-ship summary"
             echo ""
+            echo "- event: \`${{ github.event_name }}\`"
+            echo "- align.proceed: \`${{ steps.align.outputs.proceed }}\`"
+            echo "- auto-gate.ship: \`${{ needs.auto-gate.outputs.ship }}\`"
+            echo ""
             if [[ -f scripts/DEPLOY_BASELINE.txt ]]; then
               echo '```'
               cat scripts/DEPLOY_BASELINE.txt
               echo '```'
             fi
+            echo ""
+            echo "### Auto tip-ship"
+            echo "After green **Live-line CI** on a \`master\` push touching \`app_28.0/**\`,"
+            echo "\`scripts/**\`, or \`.github/workflows/tip-ship.yml\` (skips \`github-actions[bot]\`)."
+            echo "Manual: Actions → Tip-ship (shinyapps) → Run workflow."
             echo ""
             echo "### Mac post-release sync"
             echo "Cloud runners soft-skip OneDrive sync via"

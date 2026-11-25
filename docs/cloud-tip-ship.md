@@ -1,10 +1,20 @@
 # Cloud tip-ship (GitHub Actions)
 
-Tip-ship the live line (`app_28.0/`) to shinyapps.io **without** the Mac coding clone, via Actions → **Tip-ship (shinyapps)** (`workflow_dispatch`).
+Tip-ship the live line (`app_28.0/`) to shinyapps.io **without** the Mac coding clone.
 
 Workflow: [`.github/workflows/tip-ship.yml`](../.github/workflows/tip-ship.yml)  
 Deploy entrypoint: `Rscript scripts/deploy_app_21.R`  
 Baseline recorder: `Rscript scripts/record_deploy_baseline.R`
+
+## How auto-deploy works (no UI click)
+
+1. Merge (or push) to **`master`** changes under `app_28.0/**`, `scripts/**`, or `.github/workflows/tip-ship.yml`.
+2. **Live-line CI** runs offline checks on that push.
+3. On **success**, Tip-ship starts via `workflow_run` (no `workflow_dispatch`, no PAT).
+4. Gate skips: `github-actions[bot]` pushes (bump/baseline land → no ship loop), chore bump/baseline messages, and non-ship paths (e.g. README/CHANGELOG-only).
+5. Ships only when branch tip still equals the green CI SHA (if master moved, a newer CI owns the tip).
+
+Cloud agents still get **403** on `workflow_dispatch` — that is fine: **merge to master is enough** for ship. Manual **Actions → Tip-ship (shinyapps) → Run workflow** remains as a fallback / retry (`skip_bump`).
 
 ## Lawrence checklist — repo Actions secrets
 
@@ -68,4 +78,4 @@ Fallback only (not the preferred original path): run the workflow with a non-pro
 
 - Do not paste secret values into PRs, chat, or YAML.
 - Do not tip-ship paused PR #801 from this workflow setup work.
-- Auto tip-ship on every `master` push is intentionally **not** enabled yet (manual `workflow_dispatch` only).
+- Do not put shinyapps deploy steps into `.github/workflows/ci.yml` (keep Live-line CI offline-only; auto ship stays in `tip-ship.yml` via `workflow_run`).

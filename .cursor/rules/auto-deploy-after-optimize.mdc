@@ -12,7 +12,7 @@ When **development on the live line** (`app_28.0/`) is **finished and verified**
 
 **Deployment record PR auto-merge authorization (2026-10-30, Asia/Taipei):** Enable auto-merge by default for all future deployment record PRs. After required checks pass, automatically merge into master. Preserve branch protections; this authorization does not apply to unrelated app PRs.
 
-**Tip-ship host preference:** when GitHub Actions secrets `SHINYAPPS_ACCOUNT` / `SHINYAPPS_TOKEN` / `SHINYAPPS_SECRET` are configured, prefer **Actions → Tip-ship (shinyapps)** (`.github/workflows/tip-ship.yml`, manual `workflow_dispatch`; see `docs/cloud-tip-ship.md`). Mac coding clone remains preferred for local iteration and is **mandatory** for OneDrive post-release sync catch-up. Cloud Agents / this worker must **not** tip-ship unless those secrets are actually available in-session.
+**Tip-ship host preference:** when GitHub Actions secrets `SHINYAPPS_ACCOUNT` / `SHINYAPPS_TOKEN` / `SHINYAPPS_SECRET` are configured, prefer **Actions Tip-ship (shinyapps)** (`.github/workflows/tip-ship.yml`: auto after green Live-line CI on `master` via `workflow_run`; manual `workflow_dispatch` fallback; see `docs/cloud-tip-ship.md`). Mac coding clone remains preferred for local iteration and is **mandatory** for OneDrive post-release sync catch-up. Cloud Agents get 403 on `workflow_dispatch` — merge app changes to `master` is the auto path; do not tip-ship from the agent session unless secrets are actually available in-session.
 
 Immediately run the full ship sequence — either via Actions tip-ship after push, or from the **coding clone** (`/Users/lawrencekuo/coding/theYNowApp`):
 
