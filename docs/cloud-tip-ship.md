@@ -16,7 +16,16 @@ Add under **Settings → Secrets and variables → Actions** (names only; never 
 | `SHINYAPPS_TOKEN` | **yes** | https://www.shinyapps.io/admin/#/tokens |
 | `SHINYAPPS_SECRET` | **yes** | same tokens page |
 
-**No `TIP_SHIP_GH_PAT`.** Land uses the job `GITHUB_TOKEN` and Mac-parity direct push (`git push origin HEAD:<branch>`), same as original #806.
+Land path = original #806 CI/CD: deploy → job `GITHUB_TOKEN` → `git push origin HEAD:<branch>` → Release. **No land PR. No `TIP_SHIP_GH_PAT`.**
+
+### One-time GitHub **settings** change (not a secret)
+
+For tip-ship on protected **`master`** (required check `offline-checks`), allow the Actions bot to push bump/baseline commits directly:
+
+1. Repo **Settings → Rules → Rulesets** (or Branch protection) for `master`
+2. Allow **`github-actions[bot]`** to **bypass required status checks** (and required pull requests if that blocks the same push)
+
+Without that, Tip-ship #3-style **GH013** rejects `git push origin HEAD:master` after a successful shinyapps upload. This is the setting that makes “original CI/CD can deploy directly” work — **not** a new Actions secret.
 
 Optional repo **variables** (not secrets):
 
@@ -44,16 +53,11 @@ Allow-listed `YNOW_*` secrets — **required when live restore alone lacks OAuth
 7. Runs `record_github_release.sh` targeting the **pushed** SHA.
 8. Soft-skips Mac OneDrive sync via `post_release_local_sync.sh` → handoff (`PENDING_MAC_SYNC.env` + **Post-release Mac local sync**).
 
-## GH013 residual (protected `master`)
+## If push still fails (GH013)
 
-Tip-ship #3 showed that a direct push to `master` is rejected (**GH013**) when branch protection / rulesets require status check **`offline-checks`**. A direct push never carries those PR checks, and the default Actions `GITHUB_TOKEN` does not fire follow-on `pull_request`/`push` workflows.
+You have not applied the **`github-actions[bot]` bypass** above. Tip-ship will fail the push step and print the same guidance. Do **not** add `TIP_SHIP_GH_PAT` or revive a land-PR wait path.
 
-**One-time GitHub settings (not a new Actions secret):**
-
-1. **Preferred for default `branch=master` tip-ship:** ruleset / branch protection — allow **`github-actions[bot]`** to bypass required status checks (or required pull requests) for tip-ship baseline pushes; **or**
-2. Tip-ship a **non-protected** branch via workflow input `branch=…`, then open a normal human PR into `master` so `offline-checks` runs under your account.
-
-Do **not** add `TIP_SHIP_GH_PAT` for this path.
+Fallback only (not the preferred original path): run the workflow with a non-protected `branch` input, then open a normal human PR into `master`.
 
 ## Residual (Mac-owned)
 

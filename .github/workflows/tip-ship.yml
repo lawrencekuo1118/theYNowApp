@@ -8,11 +8,10 @@
 #   SHINYAPPS_TOKEN    — from https://www.shinyapps.io/admin/#/tokens
 #   SHINYAPPS_SECRET   — from the same tokens page
 #
-# Land path (Mac parity / #806): after deploy, `git push origin HEAD:<branch>`
-# with the job GITHUB_TOKEN. No TIP_SHIP_GH_PAT. If <branch> is protected
-# master requiring `offline-checks`, that push is GH013 unless a one-time
-# ruleset exception allows github-actions[bot] to bypass required checks, or
-# you tip-ship a non-protected branch (workflow input `branch`).
+# Land path (original #806 CI/CD): after deploy, `git push origin HEAD:<branch>`
+# with the job GITHUB_TOKEN → Release. No land PR. No TIP_SHIP_GH_PAT.
+# For protected master (required offline-checks): one-time ruleset setting —
+# allow github-actions[bot] to bypass required status checks (not a secret).
 #
 # Optional (defaults match live app) — set as Actions *variables*, not empty env:
 #   SHINYAPPS_APP_NAME  (default TheYNowApp)
@@ -93,7 +92,7 @@ jobs:
               echo "Source: https://www.shinyapps.io/admin/#/tokens"
               echo ""
               echo "Do **not** paste values into the PR or workflow YAML."
-              echo "Land uses job GITHUB_TOKEN (git push origin HEAD:<branch>) — no TIP_SHIP_GH_PAT."
+              echo "Land: GITHUB_TOKEN git push (original #806). Ruleset: allow github-actions[bot] bypass on master."
             } >>"$GITHUB_STEP_SUMMARY"
             echo "Missing required secrets: ${missing[*]}" >&2
             exit 1
@@ -252,9 +251,9 @@ jobs:
             if ! git push origin "HEAD:${BRANCH}"; then
               {
                 echo "::error::git push origin HEAD:${BRANCH} failed (often GH013 when ${BRANCH} requires offline-checks)."
-                echo "::error::No TIP_SHIP_GH_PAT path — choose one one-time GitHub setting (not a new Actions secret):"
-                echo "::error::  1) Ruleset: allow github-actions[bot] to bypass required status checks on ${BRANCH}, or"
-                echo "::error::  2) Tip-ship a non-protected branch (workflow input branch=…), then open a normal human PR to master."
+                echo "::error::Apply the one-time GitHub *settings* change (not a secret): allow github-actions[bot]"
+                echo "::error::to bypass required status checks on ${BRANCH} (Settings → Rules → Rulesets)."
+                echo "::error::Do not add TIP_SHIP_GH_PAT; original CI/CD is direct push after that bypass."
               } >&2
               exit 1
             fi
@@ -310,8 +309,8 @@ jobs:
             echo "(writes \`PENDING_MAC_SYNC.env\`, dispatches **Post-release Mac local sync**)."
             echo "Mac still owns coding + OneDrive catch-up."
             echo ""
-            echo "### Land"
-            echo "- path: direct \`git push origin HEAD:<branch>\` (job GITHUB_TOKEN; no TIP_SHIP_GH_PAT)"
+            echo "### Land (original #806 CI/CD)"
+            echo "- path: \`git push origin HEAD:<branch>\` with job GITHUB_TOKEN → Release"
             echo "- pushed_sha: \`${{ steps.push.outputs.sha }}\`"
             echo "- short: \`${{ steps.push.outputs.short }}\`"
             echo ""
@@ -323,7 +322,7 @@ jobs:
             echo "| \`SHINYAPPS_SECRET\` | yes |"
             echo "| \`YNOW_DB_*\` / \`YNOW_SUPABASE_*\` / OAuth | required when live restore alone lacks OAuth + account DB (do not ship thinner .Renviron) |"
             echo ""
-            echo "### GH013 residual (protected master)"
-            echo "If push fails with GH013: one-time ruleset bypass for \`github-actions[bot]\`,"
-            echo "or tip-ship a non-protected \`branch\` input — **not** a TIP_SHIP_GH_PAT secret."
+            echo "### One-time settings (not a secret)"
+            echo "Protected \`master\`: allow \`github-actions[bot]\` to bypass required status checks"
+            echo "(Settings → Rules → Rulesets). No TIP_SHIP_GH_PAT. No land PR."
           } >>"$GITHUB_STEP_SUMMARY"

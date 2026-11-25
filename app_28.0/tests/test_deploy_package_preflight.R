@@ -133,10 +133,12 @@ check(
 )
 docs_txt <- paste(readLines(docs_tip, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check(
-  "docs: no TIP_SHIP_GH_PAT required; documents GH013 residual + ruleset bypass",
-  grepl("No `TIP_SHIP_GH_PAT`", docs_txt, fixed = TRUE) &&
-    grepl("GH013", docs_txt, fixed = TRUE) &&
-    grepl("github-actions\\[bot\\]", docs_txt)
+  "docs: original direct push; ruleset bypass for github-actions[bot]; no PAT/land PR",
+  grepl("No land PR", docs_txt, fixed = TRUE) &&
+    grepl("github-actions\\[bot\\]", docs_txt) &&
+    grepl("bypass required status checks", docs_txt, fixed = TRUE) &&
+    grepl("a new Actions secret", docs_txt, fixed = TRUE) &&
+    !grepl("| `TIP_SHIP_GH_PAT` | **yes**", docs_txt, fixed = TRUE)
 )
 install_txt <- paste(
   readLines(install_src, warn = FALSE, encoding = "UTF-8"),
