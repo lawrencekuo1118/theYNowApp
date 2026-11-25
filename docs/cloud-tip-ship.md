@@ -38,8 +38,8 @@ Allow-listed `YNOW_*` secrets — **required when live restore alone lacks OAuth
 3. Installs system libs (`libpq-dev`, `libsodium-dev`, xml/font libs, …) + the **full** app package set via `scripts/install_deploy_app_packages.R` (boot `p_load` + Neon/async + snapshot extras). Thin installs omit packages from the rsconnect manifest and cause shinyapps **exit status 1**. Configures rsconnect from `SHINYAPPS_*`.
 4. Runs `deploy_app_21.R` with `YNOW_SKIP_GITHUB_RELEASE=1` (+0.01 bump → upload → `display_version` commit). Preflight refuses ship if required packages are missing.
 5. Runs `record_deploy_baseline.R` (full `DEPLOY_BASELINE.txt` with live `bundleId` / commit).
-6. **Pushes** bump + baseline commits (fails the job if detached / push impossible). **Known issue:** direct push to protected `master` can fail **GH013** (`offline-checks` required) after a successful upload — follow-up should land bump/baseline via tip-ship PR + auto-merge so Git/live stay aligned.
-7. Runs `record_github_release.sh` targeting the **pushed** SHA.
+6. **Lands** bump + baseline via `scripts/tip_ship_land_commits.sh`: opens a `tip-ship/baseline-…` PR into the ship branch, dispatches Live-line CI (GITHUB_TOKEN pushes do not fire `pull_request` workflows), enables auto-merge. Avoids **GH013** direct-push rejection on protected `master` (Tip-ship #3 left live ahead of Git).
+7. Runs `record_github_release.sh` targeting the **landed** tip SHA (branch commit; master catches up after auto-merge).
 8. Soft-skips Mac OneDrive sync via `post_release_local_sync.sh` → handoff (`PENDING_MAC_SYNC.env` + **Post-release Mac local sync**).
 
 ## Residual (Mac-owned)

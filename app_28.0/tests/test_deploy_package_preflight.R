@@ -27,11 +27,13 @@ check <- function(label, cond) {
 
 req_src <- file.path(repo_root, "scripts", "ynow_deploy_required_packages.R")
 install_src <- file.path(repo_root, "scripts", "install_deploy_app_packages.R")
+land_src <- file.path(repo_root, "scripts", "tip_ship_land_commits.sh")
 deploy_src <- file.path(repo_root, "scripts", "deploy_app_21.R")
 tip_ship <- file.path(repo_root, ".github", "workflows", "tip-ship.yml")
 
 check("ynow_deploy_required_packages.R exists", file.exists(req_src))
 check("install_deploy_app_packages.R exists", file.exists(install_src))
+check("tip_ship_land_commits.sh exists", file.exists(land_src))
 check("tip-ship.yml exists", file.exists(tip_ship))
 
 source(req_src, local = TRUE)
@@ -116,6 +118,18 @@ check(
     'pkgs <- c\\("rsconnect","curl","RPostgres","pool","sodium","future","DBI","reticulate"\\)',
     tip_txt
   )
+)
+check(
+  "tip-ship.yml lands bump/baseline via tip_ship_land_commits.sh (no direct master push)",
+  grepl("tip_ship_land_commits\\.sh", tip_txt) &&
+    !grepl("git push origin \"HEAD:", tip_txt, fixed = TRUE)
+)
+land_txt <- paste(readLines(land_src, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+check(
+  "land script opens PR, dispatches CI, enables auto-merge",
+  grepl("gh pr create", land_txt, fixed = TRUE) &&
+    grepl("workflow run ci.yml", land_txt, fixed = TRUE) &&
+    grepl("--auto", land_txt, fixed = TRUE)
 )
 
 cat("\nPASS ", pass, " / FAIL ", fail, "\n", sep = "")
