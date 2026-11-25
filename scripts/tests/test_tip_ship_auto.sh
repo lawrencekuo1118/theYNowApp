@@ -21,7 +21,8 @@ grep -Fq 'Live-line CI' "$TIP" || fail "workflow_run must watch Live-line CI"
 ok "workflow_run watches Live-line CI"
 
 grep -Fq "github-actions[bot]" "$TIP" || fail "must skip github-actions[bot] to avoid ship loop"
-ok "skips github-actions[bot]"
+grep -Fq 'chore: tip-ship baseline' "$TIP" || fail "must skip chore tip-ship baseline land messages"
+ok "skips github-actions[bot] + tip-ship baseline land messages"
 
 grep -Fq 'auto-gate:' "$TIP" || fail "auto-gate job missing"
 grep -Fq 'app_28.0/*' "$TIP" || fail "ship-path filter must include app_28.0/*"

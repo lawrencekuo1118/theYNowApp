@@ -17,6 +17,7 @@
 # Land path: after deploy, open tip-ship/baseline-* PR with default GITHUB_TOKEN,
 # dispatch Live-line CI, auto-merge when offline-checks green, then Release.
 # No TIP_SHIP_GH_PAT. No ruleset bypass. Auto-closes superseded land PRs.
+# Requires Actions setting: allow GitHub Actions to create and approve PRs.
 #
 # Optional (defaults match live app) — set as Actions *variables*, not empty env:
 #   SHINYAPPS_APP_NAME  (default TheYNowApp)
@@ -114,9 +115,9 @@ jobs:
           echo "Auto tip-ship candidate: branch=${BRANCH} sha=${SHA}"
 
           MSG="$(git log -1 --pretty=%s "${SHA}" 2>/dev/null || true)"
-          # Belt-and-suspenders: never re-ship tip-ship land commits.
+          # Belt-and-suspenders: never re-ship tip-ship land commits / land PRs.
           case "${MSG}" in
-            "chore: bump display version"*|"chore: record shinyapps baseline"*)
+            "chore: bump display version"*|"chore: record shinyapps baseline"*|"chore: tip-ship baseline"*)
               echo "ship=false" >>"$GITHUB_OUTPUT"
               echo "Skip auto tip-ship: chore land message (${MSG})"
               exit 0

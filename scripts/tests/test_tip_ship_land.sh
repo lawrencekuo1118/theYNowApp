@@ -30,6 +30,12 @@ grep -Fq 'MERGED' "$LAND" || fail "land script must wait until MERGED"
 grep -Fq 'tip-ship/baseline-' "$LAND" || fail "land branch prefix missing"
 grep -Fq 'superseded' "$LAND" || fail "land script must auto-close superseded land PRs"
 grep -Fq 'offline-checks' "$LAND" || fail "land script must publish/wait offline-checks"
+# Forbid an actual `git push -u` invocation (comments may still mention it).
+if grep -E '^[[:space:]]*git push -u|[[:space:]]+git push -u' "$LAND" >/dev/null 2>&1; then
+  fail "land script must not use git push -u (retargets master upstream)"
+fi
+grep -Fq 'git push origin "HEAD:refs/heads/' "$LAND" || fail "land script must push land branch without -u"
+grep -Fq 'Resource not accessible by integration' "$LAND" || fail "land script must diagnose Actions create-PR setting"
 ok "land script PR + CI + auto-merge + supersede"
 
 grep -Fq 'pull-requests: write' "$TIP" || fail "tip-ship.yml needs pull-requests: write"

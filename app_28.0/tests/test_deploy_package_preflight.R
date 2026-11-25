@@ -142,15 +142,19 @@ check(
     grepl("MERGED", land_txt, fixed = TRUE) &&
     grepl("tip-ship/baseline-", land_txt, fixed = TRUE) &&
     grepl("superseded", land_txt) &&
+    grepl("Resource not accessible by integration", land_txt, fixed = TRUE) &&
+    grepl('git push origin "HEAD:refs/heads/', land_txt, fixed = TRUE) &&
+    !grepl("(?m)^[[:space:]]*git push -u", land_txt, perl = TRUE) &&
     !grepl("secrets\\.TIP_SHIP_GH_PAT", land_txt) &&
     !grepl("TIP_SHIP_GH_PAT:-", land_txt, fixed = TRUE)
 )
 docs_txt <- paste(readLines(docs_tip, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check(
-  "docs: GITHUB_TOKEN land PR + auto-merge; no PAT; no ruleset bypass required",
+  "docs: GITHUB_TOKEN land PR + auto-merge; no PAT; no ruleset bypass; Actions create-PR setting",
   grepl("tip_ship_land_commits\\.sh", docs_txt) &&
     grepl("GITHUB_TOKEN", docs_txt, fixed = TRUE) &&
     grepl("auto-merge", docs_txt) &&
+    grepl("Allow GitHub Actions to create and approve pull requests", docs_txt, fixed = TRUE) &&
     grepl("Do \\*\\*not\\*\\* add `TIP_SHIP_GH_PAT`", docs_txt) &&
     grepl("Do \\*\\*not\\*\\* require `github-actions\\[bot\\]` ruleset bypass", docs_txt) &&
     !grepl("| `TIP_SHIP_GH_PAT` | **yes**", docs_txt, fixed = TRUE)

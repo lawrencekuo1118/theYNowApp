@@ -31,6 +31,16 @@ Add under **Settings → Secrets and variables → Actions** (names only; never 
 
 Do **not** add `TIP_SHIP_GH_PAT`. Do **not** require `github-actions[bot]` ruleset bypass for tip-ship land.
 
+### One-time GitHub **Actions** setting (not a secret, not ruleset bypass)
+
+`GITHUB_TOKEN` can open land PRs only when this is enabled:
+
+1. Repo **Settings → Actions → General → Workflow permissions**
+2. Check **Allow GitHub Actions to create and approve pull requests**
+3. Save (typically with “Read and write permissions”)
+
+Without it, tip-ship uploads succeed then land fails with `Resource not accessible by integration` / `createPullRequest` (branch `tip-ship/baseline-*` is left on the remote for a manual/Cursor PR).
+
 Optional repo **variables** (not secrets):
 
 | Variable | Default if unset |
@@ -59,7 +69,10 @@ Allow-listed `YNOW_*` secrets — **required when live restore alone lacks OAuth
 
 ## If land still fails
 
-Check the tip-ship job log for the land PR URL, Live-line CI run on `tip-ship/baseline-*`, and auto-merge state. Fix failing `offline-checks`, then re-run Tip-ship (optionally `skip_bump` if the upload already succeeded). Do **not** add `TIP_SHIP_GH_PAT` or a ruleset bypass for this path.
+1. If the log shows `Resource not accessible by integration` / `createPullRequest`: enable the Actions setting above, then re-run Tip-ship (`skip_bump` if the upload already succeeded) or open a PR from the pushed `tip-ship/baseline-*` branch.
+2. Otherwise check the land PR URL, Live-line CI on that branch, and auto-merge state. Fix failing `offline-checks`, then re-run.
+
+Do **not** add `TIP_SHIP_GH_PAT` or a ruleset bypass for this path.
 
 ## Residual (Mac-owned)
 
