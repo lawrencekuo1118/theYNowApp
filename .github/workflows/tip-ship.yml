@@ -150,24 +150,19 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update -qq
-          # libpq-dev → RPostgres; libsodium-dev → sodium; curl/ssl for rsconnect/curl.
+          # libpq-dev → RPostgres; libsodium-dev → sodium; curl/ssl for rsconnect/curl;
+          # xml/font/harfbuzz → tidyverse/ggplot2/rvest binaries on ubuntu-latest.
           sudo apt-get install -y --no-install-recommends \
-            libpq-dev libsodium-dev libcurl4-openssl-dev libssl-dev
+            libpq-dev libsodium-dev libcurl4-openssl-dev libssl-dev \
+            libxml2-dev libfontconfig1-dev libfreetype6-dev \
+            libharfbuzz-dev libfribidi-dev libpng-dev libtiff5-dev libjpeg-dev
 
       - name: Install deploy R packages
         run: |
           set -euo pipefail
-          Rscript -e 'pkgs <- c("rsconnect","curl","RPostgres","pool","sodium","future","DBI","reticulate");
-            missing <- pkgs[!vapply(pkgs, requireNamespace, logical(1), quietly = TRUE)];
-            if (length(missing)) install.packages(missing, quiet = TRUE);
-            if (packageVersion("reticulate") < "1.47.0")
-              install.packages("reticulate", quiet = TRUE);
-            # Load (not just requireNamespace) so dynlibs resolve against apt deps.
-            for (p in c("rsconnect","RPostgres","sodium")) {
-              if (!require(p, character.only = TRUE, quietly = TRUE))
-                stop("Failed to load package ", p, " after install — check system libs")
-            }
-            message("Deploy packages OK")'
+          # Full boot + snapshot set (not just rsconnect/Neon). Tip-ship #3 omitted
+          # uninstalled packages from the shinyapps manifest → live exit status 1.
+          Rscript scripts/install_deploy_app_packages.R
 
       - name: Configure rsconnect account (for live .Renviron restore)
         run: |
@@ -246,6 +241,10 @@ jobs:
             exit 1
           fi
           # Push any commits created by deploy / baseline recorder.
+          # NOTE (follow-up): direct push to protected master fails GH013 when
+          # required status check "offline-checks" is expected (Tip-ship #3).
+          # Prefer landing bump/baseline via a tip-ship PR + auto-merge later;
+          # do not leave live/Git desynced after a successful shinyapps upload.
           if [[ "$(git rev-parse HEAD)" != "$(git rev-parse "origin/${BRANCH}" 2>/dev/null || echo none)" ]]; then
             git push origin "HEAD:${BRANCH}"
             echo "Pushed tip-ship commits to origin/${BRANCH}"
