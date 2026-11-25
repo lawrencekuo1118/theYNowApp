@@ -215,24 +215,35 @@ if (use_env_creds) {
   message("Deploying with saved rsconnect account: ", acct)
 }
 
-# Preflight: Neon account store packages must be installed locally or rsconnect
-# skips them in the bundle → live falls back to empty in-memory points/users.
+# Preflight: packages must be installed locally or packrat/renv omits them from
+# the shinyapps manifest (non-interactive CI snapshots installed packages only).
+# Tip-ship #3 (bundle 12867372) shipped without shiny/UI stack → exit status 1.
 .ynow_extra_lib <- file.path(root, ".R", "library")
 if (dir.exists(.ynow_extra_lib)) {
   .libPaths(c(normalizePath(.ynow_extra_lib, mustWork = FALSE), .libPaths()))
 }
-need_pkgs <- c("RPostgres", "pool", "sodium", "future", "DBI")
-missing_pkgs <- need_pkgs[!vapply(
-  need_pkgs,
-  function(p) requireNamespace(p, quietly = TRUE),
-  logical(1)
-)]
+.req_pkgs_src <- file.path(root, "scripts", "ynow_deploy_required_packages.R")
+if (!file.exists(.req_pkgs_src)) {
+  stop("Deploy preflight failed: missing ", .req_pkgs_src, call. = FALSE)
+}
+source(.req_pkgs_src, local = TRUE)
+need_pkgs <- ynow_deploy_required_packages()
+missing_pkgs <- ynow_deploy_missing_packages(need_pkgs)
 if (length(missing_pkgs)) {
   stop(
     "Deploy preflight failed — install these packages before shipping ",
-    "(otherwise Testing admin / sign-in Neon backend will be empty on shinyapps):\n  ",
+    "(otherwise rsconnect omits them from the shinyapps bundle and Listen ",
+    "fails with exit status 1):\n  ",
     paste(missing_pkgs, collapse = ", "),
-    "\nExample:\n  Rscript -e 'install.packages(c(\"RPostgres\",\"pool\",\"sodium\",\"future\"))'",
+    "\nExample:\n  Rscript scripts/install_deploy_app_packages.R",
+    call. = FALSE
+  )
+}
+boot_missing <- ynow_deploy_missing_packages(ynow_deploy_boot_critical_packages())
+if (length(boot_missing)) {
+  stop(
+    "Deploy preflight failed — boot-critical packages missing:\n  ",
+    paste(boot_missing, collapse = ", "),
     call. = FALSE
   )
 }
@@ -240,7 +251,10 @@ if (!requireNamespace("reticulate", quietly = TRUE) ||
     utils::packageVersion("reticulate") < "1.47.0") {
   stop("Deploy preflight failed: reticulate >= 1.47.0 is required for managed Python initialization.", call. = FALSE)
 }
-message("Deploy preflight OK: ", paste(need_pkgs, collapse = ", "), "; reticulate ", utils::packageVersion("reticulate"))
+message(
+  "Deploy preflight OK: ", length(need_pkgs), " required packages present; reticulate ",
+  utils::packageVersion("reticulate")
+)
 
 message("Deploying ", app_dir, " → ", app_name, " (appId=", app_id, ")")
 res <- rsconnect::deployApp(
