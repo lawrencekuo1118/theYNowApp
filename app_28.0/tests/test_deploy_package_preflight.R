@@ -119,25 +119,40 @@ check(
     tip_txt
   )
 )
+land_src <- file.path(repo_root, "scripts", "tip_ship_land_commits.sh")
+check("tip_ship_land_commits.sh exists", file.exists(land_src))
 check(
-  "tip-ship.yml lands bump/baseline via direct git push (Mac parity / #806)",
-  grepl("git push origin \"HEAD:", tip_txt, fixed = TRUE) &&
-    grepl("Push bump \\+ baseline commits", tip_txt) &&
-    !grepl("tip_ship_land_commits\\.sh", tip_txt)
+  "tip-ship.yml lands bump/baseline via tip_ship_land_commits.sh (no direct master push)",
+  grepl("tip_ship_land_commits\\.sh", tip_txt) &&
+    !grepl("git push origin \"HEAD:", tip_txt, fixed = TRUE)
 )
 check(
-  "tip-ship.yml does not require TIP_SHIP_GH_PAT; Release after push",
+  "tip-ship.yml does not require TIP_SHIP_GH_PAT; Release after land merge",
   !grepl("secrets\\.TIP_SHIP_GH_PAT", tip_txt) &&
-    grepl("Publish GitHub Release \\(after push\\)", tip_txt) &&
-    grepl("steps\\.push\\.outputs\\.sha", tip_txt)
+    grepl("Publish GitHub Release \\(after land merge\\)", tip_txt) &&
+    grepl("steps\\.land\\.outputs\\.merged_sha", tip_txt)
+)
+land_txt <- paste(readLines(land_src, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+check(
+  "land script: GITHUB_TOKEN PR + CI dispatch + auto-merge wait (no PAT)",
+  grepl("gh pr create", land_txt, fixed = TRUE) &&
+    grepl("gh workflow run ci.yml", land_txt, fixed = TRUE) &&
+    grepl("gh pr merge", land_txt, fixed = TRUE) &&
+    grepl("--auto", land_txt, fixed = TRUE) &&
+    grepl("MERGED", land_txt, fixed = TRUE) &&
+    grepl("tip-ship/baseline-", land_txt, fixed = TRUE) &&
+    grepl("superseded", land_txt) &&
+    !grepl("secrets\\.TIP_SHIP_GH_PAT", land_txt) &&
+    !grepl("TIP_SHIP_GH_PAT:-", land_txt, fixed = TRUE)
 )
 docs_txt <- paste(readLines(docs_tip, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check(
-  "docs: original direct push; ruleset bypass for github-actions[bot]; no PAT/land PR",
-  grepl("No land PR", docs_txt, fixed = TRUE) &&
-    grepl("github-actions\\[bot\\]", docs_txt) &&
-    grepl("bypass required status checks", docs_txt, fixed = TRUE) &&
-    grepl("a new Actions secret", docs_txt, fixed = TRUE) &&
+  "docs: GITHUB_TOKEN land PR + auto-merge; no PAT; no ruleset bypass required",
+  grepl("tip_ship_land_commits\\.sh", docs_txt) &&
+    grepl("GITHUB_TOKEN", docs_txt, fixed = TRUE) &&
+    grepl("auto-merge", docs_txt) &&
+    grepl("Do \\*\\*not\\*\\* add `TIP_SHIP_GH_PAT`", docs_txt) &&
+    grepl("Do \\*\\*not\\*\\* require `github-actions\\[bot\\]` ruleset bypass", docs_txt) &&
     !grepl("| `TIP_SHIP_GH_PAT` | **yes**", docs_txt, fixed = TRUE)
 )
 install_txt <- paste(
