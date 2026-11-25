@@ -4897,7 +4897,7 @@ server <- function(input, output, session) {
     tryCatch({
       b_sel <- as.character(isolate(input[["mod_pb-basis"]]) %||% APP_DEFAULTS$pb_basis)[1]
       if (!b_sel %in% c("bvps", "tbvps", "navps")) b_sel <- APP_DEFAULTS$pb_basis
-      updateSelectInput(
+      updateRadioButtons(
         session, "mod_pb-basis",
         label = ui_str("pb_basis_label", loc),
         choices = stats::setNames(

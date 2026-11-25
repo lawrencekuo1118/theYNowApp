@@ -2028,6 +2028,18 @@
             if (riSettingsHint && s.ri_settings_recalc_hint) riSettingsHint.textContent = s.ri_settings_recalc_hint;
             var pbSettingsHint = document.getElementById('mod_pb-ynow_pb_settings_reset_hint');
             if (pbSettingsHint && s.pb_settings_reset_hint) pbSettingsHint.textContent = s.pb_settings_reset_hint;
+            var pbBasisHelp = document.getElementById('mod_pb-ynow_pb_basis_help');
+            if (pbBasisHelp && s.pb_basis_help) {
+              var pbBasisSpan = pbBasisHelp.querySelector('[data-i18n="pb_basis_help"]');
+              if (pbBasisSpan) pbBasisSpan.textContent = s.pb_basis_help;
+              else pbBasisHelp.textContent = s.pb_basis_help;
+            }
+            var pbFormulaBanner = document.getElementById('mod_pb-ynow_pb_formula_banner');
+            if (pbFormulaBanner && s.pb_formula_banner) {
+              var pbFormulaSpan = pbFormulaBanner.querySelector('[data-i18n="pb_formula_banner"]');
+              if (pbFormulaSpan) pbFormulaSpan.textContent = s.pb_formula_banner;
+              else pbFormulaBanner.textContent = s.pb_formula_banner;
+            }
             var navSettingsHint = document.getElementById('mod_nav-ynow_nav_settings_reset_hint');
             if (navSettingsHint && s.nav_settings_reset_hint) navSettingsHint.textContent = s.nav_settings_reset_hint;
             var capmBoxTitle = document.getElementById('ynow_capm_box_title');
