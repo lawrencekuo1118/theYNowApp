@@ -300,21 +300,55 @@ pb_asset_module_server <- function(id,
       )
     }
 
-    .pb_recompute_from_parts <- function() {
-      # Each mode owns its equity/shares inputs; keep all three per-share results fresh
-      # so switching the selector stays coherent with Fill-from-statements values.
-      bv <- .pb_bvps_from_parts(input$common_equity, input$shares)
-      if (is.finite(bv)) updateNumericInput(session, "bvps", value = round(bv, 2))
-      tb <- .pb_tbvps_from_parts(
-        input$tb_common_equity, input$goodwill, input$intangibles, input$tb_shares
-      )
-      if (is.finite(tb)) updateNumericInput(session, "tbvps", value = round(tb, 2))
+    # Recompute only the named mode(s). Never rewrite another basis's per-share
+    # field — a manual BVPS override must survive goodwill / HoldCo edits.
+    .pb_recompute_from_parts <- function(modes = "bvps") {
+      modes <- unique(as.character(modes %||% character()))
+      if ("bvps" %in% modes) {
+        bv <- .pb_bvps_from_parts(input$common_equity, input$shares)
+        if (is.finite(bv)) updateNumericInput(session, "bvps", value = round(bv, 2))
+      }
+      if ("tbvps" %in% modes) {
+        tb <- .pb_tbvps_from_parts(
+          input$tb_common_equity, input$goodwill, input$intangibles, input$tb_shares
+        )
+        if (is.finite(tb)) updateNumericInput(session, "tbvps", value = round(tb, 2))
+      }
+      if ("navps" %in% modes) {
+        disc_pct <- suppressWarnings(as.numeric(input$holdco_discount)[1])
+        if (!is.finite(disc_pct)) disc_pct <- APP_DEFAULTS$pb_holdco_discount * 100
+        nv <- .pb_navps_from_parts(
+          input$nav_common_equity, input$investments, disc_pct / 100, input$nav_shares
+        )
+        if (is.finite(nv)) updateNumericInput(session, "navps", value = round(nv, 2))
+      }
+    }
+
+    .pb_refresh_nav_breakdown <- function() {
+      sh <- suppressWarnings(as.numeric(input$nav_shares)[1])
+      if (!is.finite(sh) || sh <= 0) return()
       disc_pct <- suppressWarnings(as.numeric(input$holdco_discount)[1])
       if (!is.finite(disc_pct)) disc_pct <- APP_DEFAULTS$pb_holdco_discount * 100
-      nv <- .pb_navps_from_parts(
-        input$nav_common_equity, input$investments, disc_pct / 100, input$nav_shares
-      )
-      if (is.finite(nv)) updateNumericInput(session, "navps", value = round(nv, 2))
+      inv_in <- suppressWarnings(as.numeric(input$investments)[1])
+      eq_in <- suppressWarnings(as.numeric(input$nav_common_equity)[1])
+      if (!(is.finite(eq_in) && eq_in > 0)) return()
+      inv_use <- if (is.finite(inv_in) && inv_in >= 0) inv_in else 0
+      disc <- max(0, min(0.5, disc_pct / 100))
+      nav_components(list(
+        cash = NA_real_,
+        investments = inv_use,
+        equity = eq_in,
+        nav = eq_in - disc * inv_use,
+        discount = disc,
+        note = if (inv_use > 0 && disc > 0) {
+          sprintf("NAV＝權益 − %.0f%%×投資科目（控股折價）", disc * 100)
+        } else if (inv_use > 0) {
+          "已辨識投資科目；折價=0 時 NAV＝帳面權益"
+        } else {
+          "無獨立投資科目，NAV＝帳面淨值"
+        }
+      ))
+      nav_shares(sh)
     }
 
     sync_navps <- function(df_bs, shares, share_method = "balance_sheet") {
@@ -595,41 +629,29 @@ pb_asset_module_server <- function(id,
       showNotification("已從財報帶入 BVPS／TBVPS／NAVPS", type = "message")
     })
 
-    # Component edits → refresh per-share results (quote-aligned amounts ÷ shares).
+    # Component edits → refresh only that mode’s per-share result.
+    observeEvent(
+      list(input$common_equity, input$shares),
+      {
+        .pb_recompute_from_parts("bvps")
+      },
+      ignoreInit = TRUE
+    )
+    observeEvent(
+      list(input$tb_common_equity, input$tb_shares, input$goodwill, input$intangibles),
+      {
+        .pb_recompute_from_parts("tbvps")
+      },
+      ignoreInit = TRUE
+    )
     observeEvent(
       list(
-        input$common_equity, input$shares,
-        input$tb_common_equity, input$tb_shares, input$goodwill, input$intangibles,
-        input$nav_common_equity, input$nav_shares, input$investments, input$holdco_discount
+        input$nav_common_equity, input$nav_shares,
+        input$investments, input$holdco_discount
       ),
       {
-        .pb_recompute_from_parts()
-        # Keep NAV breakdown table in sync when HoldCo discount or investments change.
-        sh <- suppressWarnings(as.numeric(input$nav_shares)[1])
-        if (!is.finite(sh) || sh <= 0) return()
-        disc_pct <- suppressWarnings(as.numeric(input$holdco_discount)[1])
-        if (!is.finite(disc_pct)) disc_pct <- APP_DEFAULTS$pb_holdco_discount * 100
-        inv_in <- suppressWarnings(as.numeric(input$investments)[1])
-        eq_in <- suppressWarnings(as.numeric(input$nav_common_equity)[1])
-        if (is.finite(eq_in) && eq_in > 0) {
-          inv_use <- if (is.finite(inv_in) && inv_in >= 0) inv_in else 0
-          disc <- max(0, min(0.5, disc_pct / 100))
-          nav_components(list(
-            cash = NA_real_,
-            investments = inv_use,
-            equity = eq_in,
-            nav = eq_in - disc * inv_use,
-            discount = disc,
-            note = if (inv_use > 0 && disc > 0) {
-              sprintf("NAV＝權益 − %.0f%%×投資科目（控股折價）", disc * 100)
-            } else if (inv_use > 0) {
-              "已辨識投資科目；折價=0 時 NAV＝帳面權益"
-            } else {
-              "無獨立投資科目，NAV＝帳面淨值"
-            }
-          ))
-          nav_shares(sh)
-        }
+        .pb_recompute_from_parts("navps")
+        .pb_refresh_nav_breakdown()
       },
       ignoreInit = TRUE
     )
@@ -677,8 +699,16 @@ pb_asset_module_server <- function(id,
     })
     
     output$alert_missing_bv <- renderUI({
+      # Single-mode Settings: only flag the selected book metric as missing.
+      basis <- as.character(input$basis %||% "bvps")[1]
+      check_list <- switch(
+        basis,
+        tbvps = list("TBVPS" = input$tbvps),
+        navps = list("NAVPS" = input$navps),
+        list("BVPS" = input$bvps)
+      )
       ui_missing_data_alert(
-        check_list = list("BVPS" = input$bvps, "TBVPS" = input$tbvps, "NAVPS" = input$navps),
+        check_list = check_list,
         fallback_msg = "請先載入財報或手動輸入每股淨值，否則無法計算合理價。"
       )
     })

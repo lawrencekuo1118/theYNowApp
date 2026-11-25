@@ -190,6 +190,33 @@ radio_pos <- regexpr("radioButtons(", shell, fixed = TRUE)[1]
 check("Radio precedes BVPS module", radio_pos > 0 && bv_pos > radio_pos)
 check("BVPS module precedes TBVPS", bv_pos > 0 && tb_pos > bv_pos)
 check("TBVPS module precedes NAVPS", tb_pos > 0 && nv_pos > tb_pos)
+
+# Bugbot #804: missing alert + recompute must not cross modes
+server_src <- sub(
+  "(?s)^.*pb_asset_module_server\\s*<-\\s*function.*?\\{(.*)\\}\\s*$",
+  "\\1",
+  src,
+  perl = TRUE
+)
+check(
+  "Missing alert scopes to selected basis",
+  grepl("switch(", server_src, fixed = TRUE) &&
+    grepl('list("TBVPS" = input$tbvps)', server_src, fixed = TRUE) &&
+    grepl('list("NAVPS" = input$navps)', server_src, fixed = TRUE) &&
+    grepl('list("BVPS" = input$bvps)', server_src, fixed = TRUE) &&
+    !grepl(
+      'check_list = list("BVPS" = input$bvps, "TBVPS" = input$tbvps, "NAVPS" = input$navps)',
+      server_src,
+      fixed = TRUE
+    )
+)
+check(
+  "Recompute is mode-scoped (no all-three rewrite)",
+  grepl('.pb_recompute_from_parts("bvps")', server_src, fixed = TRUE) &&
+    grepl('.pb_recompute_from_parts("tbvps")', server_src, fixed = TRUE) &&
+    grepl('.pb_recompute_from_parts("navps")', server_src, fixed = TRUE) &&
+    !grepl('.pb_recompute_from_parts()', server_src, fixed = TRUE)
+)
 check(
   "Overview not a separate body tabBox",
   !grepl('"P/B Overview"', body, fixed = TRUE) &&
