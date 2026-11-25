@@ -12,20 +12,22 @@ When **development on the live line** (`app_28.0/`) is **finished and verified**
 
 **Deployment record PR auto-merge authorization (2026-10-30, Asia/Taipei):** Enable auto-merge by default for all future deployment record PRs. After required checks pass, automatically merge into master. Preserve branch protections; this authorization does not apply to unrelated app PRs.
 
-Immediately run the full ship sequence from the **coding clone** (`/Users/lawrencekuo/coding/theYNowApp`):
+**Tip-ship host preference:** when GitHub Actions secrets `SHINYAPPS_ACCOUNT` / `SHINYAPPS_TOKEN` / `SHINYAPPS_SECRET` are configured, prefer **Actions → Tip-ship (shinyapps)** (`.github/workflows/tip-ship.yml`, manual `workflow_dispatch`; see `docs/cloud-tip-ship.md`). Mac coding clone remains preferred for local iteration and is **mandatory** for OneDrive post-release sync catch-up. Cloud Agents / this worker must **not** tip-ship unless those secrets are actually available in-session.
+
+Immediately run the full ship sequence — either via Actions tip-ship after push, or from the **coding clone** (`/Users/lawrencekuo/coding/theYNowApp`):
 
 1. **Commit** the app changes without a hand-edited version bump (message: why, 1–2 sentences).  
    - This repo’s Git may reject `git commit --trailer`; if so use `write-tree` → `commit-tree` → `update-ref`.
 2. **`git push origin HEAD`** — authorized; do not ask again.
-3. **Deploy:** `Rscript scripts/deploy_app_21.R`  
+3. **Deploy:** Actions tip-ship **or** `Rscript scripts/deploy_app_21.R`  
    - The script bumps the display version **+0.01**, commits `chore: bump display version to v…`, then uploads that tree. Do not bump again by hand.
    - Confirm live bundle via rsconnect (`status=running`, new `bundleId`).  
    - If local client dies (disk) but upload succeeded, poll until the new bundle is active before recording baseline.
-4. **Baseline:** update `scripts/DEPLOY_BASELINE.txt` (bundleId, aligned_git/commit/short, message, `captured_at`, `display_version` = the version just shipped), commit as `chore: record shinyapps baseline bundle <id> (app_28.0)`, push. Publish GitHub Release for the new `display_version` when `gh` is available (`scripts/record_github_release.sh`).
+4. **Baseline:** update `scripts/DEPLOY_BASELINE.txt` (bundleId, aligned_git/commit/short, message, `captured_at`, `display_version` = the version just shipped), commit as `chore: record shinyapps baseline bundle <id> (app_28.0)`, push. Actions tip-ship runs `scripts/record_deploy_baseline.R` for this. Publish GitHub Release for the new `display_version` when `gh` is available (`scripts/record_github_release.sh`).
 5. **Post-release local backup sync (required immediately after every new display_version):** 
- - `bash scripts/post_release_local_sync.sh` (also invoked at the end of `deploy_app_21.R`). 
+ - `bash scripts/post_release_local_sync.sh` (also invoked at the end of `deploy_app_21.R`; Actions tip-ship calls it after baseline push). 
  - When `/Users/lawrencekuo/coding/theYNowApp` and the OneDrive mirror exist: sync is **mandatory and immediate** via `scripts/sync-workspaces.sh` (or `~/coding/bin/sync-theynow-workspaces.sh`), then verify with `scripts/check-od-sync.sh`. Do **not** mark tip free / ship report complete on Mac until check passes. 
- - Cloud Agents without those Mac paths: soft-skip still runs `scripts/mac_post_release_sync_handoff.sh` (writes `scripts/PENDING_MAC_SYNC.env`, tries workflow_dispatch). Ship report must cite the pending marker + Mac automation path — not only a prose soft-skip. 
+ - Cloud Agents / Actions without those Mac paths: soft-skip still runs `scripts/mac_post_release_sync_handoff.sh` (writes `scripts/PENDING_MAC_SYNC.env`, tries workflow_dispatch). Ship report must cite the pending marker + Mac automation path — not only a prose soft-skip. 
  - Keep Mac automation online (launchd install and/or `agent worker start`) so catch-up is automatic; see Project doc `docs/auto-mac-post-release-sync.md`. 
  - Deploy/upload may finish before sync; that does **not** waive the post-release backup step when paths exist.
 6. Briefly report: app commit, version-bump commit, baseline commit, display version, bundleId, live URL, and sync result (OK / soft-skip reason).
