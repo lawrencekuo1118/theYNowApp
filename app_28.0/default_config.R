@@ -134,16 +134,24 @@ APP_DEFAULTS <- list(
   ri_payout       = 40,                      # 財報載入前占位；載入後覆寫
   roe_method      = "constant",              # constant / linear / industry / custom
 
-  # --- 7. P/B（相對估值／倍數）---
+  # --- 7. Asset-Based Valuation（BVPS×P/B | TBVPS×P/TBV | NAVPS×P/NAV）---
   pb_bvps         = NA,
   pb_tbvps        = NA,
+  # Each sub-model keeps its own target multiple band (not a shared Target P/B).
   pb_low          = round(pb_lo, 2),
   pb_mid          = round(pb_mid, 2),
   pb_high         = round(pb_hi, 2),
+  ptbv_low        = round(pb_lo, 2),
+  ptbv_mid        = round(pb_mid, 2),
+  ptbv_high       = round(pb_hi, 2),
+  pnav_low        = round(pb_lo, 2),
+  pnav_mid        = round(pb_mid, 2),
+  pnav_high       = round(pb_hi, 2),
   pb_basis        = "bvps",
   pb_use_industry = TRUE,
-  pb_holdco_discount = 0,                # 可選 NAVPS 基礎時的控股折價（0–50%）
-  # multiples = 產業／歷史；justified = Justified＋可選產業／歷史（需 SGR）
+  pb_holdco_discount = 0,                # Adjusted BVPS / optional NAV HoldCo haircut（0–50%）
+  pb_nav_apply_holdco = FALSE,           # Prefer Target P/NAV for HoldCo; avoid double-count
+  # multiples = 產業／歷史；justified = Justified＋可選產業／歷史（需 SGR；primarily BVPS）
   pb_target_mode  = "justified",
 
   # --- 7b. 純 NAV（獨立模型；帳面控股，非市場 SOTP）---

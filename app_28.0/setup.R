@@ -1230,13 +1230,227 @@ extract_nav_components <- function(df_bs, holdco_discount = 0) {
   list(cash = cash, investments = inv, equity = equity, nav = nav, discount = disc, note = note)
 }
 
-#' Canonical P/B fair price from formula parameters only (unit book).
-#' P = basis × target P/B. Independent of ticker market price and share count.
+#' Canonical asset-based fair price from formula parameters only (unit book).
+#' P = metric × target multiple (P/B, P/TBV, or P/NAV). Independent of ticker
+#' market price and share count.
 .pb_formula_p <- function(basis = 1, pb) {
   basis <- suppressWarnings(as.numeric(basis)[1])
   pb <- suppressWarnings(as.numeric(pb)[1])
   if (!is.finite(basis) || basis <= 0 || !is.finite(pb) || pb <= 0) return(NA_real_)
   basis * pb
+}
+
+#' Multiple name for the active Asset-Based sub-model.
+.pb_multiple_name <- function(basis = "bvps") {
+  b <- as.character(basis %||% "bvps")[1]
+  switch(b, tbvps = "P/TBV", navps = "P/NAV", "P/B")
+}
+
+#' TRUE when mark-to-market asset/liability deltas are present.
+.pb_has_mtm <- function(delta_asset = 0, delta_liability = 0) {
+  da <- suppressWarnings(as.numeric(delta_asset)[1])
+  dl <- suppressWarnings(as.numeric(delta_liability)[1])
+  (is.finite(da) && abs(da) > 0) || (is.finite(dl) && abs(dl) > 0)
+}
+
+#' Label the NAV-family metric: true NAVPS only with mark-to-market deltas.
+.pb_nav_metric_kind <- function(delta_asset = 0, delta_liability = 0) {
+  if (.pb_has_mtm(delta_asset, delta_liability)) "navps" else "adjusted_bvps"
+}
+
+#' BVPS from Common Equity and shares (same currency; quote-aligned after sync).
+.pb_bvps_from_parts <- function(common_equity, shares) {
+  eq <- suppressWarnings(as.numeric(common_equity)[1])
+  sh <- suppressWarnings(as.numeric(shares)[1])
+  if (!is.finite(eq) || !is.finite(sh) || sh <= 0) return(NA_real_)
+  eq / sh
+}
+
+#' TBVPS = (Common Equity − Goodwill − Intangibles) ÷ Shares.
+.pb_tbvps_from_parts <- function(common_equity, goodwill = 0, intangibles = 0, shares) {
+  eq <- suppressWarnings(as.numeric(common_equity)[1])
+  gw <- suppressWarnings(as.numeric(goodwill)[1])
+  intang <- suppressWarnings(as.numeric(intangibles)[1])
+  sh <- suppressWarnings(as.numeric(shares)[1])
+  if (!is.finite(eq) || !is.finite(sh) || sh <= 0) return(NA_real_)
+  if (!is.finite(gw) || gw < 0) gw <- 0
+  if (!is.finite(intang) || intang < 0) intang <- 0
+  max(eq - gw - intang, 0) / sh
+}
+
+#' Adjusted BVPS (no mark-to-market): Equity − HoldCo discount × investments, ÷ Shares.
+#' Not true NAVPS — use when ΔAsset / ΔLiability are absent.
+.pb_adjusted_bvps_from_parts <- function(common_equity,
+                                         investments = 0,
+                                         holdco_discount = 0,
+                                         shares) {
+  eq <- suppressWarnings(as.numeric(common_equity)[1])
+  inv <- suppressWarnings(as.numeric(investments)[1])
+  disc <- suppressWarnings(as.numeric(holdco_discount)[1])
+  sh <- suppressWarnings(as.numeric(shares)[1])
+  if (!is.finite(eq) || !is.finite(sh) || sh <= 0) return(NA_real_)
+  if (!is.finite(inv) || inv < 0) inv <- 0
+  if (!is.finite(disc)) disc <- 0
+  disc <- max(0, min(0.5, disc))
+  (eq - disc * inv) / sh
+}
+
+#' Book NAV total: Equity + ΔAsset − ΔLiability, optional HoldCo haircut on investments.
+#' Do not also embed HoldCo in Target P/NAV when apply_holdco is TRUE.
+.pb_nav_total_from_parts <- function(common_equity,
+                                     delta_asset = 0,
+                                     delta_liability = 0,
+                                     investments = 0,
+                                     holdco_discount = 0,
+                                     apply_holdco = TRUE) {
+  eq <- suppressWarnings(as.numeric(common_equity)[1])
+  da <- suppressWarnings(as.numeric(delta_asset)[1])
+  dl <- suppressWarnings(as.numeric(delta_liability)[1])
+  inv <- suppressWarnings(as.numeric(investments)[1])
+  disc <- suppressWarnings(as.numeric(holdco_discount)[1])
+  if (!is.finite(eq)) return(NA_real_)
+  if (!is.finite(da)) da <- 0
+  if (!is.finite(dl)) dl <- 0
+  if (!is.finite(inv) || inv < 0) inv <- 0
+  if (!is.finite(disc)) disc <- 0
+  disc <- max(0, min(0.5, disc))
+  nav <- eq + da - dl
+  if (isTRUE(apply_holdco)) nav <- nav - disc * inv
+  nav
+}
+
+#' NAVPS (or Adjusted BVPS when no MTM). holdco_discount is a decimal ratio (0–0.5).
+#' Full form: NAV = Equity + ΔAsset − ΔLiability (− HoldCo×investments if apply_holdco).
+#' Without mark-to-market deltas, falls back to Adjusted BVPS and should be labeled as such.
+.pb_navps_from_parts <- function(common_equity,
+                                 investments = 0,
+                                 holdco_discount = 0,
+                                 shares,
+                                 delta_asset = 0,
+                                 delta_liability = 0,
+                                 apply_holdco = TRUE) {
+  sh <- suppressWarnings(as.numeric(shares)[1])
+  if (!is.finite(sh) || sh <= 0) return(NA_real_)
+  if (.pb_has_mtm(delta_asset, delta_liability)) {
+    nav <- .pb_nav_total_from_parts(
+      common_equity,
+      delta_asset = delta_asset,
+      delta_liability = delta_liability,
+      investments = investments,
+      holdco_discount = holdco_discount,
+      apply_holdco = apply_holdco
+    )
+    if (!is.finite(nav)) return(NA_real_)
+    return(nav / sh)
+  }
+  # No MTM → Adjusted BVPS path (HoldCo haircut is the adjustment).
+  .pb_adjusted_bvps_from_parts(
+    common_equity,
+    investments = investments,
+    holdco_discount = holdco_discount,
+    shares = shares
+  )
+}
+
+#' Industry / statement heuristics for Asset-Based sub-model (manual override kept).
+#' Returns list(basis, reason_en, reason_zh, disabled, confidence, prefer_other).
+.pb_recommend_basis <- function(industry_key = NULL,
+                                common_equity = NA_real_,
+                                goodwill = NA_real_,
+                                intangibles = NA_real_,
+                                investments = NA_real_,
+                                has_mtm = FALSE) {
+  key <- as.character(industry_key %||% "")[1]
+  eq <- suppressWarnings(as.numeric(common_equity)[1])
+  gw <- suppressWarnings(as.numeric(goodwill)[1])
+  intang <- suppressWarnings(as.numeric(intangibles)[1])
+  inv <- suppressWarnings(as.numeric(investments)[1])
+  if (!is.finite(gw) || gw < 0) gw <- 0
+  if (!is.finite(intang) || intang < 0) intang <- 0
+  if (!is.finite(inv) || inv < 0) inv <- 0
+
+  disabled <- character(0)
+  if (is.finite(eq) && eq <= 0) disabled <- c(disabled, "bvps")
+  tang <- if (is.finite(eq)) eq - gw - intang else NA_real_
+  if (is.finite(tang) && tang <= 0) disabled <- c(disabled, "tbvps")
+
+  prefer_other <- FALSE
+  basis <- "bvps"
+  reason_en <- "Default Book Value Valuation (BVPS × Target P/B) for asset-intensive / traditional P/B."
+  reason_zh <- "預設帳面淨值估值（BVPS × Target P/B），適用資產密集／傳統本淨比。"
+
+  if (identical(key, "re.REIT") || grepl("^re\\.", key)) {
+    basis <- "navps"
+    reason_en <- "REIT / real-estate holder → Net Asset Value Valuation (NAVPS × Target P/NAV)."
+    reason_zh <- "REIT／不動產持有 → 淨資產估值（NAVPS × Target P/NAV）。"
+  } else if (identical(key, "fn.Conglomerate_Holding") || grepl("Holding|Conglomerate", key, ignore.case = TRUE)) {
+    basis <- "navps"
+    reason_en <- "Holding / conglomerate → Net Asset Value Valuation (NAVPS × Target P/NAV)."
+    reason_zh <- "控股／綜合企業 → 淨資產估值（NAVPS × Target P/NAV）。"
+  } else if (identical(key, "fn.Banking") || identical(key, "fn.Insurance") ||
+             grepl("^fn\\.(Bank|Insurance)", key)) {
+    basis <- "tbvps"
+    reason_en <- "Bank / insurance → Tangible Book Value Valuation (TBVPS × Target P/TBV)."
+    reason_zh <- "銀行／保險 → 有形淨值估值（TBVPS × Target P/TBV）。"
+  } else if (key %in% c("tech.Software", "saas.SaaS_Cloud", "tech.Internet_Platform",
+                        "media.Gaming", "hc.Biotech", "hc.Pharma")) {
+    basis <- "bvps"
+    prefer_other <- TRUE
+    reason_en <- "Light-asset / IP-heavy: Asset-Based is secondary — prefer DCF or P/E when available."
+    reason_zh <- "輕資產／智財密集：資產法為次要；有 DCF 或 P/E 時優先。"
+  } else if (grepl("^(ind|mat|en|auto|ag)\\.", key) ||
+             key %in% c("tech.Hardware", "ec.Hardware", "sc.Foundry", "sc.Packaging",
+                        "sc.Memory", "sc.Equipment")) {
+    basis <- "bvps"
+    reason_en <- "Manufacturing / asset-intensive → Book Value Valuation (BVPS × Target P/B)."
+    reason_zh <- "製造業／資產密集 → 帳面淨值估值（BVPS × Target P/B）。"
+  }
+
+  # Statement overlays (still industry/standards only — no ticker branches).
+  if (is.finite(eq) && eq > 0) {
+    soft_ratio <- (gw + intang) / eq
+    if (is.finite(soft_ratio) && soft_ratio >= 0.25 && !"tbvps" %in% disabled) {
+      if (!identical(basis, "navps")) {
+        basis <- "tbvps"
+        reason_en <- "Goodwill / intangibles are large vs equity → Tangible Book Value Valuation (TBVPS × Target P/TBV)."
+        reason_zh <- "商譽／無形資產相對權益偏高 → 有形淨值估值（TBVPS × Target P/TBV）。"
+      }
+    }
+    if (inv / eq >= 0.15) {
+      basis <- "navps"
+      reason_en <- "Identified investments are material vs equity → Net Asset Value Valuation (NAVPS × Target P/NAV)."
+      reason_zh <- "已辨識投資相對權益重大 → 淨資產估值（NAVPS × Target P/NAV）。"
+    }
+  }
+
+  confidence <- "normal"
+  if (identical(basis, "navps") && !isTRUE(has_mtm)) {
+    confidence <- "low"
+    reason_en <- paste(
+      reason_en,
+      "No mark-to-market ΔAsset/ΔLiability — treat as Adjusted BVPS, not full NAVPS."
+    )
+    reason_zh <- paste(
+      reason_zh,
+      "無市價重估 ΔAsset／ΔLiability — 視為 Adjusted BVPS，非完整 NAVPS。"
+    )
+  }
+
+  # If recommended basis is disabled, fall back.
+  if (basis %in% disabled) {
+    alt <- setdiff(c("bvps", "tbvps", "navps"), disabled)
+    basis <- if (length(alt)) alt[[1]] else "bvps"
+  }
+
+  list(
+    basis = basis,
+    reason_en = reason_en,
+    reason_zh = reason_zh,
+    disabled = disabled,
+    confidence = confidence,
+    prefer_other = prefer_other,
+    has_mtm = isTRUE(has_mtm)
+  )
 }
 
 #' Sort elasticity table rows by |ε| descending.

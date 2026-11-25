@@ -2728,6 +2728,67 @@
         .ynow-htcdi-table--inputs tr.ynow-htcdi-term-metrics th {
           font-weight: 600; white-space: nowrap;
         }
+        /* P/B book-metric chrome above「P/B & ASSET VALUE」tabBox */
+        .ynow-pb-basis-chrome {
+          margin: 0 0 4px 0;
+          padding: 4px 2px 0 2px;
+        }
+        .ynow-pb-basis-chrome .shiny-options-group {
+          margin-top: 4px;
+        }
+        /* P/B Settings: BVPS / TBVPS / NAVPS assumption sections (settings tab only) */
+        .ynow-pb-settings-lead {
+          margin: 0 0 10px 0;
+          font-size: 13px;
+          color: #475569;
+        }
+        .ynow-pb-param-section {
+          margin: 0 0 14px 0;
+          padding: 12px 14px 10px 14px;
+          background: #fbfcfd;
+          border: 1px solid #dce3ea;
+          border-radius: 6px;
+        }
+        .ynow-pb-param-section-title {
+          margin: 0 0 8px 0;
+          font-size: 15px;
+          color: #1e293b;
+        }
+        .ynow-pb-param-formula,
+        .ynow-pb-param-fair {
+          margin: 0 0 6px 0;
+          padding: 8px 10px;
+          font-size: 13px;
+          font-weight: 700;
+          color: #2c3e50;
+          background: #eef3f7;
+          border-left: 3px solid #1a5276;
+          border-radius: 0 4px 4px 0;
+        }
+        .ynow-pb-param-fair {
+          border-left-color: #0c5484;
+          background: #f2f4f4;
+          font-weight: 600;
+        }
+        .ynow-pb-param-note {
+          margin: 4px 0 10px 0 !important;
+          font-size: 12px !important;
+        }
+        .ynow-pb-parts-mirror {
+          margin: 4px 0 8px 0 !important;
+          font-size: 12px !important;
+          color: #64748b !important;
+        }
+        @media (max-width: 767px) {
+          .ynow-pb-param-section {
+            padding: 10px 10px 8px 10px;
+          }
+          .ynow-pb-param-formula,
+          .ynow-pb-param-fair {
+            font-size: 12px;
+            padding: 7px 8px;
+          }
+        }
         /* FCF projection: six shared inputs stacked IS → reinvestment → IC */
         .ynow-fcf-param-stack {
           max-width: 560px;
