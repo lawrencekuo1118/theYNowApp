@@ -124,12 +124,36 @@ check(
   grepl("tip_ship_land_commits\\.sh", tip_txt) &&
     !grepl("git push origin \"HEAD:", tip_txt, fixed = TRUE)
 )
+check(
+  "tip-ship.yml requires TIP_SHIP_GH_PAT and releases after land merge",
+  grepl("TIP_SHIP_GH_PAT", tip_txt, fixed = TRUE) &&
+    grepl("Publish GitHub Release \\(after land merge\\)", tip_txt) &&
+    grepl("merged_sha", tip_txt, fixed = TRUE)
+)
 land_txt <- paste(readLines(land_src, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 check(
-  "land script opens PR, dispatches CI, enables auto-merge",
-  grepl("gh pr create", land_txt, fixed = TRUE) &&
-    grepl("workflow run ci.yml", land_txt, fixed = TRUE) &&
-    grepl("--auto", land_txt, fixed = TRUE)
+  "land script uses PAT push + PR + wait for checks/merge (no workflow_dispatch substitute)",
+  grepl("TIP_SHIP_GH_PAT", land_txt, fixed = TRUE) &&
+    grepl("gh pr create", land_txt, fixed = TRUE) &&
+    grepl("gh pr checks", land_txt, fixed = TRUE) &&
+    grepl("MERGED", land_txt, fixed = TRUE) &&
+    grepl("--auto", land_txt, fixed = TRUE) &&
+    !grepl("gh workflow run", land_txt, fixed = TRUE)
+)
+check(
+  "land script hard-fails when Actions lacks TIP_SHIP_GH_PAT or merge never completes",
+  grepl("GITHUB_ACTIONS", land_txt, fixed = TRUE) &&
+    grepl("Timed out waiting for land PR", land_txt, fixed = TRUE) &&
+    !grepl("Soft-warn only", land_txt, fixed = TRUE)
+)
+install_txt <- paste(
+  readLines(install_src, warn = FALSE, encoding = "UTF-8"),
+  collapse = "\n"
+)
+check(
+  "installer prefers getOption('repos') / RSPM (no hardcoded cloud.r-project.org)",
+  grepl("getOption\\(\"repos\"", install_txt) &&
+    !grepl('repos = "https://cloud.r-project.org"', install_txt, fixed = TRUE)
 )
 
 cat("\nPASS ", pass, " / FAIL ", fail, "\n", sep = "")

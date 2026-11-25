@@ -15,6 +15,7 @@ Add under **Settings → Secrets and variables → Actions** (names only; never 
 | `SHINYAPPS_ACCOUNT` | **yes** | shinyapps.io account name |
 | `SHINYAPPS_TOKEN` | **yes** | https://www.shinyapps.io/admin/#/tokens |
 | `SHINYAPPS_SECRET` | **yes** | same tokens page |
+| `TIP_SHIP_GH_PAT` | **yes** | PAT with **repo + workflow** so `tip-ship/baseline-*` push fires `pull_request` → `offline-checks`. Default `GITHUB_TOKEN` cannot; `workflow_dispatch` does **not** satisfy PR required checks. |
 
 Optional repo **variables** (not secrets):
 
@@ -38,8 +39,8 @@ Allow-listed `YNOW_*` secrets — **required when live restore alone lacks OAuth
 3. Installs system libs (`libpq-dev`, `libsodium-dev`, xml/font libs, …) + the **full** app package set via `scripts/install_deploy_app_packages.R` (boot `p_load` + Neon/async + snapshot extras). Thin installs omit packages from the rsconnect manifest and cause shinyapps **exit status 1**. Configures rsconnect from `SHINYAPPS_*`.
 4. Runs `deploy_app_21.R` with `YNOW_SKIP_GITHUB_RELEASE=1` (+0.01 bump → upload → `display_version` commit). Preflight refuses ship if required packages are missing.
 5. Runs `record_deploy_baseline.R` (full `DEPLOY_BASELINE.txt` with live `bundleId` / commit).
-6. **Lands** bump + baseline via `scripts/tip_ship_land_commits.sh`: opens a `tip-ship/baseline-…` PR into the ship branch, dispatches Live-line CI (GITHUB_TOKEN pushes do not fire `pull_request` workflows), enables auto-merge. Avoids **GH013** direct-push rejection on protected `master` (Tip-ship #3 left live ahead of Git).
-7. Runs `record_github_release.sh` targeting the **landed** tip SHA (branch commit; master catches up after auto-merge).
+6. **Lands** bump + baseline via `scripts/tip_ship_land_commits.sh` using `TIP_SHIP_GH_PAT`: pushes `tip-ship/baseline-…`, opens PR (real `pull_request` CI → `offline-checks`), enables auto-merge, **waits until MERGED**. Fails tip-ship if land fails (no false green). Avoids **GH013** direct-push rejection on protected `master`.
+7. Runs `record_github_release.sh` only **after land merge**, targeting `merged_sha`.
 8. Soft-skips Mac OneDrive sync via `post_release_local_sync.sh` → handoff (`PENDING_MAC_SYNC.env` + **Post-release Mac local sync**).
 
 ## Residual (Mac-owned)

@@ -7,6 +7,10 @@
 #   SHINYAPPS_ACCOUNT  — shinyapps.io account name
 #   SHINYAPPS_TOKEN    — from https://www.shinyapps.io/admin/#/tokens
 #   SHINYAPPS_SECRET   — from the same tokens page
+#   TIP_SHIP_GH_PAT    — PAT that triggers pull_request/push workflows when
+#                        pushing tip-ship/baseline-* (repo + workflow scopes).
+#                        Default GITHUB_TOKEN cannot fire those events; land
+#                        waits for real offline-checks then merge before Release.
 #
 # Optional (defaults match live app) — set as Actions *variables*, not empty env:
 #   SHINYAPPS_APP_NAME  (default TheYNowApp)
@@ -65,16 +69,19 @@ jobs:
       # Do not map empty vars into env here — Sys.getenv default only applies when unset.
       GH_TOKEN: ${{ github.token }}
       GITHUB_TOKEN: ${{ github.token }}
+      # Land-only PAT (required): must fire pull_request CI. Never equal to github.token.
+      TIP_SHIP_GH_PAT: ${{ secrets.TIP_SHIP_GH_PAT }}
       YNOW_MAC_SYNC_REQUESTED_BY: github-actions-tip-ship
 
     steps:
-      - name: Guard required shinyapps secrets
+      - name: Guard required shinyapps + land secrets
         run: |
           set -euo pipefail
           missing=()
           [[ -n "${SHINYAPPS_ACCOUNT:-}" ]] || missing+=("SHINYAPPS_ACCOUNT")
           [[ -n "${SHINYAPPS_TOKEN:-}" ]] || missing+=("SHINYAPPS_TOKEN")
           [[ -n "${SHINYAPPS_SECRET:-}" ]] || missing+=("SHINYAPPS_SECRET")
+          [[ -n "${TIP_SHIP_GH_PAT:-}" ]] || missing+=("TIP_SHIP_GH_PAT")
           if ((${#missing[@]} > 0)); then
             {
               echo "## Tip-ship blocked — missing Actions secrets"
@@ -85,14 +92,16 @@ jobs:
                 echo "- \`$s\`"
               done
               echo ""
-              echo "Source: https://www.shinyapps.io/admin/#/tokens"
+              echo "SHINYAPPS_*: https://www.shinyapps.io/admin/#/tokens"
+              echo "TIP_SHIP_GH_PAT: PAT with repo + workflow so tip-ship/baseline-* push"
+              echo "fires pull_request → offline-checks (GITHUB_TOKEN cannot)."
               echo ""
               echo "Do **not** paste values into the PR or workflow YAML."
             } >>"$GITHUB_STEP_SUMMARY"
             echo "Missing required secrets: ${missing[*]}" >&2
             exit 1
           fi
-          echo "Required SHINYAPPS_* secrets are present (values not logged)."
+          echo "Required SHINYAPPS_* + TIP_SHIP_GH_PAT secrets are present (values not logged)."
 
       - name: Resolve ship branch
         id: ship_branch
@@ -228,6 +237,11 @@ jobs:
 
       - name: Land bump + baseline via tip-ship PR
         id: push
+        env:
+          # Override job token for land only — PAT must trigger pull_request CI.
+          TIP_SHIP_GH_PAT: ${{ secrets.TIP_SHIP_GH_PAT }}
+          GH_TOKEN: ${{ secrets.TIP_SHIP_GH_PAT }}
+          GITHUB_TOKEN: ${{ secrets.TIP_SHIP_GH_PAT }}
         run: |
           set -euo pipefail
           BRANCH="$(git rev-parse --abbrev-ref HEAD)"
@@ -242,20 +256,23 @@ jobs:
             exit 1
           fi
           # Never push tip-ship bump/baseline directly to a protected base
-          # (Tip-ship #3 GH013 left live ahead of Git). Land via PR + auto-merge.
+          # (Tip-ship #3 GH013). Land waits for real offline-checks + MERGED.
           chmod +x scripts/tip_ship_land_commits.sh
           bash scripts/tip_ship_land_commits.sh "${BRANCH}"
 
-      - name: Publish GitHub Release (after push)
+      - name: Publish GitHub Release (after land merge)
         run: |
           set -euo pipefail
           VERSION="$(sed -n 's/^display_version=//p' scripts/DEPLOY_BASELINE.txt | head -1 | tr -d '[:space:]')"
-          TARGET="${{ steps.push.outputs.sha }}"
+          # Prefer merge commit on base; fall back to land tip SHA.
+          TARGET="${{ steps.push.outputs.merged_sha }}"
+          if [[ -z "${TARGET}" ]]; then
+            TARGET="${{ steps.push.outputs.sha }}"
+          fi
           if [[ -z "${VERSION}" || -z "${TARGET}" ]]; then
-            echo "::error::Missing display_version or pushed SHA for release."
+            echo "::error::Missing display_version or merged SHA for release (land must succeed first)."
             exit 1
           fi
-          # Target the pushed tip so the Release tag is not the pre-ship commit.
           YNOW_RELEASE_TARGET="${TARGET}" bash scripts/record_github_release.sh "${VERSION}"
 
       - name: Mac post-release sync handoff (soft-skip)
@@ -291,11 +308,18 @@ jobs:
             echo "(writes \`PENDING_MAC_SYNC.env\`, dispatches **Post-release Mac local sync**)."
             echo "Mac still owns coding + OneDrive catch-up."
             echo ""
+            echo "### Land"
+            echo "- mode: \`${{ steps.push.outputs.mode }}\`"
+            echo "- pr: ${{ steps.push.outputs.pr_url }}"
+            echo "- land_branch: \`${{ steps.push.outputs.land_branch }}\`"
+            echo "- merged_sha: \`${{ steps.push.outputs.merged_sha }}\`"
+            echo ""
             echo "### Secrets checklist (names only)"
             echo "| Secret | Required |"
             echo "|---|---|"
             echo "| \`SHINYAPPS_ACCOUNT\` | yes |"
             echo "| \`SHINYAPPS_TOKEN\` | yes |"
             echo "| \`SHINYAPPS_SECRET\` | yes |"
+            echo "| \`TIP_SHIP_GH_PAT\` | yes (land PR CI + merge) |"
             echo "| \`YNOW_DB_*\` / \`YNOW_SUPABASE_*\` / OAuth | required when live restore alone lacks OAuth + account DB (do not ship thinner .Renviron) |"
           } >>"$GITHUB_STEP_SUMMARY"

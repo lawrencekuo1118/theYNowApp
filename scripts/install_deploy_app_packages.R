@@ -25,9 +25,16 @@ source(pkg_src, local = TRUE)
 
 pkgs <- unique(ynow_deploy_required_packages())
 missing <- ynow_deploy_missing_packages(pkgs)
+# Prefer setup-r public RSPM / existing options("repos"). Do not hardcode
+# cloud.r-project.org — that forces source builds and can blow tip-ship timeouts.
+.repos <- getOption("repos", default = c(CRAN = "https://cloud.r-project.org"))
+if (length(.repos) == 0L || all(!nzchar(as.character(.repos)))) {
+  .repos <- c(CRAN = "https://cloud.r-project.org")
+}
+message("install.packages repos: ", paste(names(.repos), .repos, sep = "=", collapse = ", "))
 if (length(missing)) {
   message("Installing ", length(missing), " deploy packages: ", paste(missing, collapse = ", "))
-  install.packages(missing, quiet = TRUE, repos = "https://cloud.r-project.org")
+  install.packages(missing, quiet = TRUE, repos = .repos)
 }
 
 still <- ynow_deploy_missing_packages(pkgs)
@@ -42,7 +49,7 @@ if (length(still)) {
 # reticulate managed-Python path needs >= 1.47.0 (same gate as deploy_app_21.R).
 if (utils::packageVersion("reticulate") < "1.47.0") {
   message("Upgrading reticulate to >= 1.47.0…")
-  install.packages("reticulate", quiet = TRUE, repos = "https://cloud.r-project.org")
+  install.packages("reticulate", quiet = TRUE, repos = .repos)
   if (utils::packageVersion("reticulate") < "1.47.0") {
     stop("reticulate >= 1.47.0 required after upgrade attempt.", call. = FALSE)
   }
