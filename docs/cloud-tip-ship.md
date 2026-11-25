@@ -23,22 +23,24 @@ Optional repo **variables** (not secrets):
 | `SHINYAPPS_APP_NAME` | `TheYNowApp` |
 | `SHINYAPPS_APP_ID` | `10907657` |
 
-Optional allow-listed `YNOW_*` secrets (only if live `.Renviron` restore is incomplete):
+Allow-listed `YNOW_*` secrets — **required when live restore alone lacks OAuth + account DB** (do **not** ship a thinner `.Renviron`; do not set `YNOW_ALLOW_MISSING_*`):
 
 - `YNOW_DB_HOST`, `YNOW_DB_NAME`, `YNOW_DB_USER`, `YNOW_DB_PASSWORD`, `YNOW_DB_PORT`, `YNOW_DB_SSLMODE`, `YNOW_DATABASE_URL`
 - `YNOW_SUPABASE_URL`, `YNOW_SUPABASE_ANON_KEY`, `YNOW_SUPABASE_SERVICE_ROLE`
 - `YNOW_GOOGLE_CLIENT_ID`, `YNOW_GOOGLE_CLIENT_SECRET`
 
-`deploy_app_21.R` restores live `.Renviron` by default, then merges any of the above from process env via `inject_renviron_from_env.R`.
+`deploy_app_21.R` restores live `.Renviron` by default (workflow pre-configures `rsconnect::setAccountInfo` from `SHINYAPPS_*`), then merges any of the above from process env via `inject_renviron_from_env.R`.
 
 ## What the workflow does
 
 1. Guards that `SHINYAPPS_ACCOUNT` / `TOKEN` / `SECRET` exist (fails with a checklist in the job summary if not).
-2. Sets up R + `rsconnect` and deploy preflight packages.
-3. Runs `deploy_app_21.R` (+0.01 bump commit → upload → `display_version` baseline commit → GitHub Release soft-fail).
-4. Runs `record_deploy_baseline.R` (full `DEPLOY_BASELINE.txt` with live `bundleId` / commit).
-5. Pushes those commits to the checked-out branch (`contents: write`).
-6. Soft-skips Mac OneDrive sync via `post_release_local_sync.sh` → `mac_post_release_sync_handoff.sh` (`PENDING_MAC_SYNC.env` + dispatch **Post-release Mac local sync**).
+2. Checks out a **branch** only (default `master`); refuses detached SHA/tag refs.
+3. Installs system libs (`libpq-dev`, `libsodium-dev`, …) + R deploy packages; configures rsconnect from `SHINYAPPS_*`.
+4. Runs `deploy_app_21.R` with `YNOW_SKIP_GITHUB_RELEASE=1` (+0.01 bump → upload → `display_version` commit).
+5. Runs `record_deploy_baseline.R` (full `DEPLOY_BASELINE.txt` with live `bundleId` / commit).
+6. **Pushes** bump + baseline commits (fails the job if detached / push impossible).
+7. Runs `record_github_release.sh` targeting the **pushed** SHA.
+8. Soft-skips Mac OneDrive sync via `post_release_local_sync.sh` → handoff (`PENDING_MAC_SYNC.env` + **Post-release Mac local sync**).
 
 ## Residual (Mac-owned)
 

@@ -8,23 +8,23 @@
 #   SHINYAPPS_TOKEN    — from https://www.shinyapps.io/admin/#/tokens
 #   SHINYAPPS_SECRET   — from the same tokens page
 #
-# Optional (defaults match live app):
+# Optional (defaults match live app) — set as Actions *variables*, not empty env:
 #   SHINYAPPS_APP_NAME  (default TheYNowApp)
 #   SHINYAPPS_APP_ID    (default 10907657)
 #
-# Optional allow-listed YNOW_* secrets (merged into gitignored .Renviron via
-# scripts/inject_renviron_from_env.R when live restore alone is incomplete):
+# Live .Renviron: workflow calls rsconnect::setAccountInfo before deploy so
+# restore_renviron_from_shinyapps.R can read accounts(). Prefer live restore.
+# Allow-listed YNOW_* inject secrets are REQUIRED when restore alone cannot
+# supply OAuth + account DB keys — deploy_app_21.R refuses a thinner .Renviron
+# (do not set YNOW_ALLOW_MISSING_*). Inject keys (names only):
 #   YNOW_DB_HOST, YNOW_DB_NAME, YNOW_DB_USER, YNOW_DB_PASSWORD, YNOW_DB_PORT,
 #   YNOW_DB_SSLMODE, YNOW_DATABASE_URL,
 #   YNOW_SUPABASE_URL, YNOW_SUPABASE_ANON_KEY, YNOW_SUPABASE_SERVICE_ROLE,
 #   YNOW_GOOGLE_CLIENT_ID, YNOW_GOOGLE_CLIENT_SECRET, …
-# Prefer live .Renviron restore (default in deploy_app_21.R); inject only fills gaps.
 #
 # Residual / Mac-owned after this workflow:
 #   - OneDrive + coding-clone physical sync (soft-skip → PENDING_MAC_SYNC.env
 #     + post-release-mac-sync.yml handoff). Keep Mac automation online.
-#   - Full DEPLOY_BASELINE.txt bundleId/commit/note polish if the post-deploy
-#     recorder cannot resolve live status (rare); display_version is always written.
 #
 # Never commit secret values. Never paste tokens into the workflow file.
 name: Tip-ship (shinyapps)
@@ -37,10 +37,10 @@ on:
         required: false
         type: boolean
         default: false
-      ref:
-        description: "Git ref to ship (default: the branch/ref that triggered the run)"
+      branch:
+        description: "Branch to ship (must be a branch name, not a SHA/tag; default master)"
         required: false
-        default: ""
+        default: "master"
 
 concurrency:
   group: tip-ship-shinyapps
@@ -93,12 +93,46 @@ jobs:
           fi
           echo "Required SHINYAPPS_* secrets are present (values not logged)."
 
+      - name: Resolve ship branch
+        id: ship_branch
+        run: |
+          set -euo pipefail
+          BRANCH="${{ inputs.branch }}"
+          BRANCH="${BRANCH:-master}"
+          # Refuse SHA / tag / remote-tracking forms that yield detached HEAD.
+          if [[ ! "$BRANCH" =~ ^[A-Za-z0-9._/-]+$ ]] || [[ "$BRANCH" =~ ^[0-9a-fA-F]{7,40}$ ]]; then
+            echo "Refuse tip-ship: branch input must be a branch name (got: ${BRANCH})" >&2
+            exit 1
+          fi
+          if [[ "$BRANCH" == HEAD || "$BRANCH" == refs/tags/* || "$BRANCH" == tags/* ]]; then
+            echo "Refuse tip-ship: detached / tag refs are not allowed (${BRANCH})" >&2
+            exit 1
+          fi
+          echo "branch=${BRANCH}" >>"$GITHUB_OUTPUT"
+          echo "Shipping branch: ${BRANCH}"
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.ref || github.ref }}
+          ref: ${{ steps.ship_branch.outputs.branch }}
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Require attached branch HEAD
+        run: |
+          set -euo pipefail
+          BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+          EXPECTED="${{ steps.ship_branch.outputs.branch }}"
+          if [[ "$BRANCH" == "HEAD" ]]; then
+            echo "Refuse tip-ship: detached HEAD after checkout (ref must be a branch)." >&2
+            git status -sb
+            exit 1
+          fi
+          if [[ "$BRANCH" != "$EXPECTED" ]]; then
+            echo "Refuse tip-ship: checked out '${BRANCH}' but expected branch '${EXPECTED}'." >&2
+            exit 1
+          fi
+          echo "Attached to branch ${BRANCH} @ $(git rev-parse --short HEAD)"
 
       - name: Configure git identity + push remote
         run: |
@@ -112,6 +146,14 @@ jobs:
         with:
           use-public-rspm: true
 
+      - name: Install system libraries for deploy packages
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          # libpq-dev → RPostgres; libsodium-dev → sodium; curl/ssl for rsconnect/curl.
+          sudo apt-get install -y --no-install-recommends \
+            libpq-dev libsodium-dev libcurl4-openssl-dev libssl-dev
+
       - name: Install deploy R packages
         run: |
           set -euo pipefail
@@ -120,18 +162,41 @@ jobs:
             if (length(missing)) install.packages(missing, quiet = TRUE);
             if (packageVersion("reticulate") < "1.47.0")
               install.packages("reticulate", quiet = TRUE);
-            stopifnot(requireNamespace("rsconnect", quietly = TRUE));
+            # Load (not just requireNamespace) so dynlibs resolve against apt deps.
+            for (p in c("rsconnect","RPostgres","sodium")) {
+              if (!require(p, character.only = TRUE, quietly = TRUE))
+                stop("Failed to load package ", p, " after install — check system libs")
+            }
             message("Deploy packages OK")'
+
+      - name: Configure rsconnect account (for live .Renviron restore)
+        run: |
+          set -euo pipefail
+          # Persist SHINYAPPS_* into rsconnect::accounts() so child Rscript
+          # restore_renviron_from_shinyapps.R can call accountInfo/accounts().
+          Rscript -e '
+            acct <- Sys.getenv("SHINYAPPS_ACCOUNT", "")
+            tok  <- Sys.getenv("SHINYAPPS_TOKEN", "")
+            sec  <- Sys.getenv("SHINYAPPS_SECRET", "")
+            stopifnot(nzchar(acct), nzchar(tok), nzchar(sec))
+            rsconnect::setAccountInfo(name = acct, token = tok, secret = sec)
+            acc <- rsconnect::accounts()
+            stopifnot(nrow(acc) > 0)
+            message("rsconnect account configured: ", acc$name[[1]], " @ ", acc$server[[1]])
+          '
 
       - name: Tip-ship (deploy_app_21.R)
         env:
           # Boolean workflow_dispatch inputs are strings "true"/"false".
           YNOW_SKIP_VERSION_BUMP: ${{ inputs.skip_bump == true && '1' || '' }}
+          # Defer GitHub Release until after bump/baseline commits are pushed.
+          YNOW_SKIP_GITHUB_RELEASE: "1"
           # Defer Mac handoff until after full DEPLOY_BASELINE rewrite below.
           YNOW_SKIP_POST_RELEASE_SYNC: "1"
           YNOW_SKIP_MAC_SYNC_HANDOFF: "1"
-          # Optional allow-listed inject keys (empty → inject no-op for that key).
-          # Prefer live .Renviron restore inside deploy_app_21.R when possible.
+          # Allow-listed inject keys (empty → inject no-op for that key).
+          # REQUIRED when live restore alone lacks OAuth + account DB — do not
+          # ship a thinner .Renviron (deploy refuses; do not set ALLOW_MISSING_*).
           YNOW_DB_HOST: ${{ secrets.YNOW_DB_HOST }}
           YNOW_DB_NAME: ${{ secrets.YNOW_DB_NAME }}
           YNOW_DB_USER: ${{ secrets.YNOW_DB_USER }}
@@ -149,7 +214,7 @@ jobs:
           chmod +x scripts/*.sh scripts/macos/*.sh 2>/dev/null || true
           echo "Starting tip-ship from $(git rev-parse --short HEAD) on $(git rev-parse --abbrev-ref HEAD)"
           # deploy_app_21.R: +0.01 bump commit → shinyapps upload → display_version
-          # baseline commit → GitHub Release (soft-fail). Mac sync deferred.
+          # baseline commit. Release + Mac sync deferred to later steps.
           Rscript scripts/deploy_app_21.R
 
       - name: Record full DEPLOY_BASELINE (bundleId / commit)
@@ -157,21 +222,28 @@ jobs:
           set -euo pipefail
           if [[ -f scripts/record_deploy_baseline.R ]]; then
             Rscript scripts/record_deploy_baseline.R || {
-              echo "::warning::record_deploy_baseline.R soft-failed — display_version may already be committed; polish baseline manually if needed."
+              echo "::error::record_deploy_baseline.R failed — cannot leave tip-ship without a full baseline."
+              exit 1
             }
           else
-            echo "::warning::scripts/record_deploy_baseline.R missing — residual: update DEPLOY_BASELINE bundleId/commit by hand."
+            echo "::error::scripts/record_deploy_baseline.R missing."
+            exit 1
           fi
 
       - name: Push bump + baseline commits
+        id: push
         run: |
           set -euo pipefail
           BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+          EXPECTED="${{ steps.ship_branch.outputs.branch }}"
           if [[ "$BRANCH" == "HEAD" ]]; then
-            # Detached checkout of a tag/SHA — push is not automatic.
-            echo "::warning::Detached HEAD after ship; commits exist locally but were not pushed to a branch."
+            echo "::error::Detached HEAD after ship — refusing to leave unpushed bump/baseline."
             git log -3 --oneline
-            exit 0
+            exit 1
+          fi
+          if [[ "$BRANCH" != "$EXPECTED" ]]; then
+            echo "::error::Branch drifted to '${BRANCH}' (expected '${EXPECTED}')."
+            exit 1
           fi
           # Push any commits created by deploy / baseline recorder.
           if [[ "$(git rev-parse HEAD)" != "$(git rev-parse "origin/${BRANCH}" 2>/dev/null || echo none)" ]]; then
@@ -180,6 +252,20 @@ jobs:
           else
             echo "No new commits to push (tree already matched origin/${BRANCH})."
           fi
+          echo "sha=$(git rev-parse HEAD)" >>"$GITHUB_OUTPUT"
+          echo "short=$(git rev-parse --short HEAD)" >>"$GITHUB_OUTPUT"
+
+      - name: Publish GitHub Release (after push)
+        run: |
+          set -euo pipefail
+          VERSION="$(sed -n 's/^display_version=//p' scripts/DEPLOY_BASELINE.txt | head -1 | tr -d '[:space:]')"
+          TARGET="${{ steps.push.outputs.sha }}"
+          if [[ -z "${VERSION}" || -z "${TARGET}" ]]; then
+            echo "::error::Missing display_version or pushed SHA for release."
+            exit 1
+          fi
+          # Target the pushed tip so the Release tag is not the pre-ship commit.
+          YNOW_RELEASE_TARGET="${TARGET}" bash scripts/record_github_release.sh "${VERSION}"
 
       - name: Mac post-release sync handoff (soft-skip)
         run: |
@@ -209,7 +295,7 @@ jobs:
             fi
             echo ""
             echo "### Mac post-release sync"
-            echo "Cloud runners soft-skip OneDrive sync. \`deploy_app_21.R\` calls"
+            echo "Cloud runners soft-skip OneDrive sync via"
             echo "\`post_release_local_sync.sh\` → \`mac_post_release_sync_handoff.sh\`"
             echo "(writes \`PENDING_MAC_SYNC.env\`, dispatches **Post-release Mac local sync**)."
             echo "Mac still owns coding + OneDrive catch-up."
@@ -220,5 +306,5 @@ jobs:
             echo "| \`SHINYAPPS_ACCOUNT\` | yes |"
             echo "| \`SHINYAPPS_TOKEN\` | yes |"
             echo "| \`SHINYAPPS_SECRET\` | yes |"
-            echo "| \`YNOW_DB_*\` / \`YNOW_SUPABASE_*\` / OAuth | optional if live restore OK |"
+            echo "| \`YNOW_DB_*\` / \`YNOW_SUPABASE_*\` / OAuth | required when live restore alone lacks OAuth + account DB (do not ship thinner .Renviron) |"
           } >>"$GITHUB_STEP_SUMMARY"

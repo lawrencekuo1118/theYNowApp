@@ -89,11 +89,31 @@ dest <- file.path(app_dir, ".Renviron")
   invisible(out_path)
 }
 
-info <- tryCatch(
-  rsconnect::accountInfo(name = rsconnect::accounts()$name[[1]], server = "shinyapps.io"),
-  error = function(e) NULL
-)
-if (is.null(info)) stop("No rsconnect shinyapps account configured", call. = FALSE)
+# Prefer SHINYAPPS_* env (Actions / Cloud) so accounts() need not pre-exist;
+# otherwise use a previously configured rsconnect account (Mac coding clone).
+acct_env <- Sys.getenv("SHINYAPPS_ACCOUNT", "")
+tok_env <- Sys.getenv("SHINYAPPS_TOKEN", "")
+sec_env <- Sys.getenv("SHINYAPPS_SECRET", "")
+if (nzchar(acct_env) && nzchar(tok_env) && nzchar(sec_env)) {
+  rsconnect::setAccountInfo(name = acct_env, token = tok_env, secret = sec_env)
+}
+info <- tryCatch({
+  acc <- rsconnect::accounts()
+  if (is.null(acc) || !nrow(acc)) stop("no accounts")
+  name <- if (nzchar(acct_env) && acct_env %in% acc$name) {
+    acct_env
+  } else {
+    as.character(acc$name[[1]])
+  }
+  rsconnect::accountInfo(name = name, server = "shinyapps.io")
+}, error = function(e) NULL)
+if (is.null(info)) {
+  stop(
+    "No rsconnect shinyapps account configured. ",
+    "Set SHINYAPPS_ACCOUNT/TOKEN/SECRET or run rsconnect::setAccountInfo(...).",
+    call. = FALSE
+  )
+}
 
 authInfo <- list(token = info$token, secret = info$secret)
 GET <- getFromNamespace("GET", "rsconnect")
