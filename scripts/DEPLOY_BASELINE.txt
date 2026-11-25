@@ -7,5 +7,5 @@ commit=e44f7c7d4c12be8038ad4896b1de20f272d9c1a8
 short=e44f7c7d
 message=chore: bump display version to v28.70
 captured_at=2026-11-23T07:19:08Z
-display_version=v28.70
+display_version=v28.71
 note=Shipped v28.70 (+0.01 from v28.69) via deploy_app_21.R. Tip-ship #802 / 04ca9a28: keep pagedown/Chrome off shinyapps Listen path. Live status=running; rsconnect bundleId=12856577. Prior: v28.69 (12855589).
