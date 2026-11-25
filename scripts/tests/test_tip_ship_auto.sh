@@ -43,4 +43,11 @@ if grep -Eq 'TIP_SHIP_GH_PAT' "$TIP"; then
 fi
 ok "no TIP_SHIP_GH_PAT secret wiring"
 
+# Land = GITHUB_TOKEN PR (not direct master push / not ruleset bypass).
+grep -Fq 'tip_ship_land_commits.sh' "$TIP" || fail "tip-ship.yml must land via tip_ship_land_commits.sh"
+if grep -Fq 'git push origin "HEAD:' "$TIP"; then
+  fail "tip-ship.yml must not direct-push HEAD:branch (use land PR)"
+fi
+ok "land via tip_ship_land_commits.sh"
+
 exit 0

@@ -14,10 +14,9 @@
 #   SHINYAPPS_TOKEN    — from https://www.shinyapps.io/admin/#/tokens
 #   SHINYAPPS_SECRET   — from the same tokens page
 #
-# Land path (original #806 CI/CD): after deploy, `git push origin HEAD:<branch>`
-# with the job GITHUB_TOKEN → Release. No land PR. No TIP_SHIP_GH_PAT.
-# For protected master (required offline-checks): one-time ruleset setting —
-# allow github-actions[bot] to bypass required status checks (not a secret).
+# Land path: after deploy, open tip-ship/baseline-* PR with default GITHUB_TOKEN,
+# dispatch Live-line CI, auto-merge when offline-checks green, then Release.
+# No TIP_SHIP_GH_PAT. No ruleset bypass. Auto-closes superseded land PRs.
 #
 # Optional (defaults match live app) — set as Actions *variables*, not empty env:
 #   SHINYAPPS_APP_NAME  (default TheYNowApp)
@@ -65,6 +64,9 @@ concurrency:
 permissions:
   contents: write
   actions: write
+  pull-requests: write
+  checks: write
+  statuses: write
 
 jobs:
   auto-gate:
@@ -255,7 +257,7 @@ jobs:
               echo "Source: https://www.shinyapps.io/admin/#/tokens"
               echo ""
               echo "Do **not** paste values into the PR or workflow YAML."
-              echo "Land: GITHUB_TOKEN git push (original #806). Ruleset: allow github-actions[bot] bypass on master."
+              echo "Land: GITHUB_TOKEN tip-ship/baseline-* PR → CI → auto-merge (no PAT / no ruleset bypass)."
             } >>"$GITHUB_STEP_SUMMARY"
             echo "Missing required secrets: ${missing[*]}" >&2
             exit 1
@@ -318,7 +320,7 @@ jobs:
         env:
           # Boolean workflow_dispatch inputs are strings "true"/"false".
           YNOW_SKIP_VERSION_BUMP: ${{ inputs.skip_bump == true && '1' || '' }}
-          # Defer GitHub Release until after bump/baseline commits are pushed.
+          # Defer GitHub Release until after bump/baseline land PR merges.
           YNOW_SKIP_GITHUB_RELEASE: "1"
           # Defer Mac handoff until after full DEPLOY_BASELINE rewrite below.
           YNOW_SKIP_POST_RELEASE_SYNC: "1"
@@ -360,15 +362,15 @@ jobs:
             exit 1
           fi
 
-      - name: Push bump + baseline commits
-        id: push
+      - name: Land bump + baseline via PR (GITHUB_TOKEN)
+        id: land
         if: steps.align.outputs.proceed == 'true'
         run: |
           set -euo pipefail
           BRANCH="$(git rev-parse --abbrev-ref HEAD)"
           EXPECTED="${{ steps.ship_branch.outputs.branch }}"
           if [[ "$BRANCH" == "HEAD" ]]; then
-            echo "::error::Detached HEAD after ship — refusing to leave unpushed bump/baseline."
+            echo "::error::Detached HEAD after ship — refusing to leave unlanded bump/baseline."
             git log -3 --oneline
             exit 1
           fi
@@ -376,35 +378,24 @@ jobs:
             echo "::error::Branch drifted to '${BRANCH}' (expected '${EXPECTED}')."
             exit 1
           fi
-          # Mac-parity / #806 land: direct push with job GITHUB_TOKEN (no PAT).
-          if [[ "$(git rev-parse HEAD)" != "$(git rev-parse "origin/${BRANCH}" 2>/dev/null || echo none)" ]]; then
-            if ! git push origin "HEAD:${BRANCH}"; then
-              {
-                echo "::error::git push origin HEAD:${BRANCH} failed (often GH013 when ${BRANCH} requires offline-checks)."
-                echo "::error::Apply the one-time GitHub *settings* change (not a secret): allow github-actions[bot]"
-                echo "::error::to bypass required status checks on ${BRANCH} (Settings → Rules → Rulesets)."
-                echo "::error::Do not add TIP_SHIP_GH_PAT; original CI/CD is direct push after that bypass."
-              } >&2
-              exit 1
-            fi
-            echo "Pushed tip-ship commits to origin/${BRANCH}"
-          else
-            echo "No new commits to push (tree already matched origin/${BRANCH})."
-          fi
-          echo "sha=$(git rev-parse HEAD)" >>"$GITHUB_OUTPUT"
-          echo "short=$(git rev-parse --short HEAD)" >>"$GITHUB_OUTPUT"
+          chmod +x scripts/tip_ship_land_commits.sh
+          # Protected master: PR + dispatch CI + auto-merge (no PAT / no bypass).
+          bash scripts/tip_ship_land_commits.sh "$BRANCH"
 
-      - name: Publish GitHub Release (after push)
+      - name: Publish GitHub Release (after land merge)
         if: steps.align.outputs.proceed == 'true'
         run: |
           set -euo pipefail
           VERSION="$(sed -n 's/^display_version=//p' scripts/DEPLOY_BASELINE.txt | head -1 | tr -d '[:space:]')"
-          TARGET="${{ steps.push.outputs.sha }}"
+          # Prefer merge commit on base; fall back to ship tip SHA.
+          TARGET="${{ steps.land.outputs.merged_sha }}"
+          if [[ -z "${TARGET}" ]]; then
+            TARGET="${{ steps.land.outputs.sha }}"
+          fi
           if [[ -z "${VERSION}" || -z "${TARGET}" ]]; then
-            echo "::error::Missing display_version or pushed SHA for release."
+            echo "::error::Missing display_version or landed SHA for release."
             exit 1
           fi
-          # Target the pushed tip so the Release tag is not the pre-ship commit.
           YNOW_RELEASE_TARGET="${TARGET}" bash scripts/record_github_release.sh "${VERSION}"
 
       - name: Mac post-release sync handoff (soft-skip)
@@ -450,10 +441,15 @@ jobs:
             echo "(writes \`PENDING_MAC_SYNC.env\`, dispatches **Post-release Mac local sync**)."
             echo "Mac still owns coding + OneDrive catch-up."
             echo ""
-            echo "### Land (original #806 CI/CD)"
-            echo "- path: \`git push origin HEAD:<branch>\` with job GITHUB_TOKEN → Release"
-            echo "- pushed_sha: \`${{ steps.push.outputs.sha }}\`"
-            echo "- short: \`${{ steps.push.outputs.short }}\`"
+            echo "### Land (GITHUB_TOKEN PR + auto-merge)"
+            echo "- path: \`tip-ship/baseline-*\` PR → dispatch Live-line CI → auto-merge → Release"
+            echo "- no \`TIP_SHIP_GH_PAT\`; no ruleset bypass"
+            echo "- mode: \`${{ steps.land.outputs.mode }}\`"
+            echo "- land_pr: \`${{ steps.land.outputs.pr_url }}\`"
+            echo "- land_branch: \`${{ steps.land.outputs.land_branch }}\`"
+            echo "- ship_sha: \`${{ steps.land.outputs.sha }}\`"
+            echo "- merged_sha: \`${{ steps.land.outputs.merged_sha }}\`"
+            echo "- short: \`${{ steps.land.outputs.short }}\`"
             echo ""
             echo "### Secrets checklist (names only)"
             echo "| Secret | Required |"
@@ -463,7 +459,5 @@ jobs:
             echo "| \`SHINYAPPS_SECRET\` | yes |"
             echo "| \`YNOW_DB_*\` / \`YNOW_SUPABASE_*\` / OAuth | required when live restore alone lacks OAuth + account DB (do not ship thinner .Renviron) |"
             echo ""
-            echo "### One-time settings (not a secret)"
-            echo "Protected \`master\`: allow \`github-actions[bot]\` to bypass required status checks"
-            echo "(Settings → Rules → Rulesets). No TIP_SHIP_GH_PAT. No land PR."
+            echo "No \`TIP_SHIP_GH_PAT\`. No \`github-actions[bot]\` ruleset bypass required."
           } >>"$GITHUB_STEP_SUMMARY"
