@@ -98,20 +98,16 @@ echo "  HEAD=${HEAD_SHORT} display_version=${VERSION:-?} bundleId=${BUNDLE:-?}"
 echo "  token=GITHUB_TOKEN (no TIP_SHIP_GH_PAT; no ruleset bypass)"
 
 # Detach tip commits onto a land branch (do not push the protected base).
+# Do NOT use `git push -u` — that retargets the current branch's upstream
+# (tip-ship runs on master) to the land remote and confuses later gh/git ops.
 git branch -f "$LAND_BRANCH" HEAD
-retry 4 3 -- git push -u origin "HEAD:refs/heads/${LAND_BRANCH}"
+retry 4 3 -- git push origin "HEAD:refs/heads/${LAND_BRANCH}"
 
 EXISTING_PR=""
 PR_URL=""
-for attempt in 1 2 3 4 5; do
-  EXISTING_PR="$(gh pr list --head "$LAND_BRANCH" --base "$BASE_BRANCH" --state open --json url --jq '.[0].url // empty' 2>/dev/null || true)"
-  if [[ -n "$EXISTING_PR" ]]; then
-    PR_URL="$EXISTING_PR"
-    echo "Reusing open tip-ship PR: ${PR_URL}"
-    break
-  fi
-  TITLE="chore: tip-ship baseline ${VERSION:-?} bundle ${BUNDLE:-?}"
-  BODY="$(cat <<EOF
+LAST_PR_ERR=""
+TITLE="chore: tip-ship baseline ${VERSION:-?} bundle ${BUNDLE:-?}"
+BODY="$(cat <<EOF
 ## Tip-ship deployment record
 
 Lands the display-version bump + \`scripts/DEPLOY_BASELINE.txt\` after a successful shinyapps tip-ship.
@@ -127,23 +123,70 @@ Opened by Actions tip-ship with default \`GITHUB_TOKEN\` (no \`TIP_SHIP_GH_PAT\`
 Do **not** tip-ship paused work (e.g. #801) from this record PR.
 EOF
 )"
-  if PR_URL="$(
-    gh pr create \
-      --base "$BASE_BRANCH" \
-      --head "$LAND_BRANCH" \
-      --title "$TITLE" \
-      --body "$BODY" 2>/dev/null
-  )" && [[ -n "$PR_URL" ]]; then
+
+create_land_pr() {
+  local out errfile
+  errfile="$(mktemp)"
+  # Prefer gh CLI (GraphQL). Capture stderr — do not swallow create failures.
+  if out="$(gh pr create --base "$BASE_BRANCH" --head "$LAND_BRANCH" --title "$TITLE" --body "$BODY" 2>"$errfile")" \
+    && [[ -n "$out" ]]; then
+    printf '%s\n' "$out"
+    rm -f "$errfile"
+    return 0
+  fi
+  LAST_PR_ERR="$(cat "$errfile" 2>/dev/null || true)"
+  rm -f "$errfile"
+
+  # REST fallback (same GITHUB_TOKEN; surfaces JSON errors clearly).
+  errfile="$(mktemp)"
+  if out="$(
+    gh api -X POST "repos/${OWNER_REPO}/pulls" \
+      -f title="$TITLE" \
+      -f head="$LAND_BRANCH" \
+      -f base="$BASE_BRANCH" \
+      -f body="$BODY" \
+      --jq '.html_url // empty' 2>"$errfile"
+  )" && [[ -n "$out" ]]; then
+    printf '%s\n' "$out"
+    rm -f "$errfile"
+    return 0
+  fi
+  LAST_PR_ERR="${LAST_PR_ERR}"$'\n'"$(cat "$errfile" 2>/dev/null || true)"
+  rm -f "$errfile"
+  return 1
+}
+
+for attempt in 1 2 3 4 5; do
+  EXISTING_PR="$(gh pr list --head "$LAND_BRANCH" --base "$BASE_BRANCH" --state open --json url --jq '.[0].url // empty' 2>/dev/null || true)"
+  if [[ -n "$EXISTING_PR" ]]; then
+    PR_URL="$EXISTING_PR"
+    echo "Reusing open tip-ship PR: ${PR_URL}"
+    break
+  fi
+  if PR_URL="$(create_land_pr)" && [[ -n "$PR_URL" ]]; then
     echo "Opened tip-ship PR: ${PR_URL}"
     break
   fi
   PR_URL=""
-  echo "PR create attempt ${attempt}/5 failed (branch may not be visible yet); retrying…" >&2
+  echo "PR create attempt ${attempt}/5 failed; retrying…" >&2
+  if [[ -n "${LAST_PR_ERR}" ]]; then
+    echo "$LAST_PR_ERR" | tail -n 20 >&2
+  fi
   sleep 3
 done
 
 if [[ -z "$PR_URL" ]]; then
   echo "::error::Failed to open tip-ship land PR for ${LAND_BRANCH} → ${BASE_BRANCH}." >&2
+  if echo "${LAST_PR_ERR}" | grep -qi 'Resource not accessible by integration\|createPullRequest\|403'; then
+    echo "::error::GITHUB_TOKEN cannot create PRs until repo Actions setting is enabled:" >&2
+    echo "::error::Settings → Actions → General → Workflow permissions →" >&2
+    echo "::error::check 'Allow GitHub Actions to create and approve pull requests'." >&2
+    echo "::error::This is not a PAT and not a ruleset bypass." >&2
+  fi
+  if [[ -n "${LAST_PR_ERR}" ]]; then
+    echo "::error::Last create error:" >&2
+    echo "${LAST_PR_ERR}" | tail -n 40 >&2
+  fi
   echo "::error::Live may already be on the new bundle — open/merge ${LAND_BRANCH} manually." >&2
   exit 1
 fi
