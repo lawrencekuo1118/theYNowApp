@@ -46,6 +46,22 @@ pb_asset_module_shell_ui <- function(id) {
     ),
     tabPanel(
       "P/B Settings", value = "pb_settings", icon = icon("cogs"),
+      # Mode selector mirrors DDM「選擇 DDM 估值模型」— one book metric at a time.
+      radioButtons(
+        ns("basis"),
+        label = ui_i18n("pb_basis_label"),
+        choices = c(
+          "Book value BVPS" = "bvps",
+          "Tangible book TBVPS" = "tbvps",
+          "Holding-company NAVPS" = "navps"
+        ),
+        selected = APP_DEFAULTS$pb_basis
+      ),
+      tags$p(
+        id = ns("ynow_pb_basis_help"),
+        class = "help-block",
+        ui_i18n("pb_basis_help")
+      ),
       tags$p(
         class = "ynow-pb-settings-lead help-block",
         ui_i18n("pb_settings_lead")
@@ -66,95 +82,106 @@ pb_asset_module_shell_ui <- function(id) {
       ),
       uiOutput(ns("txt_shares_resolve_note")),
       fluidRow(column(12, uiOutput(ns("alert_missing_bv")))),
-      # --- BVPS ---
-      tags$div(
-        class = "ynow-pb-param-section",
-        `data-ynow-pb-section` = "bvps",
-        tags$h4(class = "ynow-pb-param-section-title", tags$b(ui_i18n("pb_section_bvps_title"))),
-        tags$div(class = "ynow-pb-param-formula", ui_i18n("pb_section_bvps_formula")),
-        tags$div(class = "ynow-pb-param-fair", ui_i18n("pb_section_bvps_fair")),
-        tags$p(class = "help-block ynow-pb-param-note", ui_i18n("pb_components_help")),
-        fluidRow(
-          column(4, numericInput(
-            ns("common_equity"), ui_i18n("pb_common_equity_label"),
-            value = NA, step = 1, min = 0
-          )),
-          column(4, numericInput(
-            ns("shares"), ui_i18n("pb_shares_label"),
-            value = NA, step = 1, min = 0
-          )),
-          column(4, numericInput(
-            ns("bvps"), ui_i18n("pb_bvps_label"),
-            value = APP_DEFAULTS$pb_bvps, step = 0.1, min = 0
-          ))
+      # --- BVPS module (visible only when basis == bvps) ---
+      conditionalPanel(
+        condition = sprintf("input['%s'] == 'bvps'", ns("basis")),
+        tags$div(
+          class = "ynow-pb-param-section",
+          `data-ynow-pb-section` = "bvps",
+          tags$h4(class = "ynow-pb-param-section-title", tags$b(ui_i18n("pb_section_bvps_title"))),
+          tags$div(class = "ynow-pb-param-formula", ui_i18n("pb_section_bvps_formula")),
+          tags$div(class = "ynow-pb-param-fair", ui_i18n("pb_section_bvps_fair")),
+          tags$p(class = "help-block ynow-pb-param-note", ui_i18n("pb_components_help")),
+          fluidRow(
+            column(4, numericInput(
+              ns("common_equity"), ui_i18n("pb_common_equity_label"),
+              value = NA, step = 1, min = 0
+            )),
+            column(4, numericInput(
+              ns("shares"), ui_i18n("pb_shares_label"),
+              value = NA, step = 1, min = 0
+            )),
+            column(4, numericInput(
+              ns("bvps"), ui_i18n("pb_bvps_label"),
+              value = APP_DEFAULTS$pb_bvps, step = 0.1, min = 0
+            ))
+          )
         )
       ),
-      # --- TBVPS ---
-      tags$div(
-        class = "ynow-pb-param-section",
-        `data-ynow-pb-section` = "tbvps",
-        tags$h4(class = "ynow-pb-param-section-title", tags$b(ui_i18n("pb_section_tbvps_title"))),
-        tags$div(class = "ynow-pb-param-formula", ui_i18n("pb_section_tbvps_formula")),
-        tags$div(class = "ynow-pb-param-fair", ui_i18n("pb_section_tbvps_fair")),
-        tags$p(class = "help-block ynow-pb-param-note", ui_i18n("pb_section_shared_note")),
-        fluidRow(
-          column(4, numericInput(
-            ns("goodwill"), ui_i18n("pb_goodwill_label"),
-            value = NA, step = 1, min = 0
-          )),
-          column(4, numericInput(
-            ns("intangibles"), ui_i18n("pb_intangibles_label"),
-            value = NA, step = 1, min = 0
-          )),
-          column(4, numericInput(
-            ns("tbvps"), ui_i18n("pb_tbvps_label"),
-            value = APP_DEFAULTS$pb_tbvps, step = 0.1, min = 0
-          ))
-        ),
-        uiOutput(ns("ui_tbvps_parts_mirror"))
-      ),
-      # --- NAVPS ---
-      tags$div(
-        class = "ynow-pb-param-section",
-        `data-ynow-pb-section` = "navps",
-        tags$h4(class = "ynow-pb-param-section-title", tags$b(ui_i18n("pb_section_navps_title"))),
-        tags$div(class = "ynow-pb-param-formula", ui_i18n("pb_section_navps_formula")),
-        tags$div(class = "ynow-pb-param-fair", ui_i18n("pb_section_navps_fair")),
-        tags$p(class = "help-block ynow-pb-param-note", ui_i18n("pb_section_shared_note")),
-        fluidRow(
-          column(4, numericInput(
-            ns("investments"), ui_i18n("pb_investments_label"),
-            value = NA, step = 1, min = 0
-          )),
-          column(4, numericInput(
-            ns("holdco_discount"), ui_i18n("pb_holdco_label"),
-            value = APP_DEFAULTS$pb_holdco_discount * 100,
-            min = 0, max = 50, step = 1
-          )),
-          column(4, numericInput(
-            ns("navps"), ui_i18n("pb_navps_label"),
-            value = NA, step = 0.1, min = 0
-          ))
-        ),
-        tags$p(class = "help-block", ui_i18n("pb_holdco_help")),
-        uiOutput(ns("ui_navps_parts_mirror")),
-        tableOutput(ns("tbl_nav_breakdown"))
-      ),
-      hr(style = "border-top: 1px solid #BDC3C7;"),
-      fluidRow(
-        column(
-          6,
-          selectInput(
-            ns("basis"), ui_i18n("pb_basis_label"),
-            choices = c(
-              "Book value BVPS" = "bvps",
-              "Tangible book TBVPS" = "tbvps",
-              "Holding-company NAVPS" = "navps"
-            ),
-            selected = APP_DEFAULTS$pb_basis
+      # --- TBVPS module ---
+      conditionalPanel(
+        condition = sprintf("input['%s'] == 'tbvps'", ns("basis")),
+        tags$div(
+          class = "ynow-pb-param-section",
+          `data-ynow-pb-section` = "tbvps",
+          tags$h4(class = "ynow-pb-param-section-title", tags$b(ui_i18n("pb_section_tbvps_title"))),
+          tags$div(class = "ynow-pb-param-formula", ui_i18n("pb_section_tbvps_formula")),
+          tags$div(class = "ynow-pb-param-fair", ui_i18n("pb_section_tbvps_fair")),
+          tags$p(class = "help-block ynow-pb-param-note", ui_i18n("pb_components_help")),
+          fluidRow(
+            column(4, numericInput(
+              ns("tb_common_equity"), ui_i18n("pb_common_equity_label"),
+              value = NA, step = 1, min = 0
+            )),
+            column(4, numericInput(
+              ns("tb_shares"), ui_i18n("pb_shares_label"),
+              value = NA, step = 1, min = 0
+            )),
+            column(4, numericInput(
+              ns("tbvps"), ui_i18n("pb_tbvps_label"),
+              value = APP_DEFAULTS$pb_tbvps, step = 0.1, min = 0
+            ))
+          ),
+          fluidRow(
+            column(4, numericInput(
+              ns("goodwill"), ui_i18n("pb_goodwill_label"),
+              value = NA, step = 1, min = 0
+            )),
+            column(4, numericInput(
+              ns("intangibles"), ui_i18n("pb_intangibles_label"),
+              value = NA, step = 1, min = 0
+            ))
           )
-        ),
-        column(6, helpText(ui_i18n("pb_basis_help")))
+        )
+      ),
+      # --- NAVPS module ---
+      conditionalPanel(
+        condition = sprintf("input['%s'] == 'navps'", ns("basis")),
+        tags$div(
+          class = "ynow-pb-param-section",
+          `data-ynow-pb-section` = "navps",
+          tags$h4(class = "ynow-pb-param-section-title", tags$b(ui_i18n("pb_section_navps_title"))),
+          tags$div(class = "ynow-pb-param-formula", ui_i18n("pb_section_navps_formula")),
+          tags$div(class = "ynow-pb-param-fair", ui_i18n("pb_section_navps_fair")),
+          tags$p(class = "help-block ynow-pb-param-note", ui_i18n("pb_components_help")),
+          fluidRow(
+            column(4, numericInput(
+              ns("nav_common_equity"), ui_i18n("pb_common_equity_label"),
+              value = NA, step = 1, min = 0
+            )),
+            column(4, numericInput(
+              ns("nav_shares"), ui_i18n("pb_shares_label"),
+              value = NA, step = 1, min = 0
+            )),
+            column(4, numericInput(
+              ns("navps"), ui_i18n("pb_navps_label"),
+              value = NA, step = 0.1, min = 0
+            ))
+          ),
+          fluidRow(
+            column(4, numericInput(
+              ns("investments"), ui_i18n("pb_investments_label"),
+              value = NA, step = 1, min = 0
+            )),
+            column(4, numericInput(
+              ns("holdco_discount"), ui_i18n("pb_holdco_label"),
+              value = APP_DEFAULTS$pb_holdco_discount * 100,
+              min = 0, max = 50, step = 1
+            ))
+          ),
+          tags$p(class = "help-block", ui_i18n("pb_holdco_help")),
+          tableOutput(ns("tbl_nav_breakdown"))
+        )
       )
     ),
     tabPanel(
@@ -274,15 +301,19 @@ pb_asset_module_server <- function(id,
     }
 
     .pb_recompute_from_parts <- function() {
-      eq <- suppressWarnings(as.numeric(input$common_equity)[1])
-      sh <- suppressWarnings(as.numeric(input$shares)[1])
-      bv <- .pb_bvps_from_parts(eq, sh)
+      # Each mode owns its equity/shares inputs; keep all three per-share results fresh
+      # so switching the selector stays coherent with Fill-from-statements values.
+      bv <- .pb_bvps_from_parts(input$common_equity, input$shares)
       if (is.finite(bv)) updateNumericInput(session, "bvps", value = round(bv, 2))
-      tb <- .pb_tbvps_from_parts(eq, input$goodwill, input$intangibles, sh)
+      tb <- .pb_tbvps_from_parts(
+        input$tb_common_equity, input$goodwill, input$intangibles, input$tb_shares
+      )
       if (is.finite(tb)) updateNumericInput(session, "tbvps", value = round(tb, 2))
       disc_pct <- suppressWarnings(as.numeric(input$holdco_discount)[1])
       if (!is.finite(disc_pct)) disc_pct <- APP_DEFAULTS$pb_holdco_discount * 100
-      nv <- .pb_navps_from_parts(eq, input$investments, disc_pct / 100, sh)
+      nv <- .pb_navps_from_parts(
+        input$nav_common_equity, input$investments, disc_pct / 100, input$nav_shares
+      )
       if (is.finite(nv)) updateNumericInput(session, "navps", value = round(nv, 2))
     }
 
@@ -296,6 +327,13 @@ pb_asset_module_server <- function(id,
         updateNumericInput(session, "investments", value = round(inv_q, 0))
       } else if (is.finite(navc$investments)) {
         updateNumericInput(session, "investments", value = round(navc$investments, 0))
+      }
+      eq_q <- .pb_money_to_quote(navc$equity, df_bs, share_method = share_method)
+      if (is.finite(eq_q)) {
+        updateNumericInput(session, "nav_common_equity", value = round(eq_q, 0))
+      }
+      if (is.finite(shares) && shares > 0) {
+        updateNumericInput(session, "nav_shares", value = round(shares, 0))
       }
       if (is.finite(navc$nav) && is.finite(shares) && shares > 0) {
         q_ccy <- tryCatch(quote_currency(), error = function(e) NA_character_)
@@ -407,6 +445,10 @@ pb_asset_module_server <- function(id,
       updateNumericInput(session, "navps", value = NA_real_)
       updateNumericInput(session, "common_equity", value = NA_real_)
       updateNumericInput(session, "shares", value = NA_real_)
+      updateNumericInput(session, "tb_common_equity", value = NA_real_)
+      updateNumericInput(session, "tb_shares", value = NA_real_)
+      updateNumericInput(session, "nav_common_equity", value = NA_real_)
+      updateNumericInput(session, "nav_shares", value = NA_real_)
       updateNumericInput(session, "goodwill", value = NA_real_)
       updateNumericInput(session, "intangibles", value = NA_real_)
       updateNumericInput(session, "investments", value = NA_real_)
@@ -505,10 +547,16 @@ pb_asset_module_server <- function(id,
           eq_q <- .pb_money_to_quote(equity, df_bs, share_method = meth)
           gw_q <- .pb_money_to_quote(gw_stmt, df_bs, share_method = meth)
           intang_q <- .pb_money_to_quote(intang_stmt, df_bs, share_method = meth)
+          sh_round <- round(shares, 0)
           if (is.finite(eq_q)) {
-            updateNumericInput(session, "common_equity", value = round(eq_q, 0))
+            eq_round <- round(eq_q, 0)
+            updateNumericInput(session, "common_equity", value = eq_round)
+            updateNumericInput(session, "tb_common_equity", value = eq_round)
+            updateNumericInput(session, "nav_common_equity", value = eq_round)
           }
-          updateNumericInput(session, "shares", value = round(shares, 0))
+          updateNumericInput(session, "shares", value = sh_round)
+          updateNumericInput(session, "tb_shares", value = sh_round)
+          updateNumericInput(session, "nav_shares", value = sh_round)
           if (is.finite(gw_q)) {
             updateNumericInput(session, "goodwill", value = round(gw_q, 0))
           } else {
@@ -550,20 +598,19 @@ pb_asset_module_server <- function(id,
     # Component edits → refresh per-share results (quote-aligned amounts ÷ shares).
     observeEvent(
       list(
-        input$common_equity, input$shares, input$goodwill, input$intangibles,
-        input$investments, input$holdco_discount
+        input$common_equity, input$shares,
+        input$tb_common_equity, input$tb_shares, input$goodwill, input$intangibles,
+        input$nav_common_equity, input$nav_shares, input$investments, input$holdco_discount
       ),
       {
         .pb_recompute_from_parts()
         # Keep NAV breakdown table in sync when HoldCo discount or investments change.
-        df_bs <- tryCatch(d_balance_sheet(), error = function(e) NULL)
-        sh <- suppressWarnings(as.numeric(input$shares)[1])
-        if (is.null(df_bs) || !is.finite(sh) || sh <= 0) return()
+        sh <- suppressWarnings(as.numeric(input$nav_shares)[1])
+        if (!is.finite(sh) || sh <= 0) return()
         disc_pct <- suppressWarnings(as.numeric(input$holdco_discount)[1])
         if (!is.finite(disc_pct)) disc_pct <- APP_DEFAULTS$pb_holdco_discount * 100
         inv_in <- suppressWarnings(as.numeric(input$investments)[1])
-        eq_in <- suppressWarnings(as.numeric(input$common_equity)[1])
-        # Prefer live inputs for the breakdown; fall back to statement extract.
+        eq_in <- suppressWarnings(as.numeric(input$nav_common_equity)[1])
         if (is.finite(eq_in) && eq_in > 0) {
           inv_use <- if (is.finite(inv_in) && inv_in >= 0) inv_in else 0
           disc <- max(0, min(0.5, disc_pct / 100))
@@ -598,41 +645,6 @@ pb_asset_module_server <- function(id,
         paste0("已自動對齊報價股：", note)
       )
     })
-
-    .pb_fmt_mirror <- function(x) {
-      if (!is.finite(x)) return("N/A")
-      format(round(x, 0), big.mark = ",", scientific = FALSE)
-    }
-
-    output$ui_tbvps_parts_mirror <- renderUI({
-      loc <- .loc()
-      eq <- suppressWarnings(as.numeric(input$common_equity)[1])
-      sh <- suppressWarnings(as.numeric(input$shares)[1])
-      tags$p(
-        class = "ynow-pb-parts-mirror help-block",
-        sprintf(
-          "%s: %s · %s: %s",
-          ui_str("pb_common_equity_label", loc), .pb_fmt_mirror(eq),
-          ui_str("pb_shares_label", loc),
-          if (is.finite(sh)) format(round(sh, 0), big.mark = ",", scientific = FALSE) else "N/A"
-        )
-      )
-    })
-
-    output$ui_navps_parts_mirror <- renderUI({
-      loc <- .loc()
-      eq <- suppressWarnings(as.numeric(input$common_equity)[1])
-      sh <- suppressWarnings(as.numeric(input$shares)[1])
-      tags$p(
-        class = "ynow-pb-parts-mirror help-block",
-        sprintf(
-          "%s: %s · %s: %s",
-          ui_str("pb_common_equity_label", loc), .pb_fmt_mirror(eq),
-          ui_str("pb_shares_label", loc),
-          if (is.finite(sh)) format(round(sh, 0), big.mark = ",", scientific = FALSE) else "N/A"
-        )
-      )
-    })
     
     observeEvent(list(input$use_industry_pb, input$target_mode, industry_choice(), industry_text(),
                       current_roe_pct(), central_ke(), central_g_pct(), hist_pb_series(),
@@ -656,7 +668,7 @@ pb_asset_module_server <- function(id,
         updateNumericInput(session, "pb_mid",  value = APP_DEFAULTS$pb_mid)
         updateNumericInput(session, "pb_high", value = APP_DEFAULTS$pb_high)
       }
-      updateSelectInput(session, "basis", selected = APP_DEFAULTS$pb_basis)
+      updateRadioButtons(session, "basis", selected = APP_DEFAULTS$pb_basis)
       updateCheckboxInput(session, "use_industry_pb", value = APP_DEFAULTS$pb_use_industry)
       updateRadioButtons(session, "target_mode", selected = APP_DEFAULTS$pb_target_mode %||% "justified")
       updateNumericInput(session, "holdco_discount", value = APP_DEFAULTS$pb_holdco_discount * 100)

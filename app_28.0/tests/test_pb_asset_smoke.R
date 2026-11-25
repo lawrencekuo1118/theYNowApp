@@ -148,15 +148,32 @@ check(
     grepl('value = "target_pb"', shell, fixed = TRUE)
 )
 check(
-  "Settings has three BVPS/TBVPS/NAVPS sections",
+  "Settings uses DDM-style radio for book metric",
+  grepl("radioButtons(", shell, fixed = TRUE) &&
+    grepl('ns("basis")', shell, fixed = TRUE) &&
+    grepl("pb_basis_label", shell, fixed = TRUE)
+)
+check(
+  "Settings shows one module via conditionalPanel",
+  grepl("conditionalPanel(", shell, fixed = TRUE) &&
+    grepl("== 'bvps'", shell, fixed = TRUE) &&
+    grepl("== 'tbvps'", shell, fixed = TRUE) &&
+    grepl("== 'navps'", shell, fixed = TRUE)
+)
+check(
+  "Settings has three BVPS/TBVPS/NAVPS modules",
   grepl('data-ynow-pb-section` = "bvps"', shell, fixed = TRUE) &&
     grepl('data-ynow-pb-section` = "tbvps"', shell, fixed = TRUE) &&
     grepl('data-ynow-pb-section` = "navps"', shell, fixed = TRUE)
 )
 check(
-  "Settings wires component inputs",
+  "Settings wires per-mode component inputs",
   grepl('ns("common_equity")', shell, fixed = TRUE) &&
     grepl('ns("shares")', shell, fixed = TRUE) &&
+    grepl('ns("tb_common_equity")', shell, fixed = TRUE) &&
+    grepl('ns("tb_shares")', shell, fixed = TRUE) &&
+    grepl('ns("nav_common_equity")', shell, fixed = TRUE) &&
+    grepl('ns("nav_shares")', shell, fixed = TRUE) &&
     grepl('ns("goodwill")', shell, fixed = TRUE) &&
     grepl('ns("intangibles")', shell, fixed = TRUE) &&
     grepl('ns("investments")', shell, fixed = TRUE) &&
@@ -165,16 +182,14 @@ check(
     grepl('ns("tbvps")', shell, fixed = TRUE) &&
     grepl('ns("navps")', shell, fixed = TRUE)
 )
-check(
-  "Settings keeps basis selector",
-  grepl('ns("basis")', shell, fixed = TRUE)
-)
-# Section order: BVPS → TBVPS → NAVPS
+# Module markup order: BVPS → TBVPS → NAVPS (visibility gated by radio)
 bv_pos <- regexpr('data-ynow-pb-section` = "bvps"', shell, fixed = TRUE)[1]
 tb_pos <- regexpr('data-ynow-pb-section` = "tbvps"', shell, fixed = TRUE)[1]
 nv_pos <- regexpr('data-ynow-pb-section` = "navps"', shell, fixed = TRUE)[1]
-check("BVPS section precedes TBVPS", bv_pos > 0 && tb_pos > bv_pos)
-check("TBVPS section precedes NAVPS", tb_pos > 0 && nv_pos > tb_pos)
+radio_pos <- regexpr("radioButtons(", shell, fixed = TRUE)[1]
+check("Radio precedes BVPS module", radio_pos > 0 && bv_pos > radio_pos)
+check("BVPS module precedes TBVPS", bv_pos > 0 && tb_pos > bv_pos)
+check("TBVPS module precedes NAVPS", tb_pos > 0 && nv_pos > tb_pos)
 check(
   "Overview not a separate body tabBox",
   !grepl('"P/B Overview"', body, fixed = TRUE) &&
