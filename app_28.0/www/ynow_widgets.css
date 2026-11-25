@@ -831,6 +831,143 @@
             text-overflow: clip !important;
             max-width: 100%;
           }
+
+          /* Valuation model Overview KPIs (NAV / Gordon DCF / DDM / RI / P/B / SOTP):
+             white-outline hero → full-width row; secondary KPIs → 1:1 equal-height pair.
+             Scoped to rows that contain .ynow-model-kpi-outline so Multiples (filled-only)
+             keep the default full-width stack. Desktop Bootstrap cols unchanged. */
+          .content-wrapper .row.ynow-model-kpi-row:has(> .ynow-model-kpi-outline),
+          .tab-content .row.ynow-model-kpi-row:has(> .ynow-model-kpi-outline),
+          .tab-pane .row.ynow-model-kpi-row:has(> .ynow-model-kpi-outline) {
+            display: grid !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            grid-auto-rows: minmax(min-content, auto);
+            align-items: stretch;
+            gap: 0 0;
+            margin-left: -5px;
+            margin-right: -5px;
+          }
+          .content-wrapper .row.ynow-model-kpi-row:has(> .ynow-model-kpi-outline)::before,
+          .content-wrapper .row.ynow-model-kpi-row:has(> .ynow-model-kpi-outline)::after,
+          .tab-content .row.ynow-model-kpi-row:has(> .ynow-model-kpi-outline)::before,
+          .tab-content .row.ynow-model-kpi-row:has(> .ynow-model-kpi-outline)::after,
+          .tab-pane .row.ynow-model-kpi-row:has(> .ynow-model-kpi-outline)::before,
+          .tab-pane .row.ynow-model-kpi-row:has(> .ynow-model-kpi-outline)::after {
+            display: none !important;
+            content: none !important;
+          }
+          .content-wrapper .row.ynow-model-kpi-row:has(> .ynow-model-kpi-outline) > [class*='col-'],
+          .tab-content .row.ynow-model-kpi-row:has(> .ynow-model-kpi-outline) > [class*='col-'],
+          .tab-pane .row.ynow-model-kpi-row:has(> .ynow-model-kpi-outline) > [class*='col-'] {
+            width: auto !important;
+            max-width: none !important;
+            float: none !important;
+            clear: none !important;
+            display: flex !important;
+            flex-direction: column !important;
+            margin: 0 !important;
+            padding-left: 5px;
+            padding-right: 5px;
+            min-width: 0;
+            min-height: 0;
+            height: auto;
+            box-sizing: border-box;
+          }
+          /* White hero KPI: own full-width row */
+          .content-wrapper .row.ynow-model-kpi-row:has(> .ynow-model-kpi-outline) > .ynow-model-kpi-outline,
+          .tab-content .row.ynow-model-kpi-row:has(> .ynow-model-kpi-outline) > .ynow-model-kpi-outline,
+          .tab-pane .row.ynow-model-kpi-row:has(> .ynow-model-kpi-outline) > .ynow-model-kpi-outline {
+            grid-column: 1 / -1;
+            width: 100% !important;
+            max-width: 100% !important;
+          }
+          /* Odd secondary count (2-KPI DCF/DDM, or 4-KPI P/B/RI last cell): span full width */
+          .content-wrapper .row.ynow-model-kpi-row:has(> .ynow-model-kpi-outline) > [class*='col-']:not(.ynow-model-kpi-outline):last-child:nth-child(even),
+          .tab-content .row.ynow-model-kpi-row:has(> .ynow-model-kpi-outline) > [class*='col-']:not(.ynow-model-kpi-outline):last-child:nth-child(even),
+          .tab-pane .row.ynow-model-kpi-row:has(> .ynow-model-kpi-outline) > [class*='col-']:not(.ynow-model-kpi-outline):last-child:nth-child(even) {
+            grid-column: 1 / -1;
+          }
+          .content-wrapper .row.ynow-model-kpi-row:has(> .ynow-model-kpi-outline) > [class*='col-'] > .shiny-html-output,
+          .tab-content .row.ynow-model-kpi-row:has(> .ynow-model-kpi-outline) > [class*='col-'] > .shiny-html-output,
+          .tab-pane .row.ynow-model-kpi-row:has(> .ynow-model-kpi-outline) > [class*='col-'] > .shiny-html-output,
+          .content-wrapper .row.ynow-model-kpi-row:has(> .ynow-model-kpi-outline) > [class*='col-'] > [class*='col-'],
+          .tab-content .row.ynow-model-kpi-row:has(> .ynow-model-kpi-outline) > [class*='col-'] > [class*='col-'],
+          .tab-pane .row.ynow-model-kpi-row:has(> .ynow-model-kpi-outline) > [class*='col-'] > [class*='col-'] {
+            flex: 1 1 auto;
+            width: 100% !important;
+            max-width: 100% !important;
+            float: none !important;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+          }
+          .content-wrapper .ynow-model-kpi-row:has(> .ynow-model-kpi-outline) .small-box,
+          .content-wrapper .ynow-model-kpi-row:has(> .ynow-model-kpi-outline) .info-box,
+          .tab-content .ynow-model-kpi-row:has(> .ynow-model-kpi-outline) .small-box,
+          .tab-content .ynow-model-kpi-row:has(> .ynow-model-kpi-outline) .info-box,
+          .tab-pane .ynow-model-kpi-row:has(> .ynow-model-kpi-outline) .small-box,
+          .tab-pane .ynow-model-kpi-row:has(> .ynow-model-kpi-outline) .info-box {
+            flex: 1 1 auto;
+            width: 100% !important;
+            height: 100% !important;
+            min-height: min-content;
+            margin-bottom: 10px !important;
+            overflow: visible !important;
+            display: flex !important;
+            flex-direction: column !important;
+            box-sizing: border-box;
+          }
+          .content-wrapper .ynow-model-kpi-row:has(> .ynow-model-kpi-outline) .small-box .inner,
+          .tab-content .ynow-model-kpi-row:has(> .ynow-model-kpi-outline) .small-box .inner,
+          .tab-pane .ynow-model-kpi-row:has(> .ynow-model-kpi-outline) .small-box .inner {
+            padding-right: 10px !important;
+            padding-left: 10px !important;
+            flex: 1 1 auto;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-width: 0;
+            overflow: visible !important;
+          }
+          .content-wrapper .ynow-model-kpi-row:has(> .ynow-model-kpi-outline) .small-box .icon,
+          .tab-content .ynow-model-kpi-row:has(> .ynow-model-kpi-outline) .small-box .icon,
+          .tab-pane .ynow-model-kpi-row:has(> .ynow-model-kpi-outline) .small-box .icon {
+            display: none !important;
+          }
+          .content-wrapper .ynow-model-kpi-row:has(> .ynow-model-kpi-outline) .info-box .info-box-icon,
+          .tab-content .ynow-model-kpi-row:has(> .ynow-model-kpi-outline) .info-box .info-box-icon,
+          .tab-pane .ynow-model-kpi-row:has(> .ynow-model-kpi-outline) .info-box .info-box-icon {
+            display: none !important;
+          }
+          .content-wrapper .ynow-model-kpi-row:has(> .ynow-model-kpi-outline) .info-box .info-box-content,
+          .tab-content .ynow-model-kpi-row:has(> .ynow-model-kpi-outline) .info-box .info-box-content,
+          .tab-pane .ynow-model-kpi-row:has(> .ynow-model-kpi-outline) .info-box .info-box-content {
+            margin-left: 0 !important;
+            padding: 8px 10px !important;
+            overflow: visible !important;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            flex: 1 1 auto;
+            min-width: 0;
+            width: 100%;
+            box-sizing: border-box;
+          }
+          .content-wrapper .ynow-model-kpi-row:has(> .ynow-model-kpi-outline) .small-box .inner p,
+          .tab-content .ynow-model-kpi-row:has(> .ynow-model-kpi-outline) .small-box .inner p,
+          .tab-pane .ynow-model-kpi-row:has(> .ynow-model-kpi-outline) .small-box .inner p,
+          .content-wrapper .ynow-model-kpi-row:has(> .ynow-model-kpi-outline) .info-box .info-box-text,
+          .tab-content .ynow-model-kpi-row:has(> .ynow-model-kpi-outline) .info-box .info-box-text,
+          .tab-pane .ynow-model-kpi-row:has(> .ynow-model-kpi-outline) .info-box .info-box-text {
+            white-space: normal !important;
+            overflow: visible !important;
+            text-overflow: unset !important;
+            overflow-wrap: break-word;
+            word-break: normal;
+          }
         }
 
         /* Finance Summary 卡片網格 */
