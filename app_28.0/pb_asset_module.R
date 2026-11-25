@@ -1,10 +1,13 @@
 # ==========================================
-# pb_asset_module.R — Book / Asset P/B valuation
-# Fair Value = (BVPS／TBVPS／NAVPS) × Target P/B
-# Target source decides taxonomy:
-#   Justified P/B (ROE、Ke、SGR／g) → Absolute Fair Value (Book / Asset)
-#   industry / history multiples → Relative Implied Price (Multiples · Book)
-# Pure NAV (no multiple) uses the separate NAV model — same family, different route.
+# pb_asset_module.R — Asset-Based Valuation
+# Three independent sub-models (own multiple each):
+#   Book Value Valuation     — BVPS  × Target P/B
+#   Tangible Book Valuation  — TBVPS × Target P/TBV
+#   Net Asset Value Valuation— NAVPS × Target P/NAV
+#   (no MTM → Adjusted BVPS, not NAVPS)
+# Justified P/B (ROE、Ke、SGR／g) primarily feeds the BVPS multiple;
+# industry / history can seed each mode’s band. Pure NAV (no multiple) stays
+# the separate NAV model — same family, different route.
 # ==========================================
 
 # ==========================================
@@ -12,7 +15,7 @@
 # ==========================================
 pb_asset_module_shell_ui <- function(id) {
   ns <- NS(id)
-  # Book-metric radio sits above the whole「P/B & ASSET VALUE」block (DDM-style
+  # Sub-model radio sits above the whole「P/B & ASSET VALUE」block (DDM-style
   # chrome), so Overview / Settings / Target all see the same choice.
   tagList(
     tabBox(
@@ -25,9 +28,9 @@ pb_asset_module_shell_ui <- function(id) {
             ns("basis"),
             label = ui_i18n("pb_basis_label"),
             choices = c(
-              "Book value BVPS" = "bvps",
-              "Tangible book TBVPS" = "tbvps",
-              "Holding-company NAVPS" = "navps"
+              "Book Value (BVPS × P/B)" = "bvps",
+              "Tangible Book (TBVPS × P/TBV)" = "tbvps",
+              "Net Asset Value (NAVPS × P/NAV)" = "navps"
             ),
             selected = APP_DEFAULTS$pb_basis
           ),
@@ -35,7 +38,8 @@ pb_asset_module_shell_ui <- function(id) {
             id = ns("ynow_pb_basis_help"),
             class = "help-block",
             ui_i18n("pb_basis_help")
-          )
+          ),
+          uiOutput(ns("ui_basis_recommend"))
         )
       )
     ),
@@ -53,8 +57,11 @@ pb_asset_module_shell_ui <- function(id) {
         ),
         uiOutput(ns("value_why")),
         fluidRow(
-          div("Fair Price = (BVPS / TBVPS / NAVPS) × Target P/B",
-              style = "font-size: 16px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;")
+          div(
+            id = ns("ynow_pb_formula_banner"),
+            ui_i18n("pb_formula_banner"),
+            style = "font-size: 16px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;"
+          )
         ),
         ynow_calc_reset_row(
           ynow_calc_btn(ns("btn_calc_pb"), "試算 Jst. P/B"),
@@ -128,6 +135,7 @@ pb_asset_module_shell_ui <- function(id) {
           tags$h4(class = "ynow-pb-param-section-title", tags$b(ui_i18n("pb_section_tbvps_title"))),
           tags$div(class = "ynow-pb-param-formula", ui_i18n("pb_section_tbvps_formula")),
           tags$div(class = "ynow-pb-param-fair", ui_i18n("pb_section_tbvps_fair")),
+          tags$p(class = "help-block ynow-pb-param-note", ui_i18n("pb_section_tbvps_note")),
           tags$p(class = "help-block ynow-pb-param-note", ui_i18n("pb_components_help")),
           fluidRow(
             column(4, numericInput(
@@ -155,7 +163,7 @@ pb_asset_module_shell_ui <- function(id) {
           )
         )
       ),
-      # --- NAVPS module ---
+      # --- NAVPS / Adjusted BVPS module ---
       conditionalPanel(
         condition = sprintf("input['%s'] == 'navps'", ns("basis")),
         tags$div(
@@ -165,6 +173,7 @@ pb_asset_module_shell_ui <- function(id) {
           tags$div(class = "ynow-pb-param-formula", ui_i18n("pb_section_navps_formula")),
           tags$div(class = "ynow-pb-param-fair", ui_i18n("pb_section_navps_fair")),
           tags$p(class = "help-block ynow-pb-param-note", ui_i18n("pb_components_help")),
+          uiOutput(ns("ui_nav_metric_note")),
           fluidRow(
             column(4, numericInput(
               ns("nav_common_equity"), ui_i18n("pb_common_equity_label"),
@@ -181,13 +190,28 @@ pb_asset_module_shell_ui <- function(id) {
           ),
           fluidRow(
             column(4, numericInput(
+              ns("nav_delta_asset"), ui_i18n("pb_delta_asset_label"),
+              value = NA, step = 1
+            )),
+            column(4, numericInput(
+              ns("nav_delta_liability"), ui_i18n("pb_delta_liability_label"),
+              value = NA, step = 1
+            )),
+            column(4, numericInput(
               ns("investments"), ui_i18n("pb_investments_label"),
               value = NA, step = 1, min = 0
-            )),
+            ))
+          ),
+          fluidRow(
             column(4, numericInput(
               ns("holdco_discount"), ui_i18n("pb_holdco_label"),
               value = APP_DEFAULTS$pb_holdco_discount * 100,
               min = 0, max = 50, step = 1
+            )),
+            column(8, checkboxInput(
+              ns("nav_apply_holdco"),
+              ui_i18n("pb_nav_apply_holdco"),
+              value = isTRUE(APP_DEFAULTS$pb_nav_apply_holdco)
             ))
           ),
           tags$p(class = "help-block", ui_i18n("pb_holdco_help")),
@@ -196,29 +220,50 @@ pb_asset_module_shell_ui <- function(id) {
       )
     ),
     tabPanel(
-      "目標本淨比", value = "target_pb", icon = icon("bullseye"),
-      h4(tags$b("目標本淨比假設")),
+      "目標倍數", value = "target_pb", icon = icon("bullseye"),
+      h4(tags$b(ui_i18n("pb_target_tab_title"))),
+      tags$p(class = "help-block", ui_i18n("pb_target_tab_lead")),
       radioButtons(
         ns("target_mode"),
-        label = tags$span(style = "font-weight:bold;", "目標倍數來源"),
+        label = tags$span(style = "font-weight:bold;", ui_i18n("pb_target_mode_label")),
         choices = c(
           "產業／歷史倍數（無需 SGR）" = "multiples",
-          "Justified P/B（需 ROE、Ke、SGR／g）" = "justified"
+          "Justified P/B（需 ROE、Ke、SGR／g；主要給 BVPS）" = "justified"
         ),
         selected = APP_DEFAULTS$pb_target_mode %||% "justified",
         inline = TRUE
       ),
       uiOutput(ns("ui_target_mode_help")),
-      fluidRow(
-        column(4, numericInput(ns("pb_low"),  "保守 P/B (×)", value = APP_DEFAULTS$pb_low,  step = 0.05, min = 0.1)),
-        column(4, numericInput(ns("pb_mid"),  "基準 P/B (×)", value = APP_DEFAULTS$pb_mid,  step = 0.05, min = 0.1)),
-        column(4, numericInput(ns("pb_high"), "樂觀 P/B (×)", value = APP_DEFAULTS$pb_high, step = 0.05, min = 0.1))
+      # Each sub-model owns its multiple band — not a shared Target P/B.
+      conditionalPanel(
+        condition = sprintf("input['%s'] == 'bvps'", ns("basis")),
+        fluidRow(
+          column(4, numericInput(ns("pb_low"),  ui_i18n("pb_mult_pb_low"),  value = APP_DEFAULTS$pb_low,  step = 0.05, min = 0.1)),
+          column(4, numericInput(ns("pb_mid"),  ui_i18n("pb_mult_pb_mid"),  value = APP_DEFAULTS$pb_mid,  step = 0.05, min = 0.1)),
+          column(4, numericInput(ns("pb_high"), ui_i18n("pb_mult_pb_high"), value = APP_DEFAULTS$pb_high, step = 0.05, min = 0.1))
+        )
+      ),
+      conditionalPanel(
+        condition = sprintf("input['%s'] == 'tbvps'", ns("basis")),
+        fluidRow(
+          column(4, numericInput(ns("ptbv_low"),  ui_i18n("pb_mult_ptbv_low"),  value = APP_DEFAULTS$ptbv_low,  step = 0.05, min = 0.1)),
+          column(4, numericInput(ns("ptbv_mid"),  ui_i18n("pb_mult_ptbv_mid"),  value = APP_DEFAULTS$ptbv_mid,  step = 0.05, min = 0.1)),
+          column(4, numericInput(ns("ptbv_high"), ui_i18n("pb_mult_ptbv_high"), value = APP_DEFAULTS$ptbv_high, step = 0.05, min = 0.1))
+        )
+      ),
+      conditionalPanel(
+        condition = sprintf("input['%s'] == 'navps'", ns("basis")),
+        fluidRow(
+          column(4, numericInput(ns("pnav_low"),  ui_i18n("pb_mult_pnav_low"),  value = APP_DEFAULTS$pnav_low,  step = 0.05, min = 0.1)),
+          column(4, numericInput(ns("pnav_mid"),  ui_i18n("pb_mult_pnav_mid"),  value = APP_DEFAULTS$pnav_mid,  step = 0.05, min = 0.1)),
+          column(4, numericInput(ns("pnav_high"), ui_i18n("pb_mult_pnav_high"), value = APP_DEFAULTS$pnav_high, step = 0.05, min = 0.1))
+        )
       ),
       uiOutput(ns("ui_pb_source_note")),
       fluidRow(
         column(12,
                checkboxInput(ns("use_industry_pb"),
-                             tags$span(style = "font-weight: bold;", "納入產業本淨比"),
+                             tags$span(style = "font-weight: bold;", ui_i18n("pb_use_industry")),
                              value = APP_DEFAULTS$pb_use_industry)
         )
       ),
@@ -285,6 +330,8 @@ pb_asset_module_server <- function(id,
     
     nav_shares <- reactiveVal(NA_real_)
     nav_components <- reactiveVal(NULL)
+    basis_manual <- reactiveVal(FALSE)
+    last_recommend <- reactiveVal(NULL)
 
     .pb_basis_val <- function() {
       basis <- as.character(input$basis %||% "bvps")[1]
@@ -292,9 +339,60 @@ pb_asset_module_server <- function(id,
       if (identical(basis, "navps")) return(safe_num(input$navps))
       safe_num(input$bvps)
     }
+    .pb_has_mtm_inputs <- function() {
+      .pb_has_mtm(input$nav_delta_asset, input$nav_delta_liability)
+    }
+    .pb_nav_kind <- function() {
+      .pb_nav_metric_kind(input$nav_delta_asset, input$nav_delta_liability)
+    }
     .pb_basis_label <- function(basis = NULL) {
       b <- as.character((basis %||% input$basis) %||% "bvps")[1]
-      switch(b, tbvps = "TBVPS", navps = "NAVPS", "BVPS")
+      if (identical(b, "tbvps")) return("TBVPS")
+      if (identical(b, "navps")) {
+        return(if (identical(.pb_nav_kind(), "adjusted_bvps")) "Adjusted BVPS" else "NAVPS")
+      }
+      "BVPS"
+    }
+    .pb_active_multiple_name <- function(basis = NULL) {
+      .pb_multiple_name(basis %||% input$basis %||% "bvps")
+    }
+    .pb_active_multiples <- function(basis = NULL) {
+      b <- as.character((basis %||% input$basis) %||% "bvps")[1]
+      if (identical(b, "tbvps")) {
+        return(list(
+          low = safe_num(input$ptbv_low),
+          mid = safe_num(input$ptbv_mid),
+          high = safe_num(input$ptbv_high)
+        ))
+      }
+      if (identical(b, "navps")) {
+        return(list(
+          low = safe_num(input$pnav_low),
+          mid = safe_num(input$pnav_mid),
+          high = safe_num(input$pnav_high)
+        ))
+      }
+      list(
+        low = safe_num(input$pb_low),
+        mid = safe_num(input$pb_mid),
+        high = safe_num(input$pb_high)
+      )
+    }
+    .pb_write_multiples <- function(basis, low, mid, high) {
+      b <- as.character(basis %||% "bvps")[1]
+      if (identical(b, "tbvps")) {
+        updateNumericInput(session, "ptbv_low", value = round(low, 2))
+        updateNumericInput(session, "ptbv_mid", value = round(mid, 2))
+        updateNumericInput(session, "ptbv_high", value = round(high, 2))
+      } else if (identical(b, "navps")) {
+        updateNumericInput(session, "pnav_low", value = round(low, 2))
+        updateNumericInput(session, "pnav_mid", value = round(mid, 2))
+        updateNumericInput(session, "pnav_high", value = round(high, 2))
+      } else {
+        updateNumericInput(session, "pb_low", value = round(low, 2))
+        updateNumericInput(session, "pb_mid", value = round(mid, 2))
+        updateNumericInput(session, "pb_high", value = round(high, 2))
+      }
     }
 
     .pb_money_to_quote <- function(amount, df_bs, share_method = "balance_sheet") {
@@ -329,8 +427,15 @@ pb_asset_module_server <- function(id,
       if ("navps" %in% modes) {
         disc_pct <- suppressWarnings(as.numeric(input$holdco_discount)[1])
         if (!is.finite(disc_pct)) disc_pct <- APP_DEFAULTS$pb_holdco_discount * 100
+        apply_hc <- if (.pb_has_mtm_inputs()) isTRUE(input$nav_apply_holdco) else TRUE
         nv <- .pb_navps_from_parts(
-          input$nav_common_equity, input$investments, disc_pct / 100, input$nav_shares
+          input$nav_common_equity,
+          investments = input$investments,
+          holdco_discount = disc_pct / 100,
+          shares = input$nav_shares,
+          delta_asset = input$nav_delta_asset,
+          delta_liability = input$nav_delta_liability,
+          apply_holdco = apply_hc
         )
         if (is.finite(nv)) updateNumericInput(session, "navps", value = round(nv, 2))
       }
@@ -346,21 +451,65 @@ pb_asset_module_server <- function(id,
       if (!(is.finite(eq_in) && eq_in > 0)) return()
       inv_use <- if (is.finite(inv_in) && inv_in >= 0) inv_in else 0
       disc <- max(0, min(0.5, disc_pct / 100))
+      da <- suppressWarnings(as.numeric(input$nav_delta_asset)[1])
+      dl <- suppressWarnings(as.numeric(input$nav_delta_liability)[1])
+      has_mtm <- .pb_has_mtm(da, dl)
+      apply_hc <- if (has_mtm) isTRUE(input$nav_apply_holdco) else TRUE
+      if (!is.finite(da)) da <- 0
+      if (!is.finite(dl)) dl <- 0
+      nav_tot <- if (has_mtm) {
+        .pb_nav_total_from_parts(
+          eq_in, delta_asset = da, delta_liability = dl,
+          investments = inv_use, holdco_discount = disc, apply_holdco = apply_hc
+        )
+      } else {
+        eq_in - disc * inv_use
+      }
+      kind <- if (has_mtm) "navps" else "adjusted_bvps"
+      note <- if (!has_mtm) {
+        if (inv_use > 0 && disc > 0) {
+          sprintf("無市價重估 → Adjusted BVPS＝權益 − %.0f%%×投資", disc * 100)
+        } else {
+          "無市價重估 ΔAsset／ΔLiability → 標為 Adjusted BVPS（非完整 NAVPS）"
+        }
+      } else if (isTRUE(apply_hc) && inv_use > 0 && disc > 0) {
+        sprintf("NAV＝Equity＋ΔA−ΔL − %.0f%%×投資（勿與 P/NAV 重複折價）", disc * 100)
+      } else {
+        "NAV＝Equity＋ΔAsset−ΔLiability；HoldCo 由 Target P/NAV 反映"
+      }
       nav_components(list(
         cash = NA_real_,
         investments = inv_use,
         equity = eq_in,
-        nav = eq_in - disc * inv_use,
+        delta_asset = da,
+        delta_liability = dl,
+        nav = nav_tot,
         discount = disc,
-        note = if (inv_use > 0 && disc > 0) {
-          sprintf("NAV＝權益 − %.0f%%×投資科目（控股折價）", disc * 100)
-        } else if (inv_use > 0) {
-          "已辨識投資科目；折價=0 時 NAV＝帳面權益"
-        } else {
-          "無獨立投資科目，NAV＝帳面淨值"
-        }
+        kind = kind,
+        note = note
       ))
       nav_shares(sh)
+    }
+
+    .pb_apply_recommend <- function(force = FALSE) {
+      d_bs <- tryCatch(d_balance_sheet(), error = function(e) NULL)
+      eq <- tryCatch(common_stock_equity(d_bs), error = function(e) NA_real_)
+      gw <- suppressWarnings(as.numeric(input$goodwill)[1])
+      intang <- suppressWarnings(as.numeric(input$intangibles)[1])
+      inv <- suppressWarnings(as.numeric(input$investments)[1])
+      rec <- .pb_recommend_basis(
+        industry_key = tryCatch(industry_choice(), error = function(e) NULL),
+        common_equity = eq,
+        goodwill = gw,
+        intangibles = intang,
+        investments = inv,
+        has_mtm = .pb_has_mtm_inputs()
+      )
+      last_recommend(rec)
+      if (isTRUE(force) || !isTRUE(basis_manual())) {
+        updateRadioButtons(session, "basis", selected = rec$basis)
+      }
+      invisible(rec)
     }
 
     sync_navps <- function(df_bs, shares, share_method = "balance_sheet") {
@@ -420,7 +569,8 @@ pb_asset_module_server <- function(id,
 
     hist_pb_series <- reactive({
       px <- tryCatch(hist_prices(), error = function(e) NULL)
-      bv <- suppressWarnings(as.numeric(input$bvps)[1])
+      # History multiple uses the active sub-model metric (P/B, P/TBV, or P/NAV).
+      bv <- .pb_basis_val()
       if (is.null(px) || !is.data.frame(px) || !("Close" %in% names(px)) || !is.finite(bv) || bv <= 0) {
         return(NULL)
       }
@@ -435,7 +585,10 @@ pb_asset_module_server <- function(id,
       ind_band <- if (isTRUE(input$use_industry_pb) && isTRUE(key_status$ok)) industry_pb_band() else NULL
       d_bs <- tryCatch(d_balance_sheet(), error = function(e) NULL)
       eq <- tryCatch(common_stock_equity(d_bs), error = function(e) NA_real_)
-      use_just <- identical(as.character(input$target_mode %||% "justified")[1], "justified")
+      basis <- as.character(input$basis %||% "bvps")[1]
+      # Justified P/B is the classic (ROE−g)/(Ke−g) path — primarily for BVPS × P/B.
+      use_just <- identical(as.character(input$target_mode %||% "justified")[1], "justified") &&
+        identical(basis, "bvps")
       derive_pb_targets(
         roe_pct = if (isTRUE(use_just)) current_roe_pct() else NA_real_,
         ke_pct = if (isTRUE(use_just)) suppressWarnings(as.numeric(central_ke())[1]) * 100 else NA_real_,
@@ -456,13 +609,92 @@ pb_asset_module_server <- function(id,
 
     output$ui_target_mode_help <- renderUI({
       mode <- as.character(input$target_mode %||% "justified")[1]
+      basis <- as.character(input$basis %||% "bvps")[1]
+      mult <- .pb_active_multiple_name(basis)
       txt <- if (identical(mode, "multiples")) {
-        "本模式只用產業帶與／或歷史 P/B 合成目標倍數，不套用 Justified，亦不需要 SGR。"
+        sprintf("本模式只用產業帶與／或歷史倍數合成目標 %s，不套用 Justified，亦不需要 SGR。", mult)
+      } else if (!identical(basis, "bvps")) {
+        sprintf("Justified 公式主要服務 BVPS×P/B；目前子模型改以產業／歷史合成目標 %s。", mult)
       } else {
         "Justified P/B ≈ (ROE − g)/(Ke − g)；g 取中央 SGR。可再與產業／歷史合成。"
       }
       tags$p(style = "font-size:12px; color:#64748b; margin:0 0 10px 0;", txt)
     })
+
+    output$ui_basis_recommend <- renderUI({
+      rec <- last_recommend()
+      if (is.null(rec)) return(NULL)
+      loc <- .loc()
+      reason <- if (identical(loc, "en")) rec$reason_en else rec$reason_zh
+      conf <- as.character(rec$confidence %||% "normal")[1]
+      disabled <- rec$disabled %||% character(0)
+      bits <- character(0)
+      if (length(disabled)) {
+        bits <- c(bits, sprintf(
+          if (identical(loc, "en")) "Disabled: %s." else "停用：%s。",
+          paste(toupper(disabled), collapse = ", ")
+        ))
+      }
+      if (identical(conf, "low")) {
+        bits <- c(bits, if (identical(loc, "en")) "NAV confidence: low." else "NAV 信心：低。")
+      }
+      if (isTRUE(rec$prefer_other)) {
+        bits <- c(bits, if (identical(loc, "en")) "Prefer DCF / P/E when available." else "有 DCF／P/E 時優先。")
+      }
+      tags$div(
+        class = "ynow-pb-recommend",
+        style = paste0(
+          "margin: 6px 0 4px 0; padding: 8px 10px; border-radius: 6px; font-size: 12px; ",
+          if (identical(conf, "low")) {
+            "background:#fff7ed; border:1px solid #fdba74; color:#9a3412;"
+          } else {
+            "background:#f8fafc; border:1px solid #cbd5e1; color:#334155;"
+          }
+        ),
+        tags$b(if (identical(loc, "en")) "Suggested model: " else "建議子模型："),
+        toupper(rec$basis %||% "bvps"),
+        " — ", reason,
+        if (length(bits)) tags$div(style = "margin-top:4px;", paste(bits, collapse = " ")) else NULL
+      )
+    })
+
+    output$ui_nav_metric_note <- renderUI({
+      kind <- .pb_nav_kind()
+      loc <- .loc()
+      if (identical(kind, "navps")) {
+        tags$p(
+          class = "help-block",
+          style = "color:#1e3a8a;",
+          if (identical(loc, "en")) {
+            "Mark-to-market deltas present → metric labeled NAVPS. Avoid double-counting HoldCo in both NAV and Target P/NAV."
+          } else {
+            "已有市價重估 Δ → 標為 NAVPS。勿在 NAV 與 Target P/NAV 重複套用控股折價。"
+          }
+        )
+      } else {
+        tags$p(
+          class = "help-block",
+          style = "color:#9a3412;",
+          if (identical(loc, "en")) {
+            "No mark-to-market ΔAsset/ΔLiability → Equity − HoldCo×investments is Adjusted BVPS, not full NAVPS (low confidence)."
+          } else {
+            "無市價重估 ΔAsset／ΔLiability → Equity − HoldCo×投資為 Adjusted BVPS，非完整 NAVPS（低信心）。"
+          }
+        )
+      }
+    })
+
+    observeEvent(input$basis, {
+      # User (or recommend) changed the radio — treat subsequent picks as manual
+      # once the user clicks after the first auto-apply.
+      isolate({
+        rec <- last_recommend()
+        cur <- as.character(input$basis %||% "")[1]
+        if (!is.null(rec) && !identical(cur, as.character(rec$basis %||% "")[1])) {
+          basis_manual(TRUE)
+        }
+      })
+    }, ignoreInit = TRUE)
 
     output$ui_pb_source_note <- renderUI({
       d <- tryCatch(pb_targets_derived(), error = function(e) NULL)
@@ -498,6 +730,8 @@ pb_asset_module_server <- function(id,
       updateNumericInput(session, "goodwill", value = NA_real_)
       updateNumericInput(session, "intangibles", value = NA_real_)
       updateNumericInput(session, "investments", value = NA_real_)
+      updateNumericInput(session, "nav_delta_asset", value = NA_real_)
+      updateNumericInput(session, "nav_delta_liability", value = NA_real_)
       
       equity <- common_stock_equity(df_bs)
       
@@ -638,6 +872,7 @@ pb_asset_module_server <- function(id,
     
     observeEvent(input$btn_sync_bv, {
       sync_book_values()
+      .pb_apply_recommend(force = FALSE)
       showNotification("已從財報帶入 BVPS／TBVPS／NAVPS", type = "message")
     })
 
@@ -659,13 +894,24 @@ pb_asset_module_server <- function(id,
     observeEvent(
       list(
         input$nav_common_equity, input$nav_shares,
-        input$investments, input$holdco_discount
+        input$investments, input$holdco_discount,
+        input$nav_delta_asset, input$nav_delta_liability,
+        input$nav_apply_holdco
       ),
       {
         .pb_recompute_from_parts("navps")
         .pb_refresh_nav_breakdown()
       },
       ignoreInit = TRUE
+    )
+
+    observeEvent(
+      list(industry_choice(), d_balance_sheet(), input$goodwill, input$intangibles, input$investments,
+           input$nav_delta_asset, input$nav_delta_liability),
+      {
+        .pb_apply_recommend(force = FALSE)
+      },
+      ignoreInit = FALSE
     )
     
     output$txt_shares_resolve_note <- renderUI({
@@ -682,43 +928,67 @@ pb_asset_module_server <- function(id,
     
     observeEvent(list(input$use_industry_pb, input$target_mode, industry_choice(), industry_text(),
                       current_roe_pct(), central_ke(), central_g_pct(), hist_pb_series(),
-                      input$bvps), {
+                      input$bvps, input$tbvps, input$navps, input$basis), {
       tgt <- pb_targets_derived()
       if (is.null(tgt) || !is.finite(tgt$mid)) return()
-      updateNumericInput(session, "pb_low",  value = round(tgt$low, 2))
-      updateNumericInput(session, "pb_mid",  value = round(tgt$mid, 2))
-      updateNumericInput(session, "pb_high", value = round(tgt$high, 2))
+      basis <- as.character(input$basis %||% "bvps")[1]
+      # Write only the active sub-model’s multiple band (each mode owns its inputs).
+      .pb_write_multiples(basis, tgt$low, tgt$mid, tgt$high)
       pb_source_note(tgt$source_note %||% "")
     }, ignoreInit = FALSE)
     
     observeEvent(input$btn_reset_pb, {
-      tgt <- pb_targets_derived()
-      if (!is.null(tgt) && is.finite(tgt$mid)) {
-        updateNumericInput(session, "pb_low",  value = round(tgt$low, 2))
-        updateNumericInput(session, "pb_mid",  value = round(tgt$mid, 2))
-        updateNumericInput(session, "pb_high", value = round(tgt$high, 2))
-      } else {
-        updateNumericInput(session, "pb_low",  value = APP_DEFAULTS$pb_low)
-        updateNumericInput(session, "pb_mid",  value = APP_DEFAULTS$pb_mid)
-        updateNumericInput(session, "pb_high", value = APP_DEFAULTS$pb_high)
-      }
+      basis_manual(FALSE)
+      updateNumericInput(session, "pb_low",  value = APP_DEFAULTS$pb_low)
+      updateNumericInput(session, "pb_mid",  value = APP_DEFAULTS$pb_mid)
+      updateNumericInput(session, "pb_high", value = APP_DEFAULTS$pb_high)
+      updateNumericInput(session, "ptbv_low",  value = APP_DEFAULTS$ptbv_low)
+      updateNumericInput(session, "ptbv_mid",  value = APP_DEFAULTS$ptbv_mid)
+      updateNumericInput(session, "ptbv_high", value = APP_DEFAULTS$ptbv_high)
+      updateNumericInput(session, "pnav_low",  value = APP_DEFAULTS$pnav_low)
+      updateNumericInput(session, "pnav_mid",  value = APP_DEFAULTS$pnav_mid)
+      updateNumericInput(session, "pnav_high", value = APP_DEFAULTS$pnav_high)
       updateRadioButtons(session, "basis", selected = APP_DEFAULTS$pb_basis)
       updateCheckboxInput(session, "use_industry_pb", value = APP_DEFAULTS$pb_use_industry)
       updateRadioButtons(session, "target_mode", selected = APP_DEFAULTS$pb_target_mode %||% "justified")
       updateNumericInput(session, "holdco_discount", value = APP_DEFAULTS$pb_holdco_discount * 100)
+      updateCheckboxInput(session, "nav_apply_holdco", value = isTRUE(APP_DEFAULTS$pb_nav_apply_holdco))
+      updateNumericInput(session, "nav_delta_asset", value = NA_real_)
+      updateNumericInput(session, "nav_delta_liability", value = NA_real_)
       sync_book_values()
-      showNotification("🔁 P/B 參數已回復預設", type = "message")
+      .pb_apply_recommend(force = TRUE)
+      # After sync+recommend, refresh active multiples from derive if available.
+      tgt <- tryCatch(pb_targets_derived(), error = function(e) NULL)
+      if (!is.null(tgt) && is.finite(tgt$mid)) {
+        .pb_write_multiples(input$basis %||% APP_DEFAULTS$pb_basis, tgt$low, tgt$mid, tgt$high)
+      }
+      showNotification("🔁 Asset-Based 參數已回復預設", type = "message")
     })
     
     output$alert_missing_bv <- renderUI({
       # Single-mode Settings: only flag the selected book metric as missing.
       basis <- as.character(input$basis %||% "bvps")[1]
+      nav_label <- if (identical(.pb_nav_kind(), "adjusted_bvps")) "Adjusted BVPS" else "NAVPS"
       check_list <- switch(
         basis,
         tbvps = list("TBVPS" = input$tbvps),
-        navps = list("NAVPS" = input$navps),
+        navps = stats::setNames(list(input$navps), nav_label),
         list("BVPS" = input$bvps)
       )
+      # Gate: negative equity / tangible equity
+      rec <- last_recommend()
+      disabled <- rec$disabled %||% character(0)
+      if (basis %in% disabled) {
+        msg <- if (identical(basis, "tbvps")) {
+          "Tangible common equity ≤ 0 — P/TBV (TBVPS) is disabled for this name."
+        } else {
+          "Common equity ≤ 0 — classic P/B (BVPS) is disabled for this name."
+        }
+        return(div(
+          style = "color:#9a3412; background:#fff7ed; border:1px solid #fdba74; padding:10px; border-radius:6px; margin-bottom:8px;",
+          icon("ban"), " ", msg
+        ))
+      }
       ui_missing_data_alert(
         check_list = check_list,
         fallback_msg = "請先載入財報或手動輸入每股淨值，否則無法計算合理價。"
@@ -736,10 +1006,13 @@ pb_asset_module_server <- function(id,
         if (!is.finite(x)) return("N/A")
         format(round(x, 0), big.mark = ",", scientific = FALSE)
       }
+      metric_lbl <- if (identical(navc$kind %||% "adjusted_bvps", "navps")) "NAVPS" else "Adjusted BVPS"
       data.frame(
-        科目 = c("股東權益", "已辨識投資", "控股折價", "NAV", "NAVPS", "說明"),
+        科目 = c("股東權益", "ΔAsset", "ΔLiability", "已辨識投資", "控股折價", "NAV／調整後權益", metric_lbl, "說明"),
         金額 = c(
           fmt(navc$equity),
+          fmt(navc$delta_asset %||% NA_real_),
+          fmt(navc$delta_liability %||% NA_real_),
           fmt(navc$investments),
           sprintf("%.0f%%", 100 * (navc$discount %||% 0)),
           fmt(navc$nav),
@@ -756,36 +1029,53 @@ pb_asset_module_server <- function(id,
       (is.finite(btn) && btn >= 1L) || (is.finite(pulse) && pulse >= 1L)
     }
 
-    # --- 核心計算 ---
+    # --- 核心計算：Fair Price = active metric × that mode’s own multiple ---
     pb_calc <- eventReactive(list(input$btn_calc_pb, auto_calc_pulse()), {
       if (!isTRUE(integrity_ready())) return(list(status = "idle"))
       if (!isTRUE(.pb_calc_requested())) {
         return(list(status = "idle"))
       }
+      basis <- as.character(input$basis %||% "bvps")[1]
+      rec <- last_recommend()
+      disabled <- rec$disabled %||% character(0)
+      if (basis %in% disabled) {
+        return(list(
+          status = "error",
+          message = if (identical(basis, "tbvps")) {
+            "Tangible common equity ≤ 0 — cannot run P/TBV."
+          } else {
+            "Common equity ≤ 0 — cannot run classic P/B."
+          }
+        ))
+      }
       basis_val <- .pb_basis_val()
       if (is.na(basis_val) || basis_val <= 0) {
         return(list(status = "error", message = "計算無效：請先提供有效的 BVPS／TBVPS／NAVPS（須 > 0）。"))
       }
-      lo <- safe_num(input$pb_low)
-      mid <- safe_num(input$pb_mid)
-      hi <- safe_num(input$pb_high)
+      mult <- .pb_active_multiples(basis)
+      lo <- mult$low; mid <- mult$mid; hi <- mult$high
+      mult_name <- .pb_active_multiple_name(basis)
       if (lo <= 0 || mid <= 0 || hi <= 0) {
-        return(list(status = "error", message = "目標 P/B 倍數必須大於 0。"))
+        return(list(status = "error", message = sprintf("目標 %s 倍數必須大於 0。", mult_name)))
       }
       if (lo > mid || mid > hi) {
-        return(list(status = "error", message = "請維持 保守 ≤ 基準 ≤ 樂觀 的 P/B 順序。"))
+        return(list(status = "error", message = sprintf("請維持 保守 ≤ 基準 ≤ 樂觀 的 %s 順序。", mult_name)))
       }
       
       px <- suppressWarnings(as.numeric(current_price()))
       mkt_pb <- if (length(px) == 1 && !is.na(px) && basis_val > 0) px / basis_val else NA_real_
+      nav_kind <- if (identical(basis, "navps")) .pb_nav_kind() else NA_character_
       
       list(
         status = "success",
-        basis = input$basis,
+        basis = basis,
         basis_val = basis_val,
-        fair_low = basis_val * lo,
-        fair_mid = basis_val * mid,
-        fair_high = basis_val * hi,
+        basis_label = .pb_basis_label(basis),
+        multiple_name = mult_name,
+        nav_kind = nav_kind,
+        fair_low = .pb_formula_p(basis_val, lo),
+        fair_mid = .pb_formula_p(basis_val, mid),
+        fair_high = .pb_formula_p(basis_val, hi),
         pb_low = lo, pb_mid = mid, pb_high = hi,
         market_price = px,
         market_pb = mkt_pb
@@ -816,12 +1106,12 @@ pb_asset_module_server <- function(id,
           div(style = "text-align: center; flex: 1; min-width: 120px;",
               p(style = "font-size: 13px; color: #7f8c8d; margin-bottom: 5px; font-weight: bold;", "估值基礎"),
               p(style = "font-size: 22px; color: #2c3e50; font-weight: bold; margin: 0;", paste0(money_prefix(quote_currency()), round(res$basis_val, 2))),
-              p(style = "font-size: 12px; color: #95a5a6;", .pb_basis_label(res$basis))
+              p(style = "font-size: 12px; color: #95a5a6;", res$basis_label %||% .pb_basis_label(res$basis))
           ),
           div(style = "text-align: center; flex: 1; min-width: 120px;",
               p(style = "font-size: 13px; color: #7f8c8d; margin-bottom: 5px; font-weight: bold;", "基準目標價"),
               p(style = "font-size: 28px; color: #1a1a1a; font-weight: bold; margin: 0;", paste0(money_prefix(quote_currency()), round(res$fair_mid, 2))),
-              p(style = "font-size: 12px; color: #95a5a6;", sprintf("@ %.2f× P/B", res$pb_mid))
+              p(style = "font-size: 12px; color: #95a5a6;", sprintf("@ %.2f× %s", res$pb_mid, res$multiple_name %||% "P/B"))
           ),
           div(style = "text-align: center; flex: 1; min-width: 120px;",
               p(style = "font-size: 13px; color: #7f8c8d; margin-bottom: 5px; font-weight: bold;", "市價／市價本淨比"),
@@ -879,12 +1169,15 @@ pb_asset_module_server <- function(id,
       req(.pb_calc_requested())
       res <- pb_calc()
       req(res$status == "success")
-      data.frame(
+      mult_col <- paste0("目標 ", res$multiple_name %||% "P/B")
+      out <- data.frame(
         情境 = c("保守", "基準", "樂觀"),
-        `目標 P/B` = sprintf("%.2f×", c(res$pb_low, res$pb_mid, res$pb_high)),
+        Multiple = sprintf("%.2f×", c(res$pb_low, res$pb_mid, res$pb_high)),
         `合理股價` = sprintf("$%.2f", c(res$fair_low, res$fair_mid, res$fair_high)),
         check.names = FALSE
       )
+      names(out)[2] <- mult_col
+      out
     }, striped = TRUE, hover = TRUE, bordered = TRUE, align = "c", width = "100%")
     
     output$plt_pb_band <- renderPlot({
@@ -920,27 +1213,29 @@ pb_asset_module_server <- function(id,
     # Composite / decision exports must stay calc-gated (see pb_price / pb_band).
     pb_live_band <- reactive({
       basis_val <- .pb_basis_val()
-      lo <- safe_num(input$pb_low)
-      mid <- safe_num(input$pb_mid)
-      hi <- safe_num(input$pb_high)
+      mult <- .pb_active_multiples()
+      lo <- mult$low; mid <- mult$mid; hi <- mult$high
       if (is.na(basis_val) || basis_val <= 0 || lo <= 0 || mid <= 0 || hi <= 0) return(NULL)
       list(
-        low = basis_val * lo,
-        mid = basis_val * mid,
-        high = basis_val * hi,
-        basis_val = basis_val
+        low = .pb_formula_p(basis_val, lo),
+        mid = .pb_formula_p(basis_val, mid),
+        high = .pb_formula_p(basis_val, hi),
+        basis_val = basis_val,
+        multiple_name = .pb_active_multiple_name()
       )
     })
 
     output$param_sensitivity_table <- renderTable({
       shock_pct <- if (exists("PARAM_SENSITIVITY_SHOCK", inherits = TRUE)) PARAM_SENSITIVITY_SHOCK else 0.01
       basis0 <- .pb_basis_val()
-      mid0 <- safe_num(input$pb_mid)
+      mult0 <- .pb_active_multiples()
+      mid0 <- mult0$mid
+      mult_name <- .pb_active_multiple_name()
       .p <- function(basis_u = 1, pb = mid0) .pb_formula_p(basis = basis_u, pb = pb)
       v0 <- .p()
       validate(need(
         is.finite(v0),
-        "基準公式尚未就緒：請先提供目標 P/B（BVPS／TBVPS／NAVPS 僅影響顯示基準值）。"
+        sprintf("基準公式尚未就緒：請先提供目標 %s（選定每股指標僅影響顯示基準值）。", mult_name)
       ))
       .rel <- function(x, sign = -1) .param_rel_shock(x, sign = sign, shock = shock_pct)
       basis_show <- if (is.finite(basis0) && basis0 > 0) basis0 else 1
@@ -955,15 +1250,17 @@ pb_asset_module_server <- function(id,
       )
       if (.param_sensitivity_rel_ok(mid0) && mid0 > 0) {
         rows[[length(rows) + 1]] <- .param_sensitivity_infl_row(
-          "基準目標 P/B", mid0, "x", v0,
+          paste0("基準目標 ", mult_name), mid0, "x", v0,
           .p(pb = .rel(mid0, -1)), .p(pb = .rel(mid0, +1)),
-          "P ∝ 目標 P/B ⇒ |ε|=1（公式；與個股無關）"
+          sprintf("P ∝ 目標 %s ⇒ |ε|=1（公式；與個股無關）", mult_name)
         )
       }
       roe0 <- tryCatch(current_roe_pct(), error = function(e) NA_real_)
       ke0 <- suppressWarnings(as.numeric(central_ke())[1]) * 100
       g0 <- suppressWarnings(as.numeric(central_g_pct())[1])
-      use_just <- identical(as.character(input$target_mode %||% "justified")[1], "justified")
+      basis_now <- as.character(input$basis %||% "bvps")[1]
+      use_just <- identical(as.character(input$target_mode %||% "justified")[1], "justified") &&
+        identical(basis_now, "bvps")
       ind_band <- if (isTRUE(input$use_industry_pb)) {
         tryCatch(industry_pb_band(), error = function(e) NULL)
       } else {

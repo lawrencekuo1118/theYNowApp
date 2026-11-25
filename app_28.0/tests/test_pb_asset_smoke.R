@@ -70,17 +70,56 @@ check(
   approx_eq(.pb_tbvps_from_parts(50, goodwill = 80, intangibles = 0, shares = 10), 0)
 )
 check(
-  "NAVPS with holdco discount",
-  approx_eq(.pb_navps_from_parts(1000, investments = 200, holdco_discount = 0.20, shares = 100), 9.6)
+  "No-MTM holdco path = Adjusted BVPS",
+  approx_eq(.pb_navps_from_parts(1000, investments = 200, holdco_discount = 0.20, shares = 100), 9.6) &&
+    identical(.pb_nav_metric_kind(0, 0), "adjusted_bvps")
 )
 check(
-  "NAVPS clamps discount to 50%",
-  approx_eq(.pb_navps_from_parts(1000, investments = 200, holdco_discount = 0.90, shares = 100), 9)
+  "Adjusted BVPS clamps discount to 50%",
+  approx_eq(.pb_adjusted_bvps_from_parts(1000, investments = 200, holdco_discount = 0.90, shares = 100), 9)
+)
+check(
+  "True NAVPS uses Equity+ΔA−ΔL",
+  approx_eq(
+    .pb_navps_from_parts(
+      1000, investments = 200, holdco_discount = 0.20, shares = 100,
+      delta_asset = 100, delta_liability = 50, apply_holdco = FALSE
+    ),
+    10.5
+  ) && identical(.pb_nav_metric_kind(100, 50), "navps")
+)
+check(
+  "NAV HoldCo on investments when apply_holdco",
+  approx_eq(
+    .pb_navps_from_parts(
+      1000, investments = 200, holdco_discount = 0.20, shares = 100,
+      delta_asset = 100, delta_liability = 50, apply_holdco = TRUE
+    ),
+    10.1
+  )
 )
 check(
   "Fair Price BVPS×P/B from parts",
   approx_eq(.pb_formula_p(.pb_bvps_from_parts(1200, 100), 1.5), 18)
 )
+check(
+  "Fair Price TBVPS×P/TBV",
+  approx_eq(.pb_formula_p(10, 1.2), 12) && identical(.pb_multiple_name("tbvps"), "P/TBV")
+)
+check(
+  "Fair Price NAVPS×P/NAV",
+  approx_eq(.pb_formula_p(8, 0.9), 7.2) && identical(.pb_multiple_name("navps"), "P/NAV")
+)
+rec_bank <- .pb_recommend_basis("fn.Banking", common_equity = 1000, goodwill = 50, intangibles = 0)
+check("Recommend banks → TBVPS", identical(rec_bank$basis, "tbvps"))
+rec_reit <- .pb_recommend_basis("re.REIT", common_equity = 1000, has_mtm = FALSE)
+check("Recommend REIT → NAVPS low conf", identical(rec_reit$basis, "navps") && identical(rec_reit$confidence, "low"))
+rec_neg <- .pb_recommend_basis("ind.Machinery", common_equity = -10, goodwill = 0, intangibles = 0)
+check("Neg equity disables BVPS", "bvps" %in% rec_neg$disabled)
+rec_tang <- .pb_recommend_basis(
+  "fn.Banking", common_equity = 100, goodwill = 80, intangibles = 40
+)
+check("Neg tangible disables TBVPS", "tbvps" %in% rec_tang$disabled)
 
 # Justified P/B = (ROE − g) / (Ke − g) with pct inputs
 just_closed <- (0.15 - 0.03) / (0.10 - 0.03)
@@ -190,9 +229,26 @@ check(
     grepl('ns("intangibles")', shell, fixed = TRUE) &&
     grepl('ns("investments")', shell, fixed = TRUE) &&
     grepl('ns("holdco_discount")', shell, fixed = TRUE) &&
+    grepl('ns("nav_delta_asset")', shell, fixed = TRUE) &&
+    grepl('ns("nav_delta_liability")', shell, fixed = TRUE) &&
     grepl('ns("bvps")', shell, fixed = TRUE) &&
     grepl('ns("tbvps")', shell, fixed = TRUE) &&
     grepl('ns("navps")', shell, fixed = TRUE)
+)
+check(
+  "Target tab has per-mode multiples P/B|P/TBV|P/NAV",
+  grepl('ns("pb_mid")', shell, fixed = TRUE) &&
+    grepl('ns("ptbv_mid")', shell, fixed = TRUE) &&
+    grepl('ns("pnav_mid")', shell, fixed = TRUE)
+)
+check(
+  "Module wires .pb_recommend_basis",
+  grepl(".pb_recommend_basis(", src, fixed = TRUE)
+)
+check(
+  "Module labels Adjusted BVPS when no MTM",
+  grepl("adjusted_bvps", src, fixed = TRUE) &&
+    grepl("Adjusted BVPS", src, fixed = TRUE)
 )
 # Module markup order: BVPS → TBVPS → NAVPS (visibility gated by radio)
 bv_pos <- regexpr('data-ynow-pb-section` = "bvps"', shell, fixed = TRUE)[1]
@@ -213,13 +269,18 @@ check(
   "Missing alert scopes to selected basis",
   grepl("switch(", server_src, fixed = TRUE) &&
     grepl('list("TBVPS" = input$tbvps)', server_src, fixed = TRUE) &&
-    grepl('list("NAVPS" = input$navps)', server_src, fixed = TRUE) &&
+    grepl("nav_label", server_src, fixed = TRUE) &&
     grepl('list("BVPS" = input$bvps)', server_src, fixed = TRUE) &&
     !grepl(
       'check_list = list("BVPS" = input$bvps, "TBVPS" = input$tbvps, "NAVPS" = input$navps)',
       server_src,
       fixed = TRUE
     )
+)
+check(
+  "Calc uses active mode multiples",
+  grepl(".pb_active_multiples(", server_src, fixed = TRUE) &&
+    grepl(".pb_formula_p(", server_src, fixed = TRUE)
 )
 check(
   "Recompute is mode-scoped (no all-three rewrite)",
