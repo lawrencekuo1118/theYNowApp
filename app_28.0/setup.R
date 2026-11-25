@@ -1239,6 +1239,43 @@ extract_nav_components <- function(df_bs, holdco_discount = 0) {
   basis * pb
 }
 
+#' BVPS from Common Equity and shares (same currency; quote-aligned after sync).
+.pb_bvps_from_parts <- function(common_equity, shares) {
+  eq <- suppressWarnings(as.numeric(common_equity)[1])
+  sh <- suppressWarnings(as.numeric(shares)[1])
+  if (!is.finite(eq) || !is.finite(sh) || sh <= 0) return(NA_real_)
+  eq / sh
+}
+
+#' TBVPS = (Common Equity − Goodwill − Intangibles) ÷ Shares.
+.pb_tbvps_from_parts <- function(common_equity, goodwill = 0, intangibles = 0, shares) {
+  eq <- suppressWarnings(as.numeric(common_equity)[1])
+  gw <- suppressWarnings(as.numeric(goodwill)[1])
+  intang <- suppressWarnings(as.numeric(intangibles)[1])
+  sh <- suppressWarnings(as.numeric(shares)[1])
+  if (!is.finite(eq) || !is.finite(sh) || sh <= 0) return(NA_real_)
+  if (!is.finite(gw) || gw < 0) gw <- 0
+  if (!is.finite(intang) || intang < 0) intang <- 0
+  max(eq - gw - intang, 0) / sh
+}
+
+#' NAVPS from book NAV parts. holdco_discount is a decimal ratio (0–0.5).
+#' NAV = Equity − holdco_discount × identified investments; NAVPS = NAV ÷ Shares.
+.pb_navps_from_parts <- function(common_equity,
+                                 investments = 0,
+                                 holdco_discount = 0,
+                                 shares) {
+  eq <- suppressWarnings(as.numeric(common_equity)[1])
+  inv <- suppressWarnings(as.numeric(investments)[1])
+  disc <- suppressWarnings(as.numeric(holdco_discount)[1])
+  sh <- suppressWarnings(as.numeric(shares)[1])
+  if (!is.finite(eq) || !is.finite(sh) || sh <= 0) return(NA_real_)
+  if (!is.finite(inv) || inv < 0) inv <- 0
+  if (!is.finite(disc)) disc <- 0
+  disc <- max(0, min(0.5, disc))
+  (eq - disc * inv) / sh
+}
+
 #' Sort elasticity table rows by |ε| descending.
 .param_sensitivity_sort_by_abs_eps <- function(out) {
   if (is.null(out) || !is.data.frame(out) || nrow(out) == 0) return(out)

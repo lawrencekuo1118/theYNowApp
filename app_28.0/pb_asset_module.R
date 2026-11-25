@@ -46,45 +46,113 @@ pb_asset_module_shell_ui <- function(id) {
     ),
     tabPanel(
       "P/B Settings", value = "pb_settings", icon = icon("cogs"),
-      h4(tags$b(ui_i18n("pb_bv_title"))),
-      fluidRow(
-        div(ui_i18n("pb_bv_formula"),
-            style = "font-size: 14px; font-weight: bold; color: #2C3E50; text-align: left; margin-bottom: 10px; padding: 10px; background-color: #F8F9F9; border-left: 4px solid #1a1a1a; border-radius: 4px;")
+      tags$p(
+        class = "ynow-pb-settings-lead help-block",
+        ui_i18n("pb_settings_lead")
       ),
-      uiOutput(ns("txt_shares_resolve_note")),
       fluidRow(
-        column(4, numericInput(ns("bvps"), ui_i18n("pb_bvps_label"), value = APP_DEFAULTS$pb_bvps, step = 0.1, min = 0)),
-        column(4, numericInput(ns("tbvps"), ui_i18n("pb_tbvps_label"), value = APP_DEFAULTS$pb_tbvps, step = 0.1, min = 0)),
-        column(4,
-               br(),
-               actionButton(ns("btn_sync_bv"), ui_i18n("pb_sync_bv"),
-                            icon = icon("sync"), class = "btn-sm",
-                            style = "background-color: #1a1a1a; color: white; border: none; padding: 8px 15px; font-weight: bold; border-radius: 5px; margin-top: 5px;")
+        column(
+          12,
+          actionButton(
+            ns("btn_sync_bv"),
+            tagList(icon("sync"), tags$span(ui_i18n("pb_sync_bv"))),
+            class = "btn-sm",
+            style = paste(
+              "background-color:#1a1a1a; color:white; border:none;",
+              "padding:8px 15px; font-weight:bold; border-radius:5px; margin-bottom:10px;"
+            )
+          )
         )
       ),
-      fluidRow(
-        column(12, uiOutput(ns("alert_missing_bv")))
+      uiOutput(ns("txt_shares_resolve_note")),
+      fluidRow(column(12, uiOutput(ns("alert_missing_bv")))),
+      # --- BVPS ---
+      tags$div(
+        class = "ynow-pb-param-section",
+        `data-ynow-pb-section` = "bvps",
+        tags$h4(class = "ynow-pb-param-section-title", tags$b(ui_i18n("pb_section_bvps_title"))),
+        tags$div(class = "ynow-pb-param-formula", ui_i18n("pb_section_bvps_formula")),
+        tags$div(class = "ynow-pb-param-fair", ui_i18n("pb_section_bvps_fair")),
+        tags$p(class = "help-block ynow-pb-param-note", ui_i18n("pb_components_help")),
+        fluidRow(
+          column(4, numericInput(
+            ns("common_equity"), ui_i18n("pb_common_equity_label"),
+            value = NA, step = 1, min = 0
+          )),
+          column(4, numericInput(
+            ns("shares"), ui_i18n("pb_shares_label"),
+            value = NA, step = 1, min = 0
+          )),
+          column(4, numericInput(
+            ns("bvps"), ui_i18n("pb_bvps_label"),
+            value = APP_DEFAULTS$pb_bvps, step = 0.1, min = 0
+          ))
+        )
       ),
-      fluidRow(
-        column(4, numericInput(ns("navps"), ui_i18n("pb_navps_label"), value = NA, step = 0.1, min = 0)),
-        column(4, numericInput(
-          ns("holdco_discount"), ui_i18n("pb_holdco_label"),
-          value = APP_DEFAULTS$pb_holdco_discount * 100,
-          min = 0, max = 50, step = 1
-        )),
-        column(4, helpText(ui_i18n("pb_holdco_help")))
+      # --- TBVPS ---
+      tags$div(
+        class = "ynow-pb-param-section",
+        `data-ynow-pb-section` = "tbvps",
+        tags$h4(class = "ynow-pb-param-section-title", tags$b(ui_i18n("pb_section_tbvps_title"))),
+        tags$div(class = "ynow-pb-param-formula", ui_i18n("pb_section_tbvps_formula")),
+        tags$div(class = "ynow-pb-param-fair", ui_i18n("pb_section_tbvps_fair")),
+        tags$p(class = "help-block ynow-pb-param-note", ui_i18n("pb_section_shared_note")),
+        fluidRow(
+          column(4, numericInput(
+            ns("goodwill"), ui_i18n("pb_goodwill_label"),
+            value = NA, step = 1, min = 0
+          )),
+          column(4, numericInput(
+            ns("intangibles"), ui_i18n("pb_intangibles_label"),
+            value = NA, step = 1, min = 0
+          )),
+          column(4, numericInput(
+            ns("tbvps"), ui_i18n("pb_tbvps_label"),
+            value = APP_DEFAULTS$pb_tbvps, step = 0.1, min = 0
+          ))
+        ),
+        uiOutput(ns("ui_tbvps_parts_mirror"))
       ),
-      fluidRow(
-        column(12, tableOutput(ns("tbl_nav_breakdown")))
+      # --- NAVPS ---
+      tags$div(
+        class = "ynow-pb-param-section",
+        `data-ynow-pb-section` = "navps",
+        tags$h4(class = "ynow-pb-param-section-title", tags$b(ui_i18n("pb_section_navps_title"))),
+        tags$div(class = "ynow-pb-param-formula", ui_i18n("pb_section_navps_formula")),
+        tags$div(class = "ynow-pb-param-fair", ui_i18n("pb_section_navps_fair")),
+        tags$p(class = "help-block ynow-pb-param-note", ui_i18n("pb_section_shared_note")),
+        fluidRow(
+          column(4, numericInput(
+            ns("investments"), ui_i18n("pb_investments_label"),
+            value = NA, step = 1, min = 0
+          )),
+          column(4, numericInput(
+            ns("holdco_discount"), ui_i18n("pb_holdco_label"),
+            value = APP_DEFAULTS$pb_holdco_discount * 100,
+            min = 0, max = 50, step = 1
+          )),
+          column(4, numericInput(
+            ns("navps"), ui_i18n("pb_navps_label"),
+            value = NA, step = 0.1, min = 0
+          ))
+        ),
+        tags$p(class = "help-block", ui_i18n("pb_holdco_help")),
+        uiOutput(ns("ui_navps_parts_mirror")),
+        tableOutput(ns("tbl_nav_breakdown"))
       ),
       hr(style = "border-top: 1px solid #BDC3C7;"),
       fluidRow(
-        column(6,
-               selectInput(ns("basis"), ui_i18n("pb_basis_label"),
-                           choices = c("Book value BVPS" = "bvps",
-                                       "Tangible book TBVPS" = "tbvps",
-                                       "Holding-company NAVPS" = "navps"),
-                           selected = APP_DEFAULTS$pb_basis)
+        column(
+          6,
+          selectInput(
+            ns("basis"), ui_i18n("pb_basis_label"),
+            choices = c(
+              "Book value BVPS" = "bvps",
+              "Tangible book TBVPS" = "tbvps",
+              "Holding-company NAVPS" = "navps"
+            ),
+            selected = APP_DEFAULTS$pb_basis
+          )
         ),
         column(6, helpText(ui_i18n("pb_basis_help")))
       )
@@ -190,11 +258,45 @@ pb_asset_module_server <- function(id,
       switch(b, tbvps = "TBVPS", navps = "NAVPS", "BVPS")
     }
 
+    .pb_money_to_quote <- function(amount, df_bs, share_method = "balance_sheet") {
+      amt <- suppressWarnings(as.numeric(amount)[1])
+      if (!is.finite(amt)) return(NA_real_)
+      q_ccy <- tryCatch(quote_currency(), error = function(e) NA_character_)
+      f_ccy <- tryCatch(financial_currency(), error = function(e) NA_character_)
+      eq_ccy <- equity_money_ccy(df_bs, session_ccy = q_ccy, statement_ccy = f_ccy)
+      per_share_in_quote(
+        amt, 1,
+        equity_ccy = eq_ccy,
+        to_ccy = q_ccy,
+        share_method = share_method,
+        statement_ccy = f_ccy
+      )
+    }
+
+    .pb_recompute_from_parts <- function() {
+      eq <- suppressWarnings(as.numeric(input$common_equity)[1])
+      sh <- suppressWarnings(as.numeric(input$shares)[1])
+      bv <- .pb_bvps_from_parts(eq, sh)
+      if (is.finite(bv)) updateNumericInput(session, "bvps", value = round(bv, 2))
+      tb <- .pb_tbvps_from_parts(eq, input$goodwill, input$intangibles, sh)
+      if (is.finite(tb)) updateNumericInput(session, "tbvps", value = round(tb, 2))
+      disc_pct <- suppressWarnings(as.numeric(input$holdco_discount)[1])
+      if (!is.finite(disc_pct)) disc_pct <- APP_DEFAULTS$pb_holdco_discount * 100
+      nv <- .pb_navps_from_parts(eq, input$investments, disc_pct / 100, sh)
+      if (is.finite(nv)) updateNumericInput(session, "navps", value = round(nv, 2))
+    }
+
     sync_navps <- function(df_bs, shares, share_method = "balance_sheet") {
       disc_pct <- suppressWarnings(as.numeric(input$holdco_discount)[1])
       if (!is.finite(disc_pct)) disc_pct <- APP_DEFAULTS$pb_holdco_discount * 100
       navc <- extract_nav_components(df_bs, holdco_discount = disc_pct / 100)
       nav_components(navc)
+      inv_q <- .pb_money_to_quote(navc$investments, df_bs, share_method = share_method)
+      if (is.finite(inv_q)) {
+        updateNumericInput(session, "investments", value = round(inv_q, 0))
+      } else if (is.finite(navc$investments)) {
+        updateNumericInput(session, "investments", value = round(navc$investments, 0))
+      }
       if (is.finite(navc$nav) && is.finite(shares) && shares > 0) {
         q_ccy <- tryCatch(quote_currency(), error = function(e) NA_character_)
         f_ccy <- tryCatch(financial_currency(), error = function(e) NA_character_)
@@ -296,12 +398,18 @@ pb_asset_module_server <- function(id,
       )
     })
     
-    # --- 財報同步 BVPS / TBVPS（ADR／雙重股權：一律自動約當報價股）---
+    # --- 財報同步 BVPS / TBVPS / NAVPS 與組成科目（ADR／雙重股權：一律自動約當報價股）---
     sync_book_values <- function() {
       req(d_balance_sheet())
       df_bs <- d_balance_sheet()
       updateNumericInput(session, "bvps", value = NA_real_)
       updateNumericInput(session, "tbvps", value = NA_real_)
+      updateNumericInput(session, "navps", value = NA_real_)
+      updateNumericInput(session, "common_equity", value = NA_real_)
+      updateNumericInput(session, "shares", value = NA_real_)
+      updateNumericInput(session, "goodwill", value = NA_real_)
+      updateNumericInput(session, "intangibles", value = NA_real_)
+      updateNumericInput(session, "investments", value = NA_real_)
       
       equity <- common_stock_equity(df_bs)
       
@@ -356,39 +464,65 @@ pb_asset_module_server <- function(id,
         "Goodwill And Other Intangible Assets|Goodwill & Other Intangible Assets",
         "stock"
       )
+      gw_stmt <- NA_real_
+      intang_stmt <- NA_real_
       if (!is.na(goodwill) || !is.na(other_intang)) {
-        intang_deduct <- ifelse(is.na(goodwill), 0, goodwill) +
-          ifelse(is.na(other_intang), 0, other_intang)
+        gw_stmt <- ifelse(is.na(goodwill), 0, goodwill)
+        intang_stmt <- ifelse(is.na(other_intang), 0, other_intang)
+        intang_deduct <- gw_stmt + intang_stmt
       } else if (!is.na(combined_gi)) {
+        gw_stmt <- 0
+        intang_stmt <- combined_gi
         intang_deduct <- combined_gi
       } else {
         loose <- select_current_metric(df_bs, "^Intangible Assets$", "stock")
         intang_deduct <- ifelse(is.na(loose), NA_real_, loose)
+        gw_stmt <- 0
+        intang_stmt <- ifelse(is.na(loose), NA_real_, loose)
       }
       
       if (!is.na(equity) && !is.na(shares) && shares > 0) {
         q_ccy <- tryCatch(quote_currency(), error = function(e) NA_character_)
         f_ccy <- tryCatch(financial_currency(), error = function(e) NA_character_)
         eq_ccy <- equity_money_ccy(df_bs, session_ccy = q_ccy, statement_ccy = f_ccy)
+        meth <- sh_adj$method %||% "balance_sheet"
         bvps <- per_share_in_quote(
           equity, shares,
           equity_ccy = eq_ccy,
           to_ccy = q_ccy,
-          share_method = sh_adj$method,
+          share_method = meth,
           statement_ccy = f_ccy
         )
+        tbv_base <- if (is.finite(intang_deduct)) max(equity - intang_deduct, 0) else equity
         tbvps <- per_share_in_quote(
-          max(equity - intang_deduct, 0), shares,
+          tbv_base, shares,
           equity_ccy = eq_ccy,
           to_ccy = q_ccy,
-          share_method = sh_adj$method,
+          share_method = meth,
           statement_ccy = f_ccy
         )
         if (is.finite(bvps)) {
+          eq_q <- .pb_money_to_quote(equity, df_bs, share_method = meth)
+          gw_q <- .pb_money_to_quote(gw_stmt, df_bs, share_method = meth)
+          intang_q <- .pb_money_to_quote(intang_stmt, df_bs, share_method = meth)
+          if (is.finite(eq_q)) {
+            updateNumericInput(session, "common_equity", value = round(eq_q, 0))
+          }
+          updateNumericInput(session, "shares", value = round(shares, 0))
+          if (is.finite(gw_q)) {
+            updateNumericInput(session, "goodwill", value = round(gw_q, 0))
+          } else {
+            updateNumericInput(session, "goodwill", value = 0)
+          }
+          if (is.finite(intang_q)) {
+            updateNumericInput(session, "intangibles", value = round(intang_q, 0))
+          } else {
+            updateNumericInput(session, "intangibles", value = 0)
+          }
           updateNumericInput(session, "bvps", value = round(bvps, 2))
           if (is.finite(tbvps)) updateNumericInput(session, "tbvps", value = round(tbvps, 2))
           nav_shares(shares)
-          sync_navps(df_bs, shares, share_method = sh_adj$method %||% "balance_sheet")
+          sync_navps(df_bs, shares, share_method = meth)
           # ADR／股數級距 toast 僅由 Search 發出一次；此處只更新頁內 shares_resolve_note
         } else {
           showNotification("無法從財報推算 BVPS（匯率／ADR 股數未對齊）", type = "warning", duration = 6)
@@ -413,17 +547,45 @@ pb_asset_module_server <- function(id,
       showNotification("已從財報帶入 BVPS／TBVPS／NAVPS", type = "message")
     })
 
-    observeEvent(input$holdco_discount, {
-      df_bs <- tryCatch(d_balance_sheet(), error = function(e) NULL)
-      sh <- suppressWarnings(as.numeric(nav_shares())[1])
-      if (is.null(df_bs) || !is.finite(sh) || sh <= 0) return()
-      meth <- if (!is.null(shares_resolve_note()) && nzchar(shares_resolve_note() %||% "")) {
-        "market_cap_per_price"
-      } else {
-        "balance_sheet"
-      }
-      sync_navps(df_bs, sh, share_method = meth)
-    }, ignoreInit = TRUE)
+    # Component edits → refresh per-share results (quote-aligned amounts ÷ shares).
+    observeEvent(
+      list(
+        input$common_equity, input$shares, input$goodwill, input$intangibles,
+        input$investments, input$holdco_discount
+      ),
+      {
+        .pb_recompute_from_parts()
+        # Keep NAV breakdown table in sync when HoldCo discount or investments change.
+        df_bs <- tryCatch(d_balance_sheet(), error = function(e) NULL)
+        sh <- suppressWarnings(as.numeric(input$shares)[1])
+        if (is.null(df_bs) || !is.finite(sh) || sh <= 0) return()
+        disc_pct <- suppressWarnings(as.numeric(input$holdco_discount)[1])
+        if (!is.finite(disc_pct)) disc_pct <- APP_DEFAULTS$pb_holdco_discount * 100
+        inv_in <- suppressWarnings(as.numeric(input$investments)[1])
+        eq_in <- suppressWarnings(as.numeric(input$common_equity)[1])
+        # Prefer live inputs for the breakdown; fall back to statement extract.
+        if (is.finite(eq_in) && eq_in > 0) {
+          inv_use <- if (is.finite(inv_in) && inv_in >= 0) inv_in else 0
+          disc <- max(0, min(0.5, disc_pct / 100))
+          nav_components(list(
+            cash = NA_real_,
+            investments = inv_use,
+            equity = eq_in,
+            nav = eq_in - disc * inv_use,
+            discount = disc,
+            note = if (inv_use > 0 && disc > 0) {
+              sprintf("NAV＝權益 − %.0f%%×投資科目（控股折價）", disc * 100)
+            } else if (inv_use > 0) {
+              "已辨識投資科目；折價=0 時 NAV＝帳面權益"
+            } else {
+              "無獨立投資科目，NAV＝帳面淨值"
+            }
+          ))
+          nav_shares(sh)
+        }
+      },
+      ignoreInit = TRUE
+    )
     
     output$txt_shares_resolve_note <- renderUI({
       note <- shares_resolve_note()
@@ -434,6 +596,41 @@ pb_asset_module_server <- function(id,
           " background: #fff8e6; color: #b85c00;"
         ),
         paste0("已自動對齊報價股：", note)
+      )
+    })
+
+    .pb_fmt_mirror <- function(x) {
+      if (!is.finite(x)) return("N/A")
+      format(round(x, 0), big.mark = ",", scientific = FALSE)
+    }
+
+    output$ui_tbvps_parts_mirror <- renderUI({
+      loc <- .loc()
+      eq <- suppressWarnings(as.numeric(input$common_equity)[1])
+      sh <- suppressWarnings(as.numeric(input$shares)[1])
+      tags$p(
+        class = "ynow-pb-parts-mirror help-block",
+        sprintf(
+          "%s: %s · %s: %s",
+          ui_str("pb_common_equity_label", loc), .pb_fmt_mirror(eq),
+          ui_str("pb_shares_label", loc),
+          if (is.finite(sh)) format(round(sh, 0), big.mark = ",", scientific = FALSE) else "N/A"
+        )
+      )
+    })
+
+    output$ui_navps_parts_mirror <- renderUI({
+      loc <- .loc()
+      eq <- suppressWarnings(as.numeric(input$common_equity)[1])
+      sh <- suppressWarnings(as.numeric(input$shares)[1])
+      tags$p(
+        class = "ynow-pb-parts-mirror help-block",
+        sprintf(
+          "%s: %s · %s: %s",
+          ui_str("pb_common_equity_label", loc), .pb_fmt_mirror(eq),
+          ui_str("pb_shares_label", loc),
+          if (is.finite(sh)) format(round(sh, 0), big.mark = ",", scientific = FALSE) else "N/A"
+        )
       )
     })
     

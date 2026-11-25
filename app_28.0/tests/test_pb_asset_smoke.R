@@ -55,6 +55,33 @@ check("P/B TBVPS path", approx_eq(.pb_formula_p(10, 2.0), 20))
 check("P/B NA when basis<=0", !is.finite(.pb_formula_p(0, 1.5)) && !is.finite(.pb_formula_p(-2, 1.5)))
 check("P/B NA when pb<=0", !is.finite(.pb_formula_p(12, 0)) && !is.finite(.pb_formula_p(12, -1)))
 
+# Book metric parts → per-share (settings sections)
+check(".pb_bvps_from_parts exported", exists(".pb_bvps_from_parts", mode = "function"))
+check(".pb_tbvps_from_parts exported", exists(".pb_tbvps_from_parts", mode = "function"))
+check(".pb_navps_from_parts exported", exists(".pb_navps_from_parts", mode = "function"))
+check("BVPS = equity÷shares", approx_eq(.pb_bvps_from_parts(1200, 100), 12))
+check("BVPS NA when shares<=0", !is.finite(.pb_bvps_from_parts(100, 0)))
+check(
+  "TBVPS deducts goodwill+intangibles",
+  approx_eq(.pb_tbvps_from_parts(1200, goodwill = 100, intangibles = 100, shares = 100), 10)
+)
+check(
+  "TBVPS floors at 0",
+  approx_eq(.pb_tbvps_from_parts(50, goodwill = 80, intangibles = 0, shares = 10), 0)
+)
+check(
+  "NAVPS with holdco discount",
+  approx_eq(.pb_navps_from_parts(1000, investments = 200, holdco_discount = 0.20, shares = 100), 9.6)
+)
+check(
+  "NAVPS clamps discount to 50%",
+  approx_eq(.pb_navps_from_parts(1000, investments = 200, holdco_discount = 0.90, shares = 100), 9)
+)
+check(
+  "Fair Price BVPS×P/B from parts",
+  approx_eq(.pb_formula_p(.pb_bvps_from_parts(1200, 100), 1.5), 18)
+)
+
 # Justified P/B = (ROE − g) / (Ke − g) with pct inputs
 just_closed <- (0.15 - 0.03) / (0.10 - 0.03)
 tgt_j <- derive_pb_targets(
@@ -120,6 +147,34 @@ check(
     grepl('value = "pb_settings"', shell, fixed = TRUE) &&
     grepl('value = "target_pb"', shell, fixed = TRUE)
 )
+check(
+  "Settings has three BVPS/TBVPS/NAVPS sections",
+  grepl('data-ynow-pb-section` = "bvps"', shell, fixed = TRUE) &&
+    grepl('data-ynow-pb-section` = "tbvps"', shell, fixed = TRUE) &&
+    grepl('data-ynow-pb-section` = "navps"', shell, fixed = TRUE)
+)
+check(
+  "Settings wires component inputs",
+  grepl('ns("common_equity")', shell, fixed = TRUE) &&
+    grepl('ns("shares")', shell, fixed = TRUE) &&
+    grepl('ns("goodwill")', shell, fixed = TRUE) &&
+    grepl('ns("intangibles")', shell, fixed = TRUE) &&
+    grepl('ns("investments")', shell, fixed = TRUE) &&
+    grepl('ns("holdco_discount")', shell, fixed = TRUE) &&
+    grepl('ns("bvps")', shell, fixed = TRUE) &&
+    grepl('ns("tbvps")', shell, fixed = TRUE) &&
+    grepl('ns("navps")', shell, fixed = TRUE)
+)
+check(
+  "Settings keeps basis selector",
+  grepl('ns("basis")', shell, fixed = TRUE)
+)
+# Section order: BVPS → TBVPS → NAVPS
+bv_pos <- regexpr('data-ynow-pb-section` = "bvps"', shell, fixed = TRUE)[1]
+tb_pos <- regexpr('data-ynow-pb-section` = "tbvps"', shell, fixed = TRUE)[1]
+nv_pos <- regexpr('data-ynow-pb-section` = "navps"', shell, fixed = TRUE)[1]
+check("BVPS section precedes TBVPS", bv_pos > 0 && tb_pos > bv_pos)
+check("TBVPS section precedes NAVPS", tb_pos > 0 && nv_pos > tb_pos)
 check(
   "Overview not a separate body tabBox",
   !grepl('"P/B Overview"', body, fixed = TRUE) &&
