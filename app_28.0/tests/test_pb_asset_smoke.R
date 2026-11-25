@@ -148,10 +148,22 @@ check(
     grepl('value = "target_pb"', shell, fixed = TRUE)
 )
 check(
-  "Settings uses DDM-style radio for book metric",
+  "Shell uses DDM-style radio for book metric",
   grepl("radioButtons(", shell, fixed = TRUE) &&
     grepl('ns("basis")', shell, fixed = TRUE) &&
-    grepl("pb_basis_label", shell, fixed = TRUE)
+    grepl("pb_basis_label", shell, fixed = TRUE) &&
+    grepl("ynow-pb-basis-chrome", shell, fixed = TRUE)
+)
+radio_pos <- regexpr("radioButtons(", shell, fixed = TRUE)[1]
+asset_box_pos <- regexpr('title = "P/B & ASSET VALUE"', shell, fixed = TRUE)[1]
+settings_pos <- regexpr('value = "pb_settings"', shell, fixed = TRUE)[1]
+check(
+  "Book-metric radio sits above P/B & ASSET VALUE tabBox",
+  radio_pos > 0 && asset_box_pos > radio_pos
+)
+check(
+  "Book-metric radio is outside Settings tabPanel",
+  radio_pos > 0 && settings_pos > radio_pos
 )
 check(
   "Settings shows one module via conditionalPanel",
@@ -186,7 +198,6 @@ check(
 bv_pos <- regexpr('data-ynow-pb-section` = "bvps"', shell, fixed = TRUE)[1]
 tb_pos <- regexpr('data-ynow-pb-section` = "tbvps"', shell, fixed = TRUE)[1]
 nv_pos <- regexpr('data-ynow-pb-section` = "navps"', shell, fixed = TRUE)[1]
-radio_pos <- regexpr("radioButtons(", shell, fixed = TRUE)[1]
 check("Radio precedes BVPS module", radio_pos > 0 && bv_pos > radio_pos)
 check("BVPS module precedes TBVPS", bv_pos > 0 && tb_pos > bv_pos)
 check("TBVPS module precedes NAVPS", tb_pos > 0 && nv_pos > tb_pos)

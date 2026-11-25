@@ -2728,6 +2728,14 @@
         .ynow-htcdi-table--inputs tr.ynow-htcdi-term-metrics th {
           font-weight: 600; white-space: nowrap;
         }
+        /* P/B book-metric chrome above「P/B & ASSET VALUE」tabBox */
+        .ynow-pb-basis-chrome {
+          margin: 0 0 4px 0;
+          padding: 4px 2px 0 2px;
+        }
+        .ynow-pb-basis-chrome .shiny-options-group {
+          margin-top: 4px;
+        }
         /* P/B Settings: BVPS / TBVPS / NAVPS assumption sections (settings tab only) */
         .ynow-pb-settings-lead {
           margin: 0 0 10px 0;
