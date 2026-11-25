@@ -52,7 +52,7 @@ When tip ship completes (deploy + baseline + GitHub Release for a new `display_v
    - Cursor self-hosted: `agent login && agent worker start` on the Mac coding host.
    - Optional GH Actions runner labels: `self-hosted`, `macOS`, `theynow` + `gh workflow run post-release-mac-sync.yml`.
 
-`deploy_app_21.R` calls `post_release_local_sync.sh` at the end of a successful ship. Set `YNOW_SKIP_POST_RELEASE_SYNC=1` only for intentional skips (never as the default on Mac tip-ship); handoff still records pending.
+`deploy_app_21.R` calls `post_release_local_sync.sh` at the end of a successful ship. Actions tip-ship (`.github/workflows/tip-ship.yml`) defers that call until after `record_deploy_baseline.R`, then soft-skips Mac paths and runs handoff. Set `YNOW_SKIP_POST_RELEASE_SYNC=1` only for intentional skips (never as the default on Mac tip-ship); handoff still records pending.
 
 **Never run `git status` / `git diff` / `git push` inside the OneDrive folder.**  
 OneDrive’s tree is a lightweight sync stub (objects via `alternates` → coding clone). Cloud I/O often times out (`mmap failed: Operation timed out`), so those commands hang or fail. To verify OneDrive alignment, read:

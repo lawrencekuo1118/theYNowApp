@@ -21,6 +21,7 @@ PRs and pushes that touch `app_28.0/**`, `scripts/**`, or `.github/workflows/**`
 |----------|----------------|
 | **Live-line CI** → job `offline-checks` (`.github/workflows/ci.yml`) | Path-filter guard `scripts/tests/test_ci_live_line_paths.sh`; then `YNOW_DEBUG_SKIP_PY=1` valuation formulas, report downloads, parameter／fiscal suites, Phase 1 (`bash scripts/run_phase1_audit.sh`), maintenance, and admin offline tests |
 | **Report downloads** (same `offline-checks` job) | Offline report copy/render checks: US/TW, Full/Lite, en-US/zh-TW, partial statements and missing Fair Value |
+| **Tip-ship (shinyapps)** (`.github/workflows/tip-ship.yml`) | Manual `workflow_dispatch` cloud tip-ship: `deploy_app_21.R` + baseline + Release; needs Actions secrets `SHINYAPPS_ACCOUNT` / `SHINYAPPS_TOKEN` / `SHINYAPPS_SECRET` (see [`docs/cloud-tip-ship.md`](docs/cloud-tip-ship.md)). Soft-skips Mac OneDrive sync via handoff |
 | **ITGC Audit** (`.github/workflows/audit.yml`) | Phases 2–4 via `bash scripts/run_audit.sh` + RCM artifact |
 
 **Branch protection:** require check **`offline-checks`** (workflow **Live-line CI**). Do not rely on path filters that skip the live app tree. Docs/rules-only changes may skip app jobs; app behavior PRs must stay green on Live-line CI.
@@ -31,11 +32,11 @@ PRs and pushes that touch `app_28.0/**`, `scripts/**`, or `.github/workflows/**`
 
 1. Open a PR; wait for Live-line CI green when the diff touches the live line, `scripts/`, or workflows
 2. Commit + `git push origin HEAD`（coding clone） as needed for the ship tree
-3. `Rscript scripts/deploy_app_21.R` → display version **+0.01** → shinyapps upload
-4. Update `scripts/DEPLOY_BASELINE.txt` and push
+3. Tip-ship: Actions → **Tip-ship (shinyapps)** when `SHINYAPPS_*` secrets exist ([`docs/cloud-tip-ship.md`](docs/cloud-tip-ship.md)), else `Rscript scripts/deploy_app_21.R` → display version **+0.01** → shinyapps upload
+4. Update `scripts/DEPLOY_BASELINE.txt` and push（Actions runs `scripts/record_deploy_baseline.R`）
 5. Add／update [`CHANGELOG.md`](CHANGELOG.md) entry for that `display_version`（en-US + zh-TW 台灣用語；勿只留版號）
-6. `bash scripts/record_github_release.sh v28.xx`（needs `gh` + token; **soft-fail** if unavailable — secrets never in git）
-7. `bash scripts/post_release_local_sync.sh`（Mac mandatory; Cloud writes `PENDING_MAC_SYNC.env`）
+6. `bash scripts/record_github_release.sh v28.xx`（needs `gh` + token; **soft-fail** if unavailable — secrets never in git; Actions tip-ship calls this）
+7. `bash scripts/post_release_local_sync.sh`（Mac mandatory; Cloud／Actions write `PENDING_MAC_SYNC.env`）
 8. **每次釋出後檢視並同步更新 root `README.md`**（display version、`app_N.0/`、CI paths、本機 run／deploy 片段）
 
 ## 維護方式
