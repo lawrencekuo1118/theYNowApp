@@ -8,6 +8,11 @@
 #   SHINYAPPS_TOKEN    — from https://www.shinyapps.io/admin/#/tokens
 #   SHINYAPPS_SECRET   — from the same tokens page
 #
+# Land path (original #806 CI/CD): after deploy, `git push origin HEAD:<branch>`
+# with the job GITHUB_TOKEN → Release. No land PR. No TIP_SHIP_GH_PAT.
+# For protected master (required offline-checks): one-time ruleset setting —
+# allow github-actions[bot] to bypass required status checks (not a secret).
+#
 # Optional (defaults match live app) — set as Actions *variables*, not empty env:
 #   SHINYAPPS_APP_NAME  (default TheYNowApp)
 #   SHINYAPPS_APP_ID    (default 10907657)
@@ -87,6 +92,7 @@ jobs:
               echo "Source: https://www.shinyapps.io/admin/#/tokens"
               echo ""
               echo "Do **not** paste values into the PR or workflow YAML."
+              echo "Land: GITHUB_TOKEN git push (original #806). Ruleset: allow github-actions[bot] bypass on master."
             } >>"$GITHUB_STEP_SUMMARY"
             echo "Missing required secrets: ${missing[*]}" >&2
             exit 1
@@ -150,24 +156,19 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update -qq
-          # libpq-dev → RPostgres; libsodium-dev → sodium; curl/ssl for rsconnect/curl.
+          # libpq-dev → RPostgres; libsodium-dev → sodium; curl/ssl for rsconnect/curl;
+          # xml/font/harfbuzz → tidyverse/ggplot2/rvest binaries on ubuntu-latest.
           sudo apt-get install -y --no-install-recommends \
-            libpq-dev libsodium-dev libcurl4-openssl-dev libssl-dev
+            libpq-dev libsodium-dev libcurl4-openssl-dev libssl-dev \
+            libxml2-dev libfontconfig1-dev libfreetype6-dev \
+            libharfbuzz-dev libfribidi-dev libpng-dev libtiff5-dev libjpeg-dev
 
       - name: Install deploy R packages
         run: |
           set -euo pipefail
-          Rscript -e 'pkgs <- c("rsconnect","curl","RPostgres","pool","sodium","future","DBI","reticulate");
-            missing <- pkgs[!vapply(pkgs, requireNamespace, logical(1), quietly = TRUE)];
-            if (length(missing)) install.packages(missing, quiet = TRUE);
-            if (packageVersion("reticulate") < "1.47.0")
-              install.packages("reticulate", quiet = TRUE);
-            # Load (not just requireNamespace) so dynlibs resolve against apt deps.
-            for (p in c("rsconnect","RPostgres","sodium")) {
-              if (!require(p, character.only = TRUE, quietly = TRUE))
-                stop("Failed to load package ", p, " after install — check system libs")
-            }
-            message("Deploy packages OK")'
+          # Full boot + snapshot set (not just rsconnect/Neon). Tip-ship #3 omitted
+          # uninstalled packages from the shinyapps manifest → live exit status 1.
+          Rscript scripts/install_deploy_app_packages.R
 
       - name: Configure rsconnect account (for live .Renviron restore)
         run: |
@@ -245,9 +246,17 @@ jobs:
             echo "::error::Branch drifted to '${BRANCH}' (expected '${EXPECTED}')."
             exit 1
           fi
-          # Push any commits created by deploy / baseline recorder.
+          # Mac-parity / #806 land: direct push with job GITHUB_TOKEN (no PAT).
           if [[ "$(git rev-parse HEAD)" != "$(git rev-parse "origin/${BRANCH}" 2>/dev/null || echo none)" ]]; then
-            git push origin "HEAD:${BRANCH}"
+            if ! git push origin "HEAD:${BRANCH}"; then
+              {
+                echo "::error::git push origin HEAD:${BRANCH} failed (often GH013 when ${BRANCH} requires offline-checks)."
+                echo "::error::Apply the one-time GitHub *settings* change (not a secret): allow github-actions[bot]"
+                echo "::error::to bypass required status checks on ${BRANCH} (Settings → Rules → Rulesets)."
+                echo "::error::Do not add TIP_SHIP_GH_PAT; original CI/CD is direct push after that bypass."
+              } >&2
+              exit 1
+            fi
             echo "Pushed tip-ship commits to origin/${BRANCH}"
           else
             echo "No new commits to push (tree already matched origin/${BRANCH})."
@@ -300,6 +309,11 @@ jobs:
             echo "(writes \`PENDING_MAC_SYNC.env\`, dispatches **Post-release Mac local sync**)."
             echo "Mac still owns coding + OneDrive catch-up."
             echo ""
+            echo "### Land (original #806 CI/CD)"
+            echo "- path: \`git push origin HEAD:<branch>\` with job GITHUB_TOKEN → Release"
+            echo "- pushed_sha: \`${{ steps.push.outputs.sha }}\`"
+            echo "- short: \`${{ steps.push.outputs.short }}\`"
+            echo ""
             echo "### Secrets checklist (names only)"
             echo "| Secret | Required |"
             echo "|---|---|"
@@ -307,4 +321,8 @@ jobs:
             echo "| \`SHINYAPPS_TOKEN\` | yes |"
             echo "| \`SHINYAPPS_SECRET\` | yes |"
             echo "| \`YNOW_DB_*\` / \`YNOW_SUPABASE_*\` / OAuth | required when live restore alone lacks OAuth + account DB (do not ship thinner .Renviron) |"
+            echo ""
+            echo "### One-time settings (not a secret)"
+            echo "Protected \`master\`: allow \`github-actions[bot]\` to bypass required status checks"
+            echo "(Settings → Rules → Rulesets). No TIP_SHIP_GH_PAT. No land PR."
           } >>"$GITHUB_STEP_SUMMARY"
