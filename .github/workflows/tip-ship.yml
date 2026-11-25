@@ -49,6 +49,7 @@ concurrency:
 permissions:
   contents: write
   actions: write
+  pull-requests: write
 
 jobs:
   tip-ship:
@@ -150,24 +151,19 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update -qq
-          # libpq-dev → RPostgres; libsodium-dev → sodium; curl/ssl for rsconnect/curl.
+          # libpq-dev → RPostgres; libsodium-dev → sodium; curl/ssl for rsconnect/curl;
+          # xml/font/harfbuzz → tidyverse/ggplot2/rvest binaries on ubuntu-latest.
           sudo apt-get install -y --no-install-recommends \
-            libpq-dev libsodium-dev libcurl4-openssl-dev libssl-dev
+            libpq-dev libsodium-dev libcurl4-openssl-dev libssl-dev \
+            libxml2-dev libfontconfig1-dev libfreetype6-dev \
+            libharfbuzz-dev libfribidi-dev libpng-dev libtiff5-dev libjpeg-dev
 
       - name: Install deploy R packages
         run: |
           set -euo pipefail
-          Rscript -e 'pkgs <- c("rsconnect","curl","RPostgres","pool","sodium","future","DBI","reticulate");
-            missing <- pkgs[!vapply(pkgs, requireNamespace, logical(1), quietly = TRUE)];
-            if (length(missing)) install.packages(missing, quiet = TRUE);
-            if (packageVersion("reticulate") < "1.47.0")
-              install.packages("reticulate", quiet = TRUE);
-            # Load (not just requireNamespace) so dynlibs resolve against apt deps.
-            for (p in c("rsconnect","RPostgres","sodium")) {
-              if (!require(p, character.only = TRUE, quietly = TRUE))
-                stop("Failed to load package ", p, " after install — check system libs")
-            }
-            message("Deploy packages OK")'
+          # Full boot + snapshot set (not just rsconnect/Neon). Tip-ship #3 omitted
+          # uninstalled packages from the shinyapps manifest → live exit status 1.
+          Rscript scripts/install_deploy_app_packages.R
 
       - name: Configure rsconnect account (for live .Renviron restore)
         run: |
@@ -230,7 +226,7 @@ jobs:
             exit 1
           fi
 
-      - name: Push bump + baseline commits
+      - name: Land bump + baseline via tip-ship PR
         id: push
         run: |
           set -euo pipefail
@@ -245,15 +241,10 @@ jobs:
             echo "::error::Branch drifted to '${BRANCH}' (expected '${EXPECTED}')."
             exit 1
           fi
-          # Push any commits created by deploy / baseline recorder.
-          if [[ "$(git rev-parse HEAD)" != "$(git rev-parse "origin/${BRANCH}" 2>/dev/null || echo none)" ]]; then
-            git push origin "HEAD:${BRANCH}"
-            echo "Pushed tip-ship commits to origin/${BRANCH}"
-          else
-            echo "No new commits to push (tree already matched origin/${BRANCH})."
-          fi
-          echo "sha=$(git rev-parse HEAD)" >>"$GITHUB_OUTPUT"
-          echo "short=$(git rev-parse --short HEAD)" >>"$GITHUB_OUTPUT"
+          # Never push tip-ship bump/baseline directly to a protected base
+          # (Tip-ship #3 GH013 left live ahead of Git). Land via PR + auto-merge.
+          chmod +x scripts/tip_ship_land_commits.sh
+          bash scripts/tip_ship_land_commits.sh "${BRANCH}"
 
       - name: Publish GitHub Release (after push)
         run: |
