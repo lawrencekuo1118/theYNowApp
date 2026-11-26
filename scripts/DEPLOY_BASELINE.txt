@@ -7,5 +7,5 @@ commit=240401f441715f28b2e1a9fc8225c9c4e8360fcd
 short=240401f4
 message=chore: record shipped display version v28.72
 captured_at=2026-11-26T01:17:57Z
-display_version=v28.72
+display_version=v28.73
 note=Shipped v28.72 via deploy_app_21.R (cloud tip-ship / Actions). Live status=running; rsconnect bundleId=12869606.
