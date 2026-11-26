@@ -1,6 +1,16 @@
 # DCF「二階段」sub-tab visibility: only when dcf_mode == two_stage.
 # Static checks (no Shiny session): CSS first-paint hide + server class toggle +
 # safe fallback to dcf_overview. Locale keys for the tab stay en-US / zh-TW.
+# Paths resolve from this script's dirname so CI can run from repo root.
+
+args <- commandArgs(trailingOnly = FALSE)
+file_arg <- sub("^--file=", "", args[grep("^--file=", args)])
+test_dir <- if (length(file_arg) == 1L && nzchar(file_arg)) {
+  dirname(normalizePath(file_arg))
+} else {
+  getwd()
+}
+app_dir <- normalizePath(file.path(test_dir, ".."), mustWork = TRUE)
 
 fail <- 0L
 check <- function(label, cond) {
@@ -12,8 +22,14 @@ check <- function(label, cond) {
   }
 }
 
-ui <- paste(readLines("../ynow_ui.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-srv <- paste(readLines("../ynow_server.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+ui <- paste(
+  readLines(file.path(app_dir, "ynow_ui.R"), warn = FALSE, encoding = "UTF-8"),
+  collapse = "\n"
+)
+srv <- paste(
+  readLines(file.path(app_dir, "ynow_server.R"), warn = FALSE, encoding = "UTF-8"),
+  collapse = "\n"
+)
 
 check(
   "CSS hides dcf_two_stage tab by default",
@@ -63,7 +79,7 @@ check(
   )
 )
 
-source("../ui_locale.R", local = TRUE)
+source(file.path(app_dir, "ui_locale.R"), local = TRUE)
 check(
   "en-US two-stage tab label",
   identical(ui_str("tab_dcf_two_stage", "en"), "Two-Stage")
