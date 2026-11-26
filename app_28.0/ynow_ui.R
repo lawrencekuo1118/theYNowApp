@@ -4555,6 +4555,8 @@ tabPanel(
                 )
               ),
 
+              # 「二階段」tab: visible only when input$dcf_mode == 'two_stage'
+              # (CSS html.ynow-dcf-two-stage-on + server observer; fallback → dcf_overview).
               tabBox(width = "auto",
                      tabPanel(
                        "DCF Overview", value = "dcf_overview",
@@ -5705,6 +5707,14 @@ ui <- dashboardPage(
 
       # Value alert (到值通知): right-click / long-press → quick set; bell mark
       tags$style(HTML("
+        /* DCF「二階段」sub-tab: hide until two-stage growth method is selected.
+           Server toggles html.ynow-dcf-two-stage-on from input$dcf_mode. */
+        .nav-tabs > li:has(> a[data-value=\"dcf_two_stage\"]) {
+          display: none !important;
+        }
+        html.ynow-dcf-two-stage-on .nav-tabs > li:has(> a[data-value=\"dcf_two_stage\"]) {
+          display: list-item !important;
+        }
         .ynow-alertable {
           position: relative;
           -webkit-touch-callout: none;

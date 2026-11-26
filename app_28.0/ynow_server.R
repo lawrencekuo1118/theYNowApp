@@ -10009,16 +10009,31 @@ server <- function(input, output, session) {
     run_calc_trigger(run_calc_trigger() + 1)
   }, ignoreInit = TRUE)
 
-  # 切換至 Two-Stage 時，確保 g1 帶入目前預估營收成長率
+  # Gate DCF「二階段」tab + sync g1 when entering two-stage growth method.
+  # Default Gordon: CSS hides first paint; class toggle here shows/hides the tab.
+  # Leaving two-stage while on that tab → fall back to DCF Overview.
   observeEvent(input$dcf_mode, {
-    if (!identical(input$dcf_mode, "two_stage")) return()
+    is_two <- identical(as.character(input$dcf_mode %||% "gordon")[1], "two_stage")
+    if (is_two) {
+      shinyjs::runjs(
+        "document.documentElement.classList.add('ynow-dcf-two-stage-on');"
+      )
+    } else {
+      shinyjs::runjs(paste0(
+        "document.documentElement.classList.remove('ynow-dcf-two-stage-on');",
+        "if ($('a[data-value=\"dcf_two_stage\"]').parent().hasClass('active')) {",
+        "$('a[data-value=\"dcf_overview\"]').tab('show');",
+        "}"
+      ))
+    }
+    if (!is_two) return()
     eg <- suppressWarnings(as.numeric(isolate(estimated_g()))[1])
     if (!is.finite(eg)) return()
     cur <- suppressWarnings(as.numeric(input$g_stage1)[1])
     if (is.null(input$g_stage1) || !is.finite(cur) || abs(cur - eg) > 1e-4) {
       updateNumericInput(session, "g_stage1", value = round(eg, 2))
     }
-  }, ignoreInit = TRUE)
+  }, ignoreInit = FALSE)
   
   observeEvent(input$dcf_claim, {
     claim <- input$dcf_claim %||% "fcff"
