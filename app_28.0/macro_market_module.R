@@ -2197,6 +2197,14 @@ macro_market_server <- function(id = "macro",
         itype <- tolower(as.character(iss$instrument_type %||% "")[1])
         if (identical(itype, "etf") || identical(itype, "commodity")) next
         fs <- tryCatch(cached_scrape_financials(tk), error = function(e) NULL)
+        if (!is.null(fs) &&
+            exists("ynow_soft_fill_statements_post_fetch", mode = "function")) {
+          fb <- tryCatch(
+            ynow_soft_fill_statements_post_fetch(fs, tk),
+            error = function(e) NULL
+          )
+          if (is.list(fb) && isTRUE(fb$used) && !is.null(fb$res)) fs <- fb$res
+        }
         if (!is.null(fs)) fs_map[[tk]] <- fs
       }
       if (!length(fs_map)) return()

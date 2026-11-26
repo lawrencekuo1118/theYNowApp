@@ -6324,18 +6324,16 @@ server <- function(input, output, session) {
           )
         }
 
-        # .TWO：Yahoo IS／BS 缺漏（含全空或部分空）→ 櫃買「財務資料簡報」補齊
-        # （上櫃 O_／興櫃 U_）。只填空表、不捏造 CF；閘門用 should_try_* 而非要求三表全空。
+        # .TWO：Yahoo IS／BS 缺漏 → 共用 soft-fill（櫃買季報彙總；不捏造 CF）。
+        # Lab／BBLab／index 走同一 ynow_soft_fill_statements_post_fetch。
         tpex_used <- FALSE
-        if (exists("apply_tpex_financial_fallback", mode = "function") &&
-            grepl("\\.TWO$", stock_code, ignore.case = TRUE) &&
-            exists("should_try_tpex_financial_fallback", mode = "function") &&
-            isTRUE(should_try_tpex_financial_fallback(stock_code, res))) {
-          incProgress(0.55, detail = "Yahoo 年報缺漏，改試櫃買季報彙總…")
-          fb <- tryCatch(
-            apply_tpex_financial_fallback(res, stock_code),
-            error = function(e) list(res = res, used = FALSE, error = conditionMessage(e))
-          )
+        if (exists("ynow_soft_fill_statements_post_fetch", mode = "function")) {
+          if (grepl("\\.TWO$", stock_code, ignore.case = TRUE) &&
+              exists("should_try_tpex_financial_fallback", mode = "function") &&
+              isTRUE(should_try_tpex_financial_fallback(stock_code, res))) {
+            incProgress(0.55, detail = "Yahoo 年報缺漏，改試櫃買季報彙總…")
+          }
+          fb <- ynow_soft_fill_statements_post_fetch(res, stock_code, allow_tpex = TRUE)
           if (isTRUE(fb$used)) {
             res <- fb$res
             tpex_used <- TRUE

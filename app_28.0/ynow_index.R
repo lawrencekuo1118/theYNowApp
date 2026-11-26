@@ -399,6 +399,14 @@ ynow_index_live_screen <- function(ticker, market = NULL) {
   if (!exists("cached_scrape_financials", mode = "function")) return(empty)
   res <- tryCatch(cached_scrape_financials(ticker), error = function(e) NULL)
   if (is.null(res) || !is.list(res)) return(empty)
+  # Align with Search/Lab soft-fill for .TWO thin Yahoo (respects ranking_screen skip).
+  if (exists("ynow_soft_fill_statements_post_fetch", mode = "function")) {
+    fb <- tryCatch(
+      ynow_soft_fill_statements_post_fetch(res, ticker),
+      error = function(e) NULL
+    )
+    if (is.list(fb) && isTRUE(fb$used) && !is.null(fb$res)) res <- fb$res
+  }
   pull <- function(nm) {
     node <- res[[nm]]
     df <- if (is.list(node) && !is.null(node$expanded)) node$expanded else node
