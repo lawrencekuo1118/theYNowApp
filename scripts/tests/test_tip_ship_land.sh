@@ -30,6 +30,8 @@ grep -Fq 'MERGED' "$LAND" || fail "land script must wait until MERGED"
 grep -Fq 'tip-ship/baseline-' "$LAND" || fail "land branch prefix missing"
 grep -Fq 'superseded' "$LAND" || fail "land script must auto-close superseded land PRs"
 grep -Fq 'offline-checks' "$LAND" || fail "land script must publish/wait offline-checks"
+grep -Fq 'workflow_dispatch' "$LAND" || fail "land script must prefer workflow_dispatch CI"
+grep -Fq 'action_required' "$LAND" || fail "land script must ignore action_required pull_request CI"
 # Forbid an actual `git push -u` invocation (comments may still mention it).
 if grep -E '^[[:space:]]*git push -u|[[:space:]]+git push -u' "$LAND" >/dev/null 2>&1; then
   fail "land script must not use git push -u (retargets master upstream)"
