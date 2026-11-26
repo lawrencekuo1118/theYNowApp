@@ -100,6 +100,7 @@ jobs:
           Rscript app_28.0/tests/test_method_eng_locale.R
           Rscript app_28.0/tests/test_sotp_meta_framework.R
           Rscript app_28.0/tests/test_market_cache_binary.R
+          Rscript app_28.0/tests/test_dcf_two_stage_tab_gate.R
           python3 app_28.0/tests/test_summary_deadline.py
       - name: Lab clustering + Beta grouping (offline)
         env:
