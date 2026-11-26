@@ -5361,7 +5361,8 @@ server <- function(input, output, session) {
   })
 
   # Business Breakdown — sidebar tab (shares global ticker; id company_advance)
-  business_breakdown_lab_server(
+  # lab_result feeds SOTP auto-apply when multi-segment revenue is applicable.
+  bblab_api <- business_breakdown_lab_server(
     "bblab",
     market_mode_rv = market_mode,
     ui_locale_rv = ui_locale,
@@ -10731,7 +10732,12 @@ server <- function(input, output, session) {
     quote_currency = quote_currency,
     financial_currency = statement_currency,
     ui_locale = ui_locale,
-    shared_bridge = function() .shared_bridge()
+    shared_bridge = function() .shared_bridge(),
+    bblab_result = if (is.list(bblab_api) && is.reactive(bblab_api$lab_result)) {
+      bblab_api$lab_result
+    } else {
+      NULL
+    }
   )
 
   # ==========================================

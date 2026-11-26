@@ -289,15 +289,23 @@ check("sotp segment params", grepl('ns("default_ev_sales")', sotp_src, fixed = T
 check("sotp bridge params", grepl('ns("cash")', sotp_src, fixed = TRUE) &&
         grepl('ns("debt")', sotp_src, fixed = TRUE) &&
         grepl('ns("shares")', sotp_src, fixed = TRUE))
-check("sotp sync uses segment notes", {
-  grepl(".rel_sotp_fetch_segment_notes", sotp_src, fixed = TRUE) &&
-    grepl("notes = notes", sotp_src, fixed = TRUE) &&
+check("sotp auto-apply uses segment pack + BB Lab result", {
+  grepl(".rel_sotp_fetch_segment_pack", sotp_src, fixed = TRUE) &&
+    grepl("apply_bblab_segments", sotp_src, fixed = TRUE) &&
+    grepl("sotp_bblab_result_applicable", sotp_src, fixed = TRUE) &&
+    grepl("sotp_merge_segment_multiples", sotp_src, fixed = TRUE) &&
     grepl(".sotp_unavailable_msg", sotp_src, fixed = TRUE)
+})
+check("sotp auto-apply does not overwrite bridge", {
+  !grepl('updateNumericInput(session, "cash"', sotp_src, fixed = TRUE) &&
+    !grepl('updateNumericInput(session, "debt"', sotp_src, fixed = TRUE) &&
+    !grepl('updateNumericInput(session, "shares"', sotp_src, fixed = TRUE)
 })
 check("sotp helper wires notes into BB Lab", {
   grepl("notes = notes", mod_src, fixed = TRUE) &&
     grepl("segment_tables = segment_tables", mod_src, fixed = TRUE) &&
-    grepl(".rel_sotp_fetch_segment_notes", mod_src, fixed = TRUE)
+    grepl(".rel_sotp_fetch_segment_pack", mod_src, fixed = TRUE) &&
+    grepl("sotp_segments_applicable", mod_src, fixed = TRUE)
 })
 
 # Offline: segment_tables supply ≥2 revenues when IS has only consolidated rows

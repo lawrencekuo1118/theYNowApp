@@ -2845,5 +2845,11 @@ business_breakdown_lab_server <- function(id = "bblab",
         htmlwidgets::saveWidget(plotly::last_plot(), file, selfcontained = TRUE)
       }
     )
+
+    # Expose analyze result for SOTP auto-apply (Seg Rev only; not a valuation engine).
+    list(
+      lab_result = reactive({ lab_result() }),
+      lab_ticker = reactive({ lab_ticker() })
+    )
   })
 }

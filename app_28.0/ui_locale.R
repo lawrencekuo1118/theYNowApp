@@ -333,8 +333,10 @@ locale_for_market <- function(mode = get_market_mode()) {
     sotp_btn_sync = "Fill from statements",
     sotp_btn_apply_mult = "Apply default to all segments",
     sotp_help = paste0(
-      "Each segment needs its own EV/Sales. Fill from statements pulls multi-segment revenue via BB Lab ",
-      "(income statement, plus US SEC segment notes when available). Not segment-EBIT SOTP."
+      "Each segment needs its own EV/Sales. When SOTP-applicable (≥2 positive segment revenues), ",
+      "BB Lab / Business Breakdown segment revenue auto-fills here (income statement, plus US SEC or ",
+      "TW annual segment notes when available). EV/Sales, Cash, Debt, and Shares are not auto-overwritten. ",
+      "Non-operating assets fill only when clearly disclosed. Not segment-EBIT SOTP."
     ),
     sotp_bridge_help = paste0(
       "Implied EV = Σ(segment revenue × segment EV/Sales) + non-operating; ",
@@ -357,8 +359,13 @@ locale_for_market <- function(mode = get_market_mode()) {
     sotp_status_unavailable = "SOTP Implied Price unavailable with the current inputs.",
     sotp_need_run = "Click Run SOTP to compute Implied Price.",
     sotp_synced = paste0(
-      "Filled from statements: segment revenues (income statement and US SEC segment notes when available), ",
-      "cash, debt, and shares."
+      "Applied BB Lab segment revenues (income statement; US SEC or TW annual segment notes when available). ",
+      "EV/Sales multiples, Cash, Debt, and Shares were left unchanged. ",
+      "Non-operating assets updated only when clearly disclosed on the balance sheet."
+    ),
+    sotp_auto_apply_not_applicable = paste0(
+      "SOTP auto-apply skipped: need ≥2 positive segment revenues from Business Breakdown / BB Lab ",
+      "(no usable multi-business revenue split)."
     ),
     sotp_segments_heading = "Segment EV/Sales",
     sotp_col_name = "Segment",
@@ -5484,8 +5491,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     sotp_btn_sync = "從財報帶入",
     sotp_btn_apply_mult = "套用預設倍數至全部門",
     sotp_help = paste0(
-      "各部門需各自設定 EV/Sales。「從財報帶入」走 BB Lab 路徑：",
-      "損益表部門營收，美股另可併入 SEC segment notes（若有）。",
+      "各部門需各自設定 EV/Sales。當符合 SOTP 適用條件（≥2 筆正值部門營收）時，",
+      "業務拆解／BB Lab 部門營收會自動帶入（損益表；美股 SEC 或台股年報部門附註若有）。",
+      "不會自動覆寫 EV/Sales、Cash、Debt、股數；非營業資產僅在財報明確揭露時帶入。",
       "非部門 EBIT SOTP。"
     ),
     sotp_bridge_help = paste0(
@@ -5509,8 +5517,13 @@ locale_for_market <- function(mode = get_market_mode()) {
     sotp_status_unavailable = "以目前輸入無法計算 SOTP Implied Price。",
     sotp_need_run = "請按「試算 SOTP」計算 Implied Price。",
     sotp_synced = paste0(
-      "已從財報帶入部門營收（損益表；美股另含 SEC segment notes，若有）、",
-      "現金、負債與股數。"
+      "已套用 BB Lab 部門營收（損益表；美股 SEC 或台股年報部門附註若有）。",
+      "未覆寫 EV/Sales 倍數、Cash、Debt、股數。",
+      "非營業資產僅在資產負債表明確揭露時更新。"
+    ),
+    sotp_auto_apply_not_applicable = paste0(
+      "略過 SOTP 自動套用：需業務拆解／BB Lab 提供 ≥2 筆正值部門營收",
+      "（尚無可用的多業務營收拆分）。"
     ),
     sotp_segments_heading = "部門 EV/Sales",
     sotp_col_name = "部門",
