@@ -4581,7 +4581,9 @@ tabPanel(
                                   ynow_calc_btn("calc", "試算 DCF"),
                                   ynow_reset_defaults_btn("reset_dcf")
                                 ),
-                                tags$div(style = "margin-top: 10px;", htmlOutput("vtxt_dcf_setting_details"))
+                                tags$div(style = "margin-top: 10px;", htmlOutput("vtxt_dcf_setting_details")),
+                                # FCFF / NOPAT growth path: directly under Gordon (or two-stage) settings block.
+                                plotOutput("plt_fcf_trend", height = "350px")
                          )
                        )
                      ),
@@ -4704,11 +4706,7 @@ tabPanel(
                               )
                      )
               ),
-              fluidRow(
-                column(width = 12,
-                       plotOutput("plt_fcf_trend", height = "350px")
-                )
-              ),
+              # FCFF/NOPAT growth chart moved to Overview shell (under Gordon settings).
               # Growth / WACC metric cards live on affiliated shell sub-tabs.
               tabBox(title = "SENSITIVITY", width = "auto",
                      fluidRow(

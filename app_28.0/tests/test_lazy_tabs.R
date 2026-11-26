@@ -199,10 +199,15 @@ testthat::test_that("wave2 shell ids stay out of lazy bodies", {
   testthat::expect_false(grepl("fcf_projection_module_ui", dcf_body, fixed = TRUE))
   testthat::expect_true(grepl(".dcf_two_stage_params_box()", dcf_shell, fixed = TRUE))
   testthat::expect_false(grepl("plotlyOutput", dcf_shell, fixed = TRUE))
-  # DCF Overview (trajectory chart) is the leftmost shell sub-tab.
-  # Other charts stay in the lazy body.
+  # DCF Overview (trajectory + FCFF/NOPAT growth under Gordon settings) is the
+  # leftmost shell sub-tab. History FCFF plot stays in the lazy body.
   testthat::expect_true(grepl("plt_dcf_trajectory", dcf_shell, fixed = TRUE))
-  testthat::expect_false(grepl("plt_fcf_trend", dcf_shell, fixed = TRUE))
+  testthat::expect_true(grepl('plotOutput("plt_fcf_trend"', dcf_shell, fixed = TRUE))
+  testthat::expect_true(grepl("vtxt_dcf_setting_details", dcf_shell, fixed = TRUE))
+  # Growth chart must sit after the Gordon / claim / n / WACC settings block.
+  pos_settings <- regexpr("vtxt_dcf_setting_details", dcf_shell, fixed = TRUE)[1]
+  pos_trend <- regexpr('plotOutput("plt_fcf_trend"', dcf_shell, fixed = TRUE)[1]
+  testthat::expect_true(pos_settings > 0L && pos_trend > pos_settings)
   testthat::expect_false(grepl("mod_fcf-fcf_plot", dcf_shell, fixed = TRUE))
   # Growth KPIs live on FCF Projection (shell → module UI); WACC KPIs on WACC tab.
   testthat::expect_false(grepl("ibx_estimated_g", dcf_body, fixed = TRUE))
@@ -215,7 +220,7 @@ testthat::test_that("wave2 shell ids stay out of lazy bodies", {
   testthat::expect_true(grepl("ibx_rd", dcf_shell, fixed = TRUE))
   testthat::expect_true(grepl("ibx_re", dcf_shell, fixed = TRUE))
   testthat::expect_false(grepl("plt_dcf_trajectory", dcf_body, fixed = TRUE))
-  testthat::expect_true(grepl("plt_fcf_trend", dcf_body, fixed = TRUE))
+  testthat::expect_false(grepl('plotOutput("plt_fcf_trend"', dcf_body, fixed = TRUE))
   testthat::expect_true(grepl("mod_fcf-fcf_plot", dcf_body, fixed = TRUE))
   testthat::expect_true(grepl('plotlyOutput("dcf_sensitivity_heatmap"', dcf_body, fixed = TRUE))
   fcf_txt <- paste(readLines("fcf_projection_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")

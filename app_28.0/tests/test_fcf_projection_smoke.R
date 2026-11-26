@@ -87,6 +87,66 @@ check("unit FCFF length 3", length(fcff3) == 3L && all(is.finite(fcff3)))
 # y1: rev=1.05, FCFF = 1.05*(0.15+0.04-0.06) - 0.05*0.02
 check("unit FCFF y1 closed", approx_eq(fcff3[1], 1.05 * 0.13 - 0.05 * 0.02))
 
+# Mirror fcf_projection_module::proj_table_data: when near-term g > 0 and
+# NOPAT margin is held flat, both NOPAT and FCFF must rise together.
+.proj_nopat_fcff <- function(n, g, base_rev, base_nopat, base_depre, base_capex, base_nwc) {
+  nopat_m <- base_nopat / base_rev
+  depre_m <- base_depre / base_rev
+  capex_m <- base_capex / base_rev
+  nwc_m <- base_nwc / base_rev
+  rev <- nopat <- fcff <- numeric(n)
+  for (i in seq_len(n)) {
+    prev <- if (i == 1L) base_rev else rev[i - 1L]
+    rev[i] <- prev * (1 + g)
+    nopat[i] <- rev[i] * nopat_m
+    dn <- (rev[i] - prev) * nwc_m
+    fcff[i] <- nopat[i] + rev[i] * depre_m - rev[i] * capex_m - dn
+  }
+  list(nopat = nopat, fcff = fcff, rev = rev)
+}
+grow <- .proj_nopat_fcff(5L, 0.05, 100, 20, 5, 8, 2)
+check("5y NOPAT grows with positive g", all(diff(grow$nopat) > 0))
+check("5y FCFF grows with positive g", all(diff(grow$fcff) > 0))
+check(
+  "NOPAT CAGR matches revenue g (flat margin)",
+  approx_eq((grow$nopat[5] / grow$nopat[1])^(1 / 4) - 1, 0.05, 1e-10)
+)
+check(
+  "FCFF CAGR matches revenue g (flat margins)",
+  approx_eq((grow$fcff[5] / grow$fcff[1])^(1 / 4) - 1, 0.05, 1e-10)
+)
+flat <- .proj_nopat_fcff(5L, 0, 100, 20, 5, 8, 2)
+check("g=0 keeps NOPAT flat (not a bug)", all(abs(diff(flat$nopat)) < 1e-12))
+check("g=0 keeps FCFF flat (not a bug)", all(abs(diff(flat$fcff)) < 1e-12))
+
+# Trailing-FCFF hist-anchor must use near-term g (Gordon), not terminal SGR.
+check(".fcff_trailing_growth_path exported", exists(".fcff_trailing_growth_path", mode = "function"))
+anch_near <- .fcff_trailing_growth_path(100, 5L, mode = "gordon", g_near = 0.08)
+anch_wrong_sgr <- 100 * (1.03)^seq_len(5) # old bug: grew at SGR=3%
+check("Gordon trailing path uses near-term g=8%", {
+  length(anch_near) == 5L &&
+    approx_eq(anch_near[1], 100 * 1.08) &&
+    approx_eq(anch_near[5], 100 * (1.08)^5)
+})
+check(
+  "Gordon trailing path is not terminal SGR",
+  is.null(anch_near) || abs(anch_near[5] - anch_wrong_sgr[5]) > 1
+)
+check(
+  "Gordon trailing refuses missing near-term g",
+  is.null(.fcff_trailing_growth_path(100, 5L, mode = "gordon", g_near = NA_real_))
+)
+anch_ts <- .fcff_trailing_growth_path(
+  100, 5L, mode = "two_stage",
+  g_near = 0.08, g_stage1 = 0.10, g_stage2 = 0.03, yr_stage1 = 2L
+)
+check("two-stage trailing uses g1 then g2", {
+  length(anch_ts) == 5L &&
+    approx_eq(anch_ts[1], 100 * 1.10) &&
+    approx_eq(anch_ts[2], 100 * 1.10^2) &&
+    approx_eq(anch_ts[3], 100 * 1.10^2 * 1.03)
+})
+
 # EV from projected FCFF + Gordon TV (same engine as DCF overview)
 ev <- .dcf_formula_ev_from_fcff(fcff3, r1 = 0.10, g_term = 0.03)
 tv <- fcff3[3] * 1.03 / (0.10 - 0.03)
@@ -147,15 +207,19 @@ for (k in c(
   "fcf_param_revenue", "fcf_param_nopat", "fcf_param_da",
   "fcf_param_capex", "fcf_param_delta_nwc", "fcf_param_ic",
   "fcf_param_identity", "fcf_param_ic_note", "fcf_param_symbols",
-  "fcf_sync_from_statements"
+  "fcf_sync_from_statements",
+  "dcf_fcf_trend_title", "dcf_fcf_trend_nopat", "dcf_fcf_trend_fcff",
+  "dcf_fcf_trend_fcfe", "dcf_fcf_trend_x", "dcf_fcf_trend_y"
 )) {
   check(
     paste0("locale key ", k, " in en + zh-TW"),
     length(gregexpr(paste0(k, " ="), loc, fixed = TRUE)[[1]]) >= 2L
   )
 }
-ui_css <- paste(readLines("ynow_ui.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-check("ynow_ui ships FCF param-stack CSS", grepl(".ynow-fcf-param-stack", ui_css, fixed = TRUE))
+ui_css <- paste(readLines("www/ynow_widgets.css", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+check("www CSS ships FCF param-stack rules", grepl(".ynow-fcf-param-stack", ui_css, fixed = TRUE))
+mod_ui <- paste(readLines("fcf_projection_module.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+check("FCF module uses param-stack class", grepl("ynow-fcf-param-stack", mod_ui, fixed = TRUE))
 
 if (fail > 0L) {
   cat("FAILED ", fail, " checks\n", sep = "")
