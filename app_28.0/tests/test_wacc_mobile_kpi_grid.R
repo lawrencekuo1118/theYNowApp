@@ -23,6 +23,7 @@ ui_src <- paste(readLines("ynow_ui.R", warn = FALSE, encoding = "UTF-8"), collap
 srv_src <- paste(readLines("ynow_server.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 loc_src <- paste(readLines("ui_locale.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 css_src <- paste(readLines("www/ynow_widgets.css", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+chrome_src <- paste(readLines("www/ynow_chrome.css", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 
 check(
   "WACC KPI grid is a single fluidRow class on WACC tab",
@@ -75,6 +76,33 @@ check(
   grepl("ynow-model-kpi-tone-2", grid_chunk, fixed = TRUE) &&
     grepl('infoBoxOutput("ibx_rd"', grid_chunk, fixed = TRUE) &&
     grepl('infoBoxOutput("ibx_re"', grid_chunk, fixed = TRUE)
+)
+# Follow-up to #819: square .info-box-icon must share the same tone fill as the
+# rectangular value area (beat .content-wrapper .info-box.bg-* muted + AdminLTE overlay).
+.tone_block <- function(n) {
+  pat <- sprintf(
+    "(?s)body\\.ynow-theme-model \\.content-wrapper \\.ynow-model-kpi-tone-%d \\.small-box,.*?background-image:\\s*none\\s*!important;",
+    as.integer(n)
+  )
+  m <- regexpr(pat, chrome_src, perl = TRUE)
+  if (m[1] < 0) return("")
+  substr(chrome_src, m[1], m[1] + attr(m, "match.length") - 1L)
+}
+t2 <- .tone_block(2L)
+t3 <- .tone_block(3L)
+check(
+  "tone-2 icon + box share --ynow-model-kpi-s2 (beats muted bg-*)",
+  grepl(".content-wrapper .ynow-model-kpi-tone-2 .info-box.bg-aqua", t2, fixed = TRUE) &&
+    grepl(".content-wrapper .ynow-model-kpi-tone-2 .info-box .info-box-icon", t2, fixed = TRUE) &&
+    grepl("background-color: var(--ynow-model-kpi-s2)", t2, fixed = TRUE) &&
+    grepl("background-image: none !important;", t2, fixed = TRUE)
+)
+check(
+  "tone-3 icon + box share --ynow-model-kpi-s3 (SGR / tax)",
+  grepl(".content-wrapper .ynow-model-kpi-tone-3 .info-box.bg-aqua", t3, fixed = TRUE) &&
+    grepl(".content-wrapper .ynow-model-kpi-tone-3 .info-box .info-box-icon", t3, fixed = TRUE) &&
+    grepl("background-color: var(--ynow-model-kpi-s3)", t3, fixed = TRUE) &&
+    grepl("background-image: none !important;", t3, fixed = TRUE)
 )
 check(
   "ibx_rd render avoids AdminLTE lime",
