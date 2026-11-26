@@ -62,16 +62,16 @@ check("fabricated guidance rejected", !isTRUE(v_bad$ok))
 chunks <- ynow_fni_chunk_text(paste(rep(text_q3, 20), collapse = "\n\n"), max_chars = 400L)
 check("chunker produces multiple chunks for long text", length(chunks) >= 2L)
 
-# --- Mock Docling + Ollama pipeline ---
+# --- Mock local extract + Workers AI pipeline ---
 tmp_cache <- file.path(tempdir(), paste0("fni_test_cache_", as.integer(Sys.time())))
 Sys.setenv(YNOW_AI_CACHE_DIR = tmp_cache)
 ynow_fni_cache_clear()
 
 st <- ynow_fni_service_status()
-check("mock services report ready", isTRUE(st$ready) && identical(st$docling$status, "mock"))
+check("mock services report ready", isTRUE(st$ready) && identical(st$document$status, "mock"))
 
-doc <- ynow_fni_docling_convert_file(fix_q3, filename = "fni_transcript_q3.txt")
-check("mock Docling extracts fixture text", isTRUE(doc$ok) && grepl("AI servers", doc$text, fixed = TRUE))
+doc <- ynow_fni_convert_file(fix_q3, filename = "fni_transcript_q3.txt")
+check("mock extract reads fixture text", isTRUE(doc$ok) && grepl("AI servers", doc$text, fixed = TRUE))
 
 one <- ynow_fni_analyze_document(
   list(
@@ -138,24 +138,23 @@ check("offline message mentions not configured", {
 })
 
 # reachable_model_missing must not green-banner / ready=TRUE
-ynow_fni_ollama_status <- function(...) {
+ynow_fni_llm_status <- function(...) {
   list(
     ok = FALSE,
     status = "reachable_model_missing",
-    message = "Ollama reachable but model qwen3.5:9b is not listed.",
-    url = "http://127.0.0.1:11434",
-    model = "qwen3.5:9b",
-    models = character()
+    message = "Workers AI model is not available.",
+    url = "https://api.cloudflare.com/client/v4/accounts/example/ai/run/@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+    model = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
   )
 }
-ynow_fni_docling_status <- function(...) {
-  list(ok = TRUE, status = "reachable", message = "Docling reachable", url = "http://127.0.0.1:5001")
+ynow_fni_document_status <- function(...) {
+  list(ok = TRUE, status = "cf_markdown", message = "Cloudflare Markdown Conversion reachable", url = "https://api.cloudflare.com")
 }
 Sys.setenv(YNOW_AI_QUAL_MOCK = "0", YNOW_AI_QUAL_ENABLED = "1")
 st_miss <- ynow_fni_service_status()
 check("reachable_model_missing not ready", !isTRUE(st_miss$ready))
 check("reachable_model_missing message retained", {
-  grepl("not listed", st_miss$message %||% "", fixed = TRUE) ||
+  grepl("not available", st_miss$message %||% "", fixed = TRUE) ||
     grepl("model", st_miss$message %||% "", ignore.case = TRUE)
 })
 # Restore mock clients + env for remaining checks
@@ -163,6 +162,172 @@ source("financial_document_client.R", local = TRUE, encoding = "UTF-8")
 source("financial_llm_client.R", local = TRUE, encoding = "UTF-8")
 source("financial_narrative_service.R", local = TRUE, encoding = "UTF-8")
 Sys.setenv(YNOW_AI_QUAL_MOCK = "1", YNOW_AI_QUAL_ENABLED = "0")
+
+# --- Cloudflare wiring (no network) ---
+cf_prev <- list(
+  mock = Sys.getenv("YNOW_AI_QUAL_MOCK", unset = ""),
+  enabled = Sys.getenv("YNOW_AI_QUAL_ENABLED", unset = ""),
+  account = Sys.getenv("YNOW_CF_ACCOUNT_ID", unset = ""),
+  token = Sys.getenv("YNOW_CF_API_TOKEN", unset = ""),
+  model = Sys.getenv("YNOW_CF_AI_MODEL", unset = ""),
+  backend = Sys.getenv("YNOW_FNI_PARSE_BACKEND", unset = ""),
+  cf_account = Sys.getenv("CLOUDFLARE_ACCOUNT_ID", unset = ""),
+  cf_token = Sys.getenv("CLOUDFLARE_API_TOKEN", unset = "")
+)
+Sys.setenv(
+  YNOW_AI_QUAL_MOCK = "0",
+  YNOW_AI_QUAL_ENABLED = "0",
+  YNOW_CF_ACCOUNT_ID = "",
+  YNOW_CF_API_TOKEN = "",
+  CLOUDFLARE_ACCOUNT_ID = "",
+  CLOUDFLARE_API_TOKEN = "",
+  YNOW_CF_AI_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+  YNOW_FNI_PARSE_BACKEND = "local_cf"
+)
+local_txt <- ynow_fni_convert_file(fix_q3, filename = "fni_transcript_q3.txt")
+check("txt extracts locally without Cloudflare", {
+  isTRUE(local_txt$ok) &&
+    identical(local_txt$meta$source, "local_extract") &&
+    grepl("AI servers", local_txt$text, fixed = TRUE)
+})
+pdf_tmp <- tempfile(fileext = ".pdf")
+writeBin(charToRaw("%PDF-1.1\nnot-a-text-layer"), pdf_tmp)
+pdf_off <- ynow_fni_convert_file(pdf_tmp, filename = "scan.pdf")
+check("image-like PDF without credentials names Cloudflare", {
+  !isTRUE(pdf_off$ok) &&
+    identical(pdf_off$error, "ai_service_not_configured") &&
+    grepl("Cloudflare", pdf_off$message %||% "", fixed = TRUE) &&
+    !grepl("Docling Serve", pdf_off$message %||% "", fixed = TRUE)
+})
+unlink(pdf_tmp)
+Sys.setenv(YNOW_FNI_PARSE_BACKEND = "docling")
+deferred <- ynow_fni_convert_file(fix_q3, filename = "fni_transcript_q3.txt")
+check("docling backend stays on the Cloud Run hook", {
+  !isTRUE(deferred$ok) &&
+    identical(deferred$error, "docling_cloudrun_not_implemented")
+})
+hook <- ynow_fni_docling_cloudrun_convert(fix_q3, filename = "x.txt")
+check("Cloud Run Docling hook is explicit", identical(hook$error, "docling_cloudrun_not_implemented"))
+Sys.setenv(YNOW_FNI_PARSE_BACKEND = "local_cf", YNOW_AI_QUAL_ENABLED = "1")
+llm_off <- ynow_fni_llm_status()
+check("Workers AI without token is not configured", {
+  !isTRUE(llm_off$ok) &&
+    grepl("YNOW_CF_ACCOUNT_ID", llm_off$message %||% "", fixed = TRUE)
+})
+Sys.setenv(YNOW_CF_ACCOUNT_ID = "abc123", YNOW_AI_QUAL_ENABLED = "0")
+run_url <- ynow_fni_cf_ai_run_url()
+check("Workers AI run URL uses account and JSON-mode model", {
+  grepl(
+    "accounts/abc123/ai/run/@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+    run_url,
+    fixed = TRUE
+  ) &&
+    grepl("/ai/tomarkdown", ynow_fni_cf_markdown_url(), fixed = TRUE)
+})
+body <- ynow_fni_llm_request_body("excerpt", list(ticker = "EXAM", period = "2024Q3"), "en")
+check("Workers AI body keeps JSON schema", {
+  identical(body$response_format$type, "json_schema") &&
+    is.list(body$response_format$json_schema$properties$findings) &&
+    length(body$messages) == 2L
+})
+check("Workers AI body sets max_tokens at or above 2048", {
+  is.finite(body$max_tokens) && body$max_tokens >= 2048
+})
+Sys.setenv(YNOW_CF_AI_MAX_TOKENS = "100")
+check("max_tokens below the floor is raised to 2048", {
+  identical(ynow_fni_cf_ai_max_tokens(), 2048L)
+})
+Sys.setenv(YNOW_CF_AI_MAX_TOKENS = "3000")
+check("YNOW_CF_AI_MAX_TOKENS override is honored", {
+  identical(ynow_fni_cf_ai_max_tokens(), 3000L) &&
+    identical(ynow_fni_llm_request_body("x", list(), "en")$max_tokens, 3000L)
+})
+Sys.unsetenv("YNOW_CF_AI_MAX_TOKENS")
+coerced <- ynow_fni_coerce_llm_payload(list(
+  result = list(response = list(summary = "from-run", findings = list()))
+))
+coerced_chat <- ynow_fni_coerce_llm_payload(list(
+  choices = list(list(message = list(content = "{\"summary\":\"from-chat\",\"findings\":[]}")))
+))
+check("payload coerce accepts run and chat shapes", {
+  identical(coerced$summary, "from-run") && identical(coerced_chat$summary, "from-chat")
+})
+budget_prev_cache <- Sys.getenv("YNOW_AI_CACHE_DIR", unset = "")
+budget_dir <- file.path(tempdir(), paste0("fni_budget_", as.integer(Sys.time())))
+Sys.setenv(
+  YNOW_AI_CACHE_DIR = budget_dir,
+  YNOW_AI_MAX_CONCURRENT = "1",
+  YNOW_AI_MAX_RUNS = "1",
+  YNOW_AI_MAX_RUNS_HOST = "2",
+  YNOW_AI_MIN_INTERVAL_SEC = "0"
+)
+b1 <- ynow_fni_cf_budget_begin("session-a", "en")
+b2 <- ynow_fni_cf_budget_begin("session-b", "en")
+check("live runs honor the concurrency cap", {
+  isTRUE(b1$ok) && !isTRUE(b2$ok) && identical(b2$reason, "concurrent")
+})
+ynow_fni_cf_budget_end(b1)
+b3 <- ynow_fni_cf_budget_begin("session-a", "zh-TW")
+check("session cap blocks another counted run", {
+  !isTRUE(b3$ok) &&
+    identical(b3$reason, "session") &&
+    grepl("工作階段", b3$message %||% "", fixed = TRUE)
+})
+b4 <- ynow_fni_cf_budget_begin("session-b", "en")
+check("a different session can run until the host cap", isTRUE(b4$ok))
+ynow_fni_cf_budget_end(b4)
+b5 <- ynow_fni_cf_budget_begin("session-c", "en")
+check("host cap blocks further live runs", {
+  !isTRUE(b5$ok) && identical(b5$reason, "host")
+})
+.ynow_fni_budget_rt$depth <- 1L
+guard_nested <- ynow_fni_cf_budget_guard("session-c", "en")
+check("open lease does not spend another run", {
+  isTRUE(guard_nested$ok) && !isTRUE(guard_nested$counted)
+})
+.ynow_fni_budget_rt$depth <- 0L
+cool_dir <- file.path(tempdir(), paste0("fni_cool_", as.integer(Sys.time())))
+Sys.setenv(
+  YNOW_AI_CACHE_DIR = cool_dir,
+  YNOW_AI_MAX_CONCURRENT = "2",
+  YNOW_AI_MAX_RUNS = "5",
+  YNOW_AI_MAX_RUNS_HOST = "10",
+  YNOW_AI_MIN_INTERVAL_SEC = "3600"
+)
+c1 <- ynow_fni_cf_budget_begin("cool-session", "en")
+ynow_fni_cf_budget_end(c1)
+c2 <- ynow_fni_cf_budget_begin("cool-session", "en")
+check("session cooldown blocks a second live run", {
+  isTRUE(c1$ok) && !isTRUE(c2$ok) && identical(c2$reason, "cooldown")
+})
+Sys.setenv(
+  YNOW_AI_MAX_CONCURRENT = "1",
+  YNOW_AI_MAX_RUNS = "8",
+  YNOW_AI_MAX_RUNS_HOST = "32",
+  YNOW_AI_MIN_INTERVAL_SEC = "15"
+)
+if (nzchar(budget_prev_cache)) {
+  Sys.setenv(YNOW_AI_CACHE_DIR = budget_prev_cache)
+} else {
+  Sys.unsetenv("YNOW_AI_CACHE_DIR")
+}
+restore_env <- function(name, value) {
+  if (nzchar(value)) {
+    args <- stats::setNames(list(value), name)
+    do.call(Sys.setenv, args)
+  } else {
+    Sys.unsetenv(name)
+  }
+}
+restore_env("YNOW_AI_QUAL_MOCK", "1")
+restore_env("YNOW_AI_QUAL_ENABLED", "0")
+restore_env("YNOW_CF_ACCOUNT_ID", cf_prev$account)
+restore_env("YNOW_CF_API_TOKEN", cf_prev$token)
+restore_env("YNOW_CF_AI_MODEL", cf_prev$model)
+restore_env("YNOW_FNI_PARSE_BACKEND", cf_prev$backend)
+restore_env("CLOUDFLARE_ACCOUNT_ID", cf_prev$cf_account)
+restore_env("CLOUDFLARE_API_TOKEN", cf_prev$cf_token)
+rm(restore_env)
 
 # Same-period sources must merge findings (not overwrite)
 same_period <- ynow_fni_analyze_and_compare(
@@ -211,10 +376,11 @@ check("module avoids sync fallback on async invoke error", {
     !grepl("Fallback sync path", mod, fixed = TRUE) &&
     identical(n_analyze, 1L)
 })
-check("docling httr config preserves add_headers", {
+check("Cloudflare httr config preserves add_headers", {
   doc <- paste(readLines(file.path(app_dir, "financial_document_client.R"),
                          warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-  grepl(".ynow_fni_docling_httr_config", doc, fixed = TRUE) &&
+  grepl(".ynow_fni_cf_httr_config", doc, fixed = TRUE) &&
+    grepl("ynow_fni_docling_cloudrun_convert", doc, fixed = TRUE) &&
     !grepl(
       "hdrs\\s*<-\\s*c\\(hdrs,\\s*httr::add_headers",
       doc
@@ -267,10 +433,20 @@ check("JS applyUiLocale maps financial_narrative", {
     grepl("ynow_menu_financial_narrative", js_src, fixed = TRUE) &&
     grepl("ynow_fni_page_title", js_src, fixed = TRUE)
 })
-check(".Renviron.example documents AI vars", {
+check(".Renviron.example documents Cloudflare AI vars", {
   grepl("YNOW_AI_QUAL_ENABLED", renviron, fixed = TRUE) &&
-    grepl("YNOW_DOCLING_URL", renviron, fixed = TRUE) &&
-    grepl("YNOW_OLLAMA_MODEL", renviron, fixed = TRUE)
+    grepl("YNOW_CF_ACCOUNT_ID", renviron, fixed = TRUE) &&
+    grepl("YNOW_CF_API_TOKEN", renviron, fixed = TRUE) &&
+    grepl("YNOW_CF_AI_MODEL", renviron, fixed = TRUE) &&
+    grepl("not implemented", renviron, ignore.case = TRUE) &&
+    !grepl("YNOW_OLLAMA_MODEL", renviron, fixed = TRUE)
+})
+check("locale copy describes Cloudflare setup", {
+  grepl("Cloudflare Workers AI", loc_src, fixed = TRUE) &&
+    grepl("fni_service_offline_detail", loc_src, fixed = TRUE) &&
+    grepl("YNOW_CF_ACCOUNT_ID", loc_src, fixed = TRUE) &&
+    !grepl("Docling + Ollama", loc_src, fixed = TRUE) &&
+    !grepl("本機設定 Docling", loc_src, fixed = TRUE)
 })
 check("integration doc present", file.exists(doc_path))
 

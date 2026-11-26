@@ -166,7 +166,7 @@ ynow_fni_cross_quarter_compare <- function(period_packs) {
   list(ok = TRUE, reason = "", period_ids = ids, changes = changes)
 }
 
-#' JSON Schema document describing the LLM response shape (for Ollama format).
+#' JSON Schema document describing the LLM response shape (Workers AI JSON mode).
 ynow_fni_json_schema <- function() {
   list(
     type = "object",

@@ -4294,8 +4294,9 @@ locale_for_market <- function(mode = get_market_mode()) {
     fni_page_title = "Financial Narrative Analysis",
     fni_page_sub = paste0(
       "Upload or select filings, transcripts, or decks; run grounded qualitative analysis ",
-      "across six dimensions with evidence quotes. Free on Lite and Full when Docling + Ollama ",
-      "are configured on this machine. Does not auto-overwrite WACC, Ke, g, or price."
+      "across six dimensions with evidence quotes. Open on Lite and Full (no membership lock) ",
+      "when Cloudflare Workers AI is configured. If credentials are missing, this page shows ",
+      "an offline banner and does not call the model. Does not auto-overwrite WACC, Ke, g, or price."
     ),
     fni_sources_title = "Sources",
     fni_sources_help = paste0(
@@ -4324,6 +4325,28 @@ locale_for_market <- function(mode = get_market_mode()) {
     fni_dl_json_label = "Download JSON",
     fni_service_ready = "AI services ready",
     fni_service_not_configured = "AI service not configured",
+    fni_service_offline_detail = paste0(
+      "Set YNOW_AI_QUAL_ENABLED=1 plus YNOW_CF_ACCOUNT_ID and YNOW_CF_API_TOKEN ",
+      "(Cloudflare Workers AI). Text and text-layer PDFs extract locally; other files use ",
+      "Cloudflare Markdown Conversion. Nothing runs until you press Run analysis. ",
+      "Workers AI usage is billed on your Cloudflare account."
+    ),
+    fni_budget_session = paste0(
+      "This session reached the AI analysis limit (YNOW_AI_MAX_RUNS). Try again later. ",
+      "Lite and Full share this limit so a public host cannot spend the Cloudflare account without a bound."
+    ),
+    fni_budget_host = paste0(
+      "This host reached today's AI analysis limit (YNOW_AI_MAX_RUNS_HOST). Try again tomorrow. ",
+      "Lite and Full share this limit so a public host cannot spend the Cloudflare account without a bound."
+    ),
+    fni_budget_concurrent = paste0(
+      "Another analysis is already running (YNOW_AI_MAX_CONCURRENT). ",
+      "Press Run analysis again in a moment."
+    ),
+    fni_budget_cooldown = paste0(
+      "This session must wait before another analysis (YNOW_AI_MIN_INTERVAL_SEC). ",
+      "Press Run analysis again after the interval. Lite and Full share this cooldown."
+    ),
     fni_no_sources = "Add paste text, an upload, or a catalog selection before running.",
     fni_empty_results = "No results yet. Configure sources and press Run analysis.",
     fni_empty_findings = "No grounded findings (evidence quotes must appear in the extracted text).",
@@ -9322,7 +9345,8 @@ locale_for_market <- function(mode = get_market_mode()) {
     fni_page_title = "財務質性分析",
     fni_page_sub = paste0(
       "上傳或選取財報、法說會逐字稿或簡報，依六個維度產出有證據句的質性分析。",
-      "Lite 與完整版皆免費開放；需本機設定 Docling 與 Ollama。",
+      "Lite 與完整版皆不設會員鎖；需設定 Cloudflare Workers AI。",
+      "未設定憑證時僅顯示離線橫幅，不會呼叫模型。",
       "不會自動覆寫 WACC、Ke、永續成長率 g 或股價。"
     ),
     fni_sources_title = "資料來源",
@@ -9349,6 +9373,22 @@ locale_for_market <- function(mode = get_market_mode()) {
     fni_dl_json_label = "下載 JSON",
     fni_service_ready = "AI 服務就緒",
     fni_service_not_configured = "尚未設定 AI 服務",
+    fni_service_offline_detail = paste0(
+      "請設定 YNOW_AI_QUAL_ENABLED=1，並提供 YNOW_CF_ACCOUNT_ID 與 YNOW_CF_API_TOKEN",
+      "（Cloudflare Workers AI）。文字與有文字層的 PDF 於本機擷取；其他檔案改走 ",
+      "Cloudflare Markdown Conversion。按下「執行分析」前不會呼叫模型。",
+      "Workers AI 用量計入您的 Cloudflare 帳戶。"
+    ),
+    fni_budget_session = paste0(
+      "此工作階段已達 AI 分析次數上限（YNOW_AI_MAX_RUNS）。請稍後再試。",
+      "Lite 與完整版共用此上限，用來保護 Cloudflare 帳戶。"
+    ),
+    fni_budget_host = paste0(
+      "此主機今日的 AI 分析次數已達上限（YNOW_AI_MAX_RUNS_HOST）。請明日再試。",
+      "Lite 與完整版共用此上限，用來保護 Cloudflare 帳戶。"
+    ),
+    fni_budget_concurrent = "已有分析進行中（YNOW_AI_MAX_CONCURRENT）。請稍後再按「執行分析」。",
+    fni_budget_cooldown = "此工作階段距上次分析太近（YNOW_AI_MIN_INTERVAL_SEC）。請稍候再按「執行分析」。Lite 與完整版共用此間隔。",
     fni_no_sources = "執行前請先貼上文字、上傳檔案，或選取目錄列。",
     fni_empty_results = "尚無結果。請設定來源後按下「執行分析」。",
     fni_empty_findings = "沒有可驗證的發現（證據句必須出現在擷取文字中）。",
