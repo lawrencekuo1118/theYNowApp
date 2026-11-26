@@ -17,8 +17,13 @@ check <- function(label, cond) {
   cat("OK:", label, "\n")
 }
 
-ui_src <- paste(readLines("ynow_ui.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+ui_r <- paste(readLines("ynow_ui.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 srv_src <- paste(readLines("ynow_server.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+# Theme palette + KPI tones: www/ynow_chrome.css; tab→theme map: www/ynow_app.js.
+css_src <- paste(readLines("www/ynow_chrome.css", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+js_src <- paste(readLines("www/ynow_app.js", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+# Combined surface for rules that may still live in R or the extracted assets.
+ui_src <- paste(ui_r, css_src, js_src, sep = "\n")
 
 # CSS tokens = Model Selector card hexes
 expect_vars <- c(
@@ -94,6 +99,62 @@ check(
     grepl("ynow-model-kpi-tone-3", ui_src, fixed = TRUE) &&
     grepl("ynow-model-kpi-tone-4", ui_src, fixed = TRUE) &&
     grepl("--ynow-model-kpi-s2", ui_src, fixed = TRUE)
+)
+# Tone hosts must beat muted .content-wrapper .info-box.bg-* so the square
+# .info-box-icon and the rectangular value pane share the same --ynow-model-kpi-s*.
+check(
+  "tone-2 icon+box beat muted bg-aqua (shared s2)",
+  grepl(
+    "content-wrapper .ynow-model-kpi-tone-2 .info-box.bg-aqua",
+    ui_src,
+    fixed = TRUE
+  ) &&
+    grepl(
+      "content-wrapper .ynow-model-kpi-tone-2 .info-box .info-box-icon",
+      ui_src,
+      fixed = TRUE
+    ) &&
+    grepl(
+      "ynow-model-kpi-tone-2 .info-box .info-box-icon {[\\s\\S]{0,120}?background-color: var\\(--ynow-model-kpi-s2\\)",
+      ui_src,
+      perl = TRUE
+    )
+)
+check(
+  "tone-3 / tone-4 icon selectors share s3 / s4",
+  grepl(
+    "content-wrapper .ynow-model-kpi-tone-3 .info-box .info-box-icon",
+    ui_src,
+    fixed = TRUE
+  ) &&
+    grepl(
+      "content-wrapper .ynow-model-kpi-tone-4 .info-box .info-box-icon",
+      ui_src,
+      fixed = TRUE
+    ) &&
+    grepl(
+      "ynow-model-kpi-tone-3 .info-box .info-box-icon {[\\s\\S]{0,120}?background-color: var\\(--ynow-model-kpi-s3\\)",
+      ui_src,
+      perl = TRUE
+    ) &&
+    grepl(
+      "ynow-model-kpi-tone-4 .info-box .info-box-icon {[\\s\\S]{0,120}?background-color: var\\(--ynow-model-kpi-s4\\)",
+      ui_src,
+      perl = TRUE
+    )
+)
+check(
+  "outline KPI icon stays white with value pane",
+  grepl(
+    "ynow-model-kpi-outline .info-box .info-box-icon",
+    ui_src,
+    fixed = TRUE
+  ) &&
+    grepl(
+      "ynow-model-kpi-outline .info-box .info-box-icon {[\\s\\S]{0,160}?background-color: #ffffff",
+      ui_src,
+      perl = TRUE
+    )
 )
 check(
   "white result numeral uses logo blue-green flow",
