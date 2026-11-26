@@ -27,7 +27,7 @@ Add under **Settings → Secrets and variables → Actions** (names only; never 
 | `SHINYAPPS_TOKEN` | **yes** | https://www.shinyapps.io/admin/#/tokens |
 | `SHINYAPPS_SECRET` | **yes** | same tokens page |
 
-**Land path (no PAT / no ruleset bypass):** deploy → bump + baseline commits on the runner → push `tip-ship/baseline-*` with job `GITHUB_TOKEN` → open PR into the ship branch → dispatch Live-line CI (token events do not fire `pull_request`) → publish `offline-checks` status when needed → enable auto-merge → wait until **MERGED** → Release. Superseded open `tip-ship/baseline-*` PRs are auto-closed.
+**Land path (no PAT / no ruleset bypass):** deploy → bump + baseline commits on the runner → push `tip-ship/baseline-*` with job `GITHUB_TOKEN` → open PR into the ship branch → dispatch Live-line CI → wait for that **`workflow_dispatch`** run (ignore sibling `pull_request` runs that conclude `action_required` with no jobs — common for `GITHUB_TOKEN`-opened PRs that need workflow approval) → publish `offline-checks` commit status when needed (ruleset requires that context; dispatch check runs alone often do not appear on the PR rollup) → enable auto-merge → wait until **MERGED** → Release. Superseded open `tip-ship/baseline-*` PRs are auto-closed.
 
 Do **not** add `TIP_SHIP_GH_PAT`. Do **not** require `github-actions[bot]` ruleset bypass for tip-ship land.
 
@@ -70,7 +70,8 @@ Allow-listed `YNOW_*` secrets — **required when live restore alone lacks OAuth
 ## If land still fails
 
 1. If the log shows `Resource not accessible by integration` / `createPullRequest`: enable the Actions setting above, then re-run Tip-ship (`skip_bump` if the upload already succeeded) or open a PR from the pushed `tip-ship/baseline-*` branch.
-2. Otherwise check the land PR URL, Live-line CI on that branch, and auto-merge state. Fix failing `offline-checks`, then re-run.
+2. If the log shows `Live-line CI run … concluded action_required`: the land wait picked a blocked `pull_request` suite. Current `tip_ship_land_commits.sh` prefers `workflow_dispatch` and skips `action_required`; re-run Tip-ship after that fix is on the ship branch.
+3. Otherwise check the land PR URL, Live-line CI **workflow_dispatch** on that branch, and auto-merge state. Tip-ship must publish the `offline-checks` **status** (Statuses:write) before ruleset merge; then re-run if needed.
 
 Do **not** add `TIP_SHIP_GH_PAT` or a ruleset bypass for this path.
 

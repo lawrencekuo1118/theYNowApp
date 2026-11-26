@@ -217,16 +217,22 @@ if ! gh workflow run ci.yml --ref "$LAND_BRANCH"; then
 fi
 
 # Wait for the dispatched workflow run to complete on this branch/SHA.
+#
+# GITHUB_TOKEN-opened land PRs often spawn a pull_request Live-line CI run that
+# concludes action_required (workflow approval) with zero jobs. That must NOT
+# win over the workflow_dispatch we just started — prefer dispatch, and never
+# treat action_required as a terminal land failure while a usable run exists
+# or may still appear.
 echo "Waiting for Live-line CI workflow run on ${LAND_BRANCH} (timeout ${TIMEOUT_SEC}s)…"
 deadline=$((SECONDS + TIMEOUT_SEC))
 ci_run_id=""
 ci_status=""
 ci_conclusion=""
+ci_event=""
 while (( SECONDS < deadline )); do
-  # Prefer a run whose headSha matches our land tip; fall back to newest branch run.
   run_rows=()
   mapfile -t run_rows < <(
-    gh run list --workflow=ci.yml --branch="$LAND_BRANCH" --limit 10 \
+    gh run list --workflow=ci.yml --branch="$LAND_BRANCH" --limit 15 \
       --json databaseId,status,conclusion,headSha,createdAt,event \
       --jq '.[] | [.databaseId,.status,(.conclusion // ""),.headSha,.createdAt,.event] | @tsv' \
       2>/dev/null || true
@@ -234,29 +240,46 @@ while (( SECONDS < deadline )); do
   ci_run_id=""
   ci_status=""
   ci_conclusion=""
+  ci_event=""
+  # Pass 1: workflow_dispatch matching land HEAD (newest first).
   for row in "${run_rows[@]+"${run_rows[@]}"}"; do
     [[ -z "$row" ]] && continue
     IFS=$'\t' read -r rid st conc sha created event <<<"$row"
-    if [[ "$sha" == "$HEAD_SHA" ]]; then
-      ci_run_id="$rid"
-      ci_status="$st"
-      ci_conclusion="$conc"
-      break
-    fi
-  done
-  if [[ -z "$ci_run_id" && ${#run_rows[@]} -gt 0 ]]; then
-    IFS=$'\t' read -r rid st conc sha created event <<<"${run_rows[0]}"
+    [[ "$sha" == "$HEAD_SHA" ]] || continue
+    [[ "$event" == "workflow_dispatch" ]] || continue
+    [[ "$conc" == "action_required" ]] && continue
     ci_run_id="$rid"
     ci_status="$st"
     ci_conclusion="$conc"
+    ci_event="$event"
+    break
+  done
+  # Pass 2: any non-action_required run on land HEAD (push / etc.).
+  if [[ -z "$ci_run_id" ]]; then
+    for row in "${run_rows[@]+"${run_rows[@]}"}"; do
+      [[ -z "$row" ]] && continue
+      IFS=$'\t' read -r rid st conc sha created event <<<"$row"
+      [[ "$sha" == "$HEAD_SHA" ]] || continue
+      [[ "$conc" == "action_required" ]] && continue
+      ci_run_id="$rid"
+      ci_status="$st"
+      ci_conclusion="$conc"
+      ci_event="$event"
+      break
+    done
   fi
   if [[ -n "$ci_run_id" ]]; then
-    echo "CI run ${ci_run_id}: status=${ci_status} conclusion=${ci_conclusion:-pending}"
+    echo "CI run ${ci_run_id} (event=${ci_event:-?}): status=${ci_status} conclusion=${ci_conclusion:-pending}"
     if [[ "$ci_status" == "completed" ]]; then
       break
     fi
   else
-    echo "No ci.yml run listed yet for ${LAND_BRANCH}; waiting…"
+    # action_required pull_request rows alone do not count — keep waiting for dispatch.
+    if [[ ${#run_rows[@]} -gt 0 ]]; then
+      echo "Only action_required / non-matching CI listed for ${LAND_BRANCH}; waiting for workflow_dispatch…"
+    else
+      echo "No ci.yml run listed yet for ${LAND_BRANCH}; waiting…"
+    fi
   fi
   sleep 15
 done
@@ -270,7 +293,7 @@ if [[ "$ci_conclusion" != "success" ]]; then
   gh run view "$ci_run_id" --json url --jq '.url' >&2 || true
   exit 1
 fi
-echo "Live-line CI run ${ci_run_id} succeeded."
+echo "Live-line CI run ${ci_run_id} (event=${ci_event:-?}) succeeded."
 
 # Ensure required check name offline-checks is visible on the PR head SHA.
 # workflow_dispatch check runs usually attach by SHA; if ruleset still waits,
