@@ -393,17 +393,121 @@ calc_sotp_revenue_implied <- function(segments, ev_sales_multiple, cash, debt, s
   tryCatch(select_current_metric(d_is, patterns, "flow"), error = function(e) NA_real_)
 }
 
-#' US EDGAR segment notes for SOTP / BB Lab (same cached path as Business Breakdown).
-.rel_sotp_fetch_segment_notes <- function(ticker) {
+#' US SEC / TW annual segment notes for SOTP (same cached paths as BB Lab).
+#' Returns list(notes, segment_tables). TW uses `cached_fetch_tw_annual_order_notes`
+#' and passes `segment_tables`; US uses SEC 10-K segment notes.
+.rel_sotp_fetch_segment_pack <- function(ticker) {
+  empty <- list(notes = NULL, segment_tables = NULL)
   tk <- as.character(ticker %||% "")[1]
-  if (!nzchar(tk) || grepl("\\.(TW|TWO)$", tk, ignore.case = TRUE)) return(NULL)
-  if (!exists("cached_fetch_sec_segment_notes", mode = "function")) return(NULL)
-  tryCatch(cached_fetch_sec_segment_notes(tk, "10-K"), error = function(e) NULL)
+  if (!nzchar(tk)) return(empty)
+  is_tw <- grepl("\\.(TW|TWO)$", tk, ignore.case = TRUE)
+  if (isTRUE(is_tw)) {
+    if (!exists("cached_fetch_tw_annual_order_notes", mode = "function")) return(empty)
+    notes <- tryCatch(cached_fetch_tw_annual_order_notes(tk), error = function(e) NULL)
+    tables <- if (is.list(notes)) notes$segment_tables %||% NULL else NULL
+    return(list(notes = notes, segment_tables = tables))
+  }
+  if (!exists("cached_fetch_sec_segment_notes", mode = "function")) return(empty)
+  notes <- tryCatch(cached_fetch_sec_segment_notes(tk, "10-K"), error = function(e) NULL)
+  list(notes = notes, segment_tables = NULL)
+}
+
+#' US EDGAR segment notes for SOTP / BB Lab (compat wrapper around pack fetch).
+.rel_sotp_fetch_segment_notes <- function(ticker) {
+  .rel_sotp_fetch_segment_pack(ticker)$notes
+}
+
+#' Gate: SOTP-applicable when ≥2 named segments have positive usable revenue.
+sotp_segments_applicable <- function(segs) {
+  if (!is.data.frame(segs) || !nrow(segs)) return(FALSE)
+  if (!all(c("name", "revenue") %in% names(segs))) return(FALSE)
+  nm <- as.character(segs$name %||% "")
+  rev <- suppressWarnings(as.numeric(segs$revenue))
+  ok <- is.finite(rev) & rev > 0 & nzchar(nm) & !is.na(nm)
+  sum(ok, na.rm = TRUE) >= 2L
+}
+
+#' Extract name + revenue rows from a BB Lab `bblab_analyze` result.
+sotp_segments_from_bblab_result <- function(res) {
+  empty <- data.frame(name = character(0), revenue = numeric(0), stringsAsFactors = FALSE)
+  if (is.null(res) || !is.list(res)) return(empty)
+  lim <- res$limitations %||% character(0)
+  if ("no_multi_business_split" %in% lim) return(empty)
+  biz <- res$businesses %||% list()
+  if (!length(biz)) return(empty)
+  rows <- lapply(biz, function(c) {
+    nm <- as.character(c$name %||% c$id %||% "")[1]
+    rev <- suppressWarnings(as.numeric(c$revenue)[1])
+    data.frame(name = nm, revenue = rev, stringsAsFactors = FALSE)
+  })
+  df <- tryCatch(do.call(rbind, rows), error = function(e) NULL)
+  if (is.null(df) || !nrow(df)) return(empty)
+  df <- df[is.finite(df$revenue) & df$revenue > 0 & nzchar(df$name), , drop = FALSE]
+  rownames(df) <- NULL
+  df
+}
+
+#' Gate from BB Lab analyze result (respects `no_multi_business_split`).
+sotp_bblab_result_applicable <- function(res) {
+  sotp_segments_applicable(sotp_segments_from_bblab_result(res))
+}
+
+#' Non-op for SOTP only when BS clearly discloses Non Operating Assets (finite).
+#' Never uses the IC labeled proxy-zero. Returns list(value, apply).
+sotp_clear_nonop_from_bs <- function(d_bs) {
+  out <- list(value = NA_real_, apply = FALSE)
+  if (is.null(d_bs) || !is.data.frame(d_bs) || !nrow(d_bs)) return(out)
+  raw <- tryCatch(
+    select_current_metric(d_bs, "^Non Operating Assets$", "stock"),
+    error = function(e) NA_real_
+  )
+  raw <- suppressWarnings(as.numeric(raw)[1])
+  if (!is.finite(raw)) return(out)
+  list(value = raw, apply = TRUE)
+}
+
+#' Preserve prior EV/Sales by segment name when refreshing revenues.
+#' New / unmatched rows take `default_mult`. Does not invent ticker-specific multiples.
+sotp_merge_segment_multiples <- function(new_segs, prior_segs = NULL, default_mult = 3) {
+  empty <- data.frame(
+    name = character(0), revenue = numeric(0), multiple = numeric(0),
+    stringsAsFactors = FALSE
+  )
+  if (!is.data.frame(new_segs) || !nrow(new_segs)) return(empty)
+  def <- suppressWarnings(as.numeric(default_mult)[1])
+  if (!is.finite(def) || def <= 0) def <- 3
+  out <- new_segs
+  out$name <- as.character(out$name)
+  out$revenue <- suppressWarnings(as.numeric(out$revenue))
+  if (!("multiple" %in% names(out))) out$multiple <- rep(NA_real_, nrow(out))
+  prior_map <- list()
+  if (is.data.frame(prior_segs) && nrow(prior_segs) &&
+      all(c("name", "multiple") %in% names(prior_segs))) {
+    for (i in seq_len(nrow(prior_segs))) {
+      nm <- as.character(prior_segs$name[[i]])[1]
+      m <- suppressWarnings(as.numeric(prior_segs$multiple[[i]])[1])
+      if (nzchar(nm) && is.finite(m) && m > 0) prior_map[[nm]] <- m
+    }
+  }
+  for (i in seq_len(nrow(out))) {
+    nm <- out$name[[i]]
+    keep_raw <- prior_map[[nm]]
+    keep <- if (is.null(keep_raw)) NA_real_ else suppressWarnings(as.numeric(keep_raw)[1])
+    cur <- suppressWarnings(as.numeric(out$multiple[[i]])[1])
+    if (length(keep) == 1L && is.finite(keep) && keep > 0) {
+      out$multiple[[i]] <- keep
+    } else if (length(cur) == 1L && is.finite(cur) && cur > 0) {
+      out$multiple[[i]] <- cur
+    } else {
+      out$multiple[[i]] <- def
+    }
+  }
+  out
 }
 
 #' Pull ≥2 positive segment revenues via BB Lab when multi-business split exists.
 #' Prefers income-statement rows; when `notes` / `segment_tables` are supplied
-#' (e.g. SEC segment notes), those feed the same BB Lab payload path.
+#' (e.g. SEC / TW segment notes), those feed the same BB Lab payload path.
 .rel_sotp_segments_from_is <- function(d_is, ticker = "", statement_currency = NA,
                                        notes = NULL, segment_tables = NULL) {
   empty <- data.frame(name = character(0), revenue = numeric(0), stringsAsFactors = FALSE)
@@ -424,22 +528,7 @@ calc_sotp_revenue_implied <- function(segments, ev_sales_multiple, cash, debt, s
   )
   if (is.null(payload)) return(empty)
   res <- tryCatch(bblab_analyze(payload), error = function(e) NULL)
-  if (is.null(res) || !is.list(res)) return(empty)
-  lim <- res$limitations %||% character(0)
-  if ("no_multi_business_split" %in% lim) return(empty)
-  biz <- res$businesses %||% list()
-  if (!length(biz)) return(empty)
-  rows <- lapply(biz, function(c) {
-    nm <- as.character(c$name %||% c$id %||% "")[1]
-    rev <- suppressWarnings(as.numeric(c$revenue)[1])
-    data.frame(name = nm, revenue = rev, stringsAsFactors = FALSE)
-  })
-  df <- do.call(rbind, rows)
-  if (is.null(df) || !nrow(df)) return(empty)
-  df <- df[is.finite(df$revenue) & df$revenue > 0 & nzchar(df$name), , drop = FALSE]
-  if (nrow(df) < 2L) return(empty)
-  rownames(df) <- NULL
-  df
+  sotp_segments_from_bblab_result(res)
 }
 
 # ==========================================

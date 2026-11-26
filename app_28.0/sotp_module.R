@@ -124,7 +124,7 @@ sotp_module_body_ui <- function(id) {
         tags$p(
           id = "ynow_sotp_help",
           class = "help-block",
-          "Each segment needs its own EV/Sales. Sync pulls multi-segment revenue from BB Lab when available. Not segment-EBIT SOTP."
+          "Each segment needs its own EV/Sales. When SOTP-applicable (≥2 positive segment revenues), BB Lab segment revenue auto-fills here. EV/Sales, Cash, Debt, and Shares are not auto-overwritten. Not segment-EBIT SOTP."
         ),
         textAreaInput(ns("manual_segments"), ui_i18n("param_sotp_manual_label"), rows = 4,
                       placeholder = "name,revenue,multiple"),
@@ -177,7 +177,9 @@ sotp_module_server <- function(id,
                                quote_currency = reactive(NA),
                                financial_currency = reactive(NA),
                                ui_locale = reactive("zh-TW"),
-                               shared_bridge = NULL, integrity_ready = reactive(TRUE)) {
+                               shared_bridge = NULL,
+                               integrity_ready = reactive(TRUE),
+                               bblab_result = NULL) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     shares_resolve_note <- reactiveVal(NULL)
@@ -188,6 +190,7 @@ sotp_module_server <- function(id,
         stringsAsFactors = FALSE
       )
     )
+    sotp_applicable_rv <- reactiveVal(FALSE)
     calc_token <- reactiveVal(0L)
     last_result <- reactiveVal(NULL)
 
@@ -204,9 +207,20 @@ sotp_module_server <- function(id,
       m
     }
 
-    .active_segments <- function() {
+    .manual_segments <- function() {
       text <- as.character(input$manual_segments %||% "")[1]
-      if (nzchar(trimws(text))) return(parse_manual_sotp_segments(text))
+      if (!nzchar(trimws(text))) {
+        return(data.frame(
+          name = character(0), revenue = numeric(0), multiple = numeric(0),
+          stringsAsFactors = FALSE
+        ))
+      }
+      parse_manual_sotp_segments(text)
+    }
+
+    .active_segments <- function() {
+      man <- .manual_segments()
+      if (is.data.frame(man) && nrow(man) >= 2L) return(man)
       segments_rv()
     }
 
@@ -223,77 +237,107 @@ sotp_module_server <- function(id,
       out
     }
 
-    sync_from_statements <- function() {
-      d_is <- tryCatch(d_income_statement(), error = function(e) NULL)
-      d_bs <- tryCatch(d_balance_sheet(), error = function(e) NULL)
-      cd <- statement_cash_debt(d_bs)
-      cash <- cd$cash
-      debt <- cd$debt
-      sb0 <- if (is.null(shared_bridge)) NULL else tryCatch(shared_bridge(), error = function(e) NULL)
-      if (is.list(sb0)) {
-        if (is.finite(sb0$cash)) cash <- sb0$cash
-        if (is.finite(sb0$debt)) debt <- sb0$debt
-      }
-      px_quote <- .quote_px()
-      mcap <- suppressWarnings(as.numeric(market_cap())[1])
-      tk <- tryCatch(current_ticker(), error = function(e) "")
-      q_ccy0 <- tryCatch(quote_currency(), error = function(e) NA_character_)
-      f_ccy0 <- tryCatch(financial_currency(), error = function(e) NA_character_)
-      shares_bs <- tryCatch(select_current_metric_any(d_bs, SHARE_PATTERNS, "stock"), error = function(e) NA_real_)
-      sh_adj <- tryCatch(
-        resolve_shares_for_price(
-          shares_bs, price = px_quote, market_cap = mcap, ticker = tk,
-          quote_currency = q_ccy0, financial_currency = f_ccy0
-        ),
-        error = function(e) list(shares = NA_real_, method = "none", note = NULL, shares_bs = shares_bs)
-      )
-      sh_adj$shares_bs <- shares_bs
-      adopted <- adopt_valuation_shares(sh_adj, f_ccy0, q_ccy0)
-      shares <- adopted$shares
-      if (is.list(sb0) && is.finite(sb0$shares) && sb0$shares > 0) shares <- sb0$shares
-      fx_block <- isTRUE(fx_conversion_required(
-        infer_statement_currency(f_ccy0, q_ccy0, adopted$method), q_ccy0
-      )) || isTRUE(adr_conversion_required(
-        infer_statement_currency(f_ccy0, q_ccy0, adopted$method), q_ccy0, adopted$method
-      ))
-      if (shares_auto_adjust_method(adopted$method)) {
-        shares_resolve_note(adopted$note)
-      } else if (!is.finite(shares) && fx_block) {
-        shares_resolve_note(.str("rel_multiples_shares_fx_block"))
-      } else {
-        shares_resolve_note(adopted$note)
-      }
-
-      def <- .default_mult()
-      # Same BB Lab path as Business Breakdown: income statement + US SEC segment notes.
-      notes <- if (exists(".rel_sotp_fetch_segment_notes", mode = "function")) {
-        .rel_sotp_fetch_segment_notes(tk)
-      } else {
-        NULL
-      }
-      segs <- .rel_sotp_segments_from_is(
-        d_is, ticker = tk, statement_currency = f_ccy0, notes = notes
-      )
-      if (is.data.frame(segs) && nrow(segs)) {
-        segs$multiple <- def
-      }
-      segments_rv(segs)
-
-      updateNumericInput(session, "cash", value = if (is.finite(cash)) round(cash, 2) else NA)
-      updateNumericInput(session, "debt", value = if (is.finite(debt)) round(debt, 2) else NA)
-      updateNumericInput(session, "shares", value = if (is.finite(shares)) round(shares, 0) else NA)
-      invisible(NULL)
+    .bblab_res_now <- function() {
+      if (is.null(bblab_result)) return(NULL)
+      tryCatch({
+        if (is.reactive(bblab_result)) bblab_result() else bblab_result
+      }, error = function(e) NULL)
     }
 
+    #' Resolve BB Lab segment revenues when SOTP-applicable.
+    #' Prefer live BB Lab `lab_result` when available; else shared engine + notes pack.
+    .resolve_bblab_segments <- function() {
+      empty <- data.frame(name = character(0), revenue = numeric(0), stringsAsFactors = FALSE)
+      lab <- .bblab_res_now()
+      if (exists("sotp_bblab_result_applicable", mode = "function") &&
+          isTRUE(sotp_bblab_result_applicable(lab))) {
+        return(sotp_segments_from_bblab_result(lab))
+      }
+      d_is <- tryCatch(d_income_statement(), error = function(e) NULL)
+      tk <- tryCatch(as.character(current_ticker() %||% "")[1], error = function(e) "")
+      f_ccy0 <- tryCatch(financial_currency(), error = function(e) NA_character_)
+      pack <- if (exists(".rel_sotp_fetch_segment_pack", mode = "function")) {
+        .rel_sotp_fetch_segment_pack(tk)
+      } else {
+        list(
+          notes = if (exists(".rel_sotp_fetch_segment_notes", mode = "function")) {
+            .rel_sotp_fetch_segment_notes(tk)
+          } else {
+            NULL
+          },
+          segment_tables = NULL
+        )
+      }
+      segs <- .rel_sotp_segments_from_is(
+        d_is,
+        ticker = tk,
+        statement_currency = f_ccy0,
+        notes = pack$notes,
+        segment_tables = pack$segment_tables
+      )
+      if (!isTRUE(sotp_segments_applicable(segs))) return(empty)
+      segs
+    }
+
+    #' Auto-apply BB Lab Seg Rev into SOTP when applicable.
+    #' Does NOT overwrite EV/Sales multiples (keeps by name), Cash, Debt, or Shares.
+    #' Non-op only when BS clearly discloses Non Operating Assets.
+    apply_bblab_segments <- function(notify = FALSE) {
+      segs <- .resolve_bblab_segments()
+      applicable <- isTRUE(sotp_segments_applicable(segs))
+      sotp_applicable_rv(applicable)
+      if (!isTRUE(applicable)) {
+        # Drop stale auto-filled rows when the new ticker is not SOTP-applicable.
+        segments_rv(data.frame(
+          name = character(0), revenue = numeric(0), multiple = numeric(0),
+          stringsAsFactors = FALSE
+        ))
+        if (isTRUE(notify)) {
+          showNotification(.str("sotp_auto_apply_not_applicable"), type = "warning")
+        }
+        return(invisible(list(applied = FALSE, applicable = FALSE)))
+      }
+      # Snapshot UI multiples before refresh so named segments keep user EV/Sales.
+      prior <- tryCatch(.collect_segment_multiples(segments_rv()), error = function(e) segments_rv())
+      merged <- sotp_merge_segment_multiples(segs, prior, .default_mult())
+      segments_rv(merged)
+
+      d_bs <- tryCatch(d_balance_sheet(), error = function(e) NULL)
+      nonop_pack <- if (exists("sotp_clear_nonop_from_bs", mode = "function")) {
+        sotp_clear_nonop_from_bs(d_bs)
+      } else {
+        list(value = NA_real_, apply = FALSE)
+      }
+      if (isTRUE(nonop_pack$apply) && is.finite(nonop_pack$value)) {
+        updateNumericInput(session, "nonop", value = round(nonop_pack$value, 2))
+      }
+      if (isTRUE(notify)) {
+        showNotification(.str("sotp_synced"), type = "message")
+      }
+      invisible(list(
+        applied = TRUE,
+        applicable = TRUE,
+        n_segments = nrow(merged),
+        nonop_applied = isTRUE(nonop_pack$apply)
+      ))
+    }
+
+    # Compat alias: mount / older callers. Segment-only; bridge stays on shared params.
+    sync_from_statements <- function() apply_bblab_segments(notify = FALSE)
+
     observeEvent(
-      list(d_income_statement(), d_balance_sheet(), current_price(), quote_price(),
-           market_cap(), current_ticker()),
-      { sync_from_statements() },
+      list(d_income_statement(), d_balance_sheet(), current_ticker()),
+      { apply_bblab_segments(notify = FALSE) },
       ignoreInit = FALSE
     )
+    # When BB Lab finishes after SOTP already mounted, re-apply if applicable.
+    if (!is.null(bblab_result) && is.reactive(bblab_result)) {
+      observeEvent(bblab_result(), {
+        apply_bblab_segments(notify = FALSE)
+      }, ignoreInit = TRUE)
+    }
     observeEvent(input$btn_sync_sotp, {
-      sync_from_statements()
-      showNotification(.str("sotp_synced"), type = "message")
+      apply_bblab_segments(notify = TRUE)
     })
     observeEvent(input$btn_apply_default_mult, {
       seg <- .active_segments()
@@ -308,7 +352,7 @@ sotp_module_server <- function(id,
     observeEvent(input$btn_reset_sotp, {
       updateNumericInput(session, "default_ev_sales", value = APP_DEFAULTS$rel_ev_sales_multiple %||% 3)
       updateNumericInput(session, "nonop", value = 0)
-      sync_from_statements()
+      apply_bblab_segments(notify = FALSE)
       last_result(NULL)
       calc_token(0L)
     })
@@ -525,12 +569,14 @@ sotp_module_server <- function(id,
 
     return(list(
       segments_available = reactive({ nrow(.active_segments()) >= 2L }),
+      sotp_applicable = reactive({ isTRUE(sotp_applicable_rv()) }),
       manual_segments_available = reactive({ nrow(.manual_segments()) >= 2L }),
       sotp_price = reactive({
         res <- last_result()
         if (!is.null(res) && identical(res$status, "ok")) res$implied_price else NA_real_
       }),
-      sync_from_statements = sync_from_statements
+      sync_from_statements = sync_from_statements,
+      apply_bblab_segments = apply_bblab_segments
     ))
   })
 }
