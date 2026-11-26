@@ -902,9 +902,14 @@ dcf_cf_full_zh <- function(claim) {
 }
 
 #' Projection-tab formula banner (FCFF identity, or FCFE conversion + FCFF identity).
+#' FCFE mode returns two lines (FCFE conversion, then FCFF identity); no pipe separator.
 dcf_formula_banner_txt <- function(claim) {
   if (dcf_claim_is_fcfe(claim)) {
-    "FCFE = FCFF − Interest×(1−T) + Net Borrowing　｜　FCFF = CFO + Interest×(1−T) − CapEx ＝ NOPAT + D&A − ΔNWC − CapEx"
+    paste(
+      "FCFE = FCFF − Interest×(1−T) + Net Borrowing",
+      "FCFF = CFO + Interest×(1−T) − CapEx ＝ NOPAT + D&A − ΔNWC − CapEx",
+      sep = "\n"
+    )
   } else {
     "FCFF = CFO + Interest×(1−T) − CapEx  ＝  NOPAT + D&A − ΔNWC − CapEx"
   }
