@@ -2376,20 +2376,93 @@
           color: transparent !important;
           animation: ynow-logo-flow 2.6s ease-in-out infinite !important;
         }
-        body.ynow-theme-model .ynow-model-kpi-tone-2 .small-box,
-        body.ynow-theme-model .ynow-model-kpi-tone-2 .info-box,
-        body.ynow-theme-model .ynow-model-kpi-tone-2 .info-box .info-box-icon {
+        /* Sibling tones must beat .content-wrapper .info-box.bg-* muted fills
+           (same specificity pattern as .ynow-model-kpi-outline). Square
+           .info-box-icon uses the identical fill — never AdminLTE rgba(0,0,0,.2)
+           overlay or a different mix than the adjacent value area. */
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-2 .small-box,
+        body.ynow-theme-model .tab-content .ynow-model-kpi-tone-2 .small-box,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-2 .info-box,
+        body.ynow-theme-model .tab-content .ynow-model-kpi-tone-2 .info-box,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-2 .info-box.bg-aqua,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-2 .info-box.bg-green,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-2 .info-box.bg-yellow,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-2 .info-box.bg-red,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-2 .info-box.bg-maroon,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-2 .info-box.bg-purple,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-2 .info-box.bg-navy,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-2 .info-box.bg-teal,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-2 .info-box.bg-olive,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-2 .info-box.bg-orange,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-2 .info-box.bg-light-blue,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-2 .info-box.bg-blue,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-2 .small-box.bg-aqua,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-2 .small-box.bg-green,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-2 .small-box.bg-yellow,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-2 .small-box.bg-teal,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-2 .small-box.bg-olive,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-2 .small-box.bg-blue,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-2 .info-box .info-box-icon,
+        body.ynow-theme-model .tab-content .ynow-model-kpi-tone-2 .info-box .info-box-icon {
+          background: var(--ynow-model-kpi-s2) !important;
           background-color: var(--ynow-model-kpi-s2) !important;
+          background-image: none !important;
         }
-        body.ynow-theme-model .ynow-model-kpi-tone-3 .small-box,
-        body.ynow-theme-model .ynow-model-kpi-tone-3 .info-box,
-        body.ynow-theme-model .ynow-model-kpi-tone-3 .info-box .info-box-icon {
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-3 .small-box,
+        body.ynow-theme-model .tab-content .ynow-model-kpi-tone-3 .small-box,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-3 .info-box,
+        body.ynow-theme-model .tab-content .ynow-model-kpi-tone-3 .info-box,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-3 .info-box.bg-aqua,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-3 .info-box.bg-green,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-3 .info-box.bg-yellow,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-3 .info-box.bg-red,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-3 .info-box.bg-maroon,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-3 .info-box.bg-purple,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-3 .info-box.bg-navy,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-3 .info-box.bg-teal,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-3 .info-box.bg-olive,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-3 .info-box.bg-orange,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-3 .info-box.bg-light-blue,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-3 .info-box.bg-blue,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-3 .small-box.bg-aqua,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-3 .small-box.bg-green,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-3 .small-box.bg-yellow,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-3 .small-box.bg-teal,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-3 .small-box.bg-olive,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-3 .small-box.bg-blue,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-3 .info-box .info-box-icon,
+        body.ynow-theme-model .tab-content .ynow-model-kpi-tone-3 .info-box .info-box-icon {
+          background: var(--ynow-model-kpi-s3) !important;
           background-color: var(--ynow-model-kpi-s3) !important;
+          background-image: none !important;
         }
-        body.ynow-theme-model .ynow-model-kpi-tone-4 .small-box,
-        body.ynow-theme-model .ynow-model-kpi-tone-4 .info-box,
-        body.ynow-theme-model .ynow-model-kpi-tone-4 .info-box .info-box-icon {
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-4 .small-box,
+        body.ynow-theme-model .tab-content .ynow-model-kpi-tone-4 .small-box,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-4 .info-box,
+        body.ynow-theme-model .tab-content .ynow-model-kpi-tone-4 .info-box,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-4 .info-box.bg-aqua,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-4 .info-box.bg-green,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-4 .info-box.bg-yellow,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-4 .info-box.bg-red,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-4 .info-box.bg-maroon,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-4 .info-box.bg-purple,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-4 .info-box.bg-navy,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-4 .info-box.bg-teal,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-4 .info-box.bg-olive,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-4 .info-box.bg-orange,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-4 .info-box.bg-light-blue,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-4 .info-box.bg-blue,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-4 .small-box.bg-aqua,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-4 .small-box.bg-green,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-4 .small-box.bg-yellow,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-4 .small-box.bg-teal,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-4 .small-box.bg-olive,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-4 .small-box.bg-blue,
+        body.ynow-theme-model .content-wrapper .ynow-model-kpi-tone-4 .info-box .info-box-icon,
+        body.ynow-theme-model .tab-content .ynow-model-kpi-tone-4 .info-box .info-box-icon {
+          background: var(--ynow-model-kpi-s4) !important;
           background-color: var(--ynow-model-kpi-s4) !important;
+          background-image: none !important;
         }
         /* Sidebar active rail matches the open model tab */
         body.ynow-theme-model.skin-black .main-sidebar .sidebar-menu > li.active > a,

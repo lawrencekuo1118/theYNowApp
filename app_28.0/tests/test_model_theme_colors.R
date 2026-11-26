@@ -18,9 +18,11 @@ check <- function(label, cond) {
 }
 
 ui_src <- paste(readLines("ynow_ui.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+chrome_src <- paste(readLines("www/ynow_chrome.css", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+js_src <- paste(readLines("www/ynow_app.js", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 srv_src <- paste(readLines("ynow_server.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 
-# CSS tokens = Model Selector card hexes
+# CSS tokens = Model Selector card hexes (live in ynow_chrome.css)
 expect_vars <- c(
   "--ynow-model-nav: #d81b60",
   "--ynow-model-dcf: #00a65a",
@@ -31,79 +33,93 @@ expect_vars <- c(
   "--ynow-model-sotp: #343a40"
 )
 for (v in expect_vars) {
-  check(paste("CSS token", v), grepl(v, ui_src, fixed = TRUE))
+  check(paste("CSS token", v), grepl(v, chrome_src, fixed = TRUE))
 }
 
 # Theme body classes for all seven models
 for (k in c("nav", "dcf", "ddm", "ri", "pb", "multiples", "sotp")) {
   check(
     paste("body theme class", k),
-    grepl(paste0("body.ynow-theme-", k), ui_src, fixed = TRUE)
+    grepl(paste0("body.ynow-theme-", k), chrome_src, fixed = TRUE)
   )
   check(
     paste("card accent class", k),
-    grepl(paste0(".ynow-model-card--", k), ui_src, fixed = TRUE)
+    grepl(paste0(".ynow-model-card--", k), chrome_src, fixed = TRUE)
   )
 }
 
-# JS map: Multiples/SOTP must not fall back to pb
+# JS map: Multiples/SOTP must not fall back to pb (live in ynow_app.js)
 check(
   "JS maps Multiples → multiples",
-  grepl("rel_multiples_calculator: 'multiples'", ui_src, fixed = TRUE)
+  grepl("rel_multiples_calculator: 'multiples'", js_src, fixed = TRUE)
 )
 check(
   "JS maps SOTP → sotp",
-  grepl("sotp_calculator: 'sotp'", ui_src, fixed = TRUE)
+  grepl("sotp_calculator: 'sotp'", js_src, fixed = TRUE)
 )
 check(
   "JS theme toggle includes multiples/sotp",
-  grepl("['nav', 'dcf', 'ddm', 'ri', 'pb', 'multiples', 'sotp']", ui_src, fixed = TRUE) ||
-    grepl('["nav", "dcf", "ddm", "ri", "pb", "multiples", "sotp"]', ui_src, fixed = TRUE) ||
-    grepl("['nav', 'dcf', 'ddm', 'ri', 'pb', 'multiples', 'sotp']", ui_src, fixed = TRUE)
+  grepl("['nav', 'dcf', 'ddm', 'ri', 'pb', 'multiples', 'sotp']", js_src, fixed = TRUE) ||
+    grepl('["nav", "dcf", "ddm", "ri", "pb", "multiples", "sotp"]', js_src, fixed = TRUE) ||
+    grepl("['nav', 'dcf', 'ddm', 'ri', 'pb', 'multiples', 'sotp']", js_src, fixed = TRUE)
 )
 
 # valueBox / small-box: muted family by default; non-outline result keeps filled accent
 check(
   "small-box uses muted model family by default",
-  grepl("body.ynow-theme-model .content-wrapper .small-box", ui_src, fixed = TRUE) &&
-    grepl("--ynow-model-kpi-muted", ui_src, fixed = TRUE)
+  grepl("body.ynow-theme-model .content-wrapper .small-box", chrome_src, fixed = TRUE) &&
+    grepl("--ynow-model-kpi-muted", chrome_src, fixed = TRUE)
 )
 check(
   "result KPI filled accent remains for non-outline",
-  grepl("ynow-model-kpi-result", ui_src, fixed = TRUE) &&
-    grepl("background-color: var(--ynow-model-kpi-result)", ui_src, fixed = TRUE)
+  grepl("ynow-model-kpi-result", chrome_src, fixed = TRUE) &&
+    grepl("background-color: var(--ynow-model-kpi-result)", chrome_src, fixed = TRUE)
 )
 check(
   "listed primary KPIs use white outline + accent text",
-  grepl("ynow-model-kpi-outline", ui_src, fixed = TRUE) &&
-    grepl("body.ynow-theme-model .content-wrapper .ynow-model-kpi-outline .small-box", ui_src, fixed = TRUE) &&
-    grepl("background-color: #ffffff", ui_src, fixed = TRUE) &&
-    grepl("border: 2px solid var(--ynow-model-accent)", ui_src, fixed = TRUE)
+  grepl("ynow-model-kpi-outline", chrome_src, fixed = TRUE) &&
+    grepl("body.ynow-theme-model .content-wrapper .ynow-model-kpi-outline .small-box", chrome_src, fixed = TRUE) &&
+    grepl("background-color: #ffffff", chrome_src, fixed = TRUE) &&
+    grepl("border: 2px solid var(--ynow-model-accent)", chrome_src, fixed = TRUE)
 )
 check(
   "Run accent on listed model themes only (not generic model green override alone)",
-  grepl("body.ynow-theme-dcf .btn.ynow-btn-calc", ui_src, fixed = TRUE) &&
-    grepl("body.ynow-theme-nav .btn.ynow-btn-calc", ui_src, fixed = TRUE) &&
-    grepl("body.ynow-theme-sotp .btn.ynow-btn-calc", ui_src, fixed = TRUE) &&
-    grepl("body.ynow-theme-multiples .btn.ynow-btn-calc", ui_src, fixed = TRUE) &&
-    grepl("body.ynow-theme-pb .btn.ynow-btn-calc", ui_src, fixed = TRUE)
+  grepl("body.ynow-theme-dcf .btn.ynow-btn-calc", chrome_src, fixed = TRUE) &&
+    grepl("body.ynow-theme-nav .btn.ynow-btn-calc", chrome_src, fixed = TRUE) &&
+    grepl("body.ynow-theme-sotp .btn.ynow-btn-calc", chrome_src, fixed = TRUE) &&
+    grepl("body.ynow-theme-multiples .btn.ynow-btn-calc", chrome_src, fixed = TRUE) &&
+    grepl("body.ynow-theme-pb .btn.ynow-btn-calc", chrome_src, fixed = TRUE)
 )
 check(
   "sibling KPI tones defined",
-  grepl("ynow-model-kpi-tone-2", ui_src, fixed = TRUE) &&
-    grepl("ynow-model-kpi-tone-3", ui_src, fixed = TRUE) &&
-    grepl("ynow-model-kpi-tone-4", ui_src, fixed = TRUE) &&
-    grepl("--ynow-model-kpi-s2", ui_src, fixed = TRUE)
+  grepl("ynow-model-kpi-tone-2", chrome_src, fixed = TRUE) &&
+    grepl("ynow-model-kpi-tone-3", chrome_src, fixed = TRUE) &&
+    grepl("ynow-model-kpi-tone-4", chrome_src, fixed = TRUE) &&
+    grepl("--ynow-model-kpi-s2", chrome_src, fixed = TRUE)
+)
+check(
+  "tone info-box-icon matches tone value fill (beats muted bg-*)",
+  grepl(
+    ".content-wrapper .ynow-model-kpi-tone-2 .info-box.bg-aqua",
+    chrome_src,
+    fixed = TRUE
+  ) &&
+    grepl(
+      ".content-wrapper .ynow-model-kpi-tone-2 .info-box .info-box-icon",
+      chrome_src,
+      fixed = TRUE
+    ) &&
+    grepl("background-image: none !important;", chrome_src, fixed = TRUE)
 )
 check(
   "white result numeral uses logo blue-green flow",
-  grepl("ynow-model-kpi-outline .small-box .inner h3 .ynow-model-kpi-result-num.ynow-htcdi-flow", ui_src, fixed = TRUE) &&
-    grepl("animation: ynow-logo-flow 2.6s ease-in-out infinite !important;", ui_src, fixed = TRUE)
+  grepl("ynow-model-kpi-outline .small-box .inner h3 .ynow-model-kpi-result-num.ynow-htcdi-flow", chrome_src, fixed = TRUE) &&
+    grepl("animation: ynow-logo-flow 2.6s ease-in-out infinite !important;", chrome_src, fixed = TRUE)
 )
 check(
   "filled result numeral stays white",
-  grepl("body.ynow-theme-model .ynow-model-kpi-result-num.ynow-htcdi-flow", ui_src, fixed = TRUE) &&
-    grepl("-webkit-text-fill-color: #ffffff !important;", ui_src, fixed = TRUE)
+  grepl("body.ynow-theme-model .ynow-model-kpi-result-num.ynow-htcdi-flow", chrome_src, fixed = TRUE) &&
+    grepl("-webkit-text-fill-color: #ffffff !important;", chrome_src, fixed = TRUE)
 )
 
 # Cards use CSS accent classes (single source of truth with page themes)

@@ -20,6 +20,7 @@ check <- function(label, cond) {
 .read <- function(path) paste(readLines(path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 
 ui_src <- .read("ynow_ui.R")
+chrome_src <- .read("www/ynow_chrome.css")
 # C-STRUCT-04: ynow_model_result_num lives in setup_fs.R (sourced by setup.R).
 setup_src <- paste(.read("setup_fs.R"), .read("setup.R"), sep = "\n")
 srv_src <- .read("ynow_server.R")
@@ -30,6 +31,7 @@ ri_src <- .read("ri_module.R")
 sotp_src <- .read("sotp_module.R")
 rel_src <- .read("relative_multiples_module.R")
 loc_src <- .read("ui_locale.R")
+fcf_src <- .read("fcf_projection_module.R")
 
 check("helper ynow_model_result_num", grepl("ynow_model_result_num", setup_src, fixed = TRUE))
 check("helper wraps ynow-htcdi-flow", grepl("ynow-htcdi-flow ynow-model-kpi-result-num", setup_src, fixed = TRUE))
@@ -129,13 +131,44 @@ for (k in c("pb_vbx_fair", "ri_vbx_fv", "ri_vbx_b0", "ri_vbx_pv", "ri_vbx_tv")) 
   check(paste("locale key", k), length(gregexpr(paste0(k, " ="), loc_src, fixed = TRUE)[[1]]) >= 2L)
 }
 
-# Sibling tones must not equal result token in CSS vars block
+# Sibling tones must not equal result token in CSS vars block (live in ynow_chrome.css)
 check(
   "CSS sibling mixes distinct from result",
-  grepl("--ynow-model-kpi-s2:", ui_src, fixed = TRUE) &&
-    grepl("--ynow-model-kpi-s3:", ui_src, fixed = TRUE) &&
-    grepl("--ynow-model-kpi-s4:", ui_src, fixed = TRUE) &&
-    grepl("color-mix(in srgb, var(--ynow-model-accent)", ui_src, fixed = TRUE)
+  grepl("--ynow-model-kpi-s2:", chrome_src, fixed = TRUE) &&
+    grepl("--ynow-model-kpi-s3:", chrome_src, fixed = TRUE) &&
+    grepl("--ynow-model-kpi-s4:", chrome_src, fixed = TRUE) &&
+    grepl("color-mix(in srgb, var(--ynow-model-accent)", chrome_src, fixed = TRUE)
+)
+# Growth / WACC infoBox KPIs: icon square uses same tone fill as value rectangle.
+check(
+  "FCF growth KPIs host tone-2/3 infoBoxes",
+  grepl('ynow-model-kpi-tone-2', fcf_src, fixed = TRUE) &&
+    grepl('infoBoxOutput("ibx_estimated_g"', fcf_src, fixed = TRUE) &&
+    grepl('ynow-model-kpi-tone-3', fcf_src, fixed = TRUE) &&
+    grepl('infoBoxOutput("ibx_sgr"', fcf_src, fixed = TRUE)
+)
+check(
+  "tone CSS ties info-box + info-box-icon to same --ynow-model-kpi-s*",
+  grepl(
+    "\\.content-wrapper \\.ynow-model-kpi-tone-2 \\.info-box\\.bg-aqua",
+    chrome_src,
+    perl = TRUE
+  ) &&
+    grepl(
+      "\\.content-wrapper \\.ynow-model-kpi-tone-2 \\.info-box \\.info-box-icon",
+      chrome_src,
+      perl = TRUE
+    ) &&
+    grepl(
+      "ynow-model-kpi-tone-2[\\s\\S]{0,1400}?background-color:\\s*var\\(--ynow-model-kpi-s2\\)",
+      chrome_src,
+      perl = TRUE
+    ) &&
+    grepl(
+      "ynow-model-kpi-tone-3[\\s\\S]{0,1400}?background-color:\\s*var\\(--ynow-model-kpi-s3\\)",
+      chrome_src,
+      perl = TRUE
+    )
 )
 
 cat("PASS test_model_kpi_result_row\n")
