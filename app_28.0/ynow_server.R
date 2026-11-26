@@ -13513,23 +13513,35 @@ server <- function(input, output, session) {
       "custom" = "自訂營收",
       method
     )
+    # Hosted on FCF Projection; tone-2 CSS supplies the graduated model accent.
+    # width=NULL: bare .info-box inside column tone host.
     infoBox(
       paste0("預估營收成長率 (", method_lab, ")"),
       paste0(val_g, " %"),
       icon = icon("chart-line"),
-      color = "purple",
-      fill = TRUE
+      color = "aqua",
+      fill = TRUE,
+      width = NULL
     )
   })
   
-  output$ibx_sgr <- renderInfoBox({ 
+  output$ibx_sgr <- renderInfoBox({
     val_sgr <- if (!is.null(input$sgr)) input$sgr else "N/A"
-    infoBox("DCF／RI 終值永續成長率 (SGR)", paste0(val_sgr, " %"), icon = icon("infinity"), color = "maroon", fill = TRUE) 
+    # Hosted on FCF Projection with estimated g; tone-3 CSS for hierarchy.
+    infoBox(
+      "DCF／RI 終值永續成長率 (SGR)",
+      paste0(val_sgr, " %"),
+      icon = icon("infinity"),
+      color = "aqua",
+      fill = TRUE,
+      width = NULL
+    )
   })
   
   output$ibx_wacc <- renderInfoBox({ 
     val_wacc <- if (!is.null(calculated_wacc())) round(calculated_wacc() * 100, 2) else APP_DEFAULTS$wacc_gordon
-    # width=NULL: bare .info-box inside col-sm-4 lock host (mobile 2×3 grid + desktop).
+    # Hosted on WACC tab; result/outline host + model-accent CSS.
+    # width=NULL: bare .info-box inside col-sm-4 lock host (mobile grid + desktop).
     infoBox("WACC", h3(paste0(val_wacc, " %")), icon = icon("percent"), color = "aqua", fill = TRUE, width = NULL) 
   })
   
@@ -14090,13 +14102,29 @@ server <- function(input, output, session) {
     val_re <- input$wacc_re
     if (is.null(val_re)) val_re <- APP_DEFAULTS$wacc_re
     if (isTRUE(input$use_estimated_re) && !is.null(estimated_re())) val_re <- estimated_re() * 100
-    infoBox("股權成本 (rₑ)", h3(paste0(round(val_re, 2), " %")), icon = icon("chart-line"), color = "teal", fill = TRUE)
+    # Hosted on WACC tab; tone-2 CSS (avoid neon AdminLTE lime).
+    infoBox(
+      "股權成本 (rₑ)",
+      h3(paste0(round(val_re, 2), " %")),
+      icon = icon("chart-line"),
+      color = "aqua",
+      fill = TRUE,
+      width = NULL
+    )
   })
   
   output$ibx_rd <- renderInfoBox({
     val_rd <- suppressWarnings(as.numeric(input$wacc_rd)[1])
     disp <- if (is.finite(val_rd)) paste0(round(val_rd, 2), " %") else "N/A"
-    infoBox("負債成本 (rᵈ)", h3(disp), icon = icon("university"), color = "lime", fill = TRUE)
+    # Hosted on WACC tab; tone-2 CSS — never AdminLTE lime (neon green).
+    infoBox(
+      "負債成本 (rᵈ)",
+      h3(disp),
+      icon = icon("university"),
+      color = "aqua",
+      fill = TRUE,
+      width = NULL
+    )
   })
   
   # ==========================================
