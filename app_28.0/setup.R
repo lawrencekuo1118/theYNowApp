@@ -727,6 +727,43 @@ PARAM_SENSITIVITY_SHOCK <- 0.01
   fcff
 }
 
+#' Grow a positive trailing FCFF across the explicit forecast years.
+#' Uses the same near-term / stage revenue-g path as `fcf_projection_module`
+#' (Gordon → `g_near`; two-stage → `g_stage1` then `g_stage2`). Terminal SGR
+#' belongs only in Gordon TV after year n — not in this explicit path.
+#' Rates are decimals. Returns NULL when the path cannot stay positive.
+.fcff_trailing_growth_path <- function(base, n, mode = "gordon",
+                                       g_near = 0, g_stage1 = NULL, g_stage2 = NULL,
+                                       yr_stage1 = NULL) {
+  base <- suppressWarnings(as.numeric(base)[1])
+  n <- suppressWarnings(as.integer(round(as.numeric(n)[1])))
+  if (!is.finite(base) || base <= 0 || !is.finite(n) || n < 1L) return(NULL)
+  to_pct <- function(x) {
+    x <- suppressWarnings(as.numeric(x)[1])
+    if (!is.finite(x)) NA_real_ else x * 100
+  }
+  if (!identical(as.character(mode)[1], "two_stage")) {
+    if (!is.finite(suppressWarnings(as.numeric(g_near)[1]))) return(NULL)
+  }
+  out <- numeric(n)
+  level <- base
+  for (i in seq_len(n)) {
+    g_pct <- revenue_growth_pct_for_year(
+      year_idx = i,
+      mode = mode,
+      g_est = to_pct(g_near),
+      g_stage1 = to_pct(g_stage1),
+      g_stage2 = to_pct(g_stage2),
+      yr_stage1 = yr_stage1
+    )
+    if (!is.finite(g_pct)) return(NULL)
+    level <- level * (1 + g_pct / 100)
+    out[i] <- level
+  }
+  if (!is.finite(out[n]) || out[n] <= 0) return(NULL)
+  out
+}
+
 #' Discount an explicit FCFF path with the same WACC / Gordon TV as `.dcf_formula_ev`.
 .dcf_formula_ev_from_fcff <- function(fcff, r1, g_term, r2 = NULL, yr_stage1 = NULL,
                                     yr_stage2 = NULL) {
