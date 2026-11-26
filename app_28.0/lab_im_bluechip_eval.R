@@ -779,6 +779,14 @@ lab_evaluate_ticker_fscore <- function(ticker, industry_key = NULL, method = NUL
     out$error <- "無法取得財報"
     return(out)
   }
+  # Soft-fill .TWO thin Yahoo via TPEx; ranking_screen skips (XLS fan-out).
+  if (exists("ynow_soft_fill_statements_post_fetch", mode = "function")) {
+    fb <- tryCatch(
+      ynow_soft_fill_statements_post_fetch(res, tk),
+      error = function(e) NULL
+    )
+    if (is.list(fb) && isTRUE(fb$used) && !is.null(fb$res)) res <- fb$res
+  }
   d_is <- tryCatch(res[["Income Statement"]]$expanded, error = function(e) NULL)
   d_bs <- tryCatch(res[["Balance Sheet"]]$expanded, error = function(e) NULL)
   d_cf <- tryCatch(res[["Cash Flow"]]$expanded, error = function(e) NULL)

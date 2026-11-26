@@ -104,6 +104,14 @@ lab_compute_quality_metrics <- function(ticker, industry_key = NULL) {
     out$error <- if (inherits(res, "error")) conditionMessage(res) else "no statements"
     return(out)
   }
+  # Same post-fetch soft-fill as Search (.TWO thin Yahoo → TPEx IS/BS; no CF invent).
+  if (exists("ynow_soft_fill_statements_post_fetch", mode = "function")) {
+    fb <- tryCatch(
+      ynow_soft_fill_statements_post_fetch(res, tk),
+      error = function(e) NULL
+    )
+    if (is.list(fb) && isTRUE(fb$used) && !is.null(fb$res)) res <- fb$res
+  }
   d_is <- tryCatch(res[["Income Statement"]]$expanded, error = function(e) NULL)
   d_bs <- tryCatch(res[["Balance Sheet"]]$expanded, error = function(e) NULL)
   d_cf <- tryCatch(res[["Cash Flow"]]$expanded, error = function(e) NULL)

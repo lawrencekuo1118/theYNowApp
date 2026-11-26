@@ -101,6 +101,10 @@ reorder_financial_columns <- function(df) {
   df[, c(label_col, ttm_cols, fy_cols), drop = FALSE]
 }
 
+# Bump when normalize_all_financials semantics change so persistent stmt:
+# cache hits re-run the cleaner instead of serving a stale shape.
+YNOW_STATEMENT_CLEANER_VERSION <- 1L
+
 # 標準化三表結構（collapsed / expanded 皆重排欄位）
 normalize_financial_statement <- function(stmt) {
   if (is.null(stmt)) return(stmt)
@@ -146,6 +150,16 @@ normalize_all_financials <- function(res) {
       attr(out, "financialCurrency") <- f_ccy
     }
   }
+  # Preserve non-cleaner attrs (e.g. dividends, TPEx stamps) when re-normalizing
+  # a cached payload that was already a named statement list.
+  if (is.null(meta) && is.list(res)) {
+    for (nm in c("currency", "financialCurrency")) {
+      if (is.null(attr(out, nm)) && !is.null(attr(res, nm))) {
+        attr(out, nm) <- attr(res, nm)
+      }
+    }
+  }
+  attr(out, "statement_cleaner_version") <- YNOW_STATEMENT_CLEANER_VERSION
   out
 }
 

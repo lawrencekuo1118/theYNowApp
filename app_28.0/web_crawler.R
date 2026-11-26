@@ -377,6 +377,26 @@ fetch_financial_statements_source <- function(stock_code) {
     }
     if (!is.null(hit) && !isTRUE(empty_fn(hit))) {
       attr(hit, "statement_cache_origin") <- "persistent_cache"
+      # Hits were stored only after a live normalize; mark so Search recovery
+      # (ynow_server original_source) does not re-scrape on every session.
+      attr(hit, "integrity_original_checked") <- TRUE
+      cleaner_ver <- suppressWarnings(
+        as.integer(attr(hit, "statement_cleaner_version") %||% NA_integer_)[1]
+      )
+      need_renorm <- exists("normalize_all_financials", mode = "function") &&
+        exists("YNOW_STATEMENT_CLEANER_VERSION") &&
+        !identical(cleaner_ver, as.integer(YNOW_STATEMENT_CLEANER_VERSION)[1])
+      if (isTRUE(need_renorm)) {
+        hit <- normalize_all_financials(hit)
+        attr(hit, "statement_cache_origin") <- "persistent_cache"
+        attr(hit, "integrity_original_checked") <- TRUE
+        if (exists("ynow_market_cache_put", mode = "function")) {
+          tryCatch(
+            ynow_market_cache_put(stmt_key, "statement", tk, hit),
+            error = function(e) NULL
+          )
+        }
+      }
       return(hit)
     }
   }

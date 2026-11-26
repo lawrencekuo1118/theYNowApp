@@ -1399,8 +1399,9 @@ enrich_hfv_statements_multisource <- function(ticker, d_is, d_bs, d_cf) {
   thin_cf <- .thin(d_cf)
 
   if (grepl("\\.TWO$", tk) && (thin_is || thin_bs) &&
-      exists("apply_tpex_financial_fallback", mode = "function") &&
-      exists("coerce_financial_df", mode = "function")) {
+      exists("coerce_financial_df", mode = "function") &&
+      (exists("ynow_soft_fill_statements_post_fetch", mode = "function") ||
+       exists("apply_tpex_financial_fallback", mode = "function"))) {
     yahoo_shape <- list(
       "Income Statement" = list(
         expanded = if (thin_is) data.frame() else d_is,
@@ -1416,7 +1417,11 @@ enrich_hfv_statements_multisource <- function(ticker, d_is, d_bs, d_cf) {
       )
     )
     fb <- tryCatch(
-      apply_tpex_financial_fallback(yahoo_shape, tk),
+      if (exists("ynow_soft_fill_statements_post_fetch", mode = "function")) {
+        ynow_soft_fill_statements_post_fetch(yahoo_shape, tk, allow_tpex = TRUE)
+      } else {
+        apply_tpex_financial_fallback(yahoo_shape, tk)
+      },
       error = function(e) list(used = FALSE, res = NULL, error = conditionMessage(e))
     )
     if (isTRUE(fb$used) && !is.null(fb$res)) {

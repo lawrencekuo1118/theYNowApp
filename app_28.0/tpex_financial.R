@@ -149,6 +149,39 @@ tpex_financial_meta <- function(res) {
   list(res = out, filled = filled)
 }
 
+#' Soft post-fetch fill shared by Search / Lab / BBLab / index / HTCDI / HFV.
+#' For `.TWO` with thin Yahoo IS/BS, merge TPEx summary (never invent CF/CapEx/FCF).
+#' Ranking screens skip by default (`options(ynow.ranking_screen)`) to avoid XLS fan-out.
+#' @param allow_tpex NULL → follow ranking_screen; TRUE/FALSE force.
+#' @return list(res=, used=, meta=, error=) same shape as apply_tpex_financial_fallback
+ynow_soft_fill_statements_post_fetch <- function(res, ticker, allow_tpex = NULL) {
+  if (is.null(allow_tpex)) {
+    allow_tpex <- !isTRUE(getOption("ynow.ranking_screen", FALSE))
+  }
+  out <- list(res = res, used = FALSE, meta = NULL, error = NULL)
+  if (!isTRUE(allow_tpex)) return(out)
+  # Resolve from the caller first so unit tests can stub, then fall back to
+  # the app environment that defined this helper.
+  apply_fn <- NULL
+  if (exists("apply_tpex_financial_fallback", envir = parent.frame(),
+             inherits = TRUE, mode = "function")) {
+    apply_fn <- get("apply_tpex_financial_fallback", envir = parent.frame(),
+                    inherits = TRUE, mode = "function")
+  } else if (exists("apply_tpex_financial_fallback",
+                    envir = environment(), inherits = TRUE, mode = "function")) {
+    apply_fn <- get("apply_tpex_financial_fallback", envir = environment(),
+                    inherits = TRUE, mode = "function")
+  }
+  if (!is.function(apply_fn)) return(out)
+  if (!should_try_tpex_financial_fallback(ticker, res)) return(out)
+  tryCatch(
+    apply_fn(res, ticker),
+    error = function(e) list(
+      res = res, used = FALSE, meta = NULL, error = conditionMessage(e)
+    )
+  )
+}
+
 #' 合併／覆寫：Yahoo IS／BS 缺漏時以 TPEx 摘要補齊（不捏造 CF）
 apply_tpex_financial_fallback <- function(yahoo_res, ticker) {
   if (!should_try_tpex_financial_fallback(ticker, yahoo_res)) {

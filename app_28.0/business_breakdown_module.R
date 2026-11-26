@@ -1495,6 +1495,15 @@ business_breakdown_lab_server <- function(id = "bblab",
         if (exists("cached_scrape_financials", mode = "function")) {
           # cached_scrape_financials already normalizes — avoid double work on cache hits
           res <- tryCatch(cached_scrape_financials(tk), error = function(e) NULL)
+          # Shared soft-fill with Search/Lab: .TWO thin Yahoo → TPEx IS/BS only
+          if (!is.null(res) &&
+              exists("ynow_soft_fill_statements_post_fetch", mode = "function")) {
+            fb <- tryCatch(
+              ynow_soft_fill_statements_post_fetch(res, tk),
+              error = function(e) NULL
+            )
+            if (is.list(fb) && isTRUE(fb$used) && !is.null(fb$res)) res <- fb$res
+          }
           if (!is.null(res) && !is.null(res[["Income Statement"]])) {
             d_is <- tryCatch({
               exp <- res[["Income Statement"]]$expanded
