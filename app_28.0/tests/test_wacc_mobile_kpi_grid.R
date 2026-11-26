@@ -22,16 +22,34 @@ check <- function(label, cond) {
 ui_src <- paste(readLines("ynow_ui.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 srv_src <- paste(readLines("ynow_server.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 loc_src <- paste(readLines("ui_locale.R", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+css_src <- paste(readLines("www/ynow_widgets.css", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 
 check(
-  "WACC KPI grid is a single fluidRow class",
-  grepl('fluidRow\\(\\s*class\\s*=\\s*"ynow-wacc-kpi-grid"', ui_src, perl = TRUE)
+  "WACC KPI grid is a single fluidRow class on WACC tab",
+  grepl('fluidRow\\(\\s*class\\s*=\\s*"ynow-wacc-kpi-grid ynow-model-kpi-row"', ui_src, perl = TRUE)
 )
 
-# Markup order: E, D, T then WACC, rd, re inside the grid.
-grid_pos <- regexpr('class = "ynow-wacc-kpi-grid"', ui_src, fixed = TRUE)[1]
+# Markup order: E, D, T then WACC, rd, re inside the grid (WACC shell tab, not body).
+dcf_shell <- sub(
+  "(?s).*\\.ynow_dcf_shell_ui\\s*<-\\s*function\\s*\\(\\s*\\)\\s*\\{",
+  "",
+  ui_src,
+  perl = TRUE
+)
+dcf_shell <- sub("(?s)\\n\\.ynow_dcf_body_ui\\s*<-\\s*function.*", "", dcf_shell, perl = TRUE)
+dcf_body <- sub(
+  "(?s).*\\.ynow_dcf_body_ui\\s*<-\\s*function\\s*\\(\\s*\\)\\s*\\{",
+  "",
+  ui_src,
+  perl = TRUE
+)
+dcf_body <- sub("(?s)\\nui <- dashboardPage.*", "", dcf_body, perl = TRUE)
+check("WACC KPIs left the DCF body", !grepl("ynow-wacc-kpi-grid", dcf_body, fixed = TRUE))
+check("WACC KPIs live in DCF shell", grepl("ynow-wacc-kpi-grid", dcf_shell, fixed = TRUE))
+
+grid_pos <- regexpr('class = "ynow-wacc-kpi-grid ynow-model-kpi-row"', ui_src, fixed = TRUE)[1]
 check("grid wrapper located", is.finite(grid_pos) && grid_pos > 0)
-grid_chunk <- substr(ui_src, grid_pos, min(nchar(ui_src), grid_pos + 1800L))
+grid_chunk <- substr(ui_src, grid_pos, min(nchar(ui_src), grid_pos + 2200L))
 pos_e <- regexpr('vbx_equity_val', grid_chunk, fixed = TRUE)[1]
 pos_d <- regexpr('vbx_debt_val', grid_chunk, fixed = TRUE)[1]
 pos_t <- regexpr('vbx_tax_rate', grid_chunk, fixed = TRUE)[1]
@@ -45,12 +63,31 @@ check(
 )
 
 check(
-  "WACC lock on col-sm-4 host with bare uiOutput",
+  "WACC result uses outline tone host with bare uiOutput",
   grepl(
-    'class = "col-sm-4"[\\s\\S]{0,160}`data-ynow-lock` = "output:wacc"[\\s\\S]{0,160}uiOutput\\("ibx_wacc"\\)',
+    'ynow-model-kpi-result ynow-model-kpi-outline"[\\s\\S]{0,160}`data-ynow-lock` = "output:wacc"[\\s\\S]{0,160}uiOutput\\("ibx_wacc"\\)',
     grid_chunk,
     perl = TRUE
   )
+)
+check(
+  "Rd/Re use tone-2 (no neon lime host)",
+  grepl("ynow-model-kpi-tone-2", grid_chunk, fixed = TRUE) &&
+    grepl('infoBoxOutput("ibx_rd"', grid_chunk, fixed = TRUE) &&
+    grepl('infoBoxOutput("ibx_re"', grid_chunk, fixed = TRUE)
+)
+check(
+  "ibx_rd render avoids AdminLTE lime",
+  grepl(
+    "output\\$ibx_rd\\s*<-\\s*renderInfoBox\\([\\s\\S]{0,500}?color\\s*=\\s*\"aqua\"",
+    srv_src,
+    perl = TRUE
+  ) &&
+    !grepl(
+      "output\\$ibx_rd\\s*<-\\s*renderInfoBox\\([\\s\\S]{0,500}?color\\s*=\\s*\"lime\"",
+      srv_src,
+      perl = TRUE
+    )
 )
 
 check(
@@ -66,7 +103,7 @@ check(
   "mobile media query targets ynow-wacc-kpi-grid",
   grepl(
     "@media\\s*\\(max-width:\\s*767px\\)\\s*\\{[\\s\\S]*?\\.ynow-wacc-kpi-grid",
-    ui_src,
+    css_src,
     perl = TRUE
   )
 )
@@ -74,7 +111,7 @@ check(
   "mobile CSS 3 equal columns",
   grepl(
     "\\.ynow-wacc-kpi-grid[\\s\\S]{0,400}?grid-template-columns:\\s*repeat\\(3,\\s*minmax\\(0,\\s*1fr\\)\\)",
-    ui_src,
+    css_src,
     perl = TRUE
   )
 )
@@ -82,7 +119,7 @@ check(
   "mobile CSS equal row tracks sized to content",
   grepl(
     "\\.ynow-wacc-kpi-grid[\\s\\S]{0,500}?grid-auto-rows:\\s*minmax\\(min-content,\\s*1fr\\)",
-    ui_src,
+    css_src,
     perl = TRUE
   )
 )
@@ -90,7 +127,7 @@ check(
   "mobile CSS disables Bootstrap clearfix",
   grepl(
     "\\.row\\.ynow-wacc-kpi-grid::before[\\s\\S]{0,200}?content:\\s*none\\s*!important",
-    ui_src,
+    css_src,
     perl = TRUE
   )
 )
@@ -98,12 +135,12 @@ check(
   "mobile CSS labels wrap without ellipsis",
   grepl(
     "\\.ynow-wacc-kpi-grid \\.small-box \\.inner p[\\s\\S]{0,250}?white-space:\\s*normal\\s*!important[\\s\\S]{0,120}?text-overflow:\\s*unset",
-    ui_src,
+    css_src,
     perl = TRUE
   ) &&
     grepl(
       "\\.ynow-wacc-kpi-grid \\.info-box \\.info-box-text[\\s\\S]{0,250}?white-space:\\s*normal\\s*!important[\\s\\S]{0,120}?text-overflow:\\s*unset",
-      ui_src,
+      css_src,
       perl = TRUE
     )
 )
@@ -111,15 +148,15 @@ check(
   "mobile CSS prefers overflow-wrap:break-word in WACC grid labels",
   grepl(
     "ynow-wacc-kpi-grid .small-box .inner p",
-    ui_src,
+    css_src,
     fixed = TRUE
   ) &&
     grepl(
       "Prefer whole-word wrap; avoid mid-glyph cuts from overflow-wrap:anywhere",
-      ui_src,
+      css_src,
       fixed = TRUE
     ) &&
-    grepl("overflow-wrap: break-word", ui_src, fixed = TRUE)
+    grepl("overflow-wrap: break-word", css_src, fixed = TRUE)
 )
 
 check(

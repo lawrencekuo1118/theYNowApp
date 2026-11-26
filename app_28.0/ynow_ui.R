@@ -4603,6 +4603,36 @@ tabPanel(
                        icon = icon("balance-scale"),
                        tags$div(
                          `data-ynow-lock` = "section:wacc_box",
+                         # WACC / Rd / Re (+ E, D, T) KPIs belong on this tab — not DCF Overview body.
+                         # Graduated tones match NAV/RI model cards (CSS --ynow-model-kpi-s*).
+                         fluidRow(
+                           class = "ynow-wacc-kpi-grid ynow-model-kpi-row",
+                           column(
+                             4, class = "ynow-model-kpi-tone-4",
+                             valueBoxOutput("vbx_equity_val", width = 12)
+                           ),
+                           column(
+                             4, class = "ynow-model-kpi-tone-4",
+                             valueBoxOutput("vbx_debt_val", width = 12)
+                           ),
+                           column(
+                             4, class = "ynow-model-kpi-tone-3",
+                             valueBoxOutput("vbx_tax_rate", width = 12)
+                           ),
+                           tags$div(
+                             class = "col-sm-4 ynow-model-kpi-result ynow-model-kpi-outline",
+                             `data-ynow-lock` = "output:wacc",
+                             shiny::uiOutput("ibx_wacc")
+                           ),
+                           column(
+                             4, class = "ynow-model-kpi-tone-2",
+                             infoBoxOutput("ibx_rd", width = NULL)
+                           ),
+                           column(
+                             4, class = "ynow-model-kpi-tone-2",
+                             infoBoxOutput("ibx_re", width = NULL)
+                           )
+                         ),
                          uiOutput("dcf_wacc_fcfe_note"),
                          uiOutput("dcf_disc_formula_banner"),
                          fluidRow(
@@ -4675,26 +4705,11 @@ tabPanel(
                      )
               ),
               fluidRow(
-                infoBoxOutput("ibx_estimated_g", width = 6),
-                infoBoxOutput("ibx_sgr", width = 6),
                 column(width = 12,
                        plotOutput("plt_fcf_trend", height = "350px")
                 )
               ),
-              # WACC KPI displays (inputs stay in the eager shell for Search autofill).
-              fluidRow(
-                class = "ynow-wacc-kpi-grid",
-                valueBoxOutput("vbx_equity_val", width = 4),
-                valueBoxOutput("vbx_debt_val", width = 4),
-                valueBoxOutput("vbx_tax_rate", width = 4),
-                tags$div(
-                  class = "col-sm-4",
-                  `data-ynow-lock` = "output:wacc",
-                  shiny::uiOutput("ibx_wacc")
-                ),
-                infoBoxOutput("ibx_rd", width = 4),
-                infoBoxOutput("ibx_re", width = 4)
-              ),
+              # Growth / WACC metric cards live on affiliated shell sub-tabs.
               tabBox(title = "SENSITIVITY", width = "auto",
                      fluidRow(
                        column(

@@ -63,9 +63,8 @@ lock_numeric_input <- function(ui) ui
 capm_beta_settings_ui <- function(...) shiny::tags$div()
 rd_estimate_settings_ui <- function(...) shiny::tags$div()
 ddm_ke_bridge_settings_ui <- function(...) shiny::tags$div()
-fcf_projection_module_ui <- function(id) {
-  shiny::tabPanel("FCF", value = "fcf_projection", shiny::tags$div(id))
-}
+# Real FCF shell tab (hosts near-term g + terminal SGR metric cards).
+source("fcf_projection_module.R", local = FALSE, encoding = "UTF-8")
 
 APP_DEFAULTS <- list(
   ri_roe = 15, ri_years = 5, ddm_ke = 8, sgr = 2, ri_payout = 40,
@@ -228,6 +227,24 @@ check("DCF run button left the body", !grepl('id="calc"', dcf_body, fixed = TRUE
 check(
   "DCF details stay in the body",
   "DCF Calculation Details" %in% tab_anchors(dcf_body)
+)
+# Metric cards restored to affiliated shell sub-tabs (not Overview body clutter).
+check("growth KPIs on FCF Projection shell", grepl("ibx_estimated_g", dcf_shell, fixed = TRUE) &&
+  grepl("ibx_sgr", dcf_shell, fixed = TRUE))
+check("growth KPIs left DCF body", !grepl("ibx_estimated_g", dcf_body, fixed = TRUE) &&
+  !grepl("ibx_sgr", dcf_body, fixed = TRUE))
+check("WACC KPIs on WACC shell tab", grepl("ynow-wacc-kpi-grid", dcf_shell, fixed = TRUE) &&
+  grepl("ibx_wacc", dcf_shell, fixed = TRUE) &&
+  grepl("ibx_rd", dcf_shell, fixed = TRUE) &&
+  grepl("ibx_re", dcf_shell, fixed = TRUE))
+check("WACC KPIs left DCF body", !grepl("ynow-wacc-kpi-grid", dcf_body, fixed = TRUE) &&
+  !grepl("ibx_wacc", dcf_body, fixed = TRUE))
+check(
+  "WACC KPI tones match NAV/RI scale",
+  grepl("ynow-model-kpi-result ynow-model-kpi-outline", dcf_shell, fixed = TRUE) &&
+    grepl("ynow-model-kpi-tone-2", dcf_shell, fixed = TRUE) &&
+    grepl("ynow-model-kpi-tone-3", dcf_shell, fixed = TRUE) &&
+    grepl("ynow-model-kpi-tone-4", dcf_shell, fixed = TRUE)
 )
 
 ddm_shell <- html_of(.ynow_ddm_shell_ui())

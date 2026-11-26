@@ -15,10 +15,28 @@ fcf_projection_module_ui <- function(id) {
     icon = icon("seedling"),
     tags$div(
       `data-ynow-lock` = "section:fcf_projection",
+           # Near-term g + terminal SGR KPIs live on this growth tab (not DCF Overview / body).
+           # Tone classes match NAV/RI graduated model-accent scale (not neon AdminLTE lime).
            fluidRow(
-             column(4, valueBoxOutput(ns("vbx_est_ocf"), width = 12)),
-             column(4, `data-ynow-lock` = "output:fcf_est", valueBoxOutput(ns("vbx_est_fcf"), width = 12)),
-             column(4, valueBoxOutput(ns("vbx_est_g_fund"), width = 12)) 
+             class = "ynow-model-kpi-row",
+             column(
+               6, class = "ynow-model-kpi-tone-2",
+               infoBoxOutput("ibx_estimated_g", width = NULL)
+             ),
+             column(
+               6, class = "ynow-model-kpi-tone-3",
+               infoBoxOutput("ibx_sgr", width = NULL)
+             )
+           ),
+           fluidRow(
+             class = "ynow-model-kpi-row",
+             column(4, class = "ynow-model-kpi-tone-2", valueBoxOutput(ns("vbx_est_ocf"), width = 12)),
+             column(
+               4, class = "ynow-model-kpi-result ynow-model-kpi-outline",
+               `data-ynow-lock` = "output:fcf_est",
+               valueBoxOutput(ns("vbx_est_fcf"), width = 12)
+             ),
+             column(4, class = "ynow-model-kpi-tone-3", valueBoxOutput(ns("vbx_est_g_fund"), width = 12))
            ),
            
            fluidRow(
