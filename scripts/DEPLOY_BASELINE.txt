@@ -1,11 +1,11 @@
 source=shinyapps.io TheYNowApp
-bundleId=12870230
+bundleId=12871655
 appId=10907657
 url=https://hopesmasher1118.shinyapps.io/TheYNowApp/  # pragma: allowlist secret
-aligned_git=171c6cb758bc1ab4c1c22f817e8b20f56dddcc95
-commit=171c6cb758bc1ab4c1c22f817e8b20f56dddcc95
-short=171c6cb7
-message=chore: record shipped display version v28.73
-captured_at=2026-11-26T04:52:02Z
+aligned_git=c79a6692ed961d81667041366d6eab38684b1282
+commit=c79a6692ed961d81667041366d6eab38684b1282
+short=c79a6692
+message=chore: record shipped display version v28.74
+captured_at=2026-11-26T13:35:05Z
 display_version=v28.74
-note=Shipped v28.73 via deploy_app_21.R (cloud tip-ship / Actions). Live status=running; rsconnect bundleId=12870230.
+note=Shipped v28.74 via deploy_app_21.R (cloud tip-ship / Actions). Live status=running; rsconnect bundleId=12871655.
