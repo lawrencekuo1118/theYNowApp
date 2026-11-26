@@ -246,6 +246,18 @@ check(
     grepl("ynow-model-kpi-tone-3", dcf_shell, fixed = TRUE) &&
     grepl("ynow-model-kpi-tone-4", dcf_shell, fixed = TRUE)
 )
+# Rendered HTML uses id="plt_fcf_trend" (not the R plotOutput(...) call text).
+check(
+  "FCFF/NOPAT growth chart on DCF Overview shell",
+  grepl("plt_fcf_trend", dcf_shell, fixed = TRUE) &&
+    !grepl("plt_fcf_trend", dcf_body, fixed = TRUE)
+)
+pos_set <- regexpr("vtxt_dcf_setting_details", dcf_shell, fixed = TRUE)[1]
+pos_tr <- regexpr("plt_fcf_trend", dcf_shell, fixed = TRUE)[1]
+check(
+  "growth chart sits under Gordon/WACC settings block",
+  pos_set > 0L && pos_tr > pos_set
+)
 
 ddm_shell <- html_of(.ynow_ddm_shell_ui())
 ddm_body <- html_of(.ynow_page_ui_ddm())

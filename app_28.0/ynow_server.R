@@ -13547,21 +13547,39 @@ server <- function(input, output, session) {
   
   output$plt_fcf_trend <- renderPlot({
     session_currency()
-    req(fcf_results$df_fcf()) 
+    req(fcf_results$df_fcf())
     df <- fcf_results$df_fcf()
     claim <- input$dcf_claim %||% "fcff"
-    cf_lab <- dcf_cf_full_zh(claim)
+    loc <- tryCatch(normalize_ui_locale(ui_locale()), error = function(e) "zh-TW")
+    .lab <- function(key, fb) tryCatch(ui_str(key, loc), error = function(e) fb)
     tag <- dcf_cf_tag(claim)
+    # Prefer locale claim label; fall back to existing zh helper for older builds.
+    cf_lab <- if (identical(as.character(claim)[1], "fcfe")) {
+      .lab("dcf_fcf_trend_fcfe", "FCFE")
+    } else {
+      .lab("dcf_fcf_trend_fcff", dcf_cf_full_zh(claim))
+    }
+    nopat_lab <- .lab("dcf_fcf_trend_nopat", "預估稅後營業利益 (NOPAT)")
+    title_lab <- sprintf(
+      .lab("dcf_fcf_trend_title", "%s 與 營業利益 成長軌跡"),
+      tag
+    )
+    x_lab <- .lab("dcf_fcf_trend_x", "預測年份")
+    y_lab <- sprintf(
+      .lab("dcf_fcf_trend_y", "金額 (%s)"),
+      money_label()
+    )
     br <- .dcf_fcfe_bridge()
     df$CF <- extract_dcf_claim_series(
       df, claim,
       interest_after_tax = br$iat, debt0 = br$debt, g_path = br$g
     )
     df$cf_metric <- cf_lab
-    
+    df$nopat_metric <- nopat_lab
+
     ggplot(df, aes(x = Year)) +
-      geom_col(aes(y = NOPAT, fill = "預估稅後營業利益 (NOPAT)"), width = 0.6, alpha = 0.8) +
-      scale_fill_manual(name = "", values = c("預估稅後營業利益 (NOPAT)" = "#00a65a")) +
+      geom_col(aes(y = NOPAT, fill = nopat_metric), width = 0.6, alpha = 0.8) +
+      scale_fill_manual(name = "", values = setNames("#00a65a", nopat_lab)) +
       geom_line(aes(y = CF, group = 1, color = cf_metric), size = 1.5) +
       geom_point(aes(y = CF, color = cf_metric), size = 3) +
       scale_color_manual(name = "", values = setNames("#3c8dbc", cf_lab)) +
@@ -13569,7 +13587,7 @@ server <- function(input, output, session) {
                 vjust = ifelse(df$CF >= 0, -0.5, 1.5), size = 4, fontface = "bold") +
       scale_y_continuous(labels = label_chart_number(prefix = money_prefix())) +
       theme_minimal() +
-      labs(title = paste0(tag, " 與 營業利益 成長軌跡"), x = "預測年份", y = paste0("金額 (", money_label(), ")")) +
+      labs(title = title_lab, x = x_lab, y = y_lab) +
       theme(
         plot.title = element_text(face = "bold", size = 16),
         axis.text = element_text(size = 12),
@@ -14332,8 +14350,10 @@ server <- function(input, output, session) {
   # ==========================================
   # 💰 8. DCF 計算核心與企業估值 (對接 FCFF 預測序列)
   # ==========================================
-  # Grow trailing FCFF (CFO identity) at the scenario g path. Used only when the
-  # NOPAT-margin forecast terminal year is negative.
+  # Grow trailing FCFF (CFO identity) at the same near-term / stage g path as the
+  # NOPAT→FCFF projection table. Used only when the NOPAT-margin forecast
+  # terminal year is negative. Gordon uses estimated_g (not terminal SGR);
+  # two-stage uses g_stage1 then SGR (wired as g_stage2 in the FCF module).
   .lite_fcff_from_trailing <- function(n, mode) {
     base <- tryCatch(
       latest_hist_fcff(
@@ -14345,25 +14365,22 @@ server <- function(input, output, session) {
     )
     base <- suppressWarnings(as.numeric(base)[1])
     if (!is.finite(base) || base <= 0) return(NULL)
-    g2 <- suppressWarnings(as.numeric(input$sgr)[1]) / 100
+    g_near <- suppressWarnings(as.numeric(estimated_g())[1]) / 100
     g1 <- suppressWarnings(as.numeric(input$g_stage1)[1]) / 100
-    if (!is.finite(g2)) g2 <- 0
-    if (!is.finite(g1)) g1 <- g2
+    # FCF module wires g_stage2 ← input$sgr for the explicit post-stage-1 path.
+    g2 <- suppressWarnings(as.numeric(input$sgr)[1]) / 100
     yr1 <- if (identical(mode, "two_stage")) {
       clamp_yr_stage1(n, input$yr_stage1, APP_DEFAULTS$yr_stage1)
     } else {
-      0L
+      NULL
     }
-    out <- numeric(n)
-    level <- base
-    for (i in seq_len(n)) {
-      g <- if (yr1 > 0L && i <= yr1) g1 else g2
-      if (!is.finite(g)) g <- 0
-      level <- level * (1 + g)
-      out[i] <- level
+    if (exists(".fcff_trailing_growth_path", mode = "function")) {
+      return(.fcff_trailing_growth_path(
+        base = base, n = n, mode = mode,
+        g_near = g_near, g_stage1 = g1, g_stage2 = g2, yr_stage1 = yr1
+      ))
     }
-    if (!is.finite(out[n]) || out[n] <= 0) return(NULL)
-    out
+    NULL
   }
 
   .execute_dcf_calc <- function(notify = NULL) {
