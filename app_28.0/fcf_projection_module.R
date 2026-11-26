@@ -360,7 +360,7 @@ fcf_projection_module_server <- function(
     output$fcf_formula_banner <- renderUI({
       div(
         dcf_formula_banner_txt(claim_val()),
-        style = "font-size: 18px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px;"
+        style = "font-size: 18px; font-weight: bold; color: #2C3E50; text-align: center; margin-bottom: 15px; padding: 10px; background-color: #F2F4F4; border-radius: 8px; white-space: pre-line;"
       )
     })
 

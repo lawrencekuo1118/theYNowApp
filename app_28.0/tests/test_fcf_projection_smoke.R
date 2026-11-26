@@ -100,6 +100,24 @@ check("module exposes CapEx spike controls", grepl("apply_capex_spike_smooth", s
   grepl("capex_spike_mult", src, fixed = TRUE))
 check("module calls fcf_sync_capex_revenue_margin", grepl("fcf_sync_capex_revenue_margin(", src, fixed = TRUE))
 
+# FCFE formula banner: two lines, no full-width pipe on one line
+fcfe_banner <- dcf_formula_banner_txt("fcfe")
+fcff_banner <- dcf_formula_banner_txt("fcff")
+fcfe_lines <- strsplit(fcfe_banner, "\n", fixed = TRUE)[[1]]
+check("FCFE banner is two lines", length(fcfe_lines) == 2L)
+check("FCFE banner line1 conversion", identical(
+  fcfe_lines[[1]],
+  "FCFE = FCFF − Interest×(1−T) + Net Borrowing"
+))
+check("FCFE banner line2 FCFF identity", identical(
+  fcfe_lines[[2]],
+  "FCFF = CFO + Interest×(1−T) − CapEx ＝ NOPAT + D&A − ΔNWC − CapEx"
+))
+check("FCFE banner has no pipe separator", !grepl("｜", fcfe_banner, fixed = TRUE))
+check("FCFF banner stays single line", !grepl("\n", fcff_banner, fixed = TRUE) &&
+  grepl("FCFF = CFO", fcff_banner, fixed = TRUE))
+check("banner UI preserves newlines (pre-line)", grepl("white-space: pre-line", src, fixed = TRUE))
+
 # Six FCF inputs: IS → reinvestment → IC stack (display order only; IDs unchanged)
 check(
   "fcf param stack marks IS→reinvestment→IC order",
