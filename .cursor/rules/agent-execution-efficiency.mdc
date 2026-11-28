@@ -1,0 +1,18 @@
+---
+description: Keep agent work scoped, avoid redundant scans/retries, and prefer targeted verification
+alwaysApply: true
+---
+
+# Agent Execution Efficiency
+
+- Avoid redundant repository-wide scans.
+- Inspect only files directly relevant to the requested task.
+- Prioritize implementation over repeated investigation.
+- Do not repeatedly run unchanged tests.
+- Run targeted regression tests before full test suites.
+- Set appropriate timeouts for external API requests.
+- Do not retry failed operations more than twice without investigating the underlying cause.
+- Avoid repeatedly reading unchanged files.
+- Do not expand the implementation scope unnecessarily.
+- Report blockers instead of entering indefinite retry loops.
+- Preserve existing functionality and validation requirements.
