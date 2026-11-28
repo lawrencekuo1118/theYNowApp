@@ -22,8 +22,10 @@ Thumbs.db
 *.tar.gz
 *.pdf
 .positai
-# Ignore .cursor contents; keep skills + Cloud Agent environment.json versioned.
+# Ignore .cursor contents; keep rules, skills + Cloud Agent environment.json versioned.
 .cursor/*
+!.cursor/rules/
+!.cursor/rules/**/
 !.cursor/skills/
 !.cursor/skills/**/
 !.cursor/environment.json
